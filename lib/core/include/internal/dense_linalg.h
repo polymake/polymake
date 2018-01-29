@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -32,7 +32,7 @@ typename std::enable_if<is_field<E>::value, E>::type
 det(Matrix<E> M)
 {
    const int dim=M.rows();
-   if (!dim) return zero_value<E>();
+   if (!dim) return one_value<E>();
 
    std::vector<int> row_index(dim);
    copy_range(entire(sequence(0, dim)), row_index.begin());

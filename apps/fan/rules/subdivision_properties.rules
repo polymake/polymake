@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -112,11 +112,9 @@ property CONVEX : Bool;
 # Returns the //i//-th cell of the complex as a [[VectorConfiguration]]
 # @param Int i 
 # @return VectorConfiguration
-user_method cell($) : MAXIMAL_CELLS , VECTORS {
+user_method cell($) : MAXIMAL_CELLS, VECTORS {
    my ($self, $i) = @_;
-   my $v=new VectorConfiguration<Scalar>;
-   $v->VECTORS=$self->VECTORS->minor($self->MAXIMAL_CELLS->[$i],All);
-   return $v;
+   return new VectorConfiguration<Scalar>(VECTORS=>$self->VECTORS->minor($self->MAXIMAL_CELLS->[$i],All));
 }
 
 
@@ -176,11 +174,9 @@ property POLYHEDRAL_COMPLEX : PolyhedralComplex<Scalar>;
 # Returns the //i//-th cell of the complex as a [[PointConfiguration]]
 # @param Int i
 # @return PointConfiguration
-user_method cell($) : MAXIMAL_CELLS , POINTS {
+user_method cell($) : MAXIMAL_CELLS, POINTS {
    my ($self, $i) = @_;
-   my $v=new PointConfiguration<Scalar>;
-   $v->POINTS=$self->POINTS->minor($self->MAXIMAL_CELLS->[$i],All);
-   return $v;
+   return new PointConfiguration<Scalar>(POINTS=>$self->POINTS->minor($self->MAXIMAL_CELLS->[$i],All));
 }
 
 # @category Geometry

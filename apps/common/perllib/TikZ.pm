@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -89,11 +89,11 @@ sub toString {
    my ($self)=@_;
    my $trans;
    my $object = $self->geometries->[0];
-   if(defined($self->transform)){
+   if (defined($self->transform)) {
        # if a transfomation is there, then just take it and remove translation
        $trans = new Matrix<Float>($self->transform);
        $trans->row(0) = unit_vector<Float>(4,0);
-   } elsif(is_object($object->source->Vertices) && $object->source->Vertices->cols < 3){
+   } elsif (is_object($object->source->Vertices) && $object->source->Vertices->cols < 3) {
        # if dimension is < 3 take the unit matrix as transformation
        # so that nothing gets skew
        $trans = dense(unit_matrix<Float>(4));
@@ -103,7 +103,6 @@ sub toString {
        $trans = new Matrix<Float>([[1,0,0,0],[0,0.9,-0.06,-0.44],[0,-0.076,0.95,-0.29],[0,0.43,0.3,0.85]]);
    }
 
-#   my $trans= defined($self->transform) ? (new Matrix<Float>($self->transform)) : (new Matrix<Float>([[1,0,0,0],[0,0.9,-0.06,-0.44],[0,-0.076,0.95,-0.29],[0,0.43,0.3,0.85]]));
    $self->header($trans) . join("", map { $_->toString($trans) } @{$self->geometries}) . $self->trailer;
 }
 
@@ -299,22 +298,13 @@ sub linesToString {
         }
         $text .= "\n";
 
-        my $arrowstring;
-        if($arrows==1) {
-            $arrowstring .= ", arrows = -stealth, shorten >= 1pt";
-        } elsif($arrows==-1) {
-            $arrowstring .= ", arrows = stealth-, shorten >= 1pt";
-        }
-
-        if(is_code($color) || is_code($thickness)){
+        if(is_code($color) || is_code($thickness) || is_code($arrows)){
             for (my $e=$self->source->all_edges; $e; ++$e) {
-                my $lsstring = "color=".$self->edgeColorString($e).", ".$self->edgeThicknessString($e);
-                $lsstring .= $arrowstring;
-                $text .= "  \\tikzstyle{".$self->edgeStyleString($e)."} = [$lsstring]\n";
+               my $lsstring = "color=".$self->edgeColorString($e).", ".$self->edgeThicknessString($e).$self->edgeArrowStyleString($e);
+               $text .= "  \\tikzstyle{".$self->edgeStyleString($e)."} = [$lsstring]\n";
             }
         } else {
-            my $lsstring = "color=".$self->edgeColorString(undef).", ".$self->edgeThicknessString(undef);
-            $lsstring .= $arrowstring;
+            my $lsstring = "color=".$self->edgeColorString(undef).", ".$self->edgeThicknessString(undef).$self->edgeArrowStyleString(undef);
             $text .= "  \\tikzstyle{".$self->edgeStyleString(undef)."} = [$lsstring]\n";
         }
         $text .= "\n";
@@ -351,6 +341,19 @@ sub linesToString {
     }
 
     return $text;
+}
+
+#TODO: does not work with user specified input
+sub edgeArrowStyleString {
+   my ($self,$e)=@_;
+   my $arrows=$self->source->ArrowStyle;
+   my $arrowstring;
+   if ((is_code($arrows) && ($arrows->($e)>0)) || (!is_code($arrows) && ($arrows>0))) {
+      $arrowstring .= ", arrows = -stealth, shorten >= 1pt";
+   } elsif ((is_code($arrows) && ($arrows->($e)<0)) || (!is_code($arrows) && ($arrows<0))) {
+      $arrowstring .= ", arrows = stealth-, shorten >= 1pt";
+   }
+   return $arrowstring;
 }
 
 sub edgeColorString {

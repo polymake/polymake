@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -64,5 +64,9 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary__eq, perl::Canned< const PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >, perl::Canned< const PuiseuxFraction< Min, PuiseuxFraction< Min, Rational, Rational >, Rational > >);
    OperatorInstance4perl(Binary__le, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, int);
    OperatorInstance4perl(Binary__eq, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, int);
+   OperatorInstance4perl(Binary__gt, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, int);
+   OperatorInstance4perl(assign, PuiseuxFraction< Min, Rational, Rational >, perl::Canned< const RationalFunction< Rational, Rational > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >);
+   OperatorInstance4perl(Binary__gt, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

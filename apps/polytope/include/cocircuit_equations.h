@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,7 +25,7 @@
 #include "polymake/common/lattice_tools.h"
 #include "polymake/group/representations.h"
 #include "polymake/group/isotypic_components.h"
-#include "polymake/group/action_datatypes.h"
+#include "polymake/group/action.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -175,7 +175,7 @@ foldable_cocircuit_equations_impl(int d,
                                   const Matrix<Scalar>& points,
                                   const IncidenceMatrix<>& VIF,
                                   const Array<SetType>& interior_ridge_simplices, // FIXME: Map
-                                  const Array<SetType>& interior_simplices,
+                                  const Array<SetType>& max_interior_simplices,
                                   perl::OptionSet options,
                                   bool partial_equations)
 {
@@ -186,7 +186,7 @@ foldable_cocircuit_equations_impl(int d,
    
    IndexOfType<SetType> index_of;
    int n_facets = 0; // number of full-dimensional simplices
-   for (const auto& s : interior_simplices)
+   for (const auto& s: max_interior_simplices)
       index_of[s] = n_facets++;
 
    ListMatrix<SparseVector<int>> cocircuit_eqs(0, 2*n_facets);
@@ -199,7 +199,7 @@ foldable_cocircuit_equations_impl(int d,
    time(&start_time);
    // for each interior ridge rho and c in {0,1}:
    //   sum_{sigma > rho, orientation=+} x_{c,sigma} = sum_{sigma > rho, orientation=-} x_{1-c,sigma}
-   for (const auto& ir : interior_ridge_simplices) {
+   for (const auto& ir: interior_ridge_simplices) {
       if (log_frequency && (++ct % log_frequency == 0)) {
          time(&current_time);
          cerr << ct << " " << difftime(current_time, start_time) << endl;
@@ -223,16 +223,15 @@ foldable_cocircuit_equations_impl(int d,
             }
          }
       }
-      if (eq_0_first.size()) {
-         if (reduce_rows) {
-            eq_0_first = common::divide_by_gcd(eq_0_first);
-            eq_1_first = common::divide_by_gcd(eq_1_first);
-         }
-         cocircuit_eqs /= eq_0_first;
-         cocircuit_eqs /= eq_1_first;
-         if (filename.size())
-            wrap(outfile) << eq_0_first << "\n" << eq_1_first << endl;
+      if (!eq_0_first.size()) continue;
+      if (reduce_rows) {
+         eq_0_first = common::divide_by_gcd(eq_0_first);
+         eq_1_first = common::divide_by_gcd(eq_1_first);
       }
+      cocircuit_eqs /= eq_0_first;
+      cocircuit_eqs /= eq_1_first;
+      if (filename.size())
+         wrap(outfile) << eq_0_first << "\n" << eq_1_first << endl;
    }
    return cocircuit_eqs;
 }

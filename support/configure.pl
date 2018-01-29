@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -36,8 +36,8 @@ use File::Path;
 use strict 'vars', 'subs';
 use lib "perllib";
 
-my $TOP=Cwd::getcwd;
-my ($Platform, $NeedsArchFlag);
+my $root=Cwd::getcwd;
+my ($NeedsArchFlag);
 
 my $Wiki="http://www.polymake.org/doku.php";
 
@@ -54,9 +54,9 @@ $| = 1;
 package Polymake;
 use vars qw( $DeveloperMode $Shell $filename_re $directory_of_cmd_re );
 
-$DeveloperMode=-d "$TOP/testscenarios";
+$DeveloperMode=-d "$root/testscenarios";
 
-use Polymake::Configure;
+use Polymake::ConfigureStandalone;
 
 $Shell=new FakeNoShell;
 # we can't load regex.pl without compiled support for namespaces
@@ -65,113 +65,135 @@ $directory_of_cmd_re=qr{ ^(.*) / [^/]+ (?: $ | \s)}x;
 
 package Polymake::Configure;
 
+@ARGV=grep { !/^PERL=/ } @ARGV;
+
 my (%options, %vars, %allowed_options, %allowed_with, %allowed_flags, %allowed_vars);
 
 # expected options for the core script
-@allowed_options{ qw( prefix exec-prefix bindir includedir libdir libexecdir datadir docdir build ) }=();
+@allowed_options{ qw( prefix exec-prefix bindir includedir libdir libexecdir datadir docdir build build-modes ) }=();
 @allowed_with{ qw( gmp mpfr libxml2 boost permlib toolchain ) }=();
 @allowed_flags{ qw( prereq callable native openmp libcxx ) }=();
-@allowed_vars{ qw( CC CFLAGS CXX CXXFLAGS CXXOPT CXXDEBUG LDFLAGS LIBS PERL ) }=();
+@allowed_vars{ qw( CC CFLAGS CXX CXXFLAGS CXXOPT CXXDEBUG LDFLAGS LIBS Arch DESTDIR ) }=();
 
 if ($^O eq "darwin") {
-  @allowed_with{ qw( fink readline ) }=();
+  @allowed_with{ qw( fink ) }=();
 }
 
-# check for --repeat option: must happen early enough, before any other digging in @ARGV
-try_restore_config_command_line(\@ARGV);
+my (@ext, @ext_disabled, %ext_with_config, %ext_requires, %ext_requires_opt, %ext_conflicts, %ext_failed, %ext_bad,
+    @ext_ordered, %ext_survived);
 
-my (@ext, @ext_disabled, %ext_with_config, %ext_requires, %ext_requires_opt, %ext_conflicts, %ext_failed, %ext_bad);
+my $repeating_config=early_parse_command_line();
+my $BuildDir= $options{build} ? "build.$options{build}" : "build";
+my $perlxpath="perlx/$Config::Config{version}/$Config::Config{archname}";
 
-# sieve out disabled bundled extensions
-for (my $i=$#ARGV; $i>=0; --$i) {
-   if ($ARGV[$i] =~ /^--without-(.*)$/  &&  -d "bundled/$1") {
-      push @ext_disabled, $1;
-      $options{$1}=".none.";
-      splice @ARGV, $i, 1;
+load_enabled_bundled_extensions();
+parse_command_line(\@ARGV, $repeating_config);
+construct_paths();
+determine_cxx_compiler();
+determine_cxx_library();
+determine_architecture();
+collect_compiler_specific_options();
+check_build_modes();
+if ($options{'alt-perl'}) {
+   create_alt_perl_configuration();
+   exit(0);
+}
+locate_gmp_and_mpfr_libraries();
+locate_boost_headers();
+locate_libxml2();
+locate_permlib();
+
+# there is no independent package for TOSimplex, always pick the bundled headers
+$ExternalHeaders .= " TOSimplex";
+
+if ($options{prereq} ne ".none.") {
+   check_prerequisite_perl_packages();
+   if ($options{callable} ne ".none.") {
+      check_libperl();
    }
 }
 
-# load configuration routines for enabled bundled extensions
-@ext=grep { $options{$_} ne ".none." } map { m{bundled/(.*)} } glob("bundled/*");
+# create the main build directory
+File::Path::make_path("$BuildDir/$perlxpath");
 
-my @prereq_sections=qw(REQUIRE REQUIRE_OPT);
+my $BundledLOG;
+my $BundledLOGfile="$BuildDir/bundled.log";
 
-foreach my $ext (@ext) {
-   eval {
-      if (-f "bundled/$ext/polymake.ext") {
-         open my $MF, "bundled/$ext/polymake.ext"
-           or die "unreadable\n";
-         local $/;
-         local $_=<$MF>;
-         s/^\s*\#.*\n//mg;
-         my @sections=split /(?:\A\n*|\n{2,})([A-Z_]+)(?=\s)/m;  shift @sections;
-         my %sections=@sections;
-         if ($sections{URI}) {
-            die "bundled extensions have implict URIs; URI section not allowed\n";
-         }
+print "\nConfiguring bundled extensions:\n";
+foreach my $ext (@ext_disabled) {
+   print "bundled extension $ext ... disabled by command-line\n";
+}
+while (my ($ext, $err)=each %ext_bad) {
+   print "bundled extension $ext ... disabled because of a fatal error\n";
+   bundled_ext_error_msg($ext, $err);
+}
 
-         my @prereq;
-         foreach my $is_optional (0..1) {
-            if (my $section=$sections{$prereq_sections[$is_optional]}) {
-               foreach ($section =~ /(\S+)/g) {
-                  if (/^bundled:(\w+)$/) {
-                     push @prereq, $1;
-                     $ext_requires_opt{$ext}->{$1}=$is_optional;
-                  } else {
-                     die "invalid reference to a prerequisite extension: $_\n"
-                  }
-               }
-            }
-         }
-         $ext_requires{$ext}=\@prereq;
+order_enabled_bundled_extensions();
+configure_enabled_bundled_extensions();
+finalize_compiler_flags();
+find_ninja();
 
-         my @confl;
-         if ($sections{CONFLICT}) {
-            @confl=map { /^bundled:(\w+)$/ ? $1 : die "invalid reference to a conflicting extension: $_\n" } $sections{CONFLICT} =~ /(\S+)/g;
-         }
-         $ext_conflicts{$ext}=\@confl;
-      } else {
-         die "missing\n";
-      }
-   };
-   if ($@) {
-      $options{$ext}=".none.";
-      $ext_bad{$ext}= $@ =~ /^(missing|unreadable)$/ ? "$1 description file bundled/$ext/polymake.ext" : "invalid description file bundled/$ext/polymake.ext\n$@";
+File::Path::make_path($BuildDir);
+write_configuration_file("$BuildDir/config.ninja");
+write_perl_specific_configuration_file("$BuildDir/$perlxpath/config.ninja");
+create_build_trees("$root/$BuildDir", perlxpath => $perlxpath);
+delete_old_and_disabled_build_trees();
 
-   } elsif (-f "bundled/$ext/configure.pl") {
-      my $err;
-      eval <<"---";
-      {  package Polymake::Bundled::$ext;
-         do "bundled/$ext/configure.pl";
-         unless (\$err=\$\@) {
-            allowed_options(\\%allowed_options, \\%allowed_with);
-         }
-      }
+if ($Polymake::DeveloperMode) {
+   print <<"---";
+
+* Configuration successful.
+* You can run  'ninja -C $BuildDir/Opt'  now to build polymake with full optimization
+* or  'ninja -C $BuildDir/Debug'  to build polymake with debugging support.
+* To install an immutable snapshot of polymake at $InstallTop,
+* run  'ninja -C $BuildDir/Opt install'.
+*
+* On systems with moderate amount of memory like laptops it is advisable to
+* restrict the number of parallel build processes below the default ninja limit;
+*   'ninja -l <NUMBERofCPUS>'  is a good approximation to start with.
+* If the system still feels overloaded, take a lower hard job limit
+*   'ninja -j <N>'  instead.
 ---
-      if ($err) {
-         $options{$ext}=".none.";
-         $ext_bad{$ext}="broken configuration script bundled/$ext/configure.pl:\n$err";
-      } else {
-         $ext_with_config{$ext}=1;
-      }
-   }
+} else {
+   print <<"---";
+
+* Configuration successful.
+* You can run 'ninja -C $BuildDir/Opt install' now to build and install polymake.
+---
 }
+
+print $warning if defined $warning;
+exit(0);
+
+### end of main body ###
 
 sub usage {
    my $GMPdef= $^O eq "darwin" ? '${fink}' : '/usr';
 
-   print STDERR <<'.';
+   print STDERR <<'---';
 This is a script preparing the build and installation of polymake.
 It tries to mimic well-known GNU auto-configuration scripts:
 
 ./configure [options] [VARIABLE=value ...]
 
+Without any options, or with a sole --build option, it reuses the options specified
+in the most recent run, if any; this is mostly useful for developers after an update
+of the codebase.
+
 Allowed options (and their default values) are:
+
+ Mulitple build trees:
+
+  --build SUFFIX      (none)  create or update one of several build directories,
+                              named "build.SUFFIX".  This is primarily for developers
+                              who want to test various configurations from a single code base,
+                              or for packagers.
+                              By default, a single "build" directory is created.
 
  Installation directories:
 
-  --prefix=PATH       ( /usr/local )  root of the installation tree
-  --exec-prefix=PATH  ( ${prefix} )   root of the architecture-dependent tree
+  --prefix=PATH       ( /usr/local )                   root of the installation tree
+  --exec-prefix=PATH  ( ${prefix} )                    root of the architecture-dependent tree
   --bindir=PATH       ( ${exec-prefix}/bin )           main polymake script
   --includedir=PATH   ( ${prefix}/include )            include files
   --libdir=PATH       ( ${exec-prefix}/lib )           callable library
@@ -179,34 +201,19 @@ Allowed options (and their default values) are:
   --datadir=PATH      ( ${prefix}/share/polymake )     rules and other architecture-independent files
   --docdir=PATH       ( ${datadir}/doc )               automatically generated documentation files
 
-.
-   if ($^O eq "darwin") { 
-      print STDERR <<'.'; 
-  --build=ARCH        abbreviation for the build architecture: "i386" for 32bit or "x86_64" for 64bit
-.
-   } else {
-      print STDERR <<'.'; 
-  --build=ARCH        abbreviation for the build architecture
-  --without-native    build without "-march=native" flag to allow execution on different CPU types
-                      (passing one of -m{cpu,arch,tune} via CFLAGS or CXXFLAGS also disables "-march=native")
-.
-   }
-   print STDERR <<'.';
-
  Build dependences:
 
   --with-toolchain=PATH path to a full GCC or LLVM (including clang and libc++) installation
                       (sets CC, CXX, CXXFLAGS, LDFLAGS, LIBS and --with-libcxx accordingly)
 
-.
-   if ($^O eq "darwin") {
-      print STDERR <<'.';
+---
+   $^O eq "darwin" and
+   print STDERR <<'---';
   --with-fink=PATH         ( /sw ) fink installation directory
   --without-fink           don't use Fink packages at all
-  --with-readline=PATH     where to find the gnu readline library (the version included in OSX does not suffice)
 .
-   }
-   print STDERR <<".";
+---
+   print STDERR <<"---";
   --with-gmp=PATH     ( $GMPdef ) GNU MultiPrecision library installation directory
   --with-mpfr=PATH    ( =gmp-path ) GNU Multiple Precision Floating-point Reliable library installation directory
   --with-libxml2=PATH ( find via \$PATH ) GNU XML processing library
@@ -217,7 +224,7 @@ Allowed options (and their default values) are:
                       polymake uses the bundled permlib by default or if 'bundled' is given.
 
  Bundled extensions:
-.
+---
    foreach my $ext (sort keys %ext_with_config) {
       no strict 'refs';
       print STDERR "\n  --without-$ext  disable the bundled extension $ext completely\n";
@@ -225,7 +232,7 @@ Allowed options (and their default values) are:
       print STDERR "\n";
    }
 
-   print STDERR <<".";
+   print STDERR <<'---';
 
 
  Other options:
@@ -243,7 +250,42 @@ Allowed options (and their default values) are:
 
   --without-openmp    disable OpenMP support for libnormaliz and to_simplex
 
+---
+   $^O ne "darwin" and
+   print STDERR <<'---'; 
+  --without-native    build without "-march=native" flag to allow execution on different CPU types
+                      (passing one of -m{cpu,arch,tune} via CFLAGS or CXXFLAGS also disables "-march=native")
+
+---
+   print STDERR <<'---';
+  --build-modes=MODE,MODE...
+                      prepare for builds in non-standard modes; currently supported modes are:
+                        Cov  generated code gathers coverage statistics
+                        San  sanitized build detecting address violations and undefined behavior
+                      Standard modes Opt and Debug are always supported and must not be listed here.
+
+---
+   $Polymake::DeveloperMode and
+   print STDERR <<"---";
+  --clone=PATH/config.ninja
+                      Import the options stored in the given configuration file.
+                      More options may follow; simple options may override the imported ones,
+                      but no provisions are made for detecting more subtle contradictions.
+                      Use at own risk.
+
+---
+   print STDERR <<"---";
 Allowed variables are:
+
+   Arch=       An abbreviation for the system architecture.
+---
+   $^O eq "darwin" and
+   print STDERR <<'---';
+               Allowed values are "i386" for 32bit or "x86_64" for 64bit.
+---
+   print STDERR <<'---';
+               Default value is derived from the current system setup.
+               Users' custom variables may have distinct values for different architectures.
 
    CC=cc       C compiler executable
    CFLAGS=     C compiler options
@@ -254,111 +296,281 @@ Allowed variables are:
    LIBS=       additional libraries to be linked with
    PERL=perl   perl executable
 
-Special option, incompatible with any others:
+Options incompatible with any others:
 
-   --repeat ARCH  repeat the configuration with exactly the same options as
-                  has been used last time for the given build architecture
+   --defaults    perform a configuration assuming all default settings,
+                 ignoring any existing configured builds
 
+---
+   $Polymake::DeveloperMode and
+   print STDERR <<"---";
+   --alt-perl=TAG    create a configuration for a non-standard perl interpreter;
+                     the ninja files will be called build.TAG.ninja
+
+---
+   print STDERR <<"---";
 For detailed installation instructions, please refer to the polymake Wiki site:
   $Wiki/howto/install
 
-.
+---
 }
 
-# parse the command line
-while (defined (my $arg=shift @ARGV)) {
-   # trim and allow empty arguments
-   $arg =~ s/^\s+//;
-   $arg =~ s/\s+$//;
-   next if ($arg =~ /^$/);
-   $arg = "--with-libcxx" if ($arg eq "--with-libc++");
-   if ($arg eq "--help") {
-      usage();
-      exit(0);
-   } elsif (my ($with, $out, $name, $value)= $arg =~ /^--(with(out)?-)?([-\w]+)(?:=(.*))?$/) {
-      if ($with and exists $allowed_flags{$name} and !defined($value)) {
-         if (defined($out)) {
-            $options{$name}=".none.";
-         } else {
-            $options{$name}=".true.";
-         }
-         next;
-      } elsif ($with ? exists $allowed_with{$name}
-                   : exists $allowed_options{$name}
-                 and
-               defined($out) || defined($value) || @ARGV) {
-         if (defined($out)) {
-            $value=".none.";
-         } else {
-            $value=shift(@ARGV) unless defined($value);
-            $value =~ s{^~/}{$ENV{HOME}/};
-            $value =~ s{/+$}{};
-         }
-         $options{$name}=$value;
-         next;
-      }
-   } elsif ($arg =~ /^([A-Z]+)=(.*)/) {
-      if (exists $allowed_vars{$1}) {
-         $vars{$1}=$2;
-         next;
+###################################################################################
+# * sieve out disabled extensions so that their configuration scripts are not loaded
+# * process --build, --build-modes, and --defaults
+# * restore options from previous runs if desired
+sub early_parse_command_line {
+   my (@other_args, $enforce_defaults);
+   while (defined (my $arg=shift @ARGV)) {
+      if ($arg eq "--defaults") {
+         $enforce_defaults=1;
+      } elsif (my ($flag, $value)= $arg =~ /^--(build(?:-modes)?|alt-perl)(?:=(\S+))?$/) {
+         $value //= @ARGV && $ARGV[0] =~ /^\w/ ? shift @ARGV : die "option --$flag requires a value\n";
+         $options{$flag}=$value;
+      } elsif ($arg =~ /^--without-(\w+)$/  &&  -d "bundled/$1") {
+         push @ext_disabled, $1;
+         $options{$1}=".none.";
+      } else {
+         push @other_args, $arg;
       }
    }
-   print STDERR "Unrecognized option $arg;\nTry ./configure --help for detailed information\n";
-   exit(1);
+
+   if ($options{'alt-perl'}) {
+      if ($enforce_defaults || @other_args || @ext_disabled) {
+         die "option --alt-perl can't be combined with any other configuration option\n";
+      }
+   }
+
+   if ($enforce_defaults) {
+      if (@other_args || @ext_disabled) {
+         die "option --defaults can't be combined with any other configuration option\n";
+      }
+
+   } elsif (@other_args) {
+      @ARGV=splice @other_args;
+
+   } elsif (!@ext_disabled) {
+      # no configuration options means we should reuse the options from the previous run
+
+      if ($options{build}) {
+         # want to keep several architectures in parallel
+         if ($^O eq "darwin") {
+            $options{build} =~ s/^(?!darwin\.)/darwin./;
+         }
+         if (-f "build.$options{build}/config.ninja") {
+            retrieve_config_command_line("build.$options{build}/config.ninja", \@ARGV);
+            return 1;
+         } elsif (-f "build.$options{build}/conf.make") {
+            retrieve_config_command_line("build.$options{build}/conf.make", \@ARGV);
+            return 1;
+         }
+      } elsif (-f "build/config.ninja") {
+         retrieve_config_command_line("build/config.ninja", \@ARGV);
+         return 1;
+      } elsif (my @ninja_configs=glob("build.*/config.ninja")) {
+         die "polymake has been configured for several build architectures: ", (map { m{/build\.([^/]+)/} } @ninja_configs),
+              "\nPlease specify the desired one with --build option or enforce default configuration with --defaults option.\n";
+      } elsif (my @old_configs=glob("build.*/conf.make")) {
+         if (@old_configs==1) {
+            my ($old_build)=$old_configs[0] =~ m{(build.[^/])};
+            retrieve_config_command_line($old_configs[0], \@ARGV);
+            rename $old_build, "build";
+            return 1;
+         } else {
+            die "polymake has been configured for several build architectures: ", (map { m{/build\.([^/]+)/} } @old_configs),
+                "\nPlease specify the one to be migrated to ninja build system with --build option.\n",
+                "If you want to preserve just one of them, delete all other build.XXX directories and re-run the configure command without any options.\n";
+         }
+      }
+   }
+   0
 }
 
-# construct paths
+###########################w######################################
+sub parse_command_line {
+   my ($arglist, $repeating_config, $ignore_unknown)=@_;
+   while (defined (my $arg=shift @$arglist)) {
+      # trim and allow empty arguments
+      $arg =~ s/^\s+//;
+      $arg =~ s/\s+$//;
+      next if length($arg)==0;
+      $arg =~ s/^--with-libc\K\+\+$/xx/;
+      if ($arg eq "--help") {
+         usage();
+         exit(0);
+      } elsif (my ($with, $out, $name, $value)= $arg =~ /^--(with(out)?-)?(\w[-\w]+)(?(2)|=(.*))?$/) {
+         if ($with and exists $allowed_flags{$name} and !defined($value)) {
+            if (defined($out)) {
+               $options{$name}=".none.";
+            } else {
+               $options{$name}=".true.";
+            }
+            next;
+         } elsif ($with ? exists $allowed_with{$name}
+                        : exists $allowed_options{$name}
+                    and
+                  defined($out) || defined($value) || @$arglist) {
+            if (defined($out)) {
+               $value=".none.";
+            } else {
+               $value //= shift(@$arglist);
+               $value =~ s{^~/}{$ENV{HOME}/};
+               $value =~ s{/+$}{};
+            }
+            if ($repeating_config && $name =~ /^build/) {
+               $options{$name} //= $value;
+            } elsif ($value eq "default") {
+               delete $options{$name};
+            } else {
+               $options{$name}=$value;
+            }
+            next;
+         } elsif ($Polymake::DeveloperMode and
+                  $arg eq "--clone" && @$arglist  ||
+                  $arg =~ s/^--clone=(?=.)//) {
+            # used in testscenarios
+            my @other_command_line;
+            retrieve_config_command_line($arg eq "--clone" ? shift(@$arglist) : $arg, \@other_command_line);
+            parse_command_line(\@other_command_line, 0, 1);
+            next;
+         }
+      } elsif ($arg =~ /^([A-Z]\w+)=(.*)/) {
+         if (exists $allowed_vars{$1}) {
+            $vars{$1}=$2;
+            next;
+         }
+      }
+      if (!$ignore_unknown) {
+         die "Unrecognized option $arg\nTry ./configure --help for detailed information\n";
+      }
+   }
 
-my $prefix=$options{prefix} || "/usr/local";
-my $exec_prefix=$options{'exec-prefix'} || $prefix;
+   if (!$repeating_config) {
+      # inherit some variables which haven't appeared on the command line from the environment
+      foreach my $varname (grep { !exists $vars{$_} } keys %allowed_vars) {
+         if (defined (my $value=$ENV{$varname})) {
+            $vars{$varname}=$value;
+         }
+      }
+   }
 
-$InstallBin=$options{bindir} || "$exec_prefix/bin";
-$InstallLib=$options{libdir} || "$exec_prefix/lib";
-$InstallTop=$options{datadir} || "$prefix/share/polymake";
-$InstallArch=$options{libexecdir} || "$exec_prefix/lib/polymake";
-$InstallInc=$options{includedir} || "$prefix/include";
-$InstallDoc=$options{docdir} || ($Polymake::DeveloperMode ? "doc_build" : "$InstallTop/doc");
+   $CXXOPT   =$vars{CXXOPT}   // "-O3";
+   $CXXDEBUG =$vars{CXXDEBUG} // "";
+   $CFLAGS   =$vars{CFLAGS}   // "";
+   $CXXFLAGS =$vars{CXXFLAGS} // $CFLAGS;
+   $LDFLAGS  =$vars{LDFLAGS}  // "";
+   $LIBS     =$vars{LIBS}     // "";
+   $DESTDIR  =$vars{DESTDIR};
 
-$DirMask="0755";
+   ($Arch=$vars{Arch}) =~ s/^darwin\.//;
+}
 
-# inherit some variables which haven't appeared on the comand line from the environment
+#################################################################
+sub load_enabled_bundled_extensions {
+   @ext=grep { $options{$_} ne ".none." } map { m{bundled/(.*)} } glob("bundled/*");
 
-foreach my $varname (grep { $_ ne "PERL" && !exists $vars{$_} } keys %allowed_vars) {
-   if (defined (my $value=$ENV{$varname})) {
-      $vars{$varname}=$value;
+   my @prereq_sections=qw(REQUIRE REQUIRE_OPT);
+
+   foreach my $ext (@ext) {
+      eval {
+         if (-f "bundled/$ext/polymake.ext") {
+            open my $MF, "bundled/$ext/polymake.ext"
+              or die "unreadable\n";
+            local $/;
+            local $_=<$MF>;
+            s/^\s*\#.*\n//mg;
+            my @sections=split /(?:\A\n*|\n{2,})([A-Z_]+)(?=\s)/m;  shift @sections;
+            my %sections=@sections;
+            if ($sections{URI}) {
+               die "bundled extensions have implict URIs; URI section not allowed\n";
+            }
+
+            my @prereq;
+            foreach my $is_optional (0..1) {
+               if (my $section=$sections{$prereq_sections[$is_optional]}) {
+                  foreach ($section =~ /(\S+)/g) {
+                     if (/^bundled:(\w+)$/) {
+                        push @prereq, $1;
+                        $ext_requires_opt{$ext}->{$1}=$is_optional;
+                     } else {
+                        die "invalid reference to a prerequisite extension: $_\n"
+                     }
+                  }
+               }
+            }
+            $ext_requires{$ext}=\@prereq;
+
+            my @confl;
+            if ($sections{CONFLICT}) {
+               @confl=map { /^bundled:(\w+)$/ ? $1 : die "invalid reference to a conflicting extension: $_\n" } $sections{CONFLICT} =~ /(\S+)/g;
+            }
+            $ext_conflicts{$ext}=\@confl;
+         } else {
+            die "missing\n";
+         }
+      };
+      if ($@) {
+         $options{$ext}=".none.";
+         $ext_bad{$ext}= $@ =~ /^(missing|unreadable)$/ ? "$1 description file bundled/$ext/polymake.ext" : "invalid description file bundled/$ext/polymake.ext\n$@";
+
+      } elsif (-f (my $ext_config="bundled/$ext/support/configure.pl")) {
+         my $err;
+         eval <<"---";
+         { package Polymake::Bundled::$ext;
+           do "$ext_config";
+           unless (\$err=\$\@) {
+             allowed_options(\\%allowed_options, \\%allowed_with);
+           }
+         }
+---
+         if ($err) {
+            $options{$ext}=".none.";
+            $ext_bad{$ext}="broken configuration script $ext_config:\n$err";
+         } else {
+            $ext_with_config{$ext}=1;
+         }
+      }
    }
 }
 
-# check the C++/C compiler
+#####################################################
+sub construct_paths {
+   my $prefix=$options{prefix} || "/usr/local";
+   my $exec_prefix=$options{'exec-prefix'} || $prefix;
 
-print "checking C++ compiler ... ";
-$CXX=$vars{CXX};
-$CC=$vars{CC};
+   $InstallBin=$options{bindir} || "$exec_prefix/bin";
+   $InstallLib=$options{libdir} || "$exec_prefix/lib";
+   $InstallTop=$options{datadir} || "$prefix/share/polymake";
+   $InstallArch=$options{libexecdir} || "$exec_prefix/lib/polymake";
+   $InstallInc=$options{includedir} || "$prefix/include";
+   $InstallDoc=$options{docdir} || "$InstallTop/doc";
+}
 
-if ($options{toolchain}) {
-   if (-x $options{toolchain}."/bin/clang++") {
-      $CXX ||= $options{toolchain}."/bin/clang++";
-      $CC  ||= $options{toolchain}."/bin/clang";
-   } elsif (-x $options{toolchain}."/bin/g++") {
-      $CXX ||= $options{toolchain}."/bin/g++";
-      $CC  ||= $options{toolchain}."/bin/gcc";
-   } else {
-      die <<"."
+#####################################################
+sub determine_cxx_compiler {
+   print "checking C++ compiler ... ";
+   $CXX=$vars{CXX};
+   $CC=$vars{CC};
+
+   if ($options{toolchain}) {
+      if (-x $options{toolchain}."/bin/clang++") {
+         $CXX ||= $options{toolchain}."/bin/clang++";
+         $CC  ||= $options{toolchain}."/bin/clang";
+      } elsif (-x $options{toolchain}."/bin/g++") {
+         $CXX ||= $options{toolchain}."/bin/g++";
+         $CC  ||= $options{toolchain}."/bin/gcc";
+      } else {
+         die <<"---"
 Unsupported toolchain given, only GCC or LLVM/Clang are supported.
 Make sure $options{toolchain}/bin/clang++ or $options{toolchain}/bin/g++ exists and is executable.
-.
+---
+      }
    }
-}
 
-my $absCXX=check_program($CXX, "g++", "c++", "icpc", "clang++")
-  or die "no supported C++ compiler found; please reconfigure with CXX=name\n";
+   check_program($CXX, "g++", "c++", "icpc", "clang++")
+     or die "no supported C++ compiler found; please reconfigure with CXX=name\n";
 
-while (-l $absCXX) {
-   $absCXX=readlink $absCXX;
-}
-$CCache= $absCXX =~ /\bccache$/;
-
-my $build_error = build_test_program(<<".");
+   my $build_error = build_test_program(<<"---");
 #include <iostream>
 int main() {
 #if defined(__APPLE__)
@@ -377,12 +589,14 @@ int main() {
    return 1;
 #endif
 }
-.
-if ($? != 0) {
-   die "C++ compiler $CXX could not compile a test program for version recognition:\n",
-       $build_error,
-       "\nPlease investigate and reconfigure with CXX=<appropriate C++ compiler>\n";
-} else {
+---
+
+   if ($?) {
+      die "C++ compiler $CXX could not compile a test program for version recognition:\n",
+          $build_error,
+          "\nPlease investigate and reconfigure with CXX=<appropriate C++ compiler>\n";
+   }
+
    local $_=run_test_program();  chomp;
    if (/^(apple)?clang /) {
       $CLANGversion=$';
@@ -410,28 +624,26 @@ if ($? != 0) {
    } else {
       die "$CXX is an unsupported C++ compiler.  Please choose one of the supported: Intel, clang, or GCC.\n";
    }
-}
 
-if (defined $CC) {
-   check_program($CC);
-} else {
-   $CC=$CXX;
-   unless (defined($CLANGversion)
-           ? $CC =~ s{clang\+\+$}{clang} :
-           defined($ICCversion)
-           ? $CC =~ s{\b([ei])cp?c$}{${1}cc} :
-           defined($GCCversion)
-           ? $CC =~ s{g\+\+(?=[^/]*)$}{gcc}
-               ||
-             $CC =~ s{(?:c\+\+|CC)(?=[^/]*)$}{cc}
-           : 0
-             and
-           eval { check_program($CC) }) {
-      $CC=$Config::Config{cc};
+   if (defined $CC) {
+      check_program($CC);
+   } else {
+      $CC=$CXX;
+      unless (defined($CLANGversion)
+              ? $CC =~ s{clang\+\+$}{clang} :
+              defined($ICCversion)
+              ? $CC =~ s{\b([ei])cp?c$}{${1}cc} :
+              defined($GCCversion)
+              ? $CC =~ s{g\+\+(?=[^/]*)$}{gcc}
+                  ||
+                $CC =~ s{(?:c\+\+|CC)(?=[^/]*)$}{cc}
+              : 0
+              and find_program($CC)) {
+         $CC=$Config::Config{cc};
+      }
    }
-}
-if (defined($GCCversion) or defined($CLANGversion)) {
-   print "ok ($CXX is ",
+   if (defined($GCCversion) or defined($CLANGversion)) {
+      print "ok ($CXX is ",
             defined($GCCversion) ?
                "GCC $GCCversion" :
                defined($CLANGversion) ?
@@ -439,54 +651,45 @@ if (defined($GCCversion) or defined($CLANGversion)) {
                      "Apple CLANG (roughly ".clang_ver($CLANGversion).") from Xcode $CLANGversion" :
                      "CLANG $CLANGversion")
                   : "unknown", ")\n";
-}
-
-$PERL     =$vars{PERL}     || $^X;
-$CXXOPT   =$vars{CXXOPT}   || "-O3";
-$CXXDEBUG =$vars{CXXDEBUG} || "";
-$Cflags   =$vars{CFLAGS}   || "";
-$CXXflags =$vars{CXXFLAGS} || $Cflags;
-$LDflags  =$vars{LDFLAGS}  || "";
-$Libs     =$vars{LIBS}     || "";
-
-$LDsharedFlags=$Config::Config{lddlflags};
-$LDcallableFlags= $options{callable} eq ".none." ? "none" : "$LDsharedFlags $Config::Config{ldflags}";
-
-print "checking C++ library ... ";
-
-if ($options{toolchain}) {
-   my $libdir;
-   # CC/CXX was set earlier, the else case already died at that point
-   if (-x $options{toolchain}."/bin/clang++") {
-      $libdir = get_libdir($options{toolchain},"clang");
-      $options{libcxx} = ".true.";
-   } elsif (-x $options{toolchain}."/bin/g++") {
-      $libdir = get_libdir($options{toolchain},"gcc_s");
-   }
-   $Cflags   .= " -I$options{toolchain}/include";
-   $CXXflags .= " -I$options{toolchain}/include";
-   $LDflags  .= " -L$libdir -Wl,-rpath,$libdir";
-}
-
-if ($options{libcxx} eq ".true.") {
-   $CXXflags .= " -stdlib=libc++";
-   $LDflags  .= " -stdlib=libc++";
-   $Libs     .= " -lc++";
-   $Libs     .= " -lc++abi" if ($^O eq "linux");
-}
-
-# All polymake releases after 3.0 require C++14,
-# but if someone explicitly requests another standard version go along with it,
-# if it is too old we will generate a warning / an error later on.
-if ($CXXflags !~ /(?:^|\s)-std=/) {
-   if (defined($CLANGversion) and v_cmp(clang_ver($CLANGversion), "3.5") < 0) {
-      $CXXflags .= ' -std=c++1y';
-   } else {
-      $CXXflags .= ' -std=c++14';
    }
 }
+#####################################################
+sub determine_cxx_library {
+   print "checking C++ library ... ";
 
-my $build_error = build_test_program(<<".");
+   if ($options{toolchain}) {
+      my $libdir;
+      # CC/CXX was set earlier, the else case already died at that point
+      if (-x $options{toolchain}."/bin/clang++") {
+         $libdir = get_libdir($options{toolchain}, "clang");
+         $options{libcxx} = ".true.";
+      } elsif (-x $options{toolchain}."/bin/g++") {
+         $libdir = get_libdir($options{toolchain}, "gcc_s");
+      }
+      $CFLAGS   .= " -I$options{toolchain}/include";
+      $CXXFLAGS .= " -I$options{toolchain}/include";
+      $LDFLAGS  .= " -L$libdir -Wl,-rpath,$libdir";
+   }
+
+   if ($options{libcxx} eq ".true.") {
+      $CXXFLAGS .= " -stdlib=libc++";
+      $LDFLAGS  .= " -stdlib=libc++";
+      $LIBS     .= " -lc++";
+      $LIBS     .= " -lc++abi" if ($^O eq "linux");
+   }
+
+   # All polymake releases after 3.0 require C++14,
+   # but if someone explicitly requests another standard version go along with it,
+   # if it is too old we will generate a warning / an error later on.
+   if ($CXXFLAGS !~ /(?:^|\s)-std=/) {
+      if (defined($CLANGversion) and v_cmp(clang_ver($CLANGversion), "3.5") < 0) {
+         $CXXFLAGS .= ' -std=c++1y';
+      } else {
+         $CXXFLAGS .= ' -std=c++14';
+      }
+   }
+
+   my $build_error = build_test_program(<<"---");
 #include <cstddef>
 #include <cstdio>
 #include <iostream>
@@ -505,12 +708,14 @@ int main() {
    return 1;
 #endif
 }
-.
-if ($? != 0) {
-   die "C++ compiler $CXX could not compile a test program for C++ library recognition:\n",
-       $build_error,
-       "\nPlease investigate and reconfigure\n";
-} else {
+---
+   if ($?) {
+      die <<"---";
+C++ compiler $CXX could not compile a test program for C++ library recognition:
+$build_error
+Please investigate and reconfigure.
+---
+   }
    local $_=run_test_program();  chomp;
    my ($cppver, $cpplib) = $_ =~ m/^cplusplus (\d+)\n(.+)$/;
 
@@ -530,9 +735,9 @@ if ($? != 0) {
       print "ok ($cpplib, C++ $CPPStd)\n";
    } elsif ($cpplib =~ /^libc\+\+ /) {
       $CPPStd = $cppver;
-      if ($Libs !~ /-lc\+\+/) {
-         $Libs .= " -lc++";
-         $Libs .= " -lc++abi" if ($^O eq "linux");
+      if ($LIBS !~ /-lc\+\+/) {
+         $LIBS .= " -lc++";
+         $LIBS .= " -lc++abi" if ($^O eq "linux");
       }
       print "ok ($cpplib, C++ $CPPStd)\n";
    } elsif ($cpplib =~ /^Intel /) {
@@ -544,166 +749,145 @@ if ($? != 0) {
       die "Unsupported C++ library, use -stdlib to specify libstdc++ or libc++.\n";
    }
 
-   if ($LDflags !~ /-stdlib=/ and $CXXflags =~ /(-stdlib=\S+)/) {
-      $LDflags .= " $1";
+   if ($LDFLAGS !~ /-stdlib=/ and $CXXFLAGS =~ /(-stdlib=\S+)/) {
+      $LDFLAGS .= " $1";
    }
-
 }
 
-
-my $GMP=$options{gmp};
-my $boost_path = $options{boost};
-
-do "support/locate_build_dir";
-
-if ($^O eq "darwin") {
-   if ($options{fink} ne ".none.") {
-      print "checking fink installation ... ";
-      if (defined( $FinkBase=$options{fink} )) { 
-         if (-d $FinkBase) {
-            unless (-f "$FinkBase/etc/fink.conf") {
-               die "option --with-fink does not point to the fink installation tree: $FinkBase/etc/fink.conf not found\n";
-            }
-         } elsif (-x $FinkBase && $FinkBase =~ s|/bin/fink$||) {
-            unless (-f "$FinkBase/etc/fink.conf") {
-               die "option -with-fink points to a broken fink installation: $FinkBase/etc/fink.conf not found\n";
-            }
-         } else {
-            die "option -with-fink points to a wrong program: something like /path/bin/fink expected.\n",
-            "If you have renamed the main fink program, please specify the top directory: --with-fink=/path\n";
+#####################################################
+sub check_fink {
+   print "checking fink installation ... ";
+   if (defined( $FinkBase=$options{fink} )) {
+      if (-d $FinkBase) {
+         unless (-f "$FinkBase/etc/fink.conf") {
+            die "option --with-fink does not point to the fink installation tree: $FinkBase/etc/fink.conf not found\n";
+         }
+      } elsif (-x $FinkBase && $FinkBase =~ s|/bin/fink$||) {
+         unless (-f "$FinkBase/etc/fink.conf") {
+            die "option --with-fink points to a broken fink installation: $FinkBase/etc/fink.conf not found\n";
          }
       } else {
-         # Fink location not specified, look for it at plausible places
-         (undef, my ($fink, $error))=find_program_in_path("fink", sub {
-             !(($FinkBase=$_[0]) =~ s|/bin/fink$|| && -f "$FinkBase/etc/fink.conf") && "!"
-                                                          });
-         if ($fink) {
-            if ($error) {
-               die "found the fink program at $fink, but the corresponding configuration file is missing;\n",
-               "Please specify the top installation directory using option --with-fink\n";
-            }
-         } elsif (-f "/sw/etc/fink.conf") {
-            $FinkBase="/sw";
-         } else {
-            die "The Fink package system is a mandatory prerequisite to build and use polymake under MacOS.\n",
-                "Please refer to $Wiki/mac for details and installation instructions.\n",
-                "If you already have Fink installed at a non-standard location, please specify it using option --with-fink\n";
-         }
+         die <<'---';
+option --with-fink points to a wrong program: something like /path/bin/fink expected.
+If you have renamed the main fink program, please specify the top directory: --with-fink=/path
+---
       }
-      print "ok ($FinkBase)\n";
-
-      print "checking fink gmp installation ... ";
-      if (-f "$FinkBase/lib/libgmp.dylib") {
-         ($Platform)= `lipo -info $FinkBase/lib/libgmp.dylib` =~ /architecture: (\S+)/;
+   } else {
+      # Fink location not specified, look for it at plausible places
+      (undef, my ($fink, $error))=find_program_in_path("fink", sub {
+         !(($FinkBase=$_[0]) =~ s|/bin/fink$|| && -f "$FinkBase/etc/fink.conf") && "!"
+      });
+      if ($fink) {
+         if ($error) {
+            die <<"---";
+Found the fink program at $fink, but the corresponding configuration file is missing;
+Please specify the top installation directory using option --with-fink
+---
+         }
+      } elsif (-f "/sw/etc/fink.conf") {
+         $FinkBase="/sw";
       } else {
-         die "Fink package gmp-shlibs seems to be missing.  Further configuration is not possible.\n",
-         "Please install the packages gmp and gmp-shlibs and repeat the configure run.\n";
+         die <<"---";
+The Fink package system is a mandatory prerequisite to build and use polymake under MacOS.
+Please refer to $Wiki/mac for details and installation instructions.
+If you already have Fink installed at a non-standard location, please specify it using option --with-fink
+---
       }
-      print "ok\n";
-      print "checking fink mpfr installation ... ";
-      unless (-f "$FinkBase/lib/libmpfr.dylib") {
-         die "Fink package mpfr-shlibs seems to be missing.  Further configuration is not possible.\n",
-         "Please install the packages mpfr and mpfr-shlibs and repeat the configure run.\n";            
-      }
-      print "ok\n";
-      if ( !defined($boost_path) ) {
-         print "checking fink boost installation ... ";
-         ($boost_path) = <"$FinkBase/opt/boost-*/include/boost">;
-         ($boost_path) = $boost_path =~ /(.*)include\/boost/;
-         unless (-d $boost_path ) {
-            die "Fink package boost-<some version>_nopython seems to be missing.  Further configuration is not possible.\n",
-            "Please install the package boost-<some version>_nopython and repeat the configure run.\n";
-         }
-         print "ok\n";
-      }
-      if ( $NeedsArchFlag ) {
-         $ARCHFLAGS="-arch $Platform";
-      } else {
-         $ARCHFLAGS="";
-      }
-      $Arch="darwin.$Platform";
-      $GMP ||= $FinkBase;
-   } else { # without fink
-      print "determining architecture ... ";
-      if ( defined( $Platform=$options{build}) ) {
-         if ( $Platform ne "i386" && $Platform ne "x86_64" ) {
-            die "architecture for Mac OS must be one of i386 or x86_64.\n";
-         }
-      } else { # choose i386 for 10.5 and x86_64 for all others
-         `sw_vers | grep ProductVersion` =~ /(10.*)/;
-         my $Version=$1;
-         if ( $Version =~ /^10.5/ ) { 
-            $Platform="i386";
-         } else {
-            $Platform="x86_64";
-         }
-      }
-      if ( $NeedsArchFlag ) {
-         $ARCHFLAGS="-arch $Platform";
-      } else {
-         $ARCHFLAGS="";
-      }
-      $Arch="darwin.$Platform";
-      print "ok ($Arch)\n";
    }
-} else {
-   # not MacOS
+
+   if (defined (my $anylib=(glob("$FinkBase/lib/*.dylib"))[0])) {
+      my ($fink_arch)= `lipo -info $anylib` =~ /architecture: (\S+)/;
+      if (defined $Arch) {
+         if ($Arch ne $fink_arch) {
+            die "Required architecture $Arch does not match installed Fink architecture $fink_arch\n";
+         }
+      } else {
+         $Arch=$fink_arch;
+      }
+   } else {
+      die "Fink installation seems corrupt: no shared libraries found in $FinkBase/lib\n";
+   }
+
+   print "ok ($FinkBase)\n";
+}
+#####################################################
+sub determine_architecture {
    print "determining architecture ... ";
-   $Platform=platform_name();
-   # no arch flags set
-   unless ($options{native} eq ".none." or "$Cflags $CXXflags" =~ /(?:^|\s)-m(?:arch|tune|cpu)=/) {
-      $Cflags .= " -march=native";
-      $CXXflags .= " -march=native";
-   }
-   $Arch=$options{build} || $Platform;
+   if ($^O eq "darwin") {
+      if ($options{fink} ne ".none.") {
+         check_fink();
+      } elsif (defined $Arch) {
+         if ($Arch ne "i386" && $Arch ne "x86_64") {
+            die "Invalid architecture $Arch for Mac OS: allowed values are i386 and x86_64.\n";
+         }
+      } else {
+         # choose i386 for 10.5 and x86_64 for all others
+         `sw_vers | grep ProductVersion` =~ /(\d+(?:\.\d+)*)/;
+         $Arch= v_cmp($1, "10.6")>=0 ? "x86_64" : "i386";
+      }
+      $ARCHFLAGS= $NeedsArchFlag ? "-arch $Arch" : "";
+      $Arch="darwin.$Arch";
+   } else {
+      unless (defined $Arch) {
+         if ($^O !~ /aix|rs6000|ibm/i) {
+            ($Arch)= `uname -m` =~ /(\w+)/;
+         }
+         $Arch //= $Config::Config{archname};
+      }
 
-   if ($^O eq "freebsd" && !$GMP) {
-      if (-f "/usr/local/include/gmp.h") {
-         $GMP="/usr/local";
+      # no arch flags set
+      unless ($options{native} eq ".none." or "$CFLAGS $CXXFLAGS" =~ /(?:^|\s)-m(?:arch|tune|cpu)=/) {
+         $CFLAGS .= " -march=native";
+         $CXXFLAGS .= " -march=native";
       }
    }
    print "ok ($Arch)\n";
 }
 
-# add compiler-specific options
-print "determining compiler flags ... ";
-if (defined($GCCversion)) {
-   $CsharedFlags="-fPIC";
-   $CXXDEBUG =~ /(?:^|\s)-g\d?/ or $CXXDEBUG .= " -g";
-   # TODO: remove -fno-strict-aliasing when the core library is free from reintepret_casts
-   $CXXflags .= " -ftemplate-depth-200 -fno-strict-aliasing -Wno-parentheses -fwrapv";
-   if ($options{openmp} ne ".none.") {
-      $CXXflags .= " -fopenmp";
-      $LDflags .= " -fopenmp";
-   }
-   # external libraries might be somehow dirtier
-   $CflagsSuppressWarnings="-Wno-uninitialized -Wno-unused -Wno-parentheses -Wno-unused-but-set-variable -Wno-enum-compare -Wno-sign-compare -Wno-switch -Wno-format -Wno-write-strings";
-   # gcc-specific flags
-   if (v_cmp($GCCversion, "6.3.0") == 0) {
-       $CXXflags .= " -Wno-maybe-uninitialized";
-   }
+#####################################################
+sub collect_compiler_specific_options {
+   print "determining compiler flags ... ";
+   if (defined($GCCversion)) {
+      # avoid using temp files, they grow indeterminately during debug builds
+      $CsharedFLAGS="-fPIC -pipe";
+      $CXXDEBUG =~ /(?:^|\s)-g\d?/ or $CXXDEBUG .= " -g";
+      # TODO: remove -fno-strict-aliasing when the core library is free from reintepret_casts
+      $CXXFLAGS .= " -ftemplate-depth-200 -fno-strict-aliasing -Wno-parentheses -fwrapv";
+      if ($options{openmp} ne ".none.") {
+         $CXXFLAGS .= " -fopenmp";
+         $LDFLAGS .= " -fopenmp";
+      }
+      $CXXCOV="--coverage";
+      $CXXSANITIZE="-fno-omit-frame-pointer -O1 -g";
+      # external libraries might be somehow dirtier
+      $CflagsSuppressWarnings="-Wno-uninitialized -Wno-unused -Wno-parentheses -Wno-unused-but-set-variable -Wno-enum-compare -Wno-sign-compare -Wno-switch -Wno-format -Wno-write-strings";
+      # gcc-specific flags
+      if (v_cmp($GCCversion, "6.3.0") >= 0 && v_cmp($GCCversion, "7.0.0") < 0) {
+         $CXXFLAGS .= " -Wno-maybe-uninitialized";
+      }
 
-} elsif (defined($ICCversion)) {
-   $CsharedFlags="-fPIC";
-   $CXXDEBUG .= " -g -Ob0";
-   $CXXflags .= " -wd193,383,304,981,1419,279,810,171,1418,488,1572,561";
-   $Cflags .= " -wd193,1572,561";
+   } elsif (defined($ICCversion)) {
+      $CsharedFLAGS="-fPIC";
+      $CXXDEBUG .= " -g -Ob0";
+      $CXXFLAGS .= " -wd193,383,304,981,1419,279,810,171,1418,488,1572,561";
+      $CFLAGS .= " -wd193,1572,561";
 
-} elsif (defined($CLANGversion)) {
-   $CsharedFlags="-fPIC";
-   $CXXDEBUG =~ /(?:^|\s)-g\d?/ or $CXXDEBUG .= " -g";
-   $CXXflags .= " -Wno-logical-op-parentheses -Wno-shift-op-parentheses -Wno-mismatched-tags";
-   $CflagsSuppressWarnings="-Wno-uninitialized -Wno-unused -Wno-unused-variable -Wno-enum-compare -Wno-sign-compare -Wno-switch -Wno-format -Wno-write-strings -Wno-empty-body -Wno-logical-op-parentheses -Wno-shift-op-parentheses -Wno-dangling-else";
-   if (v_cmp(clang_ver($CLANGversion), "3.6") >= 0) {
-      $CXXflags .= " -Wno-unused-local-typedef";
-   }
+   } elsif (defined($CLANGversion)) {
+      # avoid using temp files, they grow indeterminately during debug builds
+      $CsharedFLAGS="-fPIC -pipe";
+      $CXXDEBUG =~ /(?:^|\s)-g\d?/ or $CXXDEBUG .= " -g";
+      $CXXFLAGS .= " -Wno-logical-op-parentheses -Wno-shift-op-parentheses -Wno-mismatched-tags";
+      $CflagsSuppressWarnings="-Wno-uninitialized -Wno-unused -Wno-unused-variable -Wno-enum-compare -Wno-sign-compare -Wno-switch -Wno-format -Wno-write-strings -Wno-empty-body -Wno-logical-op-parentheses -Wno-shift-op-parentheses -Wno-dangling-else";
+      if (v_cmp(clang_ver($CLANGversion), "3.6") >= 0) {
+         $CXXFLAGS .= " -Wno-unused-local-typedef";
+      }
 
-   # verify openmp support which is available starting with 3.7 but depends on the installation,
-   # but 3.7 seems to crash when compiling libnormaliz so we skip that version
-   # version 3.8 is tested to work with openmp
-   if (v_cmp(clang_ver($CLANGversion), "3.8") >= 0 && $options{openmp} ne ".none.") {
-      my $ompflag = "-fopenmp";
-      my $build_error=build_test_program(<<'---', CXXflags => "$ompflag", LDflags => "$ompflag");
+      # verify openmp support which is available starting with 3.7 but depends on the installation,
+      # but 3.7 seems to crash when compiling libnormaliz so we skip that version
+      # version 3.8 is tested to work with openmp
+      if (v_cmp(clang_ver($CLANGversion), "3.8") >= 0 && $options{openmp} ne ".none.") {
+         my $ompflag = "-fopenmp";
+         my $build_error=build_test_program(<<'---', CXXFLAGS => "$ompflag", LDFLAGS => "$ompflag");
 #include <stdio.h>
 #include <omp.h>
 
@@ -713,98 +897,140 @@ int main() {
     return 0;
 }
 ---
-      if ($? == 0) {
-         my $openmpout = run_test_program();
-         my ($nthr) = $openmpout =~ /Hello from thread \d+, nthreads (\d+)/;
          if ($? == 0) {
-            $CXXflags .= " $ompflag";
-            $LDflags .= " $ompflag";
+            my $openmpout = run_test_program();
+            my ($nthr) = $openmpout =~ /Hello from thread \d+, nthreads (\d+)/;
+            if ($? == 0) {
+               $CXXFLAGS .= " $ompflag";
+               $LDFLAGS .= " $ompflag";
+            }
          }
       }
+
+      if (v_cmp(clang_ver($CLANGversion), "3.8") >= 0) {
+         # stick to the gcov-compatible coverage tool for now
+         # let's experiment with -fcoverage-mapping -fprofile-instr-generate later
+         $CXXCOV="--coverage";
+      }
+      if (v_cmp(clang_ver($CLANGversion), "3.9") >= 0) {
+         $CXXSANITIZE="-fno-omit-frame-pointer -O1 -g";
+      }
    }
-}
 
-if ($^O eq "darwin") {
-   # MacOS magic again
-   my $allarch=qr/ -arch \s+ \S+ (?: \s+ -arch \s+ \S+)* /x;
-   $Cflags =~ s/$allarch//o;
-   $Cflags .= ' ${ARCHFLAGS}';
-   $CXXflags =~ s/$allarch//o;
-   $CXXflags .= ' ${ARCHFLAGS}';
-   $LDsharedFlags =~ s/$allarch/\${ARCHFLAGS}/o;
-   if ($options{callable} ne ".none.") {
-      ($LDcallableFlags = $Config::Config{ldflags}) =~ s/$allarch//o;
-      $LDcallableFlags = "$LDsharedFlags $LDcallableFlags";
-      $LDcallableFlags =~ s{-bundle}{-dynamiclib};
-      $LDsonameFlag = "-install_name $InstallLib/";
-   }
-} else {
-   if ($options{callable} ne ".none.") {
-      $LDsonameFlag = "-Wl,-soname,";
-   }
-}
+   $LDsharedFLAGS=$Config::Config{lddlflags};
 
-print <<"EOF";
-ok
-   CFLAGS=$Cflags
-   CXXFLAGS=$CXXflags
-EOF
-
-# detect whether socket functions reside in a separate library
-
-if ($Config::Config{libs} =~ "-lsocket") {
-   $Libs="-lsocket $Libs";
-}
-
-# locate GMP and MPFR libraries
-
-if (defined $GMP) {
-   $Cflags .= " -I$GMP/include";
-   $CXXflags .= " -I$GMP/include";
-   my $libdir=get_libdir($GMP, "gmp");
-   $LDflags .= " -L$libdir";
-   if (($^O ne "darwin" || $options{fink} eq ".none.") && exists $options{gmp}) {
-      # non-standard location
-      $LDflags .= " -Wl,-rpath,$libdir";
-   }
-}
-
-my $MPFR=$options{mpfr};
-if (defined($MPFR) && $MPFR ne $GMP) {
-   $Cflags .= " -I$MPFR/include";
-   $CXXflags .= " -I$MPFR/include";
-   my $libdir=get_libdir($MPFR, "mpfr");
-   $LDflags .= " -L$libdir";
-   if ($^O ne "darwin" || $options{fink} eq ".none.") {
-      # non-standard location
-      $LDflags .= " -Wl,-rpath,$libdir";
-   }
-}
-
-if (defined($boost_path)) {
-   $boost_path .= '/include' if (-d "$boost_path/include/boost");
-   $CXXflags .= " -I$boost_path";
-}
-
-my $permlib_path = $options{permlib};
-if (defined($permlib_path) and $permlib_path ne "bundled") {
-   $permlib_path .= '/include' if (-d "$permlib_path/include/permlib");
-   $CXXflags .= " -I$permlib_path";
-} else {
-   if (!-e "external/permlib/include/permlib/permlib_api.h") {
-      # bundled permlib seems to be missing
-      # will try to use a systemwide permlib as fallback unless explicitly requested
-      die "Bundled PermLib was requested but is missing in the distribution.\n" if $permlib_path eq "bundled";
-      $permlib_path = "";
+   if ($^O eq "darwin") {
+      # MacOS magic again: remove multi-architecture options for fat binaries
+      my $allarch=qr/ -arch \s+ \S+ (?: \s+ -arch \s+ \S+)* /x;
+      $CFLAGS =~ s/$allarch//o;
+      $CXXFLAGS =~ s/$allarch//o;
+      $LDsharedFLAGS =~ s/$allarch//o;
+      if ($options{callable} ne ".none.") {
+         ($LDcallableFLAGS = $Config::Config{ldflags}) =~ s/$allarch//o;
+         $LDcallableFLAGS = "$LDsharedFLAGS $LDcallableFLAGS";
+         $LDcallableFLAGS =~ s/-bundle/-dynamiclib/;
+         $LDsonameFLAGS = "-install_name $InstallLib/";
+      } else {
+         $LDcallableFLAGS="none";
+      }
    } else {
-      $ExternalHeaders .= " permlib";
+      # enforce lazy binding unless it's already explicitly enabled or disabled by the user
+      # (there are few strange Linux distributions where it's not enabled by default contradicting the ld manual)
+      if ("$LDFLAGS $LDsharedFLAGS" !~ /-z(?:,|\s+)(?:lazy|now)\b/) {
+         $LDsharedFLAGS .= " -Wl,-z,lazy";
+      }
+
+      # prevent early loading of third-party shared modules which are used only in few applications
+      if ("$LDFLAGS $LDsharedFLAGS" !~ /-as-needed/) {
+         $LDsharedFLAGS .= " -Wl,--as-needed";
+      }
+
+      if ($options{callable} ne ".none.") {
+         $LDcallableFLAGS="$LDsharedFLAGS $Config::Config{ldflags}";
+         $LDsonameFLAGS = "-Wl,-soname,";
+      } else {
+         $LDcallableFLAGS="none";
+      }
+   }
+
+   if (defined($CLANGversion) && v_cmp(clang_ver($CLANGversion), "3.5") < 0) {
+      # old clangs do not have this option which is actively used in newer perls
+      s/-fstack-protector\K-strong//g for $LDsharedFLAGS, $LDcallableFLAGS;
+   }
+
+   print <<"---";
+ok
+   CFLAGS=$CFLAGS
+   CXXFLAGS=$CXXFLAGS
+---
+}
+
+#####################################################
+sub check_build_modes {
+   $BuildModes="Opt Debug";
+   if ($options{'build-modes'}) {
+      # might want to use a non-standard perl just with one build mode
+      $BuildModes="" if $options{'alt-perl'};
+      add_build_modes($options{'build-modes'});
    }
 }
 
-if ($options{prereq} ne ".none.") {
-   print "checking gmp installation ... ";
-   # check GMP installation
-   my $build_error=build_test_program(<<'---', Libs => "$ARCHFLAGS -lgmp");
+###############################################################
+sub locate_gmp_and_mpfr_libraries {
+   my $GMP=$options{gmp};
+
+   unless (defined $GMP) {
+      if ($^O eq "freebsd") {
+         if (-f "/usr/local/include/gmp.h") {
+            $GMP="/usr/local";
+         }
+      } elsif ($FinkBase) {
+         $GMP=$FinkBase;
+      }
+   }
+   if (defined $GMP) {
+      $CFLAGS .= " -I$GMP/include";
+      $CXXFLAGS .= " -I$GMP/include";
+      my $libdir=get_libdir($GMP, "gmp");
+      $LDFLAGS .= " -L$libdir";
+      if (!$FinkBase) {
+         # non-standard location
+         $LDFLAGS .= " -Wl,-rpath,$libdir";
+      }
+   }
+
+   my $MPFR=$options{mpfr};
+   if (defined($MPFR) && $MPFR ne $GMP) {
+      $CFLAGS .= " -I$MPFR/include";
+      $CXXFLAGS .= " -I$MPFR/include";
+      my $libdir=get_libdir($MPFR, "mpfr");
+      $LDFLAGS .= " -L$libdir";
+      if (!$FinkBase) {
+         # non-standard location
+         $LDFLAGS .= " -Wl,-rpath,$libdir";
+      }
+   } elsif ($FinkBase) {
+      $MPFR=$FinkBase;
+   }
+
+   if ($options{prereq} ne ".none.") {
+      if ($FinkBase) {
+         print "checking fink gmp and mpfr packages ... ";
+         -f "$FinkBase/lib/libgmp.dylib"
+           or die <<"---";
+Fink package gmp-shlibs seems to be missing.
+Please install the packages gmp and gmp-shlibs and repeat the configure run.
+---
+         -f "$FinkBase/lib/libmpfr.dylib"
+           or die <<"---";
+Fink package mpfr-shlibs seems to be missing.
+Please install the packages mpfr and mpfr-shlibs and repeat the configure run.
+---
+         print "ok\n";
+      }
+
+      print "checking gmp installation ... ";
+      my $build_error=build_test_program(<<'---', LIBS => "$ARCHFLAGS -lgmp");
 #include <cstddef>
 #include <gmp.h>
 #include <iostream>
@@ -815,29 +1041,34 @@ int main() {
    return 0;
 }
 ---
-   if ($?==0) {
-      my $is_version=run_test_program();
       if ($?==0) {
-         if (v_cmp($is_version,"4.2.0")<0) {
-            die "The GNU Multiprecision Library (GMP) installed at your site is of version $is_version\n",
-                "while 4.2.0 is the minimal required version.\n";
+         my $is_version=run_test_program();
+         if ($?==0) {
+            if (v_cmp($is_version,"4.2.0")<0) {
+               die <<"---";
+The GNU Multiprecision Library (GMP) installed at your site is of version $is_version
+while 4.2.0 is the minimal required version.
+---
+            }
+         } else {
+            die <<"---";
+Could not run a test program linked to the GNU Multiprecision Library (GMP).
+Probably the shared library libgmp.$Config::Config{so} is missing or of an incompatible machine type.
+---
          }
       } else {
-         die "Could not run a test program linked to the GNU Multiprecision Library (GMP).\n",
-             "Probably the shared library libgmp.$Config::Config{dlext} is missing or of an incompatible machine type.\n";
+         die <<"---", $build_error;
+Could not compile a test program checking for the GNU Multiprecision Library (GMP).
+The most probable reasons are that the library is installed at a non-standard location,
+lacking developer's subpackage or missing at all.
+Please refer to the installation instructions at $Wiki/howto/install.
+The complete error log follows:
+---
       }
-   } else {
-      die "Could not compile a test program checking for the GNU Multiprecision Library (GMP).\n",
-          "The most probable reasons are that the library is installed at a non-standard location,\n",
-          "lacking developer's subpackage or missing at all.\n",
-          "Please refer to the installation instructions at $Wiki/howto/install.\n",
-          "The complete error log follows:\n", $build_error;
-   }
-   print "ok", defined($GMP) && " ($GMP)", "\n";
+      print "ok", defined($GMP) && " ($GMP)", "\n";
 
-   # check MPFR installation
-   print "checking mpfr installation ... ";
-   my $build_error=build_test_program(<<'---', Libs => "$ARCHFLAGS -lmpfr -lgmp");
+      print "checking mpfr installation ... ";
+      $build_error=build_test_program(<<'---', LIBS => "$ARCHFLAGS -lmpfr -lgmp");
 #include <cstddef>
 #include <mpfr.h>
 #include <iostream>
@@ -848,37 +1079,143 @@ int main() {
    return 0;
 }
 ---
-   if ($?==0) {
-      my $is_version=run_test_program();
       if ($?==0) {
-         if (v_cmp($is_version,"3.0.0")<0) {
-            die "The Multiple Precision Floating-Point Reliable Library (MPFR) installed at your site is of version $is_version\n",
-                "while 3.0.0 is the minimal required version.\n";
+         my $is_version=run_test_program();
+         if ($?==0) {
+            if (v_cmp($is_version,"3.0.0")<0) {
+               die <<"---";
+The Multiple Precision Floating-Point Reliable Library (MPFR) installed at your site is of version $is_version
+while 3.0.0 is the minimal required version.
+---
+            }
+         } else {
+            die <<"---";
+Could not run a test program linked to the Multiple Precision Floating-Point Reliable Library (MPFR).
+Probably the shared library libmpfr.$Config::Config{so} is missing or of an incompatible machine type.
+---
          }
       } else {
-         die "Could not run a test program linked to the Multiple Precision Floating-Point Reliable Library (MPFR).\n",
-             "Probably the shared library libmpfr.$Config::Config{dlext} is missing or of an incompatible machine type.\n";
-      }
-   } else {
-      die <<".", $build_error;
+         die <<"---", $build_error;
 Could not compile a test program checking for the Multiple Precision Floating-Point Reliable Library (MPFR).
 The most probable reasons are that the library is installed at a non-standard location,
 lacking developer's subpackage or missing at all.
 Please refer to the installation instructions at $Wiki/howto/install.
 The complete error log follows:
-.
+---
+      }
+      print "ok", defined($MPFR) && " ($MPFR)", "\n";
    }
-   print "ok", defined $MPFR ? " ($MPFR)" : "","\n";
+}
 
-   if ($options{callable} ne ".none.") {
-      # check if libperl is there
-      print "checking shared perl library ... ";
-      my $libperl=$Config::Config{libperl};
+##########################################################
+sub locate_boost_headers {
+   my $boost_path=$options{boost};
 
-      my $error = "";
-      if (length($libperl)==0) {
-         $error = <<".";
-Your perl installation seems to lack the libperl.$Config::Config{dlext} shared library.
+   if (defined $boost_path) {
+      $boost_path .= '/include' if (-d "$boost_path/include/boost");
+      $CXXFLAGS .= " -I$boost_path";
+   } elsif ($FinkBase) {
+      print "checking fink boost package ... ";
+      ($boost_path) = glob("$FinkBase/opt/boost-*/include/boost");
+      $boost_path =~ s{/include/boost$}{};
+      unless (-d $boost_path) {
+         die <<"---";
+Fink package boost-<some version>_nopython seems to be missing.
+Please install the package boost-<some version>_nopython and repeat the configure run.
+---
+      }
+      $CXXFLAGS .= " -I$boost_path/include";
+      print "ok\n";
+   }
+
+   if ($options{prereq} ne ".none.") {
+      print "checking boost installation ... ";
+      my $build_error=build_test_program(<<'---');
+#include <boost/shared_ptr.hpp>
+#include <boost/iterator/counting_iterator.hpp>
+int main() {
+  return 0;
+}
+---
+      if ($?) {
+         die <<"---";
+Could not compile a test program checking for boost library.
+The most probable reasons are that the library is installed at a non-standard location,
+or missing at all.
+The complete error log follows:
+$build_error
+
+Please install the library and specify its location using --with-boost option, if needed.
+---
+      }
+      print "ok", defined($boost_path) && " ($boost_path)", "\n";
+   }
+}
+
+###############################################################
+sub locate_permlib {
+   my $permlib_path = $options{permlib};
+   if (defined($permlib_path) and $permlib_path ne "bundled") {
+      $permlib_path .= '/include' if (-d "$permlib_path/include/permlib");
+      $CXXFLAGS .= " -I$permlib_path";
+   } else {
+      if (!-e "external/permlib/include/permlib/permlib_api.h") {
+         # bundled permlib seems to be missing
+         # will try to use a systemwide permlib as fallback unless explicitly requested
+         die "Bundled PermLib was requested but is missing in the distribution.\n" if $permlib_path eq "bundled";
+         $permlib_path = "";
+      } else {
+         $ExternalHeaders .= " permlib";
+      }
+   }
+
+   if ($options{prereq} ne ".none.") {
+      # this includes the case $permlib_path eq "" where we try to use a systemwide installation
+      if (defined($permlib_path) and $permlib_path ne "bundled") {
+         print "checking permlib installation ... ";
+         # check permlib installation
+         my $build_error=build_test_program(<<'---');
+#include <permlib/permlib_api.h>
+int main() {
+   // from permlibs api example
+   using namespace permlib;
+   const unsigned long n = 10;
+   // group generators
+   std::list<Permutation::ptr> groupGenerators;
+   Permutation::ptr gen1(new Permutation(n, std::string("1 3 5 7 9 10 2 4 6 8")));
+   groupGenerators.push_back(gen1);
+   Permutation::ptr gen2(new Permutation(n, std::string("1 5")));
+   groupGenerators.push_back(gen2);
+   boost::shared_ptr<PermutationGroup> group = construct(n, groupGenerators.begin(), groupGenerators.end());
+   return 0;
+}
+---
+         if ($?) {
+            die <<"---";
+Could not compile a test program checking for permlib.
+The most probable reasons are that the library is installed at a non-standard location,
+or missing at all.
+The complete error log follows:
+$build_error
+
+Please install the library and specify its location using --with-permlib option, if needed.
+Alternatively, you may leave out the --with-permlib option to use the bundled version.
+---
+         }
+         print "ok", " (", $permlib_path eq "" ? "system" : ($permlib_path // "bundled"), ")\n";
+      }
+   }
+}
+
+##############################################################
+sub check_libperl {
+   print "checking shared perl library ... ";
+   my $libperl=$Config::Config{libperl};
+
+   my $error = "";
+   if (length($libperl)==0) {
+      $error = <<"---";
+Your perl installation seems to lack the libperl.$Config::Config{so} shared library.
 On some systems it is contained in a separate package named like
 perl-devel or libperl-dev.  Please look for such a package and install it.
 
@@ -887,13 +1224,18 @@ you have answered with "yes" to the question about the libperl shared library
 (it is not the default choice!), or that you have passed '-Duseshrplib=true'
 to the ./Configure script.
 Otherwise, reconfigure and reinstall your perl.
-.
-      }
+---
+   }
 
-      # We also build a test program for libperl since e.g. on Debian based systems the
-      # check for Config::Config{libperl} will not detect a missing libperl-dev package
-      chomp(my $perlldflags = `$PERL -MExtUtils::Embed -e ldopts`);
-      my $build_error=build_test_program(<<'---', CXXflags => (defined($CLANGversion) && "-Wno-reserved-user-defined-literal").`$PERL -MExtUtils::Embed -e ccopts`, LDflags => "$ARCHFLAGS $perlldflags" );
+   # We also build a test program for libperl since e.g. on Debian based systems the
+   # check for Config::Config{libperl} will not detect a missing libperl-dev package
+   require ExtUtils::Embed;
+   chomp(my $perlcflags = ExtUtils::Embed::ccopts());
+   chomp(my $perlldflags = ExtUtils::Embed::ldopts());
+   if (defined($CLANGversion) && v_cmp(clang_ver($CLANGversion), "3.5") < 0) {
+      s/-fstack-protector\K-strong//g for $perlcflags, $perlldflags;
+   }
+   my $build_error=build_test_program(<<'---', CXXFLAGS => (defined($CLANGversion) && "-Wno-reserved-user-defined-literal ").$perlcflags, LDFLAGS => "$ARCHFLAGS $perlldflags" );
 #include <EXTERN.h>
 #include <perl.h>
 
@@ -913,101 +1255,52 @@ int main(int argc, char **argv, char **env)
    PERL_SYS_TERM();
 }
 ---
-      if ($?==0) {
-         chomp(my $version = run_test_program());
-         if ($? == 0) {
-            if ($version ne $]) {
-               $error = <<".";
+   if ($?==0) {
+      chomp(my $version = run_test_program());
+      if ($? == 0) {
+         if ($version ne $]) {
+            $error = <<"---";
 The shared perl library claims to be of a different version ($version) than
 your perl interpreter ($]). Please choose a different perl installation with
 PERL=/some/path/to/bin/perl or try to reinstall perl (including libperl).
-.
-            }
-         } else {
-            $error = <<".";
-Could not run a test program checking for libperl.$Config::Config{dlext}.
+---
+         }
+      } else {
+         $error = <<"---";
+Could not run a test program checking for libperl.$Config::Config{so}.
 The error is as follows:
 $!
 
 On some systems the library is contained in a separate package named like
 perl-devel or libperl-dev.  Please look for such a package and install it.
-.
-         }
-      } else {
-         $error = <<".";
-Could not compile a test program for the libperl.$Config::Config{dlext} shared library.
+---
+      }
+   } else {
+      $error = <<"---";
+Could not compile a test program for the libperl.$Config::Config{so} shared library.
 The build error is as follows:
 $build_error
 
 On some systems the library is contained in a separate package named like
 perl-devel or libperl-dev.  Please look for such a package and install it.
-.
-      }
+---
+   }
 
-      if ($error) {
-         print "failed\n\n";
-         die <<".";
+   if ($error) {
+      print "failed\n\n";
+      die <<"---";
 $error
 As a last resort, you can configure polymake with the option --without-callable .
 You won't be able to build the callable library any more, but at least you get
 polymake compiled.
-.
-      }
-
-      print "ok\n";
-   }
-
-   print "checking boost installation ... ";
-   # check boost installation
-   $build_error=build_test_program(<<'---');
-#include <boost/shared_ptr.hpp>
-#include <boost/iterator/counting_iterator.hpp>
-int main() {
-  return 0;
-}
 ---
-   if ($?) {
-      die "Could not compile a test program checking for boost library.\n",
-          "The most probable reasons are that the library is installed at a non-standard location,\n",
-          "or missing at all.\n",
-          "The complete error log follows:\n$build_error\n\n",
-          "Please install the library and specify its location using --with-boost option, if needed.\n";
    }
-   print "ok", defined($boost_path) && " ($boost_path)", "\n";
 
-   # this includes the case $permlib_path eq "" where we try to use a systemwide installation
-   if (defined($permlib_path) and $permlib_path ne "bundled") {
-      print "checking permlib installation ... ";
-      # check permlib installation
-      $build_error=build_test_program(<<'---');
-#include <permlib/permlib_api.h>
-int main() {
-   // from permlibs api example
-	using namespace permlib;
-	const unsigned long n = 10;
-	// group generators
-	std::list<Permutation::ptr> groupGenerators;
-	Permutation::ptr gen1(new Permutation(n, std::string("1 3 5 7 9 10 2 4 6 8")));
-	groupGenerators.push_back(gen1);
-	Permutation::ptr gen2(new Permutation(n, std::string("1 5")));
-	groupGenerators.push_back(gen2);
-	boost::shared_ptr<PermutationGroup> group = construct(n, groupGenerators.begin(), groupGenerators.end());
-   return 0;
+   print "ok\n";
 }
----
-      if ($?) {
-         die "Could not compile a test program checking for permlib.\n",
-             "The most probable reasons are that the library is installed at a non-standard location,\n",
-             "or missing at all.\n",
-             "The complete error log follows:\n$build_error\n\n",
-             "Please install the library and specify its location using --with-permlib option, if needed.\n",
-             "Or leave out the --with-permlib option to use the bundled version.\n";
-      }
-      print "ok", " (", $permlib_path eq "" ? "system" : ($permlib_path//"bundled"),")\n";
-   }
 
-
-   # check the prerequisite perl packages
+######################################################################
+sub check_prerequisite_perl_packages {
    if (defined $FinkBase) { 
       lib->import("$FinkBase/lib/perl5");
    }
@@ -1058,244 +1351,311 @@ WARNING: perl module $pkg required for polymake might cause problems.
       }
    }
    if (@warned) {
-      $warning .= <<'EOF';
-  WARNING: Please install/check the following perl modules prior to starting polymake: 
-EOF
-      $warning .= "           ".join(", ",@warned)."\n";
+      $warning .= <<'---';
+WARNING: Please install/check the following perl modules prior to starting polymake: 
+---
+      $warning .= "         ".join(", ",@warned)."\n";
    }
 }
 
-
-print "checking libxml2 installation ... ";
-# gather build options for libxml2
-my $xml2=$options{libxml2};
-if (defined($xml2)) {
-   if (-x "$xml2/bin/xml2-config") {
-      $xml2="$xml2/bin/xml2-config";
-   } elsif (-x "$xml2/xml2-config") {
-      $xml2="$xml2/xml2-config";
-   } elsif ($xml2 !~ /-config$/ || !-x $xml2) {
-      die "Could not derive the location of the configuration program xml2-config from the option --with-libxml2\n";
+#######################################################################
+sub locate_libxml2 {
+   print "checking libxml2 installation ... ";
+   # gather build options for libxml2
+   my $xml2=$options{libxml2};
+   if (defined($xml2)) {
+      if (-x "$xml2/bin/xml2-config") {
+         $xml2="$xml2/bin/xml2-config";
+      } elsif (-x "$xml2/xml2-config") {
+         $xml2="$xml2/xml2-config";
+      } elsif ($xml2 !~ /-config$/ || !-x $xml2) {
+         die "Could not derive the location of the configuration program xml2-config from the option --with-libxml2\n";
+      }
+   } else {
+      $xml2="xml2-config";
    }
-} else {
-   $xml2="xml2-config";
-}
-$LIBXML2_CFLAGS=`xml2-config --cflags`;
-if ($?) {
-   die <<".";
+   $LIBXML2_CFLAGS=`xml2-config --cflags`;
+   if ($?) {
+      die <<"---";
 Could not find configuration program xml2-config for library libxml2.
 Probably you need to install development package for it;
 usually it is called libxml2-devel or similarly.
 If the library is installed at a non-standard location,
 please specify it in option --with-libxml2
-.
+---
+   }
+   chomp $LIBXML2_CFLAGS;
+   $LIBXML2_LIBS=`xml2-config --libs`;
+   chomp $LIBXML2_LIBS;
+   print "ok", defined($options{libxml2}) && " ($options{libxml2})", "\n";
 }
-chomp $LIBXML2_CFLAGS;
-$LIBXML2_LIBS=`xml2-config --libs`;
-chomp $LIBXML2_LIBS;
-print "ok", defined $options{libxml2} ? " ($options{libxml2})" : "","\n";
 
-# create the main build directory and Makefile
-my $BuildDir="build.$Arch";
-File::Path::mkpath($BuildDir);
-
-my $LOG;
-my $LOGfile="$BuildDir/bundled.log";
-
+#########################################################################
 sub bundled_ext_error_msg {
    my ($ext, $msg)=@_;
-   unless (defined($LOG)) {
-      open $LOG, ">", $LOGfile;
-      print $LOG <<".";
+   unless (defined($BundledLOG)) {
+      open $BundledLOG, ">", $BundledLOGfile;
+      print $BundledLOG <<"---";
 Configuration of the following bundled extensions failed, proceeding without them.
 If you really need them, please carefully read the following explanations,
 take the suggested actions, and repeat the configuration.
-.
+---
    }
-   print $LOG "\n---- $ext ----\n\n$msg\n";
+   print $BundledLOG "\n---- $ext ----\n\n$msg\n";
 }
 
-print "\nConfiguring bundled extensions:\n";
-foreach my $ext (@ext_disabled) {
-   print "bundled extension $ext ... disabled by command-line\n";
-}
-while (my ($ext, $err)=each %ext_bad) {
-   print "bundled extension $ext ... disabled because of a fatal error\n";
-   bundled_ext_error_msg($ext, $err);
-}
-
-# order the enabled bundled extensions
-my @ext_ordered;
-my %ext_unordered=map { ($_ => 1) } grep { $options{$_} ne ".none." } @ext;
-while (keys %ext_unordered) {
-   my $progress=@ext_ordered;
-   foreach my $ext (sort keys %ext_unordered) {
-      unless (grep { $ext_unordered{$_} } @{$ext_requires{$ext}}
-                or
-              grep { $ext_unordered{$_} } @{$ext_conflicts{$ext}}) {
-         push @ext_ordered, $ext;
-         delete $ext_unordered{$ext};
-      }
-   }
-   last if $progress==@ext_ordered;
-}
-
-while ((my $ext, undef)=each %ext_unordered) {
-   print "bundled extension $ext ... disabled because of cyclic dependencies on other extension(s): ",
-         join(", ", (grep { $ext_unordered{$_} } @{$ext_requires{$ext}}),
-                    (grep { $ext_unordered{$_} } @{$ext_conflicts{$ext}})), "\n";
-}
-
-# configure the bundled extensions
-my %ext_survived;
-foreach my $ext (@ext_ordered) {
-   print "bundled extension $ext ... ";
-   my $enable=1;
-
-   my @prereq;
-   foreach my $prereq (@{$ext_requires{$ext}}) {
-      if ($ext_survived{$prereq}) {
-         push @prereq, $prereq;
-      } elsif (!$ext_requires_opt{$ext}->{$prereq}) {
-         if (-d "bundled/$prereq") {
-            print "disabled because of unsatisfied prerequisite: $prereq";
-         } else {
-            print "disabled because of unknown/missing prerequisite: $prereq";
+##########################################################################
+sub order_enabled_bundled_extensions {
+   my %ext_unordered=map { ($_ => 1) } grep { $options{$_} ne ".none." } @ext;
+   while (keys %ext_unordered) {
+      my $progress=@ext_ordered;
+      foreach my $ext (sort keys %ext_unordered) {
+         unless (grep { $ext_unordered{$_} } @{$ext_requires{$ext}}
+                   or
+                 grep { $ext_unordered{$_} } @{$ext_conflicts{$ext}}) {
+            push @ext_ordered, $ext;
+            delete $ext_unordered{$ext};
          }
-         $enable=0; last;
       }
+      last if $progress==@ext_ordered;
    }
-   if ($enable) {
-      foreach my $conflict (@{$ext_conflicts{$ext}}) {
-         if ($ext_survived{$conflict}) {
-            print "disabled because of conflict with other extension: $conflict";
+
+   while ((my $ext, undef)=each %ext_unordered) {
+      print "bundled extension $ext ... disabled because of cyclic dependencies on other extension(s): ",
+            join(", ", (grep { $ext_unordered{$_} } @{$ext_requires{$ext}}),
+                       (grep { $ext_unordered{$_} } @{$ext_conflicts{$ext}})), "\n";
+   }
+}
+
+###########################################################################
+sub configure_enabled_bundled_extensions {
+   foreach my $ext (@ext_ordered) {
+      print "bundled extension $ext ... ";
+      my $enable=1;
+
+      my @prereq;
+      foreach my $prereq (@{$ext_requires{$ext}}) {
+         if ($ext_survived{$prereq}) {
+            push @prereq, $prereq;
+         } elsif (!$ext_requires_opt{$ext}->{$prereq}) {
+            if (-d "bundled/$prereq") {
+               print "disabled because of unsatisfied prerequisite: $prereq";
+            } else {
+               print "disabled because of unknown/missing prerequisite: $prereq";
+            }
             $enable=0; last;
          }
       }
-   }
-
-   if ($enable) {
-      eval { check_extension_source_conflicts("bundled/$ext", ".", (map { "bundled/$_" } @prereq)) };
-      if ($@) {
-         print "disabled because of the following conflicts:\n\n$@";
-         $enable=0;
-
-      } elsif ($ext_with_config{$ext}) {
-         my $result=eval { no strict 'refs'; &{"Polymake::Bundled::$ext\::proceed"}(\%options) };
-         if ($@) {
-            print "failed";
-            bundled_ext_error_msg($ext, $@);
-            $enable=0;
-         } else {
-            print "ok", $result ? " ($result)":"";
+      if ($enable) {
+         foreach my $conflict (@{$ext_conflicts{$ext}}) {
+            if ($ext_survived{$conflict}) {
+               print "disabled because of conflict with other extension: $conflict";
+               $enable=0; last;
+            }
          }
-      } else {
-         print "ok";
       }
-   }
 
-   if ($enable) {
-      $ext_requires{$ext}=\@prereq;
-      $ext_survived{$ext}=1;
-   } else {
-      $ext_failed{$ext}=1;
-      if (exists($options{$ext}) and $options{$ext} ne ".none.") {
-         die << "EOF";
+      if ($enable) {
+         eval { check_extension_source_conflicts("bundled/$ext", ".", (map { "bundled/$_" } @prereq)) };
+         if ($@) {
+            print "disabled because of the following conflicts:\n\n$@";
+            $enable=0;
+
+         } elsif ($ext_with_config{$ext}) {
+            my $result=eval { no strict 'refs'; &{"Polymake::Bundled::$ext\::proceed"}(\%options) };
+            if ($@) {
+               print "failed";
+               bundled_ext_error_msg($ext, $@);
+               $enable=0;
+            } else {
+               print "ok", $result ? " ($result)":"";
+            }
+         } else {
+            print "ok";
+         }
+      }
+
+      if ($enable) {
+         $ext_requires{$ext}=\@prereq;
+         $ext_survived{$ext}=1;
+      } else {
+         $ext_failed{$ext}=1;
+         if (exists($options{$ext}) and $options{$ext} ne ".none.") {
+            die << "---";
 
 
 ERROR:
 The bundled extension $ext was explicitly requested but failed to configure.
-Please recheck your argument (--with-$ext=$options{$ext}) and build.${Arch}/bundled.log.
+Please recheck your argument (--with-$ext=$options{$ext}) and ${BuildDir}/bundled.log .
 You can also disable it by specifying --without-$ext instead.
-EOF
+---
+         }
+         $options{$ext}=".none.";
       }
-      $options{$ext}=".none.";
+      print "\n";
    }
-   print "\n";
-}
 
-# save the list of enabled bundled extensions in proper order for the make process
-$BundledExts = join(" ",grep { $ext_survived{$_} } @ext_ordered);
+   # save the list of enabled bundled extensions in proper order for the make process
+   $BundledExts = join(" ", grep { $ext_survived{$_} } @ext_ordered);
 
-$warning .= <<"EOF" unless exists $ext_survived{"cdd"};
+   if ($options{prereq} ne ".none.") {
+      $warning .= <<"---" unless exists $ext_survived{"cdd"};
 
 WARNING: The bundled extension for cdd was either disabled or failed to configure.
          Running polymake without cdd is deprecated and not supported!
-         Please recheck your configuration (and build.${Arch}/bundled.log).
-EOF
+         Please recheck your configuration and $BundledLOGfile.
+---
 
-$warning .= <<"EOF" unless (exists $ext_survived{"nauty"} or exists $ext_survived{"bliss"});
+      $warning .= <<"---" unless (exists $ext_survived{"nauty"} or exists $ext_survived{"bliss"});
 
 WARNING: The bundled extensions for bliss and nauty were both either disabled or failed to configure.
          Running polymake without a tool for graph-isomorphism tests is not supported!
-         Please recheck your configuration (and build.${Arch}/bundled.log).
-EOF
-
-print "* If you want to change the configuration of bundled extensions please ",
-      defined($LOG) && "see $BuildDir/bundled.log and ",
-      "try configure --help.\n";
-
-if (defined $LOG) {
-   close $LOG;
-} else {
-   # remove an outdated logfile to avoid confusions
-   unlink $LOGfile;
-}
-
-# create the core build directories
-create_build_dir("$BuildDir/$_") for "lib/core", glob("{apps,staticlib}/*");
-
-# write the core configuration file
-open CONF, ">$BuildDir/conf.make";
-
-# preserve a copy of the command line for later reference
-print CONF "# last configured with:\n# $TOP/configure";
-if (defined (my $with_perl=delete $options{perl})) {
-   print CONF " PERL=$with_perl";
-}
-write_config_command_line(\*CONF, \%options, \%allowed_with, \%vars, \%ext_failed);
-print CONF "\n\n";
-
-write_conf_vars(__PACKAGE__, \*CONF);
-
-print CONF <<".";
-RANLIB=$Config::Config{ranlib}
-SO=$Config::Config{dlext}
-export INSTALL_PL=$TOP/support/install.pl
-DESTDIR=
-export FinalInstallTop := \${InstallTop}
-export FinalInstallArch := \${InstallArch}
-InstallTop := \${DESTDIR}\${InstallTop}
-InstallArch := \${DESTDIR}\${InstallArch}
-InstallBin := \${DESTDIR}\${InstallBin}
-InstallInc := \${DESTDIR}\${InstallInc}
-InstallLib := \${DESTDIR}\${InstallLib}
-InstallDoc := \${DESTDIR}\${InstallDoc}
-InSourceTree := y
-.
-close CONF;
-
-# create build directories for successfully configured bundled extensions
-foreach my $ext (keys %ext_survived) {
-   create_bundled_extension_build_dir("bundled/$ext", $BuildDir, "Polymake::Bundled::$ext", (map { "bundled/$_" } @{$ext_requires{$ext}}));
-}
-
-# delete build directories for disabled extensions, if any
-if (keys %ext_survived) {
-   foreach my $d (glob "$BuildDir/bundled/*") {
-      $ext_survived{($d =~ $Polymake::filename_re)[0]}
-        or File::Path::rmtree($d);
+         Please recheck your configuration and $BundledLOGfile.
+---
    }
-} else {
-   rmdir "$BuildDir/bundled";
+
+   print "* If you want to change the configuration of bundled extensions please ",
+         defined($BundledLOG) && "see $BundledLOGfile and ",
+         "try configure --help.\n";
+
+   if (defined $BundledLOG) {
+      close $BundledLOG;
+   } else {
+      # remove an outdated logfile to avoid confusions
+      unlink $BundledLOGfile;
+   }
 }
 
-print <<"EOF";
+##############################################################################
+sub finalize_compiler_flags {
+   # add flags and libraries that should not appear in the test builds tried before
 
-* Configuration successful. You should run 'make' now to build polymake. 
-* If you have a multicore CPU use e.g. 'make -j2' to speed things up by using two parallel compile processes.
-EOF
-print $warning if defined $warning;
+   if ($options{callable} ne ".none."
+       and $LIBS !~ /-ldl/
+       and $^O eq "linux")
+   {
+      $LIBS .= " -ldl";
+   }
+
+   $LIBS="-lmpfr -lgmp -lpthread $LIBS";
+
+   # be rigorous about own code
+   if ($Polymake::DeveloperMode) {
+      $CXXFLAGS="-Wall -Werror $CXXFLAGS";
+   }
+}
+
+##############################################################################
+sub find_ninja {
+   find_program_in_path("ninja")
+     or die <<'---';
+ERROR: The ninja program is required for building polymake.
+
+It can usually be installed as a ready-to-use package, e.g.
+on Ubuntu:
+   apt-get install ninja-build
+on MacOS with Homebrew:
+   brew install ninja-build
+
+As a fallback, you can obtain its source code from GitHub, build it yourself,
+and install at a location of your choice:
+
+INSTALL_DIR=/usr/local/bin  # or anything else reachable through your PATH
+
+git clone https://github.com/ninja-build/ninja.git
+cd ninja
+./configure.py --bootstrap
+sudo install -s -m 555 ninja $INSTALL_DIR
+
+---
+}
+
+##############################################################################
+sub write_configuration_file {
+   my ($filename)=@_;
+   open my $conf, ">", $filename
+     or die "can't create $filename: $!\n";
+
+   # preserve a copy of the command line for later reference
+   print $conf "# last configured with:\n", "configure.command=$root/configure";
+   write_config_command_line($conf, \%options, \%allowed_with, \%vars, \%ext_failed);
+
+   my @external_includes=map { "-I\${root}/include/external/$_" } $ExternalHeaders =~ /(\S+)/g;
+   print $conf <<"---";
+
+root=$root
+core.includes=-I\${root}/include/core-wrappers -I\${root}/include/core
+app.includes=-I\${root}/include/app-wrappers -I\${root}/include/apps @external_includes
+
+---
+   write_config_vars(__PACKAGE__, "", $conf);
+
+   print $conf <<"---";
+AR=$Config::Config{ar}
+---
+
+   # write configuration variables for successfully configured bundled extensions
+   foreach my $ext (keys %ext_survived) {
+      write_config_vars("Polymake::Bundled::$ext", "bundled.$ext.", $conf);
+      print $conf "bundled.$ext.RequireExtensions=@{$ext_requires{$ext}}\n";
+   }
+
+   close $conf;
+}
+
+#######################################################################
+sub write_perl_specific_configuration_file {
+   my ($filename)=@_;
+   open my $conf, ">", $filename
+     or die "can't create $filename: $!\n";
+
+   my $PerlVersion=$Config::Config{version};
+   $PerlVersion =~ s/\.//g;
+
+   my $no_warn="-Wno-nonnull";
+   # gcc 5 seems to not understand a #pragma ignoring -Wliteral-suffix
+   if ($] < 5.020 && defined($GCCversion)) {
+      $no_warn .= " -Wno-literal-suffix";
+   }
+
+   print $conf <<"---";
+PERL=$Config::Config{perlpath}
+CXXglueFLAGS=-I$Config::Config{archlibexp}/CORE $Config::Config{ccflags} -DPerlVersion=$PerlVersion $no_warn
+LIBperlFLAGS=-L$Config::Config{archlib}/CORE -lperl $Config::Config{ccdlflags}
+ExtUtils=$Config::Config{privlib}/ExtUtils
+---
+
+   close $conf;
+}
+
+#######################################################################
+sub delete_old_and_disabled_build_trees {
+   # delete artifacts for disabled extensions, if any, and create .disabled markers
+   foreach my $bundled (@ext_disabled, grep { !$ext_survived{$_} } @ext) {
+      File::Path::remove_tree(grep { -d $_ } glob("$BuildDir/{Opt,Debug,Cov,San}/bundled/$bundled"));
+   }
+
+   # delete old (pre-ninja) build artifacts
+   if ($Polymake::DeveloperMode && -f "$BuildDir/conf.make") {
+      File::Path::remove_tree((grep { -d $_ } "$BuildDir/bundled", "$BuildDir/lib", "$BuildDir/apps", "$BuildDir/jars", "$BuildDir/java"),
+                              glob("$BuildDir/perlx-*"), glob("$BuildDir/perlx/*/*/auto"));
+      unlink "$BuildDir/conf.make";
+   }
+}
+
+#######################################################################
+sub create_alt_perl_configuration {
+   -f "$BuildDir/config.ninja"
+     or die "option --alt-perl can only be used on the top of an existing full configuration\n";
+
+   File::Path::make_path("$BuildDir/$perlxpath");
+   write_perl_specific_configuration_file("$BuildDir/$perlxpath/config.ninja");
+   my $buildroot="$root/$BuildDir";
+   foreach my $mode ($BuildModes =~ /(\S+)/g) {
+      create_build_mode_subtree($buildroot, $mode);
+      write_build_ninja_file($buildroot, $mode, "build.$options{'alt-perl'}.ninja", perlxpath => $perlxpath);
+   }
+}
 
 # Local Variables:
 # cperl-indent-level:3

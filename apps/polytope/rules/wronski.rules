@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -38,7 +38,7 @@ user_function wronski_polynomial(Matrix, Vector, Array<Rational>, $; {triangulat
     map { $m->{$_}= $i++ } @{$T->FACETS->[0]};
 
     my $full_coeffs = new Vector<Rational>(map { $s**(convert_to<Int>($lambda->[$_]))*$coeffs->[$m->{$T->PROJ_DICTIONARY->[$_]}] } 0..($n-1));
-    return (new Polynomial($full_coeffs, (convert_to<Int>($M->minor(All,~[0])))));
+    return new Polynomial($full_coeffs, convert_to<Int>($M->minor(All,~[0])));
 }
 
 
@@ -106,7 +106,7 @@ user_function wronski_center_ideal(Matrix, Vector; {triangulation => undef}) {
   for (my $col=0; $col<=$d; ++$col) {
     my $points_of_this_color=$points_by_color[$col];
     my $sz=scalar(@$points_of_this_color);
-    my $eq=new Polynomial((ones_vector<Rational>($sz)), $monomials->minor($points_of_this_color,All));
+    my $eq=new Polynomial(ones_vector<Rational>($sz), $monomials->minor($points_of_this_color,All));
     push @eqs, $eq;
   }
 

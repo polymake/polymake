@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -23,9 +23,9 @@ Array<int> partition_representatives(const Array<Array<int>>& group_generators,
                                      const Set<int>& S)
 {
    const PermlibGroup G(group_generators);
-   Array<std::vector<Array<int>>> fake_cc(1);
+   Array<Array<Array<int>>> fake_cc(1);
    fake_cc[0] = all_group_elements_impl(G);
-   const GroupIndex index_of(group_index(fake_cc));
+   const GroupIndex<Array<int>> index_of(group_index(fake_cc));
    const GroupRightMultiplicationTable GMT(group_right_multiplication_table_impl(fake_cc, index_of));
    const auto stab (all_group_elements_impl(G.setwise_stabilizer(S)));
    std::vector<int> indexed_subgroup;

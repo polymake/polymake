@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -29,8 +29,8 @@ precondition : CENTERED;
 weight 0.10;
 
 rule FAR_HYPERPLANE : CONE_AMBIENT_DIM {
-   my $dim=$this->CONE_AMBIENT_DIM-1;	
-   $this->FAR_HYPERPLANE= "1".(" 0" x $dim);
+   my $dim=$this->CONE_AMBIENT_DIM-1;
+   $this->FAR_HYPERPLANE=[ 1, (0) x $dim ];
 }
 weight 0.10;
 
@@ -43,11 +43,11 @@ precondition : BOUNDED;
 
 
 rule REL_INT_POINT : VERTICES | POINTS {
-   $this->REL_INT_POINT=inner_point($this->VERTICES | POINTS);
+   $this->REL_INT_POINT=inner_point($this->give("VERTICES | POINTS"));
 }
 
 rule FAR_HYPERPLANE : FACETS | INEQUALITIES {
-   $this->FAR_HYPERPLANE=inner_point($this->FACETS | INEQUALITIES);
+   $this->FAR_HYPERPLANE=inner_point($this->give("FACETS | INEQUALITIES"));
 }
 
 rule CONE_DIM, REL_INT_POINT : FACETS | INEQUALITIES, ONE_VERTEX, BOUNDED {
@@ -58,10 +58,10 @@ weight 3.25;
 rule REL_INT_POINT : FACETS | INEQUALITIES, LINEALITY_SPACE {
    my $p;
    if (defined (my $AH = $this->lookup("AFFINE_HULL | EQUATIONS"))) {
-      $p=new Polytope(INEQUALITIES=>$this->FACETS | INEQUALITIES,EQUATIONS=>$this->LINEALITY_SPACE/$AH);
+      $p=new Polytope(INEQUALITIES=>$this->give("FACETS | INEQUALITIES"), EQUATIONS=>$this->LINEALITY_SPACE/$AH);
    }
    else {
-      $p=new Polytope(INEQUALITIES=>$this->FACETS | INEQUALITIES,EQUATIONS=>$this->LINEALITY_SPACE);
+      $p=new Polytope(INEQUALITIES=>$this->give("FACETS | INEQUALITIES"), EQUATIONS=>$this->LINEALITY_SPACE);
    }
    $this->REL_INT_POINT = $p->REL_INT_POINT;
 }

@@ -22,6 +22,7 @@
 ########################################################################
 
 
+# @Category Combinatorics
 object RationalFunction {
 
 	#Operator overload
@@ -104,7 +105,7 @@ object RationalFunction {
 		computeGeometricFunctionData($this);
 	}
 	precondition : NUMERATOR, DENOMINATOR {
-		$this->NUMERATOR != (new Polynomial<TropicalNumber<Addition>>($this->NUMERATOR->n_vars())) 
+		$this->NUMERATOR != new Polynomial<TropicalNumber<Addition>>($this->NUMERATOR->n_vars()) 
 			or die "Numerator cannot be the zero polynomial.";
 		polynomial_degree($this->NUMERATOR) == polynomial_degree($this->DENOMINATOR) 
 			or die "Both numerator and denominator must have the same degree";
@@ -129,7 +130,11 @@ object RationalFunction {
 		my $vertexvalues = new Matrix<Rational>($Xcopy->SEPARATED_VERTICES->minor(All,~scalar2set(0)));
 		my $linealityvalues = new Matrix<Rational>($Xcopy->LINEALITY_SPACE->minor(All,~scalar2set(0)));
 	
-		my $emb = new Morphism<Addition>( DOMAIN=>$Xcopy, VERTEX_VALUES=>$vertexvalues,LINEALITY_VALUES=>$linealityvalues, MATRIX=>(unit_matrix<Rational>($f->DOMAIN->PROJECTIVE_AMBIENT_DIM+1)));
+		my $emb = new Morphism<Addition>( DOMAIN => $Xcopy,
+						  VERTEX_VALUES => $vertexvalues,
+						  LINEALITY_VALUES => $linealityvalues,
+						  MATRIX => unit_matrix<Rational>($f->DOMAIN->PROJECTIVE_AMBIENT_DIM+1)
+						);
 		return pullback($emb,$f);
 	}
 
@@ -210,7 +215,7 @@ object RationalFunction {
 				$nvars = $ambient_dim;
 			}
 			$zero = new Polynomial<TropicalNumber<Addition>>( 
-				(new TropicalNumber<Addition>(0)), $nvars);
+				new TropicalNumber<Addition>(0), $nvars);
 			return new RationalFunction<Addition>(NUMERATOR=>$zero, DENOMINATOR=>$zero);
 		}
 		if (defined($this->lookup("NUMERATOR"))) {
@@ -246,7 +251,7 @@ object RationalFunction {
 user_function rational_fct_from_affine_numerator<Addition>(Polynomial<TropicalNumber<Addition>>; $=0) {
 	my ($p,$chart) = @_;
 	return homogenize_quotient($p,
-		(new Polynomial<TropicalNumber<Addition>>( (new TropicalNumber<Addition>(0)), $p->n_vars())),
+		new Polynomial<TropicalNumber<Addition>>(new TropicalNumber<Addition>(0), $p->n_vars()),
 		$chart);	
 }
 
@@ -270,7 +275,7 @@ user_function rational_fct_from_affine_numerator(String; $=0) {
 user_function rational_fct_from_affine_denominator<Addition>(Polynomial<TropicalNumber<Addition>>; $=0) {
 	my ($p,$chart) = @_;
 	return homogenize_quotient(
-		(new Polynomial<TropicalNumber<Addition>>( (new TropicalNumber<Addition>(0)), $p->n_vars())),
+		new Polynomial<TropicalNumber<Addition>>(new TropicalNumber<Addition>(0), $p->n_vars()),
 		$p,
 		$chart);	
 }
@@ -298,7 +303,7 @@ user_function point_functions<Addition>($) {
 	my @vars = monomials<TropicalNumber<Addition> >($v->dim());
 	my $denom = $vars[0]; 
 	for my $i (1 .. $v->dim()-1) {
-		my $num = $vars[$i] + (new TropicalNumber<Addition>($v->[$i] - $v->[0]))*$vars[0];
+		my $num = $vars[$i] + new TropicalNumber<Addition>($v->[$i] - $v->[0]) * $vars[0];
 		@result = (@result,new RationalFunction<Addition>(NUMERATOR=>$num,DENOMINATOR=>$denom));
 	}
 	return @result;

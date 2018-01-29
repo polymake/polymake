@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -322,16 +322,6 @@ public:
    template <bool is_readonly>
    class Array_element_factory;
 };
-
-template <typename Container>
-void read_labels(const Object& p, const std::string& label_prop, Container& labels)
-{
-   if (!(p.lookup(label_prop) >> labels)) {
-      int i=0;
-      for (auto dst=entire(labels); !dst.at_end(); ++i, ++dst)
-         *dst = std::to_string(i);
-   }
-}
 
 template <bool is_readonly>
 class Object::Array_element

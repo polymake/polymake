@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,6 +20,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Graph.h"
+#include "polymake/common/labels.h"
 
 namespace polymake { namespace polytope {
 
@@ -48,8 +49,7 @@ perl::Object full_dim_cell(perl::Object p_in, const GenericSet<_Set, int>& cell_
 
    if (!options["no_labels"]) {
       const int n_vertices = V.rows();
-      Array<std::string> labels(n_vertices);
-      read_labels(p_in, "VERTEX_LABELS", labels);
+      std::vector<std::string> labels = common::read_labels(p_in, "VERTEX_LABELS", n_vertices);
       const Array<std::string> labels_out(select(labels, cell_verts.top()));
       p_out.take("VERTEX_LABELS") << labels_out;
    }
@@ -94,7 +94,8 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @param Int cell"
                           "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytope. default: 0"
                           "# @return Polytope"
-                          "# @example First we create a nice subdivision for our favourite 2-polytope, the square:"
+                          "# @example [application fan]"
+                          "# First we create a nice subdivision for our favourite 2-polytope, the square:"
                           "# > $p = cube(2);"
                           "# > $p->POLYTOPAL_SUBDIVISION(MAXIMAL_CELLS=>[[0,1,3],[1,2,3]]);"
                           "# Then we extract the [1,2,3]-cell, copying the vertex labels."
@@ -114,7 +115,8 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @param Set<Int> cells"
                           "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytope. default: 0"
                           "# @return Polytope<Scalar>"
-                          "# @example First we create a nice subdivision for a small polytope:"
+                          "# @example [application fan]"
+                          "# First we create a nice subdivision for a small polytope:"
                           "# > $p = new Polytope(VERTICES=>[[1,0,0],[1,0,1],[1,1,0],[1,1,1],[1,3/2,1/2]]);"
                           "# > $p->POLYTOPAL_SUBDIVISION(MAXIMAL_CELLS=>[[0,1,3],[1,2,3],[2,3,4]]);"
                           "# Then we create the polytope that has as vertices the vertices from cell 1 and 2,"

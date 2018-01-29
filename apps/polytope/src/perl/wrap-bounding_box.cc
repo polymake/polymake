@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -35,5 +35,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(bounding_box_T_X_x_x, double, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<double const&> const&>, pm::Matrix<double> const&> >);
    FunctionInstance4perl(bounding_box_T_X_x_x, Rational, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSet<int>, int, pm::operations::cmp> const&> >);
    FunctionInstance4perl(bounding_box_T_X_x_x, double, perl::Canned< const Matrix< double > >);
+   FunctionInstance4perl(bounding_box_T_X_x_x, Rational, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

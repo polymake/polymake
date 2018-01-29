@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,20 +15,26 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
+
+require Polymake::Background;
 
 #####################################################################################
 package Polymake::ProgramPipe::Reading;
 use POSIX qw(:sys_wait_h);
-use Fcntl;
 
 use Polymake::Struct (
-   [ '@ISA' => 'Pipe::WithRedirection' ],
+   [ '@ISA' => 'Pipe::Collaborative' ],
+   [ new => '$$$' ],
+   [ '$out' => '#2' ],
+   [ '$wfd' => 'fileno(#2)' ],
+   [ '$pid' => '#3' ],
    [ '$program' => 'undef' ],
 );
 
 sub CLOSE {
    my ($self)=@_;
-   my $rc=Pipe::CLOSE($self,1);
+   my $rc=Pipe::CLOSE($self, 1);
    waitpid $self->pid, 0;
    if (!$@  &&  $?  &&  defined($self->program)) {
       my $rc=$?>>8;
@@ -40,11 +46,16 @@ sub CLOSE {
    $rc;
 }
 
+sub set_blocking_write {}	# remains always non-blocking
+sub set_non_blocking_write {}
+sub alone {}
+
 #####################################################################################
 package Polymake::ProgramPipe;
 use POSIX qw(:signal_h);
+use Fcntl;
 
-#  Constructor:  new ProgramPipe([ "2>errorstream" ], 'command', 'arg', ... );
+#  Constructor:  new ProgramPipe('command', 'arg', ... );
 #
 #  Supports only one special, although very common communication "protocol":
 #  send the source data to the program, then switch into the input mode,
@@ -56,23 +67,32 @@ use Polymake::Struct (
 
 # returns the tied handle, not the ProgramPipe object!
 sub new {
-   my $self=&Pipe::WithRedirection::new;
-   dbg_print( "running '@_'" ) if $Verbose::external;
+   my $pkg=shift;
+   my ($in, $out, $pid)=new Background::Pipe(@_);
+   fcntl($out, F_SETFL, O_NONBLOCK);
+   my $self=construct($pkg, $in, $out, $pid);
+   $self->register_write_channel;
    $self->program=$_[0];
    $self->handle;
 }
 
 #  The source data (output for us) are complete, start receiving the results
 sub switch_to_input {
-   my $self=shift;
+   my ($self)=@_;
    # flush the output buffer
    if (length($self->wbuffer)) {
       until (my $rc=try_write($self)) {
 	 defined($rc) or die "closed pipe\n";
       }
    }
-   $self->close_out;
+   &close_out;
    bless $self, "Polymake::ProgramPipe::Reading";
+}
+
+sub close_out {
+   my ($self)=@_;
+   $self->unregister_write_channel;
+   close($self->out);
 }
 
 sub READ {
@@ -85,11 +105,11 @@ sub READLINE {
 
 # seems to die before started to consume input: shoot the program down
 sub CLOSE {
-   my $self=shift;
-   $self->close_out;
+   my ($self)=@_;
+   &close_out;
    kill SIGINT, $self->pid;
    undef $self->program;
-   $self->SUPER::CLOSE(@_);
+   Reading::CLOSE($self);
    1
 }
 

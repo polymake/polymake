@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -773,16 +773,6 @@ public:
       }
    }
 
-   void swap_nodes_list_form(Node *l, Node *r)
-   {
-      Ptr pl=this->link(l,L), pr=this->link(r,L);
-      std::swap(this->link(pl,R), this->link(pr,R));
-      this->link(l,L)=pr;  this->link(r,L)=pl;
-      pl=this->link(l,R);  pr=this->link(r,R);
-      std::swap(this->link(pl,L), this->link(pr,L));
-      this->link(l,R)=pr;  this->link(r,R)=pl;
-   }
-
 public:
    template <typename Key>
    iterator find(const Key& k)
@@ -1497,13 +1487,13 @@ void tree<Traits>::remove_rebalance(Node *n)
 }
 
 template <typename Traits>
-void tree<Traits>::update_node(Node *n)
+void tree<Traits>::update_node(Node* n)
 {
    if (n_elem<=1) return;
 
    if (tree_form()) {
       Ptr l(n), r(n);
-      l.traverse(*this,L); r.traverse(*this,R);
+      l.traverse(*this,L); r.traverse(*this, R);
       if ((!l.end() && this->key_comparator(this->key(*l), this->key(*n))==cmp_gt) ||
           (!r.end() && this->key_comparator(this->key(*r), this->key(*n))==cmp_lt)) {
          --n_elem;
@@ -1512,25 +1502,30 @@ void tree<Traits>::update_node(Node *n)
       }
 
    } else {
-      Ptr next(n);
-      do
-         next=this->link(next,L);
-      while (!next.end() && this->key_comparator(this->key(*next), this->key(*n)) == cmp_gt);
+      Ptr old_prev=this->link(n, L),
+          old_next=this->link(n, R);
+      Ptr prev=old_prev,
+          next=old_next;
+      while (!prev.end() && this->key_comparator(this->key(*prev), this->key(*n)) == cmp_gt)
+         prev=this->link(prev, L);
 
-      next=this->link(next,R);
-      if (next != n) {
-         swap_nodes_list_form(next,n);
-         return;
+      if (prev != old_prev) {
+         next=this->link(prev, R);
+      } else {
+         while (!next.end() && this->key_comparator(this->key(*n), this->key(*next)) == cmp_gt)
+            next=this->link(next, R);
+         if (next != old_next)
+            prev=this->link(next, L);
+         else
+            return;
       }
 
-      do
-         next=this->link(next,R);
-      while (!next.end() && this->key_comparator(this->key(*n), this->key(*next)) == cmp_gt);
-
-      next=this->link(next,L);
-      if (next != n) {
-         swap_nodes_list_form(n,next);
-      }
+      this->link(old_prev, R)=old_next;
+      this->link(old_next, L)=old_prev;
+      this->link(prev, R)=n;
+      this->link(next, L)=n;
+      this->link(n, L)=prev;
+      this->link(n, R)=next;
    }
 }
 

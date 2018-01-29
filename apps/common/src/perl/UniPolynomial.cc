@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,8 +18,10 @@
 
 #include "polymake/Array.h"
 #include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/RationalFunction.h"
+#include "polymake/TropicalNumber.h"
 #include "polymake/Vector.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
@@ -48,5 +50,19 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new, UniPolynomial< UniPolynomial< Rational, int >, Rational >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const UniPolynomial< UniPolynomial< Rational, int >, Rational > >, perl::Canned< const UniPolynomial< UniPolynomial< Rational, int >, Rational > >);
    FunctionInstance4perl(new_X_X, UniPolynomial< Rational, int >, perl::Canned< const Array< int > >, perl::Canned< const Array< int > >);
+   Class4perl("Polymake::common::UniPolynomial_A_TropicalNumber_A_Min_I_Rational_Z_I_Int_Z", UniPolynomial< TropicalNumber< Min, Rational >, int >);
+   FunctionInstance4perl(new, UniPolynomial< TropicalNumber< Min, Rational >, int >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const UniPolynomial< TropicalNumber< Min, Rational >, int > >, perl::Canned< const UniPolynomial< TropicalNumber< Min, Rational >, int > >);
+   OperatorInstance4perl(Binary_add, perl::Canned< const UniPolynomial< TropicalNumber< Max, Rational >, int > >, perl::Canned< const TropicalNumber< Max, Rational > >);
+   OperatorInstance4perl(Binary_add, perl::Canned< const UniPolynomial< TropicalNumber< Max, Rational >, int > >, perl::Canned< const UniPolynomial< TropicalNumber< Max, Rational >, int > >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const UniPolynomial< TropicalNumber< Max, Rational >, int > >, perl::Canned< const UniPolynomial< TropicalNumber< Max, Rational >, int > >);
+   Class4perl("Polymake::common::UniPolynomial_A_TropicalNumber_A_Max_I_Rational_Z_I_Int_Z", UniPolynomial< TropicalNumber< Max, Rational >, int >);
+   Class4perl("Polymake::common::UniPolynomial_A_QuadraticExtension__Rational_I_Int_Z", UniPolynomial< QuadraticExtension< Rational >, int >);
+   FunctionInstance4perl(new_X_X, UniPolynomial< QuadraticExtension< Rational >, int >, perl::Canned< const Array< QuadraticExtension< Rational > > >, perl::Canned< const Array< int > >);
+   OperatorInstance4perl(Binary_add, perl::Canned< const UniPolynomial< QuadraticExtension< Rational >, int > >, perl::Canned< const QuadraticExtension< Rational > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const UniPolynomial< Rational, int > >, perl::Canned< const UniPolynomial< Rational, int > >);
+   FunctionInstance4perl(new, UniPolynomial< QuadraticExtension< Rational >, int >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const UniPolynomial< QuadraticExtension< Rational >, int > >, perl::Canned< const UniPolynomial< QuadraticExtension< Rational >, int > >);
+   OperatorInstance4perl(Binary_xor, perl::Canned< const UniPolynomial< TropicalNumber< Max, Rational >, int > >, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

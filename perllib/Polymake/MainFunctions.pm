@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -26,18 +26,18 @@ BEGIN {
 package Polymake;
 
 use strict;
-use vars qw($InstallTop $InstallArch $Arch $DeveloperMode $DebugLevel);
+use vars qw($InstallTop $InstallArch $Arch $DeveloperMode @BundledExts $ConfigTime $DebugLevel);
 
 use Polymake;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
+use feature 'state';
 
 package Polymake::Main;
 
 # private: only called from import()
 sub _init {
-   Core::UserSettings::init(shift);
-   init Core::CPlusPlus();
-   init Core::Extension();
+   &Main::init;
    $Scope=new Scope();
    add AtEnd "FinalCleanup", sub { undef $Scope }, after => "Object";
 }
@@ -84,20 +84,62 @@ sub local_custom {
    $Scope->end_locals;
 }
 
-# TODO: support incomplete expressions
-sub simulate_shell_input {
+sub shell_enable {
+   state $init_shell=do {
+      require Polymake::Core::ShellMock;
+      $Shell=new Core::Shell::Mock;
+      1
+   };
+}
+
+sub shell_execute {
    if (!defined $User::application) {
       $@="current application not set";
       return;
    }
    open my $saved_STDOUT, ">&=STDOUT";
    close STDOUT;
-   my $gather_output="";
-   open STDOUT, ">", \$gather_output;
-   $User::application->eval_expr->(@_);
+   my $gather_stdout="";
+   open STDOUT, ">:utf8", \$gather_stdout;
+   open my $saved_STDERR, ">&=STDERR";
+   close STDERR;
+   my $gather_stderr="";
+   open STDERR, ">:utf8", \$gather_stderr;
+   my $executed=$Shell->process_input(@_);
+   my $exc=$@;
+   $@="";
    close STDOUT;
    open STDOUT, ">&=", $saved_STDOUT;
-   $gather_output
+   close STDERR;
+   open STDERR, ">&=", $saved_STDERR;
+   ($executed, $gather_stdout, $gather_stderr, $exc);
+}
+
+sub shell_complete {
+   if (!defined $User::application) {
+      $@="current application not set";
+      return;
+   }
+   $_[0] =~ /\S/ or return (0, "");
+   $Shell->complete($_[0]);
+   ($Shell->completion_offset, $Shell->term->Attribs->{completion_append_character} // "", @{$Shell->completion_proposals});
+}
+
+sub shell_context_help {
+   if (!defined $User::application) {
+      $@="current application not set";
+      return;
+   }
+   my ($input, $pos, $full, $html)=@_;
+   require Polymake::Core::HelpAsHTML if $html;
+
+   $input =~ /\S/ or return;
+   $Shell->context_help($input, $pos);
+   map {
+      my $writer= $html ? new Core::HelpAsHTML() : new Core::HelpAsPlainText(0);
+      $_->write_text($writer, $full);
+      $writer->text
+   } @{$Shell->help_topics};
 }
 
 1;

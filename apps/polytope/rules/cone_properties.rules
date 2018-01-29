@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -124,7 +124,13 @@ property RAYS : Matrix<Scalar> {
 # The property [[LINEALITY_SPACE]] appears only in conjunction with the property [[RAYS]], or [[VERTICES]], respectively.
 # The specification of the property [[RAYS]] or [[VERTICES]] requires the specification of [[LINEALITY_SPACE]], and vice versa.
 property LINEALITY_SPACE : Matrix<Scalar> {
-   sub canonical { &orthogonalize_subspace; }
+   sub canonical {
+      if ($_[0]->isa("Polytope")) {
+         &orthogonalize_affine_subspace;
+      } else {
+         &orthogonalize_subspace;
+      }
+   }
 
    method equal {
      my ($this,$M1,$M2)=@_;
@@ -181,7 +187,6 @@ sub canonical_ineq { }
 # The specification of the property [[FACETS]] requires the specification of [[LINEAR_SPAN]],
 # or [[AFFINE_HULL]], respectively, and vice versa.
 property LINEAR_SPAN : Matrix<Scalar> {
-
    sub canonical { &orthogonalize_subspace; }
 
    method equal {
@@ -223,6 +228,10 @@ weight 1.10;
 # The number of [[FACETS]].
 property N_FACETS : Int;
 
+# @category Geometry
+# The number of [[RIDGES]].
+property N_RIDGES : Int;
+                          
 # @category Geometry
 # The i-th row is the normal vector of a hyperplane separating the i-th vertex from the others.
 # This property is a by-product of redundant point elimination algorithm.
@@ -285,6 +294,13 @@ rule RAYS_IN_FACETS : FacetPerm.RAYS_IN_FACETS, FacetPerm.PERMUTATION {
    $this->RAYS_IN_FACETS=permuted_rows($this->FacetPerm->RAYS_IN_FACETS, $this->FacetPerm->PERMUTATION);
 }
 weight 1.20;
+
+# @category Combinatorics
+# Ray-ridge incidence matrix, with rows corresponding to ridges and columns
+# to rays. Rays and ridges are numbered from 0 to [[N_RAYS]]-1 rsp.
+# [[N_RIDGES]]-1, according to their order in [[RAYS]] rsp. [[RIDGES]].
+property RAYS_IN_RIDGES : IncidenceMatrix;
+
 
 # @category Geometry
 # [[INPUT_RAYS|Input ray]]-[[FACETS|facet]] incidence matrix, with rows corresponding to [[FACETS|facet]] and columns
@@ -365,7 +381,7 @@ property HASSE_DIAGRAM : Lattice<BasicDecoration, Sequential> {
    }
 
    # @category Combinatorics
-   # The indices of nodes in the [[HASSE_DIAGRAM]] corredponding to faces of dimension d in the underlying object
+   # The indices of nodes in the [[HASSE_DIAGRAM]] corresponding to faces of dimension d in the underlying object
    # @param Int d dimension
    # @return Set<Int>
    user_method nodes_of_dim($) {
@@ -374,7 +390,7 @@ property HASSE_DIAGRAM : Lattice<BasicDecoration, Sequential> {
    }
 
    # @category Combinatorics
-   # The indices of nodes in the [[HASSE_DIAGRAM]] corredponding to faces with dimension in the range (d1,d2) in the underlying object
+   # The indices of nodes in the [[HASSE_DIAGRAM]] corresponding to faces with dimension in the range (d1,d2) in the underlying object
    # @param Int d1 lower dimension of the range
    # @param Int d2 upper dimension of the range
    # @return Set<Int>
@@ -386,19 +402,15 @@ property HASSE_DIAGRAM : Lattice<BasicDecoration, Sequential> {
 
 }
 
-# FIXME #851  these rules are wrongly designed
-#
-# rule HASSE_DIAGRAM.NodePerm.PERMUTATION : VertexPerm.PERMUTATION, VertexPerm.HASSE_DIAGRAM.DECORATION, VertexPerm.HASSE_DIAGRAM.INVERSE_RANK_MAP, \
-#          HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
-#    $this->HASSE_DIAGRAM->NodePerm->PERMUTATION = find_lattice_permutation($this->HASSE_DIAGRAM, $this->VertexPerm->HASSE_DIAGRAM, $this->VertexPerm->PERMUTATION);
-# }
-#
-#
-# rule HASSE_DIAGRAM.NodePerm.PERMUTATION : FacetPerm.PERMUTATION, FacetPerm.HASSE_DIAGRAM.DECORATION, FacetPerm.HASSE_DIAGRAM.INVERSE_RANK_MAP, \
-#          HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
-#    $this->HASSE_DIAGRAM->NodePerm->PERMUTATION = find_lattice_permutation($this->HASSE_DIAGRAM, $this->FacetPerm->HASSE_DIAGRAM, new Array<Int>(sequence($this->HASSE_DIAGRAM->nodes_of_rank(1))));
-# }
-
+# @category Combinatorics
+# Output the faces of a given dimension
+# @param Cone c the input cone
+# @return Array<Set<Int>>
+user_method faces_of_dim($) {
+    my ($this, $d) = @_;
+    return new Array<Set<Int>>(map { $this->HASSE_DIAGRAM->FACES->[$_] } @{$this->HASSE_DIAGRAM->nodes_of_dim($d)});
+}
+                                
 
 # @category Combinatorics
 # Number of incident facets for each ray.

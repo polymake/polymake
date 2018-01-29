@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,6 +16,7 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
@@ -30,5 +31,6 @@ namespace polymake { namespace common { namespace {
 
    FunctionInstance4perl(zero_matrix_T_x_x, Rational);
    FunctionInstance4perl(zero_matrix_T_x_x, int);
+   FunctionInstance4perl(zero_matrix_T_x_x, QuadraticExtension< Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

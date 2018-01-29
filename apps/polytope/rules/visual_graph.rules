@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -50,7 +50,7 @@ sub LP_influence_on_embedding {
       if ($self->basis_graph->Graph->ADJACENCY->has_gaps) {
          $obj=$obj->slice(nodes($self->basis_graph->Graph->ADJACENCY));
       }
-      $self->basis_graph->Coord->merge_options('z-ordering' => (convert_to<Float>($obj)), 'z-factor' => $embedding_objective_factor);
+      $self->basis_graph->Coord->merge_options('z-ordering' => convert_to<Float>($obj), 'z-factor' => $embedding_objective_factor);
    }
 }
 

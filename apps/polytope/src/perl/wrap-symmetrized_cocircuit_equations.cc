@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -15,15 +15,21 @@
 */
 
 #include "polymake/Array.h"
+#include "polymake/Bitset.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
-#include "polymake/Bitset.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
+   FunctionInterface4perl( symmetrized_foldable_cocircuit_equations_0_T_x_X_X_X_X_X_o, T0,T1,T2,T3,T4,T5,T6 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]), arg4(stack[4]), arg5(stack[5]), arg6(stack[6]);
+      WrapperReturn( (symmetrized_foldable_cocircuit_equations_0<T0,T1>(arg0, arg1.get<T2>(), arg2.get<T3>(), arg3.get<T4>(), arg4.get<T5>(), arg5.get<T6>(), arg6)) );
+   };
+
    template <typename T0, typename T1, typename T2, typename T3, typename T4, typename T5>
    FunctionInterface4perl( cocircuit_equations_support_reps_T_X_X_X_X_o, T0,T1,T2,T3,T4,T5 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]), arg4(stack[4]);
@@ -62,5 +68,7 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(combinatorial_symmetrized_cocircuit_equations_T_x_X_X_X_o, Rational, Bitset, perl::Canned< const Array< Bitset > >, perl::Canned< const Array< Bitset > >, perl::Canned< const pm::SingleElementSet<int> >);
    FunctionInstance4perl(combinatorial_symmetrized_cocircuit_equations_T_x_X_X_X_o, Rational, Bitset, perl::Canned< const Array< Bitset > >, perl::Canned< const Array< Bitset > >, perl::Canned< const Set< int > >);
    FunctionInstance4perl(cocircuit_equations_support_reps_T_X_X_X_X_o, Rational, Bitset, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Array< int > > >, perl::Canned< const Array< Bitset > >, perl::Canned< const Array< Bitset > >);
+   FunctionInstance4perl(symmetrized_cocircuit_equations_0_T_x_X_X_X_X_X_o, Rational, Bitset, perl::Canned< const Matrix< Rational > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >, perl::Canned< const Array< Array< int > > >, perl::Canned< const Array< Bitset > >, perl::Canned< const Array< Bitset > >);
+   FunctionInstance4perl(symmetrized_foldable_cocircuit_equations_0_T_x_X_X_X_X_X_o, Rational, Bitset, perl::Canned< const Matrix< Rational > >, perl::Canned< const IncidenceMatrix< NonSymmetric > >, perl::Canned< const Array< Array< int > > >, perl::Canned< const Array< Bitset > >, perl::Canned< const Array< Bitset > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

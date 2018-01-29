@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -27,6 +27,7 @@
 #include <cmath>
 #include <string>
 #include <typeinfo>
+#include <memory>
 
 // TODO: eliminate all references to SV outside the perl-aware code, use opaque ScalarHolder<ownership> instead
 
@@ -868,84 +869,91 @@ protected:
    template <typename Stored, typename SourceRef>
    Anchor* store_canned_value(SourceRef&& x, SV* type_descr, int n_anchors)
    {
-      auto place=allocate_canned(type_descr, n_anchors);
-      new(place.first) Stored(std::forward<SourceRef>(x));
-      mark_canned_as_initialized();
-      return place.second;
+      if (type_descr) {
+         auto place=allocate_canned(type_descr, n_anchors);
+         new(place.first) Stored(std::forward<SourceRef>(x));
+         mark_canned_as_initialized();
+         return place.second;
+      }
+      store_as_perl(x);
+      return nullptr;
    }
 
    template <typename Source>
    Anchor* store_canned_ref(const Source& x, SV* type_descr, int n_anchors)
    {
-      return store_canned_ref_impl((void*)&x, type_descr, options, n_anchors);
+      if (type_descr)
+         return store_canned_ref_impl((void*)&x, type_descr, options, n_anchors);
+      store_as_perl(x);
+      return nullptr;
    }
 
    // non-persistent regular type
-   template <typename SourceRef>
-   Anchor* store_canned_value(SourceRef&& x, SV* type_descr, int n_anchors, std::false_type, std::false_type, std::false_type)
+   template <typename SourceRef, typename PerlPkg>
+   Anchor* store_canned_value(SourceRef&& x, PerlPkg prescribed_pkg, int n_anchors, std::false_type, std::false_type, std::false_type)
    {
-      typedef pure_type_t<SourceRef> Source;
-      typedef typename object_traits<Source>::persistent_type Persistent;
+      using Source = pure_type_t<SourceRef>;
+      using Persistent = typename object_traits<Source>::persistent_type;
       if (options & value_allow_non_persistent)
-         return store_canned_value<Source>(std::forward<SourceRef>(x), type_descr, n_anchors);
+         return store_canned_value<Source>(std::forward<SourceRef>(x), type_cache<Source>::get_descr(prescribed_pkg), n_anchors);
       else
          return store_canned_value<Persistent>(std::forward<SourceRef>(x), type_cache<Persistent>::get_descr(0), 0);
    }
 
    // lazy type
-   template <typename SourceRef, typename IsMasquerade, typename IsPersistent>
-   Anchor* store_canned_value(SourceRef&& x, SV* type_descr, int n_anchors, IsMasquerade, std::true_type, IsPersistent)
+   template <typename SourceRef, typename PerlPkg, typename IsMasquerade, typename IsPersistent>
+   Anchor* store_canned_value(SourceRef&& x, PerlPkg prescribed_pkg, int n_anchors, IsMasquerade, std::true_type, IsPersistent)
    {
-      typedef pure_type_t<SourceRef> Source;
-      typedef typename object_traits<Source>::persistent_type Persistent;
+      using Source = pure_type_t<SourceRef>;
+      using Persistent = typename object_traits<Source>::persistent_type;
       return store_canned_value<Persistent>(std::forward<SourceRef>(x), type_cache<Persistent>::get_descr(0), 0);
    }
 
    // non-persistent regular type
-   template <typename Source, typename IsMasquerade>
-   Anchor* store_canned_ref(const Source& x, SV* type_descr, int n_anchors, IsMasquerade, std::false_type, std::false_type)
+   template <typename Source, typename PerlPkg, typename IsMasquerade>
+   Anchor* store_canned_ref(const Source& x, PerlPkg prescribed_pkg, int n_anchors, IsMasquerade, std::false_type, std::false_type)
    {
-      typedef typename object_traits<Source>::persistent_type Persistent;
+      using Persistent = typename object_traits<Source>::persistent_type;
       if (options & value_allow_non_persistent)
-         return store_canned_ref(x, type_descr, n_anchors);
+         return store_canned_ref(x, type_cache<Source>::get_descr(prescribed_pkg), n_anchors);
       else
          return store_canned_value<Persistent>(x, type_cache<Persistent>::get_descr(0), 0);
    }
 
    // lazy type - never called
-   template <typename Source, typename IsMasquerade, typename IsPersistent>
-   Anchor* store_canned_ref(const Source& x, SV* type_descr, int n_anchors, IsMasquerade, std::true_type, IsPersistent)
+   template <typename Source, typename PerlPkg, typename IsMasquerade, typename IsPersistent>
+   Anchor* store_canned_ref(const Source& x, PerlPkg prescribed_pkg, int n_anchors, IsMasquerade, std::true_type, IsPersistent)
    {
       return nullptr;
    }
 
    // persistent regular type
-   template <typename SourceRef>
-   Anchor* store_canned_value(SourceRef&& x, SV* type_descr, int n_anchors, std::false_type, std::false_type, std::true_type)
+   template <typename SourceRef, typename PerlPkg>
+   Anchor* store_canned_value(SourceRef&& x, PerlPkg prescribed_pkg, int n_anchors, std::false_type, std::false_type, std::true_type)
    {
-      typedef pure_type_t<SourceRef> Source;
-      return store_canned_value<Source>(std::forward<SourceRef>(x), type_descr, n_anchors);
+      using Source = pure_type_t<SourceRef>;
+      return store_canned_value<Source>(std::forward<SourceRef>(x), type_cache<Source>::get_descr(prescribed_pkg), n_anchors);
    }
 
    // persistent regular type
-   template <typename Source>
-   Anchor* store_canned_ref(const Source& x, SV* type_descr, int n_anchors, std::false_type, std::false_type, std::true_type)
+   template <typename Source, typename PerlPkg>
+   Anchor* store_canned_ref(const Source& x, PerlPkg prescribed_pkg, int n_anchors, std::false_type, std::false_type, std::true_type)
    {
-      return store_canned_ref(x, type_descr, n_anchors);
+      return store_canned_ref(x, type_cache<Source>::get_descr(prescribed_pkg), n_anchors);
    }
 
    // masquerade type belonging to a generic family
-   template <typename SourceRef>
-   Anchor* store_canned_value(SourceRef&& x, SV* type_descr, int n_anchors, std::true_type, std::false_type, std::false_type)
+   template <typename SourceRef, typename PerlPkg>
+   Anchor* store_canned_value(SourceRef&& x, PerlPkg prescribed_pkg, int n_anchors, std::true_type, std::false_type, std::false_type)
    {
-      typedef pure_type_t<SourceRef> Source;
-      typedef typename object_traits<Source>::persistent_type Persistent;
+      using Source = pure_type_t<SourceRef>;
+      using Persistent = typename object_traits<Source>::persistent_type;
       return store_canned_value<Persistent>(std::forward<SourceRef>(x), type_cache<Persistent>::get_descr(0), 0);
    }
 
    // masquerade type without persistent substitute
-   template <typename Source>
-   Anchor* store_canned_value(const Source& x, SV* type_descr, int n_anchors, std::true_type, std::false_type, std::true_type)
+   template <typename Source, typename PerlPkg>
+   Anchor* store_canned_value(const Source& x, PerlPkg prescribed_pkg, int n_anchors, std::true_type, std::false_type, std::true_type)
    {
       // TODO: allow storing of references to masquerade types in Object::take because they are to be converted immediately
       store_as_perl(x);
@@ -953,15 +961,14 @@ protected:
    }
 
    // masquerade type without persistent substitute
-   template <typename Source>
-   Anchor* store_canned_ref(const Source& x, SV* type_descr, int n_anchors, std::true_type, std::false_type, std::true_type)
+   template <typename Source, typename PerlPkg>
+   Anchor* store_canned_ref(const Source& x, PerlPkg prescribed_pkg, int n_anchors, std::true_type, std::false_type, std::true_type)
    {
       if (options & value_allow_non_persistent) {
-         return store_canned_ref(x, type_descr, n_anchors);
-      } else {
-         store_as_perl(x);
-         return nullptr;
+         return store_canned_ref(x, type_cache<Source>::get_descr(prescribed_pkg), n_anchors);
       }
+      store_as_perl(x);
+      return nullptr;
    }
 
    Anchor* store_primitive_ref(const bool& x,          SV* type_descr, int n_anchors, bool take_ref);
@@ -1045,35 +1052,28 @@ protected:
                            Anchor*>::type
    put_val(SourceRef&& x, PerlPkg prescribed_pkg, int n_anchors)
    {
-      typedef pure_type_t<SourceRef> Source;
-      typedef typename object_traits<Source>::persistent_type Persistent;
-      if (SV* type_descr=type_cache<Source>::get_descr(prescribed_pkg)) {
-         if (object_traits<Source>::is_lazy ||
-             !(options & (std::is_rvalue_reference<SourceRef&&>::value ? value_allow_store_temp_ref : value_allow_store_ref))) {
-            // must store a copy
-            return store_canned_value(std::forward<SourceRef>(x), type_descr, n_anchors,
-                                      is_masquerade<Source>(), bool_constant<object_traits<Source>::is_lazy>(), std::is_same<Source, Persistent>());
-         } else {
-            // can store a reference
-            return store_canned_ref(x, type_descr, n_anchors,
-                                    is_masquerade<Source>(), bool_constant<object_traits<Source>::is_lazy>(), std::is_same<Source, Persistent>());
-         }
+      using Source = pure_type_t<SourceRef>;
+      using Persistent = typename object_traits<Source>::persistent_type;
+      if (object_traits<Source>::is_lazy ||
+          !(options & (std::is_rvalue_reference<SourceRef&&>::value ? value_allow_store_temp_ref : value_allow_store_ref))) {
+         // must store a copy
+         return store_canned_value(std::forward<SourceRef>(x), prescribed_pkg, n_anchors,
+                                   is_masquerade<Source>(), bool_constant<object_traits<Source>::is_lazy>(), std::is_same<Source, Persistent>());
       } else {
-         store_as_perl(x);
-         return nullptr;
+         // can store a reference
+         return store_canned_ref(x, prescribed_pkg, n_anchors,
+                                 is_masquerade<Source>(), bool_constant<object_traits<Source>::is_lazy>(), std::is_same<Source, Persistent>());
       }
    }
 
    template <typename Source>
-   typename std::enable_if<std::is_same<typename object_traits<typename deref<Source>::type>::model, is_opaque>::value, Anchor*>::type
-   put_val(Source* ptr, int, int n_anchors)
+   Anchor* put_val(std::unique_ptr<Source>&& ptr, int, int n_anchors)
    {
-      if (SV* type_descr=type_cache<Source>::get_descr(0)) {
-         if ((options & (value_allow_non_persistent | value_allow_store_ref)) ==
-             (value_allow_non_persistent | value_allow_store_ref)) {
-            return store_canned_ref(*ptr, type_descr, n_anchors);
+      if (SV* type_descr=type_cache<std::unique_ptr<Source>>::get_descr(0)) {
+         if (options & value_allow_non_persistent) {
+            return store_canned_value<std::unique_ptr<Source>>(std::move(ptr), type_descr, n_anchors);
          } else {
-            throw std::invalid_argument("can't store a copy of an opaque C++ object");
+            throw std::invalid_argument("can't store a pointer to an opaque C++ object");
          }
       } else {
          throw std::invalid_argument("can't store an opaque C++ type without perl binding");
@@ -1097,7 +1097,7 @@ protected:
    put_val(SourceRef&& x, PerlPkg prescribed_pkg, int n_anchors)
    {
       SV* type_descr;
-      typedef pure_type_t<SourceRef> Source;
+      using Source = pure_type_t<SourceRef>;
       if ((options & (value_allow_non_persistent | value_expect_lval | value_read_only)) == 
                      (value_allow_non_persistent | value_expect_lval) &&
           (type_descr=type_cache<Source>::get_descr(prescribed_pkg))) {

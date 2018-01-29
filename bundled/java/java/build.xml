@@ -7,11 +7,7 @@
     <!-- Create the time stamp -->
     <tstamp/>
     <!-- Create the build directory structure used by compile -->
-    <mkdir dir="${build.dir}/java" />
-    <mkdir dir="${build.dir}/jni" />
-    <condition property="debug" value="on" else="off">
-      <available file="testscenarios" filepath="${polymake.top}" type="dir" />
-    </condition>
+    <mkdir dir="${build.dir}/bundled/java/java" />
   </target>
 
   <target name="compile" depends="init">
@@ -19,13 +15,13 @@
       <javac
              executable="${javac}"
              srcdir="src"
-             destdir="${build.dir}/java"
+             destdir="${build.dir}/bundled/java/java"
              failonerror="true"
              debug="${debug}"
              encoding="UTF8">
         <include name="${package.prefix}/**"/>
       </javac>
-      <copy todir="${build.dir}/java"
+      <copy todir="${build.dir}/bundled/java/java"
             preservelastmodified="yes">
         <fileset
                 dir="src"
@@ -39,23 +35,23 @@
     <javah
            force="yes"
            class="de.tuberlin.polymake.common.SharedMemoryMatrix"
-           outputfile="${build.dir}/jni/polymake_java.h">
-      <classpath location="${build.dir}/java" />
+           outputfile="native/SharedMemoryMatrix_jni.h">
+      <classpath location="${build.dir}/bundled/java/java" />
     </javah>
   </target>
 
   <target name="all" depends="compile,native-header">
-    <jar destfile="${jar.dir}/${jar.name}">
+    <jar destfile="${build.dir}/jars/${jar.name}">
         <fileset
-                 dir="${build.dir}/java"
+                 dir="${build.dir}/bundled/java/java"
         	 includes="${package.prefix}/**" />
-      </jar>
+    </jar>
+    <touch file="${build.dir}/jars/${jar.name}" />
   </target>
 
   <target name="clean">
     <delete quiet="true">
-      <fileset dir="${build.dir}/java" />
-      <fileset dir="${build.dir}/jni" />
+      <fileset dir="${build.dir}/bundled/java/java" />
     </delete>
   </target>
 </project>

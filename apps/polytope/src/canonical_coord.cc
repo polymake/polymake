@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -83,15 +83,22 @@ void canonicalize_facets(GenericMatrix<TMatrix>& M)
 
 
 template <typename TMatrix>
-void orthogonalize_subspace(GenericMatrix<TMatrix>& M)
+void orthogonalize_affine_subspace(GenericMatrix<TMatrix>& M)
 {
    orthogonalize_affine(entire(rows(M)));
 }
 
+template <typename TMatrix>
+void orthogonalize_subspace(GenericMatrix<TMatrix>& M)
+{
+   orthogonalize(entire(rows(M)));
+}
+      
 FunctionTemplate4perl("canonicalize_rays(Vector&) : void");
 FunctionTemplate4perl("canonicalize_rays(Matrix&) : void");
 FunctionTemplate4perl("canonicalize_facets(Vector&) : void");
 FunctionTemplate4perl("canonicalize_facets(Matrix&) : void");
+FunctionTemplate4perl("orthogonalize_affine_subspace(Matrix&) : void");
 FunctionTemplate4perl("orthogonalize_subspace(Matrix&) : void");
 FunctionTemplate4perl("dehomogenize(Vector)");
 FunctionTemplate4perl("dehomogenize(Matrix)");

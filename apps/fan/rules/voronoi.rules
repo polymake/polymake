@@ -1,0 +1,82 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object polytope::VoronoiPolyhedron {
+
+# The Voronoi regions as polyhedral complex. Polyhedron indices correspond
+# to site indices.
+
+property VORONOI_DIAGRAM : PolyhedralComplex<Scalar>;
+
+rule VORONOI_DIAGRAM : VERTICES_IN_FACETS, VERTICES, FAR_FACE{
+
+   my $ff = $this->FAR_FACE;
+   my $vif = $this->VERTICES_IN_FACETS;
+
+   my $n = $vif->rows;
+
+   #find index of far face
+   my $fi = 0;
+   for(;$fi < $n; $fi++){
+      if($vif->[$fi] == $ff){
+         last;
+      }
+   }
+
+   $this->VORONOI_DIAGRAM = new PolyhedralComplex<Scalar>(
+      POINTS          => $this->VERTICES->minor(All, range(0, $this->VERTICES->cols-2)),
+      INPUT_POLYTOPES => $vif           ->minor(sequence(0,$n)-sequence($fi,1), All));
+}
+
+property DELAUNAY_DIAGRAM : PolyhedralComplex<Scalar>;
+
+rule DELAUNAY_DIAGRAM : VERTICES_IN_FACETS, SITES, FAR_FACE{
+
+   my $ff = $this->FAR_FACE;
+   my $vif = $this->VERTICES_IN_FACETS;
+
+   my $n = $vif->rows;
+
+   #find index of far face
+   my $fi = 0;
+   for(;$fi < $n; $fi++){
+      if($vif->[$fi] == $ff){
+         last;
+      }
+   }
+
+   # facets of voronoi diagram become vertices of delaunay and vice versa. hence the transpose.
+   $vif = transpose($vif->minor(sequence(0,$n)-sequence($fi,1), All));
+
+   $this->DELAUNAY_DIAGRAM = new PolyhedralComplex<Scalar>(POINTS=>$this->SITES, INPUT_POLYTOPES=>$vif);
+}
+
+
+# @category Visualization
+# Visualize the Voronoi diagram together with its sites.
+# @return Visual::Container
+user_method VISUAL_VORONOI(%Visual::Polygons::decorations) : SITES, VORONOI_DIAGRAM, POINTED, VERTICES{
+   my ($this, $decor)=@_;
+   my $points = convert_to<Float>($this->SITES);
+   my $p = new Visual::PointSet(Points=>dehomogenize($points));
+   if($this->POINTED){
+      $points /= convert_to<Float>($this->VERTICES->minor($this->BOUNDED_VERTICES, range(0, $this->VERTICES->cols-2)));
+   }
+   my $bbox = bounding_box($points,1);
+   return compose($p, $this->VORONOI_DIAGRAM->VISUAL(FacetTransparency=>0.5,BoundingBox=>$bbox,$decor));
+}
+
+
+}

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -23,6 +23,7 @@
 #include "polymake/PowerSet.h"
 #include "polymake/group/orbit.h"
 #include "polymake/group/named_groups.h"
+#include <algorithm>
 
 namespace polymake { namespace topaz {
 
@@ -63,6 +64,7 @@ template<typename DiagonalList>
 bool cross_mutually(const Set<int>& c,
                     const DiagonalList& diagonals)
 {
+   assert(c.size() >= 2);
    for (auto pit = entire(all_subsets_of_k(c,2)); !pit.at_end(); ++pit)
       if (!cross(diagonals[(*pit).front()], diagonals[(*pit).back()]))
          return false;
@@ -86,13 +88,20 @@ bool contains_new_k_plus_1_crossing(int new_d,
                                     const Set<int>& family,
                                     const DiagonalList& diagonals)
 {
-   for (auto kc_it = entire(all_subsets_of_k(family, k)); !kc_it.at_end(); ++kc_it) {
-      if (!crosses_all(new_d, *kc_it, diagonals)) // first, a linear test
-         continue;
-      if (cross_mutually(*kc_it, diagonals)) // then a quadratic one
-         return true;
+   if (k>1) {
+      for (auto kc_it = entire(all_subsets_of_k(family, k)); !kc_it.at_end(); ++kc_it) {
+         if (!crosses_all(new_d, *kc_it, diagonals)) // first, a linear test
+            continue;
+         if (cross_mutually(*kc_it, diagonals)) // then a quadratic one
+            return true;
+      }
+      return false;
+   } else { // k==1
+      for (auto f_it = entire(family); !f_it.at_end(); ++f_it)
+         if (cross(diagonals[new_d], diagonals[*f_it]))
+            return true;
+      return false;
    }
-   return false;
 }
 
 template<typename DiagonalList>
@@ -117,12 +126,14 @@ induced_gen(const Array<int>& g,
 
 template<typename DiagonalList>
 Array<Array<int>>
-induced_action_Dn_gens_impl(const Array<Array<int>>& gens,
-                            const DiagonalList& diagonals,
-                            const DiagonalIndex& index_of)
+induced_action_gens_impl(const Array<Array<int>>& gens,
+                         const DiagonalList& diagonals,
+                         const DiagonalIndex& index_of)
 {
-   return { induced_gen(gens[0], diagonals, index_of),
-            induced_gen(gens[1], diagonals, index_of) };
+   Array<Array<int>> igens(gens.size());
+   std::transform(gens.begin(), gens.end(), igens.begin(),
+                  [&diagonals, &index_of](auto gen) { return induced_gen(gen, diagonals, index_of); });
+   return igens;
 }
 
 template<typename DiagonalList>

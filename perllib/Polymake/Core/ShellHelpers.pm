@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 # Analyzers of partial input, supporting TAB completion and F1 context-sensitive help
 
@@ -25,7 +26,7 @@ use Polymake::Struct (
    [ new => '$$$;$' ],
    [ '$name' => '#1' ],         # descriptive name
    [ '$pattern' => '#2' ],      # pattern to match the partial input
-   [ '&completion' => '#3' ],   # ($Shell, $word) => 1 for `ready' || 0 or undef for `try next pattern'
+   [ '&completion' => '#3' ],   # ($Shell) => 1 for `ready' || 0 or undef for `try next pattern'
    [ '&help' => '#4' ],         # ($Shell) => (start position in partial input, InteractiveHelp topics) || () for `try next pattern'
 );
 
@@ -46,12 +47,6 @@ my $intermed_re=qr{ \s*->\s* (?: (?'method_name' $id_re) (?(?=\s*\() $confined_r
 
 # chain of intermediate expressions
 my $intermed_chain_re=qr{ (?'intermed' (?:$intermed_re)*?) \s*->\s* }xo;
-
-# beginning of a function argument list
-my $args_start_re=qr{(?'args_start' \s+ | \s*\(\s* )}x;
-
-# beginning of a method argument list
-my $meth_args_start_re=qr{(?'args_start' \s*\(\s* )}x;
 
 my (%popular_perl_keywords, %object_methods);
 @popular_perl_keywords{qw( local print require chdir rename unlink mkdir rmdir declare exit )}=();
@@ -76,13 +71,13 @@ declare @list=(
          (?: $quote_re (?'prefix' $non_quote_re*)? )? $}xo,
 
       sub {
-         my ($shell, $word)=@_;
+         my ($shell)=@_;
          my ($simple_cmd, $dir_cmd, $args_start, $File, $quote, $prefix)=@+{qw(simple_cmd dir_cmd args_start File quote prefix)};
 
          if (defined $quote) {
-            $shell->try_filename_completion($word, $quote, $prefix, $dir_cmd);
+            try_filename_completion($shell, $quote, $prefix, $dir_cmd);
          } else {
-            $shell->completion_words=[ $simple_cmd || $dir_cmd || $args_start =~ /\(/ || $File ? '"' : '(' ];
+            $shell->completion_proposals=[ $simple_cmd || $dir_cmd || $args_start =~ /\(/ || $File ? '"' : '(' ];
          }
          1
       },
@@ -100,7 +95,7 @@ declare @list=(
           (?: $quote_re (?'prefix' $non_quote_re*)? )? $}xo,
 
       sub {
-         my ($shell, $word)=@_;
+         my ($shell)=@_;
          my ($ext_dir, $quote, $prefix)=@+{qw(ext_dir quote prefix)};
 
          if (defined $quote) {
@@ -110,14 +105,17 @@ declare @list=(
                replace_special_paths($ext_dir);
                if ($ext_dir !~ m{^/} && defined (my $ext=$Extension::registered_by_URI{$ext_dir})) {
                   $ext_dir=$ext->dir;
-              }
-           }
-           $shell->completion_words=[ sorted_uniq(sort( grep { not $ext_dir && -d "$ext_dir/apps/$_" }
-                                                        map { $_ =~ $filename_re }
-                                                        map { glob "$_/apps/$prefix*" }
-                                                        $InstallTop, map { $_->dir } @Extension::active[$Extension::num_bundled .. $#Extension::active] )) ];
+               }
+            }
+            $shell->completion_proposals=[ sorted_uniq(sort(
+               grep { not $ext_dir && -d "$ext_dir/apps/$_" }
+               map { $_ =~ $filename_re }
+               map { glob "$_/apps/$prefix*" }
+                   $InstallTop, map { $_->dir } @Extension::active[$Extension::num_bundled .. $#Extension::active]
+            )) ];
+            $shell->completion_offset=length($prefix);
          } else {
-            $shell->completion_words=[ '"' ];
+            $shell->completion_proposals=[ '"' ];
          }
          1
       },
@@ -139,18 +137,18 @@ declare @list=(
       'label argument for preference manipulations',
 
       qr{ $statement_start_re (?'cmd' prefer(?:_now)? | (?:re)?set_preference ) $args_start_re
-          (?: $quote_re (?'prefix' (?'app_name' $id_re) ::)?
+          (?: $quote_re (?: (?'app_name' $id_re) ::)?
               (?'expr' \*\.(?: $hier_id_re (?: \s+ (?: $ids_re (?:\s*,)? )? | \.? )? )? | $hier_id_re\.?)? )? $}xo,
 
       sub {
-         my ($shell, $word)=@_;
-         my ($cmd, $quote, $prefix, $app_name, $expr)=@+{qw(cmd quote prefix app_name expr)};
+         my ($shell)=@_;
+         my ($cmd, $quote, $app_name, $expr)=@+{qw(cmd quote app_name expr)};
 
          if (defined $quote) {
             my @proposals;
             if (defined $app_name) {
                if (defined (my $app=eval { User::application($app_name) })) {
-                  @proposals=map { "$app_name\::$_" } try_label_completion($app, $expr);
+                  @proposals=try_label_completion($app, $expr);
                }
             } else {
                @proposals=try_label_completion($User::application, $expr);
@@ -158,15 +156,16 @@ declare @list=(
                   push @proposals, map { "$_\::" } grep { /^$expr/ && !$User::application->imported->{$_} } keys %{$User::application->used};
                }
             }
-            finalize_proposals($shell, $prefix, $word, @proposals);
-
-            if (@{$shell->completion_words}==1 && $shell->completion_words->[0] !~ /:$/) {
+            $shell->completion_proposals=\@proposals;
+            $shell->completion_offset= $expr =~ /\b${id_re}$/o ? length($&) : length($expr);
+            if (@proposals==1 && $proposals[0] !~ /:$/) {
                $shell->term->Attribs->{completion_append_character}=
                   $cmd ne "reset_preference" && $expr =~ /^\*\.$hier_id_re\s*$/o
                   ? " " : $quote;
             }
+
          } else {
-            $shell->completion_words=[ '"' ];
+            $shell->completion_proposals=[ '"' ];
          }
          1
       },
@@ -193,32 +192,32 @@ declare @list=(
           (?: $expression_re ,\s* )* $quote_re? (?'prefix' $non_quote_space_re*) $}xo,
 
       sub {
-         my ($shell, $word)=@_;
+         my ($shell)=@_;
          my ($quote, $prefix)=@+{qw(quote prefix)};
          my $ext_dir=eval($+{ext_dir});
          if (defined ($ext_dir) &&
              defined ($ext_dir=verify_ext_dir($ext_dir)) and
-             -f "$ext_dir/configure.pl") {
+             -f "$ext_dir/support/configure.pl") {
             if (defined $quote) {
-               require Symbol;
                my (%allowed_options, %allowed_with, $err);
                {  package Polymake::StandaloneExt;
-                  do "$ext_dir/configure.pl";
+                  do "$ext_dir/support/configure.pl";
                   $err=$@;
                }
                unless ($err) {
                   eval "Polymake::StandaloneExt::allowed_options(\\%allowed_options, \\%allowed_with)";
                   $err=$@;
                }
-               Symbol::delete_package("Polymake::StandaloneExt");
+               wipe_package(\%Polymake::StandaloneExt::);
                return 1 if $err;
-               finalize_proposals($shell, $prefix, $word,
-                                  sort( grep { /^\Q$prefix\E/ }
-                                        (map { "--$_" } keys %allowed_options),
-                                        (map { ("--with-$_", "--without-$_") } keys %allowed_with) ));
+               $shell->completion_proposals=[ sort( grep { /^\Q$prefix\E/ }
+                                                    (map { "--$_" } keys %allowed_options),
+                                                    (map { ("--with-$_", "--without-$_") } keys %allowed_with),
+                                                    qw(--defaults) ) ];
+               $shell->completion_offset=length($prefix);
                $shell->term->Attribs->{completion_append_character}=$quote;
             } else {
-               $shell->completion_words=[ '"' ];
+               $shell->completion_proposals=[ '"' ];
             }
          }
          1
@@ -229,16 +228,15 @@ declare @list=(
          my $ext_dir=eval($+{ext_dir});
          if (defined ($ext_dir) &&
              defined ($ext_dir=verify_ext_dir($ext_dir)) and
-             -f "$ext_dir/configure.pl") {
+             -f "$ext_dir/support/configure.pl") {
             return ($start_pos, sub {
-               require Symbol;
                package Polymake::StandaloneExt;
-               do "$ext_dir/configure.pl";
+               do "$ext_dir/support/configure.pl";
                unless ($@) {
                   print STDERR "\nFollowing configuration options are possible:\n";
-                  eval { usage() };
+                  eval "Polymake::StandaloneExt::usage()";
                }
-               Symbol::delete_package("Polymake::StandaloneExt");
+               wipe_package(\%Polymake::StandaloneExt::);
             });
          }
          # proceed with the command itself
@@ -253,7 +251,7 @@ declare @list=(
           $args_start_re (?: $quote_re (?'prefix' $non_quote_re*) )? $}xo,
 
       sub {
-         my ($shell, $word)=@_;
+         my ($shell)=@_;
          my ($app_cmd, $quote, $prefix)=@+{qw(app_cmd quote prefix)};
 
          if (defined $quote) {
@@ -265,10 +263,11 @@ declare @list=(
             if ($app_cmd eq "found" && index("core", $prefix)==0) {
                push @proposals, "core";
             }
-            finalize_proposals($shell, $prefix, $word, @proposals);
+            $shell->completion_proposals=\@proposals;
+            $shell->completion_offset=length($prefix);
             $shell->term->Attribs->{completion_append_character}=$quote;
          } else {
-            $shell->completion_words=[ '"' ];
+            $shell->completion_proposals=[ '"' ];
          }
          1
       },
@@ -292,17 +291,17 @@ declare @list=(
 
       qr{ $statement_start_re (?'cmd' reconfigure|unconfigure|include)
           $args_start_re (?: $quoted_re \s*,\s* )*
-          (?: $quote_re (?'prefix' (?'app_name' $id_re) ::)? (?'filename' $non_quote_space_re*) )? $}xo,
+          (?: $quote_re (?: (?:(?'app_name' $id_re) ::)? (?'filename' $non_quote_space_re*)) )? $}xo,
 
       sub {
-         my ($shell, $word)=@_;
-         my ($cmd, $quote, $prefix, $app_name, $filename)=@+{qw(cmd quote prefix app_name filename)};
+         my ($shell)=@_;
+         my ($cmd, $quote, $app_name, $filename)=@+{qw(cmd quote app_name filename)};
 
          if (defined $quote) {
             my @proposals;
             if (defined $app_name) {
                if (defined (my $app=lookup Application($app_name))) {
-                  @proposals=map { "$app_name\::$_" } matching_rulefiles($app, $cmd, $filename);
+                  @proposals=matching_rulefiles($app, $cmd, $filename);
                }
             } else {
                @proposals=matching_rulefiles($User::application, $cmd, $filename);
@@ -315,10 +314,11 @@ declare @list=(
             if (@proposals==1 && $proposals[0] !~ /::$/) {
                $shell->term->Attribs->{completion_append_character}=$quote;
             }
-            finalize_proposals($shell, $prefix, $word, sort @proposals);
+            $shell->completion_proposals=[ sort @proposals ];
+            $shell->completion_offset=length($filename);
 
          } else {
-            $shell->completion_words=[ '"' ];
+            $shell->completion_proposals=[ '"' ];
          }
          1
       },
@@ -335,12 +335,12 @@ declare @list=(
       qr{ $op_re script $args_start_re (?: $quote_re (?'prefix' $non_quote_re*)? )? $}xo,
 
       sub {
-         my ($shell, $word)=@_;
+         my ($shell)=@_;
          my ($args_start, $quote, $prefix)=@+{qw(args_start quote prefix)};
 
          if (defined $quote) {
             if ($prefix =~ m|^[./~]|) {
-               $shell->try_filename_completion($word, $quote, $prefix, 0);
+               try_filename_completion($shell, $quote, $prefix);
             } else {
                my @proposals=$shell->term->completion_matches($prefix, $shell->term->Attribs->{filename_completion_function});
                shift @proposals if $#proposals;
@@ -352,12 +352,11 @@ declare @list=(
                      push @proposals, map { substr($_, $tail) } @sublist;
                   }
                }
-               if (@proposals) {
-                  $shell->postprocess_file_list($word, $quote, $prefix, 0, \@proposals);
-               }
+               $shell->completion_proposals=\@proposals;
+               $shell->completion_offset=length($prefix);
             }
          } else {
-            $shell->completion_words=[ $args_start =~ /\(/ ? '"' : '(' ];
+            $shell->completion_proposals=[ $args_start =~ /\(/ ? '"' : '(' ];
          }
          1
       },
@@ -372,23 +371,24 @@ declare @list=(
       'quoted property name argument',
 
       qr{ $op_re $var_or_func_re $intermed_chain_re
-          (?: (?'mult_word' give | lookup | (?'mult_arg' provide | get_schedule | remove)) | take | add ) $meth_args_start_re
+          (?: (?'mult_word' give | lookup | (?'mult_arg' provide | get_schedule | remove)) | take | add ) $method_args_start_re
           (?('mult_arg') (?: ($anon_quote_re) $hier_id_alt_re \g{-1} \s*,\s*)* )
           (?: $quote_re (?('mult_word') (?: $hier_id_re \s*\|\s*)* ) (?'prefix' $hier_id_re\.?)?)? $}xo,
 
       sub {
-         my ($shell, $word)=@_;
+         my ($shell)=@_;
          if (defined $+{quote}) {
             my ($var, $app_name, $func, $intermed, $quote, $prefix)=@+{qw(var app_name func intermed quote prefix)};
 
             if (defined( my $type=retrieve_method_owner_type($var, $app_name, $func, $intermed) )) {
                if (instanceof ObjectType($type)) {
-                  $shell->completion_words=[ try_property_completion($type, $prefix) ];
+                  $shell->completion_proposals=[ try_property_completion($type, $prefix) ];
+                  $shell->completion_offset=length($prefix);
                   $shell->term->Attribs->{completion_append_character}=$quote;
                }
             }
          } else {
-            $shell->completion_words=[ '"' ];
+            $shell->completion_proposals=[ '"' ];
          }
          1
       },
@@ -415,25 +415,26 @@ declare @list=(
       'added multiple subobject property name',
 
       qr{ $op_re $var_or_func_re $intermed_chain_re
-          add $meth_args_start_re ($anon_quote_re)(?'prop_name' $id_re)\g{-2} \s*,\s*
+          add $method_args_start_re ($anon_quote_re)(?'prop_name' $id_re)\g{-2} \s*,\s*
           (?'leading_args' (?: $expression_re ,\s* )?
              (?: (?: $id_re | ($anon_quote_re) $hier_id_re \g{-1} ) \s*=>\s* $expression_re ,\s* )* )
           $quote_re? (?'prefix' $hier_id_re\.?)? $}xo,
 
       sub {
-         my ($shell, $word)=@_;
+         my ($shell)=@_;
          my ($var, $app_name, $func, $intermed, $prop_name, $leading_args, $quote, $prefix)=@+{qw(var app_name func intermed prop_name leading_args quote prefix)};
 
          if (defined( my $type=retrieve_method_owner_type($var, $app_name, $func, $intermed) )) {
             if (instanceof ObjectType($type) && defined(my $prop=$type->lookup_property($prop_name))) {
-               $shell->completion_words=[ try_property_completion($prop->type, $prefix) ];
+               $shell->completion_proposals=[ try_property_completion($prop->type, $prefix) ];
+               $shell->completion_offset=length($prefix);
                if ($quote) {
                   $shell->term->Attribs->{completion_append_character}=$quote;
                } else {
-                  $_ .= "=>" for @{$shell->completion_words};
+                  $_ .= "=>" for @{$shell->completion_proposals};
                }
                if (length($leading_args)==0 && !$quote && index("temporary", $prefix)==0) {
-                  push @{$shell->completion_words}, "temporary,";
+                  push @{$shell->completion_proposals}, "temporary,";
                }
             }
          }
@@ -463,21 +464,22 @@ declare @list=(
       'attachment name argument',
 
       qr{ $op_re $var_or_func_re $intermed_chain_re (?: get_attachment | remove_attachment )
-          $meth_args_start_re (?: $quote_re (?'prefix' $id_re)?)? $}xo,
+          $method_args_start_re (?: $quote_re (?'prefix' $id_re)?)? $}xo,
 
       sub {
-         my ($shell, $word)=@_;
+         my ($shell)=@_;
          my ($var, $app_name, $func, $intermed, $quote, $prefix)=@+{qw(var app_name func intermed quote prefix)};
 
          if (defined $quote) {
             if (($var)=retrieve_method_owner_type($var, $app_name, $func, $intermed)) {
                if (is_object($var) && instanceof Core::Object($var)) {
-                  $shell->completion_words=[ sort( grep { /^$prefix/ } keys %{$var->attachments} ) ];
+                  $shell->completion_proposals=[ sort( grep { /^$prefix/ } keys %{$var->attachments} ) ];
+                  $shell->completion_offset=length($prefix);
                   $shell->term->Attribs->{completion_append_character}=$quote;
                }
             }
          } else {
-            $shell->completion_words=[ '"' ];
+            $shell->completion_proposals=[ '"' ];
          }
          1
       },
@@ -492,10 +494,10 @@ declare @list=(
       'rule label or header argument of a method',
 
       qr{ $op_re $var_or_func_re $intermed_chain_re (?: disable_rules | apply_rule )
-          $meth_args_start_re (?: $quote_re (?'prefix' $non_quote_re*))? $}xo,
+          $method_args_start_re (?: $quote_re (?'prefix' $non_quote_re*))? $}xo,
 
       sub {
-         my ($shell, $word)=@_;
+         my ($shell)=@_;
          my ($var, $app_name, $func, $intermed, $quote, $prefix)=@+{qw(var app_name func intermed quote prefix)};
 
          if (defined $quote) {
@@ -511,12 +513,13 @@ declare @list=(
                   Rule::prepare_header_search_pattern($pattern);
                   push @proposals, sorted_uniq(sort( grep { /^$pattern/ } map { $_->header }
                                                      map { @{$_->production_rules} } $type, @{$type->linear_isa} ));
-                  finalize_proposals($shell, $prefix, $word, @proposals);
+                  $shell->completion_proposals=\@proposals;
+                  $shell->completion_offset=length($prefix);
                   $shell->term->Attribs->{completion_append_character}=$quote;
                }
             }
          } else {
-            $shell->completion_words=[ '"' ];
+            $shell->completion_proposals=[ '"' ];
          }
          1
       },
@@ -544,7 +547,7 @@ declare @list=(
       qr{ $statement_start_re disable_rules $args_start_re (?: $quote_re (?'prefix' $non_quote_re*))? $}xo,
 
       sub {
-         my ($shell, $word)=@_;
+         my ($shell)=@_;
          my ($quote, $prefix)=@+{qw(quote prefix)};
 
          if (defined $quote) {
@@ -556,10 +559,11 @@ declare @list=(
             my $pattern=$prefix;
             Rule::prepare_header_search_pattern($pattern);
             push @proposals, sorted_uniq(sort( grep { /^$pattern/ } map { $_->header } @{$User::application->rules} ));
-            finalize_proposals($shell, $prefix, $word, @proposals);
+            $shell->completion_proposals=\@proposals;
+            $shell->completion_offset=length($prefix);
             $shell->term->Attribs->{completion_append_character}=$quote;
          } else {
-            $shell->completion_words=[ '"' ];
+            $shell->completion_proposals=[ '"' ];
          }
          1
       },
@@ -582,7 +586,7 @@ declare @list=(
       qr{ $statement_start_re help $args_start_re (?: $quote_re (?'path' $non_quote_re*/)? (?'prefix' $non_quote_re*))? $}xo,
 
       sub {
-         my ($shell, $word)=@_;
+         my ($shell)=@_;
          my ($quote, $path, $prefix)=@+{qw(quote path prefix)};
 
          if (defined $quote) {
@@ -596,7 +600,7 @@ declare @list=(
             my @proposals= sorted_uniq(sort( defined($path)
                                              ? map { $_->list_toc_completions($prefix) } $app->help->get_topics($path) :
                                              defined($app_name)
-                                             ? map { $app_name."::".$_ } $app->help->list_completions("!rel", $prefix)
+                                             ? $app->help->list_completions("!rel", $prefix)
                                              : $app->help->list_completions($prefix) ));
             if (@proposals==1 &&
                 grep { @{$_->toc} } $app->help->get_topics($path.$proposals[0])) {
@@ -604,12 +608,13 @@ declare @list=(
             }
             if (!defined($app_name) && !defined($path)) {
                $quote="" if !@proposals;
-               push @proposals, map { $_."::" } grep { /^$prefix/ } known Application;
+               push @proposals, map { $_."::" } grep { /^$prefix/ } map { $_->name } list_loaded Application;
             }
-            finalize_proposals($shell, $prefix, $word, @proposals);
+            $shell->completion_proposals=\@proposals;
+            $shell->completion_offset=length($prefix);
             $shell->term->Attribs->{completion_append_character}=$quote;
          } else {
-            $shell->completion_words=[ "'" ];
+            $shell->completion_proposals=[ "'" ];
          }
          1
       },
@@ -629,7 +634,7 @@ declare @list=(
               (?('scalar') (?('qual') | \s*\{\s* (?'keyquote' ['"])?(?'key' [\w-]*) )?) )? $}xo,
 
       sub {
-         my ($shell, $word)=@_;
+         my ($shell)=@_;
          my ($cmd, $type, $varname, $keyquote, $key)=@+{qw(cmd type varname keyquote key)};
 
          if (defined $key) {
@@ -637,12 +642,12 @@ declare @list=(
             my $i=0;
             if (my @custom_maps=grep { defined } map { $_->custom->find("%$varname", ++$i >= 3) }
                                      $User::application, $Prefs, values %{$User::application->imported}) {
-               finalize_proposals($shell, $key, $word, sorted_uniq(sort( grep { index($_, $key)==0 } map { keys %{$_->default_value} } @custom_maps )));
+               $shell->completion_proposals=[ sorted_uniq(sort( grep { index($_, $key)==0 } map { keys %{$_->default_value} } @custom_maps )) ];
             } elsif (defined (my $user_hash=find_user_variable('%', $varname))) {
-               finalize_proposals($shell, $key, $word, sort( grep { index($_, $key)==0 } keys %$user_hash ));
+               $shell->completion_proposals=[ sort( grep { index($_, $key)==0 } keys %$user_hash ) ];
             }
-
-            if (@{$shell->completion_words}==1) {
+            $shell->completion_offset=length($key);
+            if (@{$shell->completion_proposals}==1) {
                $shell->term->Attribs->{completion_append_character}=$keyquote || '}';
             }
 
@@ -656,7 +661,8 @@ declare @list=(
                 !@proposals || $varname !~ /::/) {
                push @proposals, complete_user_variable_name($type, $varname);
             }
-            $shell->completion_words=[ sort(@proposals) ];
+            $shell->completion_proposals=[ sort(@proposals) ];
+            $shell->completion_offset=length($varname);
             if ($cmd && @proposals==1 && substr($proposals[0], -1) ne ":") {
                $shell->term->Attribs->{completion_append_character}= $cmd eq "reset_custom" ? ";" : "=";
                if ($type eq '$') {
@@ -687,21 +693,22 @@ declare @list=(
    new Helper(
       'property name in a constructor call',
 
-      qr{ $op_re new \s+ (?'type' $type_re) $meth_args_start_re
-          (?: $expression_re ,\s* )* (?: (?'prop_name' $id_re) | $quote_re (?'chain' $hier_id_re \.?)? )? $}xo,
+      qr{ $op_re new \s+ (?'type' $type_re) $method_args_start_re
+          (?: $expression_re ,\s* )* (?: (?'prefix' $id_re) | $quote_re (?'prefix' $hier_id_re \.?)? )? $}xo,
 
       sub {
-         my ($shell, $word)=@_;
-         my ($type, $prop_name, $quote, $chain)=@+{qw(type prop_name quote chain)};
+         my ($shell)=@_;
+         my ($type, $prefix, $quote)=@+{qw(type prefix quote)};
 
          if (defined ($type=$User::application->eval_type($type, 1))
                and
              instanceof ObjectType($type)) {
-            $shell->completion_words=[ try_property_completion($type, $prop_name // $chain) ];
-            if (defined $prop_name) {
-               $_ .= "=>" for @{$shell->completion_words};
-            } else {
+            $shell->completion_proposals=[ try_property_completion($type, $prefix) ];
+            $shell->completion_offset=length($prefix);
+            if (defined $quote) {
                $shell->term->Attribs->{completion_append_character}=$quote;
+            } else {
+               $_ .= "=>" for @{$shell->completion_proposals};
             }
             return 1;
          }
@@ -709,7 +716,7 @@ declare @list=(
       },
 
       sub {
-         my ($type, $prop_name, $chain)=@+{qw(type prop_name chain)};
+         my ($type, $prefix)=@+{qw(type prefix)};
          # next time tell about the object type
          my $start_pos=(capturing_group_boundaries('type'))[0]+1;
          my @proposals;
@@ -717,7 +724,7 @@ declare @list=(
          if (defined ($type=$User::application->eval_type($type, 1))
                and
              instanceof ObjectType($type)) {
-            @proposals=fetch_property_help($type, $prop_name // $chain);
+            @proposals=fetch_property_help($type, $prefix);
          }
          ($start_pos, @proposals);
       }
@@ -732,15 +739,15 @@ declare @list=(
                  (?'expr' $type_re (?(?<=\w)::)? )? $}xo,
 
       sub {
-         my ($shell, $word)=@_;
+         my ($shell)=@_;
          my ($static, $open, $expr)=@+{qw(static open expr)};
          if ($expr !~ /[<>]/) {
             # TODO: don't list the functions expecting ObjectType literally (how to detect ???)
             my $only_objects= (!$static && $open =~ /^(?: cast )\b/) || undef;
             my ($app, $pkg);
-            if (defined ($app=try_type_completion($shell, $word, $expr, $only_objects)) &&
-                @{$shell->completion_words}==1 &&
-                defined ($pkg=namespaces::lookup_class($app->pkg, $shell->completion_words->[0]))) {
+            if (defined ($app=try_type_completion($shell, $expr, $only_objects)) &&
+                @{$shell->completion_proposals}==1 &&
+                defined ($pkg=namespaces::lookup_class($app->pkg, $shell->completion_proposals->[0]))) {
                if (my $min_params=eval { $pkg->_min_params }) {
                   # the suggested type has itself mandatory type parameters
                   $shell->term->Attribs->{completion_append_character}="<";
@@ -753,7 +760,7 @@ declare @list=(
                }
             }
          } elsif ($shell->partial_input !~ m{\G \s*[,>]}xgc) {
-            $shell->completion_words=[ type_expr_delimiter($open, $static) ];
+            $shell->completion_proposals=[ type_expr_delimiter($open, $static) ];
          }
          1
       },
@@ -785,14 +792,15 @@ declare @list=(
       qr{(?: \$Visual::Color::$id_re \s*=\s* | Color \s*=>\s* ) (?: $quote_re (?!\d)(?'prefix' $non_quote_re*))? $}xo,
 
       sub {
-         my ($shell, $word)=@_;
+         my ($shell)=@_;
          my ($quote, $prefix)=@+{qw(quote prefix)};
 
          if (defined $quote) {
-            finalize_proposals($shell, $prefix, $word, sort( Visual::list_color_completions($prefix) ));
+            $shell->completion_proposals=[ sort( Visual::list_color_completions($prefix) ) ];
+            $shell->completion_offset=length($prefix);
             $shell->term->Attribs->{completion_append_character}=$quote;
          } else {
-            $shell->completion_words=[ '"' ];
+            $shell->completion_proposals=[ '"' ];
          }
          1
       }
@@ -803,15 +811,16 @@ declare @list=(
       'function or method name or keyword argument',
 
       qr{ (?: (?'stmt' $statement_start_re) (?'func' $id_re)
-            | $op_re (?: (?'method_owner' $var_or_func_re) $intermed_chain_re (?:(?'last_method_name' $id_re) $meth_args_start_re?+ )?
+            | $op_re (?: (?'method_owner' $var_or_func_re) $intermed_chain_re (?:(?'last_method_name' $id_re) $method_args_start_re?+ )?
                        | $func_name_re (?'tparams' (?=\s*<) $confined_re)? $args_start_re?+ )
                      (?('args_start') (?'preceding_args' (?:$expression_re ,\s*)*+) (?'prefix' .*))
           ) $}xo,
 
       sub : method {
-         my ($self, $shell, $word)=@_;
+         my ($self, $shell)=@_;
          my ($stmt, $var, $type, $app, $app_name, $func, $method_owner, $tparams, $intermed, $last_method_name, $args_start, $preceding_args, $prefix, @func_names);
          my $prefix_start=0;
+         my $completion_offset=0;
 
          do {
             ($stmt, $var, $app_name, $func, $method_owner, $tparams, $intermed, $last_method_name, $args_start, $preceding_args, $prefix)=@+{qw(
@@ -831,8 +840,9 @@ declare @list=(
                                  # name of a subobject
                                  if (defined($var)) {
                                     $shell->term->Attribs->{completion_append_character}=$1;
-                                    $shell->completion_words=[ sorted_uniq(sort( grep { defined($_) && index($_, $prefix)==0 }
-                                                                                 map { $_->name } @{$var->give($last_method_name)} )) ];
+                                    $shell->completion_proposals=[ sorted_uniq(sort( grep { defined($_) && index($_, $prefix)==0 }
+                                                                                     map { $_->name } @{$var->give($last_method_name)} )) ];
+                                    $shell->completion_offset=length($prefix);
                                  }
                                  return 1;
                               }
@@ -848,15 +858,15 @@ declare @list=(
                                  $last_method_name =~ /^(?:give|take|add)$/ &&
                                  index("temporary", $prefix)==0) {
                            push @proposals, "temporary";
-
                         }
                         if (@proposals) {
                            # prefix is simple, no need to reiterate
-                           $shell->completion_words=\@proposals;
+                           $shell->completion_proposals=\@proposals;
+                           $shell->completion_offset=length($prefix);
                            return 1;
                         }
                      }
-                     if (try_keyword_completion($shell, $preceding_args, $prefix, $word,
+                     if (try_keyword_completion($shell, $preceding_args, $prefix,
                                                 uniq(retrieve_method_topics($type, $last_method_name, "find")))) {
                         return 1;
                      }
@@ -879,6 +889,7 @@ declare @list=(
                         }
                      }
                      if (@proposals) {
+                        $completion_offset=length($last_method_name);
                         @func_names=sorted_uniq(sort(@proposals));
                      }
                   }
@@ -887,18 +898,18 @@ declare @list=(
                # a free function
                if (defined ($app= defined($app_name) ? eval { User::application($app_name) } : $User::application)) {
                   if (defined $args_start) {
-                     if (try_keyword_completion($shell, $preceding_args, $prefix, $word,
+                     if (try_keyword_completion($shell, $preceding_args, $prefix,
                                                 $app->help->find((defined($app_name) ? "!rel" : ()), "functions", $func))) {
                         return 1;
                      }
                   } elsif (defined $tparams) {
                      # complete name and type param list, missing arguments
-                     $shell->completion_words=[ "(" ];
+                     $shell->completion_proposals=[ "(" ];
                      return 1;
                   } else {
                      # completing the function name
                      if (defined $app_name) {
-                        @proposals=map { "$app_name\::$_" } $app->help->list_completions("!rel", "functions", $func);
+                        @proposals=$app->help->list_completions("!rel", "functions", $func);
                      } else {
                         # Here we can erroneously recognize a function name in a file path.
                         # Stop here and proceed with filename completion if the apparent function name occurs in an open quoted string
@@ -912,8 +923,9 @@ declare @list=(
                      }
                      if (@proposals) {
                         @func_names=sorted_uniq(sort(@proposals));
+                        $completion_offset=length($func);
                         if (@func_names==1) {
-                           $func= defined($app_name) ? substr($func_names[0], length($app_name)+2) : $func_names[0];
+                           $func=$func_names[0];
                            if ($func =~ /^(?:exit|history|replay_history|show_(?:preferences|unconfigured|credits|extensions))$/) {
                               $shell->term->Attribs->{completion_append_character}=";";
                            } elsif (exists $popular_perl_keywords{$func} ||
@@ -936,8 +948,11 @@ declare @list=(
             # descend to the innermost open function call
          } while (defined($args_start) && $prefix =~ /${$self->pattern}/);
 
-         $shell->completion_words=\@func_names;
-         @func_names>0
+         if (@func_names) {
+            $shell->completion_proposals=\@func_names;
+            $shell->completion_offset=$completion_offset;
+            1
+         }
       },
 
       sub : method {
@@ -1013,12 +1028,15 @@ sub prepare_property_lookup {
       $prop->flags & $Property::is_subobject or return;
       $type=$prop->type;
    }
-   ($type, $prefix);
+   $_[0]=$type;
+   $_[1]=$prefix;
+   1
 }
 
 sub try_property_completion {
    my ($type, $prefix)=@_;
-   if (($type, $prefix)=&prepare_property_lookup) {
+   if (prepare_property_lookup($type, $prefix)) {
+      $_[1]=$prefix;
       sorted_uniq(sort( grep { !$type->is_overridden($_) } grep { /^$prefix/ }
                         map { keys %{$_->properties} } $type, @{$type->linear_isa} ))
    } else {
@@ -1029,7 +1047,7 @@ sub try_property_completion {
 sub fetch_property_help {
    my ($type, $prefix)=@_;
    $prefix =~ s/\.$//;
-   if (($type, $prefix)=&prepare_property_lookup) {
+   if (prepare_property_lookup($type, $prefix)) {
       my $topic;
       uniq( grep { !$type->is_overridden($_->name) }
                  map { defined($topic=$_->help_topic) ? $topic->find("!rel", "properties", $prefix) : () }
@@ -1048,7 +1066,7 @@ sub prepare_type_matching {
 }
 
 sub try_type_completion {
-   my ($shell, $word, $prefix, $is_object_type)=@_;
+   my ($shell, $prefix, $is_object_type)=@_;
    my ($type_prefix, $app_name, @maybe)=prepare_type_matching($prefix, $is_object_type);
    my $app= $app_name ? (eval { User::application($app_name) } || return) : $User::application;
    my @how= $app_name ? ("!rel") : ();
@@ -1058,13 +1076,13 @@ sub try_type_completion {
          push @proposals, $app->help->list_completions(@how, $whence, $type_prefix);
       }
    }
-
+   $shell->completion_offset=length($type_prefix);
    if (@proposals) {
-      finalize_proposals($shell, $type_prefix, $word, sorted_uniq(sort(@proposals)));
+      $shell->completion_proposals=[ sorted_uniq(sort(@proposals)) ];
       $app
    } else {
       if ($prefix !~ /::/) {
-         $shell->completion_words=[ map { "$_\::" } sort( grep { /^$prefix/ } (($is_object_type ? "objects" : qw(objects props)), keys %{$app->used}) ) ];
+         $shell->completion_proposals=[ map { "$_\::" } sort( grep { /^$prefix/ } (($is_object_type ? "objects" : qw(objects props)), keys %{$app->used}) ) ];
       }
       undef
    }
@@ -1142,11 +1160,7 @@ sub retrieve_method_owner_type {
          $app=$User::application;
       }
       if (defined ($func=$app->help->find(@how, "functions", $func))) {
-         if (!defined ($type=retrieve_return_type($func)) &&
-             $func->parent->category &&
-             $func->parent->name =~ /^\s* (?: producing | transforming ) /xi) {
-            $type=$app->default_type;
-         }
+         $type=retrieve_return_type($func);
       }
    }
 
@@ -1208,11 +1222,12 @@ sub retrieve_method_topics {
 
 # completing a keyword or enumerated argument
 sub try_keyword_completion {
-   my ($shell, $preceding_args, $prefix, $word, @topics)=@_;
+   my ($shell, $preceding_args, $prefix, @topics)=@_;
    my $arg_num=0;
    ++$arg_num while $preceding_args =~ /\G $expression_re ,\s* /xog;
    if (my @proposals=map { $_->argument_completions($arg_num, $prefix) } @topics) {
-      finalize_proposals($shell, $prefix, $word, sorted_uniq(sort(@proposals)));
+      $shell->completion_proposals=[ sorted_uniq(sort(@proposals)) ];
+      $shell->completion_offset=length($prefix);
       1
    }
 }
@@ -1235,9 +1250,9 @@ sub complete_variable_name_in_pkg {
 sub complete_user_variable_name {
    my ($type, $prefix)=@_;
    if ((my $pkg_end=rindex($prefix,"::"))>0) {
-      my $pkg_part=substr($prefix, 0, $pkg_end);
-      my $pkg=get_pkg("Polymake::User::$pkg_part") or return ();
-      map { "$pkg_part\::$_" } complete_variable_name_in_pkg($pkg, $type, substr($prefix, $pkg_end+2));
+      my $pkg=substr($prefix, 0, $pkg_end);
+      my $symtab=eval { get_symtab("Polymake::User::$pkg") } or return ();
+      map { "$pkg\::$_" } complete_variable_name_in_pkg($symtab, $type, substr($prefix, $pkg_end+2));
    } else {
       complete_variable_name_in_pkg(\%Polymake::User::,@_);
    }
@@ -1247,8 +1262,8 @@ sub find_user_variable {
    my ($type, $name)=@_;
    my $glob=do {
       if ((my $pkg_end=rindex($name, "::"))>0) {
-         my $pkg=get_pkg("Polymake::User::" . substr($name,0,$pkg_end)) or return;
-         $pkg->{substr($name,$pkg_end+2)};
+         my $symtab=eval { get_symtab("Polymake::User::" . substr($name,0,$pkg_end)) } or return;
+         $symtab->{substr($name,$pkg_end+2)};
       } else {
          $Polymake::User::{$name};
       }
@@ -1287,20 +1302,26 @@ sub verify_ext_dir {
    }
 }
 
-# readline expects proposals for the trailing word only, without any separators and interpuctuation;
-# if the end of the input line matches a more complex syntactic construction, the proposals must be trimmed
-sub finalize_proposals {
-   my ($shell, $prefix, $word, @proposals)=@_;
-   my $trim=length($prefix)-length($word);
-   if ($trim>0) {
-      $shell->completion_words=[ map { substr($_, $trim) } @proposals ];
-   } elsif ($trim<0) {
-      my $prepend=-$trim;
-      $word=substr($word, 0, $prepend);
-      $shell->completion_words=[ map { substr($_, 0, $prepend) eq $word ? $_ : $word.$_ } @proposals ];
-   } else {
-      $shell->completion_words=\@proposals;
+
+# Extensions can add own helpers using these methods
+
+# Append one or more helpers at the end of the list
+sub append {
+   shift;   # package name
+   push @list, @_;
+}
+
+# Insert one or more helpers before the one with the given name
+sub insert_before {
+   shift;   # package name
+   my $before_name=shift;
+   for (my $i=0; $i<=$#list; ++$i) {
+      if ($list[$i]->name eq $before_name) {
+         splice @list, $i, 0, @_;
+         return;
+      }
    }
+   croak( "No shell helper found with name matching $before_name" );
 }
 
 

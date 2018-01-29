@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -90,7 +90,7 @@ use Polymake::Struct (
 # the active Viewer instance
 my $active;
 
-sub instance : lvalue { $active }   declare_nodebug(\&instance) if defined($DB::sub);
+sub instance : lvalue { $active }
 
 {  # capture the own extension
    my $ext=$Polymake::Core::Application::extension;

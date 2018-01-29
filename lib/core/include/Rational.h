@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -2081,6 +2081,10 @@ Integer& Integer::operator= (Rational&& b)
    set_data(*mpq_numref(&b), initialized::yes);
    return *this;
 }
+
+template <>
+Rational
+pow(const Rational& base, int exp);
 
 }
 namespace polymake {

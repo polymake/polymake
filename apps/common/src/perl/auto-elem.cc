@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,6 +19,8 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
+#include "polymake/Polynomial.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/TropicalNumber.h"
@@ -47,5 +49,8 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(elem_x_x_f37, perl::Canned< const Wary< Matrix< double > > >);
    FunctionInstance4perl(elem_x_x_f37, perl::Canned< const Wary< IncidenceMatrix< NonSymmetric > > >);
    FunctionInstance4perl(elem_x_x_f37, perl::Canned< const Wary< pm::RepeatedRow<pm::SameElementVector<pm::Rational const&> > > >);
+   FunctionInstance4perl(elem_x_x_f37, perl::Canned< const Wary< Matrix< QuadraticExtension< Rational > > > >);
+   FunctionInstance4perl(elem_x_x_f37, perl::Canned< Wary< Matrix< Polynomial< Rational, int > > > >);
+   FunctionInstance4perl(elem_x_x_f37, perl::Canned< Wary< Matrix< Polynomial< QuadraticExtension< Rational >, int > > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -185,14 +185,14 @@ UserFunctionTemplate4perl("# @category Other"
 				 "# @param Int i the filtration frame"
 				 "# @param Int p the number of frames to consider"
 				 "# @param Int k the dimension in which to compute"
-				 "# @tparam MatrixType the type of boundary matrices"
+				 "# @tparam MatrixType type of boundary matrices"
 				"# @return Pair<SparseMatrix<Coeff>, List< Pair<Coeff, SparseMatrix<Coeff> > > >",
                    "persistent_homology<MatrixType>($$$$)");
 
 UserFunctionTemplate4perl("# @category Other"
 				  "# Given a Filtration, this computes its persistence barcodes in all dimension, using the algorithm described in the 2005 paper 'Computing Persistent Homology' by Afra Zomorodian and Gunnar Carlsson. It only works for field coefficients."
 				 "# @param Filtration<MatrixType> F"
-				 "# @tparam MatrixType the type of the boundary matrices"
+				 "# @tparam MatrixType type of the boundary matrices"
                   "# @return Array<List<Pair<int, int> > >",
                    "persistent_homology<MatrixType>($)");
 

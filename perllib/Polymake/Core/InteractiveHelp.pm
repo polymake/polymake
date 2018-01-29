@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 #################################################################################
 #
@@ -85,7 +86,7 @@ sub add {
          # in embedded rules, compiler sees everything on a single (last) line because of a macro
          my $line = $source_file =~ /\.(?:cc|cpp|C|h|hh|H)$/ ? $source_line-@lines : $source_line;
          foreach (@lines) {
-            if (/$help_line_start \@example\s /xo) {
+            if (/$help_line_start \@example (?:\s|$)/xo) {
                push @example_start_lines, $line;
             }
             ++$line;
@@ -122,7 +123,7 @@ sub add {
          }
 
          my ($opt_group, @option_lists);
-         while ($text =~ s/$help_line_start \@($id_re) [ \t]+ ( .*\n (?:(?>$help_line_start) (?! \@$id_re) .*\n)* )//xom) {
+         while ($text =~ s/$help_line_start \@($id_re) (?:[ \t]+|$) ( .*\n (?:(?>$help_line_start) (?! \@$id_re) .*\n)* )//xom) {
             my ($tag, $value)=(lc($1), $2);
             sanitize_help($value);
 
@@ -461,7 +462,7 @@ sub write_text {
       $writer->description($self->text);
       if (exists $self->annex->{keys}) {
          my $keys;
-         $writer->topic_keys(map { defined($keys=$_->annex->{keys}) ? @$keys : () } $self, @{$self->related});
+         $writer->topics_keys(map { defined($keys=$_->annex->{keys}) ? @$keys : () } $self, @{$self->related});
       }
 
       if ($full) {

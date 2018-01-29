@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -24,7 +24,6 @@
 #include "polymake/linalg.h"
 #include "polymake/hash_set"
 #include "polymake/polytope/compress_incidence.h"
-// the following requires an entry in Makefile.inc
 #include <ppl.hh>
 
 #include <fenv.h>

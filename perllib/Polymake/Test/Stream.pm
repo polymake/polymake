@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 require Scalar::Util;
 
@@ -26,6 +27,7 @@ use Polymake::Struct (
    '$buffer',
    '$handle',
    [ '$filters' => '#2' ],
+   [ '$altOK' => '#%' ],
 );
 
 sub new {
@@ -40,18 +42,21 @@ sub execute {
    close $self->handle;
    my (@expected, @gotten);
    local $_;
-   my $expected_file=find_matching_file($self->name.".OK");
-   open my $expected, "<", $expected_file
-     or die "can't read $expected_file: $!\n";
-
-   while (<$expected>) {
-      foreach my $filter (@{$self->filters}) {
-         &$filter;
-         defined($_) or last;
+   foreach my $expected_file (map { find_matching_file("$_.OK") }
+                              $self->name, ref($self->altOK) ? @{$self->altOK} : ()) {
+      open my $expected, "<", $expected_file
+        or die "can't read $expected_file: $!\n";
+      my @expected_lines;
+      while (<$expected>) {
+         foreach my $filter (@{$self->filters}) {
+            &$filter;
+            defined($_) or last;
+         }
+         if (defined $_) {
+            push @expected_lines, Scalar::Util::dualvar($., $_);
+         }
       }
-      if (defined $_) {
-         push @expected, Scalar::Util::dualvar($., $_);
-      }
+      push @expected, \@expected_lines;
    }
    foreach (split /(?<=\n)/, $self->buffer) {
       foreach my $filter (@{$self->filters}) {
@@ -63,27 +68,33 @@ sub execute {
       }
    }
 
-   my $success=1;
-   my $lineno;
-   foreach my $expected_line (@expected) {
-      my $gotten_line=shift @gotten;
-      $lineno=$expected_line+0;
-      if ($expected_line ne $gotten_line) {
-         $self->fail_log.="line $lineno:\n".
-                          "expected: $expected_line\n".
-                          "     got: ".($gotten_line // "__END__")."\n";
-         $success=0;
-         last unless @gotten;
+   foreach my $expected_lines (@expected) {
+      my $lineno;
+      my $gotten_lineno=-1;
+      $self->fail_log="";
+      foreach my $expected_line (@$expected_lines) {
+         $lineno=$expected_line+0;
+         if (++$gotten_lineno > $#gotten) {
+            $self->fail_log .= "line $lineno:\n".
+                               "expected: $expected_line\n".
+                               "     got: __END__\n";
+            last;
+         }
+         if ($expected_line ne $gotten[$gotten_lineno]) {
+            $self->fail_log .= "line $lineno:\n".
+                               "expected: $expected_line\n".
+                               "     got: $gotten[$gotten_lineno]\n";
+         }
       }
+      if (++$gotten_lineno <= $#gotten) {
+         ++$lineno;
+         $self->fail_log .= "line $lineno:\n".
+                            "expected: __END__\n".
+                            "     got: $gotten[$gotten_lineno]\n";
+      }
+      return 1 unless $self->fail_log;
    }
-   if (@gotten) {
-      ++$lineno;
-      $self->fail_log.="line $lineno:\n".
-                       "expected: __END__\n".
-                       "     got: $gotten[0]\n";
-      $success=0;
-   }
-   $success;
+   0
 }
 
 1

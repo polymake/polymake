@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,13 +17,13 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
 #include "polymake/TropicalNumber.h"
 #include "polymake/Vector.h"
-#include "polymake/PuiseuxFraction.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -51,5 +51,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(add_extra_polytope_ineq_X2_f16, perl::Canned< SparseMatrix< double, NonSymmetric > >);
    FunctionInstance4perl(add_extra_polytope_ineq_X2_f16, perl::Canned< SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >);
    FunctionInstance4perl(add_extra_polytope_ineq_X2_f16, perl::Canned< Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(canonicalize_polytope_generators_X2_f16, perl::Canned< Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

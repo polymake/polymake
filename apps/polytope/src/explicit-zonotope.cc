@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -50,7 +50,8 @@ UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
                   "# @param Matrix zones the input vectors"
                   "# @option Bool rows_are_points the rows of the input matrix represent affine points(true, default) or linear vectors(false)"
                   "# @return Polytope"
-                  "# @example > $M = new Matrix([1,1],[1,-1]);"
+                  "# @example [prefer cdd]" 
+                  "# > $M = new Matrix([1,1],[1,-1]);"
                   "# > $p = explicit_zonotope($M,rows_are_points=>0);"
                   "# > print $p->VERTICES;"
                   "# | 1 2 0"

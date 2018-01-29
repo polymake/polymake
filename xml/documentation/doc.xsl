@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <!--
-  Copyright (c) 1997-2015
+  Copyright (c) 1997-2018
   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
   http://www.polymake.org
 
@@ -219,8 +219,6 @@ polymake application.
 			<b><xsl:value-of select="@name"/></b>
 		</a>
 		
-		 <xsl:call-template name="typelinks"/><br />
-		 
 		<div>
 			<xsl:call-template name="unfoldspan"/>
 

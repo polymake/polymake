@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -17,26 +17,25 @@
 #  and generates a source file pretending to define them all.
 
 use strict;
-
-die "usage: $0 STUB_OUTFILE FAKE_OUTFILE SHARED_OBJECT ... \n" if @ARGV<3;
+use Config;
 
 my @out;
 my $nmopts= $^O eq "darwin" ? "-Ugp" : "--defined-only --extern-only -p";
 
-for my $shlib (splice @ARGV, 2) {
-   -r $shlib or die "shared library $shlib does not exist or unreadable\n";
+for my $shlib (@ARGV) {
+   -r $shlib or die "shared module $shlib does not exist or unreadable\n";
 
    open SYMS, "nm $nmopts $shlib |"
      or die "can't run nm $shlib: $!\n";
 
-   my ($appname)= $shlib =~ m{(?:^|/)(\w+)(?:-\w+)?\.[^/]+$}
-     or die "can't derive application name from shared library name $shlib\n";
+   my ($appname)= $shlib =~ m{(?:^|/)(\w+)\.$Config::Config{dlext}$}
+     or die "can't derive application name from shared module name $shlib\n";
 
    my $prefix="8polymake".length($appname).$appname;
 
    while (<SYMS>) {
       if (/ [TW] ([_ZNK]+$prefix\w+)$/) {
-	  if ( $^O eq "darwin" ) {    # aliases don't seem to work on MacOS, so we actually define the functions with emtpy body
+	  if ( $^O eq "darwin" ) {    # aliases don't seem to work on MacOS, so we actually define the functions with empty body
 	      my $functionname = $1;
 	      $functionname =~ s/^__/_/;
 	      push @out, "void $functionname() {};\n";
@@ -49,27 +48,18 @@ for my $shlib (splice @ARGV, 2) {
 }
 
 if (@out) {
-   open STUB, ">", $ARGV[0]
-     or die "can't create output file $ARGV[0]: $!\n";
-   open FAKE, ">", $ARGV[1]
-     or die "can't create output file $ARGV[1]: $!\n";
-
-   my $dummy= <<'.';
+   if ($^O eq "darwin") {
+      print "#ifndef POLYMAKE_FAKE_FUNCTIONS\n";
+   }
+   print <<'.';
 void __dummy() __attribute__((visibility ("hidden")));
 void __dummy() { }
 .
-    
-    print STUB $dummy;
-
-if ( $^O eq "darwin" ) {  # we define proper functions on MacOS, not aliases, so no dummy needed 
-    print FAKE @out;
+   if ($^O eq "darwin") {
+      print "#endif\n";
+   }
+   print "#ifdef POLYMAKE_FAKE_FUNCTIONS\n", @out, "#endif\n";
 } else {
-    print FAKE $dummy, @out;
-}
-
-   close STUB;
-   close FAKE;
-} else {
-   warn "no external symbols found, output suppressed!\n";
+   warn "no external symbols found!\n";
    exit(1);
 }

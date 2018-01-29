@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -41,6 +41,7 @@
 namespace pm {
 
 class server_socketbuf;
+class procstream;
 class socketstream;
 
 class streambuf_with_input_width : public std::streambuf {
@@ -103,10 +104,13 @@ protected:
    std::streamsize showmanyc();
    int_type pbackfail(int_type c=traits_type::eof());
 
+   void discard_out();
+
    int _fd, _sfd, _wfd, bufsize;
    pollfd my_poll;
 
    friend class server_socketbuf;
+   friend class procstream;
    friend class socketstream;
 };
 
@@ -177,6 +181,11 @@ public:
    ~procstream() { delete std::iostream::rdbuf(); }
 
    int_type skip(char c);
+
+   void discard_out()
+   {
+      rdbuf()->discard_out();
+   }
 };
 
 class socketstream : public procstream {

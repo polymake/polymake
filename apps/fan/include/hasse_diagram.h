@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -389,7 +389,7 @@ namespace polymake { namespace fan {
          }
          //Bounded version
          if(far_vertices.size() > 0) {
-            typedef lattice::SetAvodiginCut<lattice::BasicDecoration> setcut;
+            typedef lattice::SetAvoidingCut<lattice::BasicDecoration> setcut;
             typedef lattice::RankCut<lattice::BasicDecoration, lattice::RankCutType::LesserEqual> rankcut;
             setcut bounded_cut(far_vertices);
             rankcut rank_cut(rr.boundary_rank);

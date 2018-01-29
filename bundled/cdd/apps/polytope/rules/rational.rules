@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -66,7 +66,7 @@ rule cdd.convex_hull.linear_span : LINEAR_SPAN : INEQUALITIES {
    cdd_canonicalize_lineality($this,1);
 }
 precondition : INEQUALITIES | EQUATIONS {
-  ($this->INEQUALITIES | EQUATIONS)->rows;
+  $this->give("INEQUALITIES | EQUATIONS")->rows > 0;
 }
 weight 3.10;
 

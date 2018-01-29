@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -47,15 +47,18 @@
    PL_stack_sp=MARK; \
    FREETMPS; LEAVE
 
+#define PmFinishFuncall \
+   PUTBACK; FREETMPS; LEAVE
+
 #define PmFuncallFailed \
    (void)POPs; \
-   PUTBACK; FREETMPS; LEAVE; \
+   PmFinishFuncall; \
    throw exception()
 
 #define PmPopLastResult(sv) \
    SV *sv=POPs; \
    if (SvTEMP(sv)) SvREFCNT_inc_simple_void_NN(sv); \
-   PUTBACK; FREETMPS; LEAVE
+   PmFinishFuncall
 
 #define PmArray(avref) AvARRAY((AV*)SvRV(avref))
 
@@ -70,7 +73,7 @@ namespace pm { namespace perl { namespace glue {
 
 struct cached_cv {
    const char* name;
-   SV* addr;
+   SV* addr=nullptr;
 };
 
 SV** push_current_application(pTHX_ SV **sp);

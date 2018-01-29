@@ -20,6 +20,7 @@
 #  This file describes the type MatroidRingCycle.
 #####################################################################
 
+# @Category Combinatorics
 object MatroidRingCycle {
 
    #Operator overload
@@ -111,7 +112,7 @@ object MatroidRingCycle {
    }
 
    rule DEGREE : NESTED_COEFFICIENTS, N_NESTED_SUMMANDS {
-      $this->DEGREE = ( new Vector<Int>($this->NESTED_COEFFICIENTS)) * ones_vector<Int>($this->N_NESTED_SUMMANDS);
+      $this->DEGREE = new Vector<Int>($this->NESTED_COEFFICIENTS) * ones_vector<Int>($this->N_NESTED_SUMMANDS);
    }
    weight 1.10;
 
@@ -180,7 +181,7 @@ object MatroidRingCycle {
       else {
          return new MatroidRingCycle<Addition>(N_ELEMENTS=>$a->N_ELEMENTS, RANK=>$a->RANK,
                                                 NESTED_PRESENTATIONS=>$a->NESTED_PRESENTATIONS,
-                                                NESTED_COEFFICIENTS=>$b * (new Vector<Int>($a->NESTED_COEFFICIENTS)));
+                                                NESTED_COEFFICIENTS=>$b * new Vector<Int>($a->NESTED_COEFFICIENTS));
 
       }
    }
@@ -214,7 +215,7 @@ user_function matroid_ring_cycle<Addition>(matroid::Matroid; $=1) {
 # > print $z->RANK;
 # | 0
 user_function zero_in_matroid_ring<Addition>($) {
-   return new MatroidRingCycle<Addition>(N_ELEMENTS=>shift, RANK=>0, NESTED_PRESENTATIONS=>(new Array<IncidenceMatrix>()), NESTED_COEFFICIENTS=>(new Array<Int>()));
+   return new MatroidRingCycle<Addition>(N_ELEMENTS=>shift, RANK=>0, NESTED_PRESENTATIONS=>new Array<IncidenceMatrix>(), NESTED_COEFFICIENTS=>new Array<Int>());
 }
 
 
@@ -241,7 +242,7 @@ user_function matroid_ring_product<Addition>(MatroidRingCycle<Addition>, Matroid
       for my $j (0 .. scalar(@blist)-1) {
          my $inter = matroid::intersection($alist[$i], $blist[$j]);
          if($inter->LOOPS->size() == 0) {
-            $base = $base + (new MatroidRingCycle<Addition>($inter, $acoeffs->[$i] * $bcoeffs->[$j] ));
+            $base = $base + new MatroidRingCycle<Addition>($inter, $acoeffs->[$i] * $bcoeffs->[$j]);
          }
       }
    }

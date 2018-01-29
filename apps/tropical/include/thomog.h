@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,6 +19,7 @@
 
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
+#include "polymake/TropicalNumber.h"
 
 namespace polymake{ namespace tropical {
 
@@ -50,31 +51,72 @@ namespace polymake{ namespace tropical {
 		if(chart < 0 || chart > (proj.cols()- (has_leading_coordinate? 2 : 1))){
 			throw std::runtime_error("Invalid chart coordinate");
 		}
-		Matrix<Coefficient> affine = proj.minor(All,~scalar2set(has_leading_coordinate? chart+1 : chart));
-		for(int r = 0; r < affine.rows(); r++) {
-			if(has_leading_coordinate) {
-				affine.row(r).slice(~scalar2set(0)) -= proj.top()(r,chart+1)* ones_vector<Coefficient>(affine.cols()-1);
-			}
-			else {
-				affine.row(r) -= proj.top()(r,chart)*ones_vector<Coefficient>(affine.cols());
-			}
+		Matrix<Coefficient> affine(proj);
+		if (has_leading_coordinate) {
+		  Matrix<Coefficient> sub(repeat_col(affine.col(chart+1),affine.cols()-1));
+		  affine.minor(All,sequence(1,affine.cols()-1)) -= sub;
 		}
-		return affine;
+		else  {
+  		  Matrix<Coefficient> sub(repeat_col(affine.col(chart),affine.cols()));
+		  affine -= sub;
+		}				
+		return affine.minor(All,~scalar2set(has_leading_coordinate? chart+1 : chart));
 	}
 
+
+	
 	template <typename Coefficient, typename VType>
 	Vector<Coefficient> tdehomog_vec(const GenericVector<VType, Coefficient> &proj, int chart=0, bool has_leading_coordinate = true) {
 		if(proj.dim() <= 1) return Vector<Coefficient>();
 		if(chart < 0 || chart > (proj.dim() - (has_leading_coordinate? 2 : 1))) 
 			throw std::runtime_error("Invalid chart coordinate");
-		Vector<Coefficient> affine = proj.slice(~scalar2set(has_leading_coordinate? chart+1 : chart));
+		
+		Vector<Coefficient> affine(proj);
 		if(has_leading_coordinate) {
-			affine.slice(~scalar2set(0)) -= proj.top()[chart+1]* ones_vector<Coefficient>(affine.dim()-1);
+		    Vector<Coefficient> subtr(zero_value<Coefficient>() | affine[chart+1] * ones_vector<Coefficient>(affine.dim()-1));
+		    affine -= subtr;
 		}
 		else {
-			affine -= proj.top()[chart] * ones_vector<Coefficient>(affine.dim());
+		    Vector<Coefficient> subtr(affine[chart] * ones_vector<Coefficient>(affine.dim()));
+		    affine -= subtr;
 		}
-		return affine;
+		return affine.slice(~scalar2set(has_leading_coordinate? chart+1 : chart));
+	}
+
+	/*
+	 * @brief: scale the rows of a matrix so that
+	 * the first non-null entry of each row is tropical one
+	 */
+	template <typename Addition, typename Scalar, typename MatrixTop>
+	  Matrix<TropicalNumber<Addition, Scalar> > normalized_first(const GenericMatrix<MatrixTop, TropicalNumber<Addition, Scalar> >& homogeneous_points) {
+	  typedef TropicalNumber<Addition,Scalar> TNumber;
+
+	  Matrix<TNumber> result(homogeneous_points);
+	  for(auto r : rows(result)) {
+	    TNumber value;
+	    for(auto entry : r) {
+	      if (!is_zero(entry)) {value = entry; break;}
+	    }
+	    if (!is_zero(value)) r /= value;
+	  }
+	  return result;
+	}
+
+	/*
+	 * @brief: scale the rows of a matrix so that
+	 * the first non-null entry of each row is tropical one
+	 */
+	template <typename Addition, typename Scalar, typename VectorTop>
+	  Vector<TropicalNumber<Addition, Scalar> > normalized_first(const GenericVector<VectorTop, TropicalNumber<Addition, Scalar> >& homogeneous_point) {
+	  typedef TropicalNumber<Addition,Scalar> TNumber;
+
+	  Vector<TNumber> result(homogeneous_point);
+	  TNumber value;
+	  for(auto entry : result) {
+	    if (!is_zero(entry)) {value = entry; break;}
+	  }
+	  if (!is_zero(value)) result /= value;
+	  return result;
 	}
 
 }}

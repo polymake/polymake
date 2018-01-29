@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -16,31 +16,55 @@
 #  Complete production cycle for automatic part of documentation
 #
 
-my ($noHTML, $noExt, $snapshot);
+my ($noHTML, $noExt, $snapshot, $link_resources);
 
-if ( !GetOptions( noHTML => \$noHTML, noExt => \$noExt, snapshot => \$snapshot ) or
-     !@ARGV ) {
-   die "usage: polymake --script generate_docs [--noHTML] [--noExt] [--snapshot] OutDir AppName ... \n",
-       "from the polymake shell: script(\"generate_docs\", \"OutDir\");\n";
+if ( !GetOptions( noHTML => \$noHTML, noExt => \$noExt, snapshot => \$snapshot,
+                  'link-resources' => \$link_resources ) or
+     @ARGV > 1 ||
+     !@ARGV && !$DeveloperMode) {
+   die <<'.';
+usage: polymake [--ignore-config] --script generate_docs [--noHTML --noExt --snapshot --link-resources] [OutDir]
+
+  OutDir    top directory where all created documentation files are placed
+            It must be specified when running in an installed polymake;
+            in a developer's workspace, the default location is build/doc.
+
+  --noHTML  stop after created XML files with documentation skeleton,
+            do not produce final HTML pages
+
+  --noExt   do not produce separate pages describing single extensions
+            Note: features defined in extensions will still appear on the common pages;
+            to suppress them, please add --ignore-config polymake option.
+            Bundled extensions can't be suppressed without reconfiguration of polymake.
+
+  --snapshot  include the current GIT branch information instead of the polymake version.
+
+  --link-resources  add symlinks to the resource files (CSS, icons) in OutDir even when no HTML is produced
+.
 }
 
 my $Wiki="http://polymake.org/";
-
 my $docdir="$InstallTop/xml/documentation";
 
-my $outdir=shift @ARGV;
-
-my @Apps=@ARGV;
-if ($Shell->interactive) {
-   unless (@Apps) { @ARGV=known Core::Application; }
+my $outdir=$ARGV[0] || Cwd::abs_path("$InstallArch/../doc");
+if (-d $outdir) {
+   # wipe out everything if this looks like the old documentation
+   if (not grep { not -d $_ ? m{/(?:inc|images|PTL)$} : m{\.(?:html|css|js)$} } glob("$outdir/*")
+         and
+       -f "$outdir/inc/core.inc" && -f "$outdir/inc/doc_index.inc"
+         and
+       !glob("$outdir/*.html") || (-f "$outdir/core.html" && -f "$outdir/doc_index.html")) {
+      File::Path::remove_tree($outdir, { keep_root=>1 });
+   } elsif (glob("$outdir/*")) {
+      die "output directory $outdir contains unexpected files; please wipe it out or specify a different location\n";
+   }
 } else {
-   # running in batch mode
-   unless (@Apps) { @Apps=@start_applications or die "no applications specified\n"; }
+   File::Path::make_path($outdir);
 }
 
-File::Path::mkpath($outdir);
+my @Apps=sorted_uniq(sort( map { /$filename_re/o } map { glob("$_/apps/*") } $InstallTop, @Core::Extension::active[$Core::Extension::num_bundled..$#Core::Extension::active] ));
 
-my $tmpdir=Tempfile->new_dir;
+my $tmpdir=new Tempdir;
 
 script("extract_docs", '--wiki' => $Wiki, '--outsuffix' => '.html', '--outdir' => $tmpdir, @Apps);
 
@@ -56,18 +80,16 @@ if ($DeveloperMode && $snapshot) {
 }
 
 $writer->startTag("extensions");
-my $i=0;
-for (@Core::Extension::active) {
+for my $ext (@Core::Extension::active) {
   $writer->startTag("extension");
-  if ($i>= $Core::Extension::num_bundled) {
-     $writer->dataElement("non_bundled",1);
+  if (!$ext->is_bundled) {
+     $writer->dataElement("non_bundled", 1);
   }
-  ++$i;
-  $writer->dataElement("URI", $_->URI);
+  $writer->dataElement("URI", $ext->URI);
   unless ($noExt) {
-     $writer->dataElement("name", $_->short_name) if ($_->short_name);
-     $writer->dataElement("text", $_->credit->text) if ($_->credit);
-     my $ext_file = $_->URI;
+     $writer->dataElement("name", $ext->short_name) if ($ext->short_name);
+     $writer->dataElement("text", $ext->credit->text) if ($ext->credit);
+     my $ext_file = $ext->URI;
      $ext_file =~ s|http://||og;
      $ext_file =~ s|[/:.]|_|og;
      $writer->dataElement("file", $ext_file);
@@ -130,9 +152,12 @@ unless ($noHTML) {
    run_xsltproc("$outdir/doc_index.html", "export", "$outdir/inc/doc_index.inc");
 }
 
-File::Path::mkpath("$outdir/images");
-system("cp -p $docdir/images/*.png $outdir/images");
-system("cp -p $docdir/*.js $docdir/*.css $outdir/");
+if ($link_resources || !$noHTML) {
+   symlink "$docdir/images", "$outdir/images";
+   foreach my $file (glob("$docdir/*.{js,css}")) {
+      symlink $file, "$outdir/".substr($file, length($docdir)+1);
+   }
+}
 
 
 # Local Variables:

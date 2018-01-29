@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -48,11 +48,11 @@ namespace polymake { namespace graph { namespace lattice {
     * Only keeps sets not intersecting a fixed set
     */
    template <typename Decoration>
-      class SetAvodiginCut{
+      class SetAvoidingCut {
          protected:
             const Set<int> avoid;
          public:
-            SetAvodiginCut(const Set<int>& set_arg) : avoid(set_arg) {}
+            SetAvoidingCut(const Set<int>& set_arg) : avoid(set_arg) {}
             inline bool operator()(const Decoration &data) const {
                return (data.face * avoid).empty();
             }

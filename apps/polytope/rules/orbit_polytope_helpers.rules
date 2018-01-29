@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -28,18 +28,6 @@
 ###################################################################
 
 
-sub getContainedPoints {
-   my ($p, $points) = @_;
-   my $indices = new Set<Int>();
-   for ( my $i=0; $i<$points->rows; ++$i ) {
-      if ( !separable($p, $points->[$i]) ) { # points->row(i) is contained in $p
-         $indices += $i;
-      }
-   }
-   my $containedPoints = new Matrix( $points->minor($indices, All) );
-   return $containedPoints;
-}
-
 sub getContainedPointsIndices {
    my ($p, $points) = @_;
    my $indices = new Set<Int>();
@@ -49,6 +37,11 @@ sub getContainedPointsIndices {
       }
    }
    return $indices;
+}
+
+sub getContainedPoints {
+   my ($p, $points) = @_;
+   return $points->minor(getContainedPointsIndices($p, $points), All);
 }
 
 
@@ -88,19 +81,14 @@ sub getLexMin {
 
 sub getArrayNumberFromArrayOfSets {
    my ($index, $arrOfSets) = @_;
-   my $found = 0;
 
    for ( my $i=0; $i<$arrOfSets->size; ++$i ) {
-      my $set = $arrOfSets->[$i];  
-      if ( $set->contains($index) ) {
-         $found = 1;
+      if ( $arrOfSets->[$i]->contains($index) ) {
          return $i;
       }
    }
 
-   if ( !$found ) {
-      croak("The index $index was not contained in the array of sets");
-   }
+   croak("The index $index was not contained in the array of sets");
 
 }
 
@@ -151,7 +139,7 @@ user_function nestedOPGraph (Vector, Matrix, Matrix, group::PermutationAction, $
     # take any(!) representative per orbit except for orbit of starting point
     my @rep_ind = map{ if($_ != $orbOfStart) { @{$orbit_decomp->[$_]}[0]; } else {} } 0..$orbit_decomp->size-1;
     my $rep_ind = new Set<Int>(\@rep_ind);
-    my $lp_reps = new Matrix( vector2row( convert_to<Rational>($minInStartOrbit) ) / ( new Matrix( $lattice_points->minor($rep_ind, All) ) ) ); #$start at row 0
+    my $lp_reps = convert_to<Rational>($minInStartOrbit) / convert_to<Rational>($lattice_points->minor($rep_ind, All)); #$start at row 0
     if ($verbose) {
        print "All lattice point representatives in orb([$gen_point]):\n".$lp_reps."\n";
     }

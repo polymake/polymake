@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,6 +17,7 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/Graph.h"
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/client.h"
 #include "polymake/graph/compare.h"
 
@@ -29,5 +30,6 @@ namespace polymake { namespace graph { namespace {
    };
 
    FunctionInstance4perl(canonical_hash_X_x, perl::Canned< const Graph< Undirected > >);
+   FunctionInstance4perl(canonical_hash_X_x, perl::Canned< const IncidenceMatrix< NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

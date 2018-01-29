@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,8 +17,8 @@
 #ifndef POLYMAKE_POLYNOMIALVARNAMES_H
 #define POLYMAKE_POLYNOMIALVARNAMES_H
 
-#include <polymake/Array.h>
-#include <polymake/vector>
+#include "polymake/Array.h"
+#include "polymake/vector"
 #include <string>
 
 namespace pm {

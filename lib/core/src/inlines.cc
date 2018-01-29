@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,13 +19,18 @@
 #include "polymake/internal/type_union.h"
 #include "polymake/internal/shared_object.h"
 #include "polymake/FacetList.h"
-#include <sys/types.h>
-#include <unistd.h>
+#include <stdexcept>
 
 namespace pm {
 namespace virtuals {
 
-void _nop() {}
+void empty_union_def::invalid_op(char*, ...)
+{
+   throw std::runtime_error("invalid operation on an empty union object");
+}
+
+void empty_union_def::trivial_op(char*) {}
+void empty_union_def::trivial_op2(char*, const char*) {}
 
 }
 namespace fl_internal {

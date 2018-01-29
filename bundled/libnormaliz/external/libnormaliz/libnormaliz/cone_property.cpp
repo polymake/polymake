@@ -95,12 +95,28 @@ ConeProperties& ConeProperties::reset(const ConeProperties& ConeProps) {
 }
 
 ConeProperties& ConeProperties::reset_compute_options() {
+    CPs.set(ConeProperty::Projection, false);
+    CPs.set(ConeProperty::ProjectionFloat, false);
+    CPs.set(ConeProperty::NoProjection, false);
     CPs.set(ConeProperty::Approximate, false);
     CPs.set(ConeProperty::BottomDecomposition, false);
+    CPs.set(ConeProperty::NoBottomDec, false);
     CPs.set(ConeProperty::DefaultMode, false);
     CPs.set(ConeProperty::DualMode, false);
+    CPs.set(ConeProperty::PrimalMode, false);
     CPs.set(ConeProperty::KeepOrder, false);
     CPs.set(ConeProperty::HSOP, false);
+    CPs.set(ConeProperty::Symmetrize, false);
+    CPs.set(ConeProperty::NoSymmetrization, false);
+    CPs.set(ConeProperty::BigInt, false);
+    CPs.set(ConeProperty::NoSubdivision, false);
+    CPs.set(ConeProperty::NoNestedTri, false);
+    CPs.set(ConeProperty::NoPeriodBound, false);
+    CPs.set(ConeProperty::SCIP, false);
+    CPs.set(ConeProperty::NoLLL, false);
+    CPs.set(ConeProperty::NoRelax, false);
+    CPs.set(ConeProperty::ExplicitHilbertSeries, false);
+    CPs.set(ConeProperty::NakedDual, false);
     return *this;
 }
 
@@ -114,12 +130,28 @@ ConeProperties ConeProperties::goals() {
 }
 ConeProperties ConeProperties::options() {
     ConeProperties ret;
+    ret.set(ConeProperty::Projection, CPs.test(ConeProperty::Projection));
+    ret.set(ConeProperty::ProjectionFloat, CPs.test(ConeProperty::ProjectionFloat));
+    ret.set(ConeProperty::NoProjection, CPs.test(ConeProperty::NoProjection));
     ret.set(ConeProperty::Approximate, CPs.test(ConeProperty::Approximate));
     ret.set(ConeProperty::BottomDecomposition, CPs.test(ConeProperty::BottomDecomposition));
+    ret.set(ConeProperty::NoBottomDec, CPs.test(ConeProperty::NoBottomDec));
     ret.set(ConeProperty::DefaultMode, CPs.test(ConeProperty::DefaultMode));
     ret.set(ConeProperty::DualMode, CPs.test(ConeProperty::DualMode));
     ret.set(ConeProperty::KeepOrder, CPs.test(ConeProperty::KeepOrder));
     ret.set(ConeProperty::HSOP, CPs.test(ConeProperty::HSOP));
+    ret.set(ConeProperty::Symmetrize, CPs.test(ConeProperty::Symmetrize));
+    ret.set(ConeProperty::NoSymmetrization, CPs.test(ConeProperty::NoSymmetrization));
+    ret.set(ConeProperty::PrimalMode, CPs.test(ConeProperty::PrimalMode));
+    ret.set(ConeProperty::NoSubdivision, CPs.test(ConeProperty::NoSubdivision));
+    ret.set(ConeProperty::NoNestedTri, CPs.test(ConeProperty::NoNestedTri));
+    ret.set(ConeProperty::BigInt, CPs.test(ConeProperty::BigInt));
+    ret.set(ConeProperty::NoPeriodBound, CPs.test(ConeProperty::NoPeriodBound));
+    ret.set(ConeProperty::SCIP, CPs.test(ConeProperty::SCIP));
+    ret.set(ConeProperty::NoLLL, CPs.test(ConeProperty::NoLLL));
+    ret.set(ConeProperty::NoRelax, CPs.test(ConeProperty::NoRelax));
+    ret.set(ConeProperty::ExplicitHilbertSeries, CPs.test(ConeProperty::ExplicitHilbertSeries));
+    ret.set(ConeProperty::NakedDual, CPs.test(ConeProperty::NakedDual));
     return ret;
 }
 
@@ -139,7 +171,39 @@ size_t ConeProperties::count() const {
 
 
 /* add preconditions */
-void ConeProperties::set_preconditions() {
+void ConeProperties::set_preconditions(bool inhomogeneous) {
+    
+    if(CPs.test(ConeProperty::EuclideanVolume))
+        CPs.set(ConeProperty::Volume);
+    
+    if(inhomogeneous && CPs.test(ConeProperty::Deg1Elements)){
+        CPs.set(ConeProperty::ModuleGenerators);
+        CPs.reset(ConeProperty::Deg1Elements);
+    }
+    
+    if(!inhomogeneous && CPs.test(ConeProperty::Volume)){
+        CPs.set(ConeProperty::Multiplicity);
+    }
+        
+    
+    if(CPs.test(ConeProperty::VerticesFloat)){
+        CPs.set(ConeProperty::SupportHyperplanes);
+        if(!inhomogeneous)
+            CPs.set(ConeProperty::Grading);        
+    }
+    
+    if(CPs.test(ConeProperty::ProjectionFloat))
+        CPs.set(ConeProperty::Projection);
+    
+    if(CPs.test(ConeProperty::GeneratorOfInterior))
+        CPs.set(ConeProperty::IsGorenstein);
+    
+    if(CPs.test(ConeProperty::IsGorenstein))
+        CPs.set(ConeProperty::SupportHyperplanes);
+    
+    if(CPs.test(ConeProperty::NoNestedTri))
+        CPs.set(ConeProperty::NoSubdivision);
+    
     if (CPs.test(ConeProperty::WitnessNotIntegrallyClosed))
         CPs.set(ConeProperty::IsIntegrallyClosed);
 
@@ -156,7 +220,10 @@ void ConeProperties::set_preconditions() {
 
     if (CPs.test(ConeProperty::IsPointed))
         CPs.set(ConeProperty::ExtremeRays);
-
+    
+    if (CPs.test(ConeProperty::VerticesOfPolyhedron))
+        CPs.set(ConeProperty::ExtremeRays);
+    
     if (CPs.test(ConeProperty::ExtremeRays))
         CPs.set(ConeProperty::SupportHyperplanes);
         
@@ -164,10 +231,7 @@ void ConeProperties::set_preconditions() {
         CPs.set(ConeProperty::SupportHyperplanes);
         CPs.set(ConeProperty::HilbertSeries);
     }
-    // inhomogenous preconditions
-    if (CPs.test(ConeProperty::VerticesOfPolyhedron))
-        CPs.set(ConeProperty::ExtremeRays);
-    
+
     if(CPs.test(ConeProperty::ModuleGeneratorsOverOriginalMonoid))
         CPs.set(ConeProperty::HilbertBasis);
 
@@ -176,15 +240,50 @@ void ConeProperties::set_preconditions() {
     
     if (CPs.test(ConeProperty::MaximalSubspace))
         CPs.set(ConeProperty::SupportHyperplanes);
+
+    if (CPs.test(ConeProperty::ConeDecomposition))
+        CPs.set(ConeProperty::Triangulation); 
     
-    // always
+    if (CPs.test(ConeProperty::GradingDenom))
+        CPs.reset(ConeProperty::Grading);
     
-    if (CPs.test(ConeProperty::ExtremeRays))
-        CPs.set(ConeProperty::SupportHyperplanes);
+    if(CPs.test(ConeProperty::UnitGroupIndex))
+        CPs.set(ConeProperty::HilbertBasis);
+    
+    if(CPs.test(ConeProperty::Equations) || CPs.test(ConeProperty::Congruences) || CPs.test(ConeProperty::ExternalIndex))
+        CPs.set(ConeProperty::Sublattice);
+    
+    if(CPs.test(ConeProperty::Rank))
+        CPs.set(ConeProperty::Sublattice);
+    
+    if(CPs.test(ConeProperty::HilbertQuasiPolynomial))
+        CPs.set(ConeProperty::HilbertSeries);
+    
+    if(CPs.test(ConeProperty::Multiplicity) || CPs.test(ConeProperty::HilbertSeries))
+        CPs.set(ConeProperty::SupportHyperplanes);  // to meke them computed if Symmetrize is used
+        
+    if (CPs.test(ConeProperty::Integral)){
+        // CPs.set(ConeProperty::Multiplicity);
+        CPs.set(ConeProperty::Triangulation);
+    }
+    
+    if (CPs.test(ConeProperty::VirtualMultiplicity)){
+        // CPs.set(ConeProperty::Multiplicity);
+        CPs.set(ConeProperty::Triangulation);
+    }
+    
+    if (CPs.test(ConeProperty::WeightedEhrhartQuasiPolynomial))
+        CPs.set(ConeProperty::WeightedEhrhartSeries);
+    
+    if (CPs.test(ConeProperty::WeightedEhrhartSeries)){
+        // CPs.set(ConeProperty::Multiplicity);
+        CPs.set(ConeProperty::StanleyDec);
+    }
 }
 
 /* removes ignored compute options and sets implications */
 void ConeProperties::prepare_compute_options(bool inhomogeneous) {
+
     if (CPs.test(ConeProperty::IntegerHull)){
         if(inhomogeneous){
             CPs.set(ConeProperty::HilbertBasis);
@@ -193,6 +292,7 @@ void ConeProperties::prepare_compute_options(bool inhomogeneous) {
             CPs.set(ConeProperty::Deg1Elements);
         }
     }
+    
     // -d without -1 means: compute Hilbert basis in dual mode
     if (CPs.test(ConeProperty::DualMode) && !CPs.test(ConeProperty::Deg1Elements)){
         CPs.set(ConeProperty::HilbertBasis);
@@ -200,32 +300,74 @@ void ConeProperties::prepare_compute_options(bool inhomogeneous) {
     
     if(CPs.test(ConeProperty::ModuleGeneratorsOverOriginalMonoid)) // can't be computed in dual mode
         CPs.reset(ConeProperty::DualMode);
+    
+    if((CPs.test(ConeProperty::Approximate) || CPs.test(ConeProperty::Projection))){
+        if(inhomogeneous)
+            CPs.set(ConeProperty::HilbertBasis);
+        else
+            CPs.set(ConeProperty::Deg1Elements);
+    }
 
-    // dual mode has priority, approximation makes no sense if HB is computed
-    if(CPs.test(ConeProperty::DualMode) || CPs.test(ConeProperty::HilbertBasis))
+    // dual mode has priority, approximation and projection make no sense if HB is computed, except possibly with inhomogeneous data
+    if(CPs.test(ConeProperty::DualMode) || (CPs.test(ConeProperty::HilbertBasis) && !inhomogeneous)){
         CPs.reset(ConeProperty::Approximate);
+        CPs.reset(ConeProperty::Projection);
+    }
 
-    if ((CPs.test(ConeProperty::DualMode) || CPs.test(ConeProperty::Approximate))
+    if ((CPs.test(ConeProperty::DualMode) || CPs.test(ConeProperty::Approximate) || CPs.test(ConeProperty::Projection))
         && (CPs.test(ConeProperty::HilbertSeries) || CPs.test(ConeProperty::StanleyDec))
          && !CPs.test(ConeProperty::HilbertBasis)){
         CPs.reset(ConeProperty::DualMode); //it makes no sense to compute only deg 1 elements in dual mode
-        CPs.reset(ConeProperty::Approximate); // or by approximation if the
-    }                                            // Stanley decomposition must be computed anyway
-    if (CPs.test(ConeProperty::Approximate)
-            && !CPs.test(ConeProperty::Deg1Elements)) {
-        errorOutput() << "WARNING: Approximate is ignored since Deg1Elements is not set."<< std::endl;
-    }
-    if (CPs.test(ConeProperty::ConeDecomposition))
-        CPs.reset(ConeProperty::Triangulation);    
+        CPs.reset(ConeProperty::Approximate); // or by approximation or projection if the
+        CPs.reset(ConeProperty::Projection); // Stanley decomposition must be computed anyway             
+    }                                            
     
     if(inhomogeneous && CPs.test(ConeProperty::SupportHyperplanes))
         CPs.set(ConeProperty::AffineDim);
-        
+
+    if(CPs.test(ConeProperty::DefaultMode)){
+        CPs.set(ConeProperty::HilbertBasis);
+        CPs.set(ConeProperty::HilbertSeries);
+        if(!inhomogeneous)
+            CPs.set(ConeProperty::ClassGroup);
+        CPs.set(ConeProperty::SupportHyperplanes);        
+    }
 }
 
+void ConeProperties::check_conflicting_variants() {
+    
+        if(        
+           (CPs.test(ConeProperty::BottomDecomposition) && CPs.test(ConeProperty::NoBottomDec))
+        || (CPs.test(ConeProperty::DualMode) && CPs.test(ConeProperty::PrimalMode))
+        || (CPs.test(ConeProperty::Symmetrize) && CPs.test(ConeProperty::NoSymmetrization))
+        || (CPs.test(ConeProperty::Projection) && CPs.test(ConeProperty::NoProjection))
+        || (CPs.test(ConeProperty::Projection) && CPs.test(ConeProperty::ProjectionFloat))
+        || (CPs.test(ConeProperty::NoProjection) && CPs.test(ConeProperty::ProjectionFloat))
+    )
+    throw BadInputException("Contradictory algorithmic variants in options.");
 
-void ConeProperties::check_sanity(bool inhomogeneous) {
+    size_t nr_var=0;
+    if(CPs.test(ConeProperty::DualMode))
+        nr_var++;
+    if(CPs.test(ConeProperty::PrimalMode))
+        nr_var++;
+    if(CPs.test(ConeProperty::Projection))
+        nr_var++;
+    if(CPs.test(ConeProperty::ProjectionFloat))
+        nr_var++;
+    if(CPs.test(ConeProperty::Approximate))
+        nr_var++;
+    if(nr_var>1)
+        throw BadInputException("Only one of DualMode, PrimalMode, Approximate, Projection, ProjectionFloat allowed.");
+}
+
+void ConeProperties::check_sanity(bool inhomogeneous) {    
+    
     ConeProperty::Enum prop;
+        
+    if(CPs.test(ConeProperty::IsTriangulationNested) || CPs.test(ConeProperty::IsTriangulationPartial))
+        throw BadInputException("ConeProperty not allowed in compute().");
+        
     for (size_t i=0; i<ConeProperty::EnumSize; i++) {
         if (CPs.test(i)) {
             prop = static_cast<ConeProperty::Enum>(i);
@@ -236,16 +378,27 @@ void ConeProperties::check_sanity(bool inhomogeneous) {
                   || prop == ConeProperty::ConeDecomposition
                   || prop == ConeProperty::IsIntegrallyClosed
                   || prop == ConeProperty::WitnessNotIntegrallyClosed
-                  || prop == ConeProperty::Approximate
                   || prop == ConeProperty::ClassGroup
-                 // || prop == ConeProperty::ModuleGeneratorsOverOriginalMonoid
+                  || prop == ConeProperty::Symmetrize
+                  || prop == ConeProperty::NoSymmetrization
+                  || prop == ConeProperty::InclusionExclusionData
+                  || prop == ConeProperty::ExcludedFaces
+                  || prop == ConeProperty::UnitGroupIndex
+                  || prop == ConeProperty::ReesPrimaryMultiplicity
+                  || prop == ConeProperty::IsReesPrimary
+                  || prop == ConeProperty::IsDeg1HilbertBasis
+                  || prop == ConeProperty::IsDeg1ExtremeRays
+                  || prop == ConeProperty::Integral
+                  || prop == ConeProperty::IsGorenstein
+                  || prop == ConeProperty::GeneratorOfInterior
                 ) {
                     throw BadInputException(toString(prop) + " not computable in the inhomogeneous case.");
                 }
             } else { // homgeneous
                 if ( prop == ConeProperty::VerticesOfPolyhedron
                   || prop == ConeProperty::ModuleRank
-                  || prop == ConeProperty::ModuleGenerators ) {
+                  || prop == ConeProperty::ModuleGenerators 
+                ) {
                     throw BadInputException(toString(prop) + " only computable in the inhomogeneous case.");
                 }
             }
@@ -261,12 +414,15 @@ namespace {
         vector<string> CPN(ConeProperty::EnumSize);
         CPN.at(ConeProperty::Generators) = "Generators";
         CPN.at(ConeProperty::ExtremeRays) = "ExtremeRays";
+        CPN.at(ConeProperty::VerticesFloat) = "VerticesFloat";
         CPN.at(ConeProperty::VerticesOfPolyhedron) = "VerticesOfPolyhedron";
         CPN.at(ConeProperty::SupportHyperplanes) = "SupportHyperplanes";
         CPN.at(ConeProperty::TriangulationSize) = "TriangulationSize";
         CPN.at(ConeProperty::TriangulationDetSum) = "TriangulationDetSum";
         CPN.at(ConeProperty::Triangulation) = "Triangulation";
         CPN.at(ConeProperty::Multiplicity) = "Multiplicity";
+        CPN.at(ConeProperty::Volume) = "Volume";
+        CPN.at(ConeProperty::EuclideanVolume) = "EuclideanVolume";
         CPN.at(ConeProperty::RecessionRank) = "RecessionRank";
         CPN.at(ConeProperty::AffineDim) = "AffineDim";
         CPN.at(ConeProperty::ModuleRank) = "ModuleRank";
@@ -290,18 +446,53 @@ namespace {
         CPN.at(ConeProperty::Sublattice) = "Sublattice";
         CPN.at(ConeProperty::ClassGroup) = "ClassGroup";
         CPN.at(ConeProperty::ModuleGeneratorsOverOriginalMonoid) = "ModuleGeneratorsOverOriginalMonoid";
-        // the following are more compute options than real properties of the cone
         CPN.at(ConeProperty::Approximate) = "Approximate";
         CPN.at(ConeProperty::BottomDecomposition) = "BottomDecomposition";
         CPN.at(ConeProperty::DefaultMode) = "DefaultMode";
         CPN.at(ConeProperty::DualMode) = "DualMode";
         CPN.at(ConeProperty::KeepOrder) = "KeepOrder";
         CPN.at(ConeProperty::IntegerHull) = "IntegerHull";
+        CPN.at(ConeProperty::ProjectCone) = "ProjectCone";
         CPN.at(ConeProperty::MaximalSubspace) = "MaximalSubspace";
         CPN.at(ConeProperty::ConeDecomposition) = "ConeDecomposition";
         CPN.at(ConeProperty::HSOP) = "HSOP";
+        CPN.at(ConeProperty::NoBottomDec) = "NoBottomDec";        
+        CPN.at(ConeProperty::PrimalMode) = "PrimalMode";
+        CPN.at(ConeProperty::Symmetrize) = "Symmetrize";
+        CPN.at(ConeProperty::NoSymmetrization) = "NoSymmetrization";
+        CPN.at(ConeProperty::EmbeddingDim) = "EmbeddingDim";
+        CPN.at(ConeProperty::Rank) = "Rank";
+        CPN.at(ConeProperty::InternalIndex) = "InternalIndex";
+        CPN.at(ConeProperty::IsInhomogeneous) = "IsInhomogeneous";
+        CPN.at(ConeProperty::UnitGroupIndex) = "UnitGroupIndex";
+        CPN.at(ConeProperty::GradingDenom) = "GradingDenom";
+        CPN.at(ConeProperty::Equations) = "Equations";
+        CPN.at(ConeProperty::Congruences) = "Congruences";
+        CPN.at(ConeProperty::ExternalIndex) = "ExternalIndex";
+        CPN.at(ConeProperty::HilbertQuasiPolynomial) = "HilbertQuasiPolynomial";
+        CPN.at(ConeProperty::IsTriangulationNested) = "IsTriangulationNested";
+        CPN.at(ConeProperty::IsTriangulationPartial) = "IsTriangulationPartial";
+        CPN.at(ConeProperty::BigInt) = "BigInt";
+        CPN.at(ConeProperty::NoSubdivision) = "NoSubdivision";
+        CPN.at(ConeProperty::Projection) = "Projection";
+        CPN.at(ConeProperty::ProjectionFloat) = "ProjectionFloat";
+        CPN.at(ConeProperty::NoProjection) = "NoProjection";
+        CPN.at(ConeProperty::NoNestedTri) = "NoNestedTri";
+        CPN.at(ConeProperty::Integral) = "Integral";
+        CPN.at(ConeProperty::VirtualMultiplicity) = "VirtualMultiplicity";
+        CPN.at(ConeProperty::WeightedEhrhartSeries) = "WeightedEhrhartSeries";
+        CPN.at(ConeProperty::WeightedEhrhartQuasiPolynomial) = "WeightedEhrhartQuasiPolynomial";
+        CPN.at(ConeProperty::IsGorenstein) = "IsGorenstein";
+        CPN.at(ConeProperty::NoPeriodBound) = "NoPeriodBound";
+        CPN.at(ConeProperty::SCIP) = "SCIP";
+        CPN.at(ConeProperty::NoLLL) = "NoLLL";
+        CPN.at(ConeProperty::NoRelax) = "NoRelax";
+        CPN.at(ConeProperty::GeneratorOfInterior) = "GeneratorOfInterior";
+        CPN.at(ConeProperty::ExplicitHilbertSeries) = "ExplicitHilbertSeries";
+        CPN.at(ConeProperty::NakedDual) = "NakedDual";
+        
         // detect changes in size of Enum, to remember to update CPN!
-        static_assert (ConeProperty::EnumSize == 40,
+        static_assert (ConeProperty::EnumSize == 78,
             "ConeProperties Enum size does not fit! Update cone_property.cpp!");
         // assert all fields contain an non-empty string
         for (size_t i=0;  i<ConeProperty::EnumSize; i++) {

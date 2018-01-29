@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -22,6 +22,7 @@
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
 #include "polymake/PuiseuxFraction.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
@@ -46,5 +47,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(dim_f1, perl::Canned< const Vector< PuiseuxFraction< Min, Rational, Rational > > >);
    FunctionInstance4perl(dim_f1, perl::Canned< const Vector< int > >);
    FunctionInstance4perl(dim_f1, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double>&>, pm::Series<int, true>, mlist<> > >);
+   FunctionInstance4perl(dim_f1, perl::Canned< const pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::QuadraticExtension<pm::Rational> >&>, pm::Series<int, true>, mlist<> >, pm::Series<int, true> const&, mlist<> > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

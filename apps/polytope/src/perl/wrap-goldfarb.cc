@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -38,5 +38,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(goldfarb_sit_T_int_C_C, Rational, perl::Canned< const Rational >, perl::Canned< const Rational >);
    FunctionInstance4perl(goldfarb_sit_T_int_C_C, PuiseuxFraction< Min, Rational, Rational >, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >);
    FunctionInstance4perl(goldfarb_T_int_C_C, PuiseuxFraction< Min, Rational, Rational >, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, int);
+   FunctionInstance4perl(goldfarb_sit_T_int_C_C, PuiseuxFraction< Min, Rational, Rational >, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

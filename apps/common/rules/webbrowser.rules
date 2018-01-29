@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -18,9 +18,17 @@ package Visual;
 # webbrowser supporting JavaScript and SVG documents
 custom $webbrowser;
 
-CONFIGURE_OPT {
+CONFIGURE {
    # 'Open' is for Mac OS X
-   find_program($webbrowser, qw( sensible-browser xdg-open chrome firefox open ), { prompt => "the web browser" });
+   find_program($webbrowser, qw( sensible-browser xdg-open chrome firefox open ),
+                { prompt => "the web browser",
+                  check => sub {
+                     # sensible-browser script may appear on a system without any browsers installed
+                     $_[0] =~ m{^\S*\bsensible-browser$} && not($ENV{BROWSER} && -x $ENV{BROWSER}) &&
+                     !-e "/usr/bin/x-www-browser" && !-e "/etc/alternatives/x-www-browser" &&
+                     "sensible-browser can't be chosen because no real web browser is installed";
+                  },
+                });
 }
 
 

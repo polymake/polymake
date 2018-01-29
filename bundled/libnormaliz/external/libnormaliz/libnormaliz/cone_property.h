@@ -35,48 +35,110 @@ namespace libnormaliz {
  */
 namespace ConeProperty {
     enum Enum {
-        // goals that can be computed
+        //
+        // goals that can be computed (or are defined by input data)
+        //
+        // matrix valued
         Generators,
         ExtremeRays,
+        VerticesFloat,
         VerticesOfPolyhedron,
         SupportHyperplanes,
-        TriangulationSize,
-        TriangulationDetSum,
-        Triangulation,
-        Multiplicity,
-        RecessionRank,
-        AffineDim,
-        ModuleRank,
         HilbertBasis,
         ModuleGenerators,
         Deg1Elements,
-        HilbertSeries,
+        ModuleGeneratorsOverOriginalMonoid,
+        Sublattice, 
+        ExcludedFaces,
+        OriginalMonoidGenerators,
+        MaximalSubspace,
+        Equations,
+        Congruences,
+        //vector valued
         Grading,
+        Dehomogenization,
+        WitnessNotIntegrallyClosed,
+        GeneratorOfInterior,
+        // Cardinalities
+        TriangulationSize,
+        // Integer valued,        
+        TriangulationDetSum,
+        ReesPrimaryMultiplicity,
+        GradingDenom,
+        UnitGroupIndex,
+        InternalIndex,
+        ExternalIndex,
+        // rational valued
+        Multiplicity,
+        Volume,
+        Integral,
+        VirtualMultiplicity,
+        // floating point valued
+        EuclideanVolume,
+        // dimensions
+        RecessionRank,
+        AffineDim,
+        ModuleRank,
+        Rank,
+        EmbeddingDim,      
+        // boolean valued 
         IsPointed,
         IsDeg1ExtremeRays,
         IsDeg1HilbertBasis,
         IsIntegrallyClosed,
-        WitnessNotIntegrallyClosed,
-        OriginalMonoidGenerators,
         IsReesPrimary,
-        ReesPrimaryMultiplicity,
+        IsInhomogeneous,
+        IsGorenstein,        
+        // complex structures
+        Triangulation,
         StanleyDec,
-        ExcludedFaces,
-        Dehomogenization,
-        InclusionExclusionData,
-        Sublattice,
-        ClassGroup,
-        ModuleGeneratorsOverOriginalMonoid,
-        // compute options
+        InclusionExclusionData,        
+        ClassGroup,        
+        IntegerHull,
+        ProjectCone,
+        ConeDecomposition,
+        HilbertSeries,
+        HilbertQuasiPolynomial,
+        WeightedEhrhartSeries,
+        WeightedEhrhartQuasiPolynomial,        
+        //
+        // integer type for computations
+        //
+        BigInt,
+        //
+        // algorithmic variants
+        //
+        DefaultMode,
         Approximate,
         BottomDecomposition,
-        DefaultMode,
+        NoBottomDec,       
         DualMode,
+        PrimalMode,
+        Projection,
+        ProjectionFloat,
+        NoProjection,
+        Symmetrize,
+        NoSymmetrization,
+        NoSubdivision,
+        NoNestedTri, // synonym for NoSubdivision
         KeepOrder,
-        IntegerHull,
-        MaximalSubspace,
-        ConeDecomposition,
         HSOP,
+        NoPeriodBound,
+        SCIP,
+        NoLLL,
+        NoRelax,
+        //
+        // checking properties of already computed data
+        // (cannot be used as a computation goal)
+        //
+        IsTriangulationNested,
+        IsTriangulationPartial,
+        //
+        // ONLY FOR INTERNAL CONTROL
+        //
+        ExplicitHilbertSeries,
+        NakedDual,
+        
         EnumSize // this has to be the last entry, to get the number of entries in the enum
     }; // remember to change also the string conversion function if you change this enum
 }
@@ -113,9 +175,10 @@ public:
     ConeProperties options();
 
     /* the following methods are used internally */
-    void set_preconditions();    // activate properties which are needed implicitly
+    void set_preconditions(bool inhomogeneous);    // activate properties which are needed implicitly
     void prepare_compute_options(bool inhomogeneous);
     void check_sanity(bool inhomogeneous);
+    void check_conflicting_variants();
 
     /* print it in a nice way */
     friend std::ostream& operator<<(std::ostream&, const ConeProperties&);

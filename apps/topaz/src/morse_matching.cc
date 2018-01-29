@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,6 +25,34 @@
 
 namespace polymake { namespace topaz {
 
+// Compute a Morse matching. Two heuristics are implemented: 
+//
+// (1) A simple greedy algorithm:
+//    The arcs are visited in lexicographical order, i.e.
+//    we proceed by levels from top to bottom,
+//    visit the faces in each dimension in lexicographical order,
+//    and visited the faces covered by these faces in lexicographical order.
+//    This heuristic is used by default and with heuristic => 1.
+//
+// (2) A Morse matching can be improved by canceling critical cells
+//    along unique alternating paths, see function 
+//    processAlternatingPaths() in file morse_matching_tools.h .
+//    This idea is due to Robin Forman: 
+//       Morse Theory for Cell-Complexes,
+//       Advances in Math., 134 (1998), pp. 90-145.
+//    This heuristic is used by default and with heuristic => 2. 
+//
+// default setting is to use both, i.e., to run the greedy algorithm 
+// and then improve the result by the canceling algorithm. 
+//
+// Morse matchings for the bottom level can be found optimally by
+// spanning tree techniques. This can be enabled by the option
+// levels => 1.  If the complex is a pseudo-manifold the same can be
+// done for the top level (option levels => 2). By specifying option
+// levels => 0, both levels can be computed by spanning trees.
+// For 2-dim pseudo-manifolds this computes an optimal Morse matching.
+                  
+      
 
 HasseEdgeMap morse_matching(perl::Object p, perl::OptionSet options)
 {
@@ -189,42 +217,7 @@ HasseEdgeMap morse_matching(perl::Object p, perl::OptionSet options)
    return EM;
 }
 
-UserFunction4perl("# @category Other"
-                  "#  Compute a Morse matching. Two heuristics are implemented: "
-                  "# "
-                  "# \t (1) A simple greedy algorithm: "
-                  "# \t The arcs are visited in lexicographical order, i.e.: "
-                  "# \t we proceed by levels from top to bottom, "
-                  "# \t visit the faces in each dimension in lexicographical order, "
-                  "# \t and visited the faces covered by these faces in lexicographical order. "
-                  "# "
-                  "# \t This heuristic is used by default and with heuristic => 1. "
-                  "# "
-                  "# \t (2) A Morse matching can be improved by canceling critical cells "
-                  "# \t along unique alternating paths, see function "
-                  "# \t processAlternatingPaths() in file morse_matching_tools.h . "
-                  "# \t This idea is due to Robin Forman: "
-                  "# "
-                  "# \t\t Morse Theory for Cell-Complexes, "
-                  "# \t\t Advances in Math., 134 (1998), pp. 90-145. "
-                  "# "
-                  "# \t This heuristic is used by default and with heuristic => 2. "
-                  "# "
-                  "#  The default setting is to use both, i.e., to run the greedy algorithm "
-                  "#  and then improve the result by the canceling algorithm. "
-                  "# "
-                  "#  Morse matchings for the bottom level can be found optimally by "
-                  "#  spanning tree techniques. This can be enabled by the option "
-                  "#  levels => 1.  If the complex is a pseudo-manifold the same can be "
-                  "#  done for the top level (option levels => 2). By specifying option "
-                  "#  levels => 0, both levels can be computed by spanning trees. "
-                  "#  For 2-dim pseudo-manifolds this computes an optimal Morse matching. "
-                  "# "
-                  "# @param SimplicialComplex complex given by its Hasse diagram "
-                  "# @option Int heuristic (1=greedy, 2=cancel, 0=both (default)) "
-                  "# @option Int levels    (1=bottom, 2=top, 0=both (default)) "
-                  "# @return EdgeMap matching a labelling of the edges of the Hasse diagram with integer values, where 1 means that the edge is in the matching",
-                  &morse_matching, "morse_matching($ { heuristic => 0, levels => 0 })");
+Function4perl(&morse_matching, "morse_matching($ { heuristic => 0, levels => 0 })");
 
 } }
 

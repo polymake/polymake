@@ -76,7 +76,7 @@ scale one so that they become comparable.
 cddlib-***.tar.gz, where *** is the version number.  The standard
 download site for the package is
 
-     web site : http://www.ifor.math.ethz.ch/~fukuda/cdd_home/index.html
+     web site : http://www-oldurls.inf.ethz.ch/personal/fukudak/cdd_home/
      file name: cddlib-***.tar.gz
 
 In order to unpack the package in a standard unix environment, type 

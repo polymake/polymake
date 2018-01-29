@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -31,5 +31,7 @@ namespace polymake { namespace common { namespace {
 
    FunctionInstance4perl(are_permuted_X_X, perl::Canned< const Array< Set< Set< int > > > >, perl::Canned< const Array< Set< Set< int > > > >);
    FunctionInstance4perl(are_permuted_X_X, perl::Canned< const Array< int > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(are_permuted_X_X, perl::Canned< const Array< Array< int > > >, perl::Canned< const Array< Array< int > > >);
+   FunctionInstance4perl(are_permuted_X_X, perl::Canned< const Array< Set< int > > >, perl::Canned< const Array< Set< int > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

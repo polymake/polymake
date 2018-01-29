@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -734,6 +734,22 @@ int sign(const QuadraticExtension<Field>& x)
    return tmp > x.r() ? sa : sb;
 }
 
+template <typename Field>
+Integer floor(const QuadraticExtension<Field>& x)
+{
+   AccurateFloat f(sqrt(AccurateFloat(x.r())));
+   f *= x.b(); f += x.a();
+   return Integer(floor(f));
+}
+
+template <typename Field>
+Integer ceil(const QuadraticExtension<Field>& x)
+{
+   AccurateFloat f(sqrt(AccurateFloat(x.r())));
+   f *= x.b(); f += x.a();
+   return Integer(ceil(f));
+}
+   
 template <typename Field, typename T,
           typename=typename std::enable_if<QuadraticExtension<Field>::template fits_as_particle<T>::value>::type>
 inline

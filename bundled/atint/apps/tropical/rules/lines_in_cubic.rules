@@ -24,6 +24,7 @@
 ########################################################################
 
 
+# @Category Combinatorics
 object LinesInCubic {
 
 	# @topic category properties/Defining properties

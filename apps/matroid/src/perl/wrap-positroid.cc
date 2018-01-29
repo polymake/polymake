@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,11 +16,11 @@
 
 namespace polymake { namespace matroid { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( perl::Object (pm::Array<int>, pm::Set<int, pm::operations::cmp>) ) {
+   FunctionWrapper4perl( perl::Object (pm::Array<int> const&, pm::Set<int, pm::operations::cmp> const&) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       IndirectWrapperReturn( arg0.get< perl::TryCanned< const Array< int > > >(), arg1.get< perl::TryCanned< const Set< int > > >() );
    }
-   FunctionWrapperInstance4perl( perl::Object (pm::Array<int>, pm::Set<int, pm::operations::cmp>) );
+   FunctionWrapperInstance4perl( perl::Object (pm::Array<int> const&, pm::Set<int, pm::operations::cmp> const&) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

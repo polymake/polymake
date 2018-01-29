@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -39,144 +39,146 @@
 # @return Polynomial<TropicalNumber<Addition,Rational> >, where Addition depends on 
 # whether min or max was used in the string.
 user_function toTropicalPolynomial(String; @) {
-	my ($string,@vars) = @_;
+   my ($string,@vars) = @_;
 
-	#Remove any whitespace before parsing
-	$string =~ s/\s+//g;
+   # Remove any whitespace before parsing
+   $string =~ s/\s+//g;
 
-	#Check if variables have been given
-	my $vars_defined = (scalar(@vars) > 0);
-	my $varset = new Set<String>(\@vars);
-	if($vars_defined) {
-		#If there are double variables, throw an error
-		if( $varset->size() < scalar(@vars)) {
-			die "Error: Variable names must be unique.";
-		}
-	}
+   # Check if variables have been given
+   my $vars_defined = (scalar(@vars) > 0);
+   my $varset = new Set<String>(\@vars);
+   if ($vars_defined) {
+      # If there are double variables, throw an error
+      if ($varset->size() < scalar(@vars)) {
+         die "Error: Variable names must be unique.";
+      }
+   }
 
-	#First separate min/max from the list of the functions
-	# The first part will contain min or max, the second the rest
-	my @minmax_separator = ($string =~ /^(max|min)[\(\{](.+)[\)\}]$/i);
-	
-	if(scalar(@minmax_separator) != 2) {
-		die "Error: Wrong syntax. See documentation.";
-	}
+   # First separate min/max from the list of the functions
+   # The first part will contain min or max, the second the rest
+   my @minmax_separator = ($string =~ /^(max|min)[\(\{](.+)[\)\}]$/i);
+        
+   if (scalar(@minmax_separator) != 2) {
+      die "Error: Wrong syntax. See documentation.";
+   }
 
-	#Determine whether we're using min or max
-	my $uses_min = ($minmax_separator[0] =~ /^min$/i);
+   # Determine whether we're using min or max
+   my $minmax = $minmax_separator[0] =~ /^min$/i ? typeof Min : typeof Max;
 
-	#Remove any brackets from the function list and separate by commas
-	$minmax_separator[1] =~ s/[\(\{\)\}]+//g;
-	my @functionlist = split(/,/,$minmax_separator[1]);
+   # Remove any brackets from the function list and separate by commas
+   $minmax_separator[1] =~ s/[\(\{\)\}]+//g;
+   my @functionlist = split /,/, $minmax_separator[1];
 
-	#This will store the monomials
-	#The i-th element corresponds to the i-th function. It is a reference to a 
-	#hash, which maps variable names to exponents.
-	# (We need this, since we might not know until the end how many variables we have and
-	# what order they appear in)
-	my @monomial_maps=();
+   # This will store the monomials
+   # The i-th element corresponds to the i-th function. It is a reference to a hash,
+   # which maps variable names to exponents.
+   # We need this, since we might not know until the end how many variables we have and
+   # what order they appear in.
+   my @monomial_maps=();
 
-	#This stores the coefficients of each function.
-	my $coefficients = $uses_min ? (new Vector<TropicalNumber<Min> >(scalar(@functionlist))) :
-												(new Vector<TropicalNumber<Max> >(scalar(@functionlist)));
-	
-	#Now parse every single function by splitting at + or -
-	for my $index (0 .. scalar(@functionlist)-1) {
-		my %functionCoeffMap = ();
+   # This stores the coefficients of each function.
+   my $coefficients = new Vector<TropicalNumber<$minmax>>(scalar(@functionlist));
 
-		$coefficients->[$index] = $uses_min ? (new TropicalNumber<Min>(0)) : (new TropicalNumber<Max>(0));
+   # Now parse every single function by splitting at + or -
+   for my $index (0 .. scalar(@functionlist)-1) {
+      my %functionCoeffMap = ();
 
-		#We split along any consecutive sequence of + and -, keeping the actual signs for counting
-	  	my @termlist = split(/[\+\-]+/,$functionlist[$index]); #We split along any consecutive sequence of + and -
-	  	my @signlist = ($functionlist[$index] =~ /[\+\-]+/g);
+      $coefficients->[$index] = new TropicalNumber<$minmax>(0);
 
-		#If the first terms empty that means there are signs before the actual first term
-		if($termlist[0] eq "") {
-			shift(@termlist);
-		}
-		#If not then we don't have a sign for the first term and add it
-		else {
-			@signlist = ("+",@signlist);
-		}
-		#If the last term is empty that means there is an empty term at the end. 
-		if($termlist[scalar(@termlist)-1] eq "") {
-			die "Error: Empy term at the end of function $functionlist[$index]";
-		}
+      # We split along any consecutive sequence of + and -, keeping the actual signs for counting
+      my @termlist = split(/[\+\-]+/,$functionlist[$index]); #We split along any consecutive sequence of + and -
+      my @signlist = ($functionlist[$index] =~ /[\+\-]+/g);
 
-		#Now every element in signlist corresponds to an element in termlist. We count the number of -'s
-		#to determine the actual sign.
-		for my $termindex (0 .. scalar(@termlist)-1) {
-			my $minussigns = scalar(($signlist[$termindex] =~ tr/\-//));
-			if ($minussigns % 2) { #If the number of -'s is odd, set sign to -
-				$termlist[$termindex] = "-" . $termlist[$termindex];
-			}
-		}
-		
-		#Now parse every single term
-		for my $term (@termlist){
-			#Separate into coefficient and variable
-	      my @termsep = ($term =~ /^(\-?[^a-zA-Z\*]*)?\*?([a-zA-Z]+[^\+\-\(\)\{\}]*)?$/);
+      # If the first terms empty that means there are signs before the actual first term
+      if ($termlist[0] eq "") {
+         shift(@termlist);
+      }
+      # If not then we don't have a sign for the first term and add it
+      else {
+         @signlist = ("+",@signlist);
+      }
+      # If the last term is empty that means there is an empty term at the end. 
+      if ($termlist[scalar(@termlist)-1] eq "") {
+         die "Error: Empy term at the end of function $functionlist[$index]";
+      }
 
-			#Check for basic validity
-			#If both parts are empty, we have a term of the form "*", which is nonsense
-			if(scalar(@termsep) != 2) {
-				die "Error: $term has invalid form. See documentation for allowed syntax.";
-			}
-			if($termsep[0] eq "" && $termsep[1] eq "") {
-				die "Error: $term has invalid form. See documentation for allowed syntax.";
-			}
+      # Now every element in signlist corresponds to an element in termlist. We count the number of -'s
+      # to determine the actual sign.
+      for my $termindex (0 .. scalar(@termlist)-1) {
+         my $minussigns = scalar(($signlist[$termindex] =~ tr/\-//));
+         if ($minussigns % 2) { #If the number of -'s is odd, set sign to -
+            $termlist[$termindex] = "-" . $termlist[$termindex];
+         }
+      }
 
-			#Parse the coefficient (if there is none, set it to 1, since there must be a variable)
-			my $rational_termcoeff = new Rational($termsep[0] eq ""? 1: ($termsep[0] eq "-"? -1 : $termsep[0]));
-			my $termcoeff = $uses_min? (new TropicalNumber<Min>($rational_termcoeff)) : (new TropicalNumber<Max>($rational_termcoeff));
+      # Now parse every single term
+      for my $term (@termlist){
+         # Separate into coefficient and variable
+         my @termsep = ($term =~ /^(\-?[^a-zA-Z\*]*)?\*?([a-zA-Z]+[^\+\-\(\)\{\}]*)?$/);
 
-			#If there's no variable, add to the coefficient, otherwise add to the correct monomial
-			#(Note that we're already using tropical arithmetic here!)
-			if($termsep[1] eq "") {
-				$coefficients->[$index] *= $termcoeff;
-			}
-			else {
-				#Add the variable, if none were given in the function call. 
-				if(!$vars_defined) {
-					$varset = $varset + (new String($termsep[1]));
-				}
-				#Otherwise check if it's an allowed variable
-				else {
-					if(!$varset->contains($termsep[1])) {
-						die "Error: Variable $termsep[1] is not in the list of variables.";
-					}
-				}
-			}
+         # Check for basic validity
+         # If both parts are empty, we have a term of the form "*", which is nonsense
+         if (scalar(@termsep) != 2) {
+            die "Error: $term has invalid form. See documentation for allowed syntax.";
+         }
+         if ($termsep[0] eq "" && $termsep[1] eq "") {
+            die "Error: $term has invalid form. See documentation for allowed syntax.";
+         }
 
-			#Save the coefficient in the hash map
-			if(!defined($functionCoeffMap{$termsep[1]})) {
-				$functionCoeffMap{$termsep[1]} = $termcoeff;
-			}
-			else {
-				$functionCoeffMap{$termsep[1]} *= $termcoeff;
-			}			
-		}#END parse all terms
-		
-		$monomial_maps[$index] = \%functionCoeffMap;
-	}#END for(functionlist)
+         # Parse the coefficient (if there is none, set it to 1, since there must be a variable)
+         my $rational_termcoeff = new Rational($termsep[0] eq ""? 1: ($termsep[0] eq "-"? -1 : $termsep[0]));
+         my $termcoeff = new TropicalNumber<$minmax>($rational_termcoeff);
 
-	#If no variables were given, we remove double variables and sort them alphabetically
-	if(!$vars_defined) {
-		if($varset->size() == 0) { die "Error: There must be at least one variable.";}
-		@vars = sort(@{$varset});		
-	}
+         # If there's no variable, add to the coefficient, otherwise add to the correct monomial
+         # Note that we're already using tropical arithmetic here!
+         if ($termsep[1] eq "") {
+            $coefficients->[$index] *= $termcoeff;
+         } else {
+            # Add the variable, if none were given in the function call. 
+            if (!$vars_defined) {
+               $varset = $varset + (new String($termsep[1]));
+            }
+            # Otherwise check if it's an allowed variable
+            elsif (!$varset->contains($termsep[1])) {
+               die "Error: Variable $termsep[1] is not in the list of variables.";
+            }
+         }
 
-	#Now create exponent matrix
-	my $monom_matrix = new Matrix<Int>(scalar(@functionlist), scalar(@vars));
-	for my $func (0 .. scalar(@functionlist)-1) {
-		my $hashref = $monomial_maps[$func];
-		my %monmap = %$hashref;
-		for my $v (0 .. scalar(@vars)-1) {
-			$monom_matrix->elem($func,$v) = defined($monmap{$vars[$v]})? $monmap{$vars[$v]} : 0;
-		}
-	}
+         # Save the coefficient in the hash map
+         if (!defined($functionCoeffMap{$termsep[1]})) {
+            $functionCoeffMap{$termsep[1]} = $termcoeff;
+         } else {
+            $functionCoeffMap{$termsep[1]} *= $termcoeff;
+         }                      
+      }#END parse all terms
 
-	my $min= $uses_min ? typeof Min : typeof Max;
-	return new Polynomial<TropicalNumber<$min>>($coefficients, $monom_matrix);
+      $monomial_maps[$index] = \%functionCoeffMap;
+   } #END for(functionlist)
+
+   # If no variables were given, we remove double variables and sort them alphabetically
+   if (!$vars_defined) {
+      if ($varset->size() == 0) {
+         die "Error: There must be at least one variable.";
+      }
+      @vars = sort(@{$varset});         
+   }
+
+   # Now create exponent matrix
+   my $monom_matrix = new Matrix<Int>(scalar(@functionlist), scalar(@vars));
+   for my $func (0 .. scalar(@functionlist)-1) {
+      my $hashref = $monomial_maps[$func];
+      my %monmap = %$hashref;
+      for my $v (0 .. scalar(@vars)-1) {
+         $monom_matrix->elem($func,$v) = defined($monmap{$vars[$v]})? $monmap{$vars[$v]} : 0;
+      }
+   }
+
+   return new Polynomial<TropicalNumber<$minmax>>($coefficients, $monom_matrix);
 
 }#END toTropicalPolynomial(String,...)
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

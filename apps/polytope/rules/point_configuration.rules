@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -146,16 +146,31 @@ rule LABELS : N_POINTS {
 weight 0.10;
 
 
+sub translate_to_points {
+    my ($arr, $vpm) = @_;
+    foreach (@$$arr) {
+        foreach (@$_) {
+            $_ = $vpm->[$_];
+        }
+    }
+} 
+
+
 #Visualization
 
-rule PIF_CYCLIC_NORMAL : CONVEX_HULL.VIF_CYCLIC_NORMAL, VERTEX_POINT_MAP{
-   my $pif=new Array<Array<Int>>($this->CONVEX_HULL->VIF_CYCLIC_NORMAL);
-   foreach (@$pif) {
-      foreach (@$_) {
-         $_=@{$this->VERTEX_POINT_MAP}[$_];
-      }
-   }
-   $this->PIF_CYCLIC_NORMAL(temporary)=$pif;
+rule PIF_CYCLIC_NORMAL : CONVEX_HULL.VIF_CYCLIC_NORMAL, CONVEX_HULL.VERTEX_POINT_MAP {
+    my $pif=new Array<Array<Int>>($this->CONVEX_HULL->VIF_CYCLIC_NORMAL);
+    translate_to_points(\$pif, $this->CONVEX_HULL->VERTEX_POINT_MAP);
+    $this->PIF_CYCLIC_NORMAL(temporary)=$pif;
+}
+
+# @category Combinatorics
+# Output the faces of a given dimension
+# @param PointConfiguration p the input point configuration
+# @return Array<Set<Int>>
+user_method faces_of_dim($) {
+    my ($this, $d) = @_;
+    return new Array<Set<Int>>(map { [map {$this->CONVEX_HULL->VERTEX_POINT_MAP->[$_]} @$_] } @{$this->CONVEX_HULL->faces_of_dim($d)})
 }
 
 
@@ -191,7 +206,78 @@ rule TRIANGULATION(any).BOUNDARY.SPHERE : {
 weight 0.1;
 
 #rule TRIANGULATION(any).BOUNDARY.G_DIM = AMBIENT_DIM;
+
+# @category Combinatorics
+# Tells the full-dimensional simplices that contain no points except for the vertices.
+property MAX_INTERIOR_SIMPLICES : Array<Set>;
+
+# @category Combinatorics
+# Tells the number of MAX_INTERIOR_SIMPLICES
+property N_MAX_INTERIOR_SIMPLICES : Int;
+
+# @category Combinatorics
+# Tells the full-dimensional simplices on the boundary that contain no points except for the vertices.
+property MAX_BOUNDARY_SIMPLICES : Array<Set>;
+
+# @category Combinatorics
+# Tells the number of MAX_BOUNDARY_SIMPLICES
+property N_MAX_BOUNDARY_SIMPLICES : Int;
+
+# @category Combinatorics
+# Tells the number of codimension 1 simplices that are not on the boundary
+property INTERIOR_RIDGE_SIMPLICES : Array<Set>;
+
+# @category Combinatorics
+# Tells the cocircuit equations that hold for the configuration, one for each interior ridge
+property COCIRCUIT_EQUATIONS : SparseMatrix;
+
+# @category Combinatorics
+# A lower bound for the minimal number of simplices in a triangulation
+property SIMPLEXITY_LOWER_BOUND : Int;
+
+# @category Combinatorics
+# The full-dimensional simplices that contain no points except for the vertices.
+rule MAX_INTERIOR_SIMPLICES : VECTOR_DIM, POINTS, CONVEX_HULL.POINTS_IN_FACETS {
+    $this->MAX_INTERIOR_SIMPLICES = max_interior_simplices($this);
 }
+
+# @category Combinatorics
+# The number of MAX_INTERIOR_SIMPLICES
+rule N_MAX_INTERIOR_SIMPLICES : MAX_INTERIOR_SIMPLICES {
+    $this->N_MAX_INTERIOR_SIMPLICES = $this->MAX_INTERIOR_SIMPLICES->size();
+}
+
+
+# @category Combinatorics
+# The number of MAX_BOUNDARY_SIMPLICES
+rule N_MAX_BOUNDARY_SIMPLICES : MAX_BOUNDARY_SIMPLICES {
+    $this->N_MAX_BOUNDARY_SIMPLICES = $this->MAX_BOUNDARY_SIMPLICES->size();
+}
+
+# @category Combinatorics
+# The interior //d-1//-dimensional simplices of a cone of combinatorial dimension //d//
+# symmetries of the cone are NOT taken into account
+rule INTERIOR_RIDGE_SIMPLICES, MAX_BOUNDARY_SIMPLICES : VECTOR_DIM, POINTS, CONVEX_HULL.POINTS_IN_FACETS {
+    my $pair=interior_and_boundary_ridges($this);
+    $this->INTERIOR_RIDGE_SIMPLICES = $pair->first;
+    $this->MAX_BOUNDARY_SIMPLICES = $pair->second;
+}
+
+# @category Combinatorics
+# A matrix whose rows contain the cocircuit equations of C
+rule COCIRCUIT_EQUATIONS : VECTOR_DIM, POINTS, CONVEX_HULL.VERTICES_IN_FACETS, INTERIOR_RIDGE_SIMPLICES, MAX_INTERIOR_SIMPLICES {
+    $this->COCIRCUIT_EQUATIONS = cocircuit_equations($this->VECTOR_DIM-1, $this->POINTS, $this->CONVEX_HULL->VERTICES_IN_FACETS, $this->INTERIOR_RIDGE_SIMPLICES, $this->MAX_INTERIOR_SIMPLICES);
+}
+
+# @category Combinatorics
+# A lower bound for the number of simplices needed to triangulate the convex hull
+# Symmetries are NOT taken into account
+rule SIMPLEXITY_LOWER_BOUND : CONVEX_HULL.VOLUME, MAX_INTERIOR_SIMPLICES, POINTS, VECTOR_DIM, COCIRCUIT_EQUATIONS {
+    $this->SIMPLEXITY_LOWER_BOUND = simplexity_lower_bound($this->VECTOR_DIM-1, $this->POINTS, $this->MAX_INTERIOR_SIMPLICES, $this->CONVEX_HULL->VOLUME, $this->COCIRCUIT_EQUATIONS);
+}
+
+} # end object PointConfiguration
+
 
 # A point configuration with an exact coordinate type, like Rational.
 declare object_specialization ExactCoord<Scalar> = PointConfiguration<Scalar> [is_ordered_field_with_unlimited_precision(Scalar)] {
@@ -207,14 +293,15 @@ rule TRIANGULATION.FACETS : POINTS, TRIANGULATION.WEIGHTS {
 weight 3.10;
 incurs TRIANGULATION.FacetPerm;
 
-}
+} # end object_specialization ExactCoord
 
 # @category Producing a point configuration
 # Produces the Minkowski sum of //P1// and //P2//.
 # @param PointConfiguration P1
 # @param PointConfiguration P2
 # @return PointConfiguration
-# @example > $P1 = new PointConfiguration(POINTS=>simplex(2)->VERTICES);
+# @example
+# > $P1 = new PointConfiguration(POINTS=>simplex(2)->VERTICES);
 # > $P2 = new PointConfiguration(POINTS=>[[1,1,1],[1,-1,1],[1,1,-1],[1,-1,-1],[1,0,0]]);
 # > $m = minkowski_sum($P1,$P2);
 # > print $m->POINTS;
@@ -247,7 +334,8 @@ user_function minkowski_sum<Scalar> (PointConfiguration<type_upgrade<Scalar>>, P
 # @param Scalar mu
 # @param PointConfiguration P2
 # @return PointConfiguration
-# @example > $P1 = new PointConfiguration(POINTS=>simplex(2)->VERTICES);
+# @example
+# > $P1 = new PointConfiguration(POINTS=>simplex(2)->VERTICES);
 # > $P2 = new PointConfiguration(POINTS=>[[1,1,1],[1,-1,1],[1,1,-1],[1,-1,-1],[1,0,0]]);
 # > $m = minkowski_sum(1,$P1,3,$P2);
 # > print $m->POINTS;
@@ -277,6 +365,67 @@ user_function minkowski_sum<Scalar> (type_upgrade<Scalar>, PointConfiguration<ty
     return $p_out;
 }
 
+
+# @category Producing a cone
+# Computes the normal cone of //p// at the vertex //v//.
+# By default this is the inner normal cone.
+# @param PointConfiguration p
+# @param Set<Int> F (or Int v) point indices which are not contained in the far face
+# @option Bool outer Calculate outer normal cone?  Default value is 0 (= inner)
+# @return Cone
+# @example [prefer cdd] To compute the outer normal cone of a doubled 2-cube, do this:
+# > $v = cube(2)->VERTICES;
+# > $p = new PointConfiguration(POINTS=>($v/$v));
+# > print normal_cone($p, 4, outer=>1)->RAYS;
+# | 0 -1
+# | -1 0
+user_function normal_cone<Scalar>(PointConfiguration<Scalar> $; { outer => 0 }) {
+    my ($c, $F, $options) = @_;
+    if ($F =~ /^\d+/ || ref($F) == "ARRAY") {
+	$F = new Set($F);
+    }
+    return normal_cone_impl<Scalar>($c, $F, "CONVEX_HULL.FACETS_THRU_POINTS", "CONVEX_HULL.FACETS", $options);
+}
+
+# @category Triangulations, subdivisions and volume
+# find the maximal interior simplices of a point configuration 
+# Symmetries of the configuration are NOT taken into account.
+# @param PointConfiguration P the input point configuration
+# @return Array<Set>
+# @example [prefer cdd] To calculate the maximal interior simplices of a point configuration, type
+# > $p=new PointConfiguration(POINTS=>[[1,0,0],[1,1,0],[1,0,1],[1,1,1],[1,1/2,1/2]]);
+# > print max_interior_simplices($p);
+# | {0 1 2}
+# | {0 1 3}
+# | {0 1 4}
+# | {0 2 3}
+# | {0 2 4}
+# | {1 2 3}
+# | {1 3 4}
+# | {2 3 4}
+user_function max_interior_simplices<Scalar>(PointConfiguration<Scalar>) {
+    max_interior_simplices_impl<Scalar>(@_);
+}
+
+
+# @category Triangulations, subdivisions and volume
+# Calculate the universal polytope of a point configuration A. It is a 0/1 polytope with one vertex for every triangulation of A.
+# Each coordinate of the ambient space corresponds to a simplex in the configuration.
+# @tparam Scalar the underlying number type
+# @param PointConfiguration<Scalar> PC the point configuration
+# @return Polytope
+# @example [prefer cdd] To calculate the universal polytope of a point configuration, type
+# > $p=new PointConfiguration(POINTS=>[[1,0,0],[1,1,0],[1,0,1],[1,1,1],[1,1/2,1/2]]);
+# > print universal_polytope($p)->VERTICES;
+# | 1 0 1 0 1 0 0 0 0
+# | 1 1 0 0 0 0 1 0 0
+# | 1 0 0 1 0 1 0 1 1
+# Notice how the first vertex corresponds to the triangulation using all points, and the other ones to the triangulations that don't use the inner point.
+
+user_function universal_polytope<Scalar>(PointConfiguration<Scalar>) {
+    my $p = shift;
+    return universal_polytope_impl($p->VECTOR_DIM-1, $p->POINTS, $p->MAX_INTERIOR_SIMPLICES, $p->CONVEX_HULL->VOLUME, $p->COCIRCUIT_EQUATIONS);
+}
 
 # Local Variables:
 # mode: perl

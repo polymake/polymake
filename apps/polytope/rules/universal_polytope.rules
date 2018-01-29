@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,22 +15,68 @@
 
 object Polytope {
 
-# @category Combinatorics
-# The symmetrized version of SIMPLEXITY_LOWER_BOUND
-#rule SIMPLEXITY_LOWER_BOUND : VOLUME, MAX_INTERIOR_SIMPLICES | GROUP.REPRESENTATIVE_SIMPLICES, VERTICES, COMBINATORIAL_DIM, COCIRCUIT_EQUATIONS | GROUP.COCIRCUIT_EQUATIONS, VERTICES_IN_FACETS {
+    # @category Combinatorics
+    # A lower bound for the minimal number of simplices in a triangulation
+    property SIMPLEXITY_LOWER_BOUND : Int;
 
-# rule GROUP.SIMPLEXITY_LOWER_BOUND : VOLUME, VERTICES, COMBINATORIAL_DIM, GROUP.SYMMETRIZED_COCIRCUIT_EQUATIONS.FACETS, GROUP.SYMMETRIZED_COCIRCUIT_EQUATIONS.SYMMETRIZED_EQUATIONS {
-#     my $d=$this->COMBINATORIAL_DIM;
-#     $this->GROUP->SIMPLEXITY_LOWER_BOUND = simplexity_lower_bound($d, $this->VERTICES, $this->GROUP->SYMMETRIZED_COCIRCUIT_EQUATIONS->FACETS, $this->VOLUME, $this->GROUP->SYMMETRIZED_COCIRCUIT_EQUATIONS->SYMMETRIZED_EQUATIONS);
-# }
+    # @category Combinatorics
+    # An upper bound for the maximal signature of a foldable triangulation of a polytope
+    # The signature is the absolute difference of the normalized volumes of black minus white maximal simplices,
+    # where only odd normalized volumes are taken into account.
+    property FOLDABLE_MAX_SIGNATURE_UPPER_BOUND : Int;
 
-} # end Object Polytope
+    rule SIMPLEXITY_LOWER_BOUND : COMBINATORIAL_DIM, VERTICES, MAX_INTERIOR_SIMPLICES, VOLUME, COCIRCUIT_EQUATIONS {
+        $this->SIMPLEXITY_LOWER_BOUND = simplexity_lower_bound($this->COMBINATORIAL_DIM, $this->VERTICES, $this->MAX_INTERIOR_SIMPLICES, $this->VOLUME, $this->COCIRCUIT_EQUATIONS);
+    }
+
+    rule FOLDABLE_MAX_SIGNATURE_UPPER_BOUND : COMBINATORIAL_DIM, VERTICES, MAX_INTERIOR_SIMPLICES, VOLUME, FOLDABLE_COCIRCUIT_EQUATIONS {
+        $this->FOLDABLE_MAX_SIGNATURE_UPPER_BOUND = foldable_max_signature_upper_bound($this->COMBINATORIAL_DIM, $this->VERTICES, $this->MAX_INTERIOR_SIMPLICES, $this->VOLUME, $this->FOLDABLE_COCIRCUIT_EQUATIONS);
+    }
+
+    # @category Combinatorics
+    # The symmetrized version of SIMPLEXITY_LOWER_BOUND
+    rule GROUP.SIMPLEXITY_LOWER_BOUND : VOLUME, VERTICES, COMBINATORIAL_DIM, GROUP.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, GROUP.VERTICES_ACTION.SYMMETRIZED_COCIRCUIT_EQUATIONS.PROJECTED_EQUATIONS {
+        $this->GROUP->SIMPLEXITY_LOWER_BOUND = simplexity_lower_bound($this->COMBINATORIAL_DIM, $this->VERTICES, $this->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $this->VOLUME, $this->GROUP->VERTICES_ACTION->SYMMETRIZED_COCIRCUIT_EQUATIONS->PROJECTED_EQUATIONS);
+    }
+
+} # end Polytope
+
+object PointConfiguration {
+
+    # @category Symmetry
+    # The symmetrized version of SIMPLEXITY_LOWER_BOUND
+    rule GROUP.SIMPLEXITY_LOWER_BOUND : CONVEX_HULL.COMBINATORIAL_DIM, CONVEX_HULL.VOLUME, POINTS, GROUP.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, GROUP.POINTS_ACTION.SYMMETRIZED_COCIRCUIT_EQUATIONS.ISOTYPIC_COMPONENTS, GROUP.POINTS_ACTION.SYMMETRIZED_COCIRCUIT_EQUATIONS.RIDGES, GROUP.POINTS_ACTION.SYMMETRIZED_COCIRCUIT_EQUATIONS.PROJECTED_EQUATIONS {
+        $this->GROUP->SIMPLEXITY_LOWER_BOUND = simplexity_lower_bound($this->CONVEX_HULL->COMBINATORIAL_DIM, $this->POINTS, $this->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $this->CONVEX_HULL->VOLUME, $this->GROUP->POINTS_ACTION->SYMMETRIZED_COCIRCUIT_EQUATIONS->PROJECTED_EQUATIONS);
+    }
+
+    
+} # end PointConfiguration
 
 
 # @category Triangulations, subdivisions and volume
-# Calculate the universal polytope of a polytope
+# Calculate the universal polytope //U(P)// of an input polytope //P//. 
+# If //P// has //n// vertices and dimension //d//, then //U(P)// is a
+# 0/1-polytope in dimension binomial(//n//,//d//+1) whose vertices
+# correspond to the full triangulations of //P//. Each coordinate of a
+# particular vertex //v// indicates the presence or absence of a
+# particular simplex in the triangulation corresponding to //v//, and
+# the order of the simplices (and hence the interpretation of each
+# coordinate of //v//) is the one given by the property
+# MAX_INTERIOR_SIMPLICES. Because the number of triangulations of
+# //P// is typically very large, the polytope U(P) is not constructed
+# by enumerating triangulations, but instead in the inequality
+# description afforded by the cocircuit equations, a volume equality,
+# and non-negativity constraints for the coordinates.
 # @param Polytope P the input polytope
 # @return Polytope
+# @example
+# Since the 2-dimensional cube (i.e., the square) has just two
+# triangulations, its universal polytope is a segment embedded in dimension
+# binomial(4,3) = 4. The cocircuit equations read as follows:
+# > print universal_polytope(cube(2))->EQUATIONS;
+# | -8 4 4 4 4
+# | (5) (2 -1) (3 1)
+# | (5) (1 -1) (4 1)
 user_function universal_polytope<Scalar>(Polytope<Scalar>) {
     my $p = shift;
     return universal_polytope_impl($p->COMBINATORIAL_DIM, $p->VERTICES, $p->MAX_INTERIOR_SIMPLICES, $p->VOLUME, $p->COCIRCUIT_EQUATIONS);
@@ -51,35 +97,265 @@ user_function universal_polytope<Scalar>(Polytope<Scalar>, Array<Set>, SparseMat
 # construct a linear program whose optimal value is a lower bound for the minimal number of simplices
 # in a triangulation of P.
 # @param Polytope P
-# @param String outfile_name 
-user_function write_simplexity_ilp<Scalar>(Polytope<Scalar> $) {
+# @option String outfile_name. If the string is '-' (as is the default), the linear program is printed to STDOUT.
+# @example
+# To print the linear program for the 2-dimensional cube, write
+# > write_simplexity_ilp(cube(2));
+# | MINIMIZE
+# |   obj: +1 x1 +1 x2 +1 x3 +1 x4
+# | Subject To
+# |   ie0: +1 x1 >= 0
+# |   ie1: +1 x2 >= 0
+# |   ie2: +1 x3 >= 0
+# |   ie3: +1 x4 >= 0
+# |   eq0: +4 x1 +4 x2 +4 x3 +4 x4 = 8
+# |   eq1: -1 x2 +1 x3 = 0
+# |   eq2: -1 x1 +1 x4 = 0
+# | BOUNDS
+# |   x1 free
+# |   x2 free
+# |   x3 free
+# |   x4 free
+# | GENERAL
+# |   x1
+# |   x2
+# |   x3
+# |   x4
+# | END
+user_function write_simplexity_ilp<Scalar>(Polytope<Scalar>; $='-') {
     my ($p, $outfilename) = @_;
     my $rmis = new Array<Set>($p->MAX_INTERIOR_SIMPLICES);
-    return simplexity_ilp($p->COMBINATORIAL_DIM, $p->VERTICES, $rmis, $p->VOLUME, $p->COCIRCUIT_EQUATIONS, filename => $outfilename);
+    my $q = simplexity_ilp($p->COMBINATORIAL_DIM, $p->VERTICES, $rmis, $p->VOLUME, $p->COCIRCUIT_EQUATIONS);
+    poly2lp($q, $q->LP, 0, $outfilename);
 }
 
 # @category Optimization
 # construct a linear program whose optimal value is a lower bound for the minimal number of simplices
-# in a triangulation of P.
+# in a triangulation of P, and that takes into account the angle constraint around codimension 2 faces.
+# The first set of variables correspond to possible maximal internal simplices, the second set to the
+# simplices of codimension 2. See the source file polytope/src/symmetrized_codim_2_angle_sums.cc for details.
 # @param Polytope P
 # @param String outfile_name 
-user_function write_symmetrized_simplexity_ilp<Scalar>(Polytope<Scalar> Set<Int> $) {
-    my ($p, $components, $outfilename) = @_;
-    return simplexity_ilp($p->COMBINATORIAL_DIM, $p->VERTICES, $p->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $p->VOLUME, symmetrized_cocircuit_equations($p, $components)->PROJECTED_EQUATIONS, filename => $outfilename);
+# @example
+# To print the linear program for the 2-dimensional cube, write
+# > write_simplexity_ilp_with_angles(cube(2));
+# | MINIMIZE
+# |   obj: +1 x1 +1 x2 +1 x3 +1 x4
+# | Subject To
+# |   ie0: +1 x1 >= 0
+# |   ie1: +1 x2 >= 0
+# |   ie2: +1 x3 >= 0
+# |   ie3: +1 x4 >= 0
+# |   ie4: +1 x5 >= 0
+# |   ie5: +1 x6 >= 0
+# |   ie6: +1 x7 >= 0
+# |   ie7: +1 x8 >= 0
+# |   eq0: -1 x2 +1 x3 = 0
+# |   eq1: -1 x1 +1 x4 = 0
+# |   eq2: +0.5 x1 +0.25 x2 +0.2500000000000001 x3 -0.5 x5 = 0
+# |   eq3: +0.25 x1 +0.5 x3 +0.2500000000000001 x4 -0.5 x6 = 0
+# |   eq4: +0.25 x1 +0.5 x2 +0.2500000000000001 x4 -0.5 x7 = 0
+# |   eq5: +0.25 x2 +0.2500000000000001 x3 +0.5 x4 -0.5 x8 = 0
+# |   eq6: +1 x5 = 1
+# |   eq7: +1 x6 = 1
+# |   eq8: +1 x7 = 1
+# |   eq9: +1 x8 = 1
+# |   eq10: +4 x1 +4 x2 +4 x3 +4 x4 = 8
+# | BOUNDS
+# |   x1 free
+# |   x2 free
+# |   x3 free
+# |   x4 free
+# |   x5 free
+# |   x6 free
+# |   x7 free
+# |   x8 free
+# | GENERAL
+# |   x1
+# |   x2
+# |   x3
+# |   x4
+# |   x5
+# |   x6
+# |   x7
+# |   x8
+# | END
+# | 
+user_function write_simplexity_ilp_with_angles<Scalar>(Polytope<Scalar>; $="-") {
+    my ($p, $outfilename) = @_;
+    my $rmis = new Array<Set>($p->MAX_INTERIOR_SIMPLICES);
+    my $trivial_gens = new Array<Array<Int>>();
+    my $V = new Matrix<Scalar>($p->VERTICES);
+    my $F = new Matrix<Scalar>($p->FACETS);
+    my $q = simplexity_ilp_with_angles($p->COMBINATORIAL_DIM, $V, $F, $p->VERTICES_IN_FACETS, $p->VERTICES_IN_RIDGES, $trivial_gens, $rmis, $p->VOLUME, $p->COCIRCUIT_EQUATIONS);
+    poly2lp($q, $q->LP, 0, $outfilename);
+}
+
+# @category Optimization
+# construct a linear program whose optimal value is a lower bound for
+# the minimal number of simplices in a triangulation of P.
+# The symmetry group of P is taken into account, in that the
+# variables in the linear program are projections of the indicator
+# variables of the maximal interior simplices to a given direct sum of
+# isotypic components of the symmetry group of P acting on these simplices.
+# @param Polytope P
+# @param Set<Int> isotypic_components the set of indices of isotypic components to project to; default [0]
+# @param String outfile_name. Setting this to '-' (as is the default) prints the LP to stdout.
+# @example
+# For the 3-cube, the symmetrized LP for isotypic component 0 reads as follows:
+# > write_symmetrized_simplexity_ilp(cube(3,group=>1));
+# | MINIMIZE
+# |   obj: +1 x1 +1 x2 +1 x3 +1 x4
+# | Subject To
+# |   ie0: +1 x1 >= 0
+# |   ie1: +1 x2 >= 0
+# |   ie2: +1 x3 >= 0
+# |   ie3: +1 x4 >= 0
+# |   eq0: +8 x1 +8 x2 +8 x3 +16 x4 = 48
+# |   eq1: -6 x1 +6 x3 +24 x4 = 0
+# | BOUNDS
+# |   x1 free
+# |   x2 free
+# |   x3 free
+# |   x4 free
+# | GENERAL
+# |   x1
+# |   x2
+# |   x3
+# |   x4
+# | END
+# The interpretation is as follows: The variables x1,...,x4 correspond to the representatives of interior simplices:
+# > print cube(3,group=>1)->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES;
+# | {0 1 2 4}
+# | {0 1 2 5}
+# | {0 1 2 7}
+# | {0 3 5 6}
+# The solution (x1,x2,x3,x4) = (4,0,0,1) of the LP says that in a minimal triangulation of the 3-cube, 
+# there are 4 simplices in the same symmetry class as {0,1,2,4}, and one in the class of {0,3,5,6}.
+
+user_function write_symmetrized_simplexity_ilp<Scalar>(Polytope<Scalar>; $=[0], $="-") {
+    my ($p, $isotypic_components_ref, $outfilename) = @_;
+    my $isotypic_components = new Set<Int>($isotypic_components_ref);
+    my $q = simplexity_ilp($p->COMBINATORIAL_DIM, $p->VERTICES, $p->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $p->VOLUME, symmetrized_cocircuit_equations($p, $isotypic_components)->PROJECTED_EQUATIONS);
+    poly2lp($q, $q->LP, 0, $outfilename);
 }
 
 
-sub write_foldable_max_signature_ilp;
-
 # @category Optimization
 # construct a linear program whose optimal value is an upper bound for the algebraic signature of 
-# a triangulation of P.
+# a triangulation of P. This is the absolute value of the difference of normalized volumes of black
+# minus white simplices (counting only those with odd normalized volume) in a triangulation of P
+# whose dual graph is bipartite.
+# If P has a GROUP, it will be used to construct the linear program.
 # @param Polytope P
-# @param String outfile_name 
-user_function write_foldable_max_signature_ilp<Scalar>(Polytope<Scalar> $) {
+# @param String outfile_name
+# @example
+# For the 0/1 2-cube without a GROUP, the foldable max signature lp is computed as follows:
+# > write_foldable_max_signature_ilp(cube(2,0));
+# | MINIMIZE
+# |   obj: +1 x1 -1 x2 +1 x3 -1 x4 +1 x5 -1 x6 +1 x7 -1 x8
+# | Subject To
+# |   ie0: +1 x1 >= 0
+# |   ie1: +1 x2 >= 0
+# |   ie2: +1 x3 >= 0
+# |   ie3: +1 x4 >= 0
+# |   ie4: +1 x5 >= 0
+# |   ie5: +1 x6 >= 0
+# |   ie6: +1 x7 >= 0
+# |   ie7: +1 x8 >= 0
+# |   ie8: -1 x1 -1 x2 >= -1
+# |   ie9: -1 x3 -1 x4 >= -1
+# |   ie10: -1 x5 -1 x6 >= -1
+# |   ie11: -1 x7 -1 x8 >= -1
+# |   eq0: -1 x4 +1 x5 = 0
+# |   eq1: +1 x3 -1 x6 = 0
+# |   eq2: -1 x2 +1 x7 = 0
+# |   eq3: +1 x1 -1 x8 = 0
+# |   eq4: +1 x1 +1 x2 +1 x3 +1 x4 +1 x5 +1 x6 +1 x7 +1 x8 = 2
+# | BOUNDS
+# |   x1 free
+# |   x2 free
+# |   x3 free
+# |   x4 free
+# |   x5 free
+# |   x6 free
+# |   x7 free
+# |   x8 free
+# | GENERAL
+# |   x1
+# |   x2
+# |   x3
+# |   x4
+# |   x5
+# |   x6
+# |   x7
+# |   x8
+# | END
+# There are eight variables, one for each possible black or white maximal interior simplex. The optimal value of this LP is zero, because any triangulation
+# has exactly one black and one white simplex of odd normalized volume. Notice that the objective function becomes empty for cube(2), because in the +1/-1 cube,
+# each simplex has even volume.
+# @example
+# For the 0/1 3-cube, we use a GROUP property:
+# > write_foldable_max_signature_ilp(cube(3,0,group=>1));
+# | MINIMIZE
+# |   obj: +1 x1 -1 x2 +1 x3 -1 x4 +1 x5 -1 x6
+# | Subject To
+# |   ie0: +1 x1 >= 0
+# |   ie1: +1 x2 >= 0
+# |   ie2: +1 x3 >= 0
+# |   ie3: +1 x4 >= 0
+# |   ie4: +1 x5 >= 0
+# |   ie5: +1 x6 >= 0
+# |   ie6: +1 x7 >= 0
+# |   ie7: +1 x8 >= 0
+# |   ie8: -1 x1 -1 x2 >= -8
+# |   ie9: -1 x3 -1 x4 >= -24
+# |   ie10: -1 x5 -1 x6 >= -24
+# |   ie11: -1 x7 -1 x8 >= -2
+# |   eq0: +2 x3 -2 x4 +2 x5 -2 x6 = 0
+# |   eq1: -2 x3 +2 x4 -2 x5 +2 x6 = 0
+# |   eq2: -6 x2 +6 x5 +24 x7 = 0
+# |   eq3: -6 x1 +6 x6 +24 x8 = 0
+# |   eq4: +1 x1 +1 x2 +1 x3 +1 x4 +1 x5 +1 x6 +2 x7 +2 x8 = 6
+# | BOUNDS
+# |   x1 free
+# |   x2 free
+# |   x3 free
+# |   x4 free
+# |   x5 free
+# |   x6 free
+# |   x7 free
+# |   x8 free
+# | GENERAL
+# |   x1
+# |   x2
+# |   x3
+# |   x4
+# |   x5
+# |   x6
+# |   x7
+# |   x8
+# | END
+# There are again 8 variables, but now they correspond to the black and white representatives of the four symmetry classes of maximal interior simplices.
+# The optimal value of this linear program is 4, because the most imbalanced triangulation is the one with 5 simplices, in which the volume of the big interior
+# simplex is even and doesn't get counted in the objective function.
+user_function write_foldable_max_signature_ilp<Scalar>(Polytope<Scalar>; $="-") {
     my $p = shift;
     my $outfilename = shift;
-    return foldable_max_signature_ilp($p->COMBINATORIAL_DIM, $p->VERTICES, $p->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $p->VOLUME, $p->GROUP->FOLDABLE_COCIRCUIT_EQUATIONS, filename => $outfilename);
+    if (!$p->LATTICE) {
+        die "need the polytope to be a lattice polytope, ie, all vertices must be integral";
+    }
+    my $q;
+    if ($p->lookup("GROUP")) {
+        my $max_simplices = $p->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES;
+        my $foldable_cocircuit_equations = symmetrized_foldable_cocircuit_equations_0($p->COMBINATORIAL_DIM, $p->VERTICES, $p->VERTICES_IN_FACETS, $p->GROUP->VERTICES_ACTION->GENERATORS, $p->GROUP->REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, $max_simplices);
+        $q = symmetrized_foldable_max_signature_ilp($p->COMBINATORIAL_DIM, $p->VERTICES, $max_simplices, $p->VOLUME, $p->GROUP->VERTICES_ACTION->GENERATORS, $foldable_cocircuit_equations);
+    } else {
+        my $max_simplices = $p->MAX_INTERIOR_SIMPLICES;
+        my $foldable_cocircuit_equations = $p->FOLDABLE_COCIRCUIT_EQUATIONS;
+        $q = foldable_max_signature_ilp($p->COMBINATORIAL_DIM, $p->VERTICES, $max_simplices, $p->VOLUME, $foldable_cocircuit_equations);
+    }
+    poly2lp($q, $q->LP, 0, $outfilename);    
 }
     
 # Local Variables:

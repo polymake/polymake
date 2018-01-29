@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -107,23 +107,23 @@ bool is_B_nested(const Set<Set<int> >& nested, const PowerSet<int>& building)
 
 UserFunction4perl("# @category Other"
                   "# Produce a building set from a family of sets."
-                  "# @param Set<Set> the generators of the building set"
+                  "# @param Array<Set> generators the generators of the building set"
                   "# @param Int n the size of the ground set"
-                  "# @return PowerSet",
+                  "# @return PowerSet the induced building set",
                   &building_set, "building_set(Array<Set> $)");
 
 UserFunction4perl("# @category Other"
                   "# Check if a family of sets is a building set."
-                  "# @param PowerSet the would-be building set"
+                  "# @param PowerSet check_me the would-be building set"
                   "# @param Int n the size of the ground set"
-                  "# @return Bool",
+                  "# @return Bool is check_me really a building set?",
                   &is_building_set, "is_building_set(PowerSet $)");
 
 UserFunction4perl("# @category Other"
                   "# Check if a family of sets is nested wrt a given building set."
-                  "# @param Set<Set> the would-be nested sets"
-                  "# @param PowerSet the building set"
-                  "# @return Bool",
+                  "# @param Set<Set> check_me the would-be nested sets"
+                  "# @param PowerSet B the building set"
+                  "# @return Bool is the family of sets really nested wrt B?",
                   &is_B_nested, "is_B_nested(Set<Set> PowerSet)");
 } }
 

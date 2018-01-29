@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 use Polymake::Enum qw( clock_start=100000000 );
 my $clock=$clock_start;
@@ -621,7 +622,7 @@ use Polymake::Struct (
 ####################################################################################
 sub find_label {
    my ($self, $name, $create)=@_;
-   my ($name, @sublevels)=split /\./, $name;
+   ($name, my @sublevels)=split /\./, $name;
    my $label=$self->labels->{$name};
    unless ($label) {
       foreach (@{$self->imported}) {
@@ -708,6 +709,11 @@ sub add_preference {
 
    if ($mode & 2) {
       push @{$self->default_prefs}, $pref;
+      # activate this preference right now if the application
+      # is already active, otherwise end_loading will do this
+      if (contains($self->handler->applications,$self)) {
+         $self->handler->activate(0,$pref);
+      }
    } else {
       if (defined (my $dominating=$self->handler->check_repeating($pref))) {
          if ($mode==1) {

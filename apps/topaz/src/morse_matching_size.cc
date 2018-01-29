@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -21,16 +21,11 @@ namespace polymake { namespace topaz {
 
 int morse_matching_size(perl::Object p)
 {
-   const HasseEdgeMap EM = p.give("HASSE_DIAGRAM.MORSE_MATCHING");
+   const HasseEdgeMap EM = p.give("MATCHING");
    return EdgeMapSize(EM);
 }
 
-UserFunction4perl("# @category Other"
-                  "# Compute the number of edges in a Morse matching. "
-                  "# @param SimplicialComplex complex a complex with a Morse matching "
-                  "# @return Int the number of edges in the matching.",
-                  &morse_matching_size, "morse_matching_size($)");
-                  
+Function4perl(&morse_matching_size, "morse_matching_size($)");
 
 } }
 

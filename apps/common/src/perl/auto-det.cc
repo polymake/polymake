@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -42,5 +42,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(det_X, perl::Canned< const Wary< Matrix< PuiseuxFraction< Max, Rational, Rational > > > >);
    FunctionInstance4perl(det_X, perl::Canned< const Wary< Matrix< RationalFunction< Rational, int > > > >);
    FunctionInstance4perl(det_X, perl::Canned< const Wary< pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> > >);
+   FunctionInstance4perl(det_X, perl::Canned< const Wary< pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Array<int> const&, pm::all_selector const&> > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

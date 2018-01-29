@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake::Core::Customize;
 
@@ -25,7 +26,7 @@ my $file_state;
 my $var_state=0;
 my $sep_line="########################\n";
 my $print_state=$state_private;
-my $export_state;
+my $export_state=0;
 
 sub ARCH {
    $_[0] eq $Arch
@@ -108,8 +109,8 @@ sub STORE {
       $self->global_value=$_[0] if $file_state & $state_global;
       $self->private_value=$_[0];
    } elsif ($self->state & $state_config) {
-      $self->state |= $state_private;
       $self->private_value=$_[0];
+      $self->state |= $state_private;
    } else {
       $self->default_value=$_[0];
    }
@@ -181,7 +182,7 @@ sub unset {
 sub prefix { "\$" }
 
 sub printable_value {
-   my $self=$_[0];
+   my ($self)=@_;
    printable_scalar($self->state & $print_state ? $self->private_value : $self->default_value);
 }
 
@@ -378,7 +379,7 @@ sub unset {
 sub prefix { '@' }
 
 sub printable_value {
-   my $self=$_[0];
+   my ($self)=@_;
    my $comment_mark=
       $self->state & $print_state
       ? "" :
@@ -469,7 +470,7 @@ sub STORE {
       $self->state |= $state_private;
       $self->private_value->{$_[0]}=$_[1];
    } else {
-      $self->private_value->{$_[0]} //= $_[1] ;
+      $self->private_value->{$_[0]} //= $_[1];
       $self->default_value->{$_[0]}=$_[1];
    }
 }
@@ -575,28 +576,26 @@ sub unset {
 sub prefix { '%' }
 
 sub printable_value {
-   my $self=$_[0];
+   my ($self)=@_;
    my $help=$self->help;
    sanitize_help($help);
    my ($preface, %elements)=split /^\s*\@key\s+(\S+)\s+/m, $help;
-   my $glob_vals= ($self->state & $state_global) ? $self->global_value : undef;
+   # don't use for rulefile configured status in export mode
+   my $glob_vals= ($self->state & $state_global)
+                  && !($export_state && ($self->state & ($state_config | $state_accumulating)) == ($state_config | $state_accumulating))
+                  && $self->global_value;
+
    if ($self->state & $print_state) {
       ( join("", map {
                     my $quoted= /\W/ ? "'$_'" : $_;
-                    if ($export_state && ($self->state & ($state_config | $state_accumulating)) == ($state_config | $state_accumulating)
-                        && !$self->private_value->{$_}) {
-                       # don't show unconfigured values in export mode
-                       ()
-                    } else {
-                       my $h=$elements{$_};
-                       my $comment_mark="#  ";
-                       ( ($glob_vals && $glob_vals->{$_} eq $self->private_value->{$_}  and  $comment_mark="#G#  ") ||
-                         (!($self->state & $state_config) && $self->default_value->{$_} eq $self->private_value->{$_})
-                         ? "$comment_mark  $quoted => " . printable_scalar($self->default_value->{$_})
-                         : "   $quoted => " . printable_scalar($self->private_value->{$_}),
-                         defined($h) ? " ,  " . help2comment($1) : " ,\n"
-                       )
-                    }
+                    my $h=$elements{$_};
+                    my $comment_mark="#  ";
+                    ( ($glob_vals && $glob_vals->{$_} eq $self->private_value->{$_}  and  $comment_mark="#G#  ") ||
+                      (!($self->state & $state_config) && $self->default_value->{$_} eq $self->private_value->{$_})
+                      ? "$comment_mark  $quoted => " . printable_scalar($self->default_value->{$_})
+                      : "   $quoted => " . printable_scalar($self->private_value->{$_}),
+                      defined($h) ? " ,  " . help2comment($1) : " ,\n"
+                    )
                  } sort keys %{$self->private_value} ),
         help2comment($preface)
       )
@@ -604,11 +603,11 @@ sub printable_value {
       ( join("", map {
                     my $quoted= /\W/ ? "'$_'" : $_;
                     my $h=$elements{$_};
-                    ( defined($glob_vals) && defined($glob_vals->{$_}) ? "#G#  " : "#  ",
+                    ( $glob_vals && defined($glob_vals->{$_}) ? "#G#  " : "#  ",
                       $quoted, " => ", printable_scalar($self->default_value->{$_}),
                       defined($h) ? " ,  " . help2comment($1) : " ,\n"
                     )
-                 } sorted_uniq(sort( keys(%{$self->default_value}), defined($glob_vals) ? keys(%$glob_vals) : () )) ),
+                 } sorted_uniq(sort( keys(%{$self->default_value}), $glob_vals ? keys(%$glob_vals) : () )) ),
         help2comment($preface)
       )
    }
@@ -617,7 +616,7 @@ sub printable_value {
 sub printable {
    my $self=$_[0];
    my ($v, $h)=&printable_value;
-   $h .= "# \n" if $h =~ /^.*[^\#\s]\s*\E/m;
+   $h .= "# \n" if $h =~ /^.*[^\#\s]\s*\Z/m;
    $h . &printable_decl . "(\n" . $v .
    ($self->state & $print_state ? "" : "# ") . ");\n"
 }
@@ -664,6 +663,10 @@ my $arch_prefix="ARCH('$Arch') and\n";
 
 sub printable_decl {
    my $self=$_[0];
+   if (($self->state & ($state_global | $state_private | $state_config)) == ($state_global | $state_private | $state_config)
+       and $self->equal_global_private) {
+      $self->state &= ~$state_private;
+   }
    my $comment_mark=
       $self->state & $print_state
       ? "" :
@@ -681,6 +684,11 @@ sub printable {
    my $help=$self->help;
    sanitize_help($help);
    help2comment($help) . &printable_decl . $self->printable_value . ";\n"
+}
+
+sub equal_global_private {
+   my ($self)=@_;
+   printable_scalar($self->global_value) eq printable_scalar($self->private_value)
 }
 
 #################################################################################
@@ -918,12 +926,14 @@ sub printMe {
 }
 #################################################################################
 sub export {
-   my ($self, $cf)=@_;
+   my ($self, $cf, $filter)=@_;
    my $seen_in_app;
    foreach my $pkg (sort { $a eq $self->default_pkg ? -1 : $b eq $self->default_pkg ? 1 : $a cmp $b } keys %{$self->per_pkg}) {
       my $seen_in_pkg;
       while (my ($name, $var)=each %{$self->per_pkg->{$pkg}}) {
-         if (($var->state & $print_state) && !($var->state & $state_noexport)) {
+         if ($filter->($name, $var)
+             and $var->state & $print_state
+             and !($var->state & $state_noexport)) {
             $seen_in_app ||= print $cf $sep_line, "package ".$self->default_pkg.";\n\n";
             $seen_in_pkg ||= do {
                if (defined (my $h=$self->pkg_help->{$pkg})) {
@@ -971,7 +981,7 @@ sub new {
    open my $cf, $filename
       or die "can't read file $filename: $!\n";
    local $_;
-   my ($pkg, $body, $version)=("BEGIN", <<".");
+   my ($pkg, $body)=("BEGIN", <<".");
 no namespaces; no strict 'vars';
 package main;
 #line 1 "$filename"
@@ -1205,7 +1215,13 @@ sub save {
 }
 ##################################################################################
 sub export {
-   my ($self, $filename, $merge_with_global, @also)=@_;
+   my ($self, $filename, $opts, @also)=@_;
+
+   my ($merge_with_global, $only_configured, $suppress)=delete @$opts{qw(merge_with_global only_configured suppress)};
+   if (keys %$opts) {
+      die "unknown option", keys(%$opts)>1 && "s", ": ", join(" ", keys(%$opts)), "\n";
+   }
+
    my ($cf, $cf_k)=new OverwriteFile($filename);
    print $cf <<".";
 #########################################################################
@@ -1220,11 +1236,33 @@ sub export {
 \$version=v$Version;
 
 .
-   local_scalar($export_state, 1);
-   local_scalar($print_state, $state_private | $state_global) if $merge_with_global;
+   local_scalar($export_state, $merge_with_global ? $state_private | $state_global : $state_private);
+   local_scalar($print_state, $export_state) if $merge_with_global;
+
+   my $change_scope= $only_configured && new Scope();
+   my $suppress_re= qr/$suppress/;
+   my $filter=sub {
+      my ($name, $var)=@_;
+      if (length($suppress) && $name =~ $suppress_re) {
+         return 0;
+      }
+      if ($only_configured && ($var->state & $state_config)) {
+         my $value=$var->private_value;
+         if ($var->state & $state_accumulating) {
+            my %configured=map { $value->{$_} =~ /^[1-9]\d+$/ ? ($_ => $value->{$_}) : () } keys %$value;
+            $change_scope->begin_locals;
+            local_hash($value, \%configured);
+            $change_scope->end_locals;
+         } else {
+            return defined($value);
+         }
+      }
+      1
+   };
+
    foreach my $per_app (@{$self->per_app}, @also) {
       $per_app->cleanup;
-      $per_app->export($cf);
+      $per_app->export($cf, $filter);
    }
    close $cf;
 }

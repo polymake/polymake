@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,6 +18,7 @@
 #define POLYMAKE_NUMERICAL_FUNCTIONS_H
 
 #include "polymake/GenericStruct.h"
+#include "polymake/internal/type_manip.h"
 
 namespace pm {
 
@@ -145,6 +146,53 @@ inline int log2_floor(long x) { return log2_floor((unsigned long)x); }
 inline int log2_ceil(int x)   { return log2_ceil((unsigned int)x); }
 inline int log2_ceil(long x)  { return log2_ceil((unsigned long)x); }
 
+template <typename T>
+T pow_impl(T base, T odd, int exp)
+{
+   while (exp > 1) {
+      if (exp % 2 == 0) {
+         base = base * base;
+         exp = exp / 2;
+      } else {
+         odd = base * odd;
+         base = base * base;
+         exp = (exp - 1) / 2;
+      }
+   }
+   return base * odd;
+}
+
+template <typename T, typename std::enable_if<std::is_same<typename object_traits<T>::generic_tag,is_scalar>::value, int>::type=0>
+T pow(const T& base, int exp)
+{
+   auto one = one_value<T>();
+   if (exp < 0) {
+      return pow_impl<T>(one/base,one,abs(exp));
+   } else if (exp == 0) {
+      return one;
+   }
+   return pow_impl<T>(base,one,exp);
+}
+
+namespace operations {
+
+template <typename Base, typename Exp, typename=typename std::enable_if<std::is_same<Exp,int>::value>::type>
+struct pow_impl {
+   typedef Base first_argument_type;
+   typedef Exp second_argument_type;
+   typedef const Base result_type;
+
+   result_type operator() (typename function_argument<Base>::type a, Exp b) const {
+      return pm::pow(a,b);
+   }
+};
+
+template <typename Base, typename Exp>
+struct pow : pow_impl<Base,Exp> {};
+
+}
+
+
 }
 
 namespace polymake {
@@ -158,6 +206,11 @@ namespace polymake {
    using pm::log2_floor;
    using pm::log2_ceil;
    using pm::abs_equal;
+   using pm::pow;
+
+   namespace operations {
+      using pm::operations::pow;
+   }
 }
 
 #endif // POLYMAKE_NUMERICAL_FUNCTIONS_H

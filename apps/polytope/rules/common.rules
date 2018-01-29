@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -47,9 +47,9 @@ method construct(Cone) {
 rule LINEALITY_SPACE : FACETS | INEQUALITIES {
    my $F;
    if (defined (my $AH=$this->lookup("AFFINE_HULL | EQUATIONS"))) {
-      $F=($this->FACETS | INEQUALITIES) / $AH;
+      $F=$this->give("FACETS | INEQUALITIES") / $AH;
    } else {
-      $F=$this->FACETS | INEQUALITIES;
+      $F=$this->give("FACETS | INEQUALITIES");
    }
    my $cmp=$this->prepare_computations;
    $this->LINEALITY_SPACE=common::lineality_space($F);
@@ -58,6 +58,16 @@ precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM >= 1 }
 precondition : FEASIBLE;
 weight 1.10;
 override : SUPER::cone_only;
+
+
+rule VALID_POINT : VERTICES | POINTS {
+   my $p=$this->give("VERTICES | POINTS");
+   if ($p->rows > 0) {
+      $this->VALID_POINT(temporary) = $p->row(0);
+   }
+}
+weight 0.10;
+
 
 # @category Backward compatibility
 # The number of edges of the [[GRAPH]]
@@ -336,7 +346,7 @@ rule BOUNDED : VERTICES | POINTS, POINTED {
   if (!$this->POINTED) {
     $this->BOUNDED=0;
   } else {
-    foreach my $v (@{$this->VERTICES | POINTS}) {
+    foreach my $v (@{$this->give("VERTICES | POINTS")}) {
       if ($v->[0]==0) {
         $this->BOUNDED=0;
         return;
@@ -537,6 +547,16 @@ precondition : CONE_DIM {
 }
 weight 2.30;
 
+rule MAHLER_VOLUME : VOLUME {
+  $this->MAHLER_VOLUME = $this->VOLUME * polarize($this)->VOLUME;
+  # calling "polarize" makes it necessary to add WEAKLY_CENTERED to the preconditions below
+  # even if it is implied by CENTERED
+}
+precondition : BOUNDED;
+precondition : WEAKLY_CENTERED;
+precondition : CENTERED;
+precondition : FULL_DIM;
+    
 rule MINIMAL_VERTEX_ANGLE : VERTICES, VERTEX_BARYCENTER {
    $this->MINIMAL_VERTEX_ANGLE = minimal_vertex_angle($this);
 }
@@ -577,22 +597,13 @@ weight 0.1;
 rule TRIANGULATION(any).VOLUME = VOLUME;
 
 rule TRIANGULATION(any).G_DIM : CONE_AMBIENT_DIM {
-    $this->TRIANGULATION->G_DIM=CONE_AMBIENT_DIM-1;
+   $this->TRIANGULATION->G_DIM=$this->CONE_AMBIENT_DIM-1;
 }
-
-#rule TRIANGULATION(any).BOUNDARY.COORDINATES : VERTICES {
-#   $this->TRIANGULATION->BOUNDARY->COORDINATES(temporary)=$this->VERTICES->minor(All,~[0]);
-#}
-#weight 0.10;
 
 rule TRIANGULATION(any).BOUNDARY.SPHERE : {
    $this->TRIANGULATION->BOUNDARY->SPHERE=1;
 }
 weight 0.1;
-
-#rule TRIANGULATION(any).BOUNDARY.G_DIM : CONE_AMBIENT_DIM {
-#    $this->TRIANGULATION->BOUNDARY->G_DIM=CONE_AMBIENT_DIM-1;
-#}
 
 # @category Geometry
 # returns the dimension of the ambient space of the polytope
@@ -637,7 +648,8 @@ user_function recession_cone<Scalar>(Polytope<Scalar>) {
 # @option Bool deg output in degrees rather than radians, default is false
 # @option Bool cone hyperplanes seen as linear hyperplanes, default is false
 # @return Float
-# @example > $H1 = new Vector(1,5,5);
+# @example
+# > $H1 = new Vector(1,5,5);
 # > $H2 = new Vector(1,-5,5);
 # > print dihedral_angle($H1,$H2,deg=>1);
 # | 90
@@ -679,7 +691,7 @@ user_function center_distance (Polytope; {median=>0}) {
 # @param Polytope P1
 # @param Polytope P2
 # @return Polytope
-# @example The following stores the minkowski sum of a square and a triangle in the variable $p
+# @example [prefer cdd] The following stores the minkowski sum of a square and a triangle in the variable $p
 # and then prints its vertices.
 # > $p = minkowski_sum(cube(2),simplex(2));
 # > print $p->VERTICES;
@@ -702,7 +714,7 @@ user_function minkowski_sum<Scalar> (Polytope<type_upgrade<Scalar>>, Polytope<ty
 # @param Scalar mu
 # @param Polytope P2
 # @return Polytope
-# @example The following stores the minkowski sum of a scaled square and a triangle in the variable $p
+# @example [prefer cdd] The following stores the minkowski sum of a scaled square and a triangle in the variable $p
 # and then prints its vertices.
 # > $p = minkowski_sum(2,cube(2),1,simplex(2));
 # > print $p->VERTICES;

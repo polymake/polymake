@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,6 +14,7 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/graph/Decoration.h"
 
@@ -35,5 +36,6 @@ namespace polymake { namespace topaz { namespace {
    FunctionInstance4perl(iterated_barycentric_subdivision_impl_T_x_x_o, graph::lattice::BasicDecoration, graph::lattice::Sequential, Rational);
    FunctionInstance4perl(barycentric_subdivision_impl_T_x_o, graph::lattice::BasicDecoration, graph::lattice::Nonsequential, Rational);
    FunctionInstance4perl(iterated_barycentric_subdivision_impl_T_x_x_o, graph::lattice::BasicDecoration, graph::lattice::Nonsequential, Rational);
+   FunctionInstance4perl(iterated_barycentric_subdivision_impl_T_x_x_o, graph::lattice::BasicDecoration, graph::lattice::Sequential, QuadraticExtension< Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

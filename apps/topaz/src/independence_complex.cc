@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,6 +19,7 @@
 #include "polymake/Array.h"
 #include "polymake/Set.h"
 #include "polymake/vector"
+#include "polymake/common/labels.h"
 
 namespace polymake { namespace topaz {
 
@@ -33,8 +34,7 @@ perl::Object independence_complex(perl::Object matroid, perl::OptionSet options)
    
    if (!no_labels) {
      const int n_elements=matroid.give("N_ELEMENTS");
-     std::vector<std::string> labels(n_elements);
-     read_labels(matroid, "LABELS", labels);
+     const std::vector<std::string> labels = common::read_labels(matroid, "LABELS", n_elements);
      complex.take("VERTEX_LABELS") << labels;
    }
    return complex;

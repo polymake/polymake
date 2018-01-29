@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -26,7 +26,7 @@ typename std::enable_if<is_field<E>::value, E>::type
 det(SparseMatrix<E> M)
 {
    const int dim = M.rows();
-   if (!dim) return zero_value<E>();
+   if (!dim) return one_value<E>();
 
    std::vector<int> column_permutation(dim);
    copy_range(entire(sequence(0, dim)), column_permutation.begin());
@@ -115,18 +115,18 @@ inv(SparseMatrix<E> M)
    return R*L;
 }
 
-template <typename E>
+template <typename E, bool ensure_nondegenerate=true>
 typename std::enable_if<is_field<E>::value, Vector<E>>::type
 lin_solve(SparseMatrix<E> A, Vector<E> B)
 {
    const int m=A.rows(), n=A.cols();
    int non_empty_rows=m-n;
-   if (non_empty_rows<0) throw degenerate_matrix();
+   if (ensure_nondegenerate && non_empty_rows<0) throw underdetermined();
 
    for (auto r=entire(rows(A)); !r.at_end(); ++r) {
       const int pr=r.index();
       if (r->empty()) {
-         if (--non_empty_rows<0) throw degenerate_matrix();
+         if (ensure_nondegenerate && --non_empty_rows<0) throw degenerate_matrix();
          if (!is_zero(B[pr])) throw infeasible();
          continue;
       }

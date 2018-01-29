@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -70,7 +70,7 @@ rule LP.MINIMAL_VERTEX : VERTICES, FAR_FACE, LP.MINIMAL_FACE {
 weight 0.10;
 
 rule ONE_VERTEX : LP.MINIMAL_VERTEX | LP.MAXIMAL_VERTEX {
-  $this->ONE_VERTEX=$this->LP->MINIMAL_VERTEX | MAXIMAL_VERTEX;
+  $this->ONE_VERTEX=$this->LP->give("MINIMAL_VERTEX | MAXIMAL_VERTEX");
 }
 precondition : POINTED;
 weight 0.10;

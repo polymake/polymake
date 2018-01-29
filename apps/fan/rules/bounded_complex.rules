@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -22,6 +22,7 @@ object polytope::Polytope {
 # Therefore it only depends on [[VERTICES_IN_FACETS]] and [[FAR_FACE]].
 property BOUNDED_COMPLEX : PolyhedralComplex<Scalar> {
 
+        # @category Unbounded polyhedra
 	# For every row of [[VERTICES]] this indicates the corresponding row in the
 	# [[VERTICES]] of the parent polytope.
 	property VERTEX_MAP : Array<Int>;

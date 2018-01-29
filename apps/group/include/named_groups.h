@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,7 +17,7 @@
 #ifndef __NAMED_GROUPS_H
 #define __NAMED_GROUPS_H
 
-#include "polymake/group/action_datatypes.h"
+#include "polymake/group/group_tools.h"
 #include "polymake/AccurateFloat.h"
 
 namespace polymake { namespace group {
@@ -38,15 +38,16 @@ dn_n_class_reps(int n2)
 }
 
 inline
-ConjugacyClassReps dn_reps(int n2)
+ConjugacyClassReps<Array<int>>
+dn_reps(int n2)
 {
    if (n2%2)
       throw std::runtime_error("The order must be even.");
 
    const int n(n2/2);
    const bool odd(n%2);
-   ConjugacyClassReps class_reps(dn_n_class_reps(n2));
-   Entire<ConjugacyClassReps>::iterator crit = entire(class_reps);
+   ConjugacyClassReps<Array<int>> class_reps(dn_n_class_reps(n2));
+   auto crit = entire(class_reps);
 
    /*
       n odd:
@@ -237,6 +238,160 @@ perl::Object dihedral_group_impl(int n2)
    return Dn;
 }
 
+inline
+ConjugacyClassReps<Array<int>>
+sn_reps(int n) {
+   switch(n) {
+
+   case 1:
+      return { Array<int>(1,0) };
+
+   case 2:
+      return { {0, 1}, {1, 0} };
+
+   case 3:
+      return { {0, 1, 2}, {1, 0, 2}, {1, 2, 0} };
+
+   case 4:
+      return { {0, 1, 2, 3}, {1, 0, 2, 3}, {1, 0, 3, 2}, {1, 2, 0, 3}, {1, 2, 3, 0} };
+
+   case 5:
+      return { {0, 1, 2, 3, 4}, {1, 0, 2, 3, 4}, {1, 0, 3, 2, 4}, {1, 2, 0, 3, 4},
+               {1, 2, 0, 4, 3}, {1, 2, 3, 0, 4}, {1, 2, 3, 4, 0} };
+
+   case 6:
+      return { {0, 1, 2, 3, 4, 5}, {1, 0, 2, 3, 4, 5}, {1, 0, 3, 2, 4, 5}, {1, 0, 3, 2, 5, 4}, {1, 2, 0, 3, 4, 5},
+               {1, 2, 0, 4, 3, 5}, {1, 2, 0, 4, 5, 3}, {1, 2, 3, 0, 4, 5}, {1, 2, 3, 0, 5, 4}, {1, 2, 3, 4, 0, 5},
+               {1, 2, 3, 4, 5, 0} };
+
+   case 7:
+      return { {0, 1, 2, 3, 4, 5, 6}, {1, 0, 2, 3, 4, 5, 6}, {1, 0, 3, 2, 4, 5, 6}, {1, 0, 3, 2, 5, 4, 6},
+               {1, 2, 0, 3, 4, 5, 6}, {1, 2, 0, 4, 3, 5, 6}, {1, 2, 0, 4, 3, 6, 5}, {1, 2, 0, 4, 5, 3, 6},
+               {1, 2, 3, 0, 4, 5, 6}, {1, 2, 3, 0, 5, 4, 6}, {1, 2, 3, 0, 5, 6, 4}, {1, 2, 3, 4, 0, 5, 6},
+               {1, 2, 3, 4, 0, 6, 5}, {1, 2, 3, 4, 5, 0, 6}, {1, 2, 3, 4, 5, 6, 0} };
+      
+   default:
+      throw std::runtime_error("Character tables and conjugacy classes for S_n, n>=8, are not implemented");
+   }
+}   
+
+inline
+Matrix<CharacterNumberType> sn_character_table(int n) {
+   switch (n) {
+   case 1:
+      return {
+         { 1 }
+      };
+
+   case 2:
+      return {
+         { 1, -1 },
+         { 1,  1 }
+      };
+
+   case 3:
+      return {
+        {1, -1,  1},
+        {2,  0, -1},
+        {1,  1,  1}
+      };
+
+   case 4:
+      return {
+         {1, -1,  1,  1, -1},
+         {3, -1, -1,  0,  1},
+         {2,  0,  2, -1,  0},
+         {3,  1, -1,  0, -1},
+         {1,  1,  1,  1,  1}
+      };
+
+   case 5:
+      return {
+         { 1, -1,  1,  1, -1, -1,  1},
+         { 4, -2,  0,  1,  1,  0, -1},
+         { 5, -1,  1, -1, -1,  1,  0},
+         { 6,  0, -2,  0,  0,  0,  1},
+         { 5,  1,  1, -1,  1, -1,  0},
+         { 4,  2,  0,  1, -1,  0, -1},
+         { 1,  1,  1,  1,  1,  1,  1}
+      };
+
+   case 6:
+      return {
+         { 1, -1,  1, -1,  1, -1,  1, -1,  1,  1, -1},
+         { 5, -3,  1,  1,  2,  0, -1, -1, -1,  0,  1},
+         { 9, -3,  1, -3,  0,  0,  0,  1,  1, -1,  0},
+         { 5, -1,  1,  3, -1, -1,  2,  1, -1,  0,  0},
+         {10, -2, -2,  2,  1,  1,  1,  0,  0,  0, -1},
+         {16,  0,  0,  0, -2,  0, -2,  0,  0,  1,  0},
+         { 5,  1,  1, -3, -1,  1,  2, -1, -1,  0,  0},
+         {10,  2, -2, -2,  1, -1,  1,  0,  0,  0,  1},
+         { 9,  3,  1,  3,  0,  0,  0, -1,  1, -1,  0},
+         { 5,  3,  1, -1,  2,  0, -1,  1, -1,  0, -1},
+         { 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1}
+      };
+
+   case 7:
+      return {
+         { 1, -1,  1, -1,  1, -1,  1,  1, -1,  1, -1,  1, -1, -1,  1},
+         { 6, -4,  2,  0,  3, -1, -1,  0, -2,  0,  1,  1,  1,  0, -1},
+         {14, -6,  2, -2,  2,  0,  2, -1,  0,  0,  0, -1, -1,  1,  0},
+         {14, -4,  2,  0, -1, -1, -1,  2,  2,  0, -1, -1,  1,  0,  0},
+         {15, -5, -1,  3,  3,  1, -1,  0, -1, -1, -1,  0,  0,  0,  1},
+         {35, -5, -1, -1, -1,  1, -1, -1,  1,  1,  1,  0,  0, -1,  0},
+         {21, -1,  1,  3, -3, -1,  1,  0,  1, -1,  1,  1, -1,  0,  0},
+         {21,  1,  1, -3, -3,  1,  1,  0, -1, -1, -1,  1,  1,  0,  0},
+         {20,  0, -4,  0,  2,  0,  2,  2,  0,  0,  0,  0,  0,  0, -1},
+         {35,  5, -1,  1, -1, -1, -1, -1, -1,  1, -1,  0,  0,  1,  0},
+         {14,  4,  2,  0, -1,  1, -1,  2, -2,  0,  1, -1, -1,  0,  0},
+         {15,  5, -1, -3,  3, -1, -1,  0,  1, -1,  1,  0,  0,  0,  1},
+         {14,  6,  2,  2,  2,  0,  2, -1,  0,  0,  0, -1,  1, -1,  0},
+         { 6,  4,  2,  0,  3,  1, -1,  0,  2,  0, -1,  1, -1,  0, -1},
+         { 1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1}
+      };
+      
+   default:
+      throw std::runtime_error("Character tables and conjugacy classes for S_n, n>=8, are not implemented");
+   }
+}
+
+inline
+Array<Array<int>>
+symmetric_group_gens(int n) {
+   Array<Array<int>> sgs(n-1);
+   for (int i = 0; i < n-1; ++i) {
+      Array<int> gen(n);
+      for (int j = 0; j < n; ++j)
+         gen[j] = j;
+      std::swap(gen[i], gen[i+1]);
+      sgs[i] = gen;
+   }
+   return sgs;
+}
+
+inline
+perl::Object symmetric_group_impl(int n) {
+   if (n < 1) 
+      throw std::runtime_error("symmetric_group: the degree must be greater or equal than 1");
+   
+   perl::Object pa("group::PermutationAction");
+   pa.take("GENERATORS") << symmetric_group_gens(n);
+   if (n <= 7) {
+      pa.take("CONJUGACY_CLASS_REPRESENTATIVES") << sn_reps(n);
+   }      
+   
+   perl::Object g("group::Group");
+   g.take("PERMUTATION_ACTION") << pa;
+   g.set_description() << "Symmetric group of degree " << n << endl;
+
+   if (n <= 7) {
+      g.take("CHARACTER_TABLE") << sn_character_table(n);
+   }
+
+   return g;
+}
+
+      
 } }
 
 #endif // __NAMED_GROUPS_H

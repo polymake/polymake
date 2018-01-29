@@ -21,6 +21,7 @@
 #  Defines properties and rules for Morphism 
 ########################################################################
 
+# @Category Combinatorics
 object Morphism {
 
 	use overload('*' => 'mult', '""' => 'to_string', bool => 'bool', '+' => 'sum', '-' => 'minus', 'neg'=>'neg', fallback => 1);
@@ -84,7 +85,7 @@ object Morphism {
 
 	rule DOMAIN, IS_GLOBALLY_AFFINE_LINEAR : MATRIX, TRANSLATE {
 		computeDomainFromMatrix($this);
-		$this->IS_GLOBALLY_AFFINE_LINEAR = !(defined($this->lookup(VERTEX_VALUES)) || defined($this->lookup(LINEALITY_VALUES)));
+		$this->IS_GLOBALLY_AFFINE_LINEAR = !(defined($this->lookup("VERTEX_VALUES")) || defined($this->lookup("LINEALITY_VALUES")));
 	}
 	weight 0.10;
 	precondition : MATRIX, TRANSLATE {
@@ -160,7 +161,11 @@ object Morphism {
 		my $vertexvalues = $X->SEPARATED_VERTICES->minor(All,~scalar2set(0));
 		my $linealityvalues = $X->LINEALITY_SPACE->minor(All,~scalar2set(0));
 
-		my $emb = new Morphism<Addition>( DOMAIN=>$X, VERTEX_VALUES=>$vertexvalues,LINEALITY_VALUES=>$linealityvalues, MATRIX=>(unit_matrix<Rational>($f->DOMAIN->PROJECTIVE_AMBIENT_DIM+1)));
+		my $emb = new Morphism<Addition>( DOMAIN => $X,
+						  VERTEX_VALUES => $vertexvalues,
+						  LINEALITY_VALUES => $linealityvalues,
+						  MATRIX => unit_matrix<Rational>($f->DOMAIN->PROJECTIVE_AMBIENT_DIM+1)
+						);
 
 		return morphism_composition($emb,$f);
 	}

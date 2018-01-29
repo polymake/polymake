@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -45,17 +45,16 @@ sub listOfRadii {
    foreach(keys %radii) {
       my $list_ref=$radii{$_};
       my @nodes=@$list_ref;
-      $array[$count]=new Pair< Int,Set<Int> >($_,(new Set<Int>(@nodes)));
+      $array[$count]=new Pair<Int, Set<Int>>($_, new Set<Int>(@nodes));
       ++$count;
    }
    return new Array < Pair< Int,Set<Int> > >(\@array);
 }
 
-
 sub visualizeNOPGraph_sub {
    my ($Graph,$colors_ref,$filename,$radii)=@_;
    my $my_tmp=new Tempfile;
-   my $my_tmp_tred=new Tempfile;
+   my $my_tmp_tred="${my_tmp}_tred";
    graphviz($Graph->VISUAL(NodeColor=>$colors_ref),File=>"$my_tmp");
    my $command_txt1 = "tred $my_tmp.dot > $my_tmp_tred.dot;";
    $command_txt1 .= " sed \'\$d\' $my_tmp_tred.dot > $filename.dot\;";
@@ -72,11 +71,11 @@ edge [shape=plaintext, fontsize=14];
 /* radii */
 .
 
-   for (my $i=$radii->size-1;$i>0;--$i){ 
+   for (my $i=$radii->size-1;$i>0;--$i) {
       my $r=$sorted_radii[$i]; 
       print DOT_FILE '"r^2='.$r.'"'; 
       print DOT_FILE ' -> '; 
-   } 
+   }
    print DOT_FILE '"r^2='.$sorted_radii[0].'";'."\n";
 
    foreach ( @$radii ) { 

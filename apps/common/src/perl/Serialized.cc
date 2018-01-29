@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -41,5 +41,8 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::Serialized__RationalFunction_A_PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_I_Rational_Z", pm::Serialized< RationalFunction< PuiseuxFraction< Min, Rational, Rational >, Rational > >);
    Class4perl("Polymake::common::Serialized__UniPolynomial_A_Rational_I_Int_Z", pm::Serialized< UniPolynomial< Rational, int > >);
    Class4perl("Polymake::common::Serialized__UniPolynomial_A_UniPolynomial_A_Rational_I_Int_Z_I_Rational_Z", pm::Serialized< UniPolynomial< UniPolynomial< Rational, int >, Rational > >);
+   Class4perl("Polymake::common::Serialized__UniPolynomial_A_TropicalNumber_A_Min_I_Rational_Z_I_Int_Z", pm::Serialized< UniPolynomial< TropicalNumber< Min, Rational >, int > >);
+   Class4perl("Polymake::common::Serialized__Polynomial_A_QuadraticExtension__Rational_I_Int_Z", pm::Serialized< Polynomial< QuadraticExtension< Rational >, int > >);
+   Class4perl("Polymake::common::Serialized__UniPolynomial_A_QuadraticExtension__Rational_I_Int_Z", pm::Serialized< UniPolynomial< QuadraticExtension< Rational >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

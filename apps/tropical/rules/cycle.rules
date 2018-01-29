@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,187 +13,188 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+# @Category Combinatorics
 object Cycle {
 
-	#Any cycle is pure-dimensional by default.
-	rule initial : PURE : {
-           $this->PURE = 1;
-	}
+   # Any cycle is pure-dimensional by default.
+   rule initial : PURE : {
+      $this->PURE = 1;
+   }
 
-	# @category Input property
-	# A list of (non-redundant) vertices and rays of the complex. Note that [[VERTICES]]
-	# are supposed to be normalized to a leading 0. If you want to input non-normalized vertices,
-	# use this property.
-	# [[VERTICES]] will be derived from this: Each row of [[VERTICES]] is just the corresponding row
-	# of [[PROJECTIVE_VERTICES]], with the first coordinate (i.e. column index 1) normalized to 0.
-	property PROJECTIVE_VERTICES : Matrix<Rational>;
+   # @category Input property
+   # A list of (non-redundant) vertices and rays of the complex. Note that [[VERTICES]]
+   # are supposed to be normalized to a leading 0. If you want to input non-normalized vertices,
+   # use this property.
+   # [[VERTICES]] will be derived from this: Each row of [[VERTICES]] is just the corresponding row
+   # of [[PROJECTIVE_VERTICES]], with the first coordinate (i.e. column index 1) normalized to 0.
+   property PROJECTIVE_VERTICES : Matrix<Rational>;
 
-	rule VERTICES : PROJECTIVE_VERTICES {
-		my $m = new Matrix<Rational>($this->PROJECTIVE_VERTICES);
-		if($m->rows() > 0) { #Might be the empty cycle
-			canonicalize_scalar_to_leading_zero($m->minor(All,~[0]));
-		}
-		$this->VERTICES = $m;
-	}
+   rule VERTICES : PROJECTIVE_VERTICES {
+      my $m = new Matrix<Rational>($this->PROJECTIVE_VERTICES);
+      if ($m->rows() > 0) { # Might be the empty cycle
+         canonicalize_scalar_to_leading_zero($m->minor(All,~[0]));
+      }
+      $this->VERTICES = $m;
+   }
 
-        rule RaysPerm.PERMUTATION : RaysPerm.PROJECTIVE_VERTICES, PROJECTIVE_VERTICES {
-           $this->RaysPerm->PERMUTATION=find_matrix_row_permutation($this->RaysPerm->PROJECTIVE_VERTICES, $this->PROJECTIVE_VERTICES);
-        }
+   rule RaysPerm.PERMUTATION : RaysPerm.PROJECTIVE_VERTICES, PROJECTIVE_VERTICES {
+      $this->RaysPerm->PERMUTATION=find_matrix_row_permutation($this->RaysPerm->PROJECTIVE_VERTICES, $this->PROJECTIVE_VERTICES);
+   }
 
-        rule PROJECTIVE_VERTICES : RaysPerm.PROJECTIVE_VERTICES, RaysPerm.PERMUTATION {
-           $this->PROJECTIVE_VERTICES=permuted_rows($this->RaysPerm->PROJECTIVE_VERTICES, $this->RaysPerm->PERMUTATION);
-        }
-        weight 1.10;
+   rule PROJECTIVE_VERTICES : RaysPerm.PROJECTIVE_VERTICES, RaysPerm.PERMUTATION {
+      $this->PROJECTIVE_VERTICES=permuted_rows($this->RaysPerm->PROJECTIVE_VERTICES, $this->RaysPerm->PERMUTATION);
+   }
+   weight 1.10;
 
-	# @Category Weights and lattices
-	# These are the integer weights associated to the maximal cells of the complex.
-	# Entries correspond to (rows of) [[MAXIMAL_POLYTOPES]].
-	property WEIGHTS : Vector<Integer>;
+   # @Category Weights and lattices
+   # These are the integer weights associated to the maximal cells of the complex.
+   # Entries correspond to (rows of) [[MAXIMAL_POLYTOPES]].
+   property WEIGHTS : Vector<Integer>;
 
-	rule WEIGHTS : ConesPerm.WEIGHTS, ConesPerm.PERMUTATION {
-		$this->WEIGHTS=permuted($this->ConesPerm->WEIGHTS, $this->ConesPerm->PERMUTATION);
-	}
-	weight 1.10;
+   rule WEIGHTS : ConesPerm.WEIGHTS, ConesPerm.PERMUTATION {
+      $this->WEIGHTS=permuted($this->ConesPerm->WEIGHTS, $this->ConesPerm->PERMUTATION);
+   }
+   weight 1.10;
 
-	# @Category Combinatorics
-	# Non-redundant list of all codimension one faces. Indices refer to
-	# [[VERTICES]]. Does not include any far faces.
-	property CODIMENSION_ONE_POLYTOPES : IncidenceMatrix;
+   # @Category Combinatorics
+   # Non-redundant list of all codimension one faces. Indices refer to
+   # [[VERTICES]]. Does not include any far faces.
+   property CODIMENSION_ONE_POLYTOPES : IncidenceMatrix;
 
-	rule CODIMENSION_ONE_POLYTOPES : RaysPerm.CODIMENSION_ONE_POLYTOPES, RaysPerm.PERMUTATION {
-		$this->CODIMENSION_ONE_POLYTOPES=permuted_cols($this->RaysPerm->CODIMENSION_ONE_POLYTOPES,
-			$this->RaysPerm->PERMUTATION);
-	}
-	weight 1.10;
+   rule CODIMENSION_ONE_POLYTOPES : RaysPerm.CODIMENSION_ONE_POLYTOPES, RaysPerm.PERMUTATION {
+      $this->CODIMENSION_ONE_POLYTOPES=permuted_cols($this->RaysPerm->CODIMENSION_ONE_POLYTOPES,
+                                                     $this->RaysPerm->PERMUTATION);
+   }
+   weight 1.10;
 
-	# @Category Combinatorics
-	# Incidence matrix of codimension one polytopes and maximal polytopes.
-	# Rows refer to [[CODIMENSION_ONE_POLYTOPES]], columns to 
-	# [[MAXIMAL_POLYTOPES]].
-	property MAXIMAL_AT_CODIM_ONE : IncidenceMatrix;
+   # @Category Combinatorics
+   # Incidence matrix of codimension one polytopes and maximal polytopes.
+   # Rows refer to [[CODIMENSION_ONE_POLYTOPES]], columns to
+   # [[MAXIMAL_POLYTOPES]].
+   property MAXIMAL_AT_CODIM_ONE : IncidenceMatrix;
 
-	# @category Combinatorics
-	# This maps an index pair (i,j), where i corresponds to the i-th row of [[CODIMENSION_ONE_POLYTOPES]] and
-	# j to the j-th row of [[MAXIMAL_POLYTOPES]], to the matching row number in [[FACET_NORMALS]].
-	property FACET_NORMALS_BY_PAIRS : Map<Pair<Int,Int>, Int>;
+   # @category Combinatorics
+   # This maps an index pair (i,j), where i corresponds to the i-th row of [[CODIMENSION_ONE_POLYTOPES]] and
+   # j to the j-th row of [[MAXIMAL_POLYTOPES]], to the matching row number in [[FACET_NORMALS]].
+   property FACET_NORMALS_BY_PAIRS : Map<Pair<Int,Int>, Int>;
 
-	rule MAXIMAL_AT_CODIM_ONE : ConesPerm.MAXIMAL_AT_CODIM_ONE, ConesPerm.PERMUTATION {
-		$this->MAXIMAL_AT_CODIM_ONE=permuted_cols($this->ConesPerm->MAXIMAL_AT_CODIM_ONE,$this->ConesPerm->PERMUTATION);
-	}
-	weight 1.10;
+   rule MAXIMAL_AT_CODIM_ONE : ConesPerm.MAXIMAL_AT_CODIM_ONE, ConesPerm.PERMUTATION {
+      $this->MAXIMAL_AT_CODIM_ONE=permuted_cols($this->ConesPerm->MAXIMAL_AT_CODIM_ONE,$this->ConesPerm->PERMUTATION);
+   }
+   weight 1.10;
 
-        # permuting [[CODIMENSION_ONE_POLYTOPES]]
-	permutation CodimPerm : PermBase;
+   # permuting [[CODIMENSION_ONE_POLYTOPES]]
+   permutation CodimPerm : PermBase;
 
-	rule CodimPerm.PERMUTATION : CodimPerm.CODIMENSION_ONE_POLYTOPES, CODIMENSION_ONE_POLYTOPES {
-		$this->CodimPerm->PERMUTATION=find_permutation((new Array<Set<Int>>(rows($this->CodimPerm->CODIMENSION_ONE_POLYTOPES))), (new Array<Set<Int>>(rows($this->CODIMENSION_ONE_POLYTOPES))));
-	}
-	weight 5.10;
+   rule CodimPerm.PERMUTATION : CodimPerm.CODIMENSION_ONE_POLYTOPES, CODIMENSION_ONE_POLYTOPES {
+      $this->CodimPerm->PERMUTATION=find_permutation(new Array<Set<Int>>(rows($this->CodimPerm->CODIMENSION_ONE_POLYTOPES)), new Array<Set<Int>>(rows($this->CODIMENSION_ONE_POLYTOPES)));
+   }
+   weight 5.10;
 
-	rule MAXIMAL_AT_CODIM_ONE : CodimPerm.MAXIMAL_AT_CODIM_ONE, CodimPerm.PERMUTATION {
-		$this->MAXIMAL_AT_CODIM_ONE=permuted_rows($this->CodimPerm->MAXIMAL_AT_CODIM_ONE,$this->CodimPerm->PERMUTATION);
-	}
-	weight 1.10;
-	
-	rule FACET_NORMALS_BY_PAIRS : CodimPerm.FACET_NORMALS_BY_PAIRS, CodimPerm.PERMUTATION {
-		$this->FACET_NORMALS_BY_PAIRS=permute_map_first_factor($this->CodimPerm->FACET_NORMALS_BY_PAIRS, $this->CodimPerm->PERMUTATION);
-	}	
-	weight 1.10;
+   rule MAXIMAL_AT_CODIM_ONE : CodimPerm.MAXIMAL_AT_CODIM_ONE, CodimPerm.PERMUTATION {
+      $this->MAXIMAL_AT_CODIM_ONE=permuted_rows($this->CodimPerm->MAXIMAL_AT_CODIM_ONE,$this->CodimPerm->PERMUTATION);
+   }
+   weight 1.10;
 
-	rule FACET_NORMALS_BY_PAIRS : ConesPerm.FACET_NORMALS_BY_PAIRS, ConesPerm.PERMUTATION {
-		$this->FACET_NORMALS_BY_PAIRS=permute_map_second_factor($this->ConesPerm->FACET_NORMALS_BY_PAIRS, $this->ConesPerm->PERMUTATION);
-	}	
-	weight 1.10;
+   rule FACET_NORMALS_BY_PAIRS : CodimPerm.FACET_NORMALS_BY_PAIRS, CodimPerm.PERMUTATION {
+      $this->FACET_NORMALS_BY_PAIRS=permute_map_first_factor($this->CodimPerm->FACET_NORMALS_BY_PAIRS, $this->CodimPerm->PERMUTATION);
+   }
+   weight 1.10;
 
-
-
-	rule CODIMENSION_ONE_POLYTOPES, MAXIMAL_AT_CODIM_ONE, FACET_NORMALS_BY_PAIRS : MAXIMAL_POLYTOPES, VERTICES, MAXIMAL_POLYTOPES_FACETS, FACET_NORMALS, FAR_VERTICES {
-		compute_codimension_one_polytopes($this);
-	}
-	weight 2.10;
-	incurs CodimPerm;
+   rule FACET_NORMALS_BY_PAIRS : ConesPerm.FACET_NORMALS_BY_PAIRS, ConesPerm.PERMUTATION {
+      $this->FACET_NORMALS_BY_PAIRS=permute_map_second_factor($this->ConesPerm->FACET_NORMALS_BY_PAIRS, $this->ConesPerm->PERMUTATION);
+   }
+   weight 1.10;
 
 
-	# @Category Weights and lattices
-	# The lattice normals of codimension one faces with respect to adjacent
-	# maximal cells. It maps a pair of indices (i,j) to the lattice normal
-	# of the codimension one face given by row i in [[CODIMENSION_ONE_POLYTOPES]] 
-	# in the maximal cell given by row j in [[MAXIMAL_POLYTOPES]].
-	# The lattice normal is a representative of a generator of the quotient of 
-	# the saturated lattice of the maximal cell by the saturated lattice of the
-	# codimension one face. It is chosen such that it "points into the maximal cell"
-	# and is only unique modulo the lattice spanned by the codimension one cell.
-	property LATTICE_NORMALS : Map<Pair<Int,Int>,Vector<Integer>> {
-		
-		method equal {
-			my ($this,$l1,$l2) = @_;
-			return compare_lattice_normals($this->VERTICES, $this->LINEALITY_SPACE, $this->CODIMENSION_ONE_POLYTOPES, $l1, $l2);
-		}
 
-	};
-
-	rule LATTICE_NORMALS : ConesPerm.LATTICE_NORMALS, ConesPerm.PERMUTATION  {
-		$this->LATTICE_NORMALS=permute_map_second_factor($this->ConesPerm->LATTICE_NORMALS, $this->ConesPerm->PERMUTATION);
-	}
-	weight 1.10;
-
-	rule LATTICE_NORMALS : CodimPerm.LATTICE_NORMALS, CodimPerm.PERMUTATION {
-		$this->LATTICE_NORMALS=permute_map_first_factor($this->CodimPerm->LATTICE_NORMALS,$this->CodimPerm->PERMUTATION);
-	}
+   rule CODIMENSION_ONE_POLYTOPES, MAXIMAL_AT_CODIM_ONE, FACET_NORMALS_BY_PAIRS : MAXIMAL_POLYTOPES, VERTICES, MAXIMAL_POLYTOPES_FACETS, FACET_NORMALS, FAR_VERTICES {
+      compute_codimension_one_polytopes($this);
+   }
+   weight 2.10;
+   incurs CodimPerm;
 
 
-	rule LATTICE_NORMALS : MAXIMAL_POLYTOPES, CODIMENSION_ONE_POLYTOPES, MAXIMAL_AT_CODIM_ONE, MAXIMAL_POLYTOPES_AFFINE_HULL_NORMALS, FACET_NORMALS_BY_PAIRS, FACET_NORMALS, MAXIMAL_POLYTOPES_FACETS, AFFINE_HULL, FAN_DIM {
-		compute_lattice_normals($this);
-	}
-	weight 3.10;
+   # @Category Weights and lattices
+   # The lattice normals of codimension one faces with respect to adjacent
+   # maximal cells. It maps a pair of indices (i,j) to the lattice normal
+   # of the codimension one face given by row i in [[CODIMENSION_ONE_POLYTOPES]]
+   # in the maximal cell given by row j in [[MAXIMAL_POLYTOPES]].
+   # The lattice normal is a representative of a generator of the quotient of
+   # the saturated lattice of the maximal cell by the saturated lattice of the
+   # codimension one face. It is chosen such that it "points into the maximal cell"
+   # and is only unique modulo the lattice spanned by the codimension one cell.
+   property LATTICE_NORMALS : Map<Pair<Int,Int>,Vector<Integer>> {
+
+      method equal {
+         my ($this, $l1, $l2) = @_;
+         return compare_lattice_normals($this->VERTICES, $this->LINEALITY_SPACE, $this->CODIMENSION_ONE_POLYTOPES, $l1, $l2);
+      }
+
+   };
+
+   rule LATTICE_NORMALS : ConesPerm.LATTICE_NORMALS, ConesPerm.PERMUTATION  {
+      $this->LATTICE_NORMALS=permute_map_second_factor($this->ConesPerm->LATTICE_NORMALS, $this->ConesPerm->PERMUTATION);
+   }
+   weight 1.10;
+
+   rule LATTICE_NORMALS : CodimPerm.LATTICE_NORMALS, CodimPerm.PERMUTATION {
+      $this->LATTICE_NORMALS=permute_map_first_factor($this->CodimPerm->LATTICE_NORMALS,$this->CodimPerm->PERMUTATION);
+   }
 
 
-	# @Category Affine and projective coordinates
-	# This is the projective dimension of the cycle.
-	# Alias for [[DIM]].
-	property PROJECTIVE_DIM : Int;
+   rule LATTICE_NORMALS : MAXIMAL_POLYTOPES, CODIMENSION_ONE_POLYTOPES, MAXIMAL_AT_CODIM_ONE, MAXIMAL_POLYTOPES_AFFINE_HULL_NORMALS, FACET_NORMALS_BY_PAIRS, FACET_NORMALS, MAXIMAL_POLYTOPES_FACETS, AFFINE_HULL, FAN_DIM {
+      compute_lattice_normals($this);
+   }
+   weight 3.10;
 
-	rule PROJECTIVE_DIM : FAN_DIM {
-		$this->PROJECTIVE_DIM = $this->FAN_DIM-1;
-	}
-	weight 0.1;
 
-	# @Category Affine and projective coordinates
-	# This is the ambient projective dimension, i.e. it is
-	# [[FAN_AMBIENT_DIM]]-2.
-	property PROJECTIVE_AMBIENT_DIM : Int;
+   # @Category Affine and projective coordinates
+   # This is the projective dimension of the cycle.
+   # Alias for [[DIM]].
+   property PROJECTIVE_DIM : Int;
 
-	rule PROJECTIVE_AMBIENT_DIM : FAN_AMBIENT_DIM {
-		$this->PROJECTIVE_AMBIENT_DIM = $this->FAN_AMBIENT_DIM-2;
-	}
-	weight 0.1;
+   rule PROJECTIVE_DIM : FAN_DIM {
+      $this->PROJECTIVE_DIM = $this->FAN_DIM-1;
+   }
+   weight 0.1;
 
-	label with_new_properties
+   # @Category Affine and projective coordinates
+   # This is the ambient projective dimension, i.e. it is
+   # [[FAN_AMBIENT_DIM]]-2.
+   property PROJECTIVE_AMBIENT_DIM : Int;
 
-	#Note: We need to redefine this rule: If only [[PROJECTIVE_VERTICES]] are present, 
-	#the standard ruleset of fan will give 0 as an ambient dim.
-	rule with_new_properties : FAN_AMBIENT_DIM : {
-		my $d=0;
-		foreach (qw(RAYS INPUT_RAYS LINEALITY_SPACE INPUT_LINEALITY FACET_NORMALS LINEAR_SPAN_NORMALS PROJECTIVE_VERTICES)) {
-			my $M;
-			if (defined ($M=$this->lookup($_)) && $M->cols()>0) {
-				$d=$M->cols();
-				last;
-			}
-		} 
-		$this->FAN_AMBIENT_DIM=$d;
-	}
-	precondition : defined(RAYS | INPUT_RAYS | LINEALITY_SPACE | INPUT_LINEALITY | FACET_NORMALS | LINEAR_SPAN_NORMALS | PROJECTIVE_VERTICES);
-	weight 0.5;
+   rule PROJECTIVE_AMBIENT_DIM : FAN_AMBIENT_DIM {
+      $this->PROJECTIVE_AMBIENT_DIM = $this->FAN_AMBIENT_DIM-2;
+   }
+   weight 0.1;
 
-	# @category Affine and projective coordinates
-	# Codimension of the cycle. Same as [[PROJECTIVE_AMBIENT_DIM]] - [[PROJECTIVE_DIM]]
-	property PROJECTIVE_CODIMENSION : Int;
+   label with_new_properties
 
-	rule PROJECTIVE_CODIMENSION : PROJECTIVE_AMBIENT_DIM, PROJECTIVE_DIM {
-		$this->PROJECTIVE_CODIMENSION = $this->PROJECTIVE_AMBIENT_DIM - $this->PROJECTIVE_DIM;
-	}
-	weight 0.1;
+   # Note: We need to redefine this rule: If only [[PROJECTIVE_VERTICES]] are present,
+   # the standard ruleset of fan will give 0 as an ambient dim.
+   rule with_new_properties : FAN_AMBIENT_DIM : {
+      my $d=0;
+      foreach (qw(RAYS INPUT_RAYS LINEALITY_SPACE INPUT_LINEALITY FACET_NORMALS LINEAR_SPAN_NORMALS PROJECTIVE_VERTICES)) {
+         my $M;
+         if (defined ($M=$this->lookup($_)) && $M->cols()>0) {
+            $d=$M->cols();
+            last;
+         }
+      }
+      $this->FAN_AMBIENT_DIM=$d;
+   }
+   precondition : defined(RAYS | INPUT_RAYS | LINEALITY_SPACE | INPUT_LINEALITY | FACET_NORMALS | LINEAR_SPAN_NORMALS | PROJECTIVE_VERTICES);
+   weight 0.5;
+
+   # @category Affine and projective coordinates
+   # Codimension of the cycle. Same as [[PROJECTIVE_AMBIENT_DIM]] - [[PROJECTIVE_DIM]]
+   property PROJECTIVE_CODIMENSION : Int;
+
+   rule PROJECTIVE_CODIMENSION : PROJECTIVE_AMBIENT_DIM, PROJECTIVE_DIM {
+      $this->PROJECTIVE_CODIMENSION = $this->PROJECTIVE_AMBIENT_DIM - $this->PROJECTIVE_DIM;
+   }
+   weight 0.1;
 
    # @category Weights and lattices
    # For a onedimensional cycle, this produces the lengths of the [[MAXIMAL_POLYTOPES]], as multiples of the
@@ -207,45 +208,44 @@ object Cycle {
       $this->PROJECTIVE_DIM == 1;
    }
 
-	# @category Affine and projective coordinates
-	# This produces a version of the cycle in the coordinates of a standard
-	# tropical chart, i.e. one coordinate is set to 0. 
-	# It is returned as an ordinary polyhedral complex (which can, for example,
-	# be used for visualization).
-	# @param Int chart The coordinate which should be set to 0. Indexed from 
-	# 0 to [[AMBIENT_DIM]]-1 and 0 by default.
-	# @return fan::PolyhedralComplex<Rational>
-	user_method affine_chart(;$=0) {
-           my ($this,$chart) = @_;
-           if ($this->FAN_AMBIENT_DIM==0) {
-              $this
-           } else {
-              new fan::PolyhedralComplex(VERTICES=>tdehomog($this->VERTICES,$chart),
-                                         MAXIMAL_POLYTOPES=>$this->MAXIMAL_POLYTOPES,
-                                         LINEALITY_SPACE=>tdehomog($this->LINEALITY_SPACE,$chart));
-           }
-	}
+   # @category Affine and projective coordinates
+   # This produces a version of the cycle in the coordinates of a standard
+   # tropical chart, i.e. one coordinate is set to 0.
+   # It is returned as an ordinary polyhedral complex (which can, for example,
+   # be used for visualization).
+   # @param Int chart The coordinate which should be set to 0. Indexed from
+   # 0 to [[AMBIENT_DIM]]-1 and 0 by default.
+   # @return fan::PolyhedralComplex<Rational>
+   user_method affine_chart(;$=0) {
+      my ($this,$chart) = @_;
+      if ($this->FAN_AMBIENT_DIM==0) {
+         $this
+      } else {
+         new fan::PolyhedralComplex(VERTICES=>tdehomog($this->VERTICES,$chart),
+                                    MAXIMAL_POLYTOPES=>$this->MAXIMAL_POLYTOPES,
+                                    LINEALITY_SPACE=>tdehomog($this->LINEALITY_SPACE,$chart));
+      }
+   }
 
-	# @category Weights and lattices
-	# Convenience function to ask for [[LATTICE_NORMALS]]->{new Pair<Int,Int>(i,j)}
-	# @param Int i Row index in [[CODIMENSION_ONE_POLYTOPES]].
-	# @param Int j Row index in [[MAXIMAL_POLYTOPES]].
-	# @return Vector<Integer>
-	user_method lattice_normal($,$) {
-		my ($this,$i,$j)= @_;
-		return $this->LATTICE_NORMALS->{new Pair<Int,Int>($i,$j)};
-	}
+   # @category Weights and lattices
+   # Convenience function to ask for [[LATTICE_NORMALS]]->{new Pair<Int,Int>(i,j)}
+   # @param Int i Row index in [[CODIMENSION_ONE_POLYTOPES]].
+   # @param Int j Row index in [[MAXIMAL_POLYTOPES]].
+   # @return Vector<Integer>
+   user_method lattice_normal($,$) {
+      my ($this, $i, $j)=@_;
+      return $this->LATTICE_NORMALS->{new Pair<Int,Int>($i,$j)};
+   }
 
-	# @category Combinatorics 
-	# Convenience function to ask for [[FACET_NORMALS_BY_PAIRS]]->{new Pair<Int,Int>(i,i)}
-	# @param Int i Row index in [[CODIMENSION_ONE_POLYTOPES]].
-	# @param Int j Row index in [[MAXIMAL_POLYTOPES]].
-	# @return Int Row index in [[FACET_NORMALS]].
-	user_method facet_normal($,$) {
-		my ($this,$i,$j)= @_;
-		return $this->FACET_NORMALS_BY_PAIRS->{new Pair<Int,Int>($i,$j)};
-	}
-
+   # @category Combinatorics
+   # Convenience function to ask for [[FACET_NORMALS_BY_PAIRS]]->{new Pair<Int,Int>(i,i)}
+   # @param Int i Row index in [[CODIMENSION_ONE_POLYTOPES]].
+   # @param Int j Row index in [[MAXIMAL_POLYTOPES]].
+   # @return Int Row index in [[FACET_NORMALS]].
+   user_method facet_normal($,$) {
+      my ($this, $i, $j)=@_;
+      return $this->FACET_NORMALS_BY_PAIRS->{new Pair<Int,Int>($i,$j)};
+   }
 
 }
 

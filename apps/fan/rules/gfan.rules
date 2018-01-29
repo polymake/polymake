@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -35,31 +35,34 @@ CONFIGURE {
     find_program($gfan_topolyhedralfan, "gfan_topolyhedralfan");
 }
 
-
-package application;
+# command => Object
+sub run_gfan {
+  my ($cmd)=@_;
+  open my $gfan_pipe, "$cmd --xml 2>/dev/null |" or die "can't run $cmd: $!\n";
+  Core::Object->fromXMLstream($gfan_pipe);
+}
 
 # @category Producing a fan
 # Call [[wiki:external_software#gfan]] to compute the secondary fan of a point configuration.
 #
-# @param Matrix M whose rows are the vectors in the configuration
-# @return SymmetricFan
+# @param Matrix M a matrix whose rows are the vectors in the configuration
+# @return PolyhedralFan
 user_function secondary_fan(Matrix) {
   my ($M)=@_;
   my $tempfile=new Tempfile;
-  gfan_print_matrix($tempfile,eliminate_denominators_entire_affine($M));
-  system ("$gfan_secondaryfan --xml <$tempfile.txt >$tempfile.fan");
-  my $gfan_out= User::load("$tempfile.fan");
+  my $input=gfan_print_matrix($tempfile, eliminate_denominators_entire_affine($M));
   # WARNING: file automatically converted via XSLT to correct F_VECTOR
-  return $gfan_out;
+  return run_gfan("$gfan_secondaryfan <$input");
 }
 
 # @category Producing a fan
 # Call [[wiki:external_software#gfan]] to compute the secondary fan of a point configuration.
 #
 # @param polytope::PointConfiguration P
-# @return SymmetricFan
+# @return PolyhedralFan
 user_function secondary_fan(polytope::PointConfiguration) {
-   return secondary_fan(shift->POINTS);
+  my ($pc)=@_;
+  return secondary_fan($pc->POINTS);
 }
 
 sub gfan_print_matrix {
@@ -83,21 +86,20 @@ sub gfan_print_matrix {
   print $infile "}\n";
 
   close $infile;
+  return "$tempname.txt";
 }
 
 # @category Producing a fan
 # Call [[wiki:external_software#gfan]] to compute the greobner fan of an ideal.
 #
 # @param ideal::Ideal I input ideal
-# @return SymmetricFan
+# @return PolyhedralFan
 user_function groebner_fan(ideal::Ideal) {
   my ($I)=@_;
   my $tempfile=new Tempfile;
-  gfan_print_ideal($tempfile,$I);
-  system ("$gfan_bases <$tempfile.txt | $gfan_topolyhedralfan --xml >$tempfile.fan");
-  my $gfan_out= User::load("$tempfile.fan");
+  my $input=gfan_print_ideal($tempfile, $I);
   # WARNING: file automatically converted via XSLT to correct F_VECTOR
-  return $gfan_out;
+  return run_gfan("$gfan_bases <$input 2>/dev/null | $gfan_topolyhedralfan");
 }
 
 sub gfan_print_ideal {
@@ -110,9 +112,10 @@ sub gfan_print_ideal {
   print $infile "{", (join ",", @{$I->GENERATORS}), "}\n";
 
   close $infile;
+  return "$tempname.txt"
 }
 
 # Local Variables:
 # mode: perl
-# cperl-indent-level:4
+# cperl-indent-level:2
 # End:

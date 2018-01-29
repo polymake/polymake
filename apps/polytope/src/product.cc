@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,6 +19,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/Set.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/common/labels.h"
 
 namespace polymake { namespace polytope {
 namespace {
@@ -36,7 +37,7 @@ struct product_label {
 
 template<typename Scalar>
 Matrix<Scalar>
-product_coord(const Matrix<Scalar>& V1, const Matrix<Scalar>& V2,
+product_vertices(const Matrix<Scalar>& V1, const Matrix<Scalar>& V2,
               int& n_vertices1, int& n_vertices2, int& n_vertices_out, int n_rays,
               const Set<int>& rays1, const Set<int>& rays2)
 {
@@ -63,6 +64,33 @@ product_coord(const Matrix<Scalar>& V1, const Matrix<Scalar>& V2,
    return V_out;
 }
 
+template<typename Scalar>
+Matrix<Scalar>
+product_facets(const Matrix<Scalar>& F1, const Matrix<Scalar>& F2)
+{
+   return ( F1 | zero_matrix<Scalar>(F1.rows(), F2.cols()-1) ) /
+      ( F2.col(0) | zero_matrix<Scalar>(F2.rows(), F1.cols()-1) | F2.minor(All, sequence(1,F2.cols()-1)) );
+}
+
+//creates an array of length n, permuting blocks of block_size using perm
+Array<int> permute_blocks(int n, Array<int> perm, int block_size){
+   Array<int> out(n);
+   for(int i=0; i<perm.size(); ++i)
+      for(int j=0; j<block_size; ++j)
+         out[i*block_size+j] = perm[i]*block_size + j;
+   return out;
+}
+
+//creates an array of length n, permuting each of the blocks using perm
+Array<int> permute_inside_blocks(int n, Array<int> perm, int n_blocks){
+   Array<int> out(n);
+   int block_size = perm.size();
+   for(int i=0; i<n_blocks; ++i)
+      for(int j=0; j<block_size; ++j)
+         out[i*block_size+j] = perm[j] + i*block_size;
+   return out;
+}
+
 } // end unnamed namespace
 
 template<typename Scalar>
@@ -71,11 +99,17 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
    int n_vertices1=0, n_vertices2=0, n_vertices_out=0, n_rays=0;
 
    const bool noc=options["no_coordinates"],
+      nov=options["no_vertices"],
+      nof=options["no_facets"],
       relabel=!options["no_labels"];
 
+   bool f_present = p_in1.exists("FACETS | INEQUALITIES") && p_in2.exists("FACETS | INEQUALITIES");
+   bool v_present = ( p_in1.exists("VERTICES | POINTS") && p_in2.exists("VERTICES | POINTS") ) ||
+      ( !noc && !nov && ( nof || !f_present) ); //these are the conditions under which both VERTICES have to be computed (if not existent yet)
+
    Set<int> rays1, rays2;
-   if (!noc) {
-      p_in1.give("FAR_FACE") >> rays1;
+   if (v_present) {
+      p_in1.give("FAR_FACE") >> rays1; //this requires presence of VERTICES in p1 and p2
       p_in2.give("FAR_FACE") >> rays2;
       n_rays=rays1.size()+rays2.size();
    }
@@ -83,7 +117,7 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
    perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
    p_out.set_description() << "Product of " << p_in1.name() << " and " << p_in2.name() << endl;
 
-   if (noc || p_in1.exists("VERTICES_IN_FACETS") && p_in2.exists("VERTICES_IN_FACETS")) {
+   if (noc || v_present &&  p_in1.exists("VERTICES_IN_FACETS") && p_in2.exists("VERTICES_IN_FACETS")) {
       const IncidenceMatrix<> VIF1=p_in1.give("VERTICES_IN_FACETS"),
          VIF2=p_in2.give("VERTICES_IN_FACETS");
       n_vertices1=VIF1.cols();  n_vertices2=VIF2.cols();
@@ -126,29 +160,109 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
 
    if (!noc) {
 
-      const bool pointed=p_in1.give("POINTED") && p_in2.give("POINTED");
-      if (!pointed)
-         throw std::runtime_error("product: input polyhedron not pointed");
+      if(!nov && v_present){ // at least one of the polytopes has V given or nof is active
+         const bool pointed=p_in1.give("POINTED") && p_in2.give("POINTED");
+         if (!pointed)
+            throw std::runtime_error("product: input polyhedron not pointed");
 
-      std::string given1, given2;
-      const Matrix<Scalar> V1=p_in1.give_with_property_name("VERTICES | POINTS", given1),
-         V2=p_in2.give_with_property_name("VERTICES | POINTS", given2);
-      const bool VERTICES_out= given1=="VERTICES" && given2=="VERTICES";
+         std::string given1, given2;
+         const Matrix<Scalar> V1=p_in1.give_with_property_name("VERTICES | POINTS", given1),
+            V2=p_in2.give_with_property_name("VERTICES | POINTS", given2);
+         const bool VERTICES_out= given1=="VERTICES" && given2=="VERTICES";
 
-      const Matrix<Scalar> V_out=product_coord(V1, V2, n_vertices1, n_vertices2, n_vertices_out, n_rays, rays1, rays2);
+         const Matrix<Scalar> V_out=product_vertices(V1, V2, n_vertices1, n_vertices2, n_vertices_out, n_rays, rays1, rays2);
 
-      p_out.take(VERTICES_out ? Str("VERTICES") : Str("POINTS")) << V_out;
+         p_out.take(VERTICES_out ? Str("VERTICES") : Str("POINTS")) << V_out;
+      }
+
+      if(!nof && (nov || f_present)){
+         std::string given1, given2;
+         const Matrix<Scalar> F1=p_in1.give_with_property_name("FACETS | INEQUALITIES", given1),
+            F2=p_in2.give_with_property_name("FACETS | INEQUALITIES", given2);
+         const bool FACETS_out= given1=="FACETS" && given2=="FACETS";
+
+         const Matrix<Scalar> F_out=product_facets(F1, F2);
+
+
+         const Matrix<Scalar> H1=p_in1.give("AFFINE_HULL | EQUATIONS"),
+            H2=p_in2.give("AFFINE_HULL | EQUATIONS");
+         const Matrix<Scalar> H_out=product_facets(H1, H2);
+
+         p_out.take(FACETS_out ? Str("FACETS") : Str("INEQUALITIES")) << F_out;
+         p_out.take(FACETS_out ? Str("AFFINE_HULL") : Str("EQUATIONS")) << H_out;
+      }
    }
 
-   if (relabel) {
-      std::vector<std::string> labels1(n_vertices1), labels2(n_vertices2),
-         labels_out(n_vertices_out);
-      read_labels(p_in1, "VERTEX_LABELS", labels1);
-      read_labels(p_in2, "VERTEX_LABELS", labels2);
+   if(options["group"]){
+      perl::Object g("group::Group");
+      g.set_description() << "canonical group induced by the group of the base polytopes" << endl;
+      g.set_name("canonicalGroup");
+
+      Array<Array<int>> gens1, gens2;
+
+      if(p_in1.lookup("GROUP.VERTICES_ACTION.GENERATORS") >> gens1 &&
+         p_in2.lookup("GROUP.VERTICES_ACTION.GENERATORS") >> gens2 ){
+
+         if(!n_vertices1)
+            n_vertices1 = gens1[0].size();
+         if(!n_vertices2)
+            n_vertices2 = gens2[0].size();
+         if(!n_vertices_out)
+            n_vertices_out = n_vertices1 + n_vertices2;
+
+         int g1 = gens1.size();
+
+         Array<Array<int>> gens_out(g1 + gens2.size());
+
+         //each "block" of vertices of p_out corresponds to one vertex of p1
+         for(int i = 0; i < g1; ++i){
+            gens_out[i] = permute_blocks(n_vertices_out, gens1[i], n_vertices2);
+         }
+         //the vertices inside a "block" correspond to the vertices of p2
+         for(int i = g1; i < gens_out.size(); ++i){
+            gens_out[i] = permute_inside_blocks(n_vertices_out, gens2[i-g1], n_vertices1);
+         }
+
+         perl::Object a("group::PermutationAction");
+         a.take("GENERATORS") << gens_out;
+         p_out.take("GROUP") << g;
+         p_out.take("GROUP.VERTICES_ACTION") << a;
+      }
+      else if(p_in1.lookup("GROUP.FACETS_ACTION.GENERATORS") >> gens1 &&
+              p_in2.lookup("GROUP.FACETS_ACTION.GENERATORS") >> gens2 ){
+
+         int n_facets1 = gens1[0].size();
+         int n_facets_out = n_facets1 + gens2[0].size();
+
+         int g1 = gens1.size();
+         Array<Array<int>> gens_out(g1 + gens2.size());
+
+         for(int i = 0; i < g1; ++i){
+            gens_out[i] = gens1[i].append(range(n_facets1,n_facets_out-1));
+         }
+         for(int i = g1; i < gens_out.size(); ++i){
+            gens_out[i] = Array<int>(range(0,n_facets1-1)).append(gens2[i-g1]);
+            for(int j = n_facets1; j<n_facets_out; ++j)
+               gens_out[i][j]+=n_facets1;
+         }
+
+         perl::Object a("group::PermutationAction");
+         a.take("GENERATORS") << gens_out;
+         g.take("FACETS_ACTION") << a;
+         p_out.take("GROUP") << g;
+      }
+      else
+         throw std::runtime_error("GROUP action of both input polytopes must be provided.");
+   }
+
+   if (relabel && v_present) {
+      const std::vector<std::string> labels1 = common::read_labels(p_in1, "VERTEX_LABELS", n_vertices1);
+      const std::vector<std::string> labels2 = common::read_labels(p_in2, "VERTEX_LABELS", n_vertices2);
+      std::vector<std::string> labels_out(n_vertices_out);
       if (n_rays==0) {
          copy_range(entire(pm::product(labels1, labels2, product_label())), labels_out.begin());
       } else {
-         std::vector<std::string>::iterator l=labels_out.begin();
+         auto l=labels_out.begin();
          l=copy_range(entire(pm::product(select(labels1,~rays1), select(labels2,~rays2), product_label())), l);
          const std::string all("all");
          l=copy_range(entire(attach_operation(select(labels1,rays1), constant(all), product_label())), l);
@@ -161,19 +275,24 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
 
 UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Construct a new polytope as the product of two given polytopes //P1// and //P2//."
+                          "# As little additional properties of the input polytopes as possible are computed."
+                          "# You can control this behaviour using the option flags."
                           "# @param Polytope P1"
                           "# @param Polytope P2"
                           "# @option Bool no_coordinates only combinatorial information is handled"
-                          "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytopes. default: 0"
+                          "# @option Bool no_vertices do not compute vertices"
+                          "# @option Bool no_facets do not compute facets"
+                          "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytopes, if present."
                           "#   the label of a new vertex corresponding to v<sub>1</sub> &oplus; v<sub>2</sub> will"
-                          "#   have the form LABEL_1*LABEL_2."
+                          "#   have the form LABEL_1*LABEL_2. default: 0"
+                          "# @option Bool group Compute the canonical group of the product, as induced by the groups on"
+                          "#    FACETS of VERTICES of //P1// and //P2//. If neither FACETS_ACTION nor VERTICES_ACTION of the"
+                          "#    GROUPs of the input polytopes are provided, an exception is thrown. default 0"
                           "# @return Polytope"
                           "# @example The following builds the product of a square and an interval,"
-                          "# and then prints a nice representation of its vertices."
-                          "# > $p = product(cube(2),cube(1));"
-                          "# > print labeled($p->VERTICES,$p->VERTEX_LABELS);"
-                          "# | 0*0:1 -1 -1 -1 0*1:1 -1 -1 1 1*0:1 1 -1 -1 1*1:1 1 -1 1 2*0:1 -1 1 -1 2*1:1 -1 1 1 3*0:1 1 1 -1 3*1:1 1 1 1",
-                          "product<Scalar>(Polytope<type_upgrade<Scalar>>, Polytope<type_upgrade<Scalar>>; { no_coordinates => 0, no_labels => 0 })");
+                          "# without computing vertices of neither the input nor the output polytopes."
+                          "# > $p = product(cube(2),cube(1), no_vertices=>1);",
+                          "product<Scalar>(Polytope<type_upgrade<Scalar>>, Polytope<type_upgrade<Scalar>>; { no_coordinates => 0, no_vertices=>0, no_facets=>0, no_labels => 0, group=>0})");
 
 } }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,6 +16,7 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
@@ -32,5 +33,6 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(lin_solve_X_X, perl::Canned< const Wary< Matrix< Rational > > >, perl::Canned< const Wary< Vector< Rational > > >);
+   FunctionInstance4perl(lin_solve_X_X, perl::Canned< const Wary< pm::Transposed<pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Array<int> const&, pm::all_selector const&> > > >, perl::Canned< const Wary< Vector< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

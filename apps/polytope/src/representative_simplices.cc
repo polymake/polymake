@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -70,21 +70,23 @@ representative_interior_and_boundary_ridges(perl::Object p, perl::OptionSet opti
    const bool is_config = p.isa("PointConfiguration");
 
    const int d = is_config 
-      ? ((int) p.give("VECTOR_DIM"))-1
+      ? p.give("CONVEX_HULL.COMBINATORIAL_DIM")
       : p.give("COMBINATORIAL_DIM");
 
    AnyString VIF_property = options["VIF_property"];
    if (!VIF_property)
       VIF_property = is_config
-                     ? Str("CONVEX_HULL.VERTICES_IN_FACETS")
+                     ? Str("CONVEX_HULL.POINTS_IN_FACETS")
                      : Str("RAYS_IN_FACETS");
    const IncidenceMatrix<> VIF = p.give(VIF_property);
 
    const Matrix<Scalar> V = is_config
-      ? p.give("CONVEX_HULL.VERTICES")
+      ? p.give("POINTS")
       : p.give("RAYS");
 
-   const Array<Array<int>> generators = p.give("GROUP.RAYS_ACTION.GENERATORS");
+   const Array<Array<int>> generators = is_config
+      ? p.give("GROUP.POINTS_ACTION.GENERATORS")
+      : p.give("GROUP.RAYS_ACTION.GENERATORS");
    const group::PermlibGroup sym_group(generators);
 
    Set<BBitset> interior_ridges, boundary_ridges;
@@ -102,9 +104,9 @@ FunctionTemplate4perl("representative_simplices<Scalar>($ Matrix<Scalar> Array<A
 
 FunctionTemplate4perl("representative_max_interior_simplices<Scalar>($ Matrix<Scalar> Array<Array<Int>>)");
 
-FunctionTemplate4perl("representative_interior_and_boundary_ridges<Scalar>(Polytope<Scalar> { VIF_property=>undef } )");
+FunctionTemplate4perl("representative_interior_and_boundary_ridges<Scalar=Rational>($ { VIF_property=>undef } )");
 
-FunctionTemplate4perl("representative_max_interior_simplices<Scalar>(Polytope<Scalar>)");
+FunctionTemplate4perl("representative_max_interior_simplices<Scalar=Rational>($)");
 
 } }
 

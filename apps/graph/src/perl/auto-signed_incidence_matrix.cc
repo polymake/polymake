@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -36,5 +36,7 @@ namespace polymake { namespace graph { namespace {
 
    FunctionInstance4perl(signed_incidence_matrix_T_x, Undirected);
    FunctionInstance4perl(signed_incidence_matrix_X, perl::Canned< const Graph< Undirected > >);
+   FunctionInstance4perl(signed_incidence_matrix_T_x, Directed);
+   FunctionInstance4perl(signed_incidence_matrix_X, perl::Canned< const Graph< Directed > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

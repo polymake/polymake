@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -170,7 +170,7 @@ int socketbuf::sync()
       out_size-=written;
       start+=written;
    }
-   setp(pbase(),epptr());
+   setp(pbase(), epptr());
    return 0;
 }
 
@@ -318,6 +318,11 @@ int socketstream::port() const
    if (getsockname(buf->_fd, (sockaddr*)&sa, &l))
       throw std::runtime_error(std::string("socketstream: getsockname failed: ") += strerror(errno));
    return ntohs(sa.sin_port);
+}
+
+void socketbuf::discard_out()
+{
+   setp(pbase(), epptr());
 }
 
 inline

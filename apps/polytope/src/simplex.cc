@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,7 +25,7 @@ namespace polymake { namespace polytope {
 
 namespace {
 
-perl::Object simplex_group(int d) {
+perl::Object simplex_action(int d) {
    const int n_gens= d==1 ? 1 : 2;
    Array< Array< int > > gens(n_gens);
    if ( d==1 ) {
@@ -46,12 +46,7 @@ perl::Object simplex_group(int d) {
    perl::Object a("group::PermutationAction");
    a.take("GENERATORS") << gens;
 
-   perl::Object g("group::Group");
-   g.set_description() << "full combinatorial group on vertices of " << d << "-dim simplex" << endl;
-   g.set_name("fullCombinatorialGroupOnRays");
-   g.take("RAYS_ACTION") << a;
-
-   return g;
+   return a;
 }
 
 
@@ -63,7 +58,11 @@ void add_simplex_data(perl::Object& p, const int d, const bool group_flag) {
    p.take("FEASIBLE") << true;
    p.take("POINTED") << true;
    if ( group_flag ) {
-      p.take("GROUP") << simplex_group(d);
+      perl::Object g("group::Group");
+      g.set_description() << "full combinatorial group on vertices of " << d << "-dim simplex" << endl;
+      g.set_name("fullCombinatorialGroupOnRays");
+      p.take("GROUP") << g;
+      p.take("GROUP.VERTICES_ACTION") << simplex_action(d);
    }
 }
 

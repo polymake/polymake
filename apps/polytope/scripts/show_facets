@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -25,7 +25,7 @@ for (my $i=0; $i<$p->N_FACETS; ++$i) {
    foreach my $other_facet (@list) {
       next FACETS if isomorphic($facet, $other_facet);
    }
-   $facet=projection_full($facet);
+   $facet=project_full($facet);
    $facet->name="facet $i";
    push @list, $facet;
 }

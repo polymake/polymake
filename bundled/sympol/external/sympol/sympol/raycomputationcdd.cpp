@@ -110,7 +110,7 @@ bool RayComputationCDD::dualDescription(const Polyhedron & data, std::vector<Fac
 	dd_FreePolyhedra(poly);
 	dd_FreeMatrix(matrix);
 	dd_FreeMatrix(G);
-	
+
 	return true;
 }
 

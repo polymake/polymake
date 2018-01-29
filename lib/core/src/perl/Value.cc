@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -137,7 +137,7 @@ SV* ArrayHolder::operator[] (int i) const
 int ArrayHolder::dim(bool& has_sparse_representation) const
 {
    dTHX;
-   MAGIC* mg=pm_perl_array_flags_magic(aTHX_ SvRV(sv));
+   MAGIC* mg=glue::array_flags_magic(aTHX_ SvRV(sv));
    if (mg && mg->mg_len>=0 && mg->mg_obj && SvPOKp(mg->mg_obj) && SvCUR(mg->mg_obj)==3 && !strncmp(SvPVX(mg->mg_obj), "dim", 3)) {
       has_sparse_representation=true;
       return mg->mg_len;
@@ -150,7 +150,7 @@ int ArrayHolder::dim(bool& has_sparse_representation) const
 int ArrayHolder::cols() const
 {
    dTHX;
-   MAGIC* mg=pm_perl_array_flags_magic(aTHX_ SvRV(sv));
+   MAGIC* mg=glue::array_flags_magic(aTHX_ SvRV(sv));
    if (mg && mg->mg_len>=0 && mg->mg_obj && SvPOKp(mg->mg_obj) && SvCUR(mg->mg_obj)==4 && !strncmp(SvPVX(mg->mg_obj), "cols", 4)) {
       return mg->mg_len;
    } else {
@@ -162,7 +162,7 @@ bool SVHolder::is_tuple() const
 {
    dTHX;
    if (SvROK(sv)) {
-      MAGIC* mg=pm_perl_array_flags_magic(aTHX_ SvRV(sv));
+      MAGIC* mg=glue::array_flags_magic(aTHX_ SvRV(sv));
       return mg && mg->mg_len<0;
    } else {
       return false;
@@ -414,7 +414,7 @@ Value::number_flags Value::classify_number() const
    if (flags & SVf_ROK) {
       SV* const obj=SvRV(sv);
       if (SvOBJECT(obj)) {
-         if (MAGIC* mg=pm_perl_get_cpp_magic(obj)) {
+         if (MAGIC* mg=glue::get_cpp_magic(obj)) {
             const glue::base_vtbl* t=(const glue::base_vtbl*)mg->mg_virtual;
             if ((t->flags & class_is_kind_mask) == class_is_scalar)
                return number_is_object;
@@ -518,7 +518,7 @@ Value::canned_data_t Value::get_canned_data(SV* sv_arg) noexcept
    if (SvROK(sv_arg)) {
       MAGIC* mg;
       SV* obj=SvRV(sv_arg);
-      if (SvOBJECT(obj) && (mg=pm_perl_get_cpp_magic(obj)))
+      if (SvOBJECT(obj) && (mg=glue::get_cpp_magic(obj)))
          return canned_data_t(((glue::base_vtbl*)mg->mg_virtual)->type, mg->mg_ptr);
    }
    return canned_data_t(NULL, NULL);
@@ -529,7 +529,7 @@ int Value::get_canned_dim(bool tell_size_if_dense) const
    if (SvROK(sv)) {
       MAGIC* mg;
       SV* obj=SvRV(sv);
-      if (SvOBJECT(obj) && (mg=pm_perl_get_cpp_magic(obj))) {
+      if (SvOBJECT(obj) && (mg=glue::get_cpp_magic(obj))) {
          const glue::container_vtbl* t=(const glue::container_vtbl*)mg->mg_virtual;
          if (((t->flags & class_is_kind_mask) == class_is_container) && t->own_dimension==1) {
             if (tell_size_if_dense || (t->flags & class_is_sparse_container))

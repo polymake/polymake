@@ -163,7 +163,7 @@ sub isContainedInPoly {
 sub findOrbitConvCombPoly {
    my ($v, $g, $containedVec) = @_;
    my $p = orbit_polytope($v, $g);
-   my $eqs = transpose( new Matrix ( $p->POINTS->minor(All, (new Set<Int>(1..$p->POINTS->cols - 1) ) ) ) );
+   my $eqs = transpose( new Matrix( $p->POINTS->minor(All, new Set<Int>(1..$p->POINTS->cols - 1)) ) );
    my $eqs_w_rhs = new Matrix(-($containedVec->slice(1,$containedVec->dim-1)) | $eqs);
    my $pos_orth = new Matrix( zero_vector($eqs->cols) | unit_matrix($eqs->cols) );
    return new Polytope(EQUATIONS=>$eqs_w_rhs, INEQUALITIES=>$pos_orth);

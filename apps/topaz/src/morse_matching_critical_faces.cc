@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -31,7 +31,7 @@ void morse_matching_critical_faces (perl::Object p)
    perl::Object HD_obj = p.give("HASSE_DIAGRAM");
    const Lattice M(HD_obj);
    const int d = M.rank() - 2;
-   const HasseEdgeMap EM = p.give("HASSE_DIAGRAM.MORSE_MATCHING");
+   const HasseEdgeMap EM = p.give("MORSE_MATCHING.MATCHING");
    Bitset critical = collectCriticalFaces(M, EM);
    Array<int> numCritical(d+1);
    for (int k = 0; k <= d; ++k) 
@@ -60,9 +60,9 @@ void morse_matching_critical_faces (perl::Object p)
    PowerSet<int> criticalFaces = findCriticalFaces(M, EM);
 
    // write vector
-   p.take("HASSE_DIAGRAM.MORSE_MATCHING_CRITICAL_FACE_VECTOR") << numCritical;
+   p.take("MORSE_MATCHING.CRITICAL_FACE_VECTOR") << numCritical;
    // write faces
-   p.take("HASSE_DIAGRAM.MORSE_MATCHING_CRITICAL_FACES") << as_array(criticalFaces);
+   p.take("MORSE_MATCHING.CRITICAL_FACES") << as_array(criticalFaces);
 }
 
 Function4perl(&morse_matching_critical_faces, "morse_matching_critical_faces($)");

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -1545,8 +1545,8 @@ class manip_container_top<Top, TParams, true>
    : public manip_container_top<Top, TParams, false>
    , public manip_container_hidden_defaults<Top, TParams> {
 protected:
-   manip_container_top();
-   ~manip_container_top();
+   manip_container_top() = delete;
+   ~manip_container_top() = delete;
 public:
    typedef typename manip_container_hidden_defaults<Top, TParams>::hidden_type hidden_type;
 

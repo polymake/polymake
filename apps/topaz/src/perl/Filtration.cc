@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -26,6 +26,12 @@
 
 namespace polymake { namespace topaz { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1, typename T2>
+   FunctionInterface4perl( new_X2_X_x, T0,T1,T2 ) {
+      perl::Value arg0(stack[1]), arg1(stack[2]), arg2(stack[3]);
+      WrapperReturnNew(T0, (arg0.get<T1>(), arg1.get<T2>(), arg2) );
+   };
+
    template <typename T0, typename T1>
    FunctionInterface4perl( new_x_X, T0,T1 ) {
       perl::Value arg0(stack[1]), arg1(stack[2]);
@@ -46,5 +52,6 @@ namespace polymake { namespace topaz { namespace {
    OperatorInstance4perl(Binary__eq, perl::Canned< const Filtration< SparseMatrix< Integer, NonSymmetric > > >, perl::Canned< const Filtration< SparseMatrix< Integer, NonSymmetric > > >);
    FunctionInstance4perl(new_x_X, Filtration< SparseMatrix< Rational, NonSymmetric > >, perl::Canned< const Array< int > >);
    FunctionInstance4perl(new_x_X, Filtration< SparseMatrix< Integer, NonSymmetric > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(new_X2_X_x, Filtration< SparseMatrix< Rational, NonSymmetric > >, perl::Canned< Array< Cell > >, perl::Canned< const Array< SparseMatrix< Rational, NonSymmetric > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

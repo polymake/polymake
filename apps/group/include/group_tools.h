@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,7 +17,8 @@
 #ifndef __GROUP_TOOLS_H
 #define __GROUP_TOOLS_H
 
-#include "polymake/group/action_datatypes.h"
+#include "polymake/group/action.h"
+#include <polymake/QuadraticExtension.h>
 #include "polymake/hash_set"
 
 namespace polymake { namespace group {
@@ -26,14 +27,93 @@ typedef Array<Array<int>> GroupRightMultiplicationTable;
 typedef Array<Array<int>> GroupLeftMultiplicationTable;
 typedef Array<int> GroupRightMultiplicationTableRow;
 typedef Array<int> GroupLeftMultiplicationTableRow;
-typedef hash_map<Array<int>, int> GroupIndex;
 
-template<typename ConjugacyClasses>
-GroupIndex
-group_index(const ConjugacyClasses& cc)
+template<typename Element=Array<int>>
+using GroupIndex = hash_map<Element, int>;
+
+template<typename Element=Array<int>>
+using ConjugacyClass = Array<Element>;
+      
+template<typename Element=Array<int>>
+using ConjugacyClasses = Array<ConjugacyClass<Element>>;
+
+template<typename Element=Array<int>>
+using ConjugacyClassReps = Array<Element>;
+
+// choose the right parametrization of 'action' for permutation, matrix and set actions
+
+template<typename Element>
+struct action_choice;
+
+template<>
+struct action_choice<Array<int>> {
+   typedef Array<int>& OpRef;
+   typedef Array<int> Perm; // Perm and Element are the same because the group acts on itself
+   typedef on_container action_type;
+   typedef pm::is_container op_tag;
+   typedef pm::is_container perm_tag;
+   typedef std::false_type stores_ref;
+};
+
+template<typename Scalar>
+struct action_choice<Matrix<Scalar>> {
+   typedef Matrix<Scalar>& OpRef;
+   typedef Matrix<Scalar> Perm; // Perm and Element are the same because the group acts on itself
+   typedef on_elements action_type;
+   typedef pm::is_matrix op_tag;
+   typedef pm::is_matrix perm_tag;
+   typedef std::false_type stores_ref;
+};
+
+template<typename SetType>
+struct action_choice<GenericSet<SetType>> {
+   typedef GenericSet<SetType>& OpRef;
+   typedef Array<int> Perm; 
+   typedef on_container action_type;
+   typedef pm::is_container op_tag;
+   typedef pm::is_container perm_tag;
+   typedef std::false_type stores_ref;
+};
+
+      
+template<typename Element>
+using ac = action_choice<typename pm::deref<Element>::type>;
+
+template<typename Element>
+using ConjugationAction = pm::operations::group::conjugation_action
+   <typename ac<Element>::OpRef, typename ac<Element>::action_type, typename ac<Element>::Perm,
+    typename ac<Element>::op_tag, typename ac<Element>::perm_tag, typename ac<Element>::stores_ref>;
+
+template<typename Element>
+using LeftAction = pm::operations::group::action
+   <typename ac<Element>::OpRef, typename ac<Element>::action_type, typename ac<Element>::Perm,
+    typename ac<Element>::op_tag, typename ac<Element>::perm_tag>;
+      
+template<typename SetType>
+using SetAction = pm::operations::group::action
+   <typename ac<GenericSet<SetType>>::OpRef, typename ac<GenericSet<SetType>>::action_type, typename ac<GenericSet<SetType>>::Perm,
+    typename ac<GenericSet<SetType>>::op_tag, typename ac<GenericSet<SetType>>::perm_tag>;
+
+// more datatypes
+      
+template<typename SparseSet>
+using SparseSimplexVector = hash_map<SparseSet, Rational>;
+
+template<typename SparseSet>
+using SparseIsotypicBasis = Array<SparseSimplexVector<SparseSet>>;
+
+template<typename SetType>
+using ActionType = pm::operations::group::action<SetType&, group::on_container, Array<int>>;
+
+typedef QuadraticExtension<Rational> CharacterNumberType;
+
+
+template<typename Element>
+GroupIndex<Element>
+group_index(const ConjugacyClasses<Element>& cc)
 {
    int n(0);
-   GroupIndex index_of;
+   GroupIndex<Element> index_of;
    for (const auto& c : cc)
       for (const auto& g : c)
          index_of[g] = n++;
@@ -41,10 +121,10 @@ group_index(const ConjugacyClasses& cc)
 }
 
 // GMT[g][h] = gh
-template<typename ConjugacyClasses>
+template<typename Element>
 GroupRightMultiplicationTable
-group_right_multiplication_table_impl(const ConjugacyClasses& cc,
-                                      const GroupIndex& index_of)
+group_right_multiplication_table_impl(const ConjugacyClasses<Element>& cc,
+                                      const GroupIndex<Element>& index_of)
 {
    const int n(index_of.size());
    GroupRightMultiplicationTable GMT(n);
@@ -54,7 +134,7 @@ group_right_multiplication_table_impl(const ConjugacyClasses& cc,
    int i(0);
    for (const auto& c : cc) {
       for (const auto& g : c) {
-         const ActionType<Array<int>> a(g);
+         const LeftAction<Element> a(g);
          int j(-1);
          for (const auto& c1 : cc) {
             for (const auto& g1 : c1) {
@@ -69,10 +149,10 @@ group_right_multiplication_table_impl(const ConjugacyClasses& cc,
 }
 
 // GMT[g][h] = hg
-template<typename ConjugacyClasses>
+template<typename Element>
 GroupLeftMultiplicationTable
-group_left_multiplication_table_impl(const ConjugacyClasses& cc,
-                                     const GroupIndex& index_of)
+group_left_multiplication_table_impl(const ConjugacyClasses<Element>& cc,
+                                     const GroupIndex<Element>& index_of)
 {
    const int n(index_of.size());
    GroupLeftMultiplicationTable GMT(n);
@@ -80,7 +160,7 @@ group_left_multiplication_table_impl(const ConjugacyClasses& cc,
    int i(-1);
    for (const auto& c : cc) {
       for (const auto& g : c) {
-         const ActionType<Array<int>> a(g);
+         const LeftAction<Element> a(g);
          int j(-1);
          GroupLeftMultiplicationTableRow r(n);
          for (const auto& c1 : cc)

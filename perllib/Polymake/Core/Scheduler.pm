@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,7 +15,9 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 use feature 'state';
+
 package Polymake::Core::Scheduler;
 
 # RuleGraph arc states; the values are filled in the extension module RuleGraph.xxz
@@ -64,8 +66,7 @@ use Polymake::Struct (
    [ '@ISA' => 'Rule::Deputy' ],
    [ new => '$$;$' ],
    # navigation from the root object to the one the rule refers to
-   [ '$up' => '#2->up' ],                             # how many parent levels above the root object
-   [ '@down' => '#2->down' ],                         # [ Property | _::SelectMultiInstance ] path descending to the subobject
+   [ '$path' => '#2->path' ],                         # Property::Path
    [ '@multi_selector' => '#2->multi_selector' ],     # [ Property | _::SelectMultiInstance ] path descending through multiple subobjects
    [ '$created_multi_instances' => 'undef' ],         # [ DeputyObject ] for multiple subobjects created by this rule
 
@@ -161,29 +162,17 @@ sub without_permutation {
    $self->_without_permutation // $self
 }
 
-sub path_prefix {
-   my ($self)=@_;
-   defined($self->down)
-   ? join(".", ("parent") x $self->up, map { $_->name } @{$self->down})
-   : join(".", ("parent") x $self->up)
-}
-
 sub header {
    my ($self)=@_;
-   my $prefix=&path_prefix;
+   my $prefix=$self->path->toString;
    $self->rule->header . ($prefix && " ( applied to $prefix )") .
    ( $self->multi_selector ? " ( selecting " . join(".", map { $_->name } @{$self->multi_selector}) . " )" : "" ) .
    ( is_object($self->perm_trigger) && !($self->flags & $Rule::is_perm_action) && " after " . $self->perm_trigger->header )
 }
 
-sub level {
-   my ($self)=@_;
-   (defined($self->down) && @{$self->down}) - (defined($self->up) && $self->up);
-}
-
 sub list_results {
    my ($self, $proto)=@_;
-   my $prefix=&path_prefix;
+   my $prefix=$self->path->toString;
    $prefix ? map { "$prefix.$_" } $self->rule->list_results($proto) : $self->rule->list_results($proto)
 }
 
@@ -194,7 +183,7 @@ sub execute {
    my ($self, $object, $force)=@_;
    my $scope;
    if ($force >= 0) {
-      for (my $i=$self->up; $i>0; --$i) {
+      for (my $i=$self->path->up; $i>0; --$i) {
          defined (my $parent=$object->parent)
            or return $Rule::exec_infeasible;
          if ($object->property->flags & $Property::is_multiple) {
@@ -202,19 +191,17 @@ sub execute {
          }
          $object=$parent;
       }
-      if (defined $self->down) {
-         foreach my $prop (@{$self->down}) {
-            if (defined (my $i=$object->dictionary->{$prop->key})) {
-               $object=$object->contents->[$i];
-               if ($prop->flags & $Property::is_multiple) {
-                  $object=$object->select_now($prop->index)
-                    or return $Rule::exec_infeasible;
-               } elsif ($prop->flags & $Property::is_twin) {
-                  $object=$object->value;
-               }
-            } else {
-               return $Rule::exec_infeasible;
+      foreach my $prop (@{$self->path->down}) {
+         if (defined (my $i=$object->dictionary->{$prop->key})) {
+            $object=$object->contents->[$i];
+            if ($prop->flags & $Property::is_multiple) {
+               $object=$object->select_now($prop->index)
+                 or return $Rule::exec_infeasible;
+            } elsif ($prop->flags & $Property::is_twin) {
+               $object=$object->value;
             }
+         } else {
+            return $Rule::exec_infeasible;
          }
       }
    }
@@ -241,11 +228,10 @@ package Polymake::Core::Scheduler::DeputyObject;
 # Constructor: (real Object, up, Parent, Property, perm_trigger)
 use Polymake::Struct (
    [ new => '$;$$$$' ],
-   [ '$real_object' => '#1' ],  # Object  undef if not yet created
-   [ '$up' => '#2' ],           # how many levels upwards from root
-   [ '$down' => '#3 && ( #3->down ? [ @{#3->down}, #4 ] : [ #4 ] )' ],  # (Property)  path to the subobject
+   [ '$real_object' => '#1' ],          # Object  undef if not yet created
+   [ '$path' => '#2 // new Property::Path(0)' ],
    [ '$parent' => 'weak(#3)' ],
-   [ '$property' => '#4 || #1->parent && #1->property' ],
+   [ '$property' => '#4 // #1->parent && #1->property' ],
 
    [ '$multi_selector' => 'undef' ],    # (Property | _::SelectMultiInstance)  path to a multiple subobject to select
 
@@ -255,7 +241,7 @@ use Polymake::Struct (
    '$is_sibling_ancestor',              # is an ancestor of a non-default or to-be-created multiple subobject instance
    [ '$rgr_prop_node' => 'undef' ],     # node in RuleGraph corresponding to this instance of a to-be-created multiple subobject
 
-   [ '$type' => '(defined(#1) ? #1 : #3->type->property(#4->name))->type' ],
+   [ '$type' => '(#1 // #3->type->property(#4->name))->type' ],
 
    [ '$valid_for_perm_trigger' => '#5' ],       # this deputy or one of its ancestors relates to a permutation subobject:
                                                 # permutation trigger for which rule_cache, prod_cache, and prop_vertex_sets are valid
@@ -276,8 +262,7 @@ use Polymake::Struct (
 use Polymake::Struct (
    [ 'alt.constructor' => 'new_sibling' ],
    [ new => '$$$' ],
-   [ '$up' => '#2->up' ],
-   [ '$down' => 'do { local_pop(#2->down); [ @{#2->down}, #3 ]}' ],
+   [ '$path' => 'do { local_pop(#2->path->down); #2->path->deeper(#3) }' ],
    [ '$parent' => 'undef' ],
    [ '$property' => '#3' ],
    [ '$sibling_of' => 'weak(#2)' ],
@@ -291,8 +276,7 @@ use Polymake::Struct (
    [ 'alt.constructor' => 'new_sibling_ancestor' ],
    [ new => '$' ],
    [ '$real_object' => '#1->real_object' ],
-   [ '$up' => '#1->up' ],
-   [ '$down' => '#1->down' ],
+   [ '$path' => '#1->path' ],
    [ '$parent' => 'undef' ],
    [ '$property' => '#1->property' ],
    [ '$sibling_of' => 'weak(#1)' ],
@@ -313,7 +297,7 @@ sub navigate_up {
    $self->parent //= do {
       my $parent_deputy= defined($self->sibling_of)
                          ? new_sibling_ancestor DeputyObject($self->sibling_of->navigate_up)
-                         : new DeputyObject($self->real_object->parent, $self->up+1);
+                         : new DeputyObject($self->real_object->parent, $self->path->higher(1));
       if (defined $self->multi_selector) {
          $parent_deputy->multi_selector=[ $self->property, @{$self->multi_selector} ];
       } elsif ($self->property->index) {
@@ -362,7 +346,7 @@ sub navigate_down {
                return if $prod_rule->flags == $Rule::is_initial && $prop->flags & $Property::is_multiple;
             }
          }
-         $subobj_deputy=new DeputyObject($real_subobj, $self->up, $self, $prop->property,
+         $subobj_deputy=new DeputyObject($real_subobj, $self->path->deeper($prop->property), $self, $prop->property,
                                          $inherit_trigger ? $perm_trigger : undef);
 
          if ($prop->flags & $Property::is_twin) {
@@ -450,11 +434,11 @@ sub create_sibling_for_new_multi {
 # deputy object => deputy sub-object
 sub navigate_to_rule_owner {
    my ($self, $rule)=@_;
-   for (my $i=$rule->up; $i>0; --$i) {
+   for (my $i=$rule->path->up; $i>0; --$i) {
       $self=$self->parent;
    }
-   if (defined $rule->down) {
-      $self=navigate_down($self, undef, $rule, 0, @{$rule->down});
+   if (@{$rule->path->down}) {
+      $self=navigate_down($self, undef, $rule, 0, @{$rule->path->down});
    }
    if (defined $rule->multi_selector) {
       $self=navigate_down($self, undef, $rule, 0, @{$rule->multi_selector});
@@ -671,7 +655,7 @@ sub new {
    $self;
 }
 ####################################################################################
-sub gettimeofday() {
+sub gettimeofday {
    # don't expect it installed everywhere
    eval { require Time::HiRes };
    if ($@) {
@@ -878,7 +862,7 @@ sub gather_permutation_rules {
          $object_for_restoring_rules=$perm_obj->parent;
          --$remaining_actions;
          if (defined($object_for_restoring_rules->real_object) &&
-             is_object($object_for_restoring_rules->real_object->lookup_property_path($out_path, 1)) &&
+             is_object($object_for_restoring_rules->real_object->lookup_descending_path($out_path, 1)) &&
              $remaining_actions) {
             undef $object_for_restoring_rules;
          }
@@ -1014,7 +998,8 @@ sub gather_more_rules {
          foreach my $precond_rule (@{$rule->preconditions}) {
             my $object_for_precond=$object;
             if ($precond_rule->flags & $Rule::is_spez_precondition) {
-               for (my ($object_level, $spez_level)=($rule->level, $precond_rule->level); $object_level > $spez_level; --$object_level) {
+               for (my ($object_level, $spez_level)=($rule->path->level_change, $precond_rule->path->level_change);
+                    $object_level > $spez_level; --$object_level) {
                   $object_for_precond=$object_for_precond->navigate_up;
                }
             }
@@ -1150,49 +1135,6 @@ sub squeeze_prefs {
    }
 }
 ####################################################################################
-sub find_relative_path {
-   my ($object, $r1, $r2)=@_;
-   my $up1=$r1->up;
-   my $up2=$r2->up;
-   my ($diff, @path);
-   if (defined $r1->down) {
-      if (defined $r2->down) {
-         return if $up1!=$up2;
-         # starts in the same node: check whether the shorter path is the subset of the longer one
-         my $d1=@{$r1->down};
-         my $d2=@{$r2->down};
-         $diff= $d2<=>$d1;
-         return if !$diff;
-         ($r1,$d1,$r2,$d2)=($r2,$d2,$r1,$d1) if $diff<0;
-         for (my $i=0; $i<$d1; ++$i) {
-            return if $r1->down->[$i]->key != $r2->down->[$i]->key;
-         }
-         return ($diff, @{$r2->path}[$d1..$d2-1]);
-
-      } else {
-         return if $up1>$up2;
-         $diff=-1;
-         @path=@{$r1->down};
-      }
-
-   } elsif (defined $r2->down) {
-      return if $up2>$up1;
-      $diff=1;
-      @path=@{$r2->down};
-
-   } else {
-      # both sit on the direct ascending path from the root object
-      $diff= $up1<=>$up2;
-      return if !$diff;
-   }
-
-   ($up1,$up2)=($up2,$up1) if $diff<0;
-   while ($up2>0) { $object=$object->parent; --$up2; --$up1; }
-   while ($up1>0) { unshift @path, $object->property; $object=$object->parent; --$up1; }
-
-   ($diff, @path);
-}
-
 sub compare_permutations {
    my ($perm_path_upper, $perm_path_lower, @path_between)=@_;
    if (Property::equal_path_prefixes($perm_path_upper, \@path_between) == $#$perm_path_upper) {
@@ -1212,7 +1154,7 @@ sub creating_related_permutation {
 
       if (my $dep=($self->depending_on_perms->{$rule}->{$prev_rule} //= do {
             my $result=0;
-            if (my ($rel_pos, @path_between)=find_relative_path($self->deputy_root, $rule, $prev_rule)) {
+            if (my ($rel_pos, @path_between)=$rule->path->find_relative_path($prev_rule->path, $self->deputy_root)) {
                if ($rel_pos<0) {
                   # must ascend from $rule's object to $prev_rule's object
                   $result=compare_permutations($prev_perm_path, $perm_path, @path_between);
@@ -1349,11 +1291,14 @@ sub replay_rules {
 
             if (add_ready_rule($self, $self, $rule, 1) and @{$self->ready}) {
                $heap->add_to_vertex_filter($self->rules->[-1]->prop_vertex_sets);
-               last;
             } else {
-               die "internal error: progress stopped while replaying rules from the previous run; replay list is:",
-                   (map { "\n  ".$_->header } $rule, @replay_rules);
+               if ($Verbose::scheduler>=2) {
+                  dbg_print("progress stopped in the middle of replay phase; dropped rules are:",
+                            (map { "\n  ".$_->header } @replay_rules));
+               }
+               @replay_rules=();
             }
+            last;
          } else {
             # This rule or one of its preconditions depends on an expensive supplier which was executed
             # in a previous (failed) round.  As expensive rules are exempt from replaying, their dependees

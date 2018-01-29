@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,8 +25,7 @@
 
 #define TO_WITHOUT_DOUBLE
 #define TO_DISABLE_OUTPUT
-// the following requires an entry in Makefile.inc
-#include "TOSimplex.h"
+#include "TOSimplex/TOSimplex.h"
 
 namespace polymake {
 
@@ -49,7 +48,7 @@ namespace {
       }
       for (int i=0; i<A2.rows(); ++i) {
          for (int j=1; j<A2.cols(); ++j) {
-            if (!is_zero(A1(i,j))){
+            if (!is_zero(A2(i,j))){
                ++nnz;
             }
          }

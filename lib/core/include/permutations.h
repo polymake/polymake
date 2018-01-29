@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -58,7 +58,7 @@ template <typename Permutation>
 int n_fixed_points(const Permutation& p)
 {
    int i(0), n(0);
-   for (typename Entire<Permutation>::const_iterator pit = entire(p); !pit.at_end(); ++pit, ++i)
+   for (auto pit = entire(p); !pit.at_end(); ++pit, ++i)
       if (*pit == i)
          ++n;
    return n;
@@ -69,7 +69,7 @@ void inverse_permutation(const Permutation& perm, InvPermutation& inv_perm)
 {
    inv_perm.resize(perm.size());
    int pos=0;
-   for (typename Entire<Permutation>::const_iterator i=entire(perm);  !i.at_end();  ++i, ++pos)
+   for (auto i=entire(perm);  !i.at_end();  ++i, ++pos)
       inv_perm[*i]=pos;
 }
 
@@ -661,7 +661,7 @@ bool is_permutation(const Permutation& perm){
    // check that perm really is a permutation
    Set<typename Permutation::value_type> values;
    
-   for (typename Entire<Permutation>::const_iterator i=entire(perm);  !i.at_end();  ++i){
+   for (auto i=entire(perm);  !i.at_end();  ++i){
       if(*i >= perm.size() or *i < 0){
          return 0;
       }
@@ -674,25 +674,53 @@ bool is_permutation(const Permutation& perm){
 }
 
 template <typename Scalar>
-Array<Array<int> > rows_induced_from_cols(const Matrix<Scalar>& M, const Array<Array<int> > G)
+Array<Array<int>> rows_induced_from_cols(const Matrix<Scalar>& M, const Array<Array<int>> G)
 {
    Map<Vector<Scalar>,int> RevPerm;
    int index = 0;
-   for (typename Entire<Rows<Matrix<Scalar > > >::const_iterator v = entire(rows(M)); !v.at_end(); ++v, ++index){
+   for (auto v = entire(rows(M)); !v.at_end(); ++v, ++index){
       RevPerm[*v] = index;
    }
-   Array<Array<int> > RowPerm(G.size());
-   Entire<Array<Array<int > > >::const_iterator old_perm = entire(G);
+   Array<Array<int>> RowPerm(G.size());
+   auto old_perm = entire(G);
        
-       
-   for (Entire<Array<Array<int > > >::iterator new_perm = entire(RowPerm); !new_perm.at_end(); ++new_perm, ++old_perm){
+   for (auto new_perm = entire(RowPerm); !new_perm.at_end(); ++new_perm, ++old_perm){
       new_perm->resize(M.rows());
-      Entire<Array<int > >::iterator new_perm_entry = entire(*new_perm);
-      for (typename Entire<Rows<Matrix<Scalar > > >::const_iterator v = entire(rows(M)); !v.at_end(); ++v, ++new_perm_entry){
+      auto new_perm_entry = entire(*new_perm);
+      for (auto v = entire(rows(M)); !v.at_end(); ++v, ++new_perm_entry){
          *new_perm_entry = RevPerm[permuted(*v,*old_perm)];
       }
    }
    return RowPerm;
+}
+
+template<typename Permutation, typename SubdomainType>
+Array<Permutation>
+permutation_subgroup_generators(const Array<Permutation>& gens,
+                                const SubdomainType& subdomain)
+{
+   Map<int, int> index_of;
+   int index(0);
+   for (const auto& s: subdomain)
+      index_of[s] = index++;
+   
+   Set<Array<int>> subgens;
+   const Array<int> id(sequence(0, subdomain.size()));
+   
+   for (const auto& g: gens) {
+      Array<int> candidate_gen(subdomain.size());
+      bool candidate_ok(true);
+      for (const auto& i: subdomain) {
+         if (!index_of.exists(g[i])) {
+            candidate_ok = false;
+            break;
+         }
+         candidate_gen[index_of[i]] = index_of[g[i]];
+      }
+      if (candidate_ok && candidate_gen != id)
+         subgens += candidate_gen;
+   }
+   return Array<Permutation>(subgens.size(), entire(subgens));
 }
 
 } // end namespace pm
@@ -712,6 +740,7 @@ namespace polymake {
    using pm::all_permutations;
    using pm::PermutationMatrix;
    using pm::permutation_matrix;
+   using pm::permutation_subgroup_generators;
 }
 
 #endif // POLYMAKE_PERMUTATIONS_H

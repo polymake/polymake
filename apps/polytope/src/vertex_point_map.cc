@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,8 +20,8 @@
 
 namespace polymake { namespace polytope {
 
-template <typename Scalar>
-Array<int> vertex_point_map(const Matrix<Scalar>& verts, const Matrix<Scalar>& points)
+template <typename Matrix1, typename Matrix2, typename Scalar>
+Array<int> vertex_point_map(const GenericMatrix<Matrix1, Scalar>& verts, const GenericMatrix<Matrix2,Scalar>& points)
 {
   const int n=verts.rows();
   Array<int> vpm(n,-1);

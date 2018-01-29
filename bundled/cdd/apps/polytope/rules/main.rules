@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,10 +13,14 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+
 INCLUDE
   initial.rules
   rational.rules
   float.rules
+
+# enable debugging output from cdd
+custom $verbose_cdd=0;
 
 # Local Variables:
 # mode: perl

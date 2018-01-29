@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -28,12 +28,12 @@ namespace polymake { namespace polytope {
 
 
 template <typename Scalar>
-perl::Object regularity_lp(const Matrix<Scalar> &verts,const Array<Set <int> >& subdiv,perl::OptionSet options) {
+perl::Object regularity_lp(const Matrix<Scalar> &verts, const Array<Set<int>>& subdiv, perl::OptionSet options) {
    
    if (subdiv.size()<2)
       throw std::runtime_error("Subdivision is trivial.");   
 
-   std::pair<const Matrix<Scalar>,const Matrix<Scalar> > mats = secondary_cone_ineq(verts,subdiv,options);
+   std::pair<const Matrix<Scalar>, const Matrix<Scalar>> mats = secondary_cone_ineq(verts,subdiv,options);
    const Matrix<Scalar>& inequs = mats.first;
    const Matrix<Scalar>& equats = mats.second;
    
@@ -59,22 +59,33 @@ perl::Object regularity_lp(const Matrix<Scalar> &verts,const Array<Set <int> >& 
 
 
 template <typename Scalar>
-std::pair<bool,Vector<Scalar> > is_regular(const Matrix<Scalar> &verts,const Array<Set <int> >& subdiv,perl::OptionSet options)
+std::pair<bool,Vector<Scalar>>
+is_regular(const Matrix<Scalar> &verts, const Array<Set<int>>& subdiv, perl::OptionSet options)
 {
-   std::pair<const Matrix<Scalar>, const Matrix<Scalar> > mats = secondary_cone_ineq<Scalar, Set<int> >(verts,subdiv,options);
+   std::pair<const Matrix<Scalar>, const Matrix<Scalar>> mats = secondary_cone_ineq<Scalar, Set<int>>(verts,subdiv,options);
 
    perl::Object res(perl::ObjectType::construct<Scalar>("Cone"));
    res.take("INEQUALITIES") << mats.first;
    res.take("EQUATIONS") << mats.second;
 
-   const Vector<Scalar> w=res.give("REL_INT_POINT");
-   const Vector<Scalar> slack= mats.first*w;
-
-   for(typename Entire<Vector<Scalar> >::const_iterator it=entire(slack); !it.at_end();++it){
-      if(*it==0)
-         return std::pair<bool,Vector<Scalar> >(false,Vector<Scalar>());
+   Vector<Scalar> w;
+   try {
+     const Vector<Scalar> wt = res.give("REL_INT_POINT");
+     w = wt;
+   } catch (const pm::perl::undefined& e) {
+     // there is no relative internal point. If the trivial subdivision is asked for, we are ok; else the subdivision is not regular
+     if (subdiv.size() == 1 &&
+	 subdiv[0] == sequence(0, verts.rows())) {
+       w = zero_vector<Scalar>(mats.first.cols());
+     } else return std::pair<bool,Vector<Scalar>>(false,Vector<Scalar>());
    }
-   return std::pair<bool,Vector<Scalar> >(true,w);
+   const Vector<Scalar> slack = mats.first*w;
+
+   for(auto it=entire(slack); !it.at_end(); ++it) {
+      if (*it==0)
+         return std::pair<bool,Vector<Scalar>>(false,Vector<Scalar>());
+   }
+   return std::pair<bool,Vector<Scalar>>(true,w);
 }
 
 

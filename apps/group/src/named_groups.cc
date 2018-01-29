@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -22,24 +22,7 @@
 namespace polymake { namespace group {
 
 perl::Object symmetric_group(int n) {
-   if (n < 1) 
-      throw std::runtime_error("symmetric_group: the degree must be greater or equal than 1");
-   
-   Array< Array<int> > sgs(n-1);
-   for (int i = 0; i < n-1; ++i) {
-      Array<int> gen(n);
-      for (int j = 0; j < n; ++j)
-         gen[j] = j;
-      std::swap(gen[i], gen[i+1]);
-      sgs[i] = gen;
-   }
-   perl::Object pa("PermutationAction");
-   pa.take("GENERATORS") << sgs;
-
-   perl::Object g("Group");
-   g.take("PERMUTATION_ACTION") << pa;
-   g.set_description() << "Symmetric group of degree " << n << endl;
-   return g;
+   return symmetric_group_impl(n);
 }
 
 perl::Object alternating_group(int n) {
@@ -110,29 +93,29 @@ user functions
 ****************************************************************/
 
 UserFunction4perl("# @category Producing a group"
-		  "# Constructs a __symmetric group__ of given //degree//."
-		  "# @param Int degree of the symmetric group"
+		  "# Constructs a __symmetric group__ of given degree //d//."
+		  "# @param Int d degree of the symmetric group"
                   "# @return Group",
                   &symmetric_group,"symmetric_group($)");
 
 UserFunction4perl("# @category Producing a group"
-		  "# Constructs an __alternating group__ of given //degree//."
-		  "# @param Int degree of the alternating group"
+		  "# Constructs an __alternating group__ of given degree //d//."
+		  "# @param Int d degree of the alternating group"
                   "# @return Group",
                   &alternating_group,"alternating_group($)");
 
 
 UserFunction4perl("# @category Producing a group"
-		  "# Constructs a __cyclic group__ of given //degree//."
-		  "# @param Int degree of the cyclic group"
+		  "# Constructs a __cyclic group__ of given degree //d//."
+		  "# @param Int d degree of the cyclic group"
                   "# @return Group",
                   &cyclic_group,"cyclic_group($)");
 
 UserFunction4perl("# @category Producing a group"
-		  "# Constructs a __dihedral group__ of a given //order//."
+		  "# Constructs a __dihedral group__ of a given order //o//."
                   "# If the order is 2, 4, 6, 8, 10, 12, 16, 20 or 24, the character table is exact,"
                   "# otherwise some entries are mutilated rational approximations of algebraic numbers."
-		  "# @param Int order of the dihedral group (acts on a regular //(order/2)//-gon"
+		  "# @param Int o order of the dihedral group that acts on a regular //(o/2)//-gon"
                   "# @return Group",
                   &dihedral_group, "dihedral_group($)");
 

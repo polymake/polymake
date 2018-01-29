@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -60,6 +60,10 @@ options %Visual::Graph::decorations=(
 
    # String  alias for PointLabels
    NodeLabels => undef,
+   
+   # Flexible<Int>  How to draw directed edges: 0 (like undirected), 1 (with an arrow pointing towards the edge),
+   #                or -1 (with an arrow pointing against the edge).  Default is 1 for directed graphs and lattices.
+   ArrowStyle => undef,
 );
 
 
@@ -68,10 +72,6 @@ options %Visual::Graph::decorations=(
 
 options %Visual::Lattice::decorations=(
    %Visual::Graph::decorations,
-
-   # Flexible<Int>  How to draw directed edges: 0 (like undirected), 1 (with an arrow pointing towards the edge),
-   #                or -1 (with an arrow pointing against the edge).  Default is 1.
-   ArrowStyle => undef,
 
    # Array<String>  Labels of atoms, to use as building blocks for node labels.  By default the ordinal numbers are taken.
    AtomLabels => undef,

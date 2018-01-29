@@ -21,6 +21,7 @@
 #####################################################################
 
 
+# @Category Combinatorics
 object RationalCurve {
 
 	use overload('+' => 'add', '*' => 'scalar_multiplication', '-' => 'subtract', '""' => 'to_string', fallback => 1);
@@ -222,7 +223,7 @@ object RationalCurve {
 		#We keep the old curves as INPUT_*
 		my @input_sets = (@{$a->SETS}, @{$b->SETS});
 		my $r = rational_curve_from_metric($vr);
-		return new RationalCurve(SETS=>$r->SETS,COEFFS=>$r->COEFFS,INPUT_SETS=>(new Vector<Set<Int>>(\@input_sets)),INPUT_COEFFS=>($a->COEFFS | $b->COEFFS),N_LEAVES=>$r->N_LEAVES);
+		return new RationalCurve(SETS=>$r->SETS,COEFFS=>$r->COEFFS, INPUT_SETS=>new Vector<Set<Int>>(\@input_sets), INPUT_COEFFS=>($a->COEFFS | $b->COEFFS), N_LEAVES=>$r->N_LEAVES);
 	}
 
 	#For some reason the arguments seem to be sorted s.t. the scalar is always at the end

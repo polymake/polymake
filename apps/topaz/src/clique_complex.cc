@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,6 +19,7 @@
 #include "polymake/Array.h"
 #include "polymake/PowerSet.h"
 #include "polymake/vector"
+#include "polymake/common/labels.h"
 
 namespace polymake { namespace topaz {
 
@@ -33,8 +34,7 @@ perl::Object clique_complex(perl::Object graph, perl::OptionSet options)
    
    if (!no_labels) {
      const int n_nodes=graph.give("N_NODES");
-     std::vector<std::string> labels(n_nodes);
-     read_labels(graph, "NODE_LABELS", labels);
+     const std::vector<std::string> labels = common::read_labels(graph, "NODE_LABELS", n_nodes);
      complex.take("VERTEX_LABELS") << labels;
    }
    return complex;

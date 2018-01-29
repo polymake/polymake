@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,6 +17,7 @@
 #include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
 
@@ -29,5 +30,6 @@ namespace polymake { namespace polytope { namespace {
    };
 
    FunctionInstance4perl(gkz_vector_T_X_X, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Array< Set< int > > >);
+   FunctionInstance4perl(gkz_vector_T_X_X, QuadraticExtension< Rational >, perl::Canned< const Matrix< QuadraticExtension< Rational > > >, perl::Canned< const Array< Set< int > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

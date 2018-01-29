@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -45,6 +45,12 @@ namespace polymake { namespace polytope { namespace {
       IndirectWrapperReturn( arg0, arg1, arg2 );
    }
    FunctionWrapperInstance4perl( pm::Matrix<pm::Rational> (perl::Object, bool, int) );
+
+   FunctionWrapper4perl( pm::Matrix<pm::Rational> (perl::Object, perl::OptionSet) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      IndirectWrapperReturn( arg0, arg1 );
+   }
+   FunctionWrapperInstance4perl( pm::Matrix<pm::Rational> (perl::Object, perl::OptionSet) );
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

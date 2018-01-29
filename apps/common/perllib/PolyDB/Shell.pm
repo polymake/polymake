@@ -1,86 +1,88 @@
-# Copyright (c) 2013-2016 Silke Horn, Andreas Paffenholz
-# http://solros.de/polymake/poly_db
-# http://www.mathematik.tu-darmstadt.de/~paffenholz
-# 
-# This file is part of the polymake extension polyDB.
-# 
-# polyDB is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# 
-# polyDB is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-# 
-# You should have received a copy of the GNU General Public License
-# along with polyDB.  If not, see <http://www.gnu.org/licenses/>.
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+#
+#  This file is part of the polymake database interface polyDB.
+#
+#   @author Silke Horn, Andreas Paffenholz
+#   http://solros.de
+#   http://www.mathematik.tu-darmstadt.de/~paffenholz
+#
+
 
 package PolyDB::Shell;
 
-require Exporter;
-use vars qw(@ISA @EXPORT @EXPORT_OK);
+insert_before Core::Shell::Helper('function or method name or keyword argument',
 
-@ISA = qw(Exporter);
-@EXPORT = qw(poly_db_tabcompletion);
+   new Core::Shell::Helper(
+      'db column name',
 
+      qr{\b db_\w+ $args_start_re (?: $expression_re ,\s* )*
+                   (?: db \s*=>\s* ($anon_quote_re)(?'db' $non_quote_re*)\g{-2} \s*,\s*)
+                   (?: $id_re \s*=>\s* $expression_re ,\s* )*
+                   (?: collection \s*=>\s* (?: $quote_re (?'prefix' $non_quote_re*))?) $}xo,
 
-sub poly_db_tab_completion {
-	my $self = shift;
-	my $line = shift;
-    pos($line)=$self->term->Attribs->{point};
-	
-	# col name
-	if ($line =~
-       m{(?: \b db \s*=>\s* ["'](?'db' [^"']*)["']\s*,\s*) (:? \b $id_re \s*=>\s* .*?\s*,\s*)* (?: \b collection \s*=>\s* )
-         (?:(?'quote' ['"]) (?'prefix' [^"']*)? )? \G}xogc) {
+      sub {
+         my ($shell)=@_;
+         my ($db, $quote, $prefix) = @+{qw(db quote prefix)};
+         if (defined $quote) {
+            $shell->completion_proposals = [ list_col_completions($db, $prefix) ];
+            $shell->completion_offset=length($prefix);
+            $shell->term->Attribs->{completion_append_character}=$quote;
+         } else {
+            $shell->completion_proposals = ['"'];
+         }
+         1
+      }
+      # no specific context help provided
+   ),
 
-		my ($db, $quote, $prefix) = @+{qw(db quote prefix)};
-		if (defined $quote) {
-			$self->completion_words = [ list_col_completions($db, $prefix) ];
-			$self->term->Attribs->{completion_append_character}=$quote;
-			
-			return 1;
-		} else {
-			$self->completion_words = ['"'];
-			return 1;
-		}	
-	}
+   new Core::Shell::Helper(
+      'db name',
 
-	# db name
-	elsif ($line =~
-       m{(?: \b db \s*=>\s* )
-         (?:(?'quote' ['"]) (?'prefix' [^"']*)? )? \G}xogc) {
-		my ($quote, $prefix) = @+{qw(quote prefix)};
-		if (defined $quote) {
-			$self->completion_words = [ list_db_completions($prefix) ];
-			$self->term->Attribs->{completion_append_character}=$quote;
-			
-			return 1;
-		} else {
-			$self->completion_words = ['"'];
-			return 1;
-		}
-	}
-	
-	
-	return 0;
-}
+      qr{\b db_\w+ $args_start_re (?: $expression_re ,\s* )*
+                   (?: db \s*=>\s* (?: $quote_re (?'prefix' $non_quote_re*))?) $}xo,
 
+      sub {
+         my ($shell)=@_;
+         my ($quote, $prefix) = @+{qw(quote prefix)};
+         if (defined $quote) {
+            $shell->completion_proposals = [ list_db_completions($prefix) ];
+            $shell->completion_offset=length($prefix);
+            $shell->term->Attribs->{completion_append_character}=$quote;
+         } else {
+            $shell->completion_proposals = ['"'];
+         }
+         1
+      }
+      # no specific context help provided
+   ),
+);
 
 sub list_db_completions {
-	my $prefix = shift;
-	grep { /^\Q$prefix\E/ } @{common::db_get_list_db()};
-}
-sub list_col_completions {
-	my $db = shift;
-	my $prefix = shift;
-	grep { /^\Q$prefix\E/ } @{common::db_get_list_col_for_db($db)};
+   my ($prefix)=@_;
+   grep { /^\Q$prefix\E/ } @{db_get_list_db()};
 }
 
-if ($INC{"Polymake/Core/Shell.pm"}) {
-   push @Core::Shell::custom_tab_completion,  \&PolyDB::Shell::poly_db_tab_completion;
+sub list_col_completions {
+   my ($db, $prefix)=@_;
+   grep { /^\Q$prefix\E/ } @{db_get_list_col_for_db(db=>$db)};
 }
 
 1;
+
+# Local Variables:
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

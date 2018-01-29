@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -121,7 +121,8 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Produces the pointed part of a polyhedron"
                           "# @param Polytope P"
                           "# @return Polytope"
-                          "# @example > $p = new Polytope(POINTS=>[[1,0,0],[1,0,1],[1,1,0],[1,1,1],[0,1,0],[0,0,1]]);"
+                          "# @example"
+                          "# > $p = new Polytope(POINTS=>[[1,0,0],[1,0,1],[1,1,0],[1,1,1],[0,1,0],[0,0,1]]);"
                           "# > $pp = pointed_part($p);"
                           "# > print $pp->VERTICES;"
                           "# | 1 0 0"

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,15 +15,22 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake::Core::HelpAsPlainText;
 
 use Polymake::Struct (
-   [ new => '' ],
+   [ new => ';$' ],
    '$text',
+   [ '$decorate' => '#1 // 1' ],
 );
 
 *clean_text=\&InteractiveCommands::clean_text;
+
+sub underline {
+   my ($self, $text)=@_;
+   $self->decorate ? InteractiveCommands::underline($text) : $text
+}
 
 sub add_separator {
    my ($self, $sep)=@_;
@@ -51,11 +58,11 @@ sub examples {
    foreach (@$examples) {
       my $i = 0;
       foreach my $line (split /\n/, $_->body) {
-         $self->text .= $i++ ? "  " : $prefix ;
-         if ($line =~ /^\s*\|/) {
-            $self->text .= " ".$'."\n";
-         } elsif ($line =~ /^\s*>/) {
-            $self->text .= " ".$line."\n";
+         $self->text .= $i++ ? "   " : $prefix ;
+         if ($line =~ s/^\s*\|\s*//) {
+            $self->text .= "  $line\n";
+         } elsif ($line =~ s/^\s*>\s*//) {
+            $self->text .= "> $line\n";
          } else {
             clean_text($line);
             $self->text .= $line;
@@ -96,7 +103,7 @@ sub function_type_params {
       my $comment=$_->[1];
       clean_text($comment);
       $comment =~ s/\n[ \t]*(?=\S)/\n    /g;
-      $self->text .= "  " . InteractiveCommands::underline($_->[0]) . " $comment";
+      $self->text .= "  " . underline($self, $_->[0]) . " $comment";
    }
 }
 
@@ -108,7 +115,7 @@ sub function_args {
       clean_text($comment);
       $comment =~ s/\n[ \t]*(?=\S)/\n    /g;
       my ($name)= $_->[1] =~ /^($id_re)/;
-      $self->text .= "  $_->[0] " . InteractiveCommands::underline($name) . " $comment";
+      $self->text .= "  $_->[0] " . underline($self, $name) . " $comment";
       if (defined (my $value_list=$_->[3])) {
          $self->text .= "    Possible values:\n";
          foreach my $value (@$value_list) {
@@ -123,7 +130,7 @@ sub function_args {
 sub function_options {
    my ($self, $comment)=splice @_, 0, 2;
    clean_text($comment);
-   $self->text .= "\nOptions: " . (length($comment) ? $comment : "\n") . &key_descriptions
+   $self->text .= "\nOptions: " . (length($comment) ? $comment : "\n") . key_descriptions($self, @_)
 }
 
 sub function_return {
@@ -137,16 +144,17 @@ sub function_return {
 }
 
 sub key_descriptions {
+   my $self=shift;
    join("", map {
       my $comment=$_->[2];
       clean_text($comment);
       $comment =~ s/\n[ \t]*(?=\S)/\n    /g;
-      "  " . InteractiveCommands::underline($_->[1]) . " => $_->[0] $comment";
+      "  " . underline($self, $_->[1]) . " => $_->[0] $comment";
    } @_)
 }
 
 sub topics_keys {
-   my $self=shift;
+   my $self=$_[0];
    $self->text .= "\n" . &key_descriptions
 }
 

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -420,6 +420,7 @@ weight 1.10;
 
 }
 
+# @category Topology
 declare property_type Cell : c++ (include => "polymake/topaz/Filtration.h", operators => '==') {
 
    # Construct a filtration cell.
@@ -430,6 +431,7 @@ declare property_type Cell : c++ (include => "polymake/topaz/Filtration.h", oper
 
 }
 
+# @category Topology
 # A filtration of chain complexes.
 # @tparam MatrixType
 declare property_type Filtration<MatrixType> : c++ (include => "polymake/topaz/Filtration.h", operators => '=='){
@@ -469,6 +471,7 @@ declare property_type Filtration<MatrixType> : c++ (include => "polymake/topaz/F
    user_method boundary_matrix(Int, Int) : non_const : c++;
 }
 
+# @category Topology
 # A finite chain complex, represented as its boundary matrices.
 # Check out the tutorial on the polymake homepage for examples on constructing ChainComplexes and computing their homology.
 #

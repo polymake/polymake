@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -45,6 +45,10 @@ declare property_type Polynomial<Coefficient=Rational, Exponent=Int> \
    # @return Int
    user_method lc() : c++;
 
+   # The __constant coefficient__.
+   # @return Int
+   user_method constant_coefficient() : c++;
+   
    # Print a polynomial with terms sorted according to a given [[Matrix]] //m//.
    # @param Matrix m
    user_method print_ordered(Matrix<Exponent>) : c++ : void;
@@ -71,6 +75,60 @@ declare property_type Polynomial<Coefficient=Rational, Exponent=Int> \
    # The sorting agrees with [[monomials_as_matrix]].
    # @return Vector<Coefficient>
    user_method coefficients_as_vector() : c++;
+
+   # Substitute a list of values in a [[Polynomial]] with [[Int]] exponents.
+   # Either with an array of values, or with a [[Map]] mapping variable indices
+   # to values.
+   # @example
+   # > $pm = new Polynomial("1+x_0^2*x_3+x_1+3*x_3");
+   # > print $pm->substitute([0,11,2,3]);
+   # | 21
+   # > $map = new Map<Int,Rational>([0,5/2],[1,1/5],[2,new Rational(7/3)]);
+   # > print $pm->substitute($map);
+   # | 37/4*x_3 + 6/5
+   user_method substitute(*) : c++;
+
+   # Project the [[Polynomial]] to the given list of variables.
+   # The number of variables will be reduced to the number of indices,
+   # i.e. the variables will be renamed.
+   # Keeping the names of the variables is possible by using [[substitute]]
+   # with a [[Map]].
+   # @return Polynomial
+   # @example
+   # > $pm = new Polynomial("1+x_0^2*x_3+x_1+3*x_3");
+   # > print $pm->project([1,3]);
+   # | x_0 + 4*x_1 + 1
+   user_method project(*) : c++;
+
+   # Map the variables of the [[Polynomial]] to the given indices.
+   # The same index may bei given multiple times and also some may be omitted
+   # for embedding with a higher number of variables.
+   # The length of the given [[Array]] must be the same as the number of variables
+   # of the original polynomial.
+   # @param Array<Int> indices indices of the target variables
+   # @param Int nvars new number of variables, default: maximal index
+   # @return Polynomial
+   # @example
+   # > $pm = new Polynomial("1+x_0^2*x_3+x_1+3*x_3");
+   # > print $pm->mapvars([0,1,1,4],6);
+   # | x_0^2*x_4 + x_1 + 3*x_4 + 1
+   user_method mapvars(*;$=-1) : c++;
+
+   # Embed the [[Polynomial]] in a polynomial ring with the given
+   # number of variables.
+   # The old variables will be put at the beginning, for more control use [[mapvars]].
+   # @param Int nvars new number of variables
+   # @return Polynomial
+   # @example
+   # > $pm = new Polynomial("1+x_0^2*x_3+x_1+3*x_3");
+   # > print $pm->project([1,3]);
+   # | x_0 + 4*x_1 + 1
+   user_method embed($) {
+      my ($this, $n) = @_;
+      croak("embed: number of variables must be at least the current n_vars")
+         if ($n < $this->n_vars);
+      return $this->mapvars(sequence(0,$this->n_vars),$n);
+   }
 
    # construct a monomial of degree 1 with a given variable
    # @param Int var_index index of the variable
@@ -123,6 +181,10 @@ declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> \
    # @return Int
    user_method lc() : c++;
 
+   # The __constant coefficient__.
+   # @return Int
+   user_method constant_coefficient() : c++;
+   
    # Number of variables
    user_method n_vars() {
       return 1;
@@ -149,6 +211,12 @@ declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> \
    # @param Exponent exp (default: 1)
    # @return Coefficient
    user_method evaluate(*;$=1) : c++;
+
+   # Substitute some //value// in a [[UniPolynomial]] with [[Int]] exponents.
+   # When all exponents are positive the argument can be any scalar, matrix or polynomial type.
+   # With negative exponents, polynomials are not supported (use [[RationalFunction]] instead)
+   # and any given matrix must be invertible
+   user_method substitute(*) : c++;
 
    # The vector of all coefficients.
    # The sorting agrees with [[monomials_as_vector]].
@@ -181,6 +249,31 @@ declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> \
 
    method polynomial_type() { $_[0]->type }
 }
+
+# @category Data Conversion
+# Explicit conversion to a different coefficient type.
+# @param Polynomial m
+# @tparam Target
+# @return Polynomial<Target>
+
+user_function convert_to<Coefficient>(Polynomial) : c++ {
+   if ($_[0]->type->params->[0]==typeof Coefficient) {
+      return $_[0];
+   }
+}
+
+# @category Data Conversion
+# Explicit conversion to a different coefficient type.
+# @param UniPolynomial m
+# @tparam Target
+# @return UniPolynomial<Target>
+user_function convert_to<Coefficient>(UniPolynomial) : c++ {
+   if ($_[0]->type->params->[0]==typeof Coefficient) {
+      return $_[0];
+   }
+}
+
+
 
 
 # @category Arithmetic
@@ -313,6 +406,8 @@ user_function monomials<Coefficient=Rational, Exponent=Int>($) {
 #   - omitted multiplication operator '*' is inserted in subexpressions like "5x", "5 x", "x y", "x (u-w)" etc.
 #   - omitted power operator '**' is inserted in subexpressions like "x5", "x 5", "(x+y)2" etc.
 #   - alternative power operator '^' is assumed to bind stronger than multiplicative operators, unlike in C++ or perl
+#   - free term given as a numeric literal is converted to the coefficient type even when the implicit conversion
+#     in general is not allowed, like for [[TropicalNumber]].
 
 sub parse_polynomial {
    my ($proto, $string, $prescribed_num_vars)=@_;
@@ -386,6 +481,13 @@ sub parse_polynomial {
       $num_vars[0]->[1]=$prescribed_num_vars;
    }
    @monoms=map { my @coeff_exp_types=@{$_->[0]->params}; $_->[1]>0 ? [ monomials<@coeff_exp_types>($_->[1]) ] : undef } @num_vars;
+
+   # recognize the constant free term and insert the explicit constructor call if the coeffificient type
+   my $simplest_coeff_type=$num_vars[-1]->[0]->params->[0];
+   if ($simplest_coeff_type->upgrades->{typeof Rational} > 0) {
+      $string =~ s{(?: [-+] | ^ ) \s* \K (\d+ (?:/\d+)?) (?= \s* (?: [-+] | $))}
+                  {\$simplest_coeff_type->construct->($1)}xsg;
+   }
 
    # now the string should contain a valid perl expression and can be evaluated directly
    my $result=eval $string;

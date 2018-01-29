@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -93,9 +93,11 @@ class Matrix
       return static_cast<Matrix&>(make_mutable_alias(static_cast<base_t&>(alias), static_cast<base_t&>(owner)));;
    }
 
+protected:
    template <typename Iterator>
    struct fits_as_input_iterator
-      : bool_constant<construct_cascaded_iterator<Iterator, E, dense>::depth != 0> {};
+      : bool_constant<(assess_iterator_value<Iterator, can_initialize, E>::value ||
+                       assess_iterator_value<Iterator, can_initialize, Vector<E>>::value)> {};
 
 public:
    using typename GenericMatrix<Matrix>::generic_type;
@@ -114,18 +116,18 @@ public:
    template <typename E2,
              typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
    Matrix(std::initializer_list<std::initializer_list<E2>> l)
-      : base_t(l.size(), count_columns(l), entire(cascade(l))) {}
+      : base_t(l.size(), count_columns(l), l.begin()) {}
 
    /// Create a matrix with given dimensions.  Elements are initialized from one or more input sequences.
    /// Elements are assumed to come in the row order.
    template <typename... Iterator, typename=typename std::enable_if<mlist_and_nonempty<fits_as_input_iterator<Iterator>...>::value>::type>
    Matrix(int r, int c, Iterator&&... src)
-      : base_t(r, c, ensure_private_mutable(construct_cascaded_iterator<Iterator, E, dense>()(std::forward<Iterator>(src)))...) {}
+      : base_t(r, c, ensure_private_mutable(std::forward<Iterator>(src))...) {}
 
    /// Create a matrix with given dimensions.  Elements are moved from one or more input sequences.
    template <typename... Iterator, typename=typename std::enable_if<mlist_and_nonempty<fits_as_input_iterator<Iterator>...>::value>::type>
    Matrix(int r, int c, polymake::operations::move, Iterator&&... src)
-      : base_t(r, c, enforce_movable_values(construct_cascaded_iterator<Iterator, E, dense>()(std::forward<Iterator>(src)))...) {}
+      : base_t(r, c, polymake::operations::move(), std::forward<Iterator>(src)...) {}
 
    /// Copy of a disguised Matrix object.
    Matrix(const GenericMatrix<Matrix>& m)
@@ -139,14 +141,13 @@ public:
    /// Copy of an abstract matrix with element conversion.
    template <typename Matrix2, typename E2>
    explicit Matrix(const GenericMatrix<Matrix2, E2>& m,
-                   typename std::enable_if<can_initialize<E2, E>::value, void**>::type=nullptr)
+                   typename std::enable_if<can_initialize<E2, E>::value>::type** = nullptr)
       : base_t(m.rows(), m.cols(), ensure(concat_rows(m), (dense*)0).begin()) {}
 
    template <typename Container>
    explicit Matrix(const Container& src,
-                   typename std::enable_if<construct_cascaded_iterator<typename Container::const_iterator, E, dense>::depth==2, void**>::type=nullptr)
-      : base_t(src.size(), src.empty() ? 0 : get_dim(src.front()),
-               construct_cascaded_iterator<typename Container::const_iterator, E, dense>()(entire(src))) {}
+                   typename std::enable_if<isomorphic_to_container_of<Container, Vector<E>>::value>::type** = nullptr)
+      : base_t(src.size(), src.empty() ? 0 : get_dim(src.front()), src.begin()) {}
 
 protected:
    Matrix(const shared_array_placement& place, int r, int c)
@@ -154,7 +155,7 @@ protected:
 
    template <typename Iterator>
    Matrix(const shared_array_placement& place, int r, int c, Iterator&& src)
-      : base_t(place, r, c, construct_cascaded_iterator<Iterator, E, dense>()(std::forward<Iterator>(src))) {}
+      : base_t(place, r, c, std::forward<Iterator>(src)) {}
 
    void resize(const shared_array_placement& place, int r, int c)
    {

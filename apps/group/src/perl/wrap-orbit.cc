@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,12 +17,13 @@
 #include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
+#include "polymake/Polynomial.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
 #include "polymake/Vector.h"
-#include "polymake/Polynomial.h"
 #include "polymake/client.h"
 #include "polymake/group/orbit.h"
 
@@ -69,5 +70,8 @@ namespace polymake { namespace group { namespace {
    FunctionInstance4perl(action_T_X_X, on_container, perl::Canned< const Array< int > >, perl::Canned< const Array< int > >);
    FunctionInstance4perl(action_inv_T_X_X, on_container, perl::Canned< const Array< int > >, perl::Canned< const Array< int > >);
    FunctionInstance4perl(orbit_T_X_X, on_nonhomog_container, perl::Canned< const Array< Array< int > > >, perl::Canned< const Vector< Rational > >);
+   FunctionInstance4perl(orbit_T_X_X, on_container, perl::Canned< const Array< Array< int > > >, perl::Canned< const Vector< Rational > >);
+   FunctionInstance4perl(orbit_T_X_X, Rational, perl::Canned< const Array< Matrix< Rational > > >, perl::Canned< const Vector< Rational > >);
+   FunctionInstance4perl(orbit_T_X_X, QuadraticExtension< Rational >, perl::Canned< const Array< Matrix< QuadraticExtension< Rational > > > >, perl::Canned< const Vector< QuadraticExtension< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

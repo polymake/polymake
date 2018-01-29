@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,9 +16,9 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/Rational.h"
 #include "polymake/TropicalNumber.h"
-#include "polymake/PuiseuxFraction.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
@@ -30,5 +30,6 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(evaluate_X_x_f1, perl::Canned< const PuiseuxFraction< Max, Rational, Rational > >, int);
+   FunctionInstance4perl(evaluate_X_x_f1, perl::Canned< const PuiseuxFraction< Min, Rational, Rational > >, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

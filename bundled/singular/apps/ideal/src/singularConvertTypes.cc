@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -66,6 +66,7 @@ number convert_Rational_to_number(const Rational& r)
 std::pair<std::vector<Rational>, ListMatrix<Vector<int>>> convert_poly_to_vector_and_matrix(const poly q)
 {
    poly p = pCopy(q);
+   poly pfull = p;
    int n = rVar(currRing);
    ListMatrix<Vector<int>> exponents(0,n);
    std::vector<Rational> coefficients;
@@ -79,7 +80,7 @@ std::pair<std::vector<Rational>, ListMatrix<Vector<int>>> convert_poly_to_vector
       exponents /= monomial;
       pIter(p);
    }
-   p_Delete(&p,currRing);
+   p_Delete(&pfull,currRing);
    return { std::move(coefficients), std::move(exponents) };
 }
 

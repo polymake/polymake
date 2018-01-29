@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -68,11 +68,10 @@ perl::ListReturn singular_get_var(const std::string varname){
          }
       case POLY_CMD:
          {
-            //int n = r.n_vars();
             const poly q = (poly) IDDATA(var);
             std::pair<std::vector<Rational>, ListMatrix<Vector<int>>> decomposed = convert_poly_to_vector_and_matrix(q);
-            res << decomposed.first;
-            res << decomposed.second;
+            Polynomial<Rational> result(decomposed.first, decomposed.second);
+            res << result;
             break;
          }
       /*

@@ -1,4 +1,4 @@
-#  copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -41,6 +41,11 @@ weight 0.1;
 
 rule N_MAXIMAL_CONES : MAXIMAL_CONES {
    $this->N_MAXIMAL_CONES=$this->MAXIMAL_CONES->rows;
+}
+weight 0.1;
+
+rule N_CONES : CONES {
+   $this->N_CONES=$this->CONES->rows;
 }
 weight 0.1;
 
@@ -217,7 +222,7 @@ rule F_VECTOR : HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_
 weight 0.10;
 
 rule REGULAR : RAYS, MAXIMAL_CONES {
-  $this->REGULAR = regular($this);
+  $this->REGULAR = pseudo_regular($this)->first;
 }
 precondition : COMPLETE;
 weight 4.10;
@@ -241,6 +246,23 @@ rule REGULAR : {
 }
 precondition : !COMPLETE;
 weight 0.1;
+
+rule REGULAR : {
+   $this->REGULAR=0;
+}
+precondition : !PSEUDO_REGULAR;
+weight 0.1;
+
+rule REGULAR = PSEUDO_REGULAR;
+precondition : COMPLETE;
+
+rule PSEUDO_REGULAR : RAYS, MAXIMAL_CONES {
+   $this->PSEUDO_REGULAR = pseudo_regular($this)->first;
+}
+weight 4.10;
+
+rule PSEUDO_REGULAR = REGULAR;
+precondition : COMPLETE;
 
 rule INTERSECTION_COMPLEX.FACETS : MAXIMAL_CONES {
   $this->INTERSECTION_COMPLEX->FACETS(temporary)=new Array<Set<Int> >(rows($this->MAXIMAL_CONES));
@@ -370,9 +392,21 @@ user_function projection<Scalar>(PolyhedralFan<Scalar>; $=[ ], { revert=>0 }) {
 # @param PolyhedralFan P
 # @option Bool no_labels VERTEX_LABELS]] to the projection. default: 0
 # @return PolyhedralFan
-user_function projection_full<Scalar>(PolyhedralFan<Scalar>; {no_labels=>0}) {
+user_function project_full<Scalar>(PolyhedralFan<Scalar>; {no_labels=>0}) {
    projection(@_);
 }
+
+
+# @category Geometry
+# The facets of a polyhedron that has the fan //P// as its [[normal_fan|normal fan]], or the empty matrix 
+# if no such polyhedron exists.
+# @param PolyhedralFan P
+# @return Matrix<Scalar>
+user_function generating_polyhedron_facets<Scalar>(PolyhedralFan<Scalar>) { 
+   my $F = pseudo_regular(@_)->second;
+   return $F;
+}
+
 
 
 # Local Variables:

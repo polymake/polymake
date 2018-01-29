@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -48,7 +48,8 @@ user_function is_integral(Matrix<Rational>) : c++ (include => "polymake/common/l
 # Scale a vector with the least common multiple of the denominators of its coordinates.
 # @param Vector v
 # @return Vector<Integer>
-# @example > $v = new Vector(1/2,1/3,1/4,1/5);
+# @example
+# > $v = new Vector(1/2,1/3,1/4,1/5);
 # > $ve = eliminate_denominators($v);
 # > print $ve;
 # | 30 20 15 12
@@ -59,7 +60,8 @@ user_function eliminate_denominators(Vector<Rational>) : c++ (include => "polyma
 # Scale a matrix row-wise with the least common multiple of the denominators of its coordinates.
 # @param Matrix M
 # @return Matrix<Integer>
-# @example > $M = new Matrix([1/2,1/3],[1/5,7],[1/4,4/3]);
+# @example
+# > $M = new Matrix([1/2,1/3],[1/5,7],[1/4,4/3]);
 # > $Me = eliminate_denominators_in_rows($M);
 # > print $Me;
 # | 3 2
@@ -72,7 +74,8 @@ user_function eliminate_denominators_in_rows(Matrix<Rational>) : c++ (include =>
 # Scales entire matrix with the least common multiple of the denominators of its coordinates.
 # @param Matrix v
 # @return Matrix<Integer>
-# @example > $M = new Matrix([1/2,1/3],[1/5,7],[1/4,4/3]);
+# @example
+# > $M = new Matrix([1/2,1/3],[1/5,7],[1/4,4/3]);
 # > $Me = eliminate_denominators_entire($M);
 # > print $Me;
 # | 30 20
@@ -85,7 +88,8 @@ user_function eliminate_denominators_entire(Matrix<Rational>) : c++ (include => 
 # Scales entire matrix with the least common multiple of the denominators of its coordinates (ignore first column).
 # @param Matrix v
 # @return Matrix<Integer>
-# @example > $M = new Matrix([1,1/2,1/3],[1,1/5,7],[1,1/4,4/3]);
+# @example
+# > $M = new Matrix([1,1/2,1/3],[1,1/5,7],[1,1/4,4/3]);
 # > $Me = eliminate_denominators_entire_affine($M);
 # > print $Me;
 # | 1 30 20
@@ -98,7 +102,8 @@ user_function eliminate_denominators_entire_affine(Matrix<Rational>) : c++ (incl
 # Scales the vector to a primitive integral vector.
 # @param Vector v
 # @return Vector<Integer>
-# @example > print primitive(new Vector(3,3/2,3,3));
+# @example
+# > print primitive(new Vector(3,3/2,3,3));
 # | 2 1 2 2
 
 user_function primitive(Vector) : c++ (include => "polymake/common/lattice_tools.h");
@@ -107,7 +112,8 @@ user_function primitive(Vector) : c++ (include => "polymake/common/lattice_tools
 # Scales each row of the matrix to a primitive integral vector.
 # @param Matrix M
 # @return Matrix<Integer>
-# @example > print primitive(new Matrix([1,3/2],[3,1]));
+# @example
+# > print primitive(new Matrix([1,3/2],[3,1]));
 # | 2 3
 # | 3 1
 
@@ -117,7 +123,8 @@ user_function primitive(Matrix) : c++ (include => "polymake/common/lattice_tools
 # Scales the affine part of a vector to a primitive integral vector.
 # @param Vector v
 # @return Vector<Integer>
-# @example > print primitive_affine(new Vector(1,3/2,1,1));
+# @example
+# > print primitive_affine(new Vector(1,3/2,1,1));
 # | 1 3 2 2
 
 user_function primitive_affine(Vector) : c++ (include => "polymake/common/lattice_tools.h");
@@ -126,7 +133,8 @@ user_function primitive_affine(Vector) : c++ (include => "polymake/common/lattic
 # Scales the affine part of each row of the matrix to a primitive integral vector.
 # @param Matrix M
 # @return Matrix<Integer>
-# @example  > print primitive_affine(new Matrix([1,1,3/2],[1,3,1]));
+# @example
+# > print primitive_affine(new Matrix([1,1,3/2],[1,3,1]));
 # | 1 2 3
 # | 1 3 1
 

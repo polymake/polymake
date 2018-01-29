@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,6 +20,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/common/labels.h"
 
 namespace polymake { namespace polytope {
 
@@ -64,10 +65,9 @@ perl::Object bipyramid(perl::Object p_in, const Scalar& z, const Scalar& z_prime
       p_out.take("VERTICES") << V_out;
    }
    if (relabel) {
-      std::vector<std::string> labels(n_vertices+2);
-      read_labels(p_in, "VERTEX_LABELS", labels);
-      labels[n_vertices]="Apex";
-      labels[n_vertices+1]="Apex'";
+      std::vector<std::string> labels = common::read_labels(p_in, "VERTEX_LABELS", n_vertices);
+      labels.emplace_back("Apex");
+      labels.emplace_back("Apex'");
       p_out.take("VERTEX_LABELS") << labels;
    }
    return p_out;

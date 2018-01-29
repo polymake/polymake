@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -40,28 +40,20 @@ namespace polymake { namespace tropical {
 
    } 
       UserFunctionTemplate4perl("# @category Tropical operations"
-                             "# Compute the projection of a point //x// in  tropical projective space onto a tropical cone //C//."
-                             "# Cf."
-                             "# \t Develin & Sturmfels math.MG/0308254v2, Proposition 9."
-                             "# @param Polytope<Addition,Scalar> C"
-                             "# @param Vector<TropicalNumber<Addition,Scalar> > x"
-                             "# @return Vector<TropicalNumber<Addition,Scalar> >"
-                             "# @author Katja Kulas",
-                             "nearest_point<Addition, Scalar>(Polytope<Addition, Scalar>, Vector<TropicalNumber<Addition, Scalar> >)"); 
+                                "# Compute the projection of a point //x// in tropical projective space onto a tropical cone //C//."
+                                "# Cf."
+                                "# \t Develin & Sturmfels math.MG/0308254v2, Proposition 9."
+                                "# @param Polytope<Addition,Scalar> C"
+                                "# @param Vector<TropicalNumber<Addition,Scalar>> x"
+                                "# @return Vector<TropicalNumber<Addition,Scalar>>"
+                                "# @author Katja Kulas"
+                                "# @example Note that the output is not homogenized, e.g. here (1,2,1) represents the point (0,1,0)."
+                                "# > $C = new Polytope<Min>(POINTS=>[[0,0,0],[0,2,0],[0,1,2]]);"
+                                "# > $x = new Vector<TropicalNumber<Min>>([0,2,1]);"
+                                "# > print nearest_point($C, $x);"
+                                "# | 1 2 1",
+                                "nearest_point<Addition,Scalar>(Polytope<Addition,Scalar>,Vector<TropicalNumber<Addition,Scalar>>)"); 
 
-
-      UserFunctionTemplate4perl("# @category Tropical operations"
-                                "# Compute the solution of the tropical equation //A// * //x// = //b//."
-                                "# If there is no solution, the return value is 'near' a solution."
-                                "# Cf. "
-                                "# Butkovič 'Max-linear systems: theory and algorithms' (MR2681232), "
-                                "# Theorem 3.1.1"
-                                "# @param Matrix<TropicalNumber<Addition, Scalar> > A"
-                                "# @param Vector<TropicalNumber<Addition, Scalar> > b"
-                                "# @return Vector<TropicalNumber<Addition, Scalar> > ",
-                                "principal_solution(Matrix, Vector)"); 
-
-      FunctionTemplate4perl("rel_coord(Vector, Vector)");
 } }
 
 // Local Variables:

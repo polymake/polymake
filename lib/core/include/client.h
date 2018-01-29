@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -49,22 +49,76 @@ using pm::perl::cout;
 } }
 
 #ifdef POLYMAKE_APPNAME
-namespace polymake { namespace POLYMAKE_APPNAME { namespace {
+
+namespace polymake { namespace POLYMAKE_APPNAME {
+
+# ifdef POLYMAKE_BUNDLED_EXT
+namespace bundled { namespace POLYMAKE_BUNDLED_EXT {
+# endif
+
+class GlueRegistratorTag;
+
+# ifdef POLYMAKE_BUNDLED_EXT
+} }
+
+using PolymakeGlueRegistratorTag = bundled::POLYMAKE_BUNDLED_EXT::GlueRegistratorTag;
+
+#  define EmbeddedItemsKey4perl(app, bundled) FirstArgAsString(app) ":" FirstArgAsString(bundled)
+# else
+
+using PolymakeGlueRegistratorTag = GlueRegistratorTag;
+
+#  define EmbeddedItemsKey4perl(app, bundled) FirstArgAsString(app)
+# endif
+
+template <typename Tag, pm::perl::RegistratorQueue::Kind kind>
+const pm::perl::RegistratorQueue& get_registrator_queue(mlist<Tag>, std::integral_constant<pm::perl::RegistratorQueue::Kind, kind>)
+{
+   static pm::perl::RegistratorQueue queue(EmbeddedItemsKey4perl(POLYMAKE_APPNAME, POLYMAKE_BUNDLED_EXT), kind);
+   return queue;
+};
+
+namespace {
 
 template <typename Fptr>
-struct IndirectFunctionWrapper : protected pm::perl::FunctionBase {
-   IndirectFunctionWrapper(const AnyString& file, int line)
+class IndirectFunctionWrapper
+   : public pm::perl::FunctionTemplateBase {
+   IndirectFunctionWrapper() = delete;
+public:
+   void add__me(const AnyString& file, int line) const
    {
-      register_func(reinterpret_cast<pm::perl::wrapper_type>(&call), ".wrp", file, line,
-                    pm::perl::TypeListUtils<Fptr>::get_type_names());
+      register_it(reinterpret_cast<pm::perl::wrapper_type>(&call), ".wrp", file, line,
+                  pm::perl::TypeListUtils<Fptr>::get_type_names());
    }
 
-   typedef Fptr *fptr_type;
-   static SV* call(fptr_type, SV**);
+   using fptr_type = Fptr*;
+   static SV* call(void*, SV**);
 };
 
 template <typename What, int id>
-class StaticRegistrator4perl { public: static What r; };
+class QueueingRegistrator4perl {
+public:
+   template <typename... Args>
+   explicit QueueingRegistrator4perl(Args&&... args)
+   {
+      static_cast<const What&>(get_registrator_queue(mlist<PolymakeGlueRegistratorTag>(), std::integral_constant<pm::perl::RegistratorQueue::Kind, What::kind>()))
+                              .add__me(std::forward<Args>(args)...);
+   }
+
+   static QueueingRegistrator4perl r;
+};
+
+template <typename What, int id>
+class StaticRegistrator4perl {
+public:
+   template <typename... Args>
+   explicit StaticRegistrator4perl(Args&&... args)
+   {
+      What::add__me(std::forward<Args>(args)...);
+   }
+
+   static StaticRegistrator4perl r;
+};
 
 } } }
 #endif // POLYMAKE_APPNAME

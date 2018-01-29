@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -122,7 +122,7 @@ sub pointsToString {
 #---
    my $thickness=$self->source->VertexThickness;
    my $thickness_flag= is_code($thickness) ? "show" : "hide";
-   my @vertexcolor = ($color_flag eq "show") ? split(/ /, $color->(0)->toFloat) :  split(/ /, $color->toFloat);
+   my @vertexcolor = ($color_flag eq "show") ? split(/ /, ($color->(0) // new RGB("0 0 0"))->toFloat) :  split(/ /, $color->toFloat);
    my $vcstring = join ",", @vertexcolor;
    
    my $text = "";

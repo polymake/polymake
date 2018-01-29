@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,7 +19,9 @@
 #include "polymake/Bitset.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
+#include "polymake/Set.h"
 #include "polymake/Vector.h"
 #include "polymake/client.h"
 #include "polymake/hash_set"
@@ -42,5 +44,13 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::HashSet__Bitset", hash_set< Bitset >);
    FunctionInstance4perl(new, hash_set< Bitset >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const hash_set< Bitset > >, perl::Canned< const hash_set< Bitset > >);
+   OperatorInstance4perl(BinaryAssign_add, perl::Canned< hash_set< Vector< Rational > > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, mlist<> > >);
+   OperatorInstance4perl(BinaryAssign_add, perl::Canned< hash_set< Set< int > > >, perl::Canned< const Set< int > >);
+   Class4perl("Polymake::common::HashSet__Vector__QuadraticExtension__Rational", hash_set< Vector< QuadraticExtension< Rational > > >);
+   FunctionInstance4perl(new, hash_set< Vector< QuadraticExtension< Rational > > >);
+   OperatorInstance4perl(BinaryAssign_add, perl::Canned< hash_set< Vector< QuadraticExtension< Rational > > > >, perl::Canned< const Vector< QuadraticExtension< Rational > > >);
+   OperatorInstance4perl(BinaryAssign_sub, perl::Canned< hash_set< Vector< QuadraticExtension< Rational > > > >, perl::Canned< const hash_set< Vector< QuadraticExtension< Rational > > > >);
+   OperatorInstance4perl(BinaryAssign_sub, perl::Canned< hash_set< Vector< Rational > > >, perl::Canned< const hash_set< Vector< Rational > > >);
+   Class4perl("Polymake::common::HashSet__Matrix_A_QuadraticExtension__Rational_I_NonSymmetric_Z", hash_set< Matrix< QuadraticExtension< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

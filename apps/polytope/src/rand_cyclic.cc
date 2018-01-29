@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -69,21 +69,30 @@ Matrix<Rational> rand_cyclic_gale(int d, int n, const RandomSeed& seed)
       nrit = entire(rows(normal_vectors)),
       grit = entire(rows(G));
    int i=0; // how many vertices of G have been found already
+   int rws = 0; // number of non-zero rows of normal_vectors matrix
 
    // initialize the first entries of the Gale diagram with unit vectors; 
    // this is ok because we may transform the Gale diagram by a linear transform
    // moreover, the initial normal vectors point inward in the cone
-   for (; i<gdim; ++i, ++nrit, ++grit) 
+   for (; i<gdim; ++i, ++rws, ++nrit, ++grit)
       *nrit = *grit = unit_vector<Rational>(gdim, i); 
 
    bool parity_flag (true);
 
    while (i<n) { // add a new vector to the Gale diagram
-
       // find the generators of the cone of allowed positions for the new vector
       perl::Object c("Cone<Rational>");
-      c.take("INEQUALITIES") << (parity_flag ? Matrix<Rational>(-normal_vectors) : normal_vectors);
+      c.take("INEQUALITIES") << (parity_flag ? Matrix<Rational>(-normal_vectors.minor(sequence(0,rws),All))
+                                                               : normal_vectors.minor(sequence(0,rws),All));
       const Matrix<Rational> gens = c.give("RAYS");
+    /*  cout<<"without zeros: "<<gens<<endl;
+
+      perl::Object c2("Cone<Rational>");
+      c2.take("INEQUALITIES") << (parity_flag ? Matrix<Rational>(-normal_vectors)
+                                                               : normal_vectors);
+      const Matrix<Rational> gens2 = c2.give("RAYS");
+      cout<<"with zeros: "<<gens2<<endl;*/
+
 
       // pick a random vector inside this allowed cone
       Vector<Rational> v(gdim);
@@ -101,6 +110,7 @@ Matrix<Rational> rand_cyclic_gale(int d, int n, const RandomSeed& seed)
             // the inner product with first vector not in ridge is chosen positive
             *nrit = (v*G.row(j) < 0) ? Vector<Rational>(-v) : v;  
             ++nrit;
+            ++rws;
          }
       }
       ++i;

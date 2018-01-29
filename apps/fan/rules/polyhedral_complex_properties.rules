@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -50,6 +50,9 @@ property INPUT_POLYTOPES = override INPUT_CONES;
 property MAXIMAL_POLYTOPES = override MAXIMAL_CONES;
 
 # @category Combinatorics
+property MAXIMAL_POLYTOPES_THRU_VERTICES = override MAXIMAL_CONES_THRU_RAYS;
+
+# @category Combinatorics
 # Number of [[MAXIMAL_POLYTOPES]].
 property N_MAXIMAL_POLYTOPES = override N_MAXIMAL_CONES;
 
@@ -65,6 +68,12 @@ property MAXIMAL_POLYTOPES_AFFINE_HULL_NORMALS = override MAXIMAL_CONES_LINEAR_S
 
 # @category Geometry
 property MAXIMAL_POLYTOPES_FACETS = override MAXIMAL_CONES_FACETS;
+
+# @category Combinatorics
+property POLYTOPES = override CONES;
+
+# @category Combinatorics
+property N_POLYTOPES = override N_CONES;
 
 # @category Geometry
 # True if each object in [[MAXIMAL_POLYTOPES]] is [[Polytope::BOUNDED|bounded]].

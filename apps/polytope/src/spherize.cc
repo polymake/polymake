@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -47,7 +47,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# //P// must be [[CENTERED]] and [[BOUNDED]]."
                           "# @param Polytope P"
                           "# @return Polytope"
-                          "# @example The following scales the 2-dimensional cross polytope by 23 and"
+                          "# @example [prefer cdd] The following scales the 2-dimensional cross polytope by 23 and"
                           "# then projects it back onto the unit circle."
                           "# > $p = scale(cross(2),23);"
                           "# > $s = spherize($p);"

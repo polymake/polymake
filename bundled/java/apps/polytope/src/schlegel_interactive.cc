@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -24,6 +24,7 @@
 #include "polymake/common/SharedMemoryMatrix.h"
 
 #include <pthread.h>
+#include <signal.h>
 
 namespace polymake { namespace polytope {
 namespace {
@@ -38,8 +39,9 @@ rotation(const GenericVector<Vector>& H)
 }
 
 class SchlegelWindow {
-protected:  
-   pm::socketstream js;
+protected:
+   pthread_t thr;
+   socketstream js;
    int d, proj_facet;
    Matrix<double> Vertices, NeighborFacets, inv_Rotation;
    common::SharedMemoryMatrix<double> Points;
@@ -54,11 +56,12 @@ protected:
    drag_response_t drag_response;
    bool constrained;
 
+   static const std::string p_zoom;
+
    void run();
+   static void* run_it(void *me);
    void compute_points();
    double inverse_zoom();
-
-   static const std::string p_zoom;
 public:
    SchlegelWindow(const Matrix<double>& V, const Matrix<double>& F, const IncidenceMatrix<>& VIF_arg, const Graph<>& FG,
                   const Vector<double>& FacetPoint_arg, const Vector<double>& InnerPoint,
@@ -66,7 +69,8 @@ public:
 
    int port() const { return js.port(); }
 
-   static void* run_it(void *me);
+   void start_thread();
+   void shutdown();
 
    const std::string& get_name() const { return geom_name; }
    const common::SimpleGeometryParser::param_map& get_params() const { return params; }
@@ -98,17 +102,6 @@ public:
    int get_shared_matrix_id() const { return Points.get_shmid(); }
 };
 
-} }
-namespace pm {
-
-template <>
-struct is_mutable<polymake::polytope::SchlegelWindow> : std::false_type {};
-
-}
-namespace polymake { namespace polytope {
-
-const std::string SchlegelWindow::p_zoom("zoom");
-
 SchlegelWindow::SchlegelWindow(const Matrix<double>& V, const Matrix<double>& F, const IncidenceMatrix<>& VIF_arg, const Graph<>& FG,
                                const Vector<double>& FacetPoint_arg, const Vector<double>& InnerPoint,
                                int facet_index, double zoom_arg)
@@ -128,12 +121,42 @@ SchlegelWindow::SchlegelWindow(const Matrix<double>& V, const Matrix<double>& F,
    ViewRay.slice(1) = (-InnerPoint * T(R)).slice(1);
 }
 
+void SchlegelWindow::start_thread()
+{
+   if (pthread_create(&thr, 0, &run_it, this))
+      throw std::runtime_error("error creating schlegel_interactive thread");
+}
+
+void SchlegelWindow::shutdown()
+{
+   pthread_join(thr, nullptr);
+   js.discard_out();
+}
+
+void* SchlegelWindow::run_it(void *param)
+{
+   sigset_t block;
+   sigemptyset(&block);
+   sigaddset(&block, SIGPIPE);
+   pthread_sigmask(SIG_BLOCK, &block, nullptr);
+
+   try {
+      SchlegelWindow *me=reinterpret_cast<SchlegelWindow*>(param);
+      me->run();
+   } catch (const std::exception& ex) {
+      cerr << "schlegel_interactive terminated with error: " << ex.what() << endl;
+   }
+   return nullptr;
+}
+
+const std::string SchlegelWindow::p_zoom("zoom");
+
 void SchlegelWindow::run()
 {
    common::SimpleGeometryParser parser;
 
    // establish connection to Java GUI
-   if (!getline(js,geom_name)) return;
+   if (!getline(js, geom_name)) return;
    if (geom_name.substr(0,5) == "read ")
       geom_name=geom_name.substr(5);
 
@@ -141,27 +164,15 @@ void SchlegelWindow::run()
    iparams[p_zoom]=true;
    inverse_zoom();
    compute_points();
-   parser.print_long(js,*this);
+   parser.print_long(js, *this);
 
-   parser.loop(js,*this);
-}
-
-void* SchlegelWindow::run_it(void *param)
-{
-   SchlegelWindow *me=reinterpret_cast<SchlegelWindow*>(param);
-   try {
-      me->run();
-   } catch (const std::exception& ex) {
-      cerr << "schlegel_interactive terminated with error: " << ex.what() << endl;
-   }
-   delete me;
-   return 0;
+   parser.loop(js, *this);
 }
 
 double SchlegelWindow::inverse_zoom()
 {
    const double alpha=schlegel_nearest_neighbor_crossing(NeighborFacets, FacetPoint, ViewRay);
-   if ((constrained= alpha>=0 && alpha<1e8)) ViewRay*=alpha;
+   if ((constrained= alpha>=0 && alpha<1e8)) ViewRay *= alpha;
    return alpha;
 }
 
@@ -171,7 +182,7 @@ void SchlegelWindow::compute_points()
    const sequence visible_coord=range(1,d-1);
    Points=Vertices.minor(All,visible_coord);
    Rows< Matrix<double> >::iterator p_i=rows(Points).begin();
-   for (Entire< Matrix<double>::col_type >::const_iterator P_d=entire(Vertices.col(d)); !P_d.at_end(); ++P_d, ++p_i) {
+   for (auto P_d=entire(Vertices.col(d)); !P_d.at_end(); ++P_d, ++p_i) {
       (*p_i) = ( VR_d * ((*p_i)-FacetPoint.slice(visible_coord)) + (*P_d) * ViewRay.slice(visible_coord) ) /
          ( (*P_d)/z + VR_d );
    }
@@ -252,7 +263,7 @@ void SchlegelWindow::restart(common::SimpleGeometryParser& parser)
    drag_response=drag_ignore;
 }
 
-SchlegelWindow*
+std::unique_ptr<SchlegelWindow>
 schlegel_interactive(perl::Object SD, const Matrix<double>& Points)
 {
    perl::Object P=SD.parent();
@@ -265,19 +276,17 @@ schlegel_interactive(perl::Object SD, const Matrix<double>& Points)
    const int proj_facet=SD.give("FACET");
    const double zoom=SD.give("ZOOM");
 
-   SchlegelWindow *sw=new SchlegelWindow(Points,F,VIF,FG,FacetPoint,InnerPoint,proj_facet,zoom);
-   pthread_t s_thread;
-   if (pthread_create(&s_thread, 0, &SchlegelWindow::run_it, sw))
-      throw std::runtime_error("error creating schlegel_interactive thread");
-   pthread_detach(s_thread);
+   std::unique_ptr<SchlegelWindow> sw=std::make_unique<SchlegelWindow>(Points, F, VIF, FG, FacetPoint, InnerPoint, proj_facet, zoom);
+   sw->start_thread();
    return sw;
 }
 
 Function4perl(&schlegel_interactive, "schlegel_interactive(SchlegelDiagram, Matrix)");
 
-OpaqueClass4perl("SchlegelWindow", SchlegelWindow,
+OpaqueClass4perl("SchlegelWindow", std::unique_ptr<SchlegelWindow>,
                  OpaqueMethod4perl("port()")
                  OpaqueMethod4perl("store()")
+                 OpaqueMethod4perl("shutdown() : void")
                  );
 } }
 

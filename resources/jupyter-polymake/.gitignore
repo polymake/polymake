@@ -1,7 +1,0 @@
-MANIFEST
-build/*
-*.ipynb
-wrapper-kernel/build/*
-*__pychache__
-jupyter_kernel_polymake/__pycache__/
-dist/

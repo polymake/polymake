@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -1773,6 +1773,9 @@ struct algebraic_traits<AccurateFloat> {
    typedef AccurateFloat field_type;
 };
 
+template <>
+AccurateFloat
+pow(const AccurateFloat& base, int exp);
 
 }
 namespace std {

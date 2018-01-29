@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -31,6 +31,29 @@ weight 1.10;
 
 }
 
+object topaz::HyperbolicSurface{
+ 
+ # @category Other 
+   # Computes the GKZ dome of the //k//-th Delaunay trianglation up to a given //depth//.
+   # Note that //k// is also the index of the corresponding flip word in [[FLIP_WORDS]].
+   # Projection to the disc yields (a part of) the covering triangulation of the Klein disc.
+   # @param Int k index of the flip word  
+   # @param Int depth
+   # @return fan::PolyhedralComplex<Rational>
+   # @example
+   # > $T = new Array<Array<Int>>([[0,0,6,5],[0,0,1,10],[0,0,8,2],[1,0,11,4],[1,0,7,3],[1,0,9,0]]);
+   # > $s = new HyperbolicSurface(DCEL_DATA=>$T, PENNER_COORDINATES=>[1,1,1,1,1,1], SPECIAL_POINT=>[1,0]);
+   # > $d = $s->gkz_dome(0,3);
+   # > $d->VISUAL;
+   #
+   user_method gkz_dome($$){
+      my $self = shift;
+      my $triang = shift;
+      my $depth = shift;
+      covering_triangulation($self, $triang, $depth);
+   }
+
+}
 
 # Local Variables:
 # mode: perl

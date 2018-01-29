@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -516,7 +516,7 @@ public:
    evaluate(const T& t, const long exp=1) const
    {
       Integer exp_lcm(exp);
-      exp_lcm = lcm(denominators(numerator(rf).monomials_as_vector() | denominator(rf).monomials_as_vector()));
+      exp_lcm = lcm(denominators(numerator(rf).monomials_as_vector() | denominator(rf).monomials_as_vector()) | exp_lcm);
       const double t_approx = std::pow(convert_to<double>(t),1.0/convert_to<double>(exp_lcm));
       Coefficient base = exp_lcm == exp ? t : t_approx;
 

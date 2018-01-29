@@ -16,7 +16,7 @@
         <target name="soft"/>
         <target name="plugin"/>
       </ant>
-      <copy todir="${jar.dir}"
+      <copy todir="${build.dir}/jars"
             preservelastmodified="yes">
         <fileset dir="${jreality.path}/dist" includes="*.jar" />
       </copy>
@@ -33,15 +33,12 @@
   <target name="init" depends="build.jreality">
     <!-- Create the time stamp -->
     <tstamp/>
-    <mkdir dir="${build.dir}/java" />
-    <condition property="debug" value="on" else="off">
-      <available file="testscenarios" filepath="${polymake.top}" type="dir" />
-    </condition>
+    <mkdir dir="${build.dir}/bundled/jreality/java" />
   </target>
 
   <path id="compile.classpath">
     <fileset dir="${jreality.path}/lib" includes="*.jar" />
-    <fileset dir="${jar.dir}" erroronmissingdir="yes">
+    <fileset dir="${build.dir}/jars" erroronmissingdir="yes">
       <include name="polymake_java.jar" />
       <include name="jReality-*.jar" />
     </fileset>
@@ -52,14 +49,14 @@
       <javac
              executable="${javac}"
              srcdir="src"
-             destdir="${build.dir}/java"
+             destdir="${build.dir}/bundled/jreality/java"
              failonerror="true"
              debug="${debug}"
              encoding="UTF8">
         <include name="${package.prefix}/**"/>
         <classpath refid="compile.classpath"/>
       </javac>
-      <copy todir="${build.dir}/java"
+      <copy todir="${build.dir}/bundled/jreality/java"
             preservelastmodified="yes">
         <fileset
                 dir="src"
@@ -70,16 +67,18 @@
   </target>
 
   <target name="all" depends="compile">
-    <jar destfile="${jar.dir}/${jar.name}">
+    <jar destfile="${build.dir}/jars/${jar.name}">
         <fileset
-                 dir="${build.dir}/java"
+                 dir="${build.dir}/bundled/jreality/java"
         	 includes="${package.prefix}/**" />
-      </jar>
+    </jar>
+    <touch file="${build.dir}/jars/${jar.name}" />
   </target>
 
   <target name="clean" depends="clean.jreality">
     <delete quiet="true">
-      <fileset dir="${build.dir}/java" />
+      <fileset dir="${build.dir}/bundled/jreality/java" />
+      <fileset dir="${build.dir}/jars" includes="jReality-*.jar" />
     </delete>
   </target>
 </project>

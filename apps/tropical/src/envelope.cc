@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
 	Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 http://www.polymake.org
 
@@ -18,6 +18,7 @@ GNU General Public License for more details.
 #include "polymake/Vector.h"
 #include "polymake/Matrix.h"
 #include "polymake/TropicalNumber.h"
+#include "polymake/linalg.h"
 
 namespace polymake { namespace tropical {
 
@@ -42,7 +43,7 @@ namespace polymake { namespace tropical {
 
 			perl::Object p_out(perl::ObjectType::construct<Scalar>("polytope::Polytope"));
 
-			p_out.take("INEQUALITIES") << I;
+			p_out.take("INEQUALITIES") << remove_zero_rows(I);
 			p_out.take("EQUATIONS") << normalizing_equation;
 			return p_out;
 		}

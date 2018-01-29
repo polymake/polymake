@@ -1,0 +1,31 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# build rules for ninja specific for bundled extensions with java modules
+
+# compile a java package
+rule jcompile
+  command = JAVA_HOME=${bundled.java.JDKHome} ${bundled.java.ANT} -S -q -f $in -Dpolymake.top=${root} -Dbuild.dir=${builddir} -Djar.name=`basename $out` ${ANTFLAGS} -Ddebug=`if [ ${buildmode} = Debug ]; then echo on; else echo off; fi` all
+  description = BUILD $out
+
+# clean java targets
+rule jclean
+  command = JAVA_HOME=${bundled.java.JDKHome} ${bundled.java.ANT} -S -q -f $in -Dpolymake.top=${root} -Dbuild.dir=${builddir} -Djar.name=`basename $out` ${ANTFLAGS} -Ddebug=`if [ ${buildmode} = Debug ]; then echo on; else echo off; fi` clean
+  description = CLEAN $out
+
+# link a native module
+rule nativemod
+  command = ${CC} ${LDsharedFLAGS} ${bundled.java.NativeARCHFLAGS} -o $out $in ${LDFLAGS}
+  description = LD $out

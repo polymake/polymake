@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -22,7 +22,7 @@ weight 1.10;
 
 method has_far_facet {
    my ($this)=@_;
-   my $Points=$this->VERTICES | POINTS;
+   my $Points=$this->give("VERTICES | POINTS");
    rank($Points->minor(far_points($Points), range(1,$Points->cols-1))) == $this->CONE_DIM-1
 }
 

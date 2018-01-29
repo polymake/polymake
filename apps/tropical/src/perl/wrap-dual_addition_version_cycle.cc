@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,5 +25,6 @@ namespace polymake { namespace tropical { namespace {
    };
 
    FunctionInstance4perl(dual_addition_version_T_x_x, Max);
+   FunctionInstance4perl(dual_addition_version_T_x_x, Min);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

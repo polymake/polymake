@@ -69,17 +69,53 @@ Sublattice_Representation<Integer>::Sublattice_Representation(size_t n) {
 Sublattice_Representation<Integer>::Sublattice_Representation(const Matrix<Integer>& M, bool take_saturation) {
     bool success;
     initialize(M,take_saturation,success);
-    if(!success){
+    if(success){
+        LLL_improve();        
+    }
+    else{
         Matrix<mpz_class> mpz_M(M.nr,M.nc);
-        mat_to_mpz(M,mpz_M);
+        // mat_to_mpz(M,mpz_M);
+        convert(mpz_M,M);
         Sublattice_Representation<mpz_class> mpz_SLR;
         mpz_SLR.initialize(mpz_M,take_saturation,success);
+        mpz_SLR.LLL_improve();
         A=Matrix<Integer>(mpz_SLR.A.nr,mpz_SLR.A.nc);
         B=Matrix<Integer>(mpz_SLR.B.nr,mpz_SLR.B.nc);
-        mat_to_Int(mpz_SLR.A,A);
-        mat_to_Int(mpz_SLR.B,B);
+        // mat_to_Int(mpz_SLR.A,A);
+        convert(A,mpz_SLR.A);
+        // mat_to_Int(mpz_SLR.B,B);
+        convert(B,mpz_SLR.B);
         convert(c, mpz_SLR.c);
         rank=mpz_SLR.rank;        
+    }
+}
+
+/* Creates a representation from given maps and the factor c
+ * 
+ */
+
+template<typename Integer>
+Sublattice_Representation<Integer>::Sublattice_Representation(const Matrix<Integer>& GivenA, 
+                                                              const Matrix<Integer>& GivenB, Integer GivenC) {
+    dim = GivenA.nr;
+    rank= GivenA.nc;
+    assert(GivenB.nr==dim);
+    assert(GivenB.nc==rank);
+    Matrix<Integer> Test(rank);
+    Test.scalar_multiplication(GivenC);
+    Matrix<Integer> Test1=GivenA.multiplication(GivenB);
+    assert(Test1.equal(Test));
+    
+    external_index = 1; // to have a value, will be computed if asked for
+    A = GivenA;
+    B = GivenB;
+    c = GivenC;
+    Equations_computed=false;
+    Congruences_computed=false;
+    is_identity=false;
+    Test1=Matrix<Integer>(rank);
+    if(A.equal(Test1) && c==1){
+        is_identity=true; 
     }
 }
 
@@ -96,7 +132,7 @@ void Sublattice_Representation<Integer>::initialize(const Matrix<Integer>& M, bo
     dim=M.nr_of_columns();
     Matrix<Integer> N=M;    
 
-    rank=N.row_echelon_reduce(success);
+    rank=N.row_echelon_reduce(success);  // reduce is importnat here, will be used
     if(!success)
         return;
 
@@ -107,10 +143,10 @@ void Sublattice_Representation<Integer>::initialize(const Matrix<Integer>& M, bo
         return;   
     }
 
-    mpz_class row_index=1;
+    mpz_class row_index=1;  // product of the corner elements in the row echelon form
     vector<key_t> col(rank);
-    vector<bool> col_is_corner(dim,false);
-    for(size_t k=0;k<rank;++k){
+    vector<bool> col_is_corner(dim,false); // indicates whether the column is a corner in the 
+    for(size_t k=0;k<rank;++k){            // row echelin form
         size_t j=0;
         for(;j<dim;++j)
             if(N[k][j]!=0)
@@ -118,11 +154,11 @@ void Sublattice_Representation<Integer>::initialize(const Matrix<Integer>& M, bo
         col_is_corner[j]=true;
         col[k]=j;
         if(N[k][j]<0)
-            v_scalar_multiplication<Integer>(N[k],-1);
+            v_scalar_multiplication<Integer>(N[k],-1);  // make corner positive
         row_index*=convertTo<mpz_class>(N[k][j]);
     }
     
-    if(row_index==1 && rank==dim){
+    if(row_index==1 && rank==dim){  // the sublattice is the full lattice and no saturation needed
         A = B = Matrix<Integer>(dim);
         c=1;
         is_identity=true;
@@ -132,14 +168,14 @@ void Sublattice_Representation<Integer>::initialize(const Matrix<Integer>& M, bo
     A=Matrix<Integer>(rank, dim);
     B=Matrix<Integer>(dim,rank);
     
-    if(row_index==1){
+    if(row_index==1){  // no saturation needed since sublattice is direct summand
     
         for(size_t k=0;k<rank;++k)
-            A[k]=N[k];
+            A[k]=N[k];    // A is just the basis of our sublattice
         size_t j=0;
         for(size_t k=0;k<dim;++k){
             if(col_is_corner[k]){
-                B[k][j]=1;
+                B[k][j]=1;  // projection to the corner columns, allowed because of reduction!
                 j++;
             }
         };
@@ -162,13 +198,15 @@ void Sublattice_Representation<Integer>::initialize(const Matrix<Integer>& M, bo
         if(!success)
             return;
         
-        for(k=0;k<dim;++k)
+        for(k=0;k<dim;++k) // we take the partial inverse belonging to the first rankk rows of A
             for(size_t j=0;j<rank;++j)
                 B[k][j]=Q[k][j];
         return;               
     }
     
-    // now we must take the saturation
+    // now we must take the saturation.
+    // We do it by computing a complement of the smallest direct summand containing 
+    // of the sublattice and then taking its complement.
     
     Matrix<Integer> R_inv(dim);
     success=N.column_trigonalize(rank,R_inv);
@@ -185,26 +223,16 @@ void Sublattice_Representation<Integer>::initialize(const Matrix<Integer>& M, bo
     return; 
 }
 
-//---------------------------------------------------------------------------
-//                       Constructor by conversion
-//---------------------------------------------------------------------------
-
 template<typename Integer>
-template<typename IntegerFC>
-Sublattice_Representation<Integer>::Sublattice_Representation(const 
-             Sublattice_Representation<IntegerFC>& Original) {
-                 
-    convert(A,Original.A);
-    convert(B,Original.B);
-    dim=Original.dim;
-    rank=Original.rank;
-    convert(c,Original.c);
-    is_identity=Original.is_identity;
-    Equations_computed=Original.Equations_computed;
-    Congruences_computed=Original.Congruences_computed;
-    convert(Equations,Original.Equations);
-    convert(Congruences,Original.Congruences);
-    external_index=Original.external_index;    
+void Sublattice_Representation<Integer>::LLL_improve(){
+    
+    if(is_identity)
+        return;
+    // We want to give the matrix B small entries since it deternines
+    // the transformation to the sublattice
+    Sublattice_Representation LLL_trans=LLL_coordinates<Integer>(B);
+    compose(LLL_trans);
+    
 }
 
 
@@ -214,7 +242,8 @@ Sublattice_Representation<Integer>::Sublattice_Representation(const
 
 /* first this then SR when going from Z^n to Z^r */
 template<typename Integer>
-void Sublattice_Representation<Integer>::compose(const Sublattice_Representation& SR) {
+void Sublattice_Representation<Integer>::compose(const Sublattice_Representation& SR) {  
+    
     assert(rank == SR.dim); //TODO vielleicht doch exception?
     
     if(SR.is_identity)
@@ -277,7 +306,7 @@ void Sublattice_Representation<Integer>::compose_dual(const Sublattice_Represent
         c /= g;
         B.scalar_division(g);
     }
-    is_identity&=SR.is_identity;
+    is_identity&=SR.is_identity; 
 }
 
 //---------------------------------------------------------------------------
@@ -519,5 +548,12 @@ void Sublattice_Representation<Integer>::make_congruences() const {
     for(size_t i=0;i<Transf2.nr;++i)
         external_index*=convertTo<mpz_class>(Transf2[i][dim]);
 }
+
+
+#ifndef NMZ_MIC_OFFLOAD  //offload with long is not supported
+template class Sublattice_Representation<long>;
+#endif
+template class Sublattice_Representation<long long>;
+template class Sublattice_Representation<mpz_class>;
 
 }

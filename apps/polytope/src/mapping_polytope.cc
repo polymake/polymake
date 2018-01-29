@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,6 +20,7 @@
 #include "polymake/Vector.h"
 #include "polymake/Set.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/common/labels.h"
 
 namespace polymake { namespace polytope {
 namespace {
@@ -78,10 +79,10 @@ perl::Object mapping_polytope(perl::Object p_in1, perl::Object p_in2, perl::Opti
 
    const bool relabel=!options["no_labels"];
    if (relabel) {
-      std::vector<std::string> vertex_labels(n), facet_labels(m), labels_out(m*n);
-      read_labels(p_in1, "VERTEX_LABELS", vertex_labels);
-      read_labels(p_in2, "FACET_LABELS", facet_labels);
+      const std::vector<std::string> vertex_labels = common::read_labels(p_in1, "VERTEX_LABELS", n);
+      const std::vector<std::string> facet_labels = common::read_labels(p_in2, "FACET_LABELS", m);
 
+      std::vector<std::string> labels_out(m*n);
       copy_range(entire(pm::product(vertex_labels, facet_labels, product_label())), labels_out.begin());
       p_out.take("FACET_LABELS") << labels_out;
    }

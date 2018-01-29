@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -24,7 +24,7 @@ Set<Container> orbit_permlib (perl::Object G, const Container& c)
 {
    const Array<Array<int> > generators = G.give("STRONG_GENERATORS | GENERATORS");
    const PermlibGroup sym_group(generators);
-   return Set<Container>(sym_group.orbit(c));
+   return sym_group.orbit(c);
 }
 
 UserFunction4perl("# @category Orbits\n"

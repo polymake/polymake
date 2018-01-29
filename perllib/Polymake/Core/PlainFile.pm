@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake::Core::PlainFile;
 
@@ -101,23 +102,23 @@ sub load {
       } elsif (/^ _type \s+ ($type_re) \s*$/xo) {
          my $type=$1;
          $self->line=$.;
-
-         unless ($proto=$app->eval_type($type)) {
-            if ($type =~ "(Rational|Float)Polytope") {
-               $proto=$app->eval_type("Polytope<$1>");
-            } else {
-               $proto=$app->default_type;
-               report_warning($self, "unknown object type '$type', default type '", $proto->name, "' assumed");
+         ($proto, my $default_type)=$app->pkg->translate_plain_file_type($type);
+         $proto //= do {
+            if ($@) {
+               chomp $@;
+               report_warning($self, "$@, default type '", $default_type->name, "' assumed");
+               $@="";
             }
-         }
+            $default_type;
+         };
          bless $object, $proto->pkg;
          next;
 
       } elsif (my ($negated, $prop_name, $attr)=/^(!)? ($id_re) (?(1) | (\([\w+]*\))?) \s*$/xo) {
          $self->line=$.;
 
-         if (! $proto) {
-            $proto=$app->default_type;
+         unless ($proto) {
+            $proto=$app->pkg->translate_plain_file_type();
             bless $object, $proto->pkg;
          }
 
@@ -197,7 +198,7 @@ sub load {
             if ($@) {
                report_parse_error($self, "error reading property '$prop_name'");
             }
-         } elsif (defined($subobject) && defined (my $prop=$subobject->type->lookup_property($prop_name))) {
+         } elsif (defined($subobject) && defined ($prop=$subobject->type->lookup_property($prop_name))) {
             eval { $subobject->_add($prop, $prop->type->name eq "Bool" ? $boolean_value : $value) };
             if ($@) {
                report_parse_error($self, "error reading property '$prop_name'");
@@ -251,20 +252,23 @@ sub consume_unknown_property {
              sub : method {
                 my ($self, $word)=@_;
                 my $text=substr($self->term->Attribs->{line_buffer}, 0, $self->term->Attribs->{point});
-                if ($text =~ m{^\s* (?'before' (?: $qual_id_re \s*[<>,]\s* )*) (?'prefix' $qual_id_re (?: ::)?)? $}xo) {
-                   $self->try_type_completion($word, $+{prefix}, $+{before});
+                if ($text =~ m{^\s* (?: $qual_id_re \s*[<>,]\s* )* (?'prefix' $qual_id_re (?: ::)?)? $}xo) {
+                   $self->try_type_completion($+{prefix});
                 }
                 if ($text =~ m{^\s* (?: (?'type' $type_qual_re) ::)? (?'prefix' $hier_id_re\.?)? $}xo) {
                    my ($object_type, $prefix)=@+{qw(type prefix)};
                    if (defined $object_type) {
                       if (defined (my $proto=$User::application->eval_type($object_type, 1))) {
-                         push @{$self->completion_words},
-                              map { "$obj_type\::$_" } Shell::try_property_completion($proto, $prefix);
+                         push @{$self->completion_proposals},
+                              Shell::try_property_completion($proto, $prefix);
                       }
                    } else {
-                      push @{$self->completion_words}, Shell::try_property_completion($object->type, $prefix);
+                      push @{$self->completion_proposals},
+                           Shell::try_property_completion($object->type, $prefix);
                    }
+                   $self->completion_offset=length($prefix);
                 }
+                $self->trim_completion_proposals($word);
              });
    local $Shell->term->{MinLength}=1;
    my $obj_type=$object->type->full_name;

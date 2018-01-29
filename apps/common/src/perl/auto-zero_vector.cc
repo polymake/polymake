@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,6 +17,7 @@
 ///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/Integer.h"
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/TropicalNumber.h"
@@ -36,5 +37,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(zero_vector_T_x, double);
    FunctionInstance4perl(zero_vector_T_x, QuadraticExtension< Rational >);
    FunctionInstance4perl(zero_vector_T_x, int);
+   FunctionInstance4perl(zero_vector_T_x, PuiseuxFraction< Min, Rational, Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

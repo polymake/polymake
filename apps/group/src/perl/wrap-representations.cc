@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,29 +14,44 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/AccurateFloat.h"
 #include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
-#include "polymake/Set.h"
 #include "polymake/Vector.h"
-#include "polymake/hash_map"
 
 namespace polymake { namespace group { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0>
+   FunctionInterface4perl( isotypic_basis_T_x_x_int_o, T0 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
+      WrapperReturn( (isotypic_basis<T0>(arg0, arg1, arg2.get<int>(), arg3)) );
+   };
+
+   template <typename T0>
+   FunctionInterface4perl( isotypic_projector_T_x_x_int_o, T0 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
+      WrapperReturn( (isotypic_projector<T0>(arg0, arg1, arg2.get<int>(), arg3)) );
+   };
+
+   template <typename T0, typename T1>
+   FunctionInterface4perl( to_orbit_order_X_X, T0,T1 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturn( (to_orbit_order(arg0.get<T0>(), arg1.get<T1>())) );
+   };
+
    template <typename T0, typename T1>
    FunctionInterface4perl( irreducible_decomposition_T_C_x, T0,T1 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
       WrapperReturn( (irreducible_decomposition<T0>(arg0.get<T1, T0>(), arg1)) );
    };
 
-   FunctionWrapper4perl( pm::Array<int> (pm::Array<int> const&, perl::Object) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Array< int > > >(), arg1 );
+   FunctionWrapper4perl( pm::SparseMatrix<pm::QuadraticExtension<pm::Rational>, pm::NonSymmetric> (perl::Object, perl::Object, int, perl::OptionSet) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
+      IndirectWrapperReturn( arg0, arg1, arg2, arg3 );
    }
-   FunctionWrapperInstance4perl( pm::Array<int> (pm::Array<int> const&, perl::Object) );
+   FunctionWrapperInstance4perl( pm::SparseMatrix<pm::QuadraticExtension<pm::Rational>, pm::NonSymmetric> (perl::Object, perl::Object, int, perl::OptionSet) );
 
    FunctionWrapper4perl( pm::SparseMatrix<pm::Rational, pm::NonSymmetric> (perl::Object, perl::Object, pm::Array<int> const&) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
@@ -44,29 +59,18 @@ namespace polymake { namespace group { namespace {
    }
    FunctionWrapperInstance4perl( pm::SparseMatrix<pm::Rational, pm::NonSymmetric> (perl::Object, perl::Object, pm::Array<int> const&) );
 
-   FunctionWrapper4perl( pm::Array<int> (pm::Array<pm::Array<int>> const&, pm::Array<int> const&) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn( arg0.get< perl::TryCanned< const Array< Array< int > > > >(), arg1.get< perl::TryCanned< const Array< int > > >() );
+   FunctionInstance4perl(irreducible_decomposition_T_C_x, Array< QuadraticExtension< Rational > >, perl::Canned< const Array< QuadraticExtension< Rational > > >);
+   FunctionWrapper4perl( pm::IncidenceMatrix<pm::NonSymmetric> (perl::Object, perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>> const&, perl::OptionSet) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
+      IndirectWrapperReturn( arg0, arg1, arg2.get< perl::TryCanned< const Array< Set< int > > > >(), arg3 );
    }
-   FunctionWrapperInstance4perl( pm::Array<int> (pm::Array<pm::Array<int>> const&, pm::Array<int> const&) );
+   FunctionWrapperInstance4perl( pm::IncidenceMatrix<pm::NonSymmetric> (perl::Object, perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>> const&, perl::OptionSet) );
 
-   FunctionWrapper4perl( pm::SparseMatrix<pm::Rational, pm::NonSymmetric> (perl::Object, perl::Object, int) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      IndirectWrapperReturn( arg0, arg1, arg2 );
+   FunctionWrapper4perl( pm::IncidenceMatrix<pm::NonSymmetric> (perl::Object, perl::Object, pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, perl::OptionSet) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]), arg3(stack[3]);
+      IndirectWrapperReturn( arg0, arg1, arg2.get< perl::TryCanned< const SparseMatrix< Rational, NonSymmetric > > >(), arg3 );
    }
-   FunctionWrapperInstance4perl( pm::SparseMatrix<pm::Rational, pm::NonSymmetric> (perl::Object, perl::Object, int) );
-
-   FunctionWrapper4perl( pm::IncidenceMatrix<pm::NonSymmetric> (perl::Object, perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>> const&) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      IndirectWrapperReturn( arg0, arg1, arg2.get< perl::TryCanned< const Array< Set< int > > > >() );
-   }
-   FunctionWrapperInstance4perl( pm::IncidenceMatrix<pm::NonSymmetric> (perl::Object, perl::Object, pm::Array<pm::Set<int, pm::operations::cmp>> const&) );
-
-   FunctionWrapper4perl( pm::IncidenceMatrix<pm::NonSymmetric> (perl::Object, perl::Object, pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      IndirectWrapperReturn( arg0, arg1, arg2.get< perl::TryCanned< const SparseMatrix< Rational, NonSymmetric > > >() );
-   }
-   FunctionWrapperInstance4perl( pm::IncidenceMatrix<pm::NonSymmetric> (perl::Object, perl::Object, pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&) );
+   FunctionWrapperInstance4perl( pm::IncidenceMatrix<pm::NonSymmetric> (perl::Object, perl::Object, pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, perl::OptionSet) );
 
    FunctionWrapper4perl( pm::Array<int> (pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&) ) {
       perl::Value arg0(stack[0]);
@@ -75,20 +79,17 @@ namespace polymake { namespace group { namespace {
    FunctionWrapperInstance4perl( pm::Array<int> (pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&) );
 
    FunctionInstance4perl(irreducible_decomposition_T_C_x, Array< int >, perl::Canned< const Array< int > >);
-   FunctionInstance4perl(irreducible_decomposition_T_C_x, Vector< Rational >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>> >);
-   FunctionWrapper4perl( pm::SparseMatrix<pm::AccurateFloat, pm::NonSymmetric> (perl::Object, perl::Object, int) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      IndirectWrapperReturn( arg0, arg1, arg2 );
-   }
-   FunctionWrapperInstance4perl( pm::SparseMatrix<pm::AccurateFloat, pm::NonSymmetric> (perl::Object, perl::Object, int) );
-
-   FunctionInstance4perl(irreducible_decomposition_T_C_x, Vector< AccurateFloat >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::AccurateFloat> const&>, pm::Series<int, true>, mlist<> > >);
-   FunctionWrapper4perl( pm::SparseMatrix<pm::QuadraticExtension<pm::Rational>, pm::NonSymmetric> (perl::Object, perl::Object, int) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
-      IndirectWrapperReturn( arg0, arg1, arg2 );
-   }
-   FunctionWrapperInstance4perl( pm::SparseMatrix<pm::QuadraticExtension<pm::Rational>, pm::NonSymmetric> (perl::Object, perl::Object, int) );
-
    FunctionInstance4perl(irreducible_decomposition_T_C_x, Vector< QuadraticExtension< Rational > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::QuadraticExtension<pm::Rational> > const&>, pm::Series<int, true>, mlist<> > >);
+   FunctionInstance4perl(to_orbit_order_X_X, perl::Canned< const Array< Array< int > > >, perl::Canned< const Array< int > >);
+   FunctionWrapper4perl( perl::Object (perl::Object) ) {
+      perl::Value arg0(stack[0]);
+      IndirectWrapperReturn( arg0 );
+   }
+   FunctionWrapperInstance4perl( perl::Object (perl::Object) );
+
+   FunctionInstance4perl(isotypic_projector_T_x_x_int_o, Rational);
+   FunctionInstance4perl(isotypic_basis_T_x_x_int_o, QuadraticExtension< Rational >);
+   FunctionInstance4perl(isotypic_projector_T_x_x_int_o, QuadraticExtension< Rational >);
+   FunctionInstance4perl(isotypic_basis_T_x_x_int_o, Rational);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

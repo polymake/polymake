@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,8 +14,9 @@
 #-------------------------------------------------------------------------------
 
 use strict;
-
 use namespaces;
+use warnings qw(FATAL void syntax misc);
+
 package Polymake;
 
 sub min($$) {  $_[0]<$_[1] ? $_[0] : $_[1]  }
@@ -256,6 +257,7 @@ sub croak {
 
 sub beautify_error {
    unless ($DebugLevel) {
+      # FIXME: remove this!
       namespaces::temp_disable();
       use re 'eval';
       $@ =~ s/ at \(eval \d+\)(?:\[.*?:\d+\])? line 1(\.)?/$1/g;
@@ -275,6 +277,16 @@ sub sanitize_help {
    $_[0] =~ s/^\s*\n//s;
    $_[0] =~ s/\n{2,}$/\n/s;
    mark_as_utf8string($_[0]);
+}
+####################################################################################
+# this is a reduced version of Symbol::delete_package which does not delete the package itself
+# used by Configure and ShellHelpers
+sub wipe_package {
+   my ($stash)=@_;
+   foreach my $name (keys %$stash) {
+      undef *{$stash->{$name}};
+   }
+   %$stash=();
 }
 ####################################################################################
 

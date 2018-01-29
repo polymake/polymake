@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -30,6 +30,110 @@ property PROJECTED_EQUATIONS : SparseMatrix<Rational>;
 
 }
 
+object Cone {
+
+    property GROUP {
+
+        # @category Symmetry
+        # One representative for each orbit of interior ridge simplices
+        property REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES : Array<Bitset>;
+
+        # @category Symmetry
+        # One representative for each orbit of boundary ridge simplices
+        property REPRESENTATIVE_BOUNDARY_RIDGE_SIMPLICES : Array<Bitset>;
+
+        # @category Symmetry
+        # One representative for each orbit of maximal-dimensional interior simplices
+        property REPRESENTATIVE_MAX_INTERIOR_SIMPLICES : Array<Bitset>;
+
+        # @category Symmetry
+        # One representative for each orbit of maximal-dimensional boundary simplices
+        property REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES : Array<Bitset>;
+
+    }
+
+    # @category Symmetry
+    # The equivalence classes of maximal-dimensional simplices in the interior and boundary under a symmetry group 
+    rule GROUP.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, GROUP.REPRESENTATIVE_BOUNDARY_RIDGE_SIMPLICES : COMBINATORIAL_DIM, RAYS_IN_FACETS, RAYS, GROUP.RAYS_ACTION.GENERATORS {
+        my $pair = representative_interior_and_boundary_ridges($this);
+        $this->GROUP->REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES = $pair->first;
+        $this->GROUP->REPRESENTATIVE_BOUNDARY_RIDGE_SIMPLICES = $pair->second;
+    }
+
+    # @category Symmetry
+    # The equivalence classes of maximal-dimensional simplices in the boundary under a symmetry group 
+    rule GROUP.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES : COMBINATORIAL_DIM, RAYS, GROUP.RAYS_ACTION.GENERATORS {
+        $this->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES = representative_max_interior_simplices($this->COMBINATORIAL_DIM, $this->RAYS, $this->GROUP->RAYS_ACTION->GENERATORS);
+    }
+
+} # object Cone
+
+object Polytope {
+
+    property GROUP {
+
+        property VERTICES_ACTION {
+            
+            # @category Symmetry
+            # The cocircuit equations, projected to a certain direct sum of isotypic components
+            property SYMMETRIZED_COCIRCUIT_EQUATIONS : SymmetrizedCocircuitEquations : multiple;
+
+        }
+
+    }
+
+    rule GROUP.VERTICES_ACTION.SYMMETRIZED_COCIRCUIT_EQUATIONS.RIDGES, GROUP.VERTICES_ACTION.SYMMETRIZED_COCIRCUIT_EQUATIONS.PROJECTED_EQUATIONS : GROUP.ORDER, GROUP.CHARACTER_TABLE, GROUP.VERTICES_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, GROUP.VERTICES_ACTION.SYMMETRIZED_COCIRCUIT_EQUATIONS.ISOTYPIC_COMPONENTS, GROUP.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, GROUP.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES {
+        my $sce = symmetrized_cocircuit_equations($this, $this->GROUP->VERTICES_ACTION->SYMMETRIZED_COCIRCUIT_EQUATIONS->ISOTYPIC_COMPONENTS);
+        $this->GROUP->VERTICES_ACTION->SYMMETRIZED_COCIRCUIT_EQUATIONS->RIDGES = $sce->RIDGES;
+        $this->GROUP->VERTICES_ACTION->SYMMETRIZED_COCIRCUIT_EQUATIONS->PROJECTED_EQUATIONS = $sce->PROJECTED_EQUATIONS;
+    }
+}
+
+object PointConfiguration {
+
+    property GROUP {
+
+        # @category Symmetry
+        # One representative for each orbit of interior ridge simplices
+        property REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES : Array<Bitset>;
+
+        # @category Symmetry
+        # One representative for each orbit of boundary ridge simplices
+        property REPRESENTATIVE_BOUNDARY_RIDGE_SIMPLICES : Array<Bitset>;
+
+        # @category Symmetry
+        # One representative for each orbit of maximal-dimensional interior simplices
+        property REPRESENTATIVE_MAX_INTERIOR_SIMPLICES : Array<Bitset>;
+
+        # @category Symmetry
+        # One representative for each orbit of maximal-dimensional boundary simplices
+        property REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES : Array<Bitset>;
+
+        property POINTS_ACTION {
+            
+            # @category Symmetry
+            # The cocircuit equations, projected to a certain direct sum of isotypic components
+            property SYMMETRIZED_COCIRCUIT_EQUATIONS : SymmetrizedCocircuitEquations : multiple;
+
+        }
+    }
+
+    # @category Symmetry
+    # The equivalence classes of maximal-dimensional simplices in the interior and boundary under a symmetry group 
+    rule GROUP.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, GROUP.REPRESENTATIVE_BOUNDARY_RIDGE_SIMPLICES : CONVEX_HULL.COMBINATORIAL_DIM, CONVEX_HULL.POINTS_IN_FACETS, POINTS, GROUP.POINTS_ACTION.GENERATORS {
+        my $pair = representative_interior_and_boundary_ridges($this);
+        $this->GROUP->REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES = $pair->first;
+        $this->GROUP->REPRESENTATIVE_BOUNDARY_RIDGE_SIMPLICES = $pair->second;
+    }
+
+    # @category Symmetry
+    # The equivalence classes of maximal-dimensional simplices in the boundary under a symmetry group 
+    rule GROUP.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES : CONVEX_HULL.COMBINATORIAL_DIM, POINTS, GROUP.POINTS_ACTION.GENERATORS {
+        $this->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES = representative_max_interior_simplices($this->CONVEX_HULL->COMBINATORIAL_DIM, $this->POINTS, $this->GROUP->POINTS_ACTION->GENERATORS);
+    }
+
+} # object PointConfiguration
+
 
 object group::Group {
 
@@ -38,13 +142,9 @@ object group::Group {
 #* properties related to triangulations
 #*******************************************************
 
-# @category Symmetry
-# The cocircuit equations, projected to a certain direct sum of isotypic components
-property SYMMETRIZED_COCIRCUIT_EQUATIONS : SymmetrizedCocircuitEquations : multiple;
-
-# @category Symmetry
-# The symmetrized version of [[SIMPLEXITY_LOWER_BOUND]].
-property SIMPLEXITY_LOWER_BOUND : Int;
+    # @category Symmetry
+    # The symmetrized version of [[SIMPLEXITY_LOWER_BOUND]].
+    property SIMPLEXITY_LOWER_BOUND : Int;
 
 }
 
@@ -52,7 +152,7 @@ property SIMPLEXITY_LOWER_BOUND : Int;
 # @category Symmetry
 # calculate a sparse representation of the cocircuit equations corresponding to a direct sum of isotypic components
 # @param Cone P
-# @param Set<Int> the list of indices of the isotypic components to project to; default [0], which
+# @param Set<Int> comps the list of indices of the isotypic components to project to; default [0], which
 # amounts to summing all cocircuit equations corresponding to the orbit of each ridge.
 user_function combinatorial_symmetrized_cocircuit_equations<Scalar>(Cone<Scalar>; Set<Int>=scalar2set(0)) {
     my ($c, $isotypic_components) = @_;
@@ -61,11 +161,12 @@ user_function combinatorial_symmetrized_cocircuit_equations<Scalar>(Cone<Scalar>
 
 # @category Symmetry
 # calculate the projection of the cocircuit equations to a direct sum of isotypic components
-# @param Cone P
-# @param Set<Int> the list of indices of the isotypic components to project to; default [0], which
+# @tparam Scalar the underlying data type
+# @param Cone P or PointConfiguration
+# @param Set<Int> comps the list of indices of the isotypic components to project to; default [0], which
 # amounts to summing all cocircuit equations corresponding to the orbit of each ridge.
-# @option Bool reduce_rows Should we return only linearly independent equations? default: true,                      
-user_function symmetrized_cocircuit_equations<Scalar>(Cone<Scalar>; Set<Int>=scalar2set(0), { reduce_rows => 1 }) {
+# @option Bool reduce_rows Should we return only linearly independent equations? default: 1
+user_function symmetrized_cocircuit_equations<Scalar=Rational>($; Set<Int>=scalar2set(0), { reduce_rows => 1 }) {
     my ($c, $isotypic_components, $options) = @_;
     return projected_symmetrized_cocircuit_equations_impl($c, $c->GROUP->REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, $c->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, $isotypic_components, $options->{reduce_rows});
 }

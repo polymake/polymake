@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -34,34 +34,41 @@ induced_permutation(const Array<int>& perm,
 }
 
 
-
-
 template<typename Scalar>
-Array<Array<int> >
-induced_permutations(const Array<Array<int> >& original_gens, 
+Array<Array<int>>
+induced_permutations(const Array<Array<int>>& original_gens, 
                      const Matrix<Scalar>& M,
                      const hash_map<Vector<Scalar>, int>& index_of,
                      perl::OptionSet options)
 {
    const bool homogeneous_action = options["homogeneous_action"];
    return homogeneous_action
-      ? induced_permutations_impl<on_container,          Vector<Scalar> >(original_gens, M.rows(), entire(rows(M)), index_of)
-      : induced_permutations_impl<on_nonhomog_container, Vector<Scalar> >(original_gens, M.rows(), entire(rows(M)), index_of);
+      ? induced_permutations_impl<on_container>         (original_gens, M.rows(), entire(rows(M)), index_of)
+      : induced_permutations_impl<on_nonhomog_container>(original_gens, M.rows(), entire(rows(M)), index_of);
 }
 
-Array<Array<int> >
-induced_permutations_incidence(const Array<Array<int> >& original_gens,
+template<typename Scalar>
+Array<Array<int>>
+induced_permutations(const Array<Matrix<Scalar>>& original_gens, 
+                     const Matrix<Scalar>& M,
+                     const hash_map<Vector<Scalar>, int>& index_of,
+                     perl::OptionSet)
+{
+   return induced_permutations_impl<on_elements>(original_gens, M.rows(), entire(rows(M)), index_of);
+}
+
+Array<Array<int>>
+induced_permutations_incidence(const Array<Array<int>>& original_gens,
                                const IncidenceMatrix<>& M,
                                const hash_map<Set<int>, int>& index_of,
                                perl::OptionSet)
 {
    return induced_permutations_impl<on_container>(original_gens, M.rows(), entire(rows(M)), index_of);
-}
-
+}      
 
 template<typename SetType>
-Array<Array<int> >
-induced_permutations(const Array<Array<int> >& original_gens,
+Array<Array<int>>
+induced_permutations(const Array<Array<int>>& original_gens,
                      const Array<SetType>& domain_to_induce,
                      const hash_map<SetType, int>& index_of,
                      perl::OptionSet)
@@ -79,10 +86,19 @@ UserFunctionTemplate4perl("# @category Symmetry"
                           "induced_permutations<Scalar>(Array<Array<Int>>, Matrix<Scalar>; HashMap<Vector<Scalar>,Int>=(new HashMap<Vector<Scalar>,Int>) { homogeneous_action => 0 } )");
 
 UserFunctionTemplate4perl("# @category Symmetry"
+                          "# gives the permutations that are induced on the rows of a matrix //M//"
+                          "# by the action of //gens// on the columns of //M//"
+                          "# @param Array<Matrix<Scalar>> gens a list of matrices that act as generators"
+                          "# @param Matrix M the matrix acted upon"
+                          "# @option Bool homogeneous_action should the generators also act on the homogeneous column? Default False"
+                          "# @return Array<Array<Int>>",
+                          "induced_permutations<Scalar>(Array<Matrix<Scalar>>, Matrix<Scalar>; HashMap<Vector<Scalar>,Int>=(new HashMap<Vector<Scalar>,Int>) { homogeneous_action => 0 } )");
+      
+UserFunctionTemplate4perl("# @category Symmetry"
                           "# gives the permutations that are induced on an ordered collection //S//"
                           "# by the action of //gens// on the elements of //S//"
                           "# @param Array<Array<Int>> gens "
-                          "# @param Array<DomainType> the collection acted upon"
+                          "# @param Array<DomainType> S the collection acted upon"
                           "# @return Array<Array<Int>>",
                           "induced_permutations<DomainType>(Array<Array<Int>>, Array<DomainType>; HashMap<DomainType,Int>=(new HashMap<DomainType,Int>), { homogeneous_action => 0 })");
 
@@ -95,6 +111,7 @@ UserFunction4perl("# @category Symmetry"
                   &induced_permutations_incidence,
                   "induced_permutations(Array<Array<Int>>, IncidenceMatrix; HashMap<Set<Int>,Int>=(new HashMap<Set<Int>,Int>), { homogeneous_action => 0 })");
 
+      
 }}
 
 // Local Variables:

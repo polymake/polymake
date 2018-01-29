@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -41,7 +41,7 @@ label latte
 sub write_latte_ineq {
    my ($this, $tempname, $int)=@_;
    # daten: ineq / eq
-   my $ineq = $this->FACETS | INEQUALITIES;
+   my $ineq = $this->give("FACETS | INEQUALITIES");
    my $n_ineq = $ineq->rows;
    my $fac = dense(eliminate_denominators_in_rows($ineq));
    my $n_lines = $n_ineq;
@@ -76,8 +76,7 @@ sub write_latte_ineq {
 }
 
 sub write_latte_vertices {
-   my $tempname = shift;
-   my $this = shift;
+   my ($this, $tempname)=@_;
    my $vert = dense($this->VERTICES);
         
    open(my $P, ">$tempname")
@@ -95,29 +94,23 @@ sub parse_latte_points {
    while (<$P>) {
        if (my ($n)=/number of lattice points\D+(\d+)/) {
            close $P;
-           latte_cleanup();
            return $n;
        } elsif(/Empty polytope/ or /The polytope is empty!/) {
            close $P;
-           latte_cleanup();
            return 0;
        }
    }
    close $P;
-   latte_cleanup();
    die "can't parse output from LattE's 'count'\n";
-}
-
-sub latte_cleanup {
-    unlink qw( latte_cdd.ext latte_cdd.ddl latte_cdd.out latte_cdd.ead latte_cdd.ine latte_cdd.ecd Check_emp.ddl Check_emp.out numOfLatticePoints Check_emp.lp Check_emp.lps numOfUnimodularCones Check_emp.ddl.old latte_stats totalTime );
 }
 
 object Polytope<Rational> {
 
     rule latte.integer_points: N_LATTICE_POINTS : CONE_AMBIENT_DIM, CONE_DIM, FACETS | INEQUALITIES {
-        my $tempname=new Tempfile;
+        my $temp_dir=new Tempdir;
+	my $input_file="input.ine";
         my $interior = 0;
-        write_latte_ineq($this, $tempname, $interior);
+        write_latte_ineq($this, "$temp_dir/$input_file", $interior);
         
         # latte 1.2 does not do a full redundancy check by default, so force it when using inequalities
         # furthermore it might produce wrong output for 0-dim polytopes when given the far face inequality
@@ -125,10 +118,11 @@ object Polytope<Rational> {
         if (defined($this->lookup("FACETS")) && $this->CONE_DIM > 1) {
             $check = "--redundancy-check=none";
         }
+        my $tdir = new TempChangeDir($temp_dir);
         if ($Verbose::external) {
-            dbg_print( "running latte's count: $latte_count $check $latte_count_param $tempname" );
+            dbg_print( "running latte's count: cd $temp_dir; $latte_count $check $latte_count_param $input_file" );
         }
-        open my $P, "$latte_count $check $latte_count_param $tempname 2>&1 |"
+        open my $P, "$latte_count $check $latte_count_param $input_file 2>&1 |"
             or die "couldn't run LattE's 'count': $!";
         $this->N_LATTICE_POINTS = parse_latte_points($P);
     }
@@ -137,13 +131,15 @@ object Polytope<Rational> {
     weight 5.3;
 
     rule latte.integer_points: N_LATTICE_POINTS : CONE_AMBIENT_DIM , VERTICES {
-        my $tempname=new Tempfile;
-        write_latte_vertices($tempname, $this);
+	my $temp_dir=new Tempdir;
+        my $input_file="input.poi";
+        write_latte_vertices($this, "$temp_dir/$input_file");
         
+        my $tdir = new TempChangeDir($temp_dir);
         if ($Verbose::external) {
-            dbg_print( "running latte's count: $latte_count $latte_count_param vrep $tempname" );
+            dbg_print( "running latte's count: cd $temp_dir; $latte_count $latte_count_param vrep $input_file" );
         }
-        open my $P, "$latte_count $latte_count_param vrep $tempname 2>&1 |"
+        open my $P, "$latte_count $latte_count_param vrep $input_file 2>&1 |"
             or die "couldn't run LattE's 'count': $!";
         $this->N_LATTICE_POINTS = parse_latte_points($P);
         
@@ -158,9 +154,10 @@ object Polytope<Rational> {
     # Read [[FACETS]], multiply with POLYTOPE_DIM+1 (or CONE_DIM, respectively!) and substract 1 from the first column.
     # Call LattE's count on the polytope having this matrix as facet matrix.
     rule latte.integer_points: N_INTERIOR_LATTICE_POINTS : CONE_AMBIENT_DIM, CONE_DIM, FACETS | INEQUALITIES {
-        my $tempname=new Tempfile;
+        my $temp_dir=new Tempdir;
+        my $input_file="input.ine";
         my $interior = 1;
-        write_latte_ineq($this, $tempname, $interior);
+        write_latte_ineq($this, "$temp_dir/$input_file", $interior);
         
         # latte 1.2 does not do a full redundancy check by default, so force it when using inequalities
         # furthermore it might produce wrong output for 0-dim polytopes when given the far face inequality
@@ -168,10 +165,11 @@ object Polytope<Rational> {
         if (defined($this->lookup("FACETS")) && $this->lookup("CONE_DIM") > 1) {
             $check = "--redundancy-check=none";
         }
+        my $tdir = new TempChangeDir($temp_dir);
         if ($Verbose::external) {
-            dbg_print( "running latte's count: $latte_count $check $latte_count_param $tempname" );
+            dbg_print( "running latte's count: cd $temp_dir; $latte_count $check $latte_count_param $input_file" );
         }
-        open my $P, "$latte_count $check $latte_count_param $tempname 2>&1 |"
+        open my $P, "$latte_count $check $latte_count_param $input_file 2>&1 |"
             or die "couldn't run LattE's 'count': $!";
         $this->N_INTERIOR_LATTICE_POINTS = parse_latte_points($P);
     }
@@ -189,20 +187,21 @@ object_specialization Polytope::Lattice {
     precondition : CONE_DIM { $this->CONE_DIM == 1 }
 
     rule latte.ehrhartpoly: LATTICE, EHRHART_POLYNOMIAL_COEFF : CONE_AMBIENT_DIM, FACETS | INEQUALITIES {
-        my $tempname=new Tempfile;
-        write_latte_ineq($this, $tempname);
+        my $temp_dir=new Tempdir;
+        my $input_file="input.ine";
+        write_latte_ineq($this, "$temp_dir/$input_file");
         
+        my $tdir = new TempChangeDir($temp_dir);
         if ($Verbose::external) {
-            dbg_print( "running latte's count: $latte_count $latte_ehrhart_param --ehrhart-polynomial $tempname" );
+            dbg_print( "running latte's count: cd $temp_dir; $latte_count $latte_ehrhart_param --ehrhart-polynomial $input_file" );
         }
-        open my $P, "$latte_count $latte_ehrhart_param --ehrhart-polynomial $tempname 2>&1 |"
+        open my $P, "$latte_count $latte_ehrhart_param --ehrhart-polynomial $input_file 2>&1 |"
             or die "couldn't run LattE's 'count': $!";
         local $_;
         while (<$P>) {
             if(/only implemented for integral polytopes/) {
                 $this->LATTICE = 0;
                 close $P;
-                latte_cleanup();
                 return;
             } elsif (/^Ehrhart polynomial: /) {
                 # parse: Ehrhart polynomial:  + 1 * t^0 + 6 * t^1 + 12 * t^2 + 8 * t^3
@@ -216,25 +215,21 @@ object_specialization Polytope::Lattice {
                 $this->EHRHART_POLYNOMIAL_COEFF = $poly;
                 $this->LATTICE=1;
                 close $P;
-                latte_cleanup();
                 return;
             } elsif (/^The number of lattice points is 1\./ || /Total number of lattice points: 1/) {
                 $this->LATTICE=1;
                 $this->EHRHART_POLYNOMIAL_COEFF = ones_vector<Rational>(1);
                 close $P;
-                latte_cleanup();
                 return;
             }
         }
         close $P;
-        latte_cleanup();
         die "could not parse output from latte";
-
     }
     weight 5.8;
     precondition override : BOUNDED && FEASIBLE;
     precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM > 0 && $this->CONE_AMBIENT_DIM <= 100 } # upper limits for matrix dimension: 
-    precondition : FACETS | INEQUALITIES { ($this->FACETS | INEQUALITIES)->rows <= 50000 }            # default values stored explicitly for cdd used by latte
+    precondition : FACETS | INEQUALITIES { $this->give("FACETS | INEQUALITIES")->rows <= 50000 }      # default values stored explicitly for cdd used by latte
     precondition : CONE_DIM { $this->CONE_DIM > 1 }                                                   # latte does not like polytopes that only have a far facet
 
 }

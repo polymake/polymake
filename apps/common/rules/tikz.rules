@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -55,9 +55,7 @@ requires PDFLaTeX and a PDF viewer;
 please specify the output File option or call reconfigure("common::pdfviewer.rules");
 .
    }
-   my $self = &_new;
-   $self->tempfile->descend_dir();
-   $self;
+   &_new;
 }
 
 sub command {
@@ -67,7 +65,7 @@ sub command {
    print $fh write_latextemplate("$filename");
    
    my $pdfout = $self->tempfile.".pdf";
-   my $pdfout_dir = $self->tempfile->dir;
+   my $pdfout_dir = $self->tempfile->dirname;
    my $pdfout_name = $self->tempfile->basename;
    "$Visual::pdflatex -interaction=batchmode --output-directory=$pdfout_dir --jobname=$pdfout_name $latextemplate 1>/dev/null; $Visual::pdfviewer $pdfout 1>/dev/null 2>/dev/null";
 
@@ -94,7 +92,7 @@ my $text = <<'|';
 %---------------------------------------------------------------------------------
 %
 % Polymake LaTeX template for TikZ-Output
-% Copyright (c) 1997-2016
+% Copyright (c) 1997-2018
 % Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 % http://www.polymake.org
 \documentclass[12pt]{article}
@@ -125,7 +123,7 @@ $text .= <<'|';
 \begin{document}
 |
 #\rlap{\smash{\raisebox{-2.5\baselineskip}{\includegraphics[height=3\baselineskip]{%
-#  $text .= $InstallTop."/resources/logo/png/logo.png";
+#  $text .= "$Polymake::Resources/logo/png/logo.png";
 #}} }}
 #\vspace*{37.5pt}
 $text .=<<'|';
@@ -148,7 +146,7 @@ my $text = <<'|';
 %---------------------------------------------------------------------------------
 %
 % Polymake LaTeX template for TikZ-Output
-% Copyright (c) 1997-2016
+% Copyright (c) 1997-2018
 % Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 % http://www.polymake.org
 \documentclass[tikz,x11names,border=10pt]{standalone}

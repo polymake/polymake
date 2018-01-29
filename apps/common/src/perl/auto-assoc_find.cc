@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -22,8 +22,11 @@
 #include "polymake/Integer.h"
 #include "polymake/Map.h"
 #include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
+#include "polymake/SparseMatrix.h"
+#include "polymake/SparseVector.h"
 #include "polymake/Vector.h"
 #include "polymake/client.h"
 #include "polymake/hash_map"
@@ -52,5 +55,9 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(assoc_find_X32_X, perl::Canned< const hash_map< Set< int >, int > >, perl::Canned< const Set< int > >);
    FunctionInstance4perl(assoc_find_X32_X, perl::Canned< const Map< int, std::list< int > > >, int);
    FunctionInstance4perl(assoc_find_X32_X, perl::Canned< const Map< int, std::pair< int, int > > >, int);
+   FunctionInstance4perl(assoc_find_X32_X, perl::Canned< const hash_map< SparseVector< int >, Rational > >, perl::Canned< const SparseVector< int > >);
+   FunctionInstance4perl(assoc_find_X32_X, perl::Canned< const Map< Set< int >, Integer > >, perl::Canned< const Set< int > >);
+   FunctionInstance4perl(assoc_find_X32_X, perl::Canned< const hash_map< Vector< QuadraticExtension< Rational > >, int > >, perl::Canned< const Vector< QuadraticExtension< Rational > > >);
+   FunctionInstance4perl(assoc_find_X32_X, perl::Canned< const hash_map< Vector< Rational >, int > >, perl::Canned< const Vector< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

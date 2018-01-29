@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,7 +14,8 @@
 #-------------------------------------------------------------------------------
 
 
-object Polytope{
+# @Category Combinatorics
+object Polytope {
 
 	#rule PSEUDOVERTEX_LABELS : PSEUDOVERTEX_COVECTORS {
 	#	$this->PSEUDOVERTEX_LABELS(temporary)=[ map { join("", @$_) } @{$this->PSEUDOVERTEX_COVECTORS} ];
@@ -35,7 +36,7 @@ object Polytope{
 	}
 	weight 1.20;
 
-	rule ENVELOPE.INEQUALITIES, ENVELOPE.EQUATIONS : POINTS{
+	rule ENVELOPE.INEQUALITIES, ENVELOPE.EQUATIONS : POINTS {
 		$this->ENVELOPE = envelope($this->POINTS);
 	}
 
@@ -43,7 +44,7 @@ object Polytope{
 		$this->DOME = dome_hyperplane_arrangement($this->POINTS);
 	}
 
-	rule PSEUDOVERTICES, MAXIMAL_COVECTOR_CELLS : DOME {
+	rule PSEUDOVERTICES, FAR_PSEUDOVERTICES, MAXIMAL_COVECTOR_CELLS : DOME {
 		extract_pseudovertices($this);
 	}
 

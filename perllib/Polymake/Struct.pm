@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -16,6 +16,7 @@
 use strict;
 use mro;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake::Struct;
 use Polymake::Ext;
@@ -67,7 +68,7 @@ sub import {
                "\n seems to be established via plain \@ISA assignment and conflicts with Struct declaration";
       }
    }
-   my $symtab=get_pkg($pkg);
+   my $symtab=get_symtab($pkg);
    my $constructor="";
    my $constructor_deferred="";
    my $alt_constructor_name;
@@ -102,7 +103,7 @@ sub import {
                $merger &&= [ @$merger ];
                $redefine=1;
                namespaces::using($pkg, $super) if $with_namespaces !~ /^no/;
-               $super_symtab=get_pkg($super);
+               $super_symtab=get_symtab($super);
                last;
             }
          }

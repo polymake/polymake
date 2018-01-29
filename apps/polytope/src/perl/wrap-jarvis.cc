@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,6 +16,7 @@
 
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/TropicalNumber.h"
 
@@ -41,5 +42,6 @@ namespace polymake { namespace polytope { namespace {
 
    FunctionInstance4perl(jarvis_X, perl::Canned< const Matrix< Rational > >);
    FunctionInstance4perl(jarvis_X, perl::Canned< const Matrix< double > >);
+   FunctionInstance4perl(jarvis_X, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

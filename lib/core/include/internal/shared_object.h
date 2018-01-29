@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,6 +18,7 @@
 #define POLYMAKE_INTERNAL_SHARED_OBJECT_H
 
 #include "polymake/internal/iterators.h"
+#include "polymake/internal/operations.h"
 
 #include <algorithm>
 #include <memory>
@@ -105,8 +106,11 @@ protected:
 
       void forget()
       {
-         for (AliasSet **s=set->aliases, **end=s+n_aliases; s<end; ++s) (*s)->owner=nullptr;
-         n_aliases=0;
+         if (n_aliases > 0) {
+            for (AliasSet **s=set->aliases, **end=s+n_aliases; s<end; ++s)
+               (*s)->owner=nullptr;
+            n_aliases=0;
+         }
       }
 
       AliasSet() : set(nullptr), n_aliases(0) {}
@@ -745,22 +749,22 @@ protected:
          if (owner) owner->body=construct(nullptr, 0);
       }
 
+      // dummy tag for constructors copying values or creating them from scratch
+      struct copy { };
+
       /// initialize all array elements from a given value
       template <typename... TArgs>
-      static Object* init_from_value(shared_array* owner, rep* r, Object* dst, Object* end, std::true_type, TArgs&&... args)
+      static void init_from_value(shared_array* owner, rep* r, Object*& dst, Object* end, std::true_type, TArgs&&... args)
       {
          for (; dst != end; ++dst)
             construct_at(dst, std::forward<TArgs>(args)...);
-         return dst;
       }
 
       template <typename... TArgs>
-      static Object* init_from_value(shared_array* owner, rep* r, Object* dst, Object* end, std::false_type, TArgs&&... args)
+      static void init_from_value(shared_array* owner, rep* r, Object*& dst, Object* end, std::false_type, TArgs&&... args)
       {
          try {
-            for (; dst != end; ++dst)
-               construct_at(dst, std::forward<TArgs>(args)...);
-            return dst;
+            init_from_value(owner, r, dst, end, std::true_type(), std::forward<TArgs>(args)...);
          }
          catch (...) {
             destroy(dst, r->obj);
@@ -770,18 +774,17 @@ protected:
          }
       }
 
-      static Object* init(shared_array* owner, rep* r, Object* dst, Object* end)
+      static void init(shared_array* owner, rep* r, Object* dst, Object* end, copy = copy())
       {
-         return init_from_value(owner, r, dst, end, std::is_nothrow_default_constructible<Object>());
+         init_from_value(owner, r, dst, end, std::is_nothrow_default_constructible<Object>());
       }
 
       template <typename TArg1, typename... TArgs>
       static typename std::enable_if<std::is_constructible<Object, TArg1, TArgs...>::value &&
-                                     !(sizeof...(TArgs)==0 && looks_like_iterator<TArg1>::value),
-                                     Object*>::type
+                                     !(sizeof...(TArgs)==0 && looks_like_iterator<TArg1>::value)>::type
       init(shared_array* owner, rep* r, Object* dst, Object* end, TArg1&& arg1, TArgs&&... args)
       {
-         return init_from_value(owner, r, dst, end, std::is_nothrow_constructible<Object, TArg1, TArgs...>(), std::forward<TArg1>(arg1), std::forward<TArgs>(args)...);
+         init_from_value(owner, r, dst, end, std::is_nothrow_constructible<Object, TArg1, TArgs...>(), std::forward<TArg1>(arg1), std::forward<TArgs>(args)...);
       }
 
       template <typename Iterator>
@@ -811,21 +814,21 @@ protected:
       }
 
       /// Initialize array elements with values from a sequence
-      template <typename Iterator, typename... More>
-      static Object* init_from_sequence(shared_array* owner, rep* r, Object* dst, Object* end, std::true_type, Iterator& src, More&&... more_src)
+      template <typename Iterator>
+      static void init_from_sequence(shared_array* owner, rep* r, Object*& dst, Object* end, Iterator&& src,
+                                     typename std::enable_if<std::is_nothrow_constructible<Object, decltype(*src)>::value, copy>::type)
       {
          for (; go_on(dst, end, src); ++src, ++dst)
             construct_at(dst, *src);
-         return sizeof...(More) ? init(owner, r, dst, end, std::forward<More>(more_src)...) : dst;
       }
 
-      template <typename Iterator, typename... More>
-      static Object* init_from_sequence(shared_array* owner, rep* r, Object* dst, Object* end, std::false_type, Iterator& src, More&&... more_src)
+      template <typename Iterator>
+      static void init_from_sequence(shared_array* owner, rep* r, Object*& dst, Object* end, Iterator&& src,
+                                     typename std::enable_if<!std::is_nothrow_constructible<Object, decltype(*src)>::value, copy>::type)
       {
          try {
             for (; go_on(dst, end, src); ++src, ++dst)
                construct_at(dst, *src);
-            return sizeof...(More) ? init(owner, r, dst, end, std::forward<More>(more_src)...) : dst;
          }
          catch (...) {
             destroy(dst, r->obj);
@@ -835,41 +838,87 @@ protected:
          }
       }
 
-      template <typename Iterator, typename... More>
-      static typename std::enable_if<assess_iterator_value<Iterator, can_initialize, Object>::value, Object*>::type
-      init(shared_array* owner, rep* r, Object* dst, Object* end, Iterator&& src, More&&... more_src)
+      template <typename Iterator>
+      static void init_from_sequence(shared_array* owner, rep* r, Object*& dst, Object* end, Iterator&& src, polymake::operations::move)
       {
-         return init_from_sequence(owner, r, dst, end, std::is_nothrow_constructible<Object, typename iterator_traits<Iterator>::reference>(), src,
-                                   std::forward<More>(more_src)...);
+         auto&& src_moving=enforce_movable_values(std::forward<Iterator>(src));
+         init_from_sequence(owner, r, dst, end, src_moving, copy());
       }
 
-      template <typename Iterator, typename... More>
-      static typename std::enable_if<looks_like_iterator<Iterator>::value && !assess_iterator_value<Iterator, can_initialize, Object>::value, Object*>::type
-      init(shared_array* owner, rep* r, Object* dst, Object* end, Iterator&& src, More&&... more_src)
+      template <typename Iterator, typename CopyOrMove>
+      static typename std::enable_if<assess_iterator_value<Iterator, can_initialize, Object>::value, bool>::type
+      init_from_iterator(shared_array* owner, rep* r, Object*& dst, Object* end, Iterator&& src, CopyOrMove)
       {
-         if (end) {
-            for (; dst != end; ++src) {
-#if POLYMAKE_DEBUG
-               if (!go_on(dst, end, src))
-                  throw std::runtime_error("input sequence exhausted prematurely");
-#endif
-               dst=init(owner, r, dst, nullptr, ensure(*src, (cons<end_sensitive, dense>*)0).begin());
-            }
-#if POLYMAKE_DEBUG
-            (void)go_on(dst, end, src);
-#endif
-         } else {
-            dst=init(owner, r, dst, nullptr, ensure(*src, (cons<end_sensitive, dense>*)0).begin());
-            ++src;
-         }
-         return sizeof...(More) ? init(owner, r, dst, end, std::forward<More>(more_src)...) : dst;
+         init_from_sequence(owner, r, dst, end, std::forward<Iterator>(src), CopyOrMove());
+         return false;
       }
 
-      static rep* construct_empty(std::true_type)
+      template <typename Iterator, typename CopyOrMove>
+      static typename std::enable_if<looks_like_iterator<Iterator>::value && !assess_iterator_value<Iterator, can_initialize, Object>::value, bool>::type
+      init_from_iterator(shared_array* owner, rep* r, Object*& dst, Object* end, Iterator&& src, CopyOrMove)
+      {
+         for (; go_on(dst, end, src); ++src)
+            init_from_iterator(owner, r, dst, end, ensure(*src, (cons<end_sensitive, dense>*)0).begin(), CopyOrMove());
+         return false;
+      }
+
+      template <typename Iterator>
+      static typename std::enable_if<assess_iterator_value<Iterator, can_initialize, Object>::value, bool>::type
+      init_from_iterator_one_step(shared_array* owner, rep* r, Object*& dst, Iterator&& src)
+      {
+#if POLYMAKE_DEBUG
+         if (!go_on(dst, nullptr, src))
+            throw std::runtime_error("shared_array weave error: input sequence ends prematurely");
+#endif
+         init_from_value(owner, r, dst, dst+1, std::is_nothrow_constructible<Object, decltype(*src)>(), *src);
+         ++src;
+         return false;
+      }
+
+      template <typename Iterator>
+      static typename std::enable_if<looks_like_iterator<Iterator>::value && !assess_iterator_value<Iterator, can_initialize, Object>::value, bool>::type
+      init_from_iterator_one_step(shared_array* owner, rep* r, Object*& dst, Iterator& src)
+      {
+#if POLYMAKE_DEBUG
+         if (!go_on(dst, nullptr, src))
+            throw std::runtime_error("shared_array weave error: input sequence ends prematurely");
+#endif
+         init_from_iterator(owner, r, dst, nullptr, ensure(*src, (cons<end_sensitive, dense>*)0).begin(), copy());
+         ++src;
+         return false;
+      }
+
+      template <typename... Iterator>
+      static constexpr void check_input_iterators(mlist<Iterator...>)
+      {
+         static_assert(mlist_and<check_iterator_feature<Iterator, end_sensitive>...>::value,
+                       "all iterators but the last one must be end-sensitive");
+      }
+
+      template <typename CopyOrMove, typename... Iterator>
+      static typename std::enable_if<is_among<CopyOrMove, copy, polymake::operations::move>::value &&
+                                     mlist_and_nonempty<looks_like_iterator<Iterator>...>::value>::type
+      init(shared_array* owner, rep* r, Object* dst, Object* end, CopyOrMove, Iterator&&... src)
+      {
+         check_input_iterators(typename mlist_subset<mlist<Iterator...>, 0, sizeof...(Iterator)-1>::type());
+         (void)std::initializer_list<bool>{ init_from_iterator(owner, r, dst, end, std::forward<Iterator>(src), CopyOrMove())... };
+#if POLYMAKE_DEBUG
+         if (dst && dst != end) throw std::runtime_error("shared_array construction error: input sequence ends prematurely");
+#endif
+      }
+
+      template <typename... Iterator>
+      static typename std::enable_if<mlist_and_nonempty<looks_like_iterator<Iterator>...>::value>::type
+      init(shared_array* owner, rep* r, Object* dst, Object* end, Iterator&&... src)
+      {
+         init(owner, r, dst, end, copy(), std::forward<Iterator>(src)...);
+      }
+
+      static rep* construct_empty(std::true_type) PmNoSanitize(object-size)
       {
          return static_cast<rep*>(&empty_rep);
       }
-      static rep* construct_empty(std::false_type)
+      static rep* construct_empty(std::false_type) PmNoSanitize(object-size)
       {
          static super empty;
          return static_cast<rep*>(&empty);
@@ -901,7 +950,7 @@ protected:
       template <typename... TArgs>
       static rep* construct_copy(shared_array* owner, const rep* src, size_t n, TArgs&&... args)
       {
-         rep *r=allocate_copy(n, src);
+         rep* r=allocate_copy(n, src);
          init(owner, r, r->obj, r->obj+n, std::forward<TArgs>(args)...);
          return r;
       }
@@ -928,13 +977,17 @@ protected:
       {
          rep* r=allocate_copy(n, old);
          const size_t n_copy=std::min(n, old->size_and_prefix.first);
-         Object *dst=r->obj, *middle=dst+n_copy, *end=dst+n;
-         Object *src_copy=nullptr, *src_end=nullptr;
+         Object* dst=r->obj;
+         Object* middle=dst+n_copy;
+         Object* end=dst+n;
+         Object* src_copy=nullptr;
+         Object* src_end=nullptr;
 
          if (old->refc > 0) {
-            init(owner, r, dst, middle, ptr_wrapper<const Object, false>(old->obj));
+            init_from_sequence(owner, r, dst, middle, ptr_wrapper<const Object, false>(old->obj), copy());
          } else {
-            src_copy=old->obj, src_end=src_copy+old->size_and_prefix.first;
+            src_copy=old->obj;
+            src_end=src_copy+old->size_and_prefix.first;
             for (; dst!=middle;  ++src_copy, ++dst)
                relocate(src_copy, dst);
          }
@@ -951,23 +1004,27 @@ protected:
       static rep* weave(shared_array *owner, rep *old, size_t n, size_t slice, TArgs&&... args)
       {
          rep* r=allocate_copy(n, old);
-         Object *dst=r->obj, *end=dst+n;
+         Object* dst=r->obj;
+         Object* end=dst+n;
 
          if (old->refc > 0) {
             ptr_wrapper<const Object, false> src_copy(old->obj);
             while (dst != end) {
-               dst=init(owner, r, dst, dst+slice, src_copy);
-               dst=init(owner, r, dst, nullptr, args...);   // not forwarding but passing by reference, so that the source iterator is advanced
+               init_from_sequence(owner, r, dst, dst+slice, src_copy, copy());
+               (void)std::initializer_list<bool>{ init_from_iterator_one_step(owner, r, dst, args)... };
             }
          } else {
-            Object *src_copy=old->obj;
+            Object* src_copy=old->obj;
             while (dst != end) {
                for (Object* slice_end=dst+slice; dst!=slice_end; ++src_copy, ++dst)
                   relocate(src_copy, dst);
-               dst=init(owner, r, dst, nullptr, args...);
+               (void)std::initializer_list<bool>{ init_from_iterator_one_step(owner, r, dst, args)... };
             }
             deallocate(old);
          }
+#if POLYMAKE_DEBUG
+         (void)std::initializer_list<bool>{ go_on(dst, end, args)... };
+#endif
          return r;
       }
 

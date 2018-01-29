@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,8 +14,9 @@
 #-------------------------------------------------------------------------------
 
 use strict;
-use feature 'state';
 use namespaces;
+use warnings qw(FATAL void syntax misc);
+use feature 'state';
 
 package Polymake::Core::PropertyType;
 
@@ -81,7 +82,7 @@ sub { \$_[2] ? "\$_[1]" $_ "\$_[0]" : "\$_[0]" $_ "\$_[1]" }
 sub new {
    my $self=&_new;
    my $pkg=$self->pkg;
-   Overload::learn_package_retrieval($self, \&pkg);
+   Struct::learn_package_retrieval($self, \&pkg);
    my $self_sub=sub { $self };
    define_function($pkg, "type", $self_sub, 1);
    define_function($pkg, ".type", $self_sub);
@@ -112,6 +113,14 @@ sub derived {
    my ($self)=@_;
    map { $_->type } @{mro::get_isarev($self->pkg)}
 }
+
+# perl 5.16 had a weird bug in c3 mro
+if ($] < 5.018) {
+   *derived = sub {
+      my ($self)=@_;
+      map { $_->type } grep { not /::SUPER$/ } @{mro::get_isarev($self->pkg)}
+   }
+}
 ##################################################################################
 sub add_constructor {
    my ($self, $name, $code, $arg_types)=@_;
@@ -124,22 +133,12 @@ sub add_constructor {
 
 sub create_method_new : method {
    my ($self)=@_;
-   define_function($self->pkg, "new",
-                   $self->abstract
-                   ? sub {
-                        if (@_>1 && instanceof namespaces::TypeExpression($_[1])) {
-                           # full parameterized type: ready to use
-                           splice @_, 0, 2, @{$_[1]};
-                        } else {
-                           # bare generic name: try to create the type instance with default parameters
-                           splice @_, 0, 1, $self->pkg->typeof();
-                        }
-                        &construct_object
-                     }
-                   : sub {
-                        splice @_, 0, 1, $self;
-                        &construct_object
-                     });
+   if ($self->abstract) {
+      # bare generic name: try to create the type instance with default parameters
+      define_function($self->pkg, "new", sub { splice @_, 0, 1, $self->pkg->typeof(); &construct_object });
+   } else {
+      define_function($self->pkg, "new", sub { splice @_, 0, 1, $self; &construct_object });
+   }
 }
 
 sub construct_object : method {
@@ -286,7 +285,7 @@ use Polymake::Struct (
 #
 sub new {
    my $self=&_new;
-   Overload::learn_package_retrieval($self, \&PropertyType::pkg);
+   Struct::learn_package_retrieval($self, \&PropertyType::pkg);
    scan_params($self);
    unless ($self->abstract) {
       if ($self->super && $self->super != $self->generic) {
@@ -303,6 +302,7 @@ sub new {
       define_function($self->pkg, ".type", $self_sub);
       $self->dimension=$self->super->dimension;
       $self->construct_node=$self->super->construct_node;
+      $self->create_method_new();
       establish_inheritance($self, $self->generic, $self->super);
       $self->init->();
    }
@@ -356,7 +356,7 @@ sub new_generic {
    my $min_params=@$params-$n_defaults;
    my $param_index=-1;
    my @param_holders=map { new ClassTypeParam($_, $pkg, $app, ++$param_index) } @$params;
-   my $symtab=get_pkg($pkg);
+   my $symtab=get_symtab($pkg);
    if (!defined($subpkg)) {
       $self=_new_generic($self_pkg, $name, $pkg, $app, $super, \@param_holders);
       if ($super) {
@@ -369,14 +369,6 @@ sub new_generic {
       }
       $subpkg="props";
    }
-   define_function($symtab, "instanceof",
-                   sub {
-                      if (@_>1 && instanceof namespaces::TypeExpression($_[1])) {
-                         UNIVERSAL::isa($_[2], $_[1]->[0]->pkg);
-                      } else {
-                         UNIVERSAL::isa($_[1], $pkg);
-                      }
-                   });
    define_function($symtab, "_min_params", sub { $min_params });
 
    no strict 'refs';

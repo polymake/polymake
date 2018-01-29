@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -48,5 +48,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(to_input_feasible_T_x, PuiseuxFraction< Min, Rational, Rational >);
    FunctionInstance4perl(to_solve_lp_T_x_x_x_o_f16, PuiseuxFraction< Min, Rational, Rational >);
    FunctionInstance4perl(to_input_bounded_T_x, PuiseuxFraction< Min, Rational, Rational >);
+   FunctionInstance4perl(to_solve_lp_T_x_x_x_o_f16, double);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

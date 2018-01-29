@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -24,12 +24,13 @@ my $bind=<<'.';
 
 foreach my $file (@ARGV) {
    open my $C, $file or die "can't read $file: $!\n";
+   my ($filename)= $file =~ m{(?:^|/)([^/]+)$};
    while (<$C>) {
       if (/^XS(?:_EXTERNAL)?\((boot_(\w+))\);/) {
          $proto .= "$&\n";
          my $func=$1;
          (my $pkg=$2) =~ s/_/:/g;
-         $bind .= qq{   newXS("$pkg\::bootstrap", $func, "$file");\n};
+         $bind .= qq{   newXS("$pkg\::bootstrap", $func, "$filename");\n};
       }
    }
 }
@@ -40,9 +41,6 @@ print <<".";
 
    This header collects all the package bootstrap functions which must be called
    during the initial loading of the callable library.
-   
-   argv:
-   @ARGV
 */
 
 #ifndef POLYMAKE_XS_EXT_BOOTSTRAP_H

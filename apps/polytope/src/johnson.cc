@@ -1,3 +1,21 @@
+/* Copyright (c) 1997-2018
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
+
+   Author: Olivia Röhrig
+
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+--------------------------------------------------------------------------------
+*/
+
 #include "polymake/client.h"
 #include "polymake/Array.h"
 #include "polymake/Rational.h"
@@ -25,6 +43,68 @@ namespace {
   }
   return sqrt(n);
  }
+
+Vector<double> cross_product(const Vector<double>& a, const Vector<double>& b)
+{
+   Vector<double> result(4);
+   result[1]=a[2]*b[3]-a[3]*b[2];
+   result[2]=a[3]*b[1]-a[1]*b[3];
+   result[3]=a[1]*b[2]-a[2]*b[1];
+   return result;
+}
+
+Vector<double> find_facet_normal(Matrix<double> V, Set<int> f_vert){
+
+   Matrix<double> FV = V.minor(f_vert,All);
+   Vector<double> cp = cross_product(FV[2]-FV[0],FV[1]-FV[0]);
+
+   Vector<double> non_facet_point = V[(sequence(0,V.rows()) - f_vert).front()];
+   //if nfp lies on the negative side of the plane, the normal vector points inwards
+   if(cp*(non_facet_point - FV[0]) < 0)
+      cp *= -1;
+
+   cp /= norm(cp); //unit facet normal
+
+   return cp;
+}
+
+//get the indices of the facet sorted in counterclockwise order.
+Array<int> neighbors(Matrix<double> V,Set<int> f_vert){
+
+   Matrix<double> FV = V.minor(f_vert,All);
+
+   perl::Object facet("Polytope<Float>");
+
+   //project the points to a plane to make sure we get one polygon
+   //even though the coords are inexact
+   Matrix<double> basis(2,4);
+   basis[0] = FV[2]-FV[0];
+   basis[1] = FV[1]-FV[0];
+   FV = FV * T(basis);
+   FV = ones_vector<double>() | FV;
+   facet.take("VERTICES")<< FV;
+
+   //sort VIF lexicographically to ensure the facet polytope is
+   //independent of permutations through convex hull algos
+   IncidenceMatrix<> VIF = facet.give("VERTICES_IN_FACETS");
+   Set<Set<int>> VIF_sorted;
+   for(auto f = entire(rows(VIF)); !f.at_end(); ++f)
+      VIF_sorted += *f;
+
+   perl::Object facetlex("Polytope<Float>");
+   facetlex.take("VERTICES")<<FV;
+   facetlex.take("VERTICES_IN_FACETS")<<VIF_sorted;
+
+   //vertex indices in counterclockwise order
+   Array<Array<int>> FVIF = facetlex.give("VIF_CYCLIC_NORMAL");
+   Array<int> perm = FVIF[0];
+   int n = perm.size();
+   Array<int> result(n);
+   Array<int> farr(f_vert);
+   for(int i = 0; i<n; ++i)
+      result[i] = farr[perm[i]];
+   return result;
+}
 
  //rotates vectors in V by angle a about axis u (given in hom. coords) using rodrigues' rotation formula
  Matrix<double> rotate(Matrix<double> V, Vector<double> u, double a){
@@ -97,29 +177,20 @@ perl::Object exact_octagonal_prism(QE z_1, QE z_2)
    return p;
 }
 
+
 //augments the facet given as a vertex index set
 //uses sqrt and cos to calculate height, thus not exact
 perl::Object augment(perl::Object p, Set<int> f_vert){
 
    Matrix<double> V = p.give("VERTICES");
-   IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
 
-   int i = 0;
-   for(; i<VIF.rows(); i++){
-      if(VIF.row(i) == f_vert) break; //find facet index
-   }
-
-   Array<Array<int> > c = p.give("VIF_CYCLIC_NORMAL");
-   Array<int> neigh = c[i];
+   Array<int> neigh = neighbors(V,f_vert);
    double side_length = norm(V[neigh[0]]-V[neigh[1]]);
 
    Matrix<double> FV = V.minor(f_vert,All);
    Vector<double> bary = average(rows(FV));
 
-   Matrix<double> F = p.give("FACETS");
-   Vector<double> normal = F.row(i);
-   normal[0]=0; //project to plane
-   normal = normal/norm(normal); //unit facet normal
+   Vector<double> normal = find_facet_normal(V,f_vert);
 
   int n_vert = f_vert.size();
    if(n_vert == 3 || n_vert == 4 || n_vert == 5){ //pyramid
@@ -128,7 +199,7 @@ perl::Object augment(perl::Object p, Set<int> f_vert){
       V /= (bary - normal);
    }else{
       Matrix<double> trans = zero_vector<double>( V.rows()) | repeat_row(-average(rows(FV)), V.rows()).minor(All,sequence(1,3));
-      V += trans; //translate barycentre to zero
+      V += trans; //translate barycenter to zero
       double r = (side_length/(2*sin(M_PI/(n_vert/2)))) ; //circumradius of n-gon with side_length
       Matrix<double> H(0,4);
       Vector<double> v;
@@ -157,25 +228,16 @@ perl::Object rotunda(perl::Object p, Set<int> f_vert){
 
    if(10 != f_vert.size()) throw std::runtime_error("Facet must be decagon.");
 
-   IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
-   int n=0;
-   for (; n<VIF.rows(); n++) {
-      if(VIF.row(n) == f_vert) break;//find facet index
-   }
-   Array<Array<int> > c = p.give("VIF_CYCLIC_NORMAL");
-   Array<int> neigh = c[n];
    Matrix<double> V = p.give("VERTICES");
+   Array<int> neigh = neighbors(V,f_vert);
    double side_length = norm(V[neigh[0]]-V[neigh[1]]);
 
-   Matrix<double> F = p.give("FACETS");
-   Vector<double> normal = F.row(n);
-   normal[0]=0; //project to plane
-   normal = normal/norm(normal); //unit facet normal
+   Vector<double> normal = find_facet_normal(V,f_vert);
 
    Matrix<double> FV = V.minor(f_vert,All);
    Vector<double> bary = average(rows(FV));
    Matrix<double> trans = zero_vector<double>( V.rows()) | repeat_row(-average(rows(FV)), V.rows()).minor(All,sequence(1,3));
-   V += trans; //translate barycentre to zero
+   V += trans; //translate barycenter to zero
 
    double r_l = (1+sqrt(5))*sqrt(10*(5+sqrt(5)))*side_length/20;
    double r_s = sqrt((5+sqrt(5))/10)*side_length;
@@ -214,24 +276,16 @@ perl::Object rotunda(perl::Object p, Set<int> f_vert){
 perl::Object gyrotunda(perl::Object p, Set<int> f_vert){
    if(10 != f_vert.size()) throw std::runtime_error("Facet must be decagon.");
 
-   IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
-   int n=0;
-   for(; n<VIF.rows(); n++) if(VIF.row(n)==f_vert) break;//find facet index
-
-   Array<Array<int> > c = p.give("VIF_CYCLIC_NORMAL");
-   Array<int> neigh = c[n];
    Matrix<double> V = (p.give("VERTICES"));
+   Array<int> neigh = neighbors(V,f_vert);
    double side_length = norm(V[neigh[0]]-V[neigh[1]]);
 
-   Matrix<double> F = p.give("FACETS");
-   Vector<double> normal = F.row(n);
-   normal[0]=0; //project to plane
-   normal = normal/norm(normal); //unit facet normal
+   Vector<double> normal = find_facet_normal(V,f_vert);
 
    Matrix<double> FV = V.minor(f_vert,All);
    Vector<double> bary = average(rows(FV));
    Matrix<double> trans = zero_vector<double>( V.rows()) | repeat_row(-average(rows(FV)), V.rows()).minor(All,sequence(1,3));
-   V += trans; //translate barycentre to zero
+   V += trans; //translate barycenter to zero
 
    double r_l = (1+sqrt(5))*sqrt(10*(5+sqrt(5)))*side_length/20;
    double r_s = sqrt((5+sqrt(5))/10)*side_length;
@@ -270,29 +324,18 @@ perl::Object gyrotunda(perl::Object p, Set<int> f_vert){
 perl::Object elongate(perl::Object p, Set<int> f_vert){
 
    Matrix<double> V = (p.give("VERTICES"));
-   IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
-   Matrix<double> F = p.give("FACETS");
-
-   perl::Object facet("Polytope<Float>");
 
    Matrix<double> FV = V.minor(f_vert,All);
-   facet.take("VERTICES")<<FV;
 
-   IncidenceMatrix<> FVIF = facet.give("VERTICES_IN_FACETS");
-   Matrix<double> neighbors = FV.minor(FVIF.row(0),All); //two neighbor vertices
-   double side_length = norm(neighbors[0]-neighbors[1]);
-   int n_vert = facet.give("N_VERTICES");
+   Array<int> neigh = neighbors(V,f_vert);
+   double side_length = norm(V[neigh[0]]-V[neigh[1]]);
+
+   int n_vert = f_vert.size();
 
    perl::Object p_out("Polytope<Float>");
 
-   int n=0;
-   for(; n<VIF.rows(); n++){
-      if(VIF.row(n)==f_vert) break;
-   }
-
-   Vector<double> normal = F.row(n);
-   normal[0]=0; //project to plane
-   normal = side_length*normal/norm(normal); //facet normal of length side_length
+   Vector<double> normal = find_facet_normal(V,f_vert);
+   normal *= side_length; //facet normal of length side_length
    p_out.take("VERTICES") << (V / (FV - repeat_row(normal, n_vert)));
 
    return p_out;
@@ -303,26 +346,13 @@ perl::Object elongate(perl::Object p, Set<int> f_vert){
   perl::Object rotate_facet(perl::Object p, Set<int> f_vert, double a){
 
   Matrix<double> V = (p.give("VERTICES"));
-  IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
-  Matrix<double> F = p.give("FACETS");
 
   Matrix<double> FV = V.minor(f_vert,All);
+  Matrix<double> W = V.minor(~f_vert,All);
 
-  int nv = p.give("N_VERTICES");
-  Matrix<double> W(0,4);
-  int n=0;
-  for(; n<nv; n++) if(VIF.row(n)==f_vert) break; //find facet index
+  Vector<double> normal = find_facet_normal(V,f_vert);
 
-  for(int i=0; i<nv; i++){
-     if(VIF(n,i)==0){
-        W /= V.row(i); //remove facet vertices
-     }
-  }
-
-  Vector<double> normal = F.row(n); //facet normal
-  normal[0]=0;
-
-  Matrix<double> trans = zero_vector<double>(FV.rows()) | repeat_row(normal - average(rows(FV)), FV.rows()).minor(All,sequence(1,3)); //translate barycentre to axis
+  Matrix<double> trans = zero_vector<double>(FV.rows()) | repeat_row(normal - average(rows(FV)), FV.rows()).minor(All,sequence(1,3)); //translate barycenter to axis
 
   Matrix<double> Rot = rotate(FV+trans, normal, a)-trans;
 
@@ -337,24 +367,16 @@ perl::Object elongate(perl::Object p, Set<int> f_vert){
 perl::Object gyroelongate(perl::Object p, Set<int> f_vert){
 
   Matrix<double> V = (p.give("VERTICES"));
-  IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
-  Matrix<double> F = p.give("FACETS");
-  int n=0;
-  for(; n<VIF.rows(); n++) if(VIF.row(n)==f_vert) break; //find facet index
-  Vector<double> normal = F.row(n);
-  normal[0]=0; //project to plane
-  normal /= norm(normal); //unit facet normal
 
   Matrix<double> FV = V.minor(f_vert,All);
+  Vector<double> normal = find_facet_normal(V,f_vert);
+
   int n_vert = FV.rows();
-  Matrix<double> trans = zero_vector<double>(n_vert) | repeat_row(normal - average(rows(FV)), FV.rows()).minor(All,sequence(1,3)); //translate barycentre to axis
+  Matrix<double> trans = zero_vector<double>(n_vert) | repeat_row(normal - average(rows(FV)), FV.rows()).minor(All,sequence(1,3)); //translate barycenter to axis
   FV = rotate(FV+trans, normal, M_PI/n_vert)-trans; //rotate the facet by pi/n
 
-  perl::Object facet("Polytope<Float>");
-  facet.take("VERTICES")<<FV;
-  IncidenceMatrix<> FVIF = facet.give("VERTICES_IN_FACETS");
-  Matrix<double> neighbors = FV.minor(FVIF.row(0),All); //two neighbor vertices
-  double side_length = norm(neighbors[0]-neighbors[1]);
+   Array<int> neigh = neighbors(V,f_vert);
+   double side_length = norm(V[neigh[0]]-V[neigh[1]]);
 
   // wikipedia seems to be wrong https://en.wikipedia.org/wiki/Antiprism
   //   double height = 2*sqrt((cos(M_PI/n_vert)-cos(2.0*M_PI/n_vert))/2);
@@ -372,20 +394,15 @@ perl::Object gyroelongate(perl::Object p, Set<int> f_vert){
 //creates regular n-gonal prism
 perl::Object create_prism(int n)
 {
-  Matrix<double> V = create_regular_polygon_vertices(n, 1, 0);
-  perl::Object p("Polytope<Float>");
-  p.take("VERTICES") << V;
-  IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
-  Matrix<double> F = p.give("FACETS");
+   Matrix<double> V = create_regular_polygon_vertices(n, 1, 0);
 
-  Matrix<double> neighbors = V.minor(VIF.row(0),All); //two neighbor vertices
-  double side_length = norm(neighbors[0]-neighbors[1]);
+   double side_length = norm(V[0]-V[1]);
 
-  perl::Object p_out("Polytope<Float>");
+   perl::Object p_out("Polytope<Float>");
 
-  p_out.take("VERTICES") << (V | zero_vector<double>()) / (V | same_element_vector<double>(side_length, n));
+   p_out.take("VERTICES") << (V | zero_vector<double>()) / (V | same_element_vector<double>(side_length, n));
 
-  return p_out;
+   return p_out;
 }
 
 //removes the facet given as vertex index set
@@ -722,7 +739,7 @@ perl::Object elongated_pentagonal_bipyramid()
 
   p.take("VERTICES_IN_FACETS") << VIF;
 
-  centralize<QE>(p);
+  centralize<double>(p);
   p.set_description() << "Johnson solid J16: Elongated pentagonal bipyramid" << endl;
 
   return p;
@@ -782,7 +799,7 @@ perl::Object elongated_triangular_cupola()
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
-   centralize<QE>(p);
+   centralize<double>(p);
    p.set_description() << "Johnson solid J18: Elongated triangular cupola" << endl;
 
    return p;
@@ -838,7 +855,7 @@ perl::Object elongated_pentagonal_cupola()
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
-   centralize<QE>(p);
+   centralize<double>(p);
    p.set_description() << "Johnson solid J20: Elongated pentagonal cupola" << endl;
 
   return p;
@@ -915,7 +932,7 @@ perl::Object gyroelongated_triangular_cupola()
                          {0,1,3,5} };
 
   p.take("VERTICES_IN_FACETS") << VIF;
-  centralize<QE>(p);
+  centralize<double>(p);
 
   p.set_description() << "Johnson solid J22: Gyroelongated triangular cupola" << endl;
   return p;
@@ -1060,7 +1077,7 @@ perl::Object gyroelongated_pentagonal_rotunda()
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
-   centralize<QE>(p);
+   centralize<double>(p);
    p.set_description() << "Johnson solid J25: Gyroelongated pentagonal rotunda" << endl;
 
    return p;
@@ -1152,28 +1169,28 @@ perl::Object pentagonal_orthobicupola()
    p = augment(p, Set<int>{2,4,5,7,8,10,11,12,13,14});
    p = rotate_facet(p, Set<int>{0,1,3,6,9}, M_PI/5);
 
-   IncidenceMatrix<> VIF{ {0,2,10,14},
-                          {0,2,15,16},
+   IncidenceMatrix<> VIF{{0,2,15,16},
+                          {0,2,10},
                           {15,16,17,18,19},
+                          {0,1,10,14},
                           {0,1,16},
-                          {0,1,14},
-                          {7,9,11,12},
                           {1,4,16,18},
-                          {8,9,12},
+                          {1,4,14},
+                          {4,5,13,14},
                           {4,5,18},
-                          {4,5,13},
-                          {5,8,12,13},
+                          {5,8,13},
                           {8,9,19},
                           {5,8,18,19},
-                          {1,4,13,14},
+                          {8,9,12,13},
+                          {7,9,12},
                           {7,9,17,19},
                           {10,11,12,13,14},
-                          {6,7,11},
                           {6,7,17},
-                          {2,3,10},
+                          {6,7,11,12},
+                          {3,6,11},
                           {2,3,15},
                           {3,6,15,17},
-                          {3,6,10,11} };
+                          {2,3,10,11}};
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
@@ -1198,33 +1215,33 @@ perl::Object pentagonal_orthocupolarotunda()
    perl::Object p = pentagonal_rotunda();
    p = augment(p, Set<int>{7,9,10,12,13,15,16,17,18,19});
 
-   IncidenceMatrix<> VIF{ {4,8,14,16,17},
+   IncidenceMatrix<> VIF{{4,8,14,16,17},
                           {1,4,8},
-                          {16,17,24},
+                          {16,17,21,22},
                           {0,3,5,7,9},
                           {4,6,14},
-                          {17,19,20,24},
-                          {14,17,19},
                           {0,2,5},
-                          {9,13,21,22},
+                          {18,19,22,23},
+                          {9,13,24},
                           {5,9,13},
-                          {15,18,20,21},
                           {11,15,18},
-                          {13,15,21},
+                          {15,18,23},
                           {2,5,11,13,15},
-                          {18,19,20},
+                          {13,15,23,24},
                           {2,6,11},
                           {6,11,14,18,19},
-                          {7,9,22},
+                          {17,19,22},
+                          {14,17,19},
+                          {7,9,20,24},
                           {20,21,22,23,24},
                           {0,1,3},
                           {0,1,2,4,6},
+                          {7,10,20},
                           {3,7,10},
-                          {7,10,22,23},
-                          {10,12,23},
+                          {12,16,21},
                           {8,12,16},
-                          {12,16,23,24},
-                          {1,3,8,10,12} };
+                          {10,12,20,21},
+                          {1,3,8,10,12}};
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
@@ -1242,31 +1259,31 @@ perl::Object pentagonal_gyrocupolarotunda()
 
    IncidenceMatrix<> VIF{ {4,8,14,16,17},
                           {1,4,8},
-                          {16,17,20,24},
+                          {16,17,22},
                           {0,3,5,7,9},
                           {4,6,14},
+                          {17,19,22,23},
+                          {14,17,19},
                           {0,2,5},
-                          {18,19,20,21},
-                          {9,13,22},
+                          {9,13,20,24},
                           {5,9,13},
+                          {15,18,23,24},
                           {11,15,18},
-                          {15,18,21},
+                          {13,15,24},
                           {2,5,11,13,15},
-                          {13,15,21,22},
+                          {18,19,23},
                           {2,6,11},
                           {6,11,14,18,19},
-                          {17,19,20},
-                          {14,17,19},
-                          {7,9,22,23},
+                          {7,9,20},
                           {20,21,22,23,24},
                           {0,1,3},
                           {0,1,2,4,6},
-                          {7,10,23},
                           {3,7,10},
-                          {12,16,24},
+                          {7,10,20,21},
+                          {10,12,21},
                           {8,12,16},
-                          {10,12,23,24},
-                          {1,3,8,10,12} };
+                          {12,16,21,22},
+                          {1,3,8,10,12}};
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
@@ -1283,40 +1300,10 @@ perl::Object pentagonal_orthobirotunda()
    Vector<double> normal{ 0., 0., (1+sqrt(5))/2, 1. };
    p = gyrotunda(p, Set<int>{7,9,10,12,13,15,16,17,18,19});
 
-   IncidenceMatrix<> VIF{ {4,8,14,16,17},
-                          {1,4,8},
-                          {16,17,23,24,29},
-                          {0,1,2,4,6},
-                          {0,1,3},
-                          {7,9,21,22,27},
-                          {22,27,28},
-                          {4,6,14},
-                          {14,17,19},
-                          {17,19,24},
-                          {0,2,5},
-                          {21,26,27},
-                          {2,6,11},
-                          {2,5,11,13,15},
-                          {13,15,20,21,26},
-                          {11,15,18},
-                          {15,18,20},
-                          {20,25,26},
-                          {9,13,21},
-                          {5,9,13},
-                          {18,19,20,24,25},
-                          {6,11,14,18,19},
-                          {24,25,29},
-                          {25,26,27,28,29},
-                          {0,3,5,7,9},
-                          {23,28,29},
-                          {7,10,22},
-                          {3,7,10},
-                          {12,16,23},
-                          {8,12,16},
-                          {10,12,22,23,28},
-                          {1,3,8,10,12} };
+/*   IncidenceMatrix<> VIF{
+                       };
 
-   p.take("VERTICES_IN_FACETS") << VIF;
+   p.take("VERTICES_IN_FACETS") << VIF;*/
 
    centralize<double>(p);
    p.set_description() << "Johnson solid J34: Pentagonal orthobirotunda" << endl;
@@ -1334,23 +1321,23 @@ perl::Object elongated_triangular_orthobicupola()
    IncidenceMatrix<> VIF{ {1,2,6,8},
                           {1,5,6},
                           {5,6,11,12},
-                          {11,12,15},
+                          {11,12,16},
                           {4,7,10,13},
-                          {10,13,16,17},
+                          {10,13,15,17},
                           {7,8,13,14},
                           {15,16,17},
-                          {13,14,16},
-                          {12,14,15,16},
+                          {13,14,17},
+                          {12,14,16,17},
                           {6,8,12,14},
                           {2,7,8},
-                          {9,10,17},
-                          {9,11,15,17},
+                          {9,10,15},
+                          {9,11,15,16},
                           {3,4,9,10},
                           {3,5,9,11},
                           {0,3,4},
                           {0,1,2},
                           {0,2,4,7},
-                          {0,1,3,5} };
+                          {0,1,3,5}};
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
@@ -1369,23 +1356,23 @@ perl::Object elongated_triangular_gyrobicupola()
    IncidenceMatrix<> VIF{ {1,2,6,8},
                           {1,5,6},
                           {5,6,11,12},
-                          {11,12,15,17},
+                          {11,12,15,16},
                           {4,7,10,13},
-                          {10,13,16},
+                          {10,13,17},
                           {15,16,17},
-                          {13,14,15,16},
+                          {13,14,16,17},
                           {7,8,13,14},
-                          {12,14,15},
+                          {12,14,16},
                           {6,8,12,14},
                           {2,7,8},
-                          {9,11,17},
-                          {9,10,16,17},
+                          {9,11,15},
+                          {9,10,15,17},
                           {3,4,9,10},
                           {3,5,9,11},
                           {0,3,4},
                           {0,1,2},
                           {0,2,4,7},
-                          {0,1,3,5} };
+                          {0,1,3,5}};
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
@@ -1415,28 +1402,28 @@ perl::Object elongated_pentagonal_orthobicupola()
    p = augment(p,sequence(15,10));
    p = rotate_facet(p, sequence(25,5), M_PI/5);
 
-   IncidenceMatrix<> VIF{ {17,18,27,28},
-                          {18,21,28},
-                          {15,17,27},
-                          {21,22,28,29},
+   IncidenceMatrix<> VIF{{18,21,26,27},
+                          {17,18,26},
+                          {15,17,25,26},
+                          {21,22,27},
                           {25,26,27,28,29},
                           {2,4,15,16},
                           {12,14,22,24},
                           {9,12,14},
-                          {22,24,29},
-                          {23,24,25,29},
+                          {16,19,25,29},
                           {4,8,16,19},
                           {13,14,23,24},
-                          {20,23,25},
+                          {20,23,28,29},
+                          {19,20,29},
                           {10,13,20,23},
                           {8,10,19,20},
                           {6,10,13},
-                          {19,20,25,26},
-                          {16,19,26},
+                          {23,24,28},
                           {1,4,8},
                           {1,6,8,10},
                           {6,9,13,14},
-                          {15,16,26,27},
+                          {22,24,27,28},
+                          {15,16,25},
                           {0,1,2,4},
                           {0,1,3,6,9},
                           {3,9,11,12},
@@ -1462,28 +1449,28 @@ perl::Object elongated_pentagonal_gyrobicupola()
    perl::Object p = elongated_pentagonal_cupola();
    p = augment(p,sequence(15,10));
 
-   IncidenceMatrix<> VIF{ {18,21,27,28},
-                          {17,18,27},
-                          {15,17,26,27},
-                          {21,22,28},
+   IncidenceMatrix<> VIF{ {17,18,25,26},
+                          {18,21,26},
+                          {15,17,25},
+                          {21,22,26,27},
                           {25,26,27,28,29},
                           {2,4,15,16},
                           {12,14,22,24},
                           {9,12,14},
-                          {16,19,25,26},
+                          {22,24,27},
+                          {23,24,27,28},
                           {4,8,16,19},
                           {13,14,23,24},
-                          {20,23,25,29},
-                          {19,20,25},
+                          {20,23,28},
                           {10,13,20,23},
                           {8,10,19,20},
                           {6,10,13},
-                          {23,24,29},
+                          {19,20,28,29},
+                          {16,19,29},
                           {1,4,8},
                           {1,6,8,10},
                           {6,9,13,14},
-                          {22,24,28,29},
-                          {15,16,26},
+                          {15,16,25,29},
                           {0,1,2,4},
                           {0,1,3,6,9},
                           {3,9,11,12},
@@ -1550,7 +1537,7 @@ perl::Object elongated_pentagonal_orthocupolarotunda()
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
-   centralize<QE>(p);
+   centralize<double>(p);
    p.set_description() << "Johnson solid J40: Elongated pentagonal orthocupolarotunda" << endl;
 
    return p;
@@ -1722,31 +1709,31 @@ perl::Object elongated_pentagonal_gyrobirotunda()
    return p;
 }
 
-      //FIXME: coordinates #830
+//FIXME: coordinates #830
 perl::Object gyroelongated_triangular_bicupola()
 {
    perl::Object p = gyroelongated_triangular_cupola();
    p = augment(p, sequence(9,6));
 
-   IncidenceMatrix<> VIF{ {1,2,6,8},
+   IncidenceMatrix<> VIF{  {1,2,6,8},
                           {1,5,6},
                           {5,11,12},
                           {5,6,12},
                           {2,7,8},
                           {6,12,14},
                           {6,8,14},
-                          {12,14,15,17},
+                          {12,14,16},
                           {7,8,13},
                           {7,10,13},
-                          {10,13,15,16},
-                          {13,14,15},
+                          {13,14,16,17},
+                          {10,13,17},
                           {8,13,14},
                           {15,16,17},
-                          {9,10,16},
+                          {9,10,15,17},
                           {4,7,10},
                           {4,9,10},
-                          {11,12,17},
-                          {9,11,16,17},
+                          {9,11,15},
+                          {11,12,15,16},
                           {3,4,9},
                           {3,9,11},
                           {3,5,11},
@@ -1770,39 +1757,39 @@ perl::Object gyroelongated_square_bicupola()
    p = augment(p,sequence(0,8));
 
    IncidenceMatrix<> VIF{ {9,10,16,17},
-                          {1,8,9},
                           {8,9,16},
-                          {1,2,20,23},
+                          {1,8,9},
                           {1,2,8},
+                          {1,2,23},
                           {20,21,22,23},
                           {16,17,18,19},
                           {6,11,12},
-                          {2,3,23},
                           {2,3,15},
-                          {3,4,22,23},
+                          {4,5,21,22},
                           {13,14,18,19},
                           {5,12,13},
                           {3,4,14},
                           {4,5,13},
                           {4,13,14},
-                          {4,5,22},
+                          {3,4,22},
                           {12,13,19},
                           {3,14,15},
                           {14,15,18},
                           {5,6,12},
-                          {5,6,21,22},
+                          {5,6,21},
+                          {2,3,22,23},
                           {11,12,17,19},
                           {2,8,15},
                           {8,15,16,18},
-                          {6,7,21},
                           {6,7,11},
+                          {6,7,20,21},
                           {10,11,17},
                           {7,10,11},
+                          {0,7,20},
                           {0,7,10},
-                          {0,1,20},
                           {0,1,9},
                           {0,9,10},
-                          {0,7,20,21} };
+                          {0,1,20,23} };
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
@@ -1818,48 +1805,48 @@ perl::Object gyroelongated_pentagonal_bicupola()
    perl::Object p = gyroelongated_pentagonal_cupola();
    p = augment(p,sequence(15,10));
 
-   IncidenceMatrix<> VIF{ {18,21,25,26},
-                          {17,18,25},
+   IncidenceMatrix<> VIF{ {17,18,25,26},
+                          {18,21,26},
                           {5,17,18},
                           {2,5,17},
                           {0,2,5},
-                          {15,17,25,29},
+                          {15,17,25},
                           {2,15,17},
-                          {0,1,3,6,9},
-                          {2,4,15},
-                          {15,16,29},
-                          {4,15,16},
-                          {23,24,27},
-                          {14,23,24},
-                          {20,23,27,28},
-                          {4,8,16},
-                          {6,10,13},
+                          {25,26,27,28,29},
+                          {0,1,2,4},
+                          {9,12,14},
+                          {12,14,24},
+                          {23,24,27,28},
+                          {6,9,13,14},
+                          {1,6,8,10},
+                          {1,4,8},
+                          {13,14,23},
+                          {20,23,28},
                           {8,16,19},
                           {8,10,19},
                           {10,13,20},
                           {10,19,20},
                           {13,20,23},
-                          {19,20,28},
-                          {13,14,23},
-                          {1,4,8},
-                          {1,6,8,10},
-                          {16,19,28,29},
-                          {6,9,13,14},
-                          {12,14,24},
-                          {9,12,14},
-                          {0,1,2,4},
-                          {25,26,27,28,29},
+                          {6,10,13},
+                          {16,19,29},
+                          {19,20,28,29},
+                          {4,8,16},
+                          {14,23,24},
+                          {4,15,16},
+                          {15,16,25,29},
+                          {2,4,15},
+                          {0,1,3,6,9},
                           {12,22,24},
-                          {22,24,26,27},
+                          {22,24,27},
                           {11,12,22},
                           {3,9,11,12},
-                          {21,22,26},
                           {11,21,22},
+                          {21,22,26,27},
                           {3,7,11},
                           {7,11,21},
                           {5,7,18},
                           {7,18,21},
-                          {0,3,5,7} };
+                          {0,3,5,7}};
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
@@ -1868,54 +1855,55 @@ perl::Object gyroelongated_pentagonal_bicupola()
 
    return p;
 }
-      //FIXME: coordinates #830
+
+//FIXME: coordinates #830
 perl::Object gyroelongated_pentagonal_cupolarotunda()
 {
    perl::Object p = gyroelongated_pentagonal_rotunda();
    p = augment(p, sequence(20,10));
 
-   IncidenceMatrix<> VIF{ {23,26,30,31},
-                          {22,23,30},
+   IncidenceMatrix<> VIF{ {22,23,30,31},
+                          {23,26,31},
                           {10,22,23},
                           {4,8,14,16,17},
                           {1,4,8},
                           {16,17,27},
-                          {27,29,31,32},
+                          {27,29,32},
                           {17,27,29},
-                          {0,3,5,7,9},
-                          {7,9,20},
-                          {0,2,5},
-                          {6,11,14,18,19},
-                          {21,24,33,34},
-                          {2,6,11},
-                          {18,19,28},
+                          {0,1,2,4,6},
+                          {0,1,3},
+                          {4,6,14},
+                          {14,17,19},
+                          {17,19,29},
+                          {28,29,32,33},
+                          {9,20,21},
+                          {19,28,29},
+                          {5,9,13},
+                          {9,13,21},
+                          {24,25,33,34},
+                          {21,24,34},
+                          {2,5,11,13,15},
                           {13,21,24},
                           {11,15,18},
                           {15,24,25},
                           {15,18,25},
                           {13,15,24},
                           {18,25,28},
-                          {24,25,33},
-                          {2,5,11,13,15},
-                          {9,13,21},
-                          {5,9,13},
-                          {25,28,32,33},
-                          {19,28,29},
-                          {28,29,32},
-                          {9,20,21},
-                          {20,21,34},
-                          {17,19,29},
-                          {14,17,19},
-                          {4,6,14},
+                          {25,28,33},
+                          {18,19,28},
+                          {2,6,11},
+                          {6,11,14,18,19},
+                          {0,2,5},
+                          {20,21,30,34},
+                          {7,9,20},
+                          {0,3,5,7,9},
                           {30,31,32,33,34},
-                          {0,1,3},
-                          {0,1,2,4,6},
                           {7,20,22},
-                          {20,22,30,34},
+                          {20,22,30},
                           {3,7,10},
                           {7,10,22},
-                          {26,27,31},
                           {16,26,27},
+                          {26,27,31,32},
                           {8,12,16},
                           {12,16,26},
                           {10,12,23},
@@ -1936,58 +1924,58 @@ perl::Object gyroelongated_pentagonal_birotunda()
    perl::Object p = gyroelongated_pentagonal_rotunda();
    p = rotunda(p, sequence(20,10));
 
-   IncidenceMatrix<> VIF{ {23,26,30,31,35},
+   IncidenceMatrix<> VIF{  {22,23,30,31,35},
+                          {23,26,31},
                           {10,22,23},
-                          {22,23,30},
-                          {4,8,14,16,17},
-                          {1,4,8},
-                          {16,17,27},
-                          {27,29,31,32,36},
                           {31,35,36},
-                          {17,27,29},
+                          {7,10,22},
+                          {3,7,10},
+                          {7,20,22},
+                          {20,22,30},
                           {0,1,2,4,6},
                           {0,1,3},
+                          {35,36,37,38,39},
+                          {30,35,39},
                           {4,6,14},
                           {14,17,19},
                           {17,19,29},
-                          {32,36,37},
-                          {20,21,34},
+                          {28,29,32,33,37},
                           {9,20,21},
-                          {28,29,32},
                           {19,28,29},
-                          {25,28,32,33,37},
+                          {33,37,38},
                           {5,9,13},
                           {9,13,21},
-                          {33,37,38},
                           {2,5,11,13,15},
-                          {13,21,24},
-                          {11,15,18},
-                          {15,18,25},
-                          {24,25,33},
-                          {15,24,25},
-                          {13,15,24},
+                          {24,25,33,34,38},
+                          {25,28,33},
                           {18,25,28},
+                          {13,15,24},
+                          {15,18,25},
+                          {15,24,25},
+                          {11,15,18},
+                          {13,21,24},
+                          {21,24,34},
                           {18,19,28},
                           {2,6,11},
-                          {21,24,33,34,38},
+                          {34,38,39},
                           {6,11,14,18,19},
                           {0,2,5},
-                          {34,38,39},
+                          {20,21,30,34,39},
                           {7,9,20},
+                          {32,36,37},
                           {0,3,5,7,9},
-                          {35,36,37,38,39},
-                          {7,20,22},
-                          {30,35,39},
-                          {20,22,30,34,39},
-                          {3,7,10},
-                          {7,10,22},
-                          {26,27,31},
+                          {27,29,32},
+                          {17,27,29},
+                          {16,17,27},
+                          {1,4,8},
+                          {4,8,14,16,17},
                           {16,26,27},
+                          {26,27,31,32,36},
                           {8,12,16},
                           {12,16,26},
                           {10,12,23},
                           {12,23,26},
-                          {1,3,8,10,12} };
+                          {1,3,8,10,12}};
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
@@ -2071,6 +2059,7 @@ perl::Object biaugmented_triangular_prism()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object triaugmented_triangular_prism()
 {
   perl::Object p = create_prism(3);
@@ -2096,12 +2085,13 @@ perl::Object triaugmented_triangular_prism()
 
   p.take("VERTICES_IN_FACETS") << VIF;
 
-  centralize<QE>(p);
+  centralize<double>(p);
   p.set_description() << "Johnson solid J51: triaugmented triangular prism" << endl;
 
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object augmented_pentagonal_prism()
 {
   perl::Object p = create_prism(5);
@@ -2127,6 +2117,7 @@ perl::Object augmented_pentagonal_prism()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object biaugmented_pentagonal_prism()
 {
   perl::Object p = create_prism(5);
@@ -2157,6 +2148,7 @@ perl::Object biaugmented_pentagonal_prism()
 }
 
 
+//FIXME: coordinates #830
 perl::Object augmented_hexagonal_prism()
 {
   perl::Object p = create_prism(6);
@@ -2183,6 +2175,7 @@ perl::Object augmented_hexagonal_prism()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object parabiaugmented_hexagonal_prism()
 {
   perl::Object p = augmented_hexagonal_prism();
@@ -2212,6 +2205,7 @@ perl::Object parabiaugmented_hexagonal_prism()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object metabiaugmented_hexagonal_prism()
 {
   perl::Object p = augmented_hexagonal_prism();
@@ -2241,6 +2235,7 @@ perl::Object metabiaugmented_hexagonal_prism()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object triaugmented_hexagonal_prism()
 {
   perl::Object p = metabiaugmented_hexagonal_prism();
@@ -2273,6 +2268,7 @@ perl::Object triaugmented_hexagonal_prism()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object augmented_dodecahedron()
 {
   perl::Object p = call_function("dodecahedron");
@@ -2303,6 +2299,7 @@ perl::Object augmented_dodecahedron()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object parabiaugmented_dodecahedron()
 {
   perl::Object p = augmented_dodecahedron();
@@ -2338,6 +2335,7 @@ perl::Object parabiaugmented_dodecahedron()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object metabiaugmented_dodecahedron()
 {
   perl::Object p = augmented_dodecahedron();
@@ -2373,6 +2371,7 @@ perl::Object metabiaugmented_dodecahedron()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object triaugmented_dodecahedron()
 {
   perl::Object p = metabiaugmented_dodecahedron();
@@ -2439,6 +2438,7 @@ perl::Object tridiminished_icosahedron()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object augmented_tridiminished_icosahedron()
 {
   perl::Object p = tridiminished_icosahedron();
@@ -2462,7 +2462,6 @@ perl::Object augmented_tridiminished_icosahedron()
 
   return p;
 }
-
 
 perl::Object augmented_truncated_tetrahedron()
 {
@@ -2517,18 +2516,16 @@ perl::Object augmented_truncated_dodecahedron()
 
    IncidenceMatrix<> VIF{ {22,27,38},
                           {13,16,19,22,32,35,38,41,43,46},
-                          {7,13,19},
+                          {7,13,19,61},
                           {41,46,52},
-                          {7,13,61,62},
-                          {5,7,61},
+                          {5,7,60,61},
                           {43,46,48,50,52,54,56,57,58,59},
-                          {0,5,60,61},
-                          {13,16,62},
-                          {0,1,60},
+                          {13,16,61,62},
+                          {0,1,60,64},
                           {10,15,26},
                           {29,36,42},
                           {12,15,20,23,26,29,37,40,42,45},
-                          {1,4,9},
+                          {1,4,9,64},
                           {55,57,59},
                           {4,6,9,11,20,23,25,28,30,33},
                           {6,12,20},
@@ -2537,18 +2534,15 @@ perl::Object augmented_truncated_dodecahedron()
                           {23,30,37},
                           {28,33,44},
                           {47,50,56},
-                          {11,18,25},
-                          {9,11,64},
-                          {18,21,63},
-                          {11,18,63,64},
+                          {11,18,25,63},
+                          {9,11,63,64},
                           {18,21,25,28,32,35,44,47,48,50},
-                          {1,9,60,64},
+                          {18,21,62,63},
                           {35,43,48},
-                          {16,21,32},
-                          {16,21,62,63},
+                          {16,21,32,62},
                           {60,61,62,63,64},
                           {51,54,58},
-                          {0,2,5},
+                          {0,2,5,60},
                           {36,39,42,45,49,51,53,55,58,59},
                           {0,1,2,3,4,6,8,10,12,15},
                           {34,39,49},
@@ -2556,7 +2550,7 @@ perl::Object augmented_truncated_dodecahedron()
                           {8,10,14,17,26,29,31,34,36,39},
                           {17,24,31},
                           {24,27,31,34,38,41,49,51,52,54},
-                          {2,3,5,7,14,17,19,22,24,27} };
+                          {2,3,5,7,14,17,19,22,24,27}};
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
@@ -2574,56 +2568,46 @@ perl::Object parabiaugmented_truncated_dodecahedron()
 
    IncidenceMatrix<> VIF{ {22,27,38},
                           {13,16,19,22,32,35,38,41,43,46},
-                          {7,13,19},
+                          {7,13,19,61},
                           {41,46,52},
-                          {7,13,61,62},
-                          {5,7,61},
+                          {5,7,60,61},
                           {43,46,48,50,52,54,56,57,58,59},
-                          {0,5,60,61},
-                          {13,16,62},
+                          {13,16,61,62},
                           {65,66,67,68,69},
-                          {16,21,62,63},
-                          {16,21,32},
+                          {16,21,32,62},
                           {35,43,48},
-                          {58,59,69},
                           {12,15,20,23,26,29,37,40,42,45},
-                          {55,59,68,69},
-                          {11,18,63,64},
-                          {18,21,63},
-                          {55,57,59},
-                          {53,55,68},
-                          {11,18,25},
+                          {42,45,65,66},
+                          {9,11,63,64},
+                          {40,45,53,66},
                           {47,50,56},
                           {28,33,44},
                           {23,30,37},
                           {30,33,37,40,44,47,53,55,56,57},
-                          {40,45,53},
                           {6,12,20},
                           {4,6,9,11,20,23,25,28,30,33},
-                          {9,11,64},
-                          {45,53,67,68},
-                          {42,45,67},
-                          {1,4,9},
+                          {11,18,25,63},
+                          {53,55,66,67},
+                          {55,57,59,67},
+                          {1,4,9,64},
                           {18,21,25,28,32,35,44,47,48,50},
-                          {1,9,60,64},
-                          {29,36,42},
-                          {36,42,66,67},
+                          {18,21,62,63},
+                          {58,59,67,68},
+                          {29,36,42,65},
                           {10,15,26},
-                          {0,1,60},
+                          {0,1,60,64},
                           {60,61,62,63,64},
-                          {51,54,58},
-                          {51,58,65,69},
-                          {36,39,66},
-                          {0,2,5},
-                          {49,51,65},
-                          {39,49,65,66},
+                          {51,54,58,68},
+                          {36,39,65,69},
+                          {0,2,5,60},
+                          {49,51,68,69},
                           {0,1,2,3,4,6,8,10,12,15},
-                          {34,39,49},
+                          {34,39,49,69},
                           {3,8,14},
                           {8,10,14,17,26,29,31,34,36,39},
                           {17,24,31},
                           {24,27,31,34,38,41,49,51,52,54},
-                          {2,3,5,7,14,17,19,22,24,27} };
+                          {2,3,5,7,14,17,19,22,24,27}};
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
@@ -2633,6 +2617,7 @@ perl::Object parabiaugmented_truncated_dodecahedron()
    return p;
 }
 
+//FIXME: coordinates #830
 perl::Object metabiaugmented_truncated_dodecahedron()
 {
    perl::Object p = augmented_truncated_dodecahedron();
@@ -2640,48 +2625,38 @@ perl::Object metabiaugmented_truncated_dodecahedron()
 
    IncidenceMatrix<> VIF{ {22,27,38},
                           {13,16,19,22,32,35,38,41,43,46},
-                          {7,13,19},
-                          {41,46,52},
-                          {7,13,61,62},
-                          {5,7,61},
-                          {46,52,65,69},
-                          {52,54,65},
-                          {0,5,60,61},
-                          {13,16,62},
-                          {43,46,69},
-                          {54,58,65,66},
+                          {7,13,19,61},
+                          {41,46,52,69},
+                          {5,7,60,61},
+                          {52,54,68,69},
+                          {13,16,61,62},
+                          {43,46,65,69},
                           {65,66,67,68,69},
-                          {16,21,62,63},
-                          {16,21,32},
-                          {43,48,68,69},
-                          {35,43,48},
-                          {58,59,66},
+                          {16,21,32,62},
+                          {35,43,48,65},
                           {12,15,20,23,26,29,37,40,42,45},
-                          {57,59,66,67},
-                          {11,18,63,64},
-                          {18,21,63},
-                          {48,50,68},
-                          {55,57,59},
-                          {56,57,67},
-                          {11,18,25},
-                          {47,50,56},
+                          {48,50,65,66},
+                          {9,11,63,64},
+                          {56,57,66,67},
+                          {47,50,56,66},
                           {28,33,44},
                           {23,30,37},
                           {30,33,37,40,44,47,53,55,56,57},
                           {40,45,53},
                           {6,12,20},
                           {4,6,9,11,20,23,25,28,30,33},
-                          {9,11,64},
-                          {50,56,67,68},
-                          {1,4,9},
+                          {11,18,25,63},
+                          {55,57,59,67},
+                          {1,4,9,64},
                           {18,21,25,28,32,35,44,47,48,50},
-                          {1,9,60,64},
+                          {18,21,62,63},
+                          {58,59,67,68},
                           {29,36,42},
                           {10,15,26},
-                          {0,1,60},
+                          {0,1,60,64},
                           {60,61,62,63,64},
-                          {51,54,58},
-                          {0,2,5},
+                          {51,54,58,68},
+                          {0,2,5,60},
                           {36,39,42,45,49,51,53,55,58,59},
                           {0,1,2,3,4,6,8,10,12,15},
                           {34,39,49},
@@ -2689,7 +2664,7 @@ perl::Object metabiaugmented_truncated_dodecahedron()
                           {8,10,14,17,26,29,31,34,36,39},
                           {17,24,31},
                           {24,27,31,34,38,41,49,51,52,54},
-                          {2,3,5,7,14,17,19,22,24,27} };
+                          {2,3,5,7,14,17,19,22,24,27}};
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
@@ -2699,6 +2674,7 @@ perl::Object metabiaugmented_truncated_dodecahedron()
    return p;
 }
 
+//FIXME: coordinates #830
 perl::Object triaugmented_truncated_dodecahedron()
 {
    perl::Object p = metabiaugmented_truncated_dodecahedron();
@@ -2706,58 +2682,43 @@ perl::Object triaugmented_truncated_dodecahedron()
 
    IncidenceMatrix<> VIF{ {22,27,38},
                           {13,16,19,22,32,35,38,41,43,46},
-                          {7,13,19},
-                          {41,46,52},
-                          {7,13,61,62},
-                          {5,7,61},
-                          {46,52,65,69},
-                          {52,54,65},
-                          {0,5,60,61},
-                          {13,16,62},
-                          {43,46,69},
-                          {54,58,65,66},
+                          {7,13,19,61},
+                          {41,46,52,69},
+                          {5,7,60,61},
+                          {52,54,68,69},
+                          {13,16,61,62},
+                          {43,46,65,69},
                           {65,66,67,68,69},
-                          {16,21,62,63},
-                          {16,21,32},
-                          {43,48,68,69},
-                          {35,43,48},
-                          {58,59,66},
-                          {15,26,70,74},
-                          {26,29,74},
-                          {29,42,73,74},
-                          {57,59,66,67},
-                          {11,18,63,64},
-                          {18,21,63},
-                          {48,50,68},
-                          {55,57,59},
-                          {56,57,67},
-                          {4,6,9,11,20,23,25,28,30,33},
-                          {12,20,70,71},
-                          {6,12,20},
-                          {40,45,72,73},
-                          {40,45,53},
-                          {30,33,37,40,44,47,53,55,56,57},
-                          {20,23,71},
-                          {37,40,72},
-                          {23,37,71,72},
-                          {23,30,37},
+                          {16,21,32,62},
+                          {35,43,48,65},
+                          {26,29,73,74},
+                          {48,50,65,66},
+                          {9,11,63,64},
+                          {56,57,66,67},
+                          {47,50,56,66},
+                          {37,40,71,72},
                           {28,33,44},
-                          {47,50,56},
-                          {11,18,25},
+                          {23,30,37,71},
+                          {20,23,70,71},
+                          {30,33,37,40,44,47,53,55,56,57},
+                          {40,45,53,72},
+                          {6,12,20,70},
+                          {4,6,9,11,20,23,25,28,30,33},
                           {70,71,72,73,74},
-                          {9,11,64},
-                          {50,56,67,68},
-                          {42,45,73},
-                          {12,15,70},
-                          {1,4,9},
+                          {11,18,25,63},
+                          {55,57,59,67},
+                          {42,45,72,73},
+                          {12,15,70,74},
+                          {1,4,9,64},
                           {18,21,25,28,32,35,44,47,48,50},
-                          {1,9,60,64},
-                          {29,36,42},
-                          {10,15,26},
-                          {0,1,60},
+                          {18,21,62,63},
+                          {58,59,67,68},
+                          {29,36,42,73},
+                          {10,15,26,74},
+                          {0,1,60,64},
                           {60,61,62,63,64},
-                          {51,54,58},
-                          {0,2,5},
+                          {51,54,58,68},
+                          {0,2,5,60},
                           {36,39,42,45,49,51,53,55,58,59},
                           {0,1,2,3,4,6,8,10,12,15},
                           {34,39,49},
@@ -2765,7 +2726,7 @@ perl::Object triaugmented_truncated_dodecahedron()
                           {8,10,14,17,26,29,31,34,36,39},
                           {17,24,31},
                           {24,27,31,34,38,41,49,51,52,54},
-                          {2,3,5,7,14,17,19,22,24,27} };
+                          {2,3,5,7,14,17,19,22,24,27}};
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
@@ -2775,6 +2736,7 @@ perl::Object triaugmented_truncated_dodecahedron()
    return p;
 }
 
+//FIXME: coordinates #830
 perl::Object gyrate_rhombicosidodecahedron()
 {
   perl::Object p = call_function("rhombicosidodecahedron");
@@ -2851,6 +2813,7 @@ perl::Object gyrate_rhombicosidodecahedron()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object parabigyrate_rhombicosidodecahedron()
 {
    perl::Object p = gyrate_rhombicosidodecahedron();
@@ -2927,6 +2890,7 @@ perl::Object parabigyrate_rhombicosidodecahedron()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object metabigyrate_rhombicosidodecahedron()
 {
    perl::Object p = gyrate_rhombicosidodecahedron();
@@ -3003,6 +2967,7 @@ perl::Object metabigyrate_rhombicosidodecahedron()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object trigyrate_rhombicosidodecahedron()
 {
    perl::Object p = metabigyrate_rhombicosidodecahedron();
@@ -3089,6 +3054,7 @@ perl::Object diminished_rhombicosidodecahedron()
    return p;
 }
 
+//FIXME: coordinates #830
 perl::Object paragyrate_diminished_rhombicosidodecahedron()
 {
    perl::Object p = gyrate_rhombicosidodecahedron();
@@ -3154,6 +3120,7 @@ perl::Object paragyrate_diminished_rhombicosidodecahedron()
    return p;
 }
 
+//FIXME: coordinates #830
 perl::Object metagyrate_diminished_rhombicosidodecahedron()
 {
    perl::Object p = gyrate_rhombicosidodecahedron();
@@ -3219,6 +3186,7 @@ perl::Object metagyrate_diminished_rhombicosidodecahedron()
    return p;
 }
 
+//FIXME: coordinates #830
 perl::Object bigyrate_diminished_rhombicosidodecahedron()
 {
    perl::Object p = metabigyrate_rhombicosidodecahedron();
@@ -3303,6 +3271,7 @@ perl::Object metabidiminished_rhombicosidodecahedron()
    return p;
 }
 
+//FIXME: coordinates #830
 perl::Object gyrate_bidiminished_rhombicosidodecahedron()
 {
    perl::Object p = metabidiminished_rhombicosidodecahedron();
@@ -3367,7 +3336,7 @@ perl::Object tridiminished_rhombicosidodecahedron()
    return p;
 }
 
-
+//FIXME: coordinates #830
 perl::Object snub_disphenoid()
 {
   //coordinates calculated according to https://de.wikipedia.org/wiki/Trigondodekaeder
@@ -3408,6 +3377,7 @@ perl::Object snub_disphenoid()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object snub_square_antiprism()
 {
   //coordinates from:  Weisstein, Eric W. "Snub Square Antiprism." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/SnubSquareAntiprism.html
@@ -3533,23 +3503,23 @@ perl::Object augmented_sphenocorona()
   perl::Object p = sphenocorona();
   p = augment(p, Set<int>{0,1,2,4});
 
-  IncidenceMatrix<> VIF{ {6,7,9},
-                         {0,7,9},
-                         {1,2,8},
-                         {2,3,8},
-                         {0,4,9},
-                         {0,4,10},
-                         {2,4,10},
-                         {2,3,4},
-                         {3,4,9},
-                         {1,2,10},
-                         {0,1,10},
-                         {3,6,9},
-                         {3,6,8},
-                         {5,6,8},
-                         {1,5,8},
-                         {5,6,7},
-                         {0,1,5,7} };
+  IncidenceMatrix<> VIF{  {6,7,9},
+                          {0,7,9},
+                          {1,2,8},
+                          {2,3,8},
+                          {0,4,9},
+                          {0,4,10},
+                          {2,4,10},
+                          {2,3,4},
+                          {3,4,9},
+                          {1,2,10},
+                          {0,1,10},
+                          {3,6,9},
+                          {3,6,8},
+                          {5,6,8},
+                          {1,5,8},
+                          {5,6,7},
+                          {0,1,5,7}};
 
   p.take("VERTICES_IN_FACETS") << VIF;
   centralize<double>(p);
@@ -3558,6 +3528,7 @@ perl::Object augmented_sphenocorona()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object sphenomegacorona()
 {
   //coordinates from:  Weisstein, Eric W. "Sphenomegacorona." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/Sphenomegacorona.html
@@ -3604,6 +3575,7 @@ perl::Object sphenomegacorona()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object hebesphenomegacorona()
 {
   //coordinates from:   Weisstein, Eric W. "Hebesphenomegacorona." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/Hebesphenomegacorona.html
@@ -3655,6 +3627,7 @@ perl::Object hebesphenomegacorona()
   return p;
 }
 
+//FIXME: coordinates #830
 perl::Object disphenocingulum()
 {
   //coordinates from:    Weisstein, Eric W. "Disphenocingulum." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/Disphenocingulum.html
@@ -3710,7 +3683,6 @@ perl::Object disphenocingulum()
 
   return p;
 }
-
 
 perl::Object bilunabirotunda()
 {

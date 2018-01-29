@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -18,6 +18,11 @@ INCLUDE
 
 #  The aim of all these methods is to convert the obsolete properties read from a plain data file
 #  to the corresponding sub-object properties.
+
+sub translate_plain_file_type : method {
+   (undef, my $legacy_type)=@_;
+   ($legacy_type && eval("typeof $legacy_type"), typeof SimplicialComplex)
+}
 
 object SimplicialComplex {
 

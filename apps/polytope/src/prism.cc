@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,6 +18,7 @@
 #include "polymake/vector"
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/common/labels.h"
 
 namespace polymake { namespace polytope {
 
@@ -46,6 +47,9 @@ perl::Object prism(perl::Object p_in, const Scalar& z, const Scalar& z_prime, pe
 
    if(z==z_prime)
         throw std::runtime_error("prism: z and z' must be different");
+   if(options["group"] && !p_in.exists("GROUP"))
+         throw std::runtime_error("prism: group of the base polytope needs to be provided in order to compute group of the pyramid.");
+
 
    int n_vertices=0, n_vertices_out=0;
    Set<int> rays;
@@ -93,9 +97,34 @@ perl::Object prism(perl::Object p_in, const Scalar& z, const Scalar& z_prime, pe
       p_out.take("VERTICES") << V_out;
    }
 
+   if(options["group"]){
+      Array< Array< int > > gens = p_in.give("GROUP.VERTICES_ACTION.GENERATORS");
+
+      for(auto i = entire(gens); !i.at_end(); ++i){
+          (*i).append(n_vertices,entire(*i));
+          for(int j = n_vertices; j<n_vertices_out; ++j)
+            (*i)[j]+=n_vertices;
+      }
+
+      Array<int> swap(sequence(n_vertices,n_vertices));
+      swap.append(n_vertices,entire(sequence(0,n_vertices)));
+      gens.resize(gens.size()+1,swap);
+
+      perl::Object a("group::PermutationAction");
+      a.take("GENERATORS") << gens;
+
+      perl::Object g("group::Group");
+      g.set_description() << "canonical group induced by the group of the base polytope" << endl;
+      g.set_name("canonicalGroup");
+      p_out.take("GROUP") << g;
+      p_out.take("GROUP.VERTICES_ACTION") << a;
+   }
+
+
+
    if (!options["no_labels"]) {
       std::vector<std::string> labels(n_vertices_out);
-      read_labels(p_in, "VERTEX_LABELS", labels);
+      common::read_labels(p_in, "VERTEX_LABELS", non_const(select(labels, sequence(0,n_vertices))));
       const std::string tick="'";
       copy_range(entire(attach_operation(select(labels, sequence(0,n_vertices)-rays),
                                          constant(tick), operations::add())),
@@ -112,6 +141,9 @@ UserFunctionTemplate4perl("# @category  Producing a polytope from polytopes"
                           "# @param Polytope P the input polytope"
                           "# @param Scalar z1 the left endpoint of the interval; default value: -1"
                           "# @param Scalar z2 the right endpoint of the interval; default value: -//z1//"
+                          "# @option Bool group Compute the canonical group induced by the group on //P// with"
+                          "#   an extra generator swapping the upper and lower copy. throws an exception if"
+                          "#   GROUP of //P// is not provided. default 0"
                           "# @option Bool no_coordinates only combinatorial information is handled"
                           "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytope. default: 0"
                           "#   the bottom facet vertices get the labels from the original polytope;"
@@ -122,7 +154,7 @@ UserFunctionTemplate4perl("# @category  Producing a polytope from polytopes"
                           "# > $p = prism(cube(2),-2);"
                           "# > print labeled($p->VERTICES,$p->VERTEX_LABELS);"
                           "# | 0:1 -1 -1 -2 1:1 1 -1 -2 2:1 -1 1 -2 3:1 1 1 -2 0':1 -1 -1 2 1':1 1 -1 2 2':1 -1 1 2 3':1 1 1 2",
-                          "prism<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=-1, type_upgrade<Scalar>=-$_[1], { no_coordinates => undef, no_labels => 0})");
+                          "prism<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=-1, type_upgrade<Scalar>=-$_[1], {group => 0, no_coordinates => undef, no_labels => 0})");
 } }
 
 // Local Variables:

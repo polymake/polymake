@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -53,7 +53,8 @@ UserFunction4perl("# @category Geometry"
                   "# Computes the minimal angle between two vertices of the input polytope //P//."
                   "# @param Polytope P"
                   "# @return Float"
-                  "# @example > print minimal_vertex_angle(simplex(3));"
+                  "# @example"
+                  "# > print minimal_vertex_angle(simplex(3));"
                   "# | 3.14159265358979",
                   &minimal_vertex_angle,"minimal_vertex_angle");
 } }

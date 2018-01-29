@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -33,7 +33,7 @@ label azove
 
 rule azove.points01: N_01POINTS : CONE_AMBIENT_DIM, FACETS | INEQUALITIES, AFFINE_HULL | EQUATIONS {
    my $dim = $this->CONE_AMBIENT_DIM-1;
-   my $ineqs = eliminate_denominators_in_rows($this->FACETS|INEQUALITIES);
+   my $ineqs = eliminate_denominators_in_rows($this->give("FACETS | INEQUALITIES"));
    if (defined (my $AFFINE_HULL=$this->lookup("AFFINE_HULL | EQUATIONS"))) {
      my $eqs = eliminate_denominators_in_rows($AFFINE_HULL);
      $ineqs /= $eqs / (-$eqs);

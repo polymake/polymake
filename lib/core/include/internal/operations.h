@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -1634,6 +1634,23 @@ template <template <typename,typename,typename> class Masquerade, typename Secon
 struct unary_op_builder<operations::masquerade3<Masquerade,Second,Third>, Iterator, Reference>
   : empty_op_builder< operations::reinterpret_impl<Reference, typename masquerade3<Masquerade,Reference,Second,Third>::type> > {};
 
+template <typename Iterator>
+inline
+Iterator&& enforce_movable_values(Iterator&& it,
+                                  typename std::enable_if<!std::is_lvalue_reference<typename iterator_traits<Iterator>::reference>::value>::type** = nullptr)
+{
+   return std::forward<Iterator>(it);
+}
+
+template <typename Iterator>
+inline
+unary_transform_iterator<pointer2iterator_t<Iterator>, BuildUnary<operations::move>>
+enforce_movable_values(Iterator&& it,
+                       typename std::enable_if<std::is_lvalue_reference<typename iterator_traits<Iterator>::reference>::value>::type** = nullptr)
+{
+   return pointer2iterator(std::forward<Iterator>(it));
+}
+
 } // end namespace pm
 
 namespace polymake {
@@ -1642,6 +1659,7 @@ namespace polymake {
    using pm::accumulate;
    using pm::accumulate_in;
    using pm::average;
+   using pm::enforce_movable_values;
 
    namespace operations {
       typedef BuildUnary<pm::operations::neg> neg;

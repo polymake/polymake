@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,9 +20,10 @@
 
 #include <nauty.h>
 #include <naututil.h>
+#include <memory>
 
 namespace {
-inline nauty_set* graph_row(nauty_graph *g, int v, int m) { return GRAPHROW(g,v,m); }
+inline nauty_set* graph_row(nauty_graph* g, int v, int m) { return GRAPHROW(g,v,m); }
 }
 
 #undef GRAPHROW
@@ -36,14 +37,15 @@ namespace polymake { namespace graph {
 namespace {
 
 DEFAULTOPTIONS_GRAPH(default_options);
-GraphIso *in_processing=0;
+// TODO: thread_local
+GraphIso* in_processing=nullptr;
 
 }
 
 struct GraphIso::impl {
    int n, m, n_colored, is_second;
-   nauty_graph *src_graph, *canon_graph;
-   int *orbits, *canon_labels, *partitions;
+   std::unique_ptr<nauty_graph[]> src_graph, canon_graph;
+   std::unique_ptr<int[]> orbits, canon_labels, partitions;
    optionblk options;
 
    explicit impl(int n_arg)
@@ -51,28 +53,14 @@ struct GraphIso::impl {
       , m((n + WORDSIZE - 1) / WORDSIZE)
       , n_colored(0)
       , is_second(0)
-      , src_graph(0)
-      , canon_graph(0)
-      , orbits(0)
-      , canon_labels(0)
-      , partitions(0)
+      , src_graph(std::make_unique<nauty_graph[]>(n*m))
+      , canon_graph(std::make_unique<nauty_graph[]>(n*m))
+      , orbits(std::make_unique<int[]>(n))
+      , canon_labels(std::make_unique<int[]>(n))
+      , partitions(std::make_unique<int[]>(n))
    {
-      src_graph=new nauty_graph[n*m];
-      EMPTYSET(src_graph,n*m);
-      canon_graph=new nauty_graph[n*m];
-      orbits=new int[n];
-      canon_labels=new int[n];
-      partitions=new int[n];
+      EMPTYSET(src_graph.get(), n*m);
       options=default_options;
-   }
-
-   ~impl()
-   {
-      delete[] partitions;
-      delete[] canon_labels;
-      delete[] orbits;
-      delete[] canon_graph;
-      delete[] src_graph;
    }
 
    static void store_autom(int n_autom, nauty_permutation *perm, int*, int, int, int n)
@@ -95,15 +83,15 @@ GraphIso::~GraphIso() { delete p_impl; }
 
 void GraphIso::add_edge(int from, int to)
 {
-   nauty_set *gv=graph_row(p_impl->src_graph, from, p_impl->m);
+   nauty_set* gv=graph_row(p_impl->src_graph.get(), from, p_impl->m);
    ADDELEMENT(gv, to);
 }
 
 void GraphIso::partition(int at)
 {
    p_impl->options.defaultptn=false;
-   std::fill(p_impl->partitions, p_impl->partitions+p_impl->n-1, 1);
-   copy_range(entire(sequence(0,p_impl->n)), p_impl->canon_labels);
+   std::fill(p_impl->partitions.get(), p_impl->partitions.get()+p_impl->n-1, 1);
+   copy_range(entire(sequence(0, p_impl->n)), p_impl->canon_labels.get());
    p_impl->partitions[at-1]=0;
    p_impl->partitions[p_impl->n-1]=0;
 }
@@ -112,20 +100,20 @@ void GraphIso::finalize(bool gather_automorphisms)
 {
    statsblk stats;
    const int worksize=100*1024*1024;    // 100MB
-   nauty_set *workspace=new nauty_set[worksize];
+   nauty_set* workspace=new nauty_set[worksize];
    if (gather_automorphisms) {
       p_impl->options.userautomproc=&impl::store_autom;
       in_processing=this;
    }
-   nauty(p_impl->src_graph, p_impl->canon_labels, p_impl->partitions, 0, p_impl->orbits,
-         &p_impl->options, &stats, workspace, worksize, p_impl->m, p_impl->n, p_impl->canon_graph);
+   nauty(p_impl->src_graph.get(), p_impl->canon_labels.get(), p_impl->partitions.get(), 0, p_impl->orbits.get(),
+         &p_impl->options, &stats, workspace, worksize, p_impl->m, p_impl->n, p_impl->canon_graph.get());
    delete[] workspace;
 }
 
 bool GraphIso::operator== (const GraphIso& g2) const
 {
    if (p_impl->n != g2.p_impl->n) return false;
-   nauty_set *cg1=p_impl->canon_graph, *cg1_end=cg1+p_impl->n*p_impl->m, *cg2=g2.p_impl->canon_graph;
+   nauty_set *cg1=p_impl->canon_graph.get(), *cg1_end=cg1+p_impl->n*p_impl->m, *cg2=g2.p_impl->canon_graph.get();
    return std::equal(cg1, cg1_end, cg2);
 }
 
@@ -136,13 +124,13 @@ Array<int> GraphIso::find_permutation(const GraphIso& g2) const
 
    Array<int> perm(p_impl->n);
    auto dst=perm.begin();
-   for (int *lab1=p_impl->canon_labels, *lab1_end=lab1+p_impl->n, *lab2=g2.p_impl->canon_labels;
-        lab1<lab1_end; ++lab1, ++lab2)
+   for (int *lab1=p_impl->canon_labels.get(), *lab1_end=lab1+p_impl->n, *lab2=g2.p_impl->canon_labels.get();
+        lab1 != lab1_end; ++lab1, ++lab2)
       dst[*lab2]=*lab1;
    return perm;
 }
 
-std::pair< Array<int>, Array<int> >
+std::pair<Array<int>, Array<int>>
 GraphIso::find_permutations(const GraphIso& g2, int n_cols) const
 {
    if (*this != g2)
@@ -151,12 +139,12 @@ GraphIso::find_permutations(const GraphIso& g2, int n_cols) const
    Array<int> row_perm(p_impl->n-n_cols), col_perm(n_cols);
 
    auto dst=col_perm.begin();
-   int *lab1=p_impl->canon_labels, *lab1_end=lab1+n_cols, *lab2=g2.p_impl->canon_labels;
-   for (; lab1<lab1_end; ++lab1, ++lab2)
+   int *lab1=p_impl->canon_labels.get(), *lab1_end=lab1+n_cols, *lab2=g2.p_impl->canon_labels.get();
+   for (; lab1 != lab1_end; ++lab1, ++lab2)
       dst[*lab2]=*lab1;
 
    dst=row_perm.begin();
-   lab1_end=p_impl->canon_labels+p_impl->n;
+   lab1_end=p_impl->canon_labels.get()+p_impl->n;
    for (; lab1<lab1_end; ++lab1, ++lab2)
       dst[*lab2-n_cols]=*lab1-n_cols;
 
@@ -166,7 +154,7 @@ GraphIso::find_permutations(const GraphIso& g2, int n_cols) const
 void GraphIso::next_color(std::pair<int, int>& c)
 {
    c.second=p_impl->n_colored;
-   std::fill(p_impl->partitions+p_impl->n_colored, p_impl->partitions+p_impl->n_colored+c.first-1, 1);
+   std::fill(p_impl->partitions.get()+p_impl->n_colored, p_impl->partitions.get()+p_impl->n_colored+c.first-1, 1);
    p_impl->partitions[p_impl->n_colored+c.first-1]=0;
    p_impl->n_colored += c.first;
 }
@@ -174,7 +162,7 @@ void GraphIso::next_color(std::pair<int, int>& c)
 void GraphIso::copy_colors(const GraphIso& g1)
 {
    p_impl->options.defaultptn=g1.p_impl->options.defaultptn;
-   std::copy(g1.p_impl->partitions, g1.p_impl->partitions+g1.p_impl->n, p_impl->partitions);
+   std::copy(g1.p_impl->partitions.get(), g1.p_impl->partitions.get()+g1.p_impl->n, p_impl->partitions.get());
    p_impl->is_second=-1;
 }
 
@@ -185,13 +173,13 @@ void GraphIso::set_node_color(int i, std::pair<int, int>& c)
 
 Array<int> GraphIso::canonical_perm() const
 {
-   Array<int> perm(p_impl->n, p_impl->canon_labels);
+   Array<int> perm(p_impl->n, p_impl->canon_labels.get());
    return perm;
 }
 
 long GraphIso::hash(long key) const
 {
-   return hashgraph(p_impl->canon_graph, p_impl->m, p_impl->n, key);
+   return hashgraph(p_impl->canon_graph.get(), p_impl->m, p_impl->n, key);
 }
 
 } }

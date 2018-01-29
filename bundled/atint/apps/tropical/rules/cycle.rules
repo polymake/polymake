@@ -204,7 +204,7 @@ object Cycle {
 	}
 
 	rule WEIGHT_CONE : WEIGHT_SYSTEM, N_MAXIMAL_POLYTOPES {
-		$this->WEIGHT_CONE = weight_cone($this, (new Set<Int>()) );
+		$this->WEIGHT_CONE = weight_cone($this, new Set<Int>);
 	}
 
 	rule IS_IRREDUCIBLE : WEIGHT_SPACE, WEIGHTS {

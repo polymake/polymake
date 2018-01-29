@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -67,7 +67,8 @@ declare property_type Set<Element=Int> : c++ (include => "polymake/Set.h", opera
 #		-1 	if s1 &sub; s2,
 #		1	if s1 &sup; s2,
 #		2	otherwise.
-# @example > $s1 = new Set(1,2,3);
+# @example
+# > $s1 = new Set(1,2,3);
 # > $s2 = $s1 - 1;
 # > print incl($s1, $s2);
 # | 1
@@ -86,7 +87,8 @@ user_function incl(Set,Set) : c++ (include => "polymake/Set.h");
 # @param Int a minimal element of the set
 # @param Int b maximal element of the set
 # @return Set<Int>
-# @example > print range(23,27);
+# @example
+# > print range(23,27);
 # | {23 24 25 26 27}
 
 user_function range(Int,Int) : c++ (include => "polymake/Set.h") {
@@ -100,7 +102,8 @@ user_function range(Int,Int) : c++ (include => "polymake/Set.h") {
 # @param Int a the smallest element
 # @param Int c the cardinality
 # @return Set<Int>
-# @example > print sequence(23,6);
+# @example
+# > print sequence(23,6);
 # | {23 24 25 26 27 28}
 
 user_function sequence(Int,Int) : c++ (include => "polymake/Set.h") {
@@ -114,7 +117,8 @@ user_function sequence(Int,Int) : c++ (include => "polymake/Set.h") {
 # @param Set s
 # @param Set<Int> indices
 # @return Set
-# @example > $s = new Set<Int>(23,42,666,789);
+# @example
+# > $s = new Set<Int>(23,42,666,789);
 # > $ind = new Set<Int>(0,2);
 # > $su = select_subset($s,$ind);
 # > print $su;
@@ -126,7 +130,8 @@ user_function select_subset(*:wary:anchor,*) : c++ (name => 'select', include =>
 # Returns the singleton set {//s//}.
 # @param SCALAR s
 # @return Set<SCALAR>
-# @example > print scalar2set(23);
+# @example
+# > print scalar2set(23);
 # | {23}
 
 user_function scalar2set(*) : c++ (name => 'pm::scalarcopy2set', include => "polymake/Set.h");
@@ -260,8 +265,8 @@ declare property_type FacetList : c++ (include => "polymake/FacetList.h") {
 # Visit the facets of //f// sorted lexicographically.
 # @param FacetList f
 # @return PowerSet<Int>
-# @example [application polytope]
-# > $f = new FacetList(cube(2)->VERTICES_IN_FACETS);
+# @example
+# > $f = new FacetList(polytope::cube(2)->VERTICES_IN_FACETS);
 # > print lex_ordered($f);
 # | {{0 1} {0 2} {1 3} {2 3}}
 

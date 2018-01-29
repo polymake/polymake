@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -34,7 +34,7 @@ object PermutationAction {
 
 
    rule initial : {
-      my $g=$this->lookup("GENERATORS");
+      my $g=$this->GENERATORS;
       my $length=$g->size && $g->[0]->size;
       foreach (@$g) {
          if ($_->size != $length) {
@@ -75,7 +75,7 @@ object PermutationAction {
    }
 
    rule CHARACTER : CONJUGACY_CLASS_REPRESENTATIVES {
-       $this->CHARACTER = new Array<Int>(map { n_fixed_points($_) } @{$this->CONJUGACY_CLASS_REPRESENTATIVES});
+       $this->CHARACTER = new Array<QuadraticExtension>(map { n_fixed_points($_) } @{$this->CONJUGACY_CLASS_REPRESENTATIVES});
    }
    precondition : !exists(EXPLICIT_ORBIT_REPRESENTATIVES);
 
@@ -85,6 +85,12 @@ object PermutationAction {
 
    rule CONJUGACY_CLASSES : GENERATORS, CONJUGACY_CLASS_REPRESENTATIVES {
       $this->CONJUGACY_CLASSES(temporary) = conjugacy_classes($this->GENERATORS, $this->CONJUGACY_CLASS_REPRESENTATIVES);
+   }
+
+   rule CONJUGACY_CLASSES, CONJUGACY_CLASS_REPRESENTATIVES : GENERATORS {
+       my $pair = conjugacy_classes_and_reps($this->GENERATORS);
+       $this->CONJUGACY_CLASSES = $pair->first;
+       $this->CONJUGACY_CLASS_REPRESENTATIVES = $pair->second;
    }
 
    rule ORBITS : GENERATORS {
@@ -121,16 +127,215 @@ object PermutationAction {
 
 }
 
+object MatrixActionOnVectors {
+
+    # @category Symmetry
+    # orbits of vectors under a matrix group
+    property VECTORS_ORBITS : Array<Set<Int>>;
+
+    rule CONJUGACY_CLASSES : GENERATORS, CONJUGACY_CLASS_REPRESENTATIVES {
+        $this->CONJUGACY_CLASSES = conjugacy_classes($this->GENERATORS, $this->CONJUGACY_CLASS_REPRESENTATIVES);
+    }
+
+    rule CONJUGACY_CLASSES, CONJUGACY_CLASS_REPRESENTATIVES : GENERATORS {
+        my $pair = conjugacy_classes_and_reps($this->GENERATORS);
+        $this->CONJUGACY_CLASSES = $pair->first;
+        $this->CONJUGACY_CLASS_REPRESENTATIVES = $pair->second;
+    }
+
+   rule CHARACTER : CONJUGACY_CLASS_REPRESENTATIVES {
+       $this->CHARACTER = new Array<QuadraticExtension>(map { trace($_) } @{$this->CONJUGACY_CLASS_REPRESENTATIVES});
+   }
+   precondition : !exists(EXPLICIT_ORBIT_REPRESENTATIVES);
+}
+
+object Group {
+    
+    rule REGULAR_REPRESENTATION : PERMUTATION_ACTION.GENERATORS {
+        $this->REGULAR_REPRESENTATION = regular_representation($this->PERMUTATION_ACTION);
+    }
+    
+}
+
+# @category Symmetry
+# Given a permutation action //a// on some indices and an ordered list //domain// of sets containing these indices,
+# we ask for the permutation action induced by //a// on this list of sets.
+# @param PermutationAction a a permutation action that acts on some indices
+# @param Array<Set<Int>> domain a list of sets of indices that //a// should act on
+# @return PermutationActionOnSets
+# @example Consider the symmetry group of the 3-cube acting on vertices, and induce from it the action on the facets:
+# > $a = cube_group(3)->PERMUTATION_ACTION;
+# > $f = new Array<Set>([[0,2,4,6],[1,3,5,7],[0,1,4,5],[2,3,6,7],[0,1,2,3],[4,5,6,7]]);
+# > print $a->GENERATORS;
+# | 1 0 3 2 5 4 7 6
+# | 0 2 1 3 4 6 5 7
+# | 0 1 4 5 2 3 6 7
+# > print induced_action($a,$f)->GENERATORS;
+# | 1 0 2 3 4 5
+# | 2 3 0 1 4 5
+# | 0 1 4 5 2 3
+# @example To see what the permutation [0,2,1] induces on the array [{0,1},{0,2}], do the following:
+# > $a = new Array<Set<Int>>(2);
+# > $a->[0] = new Set<Int>(0,1);
+# > $a->[1] = new Set<Int>(0,2);
+# > $p = new PermutationAction(GENERATORS=>[[0,2,1]]);
+# > print induced_action($p,$a)->properties;
+# | type: PermutationActionOnSets
+# |
+# | GENERATORS
+# | 1 0
 user_function induced_action(PermutationAction, Array<Set<Int>>) {
     my ($action, $domain) = @_;
     my $iod = index_of($domain);
     my $ia = new PermutationActionOnSets;
     map {
-        if (defined($action->$_)) {
-            $ia->$_ = induced_representation_gens($action->$_, $domain, $iod);
+        if (defined($action->lookup($_))) {
+            $ia->$_ = induced_permutations($action->$_, $domain, $iod);
         }
     } ('GENERATORS', 'CONJUGACY_CLASS_REPRESENTATIVES');
     return $ia;
+}
+
+function nonhomog_container_orbit($$) {
+    my ($gens, $elem) = @_;
+    return orbit<on_nonhomog_container>($gens, $elem);
+}
+
+function homog_container_orbit($$) {
+    my ($gens, $elem) = @_;
+    return orbit<on_container>($gens, $elem);
+}
+
+# @category Symmetry
+# Given a group //g//, a permutation action //a// on some indices and an index //i//,
+# regard //a// as acting on the unit basis vectors of the ambient space, 
+# and return the projections of the unit basis vectors to the //i//-th isotypic component //C_i//
+# expressed in a basis of //C_i//.
+# @param Group g a group with a permutation action that acts on some indices
+# @param Int i the index of the desired isotypic component
+# @option Action a the action by which //g// acts. By default, this is the PERMUTATION_ACTION.
+# @option Bool affine prepend a column of ones to the vectors? Default 0
+# @return polytope::VectorConfiguration<QuadraticExtension>
+# @example [application polytope] Consider the symmetry group of the 3-cube acting on vertices, and calculate the vector configuration
+# corresponding to the isotypic component number 8, which has dimension 3 and multiplicity 1:
+# > $g = group::cube_group(3);
+# > print group::isotypic_configuration($g,8)->VECTORS;
+# | 0 0 1
+# | 0 1 0
+# | 1 0 0
+# | -1 -1 -1
+# | -1 -1 -1
+# | 1 0 0
+# | 0 1 0
+# | 0 0 1
+# To get the configuration as POINTS, ask for affine=>1: 
+# > print group::isotypic_configuration($g,8,affine=>1)->POINTS;
+# | 1 0 0 1
+# | 1 0 1 0
+# | 1 1 0 0
+# | 1 -1 -1 -1
+# | 1 -1 -1 -1
+# | 1 1 0 0
+# | 1 0 1 0
+# | 1 0 0 1
+
+user_function isotypic_configuration(Group, $; $='undef', { affine=>0 }) {
+    my ($g, $i, $a, $options) = @_;
+    if ($a eq 'undef') {
+        $a = $g->PERMUTATION_ACTION;
+    }
+    my $v = solve_left(isotypic_basis    ($g, $a, $i, permute_to_orbit_order=>0),
+                       isotypic_projector($g, $a, $i, permute_to_orbit_order=>0));
+    if ( $options->{'affine'} ) {
+        my $o = ones_vector<QuadraticExtension>($v->rows());
+        return new polytope::PointConfiguration<QuadraticExtension>(POINTS=>($o|$v),
+                                                                    GROUP=>Polymake::Core::Object::new_copy($g->type, $g));
+    }
+    return new polytope::VectorConfiguration<QuadraticExtension>(VECTORS=>$v,
+                                                                 GROUP=>Polymake::Core::Object::new_copy($g->type, $g));
+}
+
+                                             
+# @category Symmetry
+# Given a matrix action //a// of a group //G// on some //n//-dimensional vector space and a total degree //d//,
+# calculate the //G//-invariant polynomials of total degree 0 &lt; //deg// &le; //d// in //n// variables.
+# This is done by calculating the //a//-orbit of all monomials of total degree at most //d//.
+# By a theorem of Noether, for //d// = the order of //G// the output is guaranteed to generate the entire ring of //G//-invariant polynomials.
+# No effort is made to calculate a basis of the ideal generated by these invariants. 
+# @param MatrixActionOnVectors a the matrix action
+# @param Int d the maximal degree of the sought invariants
+# @option Bool action_is_affine is the action //a// affine, ie., ignore the first row and column of the generating matrices? Default yes
+# @example [application polytope] To calculate the invariants of degree at most six of the matrix action of the symmetry group of the 3-cube, type
+# > $c = cube(3, group=>1);
+# > print join "\n", @{group::invariant_polynomials($c->GROUP->MATRIX_ACTION, 6)};
+# | x_0^2 + x_1^2 + x_2^2
+# | x_0^2*x_1^2 + x_0^2*x_2^2 + x_1^2*x_2^2
+# | x_0^2*x_1^2*x_2^2
+# | x_0^4 + x_1^4 + x_2^4
+# | x_0^4*x_1^2 + x_0^4*x_2^2 + x_0^2*x_1^4 + x_0^2*x_2^4 + x_1^4*x_2^2 + x_1^2*x_2^4
+# | x_0^6 + x_1^6 + x_2^6
+
+user_function invariant_polynomials<Scalar>(MatrixActionOnVectors<Scalar>, $, { action_is_affine => 1 }) {
+    my ($a, $d, $options) = @_;
+    my $n = $a->GENERATORS->[0]->rows();
+
+    my $is_affine = $options->{action_is_affine};
+    if ($is_affine) {
+        $n--;
+    }
+    
+    my $zero = new Scalar(0);
+    my $one  = new Scalar(1);
+    my $zero_poly = new Polynomial<Scalar>($zero, zero_vector<Int>($n));
+    my $one_poly  = new Polynomial<Scalar>($one,  zero_vector<Int>($n));
+
+    # turn the matrices in G into matrices of constant polynomials; take is_affine into account
+    my @G_as_poly;
+    foreach my $g(@{$a->ALL_GROUP_ELEMENTS}) {
+        my $m = new Matrix<Polynomial<Scalar>>($n, $n);
+        foreach my $i(0..$n-1) {
+            foreach my $j(0..$n-1) {
+                $m->elem($i,$j) = $is_affine
+                    ? $g->elem($i+1,$j+1) * $one_poly
+                    : $g->elem($i,  $j)   * $one_poly;
+            }
+        }
+        push @G_as_poly, $m;
+    }
+
+    # make a vector of monomials (x_0, x_1, ..., x_{n-1})
+    my @a_monoms;
+    foreach(0..$n-1) {
+        push @a_monoms, new Polynomial<Scalar>($one, unit_vector<Int>($n, $_));
+    }
+    my $v_monoms = new Vector<Polynomial<Scalar>>(\@a_monoms);
+
+    # generate the exponent vectors of monomials of degree at most $d
+    my $deg_ineq = new Vector(-ones_vector($n+1));
+    $deg_ineq->[0] = $d;
+    my $exponents = new Matrix<Int>(new polytope::Polytope(INEQUALITIES=>(unit_matrix($n+1)/$deg_ineq))->LATTICE_POINTS->minor(All, ~[0]));
+
+    # now generate the invariants
+    my $invariants = new Set<Polynomial<Scalar>>;
+    foreach my $alpha(@{$exponents}) {
+        # for each monomial x^alpha we implement inv_alpha = sum_{g in G} (g.x0)^alpha_0 ... (g.x_{n-1})^alpha_{n-1}
+        my $inv_alpha = $zero_poly;
+        foreach my $g(@G_as_poly) {
+            my $img_of_monoms = $g * $v_monoms;
+            my $new_monom = $one_poly;
+            foreach my $i (0..$n-1) {
+                if ($alpha->[$i] > 0) {
+                    $new_monom *= ($img_of_monoms->[$i])^(int($alpha->[$i])); # omitting the int() miscompiles on gcc 5.3.0
+                }
+            }
+            $inv_alpha += $new_monom;
+        }
+        if ($inv_alpha != $zero_poly && $inv_alpha->deg() > 0) { # don't remember constants or constant coefficients
+            $inv_alpha -= $inv_alpha->constant_coefficient();
+            $invariants += $inv_alpha / $inv_alpha->lc();
+        }
+    }
+    return $invariants;
 }
 
 

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,18 +14,23 @@
 #-------------------------------------------------------------------------------
 
 # @topic application
-# The application group provides basic functionality for working with
-# permutation groups. An object of type [[Group]] records the abstract
-# properties of the groups that do not depend on any particular
-# representation, such as ([[Group::ORDER|ORDER]],
+# The application group provides basic functionality for working with permutation groups. 
+#
+# An object of type [[Group]] records the abstract properties of the groups 
+# that do not depend on any particular representation, such as [[Group::ORDER|ORDER]],
 # [[Group::CHARACTER_TABLE|CHARACTER_TABLE]] and [[Group::CONJUGACY_CLASS_SIZES|CONJUGACY_CLASS_SIZES]].
-# Moreover, it can contain several subobjects of type [[group::PermutationAction]], [[group::PermutationActionOnSets]] 
-# or [[group::ImplicitActionOnSets]] that encode representations of the group. (We use the terms //action//
-# and //representation// interchangeably). If the group object is not contained inside a [[polytope::Cone]] or 
-# [[polytope::Cone]], the representation in question is encoded as a [[Group::PERMUTATION_ACTION]], [[Group::SET_ACTION]] or 
+#
+# Moreover, it can contain several subobjects of type [[PermutationAction]], [[PermutationActionOnSets]] 
+# or [[ImplicitActionOnSets]] that encode representations of the group. (We use the terms //action//
+# and //representation// interchangeably). 
+#
+# If the group object is not contained inside a [[polytope::Cone]] or [[polytope::Polytope]],
+# the representation in question is encoded as a [[Group::PERMUTATION_ACTION]], [[Group::SET_ACTION]] or 
 # [[Group::IMPLICIT_SET_ACTION]], otherwise it may be encoded more specifically as a RAY_ACTION, FACET_ACTION,
-# COORDINATE_ACTION, etc. Different representations of the same group are convertible
-# among each other either via specific rules, or by using the function [[group::induced_action]], for example.
+# COORDINATE_ACTION, etc. 
+#
+# Different representations of the same group are convertible among each other either via specific rules, 
+# or by using the function [[induced_action]], for example.
 
 IMPORT
   common
@@ -39,12 +44,17 @@ HELP
 declare object Group;
 
 # parametrized object used for encoding group actions (representations).
-# //GeneratorType// is Array<Int> for permutation groups,
-#                   or Matrix<Scalar> for matrix groups.
-# //DomainType// is Int for permutation groups,
-#                   Vector<Scalar> for matrix groups acting on facets or vertices,
-#                   Set<Int> or Bitset for groups acting on simplices
+#
+# //GeneratorType// is Array<Int>      for permutation groups,
+#                   or Matrix<Scalar>  for matrix groups.
+#
+# //DomainType// is Int                for permutation groups,
+#                   Vector<Scalar>     for matrix groups acting on facets or vertices,
+#                   Set<Int> or Bitset for groups acting on simplices,
+#                   IncidenceMatrix    for groups acting on (maximal) cones of a fan
+#
 # //OrbitGeneratorScalarType// is the type of the entries of vectors that generate a geometric orbit; default Rational
+#
 declare object Action<GeneratorType, DomainType, OrbitGeneratorScalarType=Rational>;
 
 # derived objects for permutation representations
@@ -58,9 +68,10 @@ declare object PermutationActionOnSets : PermutationAction<Set<Int>>;
 declare object ImplicitActionOnSets : PermutationAction<Bitset>;
 
 # derived object for matrix groups
-declare object MatrixGroupActionOnVectors<Scalar> : Action<Matrix<Scalar>, Vector<Scalar>, Scalar>;
+declare object MatrixActionOnVectors<Scalar=Rational> : Action<Matrix<Scalar>, Vector<Scalar>, Scalar>;
 
-
+# object for encoding the separate actions of a group on a collection of sets, induced by the same generators
+declare object LayeredPermutationAction<DomainType=IncidenceMatrix>;
 
 # A template parameter used by [[action]] and [[orbit]] specifying that
 # the permutation acts on the given container. It will permute the order of
@@ -91,9 +102,10 @@ declare property_type on_cols: c++ (special => 'on_cols', include => "polymake/g
 declare property_type on_nonhomog_cols: c++ (special => 'on_nonhomog_cols', include => "polymake/group/orbit.h");
 
 INCLUDE
-  action_properties.rules
-  action.rules
   group_properties.rules
+  action_properties.rules
+  action_functions
+  action.rules
   group.rules
   permlib.rules
   group_helpers.rules

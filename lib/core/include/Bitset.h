@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -294,6 +294,12 @@ public:
    {
       if (n > rep[0]._mp_alloc * iterator::bits_per_limb)
          mpz_realloc2(rep, n);
+   }
+
+   /// Synonym for reserve, for compatibility with other set classes+}
+   void resize(int n)
+   {
+      reserve(n);
    }
 
    /// Make the set empty.

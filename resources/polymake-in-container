@@ -1,0 +1,161 @@
+#!/bin/bash
+
+# this script starts polymake in a docker container
+
+: ${POLYMAKE_USER_DIR:=$HOME/.polymake}
+declare run_docker=docker
+declare -a mount_list env_list
+
+# read in the configuration, provide the defaults if it does not exist yet
+if [ ! -f $POLYMAKE_USER_DIR/container.config ]; then
+cat <<'EOF' >$POLYMAKE_USER_DIR/container.config
+# this is the user's custom configuration for the script polymake-in-container
+
+# public image for the container
+declare -r image_name=polymake/nightly
+declare -r image_tag=latest
+
+# after how many days should a new image be pulled from DockerHub
+# please leave the dash before the number or replace with +0
+# to disable automatic pulling altogether
+declare -r pull_cadence=-7
+
+# assume the current user identity
+declare -r userid=$(id -u)
+declare -r groupid=$(id -g)
+
+# size of temporary in-memory file system for the container
+# change this only if some programs started by polymake complain about lacking space there
+# polymake itself will place all temporary files in $POLYMAKE_USER_DIR/tmp
+declare -r tmpsize=250m
+
+# add file systems to be mounted within the container
+# your HOME, POLYMAKE_USER_DIR, and the current working directory are always mounted,
+# don't put them here
+## mount_list+=(-v <PATH>:<PATH>)
+
+# add environment variables tp be passed to the container
+# HOME, USER, and POLYMAKE_USER_DIR are always passed, don't put them here
+## env_list+=(-e <VARNAME>=<VSLUE>)
+
+# uncomment this if you want to run docker using sudo
+# by default, the script assumes that you belong to the group docker or other group
+# entitled to run docker directly.
+## run_docker="sudo docker"
+
+EOF
+fi
+
+. $POLYMAKE_USER_DIR/container.config
+
+
+# always mount HOME and the current directory under identical paths in the container
+
+mount_list+=(-v "${HOME}:${HOME}")
+env_list+=(-e "HOME=$HOME" -e "USER=$USER")
+
+case "$POLYMAKE_USER_DIR" in $HOME/*)
+  ;;
+*)
+  mount_list+=(-v "${POLYMAKE_USER_DIR}:${POLYMAKE_USER_DIR}")
+  ;;
+esac
+env_list+=(-e "POLYMAKE_USER_DIR=$POLYMAKE_USER_DIR")
+
+declare -r POLYMAKE_RESOURCE_DIR=$POLYMAKE_USER_DIR/resources
+env_list+=(-e "POLYMAKE_RESOURCE_DIR=$POLYMAKE_RESOURCE_DIR")
+
+declare -r serversocket=$POLYMAKE_RESOURCE_DIR/host-agent/.socket
+declare -r serverpid=$POLYMAKE_RESOURCE_DIR/host-agent/pid
+
+env_list+=(-e POLYMAKE_HOST_AGENT=$serversocket)
+env_list+=(-e TMPDIR=$POLYMAKE_USER_DIR/tmp)
+
+case "$PWD" in $HOME/*|$POLYMAKE_USER_DIR/*)
+  ;;
+*)
+  mount_list+=(-v "${PWD}:${PWD}")
+  ;;
+esac
+
+declare -r runopts="--rm=true --read-only --tmpfs /tmp:rw,exec,nosuid,size=$tmpsize --tmpfs /run:rw,noexec,nosuid,size=8m"
+
+rm -rf $POLYMAKE_USER_DIR/tmp
+mkdir -p $POLYMAKE_RESOURCE_DIR $POLYMAKE_USER_DIR/tmp
+
+declare -r serverfile=$POLYMAKE_RESOURCE_DIR/host-agent/server.pl
+declare -r serverfile_ok=`find $POLYMAKE_RESOURCE_DIR -name server.pl -mtime $pull_cadence`
+
+declare server_is_alive="n"
+if [ -f $serverpid -a -S $serversocket ] && kill -0 `cat $serverpid`; then
+  server_is_alive="y"
+fi
+
+declare new_images="n"
+declare copy_resources="n"
+declare update_script="n"
+
+function pull_image() {
+  $run_docker pull "$1" | perl -p -e 'BEGIN { $s=-1; $|=1; } if (/Status: Image is up to date/) { $s=1; } elsif (/Status: Downloaded newer image/) { $s=0; } END { exit($s); }'
+}
+
+declare -r thirdparty_name=polymake/thirdparty
+
+if [ "$serverfile_ok" != $serverfile ]; then
+  if pull_image ${image_name}:${image_tag}; then
+    # retrieved newer image
+    new_images="y"
+    copy_resources="y"
+    rm -rf $POLYMAKE_RESOURCE_DIR/*
+  elif [ ! -f $serverfile ]; then
+    copy_resources="y"
+  fi
+fi
+
+declare -r thirdparty_tag=$($run_docker inspect -f '{{(index .Config.Labels "thirdparty.tag")}}' $($run_docker image ls -q ${image_name}:${image_tag}))
+
+if [ $new_images = "y" ]; then
+  if pull_image ${thirdparty_name}:${thirdparty_tag}; then
+    old_vol=$($run_docker ps -af 'label=polymake.thirdparty-vol' --format={{.Names}})
+    if [ -n "old_vol" ]; then
+      $run_docker rm -v $old_vol
+    fi
+  fi
+  $run_docker image prune -f
+fi
+
+thirdparty_vol=$($run_docker ps -af ancestor=${thirdparty_name}:${thirdparty_tag} --format={{.Names}})
+if [ -z "${thirdparty_vol}" ]; then
+  thirdparty_vol=thirdparty-vol-${thirdparty_tag}
+  $run_docker create --name $thirdparty_vol --label polymake.thirdparty-vol=true ${thirdparty_name}:${thirdparty_tag}
+fi
+
+$run_docker create --name polymake -ti -u ${userid}:${groupid} $runopts "${mount_list[@]}" "${env_list[@]}" -w "$PWD" \
+                   --volumes-from=${thirdparty_vol}:ro \
+                   ${image_name}:${image_tag} "$@"
+
+if [ $copy_resources = "y" ]; then
+  $run_docker cp polymake:/usr/local/share/polymake/resources/. $POLYMAKE_RESOURCE_DIR/
+  if [ $POLYMAKE_RESOURCE_DIR/polymake-in-container -nt $0 ] && ! cmp -s $POLYMAKE_RESOURCE_DIR/polymake-in-container $0; then
+    if [ -w $0 ]; then
+      echo "replacing $0 with a newer version"
+      # can't overwrite the existing file because bash is still reading from it
+      rm $0
+      cp -p $POLYMAKE_RESOURCE_DIR/polymake-in-container $0
+    else
+      echo "WARNING:"
+      echo "A newer version of script polymake-in-container is available at $POLYMAKE_RESOURCE_DIR/polymake-in-container."
+      echo "However, $0 is write-protected, can't update it automatically."
+    fi
+  fi
+  if [ $server_is_alive = "y" ]; then
+    kill -TERM `cat $serverpid`
+    server_is_alive=n
+  fi
+fi
+
+if [ "$server_is_alive" = "n" ]; then
+  perl $serverfile $serversocket
+fi
+
+$run_docker start -i -a polymake

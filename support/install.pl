@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,90 +14,300 @@
 #-------------------------------------------------------------------------------
 
 use strict;
-use vars qw( $makedir $usage $strip $exclude_re
-             $translate_re $translate_back_re $copylink_re @conflict
-             $Unlink $modemask $group $convert_next
-           );
+use feature 'state';
+use vars qw( $dirmode $group $permmask $root $ext_root $buildroot $config_file %ConfigFlags $buildmode );
 use POSIX qw ( :fcntl_h read write lseek );
+use File::Path;
 use Config;
 
-$usage=<<".";
-usage: $0 [ -m MODE ] [ -g GROUP ] [ -s | -W DIR ]
-          [ -{X,L} pattern ... ] [ -T old:new ] [ -U | -C pattern:{abort|concat|keep|replace} ]
-          SOURCE TARGET
-   or: $0 [ -m MODE ] [ -s ] SOURCE_FILE ... TARGET_DIRECTORY
-   or: $0 
-   or: $0 -d [ -m MODE ] [ -U ] DIRECTORY ...
+use Getopt::Long qw( GetOptions :config require_order no_ignore_case );
+unless (GetOptions( 'root=s' => \$root,
+                    'extroot=s' => \$ext_root,
+                    'buildroot=s' => \$buildroot,
+                    'config=s' => \$config_file,
+                    'mode=s' => \$buildmode,
+                    'group=s' => \$group,
+                    'perms=i' => \$permmask ) &&
+        defined($config_file) &&
+        defined($root) &&
+        defined($buildroot) &&
+        defined($buildmode) &&
+        -f $config_file &&
+        -d $root &&
+        -d "$buildroot/$buildmode" &&
+        (!defined($ext_root) || -d $ext_root)) {
+   die <<".";
+usage: $0 --root PATH --buildroot PATH --config PATH/config.ninja [ --extroot PATH --extconfig PATH/config.ninja ]
+          --buildmode Opt|Debug [ --group GROUP ] [ --perms MASK ] [ shared_module ... ]
 .
-
-sub check {
-   my ($file)=@_;
-   if (-e $file) {
-      if (!-f $file and !-l $file) {
-         warn "$0: $file is neither a regular file nor a symbolic link\n";
-         return 0;
-      }
-   } else {
-      warn "$0: $file does not exist\n";
-      return 0;
-   }
-   1;
 }
 
-sub basename {
-   $_[0]=~m|([^/]+)$|;
-   $1;
+if (defined $group) {
+   my $gid=getgrnam($group)
+     or die "$0: unknown group '$group'\n";
+   $group=$gid;
+}
+
+do "$root/support/install_utils.pl";
+die $@ if $@;
+%ConfigFlags=load_config_file($config_file, $root);
+my @BundledExts= $ConfigFlags{BundledExts} =~ /(\S+)/g;
+
+my @default_exclude_for_copy=qw( \. \.\. \.\#.* .*~ \.git.* \.noexport );
+
+# these variables may be used in sourced extension scripts
+use vars qw($InstallTop $InstallInc $InstallArch $InstallBin $InstallLib $InstallDoc $builddir $ExtTop $ExtArch);
+
+foreach (qw(InstallTop InstallInc InstallArch InstallBin InstallLib InstallDoc)) {
+   no strict 'refs';
+   ${$_}=$ConfigFlags{$_};
+}
+$builddir="$buildroot/$buildmode";
+my $ext_name= $ext_root && basename($ext_root);
+
+my $destdir = $ENV{DESTDIR} // $ConfigFlags{DESTDIR};
+if (length($destdir)) {
+   foreach ($InstallTop, $InstallInc, $InstallArch, $InstallBin, $InstallLib, $InstallDoc) {
+      substr($_,0,0).="$destdir/";
+   }
+}
+
+if (defined $permmask) {
+   if (($permmask & 0700) != 0700) {
+      die "--perms must allow full access to the file owner\n";
+   }
+   umask 0;
+   $dirmode=0777 & $permmask;
+} else {
+   $permmask=0777&~umask;
+}
+
+if (defined $ext_root) {
+   install_extension();
+} else {
+   install_core();
+}
+
+sub install_core {
+   my $perlxpath="perlx/$Config::Config{version}/$Config::Config{archname}";
+
+   make_dir($InstallTop);
+   foreach my $subdir (qw(demo perllib resources scripts xml)) {
+      copy_dir("$root/$subdir", "$InstallTop/$subdir", clean_dir => 1);
+   }
+
+   my $clean_dir=1;
+   foreach my $file (qw(configure.pl.template generate_applib_fake.pl generate_ninja_targets.pl
+                        generate_ninja_targets.pl.template groom_wrappers.pl
+                        guarded_compiler.pl install.pl install.pl.template install_utils.pl rules.ninja)) {
+      copy_file("$root/support/$file", "$InstallTop/support/$file", clean_dir => $clean_dir);
+      $clean_dir=0;
+   }
+
+   make_dir("$InstallTop/apps", clean_dir => 1);
+   make_dir("$InstallTop/bundled", clean_dir => 1);
+
+   foreach my $bundled (glob("$root/bundled/*")) {
+      my $ext_file="$bundled/polymake.ext";
+      copy_file($ext_file, $InstallTop.substr($ext_file, length($root)), clean_dir => 1);
+      if (-d (my $scripts="$root/bundled/scripts")) {
+         copy_dir($scripts, $InstallTop.substr($scripts, length($root)));
+      }
+   }
+
+   foreach my $dir (glob_all_apps("{perllib,rules,scripts}")) {
+      copy_dir($dir, $InstallTop.substr($dir, length($root)), clean_dir => 1);
+   }
+
+   make_dir("$InstallInc/polymake", clean_dir => 1);
+   copy_dir("$root/lib/core/include", "$InstallInc/polymake",
+            exclude => [qw(glue.h Ext.h cout_bridge.h)],
+            wrappers => "$root/include/core-wrappers/polymake"
+           );
+   copy_dir("$root/lib/callable/include", "$InstallInc/polymake");
+   copy_dir("$root/lib/core/skel", "$InstallTop/lib/core/skel", clean_dir => 1);
+
+   foreach my $dir (glob_all_apps("include")) {
+      my ($app_name)= $dir =~ m{/apps/(\w+)/};
+      my $wrappers="$`/include/app-wrappers/polymake/$app_name";
+      copy_dir($dir, "$InstallInc/polymake/$app_name",
+               -e $wrappers ? (wrappers => $wrappers) : ());
+   }
+
+   foreach my $ext_dir ($ConfigFlags{ExternalHeaders} =~ /(\S+)/g) {
+      copy_dir("$root/include/external/$ext_dir/$ext_dir", "$InstallInc/polymake/external/$ext_dir",
+               clean_dir => 1);
+   }
+
+   foreach my $dir (glob_all_apps("src")) {
+      copy_dir($dir, $InstallTop.substr($dir, length($root)),
+               exclude => [ 'perl' ]);
+   }
+
+   make_dir($InstallArch);
+   -d $InstallBin || make_dir($InstallBin);
+   install_bin_scripts();
+
+   copy_file($config_file, "$InstallArch/config.ninja",
+             transform => \&transform_core_config_file);
+
+   make_dir("$InstallArch/bundled", clean_dir => 1);
+   foreach my $bundled (@BundledExts) {
+      make_dir("$InstallArch/bundled/$bundled");
+   }
+
+   -d $InstallLib || make_dir($InstallLib);
+   foreach my $lib_file (@ARGV) {
+      if ($lib_file =~ m{($perlxpath/auto/.*\.$Config::Config{dlext})$}o) {
+         copy_file($lib_file, "$InstallArch/$1", mode => 0555, clean_dir => 1);
+      } elsif (-l $lib_file) {
+         copy_link($lib_file, "$InstallLib/".basename($lib_file));
+      } else {
+         copy_file($lib_file, "$InstallLib/".basename($lib_file), mode => 0555);
+      }
+   }
+
+   make_dir("$InstallArch/lib", clean_dir => 1);
+   foreach my $app_dir (glob("$root/apps/*")) {
+      my $app_mod=basename($app_dir).".$Config::Config{dlext}";
+      copy_file("$builddir/lib/$app_mod", "$InstallArch/lib/$app_mod", mode => 0555);
+   }
+
+   if (-f "$buildroot/doc/index.html") {
+      copy_dir("$buildroot/doc", $InstallDoc, clean_dir => 1);
+   }
+
+   foreach my $bundled (@BundledExts) {
+      if (-f (my $inst_script="$root/bundled/$bundled/support/install.pl")) {
+         do $inst_script;
+         die "installation script $inst_script failed: $@" if $@;
+      }
+   }
+}
+
+sub install_extension {
+   $ExtTop="$InstallTop/ext/$ext_name";
+   copy_file("$ext_root/polymake.ext", "$ExtTop/polymake.ext", clean_dir => 1);
+
+   foreach my $subdir (qw(resources scripts xml)) {
+      if (-d "$ext_root/$subdir") {
+         copy_dir("$ext_root/$subdir", "$ExtTop/$subdir");
+      }
+   }
+
+   make_dir("$ExtTop/apps");
+   foreach my $dir (glob("$ext_root/apps/*/{perllib,rules,scripts}")) {
+      copy_dir($dir, $ExtTop.substr($dir, length($ext_root)));
+   }
+
+   foreach my $dir (glob("$ext_root/apps/*/include")) {
+      my ($app_name)= $dir =~ m{/apps/(\w+)/};
+      my $wrappers="$`/include/app-wrappers/polymake/$app_name";
+      copy_dir($dir, "$ExtTop/include/polymake/$app_name",
+               -e $wrappers ? (wrappers => $wrappers) : ());
+   }
+
+   foreach my $dir (glob("$ext_root/apps/*/src")) {
+      copy_dir($dir, $ExtTop.substr($dir, length($ext_root)),
+               exclude => [ 'perl' ]);
+   }
+
+   $ExtArch="$InstallArch/ext/$ext_name";
+   copy_file("$buildroot/config.ninja", "$ExtArch/config.ninja", clean_dir => 1,
+             transform => \&transform_extension_config_file);
+
+   make_dir("$ExtArch/lib");
+   foreach my $app_dir (glob("$ext_root/apps/*")) {
+      my $app_mod=basename($app_dir).".$Config::Config{dlext}";
+      copy_file("$builddir/lib/$app_mod", "$ExtArch/lib/$app_mod", mode => 0555);
+   }
+
+   if (-f (my $inst_script="$ext_root/support/install.pl")) {
+      do $inst_script;
+      die "installation script $inst_script failed: $@" if $@;
+   }
+}
+
+sub glob_all_apps {
+   my ($pattern)=@_;
+   ( glob("$root/apps/*/$pattern"),
+     map { glob("$root/bundled/$_/apps/*/$pattern") } @BundledExts )
+}
+
+sub copy_file {
+   my ($from, $to, %options)=@_;
+   if (-e $from) {
+      if (!-f $from and !-l $from) {
+         die "$0: $from is neither a regular file nor a symbolic link\n";
+      }
+   } else {
+      die "$0: $from does not exist\n";
+   }
+   if ($options{clean_dir}) {
+      make_dir(dirname($to), clean_dir => 1);
+   }
+   &copy;
+}
+
+sub copy_link {
+   my ($from, $to)=@_;
+   my $target=readlink($from);
+   if (-e $to) {
+      unlink $to
+        or die "can't remove old $to: $!\n";
+   }
+   symlink $target, $to
+     or die "$0: can't create a symbolic link $to -> $target: $!\n";
+}
+
+sub compile_pattern {
+   my $expr=join('|', map { "(?:^$_\$)" } @_);
+   qr/$expr/;
+}
+
+sub exclude_pattern_for_copy {
+   my ($list)=@_;
+   if (defined $list) {
+      compile_pattern(@$list, @default_exclude_for_copy);
+   } else {
+      state $default_pattern=compile_pattern(@default_exclude_for_copy);
+   }
 }
 
 my $z1024=pack "x1024";
 
 sub copy {
-   my ($from, $to, $mode)=@_;
+   my ($from, $to, %options)=@_;
    my $concat;
-   if (defined $translate_re) {
-      my $other_from=$from;
-      return 1 if $other_from =~ s/$translate_back_re/$^R/  and  -e $other_from;
-      $to =~ s/$translate_re/$^R/;
-   }
-   if (!$Unlink and -e $to) {
-      foreach my $c (@conflict) {
-         if ($to =~ $c->[0]) {
-            if ($c->[1] eq 'abort') {
-               warn "$0: can't install $from: file $to already exists\n";
-               return 0;
-            } elsif ($c->[1] eq 'concat') {
-               $concat=1;
-            } elsif ($c->[1] eq 'keep') {
-               return 1;
-            } elsif ($c->[1] ne 'replace') {
-               die "$0: unknown conflict action $c->[1]\n";
+   my $mode=$options{mode};
+
+   if (-e $to) {
+      if (defined (my $conflict=$options{conflict})) {
+         foreach my $c (@$conflict) {
+            if ($to =~ $c->[0]) {
+               if ($c->[1] eq 'abort') {
+                  die "$0: can't install $from: file $to already exists\n";
+               } elsif ($c->[1] eq 'concat') {
+                  $concat=1;
+               } elsif ($c->[1] eq 'keep') {
+                  return;
+               } elsif ($c->[1] ne 'replace') {
+                  die "$0: unknown conflict action $c->[1]\n";
+               }
+               last;
             }
-            last;
          }
       }
       unless ($concat || unlink $to) {
-         warn "$0: can't remove old $to: $!\n";
-         return 0;
-      }
-   }
-   if (-l $from) {
-      my $target=readlink($from);
-      if ($target !~ $copylink_re) {
-         unless (symlink $target, $to) {
-            warn "$0: can't create $to -> $from: $!\n";
-            return 0;
-         }
-         return 1;
+         die "$0: can't remove old $to: $!\n";
       }
    }
    my ($fmode, $mtime)=(stat $from)[2,9];
    if (defined $mode) {
-      # verbatim copy - assuming binary file
+      # verbatim copy: assuming binary file
       my $in=POSIX::open $from, O_RDONLY;
-      if (!defined $in) {
-         warn "$0: can't read $from: $!\n";
-         return 0;
-      }
+      defined($in)
+         or die "$0: can't read $from: $!\n";
       my $dummy=O_WRONLY+O_CREAT+O_TRUNC; # bug in AutoLoader!
       my $out;
       if ($concat) {
@@ -105,10 +315,8 @@ sub copy {
       } else {
          $out=creat $to, 0600;
       }
-      if (!defined $out) {
-         warn "$0: can't create $to: $!\n";
-         return 0;
-      }
+      defined($out)
+         or die "$0: can't create $to: $!\n";
 
       my $trailing_zeroes;
       while ((my $size=read $in, $_, 1024)>0) {
@@ -126,106 +334,88 @@ sub copy {
       }
       POSIX::close $in;
       POSIX::close $out;
-      system "strip $to" if $strip;
    } else {
-      # text file
-      $mode=0444;
-      unless (open X, "<", $from) {
-         warn "$0: can't read $from: $!\n";
-         return 0;
-      }
+      # text file: turn on write protection
+      $mode=$fmode & 0555;
+      local $/;
+      open X, "<", $from
+         or die "$0: can't read $from: $!\n";
       $_=<X>; close X;
-      if ($convert_next) {
-	 s{^#include_next +"(.*)/([^/]+)"}{#include "$1/next/$2"}m;
+      if (defined (my $transform=$options{transform})) {
+	 &$transform;
       }
-      unless (open X, ">", $to) {
-         warn "$0: can't create $to: $!\n";
-         return 0;
-      }
+      open X, ">", $to
+         or die "$0: can't create $to: $!\n";
       print X; close X;
-      $mode&=$modemask;
+   }
+   $mode &= $permmask;
+   chmod $mode, $to
+     or die "can't modify access rights to $to: $!\n";
+   if (defined $group) {
+      chown -1, $group, $to
+        or die "$0: can't change group of $to: $!\n";
    }
    utime $mtime, $mtime, $to
-      and
-   chmod $mode, $to
-      and
-   do {
-      !defined $group
-      or chown -1, $group, $to
-      or do {
-         warn "$0: can't change group of $to: $!\n";
-         0
-      }
-   }
+     or die "can't modify mtime of $to: $!\n";
 }
 
 sub make_dir {
-   my ($dir, $mode)=@_;
+   my ($dir, %options)=@_;
+   my $clean=$options{clean_dir};
+
    if (-e $dir) {
       if (-d _) {
-         if (defined $mode and ((stat _)[2] & 03777) != $mode) {
-            unless (chmod $mode, $dir) {
-               warn "$0: can't change mode of $dir: $!\n";
-               return 0;
-            }
+         if (defined($dirmode) && ((stat _)[2] & 03777) != $dirmode) {
+            chmod $dirmode, $dir
+               or die "$0: can't change mode of $dir: $!\n";
          }
          if (defined $group and (stat _)[5] != $group) {
-            unless (chown -1, $group, $dir) {
-               warn "$0: can't change group of $dir: $!\n";
-               return 0;
-            }
+            chown -1, $group, $dir
+              or die "$0: can't change group of $dir: $!\n";
          }
-         if ($Unlink) {
-            opendir my $D, $dir;
-            foreach (readdir $D) {
-               if ($_ !~ $exclude_re  and  -l "$dir/$_" || -f _) {
-                  unless (unlink "$dir/$_") {
-                     warn "$0: can't remove old $dir/$_: $!\n";
-                     return 0;
+         if ($clean) {
+            my $error;
+            if (defined( my $exclude=$options{exclude})) {
+               my $exclude_re=compile_pattern(@$exclude, qw(. ..));
+               opendir my $D, $dir;
+               foreach (readdir $D) {
+                  if ($_ !~ $exclude_re) {
+                     if (-d "$dir/$_") {
+                        File::Path::remove_tree("$dir/_", { error=>\$error });
+                        if (@$error) {
+                           die "$0: can't remove old files:\n", map { join(": ", %$_)."\n" } @$error;
+                        }
+                     } else {
+                        unlink "$dir/$_"
+                          or die "$0: can't remove old $dir/$_: $!\n";
+                     }
                   }
+               }
+            } else {
+               File::Path::remove_tree($dir, { keep_root=>1, error=>\$error });
+               if (@$error) {
+                  die "$0: can't clean $dir:\n", map { join(": ", %$_)."\n" } @$error;
                }
             }
          }
-      } else {
-         warn "$0: $dir is not a directory\n";
-         return 0;
+         return;
       }
-      return 1;
+      unlink $dir
+         or die "$0: can't remove old $dir: $!\n";
    }
-   my @path=split m|/|, $dir;
-   my $accumulated=".";
-   if ($path[0] eq "") {
-      $accumulated="";
-      shift @path;
-   }
-   foreach my $p (@path) {
-      $accumulated.="/$p";
-      if (-e $accumulated) {
-         next if -d _;
-         warn "$0: $accumulated is not a directory\n";
-         return 0;
-      }
-      unless (mkdir $accumulated, $mode) {
-         # some other process might have created the folder in the meantime
-         # and we got a 'file exists' error
-         next if -d $accumulated;
-         warn "$0: can't create $accumulated: $!\n";
-         return 0;
-      }
-      if (defined $group and (stat $accumulated)[5] != $group) {
-         unless (chown -1, $group, $accumulated) {
-            warn "$0: can't change group of $accumulated: $!\n";
-            return 0;
-         }
-      }
-   }
-   1;
+   File::Path::make_path($dir, { defined($dirmode) ? (mode => $dirmode) : (),
+                                 defined($group) ? (group => $group) : () })
+      or die "could not create directory $dir: $!\n";
 }
 
 sub copy_dir {
-   my ($src, $dst, $dirmode, $wrappers)=@_;
+   my ($src, $dst, %options)=@_;
+   my $wrappers=delete $options{wrappers};
+   my $clean=$options{clean_dir};
+   my $exclude_re=exclude_pattern_for_copy($options{exclude});
+
    if (opendir my $S, $src) {
-      make_dir($dst, $dirmode) or return 0;
+      make_dir($dst, clean_dir => $clean);
       my (%noexport, @noexport_patterns, $next_created);
       if (-f "$src/.noexport") {
          open my $noexport, "$src/.noexport"
@@ -259,141 +449,108 @@ sub copy_dir {
          }
          my $src_f="$src/$f";
          if (-d $src_f) {
-            copy_dir($src_f, "$dst/$f", $dirmode) or return 0;
+            copy_dir($src_f, "$dst/$f", %options);
          } elsif ($wrappers && -f "$wrappers/$f") {
-	    $next_created ||= make_dir("$dst/next",$dirmode) or return 0;
-	    copy($src_f, "$dst/next/$f") or return 0;
-	    local $convert_next=1;
-	    copy("$wrappers/$f", "$dst/$f") or return 0;
+	    $next_created ||= make_dir("$dst/next");
+	    copy($src_f, "$dst/next/$f", %options);
+	    copy("$wrappers/$f", "$dst/$f", %options,
+                 transform => sub { s{^#include_next +"(.*)/([^/]+)"}{#include "$1/next/$2"}m });
 	 } else {
-            copy($src_f, "$dst/$f") or return 0;
+            copy($src_f, "$dst/$f", %options);
          }
       }
-      1
    } else {
-      warn "$0: can't traverse $src: $!\n";
-      0
+      die "$0: can't traverse $src: $!\n";
    }
 }
 
-$makedir=$strip=$Unlink=0;
-$modemask=0777;
-undef $/;
-my ($mode, $dirmode, $wrappers, %patterns);
+sub install_bin_scripts {
+   local $/;
+   open S, "$root/perl/polymake"
+     or die "can't read $root/perl/polymake: $!\n";
+   $_=<S>;
+   close S;
 
-while (@ARGV && $ARGV[0] =~ /^-/) {
-   my $opt=shift;
-   if ($opt eq "--") {
-      last;
+   if ($^O eq "darwin" && $ConfigFlags{ARCHFLAGS} =~ /-arch /) {
+      s{^\#!\S+}{#!/usr/bin/arch $ConfigFlags{ARCHFLAGS} $^X}s;
+   } else {
+      s{^\#!\S+}{#!$Config::Config{perlpath}}s;
    }
-   if ($opt eq "-d") {
-      $makedir=1;
-      next;
+
+   my $init_block=<<"---";
+   \$InstallTop="$ConfigFlags{InstallTop}";
+   \$InstallArch="$ConfigFlags{InstallArch}";
+   \$Arch="$ConfigFlags{Arch}";
+   \@BundledExts=qw(@BundledExts);
+---
+   if ($ConfigFlags{FinkBase}) {
+      $init_block.="   \@addlibs=qw($ConfigFlags{FinkBase}/lib/perl5);\n";
    }
-   if ($opt eq "-U") {
-      $Unlink=1;
-      next;
+   s|(^BEGIN\s*\{\s*\n)(?s:.*?)(^\}\n)|$1$init_block$2|m;
+
+   if (-e "$InstallBin/polymake") {
+      unlink "$InstallBin/polymake"
+        or die "can't remove old polymake script: $!\n";
    }
-   if ($opt eq "-s") {
-      $strip=1;
-      next;
+   open T, ">$InstallBin/polymake"
+     or die "can't create $InstallBin/polymake: $!\n";
+   print T;
+   close T;
+
+   chmod(0555, "$InstallBin/polymake")
+     or die "chmod $InstallBin/polymake failed: $!\n";
+
+   # apply similar transformations to the configuration utility
+
+   my $Version=extract_polymake_version($root);
+
+   open S, "$root/perl/polymake-config"
+     or die "can't read $root/perl/polymake-config: $!\n";
+   $_=<S>;
+   close S;
+
+   if ($^O eq "darwin" && $ConfigFlags{ARCHFLAGS} =~ /-arch /) {
+      s{^\#!\S+}{#!/usr/bin/arch $ConfigFlags{ARCHFLAGS} $^X}s;
+   } else {
+      s{^\#!\S+}{#!$Config::Config{perlpath}}s;
    }
-   die $usage if !@ARGV;
-   if ($opt eq "-m") {
-      $mode=oct shift;
-      next;
+
+   s/=Version(?=;)/=$Version/;
+   s/=InstallTop(?=;)/="$ConfigFlags{InstallTop}"/;
+   s/=InstallArch(?=;)/="$ConfigFlags{InstallArch}"/;
+
+   if (-e "$InstallBin/polymake-config") {
+      unlink "$InstallBin/polymake-config"
+        or die "can't remove old polymake-config script: $!\n";
    }
-   if ($opt eq "-g") {
-      $_=shift;
-      defined($group=getgrnam($_))
-      or die "$0: unknown group '$_'\n";
-      next;
-   }
-   if ($opt =~ "-[XTLC]") {
-      $_=shift;
-      s/\./\\./g;  s/\?/./g;  s/\*/.*/g;
-      push @{$patterns{$opt}}, $_;
-      next;
-   }
-   if ($opt eq "-W") {
-      $wrappers=shift;
-      undef $wrappers unless -d $wrappers;
-      next;
-   }
-   die "$0: unknown option: $opt\n$usage";
+   open T, ">$InstallBin/polymake-config"
+     or die "can't create $InstallBin/polymake-config: $!\n";
+   print T;
+   close T;
+
+   chmod(0555, "$InstallBin/polymake-config")
+     or die "chmod $InstallBin/polymake-config failed: $!\n";
 }
 
-die $usage if $makedir && keys %patterns
-           or @ARGV < 2-$makedir;
-die "$0: can't strip non-executables\n" if $strip and !defined($mode) || !($mode & 0111);
+sub transform_core_config_file {
 
-if ($makedir) {
-   if (defined $mode) {
-      umask 0;
-   } else {
-      $mode=0777&~umask;
-   }
-   map { make_dir($_,$mode) or exit 1 } @ARGV;
-} else {
-   if (defined $mode) {
-      umask 0;
-   } else {
-      $mode=0666&~umask;
-   }
+   s|^\s* root \s*= \K .*|$ConfigFlags{InstallTop}|xm;
+   s|^\s* core\.includes \s*= \K .*|-I$ConfigFlags{InstallInc}|xm;
 
-   if (-d $ARGV[0]) {
-      die $usage if @ARGV > 2;
-      $dirmode=$mode|0200;
-      undef $mode;
-      $modemask=$dirmode&0111;
-      $modemask|=$modemask<<2;
-      if ($patterns{'-T'}) {
-         use re 'eval';
-         my $translate=join('|', map { my ($from,$to)=split /:/; "(?:$from(?{\"$to\"}))" } @{$patterns{'-T'}});
-         my $translate_back=join('|', map { my ($from,$to)=split /:/; "(?:$to(?{\"$from\"}))" } @{$patterns{'-T'}});
-         $translate_re=qr/$translate/;
-         $translate_back_re=qr{(?=[^/]+$)(?:$translate_back)};
-      }
-      my $copylink=join('|', qw(/), exists $patterns{'-L'} ? @{$patterns{'-L'}} : ());
-      $copylink_re=qr/^(?:$copylink)/;
-      my @global_exclude=qw( \. \.\. \.\#.* \.svn \.noexport );
-      if (exists $patterns{'-X'}) {
-         push @global_exclude, @{$patterns{'-X'}};
-      }
-      if (exists $patterns{'-C'}) {
-         die $usage if $Unlink;
-         foreach (@{$patterns{'-C'}}) {
-            my ($pattern, $action)=split /:(?=\w+$)/
-               or die "invalid conflict action $_\n";
-            push @conflict, [ qr{$pattern}, $action ];
-         }
-      }
-      if (!$Unlink) {
-         push @conflict, [ qr{.} => 'replace' ];
-      }
+   my $external_includes= $ConfigFlags{ExternalHeaders} =~ /\S/ ? "-I$ConfigFlags{InstallInc}/polymake/external" : "";
+   s|^\s* app\.includes \s*= \K .*|$external_includes|xm;
 
-      my $global_exclude=join('|', map { "(?:^$_\$)" } @global_exclude);
-      $exclude_re=qr/$global_exclude/;
-      copy_dir(@ARGV, $dirmode, $wrappers) or exit 1;
-   } elsif (!-e $ARGV[0]) {
-      warn "$0: $ARGV[0] skipped non-existing directory\n";
-   } else {
-      die $usage if $Unlink or exists $patterns{'-X'} or exists $patterns{'-L'} or exists $patterns{'-C'};
-      if (-d $ARGV[-1]) {
-         my $dst=pop @ARGV;
-         if (-w _) {
-            foreach my $src (@ARGV) {
-               check($src) && copy($src, "$dst/".basename($src), $mode) or exit 1;
-            }
-         } else {
-            die "$0: target directory $dst not writable\n";
-         }
-      } elsif (@ARGV==2) {
-         check($ARGV[0]) && copy(@ARGV,$mode) or exit 1;
-      } else {
-         die $usage;
-      }
-   }
+   s|^(?=\s*Arch\s*=)|PERL = $Config::Config{perlpath}\n|m;
+   s|^\s* BuildModes \s*= \K .*|$buildmode|xm;
+   s|^\s* DESTDIR \s*= .*$||xm;
+}
+
+sub transform_extension_config_file {
+   
+   s|^\s* root \s*= \K .*|$ConfigFlags{InstallTop}|xm;
+   s|^\s* extroot \s*= \K .*|$ConfigFlags{InstallTop}/ext/$ext_name|xm;
+   s|^\s* app\.includes \s*= \K .*|-I\${extroot}/include \${super.app.includes}|xm;
+   s|^\s* BuildModes \s*= \K .*|$buildmode|xm;
 }
 
 # Local Variables:

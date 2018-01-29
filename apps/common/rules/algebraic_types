@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -63,7 +63,8 @@ declare property_type Vector<Element=Rational> : c++ (include => ["polymake/Vect
 # Compute the __greatest common divisor__ of the elements of the given vector.
 # @param Vector<Element> v
 # @return Element
-# @example > $v = new Vector<Int>(3,6,9);
+# @example
+# > $v = new Vector<Int>(3,6,9);
 # > print gcd($v);
 # | 3
 
@@ -73,7 +74,8 @@ user_function gcd(Vector) : c++ (include => "polymake/linalg.h");
 # Compute the least common multiple of the elements of the given vector.
 # @param Vector<Element> v
 # @return Element
-# @example > $v = new Vector<Integer>(1,3,6,9);
+# @example
+# > $v = new Vector<Integer>(1,3,6,9);
 # > print lcm($v);
 # | 18
 
@@ -215,7 +217,8 @@ declare property_type all_rows_or_cols : c++ (name => 'pm::all_selector', includ
 # @param Vector v
 # @tparam Target
 # @return Vector<Target>
-# @example > $v = new Vector<Rational>(1/2,2/3,3/4);
+# @example
+# > $v = new Vector<Rational>(1/2,2/3,3/4);
 # > $vf = convert_to<Float>($v);
 # > print $vf;
 # | 0.5 0.6666666667 0.75
@@ -231,7 +234,8 @@ user_function convert_to<Element>(Vector) : c++ {
 # @param Matrix m
 # @tparam Target
 # @return Matrix<Target>
-# @example > $M = new Matrix<Rational>([1/2,2],[3,2/3]);
+# @example
+# > $M = new Matrix<Rational>([1/2,2],[3,2/3]);
 # > $Mf = convert_to<Float>($M);
 # > print $Mf;
 # | 0.5 2
@@ -247,7 +251,8 @@ user_function convert_to<Element>(Matrix) : c++ {
 # Create a [[Matrix]] by repeating the given [[Vector]] as rows.
 # @param Vector v
 # @param Int i
-# @example > $v = new Vector(23,42,666);
+# @example
+# > $v = new Vector(23,42,666);
 # > $M = repeat_row($v,3);
 # > print $M;
 # | 23 42 666
@@ -260,7 +265,8 @@ user_function repeat_row(Vector:anchor,$) : c++ (include => "polymake/Matrix.h")
 # Create a [[Matrix]] by repeating the given [[Vector]] as cols.
 # @param Vector v
 # @param Int i
-# @example > $v = new Vector(23,42,666);
+# @example
+# > $v = new Vector(23,42,666);
 # > $M = repeat_col($v,3);
 # > print $M;
 # | 23 23 23
@@ -304,7 +310,8 @@ user_function vector2col(Vector:anchor) : c++ (include => "polymake/Matrix.h");
 # Produces a [[SparseMatrix]] from its diagonal.
 # @param Vector d the diagonal entries
 # @return SparseMatrix
-# @example > $v = new Vector(1,2,3,4);
+# @example
+# > $v = new Vector(1,2,3,4);
 # > $D = diag($v);
 # > print $D;
 # | (4) (0 1)
@@ -320,7 +327,8 @@ user_function diag(Vector:anchor) : c++ (include => "polymake/SparseMatrix.h");
 # @param Matrix m1
 # @param Matrix m2
 # @return SparseMatrix
-# @example > $m1 = new Matrix([1,2],[3,4]);
+# @example
+# > $m1 = new Matrix([1,2],[3,4]);
 # > $m2 = new Matrix([1,0,2],[3,4,0]);
 # > $D = diag($m1,$m2);
 # > print $D;
@@ -370,11 +378,11 @@ user_function anti_diag(*:anchor,*:anchor) : c++ (include => "polymake/SparseMat
 # Returns an array containing the rows of //A//.
 # @param Matrix A
 # @return Container<Vector>
-# @example [application polytope]
+# @example
 # The following saves the rows of the vertex matrix of a square in
 # the variable $w and then prints its contents using a foreach loop and concatenating
 # each entry with the string "  ".
-# > $w = rows(cube(2)->VERTICES);
+# > $w = rows(polytope::cube(2)->VERTICES);
 # > foreach( @$w ){
 # > print @{$_}, "  ";
 # > }
@@ -385,11 +393,11 @@ user_function rows(Matrix:anchor) : c++ : returns(Container);
 # Returns an array containing the columns of //A//.
 # @param Matrix A
 # @return Container<Vector>
-# @example [application polytope]
+# @example
 # The following saves the columns of the vertex matrix of a square in
 # the variable $w and then prints its contents using a foreach loop and concatenating
 # each entry with the string "  ".
-# > $w = cols(cube(2)->VERTICES);
+# > $w = cols(polytope::cube(2)->VERTICES);
 # > foreach( @$w ){
 # > print @{$_}, "  ";
 # > }
@@ -401,9 +409,9 @@ user_function cols(Matrix:anchor) : c++ : returns(Container);
 # Concatenates the rows of //A//.
 # @param Matrix A
 # @return Vector
-# @example [application polytope]
+# @example
 # Make a vector out of the rows of the vertex matrix of a cube:
-# > $v = concat_rows(cube(2)->VERTICES);
+# > $v = concat_rows(polytope::cube(2)->VERTICES);
 # > print $v;
 # | 1 -1 -1 1 1 -1 1 -1 1 1 1 1
 # @example For a sparse matrix, the resulting vector is sparse, too.
@@ -418,7 +426,8 @@ user_function concat_rows(Matrix:lvalue_opt:anchor) : c++;
 # Computes the __transpose__ //A//<sup>T</sup> of a matrix //A//, i.e., (a<sup>T</sup>)<sub>ij</sub> = a<sub>ji</sub>.
 # @param Matrix A
 # @return Matrix
-# @example > $M = new Matrix([1,2,23],[23,22,21]);
+# @example
+# > $M = new Matrix([1,2,23],[23,22,21]);
 # > $Mt = transpose($M);
 # > print $Mt;
 # | 1 23
@@ -432,7 +441,8 @@ user_function transpose(Matrix:anchor) : c++ (name => 'T');
 # Computes the __determinant__ of a matrix using Gauss elimination.
 # @param Matrix A
 # @return Int det(A)
-# @example > print det(unit_matrix(3));
+# @example
+# > print det(unit_matrix(3));
 # | 1
 
 user_function det(Matrix:wary) : c++ (include => "polymake/linalg.h");
@@ -441,7 +451,8 @@ user_function det(Matrix:wary) : c++ (include => "polymake/linalg.h");
 # Computes the __trace__ of a matrix.
 # @param Matrix A
 # @return Int trace(A)
-# @example > $M = new Matrix([1,2,3],[23,24,25],[0,0,1]);
+# @example
+# > $M = new Matrix([1,2,3],[23,24,25],[0,0,1]);
 # > print trace($M);
 # | 26
 
@@ -486,12 +497,26 @@ user_function reduce(Matrix:wary, Vector:wary) : c++ (include => "polymake/linal
 # Normalize a matrix by dividing each row by its length (l2-norm).
 # @param Matrix<Float> A
 # @return Matrix<Float>
-# @example > $A = new Matrix<Float>([1.5,2],[2.5,2.5]);
+# @example
+# > $A = new Matrix<Float>([1.5,2],[2.5,2.5]);
 # > print normalized($A);
 # | 0.6 0.8
 # | 0.7071067812 0.7071067812
 
 user_function normalized(Matrix) : c++ (include => "polymake/linalg.h");
+
+
+# @category Linear Algebra
+# Calculate the average over the rows of a matrix.
+# @param Matrix<Scalar> A
+# @return Vector<Scalar>
+# @example
+# > $A = new Matrix([3,0,0],[0,3,0],[0,0,3]);
+# > print barycenter($A);
+# | 1 1 1
+
+user_function barycenter(Matrix) : c++ (include => "polymake/linalg.h");
+
 
 # @category Linear Algebra
 # Return the sum of the squared entries of a vector //v//.
@@ -563,6 +588,11 @@ function denominators(Vector<Rational>) : c++ (include => "polymake/linalg.h");
 
 function denominators(Matrix<Rational>) : c++ (include => "polymake/linalg.h");
 
+# @category Linear Algebra
+# Remove all zero rows from a matrix.
+# @param Matrix m
+# @return Matrix
+user_function remove_zero_rows(Matrix) : c++ (include => "polymake/linalg.h");
 
 # @category Linear Algebra
 # Creates a unit matrix of given dimension
@@ -696,7 +726,8 @@ user_function ones_matrix<Element=Rational>($$) : c++ (include => "polymake/lina
 # Compute the __null space__ of a matrix //A//.
 # @param Matrix A
 # @return Matrix
-# @example > $A = new Matrix([1,2,0],[2,0,2]);
+# @example
+# > $A = new Matrix([1,2,0],[2,0,2]);
 # > print null_space($A);
 # | -1 1/2 1
 
@@ -706,8 +737,9 @@ user_function null_space(Matrix) : c++ (include => "polymake/linalg.h");
 # Compute the __null space__ of a vector //b//.
 # @param Vector b
 # @return Matrix
-# @example > $b = new Vector(1,2,3);
-# polytope > print null_space($b);
+# @example
+# > $b = new Vector(1,2,3);
+# > print null_space($b);
 # | -2 1 0
 # | -3 0 1
 
@@ -717,14 +749,15 @@ user_function null_space(Vector) : c++ (include => "polymake/linalg.h");
 # Compute the __lineality space__ of a matrix //A//.
 # @param Matrix A
 # @return Matrix
-# @example > $M = new Matrix([1,1,0,0],[1,0,1,0]);
+# @example
+# > $M = new Matrix([1,1,0,0],[1,0,1,0]);
 # > print lineality_space($M);
 # | 0 0 0 1
 
 user_function lineality_space(Matrix) : c++ (include => "polymake/linalg.h");
 
 # @category Linear Algebra
-# Computes the solution of the system //A//x = //b//
+# Computes the vector x that solves the system //A//x = //b//
 # @param Matrix A must be invertible
 # @param Vector b
 # @return Vector
@@ -736,6 +769,49 @@ user_function lineality_space(Matrix) : c++ (include => "polymake/linalg.h");
 
 user_function lin_solve(Matrix:wary, Vector:wary) : c++ (include => "polymake/linalg.h");
 
+# @category Linear Algebra
+# Computes a matrix X that solves the system //AX// = //B//
+# @param Matrix A
+# @param Matrix B
+# @return Matrix
+# @example A non-degenerate example:
+# > $A = new Matrix([[1,0,0],[1,1,0],[1,0,1],[1,1,1]]);
+# > $B = new Matrix([[1,0,0],[1,0,1],[1,1,0],[1,1,1]]);
+# > print solve_right($A,$B);
+# | 1 0 0
+# | 0 0 1
+# | 0 1 0
+# @example A degenerate example:
+# > $A = new Matrix([[1,0,0,0,0],[0,1,0,0,0],[1,0,1,0,0],[0,1,1,0,0]]);
+# > $B = new Matrix([[0,1,0,0,0],[1,0,0,0,0],[0,1,1,0,0],[1,0,1,0,0]]);
+# > print solve_right($A,$B);
+# | 0 1 0 0 0
+# | 1 0 0 0 0
+# | 0 0 1 0 0
+# | 0 0 0 0 0
+# | 0 0 0 0 0
+
+                                            
+user_function solve_right(Matrix:wary, Matrix:wary) : c++ (include => "polymake/matrix_linalg.h");
+                                            
+# @category Linear Algebra
+# Computes a matrix X that solves the system //XA// = //B//. This is useful, for instance, for computing the coordinates of some vectors 
+# with respect to a basis. The rows of the matrix solve_left(B,V) are the coordinates of the rows of //V// with respect to the rows of //B//.
+# @param Matrix A
+# @param Matrix B
+# @return Matrix
+# @example Define the matrices
+# > $V = new Matrix([[-4,2,2],[3,-2,-1]]);
+# > $B = new Matrix([[-1,1,0],[0,-1,1]]);
+# so that the rows of //B// are a basis of the subspace of vectors with zero coordinate sum. Then the rows of
+# > print solve_left($B, $V);
+# | 4 2
+# | -3 -1
+# contain the coordinates of the rows of //V// with respect to the rows of //B//.
+
+user_function solve_left(Matrix:wary, Matrix:wary) : c++ (include => "polymake/matrix_linalg.h");
+                                            
+                                            
 # @category Linear Algebra
 # Computes the solution of the system //A//x = //b// by applying Cramer's rule
 # @param Matrix A must be invertible
@@ -757,7 +833,8 @@ user_function cramer(Matrix:wary, Vector:wary) : c++ (include => "polymake/linal
 #  [[https://github.com/xammy/unimodularity-test/wiki/Polymake-Extension]].
 # @param Matrix A
 # @return Bool
-# @example > $M = new Matrix<Int>([-1,-1,0,0,0,1],[1,0,-1,-1,0,0],[0,1,1,0,-1,0],[0,0,0,1,1,-1]);
+# @example
+# > $M = new Matrix<Int>([-1,-1,0,0,0,1],[1,0,-1,-1,0,0],[0,1,1,0,-1,0],[0,0,0,1,1,-1]);
 # > print totally_unimodular($M);
 # | 1
 
@@ -769,7 +846,8 @@ user_function totally_unimodular(Matrix) : c++ (include => "polymake/totally_uni
 # @param Matrix M1
 # @param Matrix M2
 # @return Bool
-# @example > $M1 = new Matrix([1,1,0],[1,0,1],[0,0,1]);
+# @example
+# > $M1 = new Matrix([1,1,0],[1,0,1],[0,0,1]);
 # > $M2 = new Matrix([1,0,0],[0,1,0],[0,0,1]);
 # > print equal_bases($M1,$M2);
 # | 1
@@ -792,7 +870,8 @@ user_function householder_trafo(Vector<Float>) : c++ (include => "polymake/linal
 # QR decomposition of a Matrix //M// with rows > cols
 # @param Matrix<Float> M
 # @return Pair<Matrix,Matrix>
-# @example > $M = new Matrix<Float>([23,4],[6,42]);
+# @example
+# > $M = new Matrix<Float>([23,4],[6,42]);
 # > $qr = qr_decomp($M);
 # > print $qr->first;
 # | 0.9676172724 0.2524218971
@@ -823,7 +902,8 @@ declare property_type SingularValueDecomposition : c++ (include => "polymake/lin
 # The first element of the output array is S, the second U and the thrid V.
 # @param Matrix<Float> M
 # @return SingularValueDecomposition
-# @example > $M = new Matrix<Float>([1,2],[23,24]);
+# @example
+# > $M = new Matrix<Float>([1,2],[23,24]);
 # > $SVD = singular_value_decomposition($M);
 # The following prints the three matrices, seperated by newline characters.
 # > print $SVD->left_companion ,"\n", $SVD->sigma ,"\n", $SVD->right_companion;
@@ -956,8 +1036,8 @@ user_function toVector<Scalar>(Set:wary:anchor $) : c++ (name => 'same_element_s
 # @param IncidenceMatrix A
 # @tparam Scalar
 # @return SparseMatrix<Scalar>
-# @example [application polytope]
-# > $M = toMatrix<Int>(cube(2)->VERTICES_IN_FACETS);
+# @example
+# > $M = toMatrix<Int>(polytope::cube(2)->VERTICES_IN_FACETS);
 # > print $M->type->full_name;
 # | SparseMatrix<Int, NonSymmetric>
 
@@ -980,7 +1060,8 @@ user_function dense(Set $) { dense(toVector<Int>(@_)); }
 # Get the positions of non-zero entries of a sparse vector.
 # @param SparseVector v
 # @return Set<Int>
-# @example > $v = new SparseVector(0,1,1,0,0,0,2,0,3);
+# @example
+# > $v = new SparseVector(0,1,1,0,0,0,2,0,3);
 # > print indices($v);
 # | {1 2 6 8}
 
@@ -990,7 +1071,8 @@ user_function indices(SparseVector:anchor) : c++ (include => "polymake/Set.h");
 # Get the positions of non-zero entries of a vector.
 # @param Vector v
 # @return Set<Int>
-# @example > print support(new Vector(0,23,0,0,23,0,23,0,0,23));
+# @example
+# > print support(new Vector(0,23,0,0,23,0,23,0,0,23));
 # | {1 4 6 9}
 
 user_function support(Vector:anchor) : c++ (include => "polymake/linalg.h");
@@ -999,7 +1081,8 @@ user_function support(Vector:anchor) : c++ (include => "polymake/linalg.h");
 # Get the positions of non-zero entries of a sparse matrix.
 # @param SparseMatrix m
 # @return IncidenceMatrix
-# @example > $S = new SparseMatrix([1,2,0,0,0,0],[0,0,5,0,0,32]);
+# @example
+# > $S = new SparseMatrix([1,2,0,0,0,0],[0,0,5,0,0,32]);
 # > print index_matrix($S);
 # | {0 1}
 # | {2 5}
@@ -1075,7 +1158,8 @@ declare property_type SmithNormalForm<Scalar> : c++ (include => "polymake/Smith_
 # @param Matrix M must be of integer type
 # @param Bool inv optional, if true, compute the inverse of the companion matrices
 # @return SmithNormalForm<Integer>
-# @example > $M = new Matrix<Integer>([1,2],[23,24]);
+# @example
+# > $M = new Matrix<Integer>([1,2],[23,24]);
 # > $SNF = smith_normal_form($M);
 # The following line prints the three matrices seperated by newline characters.
 # > print $SNF->left_companion ,"\n", $SNF->form ,"\n", $SNF->right_companion;

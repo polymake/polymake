@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -22,7 +22,7 @@
 #include "polymake/linalg.h"
 #include "polymake/Set.h"
 #include "polymake/hash_set"
-#include "polymake/group/action_datatypes.h"
+#include "polymake/group/action.h"
 #include "polymake/polytope/cocircuit_equations.h"
 
 namespace polymake { namespace polytope {
@@ -37,7 +37,7 @@ auto operator* (const group::SparseSimplexVector<SparseSet>& v,
    const auto& larger  = (v.size() < w.size()) ? w : v;
 
    typename group::SparseSimplexVector<SparseSet>::mapped_type res(0);
-   for (const auto& s : smaller) {
+   for (const auto& s: smaller) {
       if (!larger.exists(s.first)) continue;
       res += s.second * larger.at(s.first);
    }
@@ -48,7 +48,7 @@ auto operator* (const group::SparseSimplexVector<SparseSet>& v,
 template<typename SetType>
 bool is_zero (const group::SparseSimplexVector<SetType>& v)
 {
-   for (const auto& e : v)
+   for (const auto& e: v)
       if (!is_zero(e.second))
          return false;
    return true;
@@ -56,7 +56,7 @@ bool is_zero (const group::SparseSimplexVector<SetType>& v)
 
 template<typename SetType>
 auto symmetrize_equation(const group::SparseSimplexVector<SetType>& cocircuit_equation,
-                         const group::ConjugacyClasses& conjugacy_classes,
+                         const group::ConjugacyClasses<>& conjugacy_classes,
                          const Matrix<Rational>& character_table,
                          const Set<int>& isotypic_components,
                          const group::ActionType<SetType>& h_action)
@@ -64,13 +64,13 @@ auto symmetrize_equation(const group::SparseSimplexVector<SetType>& cocircuit_eq
    group::SparseSimplexVector<SetType> new_sparse_eq;
    for (int j=0; j<conjugacy_classes.size(); ++j) {
       Rational coeff_j(0);
-      for (const auto& ic : isotypic_components)
+      for (const auto& ic: isotypic_components)
          coeff_j += character_table(ic,j) * character_table(ic,0);
       if (is_zero(coeff_j)) continue;
 
-      for (const auto& g : conjugacy_classes[j]) {
+      for (const auto& g: conjugacy_classes[j]) {
          const group::ActionType<SetType> g_action(g);
-         for (const auto& e : cocircuit_equation) {
+         for (const auto& e: cocircuit_equation) {
             new_sparse_eq[g_action(h_action(e.first))] += coeff_j * e.second;
          }
       }
@@ -89,7 +89,7 @@ combinatorial_symmetrized_cocircuit_equations_impl(const Matrix<Scalar>& points,
                                                    const Array<SetType>& representative_interior_ridge_simplices,
                                                    const Set<int>& isotypic_components,
                                                    const Matrix<Rational>& character_table,
-                                                   const group::ConjugacyClasses& conjugacy_classes,
+                                                   const group::ConjugacyClasses<>& conjugacy_classes,
                                                    const std::string& filename)
 {
    IndexMap<SetType> indexed_symmetrized_equations;
@@ -97,7 +97,7 @@ combinatorial_symmetrized_cocircuit_equations_impl(const Matrix<Scalar>& points,
    if (filename != "" && filename != "-")
       outfile = std::ofstream(filename.c_str(), std::ios_base::trunc);
    std::ostream& os = (filename == "-" ? perl::cout : outfile);
-   for (const auto& ridge_rep : representative_interior_ridge_simplices) {
+   for (const auto& ridge_rep: representative_interior_ridge_simplices) {
       const group::SparseSimplexVector<SetType> cocircuit_equation = cocircuit_equation_of_ridge_impl(points, ridge_rep);
 
       /* 
@@ -114,8 +114,8 @@ combinatorial_symmetrized_cocircuit_equations_impl(const Matrix<Scalar>& points,
       */
 
       hash_set<SetType> ridge_orbit;
-      for (const auto& cc : conjugacy_classes) {
-         for (const auto& h : cc) {
+      for (const auto& cc: conjugacy_classes) {
+         for (const auto& h: cc) {
             const group::ActionType<SetType> h_action(h);
             const SetType tau_prime = h_action(ridge_rep);
             if (ridge_orbit.collect(tau_prime)) continue;
@@ -134,13 +134,26 @@ combinatorial_symmetrized_cocircuit_equations_impl(const Matrix<Scalar>& points,
    return indexed_symmetrized_equations;
 }
 
+/*
+  return the symmetrized cocircuit equations corresponding to the given set of isotypic_components, expressed in the basis given by isotypic_basis.
+  They are returned as s SymmetrizedCocircuitEquations object that records
+  - in ISOTYPIC_COMPONENTS: the set of indices of the isotypic components considered
+  - in RIDGES: a lexicographically ordered Array of those ridges that produce non-zero equations
+  - in PROJECTED_EQUATIONS: a SparseMatrix 
+     -- whose rows correspond, in order, to the elements of RIDGES, and 
+     -- whose columns correspond, in order, to the members of isotypic_basis. 
+    Each matrix element is the coefficient corresponding to a given basis element of the equation corresponding to a given ridge.
+
+    By construction, the ordering of the basis elements is as they appear while processing the orbits of the ridges in lex order,
+    so the matrix in PROJECTED_EQUATIONS is canonical.
+ */
 template<typename Scalar, typename SetType>
 perl::Object
 projected_symmetrized_cocircuit_equations_impl_impl(const Matrix<Scalar>& points,
                                                     const Array<SetType>& representative_interior_ridge_simplices,
                                                     const Set<int>& isotypic_components,
                                                     const Matrix<Rational>& character_table,
-                                                    const group::ConjugacyClasses& conjugacy_classes,
+                                                    const group::ConjugacyClasses<>& conjugacy_classes,
                                                     const group::SparseIsotypicBasis<SetType>& isotypic_basis,
                                                     bool reduce_equations)
 {
@@ -150,7 +163,7 @@ projected_symmetrized_cocircuit_equations_impl_impl(const Matrix<Scalar>& points
       kernel_so_far(unit_matrix<Rational>(isotypic_dim));
    std::vector<SetType> ridges;
 
-   for (const auto& i_and_e : combinatorial_symmetrized_cocircuit_equations_impl(points, representative_interior_ridge_simplices, isotypic_components, character_table, conjugacy_classes, "")) {
+   for (const auto& i_and_e: combinatorial_symmetrized_cocircuit_equations_impl(points, representative_interior_ridge_simplices, isotypic_components, character_table, conjugacy_classes, "")) {
 
       SparseVector<Rational> new_eq(isotypic_dim);
       for (int i=0; i<isotypic_dim; ++i)

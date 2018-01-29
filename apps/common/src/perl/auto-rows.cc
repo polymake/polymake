@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -22,10 +22,12 @@
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
 #include "polymake/PuiseuxFraction.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/TropicalNumber.h"
+#include "polymake/Vector.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
 
@@ -74,5 +76,9 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(rows_R_X32, perl::Canned< const Matrix< Integer > >);
    FunctionInstance4perl(rows_R_X32, perl::Canned< const SparseMatrix< int, NonSymmetric > >);
    FunctionInstance4perl(rows_R_X32, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::Rational const&> const&>, pm::Matrix<pm::Rational> const&> >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const pm::RowChain<pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&, pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&> >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const pm::Transposed<pm::MatrixMinor<pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> > >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const pm::RowChain<pm::SingleRow<pm::Vector<pm::Rational> const&>, pm::Matrix<pm::Rational> const&> >);
+   FunctionInstance4perl(rows_f1, perl::Canned< const pm::DiagMatrix<pm::Vector<double> const&, true> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

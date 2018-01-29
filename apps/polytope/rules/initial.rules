@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -55,6 +55,18 @@ object Cone {
    precondition : exists(EQUATIONS);
    precondition : !exists(INEQUALITIES);
 
+   # check for zero rows in input properties.
+   rule initial : {
+      foreach my $prop (qw(INPUT_RAYS INEQUALITIES INPUT_LINEALITY EQUATIONS)){
+         if(defined(my $m = $this->lookup($prop))){
+            foreach my $r (@{$m}){
+               if(is_zero( $r )){ croak("\ninvalid input: zero vector is not a valid entry for ",$prop); }
+            }
+         }
+      }
+   }
+   precondition : exists(INPUT_RAYS | INEQUALITIES | INPUT_LINEALITY | EQUATIONS);
+
    rule CONE_AMBIENT_DIM : RAYS | FACETS | LINEAR_SPAN | LINEALITY_SPACE | INPUT_RAYS | INPUT_LINEALITY | INEQUALITIES | EQUATIONS {
       my $d=0;
       foreach (qw(RAYS FACETS LINEAR_SPAN LINEALITY_SPACE INPUT_RAYS INPUT_LINEALITY INEQUALITIES EQUATIONS)) {
@@ -81,7 +93,7 @@ object Polytope {
 
    # A Polytope defined by a non-empty set of [[VERTICES]] or [[POINTS]] is always [[FEASIBLE]].
    rule FEASIBLE : VERTICES | POINTS {
-      $this->FEASIBLE = ($this->VERTICES | POINTS)->rows > 0;
+      $this->FEASIBLE = $this->give("VERTICES | POINTS")->rows > 0;
    }
    weight 0.1;
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -28,7 +28,6 @@
 namespace polymake { namespace polytope {
 
 typedef Set<Set<int>> FaceSet;
-typedef Array<FaceSet> RepArray;
 
 namespace {
    // For some reason, this function has to be explicitly specified.
@@ -44,9 +43,9 @@ namespace {
    }
 }
 
-Array<Set<Set<Set<int>>>> orbits(int d,
-                                 const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential>& HD,
-                                 const Array<Array<int>>& generators)
+Array<Set<FaceSet>> orbits(int d,
+                           const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential>& HD,
+                           const Array<Array<int>>& generators)
 {
    typedef permlib::Permutation PERM;
    std::list<PERM::ptr> gen_list;
@@ -55,13 +54,13 @@ Array<Set<Set<Set<int>>>> orbits(int d,
       gen_list.push_back(gen);
    }
 
-   Array<Set<Set<Set<int>>>> face_orbits_of_dim(d+1);
+   Array<Set<FaceSet>> face_orbits_of_dim(d+1);
    for (int k=0; k<=d; ++k)
       for (auto fit = entire(HD.nodes_of_rank(k+1)); !fit.at_end(); ++fit) {
          const Set<int> face(HD.face(*fit));
          permlib::OrbitSet<PERM, Set<int>> face_orbit;
          face_orbit.orbit(face, gen_list, pm_set_action);
-         face_orbits_of_dim[k] += Set<Set<int>>(face_orbit.begin(), face_orbit.end());
+         face_orbits_of_dim[k] += FaceSet(face_orbit.begin(), face_orbit.end());
       }
    return face_orbits_of_dim;
 }
@@ -71,15 +70,14 @@ void quotient_space_faces(perl::Object p)
    const int
       d = p.give("COMBINATORIAL_DIM"),
       n = p.give("N_VERTICES");
+
    perl::Object HD_obj = p.give("HASSE_DIAGRAM");
    const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential> HD(HD_obj);
 
-   const Array<Array<int>>
-      sym_group_generators = p.give("GROUP.VERTICES_ACTION.GENERATORS"),
-      id_group_generators = p.give("QUOTIENT_SPACE.IDENTIFICATION_ACTION.GENERATORS");
+   const Array<Array<int>> id_group_generators = p.give("QUOTIENT_SPACE.IDENTIFICATION_ACTION.GENERATORS");
    const group::PermlibGroup identification_group(id_group_generators);
 
-   RepArray cds(d+1);
+   Array<FaceSet> cds(d+1);
    for (int k=0; k<=d; ++k)
       for (auto it=entire(HD.nodes_of_rank(k+1)); !it.at_end(); ++it)
          cds[k] += identification_group.lex_min_representative(HD.face(*it));
@@ -87,17 +85,21 @@ void quotient_space_faces(perl::Object p)
    p.take("QUOTIENT_SPACE.FACES") << cds;
    const auto face_orbits_of_dim = orbits(d, HD, id_group_generators);
    p.take("QUOTIENT_SPACE.FACE_ORBITS") << face_orbits_of_dim;
-   Set<Set<Set<int>>> face_orbits;
+   Set<FaceSet> face_orbits;
    for (int k=0; k<=d; ++k)
       face_orbits += face_orbits_of_dim[k];
 
-   perl::Object sga("group::PermutationAction");
-   sga.take("GENERATORS") << induced_symmetry_group_generators(n, sym_group_generators, face_orbits_of_dim);
+   
+   Array<Array<int>> sym_group_generators;
+   if (p.lookup("GROUP.VERTICES_ACTION.GENERATORS") >> sym_group_generators) {
+      perl::Object sga("group::PermutationAction");
+      sga.take("GENERATORS") << induced_symmetry_group_generators(n, sym_group_generators, face_orbits_of_dim);
 
-   perl::Object g("group::Group");
-   g.take("PERMUTATION_ACTION") << sga;
+      perl::Object g("group::Group");
+      g.take("PERMUTATION_ACTION") << sga;
 
-   p.take("QUOTIENT_SPACE.SYMMETRY_GROUP") << g;
+      p.take("QUOTIENT_SPACE.SYMMETRY_GROUP") << g;
+   }
 }
 
 Function4perl(&quotient_space_faces,"quotient_space_faces(Polytope)");

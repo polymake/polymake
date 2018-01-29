@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -39,5 +39,6 @@ namespace polymake { namespace common { namespace {
 
    FunctionInstance4perl(diag_X32, perl::Canned< const Vector< Rational > >);
    FunctionInstance4perl(diag_X32_X32, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(diag_X32, perl::Canned< const Vector< double > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

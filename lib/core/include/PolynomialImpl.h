@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -53,7 +53,7 @@ template <typename T, typename Coefficient>
 struct deeper_coefficient_impl<T, Coefficient,
                                typename std::enable_if<std::is_convertible<T, typename Coefficient::coefficient_type>::value>::type>
 : std::true_type {
-  typedef Coefficient coefficient_type;
+  using coefficient_type = Coefficient;
 
   static coefficient_type construct(const T& x, const int n_vars)
   {
@@ -67,8 +67,8 @@ struct deeper_coefficient_impl<T, Coefficient,
                                typename std::enable_if<!std::is_convertible<T, typename Coefficient::coefficient_type>::value &&
                                                        deeper_coefficient_impl<T, typename Coefficient::coefficient_type>::value>::type>
 : std::true_type {
-  typedef deeper_coefficient_impl<T, typename Coefficient::coefficient_type> deeper;
-  typedef Coefficient coefficient_type;
+  using deeper = deeper_coefficient_impl<T, typename Coefficient::coefficient_type>;
+  using coefficient_type = Coefficient;
 
   static coefficient_type construct(const T& x, const int n_vars)
   {
@@ -128,7 +128,7 @@ class cmp_monomial_ordered
   : public cmp_monomial_ordered_base<Order, strict>
 {
 public:
-  typedef Order exponent_type;
+  using exponent_type = Order;
 
   explicit cmp_monomial_ordered(const exponent_type& order_arg)
     : order(order_arg) {}
@@ -190,10 +190,10 @@ struct nesting_level : int_constant<0> {};
 
 template <typename Exponent>
 struct UnivariateMonomial {
-  typedef Exponent exponent_type;
-  typedef Exponent monomial_type;
-  typedef Vector<Exponent> monomial_list_type;
-  typedef MultivariateMonomial<Exponent> homogenized_type;
+  using exponent_type = Exponent;
+  using monomial_type = Exponent;
+  using monomial_list_type = Vector<Exponent>;
+  using homogenized_type = MultivariateMonomial<Exponent>;
   static Exponent deg(const monomial_type& m) { return m; }
   static monomial_type default_value(const int n_vars) { return zero_value<Exponent>(); }
   static bool equals_to_default(const monomial_type& m) { return is_zero(m); }
@@ -237,10 +237,10 @@ struct UnivariateMonomial {
 
 template <typename Exponent>
 struct MultivariateMonomial {
-  typedef Exponent exponent_type;
-  typedef SparseVector<Exponent> monomial_type;
-  typedef Matrix<Exponent> monomial_list_type;
-  typedef MultivariateMonomial<Exponent> homogenized_type;
+  using exponent_type = Exponent;
+  using monomial_type = SparseVector<Exponent>;
+  using monomial_list_type = Matrix<Exponent>;
+  using homogenized_type = MultivariateMonomial<Exponent>;
   static Exponent deg(const monomial_type& m) { return accumulate(m, operations::add<Exponent, Exponent>()); }
   static monomial_type default_value(const int n_vars) { return monomial_type(n_vars); }
   static bool equals_to_default(const monomial_type& m) { return m.empty(); }
@@ -316,12 +316,12 @@ class GenericImpl {
   template <typename> friend struct pm::spec_object_traits;
 
 public:
-  typedef Coefficient coefficient_type;
-  typedef typename Monomial::exponent_type exponent_type;
-  typedef typename Monomial::monomial_type monomial_type;
-  typedef typename std::forward_list<monomial_type> sorted_terms_type;
-  typedef hash_map<monomial_type, coefficient_type> term_hash;
-  typedef typename Monomial::monomial_list_type monomial_list_type;
+  using coefficient_type = Coefficient;
+  using exponent_type = typename Monomial::exponent_type;
+  using monomial_type = typename Monomial::monomial_type;
+  using sorted_terms_type = typename std::forward_list<monomial_type>;
+  using term_hash = hash_map<monomial_type, coefficient_type>;
+  using monomial_list_type = typename Monomial::monomial_list_type;
 
   static constexpr int coefficient_nesting_level=nesting_level<coefficient_type>::value;
 
@@ -333,9 +333,7 @@ public:
   struct fits_as_coefficient
     : bool_constant<can_upgrade<T, coefficient_type>::value || is_deeper_coefficient<T>::value> {};
 
-  GenericImpl() {}
-
-  explicit GenericImpl(const int n_vars)
+  explicit GenericImpl(const int n_vars = 0)
     : n_variables(n_vars)
     , the_sorted_terms_set(false) {}
 
@@ -682,7 +680,7 @@ public:
     if (t.second != one_value<coefficient_type>())
       throw std::runtime_error("Except for positive integers, Exponentiation is only implemented for normalized monomials");
     GenericImpl result(n_variables);
-    result.the_terms.emplace(t.first * exp, t.second);
+    result.the_terms.emplace(monomial_type(t.first * exp), t.second);
     return result;
   }
 
@@ -1065,10 +1063,10 @@ template <typename Coefficient, typename Exponent>
 struct spec_object_traits< Serialized< polynomial_impl::GenericImpl<polynomial_impl::UnivariateMonomial<Exponent>, Coefficient> > >
   : spec_object_traits<is_composite> {
 
-  typedef polynomial_impl::UnivariateMonomial<Exponent> Monomial;
-  typedef polynomial_impl::GenericImpl<Monomial,Coefficient> masquerade_for;
+  using Monomial = polynomial_impl::UnivariateMonomial<Exponent>;
+  using masquerade_for = polynomial_impl::GenericImpl<Monomial,Coefficient>;
 
-  typedef typename polynomial_impl::GenericImpl<Monomial,Coefficient>::term_hash elements;
+  using elements = typename polynomial_impl::GenericImpl<Monomial,Coefficient>::term_hash;
 
   template <typename Me, typename Visitor>
   static void visit_elements(Me& me, Visitor& v)
@@ -1090,9 +1088,9 @@ template <typename Coefficient, typename Exponent>
 struct spec_object_traits< Serialized< polynomial_impl::GenericImpl<polynomial_impl::MultivariateMonomial<Exponent>, Coefficient> > >
   : spec_object_traits<is_composite> {
 
-  typedef polynomial_impl::MultivariateMonomial<Exponent> Monomial;
-  typedef polynomial_impl::GenericImpl<Monomial,Coefficient> masquerade_for;
-  typedef cons<typename polynomial_impl::GenericImpl<Monomial,Coefficient>::term_hash, int> elements;
+  using Monomial = polynomial_impl::MultivariateMonomial<Exponent>;
+  using masquerade_for = polynomial_impl::GenericImpl<Monomial,Coefficient>;
+  using elements = cons<typename polynomial_impl::GenericImpl<Monomial,Coefficient>::term_hash, int>;
 
   template <typename Me, typename Visitor>
   static void visit_elements(Me& me, Visitor& v)

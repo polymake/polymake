@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -215,7 +215,7 @@ foreach ($exprs) {
 	    ++$files_seen;
 	 }
       }
-      foreach my $app (list Application) {
+      foreach my $app (list_loaded Application) {
 	 if ($app->EXPORT->{$file} eq "user") {
 	    application($app);
 	    $func=namespaces::lookup($app->pkg,$file);

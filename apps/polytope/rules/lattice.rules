@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -207,20 +207,16 @@ object_specialization Polytope::Lattice {
     user_method POLYTOPE_IN_STD_BASIS {
         my $this=shift;
         my $p=new Polytope<Rational>;
-        if ( defined (my $v=$this->VERTICES) ) {
-            $p->VERTICES=(ones_vector<Rational>($v->rows))|($v->minor(All,~[0])*$this->LATTICE_BASIS);
-        } elsif(defined ($v=$this->POINTS)) {
-            $p->POINTS=(ones_vector<Rational>($v->rows))|($v->minor(All,~[0])*$this->LATTICE_BASIS);
+        if (my ($v, $prop_name)=$this->lookup_with_name("VERTICES | POINTS")) {
+            $p->take($prop_name, ones_vector<Rational>($v->rows) | $v->minor(All,~[0])*$this->LATTICE_BASIS);
         }
 
-        if ( defined (my $f=$this->FACETS) ) {
-            $p->FACETS=$f->col(0)|($f->minor(All,~[0])*inv($this->LATTICE_BASIS));
-        } elsif( defined ($f=$this->INEQUALITIES) ) {
-            $p->INEQUALITIES=$f->col(0)|($f->minor(All,~[0])*inv($this->LATTICE_BASIS));
+        if (my ($f, $prop_name)=$this->lookup_with_name("FACETS | INEQUALITIES")) {
+            $p->take($prop_name, $f->col(0) | $f->minor(All,~[0])*inv($this->LATTICE_BASIS));
         }
 
-        if ( defined (my $f=$this->VERTICES_IN_FACETS) ) {
-            $p->VERTICES_IN_FACETS=$this->VERTICES_IN_FACETS;
+        if (defined (my $f=$this->lookup("VERTICES_IN_FACETS"))) {
+            $p->VERTICES_IN_FACETS=$f;
         }
 
         return $p;
@@ -367,7 +363,7 @@ object_specialization Polytope::Lattice {
     
     #Read FACETS f1, . . . , fk (in lattice minimal form) and check whether there is a lattice minimal x ??? L such that hx, fii = 1 for all 1 . i . k. If so, then P is Gorenstein, and the first coordinate r of x of is the Gorenstein index of P. x is the unique inner lattice point of rP
     rule GORENSTEIN , GORENSTEIN_INDEX , GORENSTEIN_VECTOR : FACETS , CONE_AMBIENT_DIM {
-        my $p = new Polytope<Rational>(POINTS => ((ones_vector<Integer>()) | primitive($this->FACETS)));
+        my $p = new Polytope<Rational>(POINTS => ones_vector<Integer>() | primitive($this->FACETS));
         if ($p->CONE_DIM <= $this->CONE_AMBIENT_DIM) {
             my $x = dehomogenize($p->AFFINE_HULL->row(0));
             if (is_integral($x)) {
@@ -592,7 +588,7 @@ object_specialization Polytope::Lattice {
             $sched->apply($p);
             foreach my $h (@{$p->HILBERT_BASIS_GENERATORS->[0]}) {
                 next if ($h->[0]==1);
-                foreach (@{$this->FACETS|INEQUALITIES}) {
+                foreach (@{$this->give("FACETS | INEQUALITIES")}) {
                     if ($_*($h+$this->VERTICES->[$v]) < 0) {
                         $this->VERY_AMPLE=0;
                         return;
@@ -679,6 +675,10 @@ object_specialization Polytope::Lattice {
     precondition : FULL_DIM;
     weight 5.50;
 
+    rule FOLDABLE_COCIRCUIT_EQUATIONS : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, INTERIOR_RIDGE_SIMPLICES, MAX_INTERIOR_SIMPLICES {
+       $this->FOLDABLE_COCIRCUIT_EQUATIONS = foldable_cocircuit_equations($this->COMBINATORIAL_DIM, $this->RAYS, $this->RAYS_IN_FACETS, $this->INTERIOR_RIDGE_SIMPLICES, $this->MAX_INTERIOR_SIMPLICES);
+    }
+ 
 }
 
 

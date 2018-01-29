@@ -146,7 +146,7 @@ sub circ_rank_test {
 # @return Matrix a matrix of core points for C_2l
 sub infinite_cp_series_one_dir {
     my ($l, $m_low, $m_up) = @_;
-    my $z0 = new Vector(1|(new Vector(unit_vector<Rational>(2*$l,0))));
+    my $z0 = new Vector(1 | unit_vector<Rational>(2*$l,0));
     my $w = new Vector(2*$l+1);
     $w->[0] = 0;
     foreach (1..$l) {

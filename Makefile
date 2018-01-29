@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,196 +14,43 @@
 #-----------------------------------------------------------------------------
 
 #
-#  Building and installation
+#  Mostly forwarding to ninja, for backward compatibility reasons
 #
-.PHONY: all compile install install-arch install-shared \
-	install-arch-prep docs release-docs clean clean-arch clean-xs distclean TAGS RTAGS test
+.PHONY: all install docs release-docs clean distclean test
 
-.shell := $(firstword $(wildcard /bin/bash /usr/bin/bash /usr/local/bin/bash))
-ifdef .shell
-  SHELL := ${.shell}
+NINJA := ninja
+
+override DeveloperMode := $(wildcard support/export.make)
+override BuildRoot := $(firstword $(wildcard build.${Arch}) build)
+_BuildDir = ${BuildRoot}/$(if $(filter Debug=y% Debug=Y%, ${MAKEFLAGS}),Debug,Opt)
+
+# DESTDIR is often specified as make parameter but ninja doesnt support this
+# and we forward it via an environment variable
+ifdef $(DESTDIR)
+	export DESTDIR
 endif
 
-ProjectTop := ${CURDIR}
-include support/utils.make
-ifndef BuildDir
-  BuildDir := $(call _LocateBuildDir)
-  ifndef BuildDir
-    $(error CONFIGURATION ERROR)
-  endif
-endif
+all install :
+	${NINJA} -C $(_BuildDir) $@
 
-### load configuration
-include ${BuildDir}/conf.make
+test : all
+	perl/polymake --script run_testcases
 
-### default target
-all : compile
+docs : all
+	perl/polymake --script generate_docs
+	$(if ${DeveloperMode}, perl/polymake --script doxygen ${BuildRoot}/doc/PTL >/dev/null 2>&1)
 
-# core applications to build
-Apps := $(notdir $(wildcard apps/*))
+release-docs : all
+	perl/polymake --ignore-config --script generate_docs
 
-# list of BundledExts comes from conf.make, already sorted by dependencies
-# thus both the java make targets and the extensions are build in the correct order
-#
-# append those not in the list to make sure that newly created extensions are also built
-BundledExts += $(filter-out ${BundledExts},$(notdir $(wildcard ${BuildDir}/bundled/*)))
-
-BundledExtsWithMakefile := $(patsubst %/Makefile,${ProjectTop}/%,$(wildcard $(patsubst %,bundled/%/Makefile,${BundledExts})))
-
-define _MakeApp
-	$(MAKE) -C $(firstword $(3) ${BuildDir})/apps/$(1) AppName=$(1) $(2)
-
-endef
-
-define _MakeInBundledExt
-	$(MAKE) -C $(1) -f Makefile $(2) ProjectTop=${ProjectTop} BuildDir=$(CURDIR)/${BuildDir}/bundled/$(notdir $(1))
-
-endef
-
-define _MakeAppsInExt
-	$(foreach a, $(notdir $(wildcard bundled/$(1)/apps/*)), $(call _MakeApp,$a,$(2),${BuildDir}/bundled/$(1)))
-endef
-define _MakeApps
-	$(MAKE) -C ${BuildDir}/lib/core $(1) Apps="${Apps}"
-	$(foreach a, ${Apps}, $(call _MakeApp,$a,$(1)))
-	$(foreach e, ${BundledExts}, $(call _MakeAppsInExt,$e,$(1)))
-endef
-ifdef BundledExtsWithMakefile
-  define _MakeInBundledExtensions
-    $(foreach e, ${BundledExtsWithMakefile},$(call _MakeInBundledExt,$e,$(1)))
-  endef
-else
-  _MakeInBundledExtensions :=
-endif
-
-define _InstallSubdir
-${PERL} ${INSTALL_PL} -m ${DirMask} -U $(2) $(1) ${InstallTop}/$(1)
-
-endef
-define _CreateDir
-${PERL} ${INSTALL_PL} -d -m ${DirMask} $(1)
-
-endef
-
-CallPolymake := $(if ${ARCHFLAGS},$(if $(findstring arch,${PERL}),,arch ${ARCHFLAGS})) ${PERL} perl/polymake
-
-compile:
-	@+$(call _MakeApps,compile)
-	@+$(call _MakeInBundledExtensions,compile)
-
-### installation
-
-# scripts in support/ which should not be copied to the final installation location
-InstHelpers := configure.pl convert_main_script find-provides find-requires
-
-define _InstallSharedInApp
-	$(foreach d, perllib rules scripts, $(if $(wildcard $(1)/$d), $(call _InstallSubdir,$(1)/$d)))
-endef
-define _InstallSharedInExt
-	$(if $(wildcard bundled/$(1)/scripts), ${PERL} ${INSTALL_PL} -m ${DirMask} bundled/$(1)/scripts ${InstallTop}/scripts)
-	$(foreach a, $(wildcard bundled/$(1)/apps/*), $(call _InstallSharedInApp,$a))
-endef
-define _InstallShared
-	$(foreach a, ${Apps}, $(call _InstallSharedInApp,apps/$a))
-	$(foreach e, ${BundledExts}, $(call _InstallSharedInExt,$e))
-endef
-define _InstallExternalHeaders
-	$(foreach d, ${ExternalHeaders}, ${PERL} ${INSTALL_PL} -m ${DirMask} include/external/$d ${InstallInc}/polymake/external/$d)
-
-endef
-
-install : install-shared install-arch
-
-install-arch : all install-arch-prep
-	@+$(call _MakeApps,install)
-	[ -d ${InstallBin} ] || $(call _CreateDir, ${InstallBin})
-	${PERL} support/convert_main_script --bindir ${InstallBin} \
-		$(if ${PREFIX},--prefix ${PREFIX}) $(if ${FinkBase},--perllib ${FinkBase}/lib/perl5) \
-		InstallTop=${FinalInstallTop} InstallArch=${FinalInstallArch} Arch="${Arch}"
-	rm -f ${InstallArch}/conf.make
-	{ sed -e '/Install.*=/ $(if ${PREFIX}, s:^\(Install.*=\)${PREFIX}:override \1$${PREFIX}:',\
-					       s:^:override :') \
-	      -e '/INSTALL_PL=/ s:=.*:=$${InstallTop}/support/install.pl:' \
-	      -e '/DESTDIR=/ { s/^/override /; q; }' \
-	      ${BuildDir}/conf.make; \
-	  $(if ${PREFIX}, echo "PREFIX=${PREFIX}";) \
-	} >${InstallArch}/conf.make
-	chmod 444 ${InstallArch}/conf.make
-	$(foreach e, ${BundledExts}, \
-	  rm -f ${InstallArch}/bundled/$e/conf.make; \
-	  sed -e 's|^include .*/conf\.make|include ${InstallArch}/conf.make|' ${BuildDir}/bundled/$e/conf.make >${InstallArch}/bundled/$e/conf.make; \
-	  chmod 444 ${InstallArch}/bundled/$e/conf.make; )
-	@+$(call _MakeInBundledExtensions,install-arch)
-
-install-arch-prep:
-	$(call _CreateDir, ${InstallArch} $(patsubst %, ${InstallArch}/bundled/%/lib, ${BundledExts}))
-
-install-shared:
-	$(call _CreateDir, ${InstallTop})
-	$(call _InstallSubdir,perllib)
-	$(call _InstallShared)
-	@+$(call _MakeApps, install-src)
-	$(call _InstallExternalHeaders)
-	$(call _InstallSubdir,povray)
-	$(call _InstallSubdir,resources)
-	$(call _InstallSubdir,scripts)
-	$(call _InstallSubdir,xml)
-	$(call _InstallSubdir,support,$(foreach f, ${InstHelpers}, -X $f))
-	@+$(call _MakeInBundledExtensions,install-shared)
-
-
-### run the tests
-
-ifdef DeveloperMode
-  test : compile
-	$(if $(filter y% Y%,${Debug}),POLYMAKE_CLIENT_SUFFIX=-d) ${CallPolymake} \
-	  --script run_testcases $(if ${Shuffle},--shuffle $(filter-out y% Y%,${Shuffle}))
-else
-  test : compile
-	${CallPolymake} --script run_testcases --examples '*'
-endif
-
-ifdef DeveloperMode
-
-### maintenance
-
-include support/export.make
-
-### separate builds in selected bundled extensions
-
-%-bundled :
-	+@$(call _MakeInBundledExtensions,$*)
-
-endif  # DeveloperMode
-
-### automatic part of documentation
-
-# generate the doc pages describing the current configuration, including known extensions
-docs:
-	${CallPolymake} --script generate_docs ${InstallDoc} ${Apps}
-	$(if ${DeveloperMode}, ${CallPolymake} --script doxygen ${InstallDoc}/PTL $(if ${Verbose},, >/dev/null 2>&1))
-
-# constrain the documentation to the core application
-release-docs:
-	${CallPolymake} --ignore-config --script generate_docs ${DocOptions} ${InstallDoc} ${Apps}
-
-### cleanup
-
-clean-arch:
-	@+$(call _MakeApps,clean)
-	@+$(call _MakeInBundledExtensions,clean)
-
-# fully clean up current and old perl-xs trees
-clean-xs:
-	rm -rf ${BuildDir}/perlx*
-
-clean : clean-arch
-	rm -rf doc_build
+clean :
+	${NINJA} -C $(_BuildDir) clean.all
+	${NINJA} -C $(_BuildDir) -t clean all
+	rm -rf ${BuildRoot}/doc
 
 distclean:
-	rm -rf build* doc_build
+	rm -rf build build.*
 
-
-# Local Variables:
-# mode: Makefile
-# End:
+ifdef DeveloperMode
+  include support/export.make
+endif

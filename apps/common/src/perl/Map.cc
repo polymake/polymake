@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2014
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
    
@@ -22,8 +22,10 @@
 #include "polymake/Integer.h"
 #include "polymake/Map.h"
 #include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
+#include "polymake/SparseMatrix.h"
 #include "polymake/Vector.h"
 #include "polymake/client.h"
 #include "polymake/hash_map"
@@ -31,6 +33,12 @@
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( new_X, T0,T1 ) {
+      perl::Value arg0(stack[1]);
+      WrapperReturnNew(T0, (arg0.get<T1>()) );
+   };
+
    template <typename T0>
    FunctionInterface4perl( new, T0 ) {
       WrapperReturnNew(T0, () );
@@ -57,5 +65,12 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::Map_A_Int_I_Pair_A_Set__Int_I_Set__Int_Z_Z", Map< int, std::pair< Set< int >, Set< int > > >);
    Class4perl("Polymake::common::Map_A_Bitset_I_HashMap_A_Bitset_I_Rational_Z_Z", Map< Bitset, hash_map< Bitset, Rational > >);
    FunctionInstance4perl(new, Map< Bitset, hash_map< Bitset, Rational > >);
+   Class4perl("Polymake::common::Map_A_IncidenceMatrix__NonSymmetric_I_Int_Z", Map< IncidenceMatrix< NonSymmetric >, int >);
+   FunctionInstance4perl(new, Map< IncidenceMatrix< NonSymmetric >, int >);
+   FunctionInstance4perl(new_X, Map< Set< int >, Integer >, perl::Canned< const Map< Set< int >, Integer > >);
+   Class4perl("Polymake::common::Map_A_Int_I_Rational_Z", Map< int, Rational >);
+   FunctionInstance4perl(new, Map< int, Rational >);
+   Class4perl("Polymake::common::Map_A_Int_I_QuadraticExtension__Rational_Z", Map< int, QuadraticExtension< Rational > >);
+   FunctionInstance4perl(new, Map< int, QuadraticExtension< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

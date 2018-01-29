@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -35,7 +35,7 @@ Array<SetType> max_interior_simplices_impl(perl::Object p, perl::OptionSet optio
    const bool is_config = p.isa("PointConfiguration");
 
    const int d = is_config
-      ? int(p.give("VECTOR_DIM"))-1
+      ? int(p.give("CONVEX_HULL.COMBINATORIAL_DIM"))
       : int(p.give("COMBINATORIAL_DIM"));
 
    const Matrix<Scalar> V = p.give(is_config ? Str("POINTS") : Str("RAYS"));
@@ -44,7 +44,7 @@ Array<SetType> max_interior_simplices_impl(perl::Object p, perl::OptionSet optio
    AnyString VIF_property = options["VIF_property"];
    if (!VIF_property)
       VIF_property = is_config
-                     ? Str("CONVEX_HULL.VERTICES_IN_FACETS")
+                     ? Str("CONVEX_HULL.POINTS_IN_FACETS")
                      : Str("RAYS_IN_FACETS");
    const IncidenceMatrix<> VIF = p.give(VIF_property);
 
@@ -63,13 +63,13 @@ std::pair< Array<SetType>, Array<SetType> > interior_and_boundary_ridges(perl::O
    const bool is_config = p.isa("PointConfiguration");
 
    const int d = is_config
-      ? int(p.give("VECTOR_DIM"))-1
+      ? int(p.give("CONVEX_HULL.COMBINATORIAL_DIM"))
       : int(p.give("COMBINATORIAL_DIM"));
 
    AnyString VIF_property = options["VIF_property"];
    if (!VIF_property)
       VIF_property = is_config
-                     ? Str("CONVEX_HULL.VERTICES_IN_FACETS")
+                     ? Str("CONVEX_HULL.POINTS_IN_FACETS")
                      : Str("RAYS_IN_FACETS");
    const IncidenceMatrix<> VIF = p.give(VIF_property);
 
@@ -97,7 +97,8 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# Find the (//d//-1)-dimensional simplices in the interior and in the boundary of a //d//-dimensional polytope or cone"
                           "# @param Polytope P the input polytope or cone"
                           "# @return Pair<Array<Set>,Array<Set>>"
-                          "# @example > print interior_and_boundary_ridges(cube(2));"
+                          "# @example"
+                          "# > print interior_and_boundary_ridges(cube(2));"
                           "# | <{0 3}"
                           "# | {1 2}"
                           "# | >"

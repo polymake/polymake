@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -218,8 +218,8 @@ protected:
       row_list& R=data->R;
       for (; old_r>r; --old_r) R.pop_back();
 
-      typename Rows<Matrix2>::const_iterator row2=pm::rows(M).begin();
-      for (typename Entire<row_list>::iterator row=entire(R); !row.at_end(); ++row, ++row2)
+      auto row2=pm::rows(M).begin();
+      for (auto row=entire(R); !row.at_end(); ++row, ++row2)
          *row=*row2;
 
       for (; old_r<r; ++old_r, ++row2) R.push_back(*row2);

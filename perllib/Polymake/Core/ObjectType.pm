@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 use feature 'state';
 
 package Polymake::Core::ObjectType;
@@ -88,7 +89,7 @@ use Polymake::Struct (
 #
 sub new {
    my $self=&_new;
-   Overload::learn_package_retrieval($self, \&pkg);
+   Struct::learn_package_retrieval($self, \&pkg);
    my $tparams=splice @_, 0, 3;
    my $self_sub=sub { $self };
    my $generic_type;
@@ -108,7 +109,6 @@ sub new {
          undef $self->perform_typecheck;
          $self->params=new_generic PropertyParamedType($self->name, $self->pkg, $self->application, $tparams, undef, "objects");
       }
-      PropertyType::create_method_new($self);
       Overload::add_instance($self->pkg, ".construct", \&Object::new_copy,        undef,
                              [1, 1, $self->pkg ], undef, $construct_node);
       Overload::add_instance($self->pkg, ".construct", \&Object::new_filled_copy, undef,
@@ -137,6 +137,7 @@ sub new {
    if (!$self->abstract) {
       define_function($self->pkg, ".type", $self_sub);
    }
+   PropertyType::create_method_new($self);
 
    # proceed with parent classes
    if (@_) {
@@ -512,67 +513,80 @@ sub add_permutation {
    $self->properties->{$name}=$perm;
 }
 ####################################################################################
-sub override_property {        # "new name", "old name", Help => Property
-   my ($self, $prop_name, $old_prop_name, $help)=@_;
-   if ($Application::plausibility_checks && instanceof Specialization($scope_owner) && !$scope_owner->is_anon_full_spez) {
-      croak( "A property can't be overridden in a partial or conditional specialization" );
-   }
-   my $old_prop;
+# private:
+sub find_overridden_property {
+   my ($self, $prop_name)=@_;
+   my $prop;
    foreach my $super (@{$self->linear_isa}) {
       # only properties inherited from other types or from other enclosing types may be overridden
       if ($super != $self->generic && $super->outer_object_type != $scope_owner) {
-         $old_prop=$super->lookup_property($old_prop_name)
-           and last;
+         defined($prop=$super->lookup_property($prop_name))
+           and return $prop;
       }
    }
-   if (!$old_prop) {
-      $old_prop=$self->property($old_prop_name);
-      croak( "Can't override a property $old_prop_name defined in the same class family ", $old_prop_name->defined_for->full_name );
-   }
-   my $prop=$self->properties->{$old_prop_name}=add_property($self, $old_prop->override_by($prop_name, $self));
-   define_function($self->pkg, $old_prop_name, UNIVERSAL::can($self->pkg, $prop_name));
-
-   if (defined $help) {
-      $help->annex->{header}="property $prop_name : ".$prop->type->full_name."\n";
-      weak($help->annex->{property}=$prop);
-      $help->text .= " Alias for property [[" . $old_prop->defined_for->help_ref_to_prop($self->application, $old_prop_name) . "]].\n";
-   }
-   $prop;
+   # this will croak if $prop_name is unknown
+   $prop=$self->property($prop_name);
+   croak( "Can't override a property $prop_name defined in the same class family ", $prop_name->defined_for->full_name );
 }
 ####################################################################################
-sub override_twin_property {
-   my ($self, $prop_name)=@_;
-   if ($Application::plausibility_checks and
-       instanceof Specialization($self) || instanceof Augmented($self)) {
-      croak( "A twin property can only be overridden in a derived object type" );
-   }
-   my $old_prop;
-   foreach my $super (@{$self->linear_isa}) {
-      # only properties inherited from other types may be overridden
-      if ($super != $self->generic) {
-         $old_prop=$super->lookup_property($prop_name)
-           and last;
+sub override_property {        # "new name", "old name", Help => Property
+   my ($self, $prop_name, $old_prop_name, $new_type, $help)=@_;
+   if ($Application::plausibility_checks) {
+      if (defined $old_prop_name) {
+         if (instanceof Specialization($scope_owner) && !$scope_owner->is_anon_full_spez) {
+            croak( "A property can't be overridden in a partial or conditional specialization" );
+         }
+      } else {
+         if (instanceof Specialization($self) || instanceof Augmented($self)) {
+            croak( "Property type can only be overridden in a derived object type" );
+         }
       }
    }
-   if (!$old_prop) {
-      $old_prop=$self->property($prop_name);
-      croak( "Can't override a property $prop_name defined in the same class family ", $prop_name->defined_for->full_name );
-   }
-   if ($Application::plausibility_checks && !($old_prop->flags & $Property::is_twin)) {
-      croak( "Only twin properties can be overridden without name change" );
-   }
-   my $prop=$self->properties->{$prop_name}=$old_prop->clone_for_overridden_twin($self);
-   create_prop_method($self, $prop);
+   my $old_prop=find_overridden_property($self, $old_prop_name // $prop_name);
 
-   # derived classes might have cached the original twin property or its concrete instances
-   foreach my $derived ($self->derived) {
-      my $cached_prop=$derived->properties->{$prop_name} or next;
-      if ($cached_prop==$old_prop) {
-         $derived->properties->{$prop_name}=$prop;
-      } elsif ($cached_prop->flags & $Property::is_concrete && $self->isa($cached_prop->belongs_to->generic // $cached_prop->belongs_to)) {
-         delete $derived->properties->{$prop_name};
+   if ($Application::plausibility_checks && defined($new_type)) {
+      $old_prop->flags & $Property::is_subobject
+        or croak( "invalid type override for an atomic property ", $old_prop_name // $prop_name );
+      if ($old_prop->flags & $Property::is_twin and $new_type != $self) {
+         croak( "Twin property $prop_name automatically inherits the enclosing object type, the override definition must end with ': self'" );
+      }
+      if ($new_type->pkg eq $old_prop->type->pkg) {
+         croak( "invalid property type override: new type is identical to the overridden one" );
+      }
+      ($new_type->generic // $new_type)->isa($old_prop->type->pure_type->generic // $old_prop->type->pure_type)
+        or croak( "invalid property type override: ", $new_type->full_name, " is not derived from ", $old_prop->type->pure_type->full_name );
+   }
+
+   my $prop=$old_prop->override_by($prop_name, $self, $new_type);
+
+   if (defined($new_type) and $old_prop->flags & $Property::is_augmented) {
+      $prop->change_to_augmented(new Augmented($prop, $self));
+   }
+
+   if (defined $old_prop_name) {
+      $self->properties->{$old_prop_name}=add_property($self, $prop);
+      define_function($self->pkg, $old_prop_name, UNIVERSAL::can($self->pkg, $prop_name));
+
+      if (defined $help) {
+         $help->annex->{header}="property $prop_name : ".$prop->type->full_name."\n";
+         weak($help->annex->{property}=$prop);
+         $help->text .= " Alias for property [[" . $old_prop->defined_for->help_ref_to_prop($self->application, $old_prop_name) . "]].\n";
+      }
+   } else {
+      $self->properties->{$prop_name}=$prop;
+      create_prop_method($self, $prop);
+
+      # derived classes might have cached the original property or its concrete instances
+      foreach my $derived ($self->derived) {
+         my $cached_prop=$derived->properties->{$prop_name} or next;
+         if ($cached_prop==$old_prop) {
+            $derived->properties->{$prop_name}=$prop;
+         } elsif ($cached_prop->flags & $Property::is_concrete && $self->isa($cached_prop->belongs_to->generic // $cached_prop->belongs_to)) {
+            delete $derived->properties->{$prop_name};
+         }
       }
    }
+   $prop;
 }
 ####################################################################################
 # protected:
@@ -595,17 +609,25 @@ sub rule_is_applicable {
    1
 }
 
+sub add_producers_of {
+   my ($self, $key)=splice @_, 0, 2;
+   push @{$self->producers->{$key}}, @_;
+   invalidate_prod_cache($self, $key);
+}
+
 sub get_producers_of {
    my ($self, $prop, $stop_after)=@_;
-   $self->all_producers->{$prop->key} //= do {
+   my $key=$prop->key;
+   $self->all_producers->{$key} ||= do {
       my @list;
-      if (defined (my $own_prod=$self->producers->{$prop->key})) {
+      if (defined (my $own_prod=$self->producers->{$key})) {
          @list=@$own_prod;
       }
       $stop_after //= $prop->defined_for;
       if ($stop_after != $self) {
          foreach my $super_proto (@{$self->linear_isa}) {
-            if (defined (my $super_prod=$super_proto->producers->{$prop->key})) {
+            $super_proto->all_producers->{$key} //= 0;   # mark for cache invalidation
+            if (defined (my $super_prod=$super_proto->producers->{$key})) {
                push @list, grep { rule_is_applicable($self, $_) } @$super_prod;
             }
             last if $stop_after==$super_proto;
@@ -660,13 +682,46 @@ sub add_rule_labels {
 ####################################################################################
 # protected:
 # "NAME.NAME" => (Property)
-sub encode_property_path {
-   my ($self, $req)=@_;
+sub encode_descending_path {
+   my ($self, $string)=@_;
    my $prop;
    map {
       $self=$prop->type if $prop;
       $prop=$self->property($_);
-   } split /\./, $req;
+   } split /\./, $string;
+}
+
+# "parent.<...>.PROP_NAME.<...> => Property::Path
+# Leading "parents" may also be expressed as "ancestor(TYPE)"
+sub encode_property_path {
+   my ($self, $string)=@_;
+   my $up=0;
+   while ($string =~ s/^parent\.//) {
+      if (instanceof Augmented($self)) {
+         ++$up;
+         $self=$self->parent_property->belongs_to;
+      } else {
+         croak("can't refer to parents of a non-augmented object type ", $self->full_name);
+      }
+   }
+   if (!$up && $string =~ s/^ancestor\(($balanced_re)\)\.//) {
+      my $parent_type=eval "typeof $1";
+      croak("invalid parent type $1: $@") if $@;
+      for (;;) {
+         if (instanceof Augmented($self)) {
+            ++$up;
+            $self=$self->parent_property->belongs_to;
+            if ($self->isa($parent_type)) {
+               last;
+            }
+         } elsif ($up) {
+            croak($_[0]->full_name, " has no ascendants of type ", $parent_type->full_name);
+         } else {
+            croak("can't refer to parents of a non-augmented object type ", $self->full_name);
+         }
+      }
+   }
+   new Property::Path($up, encode_descending_path($self, $string));
 }
 
 # 'NAME.NAME | ...' => [ [ Property, ... ] ]
@@ -675,7 +730,7 @@ sub encode_read_request {
    my ($self, $req)=@_;
    my $perm_seen;
    my @alternatives=map {
-      my @path=encode_property_path($self, $_);
+      my @path=encode_descending_path($self, $_);
       $perm_seen ||= Property::find_first_in_path(\@path, $Property::is_permutation)>=0;
       \@path
    } split /\s*\|\s*/, $req;
@@ -781,7 +836,7 @@ sub augment {
       $augm=new Augmented($prop, $self);
       $prop->change_to_augmented($augm);
       create_self_method_in_anon_full_spez($self, $prop, $augm) if $scope_owner->is_anon_full_spez;
-      $update_caches=!$prop->flags & $Property::is_concrete;
+      $update_caches=!($prop->flags & $Property::is_concrete);
 
    } elsif ($prop->belongs_to == $self->full_spez_for) {
       return $self->augment_in_full_spez($prop);
@@ -967,13 +1022,16 @@ sub new {
    } elsif ($self->pure_type->abstract) {
       $self->pure_type=$self->pure_type->concrete_type($self->outer_object_type);
    }
+
+   my $inherit_pure_type;
    if (!@super && defined($prop->overrides)) {
       my $overridden=$owner->lookup_overridden_property($prop);
       if ($overridden->flags & $Property::is_augmented) {
          push @super, $overridden->type;
+         $inherit_pure_type= $overridden->type->pure_type != $self->pure_type;
       }
    }
-   establish_inheritance($self, 0, @super ? @super : $self->pure_type);
+   establish_inheritance($self, 0, @super, $inherit_pure_type || !@super ? $self->pure_type : ());
 
    if (instanceof Specialization($scope_owner)) {
       if ($self->abstract) {
@@ -1032,12 +1090,14 @@ sub concrete_type {
       define_function($self->pkg, "type", sub { $self }, 1);
 
       weak($self->outer_object_type=$owner->outer_object_type);
-      if (@concrete_super) {
-         $self->pure_type=$concrete_super[0]->pure_type;
-      } else {
-         $self->pure_type= $src->pure_type->abstract ? $src->pure_type->concrete_type($self->outer_object_type) : $src->pure_type;
+      if (!@concrete_super) {
          @concrete_super=map { $_->type } grep { $_->flags & $Property::is_augmented } $owner->collect_augmented_super_instances($prop_name);
       }
+      $self->pure_type= @concrete_super
+                        ? $concrete_super[0]->pure_type :
+                        $src->pure_type->abstract
+                        ? $src->pure_type->concrete_type($self->outer_object_type)
+                        : $src->pure_type;
       establish_inheritance($self, 0, $src->matching_specializations($owner, $self->pure_type), $src,
                             @concrete_super || $self->pure_type == $src->pure_type ? @concrete_super : $self->pure_type);
       propagate_inheritance($self, $owner, @concrete_super);

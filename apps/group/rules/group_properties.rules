@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -28,6 +28,11 @@ object Group {
    # The sizes of the conjugacy classes
    property CONJUGACY_CLASS_SIZES : Array<Int>;
 
+   #
+   # after these general properties,
+   # different actions that express representations of the group on different entities
+   #
+   
    # @category Symmetry
    # a permutation action on integers
    property PERMUTATION_ACTION : PermutationAction : multiple;
@@ -42,32 +47,42 @@ object Group {
 
    # @category Symmetry
    # operates on indices
-   property INPUT_RAYS_ACTION : group::PermutationAction;
+   property INPUT_RAYS_ACTION : PermutationAction;
 
    # @category Symmetry
    # operates on indices
-   property RAYS_ACTION : group::PermutationAction;
+   property RAYS_ACTION : PermutationAction;
 
    # @category Symmetry
    # operates on indices
-   property INEQUALITIES_ACTION : group::PermutationAction;
+   property INEQUALITIES_ACTION : PermutationAction;
 
    # @category Symmetry
    # operates on indices
-   property FACETS_ACTION : group::PermutationAction;
+   property FACETS_ACTION : PermutationAction;
 
    # @category Symmetry
    # operates on indices
-   property MAXIMAL_CONES_ACTION : group::PermutationAction;
+   property MAXIMAL_CONES_ACTION : PermutationAction;
 
+   # @category Symmetry
+   # operates on indices
+   property INPUT_CONES_ACTION : group::PermutationAction;
+
+   # @category Symmetry
+   # operates on indices
+   property FACET_NORMALS_ACTION : PermutationAction;
+   
    # @category Symmetry
    # operates on indices, including the '0'-th homogeneous coordinate
-   property HOMOGENEOUS_COORDINATE_ACTION : group::PermutationAction;
+   property HOMOGENEOUS_COORDINATE_ACTION : PermutationAction;
 
    # @category Symmetry
    # operates on indices
-   property VECTOR_ACTION : group::PermutationAction;
+   property VECTOR_ACTION : PermutationAction;
 
+   # @category Symmetry
+   property REGULAR_REPRESENTATION : MatrixActionOnVectors<Rational>;
 }
 
 

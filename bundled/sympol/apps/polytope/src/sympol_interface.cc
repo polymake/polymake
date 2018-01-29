@@ -50,30 +50,22 @@ namespace polymake { namespace polytope { namespace sympol_interface {
       if ( symmetry_group.degree() != inequalities.rows() + equations.rows() )
         throw std::runtime_error("group DEGREE does not match size of input");
       
-      sympol::RayComputation* rayComp = NULL;
-      switch (rayCompMethod) {
-        case cdd:
-          rayComp = new sympol::RayComputationCDD();
-          break;
-        case lrs:
-          rayComp = new sympol::RayComputationLRS();
-          break;
-        case beneath_beyond:
-          rayComp = new RayComputationBeneathBeyond();
-          break;
+      sympol::RayComputation* rayComp = nullptr;
+      if (rayCompMethod == SympolRayComputationMethod::cdd)
+         rayComp = new sympol::RayComputationCDD();
+      else if (rayCompMethod == SympolRayComputationMethod::lrs)
+         rayComp = new sympol::RayComputationLRS();
+      else if (rayCompMethod == SympolRayComputationMethod::beneath_beyond)
+         rayComp = new RayComputationBeneathBeyond();
 #ifdef POLYMAKE_WITH_PPL
-        case ppl:
-          rayComp = new RayComputationPPL();
-          break;
+      else if (rayCompMethod == SympolRayComputationMethod::ppl)
+         rayComp = new RayComputationPPL();
 #endif
-      default:
-         break;
-      }
-      if ( ! rayComp ) {
-        throw std::runtime_error("Invalid ray computation method");
-      }
+      if (rayComp == nullptr)
+         throw std::runtime_error("this shouldn't happen");
+      
       rayComp->initialize();
-      sympol::RecursionStrategy* rs = NULL;
+      sympol::RecursionStrategy* rs = nullptr;
       if (idmLevel == 0 && admLevel == 0)
         rs = new sympol::RecursionStrategyDirect();
       else if (0 <= idmLevel && idmLevel <= admLevel)

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,6 +18,7 @@
 
 #include "polymake/Integer.h"
 #include "polymake/Rational.h"
+#include "polymake/RationalFunction.h"
 #include "polymake/TropicalNumber.h"
 #include "polymake/client.h"
 
@@ -54,5 +55,8 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary__eq, perl::Canned< const TropicalNumber< Min, Rational > >, perl::Canned< const TropicalNumber< Min, Rational > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const TropicalNumber< Max, Rational > >, perl::Canned< const TropicalNumber< Max, Rational > >);
    Class4perl("Polymake::common::TropicalNumber_A_Min_I_Int_Z", TropicalNumber< Min, int >);
+   OperatorInstance4perl(Binary_add, perl::Canned< const TropicalNumber< Min, Rational > >, perl::Canned< const UniPolynomial< TropicalNumber< Min, Rational >, int > >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const TropicalNumber< Max, Rational > >, perl::Canned< const TropicalNumber< Max, Rational > >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const TropicalNumber< Max, Rational > >, perl::Canned< const UniPolynomial< TropicalNumber< Max, Rational >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

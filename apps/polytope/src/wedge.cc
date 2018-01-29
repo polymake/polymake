@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,6 +19,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/linalg.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/common/labels.h"
 
 namespace polymake { namespace polytope {
 
@@ -132,7 +133,7 @@ perl::Object wedge(perl::Object p_in, const int wedge_facet, const Scalar& z, co
 
    if (!options["no_labels"]) {
       std::vector<std::string> labels(n_vertices_out);
-      read_labels(p_in, "VERTEX_LABELS", labels);
+      common::read_labels(p_in, "VERTEX_LABELS", non_const(select(labels, sequence(0,n_vertices))));
       const std::string tick="'";
 
       copy_range(entire(attach_operation(select(labels, sequence(0,n_vertices)-VIF[wedge_facet]),

@@ -1,0 +1,699 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+function induced_orbits<Scalar>(fan::PolyhedralFan<Scalar> $$ { homog_action=>0, return_matrix=>1 }) {
+    my ($c, $action_name, $generator_name, $options) = @_;
+    return group::induced_orbits_impl<Scalar>($c, $action_name, $generator_name, (new Scalar()), $options);
+}
+
+object PolyhedralFan {
+
+   # @category Symmetry
+   property GROUP : group::Group : multiple {
+
+      # @category Symmetry
+      property MATRIX_ACTION : group::MatrixActionOnVectors<Scalar>;
+
+      # @category Symmetry
+      property REPRESENTATIVE_RAYS : Matrix<Scalar>;
+
+      # @category Symmetry
+      property REPRESENTATIVE_MAXIMAL_CONES : IncidenceMatrix;
+
+      # @category Symmetry
+      property REPRESENTATIVE_CONES : IncidenceMatrix;
+
+
+      #
+      # some shortcuts
+      #
+
+      # @category Symmetry
+      # explicit representatives of equivalence classes of [[fan::INPUT_RAYS]] under a group action
+      user_method REPRESENTATIVE_INPUT_RAYS = INPUT_RAYS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX;
+
+      # @category Symmetry
+      # explicit representatives of equivalence classes of [[fan::INPUT_CONES]] under a group action
+      user_method REPRESENTATIVE_INPUT_CONES = INPUT_CONES_ACTION.EXPLICIT_ORBIT_REPRESENTATIVES;
+
+      rule REPRESENTATIVE_RAYS = RAYS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX;
+
+      rule REPRESENTATIVE_MAXIMAL_CONES = MAXIMAL_CONES_ACTION.EXPLICIT_ORBIT_REPRESENTATIVES;
+
+      property MAXIMAL_CONES_ACTION {
+
+           # @category Symmetry
+           # dimensions of representatives of maximal cones
+           property REPRESENTATIVE_COMBINATORIAL_DIMS : Array<Int>;
+
+           # @category Symmetry
+           # counts how many representatives of maximal cones there are in each dimension
+           property REPRESENTATIVE_F_VECTOR : Array<Int>;
+      }
+                                     
+   } # end property GROUP
+
+      # First, some rules that apply to all actions
+
+   rule GROUP.ORDER : GROUP.RAYS_ACTION.TRANSVERSAL_SIZES | GROUP.MAXIMAL_CONES_ACTION.TRANSVERSAL_SIZES | GROUP.HOMOGENEOUS_COORDINATE_ACTION.TRANSVERSAL_SIZES {
+       my $arr = $this->give("GROUP.RAYS_ACTION.TRANSVERSAL_SIZES | GROUP.MAXIMAL_CONES_ACTION.TRANSVERSAL_SIZES | GROUP.HOMOGENEOUS_COORDINATE_ACTION.TRANSVERSAL_SIZES");
+       my $i = new Integer(1);
+       $i *= $_ foreach(@{$arr});
+       $this->GROUP->ORDER = $i;
+   }
+   weight 1.10;
+
+   rule GROUP.CONJUGACY_CLASS_SIZES : GROUP.RAYS_ACTION.CONJUGACY_CLASSES | GROUP.MAXIMAL_CONES_ACTION.CONJUGACY_CLASSES | \
+       GROUP.HOMOGENEOUS_COORDINATE_ACTION.CONJUGACY_CLASSES | GROUP.SET_ACTION.CONJUGACY_CLASSES  | GROUP.MATRIX_ACTION.CONJUGACY_CLASSES {
+           my $arr = $this->give("GROUP.RAYS_ACTION.CONJUGACY_CLASSES | GROUP.MAXIMAL_CONES_ACTION.CONJUGACY_CLASSES | GROUP.HOMOGENEOUS_COORDINATE_ACTION.CONJUGACY_CLASSES | GROUP.SET_ACTION.CONJUGACY_CLASSES | GROUP.MATRIX_ACTION.CONJUGACY_CLASSES");
+           $this->GROUP->CONJUGACY_CLASS_SIZES = [ map {$_->size} @{$arr} ];
+   }
+   weight 1.10;
+
+   # *_ACTION->IRREDUCIBLE_DECOMPOSITION, in alphabetical order
+   rule GROUP.HOMOGENEOUS_COORDINATE_ACTION.IRREDUCIBLE_DECOMPOSITION : GROUP.HOMOGENEOUS_COORDINATE_ACTION.CHARACTER, GROUP.CHARACTER_TABLE, GROUP.CONJUGACY_CLASS_SIZES, GROUP.ORDER {
+       $this->GROUP->HOMOGENEOUS_COORDINATE_ACTION->IRREDUCIBLE_DECOMPOSITION = group::irreducible_decomposition($this->GROUP->HOMOGENEOUS_COORDINATE_ACTION->CHARACTER, $this->GROUP);
+   }
+   weight 1.10;
+
+   rule GROUP.MATRIX_ACTION.IRREDUCIBLE_DECOMPOSITION : GROUP.MATRIX_ACTION.CHARACTER, GROUP.CHARACTER_TABLE, GROUP.CONJUGACY_CLASS_SIZES, GROUP.ORDER {
+       $this->GROUP->MATRIX_ACTION->IRREDUCIBLE_DECOMPOSITION = group::irreducible_decomposition($this->GROUP->MATRIX_ACTION->CHARACTER, $this->GROUP);
+   }
+   weight 1.10;
+
+   rule GROUP.MAXIMAL_CONES_ACTION.IRREDUCIBLE_DECOMPOSITION : GROUP.MAXIMAL_CONES_ACTION.CHARACTER, GROUP.CHARACTER_TABLE, GROUP.CONJUGACY_CLASS_SIZES, GROUP.ORDER {
+       $this->GROUP->MAXIMAL_CONES_ACTION->IRREDUCIBLE_DECOMPOSITION = group::irreducible_decomposition($this->GROUP->MAXIMAL_CONES_ACTION->CHARACTER, $this->GROUP);
+   }
+   weight 1.10;
+
+   rule GROUP.RAYS_ACTION.IRREDUCIBLE_DECOMPOSITION : GROUP.RAYS_ACTION.CHARACTER, GROUP.CHARACTER_TABLE, GROUP.CONJUGACY_CLASS_SIZES, GROUP.ORDER {
+       $this->GROUP->RAYS_ACTION->IRREDUCIBLE_DECOMPOSITION = group::irreducible_decomposition($this->GROUP->RAYS_ACTION->CHARACTER, $this->GROUP);
+   }
+   weight 1.10;
+
+   rule GROUP.MAXIMAL_CONES_ACTION.REPRESENTATIVE_COMBINATORIAL_DIMS : MAXIMAL_CONES_COMBINATORIAL_DIMS, GROUP.MAXIMAL_CONES_ACTION.ORBIT_REPRESENTATIVES {
+       my @dims;
+       foreach (@{$this->GROUP->MAXIMAL_CONES_ACTION->ORBIT_REPRESENTATIVES}) {
+           push @dims, $this->MAXIMAL_CONES_COMBINATORIAL_DIMS->[$_];
+       }
+       $this->GROUP->MAXIMAL_CONES_ACTION->REPRESENTATIVE_COMBINATORIAL_DIMS = \@dims;
+   }
+
+   rule GROUP.MAXIMAL_CONES_ACTION.REPRESENTATIVE_F_VECTOR : COMBINATORIAL_DIM, GROUP.MAXIMAL_CONES_ACTION.REPRESENTATIVE_COMBINATORIAL_DIMS {
+       my $fvect = new Array<Int>(1 + $this->COMBINATORIAL_DIM);
+       foreach (@{$this->GROUP->MAXIMAL_CONES_ACTION->REPRESENTATIVE_COMBINATORIAL_DIMS}) {
+           $fvect->[$_]++;
+       }
+       $this->GROUP->MAXIMAL_CONES_ACTION->REPRESENTATIVE_F_VECTOR = $fvect;
+   }
+   
+   #
+   # explicit representatives
+   #
+
+   # rule GROUP.SET_ACTION.EXPLICIT_ORBIT_REPRESENTATIVES : GROUP.SET_ACTION.DOMAIN_NAME, GROUP.SET_ACTION.ORBIT_REPRESENTATIVES, MAX_INTERIOR_SIMPLICES | INTERIOR_RIDGE_SIMPLICES {
+   #    my $domain_name = $this->GROUP->SET_ACTION->DOMAIN_NAME;
+   #    my @reps = map { $this->$domain_name->[$_] } @{$this->GROUP->SET_ACTION->ORBIT_REPRESENTATIVES};
+   #    $this->GROUP->SET_ACTION->EXPLICIT_ORBIT_REPRESENTATIVES = \@reps;
+   # }
+   # weight 1.10;
+
+   rule GROUP.INPUT_RAYS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.INPUT_RAYS_ACTION.ORBIT_REPRESENTATIVES, INPUT_RAYS {
+      $this->GROUP->INPUT_RAYS_ACTION->EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX = $this->INPUT_RAYS->minor($this->GROUP->INPUT_RAYS_ACTION->ORBIT_REPRESENTATIVES, All);
+   }
+   weight 1.10;
+
+   rule GROUP.RAYS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.RAYS_ACTION.ORBIT_REPRESENTATIVES, RAYS {
+      $this->GROUP->RAYS_ACTION->EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX = $this->RAYS->minor($this->GROUP->RAYS_ACTION->ORBIT_REPRESENTATIVES, All);
+   }
+   weight 1.10;
+
+   #
+   # induce actions from others
+   #
+
+   #
+   # induce RAYS_ACTION
+   #
+   rule GROUP.INPUT_RAYS_ACTION : GROUP.HOMOGENEOUS_COORDINATE_ACTION, INPUT_RAYS {
+      $this->GROUP->INPUT_RAYS_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "INPUT_RAYS", "input_ray_action", "induced from coordinate action", 1);
+   }
+   weight 1.10;
+
+   rule GROUP.RAYS_ACTION : GROUP.MAXIMAL_CONES_ACTION, MAXIMAL_CONES_THRU_RAYS {
+      $this->GROUP->RAYS_ACTION = group::induce_permutation_action($this, "MAXIMAL_CONES_ACTION", "MAXIMAL_CONES_THRU_RAYS", "ray_action", "induced from maximal cones action", 0);
+   }
+   weight 1.10;
+
+   rule GROUP.RAYS_ACTION : GROUP.HOMOGENEOUS_COORDINATE_ACTION, RAYS {
+      $this->GROUP->RAYS_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "RAYS", "ray_action", "induced from homogeneous coordinate action", 1);
+   }
+   weight 1.10;
+
+
+   #
+   # induce MAXIMAL_CONES_ACTION
+   #
+
+   rule GROUP.MAXIMAL_CONES_ACTION : GROUP.RAYS_ACTION, MAXIMAL_CONES {
+      $this->GROUP->MAXIMAL_CONES_ACTION = group::induce_permutation_action($this, "RAYS_ACTION", "MAXIMAL_CONES", "maximal_cones_action", "induced from ray action", 0);
+   }
+   weight 1.10;
+
+   #
+   # induce MATRIX_ACTION
+   #
+   rule GROUP.MATRIX_ACTION : GROUP.INPUT_RAYS_ACTION, INPUT_RAYS {
+       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "INPUT_RAYS_ACTION", "INPUT_RAYS", new Matrix<Scalar>());
+   }
+
+   rule GROUP.MATRIX_ACTION : GROUP.RAYS_ACTION, RAYS {
+       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "RAYS_ACTION", "RAYS", new Matrix<Scalar>());
+   }
+
+   #
+   # Others
+   #
+
+   rule GROUP.FACET_NORMALS_ACTION : GROUP.HOMOGENEOUS_COORDINATE_ACTION, FACET_NORMALS {
+      $this->GROUP->FACET_NORMALS_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "FACET_NORMALS", "facet_normals_action", "induced from homogeneous_coordinate_action", 1);
+   }
+   weight 1.10;
+   
+   #
+   # Orbits induced by coordinate actions
+   #
+
+   rule INPUT_RAYS, GROUP.INPUT_RAYS_ACTION.ORBITS, GROUP.INPUT_RAYS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, GROUP.HOMOGENEOUS_COORDINATE_ACTION.INPUT_RAYS_GENERATORS {
+      my ($pts, $a) = induced_orbits($this, "HOMOGENEOUS_COORDINATE_ACTION", "INPUT_RAYS_GENERATORS", homog_action => 1);
+      $this->INPUT_RAYS = $pts;
+      $this->GROUP->INPUT_RAYS_ACTION = $a;
+   }
+   weight 2.10;
+#    incurs PointsPerm;
+
+   method rays_from_action($) {
+       my ($this, $action_type) = @_;
+       my $is_homogeneous = ($action_type eq "HOMOGENEOUS_COORDINATE_ACTION");
+       my ($pts, $a) = induced_orbits($this, $action_type, "RAYS_GENERATORS", homog_action => $is_homogeneous, return_matrix => 0);
+
+       # make the given RAYS_GENERATORS come first in the list of RAYS
+       my $rep_set = new HashSet<Vector<Scalar>>;
+       my @pts_in_order;
+       foreach (@{$this->GROUP->$action_type->RAYS_GENERATORS}) {
+           $rep_set += $_;
+           push @pts_in_order, $_;
+       }
+       foreach (@{$pts}) {
+           if ( ! $rep_set->contains($_) ) {
+               push @pts_in_order, $_;
+           }
+       }
+       $this->RAYS = new Matrix<Scalar>(\@pts_in_order);
+       my $ia = group::induce_permutation_action($this, $action_type, "RAYS", "induced RAYS_ACTION", "induced from $action_type", $is_homogeneous);
+       $a->GENERATORS = $ia->GENERATORS;
+       if ($ia->lookup("CONJUGACY_CLASS_REPRESENTATIVES")) {
+           $a->CONJUGACY_CLASS_REPRESENTATIVES = $ia->CONJUGACY_CLASS_REPRESENTATIVES;
+       }
+       $this->GROUP->RAYS_ACTION = $a;
+   }
+                           
+   rule RAYS, GROUP.RAYS_ACTION.ORBITS, GROUP.RAYS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, GROUP.HOMOGENEOUS_COORDINATE_ACTION.RAYS_GENERATORS {
+       $this->rays_from_action("HOMOGENEOUS_COORDINATE_ACTION");
+   }
+   weight 2.10;
+   incurs RaysPerm;
+
+   rule RAYS, GROUP.RAYS_ACTION.ORBITS, GROUP.RAYS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.MATRIX_ACTION.GENERATORS, GROUP.MATRIX_ACTION.RAYS_GENERATORS {
+       $this->rays_from_action("MATRIX_ACTION");
+   }
+   weight 2.10;
+   incurs RaysPerm;
+                           
+   rule MAXIMAL_CONES, GROUP.MAXIMAL_CONES_ACTION.GENERATORS : RAYS, GROUP.RAYS_ACTION.GENERATORS, GROUP.MAXIMAL_CONES_ACTION.MAXIMAL_CONES_GENERATORS {
+       my $gens = $this->GROUP->RAYS_ACTION->GENERATORS;
+       $this->GROUP->MAXIMAL_CONES_ACTION->GENERATORS = $gens;
+       my $all_cones = new HashSet<Set<Int>>;
+       foreach (@{$this->GROUP->MAXIMAL_CONES_ACTION->MAXIMAL_CONES_GENERATORS}) {
+           foreach(@{group::orbit($gens, new Set($_))}) {
+               $all_cones += $_;
+           }
+       }
+       my $max_cones = new IncidenceMatrix($all_cones->size(), $gens->[0]->size());
+       my $i=0;
+       foreach (@{$all_cones}) {
+           $max_cones->row($i++) += $_;
+       }
+       $this->MAXIMAL_CONES = $max_cones;
+   }
+   weight 2.10;
+   incurs ConesPerm;
+
+} # end PolyhedralFan
+
+
+object PolyhedralComplex {
+
+    property GROUP {
+
+        # @category Symmetry
+        property VERTICES_ACTION = override RAYS_ACTION;
+
+        # @category Symmetry
+        property COORDINATE_ACTION = override HOMOGENEOUS_COORDINATE_ACTION {
+
+            # @category Symmetry
+            property POINTS_GENERATORS = override INPUT_RAYS_GENERATORS;
+
+            # @category Symmetry
+            property N_POINTS_GENERATORS = override N_INPUT_RAYS_GENERATORS;
+
+            # @category Symmetry
+            property VERTICES_GENERATORS = override RAYS_GENERATORS;
+
+            # @category Symmetry
+            property N_VERTICES_GENERATORS = override N_RAYS_GENERATORS;
+        }
+
+        # @category Symmetry
+        property POINTS_ACTION = override INPUT_RAYS_ACTION;
+
+        # @category Symmetry
+        property MAXIMAL_POLYTOPES_ACTION = override MAXIMAL_CONES_ACTION {
+
+            # @category Symmetry
+            property POINTS_GENERATORS = override INPUT_RAYS_GENERATORS;
+
+            # @category Symmetry
+            property N_POINTS_GENERATORS = override N_INPUT_RAYS_GENERATORS;
+
+            # @category Symmetry
+            property VERTICES_GENERATORS = override RAYS_GENERATORS;
+
+            # @category Symmetry
+            property N_VERTICES_GENERATORS = override N_RAYS_GENERATORS;
+
+            # @category Symmetry
+            property MAXIMAL_POLYTOPES_GENERATORS = override MAXIMAL_CONES_GENERATORS;
+        }
+
+        # @category Symmetry
+        property MATRIX_ACTION_ON_COMPLEX = override MATRIX_ACTION { 
+            # overriding this name is silly, but if the name of the action is not overridden, assigning to GENERATORS breaks.
+            # to test this, delete the "override" and execute the example for 
+            # orbit_complex<Scalar>(fan::PolyhedralComplex<Scalar>, group::MatrixActionOnVectors<Scalar>)
+            
+            # @category Symmetry
+            property VERTICES_GENERATORS = override RAYS_GENERATORS;
+
+        }
+            
+        # @category Symmetry
+        property REPRESENTATIVE_VERTICES = override REPRESENTATIVE_RAYS;
+
+   }
+
+   # induced actions
+
+   rule GROUP.POINTS_ACTION : GROUP.COORDINATE_ACTION, POINTS {
+      $this->GROUP->POINTS_ACTION = group::induce_permutation_action($this, "COORDINATE_ACTION", "POINTS", "points_action", "induced from coordinate_action");
+   }
+   weight 1.10;
+
+   rule GROUP.POINTS_ACTION : GROUP.PERMUTATION_ACTION.GENERATORS, GROUP.PERMUTATION_ACTION.DEGREE {
+       $this->GROUP->POINTS_ACTION = new group::PermutationAction(GENERATORS => $this->GROUP->PERMUTATION_ACTION->GENERATORS,
+                                                                  DEGREE => $this->GROUP->PERMUTATION_ACTION->DEGREE);
+   }
+   weight 0.10;
+   precondition : GROUP.PERMUTATION_ACTION.DEGREE, N_POINTS { $this->GROUP->PERMUTATION_ACTION->DEGREE == $this->N_POINTS }
+
+   rule GROUP.VERTICES_ACTION : GROUP.COORDINATE_ACTION, VERTICES {
+      $this->GROUP->VERTICES_ACTION = group::induce_permutation_action($this, "COORDINATE_ACTION", "VERTICES", "vertices_action", "induced from coordinate_action");
+   }
+   weight 1.10;
+
+   rule GROUP.VERTICES_ACTION : GROUP.PERMUTATION_ACTION.GENERATORS, GROUP.PERMUTATION_ACTION.DEGREE {
+      $this->GROUP->VERTICES_ACTION = new group::PermutationAction(GENERATORS => $this->GROUP->PERMUTATION_ACTION->GENERATORS, 
+                                                                   DEGREE => $this->GROUP->PERMUTATION_ACTION->DEGREE);
+   }
+   weight 0.10;
+   precondition : GROUP.PERMUTATION_ACTION.DEGREE, N_VERTICES { $this->GROUP->PERMUTATION_ACTION->DEGREE == $this->N_VERTICES }
+
+
+   # induced orbits
+   
+   rule POINTS, GROUP.POINTS_ACTION.ORBITS, GROUP.POINTS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.COORDINATE_ACTION.GENERATORS, GROUP.COORDINATE_ACTION.POINTS_GENERATORS {
+      my ($pts, $a) = induced_orbits($this, "COORDINATE_ACTION", "POINTS_GENERATORS", homog_action => 0);
+      $this->POINTS = $pts;
+      $this->GROUP->POINTS_ACTION = $a;
+   }
+   weight 2.10;
+#   incurs PointsPerm;
+
+   rule VERTICES, GROUP.VERTICES_ACTION.ORBITS, GROUP.VERTICES_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.COORDINATE_ACTION.GENERATORS, GROUP.COORDINATE_ACTION.VERTICES_GENERATORS {
+       $this->rays_from_action("COORDINATE_ACTION");
+   }
+   weight 2.10;
+   incurs RaysPerm;
+
+   rule GROUP.POINTS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.POINTS_ACTION.ORBIT_REPRESENTATIVES, POINTS {
+       $this->GROUP->POINTS_ACTION->EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX = $this->POINTS->minor($this->GROUP->POINTS_ACTION->ORBIT_REPRESENTATIVES, All);
+   }
+   weight 1.10;
+
+   # Generates an array with a specified number of different colors.
+   # @param int number      the number of colors
+   # @return array          the colors as strings
+   sub generateColors {
+       my $number=$_[0];
+   # not really implemented yet!
+       my @FIFTEEN_COLORS=("chocolate1","salmon1","plum1","LightGreen","azure","LightSlateGrey","MidnightBlue","DarkOliveGreen","IndianRed","LavenderBlush","orange","green","red","blue","yellow");
+       my @colors=();
+       for(my $i=0;$i<$number;$i++) {
+           if($i<15) {
+               $colors[$i]=$FIFTEEN_COLORS[14-$i];
+           } else {
+               $colors[$i]="black";
+           }
+       }
+       return @colors;
+   }
+
+   # @category Visualization
+   # Visualizes the graph of a symmetric cone:
+   # All nodes belonging to one orbit get the same color.
+   # @return Visual::PolytopeGraph
+   user_method VISUAL_ORBIT_COLORED_GRAPH(%Visual::Graph::decorations, { seed => undef }) {
+       my ($this, $decor, $seed)=@_;
+       my @colors=generateColors($this->GROUP->RAYS_ACTION->N_ORBITS);
+       my @nodeColors;
+       for(my $i=0; $i<$this->GROUP->RAYS_ACTION->N_ORBITS; $i++){
+           foreach my $ray_index(@{$this->GROUP->RAYS_ACTION->ORBITS->[$i]}){
+               $nodeColors[$ray_index]=$colors[$i]; #each ray gets the color(=number) of its orbit
+           }
+       }
+       my $VG=$this->GRAPH->VISUAL( Name => $this->name,
+                                    (exists $decor->{NodeBorderColor} || exists $decor->{VertexColor} ? () : (NodeColor => \@nodeColors)),
+                                    $decor, $seed );
+       visualize( new Visual::PolytopeGraph( Name => "ORBIT_COLORED_GRAPH of " . $this->name,
+                                             Polytope => $this,
+                                             $VG ));
+   }
+
+} # end PolyhedralComplex
+
+
+# @category Symmetry
+# Constructs the orbit fan of a given fan //input_fan//
+# with respect to a given set of generators //gens//.
+# @param fan::PolyhedralFan input_fan the generating fan of the orbit fan
+# @param Array<Array<Int>> gens the generators of a permutation group that acts on the coordinates of the ambient space
+# @return fan::PolyhedralFan the orbit fan of //input_fan// w.r.t. the coordinate action generated by //gens//
+# @example [prefer ppl] To calculate an orbit fan, follow these steps:
+# First specify a seed fan:
+# > $f=new PolyhedralFan(RAYS=>[[1,1],[1,0],[-1,-1]], MAXIMAL_CONES=>[[0,1],[1,2]]);
+# Then define the orbit fan by specifying coordinate permutations:
+# > $of = orbit_fan($f,[[1,0]]);
+# The only properties of $of defined so far reside in GROUP:
+# > print $of->GROUP->properties();
+# | name: unnamed#0
+# | type: Group as PolyhedralFan<Rational>::GROUP
+# | 
+# | HOMOGENEOUS_COORDINATE_ACTION
+# | type: PermutationAction<Int, Rational>
+# | 
+# | MAXIMAL_CONES_ACTION
+# | type: PermutationAction<Int, Rational> as PolyhedralFan<Rational>::GROUP::MAXIMAL_CONES_ACTION
+# |
+# Now you can calculate the RAYS and MAXIMAL_CONES of the orbit fan.
+#
+# IMPORTANT: You must ask for $of->RAYS before $of->MAXIMAL_CONES.
+#
+# > print $of->RAYS;
+# | 1 1
+# | 1 0
+# | -1 -1
+# | 0 1
+# > print $of->N_MAXIMAL_CONES;
+# | 4
+
+user_function orbit_fan(fan::PolyhedralFan, @) {
+    my ($input_fan, $gens) = @_;
+    my $ra = new group::PermutationAction(GENERATORS=>$gens, RAYS_GENERATORS=>$input_fan->give("RAYS | INPUT_RAYS"));
+    my $ca = new group::PermutationAction(MAXIMAL_CONES_GENERATORS=>$input_fan->MAXIMAL_CONES);
+    my $g = new group::Group;
+    my $p = new fan::PolyhedralFan;
+    $p->add("GROUP", $g, HOMOGENEOUS_COORDINATE_ACTION=>$ra, MAXIMAL_CONES_ACTION=>$ca);
+    return $p;
+}
+
+
+# @category Symmetry
+# Constructs the orbit fan of a given fan //input_fan//
+# with respect to a given set of matrix group generators //gens//.
+# @param fan::PolyhedralFan input_fan the generating fan of the orbit fan
+# @param Array<Matrix<Scalar>> gens the generators of a matrix group that acts on the ambient space
+# @tparam Scalar underlying number type
+# @return fan::PolyhedralFan the orbit fan of //input_fan// w.r.t. the matrix action generated by //gens//
+# @example To calculate an orbit fan, follow these steps:
+# First specify a seed fan:
+# > $f=new PolyhedralFan(RAYS=>[[1,1,1],[1,1,0],[1,1/2,1/4]],MAXIMAL_CONES=>[[0,2],[1,2]]);
+# Then define the orbit fan by specifying a matrix group action:
+# > $of = orbit_fan($f,polytope::cube(2,group=>1)->GROUP->MATRIX_ACTION);
+# The only properties of $of defined so far reside in GROUP:
+# > print $of->GROUP->properties();
+# | name: unnamed#0
+# | type: Group as PolyhedralFan<Rational>::GROUP
+# | 
+# | MATRIX_ACTION
+# | type: MatrixActionOnVectors<Rational>
+# | 
+# | MAXIMAL_CONES_ACTION
+# | type: PermutationAction<Int, Rational> as PolyhedralFan<Rational>::GROUP::MAXIMAL_CONES_ACTION
+# |
+# Now you can calculate the RAYS and MAXIMAL_CONES of the orbit fan.
+#
+# IMPORTANT: You must ask for $of->RAYS before $of->MAXIMAL_CONES.
+#
+# > print $of->RAYS;
+# | 1 1 1
+# | 1 1 0
+# | 1 1/2 1/4
+# | 1 -1 -1
+# | 1 -1 1
+# | 1 1 -1
+# | 1 -1 0
+# | 1 0 -1
+# | 1 0 1
+# | 1 -1/2 -1/4
+# | 1 -1/2 1/4
+# | 1 -1/4 -1/2
+# | 1 -1/4 1/2
+# | 1 1/4 -1/2
+# | 1 1/4 1/2
+# | 1 1/2 -1/4
+# > print $of->N_MAXIMAL_CONES;
+# | 16
+   
+user_function orbit_fan<Scalar>(fan::PolyhedralFan<Scalar>, group::MatrixActionOnVectors<Scalar>) {
+    my ($input_fan, $a) = @_;
+    my $ra = new group::MatrixActionOnVectors<Scalar>(GENERATORS=>$a->GENERATORS, RAYS_GENERATORS=>$input_fan->give("RAYS | INPUT_RAYS"));
+    my $ca = new group::MatrixActionOnVectors<Scalar>(MAXIMAL_CONES_GENERATORS=>$input_fan->MAXIMAL_CONES);
+    my $g = new group::Group;
+    my $p = new fan::PolyhedralFan;
+    $p->add("GROUP", $g, MATRIX_ACTION=>$ra, MAXIMAL_CONES_ACTION=>$ca);
+    return $p;
+}
+
+# @category Symmetry
+# Constructs the orbit complex of a given polyhedral complex //input_complex//
+# with respect to a given set of generators //gens//.
+# @param fan::PolyhedralComplex input_complex the generating complex of the orbit complex
+# @param Array<Array<Int>> gens the generators of a permutation group that acts on the coordinates of the ambient space
+# @return fan::PolyhedralComplex the orbit complex of //input_complex// w.r.t. the coordinate action generated by //gens//
+# @example [prefer ppl] To calculate an orbit complex with respect to a group of coordinate permutations, follow these steps:
+# First specify a seed complex:
+# > $f=new PolyhedralComplex(VERTICES=>[[1,1,1],[1,1,0],[1,-1,-1]], MAXIMAL_POLYTOPES=>[[0,1],[1,2]]);
+# Then define the orbit complex by specifying a permutation action on coordinates:
+# > $oc = orbit_complex($f, [[1,0]]);
+# The only properties of $oc defined so far reside in GROUP:
+# > print $oc->GROUP->properties();
+# | type: Group as PolyhedralComplex<Rational>::GROUP
+# | 
+# | COORDINATE_ACTION
+# | type: PermutationAction<Int, Rational> as PolyhedralComplex<Rational>::GROUP::COORDINATE_ACTION
+# | 
+# | MAXIMAL_POLYTOPES_ACTION
+# | type: PermutationAction<Int, Rational> as PolyhedralComplex<Rational>::GROUP::MAXIMAL_POLYTOPES_ACTION
+#
+# Now you can calculate the VERTICES and MAXIMAL_POLYTOPES of the orbit fan.
+#
+# IMPORTANT: You must ask for $oc->VERTICES before $oc->MAXIMAL_POLYTOPES.
+#
+# > print $oc->VERTICES;
+# | 1 1 1
+# | 1 1 0
+# | 1 -1 -1
+# | 1 0 1
+# > print $oc->N_MAXIMAL_POLYTOPES;
+# | 4
+
+user_function orbit_complex(fan::PolyhedralComplex, @) {
+    my ($input, $gens) = @_;
+    return new fan::PolyhedralComplex(GROUP => new group::Group,
+                                      "GROUP.COORDINATE_ACTION" => new group::PermutationAction(), 
+                                      "GROUP.COORDINATE_ACTION.GENERATORS" => $gens,
+                                      "GROUP.COORDINATE_ACTION.VERTICES_GENERATORS" => $input->give("VERTICES | POINTS"),
+                                      "GROUP.MAXIMAL_POLYTOPES_ACTION" => new group::PermutationAction(),
+                                      "GROUP.MAXIMAL_POLYTOPES_ACTION.MAXIMAL_POLYTOPES_GENERATORS" => $input->MAXIMAL_POLYTOPES);
+}
+
+# @category Symmetry
+# Constructs the orbit fan of a given fan //input_fan//
+# with respect to a given group action //a//.
+# @param fan::PolyhedralFan input_fan the generating fan of the orbit fan
+# @param group::PermutationAction a the action of a permutation group on the coordinates of the ambient space
+# @return Polytope the orbit fan of //input_fan// w.r.t. the action //a//
+# @example To calculate an orbit complex with respect to a group of coordinate permutations, follow these steps:
+# First specify a seed complex:
+# > $f=new PolyhedralComplex(VERTICES=>[[1,1,1],[1,1,0],[1,1/2,1/4]], MAXIMAL_POLYTOPES=>[[0,2],[1,2]]);
+# Then define the orbit complex by specifying a matrix group action on the coordinates:
+# > $oc = orbit_complex($f, polytope::cube(2,group=>1)->GROUP->MATRIX_ACTION);
+# The only properties of $oc defined so far reside in GROUP:
+# | type: Group as PolyhedralComplex<Rational>::GROUP
+# | 
+# | MATRIX_ACTION_ON_COMPLEX
+# | type: MatrixActionOnVectors<Rational> as PolyhedralComplex<Rational>::GROUP::MATRIX_ACTION_ON_COMPLEX
+# | 
+# | MAXIMAL_POLYTOPES_ACTION
+# | type: PermutationAction<Int, Rational> as PolyhedralComplex<Rational>::GROUP::MAXIMAL_POLYTOPES_ACTION
+# 
+# Now you can calculate the VERTICES and MAXIMAL_POLYTOPES of the orbit fan.
+#
+# IMPORTANT: You must ask for $oc->VERTICES before $oc->MAXIMAL_POLYTOPES.
+#
+# > print $oc->VERTICES;
+# | 1 1 1
+# | 1 1 0
+# | 1 1/2 1/4
+# | 1 -1 -1
+# | 1 -1 1
+# | 1 1 -1
+# | 1 -1 0
+# | 1 0 -1
+# | 1 0 1
+# | 1 -1/2 -1/4
+# | 1 -1/2 1/4
+# | 1 -1/4 -1/2
+# | 1 -1/4 1/2
+# | 1 1/4 -1/2
+# | 1 1/4 1/2
+# | 1 1/2 -1/4
+# > print $oc->N_MAXIMAL_POLYTOPES;
+# | 16
+
+user_function orbit_complex<Scalar>(fan::PolyhedralComplex<Scalar>, group::MatrixActionOnVectors<Scalar>) {
+    my ($input, $a) = @_;
+    my $ma = new group::MatrixActionOnVectors<Scalar>();
+    return new fan::PolyhedralComplex(GROUP => new group::Group,
+                                      "GROUP.MATRIX_ACTION_ON_COMPLEX" => $ma,
+                                      "GROUP.MATRIX_ACTION_ON_COMPLEX.GENERATORS" => $a->GENERATORS,
+                                      "GROUP.MATRIX_ACTION_ON_COMPLEX.VERTICES_GENERATORS" => $input->give("VERTICES | POINTS"),
+                                      "GROUP.MAXIMAL_POLYTOPES_ACTION" => new group::PermutationAction(),
+                                      "GROUP.MAXIMAL_POLYTOPES_ACTION.MAXIMAL_POLYTOPES_GENERATORS" => $input->MAXIMAL_POLYTOPES);
+}
+
+
+# @category Symmetry
+# Returns the permutation action induced by the symmetry group of the fan //f// on the set of //k//-dimensional cones.
+# This action is not stored as a property of //f//, because polymake doesn't support dynamic names of properties.
+# Be aware that the set of //k//-dimensional cones itself is $f->CONES->[$k-1].
+# @param fan::PolyhedralFan f the input fan
+# @param Int k the dimension of the cones to induce the action on
+# @return group::PermutationAction a the action induced by //Aut//(//f//) on the set of //k//-dimensional cones
+# @example Consider a 3-cube //c//. To calculate the induced action of //Aut//(//c//) on the set of 2-dimensional cones of the normal fan, type
+# > $f = fan::normal_fan(polytope::cube(3, group=>1));
+#
+# > print fan::cones_action($f,2)->properties();
+# | name: CONES_ACTION(2)
+# | type: PermutationAction<Int, Rational>
+# | description: action induced on 2-dimensional cones
+# | 
+# | GENERATORS
+# | 0 3 4 1 2 5 7 6 8 10 9 11
+# | 1 0 2 5 6 3 4 7 9 8 11 10
+# | 0 2 1 4 3 8 9 10 5 6 7 11
+#
+# > print $f->CONES->[1];
+# | {2 4}
+# | {0 4}
+# | {0 2}
+# | {1 4}
+# | {1 2}
+# | {3 4}
+# | {0 3}
+# | {1 3}
+# | {2 5}
+# | {0 5}
+# | {1 5}
+# | {3 5}
+
+user_function cones_action(fan::PolyhedralFan, $) {
+    my ($this, $k) = @_;
+    my $a = new group::PermutationAction("CONES_ACTION($k)");
+    $a->GENERATORS = group::induced_permutations($this->GROUP->RAYS_ACTION->GENERATORS, $this->CONES->[$k-1]);
+    if (defined(my $cc = $this->lookup("GROUP.RAYS_ACTION.CONJUGACY_CLASS_REPRESENTATIVES"))) {
+        $a->CONJUGACY_CLASS_REPRESENTATIVES = group::induced_permutations($cc, $this->CONES->[$k-1]);
+    }
+    $a->description = "action induced on $k-dimensional cones";
+    return $a;
+}
+
+
+
+# @category Symmetry
+# Compute the combinatorial symmetries (i.e., automorphisms of the face lattice) of
+# a given fan //f//. They are stored in terms of a GROUP.RAYS_ACTION and a GROUP.MAXIMAL_CONES_ACTION
+# property in //f//, and the GROUP.MAXIMAL_CONES_ACTION is also returned.
+# @param PolyhedralFan f
+# @return group::PermutationAction the action of the combinatorial symmetry group on the rays
+# @example To get the ray symmetry group of the square and print its generators, type the following:
+# > print combinatorial_symmetries(normal_fan(polytope::cube(2)))->GENERATORS;
+# | 2 3 0 1
+# | 1 0 3 2
+# | 0 2 1 3
+#
+# > $f = normal_fan(polytope::cube(2)); combinatorial_symmetries($f);
+# > print $f->GROUP->RAYS_ACTION->GENERATORS;
+# | 0 1 3 2
+# | 1 0 2 3
+# | 2 3 0 1
+#
+# > print $f->GROUP->MAXIMAL_CONES_ACTION->GENERATORS;
+# | 2 3 0 1
+# | 1 0 3 2
+# | 0 2 1 3
+
+user_function combinatorial_symmetries(fan::PolyhedralFan) {
+    my ($f) = @_;
+    return group::combinatorial_symmetries_impl($f, "MAXIMAL_CONES", "MAXIMAL_CONES_ACTION", "RAYS_ACTION");
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:
+

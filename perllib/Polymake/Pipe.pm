@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake::Selector;
 use Fcntl;
@@ -59,8 +60,19 @@ sub bye {
 sub forget {
    my ($self)=@_;
    undef $channels[$self->rfd];
-   vec($rmask,$self->rfd,1)=0;
-   vec($wmask,$self->wfd,1)=0;
+   vec($rmask, $self->rfd, 1)=0;
+   vec($wmask, $self->wfd, 1)=0;
+}
+
+sub register_write_channel {
+   my ($self)=@_;
+   weak($channels[$self->wfd]=$self);
+}
+
+sub unregister_write_channel {
+   my ($self)=@_;
+   undef $channels[$self->wfd];
+   vec($wmask, $self->wfd, 1)=0;
 }
 
 sub CLOSE {
@@ -84,7 +96,7 @@ sub not_alone {}
 package Polymake::Selector;
 
 sub try_read {
-   my $member=shift;
+   my ($member)=@_;
    my ($rready, $wready);
    while (select $rready=$rmask, $wready=$wmask, undef, undef) {
       if (vec($rready, $member->rfd, 1)) {
@@ -101,7 +113,7 @@ sub try_read {
 }
 
 sub try_write {
-   my $member=shift;
+   my ($member)=@_;
    my ($rready, $wready);
    while (select $rready=$rmask, $wready=$wmask, undef, 0) {
       if (vec($wready, $member->wfd, 1)) {
@@ -232,7 +244,7 @@ sub WRITE {
       $str=substr($_[0],$_[2],$len=$_[1]);
    }
    $self->set_non_blocking_write;
-   my $written=POSIX::write($self->wfd,$str,$len);
+   my $written=POSIX::write($self->wfd, $str, $len);
    if (!defined($written)) {
       if ($!==POSIX::EAGAIN) {
 	 $written=0;
@@ -243,11 +255,34 @@ sub WRITE {
    }
    $self->set_blocking_write;
    if ($written<$len) {
-      $self->wbuffer=substr($str,$written,$len-$written);
-      vec($wmask,$self->wfd,1)=1;
+      $self->wbuffer=substr($str, $written, $len-$written);
+      vec($wmask, $self->wfd, 1)=1;
       $self->not_alone if keys(%active)==1;
    }
    $len;
+}
+
+sub EOF {
+   my ($self)=@_;
+   eof($self->handle);
+}
+
+sub TELL {
+   my ($self)=@_;
+   eof($self->handle) ? -1 : 0
+}
+
+# if pos==0, consumes the next portion of data from the input pipe
+# if pos==-1, consumes all data until the pipe closes
+# otherwise, return an error code
+sub SEEK {
+   my ($self, $pos)=@_;
+   if ($pos == 0) {
+      try_read($self) && $self->in_avail >= 0
+   } elsif ($pos == -1) {
+      while (try_read($self) && $self->in_avail > 0) { }
+      eof($self->handle);
+   }
 }
 
 sub CLOSE {
@@ -259,25 +294,26 @@ sub CLOSE {
 }
 
 sub not_alone {
-   bless shift, "Polymake::CollaborativePipe";
+   my ($self)=@_;
+   bless $self, "Polymake::Pipe::Collaborative";
 }
 
 sub set_non_blocking_write {
-   my $self=shift;
+   my ($self)=@_;
    fcntl($self->handle, F_SETFL, $self->flags|O_NONBLOCK);
 }
 
 sub set_blocking_write {
-   my $self=shift;
+   my ($self)=@_;
    fcntl($self->handle, F_SETFL, $self->flags);
 }
 
 #####################################################################################
-package Polymake::CollaborativePipe;
+package Polymake::Pipe::Collaborative;
 use Polymake::Struct [ '@ISA' => 'Pipe' ];
 
 sub out_avail {
-   my $self=shift;
+   my ($self)=@_;
    my $written=POSIX::write($self->wfd, $self->wbuffer, length($self->wbuffer));
    if (!defined($written)) {
       if ($!==POSIX::EAGAIN) {
@@ -299,7 +335,7 @@ sub out_avail {
 }
 
 sub in_avail {
-   my $self=shift;
+   my ($self)=@_;
    Pipe::do_read($self, $self->rbuffer, 1024, length($self->rbuffer));
 }
 
@@ -334,56 +370,5 @@ sub alone {
 sub not_alone {}
 
 #####################################################################################
-package Polymake::Pipe::WithRedirection;
-use IPC::Open3;
-use Fcntl;
-
-use Polymake::Struct (
-   [ '@ISA' => 'CollaborativePipe' ],
-   [ new => '$$$' ],
-   [ '$out' => '#2' ],
-   [ '$wfd' => 'fileno(#2)' ],
-   [ '$pid' => '#3' ],
-);
-
-sub new {
-   my $pkg=shift;
-   my ($in, $out, $err);
-   if ($_[0] =~ /^2>/) {
-      shift;
-      open MYERR, ">", $' or die "Can't redirect STDERR to $': $!\n";
-      $err=">&MYERR";
-   } else {
-      $err=">&STDERR";
-   }
-   my $pid=eval { open3($out, $in, $err, @_) };
-   close MYERR;
-   if ($@) {
-      $@ =~ s/^.*?://;
-      $@ =~ s/ at \(eval.*$/\n/;
-      if ($$ != getpgrp) {	# we are in the fork!!!
-	 print STDERR $@;
-	 POSIX::_exit(1);	# avoid executing global destructors
-      }
-      die $@;
-   }
-   fcntl($out, F_SETFL, O_NONBLOCK);
-   my $self=construct($pkg,$in,$out,$pid);
-   weak($channels[$self->wfd]=$self);
-   $self;
-}
-
-sub close_out {
-   my ($self)=@_;
-   undef $channels[$self->wfd];
-   vec($wmask,$self->wfd,1)=0;
-   close($self->out);
-}
-
-sub CLOSE { &close_out; &Pipe::CLOSE; }
-
-sub set_blocking_write {}	# remains always non-blocking
-sub set_non_blocking_write {}
-sub alone {}
 
 1

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,12 +15,13 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake::Core::Object;
 
 use Polymake::Struct (
    [ new => ';$' ],
-   [ '$name' => '#1', set_filter => \&name_filter ],  # object name, unique among multiple subobject collections
+   [ '$name' => '#1', set_filter => 'name_filter' ],  # object name, unique among multiple subobject collections
    '$description',                      # textual description
    '%credits',                          # credit records from producing rules
    '@contents',                         # PropertyValues in the chronological (file) order
@@ -136,14 +137,15 @@ sub propagate_temporaries {
 sub forget_temporary_subobject {
    my ($self, $subobj)=@_;
    my $temps=$self->temporaries;
+   # the list containing the temporary object might have been moved into cleanup in the meanwhile
+   # therefore it's not an error if we don't find it here
    for (my $i=1; $i<=$#$temps; ++$i) {
       my $item=$temps->[$i];
       if (!is_object($item) && $item->[1] == $subobj) {
          splice @$temps, $i, 1;
-         return;
+         last;
       }
    }
-   croak( "internal inconsistency: temporary instance of a multiple subobject does not occur in the cleanup records" );
 }
 
 sub commit {
@@ -321,23 +323,20 @@ sub new {
    my $self=&_new;
    my $top_object=$_[0];
    $top_object->transaction=$self;
-   unless ($self->rule->flags & $Rule::is_precondition) {
-      # is a production rule
-      foreach my $out (@{$self->rule->output}) {
-         my ($obj, $prop)=$top_object->descend_and_create($out);
-         my $pv=new PropertyValue($prop);
-         if (defined (my $content_index=$obj->dictionary->{$prop->key})) {
-            if (defined (my $pv_old=$obj->contents->[$content_index])) {
-               $obj->transaction->backup->{$content_index}=$pv_old;
-            } else {
-               $self->changed=0;   # enforce rule execution
-            }
-            $obj->contents->[$content_index]=$pv;
+   foreach my $out (@{$self->rule->output}) {
+      my ($obj, $prop)=$top_object->descend_and_create($out);
+      my $pv=new PropertyValue($prop);
+      if (defined (my $content_index=$obj->dictionary->{$prop->key})) {
+         if (defined (my $pv_old=$obj->contents->[$content_index])) {
+            $obj->transaction->backup->{$content_index}=$pv_old;
          } else {
-            push @{$obj->contents}, $pv;
-            $obj->dictionary->{$prop->key}=$#{$obj->contents};
             $self->changed=0;   # enforce rule execution
          }
+         $obj->contents->[$content_index]=$pv;
+      } else {
+         push @{$obj->contents}, $pv;
+         $obj->dictionary->{$prop->key}=$#{$obj->contents};
+         $self->changed=0;   # enforce rule execution
       }
    }
    $self;
@@ -491,7 +490,7 @@ sub fill_properties {
    my ($self, $proto)=splice @_, 0, 2;
    for (my ($i, $e)=(0, $#_); $i<$e; $i+=2) {
       my ($name, $value)=@_[$i, $i+1];
-      my ($obj, $prop)= $name =~ /\./ ? descend_and_create($self, [ $proto->encode_property_path($name) ])
+      my ($obj, $prop)= $name =~ /\./ ? descend_and_create($self, [ $proto->encode_descending_path($name) ])
                                       : ($self, $proto->property($name));
       if ($prop->flags & $Property::is_multiple) {
          _add_multi($obj, $prop, $value);
@@ -610,6 +609,12 @@ sub load {
 sub fromXMLstring {
    my $self=_new(shift);
    load XMLstring($self, @_);
+   $self;
+}
+
+sub fromXMLstream {
+   my $self=_new(shift);
+   load_stream XMLfile($self, @_);
    $self;
 }
 
@@ -959,7 +964,7 @@ sub create_undefs {
 ####################################################################################
 # [ Property ], for_planning_flag => PropertyValue || 0 (does not exist) || undef
 # $for_planning = TRUE forbids to apply shortcuts
-sub lookup_property_path {
+sub lookup_descending_path {
    my ($self, $path, $for_planning)=@_;
    my (@existing_path, $content_index, $pv, $obj, $prop);
    if (($obj, $prop)=descend_partially($self, \@existing_path, $path)) {
@@ -1022,7 +1027,7 @@ sub lookup_property_path {
                       and ($rc, $pv)=$rule->execute($cur_obj)
                       and $rc==$Rule::exec_OK) {
                      local_clip_front($path, $depth+1);
-                     if ($pv=lookup_property_path($pv->value, $path)) {
+                     if ($pv=lookup_descending_path($pv->value, $path)) {
                         return $pv;
                      }
                   }
@@ -1051,7 +1056,7 @@ sub lookup_request {
    my ($self, $req, $for_planning)=@_;
    my $pv;
    foreach my $path (@$req) {
-      $pv=lookup_property_path($self, $path, $for_planning)
+      $pv=lookup_descending_path($self, $path, $for_planning)
         and last;
    }
    $pv
@@ -1081,6 +1086,20 @@ sub lookup_with_name {
    } else {
       ()
    }
+}
+####################################################################################
+sub lookup_property_path {
+   my ($self, $prop_path)=@_;
+   my $up=$prop_path->up;
+   while ($up-- > 0) {
+      $self=$self->parent or return;
+   }
+   lookup_descending_path($self, $prop_path->down);
+}
+
+sub value_at_property_path {
+   my $pv=&lookup_property_path;
+   $pv ? $pv->value : croak("property path ", $prop_path->toString, " does not lead to a defined value");
 }
 ####################################################################################
 # private:
@@ -1198,7 +1217,7 @@ sub add {
 ####################################################################################
 sub take {
    my ($self, $prop_name, $value, $temp)=@_;
-   my @req=$self->type->encode_property_path($prop_name);
+   my @req=$self->type->encode_descending_path($prop_name);
    my $need_commit;
    if (!defined($self->transaction)) {
       if ($req[-1]->flags & ($Property::is_multiple & $Property::is_mutable)) {
@@ -1287,7 +1306,7 @@ sub remove {
       my $self=shift;
       my $from_production_rule=defined($self->transaction) && defined($self->transaction->rule);
       my @to_remove=map {
-         my @req=$self->type->encode_property_path($_);
+         my @req=$self->type->encode_descending_path($_);
          if ($Application::plausibility_checks && $from_production_rule) {
             $self->transaction->rule->has_matching_input(\@req)
               or croak( "a production rule can only remove its own source properties" );
@@ -1403,7 +1422,7 @@ sub cleanup {
                cleanup($sub_obj, $_->[2]);
                next if $#{$sub_obj->contents}>=0;
             }
-            $pv->remove_instance($sub_obj);
+            $pv->remove_instance($sub_obj) if defined($sub_obj->parent);
             next if @{$pv->values};
          } else {
             # via singular sub-object: $pv==subobject, $sub_obj==list of properties
@@ -1571,6 +1590,17 @@ sub give_with_name {
       ($pv->value, $pv->property->name)
    } else {
       ()
+   }
+}
+
+# "REQUEST, ..." => (value, ...)
+sub give_list {
+   my ($self, $req_string)=@_;
+   my @requests=map { $self->type->encode_read_request($_) } split /\s*,\s*/, $req_string;
+   if (provide_request($self, \@requests)) {
+      map { $self->lookup_request($_)->value } @requests
+   } else {
+      croak( "can't provide $req_string" );
    }
 }
 ####################################################################################
@@ -1755,72 +1785,36 @@ sub schedule {
 sub get {
    my ($self, $prop)=@_;
    my $content_index=$self->dictionary->{$prop->key};
-   if (defined $content_index) {
-      _get_alternatives();
-   } else {
-    TRY_ALT: {
-         my $sub_prop_names;
-         my @alt= ($prop->flags & $Property::is_subobject) ? _get_alternatives($sub_prop_names) : _get_alternatives();
-
-         if (defined $sub_prop_names) {
-
-            if (defined($self->transaction)) {
-               if (defined($self->transaction->rule)) {
-                  die "attempt to access a non-existing property ", $prop->name, "\n";
-               }
-               $self->commit;
-            }
-            $prop=$prop->instance_for_owner($self->type, 1);
-            my $sub_type=$prop->type;
-            my @req_path=($prop);
-            foreach (@$sub_prop_names) {
-               if (defined (my $sub_prop=$sub_type->lookup_property($_))) {
-                  push @req_path, $sub_prop;
-                  last unless $sub_prop->flags & $Property::is_subobject;
-                  $sub_type=$sub_prop->type;
-               } else {
-                  last;
-               }
-            }
-            my @req=( \@req_path );
-            if (@alt && @$sub_prop_names==$#req_path) {
-               local_pop(\@req_path);
-               push @req, map { [ @req_path, $sub_type->property($_) ] } @alt;
-            }
-            provide_request($self, [ \@req ]);
-            $content_index=$self->dictionary->{$prop->key};
-
-         } elsif (@alt) {
-            foreach my $alt_prop (@alt) {
-               $alt_prop=$self->type->property($alt_prop);
-               last TRY_ALT if defined ($content_index=$self->dictionary->{$alt_prop->key});
-            }
-
-            unshift @alt, $prop;
-            if (defined($self->transaction)) {
-               if (defined($self->transaction->rule)) {
-                  die "attempt to access non-existing properties ", join(" | ", map { $_->name } @alt), "\n";
-               }
-               $self->commit;
-            }
-            provide_request($self, [ [ map { [ $_ ] } @alt ] ]);
-            foreach $prop (@alt) {
-               last if defined ($content_index=$self->dictionary->{$prop->key});
-            }
-
-         } else {
-            if (defined($self->transaction)) {
-               if (defined($self->transaction->rule)) {
-                  die "attempt to access a non-existing property ", $prop->name, "\n";
-               }
-               $self->commit;
-            }
-
-            provide_request($self, [ [ [ $prop ] ] ]);
-            $content_index=$self->dictionary->{$prop->key};
+   unless (defined $content_index) {
+      if (defined($self->transaction)) {
+         if (defined($self->transaction->rule)) {
+            die "attempt to access a non-existing property ", $prop->name, "\n";
          }
+         $self->commit;
       }
-      defined($content_index) or die "can't create property ", $prop->name, "\n";
+
+      if ($prop->flags & $Property::is_subobject
+          and my @sub_prop_names=_get_descend_path()) {
+
+         $prop=$prop->instance_for_owner($self->type, 1);
+         my $sub_type=$prop->type;
+         my @req_path=($prop);
+         foreach (@sub_prop_names) {
+            if (defined (my $sub_prop=$sub_type->lookup_property($_))) {
+               push @req_path, $sub_prop;
+               last unless $sub_prop->flags & $Property::is_subobject;
+               $sub_type=$sub_prop->type;
+            } else {
+               last;
+            }
+         }
+         my @req=( \@req_path );
+         provide_request($self, [ \@req ]);
+      } else {
+         provide_request($self, [ [ [ $prop ] ] ]);
+      }
+      defined($content_index=$self->dictionary->{$prop->key})
+        or die "can't create property ", $prop->name, "\n";
    }
    $self->contents->[$content_index]->value // &allow_undef_value;
 }
@@ -1917,10 +1911,21 @@ sub list_attachments {
 sub attach {
    my ($self, $name, $data, $construct)=@_;
    if (ref($data)) {
-      if (is_object($data) && defined (my $type=UNIVERSAL::can($data,"type"))) {
+      if (is_object($data) && defined (my $type=UNIVERSAL::can($data, "type"))) {
          $type=$type->();
          if (instanceof ObjectType($type)) {
             croak( "can't attach a subobject of type ", $type->full_name, ": only atomic properties are allowed as attachments" );
+         }
+         if ($construct) {
+            $construct=trim_spaces($construct);
+            # this will happily croak if there are unknown properties
+            my @paths=map { $self->type->encode_property_path($_) } split /\s*,\s*/, $construct;
+            if (defined($type->construct_node) and
+                $type->construct_node->min_arg > @paths+1 || $type->construct_node->max_arg < @paths+1) {
+               croak( "wrong number of additional constructor arguments specified for type ", $type->full_name );
+            }
+         } elsif (defined($type->construct_node) && $type->construct_node->min_arg > 1) {
+            croak( "type ", $type->full_name, " needs additional constructor arguments but no property paths are specified" );
          }
       } else {
          croak( "can't attach ", ref($data), ": it does not belong to any declared property type" );
@@ -1944,7 +1949,7 @@ sub copy_attachments {
    while (my ($name, $at)=each %{$src->attachments}) {
       my ($data, $construct)=@$at;
       if (is_object($data)) {
-         $data= $construct ? $data->type->construct->($self->give($construct), $data) : $data->type->construct->($data);
+         $data=$data->type->construct->($construct ? $self->give_list($construct) : (), $data);
       }
       $self->attachments->{$name}=[ $data, $construct ];
    }
@@ -1974,12 +1979,12 @@ sub copy_permuted {
          @$perm_name or croak( "invalid option 'permutation => empty ARRAY'" );
          $perms[0]=$perm_name;
       } else {
-         $perms[0]=[ $proto->encode_property_path($perm_name, $self) ];
+         $perms[0]=[ $proto->encode_descending_path($perm_name, $self) ];
       }
       $perms[0]->[-1]->flags & $Property::is_permutation
         or croak( "invalid option 'permutation => $perm_name' which is not a permutation" );
    } else {
-      my @path=$proto->encode_property_path($_[0]);
+      my @path=$proto->encode_descending_path($_[0]);
       @perms = map { bless [ $_ ], "Polymake::Core::Rule::PermutationPath" }
                grep { defined($_->find_sensitive_sub_property(@path)) }
                     $proto->list_permutations;
@@ -2002,7 +2007,7 @@ sub copy_permuted {
          @perms or croak( "copy_permuted: $_[0] is not affected by any permutation" );
       }
       for (my $i=2; $i<$#_; $i+=2) {
-         @path=$proto->encode_property_path($_[$i]);
+         @path=$proto->encode_descending_path($_[$i]);
          @perms= grep { defined($_->find_sensitive_sub_property(@path)) } @perms
            or croak( "copy_permuted: no permutation type known which would simultaneously affect ", join(", ", map { $_[$_*2] } 0..$i/2));
       }

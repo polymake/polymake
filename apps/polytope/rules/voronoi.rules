@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -17,9 +17,9 @@
 # For a finite set of [[SITES]] //S// the Voronoi region of each site is the set of points closest
 # (with respect to Euclidean distance) to the given site.  All Voronoi regions (and their faces)
 # form a polyhedral complex which is a vertical projection of the boundary complex of an unbounded
-# polyhedron P(S).  This way VoronoiDiagram becomes a derived class from [[Polytope<Scalar>]].
+# polyhedron P(S).  This way VoronoiPolyhedron becomes a derived class from [[Polytope<Scalar>]].
 
-declare object VoronoiDiagram<Scalar=Rational> : Polytope<Scalar> {
+declare object VoronoiPolyhedron<Scalar=Rational> : Polytope<Scalar> {
 
 # Homogeneous coordinates of the sites in case the polyhedron is Voronoi.
 # Sites must be pairwise distinct.
@@ -92,7 +92,7 @@ property VORONOI_GRAPH : GeometricGraph<Scalar>;
 # Graph of the joint Voronoi diagram of the [[SITES]] and the vertices of Vor(SITES).  The coordinates (homogeneous, before projection)
 # are stored as node attributes.  The graph is truncated according to the [[VORONOI_GRAPH.BOUNDING_BOX]].
 # For the default BOUNDING_BOX it may happen that some of the iterated Voronoi vertices are truncated.
-# Create new objects of type [[VoronoiDiagram]] to produce proper iterated Voronoi diagrams.
+# Create new objects of type [[VoronoiPolyhedron]] to produce proper iterated Voronoi diagrams.
 
 property ITERATED_VORONOI_GRAPH : GeometricGraph<Scalar>;
 
@@ -134,7 +134,7 @@ rule NN_GRAPH.ADJACENCY, NN_CRUST_GRAPH.ADJACENCY : SITES, DELAUNAY_GRAPH.ADJACE
 
 rule CRUST_GRAPH.ADJACENCY, ITERATED_DELAUNAY_GRAPH.ADJACENCY, ITERATED_VORONOI_GRAPH : SITES, VORONOI_VERTICES, VORONOI_GRAPH {
    my $sites2 = $this->SITES / $this->VORONOI_VERTICES;
-   my $crust_poly = new VoronoiDiagram(SITES => $sites2);
+   my $crust_poly = new VoronoiPolyhedron(SITES => $sites2);
    my $site_set = range(0, $this->SITES->rows-1);
    my $idg = $crust_poly->DELAUNAY_GRAPH->ADJACENCY;
    $this->ITERATED_DELAUNAY_GRAPH->ADJACENCY=$idg;
@@ -150,11 +150,10 @@ rule DELAUNAY_TRIANGULATION : VERTICES_IN_FACETS, FAR_FACE, FACETS, SITES, CONE_
 precondition : POINTED;
 
 
-# @category Visualization
-# Draw a Voronoi diagram and its [[DELAUNAY_GRAPH|dual]].  Use the interactive features of the viewer to select.
-# @return Visual::Container
 
-user_method VISUAL_VORONOI(%Visual::Graph::decorations) : SITES, VORONOI_GRAPH, DELAUNAY_GRAPH {
+
+# @hide
+user_method VISUAL_VORONOI_GRAPHS(%Visual::Graph::decorations) : SITES, VORONOI_GRAPH, DELAUNAY_GRAPH {
    my ($this, $decor)=@_;
 
 # Delaunay graph
@@ -198,7 +197,7 @@ user_method VISUAL_CRUST(%Visual::Graph::decorations) : SITES, VORONOI_GRAPH, DE
    my ($this, $decor)=@_;
 
    # hide delaunay vertices as they are drawn again for the crust graph
-   my $visual_container=$this->VISUAL_VORONOI($decor,NodeStyle=>"hidden");
+   my $visual_container=$this->VISUAL_VORONOI_GRAPHS($decor,NodeStyle=>"hidden");
    $visual_container->Name = $this->name." crust graph";
    my $sites2 = $this->SITES / $this->VORONOI_VERTICES;
 
@@ -235,7 +234,7 @@ user_method VISUAL_NN_CRUST(%Visual::Graph::decorations) : SITES, VORONOI_GRAPH,
    my ($this, $decor)=@_;
 
    # hide delaunay vertices as they are drawn again for the crust graph
-   my $visual_container=$this->VISUAL_VORONOI($decor,NodeStyle=>"hidden");
+   my $visual_container=$this->VISUAL_VORONOI_GRAPHS($decor,NodeStyle=>"hidden");
    $visual_container->Name = $this->name." nn-crust graph";
 
 # nearest neighbor graph

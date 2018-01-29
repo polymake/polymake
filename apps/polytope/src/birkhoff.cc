@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -22,7 +22,7 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object birkhoff(int n, bool even)
+perl::Object birkhoff(int n, bool even, perl::OptionSet options)
 {
    perl::Object p("Polytope<Rational>");
    p.set_name("B" + std::to_string(n));
@@ -33,7 +33,7 @@ perl::Object birkhoff(int n, bool even)
 
    Matrix<int> V(int(even ? Integer::fac(n)/2 : Integer::fac(n)), n*n+1);
    auto v_i=rows(V).begin();
-  
+  //automorphism group of the symmetric group.
    AllPermutations<> perms(n);
    for (AllPermutations<>::const_iterator perm=entire(perms);  !perm.at_end();  ++perm, ++v_i) {
       *v_i = 1 | concat_rows( permutation_matrix<int>(*perm) );
@@ -43,6 +43,42 @@ perl::Object birkhoff(int n, bool even)
          ++perm;
    }
    p.take("VERTICES") << V;
+
+   // generate the combinatorial symmetry group on the coordinates
+   const bool group = options["group"];
+   if ( group ) {
+      Array<Array<int>> gens(2);
+      Array<int> gen{sequence(0,n*n)};
+      //swap rows 0 and 1
+      for(int i=0; i<n; ++i){
+         gen[i] = i+n;
+         gen[i+n] = i;
+      }
+      gens[0]=gen;
+
+      //front-shift all rows by one (cyclic)
+      for (int j=0; j<n; ++j) {
+         gen[j] = n*n-n+j;
+      }
+      for (int j=n; j<n*n; ++j) {
+         gen[j] = j-n;
+      }
+      gens[1]=gen;
+
+      perl::Object a("group::PermutationAction");
+      a.take("GENERATORS") << gens;
+      perl::Object g("group::Group");
+      g.set_description() << "action of the symmetric group as combinatorial symmetry group on coordinates of " << n
+                          << (n==1 ? "st"
+                              : (n==2 ? "nd"
+                                 : (n==3 ? "rd"
+                                    : "th" ))) << " Birkhoff polytope" << endl;
+      g.set_name("combinatorialGroupOnCoords");
+
+      p.take("GROUP") << g;
+      p.take("GROUP.COORDINATE_ACTION") << a;
+
+   }
    return p;
 }
 
@@ -54,8 +90,9 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# Its vertices are the permutation matrices."
                   "# @param Int n"
                   "# @param Bool even Defaults to '0'. Set this to '1' to get vertices only for even permutation matrices."
+                  "# @option Bool group add the symmetry group induced by the symmetric group to the resulting polytope"
                   "# @return Polytope",
-                  &birkhoff, "birkhoff($;$=0)");
+                  &birkhoff, "birkhoff($;$=0,{group=>undef})");
 } }
 
 // Local Variables:

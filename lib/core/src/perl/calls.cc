@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,10 +19,12 @@
 
 namespace pm { namespace perl {
 
-static glue::cached_cv
-   load_data_cv={ "Polymake::User::load_data", 0 },
-   save_data_cv={ "Polymake::User::save_data", 0 },
-   get_custom_cv={ "Polymake::Core::Application::get_custom_var", 0 };
+namespace {
+
+glue::cached_cv load_data_cv{ "Polymake::User::load_data" },
+                save_data_cv{ "Polymake::User::save_data" },
+               get_custom_cv{ "Polymake::Core::Application::get_custom_var" };
+}
 
 PropertyValue::PropertyValue(const PropertyValue& x)
    : Value(x.sv)
@@ -80,7 +82,7 @@ FunCall::FunCall(bool is_method, const AnyString& name, int reserve)
       SP=glue::push_current_application(aTHX_ SP);
       SV* const app=POPs;
       PUTBACK;
-      if (!(func=(SV*)pm_perl_namespace_lookup_sub(aTHX_ glue::User_stash, name.ptr, name.len, (CV*)SvRV(PmArray(app)[glue::Application_eval_expr_index])))) {
+      if (!(func=(SV*)glue::namespace_lookup_sub(aTHX_ glue::User_stash, name.ptr, name.len, (CV*)SvRV(PmArray(app)[glue::Application_eval_expr_index])))) {
          PmCancelFuncall;
          throw std::runtime_error("polymake function " + name + " not found");
       }
@@ -179,15 +181,15 @@ HV* current_application_pkg(pTHX)
 SV* fetch_typeof_gv(pTHX_ const char* class_name, size_t class_namelen)
 {
    HV* const app_stash=current_application_pkg(aTHX);
-   HV* const stash=pm_perl_namespace_lookup_class(aTHX_ app_stash, class_name, class_namelen, 0);
+   HV* const stash=glue::namespace_lookup_class(aTHX_ app_stash, class_name, class_namelen, 0);
    if (__builtin_expect(!stash, 0)) {
-      sv_setpvf(ERRSV, "unknown perl class %s::%.*s", HvNAME(app_stash), int(class_namelen), class_name);
+      sv_setpvf(ERRSV, "unknown perl class %.*s::%.*s", PmPrintHvNAME(app_stash), int(class_namelen), class_name);
       PmCancelFuncall;
       throw exception();
    }
    SV** const gvp=hv_fetch(stash, "typeof", 6, false);
    if (__builtin_expect(!gvp, 0)) {
-      sv_setpvf(ERRSV, "%s is not an Object or Property type", HvNAME(stash));
+      sv_setpvf(ERRSV, "%.*s is not an Object or Property type", PmPrintHvNAME(stash));
       PmCancelFuncall;
       throw exception();
    }
@@ -240,7 +242,7 @@ SV* call_func_scalar(pTHX_ SV* cv, bool undef_to_null)
    } else if (SvTEMP(ret)) {
       SvREFCNT_inc_simple_void_NN(ret);  // prevent from being destroyed in FREETMPS
    }
-   PUTBACK; FREETMPS; LEAVE;
+   PmFinishFuncall;
    return ret;
 }
 
@@ -255,7 +257,7 @@ std::string call_func_string(pTHX_ SV* cv, bool protect_with_eval)
    size_t l=0;
    const char* s=SvPV(retval, l);
    std::string ret(s, l);
-   PUTBACK; FREETMPS; LEAVE;
+   PmFinishFuncall;
    return ret;
 }
 
@@ -268,7 +270,7 @@ bool call_func_bool(pTHX_ SV* cv, int boolean_check)
    }
    SV *retval=POPs;
    const bool ret=boolean_check ? SvTRUE(retval) : SvOK(retval);
-   PUTBACK; FREETMPS; LEAVE;
+   PmFinishFuncall;
    return ret;
 }
 
@@ -312,7 +314,7 @@ SV* call_method_scalar(pTHX_ const char* name, bool undef_to_null)
    } else if (SvTEMP(ret)) {
       SvREFCNT_inc_simple_void_NN(ret);  // prevent from being destroyed in FREETMPS
    }
-   PUTBACK; FREETMPS; LEAVE;
+   PmFinishFuncall;
    return ret;
 }
 

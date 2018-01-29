@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,8 +18,10 @@
 
 #include "polymake/Integer.h"
 #include "polymake/Polynomial.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/RationalFunction.h"
+#include "polymake/TropicalNumber.h"
 #include "polymake/client.h"
 
 namespace polymake { namespace common { namespace {
@@ -48,5 +50,10 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(pow_X_f1, perl::Canned< const UniPolynomial< Rational, int > >, int);
    FunctionInstance4perl(pow_X_f1, perl::Canned< const UniPolynomial< UniPolynomial< Rational, int >, Rational > >, int);
    FunctionInstance4perl(pow_X_f1, perl::Canned< const UniPolynomial< UniPolynomial< Rational, int >, Rational > >, perl::Canned< const Rational >);
+   FunctionInstance4perl(pow_X_f1, perl::Canned< const UniPolynomial< TropicalNumber< Min, Rational >, int > >, int);
+   FunctionInstance4perl(pow_X_f1, perl::Canned< const UniPolynomial< TropicalNumber< Max, Rational >, int > >, int);
+   FunctionInstance4perl(pow_X_f1, perl::Canned< const UniPolynomial< QuadraticExtension< Rational >, int > >, int);
+   FunctionInstance4perl(pow_X_f1, perl::Canned< const Polynomial< QuadraticExtension< Rational >, int > >, perl::Canned< const QuadraticExtension< Rational > >);
+   FunctionInstance4perl(pow_X_f1, perl::Canned< const Polynomial< QuadraticExtension< Rational >, int > >, int);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

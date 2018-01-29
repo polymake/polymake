@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -74,7 +74,7 @@ sub command {
    print $fh $self->write_latextemplate;
    
    my $pdfout = $self->tempfile.".pdf";
-   my $pdfout_dir = $self->tempfile->dir;
+   my $pdfout_dir = $self->tempfile->dirname;
    my $pdfout_name = $self->tempfile->basename;
    "$sketch -t $latextemplate $filename 2>/dev/null | $Visual::pdflatex --output-directory=$pdfout_dir --jobname=$pdfout_name 1>/dev/null ; $Visual::pdfviewer $pdfout 1>/dev/null 2>/dev/null";
 }
@@ -99,7 +99,7 @@ my $text = <<'|';
 %---------------------------------------------------------------------------------
 %
 % Polymake LaTeX template for Sketch-Output
-% Copyright (c) 1997-2015
+% Copyright (c) 1997-2018
 % Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 % http://www.polymake.org
 \documentclass[12pt]{article}
@@ -127,7 +127,7 @@ my $text = <<'|';
 \begin{document}
 |
 #\rlap{\smash{\raisebox{-2.5\baselineskip}{\includegraphics[height=3\baselineskip]{%
-#  $text .= $InstallTop."/resources/logo/png/logo.png";
+#  $text .= "$Polymake::Resources/logo/png/logo.png";
 #}} }}
 #\vspace*{37.5pt}
 $text .=<<'|';

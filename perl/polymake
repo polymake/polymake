@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -20,14 +20,22 @@ use v5.16;
 package Polymake;
 
 # global variables needed for the bootstrap
-use vars qw($InstallTop $InstallArch $Arch $DeveloperMode $DebugLevel);
+use vars qw($InstallTop $InstallArch $Arch $DeveloperMode @BundledExts $ConfigTime $DebugLevel);
 my @addlibs;
 BEGIN {
    require Cwd;
    $InstallTop=Cwd::abs_path( $0 =~ m{(?:^|/+)[^/]+/+[^/]+$} ? ($` || ".") : ".." );
-   do "$InstallTop/support/locate_build_dir";
-   ($InstallArch, $Arch, @addlibs)=locate_build_dir($InstallTop);
+   $InstallArch= $ENV{POLYMAKE_BUILD_ROOT} ? "$InstallTop/build.$ENV{POLYMAKE_BUILD_ROOT}" : "$InstallTop/build";
+   do "$InstallTop/support/install_utils.pl";
+   my %ConfigFlags=load_config_file("$InstallArch/config.ninja", $InstallTop);
+   $ConfigTime=(stat "$InstallArch/config.ninja")[9];
+   $Arch=$ConfigFlags{Arch};
+   @BundledExts=$ConfigFlags{BundledExts} =~ /(\S+)/g;
+   if ($^O eq "darwin" && $ConfigFlags{FinkBase}) {
+      push @addlibs, "$ConfigFlags{FinkBase}/lib/perl5";
+   }
    $DeveloperMode=-d "$InstallTop/testscenarios";
+   $InstallArch .= "/".($ENV{POLYMAKE_BUILD_MODE} || "Opt");
 }
 
 use lib "$InstallTop/perllib", "$InstallArch/perlx", @addlibs;
@@ -38,31 +46,31 @@ use lib "$InstallTop/perllib", "$InstallArch/perlx", @addlibs;
 #
 use Getopt::Long qw( GetOptions :config require_order bundling no_ignore_case );
 
-my ($verbose, $script, $iscript, $mscript, $connect, $touch, $help, $tell_version, $start_application, $reconfigure);
-my $config_path=$ENV{POLYMAKE_CONFIG_PATH} || "user";
+my ($verbose, $script, $iscript, $connect, $touch, $help, $tell_version, $start_application, $ignore_start_applications, $reconfigure);
+my @config_path;
 
 if ( ! GetOptions( 'v+' => \$verbose, 'd+' => \$DebugLevel,
-                   'A=s' => \$start_application,
-                   'T=f' => \$Polymake::Core::Rule::timeout,
+                   'A=s' => sub { $start_application = $_[1]; $ignore_start_applications=1; },
+                   'a=s' => \$start_application,
+                   ### 'T=f' => \$Polymake::Core::Rule::timeout,
                    'script=s' => sub { $script=$_[1]; die "!FINISH\n" },
                    'iscript=s' => sub { $iscript=$_[1]; die "!FINISH\n" },
-                   'mscript=s' => sub { $config_path="none"; $mscript=$_[1]; die "!FINISH\n" },
                    'connect=s' => \$connect,
                    'touch' => \$touch, 'help' => \$help, 'version' => \$tell_version,
-                   'config-path=s' => \$config_path,
-                   'no-config' => sub { $config_path="none" },
-                   'ignore-config' => sub { $config_path="ignore" },
+                   'config-path=s' => \@config_path,
+                   'no-config' => sub { @config_path=("none") },
+                   'ignore-config' => sub { @config_path=("ignore") },
                    'reconfigure' => \$reconfigure,
                  )
      #  --*script --connect --touch --help --version are mutually exclusive
-     or defined($script)+defined($iscript)+defined($mscript)+defined($connect)+(@ARGV==1 && $ARGV[0] eq "-")+$touch+$help+$tell_version > 1
+     or defined($script)+defined($iscript)+defined($connect)+(@ARGV==1 && $ARGV[0] eq "-")+$touch+$help+$tell_version > 1
      #  --help --version do not consume any additional args
      or $help+$tell_version && @ARGV) {
    $!=1;
    die <<'.';
-usage: polymake [-dv] [-A <application>] [-T <timeout>]
-                [--reconfigure] [--config-path "DIR;..." | --no-config | --ignore-config]
-                [ --script | --iscript | --mscript <script_file> arg ... ] | '<code>' | --connect SOCKETFILE || HOST:PORT | -
+usage: polymake [-dv] [-A|-a <application>]
+                [--reconfigure] [--config-path PATH ... | --no-config | --ignore-config]
+                [ --script | --iscript <script_file> arg ... ] | '<code>' | --connect SOCKETFILE || HOST:PORT | -
                 <file> <property|method> ... |
                 --touch <file> ... | --help | --version
 .
@@ -87,8 +95,6 @@ usage: polymake [options] [arguments]
          Execute the script, passing the arguments in @ARGV .
       --iscript [application::]script_file arguments ...
          Execute the script which may contain interactive commands.
-      --mscript script_file arguments ...
-         Execute a maintenance script without loading any applications
       'code'
          Interpret the string as a perl expression.
       -
@@ -114,20 +120,26 @@ usage: polymake [options] [arguments]
       -A application_name
           Start with this application, ignoring the $default_application and
           @start_applications settings.
+      -a application_name
+          Start with this application, ignoring the $default_application but,
+          in contrast to -A, load everything in @start_applications.
       -d  Produce some debug output; can be repeated to increase the debug level.
       -v  Tell what's going on; can be repeated to increase the verbosity level.
           This is an obsolete option, please use custom variables $Verbose::*
           to gain more detailed control.
 
       --reconfigure
-          Rerun the autoconfiguration sections in all rule files.
-      --config-path "DIR;..."
-          Import settings from global configuration files in given directories;
-          If the last entry in the list has a form "user=DIR",
-          use it instead of ~/.polymake to keep the private settings.
-          DIR may start with ~/ which is treated as $HOME.
-          Default is "user", using only private configuration located at
-          $POLYMAKE_USER_DIR or ~/.polymake .
+          Re-run the autoconfiguration sections in all rule files.
+      --config-path PATH
+          Import settings from a global configuration file;
+          PATH may also point to a folder containing files prefer.pl and/or customize.pl
+          created by polymake earlier e.g. for another user.
+          Several --config-path options are allowed, later instances override settings
+          from earlier ones.
+      --config-path user[=DIR]
+          Specify the location of user's private settings, by default it's ~/.polymake
+          which may be overridden via POLYMAKE_USER_DIR environment variable.
+          All global --config-path imports must precede this option.
       --no-config
           Don't read any configuration files,
           don't try to configure rules automatically,
@@ -137,17 +149,12 @@ usage: polymake [options] [arguments]
           Don't read any configuration files,
           skip auto-configuration routines in the rule files.
           Equivalent to --config-path=ignore .
-      -n  `Dry run' mode: show the production rules that would be applied to the
-          object, but don't run any; only applicable to the compatibility mode.
-
-      -T sec
-          Set a time limit for the execution of production rules (currently without effect).
 .
    exit;
 }
 
 # Getopt::Long does not allow to combine short option bundling with multi-value options
-# Here is a work-around
+# Here is a work-around.  It is not used in this main program but in some scripts.
 sub collect_arglist {
    my $list=shift;
    @$list=@_;
@@ -163,35 +170,37 @@ sub collect_arglist {
 use strict;
 use Polymake;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 if ($tell_version) {
    print STDERR Main::greeting();
    exit;
 }
 
-Core::UserSettings::init($config_path);
+# prepare for graceful termination from outside, e.g. in a docker container
+$SIG{TERM}=sub { print STDERR "Terminating...\n"; exit; };
 
 if ($verbose || $DebugLevel) {
    print STDERR "polymake version $Version\n";
 }
+if ($reconfigure) {
+   require Polymake::Configure;
+   Configure::prepare_reconfigure();
+}
+
+Main::init(@config_path ? join(";", @config_path) : $ENV{POLYMAKE_CONFIG_PATH} || "user");
 
 if ($DebugLevel) {
    $Verbose::rules=3;
-   $Verbose::cpp=2;
    assign_max($Verbose::scheduler, $DebugLevel);
    if ($DebugLevel>1) {
       $Verbose::external=1;
    }
 }
 if ($verbose) {
-   assign_max($Verbose::rules,$verbose);
-   assign_max($Verbose::scheduler,$verbose);
+   assign_max($Verbose::rules, $verbose);
+   assign_max($Verbose::scheduler, $verbose);
 }
-if ($reconfigure) {
-   $Core::Application::configured_at=time;
-}
-
-init Core::CPlusPlus();
 
 if ($touch) {
    if (Main::load_apps()) {
@@ -204,17 +213,11 @@ if ($touch) {
    Main::run_script($script);
 
 } elsif (defined $iscript) {
+   require Polymake::Core::Shell;
    if (-t STDIN) {
-      require Polymake::Core::Shell;
       Core::Shell::start();
-      Main::run_script($iscript);
-   } else {
-      die "can't execute the interactive script without terminal input\n";
    }
-
-} elsif (defined $mscript) {
-   do $mscript;
-   beautify_error() if $@;
+   Main::run_script($iscript);
 
 } elsif (defined $connect) {
    ### named socket or host connection
@@ -285,8 +288,7 @@ package Polymake::Main;
 sub load_apps {
    if ($start_application // $User::default_application) {
       eval {
-         init Core::Extension;
-         unless (defined $start_application) {
+         unless (defined $ignore_start_applications) {
             foreach my $app_name (@User::start_applications) {
                add Core::Application($app_name);
             }
@@ -301,7 +303,6 @@ sub load_apps {
 }
 
 sub run_script {
-   init Core::Extension;
    my ($filename)=@_;
    if ($filename =~ s/^($id_re)::(?!$)//o) {
       User::application($1);

@@ -1,0 +1,59 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# @category Topology
+# A Morse matching is a reorientation of the arcs in the Hasse diagram of a simplicial complex
+# such that at most one arc incident to each face is reoriented (matching condition) and the
+# resulting orientation is acyclic (acyclicity condition). Morse matchings capture the main
+# structure of discrete Morse functions, see
+#
+#	Robin Forman: Morse Theory for Cell-Complexes,
+#	Advances in Math., 134 (1998), pp. 90-145.
+#
+# This property is computed by one of two heuristics. The default heuristic is
+# a simple greedy algorithm ([[topaz::SimplicialComplex|greedy]]). The alternative is to use a canceling algorithm
+# due to Forman ([[topaz::SimplicialComplex|cancel]]) or both ([[topaz::SimplicialComplex|both]]) together. Note that the computation of a Morse matching of largest
+# size is NP-hard. See
+#
+#	Michael Joswig, Marc E. Pfetsch: Computing Optimal Morse Matchings
+#	SIAM J. Discrete Math., 2006, to appear
+#
+# @relates objects/SimplicialComplex
+declare object MorseMatching {
+
+
+# Size of the computed Morse matching.
+property SIZE : Int;
+
+
+# The critical faces of the computed Morse matching, i.e., the faces not
+# incident to any reoriented arc (not matched).
+property CRITICAL_FACES : Array<Set>;
+
+
+# The vector of critical faces in each dimension.
+property CRITICAL_FACE_VECTOR : Array<Int>;
+
+
+# Number of critical faces of the computed Morse matching.
+property N_CRITICAL_FACES : Int;
+
+}
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

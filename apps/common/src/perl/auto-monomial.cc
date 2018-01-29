@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,6 +18,7 @@
 
 #include "polymake/Polynomial.h"
 #include "polymake/PuiseuxFraction.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/RationalFunction.h"
 #include "polymake/TropicalNumber.h"
@@ -42,5 +43,9 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(Polynomial__monomial_int_int_f1, Polynomial< PuiseuxFraction< Min, Rational, Rational >, int >);
    FunctionInstance4perl(UniPolynomial__monomial_f1, UniPolynomial< PuiseuxFraction< Min, Rational, Rational >, Rational >);
    FunctionInstance4perl(UniPolynomial__monomial_f1, UniPolynomial< UniPolynomial< Rational, int >, Rational >);
+   FunctionInstance4perl(UniPolynomial__monomial_f1, UniPolynomial< TropicalNumber< Min, Rational >, int >);
+   FunctionInstance4perl(UniPolynomial__monomial_f1, UniPolynomial< TropicalNumber< Max, Rational >, int >);
+   FunctionInstance4perl(UniPolynomial__monomial_f1, UniPolynomial< QuadraticExtension< Rational >, int >);
+   FunctionInstance4perl(Polynomial__monomial_int_int_f1, Polynomial< QuadraticExtension< Rational >, int >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

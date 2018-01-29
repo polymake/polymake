@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -48,21 +48,20 @@ struct union_reference<T1* const&, T2* const&, false> : compatible<T1*, T2*> {};
 
 template <typename T>
 struct extract_union_list {
-   typedef T type;
+   using type = T;
 };
 
 template <typename TypeList>
 struct extract_union_list< type_union<TypeList> > {
-   typedef TypeList type;
+   using type = TypeList;
 };
 
 template <typename T1, typename T2,
           typename Model1=typename object_traits<typename deref<T1>::type>::model,
           typename Model2=typename object_traits<typename deref<T2>::type>::model>
 struct union_reference_helper {
-   typedef type_union< typename merge_list<typename extract_union_list<T1>::type,
-                                           typename extract_union_list<T2>::type, std::is_same>::type >
-      type;
+   using type = type_union< typename merge_list<typename extract_union_list<T1>::type,
+                                                typename extract_union_list<T2>::type, std::is_same>::type >;
 };
 
 template <typename T1, typename T2>
@@ -70,25 +69,23 @@ struct union_reference<T1, T2, false> : union_reference_helper<T1, T2> {};
 
 template <typename Iterator>
 struct union_iterator_traits : iterator_traits<Iterator> {
-   typedef typename iterator_traits<Iterator>::iterator iterator_list;
-   typedef typename iterator_traits<Iterator>::const_iterator const_iterator_list;
+   using iterator_list = typename iterator_traits<Iterator>::iterator;
+   using const_iterator_list = typename iterator_traits<Iterator>::const_iterator;
 };
 
 template <typename Head, typename Tail>
 struct union_iterator_traits< cons<Head,Tail> > {
-   typedef union_iterator_traits<Head> traits1;
-   typedef union_iterator_traits<Tail> traits2;
+   using traits1 = union_iterator_traits<Head>;
+   using traits2 = union_iterator_traits<Tail>;
 
-   typedef typename least_derived_class<typename traits1::iterator_category, typename traits2::iterator_category>::type iterator_category;
-   typedef typename union_reference<typename traits1::reference, typename traits2::reference>::type reference;
-   typedef typename deref<reference>::type value_type;
-   typedef value_type *pointer;
-   typedef typename std::common_type<typename traits1::difference_type, typename traits2::difference_type>::type difference_type;
+   using iterator_category = typename least_derived_class<typename traits1::iterator_category, typename traits2::iterator_category>::type;
+   using reference = typename union_reference<typename traits1::reference, typename traits2::reference>::type;
+   using value_type = typename deref<reference>::type;
+   using pointer = value_type*;
+   using difference_type = typename std::common_type<typename traits1::difference_type, typename traits2::difference_type>::type;
 
-   typedef typename merge_list<typename traits1::iterator_list, typename traits2::iterator_list, std::is_same>::type
-      iterator_list;
-   typedef typename merge_list<typename traits1::const_iterator_list, typename traits2::const_iterator_list, std::is_same>::type
-      const_iterator_list;
+   using iterator_list = typename merge_list<typename traits1::iterator_list, typename traits2::iterator_list, std::is_same>::type;
+   using const_iterator_list = typename merge_list<typename traits1::const_iterator_list, typename traits2::const_iterator_list, std::is_same>::type;
 };
 
 namespace virtuals {
@@ -188,77 +185,80 @@ struct rewind {
 
 template <typename IteratorList>
 struct iterator_union_functions : type_union_functions<IteratorList> {
-   typedef type_union_functions<IteratorList> _super;
-   typedef union_iterator_traits<IteratorList> traits;
+   using base_t = type_union_functions<IteratorList>;
+   using traits = union_iterator_traits<IteratorList>;
 
    template <int discr>
    struct basics : virtuals::iterator_basics<typename n_th<IteratorList,discr>::type> {};
 
-   struct alt_copy_constructor : _super::length_def {
+   struct alt_copy_constructor : base_t::length_def {
       template <int discr> struct defs : virtuals::alt_copy_constructor<typename n_th<IteratorList,discr>::type> {};
-      typedef void (*fpointer)(char*, const char*);
+      using fpointer = void (*)(char*, const char*);
+      static fpointer no_op() { return &empty_union_def::trivial_op2; }
    };
-   struct assignment : _super::length_def {
+   struct assignment : base_t::length_def {
       template <int discr> struct defs : virtuals::assignment<typename n_th<IteratorList,discr>::type> {};
-      typedef void (*fpointer)(char*, const char*);
+      using fpointer = void (*)(char*, const char*);
+      static fpointer no_op() { return &empty_union_def::trivial_op2; }
    };
-   struct alt_assignment : _super::length_def {
+   struct alt_assignment : base_t::length_def {
       template <int discr> struct defs : virtuals::alt_assignment<typename n_th<IteratorList,discr>::type> {};
-      typedef void (*fpointer)(char*, const char*);
+      using fpointer = void (*)(char*, const char*);
+      static fpointer no_op() { return &empty_union_def::trivial_op2; }
    };
-   struct dereference : _super::length_def {
+   struct dereference : base_t::length_def {
       template <int discr> struct defs {
          static typename traits::reference _do(const char* it)
          {
             return *basics<discr>::get(it);
          }
       };
-      typedef typename traits::reference (*fpointer)(const char*);
+      using fpointer = typename traits::reference (*)(const char*);
    };
-   struct increment : _super::length_def {
+   struct increment : base_t::length_def {
       template <int discr> struct defs : virtuals::increment<typename n_th<IteratorList,discr>::type> {};
-      typedef void (*fpointer)(char*);
+      using fpointer = void (*)(char*);
    };
-   struct decrement : _super::length_def {
+   struct decrement : base_t::length_def {
       template <int discr> struct defs : virtuals::decrement<typename n_th<IteratorList,discr>::type> {};
-      typedef void (*fpointer)(char*);
+      using fpointer = void (*)(char*);
    };
-   struct advance_plus : _super::length_def {
+   struct advance_plus : base_t::length_def {
       template <int discr> struct defs : virtuals::advance_plus<typename n_th<IteratorList,discr>::type> {};
-      typedef void (*fpointer)(char*, int);
+      using fpointer = void (*)(char*, int);
    };
-   struct advance_minus : _super::length_def {
+   struct advance_minus : base_t::length_def {
       template <int discr> struct defs : virtuals::advance_minus<typename n_th<IteratorList,discr>::type> {};
-      typedef void (*fpointer)(char*, int);
+      using fpointer = void (*)(char*, int);
    };
-   struct equality : _super::length_def {
+   struct equality : base_t::length_def {
       template <int discr> struct defs : virtuals::equality<typename n_th<IteratorList,discr>::type> {};
-      typedef bool (*fpointer)(const char*, const char*);
+      using fpointer = bool (*)(const char*, const char*);
    };
-   struct difference : _super::length_def {
+   struct difference : base_t::length_def {
       template <int discr> struct defs : virtuals::difference<typename n_th<IteratorList,discr>::type> {};
-      typedef typename traits::difference_type (*fpointer)(const char*, const char*);
+      using fpointer = typename traits::difference_type (*)(const char*, const char*);
    };
-   struct random : _super::length_def {
+   struct random : base_t::length_def {
       template <int discr> struct defs {
          static typename traits::reference _do(const char* it, int i)
          {
             return basics<discr>::get(it)[i];
          }
       };
-      typedef typename traits::reference (*fpointer)(const char*, int);
+      using fpointer = typename traits::reference (*)(const char*, int);
    };
-   struct index : _super::length_def {
+   struct index : base_t::length_def {
       template <int discr> struct defs : virtuals::index<typename n_th<IteratorList,discr>::type> {};
-      typedef int (*fpointer)(const char*);
+      using fpointer = int (*)(const char*);
    };
-   struct at_end : _super::length_def {
+   struct at_end : base_t::length_def {
       template <int discr> struct defs : virtuals::at_end<typename n_th<IteratorList,discr>::type> {};
-      typedef bool (*fpointer)(const char*);
+      using fpointer = bool (*)(const char*);
    };
-   struct rewind : _super::length_def {
+   struct rewind : base_t::length_def {
       template <int discr> struct defs : virtuals::rewind<typename n_th<IteratorList,discr>::type> {};
-      typedef void (*fpointer)(char*);
+      using fpointer = void (*)(char*);
    };
 };
 } // end namespace virtuals
@@ -266,9 +266,9 @@ struct iterator_union_functions : type_union_functions<IteratorList> {
 template <typename IteratorList, typename Category=typename union_iterator_traits<IteratorList>::iterator_category>
 class iterator_union : public type_union<IteratorList> {
 protected:
-   typedef type_union<IteratorList> super;
-   typedef union_iterator_traits<IteratorList> traits;
-   typedef virtuals::iterator_union_functions<IteratorList> Functions;
+   using base_t = type_union<IteratorList>;
+   using traits = union_iterator_traits<IteratorList>;
+   using Functions = virtuals::iterator_union_functions<IteratorList>;
    template <int discr> struct basics : virtuals::basics<typename n_th<IteratorList,discr>::type> {};
 
    template <typename Iterator, int own_discr, int alt_discr>
@@ -289,7 +289,7 @@ protected:
    template <typename OtherList, typename discr2>
    void init_from_union(const iterator_union<OtherList>& it, std::false_type, discr2)
    {
-      super::init_from_union(it, std::false_type());
+      base_t::init_from_union(it, std::false_type());
    }
 
    template <typename OtherList>
@@ -309,7 +309,7 @@ protected:
    template <typename Iterator, typename discr2>
    void init_impl(const Iterator& it, std::true_type, discr2)
    {
-      super::init_impl(it, std::true_type());
+      base_t::init_impl(it, std::true_type());
    }
 
    template <typename Iterator>
@@ -342,7 +342,7 @@ protected:
    template <typename OtherList, typename discr2>
    void assign_union(const iterator_union<OtherList>& it, std::false_type, discr2)
    {
-      super::assign_union(it, std::false_type());
+      base_t::assign_union(it, std::false_type());
    }
 
    template <typename OtherList>
@@ -368,7 +368,7 @@ protected:
    template <typename Iterator, typename discr2>
    void assign_impl(const Iterator& src, std::true_type, discr2)
    {
-      super::assign_impl(src, std::true_type());
+      base_t::assign_impl(src, std::true_type());
    }
 
    template <typename Iterator>
@@ -384,20 +384,20 @@ protected:
 
    template <typename,typename> friend class iterator_union;
 public:
-   typedef typename traits::iterator_category iterator_category;
-   typedef typename traits::value_type value_type;
-   typedef typename traits::reference reference;
-   typedef typename traits::pointer pointer;
-   typedef typename traits::difference_type difference_type;
-   typedef iterator_union<typename traits::iterator_list> iterator;
-   typedef iterator_union<typename traits::const_iterator_list> const_iterator;
-   typedef iterator_union<IteratorList> me;
+   using iterator_category = typename traits::iterator_category;
+   using value_type = typename traits::value_type;
+   using reference = typename traits::reference;
+   using pointer = typename traits::pointer;
+   using difference_type = typename traits::difference_type;
+   using iterator = iterator_union<typename traits::iterator_list>;
+   using const_iterator = iterator_union<typename traits::const_iterator_list>;
+   using me = iterator_union<IteratorList>;
 
    iterator_union() {}
 
    iterator_union(const iterator_union& it)
    {
-      super::init_impl(it, std::true_type());
+      base_t::init_impl(it, std::true_type());
    }
 
    template <typename Iterator>
@@ -409,7 +409,7 @@ public:
 
    iterator_union& operator= (const iterator_union& it)
    {
-      super::assign_impl(it, std::true_type());
+      base_t::assign_impl(it, std::true_type());
       return *this;
    }
 
@@ -463,25 +463,25 @@ public:
 template <typename IteratorList>
 class iterator_union<IteratorList, bidirectional_iterator_tag>
    : public iterator_union<IteratorList, forward_iterator_tag> {
-   typedef iterator_union<IteratorList, forward_iterator_tag> _super;
+   using base_t = iterator_union<IteratorList, forward_iterator_tag> ;
 public:
-   typedef iterator_union<IteratorList> me;
+   using me = iterator_union<IteratorList> ;
 
    iterator_union() {}
 
    template <typename Iterator>
-   iterator_union(const Iterator& it) : _super(it) {}
+   iterator_union(const Iterator& it) : base_t(it) {}
 
    template <typename Iterator>
    iterator_union& operator= (const Iterator& it)
    {
-      _super::operator=(it);
+      base_t::operator=(it);
       return *this;
    }
 
    me& operator-- ()
    {
-      virtuals::table<typename _super::Functions::decrement>::call(this->discriminant)(this->area);
+      virtuals::table<typename base_t::Functions::decrement>::call(this->discriminant)(this->area);
       return static_cast<me&>(*this);
    }
    me operator--(int) { me copy=static_cast<me&>(*this); operator--(); return copy; }
@@ -490,42 +490,42 @@ public:
 template <typename IteratorList>
 class iterator_union<IteratorList, random_access_iterator_tag>
    : public iterator_union<IteratorList, bidirectional_iterator_tag> {
-   typedef iterator_union<IteratorList, bidirectional_iterator_tag> _super;
+   using base_t = iterator_union<IteratorList, bidirectional_iterator_tag>;
 public:
    iterator_union() {}
 
    template <typename Iterator>
-   iterator_union(const Iterator& it) : _super(it) {}
+   iterator_union(const Iterator& it) : base_t(it) {}
 
    template <typename Iterator>
    iterator_union& operator= (const Iterator& it)
    {
-      _super::operator=(it);
+      base_t::operator=(it);
       return *this;
    }
 
    iterator_union& operator+= (int i)
    {
-      virtuals::table<typename _super::Functions::advance_plus>::call(this->discriminant)(this->area);
+      virtuals::table<typename base_t::Functions::advance_plus>::call(this->discriminant)(this->area);
       return *this;
    }
    iterator_union& operator-= (int i)
    {
-      virtuals::table<typename _super::Functions::advance_minus>::call(this->discriminant)(this->area);
+      virtuals::table<typename base_t::Functions::advance_minus>::call(this->discriminant)(this->area);
       return *this;
    }
    iterator_union operator+ (int i) const { iterator_union copy=*this; return copy+=i; }
    iterator_union operator- (int i) const { iterator_union copy=*this; return copy-=i; }
    friend iterator_union operator+ (int i, const iterator_union& it) { return it+i; }
 
-   typename _super::difference_type operator- (const iterator_union& it) const
+   typename base_t::difference_type operator- (const iterator_union& it) const
    {
-      return virtuals::table<typename _super::Functions::difference>::call(this->discriminant)(this->area);
+      return virtuals::table<typename base_t::Functions::difference>::call(this->discriminant)(this->area);
    }
 
-   typename _super::reference operator[] (int i) const
+   typename base_t::reference operator[] (int i) const
    {
-      return virtuals::table<typename _super::Functions::random>::call(this->discriminant)(this->area,i);
+      return virtuals::table<typename base_t::Functions::random>::call(this->discriminant)(this->area,i);
    }
 };
 
@@ -535,7 +535,7 @@ struct check_iterator_feature<iterator_union<IteratorList,Category>, Feature>
 
 template <typename IteratorList, typename Category>
 struct extract_union_list< iterator_union<IteratorList,Category> > {
-   typedef IteratorList type;
+   using type = IteratorList;
 };
 
 /* -----------------
@@ -545,9 +545,9 @@ struct extract_union_list< iterator_union<IteratorList,Category> > {
 template <typename ContainerRef, typename Features,
           bool _reversible=container_traits<ContainerRef>::is_bidirectional>
 struct union_container_traits_helper : ensure_features<typename deref<ContainerRef>::minus_ref, Features> {
-   typedef ensure_features<typename deref<ContainerRef>::minus_ref, Features> _super;
-   typedef typename extract_union_list<typename _super::iterator>::type iterator_list;
-   typedef typename extract_union_list<typename _super::const_iterator>::type const_iterator_list;
+   using base_t = ensure_features<typename deref<ContainerRef>::minus_ref, Features>;
+   using iterator_list = typename extract_union_list<typename base_t::iterator>::type;
+   using const_iterator_list = typename extract_union_list<typename base_t::const_iterator>::type ;
    static const bool
       is_reversible=_reversible,   // = false
       is_resizeable=object_traits<typename deref<ContainerRef>::type>::is_resizeable==1,
@@ -557,9 +557,9 @@ struct union_container_traits_helper : ensure_features<typename deref<ContainerR
 template <typename ContainerRef, typename Features>
 struct union_container_traits_helper<ContainerRef, Features, true>
    : union_container_traits_helper<ContainerRef, Features, false> {
-   typedef union_container_traits_helper<ContainerRef, Features, false> _super;
-   typedef typename extract_union_list<typename _super::reverse_iterator>::type reverse_iterator_list;
-   typedef typename extract_union_list<typename _super::const_reverse_iterator>::type const_reverse_iterator_list;
+   using base_t = union_container_traits_helper<ContainerRef, Features, false>;
+   using reverse_iterator_list = typename extract_union_list<typename base_t::reverse_iterator>::type;
+   using const_reverse_iterator_list = typename extract_union_list<typename base_t::const_reverse_iterator>::type;
    static const bool is_reversible=true;
 };
 
@@ -576,37 +576,33 @@ struct union_container_traits_helper2
 
 template <typename C1, typename C2, typename Features>
 struct union_container_traits_helper2<C1, C2, Features, true, false> {
-   typedef typename merge_list<typename union_container_traits<C1, Features>::iterator_list,
-                               typename union_container_traits<C2, Features>::iterator_list, std::is_same>::type
-      iterator_list;
-   typedef typename merge_list<typename union_container_traits<C1, Features>::const_iterator_list,
-                               typename union_container_traits<C2, Features>::const_iterator_list, std::is_same>::type
-      const_iterator_list;
-   typedef iterator_union<iterator_list> iterator;
-   typedef iterator_union<const_iterator_list> const_iterator;
+   using iterator_list = typename merge_list<typename union_container_traits<C1, Features>::iterator_list,
+                                             typename union_container_traits<C2, Features>::iterator_list, std::is_same>::type;
+   using const_iterator_list = typename merge_list<typename union_container_traits<C1, Features>::const_iterator_list,
+                                                   typename union_container_traits<C2, Features>::const_iterator_list, std::is_same>::type;
+   using iterator = iterator_union<iterator_list>;
+   using const_iterator = iterator_union<const_iterator_list>;
 };
 
 template <typename C1, typename C2, class Features>
 struct union_container_traits_helper2<C1, C2, Features, true, true>
    : union_container_traits_helper2<C1, C2, Features, true, false> {
-   typedef typename merge_list<typename union_container_traits<C1, Features>::reverse_iterator_list,
-                               typename union_container_traits<C2, Features>::reverse_iterator_list, std::is_same>::type
-      reverse_iterator_list;
-   typedef typename merge_list<typename union_container_traits<C1, Features>::const_reverse_iterator_list,
-                               typename union_container_traits<C2, Features>::const_reverse_iterator_list, std::is_same>::type
-      const_reverse_iterator_list;
-   typedef iterator_union<reverse_iterator_list> reverse_iterator;
-   typedef iterator_union<const_reverse_iterator_list> const_reverse_iterator;
+   using reverse_iterator_list = typename merge_list<typename union_container_traits<C1, Features>::reverse_iterator_list,
+                                                     typename union_container_traits<C2, Features>::reverse_iterator_list, std::is_same>::type;
+   using const_reverse_iterator_list = typename merge_list<typename union_container_traits<C1, Features>::const_reverse_iterator_list,
+                                                           typename union_container_traits<C2, Features>::const_reverse_iterator_list, std::is_same>::type;
+   using reverse_iterator = iterator_union<reverse_iterator_list> ;
+   using const_reverse_iterator = iterator_union<const_reverse_iterator_list> ;
 };
 
 template <typename Head, typename Tail, class Features>
 struct union_container_traits<cons<Head, Tail>, Features>
    : union_container_traits_helper2<Head, Tail, Features> {
-   typedef union_container_traits<Head, Features> traits1;
-   typedef union_container_traits<Tail, Features> traits2;
-   typedef typename least_derived_class<typename traits1::category, typename traits2::category>::type category;
-   typedef typename union_reference<typename traits1::reference, typename traits2::reference>::type reference;
-   typedef typename union_reference<typename traits1::const_reference, typename traits2::const_reference>::type const_reference;
+   using traits1 = union_container_traits<Head, Features>;
+   using traits2 = union_container_traits<Tail, Features>;
+   using category = typename least_derived_class<typename traits1::category, typename traits2::category>::type;
+   using reference = typename union_reference<typename traits1::reference, typename traits2::reference>::type;
+   using const_reference = typename union_reference<typename traits1::const_reference, typename traits2::const_reference>::type;
    static const bool
       is_reversible=traits1::is_reversible && traits2::is_reversible,
       is_resizeable=traits1::is_resizeable && traits2::is_resizeable,
@@ -646,153 +642,153 @@ struct resize {
 
 template <typename ContainerList, typename Features>
 struct container_union_functions : type_union_functions<ContainerList> {
-   typedef type_union_functions<ContainerList> _super;
-   typedef union_container_traits<ContainerList, Features> traits;
+   using base_t = type_union_functions<ContainerList>;
+   using traits = union_container_traits<ContainerList, Features>;
 
    template <int discr>
    struct basics : virtuals::basics<typename n_th<ContainerList,discr>::type> {};
 
-   struct size : _super::length_def {
+   struct size : base_t::length_def {
       template <int discr> struct defs : virtuals::size<typename n_th<ContainerList,discr>::type> {};
-      typedef int (*fpointer)(const char*);
+      using fpointer = int (*)(const char*);
    };
-   struct dim : _super::length_def {
+   struct dim : base_t::length_def {
       template <int discr> struct defs : virtuals::dim<typename n_th<ContainerList,discr>::type> {};
-      typedef int (*fpointer)(const char*);
+      using fpointer = int (*)(const char*);
    };
-   struct empty : _super::length_def {
+   struct empty : base_t::length_def {
       template <int discr> struct defs : virtuals::empty<typename n_th<ContainerList,discr>::type> {};
-      typedef bool (*fpointer)(const char*);
+      using fpointer = bool (*)(const char*);
    };
-   struct resize : _super::length_def {
+   struct resize : base_t::length_def {
       template <int discr> struct defs : virtuals::resize<typename n_th<ContainerList,discr>::type> {};
-      typedef void (*fpointer)(char*, int);
+      using fpointer = void (*)(char*, int);
    };
-   struct begin : _super::length_def {
+   struct begin : base_t::length_def {
       template <int discr> struct defs {
          static typename traits::iterator _do(char* c)
          {
             return ensure(basics<discr>::get(c), (Features*)0).begin();
          }
       };
-      typedef typename traits::iterator (*fpointer)(char*);
+      using fpointer = typename traits::iterator (*)(char*);
    };
-   struct end : _super::length_def {
+   struct end : base_t::length_def {
       template <int discr> struct defs {
          static typename traits::iterator _do(char* c)
          {
             return ensure(basics<discr>::get(c), (Features*)0).end();
          }
       };
-      typedef typename traits::iterator (*fpointer)(char*);
+      using fpointer = typename traits::iterator (*)(char*);
    };
-   struct const_begin : _super::length_def {
+   struct const_begin : base_t::length_def {
       template <int discr> struct defs {
          static typename traits::const_iterator _do(const char* c)
          {
             return ensure(basics<discr>::get(c), (Features*)0).begin();
          }
       };
-      typedef typename traits::const_iterator (*fpointer)(const char*);
+      using fpointer = typename traits::const_iterator (*)(const char*);
    };
-   struct const_end : _super::length_def {
+   struct const_end : base_t::length_def {
       template <int discr> struct defs {
          static typename traits::const_iterator _do(const char* c)
          {
             return ensure(basics<discr>::get(c), (Features*)0).end();
          }
       };
-      typedef typename traits::const_iterator (*fpointer)(const char*);
+      using fpointer = typename traits::const_iterator (*)(const char*);
    };
-   struct rbegin : _super::length_def {
+   struct rbegin : base_t::length_def {
       template <int discr> struct defs {
          static typename traits::reverse_iterator _do(char* c)
          {
             return ensure(basics<discr>::get(c), (Features*)0).rbegin();
          }
       };
-      typedef typename traits::reverse_iterator (*fpointer)(char*);
+      using fpointer = typename traits::reverse_iterator (*)(char*);
    };
-   struct rend : _super::length_def {
+   struct rend : base_t::length_def {
       template <int discr> struct defs {
          static typename traits::reverse_iterator _do(char* c)
          {
             return ensure(basics<discr>::get(c), (Features*)0).rend();
          }
       };
-      typedef typename traits::reverse_iterator (*fpointer)(char*);
+      using fpointer = typename traits::reverse_iterator (*)(char*);
    };
-   struct const_rbegin : _super::length_def {
+   struct const_rbegin : base_t::length_def {
       template <int discr> struct defs {
          static typename traits::const_reverse_iterator _do(const char* c)
          {
             return ensure(basics<discr>::get(c), (Features*)0).rbegin();
          }
       };
-      typedef typename traits::const_reverse_iterator (*fpointer)(const char*);
+      using fpointer = typename traits::const_reverse_iterator (*)(const char*);
    };
-   struct const_rend : _super::length_def {
+   struct const_rend : base_t::length_def {
       template <int discr> struct defs {
          static typename traits::const_reverse_iterator _do(const char* c)
          {
             return ensure(basics<discr>::get(c), (Features*)0).rend();
          }
       };
-      typedef typename traits::const_reverse_iterator (*fpointer)(const char*);
+      using fpointer = typename traits::const_reverse_iterator (*)(const char*);
    };
-   struct front : _super::length_def {
+   struct front : base_t::length_def {
       template <int discr> struct defs {
          static typename traits::reference _do(char* c)
          {
             return basics<discr>::get(c).front();
          }
       };
-      typedef typename traits::reference (*fpointer)(char*);
+      using fpointer = typename traits::reference (*)(char*);
    };
-   struct const_front : _super::length_def {
+   struct const_front : base_t::length_def {
       template <int discr> struct defs {
          static typename traits::const_reference _do(const char* c)
          {
             return basics<discr>::get(c).front();
          }
       };
-      typedef typename traits::const_reference (*fpointer)(const char*);
+      using fpointer = typename traits::const_reference (*)(const char*);
    };
-   struct back : _super::length_def {
+   struct back : base_t::length_def {
       template <int discr> struct defs {
          static typename traits::reference _do(char* c)
          {
             return basics<discr>::get(c).back();
          }
       };
-      typedef typename traits::reference (*fpointer)(char*);
+      using fpointer = typename traits::reference (*)(char*);
    };
-   struct const_back : _super::length_def {
+   struct const_back : base_t::length_def {
       template <int discr> struct defs {
          static typename traits::const_reference _do(const char* c)
          {
             return basics<discr>::get(c).back();
          }
       };
-      typedef typename traits::const_reference (*fpointer)(const char*);
+      using fpointer = typename traits::const_reference (*)(const char*);
    };
-   struct random : _super::length_def {
+   struct random : base_t::length_def {
       template <int discr> struct defs {
          static typename traits::reference _do(char* c, int i)
          {
             return basics<discr>::get(c)[i];
          }
       };
-      typedef typename traits::reference (*fpointer)(char*, int);
+      using fpointer = typename traits::reference (*)(char*, int);
    };
-   struct const_random : _super::length_def {
+   struct const_random : base_t::length_def {
       template <int discr> struct defs {
          static typename traits::const_reference _do(const char* c, int i)
          {
             return basics<discr>::get(c)[i];
          }
       };
-      typedef typename traits::const_reference (*fpointer)(const char*, int);
+      using fpointer = typename traits::const_reference (*)(const char*, int);
    };
 };
 } // end namespace virtuals
@@ -805,177 +801,175 @@ template <typename ContainerList, typename ProvidedFeatures,
           typename Category=typename union_container_traits<ContainerList,ProvidedFeatures>::category>
 class container_union_elem_access {
 protected:
-   static const bool _provide_sparse=
+   static const bool provide_sparse =
       list_accumulate_binary<list_or, check_container_ref_feature, ContainerList, same<sparse> >::value &&
       !list_accumulate_binary<list_and, check_container_ref_feature, ContainerList, same<sparse> >::value &&
       !list_search<ProvidedFeatures, dense, std::is_same>::value;
-   typedef typename std::conditional<_provide_sparse, typename mix_features<ProvidedFeatures, sparse_compatible>::type,
-                                                      ProvidedFeatures>::type
-      needed_features;
-
-   typedef union_container_traits<ContainerList, needed_features> traits;
-   typedef virtuals::container_union_functions<ContainerList, needed_features> Functions;
+   using needed_features = typename std::conditional<provide_sparse,
+                                                     typename mix_features<ProvidedFeatures, sparse_compatible>::type,
+                                                     ProvidedFeatures>::type;
+   using traits = union_container_traits<ContainerList, needed_features>;
+   using Functions = virtuals::container_union_functions<ContainerList, needed_features>;
 public:
-   typedef typename traits::reference reference;
-   typedef typename traits::const_reference const_reference;
-   typedef typename deref<reference>::type value_type;
-   typedef typename traits::category container_category;
+   using reference = typename traits::reference;
+   using const_reference = typename traits::const_reference;
+   using value_type = typename deref<reference>::type;
+   using container_category = typename traits::category;
 
    friend class container_union_resize<ContainerList,ProvidedFeatures>;
 };
 
 template <typename ContainerList, typename ProvidedFeatures=void>
 class ContainerUnion
-   : public type_union<ContainerList>,
-     public container_union_elem_access<ContainerList,ProvidedFeatures>,
-     public container_union_resize<ContainerList,ProvidedFeatures>,
-     public inherit_generic<ContainerUnion<ContainerList,ProvidedFeatures>,
+   : public type_union<ContainerList>
+   , public container_union_elem_access<ContainerList,ProvidedFeatures>
+   , public container_union_resize<ContainerList,ProvidedFeatures>
+   , public inherit_generic<ContainerUnion<ContainerList,ProvidedFeatures>,
                             typename list_transform_unary<deref,ContainerList>::type>::type {
-   typedef type_union<ContainerList> super;
-   typedef container_union_elem_access<ContainerList,ProvidedFeatures> _super;
+   using base_t = type_union<ContainerList>;
+   using access_t = container_union_elem_access<ContainerList,ProvidedFeatures>;
 
    template <typename,typename,typename> friend class container_union_elem_access;
    friend class container_union_resize<ContainerList,ProvidedFeatures>;
 public:
-   typedef typename _super::traits::iterator iterator;
-   typedef typename _super::traits::const_iterator const_iterator;
+   using iterator = typename access_t::traits::iterator;
+   using const_iterator = typename access_t::traits::const_iterator;
 
    ContainerUnion() {}
 
    template <typename T>
-   ContainerUnion(const T& src) : super(src) {}
+   ContainerUnion(const T& src) : base_t(src) {}
 
    template <typename T>
    ContainerUnion& operator= (const T& src)
    {
-      super::operator=(src);
+      base_t::operator=(src);
       return *this;
    }
 
    iterator begin()
    {
-      return virtuals::table<typename _super::Functions::begin>::call(this->discriminant)(this->area);
+      return virtuals::table<typename access_t::Functions::begin>::call(this->discriminant)(this->area);
    }
    iterator end()
    {
-      return virtuals::table<typename _super::Functions::end>::call(this->discriminant)(this->area);
+      return virtuals::table<typename access_t::Functions::end>::call(this->discriminant)(this->area);
    }
    const_iterator begin() const
    {
-      return virtuals::table<typename _super::Functions::const_begin>::call(this->discriminant)(this->area);
+      return virtuals::table<typename access_t::Functions::const_begin>::call(this->discriminant)(this->area);
    }
    const_iterator end() const
    {
-      return virtuals::table<typename _super::Functions::const_end>::call(this->discriminant)(this->area);
+      return virtuals::table<typename access_t::Functions::const_end>::call(this->discriminant)(this->area);
    }
    int size() const
    {
-      return virtuals::table<typename _super::Functions::size>::call(this->discriminant)(this->area);
+      return virtuals::table<typename access_t::Functions::size>::call(this->discriminant)(this->area);
    }
    bool empty() const
    {
-      return virtuals::table<typename _super::Functions::empty>::call(this->discriminant)(this->area);
+      return virtuals::table<typename access_t::Functions::empty>::call(this->discriminant)(this->area);
    }
    int dim() const
    {
-      return virtuals::table<typename _super::Functions::dim>::call(this->discriminant)(this->area);
+      return virtuals::table<typename access_t::Functions::dim>::call(this->discriminant)(this->area);
    }
 };
 
 template <typename ContainerList, typename ProvidedFeatures>
 class container_union_elem_access<ContainerList, ProvidedFeatures, forward_iterator_tag>
    : public container_union_elem_access<ContainerList, ProvidedFeatures, input_iterator_tag> {
-   typedef container_union_elem_access<ContainerList, ProvidedFeatures, input_iterator_tag> _super;
+   using base_t = container_union_elem_access<ContainerList, ProvidedFeatures, input_iterator_tag>;
 protected:
-   typedef ContainerUnion<ContainerList,ProvidedFeatures> master;
+   using master = ContainerUnion<ContainerList,ProvidedFeatures>;
 public:
-   typename _super::reference front()
+   typename base_t::reference front()
    {
       master& me=static_cast<master&>(*this);
-      return virtuals::table<typename _super::Functions::front>::call(me.discriminant)(me.area);
+      return virtuals::table<typename base_t::Functions::front>::call(me.discriminant)(me.area);
    }
-   typename _super::const_reference front() const
+   typename base_t::const_reference front() const
    {
       const master& me=static_cast<const master&>(*this);
-      return virtuals::table<typename _super::Functions::const_front>::call(me.discriminant)(me.area);
+      return virtuals::table<typename base_t::Functions::const_front>::call(me.discriminant)(me.area);
    }
 };
 
 template <class ContainerList, class ProvidedFeatures>
 class container_union_elem_access<ContainerList, ProvidedFeatures, bidirectional_iterator_tag>
    : public container_union_elem_access<ContainerList, ProvidedFeatures, forward_iterator_tag> {
-   typedef container_union_elem_access<ContainerList, ProvidedFeatures, forward_iterator_tag> _super;
+   using base_t = container_union_elem_access<ContainerList, ProvidedFeatures, forward_iterator_tag>;
 public:
-   typedef typename _super::traits::reverse_iterator reverse_iterator;
-   typedef typename _super::traits::const_reverse_iterator const_reverse_iterator;
+   using reverse_iterator = typename base_t::traits::reverse_iterator;
+   using const_reverse_iterator = typename base_t::traits::const_reverse_iterator;
 
    reverse_iterator rbegin()
    {
-      typename _super::master& me=static_cast<typename _super::master&>(*this);
-      return virtuals::table<typename _super::Functions::rbegin>::call(me.discriminant)(me.area);
+      auto& me=static_cast<typename base_t::master&>(*this);
+      return virtuals::table<typename base_t::Functions::rbegin>::call(me.discriminant)(me.area);
    }
    reverse_iterator rend()
    {
-      typename _super::master& me=static_cast<typename _super::master&>(*this);
-      return virtuals::table<typename _super::Functions::rend>::call(me.discriminant)(me.area);
+      auto& me=static_cast<typename base_t::master&>(*this);
+      return virtuals::table<typename base_t::Functions::rend>::call(me.discriminant)(me.area);
    }
    const_reverse_iterator rbegin() const
    {
-      const typename _super::master& me=static_cast<const typename _super::master&>(*this);
-      return virtuals::table<typename _super::Functions::const_rbegin>::call(me.discriminant)(me.area);
+      auto& me=static_cast<const typename base_t::master&>(*this);
+      return virtuals::table<typename base_t::Functions::const_rbegin>::call(me.discriminant)(me.area);
    }
    const_reverse_iterator rend() const
    {
-      const typename _super::master& me=static_cast<const typename _super::master&>(*this);
-      return virtuals::table<typename _super::Functions::const_rend>::call(me.discriminant)(me.area);
+      auto& me=static_cast<const typename base_t::master&>(*this);
+      return virtuals::table<typename base_t::Functions::const_rend>::call(me.discriminant)(me.area);
    }
 
-   typename _super::reference back()
+   typename base_t::reference back()
    {
-      typename _super::master& me=static_cast<typename _super::master&>(*this);
-      return virtuals::table<typename _super::Functions::back>::call(me.discriminant)(me.area);
+      auto& me=static_cast<typename base_t::master&>(*this);
+      return virtuals::table<typename base_t::Functions::back>::call(me.discriminant)(me.area);
    }
-   typename _super::const_reference back() const
+   typename base_t::const_reference back() const
    {
-      const typename _super::master& me=static_cast<const typename _super::master&>(*this);
-      return virtuals::table<typename _super::Functions::const_back>::call(me.discriminant)(me.area);
+      auto& me=static_cast<const typename base_t::master&>(*this);
+      return virtuals::table<typename base_t::Functions::const_back>::call(me.discriminant)(me.area);
    }
 };
 
 template <typename ContainerList, typename ProvidedFeatures>
 class container_union_elem_access<ContainerList, ProvidedFeatures, random_access_iterator_tag>
    : public container_union_elem_access<ContainerList, ProvidedFeatures, bidirectional_iterator_tag> {
-   typedef container_union_elem_access<ContainerList, ProvidedFeatures, bidirectional_iterator_tag> _super;
+   using base_t = container_union_elem_access<ContainerList, ProvidedFeatures, bidirectional_iterator_tag>;
 public:
-   typename _super::reference operator[] (int i)
+   typename base_t::reference operator[] (int i)
    {
-      typename _super::master& me=static_cast<typename _super::master&>(*this);
-      return virtuals::table<typename _super::Functions::random>::call(me.discriminant)(me.area, i);
+      auto& me=static_cast<typename base_t::master&>(*this);
+      return virtuals::table<typename base_t::Functions::random>::call(me.discriminant)(me.area, i);
    }
-   typename _super::const_reference operator[] (int i) const
+   typename base_t::const_reference operator[] (int i) const
    {
-      const typename _super::master& me=static_cast<const typename _super::master&>(*this);
-      return virtuals::table<typename _super::Functions::const_random>::call(me.discriminant)(me.area, i);
+      auto& me=static_cast<const typename base_t::master&>(*this);
+      return virtuals::table<typename base_t::Functions::const_random>::call(me.discriminant)(me.area, i);
    }
 };
 
 template <typename ContainerList, typename ProvidedFeatures>
 class container_union_resize<ContainerList, ProvidedFeatures, true> {
 protected:
-   typedef ContainerUnion<ContainerList,ProvidedFeatures> master;
-   typedef container_union_elem_access<ContainerList, ProvidedFeatures> _super;
+   using master = ContainerUnion<ContainerList,ProvidedFeatures>;
+   using base_t = container_union_elem_access<ContainerList, ProvidedFeatures>;
 public:
    void resize(int n)
    {
       master& me=static_cast<master&>(*this);
-      virtuals::table<typename _super::Functions::resize>::call(me.discriminant)(me.area, n);
+      virtuals::table<typename base_t::Functions::resize>::call(me.discriminant)(me.area, n);
    }
 };
 
 template <typename ContainerList, typename ProvidedFeatures, typename Features>
 struct enforce_features<ContainerUnion<ContainerList,ProvidedFeatures>, Features> {
-   typedef ContainerUnion<ContainerList, typename mix_features<ProvidedFeatures, Features>::type>
-      container;
+   using container = ContainerUnion<ContainerList, typename mix_features<ProvidedFeatures, Features>::type>;
 };
 
 template <typename ContainerList, typename ProvidedFeatures>
@@ -1006,14 +1000,13 @@ struct check_container_feature<ContainerUnion<ContainerList,ProvidedFeatures>, s
 
 template <typename ContainerList, typename ProvidedFeatures>
 struct extract_union_list< ContainerUnion<ContainerList, ProvidedFeatures> > {
-   typedef ContainerList type;
+   using type = ContainerList;
 };
 
 template <typename T1, typename T2>
 struct union_reference_helper<T1, T2, is_container, is_container> {
-   typedef ContainerUnion< typename merge_list<typename extract_union_list<T1>::type,
-                                               typename extract_union_list<T2>::type, std::is_same>::type >
-      type;
+   using type = ContainerUnion< typename merge_list<typename extract_union_list<T1>::type,
+                                                    typename extract_union_list<T2>::type, std::is_same>::type >;
 };
 
 } // end namespace pm

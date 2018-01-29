@@ -1,5 +1,70 @@
 Changelog
 
+=== Polymake 3.2 ===
+
+-- distribution --
+ * build system changed to ninja
+ * support gcc 7 and clang 5
+ * support for perl 5.26 and blead up to 5.27.7
+ * tutorials available as jupyter notebooks
+
+-- interfaces --
+ * new python interface to callable library (thanks Sebastian Gutsche)
+ * new jupyter-kernel interface (thanks Sebastian Gutsche)
+   - threejs visualization now working again in jupyter
+ * libnormaliz:
+   - update bundled version to 3.5.0
+	- support preexisting installation (version >= 3.1.0)
+ * cdd and lrs: support debugging output
+ * lrs: fix segfault with non-quiet lrslib
+ * ppl: requires version >= 1.2
+ * soplex: requires version >= 2.2.1
+ * callable library: major improvements for emulating command line
+
+-- general --
+ * fixes and improvements for various visualization methods
+
+-- common --
+ * many improvements in polyDB interface including new database format
+ * new substitute method for polynomials
+ * replace rgb.txt by perl optional module Graphics::ColorNames
+   - polymake includes a short list of fallback colors now
+ * induced group actions on arbitrary containers
+
+-- fan --
+ * rename SymmetricFan to PolyhedralFan and incorporate SymmetricFan's properties there
+ * fixes in regularity checks
+ * new property PSEUDO_REGULAR
+
+-- graph --
+ * several fixes for props::Graph
+
+-- group --
+ * fixes for linear_symmetries
+ * improved support of matrix group actions
+ * rename MATRIX_GROUP_ACTION and MatrixGroupAction to MATRIX_ACTION and matrix_action, respectively
+
+-- polytope --
+ * fixed parser for LP file format
+ * new property MAHLER_VOLUME for Polytope
+ * new client for reduced 3-polytopes
+ * user method Polytope::VISUAL now takes Transformation and Offset as optional arguments
+ * zero vectors in input properties throw an exception
+ * major refactoring of VoronoiDiagram
+ * groups added to several basic constructions
+ * improved support for root systems
+ * beneath_beyond support for non-full-dim / non-pointed cases
+
+-- topaz --
+ * new big object type HyperbolicSurface
+   - encoded via an doubly connected edge list
+
+-- tropical --
+ * tropical double description method
+ * feasibility check for tropical linear inequality systems
+ * several improvements to and refactoring of basic clients
+
+
 === Polymake 3.1 ===
 
 -- distribution --

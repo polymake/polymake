@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -26,9 +26,9 @@
 
 #include "polymake/group/permlib_tools.h"
 
-#include <permlib/permlib_api.h>
-#include <permlib/generator/bsgs_generator.h>
-#include <permlib/export/bsgs_schreier_export.h>
+#include "permlib/permlib_api.h"
+#include "permlib/generator/bsgs_generator.h"
+#include "permlib/export/bsgs_schreier_export.h"
 #include <list>
 
 // TEMPORARY FIX:
@@ -135,10 +135,15 @@ public:
    }
 
    template <typename Container> inline
-   hash_set<Container> orbit(const Container& c) const {
+   hash_set<Container> unordered_orbit(const Container& c) const {
       return orbit_impl(*this, c);
    }
 
+   template <typename Container> inline
+   Set<Container> orbit(const Container& c) const {
+      return Set<Container>(entire(orbit_impl(*this, c)));
+   }
+   
 
   template<typename SetType>
   PermlibGroup setwise_stabilizer(const SetType& set) const {

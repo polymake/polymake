@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -26,6 +26,7 @@
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/TropicalNumber.h"
+#include "polymake/Vector.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
 
@@ -60,5 +61,9 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(cols_f1, perl::Canned< const SparseMatrix< PuiseuxFraction< Max, Rational, Rational >, NonSymmetric > >);
    FunctionInstance4perl(cols_f1, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
    FunctionInstance4perl(cols_R_X32, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(cols_f1, perl::Canned< const pm::Transposed<pm::MatrixMinor<pm::SparseMatrix<pm::QuadraticExtension<pm::Rational>, pm::NonSymmetric>&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> > >);
+   FunctionInstance4perl(cols_f1, perl::Canned< const pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::PuiseuxFraction<pm::Min, pm::Rational, pm::Rational> const&> const&>, pm::ColChain<pm::SingleCol<pm::SameElementVector<pm::PuiseuxFraction<pm::Min, pm::Rational, pm::Rational> const&> const&>, pm::Matrix<pm::PuiseuxFraction<pm::Min, pm::Rational, pm::Rational> > const&> const&> >);
+   FunctionInstance4perl(cols_f1, perl::Canned< const pm::RowChain<pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&, pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&> >);
+   FunctionInstance4perl(cols_f1, perl::Canned< const pm::DiagMatrix<pm::Vector<double> const&, true> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -24,6 +24,7 @@
 #include "polymake/Set.h"
 #include "polymake/Series.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/common/labels.h"
 
 namespace polymake { namespace polytope {
 namespace {
@@ -102,8 +103,7 @@ perl::Object truncation(perl::Object p_in, const GenericSet<TSet>& trunc_vertice
 
    std::vector<std::string> labels_out;
    if (relabel) {
-      std::vector<std::string> labels(n_vertices);
-      read_labels(p_in, "VERTEX_LABELS", labels);
+      const std::vector<std::string> labels = common::read_labels(p_in, "VERTEX_LABELS", n_vertices);
       labels_out.resize(n_vertices_out);
       copy_range(entire(select(labels, ~keys(vertex_map))), labels_out.begin());
 

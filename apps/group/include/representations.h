@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,10 +17,10 @@
 #ifndef __GROUP_REPRESENTATIONS_H
 #define __GROUP_REPRESENTATIONS_H
 
-#include "polymake/group/action_datatypes.h"
+#include "polymake/Array.h"
+#include "polymake/hash_map"
 #include "polymake/SparseMatrix.h"
 #include "polymake/Rational.h"
-#include "polymake/AccurateFloat.h"
 
 namespace polymake { namespace group {
 

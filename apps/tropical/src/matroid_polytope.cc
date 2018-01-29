@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
 	Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 http://www.polymake.org
 
@@ -60,7 +60,14 @@ UserFunctionTemplate4perl("# @category Producing a tropical polytope"
                           "# @param Scalar v value for the bases"
                           "# @tparam Addition Min or Max"
                           "# @tparam Scalar coordinate type"
-                          "# @return Polytope<Addition,Scalar>",
+                          "# @return Polytope<Addition,Scalar>"
+                          "# @example"
+                          "# > $m = new matroid::Matroid(VECTORS=>[[1,0,0],[1,0,1],[1,1,0],[1,0,2]]);"
+                          "# > $P = matroid_polytope<Min>($m);"
+                          "# > print $P->VERTICES;"
+                          "# | 0 0 0 1"
+                          "# | 0 1 0 0"
+                          "# | 0 -1 -1 -1",
                           "matroid_polytope<Addition,Scalar> [ is_ordered_field_with_unlimited_precision(type_upgrade<Scalar, Rational>) ](matroid::Matroid; type_upgrade<Scalar> = -Addition->orientation())");
 } }
 

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitae Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -37,7 +37,10 @@ declare property_type HomologyGroup<Scalar> : c++ (include => "polymake/topaz/Ho
 declare property_type CycleGroup<Scalar> : c++ (include => "polymake/topaz/HomologyComplex.h");
 
 # @category Topology
-# TODO: explain the meaning of the fields: parity, positive, negative
+#
+# Parity and signature of the intersection form of a closed oriented 4k-manifold.
+# See [[INTERSECTION_FORM]].
+
 declare property_type IntersectionForm : c++ (include => "polymake/topaz/IntersectionForm.h");
 
 object SimplicialComplex {
@@ -255,7 +258,11 @@ rule nonexistent : COCYCLES : VertexPerm.COCYCLES, VertexPerm.PERMUTATION;
 
 
 # @category Topology
-# Parity and signature of the intersection form of a closed oriented 4-manifold.
+#
+# The integral quadratic form obtained from restricting the multiplication of the cohomology of a closed
+# 4k-manifold to H^{2k} x H^{2k} -> H^{4k} = Z.  As a quadratic form over the reals it is characterized
+# by its dimension and its index of inertia (or, equivalenty, by the number of positive and negative ones
+# in its canonical form).  An integral quadratic form is even if it takes values in 2Z.
 property INTERSECTION_FORM : IntersectionForm;
 
 
@@ -381,14 +388,6 @@ property HASSE_DIAGRAM : Lattice<BasicDecoration> {
 
 }
 
-#rule HASSE_DIAGRAM : VertexPerm.HASSE_DIAGRAM, VertexPerm.PERMUTATION {
-#   $this->HASSE_DIAGRAM=permuted_atoms($this->VertexPerm->HASSE_DIAGRAM, $this->VertexPerm->PERMUTATION);
-#}
-#
-#rule HASSE_DIAGRAM : FacetPerm.HASSE_DIAGRAM, FacetPerm.PERMUTATION {
-#   $this->HASSE_DIAGRAM=permuted_coatoms($this->FacetPerm->HASSE_DIAGRAM, $this->FacetPerm->PERMUTATION);
-#}
-
 # @category Topology
 # True if this is a [[CONNECTED]] [[MANIFOLD]] of dimension 2.
 
@@ -422,7 +421,7 @@ sub compute_vertex_map_perm{
 # @category Combinatorics
 # Codimension-1-faces of a [[PSEUDO_MANIFOLD]] which are contained in one facet only.
 
-property BOUNDARY : SimplicialComplex {
+property BOUNDARY : self {
 
    # @category Combinatorics
    # Maps vertices of the boundary complex to the corresponding ones in the supercomplex
@@ -531,6 +530,14 @@ rule UNIMODULAR : FACETS, COORDINATES {
 rule N_UNIMODULAR : FACETS, COORDINATES {
   $this->N_UNIMODULAR=n_unimodular($this);
 }
+
+property BOUNDARY = override : self;
+
+rule BOUNDARY.COORDINATES : COORDINATES, BOUNDARY.VERTEX_MAP {
+   $this->BOUNDARY->COORDINATES(temporary) = $this->COORDINATES->minor($this->BOUNDARY->VERTEX_MAP, All);
+}
+
+rule BOUNDARY.G_DIM = G_DIM;
 
 }
 

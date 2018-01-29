@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -94,19 +94,32 @@ template <typename Base, bool symmetric, restriction_kind restriction=full> clas
 template <typename, typename, bool> struct asym_permute_entries;
 template <typename Traits> struct sym_permute_entries;
 
-template <typename E, bool _row_oriented, bool _symmetric>
+template <typename E, bool is_row_oriented, bool is_symmetric>
 class it_traits {
 protected:
    int line_index;
 public:
-   static const bool row_oriented=_row_oriented, symmetric=_symmetric;
-   typedef cell<E> Node;
-   typedef it_traits<E,(!symmetric && !row_oriented),symmetric> cross_traits;
+   static const bool row_oriented=is_row_oriented, symmetric=is_symmetric;
+   using Node = cell<E>;
+   using cross_traits = it_traits<E,(!symmetric && !row_oriented),symmetric>;
 
-   AVL::Ptr<Node>& link(Node *n, AVL::link_index X) const
+   AVL::Ptr<Node>& link(Node* n, AVL::link_index X) const
    {
       const int in_row= symmetric ? n->key > 2*line_index : row_oriented;
       return n->links[X-AVL::L + in_row*3];
+   }
+
+   void prepare_move_between_trees(Node* n, const int old_line_index, const int new_line_index) const
+   {
+      if (is_symmetric) {
+         const int cross_index = n->key - old_line_index;
+         if ((cross_index > old_line_index) != (cross_index > new_line_index)) {
+            // element has leaped over the diagonal
+            for (int i=0; i<3; ++i)
+               std::swap(n->links[i], n->links[i+3]);
+         }
+      }
+      n->key += new_line_index - old_line_index;
    }
 
    it_traits(int index_arg=0) : line_index(index_arg) {}
@@ -115,21 +128,21 @@ public:
    const it_traits& get_it_traits() const { return *this; }
 };
 
-template <typename E, bool _row_oriented, bool _symmetric, restriction_kind restriction=full>
-class traits_base : public it_traits<E, _row_oriented, _symmetric> {
+template <typename E, bool is_row_oriented, bool is_symmetric, restriction_kind restriction=full>
+class traits_base : public it_traits<E, is_row_oriented, is_symmetric> {
 public:
-   typedef it_traits<E,_row_oriented,_symmetric> traits_for_iterator;
+   typedef it_traits<E, is_row_oriented, is_symmetric> traits_for_iterator;
    typedef typename traits_for_iterator::Node Node;
 protected:
    mutable AVL::Ptr<Node> root_links[3];
 
 public:
    static const bool
-      symmetric=_symmetric,
-      row_oriented=_row_oriented,
+      symmetric=is_symmetric,
+      row_oriented=is_row_oriented,
       allow_multiple=false,
       cross_oriented= restriction!=only_rows && restriction!=only_cols ? !symmetric && !row_oriented : row_oriented,
-      fixed_dim= _symmetric || restriction==(_row_oriented ? only_cols : only_rows);
+      fixed_dim= is_symmetric || restriction==(is_row_oriented ? only_cols : only_rows);
 
    typedef E mapped_type;
    typedef AVL::tree< traits<traits_base, symmetric, restriction> > own_tree;

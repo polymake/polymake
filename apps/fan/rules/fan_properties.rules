@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -80,7 +80,7 @@ property INPUT_RAYS : Matrix<Scalar>;
 #
 # Input section only. Ask for [[MAXIMAL_CONES]] if you want to know the maximal cones (indexed by [[RAYS]]).
 
-property INPUT_CONES : Array<Set<Int>>;
+property INPUT_CONES : IncidenceMatrix;
 
 # @category Input property
 # Vectors whose linear span defines a subset of the lineality space of the fan; 
@@ -135,7 +135,7 @@ rule MAXIMAL_CONES : RaysPerm.MAXIMAL_CONES, RaysPerm.PERMUTATION {
 permutation ConesPerm : PermBase;
 
 rule ConesPerm.PERMUTATION : ConesPerm.MAXIMAL_CONES, MAXIMAL_CONES  {
-   $this->ConesPerm->PERMUTATION=find_permutation((new Array<Set<Int>>(rows($this->ConesPerm->MAXIMAL_CONES))), (new Array<Set<Int>>(rows($this->MAXIMAL_CONES))));
+   $this->ConesPerm->PERMUTATION=find_permutation(new Array<Set<Int>>(rows($this->ConesPerm->MAXIMAL_CONES)), new Array<Set<Int>>(rows($this->MAXIMAL_CONES)));
 }
 weight 1.10;
 
@@ -145,6 +145,15 @@ rule MAXIMAL_CONES : ConesPerm.MAXIMAL_CONES, ConesPerm.PERMUTATION {
 }
 weight 1.10;
 
+# @category Combinatorics
+# Transposed to [[MAXIMAL_CONES]].
+# Notice that this is a temporary property; it will not be stored in any file.
+property MAXIMAL_CONES_THRU_RAYS : IncidenceMatrix;
+
+rule MAXIMAL_CONES_THRU_RAYS : MAXIMAL_CONES {
+    $this->MAXIMAL_CONES_THRU_RAYS(temporary)=transpose($this->MAXIMAL_CONES);
+}
+
 
 # @category Combinatorics
 # List of all cones of the fan of each dimension.  Indices refer to [[RAYS]].
@@ -152,8 +161,11 @@ property CONES : Array<IncidenceMatrix>;
 
 # @category Combinatorics
 # Number of [[MAXIMAL_CONES]].
-
 property N_MAXIMAL_CONES : Int;
+
+# @category Combinatorics
+# Number of [[CONES]].
+property N_CONES : Int;
 
 # @category Combinatorics
 # Array of incidence matrices of all [[MAXIMAL_CONES|maximal cones]].
@@ -184,11 +196,20 @@ rule MAXIMAL_CONES_COMBINATORIAL_DIMS : ConesPerm.MAXIMAL_CONES_COMBINATORIAL_DI
 }
 weight 1.10;
 
+# @category Combinatorics
+# The combinatorial dimensions of the [[CONES|cones]].
+property CONES_COMBINATORIAL_DIMS : Array<Int>;
+
+rule CONES_COMBINATORIAL_DIMS : ConesPerm.CONES_COMBINATORIAL_DIMS, ConesPerm.PERMUTATION {
+   $this->CONES_COMBINATORIAL_DIMS=permuted($this->ConesPerm->CONES_COMBINATORIAL_DIMS, $this->ConesPerm->PERMUTATION);
+}
+weight 1.10;
+
 
 # @category Combinatorics
-# The dimensions of the [[MAXIMAL_CONES|maximal cones]].
+# The dimensions of the [[CONES|cones]].
 # @return Array<Int>
-user_method MAXIMAL_CONES_DIMS : FAN_DIM, MAXIMAL_CONES_COMBINATORIAL_DIMS {
+user_method CONES_DIMS : FAN_DIM, CONES_COMBINATORIAL_DIMS {
     my $this=shift;
     my @mcd;
     my $cd=$this->COMBINATORIAL_DIM;
@@ -196,7 +217,7 @@ user_method MAXIMAL_CONES_DIMS : FAN_DIM, MAXIMAL_CONES_COMBINATORIAL_DIMS {
     if ( defined ($this->lookup( "RAYS | INPUT_RAYS | INPUT_LINEALITY | LINEALITY_SPACE | LINEALITY_DIM | FAN_DIM | FACET_NORMALS | ORTH_LINEALITY_SPACE" ) ) ) {
         $d=$this->FAN_DIM-$cd;
     }
-    foreach (@{$this->MAXIMAL_CONES_COMBINATORIAL_DIMS}) {
+    foreach (@{$this->CONES_COMBINATORIAL_DIMS}) {
         push @mcd, $_+$d;
     }
     return new Array<Int>(@mcd);
@@ -268,14 +289,6 @@ property HASSE_DIAGRAM : Lattice<BasicDecoration> {
       return shift->nodes_of_rank_range($d1+$st,$d2+$st);
    }}
 
-#rule HASSE_DIAGRAM : RaysPerm.HASSE_DIAGRAM, RaysPerm.PERMUTATION {
-#   $this->HASSE_DIAGRAM=permuted_atoms($this->RaysPerm->HASSE_DIAGRAM, $this->RaysPerm->PERMUTATION);
-#}
-#
-#rule HASSE_DIAGRAM : ConesPerm.HASSE_DIAGRAM, ConesPerm.PERMUTATION {
-#   $this->HASSE_DIAGRAM=permuted_coatoms($this->ConesPerm->HASSE_DIAGRAM, $this->ConesPerm->PERMUTATION);
-#}
-
 # @category Combinatorics
 # f<sub>ik</sub> is the number of incident pairs of i-dimensional cones and k-dimensional cones; the main diagonal contains the [[F_VECTOR]].
 
@@ -308,9 +321,14 @@ property COMPLETE : Bool;
 property SIMPLICIAL : Bool;
 
 # @category Geometry
-# True if the fan is the [[normal_fan|normal fan]] of a polyhedron.
+# True if the fan is the [[normal_fan|normal fan]] of a [[Polytope::BOUNDED|bounded]] polytope.
 
 property REGULAR : Bool;
+
+# @category Geometry
+# True if the fan is a subfan of a [[REGULAR]] fan
+
+property PSEUDO_REGULAR : Bool;
 
 # @category Combinatorics
 # The graph of the fan intersected with a sphere, that is,
@@ -470,6 +488,20 @@ user_method DIM {
 }
 
 }
+
+object topaz::HyperbolicSurface {
+   
+   # The secondary fan of the hyperbolic surface.
+   # The k-th maximal cone corresponds to the Delaunay triangulation obtained by applying the k-th flip word of [[FLIP_WORDS]].
+   # See M. Joswig, R. Löwe, and B. Springborn. Secondary fans and secondary polyhedra of punctured Riemann surfaces. arXiv:1708.08714.
+   property SECONDARY_FAN : PolyhedralFan<Rational>;
+
+   rule SECONDARY_FAN, FLIP_WORDS : DCEL_DATA, PENNER_COORDINATES {
+      secondary_fan_and_flipwords($this);
+   }
+
+}
+
 
 # Local Variables:
 # mode: perl

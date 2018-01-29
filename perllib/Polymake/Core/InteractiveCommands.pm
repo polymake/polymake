@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,42 +15,45 @@
 
 #  Application methods and user commands available in interactive mode
 
-use Term::Cap;
-
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
+use feature 'state';
 
 package Polymake::Core::InteractiveCommands;
 
-my ($termcap, $bold, $boldoff, $under, $underoff);
+use Term::Cap;
+
+my ($bold, $boldoff, $under, $underoff);
 
 sub init_termcap {
-   my $tc=Term::Cap->Tgetent;
-   $bold=$tc->Tputs('md');
-   $boldoff=$tc->Tputs('me');
-   $under=$tc->Tputs('us');
-   $underoff=$tc->Tputs('ue');
-   close Term::Cap::DATA;
-   1
+   state $termcap= $ENV{TERM} && do {
+      my $tc=Term::Cap->Tgetent;
+      $bold=$tc->Tputs('md');
+      $boldoff=$tc->Tputs('me');
+      $under=$tc->Tputs('us');
+      $underoff=$tc->Tputs('ue');
+      close Term::Cap::DATA;
+      1
+   };
 }
 
 sub Tgetent {
-   $termcap //= init_termcap;
-   Term::Cap->Tgetent
+   init_termcap && Term::Cap->Tgetent
 }
 
 sub underline {
-   $termcap //= init_termcap;
+   init_termcap;
    "$under$_[0]$underoff"
 }
 
 sub bold {
-   $termcap //= init_termcap;
+   init_termcap;
    "$bold$_[0]$boldoff"
 }
 
 sub clean_text {
-   $termcap //= init_termcap;
+   init_termcap;
    $_[0] =~ s/\[\[(?:.*?\|)?(.*?)\]\]/$under$1$underoff/g;
    $_[0] =~ s/''(.*?)''/$1/g;
    $_[0] =~ s{(//|__)(.*?)\1}{$under$2$underoff}g;
@@ -68,7 +71,7 @@ my %rules_to_wake;
 
 # private
 sub store_rule_to_wake {
-   my ($self, $rulefile, $filename, $ext, $rule_key, $on_rule)=splice @_, 0, 6;
+   my ($self, $filename, $ext, $rule_key, $on_rule)=splice @_, 0, 5;
    for (;;) {
       my $list;
       if ($on_rule) {
@@ -79,16 +82,16 @@ sub store_rule_to_wake {
          $list=($rules_to_wake{$prereq_ext} //= [ ]);
       }
       if (@$list && $list->[-2]==$self) {
-         push @{$list->[-1]}, $rulefile, $filename, $ext, $rule_key;
+         push @{$list->[-1]}, $filename, $ext, $rule_key;
       } else {
-         push @$list, $self, [ $rulefile, $filename, $ext, $rule_key ];
+         push @$list, $self, [ $filename, $ext, $rule_key ];
       }
    }
 }
 ###############################################################################################
 # private
 sub do_reconfigure {
-   my ($self, $list, $rulefile, $filename, $ext, $rule_key);
+   my ($self, $list, $filename, $ext, $rule_key);
    my @woken=@_;
    while (($self, $list)=splice @woken, 0, 2) {
       my $new_to_wake=@woken;
@@ -99,12 +102,12 @@ sub do_reconfigure {
         local_array($self->custom->tied_vars, [ ]),
         $self->compile_scope->cleanup->{$self->custom}=undef;
 
-      while (($rulefile, $filename, $ext, $rule_key)=splice @$list, 0, 4) {
+      while (($filename, $ext, $rule_key)=splice @$list, 0, 3) {
          my $rc;
          local $extension=$ext if $ext != $extension;
          if (defined (my $code=$self->rule_code->{$rule_key})) {
             my $reconf=new Reconf($self);
-            local_sub(get_pkg($self->pkg)->{self}, sub { $reconf });
+            local_sub(get_symtab($self->pkg)->{self}, sub { $reconf });
             if (is_object (my $credit=$self->credits_by_rulefile->{$rule_key})) {
                $credit->shown &= ~$Rule::Credit::hide;
             }
@@ -125,11 +128,26 @@ sub do_reconfigure {
 
       for (; $new_to_wake<$#woken; $new_to_wake+=2) {
          ($self, $list)=@woken[$new_to_wake, $new_to_wake+1];
-         for (my $i=0; $i<@$list; $i+=4) {
-            ($rulefile, $filename, $ext, $rule_key)=@$list[$i..$i+2];
+         for (my $i=0; $i<@$list; $i+=3) {
+            ($filename, $ext, $rule_key)=@$list[$i..$i+2];
             delete $self->configured->{$rule_key};
          }
       }
+   }
+}
+###############################################################################################
+sub lookup_rulefile_or_key {
+   my ($self, $rulefile)=@_;
+   if ($rulefile =~ s/\@(.*)$//) {
+      # specified by the key including extension URI
+      local $extension=$Extension::registered_by_URI{$1};
+      if (defined $extension) {
+         lookup_rulefile($self, $rulefile, 1);
+      } else {
+         die "unknown extension URI $1\n";
+      }
+   } else {
+      &lookup_rulefile;
    }
 }
 ###############################################################################################
@@ -138,7 +156,7 @@ sub reconfigure {
    if ($rulefile =~ m{^($id_re)::(.*)}o) {
       reconfigure($self->used->{$1} || die("application $1 is not declared as USE'd or IMPORT'ed in the current application\n"), "$2");
 
-   } elsif (my ($filename, $ext, $rule_key, $old_status)=&lookup_rulefile) {
+   } elsif (my ($filename, $ext, $rule_key, $old_status)=&lookup_rulefile_or_key) {
       if (defined (my $conf_status=$self->configured->{$rule_key})) {
          if (is_string($conf_status) and my ($rules, $what)= $conf_status =~ /^0\#(?:(rule)|ext):(.*)/) {
             my @prereq=split /\|/, $what;
@@ -157,7 +175,7 @@ sub reconfigure {
          return;
       }
       require Polymake::Configure;
-      do_reconfigure($self, [ $rulefile, $filename, $ext, $rule_key ]);
+      do_reconfigure($self, [ $filename, $ext, $rule_key ]);
 
    } else {
       die "rulefile $rulefile does not exist in application ", $self->name, "\n";
@@ -169,12 +187,12 @@ sub unconfigure {
    if ($rulefile =~ m{^($id_re)::(.*)}o) {
       unconfigure($self->used->{$1} || die("application $1 is not declared as USE'd or IMPORT'ed in the current application"), "$2");
 
-   } elsif (my ($filename, $ext, $rule_key, $old_status)=&lookup_rulefile) {
+   } elsif (my ($filename, $ext, $rule_key, $old_status)=&lookup_rulefile_or_key) {
       my $config_state=$self->configured->{$rule_key};
       if ($config_state>0) {
          if (defined (my $code=$self->rule_code->{$rule_key})) {
             my $unconf=new Unconf($self);
-            local_sub(get_pkg($self->pkg)->{self}, sub { $unconf });
+            local_sub(get_symtab($self->pkg)->{self}, sub { $unconf });
             &$code;
          } else {
             $self->configured->{$rule_key}=-$load_time;
@@ -281,14 +299,11 @@ sub extend_in {
       unlink $link
         or die "Can't remove obsolete link $link: $!\n";
    } elsif (-e _) {
-      File::Path::rmtree($link);
+      File::Path::remove_tree($link);
    }
    symlink "../../../apps/$app_name/include", $link
       or die "Can't create a link $link: $!\n";
    $vcs->add_file($link);
-
-   require Polymake::Configure;
-   Configure::update_extension_build_dir($ext);
 }
 ###############################################################################################
 sub found {
@@ -301,12 +316,6 @@ sub found {
       print $noexport "testsuite test\n";
       close $noexport;
       $vcs->add_file("$app_dir/.noexport");
-   }
-   require Polymake::Configure;
-   if ($ext) {
-      Configure::populate_extension_build_dir($ext->dir);
-   } else {
-      Configure::create_build_dir("$InstallArch/apps/$name");
    }
 }
 ###############################################################################################
@@ -342,7 +351,7 @@ sub include_rule {
          local_bless($self, __PACKAGE__);
          my $reread=new Reconf($self, 1);
          local_unshift(\@INC, $self);
-         local_sub(get_pkg($self->pkg)->{self}, sub { $reread });
+         local_sub(get_symtab($self->pkg)->{self}, sub { $reread });
          &$code;
       }
    } else {
@@ -497,26 +506,32 @@ Finally, if you don't know where to get the extension or don't want to bother
 importing it, please enter $stop to stop loading the data file
 or $skip to load the data without components defined in this extension.
 .
+   my $dir=$Shell->enter_filename("",
+     { prompt => "extension dir",
+       check => sub {
+          if ($_[0] =~ s/^(ignore|stop|skip)$//i) {
+             $refused{$URI}=lc($1);
+             return;
+          }
+          if (-d $_[0] && -x _) {
+             return;
+          }
+          ($_[0] && "The directory $_[0] does not exist or is inaccessible.\n") .
+          "Please enter a correct location, `ignore', `stop', or `skip'.\n"
+       },
+     });
 
-   for (;;) {
-      my $dir=$Shell->enter_filename("", { prompt => "extension dir" });
-      if ($dir =~ /^(?:ignore|stop|skip)$/i) {
-         $refused{$URI}=lc($dir);
-         return;
-      } elsif (-d $dir && -x _) {
-         return provide($pkg, "file://".Cwd::abs_path($dir), $mandatory);
-      } else {
-         print $dir && "The directory $dir does not exist or is inaccessible.\n",
-               "Please enter a correct location, `ignore', `stop', or `skip'.\n";
-      }
+   if (length($dir)) {
+      return provide($pkg, "file://".Cwd::abs_path($dir), $mandatory);
    }
+   undef
 }
 ######################################################################################
 sub obliterate {
-   my $self=shift;
+   my ($self)=@_;
    my @drop_apps;
    if ($self->is_active) {
-      foreach my $app (list Application) {
+      foreach my $app (list_loaded Application) {
          if ($app->installTop eq $self->dir) {
             $Prefs->obliterate_application($app->prefs);
             $Custom->obliterate_application($app->custom);
@@ -547,7 +562,7 @@ sub obliterate {
 }
 ###############################################################################################
 sub may_obliterate {
-   my $self=shift;
+   my ($self)=@_;
    if ($self->is_bundled) {
       my ($ext_name)= $self->dir =~ $filename_re;
       die "Extension $ext_name is bundled with polymake core and may not be obliterated.\n",
@@ -569,7 +584,7 @@ sub new_bundled {
    if (-d $ext_dir) {
       die "bundled extension $ext_dir already exists\n";
    }
-   $CoreVCS->make_dir("$ext_dir/apps", "$ext_dir/include");
+   $CoreVCS->make_dir("$ext_dir/apps", "$ext_dir/include", "$ext_dir/support");
    open my $META, ">", "$ext_dir/polymake.ext"
      or die "can't create description file $ext_dir/polymake.ext: $!\n";
    print $META <<'.';
@@ -592,21 +607,25 @@ sub new_bundled {
 .
    close $META;
    $CoreVCS->add_file("$ext_dir/polymake.ext");
-   $CoreVCS->copy_file("$InstallTop/support/configure.pl.template", "$ext_dir/configure.pl");
+   $CoreVCS->copy_file("$InstallTop/support/configure.pl.template", "$ext_dir/support/configure.pl.template");
    my $ext=new($pkg, $ext_dir, "bundled:$name", 1);
    $registered_by_URI{$ext->URI}=$ext;
    $registered_by_dir{$ext_dir}=$ext;
    $ext->VCS=$CoreVCS;
+   # at the beginning of its life, the extension does not depend on anything else nor requires any configuration
+   unshift @BundledExts, $name;
    require Polymake::Configure;
-   Configure::create_bundled_extension_build_dir($ext_dir, $InstallArch);
+   Configure::rewrite_config_files($InstallTop, "BundledExts", "@BundledExts");
 }
 ###############################################################################################
 sub new_standalone {
    my ($pkg, $ext_dir)=@_;
-   if ($ext_dir =~ m/^\Q${InstallTop}\E($|\/)/) {
-      die "A standalone extension can't be created within polymake source tree.\n",
-          "If you have had a bundled extension in mind, please specify its location as \"bundled:NAME\",\n",
-          "otherwise choose a location outside $InstallTop\n";
+   if ($ext_dir =~ m{^\Q${InstallTop}\E(?:/|$)}) {
+      die <<"---";
+A standalone extension can't be created within polymake source tree.
+If you have had a bundled extension in mind, please specify its location as "bundled:NAME",
+otherwise choose a location outside $InstallTop
+---
    }
    if (-d $ext_dir) {
       if (-f "$ext_dir/polymake.ext" || -f "$ext_dir/URI" and -d "$ext_dir/apps") {
@@ -618,7 +637,7 @@ sub new_standalone {
             "  import_extension(\"$ext_dir\");\n";
          }
       }
-      if (my @dangerous=(glob("$ext_dir/{apps/*,include/*}"), grep { -e "$ext_dir/$_" } qw/configure.pl polymake.ext/)) {
+      if (my @dangerous=(glob("$ext_dir/{apps/*,include/*}"), grep { -e "$ext_dir/$_" } qw(support/configure.pl polymake.ext))) {
          die "Location $ext_dir contains files and/or subdirectories which will clash with those automatically created by polymake:\n",
              (map { s|^$ext_dir/||;$_."\n" } @dangerous);
       }
@@ -626,14 +645,18 @@ sub new_standalone {
          die "You don't have permission to create new files at the specified location $ext_dir\n";
       }
    } else {
-      File::Path::mkpath($ext_dir);
+      File::Path::make_path($ext_dir);
    }
    my $ext=new($pkg, $ext_dir);
-   File::Path::mkpath(["$ext_dir/apps", "$ext_dir/scripts", "$ext_dir/include"], 0, 0755);
+   File::Path::make_path("$ext_dir/apps", "$ext_dir/scripts", "$ext_dir/include", "$ext_dir/support");
    $registered_by_URI{$ext->URI}=$ext;
    $registered_by_dir{$ext_dir}=$ext;
+   foreach my $file (qw(configure.pl install.pl generate_ninja_targets.pl)) {
+      File::Copy::copy("$InstallTop/support/$file.template", "$ext_dir/support");
+   }
    # create the skeleton of the build directory
    require Polymake::Configure;
+   $ext->set_build_dir;
    Configure::configure_extension($ext);
 }
 ######################################################################################
@@ -761,7 +784,7 @@ sub reconfigure {
           "Please re-run the main configure script.\n";
    } elsif ($ext_dir =~ m{^\Q${InstallTop}\E/ext/}o) {
       die "Extension $ext_dir is already installed and can't be reconfigured any more.\n";
-   } elsif (@config_options && !-f "$ext_dir/configure.pl") {
+   } elsif (@config_options && !-f "$ext_dir/support/configure.pl" && !-f "$ext_dir/configure.pl") {
       die "Extension $ext_dir does not accept any configuration options.\n";
    } elsif (!-w $ext_dir) {
       die "You don't have write permission in directory $ext_dir.\n";
@@ -782,13 +805,13 @@ sub reconfigure {
    }
 
    require Polymake::Configure;
-   my $err=Configure::configure_extension($self, @config_options);
+   my $err=Configure::configure_extension($self, "--force", @config_options);
    if ($err ne "silent\n") {
       if ($err) {
          print "Configuration script failed with following error(s):\n$err\n";
          if ($User::disabled_extensions{$self->dir}) {
             print "Extension ", $self->dir,
-                  "stays disabled until you successfully retry to configure it.\n";
+                  "\nstays disabled until you successfully retry to configure it.\n";
          } else {
             print "Extension ", $self->dir,
                   "\nwill be disabled from the next polymake session on\n",
@@ -796,7 +819,7 @@ sub reconfigure {
             $Prefs->custom->set('%disabled_extensions', $self->dir, 1);
          }
       } else {
-         print "Configuration succeded without errors.\n";
+         print "Configuration succeeded without errors.\n";
          if (delete $User::disabled_extensions{$self->dir}) {
             print "Extension ", $self->URI, " is now enabled for current architecture $Arch.\n";
             activate($self);
@@ -808,7 +831,7 @@ sub reconfigure {
             foreach my $ext_dir (@User::extensions) {
                if ($User::disabled_extensions{$ext_dir} && defined (my $ext=$registered_by_dir{$ext_dir})) {
                   unless (grep { !$_->is_active } @{$ext->requires}) {
-                     if (-f "$ext_dir/configure.pl") {
+                     if (-f "$ext_dir/support/configure.pl" || -f "$ext_dir/configure.pl") {
                         print "Now you can try to reconfigure the dependent extension ", $ext->URI, " as well.\n";
                      } elsif ($ext->configure) {
                         delete $User::disabled_extensions{$ext_dir};
@@ -827,14 +850,8 @@ sub reconfigure {
          } else {
             print <<".";
 
-All compiled clients in the extension will be rebuilt at the start of the next polymake session.
-If desired, you may rebuild them manually too:
-
-  $CPlusPlus::MAKE -C $ext_dir
-
-but only *after* the end of the current polymake session.
+All C++ components in the extension will be rebuilt at the start of the next polymake session.
 .
-            CPlusPlus::mark_extension_for_rebuild($ext_dir);
          }
       }
    }
@@ -901,16 +918,18 @@ sub write_initial_description {
    close $descr;
 
    $vcs->add_file("polymake.ext");
-   $vcs->set_ignored("Makefile", "build.*");
+   $vcs->set_ignored("build", "build.*");
 
    if (-f (my $URIfile=$self->dir."/URI")) {
       $vcs->delete_file("URI");
    }
 
-   unless (glob($self->dir."/configure.pl*")) {
+   unless (glob($self->dir."/support/configure.pl*")) {
       require File::Copy;
-      File::Copy::copy("$InstallTop/support/configure.pl.template", $self->dir."/configure.pl.template");
-      $vcs->add_file("configure.pl.template");
+      foreach my $filename (qw(configure generate_ninja_targets install)) {
+         File::Copy::copy("$InstallTop/support/$filename.pl.template", $self->dir."/support/$filename.pl.template");
+         $vcs->add_file("support/$filename.pl.template");
+      }
    }
 }
 
@@ -923,19 +942,95 @@ sub add_prerequisites {
    local $/;
    local $_=<$META>;
    close $META;
+
    s{^ (REQUIRE \b .*? \n)\n }{$1$appendURIs\n}xms
      or
    s{^ \s*\#\s* REQUIRE\b .*\n (?: ^ \s*\#.* \n )* }{REQUIRE\n$appendURIs\n}xm
      or
    $_ .= "\nREQUIRE\n$appendURIs\n";
-   my ($META_new, $META_k)=new OverwriteFile($self->dir."/polymake.ext");
-   print $META_new $_;
-   close $META_new;
+   {
+      my ($META_new, $META_k)=new OverwriteFile($self->dir."/polymake.ext");
+      print $META_new $_;
+      close $META_new;
+   }
+
+   require Polymake::Configure;
+   Configure::rewrite_config_files($self->dir, "RequireExtensions", Configure::list_prerequisite_extensions($self));
 }
 ###############################################################################################
 
 package Polymake::User;
 
+# TODO: extract commands unrelated to reconfiguration in a separate file,
+# for the sake of better legibility
+
+###############################################################################################
+sub help {
+   my ($subject)=@_;
+   my $help_delim=$help_delimit ? "-------------------\n" : '';
+   my $app=$application;
+   if ($subject =~ /^($id_re)::/o && $app->used->{$1}) {
+      $subject=$';
+      $app=$app->used->{$1};
+   }
+   if (my @topics=uniq( $app->help->get_topics($subject || "top") )) {
+      my (@subcats, @subtopics, $need_delim);
+      foreach my $topic (@topics) {
+         my $text=$topic->display_text;
+         if (length($text)) {
+            print $help_delim if $need_delim++;
+            print $text, "\n";
+         }
+         foreach (@{$topic->toc}) {
+            if ($topic->topics->{$_}->category & 1) {
+               push @subcats, $_;
+            } else {
+               push @subtopics, $_;
+            }
+         }
+      }
+      if (@subcats || @subtopics) {
+         print $help_delim if $need_delim;
+      }
+      my $fp=substr($topics[0]->full_path,1);
+      $fp &&= " of $fp";
+      if (@subcats) {
+         print "Categories$fp:\n", (join ", ", sort @subcats), "\n";
+      }
+      if (@subtopics) {
+         print "Subtopics$fp:\n", (join ", ", sort @subtopics), "\n";
+      }
+   } elsif (length($subject) && index($subject,"/")<0
+            and
+            @topics=$app->help->find($subject)) {
+
+      if (@topics==1) {
+         print substr($topics[0]->full_path,1), ":\n", $topics[0]->display_text;
+      } else {
+         print "There are ", scalar(@topics), " help topics matching '$subject':\n";
+         my $n=0;
+         if (@topics<5) {
+            foreach (@topics) {
+               print $help_delim, ++$n, ": ", substr($_->full_path,1), ":\n",
+                     $_->display_text, "\n";
+            }
+         } else {
+            $Shell->fill_history({ temporary => 1 },
+               map {
+                  $subject=substr($_->full_path,1);
+                  print ++$n, ": $subject\n";
+                  "help '$subject';"
+               } @topics);
+            print $help_delim, "Please choose those interesting you via history navigation (ArrowUp/ArrowDown):\n";
+         }
+      }
+   } elsif ($subject eq "credits") {
+      print "Application ", $application->name, " does not use any third-party software directly\n";
+   } else {
+      err_print( "unknown help topic '$subject'" );
+   }
+}
+###############################################################################################
 sub apropos {
    my $expr=shift;
    $expr=qr/$expr/i;
@@ -1179,12 +1274,6 @@ sub show_unconfigured {
    if ($shown) {
       print "\nTo enable an interface:  reconfigure(\"", Core::InteractiveCommands::underline("RULEFILE"), "\");\n";
    }
-}
-###############################################################################################
-sub export_configured {
-   my ($filename, $merge_with_global)=@_;
-   replace_special_paths($filename);
-   $Custom->export($filename, $merge_with_global, $Prefs->custom);
 }
 
 1

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,9 +15,13 @@
 
 # This file is not included via main.rules but loaded on demand by the jupyter interface.
 
-require Jupyter;
+use feature 'state';
 
 prefer threejs
+
+prefer svg.lattice
+
+$ThreeJS::is_used_in_jupyter=1;
 
 sub ThreeJS::Viewer::new {
    new ThreeJS::File::Writer("-");
@@ -25,7 +29,20 @@ sub ThreeJS::Viewer::new {
 
 sub ThreeJS::File::Writer::run : method {
    my ($self)=@_;
-   print STDOUT '.@@HTML@@', $self->toString, '.@@ENDHTML@@'; 
+   my $html = $self->toString;
+   state $id = 0;
+   $html =~ s/OUTPUTID/$id/gm;
+   $id++;
+   print STDOUT '.@@HTML@@', $html, '.@@ENDHTML@@';
+}
+
+sub PmSvg::Viewer::new {
+   new PmSvg::File::Writer("-");
+}
+
+sub PmSvg::File::Writer::run : method {
+   my ($self)=@_;
+   print STDOUT '.@@HTML@@', $self->toString, '.@@ENDHTML@@';
 }
 
 # Local Variables:

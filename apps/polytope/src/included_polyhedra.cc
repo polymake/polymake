@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -26,7 +26,7 @@ bool included_polyhedra(perl::Object p1, perl::Object p2, perl::OptionSet option
    
    std::string generator_type = p1.isa("Polytope") ? "point" : "ray";
    const bool verbose=options["verbose"];
-   const Matrix<Coord> vert=p1.give("RAYS|INPUT_RAYS"), lin=p1.lookup("LINEALITY_SPACE"), ineq=p2.give("FACETS|INEQUALITIES"), eq=p2.lookup("LINEAR_SPAN|EQUATIONS");
+   const Matrix<Coord> vert=p1.give("RAYS|INPUT_RAYS"), lin=p1.lookup("LINEALITY_SPACE|INPUT_LINEALITY"), ineq=p2.give("FACETS|INEQUALITIES"), eq=p2.lookup("LINEAR_SPAN|EQUATIONS");
 
    const int dim1 = p1.give("CONE_AMBIENT_DIM");
    const int dim2 = p2.give("CONE_AMBIENT_DIM");
@@ -68,7 +68,8 @@ UserFunctionTemplate4perl("# @category Comparing"
                           "# @param Polytope P2 the second polytope"
                           "# @option Bool verbose Prints information on the difference between P1 and P2 if none is included in the other."
                           "# @return Bool 'true' if //P1// is included in //P2//, 'false' otherwise"
-                          "# @example > print included_polyhedra(simplex(3),cube(3));"
+                          "# @example"
+                          "# > print included_polyhedra(simplex(3),cube(3));"
                           "# | 1"
                           "# To see in what way the two polytopes differ, try this:"
                           "# > print included_polyhedra(cube(2),cube(3),verbose=>1);"

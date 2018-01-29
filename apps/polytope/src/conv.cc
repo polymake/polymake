@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -61,14 +61,15 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# given in //P_Array//."
                           "# @param Array<Polytope> P_Array"
                           "# @return PropagatedPolytope"
-                          " @example > $p = conv([cube(2,1,0),cube(2,6,5)]);"
-                          " > print $p->VERTICES;"
-                          " | 1 0 0"
-                          " | 1 1 0"
-                          " | 1 0 1"
-                          " | 1 6 5"
-                          " | 1 5 6"
-                          " | 1 6 6",
+                          "# @example"
+                          "# > $p = conv([cube(2,1,0),cube(2,6,5)]);"
+                          "# > print $p->VERTICES;"
+                          "# | 1 0 0"
+                          "# | 1 1 0"
+                          "# | 1 0 1"
+                          "# | 1 6 5"
+                          "# | 1 5 6"
+                          "# | 1 6 6",
                           "conv<Scalar>(Polytope<type_upgrade<Scalar>> +)");
 } }
 

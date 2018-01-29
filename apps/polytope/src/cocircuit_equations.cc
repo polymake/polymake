@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -84,10 +84,10 @@ foldable_cocircuit_equations(int d,
                              const Matrix<Scalar>& points,
                              const IncidenceMatrix<>& VIF,
                              const Array<SetType>& interior_ridges, // FIXME: Map
-                             const Array<SetType>& facets,
+                             const Array<SetType>& max_interior_simplices,
                              perl::OptionSet options)
 {
-   return foldable_cocircuit_equations_impl(d, points, VIF, interior_ridges, facets, options, false);
+   return foldable_cocircuit_equations_impl(d, points, VIF, interior_ridges, max_interior_simplices, options, false);
 }
 
 FunctionTemplate4perl("foldable_cocircuit_equations<Scalar, SetType>($ Matrix<Scalar> IncidenceMatrix Array<SetType> Array<SetType> { filename=>'', reduce_rows=>1, log_frequency=>0 })");

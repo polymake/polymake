@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -17,10 +17,10 @@ require Polymake::Pipe;
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake::ServerSocket;
 use Socket;
-use Errno;
 use Fcntl;
 use POSIX qw(:errno_h);
 
@@ -43,12 +43,14 @@ sub new {
       for ($port=30000; $port<65536; ++$port) {
          last if bind $self->handle, sockaddr_in($port, INADDR_LOOPBACK);
          die "bind failed: $!\n" if $! != EADDRINUSE;
-      } 
+      }
       if ($port==65536) {
          die "bind failed: all ports seem occupied\n";
       }
       $self->port=$port;
    }
+   fcntl($self->handle, F_SETFD, FD_CLOEXEC);
+
    listen $self->handle, 1
       or die "listen failed: $!\n";
    $self;

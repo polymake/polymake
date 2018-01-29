@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 require Polymake::Core::InteractiveCommands;
 require Polymake::Core::InteractiveHelp;
@@ -28,29 +29,26 @@ use POSIX qw( :signal_h );
 use Polymake::Struct (
    [ '@ISA' => 'Selector::Member' ],
    [ '$term' => 'Term::ReadLine::Gnu->new("polymake")' ],
-   [ '$state' => '0' ],
-   '$input_line',               # for callback interface
-   '$line_cnt',                 # in the current input group
+   '$input_line',                       # for callback interface
+   '$line_cnt',                         # in the current input group
+   [ '$read_lines_from' => 'undef' ],   # temporary alternative source of lines, e.g. a handle of an edited history file
 # for history management
-   '$first_hist_index',         # where in the history list the first line of the current input portion will go
+   '$first_hist_index',                 # where in the history list the first line of the current input portion will go
    [ '$within_history' => 'undef' ],    # when defined: position in the history list to be copied to the pre-put
-   '$within_history_begin',     # the index of the history line preceding the injected portion (for display in prompt)
-   '$last_error_was_in_history',
+   '$within_history_begin',             # the index of the history line preceding the injected portion (for display in prompt)
    [ '$histfile' => '"$PrivateDir/history"' ],
-   '@remove_hist_lines',        # [ start..end ], ...
+   '@no_hist_lines',                    # [start, end]... blocks of history lines not to be saved in the history file
 # for TAB completion
-   '&try_completion',           # method choosing the completion list
-   '&completion',               # method iterating over the completion list
-   '@completion_words',         # proposals for TAB completion
+   '&try_completion',           # method filling the completion list
+   '@completion_proposals',     # proposals for TAB completion
    '$partial_input',            # input received so far: continued lines concatenated with the input buffer
+   '$completion_offset',        # offset from the end of partial input to the point where proposals should be appended
 # for F1 context help
    '$help_point',               # cursor position when F1 was pressed last time
    '$help_input_line',          # input buffer when F1 was pressed last time
    '@help_topics',              # help topics prepared for the next F1 event
    '$help_repeat_cnt',          # how many times F1 has been pressed without moving the cursor
 );
-
-declare @custom_tab_completion;
 
 # All arguments are optional.
 # Without arguments, starts an interactive shell.
@@ -86,23 +84,35 @@ sub start {
       my $F1=InteractiveCommands::Tgetent()->{$User::help_key};
       $Shell->term->bind_keyseq($F1, $Shell->term->add_defun("context_help", \&context_help));
 
+      add AtEnd("Shell", sub { save_history($Shell); undef $Shell; });
    }
-   add AtEnd("Shell", sub { undef $Shell });
 }
 
 sub interactive { 1 }
 
-my $interactive_preamble="$warn_options; use application undef, \$namespaces::auto_declare;\n";
+my $input_preamble=<<".";
+$warn_options;  use application;  declare +auto;
+#line 1 "input"
+.
+
+my $input_preamble_utf8="use utf8; $input_preamble";
+
+# utf8 flag =>
+sub input_preamble { $_[0] ? \$input_preamble_utf8 : \$input_preamble }
+
+if ($] < 5.020) {
+   *input_preamble=sub { \(my $copy=$_[0] ? $input_preamble_utf8 : $input_preamble) }
+}
 
 my $canceled=sub {
-   if ($Shell->state==3 || $Shell->term->Attribs->{line_buffer} =~ /\S/) {
+   if ($Shell->line_cnt>0 || $Shell->term->Attribs->{line_buffer} =~ /\S/) {
       $Shell->term->delete_text;
       $Shell->term->redisplay;
       print STDERR "Canceled\n";
    } else {
       print STDERR "Type 'exit;' to leave polymake\n";
    }
-   $Shell->state=0;
+   $Shell->line_cnt=0;
    $Shell->term->callback_handler_remove unless defined($Shell->input_line);
    $Shell->term->cleanup_after_signal;
    if (defined $Shell->within_history) {
@@ -115,11 +125,12 @@ my $canceled=sub {
 
 sub interactive_INC {
    if ($_[1] eq "input:") {
-      (\&get_line, $Shell)
-   } elsif ($_[1] =~ /^history:/) {
-      open my $hf, $';
-      new ScriptFilter($hf, [ $interactive_preamble, "#line 1 \"history\"\n" ],
-                       sub { $_[0] =~ s{ ($statement_start_re) (application (?: (\s*\(\s*) | \s+) (['"]) $id_re \4) ((?(3) \s*\)\s* | \s*);) }{$1 use $2,1$5}xo; });
+      $Shell->first_hist_index=$Shell->term->Attribs->{history_length};
+      $Shell->line_cnt=0;
+      $Shell->help_point=-1;
+      $#{$Shell->help_topics}=-1;
+      # TODO: investigate how to query readline for the current character encoding, or just resort to $ENV{LANG}?
+      (input_preamble(1), \&get_line, $Shell)
    } else {
       $User::application->INC($_[1]);
    }
@@ -127,7 +138,8 @@ sub interactive_INC {
 
 sub pipe_INC {
    if ($_[1] eq "input:") {
-      (\&OverPipe::get_line, $Shell)
+      $Shell->line_cnt=0;
+      (input_preamble(1), \&OverPipe::get_line, $Shell)
    } else {
       $User::application->INC($_[1]);
    }
@@ -153,57 +165,62 @@ sub run {
 
    print "\rPress F1 or enter 'help;' for basic instructions.\n";
    STDOUT->flush();
-   do {
-      $Shell->state=0;
-      # the funny trailing '1;' provides all temporaries created in the eval'd expression be destroyed prior to the Scope object.
+   for (;;) {
+      # the funny trailing '1;' ensures that all temporaries created in the input lines
+      # are destroyed prior to the Scope object.
       {  local $Scope=new Scope(); package Polymake::User; do "input:"; 1; }
       STDOUT->flush();
       $Shell->term->crlf();
       if ($@) {
-         if ($Shell->state>1) {
+         if ($Shell->line_cnt>0) {
             if ($Shell->line_cnt>1) {
                $@ =~ s{(input line \d+), <.*?> line \d+}{$1}g;
             } else {
-               $@ =~ s{ at input line 1, <.*?> line \d+}{}g;
+               $@ =~ s{ at input line 1(?:\.|, <.*?> line \d+)}{}g;
             }
             err_print($@);
+            add_no_hist_lines($Shell, $Shell->first_hist_index, $Shell->term->Attribs->{history_length}-1);
          }
-         if ($Shell->line_cnt>0) {
-            push @{$Shell->remove_hist_lines}, [$Shell->first_hist_index, $Shell->term->Attribs->{history_length}-1];
-         }
-         $Shell->last_error_was_in_history=0;
       }
-   } while ($Shell->state >= 0);
+   }
    sigaction SIGINT, $sa_INT_save;
 }
 
 sub run_pipe {
    local_unshift(\@INC, \&pipe_INC);
    do {
-      $Shell->state=0;
       {  local $Scope=new Scope(); package Polymake::User; do "input:"; 1; }
       STDOUT->flush();
       if ($@) {
-         if ($Shell->state>1) {
+         if ($Shell->line_cnt > 0) {
             $@ =~ s{ at input line \d+, <.*?> line \d+}{}g;
             err_print($@);
          }
       }
-   } while ($Shell->state >= 0);
+   } while ($Shell->line_cnt >= 0);
+}
+
+sub add_no_hist_lines {
+   my ($self, $low, $high)=@_;
+   if (!@{$self->no_hist_lines} || $self->no_hist_lines->[-1]->[1]+1 < $low) {
+      push @{$self->no_hist_lines}, [ $low, $high ];
+   } else {
+      $self->no_hist_lines->[-1]->[1]=$high;
+   }
 }
 
 sub save_history {
    my ($self, $filename)=@_;
    my $hi=$self->term->Attribs->{history_length}-1;
    if (!defined($filename) && $self->term->history_get($hi) =~ /^\s*exit\s*;\s*$/) {
-      push @{$self->remove_hist_lines}, [$hi,$hi];
+      add_no_hist_lines($self, $hi, $hi);
    }
-   foreach (reverse @{$self->remove_hist_lines}) {
+   foreach (reverse @{$self->no_hist_lines}) {
       for ($hi=$_->[1]; $hi>=$_->[0]; --$hi) {
          $self->term->remove_history($hi);
       }
    }
-   $#{$self->remove_hist_lines}=-1;
+   $#{$self->no_hist_lines}=-1;
    unless (defined $filename) {
       $self->term->StifleHistory($User::history_size);
       $filename=$self->histfile;
@@ -211,25 +228,9 @@ sub save_history {
    $self->term->WriteHistory($filename);
 }
 
-sub DESTROY {
-   my $self=shift;
-   save_history($self);
-   $self->SUPER::DESTROY;
-}
-
 sub get_line {
    my ($l, $self)=@_;
-   if ($self->state==0) {
-      $self->state=1;
-      $_ .= $interactive_preamble;
-   } elsif ($self->state==1) {
-      $self->state=2;
-      $self->first_hist_index=$self->term->Attribs->{history_length};
-      $self->line_cnt=0;
-      $self->help_point=-1;
-      $#{$self->help_topics}=-1;
-      $_ .= "#line 1 \"input\"\n";
-   } elsif ($self->state!=3 || ($l=line_continued())) {
+   if ($self->line_cnt==0 || ($l=line_continued())>0) {
       namespaces::temp_disable();
       unless ($User::application->declared & $Application::credits_shown) {
          User::show_credits(1);
@@ -247,43 +248,47 @@ To see the complete list: show_unconfigured;
       if (defined($self->within_history)) {
          $prompt.="[".($self->within_history-$self->within_history_begin)."]";
       }
-      if ($l>0) {
-         $self->line_cnt=$l;
-      }
-      if ($self->line_cnt>1) {
-         $prompt.="(".$self->line_cnt.")";
-      }
+      $prompt.="($l)" if ($l > 1);
+
       my $line;
       do {
          $line=$self->readline("$prompt> ");
-      } until ($line =~ /\S/);
-      $self->state=3;
+      } while ($line =~ $nonsignificant_line_re);
       if (defined($self->within_history)) {
+         $self->line_cnt=$l || 1;
          $self->within_history=$self->term->where_history;
          $self->term->replace_history_entry($self->within_history, $line);
          if (++$self->within_history >= $self->first_hist_index) {
             undef $self->within_history;
             $self->term->Attribs->{startup_hook}=undef;
          }
-      } elsif ($self->line_cnt>1 && $line =~ /^\s*;\s*$/) {
+      } elsif ($self->line_cnt > 0 && $line =~ /^\s*;\s*$/) {
          my $hi=$self->term->Attribs->{history_length}-1;
          $self->term->replace_history_entry($hi, $self->term->history_get($hi).";");
-      } else {
+      } elsif ($line !~ /$end_of_source_file_re/) {
+         $self->line_cnt=$l || 1;
          $self->term->add_history($line);
       }
       $_ .= $line."\n";
-   } else {
-      $self->state=2;
-      $self->line_cnt++;
    }
    return length;
 }
 
-# the hooks and callbacks here should not copy $self during closure cloning as it defers the destruction of the Shell object!
+# The hooks and callbacks here should not copy $self during closure cloning
+# because it would defer the destruction of the Shell object!
 
 sub readline {
    my ($self, $prompt)=@_;
-   if (keys %active==1) {
+   if (defined $self->read_lines_from) {
+      my $line=CORE::readline($self->read_lines_from);
+      if (length($line)==0 ? ($line="$end_of_source_file\n") : $line =~ $end_of_source_file_re) {
+         undef $self->read_lines_from;
+      } elsif ($line !~ $nonsignificant_line_re) {
+         print STDOUT $prompt, $line;
+         chomp $line;
+      }
+      $line
+   } elsif (keys %active==1) {
       $self->term->readline($prompt);
    } else {
       $self->term->CallbackHandlerInstall($prompt, sub { $Shell->input_line=shift; $Shell->term->callback_handler_remove; });
@@ -303,42 +308,52 @@ sub in_avail { (shift)->term->callback_read_char; }
 sub completion_entry {
    my ($word, $state)=@_;
    if (!$state) {
-      undef $Shell->completion;
       $Shell->term->Attribs->{completion_append_character}="";
       $Shell->term->Attribs->{filename_quoting_desired}=0;
-      $Shell->completion_words=[];
-      $Shell->try_completion->($word);
+      $Shell->completion_proposals=[];
+      $Shell->completion_offset=0;
+      $Shell->try_completion->();
+      trim_completion_proposals($Shell, $word);
       if (substr($Shell->term->Attribs->{line_buffer}, $Shell->term->Attribs->{point}, 1) eq $Shell->term->Attribs->{completion_append_character}) {
          $Shell->term->Attribs->{completion_append_character}="";
       }
    }
-   $Shell->completion ? $Shell->completion->(@_) : $Shell->completion_words->[$state];
+   $Shell->completion_proposals->[$state];
 }
 
-sub postprocess_file_list {
-   my ($self, $word, $quote, $prefix, $dir_cmd, $list)=@_;
-   my $trim=length($prefix)-length($word);
-   my $dir_seen;
-   if ($dir_cmd) {
-      unshift @$list, ".." if length($prefix)==0 || $prefix =~ /^\.\.?$/;
-      $self->completion_words=[ map { substr($_, $trim) } grep { m|^~/| ? -d "$ENV{HOME}/$'" : -d $_ } @$list ];
-      $self->term->Attribs->{completion_append_character}="/";
-   } else {
-      $self->completion_words=[ map { substr($_, $trim).( m|^~/| ? -d "$ENV{HOME}/$'" : -d $_ and $dir_seen="/") } @$list ];
-      $self->term->Attribs->{completion_append_character}=$quote unless $dir_seen;
+# readline expects proposals for the trailing word only, without any separators and interpuctuation;
+# if the end of the input line matches a more complex syntactic construction, the proposals must be trimmed
+sub trim_completion_proposals {
+   my ($self, $word)=@_;
+   my $trim=$self->completion_offset-length($word);
+   if ($trim>0) {
+      substr($_,0,$trim)="" for @{$self->completion_proposals};
+   } elsif ($trim<0) {
+      $word=substr($word,0,-$trim);
+      substr($_,0,0).=$word for @{$self->completion_proposals};
    }
-   $self->term->Attribs->{filename_completion_desired}=0;
 }
 
 sub try_filename_completion {
-   my ($self, $word, $quote, $prefix, $dir_cmd)=@_;
-   if (length($prefix) > length($word)) {
-      if (my @list=$self->term->completion_matches($prefix,$self->term->Attribs->{filename_completion_function})) {
-         shift @list if $#list;
-         postprocess_file_list(@_, \@list);
+   my ($self, $quote, $prefix, $dir_cmd)=@_;
+   if (my @list=$self->term->completion_matches($prefix, $self->term->Attribs->{filename_completion_function})) {
+      shift @list if $#list;
+      if ($dir_cmd) {
+         unshift @list, ".." if length($prefix)==0 || $prefix =~ /^\.\.?$/;
+         $self->completion_proposals=[ grep { m|^~/| ? -d "$ENV{HOME}/$'" : -d $_ } @list ];
+         $self->term->Attribs->{completion_append_character}="/";
+      } else {
+         foreach (@list) {
+            if (m|^~/| ? -d "$ENV{HOME}/$'" : -d $_) {
+               $_.="/";
+               $quote="";
+            }
+         }
+         $self->completion_proposals=\@list;
+         $self->term->Attribs->{completion_append_character}=$quote;
       }
-   } else {
-      $self->completion=$self->term->Attribs->{filename_completion_function};
+      $self->completion_offset=length($prefix);
+      $self->term->Attribs->{filename_completion_desired}=0;
    }
 }
 
@@ -360,25 +375,20 @@ sub prepare_partial_input {
 }
 
 sub all_completions : method {
-   my ($self, $word)=@_;
+   my ($self)=@_;
    my $pos=&prepare_partial_input;
    return if $pos<0;
    pos($self->partial_input)=$pos;
    foreach my $h (@Helper::list) {
       if (substr($self->partial_input, 0, $pos) =~ /${$h->pattern}/) {
-         return if $h->completion->($self, $word);
+         return if $h->completion->($self);
       }
-   }
-
-   # try tab completion rules defined in extensions
-   foreach (@custom_tab_completion) {
-      return if $_->($self, substr($self->partial_input, 0, $pos), $word);
    }
 
    if (substr($self->partial_input, 0, $pos) =~
        m{^ $quote_balanced_re $quote_re (?'filename' $non_quote_space_re*) $}xo) {
       # if nothing else worked out, assume a file name
-      try_filename_completion($self, $word, $+{quote}, $+{filename}, 0);
+      try_filename_completion($self, $+{quote}, $+{filename});
    }
 }
 
@@ -497,78 +507,71 @@ __END__
 .
    my $last=$Shell->term->Attribs->{history_length}-1;
    if ($Shell->term->history_get($last) =~ /^\s*history\s*;\s*/) {
-      $Shell->term->remove_history($last);
+      $Shell->term->remove_history($last--);
    }
-   my ($err, $last_err)=(0, $#{$Shell->remove_hist_lines}-$Shell->last_error_was_in_history);
-   for (my $i=0; $i<$last; ++$i) {
-      if ($err > $last_err || $i < $Shell->remove_hist_lines->[$err]->[0]) {
+   my ($exclude, $last_exclude)=(0, $#{$Shell->no_hist_lines});
+   for (my $i=0; $i<=$last; ++$i) {
+      if ($exclude > $last_exclude ||
+          $i < $Shell->no_hist_lines->[$exclude]->[0]) {
          print $hf $Shell->term->history_get($i), "\n";
       } else {
-         $i=$Shell->remove_hist_lines->[$err++]->[1];
+         $i=$Shell->no_hist_lines->[$exclude++]->[1];
       }
    }
    close $hf;
-   my $created_at=(stat $scriptfile)[9];
+   my ($size, $created_at)=(stat $scriptfile)[7,9];
    my $ed_cmd=$User::history_editor;
    $ed_cmd =~ s/%f/$scriptfile/g or $ed_cmd.=" $scriptfile";
    system($ed_cmd);
-   if (-f $scriptfile && (stat _)[9]>$created_at) {
-      my $with_error;
-      { package Polymake::User; do "history:$scriptfile"; }
-      if ($@) {
-         $@ =~ s{(history line \d+), <.*?> line \d+}{$1}g;
-         STDOUT->flush();
-         $Shell->term->crlf();
-         err_print($@);
-         $with_error=1;
-      }
-      open $hf, $scriptfile;
-      while (<$hf>) {
-         chomp;
-         last if $_ eq "__END__";
-         next if /^\s*(?:\#|$)/;
-         $Shell->term->add_history($_);
-      }
-      close $hf;
-      if ($with_error) {
-         push @{$Shell->remove_hist_lines}, [$Shell->first_hist_index, $Shell->term->Attribs->{history_length}-1];
-         $Shell->last_error_was_in_history=1;
-      }
+   my ($new_size, $new_time);
+   if (-f $scriptfile and
+       ($new_size, $new_time)=(stat _)[7,9] and
+       $new_time > $created_at || $new_size != $size) {
+      open $hf, $scriptfile
+        or die "can't read from $scriptfile: $!\n";
+      $Shell->read_lines_from=$hf;
    } else {
       warn_print("no new commands found");
    }
 }
 ###############################################################################################
-my $replay_mode_startup=sub {
-   $Shell->term->history_set_pos($Shell->within_history);
-   $Shell->term->insert_text($Shell->term->current_history);
-};
+sub prepare_replay {
+   my ($cur_hist, $beg_hist)=@_;
+   $cur_hist //= $Shell->term->Attribs->{history_length};
+   $beg_hist //= $cur_hist-1;
+   $Shell->term->Attribs->{startup_hook}=sub {
+      $Shell->term->history_set_pos($Shell->within_history);
+      $Shell->term->insert_text($Shell->term->current_history);
+   };
+   $Shell->within_history=$cur_hist;
+   $Shell->within_history_begin=$beg_hist;
+}
 
 sub fill_history {
-   my ($self, $temporary)=splice @_, 0, 2;
+   shift if $_[0]==$Shell;
+   my $opts= ref($_[0]) eq "HASH" ? shift : {};
    if (@_) {
-      $self->within_history=$self->term->Attribs->{history_length};
-      $self->within_history_begin=$self->within_history-1;
+      prepare_replay;
+      my $filter=$opts->{filter};
       foreach (@_) {
          chomp;
-         $self->term->add_history($_);
+         $Shell->term->add_history($_)
+           unless (defined($filter) && /$filter/);
       }
-      $self->term->Attribs->{startup_hook}=$replay_mode_startup;
-      if ($temporary) {
-         push @{$self->remove_hist_lines}, [$self->first_hist_index, $self->term->Attribs->{history_length}-1];
+      if ($opts->{temporary}) {
+         add_no_hist_lines($Shell, $Shell->first_hist_index, $Shell->term->Attribs->{history_length}-1);
       }
       1
    } else {
       undef
    }
 }
-
+###############################################################################################
 sub Polymake::User::load_commands {
-   my $file=shift;
-   replace_special_paths($file);
-   open my $in, $file or die "can't read from $file: $!\n";
-   fill_history($Shell, 0, grep { ! /$nonsignificant_line_re/o } <$in>)
-      or warn_print( "no commands found" );
+   my ($filename)=@_;
+   replace_special_paths($filename);
+   open my $in, $filename or die "can't read from $filename: $!\n";
+   fill_history({ filter => $nonsignificant_line_re }, <$in>);
 }
 ###############################################################################################
 sub Polymake::User::replay_history {
@@ -576,202 +579,83 @@ sub Polymake::User::replay_history {
    if ($Shell->term->history_get($last) =~ /^\s*replay_history\s*;\s*/) {
       $Shell->term->remove_history($last--);
    }
-   $Shell->within_history=$last;
-   $Shell->within_history_begin=0;
-   $Shell->term->Attribs->{startup_hook}=$replay_mode_startup;
+   prepare_replay($last, 0);
 }
 ###############################################################################################
 sub Polymake::User::save_history {
-   $Shell->save_history(shift);
+   my ($filename)=@_;
+   $Shell->save_history($filename);
 }
 ###############################################################################################
-sub Polymake::User::help {
-   my ($subject)=@_;
-   my $help_delim=$User::help_delimit ? "-------------------\n" : '';
-   my $app=$User::application;
-   if ($subject =~ /^($id_re)::/o && $app->used->{$1}) {
-      $subject=$';
-      $app=$app->used->{$1};
-   }
-   if (my @topics=uniq( $app->help->get_topics($subject || "top") )) {
-      my (@subcats, @subtopics, $need_delim);
-      foreach my $topic (@topics) {
-         my $text=$topic->display_text;
-         if (length($text)) {
-             print $help_delim if $need_delim++;
-            print $text, "\n";
-         }
-         foreach (@{$topic->toc}) {
-            if ($topic->topics->{$_}->category & 1) {
-               push @subcats, $_;
-            } else {
-               push @subtopics, $_;
-            }
-         }
-      }
-      if (@subcats || @subtopics) {
-         print $help_delim if $need_delim;
-      }
-      my $fp=substr($topics[0]->full_path,1);
-      $fp &&= " of $fp";
-      if (@subcats) {
-         print "Categories$fp:\n", (join ", ", sort @subcats), "\n";
-      }
-      if (@subtopics) {
-         print "Subtopics$fp:\n", (join ", ", sort @subtopics), "\n";
-      }
-   } elsif (length($subject) && index($subject,"/")<0
-            and
-            @topics=$app->help->find($subject)) {
-
-      if (@topics==1) {
-         print substr($topics[0]->full_path,1), ":\n", $topics[0]->display_text;
-      } else {
-         print "There are ", scalar(@topics), " help topics matching '$subject':\n";
-         my $n=0;
-         if (@topics<5) {
-            foreach (@topics) {
-               print $help_delim, ++$n, ": ", substr($_->full_path,1), ":\n",
-                     $_->display_text, "\n";
-            }
-         } else {
-            fill_history($Shell, 1,
-               map {
-                  $subject=substr($_->full_path,1);
-                  print ++$n, ": $subject\n";
-                  "help '$subject';"
-               } @topics);
-            print $help_delim, "Please choose those interesting you via history navigation (ArrowUp/ArrowDown):\n";
-         }
-      }
-   } elsif ($subject eq "credits") {
-      print "Application ", $User::application->name, " does not use any third-party software directly\n";
-   } else {
-      err_print( "unknown help topic '$subject'" );
-   }
-}
-###############################################################################################
-sub enter_filename {
-   my ($self, $text, $opts)=@_;  $opts ||= { };
-   my $prompt=$opts->{prompt} || "filename";
-   my $check_code=$opts->{check};
-
-   local @{$self->term->Attribs}{qw( completion_entry_function
-                                     completer_word_break_characters
-                                     startup_hook )}
-         =( $self->term->Attribs->{filename_completion_function},
-            $self->term->Attribs->{basic_word_break_characters},
-            sub { $self->term->insert_text($text) } );
-   local $self->term->{MinLength}=1;
-   my $response;
-   for (;;) {
-      $response=$self->read_input("[$prompt] > ");
-      last unless length($response);
-      replace_special_paths($response);
-      if ($check_code and my $error=$check_code->($response)) {
-         print "Invalid input: $error\n",
-               "Please enter an alternative location or an empty string to abort.\n";
-      } else {
-         last
-      }
-   }
-   $response;
-}
-###############################################################################################
-# utilities for auto-configuration
-
-sub program_completion : method {
-   my ($self, $word)=@_;
-   if ($word =~ m{^[/~]}) {
-      $self->completion=$self->term->Attribs->{filename_completion_function};
-   } elsif ($word =~ /\S/) {
-      $self->completion_words=[ sorted_uniq(sort( map { /$filename_re/ } map { glob "$_/$word*" } split /:/, $ENV{PATH} )) ];
-   }
-}
-
-sub enter_program {
+sub enter_string {
    my ($self, $text, $opts)=@_;
-   my $check_code= ref($opts) eq "HASH" && $opts->{check};
-   local_sub($self->try_completion, \&program_completion);
    local @{$self->term->Attribs}{qw( completer_word_break_characters
                                      startup_hook )}
          =( $self->term->Attribs->{basic_word_break_characters},
             sub { $self->term->insert_text($text) } );
    local $self->term->{MinLength}=1;
-   my $error;
+
+   my $check=$opts->{check};
+   defined($opts->{completion}) and local_sub($self->try_completion, $opts->{completion});
+
    for (;;) {
-      my $response=$self->read_input("[program path] > ");
+      my $response=$self->read_input("[$opts->{prompt}] > ");
       $response =~ s/^\s+//;  $response =~ s/\s+$//;
       length($response) or return;
-      return $text if $response eq $text;
-      if ($response =~ m{^[/~]}) {
-         replace_special_paths($response);
-         my ($executable, $args)=split /\s+/, $response, 2;
-         if (-x $executable && -f _) {
-            if ($check_code and $error=$check_code->($executable, $args)) {
-               print "Program $executable did not met the requirements: $error\n",
-                     "Please enter an alternative location or an empty string to abort.\n";
-            } else {
-               return $response;
-            }
-         } elsif (-e _) {
-            print "$executable is either not a regular file or not executable\n",
-                  "Please enter a correct location or an empty string to abort.\n";
-         } else {
-            print "File $executable does not exist\n",
-                  "Please enter a correct location or an empty string to abort.\n";
+      if (defined($check) && defined (my $error=$check->($response))) {
+         if (substr($error, -1, 1) ne "\n") {
+            $error .= " or an empty string to abort.\n";
          }
+         print $error;
+         $text="";
       } else {
-         my ($first_shot, $full_path, $error)=Configure::find_program_in_path($response, $check_code ? $check_code : ());
-         if (defined $first_shot) {
-            return $first_shot ? $response : $full_path;
-         }
-         my ($executable)= $response =~ m/^(\S+)/;
-         if (defined $error) {
-            my ($location)= $full_path =~ $directory_of_cmd_re;
-            print "Program $executable found at location $location, but did not met the requirements: $error\n",
-                  "Please enter an alternative location or an empty string to abort.\n";
-         } else {
-            print "Program $executable not found anywhere along your PATH.\n",
-                  "Please enter the full path or an empty string to abort.\n";
-         }
+         return $response;
       }
-      $text="";
    }
+}
+###############################################################################################
+sub enter_filename {
+   my ($self, $text, $opts)=@_;
+   $opts->{prompt} //= "filename";
+   my $check=$opts->{check};
+   $opts->{check}=sub {
+      replace_special_paths($_[0]);
+      my $error=$check && $check->($_[0]);
+      $error && "Invalid input: $error\nPlease enter an alternative location" 
+   };
+   local ${$self->term->Attribs}{completion_entry_function} = $self->term->Attribs->{filename_completion_function};
+   enter_string($self, $text, $opts);
 }
 ###############################################################################################
 #
 #  A reduced version of the Shell, reading commands from an input stream (pipe, socket, etc.)
 #  No interactive capabilities like TAB completion or context-sensitive help are provided.
 
-package _::OverPipe;
+package Polymake::Core::Shell::OverPipe;
 
 use Polymake::Struct (
    [ new => '$' ],
    [ '$pipe' => 'new Pipe(#1)' ],
-   [ '$state' => '0' ],
+   '$line_cnt',
 );
 
 sub interactive { 0 }
 
 sub get_line {
    my ($l, $self)=@_;
-   if ($self->state==0) {
-      $self->state=1;
-      $_ .= $interactive_preamble;
-   } elsif ($self->state==1) {
-      $self->state=2;
-      $_ .= "#line 1 \"input\"\n";
-   } elsif ($self->state!=3 || ($l=line_continued())) {
+   if ($self->line_cnt==0 || ($l=line_continued())>0) {
       namespaces::temp_disable();
       my $line;
       do {
          $line=readline($self->pipe);
-      } until ($line =~ /\S/);
-      $self->state=3;
+         if (length($line)==0) {
+            # pipe closed
+            $self->line_cnt=-1;
+            return length;
+         }
+      } while ($line =~ $nonsignificant_line_re);
+      $self->line_cnt=$l || 1;
       $_ .= $line."\n";
-   } else {
-      $self->state=2;
    }
    return length;
 }

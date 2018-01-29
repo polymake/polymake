@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -178,7 +178,8 @@ object_specialization Polytope::Lattice {
     property EHRHART_POLYNOMIAL_COEFF : Vector<Rational>;
 
 # @category Lattice points in cones
-# The polytope is __normal__ if the cone spanned by P x {1} is generated in height 1.
+# The polytope is __normal__ if the Hilbert basis of the cone spanned by P x {1} is at height 1.
+# Equivalently points in integral dilates of P are postive integral sums of lattice points of P.
 # @depends 4ti2 or libnormaliz
     property NORMAL : Bool;
 

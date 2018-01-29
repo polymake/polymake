@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,9 +16,9 @@
 
 #include "polymake/polytope/to_interface_impl.h"
 
-#include <polymake/Rational.h>
-#include <polymake/QuadraticExtension.h>
-#include <polymake/PuiseuxFraction.h>
+#include "polymake/Rational.h"
+#include "polymake/QuadraticExtension.h"
+#include "polymake/PuiseuxFraction.h"
 
 namespace polymake { namespace polytope { namespace to_interface {
 

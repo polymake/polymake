@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -74,7 +74,7 @@ UserFunction4perl("# @category Visualization"
                   "# @option Float eps a threshold for point movement between iterations, below that it is considered to stand still"
                   "# @option Int max-iterations hard limit for computational efforts."
                   "#  The algorithm terminates at latest after that many iterations regardless of the convergence achieved so far."
-                  "# @example The following prints a 3-dimensional embedding of the complete graph on 3 nodes using a specific seed and scaled edge lengths:"
+                  "# @example [nocompare] The following prints a 3-dimensional embedding of the complete graph on 3 nodes using a specific seed and scaled edge lengths:"
                   "# > print spring_embedder(complete(3)->ADJACENCY, scale=>5, seed=>123);"
                   "# | 0.9512273649 -10.00210559 10.36309695"
                   "# | 10.61947526 1.391783824 -9.666627553"

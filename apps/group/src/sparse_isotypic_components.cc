@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -30,7 +30,7 @@ sparse_isotypic_basis(const perl::Object& group,
 {
    const int order = group.give("ORDER");
    const Array<Array<int>> generators = implicit_action.give("STRONG_GENERATORS | GENERATORS");
-   const ConjugacyClasses conjugacy_classes = implicit_action.give("CONJUGACY_CLASSES");
+   const ConjugacyClasses<> conjugacy_classes = implicit_action.give("CONJUGACY_CLASSES");
    const Matrix<Rational> character_table = group.give("CHARACTER_TABLE");
    const Array<Bitset> orbit_representatives = implicit_action.give("EXPLICIT_ORBIT_REPRESENTATIVES");
    const bool use_double = options["use_double"];
@@ -49,7 +49,7 @@ sparse_isotypic_spanning_set(const perl::Object& group,
 {
    const int order = group.give("ORDER");
    const Array<Array<int>> generators = implicit_action.give("STRONG_GENERATORS | GENERATORS");
-   const ConjugacyClasses conjugacy_classes = implicit_action.give("CONJUGACY_CLASSES");
+   const ConjugacyClasses<> conjugacy_classes = implicit_action.give("CONJUGACY_CLASSES");
    const Matrix<Rational> character_table = group.give("CHARACTER_TABLE");
    const Array<Bitset> orbit_representatives = implicit_action.give("EXPLICIT_ORBIT_REPRESENTATIVES");
    const std::string filename = options["filename"];
@@ -65,7 +65,7 @@ sparse_isotypic_support(const perl::Object& group,
 {
    const int order = group.give("ORDER");
    const Array<Array<int>> generators = implicit_action.give("STRONG_GENERATORS | GENERATORS");
-   const ConjugacyClasses conjugacy_classes = implicit_action.give("CONJUGACY_CLASSES");
+   const ConjugacyClasses<> conjugacy_classes = implicit_action.give("CONJUGACY_CLASSES");
    const Matrix<Rational> character_table = group.give("CHARACTER_TABLE");
    const Array<Bitset> orbit_representatives = implicit_action.give("EXPLICIT_ORBIT_REPRESENTATIVES");
    const std::string filename = options["filename"];
@@ -97,47 +97,47 @@ UserFunction4perl("# @category Symmetry"
                   "# Calculate a sparse representation of a basis for an isotypic component."
                   "# For this, the sets in the representation are listed in order by orbit. In this basis,"
                   "# the projection matrix to the isotypic component decomposes into blocks, one for each orbit."
-                  "# @param PermutationActionOnSets the given representation"
-                  "# @param Int the index of the irrep that defines the isotypic component"
+                  "# @param PermutationActionOnSets rep the given representation"
+                  "# @param Int i the index of the irrep that defines the isotypic component"
                   "# @option Bool use_double use inexact arithmetic for reducing the basis; default 0"
                   "# @option String filename if defined, the basis will be written to a file with this name, but not returned."
                   "# Use this option if you expect very large output."
                   "# @return Array<HashMap<Bitset,Rational>> Basis. Each entry tells the coefficient for each orbit representative.",
                   &sparse_isotypic_basis,
-                  "sparse_isotypic_basis(group::Group group::ImplicitActionOnSets $ { use_double => 0, filename => undef })");
+                  "sparse_isotypic_basis(Group ImplicitActionOnSets $ { use_double => 0, filename => undef })");
 
 UserFunction4perl("# @category Symmetry"
                   "# Calculate a sparse representation of a spanning set for an isotypic component."
                   "# For this, the sets in the representation are listed in order by orbit. In this basis,"
                   "# the projection matrix to the isotypic component decomposes into blocks, one for each orbit."
-                  "# @param PermutationActionOnSets the given representation"
-                  "# @param Int the index of the irrep that defines the isotypic component"
+                  "# @param PermutationActionOnSets rep the given representation"
+                  "# @param Int i the index of the irrep that defines the isotypic component"
                   "# @option String filename if defined, the basis will be written to a file with this name, but not returned."
                   "# Use this option if you expect very large output."
                    "# @return Array<HashMap<Bitset,Rational>> SpanningSet. Each entry tells the coefficient for each orbit representative.",
                   &sparse_isotypic_spanning_set,
-                  "sparse_isotypic_spanning_set(group::Group group::ImplicitActionOnSets $ { filename => undef })");
+                  "sparse_isotypic_spanning_set(Group ImplicitActionOnSets $ { filename => undef })");
 
 UserFunction4perl("# @category Symmetry"
                   "# Calculate the support of a sparse representation of a spanning set for an isotypic component."
-                  "# @param PermutationActionOnSets the given representation"
-                  "# @param Int the index of the irrep that defines the isotypic component"
+                  "# @param PermutationActionOnSets rep the given representation"
+                  "# @param Int i the index of the irrep that defines the isotypic component"
                   "# @option String filename if defined, the basis will be written to a file with this name, but not returned."
                   "# Use this option if you expect very large output."
                   "# @options Bool equivalence_class_only only report representatives of simplices, default true"
                   "# @options Bool index_only only output the indices of the representatives to filename, default true"
                   "# @return HashSet<Bitset> Support.",
                   &sparse_isotypic_support,
-                  "sparse_isotypic_support(group::Group group::ImplicitActionOnSets $ { filename => undef, cached => 0, equivalence_class_only => 1, index_only => 1 })");
+                  "sparse_isotypic_support(Group ImplicitActionOnSets $ { filename => undef, cached => 0, equivalence_class_only => 1, index_only => 1 })");
 
 UserFunction4perl("# @category Symmetry"
                   "# Does a set //S// of sparse vectors span an invariant subspace under an implicit group action //a//?"
-                  "# @param group::ImplicitActionOnSets a the given action"
+                  "# @param ImplicitActionOnSets a the given action"
                   "# @param Array<HashMap<Bitset, Rational>> S the sparsely given generating vectors of the subspace"
                   "# @option Bool verbose give a certificate if the answer is False"
                   "# @return Bool",
                   &spans_invariant_subspace,
-                  "spans_invariant_subspace(group::ImplicitActionOnSets Array<HashMap<Bitset, Rational>> { verbose => 0 })");
+                  "spans_invariant_subspace(ImplicitActionOnSets Array<HashMap<Bitset, Rational>> { verbose => 0 })");
 
 UserFunctionTemplate4perl("# @category Symmetry"
                           "# Do two collections //S1//, //S2// of sparse vectors span the same subspace?"

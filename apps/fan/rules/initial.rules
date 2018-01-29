@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -18,7 +18,7 @@ object PolyhedralFan {
    # A Polytope defined by a non-empty set of [[VERTICES]] or [[POINTS]] is always [[FEASIBLE]].
    rule initial : {
       if (defined (my $ic=$this->INPUT_CONES)) {
-         if($ic->size == 0){
+         if($ic->rows == 0){
             my $emptySet = new Array<Set<Int>>();
             my $empty = new Matrix<Scalar>();
             my $ambient_dim= $this->lookup("FAN_AMBIENT_DIM")//0 ; 
@@ -39,6 +39,15 @@ object PolyhedralFan {
       }
    }
    precondition : exists(INPUT_CONES);
+
+
+   rule initial : {
+      if($this->INPUT_CONES->cols() > $this->INPUT_RAYS->rows()){
+         croak("\ninvalid input: number of rays used in INPUT_CONES exceeds number of INPUT_RAYS");
+      }
+   }
+   precondition : exists(INPUT_CONES);
+   precondition : exists(INPUT_RAYS);
 
 }
 

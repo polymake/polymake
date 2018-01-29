@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,16 +16,10 @@
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   FunctionWrapper4perl( polymake::polytope::SchlegelWindow* (perl::Object, pm::Matrix<double> const&) ) {
-      perl::Value arg0(stack[0]), arg1(stack[1]);
-      IndirectWrapperReturn(arg0, arg1.get< perl::TryCanned< const Matrix< double > > >());
-   }
-   FunctionWrapperInstance4perl( polymake::polytope::SchlegelWindow* (perl::Object, pm::Matrix<double> const&) );
-
    template <typename T0>
-   FunctionInterface4perl( store_f1, T0 ) {
+   FunctionInterface4perl( shutdown_f17, T0 ) {
       perl::Value arg0(stack[0]);
-      WrapperReturn( arg0.get<T0>().store() );
+      WrapperReturnVoid( arg0.get<T0>().shutdown() );
    };
 
    template <typename T0>
@@ -34,7 +28,20 @@ namespace polymake { namespace polytope { namespace {
       WrapperReturn( arg0.get<T0>().port() );
    };
 
-   FunctionInstance4perl(port_f1, perl::Canned< const SchlegelWindow >);
-   FunctionInstance4perl(store_f1, perl::Canned< const SchlegelWindow >);
+   template <typename T0>
+   FunctionInterface4perl( store_f1, T0 ) {
+      perl::Value arg0(stack[0]);
+      WrapperReturn( arg0.get<T0>().store() );
+   };
+
+   FunctionWrapper4perl( std::unique_ptr<polytope::SchlegelWindow, std::default_delete<polytope::SchlegelWindow> > (perl::Object, pm::Matrix<double> const&) ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      IndirectWrapperReturn( arg0, arg1.get< perl::TryCanned< const Matrix< double > > >() );
+   }
+   FunctionWrapperInstance4perl( std::unique_ptr<polytope::SchlegelWindow, std::default_delete<polytope::SchlegelWindow> > (perl::Object, pm::Matrix<double> const&) );
+
+   FunctionInstance4perl(port_f1, perl::Canned< const std::unique_ptr<SchlegelWindow> >);
+   FunctionInstance4perl(store_f1, perl::Canned< const std::unique_ptr<SchlegelWindow> >);
+   FunctionInstance4perl(shutdown_f17, perl::Canned< const std::unique_ptr<SchlegelWindow> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

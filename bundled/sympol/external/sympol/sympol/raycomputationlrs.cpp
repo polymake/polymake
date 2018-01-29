@@ -123,7 +123,7 @@ bool RayComputationLRS::dualDescription(const Polyhedron & data, std::vector<Fac
 double RayComputationLRS::estimate(const Polyhedron & data, std::list<FaceWithData> & rays) const {
     lrs_dic *P;   /* structure for holding current dictionary and indices  */
     lrs_dat *Q;   /* structure for holding static problem data             */
-    lrs_mp_matrix Lin;
+    lrs_mp_matrix Lin=nullptr;
     lrs_mp_vector output; /* one line of output:ray,vertex,facet,linearity */
     
     if (!initLRS(data, P, Q, Lin,
@@ -157,6 +157,7 @@ double RayComputationLRS::estimate(const Polyhedron & data, std::list<FaceWithDa
         est = (Q->count[2]+Q->cest[2])/Q->totalnodes*((double)(end-start) / CLOCKS_PER_SEC );
     }
     
+    if (Lin) lrs_clear_mp_matrix(Lin, Q->nredundcol, Q->n);
     lrs_clear_mp_vector (output, Q->n);
     lrs_free_dic (P,Q);           /* deallocate lrs_dic */
     lrs_free_dat (Q);             /* deallocate lrs_dat */
@@ -300,7 +301,7 @@ bool RayComputationLRS::determineRedundantColumns(const Polyhedron & data, std::
 bool RayComputationLRS::getLinearities(const Polyhedron & data, std::list<QArrayPtr>& linearities) const {
 	lrs_dic *P;   /* structure for holding current dictionary and indices  */
 	lrs_dat *Q;   /* structure for holding static problem data             */
-	lrs_mp_matrix Lin;
+	lrs_mp_matrix Lin=nullptr;
 
 	if (!initLRS(data, P, Q, Lin, 0, 0)) {
 		return false;
@@ -312,6 +313,7 @@ bool RayComputationLRS::getLinearities(const Polyhedron & data, std::list<QArray
 		linearities.push_back(row);
 	}
 
+        if (Lin) lrs_clear_mp_matrix(Lin, Q->nredundcol, Q->n);
 	return true;
 }
 
@@ -323,8 +325,10 @@ bool RayComputationLRS::getLinearities(const Polyhedron & data, std::list<QArray
 // --------------------------------------
 
 bool RayComputationLRS::initLRS(const Polyhedron & data, lrs_dic* & P, lrs_dat* & Q) const {
-    lrs_mp_matrix Lin;
-    return initLRS(data, P, Q, Lin, 0, 0);
+    lrs_mp_matrix Lin=nullptr;
+    const bool result=initLRS(data, P, Q, Lin, 0, 0);
+    if (result && Lin) lrs_clear_mp_matrix(Lin, Q->nredundcol, Q->n);
+    return result;
 }
 
 bool RayComputationLRS::initLRS(const Polyhedron & data, lrs_dic* & P, lrs_dat* & Q, lrs_mp_matrix& Lin, int estimates, int maxDepth) const {
@@ -352,8 +356,9 @@ bool RayComputationLRS::initLRS(const Polyhedron & data, lrs_dic* & P, lrs_dat* 
     
     // prepare polyhedron data for use in LRS
     fillModelLRS(data, P, Q);
-    
+
     if (!lrs_getfirstbasis (&P, Q, &Lin, FALSE)) {
+        if (Lin) lrs_clear_mp_matrix(Lin, Q->nredundcol, Q->n);
         lrs_free_dic (P,Q);           /* deallocate lrs_dic */
         lrs_free_dat (Q);             /* deallocate lrs_dat */
         return false;

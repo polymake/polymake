@@ -21,12 +21,23 @@
  * terms of service.
  */
 
+#include <cstdlib>
+#include <signal.h>
+
 #include "libnormaliz/libnormaliz.h"
 #include "libnormaliz/general.h"
+#include "libnormaliz/my_omp.h"
 
 namespace libnormaliz {
 
 bool verbose = false;
+
+bool nmz_scip=false;
+
+volatile sig_atomic_t nmz_interrupted = 0;
+long default_thread_limit=8;
+long thread_limit=default_thread_limit;
+bool parallelization_set=false;
 
 // bool test_arithmetic_overflow = false;
 // long overflow_test_modulus = 15401;
@@ -36,6 +47,9 @@ size_t GMP_hyp=0;
 size_t GMP_scal_prod=0;
 size_t TotDet=0;
 
+void interrupt_signal_handler( int signal ){
+    nmz_interrupted = 1;
+}
 
 namespace {
     std::ostream* verbose_ostream_ptr = &std::cout;
@@ -46,6 +60,13 @@ bool setVerboseDefault(bool v) {
     //we want to return the old value
     bool old = verbose;
     verbose = v;
+    return old;
+}
+
+long set_thread_limit(long t){
+    long old=thread_limit;
+    parallelization_set=true;
+    thread_limit=t;
     return old;
 }
 
@@ -153,6 +174,14 @@ InputType to_type(const std::string& type_string) {
     if (type_string=="subspace") {
         return Type::subspace;
     }
+    
+    if (type_string=="open_facets") {
+        return Type::open_facets;
+    }
+    
+    if (type_string=="projection_coordinates") {
+        return Type::projection_coordinates;
+    }
 
     throw BadInputException("Unknown type \"" + type_string + "\"!");
     return Type::integral_closure;
@@ -172,7 +201,8 @@ long type_nr_columns_correction(InputType t) {
 /* returns true if the input of this type is a vector */
 bool type_is_vector(InputType type){
     if (type == Type::grading || type == Type::signs || type == Type::strict_signs
-            || type == Type::dehomogenization || type == Type::offset) {
+            || type == Type::dehomogenization || type == Type::offset || type==Type::open_facets  
+            || type==Type::projection_coordinates) {
         return true;
     }
     return false;

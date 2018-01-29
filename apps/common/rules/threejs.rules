@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,7 +13,7 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-REQUIRE
+INCLUDE
    webbrowser.rules
 
 CREDIT threejs
@@ -64,24 +64,18 @@ use Polymake::Struct [ '@ISA' => 'SimpleViewer' ];
 sub file_suffix { ".html" }
 
 sub new {
-   unless (defined($Visual::webbrowser)) {
+   unless (defined $Visual::webbrowser) {
       die <<'.';
 requires web browser;
 please specify the output File option or call reconfigure("common::webbrowser.rules");
 .
    }
-   my $self = &_new;
-   $self->tempfile->descend_dir;
-   $self
+   &_new;
 }
 
 sub command {
    my ($self, $filename)=@_;
-
-   my $polydir = $Polymake::InstallTop;
-
-   my $outdir = $self->tempfile->dir;
-   "cp -R -L $polydir/resources/threejs/js $outdir; $Visual::webbrowser $filename 1>/dev/null 2>&1";
+   "$Visual::webbrowser $filename 1>/dev/null 2>&1";
 }
 
 sub new_drawing {

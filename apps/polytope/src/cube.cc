@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,9 +20,10 @@
 #include "polymake/SparseMatrix.h"
 #include "polymake/polytope/CubeFacets.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/polytope/cube_group.h"
 
 namespace polymake { namespace polytope {
-
+      
 template <typename Scalar>
 perl::Object cube(int d, Scalar x_up, Scalar x_low, perl::OptionSet options)
 {
@@ -44,7 +45,7 @@ perl::Object cube(int d, Scalar x_up, Scalar x_low, perl::OptionSet options)
    p.set_description() << "cube of dimension " << d << endl;
 
    SparseMatrix<Scalar> F(2*d,d+1);
-   typename Rows< SparseMatrix<Scalar> >::iterator f=rows(F).begin();
+   auto f=rows(F).begin();
    for (int i=1; i<=d; ++i) { // Facet 2*i and Facet 2*i+1 are parallel  
       (*f)[0]=x_low;
       (*f)[i]=1;
@@ -55,56 +56,20 @@ perl::Object cube(int d, Scalar x_up, Scalar x_low, perl::OptionSet options)
    }
 
    IncidenceMatrix<> VIF(2*d, 1<<d, CubeFacets<int>(d).begin());
-
-   // generate the combinatorial symmetry group on the facets
-   bool group_flag = options["group"];
-   if ( group_flag ) {
-      Array< Array< int > > gens(d);
-      if ( d==1 ) {
-         gens[0]=Array<int>{1, 0};
-      } else {
-         Array<int> gen{sequence(0, 2*d)};
-         gen[0]=1;
-         gen[1]=0;
-
-         gens[0]=gen;
-
-         // restore gen (=> gen=[0..2d-1])
-         gen[0]=0;
-         gen[1]=1;
-
-         for ( int i=1; i<d; ++i ) { 
-            gen[2*i-2] = 2*i;
-            gen[2*i] = 2*i-2;
-            gen[2*i-1] = 2*i+1;
-            gen[2*i+1] = 2*i-1;
-            gens[i]=gen;
-
-            // restore gen (=> gen=[0..2d-1])
-            gen[2*i-2] = 2*i-2;
-            gen[2*i] = 2*i;
-            gen[2*i-1] = 2*i-1;
-            gen[2*i+1] = 2*i+1;
-         }
-      }
-
-      perl::Object a("group::PermutationAction");
-      a.take("GENERATORS") << gens;
-
-      perl::Object g("group::Group");
-      g.set_description() << "full combinatorial group on facets" << endl;
-      g.set_name("fullCombinatorialGroupOnFacets");
-      g.take("FACETS_ACTION") << a;
-
-      p.take("GROUP") << g;
-   }
-
+   
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("CONE_DIM") << d+1;
    p.take("FACETS") << F;
    p.take("AFFINE_HULL") << Matrix<Scalar>(0, d+1);
    p.take("VERTICES_IN_FACETS") << VIF;
    p.take("BOUNDED") << true;
+
+   const bool
+      group_flag = options["group"],
+      character_table_flag = options["character_table"];
+
+   if (group_flag)
+      add_group(p, d, "VERTICES_ACTION", "FACETS_ACTION", character_table_flag);
 
    return p;
 }
@@ -119,6 +84,7 @@ UserFunctionTemplate4perl("# @category Producing regular polytopes and their gen
                           "# @param Scalar x_up upper bound in each dimension"
                           "# @param Scalar x_low lower bound in each dimension"
                           "# @option Bool group add a symmetry group description to the resulting polytope"
+                          "# @option Bool character_table add the character table to the symmetry group description, if 0<d<7; default 1"
                           "# @return Polytope<Scalar>"
                           "# @example This yields a +/-1 cube of dimension 3 and stores it in the variable $c."
                           "# > $c = cube(3);"
@@ -129,7 +95,7 @@ UserFunctionTemplate4perl("# @category Producing regular polytopes and their gen
                           "# > print cube(2,7,3)->VOLUME;"
                           "# | 16",
                           "cube<Scalar> [ is_ordered_field(type_upgrade<Scalar, Rational>) ]"
-                          "    (Int; type_upgrade<Scalar>=1, type_upgrade<Scalar>=(-$_[-1]), { group => undef } )");
+                          "    (Int; type_upgrade<Scalar>=1, type_upgrade<Scalar>=(-$_[-1]), { group => undef, character_table => 1 } )");
 } }
 
 // Local Variables:

@@ -15,6 +15,8 @@ import sys
 from ipykernel.comm import Comm
 from ipykernel.comm import CommManager
 
+import JuPyMake
+
 kernel_object_for_ipython = None
 
 def _mock_get_ipython():
@@ -96,32 +98,18 @@ class polymakeKernel(Kernel):
         self._start_polymake()
 
     def _start_polymake(self):
-        sig = signal.signal(signal.SIGINT, signal.SIG_DFL)
+        JuPyMake.InitializePolymake()
         try:
-            polymake_run_command = pexpect.which( "polymake" )
-            #___replace_polymake_run_command___
-            self.polymakewrapper = pexpect.spawnu( polymake_run_command + " -" )
-            # set jupyter enviroment in polymake
-            try:
-                self._run_polymake_command( 'prefer "threejs";' )
-                self._run_polymake_command( 'include "common::jupyter.rules";' )
-                self._run_polymake_command( '$common::is_used_in_jupyter = 1;' )
-            except PolymakeRunException:
-                return False
-        finally:
-            signal.signal(signal.SIGINT, sig)
-    
+            self._run_polymake_command( 'include "common::jupyter.rules";' )
+        except PolymakeRunException:
+            return
+        return
+
     def _run_polymake_command( self, code ):
-        self.polymakewrapper.sendline( code.rstrip() + '; ' + 'print "===endofoutput===";' )
-        self.polymakewrapper.expect( 'print "===endofoutput===";' )
-        error_number = self.polymakewrapper.expect( [ "ERROR", "===endofoutput===" ] )
-        output = self.polymakewrapper.before.strip().rstrip()
-        if error_number == 0:
-            self.polymakewrapper.sendline( 'print "===endofoutput===";' )
-            self.polymakewrapper.expect( 'print "===endofoutput===";' )
-            output = 'Error' + self.polymakewrapper.before
-            self.polymakewrapper.expect( "===endofoutput===" )
-            raise PolymakeRunException( output )
+        try:
+            output = JuPyMake.ExecuteCommand( code.strip()+"\n" )
+        except Exception as exception:
+            raise PolymakeRunException(exception.args[0])
         return output
     
     def _process_python( self, code ):
@@ -145,44 +133,65 @@ class polymakeKernel(Kernel):
         interrupted = False
         code = code.rstrip()
         
-        #stream_content = {'execution_count': self.execution_count, 'data': { 'text/plain': "Code:\n" + code_to_execute } }
-        #self.send_response( self.iopub_socket, 'execute_result', stream_content )
-        
         try:
             output = self._run_polymake_command( code )
         except KeyboardInterrupt:
-            self.polymakewrapper.child.sendintr()
             self._run_polymake_command( '' )
             interrupted = True
-        except pexpect.EOF:
-            output = self.polymakewrapper.before + 'Restarting polymake'
-            self._start_polymake()
         except PolymakeRunException as exception:
             output = exception.args[0]
+            stream_content = {'execution_count': self.execution_count, 'data': { 'text/plain': "Error: Incomplete Statement:\n" + code } }
+            self.send_response( self.iopub_socket, 'execute_result', stream_content )
             return {'status': 'error', 'execution_count': self.execution_count,
                     'ename': 'PolymakeRunException', 'evalue': output, 'traceback': []}
         if not silent:
-            while output.find( '.@@HTML@@' ) != -1:
-                html_position = output.find( '.@@HTML@@' )
-                html_end_position = output.find( '.@@ENDHTML@@' )
-                if html_position > 0:
-                    before_html = output[:html_position-1].rstrip()
-                else:
-                    before_html = ''
-                output_html = output[html_position+9:html_end_position-1].strip().rstrip()
-                output = output[html_end_position+12:].strip()
-                if before_html != '':
-                    stream_content = {'execution_count': self.execution_count, 'data': { 'text/plain': before_html } }
+            if output[0] == True:
+                if output[1] != "":
+                    output_stdout = output[1]
+                    while output_stdout.find( '.@@HTML@@' ) != -1:
+                        html_position = output_stdout.find( '.@@HTML@@' )
+                        html_end_position = output_stdout.find( '.@@ENDHTML@@' )
+                        if html_position > 0:
+                            before_html = output_stdout[:html_position-1].rstrip()
+                        else:
+                            before_html = ''
+                        output_html = output_stdout[html_position+9:html_end_position-1].strip().rstrip()
+                        output_stdout = output_stdout[html_end_position+12:].strip()
+                        if before_html != '':
+                            stream_content = {'execution_count': self.execution_count, 'data': { 'text/plain': before_html } }
+                            self.send_response( self.iopub_socket, 'execute_result', stream_content )
+                        stream_content = {'execution_count': self.execution_count,
+                                          'source' : "polymake",
+                                          #'data': { 'text/html': "Sorry, threejs visualization is currently not available"},
+                                          'data': { 'text/html': output_html},
+                                          'metadata': dict() }
+                        self.send_response( self.iopub_socket, 'display_data', stream_content )
+                    if len(output_stdout) != 0:
+                        stream_content = {'execution_count': self.execution_count, 'data': { 'text/plain': output_stdout } }
+                        self.send_response( self.iopub_socket, 'execute_result', stream_content )
+                if output[2] != "":
+                    output_html = "<details><summary><pre style=\"display:inline\"><small>Click here for additional output</small></pre></summary>\n<pre>\n"+output[2]+"</pre>\n</details>\n"
+                    stream_content = {'execution_count': self.execution_count,
+                                      'source' : "polymake",
+                                      'data': { 'text/html': output_html},
+                                      'metadata': dict() }
+                    self.send_response( self.iopub_socket, 'display_data', stream_content )
+                if output[3] != "":
+                    stream_content = {'execution_count': self.execution_count, 'data': { 'text/plain': output[3] } }
                     self.send_response( self.iopub_socket, 'execute_result', stream_content )
-                stream_content = {'execution_count': self.execution_count,
-                                  'source' : "polymake",
-                                  'data': { 'text/plain': "Sorry, threejs visualization is currently not available"},
-                                  'metadata': dict() }
-                self.send_response( self.iopub_socket, 'display_data', stream_content )
-            if len(output) != 0:
-                stream_content = {'execution_count': self.execution_count, 'data': { 'text/plain': output } }
-                self.send_response( self.iopub_socket, 'execute_result', stream_content )
-        
+                    return {'status': 'error', 'execution_count': self.execution_count,
+                            'ename': 'PolymakeRunException', 'evalue': output, 'traceback': []}
+            elif output[0] == False:
+                if output[3] == "":
+                    stream_content = {'execution_count': self.execution_count, 'data': { 'text/plain': "Error: Incomplete Statement:\n" + code } }
+                    self.send_response( self.iopub_socket, 'execute_result', stream_content )
+                    return {'status': 'error', 'execution_count': self.execution_count,
+                            'ename': 'IncompleteStatementError', 'evalue': output, 'traceback': []}
+                else:
+                    stream_content = {'execution_count': self.execution_count, 'data': { 'text/plain': output[3] } }
+                    self.send_response( self.iopub_socket, 'execute_result', stream_content )
+                    return {'status': 'error', 'execution_count': self.execution_count,
+                            'ename': 'PolymakeRunException', 'evalue': output, 'traceback': []}
         if interrupted:
             return {'status': 'abort', 'execution_count': self.execution_count}
 
@@ -190,56 +199,54 @@ class polymakeKernel(Kernel):
                 'payload': [], 'user_expressions': {}}
 
     def do_shutdown(self, restart):
-        
-        self.polymakewrapper.terminate(force=True)
         if restart:
             self._start_polymake()
-
-
-### basic code completion for polymake
-### currently known shortcomings: intermediate completion, in particular for files, completion of variable names
-
-    def code_completion (self,code):
-        completion = []
-        code = re.sub( "\)$", "", code)
-        code = repr(code)
-        code_line = 'print Jupyter::tab_completion(' + code + ');'
-        try:
-            output = self._run_polymake_command( code_line )
-        except PolymakeRunException:
-            return (0,[])
-        completion = output.split("###")
-        if ( len(completion) > 1 ) :
-            completion_length = completion.pop(0)
-        else :
-            completion_length = 0
-        return (completion_length,completion)
-
+    
+    ## Temporary method to determine offset of completion. Will be replaced soon.
+    def get_completion_length( self, code, completion ):
+      code_length = len(code)
+      maximal_length = 0
+      for i in range(1,code_length+1):
+          if code[code_length-i:code_length] == completion[0:i]:
+              maximal_length = i
+      return maximal_length
     
     def do_complete(self, code, cursor_pos):
-        
-        completion_length, completion = self.code_completion(code[0:cursor_pos])
-        cur_start = cursor_pos - int(completion_length)
-        
-        return {'matches':  completion, 'cursor_start': cur_start,
+        try:
+            completions = JuPyMake.GetCompletion(code[0:cursor_pos])
+        except:
+            completions = (0,"",[])
+        completion_offset = completions[0]
+        cur_start = cursor_pos - completion_offset
+        return {'matches': completions[2], 'cursor_start': cur_start,
                 'cursor_end': cursor_pos, 'metadata': dict(),
                 'status': 'ok'}
 
     def do_is_complete( self, code ):
         new_code = 'if(0){ ' + code + ' }'
         try:
-            self._run_polymake_command( new_code )
+            output = self._run_polymake_command( new_code )
         except PolymakeRunException:
+            return {'status' : 'incomplete', 'indent': '' }
+        if output[0] == False:
             return {'status' : 'incomplete', 'indent': '' }
         return {'status' : 'complete' }
 
     def do_inspect( self, code, cursor_pos, detail_level=0 ):
-        new_code = 'print Jupyter::context_help( q#' + code + '#, 1, "text" );'
+        print(detail_level)
+        ## ignore detail_level for now
+        full = True
         try:
-            output = self._run_polymake_command( new_code )
+            output = JuPyMake.GetContextHelp( input=code, position=cursor_pos, full=full )
         except PolymakeRunException:
-            return {'status': 'ok', 'data': {}, 'metadata': {}, 'found': False}
-        if output == '':
-            return {'status': 'ok', 'data': {}, 'metadata': {}, 'found': False}
-        else:
-            return {'status': 'ok', 'data': { 'text/plain': output }, 'metadata': {}, 'found': True}
+            output = []
+        try:
+            output_html = JuPyMake.GetContextHelp( input=code, position=cursor_pos, full=full, html=True )
+        except PolymakeRunException:
+            output_html = []
+        output_data = { }
+        if output != []:
+            output_data['text/plain'] = "\n".join(output)
+        if output_html != []:
+            output_data['text/html'] = "\n".join(output_html)
+        return {'status': 'ok', 'data': output_data, 'metadata': {}, 'found': True}

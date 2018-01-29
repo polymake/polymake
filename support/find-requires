@@ -1,3 +1,0 @@
-#!/bin/bash
-
-grep -v '/lib/jreality/jni/' | /usr/lib/rpm/find-requires "$@"

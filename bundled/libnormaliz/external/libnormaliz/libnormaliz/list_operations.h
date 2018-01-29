@@ -71,6 +71,41 @@ template<typename Integer>
 template<typename Integer>
  void  l_cut_front(list<  vector<Integer> >& l,int size );
  //cuts all the vectors in l to a given size, maintaining the back
+ 
+//---------------------------------------------------------------------------
+
+template<typename T>
+void random_order(list<T>& LL){
+    vector<typename list<T>::iterator > list_order;
+    size_t nrLL=LL.size();
+    list_order.reserve(nrLL);
+    typename  list<T>::iterator p=LL.begin();
+    for(size_t k=0;k<nrLL;++k,++p){
+        list_order.push_back(p);
+    }
+    for(size_t k=0;k<10*nrLL;++k){
+        swap(list_order[rand()%nrLL],list_order[rand()%nrLL]);
+    }
+    list<T> new_order;
+    for(size_t k=0;k<nrLL;++k){
+        new_order.push_back(*list_order[k]);
+    }
+    LL.clear();
+    LL.splice(LL.begin(),new_order);
+
+}
+
+//---------------------------------------------------------------------------
+
+template<typename T>
+void random_order(list<T>& LL,typename list<T>::iterator from, typename  list<T>::iterator to ){
+
+    list<T> MM;
+    MM.splice(MM.begin(),LL,from,to);
+    random_order(MM);
+    LL.splice(LL.begin(),MM);
+}
+
 
 }
 

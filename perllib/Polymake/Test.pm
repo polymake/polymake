@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,11 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
+
+package Polymake::Test;
+
+use Time::HiRes qw(gettimeofday tv_interval);
 
 require Polymake::Test::Group;
 require Polymake::Test::Case;
@@ -29,7 +34,7 @@ require Polymake::Test::Rule;
 require Polymake::Test::Shell;
 require Polymake::Test::Examples;
 
-package Polymake::Test;
+declare $disable_viewers = 0;
 
 use Exporter 'import';
 
@@ -190,6 +195,11 @@ sub compare_attachment {
 # @param ID unique test name; the expected object file name is derived from this
 # @param Object computed result
 #
+# @option Bool after_cleanup
+#         Before comparing the objects,
+#         the cleanup procedure is performed on the test object
+#         in order to wipe out all temporary properties.
+#
 # @option Array<String> ignore
 #         list of property names not to be compared
 #
@@ -204,8 +214,7 @@ sub compare_attachment {
 #         maximal allowed execution time in seconds per object
 #
 sub compare_object {
-   unless (@_>=2 && (is_string($_[0]) || is_integer($_[0])) &&
-           instanceof Core::Object($_[1])) {
+   unless (@_>=2 && (is_string($_[0]) || is_integer($_[0]))) {
       croak( "usage: compare_object('ID', computed Object, options)" );
    }
    new Object(@_);
@@ -296,6 +305,11 @@ sub compare_schedule {
 #         The rest can be anything understood by give(): a unique intance name,
 #         a property name with a value, or an subroute reference.
 #
+# @option Array<String> permuted
+#         List of target properties in dotted notation which are expected to appear permuted
+#         with respect to the corresponding properties stored with the test object file.
+#         Only the permutation //incurred// by the rule under test is considered.
+#
 # @option Float max_exec_time
 #         maximal allowed execution time in seconds per object
 #
@@ -332,7 +346,8 @@ sub check_rules {
 # Catch the output stream and compare it with the specimen file.
 # The specimen file name is derived from ID: either <ID>.OK or <ID>.<Arch>.OK
 #
-# @param CODE body test code containing some print statements.
+# @param CODE body test code containing some print statements
+#             and/or calling C++ functions sending some output to cout.
 # @param String ID unique test name
 #
 # @option Float max_exec_time
@@ -360,8 +375,9 @@ sub compare_expected_error(&$@) {
 # Compare the output file produced by a function with the specimen.
 # The specimen file name is derived from ID: either <ID>.OK or <ID>.<Arch>.OK
 # Primarily for testing visualization functions offering a File option:
-#   user_func(..., File => diff_with('ID')
-#
+#   user_func(..., File => diff_with('ID'))
+# If several variants of correct output exist, they can be listed in an anonymous array:
+#   ... diff_with([ 'ID', 'alt1', ... ])
 # @param String ID unique test name
 # @param CODE+ filters optional filters converting both produced and expected contents
 #              before comparison.  Each filter function should work linewise, with the
@@ -370,11 +386,17 @@ sub compare_expected_error(&$@) {
 # @option Float max_exec_time maximal allowed execution time in seconds
 #
 sub diff_with {
-   unless (@_>0 && (is_string($_[0]) || is_integer($_[0]))) {
+   unless (@_>0 && (ref($_[0]) eq "ARRAY" ? $#{$_[0]} > 0 && not(grep { !is_string($_) } @{$_[0]})
+                                          : is_string($_[0]) || is_integer($_[0]))) {
       croak( "usage: diff_with('ID', filters...)" );
    }
    my $options=splice_options(\@_, 1);
    my @filters=splice @_, 1;
+   if (ref($_[0]) eq "ARRAY") {
+      my $mainID=shift @{$_[0]};
+      $options->{altOK}=$_[0];
+      $_[0]=$mainID;
+   }
    my $case=new Stream(@_, \@filters, $options);
    $case->handle;
 }
@@ -384,11 +406,12 @@ sub diff_with {
 #
 # @param String ID unique test name
 # @param String input_string partial input to be completed
+# @param Int    expected completion offset from the end of input_string
 # @param String+ expected completions;
 #                the last one is interpreted as the expected append character if it consists of exactly one char
 sub check_completion {
-   unless (@_>2 && (is_string($_[0]) || is_integer($_[0])) && is_string($_[1])) {
-      croak( "usage: check_completion('ID', 'partial input', 'expected completion', ...)" );
+   unless (@_>3 && (is_string($_[0]) || is_integer($_[0])) && is_string($_[1]) && is_integer($_[2])) {
+      croak( "usage: check_completion('ID', 'partial input', expected_offset, 'expected completion', ...)" );
    }
    new Shell::Completion(@_);
 }
@@ -412,7 +435,7 @@ sub check_context_help {
 #
 
 my $SystemArch=`uname -p`;  chomp $SystemArch;
-if (`uname -s` =~ /^darwin/i) {
+if ($^O eq "darwin") {
    $SystemArch="darwin.$SystemArch";
 } elsif ($SystemArch eq "unknown") {
    $SystemArch=`uname -m`;  chomp $SystemArch;
@@ -420,9 +443,7 @@ if (`uname -s` =~ /^darwin/i) {
 
 sub find_matching_file {
    foreach my $file (@_) {
-      foreach my $arch ($Arch, $SystemArch) {
-         -f "$file.$arch" and return "$file.$arch";
-      }
+      -f "$file.$SystemArch" and return "$file.$SystemArch";
       -f $file and return $file;
    }
    die "no matching file for @_ found\n";

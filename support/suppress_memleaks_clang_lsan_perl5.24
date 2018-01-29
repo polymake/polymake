@@ -1,2 +1,0 @@
-leak:^omAllocFromSystem$
-leak:^Perl_my_setenv$

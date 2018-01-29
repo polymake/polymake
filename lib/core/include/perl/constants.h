@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,12 +17,9 @@
 #ifndef POLYMAKE_PERL_CONSTANTS_H
 #define POLYMAKE_PERL_CONSTANTS_H
 
-#ifdef __cplusplus
-
 #include "polymake/AnyString.h"
 
 namespace pm { namespace perl {
-#endif
 
 enum value_flags {
    value_mutable=0, value_read_only=1, value_expect_lval=2, value_alloc_magic=4,
@@ -38,8 +35,6 @@ enum class_kind {
    class_is_assoc_container=0x100, class_is_sparse_container=0x200, class_is_set=0x400,
    class_is_serializable=0x800, class_is_sparse_serialized=0x1000, class_is_declared=0x2000
 };
-
-#ifdef __cplusplus
 
 constexpr value_flags operator| (value_flags a, value_flags b)
 {
@@ -59,7 +54,6 @@ value_flags& operator|= (value_flags& a, value_flags b)
 }
 
 } }
-#endif
 
 #endif // POLYMAKE_PERL_CONSTANTS_H
 

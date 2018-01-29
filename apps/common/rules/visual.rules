@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -20,21 +20,18 @@
 #
 package Visual::Color;
 
-# file with symbolic color names (as shipped with X11 system)
-custom $RGBtxt_path;
-
-CONFIGURE_OPT {
-   find_file_and_confirm($RGBtxt_path, "rgb.txt",
-                         qw( /usr/X11/lib/X11 /usr/share/X11 /usr/X11/share/X11 /usr/X11R6/lib/X11
-                             /usr/local/X11/lib/X11 /usr/local/X11R6/lib/X11 /usr/openwin/lib/X11 
-                             /usr/local/lib/X11 /opt/X11/share/X11 ),
-                         { prompt => "color name database",
-                           abort => "disable\nusing symbolic color names in visualization methods" });
-}
-
 # @topic custom
 # All colors defined here are RGB values in integer representation (0..255)
-# You may use symbolic names defined in the file $RGBtxt as well.
+# You may use symbolic names from the X11 color names if Graphics::ColorNames
+# is installed.
+
+# A list of custom symbolic color names, the values should be parseable as [[RGB]].
+# Note that these names will always be checked first, i.e. override the X11 color names.
+custom %symbolicnames = (
+      polymakeorange => "#e0a300",
+      polymakegreen  => "119 236 158",
+);
+
 
 # facets in famous polymake-green
 custom $facets="119 236 158";
@@ -65,8 +62,9 @@ require Visual::Polygons;
 # @category Visualization
 # A color described as a Red-Green-Blue triple.
 # Can be constructed from a list of three integral values from the range 0..255,
+# or a hex triplet with a leading # symbol,
 # or a list of three floating-point values from the range 0..1,
-# or one of symbolic names listed in the system-wide file ''rgb.txt''.
+# or a symbolic name from the X11 color names.
 
 declare property_type RGB : c++ (include=>["polymake/color.h"]) {
 
@@ -302,7 +300,7 @@ options %Visual::Polygons::decorations=(
 # @return Visual::Container if called in void context, immediately starts the preferred rendering program.
 # @example [application polytope]
 # Draw a pretty 8-pointed star:
-# > compose(cube(2)->VISUAL,cross(2,sqrt(2))->VISUAL,Title=>"A pretty star.",VertexLabels=>"hidden");
+# > compose(cube(2)->VISUAL, cross(2,sqrt(2))->VISUAL, Title=>"A pretty star.", VertexLabels=>"hidden");
 
 user_function compose(Visual::Object+, %) {
    my ($obj_list, $decor)=@_;

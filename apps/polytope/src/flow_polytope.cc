@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,6 +20,7 @@
 #include "polymake/SparseVector.h"
 #include "polymake/Graph.h"
 #include "polymake/Array.h"
+#include "polymake/linalg.h"
 
 namespace polymake { namespace polytope {
 
@@ -95,7 +96,7 @@ perl::Object flow_polytope(const Graph<Directed> G, const EdgeMap<Directed,Scala
    perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
    p_out.set_description() << "flow polytope of a Graph" << endl;   
    p_out.take("INEQUALITIES") << ineqs;
-   p_out.take("EQUATIONS") << eqs;
+   p_out.take("EQUATIONS") << remove_zero_rows(eqs);
    p_out.take("FEASIBLE") << 1;
    p_out.take("VALID_POINT") << unit_vector<Scalar>(G.edges()+1,0);
    return p_out;

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,10 +15,9 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake::Test::Case;
-
-use Time::HiRes qw(gettimeofday tv_interval);
 
 declare $allowed_exec_time=0;
 
@@ -55,13 +54,13 @@ sub hidden { 0 }
 
 sub run {
    my ($self)=@_;
-   my $started_at=[gettimeofday];
+   my $started_at=[gettimeofday()];
    my $cpu_time=get_user_cpu_time();
    my $result=eval { $self->execute };
    my $err=$@; $@="";
    # time spent on evaluation of results
    $self->exec_time += get_user_cpu_time()-$cpu_time;
-   $self->duration += tv_interval($started_at, [gettimeofday]);
+   $self->duration += tv_interval($started_at, [gettimeofday()]);
 
    if ($result && !$err && $self->max_exec_time) {
       my $allowed=max($self->max_exec_time, $allowed_exec_time);
@@ -71,16 +70,14 @@ sub run {
       }
    }
 
-   my $report_writer=$self->subgroup->group->env->report_writer;
+   my $env=$self->subgroup->group->env;
+   my $report_writer=$env->report_writer;
    if (!$report_writer && length($err)) {
       $self->fail_log.="ERROR: $err";
    }
 
    if ($report_writer) {
-      $report_writer->startTag("testcase",
-                               classname=>$self->subgroup->group->name,
-                               name=>($self->subgroup->name && "[ ".$self->subgroup->name." ] ").$self->name,
-                               time=>"".$self->duration);
+      $report_writer->startTag("testcase", $self->subgroup->testcase_attrs($self->name), time=>"".$self->duration);
       $report_writer->dataElement("system-out", $self->describe_location);
       unless ($result) {
          if (length($err)) {
@@ -91,6 +88,7 @@ sub run {
          }
       }
       $report_writer->endTag("testcase");
+      $env->report_fh->flush;
    }
    $result
 }
@@ -99,9 +97,6 @@ sub describe_location {
    my ($self)=@_;
    "testfile: " . $self->subgroup->shorten_source_file($self->source_file // $self->subgroup->source_file);
 }
-
-# FIXME: until all testsuites migrated
-use overload 'bool' => sub { croak("test case may not be evaluated in boolean context") };
 
 1
 

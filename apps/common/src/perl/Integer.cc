@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -35,5 +35,6 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary_mod, perl::Canned< const Integer >, long);
    OperatorInstance4perl(Binary_mod, long, perl::Canned< const Integer >);
    OperatorInstance4perl(Binary__gt, int, perl::Canned< const Integer >);
+   OperatorInstance4perl(BinaryAssign_add, perl::Canned< Integer >, long);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

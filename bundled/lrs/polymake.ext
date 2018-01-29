@@ -3,7 +3,7 @@
 CREDIT
   Implementation of the reverse search algorithm of Avis and Fukuda.
   Copyright by David Avis.
-  http://cgm.cs.mcgill.ca/~avis/lrs.html
+  http://cgm.cs.mcgill.ca/~avis/C/lrs.html
 
 # REQUIRE
 # Names of other bundled extensions which are prerequisite for this one

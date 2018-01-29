@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -129,6 +129,14 @@ const AccurateFloat& spec_object_traits<AccurateFloat>::one()
    const static AccurateFloat e(1);
    return e;
 }
+
+template <>
+AccurateFloat
+pow(const AccurateFloat& base, int exp)
+{
+   return AccurateFloat::pow(base,exp);
+}
+
 
 }
 

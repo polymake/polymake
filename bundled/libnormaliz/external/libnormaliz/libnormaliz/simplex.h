@@ -77,9 +77,11 @@ class SimplexEvaluator {
     vector< Integer > TDiag; // diagonal of transpose of generaor matrix after trigonalization
     vector< bool > Excluded;
     vector< Integer > Indicator; 
-    vector< long > gen_degrees;
+    vector<Integer> gen_degrees;
+    vector<long> gen_degrees_long;
     vector< long > level0_gen_degrees; // degrees of the generaors in level 0
-    vector< long > gen_levels;
+    vector< Integer > gen_levels;
+    vector< long > gen_levels_long;
     // vector< num_t > hvector;  //h-vector of the current evaluation
     // vector< num_t > inhom_hvector; // separate vector in the inhomogeneous case in case we want to compute two h-vectors
     // HilbertSeries Hilbert_Series; //this is the summed Hilbert Series
@@ -91,7 +93,7 @@ class SimplexEvaluator {
     Matrix<Integer> RS; // right hand side to hold order vector
     // Matrix<Integer> RSmult; // for multiple right hand sides
     
-    Matrix<Integer>* StanleyMat;
+    Matrix<long>* StanleyMat;
     size_t StanIndex;
     size_t nr_level0_gens; // counts the number of level 0 vectors among the generators
     
@@ -167,7 +169,8 @@ public:
     // evaluation in parallel threads
     void Simplex_parallel_evaluation();  
 
-        vector<key_t> get_key();
+    vector<key_t> get_key();
+    Integer get_volume();
 
     
     void print_all();

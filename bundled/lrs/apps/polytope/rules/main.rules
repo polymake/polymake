@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -19,6 +19,11 @@
 INCLUDE
   lrs_ch.rules
   lrs_lp.rules
+
+# enable debugging output from lrs
+# does not work with the bundled lrs version,
+# requires an lrs installation that was built without -DLRS_QUIET
+custom $verbose_lrs=0;
 
 # Local Variables:
 # mode: perl

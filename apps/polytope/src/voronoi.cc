@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -69,7 +69,7 @@ void voronoi(perl::Object p)
 
 }
 
-FunctionTemplate4perl("voronoi<Scalar>(VoronoiDiagram<Scalar>) : void");
+FunctionTemplate4perl("voronoi<Scalar>(VoronoiPolyhedron<Scalar>) : void");
 
 } }
 

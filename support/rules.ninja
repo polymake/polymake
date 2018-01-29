@@ -1,0 +1,112 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# build rules for ninja
+
+# compiler flags for build modes: Optimized, Debug, Coverage, and Sanitizer
+COptFLAGS = -DPOLYMAKE_DEBUG=0 -DNDEBUG ${CXXOPT}
+CDebugFLAGS = -DPOLYMAKE_DEBUG=1 ${CXXDEBUG}
+CCovFLAGS = ${CDebugFLAGS} ${CXXCOV} -DPOLYMAKE_GATHER_CODE_COVERAGE
+CSanFLAGS = -DPOLYMAKE_DEBUG=0 -DNDEBUG ${CXXSANITIZE} ${PERLSANITIZE}
+
+# compiler flags for external software provided in bundled extensions
+# the only difference now is that it's not instrumented for test coverage
+CexternOptFLAGS = ${COptFLAGS}
+CexternDebugFLAGS = ${CDebugFLAGS}
+CexternCovFLAGS = ${CexternDebugFLAGS}
+CexternSanFLAGS = ${CSanFLAGS}
+
+# linker flags for build modes
+LDOptFLAGS =
+LDDebugFLAGS = ${CXXDEBUG}
+LDCovFLAGS = ${LDDebugFLAGS} ${CXXCOV}
+LDSanFLAGS = ${CXXSANITIZE} ${PERLSANITIZE}
+
+# compile a C++ source file
+rule cxxcompile
+  command = ${CXX} -c -o $out -MMD -MT $out -MF $out.d ${CsharedFLAGS} ${CXXFLAGS} ${ARCHFLAGS} ${CmodeFLAGS} ${CXXextraFLAGS} ${CXXincludes} ${includeSource} $in
+  description = COMPILE $out
+  depfile = $out.d
+  deps = gcc
+
+# compile a C source file
+rule ccompile
+  command = ${CC} -c -o $out -MMD -MT $out -MF $out.d ${CsharedFLAGS} ${CFLAGS} ${ARCHFLAGS} ${CmodeFLAGS} ${CextraFLAGS} $in
+  description = COMPILE $out
+  depfile = $out.d
+  deps = gcc
+
+# prepare a perl extension module source
+rule xxs_to_cc
+  command = ${PERL} ${ExtUtils}/xsubpp -typemap ${ExtUtils}/typemap --output $out $in
+  description = GENERATE $out
+
+# generate a bootstrapping sequence for the callable library
+rule gen_xs_bootstrap
+  command = ${PERL} ${root}/lib/core/src/perl/createBootstrap.pl $in >$out
+  description = GENERATE $out
+
+# generate dummy companions for callable library
+rule gen_applib_stubs
+  command = ${PERL} ${root}/support/generate_applib_fake.pl $in >$out
+  description = GENERATE $out
+
+# fill a static library
+rule staticlib
+  command = ${AR} -rcs $out $in
+  description = AR $out
+
+# link a shared module
+rule sharedmod
+  command = ${CXX} ${LDsharedFLAGS} ${ARCHFLAGS} -o $out $in ${LDmodeFLAGS} ${LDextraFLAGS} ${LIBSextra} ${LDFLAGS} ${LIBS}
+  description = LD $out
+
+# create an empty file as a placeholder for something missing
+rule emptyfile
+  command = touch $out
+
+# create a symbolic link
+rule symlink
+  command = rm -f $out; ln -s $in $out
+
+# create a symbolic link to a file in the same directory
+rule symlink_samedir
+  command = ln -sf `basename $in` $out
+
+# generate the list of all targets
+rule gen_targets
+  command = ${PERL} ${root}/support/generate_ninja_targets.pl $out ${root} $in
+  description = GENERATE $out
+  generator = 1
+  depfile = $out.d
+  deps = gcc
+
+# regenerate included target lists if necessary
+build ${buildroot}/targets.ninja: gen_targets ${config.file} | ${root}/support/generate_ninja_targets.pl
+
+# generate some source files
+rule gen_sources
+  command = ${GenerateCommand}
+  description = GENERATE $out
+
+# install the core system
+rule install_core
+  command = ${PERL} ${root}/support/install.pl --root ${root} --buildroot ${buildroot} --config ${config.file} --mode ${buildmode} $in
+  description = INSTALL core system in mode ${buildmode} at ${InstallTop}
+
+# install an extension
+rule install_ext
+  command = ${PERL} ${root}/support/install.pl --root ${root} --extroot ${extroot} --buildroot ${buildroot} --config ${root.config.file} --mode ${buildmode}
+  description = INSTALL $extroot in mode ${buildmode} at ${InstallTop}/ext

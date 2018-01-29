@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -22,6 +22,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/Array.h"
 #include "polymake/Vector.h"
+#include "polymake/common/labels.h"
 #include "polymake/polytope/bisector.h"
 
 namespace polymake { namespace polytope {
@@ -114,9 +115,9 @@ perl::Object stack(perl::Object p_in, const GenericSet<TSet>& stack_facets, perl
 
    std::vector<std::string> labels, facet_labels;
    if (relabel) {
-      labels.resize(n_vertices_out);  facet_labels.resize(n_facets);
-      read_labels(p_in, "VERTEX_LABELS", labels);
-      read_labels(p_in, "FACET_LABELS", facet_labels);
+      labels.resize(n_vertices_out);
+      common::read_labels(p_in, "VERTEX_LABELS", non_const(select(labels, sequence(0, n_vertices))));
+      facet_labels = common::read_labels(p_in, "FACET_LABELS", n_facets);
    }
 
    Matrix<Rational> Vertices, Facets, Vertices_out;
@@ -166,7 +167,7 @@ perl::Object stack(perl::Object p_in, const GenericSet<TSet>& stack_facets, perl
          ++new_facet;
          copy_range(entire(sequence(first_new_vertex, vertices_per_facet)), select(new_neighbors, VIF[*sf]).begin());
 
-         for (Graph<>::adjacent_node_list::const_iterator nb=DG.adjacent_nodes(*sf).begin();
+         for (auto nb=DG.adjacent_nodes(*sf).begin();
               !nb.at_end();  ++nb, ++new_facet) {
             const Set<int> ridge=VIF[*sf] * VIF[*nb];
             *new_facet = ridge;
@@ -180,7 +181,7 @@ perl::Object stack(perl::Object p_in, const GenericSet<TSet>& stack_facets, perl
          }
 
          if (relabel) {
-            for (IncidenceMatrix<>::const_row_type::const_iterator v=VIF[*sf].begin(); !v.at_end();  ++v)
+            for (auto v=VIF[*sf].begin(); !v.at_end(); ++v)
                labels[new_neighbors[*v]] = "f(" + facet_labels[*sf] + ")-" + labels[*v];
          }
          first_new_vertex += vertices_per_facet;

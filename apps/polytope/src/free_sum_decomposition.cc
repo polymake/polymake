@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -137,7 +137,8 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes\n"
                           "# Decompose a given polytope into the free sum of smaller ones, and return the vertex indices of the summands"
                           "# @param Polytope P"
                           "# @return Array<Set>"
-                          "# @example > $p = free_sum(cube(1),cube(1));"
+                          "# @example"
+                          "# > $p = free_sum(cube(1),cube(1));"
                           "# > print $p->VERTICES;"
                           "# | 1 -1 0"
                           "# | 1 1 0"

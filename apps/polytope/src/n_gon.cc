@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -88,8 +88,8 @@ perl::Object n_gon(int n, const Rational& r, const Rational& alpha_0, perl::Opti
       perl::Object g("group::Group");
       g.set_description() << "full combinatorial group on vertices" << endl;
       g.set_name("fullCombinatorialGroupOnRays");
-      g.take("RAYS_ACTION") << a;
       p.take("GROUP") << g;
+      p.take("GROUP.VERTICES_ACTION") << a;
    }
 
 

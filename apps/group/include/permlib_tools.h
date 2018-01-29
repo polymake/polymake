@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,15 +17,13 @@
 #ifndef POLYMAKE_GROUP_PERMLIB_TOOLS_H
 #define POLYMAKE_GROUP_PERMLIB_TOOLS_H
 
-#include <boost/foreach.hpp>
-
-#include <permlib/common.h>
-#include <permlib/permutation.h>
-#include <permlib/bsgs.h>
-#include <permlib/transversal/schreier_tree_transversal.h>
-#include <permlib/construct/schreier_sims_construction.h>
-#include <permlib/search/classic/set_stabilizer_search.h>
-#include <permlib/predicate/subgroup_predicate.h>
+#include "permlib/common.h"
+#include "permlib/permutation.h"
+#include "permlib/bsgs.h"
+#include "permlib/transversal/schreier_tree_transversal.h"
+#include "permlib/construct/schreier_sims_construction.h"
+#include "permlib/search/classic/set_stabilizer_search.h"
+#include "permlib/predicate/subgroup_predicate.h"
 
 
 namespace permlib {
@@ -43,7 +41,7 @@ template <class PERM, typename T, typename Comparator, template <typename, typen
 Container<T, Comparator> action_on_container (const PERM& p, const Container<T, Comparator>& c)
 {
    Container<T, Comparator> image;
-   BOOST_FOREACH(const T& s, c) 
+   for (const T& s : c) 
       image += action_on_container(p, s);
    return image;
 }
@@ -108,8 +106,9 @@ class SetSystemStabilizerPredicate : public SetSystemStabilizerPredicateBase<PER
 protected:
    Container _set_system;
 
-   virtual bool preserves_set_system(const PERM& p) const {
-      BOOST_FOREACH(const T& c, _set_system)
+   virtual bool preserves_set_system(const PERM& p) const
+   {
+      for (const T& c : _set_system)
          if (!_set_system.exists(action_on_container(p, c))) 
             return false;
       return true;
@@ -137,9 +136,10 @@ class LayeredSetSystemStabilizerPredicate : public SetSystemStabilizerPredicateB
 protected:
    ArrayType _layered_set_system;
 
-   virtual bool preserves_set_system(const PERM& p) const {
+   virtual bool preserves_set_system(const PERM& p) const
+   {
       for (int i=0; i<_layered_set_system.size(); ++i)
-         BOOST_FOREACH(const Container& c, _layered_set_system[i])
+         for (const Container& c : _layered_set_system[i])
             if (!_layered_set_system[i].exists(action_on_container(p, c))) 
                return false;
       return true;

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -16,11 +16,35 @@
 REQUIRE
    common::svg.rules
 
+require SvgGraph;
+
+package PmSvg;
+
+# between the nodes of a face lattice (relative to the face label box width)
+custom $face_spacing=0.2;
+
+# roundness in x-coordinate of the label frame
+custom $roundness_x=0;
+
+# roundness in y-coordinate of the label frame
+custom $roundness_y=0;
+
+# space between glyphs (regarding node numbers above 9)
+custom $glyph_seperator=0.4; 
+
+# width of a glyph
+custom $glyph_width=0.68;
+
 package PmSvg::Viewer;
 
 global_method svg.graph: draw(Visual::Graph, @) {
    my ($self, $G)=@_;
    $self->append(new Wire($G));
+}
+
+global_method svg.lattice: draw(Visual::Lattice, @) {
+   my ($self, $G)=@_;
+   $self->append(new Lattice($G));
 }
 
 

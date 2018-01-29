@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -639,15 +639,22 @@ extern int solver_count;
 template <typename Coord>
 solver<Coord>::solver()
 {
-   if (solver_count++ == 0)
+   if (solver_count++ == 0) {
       dd_set_global_constants();
+      if (int(perl::get_custom("$polytope::verbose_cdd")) > 0)
+         dd_debug = dd_TRUE;
+      else
+         dd_debug = dd_FALSE;
+   }
 }
 
 template <typename Coord>
 solver<Coord>::~solver()
 {
-   if (--solver_count == 0)
+   if (--solver_count == 0) {
       dd_free_global_constants();
+      dd_debug = dd_FALSE;
+   }
 }
 
 // this and the following function are identical

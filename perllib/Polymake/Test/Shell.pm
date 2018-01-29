@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -17,6 +17,7 @@ use Polymake::Core::ShellMock;
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 use feature 'state';
 
 package Polymake::Test::Shell;
@@ -32,34 +33,32 @@ sub instance {
 sub complete {
    &Mock::complete;
    my ($self)=@_;
-   ($self->Attribs->{completion_append_character}, @{$self->completion_words})
+   ($self->completion_offset, $self->Attribs->{completion_append_character}, @{$self->completion_proposals})
 }
 
 sub context_help {
    my ($self, $string)=@_;
-   $self->Attribs->{line_buffer}=$string;
-   $self->Attribs->{point}=length($string);
-   # a simplified version of Shell::context_help, not printing any texts
-   my $pos=prepare_partial_input($self);
+   my $pos=length($string);
    my @headers;
-   while ($pos >= 0 && fetch_help_topics($self, $pos)) {
-      push @headers, map { $_->full_path } grep { $_->annex->{display} !~ /^\s*noshow\s*$/ } @{$self->help_topics};
-      $pos=pos($self->partial_input)-1;
+   while (Mock::context_help($self, $string, $pos)) {
+      push @headers, map { $_->full_path } @{$self->help_topics};
    }
    @headers
 }
 
 ##################################################################
-package _::Completion;
+package Polymake::Test::Shell::Completion;
 
 use Polymake::Struct(
    [ '@ISA' => 'Case' ],
-   [ new => '$$@' ],
+   [ new => '$$$@' ],
    [ '$max_exec_time' => '0' ],
    [ '$partial_input' => '#2' ],
+   [ '$expected_offset' => '#3' ],
    [ '$expected_words' => '@' ],
    [ '$expected_append' => 'undef' ],
    '@gotten_words',
+   '$gotten_offset',
    '$gotten_append',
 );
 
@@ -68,7 +67,7 @@ sub new {
    if (@{$self->expected_words}>1 && length($self->expected_words->[-1])==1) {
       $self->expected_append=pop @{$self->expected_words};
    }
-   ($self->gotten_append, @{$self->gotten_words})=instance()->complete($self->partial_input);
+   ($self->gotten_offset, $self->gotten_append, @{$self->gotten_words})=instance()->complete($self->partial_input);
    $self
 }
 
@@ -76,10 +75,14 @@ sub execute {
    my ($self)=@_;
    my $eq=equal_string_lists($self->expected_words, $self->gotten_words);
    my $eq_append=!defined($self->expected_append) || $self->expected_append eq $self->gotten_append;
-   unless ($eq && $eq_append) {
+   unless ($eq && $eq_append && $self->expected_offset==$self->gotten_offset) {
       unless ($eq) {
          $self->fail_log.="expected:\n@{$self->expected_words}\n".
                           "     got:\n@{$self->gotten_words}\n";
+      }
+      unless ($self->expected_offset==$self->gotten_offset) {
+         $self->fail_log.="expected offset:".$self->expected_offset."\n".
+                          "     got offset:".$self->gotten_offset."\n";
       }
       unless ($eq_append) {
          $self->fail_log.="expected append char:".$self->expected_append."\n".
@@ -90,7 +93,7 @@ sub execute {
 }
 
 ##################################################################
-package __::ContextHelp;
+package Polymake::Test::Shell::ContextHelp;
 
 use Polymake::Struct(
    [ '@ISA' => 'Case' ],

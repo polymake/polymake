@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake::Test::Object;
 
@@ -25,25 +26,29 @@ use Polymake::Struct(
    [ '$ignore' => '#%', default => 'undef' ],
    [ '$permuted' => '#%', default => 'undef' ],
    [ '$expected' => '#%', default => 'undef' ],
+   [ '$after_cleanup' => '#%' ],
 );
 
 sub execute {
    my ($self)=@_;
    my $expected=($self->expected //= $self->load_object_file);
    my $gotten=$self->gotten;
-   if (defined $self->permuted) {
-      ref($self->permuted) eq "ARRAY" && @{$self->permuted}>0
-        or croak( "option `permuted' must provide a non-empty list of property names" );
-      my @explicit_perm;
-      my @prop0=$expected->type->encode_property_path($self->permuted->[0]);
-      if ($prop0[-1]->flags & $Core::Property::is_permutation) {
-         shift @{$self->permuted};
-         push @explicit_perm, permutation => \@prop0;
+   if (instanceof Core::Object($gotten)) {
+      if (defined $self->permuted) {
+         ref($self->permuted) eq "ARRAY" && @{$self->permuted}>0
+           or croak( "option `permuted' must provide a non-empty list of property names" );
+         my @explicit_perm;
+         my @prop0=$expected->type->encode_descending_path($self->permuted->[0]);
+         if ($prop0[-1]->flags & $Core::Property::is_permutation) {
+            shift @{$self->permuted};
+            push @explicit_perm, permutation => \@prop0;
+         }
+         @{$self->permuted}
+           or croak( "option `permuted' should specify at least one data property" );
+         my @perm_defining_props=map { $_ => $expected->lookup($_) // croak( "property $_ lacking in object ", $expected->name ) } @{$self->permuted};
+         $gotten=$gotten->copy_permuted(@explicit_perm, @perm_defining_props);
       }
-      @{$self->permuted}
-        or croak( "option `permuted' should specify at least one data property" );
-      my @perm_defining_props=map { $_ => $expected->lookup($_) // croak( "property $_ lacking in object ", $expected->name ) } @{$self->permuted};
-      $gotten=$gotten->copy_permuted(@explicit_perm, @perm_defining_props);
+      $gotten->cleanup_now if $self->after_cleanup;
    }
    not( $self->fail_log=compare_and_report($expected, $gotten, defined($self->ignore) ? (ignore => $self->ignore) : ()) );
 }
@@ -62,8 +67,10 @@ sub load_object_file {
 sub compare_and_report {
    my ($expected, $gotten, @options)=@_;
    if (ref($expected) ne ref($gotten)) {
-      return "result type mismatch: expected ".ref($expected).
-             " got ".(ref($gotten) || (defined($gotten) ? "SCALAR" : "UNDEF"))."\n";
+      return join("",
+                  "result type mismatch:\n",
+                  "  expected: ", $expected->type->full_name, "\n",
+                  "       got: ", instanceof Core::Object($gotten) ? $gotten->type->full_name : ref($gotten) || (defined($gotten) ? "SCALAR" : "UNDEF"), "\n");
    }
    if (my @diff=$expected->diff($gotten, @options)) {
       return join("", print_diff($expected, @diff));
@@ -89,30 +96,34 @@ sub compare_and_report {
 sub print_diff {
    my $object=shift;
    map {
-      my ($expected, $got, $subobj)=@$_;
+      my ($expected, $gotten, $subobj)=@$_;
       my $prefix="";
       while (defined($subobj) && $subobj != $object) {
          $prefix=$subobj->property->name.".".$prefix;
          $subobj=$subobj->parent;
       }
       if (!defined($expected)) {
-         ("unexpected property $prefix", $got->property->name, "\n")
-      } elsif (!defined($got)) {
+         ("unexpected property $prefix", $gotten->property->name, "\n")
+      } elsif (!defined($gotten)) {
          ("lacking property $prefix", $expected->property->name, "\n")
+      } elsif (instanceof Core::PropertyValue::Multiple($expected)) {
+         ("multiple subobject number mismatch for property $prefix", $expected->property->name, ":\n",
+          "  expected: ", scalar @{$expected->values}, "\n",
+          "       got: ", scalar @{$gotten->values}, "\n")
       } elsif (instanceof Core::Object($expected->value)) {
          ("object type mismatch for property $prefix", $expected->property->name, ":\n",
           "  expected ", $expected->value->type->full_name, "\n",
-          "  got ", $got->value->type->full_name, "\n")
+          "       got ", $gotten->value->type->full_name, "\n")
       } else {
-         my ($expected_val, $got_val)=map { substr($_,-1) eq "\n" ? "\n$_" : " $_\n" } ($expected->toString, $got->toString);
-         my ($expected_magic, $got_magic)=map { Core::CPlusPlus::get_magic_cpp_class($_) } ($expected->value, $got->value);
+         my ($expected_val, $gotten_val)=map { substr($_,-1) eq "\n" ? "\n$_" : " $_\n" } ($expected->toString, $gotten->toString);
+         my ($expected_magic, $gotten_magic)=map { Core::CPlusPlus::get_magic_cpp_class($_) } ($expected->value, $gotten->value);
 
          ("different property $prefix", $expected->property->name, ":\n",
-          ref($expected->value) ne ref($got->value) || $expected_magic ne $got_magic
+          ref($expected->value) ne ref($gotten->value) || $expected_magic ne $gotten_magic
           ? ("  expected: ", ref($expected->value), ($expected_magic && " (=>$expected_magic)"), ":", $expected_val, "\n",
-             "       got: ", ref($got->value),      ($got_magic && " (=>$got_magic)"),           ":", $got_val, "\n")
+             "       got: ", ref($gotten->value),     ($gotten_magic && " (=>$gotten_magic)"),   ":", $gotten_val, "\n")
           : ("  expected:$expected_val\n",
-             "       got:$got_val\n"))
+             "       got:$gotten_val\n"))
       }
    } @_;
 }

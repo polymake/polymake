@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -23,47 +23,51 @@
 namespace polymake { namespace graph {
 
 namespace {
-   template<typename TGraph>
-   SparseMatrix<int> incidence_matrix_impl(const GenericGraph<TGraph>& G, int s=1)
-   {
-      SparseMatrix<int> E (G.top().nodes(), G.top().edges());
-      int col(0);
-      for (Entire<Edges<Graph<> > >::const_iterator eit = entire(edges(G.top())); !eit.at_end(); ++eit, ++col) {
-         E(eit.from_node(), col) = s;
-         E(eit.to_node(), col) = 1;
-      }
-      return E;
+
+template <typename TGraph>
+SparseMatrix<int> incidence_matrix_impl(const GenericGraph<TGraph>& G, int s=1)
+{
+   SparseMatrix<int> E (G.top().nodes(), G.top().edges());
+   int col(0);
+   for (auto eit = entire(edges(G.top())); !eit.at_end(); ++eit, ++col) {
+      E(eit.from_node(), col) = s;
+      E(eit.to_node(), col) = 1;
    }
+   return E;
+}
+
 } // end anonymous namespace
-      template<typename TGraph>
-      SparseMatrix<int> incidence_matrix(const GenericGraph<TGraph>& p)
-      {
-         return incidence_matrix_impl(p.top(), 1);
-      }
 
-       template<typename TGraph>
-      SparseMatrix<int> signed_incidence_matrix(const GenericGraph<TGraph>& p)
-      {
-         return incidence_matrix_impl(p.top(), -1);
-      }
+template <typename TGraph>
+SparseMatrix<int> incidence_matrix(const GenericGraph<TGraph>& p)
+{
+   return incidence_matrix_impl(p.top(), 1);
+}
 
-        template<typename Dir>
-      SparseMatrix<int> incidence_matrix(perl::Object p)
-      {
-         Graph<Dir> G=p.give("ADJACENCY");
-         return incidence_matrix_impl(G, 1);
-      }
+template<typename TGraph>
+SparseMatrix<int> signed_incidence_matrix(const GenericGraph<TGraph>& p)
+{
+   return incidence_matrix_impl(p.top(), -1);
+}
 
-       template<typename Dir>
-      SparseMatrix<int> signed_incidence_matrix(perl::Object p)
-      {
-         Graph<Dir> G=p.give("ADJACENCY");
-         return incidence_matrix_impl(G, -1);
-      }    
+template<typename Dir>
+SparseMatrix<int> incidence_matrix(perl::Object p)
+{
+   Graph<Dir> G=p.give("ADJACENCY");
+   return incidence_matrix_impl(G, 1);
+}
 
+template<typename Dir>
+SparseMatrix<int> signed_incidence_matrix(perl::Object p)
+{
+   Graph<Dir> G=p.give("ADJACENCY");
+   return incidence_matrix_impl(G, -1);
+}
 
 } }
+
 #endif
+
 // Local Variables:
 // mode:C++
 // c-basic-offset:3

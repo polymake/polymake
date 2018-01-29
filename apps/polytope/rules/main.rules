@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -70,7 +70,6 @@ INCLUDE
   lp.rules
   to.rules
   unbounded_polyhedron.rules
-  arbitrary_coords.rules
   rational.rules
   float.rules
   solids.rules
@@ -91,21 +90,17 @@ INCLUDE
   edge_orientable.rules
   visual_point_configuration.rules
   action.rules
-  action_combinatorial_symmetries.rules
   group.rules
-  point_configuration_group.rules
-  polytope_group.rules
-  representative_simplices.rules
   coxeter.rules  
   quotient_space.rules
   symmetrized_cocircuit_equations.rules
   universal_polytope.rules
+  arbitrary_coords.rules
   representations.rules
   orbit_polytope.rules
   orbit_polytope_helpers.rules
   orbit_polytope_visual.rules
   wronski.rules
-    
 
 # self-configuring rules
 INCLUDE
@@ -113,8 +108,6 @@ INCLUDE
   common::geomview.rules
   topcom.rules
   azove.rules
-
-default_object Polytope;
 
 # @category Convex hull computation
 # Use the //double description// method as implemented in [[wiki:external_software#cddlib]].

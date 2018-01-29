@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,10 +13,10 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-
+# @category Combinatorics
 declare object CovectorLattice : Lattice<CovectorDecoration, Nonsequential> {
 
-   #@category Combinatorics
+   # @category Combinatorics
 	# Each node in the face lattice is a cell of a covector decomposition (of either the tropical torus
 	# or the tropical span of some points). This property maps each cell to the corresponding covector.
 	# A covector is encoded as an IncidenceMatrix, where rows correspond to coordinates and columns to
@@ -38,15 +38,18 @@ declare object CovectorLattice : Lattice<CovectorDecoration, Nonsequential> {
    }
    weight 1.10;
 
+   # @category Combinatorics
    user_method dim {
       return shift->rank()-1;
    }
 
+   # @category Combinatorics
    user_method nodes_of_dim($) {
       my ($this,$d) = @_;
       return shift->nodes_of_rank($d+1);
    }
 
+   # @category Combinatorics
    user_method nodes_of_dim_range($,$) {
       my ($this,$d1,$d2) = @_;
       return shift->nodes_of_rank_range($d1+1,$d2+1);
@@ -54,3 +57,9 @@ declare object CovectorLattice : Lattice<CovectorDecoration, Nonsequential> {
 
 
 }
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

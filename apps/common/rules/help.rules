@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -149,13 +149,13 @@ INCLUDE
 # @param String filename  a suffix .rng is appended automatically if no suffix is given
 #
 # @example [notest] create a schema for a Polytope<Rational> and save it in the file poly_rat.rng
-# > save_schema((typeof Polytope<Rational>), "poly_rat");
+# > save_schema(typeof Polytope<Rational>, "poly_rat");
 # the same, specifying a type via a representative object
 # > $c=cube(3);
 # > save_schema($c, "poly_rat");
 #
 # @example [notest] create a schema for graphs and save it in the file graphs.rng
-# > save_schema((typeof props::Graph<Undirected>), (typeof props::Graph<Directed>), "graph");
+# > save_schema(typeof props::Graph<Undirected>, typeof props::Graph<Directed>, "graph");
 
 
 # @topic core/functions/prefer
@@ -389,8 +389,8 @@ INCLUDE
 # To obtain the complete list of configuration options supported by the extension, you can pass a single option ''"--help"'',
 # examine its script configure.pl, or just make use of the TAB completion when typing this command.
 #
-# @param String path : top-level directory of the extension.
-# @param List options : options passed to the extension script configure.pl
+# @param String path top-level directory of the extension.
+# @param List options options passed to the extension script configure.pl
 
 
 # @topic core/functions/reconfigure_extension ($;@)
@@ -400,7 +400,7 @@ INCLUDE
 # if not, please use the command [[import_extension]], which supports passing configuration options too.
 #
 # @param String path : URI or top-level directory of the extension.
-# @param List options : options passed to the extension script configure.pl
+# @param List options options passed to the extension script configure.pl
 
 
 # @topic core/functions/obliterate_extension ($)
@@ -409,7 +409,7 @@ INCLUDE
 # Beware that in the //current// session all the rules and functions defined in the extension remain active!
 # Therefore it's strongly recommended to quit the current session right after executing this command.
 # The files comprising the extension itself are not deleted, however, so that you can re-import the extension later once you need it again.
-# @param String path : URI or top-level directory of the extension.
+# @param String path URI or top-level directory of the extension.
 
 
 # @topic core/functions/reconfigure ($)
@@ -417,17 +417,17 @@ INCLUDE
 # Repeats the auto-configuration routines stored in the given rulefile, possibly asking for program paths, options, etc.
 # If the configuration succeeds, and the rulefile hasn't been configured until now, it will be loaded, as well as all other known rulefiles
 # depending on it.
-# @param String rulename : name of the rulefile with optional prefix and suffix: "[APPNAME::]rulefile[@URI]".
-#                          APPNAME is to be specified when the rulefile does not belong to the current application;
-#                          URI specifies an extension the rulefile comes from.
+# @param String rulename name of the rulefile with optional prefix and suffix: "[APPNAME::]rulefile[@URI]".
+#                        APPNAME is to be specified when the rulefile does not belong to the current application;
+#                        URI specifies an extension the rulefile comes from.
 
 
 # @topic core/functions/unconfigure ($)
 # @category Interactive
 # Forgets the configuration made for the given rulefile and disables it for the //following// polymake sessions.
-# @param String rulename : name of the rulefile with optional prefix and suffix: "[APPNAME::]rulefile[@URI]".
-#                          APPNAME is to be specified when the rulefile does not belong to the current application;
-#                          URI specifies an extension the rulefile comes from.
+# @param String rulename name of the rulefile with optional prefix and suffix: "[APPNAME::]rulefile[@URI]".
+#                        APPNAME is to be specified when the rulefile does not belong to the current application;
+#                        URI specifies an extension the rulefile comes from.
 
 
 # @topic core/functions/show_unconfigured
@@ -439,15 +439,19 @@ INCLUDE
 # the required software and/or cleared out other configuration troubles.
 
 
-# @topic core/functions/export_configured ($;$)
+# @topic core/functions/export_configured ($;%)
 # @category Interactive
 # Saves all custom variables having non-defalt values in a file.
 # This includes all results of automatical or manual rule configuration.
 # The obtained file can be edited manually, if needed, and used as a global configuration
 # source (see also [[wiki:howto/configure|How to configure polymake for a group of users]]).
-# @param String filename : where to store the settings
-# @param Bool merge_with_global if TRUE, the settings inherited from *your* global configuration
-#             will be included in the resulting file as well.
+# @param String filename where to store the settings
+# @option Bool merge_with_global if TRUE, the settings inherited from *your* global configuration
+#                                will be included in the resulting file as well.
+# @option Bool only_configured if TRUE, configuration status of unconfigured or only partially
+#                              configured rulefiles is not exported
+# @option String suppress regular expression matching fully qualified names of custom variables
+#                         that should not be exported
 
 
 # @topic core/functions/show_credits (;$)

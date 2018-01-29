@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -41,5 +41,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(ones_vector_T_x, TropicalNumber< Min, Rational >);
    FunctionInstance4perl(ones_vector_T_x, bool);
    FunctionInstance4perl(ones_vector_T_x, TropicalNumber< Max, Rational >);
+   FunctionInstance4perl(ones_vector_T_x, PuiseuxFraction< Min, Rational, Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

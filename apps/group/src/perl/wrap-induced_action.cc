@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -46,5 +46,6 @@ namespace polymake { namespace group { namespace {
    FunctionWrapperInstance4perl( pm::Array<pm::Array<int>> (pm::Array<pm::Array<int>> const&, pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::hash_map<pm::Set<int, pm::operations::cmp>, int> const&, perl::OptionSet) );
 
    FunctionInstance4perl(induced_permutations_T_X_X_X_o, Set< int >, perl::Canned< const Array< Array< int > > >, perl::Canned< const Array< Set< int > > >, perl::Canned< const hash_map< Set< int >, int > >);
+   FunctionInstance4perl(induced_permutations_T_X_X_X_o, Rational, perl::Canned< const Array< Matrix< Rational > > >, perl::Canned< const Matrix< Rational > >, perl::Canned< const hash_map< Vector< Rational >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

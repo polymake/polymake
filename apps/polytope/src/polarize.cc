@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -41,7 +41,7 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
 
    if (no_coordinates || p_in.exists("RAYS_IN_FACETS")) {
       const IncidenceMatrix<> VIF = p_in.give("RAYS_IN_FACETS");
-      p_out.take("VERTICES_IN_FACETS") << T(VIF);
+      p_out.take("RAYS_IN_FACETS") << T(VIF);
       RIF_property_read = true;
    }
 
@@ -118,6 +118,35 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
          p_out.take("LINEALITY_DIM") << ambient_dim-cdim;
    }
 
+   // generate the combinatorial symmetry group on the facets
+   Array<Array<int>> gens;
+   if (p_in.lookup("GROUP.FACETS_ACTION.GENERATORS")>>gens){
+       perl::Object a("group::PermutationAction");
+       a.take("GENERATORS") << gens;
+
+       perl::Object g("group::Group");
+       g.set_description() << "symmetry group on vertices of polar of" << p_in.name() << endl;
+       g.set_name("fullCombinatorialGroupOnRays");
+
+       p_out.take("GROUP") << g;
+       if (isCone) {
+          p_out.take("GROUP.RAYS_ACTION") << a;
+       } else {
+          p_out.take("GROUP.VERTICES_ACTION") << a;
+       }
+   }
+   else if(p_in.lookup("GROUP.RAYS_ACTION.GENERATORS")>>gens){
+       perl::Object a("group::PermutationAction");
+       a.take("GENERATORS") << gens;
+
+       perl::Object g("group::Group");
+       g.set_description() << "symmetry group on facets of polar of" << p_in.name() << endl;
+       g.set_name("fullCombinatorialGroupOnFacets");
+       g.take("FACETS_ACTION") << a;
+
+       p_out.take("GROUP") << g;
+   }
+
    Array<std::string> labels;
    if (p_in.lookup("RAY_LABELS") >> labels)
       p_out.take("FACET_LABELS") << labels;
@@ -128,10 +157,19 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
    return p_out;
 }
 
+template <typename Scalar>
+perl::Object dual_cone(perl::Object p_in, perl::OptionSet options){
+   return polarize<Scalar>(p_in, options);
+}
+
 UserFunctionTemplate4perl("# @category Transformations"
-                          "# Given a bounded, centered, not necessarily full-dimensional "
+                          "# This method takes either a polytope (1.) or a cone (2.) as input."
+                          "# 1. Given a bounded, centered, not necessarily full-dimensional "
                           "# polytope //P//, produce its polar with respect to the "
                           "# standard Euclidean scalar product."
+                          "# 2. Given a cone //C// produce its dual with respect to the "
+                          "# standard Euclidean scalar product, i.e. all the vectors "
+                          "# that evaluate positively on //C//."
                           "# Note that the definition of the polar has changed after version 2.10: "
                           "# the polar is reflected in the origin to conform with cone polarization"
                           "# If //P// is not full-dimensional, the output will contain lineality "
@@ -149,8 +187,19 @@ UserFunctionTemplate4perl("# @category Transformations"
                           "# | 1 1 0"
                           "# | 1 -1 0"
                           "# | 1 0 1"
-                          "# | 1 0 -1",
+                          "# | 1 0 -1"
+                          "# @example To dualize the cone over a hexagon and print its rays, do this:"
+                          "# > $c = new Cone(INPUT_RAYS=>[[1,0,0],[1,1,0],[1,2,1],[1,2,2],[1,1,2],[1,0,1]]);"
+                          "# > $cd = polarize($c);"
+                          "# > print $cd->RAYS;"
+                          "# | 1 -1 1"
+                          "# | 0 0 1"
+                          "# | 0 1 0"
+                          "# | 1 1 -1"
+                          "# | 1 0 -1/2"
+                          "# | 1 -1/2 0",
                           "polarize<Scalar> (Cone<Scalar>, { no_coordinates => 0 })");
+
 } }
 
 // Local Variables:

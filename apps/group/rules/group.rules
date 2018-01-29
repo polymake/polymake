@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -22,39 +22,57 @@ object Group {
     }
     weight 1.10;
 
+    rule ORDER : CONJUGACY_CLASS_SIZES {
+        my $order = new Integer(0);
+        foreach (@{$this->CONJUGACY_CLASS_SIZES}) {
+            $order += $_;
+        }
+        $this->ORDER = $order;
+    }
+
     rule CONJUGACY_CLASS_SIZES : PERMUTATION_ACTION.CONJUGACY_CLASSES | SET_ACTION.CONJUGACY_CLASSES {
         $this->CONJUGACY_CLASS_SIZES = new Array<Int>(map {$_->size} @{$this->lookup("PERMUTATION_ACTION.CONJUGACY_CLASSES | SET_ACTION.CONJUGACY_CLASSES")});
     }
     weight 1.10;
 
     rule IMPLICIT_SET_ACTION.IRREDUCIBLE_DECOMPOSITION : IMPLICIT_SET_ACTION.CHARACTER, CHARACTER_TABLE, CONJUGACY_CLASS_SIZES, ORDER {
-        $this->IMPLICIT_SET_ACTION->IRREDUCIBLE_DECOMPOSITION = group::irreducible_decomposition($this->IMPLICIT_SET_ACTION->CHARACTER, $this);
+        $this->IMPLICIT_SET_ACTION->IRREDUCIBLE_DECOMPOSITION = irreducible_decomposition($this->IMPLICIT_SET_ACTION->CHARACTER, $this);
     }
     weight 1.10;
 
     rule PERMUTATION_ACTION.IRREDUCIBLE_DECOMPOSITION : PERMUTATION_ACTION.CHARACTER, CHARACTER_TABLE, CONJUGACY_CLASS_SIZES, ORDER {
-        $this->PERMUTATION_ACTION->IRREDUCIBLE_DECOMPOSITION = group::irreducible_decomposition($this->PERMUTATION_ACTION->CHARACTER, $this);
+        $this->PERMUTATION_ACTION->IRREDUCIBLE_DECOMPOSITION = irreducible_decomposition($this->PERMUTATION_ACTION->CHARACTER, $this);
     }
     weight 1.10;
 }
 
 # @category Producing a group
-# Constructs the symmetry group of a d-cube, 3 <= d <= 6 (for the moment) 
-# with the corresponding character table and conjugacy class representatives.
-# @param Int dimension of the cube
+# Constructs the symmetry group of a d-cube, acting on vertices, for 3 <= d <= 6 (for the moment),
+# along with the corresponding character table and conjugacy class representatives.
+# @param Int d the dimension of the cube
 # @return Group
 user_function cube_group($) {
     my $d = shift;
-    die ("Only 3 <= d <= 6 supported at the moment") unless $d >= 3 && $d <= 6;
+    die ("Only 1 <= d <= 6 supported at the moment") unless $d >= 1 && $d <= 6;
 
     my $g = new Group;
     $g->description = "linear symmetries of cube of dimension $d";
 
-    if ($d==3) {
+    if ($d==1) {
+
+        $g->CHARACTER_TABLE = new Matrix([[1,1],[1,-1]]);
+        $g->PERMUTATION_ACTION = new Permutation_Action(GENERATORS=>[[1,0]], CONJUGACY_CLASS_REPRESENTATIVES=>[[0,1],[1,0]]);
+        
+    } elsif ($d==2) {
+
+        $g->CHARACTER_TABLE = new Matrix([[1,1,1,1,1],[1,-1,-1,1,1],[1,-1,1,-1,1],[1,1,-1,-1,1],[2,0,0,0,-2]]);
+        $g->PERMUTATION_ACTION = new PermutationAction(GENERATORS=>[[1,0,3,2],[0,2,1,3]], CONJUGACY_CLASS_REPRESENTATIVES=>[[0,1,2,3],[0,2,1,3],[1,0,3,2],[1,3,0,2],[3,2,1,0]]);
+        
+    } elsif ($d==3) {
 
         $g->CHARACTER_TABLE = new Matrix([[1,1,1,1,1,1,1,1,1,1],[1,-1,1,-1,1,1,-1,1,-1,-1],[1,-1,1,1,-1,-1,1,1,-1,1],[1,1,1,-1,-1,-1,-1,1,1,-1],[2,0,-1,-2,0,0,1,2,0,-2],[2,0,-1,2,0,0,-1,2,0,2],[3,-1,0,-1,-1,1,0,-1,1,3],[3,-1,0,1,1,-1,0,-1,1,-3],[3,1,0,-1,1,-1,0,-1,-1,3],[3,1,0,1,-1,1,0,-1,-1,-3]]);
 
-        $g->PERMUTATION_ACTION = new PermutationAction(GENERATORS=>[[0,4,2,6,1,5,3,7],[0,1,4,5,2,3,6,7],[7,6,5,4,3,2,1,0],[2,6,0,4,3,7,1,5]], CONJUGACY_CLASS_REPRESENTATIVES=>[[0,1,2,3,4,5,6,7],[0,1,4,5,2,3,6,7],[0,2,4,6,1,3,5,7],[1,0,3,2,5,4,7,6],[1,0,5,4,3,2,7,6],[1,3,0,2,5,7,4,6],[1,3,5,7,0,2,4,6],[3,2,1,0,7,6,5,4],[3,2,7,6,1,0,5,4],[7,6,5,4,3,2,1,0]]);
+        $g->PERMUTATION_ACTION = new PermutationAction(GENERATORS=>[[1,0,3,2,5,4,7,6],[0,2,1,3,4,6,5,7],[0,1,4,5,2,3,6,7]], CONJUGACY_CLASS_REPRESENTATIVES=>[[0,1,2,3,4,5,6,7],[0,1,4,5,2,3,6,7],[0,2,4,6,1,3,5,7],[1,0,3,2,5,4,7,6],[1,0,5,4,3,2,7,6],[1,3,0,2,5,7,4,6],[1,3,5,7,0,2,4,6],[3,2,1,0,7,6,5,4],[3,2,7,6,1,0,5,4],[7,6,5,4,3,2,1,0]]);
 
     } elsif ($d==4) {
 

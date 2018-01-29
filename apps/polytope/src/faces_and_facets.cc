@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -23,6 +23,7 @@
 #include "polymake/PowerSet.h"
 #include "polymake/hash_map"
 #include "polymake/Graph.h"
+#include "polymake/common/labels.h"
 
 namespace polymake { namespace polytope {
 
@@ -55,8 +56,7 @@ perl::Object facet(perl::Object p_in, int facet_number, perl::OptionSet options)
    }
 
    if (!options["no_labels"]) {
-      Array<std::string> labels(n_rays);
-      read_labels(p_in, "RAY_LABELS", labels);
+      const std::vector<std::string> labels = common::read_labels(p_in, "RAY_LABELS", n_rays);
       Array<std::string> labels_out(select(labels,RIF[facet_number]));
       p_out.take("RAY_LABELS") << labels_out;
    }
@@ -107,7 +107,7 @@ perl::Object face(perl::Object p_in, const Set<int>& some_rays, perl::OptionSet 
    for (auto v=entire(rays_of_face); !v.at_end(); ++v)
       relabel[*v]=idx++;
 
-   IncidenceMatrix<> rif_face(n_rays_of_face,n_facets_of_face);
+   IncidenceMatrix<> rif_face(n_facets_of_face,n_rays_of_face);
    idx=0;
    for (auto f=entire(facets_of_face); !f.at_end(); ++f, ++idx)
       for (auto v=entire(*f); !v.at_end(); ++v)
@@ -125,9 +125,8 @@ perl::Object face(perl::Object p_in, const Set<int>& some_rays, perl::OptionSet 
    }
    
    if (!options["no_labels"]) {
-      Array<std::string> labels(n_rays);
-      read_labels(p_in, "RAY_LABELS", labels);
-      Array<std::string> labels_out(select(labels,rays_of_face));
+      const std::vector<std::string> labels = common::read_labels(p_in, "RAY_LABELS", n_rays);
+      Array<std::string> labels_out(select(labels, rays_of_face));
       p_out.take("RAY_LABELS") << labels_out;
    }
 

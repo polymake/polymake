@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,8 +20,8 @@
 
 namespace polymake { namespace polytope {
 
-template <typename Scalar>
-Set<int> non_vertices(const Matrix<Scalar>& points, const Matrix<Scalar>& verts)
+template <typename Matrix1, typename Matrix2, typename Scalar>
+Set<int> non_vertices(const GenericMatrix<Matrix1,Scalar>& points, const GenericMatrix<Matrix2,Scalar>& verts)
 {
   const int n_verts=verts.rows();
   const int n_points=points.rows();

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,11 +15,12 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 use feature 'state';
 
 package Polymake::Core::CPlusPlus;
 
-my ($debug, $dl_suffix, $custom_handler, $private_wrapper_ext, $forbid_private_wrappers, $BigObject_cpp_options, $BigObjectArray_cpp_options);
+my ($custom_handler, $private_wrapper_ext, $forbid_private_wrappers, $BigObject_cpp_options, $BigObjectArray_cpp_options);
 
 #######################################################################################
 
@@ -309,7 +310,7 @@ sub prepare_wrapper_code {
    my $n_args=@{$self->all_args};
    ++$n_args if $self->flags & $func_has_prescribed_ret_type;
    set_number_of_args($code, $n_args, $self->flags & $func_is_ellipsis, undef);
-   declare_lvalue($code) if $self->flags & ($func_is_lvalue|$func_is_lvalue_opt);
+   declare_lvalue($code) if $self->flags & ($func_is_lvalue | $func_is_lvalue_opt);
 }
 
 sub deduce_extra_params {
@@ -323,7 +324,7 @@ sub deduce_extra_params {
 }
 
 sub gen_source_code {
-   my ($self, $debug_code)=@_;
+   my ($self)=@_;
 
    my $t_args= $self->template_params ? @{$self->explicit_template_params} + $#{$self->template_params} : -1;
    my $typelist=join(",", map { "T$_" } 0..$t_args);
@@ -525,7 +526,7 @@ sub gen_source_code {
 
 sub gen_temp_code {
    my ($self)=@_;
-   ( $self->is_instance_of->gen_source_code($debug), $self->gen_source_code );
+   ( $self->is_instance_of->gen_source_code, $self->gen_source_code );
 }
 
 sub include {
@@ -535,11 +536,8 @@ sub include {
 
 sub temp_include {
    my ($self)=@_;
-   if (defined($self->embedded)) {
-      (TempWrapperFor => $self->embedded, @{$self->headers})
-   } else {
-      (@{$self->is_instance_of->include}, @{$self->headers})
-   }
+   ( defined($self->embedded) ? (includeSource => $self->embedded) : (),
+     &include )
 }
 
 my $skip_core_functions_re=qr{^\(eval\s+\d+\)|^\Q${InstallTop}\E/(?:perllib/Polymake|scripts)/|/XML/}o;
@@ -625,7 +623,7 @@ sub new {
 }
 
 sub gen_source_code {
-   my ($self, $debug_code)=@_;
+   my ($self)=@_;
    my $func=$self->is_instance_of;
    my $args=$func->all_args;
    ( "   FunctionWrapper4perl( ".$self->func_ptr_type." ) {\n",
@@ -637,8 +635,8 @@ sub gen_source_code {
    )
 }
 
-sub gen_temp_code { gen_source_code(shift, $debug) }
-sub temp_include { (TempWrapperFor => $_[0]->embedded) }
+*gen_temp_code=\&gen_source_code;
+sub temp_include { (includeSource => $_[0]->embedded) }
 
 sub include { () }
 sub extension { $_[0]->is_instance_of->extension }
@@ -757,6 +755,7 @@ sub code {
       }
    } else {
       # unary operation
+      no warnings 'void';
       use namespaces::AnonLvalue '$is_lvalue';
       my $is_lvalue= ($self->flags & ($func_is_lvalue|$func_is_lvalue_opt)) != 0;
       sub { $is_lvalue; splice @_,-2; &{ resolve_auto_function($self, \@_, $arg_flags) } };
@@ -946,7 +945,7 @@ sub complain_source_conflict {
 sub temp_include {
    my ($self)=@_;
    if (defined($self->embedded)) {
-      (TempWrapperFor => $self->embedded, @{$self->include})
+      (includeSource => $self->embedded, @{$self->include})
    } else {
       @{$self->include}
    }
@@ -1014,7 +1013,7 @@ sub finalize {
 
 sub descr : lvalue {
    croak("Can't pass a `big' Object to a C++ function expecting a native C++ data type");
-   $debug
+   $BigObject_cpp_options
 }
 
 package Polymake::Core::CPlusPlus::OptionsForArray;
@@ -1032,75 +1031,12 @@ sub clone {
    }
 }
 #######################################################################################
-package Polymake::Core::CPlusPlus::EmbeddedRules;
-
-use Polymake::Struct (
-   [ new => '@' ],
-   '$lastfile',
-   [ '$preproc' => '0' ],
-   [ '@lines' => '@' ],
-);
-
-*TIEHANDLE=\&new;
-
-sub READLINE {
-   my ($self)=@_;
-   if ($self->preproc) {
-      --$self->preproc;
-      shift @{$self->lines};
-
-   } elsif (!@{$self->lines}) {
-      if ($self->lastfile) {
-         # close the last source file
-         undef $self->lastfile;
-         "}\n"
-      } else {
-         undef
-      }
-
-   } elsif (my ($linecmd, $line, $file)= $self->lines->[0] =~ /^(\#line\s+(\d+))\s+"(.*)"/) {
-      $.=$line-1;
-      my $result;
-      if ($file eq $self->lastfile) {
-         # perl seems confused when it encounters the same source file in the consecutive lines
-         shift @{$self->lines};
-         $result="$linecmd\n";
-      } else {
-         if ($self->lastfile !~ /\.hh?$/) {
-            $self->preproc += 1;
-            if ($self->lastfile) {
-               # previous source file finished
-               $result="} {\n";
-            } else {
-               # first source file started
-               $result="{\n";
-            }
-         } else {
-            $result=shift @{$self->lines};
-         }
-         $self->lastfile=$file;
-      }
-      $result
-
-   } else {
-      ++$.;
-      $self->lines->[0] =~ s{^.*\n}{}m;
-      if (!length($self->lines->[0])) { shift @{$self->lines}; }
-      $&;
-   }
-}
-
-sub CLOSE { !@{$_[0]->lines} }
-
-#######################################################################################
 package Polymake::Core::CPlusPlus::SharedModule;
 
 use Polymake::Struct (
    [ new => '$;$' ],
-   [ '$build_dir' => 'undef' ],         # directory where to execute `make'
    '$so_name',
    [ '$so_timestamp' => 'undef' ],
-   '$is_mutable',                       # boolean: source code for new wrappers can be added directly
 );
 
 sub new {
@@ -1108,151 +1044,43 @@ sub new {
    my ($perApp, $extension)=@_;
    my $app=$perApp->application;
    my $app_name=$app->name;
-   my $build_top;
-   if (defined($extension) || $app->installTop ne $InstallTop) {
-      # either an extension of a known application, or an application defined in an extension
-      if (defined($extension) && $extension->is_bundled) {
-         ($build_top=$extension->URI) =~ tr|:|/|;
-         substr($build_top,0,0) .= "$InstallArch/";
-         $self->is_mutable=$DeveloperMode;
-      } elsif (($build_top= defined($extension) ? $extension->dir : $app->installTop) =~ s{^\Q${InstallTop}\E(?=/ext/)}{$InstallArch}o) {
-         # An installed extension.
-         $self->is_mutable=0;
-      } else {
-         # Uninstalled private extension
-         $build_top.="/build.$Arch";
-         $self->is_mutable=1;
-      }
-   } else {
-      # core application
-      $build_top=$InstallArch;
-      $self->is_mutable= $build_top =~ m{/build.$Arch}o;
-   }
-   $self->build_dir="$build_top/apps/$app_name";
+   my $host_extension=$extension // $app->origin_extension;
+   my $build_dir=$host_extension ? $host_extension->build_dir : $InstallArch;
+   $self->so_name="$build_dir/lib/$app_name.$DynaLoader::dl_dlext";
 
-   my $modsize;
-   if (-e ($self->so_name="$build_top/lib/$app_name$dl_suffix")) {
+   my $mod_size;
+   if (-e $self->so_name) {
+      ($self->so_timestamp, $mod_size)=(stat _)[9,7];
 
-      # should the application clients be recompiled?
-      if (# they belong to the user
-          $self->is_mutable &&= -w _
-            and
-          # new wrappers have been generated
-          ($self->so_timestamp=(stat _)[9]) < $wrapper_updated{defined($extension) ? $extension->dir."/$app_name" : $app_name}
-            ||
-          # a core application or one of the prerequisite extensions has been renewed (e.g. installed a new version)
-          (defined($extension) && seems_out_of_date($self->so_timestamp, $extension, $app, $perApp))) {
-         $modsize=compile($self, $app, $extension);
-      } else {
-         $modsize=(stat _)[7];
-      }
-
-   } elsif ($self->is_mutable) {
-      # this application/extension has not yet been built for the current architecture
-      require Polymake::Configure;
-
-      my $ext_dir;
-      if (defined($extension)) {
-         $ext_dir=$extension->dir;
-         if ($extension->is_bundled) {
-            $ext_dir =~ s{^\Q${InstallTop}\E}{\${ProjectTop}}o;
-         }
-      }
-      Configure::create_build_dir($self->build_dir,
-                                  (defined($extension) ? !$extension->is_bundled : $app->installTop ne $InstallTop) && $InstallTop,   # ProjectTop
-                                  $ext_dir);
-      $modsize=compile($self, $app, $extension);
+   } elsif (is_mutable_location($build_dir)) {
+      compile($build_dir);
+      ($self->so_timestamp, $mod_size)=(stat $self->so_name)[9,7];
 
    } else {
       die "Corrupt or incomplete installation: shared module ", $self->so_name, " missing\n";
    }
 
-   $perApp->functions_begin=@{$root->functions};
-   $perApp->embedded_rules_begin=@{$root->embedded_rules};
-   $perApp->duplicate_class_instances_begin=@{$root->duplicate_class_instances};
    # empty shared module is created when the application does not contain any client code
-   if ($modsize) {
-      $self->so_timestamp=(stat _)[9];
+   if ($mod_size) {
       load_shared_module($self->so_name);
    }
-   $perApp->functions_end=$#{$root->functions};
-   $perApp->embedded_rules_cnt=@{$root->embedded_rules}-$perApp->embedded_rules_begin;
-   $perApp->duplicate_class_instances_end=$#{$root->duplicate_class_instances};
 
    $self
 }
 
-sub seems_out_of_date {
-   my ($timestamp, $extension, $app, $perApp)=@_;
-
-   # We check for is_mutable in order to avoid endless and fruitless recompilations in developer mode,
-   # where the core application may often change independently of the extensions.
-   # !is_mutable normally means that the core application or a prerequisite extension is taken from a write-protected installed location.
-   # When the installed shared module has in fact changed since the last compilation of the own extension, then it is quite certain
-   # that also the entire installed source code has been updated, thus the recompilation of the own extension won't be in vain.
-   # However, the private wrappers should be recompiled even in developer mode, because the core library headers can be changed with every sync.
-
-   my $mod=$perApp->shared_modules->{$app->installTop};
-   my $out_of_date= defined($mod) && $timestamp < $mod->so_timestamp && ($extension==$private_wrapper_ext || !$mod->is_mutable);
-   unless ($out_of_date) {
-      foreach my $prereq (@{$extension->requires}) {
-         if (defined($mod=$perApp->shared_modules->{$prereq->dir}) && $timestamp < $mod->so_timestamp && ($extension==$private_wrapper_ext || !$mod->is_mutable)) {
-            $out_of_date=1;
-            last;
-         }
-      }
-   }
-   # @todo perform the reconfiguration?
-   # if ($out_of_date) {
-   # }
-   $out_of_date
-}
-
-sub compile {
-   my ($self, $app, $ext)=@_;
-   unless ($MAKE) {
-      require Polymake::Core::CPlusPlus_config;
-      configure_make($custom_handler);
-   }
-   my $errfile=new Tempfile();
-   my $debug_flag= $debug && "Debug=y";
-   warn_print( "Recompiling application ", $app->name, $ext && " in extension ".$ext->dir, ", please be patient..." );
-   system("$MAKE -C " . $self->build_dir . " all $debug_flag $MAKEFLAGS" . (!$Verbose::cpp && ">/dev/null") . " 2>$errfile.err")
-     and
-   die "shared module compilation failed; see the error log below\n\n", `cat $errfile.err`;
-
-   my $old_timestamp=$self->so_timestamp;
-   ($self->so_timestamp, my $size)=(stat $self->so_name)[9,7];
-   if ($old_timestamp==$self->so_timestamp) {
-      # touch the unchanged shared object to avoid further unnecessary make calls
-      utime(undef, undef, $self->so_name);
-   }
-   $size
-}
-
-sub build_top {
-   my $path=(shift)->so_name;
-   $path =~ s{/lib/[^/]+$}{};
-   $path
-}
 #######################################################################################
 package Polymake::Core::CPlusPlus::perApplication;
 
 use Polymake::Struct (
    [ 'new' => '$' ],
    [ '$application' => 'weak(#1)' ],
-   [ '$functions_begin' => '0' ],
-   [ '$functions_end' => '-1' ],
-   '$embedded_rules_begin',
-   [ '$embedded_rules_cnt' => '-1' ],
-   '@embedded_rules',           # transformed source lines whilst loading rulefiles
-   '%lacking_types',            # PropertyType => 1 for types with declared C++ binding but lacking generated wrappers
+   [ '$embedded_rules' => 'undef' ],  # transformed source lines whilst loading rulefiles
+   [ '$loading_embedded_rules' => '0' ],
+   '%lacking_types',                  # PropertyType => 1 for types with declared C++ binding but lacking generated wrappers
    '%lacking_templates',
    '@lacking_auto_functions',
    '@obsolete_auto_functions',
    '@duplicate_function_instances',
-   [ '$duplicate_class_instances_begin' => '0' ],
-   [ '$duplicate_class_instances_end' => '-1' ],
    '@duplicate_class_instances',
    '$will_update_sources',
    '%shared_modules',           # "top_dir" => SharedModule
@@ -1260,44 +1088,92 @@ use Polymake::Struct (
 #######################################################################################
 sub start_loading {
    my ($self, $extension)=@_;
-   if (defined (my $shared_mod=new SharedModule($self, $extension))) {
-      pick_embedded_rules($self, $shared_mod);
+   my $embedded_items_key=$self->application->name;
+   my $dummy_name;
+   if ($extension && $extension->is_bundled) {
+      $embedded_items_key .= ":".$extension->short_name;
+      $dummy_name=$embedded_items_key;
+   } elsif (defined (my $shared_mod=new SharedModule($self, $extension))) {
       $self->shared_modules->{$extension ? $extension->dir : $self->application->installTop}=$shared_mod;
+      $dummy_name=$shared_mod->so_name;
    }
-}
-#######################################################################################
-sub pick_embedded_rules {
-   my ($self, $shared_mod)=@_;
-   if ($self->embedded_rules_cnt > 0) {
-      do "c++:1:".$shared_mod->so_name;
+   my $embedded_rules=$root->embedded_rules->{$embedded_items_key};
+   if (defined($embedded_rules) && @$embedded_rules) {
+      $self->embedded_rules=$embedded_rules;
+      do "c++:1:$dummy_name";
+      $#$embedded_rules=-1;
       if ($@) {
-         $#{$self->embedded_rules}=-1;
-         $self->embedded_rules_cnt=-1;
+         undef $self->embedded_rules;
          die "Error in rules embedded in a C++ client:\n$@";
       }
    }
+}
+#######################################################################################
+sub raw_embedded_rules {
+   my ($self)=@_;
+   my @buffer;
+   my $cur_file="";
+   foreach (@{$self->embedded_rules}) {
+      if (my ($linecmd, $file)= /^(\#line\s+\d+)\s+"(.*)"/) {
+         if ($file eq $cur_file) {
+            # perl seems confused when it encounters the same source file in the consecutive lines
+            push @buffer, "$linecmd\n";
+         } else {
+            if ($cur_file =~ /\.hh?$/i) {
+               push @buffer, $_;
+            } elsif (@buffer) {
+               # previous source file finished
+               push @buffer, "} {\n", $_;
+            } else {
+               # first source file started
+               push @buffer, "{\n", $_;
+            }
+            $cur_file=$file;
+         }
+      } else {
+         do {
+            s{^.*\n}{}m;
+            push @buffer, $&;
+         } while (length($_));
+      }
+   }
+   # close the last source file
+   if (@buffer) {
+      push @buffer, "}\n";
+   }
+   undef $self->embedded_rules;
+   \@buffer
 }
 #######################################################################################
 sub end_loading {
    my ($self, $extension)=@_;
-   if (@{$self->embedded_rules}) {
+   if (defined $self->embedded_rules) {
       if ($Verbose::rules>1) {
          dbg_print( "reading rules embedded in C++ clients from ",
-                    $self->shared_modules->{$extension ? $extension->dir : $self->application->installTop}->so_name );
+                    $self->shared_modules->{$extension && !$extension->is_bundled ? $extension->dir : $self->application->installTop}->so_name );
       }
-      $self->embedded_rules_cnt=1;   # flag for add_auto_function
+      local_incr($self->loading_embedded_rules);
       do "c++:2:";
-      $self->embedded_rules_cnt=-1;
+      undef $self->embedded_rules;
       if ($@) {
-         $#{$self->embedded_rules}=-1;
          die "Error in rules embedded in a C++ client:\n$@";
       }
    }
-   bind_functions($self, $extension, $root->functions, $self->functions_begin, $self->functions_end);
-   $self->functions_begin=0;
-   $self->functions_end=-1;
-   $self->duplicate_class_instances_begin=0;
-   $self->duplicate_class_instances_end=-1;
+
+   my $embedded_items_key=$self->application->name;
+   if ($extension && $extension->is_bundled) {
+      $embedded_items_key .= ":" . $extension->short_name;
+   }
+   bind_functions($self, $extension, $root->functions->{$embedded_items_key});
+
+   if (defined (my $duplicates=$root->duplicate_class_instances->{$embedded_items_key})) {
+      push @{$self->duplicate_class_instances},
+           map {
+              $_->application=$self->application;
+              $_->extension=$extension;
+              $_ } splice @$duplicates;
+      ensure_update_sources($self);
+   }
 }
 #######################################################################################
 sub load_suspended {
@@ -1305,14 +1181,12 @@ sub load_suspended {
    if (@{$suspended->embedded_rules}) {
       if ($Verbose::rules>1) {
          dbg_print( "reading cross-application rules embedded in C++ clients from ",
-                    $self->shared_modules->{$suspended->extension ? $suspended->extension->dir : $self->application->installTop}->so_name );
+                    $self->shared_modules->{$suspended->extension && !$suspended->extension->is_bundled ? $suspended->extension->dir : $self->application->installTop}->so_name );
       }
       $self->embedded_rules=$suspended->embedded_rules;
-      $self->embedded_rules_cnt=1;   # flag for add_auto_function
       do "c++:3:";
-      $self->embedded_rules_cnt=-1;
+      undef $self->embedded_rules;
       if ($@) {
-         $#{$self->embedded_rules}=-1;
          die "Error in rules embedded in a C++ client:\n$@";
       }
    }
@@ -1321,30 +1195,13 @@ sub load_suspended {
 #######################################################################################
 sub load_private_wrapper {
    my ($self)=@_;
-   if (defined (my $shared_mod=$private_wrapper_ext && new SharedModule($self, $private_wrapper_ext))) {
+   if (defined($private_wrapper_ext) &&
+       -d $private_wrapper_ext->dir."/apps/".$self->application->name &&
+       defined (my $shared_mod=$private_wrapper_ext && new SharedModule($self, $private_wrapper_ext))) {
       $self->shared_modules->{$private_wrapper_ext->dir}=$shared_mod;
       local $Application::extension=$private_wrapper_ext;
       $self->end_loading;
    }
-}
-#######################################################################################
-# pseudo-file handle passed to RuleFilter transforming embedded rulefiles
-sub embedded_rules_handle {
-   my ($self)=@_;
-   my $lines=$self->embedded_rules_cnt;
-   $self->embedded_rules_cnt=0;
-   my $handle=Symbol::gensym;
-   select(select $handle);
-   tie *$handle, "Polymake::Core::CPlusPlus::EmbeddedRules", (splice @{$root->embedded_rules}, $self->embedded_rules_begin, $lines);
-   $handle
-}
-
-# INC subroutine retrieving transformed embedded rulefile lines
-sub get_transformed_embedded {
-   my ($maxlen, $self)=@_;
-   print STDERR "+>> ", $self->embedded_rules->[0] if $DebugLevel>3;
-   $_ .= shift @{$self->embedded_rules};
-   return length;
 }
 #######################################################################################
 my %builtin2proxy=( int => 'NumProxy', double => 'NumProxy', 'std::string' => 'StringProxy', bool => 'BoolProxy' );
@@ -1362,7 +1219,7 @@ sub add_type {
          if (ref($opts->builtin) eq "Polymake::Enum") {
             while (my ($key, $val)=each %{$opts->builtin}) {
                my $ref=readonly_deep(bless \$val, $proto->pkg);
-               namespaces::export_sub($proto->application->pkg, define_function($proto->application->pkg, $key, sub { $ref }));
+               define_function($proto->application->pkg, $key, sub { $ref });
             }
          }
       } else {
@@ -1563,7 +1420,7 @@ sub add_auto_function {
 
    } else {
       croak( "C++ function template without signature" ) unless defined $arg_types;
-      if ($self->embedded_rules_cnt > 0) {
+      if ($self->loading_embedded_rules) {
          $auto_func->embedded=$srcfile;
       }
       $auto_func->prepare($arg_types, $arg_attrs, $pkg);
@@ -1576,6 +1433,7 @@ sub add_auto_function {
       }
       check_twins($auto_func);
 
+      no warnings 'void';
       use namespaces::AnonLvalue '$is_lvalue';
       my $is_lvalue= ($auto_func->flags & ($func_is_lvalue|$func_is_lvalue_opt)) != 0;
       $code= defined($ext_code)
@@ -1615,9 +1473,15 @@ sub add_auto_function {
 #######################################################################################
 # private:
 sub bind_functions {
-   my ($self, $extension, $func_list, $begin, $end, $subst_for_temp_src)=@_;
+   my ($self, $extension, $func_list, $subst_for_temp_src)=@_;
+   unless (defined $func_list) {
+      if (defined $subst_for_temp_src) {
+         croak( "temporary file ", keys(%$subst_for_temp_src), " does not contain function definitions" );
+      }
+      return;
+   }
 
-   foreach my $descr (defined($begin) ? @{$func_list}[$begin..$end] : @$func_list) {
+   foreach my $descr (splice @$func_list) {
       next if defined($descr->cross_apps) && $descr->suspend($self, $extension);
 
       my $auto_func=$root->auto_functions->{$descr->name};
@@ -1686,7 +1550,7 @@ sub bind_functions {
             : $auto_func->inst_cache )
           &&= do {
                  unless (defined $subst_for_temp_src) {
-                    push @{$self->duplicate_function_instances}, new DuplicateInstance($descr,$self->application);
+                    push @{$self->duplicate_function_instances}, new DuplicateInstance($descr, $self->application);
                     # pull into existence, OperatorInstance->seen_in is not a hash!
                     $auto_func->seen_in->{$descr->source_file}+=0 if (ref($auto_func->seen_in));
                     ensure_update_sources($self);
@@ -1706,21 +1570,10 @@ sub bind_functions {
          dbg_print( "C++ function ", $descr->name, " defined in ", $descr->source_file,
                     " has no binding declared in the rules, treating as obsolete" ) if $Verbose::cpp;
       }
+
+      push @{$root->bound_functions}, $descr;   # preserve from destroying
    }
 
-   if (defined $subst_for_temp_src) {
-      splice @{$root->duplicate_class_instances}, $self->duplicate_class_instances_begin;
-      $self->duplicate_class_instances_end=$self->duplicate_class_instances_begin-1;
-
-   } elsif ($self->duplicate_class_instances_end >= $self->duplicate_class_instances_begin) {
-      push @{$self->duplicate_class_instances},
-           map {
-              $_->application=$self->application;
-              $_->extension=$extension;
-              $_
-           } @{$root->duplicate_class_instances}[$self->duplicate_class_instances_begin .. $self->duplicate_class_instances_end];
-      ensure_update_sources($self);
-   }
 }
 #######################################################################################
 sub ensure_update_sources {
@@ -1813,12 +1666,13 @@ sub generate_sources {
    @{$self->obsolete_auto_functions}=();
    @{$self->duplicate_function_instances}=();
 
-   my $t=time+1;
+   my %rebuild_enforced;
    foreach (values %files) {
       modify_source_file($_);
-      $wrapper_updated{$_->{wrapper_tag}}=$t;
+      my $rebuild_in=$_->{rebuild};
+      # remove the build success markers in all modes, not only in the current one
+      $rebuild_enforced{$rebuild_in} //= unlink(glob("$rebuild_in/../*/.apps.built"));
    }
-   $custom_handler->set('%wrapper_updated');
 }
 #######################################################################################
 sub prepare_h_file {
@@ -1849,8 +1703,9 @@ sub prepare_source_file {
                ? $lacking->extension->dir
                : $self->application->installTop;
 
-   my $shared_mod=$self->shared_modules->{$src_top}       # if the shared module has disappeared (e.g. after obliterate_extension),
-      or $in_private or return { };                       # this source file won't be registered in %files and thus avoids modification.
+   my $shared_mod=$self->shared_modules->{$lacking->extension && $lacking->extension->is_bundled ? $InstallTop : $src_top};
+   # if the extension has been obliterated, this source file won't be registered in %files and thus avoids modification.
+   return { } if defined($shared_mod) && !defined($shared_mod->so_name);
 
    if (!$true_filename) {
       if (defined($lacking->embedded)) {
@@ -1864,25 +1719,27 @@ sub prepare_source_file {
          set_extension($ext, $lacking->extension);
          if ($ext != $private_wrapper_ext) {
             # $ext->[0] == $private_wrapper_ext, cf. PropertyType::set_extension.
-            push @{$private_wrapper_ext->requires}, splice(@$ext, 1);
+            @{$private_wrapper_ext->requires}=uniq( @{$private_wrapper_ext->requires}, map { ($_, @{$_->requires}) } splice(@$ext, 1) );
             ensure_update_private_wrapper();
          }
       }
    }
 
    $files->{$file} ||= do {
-      my $wrapper_tag=($src_top ne $self->application->installTop && "$src_top/").$self->application->name;
+      my $rebuild_in= $in_private ? $private_wrapper_ext : $lacking->extension // $self->application->origin_extension;
+      if ($rebuild_in && !$rebuild_in->is_bundled) {
+         $rebuild_in=$rebuild_in->build_dir;
+      } else {
+         $rebuild_in=$InstallArch;
+      }
       my $vcs= $in_private ? $private_wrapper_ext->get_source_VCS : $lacking->extension ? $lacking->extension->get_source_VCS : $CoreVCS;
       if (-r $file && -w _) {
          if (defined($shared_mod) && defined($shared_mod->so_timestamp) && (stat _)[9] > $shared_mod->so_timestamp) {
-            $wrapper_updated{$wrapper_tag}=time+1;
-            $custom_handler->set('%wrapper_updated');
             my $so_name=$shared_mod->so_name;
             die <<".";
 Automatical update of the C++ source file $file refused:
 The shared module $so_name is out-of-date!
 It will be recompiled at the very beginning of the next polymake session.
-Alternatively, you may run `make' manually right now.
 .
          }
          my $status=$vcs->check_status($file);
@@ -1913,7 +1770,7 @@ Until this file is writable for you, you can't maintain persistent C++ bindings!
          create_source_file($file, $vcs, @template, app_name=>$self->application->name);
       }
 
-      { filename => $file, wrapper_tag => $wrapper_tag, vcs => $vcs,
+      { filename => $file, rebuild => $rebuild_in, vcs => $vcs,
         includes => [ $file =~ m{/src/perl/wrap-|\.h$} ? () : ("polymake/client.h") ],
         $in_private ? (extensions => { }) : (),
       }
@@ -1923,98 +1780,98 @@ Until this file is writable for you, you can't maintain persistent C++ bindings!
 sub compile_load_temp_shared_module {
    my ($self, $lacking, $type_proto)=@_;
    local $_;
+   require Polymake::Configure;
 
-   my ($src_top, $shared_mod);
    my @includes=$lacking->temp_include;
-   my $TempWrapperFor;
-   if ($includes[0] eq "TempWrapperFor") {
+   my ($includeSource);
+   if ($includes[0] eq "includeSource") {
       # The path to the source file harbouring the definition is firmly compiled in, thus referring to the original source tree.
       # Here we must guess where the source has eventually landed.
-      ($TempWrapperFor, my $embedded)=splice @includes, 0, 2;
-      (my $srcfile=$embedded) =~ s{^(.*?(/bundled/$id_re)?)/apps/$id_re/src/}{}o;
+      $includeSource=splice @includes, 0, 2;
+      (my $relpath=$includeSource) =~ s{^(.*?(/bundled/$id_re)?)(?=/apps/$id_re/src/)}{}o;
       my ($orig, $bundled)=($1, $2);
-      my $qual_srcfile=substr($embedded, length($orig));
       if ($bundled && defined (my $ext=$Extension::registered_by_dir{$InstallTop.$bundled})) {
          # source file belongs to the bundled extension
+         $includeSource=$InstallTop.$bundled.$relpath;
          set_extension($lacking->extension, $ext);
-         $src_top=$ext->dir;
-      } elsif (-f $embedded && defined (my $ext=$Extension::registered_by_dir{$orig})) {
-         # source file belongs to a private extension
-         $src_top=$orig;
-      } elsif (-f $self->application->installTop.$qual_srcfile) {
+      } elsif (-f $self->application->installTop.$relpath) {
          # source file belongs to the application root
-         $src_top=$self->application->installTop;
+         $includeSource=$self->application->installTop.$relpath;
+      } elsif (defined ($ext=$Extension::registered_by_dir{$orig}) && -f $includeSource) {
+         # source file belongs to a private extension
+
       } else {
          # source file belongs to an installed standalone extension
-         foreach my $ext (@{$self->application->extensions}) {
-            if (!$ext->is_bundled && -f $ext->dir.$qual_srcfile) {
+         foreach $ext (@{$self->application->extensions}) {
+            if (!$ext->is_bundled && -f $ext->dir.$relpath) {
                set_extension($lacking->extension, $ext);
-               $src_top=$ext->dir;
+               $includeSource=$ext->dir.$relpath;
+               undef $relpath;
                last;
             }
          }
+         defined($relpath)
+           and croak( "can't spot the current location of source file harbouring the definition of function ",
+                      $lacking->is_instance_of->name, "; initially located at $includeSource" );
       }
-      $src_top || croak( "can't spot the current location of source file harbouring the definition of function ",
-                         $lacking->is_instance_of->name, "; initially located at $embedded" );
-      $TempWrapperFor.="=$srcfile";
    } else {
       unshift @includes, "polymake/client.h";
    }
 
-   if (!$lacking->is_private && ref($lacking->extension) eq "ARRAY") {
-      # If several independent extensions are mixtured, the wrapper must be banned into the private area.
-      # But if exactly one of the extensions is stand-alone and writable, and all others are bundled,
-      # we can remedy it by adding the dependencies between extensions.
-      my @standalone=grep { !$_->is_bundled } @{$lacking->extension};
-      if (@standalone==1) {
-         my $ext=pop @standalone;
-         $src_top=$ext->dir;
-         $shared_mod=($self->shared_modules->{$src_top} ||= new SharedModule($self, $ext));
-         unless ($lacking->is_private = !$shared_mod->is_mutable) {
-            require Polymake::Core::InteractiveCommands;
-            require Polymake::Configure;
-            delete_from_list($lacking->extension, $ext);
-            $ext->add_prerequisites(@{$lacking->extension});
-            Configure::update_extension_build_dir($ext);
-            $lacking->extension=$ext;
+   # decide where to place the generated wrapper
+   if (!$lacking->is_private) {
+      if (ref($lacking->extension) eq "ARRAY") {
+         # If several independent extensions are mixtured, the wrapper must be banned into the private area.
+         # But if exactly one of the extensions is stand-alone and writable, and all others are bundled,
+         # we can remedy it by adding the dependencies between extensions.
+         my @standalone=grep { !$_->is_bundled } @{$lacking->extension};
+         if (@standalone==1) {
+            my $ext=pop @standalone;
+            unless ($lacking->is_private=!is_mutable_location($ext->build_dir)) {
+               require Polymake::Core::InteractiveCommands;
+               delete_from_list($lacking->extension, $ext);
+               $ext->add_prerequisites(@{$lacking->extension});
+               $lacking->extension=$ext;
+            }
+         } else {
+            $lacking->is_private=1;
          }
       } else {
-         $lacking->is_private=1;
-      }
-   }
-
-   if (!$lacking->is_private) {
-      $src_top //= defined($lacking->extension) ? $lacking->extension->dir : $self->application->installTop;
-      $shared_mod=($self->shared_modules->{$src_top} ||= new SharedModule($self, $lacking->extension));
-      if ($lacking->is_private = !$shared_mod->is_mutable) {
-         # The lacking function could be persistently instantiated in the public shared module if it were allowed to extend;
-         # maybe the extension using this function is mutable?
-         if (defined($lacking->used_in_extension)) {
-            my $preserve_ext=$lacking->extension;
-            set_extension($lacking->extension, $lacking->used_in_extension);
-            if ($lacking->extension == $lacking->used_in_extension) {
-               # the extension which uses the function is indeed dependent on the defining extension (or it was just a core function)
-               $src_top=$lacking->extension->dir;
-               $shared_mod=($self->shared_modules->{$src_top} ||= new SharedModule($self, $lacking->extension));
-               $lacking->is_private=!$shared_mod->is_mutable;
-            }
-            if ($lacking->is_private) {
-               # The using extension is not dependent on the defining one or is immutable.
-               # Restore the state and instantiate the wrapper in the private area
-               $lacking->extension=$preserve_ext;
+         my $host_extension= $lacking->extension // $self->application->origin_extension;
+         if ($lacking->is_private= !is_mutable_location($host_extension && !$host_extension->is_bundled ? $host_extension->build_dir : $InstallArch)) {
+            # The lacking function could be persistently instantiated in the public shared module if it were allowed to extend;
+            # maybe the extension using this function is mutable?
+            if (defined($lacking->used_in_extension) && $lacking->used_in_extension != $host_extension &&
+                !$lacking->used_in_extension->is_bundled && is_mutable_location($lacking->used_in_extension->build_dir)) {
+               my $preserve_ext=$lacking->extension;
+               set_extension($lacking->extension, $lacking->used_in_extension);
+               if ($lacking->extension == $lacking->used_in_extension) {
+                  # the extension which uses the function is indeed dependent on the defining extension (or it was just a core function)
+                  $lacking->is_private=0;
+               } else {
+                  # The using extension is not dependent on the defining one or is immutable.
+                  # Restore the state and instantiate the wrapper in the private area
+                  $lacking->extension=$preserve_ext;
+               }
             }
          }
       }
    }
 
-   unless ($MAKE) {
-      require Polymake::Core::CPlusPlus_config;
-      configure_make($custom_handler);
+   if ($lacking->is_private) {
+      if (!$private_wrapper_ext) {
+         if ($forbid_private_wrappers) {
+            croak( "Private wrapper extension is forbidden, can't compile this code:\n", $lacking->gen_temp_code($type_proto), "\n " );
+         }
+         create_private_wrapper();
+      }
    }
-   my $file=new Tempfile();
-   my $so_name=$file->rename.$dl_suffix;
 
-   open my $cc, ">$file.cc";
+   my $dir=new Tempdir();
+   my $so_file=new Tempfile();
+   my $so_name=$so_file->rename.".$DynaLoader::dl_dlext";
+
+   open my $cc, ">$dir/tmp_client.cc";
    print $cc <<".";
 #include <unistd.h>
 namespace { void delete_temp_file() __attribute__((destructor));
@@ -2026,52 +1883,46 @@ namespace { void delete_temp_file() __attribute__((destructor));
              "} } }\n";
    close $cc;
 
+   Configure::write_temp_build_ninja_file("$dir/build.ninja", $self->application, $lacking->extension,
+                                          $includeSource, "tmp_client", $so_name);
+
    warn_print( "Compiling temporary shared module, please be patient..." ) if $Verbose::cpp;
 
-   if ($lacking->is_private) {
-      unless ($private_wrapper_ext) {
-         if ($forbid_private_wrappers) {
-            croak( "Private wrapper extension is forbidden, can't compile this code:\n", $lacking->gen_temp_code($type_proto), "\n " );
-         }
-         create_private_wrapper();
-      }
-      $shared_mod=($self->shared_modules->{$private_wrapper_ext->dir} ||= new SharedModule($self, $private_wrapper_ext));
-   }
-
-   my $debug_flag= $debug && "Debug=y";
-   system(($Verbose::cpp>1 && "cat $file.cc >&2; ") .
-          "$MAKE -C " . $shared_mod->build_dir . " $so_name $debug_flag SharedModules=$file OwnShared=$so_name WrappersOnly= $TempWrapperFor ProcessDep=none " .
-          ($lacking->is_private && defined($lacking->extension) && "RequireExtensions='" . join(" ", map { $_->dir } map { ($_, @{$_->requires}) } is_object($lacking->extension) ? ($lacking->extension) : @{$lacking->extension}) . "'") .
-          ($Verbose::cpp ? ">&2 " : ">/dev/null") . " 2>$file.err")
+   system(($Verbose::cpp>1 && "cat $dir/tmp_client.cc >&2; ") .
+          "ninja -C $dir $so_name ".($Verbose::cpp ? ">&2" : ">/dev/null")." 2>$dir/err.log")
      and
-       die ($Verbose::cpp ? "Shared module compilation failed; see the error log below\n\n" . `cat $file.err` :
+       die ($Verbose::cpp ? "Shared module compilation failed; see the error log below\n\n" . `cat $dir/err.log` :
             "Shared module compilation failed; most likely due to a type mismatch.  Set the variable \$Polymake::User::Verbose::cpp to a positive value and repeat for more details.\n");
 
    if (defined $type_proto) {
       load_shared_module($so_name);
    } else {
-      my $functions_begin=@{$root->functions};
+      my $embedded_items_key=$self->application->name;
+      if (defined($lacking->extension) && $lacking->extension->is_bundled) {
+         $embedded_items_key .= ":" . $lacking->extension->short_name;
+      }
       load_shared_module($so_name);
-      bind_functions($self, undef, $root->functions, $functions_begin, $#{$root->functions},
-                     { "$file.cc" => ($lacking->is_private ? "$file.cc" : $lacking->is_instance_of->embedded || $lacking->source_file) });
+      bind_functions($self, $lacking->extension, $root->functions->{$embedded_items_key},
+                     { "tmp_client.cc" => ($lacking->is_private ? "tmp_client.cc" : $lacking->is_instance_of->embedded || $lacking->source_file) });
+
+      if (defined (my $embedded_rules=$root->embedded_rules->{$embedded_items_key})) {
+         $#$embedded_rules=-1;
+      }
+      if (defined (my $duplicates=$root->duplicate_class_instances->{$embedded_items_key})) {
+         $#$duplicates=-1;
+      }
    }
 }
 #######################################################################################
 sub obliterate_extension {
    my ($self, $ext, $entire_app)=@_;
    if (defined (my $shared_mod=$self->shared_modules->{$ext->dir})) {
-      delete $self->shared_modules->{$ext->dir};
-      if (defined (delete $wrapper_updated{$ext->dir."/".$self->application->name})) {
-         $custom_handler->set('%wrapper_updated');
-      }
+      undef $shared_mod->so_name;
    }
    if ($entire_app) {
       if ($self->will_update_sources) {
          $self->will_update_sources=0;
          forget AtEnd($self->application->name.":C++");
-      }
-      if (defined (delete $wrapper_updated{$self->application->name})) {
-         $custom_handler->set('%wrapper_updated');
       }
    }
 }
@@ -2079,21 +1930,22 @@ sub obliterate_extension {
 package Polymake::Core::CPlusPlus;
 
 declare $root;
-declare $typeinfo_re=qr{^typeinfo for };
-declare $wrapped_typeinfo_re=qr{^typeinfo for PolymakeTestWrap<(.*)>};
-declare $constructor_re=qr{::$id_re (?:\[.*?\])? \(\)$}xo;
-declare $wrapped_constructor_re=qr{^PolymakeTestWrap<(.*)>::PolymakeTestWrap (?:\[.*?\])? \(\)$}xo;
 
 use Polymake::Struct (
-   '@functions',
-   '@regular_functions',
-   '@embedded_rules',
-   '@duplicate_class_instances',
+   # The first three members are known to C++ class RegistratorQueue.
+   # Should a new registration queue become necesary, it should be added there as well.
+   # The hash key is 'APPNAME' or 'APPNAME.BUNDLED' for items defined in bundled extensions.
+   '%functions',
+   '%embedded_rules',
+   '%duplicate_class_instances',
+
    '%classes',
    '%builtins',
    '%templates',
    '%typeids',
    '%auto_functions',
+   '@regular_functions',
+   '@bound_functions',
    '$auto_default_constructor',
    '$auto_convert_constructor',
    '$auto_assignment',
@@ -2118,44 +1970,55 @@ push @UserSettings::add_custom_vars,
 sub {
    $custom_handler=$Custom->app_handler(__PACKAGE__);
 
-   declare $MAKE;
-   $custom_handler->add('$MAKE', <<'.', $Customize::state_config);
-# GNU make utility
-.
-   declare $MAKEFLAGS;
-   $custom_handler->add('$MAKEFLAGS', <<'.', $Customize::state_config);
-# Options for make utility (especially useful: -jN for parallel builds on multi-core machines)
-.
    declare %private_wrappers;
    $custom_handler->add('%private_wrappers', <<'.', $Customize::state_hidden | $Customize::state_noexport);
 # Locations of the automatically generated source code of C++/perl wrappers for private use.
 .
-   declare %wrapper_updated;
-   $custom_handler->add('%wrapper_updated', <<'.', $Customize::state_hidden | $Customize::state_noexport);
-# Timestamps of last changes made to the automatically generated source code of C++/perl wrappers
-.
 
    $custom_handler->cleanup;
 };
+
+sub compile {
+   my ($build_dir)=@_;
+   my $errfile=new Tempfile();
+   warn_print( "Recompiling in $build_dir, please be patient..." );
+   system("ninja -C $build_dir" . ($Verbose::cpp ? " -v" : " >/dev/null") . " 2>$errfile.err")
+     and
+   die "Compilation failed; see the error log below\n\n", `cat $errfile.err`;
+}
+
+sub recompile_extension {
+   my ($ext, $core_last_built)=@_;
+   my $last_built=-f $ext->build_dir."/.apps.built" && (stat _)[9];
+   if ($last_built < $core_last_built || grep { !$_->is_bundled && $last_built < $_->configured_at } @{$ext->requires}) {
+      unlink $ext->build_dir."/.apps.built" if $last_built>0;   # let recreate it with a fresh timestamp
+      compile($ext->build_dir);
+   }
+}
+
+# build_dir => boolean
+sub is_mutable_location {
+   $_[0] =~ m{/build(?:\.[^/]+)?/\w+$}
+}
 
 my $void_signature=[[0, 0], []];
 my $unary_op_signature=[[1, 1, '$'], ['*']];
 my $binary_op_signature=[[2, 2, qw($ $)], [qw(* *)]];
 
 sub init {
-   $root=&_new;
+   $root=_new(__PACKAGE__);
 
-   if ($ENV{POLYMAKE_DEBUG_CLIENTS}) {
+   if ($ENV{POLYMAKE_DEBUG_CLIENTS} || $ENV{POLYMAKE_CLIENT_SUFFIX}) {
       die <<".";
-Use of environment variable POLYMAKE_DEBUG_CLIENTS is deprecated.
-Please use POLYMAKE_CLIENT_SUFFIX=$ENV{POLYMAKE_DEBUG_CLIENTS} instead to enforce loading non-standard client modules.
+Use of environment variables POLYMAKE_DEBUG_CLIENTS and POLYMAKE_CLIENT_SUFFIX is discontinued.
+Please use POLYMAKE_BUILD_MODE=Debug to enforce loading client modules built in debug mode.
 Note that debug output in some clients only appears at high debug levels (-dd and higher).
 .
    }
 
-   my $suffix=$ENV{POLYMAKE_CLIENT_SUFFIX};
-   $debug= $suffix eq "-d";
-   $dl_suffix="$suffix.$DynaLoader::dl_dlext";
+   if ($DebugLevel) {
+      assign_max($Verbose::cpp, 2);
+   }
 
    # create the standard constructors right now
    my $dc=new Constructor;
@@ -2175,6 +2038,58 @@ Note that debug output in some clients only appears at high debug levels (-dd an
 
    $BigObject_cpp_options=new ObjectOptions(name=>"perl::Object", builtin=>1);
    $BigObjectArray_cpp_options=new ObjectOptions(name=>"Array<perl::Object>", builtin=>1);
+
+   # check for missing or outdated flags for successful builds
+   # this should not replace the full ninja functionality, in particular it does not chck for updated C++sources,
+   # but just for the most recent reconfiguration or wrapper generation
+   my $core_last_built=do {
+      if (is_mutable_location($InstallArch)) {
+         if (-f "$InstallArch/.apps.built") {
+            (stat _)[9];
+         } else {
+            compile($InstallArch);
+            (stat "$InstallArch/.apps.built")[9];
+         }
+      } else {
+         (stat "$InstallArch/lib")[9];
+      }
+   };
+
+   foreach my $ext (@Extension::active[$Extension::num_bundled..$#Extension::active]) {
+      if (is_mutable_location($ext->build_dir)) {
+         recompile_extension($ext, $core_last_built);
+      }
+   }
+
+   my $wrapper_key=private_wrapper_key();
+   if ($PrivateDir && defined (my $dir=$private_wrappers{$wrapper_key})) {
+      if (-d ($dir="$PrivateDir/$dir")) {
+         $private_wrapper_ext=new Extension($dir, "private:");
+         my $ext;
+         foreach my $prereq (@{$private_wrapper_ext->requires}) {
+            if (defined ($ext=$Extension::registered_by_URI{$prereq})
+                and $ext->is_active) {
+               $prereq=$ext;
+            } else {
+               filter_out_extension($dir, $prereq);
+               ensure_update_private_wrapper();
+               undef $prereq;
+            }
+         }
+
+         @{$private_wrapper_ext->requires}=uniq( map { defined($_) ? ($_, @{$_->requires}) : () } @{$private_wrapper_ext->requires} );
+         if ($root->update_private_wrapper) {
+            create_private_wrapper_build_trees();
+         } else {
+            $private_wrapper_ext->set_build_dir;
+         }
+         recompile_extension($private_wrapper_ext, $core_last_built);
+
+      } else {
+         delete $private_wrappers{$wrapper_key};
+         $custom_handler->set('%private_wrappers');
+      }
+   }
 }
 
 sub Polymake::Core::ObjectType::cppoptions { $BigObject_cpp_options }
@@ -2515,6 +2430,7 @@ sub create_assoc_methods {
          my $auto_func=new AutoFunction($name, $flags, undef, @options);
          $auto_func->prepare(@$signature, "Polymake", 1);
          $root->auto_functions->{$auto_func->wrapper_name}=$auto_func;
+         no warnings 'void';
          use namespaces::AnonLvalue '$is_lvalue';
          my $is_lvalue= ($flags & ($func_is_lvalue|$func_is_lvalue_opt)) != 0;
          my $code=$root->auto_assoc_methods->[$i]=sub { $is_lvalue; &{resolve_auto_function($auto_func, \@_)} };
@@ -2783,7 +2699,7 @@ sub create_methods {
    my $opts=$proto->cppoptions;
    $opts->descr=$descr;
 
-   my $symtab=get_pkg($proto->pkg);
+   my $symtab=get_symtab($proto->pkg);
    if ($descr->is_container) {
       $proto->toXML=\&XMLwriter::set_methods;
       if ($descr->is_assoc_container) {
@@ -2885,35 +2801,18 @@ sub missing_op {
 #######################################################################################
 sub load_shared_module {
    my ($so_name)=@_;
-   DynaLoader::dl_load_file($so_name, 0x01)
-      or die "Can't load shared module $so_name: ", DynaLoader::dl_error(), "\n";
+   unless (DynaLoader::dl_load_file($so_name, 0x01)) {
+      my $error=DynaLoader::dl_error();
+      $error =~ s/\x00$//;  # sometimes there is a stray NUL character at the end
+      $error =~ s/${so_name}:\s+//;
+      $error =~ s/undefined symbol: \K(\S+)/demangle($1)/e;
+      die "Can't load shared module $so_name: $error\n";
+   }
 }
 #######################################################################################
-sub init_private_wrapper {
-   if ($PrivateDir && defined (my $dir=$private_wrappers{$InstallArch})) {
-      if (-d ($dir="$PrivateDir/$dir")) {
-         $private_wrapper_ext=new Extension($dir, "private:");
-         my $ext;
-         foreach my $prereq (@{$private_wrapper_ext->requires}) {
-            if (defined ($ext=$Extension::registered_by_URI{$prereq})
-                and $ext->is_active) {
-               $prereq=$ext;
-            } else {
-               filter_out_extension($dir, $prereq);
-               ensure_update_private_wrapper();
-               undef $prereq;
-            }
-         }
-         if ($root->update_private_wrapper) {
-            @{$private_wrapper_ext->requires}=grep { defined($_) } @{$private_wrapper_ext->requires};
-            # update the make.conf file right now because it will be used for recompilation
-            write_private_wrapper_conf_make();
-         }
-      } else {
-         delete $private_wrappers{$InstallArch};
-         $custom_handler->set('%private_wrappers');
-      }
-   }
+sub private_wrapper_key {
+   (my $key=$InstallArch) =~ s{/build(\.[^/]+)? \K /\w+ $}{}x;
+   $key
 }
 
 sub create_private_wrapper {
@@ -2923,7 +2822,7 @@ sub create_private_wrapper {
    if ($PrivateDir) {
       if (-d "$PrivateDir/wrappers") {
          # remove pre-2.12.4 wrappers
-         File::Path::rmtree("$PrivateDir/wrappers");
+         File::Path::remove_tree("$PrivateDir/wrappers");
          foreach (my ($key, $dir)=each %private_wrappers) {
             -d "$PrivateDir/$dir" || delete $private_wrappers{$key};
          }
@@ -2932,31 +2831,32 @@ sub create_private_wrapper {
       for ($seq=0; -d ($dir="$PrivateDir/wrappers.$seq"); ++$seq) {
          if (string_list_index([ values %private_wrappers ], "wrappers.$seq") < 0) {
             # stray orphaned directory
-            File::Path::rmtree($dir);
+            File::Path::remove_tree($dir);
             last;
          }
       }
-      $private_wrappers{$InstallArch}="wrappers.$seq";
+      $private_wrappers{private_wrapper_key()}="wrappers.$seq";
       $custom_handler->set('%private_wrappers');
+      File::Path::make_path($dir);
    } else {
-      $dir=Tempfile->new_dir;
+      $dir=new Tempdir("till_exit");
    }
-   File::Path::mkpath($dir);
+   File::Path::make_path("$dir/apps");
    $private_wrapper_ext=new Extension($dir, "private:");
    $private_wrapper_ext->VCS=new SourceVersionControl::None($dir);
-   File::Path::mkpath("$dir/build.$Arch/lib");
-   write_private_wrapper_conf_make();
+   $private_wrapper_ext->set_build_dir;
+   create_private_wrapper_build_trees();
    ensure_update_private_wrapper();
 }
 
 sub ensure_update_private_wrapper {
    if ($PrivateDir && !$root->update_private_wrapper) {
       $root->update_private_wrapper=1;
-      add AtEnd("Private:C++", sub { write_private_wrapper_meta();  write_private_wrapper_conf_make(1)});
+      add AtEnd("Private:C++", \&update_private_wrapper_meta);
    }
 }
 
-sub write_private_wrapper_meta {
+sub update_private_wrapper_meta {
    my ($F, $F_k)=new OverwriteFile($private_wrapper_ext->dir."/polymake.ext");
    print $F <<".";
 # This pseudo-extension collects automatically generated C++/perl glue code
@@ -2969,31 +2869,23 @@ sub write_private_wrapper_meta {
       print $F "REQUIRE\n", map { ($_->URI, "\n") } @{$private_wrapper_ext->requires};
    }
    close $F;
+
+   create_private_wrapper_build_trees();
 }
 
-# preserve_time_stamp =>
-sub write_private_wrapper_conf_make {
-   my ($preserve_time_stamp)=@_;
-   my $filename=$private_wrapper_ext->dir."/build.$Arch/conf.make";
-   $preserve_time_stamp &&= -f $filename && (stat _)[9];
-   my ($F, $F_k)=new OverwriteFile($filename);
-   print $F "include $InstallArch/conf.make\n",
-            "RequireExtensions := ", join(" ", map { $_->dir } uniq(map { ($_, @{$_->requires}) } @{$private_wrapper_ext->requires})), "\n";
+sub create_private_wrapper_build_trees {
+   (my $build_root=$private_wrapper_ext->build_dir) =~ s{/build(?:\.[^/]+)? \K /\w+$}{}x;
+   -d $build_root or File::Path::make_path($build_root);
+   require Polymake::Configure;
+   my $conf_file="$build_root/config.ninja";
+   my ($F, $F_k)=new OverwriteFile($conf_file);
+   print $F "root=$InstallTop\n",
+            "extroot=", $private_wrapper_ext->dir, "\n",
+            "RequireExtensions=", Configure::list_prerequisite_extensions($private_wrapper_ext), "\n";
    close $F;
    undef $F_k;
-   if ($preserve_time_stamp) {
-      utime(undef, $preserve_time_stamp, $filename);
-   }
-}
-#######################################################################################
-sub mark_extension_for_rebuild {
-   my ($ext_dir)=@_;
-   my $t=time+1;
-   foreach (glob("$ext_dir/build.$Arch/apps/*")) {
-      s{/build.$Arch/apps/}{/};
-      $wrapper_updated{$_}=$t;
-   }
-   $custom_handler->set('%wrapper_updated');
+   Configure::load_config_vars();
+   Configure::create_extension_build_trees($private_wrapper_ext, $build_root);
 }
 #######################################################################################
 sub create_source_file {
@@ -3036,7 +2928,8 @@ my $cpp_start_namespace_re=qr{^\s*namespace +polymake\b};
 sub modify_source_file {
    my ($what)=@_;
    my $filename=$what->{filename};
-   open my $F, $filename;
+   open my $F, $filename
+     or die "can't read source file $filename: $!\n";
    my ($Fnew, $F_k)=new OverwriteFile($filename);
    local $_;
    my $inst_count=0;
@@ -3206,41 +3099,31 @@ sub filter_out_extension {
    my ($ext_dir, $obliterated)=@_;
    foreach my $app_dir (glob("$ext_dir/apps/*")) {
       my ($app_name)= $app_dir =~ $filename_re;
-      my ($removed, $survived);
+      my $keep;
       opendir my $SRCDIR, "$app_dir/src/perl";
       while (my $entry=readdir $SRCDIR) {
          if (-f (my $src="$app_dir/src/perl/$entry")) {
-            my $kill;
-            open my $SRC, $src;
+            my $remove;
+            open my $SRC, $src
+              or die "can't read source file $src: $!\n";
             local $_;
             while (<$SRC>) {
                if (m{^//\s*ext:\s*$obliterated\s*$}) {
-                  $kill=1; last;
+                  $remove=1; last;
                } elsif (m{(?:$cpp_include_re|$cpp_start_namespace_re)}o) {
                   last;
                }
             }
             close $SRC;
-            if ($kill) {
-               unlink $src or die "can't remove obsolete wrappers $src: $!\n";
-               $removed=1;
+            if ($remove) {
+               unlink($src) or die "can't remove obsolete wrappers $src: $!\n";
             } else {
-               $survived=1;
+               $keep=1;
             }
          }
       }
       closedir $SRCDIR;
-      if ($removed) {
-         if ($survived) {
-            $wrapper_updated{"$ext_dir/$app_name"}=time+1;
-         } else {
-            delete $wrapper_updated{"$ext_dir/$app_name"};
-            File::Path::rmtree("$ext_dir/build.$Arch/apps/$app_name");
-            File::Path::rmtree("$ext_dir/apps/$app_name");
-         }
-         unlink glob("$dir/build.$Arch/lib/${app_name}{,-*}.$DynaLoader::dl_dlext");
-         $custom_handler->set('%wrapper_updated');
-      }
+      $keep or File::Path::remove_tree("$ext_dir/apps/$app_name");
    }
 }
 #######################################################################################

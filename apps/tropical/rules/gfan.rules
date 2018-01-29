@@ -1,11 +1,6 @@
-#  Copyright (c) 2012
-#  by authors as mentioned on:
-#  https://github.com/lkastner/polymake_toric/wiki/Authors
-#  
-#  Project home:
-#  https://github.com/lkastner/polymake_toric
-#
-#  For licensing we cite the original Polymake code:
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of the GNU General Public License as published by the
@@ -16,7 +11,12 @@
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-
+#-------------------------------------------------------------------------------
+#  Contributed by authors as mentioned on:
+#  https://github.com/lkastner/polymake_toric/wiki/Authors
+#
+#  Project home:
+#  https://github.com/lkastner/polymake_toric
 
 REQUIRE fan::gfan.rules
 
@@ -57,15 +57,8 @@ CONFIGURE {
 user_function gfan_tropicalintersection(ideal::Ideal) {
    my ($I) = @_;
    my $tempfile=new Tempfile;
-
-   # Writing data to file:
-   write_ideal_to_file($tempfile, $I);
-   
-   # Accessing gfan:
-   # print "Computing tropical intersecton\n";
-   system "$gfan_tropicalintersection --xml <$tempfile.in >$tempfile.poly";
-   # print "Output written.\n";
-   return gfan_fix_lineality_space($tempfile);
+   my $input=fan::gfan_print_ideal($tempfile, $I);
+   return gfan_fix_lineality_space(fan::run_gfan("$gfan_tropicalintersection <$input"));
 }
 
 # @category gfan
@@ -76,15 +69,8 @@ user_function gfan_tropicalintersection(ideal::Ideal) {
 user_function gfan_tropicalhypersurface(Polynomial) {
    my ($g) = @_;
    my $tempfile=new Tempfile;
-
-   # Writing data to file:
-   write_ideal_to_file($tempfile, new ideal::Ideal(GENERATORS=>[$g]));
-
-   # Accessing gfan:
-   # It should be checked whether gfan_groebnerbla can really be left out.
-   system "$gfan_tropicalhypersurface --xml <$tempfile.in >$tempfile.poly 2>/dev/null";
-   
-   return gfan_fix_lineality_space($tempfile);
+   my $input=fan::gfan_print_ideal($tempfile, new ideal::Ideal(GENERATORS=>[$g]));
+   return gfan_fix_lineality_space(fan::run_gfan("$gfan_tropicalhypersurface <$input"));
 }
 
 
@@ -97,44 +83,25 @@ user_function gfan_tropicalhypersurface(Polynomial) {
 user_function gfan_tropicalvariety_of_prime(ideal::Ideal) {
    my ($I) = @_;
    my $tempfile=new Tempfile;
-
-   # Writing data to file:
-   write_ideal_to_file($tempfile, $I);
-   
-   # Accessing gfan:
-   # print "Buchberger\n";
-   # Commented out, probably we don't need that. rtfm
-   #system "$gfan_buchberger <$tempfile.homog >$tempfile.gr";
-   # print "Starting cone\n";
-   system "$gfan_tropicalstartingcone <$tempfile.in >$tempfile.st";
-   # print "Traversing\n";
-   system "$gfan_tropicaltraverse --xml <$tempfile.st >$tempfile.poly";
-
-   return gfan_fix_lineality_space($tempfile);
+   my $input=fan::gfan_print_ideal($tempfile, $I);
+   return gfan_fix_lineality_space(fan::run_gfan("$gfan_tropicalstartingcone <$input 2>/dev/null | $gfan_tropicaltraverse"));
 }
 
 # @category gfan
 # Calls gfan_tropicalbruteforce for a homogeneous ideal.
 # If the ideal contains a monomial, gfan will return an empty object and the xslt parsing fails. We do not catch this for you.
 # @param ideal::Ideal I homogeneous ideal
-# @return fan::SymmetricFan
+# @return fan::PolyhedralFan
 user_function gfan_tropicalbruteforce(ideal::Ideal) {
    my ($I) = @_;
    my $tempfile=new Tempfile;
-
-   # Writing data to file:
-   write_ideal_to_file($tempfile, $I);
-   
-   # Accessing gfan:
-   system "$gfan_tropicalbruteforce --xml < $tempfile.in >$tempfile.poly 2>/dev/null";
-
-   return User::load("$tempfile.poly");
+   my $input=fan::gfan_print_ideal($tempfile, $I);
+   return fan::run_gfan("$gfan_tropicalbruteforce <$input");
 }
 
 # Tropical cycle needs to mod out 1,1...1, unable to do that in xslt.
-sub gfan_fix_lineality_space{
-   my($tempfile) = @_;
-   my $gfan_out= User::load("$tempfile.poly");
+sub gfan_fix_lineality_space {
+   my ($gfan_out) = @_;
 
    my $lineality = new Matrix($gfan_out->LINEALITY_SPACE);
    canonicalize_scalar_to_leading_zero($lineality->minor(All,~[0]));
@@ -151,18 +118,6 @@ sub gfan_fix_lineality_space{
    }
 
    return $result;
-}
-
-
-sub write_ideal_to_file {
-   my($tempfile, $ideal) = @_;
-   open(my $input, ">$tempfile.in") or die "Can't create temporary file $tempfile.in: $!";
-   print $input "Q[";
-   print $input join(",", monomials($ideal->N_VARIABLES));
-   print $input "]{\n";
-   print $input join(",",@{$ideal->GENERATORS});
-   print $input "\n}";
-   close $input;
 }
 
 

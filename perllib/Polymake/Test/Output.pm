@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake::Test::Output;
 
@@ -45,7 +46,7 @@ sub before_run {
    open my $saved_STDOUT, ">&=STDOUT";
    $self->handle=$saved_STDOUT;
    close STDOUT;
-   open STDOUT, ">", \($self->buffer);
+   open STDOUT, ">:utf8", \($self->buffer);
 }
 
 sub after_run {

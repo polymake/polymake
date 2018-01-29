@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,8 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
+use feature 'state';
 
 package Polymake::User;
 
@@ -23,8 +25,12 @@ declare $application;
 sub application {
    if (@_>1) {
       die "usage: application [ \"name\" ]\n";
-   } elsif (@_) {
-      my $new_app=shift;
+   } elsif (my ($new_app)=@_) {
+
+      # This magic provides automatic loading of applications when they are first mentioned
+      # as a prefix of a user function in the shell input, in a script, documentation example, or tutorial.
+      state $register_autoload=namespaces::set_autolookup(\&Core::Application::try_auto_load);
+
       if (defined wantarray) {
          if (ref($new_app)) {
             warn_print( "application() call without effect as the application ", $new_app->name, " already loaded" );
@@ -40,22 +46,12 @@ sub application {
          }
          $application=$new_app;
          readonly($application);
-         namespaces::import_subs_from($_->eval_expr) for ($application, values %{$application->used});
       }
    } else {
       # tell the current application
       $application;
    }
 }
-
-namespaces::set_autolookup(
-  sub {
-     my ($pkg)=@_;
-     if ($pkg =~ /^($id_re)::\w/o) {
-        my $app_name=$1;
-        !lookup Core::Application($app_name) && defined(try_add Core::Application($app_name));
-     }
-  });
 
 #################################################################################
 sub include {
@@ -282,11 +278,18 @@ sub script {
       }
    }
 }
+###############################################################################################
+sub export_configured {
+   my $filename=shift;
+   my $opts= @_==1 && ref($_[0]) eq "HASH" ? shift : { @_ };
+   replace_special_paths($filename);
+   $Custom->export($filename, $opts, $Prefs->custom);
+}
 #################################################################################
 # prepare for custom variables and preferences
 
 package Polymake::User::Verbose;
-*Polymake::Verbose::=get_pkg(__PACKAGE__);
+*Polymake::Verbose::=get_symtab(__PACKAGE__);
 
 push @Core::UserSettings::add_custom_vars,
 sub {

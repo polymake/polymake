@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,6 +18,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
+#include "polymake/SparseMatrix.h"
 #include "polymake/Vector.h"
 
 namespace polymake { namespace polytope { namespace {
@@ -30,5 +31,7 @@ namespace polymake { namespace polytope { namespace {
 
    FunctionInstance4perl(regular_subdivision_T_X_X, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Vector< Rational > >);
    FunctionInstance4perl(regular_subdivision_T_X_X, QuadraticExtension< Rational >, perl::Canned< const Matrix< QuadraticExtension< Rational > > >, perl::Canned< const Vector< QuadraticExtension< Rational > > >);
+   FunctionInstance4perl(regular_subdivision_T_X_X, Rational, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >, perl::Canned< const Vector< Rational > >);
+   FunctionInstance4perl(regular_subdivision_T_X_X, double, perl::Canned< const Matrix< double > >, perl::Canned< const Vector< double > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

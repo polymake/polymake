@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -28,12 +28,6 @@ namespace polymake { namespace group { namespace {
       WrapperReturn( (orbits_of_coordinate_action<T0>(arg0, arg1.get<T1>())) );
    };
 
-   template <typename T0=void>
-   FunctionInterface4perl( all_group_elements_x ) {
-      perl::Value arg0(stack[0]);
-      WrapperReturn( (all_group_elements(arg0)) );
-   };
-
    template <typename T0, typename T1>
    FunctionInterface4perl( are_in_same_orbit_x_X_X, T0,T1 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]), arg2(stack[2]);
@@ -52,7 +46,6 @@ namespace polymake { namespace group { namespace {
    }
    FunctionWrapperInstance4perl( pm::Array<pm::Set<int, pm::operations::cmp>> (perl::Object) );
 
-   FunctionInstance4perl(all_group_elements_x);
    FunctionInstance4perl(are_in_same_orbit_x_X_X, perl::Canned< const Vector< int > >, perl::Canned< const Vector< int > >);
    FunctionWrapper4perl( perl::Object (pm::Array<std::string> const&, int) ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
@@ -87,5 +80,11 @@ namespace polymake { namespace group { namespace {
    FunctionWrapperInstance4perl( pm::Array<pm::hash_set<int>> (perl::Object) );
 
    FunctionInstance4perl(orbits_of_coordinate_action_T_x_X, Integer, perl::Canned< const Matrix< Integer > >);
+   FunctionWrapper4perl( pm::Array<pm::Array<int>> (perl::Object) ) {
+      perl::Value arg0(stack[0]);
+      IndirectWrapperReturn( arg0 );
+   }
+   FunctionWrapperInstance4perl( pm::Array<pm::Array<int>> (perl::Object) );
+
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

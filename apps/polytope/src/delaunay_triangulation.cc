@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -64,19 +64,19 @@ Array<Set<int> > delaunay_triangulation(perl::Object p)
 }
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
-                          "# Compute the Delaunay triangulation of the given [[SITES]] of a VoronoiDiagram //V//. If the sites are"
+                          "# Compute the Delaunay triangulation of the given [[SITES]] of a VoronoiPolyhedron //V//. If the sites are"
                           "# not in general position, the non-triangular facets of the Delaunay subdivision are"
                           "# triangulated (by applying the beneath-beyond algorithm)."
-                          "# @param VoronoiDiagram V"
+                          "# @param VoronoiPolyhedron V"
                           "# @return Array<Set<Int>>"
-                          "# @example [prefer cdd] > $VD = new VoronoiDiagram(SITES=>[[1,1,1],[1,0,1],[1,-1,1],[1,1,-1],[1,0,-1],[1,-1,-1]]);"
+                          "# @example [prefer cdd] > $VD = new VoronoiPolyhedron(SITES=>[[1,1,1],[1,0,1],[1,-1,1],[1,1,-1],[1,0,-1],[1,-1,-1]]);"
                           "# > $D = delaunay_triangulation($VD);"
                           "# > print $D;"
                           "# | {0 1 3}"
                           "# | {1 3 4}"
                           "# | {1 2 4}"
                           "# | {2 4 5}",
-                          "delaunay_triangulation<Scalar>(VoronoiDiagram<Scalar>)");
+                          "delaunay_triangulation<Scalar>(VoronoiPolyhedron<Scalar>)");
 } }
 
 // Local Variables:

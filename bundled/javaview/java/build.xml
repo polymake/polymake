@@ -6,15 +6,12 @@
   <target name="init">
     <!-- Create the time stamp -->
     <tstamp/>
-    <mkdir dir="${build.dir}/java" />
-    <condition property="debug" value="on" else="off">
-      <available file="testscenarios" filepath="${polymake.top}" type="dir" />
-    </condition>
+    <mkdir dir="${build.dir}/bundled/javaview/java" />
   </target>
 
   <path id="compile.classpath">
     <fileset dir="${javaview.path}/jars" includes="*.jar" erroronmissingdir="yes" />
-    <fileset dir="${jar.dir}" includes="polymake_java.jar" erroronmissingdir="yes" />
+    <fileset dir="${build.dir}/jars" includes="polymake_java.jar" erroronmissingdir="yes" />
   </path>
 
   <target name="compile" depends="init">
@@ -22,14 +19,14 @@
       <javac
              executable="${javac}"
              srcdir="src"
-             destdir="${build.dir}/java"
+             destdir="${build.dir}/bundled/javaview/java"
              failonerror="true"
              debug="${debug}"
              encoding="UTF8">
         <include name="${package.prefix}/**"/>
         <classpath refid="compile.classpath"/>
       </javac>
-      <copy todir="${build.dir}/java"
+      <copy todir="${build.dir}/bundled/javaview/java"
             preservelastmodified="yes">
         <fileset
                 dir="src"
@@ -40,16 +37,17 @@
   </target>
 
   <target name="all" depends="compile">
-    <jar destfile="${jar.dir}/${jar.name}">
+    <jar destfile="${build.dir}/jars/${jar.name}">
         <fileset
-                 dir="${build.dir}/java"
+                 dir="${build.dir}/bundled/javaview/java"
         	 includes="${package.prefix}/**" />
-      </jar>
+    </jar>
+    <touch file="${build.dir}/jars/${jar.name}" />
   </target>
 
   <target name="clean">
     <delete quiet="true">
-      <fileset dir="${build.dir}/java" />
+      <fileset dir="${build.dir}/bundled/javaview/java" />
     </delete>
   </target>
 </project>

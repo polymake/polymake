@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,13 +13,29 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+function induced_orbits<Scalar>(Cone<Scalar> $$ { homog_action=>0 }) {
+    my ($c, $action_name, $generator_name, $options) = @_;
+    return group::induced_orbits_impl($c, $action_name, $generator_name, (new Scalar()), $options);
+}
+
+function induced_orbits_on_vectors<Scalar>(Array<Matrix<Scalar>>, Matrix<Scalar>) {
+    my ($gens, $vecs) = @_;
+    return group::induced_orbits_on_vectors_impl<Scalar>($gens, $vecs);
+}
+   
+
 object Cone {
 
    # @category Symmetry
    property GROUP : group::Group : multiple {
 
       # @category Symmetry
-      property MATRIX_GROUP_ACTION : group::MatrixGroupActionOnVectors<Scalar>;
+       property MATRIX_ACTION : group::MatrixActionOnVectors<Scalar> {
+
+           # @category Symmetry
+           property RAYS_ORBITS = override VECTORS_ORBITS;
+
+       };
 
       # @category Symmetry
       property REPRESENTATIVE_RAYS : Matrix<Scalar>;
@@ -38,8 +54,8 @@ object Cone {
       weight 1.10;
 
       rule CONJUGACY_CLASS_SIZES : RAYS_ACTION.CONJUGACY_CLASSES | FACETS_ACTION.CONJUGACY_CLASSES | \
-                                   HOMOGENEOUS_COORDINATE_ACTION.CONJUGACY_CLASSES | SET_ACTION.CONJUGACY_CLASSES {
-         my $arr = $this->give("RAYS_ACTION.CONJUGACY_CLASSES | FACETS_ACTION.CONJUGACY_CLASSES | HOMOGENEOUS_COORDINATE_ACTION.CONJUGACY_CLASSES | SET_ACTION.CONJUGACY_CLASSES");
+                                   HOMOGENEOUS_COORDINATE_ACTION.CONJUGACY_CLASSES | SET_ACTION.CONJUGACY_CLASSES | MATRIX_ACTION.CONJUGACY_CLASSES {
+         my $arr = $this->give("RAYS_ACTION.CONJUGACY_CLASSES | FACETS_ACTION.CONJUGACY_CLASSES | HOMOGENEOUS_COORDINATE_ACTION.CONJUGACY_CLASSES | SET_ACTION.CONJUGACY_CLASSES | MATRIX_ACTION.CONJUGACY_CLASSES");
          $this->CONJUGACY_CLASS_SIZES = [ map {$_->size} @{$arr} ];
       }
       weight 1.10;
@@ -55,8 +71,8 @@ object Cone {
       }
       weight 1.10;
 
-      rule MATRIX_GROUP_ACTION.IRREDUCIBLE_DECOMPOSITION : MATRIX_GROUP_ACTION.CHARACTER, CHARACTER_TABLE, CONJUGACY_CLASS_SIZES, ORDER {
-         $this->MATRIX_GROUP_ACTION->IRREDUCIBLE_DECOMPOSITION = group::irreducible_decomposition($this->MATRIX_GROUP_ACTION->CHARACTER, $this);
+      rule MATRIX_ACTION.IRREDUCIBLE_DECOMPOSITION : MATRIX_ACTION.CHARACTER, CHARACTER_TABLE, CONJUGACY_CLASS_SIZES, ORDER {
+         $this->MATRIX_ACTION->IRREDUCIBLE_DECOMPOSITION = group::irreducible_decomposition($this->MATRIX_ACTION->CHARACTER, $this);
       }
       weight 1.10;
 
@@ -125,103 +141,79 @@ object Cone {
    }
    weight 1.10;
 
+   rule GROUP.MATRIX_ACTION.RAYS_ORBITS : GROUP.MATRIX_ACTION.GENERATORS, RAYS {
+       $this->GROUP->MATRIX_ACTION->RAYS_ORBITS = group::induced_orbits_on_vectors_impl($this->GROUP->MATRIX_ACTION->GENERATORS, $this->RAYS);
+   }
+   weight 2.10;
+
    #
    # induce actions from others
    #
 
-   method induce_action($$$$; $=0) {
-      my ($this, $from_action, $on_section, $name, $desc, $homogeneous_action) = @_;
-      my $a = new group::PermutationAction($name);
-      $a->GENERATORS = group::induced_permutations($this->GROUP->$from_action->GENERATORS, $this->$on_section, homogeneous_action=>$homogeneous_action);
-      if (defined(my $cc = $this->lookup("GROUP." . $from_action . ".CONJUGACY_CLASS_REPRESENTATIVES"))) {
-         $a->CONJUGACY_CLASS_REPRESENTATIVES = group::induced_permutations($cc, $this->$on_section, homogeneous_action=>$homogeneous_action);
-      }
-      $a->description = $desc;
-      return $a;
-   }
-
-
    #
-   # Generate RAYS_ACTION
+   # induce RAYS_ACTION
    #
    rule GROUP.INPUT_RAYS_ACTION : GROUP.HOMOGENEOUS_COORDINATE_ACTION, INPUT_RAYS {
-      $this->GROUP->INPUT_RAYS_ACTION = $this->induce_action("HOMOGENEOUS_COORDINATE_ACTION", "INPUT_RAYS", "input_ray_action", "induced from coordinate action", 1);
+      $this->GROUP->INPUT_RAYS_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "INPUT_RAYS", "input_ray_action", "induced from coordinate action", 1);
    }
    weight 1.10;
 
    rule GROUP.RAYS_ACTION : GROUP.FACETS_ACTION, FACETS_THRU_RAYS {
-      $this->GROUP->RAYS_ACTION = $this->induce_action("FACETS_ACTION", "FACETS_THRU_RAYS", "ray_action", "induced from facet action", 0);
+      $this->GROUP->RAYS_ACTION = group::induce_permutation_action($this, "FACETS_ACTION", "FACETS_THRU_RAYS", "ray_action", "induced from facet action", 0);
    }
    weight 1.10;
 
    rule GROUP.RAYS_ACTION : GROUP.HOMOGENEOUS_COORDINATE_ACTION, RAYS {
-      $this->GROUP->RAYS_ACTION = $this->induce_action("HOMOGENEOUS_COORDINATE_ACTION", "RAYS", "ray_action", "induced from homogeneous coordinate action", 1);
+      $this->GROUP->RAYS_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "RAYS", "ray_action", "induced from homogeneous coordinate action", 1);
    }
    weight 1.10;
 
 
    #
-   # Generate FACETS_ACTION
+   # induce FACETS_ACTION
    #
    rule GROUP.FACETS_ACTION : GROUP.RAYS_ACTION, RAYS_IN_FACETS {
-      $this->GROUP->FACETS_ACTION = $this->induce_action("RAYS_ACTION", "RAYS_IN_FACETS", "facet_action", "induced from ray action", 0);
+      $this->GROUP->FACETS_ACTION = group::induce_permutation_action($this, "RAYS_ACTION", "RAYS_IN_FACETS", "facet_action", "induced from ray action", 0);
    }
    weight 1.10;
 
    rule GROUP.FACETS_ACTION : GROUP.HOMOGENEOUS_COORDINATE_ACTION, FACETS {
-      $this->GROUP->FACETS_ACTION = $this->induce_action("HOMOGENEOUS_COORDINATE_ACTION", "FACETS", "facet_action", "induced from homogeneous coordinate action", 1);
+      $this->GROUP->FACETS_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "FACETS", "facet_action", "induced from homogeneous coordinate action", 1);
    }
    weight 1.10;
 
 
+   #
+   # induce MATRIX_ACTION
+   #
+   rule GROUP.MATRIX_ACTION : GROUP.INPUT_RAYS_ACTION, INPUT_RAYS {
+       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "INPUT_RAYS_ACTION", "INPUT_RAYS", new Matrix<Scalar>());
+   }
+
+   rule GROUP.MATRIX_ACTION : GROUP.RAYS_ACTION, RAYS {
+       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "RAYS_ACTION", "RAYS", new Matrix<Scalar>());
+   }
+
+   rule GROUP.MATRIX_ACTION : GROUP.INEQUALITIES_ACTION, INEQUALITIES {
+       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "INEQUALITIES_ACTION", "INEQUALITIES", new Matrix<Scalar>());
+   }
+
+   rule GROUP.MATRIX_ACTION : GROUP.FACETS_ACTION, FACETS {
+       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "FACETS_ACTION", "FACETS", new Matrix<Scalar>());
+   }
+   
    #
    # Others
    #
 
    rule GROUP.INEQUALITIES_ACTION : GROUP.HOMOGENEOUS_COORDINATE_ACTION, INEQUALITIES {
-      $this->GROUP->INEQUALITIES_ACTION = $this->induce_action("HOMOGENEOUS_COORDINATE_ACTION", "INEQUALITIES", "inequalities_action", "induced from homogeneous coordinate action", 1);
+      $this->GROUP->INEQUALITIES_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "INEQUALITIES", "inequalities_action", "induced from homogeneous coordinate action", 1);
    }
    weight 1.10;
 
    #
    # Orbits induced by coordinate actions
    #
-
-   function induced_orbits<Scalar>(Cone<Scalar> $$ { homog_action=>0 }) {
-      my ($c, $action_name, $generator_name, $options) = @_;
-      my $n = 0;
-      my @reps = ();
-      my @orbits = ();
-      my @pts_in_orbit_order = ();
-      my $all_pts = new HashSet<Vector<Scalar>>;
-      foreach(@{$c->GROUP->$action_name->$generator_name}) {
-         my $one_orbit = ($options->{homog_action} == 0)
-            ? group::orbit<group::on_nonhomog_container>($c->GROUP->$action_name->GENERATORS, new Vector<Scalar>($_))
-            : group::orbit<group::on_container>($c->GROUP->$action_name->GENERATORS, new Vector<Scalar>($_));
-         $all_pts += $one_orbit;
-         if ($n == $all_pts->size()) {
-            next;
-         }
-         push @reps, new Vector<Scalar>($one_orbit->[0]);
-
-         my $orbit_indices = new HashSet<Int>;
-         foreach($n..$n+$one_orbit->size()-1) {
-            $orbit_indices += $_;
-         }
-         push @orbits, $orbit_indices;
-
-         foreach(@{$one_orbit}) {
-            push @pts_in_orbit_order, new Vector<Scalar>($_);
-         }
-
-         $n += $one_orbit->size();
-      }
-      my $a = new group::PermutationAction;
-      $a->ORBITS = \@orbits;
-      $a->EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX = new Matrix<Scalar>(\@reps);
-      $a->description = "induced from $action_name";
-      return ((new Matrix<Scalar>(\@pts_in_orbit_order)), $a);
-   }
 
    rule INPUT_RAYS, GROUP.INPUT_RAYS_ACTION.ORBITS, GROUP.INPUT_RAYS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, GROUP.HOMOGENEOUS_COORDINATE_ACTION.INPUT_RAYS_GENERATORS {
       my ($pts, $a) = induced_orbits($this, "HOMOGENEOUS_COORDINATE_ACTION", "INPUT_RAYS_GENERATORS", homog_action => 1);
@@ -231,6 +223,14 @@ object Cone {
    weight 2.10;
 #    incurs PointsPerm;
 
+   rule INPUT_RAYS, GROUP.INPUT_RAYS_ACTION.ORBITS, GROUP.INPUT_RAYS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.MATRIX_ACTION.GENERATORS, GROUP.MATRIX_ACTION.INPUT_RAYS_GENERATORS {
+      my ($pts, $a) = induced_orbits($this, "MATRIX_ACTION", "INPUT_RAYS_GENERATORS", homog_action => 0);
+      $this->INPUT_RAYS = $pts;
+      $this->GROUP->INPUT_RAYS_ACTION = $a;
+   }
+   weight 2.10;
+#    incurs PointsPerm;
+   
    rule RAYS, GROUP.RAYS_ACTION.ORBITS, GROUP.RAYS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, GROUP.HOMOGENEOUS_COORDINATE_ACTION.RAYS_GENERATORS {
       my ($pts, $a) = induced_orbits($this, "HOMOGENEOUS_COORDINATE_ACTION", "RAYS_GENERATORS", homog_action => 1);
       $this->RAYS = $pts;
@@ -265,8 +265,10 @@ object Polytope {
 
    property GROUP {
 
+      # @category Symmetry
       property VERTICES_ACTION = override RAYS_ACTION;
 
+      # @category Symmetry
       property COORDINATE_ACTION = override HOMOGENEOUS_COORDINATE_ACTION {
 
           property POINTS_GENERATORS = override INPUT_RAYS_GENERATORS;
@@ -278,8 +280,17 @@ object Polytope {
           property N_VERTICES_GENERATORS = override N_RAYS_GENERATORS;
       }
 
+      # @category Symmetry
       property POINTS_ACTION = override INPUT_RAYS_ACTION;
 
+      # @category Symmetry
+      property MATRIX_ACTION {
+
+          property VERTICES_ORBITS = override VECTORS_ORBITS;
+
+      };
+      
+      # @category Symmetry
       property REPRESENTATIVE_VERTICES = override REPRESENTATIVE_RAYS;
 
       rule ORDER : VERTICES_ACTION.TRANSVERSAL_SIZES | FACETS_ACTION.TRANSVERSAL_SIZES | COORDINATE_ACTION.TRANSVERSAL_SIZES {
@@ -295,7 +306,7 @@ object Polytope {
 
 
    rule GROUP.POINTS_ACTION : GROUP.COORDINATE_ACTION, POINTS {
-      $this->GROUP->POINTS_ACTION = $this->induce_action("COORDINATE_ACTION", "POINTS", "points_action", "induced from coordinate_action");
+      $this->GROUP->POINTS_ACTION = group::induce_permutation_action($this, "COORDINATE_ACTION", "POINTS", "points_action", "induced from coordinate_action");
    }
    weight 1.10;
 
@@ -306,7 +317,7 @@ object Polytope {
    precondition : GROUP.PERMUTATION_ACTION.DEGREE, N_POINTS { $this->GROUP->PERMUTATION_ACTION->DEGREE == $this->N_POINTS }
 
    rule GROUP.VERTICES_ACTION : GROUP.COORDINATE_ACTION, VERTICES {
-      $this->GROUP->VERTICES_ACTION = $this->induce_action("COORDINATE_ACTION", "VERTICES", "vertices_action", "induced from coordinate_action");
+      $this->GROUP->VERTICES_ACTION = group::induce_permutation_action($this, "COORDINATE_ACTION", "VERTICES", "vertices_action", "induced from coordinate_action");
    }
    weight 1.10;
 
@@ -317,12 +328,12 @@ object Polytope {
    precondition : GROUP.PERMUTATION_ACTION.DEGREE, N_VERTICES { $this->GROUP->PERMUTATION_ACTION->DEGREE == $this->N_VERTICES }
 
    rule GROUP.FACETS_ACTION : GROUP.COORDINATE_ACTION, FACETS {
-      $this->GROUP->FACETS_ACTION = $this->induce_action("COORDINATE_ACTION", "FACETS", "facets_action", "induced from coordinate_action");
+      $this->GROUP->FACETS_ACTION = group::induce_permutation_action($this, "COORDINATE_ACTION", "FACETS", "facets_action", "induced from coordinate_action");
    }
    weight 1.10;
 
    rule GROUP.INEQUALITIES_ACTION : GROUP.COORDINATE_ACTION, INEQUALITIES {
-      $this->GROUP->INEQUALITIES_ACTION = $this->induce_action("COORDINATE_ACTION", "INEQUALITIES", "inequalities_action", "induced from coordinate_action");
+      $this->GROUP->INEQUALITIES_ACTION = group::induce_permutation_action($this, "COORDINATE_ACTION", "INEQUALITIES", "inequalities_action", "induced from coordinate_action");
    }
    weight 1.10;
 
@@ -417,17 +428,42 @@ object VectorConfiguration {
     property GROUP : group::Group : multiple {
 
         # @category Symmetry
+        property MATRIX_ACTION : group::MatrixActionOnVectors<Scalar>;
+
+        # @category Symmetry
         rule ORDER : VECTOR_ACTION.TRANSVERSAL_SIZES {
-           $this->ORDER = $this->order_from_transversals("VECTOR_ACTION.TRANSVERSAL_SIZES");
+            $this->ORDER = $this->order_from_transversals("VECTOR_ACTION.TRANSVERSAL_SIZES");
         }
         weight 1.10;
-
-        rule CONJUGACY_CLASS_SIZES : VECTOR_ACTION.CONJUGACY_CLASSES {
-           $this->CONJUGACY_CLASS_SIZES = $this->conjugacy_sizes_from_classes("VECTOR_ACTION.CONJUGACY_CLASSES");
-        }
-        weight 1.10;
-
+        
     }
+
+    rule GROUP.CONJUGACY_CLASS_SIZES : GROUP.VECTOR_ACTION.CONJUGACY_CLASSES | GROUP.MATRIX_ACTION.CONJUGACY_CLASSES {
+        my $arr = $this->give("GROUP.VECTOR_ACTION.CONJUGACY_CLASSES | GROUP.MATRIX_ACTION.CONJUGACY_CLASSES");
+        $this->GROUP->CONJUGACY_CLASS_SIZES = [ map {$_->size} @{$arr} ];
+    }
+    weight 1.10;
+
+    
+   rule GROUP.VECTOR_ACTION : GROUP.PERMUTATION_ACTION.GENERATORS, GROUP.PERMUTATION_ACTION.CONJUGACY_CLASS_REPRESENTATIVES {
+      $this->GROUP->VECTOR_ACTION = $this->GROUP->PERMUTATION_ACTION;
+   }
+   weight 0.10;
+   precondition : GROUP.PERMUTATION_ACTION.DEGREE, N_VECTORS { $this->GROUP->PERMUTATION_ACTION->DEGREE == $this->N_VECTORS }
+
+   rule GROUP.MATRIX_ACTION : GROUP.VECTOR_ACTION, VECTORS {
+       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "VECTOR_ACTION", "VECTORS", new Matrix<Scalar>());
+   }
+
+   rule GROUP.MATRIX_ACTION.IRREDUCIBLE_DECOMPOSITION : GROUP.MATRIX_ACTION.CHARACTER, GROUP.CHARACTER_TABLE, GROUP.CONJUGACY_CLASS_SIZES, GROUP.ORDER {
+        $this->GROUP->MATRIX_ACTION->IRREDUCIBLE_DECOMPOSITION = group::irreducible_decomposition($this->GROUP->MATRIX_ACTION->CHARACTER, $this->GROUP);
+   }
+    weight 1.10;
+
+    rule GROUP.MATRIX_ACTION.VECTORS_ORBITS : GROUP.MATRIX_ACTION.GENERATORS, VECTORS {
+        $this->GROUP->MATRIX_ACTION->VECTORS_ORBITS = group::induced_orbits_on_vectors_impl($this->GROUP->MATRIX_ACTION->GENERATORS, $this->VECTORS);
+    }
+    weight 2.10;
 
 }
 
@@ -439,68 +475,153 @@ object PointConfiguration {
         # @category Symmetry
         property POINTS_ACTION = override VECTOR_ACTION;
 
-    }
+        property MATRIX_ACTION {
 
+            # @category Symmetry
+            property POINTS_ORBITS = override VECTORS_ORBITS;
+
+        };
+    }
 }
 
 
 # @category Symmetry
-# Construct the induced action of a permutation action on a property that is an ordered collection of sets,
-# such as MAX_INTERIOR_SIMPLICES
-# @param Cone c the cone or polytope
-# @param group::PermutationAction a a permutation action on, for example, the vertex indices
-# @param String domain the property the induced action should act upon
-# @return group::PermutationActionOnSets
-# @example > $c=cube(3, group=>1); induced_action($c, $c->GROUP->VERTICES_ACTION, "MAX_INTERIOR_SIMPLICES")->properties();
-# |induced_action_of_ray_action_on_MAX_INTERIOR_SIMPLICES
-# |induced from ray_action on MAX_INTERIOR_SIMPLICES
-# |GENERATORS
-# |5 4 7 6 1 0 3 2 11 10 9 8 30 29 32 31 38 40 39 41 33 36 35 34 37 43 42 45 44 13 12 15 14 20 23 22 21 24 16 18 17 19 26 25 28 27 49 48 47 46 55 54 57 56 51 50 53 52
-# |0 2 1 3 12 14 13 15 16 17 18 19 4 6 5 7 8 9 10 11 21 20 22 24 23 25 27 26 28 29 31 30 32 34 33 35 37 36 46 47 48 49 50 52 51 53 38 39 40 41 42 44 43 45 54 56 55 57
-# |0 4 8 9 1 5 10 11 2 3 6 7 16 20 25 26 12 17 21 27 13 18 22 23 28 14 15 19 24 33 38 42 43 29 34 35 39 44 30 36 40 45 31 32 37 41 50 51 54 55 46 47 52 56 48 49 53 57
-# |
-# |
-# |DOMAIN_NAME
-# |MAX_INTERIOR_SIMPLICES
+# Compute the combinatorial symmetries (i.e., automorphisms of the face lattice) of
+# a given polytope //p//. They are stored in terms of a GROUP.VERTICES_ACTION and a GROUP.FACETS_ACTION
+# property in //p//, and the GROUP.VERTICES_ACTION is also returned.
+# @param Polytope p
+# @return group::PermutationAction the action of the combinatorial symmetry group on the vertices
+# @example To get the vertex symmetry group of the square and print its generators, type the following:
+# > print combinatorial_symmetries(cube(2))->GENERATORS;
+# | 2 3 0 1
+# | 1 0 2 3
+# > $p = cube(2); combinatorial_symmetries($p);
+# > print $p->GROUP->VERTICES_ACTION->GENERATORS;
+# | 2 3 0 1
+# | 1 0 2 3
+# > print $p->GROUP->FACETS_ACTION->GENERATORS;
+# | 0 2 1 3
+# | 1 0 3 2
 
-user_function induced_action(Cone, group::PermutationAction, String; { store_index_of => 0 } ) {
-    my ($c, $action, $domain_name, $options) = @_;
-    my $dom = $c->give($domain_name);
-    my $iod = index_of($dom);
-    my $ia = new group::PermutationActionOnSets("induced_action_of_" . $action->name . "_on_$domain_name");
-    $ia->GENERATORS = group::induced_permutations($action->GENERATORS, $dom, $iod);
-    $ia->DOMAIN_NAME = $domain_name;
-    $ia->description = "induced from " . $action->name . " on $domain_name";
-
-    if (defined($action->lookup("CONJUGACY_CLASS_REPRESENTATIVES"))) {
-        $ia->CONJUGACY_CLASS_REPRESENTATIVES = group::induced_permutations($action->CONJUGACY_CLASS_REPRESENTATIVES, $dom, $iod);
-    }
-
-    if ($options->{"store_index_of"}) {
-        $ia->INDEX_OF = $iod;
-    }
-
-    if (!defined($c->give("GROUP.SET_ACTION", sub { $_->DOMAIN_NAME eq $domain_name } ))) {
-        $c->GROUP->add("SET_ACTION", $ia);
-    }
-
-    return $ia;
+user_function combinatorial_symmetries(polytope::Cone) {
+    my ($p) = @_;
+    return group::combinatorial_symmetries_impl($p, "RAYS_IN_FACETS", "RAYS_ACTION", "FACETS_ACTION");
 }
 
-function n_fixed_points_of_set_action($$) {
-    my ($dom, $ccr) = @_;
-    my $n_fix = 0;
-    foreach my $set (@{$dom}) {
-        my @image = ();
-        foreach (@{$set}) {
-            push @image, $ccr->[$_];
-        }
-        my $image = new Set<Int>(\@image);
-        if ($image == $set) {
-            ++$n_fix;
-        }
-    }
-    return $n_fix;
+# @category Symmetry
+# Constructs the orbit polytope of a given point //input_point//
+# with respect to a given group action //a//.
+# @param Vector input_point the basis point of the orbit polytope
+# @param group::PermutationAction a the action of a permutation group on the coordinates of the ambient space
+# @return Polytope the orbit polytope of //input_point// w.r.t. the action //a//
+# @example The //orbit polytope// of a set of points //A// in affine d-space is the convex hull of the images of //A// under the action of
+# a group //G// on the affine space. polymake implements several variations of this concept. The most basic one is the convex hull of the
+# orbit of a single point under a set of coordinate permutations.
+# For example, consider the cyclic group //C_6// that acts on 6-dimensional space by cyclically permuting the coordinates. This action is
+# represented in polymake by group::cyclic_group(6)->PERMUTATION_ACTION. 
+# To compute the convex hull of cyclic shifts of the vector //v// = [1,6,0,5,-5,0,-5] in homogeneous coordinates, type
+# > $p = orbit_polytope(new Vector([1,6,0,5,-5,0,-5]), group::cyclic_group(6)->PERMUTATION_ACTION);
+#
+# After this assignment, the orbit polytope is still in implicit form, and the only properties that are defined reside in GROUP->COORDINATE_ACTION:
+# > print $p->GROUP->COORDINATE_ACTION->properties();
+# | type: PermutationAction<Int, Rational> as Polytope<Rational>::GROUP::COORDINATE_ACTION
+# | 
+# | GENERATORS
+# | 1 2 3 4 5 0
+# | 
+# | 
+# | INPUT_RAYS_GENERATORS
+# | 1 6 0 5 -5 0 -5
+#
+# To calculate the vertices of the orbit polytope explicitly, say
+# > print $p->VERTICES;
+# | 1 -5 0 -5 6 0 5
+# | 1 -5 6 0 5 -5 0
+# | 1 0 -5 6 0 5 -5
+# | 1 0 5 -5 0 -5 6
+# | 1 5 -5 0 -5 6 0
+# | 1 6 0 5 -5 0 -5
+
+user_function orbit_polytope(Vector, group::PermutationAction) {
+    my ($input_point, $a) = @_;
+    return orbit_polytope(vector2row($input_point), $a->GENERATORS);
+}
+
+# @category Symmetry
+# Constructs the orbit polytope of a given set of points //input_points//
+# with respect to a given group action //a//.
+# @param Matrix input_points the basis points of the orbit polytope
+# @param group::PermutationAction a the action of a permutation group on the coordinates of the ambient space
+# @return Polytope the orbit polytope of //input_points// w.r.t. the action //a//
+# @example To find the orbit of more than one point under a PermutationAction on the coordinates, say
+# > $p = orbit_polytope(new Matrix([ [1,6,0,5,-5,0,-5], [1,1,2,3,4,5,6] ]), new group::PermutationAction(GENERATORS=>[ [1,2,3,4,5,0] ]));
+# > print $p->VERTICES;
+# | 1 -5 0 -5 6 0 5
+# | 1 -5 6 0 5 -5 0
+# | 1 0 -5 6 0 5 -5
+# | 1 0 5 -5 0 -5 6
+# | 1 5 -5 0 -5 6 0
+# | 1 6 0 5 -5 0 -5
+# | 1 1 2 3 4 5 6
+# | 1 2 3 4 5 6 1
+# | 1 3 4 5 6 1 2
+# | 1 4 5 6 1 2 3
+# | 1 5 6 1 2 3 4
+# | 1 6 1 2 3 4 5
+
+user_function orbit_polytope(Matrix, group::PermutationAction) {
+    my ($input_points, $a) = @_;
+    return orbit_polytope($input_points, $a->GENERATORS);
+}
+
+# @category Symmetry
+# Constructs the orbit polytope of a given point //input_point//
+# with respect to a given group action //a//.
+# @param Vector input_point the basis point of the orbit polytope
+# @param group::Group g a group with a PERMUTATION_ACTION that acts on the coordinates of the ambient space
+# @return Polytope the orbit polytope of //input_point// w.r.t. the action of //g//
+# @example As a convenience function, you can also directly specify a group::Group that contains a PERMUTATION_ACTION:
+# > $p = orbit_polytope(new Vector([1,6,0,5,-5,0,-5]), group::cyclic_group(6));
+#
+# Up to now, the orbit polytope is still in implicit form. To calculate the vertices explicitly, say
+# > print $p->VERTICES;
+# | 1 -5 0 -5 6 0 5
+# | 1 -5 6 0 5 -5 0
+# | 1 0 -5 6 0 5 -5
+# | 1 0 5 -5 0 -5 6
+# | 1 5 -5 0 -5 6 0
+# | 1 6 0 5 -5 0 -5
+
+user_function orbit_polytope(Vector, group::Group) {
+    my ($input_point, $a) = @_;
+    return orbit_polytope(vector2row($input_point), $a->PERMUTATION_ACTION->GENERATORS);
+}
+
+# @category Symmetry
+# Constructs the orbit polytope of a given set of points //input_points//
+# with respect to a given group action //a//.
+# @param Matrix input_points the basis points of the orbit polytope
+# @param group::Group g a group with a PERMUTATION_ACTION that acts on the coordinates of the ambient space
+# @return Polytope the orbit polytope of //input_points// w.r.t. the action of //g//
+# @example As a convenience function, you can also directly specify a group::Group that contains a PERMUTATION_ACTION:
+# > $p = orbit_polytope(new Matrix([ [1,6,0,5,-5,0,-5], [1,1,2,3,4,5,6] ]), group::cyclic_group(6));
+# > print $p->VERTICES;
+# | 1 -5 0 -5 6 0 5
+# | 1 -5 6 0 5 -5 0
+# | 1 0 -5 6 0 5 -5
+# | 1 0 5 -5 0 -5 6
+# | 1 5 -5 0 -5 6 0
+# | 1 6 0 5 -5 0 -5
+# | 1 1 2 3 4 5 6
+# | 1 2 3 4 5 6 1
+# | 1 3 4 5 6 1 2
+# | 1 4 5 6 1 2 3
+# | 1 5 6 1 2 3 4
+# | 1 6 1 2 3 4 5
+
+user_function orbit_polytope(Matrix, group::Group) {
+    my ($input_points, $a) = @_;
+    return orbit_polytope($input_points, $a->PERMUTATION_ACTION->GENERATORS);
 }
 
 # @category Symmetry
@@ -508,7 +629,19 @@ function n_fixed_points_of_set_action($$) {
 # with respect to a given set of generators //gens//.
 # @param Matrix input_points the basis point of the orbit polytope
 # @param Array<Array<Int>> gens the generators of a permutation group that acts on the coordinates of the ambient space
-# @return Polytope the orbit polytope of //input_points// w.r.t. the group generated by //gens//
+# @return Polytope the orbit polytope of //input_points// w.r.t. the coordinate action generated by //gens//
+# @example This is a variation where several points are given as the row of a matrix, and the permutation action
+# on coordinates is given by explicitly listing the generators. In this example, the matrix has just one row,
+# and there is just one generator.
+# > print orbit_polytope(new Matrix([ [1,6,0,5,-5,0,-5] ]), [ [1,2,3,4,5,0] ])->VERTICES;
+# | 1 -5 0 -5 6 0 5
+# | 1 -5 6 0 5 -5 0
+# | 1 0 -5 6 0 5 -5
+# | 1 0 5 -5 0 -5 6
+# | 1 5 -5 0 -5 6 0
+# | 1 6 0 5 -5 0 -5
+
+
 user_function orbit_polytope(Matrix, @) {
     my ($input_points, $gens) = @_;
     my $a = new group::PermutationAction(GENERATORS=>$gens, INPUT_RAYS_GENERATORS=>$input_points);
@@ -519,88 +652,60 @@ user_function orbit_polytope(Matrix, @) {
 }
 
 # @category Symmetry
-# Constructs the orbit polytope of a given set of points //input_points//
-# with respect to a given group action //a//.
-# @param Matrix input_points the basis points of the orbit polytope
-# @param group::PermutationAction a the action of a permutation group on the coordinates of the ambient space
-# @return Polytope the orbit polytope of //input_points// w.r.t. the action //a//
-user_function orbit_polytope(Matrix, group::PermutationAction) {
-    my ($input_points, $a) = @_;
-    return orbit_polytope($input_points, $a->GENERATORS);
-}
+# Constructs the orbit polytope of a given point //input_point//
+# with respect to a given matrix group action //a//.
+# @param Vector input_point the generating point of the orbit polytope
+# @param group::MatrixActionOnVectors a the action of a matrix group on the coordinates of the ambient space
+# @tparam Scalar S the underlying number type
+# @return Polytope the orbit polytope of //input_point// w.r.t. the action //a//
+# @example polymake also supports orbit polytopes under the action of a group by matrices. 
+# To find the orbit of a point in the plane under the symmetry group of the square, say
+# > $p = orbit_polytope(new Vector([1,2,1]), cube(2, group=>1)->GROUP->MATRIX_ACTION);
+# > print $p->VERTICES;
+# | 1 -2 -1
+# | 1 -2 1
+# | 1 -1 -2
+# | 1 -1 2
+# | 1 1 -2
+# | 1 1 2
+# | 1 2 -1
+# | 1 2 1
 
-# @category Symmetry
-# Constructs the orbit polytope of a given set of points //input_points//
-# with respect to a given group action //a//.
-# @param Matrix input_points the basis points of the orbit polytope
-# @param group::Group g a group with a PERMUTATION_ACTION that acts on the coordinates of the ambient space
-# @return Polytope the orbit polytope of //input_points// w.r.t. the action of //g//
-user_function orbit_polytope(Matrix, group::Group) {
-    my ($input_points, $a) = @_;
-    return orbit_polytope($input_points, $a->PERMUTATION_ACTION->GENERATORS);
-}
-
-# @category Symmetry
-# Constructs the orbit polytope of a given set of points //input_points//
-# with respect to a given group action //a//.
-# @param Vector input_point the basis point of the orbit polytope
-# @param group::PermutationAction a the action of a permutation group on the coordinates of the ambient space
-# @return Polytope the orbit polytope of //input_points// w.r.t. the action //a//
-user_function orbit_polytope(Vector, group::PermutationAction) {
+user_function orbit_polytope<Scalar>(Vector<Scalar>, group::MatrixActionOnVectors<Scalar>) {
     my ($input_point, $a) = @_;
-    return orbit_polytope(vector2row($input_point), $a->GENERATORS);
+    return orbit_polytope(vector2row($input_point), $a);
 }
 
 # @category Symmetry
 # Constructs the orbit polytope of a given set of points //input_points//
-# with respect to a given group action //a//.
-# @param Vector input_point the basis point of the orbit polytope
-# @param group::Group g a group with a PERMUTATION_ACTION that acts on the coordinates of the ambient space
-# @return Polytope the orbit polytope of //input_points// w.r.t. the action of //g//
-user_function orbit_polytope(Vector, group::Group) {
-    my ($input_point, $a) = @_;
-    return orbit_polytope(vector2row($input_point), $a->PERMUTATION_ACTION->GENERATORS);
-}
+# with respect to a given matrix group action //a//.
+# @param Matrix<Scalar> input_points the generating points of the orbit polytope
+# @param group::MatrixActionOnVectors<Scalar> a the action of a matrix group on the coordinates of the ambient space
+# @tparam Scalar S the underlying number type
+# @return Polytope the orbit polytope of the //input_points// w.r.t. the action //a//
+# @example To find the orbit of more than one point in the plane under the symmetry group of the square, say
+# > $p = orbit_polytope(new Matrix([ [1,2,1], [1,5/2,0] ]), cube(2, group=>1)->GROUP->MATRIX_ACTION);
+# > print $p->VERTICES;
+# | 1 -2 -1
+# | 1 -2 1
+# | 1 -1 -2
+# | 1 -1 2
+# | 1 1 -2
+# | 1 1 2
+# | 1 2 -1
+# | 1 2 1
+# | 1 -5/2 0
+# | 1 0 -5/2
+# | 1 0 5/2
+# | 1 5/2 0
 
-# @category Symmetry
-# Construct an implicit action of the action induced on a collection of sets. Only a set of
-# orbit representatives is stored, not the full induced action.
-# @param group::PermutationAction original_action the action of the group on indices
-# @param String the name of a property that describes an ordered list of sets on which the group should act
-# @return group::ImplicitActionOnSets the action of the group on the given property, such that only representatives are stored
-# @example To construct the implicit action of the symmetry group of a cube on its maximal simplices, type:
-# > $c=cube(3, group=>1);
-# > implicit_action($c, $c->GROUP->VERTICES_ACTION, $c->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, "MAX_INTERIOR_SIMPLICES")->properties();
-# |implicit_action_of_ray_action_on_MAX_INTERIOR_SIMPLICES
-# |induced from ray_action on MAX_INTERIOR_SIMPLICES
-# |GENERATORS
-# |1 0 3 2 5 4 7 6
-# |0 2 1 3 4 6 5 7
-# |0 1 4 5 2 3 6 7
-# |
-# |
-# |EXPLICIT_ORBIT_REPRESENTATIVES
-# |{0 1 2 4}
-# |{0 1 2 5}
-# |{0 1 2 7}
-# |{0 3 5 6}
-
-user_function implicit_action<SetType>(Cone, group::PermutationAction<Int,Rational>, Array<SetType>, $) {
-    my ($c, $original_action, $induced_dom_reps, $induced_dom_name) = @_;
-    my $orig_name = $original_action->name;
-    my @reps = map { new Bitset($_) } @{$induced_dom_reps};
-    my $ia = new group::ImplicitActionOnSets("implicit_action_of_" . $orig_name . "_on_$induced_dom_name");
-    $ia->GENERATORS = $original_action->GENERATORS;
-    $ia->DOMAIN_NAME = $induced_dom_name;
-    $ia->EXPLICIT_ORBIT_REPRESENTATIVES = \@reps;
-    $ia->description = "induced from $orig_name on $induced_dom_name";
-    if (defined(my $cc = $original_action->lookup("CONJUGACY_CLASS_REPRESENTATIVES"))) {
-        $ia->CONJUGACY_CLASS_REPRESENTATIVES = $cc;
-    }
-    if (!defined($c->GROUP->give("IMPLICIT_SET_ACTION", sub { $_->DOMAIN_NAME eq $induced_dom_name }))) {
-        $c->GROUP->add("IMPLICIT_SET_ACTION", $ia);
-    }
-    return $ia;
+user_function orbit_polytope<Scalar>(Matrix<Scalar>, group::MatrixActionOnVectors<Scalar>) {
+    my ($input_points, $a) = @_;
+    my $aind = new group::MatrixActionOnVectors<Scalar>(GENERATORS=>$a->GENERATORS, INPUT_RAYS_GENERATORS=>$input_points);
+    my $g = new group::Group;
+    my $p = new Polytope<Scalar>;
+    $p->add("GROUP", $g, MATRIX_ACTION=>$aind);
+    return $p;
 }
 
 # Local Variables:

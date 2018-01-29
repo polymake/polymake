@@ -39,14 +39,20 @@ class NormalizException: public std::exception {
 
 class ArithmeticException: public NormalizException {
     public:
-    ArithmeticException() : msg("Arithmetic Overflow detected, try a bigger integer type!") {}
+    ArithmeticException() : msg("Overflow detected. A fatal size excess or  a computation overflow.\n If Normaliz has terminated and you are using LongLong, rerun without it.") {}
     ~ArithmeticException() throw() {}
 
     template<typename Integer>
     ArithmeticException(const Integer& convert_number){
+        
+        static int CCCCCCC=0;
+        
+        CCCCCCC++;
+        /* if(CCCCCCC>=3)
+         assert(false);*/
         std::stringstream stream;
         stream << "Could not convert " << convert_number << ".\n";
-        stream << "Arithmetic Overflow detected, try a bigger integer type!";
+        stream << "Overflow detected. A fatal size excess or  a computation overflow.\n If Normaliz has terminated and you are using LongLong, rerun without it.";
         msg = stream.str();
     }
 
@@ -87,6 +93,21 @@ class BadInputException: public NormalizException {
     std::string msg;
 };
 
+class NmzCoCoAException: public NormalizException {
+    public:
+    NmzCoCoAException(const std::string& message) :
+            msg(message)
+    {}
+    ~NmzCoCoAException() throw() {}
+
+	virtual const char* what() const throw() {
+		return msg.c_str();
+	}
+
+    private:
+    std::string msg;
+};
+
 class NotComputableException: public NormalizException {
     public:
     NotComputableException(const std::string& message) : msg("Could not compute: " + message) {}
@@ -118,6 +139,22 @@ class FatalException: public NormalizException {
 
     private:
     std::string msg;
+};
+
+class InterruptException: public NormalizException {
+    public:
+    InterruptException(const std::string& message ):
+        msg("Interrupted: " + message )
+    {}
+    ~InterruptException() throw() {}
+
+        virtual const char* what() const throw() {
+              return msg.c_str();
+        }
+
+    private:
+    std::string msg;
+
 };
 
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,17 +25,22 @@
 
 namespace polymake { namespace group {
 
+/*
+  return a basis of the isotypic component corresponding to the given character.
+  Only rational characters are considered here, for performance reasons.
+  The basis is returned as an Array<hash_map<SparseSet, Rational>>.
+  The ordering of the rows in the basis is as they appear while processing the orbits of induced_orbit_representatives in lex order.
+ */
 template <typename SparseSet, typename NumericalType=Rational>
 SparseIsotypicBasis<SparseSet>
 sparse_isotypic_basis_impl(int order,
                            const Array<Array<int>>& original_generators,
-                           const ConjugacyClasses& conjugacy_classes,
+                           const ConjugacyClasses<>& conjugacy_classes,
                            const Vector<Rational>& character,
                            const Array<SparseSet>& induced_orbit_representatives,
                            const std::string& filename = "")
 {
-   std::vector<SparseSimplexVector<SparseSet>> basis_hash_vectors;
-   const Rational c0_ord(character[0] / order), one_half(1,2);
+   const Rational c0_ord(character[0] / order);
    std::ofstream outfile;
    if (filename != "" && filename != "-")
       outfile = std::ofstream(filename.c_str(), std::ios_base::trunc);
@@ -51,28 +56,31 @@ sparse_isotypic_basis_impl(int order,
      of the projection matrix.
    */
 
-   for (const auto& orep : induced_orbit_representatives) {
-      // The rows and columns of B are indexed by the orbit of rep.
+   std::vector<SparseSimplexVector<SparseSet>> basis_hash_vectors;
+
+   for (const auto& orep: induced_orbit_representatives) {
+      // The rows and columns of B are indexed by the orbit of orep.
+      // One could make the orbit unordered and save the time spent ordering it, but then one would lose knowledge of what simplices rows and columns correspond to.
       const auto face_orbit(orbit<on_container, Array<int>, SparseSet>(original_generators, orep));
       
-      // we need to index the orbit, and to create constant-time access to indexed elements
+      // index the orbit, and create constant-time access to indexed elements
       hash_map<SparseSet, int> index_of;
       std::vector<SparseSet> face_orbit_indexed;
       face_orbit_indexed.reserve(face_orbit.size());
       int index(-1);
-      for (const auto& f : face_orbit) {
+      for (const auto& f: face_orbit) {
          index_of[f] = ++index;
          face_orbit_indexed.push_back(f);
       }
 
-      // We make an explicit ListMatrix to keep track of the linear span achieved so far. 
-      // Whenever a new row is added to the ListMatrix, we append a corresponding SparseSimplexVector to basis_vectors.
+      // make an explicit ListMatrix to keep track of the linear span achieved so far. 
+      // Whenever a new row is added to the ListMatrix, append a corresponding SparseSimplexVector to basis_vectors.
       ListMatrix<SparseVector<NumericalType>>
          class_sparse_eqs(0, face_orbit.size()),
          kernel_so_far(unit_matrix<NumericalType>(face_orbit.size()));
 
       // for each potential new row of the block B, check if it is linearly independent from what is already there
-      for (const auto& f : face_orbit) {
+      for (const auto& f: face_orbit) {
          /* 
             Each phi(g) is a permutation matrix.
             For example, for the permutation (b,a,c) we get the matrix
@@ -86,7 +94,7 @@ sparse_isotypic_basis_impl(int order,
          for (int i=0; i<conjugacy_classes.size(); ++i) {
             if (is_zero(character[i])) 
                continue;
-            for (const auto& g : conjugacy_classes[i]) {
+            for (const auto& g: conjugacy_classes[i]) {
                group::permute_to(f.begin(), g, working_set);
                new_sparse_eq[index_of[working_set]] += convert_to<NumericalType>(character[i]);
             }
@@ -94,9 +102,9 @@ sparse_isotypic_basis_impl(int order,
          
          if (add_row_if_rowspace_increases(class_sparse_eqs, new_sparse_eq, kernel_so_far)) {
             SparseSimplexVector<SparseSet> new_hash_eq;
-            for (typename Entire<SparseVector<NumericalType>>::const_iterator eit = entire(new_sparse_eq); !eit.at_end(); ++eit) {
+            for (auto eit = entire(new_sparse_eq); !eit.at_end(); ++eit) {
                // multiply by chi_i(id)/|Gamma|
-               new_hash_eq[face_orbit_indexed[eit.index()]] = floor(convert_to<Rational>(*eit) + one_half) * c0_ord; 
+               new_hash_eq[face_orbit_indexed[eit.index()]] = Rational(*eit) * c0_ord;
             }
             if (filename.size())
                wrap(os) << new_hash_eq << endl;
@@ -113,7 +121,7 @@ template <typename SparseSet>
 auto
 sparse_isotypic_spanning_set_and_support_impl(int order,
                                               const Array<Array<int>>& original_generators,
-                                              const ConjugacyClasses& conjugacy_classes,
+                                              const ConjugacyClasses<>& conjugacy_classes,
                                               const Vector<Rational>& character,
                                               const Array<SparseSet>& induced_orbit_representatives,
                                               const std::string& filename = "",
@@ -132,13 +140,13 @@ sparse_isotypic_spanning_set_and_support_impl(int order,
    working_set.clear();
 
    SparseSimplexVector<SparseSet> old_hash_eq;
-   for (const auto& orep : induced_orbit_representatives) {
-      for (const auto& f : orbit<on_container, Array<int>, SparseSet>(original_generators, orep)) {
+   for (const auto& orep: induced_orbit_representatives) {
+      for (const auto& f: orbit<on_container, Array<int>, SparseSet>(original_generators, orep)) {
          SparseSimplexVector<SparseSet> new_hash_eq;
          for (int i=0; i<conjugacy_classes.size(); ++i) {
             if (is_zero(character[i])) 
                continue;
-            for (const auto& g : conjugacy_classes[i]) {
+            for (const auto& g: conjugacy_classes[i]) {
                group::permute_to(f.begin(), g, working_set);
                new_hash_eq[working_set] += character[i] * c0_ord;
             }
@@ -146,7 +154,7 @@ sparse_isotypic_spanning_set_and_support_impl(int order,
          if (new_hash_eq == old_hash_eq) continue; // guard against the most trivial repetition
          old_hash_eq = new_hash_eq;
          if (calculate_support) {
-            for (const auto m : old_hash_eq)
+            for (const auto m: old_hash_eq)
                if (!is_zero(m.second))
                   support += m.first;            
          } else  {
@@ -170,8 +178,8 @@ augment_index_of(hash_map<SparseSet, int>& index_of,
                  const SparseIsotypicBasis<SparseSet>& subspace_generators)
 {
    int index(index_of.size());
-   for (const auto& sgen : subspace_generators)
-      for (const auto m : sgen)
+   for (const auto& sgen: subspace_generators)
+      for (const auto m: sgen)
          if (!index_of.exists(m.first))
             index_of[m.first] = index++;
 }
@@ -182,9 +190,9 @@ list_matrix_representation(const hash_map<SparseSet, int>& index_of,
                            const SparseIsotypicBasis<SparseSet>& subspace_generators)
 {
   ListMatrix<SparseVector<Rational>> sgen_matrix(0, index_of.size());
-   for (const auto& sgen : subspace_generators) {
+   for (const auto& sgen: subspace_generators) {
       SparseVector<Rational> new_sgen(index_of.size());
-      for (const auto m : sgen)
+      for (const auto m: sgen)
          new_sgen[index_of.at(m.first)] = m.second;
       sgen_matrix /= new_sgen;
    }
@@ -201,19 +209,10 @@ spans_invariant_subspace_impl(const Array<Array<int>>& group_generators,
    augment_index_of(index_of, subspace_generators);
    const SparseMatrix<Rational> ker = null_space(list_matrix_representation(index_of, subspace_generators));
 
-   for (const auto& sgen : subspace_generators) {
-      // this is a kludge (part 1) because making hash_sets or Sets of hash_maps doesn't call the right equality comparison operator
-      Map<SparseSet, Rational> copy_map;
-      for (const auto v : sgen)
-         copy_map[v.first] = v.second;
-
-      // kludge part 2. Ideally, this should read orbit<on_container>(group_generators, sgen)
-      for (const auto& o_sgen : orbit<on_container, Array<int>, Map<SparseSet,Rational>, Set<Map<SparseSet,Rational>>>(group_generators, copy_map)) {
-         //      for (const auto& o_sgen : orbit<on_container>(group_generators, sgen)) {
-         //         typedef typename pm::deref<decltype(sgen)>::type GenType;
-
+   for (const auto& sgen: subspace_generators) {
+      for (const auto& o_sgen: unordered_orbit<on_container>(group_generators, sgen)) {
          SparseVector<Rational> new_sgen(index_of.size());
-         for (const auto m : o_sgen) {
+         for (const auto m: o_sgen) {
             try {
                new_sgen[index_of.at(m.first)] = m.second;
             } catch (no_match) {

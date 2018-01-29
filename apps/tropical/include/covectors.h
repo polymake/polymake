@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
 	Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 http://www.polymake.org
 
@@ -20,6 +20,7 @@ GNU General Public License for more details.
 #include "polymake/tropical/arithmetic.h"
 #include "polymake/linalg.h"
 #include "polymake/common/hadamard_product.h"
+#include "polymake/IncidenceMatrix.h"
 
 namespace polymake { namespace tropical {
 
@@ -31,32 +32,55 @@ namespace polymake { namespace tropical {
       CovectorDecoration(Set<int> f, int r, IncidenceMatrix<> cv) : face(f), rank(r), covector(cv) {}
    };
 
+
+   	/*
+	 * @brief compute the covector of a single point in tropical projective space wrt a matrix of generators
+	 *
+	 */
+   template <typename Addition, typename Scalar, typename Vector1, typename Vector2>
+     Set<int> single_covector( const GenericVector<Vector1, TropicalNumber<Addition,Scalar> > &point, const GenericVector<Vector2, TropicalNumber<Addition,Scalar> > &apex) {
+	  typedef TropicalNumber<Addition, Scalar> TNumber;
+	  Set<int> pt_covector = sequence(0, point.dim()) - support(point);
+	  Vector<TNumber> tdiff = rel_coord(apex, point);
+	  TNumber extremum = accumulate(tdiff, operations::add());
+	  int td_index = 0;
+	  // determine the extremal entries
+	  for(auto td : tdiff) {
+	    if(td == extremum) pt_covector += td_index;
+	    td_index++;
+	  }
+	  return pt_covector;
+	}
+
+   
 	/*
 	 * @brief compute the covector of a single point in tropical projective space wrt a matrix of generators
 	 *
 	 */
-	template <typename Addition, typename Scalar, typename VectorTop>
-	  IncidenceMatrix<> single_covector( const GenericVector<VectorTop, TropicalNumber<Addition,Scalar> > &point, const Matrix<TropicalNumber<Addition,Scalar> > &generators) {
+
+    template <typename Addition, typename Scalar, typename VectorTop, typename MatrixTop>
+      IncidenceMatrix<> single_covector( const GenericVector<VectorTop, TropicalNumber<Addition,Scalar> > &point, const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> > &generators) {
 	  typedef TropicalNumber<Addition, Scalar> TNumber;
 	  const int dimension(generators.cols());
 	  Set<int> non_support = sequence(0, point.dim()) - support(point);
-
 	  Array<Set<int> > pt_covector(dimension);
 
 	  int gn_index = 0;
-	  for(typename Entire< Rows< Matrix<TNumber> > >::const_iterator gn = entire(rows(generators)); !gn.at_end(); gn++, gn_index++) {
-	    Vector<TNumber> tdiff = rel_coord(*gn, point.top());
+	  for(auto gn : rows(generators)) {
+	    Vector<TNumber> tdiff = rel_coord(gn, point);
 	    TNumber extremum = accumulate(tdiff, operations::add());
 	    Set<int> extremal_entries = non_support;
 	    int td_index = 0;
 	    // determine the extremal entries
-	    for(typename Entire<Vector<TNumber> >::iterator td = entire(tdiff); !td.at_end(); td++, td_index++) {
-	      if(*td == extremum) extremal_entries += td_index;
+	    for(auto td : tdiff) {
+	      if(td == extremum) extremal_entries += td_index;
+	      td_index++;
 	    }
 	    // add the containing sectors to the covector of pt
-	    for(Entire<Set<int> >::iterator ext_it = entire(extremal_entries); !ext_it.at_end(); ext_it++) {
-	      pt_covector[*ext_it] += gn_index;
+	    for(auto ext_it : extremal_entries) {
+	      pt_covector[ext_it] += gn_index;
 	    }
+	    gn_index++;
 	  }
 	  return IncidenceMatrix<>(pt_covector);
 	}
@@ -89,19 +113,18 @@ namespace polymake { namespace tropical {
 
 
 	//Documentation see perl wrapper
-	template <typename Addition, typename Scalar>
-	  Array<IncidenceMatrix<> > covectors( const Matrix<TropicalNumber<Addition,Scalar> > &points,
-					       const Matrix<TropicalNumber<Addition,Scalar> > &generators) {
-	  typedef TropicalNumber<Addition,Scalar> TNumber;
+	template <typename Addition, typename Scalar, typename Matrix1, typename Matrix2>
+	  Array<IncidenceMatrix<> > covectors( const GenericMatrix<Matrix1, TropicalNumber<Addition,Scalar> > &points,
+					       const GenericMatrix<Matrix2, TropicalNumber<Addition,Scalar> > &generators) {
 	  const int n(points.rows());
 	  Array<IncidenceMatrix<> > result(n);
 	  int pt_index = 0;
-	  for(typename Entire< Rows <Matrix<TNumber> > >::const_iterator pt = entire(rows(points)); !pt.at_end(); pt++, pt_index++) {
+	  for(auto pt : rows(points)) {
 	    //call the computation of the covector for every single point
-	    result[pt_index] = single_covector(*pt, generators);
+	    result[pt_index] = single_covector(pt, generators);
+	    pt_index++;
 	  }//END iterate points
 	return result;
-
 	}
 
 
@@ -136,9 +159,8 @@ namespace polymake { namespace tropical {
     template <typename Addition, typename Scalar, typename VectorTop, typename MatrixTop>
       IncidenceMatrix<> generalized_apex_covector( const GenericVector<VectorTop, TropicalNumber<Addition,Scalar> > &point, const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> > &apices) {
 	  typedef TropicalNumber<Addition, Scalar> TNumber;
-	  const int dimension(apices.rows());
 
-	  Array<Set<int> > pt_covector(dimension);
+	  IncidenceMatrix<> pt_covector(apices.rows(),apices.cols());
 
 	  for(auto apex = ensure(rows(apices),(pm::cons<pm::end_sensitive, pm::indexed>*)0).begin(); !apex.at_end(); apex++) {
 	    TNumber extremum = *apex*point;
@@ -150,7 +172,7 @@ namespace polymake { namespace tropical {
 	      pt_covector[apex.index()] = extremal_entries;
 	    }
 	  }
-	  return IncidenceMatrix<>(pt_covector);
+	  return pt_covector;
 	}
 
 }

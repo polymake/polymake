@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -178,7 +178,8 @@ UserFunction4perl("# @category Optimization"
                   "# The inequalities should describe a full dimensional polyhedron"
                   "# @param Matrix inequalities"
                   "# @return Bool"
-                  "# @example > print totally_dual_integral(cube(2)->FACETS);"
+                  "# @example"
+                  "# > print totally_dual_integral(cube(2)->FACETS);"
                   "# | 1",
                   &totally_dual_integral, "totally_dual_integral");
 

@@ -12,11 +12,12 @@ namespace sympol {
 
 namespace polymake { namespace polytope { namespace sympol_interface {
 
-enum SympolRayComputationMethod {
-	lrs,
-	cdd,
-	beneath_beyond,
-	ppl
+enum class SympolRayComputationMethod {
+   lrs,
+   cdd,
+   beneath_beyond,
+   ppl,
+   invalid
 };
 
 class sympol_wrapper {

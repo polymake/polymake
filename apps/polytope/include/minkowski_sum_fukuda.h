@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,16 +18,8 @@
 #define POLYMAKE_POLYTOPE_MINKOWSKI_SUM_FUKUDA_H
 
 #include "polymake/client.h"
-#include "polymake/Vector.h"
-#include "polymake/Matrix.h"
-#include "polymake/Rational.h"
 #include "polymake/Array.h"
-#include "polymake/Graph.h"
-#include "polymake/hash_set"
 #include "polymake/polytope/to_interface.h"
-#include <list>
-#include <stdlib.h>
-#include <cmath>
 
 namespace polymake { namespace polytope {
 
@@ -38,7 +30,6 @@ struct choose_solver {
 
 template <typename E>
 Matrix<E> minkowski_sum_vertices_fukuda(const Array<perl::Object>& summands);
-
 
 }  }
 

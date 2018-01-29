@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 use feature 'state';
 
 #################################################################################
@@ -68,59 +69,8 @@ sub check_object_pkg {
    $_[0] or croak( "This declaration is only allowed in the top-level (application) scope" );
 }
 
-declare $warn_options="use strict 'refs'; use warnings qw(FATAL void syntax misc); use feature 'state'";
+declare $warn_options="use strict qw(refs subs); use warnings qw(FATAL void syntax misc); use feature 'state'";
 
-#################################################################################
-package Polymake::Core::ScriptLoader;
-
-use Polymake::Struct (
-   [ new => '$$' ],
-   [ '$handle' => '#1' ],
-   [ '$prologue' => '#2' ],
-);
-
-sub new {
-   my $self=&_new;
-   (\&get, $self);
-}
-
-sub get {
-   my ($maxlen, $self)=@_;
-   if (@{$self->prologue}) {
-      $_ .= shift @{$self->prologue};
-   } else {
-      $_ .= readline $self->handle;
-   }
-   return length;
-}
-#################################################################################
-package Polymake::Core::ScriptFilter;
-
-use Polymake::Struct (
-   [ '@ISA' => 'ScriptLoader' ],
-   [ new => '$$@' ],
-   [ '@conv' => '@' ],
-);
-
-sub new {
-   my $self=&_new;
-   (\&get, $self);
-}
-
-sub get {
-   my ($maxlen, $self)=@_;
-   if (@{$self->prologue}) {
-      $_ .= shift @{$self->prologue};
-   } else {
-      namespaces::temp_disable();
-      my $line=readline $self->handle;
-      foreach my $conv (@{$self->conv}) {
-         last if $conv->($line);
-      }
-      $_ .= $line;
-   }
-   return length;
-}
 #################################################################################
 #
 #   Rule parser
@@ -131,6 +81,9 @@ my $accurate_linenumbers= exists &DB::DB || namespaces::collecting_coverage();
 package Polymake::Core::Application::RuleFilter;
 
 my (%main_init_rule_headers, %rule_headers, %main_init_decl_headers, %decl_headers, %cross_app_rule_headers, %cross_app_decl_headers, %rule_subheaders);
+
+declare $init_has_config_items=0;
+my $has_interactive_commands;
 
 use Polymake::Struct (
    [ new => '$$$$$$$@' ],
@@ -143,10 +96,12 @@ use Polymake::Struct (
    [ '$buffer_phase1' => 'undef' ],
    [ '$buffer_suspended' => 'undef' ],
    [ '$gap' => '1' ],           # 1 - empty line, 2 - comment block
+   [ '$filter_fixed' => '0' ],
    '$start_comments',
    '$len_comments',
    [ '$credit_seen' => '#6' ],
    [ '$credit_cnt' => '0' ],
+   [ '$has_config_items' => '$init_has_config_items' ],
    '$after_rule',
    '@trailer',
    '&filter',
@@ -191,9 +146,14 @@ sub new {
 
 sub get {
    my ($maxlen, $self)=@_;
+   $self->filter_fixed ||= inject_error_preserving_source_filter();
    unless (@{$self->buffer}) {
       namespaces::temp_disable();
-      fill($self);
+      $self->start_comments=$self->len_comments=0;
+      my $line;
+      do {
+         $line=readline $self->handle;
+      } while (fill($self, $line, $.));
    }
    print STDERR ">>> ", $self->buffer->[0] if $DebugLevel>3;
    $_ .= shift @{$self->buffer};
@@ -205,7 +165,9 @@ sub get_embedded_rules {
    unless (@{$self->buffer_phase1}) {
       namespaces::temp_disable();
       do {
-         fill($self);
+         $self->start_comments=$self->len_comments=0;
+         while (fill($self, shift @{$self->from_embedded_rules}, ++$.)) { }
+
          if (defined($self->buffer_suspended) && $self->buffer->[-1] =~ /^\}(?: \{)?$/) {
             # end of a block suspended because of unsatisfied REQUIRE_APPLICATION
             push @{$self->buffer_suspended},
@@ -235,9 +197,9 @@ sub translate_type_expr {
 #################################################################################
 sub line_directive {
    if ((my ($line, $file)=@_) == 2) {
-      "#line $line \"$file\"\n"
+      qq{#line $line "$file"\n}
    } else {
-      "#line $line\n"
+      qq{#line $line\n}
    }
 }
 
@@ -321,6 +283,7 @@ sub injected_line_directive {
 
    REQUIRE => sub {
       my ($self, $header)=@_;
+      $self->has_config_items=1;
       $self->filter=\&erase_comments_filter;
       $header =~ s/\#.*$//;
       my $escape= $self->from_embedded_rules ? "last" : "return 1";
@@ -332,6 +295,7 @@ sub injected_line_directive {
 
    REQUIRE_EXTENSION => sub {
       my ($self, $header)=@_;
+      $self->has_config_items=1;
       $self->filter=\&erase_comments_filter;
       $header =~ s/\#.*$//;
       my $escape= $self->from_embedded_rules ? "last" : "return 1";
@@ -367,7 +331,7 @@ sub injected_line_directive {
                $self->buffer_suspended //= $self->buffer;
                $self->buffer=$suspended->embedded_rules;
                push @{$self->buffer},
-                    "{\n", line_directive($., tied(*{$self->handle})->lastfile);
+                    "{\n", line_directive($., $self->path);
             } else {
                # stop loading now
                push @{$suspended->rulefiles}, $self->path;
@@ -395,34 +359,11 @@ sub injected_line_directive {
 
    CONFIGURE_OPT => sub { process_configure(@_[0,1], 1) },
 
-   CONFIGURE_BUILD => sub {
-      my ($self, $header)=@_;
-      if ($extension) {
-         ++$funcnt;
-         $header =~ s/^\s*\{/sub __unused_conf_$funcnt {/;
-         push @{$self->buffer},
-              "\$Polymake::Core::Application::extension->activate_configure_script; warn \"CONFIGURE_BUILD is not supported since polymake 2.13,\\nthe extension must be ported to the script-based configuration model\"; $header\n";
-      } else {
-         push @{$self->buffer},
-              "BEGIN { die 'CONFIGURE_BUILD was formerly allowed in extensions only; it is not supported since polymake 2.13' }\n";
-      }
-   },
-
    object => sub { reopen_type(@_, "objects") },
 
    object_specialization => sub { reopen_specialization(@_) },
 
    property_type => sub { reopen_type(@_, "props") },
-
-   default_object => sub {
-      my ($self, $header)=@_;
-      if ($header =~ /($type_re) \s*;$/xo) {
-         push @{$self->buffer},
-              "application::self()->default_type=typeof $1;\n";
-      } else {
-         push @{$self->buffer}, "BEGIN { die 'invalid type name' }\n";
-      }
-   },
 
    property => sub { process_property(@_, 0) },
 
@@ -434,7 +375,17 @@ sub injected_line_directive {
       if ($header =~ /^[\$\@%] $id_re (?!:) (?= \s*(=))?/xo) {
          substr($header,0,0)="declare ";
          $varname=$&;
-         $tail= (defined($1) ? "0" : "$. < \$__preamble_end && \$Core::Customize::state_config") . ", __PACKAGE__";
+         if (defined $1) {
+            # with default value: simple custom variable
+            $tail="0, __PACKAGE__";
+         } else {
+            # without default value: probably an auto-configurable variable
+            if ($has_interactive_commands) {
+               $header =~ s/;\K/ declare -re;/;
+               substr($header,0,0)="declare +re; ";
+            }
+            $tail="$. < \$__preamble_end && \$Core::Customize::state_config, __PACKAGE__";
+         }
          push @{$self->buffer},
               line_directive($self->header_line),
               "$header\n";
@@ -609,9 +560,9 @@ my $cpp_init=<<'_#_#_#_';
 self()->cpp->start_loading($Polymake::Core::Application::extension);
 _#_#_#_
 
-# embedded rules must be read in after all IMPORTs, otherwise the syntax parsing may fail
 sub close_main_init_preamble {
    my $self=$_[0];
+   # embedded rules must be read in after all IMPORTs, otherwise the syntax parsing may fail
    push @{$self->buffer}, $cpp_init, line_directive($self->header_line);
    $self->rule_header_table=\%rule_headers;
    $self->decl_rule_header_table=\%decl_headers;
@@ -658,6 +609,7 @@ while (my ($keyword, $code)=each %decl_headers) {
                }
             } else {
                (my $expr=$prop) =~ s/\./->/g;
+               $expr =~ s/(?: $id_re \s* \| \s* )+ $id_re $/give("$&")/xo;
                $text .= "$append(': $prop', sub { ${not}defined(\$_[0]->$expr) }, $owner_arg 1);";
             }
          }
@@ -673,6 +625,7 @@ while (my ($keyword, $code)=each %decl_headers) {
          my @props= $expr =~ /$hier_id_alt_re/og;
          $expr =~ s/($hier_id_alt_re)/\$this->$1/og;
          $expr =~ s/\./->/g;
+         $expr =~ s/\$this-> \s* \K (?: $id_re \s* \| )+ \s* $id_re /give("$&")/xog;
          push @{$self->buffer},
               "$append(': ".join(", ", @props)."', sub { my \$this=shift; $expr }, $owner_arg 0, $override);\n";
 
@@ -727,9 +680,9 @@ while (my ($keyword, $code)=each %decl_headers) {
          if ($super eq "SUPER") {
             $super="'SUPER'";
          } elsif ($super =~ /<>/) {
-            $super="(typeof $super)";
+            $super="typeof $super";
          } else {
-            $super="(typeof_gen $super)";
+            $super="typeof_gen $super";
          }
          $line.="application::self()->append_overridden_rule(self(1), $super, '$label'); ";
       }
@@ -758,6 +711,7 @@ while (my ($keyword, $code)=each %decl_headers) {
 sub process_configure {
    my ($self, $header, $optional)=@_;
    ++$funcnt;
+   $self->has_config_items=1;
    $header =~ s/^\s*\{/sub __conf__$funcnt { use namespaces '+', 'Polymake::Configure';/;
    push @{$self->buffer},
         &start_preamble . "->configure(\\&__conf__$funcnt, '" . $self->rule_key . "', $., $optional) || return 1; $header\n";
@@ -767,6 +721,7 @@ sub process_configure {
 
 sub pretend_configure_failed {
    my ($self, $header)=@_;
+   $self->has_config_items=1;
    push @{$self->buffer},
         &start_preamble . "->configure(sub { 0 }, '" . $self->rule_key . "', $.);\n",
         "1; __END__\n";
@@ -776,25 +731,28 @@ sub pretend_configure_failed {
 sub ignore_optional_configure_clause {
    my ($self, $header)=@_;
    ++$funcnt;
+   $self->has_config_items=1;
    $header =~ s/^/sub __conf__$funcnt /;
    push @{$self->buffer}, "$header\n";
 }
 
 sub allow_config {
-   my $mode=shift;
+   my ($mode)=@_;
    if ($mode eq "none") {
       # pretend every configuration attempt has failed
       $rule_headers{CONFIGURE}=\&pretend_configure_failed;
       $main_init_rule_headers{CONFIGURE}=\&pretend_configure_failed;
 
-      $rule_headers{CONFIGURE_OPT}=\&ignore_optional_configure_clause ;
+      $rule_headers{CONFIGURE_OPT}=\&ignore_optional_configure_clause;
       $main_init_rule_headers{CONFIGURE_OPT}=sub { &close_main_init_preamble; &ignore_optional_configure_clause };
+      $init_has_config_items=1;
 
       0  # don't load any config files
 
    } elsif ($mode eq "ignore") {
       # pretend everything is configured
       *Polymake::Core::Application::configure=sub { 1 };
+      $init_has_config_items=1;
 
       0  # don't load any config files
 
@@ -803,15 +761,13 @@ sub allow_config {
    }
 }
 #####################################################################################################
-my $has_interactive_commands;
-
 sub start_preamble {
    my $self=$_[0];
-   my $start=!$self->preamble_end;
+   my $start=!$self->preamble_end && $has_interactive_commands && !$self->from_embedded_rules;
    $self->preamble_end=$.;
-   "application::self()" . ($start && $has_interactive_commands && !$self->from_embedded_rules &&
-                            "->start_preamble('".$self->rule_key."', Polymake::Core::rescue_static_code(0))")
+   "application::self()" . ($start && "->start_preamble('".$self->rule_key."', Polymake::Core::rescue_static_code(0))")
 }
+
 #####################################################################################################
 #  helper routines common for object and property type declaration processing
 
@@ -871,7 +827,7 @@ sub process_template_params($$\@\@\@\@$) {
          $needs_use_Params=1;
       } else {
          $super_type=$+{static};
-         my $super_expr="(typeof $super_type)";
+         my $super_expr="typeof $super_type";
          if (my ($super_abstract_type, $super_params)= $super_type =~ m{^($id_re)\s*<(.*)}o) {
             my $dependent;
             foreach (@$param_names) {
@@ -928,7 +884,7 @@ my $catch_unknown_types=<<'.';
 
 sub check_outer_pkg {
    my ($self, $what)=@_;
-   my $outer_pkg=compiling_in();
+   my $outer_pkg=compiling_in_pkg();
    if ($outer_pkg ne $self->application->pkg) {
       if ($plausibility_checks && index($outer_pkg, $self->application->pkg."::")==0) {
          my $msg= $what eq "object"
@@ -959,14 +915,6 @@ sub generate_scope_type_params {
    "use namespaces::Params *__scope_type_params, qw(@_);\n"
 }
 
-sub announce_parametrized_class {
-   my ($self, $name, $subpkg, @param_names)=@_;
-   namespaces::create_dummy_pkg($_)
-     for ($name,                                  # enforce a top-level package to fool the perl parser
-          $self->application->name."::$name",     # and the same for qualifications via application name
-          $subpkg."::$name",                      # and the same for qualifications via type family
-          @param_names);                          # type parameter names must also be known as packages
-}
 #####################################################################################################
 sub reopen_type {
    my ($self, $header, $where)=@_;
@@ -1040,7 +988,7 @@ sub process_property_type {
          $preamble .= "BEGIN { Core::multiple_prop_definition('$type_name') } ";
       }
       push @{$self->buffer},
-           $preamble."{ my \$stash=get_pkg((typeof $alias)->pkg); *application::$type_name\::=\$stash; *application::props::$type_name\::=\$stash; }\n";
+           $preamble."{ my \$symtab=get_symtab((typeof $alias)->pkg); *application::$type_name\::=\$symtab; *application::props::$type_name\::=\$symtab; }\n";
 
    } elsif ($header =~ /^ (?'type_name' $id_re) (?: $type_params_re | \s*<\s* (?'tparams' \.\.\. | \*) \s*> )?+
                                                 (?: \s*:\s* (?!c\+\+)(?!upgrades)(?'super' $type_expr_re) )?+
@@ -1056,7 +1004,7 @@ sub process_property_type {
       if ($plausibility_checks) {
          $preamble .= "BEGIN { Core::multiple_prop_definition('$type_name') } ";
       }
-      $preamble .= "{ package Polymake::".$self->application->name."::$type_name; BEGIN { *application::props::$type_name\::=get_pkg(__PACKAGE__) } namespaces::memorize_lexical_scope;\n";
+      $preamble .= "{ package Polymake::".$self->application->name."::$type_name; BEGIN { *application::props::$type_name\::=get_symtab(__PACKAGE__) } namespaces::memorize_lexical_scope;\n";
       push @{$self->buffer}, $preamble;
 
       my $buffer_size;
@@ -1088,7 +1036,7 @@ sub process_property_type {
                   $self->buffer->[$first_line]="BEGIN { die 'pure C++ types may not have a dynamic base class' }\n";
                   return;
                } elsif ($super =~ /</) {
-                  push @super_abstract, "(typeof $super)";
+                  push @super_abstract, "typeof $super";
                } else {
                   push @super_abstract, "typeof_gen $super";
                }
@@ -1115,8 +1063,6 @@ sub process_property_type {
               "; }\n";
 
          if ($tparams ne "*") {
-            announce_parametrized_class($self, $type_name, "props", @param_names);
-
             push @{$self->buffer},
                "sub self { &Core::check_object_pkg; &typeof_gen }\n";
          }
@@ -1150,25 +1096,25 @@ sub process_property_type {
               : "typeof_gen() }\n";
 
       } else {
-           # non-parameterized type
-           if ($cpp_binding) {
-              $cpp_opts =~ s/enum\s*(?=[({])($confined_re)/Polymake::Core::Application::RuleFilter::process_enum(q$1)/o;
-              $cpp_opts =~ s/\bembedded\b/descr=>'embedded'/;
-           }
-           $super &&= "typeof $super";
+         # non-parameterized type
+         if ($cpp_binding) {
+            $cpp_opts =~ s/enum\s*(?=[({])($confined_re)/Polymake::Core::Application::RuleFilter::process_enum(q$1)/o;
+            $cpp_opts =~ s/\bembedded\b/descr=>'embedded'/;
+         }
+         $super &&= "typeof $super";
 
-           push @{$self->buffer},
-                "sub typeof { \@==1 or croak('type $type_name is not parameterized');\n",
-                $plausibility_checks ? $catch_unknown_types : (),
-                "  state \$type_inst = new Polymake::Core::PropertyType('$type_name', __PACKAGE__, application::self(), $super); }\n",
-                "*typeof_gen=\\&typeof;\n",
-                "sub self { &Core::check_object_pkg; typeof(undef); }\n",
-                $cpp_binding
-                ? "application::self()->cpp->add_type(typeof(undef), $cpp_opts);\n" : (),
-                $upgrades
-                ? "typeof(undef)->add_upgrade_relations($upgrades);\n" : (),
-                !$open_scope
-                ? "}\n" : ();
+         push @{$self->buffer},
+              "sub typeof { \@_==1 or croak('type $type_name is not parameterized');\n",
+              $plausibility_checks ? $catch_unknown_types : (),
+              "  state \$type_inst = new Polymake::Core::PropertyType('$type_name', __PACKAGE__, application::self(), $super); }\n",
+              "*typeof_gen=\\&typeof;\n",
+              "sub self { &Core::check_object_pkg; typeof(undef); }\n",
+              $cpp_binding
+              ? "application::self()->cpp->add_type(typeof(undef), $cpp_opts);\n" : (),
+              $upgrades
+              ? "typeof(undef)->add_upgrade_relations($upgrades);\n" : (),
+              !$open_scope
+              ? "}\n" : ();
       }
 
       if ($accurate_linenumbers && !$self->from_embedded_rules) {
@@ -1201,7 +1147,7 @@ sub process_object_decl {
 
       if (defined($alias)) {
          push @{$self->buffer},
-              $preamble."{ my \$stash=get_pkg((typeof $alias)->pkg); *application::$type_name\::=\$stash; *application::objects::$type_name\::=\$stash; }\n";
+              $preamble."{ my \$symtab=get_symtab((typeof $alias)->pkg); *application::$type_name\::=\$symtab; *application::objects::$type_name\::=\$symtab; }\n";
 
       } else {
          # defining a new object type
@@ -1214,7 +1160,7 @@ sub process_object_decl {
          }
 
          push @{$self->buffer},
-              $preamble."{ package Polymake::".$self->application->name."::$type_name; BEGIN { *application::objects::$type_name\::=get_pkg(__PACKAGE__); } namespaces::memorize_lexical_scope;\n";
+              $preamble."{ package Polymake::".$self->application->name."::$type_name; BEGIN { *application::objects::$type_name\::=get_symtab(__PACKAGE__); } namespaces::memorize_lexical_scope;\n";
 
          if (defined($tparams)) {
             # parameterized template
@@ -1239,13 +1185,9 @@ sub process_object_decl {
                  "    //= " . (defined($typecheck) && "do { $typecheck; ")
                             . "new Polymake::Core::ObjectType('$type_name', undef, \\\@_, &typeof_gen, " . join(",", @super_instance) . ");"
                             . (defined($typecheck) && " } ") . "}\n",
-                 $n_defaults == @param_names
-                 ? "application::self()->default_type //= typeof(undef);\n" : (),
                  $open_scope
                  ? "local_array(*__scope_type_params, &typeof_gen->params); local \$Core::ObjectType::scope_owner=&typeof_gen;\n"
                  : "typeof_gen(); }\n";
-
-            announce_parametrized_class($self, $type_name, "objects", @param_names);
 
          } else {
             # non-parameterized type
@@ -1257,7 +1199,6 @@ sub process_object_decl {
                  "  state \$type_inst=new Polymake::Core::ObjectType('$type_name', application::self(), undef, $super); }\n",
                  "*typeof_gen=\\&typeof;\n",
                  "sub self { &Core::check_object_pkg; typeof(undef) }\n",
-                 "application::self()->default_type //= typeof(undef);\n",
                  $open_scope
                  ? "local \$Core::ObjectType::scope_owner=typeof(undef);\n"
                  : "typeof(undef); }\n";
@@ -1306,7 +1247,7 @@ sub process_object_specialization {
 
       if (defined $spez_name) {
          $spez_name="'${generic_type}::$spez_name'";
-         fill_help($self, "", "'objects', '$generic_type', 'specializations', $spez_name") if $Help::gather;
+         fill_help($self, "typeof_gen $generic_type", "'specializations', $spez_name") if $Help::gather;
       } elsif (defined $tparams) {
          $spez_name="undef";
       } else {
@@ -1336,7 +1277,7 @@ sub process_object_specialization {
          push @{$self->buffer},
               generate_scope_type_params(@param_names),
               "sub typeof_gen { state \$abstract_inst=\n",
-              "  new Polymake::Core::ObjectType::Specialization($spez_name, __PACKAGE__, (typeof_gen $generic_type), [qw(@param_names)]); }\n",
+              "  new Polymake::Core::ObjectType::Specialization($spez_name, __PACKAGE__, typeof_gen $generic_type, [qw(@param_names)]); }\n",
               "sub self { &Core::check_object_pkg; &typeof_gen }\n",
               "sub typeof { state %type_inst;\n",
               $plausibility_checks ? $catch_unknown_types : (),
@@ -1348,18 +1289,14 @@ sub process_object_specialization {
          my $match_func_name="_match_type";
          my $unique_name=$match_func_name."__inst";
          add_overloaded_instance($self,
-                                 "{ (typeof ".$self->application->pkg."::$generic_type\::$pkg_name<$tparams>) } " .
+                                 "{ typeof ".$self->application->pkg."::$generic_type\::$pkg_name<$tparams> } " .
                                  "&typeof_gen->apply_to_existing_types;",
                                  undef, "", "",
                                  $match_func_name, 0, $unique_name, "\\&$unique_name", $concrete_type, $tparams,
                                  $typecheck, "root_node=>&typeof_gen->match_node");
-
-         # reduced form of announce_parametrized_class
-         namespaces::create_dummy_pkg($visible_spez_name) if defined($visible_spez_name);
-         namespaces::create_dummy_pkg($_) for @param_names;
       } else {
          push @{$self->buffer},
-              "sub typeof { state \$type_inst=new Polymake::Core::ObjectType::Specialization($spez_name, __PACKAGE__, (typeof $concrete_type)); }\n",
+              "sub typeof { state \$type_inst=new Polymake::Core::ObjectType::Specialization($spez_name, __PACKAGE__, typeof $concrete_type); }\n",
               "*typeof_gen=\\&typeof; local \$Core::ObjectType::scope_owner=typeof();\n";
       }
 
@@ -1399,7 +1336,7 @@ sub process_property {
             $flags |= ${"Polymake::Core::Property::is_$1"};
          }
          push @attrs, "flags=>$flags" if $flags;
-         while ($attrs =~ s/:\s* (construct) \s*\( ($balanced_re) \)\s*//ox) {
+         while ($attrs =~ s/:\s* (construct) \s*\(\s* ($balanced_re) \s*\)\s*//ox) {
             push @attrs, "$1=>'$2'";
          }
       }
@@ -1408,11 +1345,16 @@ sub process_property {
               "BEGIN { die 'unknown $what attributes $attrs' }\n";
          return;
       }
+      if ($prop_type eq 'self') {
+         $prop_type="self(1)";
+      } else {
+         $prop_type="typeof $prop_type";
+      }
 
       ++$funcnt if defined($default);
       push @{$self->buffer},
            ($open_scope && "{ my \$prop=") .
-           "application::self()->add_${what}_definition(self(1), \$__last_help, '$prop_name', (typeof $prop_type), @attrs); " .
+           "application::self()->add_${what}_definition(self(1), \$__last_help, '$prop_name', $prop_type, @attrs); " .
            ( defined($default)
              ? "application::self()->add_default_value_rule('$prop_name : ', \\&__prod__$funcnt, self(1)); " .
                "sub __prod__$funcnt : method { \$_[0]->$prop_name$default }"
@@ -1420,19 +1362,32 @@ sub process_property {
                 "  package _::_prop_$prop_name; \$prop->analyze(__PACKAGE__); undef \$prop;")
            ) . "\n";
 
-   } elsif ($header =~ /^ ($id_re) \s*=\s* override (?: \s*; | \s+ ($id_re) \s* (?: ; | (\{))) \s*$/xo) {
-     my ($new_prop_name, $old_prop_name, $open_scope)=($1, $2, $3);
+   } elsif ($header =~ /^ ($id_re) \s*=\s* override \s+ (?=[:\w])
+                          ($id_re)?+ (?: \s*:\s* (?'prop_type' $type_re))?+ \s* (?: ; | (?'open_scope' \{)) \s*$/xo) {
+     my ($new_prop_name, $old_prop_name, $new_type, $open_scope)=($1, $2, $+{prop_type}, $+{open_scope});
+     if (defined $new_type) {
+        if ($new_type eq 'self') {
+           $new_type="self(1)";
+        } else {
+           $new_type="typeof $new_type";
+        }
+     } else {
+        $new_type="undef";
+     }
+     my $override_args;
      if (defined $old_prop_name) {
         fill_help($self, "self(1)", "'$what_plural', '$new_prop_name'") if $Help::gather;
-
+        $override_args="'$new_prop_name', '$old_prop_name', $new_type, \$__last_help";
+     } else {
+        $override_args="'$new_prop_name', undef, $new_type";
+     }
+     if ($open_scope) {
         push @{$self->buffer},
-             ($open_scope && "{ my \$prop=") .
-             "self(1)->override_property('$new_prop_name', '$old_prop_name', \$__last_help);" .
-             ($open_scope &&
-             "  package _::_prop_$new_prop_name; \$prop->analyze(__PACKAGE__); undef \$prop;") ."\n";
+             "{ my \$prop=self(1)->override_property($override_args);" .
+             "  package _::_prop_$new_prop_name; \$prop->analyze(__PACKAGE__); undef \$prop;\n";
      } else {
         push @{$self->buffer},
-             "self(1)->override_twin_property('$new_prop_name');\n";
+             "self(1)->override_property($override_args);\n";
      }
 
    } elsif ($header =~ /^($hier_id_re) \s*\{\s*$/xo) {
@@ -1448,14 +1403,15 @@ sub process_property {
 #####################################################################################################
 sub prepare_context_check {
    my ($self, $func_name, $type_params, $context_check)=@_;
+   $context_check &&= "BEGIN { $context_check }";
    if (defined $type_params) {
       if ($self->from_embedded_rules) {
-         push @{$self->buffer_phase1}, "sub $func_name; namespaces::export_sub(undef, \\&$func_name);\n";
+         push @{$self->buffer_phase1}, "declare &$func_name;\n";
       } else {
-         return "sub $func_name; BEGIN { namespaces::export_sub(undef, \\&$func_name); $context_check }";
+         return "declare &$func_name; $context_check";
       }
    }
-   $context_check && "BEGIN { $context_check }";
+   $context_check
 }
 #####################################################################################################
 sub add_overloaded_instance {
@@ -1555,9 +1511,9 @@ sub add_overloaded_instance {
             my $typeof= $type =~ /</ ? "typeof" : "typeof_gen";
             if ($repeated) {
                $max |= $Overload::has_repeated;
-               push @arg_list, "[ ($typeof $type), '+' ]";
+               push @arg_list, "[ $typeof $type, '+' ]";
             } else {
-               push @arg_list, "($typeof $type)";
+               push @arg_list, "$typeof $type";
             }
          } else {
             push @arg_list, "'\$'";
@@ -1974,13 +1930,12 @@ sub custom_hash_filter {
    my $last_comment_block=$#{$self->trailer};
    return sub : method {
       my ($self, $line)=@_;
-      if ($line =~ /^\s* (?: (?'key' \w+) | (['"])(?'key' .*?)\2 ) \s* => [^\#\n]+ (?:\#\s* (?'type' $type_re))?/xo) {
+      if ($line =~ /^\s* (?: (?'key' \w+) | (['"])(?'key' .*?)\2 ) \s* => (?: $anon_quoted_re | [^\#\n] )+ (?:\#\s* (?'type' $type_re))?/xo) {
          my ($key, $type)=@+{qw(key type)};
          if (defined $type) {
             # description in the trailing comments after the key => value pair
             splice @{$self->trailer}, -1, 0, "# \@key $type $key $'";
-
-         } else {
+         } elsif ($self->trailer->[$last_comment_block] !~ /_#_#_#_/) {
             # assume description to be in the comment lines above
             $self->trailer->[$last_comment_block] =~ s/^\s*\#\s* ($type_re)/# \@key $1 $key/xo
               or croak("key comment block does not start with a valid type expression");
@@ -2011,147 +1966,154 @@ sub erase_comments_filter : method {
 #################################################################################
 
 sub fill {
-   my $self=shift;
-   $self->start_comments=$self->len_comments=0;
+   my ($self, $line, $lineno)=@_;
    my $trailer_pending=@{$self->trailer};
 
- READ: {
-      my $line=readline $self->handle;
-      if (!length($line)) {
-         # EOF
-         my $lastline=$.;
-         close $self->handle or die "Syntax error near the end of file at ", $self->path, ", line ", $self->header_line, "\n";
-         if (@{$self->trailer}) {
-            my $firstline=$lastline-@{$self->buffer}+1;
-            unshift @{$self->buffer},
-                    $accurate_linenumbers && $trailer_pending > 1
-                    ? ( injected_line_directive($self) ) : (),
-                    @{$self->trailer},
-                    $trailer_pending > 1
-                    ? ( line_directive($firstline, $accurate_linenumbers ? ($self->path) : ()) ) : ();
-         }
-         if ($self->preamble_end) {
-            $self->application->preamble_end->{$self->rule_key}=$self->preamble_end;
-         }
-         push @{$self->buffer}, "1; __END__\n";
-         if ($self->from_embedded_rules) {
-            push @{$self->buffer_phase1}, "1; __END__\n";
-         }
-         $self->header_line=$lastline;
-         last;
-      }
-
-      if ($line =~ /^(?:(\#line)\s+\d+(.*)|\s*)?$/) {
-         # empty line
-         my $set_line_number=defined($1);
-         if (length($2) && $self->from_embedded_rules) {
-            $self->credit_seen= $extension && defined($extension->credit);
-         }
-         if ($self->filter) {
-            $self->filter->($line);
-            if ($self->filter) {
-               push @{$self->buffer}, $line;
-               redo;
-            }
-         }
-
-         if (@{$self->trailer}) {
-            push @{$self->buffer},
+   if (!length($line)) {
+      # EOF
+      my $lastline=$lineno;
+      if ($trailer_pending) {
+         my $firstline=$lastline-@{$self->buffer}+1;
+         unshift @{$self->buffer},
                  $accurate_linenumbers && $trailer_pending > 1
                  ? ( injected_line_directive($self) ) : (),
-                 splice(@{$self->trailer}, 0),
-                 $set_line_number
-                 ? ( $line ) :
+                 @{$self->trailer},
                  $trailer_pending > 1
-                 ? ( line_directive($., $accurate_linenumbers ? ($self->path) : ()), $line ) : ();
-
-            if ($accurate_linenumbers) {
-               $self->injected_lines += $trailer_pending+1;
-            }
-            $self->start_comments=@{$self->buffer};
-            $self->gap=1;
-            redo;
-         }
-
-         if ($self->gap==2) {
-            my $digest_comment;
-            if ($self->buffer->[$self->start_comments] =~
-                m{^\s*\#\s* \@topic \s+ (?: (?'cat' category) \s+ (?'path' (?'lead' \w+) (?:/.*(?<!\s))?+ )
-                                          | (?'path' (?'lead' \w+) (?:/\S+)?) (?:\s* (?'sig' \($balanced_re\)) )?
-                                          | // (?'group' \w+) // (?'item' .*(?<!\s)) ) \s*$}xi) {
-               if ($+{path} eq "custom") {
-                  $digest_comment="application::self()->custom->pkg_help->{__PACKAGE__}=<<'_#_#_#_';\n";
-               } elsif ($Help::gather) {
-                  my ($path, $lead, $cat, $sig, $group, $item)=@+{qw(path lead cat sig group item)};
-                  my $signature= defined($sig) ? ", q$sig" : defined($cat) && ", '$cat'";
-                  if ($path !~ m{/any/} and $lead eq "properties" || $lead eq "methods") {
-                     $digest_comment="self(1)->help_topic(1)->add('$path', <<'_#_#_#_'$signature);\n";
-                  } elsif (defined $group) {
-                     $digest_comment="self(1)->override_help('$group', '$item', <<'_#_#_#_');\n";
-                  } else {
-                     my $whence;
-                     if ($lead eq "core") {
-                        $path=substr($path, length($lead)+1);
-                        $whence='$Polymake::Core::Help::core';
-                     } else {
-                        $whence='application::self()->help';
-                        $path='' if $path eq "application";
-                     }
-                     $digest_comment="$whence->add('$path', <<'_#_#_#_'$signature);\n";
-                  }
-               }
-            }
-            if (defined($digest_comment)) {
-               $self->buffer->[$self->start_comments]=$digest_comment;
-               if ($set_line_number) {
-                  push @{$self->buffer}, "_#_#_#_\n";
-               } else {
-                  $line="_#_#_#_\n";
-               }
-               $self->start_comments=$self->len_comments=0;
-            }
-         }
-
-         $self->gap=1;
-         push @{$self->buffer}, $line;
-         redo;
+                 ? ( line_directive($firstline, $accurate_linenumbers ? ($self->path) : ()) ) : ();
       }
+      if ($self->preamble_end) {
+         $self->application->preamble_end->{$self->rule_key}=$self->preamble_end;
+      }
+      if (!$self->has_config_items &&
+          defined(delete $self->application->configured->{$self->rule_key})) {
+         $self->application->custom->handler->need_save=1;
+      }
+      if ($self->from_embedded_rules) {
+         push @{$self->buffer_phase1}, "1; __END__\n";
+         $self->from_embedded_rules=0;
+      } elsif (defined $self->handle) {
+         push @{$self->buffer}, "1; __END__\n";
+         close $self->handle;
+         undef $self->handle;
+      } else {
+         # The parser did not notice the __END__ marker,
+         # looks like the rule file ends with an unfinished multi-line string.
+         # Without the following operation, the error message is replaced with something incomprehensible.
+         remove_error_preserving_source_filter();
+      }
+      $self->header_line=$lastline;
 
-      if ($line =~ /^\s*\#/) {
-         # comment line
-         if ($self->gap) {
-            if ($self->gap==1) {
-               # ... after an empty line - starts a new comment block
-               $self->start_comments=@{$self->buffer}; $self->len_comments=0;
-               $self->gap=2;
-            }
+      return;
+   }
+
+   if ($line =~ /^(?:\#line\s+(\d+)(?:\s+"(.*)")?)?\s*$/) {
+      # empty line
+      my $set_line_number=defined($1);
+      if ($set_line_number && $self->from_embedded_rules) {
+         $.=$1-1;
+         if (length($2)) {
+            $self->path=$2;
+            $self->credit_seen= $extension && defined($extension->credit);
+         }
+      }
+      if ($self->filter) {
+         $self->filter->($line);
+         if ($self->filter) {
             push @{$self->buffer}, $line;
-            ++$self->len_comments;
-            redo;
+            return 1;
          }
-         # comments amidst the code
-         if ($self->filter) {
-            $self->filter->($line);
-         }
-         push @{$self->buffer}, $line;
-         last;
       }
 
-      if (!$self->gap && !$self->after_rule || !$trailer_pending && compiling_in_sub()) {
-         if ($self->filter) {
-            $self->filter->($line);
+      if ($trailer_pending) {
+         push @{$self->buffer},
+              $accurate_linenumbers && $trailer_pending > 1
+              ? ( injected_line_directive($self) ) : (),
+              splice(@{$self->trailer}),
+              $set_line_number
+              ? ( $line ) :
+              $trailer_pending > 1
+              ? ( line_directive($lineno, $accurate_linenumbers ? ($self->path) : ()), $line ) : ();
+
+         if ($accurate_linenumbers) {
+            $self->injected_lines += $trailer_pending+1;
          }
-         push @{$self->buffer}, $line;
-         last;
+         $self->start_comments=@{$self->buffer};
+         $self->gap=1;
+         return 1;
       }
 
+      if ($self->gap==2) {
+         my $digest_comment;
+         if ($self->buffer->[$self->start_comments] =~
+             m{^\s*\#\s* \@topic \s+ (?: (?'cat' category) \s+ (?'path' (?'lead' \w+) (?:/.*(?<!\s))?+ )
+                                       | (?'path' (?'lead' \w+) (?:/\S+)?) (?:\s* (?'sig' \($balanced_re\)) )?
+                                       | // (?'group' \w+) // (?'item' .*(?<!\s)) ) \s*$}xi) {
+            if ($+{path} eq "custom") {
+               $digest_comment="application::self()->custom->pkg_help->{__PACKAGE__}=<<'_#_#_#_';\n";
+            } elsif ($Help::gather) {
+               my ($path, $lead, $cat, $sig, $group, $item)=@+{qw(path lead cat sig group item)};
+               my $signature= defined($sig) ? ", q$sig" : defined($cat) && ", '$cat'";
+               if ($path !~ m{/any/} and $lead eq "properties" || $lead eq "methods") {
+                  $digest_comment="self(1)->help_topic(1)->add('$path', <<'_#_#_#_'$signature);\n";
+               } elsif (defined $group) {
+                  $digest_comment="self(1)->override_help('$group', '$item', <<'_#_#_#_');\n";
+               } else {
+                  my $whence;
+                  if ($lead eq "core") {
+                     $path=substr($path, length($lead)+1);
+                     $whence='$Polymake::Core::Help::core';
+                  } else {
+                     $whence='application::self()->help';
+                     $path='' if $path eq "application";
+                  }
+                  $digest_comment="$whence->add('$path', <<'_#_#_#_'$signature);\n";
+               }
+            }
+         }
+         if (defined($digest_comment)) {
+            $self->buffer->[$self->start_comments]=$digest_comment;
+            if ($set_line_number) {
+               push @{$self->buffer}, "_#_#_#_\n";
+            } else {
+               $line="_#_#_#_\n";
+            }
+            $self->start_comments=$self->len_comments=0;
+         }
+      }
+
+      $self->gap=1;
+      push @{$self->buffer}, $line;
+      return 1;
+   }
+
+   if ($line =~ /^\s*\#/) {
+      # comment line
+      if ($self->gap) {
+         if ($self->gap==1) {
+            # ... after an empty line - starts a new comment block
+            $self->start_comments=@{$self->buffer}; $self->len_comments=0;
+            $self->gap=2;
+         }
+         push @{$self->buffer}, $line;
+         ++$self->len_comments;
+         return 1;
+      }
+      # comments amidst the code
+      if ($self->filter) {
+         $self->filter->($line);
+      }
+   } elsif (!$self->gap && !$self->after_rule || !$trailer_pending && compiling_in_sub()) {
+      if ($self->filter) {
+         $self->filter->($line);
+      }
+   } else {
       $self->gap=0;
       if ($line =~ m{^[ \t]* (?> (declare \s+)?) ($id_re) (?: $|\s+|(?= <))}xo  and
           my $header_sub= $1 ? $self->decl_rule_header_table->{$2} : $self->rule_header_table->{$2} || (my $after_rule=$self->after_rule and $rule_subheaders{$2})) {
 
          # header recognized
          $line=$';
-         $self->header_line=$.;
+         $self->header_line=$lineno;
          $self->after_rule=0;
          $self->prolonged=0;
 
@@ -2159,6 +2121,7 @@ sub fill {
          for (;;) {
             chomp $line;
             last if substr($line,-1,1) ne '\\';
+            # embedded rules do not have continuation marks
             if (defined (my $cont=readline($self->handle))) {
                $cont =~ s/^\s{2,}/ /;
                substr($line,-1,1)=$cont;
@@ -2172,12 +2135,12 @@ sub fill {
          if ($self->prolonged) {
             push @{$self->buffer}, ("\n") x $self->prolonged;
          }
-
-      } else {
-         # some perl code
-         push @{$self->buffer}, $line;
+         return;
       }
    }
+
+   push @{$self->buffer}, $line;
+   0
 }
 
 #################################################################################
@@ -2219,44 +2182,56 @@ sub configure {
 }
 #################################################################################
 # private:
-sub summarize_rule_prerequisites {
-   my ($self, $failed, $rule_key, $line)=@_;
-   if (defined($failed)) {
-      $self->configured->{$rule_key}=$failed;
-      $self->custom->handler->need_save=1;
-      $self->declared |= $has_failed_config;
-      if (is_object(my $credit=$self->credits_by_rulefile->{$rule_key})) {
-         $credit->shown=$Rule::Credit::hide;
-      }
-      $self->rulefiles->{$rule_key}=0
-   } else {
-      if ($line >= $self->preamble_end->{$rule_key} && $self->configured->{$rule_key} =~ /^0\#?/) {
-         # some CONFIGURE blocks passed and no further CONFIGURE blocks
-         substr($self->configured->{$rule_key},0,1)=$load_time;
-         $self->custom->handler->need_save=1;
-      }
-      1
+sub summarize_rule_failed_prerequisites {
+   my ($self, $rule_key, $failed)=@_;
+   $self->configured->{$rule_key}=$failed;
+   $self->custom->handler->need_save=1;
+   $self->declared |= $has_failed_config;
+   if (is_object(my $credit=$self->credits_by_rulefile->{$rule_key})) {
+      $credit->shown=$Rule::Credit::hide;
    }
+   $self->rulefiles->{$rule_key}=0
+}
+
+sub summarize_rule_successful_prerequisites {
+   my ($self, $rule_key, $line)=@_;
+   if ($line >= $self->preamble_end->{$rule_key} && $self->configured->{$rule_key} =~ /^0\#?/) {
+      # some CONFIGURE blocks passed and no further CONFIGURE blocks
+      substr($self->configured->{$rule_key},0,1)=$load_time;
+      $self->custom->handler->need_save=1;
+   }
+   1
 }
 #################################################################################
 sub include_required {
    my ($self, $block, $rule_key, $line)=@_;
-   my @failed=include_rule_block($self, 1, $block);
-   summarize_rule_prerequisites($self, @failed ? "0#rule:".join("|", @failed) : undef, $rule_key, $line);
+   if (my @failed=include_rule_block($self, 1, $block)) {
+      if ($has_interactive_commands) {
+         store_rule_to_wake($self, (caller)[1], $extension, $rule_key, 1, map { /^($id_re)::/ ? ($self->used->{$1}, $') : ($self, $_) } @failed);
+      }
+      summarize_rule_failed_prerequisites($self, $rule_key, "0#rule:".join("|", @failed));
+   } else {
+      summarize_rule_successful_prerequisites($self, $rule_key, $line);
+   }
 }
 #################################################################################
 sub require_ext {
    my ($self, $block, $rule_key, $line)=@_;
-   my (@failed, $success);
+   my @failed;
    $block =~ s/^\s+//;
    $block =~ s/\s+$//;
    foreach my $URI (split /\s+\|\s+/, $block) {
       if (defined (my $ext=$Extension::registered_by_URI{$URI})) {
-         $success=$ext->is_active and last;
-         push @failed, $URI;
+         if ($ext->is_active) {
+            return summarize_rule_successful_prerequisites($self, $rule_key, $line);
+         }
+         push @failed, $ext;
       }
    }
-   summarize_rule_prerequisites($self, $success ? undef : @failed ? "0#ext:".join("|", @failed) : "0", $rule_key, $line);
+   if ($has_interactive_commands and my @failed_non_bundled=grep { !$_->is_bundled } @failed) {
+      store_rule_to_wake($self, (caller)[1], $extension, $rule_key, 0, @failed_non_bundled);
+   }
+   summarize_rule_failed_prerequisites($self, $rule_key, @failed ? "0#ext:".join("|", map { $_->URI } @failed) : "0");
 }
 #################################################################################
 sub add_credit {
@@ -2424,8 +2399,8 @@ sub process_included_rule {
                }
             }
             unless ($revived) {
-               if ($has_interactive_commands) {
-                  store_rule_to_wake($self, $rulefile, $filename, $ext, $rule_key, $on_rule, @depends_on);
+               if (@depends_on) {
+                  store_rule_to_wake($self, $filename, $ext, $rule_key, $on_rule, @depends_on);
                }
                return 0;
             }
@@ -2469,21 +2444,35 @@ sub find_file_in_INC {
 my $namespace_decls=<<'_#_#_#_';
 self()->eval_expr=sub { eval $_[0] };
 namespaces::memorize_lexical_scope;
-namespaces::export_sub(undef, \&Polymake::temporary);
 _#_#_#_
 
 # named constant to be used in put(), take(), and add()
 sub Polymake::temporary() { $PropertyValue::is_temporary }
+
+# INC subroutine retrieving embedded rulefile lines
+sub getline_embedded {
+   my ($maxlen, $buffer)=@_;
+   state $filter_fixed=0;
+   $filter_fixed ||= inject_error_preserving_source_filter();
+   print STDERR "+>> ", $buffer->[0] if $DebugLevel>3;
+   $_ .= shift @$buffer;
+   if (!@$buffer) {
+      remove_error_preserving_source_filter();
+      $filter_fixed=0;
+   }
+   return length;
+}
 
 # private:
 # must be qualified, otherwise would land in main::
 sub Polymake::Core::Application::INC {
    my ($self, $filename)=@_;
    my $handle;
+   my $app_pkg=$self->pkg;
    if (defined($self->compile_scope) && $filename =~ s/^(?:(rules)|c\+\+:(\d))://) {
       my ($prologue, $from_embedded_rules, $main_init);
       if ($1) {
-         open $handle, $filename or die "can't read rule file $filename: $!\n";
+         open $handle, "<:utf8", $filename or die "can't read rule file $filename: $!\n";
          if (!$self->declared) {
             $prologue=$namespace_decls;
             $self->declared=$namespace_declared;
@@ -2500,13 +2489,9 @@ sub Polymake::Core::Application::INC {
       } else {
          $loading_rule_key=$filename;
          $from_embedded_rules=$2;
-         if ($from_embedded_rules==1) {
-            $handle=$self->cpp->embedded_rules_handle;
-         }
       }
-      my $app_pkg=$self->pkg;
       $self->compile_scope->begin_locals;
-      local *application::=get_pkg($app_pkg);
+      local *application::=get_symtab($self->pkg);
       $self->compile_scope->end_locals;
       my $credit_val= $extension && '=$Polymake::Core::Application::extension->credit';
       if ($from_embedded_rules>=2) {
@@ -2520,10 +2505,13 @@ sub Polymake::Core::Application::INC {
             push @{$self->cpp->embedded_rules},
                  "1; __END__\n";
          }
-         return (\&CPlusPlus::perApplication::get_transformed_embedded, $self->cpp);
+         return (\&getline_embedded, $self->cpp->embedded_rules);
       }
-      new RuleFilter($handle, $self, $filename, $loading_rule_key, $from_embedded_rules,
-                     length($credit_val)>0 && defined($extension->credit), $main_init,
+
+      new RuleFilter($handle, $self, $filename, $loading_rule_key,
+                     $from_embedded_rules && $self->cpp->raw_embedded_rules,
+                     length($credit_val)>0 && defined($extension->credit),
+                     $main_init,
                      <<"_#_#_#_" . RuleFilter::line_directive(1, $filename) );
 $warn_options;
 use namespaces '$app_pkg';
@@ -2535,16 +2523,20 @@ _#_#_#_
    } elsif ($filename =~ s/^script([:=])//) {
       open $handle, $filename or die "can't read script file $filename: $!\n";
       my $tm=(stat $handle)[9];
-      new ScriptLoader($handle, [ "package Polymake::User; $warn_options; use " . ($1 eq ':' ? "application undef, " : "namespaces ") . "\$namespaces::allow_redeclare;\n",
-                                  "Polymake::Core::StoredScript->new(q{$filename}, $tm, Polymake::Core::rescue_static_code(1));\n",
-                                  RuleFilter::line_directive(1, $filename)
-                                ]);
+      my $preamble=join("\n",
+                        "package Polymake::User; $warn_options;",
+                        "use " . ($1 eq ':' ? "application" : "namespaces") . ";  declare +re;",
+                        "Polymake::Core::StoredScript->new(q{$filename}, $tm, Polymake::Core::rescue_static_code(1));",
+                        RuleFilter::line_directive(1, $filename));
+      (\$preamble, $handle);
 
    } elsif (my ($full_path, @preamble)=find_file_in_INC($filename, $self->myINC)) {
       open $handle, $full_path or die "can't read file $full_path: $!\n";
-      push @preamble, "$warn_options; use namespaces \"".$self->pkg."\";\n",
-                      RuleFilter::line_directive(1, $full_path);
-      new ScriptLoader($handle, \@preamble);
+      my $preamble=join("\n", @preamble,
+                        qq{$warn_options; use namespaces "$app_pkg";},
+                        RuleFilter::line_directive(1, $full_path));
+      (\$preamble, $handle);
+
    } else {
       undef
    }
@@ -2559,19 +2551,22 @@ sub import {
    (undef, my ($app_name, $flags))=@_;
    $flags //= 0;
    if (defined $app_name) {
-      package Polymake::User;
+      my $pkg=caller;
       eval {
          namespaces::temp_disable();
+         package Polymake::User;
          application($app_name);
       };
-      if ($@) {
-         err_print($@);
-         exit 1;
-      }
-      $INC[0]=$application if $INC[0] != \&Polymake::Core::Shell::interactive_INC;
-      import namespaces(1 | $flags, $application->eval_expr);
-      namespaces::import_subs();
+      die $@ if $@;
+      $INC[0]=$Polymake::User::application if $INC[0] != \&Polymake::Core::Shell::interactive_INC;
+      $pkg ne "Polymake::User"
+      ? import namespaces(1 | $flags, $Polymake::User::application->pkg, "Polymake::User")
+      : import namespaces(1 | $flags, $Polymake::User::application->eval_expr);
    } else {
+      package Polymake::User;
+      if ($Core::Application::plausibility_checks && caller ne __PACKAGE__) {
+         croak( "wrong use of 'use application' without application name: only allowed in package Polymake::User" );
+      }
       import namespaces(1 | $flags, $Polymake::User::application->eval_expr);
    }
 }
@@ -2594,9 +2589,10 @@ sub Polymake::Core::NeutralScriptLoader::INC {
    my ($self, $filename)=@_;
    if ($filename =~ s/^script[:=]//) {
       open my $handle, $filename or die "can't read script file $filename: $!\n";
-      new ScriptLoader($handle, [ "package Polymake::User; $warn_options; use namespaces;\n",
-                                  Application::RuleFilter::line_directive(1, $filename)
-                                ]);
+      my $preamble=join("\n",
+                        "package Polymake::User; $warn_options; use namespaces;",
+                        Application::RuleFilter::line_directive(1, $filename));
+      (\$preamble, $handle)
    } elsif ($User::application != $self) {
       $User::application->INC($filename);
    } else {
@@ -2696,7 +2692,7 @@ sub new {
 
 ####################################################################################
 
-# pre-declare the package as to enable it for namespace lookup in CONFIGURE clauses
+# pre-declare the package in order to enable it for namespace lookup in CONFIGURE clauses
 package Polymake::Configure;
 
 1

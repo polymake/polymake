@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -38,7 +38,7 @@ use Polymake::Ext;
 # Global variables
 #
 
-declare $Version="3.1";
+declare $Version="3.2";
 declare $VersionNumber=eval "v$Version";        # for string comparisons with vM.N literals
 
 declare ($Scope,                # Scope object for the current cycle
@@ -52,6 +52,9 @@ if ($DeveloperMode) {
    require Polymake::SourceVersionControl;
    $CoreVCS=new SourceVersionControl($InstallTop);
 }
+
+# resources for third-party programs launched by polymake
+declare $Resources=$ENV{POLYMAKE_RESOURCE_DIR} // "$InstallTop/resources";
 
 ########################################################################
 #
@@ -114,7 +117,7 @@ sub greeting {
 
    my @messages = ("polymake version $full_version", <<'.', <<'.');
 
-Copyright (c) 1997-2017
+Copyright (c) 1997-2018
 Ewgenij Gawrilow, Michael Joswig (TU Berlin)
 http://www.polymake.org
 .
@@ -124,6 +127,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 .
 
    return join '',@messages[0 .. $verbose];
+}
+
+# initialize some modules in proper order
+# "config path" =>
+sub init {
+   &Polymake::Core::UserSettings::init;
+   Polymake::Core::Extension::init();
+   Polymake::Core::CPlusPlus::init();
 }
 
 ########################################################################

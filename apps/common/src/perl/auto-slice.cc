@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -60,5 +60,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(slice_x_x_f37, perl::Canned< const Wary< pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true>, mlist<> > > >);
    FunctionInstance4perl(slice_X32_f37, perl::Canned< const Wary< pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::QuadraticExtension<pm::Rational>, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> > >, int);
    FunctionInstance4perl(slice_x_x_f37, perl::Canned< Wary< Vector< Rational > > >);
+   FunctionInstance4perl(slice_X32_f37, perl::Canned< const Wary< pm::VectorChain<pm::SingleElementVector<pm::Rational>, pm::Vector<pm::Rational> const&> > >, perl::Canned< const pm::Complement<pm::SingleElementSetCmp<int, pm::operations::cmp>, int, pm::operations::cmp> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

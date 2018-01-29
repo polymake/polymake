@@ -1,0 +1,21 @@
+# This is a template for an optional script generating a list of non-standard build targets
+# and/or ninja rules for a bundled or standalone extension.
+# Please edit it according to your needs and rename it to generate_ninja_targets.pl
+# If you don't need it, you can safely delete this file right now.
+
+# This script may contain any perl code doing the following:
+#
+# - Print ninja commands like variable assignments, build commands for certain targets, or build rules.
+# Rules which might be shared with other extensions may also go in a separate file rules.ninja
+# placed in the same directory (support).  They will be included automatically.
+#
+# - Return a list of build targets to be included in top-level aliases like 'all' or 'clean',
+#   for example:
+#
+#     return ( all => 'filename' )
+#
+# This script can find the configuration values of the extension in the global hash %ConfigVars.
+# $ConfigVars{srcroot} always points to the top directory of the extension.
+# The global variable $root always points to the top directory of polymake core system.
+
+# Examples can be found in bundled extensions java, jreality, and javaview.

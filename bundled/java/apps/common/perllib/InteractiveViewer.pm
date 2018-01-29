@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -27,6 +27,8 @@ require Polymake::Background;
 
 package Polymake::InteractiveViewer;
 
+use Fcntl ':seek';
+
 use Polymake::Struct (
    '$name',
    '@windows',
@@ -51,8 +53,8 @@ sub new {
       foreach my $ext ($self->java_extensions) {
          my ($jar, $native_lib);
          if ($ext->is_bundled) {
-            ($jar=$ext->URI) =~ s{^bundled:(.*)}{$InstallArch/jars/polymake_$1.jar};
-            $native_lib="polymake_$1$ENV{POLYMAKE_CLIENT_SUFFIX}";
+            $jar="$InstallArch/jars/polymake_".$ext->short_name.".jar";
+            $native_lib="polymake_".$ext->short_name;
          } else {
             # @todo
             die "Sorry, loading jars from standalone extensions is not yet implemented\n";
@@ -74,7 +76,7 @@ sub new {
                         "de.tuberlin.polymake.common.SelectorThread",
                         $self->server_socket->port, map("-nl $_", @native_libs));
 
-      push (@java_command, "2> /dev/null") if ($DebugLevel<1);
+      push @java_command, "2>/dev/null" if $DebugLevel<1;
 
       new Background::Process(@java_command);
       $self->data_socket=new Watcher($self->server_socket->accept, $self);
@@ -82,10 +84,8 @@ sub new {
       if ($Shell->interactive) {
          add AtEnd($self->name, sub { if (defined (my $active=$pkg->instance)) { close($active->data_socket) } },
                    before=>"Background", ignore_multiple=>1);
-      } else {
-         add AtEnd($self->name, sub { if (defined (my $active=$pkg->instance)) { while (length($active->data_socket->getline)) {} } },
-                   ignore_multiple=>1);
       }
+
       $self;
    }
 }
@@ -101,10 +101,16 @@ sub append {
 }
 
 sub run {
-   my $self=shift;
+   my ($self)=@_;
    foreach my $window (splice @{$self->new_windows}) {
       $window->launch($self->data_socket);
       push @{$self->pending_windows}, $window;
+   }
+
+   unless ($Shell->interactive || @{$self->windows}) {
+      # no interactive shell waiting for input ant a recursive call from a feedback listener:
+      # serve the viewer requests until it's finished
+      seek $self->data_socket, -1, SEEK_SET;
    }
 }
 
@@ -114,9 +120,13 @@ sub find_window {
 }
 
 sub shutdown {
-   my $self=shift;
+   my ($self)=@_;
    undef $self->data_socket;
    undef $self->server_socket;
+
+   foreach my $window (@{$self->windows}) {
+      $_->closed for @{$window->feedback_listener};
+   }
    undef $self->instance;
 }
 
@@ -129,29 +139,29 @@ sub shutdown {
 package Polymake::InteractiveViewer::Watcher;
 
 use Polymake::Struct (
-   [ '@ISA' => 'CollaborativePipe' ],
+   [ '@ISA' => 'Pipe::Collaborative' ],
    [ new => '$$' ],
    [ '$viewer' => 'weak( #2 )' ],       # some derived InteractiveViewer instance
+   [ '$cur_win' => 'undef' ],
 );
 
 sub alone {}
 
 sub in_avail {
-   my $self=shift;
+   my ($self)=@_;
    my $pos=length($self->rbuffer);
-   my $window;
    if ($self->SUPER::in_avail>0) {
       while ($pos < length($self->rbuffer)) {
          pos($self->rbuffer)=$pos;
          if ($self->rbuffer =~ s/\G^x\n//mc) {
             # end of feedback message
-            undef $window;
-         } elsif (defined $window) {
+            undef $self->cur_win;
+         } elsif (defined $self->cur_win) {
             # feedback message not completely consumed yet
             my $cmd=$self->READLINE;
             my $consumed;
-            foreach (@{$window->feedback_listener}) {
-               $consumed=$_->feedback($cmd, $self->handle, $self->viewer, $window) and last;
+            foreach my $listener (@{$self->cur_win->feedback_listener}) {
+               $consumed=$listener->feedback($cmd, $self->handle, $self->viewer, $self->cur_win) and last;
             }
             unless ($consumed) {
                chomp $cmd;
@@ -160,22 +170,21 @@ sub in_avail {
          } elsif ($self->rbuffer =~ s/\G^c\s+(\S+)\n//mc) {
             # window closed
             if (defined (my $wi=delete $self->viewer->windows_by_id->{$1})) {
-               $window=$self->viewer->windows->[$wi];
+               my $window=$self->viewer->windows->[$wi];
                $_->closed for @{$window->feedback_listener};
                splice @{$self->viewer->windows}, $wi, 1;
                $_>$wi && --$_ for values %{$self->viewer->windows_by_id};
-               undef $window;
             } else {
                err_print( $self->viewer->name, " tells about an unknown Window id '$1'" );
             }
          } elsif ($self->rbuffer =~ s/\G^n\s+(\S+)\n//mc) {
             if (defined (my $wi=$self->viewer->windows_by_id->{$1})) {
                # start of a feedback message
-               $window=$self->viewer->windows->[$wi];
-               unless (@{$window->feedback_listener}) {
+               $self->cur_win=$self->viewer->windows->[$wi];
+               unless (@{$self->cur_win->feedback_listener}) {
                   err_print( $self->viewer->name, " sends feedback from a non-interactive window $1" );
                }
-            } elsif (defined ($window=shift @{$self->viewer->pending_windows})) {
+            } elsif (defined (my $window=shift @{$self->viewer->pending_windows})) {
                # new window opened
                push @{$self->viewer->windows}, $window;
                $window->id=$1;
@@ -183,14 +192,19 @@ sub in_avail {
             } else {
                err_print( $self->viewer->name, " tells about an unknown Window id '$1'" )
             }
+         } else {
+            $self->rbuffer =~ s/^(.*)\n//m;
+            err_print( $self->viewer->name, " sent an unrecognizable command '", $1 // $self->rbuffer, "'" );
+            $self->rbuffer="" if !defined $1;
          }
       }
+      1
    }
 }
 
 sub CLOSE {
-   my $self=shift;
-   Pipe::CLOSE($self,1);
+   my ($self)=@_;
+   Pipe::CLOSE($self, 1);
    $self->viewer->shutdown;
    1
 }
@@ -219,6 +233,7 @@ sub launch {
    }
    print $pipe "n ", $self->class, " ", $self->client_port, "\n", $self->contents->toString;
 }
+
 
 1
 

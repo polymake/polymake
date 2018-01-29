@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -62,7 +62,8 @@ user_function find_node_permutation(props::Graph, props::Graph) : c++ (include =
 # @param IncidenceMatrix<NonSymmetric> m2
 # @return Pair<Array<Int>,Array<Int>> ''first'' permutation applies to the rows, ''second'' applies to the columns
 # @depends bliss or nauty
-# @example > $m1 = new IncidenceMatrix([1,2],[5,3]);
+# @example
+# > $m1 = new IncidenceMatrix([1,2],[5,3]);
 # > $m2 = new IncidenceMatrix([4,3],[1,5]);
 # > print find_row_col_permutation($m1,$m2);
 # | <1 0> <0 1 4 3 5 2>
@@ -91,7 +92,8 @@ user_function automorphisms(props::Graph) : c++ (include => "polymake/graph/comp
 # @param props::Graph graph
 # @return Int the order of the automorphism group
 # @depends bliss or nauty
-# @example > print n_automorphisms(cycle_graph(5)->ADJACENCY);
+# @example
+# > print n_automorphisms(cycle_graph(5)->ADJACENCY);
 # | 2
 user_function n_automorphisms(props::Graph) : c++ (include => "polymake/graph/GraphIso.h");
 
@@ -139,7 +141,17 @@ user_function canonical_form(props::Graph) : c++ (include => "polymake/graph/com
 # @param Int k a key for the hash computation, default value 2922320
 # @return Int
 # @depends bliss or nauty
-user_function canonical_hash(props::Graph;$=2922320) : c++ (include => "polymake/graph/compare.h");
+user_function canonical_hash(props::Graph; $=2922320) : c++ (include => "polymake/graph/compare.h");
+
+# @category Comparing
+# Compute a hash for an incidence matrix //I// independent of the row ordering.
+# Warning: This hash can depend on the extension (bliss/nauty) used, its version and configuration, as well as the hardware!
+# Nauty requires an integer key //k// as input, bliss will ignore the key.
+# @param IncidenceMatrix M
+# @param Int k a key for the hash computation, default value 2922320
+# @return Int
+# @depends bliss or nauty
+user_function canonical_hash(IncidenceMatrix; $=2922320) : c++ (include => "polymake/graph/compare.h");
 
 
 object Graph {

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,6 +20,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/common/labels.h"
 
 namespace polymake { namespace polytope {
 
@@ -58,10 +59,8 @@ perl::Object lattice_pyramid(perl::Object p_in, const Rational& z, const Vector<
                              (v | z);
 
    if (relabel) {
-      std::vector<std::string> labels(n_vertices);
-      read_labels(p_in, "VERTEX_LABELS", labels);
-      labels.resize(n_vertices+1);
-      labels[n_vertices]="Apex";
+      std::vector<std::string> labels = common::read_labels(p_in, "VERTEX_LABELS", n_vertices);
+      labels.emplace_back("Apex");
       p_out.take("VERTEX_LABELS") << labels;
    }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,6 +16,7 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Polynomial.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/client.h"
@@ -56,5 +57,7 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(new_C, QuadraticExtension< Rational >, int);
    FunctionInstance4perl(new_C, QuadraticExtension< Rational >, perl::Canned< const Rational >);
    OperatorInstance4perl(assign, QuadraticExtension< Rational >, perl::Canned< const Rational >);
+   OperatorInstance4perl(Binary_mul, perl::Canned< const QuadraticExtension< Rational > >, perl::Canned< const Polynomial< QuadraticExtension< Rational >, int > >);
+   OperatorInstance4perl(Binary_add, perl::Canned< const QuadraticExtension< Rational > >, perl::Canned< const Polynomial< QuadraticExtension< Rational >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

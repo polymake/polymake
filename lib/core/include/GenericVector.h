@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -285,7 +285,7 @@ public:
       return this->top();
    }
 
-   /// appending an element
+   /// divide by an element
    template <typename Right>
    top_type& operator/= (const Right& r)
    {
@@ -293,7 +293,7 @@ public:
       return this->top();
    }
 
-   /// divide by an element
+   /// divide exact by an element
    template <typename Right>
    top_type& div_exact(const Right& r)
    {

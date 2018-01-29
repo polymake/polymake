@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake::Test::Group;
 
@@ -73,7 +74,7 @@ sub run {
    local_scalar($self->env->cur_group, $self);
    my $report_writer=$self->env->report_writer;
    if ($report_writer) {
-      $report_writer->startTag("testsuite", package => $self->application->name, name => $self->name);
+      $report_writer->startTag("testsuite", package => $self->package_name, name => $self->name);
    } else {
       print_title($self, "testing " . $self->name . ":");
    }
@@ -93,6 +94,14 @@ sub print_title {
    my ($self, $title)=@_;
    $self->cursor_pos=length($title);
    print $title;
+}
+
+sub package_name {
+   $_[0]->application->name;
+}
+
+sub base_dir {
+   $_[0]->application->installTop;
 }
 
 #############################################################################
@@ -116,12 +125,12 @@ declare $current;
 
 # to be temporarily inserted into $application->myInc
 declare $preamble=[ ".",
-                    "\$current->group->env->start_timers;\n",
-                    "package Polymake::User;\n" ];
+                    '$current->group->env->start_timers;',
+                    'package Polymake::User;' ];
 
 sub new {
    my $self=&_new;
-   if ($self->source_file =~ /test_(.*)\.pl$/) {
+   if ($self->source_file =~ m{test_([^/]+)\.pl$}) {
       $self->name=$1;
    }
    $self
@@ -129,8 +138,8 @@ sub new {
 
 sub shorten_source_file {
    my ($self, $source_file)=@_;
-   if (index($source_file, $self->group->application->installTop)==0) {
-      substr($source_file, length($self->group->application->installTop)+1);
+   if (index($source_file, $self->group->base_dir)==0) {
+      substr($source_file, length($self->group->base_dir)+1);
    } else {
       $source_file;
    }
@@ -212,12 +221,11 @@ sub run {
       } elsif (length($self->disabled)) {
          if ($self->disabled ne "notest") {
             if ($report_writer) {
-               $report_writer->startTag("testcase", classname => $self->group->name,
-                                        name => ($self->name && "[ ".$self->name." ] ")."setup",
-                                        status => "ignore");
+               $report_writer->startTag("testcase", testcase_attrs($self, "setup"), status => "ignore");
                $report_writer->dataElement("system-out", $self->describe_location);
                $report_writer->emptyTag("skipped", message => $self->disabled);
                $report_writer->endTag("testcase");
+               $env->report_fh->flush;
             } else {
                if ($self->group->loaded_subgroups==0 && $self==$self->group->subgroups->[-1]) {
                   print " SKIPPED\n";
@@ -240,11 +248,11 @@ sub report_error {
    my $env=$self->group->env;
    my $report_writer=$env->report_writer;
    if ($report_writer) {
-      $report_writer->startTag("testcase", classname => $self->group->name,
-                               name => ($self->name && "[ ".$self->name." ] ")."setup");
+      $report_writer->startTag("testcase", testcase_attrs($self, "setup"));
       $report_writer->dataElement("system-out", $self->describe_location);
-      $report_writer->emptyTag("error", message=>$@);
+      $report_writer->emptyTag("error", message => $@);
       $report_writer->endTag("testcase");
+      $env->report_fh->flush;
    } else {
       my ($local_source_file)=$self->source_file =~ $filename_re;
       $@ =~ s{^(.*) at \S*\Q$local_source_file\E line (\d+)\.?$}{$env->present_source_location($self->source_file, $2).": ERROR: $1\n"}e
@@ -254,6 +262,14 @@ sub report_error {
       print " ERROR\n";
    }
    $@="";
+}
+
+sub testcase_attrs {
+   my ($self, $case_name)=@_;
+   my $mode=$self->group->env->annotate_mode;
+   ( classname => $self->group->name,
+     name => ($self->name && "[ ".$self->name." ] ") . $case_name . ($mode && " \@$mode")
+   )
 }
 
 sub describe_location {
@@ -282,9 +298,13 @@ sub assess_cases {
             $env->print_case_name($case->name, 0);
             my $loc=$env->present_source_location($case->source_file, $case->source_line);
             if ($self->is_random && $env->ignore_random_failures) {
-               push @{$env->random_failed}, "$loc: testcase ".$case->name."\n".$case->fail_log;
+               if ($env->ignore_random_failures ne "hide") {
+                  push @{$env->random_failed},
+                       "$loc: testcase ".$case->name."\n".($env->ignore_random_failures eq "show" && $case->fail_log);
+               }
             } else {
-               push @{$env->failed}, "$loc: testcase ".$case->name."\n".$case->fail_log;
+               push @{$env->failed},
+                    "$loc: testcase ".$case->name."\n".$case->fail_log;
             }
          }
       }

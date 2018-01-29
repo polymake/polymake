@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -55,8 +55,8 @@ SparseVector<E> find_initial_point(const Set<int>& rings, const SparseMatrix<E>&
        type != 'B' && type != 'b' &&
        type != 'C' && type != 'c' &&
        type != 'F' && type != 'f') {
-      for (Entire<Set<int> >::const_iterator sit = entire(rings); !sit.at_end(); ++sit)
-         equations(*sit, 0) = E(-1); // we look for a point not on any hyperplane indexed by rings, but on all others
+      for (const auto& r: rings)
+         equations(r, 0) = E(-1); // we look for a point not on any hyperplane indexed by rings, but on all others
    } else {
       // the root systems of type B, C, F, G have vectors of different length, so we need to impose equations
       // that put the initial point at equal distance to each ringed hyperplane.
@@ -83,8 +83,8 @@ SparseVector<E> find_initial_point(const Set<int>& rings, const SparseMatrix<E>&
       default:
          throw std::runtime_error("This shouldn't happen");
       }
-      for (Entire<Set<int> >::const_iterator sit = entire(rings); !sit.at_end(); ++sit)
-         equations(*sit, 0) = rhs[*sit]; // we look for a point not on any hyperplane indexed by rings, but on all others
+      for (const auto& r: rings)
+         equations(r, 0) = rhs[r]; // we look for a point not on any hyperplane indexed by rings, but on all others
    } 
    if (type == 'A' || type == 'a')
       equations /= SparseVector<E> (E(0) | ones_vector<E>(d));
@@ -95,25 +95,25 @@ SparseVector<E> find_initial_point(const Set<int>& rings, const SparseMatrix<E>&
 
 template <typename E>
 SparseMatrix<E> orbit (const SparseVector<E>& p0, 
-                       const SparseMatrix<E>& roots, 
+                       const SparseMatrix<E>& simple_roots, 
                        hash_map<SparseVector<E>, int>& index_of)
 {
    index_of[p0] = 0;
    int new_point_index(1);
-   const int n_roots(roots.rows());
+   const int n_simple_roots(simple_roots.rows());
 
-   typedef std::pair<int, SparseVector<E> > key_type; // (root_index, point) not yet reflected
+   typedef std::pair<int, SparseVector<E>> key_type; // (root_index, point) not yet reflected
    std::list<key_type> point_queue; 
-   for (int i=0; i<n_roots; ++i) 
+   for (int i=0; i<n_simple_roots; ++i) 
       point_queue.push_back(key_type(i, p0)); 
 
    while (!point_queue.empty()) {
       const key_type a(point_queue.front());  point_queue.pop_front();
       const int root_index(a.first);
       const SparseVector<E>& old_point(a.second);
-      const SparseVector<E> new_point(reflect(old_point, roots[root_index]));
+      const SparseVector<E> new_point(reflect(old_point, simple_roots[root_index]));
       if (!index_of.exists(new_point)) {
-         for (int i=0; i<n_roots; ++i)
+         for (int i=0; i<n_simple_roots; ++i)
             if (i != root_index)
                point_queue.push_back(key_type(i, new_point));
          index_of[new_point] = new_point_index++;
@@ -121,8 +121,8 @@ SparseMatrix<E> orbit (const SparseVector<E>& p0,
    }
 
    SparseMatrix<E> V(index_of.size(), index_of.begin()->first.dim());
-   for (typename Entire<hash_map<SparseVector<E>, int> >::const_iterator mit = entire(index_of); !mit.at_end(); ++mit)
-      V[mit->second] = mit->first;
+   for (const auto& io: index_of)
+      V[io.second] = io.first;
    return V;
 }
 
@@ -133,10 +133,10 @@ void wythoff(const std::string& type,
              const Set<int>& rings, 
              const SparseMatrix<E>& R, 
              SparseMatrix<E>& V, 
-             Array<Array<int> >& generators)
+             Array<Array<int>>& generators)
 {
-   const int n_roots = R.rows();
-   if (accumulate(rings, operations::max()) >= n_roots)
+   const int n_simple_roots = R.rows();
+   if (accumulate(rings, operations::max()) >= n_simple_roots)
       throw std::runtime_error("Set specifies non-existing rows of the root matrix");
    const int d = R.cols()-1;
 
@@ -147,8 +147,8 @@ void wythoff(const std::string& type,
    hash_map<SparseVector<E>, int> index_of;
    V = orbit(p0, R, index_of);
    const int n_points = V.rows();
-   generators = Array<Array<int> >(n_roots);
-   for (int i=0; i<n_roots; ++i) {
+   generators = Array<Array<int>>(n_simple_roots);
+   for (int i=0; i<n_simple_roots; ++i) {
       Array<int> g(n_points);
       for (int j=0; j<n_points; ++j) 
          g[j] = index_of[reflect(SparseVector<E>(V.row(j)), R.row(i))];
@@ -166,7 +166,7 @@ perl::Object wythoff_dispatcher(std::string type, Set<int> rings)
    std::istringstream is (type.substr(1));
    is >> n;
 
-   Array<Array<int> > generators;
+   Array<Array<int>> generators;
 
    SparseMatrix<Rational> RM;
    SparseMatrix<QE> EM;
@@ -281,8 +281,8 @@ perl::Object wythoff_dispatcher(std::string type, Set<int> rings)
    perl::Object a("group::PermutationAction");
    a.take("GENERATORS") << generators;
    perl::Object g("group::Group");
-   g.take("RAYS_ACTION") << a;
    p.take("GROUP") << g;
+   p.take("GROUP.VERTICES_ACTION") << a;
 
    return p;
 }

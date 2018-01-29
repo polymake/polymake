@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -37,5 +37,6 @@ namespace polymake { namespace common { namespace {
 
    FunctionInstance4perl(Polynomial__set_var_names_x_f17, Polynomial< Rational, int >);
    FunctionInstance4perl(UniPolynomial__set_var_names_x_f17, UniPolynomial< UniPolynomial< Rational, int >, Rational >);
+   FunctionInstance4perl(UniPolynomial__set_var_names_x_f17, UniPolynomial< Rational, Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

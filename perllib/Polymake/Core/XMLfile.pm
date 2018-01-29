@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -19,12 +19,16 @@ require Cwd;
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 use feature 'state';
 
 # XML namespaces
 my $pmns="http://www.math.tu-berlin.de/polymake/#3";
 my $RelaxNGns="http://relaxng.org/ns/structure/1.0";
 my $W3CSchemaDatatypes="http://www.w3.org/2001/XMLSchema-datatypes";
+
+# should be 8 characters long, as the regular ones
+my $always_valid_checksum="*always*";
 
 my $suppress_auto_save=0;
 
@@ -60,7 +64,7 @@ declare $reject_unknown_properties=0;
 #############################################################################################
 my ($core_transforms, %ext_transforms);
 
-package _::Transform;
+package Polymake::Core::XMLreader::Transform;
 
 use Polymake::Struct (
    [ new => '$$$' ],
@@ -112,13 +116,14 @@ sub apply_transforms {
    provide_ext($self, $_->getAttribute("ext"))
      for $XPath->findnodes('p:property[@ext] | p:object[@ext] | p:attachment[@ext]', $self->doc_tree->documentElement);
 
+   my $verbose= $Verbose::files && defined($self->filename);
    foreach my $tr (@{$self->transforms}) {
       $tr->doc_tree //= do {
          $tr->in_ext && set_search_path([ "$InstallTop/xml" ]);
          $XSLT->parse_stylesheet_file($tr->filename);
       };
-      dbg_print( "transforming ", $self->filename || "<input string>", " with ",
-                 $tr->in_ext ? $tr->filename : ($tr->filename =~ $filename_re)[0] ) if $Verbose::files;
+      dbg_print( "transforming ", $self->filename, " with ",
+                 $tr->in_ext ? $tr->filename : ($tr->filename =~ $filename_re)[0] ) if $verbose;
       $self->doc_tree=$tr->doc_tree->transform($self->doc_tree);
    }
 
@@ -146,9 +151,11 @@ sub create_doc_tree {
          seek($self->source, 0, 0);
          $parser=new XML::LibXML();
          $parser->parse_fh($self->source);
-      } else {
+      } elsif (ref($self->source) eq "SCALAR") {
          $parser=new XML::LibXML();
          $parser->parse_string(${$self->source});
+      } else {
+         die "XMLreader: can't rewind an input stream\n";
       }
    }
 }
@@ -170,8 +177,13 @@ sub parse {
       last if ($nodeType=$parser->nodeType) == XML_READER_TYPE_ELEMENT;
       if ($nodeType == XML_READER_TYPE_PROCESSING_INSTRUCTION) {
          if ($parser->name eq "pm") {
-            if (!$force_verification && $parser->value =~ /\bchk="([[:xdigit:]]+)"/) {
-               $self->chk=hex($1);
+            if (!$force_verification) {
+               if ($parser->value =~ /\bchk="([[:xdigit:]]+)"/) {
+                  $self->chk=hex($1);
+               } elsif ($parser->value =~ /\b\Qchk="$always_valid_checksum"\E/o &&
+                        $self->filename =~ m{/test(?:suite|scenarios)/}) {
+                  $self->chk=$always_valid_checksum;
+               }
             }
          }
       }
@@ -223,7 +235,7 @@ sub parse {
       verify_integrity($self);
    }
    if (!$self->trusted) {
-      my $verbose= $Verbose::files && defined $self->filename && !defined($self->doc_tree);
+      my $verbose= $Verbose::files && defined($self->filename) && !defined($self->doc_tree);
       dbg_print( "validating XML file ", $self->filename ) if $verbose;
       create_doc_tree($self, $parser);
       state $rngschema=new XML::LibXML::RelaxNG(location => $InstallTop."/xml/datafile.rng");
@@ -260,7 +272,7 @@ sub parse {
       } else {
          $is_object and die "top-level element must be `data'\n";
          if (defined (my $value=$attrs->{value})) {
-            push @{$self->cur_value}, [ downgradeUTF8($value) ];
+            push @{$self->cur_value}, [ $value ];
          } else {
             push @{$self->cur_value}, [ ];
          }
@@ -358,12 +370,12 @@ sub skip_node {
    0   # proceed with the next regular "read"
 }
 #############################################################################################
-sub parse_file {
+sub parse_filehandle {
    my ($self, $fh)=@_;
    $self->source=$fh;
    eval {
       parse($self, new XML::LibXML::Reader(IO => $fh, no_blanks=>1));
-   } or die "invalid data file ", $self->filename, ": $@\n";
+   } or die "invalid ", (defined($self->filename) ? "data file ".$self->filename : "XML input stream"), ": $@\n";
 }
 
 sub parse_string {
@@ -380,7 +392,7 @@ sub provide_ext {
    my $ret=1;
    while ($ext_attr =~ /\G (\d+) (?: = ([^\s\#]+) (?: \#([\d.]+))? )? (?:\s+|$)/xgc) {
       $self->ext->[$1] //= do {
-         my $URI=downgradeUTF8($2 // die "invalid reference to an extension #$1 before its introduction\n");
+         my $URI=$2 // die "invalid reference to an extension #$1 before its introduction\n";
          my $version=$3;
          if (my $ext=provide Extension($URI, $mandatory)) {
             my $version_num=defined($version) ? eval("v$version") : "";
@@ -410,7 +422,9 @@ sub provide_ext {
 #############################################################################################
 sub verify_integrity {
    my ($self)=@_;
-   if (defined $self->filename) {
+   if ($self->chk eq $always_valid_checksum) {
+      $self->trusted=1;
+   } elsif (defined $self->filename) {
       my ($fsize, $mtime)=(stat $self->filename)[7,9];
       $self->trusted= $self->chk==($mtime^$fsize) || $self->chk==($mtime-1^$fsize);
    } else {
@@ -420,7 +434,7 @@ sub verify_integrity {
 #############################################################################################
 sub eval_qualified_type {
    my ($self, $type, $is_object, $in_tree)=@_;
-   if (my ($app_name, $type_expr)=map { downgradeUTF8($_) } $type =~ /^(?:($id_re)::)? ($type_re)$/xo) {
+   if (my ($app_name, $type_expr)= $type =~ /^(?:($id_re)::)? ($type_re)$/xo) {
       my $app= defined($app_name)
                ? add Application($app_name) :
                $in_tree
@@ -477,14 +491,14 @@ sub close_object {
 
 sub open_property {
    my ($self, $attrs)=@_;
-   my $prop_name=downgradeUTF8($attrs->{name});
+   my $prop_name=$attrs->{name};
    if ($prop_name =~ s/^($id_re):://o) {
       add Application($1);
    }
    if (defined (my $prop=$self->cur_proto->[-1]->lookup_property($prop_name))) {
       push @{$self->cur_property}, [ $prop, extract_type($self, $attrs, 0) ];
       if (defined (my $value=$attrs->{value})) {
-         push @{$self->cur_value}, [ downgradeUTF8($value) ];
+         push @{$self->cur_value}, [ $value ];
       } else {
          push @{$self->cur_value}, [ exists $attrs->{undef} ? undef : () ];
       }
@@ -532,12 +546,12 @@ sub close_property {
 
 sub open_attachment {
    my ($self, $attrs)=@_;
-   my $name=downgradeUTF8($attrs->{name});
+   my $name=$attrs->{name};
    my $type=extract_type($self, $attrs, 0);
    my $construct=$attrs->{construct};
-   push @{$self->cur_property}, [ $name, $type, defined($construct) && downgradeUTF8($construct) ];
+   push @{$self->cur_property}, [ $name, $type, $construct ];
    if (defined (my $value=$attrs->{value})) {
-      push @{$self->cur_value}, [ downgradeUTF8($attrs->{value}) ];
+      push @{$self->cur_value}, [ $attrs->{value} ];
    } else {
       push @{$self->cur_value}, [ ];
    }
@@ -551,11 +565,7 @@ sub close_attachment {
    my ($value)=@{ pop @{$self->cur_value} };
    if (defined($type)) {
       if (ref($type)) {
-         if ($construct) {
-            $value=$type->construct->($self->cur_object->[-1]->give($construct), $value);
-         } else {
-            $value=$type->construct->($value);
-         }
+         $value=$type->construct->($construct ? $self->cur_object->[-1]->give_list($construct) : (), $value);
       } elsif ($type eq "text") {
          $value=$self->text;
       }
@@ -636,13 +646,12 @@ sub close_v {
 sub split_list_value {
    my ($text, $list)=@_;
    if ($text =~ /['"]/) {
-      $text=downgradeUTF8($text);
       while ($text =~ /\G\s* (?: (['"]) (.*?) \1 | (\S+))/xg) {
          push @$list, defined($1) ? $2 : $3;
       }
    } else {
       $text =~ s/^\s+//;
-      @$list=split /\s+/, downgradeUTF8($text);
+      @$list=split /\s+/, $text;
    }
 }
 
@@ -676,7 +685,7 @@ sub open_e {
 
 sub close_e {
    my ($self)=@_;
-   push @{$self->cur_value->[-1]}, downgradeUTF8($self->text);
+   push @{$self->cur_value->[-1]}, $self->text;
 }
 
 sub open_t {
@@ -720,6 +729,7 @@ use Polymake::Struct (
    [ new => '$' ],
    [ '$filename' => 'Cwd::abs_path(#1)' ],
    '$is_compressed',
+   '$is_always_valid',   # file has a fake checksum assuming validity; used in testsuites only
 );
 
 sub load {
@@ -749,12 +759,25 @@ sub load {
    my $reader=new XMLreader($self->filename, $object);
    local $PropertyType::trusted_value=1;
    $reader->trusted=$self->is_compressed;
-   $reader->parse_file($fh);
+   $reader->parse_filehandle($fh);
+   $self->is_always_valid=$reader->chk eq $always_valid_checksum;
    unless ($PropertyType::trusted_value) {
       $object->transaction->changed=1;
       $object->transaction->commit($object);
       $object->dont_save if $suppress_auto_save;
    }
+}
+
+sub load_stream {
+   shift;
+   my ($object, $fh)=@_;
+   my $reader=new XMLreader(undef, $object);
+   local $PropertyType::trusted_value=0;
+   local $XMLreader::force_verification=1;
+   $object->begin_init_transaction;
+   $reader->parse_filehandle($fh);
+   $object->transaction->changed=1;
+   $object->transaction->commit($object);
 }
 #############################################################################################
 sub load_data {
@@ -764,7 +787,7 @@ sub load_data {
    my $reader=new XMLreader($self->filename, new LooseData());
    local $PropertyType::trusted_value=1;
    $reader->trusted=$self->is_compressed;
-   $reader->parse_file($fh);
+   $reader->parse_filehandle($fh);
    if (!$reader->trusted && !$suppress_auto_save && -w $self->filename) {
       save_data($self, $reader->cur_value, $reader->cur_object->[0]->description);
    }
@@ -1573,6 +1596,17 @@ sub new {
    $self
 }
 
+sub substitute {
+   my ($self, $f, $text)=@_;
+   if ($self->length->[$f] == length($text)) {
+      my $body=$self->body;
+      substr($body, $self->offset->[$f], $self->length->[$f])=$text;
+      $body;
+   } else {
+      die "invalid field index or text size\n";
+   }
+}
+
 package Polymake::Core::XMLwriter::PIbody;
 use Polymake::Struct (
    [ new => '$$' ],
@@ -1748,14 +1782,18 @@ sub write_object_contents {
 }
 #############################################################################################
 sub save {
-   my ($output, $object, $is_file)=@_;
+   my ($output, $object, $is_file, $is_always_valid)=@_;
    my $writer=new XMLwriter($output);
    $writer->xmlDecl;
 
    my $pi;
    if ($is_file>=0) {
-      $pi=new PIbody($data_pi, $output);
-      $writer->pi($pi->template->name, $pi);
+      if ($is_always_valid) {
+         $writer->pi($data_pi->name, $data_pi->substitute(0, $always_valid_checksum));
+      } else {
+         $pi=new PIbody($data_pi, $output);
+         $writer->pi($data_pi->name, $pi);
+      }
    }
    $writer->{':suppress_ext'}={};
    $writer->{':ext'}={};
@@ -1887,7 +1925,7 @@ sub save {
    my ($self, $object)=@_;
    my $compress=layer_for_compression($self);
    my ($of, $of_k)=new OverwriteFile($self->filename, ":utf8".$compress);
-   XMLwriter::save($of, $object, $compress ? -1 : 1);
+   XMLwriter::save($of, $object, $compress ? -1 : 1, $self->is_always_valid);
    close $of;
 }
 

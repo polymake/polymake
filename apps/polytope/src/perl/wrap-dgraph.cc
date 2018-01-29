@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,6 +14,7 @@
 --------------------------------------------------------------------------------
 */
 
+#include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/TropicalNumber.h"
@@ -35,5 +36,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(dgraph_T_x_x_o, Rational);
    FunctionInstance4perl(objective_values_for_embedding_T_x_x, Rational);
    FunctionInstance4perl(dgraph_T_x_x_o, double);
+   FunctionInstance4perl(dgraph_T_x_x_o, PuiseuxFraction< Max, Rational, Rational >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

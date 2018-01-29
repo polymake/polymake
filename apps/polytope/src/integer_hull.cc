@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -50,7 +50,8 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# Produces the integer hull of a polyhedron"
                   "# @param Polytope P"
                   "# @return Polytope"
-                  "# @example > $p = new Polytope(VERTICES=>[[1,1.3,0.5],[1,0.2,1.2],[1,0.1,-1.5],[1,-1.4,0.2]]);"
+                  "# @example [prefer cdd]" 
+                  "# > $p = new Polytope(VERTICES=>[[1,1.3,0.5],[1,0.2,1.2],[1,0.1,-1.5],[1,-1.4,0.2]]);"
                   "# > $ih = integer_hull($p);"
                   "# > print $ih->VERTICES;"
                   "# | 1 -1 0"

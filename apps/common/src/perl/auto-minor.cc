@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,18 +14,18 @@
 --------------------------------------------------------------------------------
 */
 
-///==== this line controls the automatic file splitting: max.instances=20
+///==== this line controls the automatic file splitting: max.instances=40
 
 #include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
-#include "polymake/Integer.h"
 #include "polymake/Matrix.h"
 #include "polymake/PuiseuxFraction.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
-#include "polymake/SparseMatrix.h"
 #include "polymake/TropicalNumber.h"
 #include "polymake/client.h"
+#include "polymake/linalg.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -35,17 +35,12 @@ namespace polymake { namespace common { namespace {
       WrapperReturnLvalue( T0, arg0.get<T0>().minor(arg1.get<T1>(), arg2.get<T2>()), arg0, arg1, arg2 );
    };
 
-   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< Wary< Matrix< Integer > > >, perl::Canned< const pm::Complement<pm::SingleElementSetCmp<int, pm::operations::cmp>, int, pm::operations::cmp> >, perl::Enum<pm::all_selector>);
-   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< const Wary< Matrix< Integer > > >, perl::Enum<pm::all_selector>, perl::Canned< const pm::Complement<pm::SingleElementSetCmp<int, pm::operations::cmp>, int, pm::operations::cmp> >);
-   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< const Wary< Matrix< int > > >, perl::Canned< const Set< int > >, perl::Enum<pm::all_selector>);
-   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< const Wary< SparseMatrix< int, NonSymmetric > > >, perl::Canned< const Set< int > >, perl::Enum<pm::all_selector>);
-   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< const Wary< IncidenceMatrix< NonSymmetric > > >, perl::Canned< const Set< int > >, perl::Enum<pm::all_selector>);
-   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< const Wary< SparseMatrix< Rational, NonSymmetric > > >, perl::Enum<pm::all_selector>, perl::Canned< const pm::Complement<pm::SingleElementSetCmp<int, pm::operations::cmp>, int, pm::operations::cmp> >);
-   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< const Wary< IncidenceMatrix< NonSymmetric > > >, perl::Canned< const Set< int > >, perl::Canned< const Set< int > >);
-   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< const Wary< Matrix< PuiseuxFraction< Min, Rational, Rational > > > >, perl::Canned< const Set< int > >, perl::Enum<pm::all_selector>);
-   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< Wary< Matrix< Rational > > >, perl::Enum<pm::all_selector>, perl::Canned< const Set< int > >);
-   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< const Wary< SparseMatrix< Rational, NonSymmetric > > >, perl::Canned< const Array< int > >, perl::Enum<pm::all_selector>);
-   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< const Wary< SparseMatrix< Rational, NonSymmetric > > >, perl::Canned< const pm::Complement<pm::Set<int, pm::operations::cmp>, int, pm::operations::cmp> >, perl::Enum<pm::all_selector>);
-   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< const Wary< Matrix< Integer > > >, perl::Canned< const Set< int > >, perl::Enum<pm::all_selector>);
+   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< const Wary< pm::DiagMatrix<pm::SameElementVector<pm::PuiseuxFraction<pm::Min, pm::Rational, pm::Rational> const&>, true> > >, perl::Canned< const pm::Complement<pm::SingleElementSetCmp<int, pm::operations::cmp>, int, pm::operations::cmp> >, perl::Enum<pm::all_selector>);
+   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< const Wary< Matrix< QuadraticExtension< Rational > > > >, perl::Enum<pm::all_selector>, perl::Canned< const pm::Series<int, true> >);
+   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< const Wary< Matrix< QuadraticExtension< Rational > > > >, perl::Canned< const Array< int > >, perl::Enum<pm::all_selector>);
+   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< Wary< Matrix< QuadraticExtension< Rational > > > >, perl::Enum<pm::all_selector>, perl::Canned< const Set< int > >);
+   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< const Wary< pm::RowChain<pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&, pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&> > >, perl::Canned< const Set< int > >, perl::Enum<pm::all_selector>);
+   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< const Wary< pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSetCmp<int, pm::operations::cmp>, int, pm::operations::cmp> const&> > >, perl::Canned< const Array< int > >, perl::Enum<pm::all_selector>);
+   FunctionInstance4perl(minor_X32_X32_f37, perl::Canned< Wary< Matrix< QuadraticExtension< Rational > > > >, perl::Enum<pm::all_selector>, perl::Canned< const pm::Series<int, true> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

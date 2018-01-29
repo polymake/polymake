@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 use feature 'state';
 
 package Polymake::Test::Examples;
@@ -43,8 +44,11 @@ sub new {
    } else {
       $filter = sub { scalar($_[0]->get_examples) };
    }
+   # help topics are sorted for the sake of reproducibility of test runs
+   # because otherwise they appear in hash-map (=random) order
    @{$self->subgroups}=map { new ExamplesInTopic($_, $self) }
-      $self->application->help->list_matching_leaves($filter);
+                       sort { $a->name cmp $b->name || $a->full_path cmp $b->full_path }
+                       $self->application->help->list_matching_leaves($filter);
    $self;
 }
 
@@ -70,38 +74,44 @@ sub new {
 sub create_testcases {
    my ($self)=@_;
    my $id=0;
-   state $testpkg="TestPkg000000";
+   state $testpkg="ExampleTestPkg000000";
    my $disable_cnt=0;
    my $disable_reason;
 
    foreach my $example ($self->topic->get_examples) {
       ++$id;
       ++$testpkg;
-      my @snippets;
+      my $app=$self->group->application;
+      my $app_name=$app->name;
 
-      my ($disable_this, $nocompare);
-      my $use_appname="undef";
+      my $source_file=$example->source_file;
+      my $source_line=$example->source_line;
+      my (@snippets, $disable_this, $nocompare);
+
       foreach my $hint (@{$example->hints}) {
-	 if (my ($appname)= $hint =~ /^\s*application\s+($id_re)\s*$/o) {
-	    if ($appname ne $self->group->application->name) {
-	       $use_appname="'$appname'";
-	    }
+	 if (my ($hint_app)= $hint =~ /^\s*application\s+($id_re)\s*$/o) {
+	    if ($hint_app eq $self->group->application->name) {
+	       $@="help topic ".$self->topic->full_path." example #$id contains a superfluous annotation [application $hint_app] at $source_file, line $source_line\n";
+               return;
+	    } else {
+               $app_name=$hint_app;
+               $app=eval { User::application($app_name) } or return;
+            }
 	 } elsif (my ($label)= $hint =~ /^\s*prefer\s+($id_re)\s*$/o) {
-	    my $application= $use_appname ne "undef" ? User::application(substr($use_appname,1,-1)) : $self->group->application;
-	    if (defined $application->prefs->find_label($label)) {
+	    if (defined $app->prefs->find_label($label)) {
 	       push @snippets, "prefer_now('$label');\n"
 	    } else {
 	       $disable_reason .= "requires an unknown preference label '$label'\n";
 	       $disable_this=1;
 	       last;
-	    } 
+	    }
 	 } elsif ($hint eq "nocompare") {
 	    $nocompare=1;
 	 } elsif ($hint eq "notest") {
 	    $disable_this=1;
 	    last;
 	 } else {
-	    @$="help topic ".$self->topic->full_path." example #$id contains an unrecognized hint [$_] at $source_file, line $source_line\n";
+	    $@="help topic ".$self->topic->full_path." example #$id contains an unrecognized hint [$_] at $source_file, line $source_line\n";
 	    return;
 	 }
       }
@@ -110,7 +120,6 @@ sub create_testcases {
 	 next;
       }
 
-      my $source_file=$example->source_file;
       my $expected = "=== BEGIN ===\n";
       my $snippet_cnt=0;
       while ($example->body =~ /((?: ^ [ \t]*>[ \t]* \S.*?\n)+) ((?: ^ [ \t]*\|(?:[ \t] .*)?\n)*)/xmg) {
@@ -121,7 +130,7 @@ sub create_testcases {
 	 $printout =~ s/^ [ \t]*\|[ \t]?//xmg;
 	 my $end_marker="=== END # $snippet_cnt ===";
 	 $snippet =~ s/\n\Z/; print "\\n$end_marker\\n";\n/s;
-	 my $source_line = $example->source_line - ($snippet_cnt==1);
+	 $source_line = $example->source_line - ($snippet_cnt==1);
 	 ++$source_line while $text_before =~ /\n/g;
          # the semicolon seems to soothe some pains in perl tokenizer when the first term in the expression
          # is an explicitely parametrized function template call
@@ -136,13 +145,13 @@ print "=== BEGIN ===\n";
       if ($snippet_cnt) {
 	 my $body=join("", @snippets);
 	 $body= <<"---";
-$Polymake::Core::warn_options; use application $use_appname, \$namespaces::auto_declare;
-Polymake::Core::Shell::enforce_scalar_context();
-package Polymake::User::$testpkg;
+$Polymake::Core::warn_options;
+package Polymake::$testpkg;
+use application '$app_name';  declare +auto;
 $body
-delete \$Polymake::User::{"$testpkg\::"};
+delete \$Polymake::{"$testpkg\::"};
 ---
-	 new ExampleCase($id, $body, $nocompare ? undef : $expected, $source_file, $example->source_line, $use_appname ne "undef");
+	 new ExampleCase($id, $body, $nocompare ? undef : $expected, $source_file, $example->source_line, $app != $self->group->application);
       } else {
 	 $@="help topic ".$self->topic->full_path." example #$id without any input at $source_file, line $source_line\n";
 	 return;
@@ -168,6 +177,7 @@ use Polymake::Struct (
 
 sub new {
    my $self=&Case::new;
+   local $disable_viewers = 1;
    before_run($self);
    if ($self->restore_application) {
       local_save_scalar($User::application);

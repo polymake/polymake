@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,6 +16,7 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
@@ -40,5 +41,10 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(transpose_X32, perl::Canned< const Matrix< Integer > >);
    FunctionInstance4perl(transpose_X32, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
    FunctionInstance4perl(transpose_X32, perl::Canned< const SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > >);
+   FunctionInstance4perl(transpose_X32, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Array<int> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(transpose_X32, perl::Canned< const pm::MatrixMinor<pm::SparseMatrix<pm::QuadraticExtension<pm::Rational>, pm::NonSymmetric>&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(transpose_X32, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
+   FunctionInstance4perl(transpose_X32, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::QuadraticExtension<pm::Rational> > const&, pm::all_selector const&, pm::Series<int, true> const&> >);
+   FunctionInstance4perl(transpose_X32, perl::Canned< const pm::MatrixMinor<pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

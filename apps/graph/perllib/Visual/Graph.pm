@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -142,10 +142,6 @@ sub add_decor_filters {
          push @decor_filters, $name, sub { $marked_nodes->{$_[0]} && $value };
       } elsif ($name =~ /^(?:Edge|Arrow)/) {
          push @decor_filters, $name, sub { $marked_edges->{${$_[0]}} && $value };
-      } else {
-         no strict 'refs';
-         croak( "unknown decoration keyword '$name'; the following are allowed:\n", 
-                join(", ", keys %{ref($self)."::decorations"}) );
       }
    }
 
@@ -155,7 +151,6 @@ sub add_decor_filters {
 
 sub add_node_subset {
    my ($self, $subset, $decor)=@_;
-
    # 1: outgoing edges, -1: ingoing edges, 0: both
    my $which_edges=!($self->is_directed) || $decor->{edges} || 1;
    delete $decor->{edges};

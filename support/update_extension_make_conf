@@ -1,4 +1,0 @@
-require Polymake::Configure;
-
-$ARGV[0] =~ m{^\Q${Polymake::InstallTop}/ext/\E};
-Polymake::Configure::update_extension_build_dir(Polymake::Core::Extension->new($ARGV[0], "bundled:$'", 1));

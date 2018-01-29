@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -40,7 +40,7 @@ rule porta.convex_hull.primal: FACETS, AFFINE_HULL : CONE_AMBIENT_DIM, CONE_DIM,
    my $tempname=new Tempfile;
    my $converter=new PortaConverter("$tempname.poi");
    $converter->print_dim($this->CONE_AMBIENT_DIM-1);
-   $converter->print_points($this->VERTICES | POINTS);
+   $converter->print_points($this->give("VERTICES | POINTS"));
    $converter->finish;
 
    my $command="$xporta -l -T $tempname.poi";
@@ -66,7 +66,7 @@ rule porta.convex_hull.dual: VERTICES, LINEALITY_SPACE : CONE_AMBIENT_DIM, FACET
    my $converter=new PortaConverter("$tempname.ieq");
    $converter->print_dim($this->CONE_AMBIENT_DIM-1);
    $converter->print_valid_point($this->VALID_POINT);
-   $converter->print_inequalities($this->FACETS | INEQUALITIES, $this->lookup("AFFINE_HULL | EQUATIONS"));
+   $converter->print_inequalities($this->give("FACETS | INEQUALITIES"), $this->lookup("AFFINE_HULL | EQUATIONS"));
    $converter->finish;
 
    my $command="$xporta -l -T $tempname.ieq";
@@ -99,12 +99,12 @@ user_function poly2porta(Polytope<Rational>, $, {primal=>1} ) {
     
     my $converter=new PortaConverter($filename);
     if ( $options->{primal} ) {
-	$converter->print_dim($p->CONE_AMBIENT_DIM-1);
-	$converter->print_points($p->VERTICES | POINTS, $p->lookup("LINEALITY_SPACE | INPUT_LINEALITY"));
+        $converter->print_dim($p->CONE_AMBIENT_DIM-1);
+        $converter->print_points($p->give("VERTICES | POINTS"), $p->lookup("LINEALITY_SPACE | INPUT_LINEALITY"));
     } else {
-	$converter->print_dim($p->CONE_AMBIENT_DIM-1);
-	$converter->print_valid_point($p->VALID_POINT);
-	$converter->print_inequalities($p->FACETS | INEQUALITIES, $p->lookup("AFFINE_HULL | EQUATIONS"));
+        $converter->print_dim($p->CONE_AMBIENT_DIM-1);
+        $converter->print_valid_point($p->VALID_POINT);
+        $converter->print_inequalities($p->give("FACETS | INEQUALITIES"), $p->lookup("AFFINE_HULL | EQUATIONS"));
     }
     $converter->finish;    
 }
@@ -113,4 +113,5 @@ user_function poly2porta(Polytope<Rational>, $, {primal=>1} ) {
 # Local Variables:
 # mode: perl
 # cperl-indent-level:3
+# indent-tabs-mode:nil
 # End:

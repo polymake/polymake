@@ -53,6 +53,7 @@ template<typename Integer> class CandidateList;
 template<typename Integer> class Candidate;
 template<typename Integer> class Simplex;
 template<typename Integer> class Collector;
+template<typename Integer> class Cone_Dual_Mode;
 
 template<typename Integer>
 class Full_Cone {
@@ -64,6 +65,10 @@ class Full_Cone {
     friend class Collector<Integer>;
     
 public:
+    
+    int omp_start_level; // records the omp_get_level() when the computation is started
+                         // recorded at the start of the top cone constructor and the compute functions
+                         // compute and dualize_cone
     size_t dim;
     size_t level0_dim; // dim of cone in level 0 of the inhomogeneous case
     size_t module_rank;  // rank of solution module over level 0 monoid in the inhomogeneous case
@@ -80,11 +85,12 @@ public:
     bool deg1_extreme_rays;
     bool deg1_triangulation;
     bool deg1_hilbert_basis;
-    bool inhomogeneous; 
+    bool inhomogeneous;
     
     // control of what to compute
     bool do_triangulation;
     bool explicit_full_triang; // indicates whether full triangulation is asked for without default mode
+    bool explicit_h_vector; // to distinguish it from being set via default mode
     bool do_partial_triangulation;
     bool do_determinants;
     bool do_multiplicity;
@@ -97,8 +103,9 @@ public:
     bool do_excluded_faces;
     bool do_approximation;
     bool do_default_mode;
-	bool do_bottom_dec;
-	bool keep_order;
+    bool do_bottom_dec;
+    bool suppress_bottom_dec;
+    bool keep_order;
     bool do_class_group;
     bool do_module_gens_intcl;
     bool do_module_rank;
@@ -131,6 +138,9 @@ public:
     vector<key_t> PermGens;  // stores the permutation of the generators created by sorting
     vector<bool> Extreme_Rays_Ind;
     Matrix<Integer> Support_Hyperplanes;
+    Matrix<Integer> Subcone_Support_Hyperplanes; // used if *this computes elements in a subcone, for example in approximation
+    Matrix<Integer> Subcone_Equations;
+    vector<Integer> Subcone_Grading;
     size_t nrSupport_Hyperplanes;
     list<vector<Integer> > Hilbert_Basis;
     vector<Integer> Witness;    // for not integrally closed
@@ -140,15 +150,15 @@ public:
     size_t CandidatesSize;
     list<vector<Integer> > Deg1_Elements;
     HilbertSeries Hilbert_Series;
-    vector<long> gen_degrees;  // will contain the degrees of the generators
+    vector<Integer> gen_degrees;  // will contain the degrees of the generators
     Integer shift; // needed in the inhomogeneous case to make degrees positive
-    vector<long> gen_levels;  // will contain the levels of the generators (in the inhomogeneous case)
+    vector<Integer> gen_levels;  // will contain the levels of the generators (in the inhomogeneous case)
     size_t TriangulationBufferSize;          // number of elements in Triangulation, for efficiency
     list< SHORTSIMPLEX<Integer> > Triangulation;       // triangulation of cone
     list< SHORTSIMPLEX<Integer> > TriangulationBuffer; // simplices to evaluate
     list< SimplexEvaluator<Integer> > LargeSimplices; // Simplices for internal parallelization
     Integer detSum;                  // sum of the determinants of the simplices
-    list< STANLEYDATA<Integer> > StanleyDec; // Stanley decomposition
+    list< STANLEYDATA_int> StanleyDec; // Stanley decomposition
     vector<Integer> ClassGroup;  // the class group as a vector: ClassGroup[0]=its rank, then the orders of the finite cyclic summands
     
     Matrix<Integer> ProjToLevel0Quot;  // projection matrix onto quotient modulo level 0 sublattice    
@@ -168,6 +178,8 @@ public:
         size_t BornAt;                      // number of generator (in order of insertion) at which this hyperplane was added,, counting from 0
         size_t Ident;                      // unique number identifying the hyperplane (derived from HypCounter)
         size_t Mother;                     // Ident of positive mother if known, 0 if unknown
+        bool is_positive_on_all_original_gens;
+        bool is_negative_on_some_original_gen;
         bool simplicial;                   // indicates whether facet is simplicial
     };
 
@@ -197,6 +209,7 @@ public:
     size_t store_level; // the level on which daughters will be stored  
     deque< list<vector<key_t> > > Pyramids;  //storage for pyramids
     deque<size_t> nrPyramids; // number of pyramids on the various levels
+    deque<bool> Pyramids_scrambled; // only used for mic
 
     // data that can be used to go out of build_cone and return later (not done at present)
     // but also useful at other places
@@ -219,6 +232,8 @@ public:
 #ifdef NMZ_MIC_OFFLOAD
     MicOffloader<long long> mic_offloader;
 #endif
+void try_offload_loc(long place,size_t max_level);
+
 
     // defining semiopen cones
     Matrix<Integer> ExcludedFaces;
@@ -234,8 +249,13 @@ public:
     
     size_t AdjustedReductionBound;
     
-    long approx_level;
     bool is_approximation;
+    bool is_global_approximation; // true if approximation is defined in Cone
+
+    vector<vector<key_t>> approx_points_keys;
+    Matrix<Integer> OriginalGenerators;
+
+    Integer VolumeBound; //used to stop computation of approximation if simplex of this has larger volume
 
 /* ---------------------------------------------------------------------------
  *              Private routines, used in the public routines
@@ -265,13 +285,14 @@ public:
     vector<key_t>  find_start_simplex() const;
     void store_key(const vector<key_t>&, const Integer& height, const Integer& mother_vol,
                                   list< SHORTSIMPLEX<Integer> >& Triangulation);
-	void find_bottom_facets();                                  
-    Matrix<Integer> latt_approx(); // makes a cone over a lattice polytope approximating "this"
+    void find_bottom_facets();                                  
+    vector<list<vector<Integer>>> latt_approx(); // makes a cone over a lattice polytope approximating "this"
     void convert_polyhedron_to_polytope();
     void compute_elements_via_approx(list<vector<Integer> >& elements_from_approx); // uses the approximation
-	void compute_deg1_elements_via_approx_global(); // deg 1 elements from the approximation
-    void compute_deg1_elements_via_approx_simplicial(const vector<key_t>& key); // the same for a simplicial subcone
-    void compute_sub_div_elements(const Matrix<Integer>& gens,list<vector<Integer> >& sub_div_elements); //computes subdividing elements via approximation
+    void compute_deg1_elements_via_approx_global(); // deg 1 elements from the approximation
+    void compute_deg1_elements_via_projection_simplicial(const vector<key_t>& key); // for a simplicial subcone by projecion
+    void compute_sub_div_elements(const Matrix<Integer>& gens,list<vector<Integer> >& sub_div_elements,
+    bool best_point=false); //computes subdividing elements via approximation
     void select_deg1_elements(const Full_Cone& C);
 //    void select_Hilbert_Basis(const Full_Cone& C); //experimental, unused
     
@@ -289,6 +310,7 @@ public:
     Matrix<Integer> select_matrix_from_list(const list<vector<Integer> >& S,vector<size_t>& selection);
 
     bool contains(const vector<Integer>& v);
+    bool subcone_contains(const vector<Integer>& v);
     bool contains(const Full_Cone& C);
     void extreme_rays_and_deg1_check();
     void find_grading();

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -25,51 +25,53 @@
 */
 
 #define Class4perl(pkg, ...) \
-   template<> polymake::perl_bindings::Class< __VA_ARGS__ > \
-   StaticRegistrator4perl<polymake::perl_bindings::Class< __VA_ARGS__ >,__LINE__>::r(pkg,__FILE__,__LINE__)
+   template<> QueueingRegistrator4perl<polymake::perl_bindings::Class<__VA_ARGS__>,__LINE__> \
+   QueueingRegistrator4perl<polymake::perl_bindings::Class<__VA_ARGS__>,__LINE__>::r(pkg,__FILE__,__LINE__)
 
 #define Builtin4perl(pkg, ...) \
-   template<> pm::perl::Builtin< __VA_ARGS__ > \
-   StaticRegistrator4perl<pm::perl::Builtin< __VA_ARGS__ >,__LINE__>::r(pkg,__FILE__,__LINE__)
+   template<> QueueingRegistrator4perl<pm::perl::Builtin<__VA_ARGS__>,__LINE__> \
+   QueueingRegistrator4perl<pm::perl::Builtin<__VA_ARGS__>,__LINE__>::r(pkg,__FILE__,__LINE__)
 
 #define ClassTemplate4perl(pkg) \
-   template<> pm::perl::ClassTemplate \
+   template<> StaticRegistrator4perl<pm::perl::ClassTemplate ,__LINE__> \
    StaticRegistrator4perl<pm::perl::ClassTemplate,__LINE__>::r(pkg)
 
 #define RegisterFunctionInstance4perl(reg_arg, ...) \
-   template<> __VA_ARGS__              \
-   StaticRegistrator4perl<__VA_ARGS__,__LINE__>::r(__FILE__,__LINE__,reg_arg)
+   template<> QueueingRegistrator4perl<__VA_ARGS__,__LINE__>            \
+   QueueingRegistrator4perl<__VA_ARGS__,__LINE__>::r(__FILE__,__LINE__,reg_arg)
 
 #define FirstArgAsString(first_arg_name,...) #first_arg_name
 
 #define FunctionInstance4perl(f_class, ...) \
-   RegisterFunctionInstance4perl(0,                                    Wrapper4perl_##f_class< __VA_ARGS__ >)
+   RegisterFunctionInstance4perl(0, Wrapper4perl_##f_class<__VA_ARGS__>)
 #define OperatorInstance4perl(op_class, ...) \
-   RegisterFunctionInstance4perl(0,                                    pm::perl::Operator_##op_class< __VA_ARGS__ >)
+   RegisterFunctionInstance4perl(0, pm::perl::Operator_##op_class<__VA_ARGS__>)
 #define FunctionCrossAppInstance4perl(f_class, app_list, ...) \
-   RegisterFunctionInstance4perl(pm::perl::make_string_array app_list, Wrapper4perl_##f_class< __VA_ARGS__ >)
+   RegisterFunctionInstance4perl(pm::perl::make_string_array app_list, Wrapper4perl_##f_class<__VA_ARGS__>)
 #define OperatorCrossAppInstance4perl(op_class, app_list, ...) \
-   RegisterFunctionInstance4perl(pm::perl::make_string_array app_list, pm::perl::Operator_##op_class< __VA_ARGS__ >)
+   RegisterFunctionInstance4perl(pm::perl::make_string_array app_list, pm::perl::Operator_##op_class<__VA_ARGS__>)
 
 // not supported any longer
 #define DisabledFunction4perl(name, ...) ObsoleteWrapper(DisabledFunction not supported: name(__VA_ARGS__))
 
-#define WrapperStart(name, perlname, ...)                       \
-struct name {                                                   \
-   typedef pm::list arg_list(__VA_ARGS__);                      \
-   template <typename first_arg_type>                \
-   name(const AnyString& file, int line, first_arg_type arg0) { pm::perl::WrapperBase<name>::register_it(perlname, file, line, arg0); } \
+#define WrapperStart(name, perlname, ...)                              \
+class name : public pm::perl::FunctionTemplate<name<__VA_ARGS__>> {    \
+   name() = delete;                                                    \
+ public:                                                               \
+   typedef pm::list arg_list(__VA_ARGS__);                             \
+   template <typename first_arg_type>                                   \
+   void add__me(const AnyString& file, int line, first_arg_type arg0) const { this->register_it(perlname, file, line, arg0); } \
    static SV* call(SV **stack __attribute__((unused)))
 
 #define FunctionInterface4perl(name, ...) WrapperStart(Wrapper4perl_##name, #name, __VA_ARGS__)
 
 #define FunctionWrapper4perl(...) \
    template <>                    \
-   SV* IndirectFunctionWrapper<__VA_ARGS__>::call(fptr_type func, SV **stack __attribute__((unused)))
+   SV* IndirectFunctionWrapper<__VA_ARGS__>::call(void* func_arg, SV **stack __attribute__((unused)))
 
 #define FunctionWrapperInstance4perl(...) \
-   template<> IndirectFunctionWrapper<__VA_ARGS__> \
-   StaticRegistrator4perl<IndirectFunctionWrapper<__VA_ARGS__>,__LINE__>::r(__FILE__,__LINE__)
+   template<> QueueingRegistrator4perl<IndirectFunctionWrapper<__VA_ARGS__>,__LINE__> \
+   QueueingRegistrator4perl<IndirectFunctionWrapper<__VA_ARGS__>,__LINE__>::r(__FILE__,__LINE__)
 
 #define WrapperCloseFunction } enum { _unused }
 
@@ -92,8 +94,13 @@ struct name {                                                   \
    expr;                           \
    return nullptr
 
-#define IndirectWrapperReturn(...)     WrapperBodyWithValue(int Prescribed_Result_Pkg=0, func(__VA_ARGS__))
-#define IndirectWrapperReturnVoid(...) WrapperBodyWithoutValue(func(__VA_ARGS__))
+#define IndirectWrapperReturn(...) \
+   fptr_type func=reinterpret_cast<fptr_type>(func_arg); \
+   WrapperBodyWithValue(int Prescribed_Result_Pkg=0, func(__VA_ARGS__))
+
+#define IndirectWrapperReturnVoid(...) \
+   fptr_type func=reinterpret_cast<fptr_type>(func_arg); \
+   WrapperBodyWithoutValue(func(__VA_ARGS__))
 
 // stack in the wrappers points to the first given argument = now it's the first empty slot
 
@@ -181,29 +188,29 @@ WrapperStart( Operator_BinaryAssign_##name, "=" #name, Arg0,Arg1 ) {    \
 
 #ifdef POLYMAKE_NO_EMBEDDED_RULES
 // module with wrapper code only; proper definitions are located in core or another extension
-# define DeclareEmbeddedFunction(...) namespace { }
+# define DeclareRegularFunction(...) namespace { }
 # define InsertEmbeddedRule(...) namespace { }
 #else
 
-# define DeclareEmbeddedFunction(pre, fptr, decl) \
+# define DeclareRegularFunction(pre, fptr, decl)  \
 namespace {                                       \
-   template<> pm::perl::Function                  \
-   StaticRegistrator4perl<pm::perl::Function,__LINE__>::r(fptr,__FILE__,__LINE__, pre " " decl " : c++ (embedded=>%d);\n"); \
+   template<> QueueingRegistrator4perl<pm::perl::RegularFunction,__LINE__>  \
+   QueueingRegistrator4perl<pm::perl::RegularFunction,__LINE__>::r(fptr,__FILE__,__LINE__, pre " " decl " : c++ (embedded=>%d);\n"); \
 }
 
 # define InsertEmbeddedRule(text)                                                      \
 namespace {                                                                            \
-   template<> pm::perl::EmbeddedRule                                                   \
-   StaticRegistrator4perl<pm::perl::EmbeddedRule,__LINE__>::r(__FILE__,__LINE__,text); \
+   template<> QueueingRegistrator4perl<pm::perl::EmbeddedRule,__LINE__>                  \
+   QueueingRegistrator4perl<pm::perl::EmbeddedRule,__LINE__>::r(__FILE__,__LINE__,text); \
 }
 
 #endif
 
-#define Function4perl(fptr, decl)                DeclareEmbeddedFunction(            "function",fptr,decl)
-#define UserFunction4perl(help, fptr, decl)      DeclareEmbeddedFunction(help "\nuser_function",fptr,decl)
+#define Function4perl(fptr, decl)           DeclareRegularFunction(            "function",fptr,decl)
+#define UserFunction4perl(help, fptr, decl) DeclareRegularFunction(help "\nuser_function",fptr,decl)
 
-#define FunctionTemplate4perl(decl)                InsertEmbeddedRule("function " decl " : c++;\n")
-#define UserFunctionTemplate4perl(help, decl)      InsertEmbeddedRule(help "\nuser_function " decl " : c++;\n")
+#define FunctionTemplate4perl(decl)           InsertEmbeddedRule("function " decl " : c++;\n")
+#define UserFunctionTemplate4perl(help, decl) InsertEmbeddedRule(help "\nuser_function " decl " : c++;\n")
 
 #define FullPackage4perl(pkg, app) "Polymake::" FirstArgAsString(app) "::" pkg
 

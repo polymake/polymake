@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -78,9 +78,9 @@ user_method secondary_cone(%secondary_cone_options) : VECTORS, MAXIMAL_CELLS {
     my $n=$vectors->rows();
     my $rank=rank($vectors);
     if ($cells->size()==1 && $cells->[0]->size()==$n && $rank==$n) {
-        return new Cone<Scalar>(RAYS=>(new Matrix<Scalar>(0,$n)),
-                                CONE_AMBIENT_DIM=>$n,
-                                LINEALITY_SPACE=>unit_matrix<Scalar>($n));
+        return new Cone<Scalar>(RAYS => new Matrix<Scalar>(0,$n),
+                                CONE_AMBIENT_DIM => $n,
+                                LINEALITY_SPACE => unit_matrix<Scalar>($n));
     }
 
     my $sc_ineq=secondary_cone_ineq($vectors,$cells,$options);

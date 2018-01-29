@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -44,8 +44,14 @@ sub merge_options {
 }
 
 sub feedback {}  # don't consume anything
-sub closed {}    # ignore the event
 sub run {} # no action
+
+sub closed {
+   my ($self)=@_;
+   if (defined $self->client_object) {
+      $self->client_object->shutdown;
+   }
+}
 
 1
 

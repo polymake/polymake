@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,6 +19,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/Set.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/common/labels.h"
 #include <sstream>
 
 namespace polymake { namespace polytope {
@@ -98,11 +99,10 @@ perl::Object wreath(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opti
    p_out.take(coord_section) << M_out;
 
    if (relabel) {
-      const std::string labels_section(dual ? "FACET_LABELS" : "VERTEX_LABELS");
-      std::vector<std::string> labels1(n_rows1), labels2(n_rows2),
-                               labels_out(n_rows_out);
-      read_labels(p_in1, labels_section, labels1);
-      read_labels(p_in2, labels_section, labels2);
+      const AnyString labels_section = dual ? AnyString("FACET_LABELS") : AnyString("VERTEX_LABELS");
+      const std::vector<std::string> labels1 = common::read_labels(p_in1, labels_section, n_rows1);
+      const std::vector<std::string> labels2 = common::read_labels(p_in2, labels_section, n_rows2);
+      std::vector<std::string> labels_out(n_rows_out);
       copy_range(entire(product(labels2, labels1, wreath_label())), labels_out.begin());
       p_out.take(labels_section) << labels_out;
    }

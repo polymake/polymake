@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -49,5 +49,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(lineality_space_X, perl::Canned< const pm::RowChain<pm::Matrix<pm::Rational> const&, pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&> >);
    FunctionInstance4perl(lineality_space_X, perl::Canned< const SparseMatrix< double, NonSymmetric > >);
    FunctionInstance4perl(lineality_space_X, perl::Canned< const Matrix< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(lineality_space_X, perl::Canned< const pm::RowChain<pm::SparseMatrix<double, pm::NonSymmetric> const&, pm::Matrix<double> const&> >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

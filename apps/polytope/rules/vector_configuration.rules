@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -157,6 +157,7 @@ user_function deletion(VectorConfiguration $) {
 # 
 # The subspace the VectorConfiguration //P// is projected on is given by indices in the set //indices//.
 # The option //revert// inverts the coordinate list.
+# @tparam Scalar coordinate type
 # @param VectorConfiguration P
 # @param Array<Int> indices
 # @option Bool revert inverts the coordinate list
@@ -164,26 +165,162 @@ user_function deletion(VectorConfiguration $) {
 user_function projection<Scalar>(VectorConfiguration<Scalar>; $=[ ], { revert=>0 }) {
    my ($P, $indices, $options) = @_;
    my $first_coord = ($P->isa("PointConfiguration") ? 1 : 0);
-   projection_impl($P, "VECTOR", "AFFINE_HULL", $first_coord, $indices, $options);
+   my $linear_hull_section = ($P->isa("PointConfiguration") ? "AFFINE_HULL" : "LINEAR_SPAN");
+   projection_impl($P, "VECTOR", $linear_hull_section, $first_coord, $indices, $options);
 }
 
 
 # @category Producing a vector configuration
 # Orthogonally project a vector configuration to a coordinate subspace such that redundant columns are omitted,
 # i.e., the projection becomes full-dimensional without changing the combinatorial type.
+# @tparam Scalar coordinate type
 # @param VectorConfiguration P
 # @option Bool no_labels Do not copy [[VERTEX_LABELS]] to the projection. default: 0
 # @return VectorConfiguration
-user_function projection_full<Scalar>(VectorConfiguration<Scalar>; {no_labels=>0}) { 
+user_function project_full<Scalar>(VectorConfiguration<Scalar>; {no_labels=>0}) { 
    projection(@_); 
 }
 
+# @category Producing a vector configuration
+# Project a vector configuration V to the subspace with a given basis B and express the result in that basis.
+# A boolean flag make_affine (by default undef) determines whether the resulting coordinates acquire an extra leading '1'.
+# The return type is a VectorConfiguration, unless 
+#   (i) P is a PointConfiguration, 
+#  (ii) the first column of B is zero,
+# (iii) make_affine is not 0,
+# in which case it is a PointConfiguration. 
+# The return type depends on the input:
+# (1) If V is a VectorConfiguration, the result is also a VectorConfiguration.
+# (2a) If V is a PointConfiguration and all rows in B start with a 0, the result is a PointConfiguration.
+#      If, furthermore, make_affine is undef, it is set to 1.
+# (2b) If V is a PointConfiguration and some row of B has a non-zero first entry, the result is a VectorConfiguration.
+# The reasoning here is that B having a zero first column or not influences the hyperplane at infinity.
+# @tparam Scalar coordinate type
+# @param VectorConfiguration V
+# @param Matrix B a matrix whose rows contain the basis of the image space
+# @option Bool make_affine. If undef (default), apply the above reasoning. If 1 (0), unconditionally (don't) add leading 1's.
+# @return VectorConfiguration or PointConfiguration
+user_function project_to<Scalar>(VectorConfiguration<Scalar> Matrix<Scalar>; { make_affine=>undef }) { 
+    my ($v,$B,$options) = @_;
+    my $proj = $v->VECTORS * transpose($B);
+    my $make_affine = $options->{make_affine};
+    my $first_col_zero = ($B->col(0) == zero_vector<Scalar>($B->rows));
+    if ($v->isa("PointConfiguration") && $first_col_zero && $make_affine eq undef) {
+	$make_affine = 1;
+    }
+    if ($make_affine eq 1) {
+	$proj = ones_vector<Scalar>() | $proj;
+    }
+    my $ret;
+    if ($v->isa("PointConfiguration") && $first_col_zero) {
+	$ret = new PointConfiguration<Scalar>(POINTS=>$proj);
+    } else {
+	$ret = new VectorConfiguration<Scalar>(VECTORS=>$proj);
+    }
+    if (defined (my $labels = $v->lookup("LABELS"))) {
+	$ret->LABELS = $labels;
+    }
+    return $ret;
+}
+
+# @category Producing a vector configuration
+# Project a Polytope or Cone to the subspace with a given basis, and express the result in that basis		       
+# A boolean flag make_affine (by default undef) determines whether the resulting coordinates acquire an extra leading '1'.
+# The return type is a Cone, unless 
+#   (i) P is a Polytope, 
+#  (ii) the first column of B is zero,
+# (iii) make_affine is not 0,
+# in which case it is a Polytope. 
+# If make_affine is undef and (ii) is true, make_affine is set to 1.
+# The reasoning here is that B having a zero first column or not influences the hyperplane at infinity.
+# @tparam Scalar coordinate type
+# @param Cone C
+# @param Matrix B a matrix whose rows contain the basis of the image space
+# @return Cone or Polytope
+user_function project_to<Scalar>(Cone<Scalar> Matrix<Scalar>; { make_affine=>undef }) { 
+    my ($v,$B, $options) = @_;
+    my $proj = $v->give("RAYS | INPUT_RAYS") * transpose($B);
+    my $make_affine = $options->{make_affine};
+    my $first_col_zero = ($B->col(0) == zero_vector<Scalar>($B->rows));
+    if ($make_affine eq undef && $first_col_zero) {
+	$make_affine = 1;
+    }
+    if ($make_affine eq 1) {
+	$proj = ones_vector<Scalar>() | $proj;
+    }
+    my $ret;
+    if ($v->isa("Polytope") && $first_col_zero && $make_affine != 0) {
+	$ret = new Polytope<Scalar>(POINTS=>$proj);
+    } else {
+	$ret = new Cone<Scalar>(INPUT_RAYS=>remove_zero_rows($proj));
+    }
+    if (defined (my $labels = $v->lookup("RAY_LABELS|INPUT_RAY_LABELS"))) {
+	$ret->INPUT_RAY_LABELS = $labels;
+    }
+    return $ret;
+}
+
+# @category Producing a vector configuration
+# Project a vector configuration V along the subspace with the given basis B.
+# The result is still expressed in the original ambient basis.
+# If V is a PointConfiguration and the first column of B is zero, the result is a PointConfiguration, else a VectorConfiguration.
+# @tparam Scalar coordinate type
+# @param VectorConfiguration V
+# @param Matrix B a matrix whose rows contain the basis of the space to be projected out
+# @return VectorConfiguration
+user_function project_out<Scalar>(VectorConfiguration<Scalar> Matrix<Scalar>) { 
+    my ($v,$B) = @_;
+    my $O = new Matrix<Scalar>($B);
+    orthogonalize_subspace($O);
+    my $V = new Matrix<Scalar>($v->VECTORS);
+    project_to_orthogonal_complement($V, $O);
+    my $first_col_zero = ($B->col(0) == zero_vector<Scalar>($B->rows));
+    my $ret;
+    if ($v->isa("PointConfiguration") && $first_col_zero) {
+	$ret = new PointConfiguration<Scalar>(POINTS=>$V);
+    } else {
+	$ret = new VectorConfiguration<Scalar>(VECTORS=>$V);
+    }
+    if (defined (my $labels = $v->lookup("LABELS"))) {
+	$ret->LABELS = $labels;
+    }
+    return $ret;
+}
+
+# @category Producing a vector configuration
+# Project a Cone C along the subspace with the given basis B
+# The result is still expressed in the original ambient basis.
+# If V is a Polytope and the first column of B is zero, the result is a Polytope, else a Cone.
+# @tparam Scalar coordinate type
+# @param Cone C
+# @param Matrix B a matrix whose rows contain the basis of the space to be projected out
+# @return Cone
+user_function project_out<Scalar>(Cone<Scalar> Matrix<Scalar>) { 
+    my ($v,$B) = @_;
+    my $O = new Matrix<Scalar>($B);
+    orthogonalize_subspace($O);
+    my $V = new Matrix<Scalar>($v->RAYS);
+    project_to_orthogonal_complement($V, $O);
+    my $first_col_zero = ($B->col(0) == zero_vector<Scalar>($B->rows));
+    my $ret;
+    if ($v->isa("Polytope") && $first_col_zero) {
+	$ret = new Polytope<Scalar>(POINTS=>$V);
+    } else {
+	$ret = new Cone<Scalar>(INPUT_RAYS=>$V);
+    }
+    if (defined (my $labels = $v->lookup("RAY_LABELS|INPUT_RAY_LABELS"))) {
+	$ret->INPUT_RAY_LABELS = $labels;
+    }
+    return $ret;
+}
+			  
 
 # @category Producing a vector configuration
 # Construct a new vector configuration that projects to a given array of vector configurations
 # If the n vector configurations are d_1, d_2, ..., d_n-dimensional and all have m vectors,
 # the resulting vector configuration is (d_1+...+d_n)-dimensional, has m vectors, and
 # the projection to the i-th d_i coordinates gives the i-th input vector configuration.
+# @tparam Scalar coordinate type
 # @param Array<VectorConfiguration> P_Array
 # @return VectorConfiguration
 user_function projection_preimage<Scalar>(VectorConfiguration<Scalar> +) {

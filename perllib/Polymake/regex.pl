@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,7 +13,9 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake;
 
@@ -171,13 +173,30 @@ declare $empty_line_re=qr{^ [ \t]* \n}xm;
 declare $empty_or_separator_line=qr{^ (?: [ \t]* | \#{2,} ) \n}xm;
 
 # an empty line with possible comments
-declare $nonsignificant_line_re=qr{^ [ \t]* (?:\#.*)? \n}xm;
+declare $nonsignificant_line_re=qr{^ [ \t]* (?:\#.*)? $}xm;
 
 # a line with some contents (like perl code)
 declare $significant_line_re=qr{^ [ \t]* (?! $ | \#) }xm;
 
 # beginning of a complete statement
 declare $statement_start_re=qr{(?: ^ | [;\}] )\s*}x;
+
+# beginning of a function argument list
+declare $args_start_re=qr{(?'args_start' \s+ | \s*\(\s* )}x;
+
+# beginning of a method argument list
+declare $method_args_start_re=qr{(?'args_start' \s*\(\s* )}x;
+
+# end of a source file
+declare $end_of_source_file="__END__";
+declare $end_of_source_file_re=qr/^${end_of_source_file}$/o;
+
+sub trim_spaces {
+   my ($string)=@_;
+   $string =~ s/^\s+//;
+   $string =~ s/\s+$//;
+   $string
+}
 
 1;
 

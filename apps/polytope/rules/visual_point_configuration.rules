@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -25,10 +25,11 @@ method representative { $_[0]->PointConfiguration }
 method basis_solid { $_[0]->elements->[0] }
 
 # Visualize the [[TRIANGULATION]] of a point configuration
+# @param Array<Set<Int>> t facets of the triangulation
 # @options %Visual::Polygons::decorations
 # @return Visual::PointConfiguration
-user_method TRIANGULATION(;%Visual::Polygons::decorations) {
-   my ($self, $decor)=@_;
+user_method TRIANGULATION(; $=$_[0]->PointConfiguration->TRIANGULATION->FACETS, %Visual::Polygons::decorations) {
+   my ($self, $TR, $decor)=@_;
    my $d=$self->PointConfiguration->VECTOR_AMBIENT_DIM-1;
    if ($d > 3) {
       die "don't know how to visualize the triangulation of a $d-d configuration\n";
@@ -44,35 +45,12 @@ user_method TRIANGULATION(;%Visual::Polygons::decorations) {
    } else {
       undef $labels;
    }
-   
-   
-   my $Points=dehomogenize(convert_to<Float>($self->PointConfiguration->POINTS));
-   my $Signs=$self->PointConfiguration->TRIANGULATION_SIGNS;
+   my $Points=$skeleton->Vertices;
+   my $Signs=triang_sign($TR, $self->PointConfiguration->POINTS);
     
    $self->Name="Triangulation of ".$self->PointConfiguration->name;
-   push @{$self->elements}, [ $self->PointConfiguration->CONVEX_HULL->VisualSimplices($self->PointConfiguration->TRIANGULATION->FACETS,$Points,$Signs,$labels,$decor) ];
+   push @{$self->elements}, [ $self->PointConfiguration->CONVEX_HULL->VisualSimplices($TR,$Points,$Signs,$labels,$decor) ];
 
-   visualize($self);
-}
-
-# Draw the edges of the [[Visual::PointConfiguration::TRIANGULATION_BOUNDARY|TRIANGULATION_BOUNDARY]].
-# The facets are made transparent.
-# @options %Visual::Graph::decorations
-# @return Visual::PointConfiguration
-user_method TRIANGULATION_BOUNDARY(%Visual::Graph::decorations) {
-   my ($self, $decor)=@_;
-   my $P=$self->basis_solid;
-   $P->FacetTransparency ||= 0.5;
-   $P->EdgeThickness ||= 1;
-   $self->Name="Triangulation Boundary of ".$self->PointConfiguration->name;
-   my $graph = new graph::Graph(ADJACENCY => 
-       $self->PointConfiguration->TRIANGULATION->BOUNDARY->GRAPH->ADJACENCY - $self->PointConfiguration->GRAPH->ADJACENCY);
-   push @{$self->elements}, new Visual::Graph( Name => $self->PointConfiguration->name."-inner-edges", 
-                                               Graph => $graph,   
-                                               Coord => $P->Points, 
-                                               NodeStyle => "hidden", 
-                                               EdgeThickness => 0.5, 
-                                               $decor );
    visualize($self);
 }
 

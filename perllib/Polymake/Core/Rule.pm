@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake::Core::Rule;
 use POSIX qw( :signal_h :sys_wait_h );
@@ -340,8 +341,8 @@ sub append_existence_check {
    my $neg=length($not);
    my $precond=special Rule(':',
                             $neg
-                            ? sub { is_boolean_false($_[0]->lookup_request($req, 1)) }  # forbid shortcuts
-                            : sub { is_object($_[0]->lookup_request($req, 1)) },
+                            ? sub { !defined($_[0]) || is_boolean_false($_[0]->lookup_request($req, 1)) }  # forbid shortcuts
+                            : sub { defined($_[0]) && is_object($_[0]->lookup_request($req, 1)) },
                             $proto);
    $precond->header="precondition : ${not}exists($req_string) ( " . $self->header . " )";
    $precond->flags=$is_precondition;
@@ -366,7 +367,7 @@ sub append_weight {
 
 sub append_permutation {
    my ($self, $perm_name)=@_;
-   my @perm_path=$self->defined_for->encode_property_path($perm_name);
+   my @perm_path=$self->defined_for->encode_descending_path($perm_name);
    if ($Application::plausibility_checks) {
       if (Property::find_first_in_path(\@perm_path, $Property::is_permutation) != $#perm_path) {
          croak( "$perm_name is not a permutation" );
@@ -415,10 +416,11 @@ sub flip_rule_for_twin {
    my $flipped_input=[ map { [ map { flip_path_for_twin($_, $self->defined_for, $twin_prop) // return } @$_ ] } @{$self->input} ];
    my $flipped_output= defined($self->output) ? [ map { flip_path_for_twin($_, $self->defined_for, $twin_prop) // return } @{$self->output} ] : undef;
    my $flipped_perm_path= defined($self->with_permutation) ? flip_path_for_twin($self->with_permutation->perm_path, $self->defined_for, $twin_prop) // return : undef;
-   my $descend=[ $twin_prop, undef ];
    my $code=$self->code;
    my $flipped_rule=_new($self, $self->header." (applied to ".$twin_prop->name.")",
-                         $code && sub { my ($this)=@_; $code->($this->descend_and_create($descend)) },
+                         $code && ($self->flags & $is_precondition
+                                   ? sub { my ($this)=@_; $code->($this->descend([ $twin_prop, undef ])) }
+                                   : sub { my ($this)=@_; $code->($this->descend_and_create([ $twin_prop, undef ])) } ),
                          $self->defined_for, $self->credit);
    $flipped_rule->input=$flipped_input;
    $flipped_rule->output=$flipped_output;
@@ -482,7 +484,6 @@ sub needs_finalization {
 sub finalize {
    my ($self, $for_twin_rule)=@_;
    my $proto=$self->defined_for;
-   my $need_invalidate=keys %{$proto->all_producers};
    my $perm_deputy=$self->with_permutation;
    my $perm_path=$perm_deputy && $perm_deputy->perm_path;
 
@@ -490,15 +491,13 @@ sub finalize {
       if (defined $perm_deputy) {
          die "rule ", $self->header, " can't trigger permutations at ", $self->source_location, "\n";
       }
-      push @{$proto->producers->{ObjectType::init_pseudo_prop()->key}}, $self;
-      $proto->invalidate_prod_cache(ObjectType::init_pseudo_prop()->key) if $need_invalidate;
+      $proto->add_producers_of(ObjectType::init_pseudo_prop()->key, $self);
 
       foreach my $input (@{$self->input}) {
          foreach my $input_path (grep { @$_ > 1 } @$input) {
             (undef, my @ancestors)=reverse(@$input_path);
             my $prod_key=ObjectType::init_pseudo_prop()->get_prod_key(@ancestors);
-            push @{$proto->producers->{$prod_key}}, $self;
-            $proto->invalidate_prod_cache($prod_key) if $need_invalidate;
+            $proto->add_producers_of($prod_key, $self);
          }
       }
 
@@ -506,7 +505,7 @@ sub finalize {
          # an initial rule producing some new properties is only applicable if none of those exists
          my $non_existence_checker=sub {
             # fail on any existing or undefined property
-            not grep { !is_boolean_false($_[0]->lookup_property_path($_, 1)) } @{$self->output}
+            not grep { !is_boolean_false($_[0]->lookup_descending_path($_, 1)) } @{$self->output}
          };
          my $precond=special Rule(":", $non_existence_checker, $self->defined_for);
          $precond->header="precondition: " . join(" && ", map { "!exists(" . Property::print_path($_) . ")" } @{$self->output}) . " ( " . $self->header . " )";
@@ -531,8 +530,7 @@ sub finalize {
                push @prod, $perm_deputy;
             }
          }
-         push @{$proto->producers->{$created_prop->key}}, $self, @prod;
-         $proto->invalidate_prod_cache($created_prop->key) if $need_invalidate;
+         $proto->add_producers_of($created_prop->key, $self, @prod);
 
       } else {
          my ($prop, @ancestors)=reverse(@$output);
@@ -648,8 +646,7 @@ sub finalize {
          for (;;) {
             my $prod_key=$prop->get_prod_key(@ancestors);
             unless ($flags & $Property::is_multiple_new && $created_new_multi{$prod_key}++) {
-               push @{$proto->producers->{$prod_key}}, $self, @prod;
-               $proto->invalidate_prod_cache($prod_key) if $need_invalidate;
+               $proto->add_producers_of($prod_key, $self, @prod);
             }
             last if @ancestors <= $common_prefix;
             $prop=shift @ancestors;
@@ -711,7 +708,7 @@ sub prepare_header_search_pattern {
    $_[0] =~ s/(?<=\w)(?=[|:,])/\\s*/g;
    $_[0] =~ s/(?<=[|:,])(?=\w)/\\s*/g;
    # protect characters having special meaning
-   $_[0] =~ s/([.|])/\\$1/g;
+   $_[0] =~ s/([.|()])/\\$1/g;
 }
 
 # protected:
@@ -812,10 +809,12 @@ my $sa_INT_save=new POSIX::SigAction('IGNORE');
 # Execute the rule on a separate transaction level
 sub execute {
    my ($self, $object, $force)=@_;
-   my $trans=new RuleTransaction($object, $self);
-   unless ($force || ($self->flags & $is_precondition) || defined($trans->changed)) {
-      $trans->rollback($object);
-      return $exec_OK;
+   unless ($self->flags & $Rule::is_precondition) {
+      my $trans=new RuleTransaction($object, $self);
+      unless ($force || defined($trans->changed)) {
+         $trans->rollback($object);
+         return $exec_OK;
+      }
    }
    dbg_print("applying rule ", $self->header) if $Verbose::rules>2;
    &_execute;
@@ -830,7 +829,6 @@ sub _execute {
    eval {
       sigaction SIGINT, $sa_break, $sa_INT_save;
       sigaction SIGALRM, $sa_break;
-      sigaction SIGPIPE, $sa_break;
       my $alarm_time=$timeout && !($self->flags & $is_precondition);
       alarm $alarm_time if $alarm_time;
       if (wantarray || ($self->flags & $is_precondition)) {
@@ -854,12 +852,11 @@ sub _execute {
          # ignore the return code of the production rule
          $rc=$exec_OK;
       }
-      $object->commit;
+      $object->commit unless ($self->flags & $Rule::is_precondition);
       $died=0;
    };
    sigaction SIGINT, $sa_INT_save;
    $SIG{ALRM}='IGNORE';
-   $SIG{PIPE}='DEFAULT';
 
    if ($died) {
       $rc=$exec_failed;
@@ -871,7 +868,7 @@ sub _execute {
       }
       $object->failed_rules->{$self}=1;
       $object->failed_rules->{$self->with_permutation}=1 if defined $self->with_permutation;
-      $object->rollback;
+      $object->rollback unless ($self->flags & $Rule::is_precondition);
    }
    wantarray ? ($rc, $retval) : $rc;
 }
@@ -969,7 +966,7 @@ use Polymake::Struct (
 sub execute { $exec_OK }
 
 ####################################################################################
-package __::Deputy;
+package Polymake::Core::Rule::Deputy;
 
 # Base class for various rule proxies, especially those used in the Scheduler.
 use Polymake::Struct (

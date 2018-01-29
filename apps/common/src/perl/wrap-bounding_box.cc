@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -39,5 +39,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(bounding_box_X, perl::Canned< const Matrix< double > >);
    FunctionInstance4perl(extend_bounding_box_X2_X_f16, perl::Canned< Matrix< double > >, perl::Canned< const Matrix< double > >);
    FunctionInstance4perl(bounding_box_X, perl::Canned< const pm::MatrixMinor<pm::Matrix<double>&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(bounding_box_X, perl::Canned< const SparseMatrix< double, NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

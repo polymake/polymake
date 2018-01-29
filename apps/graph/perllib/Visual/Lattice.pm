@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -37,7 +37,7 @@ sub create_node_labels {
          my @atom_labels=@{$self->AtomLabels};
          my $n = 0;
          foreach (@atom_labels) { s/^_.*/\#$n/; ++$n; }
-         $get_face = sub { join(" ", @atom_labels[${$self->Faces->[shift]}])};
+         $get_face = sub { join(" ", @atom_labels[@{$self->Faces->[shift]}])};
       }
       else {
          $get_face = sub { join(" ", @{$self->Faces->[shift]})};
@@ -49,36 +49,24 @@ sub create_node_labels {
    sub { $labels->[shift] }
 }
 
-# $matching -> HasseDiagram with boolean edge attributes, like MORSE_MATCHING
+# $matching -> EdgeMap<Int> with boolean edge attributes, like MORSE_MATCHING
 sub add_matching {
    my ($self, $matching, $decor)=@_;
-   my @hd = @$matching;
-   shift @hd; pop @hd;
-   $hd[0] =~ s/^<//;
-
    my (%edge_color, %edge_style, %arrow_style);
    my $matched_color=$decor->{EdgeColor};
    my $matched_style=$decor->{EdgeStyle};
 
-   my $n=0;
-   foreach (@hd) {
-      my ($face, $edges) = m/^\(\{ (.*?) \} \s+ \{ (.*?) \}\)$/x;
-      my @edges = $edges =~ m/\( (\d+) \s+ ([01]) \)/gx;
-      while (my ($to_node, $matched) = splice @edges, 0, 2) {
-	 if ($matched) {
-	    $edge_color{"$n $to_node"} = $matched_color if defined $matched_color;
-	    $edge_style{"$n $to_node"} = $matched_style if defined $matched_style;
-	    $arrow_style{"$n $to_node"} = -1;
-	 } else {
-	    $arrow_style{"$n $to_node"} = 1;
-	 }
-      }
-      ++$n;
+   for (my ($n,$e)=(0,$self->all_edges); $e; ++$n, ++$e) {
+      my ($in,$out) = ($e->[0],$e->[1]);
+      if ($matching->edge($in,$out)) {
+	      $edge_color{"$n"} = $matched_color if defined $matched_color;
+	      $edge_style{"$n"} = $matched_style if defined $matched_style;
+	      $arrow_style{"$n"} = -1;
+	   } else {
+	      $arrow_style{"$n"} = 1;
+	   }
    }
-
-   local_scalar($self->EdgeStyleSymmetric,-1);
    $self->merge( ArrowStyle => \%arrow_style );
-   $self->EdgeStyleSymmetric=1;
    $self->merge( defined($matched_color) ? (EdgeColor => \%edge_color) : (),
 		 defined($matched_style) ? (EdgeStyle => \%edge_style) : () );
 }
@@ -91,11 +79,11 @@ sub add_faces {
    my $matched_style=$decor->{NodeStyle};
 
    for (my ($n,$last)=(1, $HD->ADJACENCY->nodes-2); $n<=$last; ++$n) {
-      foreach my $face (@$subcomplex) {
-	 if ($HD->FACES->[$n]==$face) {
-	    $node_color[$n]=$matched_color if defined $matched_color;
-	    $node_style[$n]=$matched_style if defined $matched_style;
-	 }
+      foreach my $face (@$faces) {
+	      if ($HD->FACES->[$n]==$face) {
+	         $node_color[$n]=$matched_color if defined $matched_color;
+	         $node_style[$n]=$matched_style if defined $matched_style;
+	      }
       }
    }
 
@@ -115,23 +103,23 @@ sub add_subcomplex {
 
    for (my ($n,$last)=(1, $HD->ADJACENCY->nodes-2); $n<=$last; ++$n) {
       foreach my $face (@$subcomplex) {
-	 my $incl=incl($HD->FACES->[$n], $face);
-	 next if $incl && $incl!=$want_incl;
+	      my $incl=incl($HD->FACES->[$n], $face);
+	      next if $incl && $incl!=$want_incl;
 
-	 if (defined $marked_nodes) {
-	    $marked_nodes->{$n}=1;
-	 }
-	 if (defined $marked_edges) {
-	    if ($want_incl>0) {
-	       for (my $e=args::entire($HD->ADJACENCY->out_edges($n)); $e; ++$e) {
-		  $marked_edges->{$$e}=1;
-	       }
-	    } else {
-	       for (my $e=args::entire($HD->ADJACENCY->in_edges($n)); $e; ++$e) {
-		  $marked_edges->{$$e}=1;
-	       }
-	    }
-	 }
+	      if (defined $marked_nodes) {
+	         $marked_nodes->{$n}=1;
+	      }
+	      if (defined $marked_edges) {
+	         if ($want_incl>0) {
+	            for (my $e=args::entire($HD->ADJACENCY->out_edges($n)); $e; ++$e) {
+		            $marked_edges->{$$e}=1;
+	            }
+	         } else {
+	            for (my $e=args::entire($HD->ADJACENCY->in_edges($n)); $e; ++$e) {
+		            $marked_edges->{$$e}=1;
+	            }
+	         }
+	      }
       }
    }
 }

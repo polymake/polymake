@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -23,7 +23,7 @@
 namespace polymake { namespace polytope {
  
 template<typename Scalar>
-Array< Set <int> >
+Array<Set<int>>
 regular_subdivision(const Matrix<Scalar> &vertices, const Vector<Scalar>& weight)
 {
    //construct the lifted polytope + a ray
@@ -48,7 +48,7 @@ regular_subdivision(const Matrix<Scalar> &vertices, const Vector<Scalar>& weight
       if (*last_col>0)
          simplices.push_back(i); //the lower facets are those with last coordinate>0
 
-   return Array< Set<int> >(select(rows(vif), simplices));
+   return Array<Set<int>>(select(rows(vif), simplices));
 }
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"

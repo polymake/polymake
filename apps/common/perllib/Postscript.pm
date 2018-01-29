@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -45,7 +45,7 @@ use Polymake::Struct (
    [ '$maxX' => 'undef' ],
    [ '$minY' => 'undef' ],
    [ '$maxY' => 'undef' ],
-   [ '$locked' => '1' ],	# the scale for X and Y dimensions must be the same
+   [ '$locked' => '1' ],        # the scale for X and Y dimensions must be the same
 );
 
 ################################################################################
@@ -72,7 +72,7 @@ use Polymake::Struct (
 sub transform {
    my $self=shift;
    my @xy=( $self->scaleX * ($_[0] - $self->minX) + $self->marginLeft,
-	    $self->scaleY * ($_[1] - $self->minY) + $self->marginBottom );
+            $self->scaleY * ($_[1] - $self->minY) + $self->marginBottom );
    wantarray ? @xy : sprintf("%.3f %3.f", @xy)
 }
 
@@ -94,28 +94,28 @@ sub finish {
 
    $self->scaleX= $self->maxX == $self->minX
                   ? 0
-		  : ($self->canvas_width - $self->marginLeft - $self->marginRight) /
+                  : ($self->canvas_width - $self->marginLeft - $self->marginRight) /
                     ($self->maxX - $self->minX);
    $self->scaleY= $self->maxY == $self->minY
                   ? 0
-		  : ($self->canvas_height - $self->marginTop - $self->marginBottom) /
+                  : ($self->canvas_height - $self->marginTop - $self->marginBottom) /
                     ($self->maxY - $self->minY);
    if ($self->locked) {
       if ($self->scaleX  and  !$self->scaleY || $self->scaleX <= $self->scaleY) {
-	 $self->scaleY=$self->scaleX;
-	 $self->canvas_height= $self->scaleY*($self->maxY-$self->minY) +
+         $self->scaleY=$self->scaleX;
+         $self->canvas_height= $self->scaleY*($self->maxY-$self->minY) +
                                $self->marginBottom + $self->marginTop;
       } else {
-	 $self->scaleX=$self->scaleY;
-	 $self->canvas_width= $self->scaleX*($self->maxX-$self->minX) +
+         $self->scaleX=$self->scaleY;
+         $self->canvas_width= $self->scaleX*($self->maxX-$self->minX) +
                               $self->marginLeft + $self->marginRight;
       }
    } else {
       if (!$self->scaleX) {
-	 $self->canvas_width= $self->marginLeft + $self->marginRight;
+         $self->canvas_width= $self->marginLeft + $self->marginRight;
       }
       if (!$self->scaleY) {
-	 $self->canvas_height= $self->marginBottom + $self->marginTop;
+         $self->canvas_height= $self->marginBottom + $self->marginTop;
       }
    }
 
@@ -131,8 +131,8 @@ sub finish {
 sub toString {
    my ($self, $ord)=@_;
    my $bb=sprintf("%.3f %.3f %.3f %.3f",
-		  $Wmargin-$line_width, $Hmargin-$line_width,
-		  $Wmargin+$self->canvas_width+$line_width, $Hmargin+$self->canvas_height+$line_width );
+                  $Wmargin-$line_width, $Hmargin-$line_width,
+                  $Wmargin+$self->canvas_width+$line_width, $Hmargin+$self->canvas_height+$line_width );
    my $title=$self->title;
    my $text=<<".";
 %%Page: $title $ord
@@ -164,8 +164,8 @@ package Postscript::File;
 use Polymake::Struct (
    '$title',
    '@pages',
-   '%procsets',		# 'name' => 'text'
-   '@procset_names',	# 'name'
+   '%procsets',         # 'name' => 'text'
+   '@procset_names',    # 'name'
 );
 
 sub encode_text {
@@ -191,8 +191,8 @@ sub finish_page {
    # We sort the keys to have consistent output for all perl versions (especially >=5.18)
    foreach my $name (sort keys %{$page->procsets}) {
       $self->procsets->{$name} ||= do {
-	 push @{$self->procset_names}, $name;
-	 $page->procsets->{$name}
+         push @{$self->procset_names}, $name;
+         $page->procsets->{$name}
       }
    }
    %{$page->procsets}=();
@@ -272,7 +272,7 @@ use Polymake::Struct (
 sub init {
    my $self=shift;
    my $P=$self->source;
-   @{$self->coords} = map { [ @$_[0,1] ] } @{$P->Vertices};	# chop the z coordinate if any
+   @{$self->coords} = map { [ @$_[0,1] ] } @{$P->Vertices};     # chop the z coordinate if any
    foreach my $coord (@{$self->coords}) {
       assign_min_max($self->minX, $self->maxX, $coord->[0]);
       assign_min_max($self->minY, $self->maxY, $coord->[1]);
@@ -285,24 +285,24 @@ sub init {
    if (is_code($style) || $style !~ $Visual::hidden_re) {
       my $thickness=$P->VertexThickness;
       if (is_code($thickness)) {
-	 @{$self->radius}=map {
-	    if (is_code($style) && $style->($_) =~ $Visual::hidden_re) {
-	       0
-	    } elsif (defined (my $th=$thickness->($_))) {
-	       $th*=$point_radius/2;
-	       assign_max($max_radius,$th);
-	       $th
-	    } else {
-	       $point_radius;
-	    }
-	 } 0..$last_point;
+         @{$self->radius}=map {
+            if (is_code($style) && $style->($_) =~ $Visual::hidden_re) {
+               0
+            } elsif (defined (my $th=$thickness->($_))) {
+               $th*=$point_radius/2;
+               assign_max($max_radius,$th);
+               $th
+            } else {
+               $point_radius;
+            }
+         } 0..$last_point;
       } else {
-	 $max_radius= defined($thickness) ? ($thickness*$point_radius)/2 : $point_radius;
-	 if (is_code($style)) {
-	    @{$self->radius}=map { $style->($_) !~ $Visual::hidden_re && $max_radius } 0..$last_point;
-	 } else {
-	    @{$self->radius}=($max_radius) x ($last_point+1);
-	 }
+         $max_radius= defined($thickness) ? ($thickness*$point_radius)/2 : $point_radius;
+         if (is_code($style)) {
+            @{$self->radius}=map { $style->($_) !~ $Visual::hidden_re && $max_radius } 0..$last_point;
+         } else {
+            @{$self->radius}=($max_radius) x ($last_point+1);
+         }
       }
    }
 
@@ -369,14 +369,14 @@ sub draw_facet {
       $lw=0;
    } else {
       if (defined $edge_color) {
-	 $edge_color=$edge_color->toFloat;
+         $edge_color=$edge_color->toFloat;
       } else {
-	 $edge_color=get_RGB($Visual::Color::edges)->toFloat;
+         $edge_color=get_RGB($Visual::Color::edges)->toFloat;
       }
       if (defined $edge_thickness) {
-	 $lw=$edge_thickness*$line_width;
+         $lw=$edge_thickness*$line_width;
       } elsif ($line_width != 1) {
-	 $lw=$line_width;
+         $lw=$line_width;
       }
    }
    my $gsave=($lw || !defined($lw) && $edge_color) && "gsave";
@@ -403,7 +403,7 @@ sub draw_lines {
    my $P=$self->source;
    my $facet=$P->Facet;
    $page->code .= draw_facet( (map { $P->$_ } qw( FacetColor FacetStyle EdgeColor EdgeThickness EdgeStyle )),
-			      defined($facet) ? [ @{$self->coords}[@$facet] ] : $self->coords);
+                              defined($facet) ? [ @{$self->coords}[@$facet] ] : $self->coords);
 }
 
 ###########################################################################
@@ -417,8 +417,8 @@ sub draw_lines {
    my $i=0;
    foreach my $polygon (@{$P->Facets}) {
       $page->code .= draw_facet( (map { my $decor=$P->$_; is_code($decor) ? $decor->($i) : $decor }
-				      qw( FacetColor FacetStyle EdgeColor EdgeThickness EdgeStyle )),
-				 [ @{$self->coords}[ @{$polygon} ] ]);
+                                      qw( FacetColor FacetStyle EdgeColor EdgeThickness EdgeStyle )),
+                                 [ @{$self->coords}[ @{$polygon} ] ]);
       ++$i;
    }
 }
@@ -449,5 +449,7 @@ sub addPointSet {
 1
 
 # Local Variables:
-# c-basic-offset:3
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
 # End:

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -22,6 +22,7 @@
 #include "polymake/PowerSet.h"
 #include "polymake/linalg.h"
 #include "polymake/Array.h"
+#include "polymake/common/labels.h"
 
 namespace polymake { namespace polytope {
 
@@ -69,7 +70,7 @@ void process_rays(perl::Object& p_in, int first_coord, const Array<int>& indices
             p_out.take( got_property=="RAYS" || got_property=="VERTICES" ? "LINEALITY_SPACE" : "INPUT_LINEALITY") << empty;
          }
       } else {
-         p_out.take("INPUT_RAYS") << Rays.minor(All,~coords_to_eliminate);
+         p_out.take("INPUT_RAYS") << remove_zero_rows(Rays.minor(All,~coords_to_eliminate));
          if (p_in.lookup("LINEALITY_SPACE | INPUT_LINEALITY") >> lineality && lineality.rows() > 0) 
             p_out.take("INPUT_LINEALITY") << lineality.minor(All,~coords_to_eliminate);  
          else {
@@ -85,8 +86,7 @@ void process_rays(perl::Object& p_in, int first_coord, const Array<int>& indices
       // here we assume that, if VERTEX_LABELS are present in the object, then also VERTICES are known
       // otherwise this will trigger a convex hull computation
       int n_vertices = p_in.give("N_RAYS");
-      Array<std::string> labels(n_vertices);
-      read_labels(p_in, "RAY_LABELS", labels);
+      const std::vector<std::string> labels = common::read_labels(p_in, "RAY_LABELS", n_vertices);
       p_out.take("RAY_LABELS") << labels;
    }
 }

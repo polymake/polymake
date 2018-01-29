@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -13,6 +13,8 @@
    GNU General Public License for more details.
 --------------------------------------------------------------------------------
 */
+
+#include <fcntl.h>
 
 #include "polymake/polytope/lrs_interface.h"
 #include "polymake/hash_set"
@@ -205,12 +207,31 @@ struct solver::dictionary {
    lrs_dat *Q;
    lrs_dic_struct *P;
    lrs_mp_matrix Lin;
+   FILE* out_ptr = nullptr;
+   int stdout_copy = -1;
+
+   // stream cleanup and restore stdout
+   void cleanup_ofp() {
+      if (out_ptr != nullptr && out_ptr != stderr) {
+         fflush(out_ptr);
+         fclose(out_ptr);
+      }
+#if PM_LRS_SUPPRESS_OUTPUT == 2
+      if (stdout_copy != -1) {
+         if (stdout != nullptr)
+            fflush(stdout);
+         dup2(stdout_copy,1);
+         close(stdout_copy);
+      }
+#endif
+   }
 
    ~dictionary()
    {
       if (Lin) lrs_clear_mp_matrix(Lin, Q->nredundcol, Q->n);
       lrs_free_dic(P,Q);
       lrs_free_dat(Q);
+      cleanup_ofp();
    }
 
    // parameter ge: primal case: true for vertex, falso for linearity
@@ -246,10 +267,32 @@ struct solver::dictionary {
          throw std::runtime_error("lrs_interface - cannot handle ambient dimension 0 in dual mode");
       // initialize static lrs data
       Lin=0;
-      lrs_mp_init(0, nullptr, nullptr);
+      // lrs needs a non-null out_ptr if it was built without LRS_QUIET
+      // we redirect this to /dev/null unless debugging output is desired
+      // the bundled version is built with LRS_QUIET
+      int verbose_lrs = perl::get_custom("$polytope::verbose_lrs");
+      if (verbose_lrs > 0)
+         out_ptr = stderr;
+
+#ifdef PM_LRS_SUPPRESS_OUTPUT
+      int output_fd = open("/dev/null", O_WRONLY);
+      if (out_ptr == nullptr)
+         out_ptr = fdopen(output_fd, "w");
+#if PM_LRS_SUPPRESS_OUTPUT == 2
+      stdout_copy = dup(1);
+      dup2(output_fd,1);
+#endif
+#endif
+
+      lrs_mp_init(0, nullptr, out_ptr);
       char name[] = "polymake";
       Q=lrs_alloc_dat(name);
-      if (!Q) throw std::bad_alloc();
+      if (!Q) {
+         cleanup_ofp();
+         throw std::bad_alloc();
+      }
+      if (verbose_lrs > 0)
+         Q->debug=1;
       Q->m=Inequalities.rows()+Equations.rows();
       Q->n=Inequalities.cols();
       if (!Q->n) Q->n=Equations.cols();
@@ -259,6 +302,7 @@ struct solver::dictionary {
       P=lrs_alloc_dic(Q);
       if (!P) {
          lrs_free_dat(Q);
+         cleanup_ofp();
          throw std::bad_alloc();
       }
       // store inequalities/points and equations/lineality in Q

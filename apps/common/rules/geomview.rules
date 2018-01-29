@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -59,14 +59,14 @@ sub facet_appearance {
    } else {
       my $transp=$P->FacetTransparency;
       ( defined($transp)
-	? is_code($transp)
-	  ? ( appearance => "face transparent -edge",
-	      facetAlpha => $transp,
-	    )
-	  : ( appearance => "face transparent -edge material { alpha $transp }" )
-	: $P->Closed ? () : ( appearance => "-backcull" ),
-	defined($P->FacetColor)
-	? ( facetColors => $P->FacetColor) : ()
+        ? is_code($transp)
+          ? ( appearance => "face transparent -edge",
+              facetAlpha => $transp,
+            )
+          : ( appearance => "face transparent -edge material { alpha $transp }" )
+        : $P->Closed ? () : ( appearance => "-backcull" ),
+        defined($P->FacetColor)
+        ? ( facetColors => $P->FacetColor) : ()
       );
    }
 }
@@ -80,9 +80,9 @@ sub line_appearance {
    }
    if (defined (my $color=$G->EdgeColor)) {
       if (is_code($color)) {
-	 @params=( lineColors => $color );
+         @params=( lineColors => $color );
       } else {
-	 $appearance.=" material { edgecolor " . $color->toFloat . " }";
+         $appearance.=" material { edgecolor " . $color->toFloat . " }";
       }
    }
    push @params, ( appearance => $appearance ) if $appearance;
@@ -92,41 +92,41 @@ sub line_appearance {
 global_method geomview.geometry: draw(Visual::PointSet, @) {
    my ($self, $P)=@_;
    my $geom=new Geomview::OFF( name => $P->Name,
-			       point_appearance($P),
-			       facets => [ ],
-			     );
+                               point_appearance($P),
+                               facets => [ ],
+                             );
    $self->append($geom);
 }
 
 global_method geomview.geometry: draw(Visual::Polygon, @) {
    my ($self, $P)=@_;
    my $geom=new Geomview::OFF( name => $P->Name,
-			       point_appearance($P),
-			       facets => $P->Facets,
-			       facet_appearance($P),
-			     );
+                               point_appearance($P),
+                               facets => $P->Facets,
+                               facet_appearance($P),
+                             );
    $self->append($geom);
 }
 
 global_method geomview.geometry: draw(Visual::Polygons, @) {
    my ($self, $P)=@_;
    my $geom=new Geomview::OFF( name => $P->Name,
-			       point_appearance($P),
-			       facets => $P->Facets,
+                               point_appearance($P),
+                               facets => $P->Facets,
                                facet_appearance($P),
-			     );
+                             );
    $self->append($geom);
 }
 
 global_method geomview.graph: draw(Visual::WireBase, @) {
    my ($self, $G)=@_;
    my $geom=new Geomview::SKEL( name => $G->Name,
-				points => $G->Vertices,
-				dim => $G->Dim,
-				lines => $G->all_edges,
-				n_lines => $G->n_edges,
-				line_appearance($G),
-			      );
+                                points => $G->Vertices,
+                                dim => $G->Dim,
+                                lines => $G->all_edges,
+                                n_lines => $G->n_edges,
+                                line_appearance($G),
+                              );
    $self->append($geom);
 }
 
@@ -201,4 +201,5 @@ user_function geomview(Visual::Object+, { File => undef }) {
 # Local Variables:
 # mode: perl
 # cperl-indent-level:3
+# indent-tabs-mode:nil
 # End:

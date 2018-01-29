@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -35,6 +35,7 @@ require Polymake::Core::HelpAsHTML;
 my $outdir=".";
 my $outsuffix=".xml";
 my $wikiURL;
+my $errors=0;
 
 if ( !GetOptions( 'outdir=s' => \$outdir, 'wiki=s' => \$wikiURL, 'outsuffix=s' => \$outsuffix ) or
      !@ARGV ) {
@@ -192,17 +193,21 @@ sub search {
    if (@topics==1) {
       ref_to_topic($topics[0]) // '#'
    } elsif (@topics) {
-      die "Ambiguous reference to $_[1] from ", ($application ? $application->name : "Core"), "::", $help->full_path, "; candidates are:\n",
-          (map { "    ".$_->full_path."\n" } @topics),
-          "Please disambiguate by qualification with application name and/or object type at ", $help->defined_at, "\n";
+      err_print( "Ambiguous reference to $_[1] from ", ($application ? $application->name : "Core"), "::", $help->full_path, "; candidates are:\n",
+                 (map { "    ".$_->full_path."\n" } @topics),
+                 "Please disambiguate by qualification with application name and/or object type at ", $help->defined_at );
+      ++$errors;
+      '#AMBIGUOUS'
 
    } elsif ($_[1] =~ /^($qual_id_re) \s*<\s* $types_re \s*>$/xo) {
       search($help, $1);
    } else {
-      die "Unresolved reference to $_[1] from ", ($application ? $application->name : "Core"), "::", $help->full_path, "\n",
-          $_[1] =~ /[<>]/ ? "Please remove the type parameters, because help topics are not stored with specializations"
-                          : "Please double-check the spelling and/or qualify with application name or object type",
-          " at ", $help->defined_at, "\n";
+      err_print( "Unresolved reference to $_[1] from ", ($application ? $application->name : "Core"), "::", $help->full_path, "\n",
+                 $_[1] =~ /[<>]/ ? "Please remove the type parameters, because help topics are not stored with specializations"
+                                 : "Please double-check the spelling and/or qualify with application name or object type",
+                 " at ", $help->defined_at );
+      ++$errors;
+      '#UNRESOLVED'
    }
 }
 
@@ -225,11 +230,13 @@ sub ref_to_type {
    if ($type->abstract) {
       return '#';
    }
-   die "Help topic ", $referrer->full_path, " defined at ", $referrer->defined_at, " refers to a ",
-       (instanceof Core::ObjectType::Specialization($type) ? ("specialization ", $type->full_name) :
-        instanceof Core::ObjectType($type) ? ("big object type ", $type->full_name) :
-        instanceof Core::PropertyType($type) ? ("property type ", $type->full_name) :
-        ("perl class ", ref($type))), " not represented in the help topic tree\n";
+   err_print( "Help topic ", $referrer->full_path, " defined at ", $referrer->defined_at, " refers to a ",
+              (instanceof Core::ObjectType::Specialization($type) ? ("specialization ", $type->full_name) :
+               instanceof Core::ObjectType($type) ? ("big object type ", $type->full_name) :
+               instanceof Core::PropertyType($type) ? ("property type ", $type->full_name) :
+               ("perl class ", ref($type))), " not represented in the help topic tree\n" );
+   ++$errors;
+   '#INVALID'
 }
 
 my %ignore_types;
@@ -329,6 +336,9 @@ sub write_function {
    if (defined (my $params=$help->annex->{param})) {
       foreach (@$params) {
          $writer->startTag("param", name => $_->[1], type => $_->[0], href => resolve_ref($help, $_->[0]));
+         if ($_->[1] eq "the") {
+             warn_print( "\"the\" used as a parameter name. Revise the docstring: ", ($application ? $application->name : "Core"), "::", $help->name, " defined at ", $help->defined_at );
+         }
          my $descr=$_->[2];
          my $value_list=$_->[3];
          if ($descr =~ /\S/ || defined($value_list)) {
@@ -531,7 +541,7 @@ sub write_object {
       write_descr($writer, $help, defined($obj_proto->generic));
       my %shown_super_types;
       foreach my $super (@{$obj_proto->super}) {
-         if (defined($super->help_topic) && !instanceof Core::ObjectType::Specialization($super) && !$shown_super_types{$obj_proto->name}++) {
+         if (defined($super->help_topic) && !instanceof Core::ObjectType::Specialization($super) && !$shown_super_types{$super->name}++ && $super != $obj_proto->generic) {
             $writer->emptyTag("derived-from",
                               object => ($super->application != $obj_proto->application && $super->application->name."::").$super->full_name,
                               href => ref_to_type($help, $super));
@@ -744,6 +754,10 @@ Core functionality available in all applications.
    }
 
    close_app_doc_file($writer);
+}
+
+if ($errors) {
+   die "Encountered $errors error", ($errors>1 && "s"), ", generation aborted\n";
 }
 
 # Local Variables:

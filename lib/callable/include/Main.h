@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -29,6 +29,7 @@
 #define POLYMAKE_APPNAME unknown
 
 #include "polymake/client.h"
+#include "polymake/vector"
 #include <string>
 
 namespace pm { namespace perl {
@@ -77,11 +78,45 @@ public:
 
    friend class Scope;
 
-   //! evaluate the given perl code in the context of the current application as if it has been entered in an interactive shell
-   //! the code must be syntactically complete, that is, no unfinished blocks or dangling operators are allowed
-   //! @return the output produced by the code
-   //! syntax or runtime errors are reported via exception
-   std::string simulate_shell_input(const std::string& input);
+   //! Load additional modules providing shell functionality.
+   //! This should be called prior to loading any application, otherwise methods querying
+   //! command completion and context help won't work.
+   void shell_enable();
+
+   //! Execute a piece of polymake/perl code in the context of the current application as if it has been entered in an interactive shell
+   //! The input must be encoded in UTF-8.
+   //! @return a tuple of four elements:
+   //!         <0> boolean indicating whether the input string could be parsed and executed
+   //!         <1> the entire stdout output produced during the execution, in particular, results of print statements;
+   //!             empty when <0> is false
+   //!         <2> the entire stderr output produced during the execution, this may include various harmless warnings and credit notes;
+   //!             empty when <0> is false
+   //!         <3> the message of an exception raised during the execution (when <0> is true) or input parse error message (when <0> is false)
+   //! Note that the result for a syntactically correct but incomplete input (unfinished statement, open block, etc.)
+   //! will be {false, "", "", ""}.
+   using shell_execute_t=std::tuple<bool, std::string, std::string, std::string>;
+   shell_execute_t shell_execute(const std::string& input);
+
+   //! get all possible completions for the partial input string, as if the TAB key has been pressed at the end of the string
+   //! @return a tuple of three elements:
+   //!         <0> offset from the end of the input string to the position where all completion proposals can be applied;
+   //!             in other words, length of the intersection of the input string and the proposals
+   //!         <1> optional delimiter character which can be appended after every completion proposal
+   //!         <2> array of completion proposals
+   using shell_complete_t=std::tuple<int, char, std::vector<std::string>>;
+   shell_complete_t shell_complete(const std::string& input);
+
+   //! get documentation strings describing an item in the input string near given position
+   //! multiple results are possible when the input can't be parsed unambiguously,
+   //! e.g. when the item in question refers to an overloaded function
+   //! @param input a piece of polymake/perl code
+   //! @param pos cursor position within the input string; results will describe the item
+   //!            under the cursor or at the closest location towards the begin
+   //!            By default, end of line is assumed
+   //! @param full provide full documentation texts including parameter descriptions, examples, etc.
+   //! @param html documentation texts may include HTML markup
+   std::vector<std::string> shell_context_help(const std::string& input, size_t pos=std::string::npos, bool full=false, bool html=false);
+
 private:
    SV* lookup_extension(const AnyString& path); // currently unused
    void call_app_method(const char* method, const AnyString& arg);

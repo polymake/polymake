@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -178,7 +178,7 @@ public:
       auto perm_it=perm.begin();
       for (Container *src=old->containers, *dst=r->containers, *end=dst+n;  dst!=end;  ++dst, ++perm_it)
          perm_entries.relocate(src+(inverse ? 0 : *perm_it), dst+(inverse ? *perm_it : 0));
-      r->size_and_prefix.first=n;
+      r->size_and_prefix=old->size_and_prefix;
       perm_entries(old, r);
       deallocate(old);
       return r;

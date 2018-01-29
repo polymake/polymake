@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -23,7 +23,7 @@ package Povray::File;
 
 use Polymake::Struct (
    [ '@ISA' => 'Visual::Drawing' ],
-   [ '$extents' => '(new Matrix<Float>)' ],
+   [ '$extents' => 'new Matrix<Float>()' ],
 );
 
 sub header {
@@ -35,8 +35,8 @@ sub header {
       $title="unnamed";
    }
    my $text = "/*\n  This povray file was created using polymake.\n  It may be rendered using the following command:\n\n";
-   $text .= "  >povray +Iinput.pov +Ooutput.tga $InstallTop/povray/polypov.ini\n*/\n";
-   $text .= "#include \"$InstallTop/povray/polymake-scene.pov\"\n\n";
+   $text .= "  >povray +Iinput.pov +Ooutput.tga $Polymake::Resources/povray/polypov.ini\n*/\n";
+   $text .= "#include \"$Polymake::Resources/povray/polymake-scene.pov\"\n\n";
 
    $text .= "#declare MIN_EXTENT = <".Visual::print_coords($self->extents->row(0),",").">;\n";
    $text .= "#declare MAX_EXTENT = <".Visual::print_coords($self->extents->row(1),",").">;\n";
@@ -101,25 +101,25 @@ sub pointsToString {
       my $diff_colors=is_code($color);
       $text .= "#declare vertices_of_$name = object {\n";
       unless (is_code($thickness)) {
-	 ($thickness ||= 1.0) *= $points_thickness;
+         ($thickness ||= 1.0) *= $points_thickness;
          $text .= "  #local pth = $thickness/SCALE;\n";
       }
       $text .= "  union {\n";
       foreach my $i (0..$n_points-1) {
          next if is_code($style) && $style->($i) =~ $Visual::hidden_re;
-	 $text .= "    sphere { vertex_list_${name}[$i], ";
-	 if (is_code($thickness)) {
-	    $text .= (($thickness->($i) || 1.0)*$points_thickness)."/SCALE";
-	 } else {
-	    $text .= "pth";
-	 }
-	 $text .= " ".pointColor($color->($i)) if $diff_colors;
+         $text .= "    sphere { vertex_list_${name}[$i], ";
+         if (is_code($thickness)) {
+            $text .= (($thickness->($i) || 1.0)*$points_thickness)."/SCALE";
+         } else {
+            $text .= "pth";
+         }
+         $text .= " ".pointColor($color->($i)) if $diff_colors;
          $text .= " }\n";
       }
       if ($diff_colors) {
-	 $text .= "}}\n";
+         $text .= "}}\n";
       } else {
-	 $text .= "  }\n  ".pointColor($color)."\n}\n";
+         $text .= "  }\n  ".pointColor($color)."\n}\n";
       }
       $text .= <<".";
 object {
@@ -171,18 +171,18 @@ sub facesToString {
 .
       my $i=0;
       foreach my $face (@{$self->source->Facets}) {
-	 next if is_code($style) && $style->($i) =~ $Visual::hidden_re;
-	 $text .= "    polygon { " . join(", ", @$face+1, map { "vertex_list_${name}[$_]" } (@$face, $face->[0]));
-	 if ($diff_colors) {
-	    $text .= " ".facetColor( is_code($color) ? $color->($i) : $color,
-				     is_code($transp) ? $transp->($i) : $transp );
-	 }
-	 $text .= " }\n";
+         next if is_code($style) && $style->($i) =~ $Visual::hidden_re;
+         $text .= "    polygon { " . join(", ", @$face+1, map { "vertex_list_${name}[$_]" } (@$face, $face->[0]));
+         if ($diff_colors) {
+            $text .= " ".facetColor( is_code($color) ? $color->($i) : $color,
+                                     is_code($transp) ? $transp->($i) : $transp );
+         }
+         $text .= " }\n";
       } continue { ++$i }
       if ($diff_colors) {
-	 $text .= "}}\n";
+         $text .= "}}\n";
       } else {
-	 $text .= "  }\n  ".facetColor($color,$transp)."\n}\n";
+         $text .= "  }\n  ".facetColor($color,$transp)."\n}\n";
       }
 
       $text .= <<".";
@@ -206,9 +206,9 @@ object {
   union {
 .
       foreach my $face (@{$self->source->Facets}) {
-	 for (my $i=$#$face; $i>=0; --$i) {
-	    $text .= "    capsule ( vertex_list_${name}[$face->[$i]], vertex_list_${name}[$face->[$i-1]], eth )\n";
-	 }
+         for (my $i=$#$face; $i>=0; --$i) {
+            $text .= "    capsule ( vertex_list_${name}[$face->[$i]], vertex_list_${name}[$face->[$i-1]], eth )\n";
+         }
       }
       $text .= "  }\n  ".edgeColor($self->source->EdgeColor)."\n}\n" . <<".";
 object {
@@ -263,13 +263,13 @@ sub linesToString {
       my @v=@$e;
       $text .= "    object { ";
       if (my $arrow= is_code($arrows) ? $arrows->($e) : $arrows) {
-	 @v=reverse(@v) if $arrow<0;
-	 $text .= "arrow(vertex_list_${name}[$v[0]], vertex_list_${name}[$v[1]], $th, al, aw)";
+         @v=reverse(@v) if $arrow<0;
+         $text .= "arrow(vertex_list_${name}[$v[0]], vertex_list_${name}[$v[1]], $th, al, aw)";
       } else {
-	 $text .= "capsule (vertex_list_${name}[$v[0]], vertex_list_${name}[$v[1]], $th)";
+         $text .= "capsule (vertex_list_${name}[$v[0]], vertex_list_${name}[$v[1]], $th)";
       }
       if (is_code($color)) {
-	 $text .= " ".edgeColor($color->($e));
+         $text .= " ".edgeColor($color->($e));
       }
       $text .= " }\n";
    }
@@ -296,5 +296,7 @@ sub toString {
 1
 
 # Local Variables:
-# c-basic-offset:3
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
 # End:

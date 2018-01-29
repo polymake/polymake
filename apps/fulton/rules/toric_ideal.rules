@@ -1,4 +1,4 @@
-#  Copyright (c) 2012
+#  Copyright (c) 2017
 #  by authors as mentioned on:
 #  https://github.com/lkastner/polymake_toric/wiki/Authors
 #  
@@ -20,11 +20,6 @@
 REQUIRE polytope::_4ti2.rules
 
 
-# path to groebner
-# custom $groebner;
-# Note: This is already declared in the _4ti2 file from Polymake.
-
-
 declare object BinomialIdeal : Ideal {
    
    property BINOMIAL_GENERATORS : Matrix<Int>;
@@ -35,14 +30,13 @@ declare object BinomialIdeal : Ideal {
 
    rule GENERATORS : BINOMIAL_GENERATORS {
       my $binomials = $this->BINOMIAL_GENERATORS;
-      $ring->n_vars == $binomials->cols or die "Wrong number of variables.";
       my @gens;
       my $coef = new Vector<Rational>(1, -1);
       foreach my $binomial (@$binomials){
          my $positivePart = new Vector<Int>(map($_>0 ? $_ : 0, @$binomial));
          my $negativePart = new Vector<Int>(map($_<0 ? -$_ : 0, @$binomial));
          my $expmat = new Matrix<Int>([$positivePart, $negativePart]);
-         push @gens, new Polynomial($expmat, $coef);
+         push @gens, new Polynomial($coef, $expmat);
       }
       $this->GENERATORS = \@gens;
    }

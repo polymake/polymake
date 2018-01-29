@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -44,6 +44,7 @@
 namespace polymake { namespace fan {
 
 namespace {
+   constexpr double epsilon = 1e-10;
 
    typedef std::pair<int,int> directed_edge;
    typedef std::pair<int,int> vertex_facet_pair;
@@ -107,6 +108,9 @@ namespace {
    inline
    int ccw(const Vector<double>& a, const Vector<double>& b, const Vector<double>& c) {
       const double det_by_laplace=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
+      if (fabs(det_by_laplace) < epsilon) {
+         return 0;
+      }
       return sign(det_by_laplace);
    }
 
@@ -136,7 +140,7 @@ namespace {
          if (ccw(pvh,nvh,point)<0) {
             // the point is on the negative side of that edge, hence ...
 #if PLANAR_NET_DEBUG > 2
-            cerr << " *]";
+            cerr << " (" << pvh << ", " << nvh << ", " << point << ")*]";
 #endif
             
             return false;
@@ -147,7 +151,7 @@ namespace {
       nvh = net_vertices[first_vertex];
       if (ccw(pvh,nvh,point)<0) {
 #if PLANAR_NET_DEBUG > 2
-         cerr << " *]";
+         cerr << "final (" << pvh << ", " << nvh << ", " << point << ")*]";
 #endif
          return false;
       }

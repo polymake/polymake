@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,6 +20,7 @@
 #include "polymake/PolynomialVarNames.h"
 #include "polymake/PolynomialImpl.h"
 #include "polymake/Rational.h"
+#include "polymake/linalg.h"
 
 namespace pm {
 
@@ -29,6 +30,9 @@ template <typename Coefficient, typename Exponent>
 class Polynomial;
 template <typename Coefficient, typename Exponent>
 class RationalFunction;
+
+// some magic needed for operator construction
+struct is_polynomial {};
 
 // forward declarations needed for friends
 template <typename Coefficient, typename Exponent>
@@ -47,6 +51,9 @@ ext_gcd(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coeff
 template <typename Coefficient, typename Exponent>
 UniPolynomial<Coefficient, Exponent>
 lcm(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficient, Exponent>& b);
+
+template <typename T, typename std::enable_if<std::is_same<typename object_traits<T>::generic_tag,is_polynomial>::value, int>::type=0>
+T pow(const T& base, int exp);
 
 template <typename Coefficient = Rational, typename Exponent = int>
 class UniPolynomial {
@@ -101,7 +108,7 @@ public:
     : impl_ptr{std::make_unique<impl_type>(coefficients, monomials, 1)} {}
 
   /// construct a monomial of degree 1
-  static UniPolynomial monomial() { return UniPolynomial(1, 1); }
+  static UniPolynomial monomial() { return UniPolynomial(one_value<Coefficient>(), 1); }
 
   // Interface forwarding
   void swap(UniPolynomial& p) { impl_ptr.swap(p.impl_ptr); }
@@ -156,11 +163,99 @@ public:
   monomial_type lm(const Exponent& order) const { return impl_ptr->lm(order); }
   const Coefficient& lc() const { return impl_ptr->lc(); }
   const Coefficient& lc(const Exponent& order) const { return impl_ptr->lc(order); }
+  const Coefficient& constant_coefficient() const { return impl_ptr->get_coefficient(0); }
 
   UniPolynomial initial_form(const Exponent& weights) const
   {
     return UniPolynomial(impl_ptr->initial_form(weights));
   }
+
+  // compatibility with Polynomial zero for correct n_vars
+  UniPolynomial zero() const
+  {
+     return zero_value<UniPolynomial>();
+  }
+
+  template <typename T,
+             typename std::enable_if<
+               std::is_same<Exponent,int>::value &&
+               std::is_same<typename object_traits<T>::generic_tag,is_scalar>::value
+             >::type* = nullptr
+           >
+  auto
+  substitute(const T& t) const
+  {
+    typename impl_type::sorted_terms_type temp = impl_ptr->get_sorted_terms();
+    // using the return type of a product allows upgrades in both directions:
+    // e.g. T=int upgraded to coefficient type,
+    //      or Coeff=Rational to T=QuadraticExtension
+    typedef typename std::remove_reference<decltype(std::declval<T>() * std::declval<Coefficient>())>::type ret_type;
+    ret_type result;
+    Exponent previous_exp = this->deg();
+    for (const auto& exp : temp) {
+      while (previous_exp > exp) {
+        result *= t;
+        previous_exp--;
+      }
+      result += this->get_coefficient(exp);
+    }
+    result *= pm::pow(convert_to<ret_type>(t),previous_exp);
+    return result;
+  }
+
+  template <typename T,
+             typename std::enable_if<
+               std::is_same<Exponent,int>::value &&
+               std::is_same<typename object_traits<T>::generic_tag,is_matrix>::value
+             >::type* = nullptr
+           >
+  auto
+  substitute(const T& t) const
+  {
+    if (POLYMAKE_DEBUG || !Unwary<T>::value) {
+      if (t.rows() != t.cols())
+        throw std::runtime_error("polynomial substitute: matrix must be square");
+    }
+    typename impl_type::sorted_terms_type temp = impl_ptr->get_sorted_terms();
+    Exponent previous_exp = this->deg();
+    typedef typename T::persistent_nonsymmetric_type ret_type;
+    ret_type result(t.rows(),t.rows());
+    for (const auto& exp : temp) {
+      while (previous_exp > exp) {
+        result = result * t;
+        previous_exp--;
+      }
+      result += this->get_coefficient(exp) * unit_matrix<typename T::value_type>(t.rows());
+    }
+    result = result * pm::pow<ret_type>(t,previous_exp);
+    return result;
+  }
+
+  template <template <typename, typename> class T, typename TCoeff, typename TExp,
+             typename std::enable_if<
+               std::is_same<Exponent,int>::value &&
+               std::is_same<typename object_traits<T<TCoeff,TExp>>::generic_tag,is_polynomial>::value
+             >::type* = nullptr
+           >
+  auto
+  substitute(const T<TCoeff,TExp>& t) const
+  {
+    typedef typename std::remove_reference<decltype(std::declval<TCoeff>() * std::declval<Coefficient>())>::type ret_coeff;
+    typedef T<ret_coeff,TExp> ret_type;
+    typename impl_type::sorted_terms_type temp = impl_ptr->get_sorted_terms();
+    Exponent previous_exp = this->deg();
+    ret_type result = convert_to<ret_coeff>(t.zero());
+    for (const auto& exp : temp) {
+      while (previous_exp > exp) {
+        result *= convert_to<ret_coeff>(t);
+        previous_exp--;
+      }
+      result += ret_coeff(this->get_coefficient(exp));
+    }
+    result *= pm::pow<ret_type>(convert_to<ret_coeff>(t),previous_exp);
+    return result;
+  }
+
 
   template <typename T>
   typename std::enable_if<is_field_of_fractions<Exponent>::value && fits_as_coefficient<T>::value,
@@ -185,12 +280,10 @@ public:
   evaluate(const T& t, const long exp_lcm=1) const
   {
     typedef typename algebraic_traits<T>::field_type field;
-    field res;
-    for (const auto& term : get_terms())
-    {
-      res += term.second * field::pow(t, static_cast<long>(exp_lcm * term.first));
-    }
-    return res;
+    if (exp_lcm == 1)
+       return substitute<field>(field::pow(t,exp_lcm));
+    else
+       return substitute<field>(t);
   }
 
   double evaluate_float(const double a) const
@@ -198,6 +291,7 @@ public:
     double res = 0;
     for (const auto& term : get_terms())
     {
+      // we do the terms separately here to keep it working for rational exponents
       res += convert_to<double>(term.second) * std::pow(a, convert_to<double>(term.first));
     }
     return res;
@@ -708,7 +802,13 @@ public:
   /// construct a monomial of the given variable
   static Polynomial monomial(int var_index, int n_vars)
   {
-    return Polynomial(1, unit_vector<Exponent>(n_vars, var_index));
+    return Polynomial(one_value<Coefficient>(), unit_vector<Exponent>(n_vars, var_index));
+  }
+
+  // non-static zero with correct n_vars
+  Polynomial zero() const
+  {
+     return Polynomial(this->n_vars());
   }
 
   // Interface forwarding
@@ -783,6 +883,8 @@ public:
   {
     return Polynomial(impl_ptr->initial_form(weights));
   }
+
+  const Coefficient& constant_coefficient() const { return get_coefficient(monomial_type(n_vars())); }
 
   template <typename T>
   typename std::enable_if<fits_as_coefficient<T>::value, Polynomial>::type
@@ -944,6 +1046,128 @@ public:
     return *p1.impl_ptr >= *p2.impl_ptr;
   }
 
+  template <typename Container,
+             typename std::enable_if<
+               std::is_same<Exponent,int>::value &&
+               std::is_same<typename object_traits<typename Container::value_type>::generic_tag,is_scalar>::value
+             >::type* = nullptr
+           >
+  auto
+  substitute(const Container& values) const
+  {
+    if (values.size() != n_vars())
+       throw std::runtime_error("substitute polynomial: number of values does not match variables");
+    typedef typename Container::value_type T;
+    typename impl_type::sorted_terms_type temp = impl_ptr->get_sorted_terms();
+    // using the return type of a product allows upgrades in both directions:
+    // e.g. T=int upgraded to coefficient type,
+    //      or Coeff=Rational to T=QuadraticExtension
+    typedef typename std::remove_reference<decltype(std::declval<T>() * std::declval<Coefficient>())>::type ret_type;
+    ret_type result;
+    for (auto t = entire(this->get_terms()); !t.at_end(); ++t)
+    {
+      ret_type term(t->second);
+      accumulate_in(entire(attach_operation(values,t->first,operations::pow<T,int>())),BuildBinary<operations::mul>(),term);
+      result += term;
+    }
+    return result;
+  }
+
+  template <
+     template <typename, typename...> class Container,
+     template <typename, typename> class Poly ,
+     typename Coeff,
+     typename Exp,
+     typename... Args,
+             typename std::enable_if<
+               std::is_same<Exponent,int>::value &&
+               std::is_same<typename object_traits<Poly<Coeff,Exp>>::generic_tag,is_polynomial>::value
+             >::type* = nullptr
+           >
+  auto
+  substitute(const Container<Poly<Coeff,Exp>,Args...>& values) const
+  {
+    if (values.size() != n_vars())
+       throw std::runtime_error("substitute polynomial: number of values does not match variables");
+    typedef typename std::remove_reference<decltype(std::declval<Coeff>() * std::declval<Coefficient>())>::type ret_coeff;
+    typedef Poly<ret_coeff,Exp> ret_type;
+    ret_type result = convert_to<ret_coeff>(values.begin()->zero());
+    for (auto t = entire(this->get_terms()); !t.at_end(); ++t)
+    {
+      ret_type term(t->second);
+      accumulate_in(entire(attach_operation(values,t->first,operations::pow<ret_type,int>())),BuildBinary<operations::mul>(),term);
+      result += term;
+    }
+    return result;
+  }
+
+  template < typename MapType,
+             typename std::enable_if<
+               std::is_same<Exponent,int>::value &&
+               std::is_same<typename object_traits<MapType>::generic_tag,is_map>::value &&
+               std::is_same<typename MapType::key_type,int>::value &&
+               std::is_same<typename object_traits<typename MapType::mapped_type>::generic_tag,is_scalar>::value
+             >::type* = nullptr
+           >
+  auto
+  substitute(const MapType& values) const
+  {
+    typedef typename std::remove_reference<decltype(std::declval<typename MapType::mapped_type>() * std::declval<Coefficient>())>::type ret_coeff;
+    Polynomial<ret_coeff,int> result(this->n_vars());
+    Set<int> indices(keys(values));
+    for (auto t = entire(this->get_terms()); !t.at_end(); ++t)
+    {
+      ret_coeff coeff(t->second);
+      for (auto v = entire(values); !v.at_end(); ++v) {
+         coeff *= pm::pow<ret_coeff>(v->second,t->first[v->first]);
+      }
+      SparseVector<int> exps(t->first);
+      exps.slice(indices) = zero_vector<int>(indices.size());
+      result += Polynomial<ret_coeff,int>(coeff,exps);
+    }
+    return result;
+  }
+
+  template <typename Container,
+             typename std::enable_if<
+               isomorphic_to_container_of<Container, int>::value
+             >::type* = nullptr
+           >
+  auto
+  project(const Container& indices) const
+  {
+    return Polynomial<Coefficient,Exponent>(
+        this->coefficients_as_vector(),
+        this->monomials_as_matrix().minor(All,indices)
+      );
+  }
+
+  template <typename Container,
+             typename std::enable_if<
+               isomorphic_to_container_of<Container, int>::value
+             >::type* = nullptr
+           >
+  auto
+  mapvars(const Container& indices, int vars=-1) const
+  {
+    if (indices.size() != this->n_vars())
+       throw std::runtime_error("polynomial mapvars: number of indices does not match variables");
+    int maxind = 0;
+    for (auto i : indices)
+       assign_max(maxind,i);
+    if (vars != -1) {
+       if (maxind+1 > vars)
+          throw std::runtime_error("polynomial mapvars: indices exceed given number of variables");
+    } else
+          vars = maxind+1;
+    SparseMatrix<Exponent> oldexps = this->monomials_as_matrix();
+    SparseMatrix<Exponent> exps(this->n_terms(),vars);
+    int j = 0;
+    for (auto i = entire(indices); !i.at_end(); ++i,++j)
+       exps.col(*i) += oldexps.col(j);
+    return Polynomial<Coefficient,Exponent>(this->coefficients_as_vector(),exps);
+  }
+
 #if POLYMAKE_DEBUG
    void dump() const __attribute__((used)) { cerr << *this << std::flush; }
 #endif
@@ -1013,9 +1237,6 @@ template <typename Coefficient, typename Exponent>
 struct algebraic_traits< UniPolynomial<Coefficient, Exponent> > {
   typedef RationalFunction<typename algebraic_traits<Coefficient>::field_type, Exponent> field_type;
 };
-
-// some magic needed for operator construction
-struct is_polynomial {};
 
 
 template <typename Coefficient, typename Exponent, typename T>
@@ -1492,11 +1713,53 @@ operator* (const T& c, const Polynomial<C,E>& p)
   return p.mult_from_right(c);
 }
 
+template <typename T, typename std::enable_if<std::is_same<typename object_traits<T>::generic_tag,is_polynomial>::value, int>::type>
+T pow(const T& base, int exp) {
+   return base.pow(exp);
+}
+
+
+/// explicit conversion of polynomial coefficients to another type
+template <typename TargetType, typename Exponent> inline
+const Polynomial<TargetType,Exponent>&
+convert_to(const Polynomial<TargetType, Exponent>& p)
+{
+   return p;
+}
+
+template <typename TargetType, typename Exponent> inline
+const UniPolynomial<TargetType,Exponent>&
+convert_to(const UniPolynomial<TargetType, Exponent>& p)
+{
+   return p;
+}
+
+template <typename TargetType, typename Coefficient, typename Exponent,
+          typename enabled=typename std::enable_if<can_initialize<Coefficient, TargetType>::value && !std::is_same<Coefficient, TargetType>::value>::type>
+inline
+Polynomial<TargetType,Exponent>
+convert_to(const Polynomial<Coefficient, Exponent>& p)
+{
+   return Polynomial<TargetType,Exponent>(convert_to<TargetType>(p.coefficients_as_vector()),p.monomials_as_matrix());
+}
+
+template <typename TargetType, typename Coefficient, typename Exponent,
+          typename enabled=typename std::enable_if<can_initialize<Coefficient, TargetType>::value && !std::is_same<Coefficient, TargetType>::value>::type>
+inline
+UniPolynomial<TargetType,Exponent>
+convert_to(const UniPolynomial<Coefficient, Exponent>& p)
+{
+   return UniPolynomial<TargetType,Exponent>(convert_to<TargetType>(p.coefficients_as_vector()),p.monomials_as_vector());
+}
+
+
+
 } // end namespace pm
 
 namespace polymake {
    using pm::Polynomial;
    using pm::UniPolynomial;
+   using pm::convert_to;
 }
 
 namespace std {

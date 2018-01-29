@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -37,5 +37,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(edge_x_x_f1, perl::Canned< Graph< Directed > >);
    FunctionInstance4perl(edge_x_x_f1, perl::Canned< Wary< Graph< DirectedMulti > > >);
    FunctionInstance4perl(edge_int_int_f37, perl::Canned< const Wary< EdgeMap< Undirected, double > > >);
+   FunctionInstance4perl(edge_int_int_f37, perl::Canned< const Wary< EdgeMap< Directed, int > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

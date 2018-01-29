@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -17,8 +17,6 @@
 #ifndef __GROUP_ISOTYPIC_COMPONENTS_H
 #define __GROUP_ISOTYPIC_COMPONENTS_H
 
-#include "polymake/group/action_datatypes.h"
-
 #include "polymake/Map.h"
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
@@ -26,6 +24,7 @@
 #include "polymake/SparseVector.h"
 #include "polymake/linalg.h"
 #include "polymake/group/orbit.h"
+#include "polymake/group/group_tools.h"
 
 namespace polymake { namespace group {
 
@@ -33,9 +32,9 @@ template<typename Perm>
 SparseMatrix<Rational> permutation_matrix(const Perm& perm,
                                           const Array<int>& coordinate_permutation)
 {
-   SparseMatrix<Rational> permutation_matrix(perm.size(), perm.size());
+   SparseMatrix<Rational> permutation_matrix(degree(perm), degree(perm));
    int i(0);
-   for (typename Entire<Perm>::const_iterator pit = entire(perm); !pit.at_end(); ++pit, ++i)
+   for (auto pit = entire(perm); !pit.at_end(); ++pit, ++i)
       permutation_matrix(coordinate_permutation[*pit],
                          coordinate_permutation[i]) = 1;
    return permutation_matrix;
@@ -47,7 +46,7 @@ int inverse_perm_at(const Perm& perm,
 {
    assert(k < perm.size());
    int i(0);
-   for (typename Entire<Perm>::const_iterator pit = entire(perm); !pit.at_end(); ++pit, ++i)
+   for (auto pit = entire(perm); !pit.at_end(); ++pit, ++i)
       if (*pit == k)
          return i;
    std::ostringstream msg;
@@ -78,36 +77,57 @@ isotypic_projector_impl(const RowType& character,
 }
    */
 
-template<typename RowType>
-SparseMatrix<CharacterNumberType> 
-isotypic_projector_impl(const RowType& character,
-                        const ConjugacyClasses& conjugacy_classes,
-                        const Array<int>& permutation_to_orbit_order,
-                        int order)
+namespace {
+
+template<typename E>   
+auto matrix_rep(const Array<E>& g, const Array<int>& permutation_to_orbit_order)
 {
-   const int degree(permutation_to_orbit_order.size());
-   SparseMatrix<CharacterNumberType> isotypic_projector(degree, degree);
+   return permutation_matrix(g, permutation_to_orbit_order);
+}
+   
+template<typename Scalar>
+auto matrix_rep(const Matrix<Scalar>& g, const Array<int>&)
+{
+   return g;
+}
+   
+} // end anonymous namespace
+
+/*
+    Implement the projector to the isotypic component given by the character //chi// using the formula
+
+    pi_chi = chi(G.identity())/G.order() * sum([chi(g).conjugate() * rep.rho(g) for g in G])
+ */
+template<typename RowType, typename Element>
+SparseMatrix<CharacterNumberType> 
+isotypic_projector_impl(const RowType& chi,
+                        const ConjugacyClasses<Element>& conjugacy_classes,
+                        const Array<int>& permutation_to_orbit_order,
+                        int group_order)
+{
+   const int deg(degree(conjugacy_classes[0][0]));
+   SparseMatrix<CharacterNumberType> isotypic_projector(deg, deg);
    for (int i=0; i<conjugacy_classes.size(); ++i) {
-      for (Entire<ConjugacyClass>::const_iterator cit = entire(conjugacy_classes[i]); !cit.at_end(); ++cit) {
+      if (is_zero(chi[i])) continue;
+      for (auto cit = entire(conjugacy_classes[i]); !cit.at_end(); ++cit) {
          isotypic_projector += 
-            character[i] // FIXME: conjugate here, once complex character tables are implemented
-            * permutation_matrix(*cit, permutation_to_orbit_order);
+            chi[i] // FIXME: conjugate here, once complex character tables are implemented
+            * matrix_rep(*cit, permutation_to_orbit_order);
       }
    }
-   //    chi(G.identity())/G.order() * sum([chi(g).conjugate() * rep.rho(g) for g in G])
-   isotypic_projector *= character[0] / order;
+   isotypic_projector *= chi[0] / group_order;
    return isotypic_projector;
 }
 
-template<typename InducedAction, typename RowType>
+template<typename InducedAction, typename RowType, typename Element>
 ListMatrix<SparseVector<CharacterNumberType> >
 isotypic_basis_impl(const RowType& character,
                     const InducedAction& induced_action,
                     int degree,
-                    const ConjugacyClasses& conjugacy_classes,
+                    const ConjugacyClasses<Element>& conjugacy_classes,
                     int order)
 {
-   ListMatrix<SparseVector<CharacterNumberType> >
+   ListMatrix<SparseVector<CharacterNumberType>>
       isotypic_basis(0, degree),
       kernel_so_far(unit_matrix<CharacterNumberType>(degree));
    // we fill the matrix row-wise. The entire matrix is
@@ -116,7 +136,7 @@ isotypic_basis_impl(const RowType& character,
    for (int k=0; k<degree; ++k) {
       SparseVector<CharacterNumberType> new_row(degree);
       for (int i=0; i<conjugacy_classes.size(); ++i) {
-         for (Entire<ConjugacyClass>::const_iterator cit = entire(conjugacy_classes[i]); !cit.at_end(); ++cit) {
+         for (auto cit = entire(conjugacy_classes[i]); !cit.at_end(); ++cit) {
             for (int j=0; j<degree; ++j)
                if (induced_action.index_of_inverse_image(*cit, j) == k) {
                   new_row[j] += 
@@ -130,25 +150,25 @@ isotypic_basis_impl(const RowType& character,
    return isotypic_basis * character[0] / order;
 }
 
-template<typename RowType>
+template<typename RowType, typename Element>
 ListMatrix<SparseVector<CharacterNumberType> >
 isotypic_basis_impl(const RowType& character,
-                    const ConjugacyClasses& conjugacy_classes,
+                    const ConjugacyClasses<Element>& conjugacy_classes,
                     const Array<int>& permutation_to_orbit_order,
                     int order)
 {
-   const int degree(permutation_to_orbit_order.size());
-   ListMatrix<SparseVector<CharacterNumberType> >
-      isotypic_basis(0, degree),
-      kernel_so_far(unit_matrix<CharacterNumberType>(degree));
+   const int deg(degree(conjugacy_classes[0][0]));
+   ListMatrix<SparseVector<CharacterNumberType>>
+      isotypic_basis(0, deg),
+      kernel_so_far(unit_matrix<CharacterNumberType>(deg));
    // we fill the matrix row-wise. The entire matrix is
    //    chi(G.identity())/G.order() * sum([chi(g).conjugate() * rep.rho(g) for g in G])
    // and rep.rho(g) (k, g^{-1}(k)) = 1.
-   int k(0);
-   for (Entire<Array<int> >::const_iterator pit = entire(permutation_to_orbit_order); !pit.at_end(); ++pit, ++k) {
-      SparseVector<CharacterNumberType> new_row(degree);
+   for (int k=0; k<deg; ++k) {
+      SparseVector<CharacterNumberType> new_row(deg);
       for (int i=0; i<conjugacy_classes.size(); ++i) {
-         for (Entire<ConjugacyClass>::const_iterator cit = entire(conjugacy_classes[i]); !cit.at_end(); ++cit) {
+         if (is_zero(character[i])) continue;
+         for (auto cit = entire(conjugacy_classes[i]); !cit.at_end(); ++cit) {
             new_row[permutation_to_orbit_order[inverse_perm_at(*cit,k)]] += 
                character[i]; // FIXME: conjugate here, once complex character tables are implemented
          }
@@ -160,11 +180,11 @@ isotypic_basis_impl(const RowType& character,
 }
 
 
-template<typename SparseMatrixType>
+template<typename SparseMatrixType, typename Element>
 IncidenceMatrix<> 
 isotypic_supports_impl(const SparseMatrixType& S,
                        const Matrix<CharacterNumberType>& character_table,
-                       const ConjugacyClasses& conjugacy_classes,
+                       const ConjugacyClasses<Element>& conjugacy_classes,
                        const Array<int>& permutation_to_orbit_order,
                        int order)
 {

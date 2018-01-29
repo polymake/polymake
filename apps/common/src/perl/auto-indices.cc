@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,6 +18,7 @@
 
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/PuiseuxFraction.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
@@ -36,5 +37,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(indices_X32, perl::Canned< const SparseVector< Rational > >);
    FunctionInstance4perl(indices_X32, perl::Canned< const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<int, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric> >);
    FunctionInstance4perl(indices_X32, perl::Canned< const SparseVector< PuiseuxFraction< Min, Rational, Rational > > >);
+   FunctionInstance4perl(indices_X32, perl::Canned< const SparseVector< QuadraticExtension< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -1,6 +1,6 @@
-/* Copyright (c) 1997-2015
-	Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-http://www.polymake.org
+/* Copyright (c) 1997-2018
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the
@@ -33,6 +33,7 @@ namespace polymake { namespace tropical {
 			facets_as_set -= far_face;
 
 			cone.take("PSEUDOVERTICES") << vertices;
+                        cone.take("FAR_PSEUDOVERTICES") << far_face;
 			cone.take("MAXIMAL_COVECTOR_CELLS") << IncidenceMatrix<>(facets_as_set);
 		}
 

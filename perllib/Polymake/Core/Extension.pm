@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake::Core::Extension;
 
@@ -40,6 +41,8 @@ use Polymake::Struct (
    [ '$credit' => 'undef' ],        # Credit credit note, if present in metadata
    [ '$short_name' => 'undef'],
    [ '$is_bundled' => '#3' ],       # boolean
+   [ '$build_dir' => 'undef' ],     # for standalone externsions: where to find architecture-dependent files (configuration, shared modules...)
+   [ '$meta_tm' => 'undef' ],       # timestamp of the meta-file
    '$is_active',                    # boolean: configured, included in @active
    '@requires',                     # ( Extension ) direct and indirect prerequisites
    '@requires_opt',                 # ( Extension ) direct and indirect optional prerequisites
@@ -55,6 +58,7 @@ sub new {
 
    if (-f $self->dir."/polymake.ext") {
       $self->untrusted= -w _ && (!$self->is_bundled || $DeveloperMode);
+      $self->meta_tm=(stat _)[9];
       open my $meta, $self->dir."/polymake.ext"
         or die "can't read extension description ", $self->dir, "/polymake.ext: $!\n";
       local $/;
@@ -64,19 +68,23 @@ sub new {
       my %sections=@sections;
       if (defined (my $URI=delete $sections{URI})) {
          if ($self->is_bundled) {
-            die "Bundled extensions have implicit URIs.\nURI section is not allowed in the extension description file ", $self->dir, "/polymake.ext\n";
+            die "Bundled extensions have implicit URIs.\n",
+                "URI section is not allowed in the extension description file ", $self->dir, "/polymake.ext\n";
          }
          $URI =~ s/^\s+//s;  $URI =~ s/\s+$//s;
          process_URI($self, $URI);
       } elsif (!$self->is_bundled && $self->URI ne "private:") {
          die "extension description file ", $self->dir, "/polymake.ext lacks mandatory URI section\n";
       }
-	
+
       if (defined (my $short_name=delete $sections{NAME})) {
-		 $short_name =~ s/^\s+//s;  $short_name =~ s/\s+$//s;
+         if ($self->is_bundled) {
+            die "Bundled extensions have fixed names derived from their top directory.\n",
+                "NAME section is not allowed in the extension description file ", $self->dir, "/polymake.ext\n";
+         }
+         $short_name =~ s/^\s+//s;  $short_name =~ s/\s+$//s;
          $self->short_name=$short_name;
       }
-
 
       if (defined (my $requires=delete $sections{REQUIRE})) {
          @{$self->requires} = $requires =~ /(\S+)/g;
@@ -98,7 +106,7 @@ sub new {
          $credit =~ s/(?<=\n)(?:[ \t]*\n)*\Z//s;
          $credit =~ s/^[ \t]*/  /gm;
          if (defined($self->short_name)) {
-         	$credit .= "\n  ".$self->URI;
+            $credit .= "\n  ".$self->URI;
          }
          $self->credit=new Credit($self, $credit);
       }
@@ -158,57 +166,58 @@ sub process_URI {
 ######################################################################################
 # load all configured bundled and imported extensions
 sub init {
-   # create objects for bundled extensions, filter out unconfigured ones
-   my (@pending, %unconfigured, %seen);
-   foreach (glob("$InstallTop/bundled/*")) {
-      m{/bundled/($id_re)$}o;
-      my $conf_file="$InstallArch/$&/conf.make";
-      $seen{"bundled:$1"}=1;
-      my $ext=new($_[0], $_, "bundled:$1", 1);
-      if (-f $conf_file) {
-         push @pending, $ext;
-         $ext->configured_at=max((stat _)[9], $Application::configured_at);
-      } else {
-         $unconfigured{$ext->URI}=$ext;
-      }
-   }
-
-   # order the bundled extensions according to dependencies
-   while (@pending) {
-      my $pending=$#pending;
-      for (my $i=$pending; $i>=0; --$i) {
-         my $ext=$pending[$i];
-         my $satisfied=1;
-         my @prereqs=map { $registered_by_URI{$_} // ($satisfied=0) }
-                         @{$ext->requires},
-                         grep { $seen{$_} && !exists $unconfigured{$_} } @{$ext->requires_opt};
-         if ($satisfied) {
-            $registered_by_URI{$_}=$ext for $ext->URI, @{$ext->replaces};
-            $registered_by_dir{$ext->dir}=$ext;
-            @{$ext->requires}=uniq(map { ($_, @{$_->requires}) } @prereqs) if @prereqs;
-            push @active, $ext;
-            $ext->VCS=$CoreVCS;
-            $ext->is_active=1;
-            splice @pending, $i, 1;
+   # create objects for bundled extensions
+ LOAD:
+   {
+      # extensions are ordered by inter-dependencies, prerequisites coming first
+      foreach my $name (@BundledExts) {
+         my $ext=new(__PACKAGE__, "$InstallTop/bundled/$name", "bundled:$name", 1);
+         $ext->short_name=$name;
+         if ($DeveloperMode && $ext->meta_tm > $ConfigTime) {
+            warn_print("meta-file of bundled extension $name has been changed since last configuration;\nPerforming automatic reconfiguration, please be patient...\n");
+            my $build_opt= $ENV{POLYMAKE_BUILD_ROOT} && "--build $ENV{POLYMAKE_BUILD_ROOT}";
+            my $config_log=`cd $InstallTop; $^X support/configure.pl $build_opt 2>&1`;
+            if ($?) {
+               die "Automatic reconfiguration failed, the complete log including the error diagnostics is shown below.\n",
+                  "Please investigate the reasons and rerun the configure script manually, possibly with different options.\n\n",
+                  $config_log;
+            }
+            my %ConfigFlags=load_config_file("$InstallArch/config.ninja", $InstallTop);
+            $ConfigTime=(stat "$InstallArch/config.ninja")[9];
+            @BundledExts=$ConfigFlags{BundledExts} =~ /(\S+)/g;
+            @active=();
+            redo LOAD;
          }
-      }
-      if ($pending==$#pending) {
-         # no further progress
-         warn_print( "Bundled extension", $pending>1 && "s", " ", join(", ", map { $_->dir =~ $filename_re } @pending),
-                     " could not be loaded because of missing or cyclic dependencies.\n",
-                     "Please investigate the reason and repeat the configuration step and/or revise the REQUIRE/REQUIRE_OPT sections." );
-         last;
+         $registered_by_URI{$_}=$ext for $ext->URI, @{$ext->replaces};
+         $registered_by_dir{$ext->dir}=$ext;
+         $ext->VCS=$CoreVCS;
+         $ext->configured_at=max($ConfigTime, $Application::configured_at);
+         my @bad;
+         my @prereqs=map { $registered_by_URI{$_} // do { push @bad, $_; () } } @{$ext->requires};
+         if (@bad) {
+            die "Corrupted configuration of bundled extensions: prerequisites @bad appear after the dependent extension $name or are disabled.\n",
+                "Please investigate and re-run the configure script.\n";
+         }
+         push @prereqs, grep { defined } map { $registered_by_URI{$_} } @{$ext->requires_opt};
+         @{$ext->requires}=uniq(map { ($_, @{$_->requires}) } @prereqs) if @prereqs;
+         push @active, $ext;
+         $ext->is_active=1;
       }
    }
 
    # register the inactive bundled extensions in order to recognize them as prerequisites of other extensions and rulefiles
-   $registered_by_URI{$_->URI}=$_ for (@pending, values %unconfigured);
+   foreach my $bundled_dir (glob("$InstallTop/bundled/*")) {
+      unless (exists $registered_by_dir{$bundled_dir}) {
+         my ($name)=$bundled_dir =~ $filename_re;
+         my $ext=new(__PACKAGE__, $bundled_dir, "bundled:$name", 1);
+         $registered_by_URI{$ext->URI}=$ext;
+      }
+   }
 
    $num_bundled=@active;
 
    # perform dependency checks on standalone extensions
-
-   @pending=map { new($_[0],$_) } @User::extensions;
+   my @pending=map { new(__PACKAGE__, $_) } @User::extensions;
    my ($list_updated, @survived, %failed);
 
    my $rounds=0;
@@ -291,7 +300,7 @@ and assign distinct URIs.
                      $satisfied=0;  last;
                   }
                }
-	       push @prereqs, $prereq, @{$prereq->requires};
+               push @prereqs, $prereq, @{$prereq->requires};
 
             } elsif (defined (my $reason=$failed{$_})) {
                warn_print( "Extension ", $ext->URI, " installed at ", $ext->dir, "\n",
@@ -320,7 +329,7 @@ and assign distinct URIs.
                               "is declared as replaced by extension ", $ext->URI, " installed at ", $ext->dir, "\n",
                               "and therefore removed from your settings.\n",
                               "If this is in error, revise the REPLACE section in the extension configuration file,\n",
-			      "then re-import the removed extension." );
+                              "then re-import the removed extension." );
 
                   push @old_replaces, @{$other->replaces};
                   delete @registered_by_URI{@{$other->replaces}};
@@ -421,8 +430,6 @@ and assign distinct URIs.
       delete @User::disabled_extensions{@obsolete};
       $Prefs->custom->set('%disabled_extensions');
    }
-
-   CPlusPlus::init_private_wrapper();
 }
 #######################################################################################
 sub configure {
@@ -430,11 +437,11 @@ sub configure {
    my $ext_dir=$self->dir;
    my $ext_build_dir=$ext_dir;
 
-   # don't look for a Makefile in an installed extension, it can never exist
    if ($ext_build_dir =~ s{^\Q${InstallTop}\E(?=/ext/)}{$InstallArch}o) {
+      $self->build_dir=$ext_build_dir;
       if (@options == 1 && $options[0] eq "--help") {
          warn_print( "Extension $ext_dir is already built and installed, it does not need any further configuration." );
-      } elsif (-f "$ext_build_dir/conf.make") {
+      } elsif (-f "$ext_build_dir/config.ninja") {
          $self->configured_at=max((stat _)[9], $Application::configured_at);
          @options and warn_print( "Extension $ext_dir is already built and installed, ignoring configuration options @options." );
          1
@@ -448,28 +455,26 @@ For the meanwhile, the extension will stay disabled for architecture $Arch.
          0
       }
    } else {
-      $ext_build_dir="$ext_dir/build.$Arch";
-      my $err;
-      if (!-f "$ext_build_dir/conf.make" || @options) {
-         require Polymake::Configure;
-         $err=Configure::configure_extension(@_);
-      } else {
-         $self->configured_at=max((stat _)[9], $Application::configured_at);
-         my $top_match;
-         if (open my $MF, "$ext_dir/Makefile") {
-            local $_;
-            while (<$MF>) {
-               if (m{^ \s* ProjectTop \s* :?= \s* \Q${InstallTop}\E \s* $ }xo) {
-                  $top_match=1;
-                  last;
+      set_build_dir($self);
+      unless (@options) {
+         if (-f (my $build_file=$self->build_dir."/build.ninja")) {
+            my $conf_tm=(stat _)[9];
+            $self->configured_at=max($conf_tm, $Application::configured_at);
+            if ($conf_tm >= $self->meta_tm and open my $bf, $build_file) {
+               local $_;
+               while (<$bf>) {
+                  # the core system configuration file is included first:
+                  # does it match the current system?
+                  if (m{^\s*include\s+(\S+)/config.ninja\s*$}) {
+                     return 1 if $1 eq $InstallArch;
+                     last;
+                  }
                }
             }
          }
-         if (!$top_match) {
-            require Polymake::Configure;
-            $err=Configure::configure_extension($self, "--repeat", $Arch);
-         }
       }
+      require Polymake::Configure;
+      my $err=Configure::configure_extension(@_);
       if (length($err)) {
          if ($err ne "silent\n") {
             warn_print( "Build configuration of extension $ext_dir failed with following error(s):\n$err\n" );
@@ -478,6 +483,16 @@ For the meanwhile, the extension will stay disabled for architecture $Arch.
       } else {
          1
       }
+   }
+}
+
+sub set_build_dir {
+   my ($self)=@_;
+   # workspace polymake and workspace extension should use the same build directory names
+   if ($InstallArch =~ m{/build(?:\.[^/]+)?/\w+$}) {
+      $self->build_dir=$self->dir.$&;
+   } else {
+      $self->build_dir=$self->dir."/build/".($ENV{POLYMAKE_BUILD_MODE} || "Opt");
    }
 }
 ########################################################################################
@@ -575,7 +590,7 @@ sub activate {
    foreach my $app_dir (glob($self->dir."/apps/*")) {
       $app_dir =~ $filename_re;
       if (defined (my $app=lookup Application($1))) {
-	 $app->load_extension($app_dir);
+         $app->load_extension($app_dir);
       }
    }
    push @active, $self;
@@ -592,14 +607,6 @@ sub get_source_VCS {
          require Polymake::SourceVersionControl;
          new SourceVersionControl($self->dir);
       }
-   }
-}
-#####################################################################################
-# protected:
-sub activate_configure_script {
-   my ($self)=@_;
-   if (-f $self->dir."/configure.pl.template" and my $vcs=eval { &get_source_VCS }) {
-      $vcs->rename_file("configure.pl.template", "configure.pl");
    }
 }
 #####################################################################################

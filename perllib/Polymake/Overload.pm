@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,10 +14,9 @@
 #-------------------------------------------------------------------------------
 
 use strict;
-use feature 'state';
 use namespaces;
-
-require Symbol;
+use warnings qw(FATAL void syntax misc);
+use feature 'state';
 
 $Carp::Internal{'Polymake::Overload'}=1;
 $Carp::Internal{'Polymake::Overload::Node'}=1;
@@ -338,19 +337,19 @@ my ($string_proto, $integer_proto, $float_proto);
 sub set_string_type {
    $string_proto=$_[0];
    $string_pkg=$_[0]->pkg;
-   store_string_package_stash(get_pkg($string_pkg));
+   store_string_package_stash(get_symtab($_[0]->pkg));
 }
 
 sub set_integer_type {
    $integer_proto=$_[0];
    $integer_pkg=$_[0]->pkg;
-   store_integer_package_stash(get_pkg($integer_pkg));
+   store_integer_package_stash(get_symtab($_[0]->pkg));
 }
 
 sub set_float_type {
    $float_proto=$_[0];
    $float_pkg=$_[0]->pkg;
-   store_float_package_stash(get_pkg($float_pkg));
+   store_float_package_stash(get_symtab($_[0]->pkg));
 }
 
 sub string_package { $string_pkg }
@@ -728,6 +727,7 @@ sub add_instance {
             }
             undef $backtrack_node;
          } else {
+            no warnings 'void';
             use namespaces::AnonLvalue '$is_lvalue';
             $dictionary{$pkg}->{$name}=$node;
             my $head_code=define_function($pkg, $name,
@@ -790,6 +790,7 @@ sub add {
       my $pkg= $name =~ s/^(.*)::([^:]+)$/$2/ ? $1 : $caller;
       my $node=dict_node($pkg, $name, $is_method, "Polymake::Overload::Labeled");
       if (!defined($node)) {
+         no warnings 'void';
          use namespaces::AnonLvalue '$is_lvalue';
          my $is_lvalue=is_lvalue($code);
          $node=$dictionary{$pkg}->{$name}=new Labeled;

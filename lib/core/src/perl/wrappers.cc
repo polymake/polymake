@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -23,7 +23,7 @@ namespace pm { namespace perl {
 namespace {
 
 inline
-int register_function(pTHX_ SV* wrap_sv, SV* func_ptr_sv, SV* name_sv, SV* file_sv, SV* arg_types, SV* cross_apps, int flist_index)
+SV* register_function(pTHX_ SV* wrap_sv, SV* func_ptr_sv, SV* name_sv, SV* file_sv, SV* arg_types, SV* cross_apps)
 {
    AV* const descr=newAV();
    av_fill(descr, glue::FuncDescr_fill);
@@ -34,54 +34,53 @@ int register_function(pTHX_ SV* wrap_sv, SV* func_ptr_sv, SV* name_sv, SV* file_
    *array++=file_sv;
    *array++=SvREFCNT_inc_simple_NN(arg_types);
    if (cross_apps) *array=cross_apps;
-
-   AV* const flist=(AV*)SvRV(PmArray(GvSV(glue::CPP_root))[flist_index]);
-   av_push(flist, sv_bless(newRV_noinc((SV*)descr), glue::FuncDescr_stash));
-   return AvFILLp(flist);
+   return sv_bless(newRV_noinc((SV*)descr), glue::FuncDescr_stash);
 }
 
 inline
-SV* pointer_as_const_string(wrapper_type p)
+SV* pointer_as_const_string(char* p)
 {
-   SV* sv=Scalar::const_string((char*)p, sizeof(p));
+   SV* sv=Scalar::const_string(p, sizeof(p));
    SvFLAGS(sv) &= ~SVf_POK;
    return sv;
 }
 
 }
 
-int FunctionBase::register_func(wrapper_type wrapper, const AnyString& sig, const AnyString& file, int line,
-                                SV* arg_types, SV* cross_apps, void* func_ptr, const char* func_ptr_type)
+void FunctionTemplateBase::register_it(wrapper_type wrapper, const AnyString& sig, const AnyString& file, int line,
+                                       SV* arg_types, SV* cross_apps) const
 {
    dTHX;
-   SV* const wrap_sv=wrapper ? pointer_as_const_string(wrapper) : &PL_sv_undef;
+   SV* const wrap_sv=wrapper ? pointer_as_const_string(reinterpret_cast<char*>(wrapper)) : &PL_sv_undef;
    SV* const file_sv= file ? Scalar::const_string_with_int(file.ptr, file.len, line) : &PL_sv_undef;
-   if (func_ptr) {
-      // a regular function which will need an indirect wrapper later
-      return register_function(aTHX_ wrap_sv, Scalar::const_string_with_int((char*)func_ptr, -1), Scalar::const_string(func_ptr_type),
-                               file_sv, arg_types, cross_apps, glue::CPP_regular_functions_index);
-   } else {
-      // a function template
-      return register_function(aTHX_ wrap_sv, newSViv(-1), sig ? newSVpvn(sig.ptr, sig.len) : &PL_sv_undef,
-                               file_sv, arg_types, cross_apps, glue::CPP_functions_index);
-   }
+   SV* descr=register_function(aTHX_ wrap_sv, newSViv(-1), newSVpvn(sig.ptr, sig.len),
+                               file_sv, arg_types, cross_apps);
+   AV* functions=(AV*)queue;
+   av_push(functions, descr);
 }
 
-void FunctionBase::add_rules(const AnyString& file, int line, const char *text, ...)
+void RegularFunctionBase::register_it(const AnyString& file, int line, const char* text,
+                                      indirect_wrapper_type get_flags_ptr, SV* arg_types, void* func_ptr, const char* func_ptr_type) const
 {
    dTHX;
-   AV* embedded_rules=(AV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_embedded_rules_index]);
-   va_list args;
-   va_start(args, text);
+   SV* descr=register_function(aTHX_ pointer_as_const_string(reinterpret_cast<char*>(get_flags_ptr)),
+                               Scalar::const_string_with_int(reinterpret_cast<char*>(func_ptr), -1),
+                               Scalar::const_string(func_ptr_type),
+                               Scalar::const_string_with_int(file.ptr, file.len, line), arg_types, nullptr);
+
+   AV* const regular_functions=(AV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_regular_functions_index]);
+   av_push(regular_functions, descr);
+   const int index=AvFILLp(regular_functions);
+
+   AV* embedded_rules=(AV*)queue;
    av_push(embedded_rules, newSVpvf("#line %d \"%s\"\n", line, file.ptr));
-   av_push(embedded_rules, vnewSVpvf(text, &args));
-   va_end(args);
+   av_push(embedded_rules, newSVpvf(text, index));
 }
 
-void EmbeddedRule::add(const AnyString& file, int line, const AnyString& text)
+void EmbeddedRule::add__me(const AnyString& file, int line, const AnyString& text) const
 {
    dTHX;
-   AV* embedded_rules=(AV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_embedded_rules_index]);
+   AV* embedded_rules=(AV*)queue;
    av_push(embedded_rules, newSVpvf("#line %d \"%s\"\n", line, file.ptr));
    av_push(embedded_rules, newSVpv(text.ptr, text.len));
 }
@@ -104,13 +103,15 @@ SV* ClassRegistratorBase::register_class(const AnyString& name, const AnyString&
 
    SV* const descr_ref=*hv_fetch((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_typeids_index]), typeid_name, typeid_len, true);
    if (SvOK(descr_ref)) {
-      // already exists
+      // already exists; someref -> list of duplicate classes
+      if (!name.ptr) Perl_croak(aTHX_ "internal error: duplicate call of register_class for an undeclared type");
+      assert(SvTYPE(someref)==SVt_PVAV);
       SV* const dup_ref=newRV_noinc((SV*)descr);
       sv_bless(dup_ref, glue::TypeDescr_stash);
 
       descr_array[glue::TypeDescr_pkg_index]=Scalar::const_string(name.ptr, name.len);
       descr_array[glue::TypeDescr_vtbl_index]=Scalar::const_string_with_int(file.ptr, file.len, line);
-      av_push((AV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_duplicate_class_instances_index]), dup_ref);
+      av_push((AV*)someref, dup_ref);
       return descr_ref;
    }
 
@@ -187,7 +188,7 @@ SV* ClassRegistratorBase::register_class(const AnyString& name, const AnyString&
          if (vtbl->flags & class_is_declared) {
             GV *neg_ind_gv=(GV*)HeVAL(hv_fetch_ent(stash, glue::negative_indices_key, true, SvSHARED_HASH(glue::negative_indices_key)));
             if (SvTYPE(neg_ind_gv) != SVt_PVGV)
-               gv_init(neg_ind_gv, stash, SvPVX(glue::negative_indices_key), SvCUR(glue::negative_indices_key), GV_ADDMULTI);
+               gv_init_pvn(neg_ind_gv, stash, SvPVX(glue::negative_indices_key), SvCUR(glue::negative_indices_key), GV_ADDMULTI);
             sv_setiv(GvSVn(neg_ind_gv), 1);
          }
       }
@@ -203,19 +204,31 @@ SV* ClassRegistratorBase::register_class(const AnyString& name, const AnyString&
    return descr_ref;
 }
 
-ClassTemplate::ClassTemplate(const AnyString& name)
+void ClassTemplate::add__me(const AnyString& name)
 {
    dTHX;
    (void)hv_store((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_templates_index]), name.ptr, name.len, &PL_sv_yes, 0);
 }
 
-#define AllocateVtbl(vtbl_type, t) \
-   dTHX;                           \
-   vtbl_type* t;                   \
-   SV* vtbl=newSV_type(SVt_PV);    \
-   Newz(0, t, 1, vtbl_type);       \
-   SvPVX(vtbl)=(char*)t;           \
-   SvLEN(vtbl)=sizeof(vtbl_type)
+namespace {
+
+template <typename vtbl_type>
+inline
+SV* allocate_vtbl(vtbl_type*& t, STRLEN size=0)
+{
+   dTHX;
+   char* t_area;
+   size += sizeof(vtbl_type);
+   Newxz(t_area, size, char);
+   SV* vtbl=newSV_type(SVt_PV);
+   SvPVX(vtbl)=t_area;
+   SvLEN(vtbl)=size;
+   SvPOKp_on(vtbl);
+   t=reinterpret_cast<vtbl_type*>(t_area);
+   return vtbl;
+}
+
+}
 
 SV* ClassRegistratorBase::create_builtin_vtbl(
    const std::type_info& type,
@@ -225,7 +238,8 @@ SV* ClassRegistratorBase::create_builtin_vtbl(
    assignment_type assignment,
    destructor_type destructor)
 {
-   AllocateVtbl(glue::base_vtbl, t);
+   glue::base_vtbl* t;
+   SV* vtbl=allocate_vtbl(t);
    t->type             =&type;
    t->obj_size         =obj_size;
    t->obj_dimension    =0;
@@ -235,7 +249,7 @@ SV* ClassRegistratorBase::create_builtin_vtbl(
    if (primitive_lvalue) {
       t->std.svt_set   =&glue::assigned_to_primitive_lvalue;
    } else {
-      t->std.svt_dup   =&pm_perl_canned_dup;
+      t->std.svt_dup   =&glue::canned_dup;
       t->destructor    =destructor;
       t->sv_maker      =&glue::create_builtin_magic_sv;
       t->sv_cloner     =&glue::clone_builtin_magic_sv;
@@ -256,9 +270,10 @@ SV* ClassRegistratorBase::create_scalar_vtbl(
    conv_to_int_type to_int,
    conv_to_float_type to_float)
 {
-   AllocateVtbl(glue::scalar_vtbl, t);
+   glue::scalar_vtbl* t;
+   SV* vtbl=allocate_vtbl(t);
    t->std.svt_free            =&glue::destroy_canned;
-   t->std.svt_dup             =&pm_perl_canned_dup;
+   t->std.svt_dup             =&glue::canned_dup;
    t->type                    =&type;
    t->obj_size                =obj_size;
    t->obj_dimension           =0;
@@ -287,9 +302,10 @@ SV* ClassRegistratorBase::create_opaque_vtbl(
    provide_type provide_serialized_type,
    provide_type provide_serialized_descr)
 {
-   AllocateVtbl(glue::common_vtbl, t);
+   glue::common_vtbl* t;
+   SV* vtbl=allocate_vtbl(t);
    t->std.svt_free            =&glue::destroy_canned;
-   t->std.svt_dup             =&pm_perl_canned_dup;
+   t->std.svt_dup             =&glue::canned_dup;
    t->type                    =&type;
    t->obj_size                =obj_size;
    t->obj_dimension           =0;
@@ -315,9 +331,10 @@ SV* ClassRegistratorBase::create_iterator_vtbl(
    conv_to_int_type at_end,
    conv_to_int_type index)
 {
-   AllocateVtbl(glue::iterator_vtbl, t);
+   glue::iterator_vtbl* t;
+   SV* vtbl=allocate_vtbl(t);
    t->std.svt_free     =&glue::destroy_canned;
-   t->std.svt_dup      =&pm_perl_canned_dup;
+   t->std.svt_dup      =&glue::canned_dup;
    t->type             =&type;
    t->obj_size         =obj_size;
    t->obj_dimension    =0;
@@ -350,10 +367,11 @@ SV* ClassRegistratorBase::create_container_vtbl(
    provide_type provide_value_type,
    provide_type provide_value_descr)
 {
-   AllocateVtbl(glue::container_vtbl, t);
+   glue::container_vtbl* t;
+   SV* vtbl=allocate_vtbl(t);
    t->std.svt_len             =&glue::canned_container_size;
    t->std.svt_free            =&glue::destroy_canned_container;
-   t->std.svt_dup             =&pm_perl_canned_dup;
+   t->std.svt_dup             =&glue::canned_dup;
    t->type                    =&type;
    t->obj_size                =obj_size;
    t->obj_dimension           =total_dimension;
@@ -385,8 +403,8 @@ void ClassRegistratorBase::fill_iterator_access_vtbl(
    container_access_type deref,
    container_access_type cderef)
 {
-   glue::container_vtbl *t=(glue::container_vtbl*)SvPVX(vtbl);
-   glue::container_access_vtbl *acct=t->acc+i;
+   glue::container_vtbl* t=reinterpret_cast<glue::container_vtbl*>(SvPVX(vtbl));
+   glue::container_access_vtbl* acct=t->acc+i;
    acct->obj_size     =it_size;
    acct->destructor   =it_destructor;
    acct->begin        =begin;
@@ -404,7 +422,7 @@ ClassRegistratorBase::fill_random_access_vtbl(
    container_access_type random,
    container_access_type crandom)
 {
-   glue::container_vtbl *t=(glue::container_vtbl*)SvPVX(vtbl);
+   glue::container_vtbl* t=reinterpret_cast<glue::container_vtbl*>(SvPVX(vtbl));
    t->acc[0].random=random;
    t->acc[1].random=crandom;
 }
@@ -426,18 +444,12 @@ SV* ClassRegistratorBase::create_composite_vtbl(
    provide_type provide_member_names,
    void (*fill)(composite_access_vtbl*))
 {
-   dTHX;
-   char* ct;
-   size_t s=sizeof(glue::composite_vtbl)+(n_members-1)*sizeof(composite_access_vtbl);
-   Newz(0, ct, s, char);
-   SV* vtbl=newSV_type(SVt_PV);
-   SvPVX(vtbl)=ct;
-   SvLEN(vtbl)=s;
-   glue::composite_vtbl *t=(glue::composite_vtbl*)ct;
+   glue::composite_vtbl* t;
+   SV* vtbl=allocate_vtbl(t, (n_members-1)*sizeof(t->acc));
    t->std.svt_len             =&glue::canned_composite_size;
    t->std.svt_copy            =&glue::canned_composite_access;
    t->std.svt_free            =&glue::destroy_canned;
-   t->std.svt_dup             =&pm_perl_canned_dup;
+   t->std.svt_dup             =&glue::canned_dup;
    t->type                    =&type;
    t->obj_size                =obj_size;
    t->obj_dimension           =obj_dimension;
@@ -463,6 +475,13 @@ SV* Unprintable::impl(const char*)
    Value v;
    v.put("<UNPRINTABLE OBJECT>", 0);
    return v.get_temp();
+}
+
+RegistratorQueue::RegistratorQueue(const AnyString& name, Kind kind)
+{
+   dTHX;
+   queue=(SV*)newAV();
+   (void)hv_store((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[kind]), name.ptr, name.len, newRV_noinc(queue), 0);
 }
 
 } }

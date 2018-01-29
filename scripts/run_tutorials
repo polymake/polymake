@@ -1,0 +1,124 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+#
+#  Script to validate tutorials
+#
+
+use Polymake::Test;
+
+require Polymake::Test::Tutorials;
+
+##################################################################
+#
+#  Option parsing and preparations
+#
+
+my (@tutorials, $jenkins_report, $annotate_mode, $emacs_style, $shuffle_seed,
+    $no_new_glue_code, $exit, $base_dir);
+
+if ( !GetOptions('jenkins-report=s' => \$jenkins_report,
+                 'annotate-mode=s' => \$annotate_mode,
+                 'base-dir=s' => \$base_dir,
+                 'emacs-style' => \$emacs_style,
+                 'shuffle:i' => \$shuffle_seed,
+                 'no-new-glue-code' => \$no_new_glue_code,
+                )
+     or $jenkins_report ? ($emacs_style || @ARGV) : ($annotate_mode)) {
+die <<'.'
+usage: polymake --script run_tutorials [ options ] [ FILE.ipynb | PATTERN ... ]
+or: polymake --script run_tutorials [ options ] --jenkins-report REPORT
+
+If no tutorial files or shell-style file patterns are specified, all existing tutorials are executed.
+
+Options are:
+
+--shuffle [SEED]
+    permute tutorials randomly
+    specify an integer SEED to reproduce a (failed) run;
+    if omitted, a random seed is generated and reported on stdout
+--no-new-glue-code
+    forbid automatic generation and compilation of C++/perl interface code snippets (aka wrappers)
+--jenkins-report REPORT
+    produce a JUnit-compatible test report REPORT_tutorials.xml,
+    do not print any test results or warnings to STDOUT.
+--annotate-mode MODE
+    annotate every testcase in JUnit test reports with '@MODE',
+    allowing to distinguish tests repeatedly run in different build modes
+--emacs-style
+    produce simple report without colors, cursor control, and with error messages
+    comprehensible to emacs compilation mode
+--base-dir
+    directory containing the tutorial files, default 'demo'
+.
+}
+
+my $env=new Test::Environment($Scope, shuffle_seed => $shuffle_seed,
+                              annotate_mode => $annotate_mode,
+                              no_new_glue_code => $no_new_glue_code,
+                              preserve_load => 1);
+
+if ($jenkins_report) {
+   $jenkins_report =~ s{^(?=[^/.])}{$InstallTop/};
+} else {
+   $env->prepare_pretty_output($emacs_style);
+}
+
+if ($base_dir) {
+   $base_dir =~ s{^(?=[^/.])}{$InstallTop/};
+} else {
+   $base_dir = "$InstallTop/demo";
+}
+
+
+if (defined $shuffle_seed) {
+   print "\n*** RANDOM SEED=", $env->shuffle_seed, " ***\n";
+}
+
+unless (@tutorials = @ARGV) {
+   push @tutorials, "*";
+}
+$env->start_testsuite($jenkins_report, "tutorials");
+
+foreach my $pattern (@tutorials) {
+   my $group=new Test::Tutorials($env, $pattern, $base_dir);
+   if (@{$group->subgroups}) {
+      my $OK=$group->run;
+      $exit ||= $OK<=0;
+   } elsif (@tutorials > 1 || $tutorials[0] ne "*") {
+      warn("No tutorials found matching $pattern\n");
+      $exit=1;
+   } else {
+      print "No tutorials found\n";
+   }
+}
+$env->close_testsuite;
+
+if (!$jenkins_report) {
+   $env->print_summary;
+}
+
+# make sure we dont save any custom variables or preferences
+forget AtEnd("Customize");
+forget AtEnd("Preference");
+
+exit($exit) if $exit;
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:
+
+

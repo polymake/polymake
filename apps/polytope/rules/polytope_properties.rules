@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -108,7 +108,9 @@ property VERTICES = override RAYS;
 # Dual basis of the affine hull of the polyhedron.
 # The property [[AFFINE_HULL]] appears only in conjunction with the property [[FACETS]].
 # The specification of the property [[FACETS]] requires the specification of [[AFFINE_HULL]], and vice versa.
-property AFFINE_HULL = override LINEAR_SPAN;
+property AFFINE_HULL = override LINEAR_SPAN {
+   sub canonical { &orthogonalize_affine_subspace; }
+}
 
 method canonical_ineq {
    add_extra_polytope_ineq($_[1]);
@@ -215,8 +217,8 @@ property WEAKLY_CENTERED : Bool;
 
 
 # @category Geometry
-# The following is defined for //CENTERED// polytopes only:
-# A facet is special if the cone over that facet with the origin as the apex contains the //VERTEX_BARYCENTER//.
+# The following is defined for [[CENTERED]] polytopes only:
+# A facet is special if the cone over that facet with the origin as the apex contains the [[VERTEX_BARYCENTER]].
 # Motivated by Obro's work on Fano polytopes.
 property SPECIAL_FACETS : Set;
 
@@ -283,6 +285,9 @@ property N_VERTEX_FACET_INC = override N_RAY_FACET_INC;
 # | 2:0 1 3
 # | 3:0 1 2
 property VERTICES_IN_FACETS = override RAYS_IN_FACETS;
+
+# @category Geometry
+property VERTICES_IN_RIDGES = override RAYS_IN_RIDGES;
 
 # @category Geometry
 # Similar to [[VERTICES_IN_FACETS]], but with columns corresponding to [[POINTS]] instead of [[VERTICES]].
@@ -504,7 +509,7 @@ property NEIGHBORLY : Bool;
 
 # @category Combinatorics
 # Maximal dimension in which all facets are neighborly.
-# @example This determines that the full dimensional polytope given by 10 specific vertices on the 8-dimensional sphere is 3-neighborly, i.e.
+# @example [nocompare] This determines that the full dimensional polytope given by 10 specific vertices on the 8-dimensional sphere is 3-neighborly, i.e.
 # all 3-dimensional faces are tetrahedra. Hence the polytope is not neighborly.
 # > print rand_sphere(8,10,seed=>8866463)->NEIGHBORLINESS;
 # | 3
@@ -522,7 +527,7 @@ property BALANCED : Bool;
 
 # @category Combinatorics
 # Maximal dimension in which all facets are balanced.
-# @example The following full dimensional polytope given by 10 specific vertices on the 8-dimensional sphere is 3-neighborly. Hence the dual polytope is
+# @example [nocompare] The following full dimensional polytope given by 10 specific vertices on the 8-dimensional sphere is 3-neighborly. Hence the dual polytope is
 # 3-balanced, where we first center and then polarize it.
 # > $p = rand_sphere(8,10,seed=>8866463);
 # > $q = polarize(center($p));
@@ -607,6 +612,15 @@ property TILING_LATTICE : AffineLattice<Scalar>;
 property VOLUME : Scalar;
 
 # @category Triangulation and volume
+# Mahler volume (or volume product) of the polytope.
+# Defined as the volume of the polytope and the volume of its polar (for [[BOUNDED]], [[CENTERED]] and [[FULL_DIM]] polytopes only).
+# Often studied for centrally symmetric convex bodies, where the regular cubes are conjectured to be the global minimiers.
+# @example The following prints the Mahler volume of the centered 2-cube:
+# > print cube(2)->MAHLER_VOLUME;
+# | 8
+property MAHLER_VOLUME : Scalar;
+
+# @category Triangulation and volume
 # Array of the squared relative //k//-dimensional volumes of the simplices in
 # a triangulation of a //d//-dimensional polytope.
 property SQUARED_RELATIVE_VOLUMES : Array<Scalar>;
@@ -623,14 +637,6 @@ property TRIANGULATION {
    # 	Discriminants, Resultants and Multidimensional Determinants, Birkhäuser 1994
    property GKZ_VECTOR : Vector<Scalar>;
 
-}
-
-# @category Triangulation and volume
-# For each simplex in the [[TRIANGULATION]], contains the sign of the determinant of its coordinate matrix, telling about its orientation.
-# @return Array<Int>
-user_method TRIANGULATION_SIGNS : TRIANGULATION.FACETS, VERTICES {
-   my $this=shift;
-   triang_sign($this->TRIANGULATION->FACETS, $this->VERTICES);
 }
 
 
@@ -741,7 +747,8 @@ user_method OUTER_DESCRIPTION : FACETS, AFFINE_HULL {
 # @tparam Coord target coordinate type
 # @param Polytope P source object
 # @return Polytope<Coord> //P// if it already has the requested type, a new object otherwise
-# @example > print cube(2)->type->full_name;
+# @example
+# > print cube(2)->type->full_name;
 # | Polytope<Rational>
 # > $pf = convert_to<Float>(cube(2));
 # > print $pf->type->full_name;
@@ -760,7 +767,8 @@ user_function convert_to<Coord>(Polytope) {
 # Dehomogenize the [[VERTICES|vertex coordinates]] and convert them to Float
 # @param Polytope P source object
 # @return Matrix<Float> the dehomogenized vertices converted to Float
-# @example > print cube(2,1/2)->VERTICES;
+# @example
+# > print cube(2,1/2)->VERTICES;
 # | 1 -1/2 -1/2
 # | 1 1/2 -1/2
 # | 1 -1/2 1/2

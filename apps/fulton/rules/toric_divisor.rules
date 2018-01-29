@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -36,14 +36,14 @@ object NormalToricVariety {
    rule DIVISOR.SECTION_POLYTOPE.INEQUALITIES : RAYS, DIVISOR.COEFFICIENTS {
       my $a = $this->DIVISOR->COEFFICIENTS;
       my $rays = primitive($this->RAYS);		
-      my $ineq = $a | (convert_to<Rational>($rays));
+      my $ineq = $a | convert_to<Rational>($rays);
       $this->DIVISOR->SECTION_POLYTOPE->INEQUALITIES = $ineq;
    }
 
    rule DIVISOR.PRINCIPAL : RAYS, DIVISOR.COEFFICIENTS {
       my $c = $this->DIVISOR->COEFFICIENTS;
       my $eq = -$c | convert_to<Rational>(primitive($this->RAYS));
-      my $bla = new Polytope<Rational>(INEQUALITIES=>(unit_vector<Rational>($eq->cols,0)),EQUATIONS => $eq);
+      my $bla = new Polytope<Rational>(INEQUALITIES => unit_vector<Rational>($eq->cols,0), EQUATIONS => $eq);
       $bla->VERTICES;
       my $sol = grep($_->[0]==1, @{$bla->LATTICE_POINTS});
       $this->DIVISOR->PRINCIPAL=($sol > 0);
@@ -62,7 +62,7 @@ object NormalToricVariety {
    }
    weight 0.1;
    precondition : DIVISOR.CARTIER, COMPLETE {
-      !$this->DIVISOR.CARTIER | !$this->COMPLETE;
+      !$this->DIVISOR->CARTIER || !$this->COMPLETE;
    }
 
    # [[AMPLE]] implies [[CARTIER]]

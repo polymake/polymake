@@ -224,7 +224,7 @@
 	<target name="io" depends="core, tools, backends-share" description="build readers and writers">
 		<mkdir dir="${build}/io" />
 		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
-			srcdir="${io}" destdir="${build}/io" 
+			srcdir="${io}" destdir="${build}/io" encoding="utf-8"
 			debug="true" includeantruntime="false">
 			<classpath refid="io.classpath"/>
 		</javac>
@@ -242,7 +242,7 @@
 	<target name="ui" depends="core, tools, io, jogl, soft" description="compile the ui">
 		<mkdir dir="${build}/ui" />
 		<javac source="${source}" target="${target}" excludesfile="excludes.txt" 
-			srcdir="${ui}" destdir="${build}/ui" 
+			srcdir="${ui}" destdir="${build}/ui" encoding="utf-8"
 			debug="true" includeantruntime="false" bootclasspathref="jre6.libraryclasspath">
 			<classpath refid="ui.classpath"/>
 		</javac>

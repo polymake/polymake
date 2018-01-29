@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,23 +13,33 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-INCLUDE
-  # implicit_action.rules
-  # permlib.rules
-  sympol.rules
-##  representations.rules
-  # cone.rules
-##  symmetrized_cocircuit_equations.rules
-##  action.rules
-  # cone_group.rules
-##  polytope_properties.rules
-  # polytope_group.rules
-##  arbitrary_coords.rules
-##  quotient_space.rules
-##  point_configuration_properties.rules
-##  point_configuration.rules
-##  point_configuration_group.rules
-##  universal_polytope.rules
+
+CREDIT sympol
+  A software package for polyhedral description conversion up to symmetries.
+  Written by Thomas Rehn and Achill Schürmann.
+  http://www.math.uni-rostock.de/~rehn/software/sympol.html 
+
+object Cone {
+
+    rule GROUP.REPRESENTATIVE_RAYS : GROUP.FACETS_ACTION.GENERATORS, FACETS, LINEAR_SPAN {
+        $this->GROUP->REPRESENTATIVE_RAYS = representation_conversion_up_to_symmetry($this, v_to_h=>0, method=>'lrs');
+    }
+    weight 5.10;
+
+    rule GROUP.REPRESENTATIVE_FACETS : GROUP.RAYS_ACTION.GENERATORS, RAYS, LINEALITY_SPACE {
+        $this->GROUP->REPRESENTATIVE_FACETS = representation_conversion_up_to_symmetry($this, v_to_h=>1, method=>'lrs');
+    }
+    weight 5.10;
+
+}
+
+# @category Symmetry
+# wrapper function to store the symmetry group in the parent object
+user_function linear_symmetries($) {
+    my $p = shift;
+    my $g = linear_symmetries_impl($p);
+    return $g;
+}
 
 # Local Variables:
 # mode: perl

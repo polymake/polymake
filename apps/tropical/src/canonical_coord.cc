@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
 	Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 http://www.polymake.org
 
@@ -62,31 +62,6 @@ namespace polymake { namespace tropical {
 			}
 			return canonicalize_to_leading_zero(M);
 		}
-/*
-	template <typename Vector, typename Addition, typename Scalar>
-		void canonicalize_to_nonnegative(GenericVector<Vector, TropicalNumber<Addition,Scalar> >& V)
-		{
-			const typename Vector::element_type x_min=accumulate(V.top(), operations::min());
-			if (pm::check_container_feature<Vector,pm::sparse>::value
-					? x_min<0 || V.top().size()==V.dim()
-					: !is_zero(x_min))
-				V/=x_min;
-		}
-
-	template <typename Matrix, typename Addition, typename Scalar>
-		void canonicalize_to_nonnegative(GenericMatrix<Matrix, TropicalNumber<Addition,Scalar> >& M)
-		{
-			if (!M.rows())
-				throw std::runtime_error("point matrix may not be empty");
-			for (typename Entire< Rows<Matrix> >::iterator r=entire(rows(M)); !r.at_end();  ++r)
-				canonicalize_to_nonnegative(r->top());
-		}
-
-*/
-	FunctionTemplate4perl("canonicalize_to_leading_zero(Vector&) : void");
-	FunctionTemplate4perl("canonicalize_to_leading_zero(Matrix&) : void");
-	//FunctionTemplate4perl("canonicalize_to_nonnegative(Vector&) : void");
-	//FunctionTemplate4perl("canonicalize_to_nonnegative(Matrix&) : void");
 
 	//The following canonicalize matrices/vectors of scalars, but representing (finite) 
 	//tropical homogeneous coordinates.
@@ -110,28 +85,6 @@ namespace polymake { namespace tropical {
 				canonicalize_scalar_to_leading_zero(r->top());
 		}
 
-	//FIXME Should this be swapped for min/max, i.e. should there be a nonpositive - or rather,
-	// a templated version of this?
-
-	template <typename Vector, typename Scalar>
-		void canonicalize_scalar_to_nonnegative(GenericVector<Vector,Scalar>& V)
-		{
-			const typename Vector::element_type x_min=accumulate(V.top(), operations::min());
-			if (pm::check_container_feature<Vector,pm::sparse>::value
-					? x_min<0 || V.top().size()==V.dim()
-					: !is_zero(x_min))
-				V-=same_element_vector(x_min,V.dim());
-		}
-
-	template <typename Matrix, typename Scalar>
-		void canonicalize_scalar_to_nonnegative(GenericMatrix<Matrix,Scalar>& M)
-		{
-			if (!M.rows())
-				throw std::runtime_error("point matrix may not be empty");
-			for (typename Entire< Rows<Matrix> >::iterator r=entire(rows(M)); !r.at_end();  ++r)
-				canonicalize_scalar_to_nonnegative(r->top());
-		}
-
 	// Assumes as input a matrix of tropically homogeneous vectors with a leading 1/0 indicating
 	// vertex or far vertex. Will canonicalize M.minor(All,~[0]) to have first coordinate 0. 
 	// Then will canonicalize the full matrix as a usual vertex matrix.
@@ -149,18 +102,17 @@ namespace polymake { namespace tropical {
 			polytope::canonicalize_oriented( find_in_range_if(entire(V.top()), operations::non_zero()) );
 		}
 
-	FunctionTemplate4perl("canonicalize_scalar_to_leading_zero(Vector&) : void");
-	FunctionTemplate4perl("canonicalize_scalar_to_leading_zero(Matrix&) : void");
-	FunctionTemplate4perl("canonicalize_to_leading_zero_and_check_columns(Matrix&) : void");
-	FunctionTemplate4perl("canonicalize_scalar_to_nonnegative(Vector&) : void");
-	FunctionTemplate4perl("canonicalize_scalar_to_nonnegative(Matrix&) : void");
-	FunctionTemplate4perl("canonicalize_vertices_to_leading_zero(Matrix&) : void");
-	FunctionTemplate4perl("canonicalize_vertex_to_leading_zero(Vector&) : void");
 
+      FunctionTemplate4perl("canonicalize_to_leading_zero(Vector&) : void");
+      FunctionTemplate4perl("canonicalize_to_leading_zero(Matrix&) : void");
 
+      FunctionTemplate4perl("canonicalize_scalar_to_leading_zero(Vector&) : void");
+      FunctionTemplate4perl("canonicalize_scalar_to_leading_zero(Matrix&) : void");
 
-	//FunctionTemplate4perl("dehomogenize_trop(Vector)");
-	//FunctionTemplate4perl("dehomogenize_trop(Matrix)");
+      FunctionTemplate4perl("canonicalize_to_leading_zero_and_check_columns(Matrix&) : void");
+
+      FunctionTemplate4perl("canonicalize_vertices_to_leading_zero(Matrix&) : void");
+      FunctionTemplate4perl("canonicalize_vertex_to_leading_zero(Vector&) : void");
 
 } }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,6 +19,7 @@
 #include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Graph.h"
+#include "polymake/common/labels.h"
 
 namespace polymake { namespace polytope {
 
@@ -100,10 +101,9 @@ perl::Object blending(perl::Object p_in1, const int vertex1, perl::Object p_in2,
    p_out.take("VERTICES_IN_FACETS") << VIF_out;
 
    if (!options["no_labels"]) {
-      std::vector<std::string> labels1(n_vertices1), labels2(n_vertices2),
-         labels_out(n_vertices1+n_vertices2-2);
-      read_labels(p_in1, "VERTEX_LABELS", labels1);
-      read_labels(p_in2, "VERTEX_LABELS", labels2);
+      const std::vector<std::string> labels1 = common::read_labels(p_in1, "VERTEX_LABELS", n_vertices1);
+      const std::vector<std::string> labels2 = common::read_labels(p_in2, "VERTEX_LABELS", n_vertices2);
+      std::vector<std::string> labels_out(n_vertices1+n_vertices2-2);
 
       const std::string tick="'";
       copy_range(entire(concatenate(select(labels1, ~scalar2set(vertex1)),
@@ -145,7 +145,13 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# @param Int v2 the index of the second vertex"
                   "# @option Array<Int> permutation"
                   "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytopes. default: 0"
-                  "# @return Polytope",
+                  "# @return Polytope"
+                  "# @example The following gives the smallest [[EVEN]] 3-polytope which is not a zonotope."
+                  "# > $c = cube(3); $bc = blending($c,0,$c,0);"
+                  "# > print $bc->EVEN"
+                  "# | 1"
+                  "# > print $bc->F_VECTOR"
+                  "# | 14 21 9",
                   &blending, "blending(Polytope $ Polytope $ { permutation => undef, no_labels => 0 })");
 } }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,6 +19,7 @@
 #include "polymake/Bitset.h"
 #include "polymake/group/representations.h"
 #include "polymake/group/permlib.h"
+#include "polymake/group/group_tools.h"
 
 namespace polymake { namespace group {
 
@@ -41,8 +42,8 @@ namespace {
 template<typename SetType>
 Array<int> implicit_character(perl::Object ia)
 {
-   const Array<Array<int> > generators = ia.give("STRONG_GENERATORS | GENERATORS");
-   const ConjugacyClassReps ccr = ia.give("CONJUGACY_CLASS_REPRESENTATIVES");
+   const Array<Array<int>> generators = ia.give("STRONG_GENERATORS | GENERATORS");
+   const ConjugacyClassReps<Array<int>> ccr = ia.give("CONJUGACY_CLASS_REPRESENTATIVES");
    const Array<SetType> orbit_reps = ia.give("EXPLICIT_ORBIT_REPRESENTATIVES");
 
    typedef permlib::Permutation PERM;
@@ -80,7 +81,7 @@ Array<int> implicit_character(perl::Object ia)
 
 UserFunction4perl("# @category Symmetry"
 		  "# Calculate character of an implicit action"
-                  "# @param ImplicitActionOnSets the given action"
+                  "# @param ImplicitActionOnSets A the given action"
                   "# @return Array<Int>",
                   &implicit_character<Bitset>, "implicit_character(ImplicitActionOnSets)");
 

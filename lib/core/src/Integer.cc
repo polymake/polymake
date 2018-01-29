@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -271,6 +271,13 @@ bool Integer::fill_from_file(int fd)
    } while ((consumed+=s)<total);
    _mp_size=_mp_alloc;
    return true;
+}
+
+template <>
+Integer
+pow(const Integer& base, int exp)
+{
+   return Integer::pow(base,exp);
 }
 
 namespace {

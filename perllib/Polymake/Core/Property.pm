@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake::Core::Property;
 
@@ -37,7 +38,7 @@ use Polymake::Struct (
    [ '$canonical' => '#%', default => 'undef' ],
    [ '$equal' => '#%', default => 'undef' ],
 
-                                  # other property or path to a subobject property needed to construct the value
+                                  # other properties needed to construct the value
    [ '$construct' => '#%', default => 'undef' ],
 
    '&accept',                     # value, object, trusted_flag =>
@@ -93,7 +94,7 @@ sub new {
       }
    }
 
-   $self->construct &&= [ $self->belongs_to->encode_property_path($self->construct) ];
+   $self->construct &&= [ map { $self->belongs_to->encode_property_path($_) } split /\s*,\s*/, trim_spaces($self->construct) ];
 
    $self->flags |= $is_concrete unless $self->type->abstract;
    choose_methods($self);
@@ -122,12 +123,23 @@ sub clone {
 }
 ####################################################################################
 sub override_by {
-   my ($src, $name, $owner)=@_;
+   my ($src, $name, $owner, $new_type)=@_;
    my $self=&clone;
    $self->name=$name;
    $self->belongs_to=$owner;
-   $self->overrides_for=$owner;
-   $self->overrides=$src->name;
+   unless ($self->flags & $is_twin) {
+      $self->overrides_for=$owner;
+      $self->overrides=$src->name;
+   }
+   if (defined $new_type) {
+      $self->type=$new_type;
+      if ($new_type->abstract) {
+         $self->flags &= ~$is_concrete;
+      } else {
+         $self->flags |= $is_concrete;
+      }
+      choose_methods($self);
+   }
    $self;
 }
 ####################################################################################
@@ -163,7 +175,7 @@ sub analyze {
       $self->belongs_to->augment($self);
    } else {
       namespaces::using($pkg, $self->type->pkg);
-      my $symtab=get_pkg($pkg);
+      my $symtab=get_symtab($pkg);
       foreach (qw(canonical equal)) {
          if (exists &{$symtab->{$_}}) {
             $self->$_=\&{$symtab->{$_}};
@@ -215,18 +227,6 @@ sub clone_for_owner {
    }
    if ($self->new_instance_deputy) {
       $self->new_instance_deputy->update_flags;
-   }
-   choose_methods($self);
-   $self
-}
-####################################################################################
-sub clone_for_overridden_twin {
-   my ($src, $proto)=@_;
-   my $self=&clone;
-   $self->belongs_to=$proto;
-   $self->type=$proto;
-   if (!$proto->abstract) {
-      $self->flags |= $is_concrete;
    }
    choose_methods($self);
    $self
@@ -395,12 +395,8 @@ sub accept_special_constructed : method {
           !$self->type->isa->($value) or
           $self->type->cppoptions && !$self->type->cppoptions->builtin &&
           CPlusPlus::must_be_copied($value,$temp,$needs_canonicalization)) {
-         if (my $construct_arg=$parent_obj->lookup_property_path($self->construct)) {
-            local $PropertyType::trusted_value=$trusted;
-            $value=$self->type->construct->($construct_arg->value, $value);
-         } else {
-            croak( "can't add property ", $self->name, " because of lacking prerequisite ", print_path($self->construct) );
-         }
+         local $PropertyType::trusted_value=$trusted;
+         $value=$self->type->construct->((map { $parent_obj->value_at_property_path($_) } @{$self->construct}), $value);
       }
       if ($needs_canonicalization) {
          select_method($self->canonical, $parent_obj, 1)->($value);
@@ -411,11 +407,7 @@ sub accept_special_constructed : method {
 
 sub copy_special_constructed : method {
    my ($self, $value, $parent_obj)=@_;
-   if (my $construct_arg=$parent_obj->lookup_property_path($self->construct)) {
-      new PropertyValue($self, $self->type->construct->($construct_arg->value, $value));
-   } else {
-      croak( "can't copy property ", $self->name, " because of lacking prerequisite ", print_path($self->construct) );
-   }
+   new PropertyValue($self, $self->type->construct->((map { $parent_obj->value_at_property_path($_) } @{$self->construct}), $value));
 }
 ####################################################################################
 sub accept_builtin : method {
@@ -475,7 +467,7 @@ sub find_last_in_path {
    -1
 }
 ####################################################################################
-package _::SelectMultiInstance;
+package Polymake::Core::Property::SelectMultiInstance;
 
 # used only in requests and 'down' paths processed by Scheduler
 
@@ -496,13 +488,13 @@ sub name {
    $self->property->name . "[" . (is_object($self->index) ? $self->index->header : $self->index) . "]"
 }
 
-package __;
+package Polymake::Core::Property;
 
 sub index { 0 }           # by default, the 0-th multiple subobject instance is selected
 sub property { $_[0] }
 
 ####################################################################################
-package _::SubobjKey;
+package Polymake::Core::Property::SubobjKey;
 RefHash::allow(__PACKAGE__);
 
 my $prop_key=\(1);
@@ -531,7 +523,7 @@ sub property_key { &property->key }
 *produced_in_twins=\&Property::produced_in_twins;
 
 ####################################################################################
-package __;
+package Polymake::Core::Property;
 
 # protected: used solely from Rule::finalize
 # ancestor Properties come in reverse (bottom-up) order!
@@ -560,7 +552,7 @@ sub produced_in_twins {
 }
 
 ####################################################################################
-package _::NewMultiInstance;
+package Polymake::Core::Property::NewMultiInstance;
 
 # used only in 'out' paths of Rules creating new instances of multiple subobjects
 
@@ -599,6 +591,95 @@ sub instance_for_owner {
    my ($self, $proto, $down)=@_;
    $self->belongs_to==$proto ? $self : $self->property->instance_for_owner($proto, $down)->new_instance_deputy;
 }
+
+####################################################################################
+package Polymake::Core::Property::Path;
+
+# path between two (sub-)objects in an object tree
+
+use Polymake::Struct (
+   [ new => '$@' ],
+   [ '$up' => '#1' ],     # how many parent levels to ascend
+   [ '@down' => '@' ],    # properties to descend
+);
+
+sub toString {
+   my ($self)=@_;
+   join(".", ("parent") x $self->up, map { $_->name } @{$self->down})
+}
+
+# => ±N ; N>0 - descending, N<0 - ascending
+sub level_change {
+   my ($self)=@_;
+   @{$self->down} - $self->up
+}
+
+# Path, Property, ... => new Path
+sub deeper {
+   my $self=shift;
+   inherit_class([ $self->up, [ @{$self->down}, @_ ]], $self)
+}
+
+# Path, +N => new Path
+sub higher {
+  my ($self, $up)=@_;
+  my $diff=@{$self->down}-$up;
+  inherit_class($diff > 0 ? [ $self->up, [ @{$self->down}[0..$diff-1] ]] : [ $self->up-$diff, [ ]], $self)
+}
+
+# Path, Property at ancestor, ... => new Path
+sub prepend {
+   my $self=shift;
+   my $diff=@_-$self->up;
+   inherit_class($diff > 0 ? [ 0, [ @_[0..$diff-1], @{$self->down} ]] : [ -$diff, [ @{$self->down} ]], $self)
+}
+
+# construct a property path leading from one subobject to another
+# => (±N, Property...)  N<0 - self is a descendant of other,  N>0 - self is ancestor of other
+# => undef  when there is no such path
+sub find_relative_path {
+   my ($self, $other, $object)=@_;
+   my $up1=$self->up;
+   my $up2=$other->up;
+   my ($diff, @path);
+   if (@{$self->down}) {
+      if (@{$other->down}) {
+         return if $up1!=$up2;
+         # starts in the same node: check whether the shorter path is the subset of the longer one
+         my $d1=@{$self->down};
+         my $d2=@{$other->down};
+         $diff= $d2<=>$d1;
+         return if !$diff;
+         ($self, $d1, $other, $d2)=($other, $d2, $self, $d1) if $diff<0;
+         for (my $i=0; $i<$d1; ++$i) {
+            return if $self->down->[$i]->key != $other->down->[$i]->key;
+         }
+         return ($diff, @{$other->down}[$d1..$d2-1]);
+
+      } else {
+         return if $up1>$up2;
+         $diff=-1;
+         @path=@{$self->down};
+      }
+
+   } elsif (@{$other->down}) {
+      return if $up2>$up1;
+      $diff=1;
+      @path=@{$other->down};
+
+   } else {
+      # both sit on the direct ascending path from the root object
+      $diff= $up1<=>$up2;
+      return if !$diff;
+   }
+
+   ($up1, $up2)=($up2, $up1) if $diff<0;
+   while ($up2>0) { $object=$object->parent; --$up2; --$up1; }
+   while ($up1>0) { unshift @path, $object->property; $object=$object->parent; --$up1; }
+
+   ($diff, @path);
+}
+
 
 1
 

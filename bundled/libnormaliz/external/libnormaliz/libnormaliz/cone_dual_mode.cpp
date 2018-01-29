@@ -34,6 +34,9 @@
 #include "libnormaliz/cone_dual_mode.h"
 #include "libnormaliz/vector_operations.h"
 #include "libnormaliz/list_operations.h"
+#include "libnormaliz/full_cone.h"
+// #include "libnormaliz/cone_helper.h"
+#include "libnormaliz/my_omp.h"
 
 //---------------------------------------------------------------------------
 
@@ -436,10 +439,37 @@ void Cone_Dual_Mode<Integer>::cut_with_halfspace_hilbert_basis(const size_t& hyp
             neg_size=neg_gen1_size;      
         }
         
-        // cout << "Step " << step << " pos " << pos_size << " neg " << neg_size << endl;
-        
         if(pos_size==0 || neg_size==0)
             continue;
+        
+        vector<typename list<Candidate<Integer>* >::iterator > PosBlockStart, NegBlockStart;
+        
+        const size_t Blocksize=200;
+        
+        size_t nr_in_block=0, pos_block_nr=0;
+        for(p=pos_begin;p!=pos_end;++p){
+            if(nr_in_block%Blocksize==0){
+                PosBlockStart.push_back(p);
+                pos_block_nr++;
+                nr_in_block=0;
+            }
+            nr_in_block++;
+        }
+        PosBlockStart.push_back(p);
+        
+        nr_in_block=0; 
+        size_t neg_block_nr=0;
+        for(n=neg_begin;n!=neg_end;++n){
+            if(nr_in_block%Blocksize==0){
+                NegBlockStart.push_back(n);
+                neg_block_nr++;
+                nr_in_block=0;
+            }
+            nr_in_block++;
+        }
+        NegBlockStart.push_back(n);
+        
+        // cout << "Step " << step << " pos " << pos_size << " neg " << neg_size << endl;
 
         if (verbose) {
             // size_t neg_size=Negative_Irred.size();
@@ -455,39 +485,45 @@ void Cone_Dual_Mode<Integer>::cut_with_halfspace_hilbert_basis(const size_t& hyp
         bool skip_remaining = false;
 
         const long VERBOSE_STEPS = 50;
-        long step_x_size = pos_size-VERBOSE_STEPS;
+        long step_x_size = pos_block_nr*neg_block_nr-VERBOSE_STEPS;
         
         #pragma omp parallel private(p,n,diff,p_cand,n_cand)
         {
         Candidate<Integer> new_candidate(dim,nr_sh);
-                
-        size_t ppos=0;
-        p = pos_begin;
+        
+        size_t total=pos_block_nr*neg_block_nr;
+        
         #pragma omp for schedule(dynamic)
-        for(i = 0; i<pos_size; ++i){
-            for(;i > ppos; ++ppos, ++p) ;
-            for(;i < ppos; --ppos, --p) ;
-
-            if (skip_remaining) continue;
-
+        for(size_t bb=0;bb<total;++bb){  // main loop over the blocks
+            
+        if (skip_remaining) continue;
+        
 #ifndef NCATCH
             try {
 #endif
             
-            if(verbose && pos_size*neg_size>=ReportBound){
-                #pragma omp critical(VERBOSE)
-                while ((long)(i*VERBOSE_STEPS) >= step_x_size) {
-                    step_x_size += pos_size;
-                    verboseOutput() << "." <<flush;
-                }
-
+            INTERRUPT_COMPUTATION_BY_EXCEPTION
+                
+                if(verbose && pos_size*neg_size>=ReportBound){
+            #pragma omp critical(VERBOSE)
+            while ((long)(bb*VERBOSE_STEPS) >= step_x_size) {
+                step_x_size += total;
+                verboseOutput() << "." <<flush;
             }
+
+        }
+                
+        size_t nr_pos=bb/neg_block_nr;
+        size_t nr_neg=bb%neg_block_nr;
+            
+        for(p=PosBlockStart[nr_pos];p!=PosBlockStart[nr_pos+1];++p){
+
             
             p_cand=*p;
             
             Integer pos_val=p_cand->values[hyp_counter];
 
-            for (n= neg_begin; n!= neg_end; ++n){
+            for (n= NegBlockStart[nr_neg];n!=NegBlockStart[nr_neg+1]; ++n){
             
                 n_cand=*n;
             
@@ -571,7 +607,10 @@ void Cone_Dual_Mode<Integer>::cut_with_halfspace_hilbert_basis(const size_t& hyp
                     // new_candidate.mother=0; // irrelevant
                     New_Neutral_thread[omp_get_thread_num()].push_back(new_candidate);
                 }
-            }
+            } // neg
+
+        } // pos
+        
 #ifndef NCATCH
         } catch(const std::exception& ) {
             tmp_exception = std::current_exception();
@@ -579,7 +618,8 @@ void Cone_Dual_Mode<Integer>::cut_with_halfspace_hilbert_basis(const size_t& hyp
             #pragma omp flush(skip_remaining)
         }
 #endif
-        } //end generation of new elements
+        
+        } // bb, end generation of new elements
         
         #pragma omp single
         {
@@ -722,6 +762,8 @@ void Cone_Dual_Mode<Integer>::cut_with_halfspace_hilbert_basis(const size_t& hyp
 
 template<typename Integer>
 Matrix<Integer> Cone_Dual_Mode<Integer>::cut_with_halfspace(const size_t& hyp_counter, const Matrix<Integer>& BasisMaxSubspace){
+    INTERRUPT_COMPUTATION_BY_EXCEPTION
+
     size_t i,rank_subspace=BasisMaxSubspace.nr_of_rows();
 
     vector <Integer> restriction,lin_form=SupportHyperplanes[hyp_counter],old_lin_subspace_half;
@@ -798,6 +840,9 @@ void Cone_Dual_Mode<Integer>::hilbert_basis_dual(){
         vector<key_t> relevant_sh;
         size_t realdim=Generators.rank();
         for(key_t h=0;h<SupportHyperplanes.nr_of_rows();++h){
+            
+            INTERRUPT_COMPUTATION_BY_EXCEPTION
+            
             key.clear();
             vector<Integer> test=Generators.MxV(SupportHyperplanes[h]);
             for(key_t i=0;i<test.size();++i)
@@ -845,6 +890,9 @@ void Cone_Dual_Mode<Integer>::extreme_rays_rank(){
     vector <key_t> zero_list;
     size_t i,k;
     for (c=Intermediate_HB.Candidates.begin(); c!=Intermediate_HB.Candidates.end(); ++c){
+        
+        INTERRUPT_COMPUTATION_BY_EXCEPTION
+        
         zero_list.clear();
         for (i = 0; i < nr_sh; i++) {
             if(c->values[i]==0) {
@@ -887,6 +935,9 @@ void Cone_Dual_Mode<Integer>::relevant_support_hyperplanes(){
     vector<bool> relevant(nr_sh,true);      
 
     for (i = 0; i < nr_sh; ++i) {
+        
+        INTERRUPT_COMPUTATION_BY_EXCEPTION
+        
         k = 0; k1=0;
         for (gen_it = ExtremeRayList.begin(); gen_it != ExtremeRayList.end(); ++gen_it, ++k) {
             if ((*gen_it)->values[i]==0) {
@@ -925,5 +976,11 @@ void Cone_Dual_Mode<Integer>::to_sublattice(const Sublattice_Representation<Inte
         Hilbert_Basis.insert(it,tmp);
     }
 }
+
+#ifndef NMZ_MIC_OFFLOAD  //offload with long is not supported
+template class Cone_Dual_Mode<long>;
+#endif
+template class Cone_Dual_Mode<long long>;
+template class Cone_Dual_Mode<mpz_class>;
 
 } //end namespace libnormaliz

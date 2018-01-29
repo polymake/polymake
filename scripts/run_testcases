@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -23,7 +23,7 @@ use Polymake::Test;
 #  Option parsing and preparations
 #
 
-my (@apps, @extensions, @testgroups, @examples, $jenkins_report, $report_writer, $emacs_style,
+my (@apps, @extensions, @testgroups, @examples, $jenkins_report, $annotate_mode, $emacs_style,
     $validate, $ignore_random_failures, $shuffle_seed, $no_new_glue_code, $single_script,
     %extensions, %found_testgroups, $exit, $auto_adjust);
 
@@ -32,10 +32,11 @@ if ( !GetOptions( 'applications=s' => sub { collect_arglist(\@apps, $_[1]) },
                   'testgroups=s' => sub { collect_arglist(\@testgroups, $_[1]) },
                   'examples=s' => sub { collect_arglist(\@examples, $_[1]) },
                   'jenkins-report=s' => \$jenkins_report,
+                  'annotate-mode=s' => \$annotate_mode,
                   'emacs-style' => \$emacs_style,
                   'validate-XML' => \$validate,
                   'shuffle:i' => \$shuffle_seed,
-                  'ignore-random-failures' => \$ignore_random_failures,
+                  'random-failures=s' => \$ignore_random_failures,
                   'no-new-glue-code' => \$no_new_glue_code,
                   'allow-exec-time=f' => \$Test::Case::allowed_exec_time,
                   'auto-adjust' =>\$auto_adjust,
@@ -43,8 +44,9 @@ if ( !GetOptions( 'applications=s' => sub { collect_arglist(\@apps, $_[1]) },
      or @ARGV>1
      or @ARGV==1 && !-f ($single_script=shift @ARGV) &&
         die ("script file $single_script ", -e $single_script ? "is not a regular file " : "does not exist", "\n")
-     or $jenkins_report && ($emacs_style || @extensions || @testgroups || @examples || $ignore_random_failures)
-     or $single_script && ($jenkins_report || @apps || @extensions || @testgroups || @examples) ) {
+     or $jenkins_report ? ($emacs_style || @extensions || @testgroups || @examples || $ignore_random_failures) : ($annotate_mode)
+     or $single_script && ($jenkins_report || @apps || @extensions || @testgroups || @examples)
+     or $ignore_random_failures && $ignore_random_failures !~ /^(?:ignore|hide|show)$/ ) {
    die <<'.'
 usage: polymake --script run_testcases [ options ] [ test_script.pl ]
    or: polymake --script run_testcases [ options ] --jenkins-report REPORT
@@ -69,9 +71,12 @@ Options are:
        permute apps and testgroups randomly
        specify an integer SEED to reproduce a (failed) run;
        if omitted, a random seed is generated and reported on stdout
-   --ignore-random-failures
-       separately report mismatching results in tests marked as random
-       and don't count them as test failures
+   --random-failures =ignore|hide|show
+       do not treat mismatching results as failues in tests known to be randomly volatile
+       the option value controls their reporting in the final summary:
+       ignore - report them briefly without showing the differing test results
+       hide   - do not report then at all
+       show   - report them fully like the normal failures
    --validate-XML
        perform additional sanity checks on data files: generate elaborated schemata,
        validate all input files, and check the idempotence of a save & load sequence
@@ -83,7 +88,10 @@ Options are:
    --jenkins-report REPORT
        produce a JUnit-compatible test report REPORT_APPNAME.xml for each application,
        do not print any test results or warnings to STDOUT.
-       This option is incompatible with --extensions, --testgroups, and --ignore-random-failures.
+       This option is incompatible with --extensions, --testgroups, and --random-failures.
+   --annotate-mode MODE
+       annotate every testcase in JUnit test reports with '@MODE',
+       allowing to distinguish tests repeatedly run in different build modes
    --emacs-style
        produce simple report without colors, cursor control, and with error messages
        comprehensible to emacs compilation mode
@@ -157,7 +165,7 @@ if (@apps) {
 }
 
 my $env=new Test::Environment($Scope, shuffle_seed => $shuffle_seed,
-                              validate => $validate,
+                              validate => $validate, annotate_mode => $annotate_mode,
                               no_new_glue_code => $no_new_glue_code,
                               ignore_random_failures => $ignore_random_failures);
 
@@ -170,6 +178,11 @@ if ($jenkins_report) {
 if (defined $shuffle_seed) {
    # on Jenkins, applications are often tested in parallel, the output must be disambiguated
    print "\n*** RANDOM SEED=", $env->shuffle_seed, @apps==1 && " (application @apps)", " ***\n";
+}
+
+if (!@testgroups && !@examples && !@extensions && !-d "$InstallTop/testscenarios") {
+   # testing outside the source tree: just run the examples
+   push @examples, "*";
 }
 
 my $disable_examples= @examples==1 && uc($examples[0]) eq "NONE"
@@ -394,7 +407,6 @@ sub list_matching_testgroups {
       ()
    }
 }
-
 
 # Local Variables:
 # mode: perl

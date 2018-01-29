@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,11 +16,12 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/IncidenceMatrix.h"
+#include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
 #include "polymake/client.h"
 #include "polymake/linalg.h"
-#include "polymake/Matrix.h"
-#include "polymake/Rational.h"
-#include "polymake/IncidenceMatrix.h"
 
 namespace polymake { namespace common { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -31,5 +32,6 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(project_to_orthogonal_complement_X2_X_f16, perl::Canned< Matrix< Rational > >, perl::Canned< const Matrix< Rational > >);
+   FunctionInstance4perl(project_to_orthogonal_complement_X2_X_f16, perl::Canned< Matrix< QuadraticExtension< Rational > > >, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

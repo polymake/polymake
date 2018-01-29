@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [ -n "$POLYMAKE_HOST_AGENT" ]; then
+  if [ -L "$POLYMAKE_HOST_AGENT" -o -S "$POLYMAKE_HOST_AGENT" ]; then
+    exec /usr/bin/perl -I `dirname $POLYMAKE_HOST_AGENT` -e 'do "run.pl";' "$@"
+  fi
+fi
+
+exec /usr/bin/env "$@"

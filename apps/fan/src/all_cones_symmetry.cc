@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -117,7 +117,7 @@ void all_cones_symmetry(perl::Object f, int dim)
    f.take("CONES_ORBIT_SIZES") << cone_orbit_sizes;
 }
 
-Function4perl(&all_cones_symmetry, "all_cones_symmetry(SymmetricFan; $=-1)");
+Function4perl(&all_cones_symmetry, "all_cones_symmetry(PolyhedralFan; $=-1)");
 
 } }
 

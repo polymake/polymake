@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -238,8 +238,8 @@ user_function edges(Graph) : c++ : returns(EdgeList);
 # Returns the sequence of all valid nodes of a graph.
 # @param Graph graph
 # @return Set<Int>
-# @example [application graph]
-# > print nodes(cycle_graph(5)->ADJACENCY);
+# @example
+# > print nodes(graph::cycle_graph(5)->ADJACENCY);
 # | {0 1 2 3 4}
 user_function nodes(Graph:anchor) : c++ : returns(Container);
 
@@ -336,8 +336,8 @@ function createEdgeHashMap<Element,Dir>(Graph<Dir>) { new EdgeHashMap<Dir,Elemen
 # @param Graph graph
 # @param Set set indices of selected nodes
 # @return Graph
-# @example [application graph]
-# > $g = new props::Graph(cycle_graph(5)->ADJACENCY);
+# @example
+# > $g = new props::Graph(graph::cycle_graph(5)->ADJACENCY);
 # > $s1 = new Set(1,2,3);
 # > print induced_subgraph($g,$s1);
 # | (5)
@@ -353,8 +353,8 @@ user_function induced_subgraph(Graph:wary:anchor, *:anchor) : c++ ( include => "
 # @param Graph graph
 # @tparam Coord coordinate type for the resulting matrix, default: [[Int]]
 # @return SparseMatrix<Coord>
-# @example [application graph]
-# > print node_edge_incidences(cycle_graph(5)->ADJACENCY);
+# @example
+# > print node_edge_incidences(graph::cycle_graph(5)->ADJACENCY);
 # | (5) (0 1) (3 1)
 # | (5) (0 1) (1 1)
 # | (5) (1 1) (2 1)

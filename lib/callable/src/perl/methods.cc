@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -21,16 +21,20 @@ namespace pm { namespace perl {
 
 namespace {
 
-glue::cached_cv application_cv={ "Polymake::User::application", 0 },
-            app_from_object_cv={ "Polymake::Main::application_from_object", 0 },
-                  new_scope_cv={ "Polymake::Main::createNewScope", 0 },
-                 set_custom_cv={ "Polymake::Main::set_custom", 0 },
-               reset_custom_cv={ "Polymake::Main::reset_custom", 0 },
-               local_custom_cv={ "Polymake::Main::local_custom", 0 },
-               greeting_cv={ "Polymake::Main::greeting", 0 },
-               simulate_shell_cv={ "Polymake::Main::simulate_shell_input", 0 };
+glue::cached_cv application_cv{ "Polymake::User::application" },
+            app_from_object_cv{ "Polymake::Main::application_from_object" },
+                  new_scope_cv{ "Polymake::Main::createNewScope" },
+                 set_custom_cv{ "Polymake::Main::set_custom" },
+               reset_custom_cv{ "Polymake::Main::reset_custom" },
+               local_custom_cv{ "Polymake::Main::local_custom" },
+                   greeting_cv{ "Polymake::Main::greeting" },
+               shell_enable_cv{ "Polymake::Main::shell_enable" },
+              shell_execute_cv{ "Polymake::Main::shell_execute" },
+             shell_complete_cv{ "Polymake::Main::shell_complete" },
+         shell_context_help_cv{ "Polymake::Main::shell_context_help" };
 
 const char Extension[]="Polymake::Core::Extension";
+
 }
 
 void Main::set_application(const AnyString& appname)
@@ -149,14 +153,81 @@ std::string Main::greeting(int verbose)
    return glue::call_func_string(aTHX_ greeting_cv);
 }
 
-std::string Main::simulate_shell_input(const std::string& input)
+void Main::shell_enable()
 {
-   if (input.empty()) return input;
+   dTHXa(pi);
+   PmStartFuncall(0);
+   glue::call_func_void(aTHX_ shell_enable_cv);
+}
+
+Main::shell_execute_t Main::shell_execute(const std::string& input)
+{
+   if (input.empty())
+      return shell_execute_t(true, input, input, input);
+
    dTHXa(pi);
    PmStartFuncall(1);
    mPUSHp(input.c_str(), input.size());
    PUTBACK;
-   return glue::call_func_string(aTHX_ simulate_shell_cv, false);
+   if (glue::call_func_list(aTHX_ shell_execute_cv) != 4)
+      return shell_execute_t(false, "", "", "unknown error");
+
+   SPAGAIN;
+   bool executed=false;
+   std::string out, err, exc;
+   Value(POPs) >> exc;
+   Value(POPs) >> err;
+   Value(POPs) >> out;
+   Value(POPs) >> executed;
+   PmFinishFuncall;
+   return shell_execute_t(executed, std::move(out), std::move(err), std::move(exc));
+}
+
+Main::shell_complete_t Main::shell_complete(const std::string& input)
+{
+   dTHXa(pi);
+   PmStartFuncall(1);
+   mPUSHp(input.c_str(), input.size());
+   PUTBACK;
+   int n=glue::call_func_list(aTHX_ shell_complete_cv);
+   int offset=0;
+   char append=0;
+   std::vector<std::string> proposals(n>2 ? n-2 : 0);
+   if (n >= 2) {
+      dSP;
+      while (--n >= 2) {
+         Value(POPs) >> proposals[n-2];
+      }
+      Value(POPs) >> append;
+      Value(POPs) >> offset;
+      PmFinishFuncall;
+   }
+   return shell_complete_t(offset, append, std::move(proposals));
+}
+
+std::vector<std::string> Main::shell_context_help(const std::string& input, size_t pos, bool full, bool html)
+{
+   dTHXa(pi);
+   PmStartFuncall(4);
+   mPUSHp(input.c_str(), input.size());
+   if (pos == std::string::npos)
+      pos=input.size();
+   mPUSHi(pos);
+   SV* bool_sv=full ? &PL_sv_yes : &PL_sv_no;
+   PUSHs(bool_sv);
+   bool_sv=html ? &PL_sv_yes : &PL_sv_no;
+   PUSHs(bool_sv);
+   PUTBACK;
+   int n=glue::call_func_list(aTHX_ shell_context_help_cv);
+   std::vector<std::string> results(n);
+   if (n) {
+      dSP;
+      while (--n >= 0) {
+         Value(POPs) >> results[n];
+      }
+      PmFinishFuncall;
+   }
+   return results;
 }
 
 } }

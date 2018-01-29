@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake::Test::Rule;
 
@@ -63,7 +64,7 @@ sub run {
 }
 
 ####################################################################################
-package _::TestFinalizer;
+package Polymake::Test::Rule::TestFinalizer;
 
 use Polymake::Struct (
    [ '@ISA' => 'Case' ],
@@ -88,7 +89,7 @@ sub execute {
 }
 
 ####################################################################################
-package __;
+package Polymake::Test::Rule;
 my (%rule_cache, %rule_cache_fill);
 
 sub fill_rule_cache {
@@ -156,7 +157,7 @@ sub describe_rule {
 ####################################################################################
 package Polymake::Test::Object::WithRule;
 
-use Polymake::Enum qw(verify: OK missing_input missing_output unsatisfied_precond wrong_permutation wrong_result died);
+use Polymake::Enum qw(verify: OK missing_input missing_output unsatisfied_precond missing_permutation wrong_permutation wrong_result died);
 use Polymake::Enum 'Core::Rule::exec';
 
 use Polymake::Struct (
@@ -207,8 +208,8 @@ sub execute {
         or croak( "option `permuted' must provide a non-empty list of property names" );
 
       foreach (@{$self->permuted}) {
-         my @path=$self->object->type->encode_property_path($_);
-         if (defined (my $pv=$self->object->lookup_property_path(\@path))) {
+         my @path=$self->object->type->encode_descending_path($_);
+         if (defined (my $pv=$self->object->lookup_descending_path(\@path))) {
             if (defined($pv->value)) {
                push @perm_input_paths, \@path;
                push @{$self->perm_input}, $_, $pv->value;
@@ -227,11 +228,16 @@ sub execute {
    my %infeasible;
    foreach my $rule (@{$self->rules}) {
       if ($proto->isa($rule->defined_for) && $proto->rule_is_applicable($rule)) {
-         if (@perm_input_paths and
-             !defined($rule->with_permutation) ||
-             grep { !defined($rule->with_permutation->perm_path->find_sensitive_sub_property(@$_)) } @perm_input_paths) {
-            $infeasible{$rule}=$verify_wrong_permutation;
-            next;
+         if (@perm_input_paths) {
+            if (defined($rule->with_permutation)) {
+               if (grep { !defined($rule->with_permutation->perm_path->find_sensitive_sub_property(@$_)) } @perm_input_paths) {
+                  $infeasible{$rule}=$verify_wrong_permutation;
+                  next;
+               }
+            } else {
+               $infeasible{$rule}=$verify_missing_permutation;
+               next;
+            }
          }
 
 	 my ($status, @data)=verify_rule($self, $rule);
@@ -257,16 +263,17 @@ sub execute {
       }
    }
    unless ($success) {
-      $self->fail_log.="test object ".$self->name." can't be used for testing ".
-		       (@{$self->rules}>1 ? "any of the rules:\n" : "rule");
+      $self->fail_log.="test object ".$self->name." can't be used for testing the rule(s):\n";
       foreach my $rule (@{$self->rules}) {
 	 $self->fail_log.=" ".Rule::describe_rule($rule)." ";
 	 if ($infeasible{$rule} == $verify_missing_input) {
 	    $self->fail_log.="is infeasible: missing or undefined source properties\n";
 	 } elsif ($infeasible{$rule} == $verify_unsatisfied_precond) {
 	    $self->fail_log.="is infeasible: preconditions not satisfied\n";
+	 } elsif ($infeasible{$rule} == $verify_missing_permutation) {
+	    $self->fail_log.="is infeasible: does not incur any permutation while permuted target properties are specified\n";
 	 } elsif ($infeasible{$rule} == $verify_wrong_permutation) {
-	    $self->fail_log.="is infeasible: permutation can't be applied\n";
+	    $self->fail_log.="is infeasible: permutation incurred by the rule is not applicable to all specified target properties\n";
 	 } elsif (!$proto->isa($rule->defined_for)) {
 	    $self->fail_log.="is not applicable: defined for ".$rule->defined_for->full_name."\n";
 	 } else {
@@ -314,30 +321,34 @@ sub verify_rule {
    }
 
    # link all prerequisites for specially constructed properties
- OUTPUT:
    foreach my $output (@{$prod_rule->output}) {
-      if (defined ($output->[-1]->construct)) {
-	 # don't link to the source object if the prerequisite property is created in the production rule under test as well
-	 my $is_created;
-	 my @construct_input=(@$output[0..$#$output-1], @{$output->[-1]->construct});
-	 foreach my $other_output (@{$prod_rule->output}) {
-	    next OUTPUT if Core::Property::equal_path_prefixes(\@construct_input, $other_output) == @construct_input;
-	 }
-	 if (defined ($pv=$self->object->lookup_property_path(\@construct_input))) {
-	    ($obj, $t_obj, $prop)=descend_in_test_object($self->object, $test_object, \@construct_input);
-	    $t_obj->dictionary->{$prop->key} //= do {
-	       push @{$t_obj->contents}, $pv;
-	       $#{$t_obj->contents};
-	    };
-	 } else {
-	    return ($verify_missing_output,
-		    "missing property ", Core::Property::print_path(\@construct_input),
-		    " prerequisite for construction of target property ", Core::Property::print_path($output), "\n");
-	 }
+      if (defined (my $construct_list=$output->[-1]->construct)) {
+       CONSTRUCT_ARG:
+         foreach my $prop_path (@$construct_list) {
+            my $full_path=$prop_path->prepend(@$output[0..$#$output-1]);
+            if (!$full_path->up) {
+               # don't link to the source object if the prerequisite property is created in the production rule under test as well
+               foreach my $other_output (@{$prod_rule->output}) {
+                  next CONSTRUCT_ARG if $other_output != $output && Core::Property::equal_path_prefixes($full_path->down, $other_output) == @{$full_path->down};
+               }
+
+               if (defined ($pv=$self->object->lookup_property_path($full_path))) {
+                  ($obj, $t_obj, $prop)=descend_in_test_object($self->object, $test_object, $full_path->down);
+                  $t_obj->dictionary->{$prop->key} //= do {
+                     push @{$t_obj->contents}, $pv;
+                     $#{$t_obj->contents};
+                  };
+               } else {
+                  return ($verify_missing_output,
+                          "missing property ", $full_path->toString,
+                          " prerequisite for construction of target property ", Core::Property::print_path($output), "\n");
+               }
+            }
+         }
       }
    }
 
-   local *Polymake::Core::Object::lookup_property_path=\&lookup_in_source;
+   local *Polymake::Core::Object::lookup_descending_path=\&lookup_in_source;
 
    foreach my $rule (@{$prod_rule->preconditions}, $prod_rule) {
       my $rc=$rule->execute($test_object, 1);
@@ -442,13 +453,13 @@ sub descend_in_test_object {
 ####################################################################################
 # intercept lookup() requests coming from rule bodies
 # and from the scheduler when it plans the permutation
-my $lookup_property_path=\&Polymake::Core::Object::lookup_property_path;
+my $lookup_descending_path=\&Polymake::Core::Object::lookup_descending_path;
 
 sub lookup_in_source {
    my ($self, $path, $for_planning)=@_;
    if (my $source=$self->attachments->{".source"}) {
-      &$lookup_property_path || do {
-         if (my $pv=$lookup_property_path->($source, $path, $for_planning)) {
+      &$lookup_descending_path || do {
+         if (my $pv=$lookup_descending_path->($source, $path, $for_planning)) {
             my ($obj, $t_obj, $prop)=descend_in_test_object($source, $self, $path);
             push @{$t_obj->contents}, $pv;
             $t_obj->dictionary->{$pv->property->key}=$#{$t_obj->contents};
@@ -456,7 +467,7 @@ sub lookup_in_source {
          }
       }
    } else {
-      &$lookup_property_path;
+      &$lookup_descending_path;
    }
 }
 

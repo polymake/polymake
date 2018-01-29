@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -18,6 +18,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
+#include "polymake/SparseMatrix.h"
 
 namespace polymake { namespace polytope { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
@@ -30,5 +31,6 @@ namespace polymake { namespace polytope { namespace {
    FunctionInstance4perl(vertex_point_map_X_X, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< Rational > >);
    FunctionInstance4perl(vertex_point_map_X_X, perl::Canned< const Matrix< double > >, perl::Canned< const Matrix< double > >);
    FunctionInstance4perl(vertex_point_map_X_X, perl::Canned< const Matrix< QuadraticExtension< Rational > > >, perl::Canned< const Matrix< QuadraticExtension< Rational > > >);
+   FunctionInstance4perl(vertex_point_map_X_X, perl::Canned< const Matrix< Rational > >, perl::Canned< const SparseMatrix< Rational, NonSymmetric > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

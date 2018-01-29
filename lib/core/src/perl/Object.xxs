@@ -1,0 +1,272 @@
+/* Copyright (c) 1997-2018
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
+
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+--------------------------------------------------------------------------------
+*/
+
+#include "polymake/perl/Ext.h"
+
+namespace {
+
+OP* pp_reveal_args(pTHX)
+{
+   dSP;
+   I32 items=PTR2IV(*SP);
+   EXTEND(SP,items);
+   *SP=SP[items+1];
+   SP+=items;
+   RETURN;
+}
+
+OP* pp_move_lhs_to_rhs(pTHX)
+{
+   dSP;
+   // the value returned from put/put_multi is on the stack top:
+   // insert it into the corresponding slot of the rhs list and replace it with undef here
+   SP[PL_markstack_ptr[-1]-PL_markstack_ptr[0]]=TOPs;
+   SETs(&PL_sv_undef);
+   RETURN;
+}
+
+}
+using namespace pm::perl::glue;
+
+MODULE = Polymake::Core::Object                 PACKAGE = Polymake::Core::Object
+
+PROTOTYPES: DISABLE
+
+void
+_prop_accessor(self, ...)
+   SV* self;
+PPCODE:
+{
+   AV* descr=(AV*)CvXSUBANY(cv).any_ptr;
+   SV* prop=AvARRAY(descr)[0], *rhs;
+   OP* o=PL_op->op_next;
+   I32 hide_args = GIMME_V != G_ARRAY ? 1 : 0;
+   I32 assign=0;
+
+   if (o && o->op_type == OP_SASSIGN && !(o->op_private & OPpASSIGN_BACKWARDS)) {
+      // setting a property: $this->PROP=value;
+      EXTEND(SP, items+3+hide_args);
+      rhs=*SP;
+      PUSHMARK(SP);
+      if (hide_args) {
+        *(++SP)=NUM2PTR(SV*, items+2);
+        SP[items]=prop;
+        SP[items+1]=rhs;
+        SP[items+2]=AvARRAY(descr)[2];
+        SP[items+3]=self;
+      } else {
+        SP+=items;
+        PUSHs(prop);
+        PUSHs(rhs);
+        PUSHs(AvARRAY(descr)[2]);
+      }
+      assign=OP_SASSIGN;
+#if PerlVersion >= 5275
+   } else if (o && o->op_type == OP_MULTICONCAT && (o->op_flags & OPf_STACKED)) {
+      Perl_croak(aTHX_ "Think twice before assigning string values to properties,\n"
+                       "most probably there are much more suitable data types such as numbers, arrays, etc.\n"
+                       "If this is in fact a Text property, please compose the value in a temporary variable first.\n"
+                       "Direct assignment of concatenated or interpolated strings to properties is not supported yet." );
+#endif
+   } else if ((o=method_named_op(PL_op), o && (o->op_private & MethodIsCalledOnLeftSideOfArrayAssignment))) {
+      // setting a property in a list assignment: (..., $this->PROP, ... )=(..., value, ...);
+      if (hide_args) Perl_croak(aTHX_ "unexpected scalar context within list assignment");
+      EXTEND(SP, items+3);
+      // AASSIGN expects two marks: the topmost delimits the lvalues, the next below it - the rvalues
+      rhs=SP[PL_markstack_ptr[-1]-PL_markstack_ptr[0]+1];
+      PUSHMARK(SP);
+      SP+=items;
+      PUSHs(prop);
+      PUSHs(rhs);
+      PUSHs(AvARRAY(descr)[2]);
+      assign=OP_AASSIGN;
+
+   } else {
+      // retrieving a property
+      EXTEND(SP, items+2+hide_args);
+      PUSHMARK(SP);
+      if (hide_args) {
+        *(++SP)=NUM2PTR(SV*, items+1);
+        SP[items]=prop;
+        SP[items+1]=AvARRAY(descr)[1];
+        SP[items+2]=self;
+      } else {
+        SP+=items;
+        PUSHs(prop);
+        PUSHs(AvARRAY(descr)[1]);
+      }
+   }
+
+   // We must repeat OP_ENTERSUB in order to execute the get or put method
+   // Depending on context, an auxiliary operation can be added.
+   if ((o=cUNOP->op_first)->op_type != OP_CUSTOM) {
+      OP* reveal_op=newOP(OP_CUSTOM, 0);
+      OP* last_new_op=reveal_op;
+      OP* dummy_op=o;
+
+      // we need a dummy operation ponting to the next op to be executed
+      if (o->op_type == OP_NULL) {
+         o->op_type = OP_CUSTOM;
+      } else {
+         dummy_op=newOP(OP_CUSTOM, 0);
+      }
+
+      reveal_op->op_ppaddr=&pp_reveal_args;
+      dummy_op->op_next=reveal_op;
+
+      if (assign) {
+         OP* sub_op=newOP(OP_CUSTOM, 0);
+         PL_op->op_private &= ~OPpLVAL_INTRO;
+         sub_op->op_ppaddr=PL_op->op_ppaddr;
+         sub_op->op_flags=PL_op->op_flags & ~OPf_KIDS;
+         sub_op->op_private=PL_op->op_private;
+         reveal_op->op_next=sub_op;
+         if (assign==OP_SASSIGN) {
+            // Now we've hidden the arguments for put/put_multi from the current OP_ENTERSUB
+            // which would destroy all but the last one because of scalar context.
+            // They must be revealed before put/put_multi is called.
+            sub_op->op_next=PL_op->op_next->op_next;  // skip OP_SASSIGN
+            last_new_op=sub_op;
+         } else {
+            // Value returned from put/put_lvalue must be moved from the left to the right hand side of the list assignment
+            // TODO: try to recognize list assignments in void context and skip this
+            OP* move_op=newOP(OP_CUSTOM, 0);
+            move_op->op_ppaddr=&pp_move_lhs_to_rhs;
+            sub_op->op_next=move_op;
+            move_op->op_next=PL_op->op_next;
+            OpMORESIB_set(sub_op, move_op);
+            last_new_op=move_op;
+         }
+         OpMORESIB_set(reveal_op, sub_op);
+      } else {
+         reveal_op->op_next=PL_op;
+      }
+
+      // include new OPs into the tree at places having further siblings (would have to deal with PERL_OP_PARENT otherwise...)
+      if (dummy_op==o) {
+         OpMORESIB_set(last_new_op, cUNOPo->op_first);
+         cUNOPo->op_first=reveal_op;
+      } else {
+         OpMORESIB_set(last_new_op, o);
+         OpMORESIB_set(dummy_op, reveal_op);
+         cUNOP->op_first=dummy_op;
+      }
+      o=dummy_op;
+   }
+   PL_op= hide_args ? o : o->op_next;
+}
+
+
+void
+_get_descend_path()
+PPCODE:
+{
+   for (PERL_CONTEXT *cx_bottom=cxstack, *cx=cx_bottom+cxstack_ix; cx >= cx_bottom; --cx) {
+      if (CxTYPE(cx)==CXt_SUB && !skip_debug_frame(aTHX_ cx)) {
+         OP* o=cx->blk_sub.retop;
+         if (!o) break;         // called from call_sv due to some magic
+
+         if (!(o->op_type==OP_LEAVESUB ||      // not the last operation in a sub (forwarding from get_multi to get)
+               o->op_type==OP_LEAVESUBLV ||
+               (o->op_type==OP_LEAVE &&        // in debug mode spurious intermediate operations may appear
+                (o->op_next->op_type==OP_LEAVESUB ||
+                 o->op_next->op_type==OP_LEAVESUBLV)))) {
+#ifdef USE_ITHREADS
+            SV** saved_curpad=nullptr;
+#endif
+            OP* nop=o;
+            while (nop->op_type == OP_METHOD_NAMED && nop->op_next->op_type == OP_ENTERSUB) {
+#ifdef USE_ITHREADS
+               if (!saved_curpad) {
+                  saved_curpad=PL_curpad;
+                  PL_curpad=get_cx_curpad(aTHX_ cx, cx_bottom);
+               }
+#endif
+               SV* prop_name=cSVOPx_sv(nop);
+               XPUSHs(prop_name);
+               nop=nop->op_next->op_next;
+            }
+#ifdef USE_ITHREADS
+            if (saved_curpad) PL_curpad=saved_curpad;
+#endif
+            break;
+         }
+      }
+   }
+}
+
+void
+_expect_array_access()
+PPCODE:
+{
+   SV* result=&PL_sv_no;
+   for (PERL_CONTEXT *cx_bottom=cxstack, *cx_top=cx_bottom+cxstack_ix, *cx=cx_top; cx >= cx_bottom; --cx) {
+      if (CxTYPE(cx)==CXt_SUB) {
+         if (!skip_debug_frame(aTHX_ cx)) {
+            OP* o=cx->blk_sub.retop;
+            for (; o && o->op_type == OP_LEAVE; o=o->op_next) ;
+            if (!o) {
+               if (cx->blk_gimme==G_ARRAY) result=&PL_sv_yes;
+               break;
+            }
+            if (o->op_type != OP_LEAVESUB && o->op_type != OP_LEAVESUBLV) {
+               if (o->op_type == OP_RV2AV) result=&PL_sv_yes;
+#if PerlVersion >= 5220
+               if (o->op_type == OP_MULTIDEREF) result=&PL_sv_yes;
+#endif
+               break;
+            }
+         }
+      }
+   }
+   XPUSHs(result);
+}
+
+MODULE = Polymake::Core::Object                 PACKAGE = Polymake::Core::ObjectType
+
+void
+create_prop_accessor(descr, pkg)
+   SV* descr;
+   SV* pkg;
+PPCODE:
+{
+   SV* sub=newSV_type(SVt_PVCV);
+   HV* stash=Nullhv;
+   CvXSUB(sub)=&XS_Polymake__Core__Object__prop_accessor;
+   CvFLAGS(sub)=CvFLAGS(cv) | CVf_ANON | CVf_LVALUE | CVf_METHOD | CVf_NODEBUG;
+   if (SvPOK(pkg))
+      stash=gv_stashpv(SvPVX(pkg), TRUE);
+   else if (SvROK(pkg))
+      stash=(HV*)SvRV(pkg);
+   CvSTASH_set((CV*)sub, stash);
+   CvXSUBANY(sub).any_ptr=SvREFCNT_inc_NN(SvRV(descr));
+   PUSHs(sv_2mortal(newRV_noinc(sub)));
+}
+
+BOOT:
+if (PL_DBgv) {
+   CvNODEBUG_on(get_cv("Polymake::Core::Object::_prop_accessor", FALSE));
+   CvNODEBUG_on(get_cv("Polymake::Core::Object::_get_descend_path", FALSE));
+   CvNODEBUG_on(get_cv("Polymake::Core::Object::_expect_array_access", FALSE));
+}
+
+=pod
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:
+=cut

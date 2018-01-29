@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -72,6 +72,34 @@ perl::Object join_polytopes(perl::Object p1, perl::Object p2, perl::OptionSet op
       p_out.take("VERTICES") << V_out;
    }
 
+   if(options["group"]){
+      Array<Array<int>> gens1 = p1.give("GROUP.VERTICES_ACTION.GENERATORS");
+      Array<Array<int>> gens2 = p2.give("GROUP.VERTICES_ACTION.GENERATORS");
+      int g1 = gens1.size();
+      Array<Array<int>> gens_out(g1 + gens2.size());
+
+      for(int i = 0; i < g1; ++i){
+          gens_out[i] = gens1[i].append(range(n1,n_vertices_out-1));
+      }
+      for(int i = g1; i < gens_out.size(); ++i){
+          gens_out[i] = Array<int>(range(0,n1-1)).append(gens2[i-g1]);
+          for(int j = n1; j<n_vertices_out; ++j)
+            gens_out[i][j]+=n1;
+
+      }
+
+      perl::Object a("group::PermutationAction");
+      a.take("GENERATORS") << gens_out;
+
+      perl::Object g("group::Group");
+      g.set_description() << "canonical group induced by the group of the base polytopes" << endl;
+      g.set_name("canonicalGroup");
+      p_out.take("GROUP") << g;
+      p_out.take("GROUP.VERTICES_ACTION") << a;
+}
+
+
+
    p_out.take("N_VERTICES") << n_vertices_out;
    return p_out;
 }
@@ -139,7 +167,6 @@ perl::Object free_sum_impl(perl::Object p1, perl::Object p2, const std::string o
          (ones_vector<Scalar>(v2.rows()) | zero_matrix<Scalar>(v2.rows(), v1.cols()-1) | v2.minor(All, ~scalar2set(0)));
       p_out.take(rays_section) << V_out;
    }
-   
    const std::string n_section = object_prefix == "CONE" ? "N_VERTICES" : "N_VECTORS";
    p_out.take(n_section) << n_vertices_out;
    return p_out;
@@ -150,6 +177,8 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @param Polytope P1"
                           "# @param Polytope P2"
                           "# @option Bool no_coordinates produces a pure combinatorial description."
+                          "# @option Bool group Compute the canonical group induced by the groups on //P1// and //P2//"
+                          "#   Throws an exception if the GROUPs of the input polytopes are not provided. default 0"
                           "# @return Polytope"
                           "# @example To join two squares, use this:"
                           "# > $p = join_polytopes(cube(2),cube(2));"
@@ -162,7 +191,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# | 1 0 0 1 1 -1"
                           "# | 1 0 0 1 -1 1"
                           "# | 1 0 0 1 1 1",
-                          "join_polytopes<Scalar>(Polytope<Scalar> Polytope<Scalar>, {no_coordinates => 0})");
+                          "join_polytopes<Scalar>(Polytope<Scalar> Polytope<Scalar>, {no_coordinates => 0, group => 0})");
 
 FunctionTemplate4perl("free_sum_impl<Scalar=Rational>($$$$$ {force_centered=>1, no_coordinates=> 0})");
 

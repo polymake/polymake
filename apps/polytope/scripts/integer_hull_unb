@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -116,7 +116,7 @@ print "\n";
 printf("Creating new polytope based on lattice points.\n");
 
 # put lattice points together with rays
-my $newpoints = (new Matrix<Rational>($lp)) / $rays;
+my $newpoints = new Matrix<Rational>($lp) / $rays;
 
 # create new polytope that has the lattice points as points
 my $q=new Polytope(POINTS=>$newpoints, COORDINATE_LABELS=>$pin->COORDINATE_LABELS);

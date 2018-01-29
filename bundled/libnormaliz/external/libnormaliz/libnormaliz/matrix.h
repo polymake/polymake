@@ -35,6 +35,7 @@
 #include <libnormaliz/libnormaliz.h>
 #include <libnormaliz/integer.h>
 #include <libnormaliz/convert.h>
+// #include <libnormaliz/sublattice_representation.h>
 
 //---------------------------------------------------------------------------
 
@@ -43,10 +44,12 @@ using std::list;
 using std::vector;
 using std::string;
 
+template<typename Integer> class Sublattice_Representation;
+
 template<typename Integer> class Matrix {
 
     template<typename> friend class Matrix;
-    template<typename> friend class Lineare_Transformation;
+    // template<typename> friend class Lineare_Transformation;
     template<typename> friend class Sublattice_Representation;
     
     // public:
@@ -58,13 +61,6 @@ template<typename Integer> class Matrix {
 //---------------------------------------------------------------------------
 //              Private routines, used in the public routines
 //---------------------------------------------------------------------------
-
-//---------------------------------------------------------------------------
-//                      Rows and columns exchange
-//---------------------------------------------------------------------------
-
-    void exchange_rows(const size_t& row1, const size_t& row2);      //row1 is exchanged with row2
-    void exchange_columns(const size_t& col1, const size_t& col2); // col1 is exchanged with col2
 
 //---------------------------------------------------------------------------
 //              Row and column reduction
@@ -123,6 +119,7 @@ template<typename Integer> class Matrix {
     
     bool SmithNormalForm_inner(size_t& rk, Matrix<Integer>& Right);
     
+    vector<Integer> optimal_subdivision_point_inner() const;  
 
 //---------------------------------------------------------------------------
 //                      Pivots for rows/columns operations
@@ -132,11 +129,11 @@ template<typename Integer> class Matrix {
     //0<abs(x)<=abs(y) for all y!=0 in the right-lower submatrix of this
     //described by an int corner
 
-    long pivot_column(size_t col);  //Find the position of an element x with
+    long pivot_in_column(size_t col);  //Find the position of an element x with
     //0<abs(x)<=abs(y) for all y!=0 in the lower half of the column of this
     //described by an int col
     
-    long pivot_column(size_t row,size_t col); //in column col starting from row
+    long pivot_in_column(size_t row,size_t col); //in column col starting from row
     
 //---------------------------------------------------------------------------
 //                     Helpers for linear systems
@@ -152,7 +149,14 @@ public:
 
 size_t row_echelon_inner_bareiss(bool& success, Integer& det);
 
-    vector<vector<Integer>* > submatrix_pointers(const vector<key_t>& key);     
+    vector<vector<Integer>* > submatrix_pointers(const vector<key_t>& key);
+    
+//---------------------------------------------------------------------------
+//                      Rows and columns exchange
+//---------------------------------------------------------------------------
+
+    void exchange_rows(const size_t& row1, const size_t& row2);      //row1 is exchanged with row2
+    void exchange_columns(const size_t& col1, const size_t& col2); // col1 is exchanged with col2
   
 //---------------------------------------------------------------------------
 
@@ -166,6 +170,7 @@ size_t row_echelon_inner_bareiss(bool& success, Integer& det);
     Matrix(size_t row, size_t col, Integer value); //constructor, all entries set to value
     Matrix(const vector< vector<Integer> >& elem); //constuctor, elem=elem
     Matrix(const list< vector<Integer> >& elems);
+    Matrix(const vector<Integer>& row);
 
 //---------------------------------------------------------------------------
 //                             Data access
@@ -174,7 +179,7 @@ size_t row_echelon_inner_bareiss(bool& success, Integer& det);
     void write_column(size_t col, const vector<Integer>& data); //write a column
     void print(const string& name, const string& suffix) const;         //  writes matrix into name.suffix
     void print_append(const string& name,const string& suffix) const;  // the same, but appends matrix
-    void print(std::ostream& out) const;          // writes matrix to the stream
+    void print(std::ostream& out, bool with_format=false) const;          // writes matrix to the stream
     void pretty_print(std::ostream& out, bool with_row_nr=false) const;  // writes matrix in a nice format to the stream                   // read a row
     size_t nr_of_rows() const;                       // returns nr
     size_t nr_of_columns() const;                   // returns nc
@@ -189,6 +194,9 @@ size_t row_echelon_inner_bareiss(bool& success, Integer& det);
     Matrix submatrix(const vector<key_t>& rows) const;
     Matrix submatrix(const vector<int>& rows) const;
     Matrix submatrix(const vector<bool>& rows) const;
+    
+    Matrix select_columns(const vector<bool>& cols) const;
+    Matrix selected_columns_first(const vector<bool>& cols) const;
 
     void swap (Matrix<Integer>& x);
 
@@ -203,9 +211,10 @@ size_t row_echelon_inner_bareiss(bool& success, Integer& det);
     Matrix& remove_zero_rows(); // remove zero rows, modifies this
 
     // resizes the matrix to the given number of rows/columns
-    // if the size shrinks it will keep all its allocated memory
+    // if only the number of rows shrinks it will keep all its allocated memory
+    // but with delete_rows=true they will really be deleted 
     // useful when the size varies
-    void resize(size_t nr_rows);
+    void resize(size_t nr_rows, bool delete_rows=false);
     void resize(size_t nr_rows, size_t nr_cols);
     void resize_columns(size_t nr_cols);
     void Shrink_nr_rows(size_t new_nr_rows);
@@ -222,12 +231,16 @@ size_t row_echelon_inner_bareiss(bool& success, Integer& det);
     void append(const vector<Integer>& v); // append the row v to this
     void append_column(const vector<Integer>& v); // append the column v to this
     void remove_row(const vector<Integer>& row); // removes all appearances of this row, not very efficient!
-    void remove_duplicate_and_zero_rows();
+    void remove_row(const size_t index);
+    vector<size_t> remove_duplicate_and_zero_rows();
+    void remove_duplicate(const Matrix& M);
+
 
     inline const Integer& get_elem(size_t row, size_t col) const {
         return elem[row][col];
     }
     inline const vector< vector<Integer> >& get_elements() const {
+        assert(nr==elem.size());
         return elem;
     }
     inline vector<Integer> const& operator[] (size_t row) const {
@@ -242,6 +255,11 @@ size_t row_echelon_inner_bareiss(bool& success, Integer& det);
     void set_nr(size_t rows){
         nc=rows;
     }
+    
+    //  convert the remaining matrix to nmz_float
+    Matrix<nmz_float> nmz_float_without_first_column() const;
+    
+    
 
 //---------------------------------------------------------------------------
 //                  Basic matrices operations
@@ -250,10 +268,8 @@ size_t row_echelon_inner_bareiss(bool& success, Integer& det);
     Matrix add(const Matrix& A) const;                       // returns this+A
     Matrix multiplication(const Matrix& A) const;          // returns this*A
     Matrix multiplication(const Matrix& A, long m) const;// returns this*A (mod m)
-    Matrix<Integer> multiplication_cut(const Matrix<Integer>& A, const size_t& c) const; // returns 
-    // this*(first c columns of A)
     bool equal(const Matrix& A) const;             // returns this==A
-    bool equal(const Matrix& A, long m) const;     // returns this==A (mod m)
+    // bool equal(const Matrix& A, long m) const;     // returns this==A (mod m)
     Matrix transpose() const;                     // returns the transpose of this
     
     bool is_diagonal() const;
@@ -404,7 +420,9 @@ size_t row_echelon_inner_bareiss(bool& success, Integer& det);
 //for simplicial subcones
 
     // computes support hyperplanes and volume
-    void simplex_data(const vector<key_t>& key, Matrix<Integer>& Supp, Integer& vol, bool compute_vol) const; 
+    void simplex_data(const vector<key_t>& key, Matrix<Integer>& Supp, Integer& vol, bool compute_vol) const;
+    // finds subdivision points
+    vector<Integer> optimal_subdivision_point() const;
     
 // Sorting of rows
     
@@ -416,7 +434,7 @@ size_t row_echelon_inner_bareiss(bool& success, Integer& det);
     
     Matrix<Integer> solve_congruences(bool& zero_modulus) const;
     
-// saturate sublattice
+// saturate sublattice generated by rows
     
     void saturate();
 
@@ -431,6 +449,25 @@ size_t row_echelon_inner_bareiss(bool& success, Integer& det);
 // find an inner point in the cone spanned by the rows of the matrix
     
     vector<Integer> find_inner_point();
+
+//  LLL
+    
+    // returns Lred =LLL_reduced(L) (sublattice generated by the rows!)
+    // Lred=T*this, Tinv=inverse(T)
+    Matrix<Integer> LLL_red(Matrix<Integer>& T, Matrix<Integer>& Tinv) const;
+    
+    // without transformation matrices
+    Matrix<Integer> LLL() const;
+    
+    // applies LLL_red to the transpose
+    // this must be a square matrix, Lred=this*T, Tinv=inverse(T)
+    Matrix<Integer> LLL_red_transpose(Matrix<Integer>& T, Matrix<Integer>& Tinv) const;
+    
+    // without transformation matrices
+    Matrix<Integer> LLL_transpose() const;
+    
+    void GramSchmidt(Matrix<double>& B, Matrix<double>& M, int from, int to);
+
 };
 //class end *****************************************************************
 
@@ -447,10 +484,10 @@ public:
     vector<Integer>* v;
 };
 
-template<typename Integer>
-vector<vector<Integer> > to_matrix(const vector<Integer>& v){
+template<typename T>
+vector<vector<T> > to_matrix(const vector<T>& v){
     
-    vector<vector<Integer> > mat(1);
+    vector<vector<T> > mat(1);
     mat[0]=v;
     return mat;    
 }
@@ -476,6 +513,25 @@ void mpz_submatrix(Matrix<mpz_class>& sub, const Matrix<Integer>& mother, const 
 
 template<typename Integer>
 void mpz_submatrix_trans(Matrix<mpz_class>& sub, const Matrix<Integer>& mother, const vector<key_t>& selection);
+
+template<typename ToType, typename FromType>
+void convert(Matrix<ToType>& to_mat, const Matrix<FromType>& from_mat){
+    size_t nrows = from_mat.nr_of_rows();
+    size_t ncols = from_mat.nr_of_columns();
+    to_mat.resize(nrows, ncols);
+    for(size_t i=0; i<nrows; ++i)
+        for(size_t j=0; j<ncols; ++j)
+            convert(to_mat[i][j], from_mat[i][j]);
+}
+
+//---------------------------------------------------------------------------
+//                  Matrix relateed functions
+//---------------------------------------------------------------------------
+// determines the maximal subsets in a vector of subsets given by their indicator vectors
+// result returned in is_max_subset -- must be initialized outside
+// only set to false in this routine
+// if a set occurs more than once, only the last instance is recognized as maximal
+void maximal_subsets(const vector<vector<bool> >& ind, vector<bool>& is_max_subset);
 
 } // namespace
 

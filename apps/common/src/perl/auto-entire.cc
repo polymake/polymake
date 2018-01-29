@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -53,5 +53,8 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(entire_R_X32, perl::Canned< const pm::Rows<pm::AdjacencyMatrix<pm::graph::Graph<pm::graph::Directed>, false> > >);
    FunctionInstance4perl(entire_R_X32, perl::Canned< const pm::Rows<pm::AdjacencyMatrix<pm::graph::Graph<pm::graph::DirectedMulti>, true> > >);
    FunctionInstance4perl(entire_R_X32, perl::Canned< const pm::Rows<pm::AdjacencyMatrix<pm::graph::Graph<pm::graph::UndirectedMulti>, true> > >);
+   FunctionInstance4perl(entire_R_X32, perl::Canned< const Array< Set< int > > >);
+   FunctionInstance4perl(entire_R_X32, perl::Canned< const pm::graph::incident_edge_list<pm::AVL::tree<pm::sparse2d::traits<pm::graph::traits_base<pm::graph::Directed, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > > >);
+   FunctionInstance4perl(entire_R_X32, perl::Canned< const EdgeMap< Directed, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

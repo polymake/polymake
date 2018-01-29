@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -35,12 +35,20 @@ Scalar norm(const GenericVector<VectorTop, TropicalNumber<Addition,Scalar> >& ve
 }
   
 UserFunctionTemplate4perl("# @category Tropical operations"
-                          "# The __tropical norm__ of a vector //v// in the tropical torus"
-                          "# is the difference between the maximal and minimal coordinate "
+                          "# The __tropical norm__ of a vector //v// in tropical projective space"
+                          "# is the difference between the maximal and minimal coordinate"
                           "# in any coordinate representation of the vector."
-								  "# @param Vector<TropicalNumber<Addition,Scalar> > v"
-                          "# @return Scalar" ,
-                          "norm<Addition,Scalar>(Vector<TropicalNumber<Addition,Scalar> >)");
+                          "# @param Vector<TropicalNumber<Addition,Scalar>> v"
+                          "# @return Scalar"
+                          "# @example"
+                          "# > $v = new Vector<TropicalNumber<Min>>([1,-2,3]);"
+                          "# > print norm($v);"
+                          "# | 5"
+                          "# @example"
+                          "# > $w = new Vector<TropicalNumber<Min>>([0,'inf',3]);"
+                          "# > print norm($w);"
+                          "# | inf",
+                          "norm<Addition,Scalar>(Vector<TropicalNumber<Addition,Scalar>>)");
 } }
 
 // Local Variables:

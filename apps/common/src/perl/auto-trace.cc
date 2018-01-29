@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -35,5 +35,6 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(trace_X, perl::Canned< const Wary< SparseMatrix< Rational, NonSymmetric > > >);
    FunctionInstance4perl(trace_X, perl::Canned< const Wary< Matrix< Rational > > >);
    FunctionInstance4perl(trace_X, perl::Canned< const Wary< SparseMatrix< QuadraticExtension< Rational >, NonSymmetric > > >);
+   FunctionInstance4perl(trace_X, perl::Canned< const Wary< Matrix< QuadraticExtension< Rational > > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

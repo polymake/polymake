@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,6 +15,7 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 
 package Polymake::Core::UserSettings;
 
@@ -37,10 +38,10 @@ sub init {
             ### TODO: select MacOS-specific default location if $^O eq "darwin" ?
             $PrivateDir=$ENV{POLYMAKE_USER_DIR} || "$ENV{HOME}/.polymake";
             next;
-         } 
-		 if ( $_ eq '@interactive' ) {
-			 require Polymake::Core::InteractiveHelp;
-			 next;
+         }
+         if ($_ eq '@interactive') {
+            require Polymake::Core::InteractiveHelp;
+            next;
          }
          my $user= s/^user=//;
          my $location;

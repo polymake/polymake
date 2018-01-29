@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -26,6 +26,12 @@
 
 namespace polymake { namespace topaz { namespace {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
+   template <typename T0, typename T1>
+   FunctionInterface4perl( new_X, T0,T1 ) {
+      perl::Value arg0(stack[1]);
+      WrapperReturnNew(T0, (arg0.get<T1>()) );
+   };
+
    template <typename T0>
    FunctionInterface4perl( new, T0 ) {
       WrapperReturnNew(T0, () );
@@ -41,5 +47,7 @@ namespace polymake { namespace topaz { namespace {
    Class4perl("Polymake::common::Array__Pair_A_HomologyGroup__Integer_I_SparseMatrix_A_Integer_I_NonSymmetric_Z_Z", Array< std::pair< HomologyGroup< Integer >, SparseMatrix< Integer, NonSymmetric > > >);
    FunctionInstance4perl(new, Array< std::pair< HomologyGroup< Integer >, SparseMatrix< Integer, NonSymmetric > > >);
    OperatorInstance4perl(Binary__eq, perl::Canned< const Array< std::pair< HomologyGroup< Integer >, SparseMatrix< Integer, NonSymmetric > > > >, perl::Canned< const Array< std::pair< HomologyGroup< Integer >, SparseMatrix< Integer, NonSymmetric > > > >);
+   FunctionInstance4perl(new_X, Array< Cell >, int);
+   FunctionInstance4perl(new_X, Array< HomologyGroup< Integer > >, perl::Canned< const Array< HomologyGroup< Integer > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

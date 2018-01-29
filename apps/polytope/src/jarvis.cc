@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -29,6 +29,15 @@ ListMatrix<Vector<Scalar> > jarvis(const Matrix<Scalar> &Points)
       throw std::runtime_error("jarvis: polytope is not 2-dimensional");
 
    const int n=Points.rows();
+   // the jarvis code needs at least 3 points to work properly:
+   //   avoid invalid iterator derefencing
+   //   doesnt detect duplicate points for n=2
+   if (n < 3) {
+      if (n == 2 && Points[0] == Points[1])
+         return Points.minor(scalar2set(0),All);
+      return Points;
+   }
+
    Set<int> points_left=range(0,n-1);
    ListMatrix< Vector<Scalar > > CH(0,3);
 

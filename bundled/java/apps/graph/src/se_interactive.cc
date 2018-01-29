@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -22,11 +22,13 @@
 
 #include <pthread.h>
 #include <unistd.h>
+#include <signal.h>
 
 namespace polymake { namespace graph {
 
 class SpringEmbedderWindow {
 protected:  
+   pthread_t thr;
    socketstream js;
    SpringEmbedder SE;
    common::SharedMemoryMatrix<double> X;
@@ -40,6 +42,7 @@ protected:
    static const std::string p_viscosity, p_inertion, p_repulsion, p_orientation, p_delay, p_step, p_continue, p_restart;
 
    void run();
+   static void* run_it(void *me);
 public:
    SpringEmbedderWindow(const Graph<>& G, perl::OptionSet options)
       : SE(G,options), X(G.nodes(),3), random_points(3), iter_count(0), needs_restart(false)
@@ -49,7 +52,8 @@ public:
 
    int port() const { return js.port(); }
 
-   static void* run_it(void *me);
+   void start_thread();
+   void shutdown();
 
    const std::string& get_name() const { return geom_name; }
    const common::SimpleGeometryParser::param_map& get_params() const { return params; }
@@ -67,14 +71,33 @@ public:
    int get_shared_matrix_id() const { return X.get_shmid(); }
 };
 
-} }
-namespace pm {
-
-template <>
-struct is_mutable<polymake::graph::SpringEmbedderWindow> : std::false_type {};
-
+void SpringEmbedderWindow::start_thread()
+{
+   if (pthread_create(&thr, 0, &run_it, this))
+      throw std::runtime_error("error creating spring embedder thread");
 }
-namespace polymake { namespace graph {
+
+void SpringEmbedderWindow::shutdown()
+{
+   pthread_join(thr, nullptr);
+   js.discard_out();
+}
+
+void* SpringEmbedderWindow::run_it(void *param)
+{
+   sigset_t block;
+   sigemptyset(&block);
+   sigaddset(&block, SIGPIPE);
+   pthread_sigmask(SIG_BLOCK, &block, nullptr);
+
+   try {
+      SpringEmbedderWindow *me=reinterpret_cast<SpringEmbedderWindow*>(param);
+      me->run();
+   } catch (const std::exception& ex) {
+      cerr << "interactive spring embedder terminated with error: " << ex.what() << endl;
+   }
+   return nullptr;
+}
 
 const std::string SpringEmbedderWindow::p_viscosity("viscosity"), SpringEmbedderWindow::p_inertion("inertion"),
                                    SpringEmbedderWindow::p_repulsion("repulsion"), SpringEmbedderWindow::p_orientation("orientation"),
@@ -86,7 +109,7 @@ void SpringEmbedderWindow::run()
    common::SimpleGeometryParser parser;
 
    // establish connection to Java GUI
-   if (!getline(js,geom_name)) return;
+   if (!getline(js, geom_name)) return;
    if (geom_name.substr(0,5) == "read ")
       geom_name=geom_name.substr(5);
 
@@ -115,18 +138,6 @@ void SpringEmbedderWindow::run()
    parser.print_long(js,*this);
 
    parser.loop(js,*this);
-}
-
-void* SpringEmbedderWindow::run_it(void *param)
-{
-   SpringEmbedderWindow *me=reinterpret_cast<SpringEmbedderWindow*>(param);
-   try {
-      me->run();
-   } catch (const std::exception& ex) {
-      cerr << "interactive_spring_embedder terminated with error: " << ex.what() << endl;
-   }
-   delete me;
-   return 0;
 }
 
 void SpringEmbedderWindow::set_param(const std::string& key, double value)
@@ -163,14 +174,11 @@ void SpringEmbedderWindow::restart(common::SimpleGeometryParser& parser)
    }
 }
 
-SpringEmbedderWindow*
+std::unique_ptr<SpringEmbedderWindow>
 interactive_spring_embedder(const Graph<>& G, perl::OptionSet options)
 {
-   SpringEmbedderWindow *sw=new SpringEmbedderWindow(G,options);
-   pthread_t se_thread;
-   if (pthread_create(&se_thread, 0, &SpringEmbedderWindow::run_it, sw))
-      throw std::runtime_error("error creating spring embedder thread");
-   pthread_detach(se_thread);
+   std::unique_ptr<SpringEmbedderWindow> sw=std::make_unique<SpringEmbedderWindow>(G, options);
+   sw->start_thread();
    return sw;
 }
 
@@ -182,8 +190,9 @@ Function4perl(&interactive_spring_embedder,
               "     'z-ordering' => undef, 'z-factor' => undef, 'edge-weights' => undef,"
               "      seed => undef, 'max-iterations' => 10000 }) ");
 
-OpaqueClass4perl("SpringEmbedderWindow", SpringEmbedderWindow,
+OpaqueClass4perl("SpringEmbedderWindow", std::unique_ptr<SpringEmbedderWindow>,
                  OpaqueMethod4perl("port()")
+                 OpaqueMethod4perl("shutdown() : void")
                  );
 } }
 

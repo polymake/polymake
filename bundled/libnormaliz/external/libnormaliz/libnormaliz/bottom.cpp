@@ -55,13 +55,14 @@ using namespace std;
 long ScipBound = 1000000;
 
 template<typename Integer>
-vector<Integer> best_point(const list<vector<Integer> >& bottom_candidates, const Matrix<Integer>& gens, const Matrix<Integer>& SuppHyp, const vector<Integer>& grading);
+vector<Integer> opt_sol(SCIP* scip, const Matrix<Integer>& gens, const Matrix<Integer>& SuppHyp,
+                        const vector<Integer>& grading);
 
 template<typename Integer>
-vector<Integer> opt_sol(SCIP* scip, const Matrix<Integer>& gens, const Matrix<Integer>& SuppHyp, const vector<Integer>& grading);
+bool bottom_points_inner(SCIP* scip, Matrix<Integer>& gens, list< vector<Integer> >& local_new_points,
+                 vector< Matrix<Integer> >& local_q_gens, size_t& stellar_det_sum);
 
-template<typename Integer>
-void bottom_points_inner(const list<vector<Integer> >& bottom_candidates, SCIP* scip, Matrix<Integer>& gens, list< vector<Integer> >& new_points, vector< Matrix<Integer> >& q_gens,vector< Matrix<Integer> >& big_simplices,long app_level);
+// kept here for simplicity:
 
 double convert_to_double(mpz_class a) {
     return a.get_d();
@@ -75,96 +76,56 @@ double convert_to_double(long long a) {
     return a;
 }
 
-// TODO do not use global variables
-long long stellar_det_sum;
-
 template<typename Integer>
-void bottom_points(list< vector<Integer> >& new_points, Matrix<Integer> gens,const vector<Integer>& grading_, long app_level, long recursion_depth) {
-	
-	Integer volume;
-	int dim = gens[0].size();
+void bottom_points(list< vector<Integer> >& new_points, const Matrix<Integer>& given_gens,Integer VolumeBound) {
+    
+    /* gens.pretty_print(cout);
+    cout << "=======================" << endl;
+    
+    gens.transpose().pretty_print(cout);
+    cout << "=======================" << endl;*/
+    
+    Matrix<Integer> gens, Trans, Trans_inv;
+    // given_gens.LLL_transform_transpose(gens,Trans,Trans_inv);  // now in optimal_subdivision_point()
+    gens=given_gens;
+    
+    Integer volume;
+    // int dim = gens[0].size();
     Matrix<Integer> Support_Hyperplanes = gens.invert(volume);
 
-    vector<Integer> grading = grading_;
+    vector<Integer> grading; // = grading_;
     if (grading.empty()) grading = gens.find_linear_form();
-    /*if (grading.empty()) {
-        grading = Support_Hyperplanes[0];
-        for (int i=1; i<dim; ++i) {
-            v_add_result(grading, dim, grading, Support_Hyperplanes[i]);
-        }
-        v_make_prime(grading);
-    }*/
-
+    // cout << grading;
 
     list<vector<Integer> > bottom_candidates;
     bottom_candidates.splice(bottom_candidates.begin(), new_points);
     //Matrix<Integer>(bottom_candidates).pretty_print(cout);
 #ifdef NMZ_SCIP
-	if(verbose){
-		if (bottom_candidates.empty() && app_level==1){
-			verboseOutput() << "Computing points from bottom using SCIP." << endl;
-		} else{
-			verboseOutput() << "Computing points from bottom using approximation with approximation level " << app_level << endl;
-		}
-	}
-#else
-	if(verbose){
-		verboseOutput() << "Computing points from bottom using approximation with approximation level " << app_level << endl;
-	}
-#endif 
-    //cout << "Volume bound for stopping the algorithm: "<< ScipBound << endl;
-    // find a good approximation level
-	Integer grading_product=1;
-	for (int i =0; i< dim; i++) grading_product *= v_scalar_product(grading,gens[i]);
-	//cout << "The volume is " << volume << endl;
-	//cout << "The product of the gradings is " << grading_product << endl;
-	long max_app_lvl;
-	double stuff_under_root = convert_to_double(grading_product)*100000/convert_to_double(volume); // current volume goal is 10^5
-	//cout << "The stuff under the root is " << stuff_under_root << endl;
-	//max_app_lvl = lround(pow(stuff_under_root,1.0/dim));
-    max_app_lvl = floor(pow(stuff_under_root,1.0/dim)+0.5);
-	//cout << "The maximal approximation level is " << max_app_lvl << endl;
-	if (app_level>1 && verbose){
-		verboseOutput() << "simplex volume " << volume << endl;
-	}
-	
-#ifndef NMZ_SCIP
-	if(max_app_lvl==1 && bottom_candidates.size()==0){
-		if(verbose){
-			verboseOutput() << "We stop approximation, since there are no bottom candidates and maximal approxmation level is 1." << endl;
-		}
-		return;
-	}
-#endif
-
-    if (app_level>max_app_lvl && bottom_candidates.size()==0){
-		if(verbose){
-			verboseOutput() << "We stop approximation, since there are no bottom candidates and the current approximation level is higher than the maximal one." << endl;
-		}
-        return;
+    if(verbose && nmz_scip){
+        verboseOutput() << "Computing bottom points using SCIP/projection" << endl;
     }
-#ifndef NMZ_SCIP
-    if(verbose){
-		verboseOutput() << "There are " << bottom_candidates.size() << " bottom candidates." << endl;
-	}
 #else
-	if (verbose && !bottom_candidates.empty()){
-		verboseOutput() << "There are " << bottom_candidates.size() << " bottom candidates." << endl;
-	}
-#endif
+    if(verbose){
+        verboseOutput() << "Computing bbottom points using projection " << endl;
+    }
+#endif 
 
-	stellar_det_sum = 0;
-    vector< Matrix<Integer> > q_gens;
+    if (verbose){
+            verboseOutput() << "simplex volume " << volume << endl;
+    }
+
+//---------------------------- begin stellar subdivision -------------------
+
+    size_t stellar_det_sum = 0;
+    vector< Matrix<Integer> > q_gens; // for successive stellar subdivision
     q_gens.push_back(gens);
-    int level = 0;
+    int level = 0; // level of subdivision
 
 #ifndef NCATCH
     std::exception_ptr tmp_exception;
 #endif
-
-	// list for the simplices that could not be decomposed
-    vector< Matrix<Integer> > big_simplices;
-    #pragma omp parallel reduction(+:stellar_det_sum)
+    bool skip_remaining = false;
+    #pragma omp parallel // reduction(+:stellar_det_sum)
     {
 #ifndef NCATCH
     try {
@@ -176,48 +137,56 @@ void bottom_points(list< vector<Integer> >& new_points, Matrix<Integer> gens,con
 
     SCIPcreate(& scip);
     SCIPincludeDefaultPlugins(scip);
-//    SCIPsetMessagehdlr(scip,NULL);  // deactivate scip output
+    //    SCIPsetMessagehdlr(scip,NULL);  // deactivate scip output
+
+    SCIPsetIntParam(scip, "display/verblevel", 0); 
     
-	SCIPsetIntParam(scip, "display/verblevel", 0); 
-	
-	// modify timing for better parallelization
-//	SCIPsetBoolParam(scip, "timing/enabled", FALSE);
-	SCIPsetBoolParam(scip, "timing/statistictiming", FALSE);
-	SCIPsetBoolParam(scip, "timing/rareclockcheck", TRUE);
+    // modify timing for better parallelization
+    //  SCIPsetBoolParam(scip, "timing/enabled", FALSE);
+    SCIPsetBoolParam(scip, "timing/statistictiming", FALSE);
+    SCIPsetBoolParam(scip, "timing/rareclockcheck", TRUE);
 
 
-	SCIPsetIntParam(scip, "heuristics/shiftandpropagate/freq", -1); 
-	SCIPsetIntParam(scip, "branching/pscost/priority", 1000000); 
-//	SCIPsetIntParam(scip, "nodeselection/uct/stdpriority", 1000000); 
+    SCIPsetIntParam(scip, "heuristics/shiftandpropagate/freq", -1); 
+    SCIPsetIntParam(scip, "branching/pscost/priority", 1000000); 
+    // SCIPsetIntParam(scip, "nodeselection/uct/stdpriority", 1000000); 
 #endif // NMZ_SCIP
 
     vector< Matrix<Integer> > local_q_gens;
     list< vector<Integer> > local_new_points;
+    
 
     while (!q_gens.empty()) {
-		if(verbose){
-			#pragma omp single
-			verboseOutput() << q_gens.size() << " simplices on level " << level++ << endl;
-		}
+        
+        if(skip_remaining) break;
+                if(verbose){
+                        #pragma omp single
+                        verboseOutput() << q_gens.size() << " simplices on level " << level++ << endl;
+                }
 
         #pragma omp for schedule(static)
         for (size_t i = 0; i < q_gens.size(); ++i) {
+        
+        if(skip_remaining) continue;
+        
 #ifndef NCATCH
             try {
 #endif
-            bottom_points_inner(bottom_candidates, scip, q_gens[i], local_new_points, local_q_gens,big_simplices,app_level);
+        bottom_points_inner(scip, q_gens[i], local_new_points,local_q_gens,stellar_det_sum);
 #ifndef NCATCH
             } catch(const std::exception& ) {
                 tmp_exception = std::current_exception();
+		skip_remaining = true;
+                #pragma omp flush(skip_remaining)
             }
 #endif
         }
 
         #pragma omp single
         {
-			q_gens.clear();
-		}
-        #pragma omp critical
+                q_gens.clear();
+        }
+        #pragma omp critical (LOCALQGENS)
         {
             q_gens.insert(q_gens.end(),local_q_gens.begin(),local_q_gens.end());
         }
@@ -225,7 +194,7 @@ void bottom_points(list< vector<Integer> >& new_points, Matrix<Integer> gens,con
         #pragma omp barrier
     }
     
-    #pragma omp critical
+    #pragma omp critical (LOCALNEWPOINTS)
     {
         new_points.splice(new_points.end(), local_new_points, local_new_points.begin(), local_new_points.end());
     }
@@ -237,110 +206,73 @@ void bottom_points(list< vector<Integer> >& new_points, Matrix<Integer> gens,con
 #ifndef NCATCH
     } catch(const std::exception& ) {
         tmp_exception = std::current_exception();
+        skip_remaining = true;
+        #pragma omp flush(skip_remaining)
     }
 #endif
+
     } // end parallel
+    
+//---------------------------- end stellar subdivision -----------------------
+    
 #ifndef NCATCH
     if (!(tmp_exception == 0)) std::rethrow_exception(tmp_exception);
 #endif
 
-	// if we still have big_simplices we approx again
-
-	int counter=0;
-    //cout << "A big simplex!" << endl;
-    //if (!big_simplices.empty()) big_simplices.front().pretty_print(cout);
-    if (app_level<max_app_lvl && !big_simplices.empty()){
-		if(verbose){
-			verboseOutput() << "There are " << big_simplices.size() << " big simplices (vol>1000*BOUND) remaining. We approximate them again." << endl;
-		}
-		for (auto it = big_simplices.begin(); it != big_simplices.end(); ++it){
-			// now we approximate this simplex again. maybe we're lucky.
-			// create full_cone
-			Matrix<Integer> gens = *it;
-			
-			list<vector<Integer> > new_points_again;
-			
-			Full_Cone<Integer> ApproxCone(gens);
-			//ApproxCone.verbose = true;
-            ApproxCone.approx_level=max_app_lvl;
-            ApproxCone.Grading = grading;
-            ApproxCone.is_Computed.set(ConeProperty::Grading);
-            ApproxCone.verbose=verbose;
-            if(verbose){
-				verboseOutput() << "Re-approximating simplex " << it-big_simplices.begin()+1 << " / "<< big_simplices.size() << " (recursion depth " << (recursion_depth+1) << ") | Approximation level: " << ApproxCone.approx_level << endl;
-			}
- 			ApproxCone.compute_sub_div_elements(gens,new_points_again);
-			if(verbose){
-				verboseOutput() << "Start bottom points again." << endl;
-			}
-            //Matrix<Integer>(new_points_again).pretty_print(cout);
-            
-		    bottom_points(new_points_again,gens,ApproxCone.Grading,ApproxCone.approx_level, recursion_depth+1);
-			//vector<Integer> new_point = best_point(hb, gens, Support_Hyperplanes, grading);
-			if (!new_points_again.empty()){
-				counter++;
-				#pragma omp critical
-				new_points.splice(new_points.end(), new_points_again, new_points_again.begin(), new_points_again.end());
-			}
-			else{
-				if(verbose){
-				verboseOutput() << "The new approximation did not yield a point." << endl;
-				}
-				
-			}
-			
-		}
-	}
-	if (!big_simplices.empty() && app_level==1 && 1<max_app_lvl && verbose){
-		 verboseOutput() << "In " << counter << " of " << big_simplices.size() << " cases the new approximation was successfull." << endl;
-	 }
 
     //cout  << new_points.size() << " new points accumulated" << endl;
     new_points.sort();
     new_points.unique();
     if(verbose){
-		if (app_level>1) verboseOutput() << new_points.size() << " additional bottom points accumulated. " << endl;
-		if (app_level==1) verboseOutput() << new_points.size() << " bottom points accumulated in total." << endl;
-		if (app_level==1) verboseOutput() << "The sum of determinants of the stellar subdivision is " << stellar_det_sum << endl;
-	}
-
-
-
+        verboseOutput() << new_points.size() << " bottom points accumulated in total." << endl;
+        verboseOutput() << "The sum of determinants of the stellar subdivision is " << stellar_det_sum << endl;
+    }
+    
+    /* for(auto it=new_points.begin();it!=new_points.end();++it)
+        *it=Trans_inv.VxM(*it); */
 }
 
+//-----------------------------------------------------------------------------------------
 
 template<typename Integer>
-void bottom_points_inner(const list<vector<Integer> >& bottom_candidates, SCIP* scip,
-                 Matrix<Integer>& gens, list< vector<Integer> >& local_new_points,
-                 vector< Matrix<Integer> >& local_q_gens, vector< Matrix<Integer> >& big_simplices,long app_level) {
+bool bottom_points_inner(SCIP* scip, Matrix<Integer>& gens, list< vector<Integer> >& local_new_points,
+                 vector< Matrix<Integer> >& local_q_gens, size_t& stellar_det_sum) {
 
+    INTERRUPT_COMPUTATION_BY_EXCEPTION
+    
     vector<Integer> grading = gens.find_linear_form();
     Integer volume;
     int dim = gens[0].size();
     Matrix<Integer> Support_Hyperplanes = gens.invert(volume);
 
     if (volume < ScipBound) {
+        #pragma omp atomic
         stellar_det_sum += convertTo<long long>(volume);
-        return;
+        return false; // not subdivided
     }
-
+    
+    // try st4ellar subdivision
     Support_Hyperplanes = Support_Hyperplanes.transpose();
-    Support_Hyperplanes.make_prime();
+    Support_Hyperplanes.make_prime();    
+    vector<Integer> new_point;
     
 #ifdef NMZ_SCIP
-    // set time limit according to volume   
-    double time_limit = pow(log10(convert_to_double(volume)),2);
-    SCIPsetRealParam(scip, "limits/time", time_limit);
-    // call scip
-    vector<Integer> new_point;
-    if (bottom_candidates.empty() && app_level==1){ //the case we really want to use SCIP
-		new_point = opt_sol(scip, gens, Support_Hyperplanes, grading);
-	} else { // we already have used SCIP and are now approximating again
-		new_point = best_point(bottom_candidates, gens, Support_Hyperplanes, grading);
-	}
-#else
-    vector<Integer> new_point = best_point(bottom_candidates, gens, Support_Hyperplanes, grading); // only approximation
+    // set time limit according to volume
+    if(nmz_scip){
+        double time_limit = pow(log10(convert_to_double(volume)),2);
+        SCIPsetRealParam(scip, "limits/time", time_limit);
+        // call scip
+        new_point = opt_sol(scip, gens, Support_Hyperplanes, grading);
+        if(new_point.empty() && verbose)
+            verboseOutput() << "No bottom point found by SCIP. Trying projection." << endl;
+    }
 #endif // NMZ_SCIP
+    
+    if(new_point.empty()){
+        list<vector<Integer> > Dummy;
+        new_point = gens.optimal_subdivision_point(); // projection method
+    }
+
     if ( !new_point.empty() ){
 
         //if (find(local_new_points.begin(), local_new_points.end(),new_point) == local_new_points.end())
@@ -354,75 +286,19 @@ void bottom_points_inner(const list<vector<Integer> >& bottom_candidates, SCIP* 
                 local_q_gens.push_back(stellar_gens);
 
                 stellar_gens[i] = gens[i];
-            } else nr_hyps++;
-
+            } 
+            else nr_hyps++;
         }
         //#pragma omp critical(VERBOSE)
-       //cout << new_point << " liegt in " << nr_hyps <<" hyperebenen" << endl;
-
+        //cout << new_point << " liegt in " << nr_hyps <<" hyperebenen" << endl;
+        return true; // subdivided
     }
-    else {
-		//cout << "Could not find a new point! " << endl;
-		// store the simplex into the big simplices list
-		if (volume > 1000*ScipBound) { // current bound for big simplices is 10^9
-		    #pragma omp critical
-            big_simplices.push_back(gens);
-        }
+    else{ // could not subdivided
+        #pragma omp atomic
         stellar_det_sum += convertTo<long long>(volume);
-    }
-    return;
-}
-
-template<typename Integer>
-vector<Integer> best_point(const list<vector<Integer> >& bottom_candidates, const Matrix<Integer>& gens, const Matrix<Integer>& SuppHyp, const vector<Integer>& grading) {
-    size_t dim = SuppHyp.nr_of_columns();
-    size_t i;
-    auto best = bottom_candidates.end();
-    Integer best_value = v_scalar_product(grading,gens[dim-1]);
-    Integer sum=0;
-    vector<Integer> eval;
-    size_t in_hyp=0;
-    for (auto it = bottom_candidates.begin(); it != bottom_candidates.end(); ++it) {
-        in_hyp=0;
-        for (i=0; i<dim; ++i) {
-            if (v_scalar_product(SuppHyp[i],*it) < 0) {
-                break;
-            }
-            if (v_scalar_product(SuppHyp[i],*it) == 0){
-                in_hyp++;
-            }
-        }
-        if (i < dim) continue;
-        if (in_hyp==dim-1){
-            continue;
-        }
-        Integer current_value = v_scalar_product(grading,*it);
-        if (current_value<best_value){
-            best_value = current_value;
-            best = it;
-        }
-        
-        if (current_value==best_value){
-            eval = SuppHyp.MxV(*it);
-            Integer tmp=0;
-            for (size_t j=0;j<eval.size();j++) tmp+=eval[j];
-            if (tmp>sum){
-                sum = tmp;
-                best=it;
-            }
-        }
-    }
-    if (best != bottom_candidates.end()) {
-        //cout << "The best vector is " << *best << endl;
-        return *best;
-    } else {
-		//cout << "Could not find a new point in the list! " << endl;
-		return vector<Integer>();
-		
-
+        return false;
     }
 }
-
 
 // returns -1 if maximum is negative
 template<typename Integer>
@@ -451,6 +327,9 @@ template<typename Integer>
 vector<Integer> opt_sol(SCIP* scip,
                         const Matrix<Integer>& gens, const Matrix<Integer>& SuppHyp,
                         const vector<Integer>& grading) {
+    
+    INTERRUPT_COMPUTATION_BY_EXCEPTION
+        
     double upper_bound = convert_to_double(v_scalar_product(grading,gens[0]))-0.5;
     // TODO make the test more strict
     long dim = grading.size();
@@ -460,11 +339,11 @@ vector<Integer> opt_sol(SCIP* scip,
     SCIPcreateProbBasic(scip, "extra_points");
     for (long i=0; i<dim; i++) {
         (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "x_%d", i);
-//        SCIPcreateVarBasic(scip, &x[i], name, -SCIPinfinity(scip), SCIPinfinity(scip),
-//                           convert_to_double(grading[i]), SCIP_VARTYPE_INTEGER);
+        //        SCIPcreateVarBasic(scip, &x[i], name, -SCIPinfinity(scip), SCIPinfinity(scip),
+        //        convert_to_double(grading[i]), SCIP_VARTYPE_INTEGER);
 
-		// min_in_col and max_in_col already give good bounds if all signs are positive or negative
-		// no constraint needed
+        // min_in_col and max_in_col already give good bounds if all signs are positive or negative
+        // no constraint needed
         SCIPcreateVarBasic(scip, &x[i], name, min_in_col(gens,i), max_in_col(gens, i),
                              convert_to_double(grading[i]), SCIP_VARTYPE_INTEGER);
         SCIPaddVar(scip, x[i]);
@@ -490,40 +369,40 @@ vector<Integer> opt_sol(SCIP* scip,
     // if all extreme rays have the same sign in one dimension, add the x_i>=1 or x_i<=-1 constraint
     
     for (long i=0; i<dim; i++){
-		double min = min_in_col(gens,i);
-		double max = max_in_col(gens,i);
-		if (min*max>0){
-			break;
-		}
-		if (i==dim-1){
-			//cout << "no same sign. using bound disjunction" << endl;
-			// set bound disjunction
-			
-			SCIP_VAR** double_x = new SCIP_VAR*[2*dim];
-			SCIP_BOUNDTYPE* boundtypes = new SCIP_BOUNDTYPE[2*dim];
-			SCIP_Real* bounds = new SCIP_Real[2*dim];
-			for (long i=0; i<dim;i++) {
-				double_x[2*i] = x[i];
-				double_x[2*i+1] = x[i];
-				boundtypes[2*i]= SCIP_BOUNDTYPE_LOWER;
-				boundtypes[2*i+1] = SCIP_BOUNDTYPE_UPPER;
-				bounds[2*i] = 1.0;
-				bounds[2*i+1] = -1.0;
-			}
-			SCIPcreateConsBasicBounddisjunction	(scip, &cons,"non_zero",2*dim,double_x,boundtypes,bounds);
-			SCIPaddCons(scip, cons);
-			SCIPreleaseCons(scip, &cons);
-		
-		/*
-		// this type of constraints procedures numerical problems:
-		for (long j=0; j<dim; j++)
-        ineq[j] = convert_to_double(grading[j]);
-		SCIPcreateConsBasicLinear(scip, &cons, "non_zero", dim, x, ineq, 1.0, SCIPinfinity(scip));
-		*/
-		}
-	}
-	
-	// set objective limit, feasible solution has to have a better objective value
+        double min = min_in_col(gens,i);
+        double max = max_in_col(gens,i);
+        if (min*max>0){
+                break;
+        }
+        if (i==dim-1){
+            //cout << "no same sign. using bound disjunction" << endl;
+            // set bound disjunction
+            
+            SCIP_VAR** double_x = new SCIP_VAR*[2*dim];
+            SCIP_BOUNDTYPE* boundtypes = new SCIP_BOUNDTYPE[2*dim];
+            SCIP_Real* bounds = new SCIP_Real[2*dim];
+            for (long i=0; i<dim;i++) {
+                double_x[2*i] = x[i];
+                double_x[2*i+1] = x[i];
+                boundtypes[2*i]= SCIP_BOUNDTYPE_LOWER;
+                boundtypes[2*i+1] = SCIP_BOUNDTYPE_UPPER;
+                bounds[2*i] = 1.0;
+                bounds[2*i+1] = -1.0;
+            }
+            SCIPcreateConsBasicBounddisjunction	(scip, &cons,"non_zero",2*dim,double_x,boundtypes,bounds);
+            SCIPaddCons(scip, cons);
+            SCIPreleaseCons(scip, &cons);
+        
+        /*
+        // this type of constraints procedures numerical problems:
+        for (long j=0; j<dim; j++)
+            ineq[j] = convert_to_double(grading[j]);
+        SCIPcreateConsBasicLinear(scip, &cons, "non_zero", dim, x, ineq, 1.0, SCIPinfinity(scip));
+        */
+        }
+}
+        
+        // set objective limit, feasible solution has to have a better objective value
     SCIPsetObjlimit(scip,upper_bound);
 
 
@@ -575,99 +454,99 @@ vector<Integer> opt_sol(SCIP* scip,
         }
 
 
-        if(v_scalar_product(grading,sol_vec)>upper_bound){
-			//Integer sc = v_scalar_product(sol_vec,grading);
-				if(verbose){
-				#pragma omp critical(VERBOSE)
-				{
-					verboseOutput() << "Solution does not respect upper bound!" << endl;
-					//cout << "upper bound: " << upper_bound << endl;
-					//cout << "grading: " << grading;
-					//cout << "hyperplanes:" << endl;
-					//SuppHyp.pretty_print(cout);
-					//cout << "generators:" << endl;
-					//gens.pretty_print(cout);
-					//cout << sc << " | solution " << sol_vec;
-					//cout << "epsilon: " << epsilon << endl;
-					//SCIPprintOrigProblem(scip, NULL, NULL, FALSE);
-					//SCIPprintSol(scip, sol, NULL, FALSE) ;
-					//cout << "write files... " << endl;
-					//FILE* file = fopen("mostrecent.lp","w");
-					//assert (file != NULL);
-					//SCIPprintOrigProblem(scip, file, "lp", FALSE);
-					//SCIPwriteParams(scip, "mostrecent.set", TRUE, TRUE);
-					//fclose(file);
-					//assert(v_scalar_product(grading,sol_vec)<=upper_bound);
-			
-				}
-			}
-			return vector<Integer>();
-			}
-			
-		
-        for (int i=0;i<nrSuppHyp;i++) {
-			if((v_scalar_product(SuppHyp[i],sol_vec))<0) {
-				//Integer sc = v_scalar_product(sol_vec,grading);
-				if(verbose){
-				#pragma omp critical(VERBOSE)
-				{
-					verboseOutput() << "Solution does not respect hyperplanes!" << endl;
-					//cout << "the hyperplane: " << SuppHyp[i];
-					//cout << "grading: " << grading;
-					//cout << "hyperplanes:" << endl;
-					//SuppHyp.pretty_print(cout);
-					//cout << "generators:" << endl;
-					//gens.pretty_print(cout);
-					//cout << sc << " | solution " << sol_vec;
-					//cout << "epsilon: " << epsilon << endl;
-					//SCIPprintOrigProblem(scip, NULL, NULL, FALSE);
-					//SCIPprintSol(scip, sol, NULL, FALSE) ;
-					//cout << "write files... " << endl;
-					//FILE* file = fopen("mostrecent.lp","w");
-					//assert (file != NULL);
-					//SCIPprintOrigProblem(scip, file, "lp", FALSE);
-					//SCIPwriteParams(scip, "mostrecent.set", TRUE, TRUE);
-					//fclose(file);
-					//assert((v_scalar_product(SuppHyp[i],sol_vec))>=0);
-			
-				}
-			}
-			return vector<Integer>();
-			}
-		}
-        if((v_scalar_product(grading,sol_vec))<1) {
-		//Integer sc = v_scalar_product(sol_vec,grading);
-		if (verbose){
-			#pragma omp critical(VERBOSE)
-			{
-				verboseOutput() << "Solution does not respect the nonzero condition!" << endl;
-				/*cout << "grading: " << grading;
-				cout << "hyperplanes:" << endl;
-				SuppHyp.pretty_print(cout);
-				cout << "generators:" << endl;
-				gens.pretty_print(cout);
-				cout << sc << " | solution " << sol_vec;
-				cout << "epsilon: " << epsilon << endl;
-				SCIPprintOrigProblem(scip, NULL, NULL, FALSE);
-				SCIPprintSol(scip, sol, NULL, FALSE) ;
-				cout << "write files... " << endl;
-				FILE* file = fopen("mostrecent.lp","w");
-				assert (file != NULL);
-				SCIPprintOrigProblem(scip, file, "lp", FALSE);
-				SCIPwriteParams(scip, "mostrecent.set", TRUE, TRUE);
-				fclose(file);
-				assert((v_scalar_product(grading,sol_vec))>=1);*/
-				
-			}
-		}
-			return vector<Integer>();
-        }
-        /*assert(v_scalar_product(grading,sol_vec)<=upper_bound);
-        for (int i=0;i<nrSuppHyp;i++) assert((v_scalar_product(SuppHyp[i],sol_vec))>=0);
-        assert((v_scalar_product(grading,sol_vec))>=1);*/
-        //Integer sc = v_scalar_product(sol_vec,grading);
-		//#pragma omp critical(VERBOSE)
-		//cout << sc << " | solution " << sol_vec;
+    if(v_scalar_product(grading,sol_vec)>upper_bound){
+                    //Integer sc = v_scalar_product(sol_vec,grading);
+                            if(verbose){
+                            #pragma omp critical(VERBOSE)
+                            {
+                                    verboseOutput() << "Solution does not respect upper bound!" << endl;
+                                    //cout << "upper bound: " << upper_bound << endl;
+                                    //cout << "grading: " << grading;
+                                    //cout << "hyperplanes:" << endl;
+                                    //SuppHyp.pretty_print(cout);
+                                    //cout << "generators:" << endl;
+                                    //gens.pretty_print(cout);
+                                    //cout << sc << " | solution " << sol_vec;
+                                    //cout << "epsilon: " << epsilon << endl;
+                                    //SCIPprintOrigProblem(scip, NULL, NULL, FALSE);
+                                    //SCIPprintSol(scip, sol, NULL, FALSE) ;
+                                    //cout << "write files... " << endl;
+                                    //FILE* file = fopen("mostrecent.lp","w");
+                                    //assert (file != NULL);
+                                    //SCIPprintOrigProblem(scip, file, "lp", FALSE);
+                                    //SCIPwriteParams(scip, "mostrecent.set", TRUE, TRUE);
+                                    //fclose(file);
+                                    //assert(v_scalar_product(grading,sol_vec)<=upper_bound);
+                    
+                            }
+                    }
+                    return vector<Integer>();
+                    }
+                    
+            
+    for (int i=0;i<nrSuppHyp;i++) {
+                    if((v_scalar_product(SuppHyp[i],sol_vec))<0) {
+                            //Integer sc = v_scalar_product(sol_vec,grading);
+                            if(verbose){
+                            #pragma omp critical(VERBOSE)
+                            {
+                                    verboseOutput() << "Solution does not respect hyperplanes!" << endl;
+                                    //cout << "the hyperplane: " << SuppHyp[i];
+                                    //cout << "grading: " << grading;
+                                    //cout << "hyperplanes:" << endl;
+                                    //SuppHyp.pretty_print(cout);
+                                    //cout << "generators:" << endl;
+                                    //gens.pretty_print(cout);
+                                    //cout << sc << " | solution " << sol_vec;
+                                    //cout << "epsilon: " << epsilon << endl;
+                                    //SCIPprintOrigProblem(scip, NULL, NULL, FALSE);
+                                    //SCIPprintSol(scip, sol, NULL, FALSE) ;
+                                    //cout << "write files... " << endl;
+                                    //FILE* file = fopen("mostrecent.lp","w");
+                                    //assert (file != NULL);
+                                    //SCIPprintOrigProblem(scip, file, "lp", FALSE);
+                                    //SCIPwriteParams(scip, "mostrecent.set", TRUE, TRUE);
+                                    //fclose(file);
+                                    //assert((v_scalar_product(SuppHyp[i],sol_vec))>=0);
+                    
+                            }
+                    }
+                    return vector<Integer>();
+                    }
+            }
+    if((v_scalar_product(grading,sol_vec))<1) {
+            //Integer sc = v_scalar_product(sol_vec,grading);
+            if (verbose){
+                    #pragma omp critical(VERBOSE)
+                    {
+                            verboseOutput() << "Solution does not respect the nonzero condition!" << endl;
+                            /*cout << "grading: " << grading;
+                            cout << "hyperplanes:" << endl;
+                            SuppHyp.pretty_print(cout);
+                            cout << "generators:" << endl;
+                            gens.pretty_print(cout);
+                            cout << sc << " | solution " << sol_vec;
+                            cout << "epsilon: " << epsilon << endl;
+                            SCIPprintOrigProblem(scip, NULL, NULL, FALSE);
+                            SCIPprintSol(scip, sol, NULL, FALSE) ;
+                            cout << "write files... " << endl;
+                            FILE* file = fopen("mostrecent.lp","w");
+                            assert (file != NULL);
+                            SCIPprintOrigProblem(scip, file, "lp", FALSE);
+                            SCIPwriteParams(scip, "mostrecent.set", TRUE, TRUE);
+                            fclose(file);
+                            assert((v_scalar_product(grading,sol_vec))>=1);*/
+                            
+                    }
+            }
+                    return vector<Integer>();
+    }
+    /*assert(v_scalar_product(grading,sol_vec)<=upper_bound);
+    for (int i=0;i<nrSuppHyp;i++) assert((v_scalar_product(SuppHyp[i],sol_vec))>=0);
+    assert((v_scalar_product(grading,sol_vec))>=1);*/
+    //Integer sc = v_scalar_product(sol_vec,grading);
+            //#pragma omp critical(VERBOSE)
+            //cout << sc << " | solution " << sol_vec;
 
     } else {
         return vector<Integer>();
@@ -680,10 +559,13 @@ vector<Integer> opt_sol(SCIP* scip,
 #endif // NMZ_SCIP
 
 #ifndef NMZ_MIC_OFFLOAD  //offload with long is not supported
-template void bottom_points(list< vector<long> >& new_points, Matrix<long> gens,const vector<long>& grading,long app_level,long recursion_depth);
+template void bottom_points(list< vector<long> >& new_points, const Matrix<long>& gens,
+                            long VolumeBound);
 #endif // NMZ_MIC_OFFLOAD
-template void bottom_points(list< vector<long long> >& new_points, Matrix<long long> gens,const vector<long long>& grading,long app_level,long recursion_depth);
-template void bottom_points(list< vector<mpz_class> >& new_points, Matrix<mpz_class> gens,const vector<mpz_class>& grading,long app_level,long recursion_depth);
+template void bottom_points(list< vector<long long> >& new_points, const Matrix<long long>& gens,
+                            long long VolumeBound);
+template void bottom_points(list< vector<mpz_class> >& new_points, const Matrix<mpz_class>& gens,
+                            mpz_class VolumeBound);
 
 } // namespace
 

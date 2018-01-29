@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -71,6 +71,10 @@ object Polytope {
 	property PSEUDOVERTICES : Matrix<Scalar> {
 		sub canonical { &canonicalize_vertices_to_leading_zero; }
 	}
+
+        # @category Geometry
+	# Subset of the [[PSEUDOVERTICES]] which are not contained in the tropical projective torus.
+	property FAR_PSEUDOVERTICES : Set;
 
 	# @category Combinatorics
 	# These are the maximal cells of the covector decomposition of the tropical torus with
@@ -168,8 +172,10 @@ object Polytope {
 	# @param Int chart Which coordinate to normalize to 0. This is 0 by default.
 	# @return fan::PolyhedralComplex
 	user_method torus_subdivision_as_complex(;$=0) {
-		my ($cone,$chart) = @_;
-		return (new Cycle<Addition>(VERTICES=>$cone->PSEUDOVERTICES, MAXIMAL_POLYTOPES=>$cone->MAXIMAL_COVECTOR_CELLS))->affine_chart($chart);
+            my ($cone,$chart) = @_;
+            return new fan::PolyhedralComplex(VERTICES=>tdehomog($cone->PSEUDOVERTICES,$chart),
+                                              MAXIMAL_POLYTOPES=>$cone->MAXIMAL_COVECTOR_CELLS,
+                                              LINEALITY_SPACE=>[]);
 	}
 
 	# @category Geometry
@@ -178,11 +184,13 @@ object Polytope {
 	# @param Int chart Which coordinate to normalize to 0. This is 0 by default.
 	# @return fan::PolyhedralComplex
 	user_method polytope_subdivision_as_complex(;$=0) {
-		my ($cone,$chart) = @_;
-		my $cov = $cone->POLYTOPE_COVECTOR_DECOMPOSITION;
-		my $used_pvertices = $cov->FACES->[$cov->top_node()];
-		return (new Cycle<Addition>(VERTICES=>$cone->PSEUDOVERTICES->minor($used_pvertices,All), 
-											 MAXIMAL_POLYTOPES=>$cone->POLYTOPE_MAXIMAL_COVECTOR_CELLS->minor(All,$used_pvertices)))->affine_chart($chart);	
+            my ($cone,$chart) = @_;
+            my $n = $cone->PSEUDOVERTICES->rows();
+            my $finite_indices = sequence(0,$n) - $cone->FAR_PSEUDOVERTICES;
+            my $finite_pseudovertices = new Matrix($cone->PSEUDOVERTICES->minor($finite_indices,All));
+            return new fan::PolyhedralComplex(VERTICES=>tdehomog($finite_pseudovertices,$chart),
+                                              MAXIMAL_POLYTOPES=>$cone->POLYTOPE_MAXIMAL_COVECTOR_CELLS,
+                                              LINEALITY_SPACE=>[]);
 	}
 
 
@@ -210,7 +218,7 @@ user_function dual_addition_version<Addition,Scalar>(Polytope<Addition,Scalar>;$
 # @return Set<Int>
 user_function points_in_pseudovertices<Addition,Scalar>(Matrix<TropicalNumber<Addition, Scalar>>, Matrix<Scalar>) {
   my ($points, $pseudovertices)=@_;
-  $points = (ones_vector<Scalar>($points->rows())) | (new Matrix<Scalar>($points));
+  $points = ones_vector<Scalar>($points->rows()) | new Matrix<Scalar>($points);
   my $generators=new HashSet<Vector<Scalar>>(rows($points));
 
   my $result = new Set<Int>();
@@ -219,3 +227,10 @@ user_function points_in_pseudovertices<Addition,Scalar>(Matrix<TropicalNumber<Ad
   }
   return $result;
 }
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

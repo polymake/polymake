@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -95,6 +95,22 @@ rule QUOTIENT_SPACE(any).DIM = COMBINATORIAL_DIM;
 # @category Quotient spaces
 # Return a 2-dimensional __cylinder__ obtained by identifying two opposite sides of a square.
 # @return Polytope
+# @example To obtain a topological space homeomorphic to a cylinder, type
+# > $p = cylinder_2();
+# > print $p->QUOTIENT_SPACE->IDENTIFICATION_ACTION->GENERATORS;
+# | 2 3 0 1
+# > print $p->QUOTIENT_SPACE->IDENTIFICATION_ACTION->ORBITS;
+# | {0 2}
+# | {1 3}
+# Thus, vertices 0,2 and vertices 1,3 are identified.
+# > print $p->QUOTIENT_SPACE->FACES;
+# | {{0} {1}}
+# | {{0 1} {0 2} {1 3}}
+# | {{0 1 2 3}}
+# Thus, after identification two vertices, three edges, and one two-dimensional face remain:
+# > print $p->QUOTIENT_SPACE->F_VECTOR;
+# | 2 3 1
+
 user_function cylinder_2 {
     my $p = cube(2);
     my $g = new group::PermutationAction(GENERATORS=>[[2,3,0,1]]);
@@ -109,6 +125,24 @@ user_function cylinder_2 {
 # of a 3-dimensional cube by a quarter turn. After identification, two classes 
 # of vertices remain.
 # @return Polytope
+# @example To obtain a topological space homeomorphic to the quarter turn manifold, type
+# > $p = quarter_turn_manifold();
+# > print $p->QUOTIENT_SPACE->IDENTIFICATION_ACTION->GENERATORS;
+# | 5 7 4 6 2 0 3 1
+# | 6 2 1 5 7 3 0 4
+# To see which vertices are identified, type
+# > print $p->QUOTIENT_SPACE->IDENTIFICATION_ACTION->ORBITS;
+# | {0 3 5 6}
+# | {1 2 4 7}
+# Thus, two classes of vertices remain, with 0 and 1 being representatives. 
+# To see the faces remaining after identification, type
+# > print $p->QUOTIENT_SPACE->FACES;
+# | {{0} {1}}
+# | {{0 1} {0 2} {0 4} {0 7}}
+# | {{0 1 2 3} {0 1 4 5} {0 1 6 7}}
+# | {{0 1 2 3 4 5 6 7}}
+# > print $p->QUOTIENT_SPACE->F_VECTOR;
+# | 2 4 3 1
 user_function quarter_turn_manifold {
     my $p = cube(3);
     my $g = new group::PermutationAction(GENERATORS=>[[5,7,4,6,2,0,3,1],[6,2,1,5,7,3,0,4]]); 
@@ -123,7 +157,8 @@ user_function quarter_turn_manifold {
 # For a centrally symmetric polytope, divide
 # out the central symmetry, i.e, identify diametrically opposite faces.
 # @param Polytope P, centrally symmetric
-#  @example > $P = cube(3);
+# @example
+# > $P = cube(3);
 # > cs_quotient($P);
 # > print $P->CS_PERMUTATION;
 # | 7 6 5 4 3 2 1 0
@@ -141,13 +176,18 @@ user_function cs_quotient {
     return $this;
 }
 
-# FIXME This doesn't work because regular_120_cell() isn't available here ?!
-# The problem is related to #534.
-# As a fix for now you can make it a script!
-
-# Return the 4-dimensional hyperbolic manifold obtained by Michael Davis 
+# @category Quotient spaces
+# Return the 4-dimensional hyperbolic manifold obtained by Michael Davis
+# @return Polytope 
 # [Proceedings of the AMS, Vol. 93, No. 2 (Feb., 1985), pp. 325-328]
 # by identifying opposite faces of the 120-cell
+# @example The Davis manifold is the centrally symmetric quotient of the regular 210-cell:
+# > $d = davis_manifold();
+# > print $d->F_VECTOR;
+# | 600 1200 720 120
+# > print $d->QUOTIENT_SPACE->F_VECTOR;
+# | 300 600 360 60 1
+
 user_function davis_manifold { 
     my $c120=regular_120_cell();
     return cs_quotient($c120);
@@ -157,10 +197,17 @@ user_function davis_manifold {
 object Polytope {
 
 rule QUOTIENT_SPACE.FACES, QUOTIENT_SPACE.FACE_ORBITS, QUOTIENT_SPACE.SYMMETRY_GROUP.PERMUTATION_ACTION(new).GENERATORS : \
-     COMBINATORIAL_DIM, N_VERTICES, \
-     HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE, \
-     GROUP.VERTICES_ACTION.GENERATORS, QUOTIENT_SPACE.IDENTIFICATION_ACTION.GENERATORS {
-    quotient_space_faces($this);
+    COMBINATORIAL_DIM, N_VERTICES, \
+    HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE, \
+    GROUP.VERTICES_ACTION.GENERATORS, QUOTIENT_SPACE.IDENTIFICATION_ACTION.GENERATORS {
+        quotient_space_faces($this);
+}
+
+rule QUOTIENT_SPACE.FACES, QUOTIENT_SPACE.FACE_ORBITS : \
+    COMBINATORIAL_DIM, N_VERTICES, \
+    HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE, \
+    QUOTIENT_SPACE.IDENTIFICATION_ACTION.GENERATORS {
+        quotient_space_faces($this);
 }
 
 rule QUOTIENT_SPACE.F_VECTOR : QUOTIENT_SPACE.FACES {
@@ -193,7 +240,7 @@ rule QUOTIENT_SPACE.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, QUOTIENT_SPACE.REPR
 # @category Combinatorics
 # The equivalence classes of maximal-dimensional simplices in the boundary under a symmetry group 
 rule QUOTIENT_SPACE.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES : COMBINATORIAL_DIM, RAYS, QUOTIENT_SPACE.SYMMETRY_GROUP.PERMUTATION_ACTION.GENERATORS {
-    $this->QUOTIENT_SPACE->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES = representative_max_interior_simplices($this->COMBINATORIAL_DIM, $this->RAYS, $this->QUOTIENT_SPACE->SYMMETRY_GROUP->PERMUTATION_ACTION.GENERATORS);
+    $this->QUOTIENT_SPACE->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES = representative_max_interior_simplices($this->COMBINATORIAL_DIM, $this->RAYS, $this->QUOTIENT_SPACE->SYMMETRY_GROUP->PERMUTATION_ACTION->GENERATORS);
 }
 
 rule QUOTIENT_SPACE.N_SIMPLICES : QUOTIENT_SPACE.SIMPLICES {
@@ -205,10 +252,8 @@ rule QUOTIENT_SPACE.N_SIMPLICES : QUOTIENT_SPACE.SIMPLICES {
 rule QUOTIENT_SPACE.COCIRCUIT_EQUATIONS : QUOTIENT_SPACE.REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES, QUOTIENT_SPACE.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, QUOTIENT_SPACE.SYMMETRY_GROUP.PERMUTATION_ACTION.GENERATORS {
    my $d = $this->COMBINATORIAL_DIM;
    my $interior_ridge_reps = $this->QUOTIENT_SPACE->REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES;
-   print $interior_ridge_reps, "\n";
    my $facet_reps = $this->QUOTIENT_SPACE->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES;
-   print $facet_reps, "\n";
-   $this->QUOTIENT_SPACE->COCIRCUIT_EQUATIONS = symmetrized_cocircuit_equations($d, $this->RAYS, $this->RAYS_IN_FACETS, $this->QUOTIENT_SPACE->SYMMETRY_GROUP->PERMUTATION_ACTION.GENERATORS, $interior_ridge_reps, $facet_reps);
+   $this->QUOTIENT_SPACE->COCIRCUIT_EQUATIONS = symmetrized_cocircuit_equations_0($d, $this->RAYS, $this->RAYS_IN_FACETS, $this->QUOTIENT_SPACE->SYMMETRY_GROUP->PERMUTATION_ACTION->GENERATORS, $interior_ridge_reps, $facet_reps);
 }
 
 rule QUOTIENT_SPACE.SIMPLEXITY_LOWER_BOUND : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, QUOTIENT_SPACE.REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES, QUOTIENT_SPACE.REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, VOLUME, QUOTIENT_SPACE.COCIRCUIT_EQUATIONS, QUOTIENT_SPACE.SYMMETRY_GROUP.PERMUTATION_ACTION.GENERATORS, QUOTIENT_SPACE.IDENTIFICATION_ACTION.GENERATORS {

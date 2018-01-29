@@ -121,7 +121,7 @@ void OffloadHandler<Integer>::create_full_cone()
   Integer *data = new Integer[size];
   fill_plain(data, nr, nc, M);
 
-//  cout << "mic " << mic_nr<< ": Offload Full_Cone..." << endl;
+  //  cout << "mic " << mic_nr<< ": Offload Full_Cone..." << endl;
   // offload to mic, copy data and free it afterwards, but keep a pointer to the created Full_Cone
   #pragma offload target(mic:mic_nr) in(nr,nc) in(data: length(size) ONCE)
   {
@@ -143,26 +143,39 @@ void OffloadHandler<Integer>::transfer_bools()
   Full_Cone<Integer>& foo_loc = local_fc_ref;  // prevents segfault
   //TODO segfaults should be resolved in intel compiler version 2015
   bool is_computed_pointed = local_fc_ref.isComputed(ConeProperty::IsPointed);
+    bool inhomogeneous      = foo_loc.inhomogeneous;
+    bool do_Hilbert_basis   = foo_loc.do_Hilbert_basis;
+    bool do_h_vector        = foo_loc.do_h_vector;
+    bool keep_triangulation = foo_loc.keep_triangulation;
+    bool do_multiplicity    = foo_loc.do_multiplicity;
+    bool do_determinants    = foo_loc.do_determinants;
+    bool do_triangulation   = foo_loc.do_triangulation;
+    bool do_deg1_elements   = foo_loc.do_deg1_elements;
+    bool do_Stanley_dec     = foo_loc.do_Stanley_dec;
+    bool do_approximation   = foo_loc.do_approximation;
+    bool do_default_mode    = foo_loc.do_default_mode;
+    bool deg1_generated = foo_loc.deg1_generated;
+    bool pointed = foo_loc.pointed;
   #pragma offload target(mic:mic_nr) in(mic_nr)
   {
-    bool foo = offload_fc_ptr->inhomogeneous;  // prevents segfault
-    offload_fc_ptr->inhomogeneous      = foo_loc.inhomogeneous;
-    offload_fc_ptr->do_Hilbert_basis   = foo_loc.do_Hilbert_basis;
-    offload_fc_ptr->do_h_vector        = foo_loc.do_h_vector;
-    offload_fc_ptr->keep_triangulation = foo_loc.keep_triangulation;
-    offload_fc_ptr->do_multiplicity    = foo_loc.do_multiplicity;
-    offload_fc_ptr->do_determinants    = foo_loc.do_determinants;
-    offload_fc_ptr->do_triangulation   = foo_loc.do_triangulation;
-    offload_fc_ptr->do_deg1_elements   = foo_loc.do_deg1_elements;
-    offload_fc_ptr->do_Stanley_dec     = foo_loc.do_Stanley_dec;
-    offload_fc_ptr->do_approximation   = foo_loc.do_approximation;
-    offload_fc_ptr->do_default_mode    = foo_loc.do_default_mode;
+    // bool foo = offload_fc_ptr->inhomogeneous;  // prevents segfault
+    offload_fc_ptr->inhomogeneous      = inhomogeneous;
+    offload_fc_ptr->do_Hilbert_basis   = do_Hilbert_basis;
+    offload_fc_ptr->do_h_vector        = do_h_vector;
+    offload_fc_ptr->keep_triangulation = keep_triangulation;
+    offload_fc_ptr->do_multiplicity    = do_multiplicity;
+    offload_fc_ptr->do_determinants    = do_determinants;
+    offload_fc_ptr->do_triangulation   = do_triangulation;
+    offload_fc_ptr->do_deg1_elements   = do_deg1_elements;
+    offload_fc_ptr->do_Stanley_dec     = do_Stanley_dec;
+    offload_fc_ptr->do_approximation   = do_approximation;
+    offload_fc_ptr->do_default_mode    = do_default_mode;
     offload_fc_ptr->do_all_hyperplanes = false;
     // deg1_generated could be set more precise
-    offload_fc_ptr->deg1_triangulation = foo_loc.deg1_generated;
+    offload_fc_ptr->deg1_triangulation = deg1_generated;
     if (is_computed_pointed)
     {
-      offload_fc_ptr->pointed = foo_loc.pointed;
+      offload_fc_ptr->pointed = pointed;
       offload_fc_ptr->is_Computed.set(ConeProperty::IsPointed);
     }
     offload_fc_ptr->verbose = true;
@@ -396,6 +409,7 @@ void OffloadHandler<Integer>::evaluate_pyramids()
     offload_fc_ptr->evaluate_stored_pyramids(0);
     offload_fc_ptr->evaluate_triangulation();
   }
+    // cout << "Nach Start evaluate mic" << mic_nr << endl;
   running = true;
 }
 
@@ -654,6 +668,7 @@ MicOffloader<Integer>::MicOffloader()
   nr_handlers(nr_mics)
 {
   handlers.resize(nr_handlers);
+  // cout << "Constructor " << nr_handlers << endl;
 }
 
 //---------------------------------------------------------------------------
@@ -692,23 +707,74 @@ void MicOffloader<Integer>::init(Full_Cone<Integer>& fc)
 
 //---------------------------------------------------------------------------
 
+// template<typename T>
+bool compare_sizes(const vector<key_t>& v, const vector<key_t>& w){
+    return v.size() < w.size();
+}
+
 template<typename Integer>
 void MicOffloader<Integer>::offload_pyramids(Full_Cone<Integer>& fc, const size_t level)
 {
     if (!is_init) init(fc);
-    size_t fraction = 5;
-    if (level > 0) fraction = 10;
+// cout << "nr_handlers " << nr_handlers << endl;
 
+    size_t fraction = 6;
+    if (fc.start_from == fc.nr_gen) { //all gens are done
+        fraction = 20;
+        if (level > 0) fraction = 30;
+    }
+    if (fraction < nr_handlers) fraction = nr_handlers; //ensure every card can get some
+
+
+    size_t nr_transfer = min(fc.nrPyramids[level]/fraction, 25000ul);
+    // cout << "transfer " << nr_transfer << endl;
+    if (nr_transfer == 0) return;
+
+    bool at_least_one_idle=false;
+    for (int i=0; i<nr_handlers; ++i){
+      if (!handlers[i]->is_running()){
+        at_least_one_idle=true;
+        /* cout << "Mixing ======================" << endl;
+        random_order(fc.Pyramids[level]);
+        auto py=fc.Pyramids[level].begin();
+        for(;py!=fc.Pyramids[level].end();++py)
+            cout << py->size() << " ";
+        cout << "======================" << endl;*/
+        break;
+      }
+    }
+    if(!at_least_one_idle)
+        return;
+    
+    if(fc.Pyramids_scrambled[level]){
+        fc.Pyramids[level].reverse(); // bring the big pyramids to the rear
+    } else{
+        fc.Pyramids_scrambled[level]=true; // will not be scrambeld again
+        fc.Pyramids[level].sort(compare_sizes);
+        
+        typename list< vector<key_t> >::iterator p;
+        size_t size_sum=0;
+        for(p=fc.Pyramids[level].begin(); p!=fc.Pyramids[level].end();++p)
+            size_sum+=p->size();
+        size_t size_bound=2*size_sum/fc.nrPyramids[level]; // 2*average size
+        
+        for(p=fc.Pyramids[level].begin(); p!=fc.Pyramids[level].end();++p){
+                if(p->size() > size_bound)
+                    break;
+        }
+        
+        random_order(fc.Pyramids[level],fc.Pyramids[level].begin(),p);
+    }
+    
     // offload some pyramids
     list< vector<key_t> > pyrs;
     vector<bool> started(nr_handlers, false);
-    size_t nr_transfer = min(fc.nrPyramids[level]/fraction, 25000ul);
-    if (nr_transfer == 0) return;
 
     for (int i=0; i<nr_handlers; ++i)
     {
       if (!handlers[i]->is_running())
       {
+// cout << "Testing mic" << i << endl;
         started[i] = true;
         typename list< vector<key_t> >::iterator transfer_end(fc.Pyramids[level].begin());
         for (size_t j = 0; j < nr_transfer; ++j, ++transfer_end) ;
@@ -716,10 +782,10 @@ void MicOffloader<Integer>::offload_pyramids(Full_Cone<Integer>& fc, const size_
         fc.nrPyramids[level] -= nr_transfer;
         handlers[i]->transfer_pyramids(pyrs);
         pyrs.clear();
-        nr_transfer = min(fc.nrPyramids[level]/fraction, 25000ul);
-        if (nr_transfer == 0) break;
       }
     }
+    
+    fc.Pyramids[level].reverse(); // bring the big pyramids to the front
 
     //compute on mics
     for (int i=0; i<nr_handlers; ++i)

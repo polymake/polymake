@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -232,6 +232,13 @@ const Rational& spec_object_traits<Rational>::zero()
 const Rational& spec_object_traits<Rational>::one()
 {
    return static_cast<const Rational&>(mpq_one_c);
+}
+
+template <>
+Rational
+pow(const Rational& base, int exp)
+{
+   return Rational::pow(base,exp);
 }
 
 }

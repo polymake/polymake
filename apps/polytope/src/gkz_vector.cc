@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -23,14 +23,14 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar, typename MatrixTop>
-Vector<Scalar> gkz_vector(const GenericMatrix<MatrixTop,Scalar>& vert, const Array< Set<int> >& triang)
+Vector<Scalar> gkz_vector(const GenericMatrix<MatrixTop,Scalar>& vert, const Array<Set<int>>& triang)
 {
    Vector<Scalar> gkz(vert.top().rows(),0);
 
    // go through all simplices
-   for (Entire< Array< Set<int> > >::const_iterator i=entire(triang); !i.at_end(); ++i) {
+   for (auto i=entire(triang); !i.at_end(); ++i) {
       const Scalar v=abs(det(vert.top().minor(*i,All)));
-      for (Entire< Set<int> >::const_iterator j=entire(*i); !j.at_end(); ++j)
+      for (auto j=entire(*i); !j.at_end(); ++j)
          gkz[(*j)]+=v;
    }
 

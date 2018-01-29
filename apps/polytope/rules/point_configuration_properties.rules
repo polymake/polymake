@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -139,14 +139,6 @@ property TRIANGULATION.BOUNDARY {
    property FACET_TRIANGULATIONS : Array<Set>;
 }
 
-# @category Triangulation and volume
-# For each simplex in the [[TRIANGULATION]], this contains the sign of the determinant of its coordinate matrix, 
-# which is the orientation of the simplex.
-# @return Array<Int>
-user_method TRIANGULATION_SIGNS : TRIANGULATION.FACETS, POINTS {
-   my $this=shift;
-   triang_sign($this->TRIANGULATION->FACETS, $this->POINTS);
-}
 
 # @category Combinatorics
 # The splits of the point configuration, i.e., hyperplanes cutting the configuration in

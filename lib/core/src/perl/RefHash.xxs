@@ -1,0 +1,856 @@
+/* Copyright (c) 1997-2018
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
+
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+--------------------------------------------------------------------------------
+*/
+
+#include "polymake/perl/Ext.h"
+
+/******************************************************************************************************/
+/*  references as hash keys  */
+
+namespace pm { namespace perl { namespace glue {
+
+namespace {
+
+HV* my_pkg;
+AV* allowed_pkgs;
+
+Perl_check_t def_ck_PUSH;
+Perl_ppaddr_t def_pp_CONST, def_pp_HELEM, def_pp_HSLICE, def_pp_EXISTS, def_pp_DELETE, def_pp_EACH, def_pp_KEYS,
+              def_pp_RV2HV, def_pp_PADHV, def_pp_ANONHASH;
+
+#if PerlVersion >= 5180
+Perl_ppaddr_t def_pp_PADRANGE;
+#endif
+#if PerlVersion >= 5220
+Perl_check_t def_ck_HELEM, def_ck_EXISTS, def_ck_DELETE;
+#endif
+
+struct tmp_keysv {
+   HEK hek;
+   size_t key_tail = 0;  // the last byte is the terminating 0, the first byte of the key resides in hek.
+   XPVUV xpv;
+   SV sv;
+
+   SV* set(SV* keysv);
+   U32 hash() const { return HEK_HASH(&hek); }
+};
+
+union key_or_ptr {
+   SV* ptr;
+   unsigned long keyl;
+   char keyp[sizeof(SV*)];
+};
+
+#if PerlVersion < 5180
+# define PmFlagsForHashKey (SVf_FAKE | SVf_READONLY)
+#else
+# define PmFlagsForHashKey SVf_IsCOW
+#endif
+
+SV* tmp_keysv::set(SV* keysv)
+{
+   HEK* hekp=&hek;
+   key_or_ptr obj;
+   obj.ptr=SvRV(keysv);
+#if PerlVersion < 5180
+   if (SvAMAGIC(keysv)) obj.keyl |= 1;
+#endif
+   Copy(obj.keyp, HEK_KEY(hekp), sizeof(SV*), char);
+   HEK_LEN(hekp)=sizeof(SV*);
+   HEK_HASH(hekp)=obj.keyl >> 4;          // hash value
+   HEK_FLAGS(hekp)=HVhek_UNSHARED;
+   sv.sv_any=&xpv;
+   sv.sv_refcnt=1;
+   sv.sv_flags= SVt_PVIV | SVf_IVisUV | SVf_POK | SVp_POK | PmFlagsForHashKey;
+   SvPV_set(&sv, HEK_KEY(hekp));
+   SvCUR_set(&sv, sizeof(SV*));
+   SvLEN_set(&sv, 0);
+   return &sv;
+}
+
+#define MarkAsRefHash(hv)     SvSTASH(hv)=my_pkg
+#define MarkAsNormalHash(hv)  SvSTASH(hv)=Nullhv
+
+OP* ErrNoRef(pTHX_ SV* key)
+{
+   if (SvOK(key)) {
+      STRLEN kl;  const char* k=SvPV(key,kl);
+      DIE(aTHX_ "Hash key '%*.s' where reference expected", (int)kl, k);
+   }
+   DIE(aTHX_ "Hash key UNDEF where reference expected");
+}
+
+static const char err_ref[]="Reference as a key in a normal hash";
+
+bool ref_key_allowed(HV* stash)
+{
+   if (AvFILLp(allowed_pkgs) >=0 ) {
+      for (SV **ap=AvARRAY(allowed_pkgs), **end=ap+AvFILLp(allowed_pkgs); ap<=end; ++ap)
+         if (SvRV(*ap)==(SV*)stash) return true;
+   }
+   return false;
+}
+
+bool ref_key_allowed(pTHX_ HV* hv, HV* stash)
+{
+   return stash==my_pkg ||
+          (!stash
+           ? !HvFILL(hv) && !SvRMAGICAL(hv) && (MarkAsRefHash(hv), true)
+           : ref_key_allowed(stash));
+}
+
+MAGIC* hash_is_cpp_class(HV* hv, HV* stash)
+{
+   return (stash && SvMAGICAL(hv)) ? get_cpp_magic((SV*)(hv)) : nullptr;
+}
+
+struct local_hash_ref_elem {
+   HV *hv;
+   SV *keyref;
+};
+
+void* store_hash_ref_elem(pTHX_ HV* hv, SV* keyref)
+{
+   local_hash_ref_elem* le;
+   Newx(le, 1, local_hash_ref_elem);
+   le->hv=(HV*)SvREFCNT_inc_simple_NN(hv);
+   le->keyref=SvREFCNT_inc_simple_NN(keyref);
+   return le;
+}
+
+void delete_hash_elem(pTHX_ void* p)
+{
+   local_hash_ref_elem* le=(local_hash_ref_elem*)p;
+   tmp_keysv tmp_key;
+   HV* hv=le->hv;
+   SV* keyref=le->keyref;
+   SV* keysv=tmp_key.set(keyref);
+   (void)hv_delete_ent(hv, keysv, G_DISCARD, tmp_key.hash());
+   SvREFCNT_dec(hv);
+   SvREFCNT_dec(keyref);
+   Safefree(p);
+}
+
+OP* intercept_pp_helem(pTHX)
+{
+   dSP;
+   SV* keysv=TOPs;
+   HV* hv=(HV*)TOPm1s;
+   HV* stash=SvSTASH(hv);
+   tmp_keysv tmp_key;
+   if (MAGIC* mg=hash_is_cpp_class(hv, stash))
+      return cpp_helem(aTHX_ hv, mg);
+   if (SvROK(keysv)) {
+      if (!ref_key_allowed(aTHX_ hv, stash))
+         DIE(aTHX_ err_ref);
+      if ((PL_op->op_private & (OPpLVAL_INTRO | OPpLVAL_DEFER)) == OPpLVAL_INTRO &&
+          (PL_op->op_flags & OPf_MOD || LVRET)) {
+         SV* keyref=keysv;
+         keysv=tmp_key.set(keysv);
+         U32 hash=tmp_key.hash();
+         I32 existed=hv_exists_ent(hv, keysv, hash);
+         HE* he=hv_fetch_ent(hv, keysv, TRUE, hash);
+         SV* elem_sv=HeVAL(he);
+         if (existed)
+            localize_scalar(aTHX_ elem_sv);
+         else
+            save_destructor_x(&delete_hash_elem, store_hash_ref_elem(aTHX_ hv, keyref));
+         (void)POPs;
+         SETs(elem_sv);
+         RETURN;
+      }
+      SETs(tmp_key.set(keysv));
+   } else if (stash == my_pkg) {
+      if (HvFILL(hv)) return ErrNoRef(aTHX_ keysv);
+      MarkAsNormalHash(hv);
+   }
+   return Perl_pp_helem(aTHX);
+}
+
+OP* intercept_pp_hslice(pTHX)
+{
+   dSP;
+   HV* hv=(HV*)POPs;
+   HV* stash=SvSTASH(hv);
+   SV** firstkey=PL_stack_base+TOPMARK+1;
+   if (firstkey <= SP) {
+      if (MAGIC* mg=hash_is_cpp_class(hv, stash)) {
+         PUTBACK;
+         return cpp_hslice(aTHX_ hv, mg);
+      }
+      if (SvROK(*firstkey)) {
+         if (ref_key_allowed(aTHX_ hv, stash)) {
+            dMARK; dORIGMARK;
+            tmp_keysv tmp_key;
+            I32 lval = (PL_op->op_flags & OPf_MOD || LVRET);
+            I32 localizing = lval && (PL_op->op_private & OPpLVAL_INTRO);
+            I32 gimme=GIMME_V;
+
+            while (++MARK <= SP) {
+               SV *keysv=*MARK, *keyref=keysv;
+               I32 existed=FALSE;
+               if (!SvROK(keysv)) return ErrNoRef(aTHX_ keysv);
+               keysv=tmp_key.set(keysv);
+               U32 hash=tmp_key.hash();
+               if (localizing) existed=hv_exists_ent(hv, keysv, hash);
+               HE* he=hv_fetch_ent(hv, keysv, lval, hash);
+               *MARK=he ? HeVAL(he) : &PL_sv_undef;
+               if (localizing) {
+                  if (existed)
+                     localize_scalar(aTHX_ *MARK);
+                  else
+                     save_destructor_x(&delete_hash_elem, store_hash_ref_elem(aTHX_ hv, keyref));
+               }
+            }
+
+            if (gimme != G_ARRAY) {
+               MARK = ORIGMARK;
+               *++MARK = *SP;
+               SP = MARK;
+            }
+            RETURN;
+
+         } else {
+            DIE(aTHX_ err_ref);
+         }
+      }
+      else if (stash==my_pkg) {
+         if (HvFILL(hv)) return ErrNoRef(aTHX_ *firstkey);
+         MarkAsNormalHash(hv);
+      }
+      return Perl_pp_hslice(aTHX);
+   }
+   RETURN;
+}
+
+OP* intercept_pp_exists(pTHX)
+{
+   if (!(PL_op->op_private & OPpEXISTS_SUB)) {
+      dSP;
+      SV* keysv=TOPs;
+      HV* hv=(HV*)TOPm1s;
+      HV* stash=SvSTASH(hv);
+      if (MAGIC *mg=hash_is_cpp_class(hv, stash))
+         return cpp_exists(aTHX_ hv, mg);
+      if (SvROK(keysv)) {
+         tmp_keysv tmp_key;
+         (void)POPs; (void)POPs;
+         if (stash != my_pkg && !(stash && ref_key_allowed(stash)))
+            RETPUSHNO;
+         keysv=tmp_key.set(keysv);
+         if (hv_exists_ent(hv, keysv, tmp_key.hash()))
+            RETPUSHYES;
+         else
+            RETPUSHNO;
+      } else if (stash == my_pkg) {
+         (void)POPs; (void)POPs;
+         RETPUSHNO;
+      }
+   }
+   return Perl_pp_exists(aTHX);
+}
+
+OP* intercept_pp_delete(pTHX)
+{
+   dSP;
+   tmp_keysv tmp_key;
+
+   if (PL_op->op_private & OPpSLICE) {
+      HV* hv=(HV*)POPs;
+      HV* stash=SvSTASH(hv);
+      if (MAGIC* mg=hash_is_cpp_class(hv, stash)) {
+         PUTBACK;
+         return cpp_delete_hslice(aTHX_ hv, mg);
+      }
+      SV** firstkey=PL_stack_base+TOPMARK+1;
+      if (firstkey <= SP) {
+         if (SvROK(*firstkey)) {
+            if (ref_key_allowed(aTHX_ hv, stash)) {
+               dMARK; dORIGMARK;
+               I32 gimme = GIMME_V;
+               I32 discard = (gimme == G_VOID) ? G_DISCARD : 0;
+
+               while (++MARK <= SP) {
+                  SV* keysv=*MARK;
+                  if (!SvROK(keysv)) return ErrNoRef(aTHX_ keysv);
+                  keysv=tmp_key.set(keysv);
+                  SV* sv=hv_delete_ent(hv, keysv, discard, tmp_key.hash());
+                  *MARK = sv ? sv : &PL_sv_undef;
+               }
+
+               if (discard)
+                  SP = ORIGMARK;
+               else if (gimme == G_SCALAR) {
+                  MARK = ORIGMARK;
+                  *++MARK = *SP;
+                  SP = MARK;
+               }
+               RETURN;
+            } else {
+               DIE(aTHX_ err_ref);
+            }
+         } else if (stash==my_pkg) {
+            if (HvFILL(hv)) return ErrNoRef(aTHX_ *firstkey);
+            MarkAsNormalHash(hv);
+         }
+      }
+   } else {
+      HV* hv=(HV*)TOPm1s;
+      HV* stash=SvSTASH(hv);
+      if (MAGIC* mg=hash_is_cpp_class(hv, stash))
+         return cpp_delete_helem(aTHX_ hv, mg);
+
+      SV* keysv=TOPs;
+      if (SvROK(keysv)) {
+         if (ref_key_allowed(aTHX_ hv, stash)) {
+            I32 discard = (GIMME_V == G_VOID) ? G_DISCARD : 0;
+            (void)POPs; (void)POPs;
+            keysv=tmp_key.set(keysv);
+            SV* sv=hv_delete_ent(hv, keysv, discard, tmp_key.hash());
+            if (!discard) {
+               if (!sv) sv = &PL_sv_undef;
+               PUSHs(sv);
+            }
+            RETURN;
+         } else {
+            DIE(aTHX_ err_ref);
+         }
+      } else if (stash==my_pkg) {
+         if (HvFILL(hv)) return ErrNoRef(aTHX_ keysv);
+         MarkAsNormalHash(hv);
+      }
+   }
+   return Perl_pp_delete(aTHX);
+}
+
+void key2ref(pTHX_ SV* keysv)
+{
+   U32 flags=PmFlagsForHashKey | SVf_POK | SVp_POK | SVf_ROK;
+   key_or_ptr obj;
+   obj.ptr=*(SV**)SvPVX(keysv);
+#if PerlVersion < 5180
+   if (obj.keyl & 1) {
+      obj.keyl ^= 1;
+      flags |= SVf_AMAGIC;
+   }
+#endif
+   if ((SvFLAGS(keysv) & PmFlagsForHashKey) == PmFlagsForHashKey)
+      Perl_unshare_hek(aTHX_ SvSHARED_HEK_FROM_PV(SvPVX_const(keysv)));
+   SvFLAGS(keysv) ^= flags;
+   SvRV(keysv)=obj.ptr;
+#ifdef DEBUG_LEAKING_SCALARS
+   if (obj.ptr->sv_flags == SVTYPEMASK || obj.ptr->sv_refcnt == 0)
+      Perl_croak(aTHX_ "dead key %p", obj.ptr);
+#endif
+   SvREFCNT_inc_simple_void_NN(obj.ptr);
+}
+
+OP* intercept_pp_each(pTHX)
+{
+   dSP;
+   HV* hv=(HV*)TOPs;
+   HV* stash=SvSTASH(hv);
+   if (stash == my_pkg || (stash && ref_key_allowed(stash))) {
+      I32 sp_dist=SP-PL_stack_base;
+      OP* ret=Perl_pp_each(aTHX);
+      sp=PL_stack_base+sp_dist;
+      if (PL_stack_sp >= sp) key2ref(aTHX_ *sp);
+      return ret;
+   }
+   return Perl_pp_each(aTHX);
+}
+
+OP* intercept_pp_keys(pTHX)
+{
+   dSP;
+   HV* hv=(HV*)TOPs;
+   HV* stash=SvSTASH(hv);
+   MAGIC* mg;
+   I32 gimme=GIMME_V;
+   if (gimme == G_ARRAY && (stash==my_pkg || (stash && ref_key_allowed(stash)))) {
+      I32 sp_dist=SP-PL_stack_base;
+      OP* ret=Perl_pp_keys(aTHX);
+      SV** last=PL_stack_sp;
+      for (sp=PL_stack_base+sp_dist; sp <= last; ++sp)
+         key2ref(aTHX_ *sp);
+      return ret;
+   }
+   if (gimme == G_SCALAR && (mg=hash_is_cpp_class(hv, stash)))
+      return cpp_keycnt(aTHX_ hv, mg);
+   return Perl_pp_keys(aTHX);
+}
+
+// aassign isn't intercepted directly, since it is used very often and not only with hashes.
+// Instead, this routine is called from rv2hv and padhv when necessary
+OP* ref_assign(pTHX)
+{
+   dSP;
+   I32 gimme = GIMME_V;
+   HV* hv=(HV*)POPs;
+   HV* stash=SvSTASH(hv);
+   I32 lastR=TOPMARK, firstR=PL_markstack_ptr[-1]+1;
+   const I32 assign_other= (SP-PL_stack_base) != lastR;
+   I32 n_keys=0;
+
+   if (assign_other) {
+      SV** lhs=PL_stack_base+lastR+1;
+      do {
+         I32 type=SvTYPE(*lhs);
+         if (type == SVt_PVAV || type == SVt_PVHV) {
+            firstR=lastR;
+            break;
+         }
+         ++firstR;
+      } while (++lhs <= SP);
+   }
+   if (MAGIC* mg=hash_is_cpp_class(hv, stash)) {
+      PUTBACK;
+      n_keys=cpp_hassign(aTHX_ hv, mg, &firstR, lastR, !assign_other);
+      SPAGAIN;
+
+   } else if (firstR < lastR && SvROK(PL_stack_base[firstR])) {
+      if (!ref_key_allowed(aTHX_ hv, stash))
+         DIE(aTHX_ err_ref);
+
+      // the assignment loop is borrowed from the appropriate branch in pp_aassign
+      hv_clear(hv);
+      do {
+         tmp_keysv tmp_key;
+         SV* keysv=PL_stack_base[firstR++];
+         if (!keysv || !SvROK(keysv)) return ErrNoRef(aTHX_ keysv);
+         keysv = tmp_key.set(keysv);
+         SV* tmp_val = PL_stack_base[firstR] ? newSVsv(PL_stack_base[firstR]) : newSV_type(SVt_NULL);    // value
+         PL_stack_base[firstR++] = tmp_val;
+         (void)hv_store_ent(hv, keysv, tmp_val, tmp_key.hash());
+      } while (firstR < lastR);
+
+      if (firstR == lastR) {
+         SV* keysv=PL_stack_base[firstR];
+         if (!keysv || !SvROK(keysv)) return ErrNoRef(aTHX_ keysv);
+         if (SvSTASH(SvRV(keysv)) == my_pkg)
+            DIE(aTHX_ "RefHash object assignment in list context");
+         else
+            DIE(aTHX_ "Key without value in hash assignment");
+      }
+      n_keys=HvFILL(hv);
+
+   } else {
+      if (stash==my_pkg) MarkAsNormalHash(hv);
+      return Perl_pp_aassign(aTHX);
+   }
+
+   if (assign_other) {
+      PUTBACK;
+      OP* ret=Perl_pp_aassign(aTHX);
+      if (gimme == G_ARRAY) {
+         SP=PL_stack_base+lastR;
+         PUTBACK;
+      }
+      return ret;
+   }
+
+   PL_markstack_ptr-=2;
+   if (gimme == G_VOID)
+      SP=PL_stack_base+firstR-1;
+   else if (gimme == G_ARRAY)
+      SP=PL_stack_base+lastR;
+   else {
+      dTARGET;
+      SP=PL_stack_base+firstR;
+      SETi(n_keys*2);
+   }
+   RETURN;
+}
+
+OP* pp_pushhv(pTHX)
+{
+   dSP; dMARK; dORIGMARK;
+   HV* hv=(HV*)*++MARK;
+   HV* stash=SvSTASH(hv);
+
+   if (MARK < SP) {
+      if (SvROK(MARK[1])) {
+         if (ref_key_allowed(aTHX_ hv, stash)) {
+            tmp_keysv tmp_key;
+            do {
+               SV* keysv=*++MARK;
+               if (!SvROK(keysv)) return ErrNoRef(aTHX_ keysv);
+               keysv=tmp_key.set(keysv);
+               SV* value=*++MARK;
+               SV* tmp_val = value ? newSVsv(value) : newSV_type(SVt_NULL);      // copy of the value
+               (void)hv_store_ent(hv, keysv, tmp_val, tmp_key.hash());
+            } while (MARK < SP);
+         } else {
+            DIE(aTHX_ err_ref);
+         }
+      } else {
+         if (stash==my_pkg) {
+            if (HvFILL(hv)) return ErrNoRef(aTHX_ MARK[1]);
+            MarkAsNormalHash(hv);
+         }
+         do {
+            SV* keysv=*++MARK;
+            if (SvROK(keysv))
+               DIE(aTHX_ err_ref);
+            SV* value=*++MARK;
+            SV* tmp_val = value ? newSVsv(value) : newSV_type(SVt_NULL);          // copy of the value
+            (void)hv_store_ent(hv, keysv, tmp_val, SvSHARED_HASH(keysv));
+         } while (MARK < SP);
+      }
+   }
+   SP=ORIGMARK;
+   RETURN;
+}
+
+OP* pp_rv2hv_ref_retrieve(pTHX)
+{
+   dSP;
+   I32 sp_dist=SP-PL_stack_base;
+   OP *ret=Perl_pp_rv2hv(aTHX);
+   SV **last=PL_stack_sp;
+   for (SP=PL_stack_base+sp_dist; SP < last; SP+=2)
+      key2ref(aTHX_ *SP);
+   return ret;
+}
+
+OP* pp_padhv_ref_retrieve(pTHX)
+{
+   dSP;
+   I32 sp_dist=SP-PL_stack_base+1;
+   OP *ret=Perl_pp_padhv(aTHX);
+   SV **last=PL_stack_sp;
+   for (SP=PL_stack_base+sp_dist; SP < last; SP+=2)
+      key2ref(aTHX_ *SP);
+   return ret;
+}
+
+OP* intercept_pp_rv2hv(pTHX)
+{
+   dSP;
+   SV* hv=TOPs;
+   HV* stash;
+   if (PL_op->op_flags & OPf_REF) {
+      if (PL_op->op_next->op_type == OP_AASSIGN) {
+         PL_op=Perl_pp_rv2hv(aTHX);
+         return ref_assign(aTHX);
+      }
+      if (SvROK(hv)) {
+        hv=SvRV(hv);
+        stash=SvSTASH(hv);
+        MAGIC* mg;
+        if ((SvTYPE(hv)==SVt_PVHV || SvTYPE(hv)==SVt_PVAV) && (mg=hash_is_cpp_class((HV*)hv, stash)) &&
+            cpp_has_assoc_methods(mg)) {
+          // escape the type check in rv2hv=rv2av in perl 5.10
+          SETs(hv);
+          RETURN;
+        }
+      }
+   } else if (GIMME_V == G_ARRAY) {
+      if (SvROK(hv)) {  // the easiest and most often case
+         stash=SvSTASH(SvRV(hv));
+         if (stash==my_pkg || (stash && ref_key_allowed(stash)))
+            return pp_rv2hv_ref_retrieve(aTHX);
+         else
+            return Perl_pp_rv2hv(aTHX);
+      }
+      SAVEI8(PL_op->op_flags);  // just for the case the op dies
+      PL_op->op_flags ^= OPf_REF;
+      Perl_pp_rv2hv(aTHX);               // get the hash
+      PL_op->op_flags ^= OPf_REF;
+      hv=TOPs;
+      stash=SvSTASH(hv);
+      if (stash==my_pkg || (stash && ref_key_allowed(stash)))
+         return pp_rv2hv_ref_retrieve(aTHX);
+   }
+   return Perl_pp_rv2hv(aTHX);
+}
+
+OP* intercept_pp_padhv(pTHX)
+{
+   if (PL_op->op_flags & OPf_REF) {
+      if (PL_op->op_next->op_type == OP_AASSIGN) {
+         PL_op=Perl_pp_padhv(aTHX);
+         return ref_assign(aTHX);
+      }
+   } else if (GIMME_V == G_ARRAY) {
+      dTARGET;
+      HV* hv=(HV*)TARG;
+      HV* stash=SvSTASH(hv);
+      if (stash==my_pkg || (stash && ref_key_allowed(stash))) {
+         return pp_padhv_ref_retrieve(aTHX);
+      }
+   }
+   return Perl_pp_padhv(aTHX);
+}
+
+#if PerlVersion >= 5180
+OP* intercept_pp_padrange_known(pTHX)
+{
+   PL_op=Perl_pp_padrange(aTHX);
+   return ref_assign(aTHX);
+}
+
+OP* intercept_pp_padrange_unknown(pTHX)
+{
+   OP* o=PL_op;
+   OP* sib=OpSIBLING(o);
+   OP* next=Perl_pp_padrange(aTHX);
+   if (next->op_type == OP_AASSIGN) {
+      while (sib) {
+         if (sib->op_type == OP_PADHV && (sib->op_flags & OPf_REF)) {
+            o->op_ppaddr=&intercept_pp_padrange_known;
+            PL_op=next;
+            return ref_assign(aTHX);
+         }
+         sib=OpSIBLING(sib);
+      }
+   }
+   o->op_ppaddr=def_pp_PADRANGE;
+   return next;
+}
+#endif
+
+OP* pp_ref_anonhash(pTHX)
+{
+    dSP; dMARK; dORIGMARK;
+    HV* hv = newHV();
+    tmp_keysv tmp_key;
+    MarkAsRefHash(hv);
+    while (++MARK < SP) {
+        SV* keysv = *MARK;
+        if (!SvROK(keysv)) return ErrNoRef(aTHX_ keysv);
+        keysv = tmp_key.set(keysv);
+        SV* val = MARK < SP ? newSVsv(*++MARK) : newSV_type(SVt_NULL);
+        (void)hv_store_ent(hv, keysv, val, tmp_key.hash());
+    }
+    SP = ORIGMARK;
+    XPUSHs(sv_2mortal((PL_op->op_flags & OPf_SPECIAL)
+                      ? newRV_noinc((SV*)hv) : (SV*)hv));
+    RETURN;
+}
+
+OP* intercept_pp_anonhash(pTHX)
+{
+   dSP;
+   SV **firstkey=PL_stack_base+TOPMARK+1;
+   if (firstkey<SP && SvROK(*firstkey))
+      return pp_ref_anonhash(aTHX);
+   return Perl_pp_anonhash(aTHX);
+}
+
+OP* check_pushhv(pTHX_ OP *o)
+{
+   if (o->op_flags & OPf_KIDS) {
+      OP* kid=cLISTOPo->op_first;
+      if (kid->op_type == OP_PUSHMARK ||
+          (kid->op_type == OP_NULL && kid->op_targ == OP_PUSHMARK))
+         kid = OpSIBLING(kid);
+      if (kid->op_type == OP_RV2HV || kid->op_type == OP_PADHV) {
+         int arg_cnt=2;
+         op_lvalue(kid, o->op_type);
+         while ((kid=OpSIBLING(kid))) {
+            if (kid->op_type == OP_RV2HV || kid->op_type == OP_PADHV) {
+               Perl_list(aTHX_ kid);
+            } else {
+               Perl_yyerror(aTHX_ Perl_form(aTHX_ "Type of arg %d to push must be hash (not %s)", arg_cnt, OP_DESC(kid)));
+            }
+            ++arg_cnt;
+         }
+         o->op_ppaddr=&pp_pushhv;
+         return o;
+      }
+   }
+   return Perl_ck_fun(aTHX_ o);
+}
+
+#if PerlVersion >= 5220
+// The following senseless routines have a sole purpose:
+// to prevent the operations HELEM, EXISTS, and DELETE from being lumped together with MULTIDEREF.
+// The concrete manipulations have been deduced from studying the source code of S_maybe_multideref,
+// they might need to be adapted in the future versions.
+
+OP* intercept_ck_helem(pTHX_ OP *o)
+{
+   // currently it's enough just to install a non-standard check hook
+   return def_ck_HELEM(aTHX_ o);
+}
+
+// For EXISTS and DELETE, it's enough to mark the operation delivering the key with a flag OPf_REF;
+// this flag does not influence the operation itself but, weirdly enough, is respected by S_maybe_multideref.
+void protect_key_operand(pTHX_ OP* o)
+{
+   o=cUNOPo->op_first;  // null = former HELEM or HSLICE
+   assert(o->op_type == OP_NULL);
+   if (o->op_targ != OP_HELEM) return;
+
+   o=cBINOPo->op_last;  // key source
+   switch (o->op_type)
+   {
+   case OP_PADSV:
+      o->op_flags |= OPf_REF;
+      break;
+   case OP_RV2SV:
+      if (cUNOPo->op_first->op_type == OP_GV)
+         o->op_flags |= OPf_REF;
+      break;
+   }
+}
+
+OP* intercept_ck_exists(pTHX_ OP *o)
+{
+   o=def_ck_EXISTS(aTHX_ o);
+   protect_key_operand(aTHX_ o);
+   return o;
+}
+
+OP* intercept_ck_delete(pTHX_ OP *o)
+{
+   o=def_ck_DELETE(aTHX_ o);
+   protect_key_operand(aTHX_ o);
+   return o;
+}
+
+#endif
+
+OP* intercept_pp_const(pTHX)
+{
+   SV* sv=cSVOP_sv;
+   if ((PL_op->op_private & OPpCONST_BARE)  &&  SvTYPE(sv)==SVt_PV)
+      SvIsUV_on(sv);
+   PL_op->op_ppaddr=&Perl_pp_const;
+   return Perl_pp_const(aTHX);
+}
+
+void catch_ptrs(pTHX_ SV *dummy)
+{
+   PL_ppaddr[OP_CONST]=&intercept_pp_const;
+   PL_ppaddr[OP_HELEM]=&intercept_pp_helem;
+   PL_ppaddr[OP_HSLICE]=&intercept_pp_hslice;
+   PL_ppaddr[OP_EXISTS]=&intercept_pp_exists;
+   PL_ppaddr[OP_DELETE]=&intercept_pp_delete;
+   PL_ppaddr[OP_EACH]=&intercept_pp_each;
+   PL_ppaddr[OP_KEYS]=&intercept_pp_keys;
+   PL_ppaddr[OP_RV2HV]=&intercept_pp_rv2hv;
+   PL_ppaddr[OP_PADHV]=&intercept_pp_padhv;
+#if PerlVersion >= 5180
+   PL_ppaddr[OP_PADRANGE]=&intercept_pp_padrange_unknown;
+#endif
+   PL_ppaddr[OP_ANONHASH]=&intercept_pp_anonhash;
+   PL_check[OP_PUSH]=&check_pushhv;
+#if PerlVersion >= 5220
+   PL_check[OP_HELEM]=&intercept_ck_helem;
+   PL_check[OP_EXISTS]=&intercept_ck_exists;
+   PL_check[OP_DELETE]=&intercept_ck_delete;
+#endif
+}
+
+void reset_ptrs(pTHX_ SV *dummy)
+{
+   PL_ppaddr[OP_CONST]=def_pp_CONST;
+   PL_ppaddr[OP_HELEM]=def_pp_HELEM;
+   PL_ppaddr[OP_HSLICE]=def_pp_HSLICE;
+   PL_ppaddr[OP_EXISTS]=def_pp_EXISTS;
+   PL_ppaddr[OP_DELETE]=def_pp_DELETE;
+   PL_ppaddr[OP_EACH]=def_pp_EACH;
+   PL_ppaddr[OP_KEYS]=def_pp_KEYS;
+   PL_ppaddr[OP_RV2HV]=def_pp_RV2HV;
+   PL_ppaddr[OP_PADHV]=def_pp_PADHV;
+#if PerlVersion >= 5180
+   PL_ppaddr[OP_PADRANGE]=def_pp_PADRANGE;
+#endif
+   PL_ppaddr[OP_ANONHASH]=def_pp_ANONHASH;
+   PL_check[OP_PUSH]=def_ck_PUSH;
+#if PerlVersion >= 5220
+   PL_check[OP_HELEM]=def_ck_HELEM;
+   PL_check[OP_EXISTS]=def_ck_EXISTS;
+   PL_check[OP_DELETE]=def_ck_DELETE;
+#endif
+}
+
+}
+
+HE* refhash_fetch_ent(pTHX_ HV* hv, SV* keysv, I32 lval)
+{
+   tmp_keysv tmp_key;
+   HV* stash=SvSTASH(hv);
+   assert(SvROK(keysv));
+   if (!ref_key_allowed(aTHX_ hv, stash))
+      Perl_croak(aTHX_ err_ref);
+   keysv=tmp_key.set(keysv);
+   return hv_fetch_ent(hv, keysv, lval, tmp_key.hash());
+}
+
+} } }
+
+using namespace pm::perl::glue;
+
+MODULE = Polymake::RefHash              PACKAGE = Polymake
+
+PROTOTYPES: DISABLE
+
+void
+is_keyword(sv)
+   SV *sv;
+PPCODE:
+{
+   if ((SvFLAGS(sv) & (SVf_POK|SVf_IVisUV)) == (SVf_POK|SVf_IVisUV))
+      PUSHs(&PL_sv_yes);
+   else
+      PUSHs(&PL_sv_no);
+}
+
+MODULE = Polymake::RefHash              PACKAGE = Polymake::RefHash
+
+void
+allow(pkg)
+   SV *pkg;
+PPCODE:
+{
+   av_push(allowed_pkgs, newRV((SV*)gv_stashsv(pkg,FALSE)));
+}
+
+BOOT:
+{
+   my_pkg=gv_stashpv("Polymake::RefHash", FALSE);
+   allowed_pkgs=newAV();
+   def_pp_CONST=PL_ppaddr[OP_CONST];
+   def_pp_HELEM=PL_ppaddr[OP_HELEM];
+   def_pp_HSLICE=PL_ppaddr[OP_HSLICE];
+   def_pp_EXISTS=PL_ppaddr[OP_EXISTS];
+   def_pp_DELETE=PL_ppaddr[OP_DELETE];
+   def_pp_EACH=PL_ppaddr[OP_EACH];
+   def_pp_KEYS=PL_ppaddr[OP_KEYS];
+   def_pp_RV2HV=PL_ppaddr[OP_RV2HV];
+   def_pp_PADHV=PL_ppaddr[OP_PADHV];
+#if PerlVersion >= 5180
+   def_pp_PADRANGE=PL_ppaddr[OP_PADRANGE];
+#endif
+   def_pp_ANONHASH=PL_ppaddr[OP_ANONHASH];
+   def_ck_PUSH=PL_check[OP_PUSH];
+#if PerlVersion >= 5220
+   def_ck_HELEM=PL_check[OP_HELEM];
+   def_ck_EXISTS=PL_check[OP_EXISTS];
+   def_ck_DELETE=PL_check[OP_DELETE];
+#endif
+   namespace_register_plugin(aTHX_ catch_ptrs, reset_ptrs, &PL_sv_undef);
+}
+
+=pod
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:
+=cut

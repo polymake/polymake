@@ -1,25 +1,39 @@
-# Copyright (c) 2013-2016 Silke Horn, Andreas Paffenholz
-# http://solros.de/polymake/poly_db
-# http://www.mathematik.tu-darmstadt.de/~paffenholz
-# 
-# This file is part of the polymake extension polyDB.
-# 
-# polyDB is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# 
-# polyDB is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-# 
-# You should have received a copy of the GNU General Public License
-# along with polyDB.  If not, see <http://www.gnu.org/licenses/>.
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+#
+#  This file is part of the polymake database interface polyDB.
+#
+#   @author Silke Horn, Andreas Paffenholz
+#   http://solros.de
+#   http://www.mathematik.tu-darmstadt.de/~paffenholz
+#
+
 
 use MongoDB;
 use MongoDB::OID;
 use PolyDB;
+use namespaces qw(+ PolyDB);
+
+CREDIT polyDB
+
+# @topic property_types/MongoClient
+# @category Database
+# A handler for the polyDB database internally controlling the connection to the MongoDB database
+
+
+package PolyDB::default;
 
 # @category Database
 
@@ -43,7 +57,16 @@ custom $db_auth_db = "admin";
 custom $db_type_db = "pm";
 
 # polyDB: The name of the info database, default 'pm'
-custom $db_info_db = "pm";
+custom $db_info_db_old = "pm";
+
+# polyDB: The name of the info database, default 'pm'
+custom $db_info_db = "polyDB";
+
+# polyDB: The name of the type_information collection, default 'type_information'
+custom $db_type_information = "type_information";
+
+# polyDB: The name of the Info collection, default 'Info'
+custom $db_info_collection = "Info";
 
 # polyDB: The name of the database you want to access. Set this if you want to access a certain database all (or most of) the time.
 custom $db_database_name = "";
@@ -51,6 +74,12 @@ custom $db_database_name = "";
 # polyDB: The name of the collection you want to access. Set this if you want to access a certain collection all (or most of) the time.
 custom $db_collection_name = "";
 
+# polyDB: The timeout for waiting to get a socket connection to the db server
+custom $db_socket_timeout = 120000;
+
+
+
+package application;
 
 # @category Database
 # Returns all objects in the database //db// in //collection// that match the //query//. This is only recommended for a reasonably small number of matching objects. If you expect many such objects you should instead use a database cursor.
@@ -65,77 +94,87 @@ custom $db_collection_name = "";
 # @option Int skip skip the first elements, default: 0
 # @option HASH sort_by specify a sorting order
 # @return Array<Core::Object>
-user_function db_query ($, {db => $db_database_name, collection => $db_collection_name, local => 0, limit => 0, username => $db_user, password => $db_pwd, client => undef, skip => 0, sort_by => {_id => 1}}){
-	my ($query, $options) = @_;
+user_function db_query ($, \
+                        {db => $PolyDB::default::db_database_name, \
+                        collection => $PolyDB::default::db_collection_name, \
+                        representative=>0, \
+                        distinct=>undef, \
+                        local => 0, \
+                        limit => 0, \
+                        username => $PolyDB::default::db_user, \
+                        password => $PolyDB::default::db_pwd, \
+                        client => undef, \
+                        skip => 0, \
+                        sort_by => {"_id" => 1}}) \
+{
+   my ($query, $options) = @_;
 
-	check_options($options);
-	my ($client, $type, $col) = prepare_query({db=>$options->{"db"}, collection=>$options->{"collection"}, client=>$options->{"client"} });
-	
-	my $output = $col->find($query)->limit($options->{limit})->sort($options->{sort_by})->skip($options->{skip});
-	unless ($output) { croak("No such object.\n"); }
+   Client::check_options($options);
+   my ($client, $collection) = Client::prepare_query({ db=>$options->{"db"},
+                                                       collection=>$options->{"collection"},
+                                                       client=>$options->{"client"} });
 
-	
-	unless (defined($options->{client})){
-		undef $client;
-	}
-	return cursor2objectarray($output, $type, $options->{db}, $options->{collection});
+   my $output;
+   my $construct_object_function;
+   if ( $options->{'representative'} ) {
+      $output = $collection->find_one($query)
+         // die "No such object in the database.\n";
+      if ( exists($output->{'polyDB'}->{'type_information_key'}) ) {
+         my $type_information_key = $output->{'polyDB'}->{'type_information_key'};
+         my $ti_query = {db => $options->{'db'},
+                         collection => $options->{'collection'},
+                         local => $options->{local},
+                         client => $client,
+                         type_information_key => $type_information_key};
+         my $type_information = db_get_type_information($ti_query)
+            // die "Type information not found\n";
+         if ( defined($type_information->{'construct_object'} ) ) {
+            $construct_object_function = $type_information->{'construct_object'};
+         }
+      }
+   } elsif( $options->{'distinct'}) {
+      $output = $client->get_database($options->{'db'})->run_command([
+         "distinct" => $options->{'collection'},
+         "key"      => $options->{'distinct'},
+         "query"    => $query
+      ]);
+   } else {
+      unless ($collection->count($query)) { die "No such object in the database.\n"; }
+      # get type information keys
+      my $keys = $client->get_database($options->{'db'})->run_command([
+         "distinct" => $options->{'collection'},
+         "key"      => "polyDB.type_information_key",
+         "query"    => $query,
+         "limit"    => $options->{'limit'},
+         "skip"     => $options->{'skip'}
+      ]);
+      $construct_object_function = {};
+      foreach my $key (@{$keys->{'values'}}) {
+         my $ti_query = {db => $options->{'db'},
+                         collection => $options->{'collection'},
+                         local => $options->{local},
+                         client => $client,
+                         type_information_key => $key};
+         my $type_information = db_get_type_information($ti_query)
+            // die "Type information for key $key not found\n";
+         if ( defined($type_information->{'construct_object'} ) ) {
+            $construct_object_function->{$key} = $type_information->{'construct_object'};
+         }
+      }
+      $output = $collection->find($query)->limit($options->{limit})->sort($options->{sort_by})->skip($options->{skip});
+   }
+
+   unless (defined($options->{client})){
+      undef $client;
+   }
+   if ( $options->{'representative'}) {
+      return PolymakeJsonConversion::perl2polymake($output, $options->{db}, $options->{collection}, $construct_object_function);
+   } elsif($options->{'distinct'}) {
+      return $output->{'values'};
+   } else {
+      return PolymakeJsonConversion::cursor2ObjectArray($output, $options->{db}, $options->{collection}, $construct_object_function);
+   }
 }
-
-
-
-# @category Database
-# Returns one object in the database //db// in //collection// that matches the //query//.
-# @param HASH query
-# @option String db name of the database, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available databases
-# @option String collection name of the collection, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available collections
-# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
-# @option String username Some databases might have access control.
-# @option String password Some databases might have access control.
-# @option MongoClient client
-# @return Core::Object
-user_function db_query_one ($, {db => $db_database_name, collection => $db_collection_name, local => 0, username => $db_user, password => $db_pwd, client => undef}){
-	my ($query, $options) = @_;
-
-	check_options($options);
-	my ($client, $type, $col) = prepare_query({db=>$options->{"db"}, collection=>$options->{"collection"}, client=>$options->{"client"} });
-
-	# query the database
-	# NOTE: the return is a perl hash of the json in the datatbase!
-	my $output = $col->find_one($query);
-	unless ($output) { croak("No such object.\n"); }
-
-	
-	unless (defined($options->{client})){
-		undef $client;
-	}
-	return db_data_to_polymake($output,$options->{db}, $options->{collection});
-}
-
-# @category Database
-# Returns a list of distinct values for a property for the database //db// in //collection//. 
-# @param HASH query
-# @option String db name of the database, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available databases
-# @option String collection name of the collection, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available collections
-# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
-# @option String username Some databases might have access control.
-# @option String password Some databases might have access control.
-# @option MongoClient client
-# @return Array<Core::Object>
-user_function db_distinct ($,$, {db => $db_database_name, collection => $db_collection_name, local => 0, username => $db_user, password => $db_pwd, client => undef }){
-	my ($distinct, $query, $options) = @_;
-
-	check_options($options);
-	my ($client, $type, $col) = prepare_query({db=>$options->{"db"}, collection=>$options->{"collection"}, client=>$options->{"client"} });
-	
-	my $output = $col->distinct($distinct, $query);
-	unless ($output) { croak("No such object.\n"); }
-	
-	unless (defined($options->{client})){
-		undef $client;
-	}
-	return cursor2array($output);
-}
-
 
 # @category Database
 # Returns the number of objects in the database //db// in //collection// that match the //query//.
@@ -147,20 +186,44 @@ user_function db_distinct ($,$, {db => $db_database_name, collection => $db_coll
 # @option String password Some databases might have access control.
 # @option MongoClient client
 # @return Int
-user_function db_count($, {db => $db_database_name, collection => $db_collection_name, local => 0, username => $db_user, password => $db_pwd, client => undef}) {
-	my ($query, $options) = @_;
+user_function db_count($, \
+                       {db => $PolyDB::default::db_database_name, \
+                       collection => $PolyDB::default::db_collection_name, \
+                       distinct=>undef, \
+                       local => 0, \
+                       username => $PolyDB::default::db_user, \
+                       password => $PolyDB::default::db_pwd, \
+                       client => undef}) \
+{
+   my ($query, $options) = @_;
 
-	check_options($options);
-	my ($client, $type, $col) = prepare_query({db=>$options->{"db"}, collection=>$options->{"collection"}, client=>$options->{"client"} });
-	my $output = $col->count($query);
-	
-	unless (defined($options->{client})){
-		undef $client;
-	}
-	
-	return $output;
+   Client::check_options($options);
+   my ($client, $collection) = Client::prepare_query({ db=>$options->{"db"},
+                                                       collection=>$options->{"collection"},
+                                                       client=>$options->{"client"} });
+
+   my $output;
+   if ( $options->{'distinct'} ) {
+      $output = $client->get_database($options->{'db'})->run_command([
+         "distinct" => $options->{'collection'},
+         "key"      => $options->{'distinct'},
+         "query"    => $query
+      ])
+        // die "No such object.\n";
+   } else {
+      $output = $collection->count($query);
+   }
+
+   unless (defined($options->{client})){
+      undef $client;
+   }
+
+   if ( $options->{'distinct'}) {
+      return scalar(@{$output->{'values'}});
+   } else {
+      return $output;
+   }
 }
-
 
 # @category Database
 # Returns the IDs of all objects in the database //db// in //collection// that match the //query//. This is only recommended for a reasonably small number of matching objects. If you expect many such objects you should instead construct a [[DBCursor]].
@@ -175,20 +238,33 @@ user_function db_count($, {db => $db_database_name, collection => $db_collection
 # @option String password Some databases might have access control.
 # @option MongoClient client
 # @return Array<String>
-user_function db_ids ($, {db => $db_database_name, collection => $db_collection_name, local => 0, limit => 0, username => $db_user, password => $db_pwd, client => undef, skip => 0, sort_by => {}}){
-	my ($query, $options) = @_;
+user_function db_ids ($, \
+                      {db => $PolyDB::default::db_database_name, \
+                      collection => $PolyDB::default::db_collection_name, \
+                      local => 0, \
+                      limit => 0, \
+                      username => $PolyDB::default::db_user, \
+                      password => $PolyDB::default::db_pwd, \
+                      client => undef, \
+                      skip => 0, \
+                      sort_by => {}})\
+{
+   my ($query, $options) = @_;
 
-	check_options($options);
-	my ($client, $type, $col) = prepare_query({db=>$options->{"db"}, collection=>$options->{"collection"}, client=>$options->{"client"} });
+   Client::check_options($options);
+   my ($client, $collection) = Client::prepare_query({ db=>$options->{"db"},
+                                                       collection=>$options->{"collection"},
+                                                       client=>$options->{"client"} });
 
-	my $output = $col->find($query)->fields({'_id'=>1})->limit($options->{limit})->sort($options->{sort_by})->skip($options->{skip});
-	unless ($output) { croak("No such object.\n"); }
-	
-	
-	unless (defined($options->{client})){
-		undef $client;
-	}
-	return new Array<String>(cursor2stringarray($output));
+   my $output = $collection->find($query)->fields({'_id'=>1})->limit($options->{limit})->sort($options->{sort_by})->skip($options->{skip})
+      // die "No such object.\n";
+
+   return new Array<String>(PolymakeJsonConversion::cursor2IdArray($output));
 }
 
 
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

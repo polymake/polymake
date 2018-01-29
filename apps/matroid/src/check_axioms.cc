@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -40,7 +40,7 @@ int check_flat_axiom(const Array<Set<int> >& matroid_flats, perl::OptionSet opti
 
 UserFunction4perl("# @category Other"
                   "# Check if a given list of sets satisfies the axioms to be the bases of a matroid."
-                  "# @param Array<Set> a list of would-be bases of a matroid"
+                  "# @param Array<Set> B a list of would-be bases of a matroid"
                   "# @option Bool verbose print a proof if the given sets do not form the set of bases of a matroid"
                   "# @return Int is_matroid are the given sets the bases of a matroid?",
                   &check_basis_exchange_axiom,
@@ -48,7 +48,7 @@ UserFunction4perl("# @category Other"
 
 UserFunction4perl("# @category Other"
                   "# Check if a given list of sets satisfies the axioms to be the hyperplanes of a matroid."
-                  "# @param Array<Set> a list of would-be hyperplanes of a matroid"
+                  "# @param Array<Set> H a list of would-be hyperplanes of a matroid"
                   "# @option Bool verbose print a proof if the given sets do not form the set of hyperplanes of a matroid"
                   "# @return Int are_hyperplanes are the given sets the hyperplanes of a matroid?",
                   &check_hyperplane_axiom,
@@ -56,7 +56,7 @@ UserFunction4perl("# @category Other"
 
 UserFunction4perl("# @category Other"
                   "# Check if a given list of sets satisfies the axioms to be the flats of a matroid."
-                  "# @param Array<Set> a list of would-be flats of a matroid"
+                  "# @param Array<Set> F a list of would-be flats of a matroid"
                   "# @option Bool verbose print a proof if the given sets do not form the set of flats of a matroid"
                   "# @return Int are_flats are the given sets the flats of a matroid?",
                   &check_flat_axiom,

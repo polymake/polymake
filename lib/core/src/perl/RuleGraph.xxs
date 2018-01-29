@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -1020,9 +1020,10 @@ int RuleGraph::Rule_is_perm_action=0;
 } }
 
 using namespace pm::perl;
+using namespace pm::perl::glue;
 
 #define RetrieveGraphArg(...) \
-   MAGIC* mg=pm_perl_get_cpp_magic(SvRV(self)); \
+   MAGIC* mg=get_cpp_magic(SvRV(self)); \
    __VA_ARGS__ RuleGraph* rgr=reinterpret_cast<__VA_ARGS__ RuleGraph*>(mg->mg_ptr)
 
 #define RetrieveChainGraph(...) \

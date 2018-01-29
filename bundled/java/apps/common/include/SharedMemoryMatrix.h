@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -128,7 +128,11 @@ template <typename E>
 class SharedMemoryMatrix
    : public SharedMemorySegment
    , public Matrix<E> {
-   typedef Matrix<E> base_t;
+   using base_t = Matrix<E>;
+
+   template <typename Iterator>
+   using fits_as_input_iterator = typename base_t::template fits_as_input_iterator<Iterator>;
+
    static size_t alloc_size(int r, int c) { return base_t::shared_array_type::alloc_size(r*c); }
 public:
    SharedMemoryMatrix() {}
@@ -141,29 +145,22 @@ public:
       : SharedMemorySegment(alloc_size(r,c))
       , base_t(shmaddr, r, c, init) {}
 
-   template <typename Iterator>
-   SharedMemoryMatrix(int r, int c, Iterator&& src,
-                      typename std::enable_if<pm::construct_cascaded_iterator<Iterator, E, pm::dense>::depth!=0, void**>::type=nullptr)
+   template <typename Iterator, typename=typename std::enable_if<fits_as_input_iterator<Iterator>::value>::type>
+   SharedMemoryMatrix(int r, int c, Iterator&& src)
       : SharedMemorySegment(alloc_size(r,c))
       , base_t(shmaddr, r, c, std::forward<Iterator>(src)) {}
 
-   template <size_t r, size_t c>
-   explicit SharedMemoryMatrix(const E (&a)[r][c])
-      : SharedMemorySegment(alloc_size(r, c))
-      , base_t(shmaddr, r, c, &a[0][0]) {}
-
    template <typename Matrix2, typename E2>
    SharedMemoryMatrix(const GenericMatrix<Matrix2, E2>& m,
-                      typename std::enable_if<pm::can_initialize<E2, E>::value, void**>::type=nullptr)
+                      typename std::enable_if<pm::can_initialize<E2, E>::value>::type** = nullptr)
       : SharedMemorySegment(alloc_size(m.rows(), m.cols()))
       , base_t(shmaddr, m.rows(), m.cols(), ensure(concat_rows(m), (pm::dense*)0).begin()) {}
 
    template <typename Container>
    SharedMemoryMatrix(const Container& src,
-                      typename std::enable_if<pm::construct_cascaded_iterator<typename Container::const_iterator, E, pm::dense>::depth==2, void**>::type=nullptr)
+                      typename std::enable_if<pm::isomorphic_to_container_of<Container, Vector<E>>::value>::type** = nullptr)
       : SharedMemorySegment(alloc_size(src.size(), src.empty() ? 0 : get_dim(src.front())))
-      , base_t(shmaddr, src.size(), src.empty() ? 0 : get_dim(src.front()),
-               pm::construct_cascaded_iterator<typename Container::const_iterator, E, pm::dense>()(entire(src))) {}
+      , base_t(shmaddr, src.size(), src.empty() ? 0 : get_dim(src.front()), src.begin()) {}
 
    SharedMemoryMatrix(const SharedMemoryMatrix& m)
       : SharedMemorySegment(alloc_size(m.rows(), m.cols()))

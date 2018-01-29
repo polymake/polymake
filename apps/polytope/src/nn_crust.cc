@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -70,7 +70,7 @@ void nn_crust(perl::Object p)
    p.take("NN_CRUST_GRAPH.ADJACENCY") << G;
 }
 
-FunctionTemplate4perl("nn_crust<Scalar>(VoronoiDiagram<Scalar>) : void");
+FunctionTemplate4perl("nn_crust<Scalar>(VoronoiPolyhedron<Scalar>) : void");
 
 } } 
 

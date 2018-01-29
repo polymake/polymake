@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -195,26 +195,25 @@ namespace {
      Action =          CoordinateAction<permlib::Permutation,Scalar>
 */    
 template<typename DomainType, typename DomainContainer, typename Action>
-Array<hash_set<int>> orbits_of_induced_action_impl(perl::Object action, const DomainContainer& container) {
+Array<hash_set<int>>
+orbits_of_induced_action_impl(perl::Object action, const DomainContainer& container) {
    const PermlibGroup group_of_cone = group_from_perl_action(action);
    hash_map<DomainType, int> index_of;
    std::vector<DomainType> domain_list;
    domain_list.reserve(container.rows());
    int i(0);
-   for (typename Entire<Rows<DomainContainer>>::const_iterator cit=entire(rows(container)); !cit.at_end(); ++cit, ++i) {	
+   for (auto cit=entire(rows(container)); !cit.at_end(); ++cit, ++i) {	
       domain_list.push_back(*cit);
       index_of[*cit] = i;
    }
 
-   typedef typename std::list<boost::shared_ptr<permlib::OrbitSet<permlib::Permutation, DomainType>> > OrbitListType;
-
-   const OrbitListType olist = permlib::orbits<DomainType, Action>(*(group_of_cone.get_permlib_group()), domain_list.begin(), domain_list.end());
+   const auto olist = permlib::orbits<DomainType, Action>(*(group_of_cone.get_permlib_group()), domain_list.begin(), domain_list.end());
 
    Array<hash_set<int>> induced_orbits(olist.size()); 
-   Entire<Array<hash_set<int>> >::iterator ioit (entire(induced_orbits));
-   for (typename OrbitListType::const_iterator orbit = olist.begin(); orbit != olist.end(); ++orbit, ++ioit) {
+   auto ioit (entire(induced_orbits));
+   for (auto orbit = olist.begin(); orbit != olist.end(); ++orbit, ++ioit) {
       hash_set<int> one_orbit;
-      for (typename permlib::OrbitSet<permlib::Permutation, DomainType>::const_iterator orb_it=(*orbit)->begin(); orb_it != (*orbit)->end(); ++orb_it) {
+      for (auto orb_it=(*orbit)->begin(); orb_it != (*orbit)->end(); ++orb_it) {
          one_orbit += index_of.at(*orb_it); // this will throw if *orb_it isn't in the orbit already, which means the action would be undefined
       }
       *ioit = one_orbit;
@@ -236,11 +235,11 @@ Array<hash_set<int>> orbits_of_coordinate_action(perl::Object action, const Gene
 }
 
 
-//wrapper for orbits_in_orbit_order_impl, returns ListReturn instead of Pair
+// wrapper for orbits_in_orbit_order_impl, returns ListReturn instead of Pair
 template <typename MatrixTop, typename Scalar>
 perl::ListReturn orbits_in_orbit_order(perl::Object coordinate_action, const GenericMatrix<MatrixTop, Scalar>& mat)
 {
-   const std::pair<ListMatrix<Vector<Scalar>> , Array<hash_set<int>>> sub_result(orbits_in_orbit_order_impl(coordinate_action, mat));
+   const auto sub_result(orbits_in_orbit_order_impl(coordinate_action, mat));
    perl::ListReturn result;
    result << sub_result.first
           << sub_result.second;
@@ -248,21 +247,20 @@ perl::ListReturn orbits_in_orbit_order(perl::Object coordinate_action, const Gen
 }
 
 
-//test whether one vector is in the orbit of another vector (coordinate action)
+//t est whether one vector is in the orbit of another vector (coordinate action)
 template <typename Scalar>
 bool are_in_same_orbit(perl::Object action, const Vector<Scalar>& vec1, const Vector<Scalar>& vec2) {
    typedef permlib::OrbitSet<permlib::Permutation,Vector<Scalar>> VecOrbit;
+   boost::shared_ptr<VecOrbit> o(new VecOrbit());
 
    PermlibGroup group_of_cone = group_from_perl_action(action);
-   boost::shared_ptr<VecOrbit> o(new VecOrbit());
-      
    if (vec1.size() <= group_of_cone.degree() || vec2.size() <= group_of_cone.degree())
       throw std::runtime_error("are_in_same_orbit: the dimension of the vectors must be equal to the degree of the group!");
 
    //orbit computation
    o->orbit(vec2, group_of_cone.get_permlib_group()->S, CoordinateAction<permlib::Permutation,Scalar>());
 
-   for (typename VecOrbit::const_iterator orb_it=o->begin(); orb_it!=o->end(); ++orb_it) {
+   for (auto orb_it=o->begin(); orb_it!=o->end(); ++orb_it) {
       if (*orb_it == vec1) {
          return true;
       }
@@ -329,9 +327,8 @@ UserFunction4perl("# @category Orbits"
                   "# Computes the orbits of a set on which an action is induced."
                   "# The incidences between the domain elements and the elements"
                   "# in the set are given by an incidence matrix //inc//."
-                  "# @param PermutationAction action an action of group"
-                  "# @param IncidenceMatrix inc the incidences between domain elements"
-                  "#    and elements on which an action is induced"
+                  "# @param PermutationAction a an action of a group"
+                  "# @param IncidenceMatrix I the incidences between domain elements and elements on which an action is induced"
                   "# @return Array<Set<Int>> an array of the orbits of the induced action",
                   &orbits_of_induced_action_incidence, "orbits_of_induced_action(PermutationAction, IncidenceMatrix)");
 
@@ -350,46 +347,46 @@ UserFunctionTemplate4perl("# @category Orbits"
 UserFunctionTemplate4perl("# @category Orbits"
             "# Computes the orbit of the rows of the matrix //mat//"
             "# under the permutation action on coordinates //action//."
-            "# @param PermutationAction action an action of a group of coordinate permutations"
-            "# @param Matrix<Scalar> mat some input vectors"
+            "# @param PermutationAction a an action of a group of coordinate permutations"
+            "# @param Matrix<Scalar> M some input vectors"
             "# @return List( Matrix generated vectors in orbit order, Array orbits of generated vectors)",
             "orbits_in_orbit_order(PermutationAction, Matrix)");
 
 
-UserFunctionTemplate4perl("# @category Utilities"
-            "# Compute all elements of a given //group//."
-            "# @param PermutationAction action the action of a permutation group"
-            "# @return Array<Array<Int> contains all group elements ",
+UserFunction4perl("# @category Utilities"
+            "# Compute all elements of a given group, expressed as a permutation action."
+            "# @param PermutationAction a the action of a permutation group"
+            "# @return Array<Array<Int> all group elements ",
+             &all_group_elements,
             "all_group_elements(PermutationAction)");
 
 
 UserFunctionTemplate4perl("# @category Orbits"
-            "# Checks whether vector //vec1// and //vec2// are in the same orbit"
+            "# Checks whether vectors //v1// and //v2// are in the same orbit"
             "# with respect to the (coordinate) action of //group//." 
-            "# @param PermutationAction action the permutation group acting on coordinates"
-            "# @param Vector vec1"
-            "# @param Vector vec2"
+            "# @param PermutationAction a the permutation group acting on coordinates"
+            "# @param Vector v1"
+            "# @param Vector v2"
             "# @return Bool",
-            "are_in_same_orbit(PermutationAction,Vector,Vector)");
+            "are_in_same_orbit(PermutationAction, Vector, Vector)");
 
 /*stabilizer computations*/  
 
 UserFunction4perl("# @category Producing a group"
                   "# Computes the subgroup of //group// which stabilizes"
                   "# the given set of indices //set//."
-                  "# @param PermutationAction action the action of a permutation group"
-                  "# @param Set set the set to be stabilized"
-                  "# @return Group the stabilizer of //set// w.r.t. //group//",
+                  "# @param PermutationAction a the action of a permutation group"
+                  "# @param Set S the set to be stabilized"
+                  "# @return Group the stabilizer of //S// w.r.t. //a//",
                   &stabilizer_of_set,"stabilizer_of_set(PermutationAction, Set)");
 
 
 UserFunctionTemplate4perl("# @category Producing a group"
-            "# Computes the subgroup of //group// which stabilizes"
-            "# the given vector //vec//."
-            "# @param Group group a permutation group"
-            "# @param Vector vec the vector to be stabilized"
-            "# @return Group the stabilizer of //vec// w.r.t. //group//",
-            "stabilizer_of_vector(PermutationAction,Vector)");
+            "# Computes the subgroup of //G// which stabilizes the given vector //v//."
+            "# @param PermutationAction a the action of a permutation group"
+            "# @param Vector v the vector to be stabilized"
+            "# @return Group the stabilizer of //v// w.r.t. //a//",
+            "stabilizer_of_vector(PermutationAction, Vector)");
 
 
 /*group generation from cyclic notation*/  

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -28,7 +28,8 @@ user_function cast<Target>(Core::Object) { $_[0]->cast_me(typeof Target); }
 # @category Utilities
 # Returns the maximal element of an array.
 # @param ARRAY array
-# @example > print maximum([1,2,3,4,5,6,7,23]);
+# @example
+# > print maximum([1,2,3,4,5,6,7,23]);
 # | 23
 
 user_function maximum($) {
@@ -42,7 +43,8 @@ user_function maximum($) {
 # @category Utilities
 # Returns the minimal element of an array.
 # @param ARRAY array
-# @example  > print minimum([23,42,666]);
+# @example
+# > print minimum([23,42,666]);
 # | 23
 
 user_function minimum($) {
@@ -56,7 +58,8 @@ user_function minimum($) {
 # @category Utilities
 # Returns the average value of the array elements.
 # @param ARRAY array
-# @example > print average([1,2,3]);
+# @example
+# > print average([1,2,3]);
 # | 2
 
 user_function average($) {
@@ -70,7 +73,8 @@ user_function average($) {
 # @category Utilities
 # Returns the median value of the array elements.
 # @param ARRAY array
-# @example > print median([1,2,3,9]);
+# @example
+# > print median([1,2,3,9]);
 # | 2.5
 
 user_function median($) {
@@ -88,7 +92,8 @@ user_function median($) {
 # Produce a histogram of an array: each different element value is mapped on the number of its occurences.
 # @param ARRAY data
 # @return Map<Element, Int>
-# @example > $H = histogram([1,1,2,2,2,3,3,2,3,3,1,1,1,3,2,3]);
+# @example
+# > $H = histogram([1,1,2,2,2,3,3,2,3,3,1,1,1,3,2,3]);
 # > print $H;
 # | {(1 5) (2 5) (3 6)}
 
@@ -96,7 +101,7 @@ user_function histogram {
    my ($data)=@_;
    return unless @$data;
    my $element_type=Core::PropertyType::guess_array_element_type($data);
-   my $map=(typeof Map($element_type, typeof Int))->construct->();
+   my $map=new Map<$element_type, Int>();
    ++$map->{$_} for @$data;
    $map
 }
@@ -211,12 +216,12 @@ user_function index_of(Array<Set<Int>>) {
 # @param Matrix S
 # @param CODE d
 # @return Matrix
-# @example [application polytope]
+# @example
 # The following defines the perl subroutine dist as the euclidean metric and then saves the distance matrix of the 3-cubes vertices in the variable $M:
 # > sub dist($$) {
 # >    my $v = $_[0] - $_[1];
 # >    return sqrt(new Float($v*$v)); }
-# > $M = distance_matrix(cube(3)->VERTICES, \&dist);
+# > $M = distance_matrix(polytope::cube(3)->VERTICES, \&dist);
 user_function distance_matrix($$){
 	my ($S, $d) = @_;
 	my $n = $S->rows;
@@ -234,9 +239,10 @@ user_function distance_matrix($$){
 # @param Matrix M1
 # @param Matrix M2
 # @return Matrix"
+
 user_function hadamard_product<Scalar>(Matrix<type_upgrade<Scalar>,_>, Matrix<type_upgrade<Scalar>,_>): c++ (include => "polymake/common/hadamard_product.h");
 
-
+                     
 # Local Variables:
 # mode: perl
 # cperl-indent-level:3

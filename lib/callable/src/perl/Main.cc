@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,7 +16,7 @@
 
 #include "polymake/perl/glue.h"
 #include "polymake/Main.h"
-#include "Bootstrap.h"
+#include "polymakeBootstrapXS.h"
 
 #include <memory>
 #include <signal.h>
@@ -30,6 +30,8 @@
 #else
 # define PmGetEnvironPtr &environ
 #endif
+
+#define ConfParamAsString(x) FirstArgAsString(x)
 
 namespace pm { namespace perl {
 namespace {
@@ -71,7 +73,7 @@ char must_reset_SIGCHLD()
 }
 
 #ifdef POLYMAKE_CONF_FinkBase
-#  define addlibs ", \"" POLYMAKE_CONF_FinkBase "/lib/perl5\""
+#  define addlibs ", \"" ConfParamAsString(POLYMAKE_CONF_FinkBase) "/lib/perl5\""
 #else
 #  define addlibs ""
 #endif
@@ -90,7 +92,8 @@ const char scr0[]=
 "BEGIN { " scr_debug1 "\n"
 "   $InstallTop='",   scr8InstallTop[]="';\n"
 "   $InstallArch='",  scr8InstallArch[]="';\n"
-"   $Arch='" POLYMAKE_CONF_Arch "';\n"
+"   $Arch='" ConfParamAsString(POLYMAKE_CONF_Arch) "';\n"
+"   @BundledExts='" ConfParamAsString(POLYMAKE_CONF_BundledExts) "' =~ /(\\S+)/g;\n"
 "}\n"
 "use lib \"$InstallTop/perllib\", \"$InstallArch/perlx\"" addlibs ";\n"
 "use Polymake::Main q{", scr8user_opts[]="},", scr8reset_SIGCHLD[]=";\n"
@@ -131,19 +134,19 @@ Main::Main(const std::string& user_opts, const std::string& install_top, const s
 
    std::string script_arg(scr0);
    if (install_top.empty())
-      script_arg+=POLYMAKE_CONF_InstallTop;
+      script_arg += ConfParamAsString(POLYMAKE_CONF_InstallTop);
    else
-      script_arg+=install_top;
-   script_arg+=scr8InstallTop;
+      script_arg += install_top;
+   script_arg += scr8InstallTop;
    if (install_arch.empty())
-      script_arg+=POLYMAKE_CONF_InstallArch;
+      script_arg += ConfParamAsString(POLYMAKE_CONF_InstallArch);
    else
-      script_arg+=install_arch;
-   script_arg+=scr8InstallArch;
-   script_arg+=user_opts;
-   script_arg+=scr8user_opts;
-   script_arg+=must_reset_SIGCHLD();
-   script_arg+=scr8reset_SIGCHLD;
+      script_arg += install_arch;
+   script_arg += scr8InstallArch;
+   script_arg += user_opts;
+   script_arg += scr8user_opts;
+   script_arg += must_reset_SIGCHLD();
+   script_arg += scr8reset_SIGCHLD;
    const char* perl_start_args[]={ "perl", "-e", script_arg.c_str(), 0 };
    int argc=sizeof(perl_start_args)/sizeof(perl_start_args[0])-1;
    const char **argv=perl_start_args;

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -14,27 +14,14 @@
 #-------------------------------------------------------------------------------
 
 use Polymake::Core::ShellMock;
-require Polymake::Core::HelpAsHTML;
-
-package Sage::CompletionWrapper;
-
-use Polymake::Struct(
-   [ '@ISA' => 'Polymake::Core::Shell::Mock' ],
-);
-
-sub instance {
-  state $inst=new CompletionWrapper();
-}
-
 
 package Sage;
 
 sub tab_completion {
    my ($code)=@_;
-   my $cpw=CompletionWrapper::instance();
-   $cpw->complete($code);
-   my $completions=$cpw->completion_words;
-   return $completions;
+   state $sh=new Polymake::Core::ShellMock;
+   $sh->complete($code);
+   return $sh->completion_proposals;
 }
 
 sub properties_for_type {

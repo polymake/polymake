@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -70,5 +70,11 @@ namespace polymake { namespace common { namespace {
    OperatorInstance4perl(Binary__eq, perl::Canned< const hash_map< Bitset, Rational > >, perl::Canned< const hash_map< Bitset, Rational > >);
    Class4perl("Polymake::common::HashMap_A_Bitset_I_Int_Z", hash_map< Bitset, int >);
    Class4perl("Polymake::common::HashMap_A_Rational_I_UniPolynomial_A_Rational_I_Int_Z_Z", hash_map< Rational, UniPolynomial< Rational, int > >);
+   FunctionInstance4perl(new, hash_map< Vector< QuadraticExtension< Rational > >, int >);
+   OperatorInstance4perl(Binary_brk, perl::Canned< hash_map< Vector< QuadraticExtension< Rational > >, int > >, perl::Canned< const Vector< QuadraticExtension< Rational > > >);
+   OperatorInstance4perl(Binary_brk, perl::Canned< hash_map< Vector< Rational >, int > >, perl::Canned< const Vector< Rational > >);
+   Class4perl("Polymake::common::HashMap_A_SparseVector__Int_I_QuadraticExtension__Rational_Z", hash_map< SparseVector< int >, QuadraticExtension< Rational > >);
+   Class4perl("Polymake::common::HashMap_A_Int_I_TropicalNumber_A_Min_I_Rational_Z_Z", hash_map< int, TropicalNumber< Min, Rational > >);
+   Class4perl("Polymake::common::HashMap_A_Int_I_QuadraticExtension__Rational_Z", hash_map< int, QuadraticExtension< Rational > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -61,12 +61,15 @@ bool RayComputationPPL::dualDescription(const Polyhedron & data, std::vector<Fac
 	Matrix<Rational> points(data.rows(), data.dimension());
 	
 	int i = 0;
-	BOOST_FOREACH(const QArray& r, data.rowPair()) {
+	BOOST_FOREACH(const QArray& row, data.rowPair()) {
+	  if ( ! data.isLinearity(row)) {
 		for (unsigned int j = 0; j < data.dimension(); j++) {
-			points[i][j].copy_from(r[j]);
+			points[i][j].copy_from(row[j]);
 		}
 		++i;
+	  }
 	}
+	points.resize(i, data.dimension());
 
     typedef ppl_interface::solver<Rational> ppl_solver;
     ppl_solver solver;

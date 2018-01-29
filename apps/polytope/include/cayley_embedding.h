@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -14,8 +14,8 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef __POLYMAKE_CAYLEY_EMBEDDING_H__
-#define __POLYMAKE_CAYLEY_EMBEDDING_H__
+#ifndef POLYMAKE_POLYTOPE_CAYLEY_EMBEDDING_H
+#define POLYMAKE_POLYTOPE_CAYLEY_EMBEDDING_H
 
 #include "polymake/Matrix.h"
 #include "polymake/Array.h"
@@ -23,6 +23,7 @@
 #include "polymake/Set.h"
 #include "polymake/linalg.h"
 #include "polymake/vector"
+#include "polymake/common/labels.h"
 
 namespace polymake { namespace polytope {
 
@@ -113,7 +114,7 @@ perl::Object cayley_embedding(const Array<perl::Object>& p_array,
       std::vector<std::string> labels(accumulate(n_vertices, operations::add()));
       int v_ct(0);
       for (int i=0; i<m; ++i) {
-         read_labels(p_array[i], "VERTEX_LABELS", non_const(select(labels, sequence(v_ct, n_vertices[i]))));
+         common::read_labels(p_array[i], "VERTEX_LABELS", non_const(select(labels, sequence(v_ct, n_vertices[i]))));
          for (std::vector<std::string>::iterator 
                  l     = labels.begin() + v_ct, 
                  l_end = labels.begin() + v_ct + n_vertices[i]; 
@@ -131,8 +132,7 @@ perl::Object cayley_embedding(const Array<perl::Object>& p_array,
 
 } } // end namespaces
 
-#endif // __POLYMAKE_CAYLEY_EMBEDDING_H__
-
+#endif // POLYMAKE_POLYTOPE_CAYLEY_EMBEDDING_H
 
 // Local Variables:
 // mode:C++

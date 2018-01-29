@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -160,7 +160,8 @@ UserFunctionTemplate4perl("# @category Geometry"
                           "# @author Marc Pfetsch"
                           "# @param  Polytope<Scalar> P"
                           "# @return Matrix<Integer>"
-                          "# @example > $p = new Polytope(VERTICES=>[[1,1.3,0.5],[1,0.2,1.2],[1,0.1,-1.5],[1,-1.4,0.2]]);"
+                          "# @example"
+                          "# > $p = new Polytope(VERTICES=>[[1,1.3,0.5],[1,0.2,1.2],[1,0.1,-1.5],[1,-1.4,0.2]]);"
                           "# > print integer_points_bbox($p);"
                           "# | 1 0 -1"
                           "# | 1 -1 0"

@@ -3,8 +3,11 @@
 ##
 include ../Makefile.configuration
 
+INSTALLHDRS = cone.h cone_property.h convert.h general.h HilbertSeries.h integer.h libnormaliz.h map_operations.h matrix.h my_omp.h normaliz_exception.h sublattice_representation.h vector_operations.h version.h nmz_integrate.h
+
 LIBSOURCES = $(wildcard *.cpp)
 LIBHEADERS = $(wildcard *.h)
+#NMZINTSOURCES = nmz_integrate.h nmz_polynomial.cpp nmz_integrate.cpp nmz_integral.cpp
 
 ## -I .. necessary since we include files libnormaliz/*.h and *.cpp
 CXXFLAGS += -I .. 
@@ -13,33 +16,33 @@ default: libnormaliz.a
 
 all: default
 
-cone_property.o: cone_property.h cone_property.cpp
-	$(CXX) $(CXXFLAGS) $(NORMFLAGS) -c cone_property.cpp -o $@
-
 offload_handler.o: $(LIBHEADERS) offload_handler.cpp
 	$(CXX) $(CXXFLAGS) $(NORMFLAGS) -c offload_handler.cpp -o $@
 
-bottom.o: $(LIBHEADERS) bottom.cpp
-	$(CXX) $(CXXFLAGS) $(NORMFLAGS) -c bottom.cpp -o $@
+enumeration.o: $(LIBHEADERS) enumeration.cpp nmz_polynomial.cpp nmz_integrate.cpp nmz_integral.cpp HilbertSeries.cpp
+	$(CXX) $(CXXFLAGS) $(NORMFLAGS) -c enumeration.cpp -o $@
 
-cone_helper.o: $(LIBHEADERS) cone_helper.cpp
-	$(CXX) $(CXXFLAGS) $(NORMFLAGS) -c cone_helper.cpp -o $@
+other_algorithms.o: $(LIBHEADERS) other_algorithms.cpp cone_dual_mode.cpp reduction.cpp project_and_lift.cpp
+	$(CXX) $(CXXFLAGS) $(NORMFLAGS) -c other_algorithms.cpp -o $@
 
-hilbert_series.o: $(LIBHEADERS) HilbertSeries.cpp
-	$(CXX) $(CXXFLAGS) $(NORMFLAGS) -c HilbertSeries.cpp -o $@
+linear_algebra.o: $(LIBHEADERS) sublattice_representation.cpp vector_operations.cpp matrix.cpp
+	$(CXX) $(CXXFLAGS) $(NORMFLAGS) -c linear_algebra.cpp -o $@
 
-libnormaliz-templated.o: $(LIBHEADERS) $(LIBSOURCES) libnormaliz-templated.cpp
-	$(CXX) $(CXXFLAGS) $(NORMFLAGS) -c libnormaliz-templated.cpp -o $@
+cone_and_control.o: $(LIBHEADERS) cone_and_control.cpp cone.cpp cone_property.cpp integer.cpp libnormaliz.cpp  list_operations.cpp
+	$(CXX) $(CXXFLAGS) $(NORMFLAGS) -c cone_and_control.cpp -o $@
 
-libnormaliz.a: cone_property.o cone_helper.o hilbert_series.o libnormaliz-templated.o bottom.o offload_handler.o
+primal.o:  $(LIBHEADERS) primal.cpp full_cone.cpp simplex.cpp bottom.cpp
+	$(CXX) $(CXXFLAGS) $(NORMFLAGS) -c primal.cpp -o $@
+
+libnormaliz.a: enumeration.o offload_handler.o  nmz_integrate.o other_algorithms.o linear_algebra.o primal.o cone_and_control.o
 	ar -cr $@ $^
 
 .PHONY : install
 install: libnormaliz.a
 	mkdir -p $(INSTALLDIR)/lib
 	install -m 0644 libnormaliz.a  $(INSTALLDIR)/lib
-	mkdir -p $(INSTALLDIR)/include/normaliz
-	install -m 0644 $(INSTALLHDRS) $(INSTALLDIR)/include/normaliz
+	mkdir -p $(INSTALLDIR)/include/libnormaliz
+	install -m 0644 $(INSTALLHDRS) $(INSTALLDIR)/include/libnormaliz
 
 clean:
 	-rm -f *.o

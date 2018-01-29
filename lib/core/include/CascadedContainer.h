@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -435,48 +435,6 @@ make_cascade_iterator(const Container& src, ExpectedFeatures*, int_constant<dept
 {
    return entire(src);
 }
-
-
-template <typename Iterator, typename Target, typename ExpectedFeatures=void,
-          typename ValueModel=typename object_traits<typename iterator_traits<Iterator>::value_type>::model,
-          typename enabled=void>
-struct construct_cascaded_iterator_impl {
-   static const int depth=0;  // disabled
-};
-
-template <typename Iterator, typename Target, typename ExpectedFeatures, typename ValueModel>
-struct construct_cascaded_iterator_impl<Iterator, Target, ExpectedFeatures, ValueModel,
-                                        typename std::enable_if< can_initialize<typename iterator_traits<Iterator>::value_type, Target>::value >::type>
-{
-   static const int depth=1;
-   typedef typename iterator_traits<Iterator>::value_type value_type;
-   typedef Iterator iterator;
-
-   Iterator&& operator() (Iterator&& src) const { return std::forward<Iterator>(src); }
-};
-
-template <typename Iterator, typename Target, typename ExpectedFeatures>
-struct construct_cascaded_iterator_impl<Iterator, Target, ExpectedFeatures, is_container,
-                                        typename std::enable_if< !isomorphic_types<typename iterator_traits<Iterator>::value_type, Target>::value &&
-                                                                 construct_cascaded_iterator_impl<typename iterator_traits<Iterator>::value_type::iterator, Target>::depth != 0>::type>
-   : construct_cascaded_iterator_impl<typename iterator_traits<Iterator>::value_type::iterator, Target>
-{
-   typedef construct_cascaded_iterator_impl<typename iterator_traits<Iterator>::value_type::iterator, Target> next_level;
-   static const int depth=next_level::depth+1;
-   typedef pure_type_t<Iterator> src_iterator;
-   typedef cascaded_iterator<src_iterator, typename mix_features<ExpectedFeatures, end_sensitive>::type, depth> iterator;
-
-   iterator operator() (const Iterator& src) const { return iterator(src); }
-};
-
-template <typename Iterator, typename Target, typename ExpectedFeatures, bool enabled=looks_like_iterator<Iterator>::value>
-struct construct_cascaded_iterator
-   : construct_cascaded_iterator_impl<Iterator, Target, ExpectedFeatures> {};
-
-template <typename Iterator, typename Target, typename ExpectedFeatures>
-struct construct_cascaded_iterator<Iterator, Target, ExpectedFeatures, false> {
-   static const int depth=0;
-};
 
 } // end namespace pm
 

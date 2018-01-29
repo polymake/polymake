@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2017
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -106,9 +106,9 @@ declare property_type Bool : c++ (builtin => 'bool') {
 
    type_method parse {
       if ($_[1] =~ m{^\s* (?i: (\d+) | (true) | false) \s*$ }x) {
-	 (defined($1) ? $1!=0 : defined($2))+0
+         (defined($1) ? $1!=0 : defined($2))+0
       } else {
-	 croak( "parse error: invalid boolean value $_[1]" );
+         croak( "parse error: invalid boolean value $_[1]" );
       }
    }
 
@@ -245,7 +245,8 @@ user_function denominator(Rational:lvalue_opt:anchor) : c++;
 # The __floor function__. Returns the smallest integral number not larger than //a//.
 # @param Rational a
 # @return Rational
-# @example > print floor(1.8);
+# @example
+# > print floor(1.8);
 # | 1
 
 user_function floor(*) : c++ (include => "polymake/Rational.h");
@@ -262,7 +263,8 @@ user_function ceil(*) : c++ (include => "polymake/Rational.h");
 # Check whether the given number has a finite value.
 # @param SCALAR a
 # @return Bool
-# @example > print isfinite('inf');
+# @example
+# > print isfinite('inf');
 # | 
 # > print isfinite(23);
 # | 1
@@ -274,7 +276,8 @@ user_function isfinite(*) : c++ (include => "polymake/Integer.h");
 # Check whether the given number has an infinite value.  Return -1/+1 for infinity and 0 for all finite values.
 # @param SCALAR a
 # @return Int
-# @example > print isinf('inf');
+# @example
+# > print isinf('inf');
 # | 1
 # > print isinf(23);
 # | 0
@@ -286,7 +289,8 @@ user_function isinf(*) : c++ (include => "polymake/Integer.h");
 # @param Integer a
 # @param Integer b a divisor of //a//
 # @return Integer
-# @example  > print div_exact(10,5);
+# @example
+# > print div_exact(10,5);
 # | 2
 user_function div_exact(*:int, *:int) : c++ (include => "polymake/numerical_functions.h");
 
@@ -312,7 +316,8 @@ declare property_type Div<Scalar> : c++ (include => "polymake/numerical_function
 # @param Int a
 # @param Int b
 # @return Div
-# @example > $d = div(10,3);
+# @example
+# > $d = div(10,3);
 # > print $d->quot;
 # | 3
 # > print $d->rem;
@@ -326,7 +331,8 @@ user_function div(*,*) : c++ (include => "polymake/numerical_functions.h");
 # @param Int a
 # @param Int b
 # @return Int
-# @example > print gcd(6,9);
+# @example
+# > print gcd(6,9);
 # | 3
 user_function gcd(*:int, *:int) : c++ (include => "polymake/numerical_functions.h");
 
@@ -364,7 +370,8 @@ declare property_type ExtGCD<Scalar> : c++ (include => "polymake/numerical_funct
 # @param Int a
 # @param Int b
 # @return ExtGCD
-# @example > $GCD = ext_gcd(15,6);
+# @example
+# > $GCD = ext_gcd(15,6);
 # The GCD of the numbers can then be accessed like this:
 # > print $GCD->g;
 # | 3
@@ -387,7 +394,8 @@ user_function ext_gcd(*:int, *:int) : c++ (include => "polymake/numerical_functi
 # @param Int a
 # @param Int b
 # @return Int
-# @example > print lcm(6,9);
+# @example
+# > print lcm(6,9);
 # | 18
 
 user_function lcm(*:int, *:int) : c++ (include => "polymake/numerical_functions.h");

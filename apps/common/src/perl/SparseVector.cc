@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -54,5 +54,11 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::SparseVector__PuiseuxFraction_A_Max_I_Rational_I_Rational_Z", SparseVector< PuiseuxFraction< Max, Rational, Rational > >);
    FunctionInstance4perl(new_X, SparseVector< PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const Vector< PuiseuxFraction< Min, Rational, Rational > > >);
    OperatorInstance4perl(Binary__ora, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSetCmp<int, pm::operations::cmp>, pm::Rational> >, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSetCmp<int, pm::operations::cmp>, pm::Rational> >);
+   FunctionInstance4perl(new_X, SparseVector< QuadraticExtension< Rational > >, perl::Canned< const Vector< QuadraticExtension< Rational > > >);
+   FunctionInstance4perl(new_X, SparseVector< PuiseuxFraction< Max, Rational, Rational > >, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSetCmp<int, pm::operations::cmp>, pm::PuiseuxFraction<pm::Max, pm::Rational, pm::Rational> > >);
+   FunctionInstance4perl(new_X, SparseVector< PuiseuxFraction< Min, Rational, Rational > >, perl::Canned< const pm::SameElementSparseVector<pm::SingleElementSetCmp<int, pm::operations::cmp>, pm::PuiseuxFraction<pm::Min, pm::Rational, pm::Rational> > >);
+   OperatorInstance4perl(Binary_add, perl::Canned< const Wary< pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<double, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&, pm::NonSymmetric> > >, perl::Canned< const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double>&>, pm::Series<int, true>, mlist<> > >);
+   OperatorInstance4perl(assign, pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<double, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&, pm::NonSymmetric>, perl::Canned< const Vector< double > >);
+   FunctionInstance4perl(new_X, SparseVector< double >, perl::Canned< const SparseVector< double > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -18,6 +18,9 @@
 # This file only provides the basic functionality.  Visualization of polymake's various object types
 # triggers code implemented in apps/*/rules/threejs.rules.
 
+package ThreeJS;
+
+declare $is_used_in_jupyter=0;
 
 package ThreeJS::File;
 use Polymake::Struct (
@@ -45,6 +48,7 @@ sub header {
    my $who=$ENV{USER};
    my $when=localtime();
    my $title=$self->title || "unnamed";
+   my $resources="$Polymake::Resources/threejs";
 
    my $source = ${$self->geometries}[0]->source;
    my ($view_point, $view_direction, $view_up, $scale) = $source->transform2view($trans, \%ThreeJS::default::);
@@ -58,20 +62,20 @@ sub header {
    my $near = $ThreeJS::default::near_plane;
    my $far = $ThreeJS::default::far_plane;
 
-
    my $random_id = int(rand(100000000000));
 
    my $width_height_start = "";
-   my $width = "window.innerWidth";
-   my $height = "window.innerHeight";
+   my $width = "document.body.clientWidth - 20";
+   my $height = "document.body.clientHeight - 20";
 
 
-   if (defined $common::is_used_in_jupyter && $common::is_used_in_jupyter) {
-      $width_height_start = "var box = document.getElementsByClassName( 'input_area' )[0];";
-
-		$width = "box.clientWidth*0.9";
-		$height = "window.innerHeight * width/(window.innerWidth)";
-		
+   if ($is_used_in_jupyter) {
+      $width_height_start = <<"%";
+         var box = document.getElementsByClassName( 'output_subarea' )[0];
+         var notebook = document.getElementById( 'notebook_panel' );
+%
+      $width = "box.clientWidth - 25";
+      $height = "notebook.clientHeight * 0.8";
    }
 
    my $head=<<"%";
@@ -89,115 +93,116 @@ $title
 /*
 // COMMON_CODE_BLOCK_BEGIN
 */
-			html{overflow: scroll;}
-			body { font-family: Arial, Helvetica, sans-serif}
-			strong{font-size: 18px;}
-			canvas {position: fixed; right: 50%; top: 0; transform: translate(50%,0); }
-			input[type='range'] {}
-			input[type='radio'] {margin-left:0;}
-			input[type='checkbox'] {margin-right:7px; margin-left: 0px; padding-left:0px;}
-			.group{padding-bottom: 50px;}
-			#settings{display: none; width: 15vw; min-height: 97vh; border-right:solid 1px silver; padding-right: 0.5vw; padding-top: 15px;}
-			.indented{margin-left: 20px; margin-top: 15px; padding-bottom: 0px;} 
-			#shownObjectsList{overflow: auto; max-width: 150px; max-height: 150px;}
-			#showSettingsButton{display: block;}
-			#closeButtonContainer{position: absolute; top: 5px; width: 15.4vw; text-align: right;}
-			#hideSettingsButton{display: none; opacity: 0.5; padding: 10px;}
-			#resetButton{margin-top: 20px;}
-			button{margin-left: 0;}
-			img{cursor: pointer;}
-			.suboption{padding-top: 30px;}
-			#transparency{display: none;}
-			#labelsCheckbox{margin-top: 10px;}
-			
+         html{overflow: scroll;}
+         body { font-family: Arial, Helvetica, sans-serif}
+         strong{font-size: 18px;}
+         canvas { z-index: 8; }
+         input[type='range'] {}
+         input[type='radio'] {margin-left:0;}
+         input[type='checkbox'] {margin-right:7px; margin-left: 0px; padding-left:0px;}
+         .group{padding-bottom: 40px;}
+         .settings * {z-index: 11; }
+         .settings{z-index: 10; margin-left: 30px; display: none; width: 14em; height: 90%; border: solid 1px silver; padding: 2px; overflow-y: scroll; background-color: white }
+         .indented{margin-left: 20px; margin-top: 15px; padding-bottom: 0px;} 
+         .shownObjectsList{overflow: auto; max-width: 150px; max-height: 150px;}
+         .showSettingsButton{display: block; z-index: 12; position: absolute }
+         .hideSettingsButton{display: none; z-index: 12; position: absolute; opacity: 0.5}
+         .resetButton{margin-top: 20px;}
+         button{margin-left: 0;}
+         img{cursor: pointer;}
+         .suboption{padding-top: 30px;}
+         .transparency{display: none;}
+         .labelsCheckbox{margin-top: 10px;}
 
-			input[type=range] {
-			  -webkit-appearance: none;
-			  padding:0; 
-			  width:13vw; 
-			  margin-left: 20px;
-			  margin-top: 20px;
-			  display: block;	
-			}
-			input[type=range]:focus {
-			  outline: none;
-			}
-			input[type=range]::-webkit-slider-runnable-track {
-			  height: 4px;
-			  cursor: pointer;
-			  animate: 0.2s;
-			  box-shadow: 0px 0px 0px #000000;
-			  background: #E3E3E3;
-			  border-radius: 0px;
-			  border: 0px solid #000000;
-			}
-			input[type=range]::-webkit-slider-thumb {
-			  box-shadow: 1px 1px 2px #B8B8B8;
-			  border: 1px solid #ABABAB;
-			  height: 13px;
-			  width: 25px;
-			  border-radius: 20px;
-			  background: #E0E0E0;
-			  cursor: pointer;
-			  -webkit-appearance: none;
-			  margin-top: -5px;
-			}
-			input[type=range]:focus::-webkit-slider-runnable-track {
-			  background: #E3E3E3;
-			}
-			input[type=range]::-moz-range-track {
-			  height: 4px;
-			  cursor: pointer;
-			  animate: 0.2s;
-			  box-shadow: 0px 0px 0px #000000;
-			  background: #E3E3E3;
-			  border-radius: 0px;
-			  border: 0px solid #000000;
-			}
-			input[type=range]::-moz-range-thumb {
-			  box-shadow: 1px 1px 2px #B8B8B8;
-			  border: 1px solid #ABABAB;
-			  height: 13px;
-			  width: 25px;
-			  border-radius: 20px;
-			  background: #E0E0E0;
-			  cursor: pointer;
-			}
-			input[type=range]::-ms-track {
-			  height: 4px;
-			  cursor: pointer;
-			  animate: 0.2s;
-			  background: transparent;
-			  border-color: transparent;
-			  color: transparent;
-			}
-			input[type=range]::-ms-fill-lower {
-			  background: #E3E3E3;
-			  border: 0px solid #000000;
-			  border-radius: 0px;
-			  box-shadow: 0px 0px 0px #000000;
-			}
-			input[type=range]::-ms-fill-upper {
-			  background: #E3E3E3;
-			  border: 0px solid #000000;
-			  border-radius: 0px;
-			  box-shadow: 0px 0px 0px #000000;
-			}
-			input[type=range]::-ms-thumb {
-			  box-shadow: 1px 1px 2px #B8B8B8;
-			  border: 1px solid #ABABAB;
-			  height: 13px;
-			  width: 25px;
-			  border-radius: 20px;
-			  background: #E0E0E0;
-			  cursor: pointer;
-			}
-			input[type=range]:focus::-ms-fill-lower {
-			  background: #E3E3E3;
-			}
-			input[type=range]:focus::-ms-fill-upper {
-			  background: #E3E3E3;
-			}
+
+         input[type=range] {
+           -webkit-appearance: none;
+           padding:0; 
+           width:90%; 
+           margin-left: auto;
+           margin-right: auto;
+           margin-top: 20px;
+           display: block;	
+         }
+         input[type=range]:focus {
+           outline: none;
+         }
+         input[type=range]::-webkit-slider-runnable-track {
+           height: 4px;
+           cursor: pointer;
+           animate: 0.2s;
+           box-shadow: 0px 0px 0px #000000;
+           background: #E3E3E3;
+           border-radius: 0px;
+           border: 0px solid #000000;
+         }
+         input[type=range]::-webkit-slider-thumb {
+           box-shadow: 1px 1px 2px #B8B8B8;
+           border: 1px solid #ABABAB;
+           height: 13px;
+           width: 25px;
+           border-radius: 20px;
+           background: #E0E0E0;
+           cursor: pointer;
+           -webkit-appearance: none;
+           margin-top: -5px;
+         }
+         input[type=range]:focus::-webkit-slider-runnable-track {
+           background: #E3E3E3;
+         }
+         input[type=range]::-moz-range-track {
+           height: 4px;
+           cursor: pointer;
+           animate: 0.2s;
+           box-shadow: 0px 0px 0px #000000;
+           background: #E3E3E3;
+           border-radius: 0px;
+           border: 0px solid #000000;
+         }
+         input[type=range]::-moz-range-thumb {
+           box-shadow: 1px 1px 2px #B8B8B8;
+           border: 1px solid #ABABAB;
+           height: 13px;
+           width: 25px;
+           border-radius: 20px;
+           background: #E0E0E0;
+           cursor: pointer;
+         }
+         input[type=range]::-ms-track {
+           height: 4px;
+           cursor: pointer;
+           animate: 0.2s;
+           background: transparent;
+           border-color: transparent;
+           color: transparent;
+         }
+         input[type=range]::-ms-fill-lower {
+           background: #E3E3E3;
+           border: 0px solid #000000;
+           border-radius: 0px;
+           box-shadow: 0px 0px 0px #000000;
+         }
+         input[type=range]::-ms-fill-upper {
+           background: #E3E3E3;
+           border: 0px solid #000000;
+           border-radius: 0px;
+           box-shadow: 0px 0px 0px #000000;
+         }
+         input[type=range]::-ms-thumb {
+           box-shadow: 1px 1px 2px #B8B8B8;
+           border: 1px solid #ABABAB;
+           height: 13px;
+           width: 25px;
+           border-radius: 20px;
+           background: #E0E0E0;
+           cursor: pointer;
+         }
+         input[type=range]:focus::-ms-fill-lower {
+           background: #E3E3E3;
+         }
+         input[type=range]:focus::-ms-fill-upper {
+           background: #E3E3E3;
+         }
 /*
 // COMMON_CODE_BLOCK_END
 */
@@ -206,93 +211,157 @@ $title
 
 <body>
 
-		<div id='settings'>
+		<div id='settings_OUTPUTID' class='settings'>
 %
-	if (@{$self->geometries}>1){
+   if (@{$self->geometries}>1) {
       $head .= <<"%";
-			<div class=group id=explode>
+			<div class=group id='explode_OUTPUTID'>
 				<strong>Explode</strong>
-				<input id='explodeRange' type='range' min=0 max=6 step=0.01 value=0 oninput=triggerExplode(event)>
-				<div class=indented><input id='explodeCheckbox' type='checkbox' onchange=triggerAutomaticExplode(event)>Automatic explosion</div>
+				<input id='explodeRange_OUTPUTID' type='range' min=0 max=6 step=0.01 value=0>
+				<div class=indented><input id='explodeCheckbox_OUTPUTID' type='checkbox'>Automatic explosion</div>
 				<div class=suboption>Exploding speed</div>
-				<input id='explodingSpeedRange' type='range' min=0 max=0.5 step=0.001 value=0.05 oninput=setExplodingSpeed(event)>
+				<input id='explodingSpeedRange_OUTPUTID' type='range' min=0 max=0.5 step=0.001 value=0.05>
 			</div>
 
 			
 %
-	}
+   }
 
-   if ($source->isa("Visual::PlanarNet::Polygons")){
+   if ($source->isa("Visual::PlanarNet::Polygons")) {
       $head .= <<"%";
-			<div class=group id=fold>
+			<div class=group id='fold_OUTPUTID'>
 				<strong>Fold</strong>
-				<input id='foldRange' type='range' min=0 max=1 step=0.001 value=0 oninput=fold(event)>
+				<input id='foldRange_OUTPUTID' type='range' min=0 max=1 step=0.001 value=0>
 			</div>
 
 %
    }
 
    $head .= <<"%";
-			<div class=group id=transparency>
+			<div class=group id='transparency_OUTPUTID' class='transparency'>
 				<strong>Transparency</strong>
-				<input id='transparencyRange' type='range' min=0 max=1 step=0.01 value=0 oninput=changeTransparency(event)>
+				<input id='transparencyRange_OUTPUTID' type='range' min=0 max=1 step=0.01 value=0>
 			</div>
 			
-			<div class=group id=rotation>
+			<div class=group id='rotation_OUTPUTID'>
 				<strong>Rotation</strong>
 				<div class=indented>
-					<div><input type='checkbox' onchange=changeRotationX(event)> x-axis</div>
-					<div><input type='checkbox' onchange=changeRotationY(event)> y-axis</div>
-					<div><input type='checkbox' onchange=changeRotationZ(event)> z-axis</div>
-					<button id=resetButton onclick=resetScene()>Reset</button>
+					<div><input type='checkbox' id='changeRotationX_OUTPUTID'> x-axis</div>
+					<div><input type='checkbox' id='changeRotationY_OUTPUTID'> y-axis</div>
+					<div><input type='checkbox' id='changeRotationZ_OUTPUTID'> z-axis</div>
+					<button id='resetButton_OUTPUTID' class='resetButton' >Reset</button>
 				</div>
 
 				<div class=suboption>Rotation speed</div>
-				<input id='rotationSpeedRange' type='range' min=0 max=5 step=0.01 value=2 oninput=changeRotationSpeedFactor(event)>
+				<input id='rotationSpeedRange_OUTPUTID' type='range' min=0 max=5 step=0.01 value=2>
 
 			</div>
 
 
-			<div class=group id=display>
+			<div class=group id='display_OUTPUTID'>
 				<strong>Display</strong>
 				<div class=indented>
-					<div id=shownObjectsList></div>
-					<div id=labelsCheckbox><input type='checkbox' onchange=displayOrHideLabels(event) checked>Labels</div>
+					<div id='shownObjectsList_OUTPUTID' class='shownObjectsList'></div>
+					<div class='labelsCheckbox'><input type='checkbox' id='labelsCheckboxInput_OUTPUTID' checked>Labels</div>
 				</div>
 			</div>
 
 
-			<div class=group id=svg>
+			<div class=group id='svg_OUTPUTID'>
 				<strong>SVG</strong>
 				<div class=indented>
 					<form>
-						<input type="radio" name='screenshotMode' value='download' id=download checked> Download<br>
-						<input type="radio" name='screenshotMode' value='tab' id=tab > New tab<br>
+						<input type="radio" name='screenshotMode' value='download' id='download_OUTPUTID' checked> Download<br>
+						<input type="radio" name='screenshotMode' value='tab' id='tab_OUTPUTID' > New tab<br>
 					</form>
-					<button onclick=takeSvgScreenshot()>Screenshot</button>
+					<button id='takeScreenshot_OUTPUTID'>Screenshot</button>
 				</div>
 			</div>
 
 		</div>	<!-- end of settings -->
-
-		<div id=closeButtonContainer>
-			<img id=hideSettingsButton src='js/images/close.svg' width=12 onclick="hideSettings(event)">
-		</div>
-		<img id=showSettingsButton src='js/images/menu.svg' width=22 onclick="showSettings(event)">
 %
+                if($is_used_in_jupyter){
+                $head .= <<"%";
+		<img id='hideSettingsButton_OUTPUTID' style="display: none" class='hideSettingsButton' src='/kernelspecs/polymake/close.svg' width=20px">
+		<img id='showSettingsButton_OUTPUTID' class='showSettingsButton' src='/kernelspecs/polymake/menu.svg' width=20px">
+%
+              }
+              else
+              {
+              $head .= <<"%";
+		<img id='hideSettingsButton_OUTPUTID' class='hideSettingsButton' src='$resources/js/images/close.svg' width=20px">
+		<img id='showSettingsButton_OUTPUTID' class='showSettingsButton' src='$resources/js/images/menu.svg' width=20px">
+%
+              }
    $head .= <<"%";
 <div id="model$random_id"></div>
 
 %
 
-   if (!defined $common::is_used_in_jupyter || !$common::is_used_in_jupyter ) {
-      $head .= "<script src='js/three.polymake.js'></script>\n";
+   unless ($is_used_in_jupyter) {
+      $head .= "<script src='$resources/js/three.polymake.js'></script>\n";
    }
 
    $head .= <<"%";
-
-
 <script>
+%
+
+   if ($is_used_in_jupyter) {
+      $head .= <<"%";
+requirejs.config({
+  paths: {
+    three: '/kernelspecs/polymake/three',
+    Detector: '/kernelspecs/polymake/Detector',
+    SVGRenderer: '/kernelspecs/polymake/SVGRenderer',
+    CanvasRenderer: '/kernelspecs/polymake/CanvasRenderer',
+    Projector: '/kernelspecs/polymake/Projector',
+    TrackballControls: '/kernelspecs/polymake/TrackballControls'
+  },
+  shim: {
+    'three':
+    {
+      exports: 'THREE'
+    },
+    'Detector':
+    {
+      deps: [ 'three' ],
+      exports: 'Detector'
+    },
+    'SVGRenderer':
+    {
+      deps: [ 'three' ],
+      exports: 'THREE.SVGRenderer'
+    },
+    'CanvasRenderer':
+    {
+      deps: [ 'three' ],
+      exports: 'THREE.CanvasRenderer'
+    },
+    'Projector':
+    {
+      deps: [ 'three' ],
+      exports: 'THREE.Projector'
+    },
+    'TrackballControls':
+    {
+      deps: [ 'three' ],
+      exports: 'THREE.TrackballControls'
+    }
+  }
+});
+require(['three'],function(THREE){
+    window.THREE = THREE;
+  require(['Detector','SVGRenderer','CanvasRenderer','Projector','TrackballControls'],function(Detector,SVGRenderer,CanvasRenderer,Projector,TrackballControls){
+      THREE.SVGRenderer = SVGRenderer;
+      THREE.CanvasRenderer = CanvasRenderer;
+      THREE.Projector = Projector;
+      THREE.TrackballControls = TrackballControls;
+
+%
+   }
+
+
+   $head .= <<"%";
 // COMMON_CODE_BLOCK_BEGIN
 	var foldable = false;
 %
@@ -376,7 +445,7 @@ function update(){
    var renderer = Detector.webgl? new THREE.WebGLRenderer({antialias: true}): new THREE.CanvasRenderer({antialias: true});
 	var svgRenderer = new THREE.SVGRenderer({antialias: true});
    $width_height_start
-   var width = $width * 0.83;
+   var width = $width;
    var height = $height;
    renderer.setSize(width, height);
    svgRenderer.setSize(width, height);
@@ -387,6 +456,8 @@ function update(){
 
    var scene = new THREE.Scene();
    var camera = new THREE.PerspectiveCamera($camera_angle, width/height, $near, $far);
+
+   var renderid;
 
    camera.position.set($view_point);
    camera.lookAt($view_direction);
@@ -459,12 +530,45 @@ function update(){
 
    var all_objects = [];
    var centroids = [];
+%
 
+   if ($is_used_in_jupyter) {
+      $head.=<<"%";
+   // select the target node
+   var target = document.querySelector('#model$random_id');
+
+   // create an observer instance
+   var observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+         if (mutation.removedNodes && mutation.removedNodes.length > 0) {
+            cancelAnimationFrame(renderId);
+            observer.disconnect();
+            console.log("cancelled frame "+renderId);
+         }
+      });
+   });
+
+   // configuration of the observer:
+   var config = { childList: true, characterData: true }
+
+   // pass in the target node, as well as the observer options
+   while (target) {
+      if (target.className=="output") {
+         observer.observe(target, config);
+         break;
+      }
+      target = target.parentNode;
+   }
+
+%
+   }
+
+   $head.=<<"%";
 // COMMON_CODE_BLOCK_END
 
 %
-	$head .= '   var objectnames = ["'.join('","',map { $_->name } @{$self->geometries})."\"];\n";
-   if ($source->isa("Visual::PlanarNet::Polygons")){
+   $head .= '   var objectnames = ["'.join('","',map { $_->name } @{$self->geometries})."\"];\n";
+   if ($source->isa("Visual::PlanarNet::Polygons")) {
       # extra data for planar net folding
       $head .= Utils::convertExtraData("axes",$source->Axes) if defined $source->Axes;
       $head .= Utils::convertExtraData("angles",$source->DihedralAngles) if defined $source->DihedralAngles;
@@ -475,12 +579,14 @@ function update(){
 }
 
 sub trailer {
-#	my @threejs_ext = grep { $_->URI =~ "http://solros.de/polymake/threejs" } @{User::application("common")->extensions};
-#	my $threejs_ext_path = $threejs_ext[0]->dir;
-
-   my $polydir = $Polymake::InstallTop;
-   open FILEHANDLE, "$polydir/resources/threejs/trailer_string.html" or die $!;
-   do { local $/; <FILEHANDLE> };
+   local $/;
+   open my $trailer, "$Polymake::Resources/threejs/trailer_string.html" or die $!;
+   my $trailerstring = <$trailer>;
+   if ($is_used_in_jupyter) {
+      # insert function closing at the end
+      $trailerstring =~ s#(?=// COMMON_CODE_BLOCK_END)#});});\n#m;
+   }
+   $trailerstring;
 }
 
 sub toString {
@@ -777,7 +883,7 @@ sub newEdge {
 sub linesToString {
    my ($self, $var)=@_;
 
-#	  TODO: arrows
+#  TODO: arrows
 #    my $arrows=$self->source->ArrowStyle;
 
    #   if($arrows==1) {
@@ -919,7 +1025,6 @@ sub pointCoords {
    my @coords = ();
    my $d = is_object($self->source->Vertices) ? $self->source->Vertices->cols : 3;
    foreach (@{$self->source->Vertices}) {
-#		print $_."		";
       my $point=ref($_) ? Visual::print_coords($_) : "$_".(" 0"x($d-1));
       $point =~ s/\s+/, /g;
       if ($d == 2) {
@@ -928,7 +1033,6 @@ sub pointCoords {
       if ($d == 1) {
          $point.= ", 0, 0";
       }
-#		print $point."\n";
       push @coords, $point;
    }
    return @coords;
@@ -944,11 +1048,11 @@ sub writeDecor {
 
    if ($name eq "FacetTransparency") {
       my $opacity = defined($value) ? 1-$value : 1;
-		if ($opacity > 0.5) {
-			return "transparent: true, opacity: $opacity, side: THREE.DoubleSide , depthWrite: true, depthTest: true, ";
-		} else {
-			return "transparent: true, opacity: $opacity, side: THREE.DoubleSide , depthWrite: false, depthTest: false, ";
-		}
+      if ($opacity > 0.5) {
+         return "transparent: true, opacity: $opacity, side: THREE.DoubleSide , depthWrite: true, depthTest: true, ";
+      } else {
+         return "transparent: true, opacity: $opacity, side: THREE.DoubleSide , depthWrite: false, depthTest: false, ";
+      }
    }
 
    if ($name eq "EdgeThickness") {
@@ -973,6 +1077,10 @@ sub convertExtraData {
 
 }
 
-
 1
 
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

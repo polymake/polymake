@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -79,6 +79,23 @@ public:
 class Integer; class Rational; class AccurateFloat;
 
 template <> struct spec_object_traits<Integer>;
+
+}
+
+namespace std {
+
+template <>
+class numeric_limits<pm::Integer>;
+
+template <>
+class numeric_limits<pm::Rational>;
+
+template <>
+class numeric_limits<pm::AccurateFloat>;
+
+}
+
+namespace pm {
 
 Integer gcd(const Integer& a, const Integer& b);
 Integer&& gcd(Integer&& a, const Integer& b);
@@ -1928,6 +1945,10 @@ struct hash_func<Integer, is_scalar> : hash_func<MP_INT>
       return __builtin_expect(isfinite(a), 1) ? impl(a.get_rep()) : 0;
    }
 };
+
+template <>
+Integer
+pow(const Integer& base, int exp);
 
 }
 

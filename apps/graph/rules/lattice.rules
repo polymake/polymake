@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -179,6 +179,7 @@ declare object Lattice<Decoration, SeqType = Nonsequential> : Graph<Directed> {
 
 }
 
+# A [[Lattice]] with a [[BasicDecoration]], which corresponds to the legacy HasseDiagram type
 declare object_specialization BasicLattice<SeqType> = Lattice<BasicDecoration, SeqType> {
 
    rule DECORATION, INVERSE_RANK_MAP, TOP_NODE, BOTTOM_NODE : FACES, DIMS, ADJACENCY {

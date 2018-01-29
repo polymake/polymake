@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -188,6 +188,13 @@ normalized(const GenericMatrix<Matrix>& m)
                                            entire(attach_operation(rows(m), polymake::operations::normalize_vectors())));
 }
 
+/// Compute the average over the rows of a matrix
+template <typename Matrix, typename E>
+Vector<E> barycenter(const GenericMatrix<Matrix, E>& V)
+{
+   return average(rows(V));
+}
+
 /// Compute the determinant of a matrix using the Gauss elimination method
 template <typename TMatrix, typename E> inline
 typename std::enable_if<is_field<E>::value, E>::type
@@ -279,7 +286,7 @@ inv(const GenericMatrix<TMatrix, E>& m)
 }
 
 /** Solve the linear system A*x==b
-    @return x
+    @return xapps/polytope/src/reverse_search_graph.cco
     @exception degenerate_matrix if det(A) == 0
     @exception infeasible if rank(A) != rank(A|b)
 */
@@ -683,6 +690,15 @@ dehomogenize_trop(const GenericMatrix<Matrix>& M)
                                                                        entire(attach_operation(rows(M), polymake::operations::dehomogenize_trop_vectors())));
 }
 
+/// Remove all matrix rows that contain only zeros.
+template <typename Matrix, typename Scalar>
+typename Matrix::persistent_nonsymmetric_type
+remove_zero_rows(const GenericMatrix<Matrix,Scalar>& m)
+{
+   auto subset = attach_selector(rows(m),polymake::operations::non_zero());
+   return typename Matrix::persistent_nonsymmetric_type(subset.size(),m.cols(),entire(subset));
+}
+
 template <typename VectorIterator, typename OutputIterator>
 void orthogonalize(VectorIterator v, OutputIterator sqr_consumer)
 {
@@ -825,6 +841,24 @@ denominators(const GenericMatrix<TMatrix, E>& m)
 {
    return apply_operation(m, polymake::operations::get_denominator());
 }
+
+template <typename T, typename std::enable_if<std::is_same<typename object_traits<T>::generic_tag,is_matrix>::value, int>::type=0>
+typename T::persistent_nonsymmetric_type pow(const T& base, int exp)
+{
+   if (POLYMAKE_DEBUG || !Unwary<T>::value) {
+      if (base.rows() != base.cols())
+         throw std::runtime_error("pow - non-square matrix");
+   }
+   auto one = unit_matrix<typename T::value_type>(base.rows());
+   if (exp < 0) {
+      return pow_impl<typename T::persistent_nonsymmetric_type>(inv(base),one,abs(exp));
+   } else if (exp == 0) {
+      return one;
+   }
+   return pow_impl<typename T::persistent_nonsymmetric_type>(base,one,exp);
+}
+
+
 
 } // end namespace pm
 

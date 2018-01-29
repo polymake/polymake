@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -61,6 +61,19 @@ user_method GALE (%Visual::Gale::decorations) : GALE_TRANSFORM, GALE_VERTICES, V
 		  $decor
 		));
    }
+}
+
+}
+
+object VectorConfiguration {
+
+# @category Geometry
+# Coordinates of the Gale transform.
+
+property GALE_TRANSFORM : Matrix<Scalar>;
+
+rule GALE_TRANSFORM : VECTORS {
+   $this->GALE_TRANSFORM=transpose(null_space(transpose($this->VECTORS)));
 }
 
 }

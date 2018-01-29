@@ -85,7 +85,7 @@ UserFunction4perl("# @category Producing a simplicial complex from other objects
 			"# Computes the __Vietoris Rips complex__ of a point set. The set is passed as its so-called \"distance matrix\", whose (i,j)-entry is the distance between point i and j. This matrix can e.g. be computed using the distance_matrix function. The points corresponding to vertices of a common simplex will all have a distance less than //delta// from each other."
 			"# @param Matrix D the \"distance matrix\" of the point set (can be upper triangular)"
 			"# @param Rational delta"
-			"# @return SimplicialComplex\n"
+			"# @return SimplicialComplex"
             ,&vietoris_rips_complex, "vietoris_rips_complex($$)");
 
 
@@ -95,7 +95,7 @@ UserFunctionTemplate4perl("# @category Other"
 			"# @param Array<Int> deg the degrees of input points"
 			"# @param Float step_size"
 			"# @param Int k dimension of the resulting filtration"
-			"# @tparam Coeff the desired coefficient type of the filtration"
-			"# @return Filtration<SparseMatrix<Coeff, NonSymmetric> >\n",
+			"# @tparam Coeff desired coefficient type of the filtration"
+			"# @return Filtration<SparseMatrix<Coeff, NonSymmetric> >",
             "vietoris_rips_filtration<Coeff>($$$$)");
 }}

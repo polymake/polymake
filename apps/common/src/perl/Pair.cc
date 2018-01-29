@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -22,6 +22,7 @@
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
 #include "polymake/PuiseuxFraction.h"
+#include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/SparseMatrix.h"
@@ -63,5 +64,18 @@ namespace polymake { namespace common { namespace {
    Class4perl("Polymake::common::Pair_A_Array__Set__Int_I_Array__Int_Z", std::pair< Array< Set< int > >, Array< int > >);
    Class4perl("Polymake::common::Pair_A_Bitset_I_HashMap_A_Bitset_I_Rational_Z_Z", std::pair< Bitset, hash_map< Bitset, Rational > >);
    Class4perl("Polymake::common::Pair_A_Array__Bitset_I_Array__Bitset_Z", std::pair< Array< Bitset >, Array< Bitset > >);
+   Class4perl("Polymake::common::Pair_A_Array__Array__Matrix_A_QuadraticExtension__Rational_I_NonSymmetric_Z_I_Array__Matrix_A_QuadraticExtension__Rational_I_NonSymmetric_Z_Z", std::pair< Array< Array< Matrix< QuadraticExtension< Rational > > > >, Array< Matrix< QuadraticExtension< Rational > > > >);
+   Class4perl("Polymake::common::Pair_A_Array__Set__Matrix_A_QuadraticExtension__Rational_I_NonSymmetric_Z_I_Array__Matrix_A_QuadraticExtension__Rational_I_NonSymmetric_Z_Z", std::pair< Array< Set< Matrix< QuadraticExtension< Rational > > > >, Array< Matrix< QuadraticExtension< Rational > > > >);
+   Class4perl("Polymake::common::Pair_A_Array__Set__Array__Int_I_Array__Array__Int_Z", std::pair< Array< Set< Array< int > > >, Array< Array< int > > >);
+   Class4perl("Polymake::common::Pair_A_Array__Set__Matrix_A_Rational_I_NonSymmetric_Z_I_Array__Matrix_A_Rational_I_NonSymmetric_Z_Z", std::pair< Array< Set< Matrix< Rational > > >, Array< Matrix< Rational > > >);
+   Class4perl("Polymake::common::Pair_A_Bool_I_Matrix_A_Rational_I_NonSymmetric_Z_Z", std::pair< bool, Matrix< Rational > >);
+   FunctionInstance4perl(new, std::pair< Rational, Rational >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const std::pair< Rational, Rational > >, perl::Canned< const std::pair< Rational, Rational > >);
+   Class4perl("Polymake::common::Pair_A_Matrix_A_TropicalNumber_A_Min_I_Rational_Z_I_NonSymmetric_Z_I_IncidenceMatrix__NonSymmetric_Z", std::pair< Matrix< TropicalNumber< Min, Rational > >, IncidenceMatrix< NonSymmetric > >);
+   FunctionInstance4perl(new, std::pair< Matrix< TropicalNumber< Min, Rational > >, IncidenceMatrix< NonSymmetric > >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const std::pair< Matrix< TropicalNumber< Min, Rational > >, IncidenceMatrix< NonSymmetric > > >, perl::Canned< const std::pair< Matrix< TropicalNumber< Min, Rational > >, IncidenceMatrix< NonSymmetric > > >);
+   Class4perl("Polymake::common::Pair_A_Vector__TropicalNumber_A_Min_I_Rational_Z_I_Int_Z", std::pair< Vector< TropicalNumber< Min, Rational > >, int >);
+   FunctionInstance4perl(new, std::pair< Vector< TropicalNumber< Min, Rational > >, int >);
+   OperatorInstance4perl(Binary__eq, perl::Canned< const std::pair< Vector< TropicalNumber< Min, Rational > >, int > >, perl::Canned< const std::pair< Vector< TropicalNumber< Min, Rational > >, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

@@ -1,33 +1,31 @@
-# Copyright (c) 2013-2016 Silke Horn, Andreas Paffenholz
-# http://solros.de/polymake/poly_db
-# http://www.mathematik.tu-darmstadt.de/~paffenholz
-# 
-# This file is part of the polymake extension polyDB.
-# 
-# polyDB is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# 
-# polyDB is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-# 
-# You should have received a copy of the GNU General Public License
-# along with polyDB.  If not, see <http://www.gnu.org/licenses/>.
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+#
+#  This file is part of the polymake database interface polyDB.
+#
+#   @author Silke Horn, Andreas Paffenholz
+#   http://solros.de
+#   http://www.mathematik.tu-darmstadt.de/~paffenholz
+#
 
 
-# @topic category any/Database
-# Here you can find the functions to access the polymake database.
-
-# @topic category functions/Database Admin
-# These are administrative functions. You need admin access to the database for these.
-# 
-# This category also contains functions that I want to hide from the public because they are not yet completely presentable.
-
-# @topic category functions/Database Write Access
-# These are the functions to insert and update objects. You need write access to the database for these. 
+CREDIT polyDB
+   Access to the polymake polytope database.
+   (c) 2013-2018 Silke Horn, Andreas Paffenholz
+   http://solros.de
+   http://www.mathematik.tu-darmstadt.de/~paffenholz
 
 CONFIGURE {
    eval("require MongoDB;");
@@ -40,18 +38,28 @@ CONFIGURE {
 
 require PolyDB;
 
-CREDIT polyDB
-   Access to the polymake polytope database.
-   (c) 2013-16 Silke Horn, Andreas Paffenholz
-   http://www.mathematik.tu-darmstadt.de/~paffenholz
+# @topic category any/Database
+# Here you can find the functions to access the polymake database.
+
+# @topic category functions/Database Admin
+# These are administrative functions. You need admin access to the database for these.
+#
+# This category also contains functions that I want to hide from the public because they are not yet completely presentable.
+
+# @topic category functions/Database Write Access
+# These are the functions to insert and update objects. You need write access to the database for these.
 
 INCLUDE
-	db_templates.rules
-	db_query.rules
-	db_info.rules
-	db_insert.rules
-	db_admin.rules
-	db_cursor.rules
+  db_templates.rules
+  db_query.rules
+  db_info.rules
+  db_insert.rules
+  db_admin.rules
+  db_cursor.rules
 
 
-#	db_update_client.rules # check
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

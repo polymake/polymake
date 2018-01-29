@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -164,9 +164,9 @@ perl::Object check_fan_objects(const Array<perl::Object>& all_cones, perl::Optio
 
 //template<typename Coord>
 typedef Rational Coord;
-perl::Object check_fan(const Matrix<Coord>& i_rays, const Array<Set<int>>& i_cones, perl::OptionSet options)
+perl::Object check_fan(const Matrix<Coord>& i_rays, const IncidenceMatrix<>& i_cones, perl::OptionSet options)
 {
-   const int n_i_cones=i_cones.size();
+   const int n_i_cones=i_cones.rows();
    Matrix<Coord> linealitySpace;
    const int ambientDim=i_rays.cols();
    if (!(options["lineality_space"] >> linealitySpace))
@@ -191,7 +191,7 @@ UserFunction4perl("# @category Consistency check"
                   "# as [[INPUT_RAYS]], //cones// as [[INPUT_CONES]], //lineality_space// as"
                   "# [[LINEALITY_SPACE]] if this option is given."
                   "# @param Matrix rays"
-                  "# @param Array< Set<int> > cones"
+                  "# @param IncidenceMatrix cones"
                   "# @option Matrix lineality_space Common lineality space for the cones."
                   "# @option Bool verbose prints information about the check."
                   "# @return PolyhedralFan",

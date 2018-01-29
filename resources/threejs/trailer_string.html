@@ -11,10 +11,11 @@ var explodingSpeed = 0.05;
 var explodeScale = 0;
 var XMLS = new XMLSerializer();
 var svgElement;
+var renderId;
 
 	var render = function () {
 
-		requestAnimationFrame(render);
+		renderId = requestAnimationFrame(render);
 
 //		comment in for automatic explosion
 //		explode(updateFactor());
@@ -92,21 +93,18 @@ var svgElement;
 
 	function showSettings(event){
 		event.currentTarget.style.display = 'none';
-		document.getElementById('settings').style.display = 'inline-block';
-		document.getElementById('hideSettingsButton').style.display = 'inline';
-		var canvas = document.getElementsByTagName('canvas')[0];
-		canvas.style.right = '0px';
-		canvas.style.transform = 'translate(0,0)';
+		document.getElementById('settings_OUTPUTID').style.position = 'absolute';
+		document.getElementById('settings_OUTPUTID').style.display = 'block';
+		document.getElementById('showSettingsButton_OUTPUTID').style.display = 'none';
+		document.getElementById('hideSettingsButton_OUTPUTID').style.display = 'block';
 		settingsShown = true;
 	}
 
 	function hideSettings(event){
 		event.currentTarget.style.display = 'none';
-		document.getElementById('settings').style.display = 'none';
-		document.getElementById('showSettingsButton').style.display = 'block';
-		var canvas = document.getElementsByTagName('canvas')[0];
-		canvas.style.right = '50%';
-		canvas.style.transform = 'translate(50%,0)';
+		document.getElementById('settings_OUTPUTID').style.display = 'none';
+		document.getElementById('hideSettingsButton_OUTPUTID').style.display = 'none';
+		document.getElementById('showSettingsButton_OUTPUTID').style.display = 'block';
 		settingsShown = false;
 	}
 
@@ -136,7 +134,7 @@ var svgElement;
 		fontsize = fontsize*10;
 
 		var canvas = document.createElement('canvas');
-		var size = 1000;
+		var size = 1024;
 		canvas.width = size;
 		canvas.height = size;
 		var context = canvas.getContext('2d');
@@ -168,7 +166,7 @@ var svgElement;
 			displayLabels();
 		}
 
-		if (document.getElementById('tab').checked){
+		if (document.getElementById('tab_OUTPUTID').checked){
 			//show in new tab
 			var myWindow = window.open("","");
 			myWindow.document.body.innerHTML = svgElement;
@@ -191,8 +189,8 @@ var svgElement;
 				if (all_objects[i].children[j].material.type == "MultiMaterial") {
 					for (var k=0; k<all_objects[i].children[j].material.materials.length; k++){
 						if (all_objects[i].children[j].material.materials[k].transparent) {
-							document.getElementById('transparency').style.display = 'block';
-							document.getElementById('transparencyRange').value = 1 - 
+							document.getElementById('transparency_OUTPUTID').style.display = 'block';
+							document.getElementById('transparencyRange_OUTPUTID').value = 1 - 
 							    all_objects[i].children[j].material.materials[k].opacity;
 							return;
 						}
@@ -200,7 +198,7 @@ var svgElement;
 				} else if (all_objects[i].children[j].material.transparent && 
 							  all_objects[i].children[j].material.type == "MeshBasicMaterial" &&
 							  all_objects[i].children[j].geometry.type == "Geometry"){
-					document.getElementById('transparency').style.display = 'block';
+					document.getElementById('transparency_OUTPUTID').style.display = 'block';
 					return;
 				}
 			}
@@ -258,7 +256,7 @@ var svgElement;
 			clearIntervals();
 			timeouts.push(setTimeout(startUnexploding, 3000));
 		}
-		document.getElementById('explodeRange').value = explodeScale;
+		document.getElementById('explodeRange_OUTPUTID').value = explodeScale;
 	}
 
 
@@ -277,7 +275,7 @@ var svgElement;
 			clearIntervals();
 			timeouts.push(setTimeout(startExploding, 3000));
 		}
-		document.getElementById('explodeRange').value = explodeScale;
+		document.getElementById('explodeRange_OUTPUTID').value = explodeScale;
 	}
 
 	function clearIntervals(){
@@ -294,7 +292,7 @@ var svgElement;
 			
 
 	// append checkboxes for displaying or hiding objects
-	var shownObjectsList = document.getElementById('shownObjectsList');
+	var shownObjectsList = document.getElementById('shownObjectsList_OUTPUTID');
 	for (var i=0; i<all_objects.length; i++){
 		var objNode = document.createElement('span');
 		objNode.innerHTML = objectnames[i] + '<br>';
@@ -351,6 +349,28 @@ var svgElement;
 
 	  document.body.removeChild(element);
 	}
+
+var tempobj;
+tempobj = document.getElementById('explodeRange_OUTPUTID');
+if (tempobj) {
+   tempobj.oninput = triggerExplode;
+   document.getElementById('explodeCheckbox_OUTPUTID').onchange = triggerAutomaticExplode;
+   document.getElementById('explodingSpeedRange_OUTPUTID').oninput = setExplodingSpeed;
+}
+tempobj = document.getElementById('foldRange_OUTPUTID');
+if (tempobj) {
+   tempobj.oninput = fold;
+}
+document.getElementById('transparencyRange_OUTPUTID').oninput = changeTransparency;
+document.getElementById('changeRotationX_OUTPUTID').onchange = changeRotationX;
+document.getElementById('changeRotationY_OUTPUTID').onchange = changeRotationY;
+document.getElementById('changeRotationZ_OUTPUTID').onchange = changeRotationZ;
+document.getElementById('resetButton_OUTPUTID').onclick = resetScene;
+document.getElementById('rotationSpeedRange_OUTPUTID').oninput = changeRotationSpeedFactor;
+document.getElementById('labelsCheckboxInput_OUTPUTID').onchange = displayOrHideLabels;
+document.getElementById('takeScreenshot_OUTPUTID').onclick = takeSvgScreenshot;
+document.getElementById('showSettingsButton_OUTPUTID').onclick = showSettings;
+document.getElementById('hideSettingsButton_OUTPUTID').onclick = hideSettings;
 
 	
 
@@ -584,12 +604,11 @@ shortcut = {
 shortcut.add("Alt+Left",function() {
 	var event = new Event('click');
 	if (settingsShown){
-		document.getElementById('hideSettingsButton').dispatchEvent(event);
+		document.getElementById('hideSettingsButton_OUTPUTID').dispatchEvent(event);
 	} else{
-		document.getElementById('showSettingsButton').dispatchEvent(event);
+		document.getElementById('showSettingsButton_OUTPUTID').dispatchEvent(event);
 	}
 });
-
 
 if (foldable) moveToBaryCenter();
 

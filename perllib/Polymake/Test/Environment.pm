@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -15,11 +15,10 @@
 
 use strict;
 use namespaces;
+use warnings qw(FATAL void syntax misc);
 use feature 'state';
 
 package Polymake::Test::Environment;
-
-use Time::HiRes qw(gettimeofday tv_interval);
 
 ##################################################################
 use Polymake::Struct (
@@ -35,7 +34,9 @@ use Polymake::Struct (
    [ '$no_new_glue_code' => '#%' ],
    [ '$shuffle_seed' => '#%' ],
    [ '&shuffle' => 'sub { @_ }' ],
+   [ '$annotate_mode' => '#%' ],
    [ '$cur_group' => 'undef' ],
+   [ '$preserve_load' => '#%' ],
    '@skipped',
    '@random_failed',
    '@failed',
@@ -76,12 +77,14 @@ sub new {
    # replace the standard 'load' user function
    local *Polymake::User::load = sub {
       load_object_file($self, find_object_file($_[0], $User::application));
-   };
+   }
+      unless $self->preserve_load;
 
    # replace the standard 'load_data' user function
    local *Polymake::User::load_data = sub {
       load_data_file($self, find_matching_file($_[0]));
-   };
+   }
+      unless $self->preserve_load;
 
    $scope->end_locals;
 
@@ -115,11 +118,13 @@ sub start_testsuite {
       binmode $report_fh, ":utf8";
       $self->report_writer=new XML::Writer(OUTPUT => $report_fh, NAMESPACES => 0, DATA_MODE => 1, DATA_INDENT => 2, ENCODING => 'utf-8', UNSAFE => 0);
       $self->report_writer->xmlDecl;
-      $self->report_writer->startTag("testsuites", name => $app_name);
+      $self->report_writer->startTag("testsuites");
       $self->report_fh=$report_fh;
 
    } elsif ($validation) {
       print "\n*** Validating data files in application $app_name ***\n\n";
+   } elsif ($app_name eq "tutorials") {
+      print "\n*** Testing $app_name ***\n\n";
    } else {
       print "\n*** Testing in application $app_name ***\n\n";
    }
@@ -178,13 +183,13 @@ sub present_source_location {
 sub start_timers {
    my ($self)=@_;
    $self->last_cputime=get_user_cpu_time();
-   $self->last_timestamp=[gettimeofday];
+   $self->last_timestamp=[gettimeofday()];
 }
 
 sub read_timers {
    my ($self)=@_;
    my $cpu_time=get_user_cpu_time();
-   my $now=[gettimeofday];
+   my $now=[gettimeofday()];
    my @results=($cpu_time-$self->last_cputime, tv_interval($self->last_timestamp, $now));
    $self->last_cputime=$cpu_time;
    $self->last_timestamp=$now;
@@ -199,7 +204,7 @@ sub load_trusted_data_file { scalar((new Core::XMLfile($_[0]))->load_data) }
 
 sub full_path_and_copy {
    my ($filename)=@_;
-   state $copies_dir=Tempfile->new_dir;
+   state $copies_dir=new Tempdir("till_exit");
    (my $full_path=Cwd::abs_path($filename)) =~ s{^\Q$InstallTop\E}{};
    $full_path =~ $directory_re;
    File::Path::mkpath($copies_dir.$1);
@@ -264,7 +269,7 @@ sub load_data_file {
 sub create_validation_schemata {
    my ($self)=@_;
    my %schemata;
-   my $tmp_dir=Tempfile->new_dir;
+   my $tmp_dir=new Tempdir();
    while (my ($app_name, $types)=each %{$self->big_types}) {
       my $schema_file="$tmp_dir/$app_name.rng";
       open my $schema_of, ">", $schema_file or die "can't create temporary schema file $schema_file: $!\n";
@@ -281,8 +286,7 @@ sub print_summary {
    print "\n*** Summary ***\n\n";
    if (@{$self->failed}) {
       print "*** Failed tests ***\n\n", @{$self->failed}, "\n";
-   }
-   if (@{$self->random_failed}) {
+   } elsif (@{$self->random_failed}) {
       print "*** Failed random tests ***\n\n", @{$self->random_failed}, "\n";
    }
    if (!@{$self->failed}) {

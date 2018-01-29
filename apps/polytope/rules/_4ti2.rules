@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -95,7 +95,7 @@ object Cone<Rational> {
 
 	# 4ti2 version 1.6 cannot handle the case of a full-dimensional linear space
 	# hence we handle this case separately
-	my $n_ineq = ($this->FACETS | INEQUALITIES)->rows;
+	my $n_ineq = $this->give("FACETS | INEQUALITIES")->rows;
 	if (defined (my $AH = $this->lookup("LINEAR_SPAN | EQUATIONS"))) {
 	    $n_ineq += $AH->rows;
 	}
@@ -214,8 +214,9 @@ sub zsolve_print {
     my $dim = $this->CONE_AMBIENT_DIM;
     if ($flags{polytope}) { --$dim; }
 
-    my $n_ineq = ($this->FACETS | INEQUALITIES)->rows;
-    my $facets = dense(eliminate_denominators_in_rows($this->FACETS | INEQUALITIES));
+    my $F=$this->give("FACETS | INEQUALITIES");
+    my $n_ineq = $F->rows;
+    my $facets = dense(eliminate_denominators_in_rows($F));
     
     if (!check_int_limit($facets)) {
         die("input values exceed int limits");
@@ -234,9 +235,11 @@ sub zsolve_print {
     # matrix file 
     open(my $M, ">$tempname.mat")
         or die "can't create temporary file $tempname.mat: $!";
-    $flags{polytope} ? 
-	print $M "$n_lines $dim\n", $facets->minor(All,range(1,$dim)) : 
+    if ($flags{polytope}) {
+	print $M "$n_lines $dim\n", $facets->minor(All,range(1,$dim));
+    } else {
 	print $M "$n_lines $dim\n", $facets;
+    }
 
     # right hand side
     open(my $R, ">$tempname.rhs")

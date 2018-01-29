@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2016
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -15,23 +15,25 @@
 */
 
 #include "polymake/group/group_tools.h"
+#include "polymake/group/orbit.h"
 #include <algorithm>
 
 namespace polymake { namespace group {
 
 namespace {
 
-GroupIndex make_group_classes(perl::Object g,
-                              perl::OptionSet options,
-                              Array<Array<Array<int>>>& group_classes)
+template<typename Element>
+GroupIndex<Element> make_group_classes(perl::Object g,
+                                       perl::OptionSet options,
+                                       Array<Array<Element>>& group_classes)
 {
    const std::string action = options["action"];
    try {
       g.give(action + ".CONJUGACY_CLASSES") >> group_classes;
    } catch (perl::undefined) {
-      const Array<Array<int>> gens = g.give(action + ".GENERATORS");
-      group_classes = Array<Array<Array<int>>>(1);
-      group_classes[0] = orbit<on_container>(gens, Array<int>(sequence(0, gens[0].size())));
+      const Array<Element> gens = g.give(action + ".GENERATORS");
+      group_classes = Array<Array<Element>>(1);
+      group_classes[0] = orbit<on_container>(gens, identity(degree(gens[0]), Element()));
       std::sort(group_classes[0].begin(), group_classes[0].end(), pm::operations::lt<const Array<int>&, const Array<int>&>());
    }
    return group_index(group_classes);
@@ -43,7 +45,7 @@ auto
 group_right_multiplication_table(perl::Object g, perl::OptionSet options)
 {
    Array<Array<Array<int>>> group_classes;
-   const GroupIndex group_index = make_group_classes(g, options, group_classes);
+   const GroupIndex<Array<int>> group_index = make_group_classes(g, options, group_classes);
    return group_right_multiplication_table_impl(group_classes, group_index);
 }
 
@@ -51,10 +53,10 @@ auto
 group_left_multiplication_table(perl::Object g, perl::OptionSet options)
 {
    Array<Array<Array<int>>> group_classes;
-   const GroupIndex group_index = make_group_classes(g, options, group_classes);
+   const GroupIndex<Array<int>> group_index = make_group_classes(g, options, group_classes);
    return group_left_multiplication_table_impl(group_classes, group_index);
 }
-
+      
 UserFunction4perl("# @category Symmetry"
                   "# Calculate the right multiplication table of a group action, in which GMT[g][h] = gh"
                   "# @param Group G"
@@ -72,8 +74,8 @@ UserFunction4perl("# @category Symmetry"
                   "# ordered by conjugacy classes (if available), else in generated order",
                   &group_left_multiplication_table,
                   "group_left_multiplication_table(Group { action=>'PERMUTATION_ACTION' })");
-
-
+ 
+    
 } }
 
 

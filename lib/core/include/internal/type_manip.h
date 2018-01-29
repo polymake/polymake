@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -32,6 +32,12 @@
 #  define POLYMAKE_ALIGN(what,n) __declspec(align(n)) what
 #endif
 
+#if defined(__clang__) && __clang_major__ >= (defined(__APPLE__) ? 8 : 4)
+# define PmNoSanitize(issue) __attribute__((no_sanitize(#issue)))
+#else
+# define PmNoSanitize(issue)
+#endif
+
 namespace pm {
 
 // For the time of transition to a proper C++14 implementation
@@ -53,6 +59,7 @@ using polymake::mlist_length;
 using polymake::mlist_wrap;
 using polymake::mlist_concat;
 using polymake::mlist_contains;
+using polymake::mlist_subset;
 using polymake::mlist_prepend_if;
 using polymake::mlist_append_if;
 using polymake::mlist_remove_duplicates;

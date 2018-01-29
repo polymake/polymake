@@ -147,8 +147,8 @@ object Cycle {
 		delete($$decor{"ConeLabels"});
 
       if($clabels->size() == 0) {
-         $clabels = produce_labels( $showWeights?  $this->WEIGHTS : (new Vector<Integer>()),
-                                    $showLengths? $this->CURVE_EDGE_LENGTHS : (new Array<Rational>()),
+         $clabels = produce_labels( $showWeights?  $this->WEIGHTS : new Vector<Integer>(),
+                                    $showLengths? $this->CURVE_EDGE_LENGTHS : new Array<Rational>(),
                                     $showWeights, $showLengths);    
       }
 	
@@ -172,7 +172,7 @@ object Cycle {
 				die "Bounding box has invalid dimension\n";
 			}
 		}
-		my @result = computeBoundedVisual($this->affine_chart($chart),(new Matrix<Rational>($boundingBox)),$clabels);
+		my @result = computeBoundedVisual($this->affine_chart($chart), new Matrix<Rational>($boundingBox), $clabels);
 		my @cells_visual;
 		my $weightCenters = pop(@result);
 

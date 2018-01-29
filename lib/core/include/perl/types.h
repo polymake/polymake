@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -19,24 +19,24 @@
 
 namespace pm { namespace perl {
 
-typedef SV* (*wrapper_type)(SV**);
-typedef SV* (*indirect_wrapper_type)(void*, SV**);
-typedef void (*destructor_type)(char*);
-typedef void (*copy_constructor_type)(void*, const char*);
-typedef void (*assignment_type)(char*, SV*, value_flags);
-typedef SV* (*conv_to_string_type)(const char*);
-typedef int (*conv_to_int_type)(const char*);
-typedef double (*conv_to_float_type)(const char*);
-typedef SV* (*conv_to_serialized_type)(const char*, SV*);
-typedef void (*container_resize_type)(char*, int);
-typedef void (*container_begin_type)(void*, char*);
-typedef void (*container_access_type)(char*, char*, int, SV*, SV*);
-typedef void (*container_store_type)(char*, char*, int, SV*);
-typedef void (*composite_access_type)(char*, SV*, SV*);
-typedef void (*composite_store_type)(char*, SV*);
-typedef SV* (*iterator_deref_type)(const char*);
-typedef void (*iterator_incr_type)(char*);
-typedef SV* (*provide_type)();
+using wrapper_type = SV* (*)(SV**);
+using indirect_wrapper_type = SV* (*)(void*, SV**);
+using destructor_type = void (*)(char*);
+using copy_constructor_type = void (*)(void*, const char*);
+using assignment_type = void (*)(char*, SV*, value_flags);
+using conv_to_string_type = SV* (*)(const char*);
+using conv_to_int_type = int (*)(const char*);
+using conv_to_float_type = double (*)(const char*);
+using conv_to_serialized_type = SV* (*)(const char*, SV*);
+using container_resize_type = void (*)(char*, int);
+using container_begin_type = void (*)(void*, char*);
+using container_access_type = void (*)(char*, char*, int, SV*, SV*);
+using container_store_type = void (*)(char*, char*, int, SV*);
+using composite_access_type = void (*)(char*, SV*, SV*);
+using composite_store_type = void (*)(char*, SV*);
+using iterator_deref_type = SV* (*)(const char*);
+using iterator_incr_type = void (*)(char*);
+using provide_type = SV* (*)();
 
 struct composite_access_vtbl {
    composite_access_type get[2];
@@ -66,7 +66,7 @@ inline bait* recognize(pm::perl::type_infos&, bait*, pm::Array<pm::perl::Object>
 } }
 namespace pm { namespace perl {
 
-typedef polymake::perl_bindings::bait* recognizer_bait;
+using recognizer_bait = polymake::perl_bindings::bait*;
 
 extern AnyString class_with_prescribed_pkg;
 extern AnyString relative_of_known_class;
@@ -84,7 +84,7 @@ struct type_infos {
 
 template <typename T>
 struct known_type {
-   typedef type_behind_t<T> TData;
+   using TData = type_behind_t<T>;
    static const bool is_proxy=!std::is_same<T, TData>::value;
 
    static const size_t recog_size=sizeof(*recognize(std::declval<type_infos&>(), recognizer_bait(0), (TData*)0, (TData*)0));
@@ -143,17 +143,17 @@ class type_cache
    : protected type_cache_base
    , protected type_cache_helper<T> {
 protected:
-   typedef type_cache_helper<T> super;
+   using helper_t = type_cache_helper<T>;
 
    static type_infos& get(SV* known_proto=nullptr)
    {
-      static type_infos infos=super::get(known_proto);
+      static type_infos infos=helper_t::get(known_proto);
       return infos;
    }
 
    static type_infos& get_with_prescribed_pkg(SV* prescribed_pkg)
    {
-      static type_infos infos=super::get_with_prescribed_pkg(prescribed_pkg, bool_constant<object_traits<T>::is_lazy>());
+      static type_infos infos=helper_t::get_with_prescribed_pkg(prescribed_pkg, bool_constant<object_traits<T>::is_lazy>());
       return infos;
    }
 public:
@@ -240,7 +240,7 @@ class type_cache_helper<T, false, false, false, true, false>
 template <typename T, bool has_persistent, bool has_generic>
 class type_cache_helper<T, true, false, has_persistent, has_generic, true> {
 protected:
-   typedef type_behind_t<T> TData;
+   using TData = type_behind_t<T>;
    static type_infos get(SV* known_proto)
    {
       assert(known_proto==nullptr);
@@ -290,8 +290,8 @@ struct is_mutable : bool_constant<pm::is_mutable<T>::value && !object_traits<T>:
 template <typename type_list, int i>
 struct TypeList_helper {
    static const int next= i+1 < list_length<type_list>::value ? i+1 : i;
-   typedef TypeList_helper<type_list,next> recurse_down;
-   typedef typename n_th<type_list,i>::type T;
+   using recurse_down = TypeList_helper<type_list,next>;
+   using T = typename n_th<type_list,i>::type;
 
    static bool push_types(Stack& stack)
    {
@@ -316,7 +316,7 @@ struct TypeList_helper {
 
    static void gather_type_names(ArrayHolder& arr)
    {
-      typedef typename access<T>::type Type;
+      using Type = typename access<T>::type;
       arr.push(Scalar::const_string_with_int(typeid(Type).name(), attrib<Type>::is_const));
       if (next>i) recurse_down::gather_type_names(arr);
    }
@@ -347,7 +347,7 @@ struct TypeList_helper<void,i> {
 
 template <typename Fptr>
 class TypeListUtils {
-   typedef typename list2cons<Fptr>::type type_list;
+   using type_list = typename list2cons<Fptr>::type;
 
    static SV* gather_flags()
    {
@@ -392,8 +392,8 @@ public:
    }
 
    // build an array with void-return and arg-is-lvalue flags;
-   // the signature of this function has to be compatible with wrapper_type
-   static SV* get_flags(SV**)
+   // the signature of this function has to be compatible with indirect_wrapper_type
+   static SV* get_flags(void*, SV**)
    {
       static SV* ret=gather_flags();
       return ret;

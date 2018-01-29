@@ -498,9 +498,13 @@ void dd_FreeDDMemory0(dd_ConePtr cone)
   
   /* THIS SHOULD BE REWRITTEN carefully */
   for (PrevPtr=cone->ArtificialRay; PrevPtr!=NULL; PrevPtr=Ptr) {
+    /* Improved for zero-dim edge case by Ewgenij Gawrilow 2017/06/05 */
+    /* cf. dd_AddArtificialRay above in this file */
+    dd_colrange ray_dim=cone->d;
     Ptr=PrevPtr->Next;
+    if (ray_dim==0 && Ptr==NULL) ray_dim=1;
     /* Added Marc Pfetsch 2/19/01 */
-    for (j=0;j < cone->d;j++)
+    for (j=0; j<ray_dim; j++)
       dd_clear(PrevPtr->Ray[j]);
     dd_clear(PrevPtr->ARay);
 
@@ -1549,8 +1553,8 @@ void dd_AddNewHalfspace2(dd_ConePtr cone, dd_rowrange hnew)
       and sort them. ( -rays, +rays, 0rays)*/
 
   if (cone->PosHead==NULL && cone->ZeroHead==NULL) {
-    cone->FirstRay=NULL;
     cone->ArtificialRay->Next=cone->FirstRay;
+    cone->FirstRay=NULL;
     cone->RayCount=0;
     cone->CompStatus=dd_AllFound;
     goto _L99;   /* All rays are infeasible, and the computation must stop */

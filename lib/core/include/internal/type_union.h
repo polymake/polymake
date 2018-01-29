@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -23,11 +23,17 @@
 namespace pm {
 namespace virtuals {
 
-void _nop();
+struct empty_union_def {
+   using invalid_op_t = void (*)(char*, ...);
+   static void invalid_op(char*, ...) __attribute__((noreturn));
+   static void trivial_op(char*);
+   static void trivial_op2(char*, const char*);
+   static invalid_op_t no_op() { return &invalid_op; }
+};
 
 template <typename Definitions>
 class table {
-   typedef typename Definitions::fpointer fpointer;
+   using fpointer = typename Definitions::fpointer;
 
    struct _impl {
       static const int length=Definitions::length;
@@ -41,7 +47,7 @@ class table {
 
       void init_impl(fpointer* ptr, int_constant<-1>)
       {
-         *ptr=reinterpret_cast<fpointer>(&_nop);
+         *ptr=reinterpret_cast<fpointer>(Definitions::no_op());
       }
 
       fpointer _table[length+1];
@@ -192,7 +198,7 @@ struct type_union_functions {
    template <int discr>
    struct basics : virtuals::basics<typename n_th<TypeList,discr>::type> { };
 
-   struct length_def {
+   struct length_def : empty_union_def {
       static const int length=list_length<TypeList>::value;
    };
    struct default_constructor : length_def {
@@ -202,10 +208,12 @@ struct type_union_functions {
    struct copy_constructor : length_def {
       template <int discr> struct defs : virtuals::copy_constructor<typename n_th<TypeList,discr>::type> { };
       typedef void (*fpointer)(char*, const char*);
+      static fpointer no_op() { return &empty_union_def::trivial_op2; }
    };
    struct destructor : length_def {
       template <int discr> struct defs : virtuals::destructor<typename n_th<TypeList,discr>::type> { };
       typedef void (*fpointer)(char*);
+      static fpointer no_op() { return &empty_union_def::trivial_op; }
    };
 };
 } // end namespace virtuals

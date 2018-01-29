@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -262,6 +262,7 @@ protected:
    {
       get_cross_ruler().prefix().removed(n);
    }
+
 public:
    typedef const traits_base& arg_type;
 
@@ -272,6 +273,11 @@ public:
    cross_tree& get_cross_tree(int i)
    {
       return get_cross_ruler()[i].in();
+   }
+
+   static void prepare_move_between_trees(Node* n, const int old_line_index, const int new_line_index)
+   {
+      n->key += new_line_index - old_line_index;
    }
 
    friend class Table<TDir>;
@@ -709,8 +715,8 @@ public:
    void swap(Table& t)
    {
       std::swap(R,t.R);
-      std::swap(node_maps, t.node_maps);
-      std::swap(edge_maps, t.edge_maps);
+      node_maps.swap(t.node_maps);
+      edge_maps.swap(t.edge_maps);
       std::swap(n_nodes, t.n_nodes);
       std::swap(free_node_id, t.free_node_id);
       std::swap(free_edge_ids, t.free_edge_ids);
@@ -2133,8 +2139,8 @@ private:
    template <typename Tree>
    void relink_edges(Tree& tree_from, Tree& tree_to, int node_from, int node_to)
    {
-      for (typename Tree::iterator it=tree_from.begin(); !it.at_end(); ) {
-         typename Tree::Node* c=it.operator->();  ++it;
+      for (auto it=tree_from.begin(); !it.at_end(); ) {
+         const auto c=it.operator->();  ++it;
          if (c->key == node_from + node_to) {
             // this is an edge to be contracted
             tree_from.destroy_node(c);
@@ -2153,11 +2159,11 @@ private:
             }
 
          } else {
-            c->key += node_to - node_from;
+            tree_from.prepare_move_between_trees(c, node_from, node_to);
             if (tree_to.insert_node(c)) {
                (*data)[c->key - node_to].cross_tree(&tree_from).update_node(c);
             } else {
-               c->key -= node_to - node_from;
+               tree_to.prepare_move_between_trees(c, node_to, node_from);
                tree_from.destroy_node(c);
             }
          }

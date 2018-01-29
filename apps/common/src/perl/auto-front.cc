@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -16,6 +16,9 @@
 
 ///==== this line controls the automatic file splitting: max.instances=40
 
+#include "polymake/Matrix.h"
+#include "polymake/QuadraticExtension.h"
+#include "polymake/Rational.h"
 #include "polymake/Set.h"
 #include "polymake/Vector.h"
 #include "polymake/client.h"
@@ -29,5 +32,7 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(front_f1, perl::Canned< const Set< int > >);
+   FunctionInstance4perl(front_f1, perl::Canned< const Set< Vector< QuadraticExtension< Rational > > > >);
+   FunctionInstance4perl(front_f1, perl::Canned< const Set< Vector< Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

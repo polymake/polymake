@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -59,8 +59,8 @@ perl::Object universal_polytope_impl(int d,
       throw std::runtime_error("Need at least #{simplex reps} many columns in the cocircuit equation matrix");
 
    Vector<Scalar> volume_vect(n_reps);
-   typename Vector<Scalar>::iterator vit = volume_vect.begin();
-   for (const auto& f : facet_reps)
+   auto vit = volume_vect.begin();
+   for (const auto& f: facet_reps)
       *vit = abs(det(points.minor(f, All))), ++vit;
 
    const SparseMatrix<Scalar> Inequalities = zero_vector<Scalar>(n_reps) | unit_matrix<Scalar>(n_reps) | zero_matrix<Scalar>(n_reps, n_cols - n_reps);
@@ -79,8 +79,7 @@ perl::Object simplexity_ilp(int d,
                             const Matrix<Scalar>& points, 
                             const Array<SetType>& facet_reps, 
                             Scalar vol, 
-                            const SparseMatrix<Rational>& cocircuit_equations, 
-                            perl::OptionSet options)
+                            const SparseMatrix<Rational>& cocircuit_equations)
 {
    const int 
       n_reps = facet_reps.size(), 
@@ -94,38 +93,33 @@ perl::Object simplexity_ilp(int d,
 
    perl::Object q = universal_polytope_impl(d, points, facet_reps, vol, cocircuit_equations);
    q.take("LP") << lp;
-
-   const std::string filename = options["filename"];
-   write_output<Scalar>(q, lp, filename);
    return q;
 }
 
+template <typename SetType, typename EquationsType>
 perl::Object foldable_max_signature_ilp(int d,
                                         const Matrix<Rational>& points,
-                                        const Array<Set<int>>& facet_reps,
+                                        const Array<SetType>& max_simplices,
                                         const Rational& vol,
-                                        const SparseMatrix<Rational>& foldable_cocircuit_equations,
-                                        perl::OptionSet options)
+                                        const EquationsType& foldable_cocircuit_equations)
 {
-   const int
-      n2 = facet_reps.size(),
-      n = n2/2;
-   Vector<Integer> volume_vect(n2);
-   SparseMatrix<Integer> selection(n,n2);
+   const int n = max_simplices.size();
+   Vector<Integer> volume_vect(2*n);
+   SparseMatrix<Integer> selection(n,2*n);
    Vector<Integer>::iterator vit = volume_vect.begin();
    int i=0;
-   for (const auto& f : facet_reps) {
-      // points required to have integer coordinates!
-      const Integer facet_vol = convert_to<Integer>(abs(det(points.minor(f, All))));
-      *vit = facet_vol; ++vit; // black facet
-      *vit = facet_vol; ++vit; // white facet
-      selection(i,2*i) = selection(i,2*i+1) = -1; // either black or white
+   for (const auto& f: max_simplices) {
+      // points have integer coordinates. This is ensured by the check for $p->LATTICE in universal_polytope.rules
+      const Integer max_simplex_vol (numerator(abs(det(points.minor(f, All)))));
+      *vit = max_simplex_vol; ++vit; // black maximal simplex
+      *vit = max_simplex_vol; ++vit; // white maximal simplex
+      selection(i,2*i) = selection(i,2*i+1) = -1; // select one of either black or white
       ++i;
    }
 
    const SparseMatrix<Integer> 
-      Inequalities = (zero_vector<Integer>(n2) | unit_matrix<Integer>(n2)) /
-                     (ones_vector<Integer>(n)  | selection),
+      Inequalities = (zero_vector<Integer>(2*n) | unit_matrix<Integer>(2*n)) /
+                     (ones_vector<Integer>(n)   | selection),
       Equations    = (zero_vector<Integer>(foldable_cocircuit_equations.rows()) | Matrix<Integer>(foldable_cocircuit_equations)) /
                      ((-Integer::fac(d) * vol) | volume_vect);
    
@@ -138,7 +132,7 @@ perl::Object foldable_max_signature_ilp(int d,
          volume_vect[2*i+1].negate();
    
    perl::Object lp("LinearProgram<Rational>");
-   lp.attach("INTEGER_VARIABLES") << Array<bool>(n2,true);
+   lp.attach("INTEGER_VARIABLES") << Array<bool>(2*n,true);
    lp.take("LINEAR_OBJECTIVE") << Vector<Rational>(0|volume_vect);
 
    perl::Object q("Polytope<Rational>");
@@ -146,37 +140,32 @@ perl::Object foldable_max_signature_ilp(int d,
    q.take("INEQUALITIES") << Inequalities;
    q.take("EQUATIONS") << Equations;
    q.take("LP") << lp;
-
-   const std::string filename = options["filename"];
-   write_output<Rational>(q, lp, filename);
    return q;
 }
 
 template <typename Scalar, typename SetType>
 Integer simplexity_lower_bound(int d, 
                                const Matrix<Scalar>& points, 
-                               const Array<SetType>& facets, 
+                               const Array<SetType>& max_simplices, 
                                Scalar vol, 
-                               const SparseMatrix<Rational>& cocircuit_equations, 
-                               perl::OptionSet options)
+                               const SparseMatrix<Rational>& cocircuit_equations)
 {
-   perl::Object q = simplexity_ilp(d, points, facets, vol, cocircuit_equations, options);
+   perl::Object q = simplexity_ilp(d, points, max_simplices, vol, cocircuit_equations);
    const Scalar sll=q.give("LP.MINIMAL_VALUE");
-   const Integer int_sll = convert_to<Integer>(sll); // rounding down
+   const Integer int_sll(floor(sll));
    return sll==int_sll? int_sll : int_sll+1;
 }
 
+template <typename SetType>
 Integer foldable_max_signature_upper_bound(int d, 
                                            const Matrix<Rational>& points, 
-                                           const Array<Set<int>>& facets, 
+                                           const Array<SetType>& max_simplices, 
                                            const Rational& vol, 
-                                           const SparseMatrix<Rational>& foldable_cocircuit_equations, 
-                                           perl::OptionSet options)
+                                           const SparseMatrix<Rational>& foldable_cocircuit_equations)
 {
-   perl::Object q = foldable_max_signature_ilp(d, points, facets, vol, foldable_cocircuit_equations, options);
+   perl::Object q = foldable_max_signature_ilp(d, points, max_simplices, vol, foldable_cocircuit_equations);
    const Rational sll=q.give("LP.MAXIMAL_VALUE");
-   const Integer int_sll = convert_to<Integer>(sll); // rounding down
-   return int_sll;
+   return floor(sll);
 }
 
 FunctionTemplate4perl("universal_polytope_impl<Scalar>($ Matrix<Scalar> Array<Set> $ SparseMatrix)");
@@ -186,12 +175,11 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# Set up an ILP whose MINIMAL_VALUE is the minimal number of simplices needed to triangulate a polytope, point configuration or quotient manifold"
                           "# @param Int d the dimension of the input polytope, point configuration or quotient manifold "
                           "# @param Matrix points the input points or vertices "
-                          "# @param Array<Set> the representatives of maximal interior simplices "
+                          "# @param Array<Set> MIS the representatives of maximal interior simplices "
                           "# @param Scalar volume the volume of the convex hull "
                           "# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations "
-                          "# @option String filename a name for a file in .lp format to store the linear program"
                           "# @return LinearProgram an LP that provides a lower bound",
-                          "simplexity_ilp<Scalar,SetType>($ Matrix<Scalar> Array<SetType> $ SparseMatrix { filename=>'' })");
+                          "simplexity_ilp<Scalar,SetType>($ Matrix<Scalar> Array<SetType> $ SparseMatrix)");
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# Calculate the LP relaxation lower bound for the minimal number of simplices needed to triangulate a polytope, point configuration or quotient manifold"
@@ -200,28 +188,25 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# @param Scalar volume the volume of the convex hull "
                           "# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations "
                           "# @return Integer the optimal value of an LP that provides a lower bound",
-                          "simplexity_lower_bound<Scalar,SetType>($ Matrix<Scalar> Array<SetType> $ SparseMatrix { filename=>'' })");
+                          "simplexity_lower_bound<Scalar,SetType>($ Matrix<Scalar> Array<SetType> $ SparseMatrix)");
 
-UserFunction4perl("# @category Triangulations, subdivisions and volume"
-                  "# Set up an ILP whose MAXIMAL_VALUE is the maximal signature of a foldable triangulation of a polytope, point configuration or quotient manifold"
-                  "# @param Int d the dimension of the input polytope, point configuration or quotient manifold "
-                  "# @param Matrix points the input points or vertices "
-                  "# @param Rational volume the volume of the convex hull "
-                  "# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations "
-                  "# @option String filename a name for a file in .lp format to store the linear program"
-                  "# @return LinearProgram<Rational> an ILP that provides the result",
-                  &foldable_max_signature_ilp,
-                  "foldable_max_signature_ilp($ Matrix Array<Set> $ SparseMatrix { filename=>'' })");
+UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
+                          "# Set up an ILP whose MAXIMAL_VALUE is the maximal signature of a foldable triangulation of a polytope, point configuration or quotient manifold"
+                          "# @param Int d the dimension of the input polytope, point configuration or quotient manifold "
+                          "# @param Matrix points the input points or vertices "
+                          "# @param Rational volume the volume of the convex hull "
+                          "# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations "
+                          "# @return LinearProgram<Rational> an ILP that provides the result",
+                          "foldable_max_signature_ilp<SetType, EquationsType>($ Matrix Array<SetType> $ EquationsType)");
 
-UserFunction4perl("# @category Triangulations, subdivisions and volume"
-                  "# Calculate the LP relaxation upper bound to the maximal signature of a foldable triangulation of polytope, point configuration or quotient manifold"
-                  "# @param Int d the dimension of the input polytope, point configuration or quotient manifold "
-                  "# @param Matrix points the input points or vertices "
-                  "# @param Rational volume the volume of the convex hull "
-                  "# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations "
-                  "# @return Integer the optimal value of an LP that provides a bound",
-                  &foldable_max_signature_upper_bound,
-                  "foldable_max_signature_upper_bound($ Matrix Array<Set> $ SparseMatrix { filename=>'' })");
+UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
+                          "# Calculate the LP relaxation upper bound to the maximal signature of a foldable triangulation of polytope, point configuration or quotient manifold"
+                          "# @param Int d the dimension of the input polytope, point configuration or quotient manifold "
+                          "# @param Matrix points the input points or vertices "
+                          "# @param Rational volume the volume of the convex hull "
+                          "# @param SparseMatrix cocircuit_equations the matrix of cocircuit equations "
+                          "# @return Integer the optimal value of an LP that provides a bound",
+                          "foldable_max_signature_upper_bound<SetType>($ Matrix Array<SetType> $ SparseMatrix)");
 
 } }
 

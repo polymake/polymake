@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2016
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -13,7 +13,7 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-REQUIRE
+INCLUDE
    webbrowser.rules
 
 package PmSvg;
@@ -96,8 +96,8 @@ or call  reconfigure("common::webbrowser.rules");
 .
    }
    my $self=&_new;
-   #$self->graphics=new Svg::File;
-   $self->tempfile->descend_dir();
+   my $temp_file=new Tempfile;
+   $self->tempfile = $temp_file;
    $self;
 }
 

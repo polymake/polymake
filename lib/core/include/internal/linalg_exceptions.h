@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -38,6 +38,12 @@ public:
    infeasible(const std::string& what) : linalg_error(what) {}
 };
 
+class underdetermined : public linalg_error {
+public:
+   underdetermined() : linalg_error("underdetermined system of linear equations") {}
+   underdetermined(const std::string& what) : linalg_error(what) {}
+};
+
 
 } // end namespace pm
 
@@ -45,6 +51,7 @@ namespace polymake {
    using pm::linalg_error;
    using pm::degenerate_matrix;
    using pm::infeasible;
+   using pm::underdetermined;
 }
 
 #endif // POLYMAKE_INTERNAL_LINALG_EXCEPTIONS_H

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -21,6 +21,7 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Integer.h"
 #include "polymake/Matrix.h"
+#include "polymake/Polynomial.h"
 #include "polymake/PuiseuxFraction.h"
 #include "polymake/QuadraticExtension.h"
 #include "polymake/Rational.h"
@@ -66,5 +67,10 @@ namespace polymake { namespace common { namespace {
    FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const Vector< QuadraticExtension< Rational > > >);
    FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::IndexedSlice<pm::Vector<pm::Rational>&, pm::Series<int, true>, mlist<> > >);
    FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const Matrix< PuiseuxFraction< Max, Rational, Rational > > >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::all_selector const&, pm::Array<int> const&> >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Set<int, pm::operations::cmp> const&, pm::Series<int, true> const&> >);
+   FunctionInstance4perl(convert_to_T_X, double, perl::Canned< const pm::MatrixMinor<pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::all_selector const&, pm::Complement<pm::SingleElementSetCmp<int, pm::operations::cmp>, int, pm::operations::cmp> const&> const&, pm::Array<int> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(convert_to_T_X, Rational, perl::Canned< const pm::MatrixMinor<pm::Matrix<pm::Integer> const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&> >);
+   FunctionInstance4perl(convert_to_T_X, QuadraticExtension< Rational >, perl::Canned< const Polynomial< Rational, int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

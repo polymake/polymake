@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2015
+#  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -60,7 +60,7 @@ rule FACET_POINT : FACET {
 
 method transform_points {
    my ($this, $points)=@_;
-   dehomogenize((convert_to<Float>($points)) * convert_to<Float>($this->TRANSFORM));
+   dehomogenize(convert_to<Float>($points) * convert_to<Float>($this->TRANSFORM));
 }
 
 method transform_and_rotate_points {
@@ -335,7 +335,7 @@ user_method CONSTRUCTION(%Visual::Polygons::decorations) {
                              EdgeThickness => 0.25,
                            );
    my $VV=new Visual::PointSet( Name => "Viewpoint of Schlegel diagram of ".$P->name,
-                                Points => (new Matrix<Float>($Vpoint)),
+                                Points => new Matrix<Float>($Vpoint),
                                 PointThickness => 2,
                                 PointColor => "0 0 255",
                                 PointLabels => ["ViewPoint"],

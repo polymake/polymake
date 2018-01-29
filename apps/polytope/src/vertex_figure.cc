@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2017
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -20,6 +20,7 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/linalg.h"
 #include "polymake/polytope/to_interface.h"
+#include "polymake/common/labels.h"
 
 namespace polymake { namespace polytope {
 
@@ -83,10 +84,8 @@ perl::Object vertex_figure(perl::Object p_in, int v_cut_off, perl::OptionSet opt
    }
 
    if (!options["no_labels"]) {
-      Array<std::string> labels(n_vertices);
-      read_labels(p_in, "VERTEX_LABELS", labels);
-      Array<std::string> labels_out(select(labels, G.adjacent_nodes(v_cut_off)));
-      p_out.take("VERTEX_LABELS") << labels_out;
+      const std::vector<std::string> labels = common::read_labels(p_in, "VERTEX_LABELS", n_vertices);
+      p_out.take("VERTEX_LABELS") << select(labels, G.adjacent_nodes(v_cut_off));
    }
 
    return p_out;

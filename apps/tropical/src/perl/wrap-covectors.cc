@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -29,9 +29,15 @@ namespace polymake { namespace tropical { namespace {
    };
 
    template <typename T0, typename T1, typename T2, typename T3>
-   FunctionInterface4perl( coarse_covectors_of_scalar_vertices_T_X_X, T0,T1,T2,T3 ) {
+   FunctionInterface4perl( covectors_T_X_X, T0,T1,T2,T3 ) {
       perl::Value arg0(stack[0]), arg1(stack[1]);
-      WrapperReturn( (coarse_covectors_of_scalar_vertices<T0,T1>(arg0.get<T2>(), arg1.get<T3>())) );
+      WrapperReturn( (covectors<T0,T1>(arg0.get<T2>(), arg1.get<T3>())) );
+   };
+
+   template <typename T0, typename T1, typename T2, typename T3>
+   FunctionInterface4perl( coarse_covectors_T_X_X, T0,T1,T2,T3 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturn( (coarse_covectors<T0,T1>(arg0.get<T2>(), arg1.get<T3>())) );
    };
 
    template <typename T0, typename T1, typename T2, typename T3>
@@ -40,10 +46,20 @@ namespace polymake { namespace tropical { namespace {
       WrapperReturn( (covectors_of_scalar_vertices<T0,T1>(arg0.get<T2>(), arg1.get<T3>())) );
    };
 
-   FunctionInstance4perl(covectors_of_scalar_vertices_T_X_X, Min, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
+   template <typename T0, typename T1, typename T2, typename T3>
+   FunctionInterface4perl( coarse_covectors_of_scalar_vertices_T_X_X, T0,T1,T2,T3 ) {
+      perl::Value arg0(stack[0]), arg1(stack[1]);
+      WrapperReturn( (coarse_covectors_of_scalar_vertices<T0,T1>(arg0.get<T2>(), arg1.get<T3>())) );
+   };
+
+   FunctionInstance4perl(covectors_T_X_X, Max, Rational, perl::Canned< const Matrix< TropicalNumber< Max, Rational > > >, perl::Canned< const Matrix< TropicalNumber< Max, Rational > > >);
+   FunctionInstance4perl(covectors_T_X_X, Min, Rational, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
+   FunctionInstance4perl(coarse_covectors_T_X_X, Max, Rational, perl::Canned< const Matrix< TropicalNumber< Max, Rational > > >, perl::Canned< const Matrix< TropicalNumber< Max, Rational > > >);
+   FunctionInstance4perl(coarse_covectors_T_X_X, Min, Rational, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
    FunctionInstance4perl(covectors_of_scalar_vertices_T_X_X, Max, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< TropicalNumber< Max, Rational > > >);
-   FunctionInstance4perl(coarse_covectors_of_scalar_vertices_T_X_X, Min, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
+   FunctionInstance4perl(covectors_of_scalar_vertices_T_X_X, Min, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
    FunctionInstance4perl(coarse_covectors_of_scalar_vertices_T_X_X, Max, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< TropicalNumber< Max, Rational > > >);
+   FunctionInstance4perl(coarse_covectors_of_scalar_vertices_T_X_X, Min, Rational, perl::Canned< const Matrix< Rational > >, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
    FunctionInstance4perl(generalized_apex_covector_T_X_X, Min, Rational, perl::Canned< const Vector< TropicalNumber< Min, Rational > > >, perl::Canned< const Matrix< TropicalNumber< Min, Rational > > >);
    FunctionInstance4perl(generalized_apex_covector_T_X_X, Max, Rational, perl::Canned< const Vector< TropicalNumber< Max, Rational > > >, perl::Canned< const Matrix< TropicalNumber< Max, Rational > > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====

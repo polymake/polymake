@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2015
+/* Copyright (c) 1997-2018
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -23,20 +23,10 @@
 
 namespace polymake { namespace group {
 
-template <typename Container>
-Map<Container, int> make_index_of(const Array<Container>& A)
-{
-   Map<Container, int> index_of;
-   int i(0);
-   for (typename Entire<Array<Container> >::const_iterator ait = entire(A); !ait.at_end(); ++ait)
-      index_of[*ait] = i++;
-   return index_of;
-}
-
 template <typename SetType>
 SetType lex_min_representative(perl::Object G, const SetType& S)
 {
-   const group::PermlibGroup group = group::group_from_perl_action(G);
+   const PermlibGroup group = group_from_perl_action(G);
    const SetType R = group.lex_min_representative(S);
    return R;
 }
@@ -70,9 +60,12 @@ UserFunctionTemplate4perl("# @category Symmetry"
                           "# Computes the lexicographically smallest representative of a given set with respect to a group"
                           "# @param Group G a symmetry group"
                           "# @param Set S a set" 
-                          "# @return Set the lex-min representative of S",
-                          "lex_min_representative<SetType>(group::PermutationAction SetType)");
-
+                          "# @return Set the lex-min representative of S"
+                          "# @example To calculate the lex-min representative of the triangle [2,5,7] under the symmetry group of the 3-cube, type"
+                          "# > print lex_min_representative(cube_group(3)->PERMUTATION_ACTION, new Set([2,5,7]));"
+                          "# | {0 1 6}",
+                          "lex_min_representative<SetType>(PermutationAction SetType)");
+ 
 FunctionTemplate4perl("orbit_reps_and_sizes<SetType>(Array<Array<Int>>, Array<SetType>)");
 
 } }
