@@ -31,7 +31,9 @@ struct spec_object_traits< std::vector<Value,Alloc> >
 template <typename Value, typename Alloc> inline
 void relocate(std::vector<Value,Alloc>* from, std::vector<Value,Alloc>* to)
 {
-   std::memcpy(to, from, sizeof(*from));
+   using vector_t=std::vector<Value,Alloc>;
+   new(to) vector_t(std::move(*from));
+   from->~vector_t();
 }
 
 #if defined(_LIBCPP_VERSION)

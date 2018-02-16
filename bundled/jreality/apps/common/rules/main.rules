@@ -45,9 +45,7 @@ use Polymake::Struct (
 );
 
 # the active Viewer instance
-my $active;
-
-sub instance : lvalue { $active }
+sub instance : lvalue { state $active }
 
 {  # capture the own extension
    my $ext=$Polymake::Core::Application::extension;
@@ -58,7 +56,10 @@ sub instance : lvalue { $active }
 sub start_properties {
    my %jre_properties;
    if ($jogl) {
-      $jre_properties{"java.library.path"}= $jogl_native_path eq "bundled" ? "$InstallArch/lib/jni/jreality" : $jogl_native_path;
+      $jre_properties{"java.library.path"}=
+         $jogl_native_path eq "bundled"
+         ? ( $DeveloperMode ? "$InstallArch/lib/jni/jreality" : "$Resources/java/jni/jreality" )
+         : $jogl_native_path;
       if ($DebugLevel >= 2) {
          $jre_properties{"newt.debug"}="all";
          $jre_properties{"nativewindow.debug"}="all";
@@ -72,15 +73,16 @@ sub start_properties {
 }
 
 sub classpath {
-   my @all_jars=glob("$InstallArch/jars/{jReality-*.jar,jreality/*.jar}");
+   my $jars_dir= $DeveloperMode ? "$InstallArch/jars" : "$Resources/java/jars";
+   my @all_jars=grep { !m{/(?:jogl-all | gluegen-rt).*\.jar $}x } glob("$jars_dir/{jReality-*.jar,jreality/*.jar}");
    if ($jogl) {
-      if ($jogl_path ne "bundled") {
-         push @all_jars, map { "$jogl_path/$_.jar" } qw(jogl gluegen-rt);
+      if ($jogl_path eq "bundled") {
+         push @all_jars, glob("$jars_dir/jreality/{jogl-all,gluegen-rt}*.jar");
+      } else {
+         push @all_jars, glob("$jogl_path/{jogl,gluegen-rt}*.jar");
       }
-      @all_jars;
-   } else {
-      grep { !m{/(?:jogl | gluegen-rt)\.jar $}x } @all_jars;
    }
+   @all_jars;
 }
 
 use Visual::Transformation;
@@ -155,16 +157,6 @@ use Polymake::Struct (
 );
 
 method detect_dynamic($) { 0 }
-
-sub launch {
-   my ($self, $pipe)=@_;
-   foreach (@{$self->contents->geometries}) {
-      if ($self->detect_dynamic($_->source->Vertices)) {
-         $_->name =~ s/^/dynamic:/;
-      }
-   }
-   $self->SUPER::launch($pipe);
-}
 
 ###########################################################################################
 package JReality::default;

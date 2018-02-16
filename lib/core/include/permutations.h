@@ -236,7 +236,7 @@ bool are_permuted(const Container1& c1, const Container2& c2, const Comparator& 
    try {
       find_permutation(entire(c1), entire(c2), perm.begin(), comparator);
       return true;
-   } catch (no_match) {
+   } catch (const no_match&) {
       return false;
    }
    return false;

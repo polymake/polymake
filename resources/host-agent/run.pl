@@ -26,6 +26,13 @@ if (readlink("/proc/self/fd/1") eq "/dev/null") {
 if (readlink("/proc/self/fd/2") eq "/dev/null") {
    push @ARGV, "2>/dev/null";
 }
+
+foreach (@ARGV) {
+   if (/ / && !/^(['"]).+\1$/) {
+      $_="'$_'";
+   }
+}
+
 my $response=Polymake::HostAgent::call("run", @ARGV);
 if ($response =~ /^ERROR/) {
    print STDERR $response;

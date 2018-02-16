@@ -63,10 +63,10 @@ bool to_input_feasible_impl (const Matrix<Scalar>& I,
       Solver solver;
       typename Solver::lp_solution S=solver.solve_lp(I, E, obj, true);
    } 
-   catch (infeasible) {
+   catch (const infeasible&) {
       return false;
    }
-   catch (unbounded) {
+   catch (const unbounded&) {
       return true;
    } 
    return true;
@@ -94,7 +94,7 @@ bool to_input_bounded_impl(const Matrix<Scalar>& L,
       typename Solver::lp_solution S=solver.solve_lp(Ineq, Eq, v, true);
       return S.first > 0 ? true : false;
    } 
-   catch ( infeasible ) {
+   catch ( const infeasible& ) {
       return true;     // the dual solution is unbounded, so the original problem is infeasible. 
    }
    return true;

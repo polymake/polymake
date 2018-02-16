@@ -188,7 +188,32 @@ sub equal_list_prefixes2 {
    }
    $ret
 }
+####################################################################################
+sub equal_hashes {
+   my ($h1, $h2)=@_;
+   if (keys(%$h1) == keys(%$h2)) {
+      while (my ($k, $v)=each %$h1) {
+         unless (exists $h2->{$k} and defined($v) ? $h2->{$k}==$v : !defined($h2->{$k})) {
+            keys %$h1;
+            return 0;
+         }
+      }
+      1;
+   }
+}
 
+sub equal_string_hashes {
+   my ($h1, $h2)=@_;
+   if (keys(%$h1) == keys(%$h2)) {
+      while (my ($k, $v)=each %$h1) {
+         unless (exists $h2->{$k} and defined($v) ? $h2->{$k} eq $v : !defined($h2->{$k})) {
+            keys %$h1;
+            return 0;
+         }
+      }
+      1;
+   }
+}
 ####################################################################################
 sub enforce_nl($) {
    $_[0].="\n" if substr($_[0],-1) ne "\n";

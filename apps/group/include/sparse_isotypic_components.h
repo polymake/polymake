@@ -215,7 +215,7 @@ spans_invariant_subspace_impl(const Array<Array<int>>& group_generators,
          for (const auto m: o_sgen) {
             try {
                new_sgen[index_of.at(m.first)] = m.second;
-            } catch (no_match) {
+            } catch (const no_match&) {
                if (verbose) cerr << "The given vectors do not span an invariant subspace, because "
                                  << m << " is in the support of the orbit of " << sgen
                                  << ", but not in the orbit of the support of the given vectors" << endl;

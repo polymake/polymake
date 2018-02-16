@@ -59,7 +59,7 @@ induced_permutation_impl(const PERM& perm,
    try {
       for (auto& iperm : induced_perm)
          iperm = index_of[a(*domain_it)], ++domain_it;
-   } catch (no_match) {
+   } catch (const no_match&) {
       std::ostringstream os;
       wrap(os) << "The given domain is not invariant under the permutation " << perm;
       throw no_match(os.str());

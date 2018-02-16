@@ -158,7 +158,7 @@ void ch_dual(perl::Object& p, Solver& solver)
          p.take("LINEALITY_DIM") << VL.second.rows();
          return;
       }
-      catch (infeasible) { }
+      catch (const infeasible&) { }
    }
    p.take("RAYS") << Matrix<coord_type>(0, d);
    p.take("LINEALITY_SPACE") << Matrix<coord_type>(0, d);
@@ -214,7 +214,7 @@ void count_vertices(perl::Object& p, Solver& solver, bool only_bounded=false)
          p.take("LINEALITY_DIM") << count.lin;
          return;
       }
-      catch (infeasible) { }
+      catch (const infeasible&) { }
    }
    p.take("POINTED") << 1;
    p.take("LINEALITY_DIM") << 0;

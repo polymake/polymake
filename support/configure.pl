@@ -860,7 +860,7 @@ sub collect_compiler_specific_options {
       $CXXCOV="--coverage";
       $CXXSANITIZE="-fno-omit-frame-pointer -O1 -g";
       # external libraries might be somehow dirtier
-      $CflagsSuppressWarnings="-Wno-uninitialized -Wno-unused -Wno-parentheses -Wno-unused-but-set-variable -Wno-enum-compare -Wno-sign-compare -Wno-switch -Wno-format -Wno-write-strings";
+      $CflagsSuppressWarnings="-Wno-uninitialized -Wno-unused -Wno-parentheses -Wno-unused-but-set-variable -Wno-enum-compare -Wno-sign-compare -Wno-switch -Wno-write-strings";
       # gcc-specific flags
       if (v_cmp($GCCversion, "6.3.0") >= 0 && v_cmp($GCCversion, "7.0.0") < 0) {
          $CXXFLAGS .= " -Wno-maybe-uninitialized";

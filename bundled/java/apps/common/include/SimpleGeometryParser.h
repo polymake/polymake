@@ -45,8 +45,8 @@ protected:
       const Matrix<double>& P=W.get_points();
       os << "# " << P.rows() << '\n';
 
-      for (Entire< Rows< Matrix<double> > >::const_iterator p_i=entire(rows(P)); !p_i.at_end(); ++p_i)
-         wrap(os) << "p " << *p_i << '\n';
+      for (auto p=entire(rows(P)); !p.at_end(); ++p)
+         wrap(os) << "p " << *p << '\n';
    }
 
    template <typename Window>

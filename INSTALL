@@ -1,0 +1,10 @@
+The step-by-step installation instructions can be found on the
+polymake Wiki site:
+
+http://www.polymake.org/polymake/doku.php/howto/install
+
+The shortest possible summary for the truly impatient:
+
+./configure
+ninja -C build/Opt -j #CPUs
+ninja -C build/Opt install

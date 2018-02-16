@@ -1107,14 +1107,14 @@ use Polymake::Struct (
 declare $hide=3;   # suppresses display if assigned to ->shown
 
 sub display {
-   my $self=shift;
+   my ($self)=@_;
    dbg_print( "used package ", $self->product, "\n", $self->text, "\n" );
    $self->shown=1;
 }
 
 sub toFileString {
-   my $self=shift;
-   $self->file_string ||= do {
+   my ($self)=@_;
+   $self->file_string //= do {
       my ($copyright)= $self->text =~ /(copyright\b.*)/im;
       my ($URL)= $self->text =~ /(?:url:?\s+)(\S+)/im;
       if (!defined($URL) && $self->text =~ m{(?:\w+://|(?:www|ftp)\.)\S+}) {

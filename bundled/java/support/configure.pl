@@ -14,12 +14,12 @@
 #-------------------------------------------------------------------------------
 
 
-@conf_vars=qw( JavaBuild JDKHome JNIheaders NativeCFLAGS NativeARCHFLAGS NativeSO ANT JAVACMD );
+@conf_vars=qw( JDKHome JNIheaders NativeCFLAGS NativeARCHFLAGS NativeSO ANT JAVACMD );
 
 
 sub allowed_options {
    my ($allowed_options, $allowed_with)=@_;
-   @$allowed_with{ qw( java jni-headers ant java-build ) }=();
+   @$allowed_with{ qw( java jni-headers ant ) }=();
 }
 
 
@@ -28,7 +28,6 @@ sub usage {
   --with-java=PATH          ( ${JAVA_HOME} )     where to find Java compiler and runtime environment
   --with-jni-headers=PATH   ( ${java}/include )  where to find jni.h and other headers for native methods
   --with-ant=PATH           ( find via $PATH )   ant executable (Java building tool)
-  --without-java-build      don't rebuild Java classes, take the precompiled ones from the source tarball
 .
 }
 
@@ -156,46 +155,43 @@ to JReality and JavaView will be disabled permanently.
    # this is needed for calling ANT
    $JDKHome =~ s{(.*)/(?:bin|Commands)/java$}{$1};
 
-   # check ANT unless precompiled JARs are to be used
+   $ANT=$options->{ant};
+   if ($ANT ne ".none.") {
+      if (defined $ANT) {
+	 Polymake::Configure::check_program($ANT);
+      } else {
+	 Polymake::Configure::find_program($ANT, "ant")
+	   or die "ant utility not found; please install it (together with optional targets, if packaged separately)\n",
+                  "Specify its location in the option --with-ant if it is installed at a non-standard location.\n";
+      }
+      my ($ant_version)= `$ANT -version` =~ /version ([\d.]+)/;
+      Polymake::Configure::v_cmp($ant_version, "1.7.1") >= 0
+	or die "$ANT reports its version as $ant_version, while minimal required version is 1.7.1\n";
 
-   $JavaBuild=0;
-   if ($options->{'java-build'} ne ".none.") {
-     if (defined ($ANT=$options->{ant})) {
-       Polymake::Configure::check_program($ANT);
-     } else {
-       Polymake::Configure::find_program($ANT, "ant")
-         or die "ant utility not found; please install it (together with optional targets, if packaged separately),\n",
-                "specify its location in the option --with-ant if it is installed at a non-standard location,\n",
-                "or disable rebuilding java classes specifying the option --without-java-build.\n";
-     }
-     my ($ant_version)= `$ANT -version` =~ /version ([\d.]+)/;
-     Polymake::Configure::v_cmp($ant_version, "1.7.1") >= 0
-       or die "$ANT reports its version as $ant_version, while minimal required version is 1.7.1\n";
+      $NativeSO="so";
 
-     $JavaBuild=1;
-   }
+      # MacOS specific magic
+      if ($^O eq "darwin") {
+	 $NativeSO="jnilib";
+	 if (length($ARCHFLAGS)) {
+	    ( $NativeARCHFLAGS=`lipo -info $JAVACMD` ) =~ s/.* are: (.*)$/$1/m;
+	    $NativeARCHFLAGS =~ s/(\S+)/-arch $1/g;
+	 }
+      }
 
-   $NativeSO="so";
-
-   # MacOS specific magic
-   if ($^O eq "darwin") {
-     $NativeSO="jnilib";
-     if (length($ARCHFLAGS)) {
-       ( $NativeARCHFLAGS=`lipo -info $JAVACMD` ) =~ s/.* are: (.*)$/$1/m;
-       $NativeARCHFLAGS =~ s/(\S+)/-arch $1/g;
-     }
-   }
-
-   $NativeCFLAGS = '-I${bundled.java.JNIheaders}';
-   if (-f (my $platform_jni_dir=glob("$JNIheaders/*/jni_md.h"))) {
-      $platform_jni_dir =~ m{/([^/]+)/[^/]+$};
-      $NativeCFLAGS .= " -I\${bundled.java.JNIheaders}/$1";
+      $NativeCFLAGS = '-I${bundled.java.JNIheaders}';
+      if (-f (my $platform_jni_dir=glob("$JNIheaders/*/jni_md.h"))) {
+	 $platform_jni_dir =~ m{/([^/]+)/[^/]+$};
+	 $NativeCFLAGS .= " -I\${bundled.java.JNIheaders}/$1";
+      }
    }
 
    # report the summary
 
    return join(", ",
                $JAVACMD ne "java" ? ("java=$JAVACMD") : (),
-               $JavaBuild && $ANT ne "ant" ? ("ant=$ANT") : (),
-               "JNI headers at $JNIheaders");
+	       $ANT ne ".none." ?
+               ( $ANT ne "ant" ? ("ant=$ANT") : (),
+		 "JNI headers at $JNIheaders" ) : ()
+	      );
 }

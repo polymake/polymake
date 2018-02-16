@@ -25,17 +25,17 @@ my @addlibs;
 BEGIN {
    require Cwd;
    $InstallTop=Cwd::abs_path( $0 =~ m{(?:^|/+)[^/]+/+[^/]+$} ? ($` || ".") : ".." );
-   $InstallArch= $ENV{POLYMAKE_BUILD_ROOT} ? "$InstallTop/build.$ENV{POLYMAKE_BUILD_ROOT}" : "$InstallTop/build";
+   my $buildroot= $ENV{POLYMAKE_BUILD_ROOT} ? "$InstallTop/build.$ENV{POLYMAKE_BUILD_ROOT}" : "$InstallTop/build";
+   $InstallArch="$buildroot/".($ENV{POLYMAKE_BUILD_MODE} || "Opt");
    do "$InstallTop/support/install_utils.pl";
-   my %ConfigFlags=load_config_file("$InstallArch/config.ninja", $InstallTop);
-   $ConfigTime=(stat "$InstallArch/config.ninja")[9];
+   my %ConfigFlags=load_config_file("$buildroot/config.ninja", $InstallTop);
+   $ConfigTime=(stat "$buildroot/config.ninja")[9];
    $Arch=$ConfigFlags{Arch};
    @BundledExts=$ConfigFlags{BundledExts} =~ /(\S+)/g;
    if ($^O eq "darwin" && $ConfigFlags{FinkBase}) {
       push @addlibs, "$ConfigFlags{FinkBase}/lib/perl5";
    }
    $DeveloperMode=-d "$InstallTop/testscenarios";
-   $InstallArch .= "/".($ENV{POLYMAKE_BUILD_MODE} || "Opt");
 }
 
 use lib "$InstallTop/perllib", "$InstallArch/perlx", @addlibs;
@@ -288,7 +288,7 @@ package Polymake::Main;
 sub load_apps {
    if ($start_application // $User::default_application) {
       eval {
-         unless (defined $ignore_start_applications) {
+         unless ($ignore_start_applications) {
             foreach my $app_name (@User::start_applications) {
                add Core::Application($app_name);
             }

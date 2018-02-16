@@ -2,7 +2,9 @@ from distutils.core import setup, Extension
 import sys
 import subprocess
 
+import platform
 import os
+
 
 if sys.version_info < (3,5):
     macro_list = [ ( "PYTHON_VERSION_OLDER_THREE_FIVE", "1" ) ]
@@ -25,6 +27,9 @@ polymake_ldflags += [ "-lpolymake" ]
 polymake_cc = conditional_decode( subprocess.check_output( [ "polymake-config", "--cc" ] ).strip() )
 os.environ["CC"] = polymake_cc
 os.environ["CXX"] = polymake_cc
+if platform.system() == "Darwin" :
+   version = platform.mac_ver()[0]
+   os.environ["MACOSX_DEPLOYMENT_TARGET"] = version.rsplit('.',1)[0]
 
 setup(
     name = 'JuPyMake',

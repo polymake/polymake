@@ -278,13 +278,6 @@ sub script {
       }
    }
 }
-###############################################################################################
-sub export_configured {
-   my $filename=shift;
-   my $opts= @_==1 && ref($_[0]) eq "HASH" ? shift : { @_ };
-   replace_special_paths($filename);
-   $Custom->export($filename, $opts, $Prefs->custom);
-}
 #################################################################################
 # prepare for custom variables and preferences
 

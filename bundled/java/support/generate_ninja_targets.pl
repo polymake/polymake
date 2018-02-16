@@ -41,14 +41,15 @@ sub add_nativelib_target {
    my $build_cmd="";
    my @obj_files;
    my $src_dir="$root/bundled/$name/java/native";
-   my $after_jar= $ConfigFlags{'bundled.java.JavaBuild'} && $all_jar_targets{$name};
    foreach my $src_file (glob "$src_dir/*.c") {
       my ($src_name, $obj_name)=basename($src_file, "c");
       $src_file =~ s/^\Q$root\E/\${root}/;
       my $obj_file="\${builddir}/bundled/$name/jni/$obj_name.o";
-      $build_cmd .= "build $obj_file: ccompile $src_file" . ($after_jar ? " || $after_jar\n" : "\n")
-                 . "  CextraFLAGS=\${bundled.java.NativeCFLAGS}\n"
-                 . "  ARCHFLAGS=\${bundled.java.NativeARCHFLAGS}\n";
+      $build_cmd .= <<"---";
+build $obj_file: ccompile $src_file || $all_jar_targets{$name}
+  CextraFLAGS=\${bundled.java.NativeCFLAGS}
+  ARCHFLAGS=\${bundled.java.NativeARCHFLAGS}
+---
       push @obj_files, $obj_file;
    }
    my $libname="\${builddir}/lib/jni/libpolymake_${name}.\${bundled.java.NativeSO}";
@@ -61,5 +62,8 @@ sub add_nativelib_target {
    ( all => $libname );
 }
 
-( $ConfigFlags{'bundled.java.JavaBuild'} ? add_jar_target("java") : (),
-  add_nativelib_target("java") )
+if ($ConfigFlags{"bundled.java.ANT"} ne ".none.") {
+   ( add_jar_target("java"), add_nativelib_target("java") )
+} else {
+   ( )
+}

@@ -106,7 +106,7 @@ namespace polymake { namespace tropical {
 				try {
 					g=call_function("coarsen", f, 1);
 				}
-				catch (std::runtime_error) {
+				catch (const std::runtime_error&) {
 					//The coarsest subdivision does not exist
 					R.is_smooth=0;
 				}

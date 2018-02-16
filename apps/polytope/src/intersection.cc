@@ -59,7 +59,7 @@ perl::Object intersection(const Array<perl::Object>& pp_in)
             AH=p_in->lookup("LINEAR_SPAN | EQUATIONS");
          Inequalities /= F;
          Equations /= AH;
-      } catch(perl::undefined) {
+      } catch(const perl::undefined&) {
          const Matrix<Scalar> AH=p_in->give("LINEAR_SPAN | EQUATIONS");
          Equations /= AH;
       }

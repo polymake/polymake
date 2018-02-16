@@ -103,7 +103,7 @@ rule gen_sources
 
 # install the core system
 rule install_core
-  command = ${PERL} ${root}/support/install.pl --root ${root} --buildroot ${buildroot} --config ${config.file} --mode ${buildmode} $in
+  command = ${PERL} ${root}/support/install.pl --root ${root} --buildroot ${buildroot} --config ${config.file} --mode ${buildmode} ${install_libs}
   description = INSTALL core system in mode ${buildmode} at ${InstallTop}
 
 # install an extension

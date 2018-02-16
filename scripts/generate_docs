@@ -22,8 +22,9 @@ if ( !GetOptions( noHTML => \$noHTML, noExt => \$noExt, snapshot => \$snapshot,
                   'link-resources' => \$link_resources ) or
      @ARGV > 1 ||
      !@ARGV && !$DeveloperMode) {
-   die <<'.';
-usage: polymake [--ignore-config] --script generate_docs [--noHTML --noExt --snapshot --link-resources] [OutDir]
+   my $outdirvar = $DeveloperMode ? '[OutDir]' : 'OutDir';
+   die <<".";
+usage: polymake [--ignore-config] --script generate_docs [--noHTML --noExt --snapshot --link-resources] $outdirvar
 
   OutDir    top directory where all created documentation files are placed
             It must be specified when running in an installed polymake;

@@ -15,19 +15,33 @@
 
 use strict;
 use feature 'state';
-use vars qw( $dirmode $group $permmask $root $ext_root $buildroot $config_file %ConfigFlags $buildmode );
+use vars qw( $dirmode $group $permmask $root $ext_root $buildroot $config_file %ConfigFlags $buildmode
+             $xsmod @callable @fakelibs );
 use POSIX qw ( :fcntl_h read write lseek );
 use File::Path;
 use Config;
 
 use Getopt::Long qw( GetOptions :config require_order no_ignore_case );
+
+sub collect_arglist {
+   my $list=shift;
+   @$list=@_;
+   while (@ARGV && $ARGV[0] !~ /^-/) {
+      push @$list, shift @ARGV;
+   }
+}
+
 unless (GetOptions( 'root=s' => \$root,
                     'extroot=s' => \$ext_root,
                     'buildroot=s' => \$buildroot,
                     'config=s' => \$config_file,
                     'mode=s' => \$buildmode,
                     'group=s' => \$group,
-                    'perms=i' => \$permmask ) &&
+                    'perms=i' => \$permmask,
+                    'xs=s' => \$xsmod,
+                    'callable=s' => sub { collect_arglist(\@callable, $_[1]) },
+                    'fakelibs=s' => sub { collect_arglist(\@fakelibs, $_[1]) } ) &&
+        !@ARGV &&
         defined($config_file) &&
         defined($root) &&
         defined($buildroot) &&
@@ -35,10 +49,11 @@ unless (GetOptions( 'root=s' => \$root,
         -f $config_file &&
         -d $root &&
         -d "$buildroot/$buildmode" &&
-        (!defined($ext_root) || -d $ext_root)) {
+        (defined($ext_root) ? -d $ext_root && !defined($xsmod) && !@callable && !@fakelibs
+                            : defined($xsmod) && -f $xsmod)) {
    die <<".";
 usage: $0 --root PATH --buildroot PATH --config PATH/config.ninja [ --extroot PATH --extconfig PATH/config.ninja ]
-          --buildmode Opt|Debug [ --group GROUP ] [ --perms MASK ] [ shared_module ... ]
+          --buildmode Opt|Debug [ --group GROUP ] [ --perms MASK ] [ --xsmod | --callable | --fakelib shared_module ... ]
 .
 }
 
@@ -66,9 +81,10 @@ $builddir="$buildroot/$buildmode";
 my $ext_name= $ext_root && basename($ext_root);
 
 my $destdir = $ENV{DESTDIR} // $ConfigFlags{DESTDIR};
+$destdir =~ s{/$}{};
 if (length($destdir)) {
    foreach ($InstallTop, $InstallInc, $InstallArch, $InstallBin, $InstallLib, $InstallDoc) {
-      substr($_,0,0).="$destdir/";
+      substr($_,0,0) .= $destdir;
    }
 }
 
@@ -157,20 +173,49 @@ sub install_core {
    }
 
    -d $InstallLib || make_dir($InstallLib);
-   foreach my $lib_file (@ARGV) {
-      if ($lib_file =~ m{($perlxpath/auto/.*\.$Config::Config{dlext})$}o) {
-         copy_file($lib_file, "$InstallArch/$1", mode => 0555, clean_dir => 1);
-      } elsif (-l $lib_file) {
-         copy_link($lib_file, "$InstallLib/".basename($lib_file));
-      } else {
-         copy_file($lib_file, "$InstallLib/".basename($lib_file), mode => 0555);
-      }
+
+   if (defined $xsmod) {
+      $xsmod =~ m{($perlxpath/auto/.*\.$Config::Config{dlext})$}o
+        or die "$0: path of perl extension module does not match the expected pattern\n";
+      copy_file($xsmod, "$InstallArch/$1", mode => 0555, clean_dir => 1);
    }
 
+   foreach my $lib_file (@callable) {
+      my $to=$InstallLib."/".basename($lib_file);
+      if (-l $lib_file) {
+         copy_link($lib_file, $to);
+      } else {
+         copy_file($lib_file, $to, mode => 0555, $^O eq "darwin" ? (lib_id => $to) : ());
+      }
+   }
    make_dir("$InstallArch/lib", clean_dir => 1);
    foreach my $app_dir (glob("$root/apps/*")) {
       my $app_mod=basename($app_dir).".$Config::Config{dlext}";
       copy_file("$builddir/lib/$app_mod", "$InstallArch/lib/$app_mod", mode => 0555);
+   }
+
+   # These symlinks are used by the callable library bootstrap module.
+   # Any change in naming scheme must be reflected in Main.cc as well.
+   rel_symlink($InstallTop, "$InstallArch/shared");
+   if ($^O eq "darwin" && $ConfigFlags{FinkBase}) {
+      rel_symlink($ConfigFlags{FinkBase}, "$InstallArch/fink-base");
+   }
+
+   if (@fakelibs) {
+      my $stub_lib_name;
+      foreach my $lib_file (@fakelibs) {
+         my $basename=basename($lib_file);
+         my $to="$InstallArch/lib/$basename";
+         if (-l $lib_file) {
+            copy_link($lib_file, $to);
+            copy_link($lib_file, "$InstallLib/$basename");
+         } else {
+            $stub_lib_name //= $to;
+            copy_file($lib_file, $to, mode => 0555, $^O eq "darwin" ? (lib_id => $stub_lib_name) : ());
+            # This symlink is also used by the callable library bootstrap module.
+            rel_symlink($to, "$InstallLib/$basename");
+         }
+      }
    }
 
    if (-f "$buildroot/doc/index.html") {
@@ -245,19 +290,42 @@ sub copy_file {
    }
    if ($options{clean_dir}) {
       make_dir(dirname($to), clean_dir => 1);
+   } elsif (-d $to) {
+      $to .= "/" . basename($from);
    }
-   &copy;
+   copy($from, $to, %options);
 }
 
 sub copy_link {
    my ($from, $to)=@_;
    my $target=readlink($from);
-   if (-e $to) {
+   if (-e $to || -l $to) {
       unlink $to
         or die "can't remove old $to: $!\n";
    }
    symlink $target, $to
      or die "$0: can't create a symbolic link $to -> $target: $!\n";
+}
+
+sub rel_symlink {
+   my ($target, $link)=@_;
+   if (-e $link || -l $link) {
+      unlink $link
+        or die "$0: can't delete old $link: $!\n";
+   }
+   my $rel_link=$link;
+   my $common_prefix=1;
+   while ($rel_link =~ s{^(/[^/]+)(?=/)}{}) {
+      if ($common_prefix && substr($target, 0, length($1)) eq $1) {
+         $target=substr($target, length($1));
+      } else {
+         $common_prefix=0;
+         $target =~ s{^/?}{../};
+      }
+   }
+   $target =~ s{^/}{};
+   symlink $target, $link
+     or die "$0: can't create a symbolic link $link -> $target: $!\n";
 }
 
 sub compile_pattern {
@@ -334,6 +402,12 @@ sub copy {
       }
       POSIX::close $in;
       POSIX::close $out;
+
+      if (my $lib_id=$options{lib_id}) {
+         substr($lib_id, 0, length($destdir))="";
+         system("install_name_tool -id $lib_id $to")
+           and die "install_name_tool $to failed\n";
+      }
    } else {
       # text file: turn on write protection
       $mode=$fmode & 0555;
@@ -483,7 +557,7 @@ sub install_bin_scripts {
    \$Arch="$ConfigFlags{Arch}";
    \@BundledExts=qw(@BundledExts);
 ---
-   if ($ConfigFlags{FinkBase}) {
+   if ($^O eq "darwin" && $ConfigFlags{FinkBase}) {
       $init_block.="   \@addlibs=qw($ConfigFlags{FinkBase}/lib/perl5);\n";
    }
    s|(^BEGIN\s*\{\s*\n)(?s:.*?)(^\}\n)|$1$init_block$2|m;

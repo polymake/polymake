@@ -1,5 +1,20 @@
 Changelog
 
+=== Polymake 3.2r2 ===
+
+-- distribution --
+ * several improvements for polymake-in-container
+ * improve JuPyMake support for Mac OS X
+ * preliminary support for clang 6 and gcc 8
+ * improvements in java build/install process
+ * improve callable library file structure
+ * include INSTALL and COPYING in tarball again
+
+=== Polymake 3.2r1 ===
+
+-- distribution --
+ * fix JuPyMake installation for python3 older than 3.5
+
 === Polymake 3.2 ===
 
 -- distribution --

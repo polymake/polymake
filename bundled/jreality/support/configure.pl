@@ -69,7 +69,6 @@ sub proceed {
       } else {
 	 die "option --with-jogl-native must point to a directory\n";
       }
-      remove_stale_symlinks();
 
    } elsif (exists $options->{jogl}) {
       for my $try (qw( . lib native jni lib/native lib/jni .. ../lib ../native ../jni ../lib/native ../lib/jni )) {
@@ -82,10 +81,9 @@ sub proceed {
 	 die "Can't find out the location of JOGL native libraries.\n",
 	     "Please specify it in the otion --with-jogl-native.\n";
       }
-      remove_stale_symlinks();
 
    } else {
-      $JNIarch= $^O eq "linux" ? 'linux'.($Config::Config{longsize}*8) :
+      $JNIarch= $^O eq "linux" ? 'linux64' :
                 $^O eq "darwin" ? 'macosx'
                                 : die <<"---";
 jReality needs JOGL (Java interface to OpenGL) for better performance of graphic rendering.
@@ -102,10 +100,4 @@ in which case jReality will fall back to a slow software renderer.
 
    # report status
    return $JoglJars eq "bundled" && $JoglNative eq "bundled" ? "with bundled JOGL" : "with locally installed JOGL";
-}
-
-sub remove_stale_symlinks {
-   foreach my $l (glob "build.$Polymake::Configure::Arch/*/lib/jni/jreality") {
-      unlink $l or die "can't remove stale symlink $l: $!\n";
-   }
 }

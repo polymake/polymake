@@ -302,7 +302,8 @@ server_socketbuf::server_socketbuf(const char* path)
    if ((_wfd=_fd=socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
       throw std::runtime_error(std::string("server_socketbuf: socket failed: ") += strerror(errno));
    sockaddr_un sa = { AF_UNIX };
-   strncpy(sa.sun_path, path, sizeof(sa.sun_path));
+   strncpy(sa.sun_path, path, sizeof(sa.sun_path)-1);
+   sa.sun_path[sizeof(sa.sun_path)-1] = '\0';
    if (bind(_fd, (sockaddr*)&sa, sizeof(sa)))
       throw std::runtime_error(std::string("server_socketbuf: bind failed: ") += strerror(errno));
    fcntl(_fd, F_SETFD, FD_CLOEXEC);

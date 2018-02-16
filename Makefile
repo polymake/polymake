@@ -37,7 +37,7 @@ test : all
 	perl/polymake --script run_testcases
 
 docs : all
-	perl/polymake --script generate_docs
+	perl/polymake --script generate_docs ${BuildRoot}/doc
 	$(if ${DeveloperMode}, perl/polymake --script doxygen ${BuildRoot}/doc/PTL >/dev/null 2>&1)
 
 release-docs : all

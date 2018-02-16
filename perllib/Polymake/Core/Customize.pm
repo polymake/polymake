@@ -109,8 +109,8 @@ sub STORE {
       $self->global_value=$_[0] if $file_state & $state_global;
       $self->private_value=$_[0];
    } elsif ($self->state & $state_config) {
-      $self->private_value=$_[0];
       $self->state |= $state_private;
+      $self->private_value=$_[0];
    } else {
       $self->default_value=$_[0];
    }
@@ -445,7 +445,7 @@ sub FIRSTKEY { each %{$_[0]->private_value} }
 *NEXTKEY=\&FIRSTKEY;
 
 sub CLEAR {
-   my $self=shift;
+   my ($self)=@_;
    if (defined $file_state) {
       if ($file_state & $state_private  &&  $self->state & $state_global) {
          # divorce the global and private values
@@ -454,34 +454,58 @@ sub CLEAR {
       $self->state |= $var_state | $file_state;
       $var_state=0;
    } elsif ($self->state & $state_config) {
+      if ($self->state & $state_accumulating  &&  $self->state & $state_global) {
+         $self->private_value={ %{$self->global_value} };
+      } else {
+         %{$self->private_value}=();
+      }
       $self->state |= $state_private;
-      %{$self->private_value}=();
    } else {
       %{$self->default_value}=();
    }
 }
 
 sub STORE {
-   my $self=shift;
+   my ($self, $key, $value)=@_;
    if (defined $file_state) {
       # state business already done in CLEAR
-      $self->private_value->{$_[0]}=$_[1];
+      $self->private_value->{$key}=$value;
    } elsif ($self->state & $state_config) {
+      if (($self->state & $state_saved) == $state_global) {
+         $self->private_value={ %{$self->global_value} };
+      }
+      $self->private_value->{$key}=$value;
       $self->state |= $state_private;
-      $self->private_value->{$_[0]}=$_[1];
    } else {
-      $self->private_value->{$_[0]} //= $_[1];
-      $self->default_value->{$_[0]}=$_[1];
+      $self->private_value->{$key} //= $value;
+      $self->default_value->{$key}=$value;
    }
 }
 
 sub DELETE {
-   my $self=shift;
+   my ($self, $key)=@_;
    if ($self->state & $state_config) {
+      if (($self->state & ($state_global | $state_accumulating)) == ($state_global | $state_accumulating)) {
+         if ($self->global_value != $self->private_value) {
+            my $changed=exists $self->private_value->{$key};
+            if (exists $self->global_value->{$key}) {
+               $self->private_value->{$key}=$self->global_value->{$key};
+            } else {
+               delete $self->private_value->{$key};
+            }
+            if ($changed && equal_string_hashes($self->global_value, $self->private_value)) {
+               $self->private_value=$self->global_value;
+               $self->state &= ~$state_private;
+            }
+         }
+         return;
+      } elsif (($self->state & $state_saved) == $state_global) {
+         $self->private_value={ %{$self->global_value} };
+      }
+      delete $self->private_value->{$key};
       $self->state |= $state_private;
-      delete $self->private_value->{$_[0]};
    } else {
-      delete $self->default_value->{$_[0]};
+      delete $self->default_value->{$key};
    }
 }
 
@@ -1236,7 +1260,7 @@ sub export {
 \$version=v$Version;
 
 .
-   local_scalar($export_state, $merge_with_global ? $state_private | $state_global : $state_private);
+   local_scalar($export_state, $merge_with_global ? $state_saved : $state_private);
    local_scalar($print_state, $export_state) if $merge_with_global;
 
    my $change_scope= $only_configured && new Scope();

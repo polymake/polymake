@@ -35,13 +35,14 @@ sub new {
    my $self=&_new;
    socket $self->handle, PF_INET, SOCK_STREAM, getprotobyname('tcp')
       or die "socket failed: $!\n";
+   my $local_ip=$ENV{POLYMAKE_HOST_AGENT} ? INADDR_ANY : INADDR_LOOPBACK;
    if (defined $self->port) {
-      bind $self->handle, sockaddr_in($self->port, INADDR_LOOPBACK)
+      bind $self->handle, sockaddr_in($self->port, $local_ip)
          or die "bind failed: $!\n";
    } else {
       my $port;
       for ($port=30000; $port<65536; ++$port) {
-         last if bind $self->handle, sockaddr_in($port, INADDR_LOOPBACK);
+         last if bind $self->handle, sockaddr_in($port, $local_ip);
          die "bind failed: $!\n" if $! != EADDRINUSE;
       }
       if ($port==65536) {
@@ -54,6 +55,15 @@ sub new {
    listen $self->handle, 1
       or die "listen failed: $!\n";
    $self;
+}
+
+sub translate_port {
+   my ($port)=@_;
+   if ($port > 0 && $ENV{POLYMAKE_HOST_AGENT}) {
+      require "$Polymake::InstallTop/resources/host-agent/client.pl";
+      $port=HostAgent::call("port $port");
+   }
+   $port
 }
 
 sub DESTROY {

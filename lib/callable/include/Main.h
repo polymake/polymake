@@ -39,8 +39,8 @@ class Scope;
 class Main {
 public:
    explicit Main(const std::string& user_opts="user",
-                 const std::string& install_top="",
-                 const std::string& install_arch="");
+                 std::string install_top="",
+                 std::string install_arch="");
 
    std::string greeting(int verbose=2);
 

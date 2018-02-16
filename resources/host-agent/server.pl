@@ -24,10 +24,18 @@
 use strict;
 use Socket;
 use IO::Handle;
-use POSIX qw(:fcntl_h :sys_wait_h :errno_h);
+use POSIX qw(:fcntl_h :sys_wait_h);
 
-my $socketfile=$ARGV[0];
-(my $pidfile=$socketfile) =~ s{^.*/\K[^/]+$}{pid};
+use Getopt::Long qw( GetOptions :config require_order no_ignore_case );
+
+my ($socketfile, $dockercmd, $cid);
+GetOptions( 'socket=s' => \$socketfile, 'docker-cmd=s' => \$dockercmd, 'cid=s' => \$cid )
+  && !@ARGV
+  && length($socketfile) && length($cid)
+or die "usage: $0 --socket SOCKET_FILE --cid CONTAINER_ID [ --docker-cmd 'COMMAND ...' ]\n";
+
+$dockercmd //= "docker";
+
 unlink $socketfile;
 
 my $serv;
@@ -37,7 +45,7 @@ if ($^O eq "darwin") {
   socket($serv, PF_INET, SOCK_STREAM, getprotobyname('tcp')) or die "socket failed: $!\n";
   for ($port=30000; $port<65536; ++$port) {
     last if bind($serv, sockaddr_in($port, INADDR_LOOPBACK));
-    die "bind failed: $!\n" if $! != EADDRINUSE;
+    die "bind failed: $!\n" unless $!{EADDRINUSE};
   }
   if ($port==65536) {
     die "bind failed: all ports seem occupied\n";
@@ -49,41 +57,71 @@ if ($^O eq "darwin") {
   bind($serv, sockaddr_un($socketfile)) or die "bind failed: $!\n";
 }
 listen($serv, 1) or die "listen failed: $!";
+POSIX::fcntl($serv, F_SETFD, FD_CLOEXEC);
+
+my ($heartbeat_src, $heartbeat_sink);
+pipe $heartbeat_sink, $heartbeat_src;
 
 if (my $pid=fork) {
-   open PID, ">", $pidfile;
-   print PID $pid;
-   close PID;
-   exit(0);
+   # parent process
+   close $heartbeat_sink;
+   POSIX::fcntl($heartbeat_src, F_SETFD, 0);
+   exec "$dockercmd start -i -a $cid";
+   die "could not execute $dockercmd: $!\n";
+   exit(1);
 }
 
-POSIX::setsid();
+close $heartbeat_src;
+
 $SIG{INT}='IGNORE';
 $SIG{TERM}=\&stop;
 $SIG{CHLD}=\&collect_children;
 
+my $select_mask="";
+vec($select_mask, fileno($heartbeat_sink), 1)=1;
+vec($select_mask, fileno($serv), 1)=1;
+
 for (;;) {
-   if (accept(my $socket, $serv)) {
-      $socket->autoflush;
-      $_=<$socket>;
-      chomp;
-      if (s/^run //) {
-	 run($socket);
-      } elsif (s/^verify //) {
-	 verify($socket);
-	 close $socket;
-      } elsif (s/^find //) {
-	 find($socket);
-	 close $socket;
-      } elsif (s/^complete //) {
-	 complete($socket);
-	 close $socket;
-      } else {
-	 print $socket "ERROR: unknown command $_\n";
-	 close $socket;
+   $!=0;
+   if (select(my $ready=$select_mask, undef, undef, undef)) {
+      # For mysterious reasons, presumably a bug in perl itself,
+      # the return value from an interrupted select() is unpredictable,
+      # even if no channel is in fact ready.
+      # Thus it's safer to check for interrupts in both cases.
+      next if $!{EINTR};
+      if (vec($ready, fileno($heartbeat_sink), 1)) {
+         # container process finished
+         last;
       }
-   } elsif (POSIX::errno != EINTR) {
-      last;
+      if (vec($ready, fileno($serv), 1) &&
+          accept(my $socket, $serv)) {
+         $socket->autoflush;
+         $_=<$socket>;
+         chomp;
+         if (s/^run //) {
+            run($socket);
+         } elsif (s/^verify //) {
+            verify($socket);
+            close $socket;
+         } elsif (s/^find //) {
+            find($socket);
+            close $socket;
+         } elsif (s/^complete //) {
+            complete($socket);
+            close $socket;
+         } elsif (s/^port //) {
+            translate_port($socket);
+            close $socket;
+         } elsif ($_ eq "system") {
+            print $socket $^O;
+            close $socket;
+         } else {
+            print $socket "ERROR: unknown command $_\n";
+            close $socket;
+         }
+      }
+   } else {
+      last unless $!{EINTR};
    }
 }
 
@@ -91,7 +129,7 @@ stop();
 
 sub stop {
    close $serv;
-   unlink $socketfile, $pidfile;
+   unlink $socketfile;
    exit(0);
 }
 
@@ -104,8 +142,8 @@ sub find {
    my ($socket)=@_;
    foreach my $dir (split /:/, $ENV{PATH}) {
       if (-x "$dir/$_" && -f _) {
-	 print $socket "$dir/$_";
-	 return;
+         print $socket "$dir/$_";
+         return;
       }
    }
 }
@@ -122,6 +160,14 @@ sub complete {
    print $socket join(" ", @candidates);
 }
 
+sub translate_port {
+   my ($socket)=@_;
+   my $mapping=`docker port $cid $_`;
+   if ($mapping =~ /:(\d+)$/) {
+      print $socket $1;
+   }
+}
+
 my %children;
 
 sub run {
@@ -132,8 +178,8 @@ sub run {
       POSIX::fcntl($socket, F_SETFD, FD_CLOEXEC);
       exec $_
       or do {
-	 print $socket "ERROR: could not run $_: $!\n";
-	 POSIX::_exit(1);
+         print $socket "ERROR: could not run $_: $!\n";
+         POSIX::_exit(1);
       }
    }
 }
@@ -145,3 +191,10 @@ sub collect_children {
       close $socket;
    }
 }
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

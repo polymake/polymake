@@ -13,7 +13,9 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-$ConfigFlags{'bundled.java.JavaBuild'}
-? add_jar_target("javaview",
-                 ANTFLAGS => '-Djavaview.path=${bundled.javaview.JavaViewPath}')
-: ()
+if ($ConfigFlags{'bundled.java.ANT'} ne '.none.') {
+   add_jar_target("javaview",
+		  ANTFLAGS => '-Djavaview.path=${bundled.javaview.JavaViewPath}')
+} else {
+   ( )
+}

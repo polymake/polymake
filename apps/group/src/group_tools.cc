@@ -30,7 +30,7 @@ GroupIndex<Element> make_group_classes(perl::Object g,
    const std::string action = options["action"];
    try {
       g.give(action + ".CONJUGACY_CLASSES") >> group_classes;
-   } catch (perl::undefined) {
+   } catch (const perl::undefined&) {
       const Array<Element> gens = g.give(action + ".GENERATORS");
       group_classes = Array<Array<Element>>(1);
       group_classes[0] = orbit<on_container>(gens, identity(degree(gens[0]), Element()));

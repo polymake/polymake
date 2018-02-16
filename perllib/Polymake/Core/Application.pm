@@ -217,6 +217,7 @@ sub delete {
 sub try_auto_load {
    my ($app_name)=@_;
    my $found;
+   namespaces::temp_disable();
    if ($app_name =~ /^$id_re$/o && !exists $repository{$app_name}) {
       foreach my $dir ($InstallTop, map { $_->dir } @Extension::active[$Extension::num_bundled .. $#Extension::active]) {
          if (-d "$dir/apps/$app_name") {

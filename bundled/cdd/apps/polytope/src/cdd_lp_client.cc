@@ -43,13 +43,13 @@ void cdd_solve_lp(perl::Object p, perl::Object lp, bool maximize)
       lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << S.second;
       p.take("FEASIBLE") << true;
    }
-   catch (unbounded) {
+   catch (const unbounded&) {
       is_unbounded = 1;
    }
-   catch (infeasible) {
+   catch (const infeasible&) {
       is_infeasible = 1;
    }
-   catch (baddual) {
+   catch (const baddual&) {
       if (H_name.compare("FACETS") == 0){
          // if we've got facets we check wether they are empty.
          // empty facets => infeasible polytope
@@ -104,10 +104,10 @@ bool cdd_input_feasible(perl::Object p)
       Solver solver;
       typename Solver::lp_solution S=solver.solve_lp(I, E, obj, true);
    } 
-   catch (infeasible) {
+   catch (const infeasible&) {
       return false;
    }
-   catch (unbounded) {
+   catch (const unbounded&) {
       return true;
    } 
    return true;
@@ -157,10 +157,10 @@ bool cdd_input_bounded(perl::Object p)
       typename Solver::lp_solution S=solver.solve_lp(F, E, obj, false);
       return S.first > 0;
    } 
-   catch (infeasible) {
+   catch (const infeasible&) {
       return true;
    }
-   catch (unbounded) {
+   catch (const unbounded&) {
       return true;
    } 
    return true;

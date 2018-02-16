@@ -63,7 +63,7 @@ void remove_redundancies(perl::Object f)
                   ray_indices.insert(rr->second);
                   found=true;
                 }
-              }catch(infeasible){}
+              }catch(const infeasible&){}
             }
             if (!found) {
               rays[the_ray]=n_rays;

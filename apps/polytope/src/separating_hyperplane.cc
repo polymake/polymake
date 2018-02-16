@@ -191,7 +191,7 @@ Vector<Scalar> separate_weak(perl::Object p1, perl::Object p2)
          }
 
          return separate_weak<Scalar>(p1,p2,inn);
-      } catch(infeasible) { }
+      } catch(const infeasible&) { }
    }
 
    if (W.rows()!=1) {  // p2 is not a point
@@ -211,7 +211,7 @@ Vector<Scalar> separate_weak(perl::Object p1, perl::Object p2)
             else ++r;
          }
          return -separate_weak<Scalar>(p2,p1,inn);
-      } catch (infeasible) { }
+      } catch (const infeasible&) { }
    }
 
    // there are only two options left:
@@ -233,7 +233,7 @@ Vector<Scalar> separating_hyperplane(perl::Object p1, perl::Object p2, perl::Opt
       else
          sol = separate_weak<Scalar>(p1,p2);
    }
-   catch (infeasible) {
+   catch (const infeasible&) {
       throw std::runtime_error("separating_hyperplane: the given polytopes cannot be separated");
    }
    return sol;
@@ -274,7 +274,7 @@ bool cone_contains_point(perl::Object p, const Vector<Scalar> & q, perl::OptionS
       bool in = options["in_interior"];
       if (sol.first == 0 && in) return false;  // the only separating plane is a weak one
    }
-   catch (infeasible) {
+   catch (const infeasible&) {
       return false;
    }
    return true;

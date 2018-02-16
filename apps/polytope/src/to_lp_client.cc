@@ -69,12 +69,12 @@ void to_solve_lp(perl::Object p, perl::Object lp, bool maximize, perl::OptionSet
       lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << S.second;
       p.take("FEASIBLE") << true;
    }
-   catch (infeasible) {
+   catch (const infeasible&) {
       lp.take(maximize ? "MAXIMAL_VALUE" : "MINIMAL_VALUE") << perl::undefined();
       lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << perl::undefined();
       p.take("FEASIBLE") << false;
    }
-   catch (unbounded) {
+   catch (const unbounded&) {
       if (maximize)
          lp.take("MAXIMAL_VALUE") << std::numeric_limits<Scalar>::infinity();
       else

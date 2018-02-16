@@ -110,8 +110,7 @@ sub program_completion : method {
 ###############################################################################################
 sub enter_program {
    my ($text)=@_;
-   $text =~ s/^(env\s+)//;
-   my $host_agent=$1 // "";
+   my $host_agent= $text =~ s/^(env\s+)// && $1;
    my %opts=(completion => \&program_completion,
              prompt => "program path",
              check =>

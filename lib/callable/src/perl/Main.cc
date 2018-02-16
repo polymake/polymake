@@ -23,6 +23,8 @@
 #include <gmp.h>
 
 #include <dlfcn.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #ifdef __APPLE__
 # include <crt_externs.h>
@@ -72,11 +74,55 @@ char must_reset_SIGCHLD()
    return sa.sa_handler != SIG_DFL || (sa.sa_flags & SA_NOCLDWAIT) ? '1' : '0';
 }
 
-#ifdef POLYMAKE_CONF_FinkBase
-#  define addlibs ", \"" ConfParamAsString(POLYMAKE_CONF_FinkBase) "/lib/perl5\""
-#else
-#  define addlibs ""
-#endif
+std::string read_rel_link(std::string link, bool mandatory=true)
+{
+   struct stat link_stat;
+   if (lstat(link.c_str(), &link_stat) < 0) {
+      if (mandatory)
+         throw std::runtime_error("polymake::Main - " + link + " is not a symlink");
+      return {};
+   }
+
+   std::string result(link_stat.st_size+1, '\0');
+   if (readlink(link.c_str(), const_cast<char*>(result.c_str()), link_stat.st_size + 1) != link_stat.st_size)
+      throw std::runtime_error("polymake::Main - readlink(" + link + ") failed");
+   result.erase(link_stat.st_size);
+
+   auto slash=link.rfind('/');
+   if (slash == std::string::npos)
+      throw std::runtime_error("polymake::Main - path " + link + " does not contain enough folder levels");
+   link.erase(slash+1);
+
+   while (result.substr(0,3) == "../") {
+      result.erase(0,3);
+      slash=link.rfind('/', link.size()-2);
+      if (slash == std::string::npos)
+         throw std::runtime_error("polymake::Main - path " + link + " does not contain enough folder levels");
+      link.erase(slash+1);
+   }
+
+   return link+result;
+}
+
+// Follow symbolic links created by the installation script
+void deduce_install_dirs(std::string lib_path, std::string& install_top, std::string& install_arch)
+{
+   const char stem_name[]="libpolymake";
+   constexpr size_t stem_size=sizeof(stem_name)-1;
+   auto basename_start=lib_path.find(stem_name, stem_size);
+   if (basename_start == std::string::npos)
+      throw std::runtime_error("polymake::Main - weird callable library path " + lib_path);
+
+   lib_path.replace(basename_start + stem_size, 0, "-apps", 5);
+   lib_path=read_rel_link(lib_path);
+   auto libdir_start=lib_path.rfind("/lib/", std::string::npos, 5);
+   if (libdir_start == std::string::npos)
+      throw std::runtime_error("polymake::Main - weird apps library path " + lib_path);
+
+   install_arch=lib_path.substr(0, libdir_start);
+   install_top=read_rel_link(install_arch+"/shared");
+}
+
 #if POLYMAKE_DEBUG
 #  define scr_debug1 "$DebugLevel=1; $DB::single=1;"
 #  define scr_debug2 "sub stop_here { print STDERR \"@_\\n\" if @_ } my $loaded=1;\n"
@@ -95,7 +141,7 @@ const char scr0[]=
 "   $Arch='" ConfParamAsString(POLYMAKE_CONF_Arch) "';\n"
 "   @BundledExts='" ConfParamAsString(POLYMAKE_CONF_BundledExts) "' =~ /(\\S+)/g;\n"
 "}\n"
-"use lib \"$InstallTop/perllib\", \"$InstallArch/perlx\"" addlibs ";\n"
+"use lib \"$InstallTop/perllib\", \"$InstallArch/perlx\"",  scr8useLib[]=";\n"
 "use Polymake::Main q{", scr8user_opts[]="},", scr8reset_SIGCHLD[]=";\n"
 scr_debug2
 "1\n";
@@ -106,15 +152,15 @@ scr_debug2
 #undef ToString1
 }
 
-Main::Main(const std::string& user_opts, const std::string& install_top, const std::string& install_arch)
+Main::Main(const std::string& user_opts, std::string install_top, std::string install_arch)
 {
    if (PL_curinterp) return;
 
-   Dl_info dli;
+   Dl_info dli_polymake, dli_perl;
    void* polyhandle = nullptr;
    int dlreturn;
-   if ((dlreturn = dladdr((void*)&destroy_perl, &dli))) {
-      polyhandle = dlopen(dli.dli_fname, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL );
+   if ((dlreturn = dladdr((void*)&destroy_perl, &dli_polymake))) {
+      polyhandle = dlopen(dli_polymake.dli_fname, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL );
    }
    if (!polyhandle) {
       std::cerr << "*** WARNING: Failed to (re-)dlopen libpolymake with RTLD_GLOBAL: " 
@@ -123,8 +169,8 @@ Main::Main(const std::string& user_opts, const std::string& install_top, const s
    }
 
    void* perlhandle = nullptr;
-   if ((dlreturn = dladdr((void*)&perl_destruct, &dli))) {
-      perlhandle = dlopen(dli.dli_fname, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL );
+   if ((dlreturn = dladdr((void*)&perl_destruct, &dli_perl))) {
+      perlhandle = dlopen(dli_perl.dli_fname, RTLD_LAZY | RTLD_NOLOAD | RTLD_GLOBAL );
    }
    if (!perlhandle) {
       std::cerr << "*** WARNING: Failed to (re-)dlopen libperl with RTLD_GLOBAL: " 
@@ -132,21 +178,27 @@ Main::Main(const std::string& user_opts, const std::string& install_top, const s
                    "    Perl modules might fail to load." << std::endl;
    }
 
-   std::string script_arg(scr0);
+   if (install_top.empty() != install_arch.empty())
+      throw std::runtime_error("polymake::Main - install_top and install_arch arguments must both be empty or set to valid paths");
    if (install_top.empty())
-      script_arg += ConfParamAsString(POLYMAKE_CONF_InstallTop);
-   else
-      script_arg += install_top;
+      deduce_install_dirs(dli_polymake.dli_fname, install_top, install_arch);
+
+   std::string script_arg(scr0);
+   script_arg += install_top;
    script_arg += scr8InstallTop;
-   if (install_arch.empty())
-      script_arg += ConfParamAsString(POLYMAKE_CONF_InstallArch);
-   else
-      script_arg += install_arch;
+   script_arg += install_arch;
    script_arg += scr8InstallArch;
+#ifdef __APPLE__
+   std::string fink_base=read_rel_link(install_arch + "/fink-base", false);
+   if (!fink_base.empty())
+      script_arg += ", \"" + fink_base + "/lib/perl5\"";
+#endif
+   script_arg += scr8useLib;
    script_arg += user_opts;
    script_arg += scr8user_opts;
    script_arg += must_reset_SIGCHLD();
    script_arg += scr8reset_SIGCHLD;
+
    const char* perl_start_args[]={ "perl", "-e", script_arg.c_str(), 0 };
    int argc=sizeof(perl_start_args)/sizeof(perl_start_args[0])-1;
    const char **argv=perl_start_args;

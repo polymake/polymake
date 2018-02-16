@@ -21,15 +21,6 @@ use IO::Handle;
 
 my $socketfile=$ENV{POLYMAKE_HOST_AGENT};
 
-my $waited=0;
-until (-l $socketfile || -S $socketfile) {
-   select(undef, undef, undef, 0.25);
-   if (++$waited >= 10) {
-      delete $ENV{POLYMAKE_HOST_AGENT};
-      undef $socketfile;
-   }
-}
-
 sub call {
    my $response="";
    if (defined($socketfile) &&

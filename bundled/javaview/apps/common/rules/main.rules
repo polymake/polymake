@@ -33,6 +33,9 @@ CONFIGURE {
    } or die "Extension configuration script did not produce expected results\n";
 }
 
+# location of the license file (for docker image users)
+custom $license_file="";
+
 ###########################################################################################
 package JavaView::default;
 
@@ -70,16 +73,6 @@ use Polymake::Struct (
 
 method detect_dynamic($) { 0 }
 
-sub launch {
-   my ($self, $pipe)=@_;
-   foreach (@{$self->contents->geometries}) {
-      if ($self->detect_dynamic($_->source->Vertices)) {
-         $_->name =~ s/^/dynamic:/;
-      }
-   }
-   $self->SUPER::launch($pipe);
-}
-
 ###########################################################################################
 package JavaView::Viewer;
 
@@ -87,10 +80,42 @@ use Polymake::Struct (
    [ '@ISA' => 'InteractiveViewer' ],
 );
 
-# the active Viewer instance
-my $active;
+sub host_install_top {
+   state $host_install_top=do {
+      local $_="$Resources/javaview";
+      unless (-d) {
+         system("cp -pR $install_top $_")
+           and die "can't copy JavaView files into $_\n";
+      }
+      unless (-l "$_/rsrc/jv-lic.lic") {
+         if (length($license_file)) {
+            if ($license_file =~ m{^/.+/jv-lic\.lic$}) {
+               symlink $license_file, "$_/rsrc/jv-lic.lic"
+                 or die "can't create a symlink $_/rsrc/jv-lic.lic => $license_file: $!\n";
+            } else {
+               err_print("Custom variable \$JavaView::Viewer::license_file set to a wrong value,\n",
+                         "it must be an absolute path of a file named jv-lic.lic\n");
+            }
+         } else {
+            warn_print(<<'---');
+No JavaView license file configured!
 
-sub instance : lvalue { $active }
+Please register at www.javaview.de,
+a license file will be sent to you as an e-mail attachment.
+Save it somewhere in your home directory tree and set the custom variable
+$JavaView::Viewer::license_file to the absolute path.
+
+For example:
+  set_custom $JavaView::Viewer::license_file="$ENV{HOME}/my-license/jv-lic.lic";
+---
+         }
+      }
+      $_
+   };
+}
+
+# the active Viewer instance
+sub instance : lvalue { state $active }
 
 {  # capture the own extension
    my $ext=$Polymake::Core::Application::extension;
@@ -100,19 +125,28 @@ sub instance : lvalue { $active }
 
 # to be filled in the command line
 sub start_properties {
-   my %jre_properties;
-   $jre_properties{"jv.licence"}=$install_top;
+   state $bg_color=Visual::get_RGB($JavaView::default::bgColor)->toInt;
+   my %jre_properties=( 'jv.licence' => $ENV{POLYMAKE_HOST_AGENT} ? host_install_top() : $install_top,
+                        'polymake.javaview.bgcolor' => "\"$bg_color\"" );
    if ($DebugLevel) {
       $jre_properties{"polymake.debug"}=$DebugLevel>=2 ? "max" : "yes";
    }
 
-   is_object($JavaView::default::bgColor) or $JavaView::default::bgColor=Visual::get_RGB($JavaView::default::bgColor);
-   my $bg_color = $JavaView::default::bgColor->toInt;
-   $jre_properties{"polymake.javaview.bgcolor"}="\"$bg_color\"";
    \%jre_properties
 }
 
-sub classpath { $classpath }
+sub classpath {
+   if ($ENV{POLYMAKE_HOST_AGENT}) {
+      state $copy=do {
+         my $in_resources=host_install_top();
+         local $_=$classpath;
+         s{(?:^|:)\K\Q$install_top\E}{$in_resources}g;
+         $_
+      };
+   } else {
+      $classpath
+   }
+}
 
 sub new_drawing {
    my ($self, $title)=@_;

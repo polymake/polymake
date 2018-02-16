@@ -23,6 +23,13 @@ namespace pm { namespace perl {
 
 enum property_type { _done, _normal, temporary, attachment };
 
+// the PerlInterpreter might be unused depending on the perl configuration
+// but we do not want to check all the perl stuff here
+#if defined(__clang__) && !defined(__APPLE__) && __clang_major__ == 6
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-private-field"
+#endif
+
 class PropertyOut {
 private:
    Value val;
@@ -51,6 +58,10 @@ public:
 
    friend class Object;
 };
+
+#if defined(__clang__) && !defined(__APPLE__) && __clang_major__ == 6
+#pragma clang diagnostic pop
+#endif
 
 
 class ObjectType {

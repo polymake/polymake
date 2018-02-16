@@ -43,38 +43,41 @@ my $native_lib_suffix= $^O eq "darwin" ? "jnilib" : "so";
 
 # start the launcher on the java side
 sub new {
-   $_[0]->instance ||= do {
+   $_[0]->instance //= do {
       my $pkg=$_[0];
       my $self=&_new;
-
       ($self->name)= $pkg =~ /^($id_re)/o;
+
+      my $server_port=ServerSocket::translate_port($self->server_socket->port);
+      my $jars_dir= $DeveloperMode ? "$InstallArch/jars" : "$Resources/java/jars";
+      my $nativelib_dir= $DeveloperMode ? "$InstallArch/lib/jni" : "$Resources/java/jni";
+      my $jre_properties=$self->start_properties;
 
       my (@jars, @native_libs);
       foreach my $ext ($self->java_extensions) {
          my ($jar, $native_lib);
          if ($ext->is_bundled) {
-            $jar="$InstallArch/jars/polymake_".$ext->short_name.".jar";
+            $jar="$jars_dir/polymake_".$ext->short_name.".jar";
             $native_lib="polymake_".$ext->short_name;
          } else {
             # @todo
             die "Sorry, loading jars from standalone extensions is not yet implemented\n";
          }
          push @jars, $jar;
-         if (-f "$InstallArch/lib/jni/lib${native_lib}.${native_lib_suffix}") {
+         if (-f "$nativelib_dir/lib${native_lib}.${native_lib_suffix}") {
             push @native_libs, $native_lib;
          }
       }
-
-      my $jre_properties=$self->start_properties;
       if (@native_libs) {
-         ( $jre_properties->{"java.library.path"}.=":$InstallArch/lib/jni" ) =~ s/^://;
+         ( $jre_properties->{"java.library.path"}.=":$nativelib_dir" ) =~ s/^://;
       }
+
       my @java_command=($java,
                         (map { "-D$_=$jre_properties->{$_}" } keys %$jre_properties),
                         $PrivateDir ? ("-Dpolymake.userdir=$PrivateDir") : (),
                         "-cp", join(":", @jars, $self->classpath),
                         "de.tuberlin.polymake.common.SelectorThread",
-                        $self->server_socket->port, map("-nl $_", @native_libs));
+                        $server_port, map("-nl $_", @native_libs));
 
       push @java_command, "2>/dev/null" if $DebugLevel<1;
 
@@ -227,13 +230,33 @@ use Polymake::Struct (
 
 sub launch {
    my ($self, $pipe)=@_;
-   $_->run($self) for @{$self->feedback_listener};
-   if ($DebugLevel>=2) {
-      dbg_print( "sending data for ", $self->contents->title, "\n", $self->class, " ", $self->client_port, "\n", $self->contents->toString );
+
+   if (allow_shmem_exchange()) {
+      foreach (@{$self->contents->geometries}) {
+         if ($self->detect_dynamic($_->source->Vertices)) {
+            $_->name =~ s/^/dynamic:/;
+         }
+      }
    }
-   print $pipe "n ", $self->class, " ", $self->client_port, "\n", $self->contents->toString;
+
+   $_->run($self) for @{$self->feedback_listener};
+   my $port=ServerSocket::translate_port($self->client_port);
+   if ($DebugLevel>=2) {
+      dbg_print( "sending data for ", $self->contents->title, "\n", $self->class, " $port\n", $self->contents->toString );
+   }
+   print $pipe "n ", $self->class, " $port\n", $self->contents->toString;
 }
 
+# temporary measure until Docker on Mac issues with shared memory are solved
+sub allow_shmem_exchange {
+   if ($ENV{POLYMAKE_HOST_AGENT}) {
+      require "$Polymake::InstallTop/resources/host-agent/client.pl";
+      state $sys=HostAgent::call("system");
+      $sys ne "darwin";
+   } else {
+      1;
+   }
+}
 
 1
 

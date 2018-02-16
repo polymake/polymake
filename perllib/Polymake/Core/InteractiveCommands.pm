@@ -193,6 +193,7 @@ sub unconfigure {
          if (defined (my $code=$self->rule_code->{$rule_key})) {
             my $unconf=new Unconf($self);
             local_sub(get_symtab($self->pkg)->{self}, sub { $unconf });
+            local $extension=$ext;
             &$code;
          } else {
             $self->configured->{$rule_key}=-$load_time;
@@ -255,6 +256,8 @@ sub first_credit_in {
       } else {
          $self->credits_by_rulefile->{$rule_key}=lookup_credit($self, $credit)
       }
+   } elsif ($rule_key =~ /\@(bundled:\w+)$/) {
+      $Extension::registered_by_URI{$1}->credit
    } else {
       undef
    }
@@ -370,6 +373,15 @@ sub include_rule {
    }
 }
 ###############################################################################################
+package Polymake::Core::Application::CppDummy;
+
+sub new {
+   state $dummy=bless [ ], $_[0];
+}
+
+sub start_loading {}
+
+###############################################################################################
 package Polymake::Core::Application::Reconf;
 
 use Polymake::Struct (
@@ -380,6 +392,8 @@ use Polymake::Struct (
 
 sub start_preamble { shift }
 sub preamble_end { $_[0]->application->preamble_end }
+
+sub cpp { new CppDummy; }
 
 sub add_credit {
    my $self=shift;
@@ -450,6 +464,8 @@ use Polymake::Struct (
 
 sub start_preamble { shift }
 sub preamble_end { $_[0]->application->preamble_end }
+
+sub cpp { new CppDummy; }
 
 sub add_credit {
    my ($self, $product, $ext_URI, $text)=@_;
@@ -1065,7 +1081,7 @@ sub show_credits {
          $hidden=1;
       } else {
           if (!$header_shown && !$internal) {
-             print "\nApplication ", $application->name, " currently uses following third-party software packages:\n";
+             print "\nApplication ", $application->name, " currently uses following contributed and third-party software packages:\n";
           }
           if ($brief) {
               if (!$internal) {
@@ -1274,6 +1290,13 @@ sub show_unconfigured {
    if ($shown) {
       print "\nTo enable an interface:  reconfigure(\"", Core::InteractiveCommands::underline("RULEFILE"), "\");\n";
    }
+}
+###############################################################################################
+sub export_configured {
+   my $filename=shift;
+   my $opts= @_==1 && ref($_[0]) eq "HASH" ? shift : { @_ };
+   replace_special_paths($filename);
+   $Custom->export($filename, $opts, $Prefs->custom);
 }
 
 1

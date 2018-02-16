@@ -448,9 +448,10 @@ build all.bundled: phony @all_bundled_targets
 ---
          push @all_targets, 'all.bundled';
       }
-      my $install_input=generate_corelib_targets();
+      my $install_libs=generate_corelib_targets();
       print <<"---";
-build install: install_core $install_input || all
+build install: install_core || all
+  install_libs=$install_libs
 ---
       if (!$testscenario_pico_mode) {
          push @all_targets, "all.libs";
@@ -495,16 +496,19 @@ sub generate_corelib_targets {
 
    my $Ext_module="\${builddir}/\${perlxpath}/auto/Polymake/Ext/Ext.$Config::Config{dlext}";
 
-   my ($callable_lib_name, $stublib_name);
+   my ($callable_libname, $callable_link, $fakeapps_libname, $fakeapps_link, $stubapps_libname, $stubapps_link);
    if ($ConfigFlags{LDcallableFLAGS} ne "none") {
       my $callable_version=extract_polymake_version($root);
-      $callable_lib_name=compose_sharedlib_versioned_name("polymake", $callable_version);
-      $stublib_name=compose_sharedlib_versioned_name("polymake-apps", $callable_version);
+      ($callable_libname, $callable_link)=compose_sharedlib_names("polymake", $callable_version);
+      ($fakeapps_libname, $fakeapps_link)=compose_sharedlib_names("polymake-apps", $callable_version);
+      ($stubapps_libname, $stubapps_link)=compose_sharedlib_names("polymake-apps-rt", $callable_version);
       print <<"---";
-callable_lib=\${builddir}/\${perlxpath}/$callable_lib_name
-callable_link=\${builddir}/\${perlxpath}/libpolymake.$Config::Config{so}
-callable_fakeapplib=\${builddir}/lib/callable/libpolymake-apps.$Config::Config{so}
-callable_stubapplib=\${builddir}/lib/callable/$stublib_name
+callable_lib =\${builddir}/\${perlxpath}/$callable_libname
+callable_link=\${builddir}/\${perlxpath}/$callable_link
+fakeapps_lib =\${builddir}/lib/callable/$fakeapps_libname
+fakeapps_link=\${builddir}/lib/callable/$fakeapps_link
+stubapps_lib =\${builddir}/lib/callable/$stubapps_libname
+stubapps_link=\${builddir}/lib/callable/$stubapps_link
 ---
    }
 
@@ -579,16 +583,19 @@ build \${bootstrapXS.h}: gen_xs_bootstrap @cc_from_xxs
          print <<"---";
 build \${callable_lib}: sharedmod @corelib_objects @callable_objects
   LDsharedFLAGS=\${LDcallableFLAGS}
-  LDextraFLAGS=\${LDsonameFLAGS}$callable_lib_name \${LIBperlFLAGS}
+  LDextraFLAGS=\${LDsonameFLAGS}$callable_libname \${LIBperlFLAGS}
   LIBSextra=$glue_custom_flags{LIBS}
 build \${callable_link}: symlink_samedir \${callable_lib}
 
-build \${callable_fakeapplib}: sharedmod \${builddir}/lib/callable/fake.o
+build \${fakeapps_lib}: sharedmod \${builddir}/lib/callable/fake.o
   LDsharedFLAGS=\${LDcallableFLAGS}
-  LDextraFLAGS=\${LDsonameFLAGS}$stublib_name
-build \${callable_stubapplib}: sharedmod \${builddir}/lib/callable/stub.o
+  LDextraFLAGS=\${LDsonameFLAGS}$stubapps_libname
+build \${fakeapps_link}: symlink_samedir \${fakeapps_lib}
+
+build \${stubapps_lib}: sharedmod \${builddir}/lib/callable/stub.o
   LDsharedFLAGS=\${LDcallableFLAGS}
-  LDextraFLAGS=\${LDsonameFLAGS}$stublib_name
+  LDextraFLAGS=\${LDsonameFLAGS}$stubapps_libname
+build \${stubapps_link}: symlink_samedir \${stubapps_lib}
 
 ---
          $targetlist_deps{"$root/lib/callable/src/perl"}=1;
@@ -597,20 +604,24 @@ build \${callable_stubapplib}: sharedmod \${builddir}/lib/callable/stub.o
 
    if ($ConfigFlags{LDcallableFLAGS} ne "none") {
       print <<"---";
-build all.libs: phony $Ext_module \${callable_link}
+build all.libs: phony $Ext_module \${callable_link} \${fakeapps_link} \${stubapps_link}
 ---
-      return $Ext_module.' ${callable_fakeapplib} ${callable_stubapplib} ${callable_lib} ${callable_link}';
+      return '--xs '.$Ext_module.' --callable ${callable_lib} ${callable_link} --fakelibs ${stubapps_lib} ${stubapps_link} ${fakeapps_lib} ${fakeapps_link}';
    } else {
       print <<"---";
 build all.libs: phony $Ext_module
 ---
-      return $Ext_module;
+      return '--xs '.$Ext_module;
    }
 }
 
-sub compose_sharedlib_versioned_name {
-   my ($name, $version)=@_;
-   $Config::Config{so} eq "so" ? "lib$name.$Config::Config{so}.$version" : "lib$name.$version.$Config::Config{so}";
+
+# stem, version => libname, versioned libname
+sub compose_sharedlib_names {
+   my ($stem, $version)=@_;
+   ( $Config::Config{so} eq "so" ? "lib$stem.$Config::Config{so}.$version" : "lib$stem.$version.$Config::Config{so}",
+     "lib$stem.$Config::Config{so}"
+   )
 }
 
 

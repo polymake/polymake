@@ -51,7 +51,7 @@ bool still_star_shaped_after_extension(const Matrix<Scalar>& vertices,
          if (sign(normal_vector * vertices[s]) != sign(normal_vector[0]))
             // the affine span of (simplex - s) separates s from 0
             return false;
-      } catch (degenerate_matrix) {
+      } catch (const degenerate_matrix&) {
          // this occurs if the affine span of a ridge contains 0
          return false;
       }

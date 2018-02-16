@@ -39,8 +39,8 @@ use Polymake::Struct (
    [ '$version' => 'undef' ],       # version as string
    [ '$version_num' => 'undef' ],   # version as comparable v-string
    [ '$credit' => 'undef' ],        # Credit credit note, if present in metadata
-   [ '$short_name' => 'undef'],
-   [ '$is_bundled' => '#3' ],       # boolean
+   [ '$short_name' => '#3'],
+   [ '$is_bundled' => 'defined(#3)' ],    # boolean
    [ '$build_dir' => 'undef' ],     # for standalone externsions: where to find architecture-dependent files (configuration, shared modules...)
    [ '$meta_tm' => 'undef' ],       # timestamp of the meta-file
    '$is_active',                    # boolean: configured, included in @active
@@ -105,10 +105,14 @@ sub new {
          $credit =~ s/\A(?:[ \t]*\n)*//s;
          $credit =~ s/(?<=\n)(?:[ \t]*\n)*\Z//s;
          $credit =~ s/^[ \t]*/  /gm;
-         if (defined($self->short_name)) {
-            $credit .= "\n  ".$self->URI;
+         if ($self->is_bundled) {
+            $self->credit=new Rule::Credit($self->short_name, $credit);
+         } else {
+            if (defined($self->short_name)) {
+               $credit .= "\n  ".$self->URI."\n";
+            }
+            $self->credit=new Credit($self->short_name // $self->URI, $credit);
          }
-         $self->credit=new Credit($self, $credit);
       }
       if (defined (my $replaces=delete $sections{REPLACE})) {
          @{$self->replaces} = $replaces =~ /(\S+)/g;
@@ -171,8 +175,7 @@ sub init {
    {
       # extensions are ordered by inter-dependencies, prerequisites coming first
       foreach my $name (@BundledExts) {
-         my $ext=new(__PACKAGE__, "$InstallTop/bundled/$name", "bundled:$name", 1);
-         $ext->short_name=$name;
+         my $ext=new(__PACKAGE__, "$InstallTop/bundled/$name", "bundled:$name", $name);
          if ($DeveloperMode && $ext->meta_tm > $ConfigTime) {
             warn_print("meta-file of bundled extension $name has been changed since last configuration;\nPerforming automatic reconfiguration, please be patient...\n");
             my $build_opt= $ENV{POLYMAKE_BUILD_ROOT} && "--build $ENV{POLYMAKE_BUILD_ROOT}";
@@ -610,32 +613,21 @@ sub get_source_VCS {
    }
 }
 #####################################################################################
-package _::Credit;
+package Polymake::Core::Extension::Credit;
 
 use Polymake::Struct (
    [ '@ISA' => 'Rule::Credit' ],
-   [ '$product' => '""' ],
 );
 
-sub new {
-   my $self=&_new;
-   if ($_[0]->is_bundled) {
-      ($self->product)= $_[0]->URI =~ /:($id_re)$/o;
-   } else {
-      $self->product=defined($_[0]->short_name)?$_[0]->short_name : $_[0]->URI;
-   }
-   bless $self, "Polymake::Core::Rule::Credit";
-}
-
 sub display {
-   my $self=shift;
+   my ($self)=@_;
    dbg_print( "used extension ", $self->product, "\n", $self->text, "\n" );
    $self->shown=1;
 }
 
 sub toFileString {
-   my $self=shift;
-   $self->file_string ||= do {
+   my ($self)=@_;
+   $self->file_string //= do {
       my ($copyright)= $self->text =~ /(copyright\b.*)/im;
       (defined($copyright) ? "\n$copyright\n" : $self->text) . $self->product . "\n"
    }

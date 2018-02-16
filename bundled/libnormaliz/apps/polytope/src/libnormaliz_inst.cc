@@ -128,7 +128,10 @@ inline bool int_quotient(long long& Quot, const pm::Integer& Num, const pm::Inte
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #if __GNUC__ >= 6
 #pragma GCC diagnostic ignored "-Wmisleading-indentation"
-#endif
+#if __GNUC__ >= 8
+#pragma GCC diagnostic ignored "-Wcatch-value=0"
+#endif // gcc8
+#endif // gcc6
 #endif
 #endif
 
