@@ -73,7 +73,9 @@ sub new {
 
 sub execute {
    my ($self)=@_;
-   my $eq=equal_string_lists($self->expected_words, $self->gotten_words);
+   my $eq= $self->expected_words->[-1] eq "..." ?
+         @{$self->expected_words}-1 == equal_string_list_prefixes($self->expected_words, $self->gotten_words) :
+         equal_string_lists($self->expected_words, $self->gotten_words);
    my $eq_append=!defined($self->expected_append) || $self->expected_append eq $self->gotten_append;
    unless ($eq && $eq_append && $self->expected_offset==$self->gotten_offset) {
       unless ($eq) {

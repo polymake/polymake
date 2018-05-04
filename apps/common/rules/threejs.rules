@@ -97,6 +97,8 @@ sub append {
 # Create a three.js file.
 label threejs
 
+prefer threejs
+
 # The following are rarely used.
 # Much more common are the methods in apps/{graph,polytope,...}/rules/threejs.rules
 

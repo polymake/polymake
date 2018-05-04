@@ -3,6 +3,15 @@
   <property name="package.prefix" value="de/tuberlin/polymake" />
   <property name="build.sysclasspath" value="ignore" />
 
+  <condition property="use-nativeheaderdir">
+    <and>
+      <antversion atleast="1.9.8"/>
+      <not>
+        <equals arg1="${ant.java.version}" arg2="1.7"/>
+      </not>
+    </and>
+  </condition>
+
   <target name="init">
     <!-- Create the time stamp -->
     <tstamp/>
@@ -10,7 +19,7 @@
     <mkdir dir="${build.dir}/bundled/java/java" />
   </target>
 
-  <target name="compile" depends="init">
+  <target name="compile-with-javah" depends="init" unless="use-nativeheaderdir">
     <sequential>
       <javac
              executable="${javac}"
@@ -21,26 +30,39 @@
              encoding="UTF8">
         <include name="${package.prefix}/**"/>
       </javac>
-      <copy todir="${build.dir}/bundled/java/java"
-            preservelastmodified="yes">
-        <fileset
-                dir="src"
-                includes="**/*.txt"
-                excludes="**/*.java" />
-      </copy>
+      <javah
+           force="yes"
+           class="de.tuberlin.polymake.common.SharedMemoryMatrix"
+           outputfile="native/de_tuberlin_polymake_common_SharedMemoryMatrix.h">
+        <classpath location="${build.dir}/bundled/java/java" />
+      </javah>
     </sequential>
   </target>
 
-  <target name="native-header" depends="compile">
-    <javah
-           force="yes"
-           class="de.tuberlin.polymake.common.SharedMemoryMatrix"
-           outputfile="native/SharedMemoryMatrix_jni.h">
-      <classpath location="${build.dir}/bundled/java/java" />
-    </javah>
+  <target name="compile-with-native" depends="init" if="use-nativeheaderdir">
+    <javac
+           executable="${javac}"
+           srcdir="src"
+           destdir="${build.dir}/bundled/java/java"
+           nativeheaderdir="native"
+           failonerror="true"
+           debug="${debug}"
+           encoding="UTF8">
+      <include name="${package.prefix}/**"/>
+    </javac>
   </target>
 
-  <target name="all" depends="compile,native-header">
+  <target name="copy-files">
+    <copy todir="${build.dir}/bundled/java/java"
+          preservelastmodified="yes">
+      <fileset
+               dir="src"
+               includes="**/*.txt"
+               excludes="**/*.java" />
+    </copy>
+  </target>
+
+  <target name="all" depends="compile-with-native,compile-with-javah,copy-files">
     <jar destfile="${build.dir}/jars/${jar.name}">
         <fileset
                  dir="${build.dir}/bundled/java/java"

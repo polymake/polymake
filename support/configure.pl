@@ -76,7 +76,7 @@ my (%options, %vars, %allowed_options, %allowed_with, %allowed_flags, %allowed_v
 @allowed_vars{ qw( CC CFLAGS CXX CXXFLAGS CXXOPT CXXDEBUG LDFLAGS LIBS Arch DESTDIR ) }=();
 
 if ($^O eq "darwin") {
-  @allowed_with{ qw( fink ) }=();
+  @allowed_with{ qw( fink brew ) }=();
 }
 
 my (@ext, @ext_disabled, %ext_with_config, %ext_requires, %ext_requires_opt, %ext_conflicts, %ext_failed, %ext_bad,
@@ -91,6 +91,9 @@ parse_command_line(\@ARGV, $repeating_config);
 construct_paths();
 determine_cxx_compiler();
 determine_cxx_library();
+if ($^O eq "darwin") {
+   check_macos_package_manager();
+}
 determine_architecture();
 collect_compiler_specific_options();
 check_build_modes();
@@ -168,7 +171,6 @@ exit(0);
 ### end of main body ###
 
 sub usage {
-   my $GMPdef= $^O eq "darwin" ? '${fink}' : '/usr';
 
    print STDERR <<'---';
 This is a script preparing the build and installation of polymake.
@@ -209,12 +211,12 @@ Allowed options (and their default values) are:
 ---
    $^O eq "darwin" and
    print STDERR <<'---';
-  --with-fink=PATH         ( /sw ) fink installation directory
-  --without-fink           don't use Fink packages at all
+  --with-fink=PATH         fink installation directory. You can pass "default" as argument if fink is installed into its default location ( /sw )
+  --with-brew=PATH         homebrew installation directory. You can pass "default" as argument if brew is installed into its default location ( /usr/local )
 .
 ---
    print STDERR <<"---";
-  --with-gmp=PATH     ( $GMPdef ) GNU MultiPrecision library installation directory
+  --with-gmp=PATH     ( /usr ) GNU MultiPrecision library installation directory
   --with-mpfr=PATH    ( =gmp-path ) GNU Multiple Precision Floating-point Reliable library installation directory
   --with-libxml2=PATH ( find via \$PATH ) GNU XML processing library
 
@@ -419,7 +421,7 @@ sub parse_command_line {
             }
             if ($repeating_config && $name =~ /^build/) {
                $options{$name} //= $value;
-            } elsif ($value eq "default") {
+            } elsif ($value eq "default" && $name ne "fink" && $name ne "brew") {
                delete $options{$name};
             } else {
                $options{$name}=$value;
@@ -756,23 +758,8 @@ Please investigate and reconfigure.
 
 #####################################################
 sub check_fink {
-   print "checking fink installation ... ";
-   if (defined( $FinkBase=$options{fink} )) {
-      if (-d $FinkBase) {
-         unless (-f "$FinkBase/etc/fink.conf") {
-            die "option --with-fink does not point to the fink installation tree: $FinkBase/etc/fink.conf not found\n";
-         }
-      } elsif (-x $FinkBase && $FinkBase =~ s|/bin/fink$||) {
-         unless (-f "$FinkBase/etc/fink.conf") {
-            die "option --with-fink points to a broken fink installation: $FinkBase/etc/fink.conf not found\n";
-         }
-      } else {
-         die <<'---';
-option --with-fink points to a wrong program: something like /path/bin/fink expected.
-If you have renamed the main fink program, please specify the top directory: --with-fink=/path
----
-      }
-   } else {
+   $FinkBase=$options{fink};
+   if ( $FinkBase eq "default" ) {
       # Fink location not specified, look for it at plausible places
       (undef, my ($fink, $error))=find_program_in_path("fink", sub {
          !(($FinkBase=$_[0]) =~ s|/bin/fink$|| && -f "$FinkBase/etc/fink.conf") && "!"
@@ -781,18 +768,31 @@ If you have renamed the main fink program, please specify the top directory: --w
          if ($error) {
             die <<"---";
 Found the fink program at $fink, but the corresponding configuration file is missing;
-Please specify the top installation directory using option --with-fink
+Please specify the top installation directory using option --with-fink=PATH
 ---
          }
       } elsif (-f "/sw/etc/fink.conf") {
          $FinkBase="/sw";
       } else {
          die <<"---";
-The Fink package system is a mandatory prerequisite to build and use polymake under MacOS.
-Please refer to $Wiki/mac for details and installation instructions.
-If you already have Fink installed at a non-standard location, please specify it using option --with-fink
+The Fink package system cannot be found at a default location on your computer.
+Please refer to $Wiki/howto/mac for installation instructions and other options to install polymake on a Mac.
+If you have Fink installed at a non-standard location, please specify it using option --with-fink=PATH
 ---
+      }  
+   } elsif (-d $FinkBase) {
+      unless (-f "$FinkBase/etc/fink.conf") {
+         die "option --with-fink does not point to the fink installation tree: $FinkBase/etc/fink.conf not found\n";
       }
+   } elsif (-x $FinkBase && $FinkBase =~ s|/bin/fink$||) {
+      unless (-f "$FinkBase/etc/fink.conf") {
+         die "option --with-fink points to a broken fink installation: $FinkBase/etc/fink.conf not found\n";
+      }
+   } else {
+      die <<'---';
+option --with-fink points to a wrong program: something like /path/bin/fink expected.
+If you have renamed the main fink program, please specify the top directory: --with-fink=PATH
+---
    }
 
    if (defined (my $anylib=(glob("$FinkBase/lib/*.dylib"))[0])) {
@@ -811,19 +811,73 @@ If you already have Fink installed at a non-standard location, please specify it
    print "ok ($FinkBase)\n";
 }
 #####################################################
+sub check_brew {
+   $BrewBase=$options{brew};
+   if ( $BrewBase eq "default" ) {
+      $BrewBase = '/usr/local';
+      unless (-f "$BrewBase/bin/brew") {
+         die "brew installation corrupt: $BrewBase/bin/brew not found\n";
+      }
+   } else {
+      if (-d $BrewBase) {
+         unless (-f "$BrewBase/bin/brew") {
+            die "option --with-brew does not point to the brew installation tree: $BrewBase/bin/brew not found\n";
+         }
+      } elsif (-x $BrewBase && $BrewBase =~ s|/bin/brew$||) {
+         unless (-f "$BrewBase/bin/brew") {
+            die "option --with-brew points to a broken brew installation: $BrewBase/bin/brew not found\n";
+         }
+      } else {
+         die <<'---';
+option --with-brew points to a wrong program: something like --with-brew=/path/bin/brew expected.
+You can also pass --with-brew=PATH,  where PATH is the base directory of your homebrew installation. 
+If you installed into the default location (/usr/local/), then you can also pass -with-brew=default or omit the option completely.
+---
+      }
+
+      $CFLAGS .= " -I$BrewBase/include";
+      $CXXFLAGS .= " -I$BrewBase/include";
+      $LDFLAGS .= " -L$BrewBase/lib";
+   }
+   
+   if (defined (my $anylib=(glob("$BrewBase/lib/*.dylib"))[0])) {
+      my ($brew_arch)= `lipo -info $anylib` =~ /architecture: (\S+)/;
+      if (defined $Arch) {
+         if ($Arch ne $brew_arch) {
+            die "Required architecture $Arch does not match installed brew architecture $brew_arch\n";
+         }
+      } else {
+         $Arch=$brew_arch;
+      }
+   } else {
+      die "Homebrew installation seems corrupt: no shared libraries found in $BrewBase/lib\n";
+   }
+
+   print "ok ($BrewBase)\n";
+}
+#####################################################
+sub check_macos_package_manager {
+   print "checking for package manager ... ";
+   if (defined($options{fink}) and $options{fink} ne ".none.") {
+      check_fink();
+   } elsif (defined($options{brew}) and $options{brew} ne ".none.") {
+      check_brew();
+   } else {
+      print "no package manager specified\n";
+   }
+}
+#####################################################
 sub determine_architecture {
    print "determining architecture ... ";
    if ($^O eq "darwin") {
-      if ($options{fink} ne ".none.") {
-         check_fink();
-      } elsif (defined $Arch) {
-         if ($Arch ne "i386" && $Arch ne "x86_64") {
-            die "Invalid architecture $Arch for Mac OS: allowed values are i386 and x86_64.\n";
+      if ( !defined($FinkBase) && !defined($BrewBase) ) {
+         if (defined $Arch) {
+            if ($Arch ne "i386" && $Arch ne "x86_64") {
+               die "Invalid architecture $Arch for Mac OS: allowed values are i386 and x86_64.\n";
+            }
+         } else {
+            $Arch = "x86_64";
          }
-      } else {
-         # choose i386 for 10.5 and x86_64 for all others
-         `sw_vers | grep ProductVersion` =~ /(\d+(?:\.\d+)*)/;
-         $Arch= v_cmp($1, "10.6")>=0 ? "x86_64" : "i386";
       }
       $ARCHFLAGS= $NeedsArchFlag ? "-arch $Arch" : "";
       $Arch="darwin.$Arch";

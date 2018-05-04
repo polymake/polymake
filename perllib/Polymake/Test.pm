@@ -409,6 +409,7 @@ sub diff_with {
 # @param Int    expected completion offset from the end of input_string
 # @param String+ expected completions;
 #                the last one is interpreted as the expected append character if it consists of exactly one char
+#                if the last word is "..." all subsequent words in the output are ignored
 sub check_completion {
    unless (@_>3 && (is_string($_[0]) || is_integer($_[0])) && is_string($_[1]) && is_integer($_[2])) {
       croak( "usage: check_completion('ID', 'partial input', expected_offset, 'expected completion', ...)" );

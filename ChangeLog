@@ -1,5 +1,17 @@
 Changelog
 
+=== Polymake 3.2r3 ===
+
+-- distribution --
+* small bug fixes
+* threejs is the default viewer if jreality is not configured
+* support for java 10
+* adapt to changes in boost 1.67
+* fix for JuPyMake support on Mac OS X
+* removed fink as the default package manager for Mac OS X
+* included support for the brew package manager on Mac OS X
+
+
 === Polymake 3.2r2 ===
 
 -- distribution --

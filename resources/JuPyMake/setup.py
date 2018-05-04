@@ -28,8 +28,8 @@ polymake_cc = conditional_decode( subprocess.check_output( [ "polymake-config", 
 os.environ["CC"] = polymake_cc
 os.environ["CXX"] = polymake_cc
 if platform.system() == "Darwin" :
-   version = platform.mac_ver()[0]
-   os.environ["MACOSX_DEPLOYMENT_TARGET"] = version.rsplit('.',1)[0]
+   version_arr = platform.mac_ver()[0].split('.')
+   os.environ["MACOSX_DEPLOYMENT_TARGET"] = version_arr[0]+'.'+version_arr[1]
 
 setup(
     name = 'JuPyMake',

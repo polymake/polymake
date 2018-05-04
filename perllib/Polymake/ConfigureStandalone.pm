@@ -32,13 +32,12 @@ BEGIN {
                   GCCversion ICCversion CLANGversion CPPStd AppleClang
                   LDFLAGS LDsharedFLAGS LDcallableFLAGS LDsonameFLAGS LIBS
                   LIBXML2_CFLAGS LIBXML2_LIBS ExternalHeaders
-                  Arch FinkBase BundledExts BuildModes
+                  Arch FinkBase BrewBase BundledExts BuildModes
                   InstallTop InstallArch InstallBin InstallInc InstallLib InstallDoc DESTDIR );
 }
 
 use vars map { "\$$_" } @conf_vars;
 
-my %augmented_vars=( CFLAGS=>1, CXXFLAGS=>1, CflagsSuppressWarnings=>1, LDFLAGS=>1, LIBS=>1 );
 my %supported_build_modes=( Cov => 1, San => 1 );
 
 ###############################################################################################

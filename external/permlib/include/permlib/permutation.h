@@ -48,7 +48,16 @@
 #include <boost/dynamic_bitset.hpp>
 #include <boost/foreach.hpp>
 #include <boost/cstdint.hpp>
+
+#include <boost/version.hpp>
+
+#if BOOST_VERSION / 100 >= 1067
+#include <boost/integer/common_factor_rt.hpp>
+#define permlib_boost_lcm boost::integer::lcm
+#else
 #include <boost/math/common_factor_rt.hpp>
+#define permlib_boost_lcm boost::math::lcm
+#endif
 
 namespace permlib {
 
@@ -343,7 +352,7 @@ inline boost::uint64_t Permutation::order() const {
 	std::list<CyclePair> cycleList = this->cycles();
 	boost::uint64_t ord = 1;
 	BOOST_FOREACH(const CyclePair& cyc, cycleList) {
-		ord = boost::math::lcm(ord, static_cast<boost::uint64_t>(cyc.second));
+		ord = permlib_boost_lcm(ord, static_cast<boost::uint64_t>(cyc.second));
 	}
 	return ord;
 }

@@ -37,11 +37,18 @@
 #include <list>
 #include <vector>
 
+#include <boost/version.hpp>
+
 #include <boost/cstdint.hpp>
 #include <boost/foreach.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
+
+#if BOOST_VERSION / 100 >= 1067
+#include <boost/next_prior.hpp>
+#else
 #include <boost/utility.hpp>
+#endif
 
 #include <permlib/bsgs_core.h>
 

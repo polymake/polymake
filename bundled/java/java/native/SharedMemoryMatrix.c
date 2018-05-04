@@ -14,7 +14,7 @@
 --------------------------------------------------------------------------------
 */
 
-#include "SharedMemoryMatrix_jni.h"
+#include "de_tuberlin_polymake_common_SharedMemoryMatrix.h"
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <errno.h>

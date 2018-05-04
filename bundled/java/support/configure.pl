@@ -93,12 +93,12 @@ sub proceed {
    # check Java version
 
    my ($java_version)= `$JAVACMD -version 2>&1` =~ /version "([\d.]+)/s;
-   Polymake::Configure::v_cmp($java_version_num, "1.5") >= 0
+   Polymake::Configure::v_cmp($java_version, "1.7") >= 0
      or die "Java run-time interpreter $JAVACMD",
             $found_by eq "PATH"
             ? " found along your program PATH"
             : $found_by && " found by environment variable $found_by",
-            " reports its version as $java_version, while minimal required is 1.5\n",
+            " reports its version as $java_version, while minimal required is 1.7\n",
             "\nPlease upgrade your Java run-time system or JDK to a modern version,\n",
             $found_by && "or specify a correct location in the option --with-java,\n",
             "or disable using Java components completely: --without-java\n",
@@ -166,7 +166,10 @@ to JReality and JavaView will be disabled permanently.
       }
       my ($ant_version)= `$ANT -version` =~ /version ([\d.]+)/;
       Polymake::Configure::v_cmp($ant_version, "1.7.1") >= 0
-	or die "$ANT reports its version as $ant_version, while minimal required version is 1.7.1\n";
+         or die "$ANT reports its version as $ant_version, while minimal required version is 1.7.1\n";
+      # Java 10 needs javac with nativeheaderdir instead of javah task which requires ant 1.9.8
+      Polymake::Configure::v_cmp($java_version, "10") >= 0 and Polymake::Configure::v_cmp($ant_version, "1.9.8") < 0
+         and die "$ANT reports its version as $ant_version, while minimal required version for Java 10 is 1.9.8\n";
 
       $NativeSO="so";
 

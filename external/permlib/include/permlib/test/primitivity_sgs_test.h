@@ -38,7 +38,15 @@
 
 #include <boost/foreach.hpp>
 #include <boost/scoped_ptr.hpp>
+
+#include <boost/version.hpp>
+
+#if BOOST_VERSION / 100 >= 1067
+#include <boost/next_prior.hpp>
+#else
 #include <boost/utility.hpp>
+#endif
+
 #include <vector>
 #include <list>
 

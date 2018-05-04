@@ -19,7 +19,10 @@ use feature 'state';
 
 prefer threejs
 
-prefer svg.lattice
+if (application::self()->configured->{"svg.rules"} > 0) {
+
+   prefer svg.lattice
+}
 
 $ThreeJS::is_used_in_jupyter=1;
 

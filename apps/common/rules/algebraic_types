@@ -870,7 +870,7 @@ user_function householder_trafo(Vector<Float>) : c++ (include => "polymake/linal
 # QR decomposition of a Matrix //M// with rows > cols
 # @param Matrix<Float> M
 # @return Pair<Matrix,Matrix>
-# @example
+# @example [nocompare]
 # > $M = new Matrix<Float>([23,4],[6,42]);
 # > $qr = qr_decomp($M);
 # > print $qr->first;

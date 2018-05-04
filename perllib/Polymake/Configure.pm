@@ -22,6 +22,9 @@ use warnings qw(FATAL void syntax misc);
 # load the non-interactive basis routines first
 use Polymake::ConfigureStandalone;
 
+# the values of these variables are growing when extension configure script assigns something to them
+my %augmented_vars=( CFLAGS=>1, CXXFLAGS=>1, CflagsSuppressWarnings=>1, LDFLAGS=>1, LIBS=>1 );
+
 package Polymake::Configure;
 
 if ($ENV{POLYMAKE_HOST_AGENT}) {
