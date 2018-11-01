@@ -445,7 +445,7 @@ sub display_help_topics {
       next if is_object($_) && $_->annex->{display} =~ /^\s*noshow\s*$/;
       print "-------------------\n" if $User::help_delimit && $n++;
       if (is_object($_)) {
-         print $full_text && substr($_->full_path,1).":\n",
+         print $full_text ? substr($_->full_path,1).":\n" : "",
                $_->display_text($full_text, $tell_about_full);
       } else {
          print $_->($full_text, $tell_about_full);

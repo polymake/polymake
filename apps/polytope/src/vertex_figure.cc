@@ -68,7 +68,8 @@ perl::Object vertex_figure(perl::Object p_in, int v_cut_off, perl::OptionSet opt
       const bool simple_vertex=basis.rows()+AH.rows()==V.cols()-1;
       typename Rows< Matrix<Scalar> >::iterator b=rows(basis).begin();
       for (Entire< Graph<>::adjacent_node_list >::const_iterator nb_v=entire(G.adjacent_nodes(v_cut_off)); !nb_v.at_end(); ++nb_v, ++b)
-         *b = (1-cutoff_factor) * V[v_cut_off] + cutoff_factor * V[*nb_v];
+         *b = cutoff_factor * (V[*nb_v] - V[v_cut_off]);
+      basis.col(0) = -ones_vector<Scalar>(basis.rows());
 
       Vector<Scalar> cutting_plane;
       if (simple_vertex) {
@@ -76,11 +77,12 @@ perl::Object vertex_figure(perl::Object p_in, int v_cut_off, perl::OptionSet opt
          cutting_plane=null_space(basis/orth)[0];
       } else {
          // look for a valid separating hyperplane furthest from the vertex being cut off
-         cutting_plane=S.solve_lp(basis, orth, V[v_cut_off], false).second;
+         cutting_plane=S.solve_lp(basis, orth, average(rows(basis)), false).second;
       }
+      cutting_plane[0] = - cutting_plane * V[v_cut_off];
 
       p_out.take("FACETS") << F.minor(VIF.col(v_cut_off),All);
-      p_out.take("AFFINE_HULL") << AH / cutting_plane;  //FIXME
+      p_out.take("AFFINE_HULL") << AH / cutting_plane;
    }
 
    if (!options["no_labels"]) {

@@ -890,9 +890,13 @@ sub determine_architecture {
       }
 
       # no arch flags set
-      unless ($options{native} eq ".none." or "$CFLAGS $CXXFLAGS" =~ /(?:^|\s)-m(?:arch|tune|cpu)=/) {
-         $CFLAGS .= " -march=native";
-         $CXXFLAGS .= " -march=native";
+      if ($options{native} ne ".none.") {
+         if ("$CFLAGS $CXXFLAGS" =~ /(?:^|\s)-m(?:arch|tune|cpu)=(\w+)/) {
+            $options{native} = ".none." unless $1 eq "native";
+         } else {
+            $CFLAGS .= " -march=native";
+            $CXXFLAGS .= " -march=native";
+         }
       }
    }
    print "ok ($Arch)\n";
@@ -1649,7 +1653,7 @@ AR=$Config::Config{ar}
 ---
 
    # write configuration variables for successfully configured bundled extensions
-   foreach my $ext (keys %ext_survived) {
+   foreach my $ext (sort keys %ext_survived) {
       write_config_vars("Polymake::Bundled::$ext", "bundled.$ext.", $conf);
       print $conf "bundled.$ext.RequireExtensions=@{$ext_requires{$ext}}\n";
    }

@@ -148,6 +148,9 @@ sub proceed {
    if (defined $Polymake::Configure::CLANGversion) {
       $CXXFLAGS .= " -Wno-deprecated-register";
    }
+
+   # remove old -std= versions from CXXFLAGS which would override our c++14
+   $CXXFLAGS =~ s/-std=(?:c|gnu)\+\+(?:11|0x|03)//g;
    
    $LIBS .= " -ldl" unless $LIBS =~ /-ldl/ or $^O ne "linux";
 

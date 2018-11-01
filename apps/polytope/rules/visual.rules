@@ -523,14 +523,14 @@ user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cu
    my $all_ones=ones_vector<Float>($this->N_RAYS+1);
    my $v= $all_ones | ($rays / $zero);
 
-   my $vif=new IncidenceMatrix($this->FACETS_THRU_RAYS->rows()+1,$this->N_RAYS+1);
-   $vif->minor(~[$this->FACETS_THRU_RAYS->rows()],~[$this->RAYS->rows()])=$this->FACETS_THRU_RAYS;
-   for(my $j=0; $j < $vif->rows()-1;++$j){
-       $vif->row($j) += $this->RAYS->rows();
+   my $ftv=new IncidenceMatrix($this->FACETS_THRU_RAYS->rows()+1,$this->N_RAYS+1);
+   $ftv->minor(~[$this->FACETS_THRU_RAYS->rows()],~[$this->RAYS->rows()])=$this->FACETS_THRU_RAYS;
+   for(my $j=0; $j < $ftv->rows()-1;++$j){
+       $ftv->row($j) += $this->RAYS->rows();
    }
-   $vif->row($this->FACETS_THRU_RAYS->rows()) += new Set(0..$this->RAYS->rows()-1);
+   $ftv->row($this->FACETS_THRU_RAYS->rows()) += new Set(0..$this->RAYS->rows()-1);
 
-   my $p=new polytope::Polytope<Float>(VERTICES => $v, LINEALITY_SPACE => zero_vector<Float>() | $lineality, VERTICES_IN_FACETS=>$vif);
+   my $p=new polytope::Polytope<Float>(VERTICES => $v, LINEALITY_SPACE => zero_vector<Float>() | $lineality, FACETS_THRU_VERTICES=>$ftv);
    
    my $pv= ($lineality->rows > 0 && $this->CONE_DIM > 1) ?
       $p->VISUAL( $decor , BoundingBox=>$bb->{BoundingBox} ) :

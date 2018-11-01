@@ -20,6 +20,7 @@
 #include "polymake/hash_set"
 #include "polymake/ListMatrix.h"
 
+#define MA
 #define GMP
 extern "C" {
   #include <lrslib.h>
@@ -32,6 +33,7 @@ extern "C" {
 #undef copy
 #undef sign
 #undef GMP
+#undef MA
 
 namespace polymake { namespace polytope { namespace lrs_interface {
 

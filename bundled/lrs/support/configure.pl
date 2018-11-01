@@ -17,7 +17,7 @@
 
 sub allowed_options {
    my ($allowed_options, $allowed_with)=@_;
-   @$allowed_with{ qw( lrs ) }=();
+   @$allowed_with{ qw( lrs lrs-include ) }=();
 }
 
 
@@ -26,7 +26,8 @@ sub usage {
                 "                   By default, polymake will try to use a system-wide\n",
                 "                   installation or fall back to the bundled lrslib\n",
                 "                   (bundled/lrs/external/lrs) if it exists.\n",
-                "                   To force the bundled version, specify 'bundled' as PATH.\n";
+                "                   To force the bundled version, specify 'bundled' as PATH.\n",
+                "  --with-lrs-include=PATH  Path to the folder containing lrslib.h\n";
 }
 
 sub check_bundled {
@@ -36,7 +37,9 @@ sub check_bundled {
 sub proceed {
    my ($options)=@_;
    my $lrs_path;
-   my $lrsversion;
+   my $lrs_inc = $options->{'lrs-include'};
+   my $lrs_version;
+   my $lrs_libname = "lrs";
    $UseBundled = 1;
    # suppress lrs output when it was built without LRS_QUIET
    # 1: use /dev/null as output stream instead of nullptr
@@ -44,26 +47,39 @@ sub proceed {
    # we check whether solving an unbounded lp produces output
    my $suppress_output=0;
 
+
    if (defined ($lrs_path=$options->{lrs}) and $lrs_path ne "bundled") {
-      my $lrs_inc="$lrs_path/include";
-      my $lrs_lib=Polymake::Configure::get_libdir($lrs_path, "lrsgmp");
-      if (-f "$lrs_inc/lrslib.h" && -f "$lrs_lib/liblrsgmp.$Config::Config{so}" ) {
-         $CFLAGS = "-I$lrs_inc";
+      my $lrs_lib = Polymake::Configure::get_libdir($lrs_path, $lrs_libname);
+      unless (-f "$lrs_lib/lib$lrs_libname.$Config::Config{so}" ||
+              -f "$lrs_lib/lib$lrs_libname.a") {
+         # retry for legacy lrsgmp
+         $lrs_libname = "lrsgmp";
+         $lrs_lib = Polymake::Configure::get_libdir($lrs_path, $lrs_libname)
+      }
+
+      $lrs_inc //= "$lrs_path/include";
+      if (-f "$lrs_inc/lrslib/lrslib.h") {
+         $lrs_inc = "$lrs_inc/lrslib";
+      } elsif (!-f "$lrs_inc/lrslib.h") {
+         die "Invalid installation location of lrslib: header file lrslib.h not found\n";
+      }
+
+      if (-f "$lrs_lib/lib$lrs_libname.$Config::Config{so}" ) {
          $LDFLAGS = "-L$lrs_lib -Wl,-rpath,$lrs_lib";
-      } elsif (-f "$lrs_inc/lrslib.h" && -f "$lrs_lib/liblrsgmp.a" ) {
-         $CFLAGS = "-I$lrs_inc";
+      } elsif (-f "$lrs_lib/lib$lrs_libname.a" ) {
          $LDFLAGS = "-L$lrs_lib";
       } else {
-         die "Invalid installation location of lrslib: header file lrslib.h and/or library liblrsgmp.$Config::Config{so} / liblrsgmp.a not found\n";
+         die "Invalid installation location of lrslib: library lib{lrs,lrsgmp}.$Config::Config{so} / lib{lrs,lrsgmp}.a not found\n";
       }
    }
 
    if ($lrs_path ne "bundled") {
-      my $error=Polymake::Configure::build_test_program(<<'---', LIBS => "-llrsgmp -lgmp", CXXFLAGS => "$CFLAGS", LDFLAGS => "$LDFLAGS");
+      my $testcode = <<'---';
 #include <cstddef>
 #include <iostream>
 #include <gmp.h>
 #define GMP
+#define MA
 extern "C" {
    #include <lrslib.h>
 }
@@ -102,6 +118,17 @@ int main (int argc, char *argv[])
    exit(0);
 }
 ---
+
+RETRY:
+      $CFLAGS .=" -I$lrs_inc" if defined($lrs_inc);
+
+      my $error=Polymake::Configure::build_test_program($testcode, LIBS => "-l$lrs_libname -lgmp", CXXFLAGS => "$CFLAGS", LDFLAGS => "$LDFLAGS");
+
+      if ($error =~ /cannot find -llrs/ && $lrs_libname eq "lrs") {
+         $lrs_libname = "lrsgmp";
+         goto RETRY;
+      }
+
       if ($?==0) {
          my $message=Polymake::Configure::run_test_program();
          if ($?) {
@@ -117,13 +144,28 @@ int main (int argc, char *argv[])
                $suppress_output = 2
                   if ($message =~ / gmp v\.\d+\.\d+/);
                $UseBundled = 0;
-               $lrsversion = $lrsver;
+               $lrs_version = $lrsver;
             } else {
                check_bundled() and !defined($lrs_path) or
                   die "Your lrslib version $lrsver is too old, at least version 5.1 is required.\n";
             }
          }
       } else {
+         if ($error =~ /lrslib\.h/m) {
+            (my $newcode = $testcode) =~ s#<lrslib.h>#<lrslib/lrslib.h>#g;
+            open my $source, "echo '$newcode' | $Polymake::Configure::CXX $CFLAGS -xc++ -E - 2>/dev/null |"
+               or die "This looks like recent lrslib with lrslib.h in a lrslib subfolder but we could not\n",
+                      "run the preprocessor to find the lrslib include path '$Polymake::Configure::CXX $CFLAGS -xc++ -E -': $!\n",
+                      "You can try specifying --with-lrs-include";
+            while (<$source>) {
+               if (m{\# \d+ "(\S+)/lrslib\.h"}) {
+                  $CFLAGS .= " -I$1";
+                  close $source;
+                  goto RETRY;
+               }
+            }
+            close $source;
+         }
          check_bundled() and !defined($lrs_path) or
             die "Could not compile a test program checking for lrs library.\n",
                 "The most probable reasons are that the library is installed at a non-standard location,\n",
@@ -140,10 +182,10 @@ int main (int argc, char *argv[])
       undef $LIBS;
       $CFLAGS='-I${root}/bundled/lrs/external/lrs';
    } else {
-      $LIBS="-llrsgmp";
+      $LIBS="-l$lrs_libname";
       $CFLAGS.=" -DPM_LRS_SUPPRESS_OUTPUT=$suppress_output" if $suppress_output;
    }
 
-   return $UseBundled ? "bundled" : ("$lrsversion @ ".($lrs_path//"system"));
+   return $UseBundled ? "bundled" : ("$lrs_version @ ".($lrs_path//"system"));
 
 }

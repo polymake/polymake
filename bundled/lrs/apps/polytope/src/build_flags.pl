@@ -7,7 +7,7 @@
         LIBNAME => 'lrsgmp',
         SOURCEDIR => '${root}/bundled/lrs/external/lrs',
         SOURCES => [ qw(lrslib.c lrsgmp.c) ],
-        CFLAGS => '-DGMP -DLRS_QUIET',
+        CFLAGS => '-DGMP -DMA -DLRS_QUIET',
       } )
   : ()
 )

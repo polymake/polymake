@@ -103,6 +103,11 @@ int main() {
           "and specify its location using --with-soplex=PATH.\n",
           "The complete error log follows:\n\n$error\n";
    }
+
+   if (defined($Polymake::Configure::GCCversion) && Polymake::Configure::v_cmp($Polymake::Configure::GCCversion, "8.0.0") >= 0) {
+      $CXXFLAGS .= " -Wno-class-memaccess";
+   }
+
    $LIBS="-lsoplex -lz";
    return "$version [$gmp] @ $path";
 }

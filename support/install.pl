@@ -589,9 +589,9 @@ sub install_bin_scripts {
       s{^\#!\S+}{#!$Config::Config{perlpath}}s;
    }
 
-   s/=Version(?=;)/=$Version/;
-   s/=InstallTop(?=;)/="$ConfigFlags{InstallTop}"/;
-   s/=InstallArch(?=;)/="$ConfigFlags{InstallArch}"/;
+   s{=Version(?=;)}{=$Version};
+   s{=InstallTop(?=;)}{='$ConfigFlags{InstallTop}'};
+   s{=InstallArch(?=;)}{='$ConfigFlags{InstallArch}'};
 
    if (-e "$InstallBin/polymake-config") {
       unlink "$InstallBin/polymake-config"

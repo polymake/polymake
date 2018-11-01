@@ -101,15 +101,14 @@ pm::Integer operator*(unsigned int a, const pm::Integer& b)
 }
 
 inline bool int_quotient(pm::Integer& Quot, const pm::Integer& Num, const pm::Integer& Den){
-   pm::Div<pm::Integer> div = pm::div(Num,Den);
-   Quot = div.quot;
-   return !div.rem.is_zero();
+   Quot = abs(Num)/abs(Den);
+   return Quot*abs(Den)!=abs(Num);
 }
 
 inline bool int_quotient(long long& Quot, const pm::Integer& Num, const pm::Integer& Den){
-   pm::Div<pm::Integer> div = pm::div(Num,Den);
-   try_convert(Quot,div.quot);
-   return !div.rem.is_zero();
+   pm::Integer QI = abs(Num)/abs(Den);
+   Quot = (long long) QI;
+   return QI*abs(Den)!=abs(Num);
 }
 
 }

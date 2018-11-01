@@ -8,7 +8,7 @@ if ($ConfigFlags{'bundled.sympol.UseBundled'}) {
                         yal/reportlevel.cpp symmetrycomputation.cpp symmetrycomputationadm.cpp symmetrycomputationdirect.cpp symmetrycomputationidm.cpp
                         symmetrygroupconstruction/graphconstructiondefault.cpp symmetrygroupconstruction/matrixconstruction.cpp symmetrygroupconstruction/matrixconstructiondefault.cpp ) ],
        'raycomputationcdd.cpp' => '-DGMPRATIONAL ${bundled.cdd.CFLAGS}',
-       'raycomputationlrs.cpp' => '-DGMP ${bundled.lrs.CFLAGS}',
+       'raycomputationlrs.cpp' => '-DGMP -DMA ${bundled.lrs.CFLAGS}',
        $ConfigFlags{ExternalHeaders} =~ /\bpermlib\b/
        ? ( CXXFLAGS => '-I${root}/include/external/permlib' ) : (),
     },

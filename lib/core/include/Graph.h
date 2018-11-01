@@ -995,6 +995,7 @@ public:
    {
       permute_entries(dir()).copy(src.R, R, perm, inv_perm);
       n_nodes=src.n_nodes;
+      R->prefix().n_edges=src.edges();
    }
 
 #if POLYMAKE_DEBUG

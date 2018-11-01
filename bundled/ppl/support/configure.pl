@@ -93,6 +93,10 @@ int main() {
           "Please remember to enable C++ interface and GMP support when configuring the libppl!\n";
    }
 
+   if (defined($Polymake::Configure::GCCversion) && Polymake::Configure::v_cmp($Polymake::Configure::GCCversion, "8.0.0") >= 0) {
+      $CXXFLAGS .= " -Wno-class-memaccess";
+   }
+
    $LIBS="-lppl";
    return "$ppl_version @ ".($ppl_path//"system");
 }

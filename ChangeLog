@@ -1,15 +1,33 @@
 Changelog
 
+=== Polymake 3.2r4 ===
+
+-- distribution --
+ * several small bug fixes
+ * support for lrslib 070
+ * fix order in config.ninja for reproducibility
+
+-- graph --
+ * fix edge number of permuted graphs
+
+-- polytope --
+ * vertex_figure: correct intermediate LP
+ * BOUNDED_COMPLEX: correct ADJACENCY
+ * normaliz interface: two minor fixes
+ * Cone-VISUAL: fix incidences
+ * tensor: dont compare example output
+   (order depends on cdd version)
+
 === Polymake 3.2r3 ===
 
 -- distribution --
-* small bug fixes
-* threejs is the default viewer if jreality is not configured
-* support for java 10
-* adapt to changes in boost 1.67
-* fix for JuPyMake support on Mac OS X
-* removed fink as the default package manager for Mac OS X
-* included support for the brew package manager on Mac OS X
+ * small bug fixes
+ * threejs is the default viewer if jreality is not configured
+ * support for java 10
+ * adapt to changes in boost 1.67
+ * fix for JuPyMake support on Mac OS X
+ * removed fink as the default package manager for Mac OS X
+ * included support for the brew package manager on Mac OS X
 
 
 === Polymake 3.2r2 ===

@@ -152,8 +152,11 @@ while (defined ($_=shift)) {
       close CC;
       if ($^O eq "darwin") {
          $ldflags="$ConfigFlags{ARCHFLAGS} $ldflags -flat_namespace";
-      } elsif ($add_rpath) {
-         $ldflags.=" -Wl,-rpath,$ConfigFlags{InstallLib}";
+      } else {
+         $ldflags .= " -Wl,-E";
+         if ($add_rpath) {
+            $ldflags .= " -Wl,-rpath,$ConfigFlags{InstallLib}";
+         }
       }
       $ldflags=~s/^\s+//; $ldflags=~s/\s+$//; $ldflags=~s/\s{2,}/ /g;
       if ($debug_asked=defined($debug)) {

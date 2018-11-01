@@ -187,7 +187,7 @@ sub retrieve_config_command_line {
    local $_;
    if ($config_file =~ /\.ninja$/) {
       while (<$conf>) {
-         s{^\s*configure\.command[ \t]*=[ \t]*(?:\S+/configure(?=\s))?}{} and last;
+         s{^\s*configure\.command[ \t]*=(?:[ \t]*\S+/configure(?=\s))?}{} and last;
       }
       unless ($_) {
          die <<"---";

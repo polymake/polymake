@@ -29,5 +29,6 @@ namespace polymake { namespace common { namespace {
    };
 
    FunctionInstance4perl(permuted_inv_nodes_X_X, perl::Canned< const Graph< Undirected > >, perl::Canned< const Array< int > >);
+   FunctionInstance4perl(permuted_inv_nodes_X_X, perl::Canned< const Graph< Directed > >, perl::Canned< const Array< int > >);
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } } }

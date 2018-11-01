@@ -131,8 +131,15 @@ perl::ListReturn normaliz_compute_with(perl::Object c, perl::OptionSet options,
         (std::is_same<Scalar,mpz_class>::value && options["skip_long"]))
      nmzCone.deactivateChangeOfPrecision();
   nmzCone.compute(todo);
-  if (options["degree_one_generators"])
-    result << stdvectorvector_to_pmMatrix<Integer>(nmzCone.getDeg1Elements());
+  if (options["degree_one_generators"]){
+       Integer d(nmzCone.getGradingDenom());
+       if(d == 1){
+          result << stdvectorvector_to_pmMatrix<Integer>(nmzCone.getDeg1Elements());
+       } else {
+          Matrix<Integer> empty(0, c.give("CONE_DIM"));
+          result << empty;
+       }
+    }
   if (options["hilbert_basis"]){
      result << Matrix<Integer>(stdvectorvector_to_pmMatrix<Integer>(nmzCone.getHilbertBasis()));
      result << Matrix<Integer>(stdvectorvector_to_pmMatrix<Integer>(nmzCone.getMaximalSubspace()));

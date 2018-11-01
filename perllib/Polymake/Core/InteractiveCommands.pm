@@ -821,6 +821,7 @@ sub reconfigure {
    }
 
    require Polymake::Configure;
+   $self->set_build_dir;
    my $err=Configure::configure_extension($self, "--force", @config_options);
    if ($err ne "silent\n") {
       if ($err) {

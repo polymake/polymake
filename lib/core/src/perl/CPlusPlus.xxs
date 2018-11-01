@@ -1698,7 +1698,6 @@ BOOT:
       CvNODEBUG_on(get_cv("Polymake::Core::CPlusPlus::call_ellipsis_function", false));
       CvNODEBUG_on(get_cv("Polymake::Core::CPlusPlus::composite_access", false));
       CvNODEBUG_on(get_cv("Polymake::Core::CPlusPlus::assign_to_cpp_object", false));
-      CvNODEBUG_on(get_cv("Polymake::Core::CPlusPlus::assign_array_to_cpp_object", false));
       CvNODEBUG_on(get_cv("Polymake::Core::CPlusPlus::overload_clone_op", false));
       CvNODEBUG_on(get_cv("Polymake::Core::CPlusPlus::convert_to_string", false));
       CvNODEBUG_on(get_cv("Polymake::Core::CPlusPlus::convert_to_int", false));

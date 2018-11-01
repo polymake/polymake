@@ -211,6 +211,7 @@ Main::Main(const std::string& user_opts, std::string install_top, std::string in
    PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
    if (perl_parse(aTHXx_ xs_init, argc, (char**)argv, *env)) {
       destroy_perl(aTHXx);
+      PL_curinterp = nullptr;
       throw std::runtime_error("could not initialize the perl interpreter");
    }
 #ifdef PERL_IMPLICIT_CONTEXT
