@@ -71,7 +71,7 @@ my $help_line_start=qr{^[ \t]*\#[ \t]*}m;
 
 sub add {
    my ($self, $path, $text, $signature)=@_;
-   unless (is_ARRAY($path)) {
+   unless (is_array($path)) {
       $path=[ split m'/', $path ];
    }
    my ($source_file, $source_line, @example_start_lines);
@@ -339,7 +339,8 @@ sub add {
 }
 #################################################################################
 sub add_tparams {
-   my $self=shift;
+   my $self = shift;
+   $self->annex->{mandatory_tparams} = shift;
    $self->annex->{tparam} //= [ map { [ $_ ] } @_ ];
 }
 #################################################################################
@@ -398,7 +399,7 @@ sub write_function_text {
                my $keys;
                $writer->function_options($opt_group->text, map { defined($keys=$_->annex->{keys}) ? @$keys : () } $opt_group, @{$opt_group->related});
             } else {
-               my $comment=local_shift($opt_group);
+               my $comment = local shift @$opt_group;
                $writer->function_options($comment, @$opt_group);
             }
          }
@@ -420,7 +421,7 @@ sub write_function_text {
                my $keys;
                push @options, map { defined($keys=$_->annex->{keys}) ? @$keys : () } $opt_group, @{$opt_group->related};
             } else {
-               local_shift($opt_group);
+               local shift @$opt_group;
                push @options, @$opt_group;
             }
          }
@@ -586,7 +587,7 @@ sub argument_completions {
                   push @matching, grep { /^\Q$prefix\E/ } map { $_->[1] } @$keys;
                }
             } else {
-               local_shift($opt_group);
+               local shift @$opt_group;
                push @matching, grep { /^\Q$prefix\E/ } map { $_->[1] } @$opt_group;
             }
          }
@@ -688,7 +689,7 @@ redefine Help;
 require Polymake::Core::HelpAsPlainText;
 
 #################################################################################
-package _::Example;
+package Polymake::Core::InteractiveHelp::Example;
 
 use Polymake::Struct (
    [ new => '$$$@' ],
@@ -699,7 +700,7 @@ use Polymake::Struct (
 );
 
 #################################################################################
-package __::Specialization;
+package Polymake::Core::InteractiveHelp::Specialization;
 
 use Polymake::Struct (
    [ new => '$$' ],

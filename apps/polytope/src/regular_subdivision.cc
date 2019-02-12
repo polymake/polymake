@@ -28,7 +28,7 @@ regular_subdivision(const Matrix<Scalar> &vertices, const Vector<Scalar>& weight
 {
    //construct the lifted polytope + a ray
    const Matrix<Scalar> lifted_vertices=(vertices|weight)/unit_vector<Scalar>(vertices.cols()+1,vertices.cols());
-   perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p("Polytope", mlist<Scalar>());
    p.take("POINTS") << lifted_vertices;
 
    //we have to check for the case in which the subdivision is trivial
@@ -43,8 +43,7 @@ regular_subdivision(const Matrix<Scalar> &vertices, const Vector<Scalar>& weight
     
    Set<int> simplices;
    int i=0;
-   for (typename Entire< typename Matrix<Scalar>::col_type >::const_iterator last_col=entire(cols(facets).back());
-        !last_col.at_end(); ++last_col, ++i)
+   for (auto last_col=entire(cols(facets).back()); !last_col.at_end(); ++last_col, ++i)
       if (*last_col>0)
          simplices.push_back(i); //the lower facets are those with last coordinate>0
 

@@ -873,34 +873,65 @@ use Polymake::Struct (
    [ '@ISA' => 'PointSet' ],
 );
 
-sub newEdge {
-   my ($self, $var, $a, $b) = @_;
-
-   return $self->newGeometry($var) . $self->newVertex($var, $a) . $self->newVertex($var, $b) . $self->newLine($var);
+sub newArrowHelper {
+   my ($self, $var, $f, $t, $length, $color, $ahead_length, $ahead_width) = @_;
+   return <<"%"
+   var length = allpoints[$t].vector.distanceTo(allpoints[$f].vector)-allpoints[$t].sphere.geometry.parameters.radius;
+   var direction = allpoints[$t].vector.clone()
+   direction.sub(allpoints[$f].vector)
+   direction.normalize();
+   var $var = new THREE.ArrowHelper(direction, allpoints[$f].vector, length, $color, $ahead_length*length, $ahead_width);
+	obj.add($var);
+%
 }
 
+sub newEdge {
+   my ($self,$var,$edge,$linewidth,$color,$label,$arrow)=@_; 
+   my ($f, $t) = $arrow!=-1 ? @$edge : reverse @$edge;
+   my $length = 1;
+	my $arrowheadlength = $ThreeJS::default::arrowheadlength;
+	my $arrowheadwidth = $ThreeJS::default::arrowheadwidth;
+	if ($arrow==1) {
+		return $self->newArrowHelper($var, $f, $t, $length, $color, $arrowheadlength, $arrowheadwidth);
+   } elsif ($arrow==-1) {
+		
+	} else {
+		return $self->newGeometry($var) . $self->newVertex($var, $f) . $self->newVertex($var, $t) . $self->newLine($var);
+	}
+}
 
 sub linesToString {
    my ($self, $var)=@_;
+	my $points_thickness = $ThreeJS::default::points_thickness;
+	my $lines_thickness = $ThreeJS::default::lines_thickness;
+# for arrows in directed graphs: keep undef for the same color as the edge
 
-#  TODO: arrows
-#    my $arrows=$self->source->ArrowStyle;
-
-   #   if($arrows==1) {
-   #       TODO
-   #   } elsif($arrows==-1) {
-   #       TODO
-   #   }
-
+	my $G = $self->source;
+	my $thickness = $G->EdgeThickness // 1;
+   my $style = $G->EdgeStyle;
+   my $labels = $G->EdgeLabels;
+   my $color = $G->EdgeColor;
+   my $static_color; 
+   if (defined($color) && !is_code($color)) {
+      $static_color=$color;
+   }
+   my $arrowstyle=$G->ArrowStyle;
    my $text ="";
 
-   if ($self->source->EdgeStyle !~ $Visual::hidden_re) {
+   if ($style !~ $Visual::hidden_re) {
       $text .= $self->newMaterial($var, "Edge");
-
       $text .= "\n   <!-- EDGES -->\n";
 
       for (my $e=$self->source->all_edges; $e; ++$e) {
-         $text .= $self->newEdge($var, $e->[0], $e->[1]);
+			my $thick = (is_code($thickness)) ? $thickness->($e) : $thickness;
+			my $line_width = $thick * $lines_thickness;
+			my $label = defined($labels) ? $labels->($e) : undef;
+			next unless $line_width || $label;
+			my $col = $static_color // $color->($e) // Visual::get_RGB($Visual::Color::edges);
+			my @col = split ' ', $col;
+			$col = Utils::rgbToHex(@col);
+			my $arrow_dir = is_code($arrowstyle) ? $arrowstyle->($e) : $arrowstyle;      
+			$text .= $self->newEdge($var,$e,$line_width,$col,$label,$arrow_dir);
       }
    }
 

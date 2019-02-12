@@ -74,18 +74,18 @@ public:
    template <typename Container>
    explicit Vector(const Container& src,
                    typename std::enable_if<isomorphic_to_container_of<Container, E, is_vector>::value, void**>::type=nullptr)
-      : data(src.size(), ensure(src, (dense*)0).begin()) {}
+      : data(src.size(), ensure(src, dense()).begin()) {}
 
    Vector(const GenericVector<Vector>& v) : data(v.top().data) {}
 
    template <typename Vector2>
    Vector(const GenericVector<Vector2, E>& v)
-      : data(v.dim(), ensure(v.top(), (dense*)0).begin()) {}
+      : data(v.dim(), ensure(v.top(), dense()).begin()) {}
 
    template <typename Vector2, typename E2>
    explicit Vector(const GenericVector<Vector2, E2>& v,
-                   typename std::enable_if<can_initialize<E2, E>::value, void**>::type=nullptr)
-      : data(v.dim(), ensure(v.top(), (dense*)0).begin()) {}
+                   std::enable_if_t<can_initialize<E2, E>::value, void**> =nullptr)
+      : data(v.dim(), ensure(v.top(), dense()).begin()) {}
 
    template <typename E2,
              typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
@@ -131,7 +131,7 @@ public:
              typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
    Vector& operator|= (const GenericVector<Vector2, E2>& v)
    {
-      data.append(v.dim(), ensure(v.top(), (dense*)0).begin());
+      data.append(v.dim(), ensure(v.top(), dense()).begin());
       return *this;
    }
 
@@ -159,7 +159,7 @@ protected:
    template <typename Container>
    void assign(const Container& c)
    {
-      data.assign(get_dim(c), ensure(c, (dense*)0).begin());
+      data.assign(get_dim(c), ensure(c, dense()).begin());
    }
 
    template <typename Operation>
@@ -171,7 +171,7 @@ protected:
    template <typename Container, typename Operation>
    void assign_op(const Container& c, const Operation& op)
    {
-      data.assign_op(ensure(c, (dense*)0).begin(), op);
+      data.assign_op(ensure(c, dense()).begin(), op);
    }
 
    template <typename E2>
@@ -185,7 +185,7 @@ template <typename TVector, typename E, typename Permutation> inline
 typename std::enable_if<!TVector::is_sparse, Vector<E>>::type
 permuted(const GenericVector<TVector, E>& v, const Permutation& perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<TVector>::value) {
+   if (POLYMAKE_DEBUG || is_wary<TVector>()) {
       if (v.dim() != int(perm.size()))
          throw std::runtime_error("permuted - dimension mismatch");
    }
@@ -196,7 +196,7 @@ template <typename TVector, typename E, typename Permutation> inline
 typename std::enable_if<!TVector::is_sparse, Vector<E>>::type
 permuted_inv(const GenericVector<TVector, E>& v, const Permutation& perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<TVector>::value) {
+   if (POLYMAKE_DEBUG || is_wary<TVector>()) {
       if (v.dim() != int(perm.size()))
          throw std::runtime_error("permuted_inv - dimension mismatch");
    }

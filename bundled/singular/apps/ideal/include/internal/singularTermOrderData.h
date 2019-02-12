@@ -20,7 +20,7 @@
 #include "polymake/client.h"
 #include "polymake/Polynomial.h"
 
-#include "Singular/libsingular.h"
+#include "polymake/ideal/internal/singularInclude.h"
 
 namespace polymake { 
 namespace ideal {
@@ -33,8 +33,8 @@ typedef typename std::remove_pointer<decltype(ip_sring::order)>::type singular_o
 
 singular_order_type StringToSingularTermOrder(std::string ringOrderName);
 
-template<typename OrderType>
-class SingularTermOrderData_base{
+template <typename OrderType>
+class SingularTermOrderData_base {
 
 protected:
    const OrderType orderData;
@@ -42,15 +42,20 @@ protected:
 
 public:
    // Constructor:
-   SingularTermOrderData_base(const int n_vars, const OrderType& order) : orderData(order), n_vars(n_vars){
-      if(n_vars == 0) 
+   SingularTermOrderData_base(const int n_vars_, const OrderType& order)
+     : orderData(order)
+     , n_vars(n_vars_)
+   {
+      if (n_vars == 0) 
          throw std::runtime_error("Given ring is not a polynomial ring.");
    }
+
    // Comparison:
-   friend bool operator==(const SingularTermOrderData_base<OrderType> &data1, const SingularTermOrderData_base<OrderType> &data2){
-      //return true;
-      return(data1.orderData == data2.orderData);
+   bool operator== (const SingularTermOrderData_base<OrderType>& other)
+   {
+      return orderData == other.orderData;
    }
+
    // Getters:
    // Not depending on template
    int get_ord_size() const;
@@ -64,8 +69,7 @@ public:
 };
 
 template <typename OrderType> 
-class SingularTermOrderData : 
-public SingularTermOrderData_base<OrderType> {
+class SingularTermOrderData : public SingularTermOrderData_base<OrderType> {
 public:
 //   SingularTermOrderData(const Ring<>& r, const OrderType& order) : SingularTermOrderData_base<OrderType>(r,order) {}
 };
@@ -102,9 +106,10 @@ int* SingularTermOrderData_base<OrderType>::get_block1() const {
 // Methods that do depend on template
 
 
-template<typename Scalar> class SingularTermOrderData<Matrix<Scalar> > : public SingularTermOrderData_base<Matrix<Scalar> > {
+template <typename Scalar>
+class SingularTermOrderData<Matrix<Scalar>> : public SingularTermOrderData_base<Matrix<Scalar>> {
 public:
-   SingularTermOrderData(const int n_vars, const Matrix<Scalar>& order) : SingularTermOrderData_base< Matrix<Scalar> >(n_vars,order) {}
+   using SingularTermOrderData_base<Matrix<Scalar>>::SingularTermOrderData_base;
 
    int get_ord_size() const {
      return this->orderData.rows()+1;
@@ -161,9 +166,10 @@ public:
    }
 };
 
-template<typename Scalar> class SingularTermOrderData<Vector<Scalar> > : public SingularTermOrderData_base<Vector<Scalar> > {
+template <typename Scalar>
+class SingularTermOrderData<Vector<Scalar>> : public SingularTermOrderData_base<Vector<Scalar> > {
 public:
-   SingularTermOrderData(const int n_vars, const Vector<Scalar>& order) : SingularTermOrderData_base< Vector<Scalar> >(n_vars,order) {}
+   using SingularTermOrderData_base<Vector<Scalar>>::SingularTermOrderData_base;
 
    singular_order_type* get_ord() const {
       int ord_size = this->get_ord_size();
@@ -189,7 +195,8 @@ public:
 
 template<> class SingularTermOrderData<std::string> : public SingularTermOrderData_base<std::string> {
 public:
-   SingularTermOrderData(const int n_vars, const std::string& order) : SingularTermOrderData_base<std::string>(n_vars,order) {}
+   using SingularTermOrderData_base<std::string>::SingularTermOrderData_base;
+
    singular_order_type* get_ord() const {
       int ord_size = this->get_ord_size();
       singular_order_type* ord=(singular_order_type*)omalloc0((ord_size+1)*sizeof(singular_order_type));

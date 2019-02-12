@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "curve_immersion.cc",
+ "inst": [
+  {"args": ["Max", "void", "void"], "func": "rational_curve_immersion", "include": ["polymake/TropicalNumber.h"], "sig": "rational_curve_immersion:T1.x.B", "tp": "1"},
+  {"args": ["Min", "void", "void"], "func": "rational_curve_immersion", "include": ["polymake/TropicalNumber.h"], "sig": "rational_curve_immersion:T1.x.B", "tp": "1"},
+ null ],
+"version": 3}

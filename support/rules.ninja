@@ -18,7 +18,7 @@
 # compiler flags for build modes: Optimized, Debug, Coverage, and Sanitizer
 COptFLAGS = -DPOLYMAKE_DEBUG=0 -DNDEBUG ${CXXOPT}
 CDebugFLAGS = -DPOLYMAKE_DEBUG=1 ${CXXDEBUG}
-CCovFLAGS = ${CDebugFLAGS} ${CXXCOV} -DPOLYMAKE_GATHER_CODE_COVERAGE
+CCovFLAGS = -DPOLYMAKE_DEBUG=1 ${CXXCOV} -DPOLYMAKE_GATHER_CODE_COVERAGE
 CSanFLAGS = -DPOLYMAKE_DEBUG=0 -DNDEBUG ${CXXSANITIZE} ${PERLSANITIZE}
 
 # compiler flags for external software provided in bundled extensions
@@ -28,22 +28,32 @@ CexternDebugFLAGS = ${CDebugFLAGS}
 CexternCovFLAGS = ${CexternDebugFLAGS}
 CexternSanFLAGS = ${CSanFLAGS}
 
+# ccache should not be used for Coverage builds, it distorts the source file paths
+COptCACHE = ${CCACHE}
+CDebugCACHE = ${CCACHE}
+CCovCACHE =
+CSanCACHE = ${CCACHE}
+
 # linker flags for build modes
 LDOptFLAGS =
 LDDebugFLAGS = ${CXXDEBUG}
 LDCovFLAGS = ${LDDebugFLAGS} ${CXXCOV}
 LDSanFLAGS = ${CXXSANITIZE} ${PERLSANITIZE}
 
+# Make ninja record the compiler version within the command line used for building object files.
+# This will enforce recompilation after a compiler upgrade and reconfiguration even if the path to the compiler has not changed.
+RecordCompilerVersion = : 'COMPILER_USED=${GCCversion}${CLANGversion}'
+
 # compile a C++ source file
 rule cxxcompile
-  command = ${CXX} -c -o $out -MMD -MT $out -MF $out.d ${CsharedFLAGS} ${CXXFLAGS} ${ARCHFLAGS} ${CmodeFLAGS} ${CXXextraFLAGS} ${CXXincludes} ${includeSource} $in
+  command = ${CCWRAPPER} ${CmodeCACHE} ${CXX} -c -o $out -MMD -MT $out -MF $out.d ${CsharedFLAGS} ${CXXFLAGS} ${ARCHFLAGS} ${CmodeFLAGS} ${CXXextraFLAGS} ${CXXincludes} $in && ${RecordCompilerVersion}
   description = COMPILE $out
   depfile = $out.d
   deps = gcc
 
 # compile a C source file
 rule ccompile
-  command = ${CC} -c -o $out -MMD -MT $out -MF $out.d ${CsharedFLAGS} ${CFLAGS} ${ARCHFLAGS} ${CmodeFLAGS} ${CextraFLAGS} $in
+  command = ${CCWRAPPER} ${CmodeCACHE} ${CC} -c -o $out -MMD -MT $out -MF $out.d ${CsharedFLAGS} ${CFLAGS} ${ARCHFLAGS} ${CmodeFLAGS} ${CextraFLAGS} $in && ${RecordCompilerVersion}
   description = COMPILE $out
   depfile = $out.d
   deps = gcc
@@ -65,15 +75,15 @@ rule gen_applib_stubs
 
 # fill a static library
 rule staticlib
-  command = ${AR} -rcs $out $in
+  command = ${CCWRAPPER} ${AR} -rcs $out $in
   description = AR $out
 
 # link a shared module
 rule sharedmod
-  command = ${CXX} ${LDsharedFLAGS} ${ARCHFLAGS} -o $out $in ${LDmodeFLAGS} ${LDextraFLAGS} ${LIBSextra} ${LDFLAGS} ${LIBS}
+  command = ${CCWRAPPER} ${CXX} ${LDsharedFLAGS} ${ARCHFLAGS} -o $out $in ${LDmodeFLAGS} ${LDextraFLAGS} ${LIBSextra} ${LDFLAGS} ${LIBS}
   description = LD $out
 
-# create an empty file as a placeholder for something missing
+# create an empty file as a timestamp of an accomplished task or as a placeholder for something missing
 rule emptyfile
   command = touch $out
 
@@ -92,6 +102,24 @@ rule gen_targets
   generator = 1
   depfile = $out.d
   deps = gcc
+
+# generate the list of all source files
+rule gen_file_list
+  command = ${PERL} ${root}/support/generate_ninja_targets.pl --$what $out $in
+  description = GENERATE $out
+  restat = 1
+
+# check the timestamp of a file
+rule inspect
+  command = : $out
+  description = INSPECT $out
+  restat = 1
+
+# generate a cpperl module from the input list (JSON)
+rule gen_cpperl_mod
+  command = ${PERL} ${root}/support/generate_cpperl_modules.pl --gen-rules ${buildroot}/cpperl/gen.ninja ${CPPERLextraFlags} $in $out
+  description = GENERATE C++ modules from $in
+  restat = 1
 
 # regenerate included target lists if necessary
 build ${buildroot}/targets.ninja: gen_targets ${config.file} | ${root}/support/generate_ninja_targets.pl

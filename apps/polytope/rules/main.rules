@@ -75,6 +75,7 @@ INCLUDE
   solids.rules
   flag_vector.rules
   lattice.rules
+  to_mip.rules
   vector_configuration.rules
   point_configuration.rules
   polarize.rules
@@ -101,11 +102,13 @@ INCLUDE
   orbit_polytope_helpers.rules
   orbit_polytope_visual.rules
   wronski.rules
+  milp_properties.rules
 
 # self-configuring rules
 INCLUDE
   postscript.rules
   common::geomview.rules
+  mptopcom.rules
   topcom.rules
   azove.rules
 
@@ -125,6 +128,7 @@ label ppl
 
 prefer *.convex_hull ppl, cdd, lrs, beneath_beyond
 
+prefer *.simplex cdd, lrs, to
 
 # Local Variables:
 # mode: perl

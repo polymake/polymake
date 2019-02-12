@@ -1,0 +1,8 @@
+{"app": "polytope", "embed": "graph_from_face_lattice.cc",
+ "inst": [
+  {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Sequential", "void"], "func": "vertex_graph", "include": ["polymake/graph/Decoration.h"], "sig": "vertex_graph:T2.B", "tp": "2"},
+  {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Sequential", "void"], "func": "facet_graph", "include": ["polymake/graph/Decoration.h"], "sig": "facet_graph:T2.B", "tp": "2"},
+  {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Nonsequential", "void"], "func": "vertex_graph", "include": ["polymake/graph/Decoration.h"], "sig": "vertex_graph:T2.B", "tp": "2"},
+  {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Nonsequential", "void"], "func": "facet_graph", "include": ["polymake/graph/Decoration.h"], "sig": "facet_graph:T2.B", "tp": "2"},
+ null ],
+"version": 3}

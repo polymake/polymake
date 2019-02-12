@@ -39,13 +39,15 @@ package PolyDB::default;
 
 # polyDB: The hostname of the database, default 'polymake.org'
 custom $db_host = "db.polymake.org";
-#custom $db_host = "130.83.68.137";
 
-# polyDB: The port of the database, default 27017
-custom $db_port = "27027";
+# polyDB: The port of the database, default 27037
+custom $db_port = "27037";
 
 # polyDB: The database username, default 'polymake'
 custom $db_user = "polymake";
+
+# polyDB: Whether to use SSL
+custom $useSSL = 1;
 
 # polyDB: The database password, default 'database'
 custom $db_pwd = "database";
@@ -56,10 +58,7 @@ custom $db_auth_db = "admin";
 # polyDB: The name of the type database, default 'pm'
 custom $db_type_db = "pm";
 
-# polyDB: The name of the info database, default 'pm'
-custom $db_info_db_old = "pm";
-
-# polyDB: The name of the info database, default 'pm'
+# polyDB: The name of the info database, default 'polyDB'
 custom $db_info_db = "polyDB";
 
 # polyDB: The name of the type_information collection, default 'type_information'
@@ -97,9 +96,9 @@ package application;
 user_function db_query ($, \
                         {db => $PolyDB::default::db_database_name, \
                         collection => $PolyDB::default::db_collection_name, \
-                        representative=>0, \
-                        distinct=>undef, \
-                        local => 0, \
+                        representative => false, \
+                        distinct => undef, \
+                        local => false, \
                         limit => 0, \
                         username => $PolyDB::default::db_user, \
                         password => $PolyDB::default::db_pwd, \
@@ -109,68 +108,62 @@ user_function db_query ($, \
 {
    my ($query, $options) = @_;
 
-   Client::check_options($options);
-   my ($client, $collection) = Client::prepare_query({ db=>$options->{"db"},
-                                                       collection=>$options->{"collection"},
-                                                       client=>$options->{"client"} });
+   my ($client, $collection) = Client::get_collection_for_query($options);
 
    my $output;
    my $construct_object_function;
-   if ( $options->{'representative'} ) {
+   if ( $options->{representative} ) {
       $output = $collection->find_one($query)
          // die "No such object in the database.\n";
-      if ( exists($output->{'polyDB'}->{'type_information_key'}) ) {
-         my $type_information_key = $output->{'polyDB'}->{'type_information_key'};
-         my $ti_query = {db => $options->{'db'},
-                         collection => $options->{'collection'},
+      if ( exists($output->{polyDB}->{type_information_key}) ) {
+         my $type_information_key = $output->{polyDB}->{type_information_key};
+         my $ti_query = {db => $options->{db},
+                         collection => $options->{collection},
                          local => $options->{local},
                          client => $client,
                          type_information_key => $type_information_key};
          my $type_information = db_get_type_information($ti_query)
             // die "Type information not found\n";
-         if ( defined($type_information->{'construct_object'} ) ) {
-            $construct_object_function = $type_information->{'construct_object'};
+         if ( defined($type_information->{construct_object} ) ) {
+            $construct_object_function = $type_information->{construct_object};
          }
       }
-   } elsif( $options->{'distinct'}) {
-      $output = $client->get_database($options->{'db'})->run_command([
-         "distinct" => $options->{'collection'},
-         "key"      => $options->{'distinct'},
-         "query"    => $query
+   } elsif( $options->{distinct}) {
+      $output = $client->get_database($options->{db})->run_command([
+         distinct => $options->{collection},
+         key      => $options->{distinct},
+         query    => $query
       ]);
    } else {
       unless ($collection->count($query)) { die "No such object in the database.\n"; }
       # get type information keys
-      my $keys = $client->get_database($options->{'db'})->run_command([
-         "distinct" => $options->{'collection'},
-         "key"      => "polyDB.type_information_key",
-         "query"    => $query,
-         "limit"    => $options->{'limit'},
-         "skip"     => $options->{'skip'}
+      my $keys = $client->get_database($options->{db})->run_command([
+         distinct => $options->{collection},
+         key      => "polyDB.type_information_key",
+         query    => $query,
+         limit    => $options->{limit},
+         skip     => $options->{skip}
       ]);
       $construct_object_function = {};
-      foreach my $key (@{$keys->{'values'}}) {
-         my $ti_query = {db => $options->{'db'},
-                         collection => $options->{'collection'},
+      foreach my $key (@{$keys->{values}}) {
+         my $ti_query = {db => $options->{db},
+                         collection => $options->{collection},
                          local => $options->{local},
                          client => $client,
                          type_information_key => $key};
          my $type_information = db_get_type_information($ti_query)
             // die "Type information for key $key not found\n";
-         if ( defined($type_information->{'construct_object'} ) ) {
-            $construct_object_function->{$key} = $type_information->{'construct_object'};
+         if ( defined($type_information->{construct_object} ) ) {
+            $construct_object_function->{$key} = $type_information->{construct_object};
          }
       }
       $output = $collection->find($query)->limit($options->{limit})->sort($options->{sort_by})->skip($options->{skip});
    }
 
-   unless (defined($options->{client})){
-      undef $client;
-   }
-   if ( $options->{'representative'}) {
+   if ( $options->{representative}) {
       return PolymakeJsonConversion::perl2polymake($output, $options->{db}, $options->{collection}, $construct_object_function);
-   } elsif($options->{'distinct'}) {
-      return $output->{'values'};
+   } elsif($options->{distinct}) {
+      return $output->{values};
    } else {
       return PolymakeJsonConversion::cursor2ObjectArray($output, $options->{db}, $options->{collection}, $construct_object_function);
    }
@@ -189,37 +182,29 @@ user_function db_query ($, \
 user_function db_count($, \
                        {db => $PolyDB::default::db_database_name, \
                        collection => $PolyDB::default::db_collection_name, \
-                       distinct=>undef, \
-                       local => 0, \
+                       distinct => false, \
+                       local => false, \
                        username => $PolyDB::default::db_user, \
                        password => $PolyDB::default::db_pwd, \
                        client => undef}) \
 {
    my ($query, $options) = @_;
 
-   Client::check_options($options);
-   my ($client, $collection) = Client::prepare_query({ db=>$options->{"db"},
-                                                       collection=>$options->{"collection"},
-                                                       client=>$options->{"client"} });
+   my ($client, $collection) = Client::get_collection_for_query($options);
 
    my $output;
-   if ( $options->{'distinct'} ) {
-      $output = $client->get_database($options->{'db'})->run_command([
-         "distinct" => $options->{'collection'},
-         "key"      => $options->{'distinct'},
-         "query"    => $query
+   if ( $options->{distinct} ) {
+      $output = $client->get_database($options->{db})->run_command([
+         distinct => $options->{collection},
+         key      => $options->{distinct},
+         query    => $query
       ])
-        // die "No such object.\n";
    } else {
       $output = $collection->count($query);
    }
 
-   unless (defined($options->{client})){
-      undef $client;
-   }
-
-   if ( $options->{'distinct'}) {
-      return scalar(@{$output->{'values'}});
+   if ( $options->{distinct}) {
+      return scalar(@{$output->{values}});
    } else {
       return $output;
    }
@@ -241,7 +226,7 @@ user_function db_count($, \
 user_function db_ids ($, \
                       {db => $PolyDB::default::db_database_name, \
                       collection => $PolyDB::default::db_collection_name, \
-                      local => 0, \
+                      local => false, \
                       limit => 0, \
                       username => $PolyDB::default::db_user, \
                       password => $PolyDB::default::db_pwd, \
@@ -251,10 +236,7 @@ user_function db_ids ($, \
 {
    my ($query, $options) = @_;
 
-   Client::check_options($options);
-   my ($client, $collection) = Client::prepare_query({ db=>$options->{"db"},
-                                                       collection=>$options->{"collection"},
-                                                       client=>$options->{"client"} });
+   my ($client, $collection) = Client::get_collection_for_query($options);
 
    my $output = $collection->find($query)->fields({'_id'=>1})->limit($options->{limit})->sort($options->{sort_by})->skip($options->{skip})
       // die "No such object.\n";

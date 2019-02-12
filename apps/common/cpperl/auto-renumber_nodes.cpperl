@@ -1,0 +1,7 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Series<int, true> const, mlist<> >&>>"], "func": "renumber_nodes", "include": ["polymake/Graph.h", "polymake/IndexedSubgraph.h", "polymake/Set.h"], "sig": "renumber_nodes.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const pm::IndexedSubgraph<pm::graph::Graph<pm::graph::Undirected> const&, pm::Series<int, true> const&, mlist<> >&>>"], "func": "renumber_nodes", "include": ["polymake/Graph.h", "polymake/IndexedSubgraph.h", "polymake/Set.h"], "sig": "renumber_nodes.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Graph<Undirected>&>>"], "func": "renumber_nodes", "include": ["polymake/Graph.h"], "sig": "renumber_nodes.X8"},
+ null ],
+"version": 3}

@@ -1,0 +1,9 @@
+{"app": "polytope", "embed": "cross.cc",
+ "inst": [
+  {"args": ["double", "int(int)", "double(double)", "void"], "func": "cross", "sig": "cross:T1.int.C0.o", "tp": "1"},
+  {"args": ["Rational", "int(int)", "Rational(int)", "void"], "func": "cross", "include": ["polymake/Rational.h"], "sig": "cross:T1.int.C0.o", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "int(int)", "QuadraticExtension<Rational>(perl::Canned<const QuadraticExtension<Rational>&>)", "void"], "func": "cross", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "cross:T1.int.C0.o", "tp": "1"},
+  {"args": ["Rational", "int(int)", "Rational(perl::Canned<const Rational&>)", "void"], "func": "cross", "include": ["polymake/Rational.h"], "sig": "cross:T1.int.C0.o", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "int(int)", "QuadraticExtension<Rational>(int)", "void"], "func": "cross", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "cross:T1.int.C0.o", "tp": "1"},
+ null ],
+"version": 3}

@@ -1,0 +1,12 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Undirected>&>"], "func": "edges", "include": ["polymake/Graph.h"], "sig": "edges:R_EdgeList.X"},
+  {"args": ["perl::Canned<const Graph<Directed>&>"], "func": "edges", "include": ["polymake/Graph.h"], "sig": "edges:R_EdgeList.X"},
+  {"args": ["perl::Canned<const Graph<UndirectedMulti>&>"], "func": "edges", "include": ["polymake/Graph.h"], "sig": "edges:R_EdgeList.X"},
+  {"args": ["perl::Canned<const Graph<UndirectedMulti>&>"], "func": "edges", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "edges:M"},
+  {"args": ["perl::Canned<const Graph<DirectedMulti>&>"], "func": "edges", "include": ["polymake/Graph.h"], "sig": "edges:R_EdgeList.X"},
+  {"args": ["perl::Canned<const Graph<DirectedMulti>&>"], "func": "edges", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "edges:M"},
+  {"args": ["perl::Canned<const Graph<Undirected>&>"], "func": "edges", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "edges:M"},
+  {"args": ["perl::Canned<const Graph<Directed>&>"], "func": "edges", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "edges:M"},
+ null ],
+"version": 3}

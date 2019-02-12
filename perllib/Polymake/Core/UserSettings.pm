@@ -19,16 +19,13 @@ use warnings qw(FATAL void syntax misc);
 
 package Polymake::Core::UserSettings;
 
-# code from other modules to run after all settings loaded
-declare @add_custom_vars;
-
 ########################################################################
 #
 # Analyze the configuration mode and load the files if necessary.
 #
 
 sub init {
-   my $mode=shift;
+   my ($mode, @custom_blocks) = @_;
    if (Application::RuleFilter::allow_config($mode)) {
       foreach (split /;/, $mode) {
          if ($_ eq "user") {
@@ -105,8 +102,7 @@ sub init {
       }
    }
 
-   $_->() for @add_custom_vars;
-   @add_custom_vars=();
+   $_->() for @custom_blocks;
 }
 
 1

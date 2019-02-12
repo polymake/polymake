@@ -77,7 +77,7 @@ perl::Object hurwitz_marked_cycle(int k, Vector<int> degree,
 
     //Since we restrict ourselves to M_0,N x {0}, we actually ignore the last coefficient
     //of ev_i and replace it by the constant coefficient 0 (for the min-max-function)
-    Matrix<int> monoms(evi_matrix.minor(All,~scalar2set(evi_matrix.cols()-1)));
+    Matrix<int> monoms(evi_matrix.minor(All, sequence(0, evi_matrix.cols()-1)));
 
     Vector<TropicalNumber<Addition> > coeffs(2);
     coeffs[0] = TropicalNumber<Addition>(0);

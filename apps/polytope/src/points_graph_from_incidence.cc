@@ -37,10 +37,10 @@ Graph<> points_graph_from_incidence(const Matrix<Rational>& points,  const Gener
 
   EdgeMap<Undirected, Set<int> > intersects(G);
 
-  for (Entire< Nodes< Graph<> > >::iterator n1=entire(nodes(G)); !n1.at_end(); ++n1) {
+  for (auto n1=entire(nodes(G)); !n1.at_end(); ++n1) {
     const Matrix<Rational> min=facets.minor(IM.col(*n1),All);
     if (rank(min)>=dim-1) { //exclude vertices in the interior of some non-edge face
-      Entire< Nodes< Graph<> > >::iterator n2=n1;
+      auto n2=n1;
       while (!(++n2).at_end()) {
         Set<int> common = IM.col(*n1) * IM.col(*n2);
         if (common.empty()) continue;

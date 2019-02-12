@@ -28,7 +28,7 @@ CREDIT polyDB
    http://www.mathematik.tu-darmstadt.de/~paffenholz
 
 CONFIGURE {
-   eval("require MongoDB;");
+   eval { require MongoDB; };
    if ($@) {
       die "Could not load perl MongoDB module: $@\n\nSee 'help \"install_mongodb\";' for an installation guide.\n";
    } else {
@@ -54,7 +54,6 @@ INCLUDE
   db_query.rules
   db_info.rules
   db_insert.rules
-  db_admin.rules
   db_cursor.rules
 
 

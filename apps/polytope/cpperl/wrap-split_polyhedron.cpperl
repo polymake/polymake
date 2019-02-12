@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "split_polyhedron.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "split_polyhedron", "include": ["polymake/Rational.h"], "sig": "split_polyhedron:T1.B", "tp": "1"},
+ null ],
+"version": 3}

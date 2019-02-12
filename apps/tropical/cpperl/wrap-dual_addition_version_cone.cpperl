@@ -1,0 +1,5 @@
+{"app": "tropical", "embed": "dual_addition_version_cone.cc",
+ "inst": [
+  {"args": ["Max", "Rational", "void", "void"], "func": "dual_addition_version_cone", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "dual_addition_version_cone:T2.B.x", "tp": "2"},
+ null ],
+"version": 3}

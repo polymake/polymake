@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "tropicalNorm.cc",
+ "inst": [
+  {"args": ["Min", "Rational", "perl::Canned<const Vector<TropicalNumber<Min, Rational>>&>"], "func": "norm", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "norm:T2.X", "tp": "2"},
+  {"args": ["Max", "Rational", "perl::Canned<const Vector<TropicalNumber<Max, Rational>>&>"], "func": "norm", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "norm:T2.X", "tp": "2"},
+ null ],
+"version": 3}

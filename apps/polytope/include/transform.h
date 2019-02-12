@@ -54,9 +54,9 @@ template <typename Scalar, typename TransMatrix>
 perl::Object transform(perl::Object p_in, const GenericMatrix<TransMatrix>& tau,
                        bool store_reverse_transformation=true)
 {
-   typename TransMatrix::persistent_type tau_inv=inv(tau);
+   const auto tau_inv=inv(tau);
 
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
 
    transform_section(p_out, p_in, "VERTICES | POINTS", tau);
    transform_section(p_out, p_in, "LINEALITY_SPACE | INPUT_LINEALITY", tau);

@@ -37,13 +37,13 @@ perl::Object cross(int d, const Scalar& s, perl::OptionSet options)
 
    const int n_vertices=2*d;
 
-   perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p("Polytope", mlist<Scalar>());
    p.set_description() << "cross-polytope of dimension " << d << endl;
 
    SparseMatrix<Scalar> V(n_vertices,d+1);
    V.col(0).fill(1);
    int c=1;
-   for (typename Entire< Rows< SparseMatrix<Scalar> > >::iterator v=entire(rows(V)); !v.at_end(); ++v, ++c) {
+   for (auto v=entire(rows(V)); !v.at_end(); ++v, ++c) {
       (*v)[c]=s;
       ++v;
       (*v)[c]=-s;

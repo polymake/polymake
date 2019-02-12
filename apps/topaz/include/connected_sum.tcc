@@ -30,7 +30,6 @@ std::list< Set<int> > connected_sum(const Complex_1& C1,
                                     const Array<std::string>& L2,
                                     map& P)
 {
-   typedef typename Complex_2::value_type Facet2;
    std::list< Set<int> > CS;
       
    // add facets of C1, omitting f1, and compute the vertex set of C1
@@ -49,23 +48,23 @@ std::list< Set<int> > connected_sum(const Complex_1& C1,
       
    // find facet f2 and compute the vertex set of C2
    i=0;
-   for (typename Entire<Complex_2>::const_iterator c_it=entire(C2); !c_it.at_end(); ++c_it, ++i) {
+   for (auto c_it=entire(C2); !c_it.at_end(); ++c_it, ++i) {
       if (i==f2)
-         facet2=*c_it;
+         facet2 = *c_it;
       V2 += *c_it;
    }
 
    if (facet2.empty())
       throw std::runtime_error("connected_sum - f2 is not a facet index");
       
-   if (facet1.size()!=facet2.size())
+   if (facet1.size() != facet2.size())
       throw std::runtime_error("connected_sum - facets dimension mismatch");
       
-   // compute new vertex indices for V2, identyfing facet1 and facet2
+   // compute new vertex indices for V2, identifying facet1 and facet2
    int index_diff= V1.back()-V2.front()+1;
    map vertex_map(V2.size());
-   typename Set<int>::iterator f1_it=facet1.begin();
-   for (typename Entire< Set<int> >::iterator it=entire(V2); !it.at_end(); ++it) {
+   auto f1_it=facet1.begin();
+   for (auto it=entire(V2); !it.at_end(); ++it) {
       const int v=*it;
       if (facet2.contains(v)) {
          vertex_map[*it]= P.empty() ? *f1_it : P[*f1_it];
@@ -80,7 +79,7 @@ std::list< Set<int> > connected_sum(const Complex_1& C1,
    for (auto c_it=entire(C2);  !c_it.at_end();  ++c_it, ++i)
       if (i!=f2) {
          Set<int> f;
-         for (typename Entire<Facet2>::const_iterator f_it=entire(*c_it);
+         for (auto f_it=entire(*c_it);
               !f_it.at_end(); ++f_it)
             f+=vertex_map[*f_it];
          CS.push_back(f);
@@ -109,9 +108,8 @@ std::list< Set<int> > connected_sum(const Complex_1& C1,
 
       // adjust labels
       Array<std::string> L_tmp(V.size());
-      Array<std::string>::iterator l = L_tmp.begin();
-      for (Entire< Set<int> >::const_iterator v=entire(V);
-           !v.at_end(); ++v, ++l)
+      auto l = L_tmp.begin();
+      for (auto v=entire(V); !v.at_end(); ++v, ++l)
          *l = L1[*v];
          
       L1 = L_tmp;

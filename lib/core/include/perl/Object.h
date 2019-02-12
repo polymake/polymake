@@ -39,11 +39,15 @@ private:
    void cancel();
 protected:
    explicit PropertyOut(PerlInterpreter* pi_arg, property_type t_arg)
-      : val(t_arg==_normal ? value_read_only :
-            t_arg==temporary ? value_allow_non_persistent | value_read_only : value_mutable)
+      : val(t_arg==_normal ? ValueFlags::read_only :
+            t_arg==temporary ? ValueFlags::allow_non_persistent | ValueFlags::read_only : ValueFlags::is_mutable)
       , pi(pi_arg)
       , t(t_arg) {}
+
 public:
+   PropertyOut(const PropertyOut&) = delete;
+   PropertyOut(PropertyOut&&) = default;
+
    template <typename Source>
    void operator<< (Source&& x)
    {
@@ -66,7 +70,13 @@ public:
 
 class ObjectType {
 public:
-   explicit ObjectType(const AnyString& type_name);
+   // construct a parameterized object type
+   template <typename... Params>
+   ObjectType(const AnyString& type_name, mlist<Params...> params)
+      : obj_ref(TypeBuilder::build(type_name, params)) {}
+
+   explicit ObjectType(const AnyString& type_name)
+      : ObjectType(type_name, mlist<>()) {}
 
    ObjectType() : obj_ref(nullptr) {}
 
@@ -81,18 +91,6 @@ public:
 
    bool valid() const { return obj_ref; }
 
-   // construct a parameterized object type
-   template <typename TypeList>
-   static ObjectType construct(const AnyString& type_name)
-   {
-      Stack stack(true, 1+TypeListUtils<TypeList>::type_cnt);
-      if (!TypeListUtils<TypeList>::push_types(stack)) {
-         stack.cancel();
-         throw exception("one of the type arguments is not declared in the rules");
-      }
-      return ObjectType(construct_parameterized_type(type_name));
-   }
-
    ObjectType& operator= (const ObjectType& o);
 
    ObjectType& operator= (ObjectType&& o) noexcept
@@ -102,7 +100,7 @@ public:
    }
 
    std::string name() const;
- 
+
    bool isa(const ObjectType& o) const;
 
    bool isa(const AnyString& type_name) const;
@@ -111,7 +109,23 @@ public:
    bool operator!= (const ObjectType& o) const { return !operator==(o); }
 
 protected:
-   static SV* construct_parameterized_type(const AnyString& type_name);
+   class TypeBuilder
+      : protected FunCall {
+      static AnyString app_method_name();
+   public:
+      using FunCall::FunCall;
+
+      template <typename... Params>
+      static
+      SV* build(const AnyString& type_name, const mlist<Params...>& params)
+      {
+         TypeBuilder b(true, app_method_name(), 1 + count_args(type_name, params));
+         b.push_current_application();
+         b.push_arg(type_name);
+         b.push_types(params);
+         return b.call_scalar_context();
+      }
+   };
 
    explicit ObjectType(SV* r)
       : obj_ref(r) {}
@@ -144,13 +158,22 @@ public:
 
    // construct an empty object of the type given as a string and with an optional name
    explicit Object(const AnyString& type_name, const AnyString& name=AnyString())
-      : Object(ObjectType(type_name)) {}
+      : Object(ObjectType(type_name), name) {}
+
+   // construct an empty object of the given parametrized type and with an optional name
+   template <typename... Params>
+   Object(const AnyString& type_name, mlist<Params...> params, const AnyString& name=AnyString())
+      : Object(ObjectType(type_name, params), name) {}
 
    // construct a copy of another object with possible property conversion
    Object(const ObjectType& type, const Object& src);
 
    Object(const AnyString& type_name, const Object& src)
       : Object(ObjectType(type_name), src) {}
+
+   template <typename... Params>
+   Object(const AnyString& type_name, mlist<Params...> params, const Object& src)
+      : Object(ObjectType(type_name, params), src) {}
 
    // construct an exact copy (up to temporary properties and local extensions)
    Object copy() const;
@@ -236,13 +259,13 @@ public:
    template <typename... TOptions>
    PropertyValue lookup(const AnyString& name, const TOptions&... options) const
    {
-      return PropertyValue(lookup_impl(name), value_allow_undef, options...);
+      return PropertyValue(lookup_impl(name), ValueFlags::allow_undef, options...);
    }
 
    template <typename... TOptions>
    PropertyValue lookup_with_property_name(const AnyString& name, std::string& given, const TOptions&... options) const
    {
-      return PropertyValue(lookup_with_property_name_impl(name, given), value_allow_undef, options...);
+      return PropertyValue(lookup_with_property_name_impl(name, given), ValueFlags::allow_undef, options...);
    }
 
    Object lookup_multi(const AnyString& name, const std::string& subobj_name) const;
@@ -297,11 +320,10 @@ public:
    {
       return FunCall::call_method(name, obj_ref, std::forward<Args>(args)...);
    }
-   template <typename... Args>
-   [[deprecated("CallPolymakeMethod macros are deprecated, please use call_method() instead")]]
-   FunCall call_method_deprecated(const AnyString& name, Args&&... args) const
+
+   VarFunCall prepare_call_method(const AnyString& name) const
    {
-      return FunCall::call_method(name, obj_ref, std::forward<Args>(args)...);
+      return VarFunCall::prepare_call_method(name, obj_ref);
    }
 
    class Schedule {
@@ -369,6 +391,24 @@ public:
 protected:
    const ArrayHolder* array;
 };
+
+
+template <typename Target>
+typename std::enable_if<represents_big_Object<Target>::value, std::false_type*>::type
+Value::retrieve(Target& x) const
+{
+   Object obj;
+   retrieve(obj);
+   x = obj;
+   return nullptr;
+}
+
+template <typename SourceRef>
+std::enable_if_t<represents_big_Object<pure_type_t<SourceRef>>::value, Value::NoAnchors>
+Value::put_val(SourceRef&& x, int)
+{
+   return put_val(static_cast<Object>(std::forward<SourceRef>(x)));
+}
 
 }
 
@@ -451,7 +491,7 @@ public:
    void push(SV*) = delete;
 
 protected:
-   explicit Array(SV* sv_ref, perl::value_flags flags=perl::value_trusted)
+   explicit Array(SV* sv_ref, perl::ValueFlags flags=perl::ValueFlags::is_trusted)
       : base_t(sv_ref, flags) {}
 
    mutable perl::ObjectType el_type;

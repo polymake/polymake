@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "matroid_ring_geometry.cc",
+ "inst": [
+  {"args": ["Max", "void"], "func": "add_refined_cycles", "include": ["polymake/TropicalNumber.h"], "sig": "add_refined_cycles:T1.B", "tp": "1"},
+  {"args": ["Min", "void"], "func": "add_refined_cycles", "include": ["polymake/TropicalNumber.h"], "sig": "add_refined_cycles:T1.B", "tp": "1"},
+ null ],
+"version": 3}

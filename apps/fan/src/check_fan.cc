@@ -53,70 +53,74 @@ bool is_face (const Set<int>& F, const IncidenceMatrix<>& I)
 template <typename Coord>
 perl::Object check_fan_objects(const Array<perl::Object>& all_cones, perl::OptionSet options)
 {
-   const int n_i_cones=all_cones.size();
-   bool verbose=options["verbose"];
+   const int n_i_cones = all_cones.size();
+   const bool verbose = options["verbose"];
    FacetList max_cones;
 
-   const perl::ObjectType t=all_cones.element_type();
-   const int lineality_dim=all_cones[0].give("LINEALITY_DIM");
+   const perl::ObjectType t = all_cones.element_type();
+   const int lineality_dim = all_cones[0].give("LINEALITY_DIM");
    const int ambientDim = all_cones[0].give("CONE_AMBIENT_DIM");
 
-   for (int i=0; i<n_i_cones; ++i) {
-      perl::Object cone=all_cones[i];
-      const Matrix<Coord> c_rays=cone.give("RAYS");
-      const Matrix<Coord> facets=cone.give("FACETS");
-      const Matrix<Coord> eqs=cone.give("LINEAR_SPAN");
-      const IncidenceMatrix<> inc=cone.give("RAYS_IN_FACETS");
-      const int cone_lin_dim=cone.give("LINEALITY_DIM");
+   for (int c_i = 0; c_i < n_i_cones; ++c_i) {
+      perl::Object cone = all_cones[c_i];
+      const Matrix<Coord> c_rays = cone.give("RAYS");
+      const Matrix<Coord> facets = cone.give("FACETS");
+      const Matrix<Coord> eqs = cone.give("LINEAR_SPAN");
+      const IncidenceMatrix<> inc = cone.give("RAYS_IN_FACETS");
+      const int cone_lin_dim = cone.give("LINEALITY_DIM");
       if (cone_lin_dim != lineality_dim) {
          if (verbose) cout << "Cones do not have the same lineality space." << endl;
          throw std::runtime_error("not a fan");
       }
       // test intersection property
-      for (int j=i+1; j<n_i_cones;++j){
+      for (int c_j = c_i + 1; c_j < n_i_cones; ++c_j) {
          perl::Object inters(t);
-         const Matrix<Coord> facets2=all_cones[j].give("FACETS");
-         const Matrix<Coord> eqs2=all_cones[j].give("LINEAR_SPAN");
-         const Matrix<Coord> c_rays2=all_cones[j].give("RAYS");
-         //cerr<<facets2<<endl<<eqs2<<endl<<c_rays2<<endl;
-         inters.take("INEQUALITIES")<<(facets/facets2);
-         inters.take("EQUATIONS")<<(eqs/eqs2);
-         const Matrix<Coord> int_rays=inters.give("RAYS");
-         //cerr<<"intersection of:"<<endl<<c_rays<<" and "<<endl<<c_rays2<<":"<<endl<<int_rays<<endl;
-         const int n_int_rays=int_rays.rows();
-         if (n_int_rays>0) {
-            //the rays of the intersection must be rays of the two cones
-            Set<int> rays_in_cone,rays_in_cone2;
-            for (int i=0;i<n_int_rays;++i) {
-               bool found=false;
-               for (int j=0;!found&&j<c_rays.rows();++j) if (c_rays[j]==int_rays[i]) {
-                  rays_in_cone.insert(j);
-                  found=true;
+         const Matrix<Coord> facets2 = all_cones[c_j].give("FACETS");
+         const Matrix<Coord> eqs2 = all_cones[c_j].give("LINEAR_SPAN");
+         const Matrix<Coord> c_rays2=all_cones[c_j].give("RAYS");
+
+         inters.take("INEQUALITIES") << (facets / facets2);
+         inters.take("EQUATIONS") << (eqs / eqs2);
+         const Matrix<Coord> int_rays = inters.give("RAYS");
+
+         const int n_int_rays = int_rays.rows();
+         if (n_int_rays > 0) {
+            // the rays of the intersection must be rays of the two cones
+            Set<int> rays_in_cone, rays_in_cone2;
+            for (int i=0; i < n_int_rays; ++i) {
+               bool found = false;
+               for (int j = 0; !found && j < c_rays.rows(); ++j) {
+                  if (c_rays[j] == int_rays[i]) {
+                     rays_in_cone.insert(j);
+                     found = true;
+                  }
                }
                if (!found) {
-                  if (verbose) cout<<"Ray "<<int_rays[i]<<" is not a ray of the cone with rays"<<endl<< c_rays<<"."<<endl;
+                  if (verbose) cout << "Ray " << int_rays[i] << " is not a ray of the cone with rays\n" << c_rays << "." << endl;
                   throw std::runtime_error("not a fan");
                }
-               found=false;
-               for (int j=0;!found&&j<c_rays2.rows();++j) if (c_rays2[j]==int_rays[i]) {
-                  rays_in_cone2.insert(j);
-                  found=true;
+               found = false;
+               for (int j = 0; !found && j < c_rays2.rows(); ++j) {
+                  if (c_rays2[j] == int_rays[i]) {
+                     rays_in_cone2.insert(j);
+                     found = true;
+                  }
                }
                if (!found) {
-                  if (verbose) cout<<"Ray "<<int_rays[i]<<" is not a ray of the cone with rays"<<endl<< c_rays2<<"."<<endl;
+                  if (verbose) cout << "Ray " << int_rays[i] << " is not a ray of the cone with rays\n" << c_rays2 << "." << endl;
                   throw std::runtime_error("not a fan");
                }
             }
-            //if the intersection has the same number of rays than one of the cones, it is one of the cones
-            //otherwise we explicitely check if it is a face of
-            if (!(n_int_rays==c_rays.rows()||n_int_rays==c_rays2.rows())){
-               if (!is_face(rays_in_cone,inc)) {
-                  if (verbose) cout << "Intersection " << rays_in_cone << " from " << i << " with " << j << " not a face of the first one, RIF: " << inc << endl;
+            // if the intersection has the same number of rays than one of the cones, it is one of the cones
+            // otherwise we explicitely check if it is a face of
+            if (!(n_int_rays == c_rays.rows() || n_int_rays == c_rays2.rows())) {
+               if (!is_face(rays_in_cone, inc)) {
+                  if (verbose) cout << "Intersection " << rays_in_cone << " from " << c_i << " with " << c_j << " not a face of the first one, RIF: " << inc << endl;
                   throw std::runtime_error("not a fan");
                }
-               const IncidenceMatrix<> inc2=all_cones[j].give("RAYS_IN_FACETS");
-               if (!is_face(rays_in_cone2,inc2)) {
-                  if (verbose) cout << "Intersection " << rays_in_cone2 << " from " << i << " with " << j << " not a face of the second one, RIF: " << inc2<< endl;
+               const IncidenceMatrix<> inc2 = all_cones[c_j].give("RAYS_IN_FACETS");
+               if (!is_face(rays_in_cone2, inc2)) {
+                  if (verbose) cout << "Intersection " << rays_in_cone2 << " from " << c_i << " with " << c_j << " not a face of the second one, RIF: " << inc2 << endl;
                   throw std::runtime_error("not a fan");
                }
             }
@@ -128,36 +132,33 @@ perl::Object check_fan_objects(const Array<perl::Object>& all_cones, perl::Optio
 
    int n_rays=0;
 
-   for(int i=0; i<n_i_cones;++i) {
-      perl::Object cone=all_cones[i];
-      const Matrix<Coord> c_rays=cone.give("RAYS");
+   for (perl::Object cone : all_cones) {
+      const Matrix<Coord> c_rays = cone.give("RAYS");
       Set<int> ray_indices;
-      for(typename Entire<Rows<Matrix<Coord> > >::const_iterator r=entire(rows(c_rays)); !r.at_end(); ++r) {
-         typename hash_map<Vector<Coord>,int >::const_iterator r_iti=rays.find(*r);
-         if (r_iti==rays.end()) {
-            rays[*r]=n_rays;
+      for (auto r = entire(rows(c_rays)); !r.at_end(); ++r) {
+         auto r_iti = rays.find(*r);
+         if (r_iti == rays.end()) {
+            rays[*r] = n_rays;
             ray_indices.insert(n_rays++);
-         }
-         else {
+         } else {
             ray_indices.insert(r_iti->second);
          }
       }
       max_cones.insertMax(ray_indices);
       //FIXME: one could also extract and save other properties here.
    }
-   //cerr<<"created rays"<<endl;
+
    // create ray matrix
-   Matrix<Coord> R(n_rays,ambientDim);
-   for(typename Entire<hash_map<Vector<Coord>,int> >::const_iterator r=entire(rays); !r.at_end(); ++r)
-      R.row(r->second)=r->first;
-   perl::ObjectType t_fan=perl::ObjectType::construct<Coord>("PolyhedralFan");
-   perl::Object f(t_fan);
-   //cerr<<".."<<endl;
+   Matrix<Coord> R(n_rays, ambientDim);
+   for (auto r = entire(rays); !r.at_end(); ++r)
+      R.row(r->second) = r->first;
+
+   perl::Object f("PolyhedralFan", mlist<Coord>());
+
    const Matrix<Coord> lineality=all_cones[0].give("LINEALITY_SPACE");
-   //cerr<<"got linspace"<<endl;
-   f.take("LINEALITY_SPACE")<<lineality;
-   f.take("RAYS")<<R;
-   f.take("MAXIMAL_CONES")<<max_cones;
+   f.take("LINEALITY_SPACE") << lineality;
+   f.take("RAYS") << R;
+   f.take("MAXIMAL_CONES") << max_cones;
    return f;
 }
 
@@ -171,7 +172,7 @@ perl::Object check_fan(const Matrix<Coord>& i_rays, const IncidenceMatrix<>& i_c
    const int ambientDim=i_rays.cols();
    if (!(options["lineality_space"] >> linealitySpace))
       linealitySpace=Matrix<Coord>(0, ambientDim);
-   perl::ObjectType t=perl::ObjectType::construct<Coord>("Cone");
+   perl::ObjectType t("Cone", mlist<Coord>());
    Array<perl::Object> all_cones(t, n_i_cones);
    for (int i=0; i<n_i_cones; ++i) {
       all_cones[i].take("INPUT_RAYS") << i_rays.minor(i_cones[i], All);

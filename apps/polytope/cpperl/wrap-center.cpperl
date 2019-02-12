@@ -1,0 +1,7 @@
+{"app": "polytope", "embed": "center.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "center", "include": ["polymake/Rational.h"], "sig": "center:T1.B", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void"], "func": "center", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "center:T1.B", "tp": "1"},
+  {"args": ["double", "void"], "func": "center", "sig": "center:T1.B", "tp": "1"},
+ null ],
+"version": 3}

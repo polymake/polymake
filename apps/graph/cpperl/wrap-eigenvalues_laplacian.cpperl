@@ -1,0 +1,8 @@
+{"app": "graph", "embed": "eigenvalues_laplacian.cc",
+ "inst": [
+  {"args": ["Undirected", "void"], "func": "eigenvalues_laplacian", "include": ["polymake/Graph.h"], "sig": "eigenvalues_laplacian:T1.B", "tp": "1"},
+  {"args": ["perl::Canned<const Graph<Undirected>&>"], "func": "eigenvalues_laplacian", "include": ["polymake/Graph.h"], "sig": "eigenvalues_laplacian.X"},
+  {"args": ["Undirected", "void"], "func": "laplacian", "include": ["polymake/Graph.h"], "sig": "laplacian:T1.B", "tp": "1"},
+  {"args": ["perl::Canned<const Graph<Undirected>&>"], "func": "laplacian", "include": ["polymake/Graph.h"], "sig": "laplacian.X"},
+ null ],
+"version": 3}

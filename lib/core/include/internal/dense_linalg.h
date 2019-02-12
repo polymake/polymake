@@ -23,12 +23,13 @@
 
 #include "polymake/vector"
 #include "polymake/Vector.h"
+#include "polymake/GenericStruct.h"
 
 namespace pm {
 
 /// determinant of a matrix
 template <typename E>
-typename std::enable_if<is_field<E>::value, E>::type
+std::enable_if_t<is_field<E>::value, E>
 det(Matrix<E> M)
 {
    const int dim=M.rows();
@@ -65,7 +66,7 @@ det(Matrix<E> M)
 }
 
 template <typename E>
-typename std::enable_if<is_field<E>::value, Vector<E>>::type
+std::enable_if_t<is_field<E>::value, Vector<E>>
 reduce(Matrix<E> M, Vector<E> V)
 {
    const int n_rows=M.rows();
@@ -125,7 +126,7 @@ reduce(Matrix<E> M, Vector<E> V)
 
 /// matrix inversion
 template <typename E>
-typename std::enable_if<is_field<E>::value, Matrix<E>>::type
+std::enable_if_t<is_field<E>::value, Matrix<E>>
 inv(Matrix<E> M)
 {
    const int dim=M.rows();
@@ -166,7 +167,7 @@ Matrix<double> inv(Matrix<double> M);
 
 /// solving systems of linear equations
 template <typename E>
-typename std::enable_if<is_field<E>::value, Vector<E>>::type
+std::enable_if_t<is_field<E>::value, Vector<E>>
 lin_solve(Matrix<E> A, Vector<E> b)
 {
    const int m=A.rows(), n=A.cols();

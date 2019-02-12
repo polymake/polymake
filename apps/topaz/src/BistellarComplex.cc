@@ -23,33 +23,30 @@ void BistellarComplex::init(const Lattice<BasicDecoration>& HD)
 {
    // test if the complex is closed.
    if (!closed) {
-      const Boundary_of_PseudoManifold B = boundary_of_pseudo_manifold(HD);
-      bool closed = B.empty();
+      const auto B = boundary_of_pseudo_manifold(HD);
+      closed = B.empty();
 
       if (!closed) {
          // compute C + cone(bound(C))
          std::list< Set<int> > S;
 
-         for (auto f=entire(HD.nodes_of_rank(HD.rank()-1));
-              !f.at_end(); ++f) {
-            S.push_back(HD.face(*f));
-            const int w = HD.face(*f).back();
+         for (const auto f : HD.nodes_of_rank(HD.rank()-1)) {
+            S.push_back(HD.face(f));
+            const int w = HD.face(f).back();
             if (w >= verts)
                verts = w+1;
          }
          apex = verts;
          ++verts;
 
-         for (Entire<polymake::topaz::Boundary_of_PseudoManifold>::const_iterator b=entire(B);
-              !b.at_end(); ++b)
+         for (auto b=entire(B); !b.at_end(); ++b)
             S.push_back(b->face+apex);
          const Lattice<BasicDecoration> new_HD = hasse_diagram_from_facets(Array<Set<int> >(S));
 
          // compute raw options
-         for (int d=0; d<=dim; ++d)
-            for (auto n=entire(new_HD.nodes_of_rank(d+1));
-                 !n.at_end(); ++n) {
-               const Set<int> face = new_HD.face(*n);
+         for (int d=0; d<=dim; ++d) {
+            for (const auto n : new_HD.nodes_of_rank(d+1)) {
+               const Set<int>& face = new_HD.face(n);
 
                if (d==0 && face.front() == apex)  // the apex is not an option
                   continue;
@@ -60,20 +57,20 @@ void BistellarComplex::init(const Lattice<BasicDecoration>& HD)
 
                } else {
                   Set<int> V;
-                  accumulate_in(link_in_HD(new_HD,*n), operations::add(), V);
+                  accumulate_in(link_in_HD(new_HD, n), operations::add(), V);
 
                   if (V.size()+face.size()==dim+2)  // face is raw option
                      raw_options[d].insert(face,V);
                }
             }
+         }
       }
    }
 
-   if (closed)
-      for (int d=0; d<=dim; ++d)
-         for (auto n=entire(HD.nodes_of_rank(d+1));
-              !n.at_end(); ++n) {
-            const Set<int> face=HD.face(*n);
+   if (closed) {
+      for (int d=0; d<=dim; ++d) {
+         for (const auto n : HD.nodes_of_rank(d+1)) {
+            const Set<int> face=HD.face(n);
 
             if (d==0) {    // face is a vertex
                const int v = face.front();
@@ -87,12 +84,14 @@ void BistellarComplex::init(const Lattice<BasicDecoration>& HD)
 
             } else {
                Set<int> V;
-               accumulate_in(link_in_HD(HD,*n), operations::add(), V);
+               accumulate_in(link_in_HD(HD, n), operations::add(), V);
 
                if (V.size()+face.size()==dim+2)   // face is raw option
                   raw_options[d].insert(face,V);
             }
          }
+      }
+   }
 }
 
 int BistellarComplex::find_move(const int dim_min, const int dim_max)
@@ -151,14 +150,12 @@ void BistellarComplex::execute_move()
 
    Lattice<BasicDecoration> star_HD = hasse_diagram_from_facets(Array<Set<int> >(star));
    for (int d=0; d<=dim; ++d)
-      for (auto n=entire(star_HD.nodes_of_rank(d+1));
-           !n.at_end(); ++n)
-         raw_options[d].remove(star_HD.face(*n));
+      for (const auto n : star_HD.nodes_of_rank(d+1))
+         raw_options[d].remove(star_HD.face(n));
 
    // add co_face * boundary(face)
    std::list< Set<int> > new_facets;
-   for (Entire< Set<int> >::const_iterator w=entire(face);
-        !w.at_end(); ++w) {
+   for (auto w=entire(face); !w.at_end(); ++w) {
       Set<int> f=face;
       f-=*w;
       f+=co_face;
@@ -170,9 +167,8 @@ void BistellarComplex::execute_move()
    // find new raw_options
    Lattice<BasicDecoration> local_HD = hasse_diagram_from_facets(Array<Set<int> >(new_facets));
    for (int d=0; d<=dim; ++d)
-      for (auto n=entire(local_HD.nodes_of_rank(d+1));
-           !n.at_end(); ++n) {
-         const Set<int> f = local_HD.face(*n);
+      for (const auto n : local_HD.nodes_of_rank(d+1)) {
+         const Set<int>& f = local_HD.face(n);
 
          if (d==dim) {
             raw_options[d].insert(f, Set<int>());

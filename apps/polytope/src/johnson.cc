@@ -400,7 +400,7 @@ perl::Object create_prism(int n)
 
    perl::Object p_out("Polytope<Float>");
 
-   p_out.take("VERTICES") << (V | zero_vector<double>()) / (V | same_element_vector<double>(side_length, n));
+   p_out.take("VERTICES") << (V | zero_vector<double>()) / (V | same_element_vector(side_length, n));
 
    return p_out;
 }
@@ -414,7 +414,7 @@ perl::Object diminish(perl::Object p, Set<int> f_vert){
   Set<int> v = sequence(0,V.rows());
   v -= f_vert;
 
-  perl::Object p_out(perl::ObjectType::construct<T>("Polytope"));
+  perl::Object p_out("Polytope", mlist<T>());
   p_out.take("VERTICES") << V.minor(v,All);
 
   return p_out;
@@ -443,7 +443,7 @@ void centralize(perl::Object& p)
 template <typename E>
 perl::Object build_from_vertices(const Matrix<E>& V, bool do_centralize=true)
 {
-  perl::Object p(perl::ObjectType::construct<E>("Polytope"));
+  perl::Object p("Polytope", mlist<E>());
   p.take("VERTICES") << V;
   if (do_centralize) centralize<E>(p);
   return p;
@@ -547,7 +547,7 @@ perl::Object elongated_triangular_pyramid()
 
   QE s(0,Rational(1,3),6);
 
-  Matrix<QE> V( ones_vector<QE>(7) | (same_element_vector<QE>(c,3) / unit_matrix<QE>(3) / (unit_matrix<QE>(3) + same_element_matrix<QE>(s , 3, 3))));
+  Matrix<QE> V( ones_vector<QE>(7) | (same_element_vector(c,3) / unit_matrix<QE>(3) / (unit_matrix<QE>(3) + same_element_matrix(s, 3, 3))));
 
   perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J7: Elongated triangular bipyramid" << endl;
@@ -647,7 +647,7 @@ perl::Object triangular_bipyramid()
 {
   Rational c(-1,3);
 
-  Matrix<Rational> V( ones_vector<Rational>(5) | unit_matrix<Rational>(3) / ones_vector<Rational>(3) / same_element_vector<Rational>(c,3));
+  Matrix<Rational> V( ones_vector<Rational>(5) | unit_matrix<Rational>(3) / ones_vector<Rational>(3) / same_element_vector(c, 3));
 
   perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J12: Triangular bipyramid" << endl;
@@ -686,7 +686,7 @@ perl::Object elongated_triangular_bipyramid()
 
   QE s(0,Rational(1,3),6);
 
-  Matrix<QE> V( ones_vector<QE>(8) | ( same_element_vector<QE>(1+s,3) / same_element_vector<QE>(c,3) / unit_matrix<QE>(3) / (unit_matrix<QE>(3) + same_element_matrix<QE>(s , 3, 3))));
+  Matrix<QE> V( ones_vector<QE>() | (same_element_vector(1+s, 3) / (same_element_vector(c, 3) / unit_matrix<QE>(3) / (unit_matrix<QE>(3) + same_element_matrix(s, 3, 3)))));
 
   perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J14: Elongated triangular bipyramid" << endl;
@@ -946,7 +946,7 @@ perl::Object gyroelongated_square_cupola()
   Matrix<double> W = create_regular_polygon_vertices(8, sqrt(2)*sqrt(2+sqrt(2)), 0);
 
   perl::Object p("Polytope<Float>");
-  Matrix<double> X = (W.minor(All, sequence(0,3)) | same_element_vector<double>(height,8)) / V;
+  Matrix<double> X = (W.minor(All, sequence(0,3)) | same_element_vector(height, 8)) / V;
 
   IncidenceMatrix<> VIF{ {0,1,9},
                          {1,2,8},
@@ -1085,14 +1085,15 @@ perl::Object gyroelongated_pentagonal_rotunda()
 
 perl::Object gyrobifastigium(){
 
-  QE height(0,1,3);
-  Vector<QE> h(2);
-  h[0]=height;
-  h[1]=-height;
-
-  Matrix<QE> V = ((create_square_vertices<QE>() | zero_vector<QE>(4)) /
-                  (same_element_vector<QE>(QE(1,0,0),4) | ((unit_matrix<QE>(2) | h) / (-unit_matrix<QE>(2) | h))));
-
+  QE o(0), l(1), h(0,1,3);
+  Matrix<QE> V{ {l, -l, -l,  o},
+                {l,  l, -l,  o},
+                {l, -l,  l,  o},
+                {l,  l,  l,  o},
+                {l,  l,  o,  h},
+                {l,  o,  l, -h},
+                {l, -l,  o,  h},
+                {l,  o, -l, -h} };
   perl::Object p=build_from_vertices(V);
   p.set_description() << "Johnson solid J26: Gyrobifastigium" << endl;
 
@@ -2500,7 +2501,7 @@ perl::Object biaugmented_truncated_cube()
    Matrix<QE> W = square_cupola_impl(false).give("VERTICES");
    W = W.minor(sequence(8,4),sequence(1,3));
    Matrix<QE> V = truncated_cube_vertices() /
-                  (ones_vector<QE>() | ((W + repeat_row(QE(2,2,2)*unit_vector<QE>(3,2),4)) / -W));
+     (ones_vector<QE>() | ((W + repeat_row(unit_vector(3, 2, QE(2,2,2)), 4)) / -W));
 
    perl::Object p=build_from_vertices(V);
    p.set_description() << "Johnson solid J67: Biaugmented truncated cube" << endl;
@@ -3880,12 +3881,14 @@ dispatcher_t dispatcher[]={
    { "triangular_hebesphenorotunda", &triangular_hebesphenorotunda } //inexact
 };
 
+const size_t dispatcher_size = sizeof(dispatcher) / sizeof(dispatcher[0]);
+
 }
 
 perl::Object johnson_int(int n)
 {
   const size_t index(n-1);
-  if (index < sizeof(dispatcher)/sizeof(dispatcher[0]))
+  if (index < dispatcher_size)
     return dispatcher[index].func();
   else
     throw std::runtime_error("invalid index of Johnson polytope");
@@ -3893,10 +3896,10 @@ perl::Object johnson_int(int n)
 
 perl::Object johnson_str(std::string s)
 {
-  typedef hash_map<std::string, dispatcher_t::fptr> func_map_t;
-  static const func_map_t func_map(attach_operation(array2container(dispatcher), dispatcher_t::to_map_value()).begin(),
-                                   attach_operation(array2container(dispatcher), dispatcher_t::to_map_value()).end());
-  const func_map_t::const_iterator it=func_map.find(s);
+  using func_map_t = hash_map<std::string, dispatcher_t::fptr> ;
+  static const func_map_t func_map(make_unary_transform_iterator(dispatcher+0, dispatcher_t::to_map_value()),
+                                   make_unary_transform_iterator(dispatcher+dispatcher_size, dispatcher_t::to_map_value()));
+  const auto it=func_map.find(s);
   if (it != func_map.end())
     return (it->second)();
   else
@@ -3904,15 +3907,19 @@ perl::Object johnson_str(std::string s)
 }
 
 UserFunction4perl("# @category Producing regular polytopes and their generalizations"
-                  "# Create Johnson solid number n."
+                  "# Create Johnson solid number n, where 1 <= n <= 92."
+                  "# A Johnson solid is a 3-polytope all of whose facets are regular polygons."
+                  "# Some are realized with floating point numbers and thus not exact;"
+                  "# yet [[VERTICES_IN_FACETS]] is correct in all cases."
                   "# @param Int n the index of the desired Johnson polytope"
                   "# @return Polytope",
                   &johnson_int, "johnson_solid(Int)");
 
 UserFunction4perl("# @category Producing regular polytopes and their generalizations"
                   "# Create Johnson solid with the given name."
-                  "# Some polytopes are realized with floating point numbers and thus not exact;"
-                  "# Vertex-facet-incidences are correct in all cases."
+                  "# A Johnson solid is a 3-polytope all of whose facets are regular polygons."
+                  "# Some are realized with floating point numbers and thus not exact;"
+                  "# yet [[VERTICES_IN_FACETS]] is correct in all cases."
                   "# @param String s the name of the desired Johnson polytope"
                   "# @value s 'square_pyramid' Square pyramid with regular facets. Johnson solid J1."
                   "# @value s 'pentagonal_pyramid' Pentagonal pyramid with regular facets. Johnson solid J2."

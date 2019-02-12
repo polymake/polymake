@@ -71,7 +71,7 @@ sub run_context {
 sub run {
    my ($self)=@_;
    my $save_context=$self->run_context;
-   local_scalar($self->env->cur_group, $self);
+   local scalar $self->env->cur_group = $self;
    my $report_writer=$self->env->report_writer;
    if ($report_writer) {
       $report_writer->startTag("testsuite", package => $self->package_name, name => $self->name);

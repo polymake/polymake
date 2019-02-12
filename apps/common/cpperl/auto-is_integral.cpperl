@@ -1,0 +1,10 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Rational>&>"], "func": "is_integral", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/common/lattice_tools.h"], "sig": "is_integral.X"},
+  {"args": ["perl::Canned<const pm::VectorChain<mlist<pm::Vector<pm::Rational> const&, pm::SameElementVector<pm::Rational const&> const> >&>"], "func": "is_integral", "include": ["polymake/Rational.h", "polymake/Vector.h", "polymake/common/lattice_tools.h"], "sig": "is_integral.X"},
+  {"args": ["perl::Canned<const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Complement<pm::Set<int, pm::operations::cmp> const&> const, pm::all_selector const&>&>"], "func": "is_integral", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h", "polymake/common/lattice_tools.h"], "sig": "is_integral.X"},
+  {"args": ["perl::Canned<const Vector<Rational>&>"], "func": "is_integral", "include": ["polymake/Rational.h", "polymake/Vector.h", "polymake/common/lattice_tools.h"], "sig": "is_integral.X"},
+  {"args": ["perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true> const, mlist<> >&>"], "func": "is_integral", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/common/lattice_tools.h"], "sig": "is_integral.X"},
+  {"args": ["perl::Canned<const pm::MatrixMinor<pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::Complement<pm::Set<int, pm::operations::cmp> const&> const, pm::all_selector const&>&>"], "func": "is_integral", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h", "polymake/SparseMatrix.h", "polymake/common/lattice_tools.h"], "sig": "is_integral.X"},
+ null ],
+"version": 3}

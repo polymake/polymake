@@ -55,7 +55,8 @@ sub proceed {
    }
    if ($ppl_lib) {
       if (-f "$ppl_lib/libppl.$Config::Config{so}") {
-         $LDFLAGS = "-L$ppl_lib -Wl,-rpath,$ppl_lib";
+         $LDFLAGS = "-L$ppl_lib";
+         $LDFLAGS .= " -Wl,-rpath,$ppl_lib" unless $ppl_lib =~ m#^/usr/lib#;
       } elsif ("$ppl_lib/libppl.a") {
 	 die "PPL found at $ppl_path is built without shared libraries.\n";
       } else {

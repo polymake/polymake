@@ -61,21 +61,20 @@ public:
    /// Creates the equivalence relation on the integers 0,..,@a size-1 where
    /// each element is contained in an equivalence class by itself.
    explicit EquivalenceRelation(const int size)
-      : equiv_classes(size,sequence(0,size).begin()),
-        the_representatives(sequence(0,size)),
-        dirty(false) { }
+      : equiv_classes(size,sequence(0,size).begin())
+      , the_representatives(sequence(0,size))
+      , dirty(false) { }
 
    /// Creates the equivalence relation on the integers 0,..,@a size-1 where
    /// each element is contained in an equivalence class by itself.  The @a
    /// representatives will be used as user defined representatives.
    template <typename Container>
    EquivalenceRelation(const int size, const Container& represent)
-      : equiv_classes(size,sequence(0,size).begin()),
-        the_representatives(sequence(0,size)),
-        dirty(true)
+      : equiv_classes(size,sequence(0,size).begin())
+      , the_representatives(sequence(0,size))
+      , dirty(true)
    {
-      for (typename Entire<Container>::const_iterator v=entire(represent);
-           !v.at_end(); ++v)
+      for (auto v=entire(represent); !v.at_end(); ++v)
          set_rep.insert(*v);
    }
 
@@ -89,7 +88,7 @@ protected:
          equiv_classes.resize(highest+1, -1);
       const int the_rep=the_class.top().front();
       the_representatives += the_rep;
-      for (typename Entire<Set>::const_iterator el=entire(the_class); !el.at_end(); ++el)
+      for (auto el=entire(the_class); !el.at_end(); ++el)
          equiv_classes[*el]=the_rep;
    }
 
@@ -165,7 +164,7 @@ public:
    template <typename Container>
    void merge_classes(const Container& classes)
    {
-      typename Entire<Container>::const_iterator c=entire(classes);
+      auto c=entire(classes);
       if (!c.at_end()) {
          const int c0=*c;
          for (++c; !c.at_end(); ++c)
@@ -211,9 +210,8 @@ public:
       for (int i=0, n=equiv_classes.size(); i<n; ++i)
          rep_map[representative(i)] += i;
 
-      for (Entire< hash_map< int,Set<int> > >::const_iterator cl=entire(rep_map);
-           !cl.at_end(); ++cl)
-         classes += cl->second;
+      for (const auto& cl : rep_map)
+         classes += cl.second;
 
       dirty=false;
       return classes;
@@ -247,7 +245,7 @@ public:
       PowerSet<int> classes;
       is.top() >> classes;
       me.clear();
-      for (Entire< PowerSet<int> >::const_iterator cl=entire(classes); !cl.at_end(); ++cl)
+      for (auto cl=entire(classes); !cl.at_end(); ++cl)
          me.add_class(*cl);
       return is.top();
    }

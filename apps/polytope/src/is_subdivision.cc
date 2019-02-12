@@ -78,8 +78,8 @@ is_subdivision(const Matrix<Rational>& verts, const Faces& subdiv, perl::OptionS
 
    const Matrix<Rational> eq=p.give("AFFINE_HULL");
 
-   for (Entire< Rows < Matrix<Rational> > >::const_iterator i=entire(rows(eq)); !i.at_end(); ++i)
-      for (Entire<Set <int> >::const_iterator j=entire(missing); !j.at_end(); ++j)
+   for (auto i=entire(rows(eq)); !i.at_end(); ++i)
+      for (auto j=entire(missing); !j.at_end(); ++j)
          if ((*i)*(verts.row(*j))!=0) {
             if (options["verbose"]) cout << "Vertex " << *j << "is not used in the subdivision." << endl;
             return false;
@@ -87,8 +87,8 @@ is_subdivision(const Matrix<Rational>& verts, const Faces& subdiv, perl::OptionS
 
 
    const Matrix<Rational> ineqs=p.give("FACETS");
-   for (Entire< Rows < Matrix<Rational> > >::const_iterator i=entire(rows(ineqs)); !i.at_end(); ++i)
-      for (Entire<Set <int> >::const_iterator j=entire(missing); !j.at_end(); ++j)
+   for (auto i=entire(rows(ineqs)); !i.at_end(); ++i)
+      for (auto j=entire(missing); !j.at_end(); ++j)
          if ((*i)*(verts.row(*j))<0) {
             if (options["verbose"]) cout <<  "Vertex " << *j << " is not used in the subdivision." << endl;
             return false;
@@ -113,6 +113,7 @@ is_subdivision(const Matrix<Rational>& verts, const UnorderedFaces& subdiv, perl
 }
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
+                          "# @author Sven Herrmann"
                           "# Checks whether //faces// forms a valid subdivision of //points//, where //points//"
                           "# is a set of points, and //faces// is a collection of subsets of (indices of) //points//."
                           "# If the set of interior points of //points// is known, this set can be passed by assigning"
@@ -125,10 +126,9 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# @example Two potential subdivisions of the square without innter points:"
                           "# > $points = cube(2)->VERTICES;"
                           "# > print is_subdivision($points,[[0,1,3],[1,2,3]],interior_points=>[ ]);"
-                          "# | 1"
+                          "# | true"
                           "# > print is_subdivision($points,[[0,1,2],[1,2]],interior_points=>[ ]);"
-                          "# | "
-                          "# @author Sven Herrmann",
+                          "# | false",
                           "is_subdivision(Matrix,*; {verbose => undef, interior_points => undef})");
 } }
 

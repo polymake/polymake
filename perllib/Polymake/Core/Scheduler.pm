@@ -99,7 +99,7 @@ sub new {
    if (defined $self->rule->dyn_weight) {
       ($self->dyn_weight)=grep { $_->rule == $self->rule->dyn_weight } @{$self->preconditions};
    }
-   if ($self->flags & $Rule::is_restricted_spez) {
+   if ($self->flags & Rule::Flags::in_restricted_spez) {
       my $spez_deputy=$obj;
       my $spez_type=$self->rule->defined_for;
       while ($spez_type->enclosed_in_restricted_spez) {
@@ -167,7 +167,7 @@ sub header {
    my $prefix=$self->path->toString;
    $self->rule->header . ($prefix && " ( applied to $prefix )") .
    ( $self->multi_selector ? " ( selecting " . join(".", map { $_->name } @{$self->multi_selector}) . " )" : "" ) .
-   ( is_object($self->perm_trigger) && !($self->flags & $Rule::is_perm_action) && " after " . $self->perm_trigger->header )
+   ( is_object($self->perm_trigger) && !($self->flags & Rule::Flags::is_perm_action) && " after " . $self->perm_trigger->header )
 }
 
 sub list_results {
@@ -183,39 +183,39 @@ sub execute {
    my ($self, $object, $force)=@_;
    my $scope;
    if ($force >= 0) {
-      for (my $i=$self->path->up; $i>0; --$i) {
-         defined (my $parent=$object->parent)
-           or return $Rule::exec_infeasible;
-         if ($object->property->flags & $Property::is_multiple) {
+      for (my $i = $self->path->up; $i > 0; --$i) {
+         defined (my $parent = $object->parent)
+           or return Rule::Exec::infeasible;
+         if ($object->property->flags & Property::Flags::is_multiple) {
             $object->select_multi_instance($scope);
          }
          $object=$parent;
       }
       foreach my $prop (@{$self->path->down}) {
-         if (defined (my $i=$object->dictionary->{$prop->key})) {
-            $object=$object->contents->[$i];
-            if ($prop->flags & $Property::is_multiple) {
-               $object=$object->select_now($prop->index)
-                 or return $Rule::exec_infeasible;
-            } elsif ($prop->flags & $Property::is_twin) {
-               $object=$object->value;
+         if (defined (my $i = $object->dictionary->{$prop->key})) {
+            $object = $object->contents->[$i];
+            if ($prop->flags & Property::Flags::is_multiple) {
+               $object = $object->select_now($prop->index)
+                 or return Rule::Exec::infeasible;
+            } elsif ($prop->flags & Property::Flags::is_twin) {
+               $object = $object->value;
             }
          } else {
-            return $Rule::exec_infeasible;
+            return Rule::Exec::infeasible;
          }
       }
    }
    if (defined $self->multi_selector) {
-      my $subobject=$object;
+      my $subobject = $object;
       foreach my $prop (@{$self->multi_selector}) {
-         if (defined (my $i=$subobject->dictionary->{$prop->key})) {
-            $subobject=$subobject->contents->[$i];
-            if ($prop->flags & $Property::is_multiple) {
-               $subobject=$subobject->select_now($prop->index, $scope)
-                 or return $Rule::exec_infeasible;
+         if (defined (my $i = $subobject->dictionary->{$prop->key})) {
+            $subobject = $subobject->contents->[$i];
+            if ($prop->flags & Property::Flags::is_multiple) {
+               $subobject = $subobject->select_now($prop->index, $scope)
+                 or return Rule::Exec::infeasible;
             }
          } else {
-            return $Rule::exec_infeasible;
+            return Rule::Exec::infeasible;
          }
       }
    }
@@ -262,7 +262,7 @@ use Polymake::Struct (
 use Polymake::Struct (
    [ 'alt.constructor' => 'new_sibling' ],
    [ new => '$$$' ],
-   [ '$path' => 'do { local_pop(#2->path->down); #2->path->deeper(#3) }' ],
+   [ '$path' => 'do { local pop(@{#2->path->down}); #2->path->deeper(#3) }' ],
    [ '$parent' => 'undef' ],
    [ '$property' => '#3' ],
    [ '$sibling_of' => 'weak(#2)' ],
@@ -323,7 +323,7 @@ sub navigate_down {
    my ($pv, $index);
    my $depth=0;
    foreach my $prop (@path) {
-      $inherit_trigger ||= ($prop->flags & $Property::is_permutation) if defined($perm_trigger);
+      $inherit_trigger ||= ($prop->flags & Property::Flags::is_permutation) if defined($perm_trigger);
 
       my $subobj_deputy;
       while ($self->is_sibling_ancestor &&
@@ -343,20 +343,20 @@ sub navigate_down {
                $real_subobj=$pv->value;
             } else {
                # creation of new multiple subobjects for initial rules is not allowed
-               return if $prod_rule->flags == $Rule::is_initial && $prop->flags & $Property::is_multiple;
+               return if $prod_rule->flags == Rule::Flags::is_initial && $prop->flags & Property::Flags::is_multiple;
             }
          }
          $subobj_deputy=new DeputyObject($real_subobj, $self->path->deeper($prop->property), $self, $prop->property,
                                          $inherit_trigger ? $perm_trigger : undef);
 
-         if ($prop->flags & $Property::is_twin) {
+         if ($prop->flags & Property::Flags::is_twin) {
             weak($subobj_deputy->subobj_cache->{$prop->property_key}=$self);
          }
          $subobj_deputy
       });
       ++$depth;
 
-      if ($prop->flags & $Property::is_multiple) {
+      if ($prop->flags & Property::Flags::is_multiple) {
          if ($prop->index) {
             # refers to a non-default multiple subobject instance
             $self=(($self->siblings //= [ ])->[$prop->index] //=
@@ -413,7 +413,7 @@ sub create_sibling_for_new_multi {
       $init_chain->rgr->add_arc($self->rgr_prop_node, $sibling->rgr_prop_node, $rgr_exclusive_arc);
       $init_chain->rgr->add_arc($rule, $sibling->rgr_prop_node, $rgr_source_arc);
 
-      foreach my $out (grep { get_array_flags($_) & $Property::is_multiple_new } @{$rule->output}) {
+      foreach my $out (grep { get_array_flags($_) & Property::Flags::is_multiple_new } @{$rule->output}) {
          for (my ($depth, $last)=(0, $#$out-1);  $depth <= $last;  ++$depth) {
             if ($out->[$depth]->key == $self->property->new_instance_deputy->key) {
                my $subobject= $depth==$last ? $sibling : navigate_down($sibling, $init_chain, $rule, 0, @$out[$depth+1..$last]);
@@ -455,7 +455,7 @@ sub navigate_to_non_permuted {
    for (;;) {
       $parent=$self->parent
         or die "internal error: permutation parent object not found\n";
-      last if $self->property->flags & $Property::is_permutation;
+      last if $self->property->flags & Property::Flags::is_permutation;
       push @descend, $self->property;
       $self=$parent;
    }
@@ -503,7 +503,7 @@ sub lookup_rule_input {
    defined($self->real_object) or return;
    my ($obj, $real_obj, $content_index, $pv);
    foreach my $path (@$input) {
-      my $prop=local_pop($path);
+      my $prop = local pop @$path;
       if (@$path) {
          ($obj)=navigate_down($self, $init_chain, $prod_rule, 2, @$path) or next;
       } else {
@@ -527,7 +527,7 @@ package Polymake::Core::Scheduler::TentativeRuleChain;
 
 sub filter_preconditions_with_cheap_suppliers {
    my ($self, $pending, $suppliers)=@_;
-   my $expensive_wt=$Rule::std_weight->[0];
+   my $expensive_wt = $Rule::std_weight->[0];
    my $rule;
 
    # initialize the rule states
@@ -576,7 +576,7 @@ sub weave_preconditions {
    my %precond_seen;
    my @full_list=map {
       ((grep { not(exists $self->run->{$_} ||
-                  ($_->flags & $Rule::is_spez_precondition && $precond_seen{$_}++))
+                  ($_->flags & Rule::Flags::is_spez_precondition && $precond_seen{$_}++))
         } @{$_->preconditions}), $_)
    } @{$self->rules};
    $self->rules=\@full_list;
@@ -589,11 +589,11 @@ sub execute {           # => number of the failed rule
    foreach my $rule (@{$self->rules}) {
       my $rc=$rule->execute($object, 1);
       $self->run->{$rule}=$rc;
-      if ($rc != $Rule::exec_OK) {
-         if ($@ && $rule->flags != $Rule::is_initial) {
+      if ($rc != Rule::Exec::OK) {
+         if ($@ && $rule->flags != Rule::Flags::is_initial) {
             if ($Verbose::rules) {
                chomp $@;
-               warn_print( !($rule->flags & $Rule::is_precondition) && "rule ", $rule->header, " failed: $@" );
+               warn_print( !($rule->flags & Rule::Flags::is_precondition) && "rule ", $rule->header, " failed: $@" );
             }
             undef $@;
          }
@@ -638,19 +638,19 @@ use Polymake::Struct (
 
 sub new {
    my $self=&_new;
-   my ($object, $final_rule)=@_;
+   my ($object, $final_rule) = @_;
    if ($Verbose::scheduler) {
       dbg_print( "gathering viable rules" );
-      $self->Tstart=[ gettimeofday() ];
+      $self->Tstart = [ gettimeofday() ];
       if ($Verbose::scheduler>=3 && $DebugLevel>=2) {
          require Polymake::Core::Scheduler_debug;
-         $self->debug=new Debug();
+         $self->debug = new Debug();
       }
    }
-   $self->deputy_root=new DeputyObject($object);
-   $final_rule //= (state $final_dummy=create Rule('final', []));
-   $self->rgr=new RuleGraph();
-   $self->final=$self->deputy_root->rule_instance($final_rule);
+   $self->deputy_root = new DeputyObject($object);
+   $final_rule //= (state $final_dummy = create Rule('final', []));
+   $self->rgr = new RuleGraph();
+   $self->final = $self->deputy_root->rule_instance($final_rule);
    $self->rgr->add_node($self->final);
    $self;
 }
@@ -669,7 +669,7 @@ sub gettimeofday {
 ####################################################################################
 sub good_rules {
    my ($self, $object, $list)=@_;
-   grep { !($self->run->{$_} & $Rule::exec_failed) }
+   grep { !($self->run->{$_} & Rule::Exec::failed) }
       map { $object->rule_instance($_) }
          grep { !defined($object->real_object) || !$object->real_object->failed_rules->{$_} } @$list;
 }
@@ -721,7 +721,7 @@ sub producers_of_property {
              defined ($prod_key=$prod_key->{$this_level->property->key}) &&
              defined ($ancestor=$this_level->navigate_up)) {
 
-         $lookup_for_perm_trigger ||= defined($self->cur_perm_trigger) && $this_level->property->flags & $Property::is_permutation;
+         $lookup_for_perm_trigger ||= defined($self->cur_perm_trigger) && $this_level->property->flags & Property::Flags::is_permutation;
          my $ancestor_rules=$ancestor->type->get_producers_of($prod_key);
 
          if (@$ancestor_rules  and
@@ -740,13 +740,13 @@ sub producers_of_property {
          my $vertex_set=($object->prop_vertex_sets->{$prop->key} //= [ $self->last_prop_vertex++ ]);
          my $prop_node=($self->prop_nodes->[$vertex_set->[0]] //= $self->rgr->add_node);
          foreach my $rule (@list) {
-            if ($rule->flags & $Rule::is_production) {
+            if ($rule->flags & Rule::Flags::is_production) {
                push @{$rule->prop_vertex_sets}, $vertex_set;
             }
             $self->rgr->add_arc($rule, $prop_node, $source_arc);
          }
          if (defined($object->valid_for_perm_trigger)
-             and not($object->property->flags & $Property::is_permutation && $object->type->isa($prop->defined_for))) {
+             and not($object->property->flags & Property::Flags::is_permutation && $object->type->isa($prop->defined_for))) {
 
             push @{$object->navigate_to_non_permuted->prop_vertex_sets->{$prop->key} //= [ $self->last_prop_vertex++ ]}, @$vertex_set;
          }
@@ -764,9 +764,9 @@ sub rule_status {
 
    foreach my $input (@{$rule->input}) {
       my $input_flags=get_array_flags($input);
-      if ($input_flags != $Property::is_permutation &&
+      if ($input_flags != Property::Flags::is_permutation &&
           defined (my $pv=$object->lookup_rule_input($self, $rule, $input))) {
-         if (defined($pv->value) || $rule->flags & $Rule::is_definedness_check) {
+         if (defined($pv->value) || $rule->flags & Rule::Flags::is_definedness_check) {
             next;
          } else {
             return $Verbose::scheduler>=2 && "undefined source " . Property::print_path($input);
@@ -775,9 +775,9 @@ sub rule_status {
 
       my $input_can_be_supplied;
       foreach my $input_path (@$input) {
-         my $prop=local_pop($input_path);
+         my $prop = local pop @$input_path;
          foreach my $subobj ($object->navigate_down($self, $rule, 2, @$input_path)) {
-            $prop=$prop->new_instance_deputy if $prop->flags & $Property::is_multiple;
+            $prop=$prop->new_instance_deputy if $prop->flags & Property::Flags::is_multiple;
             my $prop_can_be_produced;
             foreach my $prod_rule (@{ producers_of_property($self, $subobj, $prop, $rgr_source_arc) }) {
                unless (defined($self->cur_perm_trigger)  &&
@@ -787,10 +787,10 @@ sub rule_status {
                         # prevent a loop where a rule working on a permutation subobject tries to compute something
                         # using the property from the main object, but this property moves back to the main object
                         # after the the processing of the permutation has been finished
-                        $prod_rule->flags & $Rule::is_perm_action        &&
-                        $input_flags != $Property::is_permutation        &&
+                        $prod_rule->flags & Rule::Flags::is_perm_action  &&
+                        $input_flags != Property::Flags::is_permutation  &&
                         $rule->perm_trigger == $prod_rule->perm_trigger  &&
-                        grep { get_array_flags($_) == $Property::is_permutation &&
+                        grep { get_array_flags($_) == Property::Flags::is_permutation &&
                                list_index($_->[0], $prod_rule->perm_path->[-1])>=0
                         } @{$rule->input})) {
 
@@ -858,7 +858,7 @@ sub gather_permutation_rules {
                                                         : @{$perm_deputy->perm_path});
       my ($object_for_restoring_rules, $final_vertex_set);
       {
-         local_clip_front($out_path, $action_depth);
+         local splice @$out_path, 0, $action_depth;
          $object_for_restoring_rules=$perm_obj->parent;
          --$remaining_actions;
          if (defined($object_for_restoring_rules->real_object) &&
@@ -866,7 +866,7 @@ sub gather_permutation_rules {
              $remaining_actions) {
             undef $object_for_restoring_rules;
          }
-         my $prop=local_pop($out_path);
+         my $prop = local pop @$out_path;
          my $prop_owner=$perm_obj->parent->navigate_down($self, $perm_trigger, 1, @$out_path);
          my $permuted_prop_owner=$perm_obj->navigate_down($self, $perm_trigger, 1, @$out_path);
 
@@ -918,21 +918,21 @@ sub gather_initial_rules {
    foreach my $input (@{$self->final->input}) {
       my $found=0;
       {
-         my $prop=local_pop($input);
+         my $prop = local pop @$input;
          foreach my $initial_rule (@{ producers_of_property($self, $self->deputy_root->navigate_down($self, $self->final, 2, @$input), $prop) }) {
             $self->rgr->add_arc($initial_rule, $self->final, $rgr_initial_arc);
             push @{$initial_rule->prop_vertex_sets}, [ $self->last_prop_vertex++ ];
             $found=1;
          }
       }
-      if ((my $depth=Property::find_first_in_path($input, $Property::is_restricted_spez))>=0) {
-         local_clip_back($input, $depth);
+      if ((my $depth = Property::find_first_in_path($input, Property::Flags::in_restricted_spez)) >= 0) {
+         local splice @$input, $depth + 1;
          my $multi_deputy=$self->deputy_root->navigate_down($self, $self->final, 2, @$input);
          unless ($protected_multi{$multi_deputy}++) {
-            my $checker_header= $Verbose::scheduler>=2 && "specialization checker for ".Property::print_path($input);
-            my $checker_rule=new Rule::Dummy($checker_header, $Rule::is_production | $Rule::is_restricted_spez, $input->[$depth]->belongs_to);
-            my $spez_deputy=$multi_deputy->navigate_up;
-            my $checker_deputy=$spez_deputy->rule_instance($checker_rule);
+            my $checker_header = $Verbose::scheduler >= 2 && "specialization checker for " . Property::print_path($input);
+            my $checker_rule = new Rule::Dummy($checker_header, Rule::Flags::is_production | Rule::Flags::in_restricted_spez, $input->[$depth]->belongs_to);
+            my $spez_deputy = $multi_deputy->navigate_up;
+            my $checker_deputy = $spez_deputy->rule_instance($checker_rule);
             push @{$checker_deputy->prop_vertex_sets}, [ $self->last_prop_vertex++ ];
             consider_rules($self, $spez_deputy, $checker_deputy);
             $self->rgr->add_arc($checker_deputy, $self->final, $rgr_unique_arc);
@@ -945,11 +945,11 @@ sub gather_initial_rules {
    }
 
    my $root_prop=$self->deputy_root->property;
-   if (defined($root_prop) && $root_prop->flags & $Property::is_restricted_spez) {
-      my $checker_header= $Verbose::scheduler>=2 && "specialization checker for this=".$root_prop->name;
-      my $checker_rule=new Rule::Dummy($checker_header, $Rule::is_production | $Rule::is_restricted_spez, $root_prop->belongs_to);
-      my $spez_deputy=$self->deputy_root->navigate_up;
-      my $checker_deputy=$spez_deputy->rule_instance($checker_rule);
+   if (defined($root_prop) && $root_prop->flags & Property::Flags::in_restricted_spez) {
+      my $checker_header = $Verbose::scheduler >= 2 && "specialization checker for this=" . $root_prop->name;
+      my $checker_rule = new Rule::Dummy($checker_header, Rule::Flags::is_production | Rule::Flags::in_restricted_spez, $root_prop->belongs_to);
+      my $spez_deputy = $self->deputy_root->navigate_up;
+      my $checker_deputy = $spez_deputy->rule_instance($checker_rule);
       push @{$checker_deputy->prop_vertex_sets}, [ $self->last_prop_vertex++ ];
       consider_rules($self, $spez_deputy, $checker_deputy);
       $self->rgr->add_arc($checker_deputy, $self->final, $rgr_unique_arc);
@@ -997,7 +997,7 @@ sub gather_more_rules {
 
          foreach my $precond_rule (@{$rule->preconditions}) {
             my $object_for_precond=$object;
-            if ($precond_rule->flags & $Rule::is_spez_precondition) {
+            if ($precond_rule->flags & Rule::Flags::is_spez_precondition) {
                for (my ($object_level, $spez_level)=($rule->path->level_change, $precond_rule->path->level_change);
                     $object_level > $spez_level; --$object_level) {
                   $object_for_precond=$object_for_precond->navigate_up;
@@ -1014,44 +1014,44 @@ sub gather_more_rules {
 
             # preconditions of object specializations may occur repeatedly
             if (defined (my $rc=$self->run->{$precond_rule})) {
-               if ($rc == $Rule::exec_infeasible) {
+               if ($rc == Rule::Exec::infeasible) {
                   dbg_print( "  infeasible: ", $rule->header, ": unsatisfied ", $precond_rule->header, " (tested above)" )
-                    if $Verbose::scheduler>=2;
-                  $self->run->{$rule}=$Rule::exec_infeasible;
+                    if $Verbose::scheduler >= 2;
+                  $self->run->{$rule} = Rule::Exec::infeasible;
                   next RULE;
                }
-               next if $rc == $Rule::exec_OK;
+               next if $rc == Rule::Exec::OK;
             }
 
             if (!defined($precond_rule->rgr_node)) {
                $self->rgr->add_node($precond_rule);
 
-               if (defined (my $explain=rule_status($self, $object_for_precond, $precond_rule))) {
+               if (defined (my $explain = rule_status($self, $object_for_precond, $precond_rule))) {
                   dbg_print( "  infeasible: ", $precond_rule->header, ": $explain\n",
                              "  infeasible: ", $rule->header, " due to precondition above" )
                     if $explain;
                   push @infeasible, $rule, $precond_rule;
-                  $self->run->{$precond_rule}=$Rule::exec_infeasible;
-                  $self->run->{$rule}=$Rule::exec_infeasible;
+                  $self->run->{$precond_rule} = Rule::Exec::infeasible;
+                  $self->run->{$rule} = Rule::Exec::infeasible;
                   next RULE;
                }
 
                if ($self->rule_is_ready_to_use($precond_rule)) {
-                  dbg_print( "  ready to evaluate: ", $precond_rule->header ) if $Verbose::scheduler>=2;
-                  my ($rc, $retval)=$precond_rule->execute($object_for_precond->real_object, -1);
-                  if (($self->run->{$precond_rule}=$rc) != $Rule::exec_OK) {
+                  dbg_print( "  ready to evaluate: ", $precond_rule->header ) if $Verbose::scheduler >= 2;
+                  my ($rc, $retval) = $precond_rule->execute($object_for_precond->real_object, -1);
+                  if (($self->run->{$precond_rule} = $rc) != Rule::Exec::OK) {
                      if ($@) {
                         chomp $@;
                         warn_print( $precond_rule->header, " failed: $@" );
                         undef $@;
                      }
                      dbg_print( "  infeasible: ", $rule->header, " due to precondition above" )
-                       if $Verbose::scheduler>=2;
+                       if $Verbose::scheduler >= 2;
                      push @infeasible, $rule;
-                     $self->run->{$rule}=$Rule::exec_infeasible;
+                     $self->run->{$rule} = Rule::Exec::infeasible;
                      next RULE;
                   }
-                  $self->dyn_weight->{$precond_rule}=$retval if $precond_rule->flags & $Rule::is_dyn_weight;
+                  $self->dyn_weight->{$precond_rule}=$retval if $precond_rule->flags & Rule::Flags::is_dyn_weight;
                   next;
                }
 
@@ -1062,15 +1062,15 @@ sub gather_more_rules {
             $self->rgr->add_arc($precond_rule, $rule, $rgr_unique_arc);
          }
 
-         if (defined (my $explain_failure=rule_status($self, $object, $rule))) {
+         if (defined (my $explain_failure = rule_status($self, $object, $rule))) {
             dbg_print( "  infeasible: ", $rule->header, ": $explain_failure" ) if $explain_failure;
-            return if $rule==$self->final;
+            return if $rule == $self->final;
             push @infeasible, $rule;
-            $self->run->{$rule}=$Rule::exec_infeasible;
+            $self->run->{$rule} = Rule::Exec::infeasible;
             if (defined $rule->with_permutation) {
                foreach ($rule->with_permutation, @{$rule->with_permutation->actions}) {
                   push @infeasible, $_;
-                  $self->run->{$_}=$Rule::exec_infeasible;
+                  $self->run->{$_} = Rule::Exec::infeasible;
                }
             }
             next RULE;
@@ -1118,7 +1118,7 @@ sub squeeze_prefs {
       while ($r<=$#$list) {
          my $pref_rule=$list->[$r];
          if (!$self->rule_is_alive($pref_rule)      # eliminated
-             || ($self->run->{$pref_rule} & $Rule::exec_failed)) {
+             || ($self->run->{$pref_rule} & Rule::Exec::failed)) {
             splice @$list, $r, 1;
          } else {
             ++$r;
@@ -1139,7 +1139,7 @@ sub compare_permutations {
    my ($perm_path_upper, $perm_path_lower, @path_between)=@_;
    if (Property::equal_path_prefixes($perm_path_upper, \@path_between) == $#$perm_path_upper) {
       splice @path_between, 0, $#$perm_path_upper;
-      my $perm=local_pop($perm_path_lower);
+      my $perm = local pop @$perm_path_lower;
       $perm_path_upper->[-1]->find_sub_permutation(@path_between, @$perm_path_lower)==$perm;
    }
 }
@@ -1240,7 +1240,7 @@ sub prepare_schedule {
 
    for (my $i=0; $i<=$#{$self->rules}; ) {
       $rule=$self->rules->[$i];
-      my @uniq_precond=grep { not($_->flags & $Rule::is_spez_precondition && $precond_seen{$_}++) } @{$rule->preconditions};
+      my @uniq_precond=grep { not($_->flags & Rule::Flags::is_spez_precondition && $precond_seen{$_}++) } @{$rule->preconditions};
       push @result, @uniq_precond, $rule;
       my @pending=grep { !exists $self->run->{$_} } @uniq_precond;
       splice @{$self->rules}, $i, !$rule->temp_state, @pending;
@@ -1265,8 +1265,8 @@ sub replay_rules {
       my @satisfied;
       for (($i, $last)=(0, $#{$self->ready}); $i<=$last; ) {
          $rule=$self->ready->[$i];
-         if ($rule->flags & $Rule::is_precondition && exists $self->run->{$rule}) {
-            if ($Application::plausibility_checks && $self->run->{$rule} != $Rule::exec_OK) {
+         if ($rule->flags & Rule::Flags::is_precondition && exists $self->run->{$rule}) {
+            if ($Application::plausibility_checks && $self->run->{$rule} != Rule::Exec::OK) {
                die "internal error: rule ", $rule->header, " occurs in the 'ready' list although known to have failed";
             }
             push @satisfied, $rule;
@@ -1311,7 +1311,7 @@ sub replay_rules {
 
    # replaying of the previous run finished: forget the already run rules, start producing variants
    if ($Application::plausibility_checks) {
-      if (my @wrong=grep { !exists $self->run->{$_} || $self->run->{$_} != $Rule::exec_OK } @{$self->rules}) {
+      if (my @wrong=grep { !exists $self->run->{$_} || $self->run->{$_} != Rule::Exec::OK } @{$self->rules}) {
          die "internal error: unexecuted or failed rules included during replaying phase:",
              (map { "\n  ".$_->header." => ".($self->run->{$_} // "NOT RUN") } @wrong);
       }
@@ -1339,9 +1339,9 @@ sub build_cheapest_chain {
       my (@pending, @satisfied);
       for (($i, $last)=(0, $#{$top->ready}); $i<=$last; ) {
          $rule=$top->ready->[$i];
-         if ($rule->flags & $Rule::is_precondition) {
+         if ($rule->flags & Rule::Flags::is_precondition) {
             if (exists $self->run->{$rule}) {
-               if ($Application::plausibility_checks && $self->run->{$rule} != $Rule::exec_OK) {
+               if ($Application::plausibility_checks && $self->run->{$rule} != Rule::Exec::OK) {
                   die "internal error: rule ", $rule->header, " occurs in the 'ready' list although known to have failed";
                }
                push @satisfied, $rule;
@@ -1364,7 +1364,7 @@ sub build_cheapest_chain {
             my (@succeeded_suppliers, @failed);
 
             foreach $rule (@cheap_suppliers) {
-               if (($self->run->{$rule}=$rule->execute($object, 0)) == $Rule::exec_OK) {
+               if (($self->run->{$rule} = $rule->execute($object, 0)) == Rule::Exec::OK) {
                   push @succeeded_suppliers, $rule;
                } else {
                   if ($@) {
@@ -1379,12 +1379,12 @@ sub build_cheapest_chain {
 
             unless (@failed) {
                foreach $rule (@precond) {
-                  my ($rc, $retval)=$rule->execute($object, 1);
-                  $self->run->{$rule}=$rc;
-                  if ($rc==$Rule::exec_OK) {
-                     $self->dyn_weight->{$rule}=$retval if $rule->flags & $Rule::is_dyn_weight;
+                  my ($rc, $retval) = $rule->execute($object, 1);
+                  $self->run->{$rule} = $rc;
+                  if ($rc == Rule::Exec::OK) {
+                     $self->dyn_weight->{$rule} = $retval if $rule->flags & Rule::Flags::is_dyn_weight;
                   } else {
-                     dbg_print( $rule->header, " failed" ) if $Verbose::scheduler>=2;
+                     dbg_print( $rule->header, " failed" ) if $Verbose::scheduler >= 2;
                      push @failed, $rule;
                   }
                }
@@ -1419,12 +1419,12 @@ sub build_cheapest_chain {
 
       for ($i=0; $i<=$#{$top->ready}; ) {
          $rule=$top->ready->[$i];
-         if ($rule->flags & $Rule::is_precondition) {
-            $premature_next=1;
+         if ($rule->flags & Rule::Flags::is_precondition) {
+            $premature_next = 1;
             ++$i;
          } elsif ($self->initial
-                  ? $rule->flags & $Rule::is_initial
-                  : ($rule->flags & $Rule::is_perm_restoring
+                  ? $rule->flags & Rule::Flags::is_initial
+                  : ($rule->flags & Rule::Flags::is_perm_restoring
                        or
                      $self->give_schedule!=2 && $rule->weight->[0]==0 && $rule->weight->[1]<=1)) {
 
@@ -1532,31 +1532,31 @@ sub resolve {
          } else {
             weave_preconditions($top);
             dbg_print( "rules to execute:\n", report($top, $heap) ) if $Verbose::scheduler;
-            my $ret= @{$top->rules} && $top->rules->[-1]->flags & $Rule::is_function ? (pop @{$top->rules})->rule : 1;
+            my $ret= @{$top->rules} && $top->rules->[-1]->flags & Rule::Flags::is_function ? (pop @{$top->rules})->rule : 1;
             unless (defined( $last_failed=execute($top, $object) )) {
                return $ret;
             }
          }
 
          my ($failed_rule)=splice @{$top->rules}, $last_failed;
-         return if $failed_rule->flags == $Rule::is_initial;
+         return if $failed_rule->flags == Rule::Flags::is_initial;
          if ($Verbose::scheduler) {
             dbg_print( "trying to find an alternative way" );
             $self->Tstart=[ gettimeofday() ];
          }
          # if it was a precondition, let the object create the undef properties afterwards
-         ++$tries unless $failed_rule->flags & $Rule::is_precondition;
+         ++$tries unless $failed_rule->flags & Rule::Flags::is_precondition;
          my @succeeded=@{$top->rules};
          eliminate($self, $rgr_initial_arc, $failed_rule) or last;
          squeeze_prefs($self);
 
          # Only replay production rules.  Preconditions and PermActions are added automatically.
-         my @replay_rules=map { $_->without_permutation } grep { $_->flags & $Rule::is_production && $self->rule_is_alive($_) } @succeeded;
+         my @replay_rules=map { $_->without_permutation } grep { $_->flags & Rule::Flags::is_production && $self->rule_is_alive($_) } @succeeded;
 
          if (@{$self->ready}) {
             if ($self->give_schedule) {
                # do not force applying expensive rules, the resulting schedule might become far from optimum
-               my $std_wt=$Rule::std_weight->[0];
+               my $std_wt = $Rule::std_weight->[0];
                @replay_rules=grep { $_->weight->[0] <= $std_wt } @replay_rules;
             }
             if ($Verbose::scheduler>=3 && @replay_rules) {
@@ -1585,27 +1585,27 @@ package Polymake::Core::Scheduler;
 
 # object, [ rules ] => success code
 sub resolve_rules {
-   my ($object, $rules)=@_;
-   my $self=new InitRuleChain($object);
+   my ($object, $rules) = @_;
+   my $self = new InitRuleChain($object);
    $self->gather_rules_for_prescribed($rules) &&
    $self->resolve;
 }
 
 sub get_chain {
-   my ($object, $request)=@_;
-   my $self=new InitRuleChain($object, create Rule('request', $request, 1), 1);
+   my ($object, $request) = @_;
+   my $self = new InitRuleChain($object, create Rule('request', $request, 1), 1);
    $self->gather_rules &&
    $self->resolve;
 }
 
 sub resolve_permutation {
    my ($object, $rule)=@_;
-   my $self=new InitRuleChain($object);
-   $rule=$self->deputy_root->rule_instance($rule);
+   my $self = new InitRuleChain($object);
+   $rule = $self->deputy_root->rule_instance($rule);
    {
-      my $perm_path=$rule->with_permutation->perm_path;
-      my $perm=local_pop($perm_path);
-      $self->deputy_root->navigate_down($self, $rule, 1, @$perm_path)->sensitive_to->{$perm->key}=1;
+      my $perm_path = $rule->with_permutation->perm_path;
+      my $perm = local pop @$perm_path;
+      $self->deputy_root->navigate_down($self, $rule, 1, @$perm_path)->sensitive_to->{$perm->key} = 1;
    }
    $self->consider_rules($self->deputy_root, $rule);
    $self->rgr->add_arc($rule, $self->final, $rgr_source_arc);
@@ -1615,26 +1615,25 @@ sub resolve_permutation {
 ####################################################################################
 sub resolve_initial_request {
    my ($object, $request)=@_;
-   my $self=new InitRuleChain($object, create Rule('initial commit', $request, 1));
+   my $self = new InitRuleChain($object, create Rule('initial commit', $request, 1));
 
    # Only a limited subset of production rules is allowed:
    # - it must not involve any permutations
    # - it must not create subobjects by applying default values
    my $further_rule_filter=$viable_rules;
-   local_scalar($viable_rules,
-                sub {
-                   my $rules=pop;
-                   $further_rule_filter->(@_,
-                      [ grep {
-                           $_->flags & ($Rule::is_precondition | $Rule::is_initial)
-                             or
-                           $_->flags & $Rule::is_production &&
-                           ( $_->flags & $Rule::is_default_value
-                             ? defined($_[1]->real_object)
-                             : !$_->with_permutation )
-                        } @$rules
-                      ] )
-                });
+   local scalar $viable_rules = sub {
+      my $rules=pop;
+      $further_rule_filter->(@_,
+         [ grep {
+              $_->flags & (Rule::Flags::is_precondition | Rule::Flags::is_initial)
+                or
+                $_->flags & Rule::Flags::is_production &&
+                ( $_->flags & Rule::Flags::is_default_value
+                  ? defined($_[1]->real_object)
+                  : !$_->with_permutation )
+           } @$rules
+         ] )
+   };
    $self->gather_initial_rules;
    @{$self->rules}==0
      or $self->gather_more_rules && $self->resolve > 0;
@@ -1642,22 +1641,22 @@ sub resolve_initial_request {
 ####################################################################################
 sub resolve_request {
    my ($object, $request)=@_;
-   my $final=create Rule('request', $request, 1);
-   my $self=new InitRuleChain($object, $final);
-   my $success=$self->gather_rules && $self->resolve;
+   my $final = create Rule('request', $request, 1);
+   my $self = new InitRuleChain($object, $final);
+   my $success = $self->gather_rules && $self->resolve;
 
-   if ($success<=0) {
+   if ($success <= 0) {
       my $shortening_scope;
       shorten_input($object, $_, $shortening_scope) for @{$final->input};
       if (defined $shortening_scope) {
-         $self=new InitRuleChain($object, $final);
+         $self = new InitRuleChain($object, $final);
          if ($self->gather_rules && $self->resolve > 0) {
             undef $shortening_scope;
-            $self=new InitRuleChain($object, $final);
-            $success=$self->gather_rules && $self->resolve;
+            $self = new InitRuleChain($object, $final);
+            $success = $self->gather_rules && $self->resolve;
          }
       }
-      return ($success, $self) if $success==0;
+      return ($success, $self) if $success == 0;
    }
    $success;
 }
@@ -1673,11 +1672,10 @@ sub shorten_input {
                  defined ($pv=$obj->contents->[$content_index]) &&
                  defined ($obj=$pv->value);
 
-         if ($input_path->[$i]->flags & $Property::is_produced_as_whole) {
-            $scope //= ($_[2]=new Scope());
-            $scope->begin_locals;
-            local_clip_back($input_path, $i);
-            $scope->end_locals;
+         if ($input_path->[$i]->flags & Property::Flags::is_produced_as_whole) {
+            local with (($_[2] //= new Scope())->locals) {
+               local splice @$input_path, $i + 1;
+            }
             last;
          }
       }
@@ -1689,14 +1687,13 @@ my $disabled_rules;
 sub temp_disable_rules {
    unless (defined $disabled_rules) {
       my $further_rule_filter=$viable_rules;
-      $Scope->begin_locals;
-      local_scalar($disabled_rules, { });
-      local_scalar($viable_rules,
-                   sub {
-                      my $rules=pop;
-                      $further_rule_filter->(@_, [ grep { !$disabled_rules->{$_} } @$rules ] )
-                   });
-      $Scope->end_locals;
+      local with ($Scope->locals) {
+         local scalar $disabled_rules = { };
+         local scalar $viable_rules = sub {
+            my $rules = pop @_;
+            $further_rule_filter->(@_, [ grep { !$disabled_rules->{$_} } @$rules ] )
+         };
+      }
    }
    foreach my $rule (@_) {
       $disabled_rules->{$rule}=1;
@@ -1718,22 +1715,22 @@ sub list { map { $_->header } @{$_[0]->rules} }
 
 sub apply {
    my ($self, $object)=@_;
-   if ($object==$self->genesis) {
+   if ($object == $self->genesis) {
       foreach my $rule (@{$self->rules}) {
-         unless ($rule->flags & ($Rule::is_function | $Rule::is_precondition)) {
-            $rule->execute($object, 0)==$Rule::exec_OK or return;
+         unless ($rule->flags & (Rule::Flags::is_function | Rule::Flags::is_precondition)) {
+            $rule->execute($object, 0) == Rule::Exec::OK or return;
          }
       }
    } else {
       foreach my $rule (@{$self->rules}) {
-         $rule->execute($object, 1)==$Rule::exec_OK or return;
+         $rule->execute($object, 1) == Rule::Exec::OK or return;
       }
    }
    1
 }
 
 sub list_new_properties {
-   my ($self)=@_;
+   my ($self) = @_;
    uniq(map { $_->list_results($self->genesis->type) } @{$self->rules})
 }
 

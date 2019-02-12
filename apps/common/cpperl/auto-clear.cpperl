@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<Matrix<Integer>&>", "void", "void"], "func": "clear", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h"], "kind": "meth", "sig": "clear:M1.x.x"},
+ null ],
+"version": 3}

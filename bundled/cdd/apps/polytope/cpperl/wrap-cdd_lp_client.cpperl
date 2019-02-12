@@ -1,0 +1,8 @@
+{"app": "polytope", "embed": "cdd_lp_client.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void", "void"], "func": "cdd_lp_client", "include": ["polymake/Rational.h"], "sig": "cdd_lp_client:T1.B.B.x", "tp": "1"},
+  {"args": ["double", "void", "void", "void"], "func": "cdd_lp_client", "sig": "cdd_lp_client:T1.B.B.x", "tp": "1"},
+  {"args": ["Rational"], "func": "cdd_interface::create_LP_solver", "include": ["polymake/Rational.h"], "sig": "create_LP_solver#cdd.simplex:T1", "tp": "1"},
+  {"args": ["double"], "func": "cdd_interface::create_LP_solver", "sig": "create_LP_solver#cdd.simplex:T1", "tp": "1"},
+ null ],
+"version": 3}

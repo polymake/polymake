@@ -20,11 +20,11 @@
 #include "polymake/Vector.h"
 #include "polymake/Matrix.h"
 #include "polymake/linalg.h"
-#include "polymake/polytope/to_interface.h"
+#include "polymake/polytope/solve_LP.h"
 
 namespace polymake { namespace polytope {
 
-template<typename Scalar, typename VectorType, typename MatrixType>
+template <typename Scalar, typename VectorType, typename MatrixType>
 Vector<Scalar> separating_hyperplane(const GenericVector<VectorType, Scalar>& q, 
                                      const GenericMatrix<MatrixType, Scalar>& points)
 {
@@ -33,10 +33,9 @@ Vector<Scalar> separating_hyperplane(const GenericVector<VectorType, Scalar>& q,
      http://www.ifor.math.ethz.ch/~fukuda/polyfaq/node22.html#polytope:Vredundancy
     */
    const Matrix<Scalar> 
-      extension(zero_vector<Scalar>(points.rows()) / ones_vector<Scalar>(points.rows())),
-      ineqs(  (T(extension)|-points.minor(All,range(1,points.cols()-1))) 
+      ineqs(  (zero_vector<Scalar>() | (ones_vector<Scalar>() | -points.minor(All, range(1,points.cols()-1))))
               // z^t p_i - z_0 <= 0; CAUTION: p_i is affine part of i-th point! 
-            / (ones_vector<Scalar>(2)|-q.slice(1)) ), 
+              / (ones_vector<Scalar>(2) | -q.slice(range_from(1))) ),
               // z^t q - z_0 <= 1, prevents unboundedness
       affine_hull(null_space(points/q)),
       extension2(affine_hull.rows(), 2);
@@ -46,20 +45,14 @@ Vector<Scalar> separating_hyperplane(const GenericVector<VectorType, Scalar>& q,
       affine_hull_minor = affine_hull.minor(All, range(1, affine_hull.cols()-1));
    }
    const Matrix<Scalar> eqs(extension2 | -affine_hull_minor);
-   const Vector<Scalar> obj(zero_vector<Scalar>(1) | -ones_vector<Scalar>(1) | q.slice(1)); // z^t q - z_0
+   const Vector<Scalar> obj(zero_vector<Scalar>(1) | -ones_vector<Scalar>(1) | q.slice(range_from(1))); // z^t q - z_0
 
-   to_interface::solver<Scalar> S;
-   /// @retval first: objective value, second: solution
-   typedef std::pair<Scalar, Vector<Scalar> > lp_solution;
-
-   lp_solution sol=S.solve_lp(ineqs, eqs, obj, true);
-   if (sol.first <= 0) //q non-red. <=> obj_val > 0
+   const auto S = solve_LP(ineqs, eqs, obj, true);
+   if (S.status != LP_status::valid || S.objective_value <= 0) //q non-red. <=> obj_val > 0
       throw infeasible();
 
    // H: z^t x = z_0, i.e., z_0 - z^t x = 0
-   Vector<Scalar> sep_hyp = -sol.second.slice(1); 
-   sep_hyp[0] = sol.second[1]; 
-   return sep_hyp;
+   return S.solution[1] | -S.solution.slice(range_from(2));
 }
 
 }}

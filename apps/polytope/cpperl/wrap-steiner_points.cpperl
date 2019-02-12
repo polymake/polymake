@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "steiner_points.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "steiner_point", "include": ["polymake/Rational.h"], "sig": "steiner_point:T1.B.o", "tp": "1"},
+  {"args": ["Rational", "void", "void"], "func": "all_steiner_points", "include": ["polymake/Rational.h"], "sig": "all_steiner_points:T1.B.o", "tp": "1"},
+ null ],
+"version": 3}

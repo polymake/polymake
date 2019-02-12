@@ -1,0 +1,7 @@
+{"app": "polytope", "embed": "simplex.cc",
+ "inst": [
+  {"args": ["Rational", "int(int)", "Rational(int)", "void"], "func": "simplex", "include": ["polymake/Rational.h"], "sig": "simplex:T1.int.C0.o", "tp": "1"},
+  {"args": ["Rational", "int(int)", "Rational(perl::Canned<const Rational&>)", "void"], "func": "simplex", "include": ["polymake/Rational.h"], "sig": "simplex:T1.int.C0.o", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "int(int)", "QuadraticExtension<Rational>(perl::Canned<const QuadraticExtension<Rational>&>)", "void"], "func": "simplex", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "simplex:T1.int.C0.o", "tp": "1"},
+ null ],
+"version": 3}

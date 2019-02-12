@@ -1,0 +1,5 @@
+{"app": "group",
+ "inst": [
+  {"args": ["perl::Canned<const SwitchTable&>", "perl::Canned<const Vector<Rational>&>"], "func": "lex_maximize_vector", "include": ["polymake/Rational.h", "polymake/Vector.h", "polymake/group/switch_table.h"], "kind": "meth", "sig": "lex_maximize_vector:M.X"},
+ null ],
+"version": 3}

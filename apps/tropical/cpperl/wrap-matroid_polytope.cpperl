@@ -1,0 +1,5 @@
+{"app": "tropical", "embed": "matroid_polytope.cc",
+ "inst": [
+  {"args": ["Min", "Rational", "void", "Rational(int)"], "func": "matroid_polytope", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "matroid_polytope:T2.B.C1", "tp": "2"},
+ null ],
+"version": 3}

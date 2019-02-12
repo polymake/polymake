@@ -16,43 +16,26 @@
 
 #include "polymake/client.h"
 #include "polymake/polytope/ppl_interface.h"
+#include "polymake/polytope/generic_lp_client.h"
 
+namespace polymake { namespace polytope { namespace ppl_interface {
 
-namespace polymake { namespace polytope {
-
-
-
-template <typename Scalar>
-void ppl_solve_lp(perl::Object p, perl::Object lp, bool maximize)
+template <typename Scalar=Rational>
+auto create_LP_solver()
 {
-   typedef ppl_interface::solver<Scalar> Solver;
-   const Matrix<Scalar> H=p.give("FACETS | INEQUALITIES"),
-      E=p.lookup("AFFINE_HULL | EQUATIONS");
-   const Vector<Scalar> Obj=lp.give("LINEAR_OBJECTIVE");
-   try {
-      Solver solver;
-      typename Solver::lp_solution S=solver.solve_lp(H, E, Obj, maximize);
-      lp.take(maximize ? "MAXIMAL_VALUE" : "MINIMAL_VALUE") << S.first;
-      lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << S.second;
-      p.take("FEASIBLE") << true;
-   }
-   catch (const infeasible&) {
-      lp.take(maximize ? "MAXIMAL_VALUE" : "MINIMAL_VALUE") << perl::undefined();
-      lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << perl::undefined();
-      p.take("FEASIBLE") << false;
-   }
-   catch (const unbounded&) {
-      if (maximize) {
-         lp.take("MAXIMAL_VALUE") << std::numeric_limits<Scalar>::infinity();
-      } else {
-         lp.take("MINIMAL_VALUE") << -std::numeric_limits<Scalar>::infinity();
-      }
-      lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << perl::undefined();
-      p.take("FEASIBLE") << true;
-   }
+   return cached_LP_solver<Rational>(new LP_Solver<Rational>(), true);
 }
 
-      FunctionTemplate4perl("ppl_solve_lp<Scalar> (Polytope<Scalar>, LinearProgram<Scalar>, $) : void");
+}
+
+void ppl_lp_client(perl::Object p, perl::Object lp, bool maximize)
+{
+   generic_lp_client<Rational>(p, lp, maximize, ppl_interface::LP_Solver<Rational>());
+}
+
+Function4perl(&ppl_lp_client, "ppl_lp_client(Polytope<Rational>, LinearProgram<Rational>, $)");
+
+InsertEmbeddedRule("function ppl.simplex: create_LP_solver<Scalar> [Scalar==Rational] () : c++ (name => 'ppl_interface::create_LP_solver') : returns(cached);\n");
 
 } }
 

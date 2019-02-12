@@ -132,7 +132,7 @@ const AccurateFloat& spec_object_traits<AccurateFloat>::one()
 
 template <>
 AccurateFloat
-pow(const AccurateFloat& base, int exp)
+pow(const AccurateFloat& base, long exp)
 {
    return AccurateFloat::pow(base,exp);
 }

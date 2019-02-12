@@ -40,7 +40,7 @@ Graph<> graph_from_vertices(const Matrix<Rational>& Vertices)
 
    Matrix<Rational> Ineq(n_vertices,Vertices.cols());
    Matrix<Rational> Eq;
-   lrs_interface::solver LRS;
+   const lrs_interface::LP_Solver LRS{};
 
    for (int i = 0; i < n_vertices-1; i++) {
       for (int j = i+1; j < n_vertices; j++) {

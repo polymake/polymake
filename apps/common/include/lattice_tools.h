@@ -25,7 +25,7 @@
 
 namespace polymake { namespace common {
 
-template <typename TVector> inline
+template <typename TVector>
 bool is_integral(const GenericVector<TVector, Rational>& V)
 {
    for (auto x=entire(V.top()); !x.at_end(); ++x)
@@ -33,14 +33,14 @@ bool is_integral(const GenericVector<TVector, Rational>& V)
    return true;
 }
 
-template <typename TMatrix> inline
+template <typename TMatrix>
 typename std::enable_if<TMatrix::is_flat, bool>::type
 is_integral(const GenericMatrix<TMatrix, Rational>& M)
 {
    return is_integral(concat_rows(M));
 }
 
-template <typename TMatrix> inline
+template <typename TMatrix>
 typename std::enable_if<!TMatrix::is_flat, bool>::type
 is_integral(const GenericMatrix<TMatrix, Rational>& M)
 {
@@ -51,7 +51,7 @@ is_integral(const GenericMatrix<TMatrix, Rational>& M)
 
 namespace {
 
-template <typename DstVector, typename SrcIterator> inline
+template <typename DstVector, typename SrcIterator>
 void store_eliminated_denominators(DstVector& vec, SrcIterator src, const Integer& LCM, std::false_type)
 {
    for (auto dst=vec.begin(); !src.at_end(); ++src, ++dst)
@@ -59,22 +59,23 @@ void store_eliminated_denominators(DstVector& vec, SrcIterator src, const Intege
          *dst = div_exact(LCM, denominator(*src)) * numerator(*src);
 }
 
-template <typename DstVector, typename SrcIterator> inline
+template <typename DstVector, typename SrcIterator>
 void store_eliminated_denominators(DstVector& vec, SrcIterator src, const Integer& LCM, std::true_type)
 {
    for (; !src.at_end(); ++src)
       vec.push_back(src.index(), div_exact(LCM, denominator(*src)) * numerator(*src));
 }
 
-template <typename DstVector, typename SrcVector> inline
+template <typename DstVector, typename SrcVector>
 void copy_eliminated_denominators(DstVector&& vec, const SrcVector& src)
 {
-   store_eliminated_denominators(vec, entire(src), lcm(denominators(src)), bool_constant<pm::check_container_feature<DstVector, pm::sparse>::value>());
+   store_eliminated_denominators(vec, entire(src), lcm(denominators(src)),
+                                 bool_constant<pm::check_container_feature<pure_type_t<DstVector>, pm::sparse>::value>());
 }
 
 }
 
-template <typename TVector> inline
+template <typename TVector>
 typename GenericVector<TVector, Integer>::persistent_type
 eliminate_denominators(const GenericVector<TVector, Rational>& V)
 {
@@ -83,7 +84,7 @@ eliminate_denominators(const GenericVector<TVector, Rational>& V)
    return result;
 }
 
-template <typename TMatrix> inline
+template <typename TMatrix>
 typename GenericMatrix<TMatrix, Integer>::persistent_type
 eliminate_denominators_in_rows(const GenericMatrix<TMatrix, Rational>& M)
 {
@@ -94,7 +95,7 @@ eliminate_denominators_in_rows(const GenericMatrix<TMatrix, Rational>& M)
    return result;
 }
 
-template <typename TMatrix> inline
+template <typename TMatrix>
 typename GenericMatrix<TMatrix, Integer>::persistent_type
 eliminate_denominators_entire(const GenericMatrix<TMatrix, Rational>& M)
 {
@@ -103,27 +104,27 @@ eliminate_denominators_entire(const GenericMatrix<TMatrix, Rational>& M)
    return result;
 }
 
-template <typename TMatrix> inline
+template <typename TMatrix>
 typename GenericMatrix<TMatrix, Integer>::persistent_type
 eliminate_denominators_entire_affine(const GenericMatrix<TMatrix, Rational>& M)
 {
    typename GenericMatrix<TMatrix, Integer>::persistent_type result(M.rows(), M.cols());
    if (M.rows() && M.cols()) {
       if (M.cols() > 1)
-         copy_eliminated_denominators(concat_rows(result.minor(All,~scalar2set(0)).top()), concat_rows(M.minor(All,~scalar2set(0))));
+         copy_eliminated_denominators(concat_rows(result.minor(All, range_from(1))), concat_rows(M.minor(All, range_from(1))));
       result.col(0) = numerators(M.col(0));
    }
    return result;
 }
 
-template <typename TVector> inline
+template <typename TVector>
 typename std::enable_if<is_gcd_domain<typename TVector::element_type>::value, typename TVector::persistent_type>::type
 divide_by_gcd(const GenericVector<TVector>& v)
 {
    return div_exact(v, gcd(v));
 }
       
-template <typename TMatrix> inline
+template <typename TMatrix>
 typename std::enable_if<is_gcd_domain<typename TMatrix::element_type>::value, typename TMatrix::persistent_type>::type
 divide_by_gcd(const GenericMatrix<TMatrix>& M)
 {
@@ -136,21 +137,21 @@ divide_by_gcd(const GenericMatrix<TMatrix>& M)
 }
 
 
-template <typename TMatrix> inline
+template <typename TMatrix>
 typename std::enable_if<is_gcd_domain<typename TMatrix::element_type>::value, typename TMatrix::persistent_type>::type
 primitive(const GenericMatrix<TMatrix>& M)
 {
    return divide_by_gcd(M);
 }
 
-template <typename TMatrix> inline
+template <typename TMatrix>
 typename std::enable_if<is_gcd_domain<typename TMatrix::element_type>::value, typename TMatrix::persistent_type>::type
 primitive_affine(const GenericMatrix<TMatrix>& M)
 {
-   return M.col(0) | divide_by_gcd(M.minor(All, ~scalar2set(0)));
+   return M.col(0) | divide_by_gcd(M.minor(All, range_from(1)));
 }
 
-template <typename TMatrix> inline
+template <typename TMatrix>
 typename GenericMatrix<TMatrix, Integer>::persistent_type
 primitive(const GenericMatrix<TMatrix, Rational>& M)
 {
@@ -160,32 +161,32 @@ primitive(const GenericMatrix<TMatrix, Rational>& M)
    return result;
 }
 
-template <typename TMatrix> inline
+template <typename TMatrix>
 typename GenericMatrix<TMatrix, Integer>::persistent_type
 primitive_affine(const GenericMatrix<TMatrix, Rational>& M)
 {
    if (!is_integral(M.col(0)))
       throw std::runtime_error("homogeneous coordinates not integral");
 
-   return numerators(M.col(0)) | primitive(M.minor(All, ~scalar2set(0)));
+   return numerators(M.col(0)) | primitive(M.minor(All, range_from(1)));
 }
 
  
-template <typename TVector> inline
+template <typename TVector>
 typename std::enable_if<is_gcd_domain<typename TVector::element_type>::value, typename TVector::persistent_type>::type
 primitive(const GenericVector<TVector>& v)
 {
    return divide_by_gcd(v);
 }
 
-template <typename TVector> inline
+template <typename TVector>
 typename std::enable_if<is_gcd_domain<typename TVector::element_type>::value, typename TVector::persistent_type>::type
 primitive_affine(const GenericVector<TVector>& v)
 {
-   return v.top()[0] | divide_by_gcd(v.slice(1));
+   return v.top()[0] | divide_by_gcd(v.slice(range_from(1)));
 }
 
-template <typename TVector> inline
+template <typename TVector>
 typename GenericVector<TVector, Integer>::persistent_type
 primitive(const GenericVector<TVector, Rational>& v)
 {
@@ -194,21 +195,21 @@ primitive(const GenericVector<TVector, Rational>& v)
    return result;
 }
 
-template <typename TVector> inline
+template <typename TVector>
 typename GenericVector<TVector, Integer>::persistent_type
 primitive_affine(const GenericVector<TVector, Rational>& v)
 {
    if (denominator(v.top()[0]) != 1)
       throw std::runtime_error("homogeneous coordinate not integral");
 
-   return numerator(v.top()[0]) | primitive(v.slice(1));
+   return numerator(v.top()[0]) | primitive(v.slice(range_from(1)));
 }
 
-template <typename TMatrix> inline
+template <typename TMatrix>
 typename GenericMatrix<TMatrix, Integer>::persistent_type
 lattice_basis(const GenericMatrix<TMatrix, Integer>& gens)
 {
-   const SmithNormalForm<Integer> SNF = smith_normal_form(gens.minor(All, ~scalar2set(0)));
+   const SmithNormalForm<Integer> SNF = smith_normal_form(gens.minor(All, range_from(1)));
    return (SNF.form * SNF.right_companion).minor(range(0, SNF.rank-1),All);
 }
 

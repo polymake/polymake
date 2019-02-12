@@ -231,6 +231,27 @@ user_function graph_from_edges($) {
    return new Graph(ADJACENCY=>$g);
 }
 
+user_function graph_from_cycles($) {
+   my $cycles = shift;
+   my $max = 0;
+
+   foreach my $cycle (@$cycles){
+      foreach my $i (0..scalar(@$cycle)-1) {
+         ( $cycle->[$i-1] != $cycle->[$i] ) or croak( $cycle." does not seem to be a cycle (position ".$i.")\n");
+         assign_max($max, $cycle->[$i]);
+      }
+   }
+
+   my $g = new props::Graph($max+1);
+   foreach my $cycle (@$cycles) {
+      foreach my $i (0..scalar(@$cycle)-1) {
+         $g->edge($cycle->[$i-1],$cycle->[$i]);
+      }
+   }
+
+   return new Graph(ADJACENCY=>$g);
+}
+
 
 # @category Combinatorics
 # Creates the __line graph__ of a graph.
@@ -242,7 +263,7 @@ user_function graph_from_edges($) {
 # | {1 2}
 # | {0 2}
 # | {0 1}
-user_function line_graph(props::Graph) : c++ (include=>["polymak_/graph/line_graph.h"]);
+user_function line_graph(props::Graph) : c++ (include=>["polymake/graph/line_graph.h"]);
 
 # @category Combinatorics
 # Creates the __complement graph__ of a graph.

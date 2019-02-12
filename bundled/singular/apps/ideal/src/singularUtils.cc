@@ -14,7 +14,7 @@
 --------------------------------------------------------------------------------
 */
 
-#include <Singular/libsingular.h>
+#include "polymake/ideal/internal/singularInclude.h"
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
@@ -49,7 +49,7 @@ perl::ListReturn singular_get_var(const std::string varname){
             const intvec *iv = (intvec*) IDDATA(var);
             Vector<Integer> pmvec(iv->length());
             int i = 0;
-            for(Entire<Vector<Integer> >::iterator it = entire(pmvec); !it.at_end(); ++it, ++i){
+            for (auto it = entire(pmvec); !it.at_end(); ++it, ++i) {
                *it = (*iv)[i];
             }
             res << pmvec;

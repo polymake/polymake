@@ -1,0 +1,115 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+CREDIT mptopcom
+   mptopcom is a software developed at TU Berlin and Hokkaido University for computing triangulations of point configurations in parallel.
+   Copyright by Charles Jordan, Michael Joswig, Lars Kastner.
+   https://polymake.org/mptopcom
+
+custom $mptopcom;
+
+custom $mpirun;
+
+CONFIGURE {
+   $mptopcom =~ s{(?<=\S)$}{/mptopcom1};
+   $mpirun =~ s{(?<=\S)$}{/mpirun};
+   my $path=find_program($mptopcom, "mptopcom1", { prompt => "the `mptopcom1' program from the mptopcom package" }) or return;
+   find_program($mpirun, "mpirun", { prompt => "`mpirun' to call mptopcom's parallel version" });
+   ($mptopcom) = $path =~ $directory_re;
+}
+
+
+label mptopcom
+
+    
+# @category Triangulations, subdivisions and volume
+# Computes triangulations of a point configuration.
+# @param Matrix points as rows.
+# @param Array<Array<Int>> generators of group acting on the points.
+# @option Bool regular compute only regular triangulations.
+# @option Bool fine compute only fine triangulations.
+# @return Array (Array<Pair<Array<Set<Int>>, Vector<Int>>> (no symmetry) or Array<Pair<Array<Set<Int>>, Pair<Vector<Int>,Vector<Int>>>> (with symmetry))
+user_function mptopcom1($ ;  Array<Array<Int>>, { regular=>0, fine=>0 }) {
+   my ($A, $G, $options) = @_;
+   my $cmd = "$mptopcom/mptopcom1";
+   return call_mptopcom($cmd, $A, $G, $options);
+}
+
+# @category Triangulations, subdivisions and volume
+# Computes triangulations of a point configuration.
+# @param Matrix points as rows.
+# @param Array<Array<Int>> generators of group acting on the points.
+# @option Bool regular compute only regular triangulations.
+# @option Bool fine compute only fine triangulations.
+# @option Int np number of slots for parallel computation.
+# @return Array (Array<Pair<Array<Set<Int>>, Vector<Int>>> (no symmetry) or Array<Pair<Array<Set<Int>>, Pair<Vector<Int>,Vector<Int>>>> (with symmetry))
+user_function mptopcom($ ;  Array<Array<Int>>, { regular=>0, fine=>0, np=>3 }) {
+   my ($A, $G, $options) = @_;
+   my $np = $options->{np};
+   $mpirun or die "mpirun not found.\n";
+   my $cmd = "$mpirun -np $np $mptopcom/mptopcom";
+   return call_mptopcom($cmd, $A, $G, $options);
+}
+
+sub build_mptopcom_options {
+   my($options) = @_;
+   my $result = "";
+   if($options->{regular}){
+      $result .= "--regular ";
+   }
+   if($options->{fine}){
+      $result .= "-F ";
+   }
+   return $result;
+}
+
+sub decompose_line_symmetry{
+   my($line) = @_;
+   my($triang, $gkz, $can) = $line =~ m/(\{\{.*\}\})\]\s*gkz: (\[[^\]]*\]) can.*: (\[[^\]]*\])/;
+   $triang =~ s/\{/\[/g;
+   $triang =~ s/\}/\]/g;
+   my $gkzPair = new Pair<Vector<Int>, Vector<Int>>(new Vector<Int>(eval $gkz), new Vector<Int>(eval $can));
+   return new Pair<Array<Set<Int>>, Pair<Vector<Int>, Vector<Int>>>(new Array<Set<Int>>(eval $triang), $gkzPair);
+}
+
+sub decompose_line_no_symmetry{
+   my($line) = @_;
+   my($triang, $gkz) = $line =~ m/(\{\{.*\}\})\]\s*gkz: (\[[^\]]*\])/;
+   $triang =~ s/\{/\[/g;
+   $triang =~ s/\}/\]/g;
+   return new Pair<Array<Set<Int>>, Vector<Int>>(new Array<Set<Int>>(eval $triang), new Vector<Int>(eval $gkz));
+}
+
+sub call_mptopcom{
+   my($cmd, $A, $G, $options) = @_;
+   my $P = new ProgramPipe($cmd, build_mptopcom_options($options), $DebugLevel ? () : ("2>/dev/null"));
+   print $P "[[",join("],[",map(join(",",@$_),@$A))."]]\n";
+   if(defined($G)){
+      print $P "[[",join("],[",map(join(",",@$_),@$G))."]]\n";
+   }
+   my @result;
+   while(my $line = <$P>){
+      if(defined($G)){
+         push @result, decompose_line_symmetry($line);
+      } else {
+         push @result, decompose_line_no_symmetry($line);
+      }
+   }
+   if(defined($G)){
+      return new Array<Pair<Array<Set<Int>>, Pair<Vector<Int>, Vector<Int>>>>(\@result);
+   } else {
+      return new Array<Pair<Array<Set<Int>>, Vector<Int>>>(\@result);
+   }
+}

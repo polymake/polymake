@@ -70,8 +70,7 @@ perl::Object connected_sum_complex(perl::Object p_in1, perl::Object p_in2, const
       
       //      Perm.resize((C1[f1].size()));
       Set<int>::const_iterator v= C1[f1].begin();
-      for (Entire< Array<int> >::const_iterator p=entire(P);
-           !p.at_end(); ++p, ++v)
+      for (auto p=entire(P); !p.at_end(); ++p, ++v)
          Perm[*v] = *p;
       p_out.set_description() << "Connected sum of " << p_in1.name() << ", using facet " << f1
                               << ",\nand " << p_in2.name() << ", using facet " << f2 << "." << endl

@@ -113,7 +113,7 @@ namespace polymake { namespace tropical {
 
       Map<Set<int>, int> result;
       int last_rank = r; int flat_index = 0;
-      for(Entire<Vector<Set<int> > >::iterator f_it = entire(flats); !f_it.at_end(); f_it++, flat_index++) {
+      for (auto f_it = entire(flats); !f_it.at_end(); ++f_it, ++flat_index) {
          last_rank -= occurences[flat_index];
          result[*f_it] = last_rank;
       }
@@ -145,7 +145,7 @@ namespace polymake { namespace tropical {
       Array<int> final_coefficients(supp.size());
 
       int current_index = 0;
-      for(Entire<Set<int> >::iterator s = entire(supp); !s.at_end(); s++, current_index++) {
+      for (auto s = entire(supp); !s.at_end(); ++s, ++current_index) {
          final_coefficients[current_index] = -coefficients[*s];
          auto chain_nodes = select(flats_lattice.decoration(), chains.face(*s));
          Set<Set<int>, CompareBySize> ordered_faces_list( entire(
@@ -182,10 +182,12 @@ namespace polymake { namespace tropical {
       Vector<Set<int> > bases(all_subsets_of_k( sequence(0,n),r));
 
       //Remove bases that contain too much of a cyclic flat
-      for(Entire<Map<Set<int>, int> >::iterator cf_it = entire(cyclic_flats); !cf_it.at_end(); cf_it++) {
-         Set<int> bad_bases; int base_index =0;
-         for(Entire<Vector<Set<int> > >::iterator b_it = entire(bases); !b_it.at_end(); b_it++, base_index++) {
-            if( ((*b_it)*( (*cf_it).first)).size() > (*cf_it).second) bad_bases += base_index;
+      for (auto cf_it = entire(cyclic_flats); !cf_it.at_end(); ++cf_it) {
+         Set<int> bad_bases;
+         int base_index =0;
+         for (auto b_it = entire(bases); !b_it.at_end(); ++b_it, ++base_index) {
+            if (((*b_it) * cf_it->first).size() > cf_it->second)
+              bad_bases += base_index;
          }
          bases = bases.slice(~bad_bases);
       }

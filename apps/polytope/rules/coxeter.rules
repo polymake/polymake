@@ -13,6 +13,22 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+# @category Producing regular polytopes and their generalizations
+# Produce the orbit polytope of a point under a Coxeter arrangement
+# with exact coordinates, possibly in a qudratic extension field of the rationals
+# @param String type   single letter followed by rank representing the type of the arrangement
+# @param Set    rings  indices of the hyperplanes corresponding to simple roots of the arrangement
+# that the initial point should NOT lie on. You may specify just an integer or a perl array ref like [0,1] or [0..2].
+# @option Bool lattice Should the vertices of the orbit polytope be chosen to lie on the corresponding root lattice? default 0, 
+# which means that the vertices will instead be chosen to lie as symmetrically as possible.
+# @return Polytope
+user_function wythoff($$; { lattice => 0 }) {
+    my ($type, $rings, $options) = @_;
+    if ($rings =~ /^\d+/ || ref($rings) == "ARRAY") {
+	$rings = new Set($rings);
+    }
+    return wythoff_dispatcher($type, $rings, $options->{lattice});
+}
 
 
 # @category Producing other objects

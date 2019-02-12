@@ -40,6 +40,21 @@ my $bigint_numbertype_re = qr{^common::Integer$};
 my $rational_numbertype_re = qr{^common::Rational$};
 my $float_numbertype_re = qr{^common::Float$};
 
+
+sub store_builtin_from_handling {
+   my ($value,$handling) = @_;
+   
+   my $content;
+   if ( $handling->{'int'}) {
+      $content = $value;
+   } elsif($handling->{'boolean'}) {
+      $content = $value == 1 ? boolean::true : boolean::false;
+   } else {
+      $content = $value;
+   }
+}
+
+
 # store a builtin number type
 sub store_builtin {
    my ($value,$type,$handling) = @_;
@@ -293,7 +308,7 @@ sub store_subobject {
       }
 
       # first deal with subobjects of the object (e.g. a TRIANGULATION or a GRAPH)
-      if ( $_->property->flags & $Core::Property::is_subobject ) {
+      if ( $_->property->flags & Core::Property::Flags::is_subobject ) {
          my $options_for_next_level = {};
          my $property_mask_for_next_level;
          my $excludes_for_next_level;
@@ -303,7 +318,7 @@ sub store_subobject {
          # if a property is "twin", then it will contain itself as a property pointing back to the original object (to deal with duality)
          # however, we (a) don't want to descend here, and (b) only a BackRef is stored
          # so we add the proerty to excludes, so it will be jumped over when we descend into the object
-         if ( $_->property->flags & $Core::Property::is_twin ) {
+         if ( $_->property->flags & Core::Property::Flags::is_twin ) {
             $excludes_for_next_level->{$name} = 1;
             $po->{$name} = store_subobject($_, $property_mask_for_next_level, $excludes_for_next_level, $keep_all_props);
          } else {
@@ -311,14 +326,14 @@ sub store_subobject {
             # in this case more than one instance of the property can exist in the object
             # the type is necessarily an object, and it has a (maybe generated) name
             # we store as hash name => object
-            if ( $_->property->flags & $Core::Property::is_multiple ) {
+            if ( $_->property->flags & Core::Property::Flags::is_multiple ) {
                $po->{$name}=store_multiple_subobject($_,$property_mask_for_next_level, $excludes_for_next_level, $keep_all_props);
             } else {
                # now we have a simple subobject
                $po->{$name} = store_subobject($_,$property_mask_for_next_level, $excludes_for_next_level, $keep_all_props);
             }
          }
-      } elsif ( $_->property->flags & $Core::Property::is_subobject_array ) {
+      } elsif ( $_->property->flags & Core::Property::Flags::is_subobject_array ) {
          # FIXME I currently don't know of an subobject array (Array<Polytope> ?)
          my $property_mask_for_next_level;
          my $excludes_for_next_level;
@@ -345,14 +360,14 @@ sub store_attachments {
    foreach my $at (keys %{$obj->attachments}) {
       next if defined($property_mask) && (!exists($property_mask->{$at}) || $property_mask->{$at} == 0 );
       my $pv = $obj->attachments->{$at}->[0];
+      my $handling = undef;
+      if ( defined($property_mask) && ref $property_mask->{$at} eq "HASH" ) {
+         $handling = $property_mask->{$at};
+      }
       if ( is_object($pv) ) {
-         my $handling = undef;
-         if ( defined($property_mask) && ref $property_mask->{$at} eq "HASH" ) {
-            $handling = $property_mask->{$at};
-         }
          ($po->{$at}) = store_value($pv,$pv->type,$handling);
       } else {
-         ($po->{$at}) = $pv;
+         ($po->{$at}) = store_builtin_from_handling($pv,$handling);
       }
    }
    return $po;
@@ -511,20 +526,17 @@ sub cursor2ObjectArray {
 
    my @objects = $cursor->all;
 
-   my $app;
-   my $type;
-   if ( defined($objects[0]->{'app'}) ) { # old version of polyDB
-      $app  = $objects[0]->{"app"};
-      $type = $objects[0]->{"type"};
+   my ($app, $type);
+   if ( defined($app=$objects[0]->{app}) ) { # old version of polyDB
+      $type = $objects[0]->{type};
    } else {
-      $app  = $objects[0]->{'polyDB'}->{'package'}->{'polymake'}->{"app"};
-      $type = $objects[0]->{'polyDB'}->{'package'}->{'polymake'}->{"type"};
+      $app  = $objects[0]->{polyDB}->{package}->{polymake}->{app};
+      $type = $objects[0]->{polyDB}->{package}->{polymake}->{type};
    }
 
    my $obj_type = User::application($app)->eval_type($type);
-   my $arr_type = User::application($app)->eval_type("Array<$type>");
 
-   return $arr_type->construct->(map {perl2polymake($_, $db_name, $col_name, $construct_object_function->{$_->{'polyDB'}->{'type_information_key'}})} @objects);
+   return new Array<$obj_type>(map {perl2polymake($_, $db_name, $col_name, $construct_object_function->{$_->{'polyDB'}->{'type_information_key'}})} @objects);
 }
 
 sub cursor2array {

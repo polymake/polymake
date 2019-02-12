@@ -22,15 +22,14 @@
 #include <stdexcept>
 
 namespace pm {
-namespace virtuals {
+namespace unions {
 
 void empty_union_def::invalid_op(char*, ...)
 {
    throw std::runtime_error("invalid operation on an empty union object");
 }
 
-void empty_union_def::trivial_op(char*) {}
-void empty_union_def::trivial_op2(char*, const char*) {}
+void empty_union_def::trivial_op(char*, ...) {}
 
 }
 namespace fl_internal {
@@ -40,7 +39,6 @@ const facet superset_iterator::empty_facet(0);
 }
 
 shared_object_secrets::rep<> shared_object_secrets::empty_rep;
-shared_pointer_secrets::rep shared_pointer_secrets::null_rep;
 double spec_object_traits<double>::global_epsilon=1e-7;
 
 }

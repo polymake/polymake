@@ -1,0 +1,6 @@
+{"app": "graph", "embed": "f2_vector.cc",
+ "inst": [
+  {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Nonsequential", "void"], "func": "f2_vector", "include": ["polymake/graph/Decoration.h"], "sig": "f2_vector:T2.B", "tp": "2"},
+  {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Sequential", "void"], "func": "f2_vector", "include": ["polymake/graph/Decoration.h"], "sig": "f2_vector:T2.B", "tp": "2"},
+ null ],
+"version": 3}

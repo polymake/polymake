@@ -1,0 +1,7 @@
+{"app": "tropical", "embed": "divisor.cc",
+ "inst": [
+  {"args": ["Min", "void", "void"], "func": "divisor_with_refinement", "include": ["polymake/TropicalNumber.h"], "sig": "divisor_with_refinement:T1.B.B", "tp": "1"},
+  {"args": ["Max", "void", "void"], "func": "divisor_with_refinement", "include": ["polymake/TropicalNumber.h"], "sig": "divisor_with_refinement:T1.B.B", "tp": "1"},
+  {"args": ["Min", "void", "perl::Canned<const Matrix<Rational>&>"], "func": "divisorByValueMatrix", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "divisorByValueMatrix:T1.B.X", "tp": "1"},
+ null ],
+"version": 3}

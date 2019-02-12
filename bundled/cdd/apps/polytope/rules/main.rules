@@ -15,7 +15,6 @@
 
 
 INCLUDE
-  initial.rules
   rational.rules
   float.rules
 

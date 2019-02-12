@@ -56,7 +56,7 @@ public:
 // {
 //    SparseMatrix<Rational> isotypic_projector(degree, degree);
 //    for (int i=0; i<conjugacy_classes.size(); ++i) {
-//       for (Entire<Set<Array<int> > >::const_iterator cit = entire(conjugacy_classes[i]); !cit.at_end(); ++cit) {
+//       for (auto cit = entire(conjugacy_classes[i]); !cit.at_end(); ++cit) {
 //          isotypic_projector += 
 //             character[i] // FIXME: conjugate here, once complex character tables are implemented
 //             * induced_action.rep(*cit);
@@ -80,8 +80,8 @@ public:
 //    for (int i=0; i<n_irreps; ++i) {
 //       const SparseMatrix<Rational> proj = isotypic_projector_impl(character_table[i], IA, degree, conjugacy_classes, order);
 //       int j(0);
-//       for (typename Entire<Rows<SparseMatrixType> >::const_iterator rit = entire(rows(S)); !rit.at_end(); ++rit, ++j) {
-//          for (typename Entire<typename SparseMatrixType::row_type>::const_iterator e = entire(*rit); !e.at_end(); ++e) {
+//       for (auto rit = entire(rows(S)); !rit.at_end(); ++rit, ++j) {
+//          for (suto e = entire(*rit); !e.at_end(); ++e) {
 //             if (proj.col(e.index()) != zero_vector<Rational>(degree)) {
 //                supp(i,j) = 1;
 //                break; // it's only necessary to prove support once

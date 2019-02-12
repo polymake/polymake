@@ -31,7 +31,7 @@ void facets_of_simplex(const Set<int>& simplex, const Matrix<Scalar>& V, Matrix<
    hull = null_space(V.minor(simplex, All));
    facets = Matrix<Scalar>(simplex.size(), V.cols());
    int i(0);
-   for (Entire<Subsets_less_1<const Set<int>&> >::const_iterator fbi=entire(all_subsets_less_1(simplex)); !fbi.at_end(); ++fbi, ++i) {
+   for (auto fbi=entire(all_subsets_less_1(simplex)); !fbi.at_end(); ++fbi, ++i) {
       const Set<int> facet(*fbi);
       Vector<Scalar> nv = null_space(V.minor(facet, All) / hull).row(0);
       const Set<int> rest = simplex - facet;
@@ -50,7 +50,7 @@ bool is_empty(const Set<int>& simplex, const Matrix<Scalar>& V)
    bool has_interior(false);
    Matrix<Scalar> facets, hull;
    facets_of_simplex(simplex, V, facets, hull);
-   for (typename Entire<Rows<Matrix<Scalar> > >::const_iterator rit = entire(rows(V)); !rit.at_end() && !has_interior; ++rit, ++i){
+   for (auto rit = entire(rows(V)); !rit.at_end() && !has_interior; ++rit, ++i) {
       if (!simplex.contains(i)){
          if (hull.cols() == 0 || accumulate(attach_operation(hull*(*rit), operations::abs_value()), operations::max()) == 0) {
             if (facets.cols() != 0)
@@ -75,7 +75,7 @@ bool is_in_boundary(const SetType& face, const IncidenceType& VIF)
 template<typename SetType>
 bool is_interior(const SetType& ridge, const IncidenceMatrix<>& VIF)
 {
-    for (Entire<Rows<IncidenceMatrix<> > >::const_iterator fit = entire(rows(VIF)); !fit.at_end(); ++fit) 
+    for (auto fit = entire(rows(VIF)); !fit.at_end(); ++fit) 
         if ((ridge * (*fit)).size() == ridge.size())
             return false;
     return true;

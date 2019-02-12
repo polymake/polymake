@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<const FacetList&>>"], "func": "lex_ordered", "include": ["polymake/FacetList.h", "polymake/PowerSet.h"], "sig": "lex_ordered.X8"},
+ null ],
+"version": 3}

@@ -41,15 +41,33 @@ object NormalToricVariety {
    }
    weight 0.1;
 
-   rule PROJECTIVE : RAYS, MAXIMAL_CONES {
-      $this->PROJECTIVE = regular($this);
-   }
-
    # the number of maximal torus orbits
    # they correspond to the rays of the fan
    rule N_MAXIMAL_TORUS_ORBITS = N_RAYS;
 
    rule ORBIFOLD = SIMPLICIAL;
+
+   rule FANO : N_MAXIMAL_TORUS_ORBITS, RAYS, MAXIMAL_CONES, DUAL_GRAPH.ADJACENCY {
+      # RAYS, MAXIMAL_CONES, DUAL_GRAPH.ADJACENCY are needed to compute ampleness.
+    	my $AK = $this->DIVISOR(COEFFICIENTS=>ones_vector($this->N_MAXIMAL_TORUS_ORBITS), temporary);
+    	$this->FANO = $AK->AMPLE;
+	}
+	
+}
+
+
+# @category Producing a normal toric variety
+# Creates a toric variety from the normal fan of a polytope and adds the defining divisor of the polytope
+# @param Polytope<Rational> P : the input polytope
+# @param String name : a name for the divisor
+# @return NormalToricVariety
+user_function polarized_toric_variety(Polytope<Rational>,$) {
+  my $self=shift;
+  my $name=shift;
+  my $t=new NormalToricVariety(normal_fan($self));
+  my $tdiv = new TDivisor("$name",COEFFICIENTS=>primitive($self->FACETS)->col(0));
+  $t->add("DIVISOR",$tdiv);
+  return $t;
 }
 
 

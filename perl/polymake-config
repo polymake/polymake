@@ -22,7 +22,7 @@ my $InstallArch=InstallArch;
 
 sub usage {
   print STDERR <<'.';
-usage: polymake-config --help | --version | [--debug] --OPTION
+usage: polymake-config --help | --version | [--debug | --sanitize] --OPTION
 
 Print bits of polymake configuration useful to compose Makefiles
 for programs linked with its callable library.
@@ -51,7 +51,6 @@ probably because of missing shared library libperl.
 .
 }
 
-my $debug;
 my $tmpdir;
 foreach ($ENV{TMPDIR}, "/tmp", "/var/tmp", ".", $ENV{HOME}) {
    if (defined($_) && -d $_ && -w _ && -x _) {
@@ -63,14 +62,21 @@ Can't find any writable directory for temporary files;
 Please set enviroment variable TMPDIR to an appropriate location.
 .
 my $tmpfile="$tmpdir/polymake-config-$$";
-my $debug_asked;
+my ($mode, $mode_asked);
 
 while (defined ($_=shift)) {
    if ($_ eq "--debug") {
-      if (defined $debug_asked) {
+      if (defined $mode_asked) {
          usage;
       } else {
-         $debug=1;
+         $mode="Debug";
+      }
+
+   } elsif ($_ eq "--sanitize") {
+      if (defined $mode_asked) {
+         usage;
+      } else {
+         $mode="San";
       }
 
    } elsif ($_ eq "--version") {
@@ -94,8 +100,11 @@ while (defined ($_=shift)) {
       # strip spaces
       s/^\s+//; s/\s+$//; s/\s{2,}/ /g;
 
-      if ($debug_asked=defined($debug)) {
+      $mode_asked=1;
+      if ($mode eq "Debug") {
          print "$_ $ConfigFlags{CXXDEBUG} -DPOLYMAKE_DEBUG=1\n";
+      } elsif ($mode eq "San") {
+         print "$_ $ConfigFlags{CXXSANITIZE} -DPOLYMAKE_DEBUG=0 $ConfigFlags{PERLSANITIZE}\n";
       } else {
          print "$_ $ConfigFlags{CXXOPT} -DPOLYMAKE_DEBUG=0\n";
       }
@@ -159,8 +168,12 @@ while (defined ($_=shift)) {
          }
       }
       $ldflags=~s/^\s+//; $ldflags=~s/\s+$//; $ldflags=~s/\s{2,}/ /g;
-      if ($debug_asked=defined($debug)) {
+
+      $mode_asked=1;
+      if ($mode eq "Debug") {
          print "$ldflags $ConfigFlags{CXXDEBUG}\n";
+      } elsif ($mode eq "San") {
+         print "$ldflags $ConfigFlags{CXXSANITIZE} $ConfigFlags{PERLSANITIZE}\n";
       } else {
          print $ldflags, "\n";
       }

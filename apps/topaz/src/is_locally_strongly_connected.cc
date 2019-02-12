@@ -31,12 +31,12 @@ bool is_locally_strongly_connected(perl::Object p, perl::OptionSet options)
    bool loc_str_conn = true;
 
    for (int d=0; d<dim; ++d)
-      for (auto f=entire(HD.nodes_of_rank(d+1)); !f.at_end(); ++f) {
-         const FacetList star(star_in_HD(HD,*f));
+      for (const auto f : HD.nodes_of_rank(d+1)) {
+         const FacetList star(star_in_HD(HD, f));
 
-         if ( !graph::is_connected(dual_graph(star)) ) {
+         if (!graph::is_connected(dual_graph(star))) {
             if (verbose)
-               cout << "is_locally_strongly_connected: star(" << HD.face(*f) << ") is not strongly connected." << endl;
+               cout << "is_locally_strongly_connected: star(" << HD.face(f) << ") is not strongly connected." << endl;
             loc_str_conn = false;
             if (!all) break;
          }

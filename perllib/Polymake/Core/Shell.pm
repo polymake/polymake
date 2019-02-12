@@ -146,7 +146,7 @@ sub pipe_INC {
 }
 
 sub run {
-   local_unshift(\@INC, \&interactive_INC);
+   local unshift @INC, \&interactive_INC;
 
    local $SIG{__WARN__}=sub {
       my $msg=shift;
@@ -187,7 +187,7 @@ sub run {
 }
 
 sub run_pipe {
-   local_unshift(\@INC, \&pipe_INC);
+   local unshift @INC, \&pipe_INC;
    do {
       {  local $Scope=new Scope(); package Polymake::User; do "input:"; 1; }
       STDOUT->flush();
@@ -231,10 +231,10 @@ sub save_history {
 sub get_line {
    my ($l, $self)=@_;
    if ($self->line_cnt==0 || ($l=line_continued())>0) {
-      namespaces::temp_disable();
-      unless ($User::application->declared & $Application::credits_shown) {
+      namespaces::temp_disable(0);
+      unless ($User::application->load_state & Application::LoadState::credits_shown) {
          User::show_credits(1);
-         if ($User::application->declared & $Application::has_failed_config) {
+         if ($User::application->load_state & Application::LoadState::has_failed_config) {
             print <<'.';
 
 Warning: some rulefiles could not be configured automatically
@@ -242,7 +242,7 @@ due to lacking third-party software and/or other issues.
 To see the complete list: show_unconfigured;
 .
          }
-         $User::application->declared |= $Application::credits_shown;
+         $User::application->load_state |= Application::LoadState::credits_shown;
       }
       my $prompt=$User::application->name." ";
       if (defined($self->within_history)) {
@@ -596,7 +596,7 @@ sub enter_string {
    local $self->term->{MinLength}=1;
 
    my $check=$opts->{check};
-   defined($opts->{completion}) and local_sub($self->try_completion, $opts->{completion});
+   defined($opts->{completion}) and local ref $self->try_completion = $opts->{completion};
 
    for (;;) {
       my $response=$self->read_input("[$opts->{prompt}] > ");
@@ -644,7 +644,7 @@ sub interactive { 0 }
 sub get_line {
    my ($l, $self)=@_;
    if ($self->line_cnt==0 || ($l=line_continued())>0) {
-      namespaces::temp_disable();
+      namespaces::temp_disable(0);
       my $line;
       do {
          $line=readline($self->pipe);

@@ -53,9 +53,9 @@ namespace polymake { namespace tropical {
             Set<int> cone;
             for (auto r = entire(*sc); !r.at_end(); ++r) {
                if (rays(*r, 0) == 0) {
-                  result_rays /= rays.row(*r).slice(1);
+                 result_rays /= rays.row(*r).slice(range_from(1));
                } else {
-                  result_rays /= rays.row(*r).slice(1) - point.slice(1);
+                 result_rays /= rays.row(*r).slice(range_from(1)) - point.slice(range_from(1));
                }
                cone += (result_rays.rows()-1);
             }
@@ -63,7 +63,7 @@ namespace polymake { namespace tropical {
          }
          std::pair< Matrix<Rational>, std::vector< Set<int> > > result = 
             std::make_pair( result_rays, result_cones);
-         cdd_normalize_rays(result.first);
+         normalize_rays(result.first);
          return result;
       }
 }}

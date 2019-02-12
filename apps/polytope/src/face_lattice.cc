@@ -26,9 +26,9 @@ template <typename IMatrix>
 FacetList faces_below(const FacetList& F, const GenericIncidenceMatrix<IMatrix>& VIF)
 {
    FacetList F_below(F.cols());
-   for (typename Entire<FacetList>::const_iterator face=entire(F); !face.at_end(); ++face) {
+   for (auto face=entire(F); !face.at_end(); ++face) {
       // intersecting k-faces with facets
-      for (typename Entire< Rows<IMatrix> >::const_iterator facet=entire(rows(VIF)); !facet.at_end(); ++facet) {
+      for (auto facet=entire(rows(VIF)); !facet.at_end(); ++facet) {
          Set<int> face_below=(*face) * (*facet);
          if (face_below.size() &&
              face_below.size() < face->size() )  // only real subsets of the k-face are canditates for faces below
@@ -42,7 +42,7 @@ template <typename Layer> inline
 void print_layer(pm::PlainPrinter<>& os, const Layer& L)
 {
    os << "{";
-   for (typename Entire<Layer>::const_iterator l=entire(L); ;) {
+   for (auto l=entire(L); ;) {
       os << *l;
       if ((++l).at_end()) break;
       os << ' ';

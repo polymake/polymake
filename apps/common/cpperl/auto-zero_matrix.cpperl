@@ -1,0 +1,7 @@
+{"app": "common",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "zero_matrix", "include": ["polymake/Rational.h", "polymake/linalg.h"], "sig": "zero_matrix:T1.x.x", "tp": "1"},
+  {"args": ["int", "void", "void"], "func": "zero_matrix", "include": ["polymake/linalg.h"], "sig": "zero_matrix:T1.x.x", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void", "void"], "func": "zero_matrix", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "zero_matrix:T1.x.x", "tp": "1"},
+ null ],
+"version": 3}

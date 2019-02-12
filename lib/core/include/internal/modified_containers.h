@@ -17,10 +17,147 @@
 #ifndef POLYMAKE_INTERNAL_MODIFIED_CONTAINERS_H
 #define POLYMAKE_INTERNAL_MODIFIED_CONTAINERS_H
 
-#include "polymake/internal/constant_containers.h"
-#include "polymake/Series.h"
+#include "polymake/internal/singular_containers.h"
+#include "polymake/internal/SeriesRaw.h"
 
 namespace pm {
+
+template <typename T>
+class prvalue_holder {
+public:
+   using value_t = pure_type_t<T>;
+   using effective_const_value_t = std::conditional_t<object_traits<value_t>::is_always_const, std::add_const_t<T>, T>;
+   using ref_t = effective_const_value_t&;
+
+   prvalue_holder() : init(false) {}
+
+   prvalue_holder(const value_t&) = delete;
+
+   prvalue_holder(value_t&& val) : init(true)
+   {
+      // if the constructor throws an exception, alias' destructor won't be called, hence it's safe to set init=true up front
+      new(allocate()) value_t(std::move(val));
+   }
+
+   prvalue_holder(const prvalue_holder& other) = delete;
+
+   prvalue_holder(prvalue_holder&& other) : init(other.init)
+   {
+      if (init) new(allocate()) value_t(std::move(*other.ptr()));
+   }
+
+   void reset(value_t&& val)
+   {
+      if (init) {
+         destroy_at(ptr());
+         init=false;
+      }
+      new(allocate()) value_t(std::move(val));
+      init=true;
+   }
+
+   prvalue_holder& operator= (const prvalue_holder& other) = delete;
+   prvalue_holder& operator= (prvalue_holder&& other) = delete;
+
+   ~prvalue_holder()
+   {
+      if (init) destroy_at(ptr());
+   }
+
+   bool is_valid() const { return init; }
+
+   ref_t get_val() { return *ptr(); }
+   const value_t& get_val() const { return *ptr(); }
+
+protected:
+   alignas(value_t) char area[sizeof(value_t)];
+   bool init;
+
+   void* allocate() { return area; }
+   value_t*       ptr()       { return reinterpret_cast<value_t*>(area); }
+   const value_t* ptr() const { return reinterpret_cast<const value_t*>(area); }
+};
+
+template <typename Container, typename FeatureList>
+class iterator_over_prvalue
+   : private prvalue_holder<Container>
+   , public ensure_features<typename prvalue_holder<Container>::effective_const_value_t, FeatureList>::iterator {
+   using base_t = prvalue_holder<Container>;
+public:
+   using iterator_t = typename ensure_features<typename base_t::effective_const_value_t, FeatureList>::iterator;
+
+   iterator_over_prvalue() = default;
+
+   iterator_over_prvalue(Container&& c)
+      : base_t(std::move(c))
+      , iterator_t(ensure(base_t::get_val(), FeatureList()).begin()) {}
+
+   iterator_over_prvalue(const iterator_over_prvalue&) = delete;
+
+private:
+   iterator_over_prvalue(base_t&& other, std::true_type)
+      : base_t(std::move(other))
+      , iterator_t(base_t::is_valid() ? ensure(base_t::get_val(), FeatureList()).begin() : iterator_t()) {}
+
+   iterator_over_prvalue(base_t&& other, std::false_type)
+      : base_t(std::move(other))
+      , iterator_t(ensure(base_t::get_val(), FeatureList()).begin()) {}
+
+public:
+   iterator_over_prvalue(iterator_over_prvalue&& other)
+      : iterator_over_prvalue(std::move(other),
+                              std::is_default_constructible<iterator_t>()) {}
+
+   void reset(Container&& c)
+   {
+      base_t::reset(std::move(c));
+      iterator_t::operator=(ensure(base_t::get_val(), FeatureList()).begin());
+   }
+
+   iterator_over_prvalue& operator= (const iterator_over_prvalue&) = delete;
+   iterator_over_prvalue& operator= (iterator_over_prvalue&&) = delete;
+
+   using base_t::is_valid;
+};
+
+// TODO: remove these specializations when entire() is no longer used to produce a temporary iterator passed to copy, fill, constructors, etc.
+template <typename ContainerRef, typename FeatureList, typename Feature>
+struct check_iterator_feature<iterator_over_prvalue<ContainerRef, FeatureList>, Feature>
+   : check_iterator_feature<typename iterator_over_prvalue<ContainerRef, FeatureList>::iterator_t, Feature> {};
+
+template <typename ContainerRef, typename FeatureList>
+struct iterator_traits<iterator_over_prvalue<ContainerRef, FeatureList>>
+   : iterator_traits<typename iterator_over_prvalue<ContainerRef, FeatureList>::iterator_t> {};
+
+
+template <typename... MoreFeatures, typename Container>
+iterator_over_prvalue<Container, typename mix_features<end_sensitive, typename mlist_wrap<MoreFeatures...>::type>::type>
+entire(Container&& c, std::enable_if_t<std::is_rvalue_reference<Container&&>::value, void**> =nullptr)
+{
+   return std::forward<Container>(c);
+}
+
+template <typename... MoreFeatures, typename Container>
+iterator_over_prvalue<std::add_const_t<Container>, typename mix_features<end_sensitive, typename mlist_wrap<MoreFeatures...>::type>::type>
+entire_const(Container&& c, std::enable_if_t<std::is_rvalue_reference<Container&&>::value, void**> =nullptr)
+{
+   return std::forward<Container>(c);
+}
+
+template <typename... MoreFeatures, typename Container>
+auto
+entire(Container&& c, std::enable_if_t<std::is_lvalue_reference<Container&&>::value, void**> =nullptr)
+{
+   return ensure(c, typename mix_features<end_sensitive, typename mlist_wrap<MoreFeatures...>::type>::type()).begin();
+}
+
+template <typename... MoreFeatures, typename Container>
+auto
+entire_const(Container&& c, std::enable_if_t<std::is_lvalue_reference<Container&&>::value, void**> =nullptr)
+{
+   return ensure(static_cast<std::add_const_t<std::remove_reference_t<Container>>&>(c),
+                 typename mix_features<end_sensitive, typename mlist_wrap<MoreFeatures...>::type>::type()).begin();
+}
 
 template <typename IteratorConstructor,
           bool maybe=(is_derived_from_instance_of<IteratorConstructor, unary_transform_constructor>::value ||
@@ -41,16 +178,16 @@ struct is_identity_transform< pair<nothing, Operation> > : std::true_type {
    typedef Operation type;
 };
 
-template <typename Top, typename TParams>
-class redirected_container_typebase : public manip_container_top<Top, TParams> {
-   typedef manip_container_top<Top, TParams> base_t;
+template <typename Top, typename Params>
+class redirected_container_typebase : public manip_container_top<Top, Params> {
+   typedef manip_container_top<Top, Params> base_t;
 public:
-   typedef typename mtagged_list_extract<TParams, ContainerTag, typename base_t::hidden_type>::type container_ref;
+   using container_ref_raw = typename extract_container_ref<Params, ContainerRefTag, ContainerTag, typename base_t::hidden_type>::type;
+   typedef effectively_const_t<container_ref_raw> container_ref;
    typedef typename deref<container_ref>::minus_ref container;
-   typedef typename temp_ref<container_ref>::type container_temp_ref;
    typedef typename base_t::expected_features needed_features;
-   typedef typename ensure_features<container,needed_features>::iterator iterator;
-   typedef typename ensure_features<container,needed_features>::const_iterator const_iterator;
+   typedef typename ensure_features<container, needed_features>::iterator iterator;
+   typedef typename ensure_features<container, needed_features>::const_iterator const_iterator;
    typedef typename enforce_feature_helper<container>::must_enforce_features must_enforce_features;
    typedef typename enforce_feature_helper<container>::can_enforce_features can_enforce_features;
    typedef typename enforce_feature_helper<container>::cannot_enforce_features cannot_enforce_features;
@@ -68,35 +205,33 @@ class redirected_container_resize {};
 template <typename Top, typename Params=typename Top::manipulator_params,
           typename Category=typename redirected_container_typebase<Top,Params>::container_category>
 class redirected_container 
-   : public redirected_container_typebase<Top,Params>,
-     public redirected_container_resize<Top,Params> {
-   typedef redirected_container_typebase<Top,Params> _super;
+   : public redirected_container_typebase<Top, Params>
+   , public redirected_container_resize<Top, Params> {
+   using base_t = redirected_container_typebase<Top, Params>;
 public:
-   typedef redirected_container<Top,Params> manipulator_impl;
-   typedef Params manipulator_params;
+   using manipulator_impl = redirected_container<Top,Params>;
+   using manipulator_params = Params;
 
    template <typename FeatureCollector>
    struct rebind_feature_collector {
-      typedef redirected_container<FeatureCollector,Params> type;
+      using type = redirected_container<FeatureCollector,Params>;
    };
 
-   typename _super::iterator begin()
+   typename base_t::iterator begin()
    {
-      typename _super::container_temp_ref c=this->manip_top().get_container();
-      return ensure(c, (typename _super::needed_features*)0).begin();
+      return ensure(this->manip_top().get_container(), typename base_t::needed_features()).begin();
    }
-   typename _super::iterator end()
+   typename base_t::iterator end()
    {
-      typename _super::container_temp_ref c=this->manip_top().get_container();
-      return ensure(c, (typename _super::needed_features*)0).end();
+      return ensure(this->manip_top().get_container(), typename base_t::needed_features()).end();
    }
-   typename _super::const_iterator begin() const
+   typename base_t::const_iterator begin() const
    {
-      return ensure(this->manip_top().get_container(), (typename _super::needed_features*)0).begin();
+      return ensure(this->manip_top().get_container(), typename base_t::needed_features()).begin();
    }
-   typename _super::const_iterator end() const
+   typename base_t::const_iterator end() const
    {
-      return ensure(this->manip_top().get_container(), (typename _super::needed_features*)0).end();
+      return ensure(this->manip_top().get_container(), typename base_t::needed_features()).end();
    }
 
    int size() const { return this->manip_top().get_container().size(); }
@@ -106,13 +241,12 @@ public:
 template <typename Top, typename Params>
 class redirected_container<Top, Params, forward_iterator_tag>
    : public redirected_container<Top, Params, input_iterator_tag> {
-   typedef redirected_container<Top, Params, input_iterator_tag> _super;
 public:
-   typename _super::reference front()
+   decltype(auto) front()
    {
       return this->manip_top().get_container().front();
    }
-   typename _super::const_reference front() const
+   decltype(auto) front() const
    {
       return this->manip_top().get_container().front();
    }
@@ -121,37 +255,33 @@ public:
 template <typename Top, typename Params>
 class redirected_container<Top, Params, bidirectional_iterator_tag>
    : public redirected_container<Top, Params, forward_iterator_tag> {
-   typedef redirected_container<Top, Params, forward_iterator_tag> _super;
+   using base_t = redirected_container<Top, Params, forward_iterator_tag>;
 public:
-   typedef typename ensure_features<typename _super::container, typename _super::needed_features>::reverse_iterator
-      reverse_iterator;
-   typedef typename ensure_features<typename _super::container, typename _super::needed_features>::const_reverse_iterator
-      const_reverse_iterator;
+   using reverse_iterator = typename ensure_features<typename base_t::container, typename base_t::needed_features>::reverse_iterator;
+   using const_reverse_iterator = typename ensure_features<typename base_t::container, typename base_t::needed_features>::const_reverse_iterator;
 
    reverse_iterator rbegin()
    {
-      typename _super::container_temp_ref c=this->manip_top().get_container();
-      return ensure(c, (typename _super::needed_features*)0).rbegin();
+      return ensure(this->manip_top().get_container(), typename base_t::needed_features()).rbegin();
    }
    reverse_iterator rend()
    {
-      typename _super::container_temp_ref c=this->manip_top().get_container();
-      return ensure(c, (typename _super::needed_features*)0).rend();
+      return ensure(this->manip_top().get_container(), typename base_t::needed_features()).rend();
    }
    const_reverse_iterator rbegin() const
    {
-      return ensure(this->manip_top().get_container(), (typename _super::needed_features*)0).rbegin();
+      return ensure(this->manip_top().get_container(), typename base_t::needed_features()).rbegin();
    }
    const_reverse_iterator rend() const
    {
-      return ensure(this->manip_top().get_container(), (typename _super::needed_features*)0).rend();
+      return ensure(this->manip_top().get_container(), typename base_t::needed_features()).rend();
    }
 
-   typename _super::reference back()
+   decltype(auto) back()
    {
       return this->manip_top().get_container().back();
    }
-   typename _super::const_reference back() const
+   decltype(auto) back() const
    {
       return this->manip_top().get_container().back();
    }
@@ -160,13 +290,12 @@ public:
 template <typename Top, typename Params>
 class redirected_container<Top, Params, random_access_iterator_tag>
    : public redirected_container<Top, Params, bidirectional_iterator_tag> {
-   typedef redirected_container<Top, Params, bidirectional_iterator_tag> _super;
 public:
-   typename _super::reference operator[] (int i)
+   decltype(auto) operator[] (int i)
    {
       return this->manip_top().get_container()[i];
    }
-   typename _super::const_reference operator[] (int i) const
+   decltype(auto) operator[] (int i) const
    {
       return this->manip_top().get_container()[i];
    }
@@ -174,22 +303,22 @@ public:
 
 template <typename Top, typename Params>
 class redirected_container_resize<Top, Params, true> {
-   typedef redirected_container<Top, Params> master;
+   using master_t = redirected_container<Top, Params>;
 public:
    void resize(int n)
    {
-      static_cast<master*>(this)->manip_top().get_container().resize(n);
+      static_cast<master_t*>(this)->manip_top().get_container().resize(n);
    }
 };
 
-template <typename Top, typename Typebase, bool _reversible>
+template <typename Top, bool is_bidir>
 class modified_container_non_bijective_elem_access {
 public:
-   typename Typebase::reference front()
+   decltype(auto) front()
    {
       return *static_cast<Top&>(*this).begin();
    }
-   typename Typebase::const_reference front() const
+   decltype(auto) front() const
    {
       return *static_cast<const Top&>(*this).begin();
    }
@@ -204,31 +333,31 @@ public:
    }
 };
 
-template <typename Top, typename Typebase>
-class modified_container_non_bijective_elem_access<Top, Typebase, true>
-   : public modified_container_non_bijective_elem_access<Top, Typebase, false> {
+template <typename Top>
+class modified_container_non_bijective_elem_access<Top, true>
+   : public modified_container_non_bijective_elem_access<Top, false> {
 public:
-   typename Typebase::reference back()
+   decltype(auto) back()
    {
       return *static_cast<Top&>(*this).rbegin();
    }
-   typename Typebase::const_reference back() const
+   decltype(auto) back() const
    {
       return *static_cast<const Top&>(*this).rbegin();
    }
 };
 
-template <typename Top, typename TParams>
+template <typename Top, typename Params>
 class modified_container_typebase
-   : public manip_container_top<Top, TParams> {
-   typedef manip_container_top<Top, TParams> base_t;
+   : public manip_container_top<Top, Params> {
+   using base_t = manip_container_top<Top, Params>;
 public:
-   typedef typename mtagged_list_extract<TParams, ContainerTag, typename base_t::hidden_type>::type container_ref;
+   using container_ref_raw = typename extract_container_ref<Params, ContainerRefTag, ContainerTag, typename base_t::hidden_type>::type;
+   typedef effectively_const_t<container_ref_raw> container_ref;
    typedef typename deref<container_ref>::minus_ref container;
-   typedef typename temp_ref<container_ref>::type container_temp_ref;
-   typedef typename mtagged_list_extract<TParams, OperationTag>::type operation;
+   typedef typename mtagged_list_extract<Params, OperationTag>::type operation;
    typedef typename operation_cross_const_helper<operation>::const_operation const_operation;
-   typedef typename mtagged_list_extract<TParams, IteratorConstructorTag, unary_transform_constructor<> >::type it_constructor;
+   typedef typename mtagged_list_extract<Params, IteratorConstructorTag, unary_transform_constructor<> >::type it_constructor;
 
    typedef typename it_constructor::template defs<typename container_traits<container>::iterator,
                                                   operation, typename base_t::expected_features>::needed_features
@@ -246,16 +375,16 @@ public:
                                         typename container_traits<container>::category>::type
       container_category;
 
-   typedef typename enforce_feature_helper<typename deref<container>::type>::must_enforce_features must_enforce_features;
+   typedef typename enforce_feature_helper<container>::must_enforce_features must_enforce_features;
 
    typedef typename iterator_traits<iterator>::value_type value_type;
    typedef typename iterator_traits<iterator>::reference reference;
    typedef typename iterator_traits<const_iterator>::reference const_reference;
 };
 
-template <typename Top, typename TParams>
+template <typename Top, typename Params>
 class reverse_modified_container_typebase {
-   typedef modified_container_typebase<Top, TParams> base_t;
+   typedef modified_container_typebase<Top, Params> base_t;
 public:
    typedef typename base_t::it_constructor::template defs<
       typename ensure_features<typename base_t::container, typename base_t::needed_features>::reverse_iterator,
@@ -267,28 +396,28 @@ public:
    >::iterator const_reverse_iterator;
 };
 
-template <typename Top, typename TParams,
-          typename Category=typename modified_container_typebase<Top, TParams>::container_category,
-          bool TBijective=is_bijective<typename modified_container_typebase<Top, TParams>::it_constructor>::value,
-          bool TIdentity=is_identity_transform<typename modified_container_typebase<Top, TParams>::operation>::value>
+template <typename Top, typename Params,
+          typename Category=typename modified_container_typebase<Top, Params>::container_category,
+          bool TBijective=is_bijective<typename modified_container_typebase<Top, Params>::it_constructor>::value,
+          bool TIdentity=is_identity_transform<typename modified_container_typebase<Top, Params>::operation>::value>
 class modified_container_elem_access;
 
-template <typename Top, typename TParams=typename Top::manipulator_params,
-          bool TReversible=is_derived_from<typename modified_container_typebase<Top, TParams>::container_category,
+template <typename Top, typename Params=typename Top::manipulator_params,
+          bool TReversible=is_derived_from<typename modified_container_typebase<Top, Params>::container_category,
                                            bidirectional_iterator_tag>::value>
 class modified_container_impl
-   : public modified_container_typebase<Top, TParams>,
-     public modified_container_elem_access<Top, TParams> {
-   typedef modified_container_typebase<Top, TParams> base_t;
+   : public modified_container_typebase<Top, Params>
+   , public modified_container_elem_access<Top, Params> {
+   typedef modified_container_typebase<Top, Params> base_t;
 public:
-   typedef modified_container_impl<Top, TParams> manipulator_impl;
-   typedef TParams manipulator_params;
+   typedef modified_container_impl<Top, Params> manipulator_impl;
+   typedef Params manipulator_params;
    typedef typename base_t::iterator iterator;
    typedef typename base_t::const_iterator const_iterator;
 
    template <typename FeatureCollector>
    struct rebind_feature_collector {
-      typedef modified_container_impl<FeatureCollector, TParams> type;
+      typedef modified_container_impl<FeatureCollector, Params> type;
    };
 
    typename is_identity_transform<typename base_t::operation>::type get_operation() const
@@ -298,70 +427,66 @@ public:
 
    iterator begin()
    {
-      typename base_t::container_temp_ref c=this->manip_top().get_container();
-      return iterator(ensure(c, (typename base_t::needed_features*)0).begin(), this->manip_top().get_operation());
+      return iterator(ensure(this->manip_top().get_container(), typename base_t::needed_features()).begin(),
+                      this->manip_top().get_operation());
    }
    iterator end()
    {
-      typename base_t::container_temp_ref c=this->manip_top().get_container();
-      return iterator(ensure(c, (typename base_t::needed_features*)0).end(), this->manip_top().get_operation());
+      return iterator(ensure(this->manip_top().get_container(), typename base_t::needed_features()).end(),
+                      this->manip_top().get_operation());
    }
    const_iterator begin() const
    {
-      return const_iterator(ensure(this->manip_top().get_container(), (typename base_t::needed_features*)0).begin(),
+      return const_iterator(ensure(this->manip_top().get_container(), typename base_t::needed_features()).begin(),
                             this->manip_top().get_operation());
    }
    const_iterator end() const
    {
-      return const_iterator(ensure(this->manip_top().get_container(), (typename base_t::needed_features*)0).end(),
+      return const_iterator(ensure(this->manip_top().get_container(), typename base_t::needed_features()).end(),
                             this->manip_top().get_operation());
    }
 };
 
-template <typename Top, typename TParams>
-class modified_container_impl<Top, TParams, true>
-   : public modified_container_impl<Top, TParams, false>,
-     public reverse_modified_container_typebase<Top, TParams> {
-   typedef modified_container_impl<Top, TParams, false> base_t;
-   typedef reverse_modified_container_typebase<Top, TParams> rbase_t;
+template <typename Top, typename Params>
+class modified_container_impl<Top, Params, true>
+   : public modified_container_impl<Top, Params, false>,
+     public reverse_modified_container_typebase<Top, Params> {
+   typedef modified_container_impl<Top, Params, false> base_t;
+   typedef reverse_modified_container_typebase<Top, Params> rbase_t;
 public:
    typename rbase_t::reverse_iterator rbegin()
    {
-      typename base_t::container_temp_ref c=this->manip_top().get_container();
-      return typename rbase_t::reverse_iterator(ensure(c, (typename base_t::needed_features*)0).rbegin(),
+      return typename rbase_t::reverse_iterator(ensure(this->manip_top().get_container(), typename base_t::needed_features()).rbegin(),
                                                 this->manip_top().get_operation());
    }
    typename rbase_t::reverse_iterator rend()
    {
-      typename base_t::container_temp_ref c=this->manip_top().get_container();
-      return typename rbase_t::reverse_iterator(ensure(c, (typename base_t::needed_features*)0).rend(),
+      return typename rbase_t::reverse_iterator(ensure(this->manip_top().get_container(), typename base_t::needed_features()).rend(),
                                                 this->manip_top().get_operation());
    }
    typename rbase_t::const_reverse_iterator rbegin() const
    {
-      return typename rbase_t::const_reverse_iterator(ensure(this->manip_top().get_container(),
-                                                             (typename base_t::needed_features*)0).rbegin(),
+      return typename rbase_t::const_reverse_iterator(ensure(this->manip_top().get_container(), typename base_t::needed_features()).rbegin(),
                                                       this->manip_top().get_operation());
    }
    typename rbase_t::const_reverse_iterator rend() const
    {
-      return typename rbase_t::const_reverse_iterator(ensure(this->manip_top().get_container(),
-                                                             (typename base_t::needed_features*)0).rend(),
+      return typename rbase_t::const_reverse_iterator(ensure(this->manip_top().get_container(), typename base_t::needed_features()).rend(),
                                                       this->manip_top().get_operation());
    }
 };
 
-template <typename Top, typename TParams, typename Category, bool TBijective, bool TIdentity>
+template <typename Top, typename Params, typename Category, bool is_bijective, bool is_identity>
 class modified_container_elem_access {
-   typedef modified_container_typebase<Top, TParams> base_t;
+   typedef modified_container_typebase<Top, Params> base_t;
 protected:
    typename base_t::manip_top_type& _top()
    {
-      return static_cast<modified_container_impl<Top, TParams>*>(this)->manip_top();
+      return static_cast<modified_container_impl<Top, Params>*>(this)->manip_top();
    }
    const typename base_t::manip_top_type& _top() const
    {
-      return static_cast<const modified_container_impl<Top, TParams>*>(this)->manip_top();
+      return static_cast<const modified_container_impl<Top, Params>*>(this)->manip_top();
    }
 public:
    int size() const
@@ -378,134 +503,132 @@ public:
    }
 };
 
-template <typename Top, typename TParams>
-class modified_container_elem_access<Top, TParams, forward_iterator_tag, true, false>
-   : public modified_container_elem_access<Top, TParams, input_iterator_tag, true, false> {
-   typedef modified_container_typebase<Top, TParams> base_t;
+template <typename Top, typename Params>
+class modified_container_elem_access<Top, Params, forward_iterator_tag, true, false>
+   : public modified_container_elem_access<Top, Params, input_iterator_tag, true, false> {
+   typedef modified_container_typebase<Top, Params> base_t;
 
-   typename base_t::reference front_impl(const typename base_t::iterator::operation& op, std::true_type)
+   decltype(auto) front_impl(const typename base_t::iterator::operation& op, std::true_type)
    {
       return op(this->_top().get_container().front());
    }
-   typename base_t::const_reference front_impl(const typename base_t::const_iterator::operation& op, std::true_type) const
+   decltype(auto) front_impl(const typename base_t::const_iterator::operation& op, std::true_type) const
    {
       return op(this->_top().get_container().front());
    }
-   typename base_t::reference front_impl(const typename base_t::iterator::operation& op, std::false_type)
+   decltype(auto) front_impl(const typename base_t::iterator::operation& op, std::false_type)
    {
       return op(this->_top().get_container().begin());
    }
-   typename base_t::const_reference front_impl(const typename base_t::const_iterator::operation& op, std::false_type) const
+   decltype(auto) front_impl(const typename base_t::const_iterator::operation& op, std::false_type) const
    {
       return op(this->_top().get_container().begin());
    }
 public:
-   typename base_t::reference front()
+   decltype(auto) front()
    {
       typedef typename base_t::iterator::helper opb;
       return front_impl(opb::create(this->_top().get_operation()), bool_constant<opb::data_arg>());
    }
-   typename base_t::const_reference front() const
+   decltype(auto) front() const
    {
       typedef typename base_t::const_iterator::helper opb;
       return front_impl(opb::create(this->_top().get_operation()), bool_constant<opb::data_arg>());
    }
 };
 
-template <typename Top, typename TParams>
-class modified_container_elem_access<Top, TParams, forward_iterator_tag, true, true>
-   : public modified_container_elem_access<Top, TParams, input_iterator_tag, true, true> {
-   typedef modified_container_typebase<Top, TParams> base_t;
+template <typename Top, typename Params>
+class modified_container_elem_access<Top, Params, forward_iterator_tag, true, true>
+   : public modified_container_elem_access<Top, Params, input_iterator_tag, true, true> {
 public:
-   typename base_t::reference front()
+   decltype(auto) front()
    {
       return this->_top().get_container().front();
    }
-   typename base_t::const_reference front() const
+   decltype(auto) front() const
    {
       return this->_top().get_container().front();
    }
 };
 
-template <typename Top, typename TParams>
-class modified_container_elem_access<Top, TParams, bidirectional_iterator_tag, true, false>
-   : public modified_container_elem_access<Top, TParams, forward_iterator_tag, true, false> {
-   typedef modified_container_typebase<Top, TParams> base_t;
-   typedef reverse_modified_container_typebase<Top, TParams> rbase_t;
+template <typename Top, typename Params>
+class modified_container_elem_access<Top, Params, bidirectional_iterator_tag, true, false>
+   : public modified_container_elem_access<Top, Params, forward_iterator_tag, true, false> {
+   typedef modified_container_typebase<Top, Params> base_t;
+   typedef reverse_modified_container_typebase<Top, Params> rbase_t;
 
-   typename base_t::reference back_impl(const typename rbase_t::reverse_iterator::operation& op, std::true_type)
+   decltype(auto) back_impl(const typename rbase_t::reverse_iterator::operation& op, std::true_type)
    {
       return op(this->_top().get_container().back());
    }
-   typename base_t::const_reference back_impl(const typename rbase_t::const_reverse_iterator::operation& op, std::true_type) const
+   decltype(auto) back_impl(const typename rbase_t::const_reverse_iterator::operation& op, std::true_type) const
    {
       return op(this->_top().get_container().back());
    }
-   typename base_t::reference back_impl(const typename rbase_t::reverse_iterator::operation& op, std::false_type)
+   decltype(auto) back_impl(const typename rbase_t::reverse_iterator::operation& op, std::false_type)
    {
       return op(this->_top().get_container().rbegin());
    }
-   typename base_t::const_reference back_impl(const typename rbase_t::const_reverse_iterator::operation& op, std::false_type) const
+   decltype(auto) back_impl(const typename rbase_t::const_reverse_iterator::operation& op, std::false_type) const
    {
       return op(this->_top().get_container().rbegin());
    }
 public:
-   typename base_t::reference back()
+   decltype(auto) back()
    {
       typedef typename rbase_t::reverse_iterator::helper opb;
       return back_impl(opb::create(this->_top().get_operation()), bool_constant<opb::data_arg>());
    }
-   typename base_t::const_reference back() const
+   decltype(auto) back() const
    {
       typedef typename rbase_t::const_reverse_iterator::helper opb;
       return back_impl(opb::create(this->_top().get_operation()), bool_constant<opb::data_arg>());
    }
 };
 
-template <typename Top, typename TParams>
-class modified_container_elem_access<Top, TParams, bidirectional_iterator_tag, true, true>
-   : public modified_container_elem_access<Top, TParams, forward_iterator_tag, true, true> {
-   typedef modified_container_typebase<Top, TParams> base_t;
+template <typename Top, typename Params>
+class modified_container_elem_access<Top, Params, bidirectional_iterator_tag, true, true>
+   : public modified_container_elem_access<Top, Params, forward_iterator_tag, true, true> {
 public:
-   typename base_t::reference back()
+   decltype(auto) back()
    {
       return this->_top().get_container().back();
    }
-   typename base_t::const_reference back() const
+   decltype(auto) back() const
    {
       return this->_top().get_container().back();
    }
 };
 
-template <typename Top, typename TParams>
-class modified_container_elem_access<Top, TParams, random_access_iterator_tag, true, false>
-   : public modified_container_elem_access<Top, TParams, bidirectional_iterator_tag, true, false> {
-   typedef modified_container_typebase<Top, TParams> base_t;
+template <typename Top, typename Params>
+class modified_container_elem_access<Top, Params, random_access_iterator_tag, true, false>
+   : public modified_container_elem_access<Top, Params, bidirectional_iterator_tag, true, false> {
+   using base_t = modified_container_typebase<Top, Params>;
 
-   typename base_t::reference random_impl(int i, const typename base_t::iterator::operation& op, std::true_type)
+   decltype(auto) random_impl(int i, const typename base_t::iterator::operation& op, std::true_type)
    {
       return op(this->_top().get_container()[i]);
    }
-   typename base_t::const_reference random_impl(int i, const typename base_t::const_iterator::operation& op, std::true_type) const
+   decltype(auto) random_impl(int i, const typename base_t::const_iterator::operation& op, std::true_type) const
    {
       return op(this->_top().get_container()[i]);
    }
-   typename base_t::reference random_impl(int i, const typename base_t::iterator::operation& op, std::false_type)
+   decltype(auto) random_impl(int i, const typename base_t::iterator::operation& op, std::false_type)
    {
       return op(this->_top().get_container().begin() + i);
    }
-   typename base_t::const_reference random_impl(int i, const typename base_t::const_iterator::operation& op, std::false_type) const
+   decltype(auto) random_impl(int i, const typename base_t::const_iterator::operation& op, std::false_type) const
    {
       return op(this->_top().get_container().begin() + i);
    }
 public:
-   typename base_t::reference operator[] (int i)
+   decltype(auto) operator[] (int i)
    {
       typedef typename base_t::iterator::helper opb;
       const bool via_container=opb::data_arg || !iterator_traits<typename base_t::container::iterator>::is_random;
       return random_impl(i, opb::create(this->_top().get_operation()), bool_constant<via_container>());
    }
-   typename base_t::const_reference operator[] (int i) const
+   decltype(auto) operator[] (int i) const
    {
       typedef typename base_t::const_iterator::helper opb;
       const bool via_container=opb::data_arg || !iterator_traits<typename base_t::container::const_iterator>::is_random;
@@ -513,38 +636,36 @@ public:
    }
 };
 
-template <typename Top, typename TParams>
-class modified_container_elem_access<Top, TParams, random_access_iterator_tag, true, true>
-   : public modified_container_elem_access<Top, TParams, bidirectional_iterator_tag, true, true> {
-   typedef modified_container_typebase<Top, TParams> base_t;
+template <typename Top, typename Params>
+class modified_container_elem_access<Top, Params, random_access_iterator_tag, true, true>
+   : public modified_container_elem_access<Top, Params, bidirectional_iterator_tag, true, true> {
 public:
-   typename base_t::reference operator[] (int i)
+   decltype(auto) operator[] (int i)
    {
       return this->_top().get_container()[i];
    }
-   typename base_t::const_reference operator[] (int i) const
+   decltype(auto) operator[] (int i) const
    {
       return this->_top().get_container()[i];
    }
 };
 
-template <typename Top, typename TParams, typename Category>
-class modified_container_elem_access<Top, TParams, Category, false, false>
-   : public modified_container_non_bijective_elem_access<Top, modified_container_typebase<Top, TParams>,
-                                                         is_derived_from<Category, bidirectional_iterator_tag>::value> {};
+template <typename Top, typename Params, typename Category>
+class modified_container_elem_access<Top, Params, Category, false, false>
+   : public modified_container_non_bijective_elem_access<Top, is_derived_from<Category, bidirectional_iterator_tag>::value> {};
 
-template <typename Top, typename TParams>
-class container_pair_typebase : public manip_container_top<Top, TParams> {
-   typedef manip_container_top<Top, TParams> base_t;
+template <typename Top, typename Params>
+class container_pair_typebase : public manip_container_top<Top, Params> {
+   typedef manip_container_top<Top, Params> base_t;
 public:
-   typedef typename mtagged_list_extract<TParams, Container1Tag>::type container1_ref;
-   typedef typename mtagged_list_extract<TParams, Container2Tag>::type container2_ref;
+   using container1_ref_raw = typename extract_container_ref<Params, Container1RefTag, Container1Tag>::type;
+   using container2_ref_raw = typename extract_container_ref<Params, Container2RefTag, Container2Tag>::type;
+   typedef effectively_const_t<container1_ref_raw> container1_ref;
+   typedef effectively_const_t<container2_ref_raw> container2_ref;
    typedef typename deref<container1_ref>::minus_ref container1;
    typedef typename deref<container2_ref>::minus_ref container2;
-   typedef typename temp_ref<container1_ref>::type container1_temp_ref;
-   typedef typename temp_ref<container2_ref>::type container2_temp_ref;
 
-   typedef typename mtagged_list_extract<TParams, IteratorCouplerTag, pair_coupler<> >::type it_coupler;
+   typedef typename mtagged_list_extract<Params, IteratorCouplerTag, pair_coupler<> >::type it_coupler;
    typedef typename it_coupler::template defs<typename container_traits<container1>::iterator,
                                               typename container_traits<container2>::iterator,
                                               typename base_t::expected_features>::needed_features1
@@ -565,8 +686,8 @@ public:
    typedef typename least_derived_class<typename container_traits<container1>::category,
                                         typename container_traits<container2>::category>::type
       container_category;
-   typedef typename mix_features<typename enforce_feature_helper<typename deref<container1>::type>::must_enforce_features,
-                                 typename enforce_feature_helper<typename deref<container2>::type>::must_enforce_features>::type
+   typedef typename mix_features<typename enforce_feature_helper<container1>::must_enforce_features,
+                                 typename enforce_feature_helper<container2>::must_enforce_features>::type
       must_enforce_features;
 
    typedef typename iterator_traits<iterator>::value_type value_type;
@@ -576,20 +697,20 @@ public:
 
 template <typename IteratorCoupler>
 struct reverse_coupler {
-   typedef IteratorCoupler type;
+   using type = IteratorCoupler;
 };
 
-template <typename IteratorCoupler, typename TParams, bool TReverse=list_contains<TParams, _reversed>::value>
+template <typename IteratorCoupler, typename Params, bool is_reversed=mlist_contains<Params, reversed>::value>
 struct reverse_coupler_helper {
-   typedef IteratorCoupler type;
+   using type = IteratorCoupler;
 };
 
-template <typename IteratorCoupler, typename TParams>
-struct reverse_coupler_helper<IteratorCoupler, TParams, true> : reverse_coupler<IteratorCoupler> {};
+template <typename IteratorCoupler, typename Params>
+struct reverse_coupler_helper<IteratorCoupler, Params, true> : reverse_coupler<IteratorCoupler> {};
 
-template <typename Top, typename TParams>
+template <typename Top, typename Params>
 class reverse_container_pair_typebase {
-   typedef container_pair_typebase<Top, TParams> base_t;
+   typedef container_pair_typebase<Top, Params> base_t;
    typedef typename reverse_coupler<typename base_t::it_coupler>::type rev_it_coupler;
 public:
    typedef typename rev_it_coupler::template defs<typename ensure_features<typename base_t::container1,
@@ -606,11 +727,11 @@ public:
       const_reverse_iterator;
 };
 
-template <typename Top, typename TParams=typename Top::manipulator_params,
-          typename Category=typename container_pair_typebase<Top, TParams>::container_category>
+template <typename Top, typename Params=typename Top::manipulator_params,
+          typename Category=typename container_pair_typebase<Top, Params>::container_category>
 class container_pair_impl
-   : public container_pair_typebase<Top, TParams> {
-   typedef container_pair_typebase<Top, TParams> base_t;
+   : public container_pair_typebase<Top, Params> {
+   typedef container_pair_typebase<Top, Params> base_t;
    int size_impl(std::false_type) const { return this->manip_top().get_container1().size(); }
    int size_impl(std::true_type) const { return this->manip_top().get_container2().size(); }
    int dim_impl(std::false_type) const { return get_dim(this->manip_top().get_container1()); }
@@ -621,39 +742,35 @@ class container_pair_impl
    typedef bool_constant<object_classifier::what_is<typename deref<typename base_t::container1>::type>::value
                          == object_classifier::is_constant> unlimited1;
 public:
-   typedef container_pair_impl<Top, TParams> manipulator_impl;
-   typedef TParams manipulator_params;
-   typedef typename base_t::iterator iterator;
-   typedef typename base_t::const_iterator const_iterator;
+   typedef container_pair_impl<Top, Params> manipulator_impl;
+   typedef Params manipulator_params;
+   using typename base_t::iterator;
+   using typename base_t::const_iterator;
 
    template <typename FeatureCollector>
    struct rebind_feature_collector {
-      typedef container_pair_impl<FeatureCollector, TParams> type;
+      typedef container_pair_impl<FeatureCollector, Params> type;
    };
 
    iterator begin()
    {
-      typename base_t::container1_temp_ref c1=this->manip_top().get_container1();
-      typename base_t::container2_temp_ref c2=this->manip_top().get_container2();
-      return iterator(ensure(c1, (typename base_t::needed_features1*)0).begin(),
-                      ensure(c2, (typename base_t::needed_features2*)0).begin());
+      return iterator(ensure(this->manip_top().get_container1(), typename base_t::needed_features1()).begin(),
+                      ensure(this->manip_top().get_container2(), typename base_t::needed_features2()).begin());
    }
    iterator end()
    {
-      typename base_t::container1_temp_ref c1=this->manip_top().get_container1();
-      typename base_t::container2_temp_ref c2=this->manip_top().get_container2();
-      return iterator(ensure(c1, (typename base_t::needed_features1*)0).end(),
-                      ensure(c2, (typename base_t::needed_features2*)0).end());
+      return iterator(ensure(this->manip_top().get_container1(), typename base_t::needed_features1()).end(),
+                      ensure(this->manip_top().get_container2(), typename base_t::needed_features2()).end());
    }
    const_iterator begin() const
    {
-      return const_iterator(ensure(this->manip_top().get_container1(), (typename base_t::needed_features1*)0).begin(),
-                            ensure(this->manip_top().get_container2(), (typename base_t::needed_features2*)0).begin());
+      return const_iterator(ensure(this->manip_top().get_container1(), typename base_t::needed_features1()).begin(),
+                            ensure(this->manip_top().get_container2(), typename base_t::needed_features2()).begin());
    }
    const_iterator end() const
    {
-      return const_iterator(ensure(this->manip_top().get_container1(), (typename base_t::needed_features1*)0).end(),
-                            ensure(this->manip_top().get_container2(), (typename base_t::needed_features2*)0).end());
+      return const_iterator(ensure(this->manip_top().get_container1(), typename base_t::needed_features1()).end(),
+                            ensure(this->manip_top().get_container2(), typename base_t::needed_features2()).end());
    }
 
    int size() const { return size_impl(unlimited1()); }
@@ -661,101 +778,95 @@ public:
    bool empty() const { return empty_impl(unlimited1()); }
 };
 
-template <typename Top, typename TParams>
-class container_pair_impl<Top, TParams, forward_iterator_tag>
-   : public container_pair_impl<Top, TParams, input_iterator_tag> {
-   typedef container_pair_impl<Top, TParams, input_iterator_tag> base_t;
+template <typename Top, typename Params>
+class container_pair_impl<Top, Params, forward_iterator_tag>
+   : public container_pair_impl<Top, Params, input_iterator_tag> {
 public:
-   typename base_t::reference front()
+   decltype(auto) front()
    {
       return this->manip_top().get_container1().front();
    }
-   typename base_t::const_reference front() const
+   decltype(auto) front() const
    {
       return this->manip_top().get_container1().front();
    }
 };
 
-template <typename Top, typename TParams>
-class container_pair_impl<Top, TParams, bidirectional_iterator_tag>
-   : public container_pair_impl<Top, TParams, forward_iterator_tag>,
-     public reverse_container_pair_typebase<Top, TParams> {
-   typedef container_pair_impl<Top, TParams, forward_iterator_tag> base_t;
-   typedef reverse_container_pair_typebase<Top, TParams> rbase_t;
+template <typename Top, typename Params>
+class container_pair_impl<Top, Params, bidirectional_iterator_tag>
+   : public container_pair_impl<Top, Params, forward_iterator_tag>,
+     public reverse_container_pair_typebase<Top, Params> {
+   typedef container_pair_impl<Top, Params, forward_iterator_tag> base_t;
+   typedef reverse_container_pair_typebase<Top, Params> rbase_t;
 public:
    typename rbase_t::reverse_iterator rbegin()
    {
-      typename base_t::container1_temp_ref c1=this->manip_top().get_container1();
-      typename base_t::container2_temp_ref c2=this->manip_top().get_container2();
-      return typename rbase_t::reverse_iterator(ensure(c1, (typename base_t::needed_features1*)0).rbegin(),
-                                                ensure(c2, (typename base_t::needed_features2*)0).rbegin());
+      return typename rbase_t::reverse_iterator(ensure(this->manip_top().get_container1(), typename base_t::needed_features1()).rbegin(),
+                                                ensure(this->manip_top().get_container2(), typename base_t::needed_features2()).rbegin());
    }
    typename rbase_t::reverse_iterator rend()
    {
-      typename base_t::container1_temp_ref c1=this->manip_top().get_container1();
-      typename base_t::container2_temp_ref c2=this->manip_top().get_container2();
-      return typename rbase_t::reverse_iterator(ensure(c1, (typename base_t::needed_features1*)0).rend(),
-                                                ensure(c2, (typename base_t::needed_features2*)0).rend());
+      return typename rbase_t::reverse_iterator(ensure(this->manip_top().get_container1(), typename base_t::needed_features1()).rend(),
+                                                ensure(this->manip_top().get_container2(), typename base_t::needed_features2()).rend());
    }
    typename rbase_t::const_reverse_iterator rbegin() const
    {
       return typename rbase_t::const_reverse_iterator(ensure(this->manip_top().get_container1(),
-                                                             (typename base_t::needed_features1*)0).rbegin(),
+                                                             typename base_t::needed_features1()).rbegin(),
                                                       ensure(this->manip_top().get_container2(),
-                                                             (typename base_t::needed_features2*)0).rbegin());
+                                                             typename base_t::needed_features2()).rbegin());
    }
    typename rbase_t::const_reverse_iterator rend() const
    {
       return typename rbase_t::const_reverse_iterator(ensure(this->manip_top().get_container1(),
-                                                             (typename base_t::needed_features1*)0).rend(),
+                                                             typename base_t::needed_features1()).rend(),
                                                       ensure(this->manip_top().get_container2(),
-                                                             (typename base_t::needed_features2*)0).rend());
+                                                             typename base_t::needed_features2()).rend());
    }
 
-   typename base_t::reference back()
+   decltype(auto) back()
    {
       return this->manip_top().get_container1().back();
    }
-   typename base_t::const_reference back() const
+   decltype(auto) back() const
    {
       return this->manip_top().get_container1().back();
    }
 };
 
-template <typename Top, typename TParams>
-class container_pair_impl<Top, TParams, random_access_iterator_tag>
-   : public container_pair_impl<Top, TParams, bidirectional_iterator_tag> {
-   typedef container_pair_impl<Top, TParams, bidirectional_iterator_tag> base_t;
+template <typename Top, typename Params>
+class container_pair_impl<Top, Params, random_access_iterator_tag>
+   : public container_pair_impl<Top, Params, bidirectional_iterator_tag> {
 public:
-   typename base_t::reference operator[] (int i)
+   decltype(auto) operator[] (int i)
    {
       return this->manip_top().get_container1()[i];
    }
-   typename base_t::const_reference operator[] (int i) const
+   decltype(auto) operator[] (int i) const
    {
       return this->manip_top().get_container1()[i];
    }
 };
 
-template <typename Top, typename TParams>
+template <typename Top, typename Params>
 class modified_container_pair_typebase
-   : public manip_container_top<Top, TParams> {
-   typedef manip_container_top<Top, TParams> base_t;
+   : public manip_container_top<Top, Params> {
+   typedef manip_container_top<Top, Params> base_t;
 public:
-   typedef typename mtagged_list_extract<TParams, Container1Tag>::type container1_ref;
-   typedef typename mtagged_list_extract<TParams, Container2Tag>::type container2_ref;
+   using container1_ref_raw = typename extract_container_ref<Params, Container1RefTag, Container1Tag>::type;
+   using container2_ref_raw = typename extract_container_ref<Params, Container2RefTag, Container2Tag>::type;
+   typedef effectively_const_t<container1_ref_raw> container1_ref;
+   typedef effectively_const_t<container2_ref_raw> container2_ref;
    typedef typename deref<container1_ref>::minus_ref container1;
    typedef typename deref<container2_ref>::minus_ref container2;
-   typedef typename temp_ref<container1_ref>::type container1_temp_ref;
-   typedef typename temp_ref<container2_ref>::type container2_temp_ref;
 
-   typedef typename mtagged_list_extract<TParams, OperationTag>::type operation;
+   typedef typename mtagged_list_extract<Params, OperationTag>::type operation;
    typedef typename operation_cross_const_helper<operation>::const_operation const_operation;
-   typedef typename mtagged_list_extract<TParams, IteratorCouplerTag, pair_coupler<> >::type it_coupler;
+   typedef typename mtagged_list_extract<Params, IteratorCouplerTag, pair_coupler<> >::type it_coupler;
    typedef typename it_coupler::template defs<typename container_traits<container1>::iterator,
-                                              typename container_traits<container2>::iterator, void>
+                                              typename container_traits<container2>::iterator>
       coupler_defs;
-   typedef typename mtagged_list_extract<TParams, IteratorConstructorTag, binary_transform_constructor<> >::type it_constructor;
+   typedef typename mtagged_list_extract<Params, IteratorConstructorTag, binary_transform_constructor<> >::type it_constructor;
 
    typedef typename it_constructor::template defs<typename coupler_defs::iterator, operation, typename base_t::expected_features> first_try_defs;
    typedef typename first_try_defs::needed_pair_features needed_pair_features;
@@ -790,8 +901,8 @@ public:
                                          typename container_traits<container2>::category >::type
       container_category;
 
-   typedef typename mix_features<typename enforce_feature_helper<typename deref<container1>::type>::must_enforce_features,
-                                 typename enforce_feature_helper<typename deref<container2>::type>::must_enforce_features>::type
+   typedef typename mix_features<typename enforce_feature_helper<container1>::must_enforce_features,
+                                 typename enforce_feature_helper<container2>::must_enforce_features>::type
       must_enforce_features;
 
    typedef typename iterator_traits<iterator>::value_type value_type;
@@ -799,9 +910,9 @@ public:
    typedef typename iterator_traits<const_iterator>::reference const_reference;
 };
 
-template <typename Top, typename TParams>
+template <typename Top, typename Params>
 class reverse_modified_container_pair_typebase {
-   typedef modified_container_pair_typebase<Top, TParams> base_t;
+   typedef modified_container_pair_typebase<Top, Params> base_t;
    typedef typename reverse_coupler<typename base_t::it_coupler>::type rev_it_coupler;
 public:
    typedef typename rev_it_coupler::template defs<typename ensure_features<typename base_t::container1,
@@ -824,28 +935,28 @@ public:
       const_reverse_iterator;
 };
 
-template <typename Top, typename TParams,
-          typename Category=typename modified_container_pair_typebase<Top, TParams>::container_category,
-          bool TBijective=is_bijective<typename modified_container_pair_typebase<Top, TParams>::it_constructor>::value,
-          bool TIdentity=is_identity_transform<typename modified_container_pair_typebase<Top, TParams>::operation>::value>
+template <typename Top, typename Params,
+          typename Category=typename modified_container_pair_typebase<Top, Params>::container_category,
+          bool is_bijective=is_bijective<typename modified_container_pair_typebase<Top, Params>::it_constructor>::value,
+          bool is_identity=is_identity_transform<typename modified_container_pair_typebase<Top, Params>::operation>::value>
 class modified_container_pair_elem_access;
 
-template <typename Top, typename TParams=typename Top::manipulator_params,
-          bool TReversible=is_derived_from<typename modified_container_pair_typebase<Top, TParams>::container_category,
-                                           bidirectional_iterator_tag>::value>
+template <typename Top, typename Params=typename Top::manipulator_params,
+          bool is_bidir=is_derived_from<typename modified_container_pair_typebase<Top, Params>::container_category,
+                                        bidirectional_iterator_tag>::value>
 class modified_container_pair_impl
-   : public modified_container_pair_typebase<Top, TParams>,
-     public modified_container_pair_elem_access<Top, TParams> {
-   typedef modified_container_pair_typebase<Top, TParams> base_t;
+   : public modified_container_pair_typebase<Top, Params>
+   , public modified_container_pair_elem_access<Top, Params> {
+   using base_t = modified_container_pair_typebase<Top, Params>;
 public:
-   typedef modified_container_pair_impl<Top, TParams> manipulator_impl;
-   typedef TParams manipulator_params;
-   typedef typename base_t::iterator iterator;
-   typedef typename base_t::const_iterator const_iterator;
+   typedef modified_container_pair_impl<Top, Params> manipulator_impl;
+   typedef Params manipulator_params;
+   using typename base_t::iterator;
+   using typename base_t::const_iterator;
 
    template <typename FeatureCollector>
    struct rebind_feature_collector {
-      typedef modified_container_pair_impl<FeatureCollector, TParams> type;
+      typedef modified_container_pair_impl<FeatureCollector, Params> type;
    };
 
    typename is_identity_transform<typename base_t::operation>::type get_operation() const
@@ -855,86 +966,74 @@ public:
 
    iterator begin()
    {
-      typename base_t::container1_temp_ref c1=this->manip_top().get_container1();
-      typename base_t::container2_temp_ref c2=this->manip_top().get_container2();
-      return iterator(ensure(c1, (typename base_t::needed_features1*)0).begin(),
-                      ensure(c2, (typename base_t::needed_features2*)0).begin(),
+      return iterator(ensure(this->manip_top().get_container1(), typename base_t::needed_features1()).begin(),
+                      ensure(this->manip_top().get_container2(), typename base_t::needed_features2()).begin(),
                       this->manip_top().get_operation());
    }
    iterator end()
    {
-      typename base_t::container1_temp_ref c1=this->manip_top().get_container1();
-      typename base_t::container2_temp_ref c2=this->manip_top().get_container2();
-      return iterator(ensure(c1, (typename base_t::needed_features1*)0).end(),
-                      ensure(c2, (typename base_t::needed_features2*)0).end(),
+      return iterator(ensure(this->manip_top().get_container1(), typename base_t::needed_features1()).end(),
+                      ensure(this->manip_top().get_container2(), typename base_t::needed_features2()).end(),
                       this->manip_top().get_operation());
    }
    const_iterator begin() const
    {
-      return const_iterator(ensure(this->manip_top().get_container1(), (typename base_t::needed_features1*)0).begin(),
-                            ensure(this->manip_top().get_container2(), (typename base_t::needed_features2*)0).begin(),
+      return const_iterator(ensure(this->manip_top().get_container1(), typename base_t::needed_features1()).begin(),
+                            ensure(this->manip_top().get_container2(), typename base_t::needed_features2()).begin(),
                             this->manip_top().get_operation());
    }
    const_iterator end() const
    {
-      return const_iterator(ensure(this->manip_top().get_container1(), (typename base_t::needed_features1*)0).end(),
-                            ensure(this->manip_top().get_container2(), (typename base_t::needed_features2*)0).end(),
+      return const_iterator(ensure(this->manip_top().get_container1(), typename base_t::needed_features1()).end(),
+                            ensure(this->manip_top().get_container2(), typename base_t::needed_features2()).end(),
                             this->manip_top().get_operation());
    }
 };
 
-template <typename Top, typename TParams>
-class modified_container_pair_impl<Top, TParams, true>
-   : public modified_container_pair_impl<Top, TParams, false>,
-     public reverse_modified_container_pair_typebase<Top, TParams> {
-   typedef modified_container_pair_impl<Top, TParams, false> base_t;
-   typedef reverse_modified_container_pair_typebase<Top, TParams> rbase_t;
+template <typename Top, typename Params>
+class modified_container_pair_impl<Top, Params, true>
+   : public modified_container_pair_impl<Top, Params, false>,
+     public reverse_modified_container_pair_typebase<Top, Params> {
+   typedef modified_container_pair_impl<Top, Params, false> base_t;
+   typedef reverse_modified_container_pair_typebase<Top, Params> rbase_t;
 public:
    typename rbase_t::reverse_iterator rbegin()
    {
-      typename base_t::container1_temp_ref c1=this->manip_top().get_container1();
-      typename base_t::container2_temp_ref c2=this->manip_top().get_container2();
-      return typename rbase_t::reverse_iterator(ensure(c1, (typename base_t::needed_features1*)0).rbegin(),
-                                                ensure(c2, (typename base_t::needed_features2*)0).rbegin(),
+      return typename rbase_t::reverse_iterator(ensure(this->manip_top().get_container1(), typename base_t::needed_features1()).rbegin(),
+                                                ensure(this->manip_top().get_container2(), typename base_t::needed_features2()).rbegin(),
                                                 this->manip_top().get_operation());
    }
    typename rbase_t::reverse_iterator rend()
    {
-      typename base_t::container1_temp_ref c1=this->manip_top().get_container1();
-      typename base_t::container2_temp_ref c2=this->manip_top().get_container2();
-      return typename rbase_t::reverse_iterator(ensure(c1, (typename base_t::needed_features1*)0).rend(),
-                                                ensure(c2, (typename base_t::needed_features2*)0).rend(),
+      return typename rbase_t::reverse_iterator(ensure(this->manip_top().get_container1(), typename base_t::needed_features1()).rend(),
+                                                ensure(this->manip_top().get_container2(), typename base_t::needed_features2()).rend(),
                                                 this->manip_top().get_operation());
    }
    typename rbase_t::const_reverse_iterator rbegin() const
    {
-      return typename rbase_t::const_reverse_iterator(ensure(this->manip_top().get_container1(),
-                                                             (typename base_t::needed_features1*)0).rbegin(),
-                                                      ensure(this->manip_top().get_container2(),
-                                                             (typename base_t::needed_features2*)0).rbegin(),
+      return typename rbase_t::const_reverse_iterator(ensure(this->manip_top().get_container1(), typename base_t::needed_features1()).rbegin(),
+                                                      ensure(this->manip_top().get_container2(), typename base_t::needed_features2()).rbegin(),
                                                       this->manip_top().get_operation());
    }
    typename rbase_t::const_reverse_iterator rend() const
    {
-      return typename rbase_t::const_reverse_iterator(ensure(this->manip_top().get_container1(),
-                                                             (typename base_t::needed_features1*)0).rend(),
-                                                      ensure(this->manip_top().get_container2(),
-                                                             (typename base_t::needed_features2*)0).rend(),
+      return typename rbase_t::const_reverse_iterator(ensure(this->manip_top().get_container1(), typename base_t::needed_features1()).rend(),
+                                                      ensure(this->manip_top().get_container2(), typename base_t::needed_features2()).rend(),
                                                       this->manip_top().get_operation());
    }
 };
 
-template <typename Top, typename TParams, typename Category, bool TBijective, bool TIdentity>
+template <typename Top, typename Params, typename Category, bool is_bijective, bool is_identity>
 class modified_container_pair_elem_access {
-   typedef modified_container_pair_typebase<Top, TParams> base_t;
+   typedef modified_container_pair_typebase<Top, Params> base_t;
 protected:
    typename base_t::manip_top_type& _top()
    {
-      return static_cast<modified_container_pair_impl<Top, TParams>*>(this)->manip_top();
+      return static_cast<modified_container_pair_impl<Top, Params>*>(this)->manip_top();
    }
    const typename base_t::manip_top_type& _top() const
    {
-      return static_cast<const modified_container_pair_impl<Top, TParams>*>(this)->manip_top();
+      return static_cast<const modified_container_pair_impl<Top, Params>*>(this)->manip_top();
    }
 private:
    int size_impl(std::false_type) const { return _top().get_container1().size(); }
@@ -952,59 +1051,59 @@ public:
    bool empty() const { return empty_impl(unlimited1()); }
 };
 
-template <typename Top, typename TParams>
-class modified_container_pair_elem_access<Top, TParams, forward_iterator_tag, true, false>
-   : public modified_container_pair_elem_access<Top, TParams, input_iterator_tag, true, false> {
-   typedef modified_container_pair_typebase<Top, TParams> base_t;
+template <typename Top, typename Params>
+class modified_container_pair_elem_access<Top, Params, forward_iterator_tag, true, false>
+   : public modified_container_pair_elem_access<Top, Params, input_iterator_tag, true, false> {
+   typedef modified_container_pair_typebase<Top, Params> base_t;
 
-   typename base_t::reference front_impl(const typename base_t::iterator::operation& op, std::true_type, std::true_type)
+   decltype(auto) front_impl(const typename base_t::iterator::operation& op, std::true_type, std::true_type)
    {
       return op(this->_top().get_container1().front(),
                 this->_top().get_container2().front());
    }
-   typename base_t::const_reference front_impl(const typename base_t::const_iterator::operation& op, std::true_type, std::true_type) const
+   decltype(auto) front_impl(const typename base_t::const_iterator::operation& op, std::true_type, std::true_type) const
    {
       return op(this->_top().get_container1().front(),
                 this->_top().get_container2().front());
    }
-   typename base_t::reference front_impl(const typename base_t::iterator::operation& op, std::false_type, std::true_type)
+   decltype(auto) front_impl(const typename base_t::iterator::operation& op, std::false_type, std::true_type)
    {
       return op(this->_top().get_container1().begin(),
                 this->_top().get_container2().front());
    }
-   typename base_t::const_reference front_impl(const typename base_t::const_iterator::operation& op, std::false_type, std::true_type) const
+   decltype(auto) front_impl(const typename base_t::const_iterator::operation& op, std::false_type, std::true_type) const
    {
       return op(this->_top().get_container1().begin(),
                 this->_top().get_container2().front());
    }
-   typename base_t::reference front_impl(const typename base_t::iterator::operation& op, std::true_type, std::false_type)
+   decltype(auto) front_impl(const typename base_t::iterator::operation& op, std::true_type, std::false_type)
    {
       return op(this->_top().get_container1().front(),
                 this->_top().get_container2().begin());
    }
-   typename base_t::const_reference front_impl(const typename base_t::const_iterator::operation& op, std::true_type, std::false_type) const
+   decltype(auto) front_impl(const typename base_t::const_iterator::operation& op, std::true_type, std::false_type) const
    {
       return op(this->_top().get_container1().front(),
                 this->_top().get_container2().begin());
    }
-   typename base_t::reference front_impl(const typename base_t::iterator::operation& op, std::false_type, std::false_type)
+   decltype(auto) front_impl(const typename base_t::iterator::operation& op, std::false_type, std::false_type)
    {
       return op(this->_top().get_container1().begin(),
                 this->_top().get_container2().begin());
    }
-   typename base_t::const_reference front_impl(const typename base_t::const_iterator::operation& op, std::false_type, std::false_type) const
+   decltype(auto) front_impl(const typename base_t::const_iterator::operation& op, std::false_type, std::false_type) const
    {
       return op(this->_top().get_container1().begin(),
                 this->_top().get_container2().begin());
    }
 public:
-   typename base_t::reference front()
+   decltype(auto) front()
    {
       typedef typename base_t::iterator::helper opb;
       return front_impl(opb::create(this->_top().get_operation()),
                         bool_constant<opb::first_data_arg>(), bool_constant<opb::second_data_arg>());
    }
-   typename base_t::const_reference front() const
+   decltype(auto) front() const
    {
       typedef typename base_t::const_iterator::helper opb;
       return front_impl(opb::create(this->_top().get_operation()),
@@ -1012,75 +1111,74 @@ public:
    }
 };
 
-template <typename Top, typename TParams>
-class modified_container_pair_elem_access<Top, TParams, forward_iterator_tag, true, true>
-   : public modified_container_pair_elem_access<Top, TParams, input_iterator_tag, true, true> {
-   typedef modified_container_pair_typebase<Top, TParams> base_t;
+template <typename Top, typename Params>
+class modified_container_pair_elem_access<Top, Params, forward_iterator_tag, true, true>
+   : public modified_container_pair_elem_access<Top, Params, input_iterator_tag, true, true> {
 public:
-   typename base_t::reference front()
+   decltype(auto) front()
    {
       return this->_top().get_container1().front();
    }
-   typename base_t::const_reference front() const
+   decltype(auto) front() const
    {
       return this->_top().get_container1().front();
    }
 };
 
-template <typename Top, typename TParams>
-class modified_container_pair_elem_access<Top, TParams, bidirectional_iterator_tag, true, false>
-   : public modified_container_pair_elem_access<Top, TParams, forward_iterator_tag, true, false> {
-   typedef modified_container_pair_typebase<Top, TParams> base_t;
-   typedef reverse_modified_container_pair_typebase<Top, TParams> rbase_t;
+template <typename Top, typename Params>
+class modified_container_pair_elem_access<Top, Params, bidirectional_iterator_tag, true, false>
+   : public modified_container_pair_elem_access<Top, Params, forward_iterator_tag, true, false> {
+   typedef modified_container_pair_typebase<Top, Params> base_t;
+   typedef reverse_modified_container_pair_typebase<Top, Params> rbase_t;
 
-   typename base_t::reference back_impl(const typename rbase_t::reverse_iterator::operation& op, std::true_type, std::true_type)
+   decltype(auto) back_impl(const typename rbase_t::reverse_iterator::operation& op, std::true_type, std::true_type)
    {
       return op(this->_top().get_container1().back(),
                 this->_top().get_container2().back());
    }
-   typename base_t::const_reference back_impl(const typename rbase_t::const_reverse_iterator::operation& op, std::true_type, std::true_type) const
+   decltype(auto) back_impl(const typename rbase_t::const_reverse_iterator::operation& op, std::true_type, std::true_type) const
    {
       return op(this->_top().get_container1().back(),
                 this->_top().get_container2().back());
    }
-   typename base_t::reference back_impl(const typename rbase_t::reverse_iterator::operation& op, std::false_type, std::true_type)
+   decltype(auto) back_impl(const typename rbase_t::reverse_iterator::operation& op, std::false_type, std::true_type)
    {
       return op(this->_top().get_container1().rbegin(),
                 this->_top().get_container2().back());
    }
-   typename base_t::const_reference back_impl(const typename rbase_t::const_reverse_iterator::operation& op, std::false_type, std::true_type) const
+   decltype(auto) back_impl(const typename rbase_t::const_reverse_iterator::operation& op, std::false_type, std::true_type) const
    {
       return op(this->_top().get_container1().rbegin(),
                 this->_top().get_container2().back());
    }
-   typename base_t::reference back_impl(const typename rbase_t::reverse_iterator::operation& op, std::true_type, std::false_type)
+   decltype(auto) back_impl(const typename rbase_t::reverse_iterator::operation& op, std::true_type, std::false_type)
    {
       return op(this->_top().get_container1().back(),
                 this->_top().get_container2().rbegin());
    }
-   typename base_t::const_reference back_impl(const typename rbase_t::const_reverse_iterator::operation& op, std::true_type, std::false_type) const
+   decltype(auto) back_impl(const typename rbase_t::const_reverse_iterator::operation& op, std::true_type, std::false_type) const
    {
       return op(this->_top().get_container1().back(),
                 this->_top().get_container2().rbegin());
    }
-   typename base_t::reference back_impl(const typename rbase_t::reverse_iterator::operation& op, std::false_type, std::false_type)
+   decltype(auto) back_impl(const typename rbase_t::reverse_iterator::operation& op, std::false_type, std::false_type)
    {
       return op(this->_top().get_container1().rbegin(),
                 this->_top().get_container2().rbegin());
    }
-   typename base_t::const_reference back_impl(const typename rbase_t::const_reverse_iterator::operation& op, std::false_type, std::false_type) const
+   decltype(auto) back_impl(const typename rbase_t::const_reverse_iterator::operation& op, std::false_type, std::false_type) const
    {
       return op(this->_top().get_container1().rbegin(),
                 this->_top().get_container2().rbegin());
    }
 public:
-   typename base_t::reference back()
+   decltype(auto) back()
    {
       typedef typename rbase_t::reverse_iterator::helper opb;
       return back_impl(opb::create(this->_top().get_operation()),
                        bool_constant<opb::first_data_arg>(), bool_constant<opb::second_data_arg>());
    }
-   typename base_t::const_reference back() const
+   decltype(auto) back() const
    {
       typedef typename rbase_t::const_reverse_iterator::helper opb;
       return back_impl(opb::create(this->_top().get_operation()),
@@ -1088,68 +1186,67 @@ public:
    }
 };
 
-template <typename Top, typename TParams>
-class modified_container_pair_elem_access<Top, TParams, bidirectional_iterator_tag, true, true>
-   : public modified_container_pair_elem_access<Top, TParams, forward_iterator_tag, true, true> {
-   typedef modified_container_pair_typebase<Top, TParams> base_t;
+template <typename Top, typename Params>
+class modified_container_pair_elem_access<Top, Params, bidirectional_iterator_tag, true, true>
+   : public modified_container_pair_elem_access<Top, Params, forward_iterator_tag, true, true> {
 public:
-   typename base_t::reference back()
+   decltype(auto) back()
    {
       return this->_top().get_container1().back();
    }
-   typename base_t::const_reference back() const
+   decltype(auto) back() const
    {
       return this->_top().get_container1().back();
    }
 };
 
-template <typename Top, typename TParams>
-class modified_container_pair_elem_access<Top, TParams, random_access_iterator_tag, true, false>
-   : public modified_container_pair_elem_access<Top, TParams, bidirectional_iterator_tag, true, false> {
-   typedef modified_container_pair_typebase<Top, TParams> base_t;
+template <typename Top, typename Params>
+class modified_container_pair_elem_access<Top, Params, random_access_iterator_tag, true, false>
+   : public modified_container_pair_elem_access<Top, Params, bidirectional_iterator_tag, true, false> {
+   typedef modified_container_pair_typebase<Top, Params> base_t;
 
-   typename base_t::reference random_impl(int i, const typename base_t::iterator::operation& op, std::true_type, std::true_type)
+   decltype(auto) random_impl(int i, const typename base_t::iterator::operation& op, std::true_type, std::true_type)
    {
       return op(this->_top().get_container1()[i],
                 this->_top().get_container2()[i]);
    }
-   typename base_t::const_reference random_impl(int i, const typename base_t::const_iterator::operation& op, std::true_type, std::true_type) const
+   decltype(auto) random_impl(int i, const typename base_t::const_iterator::operation& op, std::true_type, std::true_type) const
    {
       return op(this->_top().get_container1()[i],
                 this->_top().get_container2()[i]);
    }
-   typename base_t::reference random_impl(int i, const typename base_t::iterator::operation& op, std::false_type, std::true_type)
+   decltype(auto) random_impl(int i, const typename base_t::iterator::operation& op, std::false_type, std::true_type)
    {
       return op(this->_top().get_container1().begin()+i,
                 this->_top().get_container2()[i]);
    }
-   typename base_t::const_reference random_impl(int i, const typename base_t::const_iterator::operation& op, std::false_type, std::true_type) const
+   decltype(auto) random_impl(int i, const typename base_t::const_iterator::operation& op, std::false_type, std::true_type) const
    {
       return op(this->_top().get_container1().begin()+i,
                 this->_top().get_container2()[i]);
    }
-   typename base_t::reference random_impl(int i, const typename base_t::iterator::operation& op, std::true_type, std::false_type)
+   decltype(auto) random_impl(int i, const typename base_t::iterator::operation& op, std::true_type, std::false_type)
    {
       return op(this->_top().get_container1()[i],
                 this->_top().get_container2().begin()+i);
    }
-   typename base_t::const_reference random_impl(int i, const typename base_t::const_iterator::operation& op, std::true_type, std::false_type) const
+   decltype(auto) random_impl(int i, const typename base_t::const_iterator::operation& op, std::true_type, std::false_type) const
    {
       return op(this->_top().get_container1()[i],
                 this->_top().get_container2().begin()+i);
    }
-   typename base_t::reference random_impl(int i, const typename base_t::iterator::operation& op, std::false_type, std::false_type)
+   decltype(auto) random_impl(int i, const typename base_t::iterator::operation& op, std::false_type, std::false_type)
    {
       return op(this->_top().get_container1().begin()+i,
                 this->_top().get_container2().begin()+i);
    }
-   typename base_t::const_reference random_impl(int i, const typename base_t::const_iterator::operation& op, std::false_type, std::false_type) const
+   decltype(auto) random_impl(int i, const typename base_t::const_iterator::operation& op, std::false_type, std::false_type) const
    {
       return op(this->_top().get_container1().begin()+i,
                 this->_top().get_container2().begin()+i);
    }
 public:
-   typename base_t::reference operator[] (int i)
+   decltype(auto) operator[] (int i)
    {
       typedef typename base_t::iterator::helper opb;
       const bool via_container1=opb::first_data_arg || !iterator_traits<typename base_t::container1::iterator>::is_random,
@@ -1157,7 +1254,7 @@ public:
       return random_impl(i, opb::create(this->_top().get_operation()),
                          bool_constant<via_container1>(), bool_constant<via_container2>());
    }
-   typename base_t::const_reference operator[] (int i) const
+   decltype(auto) operator[] (int i) const
    {
       typedef typename base_t::const_iterator::helper opb;
       const bool via_container1=opb::first_data_arg || !iterator_traits<typename base_t::container1::const_iterator>::is_random,
@@ -1167,138 +1264,190 @@ public:
    }
 };
 
-template <typename Top, typename TParams>
-class modified_container_pair_elem_access<Top, TParams, random_access_iterator_tag, true, true>
-   : public modified_container_pair_elem_access<Top, TParams, bidirectional_iterator_tag, true, true> {
-   typedef modified_container_pair_typebase<Top, TParams> base_t;
+template <typename Top, typename Params>
+class modified_container_pair_elem_access<Top, Params, random_access_iterator_tag, true, true>
+   : public modified_container_pair_elem_access<Top, Params, bidirectional_iterator_tag, true, true> {
 public:
-   typename base_t::reference operator[] (int i)
+   decltype(auto) operator[] (int i)
    {
       return this->_top().get_container1()[i];
    }
-   typename base_t::const_reference operator[] (int i) const
+   decltype(auto) operator[] (int i) const
    {
       return this->_top().get_container1()[i];
    }
 };
 
-template <typename Top, typename TParams, typename Category>
-class modified_container_pair_elem_access<Top, TParams, Category, false, false>
-   : public modified_container_non_bijective_elem_access<Top, modified_container_pair_typebase<Top, TParams>,
-                                                         is_derived_from<Category, bidirectional_iterator_tag>::value> {};
+template <typename Top, typename Params, typename Category>
+class modified_container_pair_elem_access<Top, Params, Category, false, false>
+   : public modified_container_non_bijective_elem_access<Top, is_derived_from<Category, bidirectional_iterator_tag>::value> {};
 
 template <typename ContainerRef, typename Operation>
 class modified_container_base {
 protected:
-   alias<ContainerRef> src;
+   using alias_t = alias<ContainerRef>;
+   alias_t src;
    typedef typename is_identity_transform<Operation>::type operation_type;
    operation_type op;
 public:
-   typedef typename alias<ContainerRef>::arg_type arg_type;
+   modified_container_base() = default;
 
-   modified_container_base(arg_type src_arg, const operation_type& op_arg)
-      : src(src_arg), op(op_arg) {}
+   template <typename SrcArg, typename... OpArgs,
+             typename=std::enable_if_t<std::is_constructible<alias_t, SrcArg>::value &&
+                                       std::is_constructible<operation_type, OpArgs...>::value> >
+   explicit modified_container_base(SrcArg&& src_arg, OpArgs&&... op_args)
+      : src(std::forward<SrcArg>(src_arg))
+      , op(std::forward<OpArgs>(op_args)...) {}
 
-   typename alias<ContainerRef>::reference get_container() { return *src; }
-   typename alias<ContainerRef>::const_reference get_container() const { return *src; }
-   const alias<ContainerRef>& get_container_alias() const { return src; }
+   decltype(auto) get_container() { return *src; }
+   decltype(auto) get_container() const { return *src; }
+   const alias_t& get_container_alias() const { return src; }
    const operation_type& get_operation() const { return op; }
 };
 
 template <typename ContainerRef1, typename ContainerRef2>
 class container_pair_base {
 protected:
-   alias<ContainerRef1> src1;
-   alias<ContainerRef2> src2;
+   using first_alias_t = alias<ContainerRef1>;
+   using second_alias_t = alias<ContainerRef2>;
+   first_alias_t src1;
+   second_alias_t src2;
 public:
-   typedef typename alias<ContainerRef1>::arg_type first_arg_type;
-   typedef typename alias<ContainerRef2>::arg_type second_arg_type;
+   container_pair_base() = default;
 
-   container_pair_base(first_arg_type src1_arg, second_arg_type src2_arg)
-      : src1(src1_arg), src2(src2_arg) {}
+   template <typename Arg1, typename Arg2,
+             typename=std::enable_if_t<std::is_constructible<first_alias_t, Arg1>::value &&
+                                       std::is_constructible<second_alias_t, Arg2>::value>>
+   container_pair_base(Arg1&& src1_arg, Arg2&& src2_arg)
+      : src1(std::forward<Arg1>(src1_arg))
+      , src2(std::forward<Arg2>(src2_arg)) {}
 
-   typename alias<ContainerRef1>::reference get_container1() { return *src1; }
-   typename alias<ContainerRef2>::reference get_container2() { return *src2; }
-   typename alias<ContainerRef1>::const_reference get_container1() const { return *src1; }
-   typename alias<ContainerRef2>::const_reference get_container2() const { return *src2; }
-   const alias<ContainerRef1>& get_container1_alias() const { return src1; }
-   const alias<ContainerRef2>& get_container2_alias() const { return src2; }
+   decltype(auto) get_container1() { return *src1; }
+   decltype(auto) get_container2() { return *src2; }
+   decltype(auto) get_container1() const { return *src1; }
+   decltype(auto) get_container2() const { return *src2; }
+   const first_alias_t& get_container1_alias() const { return src1; }
+   const second_alias_t& get_container2_alias() const { return src2; }
 };
 
 template <typename ContainerRef1, typename ContainerRef2, typename Operation>
 class modified_container_pair_base
    : public container_pair_base<ContainerRef1, ContainerRef2> {
-   typedef container_pair_base<ContainerRef1, ContainerRef2> _super;
+   using base_t = container_pair_base<ContainerRef1, ContainerRef2>;
 protected:
    typedef typename is_identity_transform<Operation>::type operation_type;
    operation_type op;
 public:
-   modified_container_pair_base(typename _super::first_arg_type src1_arg,
-                                typename _super::second_arg_type src2_arg,
-                                const operation_type& op_arg)
-      : _super(src1_arg,src2_arg), op(op_arg) {}
+   modified_container_pair_base() = default;
+
+   template <typename Arg1, typename Arg2, typename... OpArgs,
+             typename=std::enable_if_t<std::is_constructible<base_t, Arg1, Arg2>::value &&
+                                       std::is_constructible<operation_type, OpArgs...>::value>>
+   modified_container_pair_base(Arg1&& src1_arg, Arg2&& src2_arg, OpArgs&&... op_args)
+      : base_t(std::forward<Arg1>(src1_arg), std::forward<Arg2>(src2_arg))
+      , op(std::forward<OpArgs>(op_args)...) {}
 
    const operation_type& get_operation() const { return op; }
 };
 
-template <typename Top, typename T=typename Top::element_reference, typename TParams=mlist<>>
+template <typename Top, typename ElemRef=typename Top::element_reference, typename Params=mlist<>>
 class repeated_value_container_impl
    : public modified_container_pair_impl< Top,
                                           typename mlist_concat<
-                                             Container1Tag< constant_value_container<T> >,
-                                             Container2Tag< sequence >,
+                                             Container1RefTag< same_value_container<ElemRef> >,
+                                             Container2RefTag< sequence_raw >,
                                              OperationTag< pair<nothing,
                                                                 operations::apply2< BuildUnaryIt<operations::dereference> > > >,
-                                             TParams >::type > {
+                                             Params >::type > {
 public:
-   typedef T element_reference;
-   const constant_value_container<T>& get_container1() const
+   using element_reference = ElemRef;
+
+   decltype(auto) get_container1() const
    {
-      return constant(this->manip_top().get_elem_alias());
+      return as_same_value_container(this->manip_top().get_elem_alias());
    }
-   sequence get_container2() const { return sequence(0, this->manip_top().size()); }
+   sequence_raw get_container2() const
+   {
+      return sequence_raw(0, this->manip_top().size());
+   }
+
+   decltype(auto) front() const { return this->manip_top().get_container1().front(); }
+   decltype(auto) back() const { return front(); }
 };
 
-template <typename T>
+template <typename ElemRef>
 class repeated_value_container
-   : public repeated_value_container_impl<repeated_value_container<T>, T> {
+   : public repeated_value_container_impl<repeated_value_container<ElemRef>, ElemRef> {
 protected:
-   alias<T> value;
+   using alias_t = alias<ElemRef>;
+   alias_t value;
    int d;
 public:
-   typedef typename alias<T>::arg_type arg_type;
+   // TODO: remove this when iterators stop outliving containers
+   repeated_value_container()
+      : d(0) {}
 
-   repeated_value_container(arg_type value_arg, int dim_arg)
-      : value(value_arg), d(dim_arg) {}
+   template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
+   repeated_value_container(Arg&& value_arg, int dim_arg)
+      : value(std::forward<Arg>(value_arg))
+      , d(dim_arg)
+   {
+      if (POLYMAKE_DEBUG && dim_arg<0)
+         throw std::runtime_error("repeated_value_container - invalid dimension");
+   }
 
-   alias<T>& get_elem_alias() { return value; }
-   const alias<T>& get_elem_alias() const { return value; }
+   alias_t& get_elem_alias() { return value; }
+   const alias_t& get_elem_alias() const { return value; }
 
    int dim() const { return d; }
    int size() const { return d; }
    bool empty() const { return d==0; }
 
-   void stretch_dim(int to_dim) { d=to_dim; }
+   void stretch_dim(int to_dim)
+   {
+      d=to_dim;
+   }
 };
 
-template <typename T>
-struct spec_object_traits< repeated_value_container<T> >
-   : spec_object_traits<is_container> {
-   static const bool is_temporary=true, is_always_const=true;
+template <typename ElemRef>
+struct spec_object_traits< repeated_value_container<ElemRef> >
+   : spec_object_traits< same_value_container<ElemRef> > {};
+
+template <typename E>
+auto repeat_value(E&& value, int count)
+{
+   return repeated_value_container<E>(std::forward<E>(value), count);
+}
+
+template <typename E>
+auto single_value_as_container(E&& value)
+{
+   return repeated_value_container<E>(std::forward<E>(value), 1);
+}
+
+template <typename Container, int kind=object_classifier::what_is<Container>::value>
+struct extract_expected_features {
+   using type = mlist<>;
+};
+
+template <typename Container>
+struct extract_expected_features<Container, object_classifier::is_manip> {
+   using type = typename Container::expected_features;
 };
 
 template <typename Container>
 class construct_sequence_indexed
    : public modified_container_pair_impl< construct_sequence_indexed<Container>,
                                           mlist< Container1Tag< Container >,
-                                                 Container2Tag< sequence >,
+                                                 Container2Tag< sequence_raw >,
                                                  OperationTag< pair<nothing, operations::apply2< BuildUnaryIt<operations::dereference> > > >,
+                                                 ExpectedFeaturesTag< typename extract_expected_features<Container>::type >,
                                                  HiddenTag< Container > > > {
 public:
-   sequence get_container2() const
+   sequence_raw get_container2() const
    {
       // the size is being determined on the first (main) container unless it is of unlimited-const nature
-      return sequence(0, object_classifier::what_is<Container>::value==object_classifier::is_constant ? this->hidden().size() : 1);
+      return sequence_raw(0, object_classifier::what_is<Container>::value==object_classifier::is_constant ? int(this->hidden().size()) : 1);
    }
 };
 
@@ -1335,7 +1484,7 @@ template <typename Container>
 struct redirect_object_traits< construct_random_indexed<Container> >
    : object_traits<Container> {
    typedef Container masquerade_for;
-   static const bool is_temporary=false;
+   static constexpr bool is_temporary=false;
 };
 
 template <typename Container, typename Features>
@@ -1343,11 +1492,20 @@ struct default_enforce_features<Container, Features, object_classifier::is_const
    : default_enforce_features<construct_sequence_indexed<Container>, Features, object_classifier::is_manip> {};
 
 template <typename Container>
-struct default_enforce_features<Container, _reversed, object_classifier::is_constant> {
-   typedef Container container;
+struct default_enforce_features<Container, reversed, object_classifier::is_constant> {
+   using container = Container;
 };
 
 } // end namespace pm
+
+namespace polymake {
+
+using pm::entire;
+using pm::entire_const;
+using pm::repeat_value;
+using pm::single_value_as_container;
+
+}
 
 #endif // POLYMAKE_INTERNAL_MODIFIED_CONTAINERS_H
 

@@ -29,7 +29,7 @@ edge_directions(perl::Object g, const GenericMatrix<MatrixTop>& vertices)
    const Graph<> G = g.give("ADJACENCY");
    EdgeMap<Undirected, Vector<typename MatrixTop::element_type> > directions(G);
 
-   for (Entire< Edges< Graph<> > >::const_iterator e=entire(edges(G));  !e.at_end();  ++e) {
+   for (auto e=entire(edges(G));  !e.at_end();  ++e) {
       const int n_from=e.from_node(), n_to=e.to_node();
       directions[*e]=vertices[n_to]-vertices[n_from];
    }
@@ -43,7 +43,7 @@ edge_directions(perl::Object g, const GenericMatrix<MatrixTop>& vertices, const 
    const Graph<> G = g.give("ADJACENCY");
    EdgeMap<Undirected, Vector<typename MatrixTop::element_type> > directions(G);
 
-   for (Entire< Edges< Graph<> > >::const_iterator e=entire(edges(G));  !e.at_end();  ++e) {
+   for (auto e=entire(edges(G));  !e.at_end();  ++e) {
       const int n_from=e.from_node(), n_to=e.to_node();
       if (rays.contains(n_from)) {
          if (rays.contains(n_to))

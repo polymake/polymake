@@ -1,0 +1,10 @@
+{"app": "group",
+ "inst": [
+  {"builtin": "on_container", "include": ["polymake/group/orbit.h"], "pkg": "Polymake::group::on_container"},
+  {"builtin": "on_nonhomog_cols", "include": ["polymake/group/orbit.h"], "pkg": "Polymake::group::on_nonhomog_cols"},
+  {"builtin": "on_nonhomog_container", "include": ["polymake/group/orbit.h"], "pkg": "Polymake::group::on_nonhomog_container"},
+  {"builtin": "on_rows", "include": ["polymake/group/orbit.h"], "pkg": "Polymake::group::on_rows"},
+  {"builtin": "on_cols", "include": ["polymake/group/orbit.h"], "pkg": "Polymake::group::on_cols"},
+  {"builtin": "on_elements", "include": ["polymake/group/orbit.h"], "pkg": "Polymake::group::on_elements"},
+ null ],
+"version": 3}

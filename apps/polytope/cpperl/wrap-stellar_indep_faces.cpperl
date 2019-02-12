@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "stellar_indep_faces.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "stellar_indep_faces", "include": ["polymake/Rational.h"], "sig": "stellar_indep_faces:T1.B.x", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void", "void"], "func": "stellar_indep_faces", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "stellar_indep_faces:T1.B.x", "tp": "1"},
+ null ],
+"version": 3}

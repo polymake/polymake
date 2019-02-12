@@ -34,119 +34,111 @@
 
 namespace polymake { namespace tropical {
 
+// Documentation see perl wrapper
+template <typename Addition>	
+perl::Object piecewise_divisor(perl::Object fan, const IncidenceMatrix<>& cones, const Vector<Integer>& coefficients)
+{
+  // Basic security checks
+  if (cones.rows() != coefficients.dim()) 
+    throw std::runtime_error("Cannot compute divisor of piecewise polynomial: Number of cones does not match number of coefficients");
 
-	//Documentation see perl wrapper
-	template <typename Addition>	
-		perl::Object piecewise_divisor(perl::Object fan, IncidenceMatrix<> cones, Vector<Integer> coefficients) {
+  // Compute fan dimension
+  int fan_dim = fan.give("PROJECTIVE_DIM");
 
-			//Basic security checks
-			if(cones.rows() != coefficients.dim()) 
-				throw std::runtime_error("Cannot compute divisor of piecewise polynomial: Number of cones does not match number of coefficients");
+  Matrix<Rational> fan_rays = fan.give("SEPARATED_VERTICES");
+  Set<int> nonfar = far_and_nonfar_vertices(fan_rays).second;
 
-			//Compute fan dimension
-			int fan_dim = fan.give("PROJECTIVE_DIM");
+  // First we compute the appropriate skeleton of fan
+  if (cones.rows() == 0) return fan;
+  int result_dim = fan_dim - cones.row(0).size() + 1; // Cones have a vertex!
+  perl::Object skeleton = skeleton_complex<Addition>(fan,result_dim,true);
 
-			Matrix<Rational> fan_rays = fan.give("SEPARATED_VERTICES");
-			Set<int> nonfar = far_and_nonfar_vertices(fan_rays).second;
+  // Extract values of skeleton
+  Matrix<Rational> sk_rays = skeleton.give("VERTICES");
+  sk_rays = tdehomog(sk_rays);
+  IncidenceMatrix<> sk_cones = skeleton.give("MAXIMAL_POLYTOPES");
 
-			//First we compute the appropriate skeleton of fan
-			if(cones.rows() == 0) return fan;
-			int result_dim = fan_dim - cones.row(0).size() + 1; //Cones have a vertex!
-			perl::Object skeleton = skeleton_complex<Addition>(fan,result_dim,true);
+  // This will contain the weights of the cones in the linear combination
+  Vector<Integer> result_weights = zero_vector<Integer>(sk_cones.rows());
 
-			//Extract values of skeleton
-			Matrix<Rational> sk_rays = skeleton.give("VERTICES");
-			sk_rays = tdehomog(sk_rays);
-			IncidenceMatrix<> sk_cones = skeleton.give("MAXIMAL_POLYTOPES");
+  // Now go through the divisors psi_tau for all cones tau in cones
+  for (int tau = 0; tau < cones.rows(); ++tau) {
+    if (coefficients[tau] != 0) {
+      // Create function matrix
+      Matrix<Rational> psi_tau(0,fan_rays.rows());
+      // Remove vertex
+      const Set<int> tau_set = cones.row(tau) - nonfar;
+      if (tau_set.size() != fan_dim - result_dim) 
+        throw std::runtime_error("Cannot compute divisor of piecewise polynomials: Cones have different dimension.");
+      for (const int ts : tau_set) {
+        psi_tau /= unit_vector<Rational>(fan_rays.rows(), ts);
+      }
 
-			//This will contain the weights of the cones in the linear combination
-			Vector<Integer> result_weights = zero_vector<Integer>(sk_cones.rows());
+      // Compute divisor
+      perl::Object divisor = divisorByValueMatrix<Addition>(fan,psi_tau);
 
-			//Now go through the divisors psi_tau for all cones tau in cones
-			for(int tau = 0; tau < cones.rows(); tau++) {
-				if(coefficients[tau] != 0) {
-					//Create function matrix
-					Matrix<Rational> psi_tau(0,fan_rays.rows());
-					Set<int> tau_set = cones.row(tau);
-					//Remove vertex
-					tau_set -= nonfar;
-					if(tau_set.size() != fan_dim - result_dim) 
-						throw std::runtime_error("Cannot compute divisor of piecewise polynomials: Cones have different dimension.");
-					for(Entire<Set<int> >::iterator ts = entire(tau_set); !ts.at_end(); ts++) {
-						psi_tau /= unit_vector<Rational>(fan_rays.rows(),*ts);
-					}
+      // Extract cones, rays and weights
+      Matrix<Rational> div_rays = divisor.give("VERTICES");
+      div_rays = tdehomog(div_rays);
+      IncidenceMatrix<> div_cones = divisor.give("MAXIMAL_POLYTOPES");
+      Vector<Integer> div_weights = divisor.give("WEIGHTS");
 
-					//Compute divisor
-					perl::Object divisor = divisorByValueMatrix<Addition>(fan,psi_tau);
+      // Associate to each ray its original index 
+      Map<int,int> div_ray_to_old;
+      for (int dr = 0; dr < div_rays.rows(); ++dr) {
+        for (int oray = 0; oray < sk_rays.rows(); ++oray) {
+          if (sk_rays.row(oray) == div_rays.row(dr)) {
+            div_ray_to_old[dr] = oray; break;
+          }
+        }
+      } // END translate ray indices
 
-					//Extract cones, rays and weights
-					Matrix<Rational> div_rays = divisor.give("VERTICES");
-					div_rays = tdehomog(div_rays);
-					IncidenceMatrix<> div_cones = divisor.give("MAXIMAL_POLYTOPES");
-					Vector<Integer> div_weights = divisor.give("WEIGHTS");
+      // Now go through all d-dimensional cones in the divisor and insert their weight at the appropriate point
+      for (int rho = 0; rho < div_cones.rows(); ++rho) {
+        // Map rho rays to old rays
+        Set<int> rho_old{ div_ray_to_old.map(div_cones.row(rho)) };
+        // Find the original cone equal to that
+        for (int oc = 0; oc < sk_cones.rows(); ++oc) {
+          if ((sk_cones.row(oc) * rho_old).size() == sk_cones.row(oc).size()) {
+            result_weights[oc] += (coefficients[tau] * div_weights[rho]); 
+            break;
+          }
+        }
+      } // END iterate divisor cones
+    } // END if coeff !=0
+  } // END iterate cones 
 
-					//Associate to each ray its original index 
-					Map<int,int> div_ray_to_old;
-					for(int dr = 0; dr < div_rays.rows(); dr++) {
-						for(int oray = 0; oray < sk_rays.rows(); oray++) {
-							if(sk_rays.row(oray) == div_rays.row(dr)) {
-								div_ray_to_old[dr] = oray; break;
-							}
-						}
-					}//END translate ray indices
+  // Clean up by removing weight zero cones
+  Set<int> used_cones;
+  for (int c = 0; c < result_weights.dim(); ++c) {
+    if (result_weights[c] != 0) used_cones += c;
+  }
 
-					//Now go through all d-dimensional cones in the divisor and insert their weight at the appropriate point
-					for(int rho = 0; rho < div_cones.rows(); rho++) {
-						//Map rho rays to old rays
-                                                Set<int> rho_old{ div_ray_to_old.map(div_cones.row(rho)) };
-						//Find the original cone equal to that
-						for(int oc = 0; oc < sk_cones.rows(); oc++) {
-							if( (sk_cones.row(oc) * rho_old).size() == sk_cones.row(oc).size()) {
-								result_weights[oc] += (coefficients[tau] * div_weights[rho]); 
-								break;
-							}
-						}
-					}//END iterate divisor cones
-				}//END if coeff !=0
-			}//END iterate cones 
+  Set<int> used_rays = accumulate(rows(sk_cones.minor(used_cones,All)),operations::add());
+  sk_rays = sk_rays.minor(used_rays,All);
+  sk_cones = sk_cones.minor(used_cones,used_rays);
+  result_weights = result_weights.slice(used_cones);
 
-			//Clean up by removing weight zero cones
-			Set<int> used_cones;
-			for(int c = 0; c < result_weights.dim(); c++) {
-				if(result_weights[c] != 0) used_cones += c;
-			}
+  // Return result
+  perl::Object result("Cycle", mlist<Addition>());
+  result.take("VERTICES") << thomog(sk_rays);
+  result.take("MAXIMAL_POLYTOPES") << sk_cones;
+  result.take("WEIGHTS") << result_weights;
 
-			Set<int> used_rays = accumulate(rows(sk_cones.minor(used_cones,All)),operations::add());
-			sk_rays = sk_rays.minor(used_rays,All);
-			sk_cones = sk_cones.minor(used_cones,used_rays);
-			result_weights = result_weights.slice(used_cones);
+  return result;
+}
 
-			//Return result
-			perl::Object result(perl::ObjectType::construct<Addition>("Cycle"));
-			result.take("VERTICES") << thomog(sk_rays);
-			result.take("MAXIMAL_POLYTOPES") << sk_cones;
-			result.take("WEIGHTS") << result_weights;
-
-			return result;
-
-		}
-
-
-	// ------------------------- PERL WRAPPERS ---------------------------------------------------
-
-	UserFunctionTemplate4perl("# @category Divisor computation"
-			"# Computes a divisor of a linear sum of certain piecewise polynomials on a simplicial "
-			"# fan. "
-			"# @param Cycle<Addition> F A simplicial fan without lineality space in non-homog."
-			"# coordinates"
-			"# @param IncidenceMatrix cones A list of cones of F (not maximal, but all of the same "
-			"# dimension). Each cone t corresponds to a piecewise polynomial psi_t, defined by "
-			"# subsequently applying the rational functions that are 1 one exactly one ray of t and "
-			"# 0 elsewhere. "
-			"# Note that cones should refer to indices in [[SEPARATED_VERTICES]], which may have"
-			"# a different order"
-			"# @param Vector<Integer> coefficients A list of coefficients a_t corresponding to the "
-			"# cones. "
-			"# @return Cycle<Addition> The divisor sum_t a_t psi_t * F",
-			"piecewise_divisor<Addition>(Cycle<Addition>, $, $)");
-}}
+UserFunctionTemplate4perl("# @category Divisor computation"
+                          "# Computes a divisor of a linear sum of certain piecewise polynomials on a simplicial fan."
+                          "# @param Cycle<Addition> F A simplicial fan without lineality space in non-homogeneous coordinates"
+                          "# @param IncidenceMatrix cones A list of cones of F (not maximal, but all of the same "
+                          "# dimension). Each cone t corresponds to a piecewise polynomial psi_t, defined by "
+                          "# subsequently applying the rational functions that are 1 one exactly one ray of t and "
+                          "# 0 elsewhere. "
+                          "# Note that cones should refer to indices in [[SEPARATED_VERTICES]], which may have"
+                          "# a different order"
+                          "# @param Vector<Integer> coefficients A list of coefficients a_t corresponding to the "
+                          "# cones. "
+                          "# @return Cycle<Addition> The divisor sum_t a_t psi_t * F",
+                          "piecewise_divisor<Addition>(Cycle<Addition>, $, $)");
+} }

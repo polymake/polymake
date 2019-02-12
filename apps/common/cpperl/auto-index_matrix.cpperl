@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>>"], "func": "index_matrix", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "index_matrix.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true>&>>"], "func": "index_matrix", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "index_matrix.X8"},
+ null ],
+"version": 3}

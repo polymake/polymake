@@ -169,7 +169,7 @@ namespace polymake {
          infeasible_side[0] = TNumber::one();
 
          Vector<TNumber> feasible_side(non_dominated_point.dim()+1);
-         feasible_side.slice(~scalar2set(0)) = (-non_dominated_point);
+         feasible_side.slice(range_from(1)) = (-non_dominated_point);
 
          Vector<TNumber> new_apex((0|non_dominated_point));
          
@@ -248,7 +248,7 @@ namespace polymake {
          for (const auto& mg : rows(monomial_generators) ) {
             int j = 0;
             for (const auto& dg : rows(finite_gen) ) {
-               Vector<Scalar> sg(dg.slice(~scalar2set(0)));
+               Vector<Scalar> sg(dg.slice(range_from(1)));
                if (accumulate(sg - mg, operations::min()) == Scalar(dg[0])) vif[i] += j;
                j++;
             }

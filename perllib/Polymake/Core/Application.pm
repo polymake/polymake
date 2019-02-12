@@ -27,13 +27,15 @@ declare $plausibility_checks=1;
 declare $extension;               # Extension contributing to the application being loaded right now
 declare $cross_apps_list;         # REQUIRE_APPLICATION active in the current compilation scope
 
-# flags for `declared' member
-use Polymake::Enum qw( namespace_declared=1
-                       main_init_closed=2
-                       cpp_load_initiated=4
-                       credits_shown=8
-                       has_failed_config=16
-                     );
+# flags for `load_state' member
+use Polymake::Enum LoadState => {
+   start => 0,
+   namespace_declared => 1,
+   main_init_closed => 2,
+   cpp_load_initiated => 4,
+   credits_shown => 8,
+   has_failed_config => 16
+};
 
 my %repository;
 
@@ -72,7 +74,7 @@ use Polymake::Struct (
    '$untrusted',                  # TRUE if comes from a writable location, that is, may be under development
    '&eval_expr',                  # eval'uating the given source code in the application-specific lexical context
    [ '$cpp' => 'undef' ],         # CPlusPlus::perAplication
-   [ '$declared' => '0' ],        # flags indicating the rule loading progress
+   [ '$load_state' => 'LoadState::start' ],   # flags indicating the rule loading progress
    [ '$default_file_suffix' => 'undef' ],
    '@file_suffixes',
    [ '$origin_extension' => 'undef' ],  # Extension where this application has been introduced
@@ -110,9 +112,9 @@ sub new {
          croak( "Unknown application ", $self->name );
       }
    }
-   define_function(     # for the rule parser
-      $self->pkg, "self",
-      sub {
+   {  no strict 'refs';
+      # for the rule parser
+      *{$self->pkg."::self"} = sub {
          if (my $what=shift) {
             if ($what<0) {
                if ($what==-1) {
@@ -128,8 +130,11 @@ sub new {
          } else {
             $self;
          }
-      },
-      1);
+      };
+
+      # for quick retrieval in C++ library
+      readonly(${$self->pkg."::.APPL"}=$self);
+   }
 
    my $dir;
    if (-d ($dir=$self->top."/perllib")) {
@@ -144,7 +149,7 @@ sub new {
 
    $self->configured=namespaces::declare_var($self->pkg, "%configured");
    $self->custom=$Custom->app_handler($self->pkg);
-   $self->custom->add('%configured', <<'.', $Customize::state_config | $Customize::state_hidden | $Customize::state_accumulating, $self->pkg);
+   $self->custom->add('%configured', <<'.', Customize::State::config | Customize::State::hidden | Customize::State::accumulating, $self->pkg);
 Rulefiles with autoconfiguration sections and their exit codes.
 Value 0 denotes configuration failure, which disables the corresponding rulefile.
 .
@@ -162,8 +167,8 @@ Value 0 denotes configuration failure, which disables the corresponding rulefile
 
    $self->prefs->end_loading;
    if (length(my $cmds=$self->prefs->user_commands)) {
-      local $User::application=$self;
-      local_unshift(\@INC, $self);
+      local $User::application = $self;
+      local unshift @INC, $self;
       $self->eval_expr->("package Polymake::User; $cmds");
       die $@ if $@;
    }
@@ -215,13 +220,13 @@ sub delete {
 # try to load the application APP
 # when an expression APP::FUNCTION(...) is encountered in the user input
 sub try_auto_load {
-   my ($app_name)=@_;
+   my ($app_name) = @_;
    my $found;
-   namespaces::temp_disable();
+   namespaces::temp_disable(0);
    if ($app_name =~ /^$id_re$/o && !exists $repository{$app_name}) {
       foreach my $dir ($InstallTop, map { $_->dir } @Extension::active[$Extension::num_bundled .. $#Extension::active]) {
          if (-d "$dir/apps/$app_name") {
-            $found=defined( eval { add(__PACKAGE__, $app_name) } );
+            $found = defined( eval { add(__PACKAGE__, $app_name) } );
             last;
          }
       }
@@ -342,11 +347,20 @@ sub include_rule {
 }
 #################################################################################
 sub include_rules {
-   my $self=shift;
-   is_code($INC[0]) ? $User::application==$self ? undef : local_unshift(\@INC, $self) :
-   is_object($INC[0]) ? $INC[0]==$self || (local $INC[0]=$self) : local_unshift(\@INC, $self);
-   local_array($self->custom->tied_vars, []);
-   local_scalar($self->compile_scope, new Scope());
+   my $self = shift;
+   local if (is_code($INC[0])) {
+      if ($User::application != $self) {
+         local unshift @INC, $self;
+      }
+   } elsif (is_object($INC[0])) {
+      if ($INC[0] != $self) {
+         local $INC[0] = $self;
+      }
+   } else {
+      local unshift @INC, $self;
+   }
+   local ref $self->custom->tied_vars = [];
+   local scalar $self->compile_scope = new Scope();
    $self->compile_scope->cleanup->{$self->custom}=undef;
    my $rc_all=0;
    eval {
@@ -357,11 +371,12 @@ sub include_rules {
          }
       } else {
          # initializing the application or its main part in an extension
-         $self->declared &= ~$cpp_load_initiated;
+         local $CPlusPlus::code_generation="" if $CPlusPlus::code_generation eq "private";
+         $self->load_state &= ~LoadState::cpp_load_initiated;
          if ($rc_all=include_rule($self, "main.rules", 1)) {
-            unless ($self->declared & $cpp_load_initiated) {
+            unless ($self->load_state & LoadState::cpp_load_initiated) {
                # no rulefiles at all; nevertheless, there might be clients
-               $self->declared |= $cpp_load_initiated;
+               $self->load_state |= LoadState::cpp_load_initiated;
                $self->cpp->start_loading($extension);
             }
             $self->cpp->end_loading($extension);
@@ -409,9 +424,19 @@ sub eval_type {
    $self->eval_expr->($allow_generic && $expr !~ /[<>]/ ? "typeof_gen $expr" : "typeof $expr")
 }
 
-# called from C++ clients
-sub eval_type_throw {
-   &eval_type // croak( $@ =~ /^invalid type expression/ ? "$& $_[1]" : "Error processing type expression $_[1]: $@" );
+# called from C++ library
+sub construct_type {
+   my ($self, $typename) = splice @_, 0, 2;
+   local @ARGV = @_ and my $params='(@ARGV)';
+   $self->eval_expr->("typeof $typename$params")
+     // croak( $@ =~ /^invalid type expression/ ? "$& $typename" : "Error processing type expression $typename: $@" );
+}
+
+# called from C++ library
+sub construct_explicit_typelist {
+   my $self = shift;
+   $self->eval_expr->("bless [" . join(",", map { "typeof $_" } @_) . "], 'namespaces::ExplicitTypelist'")
+     // croak( $@ =~ /^invalid type expression/ ? "$& @_" : "Error processing type expressions @_: $@" );
 }
 #################################################################################
 sub set_file_suffix {
@@ -613,20 +638,15 @@ sub add_label {
    $label->set_application($self, $extension);
    $label
 }
-
-sub add_labels {
-   my ($self, $labels)=@_;
-   map { add_label($self, $_) } split /\s*,\s*/, $labels
-}
 #################################################################################
 sub prefer {
-   my $self=shift;
-   $self->prefs->add_preference(@_);
+   my ($self, $expr) = @_;
+   $self->prefs->add_preference($expr, Preference::Mode::strict);
 }
 
 sub prefer_now {
-   my $self=shift;
-   $self->prefs->set_temp_preference($Scope, @_);
+   my ($self, $expr) = @_;
+   $self->prefs->set_temp_preference($Scope, $expr);
 }
 
 # an alias, for the sake of symmetry
@@ -728,11 +748,12 @@ sub harvest {
             }
          } else {
             # ripe to be loaded
-            my $app=$self->application;
-            local $extension=$self->extension;
-            local_unshift(\@INC, $app);
-            local_scalar($app->compile_scope, new Scope());
+            my $app = $self->application;
+            local $extension = $self->extension;
+            local unshift @INC, $app;
+            local scalar $app->compile_scope = new Scope();
             eval {
+               local $CPlusPlus::code_generation="" if $CPlusPlus::code_generation eq "private";
                if (@{$self->rulefiles}) {
                   delete @{$app->rulefiles}{@{$self->rule_keys}};
                   delete @INC{ map { "rules:$_" } @{$self->rulefiles} };

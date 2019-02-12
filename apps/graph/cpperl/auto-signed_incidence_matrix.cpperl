@@ -1,0 +1,8 @@
+{"app": "graph",
+ "inst": [
+  {"args": ["Undirected", "void"], "func": "signed_incidence_matrix", "include": ["polymake/Graph.h", "polymake/graph/incidence_matrix.h"], "sig": "signed_incidence_matrix:T1.B", "tp": "1"},
+  {"args": ["perl::Canned<const Graph<Undirected>&>"], "func": "signed_incidence_matrix", "include": ["polymake/Graph.h", "polymake/graph/incidence_matrix.h"], "sig": "signed_incidence_matrix.X"},
+  {"args": ["Directed", "void"], "func": "signed_incidence_matrix", "include": ["polymake/Graph.h", "polymake/graph/incidence_matrix.h"], "sig": "signed_incidence_matrix:T1.B", "tp": "1"},
+  {"args": ["perl::Canned<const Graph<Directed>&>"], "func": "signed_incidence_matrix", "include": ["polymake/Graph.h", "polymake/graph/incidence_matrix.h"], "sig": "signed_incidence_matrix.X"},
+ null ],
+"version": 3}

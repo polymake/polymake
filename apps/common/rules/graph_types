@@ -52,24 +52,34 @@ function entire(EdgeList:anchor) : c++ : returns(EdgeIterator);
 
 # @category Graph Types
 # @tparam Dir one of [[Undirected]], [[Directed]], [[UndirectedMulti]] or [[DirectedMulti]], default: [[Undirected]]
-declare property_type Graph<Dir=Undirected> : c++ (include => "polymake/Graph.h", operators => '@sets:wary == !=') {
+declare property_type Graph<Dir=Undirected> : c++ (include => "polymake/Graph.h") {
 
-   # Returns the total number of nodes.
+   # @param Int n
+   method construct(Int) : c++;
+
+   # Create a (non-multi) graph with adjacency relation between nodes dictated by the given matrix.
+   method construct(IncidenceMatrix) : c++;
+
+   operator @sets @eq (*:wary, *) : c++;
+
+   operator ~ : c++;
+
+   # Get the total number of nodes.
    # @return Int
    user_method nodes() : c++;
 
-   # Returns the total number of edges.
+   # Get the total number of edges.
    # @return Int
    user_method edges() : c++;
 
-   # Adds a new node without incident edes, returns its index.
-   # @return Int
-   user_method add_node() : non_const : c++;
+   # Add a new node without incident edes.
+   # @return Int index of the new node
+   user_method add_node(&) : c++;
 
-   # Checks whether the node with given index exists.
+   # Check whether the node with given index exists.
    # @param Int node
    # @return Bool
-   user_method node_exists($) : wary : c++;
+   user_method node_exists(:wary, $) : c++;
 
    # Returns true if the given node index is either out of valid range or points to a formerly deleted node.
    # @param Int node
@@ -84,7 +94,7 @@ declare property_type Graph<Dir=Undirected> : c++ (include => "polymake/Graph.h"
    # Deletes all edges incident to the given node and marks it as invalid.
    # The numeration of other nodes stays unchanged.
    # @param Int node
-   user_method delete_node($) : non_const : wary : void : c++;
+   user_method delete_node(:wary&, $) : c++;
 
    # Returns the index of the edge connecting two given nodes.
    # The edge is created if was not there.
@@ -92,7 +102,7 @@ declare property_type Graph<Dir=Undirected> : c++ (include => "polymake/Graph.h"
    # @param Int tail_node
    # @param Int head_node
    # @return Int
-   user_method edge($$) : non_const : wary : c++;
+   user_method edge(:wary&, $$) : c++;
 
    # In a multigraph, creates a new edge connecting two given nodes.
    # In a normal graph, creates a new edge only if the nodes were not connected yet.
@@ -100,88 +110,88 @@ declare property_type Graph<Dir=Undirected> : c++ (include => "polymake/Graph.h"
    # @param Int tail_node
    # @param Int head_node
    # @return Int
-   user_method add_edge($$) : non_const : wary : c++;
+   user_method add_edge(:wary&, $$) : c++;
 
    # Checks whether two given nodes are connected by (at least) one edge.
    # @param Int tail_node
    # @param Int head_node
    # @return Bool
-   user_method edge_exists($$) : wary : c++;
+   user_method edge_exists(:wary, $$) : c++;
 
    # Returns an iterator visiting all (parallel) edges connecting two given nodes.
    # @param Int tail_node
    # @param Int head_node
    # @return Iterator
-   user_method all_edges($$) : wary : lvalue_opt : c++ : returns(Iterator);
+   user_method all_edges(:wary&&, $$) : c++ : returns(Iterator);
 
    # Deletes the edge connecting two given nodes, if there was one.
    # In a multigraph, deletes one arbitrary edge from the parallel bundle.
    # @param Int tail_node
    # @param Int head_node
-   user_method delete_edge($$) : non_const : void : wary : c++;
+   user_method delete_edge(:wary&, $$) : c++;
 
    # Delete the edge in a multigraph pointed to by the given iterator
    # @param Iterator iterator as returned by [[all_edges]].
-   user_method delete_edge(*) : non_const : void : wary : c++;
+   user_method delete_edge(:wary&&, *) : c++;
 
    # Deletes all edges in a multigraph connecting two given nodes.
    # @param Int tail_node
    # @param Int head_node
-   user_method delete_all_edges($$) : non_const : void : wary : c++;
+   user_method delete_all_edges(:wary&, $$) : c++;
 
    # Contract the edge(s) between //node1// and //node2//. Reconnects all edges from //node2// to //node1//,
    # deleting the edge(s) between them and, finally, deleting //node2//.
    # @param Int node1
    # @param Int node2
-   user_method contract_edge($$) : non_const : void : wary : c++;
+   user_method contract_edge(:wary&, $$) : c++;
 
    # Renumbers the valid nodes as to eliminate all gaps left after deleting.
-   user_method squeeze() : non_const : void : c++;
+   user_method squeeze(&) : c++;
 
    # Deletes all nodes of degree 0,
    # then renumbers the remaining nodes without gaps.
-   user_method squeeze_isolated() : non_const : void : c++;
+   user_method squeeze_isolated(&) : c++;
 
    # Returns a sequence of edges heading to (in Directed case) or incident to (in Undirected case) //node//.
    # @param Int node
    # @return EdgeList
-   user_method in_edges($) : wary : anchor : c++ : returns(EdgeList);
+   user_method in_edges(:wary:anchor, $) : c++ : returns(EdgeList);
 
    # Returns a sequence of edges leaving (in Directed case) or incident to (in Undirected case) //node//.
    # @param Int node
    # @return EdgeList
-   user_method out_edges($) : wary : anchor : c++ : returns(EdgeList);
+   user_method out_edges(:wary:anchor, $) : c++ : returns(EdgeList);
 
 
    # Returns the set of indices of nodes adjacent to //node//.
    # @param Int node
    # @return Set
-   user_method adjacent_nodes($) : wary : lvalue_opt : c++;
+   user_method adjacent_nodes(:wary&&, $) : c++;
 
    # Returns the set of indices of the nodes that have an edge heading to //node//.
    # @param Int node
    # @return Set
-   user_method in_adjacent_nodes($) : wary : lvalue_opt : c++;
+   user_method in_adjacent_nodes(:wary&&, $) : c++;
 
    # Returns the set of indices of the nodes with an edge arriving from //node//.
    # @param Int node
    # @return Set
-   user_method out_adjacent_nodes($) : wary : lvalue_opt : c++;
+   user_method out_adjacent_nodes(:wary&&, $) : c++;
 
    # Returns the number of edges heading to //node//.
    # @param Int node
    # @return Int
-   user_method in_degree($) : wary : c++;
+   user_method in_degree(:wary, $) : c++;
 
    # Returns the number of edges leaving //node//.
    # @param Int node
    # @return Int
-   user_method out_degree($) : wary : c++;
+   user_method out_degree(:wary, $) : c++;
 
    # Returns the number of edges incident to //node//.
    # @param Int node
    # @return Int
-   user_method degree($) : wary : c++;
+   user_method degree(:wary, $)  : c++;
 
    # Returns true if some nodes have been deleted since the last [[squeeze]] operation.
    # @return Bool
@@ -194,24 +204,18 @@ declare property_type Graph<Dir=Undirected> : c++ (include => "polymake/Graph.h"
 
    # permute the nodes
    # param perm permutation of node indexes
-   user_method permute_nodes(*) : wary : non_const : void : c++;
+   user_method permute_nodes(:wary&, *) : c++;
 
    # permute the nodes
    # param perm inverse permutation of node indexes
-   user_method permute_inv_nodes(*) : wary : non_const : void : c++;
+   user_method permute_inv_nodes(:wary&, *) : c++;
 
    # Create a graph with //n// isolated nodes.
-   # @param Int n
-   method construct(Int) : c++;
+   method init_node_map(*:wary&) : c++;
 
-   # Create a (non-multi) graph with adjacency relation between nodes dictated by the given matrix.
-   method construct(IncidenceMatrix) : c++;
+   method init_edge_map(*:wary&) : c++;
 
-   method init_node_map(*:lvalue:wary) : void : c++;
-
-   method init_edge_map(*:lvalue:wary) : void : c++;
-
-   method enumerate_edges() : void : c++;
+   method enumerate_edges() : c++;
 }
 
 
@@ -221,7 +225,7 @@ declare property_type Graph<Dir=Undirected> : c++ (include => "polymake/Graph.h"
 # for multigraph, it will be a [[SparseMatrix<Int>]], with entries encoding the number of parallel edges between two nodes.
 # @param Graph graph
 # @return IncidenceMatrix both rows and columns correspond to the nodes
-user_function adjacency_matrix(Graph:lvalue_opt:anchor) : c++;
+user_function adjacency_matrix(Graph&&) : c++;
 
 function renumber_nodes(Graph:anchor) : c++;
 
@@ -257,6 +261,8 @@ declare property_type GraphMap<Dir,Element> {
       Core::CPlusPlus::assign_any($proto->construct->($graph), @_);
    }
 
+   operator @eq : c++;
+
    type_method equal {
       # the maps may contain gaps, hence got to use iterators
       my ($proto, $m1, $m2)=@_;
@@ -274,52 +280,48 @@ declare property_type GraphMap<Dir,Element> {
 # Dense mapping of nodes to data items.
 # @tparam Dir kind of the host graph, [[Undirected]], [[Directed]], [[UndirectedMulti]], or [[DirectedMulti]]
 # @tparam Element data associated with nodes
-declare property_type NodeMap<Dir,Element> : GraphMap<Dir,Element> \
-   : c++ ( include => "polymake/Graph.h", operators => '@eq' );
+declare property_type NodeMap<Dir,Element> : GraphMap<Dir,Element> : c++ (include => "polymake/Graph.h");
 
 # @category Graph Types
 # Dense mapping of edges to data items.
 # @tparam Dir kind of the host graph, [[Undirected]], [[Directed]], [[UndirectedMulti]], or [[DirectedMulti]]
 # @tparam Element data associated with edges
-declare property_type EdgeMap<Dir,Element> : GraphMap<Dir,Element> \
-   : c++ ( include => "polymake/Graph.h", operators => '@eq' ) {
+declare property_type EdgeMap<Dir,Element> : GraphMap<Dir,Element> : c++ (include => "polymake/Graph.h") {
 
    # Access the data associated with an edge between two given nodes.
    # @param Int from source node
    # @param Int to target node
-   user_method edge(Int,Int) : lvalue_opt : wary : c++(name => '()');
+   user_method edge(:wary&&, $$) : c++(name => '()') : returns(lvalue);
 }
 
 # @category Graph Types
 # Sparse mapping of nodes to data items.
 # @tparam Dir one of [[Undirected]], [[Directed]], [[UndirectedMulti]] or [[DirectedMulti]]
 # @tparam Element data associated with nodes
-declare property_type NodeHashMap<Dir,Element> : GraphMap<Dir,Element> \
-   : c++ ( include => "polymake/Graph.h", operators => '@eq' );
+declare property_type NodeHashMap<Dir,Element> : GraphMap<Dir,Element> : c++ (include => "polymake/Graph.h");
 
 # @category Graph Types
 # Sparse mapping of edges to data items.
 # @tparam Dir one of [[Undirected]], [[Directed]], [[UndirectedMulti]] or [[DirectedMulti]]
 # @tparam Element data associated with edges
-declare property_type EdgeHashMap<Dir,Element> : GraphMap<Dir,Element> \
-   : c++ ( include => "polymake/Graph.h", operators => '@eq' ) {
+declare property_type EdgeHashMap<Dir,Element> : GraphMap<Dir,Element> : c++ (include => "polymake/Graph.h") {
 
    # Access the data associated with an edge between two given nodes.
    # The new data element is created on demand.
    # @param Int from source node
    # @param Int to target node
-   user_method edge(Int,Int) : lvalue : wary : c++(name => '()');
+   user_method edge(:wary&&, $$) : c++(name => '()') : returns(lvalue);
 
    # Access the data associated with an edge between two given nodes.
    # @param Int from source node
    # @param Int to target node
    # @return Iterator pointing to the data element (must be dereferenced as ${...}) or undef if the element does not exist.
-   user_method find(Int,Int) : wary : c++;
+   user_method find(:wary, $$) : c++;
 
    # Delete the data associated with an edge between two given nodes.
    # @param Int from source node
    # @param Int to target node
-   user_method erase(Int,Int) : non_const : void : wary : c++;
+   user_method erase(:wary&, $$) : c++;
 }
 
 function createNodeMap<Element,Dir>(Graph<Dir>) { new NodeMap<Dir,Element>(@_) }
@@ -345,7 +347,7 @@ function createEdgeHashMap<Element,Dir>(Graph<Dir>) { new EdgeHashMap<Dir,Elemen
 # | (2 {1 3})
 # | (3 {2})
 
-user_function induced_subgraph(Graph:wary:anchor, *:anchor) : c++ ( include => "polymake/IndexedSubgraph.h" );
+user_function induced_subgraph(Graph:wary&& const, *&& const) : c++ ( include => "polymake/IndexedSubgraph.h" );
 
 
 # @category Graph Operations

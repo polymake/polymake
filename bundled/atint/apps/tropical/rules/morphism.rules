@@ -158,8 +158,8 @@ object Morphism {
 		my ($f,$X) = @_;
 
 		#Define identity on X
-		my $vertexvalues = $X->SEPARATED_VERTICES->minor(All,~scalar2set(0));
-		my $linealityvalues = $X->LINEALITY_SPACE->minor(All,~scalar2set(0));
+		my $vertexvalues = $X->SEPARATED_VERTICES->minor(All, range_from(1));
+		my $linealityvalues = $X->LINEALITY_SPACE->minor(All, range_from(1));
 
 		my $emb = new Morphism<Addition>( DOMAIN => $X,
 						  VERTEX_VALUES => $vertexvalues,

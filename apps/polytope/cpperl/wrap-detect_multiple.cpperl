@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "detect_multiple.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Rational>&>"], "func": "detect_multiple", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "detect_multiple.X"},
+ null ],
+"version": 3}

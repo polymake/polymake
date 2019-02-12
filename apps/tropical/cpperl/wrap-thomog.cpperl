@@ -1,0 +1,14 @@
+{"app": "tropical", "embed": "thomog.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Rational>&>", "void", "void"], "func": "tdehomog", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "tdehomog.X.x.x"},
+  {"args": ["perl::Canned<const pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::all_selector const&, pm::Series<int, true> const>&>", "void", "void"], "func": "tdehomog", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "tdehomog.X.x.x"},
+  {"args": ["perl::Canned<const pm::MatrixMinor<pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::all_selector const&, pm::Series<int, true> const>&, pm::Series<int, true> const, pm::all_selector const&>&>", "void", "void"], "func": "tdehomog", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "tdehomog.X.x.x"},
+  {"args": ["perl::Canned<const Vector<Rational>&>", "void", "void"], "func": "tdehomog_vec", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "tdehomog_vec.X.x.x"},
+  {"args": ["perl::Canned<const pm::VectorChain<mlist<pm::SameElementVector<pm::Rational> const, pm::Vector<pm::Rational> const&> >&>", "void", "void"], "func": "tdehomog_vec", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "tdehomog_vec.X.x.x"},
+  {"args": ["perl::Canned<const pm::IndexedSlice<pm::VectorChain<mlist<pm::SameElementVector<pm::Rational> const, pm::Vector<pm::Rational> const&> > const&, pm::Complement<pm::SingleElementSetCmp<int, pm::operations::cmp> const> const, mlist<> >&>", "void", "void"], "func": "tdehomog_vec", "include": ["polymake/Rational.h", "polymake/Set.h", "polymake/Vector.h"], "sig": "tdehomog_vec.X.x.x"},
+  {"args": ["perl::Canned<const Matrix<TropicalNumber<Min, Rational>>&>"], "func": "normalized_first", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "normalized_first.X"},
+  {"args": ["perl::Canned<const pm::MatrixMinor<pm::Matrix<pm::TropicalNumber<pm::Min, pm::Rational> >&, pm::Array<int> const&, pm::Complement<pm::SingleElementSetCmp<int, pm::operations::cmp> const> const>&>"], "func": "normalized_first", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h", "polymake/TropicalNumber.h"], "sig": "normalized_first.X"},
+  {"args": ["perl::Canned<const Matrix<TropicalNumber<Max, Rational>>&>"], "func": "normalized_first", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "normalized_first.X"},
+  {"args": ["perl::Canned<const Matrix<Rational>&>", "void", "void"], "func": "thomog", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "thomog.X.x.x"},
+ null ],
+"version": 3}

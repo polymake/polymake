@@ -71,7 +71,7 @@ protected:
          return discovery[n] >= 0;
       }
 
-      typedef IndexedSubset<const std::vector<int>&, sequence> component_type;
+      using component_type = IndexedSubset<const std::vector<int>&, const sequence>;
 
       component_type get_cur_component() const
       {

@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Vector<Rational>&>"], "func": "eliminate_denominators", "include": ["polymake/Rational.h", "polymake/Vector.h", "polymake/common/lattice_tools.h"], "sig": "eliminate_denominators.X"},
+ null ],
+"version": 3}

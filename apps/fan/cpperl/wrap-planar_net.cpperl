@@ -1,0 +1,7 @@
+{"app": "fan", "embed": "planar_net.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "planar_net", "include": ["polymake/Rational.h"], "sig": "planar_net:T1.B", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void"], "func": "planar_net", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "planar_net:T1.B", "tp": "1"},
+  {"args": ["double", "void"], "func": "planar_net", "sig": "planar_net:T1.B", "tp": "1"},
+ null ],
+"version": 3}

@@ -57,7 +57,7 @@ namespace {
 
 typedef std::vector<std::pair<int,int>> EdgeList;
 
-enum PEdgeStatus {
+enum class PEdgeStatus {
    not_fixed,
    compatible_with_map,
    incompatible_with_map
@@ -67,12 +67,12 @@ template<typename Poset, typename Iterator>
 PEdgeStatus compatibility_status(const Poset& Q, const Iterator& it, const Array<int>& mapping) {
    if (mapping[it.from_node()] == -1 ||
        mapping[it.  to_node()] == -1) {
-      return not_fixed;
+      return PEdgeStatus::not_fixed;
    } else {
       return Q.edge_exists(mapping[it.from_node()],
                            mapping[it.  to_node()])
-         ? compatible_with_map
-         : incompatible_with_map;
+         ? PEdgeStatus::compatible_with_map
+         : PEdgeStatus::incompatible_with_map;
    }
 }
 
@@ -104,21 +104,21 @@ const EdgeList& relevant_q_edges(const Poset& Q,
 }
 
 // check if the edge of P indicated by peit can be added to the current map, then recurse, produce output or return because of incompatibility   
-template<typename PosetP, typename PosetQ, typename Record>
+template <typename PosetP, typename PosetQ, typename EdgesIterator, typename Record>
 void complete_map(const PosetP& P,
                   const PosetQ& Q,
                   const EdgeList& Qedges,
-                  const typename Entire<Edges<PosetP>>::const_iterator peit,
+                  const EdgesIterator& peit,
                   int p_edges_placed, // edge count of edges in P; synchronized with peit 
                   Array<int> current_map, // intentionally pass a copy
                   RecordKeeper<Record>& record_keeper)
 {
    assert(p_edges_placed < P.edges()); // cannot handle P with no edges 
    const PEdgeStatus es(compatibility_status(Q, peit, current_map));
-   if (es == incompatible_with_map) {
+   if (es == PEdgeStatus::incompatible_with_map) {
       return;
    }
-   if (es == compatible_with_map) { // no modification of current_map necessary, placed compatible p-edge
+   if (es == PEdgeStatus::compatible_with_map) { // no modification of current_map necessary, placed compatible p-edge
       ++p_edges_placed;
       if (p_edges_placed == P.edges()) { // map is complete
          record_keeper.add(current_map);
@@ -129,7 +129,7 @@ void complete_map(const PosetP& P,
       complete_map(P, Q, Qedges, next_peit, p_edges_placed, current_map, record_keeper);
       return;
    }
-   // now es == not_fixed
+   // now es == PEdgeStatus::not_fixed
    const int 
       pf(peit.from_node()),
       pt(peit.  to_node()),

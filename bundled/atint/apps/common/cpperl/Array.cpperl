@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["Array<IncidenceMatrix<NonSymmetric>>", "perl::Canned<const Vector<IncidenceMatrix<NonSymmetric>>&>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Vector.h"], "op": "new", "sig": "new.X"},
+ null ],
+"version": 3}

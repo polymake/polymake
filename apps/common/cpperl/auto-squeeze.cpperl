@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<Graph<Undirected>&>"], "func": "squeeze", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "squeeze:M1"},
+ null ],
+"version": 3}

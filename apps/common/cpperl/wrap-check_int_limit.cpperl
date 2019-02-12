@@ -1,0 +1,5 @@
+{"app": "common", "embed": "check_int_limit.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Integer>&>"], "func": "check_int_limit", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h"], "sig": "check_int_limit.X"},
+ null ],
+"version": 3}

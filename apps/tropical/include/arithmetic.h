@@ -1,16 +1,16 @@
 /* Copyright (c) 1997-2018
-	Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-http://www.polymake.org
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
 
-This program is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License as published by the
-Free Software Foundation; either version 2, or (at your option) any
-later version: http://www.gnu.org/licenses/gpl.txt.
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
 --------------------------------------------------------------------------------
 */
 
@@ -28,7 +28,7 @@ GNU General Public License for more details.
 #include "polymake/Vector.h"
 #include "polymake/Set.h"
 #include "polymake/graph/hungarian_method.h"
-
+#include "polymake/graph/matchings.h"
 
 namespace pm {
    namespace operations {
@@ -69,14 +69,15 @@ namespace pm {
          }
 
       };
-   }  }
+   }
+}
 
 namespace polymake {
    namespace operations {
-      using pm::operations::div_skip_zero; }
+      using pm::operations::div_skip_zero;
+   }
 
    namespace tropical {
-
 
      /*
      *
@@ -121,7 +122,7 @@ namespace polymake {
          int n(A.cols());
          Vector<TNumber> x(n);
          TNumber t_one(TNumber::one());
-         for(typename pm::ensure_features<Cols <MatrixTop >, pm::cons<pm::end_sensitive, pm::indexed> >::const_iterator col=entire(ensure(cols(A.top()),(pm::indexed*)0)); !col.at_end(); col++) {
+         for (auto col=entire<indexed>(cols(A.top())); !col.at_end(); ++col) {
             x[col.index()] = t_one/accumulate(rel_coord(*col, b.top()), operations::add());
          }
          return x;
@@ -137,11 +138,13 @@ namespace polymake {
             throw std::runtime_error("input matrix has to be quadratic");
          
          // Checking for zero columns or rows
-         for(typename Entire<Cols <MatrixTop > >::const_iterator c = entire(cols(matrix.top())); !c.at_end(); c++) {
-            if (is_zero(*c)) return std::make_pair(zero_value<TropicalNumber<Addition, Scalar> >(), Array<int>(sequence(0,d)));
+         for (auto c = entire(cols(matrix.top())); !c.at_end(); ++c) {
+            if (is_zero(*c))
+               return std::make_pair(zero_value<TropicalNumber<Addition, Scalar> >(), Array<int>(sequence(0,d)));
          }
-         for(typename Entire<Rows <MatrixTop > >::const_iterator r = entire(rows(matrix.top())); !r.at_end(); r++) {
-            if (is_zero(*r)) return std::make_pair(zero_value<TropicalNumber<Addition, Scalar> >(), Array<int>(sequence(0,d)));
+         for (auto r = entire(rows(matrix.top())); !r.at_end(); ++r) {
+            if (is_zero(*r))
+               return std::make_pair(zero_value<TropicalNumber<Addition, Scalar> >(), Array<int>(sequence(0,d)));
          }
 
          graph::HungarianMethod<Scalar> HM(Addition::orientation()*Matrix<Scalar>(matrix.top()));
@@ -167,10 +170,10 @@ namespace polymake {
             throw std::runtime_error("input matrix has to be quadratic");
          
          // Checking for zero columns or rows
-         for(typename Entire<Cols <MatrixTop > >::const_iterator c = entire(cols(matrix.top())); !c.at_end(); c++) {
+         for (auto c = entire(cols(matrix.top())); !c.at_end(); ++c) {
             if (is_zero(*c)) return std::make_pair(zero_value<TNumber >(), Array<int>(sequence(0,d)));
          }
-         for(typename Entire<Rows <MatrixTop > >::const_iterator r = entire(rows(matrix.top())); !r.at_end(); r++) {
+         for (auto r = entire(rows(matrix.top())); !r.at_end(); ++r) {
             if (is_zero(*r)) return std::make_pair(zero_value<TNumber >(), Array<int>(sequence(0,d)));
          }
 
@@ -195,27 +198,52 @@ namespace polymake {
          return std::make_pair(value,modperm[index]);
       }
 
-      
       template <typename Addition, typename Scalar, typename MatrixTop>
-      Vector<TropicalNumber<Addition, Scalar> > cramer(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
+      bool tregular(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar>>& matrix)
       {
-         // The runtime of the implementation is about O(d^4). 
-         // It could be improved to O(d^3) by an incremental approach which does not also
-         // recompute the whole tropical determinant.
-
-         const int d(matrix.cols());
-         if (d != matrix.rows()+1)
-            throw std::runtime_error("input matrix has to have one row less than the column number");
-
-         
-         Vector<TropicalNumber<Addition,Scalar> > solvec(d);
-         for(int k = 0; k < d; ++k) {
-            solvec[k] = tdet(matrix.top().minor(All, ~scalar2set(k)));
-         }
-         return solvec;
+         /* TODO 1x1 matrix? */
+         return tdet_and_perm(matrix).first != second_tdet_and_perm(matrix).first;
+         /* return tdet(matrix) != second_tdet_and_perm(matrix).first; */
       }
 
+      template <typename Addition, typename Scalar, typename MatrixTop>
+      Set<Array<int>> optimal_permutations(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
+      {
+         graph::HungarianMethod<Scalar> HM(Addition::orientation()*Matrix<Scalar>(matrix.top()));
+         HM.stage();
+         Graph<Undirected> G(HM.get_equality_subgraph());
+         Array<int> M(HM.get_matching());
+         graph::PerfectMatchings PM(G, M);
+         return PM.get_matchings();
+      }
 
+      template <typename Addition, typename Scalar, typename MatrixTop>
+      Vector<TropicalNumber<Addition, Scalar>> cramer(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar>>& matrix)
+      {
+         // For reference see:
+         //
+         // Mills-Tettey, Stentz, Dias - The Dynamic Hungarian Algorithm
+         // for the Assignment Problem with Changing Costs
+
+         const int d(matrix.cols());
+         if (d != matrix.rows() + 1)
+            throw std::runtime_error("input matrix has to be Nx(N+1)");
+         
+         Vector<TropicalNumber<Addition, Scalar>> solvec(d);
+
+         Matrix<TropicalNumber<Addition, Scalar>> matrix_0(matrix.top().minor(All, range_from(1)));
+         graph::HungarianMethod<Scalar> HM(Addition::orientation()*Matrix<Scalar>(matrix_0.top()));
+
+         HM.stage();
+         solvec[0] = Addition::orientation()*HM.get_value();
+         for (int i = 0; i < d-1; i++) {
+            HM.dynamic_stage(i, Addition::orientation()*Vector<Scalar>(matrix.col(i)));
+            solvec[i+1] = Addition::orientation()*HM.get_value();
+         }
+
+         return solvec;
+      }
+      
       template <typename Addition, typename Scalar, typename MatrixTop>
       Vector<TropicalNumber<Addition, Scalar> > subcramer(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix, Set<int> J, Set<int> I)
       {
@@ -247,13 +275,14 @@ namespace polymake {
          Scalar td(zero_value<Scalar>());
          for (int i=0; i<d-1; ++i) {
             for (int k=i+1; k<d; ++k)
-               assign_max(td,tdist(matrix.col(i),matrix.col(k)));
+               assign_max(td, tdist(matrix.col(i), matrix.col(k)));
          }
          return td;
       }
 
-      
-} }
+   }
+
+}
 
 #endif // POLYMAKE_TROPICAL_ARITHMETIC_H
 
@@ -262,3 +291,4 @@ namespace polymake {
 // c-basic-offset:3
 // indent-tabs-mode:nil
 // End:
+// vim: shiftwidth=3:softtabstop=3:

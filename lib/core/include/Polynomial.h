@@ -53,7 +53,7 @@ UniPolynomial<Coefficient, Exponent>
 lcm(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficient, Exponent>& b);
 
 template <typename T, typename std::enable_if<std::is_same<typename object_traits<T>::generic_tag,is_polynomial>::value, int>::type=0>
-T pow(const T& base, int exp);
+T pow(const T& base, long exp);
 
 template <typename Coefficient = Rational, typename Exponent = int>
 class UniPolynomial {
@@ -124,7 +124,7 @@ public:
   int n_terms() const { return impl_ptr->n_terms(); }
   const term_hash& get_terms() const { return impl_ptr->get_terms(); }
   bool trivial() const { return impl_ptr->trivial(); }
-  bool unit() const { return impl_ptr->unit(); }
+  bool is_one() const { return impl_ptr->is_one(); }
   Vector<Coefficient> coefficients_as_vector() const { return impl_ptr->coefficients_as_vector(); }
 
   bool operator== (const UniPolynomial& p2) const { return impl_ptr->operator==(*p2.impl_ptr); }
@@ -212,7 +212,7 @@ public:
   auto
   substitute(const T& t) const
   {
-    if (POLYMAKE_DEBUG || !Unwary<T>::value) {
+    if (POLYMAKE_DEBUG || is_wary<T>()) {
       if (t.rows() != t.cols())
         throw std::runtime_error("polynomial substitute: matrix must be square");
     }
@@ -825,7 +825,7 @@ public:
   int n_terms() const { return impl_ptr->n_terms(); }
   const term_hash& get_terms() const { return impl_ptr->get_terms(); }
   bool trivial() const { return impl_ptr->trivial(); }
-  bool unit() const { return impl_ptr->unit(); }
+  bool is_one() const { return impl_ptr->is_one(); }
 
   Vector<Coefficient> coefficients_as_vector() const { return impl_ptr->coefficients_as_vector(); }
 
@@ -1067,7 +1067,7 @@ public:
     for (auto t = entire(this->get_terms()); !t.at_end(); ++t)
     {
       ret_type term(t->second);
-      accumulate_in(entire(attach_operation(values,t->first,operations::pow<T,int>())),BuildBinary<operations::mul>(),term);
+      accumulate_in(entire(attach_operation(values,t->first,operations::pow<T,long>())),BuildBinary<operations::mul>(),term);
       result += term;
     }
     return result;
@@ -1095,7 +1095,7 @@ public:
     for (auto t = entire(this->get_terms()); !t.at_end(); ++t)
     {
       ret_type term(t->second);
-      accumulate_in(entire(attach_operation(values,t->first,operations::pow<ret_type,int>())),BuildBinary<operations::mul>(),term);
+      accumulate_in(entire(attach_operation(values,t->first,operations::pow<ret_type,long>())),BuildBinary<operations::mul>(),term);
       result += term;
     }
     return result;
@@ -1311,7 +1311,7 @@ struct choose_generic_object_traits< Polynomial<Coefficient, Exponent>, false, f
   static
   bool is_one(const persistent_type& p)
   {
-    return p.unit();
+    return p.is_one();
   }
 
   // FIXME Dirty hack to allow printing of zero and one values of multivariate polynomials
@@ -1348,7 +1348,7 @@ struct choose_generic_object_traits< UniPolynomial<Coefficient, Exponent>, false
   static
   bool is_one(const persistent_type& p)
   {
-    return p.unit();
+    return p.is_one();
   }
 
   static
@@ -1423,37 +1423,6 @@ struct add_impl<LeftRef, RightRef, cons<is_polynomial, is_polynomial> > {
 };
 
 template <typename LeftRef, class RightRef>
-struct add_impl<LeftRef, RightRef, cons<is_polynomial, is_scalar> > {
-  typedef LeftRef first_argument_type;
-  typedef RightRef second_argument_type;
-  typedef typename deref<LeftRef>::type result_type;
-
-  result_type operator() (typename function_argument<LeftRef>::const_type l,
-                          typename function_argument<RightRef>::const_type r) const
-  {
-    return l+r;
-  }
-
-  void assign(typename lvalue_arg<LeftRef>::type l, typename function_argument<RightRef>::const_type r) const
-  {
-    l+=r;
-  }
-};
-
-template <typename LeftRef, class RightRef>
-struct add_impl<LeftRef, RightRef, cons<is_scalar, is_polynomial> > {
-  typedef LeftRef first_argument_type;
-  typedef RightRef second_argument_type;
-  typedef typename deref<RightRef>::type result_type;
-
-  result_type operator() (typename function_argument<LeftRef>::const_type l,
-                          typename function_argument<RightRef>::const_type r) const
-  {
-    return l+r;
-  }
-};
-
-template <typename LeftRef, class RightRef>
 struct sub_impl<LeftRef, RightRef, cons<is_polynomial, is_polynomial> > {
   typedef LeftRef first_argument_type;
   typedef RightRef second_argument_type;
@@ -1468,37 +1437,6 @@ struct sub_impl<LeftRef, RightRef, cons<is_polynomial, is_polynomial> > {
   void assign(typename lvalue_arg<LeftRef>::type l, typename function_argument<RightRef>::const_type r) const
   {
     l-=r;
-  }
-};
-
-template <typename LeftRef, class RightRef>
-struct sub_impl<LeftRef, RightRef, cons<is_polynomial, is_scalar> > {
-  typedef LeftRef first_argument_type;
-  typedef RightRef second_argument_type;
-  typedef typename deref<LeftRef>::type result_type;
-
-  result_type operator() (typename function_argument<LeftRef>::const_type l,
-                          typename function_argument<RightRef>::const_type r) const
-  {
-    return l-r;
-  }
-
-  void assign(typename lvalue_arg<LeftRef>::type l, typename function_argument<RightRef>::const_type r) const
-  {
-    l-=r;
-  }
-};
-
-template <typename LeftRef, class RightRef>
-struct sub_impl<LeftRef, RightRef, cons<is_scalar, is_polynomial> > {
-  typedef LeftRef first_argument_type;
-  typedef RightRef second_argument_type;
-  typedef typename deref<RightRef>::type result_type;
-
-  result_type operator() (typename function_argument<LeftRef>::const_type l,
-                          typename function_argument<RightRef>::const_type r) const
-  {
-    return l-r;
   }
 };
 
@@ -1566,24 +1504,6 @@ struct div_impl<LeftRef, RightRef, cons<is_polynomial, is_scalar> > {
   void assign(typename lvalue_arg<LeftRef>::type l, typename function_argument<RightRef>::const_type r) const
   {
     l/=r;
-  }
-};
-
-template <typename LeftRef, class RightRef>
-struct mod_impl<LeftRef, RightRef, cons<is_polynomial, is_polynomial> > {
-  typedef LeftRef first_argument_type;
-  typedef RightRef second_argument_type;
-  typedef typename deref<LeftRef>::type result_type;
-
-  result_type operator() (typename function_argument<LeftRef>::const_type l,
-                          typename function_argument<RightRef>::const_type r) const
-  {
-    return l%r;
-  }
-
-  void assign(typename lvalue_arg<LeftRef>::type l, typename function_argument<RightRef>::const_type r) const
-  {
-    l%=r;
   }
 };
 
@@ -1714,7 +1634,7 @@ operator* (const T& c, const Polynomial<C,E>& p)
 }
 
 template <typename T, typename std::enable_if<std::is_same<typename object_traits<T>::generic_tag,is_polynomial>::value, int>::type>
-T pow(const T& base, int exp) {
+T pow(const T& base, long exp) {
    return base.pow(exp);
 }
 

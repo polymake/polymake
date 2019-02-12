@@ -1,0 +1,9 @@
+{"app": "common",
+ "inst": [
+  {"args": ["Polynomial<Rational, int>"], "func": "get_var_names", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "kind": "stat", "sig": "Polynomial::get_var_names:M64"},
+  {"args": ["UniPolynomial<UniPolynomial<Rational, int>, Rational>"], "func": "get_var_names", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "stat", "sig": "UniPolynomial::get_var_names:M64"},
+  {"args": ["UniPolynomial<Rational, int>"], "func": "get_var_names", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "stat", "sig": "UniPolynomial::get_var_names:M64"},
+  {"args": ["Polynomial<TropicalNumber<Min, Rational>, int>"], "func": "get_var_names", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "kind": "stat", "sig": "Polynomial::get_var_names:M64"},
+  {"args": ["UniPolynomial<Rational, Rational>"], "func": "get_var_names", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "stat", "sig": "UniPolynomial::get_var_names:M64"},
+ null ],
+"version": 3}

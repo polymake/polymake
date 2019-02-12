@@ -1,3 +1,19 @@
+/* Copyright (c) 1997-2018
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
+
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+--------------------------------------------------------------------------------
+*/
+
 #ifndef POLYMAKE_TOPAZ_CHAIN_COMPLEX_H
 #define POLYMAKE_TOPAZ_CHAIN_COMPLEX_H
 
@@ -10,9 +26,10 @@ namespace polymake { namespace topaz {
     @brief A general chain complex represented by its differential matrices.
     @tparam MatrixType specifies the type of the differential matrices.
 */
-    template<typename MatrixType>
-        class ChainComplex{
-            public:
+template <typename MatrixType>
+class ChainComplex
+{
+public:
             // The matrices is a map via multiplying them to a vector from the __left__.
             Array<MatrixType> bd_matrix;
 
@@ -52,12 +69,12 @@ namespace polymake { namespace topaz {
             @tparam E The return type is either SparseMatrix<E> or Matrix<E>,
              depending on whether MatrixType is sparse or not.
              */
-            template<typename E>
-               typename std::conditional< MatrixType::is_sparse,SparseMatrix<E,typename MatrixType::sym_discr>,Matrix<E>>::type
+            template <typename E>
+               std::conditional_t<MatrixType::is_sparse, SparseMatrix<E,typename MatrixType::sym_discr>, Matrix<E>>
                boundary_matrix(int d) const{
                     if (d<0) d+=dim()+1;
-                    if (d>dim()) return zero_matrix<E>(0, bd_matrix[dim()-1].rows());
-                    if (d==0) return zero_matrix<E>(bd_matrix[0].cols(), 0);
+                    if (d>dim()) return { 0, bd_matrix[dim()-1].rows() };
+                    if (d==0) return { bd_matrix[0].cols(), 0 };
                     return convert_to<E>(bd_matrix[d-1]);
                 }
 
@@ -73,8 +90,9 @@ namespace polymake { namespace topaz {
             bool operator==(const ChainComplex<MatrixType2> & other) const{
                 return bd_matrix == other.bd_matrix;
             }
-        };
-}}
+};
+
+} }
 
 namespace pm{
     template <typename MatrixType>

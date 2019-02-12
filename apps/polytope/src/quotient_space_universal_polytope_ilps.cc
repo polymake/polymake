@@ -142,11 +142,11 @@ quotient_space_simplexity_ilp(int d
       Equations    = (zero_vector<Scalar>(Blocked_Cocircuit_Equations.rows() + Compatibility_Equations.rows()) | (Blocked_Cocircuit_Equations / Compatibility_Equations) ) 
                      / volume_vect;
 
-   perl::Object lp(perl::ObjectType::construct<Scalar>("LinearProgram"));
+   perl::Object lp("LinearProgram", mlist<Scalar>());
    lp.attach("INTEGER_VARIABLES") << Array<bool>(n,true);
    lp.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0|ones_vector<Scalar>(n));
 
-   perl::Object q(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object q("Polytope", mlist<Scalar>());
    q.take("FEASIBLE") << true;
    q.take("INEQUALITIES") << Inequalities;
    q.take("EQUATIONS") << remove_zero_rows(Equations);

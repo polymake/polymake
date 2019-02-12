@@ -21,8 +21,8 @@
  * terms of service.
  */
 
-#ifndef CONE_HELPER_H_
-#define CONE_HELPER_H_
+#ifndef PROJECT_AND_LIFT_H_
+#define PROJECT_AND_LIFT_H_
 
 #include <vector>
 #include <list>
@@ -139,4 +139,4 @@ vector<Integer> FM_comb(Integer c1, const vector<Integer>& v1,Integer c2, const 
 
 } //end namespace libnormaliz
 
-#endif /* CONE_HELPER_H_ */
+#endif /* PROJECT_AND_LIFT_H_ */

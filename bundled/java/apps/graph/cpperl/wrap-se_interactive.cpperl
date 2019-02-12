@@ -1,0 +1,6 @@
+{"app": "graph", "embed": "se_interactive.cc",
+ "inst": [
+  {"args": ["perl::Canned<const std::unique_ptr<SpringEmbedderWindow>&>"], "func": "port", "kind": "meth", "sig": "port:M"},
+  {"args": ["perl::Canned<const std::unique_ptr<SpringEmbedderWindow>&>"], "func": "shutdown", "kind": "meth", "sig": "shutdown:M"},
+ null ],
+"version": 3}

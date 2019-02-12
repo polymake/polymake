@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "projection.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void", "void", "void", "void", "void"], "func": "projection_impl", "include": ["polymake/Rational.h"], "sig": "projection_impl:T1.x.x.x.x.x.o", "tp": "1"},
+  {"args": ["Rational", "void"], "func": "projection_preimage_impl", "include": ["polymake/Rational.h"], "sig": "projection_preimage_impl:T1.x", "tp": "1"},
+ null ],
+"version": 3}

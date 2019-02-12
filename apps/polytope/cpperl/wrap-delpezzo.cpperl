@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "delpezzo.cc",
+ "inst": [
+  {"args": ["Rational", "int(int)", "Rational(int)"], "func": "delpezzo", "include": ["polymake/Rational.h"], "sig": "delpezzo:T1.int.C0", "tp": "1"},
+  {"args": ["Rational", "int(int)", "Rational(int)"], "func": "pseudo_delpezzo", "include": ["polymake/Rational.h"], "sig": "pseudo_delpezzo:T1.int.C0", "tp": "1"},
+ null ],
+"version": 3}

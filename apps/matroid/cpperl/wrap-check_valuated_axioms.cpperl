@@ -1,0 +1,6 @@
+{"app": "matroid", "embed": "check_valuated_axioms.cc",
+ "inst": [
+  {"args": ["Max", "Rational", "perl::Canned<const Matrix<TropicalNumber<Max, Rational>>&>", "void"], "func": "check_valuated_circuit_axioms", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "check_valuated_circuit_axioms:T2.X.o", "tp": "2"},
+  {"args": ["Max", "Rational", "perl::Canned<const Array<Set<int>>&>", "perl::Canned<const Vector<TropicalNumber<Max, Rational>>&>", "void"], "func": "check_valuated_basis_axioms", "include": ["polymake/Array.h", "polymake/Rational.h", "polymake/Set.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "check_valuated_basis_axioms:T2.X.X.o", "tp": "2"},
+ null ],
+"version": 3}

@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "rel_int_point.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "rel_int_point", "include": ["polymake/Rational.h"], "sig": "rel_int_point:T1.B", "tp": "1"},
+  {"args": ["PuiseuxFraction<Min, Rational, Rational>", "void"], "func": "rel_int_point", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "rel_int_point:T1.B", "tp": "1"},
+ null ],
+"version": 3}

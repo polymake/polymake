@@ -1,0 +1,7 @@
+{"app": "polytope", "embed": "H_input_bounded.cc",
+ "inst": [
+  {"args": ["double", "void"], "func": "H_input_bounded", "sig": "H_input_bounded:T1.B", "tp": "1"},
+  {"args": ["Rational", "void"], "func": "H_input_bounded", "include": ["polymake/Rational.h"], "sig": "H_input_bounded:T1.B", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void"], "func": "H_input_bounded", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "H_input_bounded:T1.B", "tp": "1"},
+ null ],
+"version": 3}

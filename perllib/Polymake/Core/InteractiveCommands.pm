@@ -71,17 +71,17 @@ my %rules_to_wake;
 
 # private
 sub store_rule_to_wake {
-   my ($self, $filename, $ext, $rule_key, $on_rule)=splice @_, 0, 5;
+   my ($self, $filename, $ext, $rule_key, $on_rule) = splice @_, 0, 5;
    for (;;) {
       my $list;
       if ($on_rule) {
          my ($prereq_app, $prereq_rule_key) = splice @_, 0, 2  or  last;
-         $list=($rules_to_wake{$prereq_app}->{$prereq_rule_key} //= [ ]);
+         $list = ($rules_to_wake{$prereq_app}->{$prereq_rule_key} //= [ ]);
       } else {
          my $prereq_ext = shift @_  or  last;
          $list=($rules_to_wake{$prereq_ext} //= [ ]);
       }
-      if (@$list && $list->[-2]==$self) {
+      if (@$list && $list->[-2] == $self) {
          push @{$list->[-1]}, $filename, $ext, $rule_key;
       } else {
          push @$list, $self, [ $filename, $ext, $rule_key ];
@@ -92,27 +92,28 @@ sub store_rule_to_wake {
 # private
 sub do_reconfigure {
    my ($self, $list, $filename, $ext, $rule_key);
-   my @woken=@_;
-   while (($self, $list)=splice @woken, 0, 2) {
-      my $new_to_wake=@woken;
+   my @woken = @_;
+   while (($self, $list) = splice @woken, 0, 2) {
+      my $new_to_wake = @woken;
 
-      defined($self->compile_scope) or
-        local_unshift(\@INC, $self),
-        local_scalar($self->compile_scope, new Scope()),
-        local_array($self->custom->tied_vars, [ ]),
-        $self->compile_scope->cleanup->{$self->custom}=undef;
-
-      while (($filename, $ext, $rule_key)=splice @$list, 0, 3) {
+      local if (!defined($self->compile_scope)) {
+         local unshift @INC, $self;
+         local scalar $self->compile_scope = new Scope();
+         local ref $self->custom->tied_vars = [];
+         $self->compile_scope->cleanup->{$self->custom} = undef;
+      }
+      while (($filename, $ext, $rule_key) = splice @$list, 0, 3) {
          my $rc;
-         local $extension=$ext if $ext != $extension;
-         if (defined (my $code=$self->rule_code->{$rule_key})) {
-            my $reconf=new Reconf($self);
-            local_sub(get_symtab($self->pkg)->{self}, sub { $reconf });
-            if (is_object (my $credit=$self->credits_by_rulefile->{$rule_key})) {
-               $credit->shown &= ~$Rule::Credit::hide;
+         local $extension = $ext if $ext != $extension;
+         if (defined (my $code = $self->rule_code->{$rule_key})) {
+            my $reconf = new Reconf($self, false);
+            no strict 'refs';
+            local ref *{$self->pkg."::self"} = sub { $reconf };
+            if (is_object (my $credit = $self->credits_by_rulefile->{$rule_key})) {
+               $credit->shown &= ~Rule::Credit::hide;
             }
             &$code;
-            $rc=$self->rulefiles->{$rule_key};
+            $rc = $self->rulefiles->{$rule_key};
          } else {
             $rc=parse_rulefile($self, $rule_key, $filename);
          }
@@ -124,12 +125,12 @@ sub do_reconfigure {
       }
 
       $_->finalize for @{$self->rules_to_finalize};
-      @{$self->rules_to_finalize}=();
+      @{$self->rules_to_finalize} = ();
 
-      for (; $new_to_wake<$#woken; $new_to_wake+=2) {
-         ($self, $list)=@woken[$new_to_wake, $new_to_wake+1];
-         for (my $i=0; $i<@$list; $i+=3) {
-            ($filename, $ext, $rule_key)=@$list[$i..$i+2];
+      for (; $new_to_wake < $#woken; $new_to_wake += 2) {
+         ($self, $list) = @woken[$new_to_wake, $new_to_wake + 1];
+         for (my $i = 0; $i < @$list; $i += 3) {
+            ($filename, $ext, $rule_key) = @$list[$i..$i+2];
             delete $self->configured->{$rule_key};
          }
       }
@@ -137,10 +138,10 @@ sub do_reconfigure {
 }
 ###############################################################################################
 sub lookup_rulefile_or_key {
-   my ($self, $rulefile)=@_;
+   my ($self, $rulefile) = @_;
    if ($rulefile =~ s/\@(.*)$//) {
       # specified by the key including extension URI
-      local $extension=$Extension::registered_by_URI{$1};
+      local $extension = $Extension::registered_by_URI{$1};
       if (defined $extension) {
          lookup_rulefile($self, $rulefile, 1);
       } else {
@@ -152,17 +153,17 @@ sub lookup_rulefile_or_key {
 }
 ###############################################################################################
 sub reconfigure {
-   my ($self, $rulefile)=@_;
+   my ($self, $rulefile) = @_;
    if ($rulefile =~ m{^($id_re)::(.*)}o) {
       reconfigure($self->used->{$1} || die("application $1 is not declared as USE'd or IMPORT'ed in the current application\n"), "$2");
 
    } elsif (my ($filename, $ext, $rule_key, $old_status)=&lookup_rulefile_or_key) {
-      if (defined (my $conf_status=$self->configured->{$rule_key})) {
-         if (is_string($conf_status) and my ($rules, $what)= $conf_status =~ /^0\#(?:(rule)|ext):(.*)/) {
-            my @prereq=split /\|/, $what;
+      if (defined (my $conf_status = $self->configured->{$rule_key})) {
+         if (is_string($conf_status) and my ($rules, $what) = $conf_status =~ /^0\#(?:(rule)|ext):(.*)/) {
+            my @prereq = split /\|/, $what;
             die( "rulefile $rulefile requires ",
-                  $rules ? ( @prereq>1 ? "one of the rulefiles ".join(", ", @prereq) : "another rulefile $what" )
-                         : ( @prereq>1 ? "one of extensions ".join(", ", @prereq) : "the extension $what" ),
+                  $rules ? ( @prereq > 1 ? "one of the rulefiles ".join(", ", @prereq) : "another rulefile $what" )
+                         : ( @prereq > 1 ? "one of extensions ".join(", ", @prereq) : "the extension $what" ),
                   " which must be reconfigured first;\n",
                   "in the case of success the desired rulefile might be enabled automatically.\n" );
          }
@@ -183,21 +184,22 @@ sub reconfigure {
 }
 ###############################################################################################
 sub unconfigure {
-   my ($self, $rulefile)=@_;
+   my ($self, $rulefile) = @_;
    if ($rulefile =~ m{^($id_re)::(.*)}o) {
       unconfigure($self->used->{$1} || die("application $1 is not declared as USE'd or IMPORT'ed in the current application"), "$2");
 
-   } elsif (my ($filename, $ext, $rule_key, $old_status)=&lookup_rulefile_or_key) {
-      my $config_state=$self->configured->{$rule_key};
-      if ($config_state>0) {
-         if (defined (my $code=$self->rule_code->{$rule_key})) {
-            my $unconf=new Unconf($self);
-            local_sub(get_symtab($self->pkg)->{self}, sub { $unconf });
-            local $extension=$ext;
+   } elsif (my ($filename, $ext, $rule_key, $old_status) = &lookup_rulefile_or_key) {
+      my $config_state = $self->configured->{$rule_key};
+      if ($config_state > 0) {
+         if (defined (my $code = $self->rule_code->{$rule_key})) {
+            my $unconf = new Unconf($self);
+            no strict 'refs';
+            local ref *{$self->pkg."::self"} = sub { $unconf };
+            local $extension = $ext;
             &$code;
          } else {
-            $self->configured->{$rule_key}=-$load_time;
-            $self->custom->handler->need_save=1;
+            $self->configured->{$rule_key} = -$load_time;
+            $self->custom->handler->need_save = 1;
          }
       } elsif (defined $config_state) {
          die "rulefile $rulefile is already unconfigured\n";
@@ -216,20 +218,20 @@ sub valid_configured_entry {
       if ($rule_key =~ m{^/}) {
          -f $rule_key or do {
             delete $self->configured->{$rule_key};
-            $self->custom->handler->need_save=1;
-            0
+            $self->custom->handler->need_save = true;
+            false
          }
       } else {
-         my ($rulefile, $ext)=split /\@/, $rule_key;
+         my ($rulefile, $ext) = split /\@/, $rule_key;
          if ($ext
-             ? ($ext=$Extension::registered_by_URI{$ext},
+             ? ($ext = $Extension::registered_by_URI{$ext},
                 -f $ext->app_dir($self) . "/rules/$rulefile")
              : -f $self->top . "/rules/$rulefile") {
             !$ext || $ext->is_active;
          } else {
             delete $self->configured->{$rule_key};
-            $self->custom->handler->need_save=1;
-            0
+            $self->custom->handler->need_save = true;
+            false
          }
       }
    }
@@ -240,21 +242,21 @@ sub list_configured {
    grep {
       valid_configured_entry($self, $_) and
       ($state < 0
-       ? $self->configured->{$_}<0 || $self->configured->{$_} eq "0" || $self->configured->{$_} =~ /\#$/ :
+       ? $self->configured->{$_} < 0 || $self->configured->{$_} eq "0" || $self->configured->{$_} =~ /\#$/ :
        $state > 0
-       ? $self->configured->{$_}>0
+       ? $self->configured->{$_} > 0
        : $self->configured->{$_} !~ /^0\#/)
    } keys %{$self->configured}
 }
 ###############################################################################################
 sub first_credit_in {
-   my ($self, $rule_key)=@_;
+   my ($self, $rule_key) = @_;
    LoadPreamble::include_rule($self, $rule_key);
-   if (defined (my $credit=$self->credits_by_rulefile->{$rule_key})) {
+   if (defined (my $credit = $self->credits_by_rulefile->{$rule_key})) {
       if (is_object($credit)) {
          $credit
       } else {
-         $self->credits_by_rulefile->{$rule_key}=lookup_credit($self, $credit)
+         $self->credits_by_rulefile->{$rule_key} = lookup_credit($self, $credit)
       }
    } elsif ($rule_key =~ /\@(bundled:\w+)$/) {
       $Extension::registered_by_URI{$1}->credit
@@ -264,40 +266,39 @@ sub first_credit_in {
 }
 ###############################################################################################
 sub extend_in {
-   my ($self, $ext)=@_;
-   if ($self->installTop eq $ext->dir || list_index($self->extensions, $ext)>=0) {
+   my ($self, $ext) = @_;
+   if ($self->installTop eq $ext->dir || list_index($self->extensions, $ext) >=0 ) {
       die "Extension ", $ext->URI, " already contributes to application ", $self->name, "\n";
    }
    if ($self->installTop ne $InstallTop) {
-      my $foundation_ext=$Extension::registered_by_dir{$self->installTop};
-      if (list_index($foundation_ext->requires, $ext)>=0) {
+      my $foundation_ext = $Extension::registered_by_dir{$self->installTop};
+      if (list_index($foundation_ext->requires, $ext) >= 0) {
          die "Application ", $self->name, " is founded in extension ", $foundation_ext->URI, " installed at ", $self->installTop, "\n",
              "which has the specified extension ", $ext->URI, " among its direct or indirect prerequisites.\n",
              "Adding here a contribution to ", $app->name, " would introduce a forbidden cyclic dependency between both extensions.\n",
              "You might consider moving the foundation of ", $app->name, " into extension ", $ext->URI, "\n",
              "or into a third extension, independent on these ones.\n";
       }
-      if (list_index($ext->requires, $foundation_ext)<0) {
+      if (list_index($ext->requires, $foundation_ext) < 0) {
          $ext->add_prerequisites($foundation_ext);
       }
    }
 
-   my $vcs=$ext->get_source_VCS;
+   my $source_tree = $ext->get_source_tree;
 
-   my $app_dir=$ext->app_dir($self);
-   $vcs->make_dir(map { "$app_dir/$_" } qw(src include perllib rules scripts testsuite));
+   my $app_dir = $ext->app_dir($self);
+   $source_tree->make_dir(map { "$app_dir/$_" } qw(src include perllib rules scripts testsuite));
    if ($ext->is_bundled) {
       open my $noexport, ">", "$app_dir/.noexport";
       print $noexport "testsuite test\n";
       close $noexport;
-      $vcs->add_file("$app_dir/.noexport");
    }
 
    # create include symlink
-   my $link_dir=$ext->dir."/include/apps/polymake";
-   -d $link_dir or $vcs->make_dir($link_dir);
-   my $app_name=$self->name;
-   my $link="$link_dir/$app_name";
+   my $link_dir = $ext->dir."/include/apps/polymake";
+   -d $link_dir or $source_tree->make_dir($link_dir);
+   my $app_name = $self->name;
+   my $link = "$link_dir/$app_name";
    if (-l $link) {
       unlink $link
         or die "Can't remove obsolete link $link: $!\n";
@@ -306,19 +307,18 @@ sub extend_in {
    }
    symlink "../../../apps/$app_name/include", $link
       or die "Can't create a link $link: $!\n";
-   $vcs->add_file($link);
 }
 ###############################################################################################
 sub found {
-   (undef, my ($name, $ext))=@_;
-   my $vcs= $ext ? $ext->get_source_VCS : $CoreVCS;
-   my $app_dir=($ext ? $ext->dir : $InstallTop)."/apps/$name";
-   $vcs->make_dir(map { "$app_dir/$_" } qw(src include perllib rules scripts testsuite));
+   require Polymake::SourceTree;
+   (undef, my ($name, $ext)) = @_;
+   my $src_tree = $ext ? $ext->get_source_tree : new SourceTree($InstallTop);
+   my $app_dir = ($ext ? $ext->dir : $InstallTop)."/apps/$name";
+   $src_tree->make_dir(map { "$app_dir/$_" } qw(src include perllib rules scripts testsuite));
    unless ($ext) {
       open my $noexport, ">", "$app_dir/.noexport";
       print $noexport "testsuite test\n";
       close $noexport;
-      $vcs->add_file("$app_dir/.noexport");
    }
 }
 ###############################################################################################
@@ -330,31 +330,32 @@ use Polymake::Struct (
 
 # pretend the last configuration step in the preamble to fail
 sub configure {
-   my ($self, $code, $rule_key, $line)=@_;
+   my ($self, $code, $rule_key, $line) = @_;
    $line < $self->preamble_end->{$rule_key};
 }
 
-*include_required=\&configure;
-*require_ext=\&configure;
+*include_required = \&configure;
+*require_ext = \&configure;
 
 sub include_rule_block {}
 
 sub add_credit {
-   my $self=shift;
-   my $credit=$self->SUPER::add_credit(@_, 1);
-   $credit->shown=$Rule::Credit::hide;
+   my $self = shift;
+   my $credit = $self->SUPER::add_credit(@_, 1);
+   $credit->shown = Rule::Credit::hide;
    $credit
 }
 
 sub include_rule {
-   my ($self, $rule_key)=@_;
-   if (my $code=$self->rule_code->{$rule_key}) {
-      my $credit=$self->credits_by_rulefile->{$rule_key};
+   my ($self, $rule_key) = @_;
+   if (my $code = $self->rule_code->{$rule_key}) {
+      my $credit = $self->credits_by_rulefile->{$rule_key};
       if (defined($credit) && !is_object($credit)) {
-         local_bless($self, __PACKAGE__);
-         my $reread=new Reconf($self, 1);
-         local_unshift(\@INC, $self);
-         local_sub(get_symtab($self->pkg)->{self}, sub { $reread });
+         local bless $self;
+         my $reread = new Reconf($self, true);
+         local unshift @INC, $self;
+         no strict 'refs';
+         local ref *{$self->pkg."::self"} = sub { $reread };
          &$code;
       }
    } else {
@@ -367,7 +368,7 @@ sub include_rule {
       } else {
          delete local $self->rulefiles->{$rule_key};
          delete local $self->configured->{$rule_key};
-         local_bless($self, __PACKAGE__);
+         local bless $self;
          include_rules($self, $rulefile);
       }
    }
@@ -385,7 +386,7 @@ sub start_loading {}
 package Polymake::Core::Application::Reconf;
 
 use Polymake::Struct (
-   [ new => '$;$' ],
+   [ new => '$$' ],
    [ '$application' => '#1' ],
    [ '$simulate_failure' => '#2' ],
 );
@@ -396,10 +397,10 @@ sub preamble_end { $_[0]->application->preamble_end }
 sub cpp { new CppDummy; }
 
 sub add_credit {
-   my $self=shift;
-   my $credit=$self->application->add_credit(@_, 1);
+   my $self = shift;
+   my $credit = $self->application->add_credit(@_, 1);
    if ($self->simulate_failure && $_[1] =~ /\S/) {
-      $credit->shown=$Rule::Credit::hide;
+      $credit->shown = Rule::Credit::hide;
    }
    $credit
 }
@@ -468,10 +469,10 @@ sub preamble_end { $_[0]->application->preamble_end }
 sub cpp { new CppDummy; }
 
 sub add_credit {
-   my ($self, $product, $ext_URI, $text)=@_;
-   my $credit=$self->application->lookup_credit($product);
+   my ($self, $product, $ext_URI, $text) = @_;
+   my $credit = $self->application->lookup_credit($product);
    if ($text =~ /\S/) {
-      $credit->shown=$Rule::Credit::hide;
+      $credit->shown = Rule::Credit::hide;
    }
    $credit;
 }
@@ -595,12 +596,14 @@ sub may_obliterate {
 }
 ###############################################################################################
 sub new_bundled {
+   require Polymake::SourceTree;
    my ($pkg, $name)=@_;
    my $ext_dir="$InstallTop/bundled/$name";
    if (-d $ext_dir) {
       die "bundled extension $ext_dir already exists\n";
    }
-   $CoreVCS->make_dir("$ext_dir/apps", "$ext_dir/include", "$ext_dir/support");
+   my $src_tree=new SourceTree($InstallTop);
+   $src_tree->make_dir("$ext_dir/apps", "$ext_dir/include", "$ext_dir/support");
    open my $META, ">", "$ext_dir/polymake.ext"
      or die "can't create description file $ext_dir/polymake.ext: $!\n";
    print $META <<'.';
@@ -622,12 +625,10 @@ sub new_bundled {
 # URIs of other bundled extensions which are incompatible with this one.
 .
    close $META;
-   $CoreVCS->add_file("$ext_dir/polymake.ext");
-   $CoreVCS->copy_file("$InstallTop/support/configure.pl.template", "$ext_dir/support/configure.pl.template");
+   $src_tree->copy_file("$InstallTop/support/configure.pl.template", "$ext_dir/support/configure.pl.template");
    my $ext=new($pkg, $ext_dir, "bundled:$name", 1);
    $registered_by_URI{$ext->URI}=$ext;
    $registered_by_dir{$ext_dir}=$ext;
-   $ext->VCS=$CoreVCS;
    # at the beginning of its life, the extension does not depend on anything else nor requires any configuration
    unshift @BundledExts, $name;
    require Polymake::Configure;
@@ -669,6 +670,9 @@ otherwise choose a location outside $InstallTop
    $registered_by_dir{$ext_dir}=$ext;
    foreach my $file (qw(configure.pl install.pl generate_ninja_targets.pl)) {
       File::Copy::copy("$InstallTop/support/$file.template", "$ext_dir/support");
+   }
+   unless (-f "$ext_dir/.gitignore") {
+      File::Copy::copy("$InstallTop/support/gitignore.template", "$ext_dir/.gitignore");
    }
    # create the skeleton of the build directory
    require Polymake::Configure;
@@ -877,7 +881,7 @@ All C++ components in the extension will be rebuilt at the start of the next pol
 # private:
 sub write_initial_description {
    my ($self)=@_;
-   my $vcs=$self->get_source_VCS;
+   my $src_tree=$self->get_source_tree;
 
    open my $descr, ">", $self->dir."/polymake.ext"
       or die "can't create extension description ", $self->dir, "/polymake.ext: $!\n";
@@ -934,18 +938,13 @@ sub write_initial_description {
 .
    close $descr;
 
-   $vcs->add_file("polymake.ext");
-   $vcs->set_ignored("build", "build.*");
-
    if (-f (my $URIfile=$self->dir."/URI")) {
-      $vcs->delete_file("URI");
+      unlink $URIfile or die "can't remove $URIfile: $!\n";
    }
 
    unless (glob($self->dir."/support/configure.pl*")) {
-      require File::Copy;
       foreach my $filename (qw(configure generate_ninja_targets install)) {
-         File::Copy::copy("$InstallTop/support/$filename.pl.template", $self->dir."/support/$filename.pl.template");
-         $vcs->add_file("support/$filename.pl.template");
+         $src_tree->copy_file("$InstallTop/support/$filename.pl.template", "support/$filename.pl.template");
       }
    }
 }
@@ -972,7 +971,7 @@ sub add_prerequisites {
    }
 
    require Polymake::Configure;
-   Configure::rewrite_config_files($self->dir, "RequireExtensions", Configure::list_prerequisite_extensions($self));
+   Configure::rewrite_config_files($self->dir, RequireExtensions => $self->list_prerequisite_extensions);
 }
 ###############################################################################################
 
@@ -983,17 +982,17 @@ package Polymake::User;
 
 ###############################################################################################
 sub help {
-   my ($subject)=@_;
-   my $help_delim=$help_delimit ? "-------------------\n" : '';
-   my $app=$application;
+   my ($subject) = @_;
+   my $help_delim = $help_delimit ? "-------------------\n" : '';
+   my $app = $application;
    if ($subject =~ /^($id_re)::/o && $app->used->{$1}) {
-      $subject=$';
-      $app=$app->used->{$1};
+      $subject = $';
+      $app = $app->used->{$1};
    }
-   if (my @topics=uniq( $app->help->get_topics($subject || "top") )) {
+   if (my @topics = uniq( $app->help->get_topics($subject || "top") )) {
       my (@subcats, @subtopics, $need_delim);
       foreach my $topic (@topics) {
-         my $text=$topic->display_text;
+         my $text = $topic->display_text;
          if (length($text)) {
             print $help_delim if $need_delim++;
             print $text, "\n";
@@ -1009,7 +1008,7 @@ sub help {
       if (@subcats || @subtopics) {
          print $help_delim if $need_delim;
       }
-      my $fp=substr($topics[0]->full_path,1);
+      my $fp = substr($topics[0]->full_path,1);
       $fp &&= " of $fp";
       if (@subcats) {
          print "Categories$fp:\n", (join ", ", sort @subcats), "\n";
@@ -1017,16 +1016,16 @@ sub help {
       if (@subtopics) {
          print "Subtopics$fp:\n", (join ", ", sort @subtopics), "\n";
       }
-   } elsif (length($subject) && index($subject,"/")<0
+   } elsif (length($subject) && index($subject, "/") < 0
             and
-            @topics=$app->help->find($subject)) {
+            @topics = $app->help->find($subject)) {
 
-      if (@topics==1) {
+      if (@topics == 1) {
          print substr($topics[0]->full_path,1), ":\n", $topics[0]->display_text;
       } else {
          print "There are ", scalar(@topics), " help topics matching '$subject':\n";
-         my $n=0;
-         if (@topics<5) {
+         my $n = 0;
+         if (@topics < 5) {
             foreach (@topics) {
                print $help_delim, ++$n, ": ", substr($_->full_path,1), ":\n",
                      $_->display_text, "\n";
@@ -1034,7 +1033,7 @@ sub help {
          } else {
             $Shell->fill_history({ temporary => 1 },
                map {
-                  $subject=substr($_->full_path,1);
+                  $subject = substr($_->full_path, 1);
                   print ++$n, ": $subject\n";
                   "help '$subject';"
                } @topics);
@@ -1049,10 +1048,10 @@ sub help {
 }
 ###############################################################################################
 sub apropos {
-   my $expr=shift;
-   $expr=qr/$expr/i;
-   if (my @list=uniq( map { $_->list_matching_leaves(sub { length($_[0]->text) && $_[0]->name =~ $expr }) }
-                          map { $_->help, @{$_->help->related } } $application, values %{$application->used} )) {
+   my $expr = shift;
+   $expr = qr/$expr/i;
+   if (my @list = uniq( map { $_->list_matching_leaves(sub { length($_[0]->text) && $_[0]->name =~ $expr }) }
+                        map { $_->help, @{$_->help->related } } $application, values %{$application->used} )) {
       print map { $_->full_path."\n" } @list;
    } else {
       print "No matching help items found\n";
@@ -1071,15 +1070,15 @@ sub show_preferences {
 }
 ###############################################################################################
 sub show_credits {
-   my $brief=shift;
-   my ($header_shown, $hidden)=(0,0);
+   my $brief = shift;
+   my ($header_shown, $hidden) = (0, 0);
    foreach my $credit (sorted_uniq(sort { ($b->product =~ /^_/) - ($a->product =~ /^_/) || $a->product cmp $b->product }
                                    map { values(%{$_->credits}), grep { defined } map { $_->credit } @{$_->extensions} } $application, values %{$application->used} )) {
 
-      my $internal= $credit->product =~ /^_/;
+      my $internal = $credit->product =~ /^_/;
 
-      if ($credit->shown == $Core::Rule::Credit::hide) {
-         $hidden=1;
+      if ($credit->shown == Core::Rule::Credit::hide) {
+         $hidden = true;
       } else {
           if (!$header_shown && !$internal) {
              print "\nApplication ", $application->name, " currently uses following contributed and third-party software packages:\n";
@@ -1088,13 +1087,13 @@ sub show_credits {
               if (!$internal) {
                  print ", " if $header_shown;
                  print $credit->product;
-                 $header_shown=1;
+                 $header_shown = true;
               }
           } else {
-              my $text=$credit->text;
+              my $text = $credit->text;
               Core::InteractiveCommands::clean_text($text);
               print "\n", substr($credit->product, $internal), "\n", $text;
-              $header_shown=!$internal;
+              $header_shown = !$internal;
           }
       }
    }
@@ -1157,14 +1156,14 @@ sub found_extension {
       $ext_dir = Cwd::abs_path($ext_dir);
       new_standalone Core::Extension($ext_dir);
       push @extensions, $ext_dir;
-      $Prefs->custom->set('@extensions');
+      $Core::Prefs->custom->set('@extensions');
    }
 }
 ###############################################################################################
 sub extend_application {
-   my $where=shift;
-   my $app=application(@_);
-   my $ext=lookup Core::Extension($where);
+   my $where = shift;
+   my $app = application(@_);
+   my $ext = lookup Core::Extension($where);
    if ($ext->is_bundled) {
       $DeveloperMode or die "A bundled extension can only be expanded from within a git working copy of polymake source tree.\n";
    }
@@ -1174,10 +1173,10 @@ sub extend_application {
 ###############################################################################################
 sub found_application {
    my ($where, $app_name)=@_;
-   my $app=lookup Core::Application($app_name);
+   my $app = lookup Core::Application($app_name);
    my $exists_in;
    if ($app) {
-      $exists_in=$app->installTop;
+      $exists_in = $app->installTop;
    } else {
       foreach ($InstallTop, @extensions) {
          if (-d "$_/apps/$app_name") {
@@ -1199,7 +1198,7 @@ sub found_application {
       if ($exists_in) {
          die "Application $app_name already exists ", $exists_in eq $InstallTop ? "in the polymake core" : "in extension $exists_in", "\n";
       }
-      my $ext=lookup Core::Extension($where);
+      my $ext = lookup Core::Extension($where);
       if ($ext->is_bundled) {
          die "A new application can't be founded in a bundled extension; please specify \"core\" as location instead.";
       } else {
@@ -1210,11 +1209,11 @@ sub found_application {
 }
 ###############################################################################################
 sub import_extension {
-   my $ext_dir=shift;
+   my $ext_dir = shift;
    replace_special_paths($ext_dir);
    -d $ext_dir or die "Directory $ext_dir does not exist.\n";
-   $ext_dir=Cwd::abs_path($ext_dir);
-   if (defined (my $ext=$Core::Extension::registered_by_dir{$ext_dir})) {
+   $ext_dir = Cwd::abs_path($ext_dir);
+   if (defined (my $ext = $Core::Extension::registered_by_dir{$ext_dir})) {
       if ($ext->is_active) {
          die "Extension $ext_dir is already loaded.\n";
       } else {
@@ -1236,29 +1235,29 @@ To get additional help about configuration options:
 }
 ###############################################################################################
 sub reconfigure_extension {
-   my $what=shift;
+   my $what = shift;
    lookup Core::Extension($what)->reconfigure(@_);
 }
 ###############################################################################################
 sub obliterate_extension {
-   my $what=shift;
-   my $ext=lookup Core::Extension($what);
+   my $what = shift;
+   my $ext = lookup Core::Extension($what);
    $ext->may_obliterate;
-   $Prefs->custom->delete_from_private_list('@extensions', string_list_index(\@extensions, $ext->dir))
+   $Core::Prefs->custom->delete_from_private_list('@extensions', string_list_index(\@extensions, $ext->dir))
      or die "Extension ", $ext->URI, " can't be obliterated: it is included by global configuration\n";
 
    foreach my $app ($ext->obliterate) {
       if ($app==$default_application) {
-         $Prefs->custom->reset('$default_application');
+         $Core::Prefs->custom->reset('$default_application');
       }
       if ($app==$application) {
          application($default_application);
       }
       delete_string_from_list(\@start_applications, $app->name);
    }
-   $Prefs->custom->set('@start_applications');
+   $Core::Prefs->custom->set('@start_applications');
    if (delete $disabled_extensions{$ext->dir}) {
-      $Prefs->custom->set('%disabled_extensions');
+      $Core::Prefs->custom->set('%disabled_extensions');
    }
 }
 ###############################################################################################
@@ -1276,16 +1275,16 @@ sub show_unconfigured {
    my (%shown_credits, $credit, $shown);
    foreach my $rule_key ($application->list_configured(-1)) {
       print "$rule_key\n",
-            ($credit=$application->first_credit_in($rule_key) and !($shown_credits{$credit->product}++))
+            ($credit = $application->first_credit_in($rule_key) and !($shown_credits{$credit->product}++))
             ? ($credit->text, "\n") : ();
-      $shown=1;
+      $shown = true;
    }
    while (my ($name, $app)=each %{$application->used}) {
       foreach my $rule_key ($app->list_configured(-1)) {
          print "$name\::$rule_key\n",
-               ($credit=$app->first_credit_in($rule_key) and !($shown_credits{$credit->product}++))
+               ($credit = $app->first_credit_in($rule_key) and !($shown_credits{$credit->product}++))
                ? ($credit->text, "\n") : ();
-         $shown=1;
+         $shown = true;
       }
    }
    if ($shown) {
@@ -1294,10 +1293,10 @@ sub show_unconfigured {
 }
 ###############################################################################################
 sub export_configured {
-   my $filename=shift;
-   my $opts= @_==1 && ref($_[0]) eq "HASH" ? shift : { @_ };
+   my $filename = shift;
+   my $opts = @_==1 && ref($_[0]) eq "HASH" ? shift : { @_ };
    replace_special_paths($filename);
-   $Custom->export($filename, $opts, $Prefs->custom);
+   $Core::Custom->export($filename, $opts, $Core::Prefs->custom);
 }
 
 1

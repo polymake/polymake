@@ -22,68 +22,70 @@
 
 namespace polymake { namespace graph {
 
-   /*
-    * A lattice which allows for deletion of nodes
-    * It is assumed that the top node is never deleted.
-    */
-   template <typename Decoration, typename SeqType = lattice::Nonsequential>
-      class ShrinkingLattice : public Lattice<Decoration, SeqType> {
+/*
+ * A lattice which allows for deletion of nodes
+ * It is assumed that the top node is never deleted.
+ */
+template <typename Decoration, typename SeqType = lattice::Nonsequential>
+class ShrinkingLattice : public Lattice<Decoration, SeqType> {
 
-         protected:
-            
-            // returns 1 + the maximal rank of a node connected to the top node
-            int implicit_top_rank() const {
-               return accumulate( attach_member_accessor( 
+protected:
+  // returns 1 + the maximal rank of a node connected to the top node
+  int implicit_top_rank() const
+  {
+    return accumulate( attach_member_accessor(
                         select(this->D,this->in_adjacent_nodes(this->top_node())),
-                        ptr2type<Decoration,int,&Decoration::rank>()), operations::max()) + 1; 
-            }
+                        ptr2type<Decoration,int,&Decoration::rank>()), operations::max()) + 1;
+  }
 
-         public: 
-            // Copy constructor
-            ShrinkingLattice() : Lattice<Decoration,SeqType>() {}
-            ShrinkingLattice(const Lattice<Decoration, SeqType>& l) : Lattice<Decoration, SeqType>(l) {} 
+public:
+  // Copy constructor
+  ShrinkingLattice() : Lattice<Decoration,SeqType>() {}
+  ShrinkingLattice(const Lattice<Decoration, SeqType>& l) : Lattice<Decoration, SeqType>(l) {}
 
-            void delete_node(int n) {
-               this->G.delete_node(n);
-            }
+  void delete_node(int n)
+  {
+    this->G.delete_node(n);
+  }
 
-            template <typename TSet>
-               void delete_nodes(const GenericSet<TSet,int> &nlist) {
-                  for(auto n_it : nlist.top()) delete_node(n_it);
-               }
+  template <typename TSet>
+  void delete_nodes(const GenericSet<TSet,int> &nlist)
+  {
+    for (auto n_it : nlist.top()) delete_node(n_it);
+  }
 
-            void clear() {
-               this->G.clear();
-            }
+  void clear()
+  {
+    this->G.clear();
+  }
 
-            struct node_exists_pred {
-               const Graph<Directed> *G;
+  struct node_exists_pred {
+    const Graph<Directed>* G;
 
-               node_exists_pred() : G(0) {}
-               node_exists_pred(const Graph<Directed>& G_arg) : G(&G_arg) {}
+    node_exists_pred() : G(nullptr) {}
+    node_exists_pred(const Graph<Directed>& G_arg) : G(&G_arg) {}
 
-               typedef int argument_type;
-               typedef bool result_type;
-               result_type operator() (int n) const { return G->node_exists(n); }
-            };
+    typedef int argument_type;
+    typedef bool result_type;
+    result_type operator() (int n) const { return G->node_exists(n); }
+  };
 
-            typedef SelectedSubset< typename SeqType::nodes_of_rank_ref_type, node_exists_pred> nodes_with_gaps;
-            typedef SelectedSubset< typename SeqType::nodes_of_rank_type, node_exists_pred> nodes_range_with_gaps;
+  auto nodes_of_rank(int d) const
+  {
+    return attach_selector(this->rank_map.nodes_of_rank(d), node_exists_pred(this->G));
+  }
 
-            const nodes_with_gaps nodes_of_rank(int d) const {
-               return nodes_with_gaps(this->rank_map.nodes_of_rank(d),this->G);
-            }
+  auto nodes_of_rank_range(int d1, int d2) const
+  {
+    return attach_selector(this->rank_map.nodes_of_rank_range(d1,d2), node_exists_pred(this->G));
+  }
 
-            const nodes_range_with_gaps nodes_of_rank_range(int d1, int d2) const {
-               return nodes_range_with_gaps(this->rank_map.nodes_of_rank_range(d1,d2),this->G);
-            }
+  void set_implicit_top_rank()
+  {
+    this->D[this->top_node()].rank = implicit_top_rank();
+  }
+};
 
-            void set_implicit_top_rank() {
-               this->D[this->top_node()].rank = implicit_top_rank();
-            }
-
-      };
-
-}}
+} }
 
 #endif

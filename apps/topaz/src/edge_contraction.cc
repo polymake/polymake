@@ -50,7 +50,7 @@ perl::Object edge_contraction(perl::Object p_in, perl::OptionSet options)
    const bool is_closed = p_in.give("CLOSED_PSEUDO_MANIFOLD");
    if (!is_closed) {
       const Array< Set<int> > B = p_in.give("BOUNDARY.FACETS");
-      for (Entire< Array< Set<int> > >::const_iterator b=entire(B); !b.at_end(); ++b)
+      for (auto b=entire(B); !b.at_end(); ++b)
          F.insert(*b+n_vert);
    }
 
@@ -67,7 +67,7 @@ perl::Object edge_contraction(perl::Object p_in, perl::OptionSet options)
       for (FacetList::superset_iterator star = F.findSupersets(scalar2set(*v)); !star.at_end(); ++star)
          V += *star-*v;
 
-      for (Entire< Set<int> >::const_iterator w=entire(V); !w.at_end(); ++w) {
+      for (auto w=entire(V); !w.at_end(); ++w) {
          const Set<int> e = scalar2set(*v)+scalar2set(*w);
          if (tested_edges.contains(e))
             continue;
@@ -85,7 +85,7 @@ perl::Object edge_contraction(perl::Object p_in, perl::OptionSet options)
             F.eraseSupersets(scalar2set(*w)); // remove star(w)
 
             // update star(w)-star(e)
-            for (Entire< std::list< Set<int> > >::const_iterator l=entire(link_w); !l.at_end(); ++l)
+            for (auto l=entire(link_w); !l.at_end(); ++l)
                if (((*l)*(*v)).empty())
                   F.insert(*l + *v);
 

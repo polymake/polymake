@@ -18,24 +18,23 @@
 #include "polymake/vector"
 #include "polymake/list"
 #include "polymake/linalg.h"
-#include "polymake/polytope/to_interface.h"
+#include "polymake/polytope/solve_LP.h"
 #include "polymake/Map.h"
 #include "polymake/Graph.h"
 #include "polymake/Set.h"
-#include "polymake/Series.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/common/labels.h"
 
 namespace polymake { namespace polytope {
 namespace {
 
-template <typename E, typename Matrix, typename Vector1, typename Vector2> inline
-void assign_facet_through_points(const GenericMatrix<Matrix,E>& M,
-                                 const GenericVector<Vector1,E>& V_cut,
-                                 GenericVector<Vector2,E>& f)
+template <typename E, typename Matrix, typename Vector1, typename Vector2>
+void assign_facet_through_points(const GenericMatrix<Matrix, E>& M,
+                                 const GenericVector<Vector1, E>& V_cut,
+                                 GenericVector<Vector2, E>&& f)
 {
-   f=null_space(M)[0];
-   if (f*V_cut > 0) f.negate();
+   f = null_space(M)[0];
+   if (f * V_cut > 0) f.negate();
 }
 
 } // end anonymous namespace
@@ -72,7 +71,7 @@ perl::Object truncation(perl::Object p_in, const GenericSet<TSet>& trunc_vertice
    if (trunc_vertices.top().front() < 0 || trunc_vertices.top().back() >= n_vertices)
       throw std::runtime_error("vertex numbers out of range");
 
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    if (std::is_same<TSet, Set<int> >::value)
       p_out.set_description() << p_in.name() << " with vertices " << trunc_vertices << " truncated" << endl;
 
@@ -141,18 +140,17 @@ perl::Object truncation(perl::Object p_in, const GenericSet<TSet>& trunc_vertice
          AH=p_in.give("AFFINE_HULL");
 
       Matrix<Scalar> F_out=F / zero_matrix<Scalar>(n_trunc_vertices, F.cols());
-      to_interface::solver<Scalar> S;
       Matrix<Scalar> orth(AH);
       if (orth.cols()) orth.col(0).fill(0);
 
-      typename Rows< Matrix<Scalar> >::iterator new_facet = rows(F_out).begin()+n_facets;
-      for (vertex_map_type::iterator tv=vertex_map.begin();  !tv.at_end();  ++tv, ++new_facet) {
-         const int v_cut_off=tv->first;
+      auto new_facet_it = rows(F_out).begin() + n_facets;
+      for (auto tv = vertex_map.begin();  !tv.at_end();  ++tv, ++new_facet_it) {
+         const int v_cut_off = tv->first;
          Matrix<Scalar> basis(G.out_degree(v_cut_off), V.cols());
          const bool simple_vertex=basis.rows()+AH.rows()==V.cols()-1;
 
-         typename Rows<Matrix<Scalar>>::iterator b=rows(basis).begin();
-         for (Entire< Graph<>::adjacent_node_list >::const_iterator nb_v=entire(G.adjacent_nodes(v_cut_off)); !nb_v.at_end(); ++nb_v, ++b) {
+         auto b = rows(basis).begin();
+         for (auto nb_v = entire(G.adjacent_nodes(v_cut_off)); !nb_v.at_end(); ++nb_v, ++b) {
             if (vertex_map.exists(*nb_v))
                *b = (1-cutoff_factor/2) * V[v_cut_off] + cutoff_factor/2 * V[*nb_v];
             else
@@ -160,29 +158,32 @@ perl::Object truncation(perl::Object p_in, const GenericSet<TSet>& trunc_vertice
          }
          if (simple_vertex) {
             // calculate a hyperplane thru the basis points
-            assign_facet_through_points(basis/orth, V[v_cut_off], new_facet->top());
+            assign_facet_through_points(basis/orth, V[v_cut_off], *new_facet_it);
          } else {
-            // look for a valid separating hyperplane furthest from the vertex being cut off
-            *new_facet=S.solve_lp(basis, orth, V[v_cut_off], false).second;
+            // look for a valid separating hyperplane farthest from the vertex being cut off
+            const auto S = solve_LP(basis, orth, V[v_cut_off], false);
+            if (S.status != LP_status::valid)
+               throw std::runtime_error("truncation: wrong LP");
+            *new_facet_it = S.solution;
          }
 
          if (cutoff_factor==1) {
             // we must take care of coinciding vertices
             int new_vertex=tv->second;
-            b=rows(basis).begin();
-            for (Entire< Graph<>::adjacent_node_list >::const_iterator nb_v=entire(G.adjacent_nodes(v_cut_off));
+            b = rows(basis).begin();
+            for (auto nb_v = entire(G.adjacent_nodes(v_cut_off));
                  !nb_v.at_end();  ++nb_v, ++new_vertex) {
 
-               if (!simple_vertex && !is_zero((*new_facet)*(*b))) continue;       // doesn't touch this vertex
+               if (!simple_vertex && !is_zero((*new_facet_it)*(*b))) continue;       // doesn't touch this vertex
 
                int other_vertex;
-               vertex_map_type::iterator otv=vertex_map.find(*nb_v);
+               auto otv = vertex_map.find(*nb_v);
                if (!otv.at_end()) {
                   // pairs of coinciding new vertices should not be handled twice
                   if (v_cut_off < *nb_v) continue;
-                  other_vertex=otv->second;
+                  other_vertex = otv->second;
                   // number of the opposite new vertex can be found only by enumeration of adjacent_nodes...
-                  for (Entire< Graph<>::adjacent_node_list >::const_iterator other_nb_v=G.adjacent_nodes(*nb_v).begin();
+                  for (auto other_nb_v = G.adjacent_nodes(*nb_v).begin();
                        *other_nb_v != v_cut_off;  ++other_nb_v, ++other_vertex) ;
                } else {
                   other_vertex=renumber_vertices[*nb_v];

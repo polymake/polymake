@@ -1,0 +1,6 @@
+{"app": "graph",
+ "inst": [
+  {"class": "pm::Serialized<graph::lattice::InverseRankMap<graph::lattice::Sequential>>", "include": ["polymake/client.h", "polymake/graph/Decoration.h"], "pkg": "Polymake::common::Serialized__InverseRankMap__Sequential"},
+  {"class": "pm::Serialized<graph::lattice::InverseRankMap<graph::lattice::Nonsequential>>", "include": ["polymake/client.h", "polymake/graph/Decoration.h"], "pkg": "Polymake::common::Serialized__InverseRankMap__Nonsequential"},
+ null ],
+"version": 3}

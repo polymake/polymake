@@ -28,26 +28,22 @@
 #include "polymake/Array.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/linalg.h"
-#include "polymake/tropical/solver_def.h"
 #include "polymake/tropical/thomog.h"
 #include "polymake/tropical/separated_data.h"
 #include "polymake/tropical/linear_algebra_tools.h"
 #include "polymake/tropical/minimal_interior.h"
 #include "polymake/tropical/misc_tools.h"
 #include "polymake/tropical/refine.h"
+#include "polymake/polytope/convex_hull.h"
 
 
 namespace polymake { namespace tropical {
-
-using matrix_pair = std::pair<Matrix<Rational>, Matrix<Rational>>;
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
 RefinementResult refinement(perl::Object X, perl::Object Y,
                             bool repFromX, bool repFromY,bool computeAssoc,bool refine, bool forceLatticeComputation)
 {
-  solver<Rational> sv;
-
   // Sanity check
   if (call_function("is_empty", X)) {
     int ambient_dim=X.give("PROJECTIVE_AMBIENT_DIM");
@@ -181,12 +177,16 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
   const bool y_onlylineality = y_cones.rows() == 0;
 
   // Compute a facet representation for the Y-cones
-  Vector<matrix_pair > y_equations;
-  for (int yc = 0; yc < (y_onlylineality ? 1 : y_cones.rows()); ++yc) {
-    y_equations |= sv.enumerate_facets(
-                                       y_onlylineality? Matrix<Rational>(0,y_lineality.cols()) : \
-                                       y_rays.minor(y_cones.row(yc),All),
-                                       y_lineality, false,false);
+  std::vector<polytope::convex_hull_result<Rational>> y_equations;
+  if (y_onlylineality) {
+    y_equations.reserve(1);
+    y_equations.push_back(polytope::enumerate_facets(Matrix<Rational>(0,y_lineality.cols()), y_lineality, false));
+  } else {
+    const int n_y_equations = y_cones.rows();
+    y_equations.reserve(n_y_equations);
+    for (int yc = 0; yc < n_y_equations; ++yc) {
+      y_equations.push_back(polytope::enumerate_facets(y_rays.minor(y_cones.row(yc), All), y_lineality, false));
+    }
   }
 
   // This saves for each x-cone (index in x_cones) the cones that have been created as refinements.
@@ -223,23 +223,14 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
       // Initalize refinement cone set
       xrefinements[xc] = Set<Set<int> >();
       // Compute a facet representation for the X-cone
-      matrix_pair x_equations =
-        sv.enumerate_facets( x_onlylineality ? Matrix<Rational>(0,x_lineality.cols()) :
-                             x_rays.minor(x_cones.row(xc),All),x_lineality, false, false);
+      const auto x_equations = polytope::enumerate_facets( x_onlylineality ? Matrix<Rational>(0,x_lineality.cols()) :
+                                                           x_rays.minor(x_cones.row(xc),All), x_lineality, false );
 
       // Iterate all cones of Y
       for (int yc = 0; yc < (y_onlylineality? 1 : y_cones.rows()); ++yc) {
         // Compute a V-representation of the intersection
-        Matrix<Rational> interrays;
-        try {
-          interrays = sv.enumerate_vertices(x_equations.first / y_equations[yc].first,
-                                            x_equations.second / y_equations[yc].second, false, true).first;
-        }
-        catch (const infeasible&) {
-          // This just means the polyhedron is empty
-          interrays = Matrix<Rational>(0,ambient_dim);
-        }
-
+        Matrix<Rational> interrays = polytope::try_enumerate_vertices(x_equations.first / y_equations[yc].first,
+                                                                      x_equations.second / y_equations[yc].second, false).first;
 
         // Check if it is full-dimensional (and has at least one ray - lin.spaces are not interesting)
         if (interrays.rows() > 0 && rank(interrays) + c_lineality_dim - 1 == x_dimension) {
@@ -322,7 +313,7 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
             // Check which rays of refinement cone lie in local cone
             Set<int> cone_subset;
             for (auto cs = entire(*s); !cs.at_end(); ++cs) {
-              if (is_ray_in_cone(lrays,x_lineality,c_rays.row(*cs),false, sv)) {
+              if (is_ray_in_cone(lrays, x_lineality, c_rays.row(*cs), false)) {
                 cone_subset += *cs;
               }
             }
@@ -333,7 +324,7 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
             local_subdivided[xc_local_cones[t]] = true;
           } // END iterate all refinement cones of xc
           // Finally we add the minimal interior faces of the subdivision as new local cones
-          new_local_restriction = minimal_interior(c_rays, IncidenceMatrix<>(local_subdivision_cones), sv);
+          new_local_restriction = minimal_interior(c_rays, IncidenceMatrix<>(local_subdivision_cones));
         } // END iterate all remaining local cones in xc
       } // END refine local cones and remove non compatible maximal cones
 

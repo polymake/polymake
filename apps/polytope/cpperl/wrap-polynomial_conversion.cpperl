@@ -1,0 +1,8 @@
+{"app": "polytope", "embed": "polynomial_conversion.cc",
+ "inst": [
+  {"args": ["perl::Canned<const pm::IndexedSlice<pm::Vector<pm::Integer> const&, pm::Series<int, true> const, mlist<> >&>"], "func": "binomial_to_power_basis", "include": ["polymake/Integer.h", "polymake/Set.h", "polymake/Vector.h"], "sig": "binomial_to_power_basis.X"},
+  {"args": ["perl::Canned<const pm::IndexedSlice<pm::Vector<pm::Rational> const&, pm::Series<int, true> const, mlist<> >&>"], "func": "power_to_binomial_basis", "include": ["polymake/Rational.h", "polymake/Set.h", "polymake/Vector.h"], "sig": "power_to_binomial_basis.X"},
+  {"args": ["perl::Canned<const pm::IndexedSlice<pm::Vector<pm::Rational>&, pm::Series<int, true> const, mlist<> >&>"], "func": "power_to_binomial_basis", "include": ["polymake/Rational.h", "polymake/Set.h", "polymake/Vector.h"], "sig": "power_to_binomial_basis.X"},
+  {"args": ["perl::Canned<const pm::IndexedSlice<pm::Vector<pm::Rational>, pm::Series<int, true> const, mlist<> >&>"], "func": "power_to_binomial_basis", "include": ["polymake/Rational.h", "polymake/Set.h", "polymake/Vector.h"], "sig": "power_to_binomial_basis.X"},
+ null ],
+"version": 3}

@@ -1,0 +1,6 @@
+{"app": "fan", "embed": "face_fan.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "face_fan", "include": ["polymake/Rational.h"], "sig": "face_fan:T1.B", "tp": "1"},
+  {"args": ["Rational", "void", "perl::Canned<const Vector<Rational>&>"], "func": "face_fan", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "face_fan:T1.B.X", "tp": "1"},
+ null ],
+"version": 3}

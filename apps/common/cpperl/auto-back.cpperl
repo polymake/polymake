@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Set<int>&>"], "func": "back", "include": ["polymake/Set.h"], "kind": "meth", "sig": "back:M"},
+ null ],
+"version": 3}

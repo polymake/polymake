@@ -16,27 +16,27 @@
 object Cone<Float> {
 
 rule cdd.convex_hull.primal: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS {
-   cdd_ch_primal($this);
+   cdd_ch_primal($this, $verbose_cdd);
 }
 weight 4.10;
 precondition : N_RAYS | N_INPUT_RAYS;
 incurs FacetPerm;
 
 rule cdd.convex_hull.dual: RAYS, LINEALITY_SPACE, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
-   cdd_ch_dual($this);
+   cdd_ch_dual($this, $verbose_cdd);
 }
 weight 4.10;
 incurs VertexPerm;
 
 # cdd redundancy checks
 rule cdd.convex_hull.canon: POINTED, RAYS, LINEALITY_SPACE : INPUT_RAYS {
-   cdd_canonicalize($this,0);
+   cdd_get_non_redundant_points($this);
 }
 weight 3.10;
 incurs VertexPerm;
 
 rule cdd.convex_hull.lineality: LINEALITY_SPACE, POINTED : INPUT_RAYS {
-   cdd_canonicalize_lineality($this,0);
+   cdd_get_lineality_space($this);
 }
 weight 3.10;
 
@@ -54,13 +54,13 @@ weight 3.20;
 incurs VertexPerm;
 
 rule cdd.convex_hull.canon : FACETS, LINEAR_SPAN : INEQUALITIES { 
-  cdd_canonicalize($this,1)
+  cdd_get_non_redundant_inequalities($this);
 }
 weight 3.20;
 incurs FacetPerm;
 
 rule cdd.convex_hull.linear_span : LINEAR_SPAN : INEQUALITIES {     
-   cdd_canonicalize_lineality($this,1);
+   cdd_get_linear_span($this);
 }
 weight 3.10;
 

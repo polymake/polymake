@@ -317,10 +317,10 @@ bool GraphIso::prepare_colored(GraphIso& GI1, const GenericGraph<TGraph1>& G1, c
 
    GI2.copy_colors(GI1);
 
-   for (auto c=ensure(colors1, (pm::cons<pm::end_sensitive, pm::indexed>*)0).begin(); !c.at_end(); ++c)
+   for (auto c=entire<indexed>(colors1); !c.at_end(); ++c)
       GI1.set_node_color(c.index(), color_map[*c]);
 
-   for (auto c=ensure(colors2, (pm::cons<pm::end_sensitive, pm::indexed>*)0).begin(); !c.at_end(); ++c)
+   for (auto c=entire<indexed>(colors2); !c.at_end(); ++c)
       GI2.set_node_color(c.index(), color_map[*c]);
 
    GI1.fill(G1);  GI1.finalize(false);
@@ -343,7 +343,7 @@ bool GraphIso::prepare_colored(GraphIso& GI, const GenericGraph<TGraph>& G, cons
    for (auto cm=color_map.begin(); !cm.at_end(); ++cm)
       GI.next_color(cm->second);
 
-   for (auto c=ensure(colors, (pm::cons<pm::end_sensitive, pm::indexed>*)0).begin(); !c.at_end(); ++c)
+   for (auto c=entire<indexed>(colors); !c.at_end(); ++c)
       GI.set_node_color(c.index(), color_map[*c]);
 
    GI.fill(G);  GI.finalize(true);

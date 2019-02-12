@@ -182,26 +182,35 @@ var renderId;
 		all_objects[nr].visible = event.currentTarget.checked;
 	}
 
-
-	function displayOrHideOptions(){
-		for (var i=0; i<all_objects.length; i++){
-			for (var j=0; j<all_objects[i].children.length; j++){
-				if (all_objects[i].children[j].material.type == "MultiMaterial") {
-					for (var k=0; k<all_objects[i].children[j].material.materials.length; k++){
-						if (all_objects[i].children[j].material.materials[k].transparent) {
+	function displayOrHideOptionsRecursive( obj ) {
+		for (var j=0; j<obj.children.length; j++) {
+			var child = obj.children[j];
+			if (child.material===undefined && child) {
+				displayOrHideOptionsRecursive( child );
+			} else {
+				if (child.material.type == "MultiMaterial") {
+					for (var k=0; k<child.material.materials.length; k++) {
+						if (child.material.materials[k].transparent) {
 							document.getElementById('transparency_OUTPUTID').style.display = 'block';
 							document.getElementById('transparencyRange_OUTPUTID').value = 1 - 
-							    all_objects[i].children[j].material.materials[k].opacity;
+								child.material.materials[k].opacity;
 							return;
 						}
 					}
-				} else if (all_objects[i].children[j].material.transparent && 
-							  all_objects[i].children[j].material.type == "MeshBasicMaterial" &&
-							  all_objects[i].children[j].geometry.type == "Geometry"){
+				} else if (	child.material.transparent && 
+								child.material.type == "MeshBasicMaterial" &&
+								child.geometry.type == "Geometry"){
 					document.getElementById('transparency_OUTPUTID').style.display = 'block';
 					return;
 				}
 			}
+		}
+	}
+
+	function displayOrHideOptions() {
+		for (var i=0; i<all_objects.length; i++) {
+			var obj = all_objects[i];
+			displayOrHideOptionsRecursive( obj );
 		}
 	}
 

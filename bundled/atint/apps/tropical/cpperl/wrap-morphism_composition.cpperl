@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "morphism_composition.cc",
+ "inst": [
+  {"args": ["Max", "void", "void"], "func": "morphism_composition", "include": ["polymake/TropicalNumber.h"], "sig": "morphism_composition:T1.B.B", "tp": "1"},
+  {"args": ["Min", "void", "void"], "func": "morphism_composition", "include": ["polymake/TropicalNumber.h"], "sig": "morphism_composition:T1.B.B", "tp": "1"},
+ null ],
+"version": 3}

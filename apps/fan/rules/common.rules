@@ -105,6 +105,16 @@ rule LINEALITY_SPACE : RAYS, MAXIMAL_CONES {
 }
 weight 0.10;
 
+rule LINEALITY_SPACE : ORTH_LINEALITY_SPACE {
+    $this->LINEALITY_SPACE = null_space($this->ORTH_LINEALITY_SPACE);
+}
+weight 0.10;
+
+rule ORTH_LINEALITY_SPACE : LINEALITY_SPACE {
+    $this->ORTH_LINEALITY_SPACE = null_space($this->LINEALITY_SPACE);
+}
+weight 0.10;
+
 rule MAXIMAL_CONES_COMBINATORIAL_DIMS : RAYS, MAXIMAL_CONES, LINEALITY_SPACE {
    my @dims = map { (new polytope::Cone(RAYS=>$this->RAYS->minor($_,All),LINEALITY_SPACE=>$this->LINEALITY_SPACE))->COMBINATORIAL_DIM } @{$this->MAXIMAL_CONES};
    $this->MAXIMAL_CONES_COMBINATORIAL_DIMS=\@dims;
@@ -221,34 +231,28 @@ rule F_VECTOR : HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_
 }
 weight 0.10;
 
-rule REGULAR : RAYS, MAXIMAL_CONES {
-  $this->REGULAR = pseudo_regular($this)->first;
-}
-precondition : COMPLETE;
-weight 4.10;
-
 rule COMPLETE, REGULAR :  {
-   $this->REGULAR=0;
-   $this->COMPLETE=0;
+   $this->REGULAR = false;
+   $this->COMPLETE = false;
 }
 precondition : !DUAL_GRAPH.CONNECTED;
 weight 0.1;
 
 rule COMPLETE, REGULAR :  {
-   $this->REGULAR=0;
-   $this->COMPLETE=0;
+   $this->REGULAR = false;
+   $this->COMPLETE = false;
 }
 precondition : !FULL_DIM;
 weight 0.1;
 
 rule REGULAR : {
-   $this->REGULAR=0;
+   $this->REGULAR = false;
 }
 precondition : !COMPLETE;
 weight 0.1;
 
 rule REGULAR : {
-   $this->REGULAR=0;
+   $this->REGULAR = false;
 }
 precondition : !PSEUDO_REGULAR;
 weight 0.1;
@@ -257,7 +261,7 @@ rule REGULAR = PSEUDO_REGULAR;
 precondition : COMPLETE;
 
 rule PSEUDO_REGULAR : RAYS, MAXIMAL_CONES {
-   $this->PSEUDO_REGULAR = pseudo_regular($this)->first;
+   $this->PSEUDO_REGULAR = pseudo_regular($this)->rows == $this->RAYS->rows;
 }
 weight 4.10;
 
@@ -356,19 +360,26 @@ rule SIMPLICIAL : MAXIMAL_CONES_COMBINATORIAL_DIMS, MAXIMAL_CONES {
 weight 1.30;
 
 
-
-
 rule RAYS, MAXIMAL_CONES, LINEALITY_SPACE : INPUT_RAYS, INPUT_CONES, FAN_AMBIENT_DIM {
   remove_redundancies($this);
 }
 weight 3.10;
 incurs RaysPerm;
 
+
+rule FACET_NORMALS, MAXIMAL_CONES_FACETS, LINEAR_SPAN_NORMALS, MAXIMAL_CONES_LINEAR_SPAN_NORMALS : \
+       RAYS, MAXIMAL_CONES, FAN_AMBIENT_DIM, LINEALITY_SPACE | INPUT_LINEALITY {
+   raysToFacetNormals($this);
 }
+weight 4.10;
 
-# NOTE: Both raysToFacetNormals and facetsToRays now live in bundled:cdd for
-# performance reasons.
+rule RAYS, MAXIMAL_CONES, LINEALITY_SPACE : FACET_NORMALS, MAXIMAL_CONES_FACETS, FAN_AMBIENT_DIM {
+   facetsToRays($this);
+}
+weight 4.10;
+incurs RaysPerm;
 
+}
 
 # @category Producing a fan
 # Orthogonally project a pointed fan to a coordinate subspace.
@@ -403,8 +414,7 @@ user_function project_full<Scalar>(PolyhedralFan<Scalar>; {no_labels=>0}) {
 # @param PolyhedralFan P
 # @return Matrix<Scalar>
 user_function generating_polyhedron_facets<Scalar>(PolyhedralFan<Scalar>) { 
-   my $F = pseudo_regular(@_)->second;
-   return $F;
+   return pseudo_regular(@_);
 }
 
 

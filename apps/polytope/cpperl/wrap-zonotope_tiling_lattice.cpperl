@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "zonotope_tiling_lattice.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "zonotope_tiling_lattice", "include": ["polymake/Rational.h"], "sig": "zonotope_tiling_lattice:T1.B.o", "tp": "1"},
+ null ],
+"version": 3}

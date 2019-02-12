@@ -18,41 +18,64 @@
 #include "polymake/Array.h"
 #include "polymake/Set.h"
 #include "polymake/Map.h"
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/linalg.h"
 #include "polymake/group/permlib.h"
 
 namespace polymake { namespace group {
 
-template <typename SetType>
-SetType lex_min_representative(perl::Object G, const SetType& S)
-{
-   const PermlibGroup group = group_from_perl_action(G);
-   const SetType R = group.lex_min_representative(S);
-   return R;
-}
+namespace {
 
-template<typename SetType>
-std::pair<Array<SetType>, Array<int> >
-orbit_reps_and_sizes(const Array<Array<int> >& generators,
-                     const Array<SetType>& domain)
+template <typename Iterator>
+std::pair<Array<Set<int>>, Array<int>>
+orbit_reps_and_sizes_impl(const Array<Array<int>>& generators,
+                          Iterator& domain_it)
 {
    const PermlibGroup group(generators);
 
-   Map<SetType, int> orbit_size;
-   for (typename Entire<Array<SetType> >::const_iterator dit = entire(domain); !dit.at_end(); ++dit)
-      ++orbit_size[group.lex_min_representative(*dit)];
+   Map<Set<int>, int> orbit_size;
+   while (!domain_it.at_end()) {
+      ++orbit_size[group.lex_min_representative(Set<int>(*domain_it))];
+      ++domain_it;
+   }
 
-   Array<SetType> reps(orbit_size.size());
+   Array<Set<int>> reps(orbit_size.size());
    Array<int> size(orbit_size.size());
-   typename Entire<Array<SetType> >::iterator rit = entire(reps);
-   Entire<Array<int> >::iterator sit = entire(size);
+   auto rit = entire(reps);
+   auto sit = entire(size);
 
-   for (typename Entire<Map<SetType,int> >::const_iterator oit = entire(orbit_size); !oit.at_end(); ++oit, ++rit, ++sit) {
+   for (auto oit = entire(orbit_size); !oit.at_end(); ++oit, ++rit, ++sit) {
       *rit = oit->first;
       *sit = oit->second;
    }
 
-   return std::make_pair<Array<SetType>, Array<int> >(reps, size);
+   return std::make_pair(reps, size);
+}
+
+} // end anonymous namespace
+
+template <typename SetType>
+SetType lex_min_representative(perl::Object G, const SetType& S)
+{
+   return group_from_perl_action(G).lex_min_representative(S);
+}
+
+template <typename Container>
+std::pair<Array<Set<int>>, Array<int>>
+orbit_reps_and_sizes(const Array<Array<int>>& generators,
+                     const Container& domain)
+{
+   auto row_it = entire(domain);
+   return orbit_reps_and_sizes_impl(generators, row_it);
+}
+
+template <>
+std::pair<Array<Set<int>>, Array<int>>
+orbit_reps_and_sizes(const Array<Array<int>>& generators,
+                     const IncidenceMatrix<>& domain)
+{
+   auto row_it = entire(rows(domain));
+   return orbit_reps_and_sizes_impl(generators, row_it);
 }
 
 
@@ -66,7 +89,21 @@ UserFunctionTemplate4perl("# @category Symmetry"
                           "# | {0 1 6}",
                           "lex_min_representative<SetType>(PermutationAction SetType)");
  
-FunctionTemplate4perl("orbit_reps_and_sizes<SetType>(Array<Array<Int>>, Array<SetType>)");
+UserFunctionTemplate4perl("# @category Symmetry"
+                          "# Computes the lexicographically smallest representatives of a given array of sets with respect to a group,"
+                          "# along with the corresponding orbit sizes"
+                          "# @tparam Container a container of sets, for example Array<Set> or IncidenceMatrix"
+                          "# @param Array<Array<Int>> generators the generators of a symmetry group"
+                          "# @param Container S a container of sets, for example Array<Set> or IncidenceMatrix" 
+                          "# @return Pair<Array<Set<Int>>,Array<Int>> the lex-min representatives of S, and the sizes of the corresponding orbits"
+                          "# @example To calculate the orbits and orbit sizes of an icosidodecahedron, type"
+                          "# > $q=polytope::icosidodecahedron();"
+                          "# > print orbit_reps_and_sizes($q->GROUP->VERTICES_ACTION->GENERATORS,$q->VERTICES_IN_FACETS);"
+                          "# | <{0 1 2 4 6}"
+                          "# | {0 1 3}"
+                          "# | >"
+                          "# | 12 20",
+                          "orbit_reps_and_sizes<Container>(Array<Array<Int>>, Container)");
 
 } }
 

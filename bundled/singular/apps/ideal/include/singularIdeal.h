@@ -127,7 +127,7 @@ public:
    perl::ListReturn primary_decomposition() const {
       Array<SingularIdeal_wrap*> pd = singIdeal->primary_decomposition();
       perl::ListReturn result;
-      for(Entire<Array<SingularIdeal_wrap*> >::const_iterator id = entire(pd);!id.at_end();++id){
+      for (auto id = entire(pd); !id.at_end(); ++id) {
          result << SingularIdeal(*id);
       }
       return result;

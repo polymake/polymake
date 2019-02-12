@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Undirected>&>", "void"], "func": "invalid_node", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "invalid_node:M.x"},
+ null ],
+"version": 3}

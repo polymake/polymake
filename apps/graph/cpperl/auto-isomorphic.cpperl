@@ -1,0 +1,7 @@
+{"app": "graph",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Undirected>&>", "perl::Canned<const Graph<Undirected>&>"], "func": "isomorphic", "include": ["polymake/Graph.h", "polymake/graph/compare.h"], "sig": "isomorphic.X.X"},
+  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>"], "func": "isomorphic", "include": ["polymake/IncidenceMatrix.h", "polymake/graph/compare.h"], "sig": "isomorphic.X.X"},
+  {"args": ["perl::Canned<const Graph<Directed>&>", "perl::Canned<const Graph<Directed>&>"], "func": "isomorphic", "include": ["polymake/Graph.h", "polymake/graph/compare.h"], "sig": "isomorphic.X.X"},
+ null ],
+"version": 3}

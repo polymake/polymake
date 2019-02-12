@@ -103,7 +103,7 @@ perl::Object cayley_embedding(const Array<perl::Object>& p_array,
    }
 
 
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    odesc << endl;
    p_out.set_description() << odesc.str();
 
@@ -114,7 +114,7 @@ perl::Object cayley_embedding(const Array<perl::Object>& p_array,
       std::vector<std::string> labels(accumulate(n_vertices, operations::add()));
       int v_ct(0);
       for (int i=0; i<m; ++i) {
-         common::read_labels(p_array[i], "VERTEX_LABELS", non_const(select(labels, sequence(v_ct, n_vertices[i]))));
+         common::read_labels(p_array[i], "VERTEX_LABELS", select(labels, sequence(v_ct, n_vertices[i])));
          for (std::vector<std::string>::iterator 
                  l     = labels.begin() + v_ct, 
                  l_end = labels.begin() + v_ct + n_vertices[i]; 

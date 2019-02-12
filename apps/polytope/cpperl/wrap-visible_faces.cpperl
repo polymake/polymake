@@ -1,0 +1,10 @@
+{"app": "polytope", "embed": "visible_faces.cc",
+ "inst": [
+  {"args": ["Rational", "void", "perl::Canned<const Vector<Rational>&>", "void"], "func": "violations", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "violations:T1.B.X.o", "tp": "1"},
+  {"args": ["Rational", "void", "perl::Canned<const Vector<Rational>&>"], "func": "visible_face_indices", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "visible_face_indices:T1.B.X", "tp": "1"},
+  {"args": ["Rational", "void", "perl::Canned<const Vector<Rational>&>"], "func": "visible_facet_indices", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "visible_facet_indices:T1.B.X", "tp": "1"},
+  {"args": ["Rational", "void", "perl::Canned<const Vector<Rational>&>"], "func": "containing_normal_cone", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "containing_normal_cone:T1.B.X", "tp": "1"},
+  {"args": ["double", "void", "perl::Canned<const Vector<double>&>"], "func": "containing_normal_cone", "include": ["polymake/Vector.h"], "sig": "containing_normal_cone:T1.B.X", "tp": "1"},
+  {"args": ["Rational", "void", "perl::Canned<const Vector<Rational>&>"], "func": "containing_outer_cone", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "containing_outer_cone:T1.B.X", "tp": "1"},
+ null ],
+"version": 3}

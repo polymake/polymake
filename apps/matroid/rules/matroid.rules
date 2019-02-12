@@ -51,7 +51,7 @@ rule POLYTOPE.FEASIBLE : N_BASES {
 weight 0.10;
 
 rule POLYTOPE.BOUNDED : {
-   $this->POLYTOPE->BOUNDED = 1;
+   $this->POLYTOPE->BOUNDED = true;
 }
 weight 0.10;
 
@@ -60,8 +60,10 @@ rule POLYTOPE.VERTICES, POLYTOPE.CONE_AMBIENT_DIM, POLYTOPE.FEASIBLE, POLYTOPE.B
 }
 weight 1.12;
 
+rule POLYTOPE.VertexPerm.PERMUTATION = BasesPerm.PERMUTATION;
+
 rule POLYTOPE.VERTICES, POLYTOPE.CONE_AMBIENT_DIM, POLYTOPE.INEQUALITIES, POLYTOPE.EQUATIONS, POLYTOPE.FEASIBLE, POLYTOPE.BOUNDED: BASES, N_ELEMENTS, RANK, CONNECTED, LATTICE_OF_FLATS {
-   polytope::matroid_polytope($this, inequalities=>1)
+   polytope::matroid_polytope($this, inequalities=>true)
 }
 precondition : CONNECTED;
 weight 1.10;
@@ -231,7 +233,7 @@ rule TERNARY, TERNARY_VECTORS : BASES, N_ELEMENTS, RANK {
 weight 5.10;
 
 rule REGULAR : BINARY, TERNARY {
-    $this->REGULAR=$this->BINARY && $this->TERNARY; # See [Oxley:matroid theory (2nd ed.) Thm. 6.6.3]
+    $this->REGULAR=$this->BINARY && $this->TERNARY; # See [Oxley:Matroid theory (2nd ed.) Thm. 6.6.3]
 }
 weight 0.1;
 

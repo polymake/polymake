@@ -66,7 +66,6 @@ Options are:
 
 my $env=new Test::Environment($Scope, shuffle_seed => $shuffle_seed,
                               annotate_mode => $annotate_mode,
-                              no_new_glue_code => $no_new_glue_code,
                               preserve_load => 1);
 
 if ($jenkins_report) {
@@ -89,6 +88,9 @@ if (defined $shuffle_seed) {
 unless (@tutorials = @ARGV) {
    push @tutorials, "*";
 }
+
+local $Core::CPlusPlus::code_generation= $no_new_glue_code ? "none" : "shared";
+
 $env->start_testsuite($jenkins_report, "tutorials");
 
 foreach my $pattern (@tutorials) {
@@ -109,7 +111,7 @@ if (!$jenkins_report) {
    $env->print_summary;
 }
 
-# make sure we dont save any custom variables or preferences
+# suppress saving any custom variables or preferences
 forget AtEnd("Customize");
 forget AtEnd("Preference");
 

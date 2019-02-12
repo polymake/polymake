@@ -1,0 +1,6 @@
+{"app": "graph",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Directed>&>"], "func": "line_graph", "include": ["polymake/Graph.h", "polymake/graph/line_graph.h"], "sig": "line_graph.X"},
+  {"args": ["perl::Canned<const Graph<Undirected>&>"], "func": "line_graph", "include": ["polymake/Graph.h", "polymake/graph/line_graph.h"], "sig": "line_graph.X"},
+ null ],
+"version": 3}

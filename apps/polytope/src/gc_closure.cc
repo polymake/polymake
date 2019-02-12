@@ -32,7 +32,7 @@ namespace polymake { namespace polytope {
  */
 perl::Object gc_and_tdi(perl::Object p_in, bool round)
 {
-  perl::Object p_out(perl::ObjectType::construct<Rational>("Polytope")), C;
+   perl::Object p_out("Polytope", mlist<Rational>()), C;
   Matrix<Rational> vertices;  // Hilbert Basis and Vertices
   Set<Vector<Rational> > hilbert_ineqs;  // the new inequalities
   Vector<Rational> obj, this_vector;  // one inequality
@@ -97,7 +97,7 @@ bool totally_dual_integral(const Matrix<Rational>& inequalities)
     throw std::runtime_error("totally_dual_integral: non-empty matrix required");
 
   // variables decleration and initialization
-  perl::Object p_in(perl::ObjectType::construct<Rational>("Polytope"));
+  perl::Object p_in("Polytope<Rational>");
   int n_lattice;
   perl::Object C;
 
@@ -129,7 +129,7 @@ bool totally_dual_integral(const Matrix<Rational>& inequalities)
       perl::Object solutions("Polytope<Rational>");
 
       // building the equations and ineq
-      Matrix<Rational> temp_matrix (-hb.row(j) | T(ineq.minor(eq_sets[i], ~scalar2set(0))));
+      Matrix<Rational> temp_matrix(-hb.row(j) | T(ineq.minor(eq_sets[i], range_from(1))));
       Matrix<Rational> unit(unit_matrix<Rational>(temp_matrix.cols()));
 
       solutions.take("INEQUALITIES") << unit;
@@ -180,7 +180,7 @@ UserFunction4perl("# @category Optimization"
                   "# @return Bool"
                   "# @example"
                   "# > print totally_dual_integral(cube(2)->FACETS);"
-                  "# | 1",
+                  "# | true",
                   &totally_dual_integral, "totally_dual_integral");
 
 } }

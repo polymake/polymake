@@ -28,13 +28,13 @@ std::vector<std::string> read_labels(const perl::Object& p, AnyString label_prop
 
 //! Read a `labels' property into a properly sized container
 template <typename Container>
-typename std::enable_if<pm::isomorphic_to_container_of<Container, std::string>::value>::type
-read_labels(const perl::Object& p, AnyString label_prop, Container& labels)
+std::enable_if_t<pm::isomorphic_to_container_of<pure_type_t<Container>, std::string>::value>
+read_labels(const perl::Object& p, AnyString label_prop, Container&& labels)
 {
    if (!(p.lookup(label_prop) >> labels)) {
       int i=0;
       for (auto l=entire(labels); !l.at_end(); ++l, ++i)
-         *l=std::to_string(i);
+         *l = std::to_string(i);
    }
 }
 

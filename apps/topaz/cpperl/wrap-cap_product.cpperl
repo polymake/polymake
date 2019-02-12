@@ -1,0 +1,5 @@
+{"app": "topaz", "embed": "cap_product.cc",
+ "inst": [
+  {"args": ["Integer", "perl::Canned<const CycleGroup<Integer>&>", "perl::Canned<const CycleGroup<Integer>&>"], "func": "cap_product", "include": ["polymake/Integer.h", "polymake/topaz/HomologyComplex.h"], "sig": "cap_product:T1.X.X", "tp": "1"},
+ null ],
+"version": 3}

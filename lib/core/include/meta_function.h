@@ -21,14 +21,54 @@
 
 namespace polymake {
 
-template <bool TValue>
-using bool_constant = std::integral_constant<bool, TValue>;
+template <bool Value>
+using bool_constant = std::integral_constant<bool, Value>;
 
-template <int TValue>
-using int_constant = std::integral_constant<int, TValue>;
+template <int Value>
+using int_constant = std::integral_constant<int, Value>;
 
-template <char TValue>
-using char_constant = std::integral_constant<char, TValue>;
+template <char Value>
+using char_constant = std::integral_constant<char, Value>;
+
+template <typename T>
+using bool_not
+   = std::integral_constant<bool, !T::value>;
+
+/// Canonicalized compile-time constant
+template <typename T>
+using mvalue_of
+   = std::integral_constant<typename T::value_type, T::value>;
+
+/// Operations on compile-time constants
+
+template <typename Const1, typename Const2>
+using mis_equal
+   = bool_constant<(Const1::value == Const2::value)>;
+
+template <typename Const1, typename Const2>
+using mis_less
+   = bool_constant<(Const1::value < Const2::value)>;
+
+template <typename Const1, typename Const2>
+using mis_greater
+   = bool_constant<(Const1::value > Const2::value)>;
+
+template <typename Const1, typename Const2>
+using mminimum
+   = std::conditional<mis_less<Const1, Const2>::value, Const1, Const2>;
+
+template <typename Const1, typename Const2>
+using mmaximum
+   = std::conditional<mis_greater<Const1, Const2>::value, Const1, Const2>;
+
+template <typename Const1, typename Const2>
+using madd
+   = std::integral_constant<decltype(Const1::value + Const2::value), Const1::value + Const2::value>;
+
+template <typename Const1, typename Const2>
+using msubtract
+   = std::integral_constant<decltype(Const1::value - Const2::value), Const1::value - Const2::value>;
+
 
 /// Choose the type occurring in the first satisifed clause.
 /// Every clause but the last one must be an instance of std::enable_if.
@@ -37,61 +77,59 @@ using char_constant = std::integral_constant<char, TValue>;
 template <typename... TClauses>
 struct mselect;
 
-template <typename T>
-struct mselect<std::enable_if<true, T>> {
-   typedef T type;
+template <typename T, typename T2, typename... Tail>
+struct mselect<std::enable_if<true, T>, T2, Tail...> {
+   using type = T;
 };
 
-template <typename T, typename T2, typename... TTail>
-struct mselect<std::enable_if<true, T>, T2, TTail...> {
-   typedef T type;
-};
+template <typename T, typename T2, typename... Tail>
+struct mselect<std::enable_if<false, T>, T2, Tail...>
+   : mselect<T2, Tail...> {};
 
-template <typename T, typename T2, typename... TTail>
-struct mselect<std::enable_if<false, T>, T2, TTail...>
-   : mselect<T2, TTail...> {};
-
-template <typename T>
-struct mselect<std::enable_if<false, T>> {};
-
+// final conditional clause and no 'otherwise' case
+template <bool cond, typename T>
+struct mselect<std::enable_if<cond, T>>
+   : std::enable_if<cond, T> {};
+ 
+// 'otherwise' case
 template <typename T>
 struct mselect<T> {
-   typedef T type;
+   using type = T;
 };
 
 /// Operation on a pair of types: selects the first one
 
 template <typename T1, typename T2>
 struct mproject1st {
-  typedef T1 type;
+  using type = T1;
 };
 
 /// Operation on a pair of types: selects the first one unless it is void
 template <typename T1, typename T2>
 struct mprefer1st {
-  typedef T1 type;
+  using type = T1;
 };
 
 template <typename T2>
 struct mprefer1st<void, T2> {
-  typedef T2 type;
+  using type = T2;
 };
 
 /// Operation on a pair of types: selects the second one
 template <typename T1, typename T2>
 struct mproject2nd {
-  typedef T2 type;
+  using type = T2;
 };
 
 /// Operation on a pair of types: selects the second one unless it is void
 template <typename T1, typename T2>
 struct mprefer2nd {
-  typedef T2 type;
+  using type = T2;
 };
 
 template <typename T1>
 struct mprefer2nd<T1, void> {
-  typedef T1 type;
+  using type = T1;
 };
 
 /// container for arbitrary many types
@@ -102,37 +140,99 @@ struct mlist {};
 template <typename T, template <typename...> class Template>
 struct is_instance_of
    : std::false_type {
-   typedef mlist<> params;
+   using params = void;
 };
 
 template <typename... T, template <typename...> class Template>
 struct is_instance_of<Template<T...>, Template>
    : std::true_type {
-   typedef mlist<T...> params;
+   using params = mlist<T...>;
 };
 
 /// wrapper for a meta-function
 /// allows to pass meta-functions as elements of (tagged) meta-lists
-template <template <typename...> class TFunction>
+template <template <typename...> class Func>
 struct meta_function {
-   template <typename T> struct apply;
-
    template <typename... T>
-   struct apply<mlist<T...>>
-      : TFunction<T...> {};
+   using func = Func<T...>;
 };
+
+
+// as long as we don't have C++17 void_t
+template <typename... T>
+using accept_valid_type = void;
+
+template <template <typename...> class T>
+using accept_valid_template = void;
+
+
+/// Safely evaluate a unary boolean meta-function
+/// Return false for void input
+template <typename T, template <typename> class Func>
+struct msafely_eval_boolean
+  : bool_constant<Func<T>::value> {};
+
+template <template <typename> class Func>
+struct msafely_eval_boolean<void, Func>
+  : std::false_type {};
 
 
 /// Safely evaluate a meta-function.
 /// If its result is undefined, deliver the fallback value.
-template <typename TFunction, typename TFallback, typename TDefined=void>
-struct mevaluate {
-   typedef TFallback type;
+template <typename Func, typename Fallback, typename IsDefined = void>
+struct msafely_eval {
+   using type = Fallback;
 };
 
-template <typename TFunction, typename TFallback>
-struct mevaluate<TFunction, TFallback, typename mproject2nd<typename TFunction::type, void>::type>
-   : TFunction {};
+template <typename Func, typename Fallback>
+struct msafely_eval<Func, Fallback, accept_valid_type<typename Func::type>>
+   : Func {};
+
+/// Wrappers for arbitrary meta-functions
+
+/// Unary meta-function always returns the same result
+template <typename Const>
+struct mbind_const {
+   template <typename>
+   struct func {
+      using type = Const;
+   };
+};
+
+/// Reduce a binary meta-function to a unary one by fixing the first argument to a given value
+template <template <typename, typename> class BinaryFunc, typename Const>
+struct mbind1st {
+   template <typename Arg>
+   using func = BinaryFunc<Const, Arg>;
+};
+
+/// Reduce a binary meta-function to a unary one by fixing the second argument to a given value
+template <template <typename, typename> class BinaryFunc, typename Const>
+struct mbind2nd {
+   template <typename Arg>
+   using func = BinaryFunc<Arg, Const>;
+};
+
+/// Swap arguments passed to a binary meta-function
+template <template <typename, typename> class BinaryFunc>
+struct mswap_args {
+   template <typename Arg1, typename Arg2>
+   using func = BinaryFunc<Arg2, Arg1>;
+};
+
+/// Negate the result of a unary boolean meta-function
+template <template <typename> class UnaryFunc>
+struct mnegate_unary {
+   template <typename Arg>
+   using func = bool_constant<!UnaryFunc<Arg>::value>;
+};
+
+/// Negate the result of a binary boolean meta-function
+template <template <typename, typename> class BinaryFunc>
+struct mnegate_binary {
+   template <typename Arg1, typename Arg2>
+   using func = bool_constant<!BinaryFunc<Arg1, Arg2>::value>;
+};
 
 }
 

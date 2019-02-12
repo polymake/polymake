@@ -34,55 +34,62 @@ namespace polymake { namespace polytope {
 template <typename Scalar>
 perl::Object dual_linear_program(perl::Object p_in, bool maximize)
 {
-  // variable declaration. Names are self explaining.
-  perl::Object old_lp, new_lp(perl::ObjectType::construct<Scalar>("LinearProgram"));
-  perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
-  Vector<Scalar> new_objective;
-  Matrix<Scalar> old_ineq, new_ineq;
-  Matrix<Scalar> old_eq, new_eq;
-  Vector<Scalar> new_right;
-  int dim_dual_positive, dim_dual_free;
+   // variable declaration. Names are self explaining.
+   perl::Object old_lp, new_lp("LinearProgram", mlist<Scalar>());
+   perl::Object p_out("Polytope", mlist<Scalar>());
+   Vector<Scalar> new_objective;
+   Matrix<Scalar> old_ineq, new_ineq;
+   Matrix<Scalar> old_eq, new_eq;
+   Vector<Scalar> new_right;
+   int dim_dual_positive, dim_dual_free;
   
-  // reading the old problem.
-  // we get the problem as: min <c,x> s.t. Ax >= b, Bx = d
-  p_in.give("LP") >> old_lp;
-  old_lp.give("LINEAR_OBJECTIVE") >> new_right;
-  p_in.lookup("FACETS | INEQUALITIES") >> old_ineq;
-  p_in.lookup("AFFINE_HULL | EQUATIONS") >> old_eq;
+   // reading the old problem.
+   // we get the problem as: min <c,x> s.t. Ax >= b, Bx = d
+   p_in.give("LP") >> old_lp;
+   old_lp.give("LINEAR_OBJECTIVE") >> new_right;
+   p_in.lookup("FACETS | INEQUALITIES") >> old_ineq;
+   p_in.lookup("AFFINE_HULL | EQUATIONS") >> old_eq;
   
-  dim_dual_positive = old_ineq.rows();  // number of variables which must be >= 0
-  dim_dual_free = old_eq.rows();        // number of variables which do not have a sign constrain
-  
-  
-  // building the new Problem. Starting with the new objective = (b,d)
-  new_objective = zero_vector<Scalar>(1);
-  if (dim_dual_positive > 0) {new_objective |= (-old_ineq.col(0));};
-  if (dim_dual_free > 0) {new_objective |= (-old_eq.col(0));};
-  
-  // taking care of correct sign for objective and right hand side
-  // if we want to maximize the primal problem
-  if (maximize) {
-    new_objective = -new_objective;
-    new_right = -new_right;
-  }
-  
-  // building the new equations = (A^t, B^t) (u,v) = c
-  new_eq |= (-new_right.slice(~scalar2set(0)));
-  if (dim_dual_positive > 0) {new_eq |= (T(old_ineq.minor(All,~scalar2set(0))));};
-  if (dim_dual_free > 0) {new_eq |= (T(old_eq.minor(All,~scalar2set(0))));};
-  
-  // building the new inequalities which are just the sign constrains for "u"
-  // and the inequality for the far-face
-  new_ineq = (unit_matrix<Scalar>(dim_dual_positive + 1));
-  if (dim_dual_free >0) {new_ineq |= (zero_matrix<Scalar>(dim_dual_positive+1, dim_dual_free));};
+   dim_dual_positive = old_ineq.rows();  // number of variables which must be >= 0
+   dim_dual_free = old_eq.rows();        // number of variables which do not have a sign constrain
 
-  // writing the new problem  
-  new_lp.take("LINEAR_OBJECTIVE") << new_objective;
-  p_out.take("INEQUALITIES") << new_ineq;
-  p_out.take("EQUATIONS") << new_eq;
-  p_out.take("LP") << new_lp;
+   // building the new Problem. Starting with the new objective = (b,d)
+   new_objective = zero_vector<Scalar>(1);
+   if (dim_dual_positive > 0) {
+      new_objective |= (-old_ineq.col(0));
+   }
+   if (dim_dual_free > 0) {
+      new_objective |= (-old_eq.col(0));
+   }
+  
+   // taking care of correct sign for objective and right hand side
+   // if we want to maximize the primal problem
+   if (maximize) {
+      new_objective.negate();
+      new_right.negate();
+   }
 
-  return p_out;
+   // building the new equations = (A^t, B^t) (u,v) = c
+   new_eq |= -new_right.slice(range_from(1));
+   if (dim_dual_positive > 0)
+      new_eq |= T(old_ineq.minor(All, range_from(1)));
+   if (dim_dual_free > 0)
+      new_eq |= T(old_eq.minor(All, range_from(1)));
+
+   // building the new inequalities which are just the sign constrains for "u"
+   // and the inequality for the far-face
+   new_ineq = (unit_matrix<Scalar>(dim_dual_positive + 1));
+   if (dim_dual_free > 0) {
+      new_ineq |= (zero_matrix<Scalar>(dim_dual_positive+1, dim_dual_free));
+   }
+
+   // writing the new problem  
+   new_lp.take("LINEAR_OBJECTIVE") << new_objective;
+   p_out.take("INEQUALITIES") << new_ineq;
+   p_out.take("EQUATIONS") << new_eq;
+   p_out.take("LP") << new_lp;
+
+   return p_out;
 }
 
 

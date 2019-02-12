@@ -39,7 +39,7 @@ void orthogonalize(Matrix<E>& Points, Matrix<E>& LS)
     }
 
     // moving one point to the origin (watch out for rays)
-    Vector<E> a = (0|Points.row(*noRays.begin()).slice(1));
+    Vector<E> a = (0|Points.row(*noRays.begin()).slice(range_from(1)));
     Matrix<E> m = repeat_row(a, noRays.size());
     Points.minor(noRays,All) -= m;
     

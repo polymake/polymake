@@ -1,0 +1,14 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<const Matrix<Rational>&>>"], "func": "T", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "transpose.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Matrix<double>&>>"], "func": "T", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "transpose.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>&>>"], "func": "T", "include": ["polymake/IncidenceMatrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "transpose.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const IncidenceMatrix<NonSymmetric>&>>"], "func": "T", "include": ["polymake/IncidenceMatrix.h"], "sig": "transpose.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Matrix<Integer>&>>"], "func": "T", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h"], "sig": "transpose.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Matrix<QuadraticExtension<Rational>>&>>"], "func": "T", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "transpose.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const pm::MatrixMinor<pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::Set<int, pm::operations::cmp> const, pm::all_selector const&>&>>"], "func": "T", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Set.h"], "sig": "transpose.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const SparseMatrix<double, NonSymmetric>&>>"], "func": "T", "include": ["polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "sig": "transpose.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const pm::RepeatedRow<pm::SameElementVector<pm::Rational const&> >&>>"], "func": "T", "include": ["polymake/Rational.h", "polymake/linalg.h"], "sig": "transpose.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Array<int> const&, pm::all_selector const&>&>>"], "func": "T", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "transpose.X8"},
+ null ],
+"version": 3}

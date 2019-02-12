@@ -33,7 +33,7 @@ E schlegel_nearest_neighbor_crossing (const GenericMatrix<FMatrix,E>& F,
 {
    E alpha(-1);
    bool constrained=false;
-   for (typename Entire< Rows<FMatrix> >::const_iterator nf=entire(rows(F)); !nf.at_end();  ++nf) {
+   for (auto nf=entire(rows(F)); !nf.at_end();  ++nf) {
       const E Fr=(*nf)*ViewRay;
       if (Fr<0) {       // intersection on the negative side
          const E alpha_here=-((*nf)*FacetPoint)/Fr;
@@ -54,7 +54,7 @@ E schlegel_nearest_neighbor_crossing (const GenericMatrix<FMatrix,E>& F,
 {
    E alpha(-1);
    bool constrained=false;
-   for (typename Entire< Rows<FMatrix> >::const_iterator nf=entire(rows(F)); !nf.at_end();  ++nf) {
+   for (auto nf=entire(rows(F)); !nf.at_end();  ++nf) {
       const E Fr=(*nf)*ViewRay;
       if (Fr<0) {       // intersection on the negative side
          const E alpha_here=-((*nf)[0]/Fr);

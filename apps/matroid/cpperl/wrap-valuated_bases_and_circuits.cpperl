@@ -1,0 +1,8 @@
+{"app": "matroid", "embed": "valuated_bases_and_circuits.cc",
+ "inst": [
+  {"args": ["Max", "Rational", "void"], "func": "valuated_bases_from_circuits", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "valuated_bases_from_circuits:T2.B", "tp": "2"},
+  {"args": ["Min", "Rational", "void"], "func": "valuated_bases_from_circuits", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "valuated_bases_from_circuits:T2.B", "tp": "2"},
+  {"args": ["Max", "Rational", "void"], "func": "valuated_circuits_from_bases", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "valuated_circuits_from_bases:T2.B", "tp": "2"},
+  {"args": ["Min", "Rational", "void"], "func": "valuated_circuits_from_bases", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "valuated_circuits_from_bases:T2.B", "tp": "2"},
+ null ],
+"version": 3}

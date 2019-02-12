@@ -1,6 +1,10 @@
 # input for generate_ninja_targets.pl
 
-( ( map { $_ => '${bundled.cdd.CFLAGS}' } qw(cdd_interface.cc cdd_float_interface.cc) ),
+# sympol and cdd interface compete for initialization of cdd global variables
+my $standalone_global_init = $ConfigFlags{BundledExts} =~ /\bsympol\b/ ? '' : ' -DPOLYMAKE_CDD_STANDALONE_GLOBAL_INIT';
+
+( 'cdd_interface.cc' => '${bundled.cdd.CFLAGS}'.$standalone_global_init,
+  'cdd_float_interface.cc' => '${bundled.cdd.CFLAGS}',
 
   $ConfigFlags{'bundled.cdd.UseBundled'}
   ? ( staticlib => {

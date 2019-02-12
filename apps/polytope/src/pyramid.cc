@@ -33,15 +33,12 @@ perl::Object pyramid(perl::Object p_in, const Scalar& z, perl::OptionSet options
 
    if (z==0 && !noc)
       throw std::runtime_error("pyramid: z must be non-zero");
-   if(group && !p_in.exists("GROUP"))
-         throw std::runtime_error("pyramid: group of the base polytope needs to be provided in order to compute group of the pyramid.");
+   if (group && !p_in.exists("GROUP"))
+      throw std::runtime_error("pyramid: group of the base polytope needs to be provided in order to compute group of the pyramid.");
 
    int n_vertices=0;
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "pyramid over " << p_in.name() << endl;
-
-
-
 
    if (noc || p_in.exists("VERTICES_IN_FACETS")) {
       const IncidenceMatrix<> VIF=p_in.give("VERTICES_IN_FACETS");

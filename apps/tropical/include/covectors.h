@@ -19,7 +19,6 @@ GNU General Public License for more details.
 
 #include "polymake/tropical/arithmetic.h"
 #include "polymake/linalg.h"
-#include "polymake/common/hadamard_product.h"
 #include "polymake/IncidenceMatrix.h"
 
 namespace polymake { namespace tropical {
@@ -139,10 +138,10 @@ namespace polymake { namespace tropical {
 	  int pt_index = 0;
 	  for (auto pt = entire(rows(points)); !pt.at_end(); pt++, pt_index++) {
 	    if ((*pt)[0] == 1) {
-	      result[pt_index] = single_covector(Vector<TropicalNumber<Addition, Scalar>>(pt->slice(1)), generators);
+	      result[pt_index] = single_covector(Vector<TropicalNumber<Addition, Scalar>>(pt->slice(range_from(1))), generators);
 	    }
             else {
-	      Set<int> one_entries = support(pt->slice(1)); //the indices of the 1-entries of the 0/1-ray
+	      Set<int> one_entries = support(pt->slice(range_from(1))); //the indices of the 1-entries of the 0/1-ray
 	      if ( (*pt)[ one_entries.front()+1 ] * Addition::orientation() < 0 )
                 one_entries = sequence(0, dimension) - one_entries;
 
@@ -162,7 +161,7 @@ namespace polymake { namespace tropical {
 
 	  IncidenceMatrix<> pt_covector(apices.rows(),apices.cols());
 
-	  for(auto apex = ensure(rows(apices),(pm::cons<pm::end_sensitive, pm::indexed>*)0).begin(); !apex.at_end(); apex++) {
+	  for (auto apex = entire<indexed>(rows(apices)); !apex.at_end(); ++apex) {
 	    TNumber extremum = *apex*point;
 	    if (!is_zero(extremum)) {
 	      Vector<TNumber> hadaprod(attach_operation(*apex,point.top(),operations::mul()));

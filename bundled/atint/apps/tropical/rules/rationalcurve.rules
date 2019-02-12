@@ -24,261 +24,229 @@
 # @Category Combinatorics
 object RationalCurve {
 
-	use overload('+' => 'add', '*' => 'scalar_multiplication', '-' => 'subtract', '""' => 'to_string', fallback => 1);
+   use overload('+' => 'add', '*' => 'scalar_multiplication', '-' => 'subtract', '""' => 'to_string', fallback => 1);
 
-	# @category Combinatorics
-	# A list of partitions of [n] that define the tree of the curve: For each bounded edge we have 
-	# the corresponding partition of the n leaves. These should be irredundant. If you want to input
-	# a possibly redundant list, use [[INPUT_SETS]] and [[INPUT_COEFFS]] instead. The number of marked leaves
-	# should always be given by [[N_LEAVES]]. The sets are subsets of {1,...,n} (NOT {0,..,n-1}!)
-	# Note that the zero curve (i.e. no bounded edges, only leaves) is represented by one empty set
-	# with corresponding lenghth 0.
-	property SETS : IncidenceMatrix;
+   # @category Combinatorics
+   # A list of partitions of [n] that define the tree of the curve: For each bounded edge we have 
+   # the corresponding partition of the n leaves. These should be irredundant. If you want to input
+   # a possibly redundant list, use [[INPUT_SETS]] and [[INPUT_COEFFS]] instead. The number of marked leaves
+   # should always be given by [[N_LEAVES]]. The sets are subsets of {1,...,n} (NOT {0,..,n-1}!)
+   # Note that the zero curve (i.e. no bounded edges, only leaves) is represented by one empty set
+   # with corresponding lenghth 0.
+   property SETS : IncidenceMatrix;
 
-	# @category Combinatorics
-	# A list of positive rational coefficients. The list should have the same length as [[SETS]] and
-	# contain only entries > 0. The i-th entry then gives the length of the bounded edge defined by
-	# the i-th partition. If you're not sure if all your coefficients are > 0, use [[INPUT_SETS]] and
-	# [[INPUT_COEFFS]] instead.
-	# Note that the zero curve (i.e. no bounded edges, only leaves) is represented by one empty set
-	# with corresponding lenghth 0.
-	property COEFFS : Vector<Rational>;
+   # @category Combinatorics
+   # A list of positive rational coefficients. The list should have the same length as [[SETS]] and
+   # contain only entries > 0. The i-th entry then gives the length of the bounded edge defined by
+   # the i-th partition. If you're not sure if all your coefficients are > 0, use [[INPUT_SETS]] and
+   # [[INPUT_COEFFS]] instead.
+   # Note that the zero curve (i.e. no bounded edges, only leaves) is represented by one empty set
+   # with corresponding lenghth 0.
+   property COEFFS : Vector<Rational>;
 
-	# @category Input property
-	# Same as [[SETS]], except that sets may appear several times.
-	property INPUT_SETS : IncidenceMatrix;
+   # @category Input property
+   # Same as [[SETS]], except that sets may appear several times.
+   property INPUT_SETS : IncidenceMatrix;
 
-	# @category Input property
-	# Same as [[COEFFS]], except that entries may be <=0. This should have the same length as [[INPUT_SETS]].
-	property INPUT_COEFFS : Vector<Rational>;
+   # @category Input property
+   # Same as [[COEFFS]], except that entries may be <=0. This should have the same length as [[INPUT_SETS]].
+   property INPUT_COEFFS : Vector<Rational>;
 
-	# @category Combinatorics
-	# The number of leaves of the rational curve.
-	property N_LEAVES : Int;
+   # @category Combinatorics
+   # The number of leaves of the rational curve.
+   property N_LEAVES : Int;
 
-	# @category Input property
-	# This property can also be used to define a rational curve: A linear combination of partitions is
-	# given as a string, using the following syntax:
-	# A partition is given as a subset of {1,..,n} and written as a comma-separated list of leaf
-	# indices in round brackets, e.g. "(1,2,5)"
-	# A linear combination can be created using rational numbers, "+","+" and "-" in the obvious way, 
-	# e.g. "2*(1,2,5) + 1*(3,4,7) - 2(1,2) (The "*" is optional)
-	# Of course, each set should contain at least two elements. If you don't specify N_LEAVES, it is
-	# set to be the largest leaf index occuring in the sets.
-	# Partitions needn't be irredundant and coefficients can be any rational number. If the resulting 
-	# element is not in the moduli space, an error is thrown.
-	property INPUT_STRING : String;
+   # @category Input property
+   # This property can also be used to define a rational curve: A linear combination of partitions is
+   # given as a string, using the following syntax:
+   # A partition is given as a subset of {1,..,n} and written as a comma-separated list of leaf
+   # indices in round brackets, e.g. "(1,2,5)"
+   # A linear combination can be created using rational numbers, "+","+" and "-" in the obvious way, 
+   # e.g. "2*(1,2,5) + 1*(3,4,7) - 2(1,2) (The "*" is optional)
+   # Of course, each set should contain at least two elements. If you don't specify N_LEAVES, it is
+   # set to be the largest leaf index occuring in the sets.
+   # Partitions needn't be irredundant and coefficients can be any rational number. If the resulting 
+   # element is not in the moduli space, an error is thrown.
+   property INPUT_STRING : String;
 
-	# @category Combinatorics
-	# Contains the abstract graph (non-metric) corresponding to the curve. All unbounded leaves are modelled
-	# as bounded edges.
-	# The vertices at the ends of the "leaves" are always the first [[N_LEAVES]] vertices.
-	property GRAPH : graph::Graph;
+   # @category Combinatorics
+   # Contains the abstract graph (non-metric) corresponding to the curve. All unbounded leaves are modelled
+   # as bounded edges.
+   # The vertices at the ends of the "leaves" are always the first [[N_LEAVES]] vertices.
+   property GRAPH : graph::Graph;
 
-	# @category Combinatorics
-	# Contains the lengths of the edges of [[GRAPH]] that represent bounded edges of the curve.
-	# The coefficients appear in the order that the corr. edges appear in [[EDGES]].
-	property GRAPH_EDGE_LENGTHS : Vector<Rational>;
+   # @category Combinatorics
+   # Contains the lengths of the edges of [[GRAPH]] that represent bounded edges of the curve.
+   # The coefficients appear in the order that the corr. edges appear in [[EDGES]].
+   property GRAPH_EDGE_LENGTHS : Vector<Rational>;
 
-	# @category Combinatorics
-	# This incidence matrix gives a list of the vertices of the curve
-	# Each row corresponds to a vertex and contains as a set the row indices of the [[SETS]] that
-	# correspond to edges attached to that vertex
-	property NODES_BY_SETS : IncidenceMatrix;
+   # @category Combinatorics
+   # This incidence matrix gives a list of the vertices of the curve
+   # Each row corresponds to a vertex and contains as a set the row indices of the [[SETS]] that
+   # correspond to edges attached to that vertex
+   property NODES_BY_SETS : IncidenceMatrix;
 
-	# @category Combinatorics
-	# This incidence matrix gives a list of the vertices of the curve
-	# Each row corresponds to a vertex and contains as a set the [[LEAVES] that are
-	# attached to that vertex (again, counting from 1!)
-	property NODES_BY_LEAVES : IncidenceMatrix;
+   # @category Combinatorics
+   # This incidence matrix gives a list of the vertices of the curve
+   # Each row corresponds to a vertex and contains as a set the [[LEAVES] that are
+   # attached to that vertex (again, counting from 1!)
+   property NODES_BY_LEAVES : IncidenceMatrix;
 
-	# @category Combinatorics
-	# This gives a list of the vertices of the curve in terms of their valences
-	# They appear in the same order as in [[NODES_BY_LEAVES]] or [[NODES_BY_SETS]]
-	property NODE_DEGREES : Vector<Int>;
+   # @category Combinatorics
+   # This gives a list of the vertices of the curve in terms of their valences
+   # They appear in the same order as in [[NODES_BY_LEAVES]] or [[NODES_BY_SETS]]
+   property NODE_DEGREES : Vector<Int>;
 
-	# ----------------------- RULES -------------------------------------
+   # ----------------------- RULES -------------------------------------
 
-	rule SETS, COEFFS : INPUT_SETS, INPUT_COEFFS, N_LEAVES {
-		# Compute metric from input and then reconvert to irredundant description
-		my $metric = metric_from_curve($this->INPUT_SETS, $this->INPUT_COEFFS, $this->N_LEAVES);
-		my $curve = rational_curve_from_metric($metric);
-		$this->SETS = $curve->SETS;
-		$this->COEFFS = $curve->COEFFS;
-	}
+   rule SETS, COEFFS : INPUT_SETS, INPUT_COEFFS, N_LEAVES {
+      # Compute metric from input and then reconvert to irredundant description
+      my $metric = metric_from_curve($this->INPUT_SETS, $this->INPUT_COEFFS, $this->N_LEAVES);
+      my $curve = rational_curve_from_metric($metric);
+      $this->SETS = $curve->SETS;
+      $this->COEFFS = $curve->COEFFS;
+   }
 
-	rule INPUT_SETS, INPUT_COEFFS : INPUT_STRING {
-		my $string = $this->INPUT_STRING;
-		$string =~ s/\s+//g; #Remove any whitespace before parsing
-		#First we split the input along any consecutive sequence of + and -
-		my @termlist = split(/[\+\-]+/,$string); 
+   rule INPUT_SETS, INPUT_COEFFS : INPUT_STRING {
+      my $string = $this->INPUT_STRING;
+      $string =~ s/\s+//g; #Remove any whitespace before parsing
+      # First we split the input along any consecutive sequence of + and -
+      my @termlist = split(/[\+\-]+/,$string); 
 
-		#Now extract the signs of the terms
-		my @signlist = ($string =~ /[\+\-]+/g);
+      # Now extract the signs of the terms
+      my @signlist = ($string =~ /[\+\-]+/g);
 
-		#If the first term's empty that means there are signs before the actual first term
-		if($termlist[0] eq "") {
-			shift(@termlist);
-		}
-		#If not then we don't have a sign for the first term and add it
-		else {
-			@signlist = ("+",@signlist);
-		}
-		#If the last term is empty that means there is an empty term at the end. Hence we also forget the corr. signs
-		if($termlist[scalar(@termlist)-1] eq "") {
-			pop(@termlist);
-			pop(@signlist);
-		}
-		#Now every element in signlist corresponds to a term. We count the number of -'s to determine the actual
-		# sign of the term
-		my @signs = ();
-		for my $index (0 .. scalar(@termlist)-1) {
-			my $minussigns = scalar(($signlist[$index] =~ tr/\-//));
-			if ($minussigns % 2) { #If the number of -'s is odd, set sign to -
-				@signs = (@signs,-1);
-				#$termlist[$index] = "-" . $termlist[$index];
-			}
-			else {
-				@signs = (@signs,1);
-			}
-		}
+      # If the first term's empty that means there are signs before the actual first term
+      if ($termlist[0] eq "") {
+         shift(@termlist);
+      }
+      # If not then we don't have a sign for the first term and add it
+      else {
+         @signlist = ("+",@signlist);
+      }
+      # If the last term is empty that means there is an empty term at the end. Hence we also forget the corr. signs
+      if($termlist[scalar(@termlist)-1] eq "") {
+         pop(@termlist);
+         pop(@signlist);
+      }
+      # Now every element in signlist corresponds to a term. We count the number of -'s to determine the actual
+      # sign of the term
+      my @signs = ();
+      for my $index (0 .. scalar(@termlist)-1) {
+         my $minussigns = scalar(($signlist[$index] =~ tr/\-//));
+         # If the number of -'s is odd, set sign to -
+         push @signs, $minussigns % 2 ? -1 : 1;
+      }
 
-		#Now we parse each term 
-		my @input_sets = ();
-		my @input_coeffs = ();
-		my $signindex = 0;
+      # Now we parse each term 
+      my @input_sets = ();
+      my @input_coeffs = ();
+      my $signindex = 0;
 
-		for my $term (@termlist) {
-			#Divide term into coefficient and set
-			my @termsep = ($term =~ /^(\-?[^a-zA-Z\*]*)?\*?\(([\d,]*)\)/);
-			if(scalar(@termsep) != 2) {
-				die "Invalid term: ", $term,"\n";
-			}
+      for my $term (@termlist) {
+         # Divide term into coefficient and set
+         my @termsep = ($term =~ /^(\-?[^a-zA-Z\*]*)?\*?\(([\d,]*)\)/);
+         if (scalar(@termsep) != 2) {
+            die "Invalid term: ", $term,"\n";
+         }
 
-			#Parse coefficient
-			my $coefficient = new Rational($termsep[0] eq "" ? 1 : $termsep[0]);
-			$coefficient = $coefficient * $signs[$signindex];
-			@input_coeffs = (@input_coeffs,$coefficient);
+         # Parse coefficient
+         my $coefficient = new Rational($termsep[0] eq "" ? 1 : $termsep[0]);
+         push @input_coeffs, $coefficient * $signs[$signindex];
 
-			#Parse set
-			my $set = new Set<Int>();
-			my @numbers = split(/,/,$termsep[1]);
-			for my $n (@numbers) {
-				$set = $set + new Int($n);
-			}
-			@input_sets = (@input_sets, $set);
-			$signindex++;
-		}
+         # Parse set
+         push @input_sets, new Set<Int>([ split(/,/, $termsep[1]) ]);
+         ++$signindex;
+      }
 
-		$this->INPUT_SETS = new IncidenceMatrix(\@input_sets);
-		$this->INPUT_COEFFS = new Vector<Rational>(\@input_coeffs);
-	}
+      $this->INPUT_SETS = new IncidenceMatrix(\@input_sets);
+      $this->INPUT_COEFFS = new Vector<Rational>(\@input_coeffs);
+   }
 
-	#If no leaf number is given, it is assumed to be the maximal element occuring in the sets
-	rule N_LEAVES : INPUT_SETS {
-		my $s = new Set<Int>();
-		my $M = $this->INPUT_SETS;
-		for(my $i = 0; $i < $M->rows(); $i++) {
-			$s = $s + $M->row($i);
-		}
-		my @a = @{$s};
-		$this->N_LEAVES = $a[scalar(@a)-1];
-	}
+   # If no leaf number is given, it is assumed to be the maximal element occuring in the sets
+   rule N_LEAVES : INPUT_SETS {
+      $this->N_LEAVES = $this->INPUT_SETS->cols-1;
+   }
 
-	rule GRAPH, GRAPH_EDGE_LENGTHS: SETS,COEFFS, N_LEAVES {
-		my @a = curve_graph_from_metric($this->metric_vector());
-		$this->GRAPH = $a[0];
-		$this->GRAPH_EDGE_LENGTHS = $a[1];
-	}
+   rule GRAPH, GRAPH_EDGE_LENGTHS: SETS,COEFFS, N_LEAVES {
+      my @a = curve_graph_from_metric($this->metric_vector());
+      $this->GRAPH = $a[0];
+      $this->GRAPH_EDGE_LENGTHS = $a[1];
+   }
 
-	rule NODES_BY_LEAVES, NODES_BY_SETS, NODE_DEGREES : SETS, COEFFS, N_LEAVES {
-		compute_node_data($this);
-	}
+   rule NODES_BY_LEAVES, NODES_BY_SETS, NODE_DEGREES : SETS, COEFFS, N_LEAVES {
+      compute_node_data($this);
+   }
 
-	# -------------------------- METHODS --------------------------------
+   # -------------------------- METHODS --------------------------------
 
 
-	# @topic category methods/Conversion
-	# These deal with converting the representation of a rational curve between
-	# metric vector and matroid fan coordinates.
+   # @topic category methods/Conversion
+   # These deal with converting the representation of a rational curve between
+   # metric vector and matroid fan coordinates.
 
-	# @category Conversion
-	# Returns the (n over 2) metric vector of the rational n-marked curve
-	user_method metric_vector {
-		my $this = shift;
-		return metric_from_curve($this->SETS,$this->COEFFS,$this->N_LEAVES);
-	}
+   # @category Conversion
+   # Returns the (n over 2) metric vector of the rational n-marked curve
+   user_method metric_vector {
+      my ($this) = @_;
+      return metric_from_curve($this->SETS,$this->COEFFS,$this->N_LEAVES);
+   }
 
 
-	# ----------------------------- OVERLOADED OPERATORS -----------------
+   # ----------------------------- OVERLOADED OPERATORS -----------------
 
-	sub add {
-		my ($a,$b) = @_;
-		my $va = $a->metric_vector();
-		my $vb = $b->metric_vector();
-		if($va->dim() != $vb->dim()) {
-			die "Cannot add curves: Dimension mismatch.";
-		}
-		my $vr = $va+$vb;
-		#We keep the old curves as INPUT_*
-		my @input_sets = (@{$a->SETS}, @{$b->SETS});
-		my $r = rational_curve_from_metric($vr);
-		return new RationalCurve(SETS=>$r->SETS,COEFFS=>$r->COEFFS, INPUT_SETS=>new Vector<Set<Int>>(\@input_sets), INPUT_COEFFS=>($a->COEFFS | $b->COEFFS), N_LEAVES=>$r->N_LEAVES);
-	}
+   sub add {
+      my ($a, $b) = @_;
+      my $va = $a->metric_vector();
+      my $vb = $b->metric_vector();
+      if ($va->dim() != $vb->dim()) {
+         die "Cannot add curves: Dimension mismatch.";
+      }
+      my $vr = $va+$vb;
+      # We keep the old curves as INPUT_*
+      my @input_sets = (@{$a->SETS}, @{$b->SETS});
+      my $r = rational_curve_from_metric($vr);
+      return new RationalCurve(SETS=>$r->SETS,COEFFS=>$r->COEFFS, INPUT_SETS=>new Vector<Set<Int>>(\@input_sets), INPUT_COEFFS=>($a->COEFFS | $b->COEFFS), N_LEAVES=>$r->N_LEAVES);
+   }
 
-	#For some reason the arguments seem to be sorted s.t. the scalar is always at the end
-	sub scalar_multiplication { 
-		my ($r,$c) = @_;
-		my $vc = $r->metric_vector();
-		my $x = rational_curve_from_metric($c * $vc);
-		return new RationalCurve(SETS=>$x->SETS,COEFFS=>$x->COEFFS,INPUT_SETS=>$r->SETS,INPUT_COEFFS=>($c * $r->COEFFS),N_LEAVES=>$x->N_LEAVES);
-	}
+   sub scalar_multiplication { 
+      my ($r, $c) = @_;
+      my $vc = $r->metric_vector();
+      my $x = rational_curve_from_metric($c * $vc);
+      return new RationalCurve(SETS=>$x->SETS,COEFFS=>$x->COEFFS,INPUT_SETS=>$r->SETS,INPUT_COEFFS=>($c * $r->COEFFS),N_LEAVES=>$x->N_LEAVES);
+   }
 
-	sub subtract {
-		my ($a,$b) = @_;
-		my $va = $a->metric_vector();
-		my $vb = $b->metric_vector();
-		if ($va->dim() != $vb->dim()) {
-			die "Cannot add curves: Dimension mismatch.";
-		}
-		my $vr = $va-$vb;
-		my $r = rational_curve_from_metric($vr);
-		return new RationalCurve(SETS=>$r->SETS,COEFFS=>$r->COEFFS,INPUT_SETS=>($a->SETS / $b->SETS),INPUT_COEFFS=>(($a->COEFFS) | (-$b->COEFFS)),N_LEAVES=>$r->N_LEAVES);
-	}
+   sub subtract {
+      my ($a, $b) = @_;
+      my $va = $a->metric_vector();
+      my $vb = $b->metric_vector();
+      if ($va->dim() != $vb->dim()) {
+         die "Cannot add curves: Dimension mismatch.";
+      }
+      my $vr = $va-$vb;
+      my $r = rational_curve_from_metric($vr);
+      return new RationalCurve(SETS=>$r->SETS,COEFFS=>$r->COEFFS,INPUT_SETS=>($a->SETS / $b->SETS),INPUT_COEFFS=>(($a->COEFFS) | (-$b->COEFFS)),N_LEAVES=>$r->N_LEAVES);
+   }
 
-	sub to_string {
-		my $this = shift;
-		my $result = "";
-		for my $i (0 .. ($this->SETS->rows()-1)) {
-			my $coeff = $this->COEFFS->[$i];
-			#Attach sign (if it is negative or not the first)
-			if($coeff < 0 || $i > 0) {
-				$result = $result.($coeff < 0? " - " : " + ");
-			}
-			#Attach coefficient (if it is not +-1)
-			if($coeff != 1 && $coeff != -1) {
-				my $abs = ($coeff > 0? $coeff : - $coeff);
-				$result = $result."$abs*"; 
-			}
-			#Attach set
-			$result = $result."(";
-			my @a = @{$this->SETS->row($i)};
-			for my $j (0 ..(scalar(@a)-1)) {
-				my $n = $a[$j];
-				$result = $result."$n";
-				if($j != scalar(@a)-1) {
-					$result = $result.", ";
-				}
-			}
-			$result = $result.")";
-		}
-		if($this->SETS->rows() == 0) {
-			$result = "0";
-		}
-
-		return $result;
-	}
-
+   sub to_string {
+      my ($this) = @_;
+      my $result = "";
+      for my $i (0 .. ($this->SETS->rows()-1)) {
+         my $coeff = $this->COEFFS->[$i];
+         # Attach sign (if it is negative or not the first)
+         if ($coeff < 0 || $i > 0) {
+            $result .= $coeff < 0 ? " - " : " + ";
+         }
+         # Attach coefficient (if it is not +-1)
+         my $abs = abs($coeff);
+         if ($abs != 1) {
+            $result .= "$abs*"; 
+         }
+         # Attach set
+         $result .= "(" . join(", ", @{$this->SETS->row($i)}) . ")";
+      }
+      return $result || "0";
+   }
 }
 
 # ----------------------------- FUNCTIONS --------------------------------------
@@ -292,43 +260,42 @@ object RationalCurve {
 # @return RationalCurve The linear combination of the curves defined by the coefficients or undef, if the result
 # is not in M_0,n. The history of the operation is kept in INPUT_SETS and INPUT_COEFFS
 user_function sum_curves {
-	#my ($coeff, @curves) = @_;
-	my @curves= @_;
-	my $coeff;
+   my @curves= @_;
+   my $coeff;
 
-	if(scalar(@curves) == 0) {
-		return undef;
-	}
-	if($curves[scalar(@curves)-1]->isa("RationalCurve")) {
-		$coeff = new Vector<Rational>();
-	}
-	else {
-		$coeff = pop(@curves);
-	}
+   if (@curves == 0) {
+      return undef;
+   }
+   if ($curves[-1]->isa("RationalCurve")) {
+      $coeff = new Vector<Rational>();
+   }
+   else {
+      $coeff = pop(@curves);
+   }
 
-	my $n = binomial($curves[0]->N_LEAVES,2);
-	my $v = new Vector<Rational>($n);
+   my $n = binomial($curves[0]->N_LEAVES,2);
+   my $v = new Vector<Rational>($n);
 
-	my @isets = ();
-	my @icoeffs = ();
+   my @isets = ();
+   my @icoeffs = ();
 
-	for my $i (0 .. (scalar(@curves)-1)) {
-		my $c = $i < $coeff->dim()? $coeff->[$i] : 1;
-		$v = $v + $c * $curves[$i]->metric_vector();
-		@icoeffs = (@icoeffs,$c);
-		@isets = (@isets, @{$curves[$i]->SETS});
-	}
-	my @test = testFourPointCondition($v);
-	if(scalar(@test) == 0) {
-		my $result = rational_curve_from_metric($v);
-		my $cvector = new Vector<Rational>(\@icoeffs);
-		return new RationalCurve(SETS=>$result->SETS,COEFFS=>$result->COEFFS, INPUT_SETS=>\@isets,
-			INPUT_COEFFS=>$cvector,
-			N_LEAVES=>$result->N_LEAVES);
-	}
-	else {
-		return undef;
-	}
+   for my $i (0 .. (scalar(@curves)-1)) {
+      my $c = $i < $coeff->dim()? $coeff->[$i] : 1;
+      $v += $c * $curves[$i]->metric_vector();
+      push @icoeffs, $c;
+      push @isets, @{$curves[$i]->SETS};
+   }
+   my @test = testFourPointCondition($v);
+   if (!@test) {
+      my $result = rational_curve_from_metric($v);
+      my $cvector = new Vector<Rational>(\@icoeffs);
+      return new RationalCurve(SETS=>$result->SETS,COEFFS=>$result->COEFFS, INPUT_SETS=>\@isets,
+                               INPUT_COEFFS=>$cvector,
+                               N_LEAVES=>$result->N_LEAVES);
+   }
+   else {
+      return undef;
+   }
 }
 
 
@@ -343,28 +310,28 @@ user_function sum_curves {
 # @tparam Addition Min or Max, where the coordinates live.
 # @return RationalCurve c The curve corresponding to an interior point
 user_function rational_curve_from_rays<Addition>($) {
-	my $rays = new Matrix<Rational>(shift);
+   my $rays = new Matrix<Rational>(shift);
 
-	#Construct interior point
-	my $interior = new Vector<Rational>($rays->cols());
-	my $vertices = new Set<Int>();
-	for(my $r = 0; $r < $rays->rows(); $r++) {
-		if($rays->elem($r,0) == 1) {
-			$vertices = $vertices + $r;
-		}
-	}
-	for my $index (@{$vertices}) {
-		$interior += $rays->row($index);
-	}
-	if($vertices->size() > 0) {
-		$interior /= $vertices->size();
-	}
+   # Construct interior point
+   my $interior = new Vector<Rational>($rays->cols());
+   my $vertices = new Set<Int>();
+   for (my $r = 0; $r < $rays->rows(); ++$r) {
+      if ($rays->elem($r,0) == 1) {
+         $vertices += $r;
+      }
+   }
+   for my $index (@{$vertices}) {
+      $interior += $rays->row($index);
+   }
+   if ($vertices->size() > 0) {
+      $interior /= $vertices->size();
+   }
 
-	for my $dir (@{ sequence(0,$rays->rows()) - $vertices}) {
-		$interior += $rays->row($dir);
-	}
+   for my $dir (@{ sequence(0,$rays->rows()) - $vertices}) {
+      $interior += $rays->row($dir);
+   }
 
-	return rational_curve_from_matroid_coordinates<Addition>($interior);
+   return rational_curve_from_matroid_coordinates<Addition>($interior);
 }
 
 
@@ -380,12 +347,18 @@ user_function rational_curve_from_rays<Addition>($) {
 # @param Int coneIndex The index of the maximal cone
 # @return RationalCurve c The curve corresponding to an interior point
 user_function rational_curve_from_cone<Addition>(Cycle<Addition>, $,$) {
-	my ($cycle, $n_leaves,$coneIndex) = @_;
-	#First we compute the dimension of the M_0,n part (+1 for leading coord)
-	my $mn_dim = ($n_leaves * ($n_leaves - 3))/2 + 2;
-	my $rays = $cycle->VERTICES;
-	my $maximal_cones = $cycle->MAXIMAL_POLYTOPES;
-	return rational_curve_from_rays<Addition>( $rays->minor($maximal_cones->row($coneIndex),
-																sequence(0,$mn_dim)));
+   my ($cycle, $n_leaves,$coneIndex) = @_;
+   # First we compute the dimension of the M_0,n part (+1 for leading coord)
+   my $mn_dim = ($n_leaves * ($n_leaves - 3))/2 + 2;
+   my $rays = $cycle->VERTICES;
+   my $maximal_cones = $cycle->MAXIMAL_POLYTOPES;
+   return rational_curve_from_rays<Addition>( $rays->minor($maximal_cones->row($coneIndex),
+                                                           sequence(0,$mn_dim)));
 }
 
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

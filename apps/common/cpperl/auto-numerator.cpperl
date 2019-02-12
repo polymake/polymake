@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<Rational&>>"], "func": "numerator", "include": ["polymake/Rational.h"], "ret": "lvalue", "sig": "numerator:F.X10"},
+ null ],
+"version": 3}

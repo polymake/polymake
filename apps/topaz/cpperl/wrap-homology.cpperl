@@ -1,0 +1,6 @@
+{"app": "topaz", "embed": "homology.cc",
+ "inst": [
+  {"args": ["Rational", "perl::Canned<const ChainComplex<SparseMatrix<Integer, NonSymmetric>>&>"], "func": "betti_numbers", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/topaz/ChainComplex.h"], "sig": "betti_numbers:T1.X", "tp": "1"},
+  {"args": ["Rational", "void"], "func": "betti_numbers", "include": ["polymake/Rational.h"], "sig": "betti_numbers:T1.B", "tp": "1"},
+ null ],
+"version": 3}

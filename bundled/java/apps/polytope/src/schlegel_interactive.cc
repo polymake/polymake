@@ -110,15 +110,15 @@ SchlegelWindow::SchlegelWindow(const Matrix<double>& V, const Matrix<double>& F,
      zoom(zoom_arg), dragged_point(-1)
 {
    // orthogonal transformation: translate the origin to FacetPoint_arg and rotate F[proj_facet] to (0,0,...,1)
-   Matrix<double> R=rotation(0.0 | F[proj_facet].slice(1));
+   Matrix<double> R=rotation(0.0 | F[proj_facet].slice(range_from(1)));
    orthogonalize(entire(rows(R.minor(range(1,d-1), All).top())));
    normalize(entire(rows(R.minor(range(1,d), All).top())));
-   R.col(0).slice(1) = (-FacetPoint_arg * T(R)).slice(1);
+   R.col(0).slice(range_from(1)) = (-FacetPoint_arg * T(R)).slice(range_from(1));
 
    Vertices=V * T(R);
    inv_Rotation=inv(R);
    NeighborFacets=F.minor(FG.adjacent_nodes(proj_facet),All) * inv_Rotation;
-   ViewRay.slice(1) = (-InnerPoint * T(R)).slice(1);
+   ViewRay.slice(range_from(1)) = (-InnerPoint * T(R)).slice(range_from(1));
 }
 
 void SchlegelWindow::start_thread()
@@ -178,11 +178,11 @@ double SchlegelWindow::inverse_zoom()
 
 void SchlegelWindow::compute_points()
 {
-   const double z= constrained ? zoom : zoom/(1-zoom), VR_d=-ViewRay[d];
+   const double z = constrained ? zoom : zoom/(1-zoom), VR_d=-ViewRay[d];
    const sequence visible_coord=range(1,d-1);
-   Points=Vertices.minor(All,visible_coord);
-   Rows< Matrix<double> >::iterator p_i=rows(Points).begin();
-   for (auto P_d=entire(Vertices.col(d)); !P_d.at_end(); ++P_d, ++p_i) {
+   Points = Vertices.minor(All,visible_coord);
+   auto p_i = rows(Points).begin();
+   for (auto P_d = entire(Vertices.col(d)); !P_d.at_end(); ++P_d, ++p_i) {
       (*p_i) = ( VR_d * ((*p_i)-FacetPoint.slice(visible_coord)) + (*P_d) * ViewRay.slice(visible_coord) ) /
          ( (*P_d)/z + VR_d );
    }
@@ -286,7 +286,7 @@ Function4perl(&schlegel_interactive, "schlegel_interactive(SchlegelDiagram, Matr
 OpaqueClass4perl("SchlegelWindow", std::unique_ptr<SchlegelWindow>,
                  OpaqueMethod4perl("port()")
                  OpaqueMethod4perl("store()")
-                 OpaqueMethod4perl("shutdown() : void")
+                 OpaqueMethod4perl("shutdown()")
                  );
 } }
 

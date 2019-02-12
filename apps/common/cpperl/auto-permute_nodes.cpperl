@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<Wary<Graph<Undirected>>&>", "perl::TryCanned<const Array<int>>"], "func": "permute_nodes", "include": ["polymake/Array.h", "polymake/Graph.h"], "kind": "meth", "sig": "permute_nodes:M5.X"},
+  {"args": ["perl::Canned<Wary<Graph<Directed>>&>", "perl::TryCanned<const Array<int>>"], "func": "permute_nodes", "include": ["polymake/Array.h", "polymake/Graph.h"], "kind": "meth", "sig": "permute_nodes:M5.X"},
+ null ],
+"version": 3}

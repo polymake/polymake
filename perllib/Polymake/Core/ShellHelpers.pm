@@ -157,7 +157,7 @@ declare @list=(
                }
             }
             $shell->completion_proposals=\@proposals;
-            $shell->completion_offset= $expr =~ /\b${id_re}$/o ? length($&) : length($expr);
+            $shell->completion_offset= $expr =~ /\b${id_re}$/o ? length($&) : length($expr) // 0;
             if (@proposals==1 && $proposals[0] !~ /:$/) {
                $shell->term->Attribs->{completion_append_character}=
                   $cmd ne "reset_preference" && $expr =~ /^\*\.$hier_id_re\s*$/o
@@ -371,8 +371,9 @@ declare @list=(
       'quoted property name argument',
 
       qr{ $op_re $var_or_func_re $intermed_chain_re
-          (?: (?'mult_word' give | lookup | (?'mult_arg' provide | get_schedule | remove)) | take | add ) $method_args_start_re
+          (?: (?'mult_word' give | lookup | (?'mult_arg' provide | get_schedule | remove)) | take | add | (?'attach' attach)) $method_args_start_re
           (?('mult_arg') (?: ($anon_quote_re) $hier_id_alt_re \g{-1} \s*,\s*)* )
+          (?('attach') (?: $expression_re ,\s* ){2} )
           (?: $quote_re (?('mult_word') (?: $hier_id_re \s*\|\s*)* ) (?'prefix' $hier_id_re\.?)?)? $}xo,
 
       sub {
@@ -834,7 +835,7 @@ declare @list=(
                   if (defined $args_start) {
                      if (instanceof ObjectType($type)) {
                         if (defined (my $prop=$type->lookup_property($last_method_name))) {
-                           if ($prop->flags & $Property::is_multiple) {
+                           if ($prop->flags & Property::Flags::is_multiple) {
                               if (length($preceding_args)==0  and
                                   $prefix =~ s/^($anon_quote_re)(?=$non_quote_re+$)//) {
                                  # name of a subobject
@@ -862,7 +863,7 @@ declare @list=(
                         if (@proposals) {
                            # prefix is simple, no need to reiterate
                            $shell->completion_proposals=\@proposals;
-                           $shell->completion_offset=length($prefix);
+                           $shell->completion_offset=length($prefix) // 0;
                            return 1;
                         }
                      }
@@ -889,7 +890,7 @@ declare @list=(
                         }
                      }
                      if (@proposals) {
-                        $completion_offset=length($last_method_name);
+                        $completion_offset=length($last_method_name) // 0;
                         @func_names=sorted_uniq(sort(@proposals));
                      }
                   }
@@ -923,7 +924,7 @@ declare @list=(
                      }
                      if (@proposals) {
                         @func_names=sorted_uniq(sort(@proposals));
-                        $completion_offset=length($func);
+                        $completion_offset=length($func) // 0;
                         if (@func_names==1) {
                            $func=$func_names[0];
                            if ($func =~ /^(?:exit|history|replay_history|show_(?:preferences|unconfigured|credits|extensions))$/) {
@@ -975,7 +976,7 @@ declare @list=(
                            and
                          defined (my $prop=$type->lookup_property($last_method_name))) {
                         # property for selecting a subobject
-                        if ($prop->flags & $Property::is_multiple
+                        if ($prop->flags & Property::Flags::is_multiple
                               and
                             @proposals=fetch_property_help($prop->type, $prefix)) {
                            # next time match the multiple property
@@ -1025,7 +1026,7 @@ sub prepare_property_lookup {
    $prefix= substr($prefix,-1,1) eq "." ? "" : pop @path;
    foreach (@path) {
       my $prop=$type->lookup_property($_) or return;
-      $prop->flags & $Property::is_subobject or return;
+      $prop->flags & Property::Flags::is_subobject or return;
       $type=$prop->type;
    }
    $_[0]=$type;
@@ -1185,7 +1186,7 @@ sub retrieve_method_owner_type {
                   return;
                }
             }
-         } elsif (not defined($prop) && $prop->flags & $Property::is_multiple) {
+         } elsif (not defined($prop) && $prop->flags & Property::Flags::is_multiple) {
             # a bracketed index expression
             $type=$type->get_array_element_type or return;
          }

@@ -1,0 +1,6 @@
+{"app": "graph",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Undirected>&>", "void"], "func": "canonical_hash", "include": ["polymake/Graph.h", "polymake/graph/compare.h"], "sig": "canonical_hash.X.x"},
+  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "void"], "func": "canonical_hash", "include": ["polymake/IncidenceMatrix.h", "polymake/graph/compare.h"], "sig": "canonical_hash.X.x"},
+ null ],
+"version": 3}

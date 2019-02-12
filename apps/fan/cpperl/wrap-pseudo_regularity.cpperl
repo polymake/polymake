@@ -1,0 +1,5 @@
+{"app": "fan", "embed": "pseudo_regularity.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "pseudo_regular", "include": ["polymake/Rational.h"], "sig": "pseudo_regular:T1.B", "tp": "1"},
+ null ],
+"version": 3}

@@ -67,7 +67,7 @@ induced_permutations_incidence(const Array<Array<int>>& original_gens,
 }      
 
 template<typename SetType>
-Array<Array<int>>
+typename std::enable_if< ! pm::isomorphic_to_container_of<SetType, Set<int> >::value, Array<Array<int>>>::type
 induced_permutations(const Array<Array<int>>& original_gens,
                      const Array<SetType>& domain_to_induce,
                      const hash_map<SetType, int>& index_of,
@@ -76,6 +76,44 @@ induced_permutations(const Array<Array<int>>& original_gens,
    return induced_permutations_impl<on_container>(original_gens, domain_to_induce.size(), entire(domain_to_induce), index_of);
 }
 
+// for once nested containers, ie, Array<Set<Set>>, where the generators permute the interior set
+Array<Array<int>>
+induced_permutations_set_set(const Array<Array<int>>& original_gens,
+                             const Array<Set<Set<int>>>& domain_to_induce,
+                             const hash_map<Set<Set<int>>, int>& _index_of)
+{
+   typedef hash_map<Set<Set<int>>, int> MapType;
+   MapType _new_index_of;
+   const MapType& index_of(valid_index_of(entire(domain_to_induce), _index_of, _new_index_of));
+
+   Array<Array<int>> induced_gens(original_gens.size());
+   auto iit = entire(induced_gens);
+
+   for (const auto& g: original_gens) {
+      Array<int> induced_perm(index_of.size());
+      const pm::operations::group::action<Set<int>, on_container, Array<int>> a(g);
+      auto domain_it = domain_to_induce.begin();
+      for (auto& ip: induced_perm) {
+         Set<Set<int>> image;
+         for (const auto& ss: *domain_it) {
+            image += a(ss);
+         }
+         try {
+            ip = index_of[image];
+         } catch (const no_match&) {
+            std::ostringstream os;
+            wrap(os) << "The given domain is not invariant under the permutation " << g;
+            throw no_match(os.str());
+         }
+         ++domain_it;
+      }
+      *iit = induced_perm;
+      ++iit;
+   }
+   return induced_gens;
+}
+
+      
 UserFunctionTemplate4perl("# @category Symmetry"
                           "# gives the permutations that are induced on the rows of a matrix //M//"
                           "# by the action of //gens// on the columns of //M//"
@@ -111,6 +149,14 @@ UserFunction4perl("# @category Symmetry"
                   &induced_permutations_incidence,
                   "induced_permutations(Array<Array<Int>>, IncidenceMatrix; HashMap<Set<Int>,Int>=(new HashMap<Set<Int>,Int>), { homogeneous_action => 0 })");
 
+UserFunction4perl("# @category Symmetry"
+                  "# gives the permutations that are induced on an Array<Set<Set>> by permuting the elements of the inner set"
+                  "# @param Array<Array<Int>> gens the generators of permutation action"
+                  "# @param Array<Set<Set>> domain the domain acted upon"
+                  "# @return Array<Array<Int>>",
+                  &induced_permutations_set_set,
+                  "induced_permutations_set_set(Array<Array<Int>>, Array<Set<Set>>; HashMap<Set<Set>,Int>=(new HashMap<Set<Set>,Int>) )");
+      
       
 }}
 

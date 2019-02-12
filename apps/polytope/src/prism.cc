@@ -56,7 +56,7 @@ perl::Object prism(perl::Object p_in, const Scalar& z, const Scalar& z_prime, pe
    if (!options["no_coordinates"])
       p_in.give("FAR_FACE") >> rays;
 
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "prism over " << p_in.name() << endl;
 
    if (options["no_coordinates"] || p_in.exists("VERTICES_IN_FACETS")) {
@@ -124,10 +124,10 @@ perl::Object prism(perl::Object p_in, const Scalar& z, const Scalar& z_prime, pe
 
    if (!options["no_labels"]) {
       std::vector<std::string> labels(n_vertices_out);
-      common::read_labels(p_in, "VERTEX_LABELS", non_const(select(labels, sequence(0,n_vertices))));
+      common::read_labels(p_in, "VERTEX_LABELS", select(labels, sequence(0, n_vertices)));
       const std::string tick="'";
       copy_range(entire(attach_operation(select(labels, sequence(0,n_vertices)-rays),
-                                         constant(tick), operations::add())),
+                                         same_value(tick), operations::add())),
                  labels.begin()+n_vertices);
       p_out.take("VERTEX_LABELS") << labels;
    }
@@ -152,8 +152,15 @@ UserFunctionTemplate4perl("# @category  Producing a polytope from polytopes"
                           "# @example The following saves the prism over the square and the interval [-2,2] to the"
                           "# variable $p, and then prints a nice representation of its vertices."
                           "# > $p = prism(cube(2),-2);"
-                          "# > print labeled($p->VERTICES,$p->VERTEX_LABELS);"
-                          "# | 0:1 -1 -1 -2 1:1 1 -1 -2 2:1 -1 1 -2 3:1 1 1 -2 0':1 -1 -1 2 1':1 1 -1 2 2':1 -1 1 2 3':1 1 1 2",
+                          "# > print rows_labeled($p->VERTICES,$p->VERTEX_LABELS);"
+                          "# | 0:1 -1 -1 -2"
+                          "# | 1:1 1 -1 -2"
+                          "# | 2:1 -1 1 -2"
+                          "# | 3:1 1 1 -2"
+                          "# | 0':1 -1 -1 2"
+                          "# | 1':1 1 -1 2"
+                          "# | 2':1 -1 1 2"
+                          "# | 3':1 1 1 2",
                           "prism<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=-1, type_upgrade<Scalar>=-$_[1], {group => 0, no_coordinates => undef, no_labels => 0})");
 } }
 

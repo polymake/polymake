@@ -1,0 +1,5 @@
+{"app": "topaz", "embed": "sum_triangulation.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "void"], "func": "sum_triangulation", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h"], "sig": "sum_triangulation:T1.B.B.X.o", "tp": "1"},
+ null ],
+"version": 3}

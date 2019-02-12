@@ -71,7 +71,7 @@ my (%options, %vars, %allowed_options, %allowed_with, %allowed_flags, %allowed_v
 
 # expected options for the core script
 @allowed_options{ qw( prefix exec-prefix bindir includedir libdir libexecdir datadir docdir build build-modes ) }=();
-@allowed_with{ qw( gmp mpfr libxml2 boost permlib toolchain ) }=();
+@allowed_with{ qw( gmp mpfr libxml2 boost permlib toolchain ccache ccwrapper) }=();
 @allowed_flags{ qw( prereq callable native openmp libcxx ) }=();
 @allowed_vars{ qw( CC CFLAGS CXX CXXFLAGS CXXOPT CXXDEBUG LDFLAGS LIBS Arch DESTDIR ) }=();
 
@@ -101,6 +101,8 @@ if ($options{'alt-perl'}) {
    create_alt_perl_configuration();
    exit(0);
 }
+
+my %store_versions;
 locate_gmp_and_mpfr_libraries();
 locate_boost_headers();
 locate_libxml2();
@@ -139,7 +141,7 @@ find_ninja();
 File::Path::make_path($BuildDir);
 write_configuration_file("$BuildDir/config.ninja");
 write_perl_specific_configuration_file("$BuildDir/$perlxpath/config.ninja");
-create_build_trees("$root/$BuildDir", perlxpath => $perlxpath);
+create_build_trees($root, "$root/$BuildDir", perlxpath => $perlxpath);
 delete_old_and_disabled_build_trees();
 
 if ($Polymake::DeveloperMode) {
@@ -205,8 +207,10 @@ Allowed options (and their default values) are:
 
  Build dependences:
 
-  --with-toolchain=PATH path to a full GCC or LLVM (including clang and libc++) installation
-                      (sets CC, CXX, CXXFLAGS, LDFLAGS, LIBS and --with-libcxx accordingly)
+  --with-toolchain=PATH      path to a full GCC or LLVM (including clang and libc++) installation;
+                               overrides CC, CXX, CXXFLAGS, LDFLAGS, LIBS and --with-libcxx
+  --with-ccache=PATH         use the given ccache program for compilation
+  --with-ccwrapper=COMMAND   prepend the given command to every compiler, linker, and ar invocation
 
 ---
    $^O eq "darwin" and
@@ -294,7 +298,7 @@ Allowed variables are:
    CXX=c++     C++ compiler executable
    CXXFLAGS=   C++ compiler options
    CXXOPT=     C/C++ compiler optimization level (defaults to highest possible)
-   LDFLAGS=    linker options
+   LDFLAGS=    linker options, including linker choice (-fuse-ld)
    LIBS=       additional libraries to be linked with
    PERL=perl   perl executable
 
@@ -457,14 +461,14 @@ sub parse_command_line {
    }
 
    $CXXOPT   =$vars{CXXOPT}   // "-O3";
-   $CXXDEBUG =$vars{CXXDEBUG} // "";
+   $CXXDEBUG =$vars{CXXDEBUG} // "-g";
    $CFLAGS   =$vars{CFLAGS}   // "";
    $CXXFLAGS =$vars{CXXFLAGS} // $CFLAGS;
    $LDFLAGS  =$vars{LDFLAGS}  // "";
    $LIBS     =$vars{LIBS}     // "";
    $DESTDIR  =$vars{DESTDIR};
 
-   ($Arch=$vars{Arch}) =~ s/^darwin\.//;
+   $Arch = $vars{Arch} =~ s/^darwin\.//r;
 }
 
 #################################################################
@@ -519,7 +523,7 @@ sub load_enabled_bundled_extensions {
          my $err;
          eval <<"---";
          { package Polymake::Bundled::$ext;
-           do "$ext_config";
+           do "./$ext_config";
            unless (\$err=\$\@) {
              allowed_options(\\%allowed_options, \\%allowed_with);
            }
@@ -572,7 +576,7 @@ Make sure $options{toolchain}/bin/clang++ or $options{toolchain}/bin/g++ exists 
    check_program($CXX, "g++", "c++", "icpc", "clang++")
      or die "no supported C++ compiler found; please reconfigure with CXX=name\n";
 
-   my $build_error = build_test_program(<<"---");
+   my $cxx_tell_version=<<"---";
 #include <iostream>
 int main() {
 #if defined(__APPLE__)
@@ -592,6 +596,19 @@ int main() {
 #endif
 }
 ---
+   my $build_error;
+
+   # try to use gold linker unless another linker has been prescribed by the user
+   unless ($^O eq "darwin" or "$CXXFLAGS $LDFLAGS" =~ /(?:^|\s)-fuse-ld[=\s]/) {
+      $build_error = build_test_program($cxx_tell_version, LDFLAGS => "-fuse-ld=gold");
+      if ($?) {
+         # did not work out, maybe gold is missing?
+         undef $build_error;
+      } else {
+         $LDFLAGS .= " -fuse-ld=gold";
+      }
+   }
+   $build_error //= build_test_program($cxx_tell_version);
 
    if ($?) {
       die "C++ compiler $CXX could not compile a test program for version recognition:\n",
@@ -601,12 +618,14 @@ int main() {
 
    local $_=run_test_program();  chomp;
    if (/^(apple)?clang /) {
-      $CLANGversion=$';
-      $AppleClang = "true" if $1 eq "apple";
-      if (defined($AppleClang) and v_cmp($CLANGversion, "5.1") < 0) {
-         die "C++ compiler $CXX is from Xcode $CLANGversion, while the minimal required Xcode version is 5.1\n";
-      } elsif (!defined($AppleClang) and v_cmp($CLANGversion, "3.4") < 0) {
-         die "C++ compiler $CXX says its version is $CLANGversion, while the minimal required version is 3.4\n";
+      if ($1 eq "apple") {
+         $XcodeVersion=$';
+         $CLANGversion=xcode2clang_version();
+      } else {
+         $CLANGversion=$';
+         if (v_cmp($CLANGversion, "3.4") < 0) {
+            die "C++ compiler $CXX says its version is $CLANGversion, while the minimal required version is 3.4\n";
+         }
       }
 
    } elsif (/icc (\d+)(\d\d)$/) {
@@ -646,13 +665,12 @@ int main() {
    }
    if (defined($GCCversion) or defined($CLANGversion)) {
       print "ok ($CXX is ",
-            defined($GCCversion) ?
-               "GCC $GCCversion" :
-               defined($CLANGversion) ?
-                  (defined($AppleClang) ?
-                     "Apple CLANG (roughly ".clang_ver($CLANGversion).") from Xcode $CLANGversion" :
-                     "CLANG $CLANGversion")
-                  : "unknown", ")\n";
+            defined($GCCversion)
+            ? "GCC $GCCversion" :
+            defined($XcodeVersion)
+            ? "Apple CLANG (roughly $CLANGversion) from Xcode $XcodeVersion"
+            : "CLANG $CLANGversion",
+            ")\n";
    }
 }
 #####################################################
@@ -684,7 +702,7 @@ sub determine_cxx_library {
    # but if someone explicitly requests another standard version go along with it,
    # if it is too old we will generate a warning / an error later on.
    if ($CXXFLAGS !~ /(?:^|\s)-std=/) {
-      if (defined($CLANGversion) and v_cmp(clang_ver($CLANGversion), "3.5") < 0) {
+      if (defined($CLANGversion) and v_cmp($CLANGversion, "3.5") < 0) {
          $CXXFLAGS .= ' -std=c++1y';
       } else {
          $CXXFLAGS .= ' -std=c++14';
@@ -723,7 +741,7 @@ Please investigate and reconfigure.
 
    unless ($cppver >= 201402 or
            $cppver >= 201305 and
-               defined($CLANGversion) and v_cmp(clang_ver($CLANGversion), "3.5") < 0
+               defined($CLANGversion) and v_cmp($CLANGversion, "3.5") < 0
           ) {
       # C++ standard older than C++14 wont work (C++1y from clang 3.4 is also ok)
       die "C++ standard version ($cppver) too old, C++14 or later is required. Please omit any '-std=' options.\n";
@@ -762,7 +780,7 @@ sub check_fink {
    if ( $FinkBase eq "default" ) {
       # Fink location not specified, look for it at plausible places
       (undef, my ($fink, $error))=find_program_in_path("fink", sub {
-         !(($FinkBase=$_[0]) =~ s|/bin/fink$|| && -f "$FinkBase/etc/fink.conf") && "!"
+         !($FinkBase=$_[0] =~ s|/bin/fink$||r && -f "$FinkBase/etc/fink.conf") && "!"
       });
       if ($fink) {
          if ($error) {
@@ -908,42 +926,45 @@ sub collect_compiler_specific_options {
    if (defined($GCCversion)) {
       # avoid using temp files, they grow indeterminately during debug builds
       $CsharedFLAGS="-fPIC -pipe";
-      $CXXDEBUG =~ /(?:^|\s)-g\d?/ or $CXXDEBUG .= " -g";
       # TODO: remove -fno-strict-aliasing when the core library is free from reintepret_casts
-      $CXXFLAGS .= " -ftemplate-depth-200 -fno-strict-aliasing -Wno-parentheses -fwrapv";
+      $CXXFLAGS .= " -ftemplate-depth-200 -fno-strict-aliasing -Wno-parentheses -Wshadow";
       if ($options{openmp} ne ".none.") {
          $CXXFLAGS .= " -fopenmp";
          $LDFLAGS .= " -fopenmp";
       }
-      $CXXCOV="--coverage";
-      $CXXSANITIZE="-fno-omit-frame-pointer -O1 -g";
+      $CXXCOV="--coverage -O1";
+      $CXXSANITIZE="-fno-omit-frame-pointer -O1 " . ($CXXDEBUG =~ /(?:^|\s)-g0/ ? "-g1" : $CXXDEBUG);
       # external libraries might be somehow dirtier
-      $CflagsSuppressWarnings="-Wno-uninitialized -Wno-unused -Wno-parentheses -Wno-unused-but-set-variable -Wno-enum-compare -Wno-sign-compare -Wno-switch -Wno-write-strings";
+      $CflagsSuppressWarnings="";
       # gcc-specific flags
+      $CXXFLAGS .= " -Wno-error=unused-function";
       if (v_cmp($GCCversion, "6.3.0") >= 0 && v_cmp($GCCversion, "7.0.0") < 0) {
          $CXXFLAGS .= " -Wno-maybe-uninitialized";
       }
 
    } elsif (defined($ICCversion)) {
       $CsharedFLAGS="-fPIC";
-      $CXXDEBUG .= " -g -Ob0";
+      $CXXDEBUG !~ /(?:^|\s)-O/ and $CXXDEBUG =~ s/-g(?!0)\K/ -Ob0/;
       $CXXFLAGS .= " -wd193,383,304,981,1419,279,810,171,1418,488,1572,561";
       $CFLAGS .= " -wd193,1572,561";
 
    } elsif (defined($CLANGversion)) {
       # avoid using temp files, they grow indeterminately during debug builds
       $CsharedFLAGS="-fPIC -pipe";
-      $CXXDEBUG =~ /(?:^|\s)-g\d?/ or $CXXDEBUG .= " -g";
       $CXXFLAGS .= " -Wno-logical-op-parentheses -Wno-shift-op-parentheses -Wno-mismatched-tags";
-      $CflagsSuppressWarnings="-Wno-uninitialized -Wno-unused -Wno-unused-variable -Wno-enum-compare -Wno-sign-compare -Wno-switch -Wno-format -Wno-write-strings -Wno-empty-body -Wno-logical-op-parentheses -Wno-shift-op-parentheses -Wno-dangling-else";
-      if (v_cmp(clang_ver($CLANGversion), "3.6") >= 0) {
-         $CXXFLAGS .= " -Wno-unused-local-typedef";
+      $CflagsSuppressWarnings="-Wno-unused -Wno-empty-body -Wno-format-extra-args";
+      if (v_cmp($CLANGversion, "3.6") >= 0) {
+         $CXXFLAGS .= " -Wno-unused-local-typedef -Wno-error=unneeded-internal-declaration";
+      }
+      if (v_cmp($CLANGversion, "3.9") >= 0) {
+         # earlier versions produce bizarre false positives in nested classes methods
+         $CXXFLAGS .= " -Wshadow";
       }
 
       # verify openmp support which is available starting with 3.7 but depends on the installation,
       # but 3.7 seems to crash when compiling libnormaliz so we skip that version
       # version 3.8 is tested to work with openmp
-      if (v_cmp(clang_ver($CLANGversion), "3.8") >= 0 && $options{openmp} ne ".none.") {
+      if (v_cmp($CLANGversion, "3.8") >= 0 && $options{openmp} ne ".none.") {
          my $ompflag = "-fopenmp";
          my $build_error=build_test_program(<<'---', CXXFLAGS => "$ompflag", LDFLAGS => "$ompflag");
 #include <stdio.h>
@@ -965,13 +986,13 @@ int main() {
          }
       }
 
-      if (v_cmp(clang_ver($CLANGversion), "3.8") >= 0) {
+      if (v_cmp($CLANGversion, "3.8") >= 0) {
          # stick to the gcov-compatible coverage tool for now
          # let's experiment with -fcoverage-mapping -fprofile-instr-generate later
-         $CXXCOV="--coverage";
+         $CXXCOV="--coverage -O1";
       }
-      if (v_cmp(clang_ver($CLANGversion), "3.9") >= 0) {
-         $CXXSANITIZE="-fno-omit-frame-pointer -O1 -g";
+      if (v_cmp($CLANGversion, "3.9") >= 0) {
+         $CXXSANITIZE="-fno-omit-frame-pointer -O1 " . ($CXXDEBUG =~ /(?:^|\s)-g0/ ? "-g1" : $CXXDEBUG);
       }
    }
 
@@ -980,11 +1001,11 @@ int main() {
    if ($^O eq "darwin") {
       # MacOS magic again: remove multi-architecture options for fat binaries
       my $allarch=qr/ -arch \s+ \S+ (?: \s+ -arch \s+ \S+)* /x;
-      $CFLAGS =~ s/$allarch//o;
-      $CXXFLAGS =~ s/$allarch//o;
-      $LDsharedFLAGS =~ s/$allarch//o;
+      $CFLAGS =~ s/$allarch//;
+      $CXXFLAGS =~ s/$allarch//;
+      $LDsharedFLAGS =~ s/$allarch//;
       if ($options{callable} ne ".none.") {
-         ($LDcallableFLAGS = $Config::Config{ldflags}) =~ s/$allarch//o;
+         $LDcallableFLAGS = $Config::Config{ldflags} =~ s/$allarch//r;
          $LDcallableFLAGS = "$LDsharedFLAGS $LDcallableFLAGS";
          $LDcallableFLAGS =~ s/-bundle/-dynamiclib/;
          $LDsonameFLAGS = "-install_name $InstallLib/";
@@ -1011,7 +1032,7 @@ int main() {
       }
    }
 
-   if (defined($CLANGversion) && v_cmp(clang_ver($CLANGversion), "3.5") < 0) {
+   if (defined($CLANGversion) && v_cmp($CLANGversion, "3.5") < 0) {
       # old clangs do not have this option which is actively used in newer perls
       s/-fstack-protector\K-strong//g for $LDsharedFLAGS, $LDcallableFLAGS;
    }
@@ -1020,6 +1041,7 @@ int main() {
 ok
    CFLAGS=$CFLAGS
    CXXFLAGS=$CXXFLAGS
+   LDFLAGS=$LDFLAGS
 ---
 }
 
@@ -1102,12 +1124,13 @@ int main() {
       if ($?==0) {
          my $is_version=run_test_program();
          if ($?==0) {
-            if (v_cmp($is_version,"4.2.0")<0) {
+            if (v_cmp($is_version, "4.2.0") < 0) {
                die <<"---";
 The GNU Multiprecision Library (GMP) installed at your site is of version $is_version
 while 4.2.0 is the minimal required version.
 ---
             }
+            $store_versions{GMP}=$is_version;
          } else {
             die <<"---";
 Could not run a test program linked to the GNU Multiprecision Library (GMP).
@@ -1140,12 +1163,13 @@ int main() {
       if ($?==0) {
          my $is_version=run_test_program();
          if ($?==0) {
-            if (v_cmp($is_version,"3.0.0")<0) {
+            if (v_cmp($is_version, "3.0.0") < 0) {
                die <<"---";
 The Multiple Precision Floating-Point Reliable Library (MPFR) installed at your site is of version $is_version
 while 3.0.0 is the minimal required version.
 ---
             }
+            $store_versions{MPFR}=$is_version;
          } else {
             die <<"---";
 Could not run a test program linked to the Multiple Precision Floating-Point Reliable Library (MPFR).
@@ -1290,8 +1314,14 @@ Otherwise, reconfigure and reinstall your perl.
    require ExtUtils::Embed;
    chomp(my $perlcflags = ExtUtils::Embed::ccopts());
    chomp(my $perlldflags = ExtUtils::Embed::ldopts());
-   if (defined($CLANGversion) && v_cmp(clang_ver($CLANGversion), "3.5") < 0) {
-      s/-fstack-protector\K-strong//g for $perlcflags, $perlldflags;
+   if (defined($CLANGversion)) {
+      if (v_cmp($CLANGversion, "3.5") < 0) {
+         s/-fstack-protector\K-strong//g for $perlcflags, $perlldflags;
+      }
+      if (defined($XcodeVersion) && v_cmp($XcodeVersion, "10.0") >= 0) {
+         # from XCode 10.0.0 on, 32-bit builds are deprecated
+         $_ =~ s/(?:^|\s+)-arch\s+\w+//g for $perlcflags, $perlldflags; 
+      }
    }
    my $build_error=build_test_program(<<'---', CXXFLAGS => (defined($CLANGversion) && "-Wno-reserved-user-defined-literal ").$perlcflags, LDFLAGS => "$ARCHFLAGS $perlldflags" );
 #include <EXTERN.h>
@@ -1363,7 +1393,7 @@ sub check_prerequisite_perl_packages {
       lib->import("$FinkBase/lib/perl5");
    }
    my @warned;
-   foreach (qw(XML::Writer XML::LibXML XML::LibXSLT Term::ReadKey Term::ReadLine)) {
+   foreach (qw(XML::Writer XML::LibXML XML::LibXSLT Term::ReadKey Term::ReadLine JSON)) {
       my $pkg=$_;
       print "checking perl module $pkg ... ";
       my $warn;
@@ -1590,8 +1620,7 @@ sub finalize_compiler_flags {
 
    if ($options{callable} ne ".none."
        and $LIBS !~ /-ldl/
-       and $^O eq "linux")
-   {
+       and $^O eq "linux") {
       $LIBS .= " -ldl";
    }
 
@@ -1600,6 +1629,14 @@ sub finalize_compiler_flags {
    # be rigorous about own code
    if ($Polymake::DeveloperMode) {
       $CXXFLAGS="-Wall -Werror $CXXFLAGS";
+   }
+
+   if (defined($options{ccache}) && $options{ccache} ne ".none.") {
+      $CCACHE=$options{ccache};
+      check_program($CCACHE);
+   }
+   if (defined($options{ccwrapper}) && $options{ccwrapper} ne ".none.") {
+      $CCWRAPPER=$options{ccwrapper};
    }
 }
 
@@ -1649,8 +1686,14 @@ app.includes=-I\${root}/include/app-wrappers -I\${root}/include/apps @external_i
    write_config_vars(__PACKAGE__, "", $conf);
 
    print $conf <<"---";
-AR=$Config::Config{ar}
+AR = $Config::Config{ar}
 ---
+
+   foreach my $pkg (sort keys %store_versions) {
+      print $conf <<"---";
+${pkg}.version = $store_versions{$pkg}
+---
+   }
 
    # write configuration variables for successfully configured bundled extensions
    foreach my $ext (sort keys %ext_survived) {
@@ -1676,9 +1719,12 @@ sub write_perl_specific_configuration_file {
       $no_warn .= " -Wno-literal-suffix";
    }
 
+   # Xcode 10 deeply hides perl headers at unpredictable locations, it requires a special clang option to find them
+   my $includePerlCore = defined($XcodeVersion) && v_cmp($XcodeVersion, "10.0") >= 0 && $Config::Config{perlpath} eq "/usr/bin/perl" ? "-iwithsysroot " : "-I";
+
    print $conf <<"---";
 PERL=$Config::Config{perlpath}
-CXXglueFLAGS=-I$Config::Config{archlibexp}/CORE $Config::Config{ccflags} -DPerlVersion=$PerlVersion $no_warn
+CXXglueFLAGS=$includePerlCore$Config::Config{archlibexp}/CORE $Config::Config{ccflags} -DPerlVersion=$PerlVersion $no_warn
 LIBperlFLAGS=-L$Config::Config{archlib}/CORE -lperl $Config::Config{ccdlflags}
 ExtUtils=$Config::Config{privlib}/ExtUtils
 ---

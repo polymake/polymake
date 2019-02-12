@@ -15,7 +15,7 @@
 
 object_specialization Polytope::Lattice {
 
-rule H_STAR_VECTOR , EHRHART_POLYNOMIAL_COEFF : {
+rule H_STAR_VECTOR , EHRHART_POLYNOMIAL : {
    die <<"---";
 
 *** Missing external software:

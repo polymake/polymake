@@ -59,7 +59,7 @@ use Polymake::Struct (
 );
 
 declare $force_verification;
-declare $reject_unknown_properties=0;
+declare $reject_unknown_properties = 0;
 
 #############################################################################################
 my ($core_transforms, %ext_transforms);
@@ -276,7 +276,7 @@ sub parse {
          } else {
             push @{$self->cur_value}, [ ];
          }
-         push @{$self->cur_property}, [ $object->mock_property($proto) ];
+         push @{$self->cur_property}, [ $object->mock_array_property($proto) ];
       }
       @{$self->cols}=(undef);
 
@@ -468,7 +468,7 @@ sub open_object {
    my $prop=$self->cur_property->[-1]->[0];
    my $type=extract_type($self, $attrs, 1);
    if (defined($type)) {
-      $type=$prop->type->final_type($type) if $prop->flags & $Property::is_augmented;
+      $type=$prop->type->final_type($type) if $prop->flags & Property::Flags::is_augmented;
    } else {
       $type=$prop->subobject_type;
    }
@@ -536,7 +536,7 @@ sub close_property {
          $self->cur_object->[-1]->_add($prop, $self->text, $self->trusted);
       }
    } elsif (@$value_ptr) {
-      if ($prop->flags & $Property::is_multiple) {
+      if ($prop->flags & Property::Flags::is_multiple) {
          $self->cur_object->[-1]->_add_multis($prop, $value_ptr, $self->trusted);
       } else {
          $self->cur_object->[-1]->_add($prop, $value_ptr->[0], $self->trusted);
@@ -807,25 +807,22 @@ sub layer_for_compression {
 #############################################################################################
 # to be used in the test suite driver and other exotic circumstances
 sub suppress_validation {
-   my ($scope)=@_;
-   $scope->begin_locals;
-   local_sub(\&XMLreader::verify_integrity, sub { $_[0]->trusted=1 });
-   $scope->end_locals;
+   local with ($_[0]->locals) {
+      local ref *XMLreader::verify_integrity = sub { $_[0]->trusted=1 };
+   }
 }
 
 sub enforce_validation {
-   my ($scope)=@_;
-   $scope->begin_locals;
-   local_sub(\&XMLreader::verify_integrity, sub { $_[0]->trusted=0 });
-   local_incr($suppress_auto_save);
-   $scope->end_locals;
+   local with ($_[0]->locals) {
+      local ref *XMLreader::verify_integrity = sub { $_[0]->trusted=0 };
+      local scalar $suppress_auto_save = 1;
+   }
 }
 
 sub reject_unknown_properties {
-   my ($scope)=@_;
-   $scope->begin_locals;
-   local_incr($XMLreader::reject_unknown_properties);
-   $scope->end_locals;
+   local with ($_[0]->locals) {
+      local $XMLreader::reject_unknown_properties = 1;
+   }
 }
 #############################################################################################
 # mocking a top-level object in a loose data file
@@ -841,15 +838,15 @@ sub changed : lvalue { $dummy_changed }
 sub ensure_save_changes {}
 sub reset_to_empty { (shift)->description="" }
 sub value { undef }
-sub mock_property { new Property(pop) }
+sub mock_array_property { new MockArrayProperty(pop) }
 
-package _::Property;
+package Polymake::Core::XMLfile::MockArrayProperty;
 use Polymake::Struct (
    [ new => '$' ],
    [ '$type' => '#1' ],
 );
 
-sub flags { $Property::is_multiple | $Property::is_subobject_array }
+sub flags { Property::Flags::is_multiple | Property::Flags::is_subobject_array }
 sub subobject_type { $_[0]->type->params->[0] }
 
 #############################################################################################
@@ -1433,7 +1430,7 @@ sub produce_schema_for_Object {
    my %seen;
    foreach my $obj_proto ($proto, @{$proto->linear_isa}) {
       while (my ($prop_name, $prop)=each %{$obj_proto->properties}) {
-         if (!($prop->flags & ($Property::is_permutation | $Property::is_non_storable))) {
+         if (!($prop->flags & (Property::Flags::is_permutation | Property::Flags::is_non_storable))) {
             if ($obj_proto != $proto) {
                $prop=$proto->property($prop_name);   # get the correct instantiation
             }
@@ -1520,12 +1517,12 @@ sub produce_schema_for_property {
    $writer->dataElement("value", $prop->qual_name);
    $writer->endTag("attribute");
 
-   if ($prop->flags & $Property::is_subobject) {
-      if ($prop->flags & $Property::is_multiple) {
+   if ($prop->flags & Property::Flags::is_subobject) {
+      if ($prop->flags & Property::Flags::is_multiple) {
          $writer->startTag("oneOrMore");
       }
       produce_schema_for_subobject($prop->type, $writer, $prop->belongs_to);
-      if ($prop->flags & $Property::is_multiple) {
+      if ($prop->flags & Property::Flags::is_multiple) {
          $writer->endTag("oneOrMore");
       }
    } else {
@@ -1534,7 +1531,7 @@ sub produce_schema_for_property {
       $writer->dataElement("value", "true");
       $writer->endTag("attribute");
 
-      if ($prop->flags & $Property::is_subobject_array) {
+      if ($prop->flags & Property::Flags::is_subobject_array) {
          $writer->startTag("element", name => "m");
          $writer->startTag("zeroOrMore");
          produce_schema_for_subobject($prop->type->params->[0], $writer, $prop->belongs_to);
@@ -1583,7 +1580,7 @@ use Polymake::Struct (
    [ '$body' => '#2' ],
    '@field',
    '@offset',
-   '@length',
+   '@len',
 );
 
 sub new {
@@ -1591,16 +1588,16 @@ sub new {
    while ($self->body =~ s/%\{(\d+)\}/' ' x $1/e) {
       push @{$self->field}, "%0$1x";
       push @{$self->offset}, $-[0];
-      push @{$self->length}, $1;
+      push @{$self->len}, $1;
    }
    $self
 }
 
 sub substitute {
    my ($self, $f, $text)=@_;
-   if ($self->length->[$f] == length($text)) {
+   if ($self->len->[$f] == length($text)) {
       my $body=$self->body;
-      substr($body, $self->offset->[$f], $self->length->[$f])=$text;
+      substr($body, $self->offset->[$f], $self->len->[$f])=$text;
       $body;
    } else {
       die "invalid field index or text size\n";
@@ -1638,7 +1635,7 @@ sub print {
       seek($self->handle, $self->pos+$self->template->offset->[$f], 0);
       $self->handle->printf($self->template->field->[$f], @_);
    } else {
-      substr(${$self->string}, $self->pos+$self->template->offset->[$f], $self->template->length->[$f])=
+      substr(${$self->string}, $self->pos+$self->template->offset->[$f], $self->template->len->[$f])=
          sprintf($self->template->field->[$f], @_);
    }
 }
@@ -1657,20 +1654,20 @@ sub new {
 sub ext_attr {
    my ($writer, $type)=@_;
    if (defined (my $ext_list=$type->extension)) {
-      if (my @ext=map {
-                     if ($_->is_bundled || exists $writer->{':suppress_ext'}->{$_}) {
-                        ()
-                     } else {
-                        if (@_==3) {
-                           ($_[2] ||= new Scope())->begin_locals;
-                           local $writer->{':suppress_ext'}->{$_}=1;
-                           $_[2]->end_locals;
-                        }
-                        my $def;
-                        ($writer->{':ext'}->{$_} //= do { $def="=".$_->versioned_URI; keys(%{$writer->{':ext'}}) }) . $def;
-                     }
-                  }
-          is_object($ext_list) ? $ext_list : @{$ext_list}) {
+      if (my @ext=
+          map {
+             if ($_->is_bundled || exists $writer->{':suppress_ext'}->{$_}) {
+                ()
+             } else {
+                if (@_==3) {
+                   local with (($_[2] //= new Scope())->locals) {
+                      local $writer->{':suppress_ext'}->{$_}=1;
+                   }
+                }
+                my $def;
+                ($writer->{':ext'}->{$_} //= do { $def="=".$_->versioned_URI; keys(%{$writer->{':ext'}}) }) . $def;
+             }
+          } is_object($ext_list) ? $ext_list : @{$ext_list}) {
          return (ext => join(" ", @ext));
       }
    }
@@ -1705,7 +1702,7 @@ sub write_subobject {
                          $type->extension ? ext_attr($writer, $type->extension, $_[4]) : ())
                       : ()
                     );
-   write_object_contents($writer,$object);
+   write_object_contents($writer, $object);
    $writer->endTag("object");
 }
 
@@ -1718,16 +1715,16 @@ sub write_object_contents {
       $writer->cdataElement("credit", is_object($credit) ? $credit->toFileString : $credit, "product" => $product);
    }
    foreach my $pv (@{$object->contents}) {
-      next if !defined($pv) || $pv->property->flags & $Property::is_non_storable;
+      next if !defined($pv) || $pv->property->flags & Property::Flags::is_non_storable;
       my $scope;
       my @ext=ext_attr($writer, $pv->property, $scope);
       if (instanceof Object($pv)) {
          $writer->startTag( "property", name => $pv->property->qual_name, @ext );
          write_subobject($writer, $pv, $object, $pv->property->subobject_type, $scope);
          $writer->endTag("property");
-      } elsif ($pv->flags & $PropertyValue::is_ref) {
+      } elsif ($pv->flags & PropertyValue::Flags::is_ref) {
          # TODO: handle explicit references to other objects some day...
-      } elsif ($pv->property->flags & $Property::is_multiple) {
+      } elsif ($pv->property->flags & Property::Flags::is_multiple) {
          $writer->startTag( "property", name => $pv->property->qual_name, @ext );
          write_subobject($writer, $_, $object, $pv->property->subobject_type, $scope) for @{$pv->values};
          $writer->endTag("property");
@@ -1767,11 +1764,11 @@ sub write_object_contents {
          my $type=$value->type;
          my @construct= $construct ? (construct => $construct) : ();
          if ($type->toXML) {
-            $writer->startTag( "attachment", name => $name, type_attr($type, $object), ext_attr($writer,$type), @construct );
+            $writer->startTag( "attachment", name => $name, type_attr($type, $object), ext_attr($writer, $type), @construct );
             $type->toXML->($value, $writer);
             $writer->endTag("attachment");
          } else {
-            $writer->emptyTag( "attachment", name => $name, type_attr($type, $object), ext_attr($writer,$type), @construct, value => $value );
+            $writer->emptyTag( "attachment", name => $name, type_attr($type, $object), ext_attr($writer, $type), @construct, value => $value );
          }
       } elsif (length($value)>100 || $value =~ /\n/) {
          $writer->cdataElement("attachment", $value, name => $name, type => "text");

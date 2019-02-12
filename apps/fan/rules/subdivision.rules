@@ -72,7 +72,7 @@ options %secondary_cone_options=(
 # @return Cone<Scalar>
 user_method secondary_cone(%secondary_cone_options) : VECTORS, MAXIMAL_CELLS {
     my ($self, $options) = @_;
-    my $vectors=$self->VECTORS;
+    my $vectors=full_dim_projection($self->VECTORS);
     my $cells=new Array<Set>(rows($self->MAXIMAL_CELLS));
 
     my $n=$vectors->rows();
@@ -96,7 +96,7 @@ user_method secondary_cone(%secondary_cone_options) : VECTORS, MAXIMAL_CELLS {
     return $sc;
 }
 
-}
+} # object SubdivisionOfVectors
 
 
 object SubdivisionOfPoints {
@@ -179,7 +179,7 @@ rule TIGHT_SPAN.VERTEX_LABELS : TIGHT_SPAN.VERTICES {
    $this->TIGHT_SPAN->VERTEX_LABELS = [0.. $this->TIGHT_SPAN->VERTICES->rows-1];
 }
 
-}
+} # object SubdivisionOfPoints
 
 object polytope::Polytope {
 
@@ -197,7 +197,7 @@ rule POLYTOPAL_SUBDIVISION.REFINED_SPLITS : SPLITS, VERTICES, POLYTOPAL_SUBDIVIS
    $this->POLYTOPAL_SUBDIVISION->REFINED_SPLITS=polytope::splits_in_subdivision($this->VERTICES,$this->POLYTOPAL_SUBDIVISION->MAXIMAL_CELLS,$this->SPLITS);
 }
 
-}
+} # object polytope::Polytope
 
 object polytope::PointConfiguration {
 
@@ -209,6 +209,67 @@ rule POLYTOPAL_SUBDIVISION.REFINED_SPLITS : SPLITS, POINTS, POLYTOPAL_SUBDIVISIO
    $this->POLYTOPAL_SUBDIVISION->REFINED_SPLITS=polytope::splits_in_subdivision($this->POINTS,$this->POLYTOPAL_SUBDIVISION->MAXIMAL_CELLS,$this->SPLITS);
 }
 
+} # object polytope::PointConfiguration
+
+# @category Triangulations, subdivisions and volume
+# Calculate the secondary fan of a point or vector configuration, or polytope.
+# @param polytope::VectorConfiguration V (or polytope) the input configuration
+# @option Array<Set> initial_subdivision a seed subdivision of //V//
+# @option Matrix restrict_to the equations defining a subspace that the secondary fan should be restricted to
+# @option Int seed controls the outcome of the random number generator for generating a randomized initial subdivision
+# @return PolyhedralFan<Scalar>
+user_function secondary_fan<Scalar>(VectorConfiguration<Scalar> { initial_subdivision=>undef, restrict_to=>undef, seed=>undef }) {
+    my ($V, $options) = @_;
+    return secondary_fan_impl($V->VECTORS, $options);
+}
+
+# @category Triangulations, subdivisions and volume
+user_function secondary_fan<Scalar>(Cone<Scalar> { initial_subdivision=>undef, restrict_to=>undef, seed=>undef }) {
+    my ($V, $options) = @_;
+    return secondary_fan_impl($V->RAYS, $options);
+}
+
+
+# @category Geometry
+# Calculate the subdivision induced on a point configuration by a height function h.
+# The height function is specified as the sum of a set of rows of a matrix.
+# Using the RAYS of the secondary_fan of the configuration works well.
+# @tparam Scalar the underlying number type
+# @param VectorConfiguration<Scalar> pc (or polytope/cone) the input configuration
+# @param Matrix<Scalar> R a matrix such that R->cols() == pc->N_VECTORS
+# @param Set I (or ARRAY) a set of indices that select rows from R
+# @option Bool verbose print the final height function used=? Default 0
+# @return Set<Set> the subdivision induced on the configuration by the final height function
+user_function induced_subdivision<Scalar>(VectorConfiguration<Scalar>, Matrix<Scalar>, $; { verbose=>0 }) {
+    my ($pc, $rays, $cone, $options) = @_;
+
+    if ($cone =~ /^\d+/ || ref($cone) == "ARRAY") {
+        $cone = new Set($cone);
+    }
+
+    my $d = $pc->VECTORS->cols();
+    my $heights = ones_vector<Scalar>($cone->size()) * $rays->minor($cone,All);
+    if ($options->{verbose}) {
+        print "heights: $heights\n";
+    }
+    my $p = new Polytope<Scalar>(POINTS=>($pc->VECTORS | $heights));
+    my $F = $p->FACETS;
+    my $pif = $p->POINTS_IN_FACETS;
+
+    my @subdiv=();
+    for (0..$F->rows-1) {
+        if ($F->elem($_,$d) > 0) {
+            push @subdiv, $pif->[$_];
+        }
+    }
+    return new Set<Set>(\@subdiv);
+}
+
+# @category Geometry
+# Calculate the subdivision induced on a polytope by a height function h.
+user_function induced_subdivision<Scalar>(Cone<Scalar>, Matrix<Scalar>, $; { verbose=>0 }) {
+    my ($c, $rays, $cone, $options) = @_;
+    return induced_subdivision(new VectorConfiguration<Scalar>(VECTORS=>$c->RAYS), $rays, $cone, $options);
 }
 
 # Local Variables:

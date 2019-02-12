@@ -35,7 +35,7 @@ namespace {
 
 template<typename HDType>
 bool covering_condition(const Set<int>& Cset, const HDType& LF, const Map<Set<int>, int>& index_of, bool verbose) {
-   for (typename Entire<Subsets_of_k<const Set<int>&> >::const_iterator pit=entire(all_subsets_of_k(Cset, 2)); !pit.at_end(); ++pit) {
+   for (auto pit=entire(all_subsets_of_k(Cset, 2)); !pit.at_end(); ++pit) {
       const Set<int> p(*pit);
       const int x(p.front()), y(p.back());
       const int join = index_of[LF.face(x) * LF.face(y)];
@@ -79,7 +79,7 @@ bool is_modular_cut_impl(const Array<SetType>& C, const Lattice<BasicDecoration,
    }
 
    Set<int> Cset;
-   for (typename Entire<Array<SetType> >::const_iterator cit = entire(C); !cit.at_end(); ++cit) {
+   for (auto cit = entire(C); !cit.at_end(); ++cit) {
       Map<Set<int>, int>::const_iterator tmp = index_of.find(*cit);
       if(tmp == index_of.end()){
          if (verbose) cout << "The given array is not a modular cut because "

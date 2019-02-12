@@ -52,15 +52,15 @@ void odd_complex_of_manifold(perl::Object p)
 
    const Array<int> map = p.give("BOUNDARY.VERTEX_MAP");
    hash_set< Set<int> > Boundary(Bound_sk.size());
-   for (Entire< PowerSet<int> >::const_iterator c_it=entire(Bound_sk); !c_it.at_end(); ++c_it)
+   for (auto c_it=entire(Bound_sk); !c_it.at_end(); ++c_it)
       Boundary.insert(apply_vertex_map(*c_it,map));
 
    bool output = false;
    std::list< Set<int> > odd_complex;
-   for (auto f=entire(HD.nodes_of_rank(HD.rank()-3)); !f.at_end(); ++f)
-      if ( HD.out_edges(*f).size() % 2 && Boundary.find(HD.face(*f)) ==  Boundary.end()) {
+   for (const auto f : HD.nodes_of_rank(HD.rank()-3))
+      if (HD.out_edges(f).size() % 2 && Boundary.find(HD.face(f)) == Boundary.end()) {
          output = true;
-         odd_complex.push_back(HD.face(*f));
+         odd_complex.push_back(HD.face(f));
       }
 
    if (output)

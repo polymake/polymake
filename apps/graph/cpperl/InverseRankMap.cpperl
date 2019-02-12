@@ -1,0 +1,13 @@
+{"app": "graph",
+ "inst": [
+  {"pkg": "Polymake::graph::InverseRankMap"},
+  {"class": "graph::lattice::InverseRankMap<graph::lattice::Nonsequential>", "include": ["polymake/graph/Decoration.h"], "pkg": "Polymake::graph::InverseRankMap__Nonsequential"},
+  {"class": "graph::lattice::InverseRankMap<graph::lattice::Sequential>", "include": ["polymake/graph/Decoration.h"], "pkg": "Polymake::graph::InverseRankMap__Sequential"},
+  {"args": ["graph::lattice::InverseRankMap<graph::lattice::Sequential>"], "include": ["polymake/graph/Decoration.h"], "op": "new", "sig": "new"},
+  {"args": ["graph::lattice::InverseRankMap<graph::lattice::Nonsequential>"], "include": ["polymake/graph/Decoration.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<const graph::lattice::InverseRankMap<graph::lattice::Sequential>&>", "perl::Canned<const graph::lattice::InverseRankMap<graph::lattice::Sequential>&>"], "include": ["polymake/graph/Decoration.h"], "op": "_eq", "sig": "_eq:O.X.X"},
+  {"args": ["graph::lattice::InverseRankMap<graph::lattice::Sequential>", "perl::Canned<const graph::lattice::InverseRankMap<graph::lattice::Sequential>&>"], "include": ["polymake/graph/Decoration.h"], "op": "new", "sig": "new.X"},
+  {"args": ["perl::Canned<const graph::lattice::InverseRankMap<graph::lattice::Nonsequential>&>", "perl::Canned<const graph::lattice::InverseRankMap<graph::lattice::Nonsequential>&>"], "include": ["polymake/graph/Decoration.h"], "op": "_eq", "sig": "_eq:O.X.X"},
+  {"args": ["graph::lattice::InverseRankMap<graph::lattice::Nonsequential>", "perl::Canned<const graph::lattice::InverseRankMap<graph::lattice::Nonsequential>&>"], "include": ["polymake/graph/Decoration.h"], "op": "new", "sig": "new.X"},
+ null ],
+"version": 3}

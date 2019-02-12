@@ -69,7 +69,7 @@ void voronoi(perl::Object p)
 
 }
 
-FunctionTemplate4perl("voronoi<Scalar>(VoronoiPolyhedron<Scalar>) : void");
+FunctionTemplate4perl("voronoi<Scalar>(VoronoiPolyhedron<Scalar>)");
 
 } }
 

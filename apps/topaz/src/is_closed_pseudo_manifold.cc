@@ -27,8 +27,8 @@ bool is_closed_pseudo_manifold(const Lattice<BasicDecoration>& HD, bool known_pu
    if (!known_pure && !is_pure(HD))
       return false;
 
-   for (auto it=entire(HD.nodes_of_rank(HD.rank()-2)); !it.at_end(); ++it)
-      if ( HD.out_degree(*it) != 2 )     // ridge contained in one facet only
+   for (const auto n : HD.nodes_of_rank(HD.rank()-2))
+      if (HD.out_degree(n) != 2)     // ridge contained in one facet only
          return false;
 
    return true;

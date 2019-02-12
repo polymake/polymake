@@ -475,6 +475,9 @@ void Full_Cone<Integer>::find_new_facets(const size_t& new_generator){
         }
         if (nr_zero_i==facet_dim){    // now there could be more such subfacets. We make all and search them.      
             for (k =0; k<nr_gen; k++) {  // BOOST ROUTINE
+                
+                INTERRUPT_COMPUTATION_BY_EXCEPTION
+                
                 if(zero_i.test(k)) { 
                     subfacet=zero_i;
                     subfacet.reset(k);  // remove k-th element from facet to obtain subfacet
@@ -491,6 +494,9 @@ void Full_Cone<Integer>::find_new_facets(const size_t& new_generator){
         // now PS vs N
 
        for (j=0; j<nr_NegNonSimp; j++){ // search negative facet with common subfacet
+           
+           INTERRUPT_COMPUTATION_BY_EXCEPTION
+            
            nr_missing=0; 
            common_subfacet=true;               
            for(k=0;k<nr_zero_i;k++) {
@@ -1911,7 +1917,7 @@ void Full_Cone<Integer>::build_cone() {
     // cout << "Pyr " << pyr_level << endl;
 
     long long RecBoundSuppHyp;
-    RecBoundSuppHyp = dim*dim*dim*SuppHypRecursionFactor; //dim^3 * 50
+    RecBoundSuppHyp = dim*dim*dim*SuppHypRecursionFactor;
     if(using_GMP<Integer>())
         RecBoundSuppHyp*=GMP_time_factor; // pyramid building is more difficult for complicated arithmetic
         
@@ -1935,13 +1941,13 @@ void Full_Cone<Integer>::build_cone() {
         // for every vertex sort the approximation points via: number of positive halfspaces / index
         vector<key_t> overall_perm;
         // stores the perm of every list 
-        vector<vector<key_t>> local_perms(nr_original_gen);
+        vector<vector<key_t> > local_perms(nr_original_gen);
         
         for (size_t current_gen = 0 ; current_gen<nr_original_gen;++current_gen){
             vector<key_t> local_perm;
             if (approx_points_keys[current_gen].size()>0){
                 auto jt=approx_points_keys[current_gen].begin();
-                list<pair<size_t,key_t>> max_halfspace_index_list;
+                list<pair<size_t,key_t> > max_halfspace_index_list;
                 size_t tmp_hyp=0;
                 // TODO: collect only those which belong to the current generator?
                 for (;jt!=approx_points_keys[current_gen].end();++jt){
@@ -2536,6 +2542,13 @@ void Full_Cone<Integer>::update_reducers(bool forced){
         return;
     
     INTERRUPT_COMPUTATION_BY_EXCEPTION
+    
+    if(hilbert_basis_rec_cone_known){
+        NewCandidates.sort_by_deg();
+        NewCandidates.reduce_by(HBRC);
+        ModuleGensDepot.merge(NewCandidates);
+        return;
+    }
 
     if(nr_gen==dim)  // no global reduction in the simplicial case
         NewCandidates.sort_by_deg(); 
@@ -2580,6 +2593,8 @@ void Full_Cone<Integer>::prepare_old_candidates_and_support_hyperplanes(){
     if (!is_approximation) {
         bool save_do_module_gens_intcl=do_module_gens_intcl;
         do_module_gens_intcl=false; // to avoid multiplying sort_deg by 2 for the original generators
+                                    // sort_deg of new candiadtes will be multiplied by 2
+                                    // so that all old candidates are tested for reducibility
         for (size_t i = 0; i <nr_gen; i++) {               
             // cout << gen_levels[i] << " ** " << Generators[i];
             if(!inhomogeneous || gen_levels[i]==0 || (!save_do_module_gens_intcl && gen_levels[i]<=1)) {
@@ -2587,7 +2602,15 @@ void Full_Cone<Integer>::prepare_old_candidates_and_support_hyperplanes(){
                 OldCandidates.Candidates.back().original_generator=true;
             }
         }
+        for(size_t i=0;i<HilbertBasisRecCone.nr_of_rows();++i){
+            HBRC.Candidates.push_back(Candidate<Integer>(HilbertBasisRecCone[i],*this));            
+        }
         do_module_gens_intcl=save_do_module_gens_intcl; // restore
+        if(HilbertBasisRecCone.nr_of_rows()>0){ // early enough to avoid multiplictaion of sort_deg by 2 for the elements 
+                                               // in HilbertBasisRecCone
+            hilbert_basis_rec_cone_known=true;
+            HBRC.sort_by_deg();
+        }
         if(!do_module_gens_intcl) // if do_module_gens_intcl we don't want to change the original monoid
             OldCandidates.auto_reduce();
         else
@@ -2812,7 +2835,10 @@ void Full_Cone<Integer>::compute_deg1_elements_via_projection_simplicial(const v
     Matrix<Integer> GradMat(0,dim);
     GradMat.append(GradT);
     Cone<Integer> ProjCone(Type::cone,Gred,Type::grading, GradMat);
-    ProjCone.compute(ConeProperty::Projection,ConeProperty::NoLLL);
+    if(using_GMP<Integer>())
+        ProjCone.compute(ConeProperty::Projection,ConeProperty::NoLLL,ConeProperty::BigInt);
+    else
+        ProjCone.compute(ConeProperty::Projection,ConeProperty::NoLLL);
     Matrix<Integer> Deg1=ProjCone.getDeg1ElementsMatrix();
     Deg1=NewCoordinates.from_sublattice(Deg1);   
     
@@ -3073,6 +3099,11 @@ void Full_Cone<Integer>::primal_algorithm_set_computed() {
     INTERRUPT_COMPUTATION_BY_EXCEPTION
                 
     if (do_Hilbert_basis) {
+        if(hilbert_basis_rec_cone_known){
+            // OldCandidates.Candidates.clear();
+            OldCandidates.merge(HBRC);
+            OldCandidates.merge(ModuleGensDepot);            
+        }
         if(do_module_gens_intcl){
                 make_module_gens_and_extract_HB();
         }
@@ -3118,6 +3149,32 @@ void Full_Cone<Integer>::primal_algorithm_set_computed() {
         is_Computed.set(ConeProperty::StanleyDec);
     }
     
+    // If the grading has gcd > 1 on the recession monoid,
+    // we must multiply the multiplicity by it.
+    // Without this correction, the multiplicity (relative to deg/g)
+    // is divided by g^r, but it must be g^{r-1}.
+    // We determine g and multiply by it.
+    //
+    // The reason behind this correction is that the determinants
+    // are computed with respect to a basis in which the
+    // basic simplex has volume 1/g instead of 1.
+    // The correction above takes care of this "mistake"
+    // that we are forced to make in order to keep data integral.
+
+    if(isComputed(ConeProperty::Multiplicity)){        
+        Integer corr_factor;       
+        if(!inhomogeneous)
+            corr_factor=v_gcd(Grading);
+        if(inhomogeneous && level0_dim==0)
+            corr_factor=1;
+        if(inhomogeneous && level0_dim>0){
+            Matrix<Integer> Level0Space=ProjToLevel0Quot.kernel();
+            corr_factor=0;
+            for(size_t i=0;i<Level0Space.nr_of_rows();++i) 
+                corr_factor=libnormaliz::gcd(corr_factor,v_scalar_product(Grading,Level0Space[i]));           
+        }
+        multiplicity*=convertTo<mpz_class>(corr_factor);        
+    }
 }
 
    
@@ -3345,8 +3402,8 @@ void Full_Cone<Integer>::compute_hsop(){
             if (is_simplicial){
                     for (size_t j=0;j<ideal_heights.size();j++) ideal_heights[j]=j+1;
             } else {
-                list<pair<boost::dynamic_bitset<> , size_t>> facet_list;
-                list<vector<key_t>> facet_keys;
+                list<pair<boost::dynamic_bitset<> , size_t> > facet_list;
+                list<vector<key_t> > facet_keys;
                 vector<key_t> key;
                 size_t d = dim;
                 if (inhomogeneous) d = level0_dim;
@@ -3391,11 +3448,11 @@ void Full_Cone<Integer>::compute_hsop(){
 // recursive method to compute the heights
 // TODO: at the moment: facets are a parameter. global would be better
 template<typename Integer>
-void Full_Cone<Integer>::heights(list<vector<key_t>>& facet_keys,list<pair<boost::dynamic_bitset<>,size_t>> faces, size_t index,vector<size_t>& ideal_heights,size_t max_dim){
+void Full_Cone<Integer>::heights(list<vector<key_t> >& facet_keys,list<pair<boost::dynamic_bitset<>,size_t> > faces, size_t index,vector<size_t>& ideal_heights,size_t max_dim){
     // since we count the index backwards, this is the actual nr of the extreme ray
     size_t ER_nr = ideal_heights.size()-index-1;
     //~ cout << "starting calculation for extreme ray nr " << ER_nr << endl;
-    list<pair<boost::dynamic_bitset<>,size_t>> not_faces;
+    list<pair<boost::dynamic_bitset<>,size_t> > not_faces;
     auto face_it=faces.begin();
     for (;face_it!=faces.end();++face_it){
         if (face_it->first.test(index)){ // check whether index is set
@@ -3469,7 +3526,7 @@ void Full_Cone<Integer>::heights(list<vector<key_t>>& facet_keys,list<pair<boost
     //cout << "Their union: " << union_faces << endl;
     // the not_faces now already have a size one smaller
     union_faces.resize(index+1);
-    list<pair<boost::dynamic_bitset<>,size_t>> new_faces;
+    list<pair<boost::dynamic_bitset<>,size_t> > new_faces;
     // delete all facets which only consist of the previous extreme rays
     auto facet_it=facet_keys.begin();
     size_t counter=0;
@@ -3681,8 +3738,8 @@ void Full_Cone<Integer>::compute_elements_via_approx(list<vector<Integer> >& ele
         return;
     }
     assert(elements_from_approx.empty());
-    vector<list<vector<Integer>>> approx_points = latt_approx();
-    vector<vector<key_t>> approx_points_indices;
+    vector<list<vector<Integer> > > approx_points = latt_approx();
+    vector<vector<key_t> > approx_points_indices;
     key_t current_key =0;
     //cout << "Approximation points: " << endl;
     //for (size_t j=0;j<dim;++j){
@@ -3879,6 +3936,9 @@ void Full_Cone<Integer>::find_grading(){
 
 template<typename Integer>
 void Full_Cone<Integer>::find_level0_dim(){
+    
+    if(isComputed(ConeProperty::RecessionRank))
+        return;
 
     if(!isComputed(ConeProperty::Generators)){
         throw FatalException("Missing Generators.");
@@ -3889,9 +3949,39 @@ void Full_Cone<Integer>::find_level0_dim(){
         if(gen_levels[i]==0)
             Help[i]=Generators[i];
         
-    ProjToLevel0Quot=Help.kernel();
+    ProjToLevel0Quot=Help.kernel(); // Necessary for the module rank
+                                    // For level0_dim the rank of Help would be enough
     
     level0_dim=dim-ProjToLevel0Quot.nr_of_rows();
+    // level0_dim=Help.rank();
+    
+    is_Computed.set(ConeProperty::RecessionRank);
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+void Full_Cone<Integer>::find_level0_dim_from_HB(){
+// we use the Hilbert basis if we don't have the extreme reys.
+// This is possible if the HB was computed by the dual algorithm.
+// Would be enough if we would take the extreme reys of the recession cone,
+// but they have not been extracted from the HB
+    
+    if(isComputed(ConeProperty::RecessionRank))
+        return;
+
+    assert(isComputed(ConeProperty::HilbertBasis));
+    
+    Matrix<Integer> Help(0,dim);
+    for(auto H=Hilbert_Basis.begin(); H!= Hilbert_Basis.end();++H)
+        if(v_scalar_product(*H,Truncation)==0)
+            Help.append(*H);
+        
+    ProjToLevel0Quot=Help.kernel(); // Necessary for the module rank
+                                    // For level0_dim the rank of Help would be enough
+    
+    level0_dim=dim-ProjToLevel0Quot.nr_of_rows();
+    
     is_Computed.set(ConeProperty::RecessionRank);
 }
 
@@ -4042,6 +4132,8 @@ void Full_Cone<Integer>::set_degrees() {
     if (gen_degrees.size() != nr_gen && isComputed(ConeProperty::Grading)) // now we set the degrees
     {
         gen_degrees.resize(nr_gen);
+        if(do_h_vector || !using_GMP<Integer>())
+                gen_degrees_long.resize(nr_gen);
         vector<Integer> gen_degrees_Integer=Generators.MxV(Grading);
         for (size_t i=0; i<nr_gen; i++) {
             if (gen_degrees_Integer[i] < 1) {
@@ -4050,6 +4142,9 @@ void Full_Cone<Integer>::set_degrees() {
                         + " for generator " + toString(i+1) + ".");
             }
             convert(gen_degrees[i], gen_degrees_Integer[i]);
+            if(do_h_vector || !using_GMP<Integer>())
+                convert(gen_degrees_long[i], gen_degrees_Integer[i]);
+                
         }
     }
     
@@ -4109,8 +4204,11 @@ void Full_Cone<Integer>::sort_gens_by_degree(bool triangulate) {
     vector<key_t> perm=Generators.perm_by_weights(Weights,absolute);
     Generators.order_rows_by_perm(perm);
     order_by_perm_bool(Extreme_Rays_Ind,perm);
-    if(isComputed(ConeProperty::Grading))
+    if(isComputed(ConeProperty::Grading)){
         order_by_perm(gen_degrees,perm);
+        if(do_h_vector || !using_GMP<Integer>())
+            order_by_perm(gen_degrees_long,perm);
+    }
     if(inhomogeneous && gen_levels.size()==nr_gen)
         order_by_perm(gen_levels,perm);
     compose_perm_gens(perm);
@@ -4427,12 +4525,13 @@ bool Full_Cone<Integer>::subcone_contains(const vector<Integer>& v) {
     for (size_t i=0; i<Subcone_Support_Hyperplanes.nr_of_rows(); ++i)
         if (v_scalar_product(Subcone_Support_Hyperplanes[i],v) < 0)
             return false;
-        for (size_t i=0; i<Subcone_Equations.nr_of_rows(); ++i)
+    for (size_t i=0; i<Subcone_Equations.nr_of_rows(); ++i)
         if (v_scalar_product(Subcone_Equations[i],v) != 0)
             return false;
-        if(is_global_approximation)
-            if(v_scalar_product(Subcone_Grading,v)!=1)
-                return false;
+    if(is_global_approximation)
+        if(v_scalar_product(Subcone_Grading,v)!=1)
+            return false;
+
     return true;
 }
 
@@ -4536,7 +4635,7 @@ void Full_Cone<Integer>::disable_grading_dep_comp() {
                     do_partial_triangulation=true;
             }
         } else {
-            throw BadInputException("No grading specified and cannot find one. Cannot compute some requested properties!");
+            throw NotComputableException("No grading specified and cannot find one. Cannot compute some requested properties!");
         }
     }
 }
@@ -4676,7 +4775,7 @@ void Full_Cone<Integer>::check_deg1_hilbert_basis() {
 // Computes the generators of a supercone approximating "this" by a cone over a lattice polytope
 // for every vertex of the simplex, we get a matrix with the integer points of the respective Weyl chamber
 template<typename Integer>
-vector<list<vector<Integer>>> Full_Cone<Integer>::latt_approx() {
+vector<list<vector<Integer> > > Full_Cone<Integer>::latt_approx() {
     
     assert(isComputed(ConeProperty::Grading));
     assert(isComputed(ConeProperty::ExtremeRays));
@@ -4708,7 +4807,7 @@ vector<list<vector<Integer>>> Full_Cone<Integer>::latt_approx() {
     assert(T[0] == Grading);
     
     Matrix<Integer> M;
-    vector<list<vector<Integer>>> approx_points;
+    vector<list<vector<Integer> > > approx_points;
     size_t nr_approx=0;
     for(size_t i=0;i<nr_gen;++i){
         list<vector<Integer> > approx;
@@ -4990,6 +5089,8 @@ void Full_Cone<Integer>::reset_tasks(){
     is_pyramid = false;
     triangulation_is_nested = false;
     triangulation_is_partial = false;
+    
+    hilbert_basis_rec_cone_known=false;
 }
 
 
@@ -5003,10 +5104,14 @@ Full_Cone<Integer>::Full_Cone(const Matrix<Integer>& M, bool do_make_prime){ // 
     dim=M.nr_of_columns();
     if(dim>0)
         Generators=M;
-    /* M.pretty_print(cout);
+    /*
+    cout << "------------------" << endl;
+    cout << "dim " << dim << endl;
+    M.pretty_print(cout);
     cout << "------------------" << endl;
     M.transpose().pretty_print(cout);
-    cout << "==================" << endl;*/
+    cout << "==================" << endl;
+    */
     
     // assert(M.row_echelon()== dim); rank check now done later 
     
@@ -5283,12 +5388,18 @@ void Full_Cone<Integer>::dual_mode() {
         is_Computed.set(ConeProperty::Grading);
     }
     if(!inhomogeneous && isComputed(ConeProperty::HilbertBasis)){
-        if (isComputed(ConeProperty::Grading)) check_deg1_hilbert_basis();
+        if (isComputed(ConeProperty::Grading)) 
+            check_deg1_hilbert_basis();
     }
 
     if (inhomogeneous && isComputed(ConeProperty::Generators)) {
        set_levels();
        find_level0_dim();
+       find_module_rank();
+    }
+    
+    if (inhomogeneous && !isComputed(ConeProperty::Generators) && isComputed(ConeProperty::HilbertBasis)) {
+       find_level0_dim_from_HB();
        find_module_rank();
     }
     
@@ -5357,8 +5468,12 @@ Full_Cone<Integer>::Full_Cone(Full_Cone<Integer>& C, const vector<key_t>& Key) {
     shift = C.shift;
     if(C.gen_degrees.size()>0){ // now we copy the degrees
         gen_degrees.resize(nr_gen);
+        if(C.do_h_vector || !using_GMP<Integer>())
+            gen_degrees_long.resize(nr_gen);
         for (size_t i=0; i<nr_gen; i++) {
             gen_degrees[i] = C.gen_degrees[Key[i]];
+            if(C.do_h_vector || !using_GMP<Integer>())
+                gen_degrees_long[i] = C.gen_degrees_long[Key[i]];
         }
     }
     if(C.gen_levels.size()>0){ // now we copy the levels
@@ -5425,7 +5540,8 @@ void Full_Cone<Integer>::set_zero_cone() {
     multiplicity = 1;
     is_Computed.set(ConeProperty::Multiplicity);
     is_Computed.set(ConeProperty::HilbertBasis);
-    is_Computed.set(ConeProperty::Deg1Elements);
+    if(!inhomogeneous)
+        is_Computed.set(ConeProperty::Deg1Elements);
     
     Hilbert_Series = HilbertSeries(vector<num_t>(1,1),vector<denom_t>()); // 1/1
     is_Computed.set(ConeProperty::HilbertSeries);

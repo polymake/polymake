@@ -15,9 +15,24 @@
 */
 
 #include <gmpxx.h>
+
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshadow"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#endif
+
 #include "libnormaliz/libnormaliz.h"
 #include "libnormaliz/cone.h"
 #include "libnormaliz/HilbertSeries.h"
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 #include "polymake/client.h"
 #include "polymake/vector"
@@ -51,6 +66,18 @@ std::vector<Scalar> pmVector_to_stdvector(const GenericVector<TVector>& v)
   return std::vector<Scalar>(attach_converter<Scalar>(v.top()).begin(),
                              attach_converter<Scalar>(v.top()).end());
 }
+
+template <typename Scalar, typename FromScalar>
+Array<UniPolynomial<Scalar>> stdvectorvector_to_pmArrayPolynomial(const std::vector<std::vector<FromScalar>>& vec, const Rational denom)
+{
+	Array<UniPolynomial<Scalar>> result(vec.size());
+	for(int i = 0; i < (int)vec.size(); i++){
+		result[i] = UniPolynomial<Scalar>(vec[i], sequence(0,vec[i].size()));
+		result[i]*=1/denom;
+	}
+	return result;
+}
+
 
 template <typename Scalar, typename FromScalar>
 Matrix<Scalar> stdvectorvector_to_pmMatrix(const std::vector<std::vector<FromScalar>>& vec)
@@ -155,6 +182,15 @@ perl::ListReturn normaliz_compute_with(perl::Object c, perl::OptionSet options,
   }
   if (options["rays"])
     result << stdvectorvector_to_pmMatrix<Rational>(nmzCone.getExtremeRays());
+
+  if (options["ehrhart_quasi_polynomial"]){
+	// See the libnormaliz manual. The Ehrhart quasi polynomial is a
+	// special version of the Hilbert quasi polynomial. Therefore it is
+	// returned via getHilbertQuasiPolynomial.
+	const libnormaliz::HilbertSeries& id(nmzCone.getHilbertSeries());
+	result << stdvectorvector_to_pmArrayPolynomial<Rational>(id.getHilbertQuasiPolynomial(), convert_to<Rational>(id.getHilbertQuasiPolynomialDenom()));
+  }
+
   return result;
 }
 
@@ -177,6 +213,8 @@ perl::ListReturn normaliz_compute(perl::Object c, perl::OptionSet options)
     todo.set(libnormaliz::ConeProperty::SupportHyperplanes);
   if (options["rays"])
     todo.set(libnormaliz::ConeProperty::ExtremeRays);
+  if (options["ehrhart_quasi_polynomial"])
+    todo.set(libnormaliz::ConeProperty::EhrhartQuasiPolynomial);
 
   const bool with_grading = c.exists("MONOID_GRADING");
 
@@ -217,12 +255,13 @@ UserFunction4perl("# @category Geometry"
                   "# @option Bool hilbert_basis compute Hilbert basis of the cone C"
                   "# @option Bool h_star_vector compute Hilbert h-vector of the cone C"
                   "# @option Bool hilbert_series compute Hilbert series of the monoid"
+                  "# @option Bool ehrhart_quasi_polynomial compute Ehrhart quasi polynomial of a polytope"
                   "# @option Bool facets compute support hyperplanes (=FACETS,LINEAR_SPAN)"
                   "# @option Bool rays compute extreme rays (=RAYS)"
                   "# @option Bool dual_algorithm use the dual algorithm by Pottier"
                   "# @option Bool skip_long do not try to use long coordinates first"
                   "# @option Bool verbose libnormaliz debug output"
                   "# @return List (Matrix<Integer> degree one generators, Matrix<Integer> Hilbert basis, Vector<Integer> Hilbert h-vector, RationalFunction Hilbert series, Matrix<Rational> facets, Matrix<Rational> linear_span, Matrix<Rational> rays) (only requested items)",
-                  &normaliz_compute, "normaliz_compute(Cone { from_facets => 0, degree_one_generators=>0, hilbert_basis=>0, h_star_vector=>0, hilbert_series=>0, facets=>0, rays=>0, dual_algorithm=>0, skip_long=>0, verbose => 0 })");
+                  &normaliz_compute, "normaliz_compute(Cone { from_facets => 0, degree_one_generators=>0, hilbert_basis=>0, h_star_vector=>0, hilbert_series=>0, facets=>0, rays=>0, dual_algorithm=>0, ehrhart_quasi_polynomial=>0, skip_long=>0, verbose => 0 })");
 
 } }

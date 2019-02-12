@@ -30,7 +30,7 @@ perl::Object spherize(perl::Object p_in)
    if (!bounded || !centered)
       throw std::runtime_error("spherize: input polytope must be bounded and centered\n");
 
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Spherized polytope " << p_in.name() << endl;
 
    const Matrix<double> V=p_in.give("VERTICES | POINTS");

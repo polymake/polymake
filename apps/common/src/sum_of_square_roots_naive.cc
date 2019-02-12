@@ -33,7 +33,8 @@ Map<Rational, Rational> sum_of_square_roots_naive(const Array<Rational>& a)
 
    // Now start the summation, counting how many equal values there are in a row
    Map<Rational, Rational> coefficient_of_sqrt;
-   Entire<Array<Rational> >::const_iterator a1 = entire(sorted_a), a2 = a1;
+   auto a1 = entire(sorted_a);
+   auto a2 = a1;
    while (!a2.at_end()) {
       int multiplicity(1); 
       ++a2;

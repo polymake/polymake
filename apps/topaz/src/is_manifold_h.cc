@@ -35,9 +35,9 @@ int is_manifold_client(perl::Object p, perl::OptionSet options)
    UniformlyRandom<Integer> random_source(seed);
 
    bool res_undef = false;
-   for (auto n=entire(HD.nodes_of_rank(1)); !n.at_end(); ++n) {
+   for (const auto n : HD.nodes_of_rank(1)) {
       int local_strategy = strategy;
-      const std::list< Set<int> > link=as_iterator_range(link_in_HD(HD,*n));
+      const std::list<Set<int>> link=as_iterator_range(link_in_HD(HD, n));
 
       bool is_bos= is_closed ? is_sphere_h(link, random_source, local_strategy, n_stable_rounds)
                              : is_ball_or_sphere_h(link, random_source, local_strategy, n_stable_rounds);
@@ -46,7 +46,7 @@ int is_manifold_client(perl::Object p, perl::OptionSet options)
          if (verbose)
             cout << "is_manifold_h: after " << n_stable_rounds
                  << " iterations without improvement:\nUnable to determine, whether link("
-                 << HD.face(*n) << ") is a ball or a sphere.\n"
+                 << HD.face(n) << ") is a ball or a sphere.\n"
                  << "Trying strategy " << local_strategy << "." << endl;
 
          is_bos= is_closed ? is_sphere_h(link, random_source, local_strategy, n_stable_rounds)
@@ -59,7 +59,7 @@ int is_manifold_client(perl::Object p, perl::OptionSet options)
          if (verbose)
             cout << "is_manifold_h: after " << n_stable_rounds
                  << " iterations without improvement:\nUnable to determine, whether link("
-                 << HD.face(*n) << ") is a ball or a sphere." << endl;
+                 << HD.face(n) << ") is a ball or a sphere." << endl;
 
          if (!options["all"])  break;
       }

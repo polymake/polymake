@@ -107,32 +107,32 @@ long div_exact(long a, long b) noexcept
    return a/b;
 }
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) || defined(__clang__)
 inline
 int log2_floor(unsigned int x) noexcept
 {
-   return sizeof(x)*8 -1 - __builtin_clz(x);
+   return sizeof(x) * 8 - 1 - __builtin_clz(x);
 }
 
 inline
 int log2_floor(unsigned long x) noexcept
 {
-   return sizeof(x)*8 -1 - __builtin_clzl(x);
+   return sizeof(x) * 8 - 1 - __builtin_clzl(x);
 }
 
 inline
 int log2_ceil(unsigned int x) noexcept
 {
-   return x > 1 ? log2_floor(x-1)+1 : 0;
+   return x > 1 ? log2_floor(x - 1) + 1 : 0;
 }
 
 inline
 int log2_ceil(unsigned long x) noexcept
 {
-   return x > 1 ? log2_floor(x-1)+1 : 0;
+   return x > 1 ? log2_floor(x - 1) + 1 : 0;
 }
 
-#else // !GCC
+#else // neither GCC nor clang
 
 int log2_round(unsigned long x, int round) noexcept;
 
@@ -147,7 +147,7 @@ inline int log2_ceil(int x)   { return log2_ceil((unsigned int)x); }
 inline int log2_ceil(long x)  { return log2_ceil((unsigned long)x); }
 
 template <typename T>
-T pow_impl(T base, T odd, int exp)
+T pow_impl(T base, T odd, long exp)
 {
    while (exp > 1) {
       if (exp % 2 == 0) {
@@ -162,8 +162,8 @@ T pow_impl(T base, T odd, int exp)
    return base * odd;
 }
 
-template <typename T, typename std::enable_if<std::is_same<typename object_traits<T>::generic_tag,is_scalar>::value, int>::type=0>
-T pow(const T& base, int exp)
+template <typename T, typename=std::enable_if_t<std::is_same<typename object_traits<T>::generic_tag, is_scalar>::value>>
+T pow(const T& base, long exp)
 {
    auto one = one_value<T>();
    if (exp < 0) {
@@ -176,13 +176,14 @@ T pow(const T& base, int exp)
 
 namespace operations {
 
-template <typename Base, typename Exp, typename=typename std::enable_if<std::is_same<Exp,int>::value>::type>
+template <typename Base, typename Exp, typename=std::enable_if_t<std::is_same<Exp, long>::value>>
 struct pow_impl {
    typedef Base first_argument_type;
    typedef Exp second_argument_type;
    typedef const Base result_type;
 
-   result_type operator() (typename function_argument<Base>::type a, Exp b) const {
+   result_type operator() (typename function_argument<Base>::type a, Exp b) const
+   {
       return pm::pow(a,b);
    }
 };
@@ -191,7 +192,6 @@ template <typename Base, typename Exp>
 struct pow : pow_impl<Base,Exp> {};
 
 }
-
 
 }
 

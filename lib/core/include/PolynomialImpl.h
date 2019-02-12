@@ -198,9 +198,10 @@ struct UnivariateMonomial {
   static monomial_type default_value(const int n_vars) { return zero_value<Exponent>(); }
   static bool equals_to_default(const monomial_type& m) { return is_zero(m); }
 
-  static monomial_type empty_value(const int n_vars)
+  static monomial_type empty_value(const int n_vars, int sign = 1)
   {
-    return std::numeric_limits<Exponent>::has_infinity ? - std::numeric_limits<Exponent>::infinity() : std::numeric_limits<Exponent>::min();
+    return std::numeric_limits<Exponent>::has_infinity ? -sign * std::numeric_limits<Exponent>::infinity() : 
+                                          sign > 0 ? std::numeric_limits<Exponent>::min() : std::numeric_limits<Exponent>::max();
   }
   static void croak_if_incompatible(const monomial_type& m, const int n_vars)
   {
@@ -245,9 +246,10 @@ struct MultivariateMonomial {
   static monomial_type default_value(const int n_vars) { return monomial_type(n_vars); }
   static bool equals_to_default(const monomial_type& m) { return m.empty(); }
 
-  static monomial_type empty_value(const int n_vars)
+  static monomial_type empty_value(const int n_vars, int sign = 1)
   { 
-    return same_element_vector<Exponent>((std::numeric_limits<Exponent>::has_infinity ? - std::numeric_limits<Exponent>::infinity() : std::numeric_limits<Exponent>::min()),
+    return same_element_vector<Exponent>((std::numeric_limits<Exponent>::has_infinity ? -sign * std::numeric_limits<Exponent>::infinity() : 
+                                          sign > 0 ? std::numeric_limits<Exponent>::min() : std::numeric_limits<Exponent>::max() ),
                                          n_vars);
   }
 
@@ -402,11 +404,11 @@ public:
 					
   bool trivial() const { return the_terms.empty(); }
 
-  bool unit() const
+  bool is_one() const
   {
     return the_terms.size()==1
         && Monomial::equals_to_default(the_terms.begin()->first)
-        && is_one(the_terms.begin()->second);
+        && pm::is_one(the_terms.begin()->second);
   }
 
   Vector<coefficient_type> coefficients_as_vector() const
@@ -459,7 +461,7 @@ public:
 
   typename Monomial::exponent_type lower_deg() const
   {
-    typename Monomial::exponent_type low= Monomial::deg( - Monomial::empty_value(n_variables));
+    typename Monomial::exponent_type low= Monomial::deg( Monomial::empty_value(n_variables, -1 ));
     for (auto it=entire(get_terms()); !it.at_end(); ++it)
       assign_min(low, Monomial::deg(it->first));
     return low;
@@ -672,13 +674,26 @@ public:
   }
 
   template <typename E>
-  GenericImpl exponentiate_monomial(const E& exp) const
+  typename std::enable_if<std::numeric_limits<E>::is_integer, GenericImpl>::type
+  exponentiate_monomial(const E& exp) const
   {
     if (the_terms.size() != 1)
-      throw std::runtime_error("Except for positive integers, Exponentiation is only implemented for normalized monomials");
+      throw std::runtime_error("exponentiate_monomial: invalid term number");
+    const auto& t = *(the_terms.begin());
+    GenericImpl result(n_variables);
+    result.the_terms.emplace(monomial_type(t.first * exp), pm::pow(t.second,exp));
+    return result;
+  }
+
+  template <typename E>
+  typename std::enable_if<!std::numeric_limits<E>::is_integer, GenericImpl>::type
+  exponentiate_monomial(const E& exp) const
+  {
+    if (the_terms.size() != 1)
+      throw std::runtime_error("exponentiate_monomial: invalid term number");
     const auto& t = *(the_terms.begin());
     if (t.second != one_value<coefficient_type>())
-      throw std::runtime_error("Except for positive integers, Exponentiation is only implemented for normalized monomials");
+      throw std::runtime_error("Except for integers, Exponentiation is only implemented for normalized monomials");
     GenericImpl result(n_variables);
     result.the_terms.emplace(monomial_type(t.first * exp), t.second);
     return result;
@@ -839,7 +854,7 @@ public:
   template <typename Output> static
   void pretty_print_term(Output& out, const monomial_type& m, const coefficient_type& c)
   {
-    if (!is_one(c)) {
+    if (!pm::is_one(c)) {
       if (is_minus_one(c)) {
         out << "- ";
       } else {

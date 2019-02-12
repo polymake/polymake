@@ -1,0 +1,5 @@
+{"app": "topaz", "embed": "stabbing_order.cc",
+ "inst": [
+  {"apps": ["polytope"], "args": ["Rational", "void"], "func": "stabbing_order", "include": ["polymake/Rational.h"], "sig": "stabbing_order:T1.B", "tp": "1"},
+ null ],
+"version": 3}

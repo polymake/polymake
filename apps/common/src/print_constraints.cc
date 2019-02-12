@@ -44,5 +44,5 @@ UserFunctionTemplate4perl("# @category Formatting"
                           "# > print_constraints($M,equations=>1);"
                           "# | 0: 2 x1 + 3 x2 = -1"
                           "# | 1: 5 x1 + 23 x2 = -4",
-                          "print_constraints<Scalar>(Matrix<Scalar>; { equations => 0, homogeneous => 0, coord_labels => undef, row_labels => undef }) : void");
+                          "print_constraints<Scalar>(Matrix<Scalar>; { equations => 0, homogeneous => 0, coord_labels => undef, row_labels => undef })");
 } }

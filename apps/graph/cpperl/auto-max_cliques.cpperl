@@ -1,0 +1,5 @@
+{"app": "graph",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Undirected>&>"], "func": "max_cliques", "include": ["polymake/Graph.h", "polymake/graph/max_cliques.h"], "sig": "max_cliques.X"},
+ null ],
+"version": 3}

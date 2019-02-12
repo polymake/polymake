@@ -94,7 +94,8 @@ void Main::call_app_method(const char* method, const AnyString& arg)
 {
    dTHXa(pi);
    PmStartFuncall(2);
-   SP=glue::push_current_application(aTHX_ SP);
+   SV* const app=glue::get_current_application(aTHX);
+   PUSHs(app);
    mPUSHp(arg.ptr, arg.len);
    PUTBACK;
    glue::call_method_void(aTHX_ method);

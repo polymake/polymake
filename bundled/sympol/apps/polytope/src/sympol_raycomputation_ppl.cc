@@ -71,9 +71,8 @@ bool RayComputationPPL::dualDescription(const Polyhedron & data, std::vector<Fac
 	}
 	points.resize(i, data.dimension());
 
-    typedef ppl_interface::solver<Rational> ppl_solver;
-    ppl_solver solver;
-    ppl_solver::matrix_pair facetPair = solver.enumerate_facets(points, Matrix<Rational>(), true);
+    ppl_interface::ConvexHullSolver<Rational> solver;
+    const auto facetPair = solver.enumerate_facets(points, Matrix<Rational>(), true);
 	
 	bool is_homogenized = true;
 	std::list<QArray> facetList = sympol_wrapper::matrix2QArray(facetPair.first, is_homogenized);

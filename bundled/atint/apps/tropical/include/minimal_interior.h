@@ -26,30 +26,28 @@
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Rational.h"
-#include "polymake/tropical/solver_def.h"
 
 namespace polymake { namespace tropical{
 
-	/*
-	 * @brief Computes the minimal interior cells of a polyhedral subdivision of a polyhedron.
-	 * @param Matrix<Rational> vertices The vertices of the subdivision.
-	 * @param IncidenceMatrix<> polytopes The subdivision cells 
-	 * @param solver<Rational> a convex hull solver to compute the facets of the cell
-	 * @return IncidenceMatrix<> The minimal interior cells of the subdivision.
-	 */
-	IncidenceMatrix<> minimal_interior(const Matrix<Rational> &vertices, 
-                                           const IncidenceMatrix<>& polytopes, solver<Rational> &sv);
+/*
+ * @brief Computes the minimal interior cells of a polyhedral subdivision of a polyhedron.
+ * @param Matrix<Rational> vertices The vertices of the subdivision.
+ * @param IncidenceMatrix<> polytopes The subdivision cells 
+ * @return IncidenceMatrix<> The minimal interior cells of the subdivision.
+ */
+IncidenceMatrix<> minimal_interior(const Matrix<Rational> &vertices, 
+                                   const IncidenceMatrix<>& polytopes);
 
 
-	/*
-	 * @brief This takes a cycle with nontrivial [[LOCAL_RESTRICTION]] and another cycle refining the first one
-	 * and computes the correct [[LOCAL_RESTRICTION]] for the second cycle
-	 * @param Cycle<Addition> localized_cycle
-	 * @param Cycle<Addition> refining_cycle
-	 * @return IncidenceMatrix<>
-	 */
-	IncidenceMatrix<> refined_local_cones(perl::Object localized_cycle, perl::Object refining_cycle);
+/*
+ * @brief This takes a cycle with nontrivial [[LOCAL_RESTRICTION]] and another cycle refining the first one
+ * and computes the correct [[LOCAL_RESTRICTION]] for the second cycle
+ * @param Cycle<Addition> localized_cycle
+ * @param Cycle<Addition> refining_cycle
+ * @return IncidenceMatrix<>
+ */
+IncidenceMatrix<> refined_local_cones(perl::Object localized_cycle, perl::Object refining_cycle);
 
-}}
+} }
 
 #endif

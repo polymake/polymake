@@ -352,9 +352,9 @@ void Table::clear_facets()
    _size=0;
    facets.next=facets.prev=end_facet();
    next_id=0;
-   for (Entire<col_ruler>::iterator col_it=entire(*columns); !col_it.at_end();  ++col_it) {
-      col_it->first_col=NULL;
-      col_it->first_lex=NULL;
+   for (auto col_it=entire(*columns); !col_it.at_end();  ++col_it) {
+      col_it->first_col=nullptr;
+      col_it->first_lex=nullptr;
    }
 }
 
@@ -379,7 +379,7 @@ bool Table::sanity_check() const
       int n_e=0;
       int prev_i=-1;
       bool shown=false, lex_prev_seen=false;
-      for (Entire<facet>::const_iterator e=entire(*f); !e.at_end(); ++e, ++n_e) {
+      for (auto e=entire(*f); !e.at_end(); ++e, ++n_e) {
          int i=e.index();
          if (i<=prev_i)
             _show_facet(cerr, *f, shown) << "order violation" << endl;
@@ -428,9 +428,9 @@ bool Table::sanity_check() const
       OK=false;
       cerr << "Table::check - total size violation: " << n_f << "!=" << _size << endl;
    }
-   for (Entire<col_ruler>::const_iterator ci=entire(*columns); !ci.at_end(); ++ci) {
+   for (auto ci=entire(*columns); !ci.at_end(); ++ci) {
       int n_e=0;
-      for (Entire<vertex_list>::const_iterator e=entire(*ci); !e.at_end(); ++e, ++n_e) ;
+      for (auto e=entire(*ci); !e.at_end(); ++e, ++n_e) ;
       if (n_e != hist[ci->vertex]) {
          cerr << "Table::check - column counter[" << ci->vertex << "] mismatch: " << n_e << "!=" << hist[ci->vertex] << endl;
          OK=false;

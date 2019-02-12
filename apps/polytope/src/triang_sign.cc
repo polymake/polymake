@@ -28,7 +28,7 @@ Array<int> triang_sign(const Array< Set<int> >& Triangulation, const GenericMatr
 {
    Array<int> signs(Triangulation.size());
    Array<int>::iterator s=signs.begin();
-   for (typename Entire< Array< Set<int> > >::const_iterator t=entire(Triangulation);  !t.at_end();  ++t, ++s)
+   for (auto t=entire(Triangulation);  !t.at_end();  ++t, ++s)
       *s=sign(det(Points.minor(*t,All)));
    return signs;
 }
@@ -42,10 +42,10 @@ Array< Array<int> > triang_sign(const Array< Set<int> >& TriangBoundary, const A
 {
    Array< Array<int> > signs(TriangBoundary.size());
    Array< Array<int> >::iterator sf=signs.begin();
-   for (Entire< Array< Set<int> > >::const_iterator facet_t=entire(facet_triangs);  !facet_t.at_end();  ++facet_t, ++sf) {
+   for (auto facet_t=entire(facet_triangs);  !facet_t.at_end();  ++facet_t, ++sf) {
       sf->resize(facet_t->size());
       Array<int>::iterator s=sf->begin();
-      for (typename Entire< Set<int> >::const_iterator t=entire(*facet_t);  !t.at_end();  ++t, ++s)
+      for (auto t=entire(*facet_t);  !t.at_end();  ++t, ++s)
          *s=-sign(det(Points.minor(TriangBoundary[*t],All) / C));
    }
    return signs;

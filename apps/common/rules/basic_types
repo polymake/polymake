@@ -100,21 +100,15 @@ declare property_type Long : Int : c++ (builtin => 'long');
 # Corresponds to the C++ type __bool__.
 declare property_type Bool : c++ (builtin => 'bool') {
 
-   method construct() { 0 }
+   method construct() { false }
 
    method construct($) { !(!$_[1]) }
 
-   type_method parse {
-      if ($_[1] =~ m{^\s* (?i: (\d+) | (true) | false) \s*$ }x) {
-         (defined($1) ? $1!=0 : defined($2))+0
-      } else {
-         croak( "parse error: invalid boolean value $_[1]" );
-      }
-   }
+   type_method parse { extract_boolean($_[1]) }
 
    type_method isa { is_boolean($_[1]) }
 
-   type_method toString { $_[1] ? "true" : "false" }
+   type_method toString { to_boolean_string($_[1]) }
 
    type_method XMLdatatype { "boolean" }
 }
@@ -141,7 +135,7 @@ declare property_type Float : upgrades(Int) : c++ (builtin => 'double') {
    type_method isa { is_float($_[1]) }
 
    # produce an infinitely large positive value
-   user_method inf() : static : c++ (name => 'std::numeric_limits<double>::infinity');
+   user_method inf(:static) : c++ (name => 'infinity', class => 'std::numeric_limits<double>');
 
    # produce an infinitely large negative value
    user_method minus_inf() { -&inf }
@@ -163,16 +157,21 @@ sub inhibited_num { croak( "can't use ", $_[0]->type->full_name, " in a context 
 
 # @category Basic Types
 # An integer of arbitrary size.
-declare property_type Integer : upgrades(Int) : c++ \
-   (operators => '++ -- bool neg ! +:int -:int *:int /:int +=:int -=:int *=:int /=:int %:int %=:int  \
-                  << <<= >> >>= **(Integer::pow(*,*:int)) abs(abs(*)) @compare <=>(compare(*) : method)',     \
-    include => "polymake/Integer.h") {
+declare property_type Integer : upgrades(Int) : c++ (include => "polymake/Integer.h") {
 
    # produce an infinitely large positive value
-   user_method inf() : static : c++ (name => 'std::numeric_limits<Integer>::max');
+   user_method inf(:static) : c++ (name => 'max', class => 'std::numeric_limits<Integer>');
 
    # produce an infinitely large negative value
-   user_method minus_inf() : static : c++ (name => 'std::numeric_limits<Integer>::min');
+   user_method minus_inf(:static) : c++ (name => 'min', class => 'std::numeric_limits<Integer>');
+
+   operator ++ -- bool neg ! << <<= >> >>= @compare : c++;
+
+   operator + - * / % += -= *= /= %= (*,*:int) : c++;
+
+   function abs(*) : operator abs : c++;
+
+   method compare(*) : operator <=> : c++;
 
    use overload '0+' => \&inhibited_num;
 
@@ -181,7 +180,7 @@ declare property_type Integer : upgrades(Int) : c++ \
 
 
 # use automatically for all literal long integral constants in perl input
-namespaces::intercept_const_creation(undef, 'I', sub { (typeof Integer)->construct->($_[0]) });
+namespaces::intercept_operation(undef, 'I', sub { (typeof Integer)->construct->($_[0]) });
 
 # @category Combinatorics
 # Computes the binomial coefficient __//n// choose //k//__.
@@ -192,53 +191,73 @@ namespaces::intercept_const_creation(undef, 'I', sub { (typeof Integer)->constru
 # @example Print 6 choose 4 like this:
 # > print binomial(6,4);
 # | 15
-user_function binomial(*,$) : c++ (name => 'Integer::binom', include => "polymake/Integer.h");
+user_function binomial(*,$) : c++ (name => 'binom', class => 'Integer', include => "polymake/Integer.h");
 
 # @category Basic Types
 # A class for rational numbers.
 # You can easily create a Rational like that: $x = 1/2;
-declare property_type Rational : upgrades(Integer) : c++ \
-   (operators => '++ -- bool neg ! +:int -:int *:int /:int +=:int -=:int *=:int /=:int  \
-                  << <<= >> >>= **(Rational::pow(*,*:int)) abs(abs(*)) @compare <=>(compare(*) : method)',         \
-    include => "polymake/Rational.h") {
+declare property_type Rational : upgrades(Integer) : c++ (include => "polymake/Rational.h") {
 
    # Literal fraction constants in the perl input are also built with this constructor.
    method construct(*,*) : c++ : const_creation( / );
 
    # Produce an infinitely large positive value.
-   user_method inf() : static : c++ (name => 'std::numeric_limits<Rational>::max');
+   user_method inf(:static) : c++ (name => 'max', class => 'std::numeric_limits<Rational>');
 
    # Produce an infinitely large negative value.
-   user_method minus_inf() : static : c++ (name => 'std::numeric_limits<Rational>::min');
+   user_method minus_inf(:static) : c++ (name => 'min', class => 'std::numeric_limits<Rational>');
+
+   operator ++ -- bool neg ! << <<= >> >>= @compare : c++;
+
+   operator + - * / += -= *= /= (*,*:int) : c++;
+
+   function pow(*,*:int) : operator ** : c++ (name => 'pow', class => 'Rational', include => "polymake/Rational.h");
+
+   function abs(*) : operator abs : c++;
+
+   method compare(*) : operator <=> : c++;
 
    use overload '0+' => \&inhibited_num;
 
    type_method XMLdatatype { "pattern: -?(\\d+(/\\d+)?|inf)" }
 }
 
+property_type Integer {
+
+   function pow(*,*:int) : operator ** : c++ (name => 'pow', class => 'Integer', include => "polymake/Integer.h") {
+      if ($_[1] < 0) {
+         CROAK_SKIP:
+         return &Rational::pow;
+      }
+      # fallback to Integer pow
+   }
+}
+
 # @category Basic Types
 # A wrapper for AccurateFloat.
-declare property_type AccurateFloat : c++ \
-   (operators => 'bool neg ! +:int -:int *:int /:int +=:int -=:int *=:int /=:int  \
-                  abs(abs(*)) @compare <=>(compare(*) : method)',         \
-    include => "polymake/AccurateFloat.h") {
+declare property_type AccurateFloat : c++ (include => "polymake/AccurateFloat.h") {
 
-#   method construct(*) : c++ : const_creation( );
+   operator bool neg ! @compare + - * / += -= *= /= : c++;
 
-}  
+   function abs(*) : operator abs : c++;
+
+   method compare(*) : operator <=> : c++;
+
+   use overload '0+' => \&inhibited_num;
+}
 
 # @category Arithmetic
 # Returns the __numerator__ of //a// in a reduced representation.
 # @param Rational a
 # @return Integer
-user_function numerator(Rational:lvalue_opt:anchor) : c++;
+user_function numerator(Rational&&) : c++ : returns(lvalue);
 
 
 # @category Arithmetic
 # Returns the __denominator__ of //a// in a reduced representation.
 # @param Rational a
 # @return Integer
-user_function denominator(Rational:lvalue_opt:anchor) : c++;
+user_function denominator(Rational&&) : c++ : returns(lvalue);
 
 
 # @category Arithmetic
@@ -265,9 +284,9 @@ user_function ceil(*) : c++ (include => "polymake/Rational.h");
 # @return Bool
 # @example
 # > print isfinite('inf');
-# | 
+# | false
 # > print isfinite(23);
-# | 1
+# | true
 
 user_function isfinite(*) : c++ (include => "polymake/Integer.h");
 
@@ -405,7 +424,7 @@ user_function lcm(*:int, *:int) : c++ (include => "polymake/numerical_functions.
 # Computes the factorial //n//! = n&middot;(n-1)&middot;(n-2)&middot;...&middot;2&middot;1.
 # @param Int n >=0
 # @return Integer //n//!
-user_function fac(*:int) : c++ (name => 'Integer::fac', include => "polymake/Integer.h");
+user_function fac(*:int) : c++ (name => 'fac', class => 'Integer', include => "polymake/Integer.h");
 
 
 # @category Internal
@@ -457,8 +476,7 @@ user_function convert_to<Target>($) {
 # 
 # You can construct the value a+b\(\sqrt r\) via QuadraticExtension(a, b, r) (where a, b, r are of type //Field//).
 # @tparam Field default: [[Rational]]
-declare property_type QuadraticExtension<Field=Rational> : upgrades(Field) : c++ \
-   (operators => '! @arith @compare abs(abs(*))', include => "polymake/QuadraticExtension.h") {
+declare property_type QuadraticExtension<Field=Rational> : upgrades(Field) : c++ (include => "polymake/QuadraticExtension.h") {
 
    # Construct q=a+b*sqrt(r).
    # @param Field a
@@ -470,6 +488,12 @@ declare property_type QuadraticExtension<Field=Rational> : upgrades(Field) : c++
    # @param Field a
    method construct(type_upgrades_to<Field>) : c++;
 
+   operator ! neg @arith @compare : c++;
+
+   function abs(*) : operator abs : c++;
+
+   method compare(*) : operator <=> : c++;
+   
    use overload '0+' => \&inhibited_num;
 }
 
@@ -477,25 +501,19 @@ function conjugate(QuadraticExtension) : c++;
 
 function is_ordered_field_with_unlimited_precision(QuadraticExtension) { 1 }
 
+function is_qe(QuadraticExtension) { 1 }
+
+function is_qe(type_upgrades_to<Rational>) { 0 }
+
 
 ##################################################################################
-
-# @category Artificial
-# A perl scalar of whatever contents.
-declare property_type SCALAR : c++ (special => 'perl::Scalar');
-
-# @category Artificial
-# A perl array of whatever contents.
-declare property_type ARRAY : c++ (special => 'perl::Array');
-
-##################################################################################
-
-*is_container=\&Core::CPlusPlus::is_container;
 
 # @category Basic Types
 # Corresponds to the C++ type __std::list__.
 # @tparam Element
-declare property_type List<Element> : c++ (name => 'std::list', include => "polymake/list", operators => '@compare'){
+declare property_type List<Element> : c++ (name => 'std::list', include => "polymake/list") {
+
+   operator @compare : c++;
 
    # Return size of the list in constant time.
    # @return Int
@@ -524,7 +542,9 @@ function compare_float_sequences($$) {
 # Corresponds to the C++ type [[Array]].
 # @tparam Element
 declare property_type Array<Element> : (instanceof Polymake::Core::ObjectType(Element) ? Polymake::Core::BigObjectArray : undef) \
-   : c++ (include => "polymake/Array.h", operators => '@eq' ) {
+   : c++ (include => "polymake/Array.h") {
+
+   operator @eq : c++;
 
    # Returns the size.
    # @return Int
@@ -579,7 +599,10 @@ declare property_type Container<*> : c++ {
 # @tparam First
 # @tparam Second
 declare property_type Pair<First,Second> \
-   : c++ (name => 'std::pair', include => "polymake/client.h", fields => [qw(first second)], operators => '@compare');
+   : c++ (name => 'std::pair', include => "polymake/client.h", fields => [qw(first second)]) {
+
+   operator @compare : c++;
+}
 
 ##################################################################################
 
@@ -587,22 +610,10 @@ declare property_type Pair<First,Second> \
 # @tparam X
 declare property_type Serialized<X> : c++ (name => "pm::Serialized", include => "polymake/client.h");
 
-##################################################################################
+# @category Artificial
+declare property_type CachedObjectPointer<X...> : c++ (name => "typeid", include => "polymake/client.h");
 
-# backward compatibility, see issue #864
-sub deprecated_elem_access {
-   my $obj=shift;
-   (undef, my ($file, $line))=caller;
-   if ($file eq "input") {
-      warn_print("Matrix element access via function call operator is deprecated.\nPlease use method `elem' instead: \$Matrix->elem(\$i,\$j)");
-   } else {
-      state %told;
-      $told{"$file#$line"} //=
-        warn_print("Deprecated matrix element access operator still in use at $file, line $line.\nPlease replace with method `elem': \$Matrix->elem(\$i,\$j)");
-   }
-   use namespaces::AnonLvalue 1 ();
-   sub { $obj->elem(@_) };
-}
+##################################################################################
 
 INCLUDE
   set_types

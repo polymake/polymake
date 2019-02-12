@@ -1,0 +1,19 @@
+You seem to run the polymake image directly.
+This is possible but will lack many important third-party packages
+and the possibility to start locally installed visualisation programs.
+
+The recommended way is to use a starter script polymake-in-container.sh
+which arranges for execution of locally installed programs and mounts your home directory
+within the container.
+
+You can extract this script directly from this image to a location of your choice:
+
+  docker cp <CONTAINER-NAME>:/usr/local/share/polymake/resources/polymake-in-container.sh <YOUR-DIR>/
+
+For more details, please refer to  https://polymake.org/doku.php/howto/dockerimage
+
+If you really want to run the polymake image in isolation, add an option
+
+  --entrypoint /usr/local/bin/polymake
+
+to your docker run command.

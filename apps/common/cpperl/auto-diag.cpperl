@@ -1,0 +1,7 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<const Vector<Rational>&>>"], "func": "diag", "include": ["polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/Vector.h"], "sig": "diag.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Matrix<Rational>&>>", "perl::AnchorArg<perl::Canned<const Matrix<Rational>&>>"], "func": "diag", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "diag.X8.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Vector<double>&>>"], "func": "diag", "include": ["polymake/SparseMatrix.h", "polymake/Vector.h"], "sig": "diag.X8"},
+ null ],
+"version": 3}

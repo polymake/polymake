@@ -27,7 +27,7 @@ perl::Object explicit_zonotope(const Matrix<E>& zones, perl::OptionSet options)
    const int dim = rows_are_points ? zones.cols()-1 : zones.cols();
    Matrix<E> points(1, dim+1);    // one zero-filled row
 
-   for (typename Entire< Rows< Matrix<E> > >::const_iterator z=entire(rows(zones)); !z.at_end(); ++z) {
+   for (auto z=entire(rows(zones)); !z.at_end(); ++z) {
       Vector<E> hom_row (*z);
       if (!rows_are_points) hom_row = (E(1) | hom_row);
       points =

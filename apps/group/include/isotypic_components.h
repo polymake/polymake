@@ -65,7 +65,7 @@ isotypic_projector_impl(const RowType& character,
 {
    SparseMatrix<Rational> isotypic_projector(degree, degree);
    for (int i=0; i<conjugacy_classes.size(); ++i) {
-      for (Entire<ConjugacyClass>::const_iterator cit = entire(conjugacy_classes[i]); !cit.at_end(); ++cit) {
+      for (auto cit = entire(conjugacy_classes[i]); !cit.at_end(); ++cit) {
          isotypic_projector += 
             character[i] // FIXME: conjugate here, once complex character tables are implemented
             * induced_action.induced_rep(*cit);
@@ -98,27 +98,50 @@ auto matrix_rep(const Matrix<Scalar>& g, const Array<int>&)
 
     pi_chi = chi(G.identity())/G.order() * sum([chi(g).conjugate() * rep.rho(g) for g in G])
  */
-template<typename RowType, typename Element>
+template<typename RowType, typename Element, typename Scalar>
 SparseMatrix<CharacterNumberType> 
 isotypic_projector_impl(const RowType& chi,
                         const ConjugacyClasses<Element>& conjugacy_classes,
                         const Array<int>& permutation_to_orbit_order,
-                        int group_order)
+                        int group_order,
+                        const Scalar& )
 {
    const int deg(degree(conjugacy_classes[0][0]));
    SparseMatrix<CharacterNumberType> isotypic_projector(deg, deg);
    for (int i=0; i<conjugacy_classes.size(); ++i) {
       if (is_zero(chi[i])) continue;
-      for (auto cit = entire(conjugacy_classes[i]); !cit.at_end(); ++cit) {
+      for (const auto& cc: conjugacy_classes[i]) {
          isotypic_projector += 
             chi[i] // FIXME: conjugate here, once complex character tables are implemented
-            * matrix_rep(*cit, permutation_to_orbit_order);
+            * matrix_rep(cc, permutation_to_orbit_order);
       }
    }
    isotypic_projector *= chi[0] / group_order;
    return isotypic_projector;
 }
 
+template<typename RowType, typename Element>
+SparseMatrix<double> 
+isotypic_projector_impl(const RowType& chi,
+                        const ConjugacyClasses<Element>& conjugacy_classes,
+                        const Array<int>& permutation_to_orbit_order,
+                        int group_order,
+                        const double& )
+{
+   const int deg(degree(conjugacy_classes[0][0]));
+   SparseMatrix<double> isotypic_projector(deg, deg);
+   for (int i=0; i<conjugacy_classes.size(); ++i) {
+      if (is_zero(chi[i])) continue;
+      for (const auto& cc: conjugacy_classes[i]) {
+         isotypic_projector +=
+            chi[i] // FIXME: conjugate here, once complex character tables are implemented
+            * matrix_rep(cc, permutation_to_orbit_order);
+      }
+   }
+   isotypic_projector *= chi[0] / group_order;
+   return isotypic_projector;
+}
+      
 template<typename InducedAction, typename RowType, typename Element>
 ListMatrix<SparseVector<CharacterNumberType> >
 isotypic_basis_impl(const RowType& character,
@@ -136,9 +159,9 @@ isotypic_basis_impl(const RowType& character,
    for (int k=0; k<degree; ++k) {
       SparseVector<CharacterNumberType> new_row(degree);
       for (int i=0; i<conjugacy_classes.size(); ++i) {
-         for (auto cit = entire(conjugacy_classes[i]); !cit.at_end(); ++cit) {
+         for (const auto& cc: conjugacy_classes[i]) {
             for (int j=0; j<degree; ++j)
-               if (induced_action.index_of_inverse_image(*cit, j) == k) {
+               if (induced_action.index_of_inverse_image(cc, j) == k) {
                   new_row[j] += 
                      character[i]; // FIXME: conjugate here, once complex character tables are implemented
                }
@@ -191,7 +214,7 @@ isotypic_supports_impl(const SparseMatrixType& S,
    const int n_irreps = character_table.rows();
    IncidenceMatrix<> supp(S.rows(), n_irreps);
    for (int i=0; i<n_irreps; ++i) {
-      const SparseMatrix<CharacterNumberType> image = isotypic_projector_impl(character_table[i], conjugacy_classes, permutation_to_orbit_order, order) * T(S);
+      const SparseMatrix<CharacterNumberType> image = isotypic_projector_impl(character_table[i], conjugacy_classes, permutation_to_orbit_order, order, CharacterNumberType()) * T(S);
       int j(0);
       for (auto cit = entire(cols(image)); !cit.at_end(); ++cit, ++j)
          if (!is_zero(*cit))

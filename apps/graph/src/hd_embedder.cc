@@ -63,15 +63,17 @@ void HDEmbedder<Decoration, SeqType>::init(const perl::OptionSet& options)
 
    total_width=label_width[0];
    // randomly toss the nodes in each layer
-   layer_vector::iterator l=layers.begin();
-   Vector<double>::iterator wd=width_in_layer.begin();
-   for (int d=bottom_dim+1; d<top_dim; ++d, ++l, ++wd) {
-      const typename Lattice<Decoration, SeqType>::nodes_of_rank_type nodes=HD.nodes_of_rank(d);
-      const int n=nodes.size();
-      l->resize(n);
-      copy_range(entire(random_permutation(nodes, random)), l->begin());
-      accumulate_in(entire(select(label_width, nodes)), operations::max(), *wd);
-      assign_max(total_width, (*wd)*n);
+   {
+      auto l = layers.begin();
+      auto wd = width_in_layer.begin();
+      for (int d = bottom_dim + 1; d < top_dim; ++d, ++l, ++wd) {
+         const auto nodes=HD.nodes_of_rank(d);
+         const int n=nodes.size();
+         l->resize(n);
+         copy_range(entire(random_permutation(nodes, random)), l->begin());
+         accumulate_in(entire(select(label_width, nodes)), operations::max(), *wd);
+         assign_max(total_width, (*wd)*n);
+      }
    }
 
    // place the nodes equidistantly and symmetrically around x=0
@@ -79,24 +81,24 @@ void HDEmbedder<Decoration, SeqType>::init(const perl::OptionSet& options)
    // weight for out_edges = weights[d+1]
    // weight for in_edges = 1/weights[d]
 
-   Vector<double>::iterator wt=weights.begin();
-   double prev_width=1;
-   for (int d=bottom_dim+1, l = 0; d<top_dim; ++d, ++wt,++l) {
-      const int layer_width=HD.nodes_of_rank(d).size();
-      const double width=total_width/layer_width;
-      double x=(width-total_width)/2;
-      for (auto n=entire(layers[l]); !n.at_end(); ++n, x+=width)
-         node_x[*n]=x;
-      *wt=layer_width/prev_width;
-      prev_width=layer_width;
+   auto wt = weights.begin();
+   double prev_width = 1;
+   for (int d = bottom_dim + 1, l = 0;  d < top_dim;  ++d, ++wt,++l) {
+      const int layer_width = HD.nodes_of_rank(d).size();
+      const double width = total_width/layer_width;
+      double x = (width - total_width) / 2;
+      for (auto n = entire(layers[l]); !n.at_end(); ++n, x += width)
+         node_x[*n] = x;
+      *wt=layer_width / prev_width;
+      prev_width = layer_width;
    }
-   *wt=1/prev_width;
+   *wt = 1 / prev_width;
 
-   wt=weights.begin();
-   for (int d=bottom_dim+1; d<top_dim; ++d, ++wt) {
-      for (auto nodes=entire(HD.nodes_of_rank(d)); !nodes.at_end(); ++nodes) {
-         const int n=*nodes;
-         nb_x_sum[n]= accumulate(select(node_x, HD.out_adjacent_nodes(n)), operations::add())*wt[1] +
+   wt = weights.begin();
+   for (int d = bottom_dim + 1; d < top_dim; ++d, ++wt) {
+      for (auto nodes = entire(HD.nodes_of_rank(d)); !nodes.at_end(); ++nodes) {
+         const int n = *nodes;
+         nb_x_sum[n] = accumulate(select(node_x, HD.out_adjacent_nodes(n)), operations::add())*wt[1] +
             accumulate(select(node_x, HD.in_adjacent_nodes(n)), operations::add())/wt[0];
       }
    }
@@ -115,7 +117,7 @@ Matrix<double> HDEmbedder<Decoration, SeqType>::compute(const perl::OptionSet& o
    do {
       anyone_moved=false;
       Vector<double>::const_iterator wd=width_in_layer.begin(), wt=weights.begin();
-      for (Entire<layer_vector>::iterator l=entire(layers); !l.at_end(); ++l, ++wd, ++wt) {
+      for (auto l=entire(layers); !l.at_end(); ++l, ++wd, ++wt) {
          std::vector<int>::iterator n_first=l->begin(), n_last=l->end();
 #if POLYMAKE_DEBUG
          if (debug_print) {
@@ -239,11 +241,9 @@ void HDEmbedder<Decoration, SeqType>::adjust_x(int node, const double x, const d
 {
    const double dx=x-node_x[node];
    node_x[node]=x;
-   for (Entire<Graph<Directed>::out_adjacent_node_list>::const_iterator nb=entire(HD.out_adjacent_nodes(node));
-        !nb.at_end(); ++nb)
+   for (auto nb=entire(HD.out_adjacent_nodes(node)); !nb.at_end(); ++nb)
       nb_x_sum[*nb]+=dx/wt[1];
-   for (Entire<Graph<Directed>::in_adjacent_node_list>::const_iterator nb=entire(HD.in_adjacent_nodes(node));
-        !nb.at_end(); ++nb)
+   for (auto nb=entire(HD.in_adjacent_nodes(node)); !nb.at_end(); ++nb)
       nb_x_sum[*nb]+=dx*wt[0];
 }
 

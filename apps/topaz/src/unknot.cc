@@ -156,8 +156,8 @@ perl::Object unknot(const int m, const int n, perl::OptionSet options)
 
   // add cone over boundary
   const Lattice<BasicDecoration> HD = hasse_diagram_from_facets(Array<Set<int> >(C));
-  const Boundary_of_PseudoManifold B = boundary_of_pseudo_manifold(HD);
-  for (Entire<Boundary_of_PseudoManifold>::const_iterator b=entire(B); !b.at_end(); ++b)
+  const auto B = boundary_of_pseudo_manifold(HD);
+  for (auto b=entire(B); !b.at_end(); ++b)
     C.push_back(b->face + scalar2set(a+1));
 
   // compute knot

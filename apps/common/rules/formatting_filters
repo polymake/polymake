@@ -33,10 +33,10 @@
 user_function rows_labeled($;$$) {
    my ($data, $row_labels, $elem_labels)=@_;
    if (defined $row_labels) {
-      is_array($row_labels) or croak( "row_labels must be an array" );
+      is_like_array($row_labels) or croak( "row_labels must be an array" );
    }
    if (defined $elem_labels) {
-      is_array($elem_labels) or croak( "elem_labels must be an array" );
+      is_like_array($elem_labels) or croak( "elem_labels must be an array" );
    }
    my $i=-1;
    map {
@@ -88,7 +88,7 @@ user_function rows_numbered {
 user_function latex($;$) {
    my ($data, $elem_labels)=@_;
    if (defined $elem_labels) {
-      is_array($elem_labels) or croak( "elem_labels must be an array" );
+      is_like_array($elem_labels) or croak( "elem_labels must be an array" );
    }
    # The matrix environment is more convenient than array as it is not necessary to know the number of
    # columns in advance.  Also works with rows of varying lengths.
@@ -117,7 +117,7 @@ user_function latex($;$) {
 user_function labeled($;$) {
    my ($data, $elem_labels)=@_;
    if (defined $elem_labels) {
-      is_array($elem_labels) or croak( "elem_labels must be an array" );
+      is_like_array($elem_labels) or croak( "elem_labels must be an array" );
    }
    my $i=-1;
    my @result=map {

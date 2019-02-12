@@ -45,6 +45,7 @@ INCLUDE
   threejs.rules
   tikz.rules
   svg.rules
+  x3d.rules
 
 # Local Variables:
 # mode: perl

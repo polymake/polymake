@@ -1,0 +1,8 @@
+{"app": "group", "embed": "permlib.cc",
+ "inst": [
+  {"args": ["void", "perl::Canned<const Vector<int>&>", "perl::Canned<const Vector<int>&>"], "func": "are_in_same_orbit", "include": ["polymake/Vector.h"], "sig": "are_in_same_orbit.B.X.X"},
+  {"args": ["void", "perl::Canned<const Vector<Rational>&>"], "func": "stabilizer_of_vector", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "stabilizer_of_vector.B.X"},
+  {"args": ["void", "perl::Canned<const Vector<int>&>"], "func": "stabilizer_of_vector", "include": ["polymake/Vector.h"], "sig": "stabilizer_of_vector.B.X"},
+  {"args": ["Integer", "void", "perl::Canned<const Matrix<Integer>&>"], "func": "orbits_of_coordinate_action", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h"], "sig": "orbits_of_coordinate_action:T1.B.X", "tp": "1"},
+ null ],
+"version": 3}

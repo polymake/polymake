@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<Set<int>&>", "int"], "func": "collect", "include": ["polymake/Set.h"], "kind": "meth", "sig": "collect:M1.X"},
+  {"args": ["perl::Canned<ApproximateSet<double>&>", "double"], "func": "collect", "include": ["polymake/ApproximateSet.h"], "kind": "meth", "sig": "collect:M1.X"},
+ null ],
+"version": 3}

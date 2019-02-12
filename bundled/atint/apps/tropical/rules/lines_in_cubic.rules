@@ -115,12 +115,12 @@ object LinesInCubic {
 	### RULES ################################################
 
 	rule N_ISOLATED : {
-		$this->N_ISOLATED = scalar($this->array_isolated_edge) + scalar($this->array_isolated_no_edge);
+		$this->N_ISOLATED = $this->array_isolated_edge->size() + $this->array_isolated_no_edge->size();
 	}
 
 	rule N_FAMILIES : {
-		$this->N_FAMILIES = scalar($this->array_family_fixed_edge) + scalar($this->array_family_fixed_vertex) +
-		scalar($this->array_family_moving_edge) + scalar($this->array_family_moving_vertex);
+		$this->N_FAMILIES = $this->array_family_fixed_edge->size() + $this->array_family_fixed_vertex->size() +
+		$this->array_family_moving_edge->size() + $this->array_family_moving_vertex->size();
 	}
 
 	### METHODS ##############################################
@@ -128,97 +128,74 @@ object LinesInCubic {
 	# @category Lists of lines
 	# @return Cycle<Addition> A perl array version of [[LIST_ISOLATED_NO_EDGE]]
 	user_method array_isolated_no_edge {
-		my $this = shift;
-		if(defined($this->lookup("LIST_ISOLATED_NO_EDGE"))) {
-			return @{$this->LIST_ISOLATED_NO_EDGE};
-		}
-		else {
-			my @a = ();
-			return @a;
-		}
+      my $this = shift;
+      return multiple_property_to_BigObjectArray($this, @{$this->LIST_ISOLATED_NO_EDGE});
 	}
 
 	# @category Lists of lines
 	# @return Cycle<Addition> A perl array version of [[LIST_ISOLATED_EDGE]]
 	user_method array_isolated_edge {
-		my $this = shift;
-		if(defined($this->lookup("LIST_ISOLATED_EDGE"))) {
-			return @{$this->LIST_ISOLATED_EDGE};
-		}
-		else {
-			my @a = ();
-			return @a;
-		}
+      my $this = shift;
+      return multiple_property_to_BigObjectArray($this, @{$this->LIST_ISOLATED_EDGE});
 	}
 
 	# @category Lists of lines
 	# @return Cycle<Addition> A perl array version of [[LIST_FAMILY_FIXED_VERTEX]]
 	user_method array_family_fixed_vertex {
-		my $this = shift;
-		if(defined($this->lookup("LIST_FAMILY_FIXED_VERTEX"))) {
-			return @{$this->LIST_FAMILY_FIXED_VERTEX};
-		}
-		else {
-			my @a = ();
-			return @a;
-		}
+      my $this = shift;
+      return multiple_property_to_BigObjectArray($this, @{$this->LIST_FAMILY_FIXED_VERTEX});
 	}
 
 	# @category Lists of lines
 	# @return Cycle<Addition> A perl array version of [[LIST_FAMILY_MOVING_VERTEX]]
 	user_method array_family_moving_vertex {
-		my $this = shift;
-		if(defined($this->lookup("LIST_FAMILY_MOVING_VERTEX"))) {
-			return @{$this->LIST_FAMILY_MOVING_VERTEX};
-		}
-		else {
-			my @a = ();
-			return @a;
-		}
+      my $this = shift;
+      return multiple_property_to_BigObjectArray($this, @{$this->LIST_FAMILY_MOVING_VERTEX});
 	}
 
 	# @category Lists of lines
 	# @return Cycle<Addition> A perl array version of [[LIST_FAMILY_FIXED_EDGE]]
 	user_method array_family_fixed_edge {
-		my $this = shift;
-		if(defined($this->lookup("LIST_FAMILY_FIXED_EDGE"))) {
-			return @{$this->LIST_FAMILY_FIXED_EDGE};
-		}
-		else {
-			my @a = ();
-			return @a;
-		}
+      my $this = shift;
+      return multiple_property_to_BigObjectArray($this, @{$this->LIST_FAMILY_FIXED_EDGE});
 	}
 
 	# @category Lists of lines
 	# @return Cycle<Addition> A perl array version of [[LIST_FAMILY_MOVING_EDGE]]
 	user_method array_family_moving_edge {
-		my $this = shift;
-		if(defined($this->lookup("LIST_FAMILY_MOVING_EDGE"))) {
-			return @{$this->LIST_FAMILY_MOVING_EDGE};
-		}
-		else {
-			my @a = ();
-			return @a;
-		}
+      my $this = shift;
+      return multiple_property_to_BigObjectArray($this, @{$this->LIST_FAMILY_MOVING_EDGE});
 	}
 
 	# @category Lists of lines
 	# @return Cycle<Addition> A perl array containing all isolated solutions
 	user_method all_isolated {
-		my $this = shift;
-		return ($this->array_isolated_edge, $this->array_isolated_no_edge);
+      my $this = shift;
+		return multiple_property_to_BigObjectArray($this, @{$this->LIST_ISOLATED_EDGE}, 
+         @{$this->LIST_ISOLATED_NO_EDGE});
 	}
 
 	# @category Lists of lines
 	# @return Cycle<Addition> A perl array containing all families
 	user_method all_families {
-		my $this = shift;
-		return ($this->array_family_fixed_edge, $this->array_family_fixed_vertex,
-			$this->array_family_moving_edge, $this->array_family_moving_vertex);
+      my $this = shift;
+		my @all = (@{$this->array_family_fixed_edge}, 
+         @{$this->array_family_fixed_vertex}, @{$this->array_family_moving_edge}, 
+         @{$this->array_family_moving_vertex});
+      return multiple_property_to_BigObjectArray($this, @all);
 	}
 
+   sub multiple_property_to_BigObjectArray {
+      my($this, @in) = @_;
+      if(scalar @in != 0){
+         return new Array<Cycle<Addition>>(\@in);
+      } else {
+         return new Array<Cycle<Addition>>(0);
+      }
+   }
+
 }
+
 
 
 # @category Lines in surfaces
@@ -289,15 +266,15 @@ user_function lines_in_cubic<Addition>(Polynomial<TropicalNumber<Addition>>) {
 }
 
 sub toggle_list {
-	my @list = @_;
-	return map { dual_addition_version($_);} @list;
+	my($list) = @_;
+	return map { dual_addition_version($_);} @$list;
 }
 
 # @category Visualization
 # This visualizes a surface in R^3 and an arbitrary list of (possibly non-pure)
 # Cycle objects. A common bounding box is computed for all objects and a 
 # random color is chosen for each object (except the surface)
-user_function visualize_in_surface<Addition>(Cycle<Addition>;@) {
+user_function visualize_in_surface<Addition>(Cycle<Addition>, @) {
 	my ($X,@p) = @_;
 
 

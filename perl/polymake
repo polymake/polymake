@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #
 #  Copyright (c) 1997-2018
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
@@ -46,7 +46,7 @@ use lib "$InstallTop/perllib", "$InstallArch/perlx", @addlibs;
 #
 use Getopt::Long qw( GetOptions :config require_order bundling no_ignore_case );
 
-my ($verbose, $script, $iscript, $connect, $touch, $help, $tell_version, $start_application, $ignore_start_applications, $reconfigure);
+my ($verbose, $script, $iscript, $connect, $touch, $touch_data, $help, $tell_version, $start_application, $ignore_start_applications, $reconfigure);
 my @config_path;
 
 if ( ! GetOptions( 'v+' => \$verbose, 'd+' => \$DebugLevel,
@@ -56,14 +56,14 @@ if ( ! GetOptions( 'v+' => \$verbose, 'd+' => \$DebugLevel,
                    'script=s' => sub { $script=$_[1]; die "!FINISH\n" },
                    'iscript=s' => sub { $iscript=$_[1]; die "!FINISH\n" },
                    'connect=s' => \$connect,
-                   'touch' => \$touch, 'help' => \$help, 'version' => \$tell_version,
+                   'touch' => \$touch, 'touch_data' => \$touch_data, 'help' => \$help, 'version' => \$tell_version,
                    'config-path=s' => \@config_path,
                    'no-config' => sub { @config_path=("none") },
                    'ignore-config' => sub { @config_path=("ignore") },
                    'reconfigure' => \$reconfigure,
                  )
-     #  --*script --connect --touch --help --version are mutually exclusive
-     or defined($script)+defined($iscript)+defined($connect)+(@ARGV==1 && $ARGV[0] eq "-")+$touch+$help+$tell_version > 1
+     #  --*script --connect --touch --touch-data --help --version are mutually exclusive
+     or defined($script)+defined($iscript)+defined($connect)+(@ARGV==1 && $ARGV[0] eq "-")+$touch+$touch_data+$help+$tell_version > 1
      #  --help --version do not consume any additional args
      or $help+$tell_version && @ARGV) {
    $!=1;
@@ -72,7 +72,7 @@ usage: polymake [-dv] [-A|-a <application>]
                 [--reconfigure] [--config-path PATH ... | --no-config | --ignore-config]
                 [ --script | --iscript <script_file> arg ... ] | '<code>' | --connect SOCKETFILE || HOST:PORT | -
                 <file> <property|method> ... |
-                --touch <file> ... | --help | --version
+                --touch <file> ... | --touch-data <file> ... | --help | --version
 .
 }
 
@@ -115,6 +115,10 @@ usage: polymake [options] [arguments]
       --touch file [ file ... ]
          Read the files and write them out; useful for converting from
          older polymake versions.
+      
+      --touch-data file [ file ... ]
+         Read the data files and write them out; useful for converting 
+         from older polymake versions.
 
    Options are:
       -A application_name
@@ -209,6 +213,13 @@ if ($touch) {
       Main::touch_files();
    }
 
+} elsif ($touch_data) {
+   if (Main::load_apps()) {
+      require Polymake::Core::Shell;
+      Core::Shell::start();
+      Main::touch_data_files();
+   }
+
 } elsif (defined $script) {
    Main::run_script($script);
 
@@ -266,7 +277,7 @@ if ($touch) {
          ### script file
          Main::run_script($arg);
       } elsif (Main::load_apps()) {
-         local_unshift(\@INC, $User::application);
+         local unshift @INC, $User::application;
          local $Scope=new Scope();
          $User::application->eval_expr->("package Polymake::User; $arg");
          beautify_error() if $@;
@@ -303,18 +314,9 @@ sub load_apps {
 }
 
 sub run_script {
-   my ($filename)=@_;
-   if ($filename =~ s/^($id_re)::(?!$)//o) {
-      User::application($1);
-   } else {
-      $User::application=new Core::NeutralScriptLoader();
-   }
-   replace_special_paths($filename);
-   my ($full_path, $tm, $app)=Core::StoredScript::locate_file($filename)
-      or die "script file '$filename' not found\n";
-   local_unshift(\@INC, $app || $User::application);
-   local $Scope=new Scope();
-   do "script" . (defined($app) ? ":" : "=") . $full_path;
+   local $Scope = new Scope();
+   local $standalone_script = true;
+   eval { User::script(@_, @ARGV) };
    beautify_error() if $@;
 }
 
@@ -323,6 +325,15 @@ sub touch_files {
    local $Core::XMLreader::force_verification=1;
    foreach (@ARGV) {
       eval { User::load($_) };
+      err_print($@) if $@;
+   }
+}
+
+sub touch_data_files {
+   local $Scope=new Scope();
+   local $Core::XMLreader::force_verification=1;
+   foreach (@ARGV) {
+      eval { User::load_data($_) };
       err_print($@) if $@;
    }
 }

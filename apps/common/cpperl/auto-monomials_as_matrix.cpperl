@@ -1,0 +1,7 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Polynomial<Rational, int>&>"], "func": "monomials_as_matrix", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "kind": "meth", "sig": "monomials_as_matrix:M"},
+  {"args": ["perl::Canned<const Polynomial<TropicalNumber<Max, Rational>, int>&>"], "func": "monomials_as_matrix", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "kind": "meth", "sig": "monomials_as_matrix:M"},
+  {"args": ["perl::Canned<const Polynomial<TropicalNumber<Min, Rational>, int>&>"], "func": "monomials_as_matrix", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "kind": "meth", "sig": "monomials_as_matrix:M"},
+ null ],
+"version": 3}

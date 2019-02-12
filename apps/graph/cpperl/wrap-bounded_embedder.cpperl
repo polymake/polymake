@@ -1,0 +1,6 @@
+{"app": "graph", "embed": "bounded_embedder.cc",
+ "inst": [
+  {"args": ["void", "perl::Canned<const Matrix<Rational>&>"], "func": "tentacle_graph", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "tentacle_graph.x.X"},
+  {"args": ["void", "perl::Canned<const Matrix<double>&>", "void", "void", "perl::Canned<const Matrix<double>&>", "void"], "func": "bounded_embedder", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "bounded_embedder.x.X.x.x.X.x"},
+ null ],
+"version": 3}

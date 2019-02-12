@@ -48,22 +48,64 @@ using polymake::mselect;
 using polymake::mlist_and;
 using polymake::mlist_or;
 using polymake::bool_not;
+using polymake::mvalue_of;
+using polymake::mis_equal;
+using polymake::mis_less;
+using polymake::mis_greater;
+using polymake::mminimum;
+using polymake::mmaximum;
+using polymake::madd;
+using polymake::msubtract;
 using polymake::mlist_and_nonempty;
 using polymake::is_instance_of;
 using polymake::is_derived_from_instance_of;
 using polymake::least_derived_class;
+using polymake::most_derived_class;
+using polymake::mprefer1st;
+using polymake::mprefer2nd;
 using polymake::mproject1st;
 using polymake::mproject2nd;
+using polymake::accept_valid_type;
+using polymake::accept_valid_template;
 using polymake::mlist;
+using polymake::mlist_head;
+using polymake::mlist_tail;
 using polymake::mlist_length;
+using polymake::mlist_is_empty;
 using polymake::mlist_wrap;
+using polymake::mlist_unwrap;
+using polymake::mlist_at;
 using polymake::mlist_concat;
 using polymake::mlist_contains;
-using polymake::mlist_subset;
+using polymake::mlist_slice;
 using polymake::mlist_prepend_if;
 using polymake::mlist_append_if;
+using polymake::mlist_find_if;
+using polymake::mlist_find;
 using polymake::mlist_remove_duplicates;
+using polymake::mlist_flatten;
+using polymake::mlist_reverse;
+using polymake::mlist_fold;
+using polymake::mlist_fold_transform;
 using polymake::mlist_is_included;
+using polymake::mlist_match;
+using polymake::mlist_match_all;
+using polymake::mlist_union;
+using polymake::mlist_intersection;
+using polymake::mlist_difference;
+using polymake::mlist_symdifference;
+using polymake::mlist_replace;
+using polymake::mlist_remove;
+using polymake::mlist_insert;
+using polymake::mlist_insert_unique;
+using polymake::mlist_filter_unary;
+using polymake::mlist_filter_binary;
+using polymake::mlist_transform_unary;
+using polymake::mlist_transform_binary;
+using polymake::mrepeat;
+using polymake::mreplicate;
+using polymake::mlist_sort;
+using polymake::muntag_t;
 using polymake::mtagged_list_extract;
 using polymake::tagged_list_extract_integral;
 using polymake::mtagged_list_replace;
@@ -73,21 +115,53 @@ using polymake::is_among;
 using polymake::is_derived_from;
 using polymake::is_derived_from_any;
 using polymake::can_construct_any;
+using polymake::is_instance_of_any;
 using polymake::can_assign_to;
+using polymake::forward_arg_of_type;
+using polymake::forward_arg_derived_from;
+using polymake::forward_arg_satisfying;
+using polymake::forward_all_args_of_type;
+using polymake::forward_all_args_derived_from;
+using polymake::forward_all_args_satisfying;
+using polymake::is_direct_constructible;
+using polymake::is_lossless_convertible;
 using polymake::mget_template_parameter;
+using polymake::mset_template_parameter;
 using polymake::mreplace_template_parameter;
-using polymake::mevaluate;
+using polymake::msafely_eval;
+using polymake::mbind_const;
+using polymake::mbind1st;
+using polymake::mbind2nd;
+using polymake::mswap_args;
+using polymake::mnegate_unary;
+using polymake::mnegate_binary;
 using polymake::legible_typename;
 using polymake::pure_type_t;
+using polymake::same_pure_type;
+using polymake::is_class_or_union;
+using polymake::remove_unsigned_t;
+using polymake::is_const;
+// not yet! using polymake::add_const;
+using polymake::add_const_t;
+// not yet! using polymake::inherit_const;
+using polymake::mlist_pure_types;
 using polymake::is_class_or_union;
 using polymake::inherit_const_t;
+using polymake::inherit_reference;
 using polymake::inherit_reference_t;
 using polymake::private_mutable_t;
 using polymake::ensure_private_mutable;
+using polymake::reverse_cast;
 using polymake::is_comparable;
 using polymake::are_comparable;
 using polymake::is_less_greater_comparable;
 using polymake::are_less_greater_comparable;
+using polymake::mlist2tuple;
+using polymake::tuple2mlist;
+using polymake::index_sequence_for;
+using polymake::make_index_sequence_for;
+using polymake::make_reverse_index_sequence;
+using polymake::foreach_in_tuple;
 
 template <typename Class, typename Member, Member Class::*Ptr>
 struct ptr2type {
@@ -139,10 +213,8 @@ template <typename C> struct attrib {
    typedef C minus_ref;
    typedef const C& plus_const_ref;
    typedef const C plus_const;
-   typedef const C toggle_const;
    typedef C& plus_ref;
-   typedef C& toggle_ref;
-   static const bool is_reference=false, is_const=false;
+   static const bool is_reference=false, is_const=false, is_rvref=false;
 };
 template <>
 struct attrib<void> {
@@ -152,25 +224,25 @@ struct attrib<void> {
    typedef void plus_const_ref;
    typedef void plus_const;
    typedef void plus_ref;
-   typedef void toggle_const;
-   typedef void toggle_ref;
    static const bool is_reference=false, is_const=false;
 };
 template <typename C>
 struct attrib<const C> : attrib<C> {
    typedef const C minus_ref;
    typedef const C& plus_ref;
-   typedef C toggle_const;
-   typedef const C& toggle_ref;
    static const bool is_const=true;
 };
 template <typename C>
 struct attrib<C&> : attrib<C> {
    typedef typename attrib<C>::plus_const& plus_const;
    typedef typename attrib<C>::minus_const& minus_const;
-   typedef typename attrib<C>::toggle_const& toggle_const;
-   typedef C toggle_ref;
    static const bool is_reference=true;
+};
+template <typename C>
+struct attrib<C&&> : attrib<C> {
+   typedef typename attrib<C>::plus_const&& plus_const;
+   typedef typename attrib<C>::minus_const&& minus_const;
+   static const bool is_reference=true, is_rvref=true;
 };
 
 template <typename C>
@@ -178,86 +250,40 @@ struct deref : attrib<C> {
    typedef typename attrib<C>::minus_const_ref type;
 };
 
-template <typename C>
-struct deref_ptr : attrib<C> {
-   typedef typename attrib<C>::minus_const_ref type;
-};
-
-template <typename C>
-struct deref_ptr<C*> : attrib<C> {
-   typedef typename attrib<C>::minus_const_ref type;
-   typedef const type* plus_const;
-   typedef type* minus_const;
-   typedef type& minus_const_ref;
-};
-
 template <typename T>
-struct remove_unsigned {
-   typedef T type;
-};
-
-template <>
-struct remove_unsigned<unsigned char> {
-   typedef signed char type;
-};
-
-template <>
-struct remove_unsigned<unsigned short> {
-   typedef short type;
-};
-
-template <>
-struct remove_unsigned<unsigned int> {
-   typedef int type;
-};
-
-template <>
-struct remove_unsigned<unsigned long> {
-   typedef long type;
+struct add_const {
+   typedef typename deref<T>::plus_const type;
 };
 
 template <typename T, typename From>
 struct inherit_const {
-   typedef typename std::conditional<deref<From>::is_const, typename attrib<T>::plus_const, T>::type type;
+   typedef typename std::conditional<deref<From>::is_const, typename deref<T>::plus_const, T>::type type;
 };
 
 template <typename T, typename From>
 struct inherit_ref {
    typedef typename inherit_const<typename deref<T>::minus_ref, From>::type QT;
-   typedef typename std::conditional<deref<T>::is_reference || deref<From>::is_reference, QT&, QT>::type type;
+   typedef typename mselect< std::enable_if<deref<T>::is_rvref || deref<From>::is_rvref, QT&&>,
+                             std::enable_if<deref<T>::is_reference || deref<From>::is_reference, QT&>,
+                             QT >::type type;
+};
+
+template <typename T, typename From>
+struct inherit_ref_norv {
+   typedef typename inherit_const<typename deref<T>::minus_ref, From>::type QT;
+   typedef typename mselect< std::enable_if<deref<T>::is_rvref || deref<From>::is_rvref, QT&>,
+                             std::enable_if<deref<T>::is_reference || deref<From>::is_reference, QT&>,
+                             QT >::type type;
 };
 
 template <typename T, bool make_const>
 struct assign_const {
-   typedef typename std::conditional<make_const, typename attrib<T>::plus_const, typename attrib<T>::minus_const>::type type;
+   typedef typename std::conditional<make_const, typename deref<T>::plus_const, typename deref<T>::minus_const>::type type;
 };
 
 template <typename T, bool make_ref>
 struct assign_ref {
    typedef typename std::conditional<make_ref, typename attrib<T>::plus_ref, typename attrib<T>::minus_ref>::type type;
-};
-
-template <typename T1, typename T2>
-struct identical_minus_const {
-   static const bool value=std::is_same<typename attrib<T1>::minus_const, typename attrib<T2>::minus_const>::value;
-   typedef typename std::conditional<value, typename assign_const<T1, attrib<T1>::is_const || attrib<T2>::is_const>::type,
-                                            void>::type type;
-};
-
-template <typename T1, typename T2>
-struct identical_minus_ref {
-   static const bool value=std::is_same<typename attrib<T1>::minus_ref, typename attrib<T2>::minus_ref>::value;
-   typedef typename std::conditional<value, typename assign_ref<T1, attrib<T1>::is_reference && attrib<T2>::is_reference>::type,
-                                            void>::type type;
-};
-
-template <typename T1, typename T2>
-struct identical_minus_const_ref {
-   static const bool value=std::is_same<typename attrib<T1>::minus_const_ref, typename attrib<T2>::minus_const_ref>::value;
-   typedef typename std::conditional<value, typename assign_const<
-                                               typename assign_ref<T1, attrib<T1>::is_reference && attrib<T2>::is_reference>::type,
-                                               attrib<T1>::is_const || attrib<T2>::is_const>::type,
-                                     void>::type type;
 };
 
 template <typename Head, typename Tail>
@@ -285,15 +311,15 @@ struct list_tail< cons<Head, Tail> > {
    typedef Tail type;
 };
 
-template <typename T>
-struct reverse_cons {
-   typedef T type;
-};
+}
+namespace polymake {
 
 template <typename Head, typename Tail>
-struct reverse_cons< cons<Head, Tail> > {
-   typedef cons<Tail, Head> type;
-};
+struct mlist_wrap< pm::cons<Head, Tail> >
+   : mlist_concat<Head, typename mlist_wrap<Tail>::type> {};
+
+}
+namespace pm {
 
 template <typename> struct same {};
 
@@ -327,95 +353,36 @@ struct n_th<cons<Head, Tail>, 0> {
 };
 
 
-/// derivation and conversion tests due to Andrei Alexandrescu
-
-template <int n>
+template <size_t n>
 struct size_discriminant {
    typedef char (&type)[n];
 };
 
-namespace derivation {
-   typedef size_discriminant<1>::type no;
-   typedef size_discriminant<2>::type yes;
-
-   template <typename Specific>
-   struct test_impl {
-      static const typename Specific::item *piece();
-      struct helper : Specific {
-         static no Test(...);
-         using Specific::Test;
-      };
-      static const bool value= sizeof(helper::Test(piece())) == sizeof(yes);
-   };
-
-   template <typename Specific>
-   struct test : bool_constant< test_impl<Specific>::value > {};
-
-   struct anything {
-      template <typename T> anything(const T& ...);
-   };
-
-   template <typename Specific>
-   struct conv_tools {
-      static const typename Specific::item& piece();
-      struct helper : Specific {
-         static no Test(const anything& ...);
-         using Specific::Test;
-      };
-   };
-
-   template <typename Specific>
-   struct conv_test : conv_tools<Specific> {
-      typedef conv_tools<Specific> super;
-      static const bool value= sizeof(super::helper::Test(super::piece(), 1)) == sizeof(yes);
-   };
-}
-
-// TODO: still used in alias; remove this when alias has gone.
-template <typename Concrete, template <typename, int> class Template>
-struct is_derived_from_instance2i_impl {
-   template <typename T1, int i2>
-   static derivation::yes Test(const Template<T1,i2>*);
-   typedef Concrete item;
-};
-template <typename Concrete, template <typename, int> class Template>
-struct is_derived_from_instance2i : derivation::test< is_derived_from_instance2i_impl<Concrete,Template> > {};
-
-// TODO: still used in iterator_chain
-template <typename Concrete, template <typename, bool> class Template>
-struct is_instance2b
-   : std::false_type {};
-
-template <typename T1, bool b2, template <typename, bool> class Template>
-struct is_instance2b<Template<T1, b2>, Template>
-   : std::true_type {};
-
-
 template <typename T1, typename T2,
-          bool are_objects=(is_class_or_union<typename deref<T1>::type>::value &&
-                            is_class_or_union<typename deref<T2>::type>::value),
-          bool are_arithmetic=(std::is_arithmetic<typename deref<T1>::type>::value &&
-                               std::is_arithmetic<typename deref<T2>::type>::value)>
+          bool are_objects=(is_class_or_union<pure_type_t<T1>>::value &&
+                            is_class_or_union<pure_type_t<T2>>::value),
+          bool are_arithmetic=(std::is_arithmetic<pure_type_t<T1>>::value &&
+                               std::is_arithmetic<pure_type_t<T2>>::value)>
 struct compatible_helper
    : std::false_type {
-   typedef void type;
+   using type = void;
 };
 
 template <typename T1, typename T2>
 struct compatible_helper<T1, T2, true, false> {
-   typedef typename mevaluate<least_derived_class<typename deref<T1>::type, typename deref<T2>::type>, void>::type common_base;
-   static const bool value=!std::is_same<common_base, void>::value;
-   typedef typename assign_const<common_base, value && (attrib<T1>::is_const || attrib<T2>::is_const)>::type value_type;
-   typedef typename assign_ref<value_type, value && attrib<T1>::is_reference && attrib<T2>::is_reference>::type type;
+   using common_base = typename least_derived_class<typename deref<T1>::type, typename deref<T2>::type>::type;
+   static constexpr bool value=!std::is_same<common_base, void>::value;
+   using value_type = typename assign_const<common_base, value && (is_const<T1>::value || is_const<T2>::value)>::type;
+   using type = typename assign_ref<value_type, value && std::is_reference<T1>::value && std::is_reference<T2>::value>::type;
 };
 
 template <typename T1, typename T2>
 struct compatible_helper<T1, T2, false, true>
    : std::true_type {
-   static const bool keep_attribs=std::is_same<typename deref<T1>::type, typename deref<T2>::type>::value;
-   typedef typename std::common_type<typename deref<T1>::type, typename deref<T2>::type>::type common_type;
-   typedef typename assign_const<common_type, keep_attribs && (attrib<T1>::is_const || attrib<T2>::is_const)>::type value_type;
-   typedef typename assign_ref<value_type, keep_attribs && (attrib<T1>::is_reference && attrib<T2>::is_reference)>::type type;
+   static const bool keep_attribs=std::is_same<pure_type_t<T1>, pure_type_t<T2>>::value;
+   using common_type = typename std::common_type<pure_type_t<T1>, pure_type_t<T2>>::type;
+   using value_type = typename assign_const<common_type, keep_attribs && (is_const<T1>::value || is_const<T2>::value)>::type;
+   using type = typename assign_ref<value_type, keep_attribs && std::is_reference<T1>::value && std::is_reference<T2>::value>::type;
 };
 
 template <typename T1, typename T2>
@@ -423,7 +390,7 @@ struct compatible : compatible_helper<T1, T2> {};
 
 template <typename T1, typename T2>
 struct compatible<T1*, T2*> : compatible<T1, T2> {
-   typedef typename compatible<T1,T2>::type *type;
+   using type = typename compatible<T1,T2>::type*;
 };
 
 template <typename T1, typename T2>
@@ -536,15 +503,6 @@ struct concat_list<cons<Head,Tail>, void> {
    typedef cons<Head, Tail> type;
 };
 
-template <bool Cond, typename T, typename List>
-struct concat_if : concat_list<T, List> {};
-
-template <typename T, typename List>
-struct concat_if<false, T, List> {
-   typedef List type;
-};
-
-
 /** Determine element pairs yielding Predicate::value==true
     The primary template handles the case of $First$ and $Second$ being scalars,
     while the general case of $First$ being a list is handled in specializations.
@@ -670,22 +628,11 @@ struct list_search_all<cons<Head,Tail>, cons<Head2, Tail2>, Predicate>
    typedef typename h2::negative2 negative2;
 };
 
-template <typename List, typename Item>
-struct list_contains : list_search<typename list2cons<List>::type, Item, std::is_same> {};
-
 /// Eliminate the elements of Second that evaluate Predicate::value==TRUE
 ///  when combined with some element(s) from First.
 template <typename First, typename Second, template <typename,typename> class Predicate>
 struct merge_list
    : concat_list<First, typename list_search_all<First, Second, Predicate>::negative2> {};
-
-template <typename T, typename Old, typename New>
-struct list_replace : std::conditional<std::is_same<T,Old>::value, New, T> {};
-
-template <typename Head, typename Tail, typename Old, typename New>
-struct list_replace<cons<Head,Tail>, Old, New> {
-   typedef cons<typename std::conditional<std::is_same<Head,Old>::value, New, Head>::type, typename list_replace<Tail,Old,New>::type> type;
-};
 
 template <template <typename> class Operation, typename T>
 struct list_transform_unary : Operation<T> {};
@@ -1004,49 +951,31 @@ struct spec_or_model_traits<T, Model, false> : spec_object_traits<Model> {
 template <typename Top>
 class Generic {
 protected:
-   Generic() {}
-   Generic(const Generic&) {}
+   Generic() = default;
+   Generic(const Generic&) = default;
 public:
-   typedef Top top_type;
-   typedef void generic_type;
-   typedef Top persistent_type;
-   typedef Top concrete_type;
+   using top_type = Top;
+   using generic_type = void;
+   using persistent_type = Top;
+   using concrete_type = Top;
 
-   const Top& top() const
+   const Top& top() const &
    {
       return static_cast<const Top&>(*this);
    }
-   Top& top()
+   Top& top() &
    {
       return static_cast<Top&>(*this);
+   }
+   Top&& top() &&
+   {
+      return static_cast<Top&&>(*this);
    }
 };
 
 // to be specialized for overwriting generic family-specific properties
 template <typename T>
 struct generic_object_traits : spec_object_traits<typename T::generic_type> {};
-
-#define DeclTypedefCHECK(Typename)                                      \
-   template <typename T>                                                \
-   struct has_##Typename##_impl {                                       \
-      template <typename T2>                                            \
-      static typename size_discriminant<(2-std::is_same<typename T2::Typename, void>::value)>::type Test(const T2*, typename T2::Typename* =nullptr); \
-      typedef T item;                                                   \
-   };                                                                   \
-   template <typename T>                                                \
-   struct has_##Typename : derivation::test< has_##Typename##_impl<T> > {}
-
-#define DeclNestedTemplateCHECK(Templname)                             \
-   template <typename T>                                                \
-   struct has_nested_##Templname##_impl {                               \
-      template <template <typename...> class> struct templ_wrapper {};     \
-      template <typename T2>                                            \
-      static derivation::yes Test(const T2*, const templ_wrapper<T2::template Templname>* =nullptr); \
-      typedef T item;                                                   \
-   };                                                                   \
-   template <typename T>                                                \
-   struct has_nested_##Templname : derivation::test< has_nested_##Templname##_impl<T> > {}
-
 
 DeclTypedefCHECK(generic_type);
 DeclTypedefCHECK(persistent_type);
@@ -1149,14 +1078,6 @@ template <int X, int Y>
 struct const_compare<X,Y,false> {
    static const int max=Y, min=X;
 };
-template <int X, int Y, bool _ge=(X>=0)>
-struct const_first_nonnegative {
-   static const int value=X;
-};
-template <int X, int Y>
-struct const_first_nonnegative<X,Y,false> {
-   static const int value=Y;
-};
 
 template <typename Head, typename Tail>
 struct max_dimension< cons<Head, Tail> > {
@@ -1247,15 +1168,20 @@ struct is_masquerade<T, void> : std::false_type {
    typedef void hidden_type;
 };
 
-// common case: everything is bad
-template <typename T1, typename T2,
-          typename Model1=typename object_traits<T1>::model, typename Model2=typename object_traits<T2>::model>
-struct isomorphic_types_impl : std::false_type {
+// general case: everything is different
+struct anisomorphic_types : std::false_type {
+   using tags = mlist<>;
+   // TODO: remove discriminant here and in all specializations below when operators are refactored
    typedef void discriminant;
 };
 
+template <typename T1, typename T2,
+          typename Model1=typename object_traits<T1>::model, typename Model2=typename object_traits<T2>::model>
+struct isomorphic_types_impl : anisomorphic_types {};
+
 template <typename T1, typename T2, typename Model>
 struct isomorphic_types_impl<T1, T2, Model, Model> : std::true_type {
+   using tags = mlist<typename object_traits<T1>::generic_tag, typename object_traits<T2>::generic_tag>;
    typedef cons<typename object_traits<T1>::generic_tag, typename object_traits<T2>::generic_tag> discriminant;
 };
 
@@ -1265,7 +1191,8 @@ struct type_behind
 
 template <typename T>
 struct type_behind<T, void> {
-   typedef T type;};
+   using type = T;
+};
 
 template <typename T>
 using type_behind_t = typename type_behind<pure_type_t<T>>::type;
@@ -1276,9 +1203,16 @@ struct isomorphic_types
 
 template <typename T1, typename T2>
 struct isomorphic_types_impl<T1, T2, is_container, is_container> {
-   typedef typename container_element_type<T1>::type V1;
-   typedef typename container_element_type<T2>::type V2;
-   static const bool value=isomorphic_types<V1, V2>::value;
+   using V1 = typename container_element_type<T1>::type;
+   using V2 = typename container_element_type<T2>::type;
+   static constexpr bool value=isomorphic_types<V1, V2>::value;
+   using type = bool_constant<value>;
+   using value_type = bool;
+
+   using tags = typename mselect< std::enable_if< value, mlist<typename object_traits<T1>::generic_tag, typename object_traits<T2>::generic_tag> >,
+                                  std::enable_if< isomorphic_types<T1, V2>::value, mlist<is_scalar, typename object_traits<T2>::generic_tag> >,
+                                  std::enable_if< isomorphic_types<V1, T2>::value, mlist<typename object_traits<T1>::generic_tag, is_scalar> >,
+                                  mlist<> >::type;
    typedef typename mselect< std::enable_if< value, cons<typename object_traits<T1>::generic_tag, typename object_traits<T2>::generic_tag> >,
                              std::enable_if< isomorphic_types<T1, V2>::value, cons<is_scalar, typename object_traits<T2>::generic_tag> >,
                              std::enable_if< isomorphic_types<V1, T2>::value, cons<typename object_traits<T1>::generic_tag, is_scalar> >,
@@ -1287,14 +1221,22 @@ struct isomorphic_types_impl<T1, T2, is_container, is_container> {
 };
 
 template <typename T1, typename T2, typename Model1>
-struct isomorphic_types_impl<T1, T2, Model1, is_container> : std::false_type {
+struct isomorphic_types_impl<T1, T2, Model1, is_container>
+   : std::false_type {
+   using tags = std::conditional_t< isomorphic_types<T1, typename container_element_type<T2>::type>::value,
+                                    mlist<is_scalar, typename object_traits<T2>::generic_tag>,
+                                    mlist<> >;
    typedef typename std::conditional< isomorphic_types<T1, typename container_element_type<T2>::type>::value,
                                       cons<is_scalar, typename object_traits<T2>::generic_tag>, void>::type
       discriminant;
 };
 
 template <typename T1, typename T2, typename Model2>
-struct isomorphic_types_impl<T1, T2, is_container, Model2> : std::false_type {
+struct isomorphic_types_impl<T1, T2, is_container, Model2>
+   : std::false_type {
+   using tags = std::conditional_t< isomorphic_types<typename container_element_type<T1>::type, T2>::value,
+                                    mlist<typename object_traits<T1>::generic_tag, is_scalar>,
+                                    mlist<> >;
    typedef typename std::conditional< isomorphic_types<typename container_element_type<T1>::type, T2>::value,
                                       cons<typename object_traits<T1>::generic_tag, is_scalar>, void>::type
       discriminant;
@@ -1308,6 +1250,10 @@ struct isomorphic_types_impl<T1, T2, is_composite, is_composite> {
    static const bool value=
       list_length<typename object_traits<T1>::elements>::value == list_length<typename object_traits<T2>::elements>::value &&
       list_accumulate_binary<list_and, isomorphic_types_deref, typename object_traits<T1>::elements, typename object_traits<T2>::elements>::value;
+   using type = bool_constant<value>;
+   using value_type = bool;
+
+   using tags = std::conditional_t<value, mlist<typename object_traits<T1>::generic_tag, typename object_traits<T2>::generic_tag>, mlist<>>;
    typedef typename std::conditional<value, cons<typename object_traits<T1>::generic_tag, typename object_traits<T2>::generic_tag>, void>::type
       discriminant;
 };
@@ -1348,9 +1294,9 @@ struct is_field_of_fractions : bool_constant<!std::numeric_limits<T>::is_integer
  *  conversion between generic and concrete types
  * ----------------------------------------------- */
 
-template <typename T, bool _has_generic=has_generic_type<typename deref<T>::type>::value, bool _itself_generic=false>
+template <typename T, bool=has_generic_type<typename deref<T>::type>::value, bool=false>
 struct Concrete : std::true_type {
-   typedef typename attrib<T>::minus_const_ref type;
+   using type = pure_type_t<T>;
 };
 
 template <typename T>
@@ -1359,66 +1305,56 @@ struct Concrete<T, true, false>
 
 template <typename T>
 struct Concrete<T, false, true> : std::false_type {
-   typedef typename deref<T>::type::concrete_type type;
+   using type = typename deref<T>::type::concrete_type;
 };
 
-template <typename T> inline
-typename std::enable_if<Concrete<T>::value, const T&>::type
-concrete(const T& x)
+template <typename T>
+using concrete_t = inherit_reference_t<typename Concrete<pure_type_t<T>>::type, T>;
+
+template <typename T>
+decltype(auto) concrete(T&& x)
 {
-   return x;
-}
-template <typename T> inline
-typename std::enable_if<Concrete<T>::value, T&>::type
-concrete(T& x)
-{
-   return x;
-}
-template <typename T> inline
-typename std::enable_if<!Concrete<T>::value, const typename Concrete<T>::type&>::type
-concrete(const T& x)
-{
-   return static_cast<const typename Concrete<T>::type&>(x);
-}
-template <typename T> inline
-typename std::enable_if<!Concrete<T>::value, typename Concrete<T>::type&>::type
-concrete(T& x)
-{
-   return static_cast<typename Concrete<T>::type&>(x);
+   return static_cast<concrete_t<T&&>>(std::forward<T>(x));
 }
 
-template <typename ObjectRef,
-          bool _is_lazy=object_traits<typename Concrete<ObjectRef>::type>::is_lazy>
-struct Diligent : std::true_type {
-   static const bool add_ref=is_masquerade<typename Concrete<ObjectRef>::type>::value;
-   typedef typename inherit_ref<typename Concrete<ObjectRef>::type,
-                                typename std::conditional<add_ref, typename attrib<ObjectRef>::plus_const_ref,
-                                                                   typename attrib<ObjectRef>::plus_const>::type>::type
-      type;
+template <typename T>
+constexpr bool is_lazy()
+{
+   return object_traits<typename Concrete<typename deref<T>::type>::type>::is_lazy;
+}
+
+template <typename T, bool=is_lazy<T>()>
+struct Diligent {
+   using type = typename Concrete<typename deref<T>::type>::type;
 };
 
-template <typename ObjectRef>
-struct Diligent<ObjectRef, true> : std::false_type {
-   typedef const typename object_traits<typename Concrete<ObjectRef>::type>::persistent_type type;
+template <typename T>
+struct Diligent<T, true> {
+   using type = typename object_traits<typename Concrete<typename deref<T>::type>::type>::persistent_type;
 };
 
-template <typename T> inline
-typename std::enable_if<Diligent<T>::value, const T&>::type
-diligent(const T& x)
+template <typename T>
+using diligent_t = typename Diligent<T>::type;
+
+template <typename T>
+using diligent_ref_t = std::conditional_t<is_lazy<T>(), diligent_t<T>,
+                                          add_const_t<inherit_reference_t<diligent_t<T>, T>>>;
+
+template <typename T>
+decltype(auto) diligent(T&& x, std::enable_if_t<!is_lazy<T>(), void**> =nullptr)
 {
-   return concrete(x);
+   return concrete(std::forward<T>(x));
 }
 
-template <typename T> inline
-typename std::enable_if<!Diligent<T>::value, typename Diligent<T>::type>::type
-diligent(const T& x)
+template <typename T>
+decltype(auto) diligent(T&& x, std::enable_if_t<is_lazy<T>(), void**> =nullptr)
 {
-   return typename Diligent<T>::type(x);
+   return diligent_t<T>(std::forward<T>(x));
 }
 
-template <typename Result, typename Source, typename Generic>
+template <typename Result, typename Source, typename Generic=Source>
 struct inherit_generic_helper {
-   typedef typename Source::template rebind_generic<Result>::type type;
+   using type = typename Source::template rebind_generic<Result>::type;
 };
 
 template <typename Result, typename Source>
@@ -1430,50 +1366,22 @@ template <typename Result, typename Source>
 struct inherit_generic
    : inherit_generic_helper<Result, Source, typename object_traits<Source>::generic_type> {};
 
-template <typename Result, typename Head, typename Tail>
-struct inherit_generic<Result, cons<Head, Tail> >
-   : mevaluate<least_derived_class<typename inherit_generic<Result, Head>::type,
-                                   typename inherit_generic<Result, Tail>::type>,
-               typename inherit_generic_helper<Result, Head, void>::type> {};
+template <typename Result, typename... Sources>
+struct inherit_generic<Result, mlist<Sources...> >
+   : inherit_generic_helper<Result, typename least_derived_class<typename inherit_generic<Result, Sources>::type...>::type> {};
 
 /* ----------------------------------------
  *  tools for alias and masquerade objects 
  * ---------------------------------------- */
 
 template <typename ObjectRef>
-struct effectively_const {
-   typedef typename deref<ObjectRef>::type Object;
-   static const bool value= object_traits<Object>::is_always_const || (!object_traits<Object>::is_temporary && deref<ObjectRef>::is_const);
-};
+using is_effectively_const
+   = bool_constant<(object_traits<typename deref<ObjectRef>::type>::is_always_const
+                    || deref<ObjectRef>::is_const
+                    || (!std::is_lvalue_reference<ObjectRef>::value && object_traits<typename deref<ObjectRef>::type>::is_persistent))>;
 
-template <typename ObjectRef1, typename ObjectRef2>
-struct coherent_const {
-   typedef typename mselect< std::enable_if< effectively_const<ObjectRef1>::value, ObjectRef1>,
-                             std::enable_if< effectively_const<ObjectRef2>::value, typename deref<ObjectRef1>::plus_const>,
-                             std::enable_if< object_traits<typename deref<ObjectRef1>::type>::is_temporary, typename deref<ObjectRef1>::minus_const_ref>,
-                             ObjectRef1 >::type
-      first_type;
-   typedef typename mselect< std::enable_if< effectively_const<ObjectRef2>::value, ObjectRef2>,
-                             std::enable_if< effectively_const<ObjectRef1>::value, typename deref<ObjectRef2>::plus_const>,
-                             std::enable_if< object_traits<typename deref<ObjectRef2>::type>::is_temporary, typename deref<ObjectRef2>::minus_const_ref>,
-                             ObjectRef2 >::type
-      second_type;
-};
-
-template <typename T>
-struct non_const_helper { typedef T type; };
-
-template <typename T>
-struct non_const_helper<const T> : assign_const<T, effectively_const<const T>::value> {};
-
-template <typename T> inline
-typename non_const_helper<const T>::type& non_const(const T& x)
-{
-   return const_cast<typename non_const_helper<T>::type&>(x);
-}
-
-template <typename T> inline
-T& non_const(T& x) { return x; }
+template <typename ObjectRef>
+using effectively_const_t = std::conditional_t<is_effectively_const<ObjectRef>::value, typename deref<ObjectRef>::plus_const, ObjectRef>;
 
 template <template <typename> class Masquerade, typename OrigRef>
 struct masquerade : inherit_ref<Masquerade<typename deref<OrigRef>::type>, OrigRef> {};
@@ -1486,16 +1394,19 @@ struct masquerade3 : inherit_ref<Masquerade<typename deref<OrigRef>::type, Secon
 
 template <template <typename> class Masquerade, typename OrigRef>
 struct deref< masquerade<Masquerade,OrigRef> > : deref< typename masquerade<Masquerade,OrigRef>::type > {
+   typedef masquerade<Masquerade, typename attrib<OrigRef>::minus_const> minus_const;
    typedef masquerade<Masquerade, typename attrib<OrigRef>::plus_const> plus_const;
 };
 
 template <template <typename,typename> class Masquerade, typename OrigRef, typename Second>
 struct deref< masquerade2<Masquerade,OrigRef,Second> > : deref< typename masquerade2<Masquerade,OrigRef,Second>::type > {
+   typedef masquerade2<Masquerade, typename attrib<OrigRef>::minus_const, Second> minus_const;
    typedef masquerade2<Masquerade, typename attrib<OrigRef>::plus_const, Second> plus_const;
 };
 
 template <template <typename,typename,typename> class Masquerade, typename OrigRef, typename Second, typename Third>
 struct deref< masquerade3<Masquerade,OrigRef,Second,Third> > : deref< typename masquerade3<Masquerade,OrigRef,Second,Third>::type > {
+  typedef masquerade3<Masquerade, typename attrib<OrigRef>::minus_const, Second, Third> minus_const;
   typedef masquerade3<Masquerade, typename attrib<OrigRef>::plus_const, Second, Third> plus_const;
 };
 
@@ -1518,31 +1429,31 @@ template <>
 struct lvalue_arg<void, false> {
    typedef type2type<void> type;
 };
-
-template <typename ObjRef>
-struct temp_ref {
-   typedef typename deref<ObjRef>::type object;
-   typedef typename mselect< std::enable_if<object_traits<object>::is_always_const || object_traits<object>::is_lazy,
-                                            typename deref<ObjRef>::plus_const_ref>,
-                             std::enable_if<object_traits<object>::is_temporary, ObjRef>,
-                             typename deref<ObjRef>::plus_ref >::type
-      type;
-};
 
 /// These functions are defined in the standard libraries at non-portable locations under non-portable names.
 /// Until they are unified, it's easier to provide an own implementation.
 
-template <typename TType, typename... TArgs> inline
-TType* construct_at(TType* place, TArgs&&... args)
+template <typename T, typename... Args>
+T* construct_at(T* place, Args&&... args)
 {
-   return ::new((void*)place) TType(std::forward<TArgs>(args)...);
+   return ::new((void*)place) T(std::forward<Args>(args)...);
 }
 
-template <typename TType> inline
-void destroy_at(TType* obj)
+template <typename T>
+void destroy_at(T* obj)
 {
-   obj->~TType();
+   obj->~T();
 }
+
+template <typename T>
+struct extract_element_type {
+   using type = typename deref<T>::type::element_type;
+};
+
+template <typename T>
+struct extract_lazy {
+   using type = bool_constant<object_traits<typename deref<T>::type>::is_lazy>;
+};
 
 /* ----------------------
  *  memory layout tricks
@@ -1565,82 +1476,6 @@ template <typename T> inline
 void relocate(T* from, T* to)
 {
    relocate(from, to, std::is_pod<T>());
-}
-
-// Move a pointer from a data member of a class to the containing class object.
-// data_member may also point to some Member's parent class.
-template <typename Source, typename Member, typename Owner> inline
-Owner* reverse_cast(Source* data_member, Member Owner::* member_ptr)
-{
-   const ptrdiff_t fict_addr=8,
-      offset=reinterpret_cast<char*>(&(reinterpret_cast<Owner*>(fict_addr)->*member_ptr))
-            -reinterpret_cast<char*>(fict_addr);
-   return reinterpret_cast<Owner*>( reinterpret_cast<char*>(static_cast<Member*>(data_member)) - offset );
-}
-
-template <typename Source, typename Member, typename Owner> inline
-const Owner* reverse_cast(const Source* data_member, Member Owner::* member_ptr)
-{
-   const ptrdiff_t fict_addr=8,
-      offset=reinterpret_cast<const char*>(&(reinterpret_cast<const Owner*>(fict_addr)->*member_ptr))
-            -reinterpret_cast<const char*>(fict_addr);
-   return reinterpret_cast<const Owner*>( reinterpret_cast<const char*>(static_cast<const Member*>(data_member)) - offset );
-}
-
-template <typename Source, typename Member, typename Owner> inline
-const Owner* reverse_cast(const Source* data_member, const Member Owner::* member_ptr)
-{
-   const ptrdiff_t fict_addr=8,
-      offset=reinterpret_cast<const char*>(&(reinterpret_cast<const Owner*>(fict_addr)->*member_ptr))
-            -reinterpret_cast<const char*>(fict_addr);
-   return reinterpret_cast<const Owner*>( reinterpret_cast<const char*>(static_cast<const Member*>(data_member)) - offset );
-}
-
-template <typename Member, typename Source, typename Owner, int _size> inline
-Owner* reverse_cast(Source* data_member, int i, Member (Owner::* member_ptr)[_size])
-{
-   const ptrdiff_t fict_addr=8,
-      offset=reinterpret_cast<char*>((reinterpret_cast<Owner*>(fict_addr)->*member_ptr)+0)
-            -reinterpret_cast<char*>(fict_addr);
-   return reinterpret_cast<Owner*>( reinterpret_cast<char*>(static_cast<Member*>(data_member)-i) - offset );
-}
-
-template <typename Member, typename Source, typename Owner, int _size> inline
-const Owner* reverse_cast(const Source* data_member, int i, Member (Owner::* member_ptr)[_size])
-{
-   const ptrdiff_t fict_addr=8,
-      offset=reinterpret_cast<const char*>((reinterpret_cast<const Owner*>(fict_addr)->*member_ptr)+0)
-            -reinterpret_cast<const char*>(fict_addr);
-   return reinterpret_cast<const Owner*>( reinterpret_cast<const char*>(static_cast<const Member*>(data_member)-i) - offset );
-}
-
-template <typename Member, typename Source, typename Owner, int _size> inline
-const Owner* reverse_cast(const Source* data_member, int i, const Member (Owner::* member_ptr)[_size])
-{
-   const ptrdiff_t fict_addr=8,
-      offset=reinterpret_cast<const char*>((reinterpret_cast<const Owner*>(fict_addr)->*member_ptr)+0)
-            -reinterpret_cast<const char*>(fict_addr);
-   return reinterpret_cast<const Owner*>( reinterpret_cast<const char*>(static_cast<const Member*>(data_member)-i) - offset );
-}
-
-// the same, but with additional static cast to a class derived from the owner
-
-template <typename Class, typename Source, typename Member, typename Owner> inline
-Class* reverse_cast(Source* data_member, Member Owner::* member_ptr)
-{
-   return static_cast<Class*>(reverse_cast(data_member, member_ptr));
-}
-
-template <typename Class, typename Source, typename Member, typename Owner> inline
-const Class* reverse_cast(const Source* data_member, Member Owner::* member_ptr)
-{
-   return static_cast<const Class*>(reverse_cast(data_member, member_ptr));
-}
-
-template <typename Class, typename Source, typename Member, typename Owner> inline
-const Class* reverse_cast(const Source* data_member, const Member Owner::* member_ptr)
-{
-   return static_cast<const Class*>(reverse_cast(data_member, member_ptr));
 }
 
 template <typename T> inline
@@ -1666,8 +1501,6 @@ enum all_selector { All };
 namespace polymake {
    using pm::ptr2type;
    using pm::type2type;
-   using pm::non_const;
-   using pm::reverse_cast;
    using pm::is_zero;
    using pm::is_one;
    using pm::zero_value;

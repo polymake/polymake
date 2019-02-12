@@ -28,7 +28,7 @@ CREDIT graph_compare = bundled:graph_compare
 # > $I1 = cube(2)->VERTICES_IN_FACETS;
 # > $I2 = cross(2)->VERTICES_IN_FACETS;
 # > print isomorphic($I1,$I2);
-# | 1
+# | true
 user_function isomorphic(IncidenceMatrix, IncidenceMatrix) : c++ (include => "polymake/graph/compare.h");
 
 # @category Comparing
@@ -42,7 +42,7 @@ user_function isomorphic(IncidenceMatrix, IncidenceMatrix) : c++ (include => "po
 # > $g1 = cube(2)->GRAPH->ADJACENCY;
 # > $g2 = cycle_graph(4)->ADJACENCY;
 # > print isomorphic($g1,$g2);
-# | 1
+# | true
 user_function isomorphic(props::Graph, props::Graph) : c++ (include => "polymake/graph/compare.h");
 
 # @category Comparing

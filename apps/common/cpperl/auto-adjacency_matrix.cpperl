@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<Graph<Undirected>&>>"], "func": "adjacency_matrix", "include": ["polymake/Graph.h"], "sig": "adjacency_matrix.X10"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Graph<Undirected>&>>"], "func": "adjacency_matrix", "include": ["polymake/Graph.h"], "sig": "adjacency_matrix.X10"},
+ null ],
+"version": 3}

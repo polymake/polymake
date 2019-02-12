@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const FacetList&>", "perl::Canned<const pm::Series<int, true>&>"], "func": "findSubsets", "include": ["polymake/FacetList.h", "polymake/Set.h"], "kind": "meth", "sig": "findSubsets:R_Iterator:M.X"},
+ null ],
+"version": 3}

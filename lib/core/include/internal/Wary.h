@@ -30,33 +30,33 @@ class Wary_traits<T, is_container> : public container_traits<T> {};
 template <typename T>
 class Wary
    : public Wary_traits<T>
-   , public inherit_generic<Wary<T>, T>::type
-{
-protected:
-   // never instantiate
-   Wary();
-   ~Wary();
+   , public inherit_generic<Wary<T>, T>::type {
+   Wary() = delete;
+   ~Wary() = delete;
 public:
    using inherit_generic<Wary,T>::type::operator=;
 };
 
 template <typename T>
 class Generic< Wary<T> > {
-protected:
-   Generic();
-   ~Generic();
+   Generic() = delete;
+   ~Generic() = delete;
 public:
-   typedef T top_type;
-   typedef T persistent_type;
-   typedef Wary<T> concrete_type;
+   using top_type = T;
+   using persistent_type = T;
+   using concrete_type = Wary<T>;
 
-   const top_type& top() const
+   const top_type& top() const &
    {
       return reinterpret_cast<const T&>(static_cast<const Wary<T>&>(*this));
    }
-   top_type& top()
+   top_type& top() &
    {
       return reinterpret_cast<T&>(static_cast<Wary<T>&>(*this));
+   }
+   top_type&& top() &&
+   {
+      return reinterpret_cast<T&&>(static_cast<Wary<T>&&>(*this));
    }
 };
 
@@ -66,28 +66,23 @@ struct check_container_feature<Wary<T>, Feature> : check_container_feature<T, Fe
 template <typename T>
 struct redirect_object_traits< Wary<T> > : object_traits<T> {};
 
-template <typename T> inline
-Wary<T>& wary(T& x)
+template <typename T>
+decltype(auto) wary(T&& x)
 {
-   return reinterpret_cast<Wary<T>&>(x);
-}
-template <typename T> inline
-const Wary<T>& wary(const T& x)
-{
-   return reinterpret_cast<const Wary<T>&>(x);
+   return reinterpret_cast<inherit_reference_t<Wary<pure_type_t<T>>, T&&>>(x);
 }
 
 template <typename T>
 using MaybeWary = can_assign_to<T, Wary<T>>;
 
-template <typename T> inline
+template <typename T>
 typename std::enable_if<MaybeWary<T>::value, Wary<T>&>::type
 maybe_wary(T& x)
 {
    return wary(x);
 }
 
-template <typename T> inline
+template <typename T>
 typename std::enable_if<!MaybeWary<T>::value, T&>::type
 maybe_wary(T& x)
 {
@@ -95,44 +90,45 @@ maybe_wary(T& x)
 }
 
 template <typename T>
-struct Unwary : std::true_type {
-   typedef T type;
+struct Unwary {
+   using type = T;
 };
 
 template <typename T>
-struct Unwary< Wary<T> > : std::false_type {
-   typedef T type;
+struct Unwary< Wary<T> > {
+   using type = T;
 };
 
 template <typename T>
-struct Unwary< Wary<T>& > : std::false_type {
-   typedef T& type;
-};
+using pure_unwary_t = typename Unwary<typename Concrete<pure_type_t<T>>::type>::type;
 
 template <typename T>
-struct Unwary< const Wary<T>& > : std::false_type {
-   typedef const T& type;
-};
+using unwary_t = inherit_reference_t<pure_unwary_t<T>, T>;
 
 template <typename T>
-using unwary_t = typename Unwary<T>::type;
+constexpr bool is_wary()
+{
+   using concrete_type = typename Concrete<pure_type_t<T>>::type;
+   return !std::is_same<concrete_type, typename Unwary<concrete_type>::type>::value;
+}
 
-template <typename T> inline
-T& unwary(T& x) { return x; }
+template <typename T>
+decltype(auto) unwary(T&& x, std::enable_if_t<!is_wary<T>(), void**> =nullptr)
+{
+   return concrete(std::forward<T>(x));
+}
 
-template <typename T> inline
-const T& unwary(const T& x) { return x; }
-
-template <typename T> inline
-T& unwary(Wary<T>& x) { return x.top(); }
-
-template <typename T> inline
-const T& unwary(const Wary<T>& x) { return x.top(); }
+template <typename T>
+decltype(auto) unwary(T&& x, std::enable_if_t<is_wary<T>(), void**> =nullptr)
+{
+   return static_cast<unwary_t<T&&>>(x.top());
+}
 
 }
 namespace polymake {
    using pm::Wary;
    using pm::wary;
+   using pm::is_wary;
 }
 
 #endif // POLYMAKE_INTERNAL_WARY_H

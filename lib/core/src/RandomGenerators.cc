@@ -96,9 +96,9 @@ void RandomState::fix_for_mpfr()
 void DiscreteRandom::normalize()
 {
    double acc_sum=0.;
-   for (Entire< Vector<double> >::iterator d=entire(distribution); !d.at_end(); ++d)
+   for (auto d=entire(distribution); !d.at_end(); ++d)
       *d=(acc_sum+=*d);
-   for (Entire< Vector<double> >::iterator d=entire(distribution); !d.at_end(); ++d)
+   for (auto d=entire(distribution); !d.at_end(); ++d)
       *d/=acc_sum;
 }
 

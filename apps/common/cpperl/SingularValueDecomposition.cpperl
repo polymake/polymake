@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"class": "SingularValueDecomposition", "include": ["polymake/linalg.h"], "pkg": "Polymake::common::SingularValueDecomposition"},
+ null ],
+"version": 3}

@@ -31,32 +31,32 @@ perl::Object positroid_from_decorated_permutation(const Array<int>& perm,  const
   perl::Object p("polytope::Polytope<Rational>");
   ListMatrix<Vector<Rational>> ineq_list;
   Vector<Rational> ineq(n+1);
-  int j=0;
-  for (auto i=entire(perm); !i.at_end(); ++i,++j) {
-    if (loops.contains(j) && *i!=j)
+  int j = 0;
+  for (auto i = entire(perm); !i.at_end(); ++i,++j) {
+    if (loops.contains(j) && *i != j)
        throw std::runtime_error("A loop has to be fix point of the permutation");
-    if (*i<=j && !loops.contains(*i))
-       set+=*i;
+    if (*i <= j && !loops.contains(*i))
+       set += *i;
   }
-  const int rank=set.size();
-  j=0;
-  for (auto it=entire(set); !it.at_end(); ++it,++j) {
-     ineq[0]=-j;
-     if(*it!=0){
-        ineq.slice(1,*it)=ones_vector<Rational>(*it);
-        ineq_list/=-ineq;
+  const int rank = set.size();
+  j = 0;
+  for (auto it = entire(set); !it.at_end(); ++it, ++j) {
+     ineq[0] = -j;
+     if (*it != 0) {
+        ineq.slice(sequence(1, *it)).fill(one_value<Rational>());
+        ineq_list /= -ineq;
      }
-     ineq=zero_vector<Rational>(n+1);
+     ineq = zero_vector<Rational>(n + 1);
   }
 
-  ineq[0]=-rank;
-  ineq.slice(1)=ones_vector<Rational>(n);
+  ineq[0] = -rank;
+  ineq.slice(range_from(1)) = ones_vector<Rational>(n);
   p.take("EQUATIONS") << ineq;
 
-  for (int s=1;s<n;++s) {
-     int j=0;
+  for (int s = 1; s < n; ++s) {
+     j=0;
      set.clear();
-     for (auto i=entire(perm); !i.at_end(); ++i, ++j) {
+     for (auto i = entire(perm); !i.at_end(); ++i, ++j) {
         if ((*i-s+n)%n<=(j+n-s)%n && !loops.contains(*i)) {
            if (*i>=s) {
               set+=*i;
@@ -66,17 +66,17 @@ perl::Object positroid_from_decorated_permutation(const Array<int>& perm,  const
         }
      }
      j=0;
-     for (auto it=entire(set); !it.at_end(); ++it, ++j) {
+     for (auto it = entire(set); !it.at_end(); ++it, ++j) {
         if (*it<n) {
            ineq=zero_vector<Rational>(n+1);
            ineq[0]=-j;
            if (*it!=s) {
-              ineq.slice(s+1,*it-s)=ones_vector<Rational>(*it-s);
+              ineq.slice(sequence(s+1, *it-s)).fill(one_value<Rational>());
               ineq_list/=-ineq;
            }
         } else {
            ineq=ones_vector<Rational>(n+1);
-           ineq.slice(*it-n+1,n-*it+s)=zero_vector<Rational>(n-*it+s);
+           ineq.slice(sequence(*it-n+1, n-*it+s)).fill(zero_value<Rational>());
            ineq[0]=-j;
            if (*it!=s)
               ineq_list/=-ineq;
@@ -85,12 +85,12 @@ perl::Object positroid_from_decorated_permutation(const Array<int>& perm,  const
   }
 
 
-  for (auto it=entire(loops); !it.at_end(); ++it) {
-     ineq_list/=-unit_vector<Rational>(n+1,1+*it);
+  for (auto it = entire(loops); !it.at_end(); ++it) {
+     ineq_list /= -unit_vector<Rational>(n+1, 1+*it);
   }
 
   for (int i=0; i<n; ++i) {
-     ineq_list/=unit_vector<Rational>(n+1,1+i);
+     ineq_list /= unit_vector<Rational>(n+1, 1+i);
   }
   p.take("INEQUALITIES") << ineq_list;
   return call_function("matroid_from_matroid_polytope", p);

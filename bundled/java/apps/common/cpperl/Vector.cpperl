@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["Vector<Rational>", "perl::Canned<const Vector<double>&>"], "include": ["polymake/Rational.h", "polymake/Vector.h"], "op": "new", "sig": "new.X"},
+ null ],
+"version": 3}

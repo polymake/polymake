@@ -42,19 +42,18 @@ object Cone {
    # * An initial rule checking for [[AFFINE_HULL]] without [[FACETS]] would erroneously make [[FACETS]] empty.
 
    rule initial : {
-     croak("\ninvalid input: to define a linear or affine space you have to specify INPUT_RAYS/POINTS explicitely\nThis should be an empty matrix for an object of type Cone and a single point for an object of type Polytope");
-
+     croak("\ninvalid input: to define a linear or affine space you have to specify INPUT_RAYS/POINTS explicitely\nThis should be an empty matrix for a Cone and a single point for a Polytope");
    }
    precondition : exists(INPUT_LINEALITY);
    precondition : !exists(INPUT_RAYS);
 
    rule initial : {
-     croak("\ninvalid input: to define a linear or affine space you have to specify INEQUALITIES explicitely\nThis should be an empty matrix for an object of type Cone and the single inequality [1,0,0,...] for an object of type Polytope");
-
+     croak("\ninvalid input: to define a linear or affine space you have to specify INEQUALITIES explicitely\nThis should be an empty matrix; For a Polytope, it can also be a single inequality [1,0,0,...]");
    }
    precondition : exists(EQUATIONS);
    precondition : !exists(INEQUALITIES);
 
+   # TODO: try to remove this and look for crashes; maybe there won't be anymore
    # check for zero rows in input properties.
    rule initial : {
       foreach my $prop (qw(INPUT_RAYS INEQUALITIES INPUT_LINEALITY EQUATIONS)){
@@ -79,17 +78,12 @@ object Cone {
 
 }
 
-# bundled:cdd overloads this for Rational and Float as that is faster
-function H_input_is_feasible(Polytope) {
-   to_input_feasible($_[0]);
-}
-
 object Polytope {
 
-   # A Polytope defined in terms of [[INEQUALITIES]] and/or [[EQUATIONS]] is checked for [[FEASIBLE]] right away.
    rule FEASIBLE : INEQUALITIES | EQUATIONS {
-      $this->FEASIBLE = H_input_is_feasible($this);
+      $this->FEASIBLE = H_input_feasible($this);
    }
+   weight 3.1;
 
    # A Polytope defined by a non-empty set of [[VERTICES]] or [[POINTS]] is always [[FEASIBLE]].
    rule FEASIBLE : VERTICES | POINTS {

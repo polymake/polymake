@@ -1,0 +1,6 @@
+{"app": "graph",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Undirected>&>"], "func": "diameter", "include": ["polymake/Graph.h", "polymake/graph/diameter.h"], "sig": "diameter.X"},
+  {"args": ["perl::Canned<const Graph<Directed>&>"], "func": "diameter", "include": ["polymake/Graph.h", "polymake/graph/diameter.h"], "sig": "diameter.X"},
+ null ],
+"version": 3}

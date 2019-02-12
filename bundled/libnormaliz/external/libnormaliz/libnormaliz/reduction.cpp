@@ -100,7 +100,7 @@ template<typename Integer>
 void Candidate<Integer>::compute_values_deg(const Full_Cone<Integer>& C) {
     C.Support_Hyperplanes.MxV(values, cand);
     convert(sort_deg, v_scalar_product(cand,C.Sorting));
-    if(C.do_module_gens_intcl)  // necessary to make all monoid generators subtractible
+    if(C.do_module_gens_intcl || C.hilbert_basis_rec_cone_known)  // necessary to make all monoid generators subtractible
         sort_deg*=2;
 }
 
@@ -542,8 +542,8 @@ CandidateTable<Integer>::CandidateTable(CandidateList<Integer>& CandList){
     typename list<Candidate<Integer> >::iterator c;
     for(c=CandList.Candidates.begin();c!=CandList.Candidates.end();++c)
         ValPointers.push_back(pair< size_t, vector<Integer>* >(c->sort_deg,&(c->values)) );
-        dual=CandList.dual;
-        last_hyp=CandList.last_hyp;
+    dual=CandList.dual;
+    last_hyp=CandList.last_hyp;
 }
 
 //---------------------------------------------------------------------------

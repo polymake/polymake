@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const UniPolynomial<Rational, int>&>", "perl::Canned<const UniPolynomial<Rational, int>&>"], "func": "ext_gcd", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/numerical_functions.h"], "sig": "ext_gcd.X16.X16"},
+  {"args": ["long", "long"], "func": "ext_gcd", "include": ["polymake/numerical_functions.h"], "sig": "ext_gcd.X16.X16"},
+ null ],
+"version": 3}

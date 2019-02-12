@@ -705,30 +705,25 @@ namespace polymake { namespace graph {
 
 
          // return the index of the first Delaunay inequality matrix that is equivalent to the given inequality "ineq"; return -1 if there is no such row
-         int first_equiv_row( Vector<Rational> ineq ) const
+         int first_equiv_row(const Vector<Rational>& ineq) const
          {
-            int row_id = 0;
-            for( auto it = entire( rows( DelaunayInequalities() ) ); !it.at_end() ; ++it )
-            {
-               if( is_equiv( ineq , *it ) )
-                  return row_id;
-               else row_id++;
+            for (auto it = entire<indexed>(rows(DelaunayInequalities())); !it.at_end(); ++it) {
+               if (is_equiv(ineq, *it))
+                 return it.index();
             }
             return -1;
          }
 
 
          // return true if the two vectors define the same non-degenerate half space
-         bool is_equiv( Vector<Rational> ineq_a , Vector<Rational> ineq_b ) const
+         bool is_equiv(const Vector<Rational>& ineq_a, const Vector<Rational>& ineq_b) const
          {
-            if( rank( ineq_a/ineq_b ) == 1 )
-            {
-               for( int i = 0 ; i < ineq_a.size() ; i++ )
-               {
-                  if( ineq_a[i] != 0 ) return ( ineq_b[i]/ineq_a[i] > 0 );
-               }
-            }
-            return false;
+           if (rank(vector2row(ineq_a)/ineq_b) == 1) {
+             for (int i = 0 ; i < ineq_a.size(); ++i) {
+               if (ineq_a[i] != 0) return ineq_b[i]/ineq_a[i] > 0;
+             }
+           }
+           return false;
          }
 
 

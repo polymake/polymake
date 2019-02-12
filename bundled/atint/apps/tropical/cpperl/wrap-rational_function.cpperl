@@ -1,0 +1,11 @@
+{"app": "tropical", "embed": "rational_function.cc",
+ "inst": [
+  {"args": ["Min", "void"], "func": "computeDomain", "include": ["polymake/TropicalNumber.h"], "sig": "computeDomain:T1.B", "tp": "1"},
+  {"args": ["Max", "void"], "func": "computeDomain", "include": ["polymake/TropicalNumber.h"], "sig": "computeDomain:T1.B", "tp": "1"},
+  {"args": ["Min", "void"], "func": "computeGeometricFunctionData", "include": ["polymake/TropicalNumber.h"], "sig": "computeGeometricFunctionData:T1.B", "tp": "1"},
+  {"args": ["Max", "void"], "func": "computeGeometricFunctionData", "include": ["polymake/TropicalNumber.h"], "sig": "computeGeometricFunctionData:T1.B", "tp": "1"},
+  {"args": ["Max", "void", "void"], "func": "add_rational_functions", "include": ["polymake/TropicalNumber.h"], "sig": "add_rational_functions:T1.B.B", "tp": "1"},
+  {"args": ["Max", "perl::Canned<const Polynomial<TropicalNumber<Max, Rational>, int>&>", "perl::Canned<const Polynomial<TropicalNumber<Max, Rational>, int>&>", "void"], "func": "homogenize_quotient", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "homogenize_quotient:T1.X.X.x", "tp": "1"},
+  {"args": ["Min", "perl::Canned<const Polynomial<TropicalNumber<Min, Rational>, int>&>", "perl::Canned<const Polynomial<TropicalNumber<Min, Rational>, int>&>", "void"], "func": "homogenize_quotient", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "homogenize_quotient:T1.X.X.x", "tp": "1"},
+ null ],
+"version": 3}

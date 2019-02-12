@@ -33,7 +33,7 @@ perl::Object center(perl::Object p_in)
       throw std::runtime_error("relative interior point not affine");
 
    SparseMatrix<Scalar> tau=unit_matrix<Scalar>(d);
-   tau[0].slice(1)=-point.slice(1);
+   tau[0].slice(range_from(1)) = -point.slice(range_from(1));
 
    perl::Object p_out=transform<Scalar>(p_in, tau);
    p_out.set_description() << "Centered polytope transformed from " << p_in.name() << endl;
@@ -52,11 +52,11 @@ UserFunctionTemplate4perl("# @category Transformations"
                           "# > $P = new Polytope(VERTICES => [[1,1,1],[1,2,1],[1,1,2]]);"
                           "# > $origin = new Vector([1,0,0]);"
                           "# > print $P->contains_in_interior($origin);"
-                          "# | "
+                          "# | false"
                           "# To create a translate that contains the origin, do this:"
                           "# > $PC = center($P);"
                           "# > print $PC->contains_in_interior($origin);"
-                          "# | 1"
+                          "# | true"
                           "# This is what happened to the vertices:"
                           "# > print $PC->VERTICES;"
                           "# | 1 -1/3 -1/3"
@@ -64,7 +64,7 @@ UserFunctionTemplate4perl("# @category Transformations"
                           "# | 1 -1/3 2/3"
                           "# There also exists a property to check whether a polytope is centered:"
                           "# > print $PC->CENTERED;"
-                          "# | 1",
+                          "# | true",
                           "center<Scalar> (Polytope<Scalar>)");
 } }
 

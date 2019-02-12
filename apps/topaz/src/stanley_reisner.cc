@@ -32,7 +32,7 @@ perl::Object stanley_reisner(perl::Object C) {
   Array< Polynomial<Rational,int> > gens(n_non_faces);
 
   for (int k=0; k<n_non_faces; ++k) {
-     gens[k]=Polynomial<Rational,int>(1, same_element_sparse_vector(non_faces[k],1,n_vertices));
+     gens[k]=Polynomial<Rational, int>(1, same_element_sparse_vector<int>(non_faces[k], n_vertices));
   }
 
   perl::Object I("ideal::Ideal");

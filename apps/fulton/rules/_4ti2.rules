@@ -1,0 +1,65 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+REQUIRE polytope::_4ti2.rules
+
+
+object polytope::Cone<Rational> {
+
+   # Use 4ti2 to compute the toric ideal of a cone.
+   rule _4ti2.toric_ideal : TORIC_IDEAL.BINOMIAL_GENERATORS : HILBERT_BASIS_GENERATORS {
+      my $H = $this->HILBERT_BASIS_GENERATORS->[0];
+      
+      # Creating temporary file for input.
+      my $temp = new Tempfile;
+      open(my $input, ">$temp.mat")
+         or die "Could not write input file.";
+
+      # Printing Hilbert basis to file.
+      print $input $H->cols, " ", $H->rows, "\n";
+      print $input new Matrix<Integer>(transpose($H));
+      close $input;
+
+      # Running 4ti2.
+      open(my $P, "$groebner $temp 2>&1 |")
+         or die "couldn't run 4ti2's 'groebner': $!";
+      local $_;
+      while(<$P>) {
+         # print $_;
+      }
+      close $P;
+
+      # Parsing output.
+      open(my $output, "<$temp.gro")
+         or die "No output file found.";
+      local $_;
+      my @ti = ();
+      while(<$output>) {   
+         if(/^$/) {
+            next;
+         }
+         # print "line: ".$_;
+         my @p = split;
+         push @ti, \@p;
+      }
+      my $size = @ti;
+      @ti = @ti[1..($size-1)];
+
+      close $output;
+      $this->TORIC_IDEAL->BINOMIAL_GENERATORS = scalar(@ti) ? new Matrix<Integer>(\@ti) : new Matrix<Integer>(0, $H->cols());
+   }
+
+}
+

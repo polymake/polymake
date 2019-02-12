@@ -15,28 +15,38 @@
 */
 
 #include "polymake/client.h"
+#include "polymake/Rational.h"
 #include "polymake/polytope/ppl_interface.h"
+#include "polymake/polytope/generic_convex_hull_client.h"
 
-namespace polymake { namespace polytope {
-    
-template <typename Scalar>
-void ppl_ch_primal(perl::Object p)
+namespace polymake { namespace polytope { namespace ppl_interface {
+
+template <typename Scalar=Rational>
+auto create_convex_hull_solver()
 {
-   ppl_interface::solver<Scalar> solver;
-   ch_primal(p, solver);
-}
-    
-    
-template <typename Scalar>
-void ppl_ch_dual(perl::Object p)
-{
-   ppl_interface::solver<Scalar> solver;
-   ch_dual(p, solver);
+   return cached_convex_hull_solver<Scalar>(new ConvexHullSolver<Scalar>(), true);
 }
 
-FunctionTemplate4perl("ppl_ch_primal<Scalar> (Cone<Scalar>) : void");
-FunctionTemplate4perl("ppl_ch_dual<Scalar> (Cone<Scalar>) : void");
+}
 
+void ppl_ch_primal(perl::Object p, bool isCone)
+{
+   generic_convex_hull_primal<Rational>(p, isCone, ppl_interface::ConvexHullSolver<Rational>());
+}
+    
+void ppl_ch_dual(perl::Object p, bool isCone)
+{
+   generic_convex_hull_dual<Rational>(p, isCone, ppl_interface::ConvexHullSolver<Rational>());
+}
+
+Function4perl(&ppl_ch_primal, "ppl_ch_primal(Cone<Rational>; $=true)");
+Function4perl(&ppl_ch_dual, "ppl_ch_dual(Cone<Rational>; $=true)");
+
+Function4perl(&ppl_ch_primal, "ppl_ch_primal(Polytope<Rational>; $=false)");
+Function4perl(&ppl_ch_dual, "ppl_ch_dual(Polytope<Rational>; $=false)");
+
+InsertEmbeddedRule("function ppl.convex_hull: create_convex_hull_solver<Scalar> [Scalar==Rational] ()"
+                   " : c++ (name => 'ppl_interface::create_convex_hull_solver') : returns(cached);\n");
 } }
 
 // Local Variables:

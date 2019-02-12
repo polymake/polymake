@@ -25,6 +25,7 @@
 #pragma offload_attribute (push, target(mic))
 #endif
 
+#include "libnormaliz/integer.cpp"
 #include "libnormaliz/vector_operations.cpp"
 #include "libnormaliz/matrix.cpp"
 #include "libnormaliz/sublattice_representation.cpp"

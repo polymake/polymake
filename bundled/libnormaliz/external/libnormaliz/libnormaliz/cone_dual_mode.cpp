@@ -92,16 +92,18 @@ void Cone_Dual_Mode<Integer>::select_HB(CandidateList<Integer>& Cand, size_t gua
 //---------------------------------------------------------------------------
 
 template<typename Integer>
-Cone_Dual_Mode<Integer>::Cone_Dual_Mode(Matrix<Integer>& M, const vector<Integer>& Truncation){
+Cone_Dual_Mode<Integer>::Cone_Dual_Mode(Matrix<Integer>& M, const vector<Integer>& Truncation, bool keep_order){
     dim=M.nr_of_columns();
     M.remove_duplicate_and_zero_rows();
     // now we sort by L_1-norm and then lex
-    Matrix<Integer> Weights(0,dim);
-    vector<bool> absolute;
-    Weights.append(vector<Integer>(dim,1));
-    absolute.push_back(true);
-    vector<key_t> perm=M.perm_by_weights(Weights,absolute);
-    M.order_rows_by_perm(perm);
+    if(!keep_order){
+        Matrix<Integer> Weights(0,dim);
+        vector<bool> absolute;
+        Weights.append(vector<Integer>(dim,1));
+        absolute.push_back(true);
+        vector<key_t> perm=M.perm_by_weights(Weights,absolute);
+        M.order_rows_by_perm(perm);
+    }
 
     SupportHyperplanes=Matrix<Integer>(0,dim);
     BasisMaxSubspace=Matrix<Integer>(dim);      // dim x dim identity matrix
@@ -147,9 +149,7 @@ vector<bool> Cone_Dual_Mode<Integer>::get_extreme_rays() const{
 }
 
 
-size_t counter=0,counter1=0, counter2=0;
-
-const size_t ReportBound=100000;
+// size_t counter=0,counter1=0, counter2=0;
 
 //---------------------------------------------------------------------------
 
@@ -174,6 +174,8 @@ void Cone_Dual_Mode<Integer>::cut_with_halfspace_hilbert_basis(const size_t& hyp
         verboseOutput()<<"==================================================" << endl;
         verboseOutput()<<"cut with halfspace "<<hyp_counter+1 <<" ..."<<endl;
     }
+    
+    const size_t ReportBound=100000;
     
     size_t i;
     int sign;

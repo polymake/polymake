@@ -1,0 +1,8 @@
+{"app": "tropical", "embed": "affine_transform.cc",
+ "inst": [
+  {"args": ["Min", "void", "void", "void"], "func": "affine_transform", "include": ["polymake/TropicalNumber.h"], "sig": "affine_transform:T1.B.x.x", "tp": "1"},
+  {"args": ["Max", "void", "void"], "func": "shift_cycle", "include": ["polymake/TropicalNumber.h"], "sig": "shift_cycle:T1.B.x", "tp": "1"},
+  {"args": ["Min", "void", "void"], "func": "affine_transform", "include": ["polymake/TropicalNumber.h"], "sig": "affine_transform:T1.B.B", "tp": "1"},
+  {"args": ["Max", "void", "void", "void"], "func": "affine_transform", "include": ["polymake/TropicalNumber.h"], "sig": "affine_transform:T1.B.x.x", "tp": "1"},
+ null ],
+"version": 3}

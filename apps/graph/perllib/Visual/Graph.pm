@@ -73,7 +73,7 @@ sub prep_node_decor : method {
    my ($name, $decor, $default)=@_;
    my $unified= $name =~ /Labels$/ ? &unify_labels : &unify_decor;
    if (is_code($unified)  and
-       !is_container($decor) || @$decor > $self->n_nodes  and
+       !is_like_array($decor) || @$decor > $self->n_nodes  and
        my $renumber=$self->needs_renumbering) {
       sub { $unified->($renumber->[shift]) }
    } else {

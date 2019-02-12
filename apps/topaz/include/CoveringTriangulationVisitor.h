@@ -110,9 +110,9 @@ the triangulation dcel (containing the lambda lengths of the edges),
 the position of the first half edge via two horocycles [[p_1,q_1] , [p_2,q_2]]
 and the depth we want to visit the dual tree.
 */
-CoveringTriangulationVisitor( Graph<Directed>& G, DoublyConnectedEdgeList& dcel, Matrix<Rational> first_halfedge_horo, int dual_tree_depth )
+CoveringTriangulationVisitor( Graph<Directed>& G, DoublyConnectedEdgeList& dcel_, Matrix<Rational> first_halfedge_horo, int dual_tree_depth )
    : dual_tree(G)
-   , dcel(dcel)
+   , dcel(dcel_)
    , curr_num_nodes()
    , num_visited(0)
 {

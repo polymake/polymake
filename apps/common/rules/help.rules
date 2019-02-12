@@ -356,7 +356,6 @@ INCLUDE
 # @category Interactive
 #
 # Create a directory tree for rules, scripts, clients, etc. in the given //extension// pertaining to the given application.
-# If the extension is managed by a VCS, the added subtree will be registered for check-in.
 # @param String extension : URI or top-level directory of a registered extension.
 # @param String app_name : name of the application to be extended; by default, the current application is assumed.
 
@@ -442,7 +441,7 @@ INCLUDE
 # @topic core/functions/export_configured ($;%)
 # @category Interactive
 # Saves all custom variables having non-defalt values in a file.
-# This includes all results of automatical or manual rule configuration.
+# This includes all results of automatic or manual rule configuration.
 # The obtained file can be edited manually, if needed, and used as a global configuration
 # source (see also [[wiki:howto/configure|How to configure polymake for a group of users]]).
 # @param String filename where to store the settings
@@ -595,6 +594,36 @@ INCLUDE
 # Remove the multiple subobject instance(s) from the object.
 # @param Object subobj : multiple subobject instance.
 #                        Several subobjects may be removed at once.
+
+
+# @topic core/objects/Core::Object/methods/attach (String,$;String)
+# Attach an arbitrary data item to a `big' object.
+# Attachments are saved in the same data file as the `big' object itself.
+# They can be retrieved by calling [[get_attachment]].
+# @param String name : attachment name, can be an arbitrary string.
+#                      If an attachment with the given name already exists,
+#                      it is silently replaced with new data.
+# @param Any data : attachment data, can be a simple numeric scalar, a string,
+#                   or a complex data type, e.g. a [[Matrix]] or [[Polynomial]].
+#                   `Big' objects, anonymous arrays or hashes are not allowed.
+# @param String constructor_args : optional list of property names of the owning `big' object
+#               which should be passed to the attached data constructor when it will be
+#               restored from a data file.  Properties of subobjects are specified
+#               in dotted path notation.  For example, for an attachment of type [[NodeMap]]
+#               you must specify the "ADJACENCY" property containing the graph
+#               the map is referring to.
+
+# @topic core/objects/Core::Object/methods/get_attachment (String)
+# Retrieve data stored in the given attachment.
+# @param String name : attachment name
+
+# @topic core/objects/Core::Object/methods/remove_attachment (String)
+# Remove the given attachment from the `big' object.
+# @param String name : attachment name
+# @return Any attachment data
+
+# @topic core/objects/Core::Object/methods/list_attachments ()
+# Return names of all attachments as a list of strings.
 
 
 # @topic core/objects/Core::RuleChain

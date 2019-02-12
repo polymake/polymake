@@ -31,7 +31,7 @@ perl::Object rand_inner_points(perl::Object p_in, int n, perl::OptionSet options
 
    const RandomSeed seed(options["seed"]);
    const long M=std::numeric_limits<int>::max();
-   UniformlyRandomRanged<long> rg(M,seed);
+   UniformlyRandomRanged<long> rg(M, seed);
 
    perl::Object p_out("Polytope<Rational>");
    p_out.set_description() << "Random inner points of " << p_in.name() << "; seed=" << seed.get() << endl;
@@ -41,15 +41,15 @@ perl::Object rand_inner_points(perl::Object p_in, int n, perl::OptionSet options
 
    Vector<Rational> mu(n_vertices);
    Matrix<Rational> Points_out(n,d);
-   for (Entire< Rows< Matrix<Rational> > >::iterator p_i=entire(rows(Points_out)); !p_i.at_end(); ++p_i) {
+   for (auto p_i=entire(rows(Points_out)); !p_i.at_end(); ++p_i) {
       // get random partition of 1
       rg.begin();
       Set<int> partition;
       for (int i=1; i<n_vertices; ++i)
-         partition+=abs(rg.get());  // FIXME: check if already contained
+         partition+=abs(static_cast<int>(rg.get()));  // FIXME: check if already contained
       Rational previous(0);
       int idx=0;
-      for ( Entire< Set<int> >::iterator pit=entire(partition); !pit.at_end(); ++pit, ++idx ) {
+      for (auto pit=entire(partition); !pit.at_end(); ++pit, ++idx) {
          const Rational current(*pit);
          mu[idx]=(current-previous)/M;
          previous=current;

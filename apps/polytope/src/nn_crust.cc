@@ -41,7 +41,7 @@ void nn_crust(perl::Object p)
       
    // first step: find nearest neighbors; if there are more than one: take any of them
    Array<int> near(n,-1);
-   for (Entire< Edges< Graph<> > >::const_iterator e=entire(edges(D)); !e.at_end(); ++e) {
+   for (auto e=entire(edges(D)); !e.at_end(); ++e) {
       const int x=e.from_node(), y=e.to_node();
       if (near[x]<0 || sqr(S.row(x)-S.row(y))<sqr(S.row(x)-S.row(near[x])))
          near[x]=y;
@@ -55,7 +55,7 @@ void nn_crust(perl::Object p)
       
    // second step: find nearest neighbor among those with obtuse angle
    Array<int> obtuse_near(n,-1);
-   for (Entire< Edges< Graph<> > >::const_iterator e=entire(edges(D)); !e.at_end(); ++e) {
+   for (auto e=entire(edges(D)); !e.at_end(); ++e) {
       const int x=e.from_node(), y=e.to_node();
       if (G.degree(x)<2 && y!=near[x] && obtuse_angle<Scalar>(S.row(y),S.row(x),S.row(near[x]))
           && (obtuse_near[x]<0 || sqr(S.row(x)-S.row(y))<sqr(S.row(x)-S.row(obtuse_near[x]))))
@@ -70,9 +70,9 @@ void nn_crust(perl::Object p)
    p.take("NN_CRUST_GRAPH.ADJACENCY") << G;
 }
 
-FunctionTemplate4perl("nn_crust<Scalar>(VoronoiPolyhedron<Scalar>) : void");
+FunctionTemplate4perl("nn_crust<Scalar>(VoronoiPolyhedron<Scalar>)");
 
-} } 
+} }
 
 // Local Variables:
 // mode:C++

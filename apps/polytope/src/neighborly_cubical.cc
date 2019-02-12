@@ -32,7 +32,7 @@ std::string circuit_label (const GenericSet<SetTop>& circuit)
 {
    std::string label;
    int pos(0);
-   for (typename Entire<SetTop>::const_iterator it=entire(circuit.top()); !it.at_end(); ++it) {
+   for (auto it=entire(circuit.top()); !it.at_end(); ++it) {
       const int e(*it), e2(e/2);
       label.append(e2-pos, '0');
       label+= e%2==0? '+' : '-';

@@ -1,0 +1,9 @@
+{"app": "polytope", "embed": "incidence.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>"], "func": "incidence_matrix", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "incidence_matrix.X.X"},
+  {"args": ["perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>", "perl::Canned<const Matrix<Rational>&>"], "func": "incidence_matrix", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "incidence_matrix.X.X"},
+  {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Matrix<Rational>&>"], "func": "incidence_matrix", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "incidence_matrix.X.X"},
+  {"args": ["perl::Canned<const Matrix<double>&>", "perl::Canned<const Matrix<double>&>"], "func": "incidence_matrix", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "incidence_matrix.X.X"},
+  {"args": ["perl::Canned<const Matrix<QuadraticExtension<Rational>>&>", "perl::Canned<const Matrix<QuadraticExtension<Rational>>&>"], "func": "incidence_matrix", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "incidence_matrix.X.X"},
+ null ],
+"version": 3}

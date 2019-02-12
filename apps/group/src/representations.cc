@@ -15,41 +15,89 @@
 */
 
 #include "polymake/client.h"
+#include "polymake/AccurateFloat.h"
 #include "polymake/group/representations.h"
 #include "polymake/group/orbit.h"
 #include "polymake/group/isotypic_components.h"
 #include "polymake/linalg.h"
 #include "polymake/Set.h"
+#include <algorithm>
 
 namespace polymake { namespace group {
 
+namespace {      
 
-template<typename CharacterType>
-Array<int>
-irreducible_decomposition(const CharacterType& character, perl::Object G)
+template<typename E>
+struct character_computation_type {
+   typedef QuadraticExtension<Rational> type;
+};
+
+template<>
+struct character_computation_type<double> {
+   typedef double type;
+};
+   
+template<typename E>
+inline
+Vector<int>
+check_and_round(const Vector<E>& irr_dec)
 {
-   const Matrix<CharacterNumberType> character_table = G.give("CHARACTER_TABLE");
-   const Array<int>                  cc_sizes        = G.give("CONJUGACY_CLASS_SIZES");
-   const int                         order           = G.give("ORDER");
+   Vector<int> irr_dec_i (irr_dec.size());
+   for (int i=0; i<irr_dec.size(); ++i) {
+
+      if (denominator(irr_dec[i].a()) != 1 ||
+          irr_dec[i].b() != 0 ||
+          irr_dec[i] < 0) {
+         cerr << "The irreducible decomposition was calculated to be\n" << irr_dec << endl;
+         throw std::runtime_error("It should be a nonnegative integer vector. Please check if the CONJUGACY_CLASS_REPRESENTATIVES, the CHARACTER, and the columns of the CHARACTER_TABLE all correspond to each other, in the same order.");
+      }
+
+      irr_dec_i[i] = convert_to<int>(irr_dec[i]);
+   }
+   return irr_dec_i;
+}
+
+template<>
+inline
+Vector<int>
+check_and_round(const Vector<double>& irr_dec)
+{
+   const Vector<AccurateFloat> irr_dec_af(irr_dec.size(), entire(irr_dec));
+   Vector<AccurateFloat> irr_dec_rounded(irr_dec.size());
+   std::transform(irr_dec_af.begin(), irr_dec_af.end(), irr_dec_rounded.begin(),
+                  [](const AccurateFloat& f) -> AccurateFloat { return rounded_if_integer(f); });
+
+   if (accumulate(attach_operation(irr_dec_af - irr_dec_rounded, operations::abs_value()), operations::max()) > 1e-8 ||
+       accumulate(irr_dec_rounded, operations::min()) < 0) {
+      cerr << "The irreducible decomposition was calculated to be\n" << irr_dec << endl;
+      throw std::runtime_error("It should be a nonnegative integer vector. Please check if the CONJUGACY_CLASS_REPRESENTATIVES, the CHARACTER, and the columns of the CHARACTER_TABLE all correspond to each other, in the same order.");
+   }
+
+   Vector<int> irr_dec_i(irr_dec.size());
+   bool was_integer;
+   std::transform(irr_dec_rounded.begin(), irr_dec_rounded.end(), irr_dec_i.begin(),
+                  [&](const AccurateFloat& f) -> int { return round(f, was_integer); });
+   return irr_dec_i;
+}
+
+} // end anonymous namespace
+      
+template<typename E>
+Vector<int>
+irreducible_decomposition(const Vector<E>& character, perl::Object G)
+{
+   const Matrix<E>   character_table = G.give("CHARACTER_TABLE");
+   const Array<int>  cc_sizes        = G.give("CONJUGACY_CLASS_SIZES");
+   const int         order           = G.give("ORDER");
 
    if (character.size() != character_table.cols())
       throw std::runtime_error("The given array is not of the right size to be a character of the group.");
 
-   Vector<CharacterNumberType> weighted_character(character.size(), entire(character));
+   Vector<E> weighted_character(character);
    for (int i=0; i<weighted_character.size(); ++i)
       weighted_character[i] *= cc_sizes[i];
 
-   const Vector<CharacterNumberType> irr_dec(character_table * weighted_character / order);
-   
-   Array<int> irr_dec_i (irr_dec.size());
-   for (int i=0; i<irr_dec.size(); ++i) {
-      if (denominator(irr_dec[i].a()) != 1 || irr_dec[i].b() != 0)
-         throw std::runtime_error("The given array is not a character of the group.");
-      if (irr_dec[i] < 0)
-         throw std::runtime_error("The irreducible decomposition is not calculated correctly. Please check if the CONJUGACY_CLASS_REPRESENTATIVES, the CHARACTER, and the columns of the CHARACTER_TABLE all correspond to each other, in the same order.");
-      irr_dec_i[i] = convert_to<int>(irr_dec[i]);
-   }
-   return irr_dec_i;
+   return check_and_round(Vector<E>(character_table * weighted_character / order));
 }
 
 
@@ -105,22 +153,23 @@ isotypic_projector_permutations(perl::Object G,
       permutation_to_orbit_order = sequence(0, degree(conjugacy_classes[0][0]));
    }
    
-   return isotypic_projector_impl(character_table[irred_index], conjugacy_classes, permutation_to_orbit_order, order);
+   return isotypic_projector_impl(character_table[irred_index], conjugacy_classes, permutation_to_orbit_order, order, CharacterNumberType());
 }
 
 template<typename Scalar>
-SparseMatrix<CharacterNumberType>
+auto
 isotypic_projector(perl::Object G,
                    perl::Object A,
                    int irred_index,
                    perl::OptionSet options)
 {
-   const Matrix<CharacterNumberType> character_table = G.give("CHARACTER_TABLE");
+   typedef typename character_computation_type<Scalar>::type CCT;
+   const Matrix<CCT> character_table = G.give("CHARACTER_TABLE");
    if (irred_index<0 || irred_index >= character_table.rows())
       throw std::runtime_error("The given index does not refer to an irreducible representation.");
 
-   const int                              order             = G.give("ORDER");
-   const ConjugacyClasses<Matrix<Scalar>> conjugacy_classes = A.give("CONJUGACY_CLASSES");
+   const int                                order             = G.give("ORDER");
+   const ConjugacyClasses<Matrix<Scalar>>   conjugacy_classes = A.give("CONJUGACY_CLASSES");
    
    const bool permute_to_orbit_order = options["permute_to_orbit_order"];
    Array<int> permutation_to_orbit_order;
@@ -130,9 +179,10 @@ isotypic_projector(perl::Object G,
       permutation_to_orbit_order = sequence(0, degree(conjugacy_classes[0][0]));
    }
    
-   return isotypic_projector_impl(character_table[irred_index], conjugacy_classes, permutation_to_orbit_order, order);
+   return isotypic_projector_impl(Vector<CCT>(character_table[irred_index]), conjugacy_classes, permutation_to_orbit_order, order, Scalar());
 }
-      
+
+
 SparseMatrix<CharacterNumberType>
 isotypic_basis_on_sets(perl::Object G,
                        perl::Object R,
@@ -142,8 +192,8 @@ isotypic_basis_on_sets(perl::Object G,
    if (irred_index<0 || irred_index >= character_table.rows())
       throw std::runtime_error("The given index does not refer to an irreducible representation.");
 
-   const int                order             = G.give("ORDER");
-   const ConjugacyClasses<> conjugacy_classes = R.give("CONJUGACY_CLASSES");
+   const int                order                = G.give("ORDER");
+   const ConjugacyClasses<> conjugacy_classes    = R.give("CONJUGACY_CLASSES");
 
    const bool permute_to_orbit_order = options["permute_to_orbit_order"];
    Array<int> permutation_to_orbit_order;
@@ -198,7 +248,7 @@ isotypic_supports_array(perl::Object P,
 {
    const int                         order                      = P.give("GROUP.ORDER");
    const Matrix<CharacterNumberType> character_table            = P.give("GROUP.CHARACTER_TABLE");
-   const ConjugacyClasses<>          conjugacy_classes          = R.give("CONJUGACY_CLASSES");
+   const ConjugacyClasses<>        conjugacy_classes          = R.give("CONJUGACY_CLASSES");
    const hash_map<Set<int>,int>      index_of                   = R.give("INDEX_OF");
 
    const int deg(degree(conjugacy_classes[0][0]));
@@ -228,7 +278,7 @@ isotypic_supports_matrix(perl::Object P,
 {
    const Matrix<CharacterNumberType> character_table            = P.give("GROUP.CHARACTER_TABLE");
    const int                         order                      = P.give("GROUP.ORDER");
-   const ConjugacyClasses<>          conjugacy_classes          = R.give("CONJUGACY_CLASSES");
+   const ConjugacyClasses<>        conjugacy_classes       = R.give("CONJUGACY_CLASSES");
    const hash_map<Set<int>,int>      index_of                   = R.give("INDEX_OF");
 
    const bool permute_to_orbit_order = options["permute_to_orbit_order"];
@@ -242,6 +292,7 @@ isotypic_supports_matrix(perl::Object P,
    return isotypic_supports_impl(S, character_table, conjugacy_classes, permutation_to_orbit_order, order);
 
 }
+
 
 Array<int>
 row_support_sizes(const SparseMatrix<Rational>& S)
@@ -280,9 +331,10 @@ regular_representation(perl::Object a)
 
 UserFunctionTemplate4perl("# @category Symmetry"
                           "# Calculate the decomposition into irreducible components of a given representation"
-                          "# @param Array character the character of the given representation"
+                          "# @param Vector<Scalar> character the character of the given representation"
                           "# @param Group G the given group; it needs to know its CHARACTER_TABLE and CONJUGACY_CLASS_SIZES."
-                          "# @return Array<Int>"
+                          "# @tparam Scalar the number type of the character"
+                          "# @return Vector<Int>"
                           "# @example Remember that in polymake, we use the terms //action// and //representation// interchangeably."
                           "# To calculate the irreducible decomposition of the vertex action of the symmetry group of the 3-cube, type"
                           "# > $g = cube_group(3); $a = $g->PERMUTATION_ACTION;"
@@ -297,7 +349,7 @@ UserFunctionTemplate4perl("# @category Symmetry"
                           "# | 3 1 0 1 -1 1 0 -1 -1 -3"
                           "# The first entries of these rows say that //a// decomposes into two 1-dimensional irreps and two 3-dimensional ones."
                           "# This correctly brings the dimension of the representation //a// to 8, the number of vertices of the 3-cube.",
-                          "irreducible_decomposition<CharacterType>(CharacterType Group)");
+                          "irreducible_decomposition<Scalar>(Vector<Scalar> Group)");
 
 UserFunction4perl("# @category Symmetry"
                   "# How many non-zero entries are there in each row of a SparseMatrix?"
@@ -461,16 +513,7 @@ UserFunctionTemplate4perl("# @category Symmetry"
                           "# In effect, the first entry in this rows says that the dimension of this irrep is 2.",
                           "isotypic_basis<Scalar>(Group MatrixActionOnVectors<Scalar> Int; { permute_to_orbit_order => 0 })");
 
-
 InsertEmbeddedRule("REQUIRE_APPLICATION polytope\n\n");
-
-UserFunction4perl("# @category Symmetry"
-                  "# Calculate the representation of a group element"
-                  "# @param polytope::Cone C the cone or polytope containing the sets acted upon"
-                  "# @param PermutationActionOnSets A the action in question"
-                  "# @param Array<Int> g the group element, acting on vertices"
-                  "# @return SparseMatrix",
-                  &induced_rep, "induced_rep(polytope::Cone PermutationActionOnSets Array<Int>)");
 
 UserFunction4perl("# @category Symmetry"
                   "# For each isotypic component of a representation //a//, which of a given array //A// of sets are supported on it?"
@@ -488,6 +531,16 @@ UserFunction4perl("# @category Symmetry"
                   "# @option Bool permute_to_orbit_order Should the columns be ordered by orbits? Default 1"
                   "# @return IncidenceMatrix",
                   &isotypic_supports_matrix, "isotypic_supports(polytope::Cone PermutationActionOnSets SparseMatrix; { permute_to_orbit_order => 1 })");
+
+
+UserFunction4perl("# @category Symmetry"
+                  "# Calculate the representation of a group element"
+                  "# @param polytope::Cone C the cone or polytope containing the sets acted upon"
+                  "# @param PermutationActionOnSets A the action in question"
+                  "# @param Array<Int> g the group element, acting on vertices"
+                  "# @return SparseMatrix",
+                  &induced_rep, "induced_rep(polytope::Cone PermutationActionOnSets Array<Int>)");
+
 
 
 }

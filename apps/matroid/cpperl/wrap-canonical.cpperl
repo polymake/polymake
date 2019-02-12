@@ -1,0 +1,8 @@
+{"app": "matroid", "embed": "canonical.cc",
+ "inst": [
+  {"args": ["perl::Canned<Vector<TropicalNumber<Min, Rational>>&>"], "func": "canonicalize_tropical_rays", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "canonicalize_tropical_rays.X1"},
+  {"args": ["perl::Canned<Vector<TropicalNumber<Max, Rational>>&>"], "func": "canonicalize_tropical_rays", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "canonicalize_tropical_rays.X1"},
+  {"args": ["perl::Canned<Matrix<TropicalNumber<Max, Rational>>&>"], "func": "canonicalize_tropical_rays", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "canonicalize_tropical_rays.X1"},
+  {"args": ["perl::Canned<Matrix<TropicalNumber<Min, Rational>>&>"], "func": "canonicalize_tropical_rays", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "canonicalize_tropical_rays.X1"},
+ null ],
+"version": 3}

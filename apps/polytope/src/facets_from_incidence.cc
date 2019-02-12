@@ -37,7 +37,7 @@ void assign_facet_through_points(const GenericMatrix<Matrix1,double>& V, Generic
       // least squares
       const int n=V.cols();
       f=inv(( 2*T(V)*V               | ones_vector<double>(n)) /
-            ( ones_vector<double>(n) | 0.0                   ) )[n].slice(0,n);
+            ( ones_vector<double>(n) | 0.0                   ) )[n].slice(sequence(0, n));
    }
 }
 
@@ -48,8 +48,7 @@ Matrix<Scalar> compute(const Matrix<Scalar>& V, const Matrix<Scalar>& L, const M
    Matrix<Scalar> F(VIF.rows(), V.cols());
    typename Rows< Matrix<Scalar> >::iterator Fi=rows(F).begin();
 
-   for (typename Entire< Rows<IM> >::const_iterator vertex_list=entire(rows(VIF));
-        !vertex_list.at_end();  ++vertex_list, ++Fi) {
+   for (auto vertex_list=entire(rows(VIF)); !vertex_list.at_end();  ++vertex_list, ++Fi) {
       assign_facet_through_points(V.minor(*vertex_list,All) / L/ AH, Fi->top());
       int outer_vertex=(sequence(0,V.rows()) - *vertex_list).front();
       if (*Fi * V[outer_vertex] < 0) Fi->negate();
@@ -86,8 +85,8 @@ void vertices_from_incidence(perl::Object p)
    p.take("RAYS") << compute(F, AH, L, T(VIF));
 }
 
-FunctionTemplate4perl("facets_from_incidence<Scalar> (Cone<Scalar>) : void");
-FunctionTemplate4perl("vertices_from_incidence<Scalar> (Cone<Scalar>) : void");
+FunctionTemplate4perl("facets_from_incidence<Scalar> (Cone<Scalar>)");
+FunctionTemplate4perl("vertices_from_incidence<Scalar> (Cone<Scalar>)");
 
 } }
 

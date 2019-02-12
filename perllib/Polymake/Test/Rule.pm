@@ -92,18 +92,21 @@ sub execute {
 package Polymake::Test::Rule;
 my (%rule_cache, %rule_cache_fill);
 
-sub fill_rule_cache {
+sub rule_cache {
    my ($app)=@_;
-   my $skip=$rule_cache_fill{$app->name} || 0;
-   $rule_cache_fill{$app->name}=@{$app->rules};
-   my $cache=($rule_cache{$app->name} //= { });
+   my $cache=($rule_cache{$app} //= { });
+   my $skip = $rule_cache_fill{$app} // 0;
+   if ($skip < @{$app->rules}) {
+      $rule_cache_fill{$app}=@{$app->rules};
 
-   foreach my $rule (@{$app->rules}[$skip..$#{$app->rules}]) {
-      next if $rule->flags==$Core::Rule::is_function || $rule->code==\&Core::Rule::nonexistent;
-      my $header=$rule->header;
-      $header=~s/\s//g;
-      push @{$cache->{$header}}, $rule;
+      foreach my $rule (@{$app->rules}[$skip..$#{$app->rules}]) {
+         next if $rule->flags == Core::Rule::Flags::is_function || $rule->code == \&Core::Rule::nonexistent;
+         my $header = $rule->header;
+         $header =~ s/\s//g;
+         push @{$cache->{$header}}, $rule;
+      }
    }
+   $cache
 }
 
 sub find_matching_rules {
@@ -113,7 +116,7 @@ sub find_matching_rules {
    my $in_rulefile= $header =~ s/\@(.*)// ? $1 : undef;
    my $precond= $header =~ s/&&(.*)// ? $1 : undef;
 
-   if (my $rules=$rule_cache{$self->group->application->name}->{$header}) {
+   if (my $rules=rule_cache($self->group->application)->{$header}) {
       if (defined($in_rulefile) || defined($precond)) {
 	 my @matching_rules=@$rules;
 	 if (defined $in_rulefile) {
@@ -157,8 +160,7 @@ sub describe_rule {
 ####################################################################################
 package Polymake::Test::Object::WithRule;
 
-use Polymake::Enum qw(verify: OK missing_input missing_output unsatisfied_precond missing_permutation wrong_permutation wrong_result died);
-use Polymake::Enum 'Core::Rule::exec';
+use Polymake::Enum Verify => qw( OK missing_input missing_output unsatisfied_precond missing_permutation wrong_permutation wrong_result died );
 
 use Polymake::Struct (
    [ '@ISA' => 'Case' ],
@@ -209,7 +211,7 @@ sub execute {
 
       foreach (@{$self->permuted}) {
          my @path=$self->object->type->encode_descending_path($_);
-         if (defined (my $pv=$self->object->lookup_descending_path(\@path))) {
+         if (ref(my $pv=$self->object->lookup_descending_path(\@path))) {
             if (defined($pv->value)) {
                push @perm_input_paths, \@path;
                push @{$self->perm_input}, $_, $pv->value;
@@ -231,29 +233,29 @@ sub execute {
          if (@perm_input_paths) {
             if (defined($rule->with_permutation)) {
                if (grep { !defined($rule->with_permutation->perm_path->find_sensitive_sub_property(@$_)) } @perm_input_paths) {
-                  $infeasible{$rule}=$verify_wrong_permutation;
+                  $infeasible{$rule} = Verify::wrong_permutation;
                   next;
                }
             } else {
-               $infeasible{$rule}=$verify_missing_permutation;
+               $infeasible{$rule} = Verify::missing_permutation;
                next;
             }
          }
 
-	 my ($status, @data)=verify_rule($self, $rule);
-	 if ($status == $verify_OK) {
+	 my ($status, @data) = verify_rule($self, $rule);
+	 if ($status == Verify::OK) {
 	    $self->tested_rules->{$rule}=1;
 	    ++$success;
-	 } elsif ($status == $verify_wrong_result) {
+	 } elsif ($status == Verify::wrong_result) {
 	    $self->tested_rules->{$rule}=1;
 	    $self->fail_log.="testing rule ".Rule::describe_rule($rule)." on object ".$self->name." failed:\n".
 	                     join("", Object::print_diff($self->object, @data));
 	    return 0;
-	 } elsif ($status == $verify_missing_output) {
+	 } elsif ($status == Verify::missing_output) {
 	    $self->tested_rules->{$rule}=1;
 	    $self->fail_log.="test object ".$self->name." can't be used for testing rule ".Rule::describe_rule($rule)."\n".join("", @data);
 	    return 0;
-	 } elsif ($status == $verify_died) {
+	 } elsif ($status == Verify::died) {
 	    $self->tested_rules->{$rule}=1;
 	    $self->fail_log.=join("", @data);
 	    return 0;
@@ -266,13 +268,13 @@ sub execute {
       $self->fail_log.="test object ".$self->name." can't be used for testing the rule(s):\n";
       foreach my $rule (@{$self->rules}) {
 	 $self->fail_log.=" ".Rule::describe_rule($rule)." ";
-	 if ($infeasible{$rule} == $verify_missing_input) {
+	 if ($infeasible{$rule} == Verify::missing_input) {
 	    $self->fail_log.="is infeasible: missing or undefined source properties\n";
-	 } elsif ($infeasible{$rule} == $verify_unsatisfied_precond) {
+	 } elsif ($infeasible{$rule} == Verify::unsatisfied_precond) {
 	    $self->fail_log.="is infeasible: preconditions not satisfied\n";
-	 } elsif ($infeasible{$rule} == $verify_missing_permutation) {
+	 } elsif ($infeasible{$rule} == Verify::missing_permutation) {
 	    $self->fail_log.="is infeasible: does not incur any permutation while permuted target properties are specified\n";
-	 } elsif ($infeasible{$rule} == $verify_wrong_permutation) {
+	 } elsif ($infeasible{$rule} == Verify::wrong_permutation) {
 	    $self->fail_log.="is infeasible: permutation incurred by the rule is not applicable to all specified target properties\n";
 	 } elsif (!$proto->isa($rule->defined_for)) {
 	    $self->fail_log.="is not applicable: defined for ".$rule->defined_for->full_name."\n";
@@ -310,12 +312,12 @@ sub verify_rule {
                push @{$t_obj->contents}, $pv;
                $#{$t_obj->contents}
             };
-            unless (defined($pv->value) || ($rule->flags & $Core::Rule::is_definedness_check)) {
+            unless (defined($pv->value) || $rule->flags & Core::Rule::Flags::is_definedness_check) {
                # implicit definedness precondition failed
-               return $verify_missing_input;
+               return Verify::missing_input;
             }
          } else {
-            return $verify_missing_input;
+            return Verify::missing_input;
          }
       }
    }
@@ -339,7 +341,7 @@ sub verify_rule {
                      $#{$t_obj->contents};
                   };
                } else {
-                  return ($verify_missing_output,
+                  return (Verify::missing_output,
                           "missing property ", $full_path->toString,
                           " prerequisite for construction of target property ", Core::Property::print_path($output), "\n");
                }
@@ -352,35 +354,35 @@ sub verify_rule {
 
    foreach my $rule (@{$prod_rule->preconditions}, $prod_rule) {
       my $rc=$rule->execute($test_object, 1);
-      if ($rc == $exec_OK) {
+      if ($rc == Core::Rule::Exec::OK) {
 	 if ($rule == $prod_rule and
 	     defined($self->expected_failure)) {
-	    return ($verify_died, "rule ", Rule::describe_rule($prod_rule), " not failed as expected\n");
+	    return (Verify::died, "rule ", Rule::describe_rule($prod_rule), " not failed as expected\n");
 	 }
-      } elsif ($rc == $exec_infeasible) {
-	 return $verify_missing_input;
+      } elsif ($rc == Core::Rule::Exec::infeasible) {
+	 return Verify::missing_input;
       } elsif ($@) {
 	 if ($rule == $prod_rule) {
 	    if (defined($self->expected_failure)) {
 	       # remove source code reference, the rules may freely wander through rulefiles
 	       $@ =~ s{ at \Q${InstallTop}\E/\S+ line \d+\.?\n}{}o;
 	       if ($@ eq $self->expected_failure) {
-		  return $verify_OK;
+		  return Verify::OK;
 	       } else {
-		  return ($verify_died, "rule ", Rule::describe_rule($prod_rule), " failed with a different error message:\n",
+		  return (Verify::died, "rule ", Rule::describe_rule($prod_rule), " failed with a different error message:\n",
 			  "expected: ", $self->expected_failure, "\n",
 			  "     got: $@\n");
 	       }
 	    } else {
-	       return ($verify_died, "rule ", Rule::describe_rule($prod_rule), " failed: $@\n");
+	       return (Verify::died, "rule ", Rule::describe_rule($prod_rule), " failed: $@\n");
 	    }
 	 } else {
-	    return ($verify_died, "prerequisite rule ", Rule::describe_rule($rule), " failed: $@\n");
+	    return (Verify::died, "prerequisite rule ", Rule::describe_rule($rule), " failed: $@\n");
 	 }
-      } elsif ($rule->flags & $Core::Rule::is_precondition) {
-	 return $verify_unsatisfied_precond;
+      } elsif ($rule->flags & Core::Rule::Flags::is_precondition) {
+	 return Verify::unsatisfied_precond;
       } else {
-	 return ($verify_died, Rule::describe_rule($rule), " returned an unexpected code\n");
+	 return (Verify::died, Rule::describe_rule($rule), " returned an unexpected code\n");
       }
    }
 
@@ -407,9 +409,9 @@ sub verify_rule {
 	 push @missing, $out;
       }
    }
-   @missing ? ($verify_missing_output, map { ("missing target property ", Core::Property::print_path($_), "\n") } @missing) :
-   @diff ? ($verify_wrong_result, @diff) :
-   $verify_OK;
+   @missing ? (Verify::missing_output, map { ("missing target property ", Core::Property::print_path($_), "\n") } @missing) :
+   @diff ? (Verify::wrong_result, @diff) :
+   Verify::OK;
 }
 ####################################################################################
 sub clone {
@@ -430,7 +432,7 @@ sub clone {
 ####################################################################################
 sub descend_in_test_object {
    my ($obj, $t_obj, $path)=@_;
-   my $prop=local_pop($path);
+   my $prop = local pop @$path;
    foreach my $sub_prop (@$path) {
       if (defined (my $content_index=$obj->dictionary->{$sub_prop->property_key})) {
 	 $obj=$obj->contents->[$content_index]->value;
@@ -440,7 +442,7 @@ sub descend_in_test_object {
 	    my $sub_t_obj=clone($obj, 1);
 	    weak($sub_t_obj->parent=$t_obj);
 	    push @{$t_obj->contents},
-	         $sub_prop->flags & $Core::Property::is_multiple ? new Core::PropertyValue::Multiple($obj->property, [ $sub_t_obj ]) : $sub_t_obj;
+	         $sub_prop->flags & Core::Property::Flags::is_multiple ? new Core::PropertyValue::Multiple($obj->property, [ $sub_t_obj ]) : $sub_t_obj;
 	    $t_obj->dictionary->{$sub_prop->property_key}=$#{$t_obj->contents};
 	    $t_obj=$sub_t_obj;
 	 }
@@ -459,7 +461,7 @@ sub lookup_in_source {
    my ($self, $path, $for_planning)=@_;
    if (my $source=$self->attachments->{".source"}) {
       &$lookup_descending_path || do {
-         if (my $pv=$lookup_descending_path->($source, $path, $for_planning)) {
+         if (ref(my $pv=$lookup_descending_path->($source, $path, $for_planning))) {
             my ($obj, $t_obj, $prop)=descend_in_test_object($source, $self, $path);
             push @{$t_obj->contents}, $pv;
             $t_obj->dictionary->{$pv->property->key}=$#{$t_obj->contents};

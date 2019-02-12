@@ -25,20 +25,20 @@
 
 namespace polymake { namespace matroid {
 
-   using graph::Lattice;
-   using graph::lattice::Sequential;
-   using graph::lattice::BasicDecoration;
+using graph::Lattice;
+using graph::lattice::Sequential;
+using graph::lattice::BasicDecoration;
 
-Array<Set<int> > bases_from_lof_impl(const Lattice<BasicDecoration, Sequential>& LF, int n)
+Array<Set<int>> bases_from_lof_impl(const Lattice<BasicDecoration, Sequential>& LF, int n)
 {
-	int LF_dim = LF.rank();
-	if(LF_dim == 0) {
-		//THis means the rank is 0
-		return Array<Set<int> >(1);
-	}
+   int LF_dim = LF.rank();
+   if (LF_dim == 0) {
+      // this means the rank is 0
+      return Array<Set<int>>(1);
+   }
    const int rank(LF_dim);
-   std::vector<Set<int> > bases;
-   for (Entire<Subsets_of_k<const sequence&> >::const_iterator bit=entire(all_subsets_of_k(sequence(0,n), rank)); !bit.at_end(); ++bit) {
+   std::vector<Set<int>> bases;
+   for (auto bit=entire(all_subsets_of_k(sequence(0,n), rank)); !bit.at_end(); ++bit) {
       const Set<int> basis(*bit);
       bool dependent(false);
       for (int k=rank-1; k>=0; --k) {
@@ -49,7 +49,7 @@ Array<Set<int> > bases_from_lof_impl(const Lattice<BasicDecoration, Sequential>&
       }
       if (!dependent) bases.push_back(basis);
    }
-   return Array<Set<int> >(bases.size(), entire(bases));
+   return Array<Set<int>>(bases.size(), entire(bases));
 }
 
 } }

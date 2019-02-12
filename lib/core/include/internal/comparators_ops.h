@@ -115,7 +115,7 @@ template <typename T1, typename T2, typename ComparatorFamily,
           typename Model2=typename object_traits<T2>::model,
           typename TDiscr=typename isomorphic_types<T1, T2>::discriminant,
           typename Result=cmp_value>
-struct define_comparator { };
+struct define_comparator {};
 
 struct cmp;
 struct cmp_with_leeway;
@@ -327,6 +327,9 @@ struct is_unordered_comparable : is_unordered_comparable_impl<typename Concrete<
 
 // Tag for various parameter lists
 template <typename> class ComparatorTag;
+
+// Tag for multimaps
+template <typename> class MultiTag;
 
 template <typename Iterator1, typename Iterator2, typename Reference1, typename Reference2>
 struct binary_op_builder<operations::cmp, Iterator1, Iterator2, Reference1, Reference2>

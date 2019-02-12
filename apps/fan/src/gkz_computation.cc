@@ -43,8 +43,8 @@ void secondary_fan_and_flipwords(perl::Object surface){
       vec = dcel.normalize( vec );
       fan_rays_matrix[ it.second ] = vec;
    }
-   Matrix<Rational> secondary_fan_rays = fan_rays_matrix.minor( ~scalar2set(0) , ~scalar2set(0) );
-   Array<Set<int>> secondary_fan_cells( bfs_it.node_visitor().getfan_cells() );
+   Matrix<Rational> secondary_fan_rays = fan_rays_matrix.minor(range_from(1), range_from(1));
+   Array<Set<int>> secondary_fan_cells(bfs_it.node_visitor().getfan_cells());
 
    //TODO later we want a fan subobject instead
    perl::Object fan("PolyhedralFan<Rational>");

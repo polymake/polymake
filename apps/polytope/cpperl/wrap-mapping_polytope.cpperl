@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "mapping_polytope.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void", "void"], "func": "mapping_polytope", "include": ["polymake/Rational.h"], "sig": "mapping_polytope:T1.B.B.o", "tp": "1"},
+ null ],
+"version": 3}

@@ -47,10 +47,10 @@ compute_new_vertex(const Matrix<Rational>& Facets, const Matrix<Rational>& Verti
 {
    const Vector<Rational> Fb=average(rows(Vertices.minor(VIF[sf],All)));
    Vector<Rational> F_normal=Facets[sf];
-   F_normal[0] = -(F_normal.slice(1)*Fb.slice(1));           // facet normal thru facet barycenter
+   F_normal[0] = -(F_normal.slice(range_from(1)) * Fb.slice(range_from(1)));      // facet normal thru facet barycenter
    Rational min_ratio=(Vb-Fb)*F_normal/sqr(F_normal);        // furthest position: mirror opposite of VERTEX_BARYCENTER
 
-   for (Entire<Graph<>::adjacent_node_list>::const_iterator nb=entire(DG.adjacent_nodes(sf)); !nb.at_end();  ++nb) {
+   for (auto nb=entire(DG.adjacent_nodes(sf)); !nb.at_end();  ++nb) {
       if (stack_facets.top().contains(*nb))
          nearest_vertex(bisector(Facets[sf], Facets[*nb], Vertices[ (VIF[sf] * VIF[*nb]).front() ]),
                         F_normal, Fb, min_ratio);
@@ -116,7 +116,7 @@ perl::Object stack(perl::Object p_in, const GenericSet<TSet>& stack_facets, perl
    std::vector<std::string> labels, facet_labels;
    if (relabel) {
       labels.resize(n_vertices_out);
-      common::read_labels(p_in, "VERTEX_LABELS", non_const(select(labels, sequence(0, n_vertices))));
+      common::read_labels(p_in, "VERTEX_LABELS", select(labels, sequence(0, n_vertices)));
       facet_labels = common::read_labels(p_in, "FACET_LABELS", n_facets);
    }
 
@@ -130,27 +130,26 @@ perl::Object stack(perl::Object p_in, const GenericSet<TSet>& stack_facets, perl
    }
 
    if (simplicial) {
-      int nv=n_vertices;     // new vertex
-      for (auto sf=entire(stack_facets.top());  !sf.at_end();  ++sf, ++nv) {
+      int new_vertex = n_vertices;     // new vertex
+      for (auto sf=entire(stack_facets.top());  !sf.at_end();  ++sf, ++new_vertex) {
          // new facet = old facet - one of its vertices + new vertex
-         for (Subsets_less_1<const IncidenceMatrix<>::const_row_type&>::const_iterator
-                 ridges=entire(all_subsets_less_1(VIF[*sf]));  !ridges.at_end();  ++ridges, ++new_facet) {
-            *new_facet=*ridges;
-            new_facet->push_back(nv);
+         for (auto ridges = entire(all_subsets_less_1(VIF[*sf]));  !ridges.at_end();  ++ridges, ++new_facet) {
+            *new_facet = *ridges;
+            new_facet->push_back(new_vertex);
          }
       }
 
       if (!noc) {
-         const Graph<> DG=p_in.give("DUAL_GRAPH.ADJACENCY");
-         Rows< Matrix<Rational> >::iterator nv=rows(Vertices_out).begin()+n_vertices;
-         for (auto sf=entire(stack_facets.top());  !sf.at_end();  ++sf, ++nv) {
-            *nv=compute_new_vertex(Facets,Vertices,Vb,VIF,DG,stack_facets,*sf,lift_factor);
+         const Graph<> DG = p_in.give("DUAL_GRAPH.ADJACENCY");
+         auto nv = rows(Vertices_out).begin() + n_vertices;
+         for (auto sf = entire(stack_facets.top());  !sf.at_end();  ++sf, ++nv) {
+            *nv = compute_new_vertex(Facets, Vertices, Vb, VIF, DG, stack_facets, *sf, lift_factor);
          }
       }
 
       if (relabel) {
-         std::vector<std::string>::iterator nl=labels.begin()+n_vertices;
-         for (auto sf=entire(stack_facets.top());  !sf.at_end();  ++sf, ++nl)
+         auto nl = labels.begin() + n_vertices;
+         for (auto sf = entire(stack_facets.top());  !sf.at_end();  ++sf, ++nl)
             *nl = "f(" + facet_labels[*sf] + ')';
       }
 
@@ -171,7 +170,7 @@ perl::Object stack(perl::Object p_in, const GenericSet<TSet>& stack_facets, perl
               !nb.at_end();  ++nb, ++new_facet) {
             const Set<int> ridge=VIF[*sf] * VIF[*nb];
             *new_facet = ridge;
-            *new_facet += assure_ordered(select(new_neighbors,ridge));
+            *new_facet += assure_ordered(select(new_neighbors, ridge));
          }
 
          if (!noc) {
@@ -219,7 +218,7 @@ perl::Object stack(perl::Object p_in, int facet, perl::OptionSet options)
 perl::Object stack(perl::Object p_in, const Array<int>& facets, perl::OptionSet options)
 {
    Set<int> stack_facets;
-   for (Entire< Array<int> >::const_iterator fi = entire(facets); !fi.at_end(); ++fi)
+   for (auto fi = entire(facets); !fi.at_end(); ++fi)
       stack_facets += *fi;
 
    if (stack_facets.size() != facets.size())

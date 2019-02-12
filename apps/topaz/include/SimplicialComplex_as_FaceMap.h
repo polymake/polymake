@@ -274,8 +274,7 @@ SparseMatrix<R> SimplicialComplex_as_FaceMap<Vertex, Visitor>::_boundary_matrix(
    for (iterator face=super::begin_of_dim(d); !face.at_end(); ++face) {
       int r=face.data();
       R entry=R(1);
-      for (typename Entire< Subsets_less_1<reference> >::iterator face_below=entire(all_subsets_less_1(*face));
-           !face_below.at_end(); ++face_below) {
+      for (auto face_below=entire(all_subsets_less_1(*face)); !face_below.at_end(); ++face_below) {
          int c=insert_face(*face_below, d-1);
          Delta(r,c)=entry;
          entry=-entry;

@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "edge_middle.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "edge_middle", "include": ["polymake/Rational.h"], "sig": "edge_middle:T1.B", "tp": "1"},
+ null ],
+"version": 3}

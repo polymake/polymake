@@ -50,7 +50,7 @@ public:
   Set<int> newlabels(const Set<int>& s) const
   {
       Set<int> permuted_vertices;
-      for (Entire< Set<int> >::const_iterator it = entire(s); !it.at_end(); ++it) {
+      for (auto it = entire(s); !it.at_end(); ++it) {
 	 const int orig_vertex=*it;
 	 permuted_vertices += relabel_[orig_vertex];
       }
@@ -77,13 +77,16 @@ public:
 // @param int max_d: dimension of maximal face in newHD
 // @param Set<int,cmp> free_face_list: empty list of free faces (dim = max_d-1) in newHD sorted by relabeled label.
 void lex_free_faces(const ShrinkingLattice<BasicDecoration>& newHD,
-			   const int& max_d,
-			   Set< int,CompareByHasseDiagram >& free_face_list)
+   const int& max_d,
+   Set< int,CompareByHasseDiagram >& free_face_list)
 {
    for (auto n=entire(newHD.nodes_of_rank(max_d)); !n.at_end(); ++n) {
       const int this_index = *n;
       if( newHD.out_degree(this_index) == 1) {
-	 free_face_list += this_index;
+          const int remove_face = newHD.out_adjacent_nodes(this_index).front();
+          if(newHD.rank(this_index)+1 == newHD.rank(remove_face)) {
+                free_face_list += this_index;
+          }
       }
    }
 }
@@ -127,7 +130,7 @@ void lex_collapse(ShrinkingLattice<BasicDecoration>& newHD, Set<int,CompareByHas
 
 
    // faces that were on the boundary of remove_face are no longer free
-   for (Entire< Set<int> >::iterator s = entire(bdy_of_remove_face); !s.at_end(); ++s) {
+   for (auto s = entire(bdy_of_remove_face); !s.at_end(); ++s) {
       const int this_bdy_face = *s;
       free_face_list.erase(this_bdy_face);
    }
@@ -138,7 +141,7 @@ void lex_collapse(ShrinkingLattice<BasicDecoration>& newHD, Set<int,CompareByHas
 
 
    // deletion of remove_face may add new free faces
-   for (Entire< Set<int> >::iterator it=entire(bdy_of_remove_face); !it.at_end(); ++it) {
+   for (auto it=entire(bdy_of_remove_face); !it.at_end(); ++it) {
       const int this_index = *it;
       if ( newHD.out_degree(this_index) == 1) {
 	 free_face_list += this_index;
@@ -147,7 +150,7 @@ void lex_collapse(ShrinkingLattice<BasicDecoration>& newHD, Set<int,CompareByHas
 }
 
 
-Array<int> lex_discMorse(const int& strategy, ShrinkingLattice<BasicDecoration> newHD, const pm::SharedRandomState& random_source, const bool& print_collapsed, std::list< Set<int> >& remaining_facets)
+Array<int> lex_discMorse(const int strategy, ShrinkingLattice<BasicDecoration> newHD, const pm::SharedRandomState& random_source, const bool print_collapsed, std::list<Set<int>>& remaining_facets)
 {
    const int global_d(newHD.rank()-2);   // needed for "Warning" below
    int max_d(global_d);		   // dimension of maximum-dim face in newHD
@@ -170,18 +173,18 @@ Array<int> lex_discMorse(const int& strategy, ShrinkingLattice<BasicDecoration> 
    bool first_removed_face(true);
    bool save_remaining_faces(print_collapsed);
 
-   while (true){
+   while (true) {
       if (!free_face_list.empty()) {
 	 // collapse anything that can be collapsed
 
 	 const int remove_this( strategy==1 ? free_face_list.front() : free_face_list.back());
 
-	 if(!newHD.node_exists(remove_this)){
+	 if (!newHD.node_exists(remove_this)) {
 	    throw std::runtime_error("random_discrete_morse::lex_discMorse::can't remove this");
 	 }
 
 	 lex_collapse(newHD,free_face_list,remove_this);
-	 n_max_d_faces--;
+	 --n_max_d_faces;
 
       }
       else {
@@ -189,30 +192,27 @@ Array<int> lex_discMorse(const int& strategy, ShrinkingLattice<BasicDecoration> 
 	 if (n_max_d_faces==0) {
 	    // if there are no more max_d faces move on to next dimension
 
-	    max_d--;
+	    --max_d;
 
-	    if(max_d>0) {
-
+	    if (max_d>0) {
 	       n_max_d_faces = newHD.nodes_of_rank(max_d+1).size();
 
 	       // reinitialize free_face_list
 	       lex_free_faces(newHD,max_d,free_face_list);
-
 	    }
 	    else break;
 	 }
 	 else {
 	    // otherwise, remove a face of maximal dimension
-	    if(print_collapsed)
+	    if (print_collapsed)
             if (!first_removed_face && save_remaining_faces) {
-	       for(auto n=entire(newHD.nodes_of_rank_range(1,max_d+1)); !n.at_end(); ++n)
-		  remaining_facets.push_back(newHD.face(*n));
+	       for (const auto n : newHD.nodes_of_rank_range(1, max_d+1))
+		  remaining_facets.push_back(newHD.face(n));
 	       save_remaining_faces=false;
 	    }
 
 	    Set<int, CompareByHasseDiagram> faces_of_maximal_dim(cmp);
-	    for(auto n=entire(newHD.nodes_of_rank(max_d+1)); !n.at_end(); ++n) {
-	       const int node_of_max_d(*n);
+	    for (const auto node_of_max_d : newHD.nodes_of_rank(max_d+1)) {
 	       faces_of_maximal_dim += node_of_max_d;
 	    }
 
@@ -224,7 +224,7 @@ Array<int> lex_discMorse(const int& strategy, ShrinkingLattice<BasicDecoration> 
 	    n_max_d_faces--;
 
 	    //update free_face_list
-	    for(Entire< Set<int> >::iterator it=entire(bdy_of_critical_face); !it.at_end(); ++it) {
+	    for (auto it=entire(bdy_of_critical_face); !it.at_end(); ++it) {
 	       const int this_index(*it);
 	       if ( newHD.out_degree(this_index) == 1) {
 		  free_face_list += this_index;
@@ -232,7 +232,6 @@ Array<int> lex_discMorse(const int& strategy, ShrinkingLattice<BasicDecoration> 
 	    }
 
 	    ++(morse_vector[max_d]);
-
 	 }
       }
    }
@@ -268,13 +267,16 @@ Array<int> lex_discMorse(const int& strategy, ShrinkingLattice<BasicDecoration> 
 // @param int max_d: dimension of maximal face in newHD
 // @param Set<int> free_face_list: list of free faces (dim = max_d-1) in newHD
 void rand_free_faces(const ShrinkingLattice<BasicDecoration>& newHD,
-		const int& max_d,
-		Set<int>& free_face_list)
+const int& max_d,
+Set<int>& free_face_list)
 {
    for (auto n = entire(newHD.nodes_of_rank(max_d)); !n.at_end(); ++n) {
       const int this_index = *n;
       if( newHD.out_degree(this_index) == 1) {
-	 free_face_list += this_index;
+          const int remove_face = newHD.out_adjacent_nodes(this_index).front();
+          if(newHD.rank(this_index)+1 == newHD.rank(remove_face)) {
+                free_face_list += this_index;
+          }
       }
    }
 }
@@ -317,7 +319,7 @@ void rand_collapse(ShrinkingLattice<BasicDecoration>& newHD, Set<int>& free_face
    free_face_list-=remove_this;
 
    // faces that were on the boundary of remove_face are no longer free
-   for (Entire< Set<int> >::iterator s = entire(bdy_of_remove_face); !s.at_end(); ++s) {
+   for (auto s = entire(bdy_of_remove_face); !s.at_end(); ++s) {
       const int this_bdy_face = *s;
       free_face_list-=this_bdy_face;
    }
@@ -327,8 +329,7 @@ void rand_collapse(ShrinkingLattice<BasicDecoration>& newHD, Set<int>& free_face
    newHD.delete_node(remove_face);
 
    // deletion of remove_face may add new free faces
-   for (Entire< Set<int> >::iterator it=entire(bdy_of_remove_face);
-	!it.at_end(); ++it) {
+   for (auto it=entire(bdy_of_remove_face); !it.at_end(); ++it) {
       const int this_index = *it;
       if ( newHD.out_degree(this_index) == 1) {
 	 free_face_list+=this_index;
@@ -394,8 +395,8 @@ Array<int> rand_discMorse(ShrinkingLattice<BasicDecoration> newHD, const pm::Sha
 	    const auto faces_of_maximal_dim = newHD.nodes_of_rank(max_d+1);
 
 	    if (!first_removed_face && save_remaining_faces) {
-	       for(auto n=entire(newHD.nodes_of_rank_range(1,max_d+1)); !n.at_end(); ++n)
-	          remaining_facets.push_back(newHD.face(*n));
+	       for (const auto n : newHD.nodes_of_rank_range(1, max_d+1))
+	          remaining_facets.push_back(newHD.face(n));
 
 	       save_remaining_faces=false;
 	    }
@@ -415,7 +416,7 @@ Array<int> rand_discMorse(ShrinkingLattice<BasicDecoration> newHD, const pm::Sha
 	    --n_max_d_faces;
 
 	    // update free_face_list
-	    for(Entire< Set<int> >::iterator it=entire(bdy_of_critical_face); !it.at_end(); ++it) {
+	    for (auto it=entire(bdy_of_critical_face); !it.at_end(); ++it) {
 	       const int this_index(*it);
 	       if (newHD.out_degree(this_index) == 1) {
 		  free_face_list+=this_index;

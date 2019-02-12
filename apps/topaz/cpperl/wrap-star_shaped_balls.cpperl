@@ -1,0 +1,7 @@
+{"app": "topaz", "embed": "star_shaped_balls.cc",
+ "inst": [
+  {"args": ["Set<Set<int>>", "perl::Canned<const Array<Set<Set<int>>>&>"], "func": "poset_by_inclusion", "include": ["polymake/Array.h", "polymake/Set.h"], "sig": "poset_by_inclusion:T1.X", "tp": "1"},
+  {"args": ["Rational", "void"], "func": "star_shaped_balls", "include": ["polymake/Rational.h"], "sig": "star_shaped_balls:T1.B", "tp": "1"},
+  {"args": ["Rational", "void"], "func": "star_of_zero", "include": ["polymake/Rational.h"], "sig": "star_of_zero:T1.B", "tp": "1"},
+ null ],
+"version": 3}

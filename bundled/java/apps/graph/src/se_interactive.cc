@@ -192,7 +192,7 @@ Function4perl(&interactive_spring_embedder,
 
 OpaqueClass4perl("SpringEmbedderWindow", std::unique_ptr<SpringEmbedderWindow>,
                  OpaqueMethod4perl("port()")
-                 OpaqueMethod4perl("shutdown() : void")
+                 OpaqueMethod4perl("shutdown()")
                  );
 } }
 

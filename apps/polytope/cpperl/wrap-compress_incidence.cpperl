@@ -1,0 +1,8 @@
+{"app": "polytope", "embed": "compress_incidence.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "compress_incidence_dual", "include": ["polymake/Rational.h"], "sig": "compress_incidence_dual:T1.B", "tp": "1"},
+  {"args": ["Rational", "void"], "func": "compress_incidence_primal", "include": ["polymake/Rational.h"], "sig": "compress_incidence_primal:T1.B", "tp": "1"},
+  {"args": ["double", "void"], "func": "compress_incidence_primal", "sig": "compress_incidence_primal:T1.B", "tp": "1"},
+  {"args": ["double", "void"], "func": "compress_incidence_dual", "sig": "compress_incidence_dual:T1.B", "tp": "1"},
+ null ],
+"version": 3}

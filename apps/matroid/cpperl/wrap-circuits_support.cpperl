@@ -1,0 +1,6 @@
+{"app": "matroid", "embed": "circuits_support.cc",
+ "inst": [
+  {"args": ["Min", "Rational", "void"], "func": "circuits_supports", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "circuits_supports:T2.B", "tp": "2"},
+  {"args": ["Max", "Rational", "void"], "func": "circuits_supports", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "circuits_supports:T2.B", "tp": "2"},
+ null ],
+"version": 3}

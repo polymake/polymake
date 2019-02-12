@@ -1,0 +1,7 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Wary<Matrix<Rational>>&>", "perl::Canned<const Wary<Matrix<Rational>>&>"], "func": "solve_left", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/matrix_linalg.h"], "sig": "solve_left.X4.X4"},
+  {"args": ["perl::Canned<const Wary<SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>>&>", "perl::Canned<const Wary<SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>>&>"], "func": "solve_left", "include": ["polymake/IncidenceMatrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/matrix_linalg.h"], "sig": "solve_left.X4.X4"},
+  {"args": ["perl::Canned<const Wary<Matrix<double>>&>", "perl::Canned<const Wary<Matrix<double>>&>"], "func": "solve_left", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/matrix_linalg.h"], "sig": "solve_left.X4.X4"},
+ null ],
+"version": 3}

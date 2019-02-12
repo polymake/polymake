@@ -55,7 +55,7 @@ void fundamental_group(perl::Object p)
       const int node = queue.front();
       queue.pop_front();
       Set<int> neighbors = G.adjacent_nodes(node);
-      for (Entire< Set< int > >::const_iterator ni = entire(neighbors); !ni.at_end(); ++ni) {
+      for (auto ni = entire(neighbors); !ni.at_end(); ++ni) {
          if (!connected_verts.contains(*ni)) {
             marked(node,*ni)=false; // edge in the spanning tree
             connected_verts.insert(*ni);
@@ -69,8 +69,7 @@ void fundamental_group(perl::Object p)
    hash_map<gen_label,int> generators(n_edges);
    std::list<std::string> gen_labels;
    int c=0;
-   for (Entire< Edges< Graph<> > >::const_iterator e_it=entire(edges(G)); 
-        !e_it.at_end(); ++e_it) {
+   for (auto e_it=entire(edges(G)); !e_it.at_end(); ++e_it) {
       if (marked[*e_it]) {
          std::ostringstream label;
          if (e_it.from_node() < e_it.to_node()) {
@@ -90,9 +89,9 @@ void fundamental_group(perl::Object p)
    // each 2-face gives a relation
    std::list<relation> relations;
    const PowerSet<int> skeleton_2 = k_skeleton(C,2);
-   for (Entire< PowerSet<int> >::const_iterator c_it=entire(skeleton_2); !c_it.at_end(); ++c_it) {
+   for (auto c_it=entire(skeleton_2); !c_it.at_end(); ++c_it) {
       relation rel;
-      for (Entire< Set<int> >::const_iterator s_it=entire(*c_it); !s_it.at_end();) {
+      for (auto s_it=entire(*c_it); !s_it.at_end(); ) {
          const int from_node = *s_it;
          ++s_it;
          if (s_it.at_end()) {

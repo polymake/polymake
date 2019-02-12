@@ -84,9 +84,9 @@ template <typename HDType>
 Map<Set<int>, std::vector<int>> links_of_ridges(const HDType& HD)
 {
    Map<Set<int>, std::vector<int>> link_of;
-   for (auto r = entire(HD.nodes_of_rank(HD.rank()-2)); !r.at_end(); ++r) {
-      for (auto f = HD.out_adjacent_nodes(*r).begin(); !f.at_end(); ++f) {
-         link_of[HD.face(*r)].push_back((HD.face(*f)-HD.face(*r)).front());
+   for (const auto r : HD.nodes_of_rank(HD.rank()-2)) {
+      for (const auto f : HD.out_adjacent_nodes(r)) {
+         link_of[HD.face(r)].push_back((HD.face(f)-HD.face(r)).front());
       }
    }
    return link_of;
@@ -98,7 +98,7 @@ Set<Set<int>> boundary_of(const Container& ball)
 {
    Set<Set<int>> boundary;
    for (const auto& b : ball) {
-      for (Entire<Subsets_less_1<const Set<int>&>>::const_iterator rit = entire(all_subsets_less_1(b)); !rit.at_end(); ++rit) {
+      for (auto rit = entire(all_subsets_less_1(b)); !rit.at_end(); ++rit) {
          if (boundary.contains(*rit)) // if we see a ridge for the second time, it's not in the boundary
             boundary -= *rit;
          else
@@ -164,7 +164,7 @@ perl::Object sum_triangulation_impl(perl::Object p_in,
       webOfStars.resize(facetsP.size(), facetsQ.size());
    } else {
       webOfStars = IncidenceMatrix<>(facetsP.size(), facetsQ.size());
-      for (Entire<Rows<IncidenceMatrix<>>>::iterator rit = entire(rows(webOfStars)); !rit.at_end(); ++rit)
+      for (auto rit = entire(rows(webOfStars)); !rit.at_end(); ++rit)
          *rit = indices_of_star_Q_0;
    }
 
@@ -206,7 +206,7 @@ perl::Object sum_triangulation_impl(perl::Object p_in,
 
 
    // OUTPUT
-   perl::Object pSumTri(perl::ObjectType::construct<Scalar>("topaz::GeometricSimplicialComplex"));
+   perl::Object pSumTri("topaz::GeometricSimplicialComplex", mlist<Scalar>());
    pSumTri.set_description() << "a P sum triangulation of " << p_in.name() << " and " << q_in.name() << "." << endl;
 
    Matrix<Scalar> sumVert = (pVert | zero_matrix<Scalar>(pVert.rows(), qVert.cols())) /

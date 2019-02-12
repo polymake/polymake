@@ -1,0 +1,8 @@
+{"app": "common",
+ "inst": [
+  {"class": "RGB", "include": ["polymake/color.h"], "pkg": "Polymake::common::RGB"},
+  {"args": ["RGB"], "include": ["polymake/color.h"], "op": "new", "sig": "new"},
+  {"args": ["RGB", "int(int)", "int(int)", "int(int)"], "include": ["polymake/color.h"], "op": "new", "sig": "new.int.int.int"},
+  {"args": ["RGB", "double(double)", "double(double)", "double(double)"], "include": ["polymake/color.h"], "op": "new", "sig": "new.double.double.double"},
+ null ],
+"version": 3}

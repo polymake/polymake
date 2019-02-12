@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "dual_linear_program.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "dual_linear_program", "include": ["polymake/Rational.h"], "sig": "dual_linear_program:T1.B.x", "tp": "1"},
+ null ],
+"version": 3}

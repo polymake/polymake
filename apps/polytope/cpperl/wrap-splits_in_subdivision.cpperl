@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "splits_in_subdivision.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Array<Set<int>>&>", "perl::Canned<const Matrix<Rational>&>"], "func": "splits_in_subdivision", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "splits_in_subdivision.X.X.X"},
+  {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Matrix<Rational>&>"], "func": "splits_in_subdivision", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "splits_in_subdivision.X.X.X"},
+ null ],
+"version": 3}

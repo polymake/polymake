@@ -21,7 +21,7 @@ package Polymake::Core::Permutation;
 
 use Polymake::Struct (
    [ '@ISA' => 'Property' ],
-   [ '$flags' => '$is_subobject | $is_permutation' ],
+   [ '$flags' => 'Flags::is_subobject | Flags::is_permutation' ],
    '%sensitive_props',                  # Property->key => [ Rule ]  or  { $sub_key }->{ Property }-> ... ->[ Rule ]
                                         # rules transferring Property from the permuted subobject back into the basis
    '%sub_permutations',                 # Property->key (subobject) => Property (permutation)
@@ -33,7 +33,7 @@ sub new {
    $self->type=$self->type->create_derived($self, $self->belongs_to);
    unless ($self->type->abstract) {
       $self->accept=\&accept_subobject;
-      $self->flags |= $is_concrete;
+      $self->flags |= Flags::is_concrete;
    }
    $self;
 }
@@ -54,26 +54,26 @@ sub analyze_rule {
    foreach my $output (@{$rule->output}) {
       if (@$output == 1) {
          my $prop=$output->[0];
-         if ($rule->code==\&Rule::nonexistent) {
+         if ($rule->code == \&Rule::nonexistent) {
             if ($Application::plausibility_checks && ref($self->sensitive_props->{$prop->key})) {
                croak( "recovery of property ", $prop->name, " was enabled prior to this rule definition" );
             }
             $self->sensitive_props->{$prop->key}=[ ];
          } else {
             if ($Application::plausibility_checks && exists($self->sensitive_props->{$prop->key}) &&
-                @{$self->sensitive_props->{$prop->key}}==0) {
+                @{$self->sensitive_props->{$prop->key}} == 0) {
                croak( "recovery of property ", $prop->name, " was disabled prior to this rule definition" );
             }
             push @{$self->sensitive_props->{$prop->key}}, $rule;
          }
          $regular_out_seen=1;
       } else {
-         if ($Application::plausibility_checks && get_array_flags($output) & $is_multiple_new) {
+         if ($Application::plausibility_checks && get_array_flags($output) & Flags::is_multiple_new) {
             croak( "Rule dealing with permutations may not create new multiple subobjects" );
          }
-         my $perm_pos=find_first_in_path($output, $is_permutation);
-         if ($perm_pos>=0) {
-            if ($perm_pos==0) {
+         my $perm_pos = find_first_in_path($output, Flags::is_permutation);
+         if ($perm_pos >= 0) {
+            if ($perm_pos == 0) {
                if ($Application::plausibility_checks && $output->[0] != $self) {
                   croak( "dependence between two different permutation subobjects on the same level is not allowed" );
                }

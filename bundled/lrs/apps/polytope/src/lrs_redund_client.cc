@@ -17,62 +17,53 @@
 #include "polymake/client.h"
 #include "polymake/Rational.h"
 #include "polymake/polytope/lrs_interface.h"
+#include "polymake/polytope/generic_convex_hull_client.h"
 
 namespace polymake { namespace polytope {
 
-// find irredundant representation of rays
-// only works for pointed objects
-// as lrs does not remove generators in the lineality space from input
-// find_vertices_among_points in cdd only works for POINTED objects
-void lrs_eliminate_redundant_points(perl::Object p)
+void lrs_get_non_redundant_points(perl::Object p, const bool isCone)
 {
-   lrs_interface::solver solver;
-   Matrix<Rational> P=p.give("INPUT_RAYS"),
-                    L=p.give("LINEALITY_SPACE");
-   const bool isCone = !p.isa("Polytope");
-   if (isCone) {
-     if (P.cols())
-       P = zero_vector<Rational>()|P;
-     if (L.cols())
-       L = zero_vector<Rational>()|L;
-   }
+   lrs_interface::ConvexHullSolver solver;
+   Matrix<Rational> P = p.give("INPUT_RAYS"),
+                    L = p.give("LINEALITY_SPACE");
 
-   const lrs_interface::solver::non_redundant V=solver.find_irredundant_representation(P,L,false);
+   if (!align_matrix_column_dim(P, L, isCone))
+      throw std::runtime_error("lrs_get_non_redundant_points - dimension mismatch between input properties");
+
+   const auto V = solver.find_irredundant_representation(P, L, false);
    if (isCone) {
-     p.take("RAYS") << P.minor(V.first,~scalar2set(0));
-     p.take("LINEAR_SPAN") << V.second.minor(~scalar2set(0),~scalar2set(0));
+     p.take("RAYS") << P.minor(V.first, range_from(1));
+     p.take("LINEAR_SPAN") << V.second.minor(range_from(1), range_from(1));
    } else {
      p.take("RAYS") << P.minor(V.first,All);
      p.take("LINEAR_SPAN") << V.second;
    }
-   p.take("POINTED") << ( L.rows()>0 ? 0 : 1 );
+   p.take("POINTED") << (L.rows() == 0);
 }
 
-void lrs_eliminate_redundant_ineqs(perl::Object p)
+void lrs_get_non_redundant_inequalities(perl::Object p, const bool isCone)
 {
-   lrs_interface::solver solver;
-   Matrix<Rational> P=p.give("INEQUALITIES"),
-                    L=p.give("LINEAR_SPAN");
-   const bool isCone = !p.isa("Polytope");
-   if (isCone) {
-     if (P.cols())
-       P = zero_vector<Rational>()|P;
-     if (L.cols())
-       L = zero_vector<Rational>()|L;
-   }
+   lrs_interface::ConvexHullSolver solver;
+   Matrix<Rational> P = p.give("INEQUALITIES"),
+                    L = p.give("LINEAR_SPAN");
 
-   const lrs_interface::solver::non_redundant V=solver.find_irredundant_representation(P,L,true);
+   if (!align_matrix_column_dim(P, L, isCone))
+      throw std::runtime_error("lrs_get_non_redundant_inequalities - dimension mismatch between input properties");
+
+   const auto V = solver.find_irredundant_representation(P, L, true);
    if (isCone) {
-     p.take("FACETS") << P.minor(V.first,~scalar2set(0));
-     p.take("LINEALITY_SPACE") << V.second.minor(All,~scalar2set(0));
+     p.take("FACETS") << P.minor(V.first, range_from(1));
+     p.take("LINEALITY_SPACE") << V.second.minor(All, range_from(1));
    } else {
      p.take("FACETS") << P.minor(V.first,All);
      p.take("LINEALITY_SPACE") << V.second;
    }
 }
 
-Function4perl(&lrs_eliminate_redundant_points, "lrs_eliminate_redundant_points(Cone<Rational>)");
-Function4perl(&lrs_eliminate_redundant_ineqs, "lrs_eliminate_redundant_ineqs(Cone<Rational>)");
+Function4perl(&lrs_get_non_redundant_points, "lrs_get_non_redundant_points(Cone<Rational>; $=true)");
+Function4perl(&lrs_get_non_redundant_points, "lrs_get_non_redundant_points(Polytope<Rational>; $=false)");
+Function4perl(&lrs_get_non_redundant_inequalities, "lrs_get_non_redundant_inequalities(Cone<Rational>; $=true)");
+Function4perl(&lrs_get_non_redundant_inequalities, "lrs_get_non_redundant_inequalities(Polytope<Rational>; $=false)");
 
 } }
 

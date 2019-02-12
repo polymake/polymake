@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Rational>&>"], "func": "basis", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/linalg.h"], "ret": "list", "sig": "basis:L.X"},
+ null ],
+"version": 3}

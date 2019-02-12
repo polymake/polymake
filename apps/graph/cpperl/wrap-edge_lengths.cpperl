@@ -1,0 +1,6 @@
+{"app": "graph", "embed": "edge_lengths.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Undirected>&>", "perl::Canned<const Matrix<Rational>&>"], "func": "edge_lengths", "include": ["polymake/Graph.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "edge_lengths.X.X"},
+  {"args": ["perl::Canned<const Graph<Undirected>&>", "perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>"], "func": "edge_lengths", "include": ["polymake/Graph.h", "polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "edge_lengths.X.X"},
+ null ],
+"version": 3}

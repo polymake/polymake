@@ -27,7 +27,7 @@ namespace pm { namespace perl {
 class SchedulerHeap : public fl_internal::Table
 {
 public:
-   typedef fl_internal::Table super;
+   using super = fl_internal::Table;
 
    class ChainAgent : public fl_internal::facet
    {
@@ -55,14 +55,10 @@ public:
    class weight_comparator
    {
    public:
-      typedef ChainAgent first_argument_type;
-      typedef ChainAgent second_argument_type;
-      typedef int result_type;
-
       explicit weight_comparator(int max_weight_arg)
          : max_weight(max_weight_arg) {}
 
-      result_type operator() (const ChainAgent& c1, const ChainAgent& c2) const
+      int operator() (const ChainAgent& c1, const ChainAgent& c2) const
       {
          int diff=0;
          for (int i=0; i<=max_weight; ++i) {
@@ -80,19 +76,17 @@ public:
 
    class HeapPolicy {
    public:
-      typedef SV* value_type;
-      typedef ChainAgent key_type;
-      typedef weight_comparator key_comparator_type;
+      using value_type = SV*;
 
       explicit HeapPolicy(int max_weight_arg)
          : wt_cmp(max_weight_arg) {}
 
-      static const key_type& key(value_type sv)
+      static const ChainAgent& key(value_type sv)
       {
          return *extract_agent(sv);
       }
 
-      const key_comparator_type& key_comparator() const { return wt_cmp; }
+      const weight_comparator& key_comparator() const { return wt_cmp; }
 
       static int position(value_type sv)
       {
@@ -110,11 +104,11 @@ public:
       const weight_comparator wt_cmp;
    };
 
-   typedef Heap<HeapPolicy> heap_t;
+   using heap_t = Heap<HeapPolicy>;
 
    SchedulerHeap(pTHX_ int max_weight, int n_props)
       : super(sizeof(ChainAgent) + sizeof(int) * max_weight, n_props)
-      , heap(HeapPolicy(max_weight), 64)
+      , heap(64, max_weight)
       , PmPerlInterpreterMemberInit(pi)
         tell_dropped(nullptr)
       , chain_in_progress(nullptr)
@@ -180,7 +174,7 @@ private:
    Set<int> vertex_filter;
    Set<int> tentative_vertex_set;
 
-   PmPerlInterpreterMemberDecl(const pi);
+   PmPerlInterpreterMemberDecl(pi);
    SV* tell_dropped;
    SV* chain_in_progress;
    ChainAgent* ancestor_agent;
@@ -271,7 +265,7 @@ void SchedulerHeap::add_to_vertex_filter(AV* set_list)
    for (SV **setref_p=AvARRAY(set_list), **setref_last=setref_p+AvFILLp(set_list);  setref_p<=setref_last;  ++setref_p) {
       AV* vertex_list=(AV*)SvRV(*setref_p);
       for (SV **vertex_p=AvARRAY(vertex_list), **vertex_last=vertex_p+AvFILLp(vertex_list);  vertex_p<=vertex_last;  ++vertex_p) {
-         vertex_filter += SvIVX(*vertex_p);
+         vertex_filter += static_cast<int>(SvIVX(*vertex_p));
       }
    }
 }
@@ -344,11 +338,11 @@ PPCODE:
 {
    if (!SchedulerHeap::class_descr) {
       // this initialization can't be done in the BOOT block because CPlusPlus is not yet initialized that early
-      SchedulerHeap::class_descr=OpaqueClassRegistrator<SchedulerHeap>::register_it("Polymake::Core::Scheduler::Heap", nullptr);
+      SchedulerHeap::class_descr=OpaqueClassRegistrator<SchedulerHeap>::register_it("Polymake::Core::Scheduler::Heap", nullptr, nullptr);
       SchedulerHeap::RuleChain_agent_index=CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::heap_agent", false));
    }
    SV* ref=newSV_type(SVt_NULL);
-   MAGIC* mg=glue::allocate_canned_magic(aTHX_ ref, SchedulerHeap::class_descr, value_alloc_magic, 0);
+   MAGIC* mg=glue::allocate_canned_magic(aTHX_ ref, SchedulerHeap::class_descr, ValueFlags::alloc_magic, 0);
    new(mg->mg_ptr) SchedulerHeap(aTHX_ max_weight, n_props);
    PUSHs(sv_2mortal(ref));
    PERL_UNUSED_ARG(pkg);

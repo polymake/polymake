@@ -29,13 +29,13 @@ IncidenceMatrix<> web_of_stars(const Array<int>& poset_hom,
 {
    Map<Set<int>, int> index_of;
    int index(-1);
-   for (Entire<Array<Set<int> > >::const_iterator ait = entire(simplices); !ait.at_end(); ++ait)
+   for (auto ait = entire(simplices); !ait.at_end(); ++ait)
       index_of[*ait] = ++index;
 
    IncidenceMatrix<> wos(poset_hom.size(), simplices.size());
    for (int i=0; i<poset_hom.size(); ++i) {
       Set<int> image_indices;
-      for (Entire<Set<Set<int> > >::const_iterator sit = entire(star_shaped_balls[poset_hom[i]]); !sit.at_end(); ++sit)
+      for (auto sit = entire(star_shaped_balls[poset_hom[i]]); !sit.at_end(); ++sit)
          image_indices += index_of[*sit];
       wos[i] = image_indices;
    }

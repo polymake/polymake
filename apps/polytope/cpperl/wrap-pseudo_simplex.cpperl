@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "pseudo_simplex.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void", "void"], "func": "pseudo_simplex", "include": ["polymake/Rational.h"], "sig": "pseudo_simplex:T1.B.B.x", "tp": "1"},
+  {"args": ["double", "void", "void", "void"], "func": "pseudo_simplex", "sig": "pseudo_simplex:T1.B.B.x", "tp": "1"},
+ null ],
+"version": 3}

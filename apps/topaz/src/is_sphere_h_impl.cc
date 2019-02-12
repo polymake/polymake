@@ -149,7 +149,7 @@ int is_sphere_h(const Lattice<BasicDecoration>& HD, const pm::SharedRandomState&
 // return values: 1=true, 0=false, -1=undef
 int is_ball_or_sphere_h(const Lattice<BasicDecoration>& HD, const pm::SharedRandomState& random_source, const int strategy, const int n_stable_rounds)
 {
-  const Boundary_of_PseudoManifold B=boundary_of_pseudo_manifold(HD);
+  const auto B=boundary_of_pseudo_manifold(HD);
   if (B.empty())
     return is_sphere_h(HD, random_source, strategy, n_stable_rounds);
 
@@ -157,14 +157,14 @@ int is_ball_or_sphere_h(const Lattice<BasicDecoration>& HD, const pm::SharedRand
   std::list< Set<int> > S;
   int v=0;
 
-  for (auto f=entire(HD.nodes_of_rank(HD.rank()-2)); !f.at_end(); ++f) {
-    S.push_back(HD.face(*f));
-    const int w=HD.face(*f).back();
+  for (const auto f : HD.nodes_of_rank(HD.rank()-2)) {
+    S.push_back(HD.face(f));
+    const int w=HD.face(f).back();
     if (w>=v)
       v=w+1;
   }
 
-  for (Entire<Boundary_of_PseudoManifold>::const_iterator b=entire(B); !b.at_end(); ++b)
+  for (auto b=entire(B); !b.at_end(); ++b)
     S.push_back(b->face+v);
 
   return is_sphere_h(S, random_source, strategy, n_stable_rounds);

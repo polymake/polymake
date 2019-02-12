@@ -1,0 +1,19 @@
+# This is a bundled extension.
+# Please describe it briefly here.
+# Uncommment and fill the sections below on demand.
+# URIs of bundled extensions are written as bundled:NAME .
+
+CREDIT
+  SCIP - Solving Constraint Integer Programs
+  SCIP is a solver for Mixed Integer Linear and Nonlinear Problems that allows
+  for an easy integration of arbitrary constraints.
+  https://scip.zib.de/index.php
+
+# REQUIRE
+# URIs of other bundled extensions which are prerequisite for this one
+
+# REQUIRE_OPT
+# URIs of other bundled extensions being optional prerequisites for this one
+
+# CONFLICT
+# URIs of other bundled extensions which are incompatible with this one.

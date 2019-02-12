@@ -1,0 +1,5 @@
+{"app": "fan", "embed": "normal_fan.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "normal_fan", "include": ["polymake/Rational.h"], "sig": "normal_fan:T1.B", "tp": "1"},
+ null ],
+"version": 3}

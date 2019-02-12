@@ -139,7 +139,7 @@ user_function nestedOPGraph (Vector, Matrix, Matrix, group::PermutationAction, $
     # take any(!) representative per orbit except for orbit of starting point
     my @rep_ind = map{ if($_ != $orbOfStart) { @{$orbit_decomp->[$_]}[0]; } else {} } 0..$orbit_decomp->size-1;
     my $rep_ind = new Set<Int>(\@rep_ind);
-    my $lp_reps = convert_to<Rational>($minInStartOrbit) / convert_to<Rational>($lattice_points->minor($rep_ind, All)); #$start at row 0
+    my $lp_reps = new Matrix<Rational>(convert_to<Rational>($minInStartOrbit) / convert_to<Rational>($lattice_points->minor($rep_ind, All))); #$start at row 0
     if ($verbose) {
        print "All lattice point representatives in orb([$gen_point]):\n".$lp_reps."\n";
     }
@@ -181,7 +181,7 @@ user_function nestedOPGraph (Vector, Matrix, Matrix, group::PermutationAction, $
 
     my @labels = map{ sprintf($lp_reps->[$_]) } 0..$lp_reps->rows-1;
     my $Graph = new Graph<Directed>(ADJACENCY=>$graph, NODE_LABELS=>\@labels);
-    my $sliced_minstart=$minInStartOrbit->slice(1,$minInStartOrbit->dim-1);
+    my $sliced_minstart=$minInStartOrbit->slice(sequence(1, $minInStartOrbit->dim-1));
     my $groupname = $group->name;  
     #$Graph->name="Orbit-Polytope-Graph of [$sliced_minstart] w.r.t. Group $groupname";
     $Graph->name="NOP-graph of [$gen_point] ([$sliced_minstart]) w.r.t. Group $groupname";
@@ -238,7 +238,7 @@ user_function vlabels (Matrix,$) {
    my ($vertices, $wo_zero) = @_;
    my @vlabels=();
    if ($wo_zero) {
-      @vlabels = map {"(".join(",",@{$vertices->[$_]->slice(1,$vertices->cols-1)}).")"} 0..$vertices->rows-1;
+      @vlabels = map {"(".join(",",@{$vertices->[$_]->slice(sequence(1, $vertices->cols-1))}).")"} 0..$vertices->rows-1;
    } else {
       @vlabels = map {"(".join(",",@{$vertices->[$_]}).")"} 0..$vertices->rows-1;	
    }

@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<double>&>"], "func": "singular_value_decomposition", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/linalg.h"], "sig": "singular_value_decomposition.X"},
+ null ],
+"version": 3}

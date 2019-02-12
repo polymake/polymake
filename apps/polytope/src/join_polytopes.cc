@@ -30,11 +30,12 @@ perl::Object join_polytopes(perl::Object p1, perl::Object p2, perl::OptionSet op
 
    const bool noc=options["no_coordinates"];
 
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Join of " << p1.name() << " and " << p2.name() << endl;
 
-   int n1;
-   int n2;
+   // initializations prevent wrong warnings "may be used uninitialized" with some broken gcc's
+   int n1=0;
+   int n2=0;
    int n_vertices_out=0;
 
    if (noc || p1.exists("VERTICES_IN_FACETS") && p2.exists("VERTICES_IN_FACETS")) {
@@ -42,21 +43,11 @@ perl::Object join_polytopes(perl::Object p1, perl::Object p2, perl::OptionSet op
          VIF2=p2.give("VERTICES_IN_FACETS");
       n1=VIF1.cols();  n2=VIF2.cols();
       n_vertices_out= n1 + n2;
-      
-      const int n_facets1=VIF1.rows(),
-         n_facets2=VIF2.rows(),
-         n_facets_out=n_facets1 + n_facets2;
 
-      IncidenceMatrix<> VIF_out(n_facets_out, n_vertices_out);
-
-      const pm::SameElementIncidenceMatrix<true> S1(n_facets1,n2);
-      const pm::SameElementIncidenceMatrix<true> S2(n_facets2,n1);
-      VIF_out = (VIF1 | S1)/(S2 |VIF2);
-      
+      const IncidenceMatrix<> VIF_out=diag_1(VIF1, VIF2);
       p_out.take("VERTICES_IN_FACETS") << VIF_out;
    }
 
-   
    if (!noc) {
       const Matrix<Scalar> 
       v1=p1.give("VERTICES"),
@@ -66,26 +57,27 @@ perl::Object join_polytopes(perl::Object p1, perl::Object p2, perl::OptionSet op
       n2=v2.rows();
       n_vertices_out = n1+n2;
 
+      // TODO: should work with (v1 | same_element_vector(Scalar(-1),n1) ...)
+      // check when ContainerChain refactoring completed
       const Matrix<Scalar> V_out = 
-         (v1 | same_element_vector(Scalar(-1),n1) | zero_matrix<Scalar>(n1,v2.cols()-1)) /
-         (ones_vector<Scalar>(n2) | zero_matrix<Scalar>(n2,v1.cols()-1) | v2);
+         (v1 | -ones_vector<Scalar>(n1) | zero_matrix<Scalar>(n1, v2.cols()-1)) /
+         (ones_vector<Scalar>(n2) | zero_matrix<Scalar>(n2, v1.cols()-1) | v2);
       p_out.take("VERTICES") << V_out;
    }
 
-   if(options["group"]){
+   if (options["group"]) {
       Array<Array<int>> gens1 = p1.give("GROUP.VERTICES_ACTION.GENERATORS");
       Array<Array<int>> gens2 = p2.give("GROUP.VERTICES_ACTION.GENERATORS");
       int g1 = gens1.size();
       Array<Array<int>> gens_out(g1 + gens2.size());
 
-      for(int i = 0; i < g1; ++i){
-          gens_out[i] = gens1[i].append(range(n1,n_vertices_out-1));
+      for (int i = 0; i < g1; ++i) {
+         gens_out[i] = gens1[i].append(range(n1,n_vertices_out-1));
       }
-      for(int i = g1; i < gens_out.size(); ++i){
-          gens_out[i] = Array<int>(range(0,n1-1)).append(gens2[i-g1]);
-          for(int j = n1; j<n_vertices_out; ++j)
+      for (int i = g1; i < gens_out.size(); ++i) {
+         gens_out[i] = Array<int>(range(0,n1-1)).append(gens2[i-g1]);
+         for (int j = n1; j < n_vertices_out; ++j)
             gens_out[i][j]+=n1;
-
       }
 
       perl::Object a("group::PermutationAction");
@@ -96,9 +88,7 @@ perl::Object join_polytopes(perl::Object p1, perl::Object p2, perl::OptionSet op
       g.set_name("canonicalGroup");
       p_out.take("GROUP") << g;
       p_out.take("GROUP.VERTICES_ACTION") << a;
-}
-
-
+   }
 
    p_out.take("N_VERTICES") << n_vertices_out;
    return p_out;
@@ -164,7 +154,7 @@ perl::Object free_sum_impl(perl::Object p1, perl::Object p2, const std::string o
 
       const Matrix<Scalar> V_out = 
          (v1 | zero_matrix<Scalar>(v1.rows(), v2.cols()-1)) /
-         (ones_vector<Scalar>(v2.rows()) | zero_matrix<Scalar>(v2.rows(), v1.cols()-1) | v2.minor(All, ~scalar2set(0)));
+         (ones_vector<Scalar>(v2.rows()) | zero_matrix<Scalar>(v2.rows(), v1.cols()-1) | v2.minor(All, range_from(1)));
       p_out.take(rays_section) << V_out;
    }
    const std::string n_section = object_prefix == "CONE" ? "N_VERTICES" : "N_VECTORS";

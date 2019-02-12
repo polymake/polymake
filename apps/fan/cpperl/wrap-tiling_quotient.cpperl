@@ -1,0 +1,5 @@
+{"app": "fan", "embed": "tiling_quotient.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "tiling_quotient", "include": ["polymake/Rational.h"], "sig": "tiling_quotient:T1.B.B", "tp": "1"},
+ null ],
+"version": 3}

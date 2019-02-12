@@ -37,12 +37,12 @@ perl::Object rand_sphere(int d, int n, perl::OptionSet options)
       << "; precision=" << (use_prec ? std::to_string(my_prec) : "default") << endl;
 
    RandomSpherePoints<> random_source(d, seed);
-   if(use_prec)
+   if (use_prec)
       random_source.set_precision(my_prec);
 
    Matrix<Rational> Points(n, d+1);
    Points.col(0).fill(1);
-   copy_range(random_source.begin(), entire(rows(Points.minor(All, range(1,d)).top())));
+   copy_range(random_source.begin(), entire(rows(Points.minor(All, range(1,d)))));
 
    p.take("POINTS") << Points;
    p.take("CONE_AMBIENT_DIM") << d+1;

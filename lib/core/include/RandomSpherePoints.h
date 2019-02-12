@@ -25,7 +25,7 @@ namespace pm {
 using std::log;
 
 /** Generator of floating-point numbers normally distributed in (-1,1).
- *  The algorithm is taken from Donald E. Knuth, The Art of Computer Programming, vol. II, p117.
+ *  The algorithm is taken from Donald E. Knuth, The Art of Computer Programming, vol. II, section 3.4.1.E.6
  */
 template <typename Num=AccurateFloat>
 class NormalRandom

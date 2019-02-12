@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "vertex_point_map.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Matrix<Rational>&>"], "func": "vertex_point_map", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "vertex_point_map.X.X"},
+  {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>"], "func": "vertex_point_map", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "vertex_point_map.X.X"},
+ null ],
+"version": 3}

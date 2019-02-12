@@ -54,7 +54,7 @@ namespace polymake { namespace tropical {
 				//the sum function vector
 				Vector<Rational> ceq(summatrix.cols());
 				Set<int> adjacent_cones = codim_in_cones.row(c);
-				for(Entire<Set<int> >::iterator ac = entire(adjacent_cones); !ac.at_end(); ac++) {
+				for (auto ac = entire(adjacent_cones); !ac.at_end(); ++ac) {
 					ceq -= weights[*ac] * (summap[std::make_pair(c,*ac)]);
 				}//END iterate adjacent maximal cells
 				ceq += summatrix.row(c);

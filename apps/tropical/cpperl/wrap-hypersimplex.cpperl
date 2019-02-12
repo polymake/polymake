@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "hypersimplex.cc",
+ "inst": [
+  {"args": ["Min", "void", "void"], "func": "hypersimplex", "include": ["polymake/TropicalNumber.h"], "sig": "hypersimplex:T1.x.x", "tp": "1"},
+  {"args": ["Max", "void", "void"], "func": "hypersimplex", "include": ["polymake/TropicalNumber.h"], "sig": "hypersimplex:T1.x.x", "tp": "1"},
+ null ],
+"version": 3}

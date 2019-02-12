@@ -26,8 +26,8 @@ sub multiple_func_definition {
 }
 
 sub check_type_definition {
-   my $expected=shift;
-   my $pkg_entry=shift;
+   my $expected = shift;
+   my $pkg_entry = shift;
    foreach (@_) {
       unless (defined ($pkg_entry=$pkg_entry->{$_."::"})) {
          if ($expected) {
@@ -82,17 +82,17 @@ package Polymake::Core::Application::RuleFilter;
 
 my (%main_init_rule_headers, %rule_headers, %main_init_decl_headers, %decl_headers, %cross_app_rule_headers, %cross_app_decl_headers, %rule_subheaders);
 
-declare $init_has_config_items=0;
+declare $init_has_config_items = false;
 my $has_interactive_commands;
 
 use Polymake::Struct (
-   [ new => '$$$$$$$@' ],
+   [ new => '$$$$$$$$@' ],
    [ '$handle' => '#1' ],
    [ '$application' => '#2' ],
    [ '$path' => '#3' ],
    [ '$rule_key' => '#4' ],
    [ '$from_embedded_rules' => '#5' ],
-   '@buffer',
+   [ '@buffer' => '@' ],
    [ '$buffer_phase1' => 'undef' ],
    [ '$buffer_suspended' => 'undef' ],
    [ '$gap' => '1' ],           # 1 - empty line, 2 - comment block
@@ -110,49 +110,41 @@ use Polymake::Struct (
    [ '$prolonged' => '0' ],
    [ '$injected_lines' => 'undef' ],
    [ '$injected_source' => 'undef' ],
-   [ '$rule_header_table' => 'undef' ],
-   [ '$decl_rule_header_table' => 'undef' ],
+   [ '$rule_header_table' => '#7' ],
+   [ '$decl_rule_header_table' => '#8' ],
 );
 
 sub new {
-   my $self=&_new;
-   splice @_, 0, 6;
-   if (shift) {
-      $self->rule_header_table=\%main_init_rule_headers;
-      $self->decl_rule_header_table=\%main_init_decl_headers;
-   } else {
-      $self->rule_header_table=\%rule_headers;
-      $self->decl_rule_header_table=\%decl_headers;
-   }
-   @{$self->buffer}= @_>1 ? @_ : split /(?<=\n)/, shift;
+   my $self = &_new;
+   push @{$self->buffer}, line_directive(1, $self->path);
 
    if ($self->from_embedded_rules) {
-      my $app_pkg=$self->application->pkg;
+      my $app_pkg = $self->application->pkg;
       push @{$self->buffer_phase1=[ ]},
            "use namespaces '$app_pkg';\n",
            "package $app_pkg;\n";
-      $self->application->cpp->embedded_rules=$self->buffer;
+      $self->application->cpp->embedded_rules = $self->buffer;
       (\&get_embedded_rules, $self);
 
    } else {
       if ($accurate_linenumbers) {
-         $self->injected_lines=@{$self->buffer}+1;
+         $self->injected_lines = @{$self->buffer}+1;
          $self->application =~ /0x[0-9a-f]+/;
-         $self->injected_source="/loader/$&/rules:".$self->path;
+         $self->injected_source = "/loader/$&/rules:" . $self->path;
       }
       (\&get, $self);
    }
 }
 
 sub get {
-   my ($maxlen, $self)=@_;
+   my ($maxlen, $self) = @_;
    $self->filter_fixed ||= inject_error_preserving_source_filter();
    unless (@{$self->buffer}) {
-      namespaces::temp_disable();
-      $self->start_comments=$self->len_comments=0;
+      namespaces::temp_disable(0);
+      $self->start_comments = $self->len_comments = 0;
       my $line;
       do {
-         $line=readline $self->handle;
+         $line = readline $self->handle;
       } while (fill($self, $line, $.));
    }
    print STDERR ">>> ", $self->buffer->[0] if $DebugLevel>3;
@@ -161,11 +153,11 @@ sub get {
 }
 
 sub get_embedded_rules {
-   my ($maxlen, $self)=@_;
+   my ($maxlen, $self) = @_;
    unless (@{$self->buffer_phase1}) {
-      namespaces::temp_disable();
+      namespaces::temp_disable(0);
       do {
-         $self->start_comments=$self->len_comments=0;
+         $self->start_comments = $self->len_comments=0;
          while (fill($self, shift @{$self->from_embedded_rules}, ++$.)) { }
 
          if (defined($self->buffer_suspended) && $self->buffer->[-1] =~ /^\}(?: \{)?$/) {
@@ -173,13 +165,13 @@ sub get_embedded_rules {
             push @{$self->buffer_suspended},
                  "  undef;\n",
                  splice @{$self->buffer}, -1, 1, "}\n";
-            $self->buffer=$self->buffer_suspended;
+            $self->buffer = $self->buffer_suspended;
             undef $self->buffer_suspended;
 
             # reset the (decl) rule header table
             # it was set to cross_app_* at the beginning of the REQUIRE_APPLICATION block
-            $self->rule_header_table=\%rule_headers;
-            $self->decl_rule_header_table=\%decl_headers;
+            $self->rule_header_table = \%rule_headers;
+            $self->decl_rule_header_table = \%decl_headers;
          }
       } until (@{$self->buffer_phase1});
    }
@@ -191,7 +183,7 @@ sub get_embedded_rules {
 #################################################################################
 # Insert "typeof" method calls in front of every type expression
 sub translate_type_expr {
-   $_[0] =~ s{ (?: ^ | [\(\{,?:] )\s* \K (?! typeof | instanceof | undef) ($type_re) (?! \s*(?: [\(\[\{\$\@%<>] | -> | => )) }{(typeof $1)}xog;
+   $_[0] =~ s{ (?: ^ | [\(\{,?:] | == | \|\| | && )\s* \K (?! typeof | instanceof | undef) ($type_re) (?! \s*(?: [\(\[\{\$\@%<>] | -> | => )) }{(typeof $1)}xog;
    $_[0] =~ s/^\s*(?=\{)/do /;
 }
 #################################################################################
@@ -210,7 +202,7 @@ sub injected_line_directive {
 #################################################################################
 # these clauses are recognized at the beginning of main.rules and elsewhere
 
-%main_init_rule_headers=(
+%main_init_rule_headers = (
    IMPORT => sub {
       my ($self, $header)=@_;
       $self->filter=\&erase_comments_filter;
@@ -267,7 +259,7 @@ sub injected_line_directive {
 
 # these clauses automatically close the initial preamble
 
-%rule_headers=(
+%rule_headers = (
    IMPORT => sub {
       my ($self, $header)=@_;
       push @{$self->buffer}, "BEGIN { die 'IMPORT clause may only appear at the beginning of main.rules where the application is introduced' }\n";
@@ -346,8 +338,8 @@ sub injected_line_directive {
          push @{$self->buffer},
               "local \$Polymake::Core::Application::cross_apps_list=[ map { lookup Polymake::Core::Application(\$_) } qw(@app_names) ];\n";
 
-         $self->rule_header_table=\%cross_app_rule_headers;
-         $self->decl_rule_header_table=\%cross_app_decl_headers;
+         $self->rule_header_table = \%cross_app_rule_headers;
+         $self->decl_rule_header_table = \%cross_app_decl_headers;
 
       } else {
          push @{$self->buffer},
@@ -384,7 +376,7 @@ sub injected_line_directive {
                $header =~ s/;\K/ declare -re;/;
                substr($header,0,0)="declare +re; ";
             }
-            $tail="$. < \$__preamble_end && \$Core::Customize::state_config, __PACKAGE__";
+            $tail="$. < \$__preamble_end && Core::Customize::State::config, __PACKAGE__";
          }
          push @{$self->buffer},
               line_directive($self->header_line),
@@ -443,7 +435,7 @@ sub injected_line_directive {
       my ($self, $header)=@_;
       $header =~ s/\s+$//;
       push @{$self->buffer},
-           "application::self()->prefs->add_preference('$header', 3);\n";
+           "application::self()->prefs->add_preference('$header', Core::Preference::Mode::rules + Core::Preference::Mode::create);\n";
    },
 
    function => sub { prepare_function(@_, 0, "", "") },
@@ -457,6 +449,8 @@ sub injected_line_directive {
    global_method => sub { prepare_function(@_, 1, "g", "Core::check_application_pkg(0);") },
 
    type_method => sub { prepare_function(@_, 1, "t", "") },
+
+   operator => sub { prepare_operator(@_) },
 
    rule => sub {
       my ($self, $header)=@_;
@@ -564,9 +558,9 @@ sub close_main_init_preamble {
    my $self=$_[0];
    # embedded rules must be read in after all IMPORTs, otherwise the syntax parsing may fail
    push @{$self->buffer}, $cpp_init, line_directive($self->header_line);
-   $self->rule_header_table=\%rule_headers;
-   $self->decl_rule_header_table=\%decl_headers;
-   $self->application->declared |= $main_init_closed;
+   $self->rule_header_table = \%rule_headers;
+   $self->decl_rule_header_table = \%decl_headers;
+   $self->application->load_state |= LoadState::main_init_closed;
 }
 
 sub deny_in_cross_app_scope {
@@ -578,7 +572,7 @@ sub deny_in_cross_app_scope {
 while (my ($keyword, $code)=each %main_init_rule_headers) {
    $rule_headers{$keyword} //= $code;
 }
-while (my ($keyword, $code)=each %rule_headers) {
+while (my ($keyword, $code) = each %rule_headers) {
    $main_init_rule_headers{$keyword} //= sub { &close_main_init_preamble; &$code; };
    $cross_app_rule_headers{$keyword} = $keyword =~ /^(?:object|property_type|options|prefer|(?:user_)?function|(?:user_|global_)?method)$/
                                        ? $code : \&deny_in_cross_app_scope;
@@ -740,19 +734,19 @@ sub allow_config {
    my ($mode)=@_;
    if ($mode eq "none") {
       # pretend every configuration attempt has failed
-      $rule_headers{CONFIGURE}=\&pretend_configure_failed;
-      $main_init_rule_headers{CONFIGURE}=\&pretend_configure_failed;
+      $rule_headers{CONFIGURE} = \&pretend_configure_failed;
+      $main_init_rule_headers{CONFIGURE} = \&pretend_configure_failed;
 
-      $rule_headers{CONFIGURE_OPT}=\&ignore_optional_configure_clause;
-      $main_init_rule_headers{CONFIGURE_OPT}=sub { &close_main_init_preamble; &ignore_optional_configure_clause };
-      $init_has_config_items=1;
+      $rule_headers{CONFIGURE_OPT} = \&ignore_optional_configure_clause;
+      $main_init_rule_headers{CONFIGURE_OPT} = sub { &close_main_init_preamble; &ignore_optional_configure_clause };
+      $init_has_config_items = true;
 
       0  # don't load any config files
 
    } elsif ($mode eq "ignore") {
       # pretend everything is configured
       *Polymake::Core::Application::configure=sub { 1 };
-      $init_has_config_items=1;
+      $init_has_config_items = true;
 
       0  # don't load any config files
 
@@ -771,10 +765,10 @@ sub start_preamble {
 #####################################################################################################
 #  helper routines common for object and property type declaration processing
 
-sub process_template_params($$\@\@\@\@$) {
-   my ($text, $super_text, $param_names, $prologue, $super_abstract, $super_instance, $for_spez)=@_;
+sub process_template_params($$$\@\@\@\@$) {
+   my ($text, $is_variadic, $super_text, $param_names, $prologue, $super_abstract, $super_instance, $for_spez)=@_;
 
-   my ($i, $defaults_seen)=(0,0);
+   my ($i, $defaults_seen)=(0, 0);
    while ($text =~ m{\G $type_param_re \s* (?: ,\s* | $ ) }xog) {
       push @$param_names, $+{name};
       if (defined (my $default=$+{dynamic})) {
@@ -792,32 +786,45 @@ sub process_template_params($$\@\@\@\@$) {
    }
 
    if ($for_spez && $defaults_seen) {
-      return "type parameters can't have default values";
+      return "specialization type parameters can't have default values";
+   }
+   if ($is_variadic && $defaults_seen) {
+      return "variadic parameter list can't have default values";
    }
 
-   if (@$param_names>1) {
+   if ($is_variadic) {
+      $is_variadic = pop @$param_names;
       push @$prologue,
-           "  my \$type_inst=\\%type_inst;\n",
-           "  foreach my \$arg (\@_[0.." . ($#$param_names-1) ."]) { \$type_inst=( \$type_inst->{\$arg} //= { } ) }\n",
-           "  \$type_inst->{\$_[$#$param_names]}\n";
+           '  my $type_inst=my $root=\%type_inst;' . "\n",
+           '  $type_inst=( $type_inst->{$_} //= { } ) for @_;' . "\n",
+           '  $type_inst->{$root}' . "\n";
+   } elsif (@$param_names>1) {
+      push @$prologue,
+           '  my $type_inst=\\%type_inst;' . "\n",
+           '  foreach my $arg (@_[0..' . ($#$param_names-1) . ']) { $type_inst=( $type_inst->{$arg} //= { } ) }' . "\n",
+           '  $type_inst->{$_[' . $#$param_names . "]}\n";
    } else {
       push @$prologue,
-           "  \$type_inst{\$_[0]}\n",
+           '  $type_inst{$_[0]}' . "\n",
    }
 
    if ($defaults_seen) {
       unshift @$prologue,
-         $#$param_names >= $defaults_seen ?
-         ( "  croak('too few type parameters for ', __PACKAGE__, ' : ', \$#_) if \$#_ < " . ($#$param_names - $defaults_seen) . ";\n" ) : (),
-           "  croak('too many type parameters for ', __PACKAGE__, ' : ', \$#_) if \$#_ > $#$param_names;\n";
+              $#$param_names >= $defaults_seen ?
+              ( "  croak('too few type parameters for ', __PACKAGE__, ' : ', \$#_) if \$#_ < " . ($#$param_names - $defaults_seen) . ";\n" ) : (),
+              "  croak('too many type parameters for ', __PACKAGE__, ' : ', \$#_) if \$#_ > $#$param_names;\n";
+   } elsif ($is_variadic) {
+      unshift @$prologue,
+              "  croak('too few type parameters for ', __PACKAGE__, ' : ', \$#_) if \$#_ < $#$param_names;\n"
+        if @$param_names;
    } else {
       unshift @$prologue,
-           "  croak('wrong number of type parameters for ', __PACKAGE__, ' : ', \$#_) if \$#_ != $#$param_names;\n";
+              "  croak('wrong number of type parameters for ', __PACKAGE__, ' : ', \$#_) if \$#_ != $#$param_names;\n";
    }
 
    my $needs_use_Params=$defaults_seen;
 
-   while ($super_text =~ m{\G $type_expr_re \s*(?:,\s*)?}xgo) {
+   while ($super_text =~ m{\G $type_expr_re \s*(?:,\s*)? }xgo) {
       if (defined (my $super_type=$+{dynamic})) {
          if ($for_spez) {
             return "dynamic type expression not allowed";
@@ -827,28 +834,32 @@ sub process_template_params($$\@\@\@\@$) {
          $needs_use_Params=1;
       } else {
          $super_type=$+{static};
-         my $super_expr="typeof $super_type";
-         if (my ($super_abstract_type, $super_params)= $super_type =~ m{^($id_re)\s*<(.*)}o) {
-            my $dependent;
-            foreach (@$param_names) {
-               $dependent= $super_params =~ m{\b$_\b} and last;
-            }
-            if ($dependent) {
-               if ($for_spez) {
-                  push @$super_abstract, $super_abstract_type;
-                  push @$super_instance, $super_type;
-               } else {
-                  push @$super_abstract, "typeof_gen $super_abstract_type";
-                  push @$super_instance, $super_expr;
+         if ($super_type eq $is_variadic) {
+            push @$super_instance, '@_[' . scalar(@$param_names) . '..$#_]';
+         } else {
+            my $super_expr="typeof $super_type";
+            if (my ($super_abstract_type, $super_params)= $super_type =~ m{^($id_re)\s*<(.*)}o) {
+               my $dependent;
+               foreach (@$param_names) {
+                  $dependent= $super_params =~ m{\b$_\b} and last;
                }
-               $needs_use_Params=1;
-               next;
+               if ($dependent) {
+                  if ($for_spez) {
+                     push @$super_abstract, $super_abstract_type;
+                     push @$super_instance, $super_type;
+                  } else {
+                     push @$super_abstract, "typeof_gen $super_abstract_type";
+                     push @$super_instance, $super_expr;
+                  }
+                  $needs_use_Params=1;
+                  next;
+               }
             }
+            if ($for_spez) {
+               return "`big' object type must depend on type parameters";
+            }
+            push @$super_abstract, $super_expr;
          }
-         if ($for_spez) {
-            return "`big' object type must depend on type parameters";
-         }
-         push @$super_abstract, $super_expr;
       }
    }
 
@@ -857,26 +868,7 @@ sub process_template_params($$\@\@\@\@$) {
    $defaults_seen;
 }
 
-sub process_enum {
-   my %bag;
-   local $_=shift;
-   my $cnt=-1;
-   while (pos($_) < length($_)) {
-      if (/\G \s* (["'])? ($id_re) (?: \s*=\s* (\d+))? (?(1) \1) (?: , | \s+ | $)/xgco) {
-         $bag{$2}= defined($3) ? ( $cnt=$3 ) : ++$cnt;
-      } else {
-         croak( "invalid enum declaration" );
-      }
-   }
-   bless \%bag, "Polymake::Enum";
-}
 #####################################################################################################
-
-my @ellipsis_prologue=split /(?<=\n)/, <<'.';
-  my $type_inst=my $root=\%type_inst;
-  $type_inst=( $type_inst->{$_} //= { } ) for @_;
-  $type_inst->{$root}
-.
 
 my $catch_unknown_types=<<'.';
   !defined($_[0]) || $_[0] eq __PACKAGE__ or croak("reference to an unknown type $_[0]");
@@ -951,7 +943,7 @@ sub reopen_type {
             $preamble .= "{ package ${outer_pkg}::$pkg; sub self { &Core::check_object_pkg; typeof $type }";
          }
       } else {
-         $preamble .= "{ package ${outer_pkg}::$type; local_array(*__scope_type_params, typeof_gen(undef)->params) if typeof_gen(undef)->abstract;  use namespaces::Params *__scope_type_params;";
+         $preamble .= "{ package ${outer_pkg}::$type; local ref *__scope_type_params = typeof_gen(undef)->params if typeof_gen(undef)->abstract;  use namespaces::Params *__scope_type_params;";
          if ($where eq "objects") {
             $preamble .= " local \$Core::ObjectType::scope_owner=typeof_gen(undef);";
          }
@@ -970,7 +962,7 @@ sub reopen_specialization {
       my $sanity_check=$plausibility_checks ? "BEGIN { Core::check_type_definition(1, \\%application::, 'objects', '$obj_type', '$alias_name') } " : "";
       push @{$self->buffer},
            $preamble . $sanity_check . "{ package Polymake::".$self->application->name."::${obj_type}::$alias_name;" .
-           " local_array(*__scope_type_params, typeof_gen(undef)->params) if typeof_gen(undef)->abstract;  use namespaces::Params *__scope_type_params;  local \$Core::ObjectType::scope_owner=typeof_gen(undef);\n";
+           " local ref *__scope_type_params = typeof_gen(undef)->params if typeof_gen(undef)->abstract;  use namespaces::Params *__scope_type_params;  local \$Core::ObjectType::scope_owner=typeof_gen(undef);\n";
    } else {
       push @{$self->buffer}, "BEGIN { die 'invalid type specialization reference' }\n";
    }
@@ -990,14 +982,15 @@ sub process_property_type {
       push @{$self->buffer},
            $preamble."{ my \$symtab=get_symtab((typeof $alias)->pkg); *application::$type_name\::=\$symtab; *application::props::$type_name\::=\$symtab; }\n";
 
-   } elsif ($header =~ /^ (?'type_name' $id_re) (?: $type_params_re | \s*<\s* (?'tparams' \.\.\. | \*) \s*> )?+
+   } elsif ($header =~ /^ (?'type_name' $id_re) (?: \s*<\s* (?'tparams' \*) \s*>
+                                                  | $type_params_variadic_re (?: $typechecks_re )?+ )?+
                                                 (?: \s*:\s* (?!c\+\+)(?!upgrades)(?'super' $type_expr_re) )?+
                                                 (?: \s*:\s* upgrades \s*\(\s* (?'upgrades' $types_re) \s*\) )?+
                                                 (?: \s*:\s* (?'cpp_binding' c\+\+) (?: \s*\( (?'cpp_opts' $balanced_re) \) )?+)?+
                           \s* (?: (?'open_scope' \{ ) | ; ) \s*$/xo) {
 
-      my ($type_name, $tparams, $typecheck, $super, $upgrades, $cpp_binding, $cpp_opts, $attr_name, $attr_value, $open_scope)=@+{qw
-         ( type_name   tparams  typecheck    super   upgrades   cpp_binding   cpp_opts   attr_name   attr_value   open_scope)   };
+      my ($type_name, $tparams, $ellipsis, $typecheck, $super, $upgrades, $cpp_binding, $cpp_opts, $attr_name, $attr_value, $open_scope)=@+{qw
+         ( type_name   tparams   ellipsis   typecheck   super   upgrades   cpp_binding   cpp_opts   attr_name   attr_value   open_scope)   };
 
       fill_help($self, "", "'property_types', '$type_name'") if $Help::gather;
 
@@ -1019,18 +1012,7 @@ sub process_property_type {
          # parameterized type template
 
          my (@param_names, @prologue, @super_abstract, @super_instance, $n_defaults);
-         if ($tparams eq "...") {
-            if ($cpp_binding) {
-               $self->buffer->[$first_line]="BEGIN { die 'type with arbitrary many parameters cannot have C++ binding' }\n";
-               return;
-            }
-            if (defined($super)) {
-               $self->buffer->[$first_line]="BEGIN { die 'type with arbitrary many parameters may not be derived' }\n";
-               return;
-            }
-            @prologue=@ellipsis_prologue;
-            $n_defaults=0;
-         } elsif ($tparams eq "*") {
+         if ($tparams eq "*") {
             if (defined($super)) {
                if ($super =~ /^[{(]/) {
                   $self->buffer->[$first_line]="BEGIN { die 'pure C++ types may not have a dynamic base class' }\n";
@@ -1043,7 +1025,8 @@ sub process_property_type {
             }
             push @prologue, "  \$type_inst{\$_[0]}\n";
          } else {
-            $n_defaults=process_template_params($tparams, $super, @param_names, @prologue, @super_abstract, @super_instance, 0);
+            substr($cpp_opts,0,0) .= "variadic=>1," if $ellipsis;
+            $n_defaults=process_template_params($tparams, $ellipsis, $super, @param_names, @prologue, @super_abstract, @super_instance, 0);
             if (is_string($n_defaults)) {
                $self->buffer->[$first_line]="BEGIN { die 'invalid property type declaration: $n_defaults' }\n";
                return;
@@ -1068,7 +1051,7 @@ sub process_property_type {
          }
 
          my $super_arg= @super_instance
-                        ? "do { local_incr(\$Polymake::Core::PropertyType::nesting_level); @super_instance }"
+                        ? "do { local \$Polymake::Core::PropertyType::nested_instantiation=1; @super_instance }"
                         : "undef";
 
          push @{$self->buffer},
@@ -1080,25 +1063,24 @@ sub process_property_type {
               "         " .
               ($upgrades &&
                "(") .
-              ($cpp_binding &&
-               "\$gen->application->cpp->add_template_instance(") .
               ($tparams eq "*"
                ? "new Polymake::Core::PropertyTypeInstance(\$gen, $super_arg, \@_)"
                : "new Polymake::Core::PropertyParamedType(\$gen, $super_arg, \\\@_)" ) .
-              ($cpp_binding &&
-               ", \$gen, \$Polymake::Core::PropertyType::nesting_level)") .
               ($upgrades &&
                ")->add_upgrade_relations($upgrades)") .
               " } }\n",
               $open_scope
               ? (@param_names
-                 ? "local_array(*__scope_type_params, &typeof_gen->params);\n" : ())
+                 ? "local ref *__scope_type_params = &typeof_gen->params;\n" : ())
               : "typeof_gen() }\n";
 
       } else {
          # non-parameterized type
+         my $enum_decl;
          if ($cpp_binding) {
-            $cpp_opts =~ s/enum\s*(?=[({])($confined_re)/Polymake::Core::Application::RuleFilter::process_enum(q$1)/o;
+            $cpp_opts =~ s/enum\s*(?=[({])($confined_re)/'enum'/o
+              and $enum_decl = $1;
+            $enum_decl =~ s/^(?=\()/qw/;
             $cpp_opts =~ s/\bembedded\b/descr=>'embedded'/;
          }
          $super &&= "typeof $super";
@@ -1113,6 +1095,8 @@ sub process_property_type {
               ? "application::self()->cpp->add_type(typeof(undef), $cpp_opts);\n" : (),
               $upgrades
               ? "typeof(undef)->add_upgrade_relations($upgrades);\n" : (),
+              $enum_decl
+              ? "use Polymake::Enum _ => $enum_decl;\n" : (),
               !$open_scope
               ? "}\n" : ();
       }
@@ -1123,7 +1107,7 @@ sub process_property_type {
       } else {
          push @{$self->buffer}, line_directive($.+1);
       }
-      $self->prolonged=0;
+      $self->prolonged = 0;
 
    } else {
       push @{$self->buffer}, "BEGIN { die 'invalid property type declaration' }\n";
@@ -1136,8 +1120,8 @@ sub process_object_decl {
    my $preamble=check_outer_pkg($self, "object");
    return unless defined($preamble);
 
-   if ($header =~ /^ $paramed_decl_re (?: (?: \s*:\s* (?'super' $type_exprs_re))?+ \s*(?: ; | (?'open_scope' \{))
-                                        | (?('tparams') | \s*=\s* (?'alias' $type_re) (?: \s*;)?)) \s*$/xo) {
+   if ($header =~ /^ $parametrized_decl_re (?: (?: \s*:\s* (?'super' $type_exprs_re))?+ \s*(?: ; | (?'open_scope' \{))
+                                             | (?('tparams') | \s*=\s* (?'alias' $type_re) (?: \s*;)?)) \s*$/xo) {
 
       my ($type_name, $tparams, $typecheck, $super, $open_scope, $alias)=@+{qw(lead_name tparams typecheck super open_scope alias)};
 
@@ -1166,7 +1150,7 @@ sub process_object_decl {
             # parameterized template
 
             my (@param_names, @prologue, @super_abstract, @super_instance);
-            my $n_defaults=process_template_params($tparams, $super, @param_names, @prologue, @super_abstract, @super_instance, 0);
+            my $n_defaults=process_template_params($tparams, undef, $super, @param_names, @prologue, @super_abstract, @super_instance, 0);
             if (is_string($n_defaults)) {
                $self->buffer->[$first_line]="BEGIN { die 'invalid object declaration: $n_defaults' }\n";
                return;
@@ -1186,7 +1170,7 @@ sub process_object_decl {
                             . "new Polymake::Core::ObjectType('$type_name', undef, \\\@_, &typeof_gen, " . join(",", @super_instance) . ");"
                             . (defined($typecheck) && " } ") . "}\n",
                  $open_scope
-                 ? "local_array(*__scope_type_params, &typeof_gen->params); local \$Core::ObjectType::scope_owner=&typeof_gen;\n"
+                 ? "local ref *__scope_type_params = &typeof_gen->params; local \$Core::ObjectType::scope_owner=&typeof_gen;\n"
                  : "typeof_gen(); }\n";
 
          } else {
@@ -1211,7 +1195,7 @@ sub process_object_decl {
             push @{$self->buffer}, line_directive($.+1);
          }
       }
-      $self->prolonged=0;
+      $self->prolonged = 0;
    } else {
       push @{$self->buffer}, "BEGIN { die 'invalid object declaration' }\n";
    }
@@ -1232,7 +1216,7 @@ sub process_object_specialization {
 
       my (@param_names, @prologue, @super_abstract, @super_instance, $generic_type, $concrete_type);
       if (defined $tparams) {
-         my $error=process_template_params($tparams, $obj_type, @param_names, @prologue, @super_abstract, @super_instance, 1);
+         my $error=process_template_params($tparams, undef, $obj_type, @param_names, @prologue, @super_abstract, @super_instance, 1);
          if (is_string($error)) {
             $self->buffer->[$first_line]="BEGIN { die 'invalid type specialization declaration: $error' }\n";
             return;
@@ -1284,16 +1268,16 @@ sub process_object_specialization {
               "  shift;\n",
               @prologue,
               "    //= new Polymake::Core::ObjectType::Specialization(undef, undef, &typeof_gen, \\\@_); }\n",
-              "local_array(*__scope_type_params, &typeof_gen->params); local \$Core::ObjectType::scope_owner=&typeof_gen;\n";
+              "local ref *__scope_type_params = &typeof_gen->params; local \$Core::ObjectType::scope_owner=&typeof_gen;\n";
 
          my $match_func_name="_match_type";
          my $unique_name=$match_func_name."__inst";
          add_overloaded_instance($self,
                                  "{ typeof ".$self->application->pkg."::$generic_type\::$pkg_name<$tparams> } " .
                                  "&typeof_gen->apply_to_existing_types;",
-                                 undef, "", "",
-                                 $match_func_name, 0, $unique_name, "\\&$unique_name", $concrete_type, $tparams,
-                                 $typecheck, "root_node=>&typeof_gen->match_node");
+                                 func_name => $match_func_name, unique_name => $unique_name, sub_ref => "\\&$unique_name",
+                                 signature => $concrete_type, type_params => $tparams,
+                                 typecheck_code => $typecheck, overload_opts => "root_node=>&typeof_gen->match_node");
       } else {
          push @{$self->buffer},
               "sub typeof { state \$type_inst=new Polymake::Core::ObjectType::Specialization($spez_name, __PACKAGE__, typeof $concrete_type); }\n",
@@ -1304,8 +1288,8 @@ sub process_object_specialization {
          $self->injected_lines += @{$self->buffer}-$buffer_size;
          push @{$self->buffer}, line_directive($.+1, $self->path);
       }
-      $self->prolonged=0;
-      $self->after_rule=2;  # expect some preconditions
+      $self->prolonged = 0;
+      $self->after_rule = 2;  # expect some preconditions
    } else {
       push @{$self->buffer}, "BEGIN { die 'invalid type specialization declaration' }\n";
    }
@@ -1330,12 +1314,11 @@ sub process_property {
             return;
          }
       } else {
-         my $flags=0;
+         my @flags;
          while ($attrs =~ s/:\s* (mutable|multiple|non_storable|twin) \s* (?=:|$)//ox) {
-            no strict 'refs';
-            $flags |= ${"Polymake::Core::Property::is_$1"};
+            push @flags, "Core::Property::Flags::is_$1";
          }
-         push @attrs, "flags=>$flags" if $flags;
+         push @attrs, "flags=>" . join("|", @flags) if @flags;
          while ($attrs =~ s/:\s* (construct) \s*\(\s* ($balanced_re) \s*\)\s*//ox) {
             push @attrs, "$1=>'$2'";
          }
@@ -1415,20 +1398,25 @@ sub prepare_context_check {
 }
 #####################################################################################################
 sub add_overloaded_instance {
-   my ($self, $header, $context_check, $user, $global,
-       $func_name, $method, $unique_name, $subref, $signature, $type_params,
-       $typecheck_code, $opts, $cxx_func_attrs, $cxx_options)=@_;
-   my (@arg_list, $min, $complex_defaults, $type_deduction);
-   my (@default_types, @process_kw, @type_param_names, @type_param_mandatory, @default_values, @process_default_values, @errors);
-   my (@cxx_arg_attrs);
+   my ($self, $header, %other_args)=@_;
+   my ($context_check, $user, $global,
+       $func_name, $label, $method, $unique_name, $sub_ref, $signature, $type_params,
+       $typecheck_code, $overload_opts, $cxx_func_attrs, $cxx_options)=
+      @other_args{qw(
+        context_check user global
+        func_name label method unique_name sub_ref signature type_params
+        typecheck_code overload_opts cxx_func_attrs cxx_options
+      )};
+   $method //= 0;
+
+   my (@arg_list, $min, $complex_defaults, $type_deduction,
+       @default_types, @process_kw, @type_param_names, @type_param_mandatory, @default_values,
+       @process_default_values, @errors, @cxx_arg_attrs);
    my $cxx=defined($cxx_func_attrs);
    my $max=0;
 
-   if ($cxx && $method) {
-      substr($cxx_func_attrs, 0, 0).="method=>1,";
-   }
    if ($signature =~ s/(?: ^ | [,;]\s* | \s+) ((?: \\?% | \{ ) .*)//x) {
-      $max |= $Overload::has_keywords;
+      $max |= Overload::SignatureFlags::has_keywords;
       my $kw_tables=$1;
       if ($kw_tables =~ /%\s*$/) {
          push @process_kw, "  Overload::process_kw_args(\\\@_);\n";
@@ -1459,6 +1447,16 @@ sub add_overloaded_instance {
    }
 
    $signature =~ s/^\s+//;
+   if ($method && $cxx && $func_name ne "construct") {
+      substr($cxx_func_attrs, 0, 0) .= "method=>1,";
+      # attributes for `this'?
+      if ($signature =~ /\G \s* ($func_arg_attrs_re)? \s*(?:,\s* | (?=;) | $)/gxc) {
+         push @cxx_arg_attrs, "'$1'";
+      } else {
+         push @cxx_arg_attrs, "''";
+      }
+   }
+
    while (pos($signature) < length($signature)) {
       if ($signature =~ /\G ; \s*/gxc) {
          if (defined $min) {
@@ -1467,18 +1465,11 @@ sub add_overloaded_instance {
          }
          $min=@arg_list;
 
-      } elsif ($signature =~ /\G (?: \$ | (?: (?'star' \*) | (?'type' $type_re)) (?'attrs' (?: \s*:\s* $id_re)+ | &)?)
+      } elsif ($signature =~ /\G (?: \$ | (?: (?'star' \*) | (?'type' $type_re)) (?'attrs' $func_arg_attrs_re)?)
                                  (?('star') | (?('attrs') | (?: \s*=\s* (?'default' $expression_re) | (?('type') \s*(?'repeated' \+))? ))) \s*(?:,\s*)?/gxco) {
          my ($star, $type, $attrs, $default_value, $repeated)=@+{qw(star type attrs default repeated)};
 
          if ($cxx) {
-            if ($attrs eq "&") {
-               if (!$self->from_embedded_rules) {
-                  push @errors, "Reference sign '&' is only allowed in C++ clients; in rule files an attribute ':lvalue' or ':lvalue_opt' must be used instead.";
-                  last;
-               }
-               $attrs=":lvalue";
-            }
             push @cxx_arg_attrs, "'$star$attrs'";
          } else {
             if ($star) {
@@ -1510,7 +1501,7 @@ sub add_overloaded_instance {
             }
             my $typeof= $type =~ /</ ? "typeof" : "typeof_gen";
             if ($repeated) {
-               $max |= $Overload::has_repeated;
+               $max |= Overload::SignatureFlags::has_repeated;
                push @arg_list, "[ $typeof $type, '+' ]";
             } else {
                push @arg_list, "$typeof $type";
@@ -1526,27 +1517,24 @@ sub add_overloaded_instance {
             $complex_defaults += $default_value =~ s/^(?=\s*\{.*\}\s*$)/do /;
             $complex_defaults ||= $default_value =~ /[()<>]|\$_|\@_/;
             $default_values[$arg_index-$min]=$default_value;
-         } elsif (defined($min) && $cxx && !length($subref)) {
+         } elsif (defined($min) && $cxx && !length($sub_ref)) {
             push @errors, "optional argument without default value not allowed for a pure C++ function";
             last;
          }
 
-      } elsif ($signature =~ /\G \@(\$)? \s*$/gxc) {
-         if ($max & $Overload::has_keywords) {
+      } elsif ($signature =~ /\G \@ \s*$/gxc) {
+         if ($max & Overload::SignatureFlags::has_keywords) {
             push @errors, "unlimited trailing argument list is not compatible with keyword arguments";
             last;
          }
-         if (length($1)) {
-            unless ($cxx && length($subref)) {
-               push @errors, "collapsed trailing argument list is only allowed for hybrid perl/c++ functions";
-               last;
-            }
-            substr($cxx_func_attrs, 0, 0).="collapsed=>1,";
+         if ($cxx) {
+            push @errors, "unlimited trailing argument list is not allowed for c++ functions";
+            last;
          }
-         $max |= $Overload::has_trailing_list;
+         $max |= Overload::SignatureFlags::has_trailing_list;
 
       } else {
-         push @errors, "invalid function signature, parser stopped at `!' : '" . substr($signature, 0, pos($signature)) . "!" . substr($signature, pos($signature)) . "'";
+         push @errors, "invalid function signature starting at `" . substr($signature, pos($signature)) . "'";
          last;
       }
    }
@@ -1554,10 +1542,11 @@ sub add_overloaded_instance {
    $min //= @arg_list;
    $max += @arg_list;
 
+   my $tp_min;
    if (@type_param_names) {
-      my $tp_min=0;
+      $tp_min = 0;
       while ($tp_min < @type_param_names && $type_param_mandatory[$tp_min]) { ++$tp_min }
-      my $tp_max=$tp_min;
+      my $tp_max = $tp_min;
       while ($tp_max < @type_param_names) {
          if ($type_param_mandatory[$tp_max]) {
             push @errors, "type parameter $type_param_names[$tp_max] lacks a default value and can't be deduced from mandatory arguments",
@@ -1566,8 +1555,8 @@ sub add_overloaded_instance {
          }
          ++$tp_max;
       }
-      $opts .= "," if $opts;
-      $opts .= "tparams=>[$tp_min,$tp_max]";
+      $overload_opts .= "," if length($overload_opts);
+      $overload_opts .= "tparams=>[$tp_min,$tp_max]";
    }
 
    if (@errors) {
@@ -1590,7 +1579,7 @@ sub add_overloaded_instance {
             $skipped_undef_values=1;
          }
       }
-      if ($max & $Overload::has_keywords and $skipped_undef_values) {
+      if ($max & Overload::SignatureFlags::has_keywords and $skipped_undef_values) {
          # keyword tables must be appended at the expected position at the end of the argument list
          my $last_pos_arg=$#arg_list+$method;
          push @process_default_values,
@@ -1600,14 +1589,14 @@ sub add_overloaded_instance {
    } elsif ($min < @arg_list) {
       my $min_arg_index=$min+$method;
       if (@default_values) {
-         if ($max & $Overload::has_keywords) {
+         if ($max & Overload::SignatureFlags::has_keywords) {
             $#default_values=@arg_list-$min-1;
          }
          push @process_default_values,
               "  state \$__default_values=[" . join(", ", map { defined($_) ? $_ : "undef" } @default_values) . "];\n",
               "  push \@_, \@\$__default_values[\@_-$min_arg_index..$#default_values];\n";
 
-      } elsif ($max & $Overload::has_keywords) {
+      } elsif ($max & Overload::SignatureFlags::has_keywords) {
          my $last_pos_arg=$#arg_list+$method;
          push @process_default_values,
               "  if (\$#_ < $last_pos_arg) { \$#_=$last_pos_arg }\n";
@@ -1664,46 +1653,54 @@ sub add_overloaded_instance {
    push @preamble, @process_default_values, @process_kw;
 
    my $deferred_preamble;
-   my $orig_subref=$subref;
+   my $orig_sub_ref=$sub_ref;
    if (@preamble) {
-      if (length($subref)) {
+      if (length($sub_ref)) {
          # the preamble is inserted into the transformed code
          $deferred_preamble=\@preamble;
       } elsif ($cxx && @preamble==1 && @type_param_names) {
          # a preamble for pure C++ functions should only be generated if it contains some actions
-         $subref="undef";
+         $sub_ref="undef";
          @preamble=();
       } else {
-         $subref="\\&${unique_name}_preamble";
+         $sub_ref="\\&${unique_name}_preamble";
       }
    } else {
-      $subref ||= "undef";
+      $sub_ref ||= "undef";
    }
 
    my $ov_line=defined($context_check) ? prepare_context_check($self, $func_name, $type_params, $context_check) : "";
    if ($user && $Help::gather && @type_param_names) {
-      $ov_line .= " \$__last_help->add_tparams(qw(@type_param_names));"
+      $ov_line .= " \$__last_help->add_tparams($tp_min, qw(@type_param_names));"
    }
 
    if ($type_deduction) {
       $ov_line .= " { use namespaces::Params \\*Polymake::Core::FunctionTypeParam::instances, qw(_ @type_param_names);";
    }
 
+   if (defined $label) {
+      $label= "application::self()->add_label('$label')";
+   } else {
+      $label="undef";
+   }
+
    if (defined $signature) {
-      $ov_line .= ($func_name eq "construct"
-                   ? " self(1)->add_constructor("
-                   : " add$global Overload(") .
-                  ($cxx && "application::self()->cpp->add_auto_function(") .
-                  "'$func_name', $subref, [ $min, $max, " . join(", ", @arg_list) . " ]," .
-                  ($cxx && "[" . join(", ", @cxx_arg_attrs) . "], { $cxx_func_attrs }, { $cxx_options }),") .
-                  "$opts)";
+      my $middle_part = "'$func_name', $label, $sub_ref, [ $min, $max, " . join(", ", @arg_list) . " ]";
+
+      if ($func_name eq "construct") {
+         $middle_part = "application::self()->cpp->add_constructor($middle_part, [" . join(", ", @cxx_arg_attrs) . "], { $cxx_func_attrs })" if $cxx;
+         $ov_line .= " self(1)->add_constructor($middle_part)";
+      } else {
+         $middle_part = "application::self()->cpp->add_auto_function($middle_part, [" . join(", ", @cxx_arg_attrs) . "], { $cxx_func_attrs }, { $cxx_options })" if $cxx;
+         $ov_line .= " add$global Overload($middle_part, $overload_opts)";
+      }
    } else {
       $cxx or croak( "internal error: pure perl function went into a wrong throat" );
-      $cxx="application::self()->cpp->add_auto_function('$func_name', $subref, undef, undef, { $cxx_func_attrs }, { $cxx_options })";
-      if ($opts) {
-         $ov_line .= " add$global Overload($cxx, $opts)";
+      my $middle_part = "application::self()->cpp->add_auto_function('$func_name', $label, $sub_ref, undef, undef, { $cxx_func_attrs }, { $cxx_options })";
+      if (length($overload_opts)) {
+         $ov_line .= " add$global Overload($middle_part, $overload_opts)";
       } else {
-         $ov_line .= " $cxx";
+         $ov_line .= " $middle_part";
       }
    }
 
@@ -1719,7 +1716,7 @@ sub add_overloaded_instance {
            line_directive($self->header_line);
    }
 
-   if (length($orig_subref)) {
+   if (length($orig_sub_ref)) {
       $ov_line .= "; sub $unique_name";
       if ($method && !$cxx) {
          $ov_line .= " : method";
@@ -1727,14 +1724,52 @@ sub add_overloaded_instance {
    }
    push @{$self->buffer}, $ov_line;
    provide_long_prologue($self, $header, $deferred_preamble);
-   1
+}
+#####################################################################################################
+sub parse_operator_signature {
+   my ($signature)=@_;
+   my (@arg_types, @arg_attrs);
+   my $non_trivial_arg_types=0;
+   $signature =~ s/^\s+//;
+   while (pos($signature) < length($signature)) {
+      if ($signature =~ /\G (?: \* | (?'type' $type_re)) (?'attrs' $func_arg_attrs_re)? \s*(?:,\s*)?/gxco) {
+         my ($type, $attrs)=@+{qw(type attrs)};
+         if (defined $type) {
+            my $typeof= $type =~ /</ ? "typeof" : "typeof_gen";
+            push @arg_types, "$typeof $type";
+            ++$non_trivial_arg_types;
+         } else {
+            push @arg_types, "'\$'";
+         }
+         push @arg_attrs,  "'$attrs'";
+      } else {
+         return "BEGIN { die 'invalid operator signature starting at `" . substr($signature, pos($signature)) . "\\'' }\n";
+      }
+   }
+   if ($non_trivial_arg_types && $non_trivial_arg_types == @arg_attrs) {
+      "BEGIN { die 'invalid operator signature: one of arguments must be a wildcard * representing the enclosing property type' }\n";
+   } else {
+      ($non_trivial_arg_types ? "[" . join(", ", @arg_types) . "]" : "undef") . ", [" . join(", ", @arg_attrs) . "]"
+   }
+}
+
+sub prepare_operator {
+   my ($self, $header)=@_;
+   if ($header =~ s/^ ((?!\s)[^:;()]++) (?: \(\s* ($balanced_re) \)\s*)? :\s* c\+\+\s* (?=;\s* (?: \#.*)? $)//xo) {
+      my $ops=$1;
+      my $arg_types_attrs=parse_operator_signature($2);
+      push @{$self->buffer}, $arg_types_attrs =~ /^BEGIN/ ? $arg_types_attrs :
+                             "application::self()->cpp->add_operators(self(1), [qw($ops)], $arg_types_attrs)$header\n";
+   } else {
+      push @{$self->buffer}, "BEGIN { die 'invalid operator declaration' }\n";
+   }
 }
 #####################################################################################################
 sub prepare_function {
    my ($self, $header, $method, $kind, $context_check)=@_;
    my ($user, $global, $type_method)=($kind eq "u", $kind eq "g" && "_global", $kind eq "t");
    if ($header =~ $labeled_sub_re) {
-      my ($labels, $name, $type_params, $signature, $typecheck)=@+{qw(labels lead_name tparams signature typecheck)};
+      my ($label, $name, $type_params, $signature, $typecheck)=@+{qw(label lead_name tparams signature typecheck)};
       $header=$';
 
       if ($user) {
@@ -1752,12 +1787,12 @@ sub prepare_function {
          }
       }
       my $meth_decl= $method ? " : method" : "";
-      if ($header =~ s/^[^\#]*? \K :\s* c\+\+ \s* (?: \(\s* ($balanced_re) \s*\)\s* )? (?=[:;\{])//xo) {
+      if ($header =~ s/^[^\#]*? \K :\s* c\+\+\s* (?: \(\s* ($balanced_re) \)\s*)? (?=[:;\{])//xo) {
          my $options=$1;
          if ($plausibility_checks) {
             if ($type_method) {
                push @{$self->buffer},
-                    "BEGIN { die 'type_method can\'t have a C++ binding' }\n";
+                    "BEGIN { die q{type_method can't have a C++ binding} }\n";
                return;
             }
             if (!defined($signature)) {
@@ -1766,40 +1801,42 @@ sub prepare_function {
          } else {
             $context_check="";
          }
+
          my @attrs;
-         while ($header =~ s/^([^\#]*?) :\s* (\w+) \s* (?: \(\s* ($balanced_re) \s*\)\s*)? (?=[:;\{])/$1/x) {
-            push @attrs, "$2=>".( defined($3) ? "'$3'" : 1);
+         while ($header =~ s/^[^\#]*? \K :\s* (?: (?'name' operator) \s* (?'value' [^\s:;()]++) \s*
+                                                | (?'name' $id_re) \s* (?: \(\s* (?'value' $balanced_re) \)\s*)? )
+                              (?=[:;\{])//x) {
+            push @attrs, "$+{name}=>".( defined($+{value}) ? "'$+{value}'" : 1);
          }
+         my $attrs=join(", ", @attrs);
+
          if ($header =~ /^\s* (?: ;\s* (?: \#.*)? $ | (\{))/x) {
             ++$funcnt;
             my $unique_name="__${name}__OV__$funcnt";
-            my $subref=$1 && "\\&$unique_name";
-            $labels &&= "label=>[ application::self()->add_labels('$labels') ]";
-            add_overloaded_instance($self, $header, $context_check, $user, $global,
-                                    $name, $method, $unique_name, $subref, $signature, $type_params,
-                                    $typecheck, $labels, join(",", @attrs), $options)
-              or return;
+            my $sub_ref=$1 && "\\&$unique_name";
+            add_overloaded_instance($self, $header, context_check => $context_check, user => $user, global => $global,
+                                    func_name => $name, method => $method, unique_name => $unique_name, sub_ref => $sub_ref,
+                                    signature => $signature, type_params => $type_params,
+                                    typecheck_code => $typecheck, label => $label, cxx_func_attrs => $attrs, cxx_options => $options);
          } else {
-            push @{$self->buffer}, "BEGIN { die 'unknown attributes for C++ " . ($method ? "method" : "function") . "' }\n";
+            push @{$self->buffer},
+                 "BEGIN { die 'unknown attributes for C++ " . ($method ? "method" : "function") . "' }\n";
          }
 
-      } elsif (defined($signature) || defined($labels)) {
+      } elsif (defined($signature)) {
          if ($plausibility_checks) {
             if ($type_method) {
                push @{$self->buffer},
-                    "BEGIN { die 'type_method can\'t be overloaded or labeled' }\n";
+                    "BEGIN { die q{type_method can't be overloaded or labeled} }\n";
                return;
             }
          } else {
             $context_check="";
          }
-         my @opts;
+         my $overload_opts;
          ++$funcnt;
          my $unique_name="__${name}__OV__$funcnt";
-         my $subref="\\&$unique_name";
-         while ($header =~ s/^([^\#]*?) (?<! :) :\s* (\w+) \s* (?: \(\s* ($balanced_re) \s*\)\s*)/$1/x) {
-            push @opts, "$2=>'$3'";
-         }
+         my $sub_ref="\\&$unique_name";
          if ($header =~ s/^([^\#]*?) (?<!:) (:\s* $rule_input_re)/$1/xo) {
             if (!$method || !$user || $global) {
                push @{$self->buffer}, "BEGIN { die 'only user_methods can have rule-like input properties' }\n";
@@ -1808,30 +1845,24 @@ sub prepare_function {
             if ($type_params) {
                push @{$self->buffer}, "BEGIN { die 'rule-like method can't have explicit type parameters' }\n";
             }
-            $subref="application::self()->add_method_rule(self(1), '$labels$2', $subref)";
-            push @opts, "label=>[ 'Polymake::Core::ObjectType::MethodAsRule' ]";
+            $sub_ref="application::self()->add_method_rule(self(1), '$label$2', $sub_ref)";
+            $overload_opts="node_type=>'Polymake::Core::ObjectType::RuleLikeMethodNode'";
             $self->after_rule=1;
-         } elsif (defined $labels) {
-            push @opts, "label=>[ application::self()->add_labels('$labels') ]";
          }
 
-         if (defined $signature) {
-            add_overloaded_instance($self, $header, $context_check, $user, $global,
-                                    $name, $method, $unique_name, $subref, $signature, $type_params,
-                                    $typecheck, join(", ", @opts))
-              or return;
-         } else {
-            provide_short_prologue($self, $header, display_credit($self)) if ($user || $global) && $self->credit_seen;
+         add_overloaded_instance($self, $header, context_check => $context_check, user => $user, global => $global,
+                                 func_name => $name, method => $method, unique_name => $unique_name, sub_ref => $sub_ref,
+                                 signature => $signature, type_params => $type_params,
+                                 typecheck_code => $typecheck, label => $label, overload_opts => $overload_opts);
 
+      } elsif ($global || defined($label)) {
+         if ($global) {
             push @{$self->buffer},
-                 prepare_context_check($self, $name, $tparams, $context_check) .
-                 " add$global Overload('$name', $subref, undef, ".join(", ", @opts)."); sub ${unique_name}${meth_decl}$header\n";
+                 "BEGIN { die 'global method must have a signature" . (defined($label) ? '' : ' and labels') . " }\n";
+         } else {
+            push @{$self->buffer},
+                 "BEGIN { die 'function with labels must have a signature' }\n";
          }
-
-      } elsif ($global) {
-         push @{$self->buffer},
-              "BEGIN { die 'global method must have a signature and/or labels' }\n";
-         return;
 
       } else {
          if ($plausibility_checks) {
@@ -2114,8 +2145,8 @@ sub fill {
          # header recognized
          $line=$';
          $self->header_line=$lineno;
-         $self->after_rule=0;
-         $self->prolonged=0;
+         $self->after_rule = 0;
+         $self->prolonged = 0;
 
          # concatenate header continuation lines
          for (;;) {
@@ -2172,9 +2203,9 @@ sub configure {
       } else {
          $self->configured->{$rule_key}=-$load_time;
          $self->custom->handler->need_save=1;
-         $self->declared |= $has_failed_config;
-         if (is_object(my $credit=$self->credits_by_rulefile->{$rule_key})) {
-            $credit->shown=$Rule::Credit::hide;
+         $self->load_state |= LoadState::has_failed_config;
+         if (is_object(my $credit = $self->credits_by_rulefile->{$rule_key})) {
+            $credit->shown = Rule::Credit::hide;
          }
          $self->rulefiles->{$rule_key}=0;
       }
@@ -2186,9 +2217,9 @@ sub summarize_rule_failed_prerequisites {
    my ($self, $rule_key, $failed)=@_;
    $self->configured->{$rule_key}=$failed;
    $self->custom->handler->need_save=1;
-   $self->declared |= $has_failed_config;
-   if (is_object(my $credit=$self->credits_by_rulefile->{$rule_key})) {
-      $credit->shown=$Rule::Credit::hide;
+   $self->load_state |= LoadState::has_failed_config;
+   if (is_object(my $credit = $self->credits_by_rulefile->{$rule_key})) {
+      $credit->shown = Rule::Credit::hide;
    }
    $self->rulefiles->{$rule_key}=0
 }
@@ -2254,7 +2285,7 @@ sub add_credit {
       $self->credits->{$product}=$credit;
 
    } elsif (length($ext_URI)) {
-      my $ext=$Extension::registered_by_URI{$ext_URI}
+      my $ext = $Extension::registered_by_URI{$ext_URI}
         or croak( "unknown extension URI $ext_URI" );
       if ($plausibility_checks || $may_repeat) {
          if (my ($credit)=grep { defined } map { $_->credits->{$product} } $self, values %{$self->used}) {
@@ -2270,71 +2301,71 @@ sub add_credit {
 }
 #################################################################################
 sub add_production_rule {
-   my $self=shift;
-   my $rule=new Rule(@_);
+   my $self = shift;
+   my $rule = new Rule(@_);
    push @{$self->rules}, $rule;
    push @{$self->rules_to_finalize}, $rule->needs_finalization;
 }
 
 sub add_default_value_rule {
-   my $self=shift;
-   my $rule=new Rule(@_);
-   $rule->weight=$Rule::zero_weight;
-   $rule->flags=$Rule::is_production | $Rule::is_default_value;
+   my $self = shift;
+   my $rule = new Rule(@_);
+   $rule->weight = $Rule::zero_weight;
+   $rule->flags = Rule::Flags::is_production | Rule::Flags::is_default_value;
    push @{$self->rules}, $rule;
    push @{$self->rules_to_finalize}, $rule;
 }
 
 sub add_method_rule {
-   my ($self, $proto)=splice @_, 0, 2;
+   my ($self, $proto) = splice @_, 0, 2;
    my $rule=$proto->add_method_rule(@_);
    push @{$self->rules}, $rule;
    $rule
 }
 
 sub append_rule_precondition {
-   my ($self, $header, $code, $proto, $checks_definedness, $override)=@_;
+   my ($self, $header, $code, $proto, $checks_definedness, $override) = @_;
    $self->rules->[-1]->append_precondition(special Rule($header, $code, $proto), $checks_definedness, $override);
 }
 
 sub append_rule_existence_check {
-   my $self=shift;
+   my $self = shift;
    $self->rules->[-1]->append_existence_check(@_);
 }
 
 sub append_rule_weight {
-   my ($self, $major, $minor, $header, $code, $proto)=@_;
+   my ($self, $major, $minor, $header, $code, $proto) = @_;
    $self->rules->[-1]->append_weight($major, $minor, defined($header) && special Rule($header, $code, $proto));
 }
 
 sub append_rule_permutation {
-   my ($self, $perm_name)=@_;
+   my ($self, $perm_name) = @_;
    $self->rules->[-1]->append_permutation($perm_name);
 }
 
 sub append_overridden_rule {
-   my ($self, $proto, $super_proto, $label)=@_;
+   my ($self, $proto, $super_proto, $label) = @_;
    if ($plausibility_checks && is_object($super_proto)) {
       $proto->isa($super_proto)
         or croak( "Invalid override: ", $proto->full_name, " is not derived from ", $super_proto->full_name );
    }
-   $label=$self->prefs->find_label($label)
-          || croak( "Unknown label $label" );
-   push @{$self->rules->[-1]->overridden_in ||= [ ]}, [ $super_proto, $label, $plausibility_checks ? (caller)[1,2] : () ];
+   $label = $self->prefs->find_label($label)
+            || croak( "Unknown label $label" );
+   push @{$self->rules->[-1]->overridden_in ||= [ ]}, [ $super_proto, $label, $plausibility_checks ? (caller)[1, 2] : () ];
 }
 #################################################################################
 sub add_property_definition {
-   my ($self, $proto, $help, $name, $type, @attrs)=@_;
-   my $prop=$proto->add_property(new Property($name, $type, $proto, @attrs));
+   my ($self, $proto, $help, $name, $type, @attrs) = @_;
+   my $prop = $proto->add_property(new Property($name, $type, $proto, @attrs));
    if ($self != $proto->application) {
-      $prop->application=$self;
+      $prop->application = $self;
    }
    if (defined $help) {
       # always include the type in the displayed text
-      $help->annex->{header}="property $name : ".$type->full_name."\n";
-      weak($help->annex->{property}=$prop);
-      if ($prop->flags & $Property::is_subobject) {
-         my $type_topic=$prop->type->help_topic;
+      $help->annex->{header} = "property $name : " . $type->full_name . "\n";
+      weak($help->annex->{property} = $prop);
+      if ($prop->flags & Property::Flags::is_subobject) {
+         my $type_topic = $prop->type->help_topic;
          push @{$help->related}, $type_topic, @{$type_topic->related};
       }
    }
@@ -2342,13 +2373,13 @@ sub add_property_definition {
 }
 
 sub add_permutation_definition {
-   my ($self, $proto, $help, $name, $type, @attrs)=@_;
+   my ($self, $proto, $help, $name, $type, @attrs) = @_;
    $proto->add_permutation($name, new Property($name, $type, $proto, @attrs));
 }
 #################################################################################
 my $loading_rule_key;
 
-sub has_interactive_commands { $has_interactive_commands=shift; }
+sub has_interactive_commands { $has_interactive_commands = shift; }
 
 # private
 sub start_preamble {
@@ -2359,28 +2390,28 @@ sub start_preamble {
 
 # private
 sub process_included_rule {
-   my ($self, $rulefile, $filename, $ext, $rule_key, $rc)=@_;
+   my ($self, $rulefile, $filename, $ext, $rule_key, $rc) = @_;
    return $rc if defined($rc);
-   if (defined (my $config_state=$self->configured->{$rule_key})) {
+   if (defined (my $config_state = $self->configured->{$rule_key})) {
       if ($config_state > 0) {
          if ($config_state < ($ext // $self)->configured_at) {
             # enforce reconfiguration
             delete $self->configured->{$rule_key};
-            $self->custom->handler->need_save=1;
+            $self->custom->handler->need_save = true;
          }
       } else {
-         $self->rulefiles->{$rule_key}=0;
+         $self->rulefiles->{$rule_key} = 0;
          if (is_string($config_state)
                and
-             my ($on_rule, $prereqs)= $config_state =~ /^0\#(?:(rule)|ext):(.*)/) {
+             my ($on_rule, $prereqs) = $config_state =~ /^0\#(?:(rule)|ext):(.*)/) {
             # direct dependency on another rulefile or extension
             my ($revived, @depends_on, $prereq_rule, $prereq_app, $prereq_ext);
             if ($on_rule) {
                foreach $prereq_rule (split /\|/, $prereqs) {
-                  $prereq_app= $prereq_rule =~ s/^($id_re):://o ? ($self->used->{$1} or return 0) : $self;
-                  my $prereq_rule_key= $prereq_rule . ($ext && $ext->dir ne $prereq_app->installTop && '@'.$ext->URI);
+                  $prereq_app = $prereq_rule =~ s/^($id_re):://o ? ($self->used->{$1} or return 0) : $self;
+                  my $prereq_rule_key = $prereq_rule . ($ext && $ext->dir ne $prereq_app->installTop && '@' . $ext->URI);
                   if ($prereq_app->rulefiles->{$prereq_rule_key}) {
-                     $revived=1;
+                     $revived = true;
                      last;
                   } elsif ($has_interactive_commands) {
                      push @depends_on, $prereq_app, $prereq_rule_key;
@@ -2388,9 +2419,9 @@ sub process_included_rule {
                }
             } else {
                foreach my $URI (split /\|/, $prereqs) {
-                  if (defined (my $prereq_ext=$Extension::registered_by_URI{$URI})) {
+                  if (defined (my $prereq_ext = $Extension::registered_by_URI{$URI})) {
                      if ($prereq_ext->is_active) {
-                        $revived=1;
+                        $revived = true;
                         last;
                      } elsif ($has_interactive_commands && !$prereq_ext->is_bundled) {
                         push @depends_on, $prereq_ext;
@@ -2411,7 +2442,7 @@ sub process_included_rule {
          }
          # prerequisite was successfully reconfigured in the meanwhile, or reconfiguration forced
          delete $self->configured->{$rule_key};
-         $self->custom->handler->need_save=1;
+         $self->custom->handler->need_save = true;
       }
    }
    local $extension=$ext if $ext != $extension;
@@ -2420,20 +2451,20 @@ sub process_included_rule {
 
 # private
 sub parse_rulefile {
-   my ($self, $rule_key, $filename)=@_;
-   $self->rulefiles->{$rule_key}=1;
-   dbg_print( "reading rules from $filename" ) if $Verbose::rules>1;
-   $loading_rule_key=$rule_key;
+   my ($self, $rule_key, $filename) = @_;
+   $self->rulefiles->{$rule_key} = 1;
+   dbg_print( "reading rules from $filename" ) if $Verbose::rules > 1;
+   $loading_rule_key = $rule_key;
    require "rules:$filename";
    $self->rulefiles->{$rule_key};
 }
 
 # private
 sub find_file_in_INC {
-   my ($filename, $INC_list)=@_;
+   my ($filename, $INC_list) = @_;
    foreach my $item (@$INC_list) {
-      if (-f (my $full_path=$item->[0]."/$filename")) {
-         $full_path=Cwd::abs_path($full_path) if substr($full_path,0,1) ne "/";
+      if (-f (my $full_path = $item->[0] . "/$filename")) {
+         $full_path = Cwd::abs_path($full_path) if substr($full_path,0,1) ne "/";
          return ($full_path, @$item[1..$#$item]);
       }
    }
@@ -2441,24 +2472,24 @@ sub find_file_in_INC {
 }
 
 # freeze the lexical enviroment (namespace lookup)
-my $namespace_decls=<<'_#_#_#_';
-self()->eval_expr=sub { eval $_[0] };
+my $namespace_decls = <<'_#_#_#_';
+self()->eval_expr = sub { eval $_[0] };
 namespaces::memorize_lexical_scope;
 _#_#_#_
 
 # named constant to be used in put(), take(), and add()
-sub Polymake::temporary() { $PropertyValue::is_temporary }
+sub Polymake::temporary() { PropertyValue::Flags::is_temporary }
 
 # INC subroutine retrieving embedded rulefile lines
 sub getline_embedded {
-   my ($maxlen, $buffer)=@_;
-   state $filter_fixed=0;
+   my ($maxlen, $buffer) = @_;
+   state $filter_fixed = 0;
    $filter_fixed ||= inject_error_preserving_source_filter();
    print STDERR "+>> ", $buffer->[0] if $DebugLevel>3;
    $_ .= shift @$buffer;
    if (!@$buffer) {
       remove_error_preserving_source_filter();
-      $filter_fixed=0;
+      $filter_fixed = 0;
    }
    return length;
 }
@@ -2466,36 +2497,38 @@ sub getline_embedded {
 # private:
 # must be qualified, otherwise would land in main::
 sub Polymake::Core::Application::INC {
-   my ($self, $filename)=@_;
+   my ($self, $filename) = @_;
    my $handle;
-   my $app_pkg=$self->pkg;
+   my $app_pkg = $self->pkg;
    if (defined($self->compile_scope) && $filename =~ s/^(?:(rules)|c\+\+:(\d))://) {
-      my ($prologue, $from_embedded_rules, $main_init);
+      my ($prologue, $from_embedded_rules);
+      my ($rule_header_table, $decl_rule_header_table) = (\%rule_headers, \%decl_headers);
       if ($1) {
          open $handle, "<:utf8", $filename or die "can't read rule file $filename: $!\n";
-         if (!$self->declared) {
-            $prologue=$namespace_decls;
-            $self->declared=$namespace_declared;
+         if (!$self->load_state) {
+            $prologue = $namespace_decls;
+            $self->load_state = LoadState::namespace_declared;
          }
-         if (!($self->declared & $cpp_load_initiated)) {
-            $self->declared |= $cpp_load_initiated;
-            if ($self->declared & $main_init_closed) {
-               $prologue=$cpp_init;
+         if (not $self->load_state & LoadState::cpp_load_initiated) {
+            $self->load_state |= LoadState::cpp_load_initiated;
+            if ($self->load_state & LoadState::main_init_closed) {
+               $prologue = $cpp_init;
             } else {
                # $cpp_init will be injected after the IMPORT clauses
-               $main_init=1;
+               $rule_header_table = \%main_init_rule_headers;
+               $decl_rule_header_table = \%main_init_decl_headers;
             }
          }
       } else {
-         $loading_rule_key=$filename;
-         $from_embedded_rules=$2;
+         $loading_rule_key = $filename;
+         $from_embedded_rules = $2;
       }
-      $self->compile_scope->begin_locals;
-      local *application::=get_symtab($self->pkg);
-      $self->compile_scope->end_locals;
-      my $credit_val= $extension && '=$Polymake::Core::Application::extension->credit';
-      if ($from_embedded_rules>=2) {
-         if ($from_embedded_rules==3) {
+      local with($self->compile_scope->locals) {
+         local *application::=get_symtab($self->pkg);
+      }
+      my $credit_val = $extension && '=$Polymake::Core::Application::extension->credit';
+      if ($from_embedded_rules >= 2) {
+         if ($from_embedded_rules == 3) {
             # renewing the preamble for a suspended fragment
             unshift @{$self->cpp->embedded_rules},
                     "$warn_options;\n",
@@ -2509,15 +2542,15 @@ sub Polymake::Core::Application::INC {
       }
 
       new RuleFilter($handle, $self, $filename, $loading_rule_key,
-                     $from_embedded_rules && $self->cpp->raw_embedded_rules,
+                     $from_embedded_rules && $self->cpp->raw_embedded_rules($extension),
                      length($credit_val)>0 && defined($extension->credit),
-                     $main_init,
-                     <<"_#_#_#_" . RuleFilter::line_directive(1, $filename) );
+                     $rule_header_table, $decl_rule_header_table,
+                     split /(?<=\n)/, <<"_#_#_#_");
 $warn_options;
 use namespaces '$app_pkg';
 package $app_pkg;
 ${prologue}my \$__cur_credit_0$credit_val; my \$__last_help;
-my \$__preamble_end=self()->preamble_end->{'$loading_rule_key'};
+my \$__preamble_end = self()->preamble_end->{'$loading_rule_key'};
 _#_#_#_
 
    } elsif ($filename =~ s/^script([:=])//) {
@@ -2532,8 +2565,8 @@ _#_#_#_
 
    } elsif (my ($full_path, @preamble)=find_file_in_INC($filename, $self->myINC)) {
       open $handle, $full_path or die "can't read file $full_path: $!\n";
-      my $preamble=join("\n", @preamble,
-                        qq{$warn_options; use namespaces "$app_pkg";},
+      my $preamble=join("\n",
+                        qq{$warn_options; use namespaces "$app_pkg";}, @preamble,
                         RuleFilter::line_directive(1, $full_path));
       (\$preamble, $handle);
 
@@ -2548,27 +2581,17 @@ $INC{"application.pm"}=$INC{"Polymake/Core/Application.pm"};
 package application;
 
 sub import {
-   (undef, my ($app_name, $flags))=@_;
-   $flags //= 0;
-   if (defined $app_name) {
+   if (@_==2) {
+      namespaces::temp_disable(1);
+      my $app_name=$_[1];
       my $pkg=caller;
-      eval {
-         namespaces::temp_disable();
-         package Polymake::User;
-         application($app_name);
-      };
-      die $@ if $@;
+      Polymake::User::application($app_name);
       $INC[0]=$Polymake::User::application if $INC[0] != \&Polymake::Core::Shell::interactive_INC;
-      $pkg ne "Polymake::User"
-      ? import namespaces(1 | $flags, $Polymake::User::application->pkg, "Polymake::User")
-      : import namespaces(1 | $flags, $Polymake::User::application->eval_expr);
-   } else {
-      package Polymake::User;
-      if ($Core::Application::plausibility_checks && caller ne __PACKAGE__) {
-         croak( "wrong use of 'use application' without application name: only allowed in package Polymake::User" );
-      }
-      import namespaces(1 | $flags, $Polymake::User::application->eval_expr);
+   } elsif ($Core::Application::plausibility_checks && caller ne "Polymake::User") {
+      namespaces::temp_disable(1);
+      croak( "wrong use of 'use application' without application name: only allowed in package Polymake::User" );
    }
+   import namespaces(1, $Polymake::User::application->pkg, "Polymake::User");
 }
 
 $namespaces::special_imports{"application.pm"}=1;
@@ -2590,72 +2613,11 @@ sub Polymake::Core::NeutralScriptLoader::INC {
    if ($filename =~ s/^script[:=]//) {
       open my $handle, $filename or die "can't read script file $filename: $!\n";
       my $preamble=join("\n",
-                        "package Polymake::User; $warn_options; use namespaces;",
+                        "package Polymake::User;  $warn_options;  use namespaces;",
                         Application::RuleFilter::line_directive(1, $filename));
       (\$preamble, $handle)
-   } elsif ($User::application != $self) {
-      $User::application->INC($filename);
    } else {
       undef;
-   }
-}
-
-####################################################################################
-my %script_repo;
-
-package Polymake::Core::StoredScript;
-use Polymake::Struct (
-   [ 'new' => '$$$' ],
-   [ '$path' => '#1' ],
-   [ '$timestamp' => '#2' ],
-   [ '&code' => '#3' ],
-);
-
-sub new {
-   my $self=&_new;
-   $script_repo{$self->path}=$self;
-}
-
-sub locate_file {
-   my $filename=shift;
-   my $full_path;
-   if (defined ($full_path=find_file_in_path($filename, $User::application->scriptpath))) {
-      return ($full_path, (stat _)[9], $User::application);
-   }
-   foreach my $app (values %{$User::application->imported}) {
-      if (defined ($full_path=find_file_in_path($filename, $app->scriptpath))) {
-         return ($full_path, (stat _)[9], $app);
-      }
-   }
-   if (-f ($full_path="$InstallTop/scripts/$filename")) {
-      return ($full_path, (stat _)[9]);
-   }
-   foreach my $ext (@Extension::active[$Extension::num_bundled..$#Extension::active]) {
-      if (-f ($full_path=$ext->dir."/scripts/$filename")) {
-         return ($full_path, (stat _)[9]);
-      }
-   }
-   if (defined ($full_path=find_file_in_path($filename, \@User::lookup_scripts))) {
-      return ($full_path, (stat _)[9]);
-   }
-   if (-f $filename) {
-      my $tm=(stat _)[9];
-      return (Cwd::abs_path($filename), $tm);
-   }
-   ();
-}
-
-sub find {
-   my $filename=pop;
-   if (my ($path, $tm, $app)=locate_file($filename)) {
-      if (defined (my $script=$script_repo{$path})) {
-         if ($tm==$script->timestamp) {
-            return $script->code;
-         }
-      }
-      (undef, $path, $app);
-   } else {
-      croak( "script file \"$filename\" not found" );
    }
 }
 

@@ -23,51 +23,68 @@
 #include "polymake/Vector.h"
 #include "polymake/Bitset.h"
 #include "polymake/permutations.h"
-#include "polymake/polytope/lpch_dispatcher.h"
+#include "polymake/polytope/solve_LP.h"
+#include "polymake/polytope/convex_hull.h"
 
 namespace polymake { namespace polytope { namespace cdd_interface {
 
-template <typename Coord>
-class solver {
+enum class representation {
+   V,  // rays and lineality
+   H   // inequalities and equations
+};
+
+class CddInstance {
+   class Initializer {
+      friend class CddInstance;
+      Initializer();
+      ~Initializer();
+
+      static void (* const global_construct)();
+      static void (* const global_destroy)();
+   };
+protected:
+   CddInstance()
+   {
+      static Initializer init{};
+   }
+};
+
+template <typename Scalar>
+class ConvexHullSolver : public CddInstance, public polytope::ConvexHullSolver<Scalar, CanEliminateRedundancies::yes> {
 public:
-   typedef Coord coord_type;
+   explicit ConvexHullSolver(bool verbose_ = false)
+      : verbose(verbose_) {}
 
-   solver();
-   ~solver();
+   convex_hull_result<Scalar>
+   enumerate_facets(const Matrix<Scalar>& Points, const Matrix<Scalar>& Lineality, const bool isCone) const override;
 
-   typedef std::pair< Matrix<coord_type>, Matrix<coord_type> > matrix_pair;
+   convex_hull_result<Scalar>
+   enumerate_vertices(const Matrix<Scalar>& Inequalities, const Matrix<Scalar>& Equations, const bool isCone) const override;
 
-   /// @retval first: facets, second: affine hull
-   matrix_pair
-   enumerate_facets(const Matrix<coord_type>& Points, const Matrix<coord_type>& Lineality, const bool isCone = false, const bool primal = false);
+   std::pair<Bitset, Set<int>> get_non_redundant_points(const Matrix<Scalar>& points, const Matrix<Scalar>& linealities, bool isCone) const override;
 
-   // FIXME lasst argument necessary as long as lrs uses old format
-   matrix_pair
-   enumerate_vertices(const Matrix<coord_type>& Inequalities, const Matrix<coord_type>& Equations, const bool isCone = false, const bool primal = true); 
+   std::pair<Bitset, Set<int>> get_non_redundant_inequalities(const Matrix<Scalar>& inequalities, const Matrix<Scalar>& equations, bool isCone) const override;
 
-   typedef std::pair<Bitset, ListMatrix< Vector<coord_type> > > non_redundant;
+   /// first: indices of vertices, second: certificates (co-vertices)
+   using non_redundant = std::pair<Bitset, ListMatrix< Vector<Scalar>>>;
 
-   /// @retval first: indices of vertices, second: certificates (co-vertices)
    non_redundant
-   find_vertices_among_points(const Matrix<coord_type>& Points);
-
-   typedef std::pair<Bitset, Bitset > non_redundant_canonical;
-
-   /// @retval first: indices of vertices, second: indices of lineality_space
-   non_redundant_canonical
-   canonicalize(const Matrix<coord_type>& Points, const Matrix<coord_type>& InputLineality, bool primal = false);
+   find_vertices_among_points(const Matrix<Scalar>& Points);
 
    Bitset
-   canonicalize_lineality(const Matrix<Coord>& Points, const Matrix<Coord>& InputLineality, bool primal = false);
+   canonicalize_lineality(const Matrix<Scalar>& Points, const Matrix<Scalar>& InputLineality, const representation source_rep);
+private:
+   const bool verbose;
+};
 
-   typedef std::pair<coord_type, Vector<coord_type> > lp_solution;
+template <typename Scalar>
+class LP_Solver : public CddInstance, public polytope::LP_Solver<Scalar> {
+public:
+   LP_Solution<Scalar>
+   solve(const Matrix<Scalar>& Inequalities, const Matrix<Scalar>& Equations,
+         const Vector<Scalar>& Objective, bool maximize, bool feasibility_known = false) const override;
 
-   /// @retval first: objective value, second: solution
-   // LP only defined for polytopes
-   lp_solution
-   solve_lp(const Matrix<coord_type>& Inequalities, const Matrix<coord_type>& Equations,
-            const Vector<coord_type>& Objective, bool maximize);
-
+   bool needs_feasibility_known() const override { return true; }
 };
 
 } } }

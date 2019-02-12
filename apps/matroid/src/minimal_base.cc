@@ -44,7 +44,7 @@ Set<int> minimal_base(perl::Object m, Vector<Scalar> weights)
    std::list<int> checks;
    for (int i=0; i<circuits.size(); ++i)
       checks.push_back(i);
-   for (Entire<Array<int> >::const_iterator eit=entire(order); !eit.at_end(); ++eit) {
+   for (auto eit=entire(order); !eit.at_end(); ++eit) {
       min_base+=(*eit);
       for (std::list<int>::iterator cit=checks.begin(); cit != checks.end(); ++cit) {
          if (circuits[*cit].contains(*eit))

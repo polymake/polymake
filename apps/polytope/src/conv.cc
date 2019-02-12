@@ -32,7 +32,7 @@ perl::Object conv(const Array<perl::Object>& pp_in)
    ListMatrix< Vector<Scalar> > Points=p_in->give("VERTICES | POINTS");
    ListMatrix< Vector<Scalar> > LinSpace=p_in->give("LINEALITY_SPACE");
 
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    std::string descr_names=p_in->name();
 
    while (! (++p_in).at_end()) {

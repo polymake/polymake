@@ -199,18 +199,14 @@ sub load_extension_config_vars {
 }
 
 ###############################################################################################
-sub list_prerequisite_extensions {
-   my ($ext)=@_;
-   join(" ", map { $_->is_bundled ? $_->short_name : $_->dir } @{$ext->requires});
-}
-
-###############################################################################################
 sub create_extension_build_trees {
    my ($ext, $ext_build_root)=@_;
    local $BuildModes="$BuildModes $ENV{POLYMAKE_BUILD_MODE}" if index($BuildModes, $ENV{POLYMAKE_BUILD_MODE}) < 0;
-   create_build_trees($ext_build_root, include => [ "$Polymake::InstallArch/config.ninja",
-                                                    map { $_->is_bundled ? () : $_->build_dir."/config.ninja" } @{$ext->requires} ],
-                      $Polymake::InstallArch =~ m{/build(\.[^/]+)?/\w+$} ? (addvars => "PERL=$Config::Config{perlpath}\n") : ());
+   create_build_trees($Polymake::InstallArch, $ext_build_root,
+                      include => [ "$Polymake::InstallArch/config.ninja",
+                                   map { $_->is_bundled ? () : $_->build_dir."/config.ninja" } @{$ext->requires} ],
+                      $Polymake::InstallArch =~ m{/build(\.[^/]+)?/\w+$}
+                      ? (addvars => "PERL=$Config::Config{perlpath}\n") : ());
 }
 
 ###############################################################################################
@@ -346,7 +342,7 @@ sub do_configure_extension {
    print $conf "# last configured with:\n", "configure.command=";
    write_config_command_line($conf, \%options, \%allowed_with);
 
-   my $prereq_list=list_prerequisite_extensions($ext);
+   my $prereq_list=$ext->list_prerequisite_extensions;
    print $conf <<"---";
 
 root=$Polymake::InstallTop
@@ -366,74 +362,6 @@ app.includes=-I\${extroot}/include/app-wrappers -I\${extroot}/include/apps \${su
 
    create_extension_build_trees($ext, $ext_build_root);
    $ext->configured_at=time;
-}
-
-##############################################################################################
-# for compiling temporary glue code
-sub write_temp_build_ninja_file {
-   my ($file, $app, $extension, $includeSource, $stem, $so_name)=@_;
-   open my $conf, ">", $file
-     or die "can't create $file: $!\n";
-   print $conf <<"---";
-config.file=$Polymake::InstallArch/config.ninja
-include \${config.file}
----
-   if ($extension) {
-      foreach my $ext (is_object($extension) ? ($extension, @{$extension->requires}) :
-                       uniq(map { ($_, @{$_->requires}) } @{$extension})) {
-         if (!$ext->is_bundled) {
-            print $conf "include ", $ext->build_dir."/config.ninja\n";
-         }
-      }
-   }
-
-   my $mode=$ENV{POLYMAKE_BUILD_MODE} || "Opt";
-   print $conf <<"---";
-include \${root}/support/rules.ninja
-CmodeFLAGS=\${C${mode}FLAGS}
-CexternModeFLAGS=\${Cextern${mode}FLAGS}
-LDmodeFLAGS=\${LD${mode}FLAGS}
----
-   my $cxxflags="-DPOLYMAKE_APPNAME=".$app->name;
-   my $cxxincludes='${app.includes} ${core.includes}';
-   my $extra_ldflags="";
-   my $extra_libs="";
-   if (is_object($extension) && $extension->is_bundled) {
-      my $bundled=$extension->short_name;
-      $cxxflags.=" -DPOLYMAKE_BUNDLED_EXT=$bundled \${bundled.$bundled.CXXFLAGS}";
-      $extra_ldflags="\${bundled.$bundled.LDFLAGS}";
-      $extra_libs="\${bundled.$bundled.LIBS}";
-      if (-f "$Polymake::InstallArch/../targets.ninja") {
-         $cxxincludes="\${bundled.$bundled.includes} $cxxincludes";
-         print $conf <<"---";
-include $Polymake::InstallArch/../targets.ninja
----
-      }
-   }
-
-   if ($includeSource) {
-      $cxxflags.=" -DPOLYMAKE_NO_EMBEDDED_RULES";
-      if ($includeSource =~ m{^(.*/apps/\w+/src)/([^/]+)$}) {
-         my $build_flags_file="$1/build_flags.pl";
-         my $src_name=$2;
-         if (-f $build_flags_file) {
-            my %flags=do $build_flags_file;
-            if (my @custom_flags=@flags{'CXXFLAGS', $src_name}) {
-               $cxxflags.=" @custom_flags";
-            }
-         }
-      }
-   }
-
-   print $conf "build $stem.o: cxxcompile $stem.cc\n",
-               $includeSource && "  includeSource= -include $includeSource\n",
-               "  CXXextraFLAGS=$cxxflags\n",
-               "  CXXincludes=$cxxincludes\n\n",
-               "build $so_name: sharedmod $stem.o\n",
-               "  LDextraFLAGS=$extra_ldflags\n",
-               "  LIBSextra=$extra_libs\n";
-
-   close $conf;
 }
 
 ##############################################################################################

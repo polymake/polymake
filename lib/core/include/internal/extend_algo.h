@@ -19,28 +19,27 @@
 
 namespace pm {
 
-template <typename Iterator1, typename Iterator2> inline
+template <typename Iterator1, typename Iterator2>
 void copy_range_impl(Iterator1&& src, Iterator2&& dst, std::true_type, std::false_type)
 {
    for (; !src.at_end(); ++src, ++dst) *dst=*src;
 }
 
-template <typename Iterator1, typename Iterator2> inline
+template <typename Iterator1, typename Iterator2>
 void copy_range_impl(Iterator1&& src, Iterator2&& dst, std::false_type, std::true_type)
 {
    for (; !dst.at_end(); ++src, ++dst) *dst=*src;
 }
 
-template <typename Iterator1, typename Iterator2> inline
+template <typename Iterator1, typename Iterator2>
 void copy_range_impl(Iterator1&& src, Iterator2&& dst, std::true_type, std::true_type)
 {
    for (; !src.at_end() && !dst.at_end(); ++src, ++dst) *dst=*src;
 }
 
 template <typename Iterator1, typename Iterator2,
-          typename=typename std::enable_if<check_iterator_feature<Iterator1, end_sensitive>::value ||
-                                           check_iterator_feature<Iterator2, end_sensitive>::value>::type>
-inline
+          typename=std::enable_if_t<check_iterator_feature<Iterator1, end_sensitive>::value ||
+                                    check_iterator_feature<Iterator2, end_sensitive>::value>>
 private_mutable_t<Iterator2> copy_range(Iterator1&& src, Iterator2&& dst)
 {
    private_mutable_t<Iterator2> dst_it=ensure_private_mutable(std::forward<Iterator2>(dst));
@@ -51,7 +50,7 @@ private_mutable_t<Iterator2> copy_range(Iterator1&& src, Iterator2&& dst)
 }
 
 
-template <typename Iterator1, typename Iterator2> inline
+template <typename Iterator1, typename Iterator2>
 bool equal_ranges_impl(Iterator1&& it1, Iterator2&& it2, std::true_type, std::false_type)
 {
    for (; !it1.at_end(); ++it1, ++it2)
@@ -59,7 +58,7 @@ bool equal_ranges_impl(Iterator1&& it1, Iterator2&& it2, std::true_type, std::fa
    return true;
 }
 
-template <typename Iterator1, typename Iterator2> inline
+template <typename Iterator1, typename Iterator2>
 bool equal_ranges_impl(Iterator1&& it1, Iterator2&& it2, std::false_type, std::true_type)
 {
    for (; !it2.at_end(); ++it1, ++it2)
@@ -67,7 +66,7 @@ bool equal_ranges_impl(Iterator1&& it1, Iterator2&& it2, std::false_type, std::t
    return true;
 }
 
-template <typename Iterator1, typename Iterator2> inline
+template <typename Iterator1, typename Iterator2>
 bool equal_ranges_impl(Iterator1&& it1, Iterator2&& it2, std::true_type, std::true_type)
 {
    for (; !it1.at_end() && !it2.at_end(); ++it1, ++it2)
@@ -76,9 +75,8 @@ bool equal_ranges_impl(Iterator1&& it1, Iterator2&& it2, std::true_type, std::tr
 }
 
 template <typename Iterator1, typename Iterator2,
-          typename=typename std::enable_if<check_iterator_feature<Iterator1, end_sensitive>::value ||
-                                           check_iterator_feature<Iterator2, end_sensitive>::value>::type>
-inline
+          typename=std::enable_if_t<check_iterator_feature<Iterator1, end_sensitive>::value ||
+                                    check_iterator_feature<Iterator2, end_sensitive>::value>>
 bool equal_ranges(Iterator1&& it1, Iterator2&& it2)
 {
    return equal_ranges_impl(ensure_private_mutable(std::forward<Iterator1>(it1)),
@@ -88,28 +86,27 @@ bool equal_ranges(Iterator1&& it1, Iterator2&& it2)
 }
 
 
-template <typename Iterator1, typename Iterator2> inline
+template <typename Iterator1, typename Iterator2>
 void swap_ranges_impl(Iterator1&& it1, Iterator2&& it2, std::true_type, std::false_type)
 {
    for (; !it1.at_end(); ++it1, ++it2) std::swap(*it1, *it2);
 }
 
-template <typename Iterator1, typename Iterator2> inline
+template <typename Iterator1, typename Iterator2>
 void swap_ranges_impl(Iterator1&& it1, Iterator2&& it2, std::false_type, std::true_type)
 {
    for (; !it2.at_end(); ++it1, ++it2) std::swap(*it1, *it2);
 }
 
-template <typename Iterator1, typename Iterator2> inline
+template <typename Iterator1, typename Iterator2>
 void swap_ranges_impl(Iterator1&& it1, Iterator2&& it2, std::true_type, std::true_type)
 {
    for (; !it1.at_end() && !it2.at_end(); ++it1, ++it2) std::swap(*it1, *it2);
 }
 
 template <typename Iterator1, typename Iterator2,
-          typename=typename std::enable_if<check_iterator_feature<Iterator1, end_sensitive>::value ||
-                                           check_iterator_feature<Iterator2, end_sensitive>::value>::type>
-inline
+          typename=std::enable_if_t<check_iterator_feature<Iterator1, end_sensitive>::value ||
+                                    check_iterator_feature<Iterator2, end_sensitive>::value>>
 void swap_ranges(Iterator1&& it1, Iterator2&& it2)
 {
    swap_ranges_impl(ensure_private_mutable(std::forward<Iterator1>(it1)),
@@ -120,8 +117,7 @@ void swap_ranges(Iterator1&& it1, Iterator2&& it2)
 
 
 template <typename Iterator,
-          typename=typename std::enable_if<check_iterator_feature<Iterator, end_sensitive>::value>::type>
-inline
+          typename=std::enable_if_t<check_iterator_feature<Iterator, end_sensitive>::value>>
 typename iterator_traits<Iterator>::value_type
 first_differ_in_range(Iterator&& src, const typename iterator_traits<Iterator>::value_type& from)
 {
@@ -134,8 +130,7 @@ first_differ_in_range(Iterator&& src, const typename iterator_traits<Iterator>::
 }
 
 template <typename Iterator, typename Value,
-          typename=typename std::enable_if<check_iterator_feature<Iterator, end_sensitive>::value>::type>
-inline
+          typename=std::enable_if_t<check_iterator_feature<Iterator, end_sensitive>::value>>
 void fill_range(Iterator&& dst, const Value& x)
 {
    auto&& it=ensure_private_mutable(std::forward<Iterator>(dst));
@@ -143,8 +138,7 @@ void fill_range(Iterator&& dst, const Value& x)
 }
 
 template <typename Iterator, typename Value,
-          typename=typename std::enable_if<check_iterator_feature<Iterator, end_sensitive>::value>::type>
-inline
+          typename=std::enable_if_t<check_iterator_feature<Iterator, end_sensitive>::value>>
 private_mutable_t<Iterator>
 find_in_range(Iterator&& src, const Value& x)
 {
@@ -154,8 +148,7 @@ find_in_range(Iterator&& src, const Value& x)
 }
 
 template <typename Iterator, typename Predicate,
-          typename=typename std::enable_if<check_iterator_feature<Iterator, end_sensitive>::value>::type>
-inline
+          typename=std::enable_if_t<check_iterator_feature<Iterator, end_sensitive>::value>>
 private_mutable_t<Iterator>
 find_in_range_if(Iterator&& src, const Predicate& pred_arg)
 {

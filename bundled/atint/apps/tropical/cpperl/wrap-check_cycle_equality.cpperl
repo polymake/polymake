@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "check_cycle_equality.cc",
+ "inst": [
+  {"args": ["Max", "void", "void", "void"], "func": "check_cycle_equality", "include": ["polymake/TropicalNumber.h"], "sig": "check_cycle_equality:T1.B.B.x", "tp": "1"},
+  {"args": ["Min", "void", "void", "void"], "func": "check_cycle_equality", "include": ["polymake/TropicalNumber.h"], "sig": "check_cycle_equality:T1.B.B.x", "tp": "1"},
+ null ],
+"version": 3}

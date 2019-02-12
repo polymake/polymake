@@ -60,6 +60,16 @@ UserFunctionTemplate4perl("# @category Tropical operations"
                           "cramer(Matrix)");
 
 UserFunctionTemplate4perl("# @category Tropical operations"
+                          "# All __tropically optimal permutations__ of a matrix"
+                          "# (i.e. those yielding the tropical determinant)."
+                          "# @param Matrix< TropicalNumber<Addition,Scalar> > matrix"
+                          "# @return Set<Array<Int> >"
+                          "# @example"
+                          "# > print optimal_permutations(new Matrix<TropicalNumber<Min>>([-1,-1,2],[0,-2,-2],[0,2,0]));"
+                          "# | {<0 1 2> <1 2 0>}" ,
+                          "optimal_permutations(Matrix)");
+      
+UserFunctionTemplate4perl("# @category Tropical operations"
                           "# Tropical distance function. This is a metric on the tropical projective torus."
                           "# The same for Min and Max."
                           "# @param Vector<TropicalNumber<Addition,Scalar> > v"

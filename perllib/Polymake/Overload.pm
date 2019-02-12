@@ -18,28 +18,33 @@ use namespaces;
 use warnings qw(FATAL void syntax misc);
 use feature 'state';
 
-$Carp::Internal{'Polymake::Overload'}=1;
-$Carp::Internal{'Polymake::Overload::Node'}=1;
+$Carp::Internal{'Polymake::Overload'} = 1;
+$Carp::Internal{'Polymake::Overload::Node'} = 1;
 
 package Polymake::Overload;
 use Polymake::Ext;
-use Polymake::Enum qw( has_trailing_list=1<<30
-                       has_keywords=1<<29
-                       has_repeated=1<<28
-                       num_args_mask=(1<<28)-1
-                       has_final_typecheck_sub=1
-                       has_typecheck_object=2
-                       has_typecheck_sub=4
-                     );
 
-package _::Node;
+use Polymake::Enum SignatureFlags => {
+   has_trailing_list => 1<<30,
+   has_keywords => 1<<29,
+   has_repeated => 1<<28,
+   num_args_mask => (1<<28)-1
+};
+
+use Polymake::Enum TypecheckFlags => {
+   has_final_sub => 1,
+   has_object => 2,
+   has_sub => 4
+};
+
+package Polymake::Overload::Node;
 
 use Polymake::Struct (
    [ new => '$$$' ],
    [ '$min_arg' => '#1' ],               # min possible number of arguments
-   [ '$max_arg' => '#2' ],               # max possible number of arguments, optionally combined with special values $has_XXX
+   [ '$max_arg' => '#2' ],               # max possible number of arguments, optionally combined with SignatureFlags
    [ '$cur_arg' => 'undef' ],            # index of the argument this node has been chosen upon
-   [ '$next_arg' => '$num_args_mask' ],  # index of the next argument to check;  num_args_mask => stop checking, return the code
+   [ '$next_arg' => 'SignatureFlags::num_args_mask' ],  # index of the next argument to check;  num_args_mask => stop checking, return the code
    '$signature',                         # method name to look up in the package of the next argument
    [ '$backtrack' => '#3' ],             # another Node to try if no method is found
    [ '$typecheck' => 'undef' ],          # optional dynamic type checking subroutine/object and arguments to pass
@@ -48,22 +53,32 @@ use Polymake::Struct (
    '@flags',                             # 0 or has_keywords; indexed like @code
 );
 
+sub new_root {
+   new(@_, undef, undef, 0);
+}
 ####################################################################################
 sub clone_and_drop_code {
    my ($self)=@_;
-   $self->backtrack=inherit_class([ @$self ], $self);
-   $self->next_arg=$num_args_mask;
-   $self->code=[ ];
-   $self->ellipsis_code=undef;
-   $self->flags=[ ];
+   $self->backtrack = inherit_class([ @$self ], $self);
+   $self->next_arg = SignatureFlags::num_args_mask;
+   $self->code = [ ];
+   $self->ellipsis_code = undef;
+   $self->flags = [ ];
    $self
+}
+####################################################################################
+sub add_fallback {
+   my ($self, $code)=@_;
+   while (is_object($self->backtrack)) { $self=$self->backtrack; }
+   $self->backtrack=new($self, 0, SignatureFlags::has_trailing_list, 0);
+   $self->backtrack->ellipsis_code=$code;
 }
 ####################################################################################
 sub split_node {
    my ($src, $min)=@_;
    my ($new_min, $split_code)= $min >= $src->min_arg ? ($min, $min-$src->min_arg) : ($src->min_arg, 0);
-   my $ellipsis_code=$src->ellipsis_code
-   and $src->ellipsis_code=undef;
+   my $ellipsis_code = $src->ellipsis_code
+      and undef $src->ellipsis_code;
    inherit_class([ $new_min,
                    @$src[1..4],  # max_arg, cur_arg, next_arg, signature
                    0,            # backtrack
@@ -89,7 +104,7 @@ sub demangle {
 }
 ####################################################################################
 sub expand {
-   my ($self, $new_min, $new_max, $new_code, $labels)=@_;
+   my ($self, $new_min, $new_max, $new_code)=@_;
 
    if ($new_min < $self->min_arg) {
       if (@{$self->code}) {
@@ -100,9 +115,9 @@ sub expand {
    }
    assign_max($self->max_arg, $new_max);
 
-   my $limit=min($self->next_arg, $new_max & $num_args_mask);
+   my $limit=min($self->next_arg, $new_max & SignatureFlags::num_args_mask);
    my $insert_code_upto=$limit-$self->min_arg;
-   my $set_ellipsis_code= $new_max == ($limit | $has_trailing_list);
+   my $set_ellipsis_code= $new_max == ($limit | SignatureFlags::has_trailing_list);
 
    if ($insert_code_upto > $#{$self->code}) {
       if (defined($self->ellipsis_code)) {
@@ -112,11 +127,11 @@ sub expand {
       $insert_code_upto=$#{$self->code};
    }
    for (my $i=$new_min-$self->min_arg; $i <= $insert_code_upto; ++$i) {
-      $self->store_code($i, $new_code, $labels);
-      $self->flags->[$i] |= $new_max & $has_keywords;
+      $self->store_code($i, $new_code);
+      $self->flags->[$i] |= $new_max & SignatureFlags::has_keywords;
    }
-   if ($set_ellipsis_code && $self->next_arg >= $num_args_mask) {
-      $self->store_ellipsis_code($new_code, $labels);
+   if ($set_ellipsis_code && $self->next_arg >= SignatureFlags::num_args_mask) {
+      $self->store_ellipsis_code($new_code);
    }
 }
 ####################################################################################
@@ -135,36 +150,34 @@ sub push_code {
    push @{$self->code}, ($code) x $n;
 }
 ####################################################################################
-sub dup_code { $_[1] }
-####################################################################################
 sub dup_ellipsis_code {
    croak( "ambiguous overloading for ", demangle($_[0]) );
 }
 ####################################################################################
 sub perform_typechecks {
-   my ($self, $args, $backtrack, $bundled_repeated)=@_;
-   my $tc=$self->typecheck;
-   my $tc_flags=$tc->[0];
-   my $tc_index=1;
-   if ($tc_flags & $has_final_typecheck_sub) {
-      $_[4]=$tc->[$tc_index++];
+   my ($self, $args, $backtrack, $bundled_repeated) = @_;
+   my $tc = $self->typecheck;
+   my $tc_flags = $tc->[0];
+   my $tc_index = 1;
+   if ($tc_flags & TypecheckFlags::has_final_sub) {
+      $_[4] = $tc->[$tc_index++];
    }
    my $tc_proto;
-   my $arg_index=$self->cur_arg;
+   my $arg_index = $self->cur_arg;
    my $full_args=$args;
    if ($bundled_repeated) {
-      $tc_flags & $has_repeated or return 0;
-      $args=$full_args->[$arg_index];
-      $arg_index=0;
+      $tc_flags & SignatureFlags::has_repeated or return 0;
+      $args = $full_args->[$arg_index];
+      $arg_index = 0;
    }
-   if ($tc_flags & $has_typecheck_object) {
-      $tc_proto=$tc->[$tc_index++]->typecheck($full_args, $args->[$arg_index], $backtrack)
+   if ($tc_flags & TypecheckFlags::has_object) {
+      $tc_proto = $tc->[$tc_index++]->typecheck($full_args, $args, $arg_index, $backtrack)
         or return;
    }
-   if ($tc_flags & $has_repeated) {
+   if ($tc_flags & SignatureFlags::has_repeated) {
       my $n_args=@$args;
-      if ($tc_flags & $has_typecheck_object) {
-         while (++$arg_index < $n_args && $tc_proto->typecheck($full_args, $args->[$arg_index], $backtrack)) { }
+      if ($tc_flags & TypecheckFlags::has_object) {
+         while (++$arg_index < $n_args && $tc_proto->typecheck($full_args, $args, $arg_index, $backtrack)) { }
       } else {
          my $repeat_sig=$self->signature."+";
          while (++$arg_index < $n_args && can_signature($args->[$arg_index], $repeat_sig, 0)) { }
@@ -174,7 +187,7 @@ sub perform_typechecks {
          push @$backtrack, $self->cur_arg, \&unbundle_repeated_args;
       }
    }
-   not($tc_flags & $has_typecheck_sub)
+   not($tc_flags & TypecheckFlags::has_sub)
    or $tc->[$tc_index]->($full_args, $self->cur_arg, $backtrack, @$tc[$tc_index+1 .. $#$tc])
 }
 ####################################################################################
@@ -199,7 +212,7 @@ sub resolve {
                if (!defined($final_typecheck) || $final_typecheck->($args, \@backtrack)) {
                   if (defined (my $flags=$node->flags->[$n_args - $node->min_arg])) {
                      $candidate=$node->code->[$n_args - $node->min_arg];
-                     if ($flags == $has_keywords) {
+                     if ($flags == SignatureFlags::has_keywords) {
                         $kw_search_limit=$n_args;
                      } else {
                         return $candidate;
@@ -207,20 +220,20 @@ sub resolve {
                   } elsif (defined ($node->ellipsis_code)) {
                      # list of trailing arbitrary arguments
                      return $node->ellipsis_code;
-                  } elsif ($node->max_arg & $has_keywords) {
+                  } elsif ($node->max_arg & SignatureFlags::has_keywords) {
                      # list of key-value pairs?
                      $kw_search_limit=$node->min_arg+@{$node->code};
                   }
                   undef $final_typecheck;
                }
-            } elsif ($node->max_arg & $has_keywords  and  $node->min_arg <= $node->next_arg) {
+            } elsif ($node->max_arg & SignatureFlags::has_keywords  and  $node->min_arg <= $node->next_arg) {
                $kw_search_limit=$node->next_arg+1;
             }
             if (defined $kw_search_limit) {
                for (my ($pos, $arg)=(0, $node->min_arg);
                     $arg < $kw_search_limit;
                     ++$pos, ++$arg) {
-                  if ($node->flags->[$pos] & $has_keywords  and  is_keyword_or_hash($args->[$arg])) {
+                  if ($node->flags->[$pos] & SignatureFlags::has_keywords  and  is_keyword_or_hash($args->[$arg])) {
                      if (!defined($final_typecheck) || $final_typecheck->($args, \@backtrack)) {
                         store_kw_args($args, $arg);
                         return $node->code->[$pos];
@@ -234,7 +247,7 @@ sub resolve {
 
             # got to check the next argument
             if ($n_args > $node->next_arg  and
-                ($bundled_repeated, my $nodesub)=can_signature($args->[$node->next_arg], $node->signature, $node->max_arg & $has_repeated)) {
+                ($bundled_repeated, my $nodesub)=can_signature($args->[$node->next_arg], $node->signature, $node->max_arg & SignatureFlags::has_repeated)) {
                $node=&$nodesub;
                next;
             }
@@ -260,71 +273,72 @@ sub resolve {
       $bundled_repeated=0;
    }
 }
-####################################################################################
-sub complain_mismatch {
-   "already defined without labels"
-}
-####################################################################################
-
-package __::LabeledNode;
-
-use Polymake::Struct (
-   [ '@ISA' => 'Node' ],
-);
 
 ####################################################################################
-sub create_controls {
-   my ($list, $c, $labels)=@_;
-   foreach my $label (@$labels) {
-      $label->add_control($list, $c);
-   }
-   $list;
-}
-####################################################################################
-sub store_code {
-   my ($self, $i, $code, $labels)=@_;
-   create_controls(($self->code->[$i] //= [ ]), $code, $labels);
-}
-####################################################################################
-sub store_ellipsis_code {
-   my ($self, $code, $labels)=@_;
-   create_controls(($self->ellipsis_code //= [ ]), $code, $labels);
-}
-####################################################################################
-sub push_code {
-   my ($self, $n, $code, $labels)=@_;
-   push @{$self->code}, map { create_controls([ ], $code, $labels) } 1..$n;
-}
-####################################################################################
-sub dup_code { $_[1] && $_[1]->dup }
-####################################################################################
-sub dup_ellipsis_code {
-   my ($self, $upto)=@_;
-   push @{$self->code}, map { $self->ellipsis_code->dup } @{$self->code}..$upto;
-}
-####################################################################################
-sub resolve {
-   my $l=&Node::resolve;
-   $l && $l->resolve($_[1]);
-}
-####################################################################################
-sub complain_mismatch {
-   "already defined with labels and signature"
-}
-####################################################################################
-package __::Labeled;
+package Polymake::Overload::LabeledNode;
 
 use Polymake::Struct (
    '@control_list',
 );
 
-sub resolve {
-   $_[0]->control_list->resolve;
+sub add {
+   my ($self, $label, $node)=@_;
+   $label->add_control($self->control_list, $node);
 }
 
-sub complain_mismatch {
-   "already defined without signature"
+sub resolve {
+   my ($self, $args)=@_;
+   my $code;
+   for my $node (@{$self->control_list->items}) {
+      last if defined($code=$node->resolve($args));
+   }
+   $code
 }
+
+sub invalidate_on_change {
+   my ($self, $ptr)=@_;
+   push @{$self->control_list->destroy_on_change //= [ ]}, $ptr;
+   $ptr
+}
+
+####################################################################################
+package Polymake::Overload::GlobalLabeledNode;
+
+use Polymake::Struct (
+   [ '@ISA' => 'Node' ],
+);
+
+sub store_code {
+   my ($self, $i, $method_with_label)=@_;
+   my ($method, $label)=@$method_with_label;
+   $label->add_control($self->code->[$i] //= [ ], $method);
+}
+
+sub store_ellipsis_code {
+   my ($self, $method_with_label)=@_;
+   my ($method, $label)=@$method_with_label;
+   $label->add_control($self->ellipsis_code //= [ ], $method);
+}
+
+sub dup_ellipsis_code {
+   my ($self, $upto)=@_;
+   push @{$self->code}, map { $self->ellipsis_code->dup } @{$self->code}..$upto;
+}
+
+sub push_code {
+   my ($self, $n, $method_with_label)=@_;
+   my ($method, $label)=@$method_with_label;
+   push @{$self->code}, map { $label->add_control(my $cl=[ ], $method); $cl } 1..$n;
+}
+
+sub resolve {
+   if (my $cl=&Node::resolve) {
+      $cl->items->[0]
+   } else {
+      undef
+   }
+}
+
 ####################################################################################
 package Polymake::Overload;
 
@@ -403,40 +417,35 @@ sub restore_type_param_list {
 my %dictionary;
 
 sub dict_node {
-   my ($pkg, $name, $is_method, $node_type)=@_;
+   my ($pkg, $name, $is_method, $label)=@_;
    my $node=$dictionary{$pkg}->{$name};
-   if (defined($node)) {
-      if (ref($node) ne $node_type) {
-         croak( $is_method ? "method" : "function", " $pkg\::$name ", $node->complain_mismatch );
+   if (!defined($node)) {
+      if ($is_method) {
+         no strict 'refs';
+         if (exists &{"$pkg\::$name"}) {
+            croak( "non-overloaded method $pkg\::$name already defined" );
+         }
+      } elsif (defined (my $sub=namespaces::lookup_sub($pkg, $name))) {
+         my $owner_pkg=method_owner($sub);
+         if (defined (($node=$dictionary{$owner_pkg}) &&= $node->{$name})) {
+            # expanding the imported overloaded function
+            $dictionary{$pkg}->{$name}=$node;
+         } else {
+            croak( "non-overloaded function $pkg\::$name already ",
+                   $owner_pkg ne $pkg ? "imported from package $owner_pkg" : "defined" );
+         }
       }
-   } elsif ($is_method) {
-      no strict 'refs';
-      if (exists &{"$pkg\::$name"}) {
-         croak( "non-overloaded method $pkg\::$name already defined" );
-      }
-   } elsif (defined (my $sub=namespaces::lookup($pkg,$name))) {
-      my $owner_pkg=method_owner($sub);
-      if (defined (($node=$dictionary{$owner_pkg}) &&= $node->{$name})) {
-         # expanding the imported overloaded function
-         $dictionary{$pkg}->{$name}=$node;
-      } else {
-         croak( "non-overloaded function $pkg\::$name already ",
-                $owner_pkg ne $pkg ? "imported from package $owner_pkg" : "defined" );
-      }
+   }
+   if (defined($node) && instanceof Node($node) == defined($label)) {
+      croak( $is_method ? "method" : "function", " $pkg\::$name already defined ",
+             defined($label) ? "without labels" : "with labels" );
    }
    $node;
 }
 ####################################################################################
 sub add_fallback {
    my ($pkg, $name, $code)=@_;
-   add_fallback_to_node(($dictionary{$pkg} && $dictionary{$pkg}->{$name}) // croak( "unknown overloaded function $pkg\::$name" ), $code);
-}
-####################################################################################
-sub add_fallback_to_node {
-   my ($node, $code)=@_;
-   while (is_object($node->backtrack)) { $node=$node->backtrack; }
-   $node->backtrack=$node->new(0, $has_trailing_list, 0);
-   $node->backtrack->ellipsis_code=$code;
+   (($dictionary{$pkg} && $dictionary{$pkg}->{$name}) // croak( "unknown overloaded function $pkg\::$name" ))->add_fallback($code);
 }
 ####################################################################################
 # private:
@@ -451,9 +460,9 @@ sub analyze_signature_element {
    }
    if (@typecheck) {
       if (@typecheck==1 && $typecheck[0] eq "+") {
-         @typecheck=($has_repeated);
+         @typecheck = (SignatureFlags::has_repeated);
       } elsif (ref($typecheck[0] eq "CODE")) {
-         unshift @typecheck, $has_typecheck_sub;
+         unshift @typecheck, TypecheckFlags::has_sub;
       } else {
          croak( "invalid argument amendment ", ref($typecheck[0]) || "'$typecheck[0]'" );
       }
@@ -465,7 +474,7 @@ sub analyze_signature_element {
               or croak( "context-dependent type parameter ", $arg_type->full_name, " can only be referred to in methods of ", $arg_type->context_pkg );
          }
          if (defined($arg_type->perform_typecheck)) {
-            $typecheck[0] |= $has_typecheck_object;
+            $typecheck[0] |= TypecheckFlags::has_object;
             splice @typecheck, 1, 0, $arg_type;
          }
       }
@@ -477,7 +486,7 @@ sub analyze_signature_element {
       # final typecheck applies if the resolving procedure can stop after this argument
       do { ++$arg } while ($arg<$min && !ref($elem=$arg_list->[$arg]) && $elem eq '$');
       if ($arg >= $min) {
-         $typecheck[0] |= $has_final_typecheck_sub;
+         $typecheck[0] |= TypecheckFlags::has_final_sub;
          splice @typecheck, 1, 0, $final_typecheck;
       }
    }
@@ -503,13 +512,13 @@ sub compare_typechecks {
       }
       # Assume the new instance being more specific than all ones defined prior to it: insert at the beginning of the candidate list
       my $sibling_node=$node->clone_and_drop_code;
-      $sibling_node->min_arg=$min;
-      $sibling_node->max_arg=$max - ($typecheck->[0] & $has_repeated);
-      $sibling_node->cur_arg=$arg;
+      $sibling_node->min_arg = $min;
+      $sibling_node->max_arg = $max - ($typecheck->[0] & SignatureFlags::has_repeated);
+      $sibling_node->cur_arg = $arg;
       $sibling_node->typecheck=$typecheck;
       if (!defined($arg)) {
          # If the old root node describes functions without type parameters, they must be protected against parameterized cousins
-         $node->backtrack->typecheck //= [ $has_typecheck_sub, \&check_explicit_typelist, 0, 0 ];
+         $node->backtrack->typecheck //= [ TypecheckFlags::has_sub, \&check_explicit_typelist, 0, 0 ];
       }
       $sibling_node
    } elsif (defined $node->typecheck) {
@@ -526,7 +535,7 @@ sub compare_typechecks {
       my $sibling_node=$node->new($min, $max, $node->backtrack);
       if (!defined($arg)) {
          # The new root node describes functions without type parameters: must protect them against parameterized cousins
-         $sibling_node->typecheck=[ $has_typecheck_sub, \&check_explicit_typelist, 0, 0 ];
+         $sibling_node->typecheck=[ TypecheckFlags::has_sub, \&check_explicit_typelist, 0, 0 ];
       }
       $node->backtrack=$sibling_node;
    } else {
@@ -535,10 +544,10 @@ sub compare_typechecks {
 }
 ####################################################################################
 sub add_instance {
-   my ($caller, $name, $code, $labels, $arg_types, $tparams, $root_node)=@_;
+   my ($caller, $name, $label, $code, $arg_types, $tparams, $root_node, $node_type, $invalidate_on_change)=@_;
    my ($min, $max, @arg_list)=@$arg_types;
    my $pkg=$name =~ s/^(.*)::([^:]+)$/$2/ ? $1 : $caller;
-   my ($is_method, $is_lvalue)= is_object($code) ? (1, 0) : (is_method($code), is_lvalue($code));
+   my ($is_method, $is_lvalue)= is_object($code) ? (1, 0) : $pkg eq "Polymake::Overload::Global" ? (0, 0) : (is_method($code), is_lvalue($code));
    my $method_context_pkg;
    if ($is_method) {
       ++$min;
@@ -546,25 +555,36 @@ sub add_instance {
       unshift @arg_list, $pkg;
       $method_context_pkg=$pkg;
    }
-   my $node_type= $labels ? "Polymake::Overload::LabeledNode" : "Polymake::Overload::Node";
-   my ($signature, @last_glob, $sibling_node, $backtrack_node, $typecheck, $arg_pkg);
+   my ($signature, @last_glob, $sibling_node, $backtrack_node, $typecheck, $arg_pkg, $final_typecheck, $node);
    if (defined $tparams) {
-      $typecheck=[ $has_typecheck_sub, \&check_explicit_typelist, @$tparams ];
+      $typecheck=[ TypecheckFlags::has_sub, \&check_explicit_typelist, @$tparams ];
    }
-   my $final_typecheck;
    $final_typecheck=pop(@arg_list) if @arg_list && is_code($arg_list[-1]);
+   if (defined($final_typecheck) && !@arg_list) {
+      $typecheck //= [ 0 ];
+      $typecheck->[0] |= TypecheckFlags::has_final_sub;
+      splice @$typecheck, 1, 0, $final_typecheck;
+   }
    my $arg= $is_method && !defined($root_node) ? 0 : -1;
+   $node_type //= "Polymake::Overload::Node";
 
-   if (defined($root_node) && !defined($root_node->min_arg)) {
-      # first use of a root node created outside
-      $root_node->min_arg=$min;
-      $root_node->max_arg=$max;
-      $root_node->typecheck=$typecheck;
-      $signature=$name;
-      $sibling_node=$root_node;
+   if (defined($root_node)) {
+      if (defined($root_node->min_arg)) {
+         # revisiting a root node created outside
+         $node=$root_node;
+      } else {
+         # first use of a root node created outside
+         $root_node->min_arg=$min;
+         $root_node->max_arg=$max;
+         $root_node->typecheck=$typecheck;
+         $signature=$name;
+         $sibling_node=$root_node;
+      }
+   } elsif (defined($root_node=dict_node($pkg, $name, $is_method, $label))) {
+      $node= defined($label) ? $root_node->control_list->find_item_of_label($label) : $root_node;
+   }
 
-   } elsif (defined (my $node= $root_node // dict_node($pkg, $name, $is_method, $node_type))) {
-
+   if (defined($node)) {
       ($signature)=$node->signature =~ /^([^,\[]+)/;
 
       if (!defined( $sibling_node=compare_typechecks($node, undef, $min, $max, $typecheck, $signature))) {
@@ -576,8 +596,8 @@ sub add_instance {
             # $node => existing Node with arguments 0..$arg identical to those in the new signature
             while (++$arg <= $#arg_list && !ref($arg_list[$arg]) && $arg_list[$arg] eq '$') { $signature.=',$' }
 
-            if ($typecheck and $typecheck->[0] & $has_repeated) {
-               $max -= $has_repeated;
+            if ($typecheck and $typecheck->[0] & SignatureFlags::has_repeated) {
+               $max -= SignatureFlags::has_repeated;
             }
 
             if ($arg <= $#arg_list) {
@@ -587,7 +607,7 @@ sub add_instance {
                   my $next_arg=$node->next_arg;
                   if ($next_arg == $arg) {
                      # $node and the new signature have the next non-trivial arguments at the same position
-                     $node->expand($min, $max, $code, $labels);
+                     $node->expand($min, $max, $code);
                      $min=$arg+1 if $min<=$arg;
                      my $next_node_sub=UNIVERSAL::can($arg_pkg, $signature);
                      if (defined($next_node_sub)  &&  $arg_pkg eq method_owner($next_node_sub)) {
@@ -607,7 +627,7 @@ sub add_instance {
                   } elsif ($next_arg < $arg) {
                      # $node has a non-trivial argument at a position where the new signature has a wildcard '$':
                      # create a node for UNIVERSAL package or follow it if it already exists
-                     $node->expand($min, $max, $code, $labels);
+                     $node->expand($min, $max, $code);
                      $min=$next_arg+1 if $min<=$next_arg;
                      if (defined (my $next_node_sub=UNIVERSAL->can($node->signature))) {
                         $node=&$next_node_sub;
@@ -616,15 +636,15 @@ sub add_instance {
 
                      my $uni_node=$node_type->new($min, $max, 0);
                      if ($min <= $arg) {
-                        $uni_node->push_code($arg-$min+1, $code, $labels);
-                        push @{$uni_node->flags}, ($max & $has_keywords) x ($arg-$min+1);
+                        $uni_node->push_code($arg-$min+1, $code);
+                        push @{$uni_node->flags}, ($max & SignatureFlags::has_keywords) x ($arg-$min+1);
                         $min=$arg+1;
                      }
                      $uni_node->signature=$signature;
                      $uni_node->next_arg=$arg;
                      define_function("UNIVERSAL", $node->signature, sub : method { $uni_node });
 
-                  } elsif ($next_arg < $num_args_mask) {
+                  } elsif ($next_arg < SignatureFlags::num_args_mask) {
                      # $node has a wildcard '$' at a position where the new signature has a non-trivial argument:
                      # create a new intermediate node for UNIVERSAL package
                      my $uni_node=$node->split_node($arg+1);
@@ -635,14 +655,14 @@ sub add_instance {
                      } else {
                         define_function("UNIVERSAL", $signature, sub : method { $uni_node });
                      }
-                     $node->expand($min, $max, $code, $labels);
+                     $node->expand($min, $max, $code);
                      $min=$arg+1 if $min<=$arg;
                      $node->signature=$signature;
                      $node->next_arg=$arg;
 
                   } else {
                      # $node does not have any non-trivial arguments more
-                     if (($node->max_arg & ($num_args_mask | $has_trailing_list)) > $arg) {
+                     if (($node->max_arg & (SignatureFlags::num_args_mask | SignatureFlags::has_trailing_list)) > $arg) {
                         # $node has a wildcard at the position $arg or covers it with the trailing list:
                         # create an intermediate node for UNIVERSAL package
                         my $uni_node=$node->split_node($arg+1);
@@ -656,7 +676,7 @@ sub add_instance {
                      }
                      $node->signature=$signature;
                      $node->next_arg=$arg;
-                     $node->expand($min, $max, $code, $labels);
+                     $node->expand($min, $max, $code);
                      $min=$arg+1 if $min<=$arg;
                   }
 
@@ -667,9 +687,9 @@ sub add_instance {
             } else {
                # the new signature does not have any non-trivial arguments more
                for (;;) {
-                  $node->expand($min, $max, $code, $labels);
+                  $node->expand($min, $max, $code);
                   my $next_arg=$node->next_arg;
-                  if ($next_arg >= $num_args_mask || $next_arg >= ($max & ($num_args_mask | $has_trailing_list))) {
+                  if ($next_arg >= SignatureFlags::num_args_mask || $next_arg >= ($max & (SignatureFlags::num_args_mask | SignatureFlags::has_trailing_list))) {
                      # nothing to do more if:
                      # - the signature of $node ends as well here
                      # - new signature does not have a trailing list and ends before the next non-trivial argument of $node
@@ -693,6 +713,9 @@ sub add_instance {
       # first instance of this function
       $signature=".$pkg\@$name";
       $signature =~ s/::/\@/g;
+      if (defined($label)) {
+         $signature .= "#" . $label->full_name;
+      }
    }
 
    if (defined $typecheck) {
@@ -703,13 +726,13 @@ sub add_instance {
       my $last_arg=$arg;
       while (++$arg <= $#arg_list && !ref($arg_list[$arg]) && $arg_list[$arg] eq '$') { $signature.=',$' }
 
-      if ($typecheck and $typecheck->[0] & $has_repeated) {
-         $max -= $has_repeated;
+      if ($typecheck and $typecheck->[0] & SignatureFlags::has_repeated) {
+         $max -= SignatureFlags::has_repeated;
       }
       my $node=$sibling_node // $node_type->new($min, $max, 0);
       if ($min<=$arg) {
-         $node->push_code($arg-$min+1, $code, $labels);
-         push @{$node->flags}, ($max & $has_keywords) x ($arg-$min+1);
+         $node->push_code($arg-$min+1, $code);
+         push @{$node->flags}, ($max & SignatureFlags::has_keywords) x ($arg-$min+1);
          $min=$arg+1;
       }
       $node->signature=$signature;
@@ -719,20 +742,38 @@ sub add_instance {
       } else {
          if (@last_glob) {
             my $nodesub=define_function(@last_glob, sub : method { state %next_method_cache; $node });
-            $node->backtrack= $backtrack_node // ($last_glob[0] !~ /^(?:UNIVERSAL|namespaces::TypeExpression)\b/ && $nodesub);
+            $node->backtrack= $backtrack_node // ($last_glob[0] !~ /^UNIVERSAL\b/ && $nodesub);
             $node->cur_arg=$last_arg;
             if (defined($typecheck) and @$typecheck==1) {
                # simple repeated argument
                define_function($last_glob[0], "$signature+", sub : method { 1 });
             }
             undef $backtrack_node;
+         } elsif (defined($root_node)) {
+            $root_node->add($label, $node);
          } else {
-            no warnings 'void';
-            use namespaces::AnonLvalue '$is_lvalue';
-            $dictionary{$pkg}->{$name}=$node;
-            my $head_code=define_function($pkg, $name,
-                                          sub { $is_lvalue; &{ $node->resolve(\@_) // complain($pkg, $name, $is_method, \@_) } });
-            set_method($head_code) if $is_method;
+            if (defined($label)) {
+               $root_node=new LabeledNode();
+               $root_node->add($label, $node);
+            } else {
+               $root_node=$node;
+            }
+            $dictionary{$pkg}->{$name}=$root_node;
+            if ($pkg ne "Polymake::Overload::Global") {
+               my $head_code;
+               if ($invalidate_on_change) {
+                  $head_code=define_function($pkg, $name,
+                                             sub { $root_node->invalidate_on_change(&{ $root_node->resolve(\@_) // complain($pkg, $name, $is_method, \@_) }) });
+               } else {
+                  no warnings 'void';
+                  use namespaces::AnonLvalue '$is_lvalue';
+                  $head_code=define_function($pkg, $name,
+                                             sub { $is_lvalue; &{ $root_node->resolve(\@_) // complain($pkg, $name, $is_method, \@_) } });
+               }
+               set_method($head_code) if $is_method;
+            } else {
+               define_function($pkg, $name, sub { $root_node->resolve(\@_) // complain($pkg, $name, $is_method, \@_) });
+            }
          }
          $node->typecheck=$typecheck;
       }
@@ -747,8 +788,8 @@ sub add_instance {
             $signature.=sprintf("[%x]", $typecheck);
          }
       } else {
-         if ($max >= $has_trailing_list) {
-            $node->store_ellipsis_code($code, $labels);
+         if ($max >= SignatureFlags::has_trailing_list) {
+            $node->store_ellipsis_code($code, $label);
          }
          last;
       }
@@ -766,79 +807,68 @@ sub complain {
    my @args=map { defined($type=fetch_type($_)) ? $type->full_name : ref($_) || "\$" } @$args;
    if (my $leading_object=$is_method && shift @args) {
       croak( "no matching overloaded instance of $leading_object\->$name(" . join(", ", @args) . ")" );
+   } elsif ($pkg eq "__OPERATOR__") {
+      if (@args==1) {
+         croak( "no matching overloaded instance of operator $name $args[0]" );
+      } else {
+         croak( "no matching overloaded instance of operator $args[0] $name $args[1]" );
+      }
    } else {
       croak( "no matching overloaded instance of $pkg\::$name(" . join(", ", @args) . ")" );
    }
 }
 ####################################################################################
-# 'name', \&code, [ min_arg, max_arg, @arg_list ], options  =>
+# 'name', Label, \&code, [ min_arg, max_arg, @arg_list ], options  =>
 sub add {
-   ((undef, my ($name, $code, $arg_types, %opts))=@_) >= 4 or return;
+   ((undef, my ($name, $label, $code, $arg_types, %opts))=@_) >= 5 or return;
    my $caller=caller;
-   my $label=$opts{label};
-   $label=[ $label ] if is_object($label);
-   if (defined $arg_types) {
-      add_instance($caller, $name, $code, $label, $arg_types, $opts{tparams}, $opts{root_node});
-      if ($label && ref($code) eq "CODE") {
-         $name =~ /([^:]+)$/;
-         set_sub_name($code, $1);
-      }
-   } else {
-      # without signature
-      croak( "neither labels nor signature specified" ) unless defined($label);
-      my $is_method=is_method($code);
-      my $pkg= $name =~ s/^(.*)::([^:]+)$/$2/ ? $1 : $caller;
-      my $node=dict_node($pkg, $name, $is_method, "Polymake::Overload::Labeled");
-      if (!defined($node)) {
-         no warnings 'void';
-         use namespaces::AnonLvalue '$is_lvalue';
-         my $is_lvalue=is_lvalue($code);
-         $node=$dictionary{$pkg}->{$name}=new Labeled;
-         my $head_code=define_function($pkg, $name,
-                                       sub { $is_lvalue; &{ $node->resolve } });
-         set_method($head_code) if $is_method;
-      }
-      LabeledNode::create_controls($node->control_list, $code, $label);
-   }
+   add_instance($caller, $name, $label, $code, $arg_types, @opts{qw( tparams root_node node_type invalidate_on_change )});
 }
 ####################################################################################
 sub add_global {
-   (undef, my ($name, $code, $arg_types, %opts))=@_;
+   (undef, my ($name, $label, $code, $arg_types, %opts))=@_;
    my $caller=caller;
    croak( "cannot declare a non-method '$name' as global" ) unless is_method($code);
    croak( "package $caller tries to declare method '$name' as global although it comes from different package" )
       unless method_owner($code) eq $caller;
-   my $label=$opts{label};
-   $label=[ $label ] if is_object($label);
-   add_instance("Polymake::Overload::Global", $name, sub { $code }, $label, $arg_types);
-   add_instance($caller, $name, $code, undef, $arg_types, $opts{tparams});
-   $name =~ s/^.*::([^:]+)$/$1/;
-   if ($label) {
-      set_sub_name($code, $name);
+   if (defined $label) {
+      add_instance("Polymake::Overload::Global", $name, undef, [$code, $label], $arg_types, undef, undef, "Polymake::Overload::GlobalLabeledNode");
+   } else {
+      add_instance("Polymake::Overload::Global", $name, undef, $code, $arg_types);
    }
+   add_instance($caller, $name, undef, $code, $arg_types, $opts{tparams});
 }
 ####################################################################################
-sub resolve {
-   my ($pkg, $function, $args)=@_;
-   my $node;
-   ($node=$dictionary{$pkg}  and  $node=$node->{$function}) ||
-   ($node=&UNIVERSAL::can  and  $node=$dictionary{method_owner($node)}  and  $node=$node->{$function})
-   and $node->resolve($args)
+sub find_root_node {
+   my ($pkg, $function)=@_;
+   my $node=$dictionary{$pkg};
+   my $sub;
+   $node &&= $node->{$function}  or
+   ($sub=namespaces::lookup_sub($pkg, $function) and
+    $node=$dictionary{method_owner($sub)} and
+    $function =~ /::($id_re)$/o, $node=$node->{$1 // $function})
 }
 
-# for labeled functions returns the entire control list!
-sub resolve_labeled {
+sub resolve {
    my ($pkg, $function, $args)=@_;
-   my $node;
-   $node=$dictionary{$pkg}  and  $node=$node->{$function}  and  Node::resolve($node,$args);
+   if (my $node=&find_root_node) {
+      $node->resolve($args)
+   }
+}
+
+sub resolve_global {
+   my ($function, $args)=@_;
+   my $node=$dictionary{"Polymake::Overload::Global"};
+   $node &&= $node->{$function}  and  Node::resolve($node, $args);
 }
 
 sub resolve_method {
    my $head=&UNIVERSAL::can or return undef;
    my ($method)=splice @_, 1, 1;
    my $node=$dictionary{method_owner($head)};
-   ($node &&= $node->{$method}) ? $head=$node->resolve(\@_) : undef
+   $node &&= $node->{$method}  and  $node->resolve(\@_);
 }
+
 ####################################################################################
 sub process_kw_args {
    # for performance reasons we duplicate some code instead of branching in the loop
@@ -905,13 +935,13 @@ sub process_kw_args {
    # filter the values and fill in the defaults
    $t=0;
    foreach $table (@_) {
-      my $processed_args=$processed_args[$t++];
-      while (my ($key, $descr)=each %$table) {
+      my $processed_args = $processed_args[$t++];
+      while (my ($key, $descr) = each %$table) {
          if (exists $processed_args->{$key}) {
-            $descr=$descr->[0] if is_ARRAY($descr);
+            $descr = $descr->[0] if is_array($descr);
             $descr->($processed_args, $key) if is_code($descr);
 
-         } elsif (is_ARRAY($descr)) {
+         } elsif (is_array($descr)) {
             my $default=$descr->[1];
             if (is_code($default)) {
                $default->($processed_args, $key);

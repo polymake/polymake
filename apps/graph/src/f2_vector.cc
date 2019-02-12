@@ -43,16 +43,14 @@ Matrix<Integer> f2_vector(perl::Object p)
             F2(i,j)=F2(j,i)=cnt;
          }
 
-         const typename Lattice<Decoration, SeqType>::nodes_of_rank_type this_layer=HD.nodes_of_rank(i+1);
+         const auto this_layer=HD.nodes_of_rank(i+1);
          F2(i,i) = this_layer.size();
          if (++i>=d) break;
 
-         for (auto this_layer_node=entire(this_layer);
-              !this_layer_node.at_end();  ++this_layer_node) {
-            Graph<Directed>::in_adjacent_node_list_ref in_edges=G.in_adjacent_nodes(*this_layer_node);
-            for (auto next_layer_node=G.out_adjacent_nodes(*this_layer_node).begin();
-                 !next_layer_node.at_end();  ++next_layer_node)
-               G.in_adjacent_nodes(*next_layer_node) += in_edges;
+         for (const auto this_layer_node : this_layer) {
+            auto&& in_edges=G.in_adjacent_nodes(this_layer_node);
+            for (const auto next_layer_node : G.out_adjacent_nodes(this_layer_node))
+               G.in_adjacent_nodes(next_layer_node) += in_edges;
             in_edges.clear();
          }
       }

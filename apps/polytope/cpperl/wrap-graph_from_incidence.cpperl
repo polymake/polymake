@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "graph_from_incidence.cc",
+ "inst": [
+  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>"], "func": "graph_from_incidence", "include": ["polymake/IncidenceMatrix.h"], "sig": "graph_from_incidence.X"},
+ null ],
+"version": 3}

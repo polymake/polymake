@@ -57,8 +57,8 @@ MatrixOrbitPair symmetrize_poly_reps(const Matrix<Rational>& facets_in,
          hash_set<int> cur_facet_orbit;
          cur_facet_orbit += i;
          const auto orbit = group::orbits_in_orbit_order_impl(action, vector2row(facets.row(i)));
-         for (Entire<Rows<ListMatrix<Vector<Rational>>>>::const_iterator row = entire(rows(orbit.first)); !row.at_end(); ++row) {
-            for (Entire<Set<int>>::iterator index = entire(not_checked); !index.at_end(); ++index) {
+         for (auto row = entire(rows(orbit.first)); !row.at_end(); ++row) {
+            for (auto index = entire(not_checked); !index.at_end(); ++index) {
                if (equivalent_modulo_nullspace(*row, facets.row(*index), nullspace)) {
                   cur_facet_orbit += *index;
                   symmetric_facets.row(*index) = *row;

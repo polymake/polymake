@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "ppl_ch_client.cc",
+ "inst": [
+  {"args": ["Rational"], "func": "ppl_interface::create_convex_hull_solver", "include": ["polymake/Rational.h"], "sig": "create_convex_hull_solver#ppl.convex_hull:T1", "tp": "1"},
+ null ],
+"version": 3}

@@ -86,13 +86,17 @@ class generic_of_GraphComponents<GraphRef, polymake::graph::max_cliques_iterator
 
 namespace polymake { namespace graph {
 
-template <typename GraphTop> inline
-pm::GraphComponents<const GraphTop&, max_cliques_iterator>
-max_cliques(const GenericGraph<GraphTop, Undirected>& G) { return G.top(); }
+template <typename TGraph>
+auto max_cliques(const GenericGraph<TGraph, Undirected>& G)
+{
+   return pm::GraphComponents<const TGraph&, max_cliques_iterator>(G.top());
+}
 
-template <typename GraphTop> inline
-pm::GraphComponents<Graph<>, max_cliques_iterator>
-max_independent_sets(const GenericGraph<GraphTop, Undirected>& G) { return ~G; }
+template <typename TGraph>
+auto max_independent_sets(const GenericGraph<TGraph, Undirected>& G)
+{
+   return pm::GraphComponents<Graph<>&&, max_cliques_iterator>(~G);
+}
 
 } }
 

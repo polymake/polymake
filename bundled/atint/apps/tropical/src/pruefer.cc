@@ -27,7 +27,7 @@ namespace polymake { namespace tropical {
 	///////////////////////////////////////////////////////////////////////////////////////
 
 	//Documentation see header
-	Matrix<int> prueferSequenceFromValences(int n, Matrix<int> valences) {
+	Matrix<int> prueferSequenceFromValences(int n, const Matrix<int>& valences) {
 
 		//Compute basic parameters
 		int no_of_edges = valences.cols()-1;
@@ -69,7 +69,7 @@ namespace polymake { namespace tropical {
 				for(int k = 0; k < valences.cols()-1; k++) {
 					//Take smallest free entry for first appearance of current vector
 					current_sequence[free_entries[0]] = n+k;
-					free_entries = free_entries.slice(~scalar2set(0));
+					free_entries = free_entries.slice(range_from(1));
 					//Insert remaining entries
 					Set<int> entry_distro = (distributions[k])[seq_iterator[k]];
 					Set<int> entries_to_set = Set<int>(free_entries.slice(entry_distro));
@@ -124,7 +124,7 @@ namespace polymake { namespace tropical {
 		p.take("INEQUALITIES") << ineq;
 		p.take("EQUATIONS") << eq;
 		Matrix<int> latt = p.call_method("LATTICE_POINTS");
-		latt = latt.minor(All, ~scalar2set(0));
+		latt = latt.minor(All, range_from(1));
 
 		return prueferSequenceFromValences(n,latt);
 	}//END dimension_k_prueferSequence

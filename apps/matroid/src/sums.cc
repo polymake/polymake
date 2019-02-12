@@ -137,11 +137,11 @@ perl::Object single_element_series_extension(perl::Object m, const int e) //with
    m_new.set_description()<<"The series extension of "<<m.name()<<" and U(1,2), with basepoints "<< e <<"."<<endl;
    m_new.take("N_ELEMENTS")<<(n+1);
 
-   Array<Set<int> > bases=m.give("BASES");
-   std::list< Set<int> > new_bases;
-   for (Entire< Array< Set<int> > >::const_iterator i=entire(bases); !i.at_end(); ++i) {
+   Array<Set<int>> bases=m.give("BASES");
+   std::list<Set<int>> new_bases;
+   for (auto i=entire(bases); !i.at_end(); ++i) {
       new_bases.push_back(*i+n);
-      if(!(i->contains(e))){
+      if (!(i->contains(e))) {
          new_bases.push_back(*i+e);
       }
    }

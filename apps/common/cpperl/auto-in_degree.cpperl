@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Wary<Graph<DirectedMulti>>&>", "void"], "func": "in_degree", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "in_degree:M4.x"},
+  {"args": ["perl::Canned<const Wary<Graph<Directed>>&>", "void"], "func": "in_degree", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "in_degree:M4.x"},
+ null ],
+"version": 3}

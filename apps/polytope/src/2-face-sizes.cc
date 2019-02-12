@@ -22,16 +22,15 @@
 namespace polymake { namespace polytope {
 namespace {
 
-typedef Map<int,int> face_map_type;
-typedef graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential>::nodes_of_rank_type nodes_list;
+using face_map_type = Map<int, int>;
 
-template <typename IM> inline
-face_map_type count(const GenericIncidenceMatrix<IM>& adj, const nodes_list& face_indices)
+template <typename IM, typename NodeList>
+face_map_type count(const GenericIncidenceMatrix<IM>& adj, const NodeList& face_indices)
 {
    face_map_type face_map;
 
-   for (auto f=entire(face_indices); !f.at_end(); ++f)
-      face_map[adj.col(*f).size()]++;
+   for (const auto f : face_indices)
+      ++face_map[adj.col(f).size()];
    return face_map;
 }
 }

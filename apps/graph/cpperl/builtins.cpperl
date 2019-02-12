@@ -1,0 +1,6 @@
+{"app": "graph",
+ "inst": [
+  {"builtin": "graph::lattice::Nonsequential", "include": ["polymake/graph/Decoration.h"], "pkg": "Polymake::graph::Nonsequential"},
+  {"builtin": "graph::lattice::Sequential", "include": ["polymake/graph/Decoration.h"], "pkg": "Polymake::graph::Sequential"},
+ null ],
+"version": 3}

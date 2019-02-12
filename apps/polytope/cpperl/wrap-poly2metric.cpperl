@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "poly2metric.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Rational>&>"], "func": "points2metric_max", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "points2metric_max.X"},
+  {"args": ["perl::Canned<const Matrix<Rational>&>"], "func": "points2metric_l1", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "points2metric_l1.X"},
+ null ],
+"version": 3}

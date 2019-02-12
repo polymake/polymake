@@ -67,7 +67,7 @@ sub compare_and_report {
 }
 
 ##################################################################
-package _::FromData;
+package Polymake::Test::Value::FromData;
 
 use Polymake::Struct(
    [ '@ISA' => 'Value' ],
@@ -84,11 +84,11 @@ sub execute {
 
 sub load_OK_data_file {
    my ($self)=@_;
-   $self->subgroup->group->env->load_data_file(find_matching_file($self->name.".OK"));
+   $self->subgroup->group->env->load_data_file($self->name.".OK");
 }
 
 ##################################################################
-package __::FromAttachment;
+package Polymake::Test::Value::FromAttachment;
 
 use Polymake::Struct(
    [ '@ISA' => 'Value' ],
@@ -107,7 +107,7 @@ sub execute {
 }
 
 ##################################################################
-package __::Boolean;
+package Polymake::Test::Value::Boolean;
 
 use Polymake::Struct(
    [ '@ISA' => 'Value' ],
@@ -118,7 +118,7 @@ use Polymake::Struct(
 
 sub execute {
    my ($self)=@_;
-   if (is_acceptable_as_boolean($self->gotten)) {
+   if (is_boolean($self->gotten) || Core::CPlusPlus::is_proxy_for($self->gotten, "bool")) {
       if ($self->gotten) {
          return 1;
       }

@@ -472,6 +472,9 @@ public:
 
    TropicalNumber<MinMax, Exponent> val() const
    {
+      if (is_zero(rf))
+         return TropicalNumber<MinMax, Exponent>::zero();
+      
       if (std::is_same<MinMax, Max>::value)
          return TropicalNumber<MinMax, Exponent>(numerator(rf).deg() - denominator(rf).deg());
       else
@@ -538,7 +541,7 @@ public:
    evaluate(const GenericVector<VectorType, PuiseuxFraction>& vec, const T& t, const long exp=1)
    {
       Integer exp_lcm(exp);
-      for (typename Entire<VectorType>::const_iterator v = entire(vec.top()); !v.at_end(); ++v)
+      for (auto v = entire(vec.top()); !v.at_end(); ++v)
          exp_lcm = lcm(denominators(numerator(*v).monomials_as_vector() | denominator(*v).monomials_as_vector()) | exp_lcm);
 
       const double t_approx = std::pow(convert_to<double>(t),1.0/convert_to<double>(exp_lcm));
@@ -564,7 +567,7 @@ public:
    evaluate(const GenericMatrix<MatrixType, PuiseuxFraction>& m, const T& t, const long exp=1)
    {
       Integer exp_lcm(exp);
-      for (typename Entire<ConcatRows<MatrixType> >::const_iterator e = entire(concat_rows(m.top())); !e.at_end(); ++e)
+      for (auto e = entire(concat_rows(m.top())); !e.at_end(); ++e)
          exp_lcm = lcm(denominators(numerator(*e).monomials_as_vector() | denominator(*e).monomials_as_vector()) | exp_lcm);
 
       const double t_approx = std::pow(convert_to<double>(t),1.0/convert_to<double>(exp_lcm));
@@ -608,7 +611,7 @@ public:
              typename=typename std::enable_if<can_initialize<Coefficient, Scalar>::value>::type>
    explicit operator Scalar () const
    {
-      if (denominator(*this).unit() &&
+      if (denominator(*this).is_one() &&
           numerator(*this).deg() == 0 && numerator(*this).lower_deg() == 0)
          return static_cast<Scalar>(numerator(*this).lc());
 

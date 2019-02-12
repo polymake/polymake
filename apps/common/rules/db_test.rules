@@ -1,0 +1,98 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# Setup and functions necessary for running unit tests involving PolyDB
+
+REQUIRE
+   polydb.rules
+
+package PolyDB::Test;
+
+# host with an admin-free Mongo DB, preferably in a docker container without persistent storage
+custom $db_host="localhost";
+
+# port number of test Mongo server, cf. db_host
+custom $db_port=27017;
+
+
+CONFIGURE {
+   if ($db_host ne "" && $db_port != 0) {
+      defined(eval {
+         MongoDB::MongoClient->new(host => "${db_host}:${db_port}", socket_timeout_ms => 1000)->database_names
+        })
+      or die <<".";
+Test Mongo instance at ${db_host}:${db_port} not available:
+  $@
+Please start the Mongo server or adjust the settings:
+  include "common::test.rules";
+  set_custom \$PolyDB::Test::db_host="...";
+  set_custom \$PolyDB::Test::db_port=NNN;
+.
+   }
+}
+
+# the default collection name is set to the current testgroup name
+function prepare() {
+   my ($collection_name) = (Cwd::getcwd =~ $filename_re);
+   my $type_info_collection_name = "type_info_${collection_name}";
+   my $info_collection_name = "Info_${collection_name}";
+
+   local with($Scope->locals) {
+      local $PolyDB::default::db_host = $db_host;
+      local $PolyDB::default::db_port = $db_port;
+      local $PolyDB::default::useSSL = 0;
+      local $PolyDB::default::db_user;
+      local $PolyDB::default::db_pwd;
+      local $PolyDB::default::db_database_name = "test_db";
+      local $PolyDB::default::db_collection_name = $collection_name;
+      local $PolyDB::default::db_type_information = $type_info_collection_name;
+      local $PolyDB::default::db_info_db = "test_info_db";
+      local $PolyDB::default::db_info_collection = $info_collection_name;
+   }
+
+   my $client = Client::get_client();
+   my $db = $client->get_database($PolyDB::default::db_database_name);
+   my $max_tries = 9;
+   for (my $retry = 0; ; ++$retry) {
+      eval {
+         $db->get_collection($collection_name)->drop;
+      };
+      last if !$@;
+      die $@ if $retry == $max_tries or $@ !~ /Could not connect to '.*': Connection refused/;
+      if ($retry == 0) {
+         warn_print("No connection to Mongo test server, retrying for ", $max_tries+1, "s");
+      }
+      sleep 1;
+   }
+   $db->get_collection($type_info_collection_name)->drop;
+   my $info_db =  $client->get_database($PolyDB::default::db_info_db);
+   $info_db->get_collection($info_collection_name)->drop;
+}
+
+function read_json_for_id($) {
+   my ($id) = @_;
+
+   my $client = Client::get_client();
+   my $db = $client->get_database($PolyDB::default::db_database_name);
+   my $query = { _id => $id };
+   my $collection = $db->get_collection($PolyDB::default::db_collection_name);
+   $collection->find_one($query) // die "No such object in the database.\n";
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

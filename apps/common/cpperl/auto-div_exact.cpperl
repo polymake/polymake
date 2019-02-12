@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["long", "long"], "func": "div_exact", "include": ["polymake/numerical_functions.h"], "sig": "div_exact.X16.X16"},
+ null ],
+"version": 3}

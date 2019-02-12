@@ -30,19 +30,19 @@ void edge_colored_bounded_graph(
 		perl::Object g)
 {
    const Graph<> BG=g.give("ADJACENCY");
-	const Array<Set<int> > edges = g.call_method("EDGES");
+   const Array<Set<int> > edges = g.call_method("EDGES");
    EdgeMap<Undirected, int> edge_colors(BG);
 
-	for(auto e = ensure(edges, (pm::cons<pm::indexed, pm::end_sensitive>*)0).begin(); !e.at_end(); ++e) {
-		int rank = 1;
-		auto mc_dim_it = entire(max_poly_comb_dims);
-		auto mc_it = entire(rows(max_polys));
-		for(;!mc_it.at_end(); ++mc_it, ++mc_dim_it) {
-			if(incl(*e,*mc_it) <= 0)
-				assign_max(rank, *mc_dim_it);
-		}
-		edge_colors[e.index()] = rank;
-	}
+   for (auto e = entire<indexed>(edges); !e.at_end(); ++e) {
+      int rank = 1;
+      auto mc_dim_it = entire(max_poly_comb_dims);
+      auto mc_it = entire(rows(max_polys));
+      for (;!mc_it.at_end(); ++mc_it, ++mc_dim_it) {
+         if (incl(*e,*mc_it) <= 0)
+            assign_max(rank, *mc_dim_it);
+      }
+      edge_colors[e.index()] = rank;
+   }
 
    g.take("EDGE_COLORS") << edge_colors;
 }

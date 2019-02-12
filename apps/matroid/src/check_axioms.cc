@@ -20,19 +20,19 @@
 
 namespace polymake { namespace matroid {
 
-int check_basis_exchange_axiom(const Array<Set<int> >& bases, perl::OptionSet options)
+bool check_basis_exchange_axiom(const Array<Set<int> >& bases, perl::OptionSet options)
 {
    const bool verbose = options["verbose"];
    return check_basis_exchange_axiom_impl(bases, verbose);
 }
 
-int check_hyperplane_axiom(const Array<Set<int> >& matroid_hyperplanes, perl::OptionSet options)
+bool check_hyperplane_axiom(const Array<Set<int> >& matroid_hyperplanes, perl::OptionSet options)
 {
    const bool verbose = options["verbose"];
    return check_hyperplane_axiom_impl(matroid_hyperplanes, verbose);
 }
 
-int check_flat_axiom(const Array<Set<int> >& matroid_flats, perl::OptionSet options)
+bool check_flat_axiom(const Array<Set<int> >& matroid_flats, perl::OptionSet options)
 {
    const bool verbose = options["verbose"];
    return check_flat_axiom_impl(matroid_flats, verbose);
@@ -42,7 +42,7 @@ UserFunction4perl("# @category Other"
                   "# Check if a given list of sets satisfies the axioms to be the bases of a matroid."
                   "# @param Array<Set> B a list of would-be bases of a matroid"
                   "# @option Bool verbose print a proof if the given sets do not form the set of bases of a matroid"
-                  "# @return Int is_matroid are the given sets the bases of a matroid?",
+                  "# @return Bool are the given sets the bases of a matroid?",
                   &check_basis_exchange_axiom,
                   "check_basis_exchange_axiom(Array<Set> { verbose => 0 })");
 
@@ -50,7 +50,7 @@ UserFunction4perl("# @category Other"
                   "# Check if a given list of sets satisfies the axioms to be the hyperplanes of a matroid."
                   "# @param Array<Set> H a list of would-be hyperplanes of a matroid"
                   "# @option Bool verbose print a proof if the given sets do not form the set of hyperplanes of a matroid"
-                  "# @return Int are_hyperplanes are the given sets the hyperplanes of a matroid?",
+                  "# @return Bool are the given sets the hyperplanes of a matroid?",
                   &check_hyperplane_axiom,
                   "check_hyperplane_axiom(Array<Set> { verbose => 0 })");
 
@@ -58,7 +58,7 @@ UserFunction4perl("# @category Other"
                   "# Check if a given list of sets satisfies the axioms to be the flats of a matroid."
                   "# @param Array<Set> F a list of would-be flats of a matroid"
                   "# @option Bool verbose print a proof if the given sets do not form the set of flats of a matroid"
-                  "# @return Int are_flats are the given sets the flats of a matroid?",
+                  "# @return Bool are the given sets the flats of a matroid?",
                   &check_flat_axiom,
                   "check_flat_axiom(Array<Set> { verbose => 0 })");
 

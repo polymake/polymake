@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "morphism_addition.cc",
+ "inst": [
+  {"args": ["Max", "void", "void"], "func": "add_morphisms", "include": ["polymake/TropicalNumber.h"], "sig": "add_morphisms:T1.B.B", "tp": "1"},
+  {"args": ["Min", "void", "void"], "func": "add_morphisms", "include": ["polymake/TropicalNumber.h"], "sig": "add_morphisms:T1.B.B", "tp": "1"},
+ null ],
+"version": 3}

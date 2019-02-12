@@ -1,0 +1,16 @@
+{"app": "topaz",
+ "inst": [
+  {"class": "Array<HomologyGroup<Integer>>", "include": ["polymake/Array.h", "polymake/Integer.h", "polymake/topaz/HomologyComplex.h"], "pkg": "Polymake::common::Array__HomologyGroup__Integer"},
+  {"class": "Array<CycleGroup<Integer>>", "include": ["polymake/Array.h", "polymake/Integer.h", "polymake/topaz/HomologyComplex.h"], "pkg": "Polymake::common::Array__CycleGroup__Integer"},
+  {"class": "Array<Cell>", "include": ["polymake/Array.h", "polymake/topaz/Filtration.h"], "pkg": "Polymake::common::Array__Cell"},
+  {"class": "Array<std::pair<HomologyGroup<Integer>, SparseMatrix<Integer, NonSymmetric>>>", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h", "polymake/client.h", "polymake/topaz/HomologyComplex.h"], "pkg": "Polymake::common::Array__Pair_A_HomologyGroup__Integer_I_SparseMatrix_A_Integer_I_NonSymmetric_Z_Z"},
+  {"args": ["Array<HomologyGroup<Integer>>"], "include": ["polymake/Array.h", "polymake/Integer.h", "polymake/topaz/HomologyComplex.h"], "op": "new", "sig": "new"},
+  {"args": ["Array<CycleGroup<Integer>>"], "include": ["polymake/Array.h", "polymake/Integer.h", "polymake/topaz/HomologyComplex.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<const Array<HomologyGroup<Integer>>&>", "perl::Canned<const Array<HomologyGroup<Integer>>&>"], "include": ["polymake/Array.h", "polymake/Integer.h", "polymake/topaz/HomologyComplex.h"], "op": "_eq", "sig": "_eq:O.X.X"},
+  {"args": ["Array<std::pair<HomologyGroup<Integer>, SparseMatrix<Integer, NonSymmetric>>>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h", "polymake/client.h", "polymake/topaz/HomologyComplex.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<const Array<std::pair<HomologyGroup<Integer>, SparseMatrix<Integer, NonSymmetric>>>&>", "perl::Canned<const Array<std::pair<HomologyGroup<Integer>, SparseMatrix<Integer, NonSymmetric>>>&>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h", "polymake/client.h", "polymake/topaz/HomologyComplex.h"], "op": "_eq", "sig": "_eq:O.X.X"},
+  {"args": ["perl::Canned<const Array<CycleGroup<Integer>>&>", "perl::Canned<const Array<CycleGroup<Integer>>&>"], "include": ["polymake/Array.h", "polymake/Integer.h", "polymake/topaz/HomologyComplex.h"], "op": "_eq", "sig": "_eq:O.X.X"},
+  {"args": ["Array<HomologyGroup<Integer>>", "perl::Canned<const Array<HomologyGroup<Integer>>&>"], "include": ["polymake/Array.h", "polymake/Integer.h", "polymake/topaz/HomologyComplex.h"], "op": "new", "sig": "new.X"},
+  {"args": ["Array<Cell>", "int"], "include": ["polymake/Array.h", "polymake/topaz/Filtration.h"], "op": "new", "sig": "new.X"},
+ null ],
+"version": 3}

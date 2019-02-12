@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "linear_space.cc",
+ "inst": [
+  {"args": ["Max", "void"], "func": "linear_space", "include": ["polymake/TropicalNumber.h"], "sig": "linear_space:T1.B", "tp": "1"},
+  {"args": ["Min", "void"], "func": "linear_space", "include": ["polymake/TropicalNumber.h"], "sig": "linear_space:T1.B", "tp": "1"},
+ null ],
+"version": 3}

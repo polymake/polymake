@@ -61,10 +61,9 @@ perl::Object unirand(perl::Object p_in, int n_points_out, perl::OptionSet option
       F.col(0).fill(0);
 
       Rows< Matrix<Rational> >::iterator f=rows(F).begin();
-      for (Entire<triangulation>::const_iterator fs=entire(f_triangs);
-           !fs.at_end();  ++fs, ++f) {
+      for (auto fs=entire(f_triangs); !fs.at_end();  ++fs, ++f) {
          const Rational approx_f_norm{ sqrt(double(sqr(*f))) };
-         for (Entire< Set<int> >::const_iterator s=entire(*fs); !s.at_end(); ++s) {
+         for (auto s=entire(*fs); !s.at_end(); ++s) {
             partial_volume.push_back(total_volume, Triangulation[*s]);
             total_volume += abs(det( V.minor(Triangulation[*s],All) / *f )) / approx_f_norm;
          }
@@ -75,7 +74,7 @@ perl::Object unirand(perl::Object p_in, int n_points_out, perl::OptionSet option
       typedef Array< Set<int> > triangulation;
       const triangulation Triangulation=p_in.give("TRIANGULATION.FACETS");
 
-      for (Entire<triangulation>::const_iterator s=entire(Triangulation); !s.at_end(); ++s) {
+      for (auto s=entire(Triangulation); !s.at_end(); ++s) {
          partial_volume.push_back(total_volume, *s);
          total_volume += abs(det( V.minor(*s,All) ));
       }

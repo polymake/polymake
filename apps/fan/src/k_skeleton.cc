@@ -26,18 +26,19 @@
 */
 
 namespace polymake { namespace fan { 
-   
-   template <typename Coord>
-   perl::Object k_skeleton(perl::Object fan, const int k){
-      perl::Object result(perl::ObjectType::construct<Coord>("PolyhedralFan"));
-      bool is_pure = fan.give("PURE");
-      bool is_complete = fan.give("COMPLETE");
-      Matrix<Coord> rays = fan.give("RAYS");
-	   perl::Object hasseDiagram = lower_hasse_diagram(fan, k, is_pure, is_complete);
-      result.take("RAYS") << rays;
-      result.take("HASSE_DIAGRAM") << hasseDiagram;
-      return result;
-   }
+
+template <typename Coord>
+perl::Object k_skeleton(perl::Object fan, const int k)
+{
+  perl::Object result("PolyhedralFan", mlist<Coord>());
+  bool is_pure = fan.give("PURE");
+  bool is_complete = fan.give("COMPLETE");
+  Matrix<Coord> rays = fan.give("RAYS");
+  perl::Object hasseDiagram = lower_hasse_diagram(fan, k, is_pure, is_complete);
+  result.take("RAYS") << rays;
+  result.take("HASSE_DIAGRAM") << hasseDiagram;
+  return result;
+}
 
 UserFunctionTemplate4perl("# @category Producing a fan"
                           "# Computes the //k//-skeleton of the polyhedral fan //F//,"

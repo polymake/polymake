@@ -63,7 +63,7 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
    // random access to the facets of VIF
    std::vector< FacetList::iterator > facets_of_VIF;
    facets_of_VIF.reserve(VIF.size());
-   for (Entire<FacetList>::iterator fl_it=entire(VIF); !fl_it.at_end(); ++fl_it)
+   for (auto fl_it=entire(VIF); !fl_it.at_end(); ++fl_it)
       facets_of_VIF.push_back(fl_it);
 
    // iterate over dimensions dim-1..end_dim and over all faces of each dimension
@@ -81,8 +81,8 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
       Array< Set<int> > corr_new_facets(DG.nodes());
 
       int f_count = 0;
-      for (auto it=entire(HD.nodes_of_rank(d+1)); !it.at_end(); ++it) {
-         const Set<int>& face = HD.face(*it);
+      for (const auto face_index : HD.nodes_of_rank(d+1)) {
+         const Set<int>& face = HD.face(face_index);
 
          // produce all relevant inequalities = each neighbour (in the dual graph) of the nodes
          // corresponding to the facets of star(face) produces one inequality
@@ -93,10 +93,10 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
          for (FacetList::superset_iterator incid_facets=VIF.findSupersets(face); !incid_facets.at_end(); ++incid_facets)
             star_facets += incid_facets.index();
 
-         for (Entire< Set<int> >::iterator st_it=entire(star_facets); !st_it.at_end(); ++st_it) {
+         for (auto st_it=entire(star_facets); !st_it.at_end(); ++st_it) {
             const Set<int> neighbors = DG.adjacent_nodes(*st_it)-star_facets;
 
-            for (Entire< Set<int> >::const_iterator n_it=entire(neighbors); !n_it.at_end(); ++n_it) {
+            for (auto n_it=entire(neighbors); !n_it.at_end(); ++n_it) {
                const int v= (*facets_of_VIF[*st_it] * *facets_of_VIF[*n_it]).front();
                const Vector<Scalar> inequ = bisector(facet_normals[*st_it], facet_normals[*n_it], V[v]);
 
@@ -112,10 +112,10 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
          // add new facets
          // iterate over all neighbours (in the dual graph) of the nodes
          // corresponding to the facets of star(face) and add a facet for each one
-         for (Entire< Set<int> >::iterator st_it=entire(star_facets); !st_it.at_end(); ++st_it) {
+         for (auto st_it=entire(star_facets); !st_it.at_end(); ++st_it) {
             const Set<int> neighbors = DG.adjacent_nodes(*st_it)-star_facets;
 
-            for (Entire< Set<int> >::const_iterator n_it=entire(neighbors); !n_it.at_end(); ++n_it) {
+            for (auto n_it=entire(neighbors); !n_it.at_end(); ++n_it) {
                Set<int> new_facet = (*facets_of_VIF[*st_it]) * (*facets_of_VIF[*n_it]);
                new_facet += v_count;
 
@@ -152,12 +152,12 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
       corresp_edge.reserve(VIF.size()*(d+1)/2);  // lower bound for #ridges
 
       // iterate over new faces to determine adjacency
-      for (Entire<FacetList>::iterator f_it=entire(VIF); !f_it.at_end(); ++f_it) {
+      for (auto f_it=entire(VIF); !f_it.at_end(); ++f_it) {
          Set<int> old_neighbors = DG.adjacent_nodes(corr_old_facet[ f_it.index() ]);
          old_neighbors += corr_old_facet[ f_it.index() ];
 
-         for (Entire< Set<int> >::const_iterator n_it=entire(old_neighbors); !n_it.at_end(); ++n_it)
-            for (Entire< Set<int> >::iterator cand=entire(corr_new_facets[*n_it]); !cand.at_end(); ++cand)
+         for (auto n_it=entire(old_neighbors); !n_it.at_end(); ++n_it)
+            for (auto cand=entire(corr_new_facets[*n_it]); !cand.at_end(); ++cand)
                if (f_it.index() < *cand) {
                   const Set<int> ridge = *f_it * *facets_of_VIF[*cand];
 
@@ -175,8 +175,7 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
       }  // end iterate over faces
 
       // add edges to new_DG
-      for (Entire<FacetList>::iterator r_it=entire(ridges);
-           !r_it.at_end(); ++r_it)
+      for (auto r_it=entire(ridges); !r_it.at_end(); ++r_it)
          new_DG.edge(corresp_edge[r_it.index()].first,corresp_edge[r_it.index()].second);
 
       DG = new_DG;
@@ -184,7 +183,7 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
 
    }  // end of d = dim-1..end_dim
 
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Stellar subdivision of " << p_in.name() << " over all proper faces of dimension >= " << end_dim << endl;
    p_out.take("VERTICES") << V;
    p_out.take("VERTICES_IN_FACETS") << VIF;

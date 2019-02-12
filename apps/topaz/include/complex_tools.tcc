@@ -32,13 +32,12 @@ bool adj_numbering(Complex& C, const Set& V)
    if (renumber) {
       hash_map<int, int> vertex_map(V.size());
       int count=0;
-      for (typename Entire< Set >::const_iterator s_it=entire(V); !s_it.at_end(); ++s_it, ++count)
+      for (auto s_it=entire(V); !s_it.at_end(); ++s_it, ++count)
          vertex_map[*s_it]=count;
 
-      for (typename Entire<Complex>::iterator c_it=entire(C); !c_it.at_end(); ++c_it) {
-         typedef typename Complex::value_type Facet;
-         Facet f;
-         for (typename Entire<Facet>::iterator s_it=entire(*c_it); !s_it.at_end(); ++s_it)
+      for (auto c_it=entire(C); !c_it.at_end(); ++c_it) {
+         typename Complex::value_type f;
+         for (auto s_it=entire(*c_it); !s_it.at_end(); ++s_it)
             f += vertex_map[*s_it];
          *c_it = f;
       }
@@ -58,14 +57,14 @@ bool is_pseudo_manifold(const Lattice<BasicDecoration>& HD, bool known_pure, Out
       return false;
    }
 
-   for (auto it=entire(HD.nodes_of_rank(HD.rank()-2)); !it.at_end(); ++it) {
-      const int d = HD.out_degree(*it);
-      if ( d > 2 ) {
-         if (bad_face_p) *bad_face_p=*it;
+   for (const auto n : HD.nodes_of_rank(HD.rank()-2)) {
+      const int d = HD.out_degree(n);
+      if (d > 2) {
+         if (bad_face_p) *bad_face_p=n;
          return false;
       }
-      if (!is_derived_from_instance_of<OutputIterator, pm::black_hole>::value && d == 1 )
-         *boundary_consumer++ = HD.face(*it);
+      if (!is_derived_from_instance_of<OutputIterator, pm::black_hole>::value && d == 1)
+         *boundary_consumer++ = HD.face(n);
    }
 
    return true;

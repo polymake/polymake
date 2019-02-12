@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "hypersurface.cc",
+ "inst": [
+  {"args": ["Max", "void"], "func": "hypersurface", "include": ["polymake/TropicalNumber.h"], "sig": "hypersurface:T1.B", "tp": "1"},
+  {"args": ["Min", "void"], "func": "hypersurface", "include": ["polymake/TropicalNumber.h"], "sig": "hypersurface:T1.B", "tp": "1"},
+ null ],
+"version": 3}

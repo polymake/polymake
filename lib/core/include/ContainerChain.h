@@ -19,897 +19,1281 @@
 
 #include "polymake/internal/operations.h"
 #include "polymake/ContainerUnion.h"
+#include <array>
 
 namespace pm {
+namespace chains {
 
-template <typename Top, typename TParams> class container_chain_typebase;
-template <typename IteratorList, bool TReversed=false> class iterator_chain;
+template <typename Indexes, typename Operation>
+class Function;
 
-template <typename Iterator>
-struct iterator_chain_helper {
-   static const bool match=true;
-   typedef Iterator type;
-   typedef typename iterator_traits<Iterator>::iterator iterator_list;
-   typedef typename iterator_traits<Iterator>::const_iterator const_iterator_list;
+template <size_t... Index, typename Operation>
+class Function<std::index_sequence<Index...>, Operation> {
+   using fpointer = typename Operation::fpointer;
+   static constexpr size_t length = sizeof...(Index);
+
+   static const fpointer table[length];
+public:
+   static fpointer get(int i) { return table[i]; }
 };
 
-template <typename Iterator1, typename Helper>
-struct iterator_chain_helper2 {
-   static const bool
-      exact_match_here=std::is_same<Iterator1, typename Helper::type>::value,
-      match_here=exact_match_here || std::is_same<typename iterator_traits<Iterator1>::const_iterator,
-                                                  typename iterator_traits<typename Helper::type>::const_iterator>::value,
-      match=Helper::match && match_here;
+template <size_t... Index, typename Operation>
+const typename Function<std::index_sequence<Index...>, Operation>::fpointer
+Function<std::index_sequence<Index...>, Operation>::table[] = { &Operation::template execute<Index>... };
 
-   typedef typename std::conditional<exact_match_here, Iterator1, typename iterator_traits<Iterator1>::const_iterator>::type
-      type;
-};
+template <typename IteratorList>
+class Operations {
+public:
+   using it_tuple = typename mlist2tuple<IteratorList>::type;
+   using reference = typename union_iterator_traits<IteratorList>::reference;
+   using pointer = typename union_iterator_traits<IteratorList>::pointer;
 
-template <typename Head, typename Tail>
-struct iterator_chain_helper< cons<Head, Tail> >
-   : iterator_chain_helper2<Head, iterator_chain_helper<Tail> > {
-   typedef typename concat_list< typename iterator_chain_helper<Head>::iterator_list, typename iterator_chain_helper<Tail>::iterator_list >::type
-      iterator_list;
-   typedef typename concat_list< typename iterator_chain_helper<Head>::const_iterator_list, typename iterator_chain_helper<Tail>::const_iterator_list >::type
-      const_iterator_list;
-};
-
-
-// FIXME: duplicates is_const_compatible_with
-template <typename Iterator1, typename Iterator2>
-struct matching_iterator {
-   static const bool value= std::is_same<Iterator1, Iterator2>::value ||
-                            std::is_same<typename iterator_traits<Iterator1>::iterator, Iterator2>::value;
-};
-
-template <typename Iterator1, typename Iterator2>
-struct comparable_iterator {
-   static const bool value= std::is_same<typename iterator_traits<Iterator1>::iterator, Iterator2>::value ||
-                            std::is_same<typename iterator_traits<Iterator1>::const_iterator, Iterator2>::value;
-};
-
-template <typename IteratorList1, typename IteratorList2>
-struct suitable_iterator_list
-   : list_accumulate_binary<list_and, matching_iterator, IteratorList1, IteratorList2> {};
-
-template <typename IteratorList1, typename IteratorList2>
-struct comparable_iterator_list
-   : list_accumulate_binary<list_and, comparable_iterator, IteratorList1, IteratorList2> {};
-
-
-template <int size>
-struct iterator_chain_offset_store {
-   int off[size];
-
-   static const int last=size-1;
-
-   template <typename Container>
-   void init(const Container&, int_constant<last>) {}
-
-   template <typename Container, int discr>
-   void init(const Container& c, int_constant<discr>)
-   {
-      off[discr+1]=off[discr]+get_dim(c);
-   }
-
-   template <typename Container>
-   void init(const Container& c, int_constant<0>)
-   {
-      off[0]=0;
-      off[1]=get_dim(c);
-   }
-
-   int operator[] (int discr) const { return off[discr]; }
-};
-
-template <>
-struct iterator_chain_offset_store<0> {
-   template <typename Container, int discr>
-   void init(const Container&, int_constant<discr>) {}
+   struct star {
+      using fpointer = reference (*)(const it_tuple&);
+      template <size_t i>
+      static reference execute(const it_tuple& its)
+      {
+         return *std::get<i>(its);
+      }
+   };
+   struct arrow {
+      using fpointer = pointer (*)(const it_tuple&);
+      template <size_t i>
+      static pointer execute(const it_tuple& its)
+      {
+         return std::get<i>(its).operator->();
+      }
+   };
+   struct incr {
+      using fpointer = bool (*)(it_tuple&);
+      template <size_t i>
+      static bool execute(it_tuple& its)
+      {
+         return (++std::get<i>(its)).at_end();
+      }
+   };
+   struct eq {
+      using fpointer = bool (*)(const it_tuple&, const it_tuple&);
+      template <size_t i>
+      static bool execute(const it_tuple& its, const it_tuple& other)
+      {
+         return std::get<i>(its) == std::get<i>(other);
+      }
+   };
+   struct at_end {
+      using fpointer = bool (*)(const it_tuple&);
+      template <size_t i>
+      static bool execute(const it_tuple& its)
+      {
+         return std::get<i>(its).at_end();
+      }
+   };
+   struct index {
+      using fpointer = int (*)(const it_tuple&);
+      template <size_t i>
+      static int execute(const it_tuple& its)
+      {
+         return std::get<i>(its).index();
+      }
+   };
 };
 
 template <typename IteratorList,
-          bool _homogeneous=iterator_chain_helper<IteratorList>::match,
-          int pos=0, int n=list_length<IteratorList>::value>
-class iterator_chain_store {
-protected:
-   typedef typename iterator_chain_helper<IteratorList>::type it_type;
-   static const bool _indexed=list_accumulate_binary<list_and, check_iterator_feature, IteratorList, same<indexed> >::value;
-   static const int n_offsets=_indexed ? n : 0;
-   it_type its[n];
-   iterator_chain_offset_store<n_offsets> offsets;
-
-   struct traits {
-      typedef typename iterator_traits<it_type>::iterator iterator_list;
-      typedef typename iterator_traits<it_type>::const_iterator const_iterator_list;
-   };
-
+          bool is_homogeneous=(mlist_length<typename mlist_remove_duplicates<IteratorList>::type>::value == 1)>
+class iterator_store {
 public:
-   typedef typename iterator_traits<it_type>::reference reference;
-   typedef typename iterator_traits<it_type>::pointer pointer;
-   typedef typename iterator_traits<it_type>::value_type value_type;
+   using iterator_t = typename mlist_head<IteratorList>::type;
+   static constexpr size_t N = mlist_length<IteratorList>::value;
+   using it_tuple = std::array<iterator_t, N>;
+   it_tuple its;
 
-protected:
-   iterator_chain_store() {}
+   using reference = typename iterator_traits<iterator_t>::reference;
+   using pointer = typename iterator_traits<iterator_t>::pointer;
+   using value_type = typename iterator_traits<iterator_t>::value_type;
 
-   template <typename IteratorList2>
-   iterator_chain_store(const iterator_chain_store<IteratorList2, _homogeneous, pos, n>& s2)
-      : offsets(s2.offsets)
+   template <typename... Iterator, typename=std::enable_if_t<sizeof...(Iterator)==N>>
+   explicit iterator_store(Iterator&&... it)
+      : its{ { std::forward<Iterator>(it)... } }
+   {}
+
+   iterator_store() = default;
+   iterator_store(const iterator_store&) = default;
+   iterator_store(iterator_store&&) = default;
+   iterator_store& operator= (const iterator_store&) = default;
+
+   template <typename IteratorList2, typename=std::enable_if_t<std::is_constructible<iterator_t, const typename mlist_head<IteratorList2>::type&>::value>>
+   iterator_store(const iterator_store<IteratorList2, is_homogeneous>& other)
+      : iterator_store(other, std::make_index_sequence<N>()) {}
+
+   template <typename IteratorList2, size_t... Index>
+   iterator_store(const iterator_store<IteratorList2, is_homogeneous>& other, std::index_sequence<Index...>)
+      : its{ other.its[Index]... }
+   {}
+
+   template <typename IteratorList2, typename=std::enable_if_t<std::is_assignable<iterator_t&, const typename mlist_head<IteratorList2>::type&>::value>>
+   iterator_store& operator= (const iterator_store<IteratorList2, is_homogeneous>& other)
    {
-      std::copy(s2.its, s2.its+n, its);
-   }
-
-   template <typename IteratorList2>
-   void operator= (const iterator_chain_store<IteratorList2, _homogeneous, pos, n>& s2)
-   {
-      std::copy(s2.its, s2.its+n, its);
-      offsets=s2.offsets;
-   }
-
-   reference star(int discr) const
-   {
-      return *its[discr];
-   }
-
-   pointer arrow(int discr) const
-   {
-      return its[discr].operator->();
-   }
-
-   int index(int discr) const
-   {
-      return its[discr].index();
-   }
-
-   bool incr(int discr)
-   {
-      return (++its[discr]).at_end();
-   }
-
-   template <typename IteratorList2>
-   bool eq(int discr, const iterator_chain_store<IteratorList2, _homogeneous, pos, n>& s2) const
-   {
-      return its[discr] == s2.its[discr];
-   }
-
-   bool at_end(int discr) const
-   {
-      return its[discr].at_end();
-   }
-
-   void rewind()
-   {
-      for (it_type *itp=its, itp_end=itp+n; itp<itp_end; ++itp) itp->rewind();
-   }
-
-private:
-   template <typename Container, typename needed_features, int discr, bool is_end>
-   void init_step(Container& c, needed_features*, int_constant<discr>, bool_constant<is_end>)
-   {
-      if (!is_end)
-         its[discr]=ensure(c, (needed_features*)0).begin();
-      else
-         its[discr]=ensure(c, (needed_features*)0).end();
-      offsets.init(c, int_constant<discr>());
-   }
-
-   template <typename Container, typename needed_features, int discr, bool is_end>
-   void init_step(const Container& c, needed_features*, int_constant<discr>, bool_constant<is_end>)
-   {
-      if (!is_end)
-         its[discr]=ensure(c, (needed_features*)0).begin();
-      else
-         its[discr]=ensure(c, (needed_features*)0).end();
-      offsets.init(c, int_constant<discr>());
-   }
-
-   template <typename Chain, typename needed_features, int discr, bool is_end>
-   void init(Chain& c, needed_features*, int_constant<discr>, bool_constant<is_end>)
-   {
-      init_step(c.get_container(int_constant<discr>()), (needed_features*)0, int_constant<discr>(), bool_constant<is_end>());
-      init(c, (needed_features*)0, int_constant<discr+1>(), bool_constant<is_end>());
-   }
-
-   template <typename Chain, typename needed_features, bool is_end>
-   void init(Chain& c, needed_features*, int_constant<n>, bool_constant<is_end>) {}
-
-protected:
-   template <typename Chain, bool is_rev, bool is_end>
-   bool init(Chain& c, bool_constant<is_rev>, bool_constant<is_end>)
-   {
-      typedef typename std::conditional<is_rev, typename toggle_features<typename Chain::needed_features, _reversed>::type,
-                                                typename Chain::needed_features>::type
-         needed_features;
-      init(c, (needed_features*)0, int_constant<0>(), bool_constant<is_end>());
-      return is_end || its[0].at_end();
-   }
-
-   template <typename, bool, int, int> friend class iterator_chain_store;
-};
-
-template <typename IteratorList, int pos, int n>
-class iterator_chain_store<IteratorList, false, pos, n>
-   : public iterator_chain_store<IteratorList, false, pos+1, n> {
-
-   template <typename, bool, int, int> friend class iterator_chain_store;
-
-   typedef iterator_chain_store<IteratorList, false, pos+1, n> base_t;
-   typedef typename std::conditional<pos+1!=n, base_t, iterator_chain_store>::type next;
-
-   typedef typename n_th<IteratorList, pos>::type it_type;
-   it_type it;
-
-protected:
-   iterator_chain_store() {}
-
-   template <typename IteratorList2>
-   iterator_chain_store(const iterator_chain_store<IteratorList2, false, pos, n>& s2)
-      : base_t(static_cast<const iterator_chain_store<IteratorList2, false, pos+1, n>&>(s2)),
-        it(s2.it) {}
-
-   template <typename IteratorList2>
-   void operator= (const iterator_chain_store<IteratorList2, false, pos, n>& s2)
-   {
-      it=s2.it;
-      base_t::operator=(s2);
-   }
-
-   typename base_t::reference star(int discr) const
-   {
-      switch (discr) {
-      case pos:
-         return *it;
-      default:
-         return next::star(discr);
-      }
-   }
-
-   typename base_t::pointer arrow(int discr) const   {
-      switch (discr) {
-      case pos:
-         return it.operator->();
-      default:
-         return next::arrow(discr);
-      }
-   }
-
-   int index(int discr) const
-   {
-      switch (discr) {
-      case pos:
-         return it.index();
-      default:
-         return next::index(discr);
-      }
-   }
-
-   bool incr(int discr)
-   {
-      switch (discr) {
-      case pos:
-         return (++it).at_end();
-      default:
-         return next::incr(discr);
-      }
-   }
-
-   template <typename IteratorList2>
-   bool eq(int discr, const iterator_chain_store<IteratorList2, false, pos, n>& s2) const
-   {
-      switch (discr) {
-      case pos:
-         return it == s2.it;
-      default:
-         return next::eq(discr,s2);
-      }
-   }
-
-   bool at_end(int discr) const
-   {
-      switch (discr) {
-      case pos:
-         return it.at_end();
-      default:
-         return next::at_end(discr);
-      }
-   }
-
-   void rewind()
-   {
-      it.rewind();
-      if (pos+1 < n) next::rewind();
-   }
-
-public:
-   const it_type& get_part(int_constant<pos>) const { return it; }
-   using base_t::get_part;
-
-private:
-   template <typename Container, typename needed_features, bool is_end>
-   void init_step(Container& c, needed_features*, bool_constant<is_end>)
-   {
-      if (!is_end)
-         it=ensure(c, (needed_features*)0).begin();
-      else
-         it=ensure(c, (needed_features*)0).end();
-      base_t::offsets.init(c, int_constant<pos>());
-   }
-
-   template <typename Container, typename needed_features, bool is_end>
-   void init_step(const Container& c, needed_features*, bool_constant<is_end>)
-   {
-      if (!is_end)
-         it=ensure(c, (needed_features*)0).begin();
-      else
-         it=ensure(c, (needed_features*)0).end();
-      base_t::offsets.init(c, int_constant<pos>());
-   }
-
-protected:
-   template <typename Chain, bool is_rev, bool is_end>
-   bool init(Chain& c, bool_constant<is_rev>, bool_constant<is_end>)
-   {
-      typedef typename std::conditional<is_rev, typename toggle_features<typename Chain::needed_features, _reversed>::type,
-                                                typename Chain::needed_features>::type
-         needed_features;
-      init_step(c.get_container(int_constant<pos>()), (needed_features*)0, bool_constant<is_end>());
-      if (pos+1 < n) next::init(c, bool_constant<is_rev>(), bool_constant<is_end>());
-      return pos==0 && (is_end || it.at_end());
-   }
-};
-
-template <typename IteratorList, int n>
-class iterator_chain_store<IteratorList, false, n, n> {
-   template <typename, bool, int, int> friend class iterator_chain_store;
-protected:
-   static const bool _indexed=list_accumulate_binary<list_and, check_iterator_feature, IteratorList, same<indexed> >::value;
-   static const int n_offsets=_indexed ? n : 0;
-   iterator_chain_offset_store<n_offsets> offsets;
-
-   typedef union_iterator_traits<IteratorList> traits;
-
-   iterator_chain_store() {}
-
-   template <typename IteratorList2>
-   iterator_chain_store(const iterator_chain_store<IteratorList2, false, n, n>& s2)
-      : offsets(s2.offsets) {}
-
-   template <typename IteratorList2>
-   void operator= (const iterator_chain_store<IteratorList2, false, n, n>& s2)
-   {
-      offsets=s2.offsets;
-   }
-
-public:
-   typedef typename traits::reference reference;
-   typedef typename traits::pointer pointer;
-   typedef typename traits::value_type value_type;
-
-   void get_part(int_constant<n>) const = delete;
-};
-
-template <typename IteratorList, bool TReversed>
-class iterator_chain : public iterator_chain_store<IteratorList> {
-   typedef iterator_chain_store<IteratorList> base_t;
-protected:
-   int discr;
-   static const int d_step= TReversed ? -1 : 1,
-                    d_start= TReversed ? list_length<IteratorList>::value-1 : 0,
-                    d_finish= TReversed ? -1 : list_length<IteratorList>::value;
-
-   void valid_position()
-   {
-      do {
-         discr+=d_step;
-      } while (!at_end() && base_t::at_end(discr));
-   }
-
-   template <typename, bool> friend class iterator_chain;
-public:
-   typedef forward_iterator_tag iterator_category;
-   typedef ptrdiff_t difference_type;
-   typedef iterator_chain<typename iterator_chain_helper<IteratorList>::iterator_list, TReversed> iterator;
-   typedef iterator_chain<typename iterator_chain_helper<IteratorList>::const_iterator_list, TReversed> const_iterator;
-
-   iterator_chain() {}
-
-   template <typename IteratorList2, typename enabled=typename std::enable_if<suitable_iterator_list<IteratorList, IteratorList2>::value>::type>
-   iterator_chain(const iterator_chain<IteratorList2, TReversed>& it)
-      : base_t(it)
-      , discr(it.discr) {}
-
-   template <typename IteratorList2, typename enabled=typename std::enable_if<suitable_iterator_list<IteratorList, IteratorList2>::value>::type>
-   iterator_chain& operator= (const iterator_chain<IteratorList2, TReversed>& it)
-   {
-      base_t::operator=(it);  discr=it.discr;
+      std::copy(other.its.begin(), other.its.end(), its.begin());
       return *this;
    }
 
-   template <typename Top, typename TParams>
-   iterator_chain(container_chain_typebase<Top, TParams>& c)
-      : discr(d_start)
+   it_tuple& get_it_tuple() { return its; }
+   const it_tuple& get_it_tuple() const { return its; }
+
+   reference star(int i) const
    {
-      if (this->init(c, bool_constant<TReversed>(), std::false_type()))
-         valid_position();
+      return *its[i];
    }
 
-   template <typename Top, typename TParams>
-   iterator_chain(const container_chain_typebase<Top, TParams>& c)
-      : discr(d_start)
+   pointer arrow(int i) const
    {
-      if (this->init(c, bool_constant<TReversed>(), std::false_type()))
-         valid_position();
+      return its[i].operator->();
    }
 
-   template <typename Top, typename TParams>
-   iterator_chain(container_chain_typebase<Top, TParams>& c, bool is_end)
-      : discr(d_finish)
+   int index(int i) const
    {
-      this->init(c, bool_constant<TReversed>(), std::true_type());
+      return its[i].index();
    }
 
-   template <typename Top, typename TParams>
-   iterator_chain(const container_chain_typebase<Top, TParams>& c, bool is_end)
-      : discr(d_finish)
+   bool incr(int i)
    {
-      this->init(c, bool_constant<TReversed>(), std::true_type());
+      return (++its[i]).at_end();
+   }
+
+   bool eq(int i, const iterator_store& other) const
+   {
+      return its[i] == other.its[i];
+   }
+
+   bool at_end(int i) const
+   {
+      return its[i].at_end();
+   }
+
+   void rewind()
+   {
+      for (iterator_t& it : its) it.rewind();
+   }
+};
+
+
+template <typename IteratorList>
+class iterator_store<IteratorList, false> {
+public:
+   using it_tuple = typename mlist2tuple<IteratorList>::type;
+   it_tuple its;
+   static constexpr size_t N = mlist_length<IteratorList>::value;
+
+   using ops = Operations<IteratorList>;
+   template <typename Operation>
+   using functions = Function<std::make_index_sequence<N>, Operation>;
+
+   using reference = typename union_iterator_traits<IteratorList>::reference;
+   using pointer = typename union_iterator_traits<IteratorList>::pointer;
+   using value_type = typename union_iterator_traits<IteratorList>::value_type;
+
+   template <typename... Iterator, typename=std::enable_if_t<sizeof...(Iterator)==N>>
+   explicit iterator_store(Iterator&&... it)
+      : its(std::forward<Iterator>(it)...)
+   {}
+
+   iterator_store() = default;
+   iterator_store(const iterator_store&) = default;
+   iterator_store(iterator_store&&) = default;
+   iterator_store& operator= (const iterator_store&) = default;
+
+   template <typename IteratorList2, typename=std::enable_if_t<std::is_constructible<it_tuple, const typename mlist2tuple<IteratorList2>::type&>::value>>
+   iterator_store(const iterator_store<IteratorList2, false>& other)
+      : its(other.its) {}
+
+   template <typename IteratorList2, typename=std::enable_if_t<std::is_assignable<it_tuple&, const typename mlist2tuple<IteratorList2>::type&>::value>>
+   iterator_store& operator= (const iterator_store<IteratorList2, false>& other)
+   {
+      its = other.its;
+      return *this;
+   }
+
+   it_tuple& get_it_tuple() { return its; }
+   const it_tuple& get_it_tuple() const { return its; }
+
+   reference star(int i) const
+   {
+      return functions<typename ops::star>::get(i)(its);
+   }
+
+   pointer arrow(int i) const
+   {
+      return functions<typename ops::arrow>::get(i)(its);
+   }
+
+   int index(int i) const
+   {
+      return functions<typename ops::index>::get(i)(its);
+   }
+
+   bool incr(int i)
+   {
+      return functions<typename ops::incr>::get(i)(its);
+   }
+
+   bool eq(int i, const iterator_store& other) const
+   {
+      return functions<typename ops::eq>::get(i)(its, other.its);
+   }
+
+   bool at_end(int i) const
+   {
+      return functions<typename ops::at_end>::get(i)(its);
+   }
+
+   void rewind()
+   {
+      foreach_in_tuple(its, [](auto& it) -> void { it.rewind(); });
+   }
+};
+
+template <typename T>
+struct get_iterator {
+   using type = typename iterator_traits<T>::iterator;
+};
+template <typename T>
+struct get_const_iterator {
+   using type = typename iterator_traits<T>::const_iterator;
+};
+
+}
+
+template <typename IteratorList, bool is_indexed>
+class iterator_chain
+   : protected chains::iterator_store<IteratorList> {
+   using base_t = chains::iterator_store<IteratorList>;
+   template <typename, bool> friend class iterator_chain;
+protected:
+   int leg;
+
+   static constexpr size_t n_off = is_indexed ? mlist_length<IteratorList>::value : 0;
+   using offsets_t = std::array<int, n_off>;
+   offsets_t index_offsets;
+
+   void valid_position()
+   {
+      while (!at_end() && base_t::at_end(leg)) ++leg;
+   }
+public:
+   using iterator_category = forward_iterator_tag;
+   using typename base_t::value_type;
+   using typename base_t::reference;
+   using typename base_t::pointer;
+   using difference_type = ptrdiff_t;
+
+   using iterator = iterator_chain<typename mlist_transform_unary<IteratorList, chains::get_iterator>::type, is_indexed>;
+   using const_iterator = iterator_chain<typename mlist_transform_unary<IteratorList, chains::get_const_iterator>::type, is_indexed>;
+
+   iterator_chain()
+      : leg(mlist_length<IteratorList>::value) {}
+
+   template <typename... Iterator>
+   iterator_chain(int leg_arg, offsets_t&& offsets_arg, Iterator&&... it)
+      : base_t(std::forward<Iterator>(it)...)
+      , leg(leg_arg)
+      , index_offsets(offsets_arg)
+   {
+      valid_position();
+   }
+
+   template <typename... Iterator>
+   iterator_chain(int leg_arg, std::nullptr_t, Iterator&&... it)
+      : base_t(std::forward<Iterator>(it)...)
+      , leg(leg_arg)
+   {
+      valid_position();
+   }
+
+   iterator_chain(const iterator& other)
+      : base_t(other)
+      , leg(other.leg)
+      , index_offsets(other.index_offsets) {}
+
+   iterator_chain& operator= (const iterator& other)
+   {
+      base_t::operator=(other);
+      leg=other.leg;
+      index_offsets=other.index_offsets;
+      return *this;
    }
 
    typename base_t::reference operator* () const
    {
-      return this->star(discr);
+      return base_t::star(leg);
    }
 
    typename base_t::pointer operator-> () const
    {
-      return this->arrow(discr);
+      return base_t::arrow(leg);
    }
 
    iterator_chain& operator++ ()
    {
-      if (this->incr(discr)) valid_position();
+      if (base_t::incr(leg)) {
+         ++leg;
+         valid_position();
+      }
       return *this;
    }
    const iterator_chain operator++ (int) { iterator_chain copy=*this; operator++(); return copy; }
 
-   template <typename IteratorList2>
-   typename std::enable_if<comparable_iterator_list<IteratorList, IteratorList2>::value, bool>::type
-   operator== (const iterator_chain<IteratorList2, TReversed>& it) const
+   bool operator== (const iterator_chain& other) const
    {
-      return discr==it.discr && this->eq(discr,it);
+      return leg==other.leg && (at_end() || base_t::eq(leg, other));
    }
 
-   template <typename IteratorList2>
-   typename std::enable_if<comparable_iterator_list<IteratorList, IteratorList2>::value, bool>::type
-   operator!= (const iterator_chain<IteratorList2, TReversed>& it) const
+   bool operator!= (const iterator_chain& other) const
    {
-      return !operator==(it);
+      return !operator==(other);
    }
 
    bool at_end() const
    {
-      return discr == d_finish;
+      return leg == mlist_length<IteratorList>::value;
    }
 
    void rewind()
    {
       static_assert(check_iterator_feature<iterator_chain, rewindable>::value, "iterator is not rewindable");
       base_t::rewind();
-      discr=d_start;
-      if (base_t::at_end(discr)) valid_position();
+      leg=0;
+      valid_position();
    }
 
    int index() const
    {
-      static_assert(check_iterator_feature<iterator_chain, indexed>::value, "iterator is not indexed");
-      return base_t::index(discr) + this->offsets[discr];
+      static_assert(is_indexed, "iterator is not indexed");
+      return base_t::index(leg) + index_offsets[leg];
    }
 
-   int get_part_index() const { return discr; }
+   using typename base_t::it_tuple;
+   int get_leg() const { return leg; }
+   const it_tuple& get_it_tuple() const { return base_t::get_it_tuple(); }
 };
 
-template <typename IteratorList, bool TReversed, typename Feature>
-struct check_iterator_feature<iterator_chain<IteratorList, TReversed>, Feature>
-   : list_accumulate_binary<list_and, check_iterator_feature, IteratorList, same<Feature> > {};
+template <typename IteratorList, bool is_indexed, typename Feature>
+struct check_iterator_feature<iterator_chain<IteratorList, is_indexed>, Feature>
+   : mlist_and<typename mlist_transform_binary<IteratorList, mrepeat<Feature>, check_iterator_feature>::type> {};
 
-template <typename IteratorList, bool TReversed>
-struct check_iterator_feature<iterator_chain<IteratorList, TReversed>, contractable> : std::false_type {};
+template <typename IteratorList, bool is_indexed>
+struct check_iterator_feature<iterator_chain<IteratorList, is_indexed>, indexed>
+   : bool_constant<is_indexed> {};
 
-template <typename Container,
-          bool TDescend = is_instance2b<typename container_traits<Container>::iterator, iterator_chain>::value,
-          bool TRedirected = is_derived_from_instance_of<typename deref<Container>::type, redirected_container_typebase>::value>
-struct container_chain_helper {
-   static const bool descend = TDescend,  // false
-                     redirected = false,
-                     is_const = effectively_const<Container>::value;
-   typedef Container container_list;
-   typedef const Container const_container_list;
+template <typename IteratorList, bool is_indexed>
+struct check_iterator_feature<iterator_chain<IteratorList, is_indexed>, contractable>
+   : std::false_type {};
+
+
+template <typename ContainerList, bool enforce_const=false>
+struct chain_const_helper {
+   static constexpr bool chain_is_const = enforce_const || mlist_or<typename mlist_transform_unary<ContainerList, is_effectively_const>::type>::value;
+   using type = std::conditional_t<chain_is_const, typename mlist_transform_unary<ContainerList, add_const>::type, ContainerList>;
 };
 
-template <typename Container>
-struct container_chain_helper<Container, true, false> {
-   typedef typename Container::manipulator_impl manip;
-   static const bool descend=true, redirected=false, is_const=manip::is_const;
-   typedef typename Container::container_list container_list;
-   typedef typename Container::const_container_list const_container_list;
-};
-
-template <typename Container>
-struct container_chain_helper<Container, true, true> {
-   typedef typename Container::container::manipulator_impl manip;
-   static const bool descend=true, redirected=true, is_const=manip::is_const;
-   typedef typename Container::container::container_list container_list;
-   typedef typename Container::container::const_container_list const_container_list;
-};
-
-template <typename Container, typename Features, bool _rev=container_traits<Container>::is_bidirectional>
-struct container_chain_traits_helper {
-   static const bool reversible=_rev;
-   typedef typename ensure_features<Container, Features>::iterator iterator_list;
-   typedef typename ensure_features<Container, Features>::const_iterator const_iterator_list;
-   typedef typename container_traits<Container>::category category;
-};
-
-template <typename Container, typename Features>
-struct container_chain_traits_helper<Container, Features, true> : container_chain_traits_helper<Container, Features, false> {
-   static const bool reversible=true;
-   typedef typename ensure_features<Container, Features>::reverse_iterator reverse_iterator_list;
-   typedef typename ensure_features<Container, Features>::const_reverse_iterator const_reverse_iterator_list;
-};
-
-template <typename Container, typename Features>
-struct container_chain_traits : container_chain_traits_helper<Container, Features> {};
-
-template <typename Traits1, typename Traits2, bool _rev=Traits1::reversible && Traits2::reversible>
-struct container_chain_traits_helper2 {
-   static const bool reversible=_rev;
-   typedef typename concat_list<typename Traits1::iterator_list, typename Traits2::iterator_list>::type iterator_list;
-   typedef typename concat_list<typename Traits1::const_iterator_list, typename Traits2::const_iterator_list>::type const_iterator_list;
-   typedef typename least_derived_class<typename Traits1::category, typename Traits2::category>::type category;
-};
-
-template <typename Traits1, typename Traits2>
-struct container_chain_traits_helper2<Traits1, Traits2, true> : container_chain_traits_helper2<Traits1, Traits2, false> {
-   static const bool reversible=true;
-   typedef typename concat_list<typename Traits1::reverse_iterator_list,
-                                typename Traits2::reverse_iterator_list>::type
-      reverse_iterator_list;
-   typedef typename concat_list<typename Traits1::const_reverse_iterator_list,
-                                typename Traits2::const_reverse_iterator_list>::type
-      const_reverse_iterator_list;
-};
-
-template <typename Head, typename Tail, typename Features>
-struct container_chain_traits<cons<Head, Tail>, Features>
-   : container_chain_traits_helper2< container_chain_traits<Head, Features>, container_chain_traits<Tail, Features> > {};
-
-template <typename Top, typename TParams>
-class container_chain_typebase : public manip_container_top<Top, TParams> {
-   typedef manip_container_top<Top, TParams> base_t;
+template <typename Top, typename Params>
+class container_chain_typebase : public manip_container_top<Top, Params> {
+   using base_t = manip_container_top<Top, Params>;
 public:
-   typedef typename mtagged_list_extract<TParams, Container1Tag>::type container1_ref;
-   typedef typename mtagged_list_extract<TParams, Container2Tag>::type container2_ref;
-   typedef typename deref<container1_ref>::minus_ref container1;
-   typedef typename deref<container2_ref>::minus_ref container2;
-   typedef container_chain_helper<container1> helper1;
-   typedef container_chain_helper<container2> helper2;
-   typedef typename concat_list<typename helper1::container_list, typename helper2::container_list>::type
-      _container_list;
-   typedef typename concat_list<typename helper1::const_container_list, typename helper2::const_container_list>::type
-      const_container_list;
+   using container_ref_list = typename mtagged_list_extract<Params, ContainerRefTag>::type;
+   using container_list = typename mlist_transform_unary<container_ref_list, deref>::type;
 
-   typedef dense can_enforce_features;
-   /* either some containers are sparse (then the resulting iterator_chain is automatically indexed),
-      or the whole chain should be made indexed (it is cheaper) */
-   typedef cons<indexed, cons<provide_construction<rewindable,false>, provide_construction<end_sensitive,false> > > cannot_enforce_features;
+   static constexpr bool
+      is_const       = chain_const_helper<container_ref_list>::chain_is_const,
+      is_sparse      = mlist_or<typename mlist_transform_binary<container_list, mrepeat<sparse>, check_container_feature>::type>::value,
+      all_sparse_compatible = mlist_and<typename mlist_transform_binary<container_list, mrepeat<sparse_compatible>, check_container_feature>::type>::value,
+      is_pure_sparse = mlist_and<typename mlist_transform_binary<container_list, mrepeat<pure_sparse>, check_container_feature>::type>::value;
 
-   static const bool
-      is_const       = helper1::is_const || helper2::is_const,
-      is_sparse      = list_accumulate_binary<list_or, check_container_ref_feature, _container_list, same<sparse> >::value,
-      is_pure_sparse = list_accumulate_binary<list_and, check_container_ref_feature, _container_list, same<pure_sparse> >::value;
+   using can_enforce_features = dense;
+   // either some containers are sparse (then the resulting iterator_chain is automatically indexed),
+   // or the whole chain should be made indexed (it is cheaper)
+   using cannot_enforce_features = mlist<indexed, provide_construction<rewindable, false>, provide_construction<end_sensitive, false> >;
 
-   typedef typename std::conditional<is_const, const_container_list, _container_list>::type container_list;
-   typedef typename mix_features<typename base_t::expected_features,
-                                 typename std::conditional<is_sparse,
-                                                           typename std::conditional<list_search_all<typename base_t::expected_features, dense, std::is_same>::value,
-                                                                                     cons<indexed, end_sensitive>, sparse_compatible>::type,
-                                                           end_sensitive>::type
-                                >::type
-      needed_features;
+   using needed_features = typename mix_features<
+      typename base_t::expected_features,
+      std::conditional_t<is_sparse,
+                         std::conditional_t<mlist_contains<typename base_t::expected_features, dense>::value,
+                                            mlist<indexed, end_sensitive>, sparse_compatible>,
+                         end_sensitive>>::type;
 
-   typedef iterator_chain<typename container_chain_traits<container_list, needed_features>::iterator_list> iterator;
-   typedef iterator_chain<typename container_chain_traits<container_list, needed_features>::const_iterator_list> const_iterator;
-   typedef typename iterator::reference reference;
-   typedef typename const_iterator::reference const_reference;
-   typedef typename iterator::value_type value_type;
-   typedef typename container_chain_traits<container_list, needed_features>::category container_category;
+   static constexpr bool needs_indexed = all_sparse_compatible || mlist_contains<needed_features, indexed, absorbing_feature>::value;
 
-   template <int pos>
-   struct pos_helper {
-      static const int side= pos >= list_length<typename helper1::container_list>::value,
-                      discr= (side ? helper2::redirected*2+helper2::descend
-                                   : helper1::redirected*2+helper1::descend)*2+side;
-      typedef cons< int_constant<pos>, int_constant<discr> > type;
-   };
+   template <typename T>
+   using get_category = typename container_traits<T>::category;
 
-   template <int pos>
-   typename n_th<container_list, pos>::type&
-   get_container(cons< int_constant<pos>, int_constant<0> >)
+   using iterator_list = typename mlist_transform_binary<container_ref_list, mrepeat<needed_features>, extract_iterator_with_features>::type;
+   using const_iterator_list = typename mlist_transform_binary<container_ref_list, mrepeat<needed_features>, extract_const_iterator_with_features>::type;
+
+   using iterator = iterator_chain<std::conditional_t<is_const, const_iterator_list, iterator_list>, needs_indexed>;
+   using const_iterator = iterator_chain<const_iterator_list, needs_indexed>;
+
+   using reference = typename iterator::reference;
+   using const_reference = typename const_iterator::reference;
+   using value_type = typename iterator::value_type;
+
+   using container_category = typename least_derived_class<typename mlist_concat<bidirectional_iterator_tag,
+                                 typename mlist_transform_unary<container_list, extract_category>::type>::type>::type;
+
+   static constexpr int chain_length = mlist_length<container_list>::value;
+
+   static constexpr auto tuple_indexes()
    {
-      return this->manip_top().get_container1();
-   }
-   template <int pos>
-   typename n_th<const_container_list, pos>::type&
-   get_container(cons< int_constant<pos>, int_constant<0> >) const
-   {
-      return this->manip_top().get_container1();
+      return std::make_index_sequence<chain_length>();
    }
 
-   template <int pos>
-   typename n_th<container_list, pos>::type&
-   get_container(cons< int_constant<pos>, int_constant<1> >)
+   static constexpr auto reverse_tuple_indexes()
    {
-      return this->manip_top().get_container2();
-   }
-   template <int pos>
-   typename n_th<const_container_list, pos>::type&
-   get_container(cons< int_constant<pos>, int_constant<1> >) const
-   {
-      return this->manip_top().get_container2();
+      return make_reverse_index_sequence<chain_length>();
    }
 
-   template <int pos>
-   typename n_th<container_list, pos>::type&
-   get_container(cons< int_constant<pos>, int_constant<2> >)
+   using typename base_t::manip_top_type;
+
+   template <typename Iterator, typename Creator, size_t... Index, typename OffsetsArg>
+   Iterator make_iterator(int leg_arg, const Creator& cr, std::index_sequence<Index...>, OffsetsArg&& offsets_arg)
    {
-      return this->manip_top().get_container1().get_container(int_constant<pos>());
-   }
-   template <int pos>
-   typename n_th<const_container_list, pos>::type&
-   get_container(cons< int_constant<pos>, int_constant<2> >) const
-   {
-      return this->manip_top().get_container1().get_container(int_constant<pos>());
+      using me_t = std::conditional_t<is_const, const manip_top_type&, manip_top_type&>;
+      me_t& me = this->manip_top();
+      return Iterator(leg_arg, std::forward<OffsetsArg>(offsets_arg), cr(me.get_container(int_constant<Index>()))...);
    }
 
-   template <int pos>
-   typename n_th<container_list, pos>::type&
-   get_container(cons< int_constant<pos>, int_constant<6> >)
+   template <typename Iterator, typename Creator, size_t... Index, typename OffsetsArg>
+   Iterator make_iterator(int leg_arg, const Creator& cr, std::index_sequence<Index...>, OffsetsArg&& offsets_arg) const
    {
-      return this->manip_top().get_container1().get_container().get_container(int_constant<pos>());
-   }
-   template <int pos>
-   typename n_th<const_container_list, pos>::type&
-   get_container(cons< int_constant<pos>, int_constant<6> >) const
-   {
-      return this->manip_top().get_container1().get_container().get_container(int_constant<pos>());
+      const auto& me = this->manip_top();
+      return Iterator(leg_arg, std::forward<OffsetsArg>(offsets_arg), cr(me.get_container(int_constant<Index>()))...);
    }
 
-   template <int pos>
-   typename n_th<container_list, pos>::type&
-   get_container(cons< int_constant<pos>, int_constant<3> >)
+   static constexpr auto make_begin()
    {
-      return this->manip_top().get_container2().get_container(int_constant<(pos-list_length<typename helper1::container_list>::value)>());
+      return [](auto&& c) { return ensure(c, needed_features()).begin(); };
    }
-   template <int pos>
-   typename n_th<const_container_list, pos>::type&
-   get_container(cons< int_constant<pos>, int_constant<3> >) const
+   static constexpr auto make_end()
    {
-      return this->manip_top().get_container2().get_container(int_constant<(pos-list_length<typename helper1::container_list>::value)>());
+      return [](auto&& c) { return ensure(c, needed_features()).end(); };
    }
-
-   template <int pos>
-   typename n_th<container_list, pos>::type&
-   get_container(cons< int_constant<pos>, int_constant<7> >)
+   static constexpr auto make_rbegin()
    {
-      return this->manip_top().get_container2().get_container().get_container(int_constant<(pos-list_length<typename helper1::container_list>::value)>());
+      return [](auto&& c) { return ensure(c, needed_features()).rbegin(); };
    }
-   template <int pos>
-   typename n_th<const_container_list, pos>::type&
-   get_container(cons< int_constant<pos>, int_constant<7> >) const
+   static constexpr auto make_rend()
    {
-      return this->manip_top().get_container2().get_container().get_container(int_constant<(pos-list_length<typename helper1::container_list>::value)>());
+      return [](auto&& c) { return ensure(c, needed_features()).rend(); };
    }
 
-   template <int pos>
-   typename n_th<container_list, pos>::type&
-   get_container(int_constant<pos>)
+   template <size_t... Index>
+   std::array<int, chain_length> make_index_offsets(std::true_type, bool is_reverse, std::index_sequence<Index...>) const
    {
-      return get_container(typename pos_helper<pos>::type());
+      int off=0;
+      const auto summator=[&off](int i) ->int { int sum=off; off+=i; return sum; };
+
+      std::array<int, chain_length> offsets{ { summator(get_dim(this->manip_top().get_container(int_constant<Index>())))... } };
+      if (is_reverse) std::reverse(offsets.begin(), offsets.end());
+      return offsets;
    }
 
-   template <int pos>
-   typename n_th<const_container_list, pos>::type&
-   get_container(int_constant<pos>) const
+   template <typename... Args>
+   static constexpr std::nullptr_t make_index_offsets(std::false_type, Args&&... args)
    {
-      return get_container(typename pos_helper<pos>::type());
+      return nullptr;
+   }
+
+   auto make_index_offsets(bool is_reverse) const
+   {
+      return make_index_offsets(bool_constant<needs_indexed>(), is_reverse, tuple_indexes());
    }
 };
 
-template <typename Top, typename TParams=typename Top::manipulator_params,
-          typename Category=typename container_chain_typebase<Top, TParams>::container_category>
+template <typename Top, typename Params=typename Top::manipulator_params,
+          typename Category=typename container_chain_typebase<Top, Params>::container_category>
 class container_chain_impl
-   : public container_chain_typebase<Top, TParams> {
-   typedef container_chain_typebase<Top, TParams> base_t;
+   : public container_chain_typebase<Top, Params> {
+   using base_t = container_chain_typebase<Top, Params>;
+private:
+   static constexpr int size_(int_constant<0>)
+   {
+      return 0;
+   }
+   static constexpr int dim_(int_constant<0>)
+   {
+      return 0;
+   }
+   static constexpr bool empty_(int_constant<0>)
+   {
+      return true;
+   }
+   template <int i>
+   int size_(int_constant<i>) const
+   {
+      return this->manip_top().get_container(int_constant<i-1>()).size() + size_(int_constant<i-1>());
+   }
+   template <int i>
+   int dim_(int_constant<i>) const
+   {
+      return get_dim(this->manip_top().get_container(int_constant<i-1>())) + dim_(int_constant<i-1>());
+   }
+   template <int i>
+   bool empty_(int_constant<i>) const
+   {
+      return this->manip_top().get_container(int_constant<i-1>()).empty() && empty_(int_constant<i-1>());
+   }
+
 public:
-   typedef container_chain_impl<Top, TParams> manipulator_impl;
-   typedef TParams manipulator_params;
-   typedef typename base_t::iterator iterator;
-   typedef typename base_t::const_iterator const_iterator;
+   typedef container_chain_impl<Top, Params> manipulator_impl;
+   typedef Params manipulator_params;
+   using typename base_t::iterator;
+   using typename base_t::const_iterator;
 
    template <typename FeatureCollector>
    struct rebind_feature_collector {
-      typedef container_chain_impl<FeatureCollector, TParams> type;
+      typedef container_chain_impl<FeatureCollector, Params> type;
    };
 
    iterator begin()
    {
-      return iterator(*this);
+      return base_t::template make_iterator<iterator>(0, base_t::make_begin(), base_t::tuple_indexes(), base_t::make_index_offsets(false));
    }
    iterator end()
    {
-      return iterator(*this, true);
+      return base_t::template make_iterator<iterator>(base_t::chain_length, base_t::make_end(), base_t::tuple_indexes(), nullptr);
    }
    const_iterator begin() const
    {
-      return const_iterator(*this);
+      return base_t::template make_iterator<const_iterator>(0, base_t::make_begin(), base_t::tuple_indexes(), base_t::make_index_offsets(false));
    }
    const_iterator end() const
    {
-      return const_iterator(*this, true);
+      return base_t::template make_iterator<const_iterator>(base_t::chain_length, base_t::make_end(), base_t::tuple_indexes(), nullptr);
    }
 
    int size() const
    {
-      return this->manip_top().get_container1().size() + this->manip_top().get_container2().size();
-   }
-   bool empty() const
-   {
-      return this->manip_top().get_container1().empty() && this->manip_top().get_container2().empty();
+      return size_(int_constant<base_t::chain_length>());
    }
    int dim() const
    {
-      return get_dim(this->manip_top().get_container1()) + get_dim(this->manip_top().get_container2());
+      return dim_(int_constant<base_t::chain_length>());
+   }
+   bool empty() const
+   {
+      return empty_(int_constant<base_t::chain_length>());
    }
 };
 
-template <typename Top, typename TParams>
-class container_chain_impl<Top, TParams, forward_iterator_tag>
-   : public container_chain_impl<Top, TParams, input_iterator_tag> {
-   typedef container_chain_impl<Top, TParams, input_iterator_tag> base_t;
+template <typename Top, typename Params>
+class container_chain_impl<Top, Params, forward_iterator_tag>
+   : public container_chain_impl<Top, Params, input_iterator_tag> {
+   using base_t = container_chain_impl<Top, Params, input_iterator_tag>;
 public:
-   typename base_t::reference front()
+   using typename base_t::reference;
+   using typename base_t::const_reference;
+private:
+   reference front_(int_constant<base_t::chain_length-1>)
    {
-      if (this->manip_top().get_container1().empty())
-         return this->manip_top().get_container2().front();
-      return this->manip_top().get_container1().front();
+      return this->manip_top().get_container(int_constant<base_t::chain_length-1>()).front();
    }
-   typename base_t::const_reference front() const
+   const_reference front_(int_constant<base_t::chain_length-1>) const
    {
-      if (this->manip_top().get_container1().empty())
-         return this->manip_top().get_container2().front();
-      return this->manip_top().get_container1().front();
+      return this->manip_top().get_container(int_constant<base_t::chain_length-1>()).front();
+   }
+   template <int i>
+   reference front_(int_constant<i>)
+   {
+      auto& c = this->manip_top().get_container(int_constant<i>());
+      if (!c.empty()) return c.front();
+      return front_(int_constant<i+1>());
+   }
+   template <int i>
+   const_reference front_(int_constant<i>) const
+   {
+      const auto& c = this->manip_top().get_container(int_constant<i>());
+      if (!c.empty()) return c.front();
+      return front_(int_constant<i+1>());
+   }
+public:
+   reference front()
+   {
+      return front_(int_constant<0>());
+   }
+   const_reference front() const
+   {
+      return front_(int_constant<0>());
    }
 };
 
-template <typename Top, typename TParams>
-class container_chain_impl<Top, TParams, bidirectional_iterator_tag>
-   : public container_chain_impl<Top, TParams, forward_iterator_tag> {
-   typedef container_chain_impl<Top, TParams, forward_iterator_tag> base_t;
+template <typename Top, typename Params>
+class container_chain_impl<Top, Params, bidirectional_iterator_tag>
+   : public container_chain_impl<Top, Params, forward_iterator_tag> {
+   using base_t = container_chain_impl<Top, Params, forward_iterator_tag>;
 public:
-   typedef iterator_chain<typename container_chain_traits<typename base_t::container_list, typename base_t::needed_features>::reverse_iterator_list, true>
-      reverse_iterator;
-   typedef iterator_chain<typename container_chain_traits<typename base_t::container_list, typename base_t::needed_features>::const_reverse_iterator_list, true>
-      const_reverse_iterator;
-
+   using reverse_container_list = typename mlist_reverse<typename base_t::container_ref_list>::type;
+   using reverse_iterator_list = typename mlist_transform_binary<reverse_container_list,
+                                   mrepeat<typename base_t::needed_features>, extract_reverse_iterator_with_features>::type;
+   using const_reverse_iterator_list = typename mlist_transform_binary<reverse_container_list,
+                                   mrepeat<typename base_t::needed_features>, extract_const_reverse_iterator_with_features>::type;
+   using reverse_iterator = iterator_chain<std::conditional_t<base_t::is_const, const_reverse_iterator_list, reverse_iterator_list>, base_t::needs_indexed>;
+   using const_reverse_iterator = iterator_chain<const_reverse_iterator_list, base_t::needs_indexed>;
+   using typename base_t::reference;
+   using typename base_t::const_reference;
+private:
+   reference back_(int_constant<0>)
+   {
+      return this->manip_top().get_container(int_constant<0>()).back();
+   }
+   const_reference back_(int_constant<0>) const
+   {
+      return this->manip_top().get_container(int_constant<0>()).back();
+   }
+   template <int i>
+   reference back_(int_constant<i>)
+   {
+      auto& c = this->manip_top().get_container(int_constant<i>());
+      if (!c.empty()) return c.back();
+      return back_(int_constant<i-1>());
+   }
+   template <int i>
+   const_reference back_(int_constant<i>) const
+   {
+      const auto& c = this->manip_top().get_container(int_constant<i>());
+      if (!c.empty()) return c.back();
+      return back_(int_constant<i-1>());
+   }
+public:
    reverse_iterator rbegin()
    {
-      return reverse_iterator(*this);
+      return base_t::template make_iterator<reverse_iterator>(0, base_t::make_rbegin(), base_t::reverse_tuple_indexes(), base_t::make_index_offsets(true));
    }
    reverse_iterator rend()
    {
-      return reverse_iterator(*this, true);
+      return base_t::template make_iterator<reverse_iterator>(base_t::chain_length, base_t::make_rend(), base_t::reverse_tuple_indexes(), nullptr);
    }
    const_reverse_iterator rbegin() const
    {
-      return const_reverse_iterator(*this);
+      return base_t::template make_iterator<const_reverse_iterator>(0, base_t::make_rbegin(), base_t::reverse_tuple_indexes(), base_t::make_index_offsets(true));
    }
    const_reverse_iterator rend() const
    {
-      return const_reverse_iterator(*this, true);
+      return base_t::template make_iterator<const_reverse_iterator>(base_t::chain_length, base_t::make_rend(), base_t::reverse_tuple_indexes(), nullptr);
    }
 
-   typename base_t::reference back()
+   reference back()
    {
-      if (this->manip_top().get_container2().empty())
-         return this->manip_top().get_container1().back();
-      return this->manip_top().get_container2().back();
+      return back_(int_constant<base_t::chain_length-1>());
    }
-   typename base_t::const_reference back() const
+   const_reference back() const
    {
-      if (this->manip_top().get_container2().empty())
-         return this->manip_top().get_container1().back();
-      return this->manip_top().get_container2().back();
+      return back_(int_constant<base_t::chain_length-1>());
    }
 };
 
-template <typename Top, typename TParams>
-class container_chain_impl<Top, TParams, random_access_iterator_tag>
-   : public container_chain_impl<Top, TParams, bidirectional_iterator_tag> {
-   typedef container_chain_impl<Top, TParams, bidirectional_iterator_tag> base_t;
+template <template <typename...> class Owner, typename... TailParams>
+struct chain_arg_helper {
+   template <typename T>
+   using recognize = is_instance_of<pure_type_t<T>, Owner>;
+
+   template <typename T, typename=void>
+   struct extract_impl {
+      using type = T;
+   };
+   template <typename T>
+   struct extract_impl<T, std::enable_if_t<recognize<T>::value &&
+            std::is_same<typename mlist_tail<typename recognize<T>::params>::type, mlist<TailParams...>>::value>> {
+      using aliases = typename mlist_transform_unary<typename mget_template_parameter<pure_type_t<T>, 0>::type, make_alias>::type;
+      using type = typename mlist_transform_binary<aliases, mrepeat<T>, inherit_reference>::type;
+   };
+
+   template <typename T>
+   using extract = extract_impl<T>;
+
+   template <typename ContainerList, typename ArgList>
+   static constexpr bool allow(ContainerList, ArgList)
+   {
+      using flattened_args = typename mlist_flatten<typename mlist_transform_unary<ArgList, extract>::type>::type;
+      using alias_list = typename mlist_transform_unary<ContainerList, make_alias>::type;
+      return allow_args(alias_list(), flattened_args());
+   }
+
+   template <typename AliasList, typename ArgList>
+   static constexpr std::enable_if_t<mlist_length<AliasList>::value == mlist_length<ArgList>::value, bool>
+   allow_args(AliasList, ArgList)
+   {
+      return mlist_and< typename mlist_transform_binary<AliasList, ArgList, is_direct_constructible>::type >::value;
+   }
+
+   template <typename AliasList, typename ArgList>
+   static constexpr std::enable_if_t<mlist_length<AliasList>::value != mlist_length<ArgList>::value, bool>
+   allow_args(AliasList, ArgList)
+   {
+      return false;
+   }
+
+   template <typename T>
+   using count = int_constant<mlist_length<typename extract_impl<T>::type>::value>;
+
+   template <typename Count, typename CountList>
+   using add_count = mlist_concat<Count, typename mlist_transform_binary<CountList, mrepeat<Count>, madd>::type>;
+
+   template <typename ArgList, bool no_tuples>
+   struct matcher {
+      using type = std::true_type;
+   };
+
+   template <typename ArgList>
+   struct matcher<ArgList, false> {
+      using type = typename mlist_wrap<typename mlist_fold_transform<ArgList, count, add_count>::type>::type;
+   };
+
+   template <int length, typename ArgList>
+   static constexpr auto match(ArgList)
+   {
+      return typename matcher<ArgList, (length==mlist_length<ArgList>::value)>::type();
+   }
+};
+
+template <typename Elements>
+class alias_tuple {
+protected:
+   using alias_list = typename mlist_transform_unary<Elements, make_alias>::type;
+   using alias_store = typename mlist2tuple<alias_list>::type;
+
+   alias_store aliases;
+
+   // TODO: =delete
+   alias_tuple() = default;
+
+   alias_tuple(alias_tuple&&) = default;
+   alias_tuple(const alias_tuple&) = default;
+
+   template <template <typename...> class Owner, typename... TailParams, typename... Args>
+   alias_tuple(chain_arg_helper<Owner, TailParams...> helper, Args&&... args)
+      : alias_tuple(helper.template match<mlist_length<Elements>::value>(mlist<Args...>()), std::forward<Args>(args)...) {}
+
+private:
+   template <typename... Args>
+   alias_tuple(std::true_type, Args&&... args)
+      : aliases(std::forward<Args>(args)...) {}
+
+   template <typename... Counts, typename... Args>
+   alias_tuple(mlist<Counts...>, Args&&... args)
+      : alias_tuple(typename index_sequence_for<Elements>::type(),
+                    mlist<int_constant<0>, Counts...>(),
+                    std::forward_as_tuple(std::forward<Args>(args)...)) {}
+
+   template <size_t... Index, typename Counts, typename... Args>
+   alias_tuple(std::index_sequence<Index...>, Counts, std::tuple<Args...>&& args)
+      : aliases(pick_arg<Index, Counts>(args)...) {}
+
+   template <int i, typename Counts, typename... Args>
+   static constexpr decltype(auto) pick_arg(std::tuple<Args...>& args)
+   {
+      using arg_finder = mlist_find_if<Counts, mis_greater, int_constant<i>>;
+      constexpr int offset = mlist_at<Counts, arg_finder::pos-1>::type::value;
+      constexpr bool arg_is_tuple = arg_finder::match::value > offset+1;
+      return pick_arg(std::get<arg_finder::pos-1>(std::move(args)), int_constant<(arg_is_tuple ? i-offset : -1)>());
+   }
+
+   template <typename Arg>
+   static constexpr decltype(auto) pick_arg(Arg&& arg, int_constant<-1>)
+   {
+      return std::forward<Arg>(arg);
+   }
+
+   template <typename Arg, int i>
+   static constexpr decltype(auto) pick_arg(Arg&& arg, int_constant<i>)
+   {
+      return std::forward<Arg>(arg).get_alias(int_constant<i>());
+   }
+
 public:
-   typename base_t::reference operator[] (int i)
+   template <int i>
+   decltype(auto) get_alias(int_constant<i>) &
    {
-      const int d1=get_dim(this->manip_top().get_container1());
-      if (i<d1) return this->manip_top().get_container1()[i];
-      return this->manip_top().get_container2()[i-d1];
+      return std::get<i>(aliases);
    }
-   typename base_t::const_reference operator[] (int i) const
+   template <int i>
+   decltype(auto) get_alias(int_constant<i>) const &
    {
-      const int d1=get_dim(this->manip_top().get_container1());
-      if (i<d1) return this->manip_top().get_container1()[i];
-      return this->manip_top().get_container2()[i-d1];
+      return std::get<i>(aliases);
    }
+   template <int i>
+   decltype(auto) get_alias(int_constant<i>) &&
+   {
+      return std::move(std::get<i>(aliases));
+   }
+   template <int i>
+   decltype(auto) get_container(int_constant<i>)
+   {
+      return *get_alias(int_constant<i>());
+   }
+   template <int i>
+   decltype(auto) get_container(int_constant<i>) const
+   {
+      return *get_alias(int_constant<i>());
+   }
+
+   template <typename T>
+   using get_lazy = bool_constant<object_traits<typename deref<T>::type>::is_lazy>;
+
+   static constexpr bool
+      is_lazy = mlist_or<typename mlist_transform_unary<Elements, get_lazy>::type>::value,
+      is_always_const = mlist_or<typename mlist_transform_unary<Elements, is_effectively_const>::type>::value;
 };
 
-template <typename ContainerRef1, typename ContainerRef2>
+template <template <typename...> class Owner, bool enforce_const=false, typename... TailParams>
+struct chain_compose {
+   template <typename T>
+   using recognize = is_instance_of<pure_type_t<T>, Owner>;
+
+   template <typename T, typename=void>
+   struct extract_impl {
+      using type = T;
+   };
+   template <typename T>
+   struct extract_impl<T, std::enable_if_t<recognize<T>::value &&
+            std::is_same<typename mlist_tail<typename recognize<T>::params>::type, mlist<TailParams...>>::value>> {
+      using type = typename mlist_head<typename recognize<T>::params>::type;
+   };
+   template <typename T>
+   using extract = extract_impl<T>;
+
+   template <typename... T>
+   using component_list = typename mlist_flatten<typename mlist_transform_unary<typename mlist_wrap<T...>::type, extract>::type>::type;
+
+   template <typename... T>
+   using list = typename chain_const_helper<component_list<T...>, enforce_const>::type;
+
+   template <typename... T>
+   using with = Owner<list<T...>, TailParams...>;
+};
+
+template <typename ContainerList>
 class ContainerChain
-   : public container_pair_base<ContainerRef1, ContainerRef2>,
-     public container_chain_impl< ContainerChain<ContainerRef1,ContainerRef2>,
-                                  mlist< Container1Tag<ContainerRef1>, Container2Tag<ContainerRef2> > > {
-   typedef container_pair_base<ContainerRef1, ContainerRef2> base_t;
+   : public alias_tuple<ContainerList>
+   , public container_chain_impl< ContainerChain<ContainerList>,
+                                  mlist< ContainerRefTag<ContainerList> > > {
+   using arg_helper = chain_arg_helper<pm::ContainerChain>;
+protected:
+   using alias_tuple<ContainerList>::alias_tuple;
 public:
-   ContainerChain(typename base_t::first_arg_type src1_arg, typename base_t::second_arg_type src2_arg)
-      : base_t(src1_arg,src2_arg) {}
+   template <typename... Args, typename=std::enable_if_t<arg_helper::allow(ContainerList(), mlist<Args...>())>>
+   explicit ContainerChain(Args&&... args)
+      : alias_tuple<ContainerList>(arg_helper(), std::forward<Args>(args)...) {}
 };
 
-template <typename ContainerRef1, typename ContainerRef2>
-struct spec_object_traits< ContainerChain<ContainerRef1, ContainerRef2> >
+template <typename ContainerList>
+struct spec_object_traits< ContainerChain<ContainerList> >
    : spec_object_traits<is_container> {
-   static const bool
-      is_temporary=true,
-      is_lazy = object_traits<typename deref<ContainerRef1>::type>::is_lazy || object_traits<typename deref<ContainerRef2>::type>::is_lazy,
-      is_always_const = effectively_const<ContainerRef1>::value || effectively_const<ContainerRef2>::value;
+   static constexpr bool
+      is_temporary = true,
+      is_lazy = alias_tuple<ContainerList>::is_lazy,
+      is_always_const = alias_tuple<ContainerList>::is_always_const;
 };
 
-template <typename ContainerRef1, typename ContainerRef2>
-struct check_container_feature<ContainerChain<ContainerRef1, ContainerRef2>, sparse> {
-   static const bool value=check_container_ref_feature<ContainerRef1, sparse>::value ||
-                           check_container_ref_feature<ContainerRef2, sparse>::value;
+template <typename ContainerList>
+struct check_container_feature<ContainerChain<ContainerList>, sparse>
+   : mlist_or<typename mlist_transform_binary<ContainerList, mrepeat<sparse>, check_container_ref_feature>::type> {};
+
+template <typename ContainerList>
+struct check_container_feature<ContainerChain<ContainerList>, pure_sparse>
+   : mlist_and<typename mlist_transform_binary<ContainerList, mrepeat<pure_sparse>, check_container_ref_feature>::type> {};
+
+template <typename... Container>
+auto concatenate(Container&&... c)
+{
+   return typename chain_compose<ContainerChain>::template with<Container...>(std::forward<Container>(c)...);
+}
+
+template <typename IteratorList, typename Operation>
+class tuple_transform_iterator
+   : protected chains::iterator_store<IteratorList> {
+   using base_t = chains::iterator_store<IteratorList>;
+   using typename base_t::it_tuple;
+protected:
+   Operation op;
+
+   template <size_t... Index>
+   static decltype(auto) apply_op(const Operation& op, const it_tuple& t, std::index_sequence<Index...>)
+   {
+      return op(*(std::get<Index>(t))...);
+   }
+
+public:
+   using iterator_category = typename union_iterator_traits<IteratorList>::iterator_category;
+   using difference_type = ptrdiff_t;
+
+   using iterator = tuple_transform_iterator<typename mlist_transform_unary<IteratorList, chains::get_iterator>::type, Operation>;
+   using const_iterator = tuple_transform_iterator<typename mlist_transform_unary<IteratorList, chains::get_const_iterator>::type, Operation>;
+
+   tuple_transform_iterator() = default;
+
+   template <typename... Iterator, typename=std::enable_if_t<std::is_constructible<base_t, Iterator...>::value>>
+   explicit tuple_transform_iterator(Iterator&&... args)
+      : base_t(std::forward<Iterator>(args)...) {}
+
+   template <typename... Iterator, typename=std::enable_if_t<std::is_constructible<base_t, Iterator...>::value>>
+   tuple_transform_iterator(const Operation& op_arg, Iterator&&... args)
+      : base_t(std::forward<Iterator>(args)...)
+      , op(op_arg) {}
+
+   tuple_transform_iterator(const iterator& other)
+      : base_t(other) {}
+
+   tuple_transform_iterator& operator= (const iterator& other)
+   {
+      base_t::operator=(other);
+      return *this;
+   }
+
+   using reference = decltype(apply_op(std::declval<const Operation&>(), std::declval<const it_tuple&>(), typename index_sequence_for<IteratorList>::type()));
+   using pointer = typename arrow_helper<reference>::pointer;
+   using value_type = pure_type_t<reference>;
+
+   reference operator* () const
+   {
+      return apply_op(op, base_t::get_it_tuple(), typename index_sequence_for<IteratorList>::type());
+   }
+   pointer operator-> () const
+   {
+      return arrow_helper<reference>::get(*this);
+   }
+
+   tuple_transform_iterator& operator++ ()
+   {
+      foreach_in_tuple(base_t::its, [](auto& it) ->void { ++it; });
+      return *this;
+   }
+   tuple_transform_iterator operator++ (int) { tuple_transform_iterator copy(*this); operator++(); return copy; }
+
+   tuple_transform_iterator& operator-- ()
+   {
+      static_assert(is_derived_from<iterator_category, std::bidirectional_iterator_tag>::value,
+                    "decrement is not supported by all involved iterators");
+      foreach_in_tuple(base_t::get_it_tuple(), [](auto& it) ->void { --it; });
+      return *this;
+   }
+   tuple_transform_iterator operator-- (int) { tuple_transform_iterator copy(*this); operator--(); return copy; }
+
+   tuple_transform_iterator& operator+= (ptrdiff_t i)
+   {
+      static_assert(std::is_same<iterator_category, std::random_access_iterator_tag>::value,
+                    "random access is not supported by all involved iterators");
+      foreach_in_tuple(base_t::get_it_tuple(), [i](auto& it) ->void { it+=i; });
+      return *this;
+   }
+   tuple_transform_iterator& operator-= (ptrdiff_t i)
+   {
+      static_assert(std::is_same<iterator_category, std::random_access_iterator_tag>::value,
+                    "random access is not supported by all involved iterators");
+      foreach_in_tuple(base_t::get_it_tuple(), [i](auto& it) ->void { it-=i; });
+      return *this;
+   }
+
+   tuple_transform_iterator operator+ (ptrdiff_t i) const
+   {
+      tuple_transform_iterator copy(*this);  return copy+=i;
+   }
+   tuple_transform_iterator operator- (ptrdiff_t i) const
+   {
+      tuple_transform_iterator copy(*this);  return copy-=i;
+   }
+   friend tuple_transform_iterator operator+ (ptrdiff_t i, const tuple_transform_iterator& me)
+   {
+      return me+i;
+   }
+   ptrdiff_t operator- (const tuple_transform_iterator& other) const
+   {
+      constexpr int i = mlist_find_if<IteratorList, can_subtract_iterators>::pos;
+      static_assert(i>=0, "no random access");
+      return std::get<i>(base_t::get_it_tuple()) - std::get<i>(other.get_it_tuple());
+   }
+
+   bool at_end() const
+   {
+      constexpr int i = mlist_find_if<IteratorList, check_iterator_feature, end_sensitive>::pos;
+      return std::get<i>(base_t::get_it_tuple()).at_end();
+   }
+
+   int index() const
+   {
+      constexpr int i = mlist_find_if<IteratorList, check_iterator_feature, indexed>::pos;
+      return std::get<i>(base_t::get_it_tuple()).index();
+   }
+
+   bool operator== (const tuple_transform_iterator& other) const
+   {
+      constexpr int i = mlist_find_if<IteratorList, mnegate_binary<check_iterator_feature>::template func, unlimited>::pos;
+      return std::get<i>(base_t::get_it_tuple()) == std::get<i>(other.get_it_tuple());
+   }
+   bool operator!= (const tuple_transform_iterator& other) const
+   {
+      return !operator==(other);
+   }
 };
 
-template <typename ContainerRef1, typename ContainerRef2>
-struct check_container_feature<ContainerChain<ContainerRef1, ContainerRef2>, pure_sparse> {
-   static const bool value=check_container_ref_feature<ContainerRef1, pure_sparse>::value &&
-                           check_container_ref_feature<ContainerRef2, pure_sparse>::value;
+template <typename IteratorList, typename Operation, typename Feature>
+struct check_iterator_feature< tuple_transform_iterator<IteratorList, Operation>, Feature>
+   : mlist_or< typename mlist_transform_binary<IteratorList, mrepeat<Feature>, check_iterator_feature>::type > {};
+
+template <typename IteratorList, typename Operation>
+struct check_iterator_feature< tuple_transform_iterator<IteratorList, Operation>, unlimited>
+   : mlist_and< typename mlist_transform_binary<IteratorList, mrepeat<unlimited>, check_iterator_feature>::type > {};
+
+template <typename Top, typename Params>
+class modified_container_tuple_typebase : public manip_container_top<Top, Params> {
+   using base_t = manip_container_top<Top, Params>;
+public:
+   using container_ref_list = typename mtagged_list_extract<Params, ContainerRefTag>::type;
+   using container_list = typename mlist_transform_unary<container_ref_list, deref>::type;
+   using operation = typename mtagged_list_extract<Params, OperationTag>::type;
+   using raw_iterator_list = typename mlist_transform_unary<container_ref_list, extract_iterator>::type;
+
+   static constexpr int tuple_size = mlist_length<container_list>::value;
+   static constexpr auto tuple_indexes()
+   {
+      return std::make_index_sequence<tuple_size>();
+   }
+
+   using usual_or_features = mlist<end_sensitive, indexed>;
+   using typename base_t::expected_features;
+   using or_features = typename mlist_match_all<expected_features, usual_or_features, equivalent_features>::type;
+   using and_features = typename mlist_match_all<expected_features, usual_or_features, equivalent_features>::complement;
+   using missing_or_features = typename mlist_match_all<raw_iterator_list, or_features, check_iterator_feature>::complement2;
+
+   static constexpr int normal_it_pos = mlist_find_if<raw_iterator_list, mnegate_binary<check_iterator_feature>::template func, unlimited>::pos;
+   using needed_feature_list = typename mlist_concat< typename mreplicate< ExpectedFeaturesTag<and_features>, normal_it_pos>::type,
+                                                      ExpectedFeaturesTag< typename mix_features<and_features, missing_or_features>::type >,
+                                                      typename mreplicate< ExpectedFeaturesTag<and_features>, tuple_size-normal_it_pos-1>::type >::type;
+
+   using iterator_list = typename mlist_transform_binary<container_ref_list, needed_feature_list, extract_iterator_with_features>::type;
+   using const_iterator_list = typename mlist_transform_binary<container_ref_list, needed_feature_list, extract_const_iterator_with_features>::type;
+
+   using iterator = tuple_transform_iterator<iterator_list, operation>;
+   using const_iterator = tuple_transform_iterator<const_iterator_list, operation>;
+   using container_category = typename least_derived_class< typename mlist_transform_unary<container_list, extract_category>::type >::type;
+   using reference = typename iterator::reference;
+   using const_reference = typename const_iterator::reference;
+   using value_type = typename iterator::value_type;
 };
 
-template <typename Container1, typename Container2> inline
-ContainerChain<Container1&, Container2&>
-concatenate(Container1& c1, Container2& c2)
-{
-   return ContainerChain<Container1&, Container2&> (c1,c2);
-}
+template <typename Top, typename Params>
+class reverse_modified_container_tuple_typebase {
+   using base_t = modified_container_tuple_typebase<Top, Params>;
+public:
+   using reverse_iterator_list =
+      typename mlist_transform_binary<typename base_t::container_ref_list, typename base_t::needed_feature_list,
+                                      extract_reverse_iterator_with_features>::type;
+   using const_reverse_iterator_list =
+      typename mlist_transform_binary<typename base_t::container_ref_list, typename base_t::needed_feature_list,
+                                      extract_const_reverse_iterator_with_features>::type;
 
-template <typename Container1, typename Container2> inline
-ContainerChain<Container1&, const Container2&>
-concatenate(Container1& c1, const Container2& c2)
-{
-   return ContainerChain<Container1&, const Container2&> (c1,c2);
-}
+   using reverse_iterator = tuple_transform_iterator<reverse_iterator_list, typename base_t::operation>;
+   using const_reverse_iterator = tuple_transform_iterator<const_reverse_iterator_list, typename base_t::operation>;
+};
 
-template <typename Container1, typename Container2> inline
-ContainerChain<const Container1&, Container2&>
-concatenate(const Container1& c1, Container2& c2)
-{
-   return ContainerChain<const Container1&, Container2&> (c1,c2);
-}
+template <typename Top, typename Params=typename Top::manipulator_params,
+          typename Category=typename modified_container_tuple_typebase<Top, Params>::container_category>
+class modified_container_tuple_impl
+   : public modified_container_tuple_typebase<Top, Params> {
+   using base_t = modified_container_tuple_typebase<Top, Params>;
+public:
+   typedef modified_container_tuple_impl<Top, Params> manipulator_impl;
+   typedef Params manipulator_params;
+   using typename base_t::iterator;
+   using typename base_t::const_iterator;
 
-template <typename Container1, typename Container2> inline
-ContainerChain<const Container1&, const Container2&>
-concatenate(const Container1& c1, const Container2& c2)
-{
-   return ContainerChain<const Container1&, const Container2&> (c1,c2);
-}
+   template <typename FeatureCollector>
+   struct rebind_feature_collector {
+      typedef modified_container_tuple_impl<FeatureCollector, Params> type;
+   };
+
+   iterator begin()
+   {
+      return make_begin(base_t::tuple_indexes(), typename base_t::needed_feature_list());
+   }
+   iterator end()
+   {
+      return make_end(base_t::tuple_indexes(), typename base_t::needed_feature_list());
+   }
+   const_iterator begin() const
+   {
+      return make_begin(base_t::tuple_indexes(), typename base_t::needed_feature_list());
+   }
+   const_iterator end() const
+   {
+      return make_end(base_t::tuple_indexes(), typename base_t::needed_feature_list());
+   }
+
+   int size() const
+   {
+      return this->manip_top().template get_container(int_constant<base_t::normal_it_pos>()).size();
+   }
+   int dim() const
+   {
+      return get_dim(this->manip_top().template get_container(int_constant<base_t::normal_it_pos>()));
+   }
+   bool empty() const
+   {
+      return this->manip_top().template get_container(int_constant<base_t::normal_it_pos>()).empty();
+   }
+
+   decltype(auto) front()
+   {
+      return make_front(base_t::tuple_indexes());
+   }
+   decltype(auto) front() const
+   {
+      return make_front(base_t::tuple_indexes());
+   }
+
+private:
+   template <size_t... Index, typename... Features>
+   iterator make_begin(std::index_sequence<Index...>, mlist<Features...>)
+   {
+      return iterator(this->manip_top().get_operation(),
+                      ensure(this->manip_top().template get_container(int_constant<Index>()), muntag_t<Features>()).begin()...);
+   }
+
+   template <size_t... Index, typename... Features>
+   iterator make_end(std::index_sequence<Index...>, mlist<Features...>)
+   {
+      return iterator(this->manip_top().get_operation(),
+                      ensure(this->manip_top().template get_container(int_constant<Index>()), muntag_t<Features>()).end()...);
+   }
+
+   template <size_t... Index, typename... Features>
+   const_iterator make_begin(std::index_sequence<Index...>, mlist<Features...>) const
+   {
+      return const_iterator(this->manip_top().get_operation(),
+                            ensure(this->manip_top().template get_container(int_constant<Index>()), muntag_t<Features>()).begin()...);
+   }
+
+   template <size_t... Index, typename... Features>
+   const_iterator make_end(std::index_sequence<Index...>, mlist<Features...>) const
+   {
+      return const_iterator(this->manip_top().get_operation(),
+                            ensure(this->manip_top().template get_container(int_constant<Index>()), muntag_t<Features>()).end()...);
+   }
+
+   template <size_t... Index>
+   decltype(auto) make_front(std::index_sequence<Index...>)
+   {
+      return this->manip_top().get_operation()( this->manip_top().template get_container(int_constant<Index>()).front()... );
+   }
+
+   template <size_t... Index>
+   decltype(auto) make_front(std::index_sequence<Index...>) const
+   {
+      return this->manip_top().get_operation()( this->manip_top().template get_container(int_constant<Index>()).front()... );
+   }
+};
+
+template <typename Top, typename Params>
+class modified_container_tuple_impl<Top, Params, std::bidirectional_iterator_tag>
+   : public modified_container_tuple_impl<Top, Params, std::forward_iterator_tag> {
+   using base_t = modified_container_tuple_impl<Top, Params, std::forward_iterator_tag>;
+   using rev_traits = reverse_modified_container_tuple_typebase<Top, Params>;
+public:
+   using reverse_iterator = typename rev_traits::reverse_iterator;
+   using const_reverse_iterator = typename rev_traits::const_reverse_iterator;
+
+   reverse_iterator rbegin()
+   {
+      return make_rbegin(base_t::tuple_indexes(), typename base_t::needed_feature_list());
+   }
+   reverse_iterator rend()
+   {
+      return make_rend(base_t::tuple_indexes(), typename base_t::needed_feature_list());
+   }
+   const_reverse_iterator rbegin() const
+   {
+      return make_rbegin(base_t::tuple_indexes(), typename base_t::needed_feature_list());
+   }
+   const_reverse_iterator rend() const
+   {
+      return make_rend(base_t::tuple_indexes(), typename base_t::needed_feature_list());
+   }
+
+   decltype(auto) back()
+   {
+      return make_back(base_t::tuple_indexes());
+   }
+   decltype(auto) back() const
+   {
+      return make_back(base_t::tuple_indexes());
+   }
+
+private:
+   template <size_t... Index, typename... Features>
+   reverse_iterator make_rbegin(std::index_sequence<Index...>, mlist<Features...>)
+   {
+      return reverse_iterator(this->manip_top().get_operation(),
+                              ensure(this->manip_top().template get_container(int_constant<Index>()), muntag_t<Features>()).rbegin()...);
+   }
+
+   template <size_t... Index, typename... Features>
+   reverse_iterator make_rend(std::index_sequence<Index...>, mlist<Features...>)
+   {
+      return reverse_iterator(this->manip_top().get_operation(),
+                              ensure(this->manip_top().template get_container(int_constant<Index>()), muntag_t<Features>()).rend()...);
+   }
+
+   template <size_t... Index, typename... Features>
+   const_reverse_iterator make_rbegin(std::index_sequence<Index...>, mlist<Features...>) const
+   {
+      return const_reverse_iterator(this->manip_top().get_operation(),
+                                    ensure(this->manip_top().template get_container(int_constant<Index>()), muntag_t<Features>()).rbegin()...);
+   }
+
+   template <size_t... Index, typename... Features>
+   const_reverse_iterator make_rend(std::index_sequence<Index...>, mlist<Features...>) const
+   {
+      return const_reverse_iterator(this->manip_top().get_operation(),
+                                    ensure(this->manip_top().template get_container(int_constant<Index>()), muntag_t<Features>()).rend()...);
+   }
+
+   template <size_t... Index>
+   decltype(auto) make_back(std::index_sequence<Index...>)
+   {
+      return this->manip_top().get_operation()( this->manip_top().template get_container(int_constant<Index>()).back()... );
+   }
+
+   template <size_t... Index>
+   decltype(auto) make_back(std::index_sequence<Index...>) const
+   {
+      return this->manip_top().get_operation()( this->manip_top().template get_container(int_constant<Index>()).back()... );
+   }
+};
+
+template <typename Top, typename Params>
+class modified_container_tuple_impl<Top, Params, std::random_access_iterator_tag>
+   : public modified_container_tuple_impl<Top, Params, std::bidirectional_iterator_tag> {
+   using base_t = modified_container_tuple_impl<Top, Params, std::bidirectional_iterator_tag>;
+public:
+   decltype(auto) operator[] (int i)
+   {
+      return make_random(i, base_t::tuple_indexes());
+   }
+   decltype(auto) operator[] (int i) const
+   {
+      return make_random(i, base_t::tuple_indexes());
+   }
+
+private:
+   template <size_t... Index>
+   decltype(auto) make_random(int i, std::index_sequence<Index...>)
+   {
+      return this->manip_top().get_operation()( this->manip_top().template get_container(int_constant<Index>())[i]... );
+   }
+
+   template <size_t... Index>
+   decltype(auto) make_random(int i, std::index_sequence<Index...>) const
+   {
+      return this->manip_top().get_operation()( this->manip_top().template get_container(int_constant<Index>())[i]... );
+   }
+};
 
 namespace operations {
 
@@ -918,18 +1302,31 @@ template <typename LeftRef, typename RightRef,
 struct concat_impl;
 
 template <typename LeftRef, typename RightRef>
-struct concat : concat_impl<LeftRef,RightRef> {};
+struct concat : concat_impl<LeftRef, RightRef> {};
 
 } // end namespace operations
 } // end namespace pm
 
 namespace polymake {
-   using pm::concatenate;
 
-   namespace operations {
-      typedef BuildBinary<pm::operations::concat> concat;
+using pm::concatenate;
+
+namespace operations {
+
+typedef BuildBinary<pm::operations::concat> concat;
+
+// to be used in Rows/Cols of BlockMatrix, where no hidden chains can ocur among the arguments
+template <template <typename> class Result>
+struct concat_tuple {
+   template <typename... Args>
+   auto operator() (Args&&... args) const
+   {
+      using list = typename pm::chain_const_helper<mlist<Args...>>::type;
+      return Result<list>(std::forward<Args>(args)...);
    }
-}
+};
+
+} }
 
 #endif // POLYMAKE_CONTAINER_CHAIN_H
 

@@ -32,100 +32,100 @@
 
 namespace polymake { namespace tropical {
 
+template <typename Addition>
+perl::Object affine_transform(perl::Object cycle, Matrix<Rational> matrix, Vector<Rational> translate)
+{
+  // Extract values
+  Matrix<Rational> vertices = cycle.give("VERTICES");
+  IncidenceMatrix<> polytopes = cycle.give("MAXIMAL_POLYTOPES");
+  Matrix<Rational> lineality = cycle.give("LINEALITY_SPACE");
+  bool weights_exist = cycle.exists("WEIGHTS");
+  bool local_exists = cycle.exists("LOCAL_RESTRICTION");
 
-	template <typename Addition>
-		perl::Object affine_transform(perl::Object cycle, Matrix<Rational> matrix, Vector<Rational> translate) {
-			//Extract values
-			Matrix<Rational> vertices = cycle.give("VERTICES");
-			IncidenceMatrix<> polytopes = cycle.give("MAXIMAL_POLYTOPES");
-			Matrix<Rational> lineality = cycle.give("LINEALITY_SPACE");
-			bool weights_exist = cycle.exists("WEIGHTS");
-			bool local_exists = cycle.exists("LOCAL_RESTRICTION");
+  if (translate.dim() == 0)
+    translate = zero_vector<Rational>(matrix.rows());
 
-			if(translate.dim() == 0)
-				translate = zero_vector<Rational>(matrix.rows());
+  // Sanity checks
+  if (call_function("is_empty", cycle)) {
+    return empty_cycle<Addition>(matrix.rows()-1);
+  }
+  if (matrix.rows() != translate.dim() || matrix.cols() != vertices.cols()-1)
+    throw std::runtime_error("affine_transform: Dimension mismatch.");
 
-			//Sanity checks
-			if (call_function("is_empty", cycle)) {
-				return empty_cycle<Addition>(matrix.rows()-1);
-			}
-			if (matrix.rows() != translate.dim() || matrix.cols() != vertices.cols()-1)
-				throw std::runtime_error("affine_transform: Dimension mismatch.");
+  // Change matrix and translate so we can just apply it to rays
+  matrix = zero_vector<Rational>() / matrix;
+  matrix = unit_vector<Rational>(matrix.rows(),0) | matrix;
+  translate = Rational(0) | translate;
 
-			//Change matrix and translate so we can just apply it to rays
-			matrix = zero_vector<Rational>() / matrix;
-			matrix = unit_vector<Rational>(matrix.rows(),0) | matrix;
-			translate = Rational(0) | translate;
-
-			//Transform
-			Set<int> nonfar = far_and_nonfar_vertices(vertices).second;
-			vertices= vertices * T(matrix);
-			for(Entire<Set<int> >::iterator nf = entire(nonfar); !nf.at_end(); nf++) {
-				vertices.row(*nf) += translate;
-			}
-			if(lineality.rows() > 0)
-				lineality = lineality * T(matrix);
+  // Transform
+  Set<int> nonfar = far_and_nonfar_vertices(vertices).second;
+  vertices= vertices * T(matrix);
+  for (auto nf = entire(nonfar); !nf.at_end(); ++nf) {
+    vertices.row(*nf) += translate;
+  }
+  if (lineality.rows() > 0)
+    lineality = lineality * T(matrix);
 		
-			//The seemingly unnecessary thomog(tdehomog - calls take care of the fact
-			//that the normalization polymake applies to vertices is not compatible with
-			//tropical projective equivalence relation. By dehomogenizing, the homogenizing,
-			//we pick a unique representative on an affine chart.
-			perl::Object result(perl::ObjectType::construct<Addition>("Cycle"));
-				result.take("VERTICES") << thomog(tdehomog(vertices));
-				result.take("MAXIMAL_POLYTOPES") << cycle.give("MAXIMAL_POLYTOPES");
-				result.take("LINEALITY_SPACE") << thomog(tdehomog(lineality));
-				if(weights_exist)
-					result.take("WEIGHTS") << cycle.give("WEIGHTS");
-				if(local_exists)
-					result.take("LOCAL_RESTRICTION") << cycle.give("LOCAL_RESTRICTION");
+  // The seemingly unnecessary thomog(tdehomog - calls take care of the fact
+  // that the normalization polymake applies to vertices is not compatible with
+  // tropical projective equivalence relation. By dehomogenizing, the homogenizing,
+  // we pick a unique representative on an affine chart.
+  perl::Object result("Cycle", mlist<Addition>());
+  result.take("VERTICES") << thomog(tdehomog(vertices));
+  result.take("MAXIMAL_POLYTOPES") << cycle.give("MAXIMAL_POLYTOPES");
+  result.take("LINEALITY_SPACE") << thomog(tdehomog(lineality));
+  if (weights_exist)
+    result.take("WEIGHTS") << cycle.give("WEIGHTS");
+  if (local_exists)
+    result.take("LOCAL_RESTRICTION") << cycle.give("LOCAL_RESTRICTION");
 			
-			return result;
-		}
+  return result;
+}
 
-	template <typename Addition>
-		perl::Object shift_cycle(perl::Object cycle, Vector<Rational> translate) {
-			return affine_transform<Addition>(cycle, unit_matrix<Rational>(translate.dim()), translate);
-		}
+template <typename Addition>
+perl::Object shift_cycle(perl::Object cycle, Vector<Rational> translate)
+{
+  return affine_transform<Addition>(cycle, unit_matrix<Rational>(translate.dim()), translate);
+}
 
-	template <typename Addition>
-		perl::Object affine_transform(perl::Object cycle, perl::Object morphism) {
-			if(!morphism.exists("MATRIX") && !morphism.exists("TRANSLATE"))
-				throw std::runtime_error("affine_transform: Morphism has no matrix or translate");
-			Matrix<Rational> matrix = morphism.give("MATRIX");
-			Vector<Rational> translate = morphism.give("TRANSLATE");
-			return affine_transform<Addition>(cycle, matrix,translate);
-		}
+template <typename Addition>
+perl::Object affine_transform(perl::Object cycle, perl::Object morphism)
+{
+  if (!morphism.exists("MATRIX") && !morphism.exists("TRANSLATE"))
+    throw std::runtime_error("affine_transform: Morphism has no matrix or translate");
+  Matrix<Rational> matrix = morphism.give("MATRIX");
+  Vector<Rational> translate = morphism.give("TRANSLATE");
+  return affine_transform<Addition>(cycle, matrix,translate);
+}
 
-	UserFunctionTemplate4perl("# @category Basic polyhedral operations"
-			"# Computes the affine transform of a cycle under an affine linear map."
-			"# This function assumes that the map is a lattice isomorphism on the cycle, i.e."
-			"# no push-forward computations are performed, in particular the weights remain unchanged"
-			"# @param Cycle<Addition> C a tropical cycle"
-			"# @param Matrix<Rational> M The transformation matrix. Should be given in tropical projective"
-			"# coordinates and be homogeneous, i.e. the sum over all rows should be the same."
-			"# @param Vector<Rational> T The translate. Optional and zero vector by default. Should be given in"
-			"# tropical projective coordinates (but without leading coordinate for vertices or rays)."
-			"# If you only want to shift a cycle, use [[shift_cycle]]."
-			"# @return Cycle<Addition> The transform M*C + T",
-			"affine_transform<Addition>(Cycle<Addition>, $; $ = new Vector())");
+UserFunctionTemplate4perl("# @category Basic polyhedral operations"
+                          "# Computes the affine transform of a cycle under an affine linear map."
+                          "# This function assumes that the map is a lattice isomorphism on the cycle, i.e."
+                          "# no push-forward computations are performed, in particular the weights remain unchanged"
+                          "# @param Cycle<Addition> C a tropical cycle"
+                          "# @param Matrix<Rational> M The transformation matrix. Should be given in tropical projective"
+                          "# coordinates and be homogeneous, i.e. the sum over all rows should be the same."
+                          "# @param Vector<Rational> T The translate. Optional and zero vector by default. Should be given in"
+                          "# tropical projective coordinates (but without leading coordinate for vertices or rays)."
+                          "# If you only want to shift a cycle, use [[shift_cycle]]."
+                          "# @return Cycle<Addition> The transform M*C + T",
+                          "affine_transform<Addition>(Cycle<Addition>, $; $ = new Vector())");
 
-	UserFunctionTemplate4perl("# @category Basic polyhedral operations"
-			"# Computes the affine transform of a cycle under an affine linear map."
-			"# This function assumes that the map is a lattice isomorphism on the cycle, i.e."
-			"# no push-forward computations are performed, in particular the weights remain unchanged"
-			"# @param Cycle<Addition> C a tropical cycle"
-			"# @param Morphism<Addition> M A morphism. Should be defined via [[MATRIX]] and [[TRANSLATE]],"
-			"# though its [[DOMAIN]] will be ignored."
-			"# @return Cycle<Addition> The transform M(C)",
-			"affine_transform<Addition>(Cycle<Addition>, Morphism<Addition>)");
+UserFunctionTemplate4perl("# @category Basic polyhedral operations"
+                          "# Computes the affine transform of a cycle under an affine linear map."
+                          "# This function assumes that the map is a lattice isomorphism on the cycle, i.e."
+                          "# no push-forward computations are performed, in particular the weights remain unchanged"
+                          "# @param Cycle<Addition> C a tropical cycle"
+                          "# @param Morphism<Addition> M A morphism. Should be defined via [[MATRIX]] and [[TRANSLATE]],"
+                          "# though its [[DOMAIN]] will be ignored."
+                          "# @return Cycle<Addition> The transform M(C)",
+                          "affine_transform<Addition>(Cycle<Addition>, Morphism<Addition>)");
 
-	UserFunctionTemplate4perl("# @category Basic polyhedral operations"
-			"# Computes the shift of a tropical cycle by a given vector"
-			"# @param Cycle<Addition> C a tropical cycle"
-			"# @param Vector<Rational> T The translate. Optional and zero vector by default. Should be given in"
-			"# tropical projective coordinates (but without leading coordinate for vertices or rays)."
-			"# @return Cycle<Addition> The shifted cycle",
-			"shift_cycle<Addition>(Cycle<Addition>, $)");
-
-
-}}
+UserFunctionTemplate4perl("# @category Basic polyhedral operations"
+                          "# Computes the shift of a tropical cycle by a given vector"
+                          "# @param Cycle<Addition> C a tropical cycle"
+                          "# @param Vector<Rational> T The translate. Optional and zero vector by default. Should be given in"
+                          "# tropical projective coordinates (but without leading coordinate for vertices or rays)."
+                          "# @return Cycle<Addition> The shifted cycle",
+                          "shift_cycle<Addition>(Cycle<Addition>, $)");
+} }

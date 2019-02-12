@@ -54,15 +54,17 @@ sub tikzfigure($$$) {
 
 sub analyze_this($) {
   my ($poly) = @_;
-  my $pdflatex = $TikZ::pdflatex;
-  my $pdfviewer = $TikZ::pdfviewer;
+  my $pdflatex = $Visual::pdflatex;
+  my $pdfviewer = $Visual::pdfviewer;
   my $tempfile = new Tempfile();
   my $latextemplate = $tempfile.".tex";
   my $tikzfile = $tempfile.".tikz";
   my $pdfout = $tempfile.".pdf";
-  my $pdfout_dir = $tempfile->dir;
+  my $pdfout_dir = $tempfile->dirname;
   my $pdfout_name = $tempfile->basename;
 
+  print STDERR "writing to $latextemplate\n";
+  
   my $name = $poly->description();
   if ($name eq "") {
     $name = defined($poly->name)? $poly->name : "unnamed polyhedron";
@@ -115,8 +117,12 @@ picture.
   print TEX footer();
   close TEX;
 
-  system("$pdflatex --output-directory=$pdfout_dir --jobname=$pdfout_name $latextemplate 1>/dev/null ; $pdflatex --output-directory=$pdfout_dir --jobname=$pdfout_name $latextemplate 1>/dev/null ; $pdfviewer $pdfout 1>/dev/null 2>/dev/null");
+  # LaTeX twice to get references right
+  system("$pdflatex --output-directory=$pdfout_dir --jobname=$pdfout_name $latextemplate 1>/dev/null");
+  system("$pdflatex --output-directory=$pdfout_dir --jobname=$pdfout_name $latextemplate 1>/dev/null");
 
+  print STDERR "viewing $pdfout\n";
+  system("$pdfviewer $pdfout");
 }
 
 

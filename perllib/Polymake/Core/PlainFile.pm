@@ -81,7 +81,7 @@ sub load {
    }
    $app->include_rules("*/upgrade.rules");
 
-   local_sub(*Polymake::Core::PropertyType::parse_error, \&value_parse_error);
+   local ref *Polymake::Core::PropertyType::parse_error = \&value_parse_error;
 
  INPUT:
    while (<$fh>) {
@@ -164,7 +164,7 @@ sub load {
 
          if (defined (my $cast_sub=UNIVERSAL::can($object, "cast_if_seen_$prop_name"))) {
             if (defined (my $ret=$cast_sub->($object))) {
-               if (is_ARRAY($ret)) {
+               if (is_array($ret)) {
                   # created a new parent object, the current object must become its property
                   ($subobject, my $sub_prop)=@$ret;
                   # this is necessary since we can't simply exchange the object references
@@ -248,28 +248,27 @@ sub consume_unknown_property {
    my ($prop_name, $value, $object)=@_;
    (my $show_value=$value) =~ s/\A((?:^.*\n){3})^(?s:.+)\Z/$1...\n/m;
 
-   local_sub($Shell->try_completion,
-             sub : method {
-                my ($self, $word)=@_;
-                my $text=substr($self->term->Attribs->{line_buffer}, 0, $self->term->Attribs->{point});
-                if ($text =~ m{^\s* (?: $qual_id_re \s*[<>,]\s* )* (?'prefix' $qual_id_re (?: ::)?)? $}xo) {
-                   $self->try_type_completion($+{prefix});
-                }
-                if ($text =~ m{^\s* (?: (?'type' $type_qual_re) ::)? (?'prefix' $hier_id_re\.?)? $}xo) {
-                   my ($object_type, $prefix)=@+{qw(type prefix)};
-                   if (defined $object_type) {
-                      if (defined (my $proto=$User::application->eval_type($object_type, 1))) {
-                         push @{$self->completion_proposals},
-                              Shell::try_property_completion($proto, $prefix);
-                      }
-                   } else {
-                      push @{$self->completion_proposals},
-                           Shell::try_property_completion($object->type, $prefix);
-                   }
-                   $self->completion_offset=length($prefix);
-                }
-                $self->trim_completion_proposals($word);
-             });
+   local ref $Shell->try_completion = sub : method {
+      my ($self, $word)=@_;
+      my $text=substr($self->term->Attribs->{line_buffer}, 0, $self->term->Attribs->{point});
+      if ($text =~ m{^\s* (?: $qual_id_re \s*[<>,]\s* )* (?'prefix' $qual_id_re (?: ::)?)? $}xo) {
+         $self->try_type_completion($+{prefix});
+      }
+      if ($text =~ m{^\s* (?: (?'type' $type_qual_re) ::)? (?'prefix' $hier_id_re\.?)? $}xo) {
+         my ($object_type, $prefix)=@+{qw(type prefix)};
+         if (defined $object_type) {
+            if (defined (my $proto=$User::application->eval_type($object_type, 1))) {
+               push @{$self->completion_proposals},
+               Shell::try_property_completion($proto, $prefix);
+            }
+         } else {
+            push @{$self->completion_proposals},
+            Shell::try_property_completion($object->type, $prefix);
+         }
+         $self->completion_offset=length($prefix);
+      }
+      $self->trim_completion_proposals($word);
+   };
    local $Shell->term->{MinLength}=1;
    my $obj_type=$object->type->full_name;
    print <<".";

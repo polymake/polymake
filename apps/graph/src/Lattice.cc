@@ -19,16 +19,25 @@
 
 namespace polymake { namespace graph {
 
-   template <typename Decoration, typename SeqType>
-      Array<Set<int> > lattice_dual_faces(perl::Object lattice_obj) {
-         return Lattice<Decoration, SeqType>(lattice_obj).dual_faces();
-      }
+template <typename Decoration, typename SeqType>
+Array<Set<int>> lattice_dual_faces(perl::Object lattice_obj)
+{
+  return Lattice<Decoration, SeqType>(lattice_obj).dual_faces();
+}
 
-   template <typename Decoration, typename SeqType, typename Permutation>
-      perl::Object lattice_permuted_faces(perl::Object lattice_obj, const Permutation& perm) {
-         return (Lattice<Decoration, SeqType>(lattice_obj)).permuted_faces(perm).makeObject();
-      }
+template <typename Decoration, typename SeqType, typename Permutation>
+perl::Object lattice_permuted_faces(perl::Object lattice_obj, const Permutation& perm)
+{
+  return static_cast<perl::Object>((Lattice<Decoration, SeqType>(lattice_obj)).permuted_faces(perm));
+}
 
-   FunctionTemplate4perl("lattice_dual_faces<Decoration, SeqType>(Lattice<Decoration, SeqType>)");
-   FunctionTemplate4perl("lattice_permuted_faces<Decoration, SeqType, Permutation>(Lattice<Decoration,SeqType>, Permutation)");
-}}
+FunctionTemplate4perl("lattice_dual_faces<Decoration, SeqType>(Lattice<Decoration, SeqType>)");
+FunctionTemplate4perl("lattice_permuted_faces<Decoration, SeqType, Permutation>(Lattice<Decoration,SeqType>, Permutation)");
+
+} }
+
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:

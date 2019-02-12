@@ -36,16 +36,13 @@ perl::Object t_union(perl::Object p1, perl::Object p2,perl::OptionSet options)
    
    // add facets of C1
    FacetList Union;      
-   for (Entire< Array< Set<int> > >::const_iterator c_it=entire(C1);
-        !c_it.at_end(); ++c_it)
+   for (auto c_it=entire(C1); !c_it.at_end(); ++c_it)
       Union.insert(*c_it);
    
    // add facets of C2
-   for (Entire< Array< Set<int> > >::const_iterator c_it=entire(C2);
-        !c_it.at_end(); ++c_it) {
+   for (auto c_it=entire(C2); !c_it.at_end(); ++c_it) {
       Set<int> f;
-      for (Entire< Set<int> >::const_iterator v=entire(*c_it);
-           !v.at_end(); ++v)
+      for (auto v=entire(*c_it); !v.at_end(); ++v)
          f += map[*v];
       
       Union.insertMax(f);

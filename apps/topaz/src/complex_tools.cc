@@ -21,8 +21,7 @@ namespace polymake { namespace topaz {
 bool is_pure(const Lattice<BasicDecoration>& HD)
 {
    int test_dim = -1;
-   for (Entire< Graph<Directed>::in_edge_list >::const_iterator it=entire(HD.in_edges(HD.top_node()));
-        !it.at_end(); ++it) {
+   for (auto it=entire(HD.in_edges(HD.top_node())); !it.at_end(); ++it) {
       const int n = it.from_node();
 
       if (test_dim == -1)  // first facet
@@ -50,7 +49,7 @@ void remove_vertex_star(ShrinkingLattice<BasicDecoration>& HD, const int v)
    while (!n_it.at_end()) {
       const int n=*n_it;  ++n_it;
       if (n != top_node) {
-         for (Entire<Graph<Directed>::in_edge_list>::const_iterator e=entire(HD.in_edges(n)); !e.at_end(); ++e) {
+         for (auto e=entire(HD.in_edges(n)); !e.at_end(); ++e) {
             const int nn=e.from_node();
             if (HD.out_degree(nn)==1)
                HD.graph().edge(nn,top_node);

@@ -1,0 +1,5 @@
+{"app": "topaz",
+ "inst": [
+  {"args": ["perl::Canned<const Filtration<SparseMatrix<Rational, NonSymmetric>>&>"], "func": "cells", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/topaz/Filtration.h"], "kind": "meth", "sig": "cells:M"},
+ null ],
+"version": 3}

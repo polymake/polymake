@@ -1,0 +1,187 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @Category Combinatorics
+object Patchwork {
+
+  # Sign distribution on the support of the [[POLYNOMIAL]].
+  property SIGNS : Vector<Bool>;
+
+  # Facets of the real part of the patchworked hypersurface.
+  # Each row gives the indices of those facets of the original trop. hypersurface,
+  # which are present in the orthant described by the binary expression of the row number.
+  # E.g. in dimension 3, the 6th row will hold the facets present in the orthant [0,1,1].
+  property REAL_FACETS : IncidenceMatrix<NonSymmetric>;
+
+  permutation TermPerm : PermBase;
+
+  permutation ConesPerm : PermBase;
+
+  rule REAL_FACETS : ConesPerm.REAL_FACETS, ConesPerm.PERMUTATION {
+    $this->REAL_FACETS=permuted_cols($this->ConesPerm->REAL_FACETS, $this->ConesPerm->PERMUTATION);
+  }
+  # weight 1.10;
+
+  rule SIGNS : TermPerm.SIGNS, TermPerm.PERMUTATION {
+    $this->SIGNS=permuted($this->TermPerm->SIGNS, $this->TermPerm->PERMUTATION);
+  }
+  # weight 1.10;
+
+  # @param String method "rigid" (default) or "uniform"
+  # @return fan::PolyhedralComplex<Rational>
+  # The real part of the patchworked hypersurface,
+  # realized as a polyhedral hypersurface in IR^dim.
+  # The vertices of each of the 2^dim copies of the hypersurface
+  # will be moved to the interior of the respective orthant
+  # (according to method), and relevant unbounded facets will be joined.
+  # If method is "rigid", vertices will be translated to the positive orthant,
+  # and then reflected to their corresponding orthant.
+  # If method is "uniform", vertices will be moved to the barycenter
+  # of the respective dual cell in the dual subdivision of the support,
+  # and then reflected to their corresponding orthant
+  # (this only works if the hypersurface is simplicial, e.g. for curves).
+  user_method realize(;String = "rigid") : REAL_FACETS {
+    # exception if !defined($this->parent)
+    my ($this, $method) = @_;
+    return real_part_realize($this->parent->MONOMIALS, $this->parent->COEFFICIENTS, $this->parent->VERTICES, $this->parent->MAXIMAL_POLYTOPES, $this->parent->FAR_VERTICES, $this->REAL_FACETS, $method);
+  }
+
+}
+
+object Hypersurface {
+
+# @Category Combinatorics
+# This encodes a patchworking structure on the hypersurface.
+# Its lone input property is [[SIGNS]]
+property PATCHWORK : Patchwork : multiple;
+
+rule PATCHWORK.REAL_FACETS : PATCHWORK.SIGNS, MONOMIALS, COEFFICIENTS, VERTICES, MAXIMAL_POLYTOPES {
+  $this->PATCHWORK->REAL_FACETS = real_facets($this->PATCHWORK->SIGNS, $this->MONOMIALS, $this->COEFFICIENTS, $this->VERTICES, $this->MAXIMAL_POLYTOPES);
+}
+
+rule PATCHWORK.TermPerm.PERMUTATION = TermPerm.PERMUTATION;
+
+rule PATCHWORK.ConesPerm.PERMUTATION = ConesPerm.PERMUTATION;
+
+}
+
+### examples:
+
+# Create a polyhedral model of the harnack curve (M-curve) of given degree.
+# @param Int d the degree of the curve
+# @return fan::PolyhedralComplex
+user_function harnack_curve( Int ) {
+  my $n = shift;
+  my @monoms;
+  my @weights;
+  my @signs;
+  foreach my $i (0 .. $n) {
+    foreach my $j (0 .. $n-$i) {
+      push @weights, ($i*$j+$i*$i+$j*$j);
+      push @monoms, [$n-$i-$j, $i, $j];
+      push @signs, ($i*$j+$i+$j)%2;
+    }
+  }
+
+  my $m = new Matrix<Int>(\@monoms);
+  my $c = new Vector<TropicalNumber<Min>>(\@weights);
+  my $s = new Vector<Bool>(\@signs);
+  my $h = new Hypersurface<Min>(MONOMIALS=>$m, COEFFICIENTS=>$c);
+  return $h->PATCHWORK(SIGNS=>$s)->realize("uniform");
+}
+
+# Create a polyhedral model of a curve disproving the Ragsdale conjecture.
+# @return fan::PolyhedralComplex
+user_function ragsdale_counterexample {
+  my @monoms;
+  foreach my $i (0 .. 10) {
+    foreach my $j (0 .. 10-$i) {
+      push @monoms, [10-$i-$j, $i, $j];
+    }
+  }
+  my $weights = [ # yes these were done by hand
+    224, 142, 76,  12,  76, 142, 224, 311, 401, 494, 600,
+    144, 58,  22,  6,   22, 58,  144, 232, 324, 419,
+    66,  34,  10,  2,   10, 34,  66,  156, 250,
+    48,  18,  2,   0,   2,  18,  48,  140,
+    66,  34,  10,  2,   10, 34,  68,
+    144, 58,  22,  6,   22, 55,
+    224, 142, 76,  12,  44,
+    310, 232, 167, 104,
+    402, 326, 262,
+    498, 424,
+    600
+  ];
+  my $signs = [
+    1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
+    0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+    1, 0, 0, 0, 0, 0, 1, 0, 1,
+    0, 0, 1, 1, 1, 0, 0, 0,
+    1, 0, 0, 0, 0, 0, 1,
+    0, 0, 0, 1, 0, 0,
+    1, 0, 1, 0, 1,
+    0, 0, 0, 0,
+    1, 0, 1,
+    0, 0,
+    1
+  ];
+
+  my $m = new Matrix<Int>(\@monoms);
+  my $c = new Vector<TropicalNumber<Min>>($weights);
+  my $s = new Vector<Bool>($signs);
+  my $h = new Hypersurface<Min>(MONOMIALS=>$m, COEFFICIENTS=>$c);
+  return $h->PATCHWORK(SIGNS=>$s)->realize("uniform");
+}
+
+# Create a polyhedral model of the gudkov curve of degree 6.
+# @return fan::PolyhedralComplex
+user_function gudkov_curve {
+  my @monoms;
+  my $n = 6;
+  foreach my $i (0 .. $n) {
+    foreach my $j (0 .. $n-$i) {
+      push @monoms, [$n-$i-$j, $i, $j];
+    }
+  }
+  my $signs = [
+    1, 0, 0, 0, 0, 0, 1,
+    0, 0, 1, 0, 1, 0,
+    1, 0, 1, 0, 0,
+    0, 0, 0, 0,
+    1, 0, 1,
+    0, 0,
+    1
+  ];
+  my $weights = [
+    0,   0,   66,  156, 252, 369, 507,
+    0,   6,   23,  95,  200, 332,
+    66,  23,  24,  61,  178,
+    156, 95,  61,  45,
+    252, 200, 178,
+    369, 332,
+    507
+  ];
+  my $m = new Matrix<Int>(\@monoms);
+  my $c = new Vector<TropicalNumber<Min>>($weights);
+  my $s = new Vector<Bool>($signs);
+  my $h = new Hypersurface<Min>(MONOMIALS=>$m, COEFFICIENTS=>$c);
+  return $h->PATCHWORK(SIGNS=>$s)->realize("uniform");
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

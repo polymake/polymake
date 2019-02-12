@@ -58,7 +58,7 @@ void reverse_search_graph(perl::Object p, const Vector<Rational>& min_vertex, pe
   const Matrix<Rational> fe=facets/equations;
   
   //we transform to Ax<=b, where the last rows of A are set to equality
-  const Matrix<Rational> A= -fe.minor(All, ~scalar2set(0));
+  const Matrix<Rational> A= -fe.minor(All, range_from(1));
   const Vector<Rational> b= fe.col(0);
   
   //used to construct the graph at the end
@@ -80,7 +80,7 @@ void reverse_search_graph(perl::Object p, const Vector<Rational>& min_vertex, pe
 
   Array<int> start_B(dim);
   int number=0,index=0;
-  for (Entire<Rows <Matrix <Rational> > >::const_iterator i=entire(rows(facets)); !i.at_end();++i,++number)
+  for (auto i=entire(rows(facets)); !i.at_end();++i,++number)
     if (min_vertex*(*i)==0)  {
       if (index==dim) throw std::runtime_error("Inequalities not in general position.");
       start_B[index++]=number;
@@ -90,19 +90,18 @@ void reverse_search_graph(perl::Object p, const Vector<Rational>& min_vertex, pe
   
   
   Vector<Rational> objective;
-  if (options.exists("objective"))
-    {
-      options["objective"] >> objective;
-      objective=objective.slice(1);
-    }
-  else //if no objective function is given we artificially construct one that minimizes min_vertex
-    objective=-T(A.minor(start_B,All))*ones_vector<Rational>(dim);
-
+  if (options.exists("objective")) {
+     options["objective"] >> objective;
+     objective=objective.slice(range_from(1));
+  } else {
+     // if no objective function is given we artificially construct one that minimizes min_vertex
+     objective = -T(A.minor(start_B, All)) * ones_vector<Rational>(dim);
+  }
 
   Array<int> B=start_B; //Basis has to be set to the initial basis
   //reduced cost for the simplex (for maximizing objective)
-  Vector<Rational> costs=lin_solve(T(A.minor(B,All)),objective);
-  Vector<Rational> vertex=lin_solve(A.minor(B,All),b.slice(B));
+  Vector<Rational> costs=lin_solve(T(A.minor(B, All)), objective);
+  Vector<Rational> vertex=lin_solve(A.minor(B, All), b.slice(B));
   vertices/=(1|vertex);
   v_map[vertex]=n_vertices++;  
 
@@ -205,7 +204,7 @@ void reverse_search_graph(perl::Object p, const Vector<Rational>& min_vertex, pe
   // create the graph from the edges
   // it should contain gaps at the rays' positions
   Graph<Directed> graph(sequence(0,n_vertices), n_vertices+n_rays);
-  for (Entire< std::list<Edge> >::const_iterator i=entire(edges); !i.at_end(); ++i)
+  for (auto i=entire(edges); !i.at_end(); ++i)
     graph.edge(v_map[i->first],v_map[i->second]);
 
   if (options.exists("objective")) {
@@ -226,7 +225,8 @@ void reverse_search_graph(perl::Object p, const Vector<Rational>& min_vertex, pe
   }
   else {
     p.take("BOUNDED")<<false;
-    const ListMatrix<Vector <Rational> > v(rays.size()+vertices.rows(), dim+1, entire(concatenate(rows(vertices),rays)));
+    // TODO: replace with variadic constructor similar to Array
+    const ListMatrix<Vector<Rational>> v(rays.size()+vertices.rows(), dim+1, concatenate(rows(vertices),rays).begin());
     p.take("VERTICES")<<v;
     const Set<int> ff=sequence(n_vertices,n_rays);
     p.take("FAR_FACE")<<ff;

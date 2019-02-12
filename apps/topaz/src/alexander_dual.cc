@@ -26,7 +26,7 @@ perl::Object alexander_dual(perl::Object p_in, perl::OptionSet options)
    Array< Set<int> > MNF = p_in.give("MINIMAL_NON_FACES");
    const int n_vert = p_in.give("N_VERTICES");
 
-   for (Entire< Array< Set<int> > >::iterator nf=entire(MNF); !nf.at_end(); ++nf)
+   for (auto nf=entire(MNF); !nf.at_end(); ++nf)
       *nf = range(0,n_vert-1) - *nf;
 
    Set<int> V = accumulate(MNF, operations::add());

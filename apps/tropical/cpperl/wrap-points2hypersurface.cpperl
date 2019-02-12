@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "points2hypersurface.cc",
+ "inst": [
+  {"args": ["Min", "perl::Canned<const Matrix<TropicalNumber<Min, Rational>>&>"], "func": "points2hypersurface", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "points2hypersurface:T1.X", "tp": "1"},
+  {"args": ["Max", "perl::Canned<const Matrix<TropicalNumber<Max, Rational>>&>"], "func": "points2hypersurface", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "points2hypersurface:T1.X", "tp": "1"},
+ null ],
+"version": 3}

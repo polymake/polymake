@@ -18,7 +18,7 @@
 #define POLYMAKE_IDEAL_INTERNAL_SINGULAR_UTILS_H
 
 // Singular includes
-#include <Singular/libsingular.h>
+#include "polymake/ideal/internal/singularInclude.h"
 
 // polymake includes
 #include "polymake/client.h"

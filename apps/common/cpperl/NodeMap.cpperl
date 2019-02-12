@@ -1,0 +1,15 @@
+{"app": "common",
+ "inst": [
+  {"pkg": "Polymake::common::NodeMap"},
+  {"class": "NodeMap<Directed, Set<int>>", "include": ["polymake/Graph.h", "polymake/Set.h"], "pkg": "Polymake::common::NodeMap_A_Directed_I_Set__Int_Z"},
+  {"class": "NodeMap<Undirected, int>", "include": ["polymake/Graph.h"], "pkg": "Polymake::common::NodeMap_A_Undirected_I_Int_Z"},
+  {"class": "NodeMap<Directed, IncidenceMatrix<NonSymmetric>>", "include": ["polymake/Graph.h", "polymake/IncidenceMatrix.h"], "pkg": "Polymake::common::NodeMap_A_Directed_I_IncidenceMatrix__NonSymmetric_Z"},
+  {"args": ["NodeMap<Undirected, int>", "perl::Canned<const Graph<Undirected>&>"], "include": ["polymake/Graph.h"], "op": "new", "sig": "new.X"},
+  {"args": ["NodeMap<Directed, Set<int>>", "perl::Canned<const Graph<Directed>&>"], "include": ["polymake/Graph.h", "polymake/Set.h"], "op": "new", "sig": "new.X"},
+  {"args": ["NodeMap<Directed, IncidenceMatrix<NonSymmetric>>", "perl::Canned<const Graph<Directed>&>"], "include": ["polymake/Graph.h", "polymake/IncidenceMatrix.h"], "op": "new", "sig": "new.X"},
+  {"class": "NodeMap<Undirected, Vector<Rational>>", "include": ["polymake/Graph.h", "polymake/Rational.h", "polymake/Vector.h"], "pkg": "Polymake::common::NodeMap_A_Undirected_I_Vector__Rational_Z"},
+  {"args": ["NodeMap<Undirected, Vector<Rational>>", "perl::Canned<const Graph<Undirected>&>"], "include": ["polymake/Graph.h", "polymake/Rational.h", "polymake/Vector.h"], "op": "new", "sig": "new.X"},
+  {"class": "NodeMap<Undirected, Vector<QuadraticExtension<Rational>>>", "include": ["polymake/Graph.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/Vector.h"], "pkg": "Polymake::common::NodeMap_A_Undirected_I_Vector__QuadraticExtension__Rational_Z"},
+  {"class": "NodeMap<Directed, Matrix<Rational>>", "include": ["polymake/Graph.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "pkg": "Polymake::common::NodeMap_A_Directed_I_Matrix_A_Rational_I_NonSymmetric_Z_Z"},
+ null ],
+"version": 3}

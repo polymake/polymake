@@ -1,0 +1,5 @@
+{"app": "topaz", "embed": "vietoris_rips_complex.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void", "void", "void"], "func": "vietoris_rips_filtration", "include": ["polymake/Rational.h"], "sig": "vietoris_rips_filtration:T1.x.x.x.x", "tp": "1"},
+ null ],
+"version": 3}

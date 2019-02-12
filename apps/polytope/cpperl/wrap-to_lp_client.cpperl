@@ -1,0 +1,9 @@
+{"app": "polytope", "embed": "to_lp_client.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void", "void"], "func": "to_lp_client", "include": ["polymake/Rational.h"], "sig": "to_lp_client:T1.B.B.x", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void", "void", "void"], "func": "to_lp_client", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "to_lp_client:T1.B.B.x", "tp": "1"},
+  {"args": ["PuiseuxFraction<Min, Rational, Rational>", "void", "void", "void"], "func": "to_lp_client", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "to_lp_client:T1.B.B.x", "tp": "1"},
+  {"args": ["Rational"], "func": "to_interface::create_LP_solver", "include": ["polymake/Rational.h"], "sig": "create_LP_solver#to.simplex:T1", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>"], "func": "to_interface::create_LP_solver", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "create_LP_solver#to.simplex:T1", "tp": "1"},
+ null ],
+"version": 3}

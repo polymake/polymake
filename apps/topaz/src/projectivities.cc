@@ -43,8 +43,7 @@ perl::ListReturn projectivities(perl::Object p)
       const int n=node_queue.front();
       node_queue.pop_front(); 
       
-      for (Entire<graph::out_edge_list>::const_iterator e=entire(DG.out_edges(n));
-           !e.at_end(); ++e) {
+      for (auto e=entire(DG.out_edges(n)); !e.at_end(); ++e) {
          const int nn = e.to_node();
          
          if ( !visited.contains(nn) ) {
@@ -59,16 +58,14 @@ perl::ListReturn projectivities(perl::Object p)
    
    // compute orbit spaces
    PowerSet<int> orbit_spaces;
-   for (Entire< Set<int> >::const_iterator v=entire(F[0]);
-        !v.at_end(); ++v) {
+   for (auto v=entire(F[0]); !v.at_end(); ++v) {
       const int rep = color_classes.representative(*v);
 
       if (*v == rep)
          orbit_spaces += scalar2set(*v);
       else {
          Set<int> add;
-         for (Entire< PowerSet<int> >::iterator c=entire(orbit_spaces);
-              !c.at_end(); ++c) 
+         for (auto c=entire(orbit_spaces); !c.at_end(); ++c) 
             if (c->front()==rep) {
                add = *c;
                break;

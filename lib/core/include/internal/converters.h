@@ -27,8 +27,8 @@
 namespace pm {
 
 template <typename From1, typename From2, typename To1, typename To2,
-          int cc1=(std::is_convertible<From1, To1>::value * 2 + explicitly_convertible_to<From1, To1>::value),
-          int cc2=(std::is_convertible<From2, To2>::value * 2 + explicitly_convertible_to<From2, To2>::value)>
+          int cc1=(std::is_convertible<From1, To1>::value * 2 + is_explicitly_convertible_to<From1, To1>::value),
+          int cc2=(std::is_convertible<From2, To2>::value * 2 + is_explicitly_convertible_to<From2, To2>::value)>
 class pair_conv : public nothing {};
 
 template <typename From1, typename From2, typename To1, typename To2>
@@ -98,73 +98,73 @@ public:
 };
 
 
-template <typename Target, typename Container> inline
+template <typename Target, typename Container>
 auto attach_converter(const Container& src,
-                      typename std::enable_if<can_initialize<typename object_traits<typename Container::value_type>::persistent_type, Target>::value &&
-                                              !std::is_convertible<typename object_traits<typename Container::value_type>::persistent_type, Target>::value, void**>::type=nullptr)
+                      std::enable_if_t<can_initialize<typename object_traits<typename Container::value_type>::persistent_type, Target>::value &&
+                                       !std::is_convertible<typename object_traits<typename Container::value_type>::persistent_type, Target>::value, void**> =nullptr)
 {
    typedef conv<typename object_traits<typename Container::value_type>::persistent_type, Target> converter;
    return TransformedContainer<const Container&, converter>(src);
 }
 
-template <typename Target, typename Container, typename ConverterArg> inline
+template <typename Target, typename Container, typename ConverterArg>
 TransformedContainer<const Container&, conv<typename object_traits<typename Container::value_type>::persistent_type, Target> >
 attach_converter(const Container& src, const ConverterArg& conv_arg,
-                 typename std::enable_if<explicitly_convertible_to<typename object_traits<typename Container::value_type>::persistent_type, Target>::value, void**>::type=nullptr)
+                 std::enable_if_t<is_explicitly_convertible_to<typename object_traits<typename Container::value_type>::persistent_type, Target>::value, void**> =nullptr)
 {
    return TransformedContainer<const Container&, conv<typename object_traits<typename Container::value_type>::persistent_type, Target> >
                               (src, conv_arg);
 }
 
-template <typename Target, typename Container> inline
+template <typename Target, typename Container>
 const Container&
 attach_converter(const Container& src,
-                 typename std::enable_if<std::is_convertible<typename object_traits<typename Container::value_type>::persistent_type, Target>::value, void**>::type=nullptr)
+                 std::enable_if_t<std::is_convertible<typename object_traits<typename Container::value_type>::persistent_type, Target>::value, void**> =nullptr)
 {
    return src;
 }
 
-template <typename Target, typename Iterator> inline
+template <typename Target, typename Iterator>
 auto make_converting_iterator(Iterator&& it,
-                              typename std::enable_if<can_initialize<typename iterator_traits<Iterator>::value_type, Target>::value &&
-                                                      !std::is_convertible<typename iterator_traits<Iterator>::value_type, Target>::value, void**>::type=nullptr)
+                              std::enable_if_t<can_initialize<typename iterator_traits<Iterator>::value_type, Target>::value &&
+                                               !std::is_convertible<typename iterator_traits<Iterator>::value_type, Target>::value, void**> =nullptr)
 {
    typedef conv<typename object_traits<typename iterator_traits<Iterator>::value_type>::persistent_type, Target> converter;
    return unary_transform_iterator<pointer2iterator_t<Iterator>, converter>(pointer2iterator(std::forward<Iterator>(it)));
 }
 
-template <typename Target, typename Iterator> inline
+template <typename Target, typename Iterator>
 decltype(auto) make_converting_iterator(Iterator&& it,
-                                        typename std::enable_if<std::is_convertible<typename iterator_traits<Iterator>::value_type, Target>::value, void**>::type=nullptr)
+                                        std::enable_if_t<std::is_convertible<typename iterator_traits<Iterator>::value_type, Target>::value, void**> =nullptr)
 {
    return pointer2iterator(std::forward<Iterator>(std::forward<Iterator>(it)));
 }
 
 //! trivial conversion of an object to itself (mutable access)
-template <typename Target, typename Source> inline
+template <typename Target, typename Source>
 inherit_reference_t<Target, Source&&>
 convert_to(Source&& x,
-           typename std::enable_if<is_derived_from<pure_type_t<Source>, Target>::value ||
-                                   std::is_same<pure_type_t<Source>, Target>::value, void**>::type=nullptr)
+           std::enable_if_t<is_derived_from<pure_type_t<Source>, Target>::value ||
+                            std::is_same<pure_type_t<Source>, Target>::value, void**> =nullptr)
 {
    return std::forward<Source>(x);
 }
 
-template <typename Target, typename Source> inline
+template <typename Target, typename Source>
 Target convert_to(Source x,
-                  typename std::enable_if<std::is_arithmetic<Source>::value &&
-                                          std::is_arithmetic<Target>::value &&
-                                          !std::is_same<Source, Target>::value, void**>::type=nullptr)
+                  std::enable_if_t<std::is_arithmetic<Source>::value &&
+                                   std::is_arithmetic<Target>::value &&
+                                   !std::is_same<Source, Target>::value, void**> =nullptr)
 {
    return Target(x);
 }
 
 //! conversion via functor
-template <typename Target, typename Source> inline
+template <typename Target, typename Source>
 Target convert_to(const Source& x,
-                  typename std::enable_if<can_initialize<Source, Target>::value &&
-                                          (!std::is_arithmetic<Source>::value || !std::is_arithmetic<Target>::value) &&
-                                          !is_derived_from<Source, Target>::value, void**>::type=nullptr)
+                  std::enable_if_t<can_initialize<Source, Target>::value &&
+                                   (!std::is_arithmetic<Source>::value || !std::is_arithmetic<Target>::value) &&
+                                   !is_derived_from<Source, Target>::value, void**> =nullptr)
 {
    return conv<Source, Target>()(x);
 }

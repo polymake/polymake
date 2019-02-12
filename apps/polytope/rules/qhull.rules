@@ -48,7 +48,7 @@ sub run_qhull_primal {
    for (my $i=0; $i<$n; ++$i) {
       defined($_=<$Q>) or die "premature end of input\n";
       my $f=new Vector<Float>($_);
-      @{$FACETS->[$i]}=(-$f->[$d], @{ -($f->slice(0,$d)) });
+      @{$FACETS->[$i]}=(-$f->[$d], @{ -($f->slice(sequence(0,$d))) });
    }
 
    $_=<$Q>;

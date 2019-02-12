@@ -71,7 +71,7 @@ protected:
       : data(place, dim_t(r,c), r*c, std::forward<TArgs>(args)...) {}
 
    friend class ConcatRows<Matrix_base>;
-   template <typename, int> friend class alias;
+   template <typename, alias_kind> friend class alias;
 };
 
 /**
@@ -82,10 +82,9 @@ protected:
 
 template <typename E>
 class Matrix
-   : public GenericMatrix<Matrix<E>, E>
-   , protected Matrix_base<E>
-{
-   typedef Matrix_base<E> base_t;
+   : public Matrix_base<E>
+   , public GenericMatrix<Matrix<E>, E> {
+   using base_t = Matrix_base<E>;
    using typename base_t::dim_t;
 
    friend Matrix& make_mutable_alias(Matrix& alias, Matrix& owner)
@@ -99,33 +98,45 @@ protected:
       : bool_constant<(assess_iterator_value<Iterator, can_initialize, E>::value ||
                        assess_iterator_value<Iterator, can_initialize, Vector<E>>::value)> {};
 
+   template <typename Matrix2>
+   auto make_src_iterator(const Matrix2& m, std::enable_if_t<Matrix2::is_flat, void**> =nullptr)
+   {
+      return ensure(concat_rows(m), dense()).begin();
+   }
+
+   template <typename Matrix2>
+   auto make_src_iterator(const Matrix2& m, std::enable_if_t<!Matrix2::is_flat, void**> =nullptr)
+   {
+      return ensure(pm::rows(m), dense()).begin();
+   }
+
 public:
    using typename GenericMatrix<Matrix>::generic_type;
 
-   typedef E value_type;
-   typedef E& reference;
-   typedef const E& const_reference;
+   using value_type = E;
+   using reference = E&;
+   using const_reference = const E&;
 
    /// create as empty
    Matrix() {}
 
    /// create matrix with r rows and c columns, initialize all elements to 0
    Matrix(int r, int c)
-      : base_t(r,c) {}
+      : base_t(r, c) {}
 
    template <typename E2,
-             typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
+             typename=std::enable_if_t<can_initialize<E2, E>::value>>
    Matrix(std::initializer_list<std::initializer_list<E2>> l)
       : base_t(l.size(), count_columns(l), l.begin()) {}
 
    /// Create a matrix with given dimensions.  Elements are initialized from one or more input sequences.
    /// Elements are assumed to come in the row order.
-   template <typename... Iterator, typename=typename std::enable_if<mlist_and_nonempty<fits_as_input_iterator<Iterator>...>::value>::type>
+   template <typename... Iterator, typename=std::enable_if_t<mlist_and_nonempty<fits_as_input_iterator<Iterator>...>::value>>
    Matrix(int r, int c, Iterator&&... src)
       : base_t(r, c, ensure_private_mutable(std::forward<Iterator>(src))...) {}
 
    /// Create a matrix with given dimensions.  Elements are moved from one or more input sequences.
-   template <typename... Iterator, typename=typename std::enable_if<mlist_and_nonempty<fits_as_input_iterator<Iterator>...>::value>::type>
+   template <typename... Iterator, typename=std::enable_if_t<mlist_and_nonempty<fits_as_input_iterator<Iterator>...>::value>>
    Matrix(int r, int c, polymake::operations::move, Iterator&&... src)
       : base_t(r, c, polymake::operations::move(), std::forward<Iterator>(src)...) {}
 
@@ -136,17 +147,17 @@ public:
    /// Copy of an abstract matrix of the same element type.
    template <typename Matrix2>
    Matrix(const GenericMatrix<Matrix2, E>& m)
-      : base_t(m.rows(), m.cols(), ensure(concat_rows(m), (dense*)0).begin()) {}
+      : base_t(m.rows(), m.cols(), make_src_iterator(m.top())) {}
 
    /// Copy of an abstract matrix with element conversion.
    template <typename Matrix2, typename E2>
    explicit Matrix(const GenericMatrix<Matrix2, E2>& m,
-                   typename std::enable_if<can_initialize<E2, E>::value>::type** = nullptr)
-      : base_t(m.rows(), m.cols(), ensure(concat_rows(m), (dense*)0).begin()) {}
+                   std::enable_if_t<can_initialize<E2, E>::value, void**> =nullptr)
+      : base_t(m.rows(), m.cols(), make_src_iterator(m.top())) {}
 
    template <typename Container>
    explicit Matrix(const Container& src,
-                   typename std::enable_if<isomorphic_to_container_of<Container, Vector<E>>::value>::type** = nullptr)
+                   std::enable_if_t<isomorphic_to_container_of<Container, Vector<E>>::value, void**> =nullptr)
       : base_t(src.size(), src.empty() ? 0 : get_dim(src.front()), src.begin()) {}
 
 protected:
@@ -168,8 +179,7 @@ public:
    Matrix& operator= (const Matrix& other) { assign(other); return *this; }
    using generic_type::operator=;
 
-   /// Exchange the contents of two matrices in a most efficient way. 
-   /// If at least one non-persistent object is involved, the operands must have equal dimensions. 
+   /// Exchange the contents of two matrices in a most efficient way.
    void swap(Matrix& m) { this->data.swap(m.data); }
 
    friend void relocate(Matrix* from, Matrix* to)
@@ -197,7 +207,7 @@ public:
    }
 
    template <typename E2>
-   typename std::enable_if<can_initialize<E2, E>::value, void>::type
+   std::enable_if_t<can_initialize<E2, E>::value>
    assign(int r, int c, const E2& x)
    {
       this->data.assign(r*c, x);
@@ -222,7 +232,7 @@ public:
    reference operator() (int i, int j)
    {
       if (POLYMAKE_DEBUG) {
-         if (i<0 || i>=this->rows() || j<0 || j>=this->cols())
+         if (i<0 || i>=rows() || j<0 || j>=cols())
             throw std::runtime_error("Matrix::operator() - index out of range");
       }
       return (*this->data)[i*cols()+j];
@@ -230,7 +240,7 @@ public:
    const_reference operator() (int i, int j) const
    {
       if (POLYMAKE_DEBUG) {
-         if (i<0 || i>=this->rows() || j<0 || j>=this->cols())
+         if (i<0 || i>=rows() || j<0 || j>=cols())
             throw std::runtime_error("Matrix::operator() - index out of range");
       }
       return (*this->data)[i*cols()+j];
@@ -243,7 +253,7 @@ protected:
    void assign(const GenericMatrix<Matrix2>& m)
    {
       const int r=m.rows(), c=m.cols();
-      this->data.assign(r*c, ensure(concat_rows(m), (dense*)0).begin());
+      this->data.assign(r*c, make_src_iterator(m.top()));
       this->data.get_prefix().dimr=r;
       this->data.get_prefix().dimc=c;
    }
@@ -257,21 +267,21 @@ protected:
    template <typename Source2, typename Operation>
    void assign_op(const Source2& src2, const Operation& op)
    {
-      this->data.assign_op(ensure(concat_rows(src2), (dense*)0).begin(), op);
+      this->data.assign_op(make_src_iterator(src2), op);
    }
 
    // TODO: provide moving version of the following 4 methods
    template <typename Matrix2, typename E2>
    void append_rows(const GenericMatrix<Matrix2, E2>& m)
    {
-      this->data.append(concat_rows(m).dim(), ensure(concat_rows(m), (dense*)0).begin());
+      this->data.append(m.rows()*m.cols(), make_src_iterator(m.top()));
       this->data.get_prefix().dimr+=m.rows();
    }
 
    template <typename Vector2>
    void append_row(const GenericVector<Vector2>& v)
    {
-      this->data.append(v.dim(), ensure(v.top(), (dense*)0).begin());
+      this->data.append(v.dim(), ensure(v.top(), dense()).begin());
       this->data.get_prefix().dimr++;
    }
 
@@ -294,22 +304,11 @@ protected:
       this->data.assign(this->data.size(), x);
    }
 
-   void stretch_rows(int r)
-   {
-      this->data.enforce_unshared().get_prefix().dimr=r;
-   }
-
-   void stretch_cols(int c)
-   {
-      this->data.enforce_unshared().get_prefix().dimc=c;
-   }
-
    friend class ConcatRows<Matrix>;
    template <typename,typename> friend class GenericMatrix;
    friend class Rows<Matrix>;
    friend class Cols<Matrix>;
-   template <typename, typename> friend class RowChain;
-   template <typename, typename> friend class ColChain;
+   template <typename, typename> friend class BlockMatrix;
 };
 
 template <typename E>
@@ -320,7 +319,7 @@ class ConcatRows< Matrix_base<E> >
    : public plain_array< ConcatRows< Matrix_base<E> >, E >
    , public GenericVector< ConcatRows< Matrix_base<E> >, E> {
 protected:
-   ~ConcatRows();
+   ~ConcatRows() = delete;
    Matrix_base<E>& hidden() { return *reinterpret_cast<Matrix_base<E>*>(this); }
    const Matrix_base<E>& hidden() const { return *reinterpret_cast<const Matrix_base<E>*>(this); }
 
@@ -347,11 +346,11 @@ class matrix_line_factory {
 public:
    typedef BaseRef first_argument_type;
    typedef int second_argument_type;
-   typedef IndexedSlice<masquerade<ConcatRows, BaseRef>, Series<int,rowwise> > result_type;
+   typedef IndexedSlice<masquerade<ConcatRows, BaseRef>, const Series<int, rowwise>> result_type;
 
    result_type operator() (BaseRef matrix, int start) const
    {
-      const typename deref<BaseRef>::type::dim_t& dims=matrix.data.get_prefix();
+      const auto& dims=matrix.data.get_prefix();
       return result_type(matrix, Series<int,rowwise>(start, rowwise ? dims.dimc : dims.dimr, rowwise ? 1 : dims.dimc));
    }
 };
@@ -372,20 +371,20 @@ struct binary_op_builder< matrix_line_factory<rowwise>, Iterator1, Iterator2, Re
 template <typename E>
 class Rows< Matrix<E> >
    : public modified_container_pair_impl< Rows< Matrix<E> >,
-                                          mlist< Container1Tag< constant_value_container< Matrix_base<E>& > >,
+                                          mlist< Container1Tag< same_value_container< Matrix_base<E>& > >,
                                                  Container2Tag< series >,
                                                  OperationTag< matrix_line_factory<true> >,
                                                  MasqueradedTop > > {
 protected:
    ~Rows();
 public:
-   constant_value_container< Matrix_base<E>& > get_container1()
+   auto get_container1()
    {
-      return this->hidden();
+      return same_value_container< Matrix_base<E>& >(static_cast<Matrix_base<E>&>(this->hidden()));
    }
-   const constant_value_container< const Matrix_base<E>& > get_container1() const
+   auto get_container1() const
    {
-      return this->hidden();
+      return same_value_container< const Matrix_base<E>& >(static_cast<const Matrix_base<E>&>(this->hidden()));
    }
    series get_container2() const
    {
@@ -402,20 +401,20 @@ public:
 template <typename E>
 class Cols< Matrix<E> >
    : public modified_container_pair_impl< Cols< Matrix<E> >,
-                                          mlist< Container1Tag< constant_value_container< Matrix_base<E>& > >,
+                                          mlist< Container1Tag< same_value_container< Matrix_base<E>& > >,
                                                  Container2Tag< sequence >,
                                                  OperationTag< matrix_line_factory<false> >,
                                                  MasqueradedTop > > {
 protected:
    ~Cols();
 public:
-   constant_value_container< Matrix_base<E>& > get_container1()
+   auto get_container1()
    {
-      return this->hidden();
+      return same_value_container< Matrix_base<E>& >(static_cast<Matrix_base<E>&>(this->hidden()));
    }
-   const constant_value_container< const Matrix_base<E>& > get_container1() const
+   auto get_container1() const
    {
-      return this->hidden();
+      return same_value_container< const Matrix_base<E>& >(static_cast<const Matrix_base<E>&>(this->hidden()));
    }
    sequence get_container2() const
    {
@@ -428,22 +427,22 @@ public:
    }
 };
 
-template <typename TMatrix, typename E, typename Permutation> inline
-typename std::enable_if<TMatrix::is_nonsymmetric && !TMatrix::is_sparse, Matrix<E>>::type
+template <typename TMatrix, typename E, typename Permutation>
+std::enable_if_t<TMatrix::is_nonsymmetric && !TMatrix::is_sparse, Matrix<E>>
 permuted_rows(const GenericMatrix<TMatrix, E>& m, const Permutation& perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
+   if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
       if (m.rows() != perm.size())
          throw std::runtime_error("permuted_rows - dimension mismatch");
    }
    return Matrix<E>(m.rows(), m.cols(), select(rows(m),perm).begin());
 }
 
-template <typename TMatrix, typename E, typename Permutation> inline
-typename std::enable_if<TMatrix::is_nonsymmetric && !TMatrix::is_sparse, Matrix<E>>::type
+template <typename TMatrix, typename E, typename Permutation>
+std::enable_if_t<TMatrix::is_nonsymmetric && !TMatrix::is_sparse, Matrix<E>>
 permuted_cols(const GenericMatrix<TMatrix, E>& m, const Permutation& perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
+   if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
       if (m.cols() != perm.size())
          throw std::runtime_error("permuted_cols - dimension mismatch");
    }
@@ -452,11 +451,11 @@ permuted_cols(const GenericMatrix<TMatrix, E>& m, const Permutation& perm)
    return result;
 }
 
-template <typename TMatrix, typename E, typename Permutation> inline
-typename std::enable_if<TMatrix::is_nonsymmetric && !TMatrix::is_sparse, Matrix<E>>::type
+template <typename TMatrix, typename E, typename Permutation>
+std::enable_if_t<TMatrix::is_nonsymmetric && !TMatrix::is_sparse, Matrix<E>>
 permuted_inv_rows(const GenericMatrix<TMatrix, E>& m, const Permutation& perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
+   if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
       if (m.rows() != perm.size())
          throw std::runtime_error("permuted_inv_rows - dimension mismatch");
    }
@@ -465,11 +464,11 @@ permuted_inv_rows(const GenericMatrix<TMatrix, E>& m, const Permutation& perm)
    return result;
 }
 
-template <typename TMatrix, typename E, typename Permutation> inline
-typename std::enable_if<TMatrix::is_nonsymmetric && !TMatrix::is_sparse, Matrix<E>>::type
+template <typename TMatrix, typename E, typename Permutation>
+std::enable_if_t<TMatrix::is_nonsymmetric && !TMatrix::is_sparse, Matrix<E>>
 permuted_inv_cols(const GenericMatrix<TMatrix, E>& m, const Permutation& perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
+   if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
       if (m.cols() != perm.size())
          throw std::runtime_error("permuted_inv_cols - dimension mismatch");
    }
@@ -486,10 +485,9 @@ namespace polymake {
 
 namespace std {
 
-   /// Exchange the contents of two matrices in a most efficient way. 
-   /// If at least one non-persistent object is involved, the operands must have equal dimensions. 
-   template <typename E> inline
-   void swap(pm::Matrix<E>& m1, pm::Matrix<E>& m2) { m1.swap(m2); }
+template <typename E>
+void swap(pm::Matrix<E>& m1, pm::Matrix<E>& m2) { m1.swap(m2); }
+
 }
 
 #endif // POLYMAKE_MATRIX_H

@@ -1,0 +1,6 @@
+{"app": "graph",
+ "inst": [
+  {"class": "graph::lattice::BasicDecoration", "include": ["polymake/graph/Decoration.h"], "pkg": "Polymake::graph::BasicDecoration"},
+  {"args": ["perl::Canned<const graph::lattice::BasicDecoration&>", "perl::Canned<const graph::lattice::BasicDecoration&>"], "include": ["polymake/graph/Decoration.h"], "op": "_eq", "sig": "_eq:O.X.X"},
+ null ],
+"version": 3}

@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const PuiseuxFraction<Max, Rational, Rational>&>"], "func": "val", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "kind": "meth", "sig": "val:M"},
+  {"args": ["perl::Canned<const PuiseuxFraction<Min, Rational, Rational>&>"], "func": "val", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "kind": "meth", "sig": "val:M"},
+ null ],
+"version": 3}

@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::TryCanned<const Array<int>>"], "func": "n_fixed_points", "include": ["polymake/Array.h", "polymake/permutations.h"], "sig": "n_fixed_points.X"},
+ null ],
+"version": 3}

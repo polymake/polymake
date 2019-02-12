@@ -34,14 +34,15 @@ void morse_matching_critical_faces (perl::Object p)
    const HasseEdgeMap EM = p.give("MORSE_MATCHING.MATCHING");
    Bitset critical = collectCriticalFaces(M, EM);
    Array<int> numCritical(d+1);
-   for (int k = 0; k <= d; ++k) 
-      for (auto f = entire(M.nodes_of_rank(k+1)); !f.at_end(); ++f) 
-         if ( critical.contains(*f) ) {
-            const int dim = M.rank(*f)-1;
+   for (int k = 0; k <= d; ++k) {
+      for (const auto f : M.nodes_of_rank(k+1)) {
+         if (critical.contains(f)) {
+            const int dim = M.rank(f)-1;
             assert( 0 <= dim && dim <= d );
             ++numCritical[dim];
          }
-   
+      }
+   }
 
 #if POLYMAKE_DEBUG
    const bool debug_print = perl::get_debug_level() > 1;

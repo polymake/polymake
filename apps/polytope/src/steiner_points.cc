@@ -28,20 +28,20 @@
 namespace polymake { namespace polytope {
 namespace {
 
-template <typename Coord> inline
-Coord weight(int a, int b, Coord*) { return Coord(a)/Coord(b); }
+template <typename Coord>
+Coord weight(int a, int b) { return Coord(a)/Coord(b); }
 
-inline
-Rational weight(int a, int b, Rational*) { return Rational(a,b); }
+template <>
+Rational weight<Rational>(int a, int b) { return Rational(a,b); }
 
 template <typename Coord, typename AdjVert>
 Coord calc_weight(const Matrix<Coord>& Vd, const GenericMatrix<AdjVert>& adjVert_in,
-                  const int i, const int dim, const int nop,
+                  const int vertex_index, const int dim, const int nop,
                   RandomSpherePoints<>& random_source,
                   const double eps)
 {
    // get the perpendicular vectors for actual vertex
-   const Matrix<Coord> adjVert=repeat_row(Vd[i], adjVert_in.rows())-adjVert_in;
+   const Matrix<Coord> adjVert=repeat_row(Vd[vertex_index], adjVert_in.rows())-adjVert_in;
 
    int countwhile = 0;
    int old_out = 0;
@@ -60,9 +60,9 @@ Coord calc_weight(const Matrix<Coord>& Vd, const GenericMatrix<AdjVert>& adjVert
       RandomSpherePoints<>::const_iterator rand_point_it(random_source.begin());
       for (int i = 0; i < ((countwhile == 1)?50*nop:nop); ++i) {
          const Vector<Coord> point(Coord(1) | *rand_point_it);
-         for (typename Entire< Rows< Matrix<Coord> > >::const_iterator ri2= entire(rows(adjVert)); !ri2.at_end(); ++ri2 )
-            if ( point*(*ri2) < 0) {
-               out++;
+         for (auto ri2= entire(rows(adjVert)); !ri2.at_end(); ++ri2)
+            if (point*(*ri2) < 0) {
+               ++out;
                break;
             }
       }
@@ -71,8 +71,9 @@ Coord calc_weight(const Matrix<Coord>& Vd, const GenericMatrix<AdjVert>& adjVert
 
    } while (abs(step_dist-1) >= eps);
 
-   return weight((countwhile+49)*nop-out, (countwhile+49)*nop, (Coord*)0);
+   return weight<Coord>((countwhile+49)*nop-out, (countwhile+49)*nop);
 }
+
 }
 
 template <typename Coord>
@@ -91,29 +92,30 @@ Matrix<Coord> all_steiner_points(perl::Object p, perl::OptionSet options)
 
    const int n_stp = HDiagram.nodes() - HDiagram.nodes_of_rank(2).size() - HDiagram.nodes_of_rank(1).size() - 1;
    Matrix<Coord> steiner_points(n_stp,dim+1);
-   typename Rows< Matrix<Coord> >::iterator si=rows(steiner_points).begin();
+   auto si=rows(steiner_points).begin();
 
    for (int d = dim; d >= 2; --d) {
       const int nop = 10*(1<<d);
 
-      //iterate over the faces of current dimension d
-      for (auto fi=entire(HDiagram.nodes_of_rank(d+1)); !fi.at_end(); ++fi, ++si) {
-
-         const Set<int>& face = HDiagram.face(*fi);
+      // iterate over the faces of current dimension d
+      for (const auto f : HDiagram.nodes_of_rank(d+1)) {
+         const Set<int>& face = HDiagram.face(f);
          Vector<Coord> weights(face.size());
          Coord sw(0);
-         typename Vector<Coord>::iterator wi=weights.begin();
+         auto wi=weights.begin();
 
          //iterate over the vertices of the face
-         for ( Entire< Set<int> >::const_iterator vi=entire(face); !vi.at_end(); ++vi, ++wi ) {
-            const Coord w=calc_weight(V, V.minor(G.adjacent_nodes(*vi)*face, All),
-                                      *vi, dim, nop, random_source, eps);
+         for (const auto vertex : face) {
+            const Coord w=calc_weight(V, V.minor(G.adjacent_nodes(vertex)*face, All),
+                                      vertex, dim, nop, random_source, eps);
             sw+=w;
             *wi=w;
+            ++wi;
          }
 
          weights /= sw;
-         *si = weights*V.minor(face,All);
+         *si = weights * V.minor(face, All);
+         ++si;
       }
    }
 
@@ -137,7 +139,7 @@ Vector<Coord> steiner_point(perl::Object p, perl::OptionSet options)
    Coord sw(0);
    typename Vector<Coord>::iterator wi=weights.begin();
 
-   for (Entire< Nodes< Graph<> > >::const_iterator n=entire(nodes(G)); !n.at_end(); ++n, ++wi) {
+   for (auto n=entire(nodes(G)); !n.at_end(); ++n, ++wi) {
       const Coord w=calc_weight(V, V.minor(n.adjacent_nodes(),All),
                                 *n, dim, nop, random_source, eps);
       sw+=w;

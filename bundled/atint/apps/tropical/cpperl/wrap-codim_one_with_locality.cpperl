@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "codim_one_with_locality.cc",
+ "inst": [
+  {"args": ["Min", "void"], "func": "codim_one_with_locality", "include": ["polymake/TropicalNumber.h"], "sig": "codim_one_with_locality:T1.B", "tp": "1"},
+  {"args": ["Max", "void"], "func": "codim_one_with_locality", "include": ["polymake/TropicalNumber.h"], "sig": "codim_one_with_locality:T1.B", "tp": "1"},
+ null ],
+"version": 3}

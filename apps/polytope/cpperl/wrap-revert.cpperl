@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "revert.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "revert", "include": ["polymake/Rational.h"], "sig": "revert:T1.B", "tp": "1"},
+ null ],
+"version": 3}

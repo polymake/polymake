@@ -35,7 +35,7 @@ perl::Object create_delpezzo(const int d, const Scalar& s, const bool pseudo_fla
 
    const int n_vertices= (pseudo_flag) ? 2*d+1 : 2*d+2;
 
-   perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p("Polytope", mlist<Scalar>());
    p.set_description() << "del-pezzo-polytope of dimension " << d << endl;
 
    SparseMatrix<Scalar> V((s*unit_matrix<Scalar>(d)) / ((-s)*unit_matrix<Scalar>(d)) / (s*ones_vector<Scalar>(d)));

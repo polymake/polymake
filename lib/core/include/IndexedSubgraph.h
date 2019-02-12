@@ -139,18 +139,21 @@ struct subgraph_edge_accessor {
 template <typename EdgeListRef>
 class subgraph_edge_list
    : public container_pair_impl< subgraph_edge_list<EdgeListRef>,
-                                 mlist< Container1Tag< EdgeListRef >,
-                                        Container2Tag< constant_value_container<int> > > > {
+                                 mlist< Container1RefTag< EdgeListRef >,
+                                        Container2RefTag< same_value_container<int> > > > {
 protected:
-   alias<EdgeListRef> edges;
+   using alias_t = alias<EdgeListRef>;
+   alias_t edges;
    int own_index;
 public:
-   subgraph_edge_list(typename alias<EdgeListRef>::arg_type edges_arg, int index_arg)
-      : edges(edges_arg), own_index(index_arg) {}
+   template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
+   subgraph_edge_list(Arg&& edges_arg, int index_arg)
+      : edges(std::forward<Arg>(edges_arg)),
+        own_index(index_arg) {}
 
-   typename alias<EdgeListRef>::reference get_container1() { return *edges; }
-   typename alias<EdgeListRef>::const_reference get_container1() const { return *edges; }
-   constant_value_container<int> get_container2() const { return own_index; }
+   decltype(auto) get_container1() { return *edges; }
+   decltype(auto) get_container1() const { return *edges; }
+   auto get_container2() const { return same_value_container<int>(own_index); }
 
    int dim() const { return get_container1().dim(); }
 };
@@ -175,39 +178,36 @@ struct construct_subgraph_edge_list {
    }
 };
 
-template <typename GraphRef, typename SetRef, typename TParams, bool TEnabled>
+template <typename GraphRef, typename SetRef, typename Params, bool Enabled>
 class IndexedSubgraph_random_access_methods {};
 
-template <typename GraphRef, typename SetRef, typename TParams>
+template <typename GraphRef, typename SetRef, typename Params>
 class IndexedSubgraph_base
-   : public container_pair_base<GraphRef, typename Diligent<SetRef>::type> {
-   typedef container_pair_base<GraphRef, typename Diligent<SetRef>::type> base_t;
+   : public container_pair_base<GraphRef, SetRef> {
+   using base_t = container_pair_base<GraphRef, SetRef>;
    template <typename, typename, typename, bool> friend class IndexedSubgraph_random_access_methods;
 public:
-   typedef typename deref<GraphRef>::type graph_type;
-   typedef typename deref<SetRef>::type node_set_type;
+   using graph_type = typename deref<GraphRef>::type;
 protected:
-   typedef typename mtagged_list_extract<TParams, RenumberTag, std::false_type>::type renumber_nodes;
+   using renumber_nodes = typename mtagged_list_extract<Params, RenumberTag, std::false_type>::type;
 
-   typename inherit_const<graph_type, GraphRef>::type& get_graph() { return base_t::get_container1(); }
-   const graph_type& get_graph() const { return base_t::get_container1(); }
-   const alias<typename Diligent<SetRef>::type>& get_node_set_alias() const { return this->src2; }
-   typename alias<typename Diligent<SetRef>::type>::const_reference get_node_set() const { return base_t::get_container2(); }
+   decltype(auto) get_graph() { return base_t::get_container1(); }
+   decltype(auto) get_graph() const { return base_t::get_container1(); }
+   const typename base_t::second_alias_t& get_node_set_alias() const { return this->src2; }
+   decltype(auto) get_node_set() const { return base_t::get_container2(); }
 
-   IndexedSubgraph_base(typename base_t::first_arg_type graph_arg, typename alias<SetRef>::arg_type node_set_arg)
-      : base_t(graph_arg, diligent(node_set_arg)) {}
+   using container_pair_base<GraphRef, SetRef>::container_pair_base;
 
-   typedef typename mlist_prepend_if<renumber_nodes::value,
-                                     mlist< RenumberTag<std::true_type>, ExpectedFeaturesTag<indexed> >,
-                                     HiddenTag<IndexedSubgraph_base> >::type
-      node_selector_params;
+   using node_selector_params = typename mlist_prepend_if<renumber_nodes::value,
+                                                          mlist< RenumberTag<std::true_type>, ExpectedFeaturesTag<indexed> >,
+                                                          HiddenTag<IndexedSubgraph_base> >::type;
 
    template <typename Source>
    class node_selector
       : public indexed_subset_impl< node_selector<Source>,
-                                    typename mlist_concat< Container1Tag< Source >, Container2Tag< SetRef >,
+                                    typename mlist_concat< Container1RefTag< Source >, Container2RefTag< SetRef >,
                                                            node_selector_params >::type > {
-      typedef indexed_subset_impl<node_selector> base_t;
+      using base_t = indexed_subset_impl<node_selector>;
    public:
       typename base_t::container1& get_container1()
       {
@@ -217,7 +217,7 @@ protected:
       {
          return this->hidden().get_graph().template pretend<const typename base_t::container1&>();
       }
-      const node_set_type& get_container2() const
+      decltype(auto) get_container2() const
       {
          return this->hidden().get_node_set();
       }
@@ -227,25 +227,23 @@ protected:
    class masquerade_container
       : public modified_container_pair_impl< masquerade_container<Source, AddParams>,
                                              typename mlist_concat< Container1Tag< node_selector<Source> >,
-                                                                    Container2Tag< constant_value_container<typename Diligent<SetRef>::type> >,
+                                                                    Container2RefTag< same_value_container<SetRef> >,
                                                                     HiddenTag< IndexedSubgraph_base >,
                                                                     AddParams >::type > {
       typedef modified_container_pair_impl<masquerade_container> base_t;
    public:
-      const typename base_t::container2& get_container2() const
+      decltype(auto) get_container2() const
       {
-         return constant(this->hidden().get_node_set_alias());
+         return as_same_value_container(this->hidden().get_node_set_alias());
       }
    };
 
-   typedef typename std::conditional<renumber_nodes::value,
-                                     BuildBinaryIt<construct_subgraph_edge_list>,
-                                     operations::construct_binary2<IndexedSubset, HintTag<sparse> > >::type
-      edge_list_operation;
-   typedef typename std::conditional<renumber_nodes::value,
-                                     operations::construct_binary2<IndexedSlice, HintTag<sparse> >,
-                                     operations::construct_binary2<LazySet2, set_intersection_zipper> >::type
-      adjacent_node_list_operation;
+   using edge_list_operation = std::conditional_t<renumber_nodes::value,
+                                                  BuildBinaryIt<construct_subgraph_edge_list>,
+                                                  operations::construct_binary2<IndexedSubset, HintTag<sparse>>>;
+   using adjacent_node_list_operation = std::conditional_t<renumber_nodes::value,
+                                                           operations::construct_binary2<IndexedSlice, HintTag<sparse> >,
+                                                           operations::construct_binary2<LazySet2, set_intersection_zipper>>;
 
 public:
    template <typename Iterator>
@@ -253,9 +251,9 @@ public:
    public:
       typedef Iterator first_argument_type;
       typedef SetRef second_argument_type;
-      typedef typename function_argument<SetRef>::const_type second_arg_type;
       typedef typename iterator_traits<Iterator>::reference result_type;
-      typedef typename constant_value_container<typename Diligent<SetRef>::type>::const_iterator ConstIterator2;
+      typedef const pure_type_t<SetRef>& second_arg_type;
+      typedef ptr_wrapper<const pure_type_t<SetRef>, false> ConstIterator2;
    private:
       typename Iterator::out_edge_list_ref out_intermed(const Iterator& it, std::false_type) const
       {
@@ -275,15 +273,13 @@ public:
          return subgraph_edge_list<typename Iterator::in_edge_list_ref>(it.in_edges(), it.index());
       }
 
-      static const bool is_const=std::is_same<Iterator, typename container_traits<typename masquerade<Nodes, GraphRef>::type>::const_iterator>::value;
-      typedef typename std::conditional<is_const,
-                                        typename deref<GraphRef>::type::out_edge_list_container::const_iterator,
-                                        typename deref<GraphRef>::type::out_edge_list_container::iterator>::type
-         out_edge_lists_iterator;
-      typedef typename std::conditional<is_const,
-                                        typename deref<GraphRef>::type::in_edge_list_container::const_iterator,
-                                        typename deref<GraphRef>::type::in_edge_list_container::iterator>::type
-         in_edge_lists_iterator;
+      static constexpr bool is_const=std::is_same<Iterator, typename container_traits<typename masquerade<Nodes, GraphRef>::type>::const_iterator>::value;
+      using out_edge_lists_iterator = std::conditional_t<is_const,
+                                                         typename deref<GraphRef>::type::out_edge_list_container::const_iterator,
+                                                         typename deref<GraphRef>::type::out_edge_list_container::iterator>;
+      using in_edge_lists_iterator = std::conditional_t<is_const,
+                                                        typename deref<GraphRef>::type::in_edge_list_container::const_iterator,
+                                                        typename deref<GraphRef>::type::in_edge_list_container::iterator>;
    public:
       typedef typename binary_op_builder<edge_list_operation, out_edge_lists_iterator, ConstIterator2>::operation::result_type
          out_edge_list;
@@ -329,18 +325,18 @@ protected:
                                     mlist< OperationTag< node_accessor<typename container_traits<Source>::iterator> >,
                                            IteratorConstructorTag< subgraph_node_access_constructor > > > {};
 public:
-   typedef masquerade_node_container<typename std::conditional<attrib<GraphRef>::is_const,
-                                                               typename graph_type::const_node_container_ref,
-                                                               typename graph_type::node_container_ref>::type>
+   typedef masquerade_node_container<std::conditional_t<attrib<GraphRef>::is_const,
+                                                        typename graph_type::const_node_container_ref,
+                                                        typename graph_type::node_container_ref>>
       node_container;
    typedef masquerade_node_container<typename graph_type::const_node_container_ref>
       const_node_container;
    typedef typename inherit_const<node_container, GraphRef>::type& node_container_ref;
    typedef const const_node_container& const_node_container_ref;
 
-   typedef masquerade_container<typename std::conditional<attrib<GraphRef>::is_const,
-                                                          typename graph_type::const_out_edge_list_container_ref,
-                                                          typename graph_type::out_edge_list_container_ref>::type,
+   typedef masquerade_container<std::conditional_t<attrib<GraphRef>::is_const,
+                                                   typename graph_type::const_out_edge_list_container_ref,
+                                                   typename graph_type::out_edge_list_container_ref>,
                                 OperationTag< edge_list_operation > >
       out_edge_list_container;
    typedef masquerade_container<typename graph_type::const_out_edge_list_container_ref,
@@ -349,9 +345,9 @@ public:
    typedef typename inherit_const<out_edge_list_container, GraphRef>::type& out_edge_list_container_ref;
    typedef const const_out_edge_list_container& const_out_edge_list_container_ref;
 
-   typedef masquerade_container<typename std::conditional<attrib<GraphRef>::is_const,
-                                                          typename graph_type::const_in_edge_list_container_ref,
-                                                          typename graph_type::in_edge_list_container_ref>::type,
+   typedef masquerade_container<std::conditional_t<attrib<GraphRef>::is_const,
+                                                   typename graph_type::const_in_edge_list_container_ref,
+                                                   typename graph_type::in_edge_list_container_ref>,
                                 OperationTag< edge_list_operation > >
       in_edge_list_container;
    typedef masquerade_container<typename graph_type::const_in_edge_list_container_ref,
@@ -390,41 +386,44 @@ public:
    typedef in_adjacent_node_list const_in_adjacent_list_ref;
 };
 
-template <typename GraphRef, typename SetRef, typename TParams>
+template <typename GraphRef, typename SetRef, typename Params>
 struct IndexedSubgraph_random_access {
    static constexpr bool enabled= container_traits<typename deref<GraphRef>::type::node_container_ref>::is_random &&
-                                  (!tagged_list_extract_integral<TParams, RenumberTag>(false) ||
+                                  (!tagged_list_extract_integral<Params, RenumberTag>(false) ||
                                    subset_classifier::index_helper<masquerade<Nodes, GraphRef>, SetRef, false>::random);
-   typedef IndexedSubgraph_random_access_methods<GraphRef, SetRef, TParams, enabled> type;
+   typedef IndexedSubgraph_random_access_methods<GraphRef, SetRef, Params, enabled> type;
 };
 
-template <typename GraphRef, typename SetRef, typename TParams=mlist<>>
+template <typename GraphRef, typename SetRef, typename Params=mlist<>>
 class IndexedSubgraph
-   : public IndexedSubgraph_base<GraphRef, SetRef, TParams>,
-     public IndexedSubgraph_random_access<GraphRef, SetRef, TParams>::type,
-     public GenericGraph< IndexedSubgraph<GraphRef, SetRef, TParams>, typename deref<GraphRef>::type::dir > {
-   typedef IndexedSubgraph_base<GraphRef, SetRef, TParams> base_t;
+   : public IndexedSubgraph_base<GraphRef, SetRef, Params>,
+     public IndexedSubgraph_random_access<GraphRef, SetRef, Params>::type,
+     public GenericGraph< IndexedSubgraph<GraphRef, SetRef, Params>, typename deref<GraphRef>::type::dir > {
+   using base_t = IndexedSubgraph_base<GraphRef, SetRef, Params>;
    template <typename, typename, typename, bool> friend class IndexedSubgraph_random_access_methods;
 protected:
-   int nodes_impl(std::false_type) const { return this->get_node_set().size(); }
-   int nodes_impl(std::true_type) const { return this->get_graph().nodes()-this->get_node_set().base().size(); }
+   bool has_gaps_impl(std::false_type) const { return true; }
+   bool has_gaps_impl(std::true_type) const { return this->get_node_set().front() != 0; }
+
    int dim_impl(std::false_type) const { return this->get_graph().dim(); }
    int dim_impl(std::true_type) const { return nodes(); }
-   int first_node_impl(std::false_type) const { return this->get_node_set().front(); }
-   int first_node_impl(std::true_type) const { return -1; }
 
 public:
-   IndexedSubgraph(typename base_t::first_arg_type graph_arg, typename alias<SetRef>::arg_type node_set_arg)
-      : base_t(graph_arg, node_set_arg) {}
+   using IndexedSubgraph_base<GraphRef, SetRef, Params>::IndexedSubgraph_base;
 
-   int nodes() const { return nodes_impl(complement_helper<SetRef>()); }
+   int nodes() const
+   {
+      return this->get_node_set().size();
+   }
    int edges() const;
-   int dim() const { return dim_impl(typename base_t::renumber_nodes()); }
+   int dim() const
+   {
+      return dim_impl(typename base_t::renumber_nodes());
+   }
 
    bool has_gaps() const
    {
-      return !base_t::renumber_nodes::value &&
-             !(std::is_same<typename deref<SetRef>::type, sequence>::value && first_node_impl(complement_helper<SetRef>())==0);
+      return !base_t::renumber_nodes::value && has_gaps_impl(std::is_same<pure_type_t<SetRef>, sequence>());
    }
 
    template <typename MasqueradeRef>
@@ -439,8 +438,8 @@ public:
    }
 };
 
-template <typename GraphRef, typename SetRef, typename TParams>
-int IndexedSubgraph<GraphRef, SetRef, TParams>::edges() const
+template <typename GraphRef, typename SetRef, typename Params>
+int IndexedSubgraph<GraphRef, SetRef, Params>::edges() const
 {
    int cnt=0;
    for (typename Nodes<IndexedSubgraph>::const_iterator n_it=entire(pm::nodes(*this)); !n_it.at_end(); ++n_it)
@@ -449,10 +448,10 @@ int IndexedSubgraph<GraphRef, SetRef, TParams>::edges() const
    return cnt;
 }
 
-template <typename GraphRef, typename SetRef, typename TParams>
-class IndexedSubgraph_random_access_methods<GraphRef, SetRef, TParams, true> {
-   typedef IndexedSubgraph<GraphRef, SetRef, TParams> master;
-   typedef IndexedSubgraph_base<GraphRef, SetRef, TParams> base;
+template <typename GraphRef, typename SetRef, typename Params>
+class IndexedSubgraph_random_access_methods<GraphRef, SetRef, Params, true> {
+   typedef IndexedSubgraph<GraphRef, SetRef, Params> master;
+   typedef IndexedSubgraph_base<GraphRef, SetRef, Params> base;
    static const bool is_directed_local= deref<GraphRef>::type::dir::value==graph::Directed::value;
 
    master& me() { return static_cast<master&>(*this); }
@@ -532,42 +531,36 @@ public:
    }
 };
 
-template <typename GraphRef, typename SetRef, typename TParams>
-inline
-const IndexedSubgraph<GraphRef, SetRef, typename mtagged_list_replace<TParams, RenumberTag<std::true_type>>::type>&
-renumber_nodes(const IndexedSubgraph<GraphRef, SetRef, TParams>& G)
+template <typename GraphRef, typename SetRef, typename Params>
+const IndexedSubgraph<GraphRef, SetRef, typename mtagged_list_replace<Params, RenumberTag<std::true_type>>::type>&
+renumber_nodes(const IndexedSubgraph<GraphRef, SetRef, Params>& G)
 {
-   return reinterpret_cast<const IndexedSubgraph<GraphRef, SetRef, typename mtagged_list_replace<TParams, RenumberTag<std::true_type>>::type>&>(G);
+   return reinterpret_cast<const IndexedSubgraph<GraphRef, SetRef, typename mtagged_list_replace<Params, RenumberTag<std::true_type>>::type>&>(G);
 }
 
-template <typename GraphRef, typename SetRef, typename TParams>
-struct spec_object_traits< IndexedSubgraph<GraphRef, SetRef, TParams> >
+template <typename GraphRef, typename SetRef, typename Params>
+struct spec_object_traits< IndexedSubgraph<GraphRef, SetRef, Params> >
    : spec_object_traits<is_opaque> {
-   static const bool is_temporary=true,
-                     is_always_const=effectively_const<GraphRef>::value;
-   static const int is_resizeable=0;
+   static constexpr bool
+      is_temporary = true,
+      is_always_const = is_effectively_const<GraphRef>::value;
+   static constexpr int is_resizeable=0;
 };
 
-template <typename Graph, typename Set> inline
-IndexedSubgraph<unwary_t<Graph>&, const typename Concrete<Set>::type&>
-induced_subgraph(GenericGraph<Graph>& G, const Set& nodes)
+template <typename TGraph, typename IndexSet,
+          typename = std::enable_if_t<is_generic_graph<TGraph>::value &&
+                                      isomorphic_to_container_of<pure_type_t<IndexSet>, int>::value>>
+auto induced_subgraph(TGraph&& G, IndexSet&& node_indices)
+     // gcc 5 needs this crutch
+     -> IndexedSubgraph<unwary_t<TGraph>, add_const_t<unwary_t<IndexSet>>>
 {
-   if (POLYMAKE_DEBUG || !Unwary<Graph>::value) {
-      if (!set_within_range(nodes, G.nodes()))
+   if (POLYMAKE_DEBUG || is_wary<TGraph>()) {
+      if (!set_within_range(node_indices, G.top().nodes()))
          throw std::runtime_error("induced_subgraph - node indices out of range");
    }
-   return IndexedSubgraph<unwary_t<Graph>&, const typename Concrete<Set>::type&>(G.top(), concrete(nodes));
-}
-
-template <typename Graph, typename Set> inline
-IndexedSubgraph<const unwary_t<Graph>&, const typename Concrete<Set>::type&>
-induced_subgraph(const GenericGraph<Graph>& G, const Set& nodes)
-{
-   if (POLYMAKE_DEBUG || !Unwary<Graph>::value) {
-      if (!set_within_range(nodes, G.nodes()))
-         throw std::runtime_error("induced_subgraph - node indices out of range");
-   }
-   return IndexedSubgraph<const unwary_t<Graph>&, const typename Concrete<Set>::type&>(G.top(), concrete(nodes));
+   using result_type = IndexedSubgraph<unwary_t<TGraph>, add_const_t<unwary_t<IndexSet>>>;
+   return result_type(unwary(std::forward<TGraph>(G)),
+                      prepare_index_set(std::forward<IndexSet>(node_indices), [&](){ return unwary(G).dim(); }));
 }
 
 } // end namespace pm

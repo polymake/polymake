@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<Wary<Graph<DirectedMulti>>&>", "void", "void"], "func": "delete_all_edges", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "delete_all_edges:M5.x.x"},
+ null ],
+"version": 3}

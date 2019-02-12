@@ -249,8 +249,7 @@ private:
 
       // Create graph nodes
       Map<int,int> node_number; int n=0;
-      for (Entire< Set<int> >::const_iterator v = entire(nodes);
-           !v.at_end(); ++n, ++v) {
+      for (auto v = entire(nodes); !v.at_end(); ++n, ++v) {
          node_number[*v] = n;
          nm[n] = *v;
       }

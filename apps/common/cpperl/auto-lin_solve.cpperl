@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Wary<Matrix<Rational>>&>", "perl::Canned<const Wary<Vector<Rational>>&>"], "func": "lin_solve", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Vector.h", "polymake/linalg.h"], "sig": "lin_solve.X4.X4"},
+  {"args": ["perl::Canned<const Wary<pm::Transposed<pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Array<int> const&, pm::all_selector const&> >>&>", "perl::Canned<const Wary<Vector<Rational>>&>"], "func": "lin_solve", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Vector.h", "polymake/linalg.h"], "sig": "lin_solve.X4.X4"},
+ null ],
+"version": 3}

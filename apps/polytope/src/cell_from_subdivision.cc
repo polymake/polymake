@@ -29,7 +29,7 @@ namespace {
 template <typename Scalar, typename _Set>
 perl::Object full_dim_cell(perl::Object p_in, const GenericSet<_Set, int>& cell_verts, perl::OptionSet options)
 {
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
 
    if (p_in.exists("CONE_DIM")) {
       const int dim=p_in.call_method("DIM");

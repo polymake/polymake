@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["void"], "func": "local_epsilon", "include": ["polymake/internal/comparators.h"], "sig": "local_epsilon.x"},
+ null ],
+"version": 3}

@@ -102,9 +102,9 @@ user_method MIN_MAX_FACE(; LinearProgram { min => $Visual::Color::min, max => $V
       $lp=$self->Polytope->LP;
    }
    foreach (values %$decor) {
-      unless (is_hash($_)) {
-         my $c=get_RGB($_);
-         $_={ NodeColor=>$c };
+      unless (is_like_hash($_)) {
+         my $c = get_RGB($_);
+         $_ = { NodeColor => $c };
       }
    }
 
@@ -219,9 +219,9 @@ user_method MIN_MAX_FACE(; LinearProgram { min => $Visual::Color::min, max => $V
       $lp=$self->Polytope->LP;
    }
    foreach (values %$decor) {
-      unless (is_hash($_)) {
-         my $c=get_RGB($_);
-         $_={ NodeBorderColor=>$c, EdgeColor=>$c };
+      unless (is_like_hash($_)) {
+         my $c = get_RGB($_);
+         $_ = { NodeBorderColor => $c, EdgeColor => $c };
       }
       $_->{show_filter}=1;
    }

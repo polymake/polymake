@@ -103,7 +103,7 @@ include "common::jupyter.rules";
 
          foreach (@{${$_}{"source"}}) {
 	    s{^ \s* application \s* ($anon_quoted_re) \s*;\s* $}
-	     {use application $1;  declare +auto;\n}xmg;
+	     {use application $1;\n}xmg;
 
             $body .= enforce_nl($_);  # add a trailing newline after the command if not present (for ease of debugging)
          }
@@ -142,15 +142,15 @@ sub new {
    my $tdir = new TempChangeDir($self->subgroup->temp_dir);
    # files created in tutorials via save(), save_data() etc. must be automatically destroyed
    # script() must be exempt from this transformation because it refers to existing scripts
-   local_sub(\&replace_special_paths, sub {
-		if ((caller(1))[3] ne "Polymake::User::script") {
-		   foreach (@_) {
-		      s{^~(?=/|$)}{ $self->subgroup->temp_dir }e
-		        or
-		      s{^(?=[^/])}{ $self->subgroup->temp_dir."/" }e;
-		   }
-		}
-	     });
+   local ref *replace_special_paths = sub {
+      if ((caller(1))[3] ne "Polymake::User::script") {
+	 foreach (@_) {
+	    s{^~(?=/|$)}{ $self->subgroup->temp_dir }e
+	      or
+	    s{^(?=[^/])}{ $self->subgroup->temp_dir."/" }e;
+	 }
+      }
+   };
    before_run($self);
    eval $self->body;
    if ($@) {

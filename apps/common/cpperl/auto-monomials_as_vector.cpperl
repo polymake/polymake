@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const UniPolynomial<Rational, int>&>"], "func": "monomials_as_vector", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "meth", "sig": "monomials_as_vector:M"},
+ null ],
+"version": 3}

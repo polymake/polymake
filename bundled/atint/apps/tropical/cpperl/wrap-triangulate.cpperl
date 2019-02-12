@@ -1,0 +1,8 @@
+{"app": "tropical", "embed": "triangulate.cc",
+ "inst": [
+  {"args": ["Max", "void", "void"], "func": "insert_rays", "include": ["polymake/TropicalNumber.h"], "sig": "insert_rays:T1.B.x", "tp": "1"},
+  {"args": ["Min", "void", "void"], "func": "insert_rays", "include": ["polymake/TropicalNumber.h"], "sig": "insert_rays:T1.B.x", "tp": "1"},
+  {"args": ["Max", "void"], "func": "triangulate_cycle", "include": ["polymake/TropicalNumber.h"], "sig": "triangulate_cycle:T1.B", "tp": "1"},
+  {"args": ["Min", "void"], "func": "triangulate_cycle", "include": ["polymake/TropicalNumber.h"], "sig": "triangulate_cycle:T1.B", "tp": "1"},
+ null ],
+"version": 3}

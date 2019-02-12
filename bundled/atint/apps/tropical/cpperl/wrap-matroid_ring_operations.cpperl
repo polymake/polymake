@@ -1,0 +1,8 @@
+{"app": "tropical", "embed": "matroid_ring_operations.cc",
+ "inst": [
+  {"args": ["Max", "void", "void"], "func": "matroid_ring_sum", "include": ["polymake/TropicalNumber.h"], "sig": "matroid_ring_sum:T1.B.B", "tp": "1"},
+  {"args": ["Min", "void", "void"], "func": "matroid_ring_sum", "include": ["polymake/TropicalNumber.h"], "sig": "matroid_ring_sum:T1.B.B", "tp": "1"},
+  {"args": ["Min", "void"], "func": "matroid_ring_linear_space", "include": ["polymake/TropicalNumber.h"], "sig": "matroid_ring_linear_space:T1.B", "tp": "1"},
+  {"args": ["Max", "void"], "func": "matroid_ring_linear_space", "include": ["polymake/TropicalNumber.h"], "sig": "matroid_ring_linear_space:T1.B", "tp": "1"},
+ null ],
+"version": 3}

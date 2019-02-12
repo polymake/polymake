@@ -34,7 +34,7 @@ perl::Object goldfarb(int d, const Scalar& e, const Scalar& g)
    if (g>e/4)
       throw std::runtime_error("goldfarb: g <= e/4");
 
-   perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p("Polytope", mlist<Scalar>());
    p.set_description() << "Goldfarb " << d << "-cube with parameters e=" << e << " and g=" << g << endl;
 
    Matrix<Scalar> IE(4+2*(d-2),d+1);
@@ -72,7 +72,7 @@ perl::Object goldfarb_sit(int d, const Scalar& eps, const Scalar& delta)
    if (delta>Rational(1,2)) // 1/beta
       throw std::runtime_error("goldfarb_sit: delta <= 1/2");
 
-   perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p("Polytope", mlist<Scalar>());
    Matrix<Scalar> IE(4+2*(d-2),d+1);
 
    // the last 2 inequalities

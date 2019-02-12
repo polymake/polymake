@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "fan_decomposition.cc",
+ "inst": [
+  {"args": ["Min", "void"], "func": "fan_decomposition", "include": ["polymake/TropicalNumber.h"], "sig": "fan_decomposition:T1.B", "tp": "1"},
+  {"args": ["Max", "void"], "func": "fan_decomposition", "include": ["polymake/TropicalNumber.h"], "sig": "fan_decomposition:T1.B", "tp": "1"},
+ null ],
+"version": 3}

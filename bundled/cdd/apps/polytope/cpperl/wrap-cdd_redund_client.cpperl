@@ -1,0 +1,17 @@
+{"app": "polytope", "embed": "cdd_redund_client.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "cdd_vertex_normals", "include": ["polymake/Rational.h"], "sig": "cdd_vertex_normals:T1.B", "tp": "1"},
+  {"args": ["Rational", "void"], "func": "cdd_eliminate_redundant_points", "include": ["polymake/Rational.h"], "sig": "cdd_eliminate_redundant_points:T1.B", "tp": "1"},
+  {"args": ["double", "void"], "func": "cdd_eliminate_redundant_points", "sig": "cdd_eliminate_redundant_points:T1.B", "tp": "1"},
+  {"args": ["Matrix<double>", "perl::Canned<const pm::ListMatrix<pm::Vector<double> >&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "op": "new", "sig": "new.X"},
+  {"args": ["double", "void"], "func": "cdd_vertex_normals", "sig": "cdd_vertex_normals:T1.B", "tp": "1"},
+  {"args": ["Rational", "void", "void"], "func": "cdd_get_non_redundant_points", "include": ["polymake/Rational.h"], "sig": "cdd_get_non_redundant_points:T1.B.x", "tp": "1"},
+  {"args": ["Rational", "void", "void"], "func": "cdd_get_linear_span", "include": ["polymake/Rational.h"], "sig": "cdd_get_linear_span:T1.B.x", "tp": "1"},
+  {"args": ["double", "void", "void"], "func": "cdd_get_non_redundant_points", "sig": "cdd_get_non_redundant_points:T1.B.x", "tp": "1"},
+  {"args": ["double", "void", "void"], "func": "cdd_get_non_redundant_inequalities", "sig": "cdd_get_non_redundant_inequalities:T1.B.x", "tp": "1"},
+  {"args": ["Rational", "void", "void"], "func": "cdd_get_non_redundant_inequalities", "include": ["polymake/Rational.h"], "sig": "cdd_get_non_redundant_inequalities:T1.B.x", "tp": "1"},
+  {"args": ["double", "void", "void"], "func": "cdd_get_linear_span", "sig": "cdd_get_linear_span:T1.B.x", "tp": "1"},
+  {"args": ["Rational", "void", "void"], "func": "cdd_get_lineality_space", "include": ["polymake/Rational.h"], "sig": "cdd_get_lineality_space:T1.B.x", "tp": "1"},
+  {"args": ["double", "void", "void"], "func": "cdd_get_lineality_space", "sig": "cdd_get_lineality_space:T1.B.x", "tp": "1"},
+ null ],
+"version": 3}

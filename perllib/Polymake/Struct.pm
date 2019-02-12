@@ -250,9 +250,9 @@ sub import {
                       if (defined (my $default_arg=delete $options{default})) {
                          $init_deferred ||= $default_arg =~ /(?<!\\)\$this\b/;
                          if ($key_in_expr) {
-                            ($deflt=$expr) =~ s/\#%/'$aliases[0]', $default_arg/g;
+                            $deflt = $expr =~ s/\#%/'$aliases[0]', $default_arg/gr;
                          } else {
-                            $deflt=$default_arg;
+                            $deflt = $default_arg;
                          }
                       }
                       my $val="\$kw[2*$index+1]";

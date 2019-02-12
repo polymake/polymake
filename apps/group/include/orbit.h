@@ -49,7 +49,7 @@ orbit_impl(const Array<Perm>& generators,
       q.pop();
       for (const auto& a: g_actions) {
          const Element next = a(orbitElement);
-         if(!orbit.collect(next)) {
+         if (!orbit.collect(next)) {
             q.push(next);
          }
       }

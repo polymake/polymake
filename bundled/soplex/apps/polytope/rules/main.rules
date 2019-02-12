@@ -20,12 +20,12 @@ label soplex
 object Polytope<Rational> {
 
 rule soplex.simplex: LP.MAXIMAL_VALUE, LP.MAXIMAL_VERTEX, FEASIBLE : LP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
-   soplex_solve_lp($this, $this->LP, 1);
+   soplex_lp_client($this, $this->LP, true);
 }
 weight 3.10;
 
 rule soplex.simplex: LP.MINIMAL_VALUE, LP.MINIMAL_VERTEX, FEASIBLE : LP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
-   soplex_solve_lp($this, $this->LP, 0);
+   soplex_lp_client($this, $this->LP, false);
 }
 weight 3.10;
 

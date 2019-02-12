@@ -19,29 +19,31 @@
 
 namespace polymake { namespace matroid {
 
-	using namespace graph;
-   using namespace graph::lattice;
+using namespace graph;
+using namespace graph::lattice;
 
-	template <typename IMatrix>
-		perl::Object lattice_of_flats(const GenericIncidenceMatrix<IMatrix>& mat_hyperplanes, int total_rank) {
-			const bool is_dual = mat_hyperplanes.rows() < mat_hyperplanes.cols();
-			const int total = is_dual? mat_hyperplanes.rows() : mat_hyperplanes.cols();
-			BasicClosureOperator<> cop = is_dual?
-				BasicClosureOperator<>(total, T(mat_hyperplanes)) : BasicClosureOperator<>(total, mat_hyperplanes);
-			TrivialCut<BasicDecoration> cut;
-			BasicDecorator<> dec = is_dual?
-				BasicDecorator<>(mat_hyperplanes.cols(), total_rank, Set<int>()) :
-				BasicDecorator<>(0, Set<int>());
-         Lattice<BasicDecoration, Sequential> init_lattice;
-
-			return (is_dual?
-					lattice_builder::compute_lattice_from_closure<BasicDecoration>(cop, cut, dec,0, lattice_builder::Dual(), init_lattice) :
-					lattice_builder::compute_lattice_from_closure<BasicDecoration>(cop, cut, dec,0, lattice_builder::Primal(), init_lattice)).makeObject();
-		}
-
+template <typename IMatrix>
+perl::Object lattice_of_flats(const GenericIncidenceMatrix<IMatrix>& mat_hyperplanes, int total_rank)
+{
+   const bool is_dual = mat_hyperplanes.rows() < mat_hyperplanes.cols();
+   if (is_dual) {
+      const int total = mat_hyperplanes.rows();
+      BasicClosureOperator<> cop = BasicClosureOperator<>(total, T(mat_hyperplanes));
+      TrivialCut<BasicDecoration> cut;
+      BasicDecorator<> dec = BasicDecorator<>(mat_hyperplanes.cols(), total_rank, Set<int>());
+      Lattice<BasicDecoration, Sequential> init_lattice;
+      return static_cast<perl::Object>(lattice_builder::compute_lattice_from_closure<BasicDecoration>(cop, cut, dec,0, lattice_builder::Dual(), init_lattice));
+   } else {
+      const int total = mat_hyperplanes.cols();
+      BasicClosureOperator<> cop = BasicClosureOperator<>(total, mat_hyperplanes);
+      TrivialCut<BasicDecoration> cut;
+      BasicDecorator<> dec = BasicDecorator<>(0, Set<int>());
+      Lattice<BasicDecoration, Sequential> init_lattice;
+      return static_cast<perl::Object>(lattice_builder::compute_lattice_from_closure<BasicDecoration>(cop, cut, dec,0, lattice_builder::Primal(), init_lattice));
+   }
+}
 
 FunctionTemplate4perl("lattice_of_flats(IncidenceMatrix, $)");
-
 
 } }
 

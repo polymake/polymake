@@ -1,0 +1,8 @@
+{"app": "tropical", "embed": "rational_curve.cc",
+ "inst": [
+  {"args": ["Max", "perl::Canned<const Vector<Rational>&>"], "func": "rational_curve_from_matroid_coordinates", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "rational_curve_from_matroid_coordinates:T1.X", "tp": "1"},
+  {"args": ["Min", "perl::Canned<const Vector<Rational>&>"], "func": "rational_curve_from_matroid_coordinates", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "rational_curve_from_matroid_coordinates:T1.X", "tp": "1"},
+  {"args": ["Max", "void"], "func": "matroid_coordinates_from_curve", "include": ["polymake/TropicalNumber.h"], "sig": "matroid_coordinates_from_curve:T1.B", "tp": "1"},
+  {"args": ["Min", "void"], "func": "matroid_coordinates_from_curve", "include": ["polymake/TropicalNumber.h"], "sig": "matroid_coordinates_from_curve:T1.B", "tp": "1"},
+ null ],
+"version": 3}

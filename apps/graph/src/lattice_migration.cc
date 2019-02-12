@@ -53,7 +53,7 @@ namespace polymake { namespace graph {
       lattice.take("BOTTOM_NODE") << bottom_node;
    }
 
-   FunctionTemplate4perl("migrate_hasse_properties<SeqType>(Lattice<BasicDecoration, SeqType>) : void");
+   FunctionTemplate4perl("migrate_hasse_properties<SeqType>(Lattice<BasicDecoration, SeqType>)");
 
    FunctionTemplate4perl("faces_map_from_decoration(props::Graph, NodeMap)");
 

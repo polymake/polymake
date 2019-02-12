@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "quotient_space_universal_polytope_ilps.cc",
+ "inst": [
+  {"args": ["Rational", "SparseMatrix<Rational, NonSymmetric>", "Bitset", "void", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Array<Bitset>&>", "perl::Canned<const Array<Bitset>&>", "void", "SparseMatrix<Rational, NonSymmetric>(perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>)", "perl::Canned<const Array<Array<int>>&>", "perl::Canned<const Array<Array<int>>&>", "void"], "func": "quotient_space_simplexity_ilp", "include": ["polymake/Array.h", "polymake/Bitset.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "quotient_space_simplexity_ilp:T3.x.X.X.X.X.x.C1.X.X.o", "tp": "3"},
+ null ],
+"version": 3}

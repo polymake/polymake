@@ -25,24 +25,22 @@
 
 namespace polymake { namespace tropical {
 
-	template <typename Addition, typename Scalar>
-		void compute_maximal_covectors(perl::Object cone) {
-			Matrix<Rational> pseudovertices = cone.give("PSEUDOVERTICES");
-			IncidenceMatrix<> maximal_cells = cone.give("MAXIMAL_COVECTOR_CELLS");
-			Matrix<TropicalNumber<Addition,Scalar> > points = cone.give("POINTS");
+template <typename Addition, typename Scalar>
+void compute_maximal_covectors(perl::Object cone)
+{
+  Matrix<Rational> pseudovertices = cone.give("PSEUDOVERTICES");
+  IncidenceMatrix<> maximal_cells = cone.give("MAXIMAL_COVECTOR_CELLS");
+  Matrix<TropicalNumber<Addition, Scalar>> points = cone.give("POINTS");
 
-			Matrix<Rational> interior_points(maximal_cells.rows(), pseudovertices.cols());
-			int index=0;
-			for(Entire<Rows<IncidenceMatrix<> > >::iterator r = entire(rows(maximal_cells)); 
-					!r.at_end(); r++, index++) {
-				interior_points.row(index) = accumulate( rows(pseudovertices.minor(*r,All)),operations::add()) 
-														/ support(pseudovertices.minor(*r,All).col(0)).size(); 
-			}
-			cone.take("MAXIMAL_COVECTORS") << covectors_of_scalar_vertices(interior_points, points);
-		}
+  Matrix<Rational> interior_points(maximal_cells.rows(), pseudovertices.cols());
+  int index=0;
+  for (auto r = entire(rows(maximal_cells)); !r.at_end(); r++, index++) {
+    interior_points.row(index) = accumulate(rows(pseudovertices.minor(*r,All)), operations::add())
+                                 / support(pseudovertices.minor(*r,All).col(0)).size(); 
+  }
+  cone.take("MAXIMAL_COVECTORS") << covectors_of_scalar_vertices(interior_points, points);
+}
 
-	FunctionTemplate4perl("compute_maximal_covectors<Addition,Scalar>(Polytope<Addition,Scalar>) : void");
+FunctionTemplate4perl("compute_maximal_covectors<Addition,Scalar>(Polytope<Addition,Scalar>)");
 
-}}
-
-
+} }

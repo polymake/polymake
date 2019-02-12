@@ -29,56 +29,57 @@
 
 namespace polymake { namespace tropical {
 
-	//Documentation see perl wrapper
-	template <typename Addition>
-		perl::ListReturn fan_decomposition(perl::Object cycle) {
-			//Extract values
-			Matrix<Rational> rays = cycle.give("VERTICES");
-			IncidenceMatrix<> cones = cycle.give("MAXIMAL_POLYTOPES");
-			IncidenceMatrix<> verticesInCones = T(cones);
-			Vector<Integer> weights = cycle.give("WEIGHTS");
-			Matrix<Rational> lineality = cycle.give("LINEALITY_SPACE");
+// Documentation see perl wrapper
+template <typename Addition>
+perl::ListReturn fan_decomposition(perl::Object cycle)
+{
+  // Extract values
+  Matrix<Rational> rays = cycle.give("VERTICES");
+  IncidenceMatrix<> cones = cycle.give("MAXIMAL_POLYTOPES");
+  IncidenceMatrix<> verticesInCones = T(cones);
+  Vector<Integer> weights = cycle.give("WEIGHTS");
+  Matrix<Rational> lineality = cycle.give("LINEALITY_SPACE");
 
-			IncidenceMatrix<> local_restriction;
-			if(cycle.exists("LOCAL_RESTRICTION")) {
-				cycle.give("LOCAL_RESTRICTION") >> local_restriction;
-			}
+  IncidenceMatrix<> local_restriction;
+  if (cycle.exists("LOCAL_RESTRICTION")) {
+    cycle.give("LOCAL_RESTRICTION") >> local_restriction;
+  }
 
-			Set<int> nonfar = far_and_nonfar_vertices(rays).second;
+  Set<int> nonfar = far_and_nonfar_vertices(rays).second;
 
-			perl::ListReturn result;
-			for(Entire<Set<int> >::iterator nf = entire(nonfar); !nf.at_end(); nf++) {
-				if(local_restriction.rows() > 0) {
-					if(!is_coneset_compatible(scalar2set(*nf), local_restriction))
-						continue;
-				}
+  perl::ListReturn result;
+  for (auto nf = entire(nonfar); !nf.at_end(); ++nf) {
+    if (local_restriction.rows() > 0) {
+      if (!is_coneset_compatible(scalar2set(*nf), local_restriction))
+        continue;
+    }
 
-				Set<int> conesAtVertex = verticesInCones.row(*nf);
-				Set<int> usedRays = accumulate(rows( cones.minor(conesAtVertex,All)), operations::add());
+    Set<int> conesAtVertex = verticesInCones.row(*nf);
+    Set<int> usedRays = accumulate(rows( cones.minor(conesAtVertex,All)), operations::add());
 
-				Matrix<Rational> fanRays(rays);
-				//Replace other nonfar vertices by difference
-				Set<int> othernonfar = (nonfar * usedRays) - *nf;
-				for(Entire<Set<int> >::iterator onf = entire(othernonfar); !onf.at_end(); onf++) {
-					fanRays.row(*onf) = fanRays.row(*onf) - fanRays.row(*nf);
-				}
-				fanRays.row(*nf) = unit_vector<Rational>(fanRays.cols(),0);
-				fanRays = fanRays.minor(usedRays,All);
+    Matrix<Rational> fanRays(rays);
+    // Replace other nonfar vertices by difference
+    Set<int> othernonfar = (nonfar * usedRays) - *nf;
+    for (auto onf = entire(othernonfar); !onf.at_end(); ++onf) {
+      fanRays.row(*onf) = fanRays.row(*onf) - fanRays.row(*nf);
+    }
+    fanRays.row(*nf) = unit_vector<Rational>(fanRays.cols(),0);
+    fanRays = fanRays.minor(usedRays,All);
 
-				perl::Object fanCycle(perl::ObjectType::construct<Addition>("Cycle"));
-					fanCycle.take("PROJECTIVE_VERTICES") << fanRays; 
-					fanCycle.take("MAXIMAL_POLYTOPES") << cones.minor(conesAtVertex,usedRays);
-					fanCycle.take("WEIGHTS") << weights.slice(conesAtVertex);
-					fanCycle.take("LINEALITY_SPACE") << lineality;
-				result << fanCycle;
-			}
-			return result;
-		}
+    perl::Object fanCycle("Cycle", mlist<Addition>());
+    fanCycle.take("PROJECTIVE_VERTICES") << fanRays; 
+    fanCycle.take("MAXIMAL_POLYTOPES") << cones.minor(conesAtVertex,usedRays);
+    fanCycle.take("WEIGHTS") << weights.slice(conesAtVertex);
+    fanCycle.take("LINEALITY_SPACE") << lineality;
+    result << fanCycle;
+  }
+  return result;
+}
 
-	UserFunctionTemplate4perl("# @category Basic polyhedral operations"
-			"# This computes the local fans at all (nonfar) vertices of a tropical cycle"
-			"# @param Cycle<Addition> C A tropical cycle"
-			"# @return Cycle<Addition> A list of local cycles",
-			"fan_decomposition<Addition>(Cycle<Addition>)");
+UserFunctionTemplate4perl("# @category Basic polyhedral operations"
+                          "# This computes the local fans at all (nonfar) vertices of a tropical cycle"
+                          "# @param Cycle<Addition> C A tropical cycle"
+                          "# @return Cycle<Addition> A list of local cycles",
+                          "fan_decomposition<Addition>(Cycle<Addition>)");
 
-}}
+} }

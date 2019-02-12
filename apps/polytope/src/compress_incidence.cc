@@ -35,6 +35,8 @@ void compress_incidence_primal(perl::Object p)
    Matrix<Scalar> V=p.give("INPUT_RAYS");
    IncidenceMatrix<> VIF=p.give("INPUT_RAYS_IN_FACETS");
    Matrix<Scalar> L=p.lookup("INPUT_LINEALITY");
+   if (L.rows() == 0)
+      L.resize(0,V.cols());
 
    cols(VIF).resize(V.rows());     // for the exotic case of the last point(s) being strict inner points
                                    // note that this might still happen as an incidence matrix defined in perl determines its number of columns from the input
@@ -65,11 +67,6 @@ void compress_incidence_primal(perl::Object p)
          const int c = (sequence(0,VIF.cols())-VIF.row(0)).front(); // pick any of the remaining points to span the pointed part
          V = V.minor(scalar2set(c),All);                            // FIXME selection of the first zero entry of VIF.row(0) should be easier?
          VIF.resize(1,1); VIF(0,0)=0;
-      } else {
-         // we have no facet. In this case our object must be a cone, and this cone defines a linear space
-
-         Matrix<Scalar> empty;
-         V = empty; // this cone has no rays
       }
    }
    
@@ -92,6 +89,8 @@ void compress_incidence_dual(perl::Object p)
    Matrix<Scalar> F=p.give("INEQUALITIES");
    IncidenceMatrix<> VIF=p.give("RAYS_IN_INEQUALITIES");
    Matrix<Scalar> E=p.lookup("EQUATIONS");
+   if (E.rows() == 0)
+      E.resize(0,F.cols());
 
    if (VIF.rows() != F.rows())
       throw std::runtime_error("dimension mismatch. Note: the far hyperplane must always be specified explicitly in INEQUALITIES and RAYS_IN_INEQUALITIES");
@@ -101,7 +100,7 @@ void compress_incidence_dual(perl::Object p)
       Set<int> b=basis_rows(E);    // compute an affine hull
       if (b.size() < E.rows()) E=E.minor(b,All);
       VIF.resize(0,0);
-      F.resize(0,0);
+      F.resize(0,F.cols());
    } else {
       const std::pair< Set<int>, Set<int> > non_facets=compress_incidence(VIF);
       E /= F.minor(non_facets.second,All);
@@ -132,8 +131,8 @@ void compress_incidence_dual(perl::Object p)
    p.take("RAYS_IN_FACETS") << VIF;
 }
 
-FunctionTemplate4perl("compress_incidence_primal<Scalar> (Cone<Scalar>) : void");
-FunctionTemplate4perl("compress_incidence_dual<Scalar> (Cone<Scalar>) : void");
+FunctionTemplate4perl("compress_incidence_primal<Scalar> (Cone<Scalar>)");
+FunctionTemplate4perl("compress_incidence_dual<Scalar> (Cone<Scalar>)");
 
 } }
 

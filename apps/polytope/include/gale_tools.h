@@ -19,18 +19,18 @@
 
 namespace polymake { namespace polytope {
 
-template <typename MatrixTop, typename E>
-Matrix<E> balance(const GenericMatrix<MatrixTop, E>& _G)
+template <typename TMatrix, typename E>
+Matrix<E> balance(const GenericMatrix<TMatrix, E>& G_arg)
 {
    // Given a matrix of vectors in R^d (actually, R^{n-d}), we want to
    // scale d of them by positive coefficients so that the entire set
    // of vectors has the origin as barycenter. To do this, we
    // exhaustively check all d-tuples of vectors for feasibility.
-   Matrix<E> G (_G);
+   Matrix<E> G (G_arg);
    const int n = G.rows(), d = G.cols();
    Vector<E> coeffs;
    bool success (false);
-   for (Entire<Subsets_of_k<const sequence&> >::const_iterator r(entire(all_subsets_of_k(sequence(0,n),d))); !r.at_end() && !success; ++r) {
+   for (auto r = entire(all_subsets_of_k(sequence(0,n), d)); !r.at_end() && !success; ++r) {
       Set<int> comp (sequence(0,n)), rset(*r);
       comp -= rset;
       const Vector<E> mbarycenter = - ones_vector<E>(comp.size()) * G.minor(comp,All);
@@ -41,9 +41,8 @@ Matrix<E> balance(const GenericMatrix<MatrixTop, E>& _G)
       }
       success = accumulate(coeffs, operations::min()) > 0;
       if (success) {
-         Entire<Set<int> >::const_iterator sit = entire(rset);
-         typename Entire<Vector<E> >::const_iterator vit = entire(coeffs);
-         for (; !sit.at_end() && !vit.at_end(); ++sit, ++vit)
+         auto vit = entire(coeffs);
+         for (auto sit = entire(rset); !sit.at_end() && !vit.at_end(); ++sit, ++vit)
             G.row(*sit) *= *vit;
       }
    }

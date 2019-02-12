@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Rational&>", "perl::Canned<const Rational&>"], "func": "compare", "include": ["polymake/Rational.h"], "kind": "meth", "sig": "compare:M.X"},
+ null ],
+"version": 3}

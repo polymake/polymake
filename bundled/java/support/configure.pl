@@ -114,15 +114,15 @@ sub proceed {
      for (;;) {
        if ($path =~ m|/bin/java$|) {
          if (-f "$`/include/jni.h") {
-	   # Oracle package structure
+           # Oracle package structure
            $JNIheaders="$`/include";
            last;
          }
-	 if (-f "$`/../include/jni.h") {
-	    # OpenJDK package structure
-	    $JNIheaders=Cwd::abs_path("$`/../include");
-	    last;
-	 }
+         if (-f "$`/../include/jni.h") {
+            # OpenJDK package structure
+            $JNIheaders=Cwd::abs_path("$`/../include");
+            last;
+         }
        } elsif ($path =~ m|/Commands/java$|) {
          # MacOS X naming convention
          if (-f "$`/Headers/jni.h") {
@@ -158,10 +158,10 @@ to JReality and JavaView will be disabled permanently.
    $ANT=$options->{ant};
    if ($ANT ne ".none.") {
       if (defined $ANT) {
-	 Polymake::Configure::check_program($ANT);
+         Polymake::Configure::check_program($ANT);
       } else {
-	 Polymake::Configure::find_program($ANT, "ant")
-	   or die "ant utility not found; please install it (together with optional targets, if packaged separately)\n",
+         Polymake::Configure::find_program($ANT, "ant")
+           or die "ant utility not found; please install it (together with optional targets, if packaged separately)\n",
                   "Specify its location in the option --with-ant if it is installed at a non-standard location.\n";
       }
       my ($ant_version)= `$ANT -version` =~ /version ([\d.]+)/;
@@ -175,17 +175,17 @@ to JReality and JavaView will be disabled permanently.
 
       # MacOS specific magic
       if ($^O eq "darwin") {
-	 $NativeSO="jnilib";
-	 if (length($ARCHFLAGS)) {
-	    ( $NativeARCHFLAGS=`lipo -info $JAVACMD` ) =~ s/.* are: (.*)$/$1/m;
-	    $NativeARCHFLAGS =~ s/(\S+)/-arch $1/g;
-	 }
+         $NativeSO="jnilib";
+         if (length($ARCHFLAGS)) {
+            $NativeARCHFLAGS = `lipo -info $JAVACMD` =~ s/.* are: (.*)$/$1/mr;
+            $NativeARCHFLAGS =~ s/(\S+)/-arch $1/g;
+         }
       }
 
       $NativeCFLAGS = '-I${bundled.java.JNIheaders}';
       if (-f (my $platform_jni_dir=glob("$JNIheaders/*/jni_md.h"))) {
-	 $platform_jni_dir =~ m{/([^/]+)/[^/]+$};
-	 $NativeCFLAGS .= " -I\${bundled.java.JNIheaders}/$1";
+         $platform_jni_dir =~ m{/([^/]+)/[^/]+$};
+         $NativeCFLAGS .= " -I\${bundled.java.JNIheaders}/$1";
       }
    }
 
@@ -193,8 +193,13 @@ to JReality and JavaView will be disabled permanently.
 
    return join(", ",
                $JAVACMD ne "java" ? ("java=$JAVACMD") : (),
-	       $ANT ne ".none." ?
+               $ANT ne ".none." ?
                ( $ANT ne "ant" ? ("ant=$ANT") : (),
-		 "JNI headers at $JNIheaders" ) : ()
-	      );
+                 "JNI headers at $JNIheaders" ) : ()
+              );
 }
+
+# Local Variables:
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

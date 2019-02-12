@@ -53,9 +53,9 @@ namespace polymake { namespace topaz {
          const bool realize = options["geometric_realization"];
          const bool ignore_top_node = options["ignore_top_node"] || force_ignore_top_node;
 
-         perl::ObjectType result_type =
-            realize ? perl::ObjectType::construct<Scalar>("topaz::GeometricSimplicialComplex")
-            : perl::ObjectType("topaz::SimplicialComplex");
+         perl::ObjectType result_type = realize
+            ? perl::ObjectType("GeometricSimplicialComplex", mlist<Scalar>())
+            : perl::ObjectType("SimplicialComplex");
          perl::Object p_out(result_type);
          p_out.set_description() << "Barycentric subdivision of " << p_in.description() << endl;
 

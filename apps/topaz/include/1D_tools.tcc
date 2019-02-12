@@ -25,8 +25,8 @@ template <typename Complex>
 int fill_graph(Graph<>& G, const Complex& C, int *bad_link_p)
 {
    // check whether each vertex is contained in 1 or 2 edges
-   for (typename Entire<Complex>::const_iterator c_it=entire(C); !c_it.at_end(); ++c_it) {
-      typename Complex::value_type::const_iterator f_it=c_it->begin();
+   for (auto c_it=entire(C); !c_it.at_end(); ++c_it) {
+      auto f_it=c_it->begin();
       const int n1=*f_it, n2=*++f_it;
       G.edge(n1,n2);
       if (G.degree(n1) > 2) {
@@ -56,7 +56,7 @@ int is_ball_or_sphere(const Complex& C, const GenericSet<VertexSet>& V, int_cons
    if (fill_graph(G,C,0)==0 || !graph::is_connected(G)) return 0;
 
    int n_leafs=0;
-   for (typename Entire<VertexSet>::const_iterator v=entire(V.top()); !v.at_end(); ++v)
+   for (auto v=entire(V.top()); !v.at_end(); ++v)
       if (G.degree(*v)==1) {
          if (++n_leafs > 2) return 0;
       }

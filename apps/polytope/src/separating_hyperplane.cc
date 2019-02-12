@@ -19,6 +19,18 @@ GNU General Public License for more details.
 
 namespace polymake { namespace polytope {
 
+namespace {
+
+template <typename TMatrix>
+decltype(auto) first_non_ray(const GenericMatrix<TMatrix>& V)
+{
+   for (auto r = entire(rows(V)); !r.at_end(); ++r) {
+      if (!is_zero(r->front()))
+         return *r;
+   }
+   throw std::runtime_error("all VERTICES | POINTS are rays");
+}
+
 // translate all entries of the matrix that do not have 0 as first coordinate (i.e. non-rays) by t
 template <typename Scalar>
 Matrix<Scalar> translate_non_rays(const Matrix<Scalar>& M, const Vector<Scalar>& t)
@@ -34,7 +46,7 @@ Matrix<Scalar> translate_non_rays(const Matrix<Scalar>& M, const Vector<Scalar>&
    return tM;
 }
 
-template<typename Scalar>
+template <typename Scalar>
 Vector<Scalar> separate_strong(perl::Object p1, perl::Object p2)
 {
    const Matrix<Scalar>
@@ -43,14 +55,9 @@ Vector<Scalar> separate_strong(perl::Object p1, perl::Object p2)
       L1 = p1.give("LINEALITY_SPACE | INPUT_LINEALITY"),
       L2 = p2.give("LINEALITY_SPACE | INPUT_LINEALITY");
 
-   int i=0; //index of the first non-ray in V
-   for (auto r = entire(rows(V)); !r.at_end(); ++r, ++i)
-      if (!is_zero((*r)[0])) break;
-
-   //origin needs to be on the positive side of the separating plane in order for the LP to work.
-   //translate the whole thing s.t. v_0 is the origin
-   Vector<Scalar> t = V[i];
-   t[0]=0;
+   // origin needs to be on the positive side of the separating plane in order for the LP to work.
+   // translate the whole thing s.t. v_0 is the origin
+   Vector<Scalar> t = zero_value<Scalar>() | first_non_ray(V).slice(range_from(1));
 
    const Matrix<Scalar> ineqs( ( (translate_non_rays(V,t) / -translate_non_rays(W,t)) | //V is on the positive, W on the negative side of the hyperplane
                                  ( -ones_vector<Scalar>(V.rows()+W.rows()))) //vz - eps >= 0 and wz + eps <= 0
@@ -62,25 +69,20 @@ Vector<Scalar> separate_strong(perl::Object p1, perl::Object p2)
    if (L2.rows()) eqs /= L2;
    eqs = eqs | zero_vector<Scalar>();
 
-   const Vector<Scalar> obj = unit_vector<Scalar>(V.cols()+1, V.cols());//maximize eps
+   const auto S = solve_LP(ineqs, eqs, unit_vector<Scalar>(V.cols()+1, V.cols()), true);  // maximize eps
+   if (S.status != LP_status::valid || S.objective_value == 0)
+      throw infeasible();  // the only separating plane is a weak one
 
-   to_interface::solver<Scalar> S;
-   Vector<Scalar> P, sep_hyp;
-
-   Vector<Scalar> sol;
-   // exception is caught in the wrapper
-   std::pair<Scalar,Vector<Scalar>> sol_pair = S.solve_lp(ineqs, eqs, obj, true);
-   if (sol_pair.first == 0) throw infeasible(); //the only separating plane is a weak one
-   sol = sol_pair.second.slice(0, V.cols());
+   Vector<Scalar> sol = S.solution.slice(sequence(0, V.cols()));
 
    // translate sol back to the original polytope position
-   for (int i=1; i<sol.dim(); ++i){
+   for (int i = 1; i < sol.dim(); ++i) {
       if (!is_zero(sol[i])) {
-         t[i] -= sol[0]/sol[i];
+         t[i] -= sol[0] / sol[i];
          break;
       }
    }
-   t[0]=1;
+   t[0] = 1;
    sol[0] = -(sol * t - sol[0]);
    return sol;
 }
@@ -103,38 +105,32 @@ Vector<Scalar> separate_weak(perl::Object p1, perl::Object p2, Vector<Scalar> t)
 
    // origin needs to be on the positive side of the separating plane and must not be a vertex of p1
    // in order for the LP to work. translate the whole thing s.t. the origin lies in the interior of p1
-   t[0]=0;
-
-   int i=0; //index of the first non-ray in V
-   for (auto r = entire(rows(V)); !r.at_end(); ++r, ++i)
-      if (!is_zero((*r)[0])) break;
-
+   t[0] = zero_value<Scalar>();
 
    // obj must not be a vertex of p1 or p2, so we choose an inner point of the translated polytope.
-   const Vector<Scalar> obj = ones_vector<Scalar>(1) | ((V[i] - t)/2).slice(1);
+   const Vector<Scalar> obj = one_value<Scalar>() | ((first_non_ray(V) - t)/2).slice(range_from(1));
 
    const Matrix<Scalar> ineqs( ( translate_non_rays(V,t) / -translate_non_rays(W,t)) //V is on the positive, W on the negative side of the hyperplane
-                               / (2*ones_vector<Scalar>(1) | obj.slice(1))); //obj*z >= -1 to ensure boundedness
+                               / (2 | obj.slice(range_from(1)))); //obj*z >= -1 to ensure boundedness
 
    Matrix<Scalar> eqs(0, V.cols());
    if (L1.rows()) eqs /= L1;
    if (L2.rows()) eqs /= L2;
 
-   to_interface::solver<Scalar> S;
-   Vector<Scalar> P, sep_hyp;
+   const auto S = solve_LP(ineqs, eqs, obj, false);  // minimize obj*z
+   if (S.status != LP_status::valid)
+      throw infeasible();
 
-   Vector<Scalar> sol;
-   // exception is caught in separate_weak
-   sol = S.solve_lp(ineqs, eqs, obj, false).second; //minimize obj*z
+   Vector<Scalar> sol = S.solution;
 
    // translate sol back to the original polytope position
-   for (int i=1;i<sol.dim(); ++i){
+   for (int i = 1; i < sol.dim(); ++i) {
       if (!is_zero(sol[i])) {
-         t[i] -= sol[0]/sol[i];
+         t[i] -= sol[0] / sol[i];
          break;
       }
    }
-   t[0]=1;
+   t[0] = one_value<Scalar>();
    sol[0] = -(sol * t - sol[0]);
    return sol;
 }
@@ -171,54 +167,53 @@ Vector<Scalar> separate_weak(perl::Object p1, perl::Object p2)
 
    // both are lowdim
 
-   if (V.rows()!=1) {  // p1 is not a point
+   if (V.rows() != 1) {  // p1 is not a point
       try {
          // we need to find an inner point of p1 that is not a vertex of p2.
          // the loop terminates after a maximum of 2 restarts as there is a maximum of
          // 2 vertices of p2 on the line from inn to V[i]
 
-         int i=0;  // index of the first non-ray in V
-         for (auto r = entire(rows(V)); !r.at_end(); ++r, ++i)
-            if (!is_zero((*r)[0])) break;
+         const auto non_ray = first_non_ray(V);
 
          Vector<Scalar> inn = p1.give("REL_INT_POINT");
          for (auto r = entire(rows(W)); !r.at_end(); ) {
             if (*r == inn) {
-               inn = ones_vector<Scalar>(1) | (inn + (V[i]-inn)/2).slice(1);
+               inn = one_value<Scalar>() | (inn + (non_ray - inn) / 2).slice(range_from(1));
                r = entire(rows(W));
             }
-            else ++r;
+            else
+               ++r;
          }
 
-         return separate_weak<Scalar>(p1,p2,inn);
+         return separate_weak<Scalar>(p1, p2, inn);
       } catch(const infeasible&) { }
    }
 
-   if (W.rows()!=1) {  // p2 is not a point
+   if (W.rows() != 1) {  // p2 is not a point
       try {
-         int i=0;  // index of the first non-ray in V
-         for (auto r = entire(rows(W)); !r.at_end(); ++r, ++i)
-            if (!is_zero((*r)[0])) break;
+         const auto non_ray = first_non_ray(W);
 
          // maybe the inner point lies on the separating plane!
          // try the same for p1 and p2 swapped:
          Vector<Scalar> inn = p2.give("REL_INT_POINT");
          for (auto r = entire(rows(V)); !r.at_end(); ) {
             if (*r == inn) {
-               inn = ones_vector<Scalar>(1) | (inn + (W[i]-inn)/2).slice(1);
+               inn = one_value<Scalar>() | (inn + (non_ray - inn) / 2).slice(range_from(1));
                r = entire(rows(V));
             }
             else ++r;
          }
-         return -separate_weak<Scalar>(p2,p1,inn);
+         return -separate_weak<Scalar>(p2, p1, inn);
       } catch (const infeasible&) { }
    }
 
    // there are only two options left:
    // either both inner points lie on the separating plane, so p1 and p2 lie in a common hyperplane,
    // or they are inseparable.
-   if ((W*T(ker1)).non_zero()) throw infeasible(); //no common plane
+   if ((W*T(ker1)).non_zero()) throw infeasible(); // no common plane
    return ker1[0];
+}
+
 }
 
 // separate two polytopes
@@ -267,17 +262,12 @@ bool cone_contains_point(perl::Object p, const Vector<Scalar> & q, perl::OptionS
    ineqs = ineqs / unit_vector<Scalar>(c,c-1) //eps >= 0
                  / (unit_vector<Scalar>(c,0) - unit_vector<Scalar>(c,c-1)); // eps <= 1
 
-   Vector<Scalar> obj = unit_vector<Scalar>(c,c-1); //maximize eps
-   to_interface::solver<Scalar> S;
-   try {
-      std::pair<Scalar,Vector<Scalar>> sol = S.solve_lp(ineqs, eqs, obj, true);
-      bool in = options["in_interior"];
-      if (sol.first == 0 && in) return false;  // the only separating plane is a weak one
-   }
-   catch (const infeasible&) {
+   const auto S = solve_LP(ineqs, eqs, unit_vector<Scalar>(c, c-1), true);  // maximize eps
+   if (S.status != LP_status::valid)
       return false;
-   }
-   return true;
+
+   bool in = options["in_interior"];
+   return !(in && S.objective_value == 0);  // the only separating plane is a weak one
 }
 
 // check for separability of a point and a set of points
@@ -304,7 +294,7 @@ UserFunctionTemplate4perl("# @category Geometry"
                           "# @example"
                           "# > $q = cube(2)->VERTICES->row(0);"
                           "# > print separable(cube(2), $q, strong=>0);"
-                          "# | 1",
+                          "# | true",
                           "separable<Scalar>(Cone<type_upgrade<Scalar>>, Vector<type_upgrade<Scalar>>, {strong=>1})");
 
 UserFunctionTemplate4perl("# @category Optimization"

@@ -67,19 +67,19 @@ sub transform2view {
    ( !Struct::is_default($self->ViewPoint)
      ? $self->ViewPoint :
      defined($inv_transform)
-     ? ($inv_transform * new Vector<Float>(1., @{$self->ViewPoint}))->slice(1)
+     ? ($inv_transform * new Vector<Float>(1., @{$self->ViewPoint}))->slice(range_from(1))
      : *{$defaults_pkg->{view_point}}{ARRAY}
    ),
    ( !Struct::is_default($self->ViewDirection)
      ? $self->ViewDirection :
      defined($inv_transform)
-     ? ($inv_transform * new Vector<Float>(1., @{$self->ViewDirection}))->slice(1)
+     ? ($inv_transform * new Vector<Float>(1., @{$self->ViewDirection}))->slice(range_from(1))
      : *{$defaults_pkg->{view_direction}}{ARRAY}
    ),
    ( !Struct::is_default($self->ViewUp)
      ? $self->ViewUp :
      defined($inv_transform)
-     ? ($inv_transform * new Vector<Float>(0., @{$self->ViewUp}))->slice(1)
+     ? ($inv_transform * new Vector<Float>(0., @{$self->ViewUp}))->slice(range_from(1))
      : *{$defaults_pkg->{view_up}}{ARRAY}
    ),
    ( !Struct::is_default($self->Scale)

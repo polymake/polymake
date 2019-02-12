@@ -66,11 +66,11 @@ protected:
    {
       const param_map& params = W.get_params();
       const iparam_map& iparams = W.get_iparams();
-      for (Entire<param_map>::const_iterator pi = entire(params); !pi.at_end(); ++pi) {
-         os << "s " << pi->first << " " << pi->second << '\n';
-         iparam_map::const_iterator ipi=iparams.find(pi->first);
+      for (const auto& p : params) {
+         os << "s " << p.first << " " << p.second << '\n';
+         auto ipi=iparams.find(p.first);
          if (!ipi.at_end())
-            os << "i " << pi->first << " " << ipi->second << '\n';
+            os << "i " << ipi->first << " " << ipi->second << '\n';
       }
    }
 
@@ -91,7 +91,7 @@ protected:
       const param_map& params = W.get_params();
       const iparam_map& iparams = W.get_iparams();
       os << "s " << param_name << " " << params[param_name] << '\n';
-      iparam_map::const_iterator ipi=iparams.find(param_name);
+      auto ipi=iparams.find(param_name);
       if (!ipi.at_end())
          os << "i " << param_name << " " << ipi->second << '\n';
    }
@@ -101,11 +101,11 @@ protected:
    {
       const param_map& params = W.get_params();
       const iparam_map& iparams = W.get_iparams();
-      for (typename Entire<Params>::const_iterator param_name=entire(params); !param_name.at_end(); ++param_name) {
-         os << "s " << *param_name << " " << params[*param_name] << '\n';
-         iparam_map::const_iterator ipi=iparams.find(param_name);
+      for (const auto& param : params) {
+         os << "s " << param.first << " " << param.second << '\n';
+         auto ipi=iparams.find(param.first);
          if (!ipi.at_end())
-            os << "i " << *param_name << " " << ipi->second << '\n';
+            os << "i " << param.first << " " << ipi->second << '\n';
       }
    }
 

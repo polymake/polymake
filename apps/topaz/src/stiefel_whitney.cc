@@ -29,7 +29,7 @@ namespace {
 
 bool regular(const Set<int>& s, const Set<int>& t)
 {
-   Entire< Set<int> >::const_iterator i(entire(s));
+   auto i = entire(s);
    assert(!i.at_end());
    Set<int>::const_iterator j(t.begin());
    assert(!j.at_end());
@@ -92,8 +92,8 @@ Array<PowerSet<int> > stiefel_whitney(const Array<Set<int> >& facets, perl::Opti
          cout << "f_" << k << "=" << size_k << ", regular pairs:" << std::endl;
       SparseVector<GF2> omega(size_k);
       for (int l=k; l<=d; ++l)
-         for (Entire<sc_type::Faces_of_Dim>::const_iterator t(entire(SC.faces_of_dim(l))); !t.at_end(); ++t) {
-            for (Entire< Subsets_of_k<sc_type::reference> >::const_iterator s(entire(all_subsets_of_k(*t,k+1))); !s.at_end(); ++s) {
+         for (auto t = entire(SC.faces_of_dim(l)); !t.at_end(); ++t) {
+            for (auto s = entire(all_subsets_of_k(*t,k+1)); !s.at_end(); ++s) {
                if (regular(*s,*t)) {
                   if (verbose)
                      cout << " " << *s << *t << endl;

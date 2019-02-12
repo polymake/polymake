@@ -1,0 +1,48 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# This rulefile is automatically included by run_testcases script.
+
+INCLUDE
+  test_filters
+  db_test.rules
+
+sub get_detected_version {
+   state %ConfigFlags;
+   my ($name)=@_;
+   unless (keys %ConfigFlags) {
+      $DeveloperMode or do "$InstallTop/support/install_utils.pl";
+      %ConfigFlags = load_config_file("$InstallArch/config.ninja", $InstallTop);
+   }
+   if (defined (my $version= $ConfigFlags{"$name.version"} // $ConfigFlags{"${name}version"})) {
+      eval "v$version"
+   } else {
+      undef
+   }
+}
+
+if (get_detected_version("MPFR") ge v4.0) {
+   # MPFR 4.0 changed implementation of random number generator, mpfr_urandom
+   # Test results dependent on random AccurateFloat numbers must be provided in two flavors
+   Test::add_alternative_suffix("mpfr4");
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:
+

@@ -44,40 +44,40 @@ namespace polymake { namespace topaz {
 template <typename Complex>
 PowerSet<int> k_skeleton(const Complex& C, const int k);
 
-template <typename Complex, typename Set>
+template <typename Complex, typename TSet>
 struct link_helper {
-   typedef pm::constant_value_container<const Set&> same_set;
+   typedef pm::same_value_container<const TSet&> same_set;
    typedef pm::SelectedContainerPairSubset< const Complex&, same_set, operations::includes >
-   selected_facets;
+     selected_facets;
    typedef pm::SelectedContainerPairSubset< const Complex&, same_set,
                                             operations::composed21<operations::includes, std::logical_not<bool> > >
-   deletion_type;
+     deletion_type;
    typedef pm::TransformedContainerPair< selected_facets, same_set, operations::sub >
-   result_type;
+     result_type;
 };
 
 // Computes the star of a given face F.
-template <typename Complex, typename Set> inline
-typename link_helper<Complex,Set>::selected_facets
-star(const Complex& C, const GenericSet< Set,int >& F)
+template <typename Complex, typename TSet>
+auto star(const Complex& C, const GenericSet<TSet, int>& F)
 {
-   return typename link_helper<Complex,Set>::selected_facets(C, F.top());
+   using helper = link_helper<Complex, TSet>;
+   return typename helper::selected_facets(C, typename helper::same_set(F.top()));
 }
 
 // Computes the deletion of a given face F.
-template <typename Complex, typename Set> inline
-typename link_helper<Complex,Set>::deletion_type
-deletion(const Complex& C, const GenericSet< Set,int >& F)
+template <typename Complex, typename TSet>
+auto deletion(const Complex& C, const GenericSet<TSet, int>& F)
 {
-   return typename link_helper<Complex,Set>::deletion_type(C, F.top());
+   using helper = link_helper<Complex, TSet>;
+   return typename helper::deletion_type(C, typename helper::same_set(F.top()));
 }
 
 // Computes the link of a given face F.
-template <typename Complex, typename Set> inline
-typename link_helper<Complex,Set>::result_type
-link(const Complex& C, const GenericSet< Set,int >& F)
+template <typename Complex, typename TSet>
+auto link(const Complex& C, const GenericSet<TSet, int>& F)
 {
-   return typename link_helper<Complex,Set>::result_type(star(C,F), F.top());
+   using helper = link_helper<Complex, TSet>;
+   return typename helper::result_type(star(C, F), typename helper::same_set(F.top()));
 }
 
 struct star_maker {
@@ -150,13 +150,11 @@ protected:
 
 // Computes the boundary complex (= ridges contained in one facet only)
 // of a PSEUDO_MANIFOLD. The complex is encoded as a Hasse Diagrams.
-typedef pm::IndexedSubset<const NodeMap<Directed, BasicDecoration>&, Lattice<BasicDecoration>::nodes_of_rank_type> faces_of_dim_set;
-typedef pm::SelectedSubset<faces_of_dim_set, out_degree_checker> Boundary_of_PseudoManifold;
 
 inline
-Boundary_of_PseudoManifold boundary_of_pseudo_manifold(const Lattice<BasicDecoration>& PM)
+auto boundary_of_pseudo_manifold(const Lattice<BasicDecoration>& PM)
 {
-   return Boundary_of_PseudoManifold(faces_of_dim_set(PM.decoration(), PM.nodes_of_rank(PM.rank()-2)), out_degree_checker(1));
+   return attach_selector(select(PM.decoration(), PM.nodes_of_rank(PM.rank()-2)), out_degree_checker(1));
 }
 
 // Removes the vertex star of v from a complex C, represented as a Hasse Diagram.

@@ -103,6 +103,7 @@ UserFunctionTemplate4perl("# @category Consistency check"
                   "# | <1,0>   ( 1 1 -1 ) * [ 1 1 0 ] == 2"
                   "# | <3,0>   ( 1 1 1 ) * [ 1 1 0 ] == 2"
                   "# | \\#points==4, \\#hyperplanes==1, -:0, 0:2, +:2, total:4"
+                  "# | false"
                   "# Thus, the first and third vertex don't lie on the hyperplane defined by the facet"
                   "# but on the positive side of it, and the remaining two lie on the hyperplane.",
                   "check_inc<Scalar>(Matrix<type_upgrade<Scalar>> Matrix<type_upgrade<Scalar>> $; $=0)");

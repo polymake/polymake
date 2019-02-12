@@ -31,7 +31,7 @@ template <typename PointsSubset, typename Hyperplane> inline
 void lift_to_hyperplane(PointsSubset P, const GenericVector<Hyperplane>& U) {
    typedef typename PointsSubset::value_type point;
    const int d=U.dim()-1;
-   for (typename Entire<PointsSubset>::iterator p=entire(P); !p.at_end(); ++p) {
+   for (auto p=entire(P); !p.at_end(); ++p) {
       typename point::iterator p_i=p->begin();
       typename Hyperplane::const_iterator u_i=U.top().begin();
       typename Hyperplane::element_type x(0);
@@ -43,7 +43,6 @@ void lift_to_hyperplane(PointsSubset P, const GenericVector<Hyperplane>& U) {
          Therefore, 
                p_d = - < (u_0,...,u_{d-1}), (p_0,...,p_{d-1}) > / u_d
        */
-      //      (*p)[d] = p->slice(0,d) * U.top().slice(0,d) / U.top().begin();
       for (int i=0; i<d; ++i, ++p_i, ++u_i)
          x -= (*p_i) * (*u_i);
       (*p_i) = x / (*u_i);
@@ -73,7 +72,7 @@ wedge_coord(const Matrix<Scalar>& V,          // input vertices
                   (V.minor(VIF[wedge_facet],All) | zero_vector<Scalar>()) );
 
    // find a row of facet that has non-zero last coordinate.
-   Entire<Rows<Matrix<Scalar> > >::const_iterator rit = entire(rows(facet));
+   auto rit = entire(rows(facet));
    while (!rit.at_end() && is_zero(rit->back()))
       ++rit;
    if (rit.at_end()) throw std::runtime_error("Encountered a problem with the new facet.");
@@ -118,7 +117,7 @@ perl::Object wedge(perl::Object p_in, const int wedge_facet, const Scalar& z, co
    // top facet = edge facet + all clones
    VIF_out[wedge_facet]+=range(n_vertices,n_vertices_out-1);
 
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "wedge over " << p_in.name() << "; edge facet " << wedge_facet << endl;
 
    if (options["no_coordinates"]) {
@@ -133,11 +132,11 @@ perl::Object wedge(perl::Object p_in, const int wedge_facet, const Scalar& z, co
 
    if (!options["no_labels"]) {
       std::vector<std::string> labels(n_vertices_out);
-      common::read_labels(p_in, "VERTEX_LABELS", non_const(select(labels, sequence(0,n_vertices))));
+      common::read_labels(p_in, "VERTEX_LABELS", select(labels, sequence(0, n_vertices)));
       const std::string tick="'";
 
       copy_range(entire(attach_operation(select(labels, sequence(0,n_vertices)-VIF[wedge_facet]),
-                                         constant(tick), operations::add())),
+                                         same_value(tick), operations::add())),
                  labels.begin()+n_vertices);
 
       p_out.take("VERTEX_LABELS") << labels;

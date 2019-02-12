@@ -70,9 +70,9 @@ sub get_client {
    if ($local) {
       $client = MongoDB::MongoClient->new;
    } elsif (!$u || !$p) {
-      $client = MongoDB::MongoClient->new(host=> $PolyDB::default::db_host.":".$PolyDB::default::db_port, db_name=> $PolyDB::default::db_auth_db, username=>$PolyDB::default::db_user, password=>$PolyDB::default::db_pwd, socket_timeout_ms=>$PolyDB::default::db_socket_timeout);
+      $client = MongoDB::MongoClient->new(ssl=>$PolyDB::default::useSSL, host=> $PolyDB::default::db_host.":".$PolyDB::default::db_port, db_name=> $PolyDB::default::db_auth_db, username=>$PolyDB::default::db_user, password=>$PolyDB::default::db_pwd, socket_timeout_ms=>$PolyDB::default::db_socket_timeout);
    } else {
-      $client = MongoDB::MongoClient->new(host=> $PolyDB::default::db_host.":".$PolyDB::default::db_port, db_name=> $PolyDB::default::db_auth_db, username=>$u, password=>$p, socket_timeout_ms=>$PolyDB::default::db_socket_timeout);
+      $client = MongoDB::MongoClient->new(ssl=>$PolyDB::default::useSSL, host=> $PolyDB::default::db_host.":".$PolyDB::default::db_port, db_name=> $PolyDB::default::db_auth_db, username=>$u, password=>$p, socket_timeout_ms=>$PolyDB::default::db_socket_timeout);
    }
 
    if( !defined($client) ) {
@@ -121,38 +121,21 @@ sub get_type_from_type_information {
    }
 }
 
-# returns a db handle, a typer information entry, and a collection handle
+# returns a db handle and a collection handle
 # FIXME the client handle must be returned as we need to close it after using the collection handle
 # FIXME creation of the client handle should happen in the calling function!
-sub prepare_query {
+sub get_collection_for_query {
    my ($options) = @_;
+
+   $options->{db} ne "" or croak("database name is missing");
+   $options->{collection} ne "" or croak("collection name is missing");
 
    my $client = $options->{client} // get_client($options);
 
    # get the actual collection
    my $col  = get_collection($client, $options->{db}, $options->{collection});
 
-   return $client, $col;
-}
-
-sub check_options {
-   my $options = shift;
-   unless ($options->{db}) { croak("Please specify a database.\n"); }
-   unless ($options->{collection}) { croak("Please specify a collection.\n"); }
-}
-
-
-#### currently unused old functions
-
-
-# generates a hash containing local, username and password from a possibly larger one
-sub lup {
-   my $o = shift;
-   my $r = {};
-   $r->{local}=$o->{local};
-   $r->{username}=$o->{username};
-   $r->{password}=$o->{password};
-   return $r;
+   return ($client, $col);
 }
 
 ### broken/unused functions

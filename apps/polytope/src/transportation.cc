@@ -32,15 +32,15 @@ perl::Object transportation(const Vector<Scalar>& r, const Vector<Scalar>& c)
    if (ones_vector<Scalar>(m)*r != ones_vector<Scalar>(n)*c)
       throw std::runtime_error("transportation polytope: sum of entries of r and c must be equal");
 
-   for (typename Entire<Vector<Scalar> >::const_iterator x = entire(r); !x.at_end(); ++x)
+   for (auto x = entire(r); !x.at_end(); ++x)
       if (*x < 0)
          throw std::runtime_error("transportation polytope: r and c must have nonnegative entries");
    
-   for (typename Entire<Vector<Scalar> >::const_iterator x = entire(c); !x.at_end(); ++x)
+   for (auto x = entire(c); !x.at_end(); ++x)
       if (*x < 0)
          throw std::runtime_error("transportation polytope: r and c must have nonnegative entries");
 
-   perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p("Polytope", mlist<Scalar>());
    p.set_description() << "transportation polytope for r=(" << r << ") and c=(" << c << ")" << endl;
 
    p.take("CONE_AMBIENT_DIM") << (m*n+1);

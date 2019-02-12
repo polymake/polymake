@@ -33,9 +33,9 @@ typedef Graph<Directed> graph;
 // Gathers next generation of graph nodes which can be defined now, since all predecessors known.
 void add_next_generation(std::list<int>& next_nodes, const int v, const graph& G, const NodeMap<Directed,perl::Object>& pa)
 {
-   for (Entire<graph::out_edge_list>::const_iterator e=entire(G.out_edges(v)); !e.at_end(); ++e) {
+   for (auto e=entire(G.out_edges(v)); !e.at_end(); ++e) {
       const int x=e.to_node();
-      Entire<graph::in_edge_list>::const_iterator f=entire(G.in_edges(x));
+      auto f=entire(G.in_edges(x));
       for( ; !f.at_end() && pa[f.from_node()].valid(); ++f);
       if (f.at_end())
          next_nodes.push_back(x);
@@ -79,7 +79,7 @@ void sum_product(perl::Object p)
    NodeMap<Directed, perl::Object> pa(G);
    std::list<int> next_nodes;
    // will need this now and again
-   perl::ObjectType Polytope(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::ObjectType Polytope("Polytope", mlist<Scalar>());
 
    // Initialize by assigning a single point (origin) to each source in the graph.
    for (int v=0; v<n; ++v) {
@@ -145,7 +145,7 @@ void sum_product(perl::Object p)
    p.take("LINEALITY_SPACE") << empty_lin_space;
 }
 
-FunctionTemplate4perl("sum_product<Scalar>(Polytope<Scalar>) : void");
+FunctionTemplate4perl("sum_product<Scalar>(Polytope<Scalar>)");
 
 } }
 

@@ -449,7 +449,7 @@ object PolyhedralComplex {
 # > print $of->N_MAXIMAL_CONES;
 # | 4
 
-user_function orbit_fan(fan::PolyhedralFan, @) {
+user_function orbit_fan(fan::PolyhedralFan, can_convert_to<Array<Array<Int>>>) {
     my ($input_fan, $gens) = @_;
     my $ra = new group::PermutationAction(GENERATORS=>$gens, RAYS_GENERATORS=>$input_fan->give("RAYS | INPUT_RAYS"));
     my $ca = new group::PermutationAction(MAXIMAL_CONES_GENERATORS=>$input_fan->MAXIMAL_CONES);
@@ -550,7 +550,7 @@ user_function orbit_fan<Scalar>(fan::PolyhedralFan<Scalar>, group::MatrixActionO
 # > print $oc->N_MAXIMAL_POLYTOPES;
 # | 4
 
-user_function orbit_complex(fan::PolyhedralComplex, @) {
+user_function orbit_complex(fan::PolyhedralComplex, can_convert_to<Array<Array<Int>>>) {
     my ($input, $gens) = @_;
     return new fan::PolyhedralComplex(GROUP => new group::Group,
                                       "GROUP.COORDINATE_ACTION" => new group::PermutationAction(), 

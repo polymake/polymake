@@ -40,13 +40,13 @@ custom $gfan_tropicaltraverse;
 
 
 CONFIGURE {
-   ($gfan_buchberger=$fan::gfan_bases) =~ s/gfan_bases$/gfan_buchberger/;
-   ($gfan_homogenize=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_homogenize/;
-   ($gfan_tropicalbruteforce=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_tropicalbruteforce/;
-   ($gfan_tropicalhypersurface=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_tropicalhypersurface/;
-   ($gfan_tropicalintersection=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_tropicalintersection/;
-   ($gfan_tropicalstartingcone=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_tropicalstartingcone/;
-   ($gfan_tropicaltraverse=$gfan_buchberger) =~ s/gfan_buchberger$/gfan_tropicaltraverse/;
+   $gfan_buchberger = $fan::gfan_bases =~ s/gfan_bases$/gfan_buchberger/r;
+   $gfan_homogenize = $gfan_buchberger =~ s/gfan_buchberger$/gfan_homogenize/r;
+   $gfan_tropicalbruteforce = $gfan_buchberger =~ s/gfan_buchberger$/gfan_tropicalbruteforce/r;
+   $gfan_tropicalhypersurface = $gfan_buchberger =~ s/gfan_buchberger$/gfan_tropicalhypersurface/r;
+   $gfan_tropicalintersection = $gfan_buchberger =~ s/gfan_buchberger$/gfan_tropicalintersection/r;
+   $gfan_tropicalstartingcone = $gfan_buchberger =~ s/gfan_buchberger$/gfan_tropicalstartingcone/r;
+   $gfan_tropicaltraverse = $gfan_buchberger =~ s/gfan_buchberger$/gfan_tropicaltraverse/r;
 }
 
 

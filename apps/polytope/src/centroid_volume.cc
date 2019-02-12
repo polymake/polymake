@@ -30,12 +30,12 @@ void centroid_volume(perl::Object p, const GenericMatrix<MatrixTop>& Points, con
    Vector<Coord> centroid(Points.cols());
    int d=tr.front().size()-1;
      
-   for (typename Entire<Triangulation>::const_iterator s=entire(tr); !s.at_end(); ++s) {
+   for (auto s=entire(tr); !s.at_end(); ++s) {
       const typename MatrixTop::persistent_type sim=Points.minor(*s,All);
       Coord v=abs(det(sim));
       volume += v;
       Vector<Coord> b(Points.cols());
-      for (typename Entire< Rows<MatrixTop> >::const_iterator i=entire(rows(sim));!i.at_end(); ++i)
+      for (auto i=entire(rows(sim));!i.at_end(); ++i)
          b+=*i;
       centroid+=v*b;
    }
@@ -46,8 +46,8 @@ void centroid_volume(perl::Object p, const GenericMatrix<MatrixTop>& Points, con
    p.take("VOLUME") << volume;
 }
   
-FunctionTemplate4perl("centroid_volume(Polytope Matrix Array<Set<Int> >) : void");
-FunctionTemplate4perl("centroid_volume(Polytope SparseMatrix Array<Set<Int>>) : void");
+FunctionTemplate4perl("centroid_volume(Polytope, Matrix, Array<Set<Int>>)");
+FunctionTemplate4perl("centroid_volume(Polytope, SparseMatrix, Array<Set<Int>>)");
 
 } }
 

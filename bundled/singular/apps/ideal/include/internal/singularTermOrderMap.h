@@ -20,7 +20,7 @@
 #include "polymake/Map.h"
 #include "polymake/ideal/internal/singularTermOrderData.h"
 
-#include <Singular/libsingular.h>
+#include "polymake/ideal/internal/singularInclude.h"
 
 namespace polymake { 
 namespace ideal {

@@ -1,0 +1,7 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Set<int>&>", "perl::Canned<const Set<int>&>"], "func": "incl", "include": ["polymake/Set.h"], "sig": "incl.X.X"},
+  {"args": ["perl::Canned<const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&>&>", "perl::Canned<const Set<int>&>"], "func": "incl", "include": ["polymake/IncidenceMatrix.h", "polymake/Set.h"], "sig": "incl.X.X"},
+  {"args": ["perl::Canned<const Set<int>&>", "perl::Canned<const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&>&>"], "func": "incl", "include": ["polymake/IncidenceMatrix.h", "polymake/Set.h"], "sig": "incl.X.X"},
+ null ],
+"version": 3}

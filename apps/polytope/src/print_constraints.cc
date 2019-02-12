@@ -59,8 +59,5 @@ UserFunctionTemplate4perl("# @category Optimization"
            "# | one: -x1 >= -1"
            "# | two: x2 >= -1"
            "# | three: -x2 >= -1",
-           "print_constraints<Scalar>(Cone<Scalar>; { ineq_labels => undef, eq_labels => undef }) : void");
-
-
-
-}}
+           "print_constraints<Scalar>(Cone<Scalar>; { ineq_labels => undef, eq_labels => undef })");
+} }

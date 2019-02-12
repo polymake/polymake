@@ -28,7 +28,9 @@ template <typename Iterator> inline
 void canonicalize_oriented(Iterator&& it)
 {
   typedef typename pm::iterator_traits<Iterator>::value_type Scalar;
-   if (!it.at_end() && !abs_equal(*it, one_value<Scalar>())) {
+  while (!it.at_end() && is_zero(*it))
+    ++it;
+  if (!it.at_end() && !abs_equal(*it, one_value<Scalar>())) {
       const Scalar leading=abs(*it);
       auto&& tail=ensure_private_mutable(std::forward<Iterator>(it));
       do *tail /= leading; while (!(++tail).at_end());

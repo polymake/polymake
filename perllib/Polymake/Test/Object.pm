@@ -39,7 +39,7 @@ sub execute {
            or croak( "option `permuted' must provide a non-empty list of property names" );
          my @explicit_perm;
          my @prop0=$expected->type->encode_descending_path($self->permuted->[0]);
-         if ($prop0[-1]->flags & $Core::Property::is_permutation) {
+         if ($prop0[-1]->flags & Core::Property::Flags::is_permutation) {
             shift @{$self->permuted};
             push @explicit_perm, permutation => \@prop0;
          }
@@ -60,7 +60,7 @@ sub load_object_file {
       $obj
    } else {
       my $group=$self->subgroup->group;
-      $group->env->load_object_file(find_object_file($self->name, $group->application));
+      $group->env->load_object_file($self->name, $group->application);
    }
 }
 
@@ -116,12 +116,12 @@ sub print_diff {
           "       got ", $gotten->value->type->full_name, "\n")
       } else {
          my ($expected_val, $gotten_val)=map { substr($_,-1) eq "\n" ? "\n$_" : " $_\n" } ($expected->toString, $gotten->toString);
-         my ($expected_magic, $gotten_magic)=map { Core::CPlusPlus::get_magic_cpp_class($_) } ($expected->value, $gotten->value);
+         my ($expected_canned, $gotten_canned)=map { Core::CPlusPlus::get_canned_cpp_class($_) } ($expected->value, $gotten->value);
 
          ("different property $prefix", $expected->property->name, ":\n",
-          ref($expected->value) ne ref($gotten->value) || $expected_magic ne $gotten_magic
-          ? ("  expected: ", ref($expected->value), ($expected_magic && " (=>$expected_magic)"), ":", $expected_val, "\n",
-             "       got: ", ref($gotten->value),     ($gotten_magic && " (=>$gotten_magic)"),   ":", $gotten_val, "\n")
+          ref($expected->value) ne ref($gotten->value) || $expected_canned ne $gotten_canned
+          ? ("  expected: ", ref($expected->value), ($expected_canned && " (=>$expected_canned)"), ":", $expected_val, "\n",
+             "       got: ", ref($gotten->value),     ($gotten_canned && " (=>$gotten_canned)"),   ":", $gotten_val, "\n")
           : ("  expected:$expected_val\n",
              "       got:$gotten_val\n"))
       }
@@ -174,7 +174,7 @@ sub execute {
    Core::XMLfile::enforce_validation($scope);
    local $Verbose::files=0;
    my $group=$self->subgroup->group;
-   my $transformed=load Core::Object(find_object_file($self->name."-in", $group->application));
+   my $transformed=load Core::Object($group->env->find_object_file($self->name."-in", $group->application));
    # don't update the input file
    $transformed->dont_save;
    not( $self->fail_log=compare_and_report($expected, $transformed) );

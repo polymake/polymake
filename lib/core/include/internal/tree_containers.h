@@ -21,62 +21,62 @@
 
 namespace pm {
 
-template <typename Top, typename TParams=typename Top::manipulator_params,
-          bool TModified=mtagged_list_extract<TParams, OperationTag>::is_specified>
+template <typename Top, typename Params=typename Top::manipulator_params,
+          bool is_modified=mtagged_list_extract<Params, OperationTag>::is_specified>
 class modified_tree_impl
-   : public modified_container_impl<Top, TParams> {
-   typedef modified_container_impl<Top, TParams> base_t;
+   : public modified_container_impl<Top, Params> {
+   using base_t = modified_container_impl<Top, Params>;
 public:
    using typename base_t::iterator;
    using typename base_t::const_iterator;
    using typename base_t::reverse_iterator;
    using typename base_t::const_reverse_iterator;
-   typedef typename base_t::container::tree_type tree_type;
+   using tree_type = typename base_t::container::tree_type;
 protected:
-   iterator finalize(typename tree_type::iterator it)
+   iterator finalize(typename tree_type::iterator&& it)
    {
-      return iterator(it, this->manip_top().get_operation());
+      return iterator(std::move(it), this->manip_top().get_operation());
    }
-   const_iterator finalize(typename tree_type::const_iterator it) const
+   const_iterator finalize(typename tree_type::const_iterator&& it) const
    {
-      return const_iterator(it, this->manip_top().get_operation());
+      return const_iterator(std::move(it), this->manip_top().get_operation());
    }
-   reverse_iterator finalize(typename tree_type::reverse_iterator it)
+   reverse_iterator finalize(typename tree_type::reverse_iterator&& it)
    {
-      return reverse_iterator(it, this->manip_top().get_operation());
+      return reverse_iterator(std::move(it), this->manip_top().get_operation());
    }
-   const_reverse_iterator finalize(typename tree_type::const_reverse_iterator it) const
+   const_reverse_iterator finalize(typename tree_type::const_reverse_iterator&& it) const
    {
-      return const_reverse_iterator(it, this->manip_top().get_operation());
+      return const_reverse_iterator(std::move(it), this->manip_top().get_operation());
    }
 };
 
-template <typename Top, typename TParams>
-class modified_tree_impl<Top, TParams, false>
-   : public redirected_container<Top, TParams> {
-   typedef redirected_container<Top, TParams> base_t;
+template <typename Top, typename Params>
+class modified_tree_impl<Top, Params, false>
+   : public redirected_container<Top, Params> {
+   using base_t = redirected_container<Top, Params>;
 public:
    using typename base_t::iterator;
    using typename base_t::const_iterator;
    using typename base_t::reverse_iterator;
    using typename base_t::const_reverse_iterator;
 protected:
-   iterator finalize(iterator it) { return it; }
-   const_iterator finalize(const_iterator it) const { return it; }
-   reverse_iterator finalize(reverse_iterator it) { return it; }
-   const_reverse_iterator finalize(const_reverse_iterator it) const { return it; }
+   iterator finalize(iterator&& it) { return std::move(it); }
+   const_iterator finalize(const_iterator&& it) const { return std::move(it); }
+   reverse_iterator finalize(reverse_iterator&& it) { return std::move(it); }
+   const_reverse_iterator finalize(const_reverse_iterator&& it) const { return std::move(it); }
 };
 
-template <typename Top, typename TParams=typename Top::manipulator_params>
+template <typename Top, typename Params=typename Top::manipulator_params>
 class modified_tree
-   : public modified_tree_impl<Top, TParams> {
-   typedef modified_tree_impl<Top, TParams> base_t;
+   : public modified_tree_impl<Top, Params> {
+   using base_t = modified_tree_impl<Top, Params>;
 public:
    using typename base_t::iterator;
    using typename base_t::const_iterator;
    using typename base_t::reverse_iterator;
    using typename base_t::const_reverse_iterator;
-   typedef typename base_t::container::tree_type tree_type;
+   using tree_type = typename base_t::container::tree_type;
 
    template <typename Key>
    iterator find(const Key& k)
@@ -130,42 +130,24 @@ public:
    template <typename Key>
    bool contains(const Key& k) const { return exists(k); }
 
-protected:
-   template <typename First>
-   struct insert_helper {
-      static const bool is_reverse_iterator=tree_type::template insert_arg_helper<First>::is_reverse_iterator;
-      typedef typename std::conditional<is_reverse_iterator, typename base_t::reverse_iterator, iterator>::type return_type;
-   };
-public:
-   template <typename First>
-   typename insert_helper<First>::return_type
-   insert(const First& first_arg)
+   // TODO: align the naming with STL as per C++17
+
+   template <typename... Args>
+   auto insert(Args&&... args)
    {
-      return this->finalize(this->manip_top().get_container().insert(first_arg));
-   }
-   template <typename First, typename Second>
-   typename insert_helper<First>::return_type
-   insert(const First& first_arg, const Second& second_arg)
-   {
-      return this->finalize(this->manip_top().get_container().insert(first_arg,second_arg));
-   }
-   template <typename First, typename Second, typename Third>
-   typename insert_helper<First>::return_type
-   insert(const First& first_arg, const Second& second_arg, const Third& third_arg)
-   {
-      return this->finalize(this->manip_top().get_container().insert(first_arg,second_arg,third_arg));
+      return this->finalize(this->manip_top().get_container().insert(std::forward<Args>(args)...));
    }
 
-   template <typename Key_or_Iterator>
-   void erase(const Key_or_Iterator& k_or_it)
+   template <typename... Args>
+   auto emplace(Args&&... args)
    {
-      this->manip_top().get_container().erase(k_or_it);
+      return this->finalize(this->manip_top().get_container().insert_new(std::forward<Args>(args)...));
    }
 
-   template <typename Iterator>
-   void erase(const Iterator& pos, const Iterator& end)
+   template <typename... Args>
+   void erase(Args&&... args)
    {
-      this->manip_top().get_container().erase(pos,end);
+      this->manip_top().get_container().erase(std::forward<Args>(args)...);
    }
 
    template <typename Key>

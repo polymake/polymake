@@ -34,7 +34,7 @@ void degree_sequence(perl::Object G)
    G.take("AVERAGE_DEGREE") << Rational(sum_degree, g.nodes());
 }
 
-Function4perl(&degree_sequence, "degree_sequence($)");
+Function4perl(&degree_sequence, "degree_sequence(Graph)");
 
 } }
 

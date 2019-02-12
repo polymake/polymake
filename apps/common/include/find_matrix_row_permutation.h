@@ -33,11 +33,13 @@ struct matrix_elem_comparator<double> {
 };
 
 template <typename Matrix1, typename Matrix2, typename E>
-Array<int> find_matrix_row_permutation(const GenericMatrix<Matrix1,E>& M1, const GenericMatrix<Matrix2,E>& M2)
+Array<int> find_matrix_row_permutation(const GenericMatrix<Matrix1, E>& M1, const GenericMatrix<Matrix2, E>& M2,
+                                       bool expect_duplicate_rows=false)
 {
    if (M1.rows() != M2.rows() || M1.cols() != M2.cols())
       throw no_match("find_matrix_row_permutation: dimension mismatch");
-   return find_permutation(rows(M1), rows(M2), typename matrix_elem_comparator<E>::type());
+   return expect_duplicate_rows ? find_permutation_with_duplicates(rows(M1), rows(M2), typename matrix_elem_comparator<E>::type())
+                                : find_permutation(rows(M1), rows(M2), typename matrix_elem_comparator<E>::type());
 }
 
 } }

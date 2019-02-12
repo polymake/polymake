@@ -62,7 +62,8 @@ generators_from_permlib_group(const PermlibGroup& permlib_group)
 
 perl::Object perl_action_from_group(const PermlibGroup& permlib_group,
                                     const std::string& name,
-                                    const std::string& description) {
+                                    const std::string& description)
+{
    perl::Object pa("group::PermutationAction");
    perl_action_from_group_impl(permlib_group, pa, name, description);
    return pa;
@@ -70,7 +71,8 @@ perl::Object perl_action_from_group(const PermlibGroup& permlib_group,
 
 void perl_action_from_generators(const Array<Array<int>>& generators,
                                  perl::Object action,
-                                 perl::OptionSet options) {
+                                 perl::OptionSet options)
+{
    const std::string name = options["name"];
    const std::string description = options["description"];
    perl_action_from_group_impl(PermlibGroup(generators), action, name, description);
@@ -79,7 +81,8 @@ void perl_action_from_generators(const Array<Array<int>>& generators,
 
 perl::Object perl_group_from_group(const PermlibGroup& permlib_group,
                                    const std::string& name,
-                                   const std::string& description) {
+                                   const std::string& description)
+{
    perl::Object G("group::Group");
    G.take("PERMUTATION_ACTION") << perl_action_from_group(permlib_group, name, description);
    return G;
@@ -87,7 +90,8 @@ perl::Object perl_group_from_group(const PermlibGroup& permlib_group,
   
 
 
-PermlibGroup group_from_perl_action(perl::Object action) {
+PermlibGroup group_from_perl_action(perl::Object action)
+{
    using namespace permlib::exports;
 
    Array<int> base;
@@ -134,7 +138,8 @@ PermlibGroup group_from_perl_action(perl::Object action) {
 
 /* helpers */  
 
-perl::Object group_from_permlib_cyclic_notation(const Array<std::string>& cyc_not, int degree) {
+perl::Object group_from_permlib_cyclic_notation(const Array<std::string>& cyc_not, int degree)
+{
    Array<Array<int>> parsed_generators;
    const PermlibGroup permlib_group = PermlibGroup::permgroup_from_cyclic_notation(cyc_not, degree, parsed_generators);
    perl::Object action(perl_action_from_group(permlib_group));
@@ -145,14 +150,15 @@ perl::Object group_from_permlib_cyclic_notation(const Array<std::string>& cyc_no
    return G;
 }
     
-std::string action_to_cyclic_notation(perl::Object action) {
+std::string action_to_cyclic_notation(perl::Object action)
+{
    Array<Array<int>> generators;
    action.give("STRONG_GENERATORS | GENERATORS") >> generators;
    std::stringstream ss;
    int count = generators.size()-1;
-   for (Entire<Array<Array<int>> >::const_iterator perm = entire(generators); !perm.at_end(); ++perm) {
-      boost::scoped_ptr<permlib::Permutation> gen(new permlib::Permutation((*perm).begin(),(*perm).end()));
-      ss << *gen;
+   for (auto perm = entire(generators); !perm.at_end(); ++perm) {
+      const permlib::Permutation gen(perm->begin(), perm->end());
+      ss << gen;
       if (count > 0)
          ss << ",\n";
       --count;
@@ -247,7 +253,7 @@ perl::ListReturn orbits_in_orbit_order(perl::Object coordinate_action, const Gen
 }
 
 
-//t est whether one vector is in the orbit of another vector (coordinate action)
+// test whether one vector is in the orbit of another vector (coordinate action)
 template <typename Scalar>
 bool are_in_same_orbit(perl::Object action, const Vector<Scalar>& vec1, const Vector<Scalar>& vec2) {
    typedef permlib::OrbitSet<permlib::Permutation,Vector<Scalar>> VecOrbit;

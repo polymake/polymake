@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "piecewise_cone_divisor.cc",
+ "inst": [
+  {"args": ["Max", "void", "void", "void"], "func": "piecewise_divisor", "include": ["polymake/TropicalNumber.h"], "sig": "piecewise_divisor:T1.B.x.x", "tp": "1"},
+  {"args": ["Min", "void", "void", "void"], "func": "piecewise_divisor", "include": ["polymake/TropicalNumber.h"], "sig": "piecewise_divisor:T1.B.x.x", "tp": "1"},
+ null ],
+"version": 3}

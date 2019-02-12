@@ -23,7 +23,9 @@ declare property_type Nonsequential : c++(special => 'graph::lattice::Nonsequent
 
 # @category Combinatorics
 # This provides an efficient way to obtain all nodes of a lattice of given rank.
-declare property_type InverseRankMap<SeqType> : c++ (name=>"graph::lattice::InverseRankMap", include=>"polymake/graph/Decoration.h", operators=>"==") {
+declare property_type InverseRankMap<SeqType> : c++ (name=>"graph::lattice::InverseRankMap", include=>"polymake/graph/Decoration.h") {
+
+   operator @eq : c++;
 
    # @category Combinatorics
    # @param Int r

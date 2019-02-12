@@ -19,7 +19,8 @@
 
 namespace polymake { namespace polytope { namespace ppl_interface {
 
-template class solver<Rational>;
+template class ConvexHullSolver<Rational>;
+template class LP_Solver<Rational>;
 
 // instantiate this only once in the entire extension!
 fp_mode_setter::init fp_mode_setter::captured;

@@ -42,14 +42,14 @@ namespace polymake { namespace matroid {
       Map<Set<int>, int> rank_of, index_of;
       rank_of[Set<int>()] = -1;
       for (int i=0; i<=LF.rank(); ++i) {
-         for (auto fit = entire(LF.nodes_of_rank(i)); !fit.at_end(); ++fit) {
-            rank_of[LF.face(*fit)] = i;
-            index_of[LF.face(*fit)] = *fit;
+         for (const auto f_index : LF.nodes_of_rank(i)) {
+            rank_of[LF.face(f_index)] = i;
+            index_of[LF.face(f_index)] = f_index;
          }
       }
 
-      Set<Set<int> > modular_cut_set;
-      for (Entire<Array<Set<int> > >::const_iterator mit = entire(modular_cut); !mit.at_end(); ++mit)
+      Set<Set<int>> modular_cut_set;
+      for (auto mit = entire(modular_cut); !mit.at_end(); ++mit)
          modular_cut_set += *mit;
 
       /*
@@ -77,16 +77,16 @@ namespace polymake { namespace matroid {
       const int n = N.give("N_ELEMENTS");
       const int r = N.give("RANK");
 
-      Set<Set<int> > matroid_hyperplanes_N; // make it a Set to output them in canonical lex order
-      Set<Set<int> > collar;
-      for (Entire<Array<Set<int> > >::const_iterator mit = entire(modular_cut); !mit.at_end(); ++mit) {
+      Set<Set<int>> matroid_hyperplanes_N; // make it a Set to output them in canonical lex order
+      Set<Set<int>> collar;
+      for (auto mit = entire(modular_cut); !mit.at_end(); ++mit) {
          if (rank_of[*mit] == r-1)
             matroid_hyperplanes_N += *mit + scalar2set(n);
          for (Graph<Directed>::in_adjacent_node_list::const_iterator covered_flats_it = LF.in_adjacent_nodes(index_of[*mit]).begin(); !covered_flats_it.at_end(); ++covered_flats_it)
             collar += LF.face(*covered_flats_it);
       }
 
-      for (Entire<Set<Set<int> > >::const_iterator cit = entire(collar); !cit.at_end(); ++cit) {
+      for (auto cit = entire(collar); !cit.at_end(); ++cit) {
          if (rank_of[*cit] == r-1 && !modular_cut_set.contains(*cit))
             matroid_hyperplanes_N += *cit;
       }
@@ -95,8 +95,8 @@ namespace polymake { namespace matroid {
       collar += modular_cut_set;
 
       for (int i=0; i<=LF.rank(); ++i) {
-         for (auto fit = entire(LF.nodes_of_rank(i)); !fit.at_end(); ++fit) {
-            const Set<int> f(LF.face(*fit));
+         for (const auto f_index : LF.nodes_of_rank(i)) {
+            const Set<int>& f = LF.face(f_index);
             if (!collar.contains(f)) {
                if (rank_of[f] == r-1)
                   matroid_hyperplanes_N += f;

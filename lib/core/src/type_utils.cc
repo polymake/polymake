@@ -15,11 +15,23 @@
 */
 
 #include "polymake/type_utils.h"
+#include "polymake/AnyString.h"
 #include <cxxabi.h>
 #include <cstring>
 #include <cstdlib>
 
 namespace polymake {
+namespace {
+
+void remove_uninteresting_ns_prefix(std::string& name, const AnyString& prefix)
+{
+  size_t pos=0;
+  while ((pos=name.find(prefix.ptr, pos, prefix.len)) != name.npos) {
+    name.erase(pos, prefix.len);
+  }
+}
+
+}
 
 std::string legible_typename(const std::type_info& ti)
 {
@@ -39,13 +51,13 @@ std::string legible_typename(const char* typeid_name)
     if (strncmp(dem, "test::", 6)==0) dem+=6;
   }
   name.append(dem);
-#ifdef __clang__
-  size_t stdver=0;
-  while ((stdver=name.find("__1::", stdver)) != name.npos) {
-    name.erase(stdver, 5);
-  }
-#endif
   std::free(dem_buffer);
+
+#ifdef __clang__
+  remove_uninteresting_ns_prefix(name, "__1::");
+#endif
+  remove_uninteresting_ns_prefix(name, "__cxx11::");
+
   return name;
 }
 

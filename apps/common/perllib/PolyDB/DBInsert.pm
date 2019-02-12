@@ -42,9 +42,9 @@ sub add_properties_at_level {
          my $read_request;
          if ( eval { $read_request = $input_object->type->encode_read_request($new_initial) } ) {
             if ( ref $property_mask->{$pn} eq "HASH" ) {
-               my $prop = local_pop($read_request->[0]);
-               if ( $prop->flags & $Polymake::Core::Property::is_subobject ) {
-                  my $is_multiple = $prop->flags & $Polymake::Core::Property::is_multiple;
+               my $prop = local pop @{$read_request->[0]};
+               if ( $prop->flags & Core::Property::Flags::is_subobject ) {
+                  my $is_multiple = $prop->flags & Core::Property::Flags::is_multiple;
                   my ($rp,$rm,$ra) = add_properties_at_level($input_object, $property_mask->{$pn},$new_initial, $is_multiple ? "" : $new_m_initial, $is_multiple ? 1 : $multiple);
                   push @$required_properties, @$rp;
 
@@ -84,7 +84,8 @@ sub create_filter_for_mask {
       my $original_mask_element = $original_property_mask->{$property->name};
 
       if ( defined($mask_element) || defined($original_mask_element) ) {
-         if ( (ref($mask_element) && $property->flags & $Core::Property::is_subobject) && ( !defined($original_mask_element) || ( ref($original_mask_element) && $property->flags & $Core::Property::is_subobject) ) ) {
+         if ( (ref($mask_element) && $property->flags & Core::Property::Flags::is_subobject) &&
+              ( !defined($original_mask_element) || ( ref($original_mask_element) && $property->flags & Core::Property::Flags::is_subobject) ) ) {
             # recursively copy selected properties of a subobject or of all instances of a multiple subobject
             ($parent, $pv->copy($parent, $property, create_filter_for_mask($mask_element, $original_mask_element)));
          } else {
@@ -108,7 +109,7 @@ sub copy_all_attachments {
 
    $output_object->copy_attachments($input_object);
    foreach my $pv (@{$input_object->contents}) {
-      if ($pv->property->flags & $Core::Property::is_subobject) {
+      if ($pv->property->flags & Core::Property::Flags::is_subobject) {
          copy_all_attachments($input_object->{$pv->{$property}},$output_object->{$property});
       }
    }

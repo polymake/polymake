@@ -23,7 +23,7 @@
 #include "polymake/linalg.h"
 
 namespace polymake { namespace fan {
-  
+
 template <typename Coord>
 void remove_redundancies(perl::Object f)
 {
@@ -31,32 +31,31 @@ void remove_redundancies(perl::Object f)
    const Matrix<Coord> i_rays = f.give("INPUT_RAYS");
    const IncidenceMatrix<> i_cones = f.give("INPUT_CONES");
    const int n_i_cones=i_cones.rows();
-   perl::ObjectType t=perl::ObjectType::construct<Coord>("Cone");
+   perl::ObjectType t("Cone", mlist<Coord>());
 
    Matrix<Coord> lineality_space;
-     const Matrix<Coord> lin = f.lookup("INPUT_LINEALITY");
-     perl::Object cone(t);
-     cone.take("INPUT_RAYS")<<i_rays.minor(i_cones.row(0),All);
-     cone.take("INPUT_LINEALITY")<<lin;
-     cone.give("LINEALITY_SPACE")>>lineality_space;
-
-
-   hash_map<Vector<Coord>,int > rays;    
+   const Matrix<Coord> lin = f.lookup("INPUT_LINEALITY");
+   {
+      perl::Object cone(t);
+      cone.take("INPUT_RAYS") << i_rays.minor(i_cones.row(0), All);
+      cone.take("INPUT_LINEALITY") << lin;
+      cone.give("LINEALITY_SPACE") >> lineality_space;
+   }
+   hash_map<Vector<Coord>, int> rays;
    FacetList max_cones;
    int n_rays=0;
-   for(int i=0; i<n_i_cones;++i) 
-   {
+   for (int i=0; i<n_i_cones; ++i) {
       perl::Object cone(t);
       cone.take("INPUT_RAYS")<<i_rays.minor(i_cones.row(i),All);
       cone.take("INPUT_LINEALITY")<<lineality_space;
       const Matrix<Coord> c_rays=cone.give("RAYS");
       Set<int> ray_indices;
-      for(typename Entire<Rows<Matrix<Coord> > >::const_iterator r=entire(rows(c_rays)); !r.at_end(); ++r) {
+      for (auto r=entire(rows(c_rays)); !r.at_end(); ++r) {
          const Vector<Rational> the_ray(*r);
          typename hash_map<Vector<Coord>,int >::iterator r_iti=rays.find(the_ray);
          if (r_iti==rays.end()) {
             bool found=false;
-            for(typename Entire<hash_map<Vector<Coord>,int> >::const_iterator rr=entire(rays); !found && !rr.at_end(); ++rr) {
+            for (auto rr=entire(rays); !found && !rr.at_end(); ++rr) {
               try {
                 const Vector<Coord> v=lin_solve(T((rr->first)/lineality_space),the_ray);
                 if (v[0]>0) {
@@ -77,7 +76,7 @@ void remove_redundancies(perl::Object f)
 
    // create ray matrix
    Matrix<Coord> R(n_rays,ambientDim);
-   for(typename Entire<hash_map<Vector<Coord>,int> >::const_iterator r=entire(rays); !r.at_end(); ++r)
+   for (auto r=entire(rays); !r.at_end(); ++r)
       R.row(r->second)=r->first;
    f.take("RAYS")<<R;
    f.take("LINEALITY_SPACE")<<lineality_space;
@@ -88,8 +87,8 @@ void remove_redundancies(perl::Object f)
    else
       f.take("MAXIMAL_CONES")<<max_cones;
 }
-  
-FunctionTemplate4perl("remove_redundancies<Coord>(PolyhedralFan<Coord>) : void");
+
+FunctionTemplate4perl("remove_redundancies<Coord>(PolyhedralFan<Coord>)");
 
 } }
 

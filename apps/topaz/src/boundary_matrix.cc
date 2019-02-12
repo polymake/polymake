@@ -33,16 +33,15 @@ SparseMatrix<Integer> boundary_matrix(perl::Object sc, int d){
    if(d > dim) return zero_matrix<Integer>(1,n_subfaces);
 
    hash_map<int,int> face_index; //maps the index af a face to its number of occurence in the HD
-   //FIXME #974 use indexed iterator
-   int i = 0;
-   for(int f : faces)
-      face_index[f] = i++;
-
+   {
+     int i = 0;
+     for (int f : faces)
+       face_index[f] = i++;
+   }
    SparseMatrix<Integer> delta(n_faces,n_subfaces);
 
-   //FIXME #974
    int c = 0;
-   for(int sf : subfaces){
+   for (int sf : subfaces) {
       auto subface = HD.face(sf);
       for(int f : HD.out_adjacent_nodes(sf)){
          auto face = HD.face(f);
@@ -61,4 +60,4 @@ SparseMatrix<Integer> boundary_matrix(perl::Object sc, int d){
 
 Function4perl(&boundary_matrix, "boundary_matrix_cpp(SimplicialComplex,Int)");
 
-}}
+} }

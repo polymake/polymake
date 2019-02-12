@@ -51,12 +51,12 @@ perl::Object symmetrized_foldable_max_signature_ilp(int d,
    SparseMatrix<Integer> selection_matrix(n, n2+1);
 
    Vector<Integer> volume_vect(n2+1);
-   Vector<Integer>::iterator vit = volume_vect.begin();
+   auto vit = volume_vect.begin();
    *vit = -Integer::fac(d) * vol;
    ++vit;
 
-   int i=0;
-   for (auto fit = entire(facets); !fit.at_end(); ++fit, ++vit, ++i) {
+   int s=0;
+   for (auto fit = entire(facets); !fit.at_end(); ++fit, ++vit, ++s) {
       // points required to have integer coordinates!
       const Rational rational_facet_vol = abs(det(points.minor(*fit, All)));
       assert (denominator(rational_facet_vol) == 1);
@@ -64,8 +64,8 @@ perl::Object symmetrized_foldable_max_signature_ilp(int d,
       *vit = facet_vol; // black facet
       ++vit;
       *vit = facet_vol; // white facet
-      selection_matrix(i,2*i+1) = selection_matrix(i,2*i+2) = -1; // either black or white
-      selection_matrix(i,0) = sym_group.orbit(Set<int>(*fit)).size();
+      selection_matrix(s, 2*s+1) = selection_matrix(s, 2*s+2) = -1; // either black or white
+      selection_matrix(s, 0) = sym_group.orbit(Set<int>(*fit)).size();
    }
 
    const SparseMatrix<Integer> 
@@ -76,14 +76,16 @@ perl::Object symmetrized_foldable_max_signature_ilp(int d,
    
    // signature = absolute difference of normalized volumes of black minus white maximal simplices
    // (provided that normalized volume is odd)
-   for (int i=0; i<n; ++i) {
-      if (volume_vect[2*i+1].even()) volume_vect[2*i+1] = volume_vect[2*i+2] = 0;
-      else volume_vect[2*i+2].negate();
+   for (int i = 0; i < n; ++i) {
+      if (volume_vect[2*i+1].even())
+         volume_vect[2*i+1] = volume_vect[2*i+2] = 0;
+      else
+         volume_vect[2*i+2].negate();
    }
    
    perl::Object lp("LinearProgram<Rational>");
    lp.attach("INTEGER_VARIABLES") << Array<bool>(n2,true);
-   lp.take("LINEAR_OBJECTIVE") << Vector<Rational>(0|volume_vect.slice(1));
+   lp.take("LINEAR_OBJECTIVE") << Vector<Rational>(0|volume_vect.slice(range_from(1)));
 
    perl::Object q("Polytope<Rational>");
    q.take("FEASIBLE") << true;

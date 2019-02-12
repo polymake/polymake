@@ -1,0 +1,5 @@
+{"app": "group",
+ "inst": [
+  {"class": "pm::Serialized<SwitchTable>", "include": ["polymake/client.h", "polymake/group/switch_table.h"], "pkg": "Polymake::common::Serialized__SwitchTable"},
+ null ],
+"version": 3}

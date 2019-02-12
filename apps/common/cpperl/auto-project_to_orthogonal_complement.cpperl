@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<Matrix<Rational>&>", "perl::Canned<const Matrix<Rational>&>"], "func": "project_to_orthogonal_complement", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "project_to_orthogonal_complement.X1.X"},
+ null ],
+"version": 3}

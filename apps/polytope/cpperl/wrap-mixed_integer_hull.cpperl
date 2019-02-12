@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "mixed_integer_hull.cc",
+ "inst": [
+  {"args": ["void", "void"], "func": "mixed_integer_hull", "sig": "mixed_integer_hull.B.x"},
+ null ],
+"version": 3}

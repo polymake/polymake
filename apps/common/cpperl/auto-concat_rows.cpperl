@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true>>>"], "func": "concat_rows", "include": ["polymake/Rational.h", "polymake/linalg.h"], "sig": "concat_rows.X10"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Matrix<Rational>&>>"], "func": "concat_rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "concat_rows.X10"},
+ null ],
+"version": 3}

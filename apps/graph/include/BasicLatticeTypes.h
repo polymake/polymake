@@ -29,170 +29,195 @@
 
 namespace polymake { namespace graph { namespace lattice {
 
-   //Every CrossCut needs to provide an operator
-   //
-   // bool operator()(const Decoration& data), which accepts a decoration and then returns whether this
-   // node should be kept (true) or discarded (false).
+// Every CrossCut needs to provide an operator
+//
+// bool operator()(const Decoration& data), which accepts a decoration and then returns whether this
+// node should be kept (true) or discarded (false).
 
-   /*
-    * The trivial cut - accepts everything
-    */
-   template <typename Decoration>
-      class TrivialCut {
-         public:
-            TrivialCut() {}
-            inline bool operator()(const Decoration &data) const { return true; }
-      };
+/*
+ * The trivial cut - accepts everything
+ */
+template <typename Decoration>
+class TrivialCut {
+public:
+  TrivialCut() = default;
+  bool operator()(const Decoration& data) const { return true; }
+};
 
-   /*
-    * Only keeps sets not intersecting a fixed set
-    */
-   template <typename Decoration>
-      class SetAvoidingCut {
-         protected:
-            const Set<int> avoid;
-         public:
-            SetAvoidingCut(const Set<int>& set_arg) : avoid(set_arg) {}
-            inline bool operator()(const Decoration &data) const {
-               return (data.face * avoid).empty();
-            }
-      };
+/*
+ * Only keeps sets not intersecting a fixed set
+ */
+template <typename Decoration>
+class SetAvoidingCut {
+protected:
+  const Set<int> avoid;
+public:
+  SetAvoidingCut(const Set<int>& set_arg) : avoid(set_arg) {}
 
-	/*
-	 * Only keeps sets smaller than the full set.
-	 */
-	template <typename Decoration>
-		class NotFullSetCut {
-			protected:
-				const int full_set_size;
-			public:
-				NotFullSetCut(const int full_set_size) : full_set_size(full_set_size) {}
-				inline bool operator()(const Decoration& data) const {
-					return data.face.size() < full_set_size;
-				}
-		};
+  bool operator()(const Decoration &data) const
+  {
+    return (data.face * avoid).empty();
+  }
+};
 
-   namespace RankCutType {
-      const bool GreaterEqual = false;
-      const bool LesserEqual = true;
-   }
+/*
+ * Only keeps sets smaller than the full set.
+ */
+template <typename Decoration>
+class NotFullSetCut {
+protected:
+  const int full_set_size;
+public:
+  NotFullSetCut(const int full_set_size_)
+    : full_set_size(full_set_size_) {}
 
-   /*
-    * Only keeps nodes whose rank is greater equal (or lesser equal) a certain number.
-    */
-   template <typename Decoration, bool lesser_equal>
-      class RankCut {
-         protected:
-            const int compare;
-         public:
-            RankCut(int comp_arg) : compare(comp_arg) {}
-            inline bool operator()(const Decoration &data) const {
-               return lesser_equal? data.rank <= compare : data.rank >= compare;
-            }
-      };
+  bool operator()(const Decoration& data) const
+  {
+    return data.face.size() < full_set_size;
+  }
+};
 
-   /*
-    * This encapsulates various parameters for restricting the rank of a lattice.
-    */
-   struct RankRestriction {
-      bool rank_restricted;         // Do we want to restrict the rank?
-      bool rank_restriction_type;   // RankCutType::LesserEqual or ::GreaterEqual
-      int boundary_rank;             // up to which dimension (included!)
-      RankRestriction() : rank_restricted(false), rank_restriction_type(false), boundary_rank(0) {}
-      RankRestriction(bool res_arg, bool res_type, int dim_arg):
-         rank_restricted(res_arg), rank_restriction_type(res_type), boundary_rank(dim_arg) {}
-   };
+namespace RankCutType {
 
-   /*
-	 * Makes a cut from two cuts: Both have to return true for a final true value
-	 */
-	template <typename C1, typename C2>
-		class CutAnd {
-			protected:
-				const C1& c1;
-				const C2& c2;
-			public :
-				CutAnd(const C1& a1, const C2& a2) : c1(a1), c2(a2) {}
-				template <typename Decoration>
-					inline bool operator()(const Decoration &data) const {
-						return c1(data) && c2(data);
-					}
-		};
+const bool GreaterEqual = false;
+const bool LesserEqual = true;
 
-   /*
-    * In the lattice building algorithm, the data handled by the closure operator can be different
-    * from the data one wants to attach to the final lattice.
-    * The decorator converts the closure data to the actual decoration. 
-    * It needs to provide the following interface:
-    * - const Decoration compute_initial_decoration(const ClosureData& face) const:
-    *   Here, Decoration needs to match the Decoration of the corresponding lattice and
-    *   ClosureData must be the ClosureData returned by the closure operator. The function computes
-    *   the decoration of the initial node.
-    * - const Decoration compute_decoration(const ClosureData& face, const Decoration& predecessor_data) const:
-    *   Given the closure data of a node and the decoration of *one of* its predecessors, this computes
-    *   the decoration of this node.
-    * - const Decoration compute_artificial_decoration(const NodeMap<Directed, BasicDecoration> &decor,
-						const std::list<int> &max_nodes) const
-    *   In some cases, an artificial top node is added to the lattice at the end of the algorithm. This
-    *   computes its decor from a node map containing all previous decorations and a list of indices of all
-    *   nodes which are maximal.
-    */
+}
 
-   /*
-    * The basic decorator: Faces are either the sets computed during the closure algorithm
-    * or the intersection of the corresponding coatoms (if built dually).
-    * Ranks are computed as heights in the lattice plus a potential shift.
-    */
-	template <typename FaceData = BasicClosureOperator<BasicDecoration>::ClosureData >
-		class BasicDecorator {
-			protected:
-				const int total_size;
-				const int initial_rank;
-				const bool built_dually;
-				const Set<int> artificial_set;
+/*
+ * Only keeps nodes whose rank is greater equal (or lesser equal) a certain number.
+ */
+template <typename Decoration, bool lesser_equal>
+class RankCut {
+protected:
+  const int compare;
+public:
+  RankCut(int comp_arg)
+    : compare(comp_arg) {}
 
-			public:
-				//dual type
-				BasicDecorator(int n_vertices, int top_rank, const Set<int> artificial)
-					: total_size(n_vertices), initial_rank(top_rank),
-					built_dually(true), artificial_set(artificial) {}
+  bool operator()(const Decoration& data) const
+  {
+    return lesser_equal ? data.rank <= compare : data.rank >= compare;
+  }
+};
 
-				//primal type
-				BasicDecorator(int bottom_rank, const Set<int> artificial)
-					: total_size(0), initial_rank(bottom_rank), built_dually(false),
-					artificial_set(artificial) {}
+/*
+ * This encapsulates various parameters for restricting the rank of a lattice.
+ */
+struct RankRestriction {
+  int boundary_rank;            // up to which dimension (included!)
+  bool rank_restricted;         // Do we want to restrict the rank?
+  bool rank_restriction_type;   // RankCutType::LesserEqual or ::GreaterEqual
 
-				const BasicDecoration compute_decoration(const FaceData& face,
-							const BasicDecoration& predecessor_data) const {
-						BasicDecoration data;
-						data.rank = predecessor_data.rank + (built_dually? -1 : 1);
-						data.face = built_dually? face.get_dual_face() : face.get_face();
-						return data;
-				}
+  RankRestriction()
+    : boundary_rank(0)
+    , rank_restricted(false)
+    , rank_restriction_type(false) {}
 
-				const BasicDecoration compute_initial_decoration(const FaceData& face) const {
-					BasicDecoration data;
-					data.rank = initial_rank;
-					data.face = built_dually? face.get_dual_face() : face.get_face();
-					return data;
-				}
+  RankRestriction(bool res_arg, bool res_type, int dim_arg)
+    : boundary_rank(dim_arg)
+    , rank_restricted(res_arg)
+    , rank_restriction_type(res_type) {}
+};
 
-				const BasicDecoration compute_artificial_decoration(const NodeMap<Directed, BasicDecoration> &decor,
-						const std::list<int> &max_nodes) const {
-					BasicDecoration data;
-					auto max_list = attach_member_accessor( select(decor, max_nodes),
-							ptr2type<BasicDecoration, int, &BasicDecoration::rank>()
-							);
-					data.rank = built_dually?
-						accumulate(max_list, operations::min()) -1 :
-						accumulate(max_list, operations::max()) +1;
-					data.face = artificial_set;
-					return data;
-				}
-		};
+/*
+ * Makes a cut from two cuts: Both have to return true for a final true value
+ */
+template <typename C1, typename C2>
+class CutAnd {
+protected:
+  const C1& c1;
+  const C2& c2;
+public:
+  CutAnd(const C1& a1, const C2& a2)
+    : c1(a1), c2(a2) {}
 
+  template <typename Decoration>
+  bool operator()(const Decoration& data) const
+  {
+    return c1(data) && c2(data);
+  }
+};
 
+/*
+ * In the lattice building algorithm, the data handled by the closure operator can be different
+ * from the data one wants to attach to the final lattice.
+ * The decorator converts the closure data to the actual decoration. 
+ * It needs to provide the following interface:
+ * - const Decoration compute_initial_decoration(const ClosureData& face) const:
+ *   Here, Decoration needs to match the Decoration of the corresponding lattice and
+ *   ClosureData must be the ClosureData returned by the closure operator. The function computes
+ *   the decoration of the initial node.
+ * - const Decoration compute_decoration(const ClosureData& face, const Decoration& predecessor_data) const:
+ *   Given the closure data of a node and the decoration of *one of* its predecessors, this computes
+ *   the decoration of this node.
+ * - const Decoration compute_artificial_decoration(const NodeMap<Directed, BasicDecoration>& decor,
+ *                                                  const std::list<int>& max_nodes) const
+ *   In some cases, an artificial top node is added to the lattice at the end of the algorithm. This
+ *   computes its decor from a node map containing all previous decorations and a list of indices of all
+ *   nodes which are maximal.
+ */
 
-}}}
+/*
+ * The basic decorator: Faces are either the sets computed during the closure algorithm
+ * or the intersection of the corresponding coatoms (if built dually).
+ * Ranks are computed as heights in the lattice plus a potential shift.
+ */
+template <typename FaceData = BasicClosureOperator<BasicDecoration>::ClosureData>
+class BasicDecorator {
+protected:
+  const int total_size;
+  const int initial_rank;
+  const bool built_dually;
+  const Set<int> artificial_set;
+
+public:
+  // dual type
+  BasicDecorator(int n_vertices, int top_rank, const Set<int> artificial)
+    : total_size(n_vertices)
+    , initial_rank(top_rank),
+      built_dually(true)
+    , artificial_set(artificial) {}
+
+  //primal type
+  BasicDecorator(int bottom_rank, const Set<int> artificial)
+    : total_size(0)
+    , initial_rank(bottom_rank)
+    , built_dually(false)
+    , artificial_set(artificial) {}
+
+  BasicDecoration compute_decoration(const FaceData& face,
+                                     const BasicDecoration& predecessor_data) const
+  {
+    BasicDecoration data;
+    data.rank = predecessor_data.rank + (built_dually ? -1 : 1);
+    data.face = built_dually ? face.get_dual_face() : face.get_face();
+    return data;
+  }
+
+  BasicDecoration compute_initial_decoration(const FaceData& face) const
+  {
+    BasicDecoration data;
+    data.rank = initial_rank;
+    data.face = built_dually? face.get_dual_face() : face.get_face();
+    return data;
+  }
+
+  BasicDecoration compute_artificial_decoration(const NodeMap<Directed, BasicDecoration>& decor,
+						const std::list<int>& max_nodes) const
+  {
+    BasicDecoration data;
+    auto max_list = attach_member_accessor( select(decor, max_nodes),
+                                            ptr2type<BasicDecoration, int, &BasicDecoration::rank>()
+                                            );
+    data.rank = built_dually ?
+      accumulate(max_list, operations::min()) -1 :
+      accumulate(max_list, operations::max()) +1 ;
+    data.face = artificial_set;
+    return data;
+  }
+};
+
+} } }
 
 #endif

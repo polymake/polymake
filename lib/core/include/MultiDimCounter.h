@@ -94,16 +94,16 @@ public:
          if (values.size() != my_limits.size())
             throw std::runtime_error("MultiDimCounter::set - dimension mismatch");
 
-         typename value_type::iterator l=my_limits.begin();
-         typename Container::const_iterator v=values.begin();
-         for (typename Entire<value_type>::iterator s=entire(my_start);  !s.at_end();  ++s, ++l, ++v)
+         auto l=my_limits.begin();
+         auto v=values.begin();
+         for (auto s=entire(my_start);  !s.at_end();  ++s, ++l, ++v)
             if (*v < *s || *v >= *l)
                throw std::runtime_error("MultiDimCounter::set - value out of range");
       }
       copy_range(values.begin(), entire(my_counter));
    }
 
-   void set_digit(int digit, typename function_argument<number_type>::type value)
+   void set_digit(int digit, const number_type& value)
    {
       if (POLYMAKE_DEBUG) {
          if (digit >= my_limits.size())

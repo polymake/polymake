@@ -100,9 +100,6 @@ namespace pm {
       ElementType(), which is 0 for most numerical types) are not stored, but
       implicitly encoded by the gaps in the key set.  It is based on an AVL
       tree.
-    
-    - FixedVector is a built-in array of a fixed dimension decorated with the
-      common vector interface.
 
     @subsection matrix_sec Matrix Types
 

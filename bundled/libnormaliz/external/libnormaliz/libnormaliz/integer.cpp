@@ -190,36 +190,45 @@ template<typename Integer>
 Integer int_max_value_dual(){
     Integer k=sizeof(Integer)*8-2;  // number of bytes convetred to number of bits
     Integer test=1;
-    test = test << k;  // (maximal positive number)/2^k
+    test = test << k;  // 2^k
     return test;
 }
 
-//---------------------------------------------------------------------------
 
-template<typename Integer>
-Integer int_max_value_primary(){
-    Integer k=sizeof(Integer)*8-12;  // number of bytes convetred to number of bits
-    Integer test=1;
-    test = test << k;  // (maximal positive number)/2^k
-    // test=0; // 10000;
-    return test;
-}
+
+bool int_max_value_dual_long_computed=false;
 
 template<>
-long int_max_value_primary(){
-    long k=sizeof(long)*8-12;  // number of bytes convetred to number of bits
+long int_max_value_dual(){
+    static long max_value;
+    
+    if(int_max_value_dual_long_computed)
+        return max_value;
+    
+    long k=sizeof(long)*8-2;  // number of bytes convetred to number of bits
     long test=1;
-    test = test << k;  // (maximal positive number)/2^k
+    test = test << k;  // 2^k
     // test=0; // 10000;
+    max_value=test;
+    int_max_value_dual_long_computed=true;
     return test;
 }
 
+bool int_max_value_dual_long_long_computed=false;
+
 template<>
-long long int_max_value_primary(){
-    long long k=sizeof(long long)*8-12;  // number of bytes convetred to number of bits
+long long int_max_value_dual(){    
+    static long long max_value;
+    
+    if(int_max_value_dual_long_long_computed)
+        return max_value;
+    
+    long long k=sizeof(long long)*8-2;  // number of bytes convetred to number of bits
     long long test=1;
-    test = test << k;  // (maximal positive number)/2^k
+    test = test << k;  // 2^k
     // test=0; // 10000;
+    max_value=test;
+    int_max_value_dual_long_long_computed=true;
     return test;
 }
 
@@ -229,6 +238,53 @@ template<>
 mpz_class int_max_value_dual<mpz_class>(){
     assert(false);
     return 0;
+}
+
+//---------------------------------------------------------------------------
+
+template<typename Integer>
+Integer int_max_value_primary(){
+    Integer k=sizeof(Integer)*8-12;  // number of bytes convetred to number of bits
+    Integer test=1;
+    test = test << k;  // 2^k
+    // test=0; // 10000;
+    return test;
+}
+
+bool int_max_value_primary_long_computed=false;
+
+template<>
+long int_max_value_primary(){
+    static long max_value;
+    
+    if(int_max_value_primary_long_computed)
+        return max_value;
+    
+    long k=sizeof(long)*8-12;  // number of bytes convetred to number of bits
+    long test=1;
+    test = test << k;  // 2^k
+    // test=0; // 10000;
+    int_max_value_primary_long_computed=true;
+    max_value=test;
+    return test;
+}
+
+bool int_max_value_primary_long_long_computed=false;
+
+template<>
+long long int_max_value_primary(){    
+    static long long max_value;
+    
+    if(int_max_value_primary_long_long_computed)
+        return max_value;
+    
+    long long k=sizeof(long long)*8-12;  // number of bytes convetred to number of bits
+    long long test=1;
+    test = test << k;  // 2^k
+    // test=0; // 10000;
+    max_value=test;
+    int_max_value_primary_long_long_computed=true;
+    return test;
 }
 
 //---------------------------------------------------------------------------
@@ -280,9 +336,14 @@ void check_range_list(const std::list<Candidate<Integer> >& ll){
 //---------------------------------------------------------------------------
 
 mpq_class dec_fraction_to_mpq(string s){
-    
-    // cout << "s " << s <<endl;
-    
+
+    size_t skip=0;               // skip leading spaces
+    for(;skip<s.size();++skip){
+            if(!isspace(s[skip]))
+                break;
+    }
+    s=s.substr(skip);
+
     mpz_class sign=1;
     if(s[0]=='+')
         s=s.substr(1);
@@ -293,7 +354,7 @@ mpq_class dec_fraction_to_mpq(string s){
     }
     
     if(s[0]=='+' || s[0]=='-')
-            throw BadInputException("Error in decimal fraction");
+            throw BadInputException("Error in decimal fraction "+s);
     
     string int_string,frac_string,exp_string;
     size_t frac_part_length=0;
@@ -308,7 +369,7 @@ mpq_class dec_fraction_to_mpq(string s){
             frac_part_length=s.size()-(pos_point+1);
         frac_string=s.substr(pos_point+1,frac_part_length);
         if(frac_string[0]=='+' || frac_string[0]=='-')
-            throw BadInputException("Error in decimal fraction");
+            throw BadInputException("Error in decimal fraction "+s);
     }
     else
         int_string=s.substr(0,pos_E);
@@ -345,8 +406,9 @@ mpq_class dec_fraction_to_mpq(string s){
     if(frac_part!=0)
         result+=frac_part/den;
     if(!exp_string.empty()){
-        long expo=stol(exp_string);
-        long abs_expo=Iabs(expo);
+        mpz_class expo(exp_string); // we take mpz_class because it has better error checking
+        // long expo=stol(exp_string);        
+        mpz_class abs_expo=Iabs(expo);
         // cout << "expo " << expo << endl;
         mpz_class factor=1;
         for(long i=0;i< abs_expo;++i)

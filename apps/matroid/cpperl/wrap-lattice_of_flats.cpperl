@@ -1,0 +1,5 @@
+{"app": "matroid", "embed": "lattice_of_flats.cc",
+ "inst": [
+  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "void"], "func": "lattice_of_flats", "include": ["polymake/IncidenceMatrix.h"], "sig": "lattice_of_flats.X.x"},
+ null ],
+"version": 3}

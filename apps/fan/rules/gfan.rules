@@ -28,11 +28,11 @@ custom $gfan_secondaryfan;
 custom $gfan_topolyhedralfan;
 
 CONFIGURE {
-    find_program($gfan_bases,           "gfan_bases");
-	($gfan_secondaryfan=$gfan_bases) =~ s/gfan_bases$/gfan_secondaryfan/;
-    find_program($gfan_secondaryfan,    "gfan_secondaryfan");
-	($gfan_topolyhedralfan=$gfan_bases) =~ s/gfan_bases$/gfan_topolyhedralfan/;
-    find_program($gfan_topolyhedralfan, "gfan_topolyhedralfan");
+    find_program($gfan_bases, "gfan_bases");
+    find_program($gfan_secondaryfan = $gfan_bases =~ s/gfan_bases$/gfan_secondaryfan/r,
+		 "gfan_secondaryfan");
+    find_program($gfan_topolyhedralfan = $gfan_bases =~ s/gfan_bases$/gfan_topolyhedralfan/r,
+		 "gfan_topolyhedralfan");
 }
 
 # command => Object
@@ -47,7 +47,7 @@ sub run_gfan {
 #
 # @param Matrix M a matrix whose rows are the vectors in the configuration
 # @return PolyhedralFan
-user_function secondary_fan(Matrix) {
+user_function gfan_secondary_fan(Matrix) {
   my ($M)=@_;
   my $tempfile=new Tempfile;
   my $input=gfan_print_matrix($tempfile, eliminate_denominators_entire_affine($M));
@@ -60,9 +60,9 @@ user_function secondary_fan(Matrix) {
 #
 # @param polytope::PointConfiguration P
 # @return PolyhedralFan
-user_function secondary_fan(polytope::PointConfiguration) {
+user_function gfan_secondary_fan(polytope::PointConfiguration) {
   my ($pc)=@_;
-  return secondary_fan($pc->POINTS);
+  return gfan_secondary_fan($pc->POINTS);
 }
 
 sub gfan_print_matrix {

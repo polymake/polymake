@@ -20,16 +20,17 @@ use warnings qw(FATAL void syntax misc);
 package Polymake::Scope;
 
 use Polymake::Struct (
-   '$local_marker',
+   [ '$locals' => 'undef' ],
    '%cleanup',          # \Object => [ args ] || \&method
 );
 
-use Polymake::Ext;
-
 sub DESTROY {
    my ($self)=@_;
-   unwind($self->local_marker);
-   while (my ($key, $action)=each %{$self->cleanup}) {
+
+   # undo locals before performing cleanup actions
+   delete $self->[0];
+
+   while (my ($key, $action) = each %{$self->cleanup}) {
       local $@;
       eval {
          if (is_code($action)) {
@@ -49,8 +50,8 @@ my (%names, @actions, @before, @after);
 END {
    my ($delayed, $succeeded);
    # remove dependencies on unregistered actions
-   my $n=keys %names;
-   for (my $i=0; $i<=$n; ++$i) {
+   my $n = keys %names;
+   for (my $i = 0; $i <= $n; ++$i) {
       if (!defined($actions[$i])) {
          foreach (keys %{$before[$i]}) {
             delete $after[$_]->{$i};
@@ -59,10 +60,10 @@ END {
    }
 
    while (1) {
-      $delayed=$succeeded=0;
-      for (my $i=0; $i<=$#actions; ++$i) {
+      $delayed = $succeeded = 0;
+      for (my $i = 0; $i <= $#actions; ++$i) {
          next if !defined($actions[$i]);
-         if (keys(%{$after[$i]})==0) {
+         if (keys(%{$after[$i]}) == 0) {
             eval { $actions[$i]->() };
             if ($@) {
                print STDERR "cleanup in package ", sub_pkg($actions[$i]), " failed:", $@ =~ /\n./ ? "\n" : " ", $@;
@@ -79,7 +80,7 @@ END {
       if ($delayed) {
          if (!$succeeded) {
             my @blocked;
-            while (my ($name, $i)=each %names) {
+            while (my ($name, $i) = each %names) {
                push @blocked, $name if defined($actions[$i]);
             }
             print STDERR "deadlock due to circular dependencies between AtEnd actions: ", join(", ", @blocked), "\n";
@@ -92,21 +93,21 @@ END {
 }
 
 sub find_id {
-   my $name=shift;
-   $names{$name} ||= do {
-      my $i=keys %names;
-      $before[$i]={ };
-      $after[$i]={ };
+   my ($name) = @_;
+   $names{$name} //= do {
+      my $i = keys %names;
+      $before[$i] = { };
+      $after[$i] = { };
       $i
    }
 }
 
 sub add {
    $_[0] eq __PACKAGE__ && shift;
-   my ($name, $action, %relations)=@_;
+   my ($name, $action, %relations) = @_;
 
-   my $i=find_id($name);
-   my $ignore_multiple=delete $relations{ignore_multiple};
+   my $i = find_id($name);
+   my $ignore_multiple = delete $relations{ignore_multiple};
    ($actions[$i] &&= do {
       if ($ignore_multiple) {
          return;
@@ -115,16 +116,16 @@ sub add {
       } else {
          croak( "packages ", sub_pkg($actions[$i]), " and ", sub_pkg($action), " use the same AtEnd action key '$name'" );
       }
-   }) =$action;
+   }) = $action;
 
-   if (defined (my $before=delete $relations{before})) {
+   if (defined (my $before = delete $relations{before})) {
       foreach (ref($before) ? @$before : $before) {
-         my $b=find_id($_);
+         my $b = find_id($_);
          if (exists $after[$i]->{$b}) {
             croak( "circular dependency between AtEnd actions $name and $_" );
          }
-         $before[$i]->{$b}=1;
-         $after[$b]->{$i}=1;
+         $before[$i]->{$b} = true;
+         $after[$b]->{$i} = true;
       }
    }
    if (defined (my $after=delete $relations{after})) {
@@ -133,8 +134,8 @@ sub add {
          if (exists $before[$i]->{$a}) {
             croak( "circular dependency between AtEnd actions $name and $_" );
          }
-         $before[$a]->{$i}=1;
-         $after[$i]->{$a}=1;
+         $before[$a]->{$i} = true;
+         $after[$i]->{$a} = true;
       }
    }
    if (keys %relations) {
@@ -144,8 +145,8 @@ sub add {
 
 sub forget {
    my $name=pop;
-   if (defined (my $i=$names{$name})) {
-      undef $actions[$i];
+   if (defined (my $i = $names{$name})) {
+      delete $actions[$i];
    }
 }
 

@@ -42,12 +42,12 @@ perl::Object check_poly(const IncidenceMatrix<>& VIF, perl::OptionSet options)
   
    PowerSet<int> F;     // all faces, we start with facets
    if (primal) {
-      for (Entire< Rows< IncidenceMatrix<> > >::const_iterator vlist=entire(rows(VIF)); !vlist.at_end(); ++vlist) {
+      for (auto vlist=entire(rows(VIF)); !vlist.at_end(); ++vlist) {
          F += *vlist;
          max_d = std::min(vlist->size(), max_d);
       }
    } else {
-      for (Entire< Cols< IncidenceMatrix<> > >::const_iterator vlist=entire(cols(VIF)); !vlist.at_end(); ++vlist) {
+      for (auto vlist=entire(cols(VIF)); !vlist.at_end(); ++vlist) {
          F += *vlist;
          max_d = std::min(vlist->size(), max_d);
       }

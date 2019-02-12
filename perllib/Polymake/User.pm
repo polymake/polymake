@@ -238,11 +238,11 @@ sub disable_rules {
 }
 #################################################################################
 sub set_custom {
-   $application->_set_custom($Prefs->custom, Core::name_of_custom_var(1));
+   $application->_set_custom($Core::Prefs->custom, Core::name_of_custom_var(1));
 }
 
 sub reset_custom {
-   $application->_reset_custom($Prefs->custom, Core::name_of_custom_var(0));
+   $application->_reset_custom($Core::Prefs->custom, Core::name_of_custom_var(0));
 }
 #################################################################################
 sub script {
@@ -253,16 +253,25 @@ sub script {
       local *ARGV=\@_;
       &$code;
    } else {
-      local @ARGV=@_;
-
-      # The following awful expression *can't* be broken down into more legible if-else branches
-      # because all localizations have to occur in this block.
-      defined($in_app)
-        ? $in_app != $User::application && (local $User::application=$in_app,
-                                            ref($INC[0]) ? (local $INC[0]=$in_app) : local_unshift(\@INC, $in_app))
-        : (local_save_scalar($User::application),
-           ref($INC[0]) || local_unshift(\@INC, $User::application));
-
+      local @ARGV = @_;
+      local if (defined($in_app)) {
+         if ($in_app != $User::application) {
+            local $User::application = $in_app;
+            if (ref($INC[0])) {
+               local $INC[0] = $in_app;
+            } else {
+               local unshift @INC, $in_app;
+            }
+         }
+      } elsif (defined (local scalar $User::application)) {
+         if (!ref($INC[0])) {
+            local unshift @INC, $User::application;
+         }
+      } else {
+         if (!ref($INC[0])) {
+            local unshift @INC, new Core::NeutralScriptLoader();
+         }
+      }
       $name="script" . (defined($in_app) ? ":" : "=") . $full_path;
       if (wantarray) {
          my @ret=do $name;
@@ -279,14 +288,20 @@ sub script {
    }
 }
 #################################################################################
+# print boolean values in legible form: true and false instead of 1 and empty string
+# enforce creation of a unique lexical scope with this operation inherited by all nested packages
+use namespaces 'Polymake::User';
+namespaces::memorize_lexical_scope;
+namespaces::intercept_operation(undef, "P", "bool");
+
+#################################################################################
 # prepare for custom variables and preferences
 
 package Polymake::User::Verbose;
 *Polymake::Verbose::=get_symtab(__PACKAGE__);
 
-push @Core::UserSettings::add_custom_vars,
-sub {
-   my $ch=$Prefs->create_custom("Polymake::User");
+Core::add_custom_vars sub {
+   my $ch = $Core::Prefs->create_custom("Polymake::User");
 
    $ch->pkg_help->{__PACKAGE__}=<<'.';
 # The following variables control the display of various informational message classes.
@@ -333,15 +348,15 @@ $ch->add('$external', <<'.');
 # Application to start with as the current one
 .
    declare @extensions;
-   $ch->add('@extensions', <<'.', $Core::Customize::state_accumulating);
+   $ch->add('@extensions', <<'.', Core::Customize::State::accumulating);
 # A list of directories containing imported and/or locally created extensions
 .
    declare %disabled_extensions;
-   $ch->add('%disabled_extensions', <<'.', $Core::Customize::state_config | $Core::Customize::state_hidden | $Core::Customize::state_noexport);
+   $ch->add('%disabled_extensions', <<'.', Core::Customize::State::config | Core::Customize::State::hidden | Core::Customize::State::noexport);
 # Extensions which could not be configured for given architecture
 .
    declare @lookup_scripts;
-   $ch->add('@lookup_scripts', <<'.', $Core::Customize::state_accumulating);
+   $ch->add('@lookup_scripts', <<'.', Core::Customize::State::accumulating);
 # A list of directories where to look for scripts
 .
    declare $history_size=200;

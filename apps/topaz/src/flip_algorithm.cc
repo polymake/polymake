@@ -225,7 +225,7 @@ public:
            fan_vert_matrix[ it.second ] = it.first;
            fan_vert_matrix[ it.second ][0] = 1;
       }
-      fan_rays = fan_vert_matrix.minor(~scalar2set(0),All);
+      fan_rays = fan_vert_matrix.minor(range_from(1), All);
       
       int size = bfs_it.node_visitor().fan_cells.size();
       Array< Set<int> > fan_cells_array{ size };
@@ -295,15 +295,16 @@ std::pair< Matrix<Rational> , Array<Set<int> > > DCEL_secondary_fan_input( Doubl
    //cout << "zu fan_cells kommt " << *it << " dazu" << endl;
    }
    std::pair< Matrix<Rational> , Array<Set<int> > > input_pair;
-   input_pair.first = fan_vert_matrix.minor(~scalar2set(0),All);
+   input_pair.first = fan_vert_matrix.minor(range_from(1), All);
    input_pair.second = fan_cells_array;
    
    return input_pair; 
 }
+#if 0
 UserFunction4perl("# @category Producing other objects"
                   "# some strange function",
-                  &DCEL_secondary_fan_input,"DCEL_secondary_fan_input(DoublyConnectedEdgeList:non_const)");
-
+                  &DCEL_secondary_fan_input, "DCEL_secondary_fan_input(DoublyConnectedEdgeList&)");
+#endif
 
 
 /*Indexed_Cones DCEL_secondary_fan( DoublyConnectedEdgeList& dcel ) {
@@ -323,7 +324,7 @@ UserFunction4perl("# @category Producing other objects"
 
 UserFunction4perl("# @category Producing other objects"
                   "# some strange function",
-                  &DCEL_secondary_fan,"DCEL_secondary_fan(DoublyConnectedEdgeList:non_const)");
+                  &DCEL_secondary_fan, "DCEL_secondary_fan(DoublyConnectedEdgeList&)");
 
 
 
@@ -345,7 +346,7 @@ Cone_Inequalities DCEL_secondary_fan_ineqs( DoublyConnectedEdgeList& dcel ) {
 
 UserFunction4perl("# @category Producing other objects"
                   "# some strange function2",                                             
-                  &DCEL_secondary_fan_ineqs,"DCEL_secondary_fan_ineqs(DoublyConnectedEdgeList:non_const)");
+                  &DCEL_secondary_fan_ineqs, "DCEL_secondary_fan_ineqs(DoublyConnectedEdgeList&)");
 
 
 
@@ -369,10 +370,11 @@ Matrix<Rational> DCEL_secondary_fan_input_vertices( DoublyConnectedEdgeList& dce
    return fan_vert_matrix;
    }
 
+#if 0
    UserFunction4perl("# @category Producing other objects"  
                      "# some strange function2",
-                     &DCEL_secondary_fan_input_vertices,"DCEL_secondary_fan_input_vertices(DoublyConnectedEdgeList:non_const)");
-
+                     &DCEL_secondary_fan_input_vertices, "DCEL_secondary_fan_input_vertices(DoublyConnectedEdgeList&)");
+#endif
 
 
 
@@ -398,11 +400,11 @@ Array< Set<int> > DCEL_secondary_fan_input_cells( DoublyConnectedEdgeList& dcel 
    
    return fan_cells_array;
    }
-
+#if 0
    UserFunction4perl("# @category Producing other objects"  
                      "# some strange function2",
-                     &DCEL_secondary_fan_input_cells,"DCEL_secondary_fan_input_cells(DoublyConnectedEdgeList:non_const)");
-
+                     &DCEL_secondary_fan_input_cells, "DCEL_secondary_fan_input_cells(DoublyConnectedEdgeList&)");
+#endif
 */
 
 } //end topaz namespace

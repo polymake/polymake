@@ -164,7 +164,7 @@ OP* intercept_pp_helem(pTHX)
          HE* he=hv_fetch_ent(hv, keysv, TRUE, hash);
          SV* elem_sv=HeVAL(he);
          if (existed)
-            localize_scalar(aTHX_ elem_sv);
+            ops::localize_scalar(aTHX_ elem_sv);
          else
             save_destructor_x(&delete_hash_elem, store_hash_ref_elem(aTHX_ hv, keyref));
          (void)POPs;
@@ -209,7 +209,7 @@ OP* intercept_pp_hslice(pTHX)
                *MARK=he ? HeVAL(he) : &PL_sv_undef;
                if (localizing) {
                   if (existed)
-                     localize_scalar(aTHX_ *MARK);
+                     ops::localize_scalar(aTHX_ *MARK);
                   else
                      save_destructor_x(&delete_hash_elem, store_hash_ref_elem(aTHX_ hv, keyref));
                }

@@ -1,0 +1,7 @@
+{"app": "topaz",
+ "inst": [
+  {"class": "IntersectionForm", "include": ["polymake/topaz/IntersectionForm.h"], "pkg": "Polymake::topaz::IntersectionForm"},
+  {"args": ["IntersectionForm"], "include": ["polymake/topaz/IntersectionForm.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<const IntersectionForm&>", "perl::Canned<const IntersectionForm&>"], "include": ["polymake/topaz/IntersectionForm.h"], "op": "_eq", "sig": "_eq:O.X.X"},
+ null ],
+"version": 3}

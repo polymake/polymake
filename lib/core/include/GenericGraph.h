@@ -83,13 +83,19 @@ struct edge_container_impl;
 
 } // end namespace pm::graph
 
+template <typename TGraph, typename dir_val=typename TGraph::dir>
+class GenericGraph;
+
+template <typename T, typename... Dir>
+using is_generic_graph = is_derived_from_instance_of<pure_type_t<T>, GenericGraph, Dir...>;
+
 /** @class GenericGraph
     @brief @ref generic "Generic type" for all graph classes.
 
     Defines various types and constants.
 */
 
-template <typename TGraph, typename dir_val=typename TGraph::dir>
+template <typename TGraph, typename dir_val>
 class GenericGraph
    : public Generic<TGraph> {
 protected:
@@ -97,12 +103,12 @@ protected:
    GenericGraph(const GenericGraph&) {}
 
 public:
-   typedef dir_val dir;
-   static const bool is_directed=dir::value==graph::Directed::value;
-   static const bool is_multigraph=dir::multigraph;
-   typedef GenericGraph generic_type;
-   typedef graph::Graph<dir> persistent_type;
-   typedef typename Generic<TGraph>::top_type top_type;
+   using dir = dir_val;
+   static constexpr bool is_directed=dir::value==graph::Directed::value;
+   static constexpr bool is_multigraph=dir::multigraph;
+   using generic_type = GenericGraph;
+   using persistent_type = graph::Graph<dir>;
+   using typename Generic<TGraph>::top_type;
 
    template <typename Result>
    struct rebind_generic {
@@ -123,7 +129,7 @@ public:
    top_type& operator+= (const GenericGraph<TGraph2>& g2)
    {
       static_assert(!is_multigraph, "in-place modification of a multigraph is not defined");
-      if (POLYMAKE_DEBUG || !Unwary<TGraph>::value || !Unwary<TGraph2>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TGraph>() || is_wary<TGraph2>()) {
          if (this->top().nodes() != g2.top().nodes())
             throw std::runtime_error("GenericGraph::operator+= - dimension mismatch");
          if (this->top().has_gaps() || g2.top().has_gaps())
@@ -137,7 +143,7 @@ public:
    top_type& operator-= (const GenericGraph<TGraph2>& g2)
    {
       static_assert(!is_multigraph, "in-place modification of a multigraph is not defined");
-      if (POLYMAKE_DEBUG || !Unwary<TGraph>::value || !Unwary<TGraph2>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TGraph>() || is_wary<TGraph2>()) {
          if (this->top().nodes() != g2.top().nodes())
             throw std::runtime_error("GenericGraph::operator-= - dimension mismatch");
          if (this->top().has_gaps() || g2.top().has_gaps())
@@ -151,7 +157,7 @@ public:
    top_type& operator*= (const GenericGraph<TGraph2>& g2)
    {
       static_assert(!is_multigraph, "in-place modification of a multigraph is not defined");
-      if (POLYMAKE_DEBUG || !Unwary<TGraph>::value || !Unwary<TGraph2>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TGraph>() || is_wary<TGraph2>()) {
          if (this->top().nodes() != g2.top().nodes())
             throw std::runtime_error("GenericGraph::operator*= - dimension mismatch");
          if (this->top().has_gaps() || g2.top().has_gaps())
@@ -165,7 +171,7 @@ public:
    top_type& operator^= (const GenericGraph<TGraph2>& g2)
    {
       static_assert(!is_multigraph, "in-place modification of a multigraph is not defined");
-      if (POLYMAKE_DEBUG || !Unwary<TGraph>::value || !Unwary<TGraph2>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TGraph>() || is_wary<TGraph2>()) {
          if (this->top().nodes() != g2.top().nodes())
             throw std::runtime_error("GenericGraph::operator^= - dimension mismatch");
          if (this->top().has_gaps() || g2.top().has_gaps())
@@ -176,12 +182,12 @@ public:
    }
 
    template <typename TGraph2>
-   using graph_overlay_t = graph::Graph<typename std::conditional<dir::value==TGraph2::dir::value, dir, graph::Directed>::type>;
+   using graph_overlay_t = graph::Graph<std::conditional_t<dir::value==TGraph2::dir::value, dir, graph::Directed>>;
 
    template <typename TGraph2>
    graph_overlay_t<TGraph2> operator+ (const GenericGraph<TGraph2>& g2) const
    {
-      if (POLYMAKE_DEBUG || !Unwary<TGraph>::value || !Unwary<TGraph2>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TGraph>() || is_wary<TGraph2>()) {
          if (this->top().nodes() != g2.top().nodes())
             throw std::runtime_error("GenericGraph::operator+ - dimension mismatch");
          if (this->top().has_gaps() || g2.top().has_gaps())
@@ -194,7 +200,7 @@ public:
    graph::Graph<typename dir::non_multi_type>
    operator- (const GenericGraph<TGraph2>& g2) const
    {
-      if (POLYMAKE_DEBUG || !Unwary<TGraph>::value || !Unwary<TGraph2>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TGraph>() || is_wary<TGraph2>()) {
          if (this->top().nodes() != g2.top().nodes())
             throw std::runtime_error("GenericGraph::operator- - dimension mismatch");
          if (this->top().has_gaps() || g2.top().has_gaps())
@@ -206,7 +212,7 @@ public:
    template <typename TGraph2>
    graph_overlay_t<TGraph2> operator* (const GenericGraph<TGraph2>& g2) const
    {
-      if (POLYMAKE_DEBUG || !Unwary<TGraph>::value || !Unwary<TGraph2>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TGraph>() || is_wary<TGraph2>()) {
          if (this->top().nodes() != g2.top().nodes())
             throw std::runtime_error("GenericGraph::operator* - dimension mismatch");
          if (this->top().has_gaps() || g2.top().has_gaps())
@@ -218,7 +224,7 @@ public:
    template <typename TGraph2>
    graph_overlay_t<TGraph2> operator^ (const GenericGraph<TGraph2>& g2) const
    {
-      if (POLYMAKE_DEBUG || !Unwary<TGraph>::value || !Unwary<TGraph2>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TGraph>() || is_wary<TGraph2>()) {
          if (this->top().nodes() != g2.top().nodes())
             throw std::runtime_error("GenericGraph::operator^ - dimension mismatch");
          if (this->top().has_gaps() || g2.top().has_gaps())
@@ -230,7 +236,7 @@ public:
    graph::Graph<typename dir::non_multi_type>
    operator~ () const
    {
-      if (POLYMAKE_DEBUG || !Unwary<TGraph>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TGraph>()) {
          if (this->top().has_gaps())
             throw std::runtime_error("GenericGraph::operator~ - not supported for graphs with deleted nodes");
       }
@@ -259,7 +265,7 @@ public:
 template <typename TGraph>
 class Nodes
    : public redirected_container< Nodes<TGraph>,
-                                  mlist< ContainerTag< typename TGraph::node_container_ref >,
+                                  mlist< ContainerRefTag< typename TGraph::node_container_ref >,
                                          MasqueradedTop > >
    , public GenericSet<Nodes<TGraph>, int, operations::cmp> {
 protected:
@@ -315,7 +321,7 @@ struct edge_container_impl<TGraph, false, true> {
    class container
       : public modified_container_impl< container,
                                         mlist< HiddenTag< TGraph >,
-                                               ContainerTag< typename base_t::container_ref >,
+                                               ContainerRefTag< typename base_t::container_ref >,
                                                OperationTag< operations::masquerade<uniq_edge_list> > > >
       , public edge_container_access<container, TGraph> {
    public:
@@ -334,7 +340,7 @@ struct edge_container_impl<TGraph, false, false> {
    class container
       : public modified_container_impl< container,
                                         mlist< HiddenTag< TGraph >,
-                                               ContainerTag< typename base_t::container_ref >,
+                                               ContainerRefTag< typename base_t::container_ref >,
                                                OperationTag< operation > > >
       , public edge_container_access<container, TGraph> {
    public:
@@ -344,7 +350,7 @@ struct edge_container_impl<TGraph, false, false> {
    class const_container
       : public modified_container_impl< const_container,
                                         mlist< HiddenTag< TGraph >,
-                                               ContainerTag< typename base_t::const_container_ref >,
+                                               ContainerRefTag< typename base_t::const_container_ref >,
                                                OperationTag< operation > > >
       , public edge_container_access<const_container, TGraph> {
    public:
@@ -419,7 +425,7 @@ public:
 template <typename TGraph, bool TMultigraph>
 class Rows< AdjacencyMatrix<TGraph, TMultigraph> >
    : public redirected_container< Rows< AdjacencyMatrix<TGraph, TMultigraph> >,
-                                  mlist< ContainerTag< typename TGraph::adjacency_rows_container_ref >,
+                                  mlist< ContainerRefTag< typename TGraph::adjacency_rows_container_ref >,
                                          HiddenTag< TGraph > > > {
 public:
    typename TGraph::adjacency_rows_container_ref get_container()
@@ -442,7 +448,7 @@ public:
 template <typename TGraph, bool TMultigraph>
 class Cols< AdjacencyMatrix<TGraph, TMultigraph> >
    : public redirected_container< Cols< AdjacencyMatrix<TGraph, TMultigraph> >,
-                                  mlist< ContainerTag< typename TGraph::adjacency_cols_container >,
+                                  mlist< ContainerRefTag< typename TGraph::adjacency_cols_container_ref >,
                                          HiddenTag< TGraph > > > {
 public:
    typename TGraph::adjacency_cols_container_ref get_container()
@@ -755,13 +761,15 @@ class generic_of_GraphComponents {};
 template <typename GraphRef, template <typename> class Iterator>
 class GraphComponents : public generic_of_GraphComponents<GraphRef, Iterator> {
 protected:
-   alias<GraphRef> graph;
+   using alias_t = alias<GraphRef>;
+   alias_t graph;
 public:
-   typedef typename alias<GraphRef>::arg_type arg_type;
-   typedef typename deref<GraphRef>::type graph_t;
-   typename alias<GraphRef>::const_reference get_graph() const { return *graph; }
+   using graph_t = typename deref<GraphRef>::type;
+   decltype(auto) get_graph() const { return *graph; }
 
-   GraphComponents(arg_type G) : graph(G) {}
+   template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
+   explicit GraphComponents(Arg&& graph_arg)
+      : graph(std::forward<Arg>(graph_arg)) {}
 
    typedef Iterator<graph_t> iterator;
    typedef iterator const_iterator;

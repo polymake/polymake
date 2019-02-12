@@ -61,11 +61,11 @@ Vector<Rational> rand_aof(perl::Object p, int start, perl::OptionSet options)
    candidates.reserve(n);
    while (available.size()>1) {
       // determine which of the facets could continue the shelling
-      for (Entire< Set<int> >::const_iterator it=entire(available); !it.at_end(); ++it) {
+      for (auto it=entire(available); !it.at_end(); ++it) {
          const Set<int> intersection_with_previous(Boundary.col(*it) * ball);
          switch (intersection_with_previous.size()-d) {
          case 0: // must be contained in a unique facet
-            for (Entire<vertex_list>::const_iterator v=entire(AOF); !v.at_end(); ++v)
+            for (auto v=entire(AOF); !v.at_end(); ++v)
                if (incl(intersection_with_previous, Boundary.col(*v))<=0) { // contained in this facet
                   candidates.push_back(*it);
                   break;
@@ -73,12 +73,12 @@ Vector<Rational> rand_aof(perl::Object p, int start, perl::OptionSet options)
             break;
          case 1: {
             FacetList intersection_as_a_complex(n);
-            for (Entire<vertex_list>::const_iterator v=entire(AOF); !v.at_end(); ++v)
+            for (auto v=entire(AOF); !v.at_end(); ++v)
                intersection_as_a_complex.replaceMax(Boundary.col(*it) * Boundary.col(*v));
             if (intersection_as_a_complex.size()>d)
                break;
             bool pure=true;
-            for (Entire<FacetList>::const_iterator s=entire(intersection_as_a_complex); !s.at_end(); ++s)
+            for (auto s=entire(intersection_as_a_complex); !s.at_end(); ++s)
                if (s->size()!=d) {
                   pure=false;
                   break;
@@ -112,7 +112,7 @@ Vector<Rational> rand_aof(perl::Object p, int start, perl::OptionSet options)
    AOF.push_back(available.front());
    Vector<Rational> AOF_Vec(n);
    int cnt=0;
-   for (Entire<vertex_list>::iterator x=entire(AOF); !x.at_end(); ++x)
+   for (auto x=entire(AOF); !x.at_end(); ++x)
       AOF_Vec[*x]=cnt++;
    return AOF_Vec;
 }

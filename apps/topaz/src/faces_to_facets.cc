@@ -31,7 +31,7 @@ void faces_to_facets(perl::Object p, const face_list& F_in)
    FacetList F;
    Set<int> V;
 
-   for (Entire<face_list>::const_iterator f_it=entire(F_in); !f_it.at_end(); ++f_it) {
+   for (auto f_it=entire(F_in); !f_it.at_end(); ++f_it) {
       // provide vertex ordering
       Set<int> facet;
       accumulate_in(entire(*f_it), operations::add(), facet);

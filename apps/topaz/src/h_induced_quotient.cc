@@ -31,14 +31,12 @@ perl::Object h_induced_quotient(perl::Object p_in,const Set<int>& V_in,perl::Opt
    const bool no_labels=options["no_labels"];
    const int n_vert = p_in.give("N_VERTICES");
 
-      
    int apex=n_vert;
 
-   
    if (!no_labels) {
       Array<std::string> L = p_in.give("VERTEX_LABELS");
       L.resize(n_vert+1);
-      
+
       const std::string apex_label;
       if(!(options["apex"]>>L[n_vert])) {
          std::ostringstream label;
@@ -47,9 +45,8 @@ perl::Object h_induced_quotient(perl::Object p_in,const Set<int>& V_in,perl::Opt
          // creating vertex map
          hash_map<std::string,int> map(L.size());
          int count = 0;
-         for (Entire< Array<std::string> >::const_iterator l=entire(L);
-              !l.at_end(); ++l, ++count)
-            map[*l] = count; 
+         for (const auto& label_in : L)
+            map[label_in] = count++;
          // test if ll is unique
          int i=0;
          while (map.find(ll) != map.end()) {
@@ -58,7 +55,7 @@ perl::Object h_induced_quotient(perl::Object p_in,const Set<int>& V_in,perl::Opt
             label << l << "_" << i;
             ll=label.str();
          }
-         
+
          L[n_vert] = ll;
       }
       p_out.take("VERTEX_LABELS") << L;
@@ -70,7 +67,7 @@ perl::Object h_induced_quotient(perl::Object p_in,const Set<int>& V_in,perl::Opt
 
    // computing the subcomplex
    FacetList Quotient(C.begin(), C.end());
-   for (Entire< Array< Set<int> > >::const_iterator it=entire(C); !it.at_end(); ++it) {
+   for (auto it=entire(C); !it.at_end(); ++it) {
       Set<int> S=V_in*(*it);
       if (!S.empty()) {
          S+=apex;
@@ -81,7 +78,7 @@ perl::Object h_induced_quotient(perl::Object p_in,const Set<int>& V_in,perl::Opt
 
    p_out.set_description()<<"A homotopy equivalent complex to " << p_in.name() << " modulo the subcomplexed induced by the vertices " <<V_in << "."<<endl;
 
-   p_out.take("FACETS") << Quotient;              
+   p_out.take("FACETS") << Quotient;
 
    return p_out;
 }
@@ -91,7 +88,7 @@ UserFunction4perl("# @category Producing a new simplicial complex from others"
                   "# the given //vertices//. Then this function produces a simplicial complex"
                   "# homotopy equivalent to //C// mod A by adding the cone over A with"
                   "# apex a to //C//."
-                  "# The label of the apex my be specified via the option //apex//." 
+                  "# The label of the apex my be specified via the option //apex//."
                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @option String apex"
                   "# @param SimplicialComplex C"

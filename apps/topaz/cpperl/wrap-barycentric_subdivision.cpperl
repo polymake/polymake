@@ -1,0 +1,9 @@
+{"app": "topaz", "embed": "barycentric_subdivision.cc",
+ "inst": [
+  {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Nonsequential", "Rational", "void", "void"], "func": "barycentric_subdivision_impl", "include": ["polymake/Rational.h", "polymake/graph/Decoration.h"], "sig": "barycentric_subdivision_impl:T3.x.o", "tp": "3"},
+  {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Nonsequential", "Rational", "void", "void", "void"], "func": "iterated_barycentric_subdivision_impl", "include": ["polymake/Rational.h", "polymake/graph/Decoration.h"], "sig": "iterated_barycentric_subdivision_impl:T3.x.x.o", "tp": "3"},
+  {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Sequential", "Rational", "void", "void"], "func": "barycentric_subdivision_impl", "include": ["polymake/Rational.h", "polymake/graph/Decoration.h"], "sig": "barycentric_subdivision_impl:T3.x.o", "tp": "3"},
+  {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Sequential", "Rational", "void", "void", "void"], "func": "iterated_barycentric_subdivision_impl", "include": ["polymake/Rational.h", "polymake/graph/Decoration.h"], "sig": "iterated_barycentric_subdivision_impl:T3.x.x.o", "tp": "3"},
+  {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Sequential", "QuadraticExtension<Rational>", "void", "void", "void"], "func": "iterated_barycentric_subdivision_impl", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/graph/Decoration.h"], "sig": "iterated_barycentric_subdivision_impl:T3.x.x.o", "tp": "3"},
+ null ],
+"version": 3}

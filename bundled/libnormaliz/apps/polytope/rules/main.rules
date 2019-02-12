@@ -73,3 +73,14 @@ object Cone<Rational> {
 
 }
 
+object Polytope<Rational> {
+
+   rule libnormaliz.ehrhartquasipoly: EHRHART_QUASI_POLYNOMIAL : RAYS | INPUT_RAYS {
+      my @list = normaliz_compute($this,ehrhart_quasi_polynomial=>1);
+      $this->EHRHART_QUASI_POLYNOMIAL = $list[0];
+   }
+   precondition : defined(MONOID_GRADING);
+   precondition : POINTED;
+   weight 5.39;
+
+}

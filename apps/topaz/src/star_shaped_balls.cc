@@ -103,7 +103,7 @@ void update_boundary_ridges(const face_type& new_facet,
                             complex_type& new_boundary,
                             complex_type& new_candidate_ridges)
 {
-   for (Entire<Subsets_less_1<const face_type&>>::const_iterator rit = entire(all_subsets_less_1(new_facet)); !rit.at_end(); ++rit) {
+   for (auto rit = entire(all_subsets_less_1(new_facet)); !rit.at_end(); ++rit) {
       const face_type ridge(*rit);
       if (new_boundary.contains(ridge)) {
          new_boundary -= ridge;
@@ -180,8 +180,8 @@ Array<complex_type> star_shaped_balls(perl::Object triangulation)
    if (!must_rename) return Array<complex_type>(balls_processed.size(), entire(balls_processed));
 
    Array<complex_type> ssb(balls_processed.size());
-   Entire<Array<complex_type>>::iterator oit = entire(ssb);
-   for (Entire<ballhash_type>::const_iterator iit = entire(balls_processed); !iit.at_end(); ++iit, ++oit) {
+   auto oit = entire(ssb);
+   for (auto iit = entire(balls_processed); !iit.at_end(); ++iit, ++oit) {
       complex_type ball;
       for (const auto& s : *iit)
          ball += permuted_inv(s, vertex_indices);
@@ -207,7 +207,7 @@ complex_type star_of_zero(perl::Object triangulation)
    if (!must_rename) return ssz;
 
    complex_type output;
-   for (Entire<complex_type>::const_iterator sit = entire(ssz); !sit.at_end(); ++sit)
+   for (auto sit = entire(ssz); !sit.at_end(); ++sit)
       output += permuted_inv(*sit, vertex_indices);
    return output;
 }

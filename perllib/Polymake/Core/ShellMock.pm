@@ -78,7 +78,7 @@ sub context_help {
 
 sub process_input {
    my ($self, $input)=@_;
-   local_unshift(\@INC, $self);
+   local unshift @INC, $self;
    $self->partial_input=$input;
    { local $Scope=new Scope(); package Polymake::User; do "input:"; 1; }
    if ($self->line_cnt==-1) {

@@ -14,12 +14,26 @@
 #-------------------------------------------------------------------------------
 
 use strict;
-use Cwd;
-use Config;
-use File::Path;
+use feature "state";
+
+require Config;
+require File::Path;
 
 use vars '$root', '%ConfigFlags';
-my ($targets_file, $config_file);
+my ($targets_file, $source_list_file, $cpperl_list_file, $config_file);
+my (%targetlist_deps, @all_source_dirs, @all_source_files, @all_cpperl_dirs, @all_cpperl_files);
+
+if ($ARGV[0] eq "--source-list") {
+   (undef, $source_list_file, @all_source_dirs)=@ARGV;
+   update_file_list($source_list_file, \@all_source_dirs, "*.{cc,cpp,C,xxs}");
+   exit 0;
+}
+if ($ARGV[0] eq "--cpperl-list") {
+   (undef, $cpperl_list_file, @all_cpperl_dirs)=@ARGV;
+   update_file_list($cpperl_list_file, \@all_cpperl_dirs, "*.cpperl");
+   exit 0;
+}
+
 ($targets_file, $root, $config_file)=@ARGV;
 
 unless (@ARGV==3 && -f $config_file && -d $root) {
@@ -40,18 +54,20 @@ my $DeveloperMode=-d "$srcroot/.git";
 
 my @prereq_exts= $core_mode ? () : ($ConfigFlags{RequireExtensions} =~ /(\S+)/g);
 
-my %targetlist_deps;
+$source_list_file="$buildroot/sources.lst";
+$cpperl_list_file="$buildroot/cpperl/input.lst";
+my $cpperl_gen_file="$buildroot/cpperl/gen.ninja";
+my (%cpperl_def_files, %cpperl_config_dependent, %cpperl_mods);
+
+load_cpperl_gen_rules($cpperl_gen_file);
 generate_targets();
-
-# record the dependencies
-open OUT, ">$targets_file.d"
-  or die "could not create dependency file $targets_file.d: $!\n";
-
-print OUT join(" \\\n", "$targets_file:", map { "  $_" } keys(%targetlist_deps)), "\n";
-close OUT;
-
+generate_filelist_rules();
+record_deps($targets_file, "$targets_file.d", \%targetlist_deps);
+# the tagrets file must appear younger than all its dependencies generated before
+finalize_targets_file();
 exit 0;
 
+################################################################################
 sub read_custom_script {
    my ($filename)=@_;
    my @result;
@@ -70,11 +86,15 @@ sub read_custom_script {
 
 sub process_app_sources {
    my ($app, $objects, $bundled, $link_flags)=@_;
-   -d "$app/src" or return;
-   $targetlist_deps{"$app/src"}=1;
+   # this will trigger regeneration after adding or removing the src or cpperl subdirectory
+   $targetlist_deps{$app}=1;
 
    my $app_name=basename($app);
-   my $out_dir='${builddir}'.($bundled ? "/bundled/$bundled" : "")."/apps/$app_name";
+   my $app_path=($bundled ? "/bundled/$bundled" : "")."/apps/$app_name";
+   my $out_dir='${builddir}'.$app_path;
+   my $cpperl_gen_dir="$app/cpperl/generated";
+   process_app_cpperl_lists("$app/cpperl", $cpperl_gen_dir) if -d "$app/cpperl";
+
    my $obj_count_before=keys %$objects;
 
    my $app_build_flags="$app/src/build_flags.pl";
@@ -97,104 +117,97 @@ sub process_app_sources {
       check_for_unknown_flags($generated, "generated files for $app");
 
       $link_flags->{generated}->{"$bundled.$app_name"}=
-        "build $gen_out: gen_sources $gen_in\n" .
+        "build $gen_out : gen_sources $gen_in\n" .
         "  GenerateCommand=$gen_command\n\n";
       $pre_gen=" || $gen_out";
    }
 
-   my $ignore_sources = delete $custom_flags{IGNORE};
+   if (-d "$app/src") {
+      push @all_source_dirs, "$app/src";
 
-   foreach my $src_file (glob "$app/src/*.{cc,cpp,C}") {
-      my ($src_name, $obj_name)=basename($src_file, "(?:cc|cpp|C)");
-      $src_file =~ s/^\Q$srcroot\E/$srcrootname/;
-      next if $ignore_sources->{$src_name};
-      $obj_name="$out_dir/$obj_name.o";
-      my ($in, $includeSource);
-      if (-f ($in="$app/src/perl/wrap-${src_name}")) {
-         $in =~ s/^\Q$srcroot\E/$srcrootname/;
-         $includeSource=$src_file;
-      } else {
-         $in=$src_file;
+      my $ignore_sources = delete $custom_flags{IGNORE};
+
+      foreach my $src_file (glob "$app/src/*.{cc,cpp,C}") {
+         my ($src_name, $obj_name)=basename($src_file, "(?:cc|cpp|C)");
+         push @all_source_files, $src_file;
+         next if $ignore_sources->{$src_name};
+         my $src_file_in_rules= $src_file =~ s/^\Q$srcroot\E/$srcrootname/r;
+         my $obj_file="$out_dir/$obj_name.o";
+         my ($cxx_extra_flags, $override_flags)=("")x2;
+         my $file_specific_flags=delete $custom_flags{$src_name};
+         if (ref($file_specific_flags) eq "HASH") {
+            $cxx_extra_flags=delete $file_specific_flags->{CXXextraFLAGS};
+            $override_flags=join("", map { "  $_=$file_specific_flags->{$_}\n" } sort keys %$file_specific_flags);
+         } else {
+            $cxx_extra_flags=$file_specific_flags;
+         }
+         $objects->{$obj_file}= <<"---" . $override_flags . $common_cxxincludes;
+build $obj_file : cxxcompile $src_file_in_rules$pre_gen
+  CXXextraFLAGS=$cxx_extra_flags $common_cxxflags -DPOLYMAKE_DEFINITION_SOURCE_FILE="$src_name"
+---
       }
-      my ($cxx_extra_flags, $override_flags)=("")x2;
-      my $file_specific_flags=delete $custom_flags{$src_name};
-      if (ref($file_specific_flags) eq "HASH") {
-         $cxx_extra_flags=delete $file_specific_flags->{CXXextraFLAGS};
-         $override_flags=join("", map { "  $_=$file_specific_flags->{$_}\n" } sort keys %$file_specific_flags);
-      } else {
-         $cxx_extra_flags=$file_specific_flags;
-      }
-      $objects->{$obj_name}=
-        "build $obj_name : cxxcompile $in$pre_gen\n" .
-        ($includeSource && "  includeSource= -include $includeSource\n") .
-        "  CXXextraFLAGS=$cxx_extra_flags $common_cxxflags\n" .
-        $override_flags . $common_cxxincludes;
    }
 
-   if (-d "$app/src/perl") {
-      $targetlist_deps{"$app/src/perl"}=1;
-      my (@to_groom, %other_custom_flags);
-      foreach my $src_file (glob "$app/src/perl/*.{cc,cpp,C}") {
-         push @to_groom, $src_file;
-         my ($src_name, $obj_name)=basename($src_file, "(?:cc|cpp|C)");
-         my $real_src_file=$src_file;
-         $src_file =~ s/^\Q$srcroot\E/$srcrootname/;
-         if (not $obj_name =~ s/^wrap-//) {
-            $obj_name="$out_dir/perl/$obj_name.o";
-            $objects->{$obj_name}=
-              "build $obj_name : cxxcompile $src_file$pre_gen\n" .
-              "  CXXextraFLAGS=$common_cxxflags\n" .
-              $common_cxxincludes;
-         } else {
-            $obj_name="$out_dir/$obj_name.o";
-            if (!exists $objects->{$obj_name}) {
-               if ($core_mode) {
-                  if ($DeveloperMode) {
-                     print STDERR "WARNING: deleting stray wrapper file $real_src_file\n";
-                     $src_file =~ s|^\$\{\w+\}/?||;
-                     system("cd $root; git rm $src_file");
-                  } else {
-                     print STDERR "WARNING: ignoring a stray wrapper file $real_src_file\n";
-                  }
-               } else {
-                  # wrapper in one extension refers to the source file in another extension or in the core system
-                  $src_name =~ s/^wrap-//;
-                  my ($src_dir, $includeSource);
-                  foreach my $top_dir (@prereq_exts, $root) {
-                     ($src_dir=$top_dir) =~ s|^(?=\w+$)|$root/bundled/|;
-                     if (-f "$src_dir/apps/$app_name/src/$src_name") {
-                        $src_dir .= "/apps/$app_name/src";
-                        $includeSource="$src_dir/$src_name";
-                        $includeSource=~ s|^\Q$root\E|\${root}|;
-                        last;
-                     }
-                  }
-                  if (defined $includeSource) {
-                     $other_custom_flags{$src_dir} //= do {
-                        my %other_flags=read_custom_script("$src_dir/build_flags.pl");
-                        \%other_flags;
-                     };
-                     my $custom_cxxflags=join(" ", grep { defined } @{$other_custom_flags{$src_dir}}{'CXXFLAGS', $src_name});
-                     $objects->{$obj_name}=
-                       "build $obj_name : cxxcompile $src_file\n" .
-                       "  includeSource= -include $includeSource\n" .
-                       "  CXXextraFLAGS=$common_cxxflags $custom_cxxflags -DPOLYMAKE_NO_EMBEDDED_RULES\n" .
-                       $common_cxxincludes;
-                  } elsif (-w "$app/src/perl") {
-                     print STDERR "deleting obsolete wrapper file $real_src_file\n";
-                     unlink $real_src_file;
-                  } else {
-                     print STDERR "WARNING: ignoring obsolete wrapper file $real_src_file\n";
-                  }
-               }
-            }
+   if (-d $cpperl_gen_dir) {
+      my %other_custom_flags;
+      if (!$core_mode) {
+         # a wrapper file in one extension may refer to a source file in another extension
+         # or in the core
+         foreach my $top_dir (@prereq_exts, $root) {
+            my $src_dir = ($top_dir =~ s|^(?=\w+$)|$root/bundled/|r) . "/apps/$app_name/src";
+            my %other_flags=read_custom_script("$src_dir/build_flags.pl");
+            $other_custom_flags{$src_dir}=\%other_flags;
          }
       }
 
-      if (@to_groom && -w "$app/src/perl") {
-         require "$root/support/groom_wrappers.pl";
-         $targetlist_deps{"$root/support/groom_wrappers.pl"}=1;
-         groom_wrappers("$app/src/perl", @to_groom);
+      foreach my $src_file (glob "$cpperl_gen_dir/*.{cc,cpp,C}") {
+         my $src_file_in_rules= $src_file =~ s/^\Q$srcroot\E/$srcrootname/r;
+         if (defined (my $def_file=$cpperl_mods{$src_file_in_rules})) {
+            # cpperl definition exists - check the main C++ module
+            my $real_src_file=$src_file;
+            my $is_wrapper= $src_file =~ s{/wrap-([^/]+)$}{/$1};
+            my ($src_name, $obj_name)=basename($src_file, "(?:cc|cpp|C)");
+            my $obj_file="$out_dir/$obj_name.o";
+            if ($is_wrapper) {
+               if (defined (my $build_rule=$objects->{$obj_file})) {
+                  # the main module lives in the sibling source tree
+                  $build_rule =~ s{cxxcompile \K\S+}{$src_file_in_rules};
+                  $build_rule =~ s{CXXextraFLAGS=.*\K}{ -DPOLYMAKE_DEFINITION_SOURCE_DIR="../../src"}m;
+                  $objects->{$obj_file}=$build_rule;
+                  next;
+               }
+               if (!$core_mode) {
+                  my $main_src_dir;
+                  foreach (keys %other_custom_flags) {
+                     if (-f "$_/$src_name") {
+                        $main_src_dir=$_;  last;
+                     }
+                  }
+                  if (defined $main_src_dir) {
+                     my $custom_cxxflags=join(" ", grep { defined } @{$other_custom_flags{$main_src_dir}}{'CXXFLAGS', $src_name});
+                     $objects->{$obj_file}= <<"---" . $common_cxxincludes;
+build $obj_file : cxxcompile $src_file_in_rules
+  CXXextraFLAGS=$common_cxxflags $custom_cxxflags -DPOLYMAKE_DEFINITION_SOURCE_DIR="$main_src_dir" -DPOLYMAKE_NO_EMBEDDED_RULES
+---
+                     next;
+                  }
+               }
+               # main module has been deleted or renamed,
+               # but the old interface definition is still lingering around there
+               update_cpperl_gen_rules($def_file =~ s/^\Q$srcrootname\E/$srcroot/r);
+               unlink $real_src_file;
+            } else {
+               # class or auto-function instantiation file
+               $obj_file="$out_dir/cpperl/$obj_name.o";
+               $objects->{$obj_file}= <<"---" . $common_cxxincludes;
+build $obj_file : cxxcompile $src_file_in_rules$pre_gen
+  CXXextraFLAGS=$common_cxxflags
+---
+            }
+         } else {
+            print STDERR "removing obsolete interface module $src_file\n";
+            unlink $src_file;
+         }
       }
    }
 
@@ -214,9 +227,9 @@ sub process_app_sources {
    # check for obsolete binary artifacts
    $out_dir =~ s{^\$\{builddir\}}{$buildroot/*};
    if (keys %$objects > $obj_count_before) {
-      foreach my $obj_file (glob("$out_dir/*.o")) {
-         (my $obj_name=$obj_file) =~ s{^\Q$buildroot/\E[^/]+}{\${builddir}};
-         if (!exists $objects->{$obj_name}) {
+      foreach my $obj_file (glob("$out_dir/{,perl/,cpperl/}*.o")) {
+         my $obj_file_in_rules= $obj_file =~ s{^\Q$buildroot/\E[^/]+}{\${builddir}}r;
+         if (!exists $objects->{$obj_file_in_rules}) {
             print STDERR "removing obsolete object file $obj_file\n";
             unlink $obj_file;
          }
@@ -291,11 +304,28 @@ build $obj_file : cxxcompile $src_dir/$src_file$pre_gen
    push @{$link_flags->{staticlibcmds}}, $out;
 }
 
-sub generate_targets {
-   $targetlist_deps{"$srcroot/apps"}=1;
-   if ($core_mode && (!$testscenario_pico_mode || -d "$root/bundled")) {
-      $targetlist_deps{"$root/bundled"}=1;
+sub process_app_cpperl_lists {
+   my ($cpperl_dir, $cpperl_gen_dir)=@_;
+   push @all_cpperl_dirs, $cpperl_dir;
+   foreach my $def_file (glob("$cpperl_dir/*.cpperl")) {
+      my $def_file_in_rule= $def_file =~ s/^\Q$srcroot\E/$srcrootname/r;
+      unless (exists $cpperl_def_files{$def_file_in_rule}) {
+         # discovered a new cpperl definition file
+         state $script_loaded = do {
+            local @ARGV;
+            do "$root/support/generate_cpperl_modules.pl";
+            die $@ if $@;
+         };
+         -d $cpperl_gen_dir or File::Path::make_path($cpperl_gen_dir);
+         update_cpperl_gen_rules(Polymake::GenerateCppPerl::process_def_file($def_file, $cpperl_gen_dir, {}));
+      }
+      push @all_cpperl_files, $def_file;
    }
+}
+
+sub generate_targets {
+   # this will trigger regeneration after adding or renaming an application 
+   $targetlist_deps{"$srcroot/apps"}=1;
 
    my @apps=glob "$srcroot/apps/*";
 
@@ -304,6 +334,7 @@ sub generate_targets {
    my @bundled=$core_mode ? ($ConfigFlags{BundledExts}) =~ /(\S+)/g : ();
    my @bundled_rev=reverse(@bundled);
    foreach my $bundled (@bundled) {
+      # this will trigger regeneration after adding or renaming an application in the given extension
       $targetlist_deps{"$root/bundled/$bundled/apps"}=1;
    }
 
@@ -331,12 +362,19 @@ sub generate_targets {
    select OUT;
 
    if ($core_mode) {
+      # additional flags for building C++ modules in bundled extensions should be kept separately
+      # because they are needed for temporary wrappers too
+      my $bundled_flags= $targets_file =~ s{(?:^|/) \K [^/.]+ (?=\.ninja$)}{bundled_flags}xr;
+      open my $B, ">", $bundled_flags
+        or die "can't write to $bundled_flags: $!\n";
       foreach my $bundled (@bundled_rev) {
          my @look_in=($bundled, $ConfigFlags{"bundled.$bundled.RequireExtensions"} =~ /(\S+)/g);
          my @includes=glob("$root/bundled/{".join(",", @look_in)."}/include/app*");
-         s|^\Q$root\E|$srcrootname| for @includes;
-         print "bundled.$bundled.includes=", (map { " -I$_" } @includes), "\n\n";
+         s/^\Q$root\E/$srcrootname/ for @includes;
+         print $B "bundled.$bundled.includes=", (map { " -I$_" } @includes), "\n\n";
       }
+      close $B;
+      print "include \${buildroot}/bundled_flags.ninja\n";
    } else {
       # an extension might depend on bundled extensions, in particular the private wrapper collection
       if (my @prereq_bundled=grep { /^\w+$/ } @prereq_exts) {
@@ -378,8 +416,8 @@ LIBS=\${partial.LIBS} @add_libs
             }
          }
          my @all_objects=sort keys %$objects;
-         foreach my $obj_name (@all_objects) {
-            print $objects->{$obj_name}, "\n";
+         foreach my $obj_file (@all_objects) {
+            print $objects->{$obj_file}, "\n";
          }
          if (my $staticlibs=delete $link_flags->{staticlibs}) {
             push @all_objects, @$staticlibs;
@@ -387,7 +425,7 @@ LIBS=\${partial.LIBS} @add_libs
                print $commands, "\n";
             }
          }
-         print "build $app_shared_module: sharedmod @all_objects\n";
+         print "build $app_shared_module : sharedmod @all_objects\n";
          foreach my $flag (sort keys %$link_flags) {
             print "  $flag=", join(" ", @{$link_flags->{$flag}}), "\n";
          }
@@ -398,7 +436,7 @@ LIBS=\${partial.LIBS} @add_libs
             print STDERR "removing obsolete shared module(s) @obsolete\n";
             unlink @obsolete;
          }
-         print "build $app_shared_module: emptyfile\n\n";
+         print "build $app_shared_module : emptyfile\n\n";
       }
    }
 
@@ -416,7 +454,7 @@ LIBS=\${partial.LIBS} @add_libs
 
    print <<"---";
 # flag file may be deleted after wrapper generation and extension reconfiguring
-build \${builddir}/.apps.built: emptyfile | @all_app_targets
+build \${builddir}/.apps.built : emptyfile | @all_app_targets
 
 ---
    my @all_targets=('${builddir}/.apps.built', @all_app_targets);
@@ -425,10 +463,10 @@ build \${builddir}/.apps.built: emptyfile | @all_app_targets
    if ($core_mode) {
       if ($ConfigFlags{LDcallableFLAGS} ne "none") {
          print <<"---";
-build \${buildroot}/applib/fake.c: gen_applib_stubs @all_app_targets
-build \${builddir}/lib/callable/fake.o: ccompile \${buildroot}/applib/fake.c
+build \${buildroot}/applib/fake.c : gen_applib_stubs @all_app_targets
+build \${builddir}/lib/callable/fake.o : ccompile \${buildroot}/applib/fake.c
   CextraFLAGS=-DPOLYMAKE_FAKE_FUNCTIONS
-build \${builddir}/lib/callable/stub.o: ccompile \${buildroot}/applib/fake.c
+build \${builddir}/lib/callable/stub.o : ccompile \${buildroot}/applib/fake.c
 
 ---
       }
@@ -444,13 +482,13 @@ build \${builddir}/lib/callable/stub.o: ccompile \${buildroot}/applib/fake.c
       }
       if (@all_bundled_targets) {
          print <<"---";
-build all.bundled: phony @all_bundled_targets
+build all.bundled : phony @all_bundled_targets
 ---
          push @all_targets, 'all.bundled';
       }
-      my $install_libs=generate_corelib_targets();
+      my ($install_deps, $install_libs)=generate_corelib_targets();
       print <<"---";
-build install: install_core || all
+build install : install_core || all $install_deps
   install_libs=$install_libs
 ---
       if (!$testscenario_pico_mode) {
@@ -459,25 +497,19 @@ build install: install_core || all
    } else {
       if (-f "$srcroot/support/rules.ninja") {
          print "include $srcrootname/support/rules.ninja\n";
-         $targetlist_deps{"$srcroot/support/rules.ninja"}=1;
+         $targetlist_deps{"$srcroot/support/rules.ninja"}=0;
       }
       add_custom_targets("$srcroot/support/generate_ninja_targets.pl",
                          all => \@all_targets, clean => \@all_clean_targets);
       print <<"---";
-build install: install_ext || all
+build install : install_ext || all
 ---
    }
 
    print <<"---";
-build all: phony @all_targets
-default all
-build clean.all: phony @all_clean_targets
+build all : phony @all_targets
+build clean.all : phony @all_clean_targets
 ---
-   close OUT;
-
-   unlink $targets_file;
-   rename "$targets_file.new", $targets_file
-     or die "could not rename $targets_file.new to $targets_file: $!\n";
 }
 
 sub add_custom_targets {
@@ -519,6 +551,7 @@ stubapps_link=\${builddir}/lib/callable/$stubapps_link
       my $out_dir='${builddir}/lib/core';
       foreach my $src_file (glob "$root/lib/core/src/*.cc") {
          my ($src_name, $obj_file)=basename($src_file, "cc");
+         push @all_source_files, $src_file;
          $src_file =~ s/^\Q$root\E/$srcrootname/;
          $obj_file="$out_dir/$obj_file.o";
          push @corelib_objects, $obj_file;
@@ -530,19 +563,21 @@ stubapps_link=\${builddir}/lib/callable/$stubapps_link
       $out_dir='${builddir}/lib/${perlxpath}';
       my $mode_flags=$Config::Config{optimize} =~ /-O[1-9]/ ? "" : "  CmodeFLAGS=\${CDebugFLAGS}\n";
 
-      my @xxs=glob("$root/lib/core/src/perl/*.xxs");
-      my @cc_from_xxs=map { "\${buildroot}/\${perlxpath}/".basename($_,"xxs").".cc" } @xxs;
+      my @perl_cc=glob("$root/lib/core/src/perl/*.cc");
+      my @perl_xxs=glob("$root/lib/core/src/perl/*.xxs");
+      push @all_source_files, @perl_cc, @perl_xxs;
+      my @cc_from_xxs=map { "\${buildroot}/\${perlxpath}/".basename($_,"xxs").".cc" } @perl_xxs;
 
       foreach my $src_file (@cc_from_xxs) {
-         my $xxs_file=shift(@xxs);
+         my $xxs_file=shift(@perl_xxs);
          $xxs_file =~ s/^\Q$root\E/$srcrootname/;
-         print "build $src_file: xxs_to_cc $xxs_file\n";
+         print "build $src_file : xxs_to_cc $xxs_file\n";
       }
       print "\n";
 
       my %glue_custom_flags=read_custom_script("$root/lib/core/src/perl/build_flags.pl");
 
-      foreach my $src_file (@cc_from_xxs, glob("$root/lib/core/src/perl/*.cc")) {
+      foreach my $src_file (@perl_cc, @cc_from_xxs) {
          my ($src_name, $obj_file)=basename($src_file, "cc");
          $src_file =~ s/^\Q$root\E/$srcrootname/;
          $obj_file="$out_dir/$obj_file.o";
@@ -554,23 +589,23 @@ stubapps_link=\${builddir}/lib/callable/$stubapps_link
       }
 
       print <<"---";
-build $Ext_module: sharedmod @corelib_objects
+build $Ext_module : sharedmod @corelib_objects
   LIBSextra=$glue_custom_flags{LIBS}
 
 ---
 
-      $targetlist_deps{"$root/lib/core/src"}=1;
-      $targetlist_deps{"$root/lib/core/src/perl"}=1;
+      push @all_source_dirs, "$root/lib/core/src", "$root/lib/core/src/perl";
 
       if ($ConfigFlags{LDcallableFLAGS} ne "none") {
          my %callable_custom_flags=read_custom_script("$root/lib/callable/src/perl/build_flags.pl");
          print <<"---";
 bootstrapXS.h=\${buildroot}/\${perlxpath}/polymakeBootstrapXS.h
-build \${bootstrapXS.h}: gen_xs_bootstrap @cc_from_xxs
+build \${bootstrapXS.h} : gen_xs_bootstrap @cc_from_xxs
 
 ---
          foreach my $src_file (glob("$root/lib/callable/src/perl/*.cc")) {
             my ($src_name, $obj_file)=basename($src_file, "cc");
+            push @all_source_files, $src_file;
             $src_file =~ s/^\Q$root\E/$srcrootname/;
             $obj_file="$out_dir/$obj_file.o";
             push @callable_objects, $obj_file;
@@ -581,37 +616,39 @@ build \${bootstrapXS.h}: gen_xs_bootstrap @cc_from_xxs
          }
 
          print <<"---";
-build \${callable_lib}: sharedmod @corelib_objects @callable_objects
+build \${callable_lib} : sharedmod @corelib_objects @callable_objects
   LDsharedFLAGS=\${LDcallableFLAGS}
   LDextraFLAGS=\${LDsonameFLAGS}$callable_libname \${LIBperlFLAGS}
   LIBSextra=$glue_custom_flags{LIBS}
-build \${callable_link}: symlink_samedir \${callable_lib}
+build \${callable_link} : symlink_samedir \${callable_lib}
 
-build \${fakeapps_lib}: sharedmod \${builddir}/lib/callable/fake.o
+build \${fakeapps_lib} : sharedmod \${builddir}/lib/callable/fake.o
   LDsharedFLAGS=\${LDcallableFLAGS}
   LDextraFLAGS=\${LDsonameFLAGS}$stubapps_libname
-build \${fakeapps_link}: symlink_samedir \${fakeapps_lib}
+build \${fakeapps_link} : symlink_samedir \${fakeapps_lib}
 
-build \${stubapps_lib}: sharedmod \${builddir}/lib/callable/stub.o
+build \${stubapps_lib} : sharedmod \${builddir}/lib/callable/stub.o
   LDsharedFLAGS=\${LDcallableFLAGS}
   LDextraFLAGS=\${LDsonameFLAGS}$stubapps_libname
-build \${stubapps_link}: symlink_samedir \${stubapps_lib}
+build \${stubapps_link} : symlink_samedir \${stubapps_lib}
 
 ---
-         $targetlist_deps{"$root/lib/callable/src/perl"}=1;
+         push @all_source_dirs, "$root/lib/callable/src/perl";
       }
    }
 
    if ($ConfigFlags{LDcallableFLAGS} ne "none") {
       print <<"---";
-build all.libs: phony $Ext_module \${callable_link} \${fakeapps_link} \${stubapps_link}
+build all.libs : phony $Ext_module \${callable_link}
+build callable-apps-libs : phony \${fakeapps_link} \${stubapps_link}
 ---
-      return '--xs '.$Ext_module.' --callable ${callable_lib} ${callable_link} --fakelibs ${stubapps_lib} ${stubapps_link} ${fakeapps_lib} ${fakeapps_link}';
+      return ('callable-apps-libs',
+              '--xs '.$Ext_module.' --callable ${callable_lib} ${callable_link} --fakelibs ${stubapps_lib} ${stubapps_link} ${fakeapps_lib} ${fakeapps_link}');
    } else {
       print <<"---";
-build all.libs: phony $Ext_module
+build all.libs : phony $Ext_module
 ---
-      return '--xs '.$Ext_module;
+      return ('', '--xs '.$Ext_module);
    }
 }
 
@@ -624,6 +661,177 @@ sub compose_sharedlib_names {
    )
 }
 
+sub record_deps {
+   my ($target, $deps_file, $deps)=@_;
+   open my $D, ">", $deps_file
+     or die "could not create dependency file $deps_file: $!\n";
+
+   print $D join(" \\\n", "$target:", map { "  $_" } keys(%$deps)), "\n";
+   close $D;
+}
+
+sub finalize_targets_file {
+   print "\ndefault all\n";
+   close OUT;
+   unlink $targets_file;
+   rename "$targets_file.new", $targets_file
+     or die "could not rename $targets_file.new to $targets_file: $!\n";
+}
+########################################################################################
+sub create_file_list {
+   my ($filename, $list)=@_;
+   my $text=join(" ", sort @$list);
+   open my $L, ">", $filename or die "can't create $filename: $!\n";
+   print $L $text;
+}
+
+sub update_file_list {
+   my ($filename, $dirlist, $pattern)=@_;
+   my $text=join(" ", map { glob("$_/$pattern") } @$dirlist);
+   if (-f $filename) {
+      open my $L, "+<", $filename or die "can't modify $filename: $!\n";
+      local $/;
+      # only overwrite it if comething has changed, otherwise the target list generation can be skipped
+      if (<$L> ne $text) {
+         seek $L, 0, 0;
+         truncate $L, 0;
+         print $L $text;
+      }
+   } else {
+      open my $L, ">", $filename or die "can't create $filename: $!\n";
+      print $L $text;
+   }
+}
+########################################################################################
+sub load_cpperl_gen_rules {
+   my ($filename)=@_;
+   if (-f $filename) {
+      open my $F, "<", $filename
+        or die "can't read $filename: $!\n";
+      while (<$F>) {
+         if (my ($out, $in, $config_depend)= /^ *build +(.*?) *: *gen_cpperl_mod +(\S+)\s*(?:\| *\S+( +\$\{config\.file\})?|$)/) {
+            my @out= $out =~ /(\S+)/g;
+            my $in_file= $in =~ s/\$\{\w+\}/$srcroot/r;
+            if (-f $in_file) {
+               $cpperl_def_files{$in}=\@out;
+               $cpperl_mods{$_}=$in for @out;
+               $cpperl_config_dependent{$in}= $config_depend ne "";
+            }
+         } elsif (my ($files)= /^ *# *\@update +(.*)/) {
+            # an update remark appended by prior rule
+            my ($in_file, @out_files)= $files =~ /(\S+)/g;
+            if (-f $in_file) {
+               update_cpperl_gen_rules($in_file, @out_files);
+            }
+         } elsif (/^ *(?!build +(.*?) *: *(?:inspect|phony)\b)[^#\s]/) {
+            die "invalid line in generated rules $filename: $_";
+         }
+      }
+   }
+}
+
+# input_file, out_files ... =>
+sub update_cpperl_gen_rules {
+   my $in_file=shift;
+   my $config_depend;
+   if (@_ && $_[-1] eq "|config.file") {
+      pop @_;
+      $config_depend=1;
+   }
+   my $in=$in_file =~ s/^\Q$srcroot\E/$srcrootname/r;
+   my @out= map { s/^\Q$srcroot\E/$srcrootname/r } @_;
+   my $old_out_list=delete $cpperl_def_files{$in};
+   if ($old_out_list) {
+      delete @cpperl_mods{@$old_out_list};
+   }
+   if (@out) {
+      $cpperl_def_files{$in}=\@out;
+      $cpperl_config_dependent{$in}=$config_depend;
+      $cpperl_mods{$_}=$in for @out;
+   } else {
+      # completely disappeared
+      if ($core_mode && $DeveloperMode) {
+         print STDERR "deleting obsolete interface definition file $in_file\n";
+         $in_file =~ s{^\Q$root\E/}{};
+         system("cd $root; git rm -f $in_file || rm -f $in_file");
+      } elsif (-w $in_file) {
+         print STDERR "deleting obsolete interface definition file $in_file\n";
+         unlink $in_file;
+      } else {
+         print STDERR "WARNING: encountered an empty or obsolete interface definition file in_file\n";
+      }
+   }
+}
+
+sub write_cpp_gen_rules {
+   my ($filename, $filename_in_rules)=@_;
+   open my $R, ">", $filename
+     or die "can't write to $filename: $!\n";
+   my (@all_inputs, @all_generated);
+   foreach my $in (sort keys %cpperl_def_files) {
+      my @out=sort @{$cpperl_def_files{$in}};
+      my $out=join(" ", @out);
+      push @all_inputs, $in;
+      push @all_generated, @out;
+      my $depends='${root}/support/generate_cpperl_modules.pl';
+      if ($cpperl_config_dependent{$in}) {
+         $depends .= ' ${config.file}';
+      }
+      print $R <<"---";
+build $out : gen_cpperl_mod $in | $depends
+build $in : phony
+---
+   }
+   print $R <<"---";
+build $filename_in_rules : inspect @all_inputs || @all_generated
+---
+}
+########################################################################################
+sub generate_filelist_rules {
+   my %file_in_rules=map { ($_ => s/\Q$buildroot\E/\${buildroot}/r) }
+                     $source_list_file, $cpperl_list_file, $cpperl_gen_file;
+
+   my $after_cpperl_gen="";
+
+   if (@all_cpperl_files) {
+      # regeneration of the c++/perl interface list
+      $targetlist_deps{$cpperl_list_file}=0;
+      @all_cpperl_dirs = map { s/^\Q$srcroot\E/$srcrootname/r } sort @all_cpperl_dirs;
+      print <<"---";
+
+build $file_in_rules{$cpperl_list_file} : gen_file_list @all_cpperl_dirs | \${root}/support/generate_ninja_targets.pl
+  what=cpperl-list
+---
+      print <<"---" for @all_cpperl_dirs;
+build $_ : phony
+---
+      -d "$buildroot/cpperl" or File::Path::make_path("$buildroot/cpperl");
+      create_file_list($cpperl_list_file, \@all_cpperl_files);
+      write_cpp_gen_rules($cpperl_gen_file, $file_in_rules{$cpperl_gen_file});
+      $targetlist_deps{$cpperl_gen_file}=0;
+      print "include $file_in_rules{$cpperl_gen_file}\n";
+
+      $after_cpperl_gen=" || $file_in_rules{$cpperl_gen_file}";
+   } else {
+      # there are currently no interface definitions, but some directories where new ones might pop up later
+      # so we should watch for changes there
+      $targetlist_deps{$_}=1 for @all_cpperl_dirs;
+      unlink $cpperl_list_file, $cpperl_gen_file;
+   }
+
+   # regeneration of the source list
+   $targetlist_deps{$source_list_file}=0;
+   my @all_source_dirs = map { s/^\Q$srcroot\E/$srcrootname/r } sort @all_source_dirs;
+   print <<"---";
+
+build $file_in_rules{$source_list_file} : gen_file_list @all_source_dirs | \${root}/support/generate_ninja_targets.pl $after_cpperl_gen
+  what=source-list
+---
+   print <<"---" for @all_source_dirs, (map { s/^\Q$srcroot\E/$srcrootname/r } grep { $targetlist_deps{$_} } sort keys %targetlist_deps);
+build $_ : phony
+---
+   create_file_list($source_list_file, \@all_source_files);
+}
 
 # Local Variables:
 # cperl-indent-level:3

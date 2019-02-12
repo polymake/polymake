@@ -112,7 +112,7 @@ user_function db_get_type_information({db => $PolyDB::default::db_database_name,
 # @option String db database name
 # @option String col collection name
 # @option String key the key of the type information
-# @option Bool replace set to 1 if a type information for this database, collection and key already exists and should be replaced
+# @option Bool replace type information for this database, collection and key already exists and should be replaced
 # @option String file a filename containing the type information as json document (only one of file and type_information allowed)
 # @option HASH type_information the type information as per hash (only one of file and type_information allowed)
 # @option String username
@@ -121,11 +121,11 @@ user_function db_get_type_information({db => $PolyDB::default::db_database_name,
 # @option Bool verbose
 user_function db_set_type_information ({db=> undef, collection => undef, local => 0, \
                                         key => undef, \
-                                        replace => undef, \
+                                        replace => false, \
                                         file => undef, type_information => undef, \
                                         username => undef, password => undef, \
                                         polydb_version => undef, \
-                                        verbose => 0 \
+                                        verbose => false \
                                        } ) \
 {
    my ($options) = @_;
@@ -255,39 +255,6 @@ function convert_type_information {
    $type_info->{'json_modifier'} = $old_type_info->{'modifier'};
    $type_info->{'type'} = $old_type_info->{'basic_type'};
    return $type_info;
-}
-
-
-### function needed to access data in the old db format
-### only used in testcases
-
-# @category Database Write Access
-# Returns the template object for the collection //col// of the database //db// (if this is set).
-# returns the full template record for a given collection and a given key
-#
-# @param String db name of the database, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available databases
-# @param String collection name of the collection, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available collections
-# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
-# @option String type_information_key   template name to load from the database
-# @option MongoClient client
-# @return HASH
-user_function db_get_type_info({db => $PolyDB::default::db_database_name, \
-                                collection => $PolyDB::default::db_collection_name, \
-                                local => 0, \
-                                client => undef, \
-                                template_key=>"default"}) \
-{
-   my ($options) = @_;
-   my $local = $options->{local};
-
-   my $client = $options->{client} // Client::get_client($local, "", "");
-
-   my $tcol = $client->get_database($options->{"db"})->get_collection("$PolyDB::default::db_type_information")
-      // die "No connection to database $PolyDB::default::db_type_information\n";
-   my $template = $tcol->find({db => $options->{"db"}, col => $options->{"collection"}, key=>$options->{'template_key'}})->next
-      // die "no template data for collection $options->{'collection'} in database $options->{'db'} with key $options->{'template_key'}\n";
-
-   return $template;
 }
 
 

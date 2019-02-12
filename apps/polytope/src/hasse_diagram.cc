@@ -28,28 +28,34 @@ using graph::lattice::CutAnd;
 perl::Object hasse_diagram(const IncidenceMatrix<>& VIF, const int cone_dim)
 {
    const bool is_dual = VIF.rows() < VIF.cols();
-   const int total = (is_dual? VIF.rows() : VIF.cols());
+   if (is_dual) {
+      const int total = VIF.rows();
+      BasicClosureOperator<> cop(total, T(VIF));
+      TrivialCut<BasicDecoration> cut;
+      BasicDecorator<> dec(VIF.cols(), cone_dim, Set<int>());
 
-   BasicClosureOperator<> cop = is_dual?
-      BasicClosureOperator<>(total,T(VIF)) : BasicClosureOperator<>(total,VIF);
-   TrivialCut<BasicDecoration> cut;
-   BasicDecorator<> dec = is_dual?
-      BasicDecorator<>(VIF.cols(), cone_dim, Set<int>()) :
-      BasicDecorator<>(0, Set<int>());
+      Lattice<BasicDecoration, Sequential> init_lattice;
+      Lattice<BasicDecoration, Sequential> result(graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
+         cop, cut, dec, 0, graph::lattice_builder::Dual(), init_lattice));
+      sort_vertices_and_facets(result, VIF);
+      return static_cast<perl::Object>(result);
+   } else {
+      const int total = VIF.cols();
+      BasicClosureOperator<> cop(total, VIF);
+      TrivialCut<BasicDecoration> cut;
+      BasicDecorator<> dec(0, Set<int>());
 
-   Lattice<BasicDecoration, Sequential> init_lattice;
-   Lattice<BasicDecoration, Sequential> result = (is_dual?
-          graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(cop, cut, dec, 0, graph::lattice_builder::Dual(), init_lattice) :
-          graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(cop, cut, dec, 0, graph::lattice_builder::Primal(), init_lattice));
-   sort_vertices_and_facets(result, VIF);
-   return result.makeObject();
+      Lattice<BasicDecoration, Sequential> init_lattice;
+      Lattice<BasicDecoration, Sequential> result(graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
+         cop, cut, dec, 0, graph::lattice_builder::Primal(), init_lattice));
+      sort_vertices_and_facets(result, VIF);
+      return static_cast<perl::Object>(result);
+   }
 }
 
 
-Lattice<BasicDecoration, Nonsequential> bounded_hasse_diagram_computation(
-  const IncidenceMatrix<>& VIF,
-  const Set<int>& far_face,
-  const int boundary_dim)
+Lattice<BasicDecoration, Nonsequential>
+bounded_hasse_diagram_computation(const IncidenceMatrix<>& VIF, const Set<int>& far_face, const int boundary_dim)
 {
    using bounded_cut_type = SetAvoidingCut<BasicDecoration>;
    using rank_cut_type = RankCut<BasicDecoration, graph::lattice::RankCutType::LesserEqual>;
@@ -62,12 +68,13 @@ Lattice<BasicDecoration, Nonsequential> bounded_hasse_diagram_computation(
    BasicDecorator<> dec(0, scalar2set(-1));
 
    Lattice<BasicDecoration, Nonsequential> init_lattice;
-   Lattice<BasicDecoration, Nonsequential> result = (boundary_dim == -1) ?
-      graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
-                  cop, bounded_cut,dec, 1, graph::lattice_builder::Primal(), init_lattice) :
-      graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
-                  cop, bounded_and_rank_cut,dec, 1, graph::lattice_builder::Primal(), init_lattice);
-   return result;
+   if (boundary_dim == -1) {
+      return graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
+               cop, bounded_cut,dec, 1, graph::lattice_builder::Primal(), init_lattice);
+   } else {
+      return graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
+               cop, bounded_and_rank_cut,dec, 1, graph::lattice_builder::Primal(), init_lattice);
+   }
 }
 
 perl::Object bounded_hasse_diagram(const IncidenceMatrix<>& VIF,
@@ -78,29 +85,31 @@ perl::Object bounded_hasse_diagram(const IncidenceMatrix<>& VIF,
   if (std::min(VIF.rows(), VIF.cols()) == 0) {
     return hasse_diagram(VIF, 0);
   }
-  return bounded_hasse_diagram_computation(VIF, far_face, boundary_dim).makeObject();
+  return static_cast<perl::Object>(bounded_hasse_diagram_computation(VIF, far_face, boundary_dim));
 }
 
 perl::Object rank_bounded_hasse_diagram(const IncidenceMatrix<>& VIF,
                                         int cone_dim, int boundary_dim, bool from_above)
 {
-   bool is_dual = from_above;
-   int total = (is_dual? VIF.rows() : VIF.cols());
-   BasicClosureOperator<> cop = is_dual?
-      BasicClosureOperator<>(total,T(VIF)) : BasicClosureOperator<>(total,VIF);
-   auto cut_above = RankCut<BasicDecoration,graph::lattice::RankCutType::GreaterEqual>(boundary_dim);
-   auto cut_below = RankCut<BasicDecoration,graph::lattice::RankCutType::LesserEqual>(boundary_dim);
-   BasicDecorator<> dec = is_dual?
-      BasicDecorator<>(VIF.cols(), cone_dim, scalar2set(-1)) :
-      BasicDecorator<>(0, scalar2set(-1));
+   if (from_above) {
+      const int total = VIF.rows();
+      BasicClosureOperator<> cop(total, T(VIF));
+      BasicDecorator<> dec(VIF.cols(), cone_dim, scalar2set(-1));
+      const auto cut_above = RankCut<BasicDecoration,graph::lattice::RankCutType::GreaterEqual>(boundary_dim);
 
-   Lattice<BasicDecoration, Sequential> init_lattice;
-   Lattice<BasicDecoration, Sequential> result = from_above?
-      graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
-                  cop, cut_above, dec, 1, graph::lattice_builder::Dual(), init_lattice) :
-      graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
-                  cop, cut_below, dec, 1, graph::lattice_builder::Primal(), init_lattice);
-   return result.makeObject();
+      Lattice<BasicDecoration, Sequential> init_lattice;
+      return static_cast<perl::Object>(graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
+                cop, cut_above, dec, 1, graph::lattice_builder::Dual(), init_lattice));
+   } else {
+      const int total = VIF.cols();
+      BasicClosureOperator<> cop(total, VIF);
+      BasicDecorator<> dec(0, scalar2set(-1));
+      const auto cut_below = RankCut<BasicDecoration,graph::lattice::RankCutType::LesserEqual>(boundary_dim);
+
+      Lattice<BasicDecoration, Sequential> init_lattice;
+      return static_cast<perl::Object>(graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
+                cop, cut_below, dec, 1, graph::lattice_builder::Primal(), init_lattice));
+   }
 }
 
 

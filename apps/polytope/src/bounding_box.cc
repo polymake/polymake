@@ -32,7 +32,7 @@ bounding_box(const Matrix<Scalar>& V, const Scalar& surplus_k, const bool visual
    while (i>=0 && is_zero(V(i,0))) --i;
    if (i<0) throw std::runtime_error("bounding_box: no bounded vertices for box.");
 
-   Vector<Scalar> min_vector(V[i].slice(0,d)), max_vector(min_vector);
+   Vector<Scalar> min_vector(V[i].slice(sequence(0,d))), max_vector(min_vector);
    for (--i ; i>=0; --i)
       if (!is_zero(V(i,0)))
          for (int j=1; j<d; ++j)

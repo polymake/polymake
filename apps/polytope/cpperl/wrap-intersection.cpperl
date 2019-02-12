@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "intersection.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "intersection", "include": ["polymake/Rational.h"], "sig": "intersection:T1.B", "tp": "1"},
+ null ],
+"version": 3}

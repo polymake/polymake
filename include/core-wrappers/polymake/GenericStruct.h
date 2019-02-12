@@ -54,7 +54,7 @@ struct StructUtils {
 namespace polymake { namespace perl_bindings {
 
 template <typename Struct>
-SV* member_names(bait*, GenericStruct<Struct>*)
+SV* member_names(bait, GenericStruct<Struct>*)
 {
    return pm::perl::StructUtils<Struct>::field_names();
 }

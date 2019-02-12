@@ -73,6 +73,7 @@ property LABELS : Array<String> : mutable;
 
 # @category Matroid properties
 # Chirotope corresponding to [[VECTORS]]
+# @depends topcom
 property CHIROTOPE : Text;
 
 # @category Matroid properties

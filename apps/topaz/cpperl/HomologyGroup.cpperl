@@ -1,0 +1,6 @@
+{"app": "topaz",
+ "inst": [
+  {"pkg": "Polymake::topaz::HomologyGroup"},
+  {"class": "HomologyGroup<Integer>", "include": ["polymake/Integer.h", "polymake/topaz/HomologyComplex.h"], "pkg": "Polymake::topaz::HomologyGroup__Integer"},
+ null ],
+"version": 3}

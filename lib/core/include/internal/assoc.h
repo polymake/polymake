@@ -143,10 +143,14 @@ struct operation_cross_const_helper< operations::associative_search<TMapRef> > {
 };
 
 template <typename TMap, typename TKeys,
+          bool is_multimap=TMap::is_multimap,
           bool keys_match=isomorphic_types<typename TMap::key_type, TKeys>::value>
-class assoc_helper {
+class assoc_helper {};
+
+template <typename TMap, typename TKeys>
+class assoc_helper<TMap, TKeys, false, true> {
 public:
-   typedef typename inherit_const<typename TMap::mapped_type, TMap>::type& result_type;
+   using result_type = typename inherit_const<typename TMap::mapped_type, TMap>::type&;
 
    result_type operator()(TMap& map, const TKeys& k) const
    {
@@ -168,19 +172,19 @@ protected:
 };
 
 template <typename TMap, size_t s>
-class assoc_helper<TMap, char[s], true>
-   : assoc_helper<TMap, typename TMap::key_type, true> {
+class assoc_helper<TMap, char[s], false, true>
+   : assoc_helper<TMap, typename TMap::key_type, false, true> {
 public:
-   typedef assoc_helper<TMap, typename TMap::key_type, true> base_t;
+   using base_t = assoc_helper<TMap, typename TMap::key_type, false, true>;
 
    typename base_t::result_type operator()(TMap& map, const char (&k)[s]) const
    {
-      return base_t::impl(map, typename TMap::key_type(k), std::is_const<TMap>());
+      return base_t::operator()(map, typename TMap::key_type(k));
    }
 };
 
 template <typename TMap, typename TKeys>
-class assoc_helper<TMap, TKeys, false> {
+class assoc_helper<TMap, TKeys, false, false> {
 public:
    typedef TransformedContainer<const TKeys&, operations::associative_access<TMap&, typename TKeys::value_type> > result_type;
 
@@ -190,7 +194,7 @@ public:
    }
 };
 
-template <typename TMap, typename TKeys> inline
+template <typename TMap, typename TKeys>
 typename assoc_helper<const TMap, TKeys>::type
 select_by_keys(const TMap& map, const TKeys& keys)
 {

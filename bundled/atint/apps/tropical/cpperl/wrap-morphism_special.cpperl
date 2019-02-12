@@ -1,0 +1,10 @@
+{"app": "tropical", "embed": "morphism_special.cc",
+ "inst": [
+  {"args": ["Max", "void", "perl::Canned<const Matrix<Rational>&>", "void"], "func": "evaluation_map", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "evaluation_map:T1.x.X.x", "tp": "1"},
+  {"args": ["Min", "void", "void", "void", "void"], "func": "evaluation_map_d", "include": ["polymake/TropicalNumber.h"], "sig": "evaluation_map_d:T1.x.x.x.x", "tp": "1"},
+  {"args": ["Max", "void", "perl::Canned<const Set<int>&>"], "func": "forgetful_map", "include": ["polymake/Set.h", "polymake/TropicalNumber.h"], "sig": "forgetful_map:T1.x.X", "tp": "1"},
+  {"args": ["Min", "void", "perl::Canned<const Set<int>&>"], "func": "forgetful_map", "include": ["polymake/Set.h", "polymake/TropicalNumber.h"], "sig": "forgetful_map:T1.x.X", "tp": "1"},
+  {"args": ["Max", "void", "void"], "func": "projection_map_default", "include": ["polymake/TropicalNumber.h"], "sig": "projection_map_default:T1.x.x", "tp": "1"},
+  {"args": ["Min", "void", "perl::Canned<const Set<int>&>"], "func": "projection_map", "include": ["polymake/Set.h", "polymake/TropicalNumber.h"], "sig": "projection_map:T1.x.X", "tp": "1"},
+ null ],
+"version": 3}

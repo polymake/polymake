@@ -104,12 +104,12 @@ int main (int argc, char *argv[])
                    "Please investigate the reasons and fix the installation.\n";
          } else {
             ($nmz_version) = $message =~ /version ([0-9]\.[0-9]\.[0-9])/;
-            my $minversion = "3.1.0";
+            my $minversion = "3.6.0";
             if (Polymake::Configure::v_cmp($nmz_version,$minversion) >= 0) {
                $UseBundled = 0;
             } else {
                check_bundled() and !defined($nmz_path) or
-                  die "Your libnormaliz version $nmz_version is too old, at least version $minversion is required.\n";
+                  die "Your libnormaliz version $nmz_version is too old, at least version $minversion is required.\nPlease install a newer version or use the bundled version by omitting\n--with-libnormaliz during configuration.\n";
             }
          }
       } else {

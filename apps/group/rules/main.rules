@@ -109,6 +109,7 @@ INCLUDE
   group.rules
   permlib.rules
   group_helpers.rules
+  switch_table.rules
 
 # Local Variables:
 # mode: perl

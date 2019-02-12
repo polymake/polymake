@@ -23,7 +23,7 @@
 #include "polymake/Vector.h"
 
 #include <cstdlib>
-#include <string.h>
+#include <memory>
 
 namespace pm {
 
@@ -81,22 +81,22 @@ public:
    SharedRandomState() {}
 
    explicit SharedRandomState(const RandomSeed& seed)
-      : s(seed) {}
+      : state_ptr(new RandomState(seed)) {}
 
    void reset(const RandomSeed& seed=RandomSeed())
    {
-      gmp_randseed(s->state, seed.get().get_rep());
+      gmp_randseed(state(), seed.get().get_rep());
    }
 protected:
-   gmp_randstate_t& state() { return s->state; }
+   gmp_randstate_t& state() { return state_ptr->state; }
 
 #if GMP_LIMB_BITS==32
-   void fix_for_mpfr() { s->fix_for_mpfr(); }
+   void fix_for_mpfr() { state_ptr->fix_for_mpfr(); }
 #else
    static void fix_for_mpfr() {}
 #endif
 
-   shared_object<RandomState, CopyOnWriteTag<std::false_type>> s;
+   std::shared_ptr<RandomState> state_ptr;
 };
 
 template <typename Generator, typename Eref>
@@ -104,14 +104,14 @@ class random_get_iterator {
 protected:
    Generator* generator;
 public:
-   typedef input_iterator_tag iterator_category;
-   typedef typename deref<Eref>::type value_type;
-   typedef Eref reference;
-   typedef void* pointer;
-   typedef ptrdiff_t difference_type;
+   using iterator_category = input_iterator_tag;
+   using value_type = typename deref<Eref>::type;
+   using reference = Eref;
+   using pointer = void*;
+   using difference_type = ptrdiff_t;
 
-   random_get_iterator(const Generator* gen_arg=NULL) :
-      generator(const_cast<Generator*>(gen_arg)) {}
+   random_get_iterator(const Generator* gen_arg=nullptr)
+      : generator(const_cast<Generator*>(gen_arg)) {}
 
    reference operator* () const { return generator->get(); }
 
@@ -134,12 +134,13 @@ template <typename Top, typename Eref=typename Top::reference>
 class GenericRandomGenerator
    : public Generic<Top> {
 public:
-   typedef typename deref<Eref>::type value_type;
-   typedef Eref reference;
-   typedef reference const_reference;
+   using value_type = typename deref<Eref>::type;
+   using reference = Eref;
+   using const_reference = reference;
+   using generic_type = GenericRandomGenerator;
 
-   typedef random_get_iterator<Top, Eref> iterator;
-   typedef iterator const_iterator;
+   using iterator = random_get_iterator<Top, Eref>;
+   using const_iterator = iterator;
    iterator begin() const { return iterator(static_cast<const Top*>(this)); }
    iterator end() const { return iterator(); }
 };
@@ -376,14 +377,14 @@ protected:
 class DiscreteRandom
    : public GenericRandomGenerator<DiscreteRandom, int> {
 public:
-   template <typename Container, typename enabled=typename std::enable_if<isomorphic_to_container_of<Container,double>::value>::type>
+   template <typename Container, typename=std::enable_if_t<isomorphic_to_container_of<Container,double>::value>>
    DiscreteRandom(const Container& distrib_src, const RandomSeed& seed=RandomSeed())
       : rg(seed), distribution(distrib_src)
    {
       normalize();
    }
 
-   template <typename Container, typename enabled=typename std::enable_if<isomorphic_to_container_of<Container,double>::value>::type>
+   template <typename Container, typename=std::enable_if_t<isomorphic_to_container_of<Container,double>::value>>
    DiscreteRandom(const Container& distrib_src, const SharedRandomState& s)
       : rg(s), distribution(distrib_src)
    {

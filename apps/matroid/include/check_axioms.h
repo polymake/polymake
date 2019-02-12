@@ -27,17 +27,16 @@ template<typename Container>
 bool check_basis_exchange_axiom_impl(const Container& bases, bool verbose=false)
 {
    Set<Set<int> > basis_set;
-   for (typename Entire<Container>::const_iterator bit = entire(bases); !bit.at_end(); ++bit)
+   for (auto bit = entire(bases); !bit.at_end(); ++bit)
       basis_set += *bit; // have to do it like this so that the comparison tree gets built properly
    
-   for (typename Entire<Container>::const_iterator bit1 = entire(bases); !bit1.at_end(); ++bit1) {
-      for (typename Entire<Container>::const_iterator bit2 = entire(bases); !bit2.at_end(); ++bit2) {
-         const Set<int> 
-            AmB = *bit1 - *bit2,
-            BmA = *bit2 - *bit1;
-         for (Entire<Set<int> >::const_iterator ambit = entire(AmB); !ambit.at_end(); ++ambit) {
+   for (auto bit1 = entire(bases); !bit1.at_end(); ++bit1) {
+      for (auto bit2 = entire(bases); !bit2.at_end(); ++bit2) {
+         const Set<int> AmB = *bit1 - *bit2;
+         const Set<int> BmA = *bit2 - *bit1;
+         for (auto ambit = entire(AmB); !ambit.at_end(); ++ambit) {
             bool verified (false);
-            for (Entire<Set<int> >::const_iterator bmait = entire(BmA); !verified && !bmait.at_end(); ++bmait) {
+            for (auto bmait = entire(BmA); !verified && !bmait.at_end(); ++bmait) {
                verified = basis_set.contains(*bit1 - *ambit + *bmait);
             }
             if (!verified) {
@@ -65,10 +64,10 @@ bool check_hyperplane_axiom_impl(const Array<SetType>& H, bool verbose=false)
           then there exists h in H such that (h1 intersect h2) union x subset h.
     */
    SetType E; // ground set
-   for (typename Entire<Array<SetType> >::const_iterator hit = entire(H); !hit.at_end(); ++hit)
+   for (auto hit = entire(H); !hit.at_end(); ++hit)
       E += *hit;
 
-   for (typename Entire<Subsets_of_k<const Array<SetType>&> >::const_iterator pit=entire(all_subsets_of_k(H, 2)); !pit.at_end(); ++pit) {
+   for (auto pit=entire(all_subsets_of_k(H, 2)); !pit.at_end(); ++pit) {
       const Set<SetType> p(*pit);
       const SetType& h1(p.front()), h2(p.back());
       if( E==h1 || E==h2){
@@ -83,10 +82,10 @@ bool check_hyperplane_axiom_impl(const Array<SetType>& H, bool verbose=false)
          return false;
       }
       const SetType C(E - h1 - h2);
-      for (typename Entire<SetType>::const_iterator sit = entire(C); !sit.at_end(); ++sit) {
+      for (auto sit = entire(C); !sit.at_end(); ++sit) {
          const SetType U((h1 * h2) + scalar2set(*sit));
          bool found_container(false);
-         for (typename Entire<Array<SetType> >::const_iterator hit = entire(H); !hit.at_end() && !found_container; ++hit) {
+         for (auto hit = entire(H); !hit.at_end() && !found_container; ++hit) {
             found_container = incl(U, *hit) <= 0;
          }
          if (!found_container) {
@@ -106,11 +105,11 @@ bool check_flat_axiom_impl(const Array<SetType>& F, bool verbose=false)
 {
    // Extract the hyperplanes from the flats, then check the hyperplane axioms.
    SetType E; // ground set
-   for (typename Entire<Array<SetType> >::const_iterator fit = entire(F); !fit.at_end(); ++fit)
+   for (auto fit = entire(F); !fit.at_end(); ++fit)
       E += *fit;
 
    FacetList HL(E.size());
-   for (typename Entire<Array<SetType> >::const_iterator fit = entire(F); !fit.at_end(); ++fit)
+   for (auto fit = entire(F); !fit.at_end(); ++fit)
       if (fit->size() != E.size())
          HL.insertMax(*fit);
 

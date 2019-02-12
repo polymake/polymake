@@ -1,0 +1,7 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Wary<Matrix<Rational>>&>"], "func": "trace", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "trace.X4"},
+  {"args": ["perl::Canned<const Wary<SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>>&>"], "func": "trace", "include": ["polymake/IncidenceMatrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/linalg.h"], "sig": "trace.X4"},
+  {"args": ["perl::Canned<const Wary<Matrix<QuadraticExtension<Rational>>>&>"], "func": "trace", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "trace.X4"},
+ null ],
+"version": 3}

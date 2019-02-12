@@ -1,0 +1,7 @@
+{"app": "polytope", "embed": "cayley_polytope.cc",
+ "inst": [
+  {"args": ["void", "void"], "func": "cayley_polytope", "sig": "cayley_polytope.B.o"},
+  {"args": ["pm::ListMatrix<pm::Vector<pm::Integer> >", "perl::Canned<const Matrix<Rational>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "op": "convert", "ret": "empty", "sig": "convert:O"},
+  {"args": ["Matrix<Rational>", "perl::Canned<const pm::ListMatrix<pm::Vector<pm::Integer> >&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "op": "new", "sig": "new.X"},
+ null ],
+"version": 3}

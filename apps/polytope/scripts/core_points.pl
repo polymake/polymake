@@ -121,7 +121,7 @@ sub get_universal_cp_reps {
 # @return Rational the number of the 1-layer
 sub getOnesLayer {
     my $vec=$_[0];
-    my $dehom_vec=$vec->slice(1);
+    my $dehom_vec=$vec->slice(range_from(1));
     my $allOnes=ones_vector<Rational>($vec->dim-1);
     return $dehom_vec*$allOnes;
 }
@@ -164,7 +164,7 @@ sub findOrbitConvCombPoly {
    my ($v, $g, $containedVec) = @_;
    my $p = orbit_polytope($v, $g);
    my $eqs = transpose( new Matrix( $p->POINTS->minor(All, new Set<Int>(1..$p->POINTS->cols - 1)) ) );
-   my $eqs_w_rhs = new Matrix(-($containedVec->slice(1,$containedVec->dim-1)) | $eqs);
+   my $eqs_w_rhs = new Matrix(-($containedVec->slice(sequence(1, $containedVec->dim-1))) | $eqs);
    my $pos_orth = new Matrix( zero_vector($eqs->cols) | unit_matrix($eqs->cols) );
    return new Polytope(EQUATIONS=>$eqs_w_rhs, INEQUALITIES=>$pos_orth);
 }

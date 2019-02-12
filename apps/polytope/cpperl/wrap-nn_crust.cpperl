@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "nn_crust.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "nn_crust", "include": ["polymake/Rational.h"], "sig": "nn_crust:T1.B", "tp": "1"},
+ null ],
+"version": 3}

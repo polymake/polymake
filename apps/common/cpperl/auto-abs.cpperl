@@ -1,0 +1,7 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Integer&>"], "func": "abs", "include": ["polymake/Integer.h"], "sig": "abs.X"},
+  {"args": ["perl::Canned<const QuadraticExtension<Rational>&>"], "func": "abs", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "abs.X"},
+  {"args": ["perl::Canned<const Rational&>"], "func": "abs", "include": ["polymake/Rational.h"], "sig": "abs.X"},
+ null ],
+"version": 3}

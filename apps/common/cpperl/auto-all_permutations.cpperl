@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["void"], "func": "all_permutations", "include": ["polymake/permutations.h"], "ret": "list", "sig": "all_permutations:L.x"},
+ null ],
+"version": 3}

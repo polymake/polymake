@@ -26,16 +26,15 @@
 
 namespace polymake { namespace polytope {
 
-   typedef graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential> Lattice;
+using Lattice = graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential>;
         
 // computes the cone defined in R^d, where d is the number of edges of the graph G
 // defined by the intersection of the positive orthant with all equations given by
 // the condition that the edge lengths around any 2-face should add to 0
-perl::Object minkowski_cone ( const Lattice H, // we only need the 2-faces
-                              const Graph<> G,      // the graph of the polytope
-                              EdgeMap<Undirected,Vector<Rational> > edge_directions, // the edge directions of the polytope
-                              const Set<int> far_face
-                                      )
+perl::Object minkowski_cone(const Lattice& H, // we only need the 2-faces
+                            const Graph<>& G,      // the graph of the polytope
+                            const EdgeMap<Undirected, Vector<Rational>>& edge_directions, // the edge directions of the polytope
+                            const Set<int>& far_face)
 {
   perl::Object c("Cone<Rational>");  // the minkowski cone
       
@@ -44,28 +43,25 @@ perl::Object minkowski_cone ( const Lattice H, // we only need the 2-faces
   EdgeMap<Undirected,int> edge_labels(G);
   int i = 0;
   int far_edges = 0;
-  for ( Entire<Edges<Graph<> > >::const_iterator e = entire(edges(G)); !e.at_end(); ++e){ 
-    if(!far_face.contains(e.from_node()) && !far_face.contains(e.to_node())) {
+  for (auto e = entire(edges(G)); !e.at_end(); ++e) {
+    if (!far_face.contains(e.from_node()) && !far_face.contains(e.to_node())) {
        edge_labels[*e] = i;
        i++;
     } else {
       far_edges++;
     }
-   }
+  }
             
   // collect the equations given by the 2-faces
   // order the nodes: smallest, smaller neighbour, then consecutively
   Matrix<Rational> equations(0,G.edges());
-  for ( auto node = entire(H.nodes_of_rank(3)); 
-        !node.at_end(); ++node ) {
-        
+  for (const auto node : H.nodes_of_rank(3)) {
     Matrix<Rational> M(edge_directions[0].dim(),G.edges()-far_edges);
-        
-    Set<int> TwoFace = H.face(*node);  // the 2-face we are currently working on
-    if((TwoFace*far_face).size() > 0){
-      continue;
-    }
-    int v = *(TwoFace.begin());        // the  node with smallest index
+
+    Set<int> TwoFace = H.face(node);  // the 2-face we are currently working on
+    if (!(TwoFace*far_face).empty()) continue;
+
+    int v = *(TwoFace.begin());        // the node with smallest index
     TwoFace -= v;                     
     int w = *((TwoFace * G.adjacent_nodes(v)).begin());  // the neighbor of v with smaller index
     TwoFace -= w;
@@ -75,7 +71,7 @@ perl::Object minkowski_cone ( const Lattice H, // we only need the 2-faces
         
     int u(-1); // need the node index outside loop; initialize to nonsensical value
     // add edges
-    while ( TwoFace.size() ) {
+    while (!TwoFace.empty()) {
       u = *((TwoFace * G.adjacent_nodes(w)).begin());
       Vector<Rational> E = edge_directions[edge_labels(u,w)];
       M.col(edge_labels(u,w)) = (u > w) ? (-1)*E : E;
@@ -98,25 +94,24 @@ perl::Object minkowski_cone ( const Lattice H, // we only need the 2-faces
 }    
 
 // return the polytope defined by a point in the minkowski summand cone
-perl::Object minkowski_cone_point(const Vector<Rational> cone_point, // the point in the minkowski cone
-                                  const Matrix<Rational> rays, // the rays of the minkowski cone
+perl::Object minkowski_cone_point(const Vector<Rational>& cone_point, // the point in the minkowski cone
+                                  const Matrix<Rational>& rays, // the rays of the recession cone of the original polytope
                                   const perl::Object g, // graph of the original polytope
-                                  const Set<int> far_face
+                                  const Set<int>& far_face
                                   )
 {
   const Graph<> G = g.give("ADJACENCY");
-  EdgeMap<Undirected,Vector<Rational> > edge_directions = g.give("EDGE_DIRECTIONS");
+  EdgeMap<Undirected,Vector<Rational>> edge_directions = g.give("EDGE_DIRECTIONS");
 
   // scale the edge directions
   int i = 0;
-  for ( Entire<Edges< Graph<> > >::const_iterator e = entire(edges(G)); !e.at_end();  ++e ){
-    if(!far_face.contains(e.from_node()) && !far_face.contains(e.to_node())) {
+  for (auto e = entire(edges(G)); !e.at_end();  ++e) {
+    if (!far_face.contains(e.from_node()) && !far_face.contains(e.to_node())) {
       edge_directions[*e] *= cone_point[i];
       i++;
     } else {
       edge_directions[*e] *= 0;
     } 
-    
   }
 
   NodeMap<Undirected,Vector<Rational> > new_vertices(G);  // the vertices of the Minkowski summand
@@ -133,7 +128,7 @@ perl::Object minkowski_cone_point(const Vector<Rational> cone_point, // the poin
     const int current = unprocessed_leaves.front();
     unprocessed_leaves.pop_front();
     Set<int> neighbours = G.adjacent_nodes(current);  
-    for (Entire< Set< int > >::const_iterator v = entire(neighbours); !v.at_end(); ++v) 
+    for (auto v = entire(neighbours); !v.at_end(); ++v) {
       if (!marked.contains(*v)) {
         unprocessed_leaves.push_back(*v);
         marked.insert(*v);
@@ -142,6 +137,7 @@ perl::Object minkowski_cone_point(const Vector<Rational> cone_point, // the poin
         else
           new_vertices[*v] = new_vertices[current] + edge_directions[G.edge(current,*v)];
       }
+    }
   }
 
   // points for the polytope (not vertices: edges of length zero lead to duplicates in the list)
@@ -153,16 +149,12 @@ perl::Object minkowski_cone_point(const Vector<Rational> cone_point, // the poin
     
     
 // return the polytope defined by coefficients to the rays of the minkowski summand cone
-perl::Object minkowski_cone_coeff(Vector<Rational> coefficients, perl::Object c, const perl::Object g, const Set<int> far_face, const Matrix<Rational> tailcone)
+perl::Object minkowski_cone_coeff(const Vector<Rational>& coefficients, perl::Object c, const perl::Object g, const Set<int>& far_face, const Matrix<Rational>& tailcone)
 {
-  //  for ( Entire<Vector<Rational> >::const_iterator e = entire(coefficients); !e.at_end(); ++e ) 
-  //  if ( *e < 0 ) 
-  //    throw std::runtime_error( "[minkowski_cone_coeff] -- coefficient vector must be non-negative");
-
   Matrix<Rational> rays = c.give("RAYS");      
-  if ( coefficients.dim() != rays.rows() ) 
+  if (coefficients.dim() != rays.rows()) 
     throw std::runtime_error( "[minkowski_cone_coeff] -- coefficient vector has wrong dimension");
-  return minkowski_cone_point(coefficients * rays,tailcone,g,far_face);
+  return minkowski_cone_point(coefficients * rays, tailcone, g, far_face);
 }    
 
 Function4perl(&minkowski_cone, "minkowski_cone($,$,$,$)");

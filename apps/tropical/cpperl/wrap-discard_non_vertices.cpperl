@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "discard_non_vertices.cc",
+ "inst": [
+  {"args": ["Min", "Rational", "void"], "func": "discard_non_vertices", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "discard_non_vertices:T2.B", "tp": "2"},
+  {"args": ["Max", "Rational", "void"], "func": "discard_non_vertices", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "discard_non_vertices:T2.B", "tp": "2"},
+ null ],
+"version": 3}

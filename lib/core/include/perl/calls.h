@@ -22,7 +22,7 @@ namespace pm { namespace perl {
 class PropertyValue;
 PropertyValue load_data(const std::string& filename);
 
-template <typename T> inline
+template <typename T>
 void save_data(const std::string& filename, const T& data, const std::string& description=std::string());
 
 PropertyValue get_custom(const AnyString& name, const AnyString& key=AnyString());
@@ -43,40 +43,40 @@ class PropertyValue : public Value {
 
    PropertyValue() {}
 
-   template <typename... TOptions>
-   explicit PropertyValue(SV* sv_arg, TOptions... options)
+   template <typename... Options>
+   explicit PropertyValue(SV* sv_arg, Options... option_args)
       : Value(sv_arg)
    {
-      set_options(options...);
+      set_options(option_args...);
    }
 
    void set_options() {}
 
-   template <typename... TMoreOptions>
-   void set_options(value_flags flag, TMoreOptions... more_options)
+   template <typename... MoreOptions>
+   void set_options(ValueFlags flag, MoreOptions... more_options)
    {
       options |= flag;
       set_options(more_options...);
    }
 
-   template <typename... TMoreOptions>
-   void set_options(allow_conversion, TMoreOptions... more_options)
+   template <typename... MoreOptions>
+   void set_options(allow_conversion, MoreOptions... more_options)
    {
-      options |= value_allow_conversion;
+      options |= ValueFlags::allow_conversion;
       set_options(more_options...);
    }
 
    void operator= (const PropertyValue&) = delete;
 
-   static SV* _load_data(const std::string& filename);
-   void _save_data(const std::string&, const std::string&);
+   static SV* load_data_impl(const std::string& filename);
+   void save_data_impl(const std::string&, const std::string&);
 public:
    PropertyValue(const PropertyValue& x);
    ~PropertyValue();
 };
 
 inline
-Value::NoAnchors Value::put_val(const PropertyValue& x, int, int)
+Value::NoAnchors Value::put_val(const PropertyValue& x, int)
 {
    set_copy(x);
    return NoAnchors();
@@ -85,15 +85,15 @@ Value::NoAnchors Value::put_val(const PropertyValue& x, int, int)
 inline
 PropertyValue load_data(const std::string& filename)
 {
-   return PropertyValue(PropertyValue::_load_data(filename));
+   return PropertyValue(PropertyValue::load_data_impl(filename));
 }
 
-template <typename T> inline
+template <typename T>
 void save_data(const std::string& filename, const T& data, const std::string& description)
 {
    PropertyValue v;
    v << data;
-   v._save_data(filename, description);
+   v.save_data_impl(filename, description);
 }
 
 template <typename TContainerRef>
@@ -121,7 +121,7 @@ public:
    ListResult& operator>> (Target& x)
    {
       if (!empty()) {
-         Value v(shift(), value_allow_undef | value_not_trusted);
+         Value v(shift(), ValueFlags::allow_undef | ValueFlags::not_trusted);
          v >> x;
          v.forget();
       }
@@ -131,7 +131,7 @@ public:
    template <typename TContainerRef>
    void operator>> (Unrolled<TContainerRef>&& c)
    {
-      Value v(sv, value_not_trusted);
+      Value v(sv, ValueFlags::not_trusted);
       v.retrieve_nomagic(c.container);
       forget();
       sv=nullptr;
@@ -156,36 +156,44 @@ private:
 class FunCall
    : protected Stack {
    void operator= (const FunCall&) = delete;
-   FunCall(const FunCall&) = delete;   
+   FunCall(const FunCall&) = delete;
 public:
-   FunCall(FunCall&&) = default;
+   FunCall(FunCall&& other)
+      : Stack(std::move(other))
+      , func(other.func)
+      , method_name(other.method_name)
+      , val_flags(other.val_flags)
+   {
+      other.val_flags = ValueFlags::is_mutable;
+   }
+
    ~FunCall();
 
-   template <typename... TArgs>
+   template <typename... Args>
    static
-   FunCall call_function(const AnyString& name, TArgs&&... args)
+   FunCall call_function(const AnyString& name, Args&&... args)
    {
-      FunCall fc(false, name, count_args(std::forward<TArgs>(args)...));
-      fc.push_args(std::forward<TArgs>(args)...);
+      FunCall fc(false, name, count_args(std::forward<Args>(args)...));
+      (void)std::initializer_list<bool>{ (fc.push_arg(std::forward<Args>(args)), true)... };
       return fc;
    }
 
-   template <typename... TArgs>
+   template <typename... Args>
    static
-   FunCall call_method(const AnyString& name, SV* obj_ref, TArgs&&... args)
+   FunCall call_method(const AnyString& name, SV* obj_arg, Args&&... args)
    {
-      FunCall fc(true, name, 1+count_args(std::forward<TArgs>(args)...));
-      fc.push(obj_ref);
-      fc.push_args(std::forward<TArgs>(args)...);
+      FunCall fc(true, name, 1 + count_args(std::forward<Args>(args)...));
+      fc.push(obj_arg);
+      (void)std::initializer_list<bool>{ (fc.push_arg(std::forward<Args>(args)), true)... };
       return fc;
    }
 
    // single consumer: call in a scalar context
    template <typename Target,
-             typename=typename std::enable_if<Concrete<Target>::value>::type>
+             typename=std::enable_if_t<Concrete<Target>::value>>
    operator Target ()
    {
-      return PropertyValue(call_scalar_context(), value_not_trusted);
+      return PropertyValue(call_scalar_context(), ValueFlags::not_trusted);
    }
 
    operator ListResult ()
@@ -200,56 +208,94 @@ public:
    }
 
 protected:
-   FunCall(bool is_method, const AnyString& name, int reserve);
+   FunCall(std::nullptr_t, ValueFlags val_flags_, int reserve);
 
-   template <typename... TArgs>
-   static
-   typename std::enable_if<!mlist_or<is_instance_of<pure_type_t<TArgs>, Unrolled>...>::value, int>::type
-   count_args(TArgs&&... args) { return sizeof...(TArgs); }
+   FunCall(std::nullptr_t, int reserve)
+      : FunCall(nullptr, ValueFlags::allow_non_persistent | ValueFlags::allow_store_any_ref, reserve) {}
 
-   template <typename TContainer, typename... MoreArgs>
-   static
-   int count_args(Unrolled<TContainer>&& c, MoreArgs&&... more_args)
+   FunCall(bool is_method, ValueFlags val_flags_, const AnyString& name, int reserve);
+
+   FunCall(bool is_method, const AnyString& name, int reserve)
+      : FunCall(is_method, ValueFlags::allow_non_persistent | ValueFlags::allow_store_any_ref, name, reserve) {}
+
+   template <typename Arg>
+   using count_separately = typename mlist_or< is_instance_of<pure_type_t<Arg>, Unrolled>,
+                                               is_instance_of<pure_type_t<Arg>, mlist> >::type;
+
+   template <typename... Args>
+   static constexpr
+   std::enable_if_t<!mlist_or<count_separately<Args>...>::value, int>
+   count_args(Args&&... args)
    {
-      return c.container.size()+count_args(std::forward<MoreArgs>(more_args)...);
+      return sizeof...(Args);
+   }
+
+   template <typename Container, typename... MoreArgs>
+   static
+   int count_args(Unrolled<Container>&& c, MoreArgs&&... more_args)
+   {
+      return c.container.size() + count_args(std::forward<MoreArgs>(more_args)...);
+   }
+
+   template <typename... Types, typename... MoreArgs>
+   static
+   int count_args(const mlist<Types...>&, MoreArgs&&... more_args)
+   {
+      return sizeof...(Types) + count_args(std::forward<MoreArgs>(more_args)...);
    }
 
    template <typename FirstArg, typename... MoreArgs>
    static
-   typename std::enable_if<!is_instance_of<FirstArg, Unrolled>::value && mlist_or<is_instance_of<pure_type_t<MoreArgs>, Unrolled>...>::value, int>::type
+   std::enable_if_t<!count_separately<FirstArg>::value && mlist_or<count_separately<MoreArgs>...>::value, int>
    count_args(FirstArg&& first_arg, MoreArgs&&... more_args)
    {
-      return 1+count_args(std::forward<MoreArgs>(more_args)...);
+      return 1 + count_args(std::forward<MoreArgs>(more_args)...);
    }
 
-   void push_args() {}
-
-   template <typename FirstArg, typename... MoreArgs>
-   void push_args(FirstArg&& first_arg, MoreArgs&&... more_args)
+   template <typename Arg>
+   std::enable_if_t<!count_separately<Arg>::value &&
+                    !is_among<pure_type_t<Arg>, OptionSet, AnyString, FunCall, SV*>::value>
+   push_arg(Arg&& arg)
    {
-      push_arg(std::forward<FirstArg>(first_arg));
-      push_args(std::forward<MoreArgs>(more_args)...);
+      Value v(val_flags);
+      v.put(std::forward<Arg>(arg));
+      push(v.get_temp());
    }
 
-   template <typename TArg>
-   typename std::enable_if<!is_instance_of<pure_type_t<TArg>, Unrolled>::value &&
-                           !std::is_same<pure_type_t<TArg>, OptionSet>::value>::type
-   push_arg(TArg&& arg)
-   {
-      Value v(value_allow_non_persistent | value_allow_store_any_ref);
-      v.put(std::forward<TArg>(arg), 0);
-      push_temp(v);
-   }
-
-   template <typename TContainerRef>
-   void push_arg(Unrolled<TContainerRef>&& c)
+   template <typename ContainerRef>
+   void push_arg(Unrolled<ContainerRef>&& c)
    {
       for (auto it=entire(c.container); !it.at_end(); ++it) {
-         Value v(value_allow_non_persistent | value_allow_store_any_ref);
-         v.put(*it, 0);
-         push_temp(v);
+         Value v(val_flags);
+         v.put(*it);
+         push(v.get_temp());
       }
    }
+
+   template <typename... Types>
+   void push_types(const mlist<Types...>&)
+   {
+      (void)std::initializer_list<bool>{ (push_type(type_cache<pure_type_t<Types>>::get_proto()), true)... };
+   }
+
+   void push_type(SV* proto)
+   {
+      if (proto)
+         push(proto);
+      else
+         throw undefined();
+   }
+
+   template <typename... Types>
+   void push_arg(const mlist<Types...>& t)
+   {
+      push_types(t);
+      if (sizeof...(Types) != 0) create_explicit_typelist(sizeof...(Types));
+   }
+
+   void push_current_application();
+   void push_current_application_pkg();
+   void create_explicit_typelist(int size);
 
    void push_arg(FunCall&& x);
 
@@ -258,21 +304,167 @@ protected:
       push(options.get());
    }
 
+   void push_arg(const AnyString& s)
+   {
+      push(s);
+   }
+
    void push_arg(SV* sv)
    {
       push(sv);
    }
+
+   void check_call();
 
    SV* call_scalar_context();
    int call_list_context();
 
    SV* func;
    const char* method_name;
+   ValueFlags val_flags;
 
    friend class ListResult;
 };
 
+
+class VarFunCall
+   : protected FunCall {
+   void operator= (const VarFunCall&) = delete;
+   VarFunCall(const VarFunCall&) = delete;
+public:
+   VarFunCall(VarFunCall&&) = default;
+
+   static
+   VarFunCall prepare_call_function(const AnyString& name)
+   {
+      return VarFunCall(false, ValueFlags::allow_non_persistent | ValueFlags::allow_store_ref, name, 0);
+   }
+
+   template <typename TypeParams>
+   static
+   VarFunCall prepare_call_function(const AnyString& name, const TypeParams& explicit_type_params)
+   {
+      VarFunCall fc{prepare_call_function(name)};
+      if (explicit_type_params.size() != 0) {
+         fc.begin_type_params(explicit_type_params.size());
+         for (const auto& param : explicit_type_params)
+            fc.push_type_param(param);
+         fc.end_type_params();
+      }
+      return fc;
+   }
+
+   static
+   VarFunCall prepare_call_method(const AnyString& name, SV* obj_arg)
+   {
+      VarFunCall fc(true, ValueFlags::allow_non_persistent | ValueFlags::allow_store_ref, name, 1);
+      fc.push(obj_arg);
+      return fc;
+   }
+
+   template <typename Arg>
+   VarFunCall& operator<< (Arg&& arg)
+   {
+      check_push();
+      extend(count_args(std::forward<Arg>(arg)));
+      push_arg(std::forward<Arg>(arg));
+      return *this;
+   }
+
+   // seal the argument list, allowing calls
+   FunCall operator()()
+   {
+      // the actual call is performed in the conversion operator which depends on the context
+      return std::move(*this);
+   }
+
+   template <typename Target>
+   operator Target () = delete;
+
+   template <typename Target>
+   ListResult operator>> (Target&& x) = delete;
+
+protected:
+   using FunCall::FunCall;
+
+   void begin_type_params(int n);
+   void push_type_param(const AnyString& param);
+   void end_type_params();
+
+   void check_push() const;
+};
+
+
+template <typename T, typename... Params>
+class CachedObjectPointer {
+   CachedObjectPointer(const CachedObjectPointer&) = delete;
+public:
+   CachedObjectPointer(CachedObjectPointer&& other)
+      : ptr(std::move(other.ptr))
+      , reset_on_destruction(other.reset_on_destruction)
+   {
+      other.reset_on_destruction = false;
+   }
+
+   CachedObjectPointer& operator= (const CachedObjectPointer& other)
+   {
+      ptr = other.ptr;
+      return *this;
+   }
+
+   explicit CachedObjectPointer(T* ptr_, bool reset_on_destruction_=false)
+      : ptr(std::make_shared<std::unique_ptr<T>>(ptr_))
+      , reset_on_destruction(reset_on_destruction_) {}
+
+   explicit CachedObjectPointer(const AnyString& function_name_)
+      : function_name(function_name_)
+      , ptr(std::make_shared<std::unique_ptr<T>>(nullptr))
+      , reset_on_destruction(false) {}
+
+   ~CachedObjectPointer()
+   {
+      if (reset_on_destruction) ptr->reset(nullptr);
+   }
+
+   template <typename... Args>
+   T& get(Args&&... args)
+   {
+      if (!(*ptr)) FunCall::call_function(function_name, mlist<Params...>(), std::forward<Args>(args)...) >> *this;
+      return **ptr;
+   }
+
+   void set(T* obj) { ptr.reset(obj); }
+
+private:
+   const AnyString function_name;
+   std::shared_ptr<std::unique_ptr<T>> ptr;
+   bool reset_on_destruction = false;
+};
+
 int get_debug_level();
+
+class PropertyTypeBuilder
+   : protected FunCall {
+public:
+   using FunCall::FunCall;
+
+   template <typename... Params, bool exact_match>
+   static SV* build(const AnyString& pkg_name, const mlist<Params...>& params, bool_constant<exact_match>)
+   {
+      try {
+         PropertyTypeBuilder b(true, "typeof", 1 + sizeof...(Params));
+         b.push_arg(pkg_name);
+         b.push_types(params);
+         if (!exact_match) b.nonexact_match();
+         return b.call_scalar_context();
+      }
+      catch (const undefined&) {
+         return nullptr;
+      }
+   }
+private:
+   void nonexact_match();
+};
 
 } }
 
@@ -284,12 +476,19 @@ pm::perl::FunCall call_function(const AnyString& name, Args&&... args)
    return pm::perl::FunCall::call_function(name, std::forward<Args>(args)...);
 }
 
-template <typename... Args>
-[[deprecated("CallPolymakeFunction macros are deprecated, please use call_function() instead")]]
-pm::perl::FunCall call_function_deprecated(const AnyString& name, Args&&... args)
+inline
+pm::perl::VarFunCall prepare_call_function(const AnyString& name)
 {
-   return pm::perl::FunCall::call_function(name, std::forward<Args>(args)...);
+   return pm::perl::VarFunCall::prepare_call_function(name);
 }
+
+template <typename TypeParams, typename = std::enable_if_t<std::is_constructible<AnyString, typename pm::container_traits<TypeParams>::value_type>::value>>
+pm::perl::VarFunCall prepare_call_function(const AnyString& name, const TypeParams& explicit_type_params)
+{
+   return pm::perl::VarFunCall::prepare_call_function(name, explicit_type_params);
+}
+
+using pm::perl::CachedObjectPointer;
 
 namespace perl {
 using pm::perl::unroll;

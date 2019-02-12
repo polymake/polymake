@@ -30,13 +30,10 @@ perl::Object join_complexes(perl::Object p_in1,perl::Object p_in2,perl::OptionSe
    // join facets of C1 with the facets of C2
    Array< Set<int> > Join( C1.size()*C2.size() );
    Array< Set<int> >::iterator f=Join.begin();
-   for (Entire< Array< Set<int> > >::const_iterator c_it1=entire(C1);
-        !c_it1.at_end(); ++c_it1)
-      for (Entire< Array< Set<int> > >::const_iterator c_it2=entire(C2);
-           !c_it2.at_end(); ++c_it2, ++f) {
+   for (auto c_it1=entire(C1); !c_it1.at_end(); ++c_it1)
+      for (auto c_it2=entire(C2); !c_it2.at_end(); ++c_it2, ++f) {
          *f = *c_it1;
-         for (Entire< Set<int> >::const_iterator v=entire(*c_it2);
-              !v.at_end(); ++v)
+         for (auto v=entire(*c_it2); !v.at_end(); ++v)
             *f += *v+n1;
       }
    

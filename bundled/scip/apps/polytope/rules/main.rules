@@ -1,0 +1,42 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @category Convex hull computation
+# Use the MILP code implemented in [[wiki:external_software#scip]].
+label scip
+
+
+object Polytope<Rational> {
+
+# It is not necessary to require EQUATIONS or AFFINE_HULL, those are dealt with
+# via lookup in the C++ client.
+
+rule scip.milp: MILP.MAXIMAL_VALUE, MILP.MAXIMAL_SOLUTION, FEASIBLE : MILP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
+   scip_milp_client($this, $this->MILP, true);
+}
+weight 3.10;
+
+rule scip.milp: MILP.MINIMAL_VALUE, MILP.MINIMAL_SOLUTION, FEASIBLE : MILP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
+   scip_milp_client($this, $this->MILP, false);
+}
+weight 3.10;
+
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# End:

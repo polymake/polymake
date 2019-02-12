@@ -115,6 +115,8 @@ public:
     
     bool do_extreme_rays;
     bool do_pointed;
+    
+    bool hilbert_basis_rec_cone_known;
 
     // internal helper control variables
     bool do_only_multiplicity;
@@ -138,6 +140,7 @@ public:
     vector<key_t> PermGens;  // stores the permutation of the generators created by sorting
     vector<bool> Extreme_Rays_Ind;
     Matrix<Integer> Support_Hyperplanes;
+    Matrix<Integer> HilbertBasisRecCone;
     Matrix<Integer> Subcone_Support_Hyperplanes; // used if *this computes elements in a subcone, for example in approximation
     Matrix<Integer> Subcone_Equations;
     vector<Integer> Subcone_Grading;
@@ -146,11 +149,14 @@ public:
     vector<Integer> Witness;    // for not integrally closed
     Matrix<Integer> Basis_Max_Subspace; // a basis of the maximal linear subspace of the cone --- only used in connection with dual mode
     list<vector<Integer> > ModuleGeneratorsOverOriginalMonoid;
-    CandidateList<Integer> OldCandidates,NewCandidates;   // for the Hilbert basis
+    CandidateList<Integer> OldCandidates,NewCandidates,HBRC,ModuleGensDepot;   // for the Hilbert basis
+    // HBRC is for the Hilbert basis of the recession cone if provided, ModuleGensDepot for the collected module 
+    // generators in this case
     size_t CandidatesSize;
     list<vector<Integer> > Deg1_Elements;
     HilbertSeries Hilbert_Series;
     vector<Integer> gen_degrees;  // will contain the degrees of the generators
+    vector<long> gen_degrees_long;  // will contain the degrees of the generators
     Integer shift; // needed in the inhomogeneous case to make degrees positive
     vector<Integer> gen_levels;  // will contain the levels of the generators (in the inhomogeneous case)
     size_t TriangulationBufferSize;          // number of elements in Triangulation, for efficiency
@@ -252,7 +258,7 @@ void try_offload_loc(long place,size_t max_level);
     bool is_approximation;
     bool is_global_approximation; // true if approximation is defined in Cone
 
-    vector<vector<key_t>> approx_points_keys;
+    vector<vector<key_t> > approx_points_keys;
     Matrix<Integer> OriginalGenerators;
 
     Integer VolumeBound; //used to stop computation of approximation if simplex of this has larger volume
@@ -286,7 +292,7 @@ void try_offload_loc(long place,size_t max_level);
     void store_key(const vector<key_t>&, const Integer& height, const Integer& mother_vol,
                                   list< SHORTSIMPLEX<Integer> >& Triangulation);
     void find_bottom_facets();                                  
-    vector<list<vector<Integer>>> latt_approx(); // makes a cone over a lattice polytope approximating "this"
+    vector<list<vector<Integer> > > latt_approx(); // makes a cone over a lattice polytope approximating "this"
     void convert_polyhedron_to_polytope();
     void compute_elements_via_approx(list<vector<Integer> >& elements_from_approx); // uses the approximation
     void compute_deg1_elements_via_approx_global(); // deg 1 elements from the approximation
@@ -322,7 +328,8 @@ void try_offload_loc(long place,size_t max_level);
     void find_module_rank(); // finds the module rank in the inhom case
     void find_module_rank_from_HB();
     void find_module_rank_from_proj();  // used if Hilbert basis is not computed
-    void find_level0_dim(); // ditto for the level 0 dimension 
+    void find_level0_dim(); // ditto for the level 0 dimension
+    void find_level0_dim_from_HB(); // from the Hilbert basis (after dual mode)
     void sort_gens_by_degree(bool triangulate);
     // void compute_support_hyperplanes(bool do_extreme_rays=false);
     bool check_evaluation_buffer();
@@ -368,7 +375,7 @@ void try_offload_loc(long place,size_t max_level);
     
 
     void compute_hsop();
-    void heights(list<vector<key_t>>& facet_keys,list<pair<boost::dynamic_bitset<>,size_t>> faces, size_t index,vector<size_t>& ideal_heights, size_t max_dim);
+    void heights(list<vector<key_t> >& facet_keys,list<pair<boost::dynamic_bitset<>,size_t> > faces, size_t index,vector<size_t>& ideal_heights, size_t max_dim);
     
     void start_message();
     void end_message();

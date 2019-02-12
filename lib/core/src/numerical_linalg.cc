@@ -51,25 +51,24 @@ namespace {
      const int dimU=U.rows()-1;
      Matrix<double> V=unit_matrix<double>(colsM+1);
      const int dimV=V.rows()-1;
-     for (int i=0; i<=std::min(rowsM,colsM); i++) // check "<"
+     for (int i=0; i<=std::min(rowsM,colsM); i++) { // check "<"
         {
-    
-           const Vector<double>v=M.col(i).slice(i);
-           const Matrix<double>Ui=householder_trafo(v);
-           const Matrix<double>M1=non_zero_sign(v[0])*Ui*M.minor(range(i,rowsM),range(i,colsM));
-           M.minor(range(i,rowsM),range(i,colsM))=M1;
-           const Matrix<double>U1=non_zero_sign(v[0])*Ui*U.minor(range(i,dimU),range(0,dimU)); 
-           U.minor(range(i,dimU),range(0,dimU))=U1;
-    
-           if (i<=colsM-2){
-              const Vector<double>v=M.row(i).slice(i+1);
-              const Matrix<double>Vi=householder_trafo(v);
-              const Matrix<double>M1=non_zero_sign(v[0])*M.minor(range(i,rowsM),range(i+1,colsM))*Vi;
-              M.minor(range(i,rowsM),range(i+1,colsM))=M1;
-              const Matrix<double>V1=non_zero_sign(v[0])*V.minor(range(0,dimV),range(i+1,dimV))*Vi;
-              V.minor(range(0,dimV),range(i+1,dimV))=V1;
-           }
-        } 
+           const Vector<double> v = M.col(i).slice(range_from(i));
+           const Matrix<double> Ui = householder_trafo(v);
+           const Matrix<double> M1 = non_zero_sign(v[0])*Ui*M.minor(range(i,rowsM),range(i,colsM));
+           M.minor(range(i,rowsM),range(i,colsM)) = M1;
+           const Matrix<double> U1 = non_zero_sign(v[0])*Ui*U.minor(range(i,dimU),range(0,dimU));
+           U.minor(range(i,dimU),range(0,dimU)) = U1;
+        }
+        if (i<=colsM-2) {
+           const Vector<double> v = M.row(i).slice(range_from(i+1));
+           const Matrix<double> Vi = householder_trafo(v);
+           const Matrix<double> M1 = non_zero_sign(v[0])*M.minor(range(i,rowsM),range(i+1,colsM))*Vi;
+           M.minor(range(i, rowsM), range(i+1, colsM)) = M1;
+           const Matrix<double>V1=non_zero_sign(v[0])*V.minor(range(0,dimV),range(i+1,dimV))*Vi;
+           V.minor(range(0,dimV),range(i+1,dimV))=V1;
+        }
+     }
      //V=T(V);
      matrixTriple biDuv; // fixme: constructor
      biDuv.diag=M;
@@ -151,21 +150,19 @@ namespace {
               if (abs(biDuv.diag[i][i])<epsilon){
                if (i==colsDiag-1) {
                   for (int j=colsDiag-2; j>=0; j=j-1)   {
-                     Set<int> setj(j);
-                     setj+=colsDiag-1;
+                     Set<int> setj{j, colsDiag-1};
                      u[0]=biDuv.diag[j][j];
                      u[1]=biDuv.diag[j][colsDiag-1];
                      Matrix<double> Rij= givens_rot(u);
                      Matrix<double> B1=biDuv.diag.minor(sequence(0,rowsDiag),setj)*Rij;
-                     biDuv.diag.minor(sequence(0,rowsDiag),setj)=B1;
-                     Matrix<double> V1=biDuv.right.minor(sequence(0,dimV),setj)*Rij; 
-                     biDuv.right.minor(sequence(0,dimV),setj)=V1;
+                     biDuv.diag.minor(sequence(0,rowsDiag), setj)=B1;
+                     Matrix<double> V1=biDuv.right.minor(sequence(0,dimV), setj)*Rij; 
+                     biDuv.right.minor(sequence(0,dimV), setj)=V1;
                   }
                }
                else{                      
                   for (int j=i+1; j<=colsDiag-1; j++)   {
-                     Set<int> setj(i);
-                     setj+=j;
+                     Set<int> setj{i, j};
                      u[0]=biDuv.diag[j][j];
                      u[1]=biDuv.diag[i][j];
                      Matrix<double> Rij= givens_rot(u);
@@ -183,9 +180,8 @@ namespace {
          double dn=biDuv.diag[rowsM-1][colsM-1];
          lambda=rowsM > 2 ? eigenValuesOfT(dm,dn,fm,biDuv.diag[rowsM-3][colsM-2]) : 0;
          
-         for (int i=0; i<=colsDiag-2; i++) {
-            Set<int> setij(i);
-            setij += i+1;
+         for (int i=0; i<=colsDiag-2; ++i) {
+            Set<int> setij{i, i+1};
             u[0]=biDuv.diag[i][i]*biDuv.diag[i][i]-lambda;
             u[1]=biDuv.diag[i][i]*biDuv.diag[i][i+1];
 
@@ -205,32 +201,29 @@ namespace {
             Matrix<double> U1=T(Rij)*biDuv.left.minor(setij,sequence(0,dimU)); 
             biDuv.left.minor(setij,sequence(0,dimU))=U1;
          }
-         for (int i=0; i<=colsDiag-2; i++) {
+         for (int i=0; i<=colsDiag-2; ++i) {
             double left=abs(biDuv.diag[i][i+1]);
             double right=epsilon*colsM*rowsM*max_entry;
-            if (left<=right)
-               {
-                  biDuv.diag[i][i+1]=0;
-               }
-            if (left>right){
+            if (left<=right) {
+               biDuv.diag[i][i+1]=0;
+            }
+            if (left>right) {
                fuse=1;
                break;
             }
          }
       } 
       SparseMatrix<double> Diag(rowsDiag,colsDiag);
-      for (int i=0; i<=colsDiag-1; i++)
-         {
-            Diag[i][i]=biDuv.diag[i][i];
-         }
+      for (int i=0; i<=colsDiag-1; ++i) {
+         Diag[i][i]=biDuv.diag[i][i];
+      }
        
       SingularValueDecomposition Out;
-       if (colsM>rowsM){
+       if (colsM > rowsM) {
           Out.sigma=T(Diag);
           Out.left_companion=T(biDuv.right);
           Out.right_companion=biDuv.left;
-         }
-       else{
+       } else {
           Out.sigma=Diag;
           Out.left_companion=T(biDuv.left);
           Out.right_companion=biDuv.right;
@@ -244,15 +237,15 @@ namespace {
       Matrix<double> Mhouse;
       const int dimv=v.dim();
       double max_entry=0;
-      for (int i=0; i<dimv; i++){ 
-         if(abs(v[i])>max_entry){
+      for (int i=0; i<dimv; ++i) { 
+         if (abs(v[i]) > max_entry) {
             max_entry=abs(v[i]);
          }          
       }
       const double zero=epsilon*dimv*max_entry;
       Vector<double> u=v+non_zero_sign(v[0])*sqrt(v*v)*unit_vector<double>(dimv,0);
 
-      if (u*u<=zero*zero) {
+      if (u*u <= zero*zero) {
          Mhouse=unit_matrix<double>(dimv);
       } else {
          u/=sqrt(u*u);
@@ -270,9 +263,9 @@ namespace {
       const int rowsM=M.rows()-1;
       Matrix<double> Q=unit_matrix<double>(rowsM+1);
       const int dimQ=Q.cols()-1;
-      for (int i=0; i<=colsM; i++) 
+      for (int i=0; i<=colsM; ++i) 
       {
-         Vector<double>v=M.col(i).slice(i);
+         Vector<double>v=M.col(i).slice(range_from(i));
          Matrix<double>Qi=householder_trafo(v);
          Matrix<double>M1=Qi*M.minor(range(i,rowsM),range(i,colsM));
          M.minor(range(i,rowsM),range(i,colsM))=M1;

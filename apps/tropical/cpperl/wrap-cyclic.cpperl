@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "cyclic.cc",
+ "inst": [
+  {"args": ["Min", "void", "void"], "func": "cyclic", "include": ["polymake/TropicalNumber.h"], "sig": "cyclic:T1.x.x", "tp": "1"},
+  {"args": ["Max", "void", "void"], "func": "cyclic", "include": ["polymake/TropicalNumber.h"], "sig": "cyclic:T1.x.x", "tp": "1"},
+ null ],
+"version": 3}

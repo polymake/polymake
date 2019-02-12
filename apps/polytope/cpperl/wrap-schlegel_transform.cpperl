@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "schlegel_transform.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "schlegel_transform", "include": ["polymake/Rational.h"], "sig": "schlegel_transform:T1.B.B", "tp": "1"},
+ null ],
+"version": 3}

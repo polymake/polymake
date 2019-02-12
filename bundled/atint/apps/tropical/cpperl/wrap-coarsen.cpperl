@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "coarsen.cc",
+ "inst": [
+  {"args": ["Max", "void", "void"], "func": "coarsen", "include": ["polymake/TropicalNumber.h"], "sig": "coarsen:T1.B.x", "tp": "1"},
+  {"args": ["Min", "void", "void"], "func": "coarsen", "include": ["polymake/TropicalNumber.h"], "sig": "coarsen:T1.B.x", "tp": "1"},
+ null ],
+"version": 3}

@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<const Wary<Matrix<int>>&>>", "void"], "func": "diagonal", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "kind": "meth", "ret": "lvalue", "sig": "diagonal:F:M14.x"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Wary<Matrix<Integer>>&>>", "void"], "func": "diagonal", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h"], "kind": "meth", "ret": "lvalue", "sig": "diagonal:F:M14.x"},
+ null ],
+"version": 3}

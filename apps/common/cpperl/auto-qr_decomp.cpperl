@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<double>&>"], "func": "qr_decomp", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/linalg.h"], "sig": "qr_decomp.X"},
+ null ],
+"version": 3}

@@ -1,0 +1,87 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+declare property_type SwitchTable : c++ (include => ["polymake/group/switch_table.h"]) {
+
+   # @category Constructors
+   method construct(Array<Array<Int>>) : c++;
+
+   method lex_maximize_vector(Vector) : c++;
+   
+   method lex_minimize_vector(Vector) : c++;
+
+   operator == : c++;
+
+}
+
+object PermutationAction {
+
+   # @category Orbits
+   # A switch table is a tool for finding lex-maximal or -minimal in orbits
+   # under the action of a permutation group. Its main ingredient is an
+   # upper-left triangular matrix with group elements as entries.
+   # See https://arxiv.org/abs/1709.04746
+   #
+   # The output contains the support at every level, i.e. a number and a
+   # Set<Int>, the number is the size of the support and and the Set<Int> are
+   # the indices of those entries that can be permuted to the index of the
+   # current level while keeping previous level indices fixed. I.e. entry [i,j]
+   # will keep the first i entries of a vector fixed, while moving the j-th
+   # entry to position i. Note that we start counting at 0!
+   #
+   # @example
+   # > $P = new PermutationAction(GENERATORS=>[[1,2,0,4,5,3],[2,1,0,5,4,3]]);
+   # > print $P->SWITCH_TABLE;
+   # |   Supports: (size, content)
+   # | Level 0: 3 {0 1 2}
+   # | Level 1: 2 {1 2}
+   # |   Entries:
+   # | [0,0]: 0 1 2 3 4 5
+   # | [0,1]: 1 0 2 4 3 5
+   # | [0,2]: 1 2 0 4 5 3
+   # | [1,1]: 0 1 2 3 4 5
+   # | [1,2]: 0 2 1 3 5 4
+   property SWITCH_TABLE : SwitchTable;
+
+   rule SWITCH_TABLE : ALL_GROUP_ELEMENTS {
+      $this->SWITCH_TABLE = new SwitchTable($this->ALL_GROUP_ELEMENTS);
+   }
+
+   # @category Orbits
+   # Assume the group acts on a vector by permuting its entries. Then this
+   # method gives the lex-maximal vector from the orbit of the input vector
+   # under the group action.
+   # See https://arxiv.org/abs/1709.04746
+   user_method lex_maximal(Vector) : SWITCH_TABLE {
+      my($this, $v) = @_;
+      return $this->SWITCH_TABLE->lex_maximize_vector($v);
+   }
+   
+   # @category Orbits
+   # Similar to [[lex_maximal]].
+   user_method lex_minimal(Vector) : SWITCH_TABLE {
+      my($this, $v) = @_;
+      return $this->SWITCH_TABLE->lex_minimize_vector($v);
+   }
+
+}
+
+
+
+# Local Variables:
+# mode: perl
+# c-basic-offset:3
+# End:

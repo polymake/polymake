@@ -1,0 +1,10 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Integer&>", "perl::Canned<const Integer&>"], "func": "gcd", "include": ["polymake/Integer.h", "polymake/numerical_functions.h"], "sig": "gcd.X16.X16"},
+  {"args": ["perl::Canned<const UniPolynomial<Rational, int>&>", "perl::Canned<const UniPolynomial<Rational, int>&>"], "func": "gcd", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "sig": "gcd.X.X"},
+  {"args": ["long", "long"], "func": "gcd", "include": ["polymake/numerical_functions.h"], "sig": "gcd.X16.X16"},
+  {"args": ["perl::Canned<const Vector<int>&>"], "func": "gcd", "include": ["polymake/Vector.h", "polymake/linalg.h"], "sig": "gcd.X"},
+  {"args": ["long", "perl::Canned<const Integer&>"], "func": "gcd", "include": ["polymake/Integer.h", "polymake/numerical_functions.h"], "sig": "gcd.X16.X16"},
+  {"args": ["perl::Canned<const Vector<Integer>&>"], "func": "gcd", "include": ["polymake/Integer.h", "polymake/Vector.h", "polymake/linalg.h"], "sig": "gcd.X"},
+ null ],
+"version": 3}

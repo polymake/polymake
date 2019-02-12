@@ -79,15 +79,15 @@ Matrix<Coords> bounded_embedder(const Graph<>& BG, const Matrix<Coords>& V, cons
 
    Coords scale=zero_value<Coords>();
    if (use_max_norm) {
-      for (Entire< Array<int> >::const_iterator fix1=entire(fixed_nodes); !fix1.at_end(); ++fix1) {
-         Entire< Array<int> >::const_iterator fix2=fix1;
+      for (auto fix1=entire(fixed_nodes); !fix1.at_end(); ++fix1) {
+         auto fix2=fix1;
          while (!(++fix2).at_end())
             scale += max_norm(V,*fix1,*fix2)/square_norm(GR,*fix1,*fix2);
       }
    }
    else {
-      for (Entire< Array<int> >::const_iterator fix1=entire(fixed_nodes); !fix1.at_end(); ++fix1) {
-         Entire< Array<int> >::const_iterator fix2=fix1;
+      for (auto fix1=entire(fixed_nodes); !fix1.at_end(); ++fix1) {
+         auto fix2=fix1;
          while (!(++fix2).at_end())
             scale += square_norm(V,*fix1,*fix2)/square_norm(GR,*fix1,*fix2);
       }
@@ -95,7 +95,7 @@ Matrix<Coords> bounded_embedder(const Graph<>& BG, const Matrix<Coords>& V, cons
    scale /= n_fixed_nodes*(n_fixed_nodes-1)/2;
 
    EdgeMap<Undirected, Coords> BGmap(BG);   
-   for (Entire<Edges< Graph<> > >::const_iterator e=entire(edges(BG)); !e.at_end(); ++e)
+   for (auto e=entire(edges(BG)); !e.at_end(); ++e)
       BGmap[*e] = use_max_norm ? max_norm(V, e.from_node(), e.to_node())/scale :  square_norm(V, e.from_node(), e.to_node())/scale;
 
 #if POLYMAKE_DEBUG
@@ -115,8 +115,8 @@ Matrix<Coords> bounded_embedder(const Graph<>& BG, const Matrix<Coords>& V, cons
    Matrix<Coords> rhs(n_inner_nodes,3);
    
    int m=0;
-   for (Entire< Set <int> >::const_iterator n=entire(inner_nodes); !n.at_end(); ++n,++m) {
-      for (Entire<Graph<>::out_edge_list>::const_iterator e=entire(BG.out_edges(*n)); !e.at_end(); ++e) {
+   for (auto n=entire(inner_nodes); !n.at_end(); ++n,++m) {
+      for (auto e=entire(BG.out_edges(*n)); !e.at_end(); ++e) {
          stress_matrix(m,*n) += 1/BGmap[*e];  // spring constant
          const int nn = e.to_node();
          if ( inner_nodes.contains(nn) )

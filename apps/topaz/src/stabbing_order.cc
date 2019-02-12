@@ -22,38 +22,23 @@
 #include "polymake/Map.h"
 #include "polymake/linalg.h"
 #include "polymake/topaz/sum_triangulation_tools.h"
-#include "polymake/polytope/beneath_beyond.h"
-#include "polymake/polytope/to_interface.h"
+#include "polymake/polytope/convex_hull.h"
 
 namespace polymake { namespace topaz {
 
 namespace {
 
-
-template<typename Scalar>
+template <typename Scalar>
 Matrix<Scalar> facets_of_cone_over(Set<int> facet,
                                    const Matrix<Scalar>& vertices,
-                                   int ioz)
+                                   const int ioz)
 {
-   if (ioz >= 0) facet -= ioz;
-   const Matrix<Scalar> cone(vertices.minor(facet, ~scalar2set(0)));
-   polytope::beneath_beyond_algo<Scalar> algo(cone, false);
-   algo.compute(entire(sequence(0, facet.size())));
-   return zero_vector<Scalar>() | algo.getFacets();
-}
-
-template<typename Scalar>
-Matrix<Scalar> ineqs2vertices(const Matrix<Scalar>& inequalities)
-{
-   polytope::beneath_beyond_algo<Scalar> algo(inequalities, false);
-   algo.compute(entire(sequence(0, inequalities.rows())));
-   return algo.getFacets();
+   const Matrix<Scalar> cone(vertices.minor(facet - ioz, range_from(1)));
+   return zero_vector<Scalar>() | polytope::enumerate_facets(cone, true).first;
 }
 
 
-
-
-template<typename Scalar>
+template <typename Scalar>
 Matrix<Scalar> inner_facet_normals(const Set<int>& facet,
                                    const Matrix<Scalar>& vertices)
 {
@@ -69,13 +54,13 @@ Matrix<Scalar> inner_facet_normals(const Set<int>& facet,
    return inner_facet_normals;
 }
 
-template<typename Scalar>
+template <typename Scalar>
 std::vector<int> indices_of_normals_towards_0(const Set<int>& facet,
                                               const Matrix<Scalar>& inner_facet_normals)
 {
    std::vector<int> indices_of_normals_towards_0;
    int i(0);
-   for (typename Entire<Rows<Matrix<Scalar>>>::const_iterator nit = entire(rows(inner_facet_normals)); !nit.at_end(); ++nit, ++i) {
+   for (auto nit = entire(rows(inner_facet_normals)); !nit.at_end(); ++nit, ++i) {
       if ((*nit)[0] > 0)
          indices_of_normals_towards_0.push_back(i);
    }
@@ -84,20 +69,20 @@ std::vector<int> indices_of_normals_towards_0(const Set<int>& facet,
 
 
 // return the list of indices of simplices that are greater than the one indexed by sigma
-template<typename Scalar>
+template <typename Scalar>
 Set<int> ideal_of(int sigma,
                   const Matrix<Scalar>& vertices,
                   const Array<Set<int>>& simplices,
                   const Array<Matrix<Scalar>>& inner_facet_normals_of,
                   const Array<std::vector<int>>& indices_of_normals_towards_0_of,
-                  int ioz)
+                  const int ioz)
 {
    Set<int> ideal_of_sigma;
    const Matrix<Scalar> cone_facets = facets_of_cone_over(simplices[sigma], vertices, ioz);
 
    // check if zero is in sigma;
    bool zero_in_sigma = true;
-   for (typename Entire<Rows<Matrix<Scalar>>>::const_iterator fit = entire(rows(inner_facet_normals_of[sigma])); !fit.at_end(); ++fit) {
+   for (auto fit = entire(rows(inner_facet_normals_of[sigma])); !fit.at_end(); ++fit) {
       if((*fit)[0] < 0){
          zero_in_sigma = false;
          break;
@@ -115,8 +100,8 @@ Set<int> ideal_of(int sigma,
 
       // check if zero is in tau
       bool zero_in_tau = true;
-      for (typename Entire<Rows<Matrix<Scalar>>>::const_iterator fit = entire(rows(inner_facet_normals_of[tau])); !fit.at_end(); ++fit) {
-         if((*fit)[0] < 0){
+      for (auto fit = entire(rows(inner_facet_normals_of[tau])); !fit.at_end(); ++fit) {
+         if ((*fit)[0] < 0) {
             zero_in_tau = false;
             break;
          }
@@ -132,10 +117,10 @@ Set<int> ideal_of(int sigma,
 
       // Check if the affine hull of the intersection of sigma and tau contain
       // the origin. If this is the case sigma is not preceeding tau
-      perl::Object p_sigma(perl::ObjectType::construct<Scalar>("polytope::Polytope"));
+      perl::Object p_sigma("polytope::Polytope", mlist<Scalar>());
       p_sigma.take("FACETS") << inner_facet_normals_of[sigma];
 
-      perl::Object p_tau(perl::ObjectType::construct<Scalar>("polytope::Polytope"));
+      perl::Object p_tau("polytope::Polytope", mlist<Scalar>());
       p_tau.take("FACETS") << inner_facet_normals_of[tau];
 
       perl::Object intersection = call_function("polytope::intersection", p_sigma, p_tau);
@@ -143,7 +128,7 @@ Set<int> ideal_of(int sigma,
       bool sigma_tau_intersect = intersection.give("FEASIBLE");
       bool zero_in_affine_hull = true;
 
-      for (typename Entire<Rows<Matrix<Scalar>>>::const_iterator fit = entire(rows(affine_hull)); !fit.at_end(); ++fit) {
+      for (auto fit = entire(rows(affine_hull)); !fit.at_end(); ++fit) {
          if ((*fit)[0] != 0) {
             zero_in_affine_hull = false;
             break;
@@ -163,15 +148,15 @@ Set<int> ideal_of(int sigma,
             sigma preceeds tau iff that point is not equal to x
        */
       Matrix<Scalar> intersection_ineqs = cone_facets / inner_facet_normals_of[tau];
-      intersection = perl::Object(perl::ObjectType::construct<Scalar>("polytope::Polytope"));
+      intersection = perl::Object("polytope::Polytope", mlist<Scalar>());
       intersection.take("INEQUALITIES") << intersection_ineqs;
       bool feasible = intersection.give("FEASIBLE");
       if(!feasible) continue;
       
       Vector<Scalar> rel_int_p = intersection.give("REL_INT_POINT");
 
-      Matrix<Scalar> segment_verts = unit_vector<Scalar>(rel_int_p.dim(),0) / rel_int_p;
-      perl::Object segment(perl::ObjectType::construct<Scalar>("polytope::Polytope"));
+      Matrix<Scalar> segment_verts = vector2row(unit_vector<Scalar>(rel_int_p.dim(), 0)) / rel_int_p;
+      perl::Object segment("polytope::Polytope", mlist<Scalar>());
       segment.take("VERTICES") << segment_verts;
 
       intersection = call_function("polytope::intersection", p_sigma, segment);
@@ -246,7 +231,7 @@ Graph<Directed> stabbing_order(perl::Object triangulation)
    // if 0 is not a vertex of the triangulation, we're done
    if (!st_0_indices.size()) return stabbing_order;
 
-   for (Entire<Subsets_of_k<const sequence&>>::const_iterator i=entire(all_subsets_of_k(sequence(0, st_0_indices.size()),2)); !i.at_end(); ++i) {
+   for (auto i=entire(all_subsets_of_k(sequence(0, st_0_indices.size()),2)); !i.at_end(); ++i) {
       const Set<int> pair(*i);
       stabbing_order.delete_edge(st_0_indices[pair.front()],
                                  st_0_indices[pair.back() ]);

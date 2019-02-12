@@ -48,7 +48,7 @@ perl::Object flow_polytope(const Graph<Directed> G, const EdgeMap<Directed,Scala
    SparseMatrix<Scalar> eqs(G.nodes()-2, G.edges()+1);     // equations of the new polytope
 
    int i(0); // Keeping track of the number of the current edge.
-   for (Entire< Edges< Graph<Directed> > >::const_iterator e=entire(edges(G));  !e.at_end();  ++e, ++i) {
+   for (auto e=entire(edges(G));  !e.at_end();  ++e, ++i) {
 
       // Inequality: x_e <= given bound on edge e 
       ineqs(i, i+1) = -1;
@@ -93,7 +93,7 @@ perl::Object flow_polytope(const Graph<Directed> G, const EdgeMap<Directed,Scala
    ineqs(G.edges()+2,0) = 1; // far face
 
    // output
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "flow polytope of a Graph" << endl;   
    p_out.take("INEQUALITIES") << ineqs;
    p_out.take("EQUATIONS") << remove_zero_rows(eqs);
@@ -108,7 +108,7 @@ perl::Object flow_polytope(const perl::Object G_in, const Array<Scalar> &arc_bou
    Graph<Directed> G = G_in.give("ADJACENCY");
    EdgeMap<Directed,Scalar> EM(G);
    int i(0);
-   for (Entire< Edges< Graph<Directed> > >::const_iterator e=entire(edges(G));  !e.at_end();  ++e, ++i) {
+   for (auto e=entire(edges(G));  !e.at_end();  ++e, ++i) {
       EM[i] = arc_bounds[i];
    }
    

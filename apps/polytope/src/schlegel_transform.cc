@@ -44,7 +44,7 @@ void schlegel_transform(perl::Object S, perl::Object P)
 
    // First transformation step: move FacetPoint to the origin
    Matrix<Scalar> tau = unit_matrix<Scalar>(d);
-   tau.row(0).slice(1) = -FacetPoint.slice(1);
+   tau.row(0).slice(range_from(1)) = -FacetPoint.slice(range_from(1));
 
    // Second step: move the view point to a far point if it is not already.
    // The projection facet is still fixed
@@ -58,13 +58,13 @@ void schlegel_transform(perl::Object S, perl::Object P)
    }
 
    // Third step: project the points onto the facet parallel to the view ray (shear)
-   Vector<Scalar> v = 0|(F[proj_facet]).slice(1);
+   Vector<Scalar> v = 0|(F[proj_facet]).slice(range_from(1));
    tau = tau * ( unit_matrix<Scalar>(d) -
                  (vector2col(v) * vector2row(ViewRay)) / FxVR );
    
    // Fourth step: move everything back to their original position
    Matrix<Scalar> trans = unit_matrix<Scalar>(d);
-   trans.row(0).slice(1) = FacetPoint.slice(1);
+   trans.row(0).slice(range_from(1)) = FacetPoint.slice(range_from(1));
    tau = tau*trans;
    
 
@@ -72,7 +72,7 @@ void schlegel_transform(perl::Object S, perl::Object P)
    S.take("VIEWPOINT") << ViewPoint;
 }
 
-FunctionTemplate4perl("schlegel_transform<Scalar> (SchlegelDiagram<Scalar>, Polytope<Scalar>) : void");
+FunctionTemplate4perl("schlegel_transform<Scalar> (SchlegelDiagram<Scalar>, Polytope<Scalar>)");
 
 } }
 

@@ -28,7 +28,7 @@
 #include "polymake/linalg.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/tropical/convex_hull_tools.h"
-#include "polymake/tropical/solver_def.h"
+#include "polymake/polytope/convex_hull.h"
 
 namespace polymake { namespace tropical {
 
@@ -48,9 +48,9 @@ Matrix<Rational> boundingBox(const Matrix<Rational> &rays, const Rational &dista
   if(rays.rows() == 0) return Matrix<Rational>(2,rays.cols());
   Vector<Rational> min_values = rays.row(0);
   Vector<Rational> max_values = rays.row(0);
-  for (auto c = ensure( cols(rays), (pm::cons<pm::end_sensitive, pm::indexed>*)0).begin(); !c.at_end(); ++c) {
-    min_values[c.index()] = accumulate( *c, operations::min());
-    max_values[c.index()] = accumulate( *c, operations::max());
+  for (auto c = entire<indexed>(cols(rays)); !c.at_end(); ++c) {
+    min_values[c.index()] = accumulate(*c, operations::min());
+    max_values[c.index()] = accumulate(*c, operations::max());
   }
   if (make_it_a_cube) {
     Rational total_max = accumulate( max_values, operations::max());
@@ -61,8 +61,8 @@ Matrix<Rational> boundingBox(const Matrix<Rational> &rays, const Rational &dista
   // Add distance
   min_values -= distance* ones_vector<Rational>(rays.cols());
   max_values += distance* ones_vector<Rational>(rays.cols());
-  return min_values / max_values;
-}//END boundingBox
+  return vector2row(min_values) / max_values;
+} //END boundingBox
 
 /**
    Computes the polyhedral data necessary for visualization with a bounding box.
@@ -114,7 +114,6 @@ perl::ListReturn computeBoundedVisual(perl::Object fan, const Matrix<Rational> &
   Matrix<Rational> centermatrix(0,ambient_dim+1);
   std::vector<std::string> centerlabels;
 
-  solver<Rational> sv;
   // Now compute all polyhedra to be rendered
   for (int mc = 0; mc < linearSpanInCones.rows(); mc++) {
     // Compute the facets ans equalities of the current cone and add the bbox facets
@@ -127,19 +126,10 @@ perl::ListReturn computeBoundedVisual(perl::Object fan, const Matrix<Rational> &
     facets /= bbFacets;
 
     // Compute the polytope vertices from that
-    Matrix<Rational> polyRays;
-    try {
-      polyRays = solver<Rational>().enumerate_vertices(facets, linspan, false,true).first;
-    }
-    catch(const infeasible&) {
-      polyRays = Matrix<Rational>(0,ambient_dim+1);
-    }
+    Matrix<Rational> polyRays = polytope::try_enumerate_vertices(facets, linspan, false).first;
     // Normalize
-    cdd_normalize_rays(polyRays);
+    normalize_rays(polyRays);
 
-    // for (int r = 0; r < polyRays.rows(); r++) {
-    //	 if(polyRays(r,0) != 0) polyRays.row(r) /= polyRays(r,0);
-    // }
     // We have to make sure that the polytope has
     // at least dim +1 vertices after cutting, otherwise its a point set or graph to the
     // visualization and all the Facet options don't work

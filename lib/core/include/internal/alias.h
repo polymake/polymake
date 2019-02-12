@@ -28,8 +28,8 @@
 namespace pm {
 
 template <typename T>
-const type2type<T>& make_mutable_alias(T&, T&);
-template <typename T> inline
+void make_mutable_alias(T&, T&);
+template <typename T>
 void make_mutable_alias(const T&, const T&) {}
 
 template <typename T, bool _apply=!std::is_same<typename deref<T>::type, typename attrib<T>::minus_const_ref>::value>
@@ -46,122 +46,54 @@ struct demasq<T,true> : T {
 };
 
 template <typename T>
-struct deserves_special_alias {
-   static T& data();
-   struct helper {
-      static derivation::yes Test(T&);
-      static derivation::no Test(const type2type<T>&);
-   };
-   static const bool value= sizeof(helper::Test( make_mutable_alias(data(),data()) )) == sizeof(derivation::yes);
+using deserves_special_alias = std::is_same<decltype(make_mutable_alias(std::declval<T&>(), std::declval<T&>())), T&>;
+
+enum class alias_kind { obj, ref, special, rvref,
+                        masqueraded, delayed_masquerade
 };
 
-namespace object_classifier {
-   enum { alias_obj, alias_primitive, alias_ref, alias_special,
-          alias_temporary, alias_based, alias_masqueraded, alias_delayed_masquerade };
+template <typename ObjectRef> struct alias_kind_of;
+template <typename T, alias_kind kind=alias_kind_of<T>::value> class alias;
 
-   template <typename ObjectRef> struct alias_kind_of;
+template <typename ObjectRef>
+struct alias_kind_of {
+   using T = typename deref<ObjectRef>::type;
+
+   static constexpr alias_kind value=
+      is_masquerade<typename demasq<ObjectRef>::type>::value
+      ? (demasq<ObjectRef>::apply ? alias_kind::delayed_masquerade : alias_kind::masqueraded) :
+      is_masquerade<ObjectRef>::value
+      ? alias_kind::masqueraded :
+      std::is_rvalue_reference<ObjectRef>::value
+      ? alias_kind::rvref :
+      deserves_special_alias<T>::value
+      ? alias_kind::special :
+      std::is_lvalue_reference<ObjectRef>::value
+      ? alias_kind::ref
+      : alias_kind::obj;
 };
 
-template <typename T, int kind=object_classifier::alias_kind_of<T>::value> class alias;
-
-namespace object_classifier {
-   template <typename ObjectRef> 
-   struct alias_kind_of {
-      typedef typename deref<ObjectRef>::type T;
-      static const int value=
-         is_masquerade<typename demasq<ObjectRef>::type>::value
-         ? (demasq<ObjectRef>::apply ? alias_delayed_masquerade : alias_masqueraded) :
-         is_masquerade<ObjectRef>::value
-         ? alias_masqueraded :
-         deserves_special_alias<T>::value
-         ? alias_special :
-         (is_derived_from_instance2i<T,alias>::value && !check_container_feature<T,sparse>::value)
-         ? alias_based :
-         object_traits<T>::is_temporary
-         ? alias_temporary :
-         attrib<ObjectRef>::is_reference
-         ? alias_ref :
-         std::is_enum<T>::value || (std::is_pod<T>::value && sizeof(T) <= 2 * sizeof(T*))
-         ? alias_primitive
-         : alias_obj;
-   };
-};
-
-template <typename T, int kind>  // kind==alias_obj
-class alias {
-   // alias to a transient value: keep a copy under a shared pointer
-public:
-   typedef alias alias_type;
-   typedef typename attrib<T>::minus_const_ref value_type;
-   typedef typename attrib<T>::plus_const_ref const_reference;
-   typedef typename attrib<T>::plus_ref reference;
-   typedef const value_type* const_pointer;
-   typedef value_type* pointer;
-   typedef const_reference arg_type;
-
-   alias() {}
-   alias(arg_type arg) : value(new(alloc.allocate(1)) value_type(arg)) {}
-
-   typedef typename std::conditional<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
-   alias(alt_alias_arg_type& other) : value(*other) {}
-
-   reference operator* () { return *value; }
-   const_reference operator* () const { return *value; }
-   pointer operator-> () { return value.operator->(); }
-   const_pointer operator-> () const { return value.operator->(); }
-
-   value_type& get_object() { return *value; }
-
-protected:
-   std::allocator<value_type> alloc;
-   shared_pointer<value_type> value;
-
-   template <typename,int> friend class alias;
-};
+template <typename T, alias_kind kind>  // kind==alias::rvref disabled
+class alias;
 
 template <typename T>
-class alias<T, object_classifier::alias_primitive> {
-   // alias to a constant primitive data item: keep a verbatim copy
-public:
-   typedef alias alias_type;
-   typedef typename attrib<T>::minus_const_ref value_type;
-   typedef typename attrib<T>::plus_const_ref reference;
-   typedef reference const_reference;
-   typedef const value_type* pointer;
-   typedef pointer const_pointer;
-   typedef typename function_argument<value_type>::type arg_type;
-
-   alias() {}
-   alias(arg_type arg) : val(arg) {}
-
-   typedef typename std::conditional<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
-   alias(alt_alias_arg_type& other) : val(*other) {}
-
-   const_reference operator* () const { return val; }
-   const_pointer operator-> () const { return &val; }
-protected:
-   value_type val;
-
-   template <typename,int> friend class alias;
-};
-
-template <typename T>
-class alias<T, object_classifier::alias_ref> {
+class alias<T, alias_kind::ref> {
    // alias to a persistent object: keep a reference
 public:
-   typedef alias alias_type;
    typedef typename attrib<T>::minus_const_ref value_type;
    typedef typename attrib<T>::plus_ref reference;
    typedef typename attrib<T>::plus_const_ref const_reference;
    typedef typename attrib<T>::minus_ref* pointer;
    typedef const value_type* const_pointer;
-   typedef reference arg_type;
 
-   alias() : ptr(0) {}
-   alias(arg_type arg) : ptr(&arg) {}
-
-   typedef typename std::conditional<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
-   alias(alt_alias_arg_type& other) : ptr(other.ptr) {}
+   alias() : ptr(nullptr) {}
+   alias(reference arg) : ptr(&arg) {}
+   alias(typename assign_const<alias<typename attrib<T>::minus_const, alias_kind::ref>, !std::is_same<T, typename attrib<T>::minus_const>::value>::type& other)
+      : ptr(other.ptr) {}
+   alias(const alias&) = default;
+   alias(alias&&) = default;
+   alias& operator= (const alias&) = default;
+   alias& operator= (alias&&) = default;
 
    reference operator* () { return *ptr; }
    const_reference operator* () const { return *ptr; }
@@ -172,26 +104,34 @@ public:
 protected:
    pointer ptr;
 
-   template <typename,int> friend class alias;
+   template <typename, alias_kind> friend class alias;
 };
 
 template <typename T>
-class alias<T, object_classifier::alias_special> {
+class alias<T, alias_kind::special> {
    // special alias requires extra treatment in the constructor
 public:
-   typedef alias alias_type;
    typedef typename attrib<T>::minus_const_ref value_type;
    typedef typename attrib<T>::plus_ref reference;
    typedef typename attrib<T>::plus_const_ref const_reference;
    typedef typename attrib<T>::minus_ref* pointer;
    typedef const value_type* const_pointer;
-   typedef typename function_argument<T>::type arg_type;
+   using arg_type = std::conditional_t<std::is_reference<T>::value, T, typename attrib<T>::plus_const_ref>;
 
-   alias() {}
-   alias(arg_type arg) : val(arg) { make_mutable_alias(val,arg); }
+   alias() = default;
+   alias(arg_type arg) : val(arg) { make_mutable_alias(val, arg); }
 
-   typedef typename std::conditional<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
-   alias(alt_alias_arg_type& other) : val(other.val) {}
+   alias(typename assign_const<alias<typename attrib<T>::minus_const>, !std::is_same<T, typename attrib<T>::minus_const>::value>::type& other)
+      : val(other.val) {}
+
+   alias(const alias&) = default;
+
+   alias& operator= (const alias& other)
+   {
+      val.~value_type();
+      new(&val) value_type(other.val);
+      return *this;
+   }
 
    reference operator* () { return val; }
    const_reference operator* () const { return val; }
@@ -199,112 +139,81 @@ public:
    const_pointer operator-> () const { return &val; }
 
    value_type& get_object() { return val; }
+   const value_type& get_object() const { return val; }
 protected:
    value_type val;
 
-   template <typename,int> friend class alias;
+   template <typename, alias_kind> friend class alias;
 };
 
-template <typename T>
-class alias<T, object_classifier::alias_temporary> {
-   // alias to a temporary object: keep an internal copy
+template <typename TRef>
+class alias<TRef, alias_kind::obj> {
 public:
-   typedef alias alias_type;
-   typedef typename attrib<T>::minus_const_ref value_type;
-   typedef typename attrib<T>::plus_const_ref const_reference;
-   typedef typename std::conditional<object_traits<value_type>::is_always_const, const_reference, typename attrib<T>::plus_ref>::type reference;
-   typedef const value_type* const_pointer;
-   typedef typename std::conditional<attrib<reference>::is_const, const_pointer, typename attrib<T>::minus_ref*>::type pointer;
-   typedef const_reference arg_type;
+   using value_type = pure_type_t<TRef>;
+   static constexpr bool always_const = object_traits<value_type>::is_persistent || object_traits<value_type>::is_always_const;
+   using const_reference = const value_type&;
+   using reference = std::conditional_t<always_const, const_reference, inherit_const_t<value_type, TRef>&>;
+   using const_pointer = const value_type*;
+   using pointer = std::conditional_t<always_const, const_pointer, inherit_const_t<value_type, TRef>*>;
 
-   alias() : init(false) {}
-   alias(arg_type arg) : init(true)
+   static_assert(std::is_move_constructible<value_type>::value, "must be moveable");
+
+   // TODO: delete
+   alias() = default;
+
+   // gcc5 has a defect in std::tuple implementation prohibiting use of `explicit' here
+   alias(value_type&& arg) : val(std::move(arg)) {}
+   alias(const value_type& arg) : val(arg) {}
+
+   template <typename... Args, typename=std::enable_if_t<std::is_constructible<value_type, Args...>::value>>
+   explicit alias(Args&&... args) : val(std::forward<Args>(args)...) {}
+
+   alias(alias&& other) = default;
+
+   // TODO: =delete all these when iterators stop outliving containers
+   alias(const alias& other) = default;
+   using alt_arg_type = std::conditional_t<is_const<TRef>::value, const alias<typename attrib<TRef>::minus_const>, alias>;
+   alias(alt_arg_type& other)
+      : val(other.val) {}
+
+   alias& operator= (alias&& other)
    {
-      // if the constructor throws an exception, alias' destructor won't be called, hence it's safe to set init=true up front
-      new(allocate()) value_type(arg);
-   }
-
-   alias(const alias& other) : init(other.init)
-   {
-      if (init) new(allocate()) value_type(*other);
-   }
-
-   typedef typename std::conditional<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
-
-   alias(alt_alias_arg_type& other) : init(other.init)
-   {
-      if (init) new(allocate()) value_type(*other);
-   }
-
-   alias& operator= (const alias& other)
-   {
-      if (this != &other) {
-         if (init) {
-            destroy_at(ptr());
-            init=false;
-         }
-         if (other.init) {
-            new(allocate()) value_type(*other);
-            init=true;
-         }
-      }
+      val.~value_type();
+      new(&val) value_type(std::move(other.val));
       return *this;
    }
 
-   ~alias() { if (init) destroy_at(ptr()); }
+   // TODO: =delete when iterators stop outliving containers
+   alias& operator= (const alias& other)
+   {
+      val.~value_type();
+      new(&val) value_type(other.val);
+      return *this;
+   }
 
-   reference operator* () { return *ptr(); }
-   const_reference operator* () const { return *ptr(); }
-   pointer operator-> () { return ptr(); }
-   const_pointer operator-> () const { return ptr(); }
+   reference operator* () & { return val; }
+   const_reference operator* () const & { return val; }
+   value_type&& operator* () && { return val; }
 
-   value_type& get_object() { return *ptr(); }
+   pointer operator-> () { return &val; }
+   const_pointer operator-> () const { return &val; }
+
+   value_type& get_object() & { return val; }
+   const value_type& get_object() const & { return val; }
+   value_type&& get_object() && { return val; }
 
 protected:
-   POLYMAKE_ALIGN(char area[sizeof(value_type)], 8);
-   bool init;
+   value_type val;
 
-   void* allocate() { return area; }
-   value_type*       ptr()       { return reinterpret_cast<value_type*>(area); }
-   const value_type* ptr() const { return reinterpret_cast<const value_type*>(area); }
-
-   template <typename,int> friend class alias;
+   template <typename, alias_kind> friend class alias;
 };
 
 template <typename T>
-class alias<T, object_classifier::alias_based>
-   : public deref<T>::type::alias_type {
-   typedef typename deref<T>::type::alias_type _super;
-public:
-   typedef typename attrib<T>::minus_const_ref value_type;
-   typedef typename attrib<T>::plus_ref reference;
-   typedef typename attrib<T>::plus_const_ref const_reference;
-   typedef typename attrib<T>::minus_ref* pointer;
-   typedef const value_type* const_pointer;
-   typedef const_reference arg_type;
-
-   alias() {}
-   alias(typename _super::arg_type arg) : _super(arg) {}
-   alias(arg_type arg) : _super(arg) {}
-
-   typedef typename std::conditional<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
-   alias(alt_alias_arg_type& other) : _super(other) {}
-
-   reference operator* () { return static_cast<reference>(static_cast<_super&>(*this)); }
-   const_reference operator* () const { return static_cast<const_reference>(static_cast<const _super&>(*this)); }
-   pointer operator-> () { return &operator*(); }
-   const_pointer operator-> () const { return &operator*(); }
-
-   template <typename,int> friend class alias;
-};
-
-template <typename T>
-class alias<T, object_classifier::alias_masqueraded>
+class alias<T, alias_kind::masqueraded>
    : public alias<typename is_masquerade<T>::hidden_stored_type> {
    // masquerade: keep an alias to a hidden type
    typedef alias<typename is_masquerade<T>::hidden_stored_type> _super;
 public:
-   typedef alias alias_type;
    typedef typename attrib<T>::plus_const_ref const_reference;
    typedef typename std::conditional<object_traits<typename is_masquerade<T>::hidden_type>::is_always_const ||
                                      object_traits<typename attrib<T>::minus_const_ref>::is_always_const,
@@ -314,29 +223,35 @@ public:
    typedef typename std::conditional<attrib<reference>::is_const, const_pointer, typename attrib<T>::minus_ref*>::type pointer;
    typedef reference arg_type;
 
-   alias() {}
+   alias() = default;
    alias(arg_type arg)
       : _super(reinterpret_cast<typename is_masquerade<T>::hidden_stored_type>(arg)) {}
 
    typedef typename std::conditional<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
-   alias(alt_alias_arg_type& other) : _super(other) {}
+   alias(alt_alias_arg_type& other)
+      : _super(other) {}
+
+   alias(alias&&) = default;
+   alias(const alias&) = default;
+
+   alias& operator= (const alias&) = default;
+   alias& operator= (alias&&) = default;
 
    reference operator* () { return reinterpret_cast<reference>(_super::operator*()); }
    const_reference operator* () const { return reinterpret_cast<const_reference>(_super::operator*()); }
    pointer operator-> () { return &operator*(); }
    const_pointer operator-> () const { return &operator*(); }
 
-   template <typename,int> friend class alias;
+   template <typename, alias_kind> friend class alias;
 };
 
 template <typename T>
-class alias<T, object_classifier::alias_delayed_masquerade>
+class alias<T, alias_kind::delayed_masquerade>
    : public alias<typename demasq<T>::arg_type> {
    // delayed masquerade: keep an alias to a given source type
    typedef typename demasq<T>::type M;
    typedef alias<typename demasq<T>::arg_type> _super;
 public:
-   typedef alias alias_type;
    typedef typename attrib<M>::plus_const_ref const_reference;
    typedef typename std::conditional<object_traits<typename is_masquerade<M>::hidden_type>::is_always_const ||
                                      object_traits<typename attrib<M>::minus_const_ref>::is_always_const,
@@ -345,26 +260,28 @@ public:
    typedef const typename attrib<M>::minus_ref* const_pointer;
    typedef typename std::conditional<attrib<reference>::is_const, const_pointer, typename attrib<M>::minus_ref*>::type pointer;
 
-   alias() {}
-   alias(typename _super::arg_type arg) : _super(arg) {}
+   using alias<typename demasq<T>::arg_type>::alias;
+   alias(_super&& arg) : _super(std::move(arg)) {}
 
-   typedef typename std::conditional<attrib<T>::is_const, const alias<typename attrib<T>::minus_const>, type2type<T> >::type alt_alias_arg_type;
-   alias(alt_alias_arg_type& other) : _super(other) {}
+   alias(const alias&) = default;
+   alias(alias&&) = default;
+
+   alias& operator= (const alias&) = default;
+   alias& operator= (alias&&) = default;
 
    reference operator* () { return reinterpret_cast<reference>(_super::operator*()); }
    const_reference operator* () const { return reinterpret_cast<const_reference>(_super::operator*()); }
    pointer operator-> () { return &operator*(); }
    const_pointer operator-> () const { return &operator*(); }
 
-   template <typename,int> friend class alias;
+   template <typename, alias_kind> friend class alias;
 };
 
 // keeps nothing
 template <>
-class alias<nothing, object_classifier::alias_obj>
+class alias<nothing, alias_kind::obj>
 {
 public:
-   typedef alias alias_type;
    typedef const nothing& reference;
    typedef reference const_reference;
    typedef const nothing* pointer;
@@ -378,9 +295,9 @@ public:
    const_pointer operator-> () const { return &operator*(); }
 };
 
-template <typename T, int kind>
-struct function_argument< alias<T,kind> > {
-   typedef typename alias<T,kind>::arg_type type;
+template <typename T>
+struct make_alias {
+   using type = alias<T>;
 };
 
 } // end namespace pm

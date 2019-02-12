@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "matroid_fan_from_flats.cc",
+ "inst": [
+  {"args": ["Max", "void"], "func": "matroid_fan_from_flats", "include": ["polymake/TropicalNumber.h"], "sig": "matroid_fan_from_flats:T1.B", "tp": "1"},
+  {"args": ["Min", "void"], "func": "matroid_fan_from_flats", "include": ["polymake/TropicalNumber.h"], "sig": "matroid_fan_from_flats:T1.B", "tp": "1"},
+ null ],
+"version": 3}

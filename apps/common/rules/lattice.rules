@@ -23,10 +23,10 @@
 # @example This rational vector has only integral entries:
 # > $v = new Vector<Rational>(1,2,3,4);
 # polytope > print is_integral($v);
-# | 1
-# But if we append 1/2, it hasn't anymore:
+# | true
+# But if we append 1/2, it isn't anymore:
 # > print is_integral($v|1/2);
-# | 
+# | false
 
 user_function is_integral(Vector<Rational>) : c++ (include => "polymake/common/lattice_tools.h");
 
@@ -37,10 +37,10 @@ user_function is_integral(Vector<Rational>) : c++ (include => "polymake/common/l
 # @example This rational matrix has only integral entries:
 # > $m = new Matrix<Rational>([1,2],[3,4]);
 # > print is_integral($m);
-# | 1
+# | true
 # But if we multiply it with 1/2, that is not the case anymore.
 # > print is_integral(1/2 * $m);
-# | 
+# | false
 
 user_function is_integral(Matrix<Rational>) : c++ (include => "polymake/common/lattice_tools.h");
 

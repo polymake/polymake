@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "is_smooth.cc",
+ "inst": [
+  {"args": ["Max", "void"], "func": "is_smooth", "include": ["polymake/TropicalNumber.h"], "sig": "is_smooth:T1.B", "tp": "1"},
+  {"args": ["Min", "void"], "func": "is_smooth", "include": ["polymake/TropicalNumber.h"], "sig": "is_smooth:T1.B", "tp": "1"},
+ null ],
+"version": 3}

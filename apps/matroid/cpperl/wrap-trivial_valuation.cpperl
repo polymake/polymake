@@ -1,0 +1,6 @@
+{"app": "matroid", "embed": "trivial_valuation.cc",
+ "inst": [
+  {"args": ["Min", "Rational", "void"], "func": "trivial_valuation", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "trivial_valuation:T2.B", "tp": "2"},
+  {"args": ["Max", "Rational", "void"], "func": "trivial_valuation", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "trivial_valuation:T2.B", "tp": "2"},
+ null ],
+"version": 3}

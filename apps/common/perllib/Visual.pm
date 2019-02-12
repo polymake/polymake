@@ -42,7 +42,7 @@ sub visualize($) {
    if (@args==1) {
       eval {
          if (is_object($args[0])) {
-            # a single object to draw - can use the overloading directly
+            # a single object to draw
             $method=Overload::Global::draw($args[0]);
             $viewer=method_owner($method)->new;
             $method->($viewer->new_drawing($title, $first), $args[0]);
@@ -73,13 +73,12 @@ sub visualize($) {
       # first obtain all viable visualizers, even if not preferred
       $obj=$args[0];
       my ($viewer_pkg, @methods);
-      if (defined (my $list=Overload::resolve_labeled("Polymake::Overload::Global", "draw",
-                                                      [ is_object($obj) ? $obj : $obj->[0], undef ]))) {
+      if (defined (my $control_list=Overload::resolve_global("draw",
+                      [ is_object($obj) ? $obj : $obj->[0], undef ]))) {
          # must try all visualizers in the preference order until find such a one
          # that can cope with all drawable objects
        TRY:
-         foreach my $sub (is_object($list) ? $list->get_items : ($list)) {
-            $method=&$sub;
+         foreach my $method (@{$control_list->items}) {
             @methods=($method);
             $viewer_pkg=method_owner($method);
             foreach $obj (@args[1..$#args]) {
@@ -266,6 +265,28 @@ sub print3dcoords {
    sprintf "%.6g$c%.6g$c%.6g", @{$_[0]}, 0;
 }
 
+sub transform_float {
+    my ($MM,$T,$v) = @_; # Matrix<Float> (dehomogenized), Matrix<Float>, Vector<Float>
+    if (defined($T)) {
+        die "transformation invalid" unless $MM->cols()==$T->rows() && $T->cols()<=3;
+        $MM = $MM*$T;
+    }
+    if (defined($v)) {
+        die "offset invalid" unless $MM->cols()==$v->dim() && $v->dim()<=3;
+        for (my $i=0; $i<$MM->rows(); ++$i) { $MM->[$i] = $MM->[$i]+$v }
+    }
+    return $MM;
+}
+
+sub transform_float_facets {
+    my ($FF,$T,$v) = @_; # Matrix<Float>, Matrix<Float>, Vector<Float>
+    my $vv = defined($v) ? new Vector<Float>(1|$v) : unit_vector<Float>($FF->cols(),0);
+    my $TT = defined($T) ? $vv/(zero_vector<Float>()|$T) : unit_matrix<Float>($FF->cols());
+    $FF = $FF*transpose(inv($TT));
+    return $FF;
+}
+
+
 ###############################################################################
 #
 #  Basic visual object.
@@ -288,7 +309,7 @@ sub representative { undef }
 sub check_points {
    my ($name, $pts)=@_;
    if (is_object($pts) && $pts->isa("Visual::DynamicCoord")
-       || is_array($pts)) {
+       || is_like_array($pts)) {
       $pts;
    } else {
       croak( "$name neither an array nor an interactive object" );
@@ -323,9 +344,9 @@ sub unify_labels {
    if (defined $labels) {
       if (is_code($labels)) {
          $labels
-      } elsif (is_array($labels)) {
+      } elsif (is_like_array($labels)) {
          sub { $labels->[$_[0]] }
-      } elsif (is_hash($labels)) {
+      } elsif (is_like_hash($labels)) {
          sub { $labels->{$_[0]} }
       } elsif ($labels eq "hidden") {
          undef
@@ -385,11 +406,11 @@ sub unify_decor {
    if ($name =~ /color(?:s)?$/i) {
       !defined($decor)
       ?  $default :
-      is_container($decor)
+      is_like_array($decor)
       ?  (is_code($default)
           ?  sub { my $c=$decor->[$_[0]]; defined($c) ? get_RGB($c) : &$default }
           :  sub { my $c=$decor->[$_[0]]; defined($c) ? get_RGB($c) : $default } ) :
-      is_hash($decor)
+      is_like_hash($decor)
       ?  (is_code($default)
           ?  sub { my $c=$decor->{$_[0]}; defined($c) ? get_RGB($c) : &$default }
           :  sub { my $c=$decor->{$_[0]}; defined($c) ? get_RGB($c) : $default } ) :
@@ -400,9 +421,9 @@ sub unify_decor {
       :  get_RGB($decor)
 
    } else {
-      is_container($decor)
+      is_like_array($decor)
       ?  sub { $decor->[$_[0]] } :
-      is_hash($decor)
+      is_like_hash($decor)
       ?  (is_code($default)
           ?  sub { $decor->{$_[0]} // &$default } :
           defined($default)
@@ -479,29 +500,29 @@ package Visual::FileWriter;
 
 sub import {
    (undef, my %params)=@_;
-   my $pkg=caller;
-   my ($top_pkg)= $pkg =~ /^([^:]+)/;
-   my $multiple=$params{multiple};
+   my $pkg = caller;
+   my ($top_pkg) = $pkg =~ /^([^:]+)/;
+   my $multiple = $params{multiple};
    eval <<".";
 package $pkg;
 use Polymake::Struct (
-   [ '\@ISA' => "$top_pkg\::File", "$top_pkg\::Viewer" ],
+   [ '\@ISA' => "${top_pkg}::File", "${top_pkg}::Viewer" ],
    [ new => ';\$' ],
    [ '\$file' => '#1 // &Visual::FileWriter::prompt_filename' ],
+   [ '\$multiple' => '$multiple' ],
 );
+
+*graphics = \\&Visual::FileWriter::self;
+*run = \\&Visual::FileWriter::run;
 .
-   my $symtab=get_symtab($pkg);
-   define_function($symtab, "graphics", \&self);
-   define_function($symtab, "run", \&run);
-   define_function($symtab, "multiple", sub { $multiple });
 }
 
-sub self : method { shift }
+sub self : method { $_[0] }
 
 sub run : method {
    my ($self)=@_;
    if (!ref($self->file)) {
-      open my $handle, ">".$self->file
+      open my $handle, ">", $self->file
          or die "can't create output file ", $self->file, ": $!\n";
       $self->file=$handle;
    }
@@ -518,7 +539,7 @@ sub prompt_filename {
       }
       $response
    } else {
-      croak("missing argument File=>\"filename\"");
+      croak('missing argument File=>"filename"');
    }
 }
 

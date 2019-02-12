@@ -17,41 +17,38 @@
 #ifndef POLYMAKE_POLYTOPE_SOPLEX_INTERFACE_H
 #define POLYMAKE_POLYTOPE_SOPLEX_INTERFACE_H
 
-#include "polymake/Matrix.h"
-#include "polymake/Vector.h"
-#include "polymake/polytope/lpch_dispatcher.h"
-#include "polymake/Set.h"
+#include "polymake/polytope/solve_LP.h"
 #include "polymake/Rational.h"
+#if POLYMAKE_DEBUG
+#include "polymake/client.h"
+#endif
 
 namespace polymake { namespace polytope { namespace soplex_interface {
 
-class solver
-{
+class Solver : public LP_Solver<Rational> {
 public:
-   solver()
-   {
+   Solver()
 #if POLYMAKE_DEBUG
-      debug_print = perl::get_debug_level() > 1;
+      : debug_print(perl::get_debug_level() > 1)
 #endif
-   };
+   {}
 
-   Set<int> initial_basis;
+   LP_Solution<Rational>
+   solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations,
+         const Vector<Rational>& Objective, bool maximize, const Set<int>& initial_basis) const;
 
-   typedef std::pair<Rational, Vector<Rational> > lp_solution;
+   LP_Solution<Rational>
+   solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations,
+         const Vector<Rational>& Objective, bool maximize, bool=false) const override
+   {
+      return Solver::solve(Inequalities, Equations, Objective, maximize, Set<int>());
+   }
 
-   /// Solve lp
-   /// @returns first: objective value, second: solution
-   lp_solution
-   solve_lp(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations,
-            const Vector<Rational>& Objective, bool maximize);
-
-   void set_basis(const Set<int>& basis);
-
+private:
 #if POLYMAKE_DEBUG
-   bool debug_print;
+   const bool debug_print;
 #endif
 };
-
 
 } } }
 

@@ -42,7 +42,7 @@ void add_action(perl::Object& p,
 //symmetry group computation vie edge colored graph automorphisms works for non-convex point sets, too. For the proof, see prop. 3.1 in "Polyhedral representation conversion up to symmetries" by Bremner, Sikiric and Schuermann, arxiv 0702239v2.
 perl::Object linear_symmetries_matrix(const Matrix<Rational>& M)
 {
-   Matrix<Rational> Mpty;
+   Matrix<Rational> Mpty(0, M.cols());
    perl::Object g(perl_group_from_group(sympol_interface::sympol_wrapper::compute_linear_symmetries(M, Mpty)));
    g.set_name("LinAut");
    g.set_description() << "linear symmetry group";

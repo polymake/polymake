@@ -183,7 +183,7 @@ RETRY:
       $CFLAGS='-I${root}/bundled/lrs/external/lrs';
    } else {
       $LIBS="-l$lrs_libname";
-      $CFLAGS.=" -DPM_LRS_SUPPRESS_OUTPUT=$suppress_output" if $suppress_output;
+      $CFLAGS.=" -DPOLYMAKE_LRS_SUPPRESS_OUTPUT=$suppress_output" if $suppress_output;
    }
 
    return $UseBundled ? "bundled" : ("$lrs_version @ ".($lrs_path//"system"));

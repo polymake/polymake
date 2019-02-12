@@ -1,0 +1,7 @@
+{"app": "polytope", "embed": "H_input_feasible.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "H_input_feasible", "include": ["polymake/Rational.h"], "sig": "H_input_feasible:T1.B", "tp": "1"},
+  {"args": ["double", "void"], "func": "H_input_feasible", "sig": "H_input_feasible:T1.B", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void"], "func": "H_input_feasible", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "H_input_feasible:T1.B", "tp": "1"},
+ null ],
+"version": 3}

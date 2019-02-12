@@ -38,7 +38,7 @@ typedef chain_complex::cycle_type cycle_type;
 
 void split_face(face_type& sigma_p, face_type& sigma_q, const face_type& sigma, const int p)
 {
-   Entire< Set<int> >::const_iterator v(entire(sigma));
+   auto v = entire(sigma);
    sigma_p.clear();
    for (int i=0; i<p; ++i, ++v)
       sigma_p.push_back(*v);
@@ -66,8 +66,8 @@ cap_product(const GenericVector<VectorType,E>& co_coeffs, const Array< Set<int> 
    int codim = co_faces[0].size()-1;
    const int dim_sign = ((dim-codim)*codim)%2 == 0 ? 1 : -1;
 
-   typename Entire< VectorType >::const_iterator sigma = entire(coeffs.top());
-   Entire< Array< Set<int> > >::const_iterator sigma_faces(entire(faces));
+   auto sigma = entire(coeffs.top());
+   auto sigma_faces = entire(faces);
 
    face_type sigma_p, sigma_q;
 
@@ -77,8 +77,8 @@ cap_product(const GenericVector<VectorType,E>& co_coeffs, const Array< Set<int> 
       if (cap_product_map.find(sigma_q) == cap_product_map.end())
          cap_product_map[sigma_q] = 0;
 
-      typename Entire< VectorType >::const_iterator f = entire(co_coeffs.top());
-      Entire< Array< Set<int> > >::const_iterator f_faces(entire(co_faces));
+      auto f = entire(co_coeffs.top());
+      auto f_faces = entire(co_faces);
       for ( ; !f.at_end(); ++f, ++f_faces) {
          if (sigma_p != *f_faces) continue;
          cap_product_map[sigma_q] += dim_sign * (*f) * (*sigma);
@@ -99,29 +99,21 @@ cap_product(const CycleGroup<E>& cocycles, const CycleGroup<E>& cycles)
    std::vector< Set<int> > facevector;
    hash_map< Set<int>, int > facevector_indices;
 
-   for(typename pm::ensure_features<Rows<typename CycleGroup<E>::coeff_matrix>, pm::cons<pm::end_sensitive,pm::indexed> >::const_iterator cocycle = ensure(rows(cocycles.coeffs), (pm::cons<pm::end_sensitive, pm::indexed>*)0).begin();
-         !cocycle.at_end(); ++cocycle)
-   {
-      for(typename pm::ensure_features<Rows<typename CycleGroup<E>::coeff_matrix>, pm::cons<pm::end_sensitive,pm::indexed> >::const_iterator cycle = ensure(rows(cycles.coeffs), (pm::cons<pm::end_sensitive, pm::indexed>*)0).begin();
-            !cycle.at_end(); ++cycle)
-      {
+   for (auto cocycle = entire<indexed>(rows(cocycles.coeffs)); !cocycle.at_end(); ++cocycle) {
+      for (auto cycle = entire<indexed>(rows(cycles.coeffs)); !cycle.at_end(); ++cycle) {
          index_map[std::pair<int,int>(cocycle.index(), cycle.index())] = count++;
          const int rows = res_group.coeffs.rows()+1;
          res_group.coeffs.resize(rows, res_group.coeffs.cols());
 
-         Map< Set<int>, E > prod(cap_product(*cocycle,cocycles.faces,*cycle,cycles.faces));
-         for(typename Entire< Map< Set<int>, E > >::const_iterator prod_pair = entire(prod); !prod_pair.at_end(); ++prod_pair)
-         {
+         Map<Set<int>, E> prod(cap_product(*cocycle,cocycles.faces,*cycle,cycles.faces));
+         for (auto prod_pair = entire(prod); !prod_pair.at_end(); ++prod_pair) {
             hash_map< Set<int>, int >::iterator facevec_it = facevector_indices.find(prod_pair->first);
             int col = res_group.coeffs.cols();
-            if (facevec_it == facevector_indices.end())
-            {
+            if (facevec_it == facevector_indices.end()) {
                facevector_indices[prod_pair->first] = col;
                facevector.push_back(prod_pair->first);
                res_group.coeffs.resize(rows,col+1);
-            }
-            else
-            {
+            } else {
                col = facevec_it->second;
             }
             res_group.coeffs(rows-1,col) = prod_pair->second;

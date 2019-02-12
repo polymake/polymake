@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "sum_product.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "sum_product", "include": ["polymake/Rational.h"], "sig": "sum_product:T1.B", "tp": "1"},
+ null ],
+"version": 3}

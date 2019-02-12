@@ -28,12 +28,12 @@ void cs_permutation(perl::Object p)
 
    Map<Vector<Scalar>,int> index_of;
    int index(0);
-   for (typename Entire<Rows<Matrix<Scalar> > >::const_iterator rit = entire(rows(V)); !rit.at_end(); ++rit)
+   for (auto rit = entire(rows(V)); !rit.at_end(); ++rit)
       index_of[*rit] = index++;
 
    Array<int> generator(V.rows());
-   Entire<Array<int> >::iterator ait = entire(generator);
-   for (typename Entire<Rows<Matrix<Scalar> > >::const_iterator rit = entire(rows(V)); !rit.at_end(); ++rit) {
+   auto ait = entire(generator);
+   for (auto rit = entire(rows(V)); !rit.at_end(); ++rit) {
       Vector<Scalar> v(-(*rit));
       v[0].negate();
       if (!index_of.contains(v)) {
@@ -48,7 +48,7 @@ void cs_permutation(perl::Object p)
    p.take("CS_PERMUTATION") << generator;
 }
 
-FunctionTemplate4perl("cs_permutation<Scalar>(Polytope<Scalar>) : void");
+FunctionTemplate4perl("cs_permutation<Scalar>(Polytope<Scalar>)");
 
 } }
 

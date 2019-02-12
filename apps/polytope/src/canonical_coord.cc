@@ -94,12 +94,12 @@ void orthogonalize_subspace(GenericMatrix<TMatrix>& M)
    orthogonalize(entire(rows(M)));
 }
       
-FunctionTemplate4perl("canonicalize_rays(Vector&) : void");
-FunctionTemplate4perl("canonicalize_rays(Matrix&) : void");
-FunctionTemplate4perl("canonicalize_facets(Vector&) : void");
-FunctionTemplate4perl("canonicalize_facets(Matrix&) : void");
-FunctionTemplate4perl("orthogonalize_affine_subspace(Matrix&) : void");
-FunctionTemplate4perl("orthogonalize_subspace(Matrix&) : void");
+FunctionTemplate4perl("canonicalize_rays(Vector&)");
+FunctionTemplate4perl("canonicalize_rays(Matrix&)");
+FunctionTemplate4perl("canonicalize_facets(Vector&)");
+FunctionTemplate4perl("canonicalize_facets(Matrix&)");
+FunctionTemplate4perl("orthogonalize_affine_subspace(Matrix&)");
+FunctionTemplate4perl("orthogonalize_subspace(Matrix&)");
 FunctionTemplate4perl("dehomogenize(Vector)");
 FunctionTemplate4perl("dehomogenize(Matrix)");
 
@@ -108,9 +108,9 @@ template <typename Matrix2, typename E>
 void orthogonalize_facets(Matrix<E>& F, const GenericMatrix<Matrix2,E>& AH)
 {
    for (auto a=entire(rows(AH)); !a.at_end(); ++a) {
-      const E s=sqr(a->slice(1));
+      const E s=sqr(a->slice(range_from(1)));
       for (auto f=entire(rows(F)); !f.at_end(); ++f) {
-         const E x = f->slice(1) * a->slice(1);
+         const E x = f->slice(range_from(1)) * a->slice(range_from(1));
          if (!is_zero(x)) *f -= (x/s) * (*a);
       }
    }
@@ -120,10 +120,10 @@ template <typename Matrix1, typename Matrix2, typename Matrix3, typename E>
 Array<int> find_representation_permutation(const GenericMatrix<Matrix1,E>& Facets, const GenericMatrix<Matrix2,E>& otherFacets,
                                   const GenericMatrix<Matrix3,E>& AH, bool dual)
 {
-   if ((Facets.rows()==0 || Facets.cols()==0) && (otherFacets.rows()==0 || otherFacets.cols()==0))
-      return Array<int>();
    if (Facets.rows() != otherFacets.rows() || Facets.cols() != otherFacets.cols())
       throw no_match("find_representation_permutation: dimension mismatch");
+   if (Facets.rows() == 0)
+      return Array<int>();
    Matrix<E> F1(Facets), F2(otherFacets);
    if (AH.rows()) {
       orthogonalize_facets(F1, AH);
@@ -148,13 +148,45 @@ FunctionTemplate4perl("find_representation_permutation(Matrix, Matrix, Matrix,$)
 template <typename Vector>
 Matrix<double> rotate_hyperplane(const GenericVector<Vector>& F, int last_sign)
 {
-   Matrix<double> R(T(null_space_oriented(F.slice(1), last_sign)));
+   Matrix<double> R(T(null_space_oriented(F.slice(range_from(1)), last_sign)));
    orthogonalize(entire(cols(R)));
    normalize(entire(cols(R)));
    return R;
 }
 
 FunctionTemplate4perl("rotate_hyperplane(Vector; $=1)");
+
+template <typename MatrixT>
+Matrix<double>
+orthonormal_row_basis(const GenericMatrix<MatrixT>& A)
+{
+   Matrix<double> B(A.minor(basis(A).first,All));
+   orthogonalize(entire(rows(B)));
+   normalize(entire(rows(B)));
+   return B;
+}
+
+template <typename MatrixT>
+Matrix<double>
+orthonormal_col_basis(const GenericMatrix<MatrixT>& A)
+{
+   Matrix<double> B(A.minor(All,basis(A).second));
+   orthogonalize(entire(cols(B)));
+   normalize(entire(cols(B)));
+   return B;
+}
+
+UserFunctionTemplate4perl("# @category Transformations"
+                          "# Return an orthonormal row basis of the input matrix."
+                          "# @param Matrix<Scalar> M the input matrix"
+                          "# @return Matrix<Float>",
+                          "orthonormal_row_basis(Matrix)");
+
+UserFunctionTemplate4perl("# @category Transformations"
+                          "# Return an orthonormal column basis of the input matrix."
+                          "# @param Matrix<Scalar> M the input matrix"
+                          "# @return Matrix<Float>",
+                          "orthonormal_col_basis(Matrix)");
 
 } }
 

@@ -34,14 +34,15 @@ Set<int> coordinates_to_eliminate(const Array<int>& indices, int first_coord, in
    Set<int> coords_to_eliminate;
    if (indices.empty()) {
       bool found=false;
-      for (Entire< Subsets_of_k<const sequence&> >::const_iterator i=entire(all_subsets_of_k(range(first_coord,last_coord),codim));!found&&!i.at_end(); ++i)
+      for (auto i=entire(all_subsets_of_k(range(first_coord, last_coord), codim)); !found && !i.at_end(); ++i) {
          if (det(linear_span.minor(All,*i))!=0) {
             coords_to_eliminate=*i;
             found=true;
          }
+      }
       if (!found) throw std::runtime_error("projection: no non-singular minor in LINEAR_SPAN!");
    } else {
-      for (Entire< Array<int> >::const_iterator i=entire(indices); !i.at_end(); ++i) {
+      for (auto i=entire(indices); !i.at_end(); ++i) {
          if (*i<first_coord || *i>last_coord)
             throw std::runtime_error("projection: index out of range");
          coords_to_eliminate+=*i;
@@ -105,7 +106,7 @@ void process_facets(perl::Object& p_in, const Array<int>& indices, perl::OptionS
     
       if (inequalities_read) {
          // perform Fourier-Motzkin elimination on coords
-         for (Entire< Set<int> >::const_reverse_iterator c=rentire(coords_to_eliminate); !c.at_end(); ++c) {
+         for (auto c=entire<reversed>(coords_to_eliminate); !c.at_end(); ++c) {
             Set<int> negative, zero, positive;
             // normalize Inequalities such that there is a -1,0, or 1 in the next column to be eliminated
             for (int i=0; i<Inequalities.rows(); ++i) {
@@ -123,11 +124,11 @@ void process_facets(perl::Object& p_in, const Array<int>& indices, perl::OptionS
             const Set<int> remaining_coords=range(0,Inequalities.cols()-1)-(*c);
             Inequalities = Inequalities.minor(All,remaining_coords);
             ListMatrix< Vector<Scalar> > Combined_Ineqs=Inequalities.minor(zero,All);
-            for (Entire< Set<int> >::const_iterator i=entire(negative); !i.at_end(); ++i)
-               for (Entire< Set<int> >::const_iterator k=entire(positive); !k.at_end(); ++k)
+            for (auto i=entire(negative); !i.at_end(); ++i)
+               for (auto k=entire(positive); !k.at_end(); ++k)
                   Combined_Ineqs /= Inequalities[*i]+Inequalities[*k];
             // delete redundant rows
-            for (typename Entire< Rows< ListMatrix< Vector<Scalar> > > >::iterator i=entire(rows(Combined_Ineqs)); !i.at_end(); ) {
+            for (auto i=entire(rows(Combined_Ineqs)); !i.at_end(); ) {
                const typename Rows< ListMatrix< Vector<Scalar> > >::iterator j(i++);
                if (is_zero(*j)) Combined_Ineqs.delete_row(j);
             }
@@ -221,13 +222,13 @@ perl::Object projection_preimage_impl(const Array<perl::Object>& pp_in)
       if (V.rows() != Rays.rows())
          throw std::runtime_error("projection_preimage: mismatch in the number of rays or points");
       if (is_poc)
-         Rays |= V.minor(All, ~scalar2set(0));
+         Rays |= V.minor(All, range_from(1));
       else
          Rays |= V;
 
       if (is_cone) {
          LinSpace |= zero_matrix<Scalar>(LinSpace.rows(), L.cols()-1);
-         LinSpace /= L.col(0) | zero_matrix<Scalar>(L.rows(), LinSpace.cols()-1) | L.minor(All, ~scalar2set(0));
+         LinSpace /= L.col(0) | zero_matrix<Scalar>(L.rows(), LinSpace.cols()-1) | L.minor(All, range_from(1));
       }      
       descr_names += ", " + p_in->name();
    }

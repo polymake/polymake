@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["int", "perl::AnchorArg<perl::Canned<const IncidenceMatrix<NonSymmetric>&>>"], "func": "same_element_sparse_matrix", "include": ["polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "sig": "toMatrix:T1.X8", "tp": "1"},
+ null ],
+"version": 3}

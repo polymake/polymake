@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ -d /opt/bin -a -n "POLYMAKE_HOST_AGENT" ]; then
+  exec /usr/local/bin/polymake "$@"
+else
+  cat /usr/local/share/polymake/resources/host-agent/warning.txt >&2
+  exit 1
+fi

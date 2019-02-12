@@ -26,7 +26,7 @@ namespace polymake { namespace polytope {
 template <typename Scalar>
 IncidenceMatrix<> common_refinement(const Matrix<Scalar>& vertices, const IncidenceMatrix<>& sub1, const IncidenceMatrix<>& sub2,  const int dim)
 {
-   perl::ObjectType polytope=perl::ObjectType::construct<Scalar>("Polytope");
+   perl::ObjectType polytope("Polytope", mlist<Scalar>());
 
    RestrictedIncidenceMatrix<> refinement;
    for (auto i=entire(rows(sub1)); !i.at_end(); ++i)

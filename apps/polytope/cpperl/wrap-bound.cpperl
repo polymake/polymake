@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "bound.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "bound", "include": ["polymake/Rational.h"], "sig": "bound:T1.B", "tp": "1"},
+ null ],
+"version": 3}

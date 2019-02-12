@@ -8,9 +8,6 @@ CREDIT
  (C) 2011 - 2015 Simon Hampe, simon.hampe@googlemail.com
  See also: https://github.com/simonhampe/atint 
 
-REQUIRE 
-bundled:cdd
-
 # REQUIRE
 # URIs of other bundled extensions which are prerequisite for this one
 

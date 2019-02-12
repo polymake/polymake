@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "surface_intersection.cc",
+ "inst": [
+  {"args": ["Max", "void", "void", "void"], "func": "intersect_in_smooth_surface", "include": ["polymake/TropicalNumber.h"], "sig": "intersect_in_smooth_surface:T1.B.B.B", "tp": "1"},
+  {"args": ["Min", "void", "void", "void"], "func": "intersect_in_smooth_surface", "include": ["polymake/TropicalNumber.h"], "sig": "intersect_in_smooth_surface:T1.B.B.B", "tp": "1"},
+ null ],
+"version": 3}

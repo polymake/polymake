@@ -30,8 +30,8 @@ perl::Object crosscut_complex(perl::Object p_in, perl::OptionSet options)
       realize = options["geometric_realization"],
       bounded = p_in.give("BOUNDED");
    perl::ObjectType result_type =
-        (realize && bounded) ? perl::ObjectType::construct<Scalar>("topaz::GeometricSimplicialComplex")
-                             : perl::ObjectType("topaz::SimplicialComplex");
+      (realize && bounded) ? perl::ObjectType("topaz::GeometricSimplicialComplex", mlist<Scalar>())
+                           : perl::ObjectType("topaz::SimplicialComplex");
    perl::Object p_out(result_type);
    p_out.set_description() << "Crosscut complex of " << p_in.name() << endl;
    p_out.take("FACETS") << rows(C);

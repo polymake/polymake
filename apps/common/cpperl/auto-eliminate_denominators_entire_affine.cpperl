@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Rational>&>"], "func": "eliminate_denominators_entire_affine", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/common/lattice_tools.h"], "sig": "eliminate_denominators_entire_affine.X"},
+ null ],
+"version": 3}

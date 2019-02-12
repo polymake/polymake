@@ -64,10 +64,10 @@ sub delete_from_list {  # \@list, numeric scalar or ref => true if deleted
    for (my $i=$#$list; $i>=0; --$i) {
       if ($list->[$i]==$item) {
          splice @$list, $i, 1;
-         return 1;
+         return true;
       }
    }
-   0
+   false
 }
 ####################################################################################
 sub delete_string_from_list {   # \@list, string scalar => true if deleted
@@ -75,26 +75,26 @@ sub delete_string_from_list {   # \@list, string scalar => true if deleted
    for (my $i=$#$list; $i>=0; --$i) {
       if ($list->[$i] eq $item) {
          splice @$list, $i, 1;
-         return 1;
+         return true;
       }
    }
-   0
+   false
 }
 ####################################################################################
 sub contains {          # \@list, numeric scalar or ref => bool
    my ($list, $item)=@_;
    foreach my $elem (@$list) {
-      $elem==$item and return 1;
+      $elem==$item and return true;
    }
-   return 0;
+   return false;
 }
 ####################################################################################
 sub contains_string {           # \@list, scalar => bool
    my ($list, $item)=@_;
    foreach my $elem (@$list) {
-      $elem eq $item and return 1;
+      $elem eq $item and return true;
    }
-   return 0;
+   return false;
 }
 ####################################################################################
 # "string1", "string2" [, "delimiter" ]
@@ -134,9 +134,9 @@ sub equal_lists {
    my $end=@$l1;
    return 0 if $end!=@$l2;
    for (my $i=0; $i<$end; ++$i) {
-       $l1->[$i] == $l2->[$i] or return 0;
+       $l1->[$i] == $l2->[$i] or return false;
    }
-   1
+   true
 }
 
 sub equal_string_lists {
@@ -144,9 +144,9 @@ sub equal_string_lists {
    my $end=@$l1;
    return 0 if $end!=@$l2;
    for (my $i=0; $i<$end; ++$i) {
-       $l1->[$i] eq $l2->[$i] or return 0;
+       $l1->[$i] eq $l2->[$i] or return false;
    }
-   1
+   true
 }
 
 # \list1, start_index1, \list2, start_index2 => length of the equal sequence starting at given positions
@@ -195,10 +195,10 @@ sub equal_hashes {
       while (my ($k, $v)=each %$h1) {
          unless (exists $h2->{$k} and defined($v) ? $h2->{$k}==$v : !defined($h2->{$k})) {
             keys %$h1;
-            return 0;
+            return false;
          }
       }
-      1;
+      true;
    }
 }
 
@@ -208,10 +208,10 @@ sub equal_string_hashes {
       while (my ($k, $v)=each %$h1) {
          unless (exists $h2->{$k} and defined($v) ? $h2->{$k} eq $v : !defined($h2->{$k})) {
             keys %$h1;
-            return 0;
+            return false;
          }
       }
-      1;
+      true;
    }
 }
 ####################################################################################
@@ -282,8 +282,6 @@ sub croak {
 
 sub beautify_error {
    unless ($DebugLevel) {
-      # FIXME: remove this!
-      namespaces::temp_disable();
       use re 'eval';
       $@ =~ s/ at \(eval \d+\)(?:\[.*?:\d+\])? line 1(\.)?/$1/g;
       $@ =~ s/, <\$?$id_re> line \d+\.//go;

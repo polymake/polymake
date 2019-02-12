@@ -24,19 +24,25 @@
 
 namespace pm {
 
-template <typename Key, typename Value, typename... TParams>
-class hash_map
-   : public std::unordered_map<Key, Value, hash_func<Key>, typename hash_table_cmp_adapter<Key, TParams...>::type> {
-   typedef std::unordered_map<Key, Value, hash_func<Key>, typename hash_table_cmp_adapter<Key, TParams...>::type> base_t;
+template <typename Key, typename Value, typename... Params>
+using hash_map_base_t = std::conditional_t<tagged_list_extract_integral<typename mlist_wrap<Params...>::type, MultiTag>(false),
+                                           std::unordered_multimap<Key, Value, hash_func<Key>, typename hash_table_cmp_adapter<Key, Params...>::type>,
+                                           std::unordered_map<Key, Value, hash_func<Key>, typename hash_table_cmp_adapter<Key, Params...>::type>>;
 
-   typedef typename mlist_wrap<TParams...>::type params;
+template <typename Key, typename Value, typename... Params>
+class hash_map
+   : public hash_map_base_t<Key, Value, Params...> {
+   using base_t = hash_map_base_t<Key, Value, Params...>;
+
+   typedef typename mlist_wrap<Params...>::type params;
    typedef typename mtagged_list_extract<params, DefaultValueTag, operations::clear<Value>>::type default_value_supplier;
    default_value_supplier dflt;
 
 public:
-   typedef Key key_type;
-   typedef Value mapped_type;
-   typedef operations::cmp key_comparator_type;
+   using key_type = Key;
+   using mapped_type = Value;
+   using key_comparator_type = operations::cmp;
+   static constexpr bool is_multimap = tagged_list_extract_integral<params, MultiTag>(false);
 
    hash_map() {}
    explicit hash_map(size_t start_cap) : base_t(start_cap) {}
@@ -71,14 +77,12 @@ public:
       return ret.first;
    }
 
-   std::pair<typename base_t::iterator, bool>
-   find_or_insert(const Key& k)
+   auto find_or_insert(const Key& k)
    {
       return this->emplace(k, dflt());
    }
 
-   std::pair<typename base_t::iterator, bool>
-   insert(const typename base_t::value_type& p)
+   auto insert(const typename base_t::value_type& p)
    {
       return base_t::insert(p);
    }
@@ -144,27 +148,27 @@ public:
    filler make_filler() { return filler(*this); }
 };
 
-template <typename Key, typename Value, typename... TParams>
-struct spec_object_traits< hash_map<Key, Value, TParams...> >
+template <typename Key, typename Value, typename... Params>
+struct spec_object_traits< hash_map<Key, Value, Params...> >
    : spec_object_traits<is_container> {
    static const IO_separator_kind IO_separator=IO_sep_inherit;
 };
 
-template <typename Key, typename Value, typename... TParams>
-struct choose_generic_object_traits<hash_map<Key, Value, TParams...>, false, false>
-   : spec_object_traits<hash_map<Key, Value, TParams...>> {
+template <typename Key, typename Value, typename... Params>
+struct choose_generic_object_traits<hash_map<Key, Value, Params...>, false, false>
+   : spec_object_traits<hash_map<Key, Value, Params...>> {
    typedef void generic_type;
    typedef is_map generic_tag;
-   typedef hash_map<Key, Value, TParams...> persistent_type;
+   typedef hash_map<Key, Value, Params...> persistent_type;
 };
 
-template <typename Key, typename Value, typename... TParams>
-struct is_ordered< hash_map<Key, Value, TParams...> >
+template <typename Key, typename Value, typename... Params>
+struct is_ordered< hash_map<Key, Value, Params...> >
    : std::false_type { };
 
 
 template <typename TKeys, typename TValues>
-class assoc_helper<const hash_map<TKeys,TValues>, TKeys, true> {
+class assoc_helper<const hash_map<TKeys,TValues>, TKeys, false, true> {
 public:
    typedef const hash_map<TKeys,TValues> TMap;
    typedef typename inherit_const<typename TMap::mapped_type, TMap>::type& result_type;
@@ -177,7 +181,7 @@ public:
 };
 
 template <typename TKeys, typename TValues>
-class assoc_helper<hash_map<TKeys,TValues>, TKeys, true> {
+class assoc_helper<hash_map<TKeys,TValues>, TKeys, false, true> {
 public:
    typedef hash_map<TKeys,TValues> TMap;
    typedef typename inherit_const<typename TMap::mapped_type, TMap>::type& result_type;

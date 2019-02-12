@@ -27,13 +27,13 @@ namespace pm {
  *  Matrix masquerade: ConcatRows, ConcatCols
  * ------------------------------------------ */
 
-template <typename Matrix>
+template <typename TMatrix>
 class ConcatRows_default
-   : public cascade_impl< ConcatRows_default<Matrix>,
-                          mlist< ContainerTag< Rows<Matrix> >,
+   : public cascade_impl< ConcatRows_default<TMatrix>,
+                          mlist< ContainerTag< Rows<TMatrix> >,
                                  CascadeDepth< int_constant<2> >,
                                  MasqueradedTop > > {
-   typedef cascade_impl<ConcatRows_default> base_t;
+   using base_t = cascade_impl<ConcatRows_default>;
 
    int size_impl(std::false_type) const { return dim(); }
    int size_impl(std::true_type) const { return base_t::size(); }
@@ -44,55 +44,64 @@ public:
    }
    int size() const
    {
-      return size_impl(bool_constant<check_container_feature<Matrix, sparse>::value>());
+      return size_impl(bool_constant<check_container_feature<TMatrix, sparse>::value>());
    }
 };
 
-template <typename Matrix>
+template <typename TMatrix>
 class ConcatRows
-   : public ConcatRows_default<Matrix>
-   , public GenericVector< ConcatRows<Matrix>,
-                           typename object_traits<typename Matrix::value_type>::persistent_type > {
+   : public ConcatRows_default<TMatrix>
+   , public GenericVector< ConcatRows<TMatrix>,
+                           typename object_traits<typename TMatrix::value_type>::persistent_type > {
 protected:
    ~ConcatRows();
 public:
    ConcatRows& operator= (const ConcatRows& other) { return ConcatRows::generic_type::operator=(other); }
    using ConcatRows::generic_type::operator=;
-   using ConcatRows_default<Matrix>::dim;
+   using ConcatRows_default<TMatrix>::dim;
 };
 
-template <typename Matrix>
+template <typename TMatrix>
 class ConcatCols
-   : public ConcatRows< Transposed<Matrix> > {};
+   : public ConcatRows< Transposed<TMatrix> > {};
 
-template <typename Matrix>
-struct spec_object_traits< ConcatRows<Matrix> >
+template <typename TMatrix>
+struct spec_object_traits< ConcatRows<TMatrix> >
    : spec_object_traits<is_container> {
-   static const bool is_always_const=object_traits<Matrix>::is_always_const;
+   static const bool is_always_const=object_traits<TMatrix>::is_always_const;
    static const int is_resizeable=0;
-   typedef Matrix masquerade_for;
+   typedef TMatrix masquerade_for;
 };
 
-template <typename Matrix>
-struct spec_object_traits< ConcatCols<Matrix> >
-   : spec_object_traits< ConcatRows<Matrix> > {};
+template <typename TMatrix>
+struct spec_object_traits< ConcatCols<TMatrix> >
+   : spec_object_traits< ConcatRows<TMatrix> > {};
 
-template <typename Matrix>
-struct check_container_feature<ConcatRows<Matrix>, sparse>
-   : check_container_feature<Matrix, sparse> {};
+template <typename TMatrix>
+struct check_container_feature<ConcatRows<TMatrix>, sparse>
+   : check_container_feature<TMatrix, sparse> {};
 
-template <typename Matrix>
-struct check_container_feature<ConcatRows<Matrix>, pure_sparse>
-   : check_container_feature<Matrix, pure_sparse> {};
+template <typename TMatrix>
+struct check_container_feature<ConcatRows<TMatrix>, pure_sparse>
+   : check_container_feature<TMatrix, pure_sparse> {};
 
-template <typename Matrix>
-struct check_container_feature<ConcatCols<Matrix>, sparse>
-   : check_container_feature<Matrix, sparse> {};
+template <typename TMatrix>
+struct check_container_feature<ConcatCols<TMatrix>, sparse>
+   : check_container_feature<TMatrix, sparse> {};
 
-template <typename Matrix>
-struct check_container_feature<ConcatCols<Matrix>, pure_sparse>
-   : check_container_feature<Matrix, pure_sparse> {};
-
+template <typename TMatrix>
+struct check_container_feature<ConcatCols<TMatrix>, pure_sparse>
+   : check_container_feature<TMatrix, pure_sparse> {};
+
+template <typename T>
+struct masquerade_as_ConcatRows {
+   using type = masquerade<ConcatRows, T>;
+};
+template <typename T>
+struct masquerade_as_ConcatCols {
+   using type = masquerade<ConcatCols, T>;
+};
+
 /* ----------------
  *  Generic matrix
  * ---------------- */
@@ -100,20 +109,40 @@ struct check_container_feature<ConcatCols<Matrix>, pure_sparse>
 /** @defgroup genericMatrices Generic Matrices
  *  @{
  */
+
+template <typename TMatrix, typename E = typename TMatrix::element_type>
+class GenericMatrix;
+
+template <typename T, typename... E>
+using is_generic_matrix = is_derived_from_instance_of<pure_type_t<T>, GenericMatrix, E...>;
+
 template <typename E> class Matrix;
-template <typename E, typename _symmetric=NonSymmetric> class SparseMatrix;
+template <typename E, typename is_symmetric=NonSymmetric> class SparseMatrix;
 template <typename E> class SparseMatrix2x2;
-template <typename E> class constant_value_matrix;
+template <typename E> class SameElementMatrix;
+
+template <typename MatrixRef, typename Operation> class LazyMatrix1;
+template <typename MatrixRef1, typename MatrixRef2, typename Operation> class LazyMatrix2;
+template <typename VectorRef> class RepeatedRow;
+template <typename VectorRef> class RepeatedCol;
+
+namespace internal {
+
+template <typename LeftRef, typename RightRef,
+          typename Left =typename deref<unwary_t<LeftRef>>::type,
+          typename Right=typename deref<unwary_t<RightRef>>::type>
+struct matrix_product;
+
+}
 
 /** @file GenericMatrix.h
     @class GenericMatrix
     @brief @ref generic "Generic type" for @ref matrix_sec "matrices"
  */
-template <typename TMatrix, typename E = typename TMatrix::element_type>
+template <typename TMatrix, typename E>
 class GenericMatrix
    : public Generic<TMatrix>
-   , public matrix_methods<TMatrix, E>
-   , public operators::base {
+   , public matrix_methods<TMatrix, E> {
    template <typename, typename> friend class GenericMatrix;
 
 protected:
@@ -128,17 +157,12 @@ public:
       is_nonsymmetric=!is_symmetric && !is_skew,
       is_flat=check_container_feature<TMatrix, FlatStorage>::value;
 
-   typedef typename matrix_symmetry_type<TMatrix>::type sym_discr;
-   typedef typename Generic<TMatrix>::top_type top_type;
-   typedef typename std::conditional< is_sparse,
-                                      SparseMatrix<E, sym_discr>,
-                                      Matrix<E> >::type
-      persistent_type;
-   typedef typename std::conditional< is_sparse,
-                                      SparseMatrix<E>,
-                                      Matrix<E> >::type
-      persistent_nonsymmetric_type;
-   typedef GenericMatrix generic_type;
+   using sym_discr = typename matrix_symmetry_type<TMatrix>::type;
+   using typename Generic<TMatrix>::top_type;
+   using persistent_type = std::conditional_t<is_sparse, SparseMatrix<E, sym_discr>, Matrix<E>>;
+   using persistent_nonsymmetric_type = std::conditional_t<is_sparse, SparseMatrix<E>, Matrix<E>>;
+   using persistent_dense_type = Matrix<E>;
+   using generic_type = GenericMatrix;
 
    template <typename Other>
    static constexpr bool is_expandable_by()
@@ -147,18 +171,19 @@ public:
              can_initialize<typename Other::element_type, E>::value;
    }
 
-   template <typename TMatrix2>
+   template <typename Matrix2>
    static constexpr bool compatible_symmetry_types()
    {
-      return is_nonsymmetric || std::is_same<sym_discr, typename TMatrix2::sym_discr>::value;
+      return (is_nonsymmetric || std::is_same<sym_discr, typename Matrix2::sym_discr>::value) &&
+             isomorphic_types<E, typename Matrix2::element_type>::value;
    }
 
-   template <typename TMatrix2>
+   template <typename Matrix2>
    static constexpr bool is_assignable_from()
    {
       return !spec_object_traits<top_type>::is_always_const &&
-             compatible_symmetry_types<TMatrix2>() &&
-             can_assign_to<typename TMatrix2::element_type, E>::value;
+             compatible_symmetry_types<Matrix2>() &&
+             can_assign_to<typename Matrix2::element_type, E>::value;
    }
 
 protected:
@@ -205,7 +230,7 @@ protected:
    void assign_op_impl(const Operation& op, std::false_type, Symmetric)
    {
       for (auto r_i=entire(pm::rows(*this)); !r_i.at_end(); ++r_i)
-         r_i->assign_op(op,sym_discr());
+         r_i->assign_op(op, sym_discr());
    }
 
    template <typename TMatrix2, typename Operation>
@@ -219,7 +244,7 @@ protected:
    {
       auto src=pm::rows(m).begin();
       for (auto r_i=entire(pm::rows(*this)); !r_i.at_end(); ++r_i, ++src)
-         r_i->assign_op(*src,op);
+         r_i->assign_op(*src, op);
    }
 
    template <typename TMatrix2, typename Operation>
@@ -227,7 +252,7 @@ protected:
    {
       auto src=pm::rows(m).begin();
       for (auto r_i=entire(pm::rows(*this)); !r_i.at_end(); ++r_i, ++src)
-         r_i->assign_op(*src,op,sym_discr());
+         r_i->assign_op(*src, op, sym_discr());
    }
 
    template <typename E2>
@@ -279,7 +304,7 @@ public:
    top_type& operator= (const GenericMatrix& m)
    {
       if (!trivial_assignment(m)) {
-         if (!object_traits<TMatrix>::is_resizeable && (POLYMAKE_DEBUG || !Unwary<TMatrix>::value)) {
+         if (!object_traits<TMatrix>::is_resizeable && (POLYMAKE_DEBUG || is_wary<TMatrix>())) {
             if (this->rows() != m.rows() || this->cols() != m.cols())
                throw std::runtime_error("GenericMatrix::operator= - dimension mismatch");
          }
@@ -291,7 +316,7 @@ public:
    template <typename TMatrix2, typename=typename std::enable_if<is_assignable_from<TMatrix2>()>::type>
    top_type& operator= (const GenericMatrix<TMatrix2>& m)
    {
-      if (!object_traits<TMatrix>::is_resizeable && (POLYMAKE_DEBUG || !Unwary<TMatrix>::value)) {
+      if (!object_traits<TMatrix>::is_resizeable && (POLYMAKE_DEBUG || is_wary<TMatrix>())) {
          if (this->rows() != m.rows() || this->cols() != m.cols())
             throw std::runtime_error("GenericMatrix::operator= - dimension mismatch");
       }
@@ -309,7 +334,7 @@ public:
    {
       if (trivial_assignment(m)) return;
 
-      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TMatrix2>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TMatrix>() || is_wary<TMatrix2>()) {
          if (this->rows() != m.rows() || this->cols() != m.cols())
             throw std::runtime_error("GenericMatrix::swap - dimension mismatch");
       }
@@ -322,10 +347,10 @@ public:
       assign_op_impl(op, bool_constant<is_flat>(), sym_discr());
    }
 
-   template <typename TMatrix2, typename Operation>
-   void assign_op(const GenericMatrix<TMatrix2>& m, const Operation& op)
+   template <typename Matrix2, typename Operation>
+   void assign_op(const GenericMatrix<Matrix2>& m, const Operation& op)
    {
-      assign_op_impl(m.top(), op, bool_constant<is_flat && check_container_feature<TMatrix2, FlatStorage>::value>(), sym_discr());
+      assign_op_impl(m.top(), op, bool_constant<is_flat && Matrix2::is_flat>(), sym_discr());
    }
 
    /**
@@ -338,74 +363,485 @@ public:
       this->top().fill_impl(x, bool_constant<is_flat>());
    }
 
+protected:
+   // TODO: enable variants with persistent_type&&
+   // when defined<Operation> is properly implemented
+   template <bool now, bool>
+   using temp_ignore = bool_constant<now>;
+
+   template <typename T>
+   using is_this = std::is_same<generic_type, typename unwary_t<pure_type_t<T>>::generic_type>;
+
+   template <typename Left, typename Right, typename Operation, typename=void>
+   struct lazy_op {};
+
+   template <typename Left, typename Operation>
+   struct lazy_op<Left, void, Operation,
+                  std::enable_if_t<is_this<Left>::value &&
+                                   !std::is_same<Left, persistent_type>::value>> {
+      using m_type = LazyMatrix1<add_const_t<unwary_t<Left>>, Operation>;
+   };
+
+   template <typename Operation>
+   struct lazy_op<persistent_type, void, Operation, void> {
+      using r_type = persistent_type&&;
+   };
+
+   // TODO: && is_defined<Operation>
+   template <typename Left, typename Right, typename Operation>
+   struct lazy_op<Left, Right, Operation,
+                  std::enable_if_t<isomorphic_types<E, pure_type_t<Right>>::value &&
+                                   is_this<Left>::value &&
+                                   temp_ignore<true, !std::is_same<Left, persistent_type>::value>::value>> {
+      using scalar_type = SameElementMatrix<diligent_ref_t<unwary_t<Right>>>;
+      using m_s_type = LazyMatrix2<add_const_t<unwary_t<Left>>, scalar_type, Operation>;
+
+      static m_s_type make(Left&& l, Right&& r)
+      {
+         return m_s_type(unwary(std::forward<Left>(l)), scalar_type(diligent(unwary(std::forward<Right>(r)))));
+      }
+   };
+
+#if 0
+   // TODO enable when temp_ignore goes
+   template <typename Right, typename Operation>
+   struct lazy_op<persistent_type, Right, Operation,
+                  std::enable_if_t<isomorphic_types<E, pure_type_t<Right>>::value>> {
+      using r_s_type = persistent_type&&;
+   };
+#endif
+
+   template <typename Left, typename Right, typename Operation>
+   struct lazy_op<Left, Right, Operation,
+                  std::enable_if_t<isomorphic_types<E, pure_type_t<Left>>::value &&
+                                   is_this<Right>::value &&
+                                   temp_ignore<true, !std::is_same<Right, persistent_type>::value>::value>> {
+      using scalar_type = SameElementMatrix<diligent_ref_t<unwary_t<Left>>>;
+      using s_m_type = LazyMatrix2<scalar_type, add_const_t<unwary_t<Right>>, Operation>;
+
+      static s_m_type make(Left&& l, Right&& r)
+      {
+         return s_m_type(scalar_type(diligent(unwary(std::forward<Left>(l)))), unwary(std::forward<Right>(r)));
+      }
+   };
+
+#if 0
+   // TODO enable when temp_ignore goes
+   template <typename Left, typename Operation>
+   struct lazy_op<Left, persistent_type, Operation,
+                  std::enable_if_t<isomorphic_types<E, pure_type_t<Left>>::value>> {
+      using s_r_type = persistent_type&&;
+   };
+#endif
+
+   // TODO: && is_defined<Operation>
+   template <typename Left, typename Right, typename Operation>
+   struct lazy_op<Left, Right, Operation,
+                  std::enable_if_t<is_this<Left>::value &&
+                                   is_generic_vector<Right>::value &&
+                                   isomorphic_types<E, typename pure_type_t<Right>::element_type>::value>> {
+      using vec_type = same_value_container<diligent_ref_t<unwary_t<Right>>>;
+      using m_v_type = LazyVector2<masquerade<Rows, add_const_t<unwary_t<Left>>>, vec_type, Operation>;
+
+      static m_v_type make(Left&& l, Right&& r)
+      {
+         return m_v_type(unwary(std::forward<Left>(l)), vec_type(diligent(unwary(std::forward<Right>(r)))));
+      }
+   };
+
+   template <typename Left, typename Right, typename Operation>
+   struct lazy_op<Left, Right, Operation,
+                  std::enable_if_t<is_this<Right>::value &&
+                                   is_generic_vector<Left>::value &&
+                                   isomorphic_types<E, typename pure_type_t<Left>::element_type>::value>> {
+      using vec_type = same_value_container<diligent_ref_t<unwary_t<Left>>>;
+      using v_m_type = LazyVector2<vec_type, masquerade<Cols, add_const_t<unwary_t<Right>>>, Operation>;
+
+      static v_m_type make(Left&& l, Right&& r)
+      {
+         return v_m_type(vec_type(diligent(unwary(std::forward<Left>(l)))), std::forward<Right>(r));
+      }
+   };
+
+   // TODO: && is_defined<Operation>
+   template <typename Left, typename Right, typename Operation>
+   struct lazy_op<Left, Right, Operation,
+                  std::enable_if_t<!std::is_same<Operation, BuildBinary<operations::mul>>::value &&
+                                   is_this<Left>::value &&
+                                   temp_ignore<true, !std::is_same<Left, persistent_type>::value>::value &&
+                                   is_generic_matrix<Right>::value &&
+                                   isomorphic_types<E, typename pure_type_t<Right>::element_type>::value>> {
+      using m_m_type = LazyMatrix2<add_const_t<unwary_t<Left>>, add_const_t<unwary_t<Right>>, Operation>;
+   };
+
+   template <typename Right, typename Operation>
+   struct lazy_op<persistent_type, Right, Operation,
+                  std::enable_if_t<!std::is_same<Operation, BuildBinary<operations::mul>>::value &&
+                                   temp_ignore<false, std::is_same<TMatrix, persistent_type>::value>::value &&
+                                   is_generic_matrix<Right>::value &&
+                                   isomorphic_types<E, typename pure_type_t<Right>::element_type>::value>> {
+      using r_m_type = persistent_type&&;
+   };
+
+   template <typename Left, typename Operation>
+   struct lazy_op<Left, persistent_type, Operation,
+                  std::enable_if_t<!std::is_same<Operation, BuildBinary<operations::mul>>::value &&
+                                   is_generic_matrix<Left>::value &&
+                                   temp_ignore<false, !std::is_same<Left, persistent_type>::value>::value &&
+                                   isomorphic_types<E, typename pure_type_t<Left>::element_type>::value>> {
+      using m_r_type = persistent_type&&;
+   };
+
+   // TODO: && is_defined<mul>
+   template <typename Left, typename Right>
+   struct lazy_op<Left, Right, BuildBinary<operations::mul>,
+                  std::enable_if_t<is_this<Left>::value &&
+                                   is_generic_matrix<Right>::value &&
+                                   isomorphic_types<E, typename pure_type_t<Right>::element_type>::value &&
+                                   cleanOperations::can<cleanOperations::mul, E, typename pure_type_t<Right>::element_type>::value>>
+      : public internal::matrix_product<Left, Right> {};
+
+#define PmCheckMatrixDim(Left, l, Right, r, sign) \
+   if (POLYMAKE_DEBUG || is_wary<Left>() || is_wary<Right>()) \
+      if (l.rows() != r.rows() || l.cols() != r.cols()) \
+         throw std::runtime_error("GenericMatrix::operator" sign " - dimension mismatch")
+
+public:
+   /// negate
+   template <typename Op>
+   friend
+   typename lazy_op<Op, void, BuildUnary<operations::neg>>::m_type
+   operator- (Op&& m)
+   {
+      return typename lazy_op<Op, void, BuildUnary<operations::neg>>::m_type(unwary(std::forward<Op>(m)));
+   }
+
+   template <typename Op>
+   friend
+   typename lazy_op<Op, void, BuildUnary<operations::neg>>::r_type
+   operator- (Op&& m)
+   {
+      return std::move(m.negate());
+   }
+
+   /// negate elements in place
    top_type& negate()
    {
       this->top().assign_op(BuildUnary<operations::neg>());
       return this->top();
    }
 
-   /// adding a GenericMatrix
-   template <typename TMatrix2>
-   typename std::enable_if<compatible_symmetry_types<TMatrix2>(), top_type&>::type
-   operator+= (const GenericMatrix<TMatrix2>& m)
+   /// add a matrix
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::add>>::m_m_type
+   operator+ (Left&& l, Right&& r)
    {
-      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TMatrix2>::value) {
-         if (this->rows() != m.rows() || this->cols() != m.cols())
-            throw std::runtime_error("GenericMatrix::operator+= - dimension mismatch");
-      }
-      this->top().assign_op(m.top(), BuildBinary<operations::add>());
+      PmCheckMatrixDim(Left, l, Right, r, "+");
+      return typename lazy_op<Left, Right, BuildBinary<operations::add>>::m_m_type(unwary(std::forward<Left>(l)),
+                                                                                   unwary(std::forward<Right>(r)));
+   }
+
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::add>>::r_m_type
+   operator+ (Left&& l, Right&& r)
+   {
+      PmCheckMatrixDim(Left, l, Right, r, "+");
+      return std::move(l += r);
+   }
+
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::add>>::m_r_type
+   operator+ (Left&& l, Right&& r)
+   {
+      PmCheckMatrixDim(Left, l, Right, r, "+");
+      return std::move(r += l);
+   }
+
+   template <typename Right, typename E2>
+   std::enable_if_t<compatible_symmetry_types<Right>() &&
+                    isomorphic_types<E, E2>::value &&
+                    cleanOperations::can<cleanOperations::add, E, E2>::value, top_type&>
+   operator+= (const GenericMatrix<Right, E2>& r)
+   {
+      PmCheckMatrixDim(TMatrix, (*this), Right, r, "+=");
+      this->top().assign_op(r.top(), BuildBinary<operations::add>());
       return this->top();
    }
 
-   /// subtracting a GenericMatrix
-   template <typename TMatrix2>
-   typename std::enable_if<compatible_symmetry_types<TMatrix2>(), top_type&>::type
-   operator-= (const GenericMatrix<TMatrix2, E>& m)
+   /// subtract a matrix
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::sub>>::m_m_type
+   operator- (Left&& l, Right&& r)
    {
-      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TMatrix2>::value) {
-         if (this->rows() != m.rows() || this->cols() != m.cols())
-            throw std::runtime_error("GenericMatrix::operator-= - dimension mismatch");
-      }
-      this->top().assign_op(m.top(), BuildBinary<operations::sub>());
+      PmCheckMatrixDim(Left, l, Right, r, "-");
+      return typename lazy_op<Left, Right, BuildBinary<operations::sub>>::m_m_type(unwary(std::forward<Left>(l)),
+                                                                                   unwary(std::forward<Right>(r)));
+   }
+
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::sub>>::r_m_type
+   operator- (Left&& l, Right&& r)
+   {
+      PmCheckMatrixDim(Left, l, Right, r, "-");
+      return std::move(l -= r);
+   }
+
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::sub>>::m_r_type
+   operator- (Left&& l, Right&& r)
+   {
+      PmCheckMatrixDim(Left, l, Right, r, "-");
+      return std::move(r.negate() += l);
+   }
+
+   template <typename Right, typename E2>
+   std::enable_if_t<compatible_symmetry_types<Right>() &&
+                    isomorphic_types<E, E2>::value &&
+                    cleanOperations::can<cleanOperations::sub, E, E2>::value, top_type&>
+   operator-= (const GenericMatrix<Right, E2>& r)
+   {
+      PmCheckMatrixDim(TMatrix, (*this), Right, r, "-=");
+      this->top().assign_op(r.top(), BuildBinary<operations::sub>());
       return this->top();
    }
 
-   /// multiply with an element
+#undef PmCheckMatrixDim
+
+   /// multiply with a scalar
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::mul>>::m_s_type
+   operator* (Left&& l, Right&& r)
+   {
+      return lazy_op<Left, Right, BuildBinary<operations::mul>>::make(std::forward<Left>(l), std::forward<Right>(r));
+   }
+
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::mul>>::s_m_type
+   operator* (Left&& l, Right&& r)
+   {
+      return lazy_op<Left, Right, BuildBinary<operations::mul>>::make(std::forward<Left>(l), std::forward<Right>(r));
+   }
+
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::mul>>::r_s_type
+   operator* (Left&& l, Right&& r)
+   {
+      return std::move(l *= r);
+   }
+
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::mul>>::s_r_type
+   operator* (Left&& l, Right&& r)
+   {
+      return std::move(r.mul_from_left(l));
+   }
+
+   /// multiply with a vector
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::mul>>::m_v_type
+   operator* (Left&& l, Right&& r)
+   {
+      if (POLYMAKE_DEBUG || is_wary<Left>() || is_wary<Right>()) {
+         if (l.cols() != r.dim())
+            throw std::runtime_error("GenericMatrix::operator* - dimension mismatch");
+      }
+      return lazy_op<Left, Right, BuildBinary<operations::mul>>::make(std::forward<Left>(l), std::forward<Right>(r));
+   }
+
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::mul>>::v_m_type
+   operator* (Left&& l, Right&& r)
+   {
+      if (POLYMAKE_DEBUG || is_wary<Left>() || is_wary<Right>()) {
+         if (l.dim() != r.rows())
+            throw std::runtime_error("GenericMatrix::operator* - dimension mismatch");
+      }
+      return lazy_op<Left, Right, BuildBinary<operations::mul>>::make(std::forward<Left>(l), std::forward<Right>(r));
+   }
+
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::mul>>::m_m_type
+   operator* (Left&& l, Right&& r)
+   {
+      if (POLYMAKE_DEBUG || is_wary<Left>() || is_wary<Right>()) {
+         if (l.cols() != r.rows())
+            throw std::runtime_error("GenericMatrix::operator* - dimension mismatch");
+      }
+      return internal::matrix_product<Left, Right>::make(std::forward<Left>(l), std::forward<Right>(r));
+   }
+
    template <typename Right>
-   top_type& operator*= (const Right& r)
+   std::enable_if_t<isomorphic_types<E, Right>::value &&
+                    cleanOperations::can<cleanOperations::mul, E, Right>::value, top_type&>
+   operator*= (const Right& r)
    {
       if (!is_zero(r))
-         this->top().assign_op(constant_value_matrix<const Right&>(r), BuildBinary<operations::mul>());
+         this->top().assign_op(SameElementMatrix<const Right&>(r), BuildBinary<operations::mul>());
       else
          fill(r);
       return this->top();
    }
 
+   template <typename Left>
+   std::enable_if_t<isomorphic_types<E, Left>::value &&
+                    cleanOperations::can<cleanOperations::mul, Left, E>::value, top_type&>
+   mul_from_left(const Left& l)
+   {
+      if (!is_zero(l))
+         this->top().assign_op(SameElementMatrix<const Left&>(l), BuildBinary<operations::mul_from_left>());
+      else
+         fill(l);
+      return this->top();
+   }
+
+   /// divide by a scalar  
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::div>>::m_s_type
+   operator/ (Left&& l, Right&& r)
+   {
+      return lazy_op<Left, Right, BuildBinary<operations::div>>::make(std::forward<Left>(l), std::forward<Right>(r));
+   }
+
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::div>>::r_s_type
+   operator/ (Left&& l, Right&& r)
+   {
+      std::move(l /= r);
+   }
+
    template <typename Right>
-   typename std::enable_if<isomorphic_types<E, Right>::value, top_type&>::type
+   std::enable_if_t<isomorphic_types<E, Right>::value &&
+                    cleanOperations::can<cleanOperations::div, E, Right>::value, top_type&>
    operator/= (const Right& r)
    {
-      this->top().assign_op(constant_value_matrix<const Right&>(r), BuildBinary<operations::div>());
+      this->top().assign_op(SameElementMatrix<const Right&>(r), BuildBinary<operations::div>());
       return this->top();
    }
 
-   /// divide by an element 
+   /// divide without residue by a scalar
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::divexact>>::m_s_type
+   div_exact(Left&& l, Right&& r)
+   {
+      return lazy_op<Left, Right, BuildBinary<operations::divexact>>::make(std::forward<Left>(l), std::forward<Right>(r));
+   }
+
+   template <typename Left, typename Right>
+   friend
+   typename lazy_op<Left, Right, BuildBinary<operations::divexact>>::r_s_type
+   div_exact(Left&& l, Right&& r)
+   {
+      std::move(l.div_exact(r));
+   }
+
    template <typename Right>
-   typename std::enable_if<isomorphic_types<E, Right>::value, top_type&>::type
+   std::enable_if_t<isomorphic_types<E, Right>::value &&
+                    cleanOperations::can<cleanOperations::div, E, Right>::value, top_type&>
    div_exact(const Right& r)
    {
-      this->top().assign_op(constant_value_matrix<const Right&>(r), BuildBinary<operations::divexact>());
+      this->top().assign_op(SameElementMatrix<const Right&>(r), BuildBinary<operations::divexact>());
       return this->top();
    }
 
-   /// append the rows of a GenericMatrix
+protected:
+   template <typename Left, typename Right, typename Rowwise, typename=void>
+   struct block_matrix {};
+   using rowwise = std::true_type;
+   using columnwise = std::false_type;
+
+   template <typename Left, typename Right, typename Rowwise>
+   struct block_matrix<Left, Right, Rowwise, std::enable_if_t<is_this<Left>::value &&
+                                                              is_generic_matrix<Right, E>::value>> {
+      using m_m_type = typename chain_compose<BlockMatrix, true, Rowwise>::template with<unwary_t<Left>, unwary_t<Right>>;
+   };
+
+   template <typename Left, typename Right, typename Rowwise>
+   struct block_matrix<Left, Right, Rowwise, std::enable_if_t<is_this<Left>::value &&
+                                                              is_generic_vector<Right, E>::value>> {
+      using line_type = std::conditional_t<Rowwise::value, RepeatedRow<unwary_t<Right>>, RepeatedCol<unwary_t<Right>>>;
+      using m_v_type = typename chain_compose<BlockMatrix, true, Rowwise>::template with<unwary_t<Left>, line_type>;
+
+      static m_v_type make(Left&& l, Right&& r)
+      {
+         return m_v_type(unwary(std::forward<Left>(l)), line_type(unwary(std::forward<Right>(r)), 1));
+      }
+   };
+
+   template <typename Left, typename Right, typename Rowwise>
+   struct block_matrix<Left, Right, Rowwise, std::enable_if_t<is_generic_vector<Left, E>::value &&
+                                                              is_this<Right>::value>> {
+      using line_type = std::conditional_t<Rowwise::value, RepeatedRow<unwary_t<Left>>, RepeatedCol<unwary_t<Left>>>;
+      using v_m_type = typename chain_compose<BlockMatrix, true, Rowwise>::template with<line_type, unwary_t<Right>>;
+
+      static v_m_type make(Left&& l, Right&& r)
+      {
+         return v_m_type(line_type(unwary(std::forward<Left>(l)), 1), unwary(std::forward<Right>(r)));
+      }
+   };
+
+public:
+   template <typename Left, typename Right> friend
+   typename block_matrix<Left, Right, rowwise>::m_m_type operator/ (Left&& l, Right&& r)
+   {
+      return typename block_matrix<Left, Right, rowwise>::m_m_type(unwary(std::forward<Left>(l)),
+                                                                   unwary(std::forward<Right>(r)));
+   }
+
+   template <typename Left, typename Right> friend
+   typename block_matrix<Left, Right, rowwise>::m_v_type operator/ (Left&& l, Right&& r)
+   {
+      return block_matrix<Left, Right, rowwise>::make(std::forward<Left>(l), std::forward<Right>(r));
+   }
+
+   template <typename Left, typename Right> friend
+   typename block_matrix<Left, Right, rowwise>::v_m_type operator/ (Left&& l, Right&& r)
+   {
+      return block_matrix<Left, Right, rowwise>::make(std::forward<Left>(l), std::forward<Right>(r));
+   }
+
+   template <typename Left, typename Right> friend
+   typename block_matrix<Left, Right, columnwise>::m_m_type operator| (Left&& l, Right&& r)
+   {
+      return typename block_matrix<Left, Right, columnwise>::m_m_type(unwary(std::forward<Left>(l)),
+                                                                      unwary(std::forward<Right>(r)));
+   }
+
+   template <typename Left, typename Right> friend
+   typename block_matrix<Left, Right, columnwise>::m_v_type operator| (Left&& l, Right&& r)
+   {
+      return block_matrix<Left, Right, columnwise>::make(std::forward<Left>(l), std::forward<Right>(r));
+   }
+
+   template <typename Left, typename Right> friend
+   typename block_matrix<Left, Right, columnwise>::v_m_type operator| (Left&& l, Right&& r)
+   {
+      return block_matrix<Left, Right, columnwise>::make(std::forward<Left>(l), std::forward<Right>(r));
+   }
+
+   /// append rows of another matrix
    template <typename TMatrix2>
    typename std::enable_if<is_expandable_by<TMatrix2>(), top_type&>::type
    operator/= (const GenericMatrix<TMatrix2>& m)
    {
       if (m.rows()) {
          if (this->rows()) {
-            if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TMatrix2>::value) {
+            if (POLYMAKE_DEBUG || is_wary<TMatrix>() || is_wary<TMatrix2>()) {
                if (this->cols() != m.cols())
                   throw std::runtime_error("GenericMatrix::operator/= - dimension mismatch");
             }
@@ -417,13 +853,13 @@ public:
       return this->top();
    }
 
-   /// append a GenericVector as a row
+   /// append a vector as a row
    template <typename TVector>
    typename std::enable_if<is_expandable_by<TVector>(), top_type&>::type
    operator/= (const GenericVector<TVector>& v)
    {
       if (this->rows()) {
-         if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TVector>::value) {
+         if (POLYMAKE_DEBUG || is_wary<TMatrix>() || is_wary<TVector>()) {
             if (this->cols() != v.dim())
                throw std::runtime_error("GenericMatrix::operator/= - dimension mismatch");
          }
@@ -434,14 +870,14 @@ public:
       return this->top();
    }
 
-   /// append the columns of a GenericMatrix
+   /// append columns of another matrix
    template <typename TMatrix2>
-   typename std::enable_if<is_expandable_by<TMatrix2>(), top_type&>::type
+   std::enable_if_t<is_expandable_by<TMatrix2>(), top_type&>
    operator|= (const GenericMatrix<TMatrix2>& m)
    {
       if (m.cols()) {
          if (this->cols()) {
-            if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TMatrix2>::value) {
+            if (POLYMAKE_DEBUG || is_wary<TMatrix>() || is_wary<TMatrix2>()) {
                if (this->rows() != m.rows())
                   throw std::runtime_error("GenericMatrix::operator|= - dimension mismatch");
             }
@@ -453,13 +889,13 @@ public:
       return this->top();
    }
 
-   /// append a GenericVector as a column
+   /// append a vector as a column
    template <typename TVector>
-   typename std::enable_if<is_expandable_by<TVector>(), top_type&>::type
+   std::enable_if_t<is_expandable_by<TVector>(), top_type&>
    operator|= (const GenericVector<TVector>& v)
    {
       if (this->cols()) {
-         if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value || !Unwary<TVector>::value) {
+         if (POLYMAKE_DEBUG || is_wary<TMatrix>() || is_wary<TVector>()) {
             if (this->rows() != v.dim())
                throw std::runtime_error("GenericMatrix::operator|= - dimension mismatch");
          }
@@ -475,84 +911,90 @@ public:
       return non_zero(bool_constant<is_flat>());
    }
 
-   template <typename TMatrix2,
-             typename=typename std::enable_if<are_comparable<E, typename TMatrix2::element_type>::value>::type>
-   friend
-   bool operator== (const GenericMatrix& l, const GenericMatrix<TMatrix2>& r)
+   template <typename TMatrix2, typename E2>
+   std::enable_if_t<are_comparable<E, E2>::value, bool>
+   operator== (const GenericMatrix<TMatrix2, E2>& m2) const
    {
-      if ((l.rows()==0 || l.cols()==0) && (r.rows()==0 || r.cols()==0)) return true;
-      if (l.rows() != r.rows() || l.cols() != r.cols()) return false;
-      return l.equal(r, bool_constant<is_flat && check_container_feature<TMatrix2, FlatStorage>::value>());
+      if (this->rows() != m2.rows() || this->cols() != m2.cols()) return false;
+      return equal(m2, bool_constant<is_flat && check_container_feature<TMatrix2, FlatStorage>::value>());
    }
 
-   template <typename TMatrix2,
-             typename=typename std::enable_if<are_comparable<E, typename TMatrix2::element_type>::value>::type>
-   friend
-   bool operator!= (const GenericMatrix& l, const GenericMatrix<TMatrix2>& r)
+   template <typename TMatrix2, typename E2>
+   std::enable_if_t<are_comparable<E, E2>::value, bool>
+   operator!= (const GenericMatrix<TMatrix2, E2>& m2) const
    {
-      return !(l==r);
+      return !(*this == m2);
    }
 
+private:
+   template <typename MatrixRef>
+   static auto make_diagonal(MatrixRef&& matrix, int i, bool anti)
+   {
+      const int r = matrix.rows(),
+                c = matrix.cols();
+      if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
+         if (i>0 ? i>=r : -i >= c)
+            throw std::runtime_error("GenericMatrix::diagonal/anti_diagonal - index out of range");
+      }
+      using result_type = IndexedSlice<masquerade<ConcatRows, MatrixRef>, const series>;
+
+      const int start = anti ? (i>0 ? (i+1)*c-1 : c+i-1) : (i>0 ? i*c : -i);
+      const int size = i>0 ? std::min(r-i, c) : std::min(r, c+i);
+      const int step = anti ? c-1 : c+1;
+      return result_type(std::forward<MatrixRef>(matrix), series(start, size, step));
+   }
+
+public:
    /// @param i==0: main diagonal; i>0: i-th diagonal below the main; i<0: (-i)-th above the main
-   IndexedSlice<ConcatRows<unwary_t<TMatrix>>&, series>
-   diagonal(int i=0)
+   // gcc 5 can't digest auto here
+   IndexedSlice<masquerade<ConcatRows, const typename Unwary<TMatrix>::type&>, const series>
+   diagonal(int i=0) const &
    {
-      const int r=this->rows(), c=this->cols();
-      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
-         if (i>0 ? i>=r : -i >= c)
-            throw std::runtime_error("GenericMatrix::diagonal - index out of range");
-      }
-      const int start= i>0 ? i*c : -i,
-                 size= i>0 ? std::min(r-i, c) : std::min(r, c+i);
-      return IndexedSlice<ConcatRows<unwary_t<TMatrix>>&, series> (concat_rows(*this), series(start,size,c+1));
+      return make_diagonal(unwary(*this), i, false);
    }
 
-   const IndexedSlice<const ConcatRows<unwary_t<TMatrix>>&, series>
-   diagonal(int i=0) const
+   // gcc 5 can't digest auto here
+   IndexedSlice<masquerade<ConcatRows, typename Unwary<TMatrix>::type&>, const series>
+   diagonal(int i=0) &
    {
-      const int r=this->rows(), c=this->cols();
-      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
-         if (i>0 ? i>=r : -i >= c)
-            throw std::runtime_error("GenericMatrix::diagonal - index out of range");
-      }
-      const int start= i>0 ? i*c : -i,
-                 size= i>0 ? std::min(r-i, c) : std::min(r, c+i);
-      return IndexedSlice<const ConcatRows<unwary_t<TMatrix>>&, series> (concat_rows(*this), series(start,size,c+1));
+      return make_diagonal(unwary(*this), i, false);
+   }
+
+   // gcc 5 can't digest auto here
+   IndexedSlice<masquerade<ConcatRows, typename Unwary<TMatrix>::type>, const series>
+   diagonal(int i=0) &&
+   {
+      return make_diagonal(unwary(std::move(*this)), i, false);
    }
 
    /// @param i==0: main anti-diagonal; i>0: i-th diagonal below the main; i<0: (-i)-th above the main
-   IndexedSlice<ConcatRows<unwary_t<TMatrix>>&, series>
-   anti_diagonal(int i=0)
+   // gcc 5 can't digest auto here
+   IndexedSlice<masquerade<ConcatRows, const typename Unwary<TMatrix>::type&>, const series>
+   anti_diagonal(int i=0) const &
    {
-      const int r=this->rows(), c=this->cols();
-      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
-         if (i>0 ? i>=r : -i >= c)
-            throw std::runtime_error("GenericMatrix::anti_diagonal - index out of range");
-      }
-      const int start= i>0 ? (i+1)*c-1 : c+i-1,
-                 size= i>0 ? std::min(r-i, c) : std::min(r, c+i);
-      return IndexedSlice<ConcatRows<unwary_t<TMatrix>>&, series> (concat_rows(*this), series(start,size,c-1));
+      return make_diagonal(unwary(*this), i, true);
    }
 
-   const IndexedSlice<const ConcatRows<unwary_t<TMatrix>>&, series>
-   anti_diagonal(int i=0) const
+   // gcc 5 can't digest auto here
+   IndexedSlice<masquerade<ConcatRows, typename Unwary<TMatrix>::type&>, const series>
+   anti_diagonal(int i=0) &
    {
-      const int r=this->rows(), c=this->cols();
-      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
-         if (i>0 ? i>=r : -i >= c)
-            throw std::runtime_error("GenericMatrix::anti_diagonal - index out of range");
-      }
-      const int start= i>0 ? (i+1)*c-1 : c+i-1,
-                 size= i>0 ? std::min(r-i, c) : std::min(r, c+i);
-      return IndexedSlice<const ConcatRows<unwary_t<TMatrix>>&, series> (concat_rows(*this), series(start,size,c-1));
+      return make_diagonal(unwary(*this), i, true);
+   }
+
+   // gcc 5 can't digest auto here
+   IndexedSlice<masquerade<ConcatRows, typename Unwary<TMatrix>::type>, const series>
+   anti_diagonal(int i=0) &&
+   {
+      return make_diagonal(unwary(std::move(*this)), i, true);
    }
 
 protected:
    template <typename Line, typename E2>
-   static void multiply_with2x2(Line& l_i, Line& l_j,
+   static void multiply_with2x2(Line&& l_i, Line&& l_j,
                                 const E2& a_ii, const E2& a_ij, const E2& a_ji, const E2& a_jj, std::false_type)
    {
-      typename Line::iterator e_j=l_j.begin();
+      auto e_j=l_j.begin();
       for (auto e_i=entire(l_i); !e_i.at_end(); ++e_i, ++e_j) {
          const E x_i= (*e_i)*a_ii + (*e_j)*a_ij;
          *e_j =       (*e_i)*a_ji + (*e_j)*a_jj;
@@ -561,10 +1003,10 @@ protected:
    }
 
    template <typename Line, typename E2>
-   static void multiply_with2x2(Line& l_i, Line& l_j,
+   static void multiply_with2x2(Line&& l_i, Line&& l_j,
                                 const E2& a_ii, const E2& a_ij, const E2& a_ji, const E2& a_jj, std::true_type)
    {
-      typename Line::iterator e_i=l_i.begin(), e_j=l_j.begin();
+      auto e_i=l_i.begin(), e_j=l_j.begin();
       int state=zipper_both;
       if (e_i.at_end()) state>>=3;
       if (e_j.at_end()) state>>=6;
@@ -613,42 +1055,42 @@ protected:
 public:
    void multiply_from_left(const SparseMatrix2x2<E>& U)
    {
-      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
          if (U.i<0 || U.j<0 || U.i >= this->rows() || U.j >= this->rows())
             throw std::runtime_error("GenericMatrix::multiply_from_left - dimension mismatch");
       }
-      multiply_with2x2(this->row(U.i).top(), this->row(U.j).top(),
+      multiply_with2x2(this->row(U.i), this->row(U.j),
                        U.a_ii, U.a_ij, U.a_ji, U.a_jj, bool_constant<is_sparse>());
    }
 
    void multiply_from_left(const Transposed< SparseMatrix2x2<E> >& U)
    {
-      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
          if (U.i<0 || U.j<0 || U.i >= this->rows() || U.j >= this->rows())
             throw std::runtime_error("GenericMatrix::multiply_from_left - dimension mismatch");
       }
-      multiply_with2x2(this->row(U.i).top(), this->row(U.j).top(),
+      multiply_with2x2(this->row(U.i), this->row(U.j),
                        U.a_ii, U.a_ji, U.a_ij, U.a_jj, bool_constant<is_sparse>());
    }
 
    void multiply_from_right(const SparseMatrix2x2<E>& U)
    {
-      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
          if (U.i<0 || U.j<0 || U.i >= this->cols() || U.j >= this->cols())
             throw std::runtime_error("GenericMatrix::multiply_from_right - dimension mismatch");
       }
-      multiply_with2x2(this->col(U.i).top(), this->col(U.j).top(),
+      multiply_with2x2(this->col(U.i), this->col(U.j),
                        U.a_ii, U.a_ji, U.a_ij, U.a_jj, bool_constant<is_sparse>());
    }
 
    void multiply_from_right(const Transposed< SparseMatrix2x2<E> >& U)
    {
-      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
          if (U.i<0 || U.j<0 || U.i >= this->cols() || U.j >= this->cols())
             throw std::runtime_error("GenericMatrix::multiply_from_right - dimension mismatch");
       }
-      multiply_with2x2(this->col(U.i).top(), this->col(U.j).top(),
-                          U.a_ii, U.a_ij, U.a_ji, U.a_jj, bool_constant<is_sparse>());
+      multiply_with2x2(this->col(U.i), this->col(U.j),
+                       U.a_ii, U.a_ij, U.a_ji, U.a_jj, bool_constant<is_sparse>());
    }
 
    template <typename Result>
@@ -673,34 +1115,60 @@ struct spec_object_traits< GenericMatrix<TMatrix, E> >
    static bool is_zero(const TMatrix& m) { return !m.non_zero(); }
 };
 
-template <typename TMatrix> inline
+
+template <typename Result, typename TVector, typename E>
+struct generic_of_repeated_line<Result, GenericVector<TVector, E>> {
+   using type = GenericMatrix<Result, E>;
+};
+
+template <typename TMatrix, typename E>
+struct concat_lines_op<GenericMatrix<TMatrix, E>> {
+   using type = polymake::operations::concat_tuple<VectorChain>;
+};
+
+
+template <typename TMatrix>
 ConcatRows<unwary_t<TMatrix>>&
 concat_rows(GenericMatrix<TMatrix>& m)
 {
    return reinterpret_cast<ConcatRows<unwary_t<TMatrix>>&>(m.top());
 }
 
-template <typename TMatrix> inline
+template <typename TMatrix>
 const ConcatRows<unwary_t<TMatrix>>&
 concat_rows(const GenericMatrix<TMatrix>& m)
 {
    return reinterpret_cast<const ConcatRows<unwary_t<TMatrix>>&>(m.top());
 }
 
-template <typename TMatrix> inline
+template <typename TMatrix>
+ConcatRows<unwary_t<TMatrix>>&
+concat_rows(GenericMatrix<TMatrix>&& m)
+{
+   return reinterpret_cast<ConcatRows<unwary_t<TMatrix>>&>(m.top());
+}
+
+template <typename TMatrix>
 ConcatCols<unwary_t<TMatrix>>&
 concat_cols(GenericMatrix<TMatrix>& m)
 {
    return reinterpret_cast<ConcatCols<unwary_t<TMatrix>>&>(m.top());
 }
 
-template <typename TMatrix> inline
+template <typename TMatrix>
 const ConcatCols<unwary_t<TMatrix>>&
 concat_cols(const GenericMatrix<TMatrix>& m)
 {
    return reinterpret_cast<const ConcatCols<unwary_t<TMatrix>>&>(m.top());
 }
-
+
+template <typename TMatrix>
+ConcatCols<unwary_t<TMatrix>>&
+concat_cols(GenericMatrix<TMatrix>&& m)
+{
+   return reinterpret_cast<ConcatCols<unwary_t<TMatrix>>&>(m.top());
+}
+
 /* --------------------------------------------
  *  LazyMatrix1
  * lazy evaluation of an unary matrix operator
@@ -720,21 +1188,19 @@ class LazyMatrix1
    : public modified_container_base<MatrixRef, Operation>,
      public GenericMatrix< LazyMatrix1<MatrixRef,Operation>,
                            typename lazy1_traits<MatrixRef,Operation>::element_type > {
-   typedef modified_container_base<MatrixRef, Operation> _base;
 public:
-   typedef typename lazy1_traits<MatrixRef,Operation>::value_type value_type;
-   typedef typename lazy1_traits<MatrixRef,Operation>::reference reference;
-   typedef reference const_reference;
-   typedef typename deref<MatrixRef>::type matrix_type;
+   using value_type = typename lazy1_traits<MatrixRef,Operation>::value_type;
+   using reference = typename lazy1_traits<MatrixRef,Operation>::reference;
+   using const_reference = reference;
+   using matrix_type = typename deref<MatrixRef>::type;
 
-   LazyMatrix1(typename _base::arg_type src_arg, const Operation& op_arg=Operation())
-      : _base(src_arg, op_arg) {}
+   using modified_container_base<MatrixRef, Operation>::modified_container_base;
 };
 
 template <typename MatrixRef, typename Operation>
 struct spec_object_traits< LazyMatrix1<MatrixRef, Operation> >
    : spec_object_traits<is_container> {
-   static const bool is_lazy=true, is_temporary=true, is_always_const=true;
+   static constexpr bool is_lazy = true, is_temporary = true, is_always_const = true;
 };
 
 template <typename MatrixRef, typename Operation>
@@ -759,12 +1225,12 @@ struct check_container_feature<LazyMatrix1<MatrixRef, Operation>, FlatStorage>
 
 template <typename MatrixRef, typename Operation>
 class matrix_random_access_methods< LazyMatrix1<MatrixRef, Operation> > {
-   typedef LazyMatrix1<MatrixRef,Operation> master;
+   using self_t = LazyMatrix1<MatrixRef,Operation>;
 public:
    typename lazy1_traits<MatrixRef,Operation>::reference
    operator() (int i, int j) const
    {
-      const master& me=static_cast<const master&>(*this);
+      const self_t& me=static_cast<const self_t&>(*this);
       typedef typename lazy1_traits<MatrixRef,Operation>::op_builder opb;
       return opb::create(me.get_operation()) (me.get_container()(i,j));
    }
@@ -781,7 +1247,7 @@ protected:
 template <typename MatrixRef, typename OperationVal>
 class Rows< LazyMatrix1<MatrixRef, OperationVal> >
    : public modified_container_impl< Rows< LazyMatrix1<MatrixRef, OperationVal> >,
-                                     mlist< ContainerTag< masquerade<pm::Rows, MatrixRef> >,
+                                     mlist< ContainerRefTag< masquerade<pm::Rows, MatrixRef> >,
                                             OperationTag< operations::construct_unary2_with_arg<LazyVector1, OperationVal> >,
                                             MasqueradedTop > > {
    typedef modified_container_impl<Rows> base_t;
@@ -801,7 +1267,7 @@ public:
 template <typename MatrixRef, typename OperationVal>
 class Cols< LazyMatrix1<MatrixRef, OperationVal> >
    : public modified_container_impl< Cols< LazyMatrix1<MatrixRef, OperationVal> >,
-                                     mlist< ContainerTag< masquerade<pm::Cols, MatrixRef> >,
+                                     mlist< ContainerRefTag< masquerade<pm::Cols, MatrixRef> >,
                                             OperationTag< operations::construct_unary2_with_arg<LazyVector1, OperationVal> >,
                                             MasqueradedTop > > {
    typedef modified_container_impl<Cols> base_t;
@@ -836,23 +1302,20 @@ struct lazy2_traits {
 
 template <typename MatrixRef1, typename MatrixRef2, typename Operation>
 class LazyMatrix2
-   : public modified_container_pair_base<MatrixRef1, MatrixRef2, Operation>,
-     public GenericMatrix< LazyMatrix2<MatrixRef1,MatrixRef2,Operation>,
+   : public modified_container_pair_base<MatrixRef1, MatrixRef2, Operation>
+   , public GenericMatrix< LazyMatrix2<MatrixRef1,MatrixRef2,Operation>,
                            typename lazy2_traits<MatrixRef1,MatrixRef2,Operation>::element_type > {
-   typedef modified_container_pair_base<MatrixRef1, MatrixRef2, Operation> _base;
 public:
-   typedef typename lazy2_traits<MatrixRef1,MatrixRef2,Operation>::value_type value_type;
-   typedef typename lazy2_traits<MatrixRef1,MatrixRef2,Operation>::reference reference;
-   typedef reference const_reference;
-
-   LazyMatrix2(typename _base::first_arg_type src1_arg, typename _base::second_arg_type src2_arg, const Operation& op_arg=Operation())
-      : _base(src1_arg, src2_arg, op_arg) {}
+   using value_type = typename lazy2_traits<MatrixRef1,MatrixRef2,Operation>::value_type;
+   using reference = typename lazy2_traits<MatrixRef1,MatrixRef2,Operation>::reference;
+   using const_reference = reference;
+   using modified_container_pair_base<MatrixRef1, MatrixRef2, Operation>::modified_container_pair_base;
 };
 
 template <typename MatrixRef1, typename MatrixRef2, typename Operation>
 struct spec_object_traits< LazyMatrix2<MatrixRef1, MatrixRef2, Operation> >
    : spec_object_traits<is_container> {
-   static const bool is_lazy=true, is_temporary=true, is_always_const=true;
+   static constexpr bool is_lazy = true, is_temporary = true, is_always_const = true;
 };
 
 template <typename MatrixRef1, typename MatrixRef2, typename Operation>
@@ -860,31 +1323,28 @@ struct check_container_feature<LazyMatrix2<MatrixRef1, MatrixRef2, Operation>, s
    : bool_constant< TransformedContainerPair_helper1<MatrixRef1, MatrixRef2, Operation>::sparse_result > {};
 
 template <typename MatrixRef1, typename MatrixRef2, typename Operation>
-struct check_container_feature<LazyMatrix2<MatrixRef1, MatrixRef2, Operation>, Symmetric> {
-   static const bool value=check_container_ref_feature<MatrixRef1,Symmetric>::value &&
-                           check_container_ref_feature<MatrixRef2,Symmetric>::value;
-};
+struct check_container_feature<LazyMatrix2<MatrixRef1, MatrixRef2, Operation>, Symmetric>
+   : mlist_and< check_container_ref_feature<MatrixRef1,Symmetric>,
+                check_container_ref_feature<MatrixRef2,Symmetric> > {};
 
 template <typename MatrixRef1, typename MatrixRef2, typename Operation>
-struct check_container_feature<LazyMatrix2<MatrixRef1, MatrixRef2, Operation>, SkewSymmetric> {
-   static const bool value=check_container_ref_feature<MatrixRef1,SkewSymmetric>::value &&
-                           check_container_ref_feature<MatrixRef2,SkewSymmetric>::value;
-};
+struct check_container_feature<LazyMatrix2<MatrixRef1, MatrixRef2, Operation>, SkewSymmetric>
+   : mlist_and< check_container_ref_feature<MatrixRef1,SkewSymmetric>,
+                check_container_ref_feature<MatrixRef2,SkewSymmetric> > {};
 
 template <typename MatrixRef1, typename MatrixRef2, typename Operation>
-struct check_container_feature<LazyMatrix2<MatrixRef1, MatrixRef2, Operation>, FlatStorage> {
-   static const bool value=check_container_ref_feature<MatrixRef1,FlatStorage>::value &&
-                           check_container_ref_feature<MatrixRef2,FlatStorage>::value;
-};
+struct check_container_feature<LazyMatrix2<MatrixRef1, MatrixRef2, Operation>, FlatStorage>
+   : mlist_and< check_container_ref_feature<MatrixRef1,FlatStorage>,
+                check_container_ref_feature<MatrixRef2,FlatStorage> > {};
 
 template <typename MatrixRef1, typename MatrixRef2, typename Operation>
 class matrix_random_access_methods< LazyMatrix2<MatrixRef1, MatrixRef2, Operation> > {
-   typedef LazyMatrix2<MatrixRef1,MatrixRef2,Operation> master;
+   using self_t = LazyMatrix2<MatrixRef1,MatrixRef2,Operation>;
 public:
    typename lazy2_traits<MatrixRef1,MatrixRef2,Operation>::reference
    operator() (int i, int j) const
    {
-      const master& me=static_cast<const master&>(*this);
+      const self_t& me=static_cast<const self_t&>(*this);
       typedef typename lazy2_traits<MatrixRef1,MatrixRef2,Operation>::op_builder opb;
       return opb::create(me.get_operation()) (me.get_container1()(i,j), me.get_container2()(i,j));
    }
@@ -902,8 +1362,8 @@ protected:
 template <typename MatrixRef1, typename MatrixRef2, typename Operation>
 class Rows< LazyMatrix2<MatrixRef1, MatrixRef2, Operation> >
    : public modified_container_pair_impl< Rows< LazyMatrix2<MatrixRef1, MatrixRef2, Operation> >,
-                                          mlist< Container1Tag< masquerade<pm::Rows, MatrixRef1> >,
-                                                 Container2Tag< masquerade<pm::Rows, MatrixRef2> >,
+                                          mlist< Container1RefTag< masquerade<pm::Rows, MatrixRef1> >,
+                                                 Container2RefTag< masquerade<pm::Rows, MatrixRef2> >,
                                                  OperationTag< operations::construct_binary2_with_arg<LazyVector2, Operation> >,
                                                  MasqueradedTop > > {
    typedef modified_container_pair_impl<Rows> base_t;
@@ -927,8 +1387,8 @@ public:
 template <typename MatrixRef1, typename MatrixRef2, typename Operation>
 class Cols< LazyMatrix2<MatrixRef1, MatrixRef2, Operation> >
    : public modified_container_pair_impl< Cols< LazyMatrix2<MatrixRef1, MatrixRef2, Operation> >,
-                                          mlist< Container1Tag< masquerade<pm::Cols, MatrixRef1> >,
-                                                 Container2Tag< masquerade<pm::Cols, MatrixRef2> >,
+                                          mlist< Container1RefTag< masquerade<pm::Cols, MatrixRef1> >,
+                                                 Container2RefTag< masquerade<pm::Cols, MatrixRef2> >,
                                                  OperationTag< operations::construct_binary2_with_arg<LazyVector2, Operation> >,
                                                  MasqueradedTop > > {
    typedef modified_container_pair_impl<Cols> base_t;
@@ -959,40 +1419,35 @@ class ConcatRows< Transposed< LazyMatrix2<MatrixRef1, MatrixRef2, Operation> > >
                                     masquerade<Transposed,MatrixRef2>, Operation> > {};
 
 /// explicit conversion of matrix elements to another type
-template <typename TargetType, typename TMatrix> inline
-const typename TMatrix::top_type&
-convert_to(const GenericMatrix<TMatrix, TargetType>& m)
+template <typename TargetType, typename TMatrix>
+const TMatrix& convert_to(const GenericMatrix<TMatrix, TargetType>& m)
 {
    return m.top();
 }
 
 template <typename TargetType, typename TMatrix, typename E,
-          typename enabled=typename std::enable_if<can_initialize<E, TargetType>::value && !std::is_same<E, TargetType>::value>::type>
-inline
-const LazyMatrix1<const unwary_t<TMatrix>&, conv<E, TargetType> >
-convert_to(const GenericMatrix<TMatrix, E>& m)
+          typename=std::enable_if_t<can_initialize<E, TargetType>::value && !std::is_same<E, TargetType>::value>>
+auto convert_to(const GenericMatrix<TMatrix, E>& m)
+{
+   return LazyMatrix1<const unwary_t<TMatrix>&, conv<E, TargetType>>(m.top());
+}
+
+template <typename TargetType, typename TMatrix, typename E>
+const TMatrix& convert_lazily(const GenericMatrix<TMatrix, E>& m,
+                              std::enable_if_t<std::is_convertible<E, TargetType>::value, void**> =nullptr)
 {
    return m.top();
 }
 
-template <typename TargetType, typename TMatrix, typename E> inline
-const typename TMatrix::top_type& convert_lazily(const GenericMatrix<TMatrix, E>& m,
-                                                 typename std::enable_if<std::is_convertible<E, TargetType>::value, void**>::type=nullptr)
+template <typename TargetType, typename TMatrix, typename E>
+auto convert_lazily(const GenericMatrix<TMatrix, E>& m,
+                    std::enable_if_t<can_initialize<E, TargetType>::value && !std::is_convertible<E, TargetType>::value, void**> =nullptr)
 {
-   return m.top();
+   return LazyMatrix1<const unwary_t<TMatrix>&, conv<E, TargetType>>(m.top());
 }
 
-template <typename TargetType, typename TMatrix, typename E> inline
-const LazyMatrix1<const unwary_t<TMatrix>&, conv<E, TargetType> >
-convert_lazily(const GenericMatrix<TMatrix, E>& m,
-               typename std::enable_if<can_initialize<E, TargetType>::value && !std::is_convertible<E, TargetType>::value, void**>::type=nullptr)
-{
-   return m.top();
-}
-
-template <typename TMatrix, typename Operation> inline
-const LazyMatrix1<const TMatrix&, Operation>
-apply_operation(const GenericMatrix<TMatrix>& m, const Operation& op)
+template <typename TMatrix, typename Operation>
+auto apply_operation(const GenericMatrix<TMatrix>& m, const Operation& op)
 {
    return LazyMatrix1<const TMatrix&, Operation>(m.top(), op);
 }
@@ -1009,8 +1464,8 @@ class MatrixMinorConcatRows
 template <typename MatrixRef, typename RowIndexSetRef>
 class MatrixMinorConcatRows<MatrixRef, RowIndexSetRef, const all_selector&, true>
    : public indexed_subset_impl< MatrixMinorConcatRows<MatrixRef, RowIndexSetRef, const all_selector&, true>,
-                                 mlist< Container1Tag< masquerade<ConcatRows,MatrixRef> >,
-                                        Container2Tag< sequence >,
+                                 mlist< Container1RefTag< masquerade<ConcatRows, MatrixRef> >,
+                                        Container2RefTag< sequence >,
                                         HiddenTag< MatrixMinor<MatrixRef, RowIndexSetRef, const all_selector&> > > > {
    typedef indexed_subset_impl<MatrixMinorConcatRows> base_t;
 public:
@@ -1046,38 +1501,31 @@ public:
    ConcatRows& operator= (const ConcatRows& other) { return ConcatRows::generic_type::operator=(other); }
    using ConcatRows::generic_type::operator=;
 };
-
+
 /* -----------------------------
  *  Block matrices concatenated
  * ----------------------------- */
 
-template <typename MatrixRef1, typename MatrixRef2>
-class ConcatRows< RowChain<MatrixRef1, MatrixRef2> >
-   : public container_chain_impl< ConcatRows< RowChain<MatrixRef1,MatrixRef2> >,
-                                  mlist< Container1Tag< masquerade<pm::ConcatRows,MatrixRef1> >,
-                                         Container2Tag< masquerade<pm::ConcatRows,MatrixRef2> >,
+template <typename MatrixList>
+class ConcatRows< BlockMatrix<MatrixList, std::true_type> >
+   : public container_chain_impl< ConcatRows< BlockMatrix<MatrixList, std::true_type> >,
+                                  mlist< ContainerRefTag< typename mlist_transform_unary<MatrixList, masquerade_as_ConcatRows>::type >,
                                          MasqueradedTop > >
-   , public GenericVector< ConcatRows< RowChain<MatrixRef1, MatrixRef2> >,
-                           typename deref<MatrixRef1>::type::element_type> {
-   typedef container_chain_impl<ConcatRows> base_t;
+   , public GenericVector< ConcatRows< BlockMatrix<MatrixList, std::true_type> >,
+                           typename deref<typename mlist_head<MatrixList>::type>::type::element_type> {
+   using base_t = container_chain_impl<ConcatRows>;
 protected:
    ~ConcatRows();
 public:
-   typename ConcatRows::container1& get_container1()
+   template <int i>
+   decltype(auto) get_container(int_constant<i>)
    {
-      return concat_rows(this->hidden().get_container1());
+      return concat_rows(this->hidden().template get_container(int_constant<i>()));
    }
-   typename ConcatRows::container2& get_container2()
+   template <int i>
+   decltype(auto) get_container(int_constant<i>) const
    {
-      return concat_rows(this->hidden().get_container2());
-   }
-   const typename ConcatRows::container1& get_container1() const
-   {
-      return concat_rows(this->hidden().get_container1());
-   }
-   const typename ConcatRows::container2& get_container2() const
-   {
-      return concat_rows(this->hidden().get_container2());
+      return concat_rows(this->hidden().template get_container(int_constant<i>()));
    }
 
    ConcatRows& operator= (const ConcatRows& other) { return ConcatRows::generic_type::operator=(other); }
@@ -1085,329 +1533,71 @@ public:
    using base_t::dim;
 };
 
-template <typename MatrixRef1, typename MatrixRef2>
-class ConcatRows< Transposed< RowChain<MatrixRef1,MatrixRef2> > >
-   : public ConcatRows< ColChain< masquerade<Transposed,MatrixRef1>, masquerade<Transposed,MatrixRef2> > > {};
-
-template <typename MatrixRef1, typename MatrixRef2>
-class ConcatRows< Transposed< ColChain<MatrixRef1,MatrixRef2> > >
-   : public ConcatRows< RowChain< masquerade<Transposed,MatrixRef1>, masquerade<Transposed,MatrixRef2> > > {};
-
-/* ----------------------
- *  SingleRow, SingleCol
- * ---------------------- */
-template <typename VectorRef>
-class SingleRow
-   : public single_line_matrix<VectorRef>
-   , public GenericMatrix< SingleRow<VectorRef>, typename deref<VectorRef>::type::element_type> {
-   typedef single_line_matrix<VectorRef> base_t;
-public:
-   typedef typename deref<VectorRef>::type::value_type value_type;
-   typedef typename deref<VectorRef>::type::const_reference const_reference;
-   typedef typename std::conditional<base_t::is_always_const, const_reference, typename deref<VectorRef>::type::reference>::type
-      reference;
-
-   SingleRow(typename base_t::arg_type arg) : base_t(arg) {}
-
-protected:
-   void stretch_cols(int c)
-   {
-      this->_line.get_object().stretch_dim(c);
-   }
-
-   friend class Rows<SingleRow>;
-   template <typename, typename> friend class RowChain;
-};
-
-template <typename VectorRef>
-class SingleCol
-   : public single_line_matrix<VectorRef>,
-     public GenericMatrix< SingleCol<VectorRef>, typename deref<VectorRef>::type::element_type> {
-   typedef single_line_matrix<VectorRef> base_t;
-public:
-   typedef typename deref<VectorRef>::type::value_type value_type;
-   typedef typename deref<VectorRef>::type::const_reference const_reference;
-   typedef typename std::conditional<base_t::is_always_const, const_reference, typename deref<VectorRef>::type::reference>::type
-      reference;
-
-   SingleCol(typename base_t::arg_type arg) : base_t(arg) {}
-
-protected:
-   void stretch_rows(int r)
-   {
-      this->_line.get_object().stretch_dim(r);
-   }
-
-   template <typename, typename> friend class ColChain;
-};
-
-template <typename VectorRef>
-class matrix_random_access_methods< SingleRow<VectorRef> > {
-public:
-   typename container_traits<VectorRef>::reference
-   operator() (int i, int j)
-   {
-      SingleRow<VectorRef>& me=static_cast<SingleRow<VectorRef>&>(*this);
-      return me.get_line()[j];
-   }
-   typename container_traits<VectorRef>::const_reference
-   operator() (int i, int j) const
-   {
-      const SingleRow<VectorRef>& me=static_cast<const SingleRow<VectorRef>&>(*this);
-      return me.get_line()[j];
-   }
-};
-
-template <typename VectorRef>
-class matrix_random_access_methods< SingleCol<VectorRef> > {
-public:
-   typename container_traits<VectorRef>::reference
-   operator() (int i, int j)
-   {
-      SingleCol<VectorRef>& me=static_cast<SingleCol<VectorRef>&>(*this);
-      return me.get_line()[i];
-   }
-
-   typename container_traits<VectorRef>::const_reference
-   operator() (int i, int j) const
-   {
-      const SingleCol<VectorRef>& me=static_cast<const SingleCol<VectorRef>&>(*this);
-      return me.get_line()[i];
-   }
-};
-
-template <typename VectorRef>
-struct spec_object_traits< SingleRow<VectorRef> >
-   : spec_object_traits< single_value_container<VectorRef> > {};
-
-template <typename VectorRef>
-struct spec_object_traits< SingleCol<VectorRef> >
-   : spec_object_traits< single_value_container<VectorRef> > {};
-
-template <typename VectorRef>
-struct check_container_feature<SingleRow<VectorRef>, FlatStorage> : std::true_type {};
-
-template <typename VectorRef>
-struct check_container_feature<SingleCol<VectorRef>, FlatStorage> : std::true_type {};
-
-template <typename VectorRef>
-class ConcatRows< SingleRow<VectorRef> >
-   : public redirected_container< ConcatRows< SingleRow<VectorRef> >,
-                                  mlist< ContainerTag< VectorRef >,
-                                         MasqueradedTop > >
-   , public GenericVector< ConcatRows< SingleRow<VectorRef> >, typename deref<VectorRef>::type::element_type > {
-protected:
-   ~ConcatRows();
-public:
-   typename single_value_container<VectorRef>::reference get_container() { return this->hidden().get_line(); }
-   typename single_value_container<VectorRef>::const_reference get_container() const { return this->hidden().get_line(); }
-   int dim() const { return get_container().dim(); }
-};
-
-template <typename VectorRef>
-class ConcatRows< SingleCol<VectorRef> > : public ConcatRows< SingleRow<VectorRef> > {
-protected:
-   ~ConcatRows();
-};
-
-template <typename VectorRef>
-struct check_container_feature< SingleRow<VectorRef>, sparse>
-   : check_container_ref_feature<VectorRef, sparse> {};
-
-template <typename VectorRef>
-struct check_container_feature< SingleRow<VectorRef>, pure_sparse>
-   : check_container_ref_feature<VectorRef, pure_sparse> {};
-
-template <typename VectorRef>
-struct check_container_feature< SingleCol<VectorRef>, sparse>
-   : check_container_ref_feature<VectorRef, sparse> {};
-
-template <typename VectorRef>
-struct check_container_feature< SingleCol<VectorRef>, pure_sparse>
-   : check_container_ref_feature<VectorRef, pure_sparse> {};
-
-template <typename VectorRef, bool TSparse=check_container_ref_feature<VectorRef, sparse>::value>
-class single_line_across
-   : public modified_container_impl< single_line_across<VectorRef, TSparse>,
-                                     mlist< ContainerTag< VectorRef >,
-                                            OperationTag< operations::construct_unary<SingleElementVector> >,
-                                            HiddenTag< single_line_matrix<VectorRef> > > > {
-public:
-   typename single_value_container<VectorRef>::reference get_container() { return this->hidden().get_line(); }
-   typename single_value_container<VectorRef>::const_reference get_container() const { return this->hidden().get_line(); }
-};
-
-template <typename VectorRef>
-class single_line_across<VectorRef, true>
-   : public modified_container_pair_impl< single_line_across<VectorRef, true>,
-                                          mlist< Container1Tag< VectorRef >,
-                                                 Container2Tag< sequence >,
-                                                 IteratorCouplerTag< zipping_coupler< operations::cmp, set_union_zipper, true, false> >,
-                                                 OperationTag< BuildBinary<SingleElementSparseVector_factory> >,
-                                                 HiddenTag< single_line_matrix<VectorRef> > > > {
-public:
-   typename single_value_container<VectorRef>::reference get_container1() { return this->hidden().get_line(); }
-   typename single_value_container<VectorRef>::const_reference get_container1() const { return this->hidden().get_line(); }
-   sequence get_container2() const { return sequence(0, size()); }
-   int size() const { return this->hidden().get_line().dim(); }
-};
-
-template <typename VectorRef>
-class Rows< SingleRow<VectorRef> >
-   : public redirected_container< Rows< SingleRow<VectorRef> >,
-                                  mlist< ContainerTag< single_value_container<VectorRef> >,
-                                         MasqueradedTop > > {
-protected:
-   ~Rows();
-public:
-   single_value_container<VectorRef>& get_container() { return this->hidden()._line; }
-   const single_value_container<VectorRef>& get_container() const { return this->hidden()._line; }
-};
-
-template <typename VectorRef>
-class Cols< SingleRow<VectorRef> > : public single_line_across<VectorRef> {
-protected:
-   ~Cols();
-};
-
-template <typename VectorRef>
-class Rows< SingleCol<VectorRef> > : public single_line_across<VectorRef> {
-protected:
-   ~Rows();
-};
-
-template <typename VectorRef>
-class Cols< SingleCol<VectorRef> > : public Rows< SingleRow<VectorRef> > {
-protected:
-   ~Cols();
-};
-
-template <typename VectorRef>
-class ConcatRows< Transposed< SingleRow<VectorRef> > > : public ConcatRows< SingleRow<VectorRef> > {
-protected:
-   ~ConcatRows();
-};
-
-template <typename VectorRef>
-class ConcatRows< Transposed< SingleCol<VectorRef> > > : public ConcatRows< SingleRow<VectorRef> > {
-protected:
-   ~ConcatRows();
-};
-
-/// disguise a GenericVector as a matrix with 1 row 
-template <typename Vector> inline
-SingleRow<unwary_t<Vector>&>
-vector2row(GenericVector<Vector>& v)
-{
-   return v.top();
-}
-
-template <typename Vector> inline
-const SingleRow<const unwary_t<Vector>&>
-vector2row(const GenericVector<Vector>& v)
-{
-   return v.top();
-}
-
-/// disguise a GenericVector as a matrix with 1 column 
-template <typename Vector> inline
-SingleCol<unwary_t<Vector>&>
-vector2col(GenericVector<Vector>& v)
-{
-   return v.top();
-}
-
-template <typename Vector> inline
-const SingleCol<const unwary_t<Vector>&>
-vector2col(const GenericVector<Vector>& v)
-{
-   return v.top();
-}
-
 /* --------------------------
  *  RepeatedRow, RepeatedCol
  * -------------------------- */
 
 template <typename VectorRef>
-class repeated_line_matrix {
-public:
-   static const bool same_elem=is_derived_from_instance_of<typename deref<VectorRef>::type, SameElementVector>::value;
-   typedef typename deref<VectorRef>::type::value_type value_type;
-   typedef typename deref<VectorRef>::type::const_reference const_reference;
-   typedef const_reference reference;
-
-   typedef typename repeated_value_container<VectorRef>::arg_type arg_type;
-
-   repeated_line_matrix(arg_type vector_arg, int cnt_arg)
-      : lines(vector_arg,cnt_arg) {}
-
-   typename alias<VectorRef>::const_reference get_vector() const { return lines.front(); }
-   int get_count() const { return lines.size(); }
-protected:
-   repeated_value_container<VectorRef> lines;
-};
-
-template <typename VectorRef>
 class RepeatedRow
-   : public repeated_line_matrix<VectorRef>,
-     public GenericMatrix< RepeatedRow<VectorRef>,
-                           typename deref<VectorRef>::type::element_type> {
-   typedef repeated_line_matrix<VectorRef> _super;
+   : public repeated_line_matrix<VectorRef>
+   , public GenericMatrix< RepeatedRow<VectorRef>,
+                           typename pure_type_t<VectorRef>::element_type> {
 public:
-   RepeatedRow(typename _super::arg_type vector_arg, int cnt_arg)
-      : _super(vector_arg, cnt_arg) {}
+   using repeated_line_matrix<VectorRef>::repeated_line_matrix;
 
 protected:
+   using GenericMatrix<RepeatedRow>::stretch_rows;
+   using GenericMatrix<RepeatedRow>::stretch_cols;
+
    void stretch_rows(int r)
    {
-      this->lines.stretch_dim(r);
+      this->line_container.stretch_dim(r);
    }
 
    void stretch_cols(int c)
    {
-      this->lines.get_elem_alias().get_object().stretch_dim(c);
+      this->line_container.get_elem_alias().get_object().stretch_dim(c);
    }
 
    friend class Rows<RepeatedRow>;
-   template <typename, typename> friend class RowChain;
-   template <typename, typename> friend class ColChain;
+   template <typename, typename> friend class BlockMatrix;
 };
 
 template <typename VectorRef>
 class RepeatedCol
-   : public repeated_line_matrix<VectorRef>,
-     public GenericMatrix< RepeatedCol<VectorRef>,
-                           typename deref<VectorRef>::type::element_type> {
-   typedef repeated_line_matrix<VectorRef> _super;
+   : public repeated_line_matrix<VectorRef>
+   , public GenericMatrix< RepeatedCol<VectorRef>,
+                           typename pure_type_t<VectorRef>::element_type> {
 public:
-   RepeatedCol(typename _super::arg_type vector_arg, int cnt_arg)
-      : _super(vector_arg, cnt_arg) {}
+   using repeated_line_matrix<VectorRef>::repeated_line_matrix;
 
 protected:
+   using GenericMatrix<RepeatedCol>::stretch_rows;
+   using GenericMatrix<RepeatedCol>::stretch_cols;
+
    void stretch_rows(int r)
    {
-      this->lines.get_elem_alias().get_object().stretch_dim(r);
+      this->line_container.get_elem_alias().get_object().stretch_dim(r);
    }
 
    void stretch_cols(int c)
    {
-      this->lines.stretch_dim(c);
+      this->line_container.stretch_dim(c);
    }
 
-   template <typename, typename> friend class RowChain;
-   template <typename, typename> friend class ColChain;
+   template <typename, typename> friend class BlockMatrix;
 };
 
 template <typename VectorRef>
 struct spec_object_traits< RepeatedRow<VectorRef> >
    : spec_object_traits<is_container> {
-   static const bool is_temporary=true, is_always_const=true;
+   static constexpr bool is_temporary = true, is_always_const = true;
 };
 
 template <typename VectorRef>
 struct spec_object_traits< RepeatedCol<VectorRef> >
    : spec_object_traits<is_container> {
-   static const bool is_temporary=true, is_always_const=true;
+   static constexpr bool is_temporary = true, is_always_const = true;
 };
 
 template <typename VectorRef>
@@ -1428,9 +1618,7 @@ struct check_container_feature< RepeatedCol<VectorRef>, pure_sparse>
 
 template <typename VectorRef>
 struct check_container_feature<RepeatedRow<VectorRef>, FlatStorage>
-{
-   static const bool value=repeated_line_matrix<VectorRef>::same_elem;
-};
+   : is_derived_from_instance_of<pure_type_t<VectorRef>, SameElementVector> {};
 
 template <typename VectorRef>
 struct check_container_feature<RepeatedCol<VectorRef>, FlatStorage>
@@ -1438,37 +1626,55 @@ struct check_container_feature<RepeatedCol<VectorRef>, FlatStorage>
 
 template <typename VectorRef>
 class matrix_random_access_methods< RepeatedRow<VectorRef> > {
-   typedef RepeatedRow<VectorRef> master;
+   using self_t = RepeatedRow<VectorRef>;
 public:
-   typename container_traits<VectorRef>::const_reference
-   operator() (int i, int j) const
+   decltype(auto) operator() (int i, int j)
    {
-      const master& me=static_cast<const master&>(*this);
-      return me.get_vector()[j];
+      self_t& me=static_cast<self_t&>(*this);
+      if (POLYMAKE_DEBUG && (i<0 || i>me.rows()))
+         throw std::runtime_error("RepeatedRow::operator() - index out of bound");
+      return me.get_line()[j];
+   }
+
+   decltype(auto) operator() (int i, int j) const
+   {
+      const self_t& me=static_cast<const self_t&>(*this);
+      if (POLYMAKE_DEBUG && (i<0 || i>me.rows()))
+         throw std::runtime_error("RepeatedRow::operator() - index out of bound");
+      return me.get_line()[j];
    }
 };
 
 template <typename VectorRef>
 class matrix_random_access_methods< RepeatedCol<VectorRef> > {
-   typedef RepeatedCol<VectorRef> master;
+   using self_t = RepeatedCol<VectorRef>;
 public:
-   typename container_traits<VectorRef>::const_reference
-   operator() (int i, int j) const
+   decltype(auto) operator() (int i, int j)
    {
-      const master& me=static_cast<const master&>(*this);
-      return me.get_vector()[i];
+      self_t& me=static_cast<self_t&>(*this);
+      if (POLYMAKE_DEBUG && (j<0 || j>me.cols()))
+         throw std::runtime_error("RepeatedCol::operator() - index out of bound");
+      return me.get_line()[i];
+   }
+
+   decltype(auto) operator() (int i, int j) const
+   {
+      const self_t& me=static_cast<const self_t&>(*this);
+      if (POLYMAKE_DEBUG && (j<0 || j>me.cols()))
+         throw std::runtime_error("RepeatedCol::operator() - index out of bound");
+      return me.get_line()[i];
    }
 };
 
 template <typename VectorRef,
-          bool TSame_elem=repeated_line_matrix<VectorRef>::same_elem>
+          bool same_elem = check_container_feature<RepeatedRow<VectorRef>, FlatStorage>::value>
 class ConcatRepeatedRow_impl
-   : public container_product_impl< ConcatRepeatedRow_impl<VectorRef, TSame_elem>,
+   : public container_product_impl< ConcatRepeatedRow_impl<VectorRef, same_elem>,
                                     typename mlist_concat< typename repeated_container<VectorRef>::params,
                                                            HiddenTag< repeated_line_matrix<VectorRef> > >::type > {
 public:
    count_down get_container1() const { return count_down(this->hidden().get_count()); }
-   typename alias<VectorRef>::const_reference get_container2() const { return this->hidden().get_vector(); }
+   decltype(auto) get_container2() const { return this->hidden().get_line(); }
 
    int dim() const
    {
@@ -1479,32 +1685,32 @@ public:
 template <typename VectorRef>
 class ConcatRepeatedRow_impl<VectorRef, true>
    : public repeated_value_container_impl< ConcatRepeatedRow_impl<VectorRef, true>,
-                                           typename deref<VectorRef>::type::element_reference,
+                                           typename pure_type_t<VectorRef>::element_reference,
                                            HiddenTag< repeated_line_matrix<VectorRef> > > {
 public:
-   const alias<typename deref<VectorRef>::type::element_reference>& get_elem_alias() const
+   decltype(auto) get_elem_alias() const
    {
-      return this->hidden().get_vector().get_elem_alias();
+      return this->hidden().get_line().get_elem_alias();
    }
    int size() const
    {
-      return this->hidden().get_count() * this->hidden().get_vector().size();
+      return this->hidden().get_count() * this->hidden().get_line().size();
    }
    int dim() const
    {
-      return this->hidden().get_count() * this->hidden().get_vector().dim();
+      return this->hidden().get_count() * this->hidden().get_line().dim();
    }
 };
 
 template <typename VectorRef,
-          bool TSame_elem=repeated_line_matrix<VectorRef>::same_elem>
+          bool same_elem = check_container_feature<RepeatedCol<VectorRef>, FlatStorage>::value>
 class ConcatRepeatedCol_impl
-   : public container_product_impl< ConcatRepeatedCol_impl<VectorRef, TSame_elem>,
-                                    mlist< Container1Tag<VectorRef>,
-                                           Container2Tag<count_down>,
+   : public container_product_impl< ConcatRepeatedCol_impl<VectorRef, same_elem>,
+                                    mlist< Container1RefTag<VectorRef>,
+                                           Container2RefTag<count_down>,
                                            HiddenTag< repeated_line_matrix<VectorRef> > > > {
 public:
-   typename alias<VectorRef>::const_reference get_container1() const { return this->hidden().get_vector(); }
+   decltype(auto) get_container1() const { return this->hidden().get_line(); }
    count_down get_container2() const { return count_down(this->hidden().get_count()); }
 
    int dim() const
@@ -1521,7 +1727,7 @@ template <typename VectorRef>
 class ConcatRows< RepeatedRow<VectorRef> >
    : public ConcatRepeatedRow_impl<VectorRef>
    , public GenericVector< ConcatRows< RepeatedRow<VectorRef> >,
-                           typename deref<VectorRef>::type::element_type > {
+                           typename pure_type_t<VectorRef>::element_type > {
 protected:
    ~ConcatRows();
 public:
@@ -1530,41 +1736,13 @@ public:
 
 template <typename VectorRef>
 class ConcatRows< RepeatedCol<VectorRef> >
-   : public ConcatRepeatedCol_impl<VectorRef>,
-     public GenericVector< ConcatRows< RepeatedCol<VectorRef> >,
-                           typename deref<VectorRef>::type::element_type > {
+   : public ConcatRepeatedCol_impl<VectorRef>
+   , public GenericVector< ConcatRows< RepeatedCol<VectorRef> >,
+                           typename pure_type_t<VectorRef>::element_type > {
 protected:
    ~ConcatRows();
 public:
    using ConcatRepeatedCol_impl<VectorRef>::dim;
-};
-
-template <typename VectorRef, bool TSparse=check_container_ref_feature<VectorRef,sparse>::value>
-class repeated_line_across
-   : public modified_container_impl< repeated_line_across<VectorRef, TSparse>,
-                                     mlist< ContainerTag< typename attrib<VectorRef>::plus_const >,
-                                            OperationTag< operations::construct_unary_with_arg<SameElementVector, int> >,
-                                            HiddenTag< repeated_line_matrix<VectorRef> > > > {
-   typedef modified_container_impl<repeated_line_across> base_t;
-public:
-   const typename base_t::container& get_container() const { return this->hidden().get_vector(); }
-   typename base_t::operation get_operation() const { return this->hidden().get_count(); }
-};
-
-template <typename VectorRef>
-class repeated_line_across<VectorRef, true>
-   : public modified_container_pair_impl< repeated_line_across<VectorRef,true>,
-                                          mlist< Container1Tag< sequence >,
-                                                 Container2Tag< typename attrib<VectorRef>::plus_const >,
-                                                 IteratorCouplerTag< zipping_coupler< operations::cmp, set_union_zipper, false, true> >,
-                                                 OperationTag< SameElementSparseVector_factory<1> >,
-                                                 HiddenTag< repeated_line_matrix<VectorRef> > > > {
-   typedef modified_container_pair_impl<repeated_line_across> base_t;
-public:
-   sequence get_container1() const { return sequence(0, size()); }
-   const typename base_t::container2& get_container2() const { return this->hidden().get_vector(); }
-   typename base_t::operation get_operation() const { return this->hidden().get_count(); }
-   int size() const { return get_container2().dim(); }
 };
 
 template <typename VectorRef>
@@ -1575,7 +1753,52 @@ class Rows< RepeatedRow<VectorRef> >
 protected:
    ~Rows();
 public:
-   const repeated_value_container<VectorRef>& get_container() const { return this->hidden().lines; }
+   decltype(auto) get_container() const
+   {
+      return this->hidden().get_line_container();
+   }
+};
+
+template <typename VectorRef>
+class Cols< RepeatedCol<VectorRef> >
+   : public redirected_container< Cols< RepeatedCol<VectorRef> >,
+                                  mlist< ContainerTag< repeated_value_container<VectorRef> >,
+                                         MasqueradedTop > > {
+protected:
+   ~Cols();
+public:
+   decltype(auto) get_container() const
+   {
+      return this->hidden().get_line_container();
+   }
+};
+
+template <typename VectorRef, bool is_sparse=check_container_ref_feature<VectorRef, sparse>::value>
+class repeated_line_across
+   : public modified_container_impl< repeated_line_across<VectorRef, is_sparse>,
+                                     mlist< ContainerRefTag< typename attrib<VectorRef>::plus_const >,
+                                            OperationTag< operations::construct_unary_with_arg<SameElementVector, int> >,
+                                            HiddenTag< repeated_line_matrix<VectorRef> > > > {
+   using base_t = modified_container_impl<repeated_line_across>;
+public:
+   decltype(auto) get_container() const { return this->hidden().get_line(); }
+   typename base_t::operation get_operation() const { return this->hidden().get_count(); }
+};
+
+template <typename VectorRef>
+class repeated_line_across<VectorRef, true>
+   : public modified_container_pair_impl< repeated_line_across<VectorRef, true>,
+                                          mlist< Container1RefTag< sequence >,
+                                                 Container2RefTag< typename attrib<VectorRef>::plus_const >,
+                                                 IteratorCouplerTag< zipping_coupler< operations::cmp, set_union_zipper, false, true> >,
+                                                 OperationTag< SameElementSparseVector_factory<1> >,
+                                                 HiddenTag< repeated_line_matrix<VectorRef> > > > {
+   using base_t = modified_container_pair_impl<repeated_line_across>;
+public:
+   sequence get_container1() const { return sequence(0, size()); }
+   decltype(auto) get_container2() const { return this->hidden().get_line(); }
+   typename base_t::operation get_operation() const { return this->hidden().get_count(); }
+   int size() const { return get_container2().dim(); }
 };
 
 template <typename VectorRef>
@@ -1592,104 +1815,114 @@ protected:
    ~Cols();
 };
 
-template <typename VectorRef>
-class Cols< RepeatedCol<VectorRef> >
-   : public Rows< RepeatedRow<VectorRef> > {};
 
-template <typename VectorRef>
-class Transposed< RepeatedRow<VectorRef> >
-   : public RepeatedCol<VectorRef> {};
-
-template <typename VectorRef>
-class Transposed< RepeatedCol<VectorRef> >
-   : public RepeatedRow<VectorRef> {};
-
-template <typename VectorRef>
-class ConcatRows< Transposed< RepeatedRow<VectorRef> > >
-   : public ConcatRows< RepeatedCol<VectorRef> > {};
-
-template <typename VectorRef>
-class ConcatRows< Transposed< RepeatedCol<VectorRef> > >
-   : public ConcatRows< RepeatedRow<VectorRef> > {};
-
-/// Create a matrix with n rows, each equal to v. 
-template <typename Vector> inline
-const RepeatedRow<typename Diligent<const unwary_t<Vector>&>::type>
-repeat_row(const GenericVector<Vector>& v, int n=0)
+/// Create a matrix with n rows, each equal to v.
+template <typename TVector, typename=std::enable_if_t<is_generic_vector<TVector>::value>>
+auto repeat_row(TVector&& v, int n=0)
+     // gcc 5 needs this crutch
+     -> RepeatedRow<diligent_ref_t<unwary_t<TVector>>>
 {
-   return RepeatedRow<typename Diligent<const unwary_t<Vector>&>::type> (v.top(), n);
+   using result_type = RepeatedRow<diligent_ref_t<unwary_t<TVector>>>;
+   return result_type(diligent(unwary(std::forward<TVector>(v))), n);
 }
 
-/// Create a matrix with n columns, each equal to v. 
-template <typename Vector> inline
-const RepeatedCol<typename Diligent<const unwary_t<Vector>&>::type>
-repeat_col(const GenericVector<Vector>& v, int n=0)
+/// Create a matrix with n columns, each equal to v.
+template <typename TVector, typename=std::enable_if_t<is_generic_vector<TVector>::value>>
+auto repeat_col(TVector&& v, int n=0)
+     // gcc 5 needs this crutch
+     -> RepeatedCol<diligent_ref_t<unwary_t<TVector>>>
 {
-   return RepeatedCol<typename Diligent<const unwary_t<Vector>&>::type> (v.top(), n);
+   using result_type = RepeatedCol<diligent_ref_t<unwary_t<TVector>>>;
+   return result_type(diligent(unwary(std::forward<TVector>(v))), n);
 }
 
 /// Create a matrix with m rows and n columns whose entries
 /// are all equal to the given element x.
-template <typename E> inline
-const RepeatedRow< SameElementVector<const E&> >
-same_element_matrix(const E& x, int m, int n)
+template <typename E>
+auto same_element_matrix(E&& x, int m, int n)
 {
-   return RepeatedRow< SameElementVector<const E&> > (same_element_vector(x,n), m);
+   return RepeatedRow<SameElementVector<E>>(same_element_vector(std::forward<E>(x), n), m);
 }
 
 /// Create a matrix with m rows and n columns whose entries
 /// are all equal to 1.
-template <typename E> inline
-const RepeatedRow< SameElementVector<const E&> >
-ones_matrix(int m, int n)
+template <typename E>
+auto ones_matrix(int m, int n)
 {
-   return RepeatedRow< SameElementVector<const E&> > (ones_vector<E>(n), m);
+   using vector_t = decltype(ones_vector<E>(0));
+   return RepeatedRow<vector_t>(ones_vector<E>(n), m);
 }
 
 /// Create a matrix with m rows and n columns whose entries
 /// are all equal to 0.
-template <typename E> inline
-const RepeatedRow< SameElementVector<const E&> >
-zero_matrix(int m, int n)
+template <typename E>
+auto zero_matrix(int m, int n)
 {
-   return RepeatedRow< SameElementVector<const E&> > (zero_vector<E>(n), m);
+   using vector_t = decltype(zero_vector<E>(0));
+   return RepeatedRow<vector_t>(zero_vector<E>(n), m);
 }
 
-template <typename E>
-class constant_value_matrix
-   : public constant_value_container<E>,
-     public GenericMatrix<constant_value_matrix<E>, typename deref<E>::type> {
-   typedef constant_value_container<E> _super;
-public:
-   constant_value_matrix(typename _super::arg_type arg) : _super(arg) {}
+/// disguise a GenericVector as a matrix with 1 row 
+template <typename TVector>
+auto vector2row(GenericVector<TVector>& v)
+{
+   return RepeatedRow<unwary_t<TVector>&>(v.top(), 1);
+}
 
-   typename _super::const_reference operator() (int, int) const { return this->front(); }
+template <typename TVector>
+auto vector2row(const GenericVector<TVector>& v)
+{
+   return RepeatedRow<const unwary_t<TVector>&>(v.top(), 1);
+}
+
+/// disguise a GenericVector as a matrix with 1 column 
+template <typename TVector>
+auto vector2col(GenericVector<TVector>& v)
+{
+   return RepeatedCol<unwary_t<TVector>&>(v.top(), 1);
+}
+
+template <typename TVector>
+auto vector2col(const GenericVector<TVector>& v)
+{
+   return RepeatedCol<const unwary_t<TVector>&>(v.top(), 1);
+}
+
+template <typename ERef>
+class SameElementMatrix
+   : public same_value_container<ERef>
+   , public GenericMatrix<SameElementMatrix<ERef>, pure_type_t<ERef>> {
+public:
+   using same_value_container<ERef>::same_value_container;
+
+   decltype(auto) operator() (int, int) const { return this->front(); }
 };
 
-template <typename E>
-struct spec_object_traits< constant_value_matrix<E> > : spec_object_traits< constant_value_container<E> > {};
+template <typename ERef>
+struct spec_object_traits< SameElementMatrix<ERef> >
+   : spec_object_traits< same_value_container<ERef> > {};
 
-template <typename E>
-struct check_container_feature<constant_value_matrix<E>, FlatStorage> : std::true_type {};
+template <typename ERef>
+struct check_container_feature<SameElementMatrix<ERef>, FlatStorage> : std::true_type {};
 
-template <typename E>
-class ConcatRows< constant_value_matrix<E> >
-   : public constant_value_container<E> {
+template <typename ERef>
+class ConcatRows< SameElementMatrix<ERef> >
+   : public same_value_container<ERef> {
 protected:
    ConcatRows();
    ~ConcatRows();
 };
 
-template <typename E>
-class Rows< constant_value_matrix<E> >
-   : public constant_masquerade_container< constant_value_container<E> > {
+template <typename ERef>
+class Rows< SameElementMatrix<ERef> >
+   : public constant_masquerade_container< same_value_container<ERef> > {
 protected:
    ~Rows();
 };
 
-template <typename E>
-class Cols< constant_value_matrix<E> >
-   : public constant_masquerade_container< constant_value_container<E> > {
+template <typename ERef>
+class Cols< SameElementMatrix<ERef> >
+   : public constant_masquerade_container< same_value_container<ERef> > {
 protected:
    ~Cols();
 };
@@ -1698,24 +1931,36 @@ protected:
  *  diagonal and block-diagonal matrices
  * -------------------------------------- */
 
-// _main==true: the vector is laid out along the main diagonal
-// _main==false: along the anti-diagonal (starting in the lower left corner)
+// is_main==true: the vector is laid out along the main diagonal
+// is_main==false: along the anti-diagonal (starting in the lower left corner)
 
-template <typename VectorRef, bool _main=true>
+template <typename VectorRef, bool is_main=true>
 class DiagMatrix
-   : public GenericMatrix< DiagMatrix<VectorRef, _main>, typename deref<VectorRef>::type::element_type > {
+   : public GenericMatrix< DiagMatrix<VectorRef, is_main>, typename deref<VectorRef>::type::element_type > {
 protected:
-   alias<VectorRef> vector;
+   using alias_t = alias<VectorRef>;
+   alias_t vector;
 public:
-   typedef typename deref<VectorRef>::type::value_type value_type;
-   typedef typename deref<VectorRef>::type::const_reference const_reference;
-   typedef const_reference reference;
+   using value_type = typename deref<VectorRef>::type::value_type;
+   using const_reference = typename deref<VectorRef>::type::const_reference;
+   using reference = const_reference;
 
-   typedef typename alias<VectorRef>::arg_type arg_type;
-   DiagMatrix(arg_type vector_arg) : vector(vector_arg) {}
+   template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
+   explicit DiagMatrix(Arg&& vector_arg)
+      : vector(std::forward<Arg>(vector_arg)) {}
 
-   typename alias<VectorRef>::const_reference get_vector() const { return *vector; }
+   decltype(auto) get_vector() const &
+   {
+      return *vector;
+   }
+   decltype(auto) get_vector() &&
+   {
+      return vector.get_object();
+   }
 protected:
+   using GenericMatrix<DiagMatrix>::stretch_rows;
+   using GenericMatrix<DiagMatrix>::stretch_cols;
+
    void stretch_rows(int r)
    {
       vector.get_object().stretch_dim(r);
@@ -1725,25 +1970,24 @@ protected:
       vector.get_object().stretch_dim(c);
    }
 
-   template <typename, typename> friend class RowChain;
-   template <typename, typename> friend class ColChain;
+   template <typename, typename> friend class BlockMatrix;
 };
 
-template <typename VectorRef, bool _main>
-struct spec_object_traits< DiagMatrix<VectorRef, _main> >
+template <typename VectorRef, bool is_main>
+struct spec_object_traits< DiagMatrix<VectorRef, is_main> >
    : spec_object_traits<is_container> {
-   static const bool is_temporary=true, is_always_const=true;
+   static constexpr bool is_temporary = true, is_always_const = true;
 };
 
-template <typename VectorRef, bool _main>
-class matrix_random_access_methods< DiagMatrix<VectorRef, _main> > {
-   typedef DiagMatrix<VectorRef, _main> master;
+template <typename VectorRef, bool is_main>
+class matrix_random_access_methods< DiagMatrix<VectorRef, is_main> > {
+   using self_t = DiagMatrix<VectorRef, is_main>;
 public:
    typename container_traits<VectorRef>::const_reference
    operator() (int i, int j) const
    {
-      const master& me=static_cast<const master&>(*this);
-      if (_main ? i==j : i+j==me.get_vector().dim()-1)
+      const self_t& me=static_cast<const self_t&>(*this);
+      if (is_main ? i==j : i+j==me.get_vector().dim()-1)
          return me.get_vector()[j];
       return zero_value<typename deref<VectorRef>::type::element_type>();
    }
@@ -1752,9 +1996,9 @@ public:
 template <typename VectorRef, bool main_diag>
 class ConcatRows< DiagMatrix<VectorRef, main_diag> >
    : public modified_container_pair_impl< ConcatRows< DiagMatrix<VectorRef, main_diag> >,
-                                          mlist< Container1Tag< masquerade_add_features<VectorRef,
-                                                                                        typename concat_if<!main_diag, _reversed, cons<indexed, end_sensitive> >::type> >,
-                                                 Container2Tag< series >,
+                                          mlist< Container1RefTag< masquerade_add_features<VectorRef,
+                                                                     typename mlist_prepend_if<!main_diag, reversed, mlist<indexed, end_sensitive> >::type> >,
+                                                 Container2RefTag< series >,
                                                  OperationTag< pair<nothing, BuildBinaryIt<operations::dereference2> > >,
                                                  MasqueradedTop > >
    , public GenericVector< ConcatRows< DiagMatrix<VectorRef, main_diag> >,
@@ -1790,8 +2034,8 @@ template <typename VectorRef, bool main_diag, typename TReversed,
 struct DiagRowsCols_helper {
    static const bool use_sequence_index= !main_diag && std::is_same<TReversed, void>::value;
    typedef zipping_coupler< operations::cmp, set_union_zipper, use_sequence_index, true > zipper;
-   typedef mlist< Container1Tag< Series<int, main_diag> >,
-                  Container2Tag< masquerade_add_features<VectorRef, typename concat_list<pure_sparse, TReversed>::type> >,
+   typedef mlist< Container1RefTag< Series<int, main_diag> >,
+                  Container2RefTag< masquerade_add_features<VectorRef, typename mlist_concat<pure_sparse, TReversed>::type> >,
                   IteratorCouplerTag< typename reverse_coupler_helper<zipper, TReversed>::type >,
                   OperationTag< SameElementSparseVector_factory<3> >,
                   HiddenTag< DiagMatrix<VectorRef, main_diag> > > params;
@@ -1799,8 +2043,8 @@ struct DiagRowsCols_helper {
 
 template <typename VectorRef, bool main_diag, typename TReversed>
 struct DiagRowsCols_helper<VectorRef, main_diag, TReversed, true> {
-   typedef mlist< Container1Tag< Series<int, main_diag> >,
-                  Container2Tag< VectorRef >,
+   typedef mlist< Container1RefTag< Series<int, main_diag> >,
+                  Container2RefTag< VectorRef >,
                   OperationTag< SameElementSparseVector_factory<2> >,
                   HiddenTag< DiagMatrix<VectorRef, main_diag> > > params;
 };
@@ -1836,7 +2080,7 @@ template <typename VectorRef>
 class Cols< DiagMatrix<VectorRef, true> > : public Rows< DiagMatrix<VectorRef, true> > {};
 
 template <typename VectorRef>
-class Rows< DiagMatrix<VectorRef, false> > : public DiagRowsCols<VectorRef, false, _reversed> {
+class Rows< DiagMatrix<VectorRef, false> > : public DiagRowsCols<VectorRef, false, reversed> {
 protected:
    ~Rows();
 };
@@ -1848,65 +2092,46 @@ protected:
 };
 
 /// Create a square diagonal matrix from a GenericVector. 
-template <typename Vector> inline
-const DiagMatrix<const unwary_t<Vector>&>
-diag(const GenericVector<Vector>& v)
+template <typename TVector>
+auto diag(const GenericVector<TVector>& v)
 {
-   return v.top();
-}
-
-template <typename E, int size>
-const DiagMatrix<const FixedVector<E,size>&>
-diag(const E (&a)[size])
-{
-   return array2vector(a);
+   return DiagMatrix<const unwary_t<TVector>&>(v.top());
 }
 
 /// Create a anti-diagonal matrix. 
-template <typename Vector> inline
-const DiagMatrix<const unwary_t<Vector>&, false>
-anti_diag(const GenericVector<Vector>& v)
+template <typename TVector>
+auto anti_diag(const GenericVector<TVector>& v)
 {
-   return v.top();
+   return DiagMatrix<const unwary_t<TVector>&, false>(v.top());
 }
-
-template <typename E, int size>
-const DiagMatrix<const FixedVector<E,size>&, false>
-anti_diag(const E (&a)[size])
-{
-   return array2vector(a);
-}
-
 
 /// Create a unit_matrix of dimension dim.
-template <typename E> inline
-const DiagMatrix< SameElementVector<const E&> >
-unit_matrix(int dim)
+template <typename E>
+auto unit_matrix(int dim)
 {
-   return ones_vector<E>(dim);
+   // TODO: replace with direct call to diag() when it starts using urefs
+   using vector_t = decltype(ones_vector<E>(dim));
+   return DiagMatrix<vector_t>(ones_vector<E>(dim));
 }
 
-// _main==true : blocks are laid out along the main diagonal
-// _main==false : along the anti-diagonal, starting in the lower left corner
-
-template <typename MatrixRef1, typename MatrixRef2, bool _main=true>
+// is_main==true : blocks are laid out along the main diagonal
+// is_main==false : along the anti-diagonal, starting in the lower left corner
+// TODO: migrate to a tuple
+template <typename MatrixRef1, typename MatrixRef2, bool is_main=true>
 class BlockDiagMatrix
    : public container_pair_base<typename attrib<MatrixRef1>::plus_const, typename attrib<MatrixRef2>::plus_const>
-   , public GenericMatrix< BlockDiagMatrix<MatrixRef1,MatrixRef2,_main>,
+   , public GenericMatrix< BlockDiagMatrix<MatrixRef1, MatrixRef2, is_main>,
                            typename deref<MatrixRef1>::type::element_type > {
-   typedef container_pair_base<typename attrib<MatrixRef1>::plus_const, typename attrib<MatrixRef2>::plus_const> _base;
 public:
-   typedef typename container_traits<MatrixRef1>::value_type value_type;
+   using value_type = typename container_traits<MatrixRef1>::value_type;
    static_assert(std::is_same<value_type, typename container_traits<MatrixRef2>::value_type>::value,
                  "blocks with inhomogeneous element types");
       
-   typedef typename compatible<typename container_traits<MatrixRef1>::const_reference,
-                               typename container_traits<MatrixRef2>::const_reference>::type
-      const_reference;
-   typedef const_reference reference;
+   using const_reference = typename compatible<typename container_traits<MatrixRef1>::const_reference,
+                                               typename container_traits<MatrixRef2>::const_reference>::type;
+   using reference = const_reference;
 
-   BlockDiagMatrix(typename _base::first_arg_type matrix1_arg, typename _base::second_arg_type matrix2_arg)
-      : _base(matrix1_arg, matrix2_arg) {}
+   using container_pair_base<typename attrib<MatrixRef1>::plus_const, typename attrib<MatrixRef2>::plus_const>::container_pair_base;
 
    /// the number of rows
    int rows() const { return this->get_container1().rows() + this->get_container2().rows(); }
@@ -1915,38 +2140,36 @@ public:
    int cols() const { return this->get_container1().cols() + this->get_container2().cols(); }
 };
 
-template <typename MatrixRef1, typename MatrixRef2, bool _main>
-struct spec_object_traits< BlockDiagMatrix<MatrixRef1, MatrixRef2, _main> >
+template <typename MatrixRef1, typename MatrixRef2, bool is_main>
+struct spec_object_traits< BlockDiagMatrix<MatrixRef1, MatrixRef2, is_main> >
    : spec_object_traits<is_container> {
-   static const bool is_temporary=true, is_always_const=true;
+   static const bool is_temporary = true, is_always_const = true;
 };
 
-template <typename MatrixRef1, typename MatrixRef2, bool _main>
-struct check_container_feature<BlockDiagMatrix<MatrixRef1, MatrixRef2, _main>, sparse> : std::true_type {};
+template <typename MatrixRef1, typename MatrixRef2, bool is_main>
+struct check_container_feature<BlockDiagMatrix<MatrixRef1, MatrixRef2, is_main>, sparse> : std::true_type {};
 
-template <typename MatrixRef1, typename MatrixRef2, bool _main>
-struct check_container_feature<BlockDiagMatrix<MatrixRef1, MatrixRef2, _main>, pure_sparse> {
-   static const bool value=check_container_ref_feature<MatrixRef1, pure_sparse>::value &&
-                           check_container_ref_feature<MatrixRef2, pure_sparse>::value;
-};
+template <typename MatrixRef1, typename MatrixRef2, bool is_main>
+struct check_container_feature<BlockDiagMatrix<MatrixRef1, MatrixRef2, is_main>, pure_sparse>
+   : mlist_and< check_container_ref_feature<MatrixRef1, pure_sparse>,
+                check_container_ref_feature<MatrixRef2, pure_sparse> > {};
 
 template <typename MatrixRef1, typename MatrixRef2>
-struct check_container_feature<BlockDiagMatrix<MatrixRef1, MatrixRef2, true>, Symmetric> {
-   static const bool value=check_container_ref_feature<MatrixRef1, Symmetric>::value &&
-                           check_container_ref_feature<MatrixRef2, Symmetric>::value;
-};
+struct check_container_feature<BlockDiagMatrix<MatrixRef1, MatrixRef2, true>, Symmetric>
+   : mlist_and< check_container_ref_feature<MatrixRef1, Symmetric>,
+                check_container_ref_feature<MatrixRef2, Symmetric> > {};
 
-template <typename MatrixRef1, typename MatrixRef2, bool _main>
-class matrix_random_access_methods< BlockDiagMatrix<MatrixRef1, MatrixRef2, _main> > {
-   typedef BlockDiagMatrix<MatrixRef1, MatrixRef2, _main> master;
+template <typename MatrixRef1, typename MatrixRef2, bool is_main>
+class matrix_random_access_methods< BlockDiagMatrix<MatrixRef1, MatrixRef2, is_main> > {
+   using self_t = BlockDiagMatrix<MatrixRef1, MatrixRef2, is_main>;
 public:
    typename compatible<typename container_traits<MatrixRef1>::const_reference,
                        typename container_traits<MatrixRef2>::const_reference>::type
    operator() (int i, int j) const
    {
-      const master& me=static_cast<const master&>(*this);
+      const self_t& me=static_cast<const self_t&>(*this);
       const int c1=me.get_container1().cols();
-      if (_main) {
+      if (is_main) {
          const int r1=me.get_container1().rows();
          if (i<r1 && j<c1) return me.get_container1()(i,j);
          if (i>=r1 && j>=c1) return me.get_container2()(i-r1,j-c1);
@@ -1955,7 +2178,7 @@ public:
          if (i>=r2 && j<c1) return me.get_container1()(i-r2,j);
          if (i<r2 && j>=c1) return me.get_container2()(i,j-c1);
       }
-      return zero_value<typename master::element_type>();
+      return zero_value<typename self_t::element_type>();
    }
 };
 
@@ -1963,10 +2186,10 @@ template <typename MatrixRef1, typename MatrixRef2, bool main_diag,
           template <typename> class RowsCols, bool for_rows, bool is_first>
 class BlockDiagRowsCols
    : public modified_container_impl< BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, RowsCols, for_rows, is_first>,
-                                     mlist< ContainerTag< masquerade<RowsCols, typename std::conditional<(main_diag ? is_first : for_rows^is_first), MatrixRef1, MatrixRef2>::type> >,
+                                     mlist< ContainerRefTag< masquerade<RowsCols, std::conditional_t<(main_diag ? is_first : for_rows^is_first), MatrixRef1, MatrixRef2>> >,
                                             OperationTag< ExpandedVector_factory<> >,
                                             HiddenTag< BlockDiagMatrix<MatrixRef1, MatrixRef2, main_diag> > > > {
-   typedef modified_container_impl<BlockDiagRowsCols> base_t;
+   using base_t = modified_container_impl<BlockDiagRowsCols>;
 
    const typename base_t::container& get_container_impl(std::true_type) const
    {
@@ -2004,26 +2227,44 @@ public:
 template <typename MatrixRef1, typename MatrixRef2, bool main_diag>
 class Rows< BlockDiagMatrix<MatrixRef1, MatrixRef2, main_diag> >
    : public container_chain_impl< Rows< BlockDiagMatrix<MatrixRef1, MatrixRef2, main_diag> >,
-                                  mlist< Container1Tag< BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, Rows, true, true> >,
-                                         Container2Tag< BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, Rows, true, false> >,
+                                  mlist< ContainerRefTag< mlist< BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, Rows, true, true>,
+                                                                 BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, Rows, true, false> > >,
                                          MasqueradedTop > > {
 protected:
    ~Rows();
+public:
+   decltype(auto) get_container(int_constant<0>) const
+   {
+      return reinterpret_cast<const BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, pm::Rows, true, true>&>(this->hidden());
+   }
+   decltype(auto) get_container(int_constant<1>) const
+   {
+      return reinterpret_cast<const BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, pm::Rows, true, false>&>(this->hidden());
+   }
 };
 
 template <typename MatrixRef1, typename MatrixRef2, bool main_diag>
 class Cols< BlockDiagMatrix<MatrixRef1, MatrixRef2, main_diag> >
    : public container_chain_impl< Cols< BlockDiagMatrix<MatrixRef1, MatrixRef2, main_diag> >,
-                                  mlist< Container1Tag< BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, Cols, false, true> >,
-                                         Container2Tag< BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, Cols, false, false> >,
+                                  mlist< ContainerRefTag< mlist< BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, Cols, false, true>,
+                                                                 BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, Cols, false, false> > >,
                                          MasqueradedTop > > {
 protected:
    ~Cols();
+public:
+   decltype(auto) get_container(int_constant<0>) const
+   {
+      return reinterpret_cast<const BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, pm::Cols, false, true>&>(this->hidden());
+   }
+   decltype(auto) get_container(int_constant<1>) const
+   {
+      return reinterpret_cast<const BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, pm::Cols, false, false>&>(this->hidden());
+   }
 };
 
 /// Create a block-diagonal matrix.
-template <typename E, typename Matrix1, typename Matrix2> inline
-auto diag(const GenericMatrix<Matrix1,E>& m1, const GenericMatrix<Matrix2,E>& m2)
+template <typename E, typename Matrix1, typename Matrix2>
+auto diag(const GenericMatrix<Matrix1, E>& m1, const GenericMatrix<Matrix2, E>& m2)
 {
    return BlockDiagMatrix<const unwary_t<Matrix1>&,
                           const unwary_t<Matrix2>&, true>(m1.top(), m2.top());
@@ -2031,8 +2272,8 @@ auto diag(const GenericMatrix<Matrix1,E>& m1, const GenericMatrix<Matrix2,E>& m2
 
 /// Create a block-diagonal matrix. 
 /// The vector argument is treated as a square diagonal matrix.
-template <typename E, typename Vector1, typename Matrix2> inline
-auto diag(const GenericVector<Vector1,E>& v1, const GenericMatrix<Matrix2,E>& m2)
+template <typename E, typename Vector1, typename Matrix2>
+auto diag(const GenericVector<Vector1, E>& v1, const GenericMatrix<Matrix2, E>& m2)
 {
    return BlockDiagMatrix<DiagMatrix<const unwary_t<Vector1>&>,
                           const unwary_t<Matrix2>&, true>(diag(v1), m2.top());
@@ -2040,34 +2281,36 @@ auto diag(const GenericVector<Vector1,E>& v1, const GenericMatrix<Matrix2,E>& m2
 
 /// Create a block-diagonal matrix. 
 /// The vector argument is treated as a square diagonal matrix.
-template <typename E, typename Matrix1, typename Vector2> inline
-auto diag(const GenericMatrix<Matrix1,E>& m1, const GenericVector<Vector2,E>& v2)
+template <typename E, typename Matrix1, typename Vector2>
+auto diag(const GenericMatrix<Matrix1, E>& m1, const GenericVector<Vector2, E>& v2)
 {
    return BlockDiagMatrix<const unwary_t<Matrix1>&,
                           DiagMatrix<const unwary_t<Vector2>&>, true>(m1.top(), diag(v2));
 }
 
 template <typename Scalar1, typename Matrix2, typename E,
-          typename enabled=typename std::enable_if<can_initialize<Scalar1, E>::value>::type> inline
-auto diag(const Scalar1& x1, const GenericMatrix<Matrix2, E>& m2)
+          typename=std::enable_if_t<can_initialize<pure_type_t<Scalar1>, E>::value>>
+auto diag(Scalar1&& x1, const GenericMatrix<Matrix2, E>& m2)
 {
-   return BlockDiagMatrix<DiagMatrix< SingleElementVector<E> >,
-                          const unwary_t<Matrix2>&, true>
-                         (DiagMatrix< SingleElementVector<E> >(SingleElementVector<E>(convert_to<E>(x1))), m2.top());
+   using corner_elem_t = std::conditional_t<std::is_same<pure_type_t<Scalar1>, E>::value, Scalar1, E>;
+   using corner_t = DiagMatrix< SameElementVector<corner_elem_t> >;
+   return BlockDiagMatrix<corner_t, const unwary_t<Matrix2>&, true>
+          (corner_t(SameElementVector<corner_elem_t>(convert_to<E>(std::forward<Scalar1>(x1)), 1)), m2.top());
 }
 
 template <typename Matrix1, typename Scalar2, typename E,
-          typename enabled=typename std::enable_if<can_initialize<Scalar2, E>::value>::type> inline
-auto diag(const GenericMatrix<Matrix1, E>& m1, const Scalar2& x2)
+          typename=std::enable_if_t<can_initialize<pure_type_t<Scalar2>, E>::value>>
+auto diag(const GenericMatrix<Matrix1, E>& m1, Scalar2&& x2)
 {
-   return BlockDiagMatrix<const unwary_t<Matrix1>&,
-                          DiagMatrix< SingleElementVector<E> >, true>
-                         (m1.top(), DiagMatrix< SingleElementVector<E> >(SingleElementVector<E>(convert_to<E>(x2))));
+   using corner_elem_t = std::conditional_t<std::is_same<pure_type_t<Scalar2>, E>::value, Scalar2, E>;
+   using corner_t = DiagMatrix< SameElementVector<corner_elem_t> >;
+   return BlockDiagMatrix<const unwary_t<Matrix1>&, corner_t>
+         (m1.top(), corner_t(SameElementVector<corner_elem_t>(convert_to<E>(std::forward<Scalar2>(x2)), 1)));
 }
 
 /// Create a block-anti-diagonal matrix. 
-template <typename E, typename Matrix1, typename Matrix2> inline
-auto anti_diag(const GenericMatrix<Matrix1,E>& m1, const GenericMatrix<Matrix2,E>& m2)
+template <typename E, typename Matrix1, typename Matrix2>
+auto anti_diag(const GenericMatrix<Matrix1, E>& m1, const GenericMatrix<Matrix2, E>& m2)
 {
    return BlockDiagMatrix<const unwary_t<Matrix1>&,
                           const unwary_t<Matrix2>&, false>(m1.top(), m2.top());
@@ -2075,8 +2318,8 @@ auto anti_diag(const GenericMatrix<Matrix1,E>& m1, const GenericMatrix<Matrix2,E
 
 /// Create a block-anti-diagonal matrix. 
 /// The vector argument is treated as a square anti-diagonal matrix.
-template <typename E, typename Vector1, typename Matrix2> inline
-auto anti_diag(const GenericVector<Vector1,E>& v1, const GenericMatrix<Matrix2,E>& m2)
+template <typename E, typename Vector1, typename Matrix2>
+auto anti_diag(const GenericVector<Vector1, E>& v1, const GenericMatrix<Matrix2, E>& m2)
 {
    return BlockDiagMatrix<DiagMatrix<const unwary_t<Vector1>&, false>,
                           const unwary_t<Matrix2>&, false>(anti_diag(v1), m2.top());
@@ -2084,7 +2327,7 @@ auto anti_diag(const GenericVector<Vector1,E>& v1, const GenericMatrix<Matrix2,E
 
 /// Create a block-anti-diagonal matrix. 
 /// The vector argument is treated as a square anti-diagonal matrix.
-template <typename E, typename Matrix1, typename Vector2> inline
+template <typename E, typename Matrix1, typename Vector2>
 auto anti_diag(const GenericMatrix<Matrix1, E>& m1, const GenericVector<Vector2, E>& v2)
 {
    return BlockDiagMatrix<const unwary_t<Matrix1>&,
@@ -2092,21 +2335,23 @@ auto anti_diag(const GenericMatrix<Matrix1, E>& m1, const GenericVector<Vector2,
 }
 
 template <typename Scalar1, typename Matrix2, typename E,
-          typename enabled=typename std::enable_if<can_initialize<Scalar1, E>::value>::type> inline
-auto anti_diag(const Scalar1& x1, const GenericMatrix<Matrix2, E>& m2)
+          typename=std::enable_if_t<can_initialize<pure_type_t<Scalar1>, E>::value>>
+auto anti_diag(Scalar1&& x1, const GenericMatrix<Matrix2, E>& m2)
 {
-   return BlockDiagMatrix<DiagMatrix<SingleElementVector<E>, false>,
-                          const unwary_t<Matrix2>&, false>
-                         (DiagMatrix<SingleElementVector<E>, false>(SingleElementVector<E>(convert_to<E>(x1))), m2.top());
+   using corner_elem_t = std::conditional_t<std::is_same<pure_type_t<Scalar1>, E>::value, Scalar1, E>;
+   using corner_t = DiagMatrix<SameElementVector<corner_elem_t>, false>;
+   return BlockDiagMatrix<corner_t, const unwary_t<Matrix2>&, false>
+          (corner_t(SameElementVector<corner_elem_t>(convert_to<E>(std::forward<Scalar1>(x1)), 1)), m2.top());
 }
 
 template <typename Matrix1, typename Scalar2, typename E,
-          typename enabled=typename std::enable_if<can_initialize<Scalar2, E>::value>::type> inline
-auto anti_diag(const GenericMatrix<Matrix1,E>& m1, const Scalar2& x2)
+          typename=std::enable_if_t<can_initialize<pure_type_t<Scalar2>, E>::value>>
+auto anti_diag(const GenericMatrix<Matrix1, E>& m1, Scalar2&& x2)
 {
-   return BlockDiagMatrix<const unwary_t<Matrix1>&,
-                          DiagMatrix<SingleElementVector<E>, false>, false>
-                         (m1.top(), DiagMatrix<SingleElementVector<E>, false>(SingleElementVector<E>(convert_to<E>(x2))));
+   using corner_elem_t = std::conditional_t<std::is_same<pure_type_t<Scalar2>, E>::value, Scalar2, E>;
+   using corner_t = DiagMatrix<SameElementVector<corner_elem_t>, false>;
+   return BlockDiagMatrix<const unwary_t<Matrix1>&, corner_t, false>
+          (m1.top(), corner_t(SameElementVector<corner_elem_t>(convert_to<E>(std::forward<Scalar2>(x2)), 1)));
 }
 
 /* -----------------
@@ -2120,9 +2365,9 @@ auto anti_diag(const GenericMatrix<Matrix1,E>& m1, const Scalar2& x2)
 template <typename E>
 class SparseMatrix2x2 {
 public:
-   typedef E value_type;
-   typedef E& reference;
-   typedef const E& const_reference;
+   using value_type = E;
+   using reference = E&;
+   using const_reference = const E&;
 
    int i, j;    // row & col
    E a_ii, a_ij, a_ji, a_jj;
@@ -2130,8 +2375,8 @@ public:
    SparseMatrix2x2() {}
 
    SparseMatrix2x2(int i_arg, int j_arg,
-                   typename function_argument<E>::type a_ii_arg, typename function_argument<E>::type a_ij_arg,
-                   typename function_argument<E>::type a_ji_arg, typename function_argument<E>::type a_jj_arg)
+                   const E& a_ii_arg, const E& a_ij_arg,
+                   const E& a_ji_arg, const E& a_jj_arg)
       : i(i_arg), j(j_arg), a_ii(a_ii_arg), a_ij(a_ij_arg), a_ji(a_ji_arg), a_jj(a_jj_arg) {}
 };
 
@@ -2141,7 +2386,7 @@ protected:
    ~Transposed();
 };
 
-template <typename E> inline
+template <typename E>
 E det(const SparseMatrix2x2<E>& U)
 {
    return U.a_ii*U.a_jj-U.a_ij*U.a_ji;
@@ -2163,40 +2408,37 @@ struct lazy_product_traits {
 
 template <typename MatrixRef1, typename MatrixRef2>
 class MatrixProduct
-   : public container_pair_base<MatrixRef1, MatrixRef2>,
-     public GenericMatrix< MatrixProduct<MatrixRef1,MatrixRef2>,
-                           typename lazy_product_traits<MatrixRef1,MatrixRef2>::element_type > {
-   typedef container_pair_base<MatrixRef1, MatrixRef2> _base;
+   : public container_pair_base<MatrixRef1, MatrixRef2>
+   , public GenericMatrix< MatrixProduct<MatrixRef1, MatrixRef2>,
+                           typename lazy_product_traits<MatrixRef1, MatrixRef2>::element_type > {
 public:
-   typedef typename lazy_product_traits<MatrixRef1,MatrixRef2>::reference reference;
-   typedef typename lazy_product_traits<MatrixRef1,MatrixRef2>::value_type value_type;
-   typedef reference const_reference;
-   typedef typename lazy_product_traits<MatrixRef1,MatrixRef2>::element_type element_type;
+   using reference = typename lazy_product_traits<MatrixRef1,MatrixRef2>::reference;
+   using value_type = typename lazy_product_traits<MatrixRef1,MatrixRef2>::value_type;
+   using const_reference = reference;
+   using typename GenericMatrix<MatrixProduct>::element_type;
 
-   MatrixProduct(typename _base::first_arg_type src1_arg, typename _base::second_arg_type src2_arg)
-      : _base(src1_arg,src2_arg) {}
+   using container_pair_base<MatrixRef1, MatrixRef2>::container_pair_base;
 
-   static const bool is_sparse=check_container_ref_feature<MatrixRef1, sparse>::value &&
-                               check_container_ref_feature<MatrixRef2, sparse>::value;
-   typedef typename std::conditional<is_sparse, SparseMatrix<element_type>, Matrix<element_type> >::type
-      persistent_type;
+   static constexpr bool is_sparse=check_container_ref_feature<MatrixRef1, sparse>::value &&
+                                   check_container_ref_feature<MatrixRef2, sparse>::value;
+   using persistent_type = std::conditional_t<is_sparse, SparseMatrix<element_type>, Matrix<element_type>>;
 };
 
 template <typename MatrixRef1, typename MatrixRef2>
 struct spec_object_traits< MatrixProduct<MatrixRef1, MatrixRef2> >
    : spec_object_traits<is_container> {
-   static const bool is_lazy=true, is_temporary=true, is_always_const=true;
+   static constexpr bool is_lazy = true, is_temporary = true, is_always_const = true;
 };
 
 template <typename MatrixRef1, typename MatrixRef2>
 class matrix_random_access_methods< MatrixProduct<MatrixRef1, MatrixRef2> > {
-   typedef MatrixProduct<MatrixRef1,MatrixRef2> master;
+   using self_t = MatrixProduct<MatrixRef1,MatrixRef2>;
 public:
    typename operations::mul<typename container_traits<MatrixRef1>::const_reference,
                             typename container_traits<MatrixRef2>::const_reference>::result_type
    operator() (int i, int j) const
    {
-      const master& me=static_cast<const master&>(*this);
+      const self_t& me=static_cast<const self_t&>(*this);
       return me.get_container1().row(i) * me.get_container2().col(j);
    }
 };
@@ -2204,8 +2446,8 @@ public:
 template <typename MatrixRef1, typename MatrixRef2>
 class ConcatRows< MatrixProduct<MatrixRef1, MatrixRef2> >
    : public container_product_impl< ConcatRows< MatrixProduct<MatrixRef1, MatrixRef2> >,
-                                    mlist< Container1Tag< masquerade<Rows, MatrixRef1> >,
-                                           Container2Tag< masquerade<Cols, MatrixRef2> >,
+                                    mlist< Container1RefTag< masquerade<Rows, MatrixRef1> >,
+                                           Container2RefTag< masquerade<Cols, MatrixRef2> >,
                                            OperationTag< BuildBinary<operations::mul> >,
                                            MasqueradedTop > >,
      public GenericVector< ConcatRows< MatrixProduct<MatrixRef1, MatrixRef2> >,
@@ -2225,252 +2467,112 @@ public:
 template <typename MatrixRef1, typename MatrixRef2>
 class Rows< MatrixProduct<MatrixRef1, MatrixRef2> >
    : public modified_container_pair_impl< Rows< MatrixProduct<MatrixRef1, MatrixRef2> >,
-                                          mlist< Container1Tag< masquerade<pm::Rows, MatrixRef1> >,
-                                                 Container2Tag< constant_value_container<MatrixRef2> >,
+                                          mlist< Container1RefTag< masquerade<pm::Rows, MatrixRef1> >,
+                                                 Container2RefTag< same_value_container<MatrixRef2> >,
                                                  OperationTag< BuildBinary<operations::mul> >,
                                                  MasqueradedTop > > {
    typedef modified_container_pair_impl<Rows> base_t;
 protected:
    ~Rows();
 public:
-   const typename base_t::container1& get_container1() const
+   decltype(auto) get_container1() const
    {
       return rows(this->hidden().get_container1());
    }
-   const typename base_t::container2& get_container2() const
+   decltype(auto) get_container2() const
    {
-      return constant(this->hidden().get_container2_alias());
+      return as_same_value_container(this->hidden().get_container2_alias());
    }
 };
 
 template <typename MatrixRef1, typename MatrixRef2>
 class Cols< MatrixProduct<MatrixRef1, MatrixRef2> >
    : public modified_container_pair_impl< Cols< MatrixProduct<MatrixRef1, MatrixRef2> >,
-                                          mlist< Container1Tag< constant_value_container<MatrixRef1> >,
-                                                 Container2Tag< masquerade<pm::Cols, MatrixRef2> >,
+                                          mlist< Container1RefTag< same_value_container<MatrixRef1> >,
+                                                 Container2RefTag< masquerade<pm::Cols, MatrixRef2> >,
                                                  OperationTag< BuildBinary<operations::mul> >,
                                                  MasqueradedTop > > {
    typedef modified_container_pair_impl<Cols> base_t;
 protected:
    ~Cols();
 public:
-   const typename base_t::container1& get_container1() const
+   decltype(auto) get_container1() const
    {
-      return constant(this->hidden().get_container1_alias());
+      return as_same_value_container(this->hidden().get_container1_alias());
    }
-   const typename base_t::container2& get_container2() const
+   decltype(auto) get_container2() const
    {
       return cols(this->hidden().get_container2());
    }
 };
+
+namespace internal {
+
+template <typename LeftRef, typename RightRef, typename Left, typename Right>
+struct matrix_product {
+   using m_m_type = MatrixProduct<diligent_ref_t<unwary_t<LeftRef>>,
+                                  diligent_ref_t<unwary_t<RightRef>>>;
+
+   static m_m_type make(LeftRef&& l, RightRef&& r)
+   {
+      return m_m_type(diligent(unwary(std::forward<LeftRef>(l))),
+                      diligent(unwary(std::forward<RightRef>(r))));
+   }
+};
+
+template <typename LeftRef, typename RightRef, typename VectorRef, typename Right>
+struct matrix_product<LeftRef, RightRef, DiagMatrix<VectorRef, true>, Right> {
+   using m_m_type = LazyMatrix2<RepeatedCol<VectorRef>,
+                                add_const_t<unwary_t<RightRef>>, BuildBinary<operations::mul>>;
+
+   static m_m_type make(LeftRef&& l, RightRef&& r)
+   {
+      return m_m_type(RepeatedCol<VectorRef>(unwary(std::forward<LeftRef>(l)).get_vector(), r.cols()),
+                      unwary(std::forward<RightRef>(r)));
+   }
+};
+
+template <typename LeftRef, typename RightRef, typename Left, typename VectorRef>
+struct matrix_product<LeftRef, RightRef, Left, DiagMatrix<VectorRef, true>> {
+   using m_m_type = LazyMatrix2<add_const_t<unwary_t<LeftRef>>,
+                                RepeatedRow<VectorRef>, BuildBinary<operations::mul>>;
+
+   static m_m_type make(LeftRef&& l, RightRef&& r)
+   {
+      return m_m_type(unwary(std::forward<LeftRef>(l)),
+                      RepeatedRow<VectorRef>(unwary(std::forward<RightRef>(r)).get_vector(), l.rows()));
+   }
+};
+
+template <typename LeftRef, typename RightRef, typename LeftVectorRef, typename RightVectorRef>
+struct matrix_product<LeftRef, RightRef, DiagMatrix<LeftVectorRef, true>, DiagMatrix<RightVectorRef, true> > {
+   using diag_type = LazyVector2<LeftVectorRef, RightVectorRef, BuildBinary<operations::mul>>;
+   using m_m_type = DiagMatrix<diag_type>;
+
+   static m_m_type make(LeftRef&& l, RightRef&& r)
+   {
+      return m_m_type(diag_type(unwary(std::forward<LeftRef>(l)).get_vector(),
+                                unwary(std::forward<RightRef>(r)).get_vector()));
+   }
+};
+
+}
 
 /* ---------------------------------------
  *  matrix arithmetic operations
  * --------------------------------------- */
 namespace operations {
 
-template <typename OpRef>
-struct neg_impl<OpRef, is_matrix> {
-   typedef OpRef argument_type;
-   typedef LazyMatrix1<typename attrib<unwary_t<OpRef>>::plus_const, BuildUnary<neg> > result_type;
-
-   result_type operator() (typename function_argument<OpRef>::const_type x) const
-   {
-      return unwary(x);
-   }
-
-   void assign(typename lvalue_arg<OpRef>::type x) const
-   {
-      x.negate();
-   }
-};
-
-template <typename LeftRef, typename RightRef>
-struct add_impl<LeftRef, RightRef, cons<is_matrix, is_matrix> > {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef LazyMatrix2<typename attrib<unwary_t<LeftRef>>::plus_const,
-                       typename attrib<unwary_t<RightRef>>::plus_const,
-                       BuildBinary<add> >
-      result_type;
-
-   result_type operator() (typename function_argument<LeftRef>::const_type l,
-                           typename function_argument<RightRef>::const_type r) const
-   {
-      if (POLYMAKE_DEBUG || !Unwary<LeftRef>::value || !Unwary<RightRef>::value) {
-         if (l.rows() != r.rows() || l.cols() != r.cols())
-            throw std::runtime_error("operator+(GenericMatrix,GenericMatrix) - dimension mismatch");
-      }
-      return result_type(unwary(l), unwary(r));
-   }
-
-   template <typename Iterator2>
-   typename function_argument<LeftRef>::const_type
-   operator() (partial_left, typename function_argument<LeftRef>::const_type l, const Iterator2&) const
-   {
-      return l;
-   }
-
-   template <typename Iterator1>
-   typename function_argument<RightRef>::const_type
-   operator() (partial_right, const Iterator1&, typename function_argument<RightRef>::const_type r) const
-   {
-      return r;
-   }
-
-   void assign(typename lvalue_arg<LeftRef>::type l, typename function_argument<RightRef>::const_type r) const
-   {
-      l+=r;
-   }
-};
-
-template <typename LeftRef, typename RightRef>
-struct sub_impl<LeftRef, RightRef, cons<is_matrix, is_matrix> > {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef LazyMatrix2<typename attrib<unwary_t<LeftRef>>::plus_const,
-                       typename attrib<unwary_t<RightRef>>::plus_const,
-                       BuildBinary<sub> >
-      result_type;
-
-   result_type operator() (typename function_argument<LeftRef>::const_type l,
-                           typename function_argument<RightRef>::const_type r) const
-   {
-      if (POLYMAKE_DEBUG || !Unwary<LeftRef>::value || !Unwary<RightRef>::value) {
-         if (l.rows() != r.rows() || l.cols() != r.cols())
-            throw std::runtime_error("operator-(GenericMatrix,GenericMatrix) - dimension mismatch");
-      }
-      return result_type(unwary(l), unwary(r));
-   }
-
-   template <typename Iterator2>
-   typename function_argument<LeftRef>::const_type
-   operator() (partial_left, typename function_argument<LeftRef>::const_type l, const Iterator2&) const
-   {
-      return l;
-   }
-
-   template <typename Iterator1>
-   typename neg<RightRef>::result_type
-   operator() (partial_right, const Iterator1&, typename function_argument<RightRef>::const_type r) const
-   {
-      neg<RightRef> n;
-      return n(r);
-   }
-
-   void assign(typename lvalue_arg<LeftRef>::type l, typename function_argument<RightRef>::const_type r) const
-   {
-      l-=r;
-   }
-};
-
-template <typename LeftRef, typename RightRef,
-          typename Left =typename deref<unwary_t<LeftRef>>::type,
-          typename Right=typename deref<unwary_t<RightRef>>::type>
-struct matrix_prod_chooser {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef MatrixProduct<typename Diligent<unwary_t<LeftRef>>::type,
-                         typename Diligent<unwary_t<RightRef>>::type>
-      result_type;
-
-   result_type operator() (typename function_argument<LeftRef>::const_type l,
-                           typename function_argument<RightRef>::const_type r) const
-   {
-      if (POLYMAKE_DEBUG || !Unwary<LeftRef>::value || !Unwary<RightRef>::value) {
-         if (l.cols() != r.rows())
-            throw std::runtime_error("operator*(GenericMatrix,GenericMatrix) - dimension mismatch");
-      }
-      return result_type(diligent(unwary(l)), diligent(unwary(r)));
-   }
-};
-
-template <typename LeftRef, typename RightRef, typename VectorRef, typename Right>
-struct matrix_prod_chooser<LeftRef, RightRef, DiagMatrix<VectorRef,true>, Right> {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef LazyMatrix2<RepeatedCol<VectorRef>,
-                       typename attrib<unwary_t<RightRef>>::plus_const,
-                       BuildBinary<mul> >
-      result_type;
-
-   result_type operator() (typename function_argument<LeftRef>::const_type l,
-                           typename function_argument<RightRef>::const_type r) const
-   {
-      if (POLYMAKE_DEBUG || !Unwary<LeftRef>::value || !Unwary<RightRef>::value) {
-         if (l.cols() != r.rows())
-            throw std::runtime_error("operator*(DiagMatrix,GenericMatrix) - dimension mismatch");
-      }
-      return result_type(RepeatedCol<VectorRef>(unwary(l).get_vector(), r.cols()), unwary(r));
-   }
-};
-
-template <typename LeftRef, typename RightRef, typename Left, typename VectorRef>
-struct matrix_prod_chooser<LeftRef, RightRef, Left, DiagMatrix<VectorRef,true> > {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef LazyMatrix2<typename attrib<unwary_t<LeftRef>>::plus_const,
-                       RepeatedRow<VectorRef>,
-                       BuildBinary<mul> >
-      result_type;
-
-   result_type operator() (typename function_argument<LeftRef>::const_type l,
-                           typename function_argument<RightRef>::const_type r) const
-   {
-      if (POLYMAKE_DEBUG || !Unwary<LeftRef>::value || !Unwary<RightRef>::value) {
-         if (l.cols() != r.rows())
-            throw std::runtime_error("operator*(GenericMatrix,DiagMatrix) - dimension mismatch");
-      }
-      return result_type(unwary(l), RepeatedRow<VectorRef>(unwary(r).get_vector(), l.rows()));
-   }
-};
-
-template <typename LeftRef, typename RightRef, typename LeftVectorRef, typename RightVectorRef>
-struct matrix_prod_chooser<LeftRef, RightRef, DiagMatrix<LeftVectorRef,true>, DiagMatrix<RightVectorRef,true> > {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef LazyVector2<LeftVectorRef, RightVectorRef, BuildBinary<mul> > prod_diag;
-   typedef const DiagMatrix<prod_diag> result_type;
-
-   result_type operator() (typename function_argument<LeftRef>::const_type l,
-                           typename function_argument<RightRef>::const_type r) const
-   {
-      if (POLYMAKE_DEBUG || !Unwary<LeftRef>::value || !Unwary<RightRef>::value) {
-         if (l.cols() != r.rows())
-            throw std::runtime_error("operator*(DiagMatrix,DiagMatrix) - dimension mismatch");
-      }
-      return result_type(prod_diag(unwary(l).get_vector(), unwary(r).get_vector()));
-   }
-};
-
-template <typename LeftRef, typename RightRef>
-struct mul_impl<LeftRef, RightRef, cons<is_matrix, is_matrix> >
-   : matrix_prod_chooser<LeftRef,RightRef> {
-
-   void assign(typename lvalue_arg<LeftRef>::type l,
-               typename function_argument<RightRef>::const_type r)
-   {
-      l=l*r;
-   }
-};
-
 template <typename LeftRef, typename RightRef>
 struct mul_impl<LeftRef, RightRef, cons<is_matrix, is_vector> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef LazyVector2<pm::masquerade<Rows, typename attrib<unwary_t<LeftRef>>::plus_const>,
-                       constant_value_container<typename Diligent<unwary_t<RightRef>>::type>,
-                       BuildBinary<mul> >
-      result_type;
+   typedef decltype(std::declval<LeftRef>() * std::declval<RightRef>()) result_type;
 
-   result_type operator() (typename function_argument<LeftRef>::const_type l,
-                           typename function_argument<RightRef>::const_type r) const
+   template <typename L, typename R>
+   result_type operator() (L&& l, R&& r) const
    {
-      if (POLYMAKE_DEBUG || !Unwary<LeftRef>::value || !Unwary<RightRef>::value) {
-         if (l.cols() != r.dim())
-            throw std::runtime_error("operator*(GenericMatrix,GenericVector) - dimension mismatch");
-      }
-      return result_type(unwary(l), diligent(unwary(r)));
+      return std::forward<L>(l) * std::forward<R>(r);
    }
 };
 
@@ -2478,266 +2580,16 @@ template <typename LeftRef, typename RightRef>
 struct mul_impl<LeftRef, RightRef, cons<is_vector, is_matrix> > {
    typedef LeftRef  first_argument_type;
    typedef RightRef second_argument_type;
-   typedef LazyVector2<constant_value_container<typename Diligent<unwary_t<LeftRef>>::type>,
-                       pm::masquerade<Cols, typename attrib<unwary_t<RightRef>>::plus_const>,
-                       BuildBinary<mul> >
-      result_type;
+   typedef decltype(std::declval<LeftRef>() * std::declval<RightRef>()) result_type;
 
-   result_type operator() (typename function_argument<LeftRef>::const_type l,
-                           typename function_argument<RightRef>::const_type r) const
+   template <typename L, typename R>
+   result_type operator() (L&& l, R&& r) const
    {
-      if (POLYMAKE_DEBUG || !Unwary<LeftRef>::value || !Unwary<RightRef>::value) {
-         if (l.dim() != r.rows())
-            throw std::runtime_error("operator*(GenericVector,GenericMatrix) - dimension mismatch");
-      }
-      return result_type(diligent(unwary(l)), unwary(r));
-   }
-};
-
-template <typename LeftRef, typename RightRef>
-struct mul_impl<LeftRef, RightRef, cons<is_matrix, is_scalar> > {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef LazyMatrix2<typename attrib<unwary_t<LeftRef>>::plus_const,
-                       constant_value_matrix<typename Diligent<unwary_t<RightRef>>::type>,
-                       BuildBinary<mul> >
-      result_type;
-
-   result_type operator() (typename function_argument<LeftRef>::const_type l,
-                           typename function_argument<RightRef>::const_type r) const
-   {
-      return result_type(unwary(l), diligent(unwary(r)));
-   }
-
-   void assign(typename lvalue_arg<LeftRef>::type l, typename function_argument<RightRef>::const_type r) const
-   {
-      l*=r;
-   }
-};
-
-template <typename LeftRef, typename RightRef>
-struct mul_impl<LeftRef, RightRef, cons<is_scalar, is_matrix> > {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef LazyMatrix2<constant_value_matrix<typename Diligent<unwary_t<LeftRef>>::type>,
-                       typename attrib<unwary_t<RightRef>>::plus_const,
-                       BuildBinary<mul> >
-      result_type;
-
-   result_type operator() (typename function_argument<LeftRef>::const_type l,
-                           typename function_argument<RightRef>::const_type r) const
-   {
-      return result_type(diligent(unwary(l)), unwary(r));
-   }
-};
-
-template <typename LeftRef, typename RightRef>
-struct div_impl<LeftRef, RightRef, cons<is_matrix, is_scalar> > {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef LazyMatrix2<typename attrib<unwary_t<LeftRef>>::plus_const, 
-                       constant_value_matrix<typename Diligent<unwary_t<RightRef>>::type>,
-                       BuildBinary<div> >
-      result_type;
-
-   result_type operator() (typename function_argument<LeftRef>::const_type l,
-                           typename function_argument<RightRef>::const_type r) const
-   {
-      return result_type(unwary(l), diligent(unwary(r)));
-   }
-
-   void assign(typename lvalue_arg<LeftRef>::type l, typename function_argument<RightRef>::const_type r) const
-   {
-      l/=r;
-   }
-};
-
-template <typename LeftRef, typename RightRef>
-struct divexact_impl<LeftRef, RightRef, cons<is_matrix, is_scalar> > {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef LazyMatrix2<typename attrib<unwary_t<LeftRef>>::plus_const, 
-                       constant_value_matrix<typename Diligent<unwary_t<RightRef>>::type>,
-                       BuildBinary<divexact> >
-      result_type;
-
-   result_type operator() (typename function_argument<LeftRef>::const_type l,
-                           typename function_argument<RightRef>::const_type r) const
-   {
-      return result_type(unwary(l), diligent(unwary(r)));
-   }
-
-   void assign(typename lvalue_arg<LeftRef>::type l, typename function_argument<RightRef>::const_type r) const
-   {
-      l.div_exact(r);
-   }
-};
-
-/* ------------------------------------
- *  operations building block matrices
- * ------------------------------------ */
-
-template <typename LeftRef, typename RightRef>
-struct div_impl<LeftRef, RightRef, cons<is_matrix, is_matrix> > {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef RowChain<typename coherent_const<unwary_t<LeftRef>, unwary_t<RightRef>>::first_type,
-                    typename coherent_const<unwary_t<LeftRef>, unwary_t<RightRef>>::second_type>
-      result_type;
-   
-   result_type operator() (typename function_argument<LeftRef>::type l,
-                           typename function_argument<RightRef>::type r) const
-   {
-      return result_type(unwary(l), unwary(r));
-   }
-
-   void assign(typename lvalue_arg<LeftRef>::type l, typename function_argument<RightRef>::const_type r) const
-   {
-      return l/=r;
-   }
-};
-
-template <typename LeftRef, typename RightRef>
-struct div_impl<LeftRef, RightRef, cons<is_matrix, is_vector> > {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef SingleRow<unwary_t<RightRef>> Right;
-   typedef RowChain<typename coherent_const<unwary_t<LeftRef>, Right>::first_type,
-                    typename coherent_const<unwary_t<LeftRef>, Right>::second_type>
-      result_type;
-
-   result_type operator() (typename function_argument<LeftRef>::type l,
-                           typename function_argument<RightRef>::type r) const
-   {
-      return result_type(unwary(l), unwary(r));
-   }
-
-   void assign(typename lvalue_arg<LeftRef>::type l, typename function_argument<RightRef>::const_type r) const
-   {
-      l/=r;
-   }
-};
-
-template <typename LeftRef, typename RightRef>
-struct div_impl<LeftRef, RightRef, cons<is_vector, is_matrix> > {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef SingleRow<unwary_t<LeftRef>> Left;
-   typedef RowChain<typename coherent_const<Left, unwary_t<RightRef>>::first_type,
-                    typename coherent_const<Left, unwary_t<RightRef>>::second_type>
-      result_type;
-
-   result_type operator() (typename function_argument<LeftRef>::type l,
-                           typename function_argument<RightRef>::type r) const
-   {
-      return result_type(unwary(l), unwary(r));
-   }
-};
-
-template <typename LeftRef, typename RightRef>
-struct div_impl<LeftRef, RightRef, cons<is_vector, is_vector> > {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef SingleRow<unwary_t<LeftRef>>  Left;
-   typedef SingleRow<unwary_t<RightRef>> Right;
-   typedef RowChain<typename coherent_const<Left, Right>::first_type,
-                    typename coherent_const<Left, Right>::second_type>
-      result_type;
-
-   result_type operator() (typename function_argument<LeftRef>::type l,
-                           typename function_argument<RightRef>::type r) const
-   {
-      return result_type(unwary(l), unwary(r));
-   }
-};
-
-template <typename LeftRef, typename RightRef>
-struct bitwise_or_impl<LeftRef, RightRef, cons<is_matrix, is_matrix> > {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef ColChain<typename coherent_const<unwary_t<LeftRef>, unwary_t<RightRef>>::first_type,
-                    typename coherent_const<unwary_t<LeftRef>, unwary_t<RightRef>>::second_type>
-      result_type;
-
-   result_type operator() (typename function_argument<LeftRef>::type l,
-                           typename function_argument<RightRef>::type r) const
-   {
-      return result_type(unwary(l), unwary(r));
-   }
-
-   void assign(typename lvalue_arg<LeftRef>::type l,
-               typename function_argument<RightRef>::const_type r) const
-   {
-      l|=r;
-   }
-};
-
-template <typename LeftRef, typename RightRef>
-struct bitwise_or_impl<LeftRef, RightRef, cons<is_matrix, is_vector> > {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef SingleCol<unwary_t<RightRef>> Right;
-   typedef ColChain<typename coherent_const<unwary_t<LeftRef>, Right>::first_type,
-                    typename coherent_const<unwary_t<LeftRef>, Right>::second_type>
-      result_type;
-
-   result_type operator() (typename function_argument<LeftRef>::type l,
-                           typename function_argument<RightRef>::type r) const
-   {
-      return result_type(unwary(l), unwary(r));
-   }
-
-   void assign(typename lvalue_arg<LeftRef>::type l,
-               typename function_argument<RightRef>::const_type r) const
-   {
-      l|=r;
-   }
-};
-
-template <typename LeftRef, typename RightRef>
-struct bitwise_or_impl<LeftRef, RightRef, cons<is_vector, is_matrix> > {
-   typedef LeftRef  first_argument_type;
-   typedef RightRef second_argument_type;
-   typedef SingleCol<unwary_t<LeftRef>> Left;
-   typedef ColChain<typename coherent_const<Left, unwary_t<RightRef>>::first_type,
-                    typename coherent_const<Left, unwary_t<RightRef>>::second_type>
-      result_type;
-
-   result_type operator() (typename function_argument<LeftRef>::type l,
-                           typename function_argument<RightRef>::type r) const
-   {
-      return result_type(unwary(l), unwary(r));
+      return std::forward<L>(l) * std::forward<R>(r);
    }
 };
 
 } // end namespace operations
-namespace operators {
-
-template <typename Matrix1, typename Matrix2> inline
-typename operations::add_impl<const Matrix1&, const Matrix2&>::result_type
-operator+ (const GenericMatrix<Matrix1>& l, const GenericMatrix<Matrix2>& r)
-{
-   operations::add_impl<const Matrix1&, const Matrix2&> op;
-   return op(concrete(l), concrete(r));
-}
-
-template <typename Matrix1, typename Matrix2> inline
-typename operations::sub_impl<const Matrix1&, const Matrix2&>::result_type
-operator- (const GenericMatrix<Matrix1>& l, const GenericMatrix<Matrix2>& r)
-{
-   operations::sub_impl<const Matrix1&, const Matrix2&> op;
-   return op(concrete(l), concrete(r));
-}
-
-} // end namespace operators
-
-template <typename Matrix, typename Right> inline
-typename operations::divexact_impl<const Matrix&, const Right&>::result_type
-div_exact(const GenericMatrix<Matrix>& l, const Right& r)
-{
-   operations::divexact_impl<const Matrix&, const Right&> op;
-   return op(concrete(l), r);
-}
 
 template <typename Matrix>
 struct hash_func<Matrix, is_matrix> : hash_func< ConcatRows<Matrix> > {
@@ -2747,7 +2599,7 @@ struct hash_func<Matrix, is_matrix> : hash_func< ConcatRows<Matrix> > {
    }
 };
 
-template <typename TMatrix1, typename TMatrix2, typename E> inline
+template <typename TMatrix1, typename TMatrix2, typename E>
 cmp_value lex_compare(const GenericMatrix<TMatrix1, E>& l, const GenericMatrix<TMatrix2, E>& r)
 {
    if (l.rows()==0 || l.cols()==0) {
@@ -2775,7 +2627,7 @@ namespace polymake {
 }
 
 namespace std {
-   template <typename Matrix1, typename Matrix2, typename E> inline
+   template <typename Matrix1, typename Matrix2, typename E>
    void swap(pm::GenericMatrix<Matrix1,E>& M1, pm::GenericMatrix<Matrix2,E>& M2)
    {
       M1.top().swap(M2.top());

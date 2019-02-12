@@ -36,7 +36,7 @@ void print_row(std::ostream& os,
 {
    if (v == unit_vector<typename Vector::element_type>(v.dim(),0)) // don't print the line " 0 >= -1 "
       return;
-   typename Entire<Vector>::const_iterator e(entire(v.top()));
+   auto e = entire(v.top());
    typename Vector::element_type free_term(0);
    if (!e.at_end() && e.index()==0) {
       free_term=*e;  ++e;
@@ -90,11 +90,11 @@ void print_lp(perl::Object p, perl::Object lp, const bool maximize, std::ostream
    print_row(os, "obj", 0, LO, variable_names);
 
    os << "Subject To\n";
-   for (typename Entire<Rows<SparseMatrix<Scalar>>>::const_iterator ie=entire(rows(IE)); !ie.at_end(); ++ie) {
+   for (auto ie=entire(rows(IE)); !ie.at_end(); ++ie) {
       print_row(os, "ie", ie.index(), *ie, variable_names, ">=");
    }
 
-   for (typename Entire<Rows<SparseMatrix<Scalar>>>::const_iterator eq=entire(rows(EQ)); !eq.at_end(); ++eq) {
+   for (auto eq=entire(rows(EQ)); !eq.at_end(); ++eq) {
       print_row(os, "eq", eq.index(), *eq, variable_names, "=");
    }
 

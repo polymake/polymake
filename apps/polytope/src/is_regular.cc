@@ -33,14 +33,14 @@ perl::Object regularity_lp(const Matrix<Scalar> &verts, const Array<Set<int>>& s
    if (subdiv.size()<2)
       throw std::runtime_error("Subdivision is trivial.");   
 
-   std::pair<const Matrix<Scalar>, const Matrix<Scalar>> mats = secondary_cone_ineq(verts,subdiv,options);
-   const Matrix<Scalar>& inequs = mats.first;
-   const Matrix<Scalar>& equats = mats.second;
+   const auto mats = secondary_cone_ineq(full_dim_projection(verts), subdiv, options);
+   const auto& inequs = mats.first;
+   const auto& equats = mats.second;
    
    const int n_vertices=verts.rows();
 
    Scalar epsilon = options["epsilon"];
-   perl::Object q(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object q("Polytope", mlist<Scalar>());
    q.take("FEASIBLE") << true;
    if (equats.rows() > 0)
      q.take("EQUATIONS") << (zero_vector<Scalar>() | equats);
@@ -48,7 +48,7 @@ perl::Object regularity_lp(const Matrix<Scalar> &verts, const Array<Set<int>>& s
       (zero_vector<Scalar>(n_vertices) | unit_matrix<Scalar>(n_vertices)) /
       ((-epsilon * ones_vector<Scalar>(inequs.rows())) | inequs);
 
-   perl::Object lp(perl::ObjectType::construct<Scalar>("LinearProgram"));
+   perl::Object lp("LinearProgram", mlist<Scalar>());
    lp.attach("INTEGER_VARIABLES") << Array<bool>(n_vertices, true);
    lp.take("LINEAR_OBJECTIVE") << (Scalar(0) | ones_vector<Scalar>(n_vertices));
    q.take("LP") << lp;
@@ -62,22 +62,22 @@ template <typename Scalar>
 std::pair<bool,Vector<Scalar>>
 is_regular(const Matrix<Scalar> &verts, const Array<Set<int>>& subdiv, perl::OptionSet options)
 {
-   std::pair<const Matrix<Scalar>, const Matrix<Scalar>> mats = secondary_cone_ineq<Scalar, Set<int>>(verts,subdiv,options);
+   const auto mats = secondary_cone_ineq(full_dim_projection(verts), subdiv, options);
 
-   perl::Object res(perl::ObjectType::construct<Scalar>("Cone"));
+   perl::Object res("Cone", mlist<Scalar>());
    res.take("INEQUALITIES") << mats.first;
    res.take("EQUATIONS") << mats.second;
 
    Vector<Scalar> w;
    try {
-     const Vector<Scalar> wt = res.give("REL_INT_POINT");
-     w = wt;
+      const Vector<Scalar> wt = res.give("REL_INT_POINT");
+      w = wt;
    } catch (const pm::perl::undefined& e) {
-     // there is no relative internal point. If the trivial subdivision is asked for, we are ok; else the subdivision is not regular
-     if (subdiv.size() == 1 &&
-	 subdiv[0] == sequence(0, verts.rows())) {
-       w = zero_vector<Scalar>(mats.first.cols());
-     } else return std::pair<bool,Vector<Scalar>>(false,Vector<Scalar>());
+      // there is no relative internal point. If the trivial subdivision is asked for, we are ok; else the subdivision is not regular
+      if (subdiv.size() == 1 &&
+          subdiv[0] == sequence(0, verts.rows())) {
+         w = zero_vector<Scalar>(mats.first.cols());
+      } else return std::pair<bool,Vector<Scalar>>(false,Vector<Scalar>());
    }
    const Vector<Scalar> slack = mats.first*w;
 
@@ -88,9 +88,9 @@ is_regular(const Matrix<Scalar> &verts, const Array<Set<int>>& subdiv, perl::Opt
    return std::pair<bool,Vector<Scalar>>(true,w);
 }
 
-
 FunctionTemplate4perl("secondary_cone_ineq<Scalar>(Matrix<Scalar> Array<Set>; {equations => undef, lift_to_zero=>undef, lift_face_to_zero => undef, test_regularity=>0})");
 
+FunctionTemplate4perl("full_dim_projection<Scalar>(Matrix<Scalar>)");
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# For a given subdivision //subdiv// of //points// tests"
@@ -129,3 +129,10 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "regularity_lp<Scalar>(Matrix<Scalar>,$;{equations => undef, lift_to_zero=>undef, lift_face_to_zero => 0, epsilon => 1/100})");
 
 } }
+
+
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:

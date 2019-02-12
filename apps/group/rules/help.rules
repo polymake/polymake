@@ -22,6 +22,11 @@
 # @topic category functions/Orbits
 # These functions are concerned with orbits in groups.
 
+# @topic category objects/PermutationAction/properties/Orbits
+# Dealing with orbits under permutation groups.
+
+# @topic category objects/PermutationAction/methods/Orbits
+# Dealing with orbits under permutation groups.
 
 # Local Variables:
 # mode: perl

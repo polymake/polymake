@@ -61,23 +61,33 @@ use Polymake::Struct (
    [ '$new_instance_deputy' => 'undef' ],  # NewMultiInstance for multiple properties
 );
 
-# Property->flags
-use Polymake::Enum qw( is: mutable=1 subobject=2 augmented=4 multiple=8 multiple_new=16
-                           permutation=32 non_storable=64 subobject_array=128 produced_as_whole=256 restricted_spez=512
-                           concrete=1024 twin=2048 );
+use Polymake::Enum Flags => {
+   is_mutable => 0x1,
+   is_subobject => 0x2,
+   is_augmented => 0x4,
+   is_multiple => 0x8,
+   is_multiple_new => 0x10,
+   is_permutation => 0x20,
+   is_non_storable => 0x40,
+   is_subobject_array => 0x80,
+   is_produced_as_whole => 0x100,
+   in_restricted_spez => 0x200,
+   is_concrete => 0x400,
+   is_twin => 0x800
+};
 
 sub new {
    my $self=&_new;
    if (instanceof ObjectType($self->type)) {
-      $self->flags |= $is_subobject;
+      $self->flags |= Flags::is_subobject;
    }
    if ($Application::plausibility_checks) {
-      if ($self->flags & $is_subobject) {
-         if ($self->flags & $is_non_storable) {
+      if ($self->flags & Flags::is_subobject) {
+         if ($self->flags & Flags::is_non_storable) {
             croak( "only atomic properties can be declared non-storable" );
          }
-         if ($self->flags & $is_twin) {
-            if ($self->flags & $is_multiple) {
+         if ($self->flags & Flags::is_twin) {
+            if ($self->flags & Flags::is_multiple) {
                croak( "a twin property may not be declared as multiple" );
             }
             if (!$self->defined_for->isa($self->type)) {
@@ -88,24 +98,24 @@ sub new {
             }
          }
       } else {
-         if ($self->flags & ($is_multiple | $is_twin)) {
-            croak( "an atomic property may not be declared as ", $self->flags & $is_multiple ? "multiple" : "twin");
+         if ($self->flags & (Flags::is_multiple | Flags::is_twin)) {
+            croak( "an atomic property may not be declared as ", $self->flags & Flags::is_multiple ? "multiple" : "twin");
          }
       }
    }
 
    $self->construct &&= [ map { $self->belongs_to->encode_property_path($_) } split /\s*,\s*/, trim_spaces($self->construct) ];
 
-   $self->flags |= $is_concrete unless $self->type->abstract;
+   $self->flags |= Flags::is_concrete unless $self->type->abstract;
    choose_methods($self);
 
-   if ($self->flags & $is_multiple) {
-      my $spez_type=$self->belongs_to;
+   if ($self->flags & Flags::is_multiple) {
+      my $spez_type = $self->belongs_to;
       while ($spez_type->enclosed_in_restricted_spez) {
-         $spez_type=$spez_type->parent_property->belongs_to;
+         $spez_type = $spez_type->parent_property->belongs_to;
       }
       if (defined $spez_type->preconditions) {
-         $self->flags |= $is_restricted_spez;
+         $self->flags |= Flags::in_restricted_spez;
       }
       $self->new_instance_deputy=new NewMultiInstance($self, { });
    }
@@ -124,19 +134,19 @@ sub clone {
 ####################################################################################
 sub override_by {
    my ($src, $name, $owner, $new_type)=@_;
-   my $self=&clone;
-   $self->name=$name;
-   $self->belongs_to=$owner;
-   unless ($self->flags & $is_twin) {
-      $self->overrides_for=$owner;
-      $self->overrides=$src->name;
+   my $self = &clone;
+   $self->name = $name;
+   $self->belongs_to = $owner;
+   unless ($self->flags & Flags::is_twin) {
+      $self->overrides_for = $owner;
+      $self->overrides = $src->name;
    }
    if (defined $new_type) {
-      $self->type=$new_type;
+      $self->type = $new_type;
       if ($new_type->abstract) {
-         $self->flags &= ~$is_concrete;
+         $self->flags &= ~Flags::is_concrete;
       } else {
-         $self->flags |= $is_concrete;
+         $self->flags |= Flags::is_concrete;
       }
       choose_methods($self);
    }
@@ -168,14 +178,14 @@ sub instance_for_owner {
 ####################################################################################
 sub analyze {
    my ($self, $pkg)=@_;
-   if ($self->flags & $is_subobject) {
-      if ($self->flags & $is_twin) {
+   if ($self->flags & Flags::is_subobject) {
+      if ($self->flags & Flags::is_twin) {
          croak( "a twin property cannot be augmented" );
       }
       $self->belongs_to->augment($self);
    } else {
       namespaces::using($pkg, $self->type->pkg);
-      my $symtab=get_symtab($pkg);
+      my $symtab = get_symtab($pkg);
       foreach (qw(canonical equal)) {
          if (exists &{$symtab->{$_}}) {
             $self->$_=\&{$symtab->{$_}};
@@ -186,16 +196,16 @@ sub analyze {
 ####################################################################################
 sub change_to_augmented {
    my ($self, $augm)=@_;
-   $self->type=$augm;
+   $self->type = $augm;
    if ($self->belongs_to->abstract) {
-      $self->flags &= ~$is_concrete;
+      $self->flags &= ~Flags::is_concrete;
       choose_methods($self);
    }
-   $self->flags |= $is_augmented;
+   $self->flags |= Flags::is_augmented;
    if ($self->new_instance_deputy) {
       $self->new_instance_deputy->update_flags;
    }
-   weak($augm->parent_property=$self);
+   weak($augm->parent_property = $self);
 }
 ####################################################################################
 sub clone_for_augmented {
@@ -211,13 +221,13 @@ sub clone_for_owner {
    my $self=&clone;
    $self->belongs_to=$proto;
    $self->type=$src->type->concrete_type($proto);
-   if ($self->flags & $is_augmented) {
-      weak($self->type->parent_property=$self);
+   if ($self->flags & Flags::is_augmented) {
+      weak($self->type->parent_property = $self);
    }
    if (!$proto->abstract) {
-      $self->flags |= $is_concrete;
+      $self->flags |= Flags::is_concrete;
 
-      if ($self->flags & $is_twin && $self->type != $proto) {
+      if ($self->flags & Flags::is_twin && $self->type != $proto) {
          my $twin_prop=$self->type->property($self->name);
          if (!$proto->isa($twin_prop->type)) {
             die "invalid twin property ", $proto->full_name, "::", $self->name,
@@ -234,32 +244,32 @@ sub clone_for_owner {
 ####################################################################################
 sub choose_methods {
    my ($self)=@_;
-   if ($self->flags & $is_concrete) {
-      if ($self->flags & $is_subobject) {
-         $self->accept=\&accept_subobject;
-         $self->copy=undef;
+   if ($self->flags & Flags::is_concrete) {
+      if ($self->flags & Flags::is_subobject) {
+         $self->accept = \&accept_subobject;
+         $self->copy = undef;
       } elsif ($self->type->super == typeof BigObjectArray) {
-         $self->flags |= $is_subobject_array;
-         $self->accept=\&accept_subobject_array;
-         $self->copy=\&copy_subobject_array;
+         $self->flags |= Flags::is_subobject_array;
+         $self->accept = \&accept_subobject_array;
+         $self->copy = \&copy_subobject_array;
       } elsif (defined $self->construct) {
-         $self->accept=\&accept_special_constructed;
-         $self->copy=\&copy_special_constructed;
+         $self->accept = \&accept_special_constructed;
+         $self->copy = \&copy_special_constructed;
       } elsif ($self->type->cppoptions && !$self->type->cppoptions->builtin) {
-         $self->accept=\&accept_composite;
-         $self->copy=\&copy_composite;
+         $self->accept = \&accept_composite;
+         $self->copy = \&copy_composite;
       } else {
-         $self->accept=\&accept_builtin;
-         $self->copy=\&copy_builtin;
+         $self->accept = \&accept_builtin;
+         $self->copy = \&copy_builtin;
       }
    } else {
       $self->accept=sub : method {
          my $prop=shift;
          $_[1]->type->property($prop->name)->accept->(@_);
       };
-      unless ($self->flags & $is_subobject) {
-         $self->copy=sub : method {
-            my $prop=shift;
+      unless ($self->flags & Flags::is_subobject) {
+         $self->copy = sub : method {
+            my $prop = shift;
             $_[1]->type->property($prop->name)->copy->(@_);
          };
       }
@@ -270,8 +280,8 @@ sub accept_subobject : method {
    my ($self, $value, $parent_obj, $trusted, $temp)=@_;
    my $subobj_type=$self->subobject_type;
    unless (defined $value) {
-      if (!$trusted and $self->flags & ($is_multiple | $is_subobject_array | $is_twin)) {
-         croak( "undefined value not allowed for the ", ($self->flags & $is_twin ? "twin object" : "multiple subobject"),
+      if (!$trusted and $self->flags & (Flags::is_multiple | Flags::is_subobject_array | Flags::is_twin)) {
+         croak( "undefined value not allowed for the ", ($self->flags & Flags::is_twin ? "twin object" : "multiple subobject"),
                 " property ", $self->name );
       }
       return new PropertyValue($self, $value);
@@ -290,7 +300,7 @@ sub accept_subobject : method {
    } else {
       $value->property=$self;
       guarded_weak($value->parent=$parent_obj, $value, \&Object::forget_parent_property);
-      if ($self->flags & $is_augmented && (my $given_type=$value->type) != $subobj_type) {
+      if ($self->flags & Flags::is_augmented && (my $given_type=$value->type) != $subobj_type) {
          $value->perform_cast($subobj_type->final_type($given_type), 1);
       }
    }
@@ -310,17 +320,17 @@ sub accept_subobject : method {
    } elsif (defined($parent_obj->transaction)) {
       unless ($temp && defined($parent_obj->transaction->rule)) {
          ## FIXME: suspicious logical expression
-         if (not($self->flags & $is_subobject_array) || $value->has_cleanup) {
-            $parent_obj->transaction->descend($value, !($self->flags & $is_permutation));
+         if (not($self->flags & Flags::is_subobject_array) || $value->has_cleanup) {
+            $parent_obj->transaction->descend($value, !($self->flags & Flags::is_permutation));
             if ($value->has_cleanup) {
-               $value->transaction->temporaries=delete $Scope->cleanup->{$value};
-               $value->has_cleanup=0;
+               $value->transaction->temporaries = delete $Scope->cleanup->{$value};
+               $value->has_cleanup = 0;
             }
          }
       }
    }
 
-   if ($self->flags & $is_twin) {
+   if ($self->flags & Flags::is_twin) {
       $value->add_twin_backref($self);
    }
    $value
@@ -334,7 +344,7 @@ sub create_subobject : method {
 
 sub subobject_type {
    my ($self)=@_;
-   $self->flags & $is_subobject_array ? $self->type->params->[0] : $self->type;
+   $self->flags & Flags::is_subobject_array ? $self->type->params->[0] : $self->type;
 }
 ####################################################################################
 sub accept_subobject_array : method {
@@ -357,18 +367,18 @@ sub copy_subobject_array : method {
 }
 ####################################################################################
 sub accept_composite : method {
-   my ($self, $value, $parent_obj, $trusted, $temp)=@_;
+   my ($self, $value, $parent_obj, $trusted, $temp) = @_;
    if (defined $value) {
-      my $needs_canonicalization=!$trusted && defined($self->canonical);
+      my $needs_canonicalization = !$trusted && defined($self->canonical);
       my ($is_object, $type_mismatch);
-      if (!($is_object=is_object($value)) or
-          $type_mismatch=!$self->type->isa->($value) or
+      if (!($is_object = is_object($value)) or
+          $type_mismatch = !$self->type->isa->($value) or
           $self->type->cppoptions && !$self->type->cppoptions->builtin &&
           CPlusPlus::must_be_copied($value, $temp, $needs_canonicalization)) {
-         my $target_type= $type_mismatch
-                          ? $self->type->coherent_type->($value)
-                          : $is_object && $value->type;
-         local $PropertyType::trusted_value=$trusted;
+         my $target_type = $type_mismatch
+                           ? $self->type->coherent_type->($value)
+                           : $is_object && $value->type;
+         local $PropertyType::trusted_value = $trusted;
          $value=($target_type || $self->type)->construct->($value);
       }
       if ($needs_canonicalization) {
@@ -379,24 +389,24 @@ sub accept_composite : method {
 }
 
 sub copy_composite : method {
-   my ($self, $value, $parent_obj, $type_mismatch)=@_;
-   my $target_type= is_object($value) &&
-                    ($type_mismatch && !$self->type->isa->($value)
-                     ? $self->type->coherent_type->($value)
-                     : $value->type);
+   my ($self, $value, $parent_obj, $type_mismatch) = @_;
+   my $target_type = is_object($value) &&
+                     ($type_mismatch && !$self->type->isa->($value)
+                      ? $self->type->coherent_type->($value)
+                      : $value->type);
    new PropertyValue($self, ($target_type || $self->type)->construct->($value));
 }
 ####################################################################################
 sub accept_special_constructed : method {
-   my ($self, $value, $parent_obj, $trusted, $temp)=@_;
+   my ($self, $value, $parent_obj, $trusted, $temp) = @_;
    if (defined($value)) {
-      my $needs_canonicalization=!$trusted && defined($self->canonical);
+      my $needs_canonicalization = !$trusted && defined($self->canonical);
       if (!is_object($value) or
           !$self->type->isa->($value) or
           $self->type->cppoptions && !$self->type->cppoptions->builtin &&
           CPlusPlus::must_be_copied($value,$temp,$needs_canonicalization)) {
-         local $PropertyType::trusted_value=$trusted;
-         $value=$self->type->construct->((map { $parent_obj->value_at_property_path($_) } @{$self->construct}), $value);
+         local $PropertyType::trusted_value = $trusted;
+         $value = $self->type->construct->((map { $parent_obj->value_at_property_path($_) } @{$self->construct}), $value);
       }
       if ($needs_canonicalization) {
          select_method($self->canonical, $parent_obj, 1)->($value);
@@ -413,8 +423,8 @@ sub copy_special_constructed : method {
 sub accept_builtin : method {
    my ($self, $value, $parent_obj, $trusted, $temp)=@_;
    if (defined $value) {
-      local $PropertyType::trusted_value=$trusted;
-      $value=$self->type->construct->($value);
+      local $PropertyType::trusted_value = $trusted;
+      $value = $self->type->construct->($value);
       if (!$trusted && defined($self->canonical)) {
          select_method($self->canonical, $parent_obj, 1)->($value);
       }
@@ -481,7 +491,7 @@ sub key { $_[0]->property->key }
 *property_key=\&key;
 sub property_name { $_[0]->property->name }
 sub type { $_[0]->property->type }
-sub flags { $is_multiple }
+sub flags { Flags::is_multiple }
 
 sub name {
    my ($self)=@_;
@@ -561,7 +571,7 @@ use Polymake::Struct (
    [ '$property' => 'weak(#1)' ],
    [ '$key' => '#2' ],
    [ '$name' => '#1->name . "(new)"' ],
-   [ '$flags' => '#1->flags | $is_multiple_new' ],
+   [ '$flags' => '#1->flags | Flags::is_multiple_new' ],
    [ '$defined_for' => '#1->defined_for' ],
    [ '$belongs_to' => '#1->belongs_to' ],
    [ '$property_key' => '#1->property_key' ],
@@ -573,7 +583,7 @@ sub index { 0 }
 
 sub update_flags {
    my ($self)=@_;
-   $self->flags=$self->property->flags | $is_multiple_new;
+   $self->flags = $self->property->flags | Flags::is_multiple_new;
 }
 
 *get_prod_key=\&Property::get_prod_key;

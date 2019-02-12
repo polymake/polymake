@@ -33,8 +33,8 @@ Graph<> graph_from_incidence(const GenericIncidenceMatrix<IMatrix>& IM)
 
    EdgeMap<Undirected, Set<int> > intersects(G);
 
-   for (Entire< Nodes< Graph<> > >::iterator n1=entire(nodes(G)); !n1.at_end(); ++n1) {
-      Entire< Nodes< Graph<> > >::iterator n2=n1;
+   for (auto n1=entire(nodes(G)); !n1.at_end(); ++n1) {
+      auto n2=n1;
       while (!(++n2).at_end()) {
          Set<int> common = IM.col(*n1) * IM.col(*n2);
          if (common.empty()) continue;

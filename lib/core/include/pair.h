@@ -69,57 +69,6 @@ struct isomorphic_to_second< Data, pair<T1,T2> > : isomorphic_types<typename der
 }
 namespace std {
 
-template <typename T1, typename T2>
-struct pair<T1&, T2> {
-   typedef T1& first_type;
-   typedef T2 second_type;
-   /// data types referred to by the components
-   typedef T1 first_data_type;
-   typedef T2 second_data_type;
-
-   first_type first;
-   second_type second;
-
-   pair(T1& first_arg, const T2& second_arg) : first(first_arg), second(second_arg) {}
-
-   template <typename U1, typename U2>
-   explicit pair(const pair<U1&,U2>& p) : first(p.first), second(p.second) {}
-};
-
-template <typename T1, typename T2>
-struct pair<T1, T2&> {
-   typedef T1 first_type;
-   typedef T2& second_type;
-
-   typedef T1 first_data_type;
-   typedef T2 second_data_type;
-
-   first_type first;
-   second_type second;
-
-   pair(const T1& first_arg, T2& second_arg) : first(first_arg), second(second_arg) {}
-
-   template <typename U1, typename U2>
-   explicit pair(const pair<U1,U2&>& p) : first(p.first), second(p.second) {}
-};
-
-template <typename T1, typename T2>
-struct pair<T1&, T2&> {
-   typedef T1& first_type;
-   typedef T2& second_type;
-
-   typedef T1 first_data_type;
-   typedef T2 second_data_type;
-
-   first_type first;
-   second_type second;
-
-   pair(T1& first_arg, T2& second_arg) : first(first_arg), second(second_arg) {}
-
-   template <typename U1, typename U2>
-   explicit pair(const pair<U1&,U2&>& p) : first(p.first), second(p.second) {}
-};
-
 template <typename T1>
 struct pair<T1, pm::nothing> {
    typedef T1 first_type;

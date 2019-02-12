@@ -29,7 +29,7 @@ perl::Object pile(const Vector<int>& sizes)
 
    const int d=sizes.size();
    int n=1;
-   for (Entire< Vector<int> >::const_iterator s=entire(sizes); !s.at_end(); ++s)
+   for (auto s=entire(sizes); !s.at_end(); ++s)
       n *= *s+1;
 
    Matrix<Rational> V(n,d+2);
@@ -53,7 +53,7 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# @param Vector<Int> sizes a vector (s<sub>1</sub>,...,s<sub>d</sub>,"
                   "#   where s<sub>i</sub> specifies the number of boxes in the i-th dimension."
                   "# @return Polytope",
-                  &pile,"pile(@)");
+                  &pile, "pile");
 
 } }
 

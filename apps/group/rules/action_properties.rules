@@ -28,12 +28,12 @@ object Action {
    # @category Symmetry
    # The character of the action. The ordering corresponds to the
    # columns of the CHARACTER_TABLE
-   property CHARACTER : Array<QuadraticExtension>;
+   property CHARACTER : Vector<QuadraticExtension>;
 
    # @category Symmetry
    # The multiplicities of each irreducible representation in this action.
    # The ordering corresponds to the rows of the CHARACTER_TABLE
-   property IRREDUCIBLE_DECOMPOSITION : Array<Int>;
+   property IRREDUCIBLE_DECOMPOSITION : Vector<Int>;
 
    # @category Symmetry
    # A set of representatives for each conjugacy class.

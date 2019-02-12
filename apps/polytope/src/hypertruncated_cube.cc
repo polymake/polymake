@@ -31,7 +31,7 @@ perl::Object hypertruncated_cube(const int d, const Scalar k, const Scalar lambd
    if (lambda*d <= k)
       throw std::runtime_error("hypertruncated_cube: lambda > k/d required");
 
-   perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p("Polytope", mlist<Scalar>());
    p.set_description() << "hypertruncated_cube(" << d << "," << k << "," << lambda << ")" << endl;
 
    const int n_ineqs=4*d;
@@ -74,7 +74,7 @@ perl::Object hypertruncated_cube(const int d, const Scalar k, const Scalar lambd
    p.take("ONE_VERTEX") << unit_vector<Scalar>(d+1,0);
 
    // symmetric linear objective function
-   perl::Object LP(perl::ObjectType::construct<Scalar>("LinearProgram"));
+   perl::Object LP("LinearProgram", mlist<Scalar>());
    LP.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0|ones_vector<Scalar>(d));
    LP.attach("INTEGER_VARIABLES") << Array<bool>(d,true);
    p.take("LP") << LP;

@@ -39,7 +39,7 @@ void split_flacets(perl::Object m)
    Set<int> reps;
    Matrix<Rational> eq(components.size(),n+1);
    for (int i=0; i<components.size(); ++i) {
-      reps+=components[i].front()+1;
+      reps += components[i].front()+1;
    }
    for (int i=0; i<components.size(); ++i) {
       const auto v = -unit_vector<Rational>(n+1,components[i].front()+1);
@@ -50,9 +50,9 @@ void split_flacets(perl::Object m)
    for (auto rit = entire(rows(facets)); !rit.at_end(); ++rit) {
       Vector<Rational> f(*rit);
       // special form of f: orth. to AFF_HULL.minor(All,~[0])
-      // note that the support of f.slice(1) coinsides exactly with one component of the matroid
+      // note that the support of f.slice(range_from(1)) exactly coincides with one component of the matroid
       for(int i=0;i<components.size();++i){
-         f -= ( eq.row(i).slice(1)*f.slice(1) /components[i].size()) * eq.row(i);
+         f -= ( eq.row(i).slice(range_from(1)) * f.slice(range_from(1)) /components[i].size()) * eq.row(i);
       }
       Set<int> positive, negative;
       for (int i=0; i<n; ++i) { // add 1 for proper labeling
@@ -87,20 +87,20 @@ bool split_compatibility_check(perl::Object m)
 
    Array< int > rk(components.size());
    int rank=0;
-   for (Entire<const Array< Set<int> > >::const_iterator it = entire(circuits); !it.at_end(); ++it){
-      for(int i=0; i< components.size();++i){
-         if( components[i].contains(it->front()) ){
-            if( rk[i] < it->size()-1 ) 
+   for (auto it = entire(circuits); !it.at_end(); ++it) {
+      for (int i=0; i< components.size(); ++i) {
+         if (components[i].contains(it->front())) {
+            if (rk[i] < it->size()-1)
                rk[i]= it->size()-1;
          }
       }
    }
-   for(int i=0; i< components.size();++i){
+   for (int i=0; i< components.size(); ++i) {
       rank+=rk[i];
    }
-   for(int f_rk=0; f_rk<rank; ++f_rk){
+   for (int f_rk=0; f_rk<rank; ++f_rk) {
       const Array< Set<int> > F= sf[f_rk];
-      for(int g_rk=0; g_rk<=f_rk; ++g_rk){
+      for (int g_rk=0; g_rk<=f_rk; ++g_rk) {
          const Array< Set<int> >G= sf[g_rk];
          const int val2(f_rk-g_rk);
          for (int f=0; f< F.size(); ++f) {
@@ -109,23 +109,23 @@ bool split_compatibility_check(perl::Object m)
                ++i;
             }
             const int n=components[i].size();
-         const int val1(f_rk+g_rk-rk[i]);
+            const int val1(f_rk+g_rk-rk[i]);
             for (int g=0; g< G.size(); ++g) {
-               if( (G[g]*components[i]).size()!=0 ){
-                  if(f_rk==g_rk && f==g){
+               if (!(G[g]*components[i]).empty()) {
+                  if (f_rk==g_rk && f==g) {
                      break;
                   }
-                  if( (G[g]*F[f]).size() <= val1 )
+                  if ((G[g]*F[f]).size() <= val1)
                      break;
-                  if( F[f].size()-(G[g]*F[f]).size() <= val2 )
+                  if (F[f].size()-(G[g]*F[f]).size() <= val2)
                      break;
-                  if( G[g].size()-(G[g]*F[f]).size() <= -val2 )
+                  if ( G[g].size()-(G[g]*F[f]).size() <= -val2)
                      break;
-                  if( n-(G[g]+F[f]).size() <= -val1 )
+                  if (n-(G[g]+F[f]).size() <= -val1)
                      break;
                   return false;
-               }else{
-                   return false; //splits in distinct components
+               } else {
+                   return false; // splits in distinct components
                }
             }
          }

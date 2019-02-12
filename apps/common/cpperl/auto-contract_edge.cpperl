@@ -1,0 +1,8 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<Wary<Graph<Undirected>>&>", "void", "void"], "func": "contract_edge", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "contract_edge:M5.x.x"},
+  {"args": ["perl::Canned<Wary<Graph<Directed>>&>", "void", "void"], "func": "contract_edge", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "contract_edge:M5.x.x"},
+  {"args": ["perl::Canned<Wary<Graph<UndirectedMulti>>&>", "void", "void"], "func": "contract_edge", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "contract_edge:M5.x.x"},
+  {"args": ["perl::Canned<Wary<Graph<DirectedMulti>>&>", "void", "void"], "func": "contract_edge", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "contract_edge:M5.x.x"},
+ null ],
+"version": 3}

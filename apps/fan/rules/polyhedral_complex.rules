@@ -19,9 +19,9 @@ object PolyhedralComplex {
 method construct(topaz::GeometricSimplicialComplex) {
   my $complex=$_[1];
   if (!defined ($complex->lookup("FACETS"))) {
-      return new PolyhedralComplex(POINTS=>(ones_vector()|$complex->COORDINATES),INPUT_POLYTOPES=>$complex->INPUT_FACES,INPUT_LINEALITY=>[]);
+      return new PolyhedralComplex(POINTS=>(ones_vector()|$complex->COORDINATES),INPUT_POLYTOPES=>$complex->INPUT_FACES,INPUT_LINEALITY=>new Matrix(0,$complex->COORDINATES->cols+1));
   }
-  return new PolyhedralComplex(VERTICES=>(ones_vector()|$complex->COORDINATES->minor($complex->VERTEX_INDICES,All)),MAXIMAL_POLYTOPES=>$complex->FACETS,LINEALITY_SPACE=>[]);
+  return new PolyhedralComplex(VERTICES=>(ones_vector()|$complex->COORDINATES->minor($complex->VERTEX_INDICES,All)),MAXIMAL_POLYTOPES=>$complex->FACETS,LINEALITY_SPACE=>new Matrix(0,$complex->COORDINATES->cols+1));
 }
 
 rule FAR_VERTICES : VERTICES {

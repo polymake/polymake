@@ -48,7 +48,6 @@ use Polymake::Struct (
    '@requires_opt',                 # ( Extension ) direct and indirect optional prerequisites
    '@replaces',                     # URIs obsoleted by this Extension
    '@conflicts',                    # URIs conflicting with this Extension
-   [ '$VCS' => 'undef' ],           # version control system for source files
    '$untrusted',                    # TRUE if comes from a writable location, that is, may be under development
    '$configured_at',                # timestamp of the last configuration for the current architecture
 );
@@ -134,9 +133,9 @@ sub new {
       my $URI=<$U>;
       process_URI($self, $URI);
       if (-w $self->dir) {
+         $self->untrusted=1;
          require Polymake::Core::InteractiveCommands;
          write_initial_description($self);
-         $self->untrusted=1;
       }
 
    } elsif ($self->URI eq "private:") {
@@ -147,9 +146,9 @@ sub new {
          die "The extension ", $self->dir, " does not have any URI while ", $self->URI, " was expected\n";
       } else {
          $self->URI="file://".$self->dir;
+         $self->untrusted=1;
          require Polymake::Core::InteractiveCommands;
          write_initial_description($self);
-         $self->untrusted=1;
       }
    }
 
@@ -193,7 +192,6 @@ sub init {
          }
          $registered_by_URI{$_}=$ext for $ext->URI, @{$ext->replaces};
          $registered_by_dir{$ext->dir}=$ext;
-         $ext->VCS=$CoreVCS;
          $ext->configured_at=max($ConfigTime, $Application::configured_at);
          my @bad;
          my @prereqs=map { $registered_by_URI{$_} // do { push @bad, $_; () } } @{$ext->requires};
@@ -599,18 +597,21 @@ sub activate {
    push @active, $self;
 }
 #####################################################################################
-sub get_source_VCS {
-   my $self=shift;
-   $self->VCS ||= do {
-      if ($self->is_bundled || index($self->dir, "$InstallTop/ext/")==0) {
-         die "Can't modify an installed bundled extension\n";
-      } elsif (!-w $self->dir) {
-         die "You don't have permission to create or change files in ", $self->dir, "\n";
-      } else {
-         require Polymake::SourceVersionControl;
-         new SourceVersionControl($self->dir);
-      }
+sub get_source_tree {
+   my ($self)=@_;
+   if ($self->untrusted) {
+      require Polymake::SourceTree;
+      new SourceTree($self->is_bundled ? $InstallTop : $self->dir);
+   } elsif ($self->is_bundled || index($self->dir, "$InstallTop/ext/")==0) {
+      die "Can't modify an installed bundled extension\n";
+   } else {
+      die "You don't have permission to create or change files in ", $self->dir, "\n";
    }
+}
+###############################################################################################
+sub list_prerequisite_extensions {
+   my ($self)=@_;
+   join(" ", map { $_->is_bundled ? $_->short_name : $_->dir } @{$self->requires});
 }
 #####################################################################################
 package Polymake::Core::Extension::Credit;

@@ -41,16 +41,16 @@ face_map_type count(const Graph<>& G, const GenericIncidenceMatrix<IMatrix>& I)
    // edges such that the middle vertex is maximal among all vertices of that 2-face.
    // The to_nodes in the out_edge_list come in ascending order.
    for (int n1=G.nodes()-1; n1>=0; --n1)
-      for (Entire<Graph<>::out_edge_list>::const_iterator n2=G.out_edges(n1).begin(); !n2.at_end() && n2.to_node()<n1; ++n2) {
-	 for (Entire<Graph<>::out_edge_list>::const_iterator n3=G.out_edges(n1).begin(); n3.to_node()<n2.to_node(); ++n3) {
-	    const Set<int> facets_thru_all3(I.col(n1)*I.col(n2.to_node())*I.col(n3.to_node()));
+      for (auto n2=G.out_edges(n1).begin(); !n2.at_end() && n2.to_node()<n1; ++n2) {
+         for (auto n3=G.out_edges(n1).begin(); n3.to_node()<n2.to_node(); ++n3) {
+            const Set<int> facets_thru_all3(I.col(n1)*I.col(n2.to_node())*I.col(n3.to_node()));
 
-	    // compute the 2-face spanned by n1, n2.to_node() and n3.to_node()
-	    const Set<int> this_face=accumulate(rows(I.minor(facets_thru_all3,All)), operations::mul());
+            // compute the 2-face spanned by n1, n2.to_node() and n3.to_node()
+            const Set<int> this_face=accumulate(rows(I.minor(facets_thru_all3,All)), operations::mul());
 
-	    if (this_face.back()==n1)        // n1 largest vertex in 2-face; this avoids double counting
-	       ++face_map[this_face.size()];
-	 }
+            if (this_face.back()==n1)        // n1 largest vertex in 2-face; this avoids double counting
+               ++face_map[this_face.size()];
+         }
       }
 
    return face_map;

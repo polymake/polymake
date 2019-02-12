@@ -1,0 +1,5 @@
+{"app": "ideal",
+ "inst": [
+  {"args": ["perl::Canned<const SingularIdeal&>", "perl::Canned<const Polynomial<Rational, int>&>"], "func": "division", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/ideal/singularIdeal.h"], "kind": "meth", "sig": "division:M.X"},
+ null ],
+"version": 3}

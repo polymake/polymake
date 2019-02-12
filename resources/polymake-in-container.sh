@@ -178,7 +178,7 @@ if [ -z "${thirdparty_vol}" ]; then
 fi
 
 declare -r cid=$($run_docker create -ti -u ${userid}:${groupid} $runopts "${mount_list[@]}" "${env_list[@]}" -w "$PWD" \
-                             --volumes-from=${thirdparty_vol}:ro $portmapping \
+                             --volumes-from=${thirdparty_vol}:ro $portmapping --entrypoint /usr/local/bin/polymake \
                              ${image_name}:${image_tag} "$@")
 
 if [ $copy_resources = "y" ]; then

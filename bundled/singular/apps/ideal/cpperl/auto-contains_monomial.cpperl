@@ -1,0 +1,5 @@
+{"app": "ideal",
+ "inst": [
+  {"args": ["perl::Canned<const SingularIdeal&>"], "func": "contains_monomial", "include": ["polymake/ideal/singularIdeal.h"], "kind": "meth", "sig": "contains_monomial:M"},
+ null ],
+"version": 3}

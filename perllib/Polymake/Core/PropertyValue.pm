@@ -26,7 +26,12 @@ use Polymake::Struct (
    [ '$flags' => '#3' ],        # *ref flags
 );
 
-use Polymake::Enum qw( is: temporary=1024 strong_ref=1 weak_ref=2 ref=3 );
+use Polymake::Enum Flags => {
+   is_temporary => 1024,
+   is_strong_ref => 1,
+   is_weak_ref => 2,
+   is_ref => 3
+};
 
 ######################################################################
 #
@@ -35,9 +40,9 @@ use Polymake::Enum qw( is: temporary=1024 strong_ref=1 weak_ref=2 ref=3 );
 #  new PropertyValue(Property, data, [ flags ]);
 #
 sub new {
-   my $self=&_new;
-   if ($self->flags & $is_ref) {
-      weak($self->value) if $self->flags & $is_weak_ref;
+   my $self = &_new;
+   if ($self->flags & Flags::is_ref) {
+      weak($self->value) if $self->flags & Flags::is_weak_ref;
       readonly($self->value);
    } else {
       readonly_deep($self->value);
@@ -58,11 +63,11 @@ sub toString {
    defined($self->value) ? $self->property->type->toString->($self->value) : $UNDEF;
 }
 
-sub is_temporary { $_[0]->flags & $is_temporary }
+sub is_temporary { $_[0]->flags & Flags::is_temporary }
 
 sub delete_from_subobjects {
    my ($self, $trans)=@_;
-   if ($self->property->flags & $Property::is_subobject_array) {
+   if ($self->property->flags & Property::Flags::is_subobject_array) {
       delete @{$trans->subobjects}{@{$self->value}};
    }
 }
@@ -70,7 +75,7 @@ sub delete_from_subobjects {
 sub copy {
    my ($self, $parent_obj, $to_prop)=@_;
    $to_prop //= $self->property;
-   if ($self->flags & $is_ref || !defined($self->value)) {
+   if ($self->flags & Flags::is_ref || !defined($self->value)) {
       # TODO: special treatment for inner-object-tree references
       new($self, $to_prop, $self->value, $self->flags);
    } else {
@@ -78,7 +83,7 @@ sub copy {
    }
 }
 ######################################################################
-package _::BackRefToParent;
+package Polymake::Core::PropertyValue::BackRefToParent;
 
 use Polymake::Struct (
    [ new => '$;$' ],
@@ -88,13 +93,13 @@ use Polymake::Struct (
 sub value { $_[0]->owner->parent }
 sub property { $_[0]->owner->property }
 sub is_temporary { $_[0]->owner->is_temporary }
-sub flags { $is_weak_ref }
+sub flags { Flags::is_weak_ref }
 *copy=\&new;
 
 sub toString { '@PARENT' }
 
 ######################################################################
-package __::Multiple;
+package Polymake::Core::PropertyValue::Multiple;
 
 use Polymake::Struct (
    [ new => '$$' ],
@@ -127,10 +132,9 @@ sub select_now {
         or return;
    }
    if ($index && @_==3) {
-      my $scope=($_[2] //= new Scope());
-      $scope->begin_locals;
-      local_swap($self->values, 0, $index);
-      $scope->end_locals;
+      local with(($_[2] //= new Scope())->locals) {
+         local swap @{$self->values}, 0, $index;
+      }
       $index=0;
    }
    $self->values->[$index]
@@ -198,33 +202,32 @@ sub backup {
 ######################################################################
 # private:
 sub find_instance {
-   my $self=shift; shift; # parent
-   my $proto=$self->property->type;
-   my (@props, @values);
+   my $self = shift;  shift; # parent
+   my $proto = $self->property->type;
+   my (@paths, @values);
    if (is_string($_[0])) {
-      for (my $i=0; $i<$#_; ++$i) {
-         push @props, $proto->property($_[$i]);
+      for (my $i = 0; $i < $#_; ++$i) {
+         push @paths, [ $proto->encode_descending_path($_[$i]) ];
          push @values, $_[++$i];
       }
    } elsif (is_hash($_[0])) {
-      my $list=shift;
-      while (my ($prop, $value)=each %$list) {
-         push @props, $proto->property($prop);
+      my $list = shift;
+      while (my ($path, $value)=each %$list) {
+         push @paths, [ $proto->encode_descending_path($path) ];
          push @values, $value;
       }
    } else {
       croak( "PROPERTY => value or { PROPERTY => value, ... } are allowed as multiple property filter expression" );
    }
-   my $index=-1;
+   my $index = -1;
  OBJ:
    foreach my $obj (@{$self->values}) {
       ++$index;
-      my ($i, $content_index, $pv)=(0);
-      foreach my $prop (@props) {
-         defined ($content_index=$obj->dictionary->{$prop->key})  &&
-         defined ($pv=$obj->contents->[$content_index]) &&
-         !$obj->diff_properties($pv, $values[$i++])
+      for (my $i = 0; $i < @paths; ++$i) {
+         (my ($subobj, $pv) = $obj->lookup_descending_path($paths[$i])) == 2
            or next OBJ;
+         $subobj->diff_properties($pv, $values[$i])
+           and next OBJ;
       }
       return ($index, $obj);
    }

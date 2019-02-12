@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "join_polytopes.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void", "void"], "func": "join_polytopes", "include": ["polymake/Rational.h"], "sig": "join_polytopes:T1.B.B.o", "tp": "1"},
+  {"args": ["Rational", "void", "void", "void", "void", "void", "void"], "func": "free_sum_impl", "include": ["polymake/Rational.h"], "sig": "free_sum_impl:T1.x.x.x.x.x.o", "tp": "1"},
+ null ],
+"version": 3}

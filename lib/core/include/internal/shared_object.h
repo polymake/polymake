@@ -259,20 +259,6 @@ protected:
    static rep<> empty_rep;
 };
 
-class shared_pointer_secrets {
-protected:
-   struct rep {
-      void *obj;
-      long refc;
-
-      // prevent from being ever destroyed
-      rep() : obj(0), refc(1) {}
-   };
-
-   static rep null_rep;
-};
-
-
 /** Automatic pointer to shared data
 
     This class implements an automatic pointer to a data object that can be shared
@@ -341,28 +327,19 @@ protected:
          destroy_at(o);
       }
 
-      // TODO: remove this when shared_pointer vanishes
-      template <typename PointedObject>
-      static void destroy(PointedObject** o)
-      {
-         destroy_at(*o);
-         Alloc alloc;
-         alloc.deallocate(*o, 1);
-      }
-
    public:
-      template <typename... TArgs>
-      static rep* init(shared_object* owner, rep* r, std::true_type, TArgs&&... args)
+      template <typename... Args>
+      static rep* init(shared_object* owner, rep* r, std::true_type, Args&&... args)
       {
-         construct_at(&r->obj, std::forward<TArgs>(args)...);
+         construct_at(&r->obj, std::forward<Args>(args)...);
          return r;
       }
 
-      template <typename... TArgs>
-      static rep* init(shared_object* owner, rep* r, std::false_type, TArgs&&... args)
+      template <typename... Args>
+      static rep* init(shared_object* owner, rep* r, std::false_type, Args&&... args)
       {
          try {
-            construct_at(&r->obj, std::forward<TArgs>(args)...);
+            construct_at(&r->obj, std::forward<Args>(args)...);
          } catch (...) {
             deallocate(r);
             empty(owner);
@@ -385,10 +362,10 @@ protected:
          return r;
       }
 
-      template <typename... TArgs>
-      static rep* construct(shared_object* owner, TArgs&&... args)
+      template <typename... Args>
+      static rep* construct(shared_object* owner, Args&&... args)
       {
-         return init(owner, allocate(), std::is_nothrow_constructible<Object, TArgs...>(), std::forward<TArgs>(args)...);
+         return init(owner, allocate(), std::is_nothrow_constructible<Object, Args...>(), std::forward<Args>(args)...);
       }
 
       void destroy()
@@ -416,12 +393,12 @@ protected:
    void divorce()
    {
       --body->refc;
-      body=divorce_hook(rep::construct(this, body->obj), std::true_type());
+      body=divorce_hook(rep::construct(this, const_cast<const Object&>(body->obj)), std::true_type());
    }
 
-   void divorce(alias_handler *al)
+   void divorce(alias_handler* al)
    {
-      shared_object *o=static_cast<shared_object*>(al);
+      shared_object* o=static_cast<shared_object*>(al);
       o->body->refc--;
       o->body=body;
       body->refc++;
@@ -434,9 +411,9 @@ public:
       : body(rep::construct(nullptr)) {}
 
    /// Create the attached object from given arguments.
-   template <typename... TArgs>
-   explicit shared_object(TArgs&&... args)
-      : body(rep::construct(nullptr, std::forward<TArgs>(args)...)) {}
+   template <typename... Args>
+   explicit shared_object(Args&&... args)
+      : body(rep::construct(nullptr, std::forward<Args>(args)...)) {}
 
    /// Share the object attached to @c s.
    shared_object(const shared_object& s)
@@ -463,15 +440,15 @@ public:
    shared_object& operator= (shared_object&& s) = delete;
 
    /// Detach or delete the old instance, create a new one from given arguments
-   template <typename... TArgs>
-   shared_object& replace(TArgs&&... args)
+   template <typename... Args>
+   shared_object& replace(Args&&... args)
    {
       if (__builtin_expect(body->refc>1, 0)) {
          --body->refc;
-         body=rep::construct(this, std::forward<TArgs>(args)...);
+         body=rep::construct(this, std::forward<Args>(args)...);
       } else {
          body->destroy();
-         rep::init(this, body, std::is_nothrow_constructible<Object, TArgs...>(), std::forward<TArgs>(args)...);
+         rep::init(this, body, std::is_nothrow_constructible<Object, Args...>(), std::forward<Args>(args)...);
       }
       return *this;
    }
@@ -482,7 +459,7 @@ public:
       if (__builtin_expect(this != &s, 1)) {
          if (__builtin_expect(body->refc>1, 0)) {
             --body->refc;
-            body=divorce_hook(rep::construct(this, s.body->obj), std::true_type());
+            body=divorce_hook(rep::construct(this, const_cast<const Object&>(s.body->obj)), std::true_type());
          } else {
             body->obj=s.body->obj;
          }
@@ -515,8 +492,12 @@ public:
       relocate(&from->divorce_hook, &to->divorce_hook);
    }
 
-   divorce_handler& get_divorce_handler() const { return const_cast<divorce_handler&>(divorce_hook); }
-   static const shared_object* from_divorce_handler(const divorce_handler *h)
+   divorce_handler& get_divorce_handler() const
+   {
+      return const_cast<divorce_handler&>(divorce_hook);
+   }
+
+   static const shared_object* from_divorce_handler(const divorce_handler* h)
    {
       return reverse_cast(h, &shared_object::divorce_hook);
    }
@@ -545,104 +526,6 @@ public:
    const Object* operator-> () const { return &body->obj; }
    const Object& operator* () const { return body->obj; }
 };
-
-/** Like in boost, but not MT-safe (and hence without overhead) */
-template <typename Object, typename... TParams>
-class shared_pointer
-   : public shared_object<Object*, typename mtagged_list_add_default<typename mlist_wrap<TParams...>::type,
-                                                                     CopyOnWriteTag<std::false_type>,
-                                                                     AllocatorTag< std::allocator<Object> > >::type>
-   , protected shared_pointer_secrets {
-   typedef typename mlist_wrap<TParams...>::type params;
-   typedef shared_object<Object*, typename mtagged_list_add_default<params,
-                                                                    CopyOnWriteTag<std::false_type>,
-                                                                    AllocatorTag< std::allocator<Object> > >::type> super;
-   typedef typename super::rep rep;
-public:
-   shared_pointer()
-      : super(reinterpret_cast<rep*>(&null_rep)) { ++this->body->refc; }
-
-   shared_pointer(Object *o)
-      : super(o) {}
-
-   shared_pointer& operator= (Object* o)
-   {
-      if (__builtin_expect(o, 1)) {
-         if (this->body->refc==1) {
-            this->body->destroy();
-            this->body->obj=o;
-         } else {
-            this->body->refc--;
-            this->body=rep::construct(nullptr, o);
-         }
-      } else {
-         this->leave();
-         this->body=reinterpret_cast<rep*>(&null_rep);
-         ++this->body->refc;
-      }
-      return *this;
-   }
-
-   using super::swap;
-
-   shared_pointer& swap(Object* &op)
-   {
-      Object *o=this->body->obj;
-      if (__builtin_expect(this->body->refc==1, 1)) {
-         if (__builtin_expect(op, 1)) {
-            if (o) this->body->obj=op;
-            else this->body=rep::construct(nullptr, op);
-         } else if (o) {
-            rep::destruct(this->body);
-            this->body=reinterpret_cast<rep*>(&null_rep);
-         }
-      } else {
-         this->body->refc--;
-         this->body= op ? rep::construct(nullptr, op) : reinterpret_cast<rep*>(&null_rep);
-      }
-      op=o;
-      return *this;
-   }
-
-   Object& operator* () { return *this->body->obj; }
-   const Object& operator* () const { return *this->body->obj; }
-   Object* operator-> () { return this->body->obj; }
-   const Object* operator-> () const { return this->body->obj; }
-
-   operator Object* () { return this->body->obj; }
-   operator const Object* () const { return this->body->obj; }
-
-   bool operator== (const shared_pointer& other) const { return this->body->obj == other.body->obj; }
-   bool operator!= (const shared_pointer& other) const { return this->body->obj != other.body->obj; }
-
-   template <typename OtherObject>
-   typename std::enable_if<(is_derived_from<OtherObject, Object>::value ||
-                            is_derived_from<Object, OtherObject>::value), shared_pointer<OtherObject>&>::type
-   cast()
-   {
-      return reinterpret_cast<shared_pointer<OtherObject>&>(*this);
-   }
-
-   template <typename OtherObject>
-   typename std::enable_if<(is_derived_from<OtherObject,Object>::value ||
-                            is_derived_from<Object,OtherObject>::value), const shared_pointer<OtherObject>&>::type
-   cast() const
-   {
-      return reinterpret_cast<const shared_pointer<OtherObject>&>(*this);
-   }
-
-   static shared_pointer new_object()
-   {
-      typename mtagged_list_extract<params, AllocatorTag, std::allocator<Object>>::type alloc;
-      return new(alloc.allocate(1)) Object;
-   }
-};
-
-template <typename T, typename... TParams>
-struct deref_ptr< shared_pointer<T, TParams...> > : deref_ptr<T> {};
-
-template <typename T, typename... TParams>
-struct deref_ptr< const shared_pointer<T, TParams...> > : deref_ptr<const T> {};
 
 
 class shared_array_placement {
@@ -753,18 +636,18 @@ protected:
       struct copy { };
 
       /// initialize all array elements from a given value
-      template <typename... TArgs>
-      static void init_from_value(shared_array* owner, rep* r, Object*& dst, Object* end, std::true_type, TArgs&&... args)
+      template <typename... Args>
+      static void init_from_value(shared_array* owner, rep* r, Object*& dst, Object* end, std::true_type, Args&&... args)
       {
          for (; dst != end; ++dst)
-            construct_at(dst, std::forward<TArgs>(args)...);
+            construct_at(dst, std::forward<Args>(args)...);
       }
 
-      template <typename... TArgs>
-      static void init_from_value(shared_array* owner, rep* r, Object*& dst, Object* end, std::false_type, TArgs&&... args)
+      template <typename... Args>
+      static void init_from_value(shared_array* owner, rep* r, Object*& dst, Object* end, std::false_type, Args&&... args)
       {
          try {
-            init_from_value(owner, r, dst, end, std::true_type(), std::forward<TArgs>(args)...);
+            init_from_value(owner, r, dst, end, std::true_type(), std::forward<Args>(args)...);
          }
          catch (...) {
             destroy(dst, r->obj);
@@ -779,12 +662,13 @@ protected:
          init_from_value(owner, r, dst, end, std::is_nothrow_default_constructible<Object>());
       }
 
-      template <typename TArg1, typename... TArgs>
-      static typename std::enable_if<std::is_constructible<Object, TArg1, TArgs...>::value &&
-                                     !(sizeof...(TArgs)==0 && looks_like_iterator<TArg1>::value)>::type
-      init(shared_array* owner, rep* r, Object* dst, Object* end, TArg1&& arg1, TArgs&&... args)
+      template <typename Arg1, typename... Args>
+      static
+      std::enable_if_t<std::is_constructible<Object, Arg1, Args...>::value &&
+                       !(sizeof...(Args)==0 && looks_like_iterator<Arg1>::value)>
+      init(shared_array* owner, rep* r, Object* dst, Object* end, Arg1&& arg1, Args&&... args)
       {
-         init_from_value(owner, r, dst, end, std::is_nothrow_constructible<Object, TArg1, TArgs...>(), std::forward<TArg1>(arg1), std::forward<TArgs>(args)...);
+         init_from_value(owner, r, dst, end, std::is_nothrow_constructible<Object, Arg1, Args...>(), std::forward<Arg1>(arg1), std::forward<Args>(args)...);
       }
 
       template <typename Iterator>
@@ -816,7 +700,7 @@ protected:
       /// Initialize array elements with values from a sequence
       template <typename Iterator>
       static void init_from_sequence(shared_array* owner, rep* r, Object*& dst, Object* end, Iterator&& src,
-                                     typename std::enable_if<std::is_nothrow_constructible<Object, decltype(*src)>::value, copy>::type)
+                                     std::enable_if_t<std::is_nothrow_constructible<Object, decltype(*src)>::value, copy>)
       {
          for (; go_on(dst, end, src); ++src, ++dst)
             construct_at(dst, *src);
@@ -824,7 +708,7 @@ protected:
 
       template <typename Iterator>
       static void init_from_sequence(shared_array* owner, rep* r, Object*& dst, Object* end, Iterator&& src,
-                                     typename std::enable_if<!std::is_nothrow_constructible<Object, decltype(*src)>::value, copy>::type)
+                                     std::enable_if_t<!std::is_nothrow_constructible<Object, decltype(*src)>::value, copy>)
       {
          try {
             for (; go_on(dst, end, src); ++src, ++dst)
@@ -839,31 +723,99 @@ protected:
       }
 
       template <typename Iterator>
-      static void init_from_sequence(shared_array* owner, rep* r, Object*& dst, Object* end, Iterator&& src, polymake::operations::move)
+      static
+      void init_from_sequence(shared_array* owner, rep* r, Object*& dst, Object* end, Iterator&& src, polymake::operations::move)
       {
          auto&& src_moving=enforce_movable_values(std::forward<Iterator>(src));
          init_from_sequence(owner, r, dst, end, src_moving, copy());
       }
 
       template <typename Iterator, typename CopyOrMove>
-      static typename std::enable_if<assess_iterator_value<Iterator, can_initialize, Object>::value, bool>::type
+      static
+      std::enable_if_t<assess_iterator_value<Iterator, can_initialize, Object>::value>
       init_from_iterator(shared_array* owner, rep* r, Object*& dst, Object* end, Iterator&& src, CopyOrMove)
       {
          init_from_sequence(owner, r, dst, end, std::forward<Iterator>(src), CopyOrMove());
-         return false;
       }
 
       template <typename Iterator, typename CopyOrMove>
-      static typename std::enable_if<looks_like_iterator<Iterator>::value && !assess_iterator_value<Iterator, can_initialize, Object>::value, bool>::type
+      static
+      std::enable_if_t<looks_like_iterator<Iterator>::value && !assess_iterator_value<Iterator, can_initialize, Object>::value>
       init_from_iterator(shared_array* owner, rep* r, Object*& dst, Object* end, Iterator&& src, CopyOrMove)
       {
          for (; go_on(dst, end, src); ++src)
-            init_from_iterator(owner, r, dst, end, ensure(*src, (cons<end_sensitive, dense>*)0).begin(), CopyOrMove());
-         return false;
+            init_from_iterator(owner, r, dst, nullptr, entire_range<dense>(*src), CopyOrMove());
       }
 
       template <typename Iterator>
-      static typename std::enable_if<assess_iterator_value<Iterator, can_initialize, Object>::value, bool>::type
+      static
+      std::enable_if_t<assess_iterator_value<Iterator, can_assign_to, Object>::value>
+      assign_from_iterator(Object*& dst, Object* end, Iterator&& src)
+      {
+         for (; go_on(dst, end, src); ++src, ++dst)
+            *dst = *src;
+      }
+
+      template <typename Iterator>
+      static
+      std::enable_if_t<looks_like_iterator<Iterator>::value && !assess_iterator_value<Iterator, can_assign_to, Object>::value>
+      assign_from_iterator(Object*& dst, Object* end, Iterator&& src)
+      {
+         for (; go_on(dst, end, src); ++src)
+            assign_from_iterator(dst, nullptr, entire_range<dense>(*src));
+      }
+
+      template <typename Iterator, typename Operation>
+      static
+      std::enable_if_t<assess_iterator_value<Iterator, isomorphic_types, Object>::value>
+      init_from_iterator_with_binop(shared_array* owner, rep* r, Object*& dst, Object* end, const Object*& src_obj, Iterator&& src2, const Operation& op)
+      {
+         const Object* dst_start=dst;
+         init_from_sequence(owner, r, dst, end, make_binary_transform_iterator(src_obj, std::forward<Iterator>(src2), op), copy());
+         src_obj += dst-dst_start;
+      }
+
+      template <typename Iterator, typename Operation>
+      static
+      std::enable_if_t<looks_like_iterator<Iterator>::value &&
+                       !assess_iterator_value<Iterator, isomorphic_types, Object>::value>
+      init_from_iterator_with_binop(shared_array* owner, rep* r, Object*& dst, Object* end, const Object*& src_obj, Iterator&& src2, const Operation& op)
+      {
+         for (; go_on(dst, end, src2); ++src2)
+            init_from_iterator_with_binop(owner, r, dst, nullptr, src_obj, entire_range<dense>(*src2), op);
+      }
+
+      template <typename Iterator, typename Operation>
+      static
+      std::enable_if_t<assess_iterator_value<Iterator, isomorphic_types, Object>::value &&
+                       check_iterator_feature<pure_type_t<Iterator>, end_sensitive>::value>
+      assign_with_binop(Object*& dst, Object* end, Iterator&& src2, const Operation& op)
+      {
+         perform_assign(dst, src2, op);
+      }
+
+      template <typename Iterator, typename Operation>
+      static
+      std::enable_if_t<assess_iterator_value<Iterator, isomorphic_types, Object>::value &&
+                       !check_iterator_feature<pure_type_t<Iterator>, end_sensitive>::value>
+      assign_with_binop(Object*& dst, Object* end, Iterator&& src2, const Operation& op)
+      {
+         perform_assign(make_iterator_range(dst, end), src2, op);
+      }
+
+      template <typename Iterator, typename Operation>
+      static
+      std::enable_if_t<looks_like_iterator<Iterator>::value &&
+                       !assess_iterator_value<Iterator, isomorphic_types, Object>::value>
+      assign_with_binop(Object*& dst, Object* end, Iterator&& src2, const Operation& op)
+      {
+         for (; go_on(dst, end, src2); ++src2)
+            assign_with_binop(dst, nullptr, entire_range<dense>(*src2), op);
+      }
+
+      template <typename Iterator>
+      static
+      std::enable_if_t<assess_iterator_value<Iterator, can_initialize, Object>::value>
       init_from_iterator_one_step(shared_array* owner, rep* r, Object*& dst, Iterator&& src)
       {
 #if POLYMAKE_DEBUG
@@ -872,20 +824,19 @@ protected:
 #endif
          init_from_value(owner, r, dst, dst+1, std::is_nothrow_constructible<Object, decltype(*src)>(), *src);
          ++src;
-         return false;
       }
 
       template <typename Iterator>
-      static typename std::enable_if<looks_like_iterator<Iterator>::value && !assess_iterator_value<Iterator, can_initialize, Object>::value, bool>::type
+      static
+      std::enable_if_t<looks_like_iterator<Iterator>::value && !assess_iterator_value<Iterator, can_initialize, Object>::value>
       init_from_iterator_one_step(shared_array* owner, rep* r, Object*& dst, Iterator& src)
       {
 #if POLYMAKE_DEBUG
          if (!go_on(dst, nullptr, src))
             throw std::runtime_error("shared_array weave error: input sequence ends prematurely");
 #endif
-         init_from_iterator(owner, r, dst, nullptr, ensure(*src, (cons<end_sensitive, dense>*)0).begin(), copy());
+         init_from_iterator(owner, r, dst, nullptr, entire_range<dense>(*src), copy());
          ++src;
-         return false;
       }
 
       template <typename... Iterator>
@@ -896,19 +847,21 @@ protected:
       }
 
       template <typename CopyOrMove, typename... Iterator>
-      static typename std::enable_if<is_among<CopyOrMove, copy, polymake::operations::move>::value &&
-                                     mlist_and_nonempty<looks_like_iterator<Iterator>...>::value>::type
+      static
+      std::enable_if_t<is_among<CopyOrMove, copy, polymake::operations::move>::value &&
+                       mlist_and_nonempty<looks_like_iterator<Iterator>...>::value>
       init(shared_array* owner, rep* r, Object* dst, Object* end, CopyOrMove, Iterator&&... src)
       {
-         check_input_iterators(typename mlist_subset<mlist<Iterator...>, 0, sizeof...(Iterator)-1>::type());
-         (void)std::initializer_list<bool>{ init_from_iterator(owner, r, dst, end, std::forward<Iterator>(src), CopyOrMove())... };
+         check_input_iterators(typename mlist_slice<mlist<Iterator...>, 0, sizeof...(Iterator)-1>::type());
+         (void)std::initializer_list<bool>{ (init_from_iterator(owner, r, dst, end, std::forward<Iterator>(src), CopyOrMove()), true)... };
 #if POLYMAKE_DEBUG
          if (dst && dst != end) throw std::runtime_error("shared_array construction error: input sequence ends prematurely");
 #endif
       }
 
       template <typename... Iterator>
-      static typename std::enable_if<mlist_and_nonempty<looks_like_iterator<Iterator>...>::value>::type
+      static
+      std::enable_if_t<mlist_and_nonempty<looks_like_iterator<Iterator>...>::value>
       init(shared_array* owner, rep* r, Object* dst, Object* end, Iterator&&... src)
       {
          init(owner, r, dst, end, copy(), std::forward<Iterator>(src)...);
@@ -925,13 +878,13 @@ protected:
       }
 
    public:
-      template <typename... TArgs>
-      static rep* construct(shared_array* owner, size_t n, TArgs&&... args)
+      template <typename... Args>
+      static rep* construct(shared_array* owner, size_t n, Args&&... args)
       {
          rep* r;
          if (__builtin_expect(n != 0, 1)) {
             r=allocate(n, prefix_type());
-            init(owner, r, r->obj, r->obj+n, std::forward<TArgs>(args)...);
+            init(owner, r, r->obj, r->obj+n, std::forward<Args>(args)...);
          } else {
             r=construct_empty(std::is_same<prefix_type, nothing>());
             ++r->refc;
@@ -939,41 +892,58 @@ protected:
          return r;
       }
 
-      template <typename... TArgs>
-      static rep* construct(shared_array* owner, const prefix_type& p, size_t n, TArgs&&... args)
+      template <typename... Args>
+      static rep* construct(shared_array* owner, const prefix_type& p, size_t n, Args&&... args)
       {
          rep* r=allocate(n, p);
-         init(owner, r, r->obj, r->obj+n, std::forward<TArgs>(args)...);
+         init(owner, r, r->obj, r->obj+n, std::forward<Args>(args)...);
          return r;
       }
 
-      template <typename... TArgs>
-      static rep* construct_copy(shared_array* owner, const rep* src, size_t n, TArgs&&... args)
+      template <typename... Args>
+      static rep* construct_copy(shared_array* owner, const rep* src, size_t n, Args&&... args)
       {
          rep* r=allocate_copy(n, src);
-         init(owner, r, r->obj, r->obj+n, std::forward<TArgs>(args)...);
+         init(owner, r, r->obj, r->obj+n, std::forward<Args>(args)...);
          return r;
       }
 
-      template <typename... TArgs>
-      static rep* construct(shared_array* owner, const shared_array_placement& place, size_t n, TArgs&&... args)
+      template <typename Iterator, typename Operation>
+      static rep* construct_copy_with_binop(shared_array* owner, const rep* src, size_t n, Iterator&& src2, const Operation& op)
+      {
+         rep* r=allocate_copy(n, src);
+         Object* dst=r->obj;
+         const Object* src_obj=src->obj;
+         init_from_iterator_with_binop(owner, r, dst, dst+n, src_obj, std::forward<Iterator>(src2), op);
+         return r;
+      }
+
+      template <typename Iterator, typename Operation>
+      void assign_with_binop(int n, Iterator&& src2, const Operation& op)
+      {
+         Object* dst=obj;
+         assign_with_binop(dst, dst+n, std::forward<Iterator>(src2), op);
+      }
+
+      template <typename... Args>
+      static rep* construct(shared_array* owner, const shared_array_placement& place, size_t n, Args&&... args)
       {
          rep* r=allocate(place, n, prefix_type());
-         init(owner, r, r->obj, r->obj+n, std::forward<TArgs>(args)...);
+         init(owner, r, r->obj, r->obj+n, std::forward<Args>(args)...);
          return r;
       }
 
-      template <typename... TArgs>
-      static rep* construct(shared_array* owner, const shared_array_placement& place, const prefix_type& p, size_t n, TArgs&&... args)
+      template <typename... Args>
+      static rep* construct(shared_array* owner, const shared_array_placement& place, const prefix_type& p, size_t n, Args&&... args)
       {
          rep* r=allocate(place, n, p);
-         init(owner, r, r->obj, r->obj+n, std::forward<TArgs>(args)...);
+         init(owner, r, r->obj, r->obj+n, std::forward<Args>(args)...);
          return r;
       }
 
       // relocate or copy
-      template <typename... TArgs>
-      static rep* resize(shared_array *owner, rep* old, size_t n, TArgs&&... args)
+      template <typename... Args>
+      static rep* resize(shared_array *owner, rep* old, size_t n, Args&&... args)
       {
          rep* r=allocate_copy(n, old);
          const size_t n_copy=std::min(n, old->size_and_prefix.first);
@@ -991,7 +961,7 @@ protected:
             for (; dst!=middle;  ++src_copy, ++dst)
                relocate(src_copy, dst);
          }
-         init(owner, r, middle, end, std::forward<TArgs>(args)...);
+         init(owner, r, middle, end, std::forward<Args>(args)...);
          if (old->refc <= 0) {
             destroy(src_end, src_copy);
             deallocate(old);
@@ -1000,8 +970,8 @@ protected:
          return r;
       }
 
-      template <typename... TArgs>
-      static rep* weave(shared_array *owner, rep *old, size_t n, size_t slice, TArgs&&... args)
+      template <typename... Args>
+      static rep* weave(shared_array *owner, rep *old, size_t n, size_t slice, Args&&... args)
       {
          rep* r=allocate_copy(n, old);
          Object* dst=r->obj;
@@ -1011,14 +981,14 @@ protected:
             ptr_wrapper<const Object, false> src_copy(old->obj);
             while (dst != end) {
                init_from_sequence(owner, r, dst, dst+slice, src_copy, copy());
-               (void)std::initializer_list<bool>{ init_from_iterator_one_step(owner, r, dst, args)... };
+               (void)std::initializer_list<bool>{ (init_from_iterator_one_step(owner, r, dst, args), true)... };
             }
          } else {
             Object* src_copy=old->obj;
             while (dst != end) {
                for (Object* slice_end=dst+slice; dst!=slice_end; ++src_copy, ++dst)
                   relocate(src_copy, dst);
-               (void)std::initializer_list<bool>{ init_from_iterator_one_step(owner, r, dst, args)... };
+               (void)std::initializer_list<bool>{ (init_from_iterator_one_step(owner, r, dst, args), true)... };
             }
             deallocate(old);
          }
@@ -1029,30 +999,24 @@ protected:
       }
 
       template <typename Value>
-      static typename std::enable_if<(isomorphic_types<Value, Object>::value && can_assign_to<Value, Object>::value), Object*>::type
+      static
+      std::enable_if_t<isomorphic_types<Value, Object>::value && can_assign_to<Value, Object>::value>
       assign(Object* dst, Object* end, const Value& val)
       {
          for (; dst != end; ++dst)
             *dst = val;
-         return dst;
       }
 
-      template <typename Iterator>
-      static typename std::enable_if<assess_iterator_value<Iterator, can_assign_to, Object>::value, Object*>::type
-      assign(Object* dst, Object* end, Iterator&& src)
+      template <typename... Iterator>
+      static
+      std::enable_if_t<mlist_and_nonempty<looks_like_iterator<Iterator>...>::value>
+      assign(Object* dst, Object* end, Iterator&&... src)
       {
-         for (; dst != end; ++src, ++dst)
-            *dst = *src;
-         return dst;
-      }
-
-      template <typename Iterator>
-      static typename std::enable_if<looks_like_iterator<Iterator>::value && !assess_iterator_value<Iterator, can_assign_to, Object>::value, Object*>::type
-      assign(Object* dst, Object* end, Iterator&& src)
-      {
-         for (; dst != end; ++src)
-            dst=assign(dst, end, ensure(*src, (cons<end_sensitive, dense>*)0).begin());
-         return dst;
+         check_input_iterators(typename mlist_slice<mlist<Iterator...>, 0, sizeof...(Iterator)-1>::type());
+         (void)std::initializer_list<bool>{ (assign_from_iterator(dst, end, std::forward<Iterator>(src)), true)... };
+#if POLYMAKE_DEBUG
+         if (dst && dst != end) throw std::runtime_error("shared_array assign error: input sequence ends prematurely");
+#endif
       }
 
       static void destruct(rep *r)
@@ -1112,21 +1076,21 @@ public:
    /// or it can be an iterator over a sequence of input values or nested containers thereof,
    /// in which case the array elements are constructed by copying or conversion, whatever applies.
    /// Note that the input iterator is passed down by reference where it's advanced towards the end of the sequence.
-   template <typename... TArgs>
-   shared_array(size_t n, TArgs&&... args)
-      : body(rep::construct(nullptr, n, std::forward<TArgs>(args)...)) {}
+   template <typename... Args>
+   shared_array(size_t n, Args&&... args)
+      : body(rep::construct(nullptr, n, std::forward<Args>(args)...)) {}
 
-   template <typename... TArgs>
-   shared_array(const prefix_type& p, size_t n, TArgs&&... args)
-      : body(rep::construct(nullptr, p, n, std::forward<TArgs>(args)...)) {}
+   template <typename... Args>
+   shared_array(const prefix_type& p, size_t n, Args&&... args)
+      : body(rep::construct(nullptr, p, n, std::forward<Args>(args)...)) {}
 
-   template <typename... TArgs>
-   shared_array(const shared_array_placement& place, size_t n, TArgs&&... args)
-      : body(rep::construct(nullptr, place, n, std::forward<TArgs>(args)...)) {}
+   template <typename... Args>
+   shared_array(const shared_array_placement& place, size_t n, Args&&... args)
+      : body(rep::construct(nullptr, place, n, std::forward<Args>(args)...)) {}
 
-   template <typename... TArgs>
-   shared_array(const shared_array_placement& place, const prefix_type& p, size_t n, TArgs&&... args)
-      : body(rep::construct(nullptr, place, p, n, std::forward<TArgs>(args)...)) {}
+   template <typename... Args>
+   shared_array(const shared_array_placement& place, const prefix_type& p, size_t n, Args&&... args)
+      : body(rep::construct(nullptr, place, p, n, std::forward<Args>(args)...)) {}
 
    shared_array(const shared_array& s)
       : alias_handler(s) , body(s.body) { ++body->refc; }
@@ -1183,25 +1147,25 @@ public:
       body=rep::construct(this, place, n);
    }
 
-   template <typename... TArgs>
-   void append(size_t n, TArgs&&... args)
+   template <typename... Args>
+   void append(size_t n, Args&&... args)
    {
       assert(alias_handler::is_owner());
       if (n) {
          --body->refc;
-         body=rep::resize(this, body, n+size(), std::forward<TArgs>(args)...);
+         body=rep::resize(this, body, n+size(), std::forward<Args>(args)...);
          if (__builtin_expect(alias_handler::need_postCoW(), 0))
             alias_handler::postCoW(this,true);
       }
    }
 
-   template <typename ... TArgs>
-   void weave(size_t n, size_t slice, TArgs&&... args)
+   template <typename... Args>
+   void weave(size_t n, size_t slice, Args&&... args)
    {
       assert(alias_handler::is_owner());
       if (n) {
          --body->refc;
-         body=rep::weave(this, body, n+size(), slice, std::forward<TArgs>(args)...);
+         body=rep::weave(this, body, n+size(), slice, std::forward<Args>(args)...);
          if (__builtin_expect(alias_handler::need_postCoW(), 0))
             alias_handler::postCoW(this,true);
       }
@@ -1220,17 +1184,17 @@ public:
       it is detached rsp. destroyed and a new one is created and initialized from the
       input sequence. Otherwise assigns the input data to the array elements.
    */
-   template <typename... TArgs>
-   void assign(size_t n, TArgs&&... args)
+   template <typename... Args>
+   void assign(size_t n, Args&&... args)
    {
-      const bool CoW=copy_on_write && body->refc>1 && alias_handler::preCoW(body->refc);
-      if (CoW || size() != n) {
-         rep* newbody=rep::construct_copy(this, body, n, std::forward<TArgs>(args)...);
+      const bool isCoW = copy_on_write && body->refc>1 && alias_handler::preCoW(body->refc);
+      if (isCoW || size() != n) {
+         rep* newbody=rep::construct_copy(this, body, n, std::forward<Args>(args)...);
          leave();
          body=newbody;
-         if (CoW) alias_handler::postCoW(this);
+         if (isCoW) alias_handler::postCoW(this);
       } else {
-         rep::assign(body->obj, body->obj+n, std::forward<TArgs>(args)...);
+         rep::assign(body->obj, body->obj+n, std::forward<Args>(args)...);
       }
    }
 
@@ -1248,15 +1212,15 @@ public:
    }
 
    template <typename Iterator, typename Operation>
-   void assign_op(Iterator src2, const Operation& op)
+   void assign_op(Iterator&& src2, const Operation& op)
    {
       if (copy_on_write && __builtin_expect(body->refc>1,0) && alias_handler::preCoW(body->refc)) {
-         rep *newbody=rep::construct_copy(this, body, size(), make_binary_transform_iterator(body->obj+0, src2, op));
+         rep *newbody=rep::construct_copy_with_binop(this, body, size(), std::forward<Iterator>(src2), op);
          leave();
          body=newbody;
          alias_handler::postCoW(this);
       } else {
-         perform_assign(make_iterator_range(body->obj+0, body->obj+size()), src2, op);
+         body->assign_with_binop(size(), std::forward<Iterator>(src2), op);
       }
    }
 

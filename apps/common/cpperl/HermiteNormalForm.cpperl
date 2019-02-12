@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"pkg": "Polymake::common::HermiteNormalForm"},
+  {"class": "HermiteNormalForm<Integer>", "include": ["polymake/Integer.h", "polymake/integer_linalg.h"], "pkg": "Polymake::common::HermiteNormalForm__Integer"},
+ null ],
+"version": 3}

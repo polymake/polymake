@@ -31,7 +31,7 @@ declare property_type SingularIdeal : c++ (include => ["polymake/ideal/singularI
 
    # @category Singular interface
    # Compute the Groebner basis.
-   method groebner() : void : c++ ;
+   method groebner() : c++ ;
 
    # Compute the dimension of the ideal.
    method dim() : c++ ;

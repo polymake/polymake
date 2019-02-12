@@ -20,9 +20,9 @@
 #include "polymake/GenericGraph.h"
 #include "polymake/Bitset.h"
 #include "polymake/ContainerChain.h"
-#include "polymake/list"
 #include "polymake/vector"
 #include "polymake/meta_list.h"
+#include <deque>
 #include <cassert>
 
 namespace polymake { namespace graph {
@@ -34,7 +34,7 @@ protected:
 public:
    static const bool visit_all_edges=false;
 
-   NodeVisitor() {}
+   NodeVisitor() = default;
 
    template <typename TGraph>
    NodeVisitor(const GenericGraph<TGraph>& G)
@@ -185,18 +185,18 @@ protected:
    static
    int from_node(const TEdgeIterator& e, int_constant<0>)
    {
-      return e.get_part_index()==0
-             ? e.get_part(int_constant<0>()).from_node()
-             : e.get_part(int_constant<1>()).to_node();
+      return e.get_leg()==0
+             ? std::get<0>(e.get_it_tuple()).from_node()
+             : std::get<1>(e.get_it_tuple()).to_node();
    }
 
    template <typename TEdgeIterator>
    static
    int to_node(const TEdgeIterator& e, int_constant<0>)
    {
-      return e.get_part_index()==0
-             ? e.get_part(int_constant<0>()).to_node()
-             : e.get_part(int_constant<1>()).from_node();
+      return e.get_leg()==0
+             ? std::get<0>(e.get_it_tuple()).to_node()
+             : std::get<1>(e.get_it_tuple()).from_node();
    }
 
    template <typename TEdgeIterator>
@@ -246,16 +246,16 @@ protected:
 template <typename TGraph, typename... TParams>
 class BFSiterator
    : public graph_iterator_base<TGraph, TParams...> {
-   typedef graph_iterator_base<TGraph, TParams...> base_t;
+   using base_t = graph_iterator_base<TGraph, TParams...>;
 public:
    using typename base_t::visitor_t;
    using typename base_t::reference;
-   typedef std::list<int> queue_t;
+   using queue_t = std::deque<int>;
 
-   typedef BFSiterator iterator;
-   typedef BFSiterator const_iterator;
+   using iterator = BFSiterator;
+   using const_iterator = BFSiterator;
 
-   BFSiterator() {}
+   BFSiterator() = default;
 
    explicit BFSiterator(const GenericGraph<TGraph>& graph_arg)
       : base_t(graph_arg.top()) {}
@@ -336,9 +336,9 @@ protected:
    void propagate(int n, TEdgeIterator&& e)
    {
       for (; !e.at_end(); ++e) {
-         const int to_node= base_t::to_node(e);
-         if (this->visit_edge(n, to_node, e)) {
-            queue.push_back(to_node);
+         const int to_n = this->to_node(e);
+         if (this->visit_edge(n, to_n, e)) {
+            queue.push_back(to_n);
             --this->undiscovered;
          }
       }
@@ -351,7 +351,7 @@ protected:
 template <typename TGraph, typename... TParams>
 class DFSiterator
    : public graph_iterator_base<TGraph, TParams...> {
-   typedef graph_iterator_base<TGraph, TParams...> base_t;
+   using base_t = graph_iterator_base<TGraph, TParams...>;
 public:
    using typename base_t::visitor_t;
    using typename base_t::reference;
@@ -359,8 +359,8 @@ public:
 
    static const bool visit_parent_first=tagged_list_extract_integral<params, VisitParentFirstTag>(false);
 
-   typedef DFSiterator iterator;
-   typedef DFSiterator const_iterator;
+   using iterator = DFSiterator;
+   using const_iterator = DFSiterator;
 
    DFSiterator()
       : cur(-1) {}
@@ -451,7 +451,7 @@ public:
    }
 
    using edge_iterator = decltype(std::declval<base_t>().edges(0));
-   typedef std::vector<edge_iterator> it_stack_t;
+   using it_stack_t = std::deque<edge_iterator>;
 
    const it_stack_t& get_stack() const { return it_stack; }
 
@@ -461,12 +461,12 @@ protected:
    void descend()
    {
       while (!it_stack.back().at_end()) {
-         edge_iterator& e=it_stack.back();
-         const int to_node=base_t::to_node(e);
-         if (!is_back_edge(to_node) && this->visit_edge(cur, to_node, e)) {
-            cur=to_node;
+         edge_iterator& e = it_stack.back();
+         const int to_n = this->to_node(e);
+         if (!is_back_edge(to_n) && this->visit_edge(cur, to_n, e)) {
+            cur = to_n;
             --this->undiscovered;
-            it_stack.push_back(this->edges(to_node));
+            it_stack.push_back(this->edges(to_n));
          } else {
             ++e;
          }
@@ -477,18 +477,18 @@ protected:
    void propagate()
    {
       for (;; ++it_stack.back()) {
-         edge_iterator& e=it_stack.back();
+         edge_iterator& e = it_stack.back();
          if (!e.at_end()) {
-            const int to_node=base_t::to_node(e);
-            if (!is_back_edge(to_node) && this->visit_edge(cur, to_node, e)) {
-               cur=to_node;
+            const int to_n = this->to_node(e);
+            if (!is_back_edge(to_n) && this->visit_edge(cur, to_n, e)) {
+               cur = to_n;
                --this->undiscovered;
                break;
             }
          } else {
             it_stack.pop_back();
             if (it_stack.empty()) {
-               cur=-1;
+               cur = -1;
                break;
             }
          }

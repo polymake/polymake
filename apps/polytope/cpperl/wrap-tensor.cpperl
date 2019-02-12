@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "tensor.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "tensor", "include": ["polymake/Rational.h"], "sig": "tensor:T1.B.B", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void", "void"], "func": "tensor", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "tensor:T1.B.B", "tp": "1"},
+ null ],
+"version": 3}

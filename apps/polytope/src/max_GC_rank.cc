@@ -42,9 +42,7 @@ perl::Object max_GC_rank(int d)
      (*i)[j]=-1;
    }
    // one more inequality per subset of [1..d]
-   const sequence set = range(1,d);
-   for (Entire< AllSubsets<const sequence&> >::const_iterator si = entire(all_subsets(set)); 
-        !si.at_end(); ++si, ++i) {
+   for (auto si = entire(all_subsets(range(1,d))); !si.at_end(); ++si, ++i) {
      (*i)[0] = d - (si->size()) - 1;
      i->slice(range(1,d)).fill(-1);
      i->slice(*si).fill(1);
@@ -52,7 +50,7 @@ perl::Object max_GC_rank(int d)
 
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("INEQUALITIES") << Inequalities;
-   p.take("VALID_POINT") << (1|Vector<Rational>(d,Rational(1,2)));
+   p.take("VALID_POINT") << (1 | Vector<Rational>(d,Rational(1,2)));
    p.take("BOUNDED") << true;
    p.take("FEASIBLE") << true;
 

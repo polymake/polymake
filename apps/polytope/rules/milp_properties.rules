@@ -1,0 +1,170 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @category Optimization
+# A mixed integer linear program specified by a linear or abstract objective function
+# @relates objects/Polytope
+declare object MixedIntegerLinearProgram<Scalar=Rational> {
+   
+   # Linear objective funtion. In d-space a linear objective function is given
+   # by a (d+1)-vector.  The first coordinate specifies a constant that is
+   # added to the resulting value.
+   # @example [require bundled:scip]
+   # The following defines a MixedIntegerLinearProgram together with a
+   # linear objective on a rational line segment embedded in two-dimensional
+   # space. 
+   # > $l = new Polytope(INEQUALITIES=>[[0,1,0],[3/2,-1,0],[1,0,0]],EQUATIONS=>[[0,0,1]]);
+   # > $obj = new Vector([0,-1,0]);
+   # > $intvar = new Set<Int>([0,1,2]);
+   # > $milp = $l->MILP(LINEAR_OBJECTIVE=>$obj, INTEGER_VARIABLES=>$intvar);
+   # > print $milp->LINEAR_OBJECTIVE;
+   # | 0 -1 0
+   property LINEAR_OBJECTIVE : Vector<Scalar>;
+
+   # Similar to [[MAXIMAL_VALUE]].
+   # @example [require bundled:scip]
+   # The following defines a MixedIntegerLinearProgram together with a
+   # linear objective on a rational line segment embedded in two-dimensional
+   # space. Note that the maximal value is integral and not the same as the
+   # value of the objective function on any of the vertices.
+   # > $l = new Polytope(INEQUALITIES=>[[0,1,0],[3/2,-1,0],[1,0,0]],EQUATIONS=>[[0,0,1]]);
+   # > $obj = new Vector([0,-1,0]);
+   # > $intvar = new Set<Int>([0,1,2]);
+   # > $milp = $l->MILP(LINEAR_OBJECTIVE=>$obj, INTEGER_VARIABLES=>$intvar);
+   # > print $milp->MINIMAL_VALUE;
+   # | -1
+   # @example [require bundled:scip]
+   # Same as the previous example, but we do not require the first
+   # coordinate to be integral anymore.
+   # > $l = new Polytope(INEQUALITIES=>[[0,1,0],[3/2,-1,0],[1,0,0]],EQUATIONS=>[[0,0,1]]);
+   # > $obj = new Vector([0,-1,0]);
+   # > $intvar = new Set<Int>([0,2]);
+   # > $milp = $l->MILP(LINEAR_OBJECTIVE=>$obj, INTEGER_VARIABLES=>$intvar);
+   # > print $milp->MINIMAL_VALUE;
+   # | -3/2
+   property MINIMAL_VALUE : Scalar;
+   
+   # Similar to [[MAXIMAL_SOLUTION]]
+   # @example [require bundled:scip]
+   # The following defines a MixedIntegerLinearProgram together with a
+   # linear objective for the centered square with side length 2 and asks for a
+   # maximal solution:
+   # > $c = new Vector([0, 1, -1/2]);
+   # > $p = cube(2);
+   # > $p->MILP(LINEAR_OBJECTIVE=>$c);
+   # > print $p->MILP->MINIMAL_SOLUTION;
+   # | 1 -1 1
+   property MINIMAL_SOLUTION : Vector<Scalar>;
+   
+   # Maximum value the objective funtion takes under the restriction given by
+   # [[INTEGER_VARIABLES]].
+   # @example [require bundled:scip]
+   # The following defines a MixedIntegerLinearProgram together with a
+   # linear objective on a rational line segment embedded in two-dimensional
+   # space. Note that the maximal value is integral and not the same as the
+   # value of the objective function on any of the vertices.
+   # > $l = new Polytope(INEQUALITIES=>[[0,1,0],[3/2,-1,0],[1,0,0]],EQUATIONS=>[[0,0,1]]);
+   # > $obj = new Vector([0,1,0]);
+   # > $intvar = new Set<Int>([0,1,2]);
+   # > $milp = $l->MILP(LINEAR_OBJECTIVE=>$obj, INTEGER_VARIABLES=>$intvar);
+   # > print $milp->MAXIMAL_VALUE;
+   # | 1
+   # @example [require bundled:scip]
+   # Same as the previous example, but we do not require the first
+   # coordinate to be integral anymore.
+   # > $l = new Polytope(INEQUALITIES=>[[0,1,0],[3/2,-1,0],[1,0,0]],EQUATIONS=>[[0,0,1]]);
+   # > $obj = new Vector([0,1,0]);
+   # > $intvar = new Set<Int>([0,2]);
+   # > $milp = $l->MILP(LINEAR_OBJECTIVE=>$obj, INTEGER_VARIABLES=>$intvar);
+   # > print $milp->MAXIMAL_VALUE;
+   # | 3/2
+   property MAXIMAL_VALUE : Scalar;
+   
+   # Coordinates of a (possibly not unique) affine vertex at which the maximum
+   # of the objective function is attained.
+   # @example [require bundled:scip]
+   # The following defines a MixedIntegerLinearProgram together with a
+   # linear objective for the centered square with side length 2 and asks for a
+   # maximal solution:
+   # > $c = new Vector([0, 1, -1/2]);
+   # > $p = cube(2);
+   # > $p->MILP(LINEAR_OBJECTIVE=>$c);
+   # > print $p->MILP->MAXIMAL_SOLUTION;
+   # | 1 1 -1
+   # @example [require bundled:scip]
+   # The following defines a MixedIntegerLinearProgram together with a
+   # linear objective on a rational line segment embedded in two-dimensional
+   # space. Note that the maximal solution is not a vertex/endpoint of the line
+   # segment.
+   # > $l = new Polytope(INEQUALITIES=>[[0,1,0],[3/2,-1,0],[1,0,0]],EQUATIONS=>[[0,0,1]]);
+   # > $obj = new Vector([0,1,0]);
+   # > $intvar = new Set<Int>([0,1,2]);
+   # > $milp = $l->MILP(LINEAR_OBJECTIVE=>$obj, INTEGER_VARIABLES=>$intvar);
+   # > print $milp->MAXIMAL_SOLUTION;
+   # | 1 1 0
+   # @example [require bundled:scip]
+   # Same as the previous example, but we do not require the first
+   # coordinate to be integral anymore. Now the maximal solution is an endpoint
+   # of the line segment.
+   # > $l = new Polytope(INEQUALITIES=>[[0,1,0],[3/2,-1,0],[1,0,0]],EQUATIONS=>[[0,0,1]]);
+   # > $obj = new Vector([0,1,0]);
+   # > $intvar = new Set<Int>([0,2]);
+   # > $milp = $l->MILP(LINEAR_OBJECTIVE=>$obj, INTEGER_VARIABLES=>$intvar);
+   # > print $milp->MAXIMAL_SOLUTION;
+   # | 1 3/2 0
+   property MAXIMAL_SOLUTION : Vector<Scalar>;
+
+   # Set of integers that indicate which entries of the solution should be
+   # integral. If no value is specified, all entries are required to be
+   # integral. If all entries should be rational, please use an
+   # [[LinearProgram]] instead.
+   # @example [require bundled:scip]
+   # The following defines a MixedIntegerLinearProgram together with a
+   # linear objective on a rational line segment embedded in two-dimensional
+   # space. 
+   # > $l = new Polytope(INEQUALITIES=>[[0,1,0],[3/2,-1,0],[1,0,0]],EQUATIONS=>[[0,0,1]]);
+   # > $obj = new Vector([0,1,0]);
+   # > $intvar = new Set<Int>([0,1,2]);
+   # > $milp = $l->MILP(LINEAR_OBJECTIVE=>$obj, INTEGER_VARIABLES=>$intvar);
+   # > print $milp->INTEGER_VARIABLES;
+   # | {0 1 2}
+   # @example [require bundled:scip]
+   # Same as the previous example, but we do not require the first
+   # coordinate to be integral anymore.
+   # > $l = new Polytope(INEQUALITIES=>[[0,1,0],[3/2,-1,0],[1,0,0]],EQUATIONS=>[[0,0,1]]);
+   # > $obj = new Vector([0,1,0]);
+   # > $intvar = new Set<Int>([0,2]);
+   # > $milp = $l->MILP(LINEAR_OBJECTIVE=>$obj, INTEGER_VARIABLES=>$intvar);
+   # > print $milp->INTEGER_VARIABLES;
+   # | {0 2}
+   property INTEGER_VARIABLES : Set<Int>;
+
+}
+
+
+object Polytope {
+   
+   # @category Optimization
+   # Mixed integer linear program applied to the polytope
+   property MILP : MixedIntegerLinearProgram<Scalar> : multiple;
+
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

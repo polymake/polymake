@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "cutting_functions.cc",
+ "inst": [
+  {"args": ["Max", "void", "perl::Canned<const Vector<Integer>&>"], "func": "cutting_functions", "include": ["polymake/Integer.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "cutting_functions:T1.B.X", "tp": "1"},
+  {"args": ["Min", "void", "perl::Canned<const Vector<Integer>&>"], "func": "cutting_functions", "include": ["polymake/Integer.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "cutting_functions:T1.B.X", "tp": "1"},
+ null ],
+"version": 3}

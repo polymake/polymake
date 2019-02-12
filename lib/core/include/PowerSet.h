@@ -29,33 +29,35 @@ namespace pm {
 template <typename ContainerRef>
 class Subsets_of_1
    : public modified_container_impl< Subsets_of_1<ContainerRef>,
-                                     mlist< ContainerTag< ContainerRef >,
+                                     mlist< ContainerRefTag< ContainerRef >,
                                             OperationTag< operations::construct_unary2<
                                                              SingleElementSetCmp,
                                                              typename generic_of_subsets< Subsets_of_1<ContainerRef>,
                                                                                           typename deref<ContainerRef>::type >::subset_element_comparator
-                                                                       > > > >,
-     public generic_of_subsets< Subsets_of_1<ContainerRef>, typename deref<ContainerRef>::type > {
-   typedef modified_container_impl<Subsets_of_1> impl_t;
+                                                                       > > > >
+   , public generic_of_subsets< Subsets_of_1<ContainerRef>, typename deref<ContainerRef>::type > {
 protected:
-   typedef alias<typename attrib<ContainerRef>::plus_const> alias_type;
-   typedef typename alias_type::arg_type arg_type;
-   alias_type base;
+   using alias_t = alias<add_const_t<ContainerRef>>;
+   alias_t base;
 public:
-   Subsets_of_1(arg_type base_arg) : base(base_arg) {}
+   template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
+   explicit Subsets_of_1(Arg&& base_arg)
+      : base(std::forward<Arg>(base_arg)) {}
 
-   const typename impl_t::container& get_container() const { return *base; }
+   decltype(auto) get_container() const { return *base; }
 };
 
 template <typename ContainerRef>
 struct spec_object_traits< Subsets_of_1<ContainerRef> >
   : spec_object_traits<is_container> {
-  static const bool is_temporary=true, is_always_const=true;
+  static constexpr bool is_temporary = true, is_always_const = true;
 };
 
-template <typename Container> inline
-const Subsets_of_1<const Container&>
-all_subsets_of_1(const Container& c) { return c; }
+template <typename Container>
+auto all_subsets_of_1(Container&& c)
+{
+   return Subsets_of_1<add_const_t<Container>>(std::forward<Container>(c));
+}
 
 template <typename SkipIterator,
           bool is_std_rev=is_derived_from_instance_of<SkipIterator, std::reverse_iterator>::value>
@@ -93,42 +95,47 @@ private:
    BaseIterator skip_base;
 };
 
-template <typename ContainerRef, typename SkipIterator> class Subsets_less_1_iterator;
+template <typename Container> class Subsets_less_1_iterator;
 
-template <typename ContainerRef, typename SkipIterator,
-          typename Category=typename least_derived_class<typename container_traits<ContainerRef>::category, bidirectional_iterator_tag>::type>
+template <typename Container, bool is_bidir=is_derived_from<typename container_traits<Container>::category, bidirectional_iterator_tag>::value>
 class Subset_less_1
-   : public generic_of_subset< Subset_less_1<ContainerRef,SkipIterator>, typename deref<ContainerRef>::type> {
-   friend class Subsets_less_1_iterator<ContainerRef, SkipIterator>;
+   : public generic_of_subset<Subset_less_1<Container, is_derived_from<typename container_traits<Container>::category, bidirectional_iterator_tag>::value>, Container> {
+   friend class Subsets_less_1_iterator<Container>;
 protected:
-   typedef alias<typename attrib<ContainerRef>::plus_const> alias_type;
-   alias_type base;
-   SkipIterator skip;
+   using skip_iterator_features = mlist<reversed, end_sensitive>;
+   using skip_iterator = typename ensure_features<Container, skip_iterator_features>::const_iterator;
+
+   const Container* base;
+   skip_iterator skip;
 
 public:
-   typedef typename deref<ContainerRef>::type::value_type value_type;
-   typedef typename container_traits<ContainerRef>::const_reference const_reference;
-   typedef const_reference reference;
+   using value_type = typename container_traits<Container>::value_type;
+   using const_reference = typename container_traits<Container>::const_reference;
+   using reference = const_reference;
 
-   Subset_less_1(const alias_type& base_arg, const SkipIterator& skip_arg)
-      : base(base_arg), skip(skip_arg) {}
+   Subset_less_1()
+      : base(nullptr) {}
 
-   typedef unary_predicate_selector<typename ensure_features<typename deref<ContainerRef>::type, end_sensitive>::const_iterator,
-                                    skip_predicate<SkipIterator> >
-      const_iterator;
-   typedef const_iterator iterator;
+   Subset_less_1(const Container& base_arg, bool at_begin)
+      : base(&base_arg)
+      , skip(at_begin ? ensure(base_arg, skip_iterator_features()).begin()
+                      : ensure(base_arg, skip_iterator_features()).end()) {}
+
+   using const_iterator = unary_predicate_selector<typename ensure_features<Container, end_sensitive>::const_iterator,
+                                                   skip_predicate<skip_iterator> >;
+   using iterator = const_iterator;
 
    iterator begin() const
    {
-      return iterator(ensure(*base, (end_sensitive*)0).begin(), skip);
+      return iterator(ensure(*base, end_sensitive()).begin(), skip);
    }
    iterator end() const
    {
-      return iterator(ensure(*base, (end_sensitive*)0).end(), skip);
+      return iterator(ensure(*base, end_sensitive()).end(), skip);
    }
    reference front() const
    {
-      typename container_traits<ContainerRef>::const_iterator b=base->begin();
+      auto b=base->begin();
       if (b==skip) ++b;
       return *b;
    }
@@ -136,46 +143,46 @@ public:
    int size() const { return base->size()-1; }
    bool empty() const { return base->empty() || base->size()<=1; }
 
-   typename iterator_traits<SkipIterator>::reference skipped_element() const { return *skip; }
+   decltype(auto) skipped_element() const { return *skip; }
 };
 
-template <typename ContainerRef, typename SkipIterator>
-class Subset_less_1<ContainerRef, SkipIterator, bidirectional_iterator_tag>
-   : public Subset_less_1<ContainerRef, SkipIterator, forward_iterator_tag> {
-   typedef Subset_less_1<ContainerRef, SkipIterator, forward_iterator_tag> base_t;
-   friend class Subsets_less_1_iterator<ContainerRef, SkipIterator>;
+template <typename Container>
+class Subset_less_1<Container, true>
+   : public Subset_less_1<Container, false> {
+   friend class Subsets_less_1_iterator<Container>;
+   using base_t = Subset_less_1<Container, false>;
 public:
-   Subset_less_1(const typename base_t::alias_type& base_arg, const SkipIterator& skip_arg)
-      : base_t(base_arg, skip_arg) {}
+   using Subset_less_1<Container, false>::Subset_less_1;
 
-   typedef unary_predicate_selector<typename ensure_features<typename deref<ContainerRef>::type, end_sensitive>::const_reverse_iterator,
-                                    skip_predicate<SkipIterator> >
-      const_reverse_iterator;
-   typedef const_reverse_iterator reverse_iterator;
+   using const_reverse_iterator = unary_predicate_selector<typename ensure_features<Container, end_sensitive>::const_reverse_iterator,
+                                                           skip_predicate<typename base_t::skip_iterator> >;
+   using reverse_iterator = const_reverse_iterator;
 
    reverse_iterator rbegin() const
    {
-      return reverse_iterator(ensure(*this->base, (end_sensitive*)0).rbegin(), this->skip);
+      return reverse_iterator(ensure(*this->base, end_sensitive()).rbegin(), this->skip);
    }
    reverse_iterator rend() const
    {
-      return reverse_iterator(ensure(*this->base, (end_sensitive*)0).rend(), this->skip);
+      return reverse_iterator(ensure(*this->base, end_sensitive()).rend(), this->skip);
    }
 };
 
-template <typename ContainerRef, typename SkipIterator>
+template <typename Container>
 class Subsets_less_1_iterator {
 public:
-   typedef forward_iterator_tag iterator_category;
-   typedef Subset_less_1<ContainerRef, SkipIterator> value_type;
-   typedef const value_type& reference;
-   typedef const value_type* pointer;
-   typedef ptrdiff_t difference_type;
-   typedef Subsets_less_1_iterator iterator;
-   typedef Subsets_less_1_iterator const_iterator;
+   using iterator_category = forward_iterator_tag;
+   using value_type = Subset_less_1<Container>;
+   using reference = const value_type&;
+   using pointer = const value_type*;
+   using difference_type = ptrdiff_t;
+   using iterator = Subsets_less_1_iterator;
+   using const_iterator = Subsets_less_1_iterator;
 
-   Subsets_less_1_iterator(const typename value_type::alias_type& base_arg, const SkipIterator& skip_arg)
-      : value(base_arg, skip_arg) {}
+   Subsets_less_1_iterator() = default;
+
+   Subsets_less_1_iterator(const Container& c, bool at_begin)
+      : value(c, at_begin) {}
 
    reference operator* () const { return value; }
    pointer operator-> () const { return &value; }
@@ -195,46 +202,46 @@ template <typename ContainerRef>
 class Subsets_less_1
    : public generic_of_subsets<Subsets_less_1<ContainerRef>, typename deref<ContainerRef>::type> {
 protected:
-   typedef alias<typename attrib<ContainerRef>::plus_const> alias_type;
-   typedef typename alias_type::arg_type arg_type;
-   alias_type base;
-
-   typedef cons<_reversed, end_sensitive> req_features;
-   typedef typename ensure_features<typename deref<ContainerRef>::type, req_features>::const_iterator skip_iterator;
+   using alias_t = alias<add_const_t<ContainerRef>>;
+   alias_t base;
 public:
-   typedef Subsets_less_1_iterator<ContainerRef,skip_iterator> iterator;
-   typedef typename iterator::value_type value_type;
-   typedef typename iterator::reference reference;
-   typedef iterator const_iterator;
-   typedef reference const_reference;
+   using iterator = Subsets_less_1_iterator<typename deref<ContainerRef>::type>;
+   using value_type = typename iterator::value_type;
+   using reference = typename iterator::reference;
+   using const_iterator = iterator;
+   using const_reference = reference;
 
-   Subsets_less_1(arg_type base_arg) : base(base_arg) {}
+   template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
+   explicit Subsets_less_1(Arg&& base_arg)
+      : base(std::forward<Arg>(base_arg)) {}
 
    int size() const { return base->size(); }
    bool empty() const { return base->empty(); }
 
    iterator begin() const
    {
-      return iterator(base, ensure(*base, (req_features*)0).begin());
+      return iterator(*base, true);
    }
    iterator end() const
    {
-      return iterator(base, ensure(*base, (req_features*)0).end());
+      return iterator(*base, false);
    }
 };
 
-template <typename ContainerRef, typename SkipIterator>
-struct check_iterator_feature<Subsets_less_1_iterator<ContainerRef, SkipIterator>, end_sensitive> : std::true_type {};
+template <typename Container>
+struct check_iterator_feature<Subsets_less_1_iterator<Container>, end_sensitive> : std::true_type {};
 
 template <typename ContainerRef>
 struct spec_object_traits< Subsets_less_1<ContainerRef> >
   : spec_object_traits<is_container> {
-  static const bool is_temporary=true, is_always_const=true;
+  static constexpr bool is_temporary = true, is_always_const = true;
 };
 
-template <typename Container> inline
-const Subsets_less_1<const Container&>
-all_subsets_less_1(const Container& c) { return c; }
+template <typename Container>
+auto all_subsets_less_1(Container&& c)
+{
+   return Subsets_less_1<add_const_t<Container>>(std::forward<Container>(c));
+}
 
 template <typename ContainerRef> class Subsets_of_k_iterator;
 template <typename ContainerRef> class AllSubsets_iterator;
@@ -250,96 +257,103 @@ class PointedSubset
    template <typename> friend class Subsets_of_k_iterator;
    template <typename> friend class AllSubsets_iterator;
 protected:
-   typedef typename container_traits<BaseContainer>::const_iterator elem_iterator;
-   typedef typename base_t::container it_vector;
-   shared_object<typename base_t::container> ptr;
+   using elem_iterator = typename container_traits<BaseContainer>::const_iterator;
+   using it_vector = std::vector<elem_iterator>;
+   it_vector its;
 public:
-   const it_vector& get_container() const { return *ptr; }
+   const it_vector& get_container() const { return its; }
 
-   PointedSubset() {}
+   PointedSubset() = default;
 
    explicit PointedSubset(int k)
    {
-      ptr->reserve(k);
+      its.reserve(k);
    }
 
-   PointedSubset(const BaseContainer& src, int k)
-      : ptr(k)
+   PointedSubset(const BaseContainer& base, int k)
    {
-      elem_iterator e=src.begin();
-      for (auto pp=entire(*ptr);  !pp.at_end(); ++e, ++pp)
-         *pp=e;
+      its.reserve(k);
+      for (elem_iterator e=base.begin();  k>0;  --k, ++e)
+         its.push_back(e);
    }
+
+   decltype(auto) get_comparator() const { return operations::cmp(); }
 };
 
-template <typename ContainerRef>
+template <typename Container>
 class Subsets_of_k_iterator {
 public:
-   typedef forward_iterator_tag iterator_category;
-   typedef PointedSubset<typename deref<ContainerRef>::type> value_type;
-   typedef const value_type& reference;
-   typedef const value_type* pointer;
-   typedef ptrdiff_t difference_type;
-   typedef Subsets_of_k_iterator iterator;
-   typedef Subsets_of_k_iterator const_iterator;
+   using iterator_category = forward_iterator_tag;
+   using value_type = PointedSubset<Container>;
+   using reference = const value_type&;
+   using pointer = const value_type*;
+   using difference_type = ptrdiff_t;
+   using iterator = Subsets_of_k_iterator;
+   using const_iterator = Subsets_of_k_iterator;
+   using elem_iterator = typename value_type::elem_iterator;
 
-   typedef alias<typename attrib<ContainerRef>::plus_const> alias_type;
+   Subsets_of_k_iterator()
+      : at_end_(true) {}
 
-   Subsets_of_k_iterator() {}
+   Subsets_of_k_iterator(const Container& base, int k)
+      : value(base, k)
+      , e_end(base.end())
+      , at_end_(false) {}
 
-   Subsets_of_k_iterator(const alias_type& base_arg, int k, bool at_end_arg=false)
-      : base(base_arg), value(*base,k), e_end(base->end()), _at_end(at_end_arg) {}
+   Subsets_of_k_iterator(const Subsets_of_k_iterator&) = default;
+   Subsets_of_k_iterator(Subsets_of_k_iterator&&) = default;
 
    reference operator* () const { return value; }
    pointer operator-> () const { return &value; }
 
    iterator& operator++()
    {
-      typename value_type::elem_iterator stop=e_end;
-      for (auto ptr_first=value.ptr->begin(), ptr_last=value.ptr->end(), ptr_i=ptr_last;
-           ptr_i != ptr_first; --ptr_i) {
-         typename value_type::elem_iterator new_stop=(ptr_i[-1])++;
-         if (ptr_i[-1] != stop) {
-            for (; ptr_i != ptr_last; ++ptr_i)
-               ++(*ptr_i=ptr_i[-1]);
+      elem_iterator stop=e_end;
+      for (auto it_first=value.its.begin(), it_last=value.its.end(), it_i=it_last;
+           it_i != it_first; --it_i) {
+         elem_iterator new_stop=(it_i[-1])++;
+         if (it_i[-1] != stop) {
+            for (; it_i != it_last; ++it_i)
+               ++(*it_i=it_i[-1]);
             return *this;
          }
          stop=new_stop;
       }
-      _at_end=true;
+      at_end_=true;
       return *this;
    }
 
    const iterator operator++ (int) { iterator copy=*this; operator++(); return copy; }
 
-   bool operator== (const iterator& it) const
+   bool operator== (const iterator& other) const
    {
-      return _at_end==it._at_end && (_at_end || *value.ptr==*it.value.ptr);
+      return at_end_==other.at_end_ && (at_end_ || value.its==other.value.its);
    }
-   bool operator!= (const iterator& it) const { return !operator==(it); }
+   bool operator!= (const iterator& other) const { return !operator==(other); }
 
-   bool at_end() const { return _at_end; }
+   bool at_end() const { return at_end_; }
 protected:
-   alias_type base;
    value_type value;
-   typename value_type::elem_iterator e_end;
-   bool _at_end;
+   elem_iterator e_end;
+   bool at_end_;
 };
 
 template <typename ContainerRef>
 class Subsets_of_k
    : public generic_of_subsets< Subsets_of_k<ContainerRef>, typename deref<ContainerRef>::type> {
 public:
-   typedef Subsets_of_k_iterator<ContainerRef> iterator;
-   typedef typename iterator::value_type value_type;
-   typedef typename iterator::reference reference;
-   typedef iterator const_iterator;
-   typedef reference const_reference;
+   using iterator = Subsets_of_k_iterator<typename deref<ContainerRef>::type>;
+   using value_type = typename iterator::value_type;
+   using reference = typename iterator::reference;
+   using const_iterator = iterator;
+   using const_reference = reference;
 
-   typedef typename iterator::alias_type alias_type;
+   using alias_t = alias<add_const_t<ContainerRef>>;
 
-   Subsets_of_k(typename alias_type::arg_type base_arg, int k_arg)
-      : base(base_arg), k(k_arg)
+   template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
+   Subsets_of_k(Arg&& base_arg, int k_arg)
+      : base(std::forward<Arg>(base_arg))
+      , k(k_arg)
    {
       if (POLYMAKE_DEBUG) {
          if (k<0 || k>base->size())
@@ -359,35 +373,36 @@ public:
 
    bool empty() const { return false; }
 
-   iterator begin() const { return iterator(base, k); }
-   iterator end() const { return iterator(base, k, true); }
-   value_type front() const { return value_type(base, k); }
+   iterator begin() const { return iterator(*base, k); }
+   iterator end() const { return iterator(); }
+   value_type front() const { return value_type(*base, k); }
 protected:
-   alias_type base;
+   alias_t base;
    int k;
 };
 
-template <typename ContainerRef>
+template <typename Container>
 class AllSubsets_iterator {
 public:
-   typedef forward_iterator_tag iterator_category;
-   typedef PointedSubset<typename deref<ContainerRef>::type> value_type;
-   typedef const value_type& reference;
-   typedef const value_type* pointer;
-   typedef ptrdiff_t difference_type;
-   typedef AllSubsets_iterator iterator;
-   typedef AllSubsets_iterator const_iterator;
+   using iterator_category = forward_iterator_tag;
+   using value_type = PointedSubset<Container>;
+   using reference = const value_type&;
+   using pointer = const value_type*;
+   using difference_type = ptrdiff_t;
+   using iterator = AllSubsets_iterator;
+   using const_iterator = AllSubsets_iterator;
 
-   typedef alias<typename attrib<ContainerRef>::plus_const> alias_type;
+   AllSubsets_iterator()
+      : at_end_(true) {}
 
-   AllSubsets_iterator() {}
+   AllSubsets_iterator(const Container& base)
+      : value(base.size())
+      , e_next(base.begin())
+      , e_end(base.end())
+      , at_end_(false) {}
 
-   AllSubsets_iterator(const alias_type& base_arg, bool at_end_arg=false)
-      : base(base_arg),
-        value(base->size()),
-        e_next(base->begin()),
-        e_end(base->end()),
-        _at_end(at_end_arg) {}
+   AllSubsets_iterator(const AllSubsets_iterator&) = default;
+   AllSubsets_iterator(AllSubsets_iterator&&) = default;
 
    reference operator* () const { return value; }
    pointer operator-> () const { return &value; }
@@ -395,15 +410,15 @@ public:
    iterator& operator++()
    {
       if (e_next != e_end) {
-         value.ptr->push_back(e_next);
+         value.its.push_back(e_next);
          ++e_next;
       } else {
-         if (!value.ptr->empty())       // special precaution for the case of an empty base set
-            value.ptr->pop_back();
-         if (value.ptr->empty()) {
-            _at_end=true;
+         if (!value.its.empty())
+            value.its.pop_back();
+         if (value.its.empty()) {
+            at_end_=true;
          } else {
-            e_next=++value.ptr->back();
+            e_next=++value.its.back();
             ++e_next;
          }
       }
@@ -412,83 +427,81 @@ public:
 
    const iterator operator++ (int) { iterator copy=*this; operator++(); return copy; }
 
-   bool operator== (const iterator& it) const
+   bool operator== (const iterator& other) const
    {
-      return _at_end==it._at_end && (_at_end || *value.ptr==*it.value.ptr);
+      return at_end_==other.at_end_ && (at_end_ || value.its==other.value.its);
    }
-   bool operator!= (const iterator& it) const { return !operator==(it); }
+   bool operator!= (const iterator& other) const { return !operator==(other); }
 
-   bool at_end() const { return _at_end; }
+   bool at_end() const { return at_end_; }
 protected:
-   alias_type base;
    value_type value;
    typename value_type::elem_iterator e_next, e_end;
-   bool _at_end;
+   bool at_end_;
 };
 
 template <typename ContainerRef>
 class AllSubsets
    : public generic_of_subsets< AllSubsets<ContainerRef>, typename deref<ContainerRef>::type> {
 public:
-   typedef AllSubsets_iterator<ContainerRef> iterator;
-   typedef typename iterator::value_type value_type;
-   typedef typename iterator::reference reference;
-   typedef iterator const_iterator;
-   typedef reference const_reference;
+   using iterator = AllSubsets_iterator<typename deref<ContainerRef>::type>;
+   using value_type = typename iterator::value_type;
+   using reference = typename iterator::reference;
+   using const_iterator = iterator;
+   using const_reference = reference;
 
-   typedef typename iterator::alias_type alias_type;
+   using alias_t = alias<add_const_t<ContainerRef>>;
 
-   AllSubsets(typename alias_type::arg_type base_arg)
-      : base(base_arg) {}
+   template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
+   explicit AllSubsets(Arg&& base_arg)
+      : base(std::forward<Arg>(base_arg)) {}
 
    int size() const { return 1 << base->size(); }
    bool empty() const { return false; }
 
-   iterator begin() const { return iterator(base); }
-   iterator end() const { return iterator(base, true); }
+   iterator begin() const { return iterator(*base); }
+   iterator end() const { return iterator(); }
    value_type front() const { return value_type(); }
 protected:
-   alias_type base;
+   alias_t base;
 };
 
-template <typename ContainerRef>
-struct check_iterator_feature<Subsets_of_k_iterator<ContainerRef>, end_sensitive> : std::true_type {};
+template <typename Container>
+struct check_iterator_feature<Subsets_of_k_iterator<Container>, end_sensitive> : std::true_type {};
 
-template <typename ContainerRef>
-struct check_iterator_feature<AllSubsets_iterator<ContainerRef>, end_sensitive> : std::true_type {};
+template <typename Container>
+struct check_iterator_feature<AllSubsets_iterator<Container>, end_sensitive> : std::true_type {};
 
 template <typename ContainerRef>
 struct spec_object_traits< Subsets_of_k<ContainerRef> >
   : spec_object_traits<is_container> {
-  static const bool is_temporary=true, is_always_const=true;
+  static constexpr bool is_temporary = true, is_always_const = true;
 };
 
 template <typename ContainerRef>
 struct spec_object_traits< AllSubsets<ContainerRef> >
   : spec_object_traits<is_container> {
-  static const bool is_temporary=true, is_always_const=true;
+  static constexpr bool is_temporary = true, is_always_const = true;
 };
 
-template <typename Container> inline
-const Subsets_of_k<const Container&>
-all_subsets_of_k(const Container& c, int k)
+template <typename Container>
+auto all_subsets_of_k(Container&& c, int k)
 {
-   return Subsets_of_k<const Container&>(c,k);
+   return Subsets_of_k<add_const_t<Container>>(std::forward<Container>(c), k);
 }
 
-template <typename Container> inline
-const AllSubsets<const Container&>
-all_subsets(const Container& c)
+template <typename Container>
+auto all_subsets(Container&& c)
 {
-   return AllSubsets<const Container&>(c);
+   return AllSubsets<add_const_t<Container>>(std::forward<Container>(c));
 }
 
 template <typename PowerSet, typename ElementSet>
-int insertMax(PowerSet& power_set, const GenericSet<ElementSet>& _element_set)
+int insertMax(PowerSet& power_set, const GenericSet<ElementSet>& element_set_arg)
 {
-   typename Diligent<const ElementSet&>::type element_set=diligent(_element_set);
+   const auto& element_set=diligent(element_set_arg);
    if (element_set.empty()) return -1;
-   for (typename Entire<PowerSet>::iterator e=entire(power_set); !e.at_end(); ) {
+   for (auto e=entire(power_set); !e.at_end(); ) {
       int inc=incl(element_set,*e);
       // found a subset containing or equal to set
       if (inc<=0) return inc;
@@ -501,11 +514,11 @@ int insertMax(PowerSet& power_set, const GenericSet<ElementSet>& _element_set)
 }
 
 template <typename PowerSet, typename ElementSet>
-int insertMin(PowerSet& power_set, const GenericSet<ElementSet>& _element_set)
+int insertMin(PowerSet& power_set, const GenericSet<ElementSet>& element_set_arg)
 {
-   typename Diligent<const ElementSet&>::type element_set=diligent(_element_set);
+   const auto& element_set=diligent(element_set_arg);
    if (element_set.empty()) return -1;
-   for (typename Entire<PowerSet>::iterator e=entire(power_set); !e.at_end(); ) {
+   for (auto e=entire(power_set); !e.at_end(); ) {
       int inc=incl(*e,element_set);
       // found a subset containing or equal to set
       if (inc<=0) return inc;
@@ -622,7 +635,7 @@ template <typename E, typename Comparator, typename Permutation> inline
 PowerSet<E,Comparator> permuted(const PowerSet<E,Comparator>& s, const Permutation& perm)
 {
    PowerSet<E,Comparator> result;
-   for (typename Entire< PowerSet<E,Comparator> >::const_iterator it=entire(s);  !it.at_end();  ++it)
+   for (auto it=entire(s);  !it.at_end();  ++it)
       result += permuted(*it,perm);
    return result;
 }
@@ -631,7 +644,7 @@ template <typename E, typename Comparator, typename Permutation> inline
 PowerSet<E,Comparator> permuted_inv(const PowerSet<E,Comparator>& s, const Permutation& perm)
 {
    PowerSet<E,Comparator> result;
-   for (typename Entire< PowerSet<E,Comparator> >::const_iterator it=entire(s);  !it.at_end();  ++it)
+   for (auto it=entire(s);  !it.at_end();  ++it)
       result += permuted_inv(*it,perm);
    return result;
 }

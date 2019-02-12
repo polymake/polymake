@@ -47,8 +47,8 @@ void rel_int_point(perl::Object p)
 
       
    if (unbounded) {
-      const Vector<Coord> VEC1=-v0.slice(1)+ones_vector<Coord>(n);
-      const Vector<Coord> VEC2=v0.slice(1)+ones_vector<Coord>(n);
+      const Vector<Coord> VEC1 = -v0.slice(range_from(1)) + ones_vector<Coord>(n);
+      const Vector<Coord> VEC2 = v0.slice(range_from(1)) + ones_vector<Coord>(n);
       F/=(VEC1|unit_matrix<Coord>(n))/(VEC2|-unit_matrix<Coord>(n));
    }
   
@@ -98,22 +98,22 @@ void rel_int_point(perl::Object p)
          equats/=(-min|ort.row(i));
       //else we get a new vertex
       else {
-         const Vector<Coord> M=p_new.give("LP.MINIMAL_VERTEX");
-         const Matrix<Coord> Mat=verts/(M-v0).slice(1);
+         const Vector<Coord> M = p_new.give("LP.MINIMAL_VERTEX");
+         const Matrix<Coord> Mat = verts / (M-v0).slice(range_from(1));
          if (rank(Mat)==n_verts+1)
-            verts/=(M-v0).slice(1);
+            verts /= (M-v0).slice(range_from(1));
          else {
             const Vector<Coord> M2=p_new.give("LP.MAXIMAL_VERTEX");
-            verts/=(M2-v0).slice(1);
+            verts /= (M2-v0).slice(range_from(1));
          }
       }
    }
 
-   p.take("CONE_DIM")<<verts.rows()+1;
+   p.take("CONE_DIM") << verts.rows()+1;
    p.take("REL_INT_POINT") << (v0+(0|average(rows(verts/zero_vector<Coord>(n)))));
 }
 
-FunctionTemplate4perl("rel_int_point<Coords>(Polytope<Coords>) : void");
+FunctionTemplate4perl("rel_int_point<Coords>(Polytope<Coords>)");
 } }
 
 // Local Variables:

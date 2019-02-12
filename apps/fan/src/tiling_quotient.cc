@@ -23,7 +23,6 @@
 #include "polymake/linalg.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/FacetList.h"
-#include "polymake/polytope/minkowski_sum_fukuda.h"
 
 namespace polymake { namespace fan {
 
@@ -39,8 +38,8 @@ Matrix<E> express_in_basis(const Matrix<E>& A, const Matrix<E>& B)
          throw std::runtime_error("solve_system - incompatible matrix");
    }
    Matrix<E> res(B.rows(), A.rows());
-   typename Entire<Rows<Matrix<E> > >::iterator rit = entire(rows(res));
-   for (typename Entire<Rows<Matrix<E> > >::const_iterator bit = entire(rows(B)); !bit.at_end(); ++bit, ++rit) 
+   auto rit = entire(rows(res));
+   for (auto bit = entire(rows(B)); !bit.at_end(); ++bit, ++rit) 
       *rit = lin_solve(T(A), *bit);
    return res;
 }
@@ -74,13 +73,15 @@ perl::Object tiling_quotient(perl::Object P, perl::Object Q)
    VQL -= repeat_row(barycenter, VQL.rows());
 
    // Take the Minkowski sum of the transformed P and Q 
-   Array<perl::Object> summands(perl::ObjectType::construct<E>("Polytope"), 2);
-   summands[0].take("VERTICES") << (ones_vector<E>() | VPL);
-   summands[1].take("VERTICES") << (ones_vector<E>() | VQL);
-   const Matrix<E> MV = polytope::minkowski_sum_vertices_fukuda<E>(summands);
+   perl::ObjectType Polytope("Polytope", mlist<E>());
+   perl::Object summand1(Polytope);
+   perl::Object summand2(Polytope);
+   summand1.take("VERTICES") << (ones_vector<E>() | VPL);
+   summand2.take("VERTICES") << (ones_vector<E>() | VQL);
+   const Matrix<E> MV = call_function("polytope::minkowski_sum_vertices_fukuda", mlist<E>(), summand1, summand2);
 
    // Find the interior and boundary lattice points of the Minkowski sum
-   perl::Object M(perl::ObjectType::construct<E>("Polytope"));
+   perl::Object M("Polytope", mlist<E>());
    M.take("VERTICES") << MV;
    const Matrix<E> 
       ILP = M.give("INTERIOR_LATTICE_POINTS"),
@@ -91,8 +92,8 @@ perl::Object tiling_quotient(perl::Object P, perl::Object Q)
    // get the facets of the transformed polytopes.
    // of course, we could calculate these directly...
    const Matrix<E> 
-      FP = summands[0].give("FACETS"),
-      FQ = summands[1].give("FACETS");
+      FP = summand1.give("FACETS"),
+      FQ = summand2.give("FACETS");
 
    Map<Vector<E>, int> index_of;
    int n(0);
@@ -107,13 +108,13 @@ perl::Object tiling_quotient(perl::Object P, perl::Object Q)
    // - intersect the translate with P 
    // - if the intersection is full-dimensional, store it
    ListMatrix<Vector<E> > coos(0, d+1);
-   for (typename Entire<Rows<Matrix<E> > >::const_iterator lit = entire(rows(LPm)); !lit.at_end(); ++lit) {
+   for (auto lit = entire(rows(LPm)); !lit.at_end(); ++lit) {
       // translate Q by *lit 
       Matrix<E> translated_facets(FQ);
-      translated_facets.col(0) -= FQ.minor(All, ~scalar2set(0)) * (*lit);
+      translated_facets.col(0) -= FQ.minor(All, range_from(1)) * (*lit);
 
       // intersect the translated polytope with P
-      perl::Object Cell(perl::ObjectType::construct<E>("Polytope"));
+      perl::Object Cell("Polytope", mlist<E>());
       Cell.take("INEQUALITIES") << (translated_facets / FP);
 
       // only proceed with full-dimensional faces
@@ -124,7 +125,7 @@ perl::Object tiling_quotient(perl::Object P, perl::Object Q)
 
       // translate back, simultaneously store vertices and cell information
       Set<int> vif;
-      for (typename Entire<Rows<Matrix<E> > >::const_iterator rit = entire(rows(translated_vertices)); !rit.at_end(); ++rit) {
+      for (auto rit = entire(rows(translated_vertices)); !rit.at_end(); ++rit) {
          // translate back from the lattice point and undo the translation of the barycenter 
          const Vector<E> v (dehomogenize(*rit) - *lit + barycenter);
          const Vector<E> inhv = 1 | (v * L);   // ... and undo the linear transform
@@ -138,7 +139,7 @@ perl::Object tiling_quotient(perl::Object P, perl::Object Q)
    }
 
    // done
-   perl::Object PS(perl::ObjectType::construct<E>("PolyhedralComplex"));
+   perl::Object PS("PolyhedralComplex", mlist<E>());
    PS.take("VERTICES") << coos;
    PS.take("MAXIMAL_POLYTOPES") << F;
    return PS;

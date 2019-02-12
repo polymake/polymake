@@ -100,7 +100,7 @@ public:
              typename=typename std::enable_if<isomorphic_to_container_of<mlist<Containers...>, E, allow_conversion>::value>::type>
    explicit Array(const Containers&... src)
       : data(total_size(src...),
-             make_converting_iterator<E>(ensure(src, (typename std::conditional<sizeof...(Containers)==1, dense, cons<dense, end_sensitive>>::type*)0).begin())...) {}
+             make_converting_iterator<E>(ensure(src, std::conditional_t<sizeof...(Containers)==1, dense, mlist<dense, end_sensitive>>()).begin())...) {}
 
    /// number of elements
    int size() const { return data.size(); }
@@ -145,7 +145,7 @@ public:
    template <typename Container, typename=typename std::enable_if<isomorphic_to_container_of<Container, E, allow_conversion>::value>::type>
    Array& operator= (const Container& src)
    {
-      data.assign(src.size(), make_converting_iterator<E>(ensure(src, (dense*)0).begin()));
+      data.assign(src.size(), make_converting_iterator<E>(ensure(src, dense()).begin()));
       return *this;
    }
 
@@ -164,7 +164,7 @@ public:
    Array& append(const Containers&... src)
    {
       data.append(total_size(src...),
-                  make_converting_iterator<E>(ensure(src, (typename std::conditional<sizeof...(Containers)==1, dense, cons<dense, end_sensitive>>::type*)0).begin())...);
+                  make_converting_iterator<E>(ensure(src, std::conditional_t<sizeof...(Containers)==1, dense, mlist<dense, end_sensitive>>()).begin())...);
       return *this;
    }
 

@@ -33,15 +33,16 @@ declare object CyclicQuotient : NormalToricVariety;
 
 INCLUDE
    toric_ideal.rules
+   _4ti2.rules
    toric_divisor_properties.rules
-   toric_divisor.rules
    toric_variety_properties.rules
+   toric_divisor.rules
    toric_variety.rules
    affine_toric_variety.rules
    cyclic_quotient_properties.rules
    cyclic_quotient.rules
    standard_constructions.rules
-
+   toric_divisor_classes.rules
 
 
 # Local Variables:

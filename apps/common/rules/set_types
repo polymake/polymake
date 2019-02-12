@@ -29,9 +29,19 @@
 # 	$s1 + $s2  union
 #	$s1 * $s2  intersection
 # 	$s1 - $s2  difference
-#	$s1 ^ $s2  symmetric difference 
+#	$s1 ^ $s2  symmetric difference
 # @tparam Element default: [[Int]]
-declare property_type Set<Element=Int> : c++ (include => "polymake/Set.h", operators => '@sets @compare') {
+declare property_type Set<Element=Int> : c++ (include => "polymake/Set.h") {
+
+   operator @sets @compare : c++;
+
+   operator ~ (*&& const) : c++;
+
+   # a shortcut for single element set construction, not allowed in C++
+   method construct(Element) {
+       my $proto=shift;
+       Core::CPlusPlus::std_parsing_constructor($proto, \@_);
+   }
 
    # Check if e is contained in the set.
    # @param Element e element check for
@@ -56,7 +66,7 @@ declare property_type Set<Element=Int> : c++ (include => "polymake/Set.h", opera
    # Add to the set, report true if existed formerly.
    # @param Element e element to insert into the set
    # @return Bool
-   user_method collect(*) : c++ : non_const;
+   user_method collect(&, *) : c++;
 }
 
 # @category Set Operations
@@ -83,7 +93,7 @@ user_function incl(Set,Set) : c++ (include => "polymake/Set.h");
 
 
 # @category Set Operations
-# Creates the [[Set]] {//a//, //a//+1, ..., //b//-1, //b//} for //a// &le; //b//. See also: sequence
+# Create the [[Set]] {//a//, //a//+1, ..., //b//-1, //b//} for //a// &le; //b//. See also: sequence
 # @param Int a minimal element of the set
 # @param Int b maximal element of the set
 # @return Set<Int>
@@ -98,7 +108,19 @@ user_function range(Int,Int) : c++ (include => "polymake/Set.h") {
 }
 
 # @category Set Operations
-# Creates the [[Set]] {//a//, //a//+1, ..., //a//+//c//-1}. See also: range
+# Create an index range starting at //a//, the last index is implied by the context.
+# To be used with minor, slice, and similar methods selecting a subset of elements.
+# @param Int a start index
+# @return Set<Int>
+# @example
+# > $v=new Vector<Int>(10,20,30,40);
+# > print $v->slice(range_from(2));
+# | 30 40
+
+user_function range_from(Int) : c++ (include => "polymake/Set.h");
+
+# @category Set Operations
+# Create the [[Set]] {//a//, //a//+1, ..., //a//+//c//-1}. See also: range
 # @param Int a the smallest element
 # @param Int c the cardinality
 # @return Set<Int>
@@ -124,7 +146,7 @@ user_function sequence(Int,Int) : c++ (include => "polymake/Set.h") {
 # > print $su;
 # | {23 666}
 
-user_function select_subset(*:wary:anchor,*) : c++ (name => 'select', include => "polymake/IndexedSubset.h");
+user_function select_subset(*:wary&&, *&& const) : c++ (name => 'select', include => "polymake/IndexedSubset.h");
 
 # @category Set Operations
 # Returns the singleton set {//s//}.
@@ -134,20 +156,14 @@ user_function select_subset(*:wary:anchor,*) : c++ (name => 'select', include =>
 # > print scalar2set(23);
 # | {23}
 
-user_function scalar2set(*) : c++ (name => 'pm::scalarcopy2set', include => "polymake/Set.h");
+user_function scalar2set(*&& const) : c++ (include => "polymake/Set.h");
 
 # @category Set Types
 # Container class for dense sets of integers.
 #
 # A special class optimized for representation of a constrained range of
 # non-negative integer numbers.
-declare property_type Bitset : Set<Int> : c++ (include => "polymake/Bitset.h", operators => '@sets @compare', default_constructor => 'Deserializing') {
-
-   # The cardinality of the set.
-   # @return Int
-   user_method size() : c++;
-
-}
+declare property_type Bitset : Set<Int> : c++ (include => "polymake/Bitset.h", default_constructor => 'Deserializing');
 
 # @category Set Types
 # A [[Set]] whose elements are of type Set<//Element//>.
@@ -155,16 +171,18 @@ declare property_type Bitset : Set<Int> : c++ (include => "polymake/Bitset.h", o
 declare property_type PowerSet<Element=Int> : Set<Set<Element>> : c++ (include => "polymake/PowerSet.h");
 
 # allow to write ~[0,1,2] in contexts where a Set<Int> is expected
-sub _construct_set {
+sub construct_set_from_anonlist {
    my ($arr)=@_;
-   if ($#{$arr} > 0) {
-      new Set($arr)
+   if (@$arr > 1) {
+      ~(new Set($arr));
+   } elsif ($arr->[0]==0) {
+      range_from(1);
    } else {
-      scalar2set(@{$arr});
+      ~scalar2set($arr->[0]);
    }
 }
 
-namespaces::intercept_const_creation(undef, '~', \&_construct_set);
+namespaces::intercept_operation(undef, '~', \&construct_set_from_anonlist);
 
 ##################################################################################
 
@@ -220,12 +238,12 @@ declare property_type FacetList : c++ (include => "polymake/FacetList.h") {
    # Add a new facet.  It may be a proper subset or a proper superset of existing facets.
    # It must not be empty or coincide with any existing facet.
    # @param Set f facet to add.
-   user_method insert(Set) : c++ : non_const : void;
+   user_method insert(&, Set) : c++ : returns(Iterator);
 
    # Remove a facet.
    # @param Set f facet to remove
    # @return Bool whether a facet existed before
-   user_method erase(Set) : c++ : non_const;
+   user_method erase(&, Set) : c++;
 
    # Find all supersets of a given set.
    # @param Set s
@@ -241,23 +259,23 @@ declare property_type FacetList : c++ (include => "polymake/FacetList.h") {
    # If this holds, remove all facets that are included in the new one.
    # @return Bool whether the new facet was really included.
    # @param Set f facet to add
-   user_method insertMax(Set) : c++ : non_const;
+   user_method insertMax(&, Set) : c++;
 
    # Add a new facet if and only if there are no facets included in it.
    # If this holds, remove all facets including the new facet.
    # @param Set f facet to add
    # @return Bool whether the new facet was really included.
-   user_method insertMin(Set) : c++ : non_const;
+   user_method insertMin(&, Set) : c++;
 
    # Remove all supersets of a given set
    # @param Set s filter for removal
    # @return Int number of removed facets
-   user_method eraseSupersets(Set) : c++ : non_const;
+   user_method eraseSupersets(&, Set) : c++;
 
    # Remove all subsets of a given set
    # @param Set s filter for removal
    # @return Int number of removed facets
-   user_method eraseSubsets(Set) : c++ : non_const;
+   user_method eraseSubsets(&, Set) : c++;
 
 }
 
@@ -285,8 +303,7 @@ declare property_type NonSymmetric : upgrades(Symmetric) : c++ (special => 'NonS
 # @category Set Types
 # A 0/1 incidence matrix.
 # @tparam Sym one of [[Symmetric]] or [[NonSymmetric]], default: [[NonSymmetric]]
-declare property_type IncidenceMatrix<Sym=NonSymmetric> \
-   : c++ (include => "polymake/IncidenceMatrix.h", operators => '@sets:wary /:wary:anchor |:wary:anchor /=:wary |=:wary @compare:wary') {
+declare property_type IncidenceMatrix<Sym=NonSymmetric> : c++ (include => "polymake/IncidenceMatrix.h") {
 
    # Construct a matrix from a given sequence of rows.
    # @param Set sets representing the rows
@@ -297,6 +314,12 @@ declare property_type IncidenceMatrix<Sym=NonSymmetric> \
    # @param Int r number of rows
    # @param Int c number of columns
    method construct(Int, Int) : c++;
+
+   operator @sets @compare (*:wary, *) : c++;
+
+   operator ~ (*&& const) : c++;
+
+   operator / | /= |= (*:wary&& const, *&& const) : c++;
 
    # Returns the number of rows.
    # @return Int
@@ -309,42 +332,41 @@ declare property_type IncidenceMatrix<Sym=NonSymmetric> \
    # Returns the //i//-th row.
    # @param Int i
    # @return SparseVector<Int>
-   user_method row($) : lvalue_opt : wary : c++;
+   user_method row(:wary&&, $) : c++ : returns(lvalue);
 
    # Returns the //i//-th column.
    # @param Int i
    # @return SparseVector<Int>
-   user_method col($) : lvalue_opt : wary : c++;
+   user_method col(:wary&&, $) : c++ : returns(lvalue);
 
-   # Returns a __minor__ of the matrix containing the rows in //r// and the columns in //c//. You can pass [[all_rows_or_cols|All]] if you want all rows or columns and ~ for the complement of a set. E.g. 
+   # Returns a __minor__ of the matrix containing the rows in //r// and the columns in //c//.
+   # You can pass [[all_rows_or_cols|All]] if you want all rows or columns and ~ for the complement of a set.
+   # For example,
    #	$A->minor(All, ~[0]);
    # will give you the minor of a matrix containing all rows and all but the 0-th column.
    # @param Set r the rows
    # @param Set c the columns
    # @return IncidenceMatrix
-   user_method minor(*:anchor,*:anchor) : lvalue_opt : wary : c++;
+   user_method minor(:wary&&, *&& const, *&& const) : c++ : returns(lvalue);
 
    # Returns an element of the matrix as a boolean value.
    # The return value is an `lvalue', that is, it can be assigned to, flipped, etc. if the matrix object is mutable.
    # @param Int r the row index
    # @param Int c the column index
    # @return Bool
-   user_method elem($,$) : lvalue_opt : wary : c++(name => '()');
+   user_method elem(:wary&&, $$) : c++(name => '()') : returns(lvalue);
 
    # Removes empty rows and columns.
    # The remaining rows and columns are renumbered without gaps.
-   user_method squeeze() : non_const : void : c++;
+   user_method squeeze(&) : c++;
 
    # Removes empty rows.
    # The remaining rows are renumbered without gaps.
-   user_method squeeze_rows() : non_const : void : c++;
+   user_method squeeze_rows(&) : c++;
 
    # Removes empty columns.
    # The remaining columns are renumbered without gaps.
-   user_method squeeze_cols() : non_const : void : c++;
-
-   # backward compatibility, see issue #864
-   use overload '&{}' => \&deprecated_elem_access;
+   user_method squeeze_cols(&) : c++;
 }
 
 user_function rows(IncidenceMatrix:anchor) : c++ : returns(Container);
@@ -362,12 +384,12 @@ user_function transpose(IncidenceMatrix:anchor) : c++ (name => 'T');
 ##################################################################################
 
 # @category Set Types
-# Maps are sorted associative containers that contain unique key/value pairs. 
-# Maps are sorted by their keys. 
+# Maps are sorted associative containers that contain unique key/value pairs.
+# Maps are sorted by their keys.
 #
 # Accessing or inserting a value needs logarithmic time O(log n), where n is the size of the map.
-# 
-# You can create a new Map mapping Ints to Strings by 
+#
+# You can create a new Map mapping Ints to Strings by
 #	$mymap = new Map<Int, String>([1, "Monday"], [2, "Tuesday"]);
 # On the perl side Maps are treated like hashrefs.
 # You can add a new key/value pair by
@@ -377,7 +399,9 @@ user_function transpose(IncidenceMatrix:anchor) : c++ (name => 'T');
 #	print $mymap->{1};
 # @tparam Key type of the key values
 # @tparam Value	type of the mapped value
-declare property_type Map<Key,Value> : c++ (include => "polymake/Map.h", operators => '@string', operators => '== !=') {
+declare property_type Map<Key,Value> : c++ (include => "polymake/Map.h") {
+
+   operator @eq : c++;
 
    type_method equal {
       my ($proto, $m1, $m2)=@_;
@@ -397,7 +421,9 @@ declare property_type Map<Key,Value> : c++ (include => "polymake/Map.h", operato
 # Can be traversed as a normal container, but the order of elements is not stable across polymake sessions,
 # even if the set is restored from the same data file every time.
 # @tparam Element
-declare property_type HashSet<Element> : c++ (name => 'hash_set', include => "polymake/hash_set", operators => '+= -= ^= == !=') {
+declare property_type HashSet<Element> : c++ (name => 'hash_set', include => "polymake/hash_set") {
+
+   operator += -= ^= @eq : c++;
 
    method contains {
       my ($self, $key)=@_;
@@ -415,19 +441,34 @@ declare property_type HashSet<Element> : c++ (name => 'hash_set', include => "po
 #
 # Accessing and inserting a value by its key works in constant time O(1).
 #
-# You can create a new HashMap mapping Ints to Strings by 
+# You can create a new HashMap mapping Ints to Strings by
 #	$myhashmap = new HashMap<Int, String>([1, "Monday"], [2, "Tuesday"]);
 # On the perl side HashMaps are treated like hashrefs.
 # You can work with a HashMap like you work with a [[Map]] (keeping in mind differences in performance
 # and memory demand).
 # @tparam Key type of the key values
 # @tparam Value	type of the mapped value
-declare property_type HashMap<Key,Value> : c++ (name => 'hash_map', include => "polymake/hash_map", operators => '== !=') {
+declare property_type HashMap<Key,Value> : c++ (name => 'hash_map', include => "polymake/hash_map") {
+
+   operator @eq : c++;
 
    # Size of the map
    # @return Int
    user_method size() : c++;
 }
+
+##################################################################################
+
+# @category Set Types
+# A specialization of Sets containing elements of type //Element//,
+# but where equality is enforced only up to a global epsilon.
+#
+# You can for example create a new ApproximateSet with two elements by:
+#	$s = new ApproximateSet(1.1, 1.2, 1.200000001);
+#
+# @tparam Element default: [[Float]]
+declare property_type ApproximateSet<Element=Float> : Set<Element> : c++ (include => "polymake/ApproximateSet.h");
+
 
 # Local Variables:
 # mode: perl

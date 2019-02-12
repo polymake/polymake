@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "regular_subdivision.cc",
+ "inst": [
+  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Vector<Rational>&>"], "func": "regular_subdivision", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Vector.h"], "sig": "regular_subdivision:T1.X.X", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "perl::Canned<const Matrix<QuadraticExtension<Rational>>&>", "perl::Canned<const Vector<QuadraticExtension<Rational>>&>"], "func": "regular_subdivision", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/Vector.h"], "sig": "regular_subdivision:T1.X.X", "tp": "1"},
+ null ],
+"version": 3}

@@ -23,7 +23,25 @@
 #ifndef RAYCOMPUTATION_BENEATHBEYOND_H
 #define RAYCOMPUTATION_BENEATHBEYOND_H
 
+#if defined(__GNUC__)
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshadow"
+#else // gcc
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#endif
+#endif
+
 #include "sympol/raycomputation.h"
+
+#if defined(__GNUC__)
+#ifdef __clang__
+#pragma clang diagnostic pop
+#else // gcc
+#pragma GCC diagnostic pop
+#endif
+#endif
 
 namespace sympol {
 	class Polyhedron;

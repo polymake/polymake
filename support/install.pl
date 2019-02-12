@@ -88,6 +88,12 @@ if (length($destdir)) {
    }
 }
 
+my $perlxpath="perlx/$Config::Config{version}/$Config::Config{archname}";
+
+if ($buildmode eq "San") {
+   load_sanitizer_flags();
+}
+
 if (defined $permmask) {
    if (($permmask & 0700) != 0700) {
       die "--perms must allow full access to the file owner\n";
@@ -105,8 +111,6 @@ if (defined $ext_root) {
 }
 
 sub install_core {
-   my $perlxpath="perlx/$Config::Config{version}/$Config::Config{archname}";
-
    make_dir($InstallTop);
    foreach my $subdir (qw(demo perllib resources scripts xml)) {
       copy_dir("$root/$subdir", "$InstallTop/$subdir", clean_dir => 1);
@@ -114,7 +118,7 @@ sub install_core {
 
    my $clean_dir=1;
    foreach my $file (qw(configure.pl.template generate_applib_fake.pl generate_ninja_targets.pl
-                        generate_ninja_targets.pl.template groom_wrappers.pl
+                        generate_ninja_targets.pl.template generate_cpperl_modules.pl
                         guarded_compiler.pl install.pl install.pl.template install_utils.pl rules.ninja)) {
       copy_file("$root/support/$file", "$InstallTop/support/$file", clean_dir => $clean_dir);
       $clean_dir=0;
@@ -546,21 +550,21 @@ sub install_bin_scripts {
    close S;
 
    if ($^O eq "darwin" && $ConfigFlags{ARCHFLAGS} =~ /-arch /) {
-      s{^\#!\S+}{#!/usr/bin/arch $ConfigFlags{ARCHFLAGS} $^X}s;
+      s{^\#!/usr/bin/env perl}{#!/usr/bin/arch $ConfigFlags{ARCHFLAGS} $^X}s;
    } else {
-      s{^\#!\S+}{#!$Config::Config{perlpath}}s;
+      s{^\#!/usr/bin/env perl}{#!$Config::Config{perlpath}}s;
    }
 
    my $init_block=<<"---";
-   \$InstallTop="$ConfigFlags{InstallTop}";
-   \$InstallArch="$ConfigFlags{InstallArch}";
+   \$InstallTop='$ConfigFlags{InstallTop}';
+   \$InstallArch='$ConfigFlags{InstallArch}';
    \$Arch="$ConfigFlags{Arch}";
    \@BundledExts=qw(@BundledExts);
 ---
    if ($^O eq "darwin" && $ConfigFlags{FinkBase}) {
       $init_block.="   \@addlibs=qw($ConfigFlags{FinkBase}/lib/perl5);\n";
    }
-   s|(^BEGIN\s*\{\s*\n)(?s:.*?)(^\}\n)|$1$init_block$2|m;
+   s/(^BEGIN\s*\{\s*\n)(?s:.*?)(^\}\n)/$1$init_block$2/m;
 
    if (-e "$InstallBin/polymake") {
       unlink "$InstallBin/polymake"
@@ -606,25 +610,52 @@ sub install_bin_scripts {
      or die "chmod $InstallBin/polymake-config failed: $!\n";
 }
 
-sub transform_core_config_file {
+sub load_sanitizer_flags {
+   open my $BB, "<", "$builddir/build.ninja"
+      or die "can't read $builddir/build.ninja: $!\n";
+   while (<$BB>) {
+      chomp;
+      if (/^\s*PERLSANITIZE\s*=\s*/) {
+         $ConfigFlags{PERLSANITIZE}=$';
+      } elsif (/^\s*perlxpath\s*=\s*/) {
+         if ($perlxpath ne $') {
+            die "$builddir/build.ninja does not match the current running environment; expected perlxpath=$perlxpath\n";
+         }
+      } elsif (/^\s*buildroot\s*=\s*/) {
+         if ($buildroot ne $') {
+            die "$builddir/build.ninja does not match the current running environment; expected buildroot=$buildroot\n";
+         }
+      }
+   }
+   $ConfigFlags{PERLSANITIZE} or die "$builddir/build.ninja does not contain PERLSANITIZE flags\n";
+}
 
-   s|^\s* root \s*= \K .*|$ConfigFlags{InstallTop}|xm;
-   s|^\s* core\.includes \s*= \K .*|-I$ConfigFlags{InstallInc}|xm;
+sub transform_core_config_file {
+   s{^\s* configure\.command \s*= .* \n}{}xm;
+
+   s{^\s* root \s*= \K .*}{$ConfigFlags{InstallTop}}xm;
+   s{^\s* core\.includes \s*= \K .*}{-I$ConfigFlags{InstallInc}}xm;
 
    my $external_includes= $ConfigFlags{ExternalHeaders} =~ /\S/ ? "-I$ConfigFlags{InstallInc}/polymake/external" : "";
-   s|^\s* app\.includes \s*= \K .*|$external_includes|xm;
+   s{^\s* app\.includes \s*= \K .*}{$external_includes}xm;
 
-   s|^(?=\s*Arch\s*=)|PERL = $Config::Config{perlpath}\n|m;
-   s|^\s* BuildModes \s*= \K .*|$buildmode|xm;
-   s|^\s* DESTDIR \s*= .*$||xm;
+   s{^(?=\s*Arch\s*=)}{PERL = $Config::Config{perlpath}\n}m;
+   s{^\s* BuildModes \s*= \K .*}{$buildmode}xm;
+   s{^\s* (?: DESTDIR | CCACHE | CCWRAPPER ) \s*= .*$}{}xm;
+
+   s{[ =] -Wl,-z, \K now}{lazy}x;
+
+   if ($buildmode eq "San") {
+      s{^\s* PERL \s*= .*\n \K}{PERLSANITIZE = $ConfigFlags{PERLSANITIZE}\n}xm;
+   }
 }
 
 sub transform_extension_config_file {
    
-   s|^\s* root \s*= \K .*|$ConfigFlags{InstallTop}|xm;
-   s|^\s* extroot \s*= \K .*|$ConfigFlags{InstallTop}/ext/$ext_name|xm;
-   s|^\s* app\.includes \s*= \K .*|-I\${extroot}/include \${super.app.includes}|xm;
-   s|^\s* BuildModes \s*= \K .*|$buildmode|xm;
+   s{^\s* root \s*= \K .*}{$ConfigFlags{InstallTop}}xm;
+   s{^\s* extroot \s*= \K .*}{$ConfigFlags{InstallTop}/ext/$ext_name}xm;
+   s{^\s* app\.includes \s*= \K .*}{-I\${extroot}/include \${super.app.includes}}xm;
+   s{^\s* BuildModes \s*= \K .*}{$buildmode}xm;
 }
 
 # Local Variables:

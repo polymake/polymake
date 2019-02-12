@@ -15,6 +15,7 @@
 */
 
 #include "polymake/Integer.h"
+#include "polymake/Rational.h"
 #include <cstring>
 #include <unistd.h>
 
@@ -275,9 +276,12 @@ bool Integer::fill_from_file(int fd)
 
 template <>
 Integer
-pow(const Integer& base, int exp)
+pow(const Integer& base, long exp)
 {
-   return Integer::pow(base,exp);
+   if (exp >= 0)
+      return Integer::pow(base,exp);
+   else
+      return Integer(Rational::pow(base,exp));
 }
 
 namespace {

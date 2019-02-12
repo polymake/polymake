@@ -84,7 +84,7 @@ namespace polymake { namespace tropical {
 			Matrix<Rational> rays = refinedComplex.give("VERTICES");
 			Set<int> vertices = far_and_nonfar_vertices(rays).second; 
 			int pointindex = -1;
-			for(Entire<Set<int> >::iterator v = entire(vertices); !v.at_end(); v++) {
+			for (auto v = entire(vertices); !v.at_end(); ++v) {
 				if(tdehomog_vec(Vector<Rational>(rays.row(*v))) == tdehomog_vec(point)) {
 					pointindex = *v; break;
 				}

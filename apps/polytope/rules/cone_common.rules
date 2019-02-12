@@ -133,58 +133,59 @@ rule POINTED : LINEALITY_DIM {
 weight 0.1;
 
 rule POINTED : RAYS {
-  if ( defined(my $l=$this->lookup("INPUT_LINEALITY | LINEALITY_SPACE") ) ) {
-    $this->POINTED= $l->rows==0;
+  if (defined (my $l=$this->lookup("INPUT_LINEALITY | LINEALITY_SPACE"))) {
+    $this->POINTED = $l->rows==0;
   } else {
-    $this->POINTED=1;
+    $this->POINTED = true;
   }
 }
 weight 0.1;
 
 
-# FIXME #195
-# caution: rule weight set to 0.10 to allow immediate execution of rule
-# independent of actual complexity of the computation
 rule POINTED : INPUT_RAYS {
-    if (defined (my $l=$this->lookup("INPUT_LINEALITY | LINEALITY_SPACE"))) {
-        if ($l->rows>0) { $this->POINTED=0; return; }
-    }
+   if (defined (my $l=$this->lookup("INPUT_LINEALITY | LINEALITY_SPACE"))) {
+      if ($l->rows>0) { $this->POINTED=false; return; }
+   }
 
-    my $v=zero_vector<Scalar>() | (ones_vector<Scalar>() | $this->INPUT_RAYS);
-    my $w=new Vector<Scalar>($v->cols); $w->[0]=1; $w->[1]=-1;
-    my $lp=new LinearProgram<Scalar>(LINEAR_OBJECTIVE=>unit_vector<Scalar>($v->cols,1));
-    my $p=new Polytope<Scalar>(INEQUALITIES=>-$v/$w,LP=>$lp);
-    $this->POINTED= $p->LP->MAXIMAL_VALUE > 0  ? 1 : 0;
-}
-weight 0.10;
-
-rule POINTED : FACETS | INEQUALITIES, LINEAR_SPAN | EQUATIONS, CONE_AMBIENT_DIM {
-  $this->POINTED=rank($this->give("FACETS | INEQUALITIES") / $this->give("LINEAR_SPAN | EQUATIONS"))==$this->CONE_AMBIENT_DIM;
+   my $v = zero_vector<Scalar>() | (ones_vector<Scalar>() | $this->INPUT_RAYS);
+   my $w = new Vector<Scalar>($v->cols);
+   $w->[0] = 1;
+   $w->[1] = -1;
+   my $lp = new LinearProgram<Scalar>(LINEAR_OBJECTIVE => unit_vector<Scalar>($v->cols, 1));
+   my $p = new Polytope<Scalar>(INEQUALITIES => -$v/$w, LP => $lp);
+   $this->POINTED = $p->LP->MAXIMAL_VALUE > 0;
 }
 weight 3.10;
 
+rule POINTED : FACETS | INEQUALITIES, CONE_AMBIENT_DIM {
+   my $f = $this->give("FACETS | INEQUALITIES");
+   my $l = $this->lookup("LINEAR_SPAN | EQUATIONS");
+   $this->POINTED = rank(defined($l) && $l->rows > 0 ? $f/$l : $f) == $this->CONE_AMBIENT_DIM;
+}
+
 rule cone_only : LINEALITY_SPACE : FACETS | INEQUALITIES {
    my $F;
-   if (defined (my $AH=$this->lookup("LINEAR_SPAN | EQUATIONS"))) {
-      $F=$this->give("FACETS | INEQUALITIES") / $AH;
+   my $AH = $this->lookup("LINEAR_SPAN | EQUATIONS");
+   if (defined($AH) && $AH->rows > 0) {
+      $F = $this->give("FACETS | INEQUALITIES") / $AH;
    } else {
-      $F=$this->give("FACETS | INEQUALITIES");
+      $F = $this->give("FACETS | INEQUALITIES");
    }
-   my $cmp=$this->prepare_computations;
-   $this->LINEALITY_SPACE=common::null_space($F);
+   my $cmp = $this->prepare_computations;
+   $this->LINEALITY_SPACE = common::null_space($F);
 }
 precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM >= 1 }
 weight 1.10;
 
 rule LINEALITY_DIM, LINEALITY_SPACE : CONE_AMBIENT_DIM {
-   $this->LINEALITY_DIM=0;
-   $this->LINEALITY_SPACE=new Matrix<Scalar>(0, $this->CONE_AMBIENT_DIM);
+   $this->LINEALITY_DIM = 0;
+   $this->LINEALITY_SPACE = new Matrix<Scalar>(0, $this->CONE_AMBIENT_DIM);
 }
 precondition : POINTED;
 weight 0.10;
 
 rule ONE_RAY : RAYS {
-  $this->ONE_RAY=$this->RAYS->[0];
+  $this->ONE_RAY = $this->RAYS->[0];
 }
 precondition : N_RAYS;
 weight 0.10;
@@ -627,12 +628,12 @@ user_method contains {
     if (defined (my $ah=$self->lookup("LINEAR_SPAN | INPUT_LINEALITY")) ) {
       if ( $ah->rows ) {
         my $b=$ah*$v;
-        foreach (@{$b}) { if ( $_ != $zero ) { return 0; } }
+        foreach (@{$b}) { if ( $_ != $zero ) { return false; } }
       }
     }
     my $b=$f*$v;
-    foreach (@{$b}) { if ( $_ < $zero ) { return 0; } }
-    return 1;
+    foreach (@{$b}) { if ( $_ < $zero ) { return false; } }
+    return true;
   } else {
     return cone_contains_point($self,$v,in_interior=>0);
   }
@@ -648,12 +649,12 @@ user_method contains_in_interior {
     if (defined (my $ah=$self->lookup("LINEAR_SPAN | INPUT_LINEALITY")) ) {
       if ( $ah->rows ) {
         my $b=$ah*$v;
-        foreach (@{$b}) { if ( $_ != 0 ) { return 0; } }
+        foreach (@{$b}) { if ( $_ != 0 ) { return false; } }
       }
     }
     my $b=$f*$v;
-    foreach (@{$b}) { if ( $_ <= 0 ) { return 0; } }
-    return 1;
+    foreach (@{$b}) { if ( $_ <= 0 ) { return false; } }
+    return true;
   }else {
     return cone_contains_point($self,$v,in_interior=>1);
   }

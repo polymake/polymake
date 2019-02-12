@@ -22,49 +22,17 @@ label to
 
 object Polytope {
 
-sub run_to_solve {
-   my ($this, $sense)=@_;
-   my %opts;
-   if (defined( my $ov=$this->lookup("ONE_VERTEX") )) {
-      my $ineq=$this->give("FACETS | INEQUALITIES");
-      if (defined( my $eq=$this->lookup("AFFINE_HULL | EQUATIONS") )) {
-         $ineq = $ineq / $eq;
-      }
-      my $s = new SparseVector<Scalar>($ineq*$ov);
-      my $set = sequence(0, $ineq->rows())-indices($s);
-      my $ind = basis_rows($ineq->minor($set, All));
-      if ($ineq->cols()-1 == $ind->size()) {
-         my $basis = new Set();
-         my $i = 0;
-         foreach (@$set) {
-            if ($ind->contains($i)) {
-               $basis+=$_;
-            }
-            ++$i;
-         }
-         $opts{initial_basis}=$basis;
-      }
-   }
-   to_solve_lp($this, $this->LP, $sense, \%opts);
-}
-
 rule to.simplex: LP.MAXIMAL_VALUE, LP.MAXIMAL_VERTEX, FEASIBLE : LP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
-   run_to_solve($this, 1);
+   to_lp_client($this, $this->LP, true);
 }
 weight 3.30;
 
 rule to.simplex: LP.MINIMAL_VALUE, LP.MINIMAL_VERTEX, FEASIBLE : LP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
-   run_to_solve($this, 0);
+   to_lp_client($this, $this->LP, false);
 }
 weight 3.30;
 
 }
-
-# this is overridden in bundled:cdd for Rational and Float coordinate types
-function H_input_is_bounded(Polytope) {
-   to_input_bounded($_[0]);
-}
-
 
 
 # Local Variables:

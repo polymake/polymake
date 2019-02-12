@@ -38,7 +38,7 @@ perl::Object cone(perl::Object p_in, int k, perl::OptionSet options)
       assign_max(k,1);
    }
 
-   for (Entire< Array< Set<int> > >::iterator it=entire(C); !it.at_end(); ++it)
+   for (auto it=entire(C); !it.at_end(); ++it)
       *it += sequence(n_v,k);
 
    perl::Object p_out("SimplicialComplex");
@@ -50,7 +50,7 @@ perl::Object cone(perl::Object p_in, int k, perl::OptionSet options)
       hash_set<std::string> old_L(L.begin(), L.end());
 
       if (!apex_labels.empty()) {
-         for (Entire< Array<std::string> >::const_iterator l=entire(apex_labels); !l.at_end(); ++l)
+         for (auto l=entire(apex_labels); !l.at_end(); ++l)
             if (! old_L.insert(*l).second)
                throw std::runtime_error("cone - apex labels not unique");
 

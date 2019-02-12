@@ -1,0 +1,5 @@
+{"app": "fan", "embed": "intersection.cc",
+ "inst": [
+  {"args": ["Rational", "void", "perl::Canned<const Matrix<Rational>&>"], "func": "intersection", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "intersection:T1.B.X", "tp": "1"},
+ null ],
+"version": 3}

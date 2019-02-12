@@ -53,7 +53,7 @@ perl::Object matroid_from_graph(perl::Object g)
    for (auto comp_it=entire(rows(components)); !comp_it.at_end(); ++comp_it) {
       if (comp_it->size() > 1) {
          Graph<> indg = renumber_nodes(induced_subgraph(graph,*comp_it));
-         bases = product(bases, shift_elements(graph::all_spanningtrees(indg),n_edges),operations::add());
+         bases = product(bases, shift_elements(graph::all_spanningtrees(indg), n_edges), operations::add());
          n_edges += indg.edges();
       }
    }

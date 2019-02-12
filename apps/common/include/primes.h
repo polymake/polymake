@@ -161,7 +161,7 @@ std::pair<number_t, number_t> integer_and_radical_of_sqrt(const Integer &n)
 {
    const ExponentMap exponent_of = naive_partial_prime_factorization(n);
    std::pair<number_t, number_t> ir_sqrt(1,1);
-   for (Entire<ExponentMap>::const_iterator mit = entire(exponent_of); !mit.at_end(); ++mit) {
+   for (auto mit = entire(exponent_of); !mit.at_end(); ++mit) {
       number_t rest_exponent = mit->second;
       if (mit->second & 1) { // odd exponent
          ir_sqrt.second *= mit->first;

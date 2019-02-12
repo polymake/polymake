@@ -1,0 +1,5 @@
+{"app": "graph",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Undirected>&>"], "func": "biconnected_components", "include": ["polymake/Graph.h", "polymake/graph/biconnected.h"], "sig": "biconnected_components.X"},
+ null ],
+"version": 3}

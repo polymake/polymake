@@ -34,8 +34,7 @@ perl::Object induced_subcomplex(perl::Object p_in,const Set<int>& V_in, perl::Op
    
    // computing subcomplex
    FacetList sub(n_vert);
-   for (Entire< Array< Set<int> > >::const_iterator it=entire(C);
-        !it.at_end(); ++it)
+   for (auto it=entire(C); !it.at_end(); ++it)
       sub.replaceMax(V_in*(*it));
    
    // adjust numbering
@@ -49,9 +48,8 @@ perl::Object induced_subcomplex(perl::Object p_in,const Set<int>& V_in, perl::Op
    if (!options["no_labels"]) {
       const Array<std::string> L = p_in.give("VERTEX_LABELS");
       Array<std::string> new_L(V_in.size());
-      Array<std::string>::iterator l = new_L.begin();
-      for (Entire< Set<int> >::const_iterator v=entire(V_in);
-           !v.at_end(); ++v, ++l)
+      auto l = new_L.begin();
+      for (auto v=entire(V_in); !v.at_end(); ++v, ++l)
          *l = L[*v];
       
       p_out.take("VERTEX_LABELS") << new_L;

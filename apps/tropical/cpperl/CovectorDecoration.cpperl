@@ -1,0 +1,6 @@
+{"app": "tropical",
+ "inst": [
+  {"class": "CovectorDecoration", "include": ["polymake/tropical/covectors.h"], "pkg": "Polymake::tropical::CovectorDecoration"},
+  {"args": ["perl::Canned<const CovectorDecoration&>", "perl::Canned<const CovectorDecoration&>"], "include": ["polymake/tropical/covectors.h"], "op": "_eq", "sig": "_eq:O.X.X"},
+ null ],
+"version": 3}

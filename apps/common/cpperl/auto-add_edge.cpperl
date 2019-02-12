@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<Wary<Graph<Undirected>>&>", "void", "void"], "func": "add_edge", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "add_edge:M5.x.x"},
+ null ],
+"version": 3}

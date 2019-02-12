@@ -1,0 +1,9 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::TryCanned<const Array<int>>", "perl::TryCanned<const Array<int>>"], "func": "find_permutation", "include": ["polymake/Array.h", "polymake/permutations.h"], "sig": "find_permutation.X.X"},
+  {"args": ["perl::Canned<const Array<Set<int>>&>", "perl::Canned<const Array<Set<int>>&>"], "func": "find_permutation", "include": ["polymake/Array.h", "polymake/Set.h", "polymake/permutations.h"], "sig": "find_permutation.X.X"},
+  {"args": ["perl::Canned<const Array<Polynomial<Rational, int>>&>", "perl::Canned<const Array<Polynomial<Rational, int>>&>"], "func": "find_permutation", "include": ["polymake/Array.h", "polymake/Polynomial.h", "polymake/Rational.h", "polymake/permutations.h"], "sig": "find_permutation.X.X"},
+  {"args": ["perl::Canned<const pm::Rows<pm::IncidenceMatrix<pm::NonSymmetric> >&>", "perl::Canned<const pm::Rows<pm::IncidenceMatrix<pm::NonSymmetric> >&>"], "func": "find_permutation", "include": ["polymake/IncidenceMatrix.h", "polymake/permutations.h"], "sig": "find_permutation.X.X"},
+  {"args": ["perl::Canned<const Array<IncidenceMatrix<NonSymmetric>>&>", "perl::Canned<const Array<IncidenceMatrix<NonSymmetric>>&>"], "func": "find_permutation", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/permutations.h"], "sig": "find_permutation.X.X"},
+ null ],
+"version": 3}

@@ -51,8 +51,12 @@ rule porta.convex_hull.primal: FACETS, AFFINE_HULL : CONE_AMBIENT_DIM, CONE_DIM,
    if ($this->has_far_facet) {
       push @{$parser->Ineq}, [ 1, (0) x ($this->CONE_AMBIENT_DIM-1) ];
    }
-   $this->FACETS=$parser->Ineq;
-   $this->AFFINE_HULL=$parser->Eq;
+   $this->FACETS = @{$parser->Ineq} > 0 ? 
+                   $parser->Ineq : 
+                   new Matrix(0,$this->CONE_AMBIENT_DIM);
+   $this->AFFINE_HULL = @{$parser->Eq} > 0 ? 
+                        $parser->Eq : 
+                        new Matrix(0,$this->CONE_AMBIENT_DIM);
    unlink "porta.log";
 }
 weight 4.20;
@@ -74,8 +78,10 @@ rule porta.convex_hull.dual: VERTICES, LINEALITY_SPACE : CONE_AMBIENT_DIM, FACET
    system($command) and die "xporta exited with error code\n";
 
    my $parser=new PortaParser("$tempname.ieq.poi");
-   $this->VERTICES=$parser->Points;
-   $this->LINEALITY_SPACE=new Matrix<Rational>;
+   $this->VERTICES = @{$parser->Points} > 0 ? 
+                     $parser->Points : 
+                     new Matrix(0,$this->CONE_AMBIENT_DIM);
+   $this->LINEALITY_SPACE=new Matrix<Rational>(0,$this->CONE_AMBIENT_DIM);
    unlink "porta.log";
 }
 weight 4.10;

@@ -102,7 +102,8 @@ rule MATROID_HYPERPLANES : HyperplanePerm.MATROID_HYPERPLANES, HyperplanePerm.PE
 weight 1.10;
 
 # @category Axiom systems
-# The lattice of flats, this is a graph with all closed sets as nodes
+# The lattice of flats.
+# This is a graph with all closed sets as nodes and inclusion relations as edges.
 property LATTICE_OF_FLATS : Lattice<BasicDecoration, Sequential>;
 
 # @category Axiom systems
@@ -110,7 +111,6 @@ property LATTICE_OF_FLATS : Lattice<BasicDecoration, Sequential>;
 # A flat is a cyclic flat, if and only if it is a union of circuits.
 # Their ranks can also be read off of this property using nodes_of_dim(..)
 property LATTICE_OF_CYCLIC_FLATS : Lattice<BasicDecoration, Sequential>;
-
 
 ## ADVANCED PROPERTIES ###
 
@@ -177,7 +177,7 @@ property TERNARY_VECTORS : Matrix<Int>;
 
 # @category Advanced properties
 # Whether the matroid is representable over every field, that is the repesentation is unimodular.
-# NOTE: the property is 'undef' when its hard to decide, whether the matroid is ternary.
+# NOTE: the property is 'undef' when it's hard to decide whether the matroid is ternary.
 property REGULAR : Bool;
 
 # @category Advanced properties
@@ -214,7 +214,7 @@ property BETA_INVARIANT : Integer;
 property CONNECTED : Bool;
 
 # @category Advanced properties
-# The connected componets
+# The connected components
 property CONNECTED_COMPONENTS : Array<Set> {
    sub equal {
       defined(eval { find_permutation(@_) })
@@ -274,9 +274,10 @@ property AUTOMORPHISM_GROUP : group::Group;
 # @category Other
 # Unique names assigned to the elements of the matroid.
 #
-# For a matroid build from scratch, you should create this property by yourself.
+# For a matroid built from scratch, you should create this property by yourself.
+# the labels may be assigned for you in a meaningful way.
 # If you build the matroid with a construction client, (e.g. [[matroid_from_graph]])
-# the labels may be assigend for you in a meaningful way.
+# the labels may be assigned for you in a meaningful way.
 property LABELS : Array<String> : mutable;
 
 # @category Input properties

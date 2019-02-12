@@ -1,0 +1,5 @@
+{"app": "fan", "embed": "rays_facets_conversion.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "raysToFacetNormals", "include": ["polymake/Rational.h"], "sig": "raysToFacetNormals:T1.B", "tp": "1"},
+ null ],
+"version": 3}

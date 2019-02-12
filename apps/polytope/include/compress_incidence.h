@@ -32,7 +32,7 @@ compress_incidence(const GenericIncidenceMatrix<IM>& VIF)
    const int nv=VIF.cols();
    FacetList facets(nv);
 
-   for (typename Entire< Rows<IM> >::const_iterator f=entire(rows(VIF)); !f.at_end(); ++f) {
+   for (auto f=entire(rows(VIF)); !f.at_end(); ++f) {
       if (f->size() == nv) {
          facets.skip_facet_id();
          non_facets.push_back(f.index());

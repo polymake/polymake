@@ -312,7 +312,17 @@ rule PSEUDO_MANIFOLD : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_
    is_pseudo_manifold($this);
 }
 precondition : PURE;
+precondition : DIM {
+	$this->DIM >= 1;
+}
 weight 1.50;
+
+rule PSEUDO_MANIFOLD : {
+	$this->PSEUDO_MANIFOLD = 1; 
+}
+precondition : DIM {
+	$this->DIM == 0;
+}
 
 rule MANIFOLD, PSEUDO_MANIFOLD : {
    $this->MANIFOLD=0;
@@ -325,7 +335,18 @@ rule CLOSED_PSEUDO_MANIFOLD : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION,
    is_closed_pseudo_manifold($this);
 }
 precondition : PURE;
+precondition : DIM {
+	$this->DIM >= 1;
+}
 weight 1.50;
+
+rule CLOSED_PSEUDO_MANIFOLD : {
+	$this->CLOSED_PSEUDO_MANIFOLD = 1; 
+}
+precondition : DIM {
+	$this->DIM == 0;
+}
+weight 0.1;
 
 rule CLOSED_PSEUDO_MANIFOLD : {
    $this->CLOSED_PSEUDO_MANIFOLD=0;
@@ -421,7 +442,7 @@ weight 1.10;
 }
 
 # @category Topology
-declare property_type Cell : c++ (include => "polymake/topaz/Filtration.h", operators => '==') {
+declare property_type Cell : c++ (include => "polymake/topaz/Filtration.h") {
 
    # Construct a filtration cell.
    # @param Int deg Filtration degree of the cell.
@@ -429,24 +450,27 @@ declare property_type Cell : c++ (include => "polymake/topaz/Filtration.h", oper
    # @param Int idx Row number of the cell in the boundary matrix belonging to the Filtration.
    method construct(*, *, *) : c++;
 
+   operator @eq : c++;
 }
 
 # @category Topology
 # A filtration of chain complexes.
 # @tparam MatrixType
-declare property_type Filtration<MatrixType> : c++ (include => "polymake/topaz/Filtration.h", operators => '=='){
+declare property_type Filtration<MatrixType> : c++ (include => "polymake/topaz/Filtration.h") {
 
    # Construct a Filtration.
    # @param Array<Cell> C An array containing all cells in the filtration.
    # @param Array<MatrixType> bd The boundary matrices of the last frame of the filtration, indexed by dimension.
    # @optional Bool s Indicates whether the cell array is already sorted by degree first and dimension second, default: 0
-   method construct(Array<Cell>:lvalue,Array<MatrixType>;$=0) : c++;
+   method construct(Array<Cell>, Array<MatrixType>; $=0) : c++;
 
    # Construct a Filtration from a HasseDiagram and an integer array.
    # @param Lattice The last frame of the filtration.
    # @param Array<Int> degs The degrees of the simplices in the input complex.
    #                        Indexing after sorting them first by dimension, second lexicographically (like in the HasseDiagram)
-    method construct(Lattice<BasicDecoration>,Array<Int>) : c++;
+   method construct(Lattice<BasicDecoration>,Array<Int>) : c++;
+
+   operator @eq : c++;
 
    # Returns the dimension of the maximal cells in the last frame of the filtration.
    # @return Int
@@ -468,7 +492,7 @@ declare property_type Filtration<MatrixType> : c++ (include => "polymake/topaz/F
    # Returns the d-boundary matrix of the t-th frame of the filtration.
    # @param Int d
    # @param Int t
-   user_method boundary_matrix(Int, Int) : non_const : c++;
+   user_method boundary_matrix(Int, Int) : c++;
 }
 
 # @category Topology
@@ -490,12 +514,14 @@ declare property_type Filtration<MatrixType> : c++ (include => "polymake/topaz/F
 # | ({(2 1)} 1)
 # | ({} 0)
 # @tparam MatrixType The type of the differential matrices. default: SparseMatrix<Integer>
-declare property_type ChainComplex<MatrixType = SparseMatrix<Integer>> : c++ (include => "polymake/topaz/ChainComplex.h", operators => '=='){
+declare property_type ChainComplex<MatrixType = SparseMatrix<Integer>> : c++ (include => "polymake/topaz/ChainComplex.h") {
 
    # Construct a Chain Complex.
    # @param Array<MatrixType> bd The boundary matrices of the chain complex, NOT including the trivial zeroth and last matrices. Indexed by dimension. The matrices are maps via left multiplication.
    # @optional Bool sanity_check Indicates whether to test if the input matrices' dimensions match and the maps satisfy the differential condition. default: 0
    method construct(Array<MatrixType>; $=0) : c++;
+
+   operator @eq : c++;
 
    # Returns the number of non-empty modules in the complex.
    # @return Int

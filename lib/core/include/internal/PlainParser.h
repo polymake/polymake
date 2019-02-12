@@ -200,19 +200,21 @@ using std::ends;
 template <typename Options, typename Traits>
 class PlainPrinterCompositeCursor
    : public PlainPrinter<Options, Traits> {
-   typedef PlainPrinter<Options, Traits> super;
+   using base_t = PlainPrinter<Options, Traits>;
 protected:
    char pending_sep;
    int width;
-   static const char
+   static constexpr char
       null_char = '\0',
       sep = tagged_list_extract_integral<Options, SeparatorChar>(null_char),
       opening = tagged_list_extract_integral<Options, OpeningBracket>(null_char),
       closing = tagged_list_extract_integral<Options, ClosingBracket>(null_char);
 
 public:
-   PlainPrinterCompositeCursor(typename super::ostream& os_arg, bool no_opening_by_width=false)
-      : super(os_arg), pending_sep(0), width(os_arg.width())
+   PlainPrinterCompositeCursor(typename base_t::ostream& os_arg, bool no_opening_by_width=false)
+      : base_t(os_arg)
+      , pending_sep(null_char)
+      , width(os_arg.width())
    {
       if (opening) {
          if (width) {
@@ -227,9 +229,12 @@ public:
    template <typename T>
    PlainPrinterCompositeCursor& operator<< (const T& x)
    {
-      if (pending_sep) *this->os << pending_sep;
+      if (pending_sep) {
+         *this->os << pending_sep;
+         pending_sep = null_char;
+      }
       if (width) *this->os << std::setw(width);
-      static_cast<super&>(*this) << x;
+      static_cast<base_t&>(*this) << x;
       if (sep=='\n') {
          if (! object_traits<T>::IO_ends_with_eol) *this->os << sep;
       } else {
@@ -251,23 +256,28 @@ public:
          *this->os << closing;
          if (sep=='\n') *this->os << sep;
       }
-      pending_sep=0;
+      pending_sep=null_char;
    }
 };
 
 template <typename Options, typename Traits>
 class PlainPrinterSparseCursor
    : public PlainPrinterCompositeCursor<Options, Traits> {
-   typedef PlainPrinterCompositeCursor<Options, Traits> super;
+   using base_t = PlainPrinterCompositeCursor<Options, Traits>;
 protected:
    int next_index, dim;
 
 public:
-   PlainPrinterSparseCursor(typename super::ostream& os_arg, int dim_arg)
-      : super(os_arg,true), next_index(0), dim(dim_arg)
+   PlainPrinterSparseCursor(typename base_t::ostream& os_arg, int dim_arg)
+      : base_t(os_arg, true)
+      , next_index(0)
+      , dim(dim_arg)
    {
-      if (!this->width)  // print the dimension
-         static_cast<super&>(*this) << item2composite(dim);
+      if (!this->width) {
+         // print the dimension
+         *this->os << '(' << dim << ')';
+         this->pending_sep = base_t::sep;
+      }
    }
 
    template <typename Iterator>
@@ -280,10 +290,10 @@ public:
             ++next_index;
          }
          *this->os << std::setw(this->width);
-         static_cast<super&>(*this) << *x;
+         static_cast<base_t&>(*this) << *x;
          ++next_index;
       } else {
-         static_cast<super&>(*this) << reinterpret_cast<const indexed_pair<Iterator>&>(x);
+         static_cast<base_t&>(*this) << reinterpret_cast<const indexed_pair<Iterator>&>(x);
       }
       return *this;
    }
@@ -296,7 +306,7 @@ public:
             ++next_index;
          }
       } else {
-         super::finish();
+         base_t::finish();
       }
    }
 };
@@ -497,10 +507,10 @@ class PlainParserCompositeCursor
    : public PlainParserCursor<Options>,
      public GenericInputImpl< PlainParserCompositeCursor<Options> >,
      public GenericIOoptions< PlainParserCompositeCursor<Options>, Options > {
-   typedef PlainParserCursor<Options> super;
+   using base_t = PlainParserCursor<Options>;
 public:
    PlainParserCompositeCursor(std::istream& is_arg)
-      : super(is_arg) { }
+      : base_t(is_arg) { }
 
    template <typename Data>
    void operator>> (Data& data)
@@ -514,13 +524,13 @@ class PlainParserListCursor
    : public PlainParserCursor<Options>,
      public GenericInputImpl< PlainParserListCursor<Value, Options> >,
      public GenericIOoptions< PlainParserListCursor<Value, Options>, Options, 1 > {
-   typedef PlainParserCursor<Options> super;
+   using base_t = PlainParserCursor<Options>;
 
    template <typename, typename> friend class PlainParserListCursor;
 
    static const bool has_sparse_representation=tagged_list_extract_integral<Options, SparseRepresentation>(false);
 protected:
-   int _size;
+   int size_;
    char* pair_egptr;
 
    int size(is_scalar)
@@ -538,7 +548,7 @@ protected:
       typedef typename PlainPrinter<Options>::template list_cursor<Value> defs;
       return defs::opening
              ? this->count_braced(defs::opening, defs::closing) :
-             super::opening
+             base_t::opening
              ? this->count_lines()
              : this->count_all_lines();
    }
@@ -548,8 +558,8 @@ protected:
       typedef typename PlainPrinter<Options>::template composite_cursor<Value> defs;
       return defs::opening
              ? this->count_braced(defs::opening, defs::closing) :
-             super::separator=='\n'
-             ? super::opening
+             base_t::separator=='\n'
+             ? base_t::opening
                ? this->count_lines()
                : this->count_all_lines()
              : this->count_words();
@@ -559,17 +569,19 @@ public:
    typedef Value value_type;
 
    PlainParserListCursor(std::istream& is_arg)
-      : super(is_arg), _size(-1), pair_egptr(0)
+      : base_t(is_arg)
+      , size_(-1)
+      , pair_egptr(0)
    {
-      if (!super::opening && object_traits<Value>::total_dimension==0)
+      if (!base_t::opening && object_traits<Value>::total_dimension==0)
          this->set_range(0, '\n');
    }
 
    int size()
    {
-      if (_size<0)
-         _size=size(typename object_traits<Value>::model());
-      return _size;
+      if (size_<0)
+         size_=size(typename object_traits<Value>::model());
+      return size_;
    }
 
 protected:
@@ -677,7 +689,7 @@ public:
          this->skip_temp_range(pair_egptr);
          pair_egptr=NULL;
       } else {
-         super::skip_item();
+         base_t::skip_item();
       }
    }
 };

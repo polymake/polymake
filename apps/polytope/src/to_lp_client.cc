@@ -15,80 +15,30 @@
 */
 
 #include "polymake/client.h"
+#include "polymake/linalg.h"
 #include "polymake/polytope/to_interface.h"
+#include "polymake/polytope/generic_lp_client.h"
 
-
-namespace polymake { namespace polytope {
-
-template <typename Scalar>
-bool to_input_feasible (perl::Object p) {
-   Matrix<Scalar> I = p.lookup("FACETS | INEQUALITIES"),
-                  E = p.lookup("LINEAR_SPAN | EQUATIONS");
-
-   return to_interface::to_input_feasible_impl(I, E);
-}
-
-
-// BOUNDED is decided by determining whether [1,0,0,0,...] is a strictly interior point of the cone C spanned by INEQUALITIES and +/-EQUATIONS
-// to cope for the case that C is low dimensional we ask for lineality space first
-// the primal linear program is then to determine whether 
-// max lambda
-// y^t (F/E/-E)=e_0
-// y_i >= lambda
-// has a positive maximal value
-template <typename Scalar>
-bool to_input_bounded  (perl::Object p) {
-   const Matrix<Scalar> L = p.give("LINEALITY_SPACE");
-   if ( L.rows() > 0 ) return false;
-
-   Matrix<Scalar> F = p.give("FACETS | INEQUALITIES"),
-                  E = p.lookup("AFFINE_HULL | EQUATIONS");
-
-   return to_interface::to_input_bounded_impl(L, F, E);
-}
-
-
-
+namespace polymake { namespace polytope { namespace to_interface {
 
 template <typename Scalar>
-void to_solve_lp(perl::Object p, perl::Object lp, bool maximize, perl::OptionSet options)
+auto create_LP_solver()
 {
-   typedef to_interface::solver<Scalar> Solver;
-   const Matrix<Scalar> H=p.give("FACETS | INEQUALITIES"),
-      E=p.lookup("AFFINE_HULL | EQUATIONS");
-   const Vector<Scalar> Obj=lp.give("LINEAR_OBJECTIVE");
-
-   try {
-      Solver solver;
-      if(options.exists("initial_basis")){
-         const Set<int> basis = options["initial_basis"];
-         solver.set_basis(basis);
-      }
-      typename Solver::lp_solution S=solver.solve_lp(H, E, Obj, maximize);
-      lp.take(maximize ? "MAXIMAL_VALUE" : "MINIMAL_VALUE") << S.first;
-      lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << S.second;
-      p.take("FEASIBLE") << true;
-   }
-   catch (const infeasible&) {
-      lp.take(maximize ? "MAXIMAL_VALUE" : "MINIMAL_VALUE") << perl::undefined();
-      lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << perl::undefined();
-      p.take("FEASIBLE") << false;
-   }
-   catch (const unbounded&) {
-      if (maximize)
-         lp.take("MAXIMAL_VALUE") << std::numeric_limits<Scalar>::infinity();
-      else
-         lp.take("MINIMAL_VALUE") << -std::numeric_limits<Scalar>::infinity();
-      lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << perl::undefined();
-      p.take("FEASIBLE") << true;
-   }
+   return cached_LP_solver<Scalar>(new Solver<Scalar>(), true);
 }
 
+}
 
-FunctionTemplate4perl("to_input_feasible<Scalar> (Polytope<Scalar>)");
-FunctionTemplate4perl("to_input_bounded<Scalar> (Polytope<Scalar>)");
-FunctionTemplate4perl("to_solve_lp<Scalar> (Polytope<Scalar>, LinearProgram<Scalar>, $; {initial_basis => undef}) : void");
+template <typename Scalar>
+void to_lp_client(perl::Object p, perl::Object lp, bool maximize)
+{
+   generic_lp_client<Scalar>(p, lp, maximize, to_interface::Solver<Scalar>());
+}
 
+FunctionTemplate4perl("to_lp_client<Scalar> (Polytope<Scalar>, LinearProgram<Scalar>, $)");
+
+InsertEmbeddedRule("function to.simplex: create_LP_solver<Scalar> [is_ordered_field_with_unlimited_precision(Scalar)] ()"
+                   " : c++ (name => 'to_interface::create_LP_solver') : returns(cached);\n");
 } }
 
 // Local Variables:

@@ -17,10 +17,12 @@
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
 #include "polymake/AccurateFloat.h"
+#include "polymake/group/named_groups.h"
+#include <math.h>
 
 namespace polymake { namespace polytope {
 
-perl::Object cyclic_caratheodory(const int d, const int n)
+      perl::Object cyclic_caratheodory(const int d, const int n, perl::OptionSet options)
 {
    if ((d < 2) || (d >= n)) {
       throw std::runtime_error("cyclic_caratheodory: (d >= 2) && (n > d)\n");
@@ -28,8 +30,9 @@ perl::Object cyclic_caratheodory(const int d, const int n)
    if (d % 2) {
       throw std::runtime_error("cyclic_caratheodory: even dimension required.\n");
    }
-   
-   perl::Object p("Polytope<Rational>");
+
+   const bool group = options["group"];
+   perl::Object p(std::string(group ? "Polytope<Float>" : "Polytope<Rational>"));
    p.set_description() << "Cyclic " << d << "-polytope on " << n << " vertices on the trigonometric moment curve" << endl;
 
    Matrix<Rational> Vertices(n,d+1);
@@ -39,7 +42,7 @@ perl::Object cyclic_caratheodory(const int d, const int n)
    for (int r=0; r<n; ++r, ++x) {
       *v++ = 1;
       for (int i = 1; i <= d/2; ++i) {
-         sin_cos(s, c, x*i);
+         sin_cos(s, c, x*i*2*M_PI/n);
          *v++ = c;
          *v++ = s;
       }
@@ -50,6 +53,17 @@ perl::Object cyclic_caratheodory(const int d, const int n)
    p.take("N_VERTICES") << n;
    p.take("VERTICES") << Vertices;
    p.take("BOUNDED") << true;
+
+   if (group) {
+      perl::Object g("group::Group");
+      const perl::Object D(group::dihedral_group_impl(2*n));
+      g.take("CHARACTER_TABLE") << D.give("CHARACTER_TABLE");
+      g.set_description() << "full combinatorial group" << endl;
+      g.set_name("fullCombinatorialGroup");
+      p.take("GROUP") << g;
+      p.take("GROUP.VERTICES_ACTION") << D.give("PERMUTATION_ACTION");
+   }
+   
    return p;
 }
 
@@ -60,8 +74,10 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# moment curve. For cyclic polytopes from other curves, see [[polytope::cyclic]]."
                   "# @param Int d the dimension. Required to be even."
                   "# @param Int n the number of points"
+                  "# @option Bool group add a symmetry group description. If 0 (default), the return type is Polytope<Rational>, else Polytope<Float>"
+                  "# so that the matrices corresponding to the symmetry action may be approximated"
                   "# @return Polytope",
-                  &cyclic_caratheodory,"cyclic_caratheodory($$)");
+                  &cyclic_caratheodory,"cyclic_caratheodory($$ { group=>0 })");
 
 } }
 

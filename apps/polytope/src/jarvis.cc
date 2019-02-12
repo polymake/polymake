@@ -34,7 +34,7 @@ ListMatrix<Vector<Scalar> > jarvis(const Matrix<Scalar> &Points)
    //   doesnt detect duplicate points for n=2
    if (n < 3) {
       if (n == 2 && Points[0] == Points[1])
-         return Points.minor(scalar2set(0),All);
+         return Points.minor(scalar2set(0), All);
       return Points;
    }
 

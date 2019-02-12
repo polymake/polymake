@@ -1,0 +1,9 @@
+{"app": "common",
+ "inst": [
+  {"pkg": "Polymake::common::PowerSet"},
+  {"class": "PowerSet<int>", "include": ["polymake/PowerSet.h"], "pkg": "Polymake::common::PowerSet__Int"},
+  {"args": ["PowerSet<int>"], "include": ["polymake/PowerSet.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<const PowerSet<int>&>", "perl::Canned<const PowerSet<int>&>"], "include": ["polymake/PowerSet.h"], "op": "_eq", "sig": "_eq:O.X.X"},
+  {"args": ["PowerSet<int>", "perl::Canned<const PowerSet<int>&>"], "include": ["polymake/PowerSet.h"], "op": "new", "sig": "new.X"},
+ null ],
+"version": 3}

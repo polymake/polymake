@@ -37,8 +37,8 @@ bool totally_unimodular(const GenericMatrix<Matrix, E>& M)
    const int r=std::min(m,n);
 
    for (int k=1; k<=r; ++k)
-      for (Entire< Subsets_of_k<const sequence &> >::const_iterator ri = entire(all_subsets_of_k(sequence(0,m),k)); !ri.at_end(); ++ri)
-         for (Entire< Subsets_of_k<const sequence &> >::const_iterator ci = entire(all_subsets_of_k(sequence(0,n),k)); !ci.at_end(); ++ci) {
+      for (auto ri = entire(all_subsets_of_k(sequence(0,m),k)); !ri.at_end(); ++ri)
+         for (auto ci = entire(all_subsets_of_k(sequence(0,n),k)); !ci.at_end(); ++ci) {
             const E d=det(M.minor(*ri,*ci));
             if (!is_zero(d) && !abs_equal(d,one_value<E>())) return false;
          }

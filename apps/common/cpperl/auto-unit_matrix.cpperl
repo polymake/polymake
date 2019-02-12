@@ -1,0 +1,13 @@
+{"app": "common",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "unit_matrix", "include": ["polymake/Rational.h", "polymake/linalg.h"], "sig": "unit_matrix:T1.x", "tp": "1"},
+  {"args": ["PuiseuxFraction<Max, Rational, Rational>", "void"], "func": "unit_matrix", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/linalg.h"], "sig": "unit_matrix:T1.x", "tp": "1"},
+  {"args": ["RationalFunction<Rational, int>", "void"], "func": "unit_matrix", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/linalg.h"], "sig": "unit_matrix:T1.x", "tp": "1"},
+  {"args": ["TropicalNumber<Min, Rational>", "void"], "func": "unit_matrix", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/linalg.h"], "sig": "unit_matrix:T1.x", "tp": "1"},
+  {"args": ["TropicalNumber<Min, int>", "void"], "func": "unit_matrix", "include": ["polymake/TropicalNumber.h", "polymake/linalg.h"], "sig": "unit_matrix:T1.x", "tp": "1"},
+  {"args": ["int", "void"], "func": "unit_matrix", "include": ["polymake/linalg.h"], "sig": "unit_matrix:T1.x", "tp": "1"},
+  {"args": ["Integer", "void"], "func": "unit_matrix", "include": ["polymake/Integer.h", "polymake/linalg.h"], "sig": "unit_matrix:T1.x", "tp": "1"},
+  {"args": ["double", "void"], "func": "unit_matrix", "include": ["polymake/linalg.h"], "sig": "unit_matrix:T1.x", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void"], "func": "unit_matrix", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "unit_matrix:T1.x", "tp": "1"},
+ null ],
+"version": 3}

@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "gkz_vector.cc",
+ "inst": [
+  {"args": ["Rational", "Array<Set<int>>", "perl::Canned<const Matrix<Rational>&>", "Array<Set<int>>(perl::Canned<const Array<Set<int>>&>)"], "func": "gkz_vector", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "gkz_vector:T2.X.C1", "tp": "2"},
+  {"args": ["Rational", "perl::Canned<const SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>&>"], "func": "chirotope_impl_native", "include": ["polymake/IncidenceMatrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "chirotope_impl_native:T1.X", "tp": "1"},
+ null ],
+"version": 3}

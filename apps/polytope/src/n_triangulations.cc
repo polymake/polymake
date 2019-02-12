@@ -84,7 +84,7 @@ Array<Array<EdgeData > > edge_precalc(const Array< Vector<Scalar> > points)
             Bitset vis_from_above(n-i-2);
             for (int k=i+1; k<n; ++k) {
                if (k!=j && (0==illegal_edges(i,k)) && (0==illegal_edges(j,k))) {
-                  perl::Object p = perl::Object(perl::ObjectType::construct<field>("Polytope"));
+                  perl::Object p = perl::Object("Polytope", mlist<field>());
                   V.row(0) = points[i];
                   V.row(1) = points[k];
                   V.row(2) = points[j];
@@ -151,9 +151,9 @@ int lower_upper_boundary(Bitset& lower, Bitset& upper, perl::Object p)
    const Matrix<field> F = p.give("FACETS");
 
    upper+= n;
-   for (Entire<Rows<IncidenceMatrix<> > >::const_iterator rit = entire(rows(PIF)); !rit.at_end(); ++rit) {
+   for (auto rit = entire(rows(PIF)); !rit.at_end(); ++rit) {
       const Set<int>& ps((*rit));	
-      for (Entire<Set<int> >::const_iterator sit = entire(ps); !sit.at_end(); ++sit) {
+      for (auto sit = entire(ps); !sit.at_end(); ++sit) {
          boundary_points+= *sit;
          if (F(rit.index(),2)>0 || P(n,1)==P(*sit,1))
             lower+= *sit;
@@ -183,7 +183,7 @@ Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
 
    //precalculations for the edges
    Array<Array<EdgeData>> advance_triangles = edge_precalc<Scalar>(ordered_points);
-   perl::Object p = perl::Object(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p("Polytope", mlist<Scalar>());
    Matrix<Scalar> ordered_points_matrix(n,points.cols(),entire(ordered_points));
 
    p.take("FEASIBLE") << true;
@@ -205,36 +205,36 @@ Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
 
    //while keeping at most two hashtables for consecutive levels in memory, calculate the number of triangulations for each level one after another
    for (int i=0; i<2*n-n_boundary_points-2; ++i) {	
-      for (Entire<hash_map<Bitset, Integer> >::iterator chain = (*current_lvl).begin(); chain != (*current_lvl).end(); chain = (*current_lvl).erase(chain)) {
+      for (auto chain = current_lvl->begin(); chain != current_lvl->end(); chain = current_lvl->erase(chain)) {
          Bitset current_mchain = (*chain).first;
          Bitset on_or_above(n);
          if (opt) {
-            //calculate all points on or above the current chain and relate them to their visible edges
+            // calculate all points on or above the current chain and relate them to their visible edges
             on_or_above += 0;
-            Entire<Bitset>::const_iterator right_end = current_mchain.begin();
-            right_end++;
-            for (int j=0; j!=n-1; j = *right_end, right_end++) {
+            auto right_end = current_mchain.begin();
+            ++right_end;
+            for (int j=0; j!=n-1; j = *right_end, ++right_end) {
                on_or_above += *right_end;
                for (int l=j+1; l < *right_end; l++)
                   if (advance_triangles[j][*right_end-j-1].vis.contains(l-j-1))
                      on_or_above += l;
             }
          }
-         //calculate the marking from the corresponding bitset
+         // calculate the marking from the corresponding bitset
          int mark(0);
-         Entire<Bitset>::const_iterator leading_one = current_mchain.begin();
+         auto leading_one = current_mchain.begin();
          while (*leading_one < n)
-            leading_one++;
+            ++leading_one;
          for (int j = size-1; j >= *leading_one; --j) {
             if (current_mchain.contains(j)) {
                mark+= pow(2,size-j-1);
             }
          }
          int left(0), mid(0), right(0);
-         //calculate the start nodes according to the mark of the chain
-         Entire<Bitset>::const_iterator unmarked = current_mchain.begin();
+         // calculate the start nodes according to the mark of the chain
+         auto unmarked = current_mchain.begin();
          for (int j=0; j+2<mark; ++j) {
-            unmarked++;
+            ++unmarked;
          }
          mid = *unmarked;
 
@@ -250,15 +250,15 @@ Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
             current_mchain -= j;
          }
 
-         //check each edge in the current chain for legal successors
+         // check each edge in the current chain for legal successors
          do {
             left = mid;
             mid = right;
-            Entire<Bitset>::const_iterator legal_edge = current_mchain.begin();
+            auto legal_edge = current_mchain.begin();
             while (*legal_edge < mid+1)
-               legal_edge++;
+               ++legal_edge;
             right = *legal_edge;
-            //check for advances of type 2 which exclude a point from the chain
+            // check for advances of type 2 which exclude a point from the chain
             if (mid > 0) {
                if (!advance_triangles[left][right-left-1].trivial && advance_triangles[left][right-left-1].adv2.contains(mid-left-1)) {
                   //check if the visibility condition is met for the advanced marked chain in question
@@ -266,8 +266,8 @@ Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
                   if (opt) {
                      on_or_above -= mid;
                      bool visible = true;
-                     Entire<Bitset>::const_iterator untreated = current_mchain.begin();
-                     untreated++;
+                     auto untreated = current_mchain.begin();
+                     ++untreated;
                      int tmp(0);
                      for (int m=0; m<left && visible; m=tmp) {
                         tmp = *untreated;
@@ -319,8 +319,8 @@ Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
                      current_mchain += j;
                      if (opt) {
                         bool visible = true;
-                        Entire<Bitset>::const_iterator untreated = current_mchain.begin();
-                        untreated++;
+                        auto untreated = current_mchain.begin();
+                        ++untreated;
                         int tmp(0);
                         for (int m=0; m<mid && visible; m=*untreated, untreated++) {
                            tmp = *untreated;
@@ -361,8 +361,8 @@ Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
    }
    //calculate the number of triangulations from the counters of the last iteration
    Integer tr(0);
-   for (Entire<hash_map<Bitset,Integer> >::iterator chain = (*current_lvl).begin(); chain != (*current_lvl).end(); ++chain) {
-      tr += (*chain).second;
+   for (auto chain = current_lvl->begin(); chain != current_lvl->end(); ++chain) {
+      tr += chain->second;
    }
    return tr;
 }

@@ -472,6 +472,11 @@ public:
       set_data(num, den, initialized::yes);
       return *this;
    }
+   Rational& set(mpz_t&& num, mpz_t&& den)
+   {
+      set_data(num[0], den[0], initialized::yes);
+      return *this;
+   }
 
    Rational& copy_from(mpz_srcptr num_src, mpz_srcptr den_src)
    {
@@ -1990,8 +1995,8 @@ struct cmp_scalar<Rational, Rational, void>
 template <bool is_numerator, typename TPart>
 struct object_traits<RationalParticle<is_numerator, TPart>>
    : object_traits<TPart> {
-   typedef TPart proxy_for;
-   static const bool is_temporary=true, is_persistent=false;
+   using proxy_for = TPart;
+   static constexpr bool is_temporary=true, is_persistent=false;
 };
 
 template <>
@@ -2084,7 +2089,7 @@ Integer& Integer::operator= (Rational&& b)
 
 template <>
 Rational
-pow(const Rational& base, int exp);
+pow(const Rational& base, long exp);
 
 }
 namespace polymake {

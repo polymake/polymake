@@ -67,7 +67,7 @@ perl::Object universal_polytope_impl(int d,
    const SparseMatrix<Scalar> Equations(((-Integer::fac(d) * vol) | volume_vect | zero_vector<Scalar>(n_cols - n_reps))
                                        / (zero_vector<Scalar>(cocircuit_equations.rows()) | Matrix<Scalar>(cocircuit_equations)));
 
-   perl::Object q(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object q("Polytope", mlist<Scalar>());
    q.take("FEASIBLE") << true;
    q.take("INEQUALITIES") << Inequalities;
    q.take("EQUATIONS") << Equations;
@@ -87,7 +87,7 @@ perl::Object simplexity_ilp(int d,
    if (n_reps > n_cols)
       throw std::runtime_error("Need at least #{simplex reps} many columns in the cocircuit equation matrix");
 
-   perl::Object lp(perl::ObjectType::construct<Scalar>("LinearProgram"));
+   perl::Object lp("LinearProgram", mlist<Scalar>());
    lp.attach("INTEGER_VARIABLES") << Array<bool>(n_reps, true);
    lp.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0 | ones_vector<Scalar>(n_reps) | zero_vector<Scalar>(n_cols-n_reps));
 
@@ -107,14 +107,14 @@ perl::Object foldable_max_signature_ilp(int d,
    Vector<Integer> volume_vect(2*n);
    SparseMatrix<Integer> selection(n,2*n);
    Vector<Integer>::iterator vit = volume_vect.begin();
-   int i=0;
+   int s = 0;
    for (const auto& f: max_simplices) {
       // points have integer coordinates. This is ensured by the check for $p->LATTICE in universal_polytope.rules
       const Integer max_simplex_vol (numerator(abs(det(points.minor(f, All)))));
       *vit = max_simplex_vol; ++vit; // black maximal simplex
       *vit = max_simplex_vol; ++vit; // white maximal simplex
-      selection(i,2*i) = selection(i,2*i+1) = -1; // select one of either black or white
-      ++i;
+      selection(s, 2*s) = selection(s, 2*s+1) = -1; // select one of either black or white
+      ++s;
    }
 
    const SparseMatrix<Integer> 
@@ -125,7 +125,7 @@ perl::Object foldable_max_signature_ilp(int d,
    
    // signature = absolute difference of normalized volumes of black minus white maximal simplices
    // (provided that normalized volume is odd)
-   for (int i=0; i<n; ++i)
+   for (int i = 0; i < n; ++i)
       if (volume_vect[2*i].even()) 
          volume_vect[2*i] = volume_vect[2*i+1] = 0;
       else 

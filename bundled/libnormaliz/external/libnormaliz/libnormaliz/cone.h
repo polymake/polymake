@@ -247,6 +247,10 @@ public:
     const Matrix<nmz_float>& getVerticesFloatMatrix();
     const vector< vector<nmz_float> >& getVerticesFloat();
     size_t getNrVerticesFloat();
+    
+    const Matrix<nmz_float>& getSuppHypsFloatMatrix();
+    const vector< vector<nmz_float> >& getSuppHypsFloat();
+    size_t getNrSuppHypsFloat();
 
     const Matrix<Integer>& getVerticesOfPolyhedronMatrix();
     const vector< vector<Integer> >& getVerticesOfPolyhedron();
@@ -288,6 +292,10 @@ public:
     const Matrix<Integer>& getDeg1ElementsMatrix();
     const vector< vector<Integer> >& getDeg1Elements();
     size_t getNrDeg1Elements();
+    
+    const Matrix<Integer>& getLatticePointsMatrix();
+    const vector< vector<Integer> >& getLatticePoints();
+    size_t getNrLatticePoints();
 
     // the actual grading is Grading/GradingDenom
     vector<Integer> getGrading();
@@ -302,6 +310,8 @@ public:
     nmz_float getEuclideanVolume();
     mpq_class getVirtualMultiplicity();
     mpq_class getIntegral();
+    nmz_float getEuclideanIntegral();
+
     const pair<HilbertSeries, mpz_class>& getWeightedEhrhartSeries();
     
     string getPolynomial() const;
@@ -346,6 +356,30 @@ public:
     
     IntegrationData& getIntData();
 
+    void resetGrading(vector<Integer> lf);
+
+    const Matrix<Integer>& getMatrixConePropertyMatrix(ConeProperty::Enum property);
+    const vector< vector<Integer> >& getMatrixConeProperty(ConeProperty::Enum property);
+
+    const Matrix<nmz_float>& getFloatMatrixConePropertyMatrix(ConeProperty::Enum property);
+    const vector< vector<nmz_float> >& getFloatMatrixConeProperty(ConeProperty::Enum property);
+    
+    vector<Integer> getVectorConeProperty(ConeProperty::Enum property);
+
+    Integer getIntegerConeProperty(ConeProperty::Enum property);
+
+    mpz_class getGMPIntegerConeProperty(ConeProperty::Enum property);
+    
+    mpq_class getRationalConeProperty(ConeProperty::Enum property);
+
+    nmz_float getFloatConeProperty(ConeProperty::Enum property);
+
+    size_t getMachineIntegerConeProperty(ConeProperty::Enum property);
+
+    bool getBooleanConeProperty(ConeProperty::Enum property);
+    
+    nmz_float euclidean_corr_factor();
+
 //---------------------------------------------------------------------------
 //                          private part
 //---------------------------------------------------------------------------
@@ -356,6 +390,7 @@ private:
     string output_dir;
     string nmz_call;
     size_t dim;
+    bool inhom_input;
     
     // the following three matrices store the constraints of the input
     Matrix<Integer> Inequalities;
@@ -378,6 +413,7 @@ private:
     vector<bool> ExtremeRaysIndicator;
     Matrix<Integer> VerticesOfPolyhedron;
     Matrix<Integer> SupportHyperplanes;
+    Matrix<nmz_float> SuppHypsFloat;
     Matrix<Integer> ExcludedFaces;
     Matrix<Integer> PreComputedSupportHyperplanes;
     size_t TriangulationSize;
@@ -392,12 +428,13 @@ private:
     list< STANLEYDATA<Integer> > StanleyDec_export;
     mpq_class multiplicity;
     mpq_class volume;
-    nmz_float euclidean_volume;
+    double euclidean_volume;
     mpq_class Integral;
     mpq_class VirtualMultiplicity;
     vector<Integer> WitnessNotIntegrallyClosed;
     vector<Integer> GeneratorOfInterior;
     Matrix<Integer> HilbertBasis;
+    Matrix<Integer> HilbertBasisRecCone;
     Matrix<Integer> BasisMaxSubspace;
     Matrix<Integer> ModuleGeneratorsOverOriginalMonoid;
     Matrix<Integer> Deg1Elements;
@@ -412,6 +449,7 @@ private:
     vector<boost::dynamic_bitset<> > Pair; // for indicator vectors in project-and_lift
     vector<boost::dynamic_bitset<> > ParaInPair; // if polytope is a parallelotope
     bool check_parallelotope();
+    bool is_parallelotope;
 
     bool pointed;
     bool inhomogeneous;
@@ -421,6 +459,7 @@ private:
     bool integrally_closed;
     bool Gorenstein;
     bool rees_primary;
+    bool dual_original_generators; // true means: dual cone has original generators
     Integer ReesPrimaryMultiplicity;
     int affine_dim; //dimension of polyhedron
     size_t recession_rank; // rank of recession monoid
@@ -436,6 +475,7 @@ private:
 
     bool no_lattice_restriction; // true if cine generators are known to be in the relevant lattice
     bool normalization; // true if input type normalization is used
+    bool general_no_grading_denom;
 
     // if this is true we allow to change to a smaller integer type in the computation
     bool change_integer_type;
@@ -477,7 +517,7 @@ private:
 
     Matrix<Integer> prepare_input_type_2(const vector< vector<Integer> >& Input);
     Matrix<Integer> prepare_input_type_3(const vector< vector<Integer> >& Input);
-    void prepare_input_type_4(Matrix<Integer>& Inequalities);
+    void insert_default_inequalities(Matrix<Integer>& Inequalities);
 
     /* only used by the constructors */
     void initialize();
@@ -486,9 +526,9 @@ private:
     void compute_full_cone(ConeProperties& ToCompute);
 
     /* compute the generators using the support hyperplanes */
-    void compute_generators();
+    void compute_generators(ConeProperties& ToCompute);
     template<typename IntegerFC>
-    void compute_generators_inner();
+    void compute_generators_inner(ConeProperties& ToCompute);
 
     /* compute method for the dual_mode, used in compute(mode) */
     void compute_dual(ConeProperties& ToCompute);
@@ -499,12 +539,12 @@ private:
 
     /* extract the data from Full_Cone, this may remove data from Full_Cone!*/
     template<typename IntegerFC>
-    void extract_data(Full_Cone<IntegerFC>& FC);
+    void extract_data(Full_Cone<IntegerFC>& FC,ConeProperties& ToCompute);
     template<typename IntegerFC>
-    void extract_supphyps(Full_Cone<IntegerFC>& FC);
+    void extract_supphyps(Full_Cone<IntegerFC>& FC, Matrix<Integer>& ret, bool dual=true);
+    void extract_supphyps(Full_Cone<Integer>& FC, Matrix<Integer>& ret, bool dual=true);    
     
-    void extract_supphyps(Full_Cone<Integer>& FC);
-
+    void norm_dehomogenization(size_t FC_dim);
 
     /* set OriginalMonoidGenerators */
     void set_original_monoid_generators(const Matrix<Integer>&);
@@ -529,11 +569,14 @@ private:
     void complete_sublattice_comp(ConeProperties& ToCompute); // completes the sublattice computations
     void complete_HilbertSeries_comp(ConeProperties& ToCompute);
     
+    void treat_polytope_as_being_hom_defined(ConeProperties ToCompute);
+    
     void compute_integral (ConeProperties& ToCompute);
     void compute_virt_mult (ConeProperties& ToCompute);
     void compute_weighted_Ehrhart(ConeProperties& ToCompute);
     
     void compute_vertices_float(ConeProperties& ToCompute);
+    void compute_supp_hyps_float(ConeProperties& ToCompute);
     
     void make_StanleyDec_export();
     
@@ -547,11 +590,13 @@ private:
     void project_and_lift(ConeProperties& ToCompute, Matrix<Integer>& Deg1, const Matrix<Integer>& Gens, Matrix<Integer>& Supps, bool float_projection);
 
     void compute_volume(ConeProperties& ToCompute);
-    void compute_euclidean_volume(const vector<Integer>& Grad);
+    
+    void try_multiplicity_by_descent(ConeProperties& ToCompute);
+    void try_multiplicity_of_para(ConeProperties& ToCompute);
     
     void compute_projection(ConeProperties& ToCompute);
     void compute_projection_from_gens(const vector<Integer>& GradOrDehom);
-    void compute_projection_from_constraints(const vector<Integer>& GradOrDehom);
+    void compute_projection_from_constraints(const vector<Integer>& GradOrDehom, ConeProperties& ToCompute);
  
     //in order to avoid getRank fromm inside compute
     size_t get_rank_internal();
@@ -569,6 +614,77 @@ void insert_zero_column(vector< vector<Integer> >& mat, size_t col);
 
 template<typename Integer>
 void insert_column(vector< vector<Integer> >& mat, size_t col, Integer entry);
+
+// computes approximating lattice simplex using the A_n dissection of the unit cube
+// q is a rational vector with the denominator in the FIRST component q[0]
+template<typename Integer>
+void approx_simplex(const vector<Integer>& q, std::list<vector<Integer> >& approx, const long approx_level){
+	
+	//cout << "approximate the point " << q;
+    long dim=q.size();
+    long l = approx_level;
+    //if (approx_level>q[0]) l=q[0]; // approximating on level q[0](=grading) is the best we can do
+    // TODO in this case, skip the rest and just approximate on q[0]
+    Matrix<Integer> quot =  Matrix<Integer>(l,dim);
+    Matrix<Integer> remain=Matrix<Integer>(l,dim);
+    for(long j=0;j<approx_level;j++){
+	    for(long i=0;i<dim;++i){
+	        quot[j][i]=(q[i]*(j+1))/q[0];          // write q[i]=quot*q[0]+remain
+	        //quot[j][0] = 1;
+	        remain[j][i]=(q[i]*(j+1))%q[0];  // with 0 <= remain < q[0]
+	        if(remain[j][i]<0){
+	            remain[j][i]+=q[0];
+	            quot[j][i]--;
+	        }
+	          
+	    }
+	    v_make_prime(quot[j]);
+	    remain[j][0]=q[0];  // helps to avoid special treatment of i=0
+	}
+	// choose best level
+	//cout << "this is the qout matrix" << endl;
+	//quot.pretty_print(cout);
+	//cout << "this is the remain matrix" << endl;
+	//remain.pretty_print(cout);
+	long best_level=l-1;
+	vector<long> nr_zeros(l);
+	for(long j=l-1;j>=0;j--){
+		for(long i=0;i<dim;++i){
+			if(remain[j][i]==0) nr_zeros[j]++;
+		}
+		if (nr_zeros[j]>nr_zeros[best_level]) best_level=j;
+	}
+	//cout << "the best level is " << (best_level+1) << endl;
+	//now we proceed as before
+	vector<pair<Integer,size_t> > best_remain(dim);
+	for(long i=0;i<dim;i++){
+		best_remain[i].first = remain[best_level][i];
+		best_remain[i].second = i; // after sorting we must lnow where elements come from
+	}
+
+    sort(best_remain.begin(),best_remain.end()); 
+    reverse(best_remain.begin(),best_remain.end()); // we sort remain into descending order
+    
+    /*for(long i=0;i<dim;++i){
+        cout << remain[i].first << " " << remain[i].second << endl;
+    } */
+    
+    for(long i=1;i<dim;++i){
+        if(best_remain[i].first<best_remain[i-1].first)
+        {
+            approx.push_back(quot[best_level]);
+            //cout << "add the point " << quot[best_level];
+            // cout << i << " + " << remain[i].first << " + " << quot << endl;
+        }
+        quot[best_level][best_remain[i].second]++;    
+    }
+    if(best_remain[dim-1].first > 0){
+        // cout << "E " << quot << endl;
+        approx.push_back(quot[best_level]);
+        //cout << "add the point " << quot[best_level];
+    }
+
+}
 
 
 }  //end namespace libnormaliz

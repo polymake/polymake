@@ -29,7 +29,7 @@ namespace {
 template <typename Coord>
 Array<perl::Object> construct_cones(const IncidenceMatrix<>& max_cones, const Matrix<Coord>& rays, const Matrix<Coord>& lin_space, const int ambient_dim)
 {
-   perl::ObjectType cone_type=perl::ObjectType::construct<Coord>("Cone");
+   perl::ObjectType cone_type("Cone", mlist<Coord>());
 
    const int size = max_cones.rows();
 
@@ -61,7 +61,7 @@ perl::Object common_refinement(perl::Object f1, perl::Object f2)
    orthogonalize(entire(rows(lineality_space2)));
    Matrix<Coord> lineality_space;
    if (lineality_space1.rows() == 0 || lineality_space2.rows() == 0){
-      lineality_space = Matrix<Coord>();
+      lineality_space = Matrix<Coord>(0,ambient_dim);
    }else if(rank(lineality_space1) == ambient_dim && rank(lineality_space2) == ambient_dim){
       lineality_space = unit_matrix<Coord>(ambient_dim);
    }else{
@@ -76,7 +76,7 @@ perl::Object common_refinement(perl::Object f1, perl::Object f2)
    project_to_orthogonal_complement(rays2, lineality_space2);
 
 
-   ListMatrix<Vector<Coord> > rays;
+   ListMatrix<Vector<Coord> > rays(0,ambient_dim);
    hash_map<Vector<Coord>, int> ray_map;
    bool empty_not_yet_there = true;
 
@@ -106,7 +106,7 @@ perl::Object common_refinement(perl::Object f1, perl::Object f2)
                }
             }
             Set<int> new_cone;
-            for (Entire<sequence>::const_iterator j=entire(sequence(0,index)); !j.at_end(); ++j)
+            for (auto j=entire(sequence(0,index)); !j.at_end(); ++j)
                if (ray_indices[*j]>=0) new_cone.insert(ray_indices[*j]);
             if (inters_dim > 0 || empty_not_yet_there){
                new_max_cones.push_back(new_cone);

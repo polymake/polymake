@@ -95,14 +95,16 @@ Matrix<Rational> rand_cyclic_gale(int d, int n, const RandomSeed& seed)
 
 
       // pick a random vector inside this allowed cone
-      Vector<Rational> v(gdim);
-      for (Entire<Rows<Matrix<Rational> > >::const_iterator rit = entire(rows(gens)); !rit.at_end(); ++rit)
-         v += random.get() * (*rit);
-      *grit = v;
+      {
+         Vector<Rational> v(gdim);
+         for (auto rit = entire(rows(gens)); !rit.at_end(); ++rit)
+            v += random.get() * (*rit);
+         *grit = v;
+      }
       
       // add the normal vectors of the new hyperplanes generated using this vector
-      if (i<n-1) { // but don't waste time on the last point
-         for (Entire<Subsets_of_k<const sequence&> >::const_iterator r(entire(all_subsets_of_k(sequence(0,i), gdim-2))); !r.at_end(); ++r) {
+      if (i < n-1) { // but don't waste time on the last point
+         for (auto r = entire(all_subsets_of_k(sequence(0,i), gdim-2)); !r.at_end(); ++r) {
             Set<int> ridge(*r);
             ridge += i;
             const Vector<Rational> v = null_space(G.minor(ridge, All))[0];

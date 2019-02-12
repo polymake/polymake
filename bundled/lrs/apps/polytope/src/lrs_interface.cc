@@ -15,6 +15,7 @@
 */
 
 #include <fcntl.h>
+#include <stdio.h>
 
 #include "polymake/polytope/lrs_interface.h"
 #include "polymake/hash_set"
@@ -35,7 +36,45 @@ extern "C" {
 #undef GMP
 #undef MA
 
+
 namespace polymake { namespace polytope { namespace lrs_interface {
+
+#ifdef POLYMAKE_LRS_STANDALONE_GLOBAL_INIT
+
+namespace {
+
+void global_construct_standalone()
+{
+   FILE* dummy_out = nullptr;
+#ifdef POLYMAKE_LRS_SUPPRESS_OUTPUT
+   dummy_out = fopen("/dev/null", "w");
+#endif
+   lrs_mp_init(0, nullptr, dummy_out);
+}
+
+void global_destroy_standalone()
+{
+#ifdef POLYMAKE_LRS_SUPPRESS_OUTPUT
+   fclose(lrs_ofp);
+#endif
+}
+
+}
+
+void (* const LrsInstance::Initializer::global_construct)() = &global_construct_standalone;
+void (* const LrsInstance::Initializer::global_destroy)() = &global_destroy_standalone;
+
+#endif
+
+LrsInstance::Initializer::Initializer()
+{
+   global_construct();
+}
+
+LrsInstance::Initializer::~Initializer()
+{
+   global_destroy();
+}
 
 class lrs_mp_vector_output {
 public:
@@ -100,7 +139,7 @@ public:
       const bool oriented;
    };
 
-   Vector<Rational> make_Vector(bool oriented, bool repair=true)
+   Vector<Rational> make_Vector(const bool oriented, const bool repair = true)
    {
       Vector<Rational> result(d+1, iterator(*this, oriented));
       if (repair) {
@@ -205,25 +244,27 @@ private:
    int m, n;
 };
 
-struct solver::dictionary {
+struct dictionary {
    lrs_dat *Q;
    lrs_dic_struct *P;
    lrs_mp_matrix Lin;
-   FILE* out_ptr = nullptr;
-   int stdout_copy = -1;
+   FILE* save_lrs_ofp = nullptr;
+#if defined(POLYMAKE_LRS_SUPPRESS_OUTPUT) && POLYMAKE_LRS_SUPPRESS_OUTPUT == 2
+   int save_stdout = -1;
+#endif
 
    // stream cleanup and restore stdout
-   void cleanup_ofp() {
-      if (out_ptr != nullptr && out_ptr != stderr) {
-         fflush(out_ptr);
-         fclose(out_ptr);
+   void restore_ofp() {
+      if (lrs_ofp == stderr) {
+         fflush(lrs_ofp);
+         lrs_ofp = save_lrs_ofp;
       }
-#if PM_LRS_SUPPRESS_OUTPUT == 2
-      if (stdout_copy != -1) {
+#if defined(POLYMAKE_LRS_SUPPRESS_OUTPUT) && POLYMAKE_LRS_SUPPRESS_OUTPUT == 2
+      else if (save_stdout != -1) {
          if (stdout != nullptr)
             fflush(stdout);
-         dup2(stdout_copy,1);
-         close(stdout_copy);
+         dup2(save_stdout, 1);
+         close(save_stdout);
       }
 #endif
    }
@@ -233,10 +274,10 @@ struct solver::dictionary {
       if (Lin) lrs_clear_mp_matrix(Lin, Q->nredundcol, Q->n);
       lrs_free_dic(P,Q);
       lrs_free_dat(Q);
-      cleanup_ofp();
+      restore_ofp();
    }
 
-   // parameter ge: primal case: true for vertex, falso for linearity
+   // parameter ge: primal case: true for vertex, false for linearity
    //                 dual case: true for inequality, false for equation
    void set_matrix(const Matrix<Rational>& A, int start_row=0, bool ge=true)
    {
@@ -262,38 +303,32 @@ struct solver::dictionary {
    }
 
 
-   dictionary(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations,const bool dual)
+   dictionary(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations, const bool dual, const bool verbose=false)
    {
       // this avoids a segfault in some lrs versions
       if (dual && Inequalities.cols() == 0 && Equations.cols() == 0)
          throw std::runtime_error("lrs_interface - cannot handle ambient dimension 0 in dual mode");
       // initialize static lrs data
       Lin=0;
-      // lrs needs a non-null out_ptr if it was built without LRS_QUIET
-      // we redirect this to /dev/null unless debugging output is desired
-      // the bundled version is built with LRS_QUIET
-      int verbose_lrs = perl::get_custom("$polytope::verbose_lrs");
-      if (verbose_lrs > 0)
-         out_ptr = stderr;
 
-#ifdef PM_LRS_SUPPRESS_OUTPUT
-      int output_fd = open("/dev/null", O_WRONLY);
-      if (out_ptr == nullptr)
-         out_ptr = fdopen(output_fd, "w");
-#if PM_LRS_SUPPRESS_OUTPUT == 2
-      stdout_copy = dup(1);
-      dup2(output_fd,1);
-#endif
+      if (verbose) {
+         save_lrs_ofp = lrs_ofp;
+         lrs_ofp = stderr;
+      }
+#if defined(POLYMAKE_LRS_SUPPRESS_OUTPUT) && POLYMAKE_LRS_SUPPRESS_OUTPUT == 2
+      else {
+         save_stdout = dup(1);
+         dup2(fileno(lrs_ofp), 1);
+      }
 #endif
 
-      lrs_mp_init(0, nullptr, out_ptr);
       char name[] = "polymake";
       Q=lrs_alloc_dat(name);
       if (!Q) {
-         cleanup_ofp();
+         restore_ofp();
          throw std::bad_alloc();
       }
-      if (verbose_lrs > 0)
+      if (verbose)
          Q->debug=1;
       Q->m=Inequalities.rows()+Equations.rows();
       Q->n=Inequalities.cols();
@@ -303,8 +338,8 @@ struct solver::dictionary {
       // initialize dynamic lrs data
       P=lrs_alloc_dic(Q);
       if (!P) {
+         restore_ofp();
          lrs_free_dat(Q);
-         cleanup_ofp();
          throw std::bad_alloc();
       }
       // store inequalities/points and equations/lineality in Q
@@ -314,12 +349,12 @@ struct solver::dictionary {
 
 
    // the following functions "run" lrs
-   enum _filter_nothing { filter_nothing };
-   enum _filter_bounded { filter_bounded };
-   enum _filter_rays { filter_rays };
-   enum _filter_facets { filter_facets };
+   enum filter_nothing_t { filter_nothing };
+   enum filter_bounded_t { filter_bounded };
+   enum filter_rays_t { filter_rays };
+   enum filter_facets_t { filter_facets };
 
-   Matrix<Rational> get_solution_matrix(_filter_nothing)
+   Matrix<Rational> get_solution_matrix(filter_nothing_t)
    {
       ListMatrix<Vector<Rational>> facets(0,Q->n);
 
@@ -333,7 +368,7 @@ struct solver::dictionary {
       return Matrix<Rational>(facets.rows(), facets.cols(), operations::move(), entire(rows(facets)));
    }
 
-   long count_solutions(_filter_nothing)
+   long count_solutions(filter_nothing_t)
    {
       long facets=0;
 
@@ -347,7 +382,7 @@ struct solver::dictionary {
       return facets;
    }
 
-   Matrix<Rational> get_solution_matrix(_filter_rays, bool isCone)
+   Matrix<Rational> get_solution_matrix(filter_rays_t, bool isCone)
    {
       // each vertex is computed only once, but rays can appear multiple times.
       ListMatrix<Vector<Rational>> vertices(0,Q->n);
@@ -382,7 +417,7 @@ struct solver::dictionary {
       return output.make_Matrix();
    }
 
-   std::pair<long, long> count_solutions(_filter_rays)
+   std::pair<long, long> count_solutions(filter_rays_t)
    {
       std::pair<long, long> vertices(0, 0);
       hash_set<Vector<Rational>> rays;
@@ -399,11 +434,11 @@ struct solver::dictionary {
 
       } while (lrs_getnextbasis (&P, Q, 0));
 
-      vertices.first=vertices.second+rays.size();
+      vertices.first = vertices.second + rays.size();
       return vertices;
    }
 
-   long count_solutions(_filter_bounded)
+   long count_solutions(filter_bounded_t)
    {
       long vertices=0;
 
@@ -419,7 +454,7 @@ struct solver::dictionary {
       return vertices;
    }
 
-   Matrix<Rational> get_solution_matrix(_filter_facets)
+   Matrix<Rational> get_solution_matrix(filter_facets_t)
    {
       hash_set<Vector<Rational>> facets(Q->m * Q->n);
 
@@ -434,28 +469,29 @@ struct solver::dictionary {
    }
 };
 
-solver::matrix_pair
-solver::enumerate_facets(const Matrix<Rational>& Points, const Matrix<Rational>& Lineality, const bool isCone, const bool primal)
+convex_hull_result<Rational>
+ConvexHullSolver::enumerate_facets(const Matrix<Rational>& Points, const Matrix<Rational>& Lineality, const bool isCone) const
 {
-   dictionary D(Points, Lineality, false);
+   dictionary D(Points, Lineality, false, verbose);
    // we have a polytope if and only if all first coordinates are !=0
-   // FIXME find better name, vertex enumeration is unique for cones and polytopes
+   // FIXME find better name, vertex enumeration is the same for cones and polytopes
    D.Q->polytope= isCone || attach_selector(Points.col(0), operations::is_zero()).empty();
 
    if (!lrs_getfirstbasis(&D.P, D.Q, &D.Lin, 1) && !D.Q->nredundcol) throw infeasible();
 
-   const Matrix<Rational> AH=isCone ? D.get_linearities().minor(~scalar2set(0),All) : D.get_linearities(); // always lrs returns the functional [1,0,0,0,...]
-   const Matrix<Rational> F=D.Q->polytope
-                            ? D.get_solution_matrix(dictionary::filter_nothing)  // lrs computes facets only once if input is a polytope
-                            : D.get_solution_matrix(dictionary::filter_facets);  // FIXME can facets appear several times for unbounded polyhedra?
-   return matrix_pair(F, AH);
+   Matrix<Rational> AH = isCone ? D.get_linearities().minor(range_from(1), All) : D.get_linearities(); // always lrs returns the functional [1,0,0,0,...]
+   Matrix<Rational> F = D.Q->polytope
+                        ? D.get_solution_matrix(dictionary::filter_nothing)  // lrs computes facets only once if input is a polytope
+                        : D.get_solution_matrix(dictionary::filter_facets);  // FIXME can facets appear several times for unbounded polyhedra?
+   // TODO: std::move
+   return { F, AH };
 }
 
 // FIXME check: why are unbounded polyhedra not allowed?
 long
-solver::count_facets(const Matrix<Rational>& Points, const Matrix<Rational>& Lineality, const bool isCone )
+ConvexHullSolver::count_facets(const Matrix<Rational>& Points, const Matrix<Rational>& Lineality, const bool isCone) const
 {
-   dictionary D(Points,Lineality,false);
+   dictionary D(Points, Lineality, verbose);
 
    // CHECK: the restriction to bounded polyhedra has been added prior to the implementation
    // of convex hull rules for unbounded polyhedra, and apparently the reason is not known anymore
@@ -466,49 +502,48 @@ solver::count_facets(const Matrix<Rational>& Points, const Matrix<Rational>& Lin
    if (!lrs_getfirstbasis(&D.P, D.Q, &D.Lin, 1)) throw infeasible();
 
    return D.Q->nredundcol+1==D.Q->n
-      ? 0       // lrs does not treat the special case of a single point correctly
-      : D.count_solutions(dictionary::filter_nothing);
+          ? 0       // lrs does not treat the special case of a single point correctly
+          : D.count_solutions(dictionary::filter_nothing);
 }
 
-solver::matrix_pair
-solver::enumerate_vertices(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations, const bool isCone, const bool primal)
+convex_hull_result<Rational>
+ConvexHullSolver::enumerate_vertices(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations, const bool isCone) const
 {
-   dictionary D(Inequalities, Equations,true);
+   dictionary D(Inequalities, Equations, true, verbose);
 
    if (!lrs_getfirstbasis(&D.P, D.Q, &D.Lin, 1)) throw infeasible();
 
-   //      && !D.Q->nredundcol
+   Matrix<Rational> Lineality = D.get_linearities();
+   Matrix<Rational> Vertices  = D.get_solution_matrix(dictionary::filter_rays, isCone);
 
-   const Matrix<Rational> Lineality=D.get_linearities();
-   Matrix<Rational>       Vertices= D.get_solution_matrix(dictionary::filter_rays, isCone);
-
-   return matrix_pair(Vertices, Lineality);
+   // TODO: std::move
+   return { Vertices, Lineality };
 }
 
-solver::vertex_count
-solver::count_vertices(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations,
-                       bool only_bounded)
+ConvexHullSolver::vertex_count
+ConvexHullSolver::count_vertices(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations, const bool only_bounded) const
 {
-   dictionary D(Inequalities, Equations,true);
+   dictionary D(Inequalities, Equations, true, verbose);
 
    if (!lrs_getfirstbasis(&D.P, D.Q, &D.Lin, 1)) throw infeasible();
 
-   solver::vertex_count count;
-   count.lin = D.Q->nredundcol;
-   if ( only_bounded ) {
-      count.verts.first = 0;
-      count.verts.second = D.count_solutions(dictionary::filter_bounded);
-   } else
-      count.verts = D.count_solutions(dictionary::filter_rays);
+   vertex_count count;
+   count.lineality_dim = D.Q->nredundcol;
+   if (only_bounded) {
+      count.n_vertices = 0;
+      count.n_bounded_vertices = D.count_solutions(dictionary::filter_bounded);
+   } else {
+      std::tie(count.n_vertices, count.n_bounded_vertices) = D.count_solutions(dictionary::filter_rays);
+   }
 
    return count;
 }
 
 //primal or dual
 std::pair< Bitset, Matrix<Rational> >
-solver::find_irredundant_representation(const Matrix<Rational>& Points, const Matrix<Rational>& Lineality, const bool dual)
+ConvexHullSolver::find_irredundant_representation(const Matrix<Rational>& Points, const Matrix<Rational>& Lineality, const bool dual) const
 {
-   dictionary D(Points, Lineality, dual);
+   dictionary D(Points, Lineality, dual, verbose);
 
    if (!lrs_getfirstbasis(&D.P, D.Q, &D.Lin, 1)) throw infeasible();
    const Matrix<Rational> AH=D.get_linearities();
@@ -521,30 +556,13 @@ solver::find_irredundant_representation(const Matrix<Rational>& Points, const Ma
    return std::pair< Bitset, Matrix<Rational> >(V,AH);
 }
 
-Vector<Rational>
-solver::find_a_vertex(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations)
-{
-   dictionary D(Inequalities, Equations,true);
-
-   if (!lrs_getfirstbasis(&D.P, D.Q, &D.Lin, 1))
-      throw infeasible();
-   if (D.Q->nredundcol)
-      throw not_pointed(D.Q->nredundcol);
-
-   lrs_mp_vector_output output(D.Q->n);
-   for (int col=0; col <= D.P->d; ++col)
-      if (lrs_getsolution(D.P, D.Q, output, col)) break;
-
-   return output.make_Vector(false, false);
-}
-
-bool solver::check_feasibility(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations)
+bool LP_Solver::check_feasibility(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations) const
 {
    dictionary D(Inequalities, Equations,true);
    return lrs_getfirstbasis(&D.P, D.Q, &D.Lin, 1);
 }
 
-bool solver::check_feasibility(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations, Vector<Rational>& ValidPoint)
+bool LP_Solver::check_feasibility(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations, Vector<Rational>& ValidPoint) const
 {
    dictionary D(Inequalities, Equations,true);
 
@@ -552,38 +570,54 @@ bool solver::check_feasibility(const Matrix<Rational>& Inequalities, const Matri
       lrs_mp_vector_output output(D.Q->n);
       for (int col=0; col <= D.P->d; ++col)
          if (lrs_getsolution(D.P, D.Q, output, col)) break;
-      ValidPoint=output.make_Vector(false, false);
+      ValidPoint = output.make_Vector(false, false);
       return true;
    }
    return false;
 }
 
-solver::lp_solution
-solver::solve_lp(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations,
-                 const Vector<Rational>& Objective, bool maximize, int* linearity_dim_p)
+LP_Solution<Rational>
+LP_Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations,
+                 const Vector<Rational>& Objective, bool maximize, bool) const
 {
-   dictionary D(Inequalities, Equations,true);
+   dictionary D(Inequalities, Equations, true);
    D.set_obj_vector(Objective, maximize);
 
-   if (!lrs_getfirstbasis(&D.P, D.Q, &D.Lin, 1)) throw infeasible();
-   if (linearity_dim_p) *linearity_dim_p = D.Q->nredundcol;
-   if (D.Q->unbounded) throw unbounded();
+   LP_Solution<Rational> result;
+   if (lrs_getfirstbasis(&D.P, D.Q, &D.Lin, 1)) {
+      result.lineality_dim = D.Q->nredundcol;
+      if (D.Q->unbounded) {
+         result.status = LP_status::unbounded;
+      } else {
+         result.status = LP_status::valid;
 
-   // sometimes there is lineality that fits the objective function but unbounded is not set
-   // hence we check all lineality rows that lrs computed manually
-   if (*linearity_dim_p) {
-      Matrix<Rational> lin = D.get_linearities();
-      for (auto r = entire(rows(lin)); !r.at_end(); ++r)
-         if (Objective * (*r) != 0)
-            throw unbounded();
+         // sometimes there is lineality that fits the objective function but unbounded is not set
+         // hence we check all lineality rows that lrs computed manually
+         if (result.lineality_dim) {
+            Matrix<Rational> lin = D.get_linearities();
+            for (auto r = entire(rows(lin)); !r.at_end(); ++r) {
+               if (Objective * (*r) != 0) {
+                  result.status = LP_status::unbounded;
+                  break;
+               }
+            }
+         }
+
+         if (result.status == LP_status::valid) {
+            lrs_mp_vector_output output(D.Q->n);
+            for (int col=0; col <= D.P->d; ++col)
+               if (lrs_getsolution(D.P, D.Q, output, col)) break;
+
+            result.objective_value.set(std::move(D.P->objnum), std::move(D.P->objden));
+            result.solution = output.make_Vector(false, false);
+         }
+      }
+   } else {
+      result.status = LP_status::infeasible;
+      result.lineality_dim = 0;
    }
 
-   lrs_mp_vector_output output(D.Q->n);
-   for (int col=0; col <= D.P->d; ++col)
-      if (lrs_getsolution(D.P, D.Q, output, col)) break;
-
-   return lp_solution(Rational(std::move(D.P->objnum), std::move(D.P->objden)),
-                      output.make_Vector(false, false));
+   return result;
 }
 
 } } }

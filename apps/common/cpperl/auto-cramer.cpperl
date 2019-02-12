@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Wary<Matrix<Rational>>&>", "perl::Canned<const Wary<Vector<Rational>>&>"], "func": "cramer", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Vector.h", "polymake/linalg.h"], "sig": "cramer.X4.X4"},
+  {"args": ["perl::Canned<const Wary<SparseMatrix<Rational, NonSymmetric>>&>", "perl::Canned<const Wary<SparseVector<Rational>>&>"], "func": "cramer", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/SparseVector.h", "polymake/linalg.h"], "sig": "cramer.X4.X4"},
+ null ],
+"version": 3}

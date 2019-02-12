@@ -1,13 +1,22 @@
 
+#if defined(__GNUC__)
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-private-field"
+#pragma clang diagnostic ignored "-Wshadow"
+#else // gcc
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#endif
 #endif
 
 #include "polymake/polytope/sympol_config.h"
 #include "polymake/polytope/sympol_interface.h"
 #include "polymake/polytope/sympol_raycomputation_beneathbeyond.h"
 #include "polymake/polytope/sympol_raycomputation_ppl.h"
+#include "polymake/polytope/cdd_interface.h"
+#include "polymake/polytope/lrs_interface.h"
+
 #include "sympol/polyhedron.h"
 #include "sympol/yal/reportlevel.h"
 #include "sympol/symmetrygroupconstruction/computesymmetries.h"
@@ -16,11 +25,74 @@
 #include "sympol/recursionstrategyidmadmlevel.h"
 #include "sympol/facesuptosymmetrylist.h"
 
+#if defined(__GNUC__)
 #ifdef __clang__
 #pragma clang diagnostic pop
+#else // gcc
+#pragma GCC diagnostic pop
+#endif
 #endif
 
 namespace polymake { namespace polytope { namespace sympol_interface {
+
+// prevents repetitious creation and deletion of global constants and bad interference with cdd/lrs interface classes
+
+template <typename Impl>
+class Interface_adhering_to_RAII : public Impl {
+public:
+   Interface_adhering_to_RAII()
+      : Impl()
+   {
+      Impl::initialize();
+   }
+
+   ~Interface_adhering_to_RAII() override
+   {
+      Impl::finish();
+   }
+};
+
+template <typename Impl>
+class StaticInstance {
+public:
+   static Impl* get()
+   {
+      static std::unique_ptr<Impl> instance(new Interface_adhering_to_RAII<Impl>());
+      return instance.get();
+   }
+};
+
+}
+
+namespace {
+
+void cdd_global_construct()
+{
+   (void)sympol_interface::StaticInstance<sympol::RayComputationCDD>::get();
+}
+void lrs_global_construct()
+{
+   (void)sympol_interface::StaticInstance<sympol::RayComputationLRS>::get();
+}
+// cleanup is done automatically via unique_ptr destructor in StaticInstance
+void any_global_destroy() {}
+
+}
+
+namespace cdd_interface {
+
+void (* const CddInstance::Initializer::global_construct)() = &cdd_global_construct;
+void (* const CddInstance::Initializer::global_destroy)() = &any_global_destroy;
+
+}
+namespace lrs_interface {
+
+void (* const LrsInstance::Initializer::global_construct)() = &lrs_global_construct;
+void (* const LrsInstance::Initializer::global_destroy)() = &any_global_destroy;
+
+}
+
+namespace sympol_interface {
 
    group::PermlibGroup sympol_wrapper::compute_linear_symmetries (const Matrix<Rational>& inequalities, const Matrix<Rational>& equations) {
       bool is_homogeneous = false;
@@ -51,20 +123,25 @@ namespace polymake { namespace polytope { namespace sympol_interface {
         throw std::runtime_error("group DEGREE does not match size of input");
       
       sympol::RayComputation* rayComp = nullptr;
-      if (rayCompMethod == SympolRayComputationMethod::cdd)
-         rayComp = new sympol::RayComputationCDD();
-      else if (rayCompMethod == SympolRayComputationMethod::lrs)
-         rayComp = new sympol::RayComputationLRS();
-      else if (rayCompMethod == SympolRayComputationMethod::beneath_beyond)
-         rayComp = new RayComputationBeneathBeyond();
+      switch (rayCompMethod) {
+      case SympolRayComputationMethod::cdd:
+         rayComp = StaticInstance<sympol::RayComputationCDD>::get();
+         break;
+      case SympolRayComputationMethod::lrs:
+         rayComp = StaticInstance<sympol::RayComputationLRS>::get();
+         break;
+      case SympolRayComputationMethod::beneath_beyond:
+         rayComp = StaticInstance<RayComputationBeneathBeyond>::get();
+         break;
 #ifdef POLYMAKE_WITH_PPL
-      else if (rayCompMethod == SympolRayComputationMethod::ppl)
-         rayComp = new RayComputationPPL();
+      case SympolRayComputationMethod::ppl:
+         rayComp = StaticInstance<RayComputationPPL>::get();
+         break;
 #endif
-      if (rayComp == nullptr)
-         throw std::runtime_error("this shouldn't happen");
-      
-      rayComp->initialize();
+      default:
+         throw std::runtime_error("invalid SympolRayComputationMethod value");
+      }
+
       sympol::RecursionStrategy* rs = nullptr;
       if (idmLevel == 0 && admLevel == 0)
         rs = new sympol::RecursionStrategyDirect();
@@ -112,8 +189,6 @@ namespace polymake { namespace polytope { namespace sympol_interface {
       }
 
       delete rs;
-      rayComp->finish();
-      delete rayComp;
       delete sympolPoly;
       sympol::PolyhedronDataStorage::cleanupStorage();
                                   
@@ -150,21 +225,19 @@ namespace polymake { namespace polytope { namespace sympol_interface {
       const int n=A.cols();
       is_homogeneous = true;
       
-      for (Entire< Rows< Matrix<Rational> > >::const_iterator r=entire(rows(A)); !r.at_end(); ++r) {
+      for (auto r=entire(rows(A)); !r.at_end(); ++r) {
          if ((*r)[0] != 0) {
             is_homogeneous = false;
             break;
          }
       }
       
-      const int homogenity_offset = is_homogeneous
-         ? 0
-         : 1;
+      const int homogenity_offset = is_homogeneous ? 0 : 1;
 
       std::list<sympol::QArray> rowList;
       int idx = 0;
       
-      for (Entire< Rows< Matrix<Rational> > >::const_iterator r=entire(rows(A)); !r.at_end(); ++r){
+      for (auto r=entire(rows(A)); !r.at_end(); ++r) {
          sympol::QArray row(n+homogenity_offset, idx++);
          for (int j=0; j < n; ++j) {
             mpq_set(row[j+homogenity_offset],(*r)[j].get_rep());

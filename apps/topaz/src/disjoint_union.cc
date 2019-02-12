@@ -33,11 +33,9 @@ perl::Object disjoint_union(perl::Object p1, perl::Object p2,perl::OptionSet opt
    UNION.resize(count + C2.size());
    
    // add facets of C2
-   for (Entire< Array< Set<int> > >::const_iterator f=entire(C2);
-        !f.at_end(); ++f, ++count) {
+   for (auto f=entire(C2); !f.at_end(); ++f, ++count) {
       Set<int> facet;
-      for (Entire< Set<int> >::const_iterator v=entire(*f);
-           !v.at_end(); ++v)
+      for (auto v=entire(*f); !v.at_end(); ++v)
          facet += n1 + *v;
       
       UNION[count]=facet;

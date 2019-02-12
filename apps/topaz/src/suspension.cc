@@ -65,7 +65,7 @@ perl::Object suspension(perl::Object p_in, int k, perl::OptionSet options)
                 hash_set<std::string> old_L(L.begin(), L.end());
 
                 if (!apex_labels.empty()) {
-                        for (Entire< Array<std::string> >::const_iterator l=entire(apex_labels); !l.at_end(); ++l)
+                        for (auto l=entire(apex_labels); !l.at_end(); ++l)
                                 if (! old_L.insert(*l).second)
                                         throw std::runtime_error("suspension - apex labels not unique");
 

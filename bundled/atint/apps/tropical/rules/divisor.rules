@@ -29,23 +29,18 @@
 # of r_i should contain the support of r_{i-1} * ... * r_1 * C. Note that using the ^-operator
 # on these rational functions is allowed and will result in applying the corresponding function several times.
 # @return Cycle The divisor r_n * ... * r_1 * C
-user_function divisor<Addition>(Cycle<Addition>;@) {
-	my ($cycle, @functions) = @_;
-	
-	if(scalar(@functions) == 0) { return $cycle;}
+user_function divisor<Addition>(Cycle<Addition>; RationalFunction<Addition>+) {
+   my ($cycle, $functions) = @_;
 
-	if(scalar(@functions) > $cycle->PROJECTIVE_DIM) {
-		return empty_cycle<Addition>($cycle->PROJECTIVE_AMBIENT_DIM);
-	}
+   if (@$functions > $cycle->PROJECTIVE_DIM) {
+      return empty_cycle<Addition>($cycle->PROJECTIVE_AMBIENT_DIM);
+   }
 
-	for my $f (@functions) {
-		if(!is_compatible($cycle,$f)) {
-			die "Tropical addition of cycle and function are not compatible.";
-		}
-		$cycle = divisor_with_refinement($cycle,$f);
-	}	
+   for my $f (@$functions) {
+      $cycle = divisor_with_refinement($cycle, $f);
+   }
 
-	return $cycle;
+   return $cycle;
 }
 
 # @category Divisor computation
@@ -58,28 +53,32 @@ user_function divisor<Addition>(Cycle<Addition>;@) {
 # Note that using the ^-operator on these rational functions is allowed and will result in 
 # applying the corresponding function several times.
 # @return Cycle The divisor r_n * ... * r_1 * C
-user_function divisor_nr<Addition>(Cycle<Addition>;@) {
-	my ($cycle,@functions) = @_;
-	if(scalar(@functions) == 0) { return $cycle;}
-	if(scalar(@functions) > $cycle->PROJECTIVE_DIM) {
-		return empty_cycle<Addition>($cycle->PROJECTIVE_AMBIENT_DIM);
-	}
+user_function divisor_nr<Addition>(Cycle<Addition>; RationalFunction<Addition>+) {
+   my ($cycle, $functions) = @_;
 
-	my $value_matrix = new Matrix<Rational>(0,$cycle->SEPARATED_VERTICES->rows() + $cycle->LINEALITY_SPACE->rows());
-	for my $f (@functions) {
-		if(!is_compatible($cycle,$f)) {
-			die "Tropical addition of cycle and function are not compatible.";
-		}
-		my $vertex_values = $f->VERTEX_VALUES;
-		my $lineality_values = $f->LINEALITY_VALUES;
-		my $full_values = $vertex_values | $lineality_values;
-		for my $i (1 .. $f->POWER) {
-			$value_matrix /= $full_values;
-		}
-	}
+   if (@$functions == 0) {
+      return $cycle;
+   }
+   if (@$functions > $cycle->PROJECTIVE_DIM) {
+      return empty_cycle<Addition>($cycle->PROJECTIVE_AMBIENT_DIM);
+   }
 
-	return divisorByValueMatrix($cycle,$value_matrix);
+   my $value_matrix = new Matrix<Rational>(0, $cycle->SEPARATED_VERTICES->rows() + $cycle->LINEALITY_SPACE->rows());
+   for my $f (@$functions) {
+      my $vertex_values = $f->VERTEX_VALUES;
+      my $lineality_values = $f->LINEALITY_VALUES;
+      my $full_values = $vertex_values | $lineality_values;
+      for my $i (1 .. $f->POWER) {
+         $value_matrix /= $full_values;
+      }
+   }
 
+   return divisorByValueMatrix($cycle, $value_matrix);
 }
 
 
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

@@ -16,14 +16,41 @@
 
 #define USE_DD_
 #include "polymake/polytope/cdd_interface_impl.h"
-#include <sstream>
 
 namespace polymake { namespace polytope { namespace cdd_interface {
 
-// variable to count the number of solver instances, see cdd_interface_impl.h
-int solver_count = 0;
+#ifdef POLYMAKE_CDD_STANDALONE_GLOBAL_INIT
 
-template <> inline
+namespace {
+
+void global_construct_standalone()
+{
+   dd_set_global_constants();
+}
+
+void global_destroy_standalone()
+{
+   dd_free_global_constants();
+}
+
+}
+
+void (* const CddInstance::Initializer::global_construct)() = &global_construct_standalone;
+void (* const CddInstance::Initializer::global_destroy)() = &global_destroy_standalone;
+
+#endif
+
+CddInstance::Initializer::Initializer()
+{
+   global_construct();
+}
+
+CddInstance::Initializer::~Initializer()
+{
+   global_destroy();
+}
+
+template <>
 Rational cdd_lp_sol<Rational>::optimal_value() const
 {
    return Rational(std::move(ptr->optvalue));
@@ -31,7 +58,8 @@ Rational cdd_lp_sol<Rational>::optimal_value() const
 
 template class cdd_matrix<Rational>;
 template class cdd_polyhedron<Rational>;
-template class solver<Rational>;
+template class ConvexHullSolver<Rational>;
+template class LP_Solver<Rational>;
 
 dd_ErrorType err;
 

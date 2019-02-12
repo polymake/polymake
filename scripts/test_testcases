@@ -1,0 +1,57 @@
+use Polymake::Test;
+my @files = (@ARGV>0) ? @ARGV : glob("apps/fan/testsuite/*/*.fan");
+
+foreach my $file (@files){
+   my $orig = load($file);
+   print "testing ".$file."\n";
+
+   # get a new object that has a copy of the properties of $orig that are passed to $proplist
+   sub copy_props($){
+      my ($proplist) = @_;
+      return $orig->copy(undef,undef,
+         sub {
+            my ($self,$pv) = @_;
+            ($self,$pv->copy($self))
+            if grep { $pv->property->name eq $_ } @$proplist
+         }
+      );
+   }
+
+   # compute all properties of the input object that are present in $orig and compare
+   sub validate($){
+      my $copy = shift;
+
+      # skip if the copy is empty becaue the props weren't present in the original
+      if($copy->list_properties == 0){
+         return;
+      }
+
+      my @orig_props = $orig->list_properties;
+
+      foreach my $prop (@orig_props){
+         # ignore GROUP as that makes things complicated
+         if(!($prop eq "GROUP") and ($prop !~ /INPUT_.*/)){
+            if($orig->$prop != $copy->$prop){
+               if(grep { $prop eq $_ } qw(RAYS MAXIMAL_CONES)){
+                  if(!common::are_permuted(common::rows($orig->$prop),common::rows($copy->$prop))){
+                     die "Property ".$prop." in testcase ".$file." does not match input property.";
+                  }
+               }else{
+                  die "Property ".$prop." in testcase ".$file." does not match input property.";
+               }
+            }
+         }
+      }
+   }
+
+   my @prop_lists = ([qw(INPUT_RAYS INPUT_CONES INPUT_LINEALITY)],
+      [qw(RAYS MAXIMAL_CONES LINEALITY_SPACE)],
+      [qw(FACET_NORMALS MAXIMAL_CONES_FACETS LINEAR_SPAN_NORMALS MAXIMAL_CONES_LINEAR_SPAN_NORMALS)]);
+
+   # make three copies...
+   my @fans = map copy_props($_), (@prop_lists);
+   # ...and compare them to the original.
+   map validate($_), (@fans);
+
+}
+

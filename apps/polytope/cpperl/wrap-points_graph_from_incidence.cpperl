@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "points_graph_from_incidence.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Matrix<Rational>&>", "int(int)"], "func": "points_graph_from_incidence", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "points_graph_from_incidence.X.X.X.int"},
+ null ],
+"version": 3}

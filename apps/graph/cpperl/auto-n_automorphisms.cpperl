@@ -1,0 +1,5 @@
+{"app": "graph",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Undirected>&>"], "func": "n_automorphisms", "include": ["polymake/Graph.h", "polymake/graph/GraphIso.h"], "sig": "n_automorphisms.X"},
+ null ],
+"version": 3}

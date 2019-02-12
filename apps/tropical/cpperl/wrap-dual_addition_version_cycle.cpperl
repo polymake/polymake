@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "dual_addition_version_cycle.cc",
+ "inst": [
+  {"args": ["Max", "void", "void"], "func": "dual_addition_version", "include": ["polymake/TropicalNumber.h"], "sig": "dual_addition_version:T1.B.x", "tp": "1"},
+  {"args": ["Min", "void", "void"], "func": "dual_addition_version", "include": ["polymake/TropicalNumber.h"], "sig": "dual_addition_version:T1.B.x", "tp": "1"},
+ null ],
+"version": 3}

@@ -28,7 +28,7 @@ SparseMatrix<Coord> node_edge_incidences(const GenericGraph<Graph, graph::Direct
 {
    SparseMatrix<Coord> ne(G.top().nodes(), G.top().edges());
    int k=0;
-   for (typename Entire< Edges<Graph> >::const_iterator e=entire(edges(G)); !e.at_end(); ++e, ++k) {
+   for (auto e=entire(edges(G)); !e.at_end(); ++e, ++k) {
       ne(e.to_node(),  k)=1;
       ne(e.from_node(),k)=-1;
    }
@@ -42,7 +42,7 @@ SparseMatrix<Coord> node_edge_incidences(const GenericGraph<Graph, graph::Undire
 {
    SparseMatrix<Coord> ne(G.top().nodes(), G.top().edges());
    int k=0;
-   for (typename Entire< Edges<Graph> >::const_iterator e=entire(edges(G)); !e.at_end(); ++e, ++k) {
+   for (auto e=entire(edges(G)); !e.at_end(); ++e, ++k) {
       ne(e.to_node(),  k)=1;
       ne(e.from_node(),k)=1;
    }

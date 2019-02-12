@@ -46,8 +46,7 @@ HV* pkg_of_object(pTHX_ SV* obj, I32 try_repeated, I32& bundled_repeated)
       return SvSTASH(obj);
 }
 
-}
-} } }
+} } } }
 
 using namespace pm::perl::glue;
 

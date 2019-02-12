@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["Map<std::pair<int, int>, int>", "perl::Canned<const Map<std::pair<int, int>, int>&>"], "include": ["polymake/Map.h", "polymake/client.h"], "op": "new", "sig": "new.X"},
+ null ],
+"version": 3}

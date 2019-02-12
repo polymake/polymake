@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "free_sum_decomposition.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "free_sum_decomposition_indices", "include": ["polymake/Rational.h"], "sig": "free_sum_decomposition_indices:T1.B", "tp": "1"},
+ null ],
+"version": 3}

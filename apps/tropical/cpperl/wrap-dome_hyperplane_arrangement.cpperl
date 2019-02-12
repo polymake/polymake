@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "dome_hyperplane_arrangement.cc",
+ "inst": [
+  {"args": ["Min", "Rational", "perl::Canned<const Matrix<TropicalNumber<Min, Rational>>&>"], "func": "dome_hyperplane_arrangement", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "dome_hyperplane_arrangement:T2.X", "tp": "2"},
+  {"args": ["Max", "Rational", "perl::Canned<const Matrix<TropicalNumber<Max, Rational>>&>"], "func": "dome_hyperplane_arrangement", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "dome_hyperplane_arrangement:T2.X", "tp": "2"},
+ null ],
+"version": 3}

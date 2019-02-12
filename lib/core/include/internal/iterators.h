@@ -107,14 +107,14 @@ struct iterator_traits
    , public iterator_cross_const_helper<pure_type_t<Iterator>>
    , public iterator_category_booleans<pure_type_t<Iterator>> {};
 
-template <typename Iterator, bool _is_rev=iterator_category_booleans<Iterator>::is_bidirectional>
+template <typename Iterator, bool is_bidir=iterator_category_booleans<Iterator>::is_bidirectional>
 struct default_iterator_reversed {
-   typedef void type;
+   using type = void;
 };
 
 template <typename Iterator>
 struct default_iterator_reversed<Iterator, true> {
-   typedef std::reverse_iterator<Iterator> type;
+   using type = std::reverse_iterator<Iterator>;
    static Iterator reverse(const type& it) { return it.base(); }
 };
 
@@ -145,12 +145,15 @@ struct iterator_cross_const_helper<std::reverse_iterator<Iterator>, true> {
 };
 
 template <typename Iterator>
-struct const_compatible_with
-   : mlist_remove_duplicates< mlist<Iterator, typename iterator_traits<Iterator>::iterator> > {};
+using const_compatible_with = typename mlist_remove_duplicates< mlist<Iterator, typename iterator_traits<Iterator>::iterator> >::type;
 
 template <typename Source, typename Iterator>
-struct is_const_compatible_with
-   : is_among<pure_type_t<Source>, typename const_compatible_with<Iterator>::type> {};
+using is_const_compatible_with = is_among<pure_type_t<Source>, const_compatible_with<Iterator>>;
+
+template <typename Iterator1, typename Iterator2>
+using are_comparable_iterators
+   = is_among<Iterator2, typename iterator_traits<Iterator1>::iterator, typename iterator_traits<Iterator1>::const_iterator>;
+
 
 #if defined(__GLIBCXX__)
 template <typename Iterator, typename Container>
@@ -250,7 +253,7 @@ public:
    insert_iterator& operator++ (int) { return *this; }
 };
 
-template <typename Container> inline
+template <typename Container>
 insert_iterator<Container> inserter(Container& c) { return c; }
 
 struct end_sensitive {};
@@ -271,9 +274,8 @@ template <typename Iterator, typename Feature>
 struct default_check_iterator_feature : std::is_same<Feature, void> {};
 
 template <typename Iterator>
-struct default_check_iterator_feature<Iterator, unlimited> {
-   static const bool value=!iterator_traits<Iterator>::is_forward;
-};
+struct default_check_iterator_feature<Iterator, unlimited>
+   : bool_constant<!iterator_traits<Iterator>::is_forward> {};
 
 template <typename Iterator, typename Feature>
 struct check_iterator_feature
@@ -290,18 +292,19 @@ template <typename Feature, bool on_top=true> struct provide_construction {};
 
 template <typename Feature_before, bool on_top, typename Feature_after>
 struct feature_allow_order< provide_construction<Feature_before, on_top>, Feature_after >
-   : feature_allow_order<Feature_before, Feature_after> {};
+   : bool_constant<!on_top && feature_allow_order<Feature_before, Feature_after>::value> {};
 
 template <typename Feature_before, typename Feature_after, bool on_top>
 struct feature_allow_order< Feature_before, provide_construction<Feature_after, on_top> >
-   : feature_allow_order<Feature_before, Feature_after> {};
+   : bool_constant<on_top || feature_allow_order<Feature_before, Feature_after>::value> {};
 
 template <typename Feature_before, bool on_top_before, typename Feature_after, bool on_top_after>
 struct feature_allow_order< provide_construction<Feature_before, on_top_before>, provide_construction<Feature_after, on_top_after> >
-   : feature_allow_order<Feature_before, Feature_after> {};
+   : bool_constant<(on_top_before < on_top_after || (on_top_before==on_top_after && feature_allow_order<Feature_before, Feature_after>::value))> {};
 
 template <typename Feature1, typename Feature2>
-struct absorbing_feature : is_derived_from<Feature1, Feature2> {};
+struct absorbing_feature
+   : is_derived_from<Feature1, Feature2> {};
 
 template <typename Feature1, bool on_top1, typename Feature2>
 struct absorbing_feature< provide_construction<Feature1, on_top1>, Feature2>
@@ -309,28 +312,24 @@ struct absorbing_feature< provide_construction<Feature1, on_top1>, Feature2>
 
 template <typename Feature1, bool on_top1, typename Feature2, bool on_top2>
 struct absorbing_feature< provide_construction<Feature1, on_top1>, provide_construction<Feature2, on_top2> > {
-   static const bool value= on_top1>=on_top2 && is_derived_from<Feature1, Feature2>::value;
+   static constexpr bool value= on_top1>=on_top2 && is_derived_from<Feature1, Feature2>::value;
 };
 
 template <typename Feature1, typename Feature2>
-struct equivalent_features : std::false_type {
-   typedef void type;
-};
-
-template <typename Feature>
-struct equivalent_features<Feature, Feature> : std::true_type {
-   typedef Feature type;
-};
+struct equivalent_features
+   : std::is_same<Feature1, Feature2> {};
 
 template <typename Feature, bool on_top>
-struct equivalent_features< provide_construction<Feature,on_top>, Feature > : std::true_type {
-   typedef provide_construction<Feature,on_top> type;
-};
+struct equivalent_features< provide_construction<Feature, on_top>, Feature >
+   : std::true_type {};
 
 template <typename Feature, bool on_top>
-struct equivalent_features< Feature, provide_construction<Feature,on_top> > : std::true_type {
-   typedef provide_construction<Feature> type;
-};
+struct equivalent_features< Feature, provide_construction<Feature, on_top> >
+   : std::true_type {};
+
+template <typename Iterator>
+using can_subtract_iterators
+   = bool_constant<!check_iterator_feature<Iterator, unlimited>::value && iterator_traits<Iterator>::is_random>;
 
 template <typename Iterator>
 struct accompanying_iterator {
@@ -433,8 +432,8 @@ public:
       , end(cur_arg) {}
 
    template <typename SourceIterator1, typename SourceIterator2,
-             typename enabled=typename std::enable_if<is_const_compatible_with<SourceIterator1, Iterator>::value &&
-                                                      is_derived_from_any<SourceIterator2, typename const_compatible_with<end_type>::type>::value>::type>
+             typename=std::enable_if_t<is_const_compatible_with<SourceIterator1, Iterator>::value &&
+                                       is_derived_from_any<SourceIterator2, const_compatible_with<end_type>>::value>>
    iterator_range(const SourceIterator1& cur_arg, const SourceIterator2& end_arg)
       : base_t(cur_arg)
       , end(end_arg) {}
@@ -450,10 +449,10 @@ public:
       return *this;
    }
 
-   template <typename SourceIterator, typename enabled=typename std::enable_if<is_const_compatible_with<SourceIterator, Iterator>::value>::type>
-   iterator_range& operator= (const SourceIterator& cur)
+   template <typename SourceIterator, typename=std::enable_if_t<is_const_compatible_with<SourceIterator, Iterator>::value>>
+   iterator_range& operator= (const SourceIterator& cur_arg)
    {
-      static_cast<base_t&>(*this)=cur;
+      static_cast<base_t&>(*this) = cur_arg;
       return *this;
    }
 
@@ -508,11 +507,11 @@ public:
    }
 
    template <typename Other>
-   typename std::enable_if<is_derived_from_any<Other, typename iterator::base_t, typename const_iterator::base_t>::value, typename base_t::difference_type>::type
+   std::enable_if_t<is_derived_from_any<Other, typename iterator::base_t, typename const_iterator::base_t>::value, typename base_t::difference_type>
    operator- (const Other& other) const
    {
       static_assert(iterator_traits<base_t>::is_random, "iterator is not random-access");
-      typedef typename is_derived_from_any<Other, typename iterator::base_t, typename const_iterator::base_t>::type other_base_t;
+      using other_base_t = typename is_derived_from_any<Other, typename iterator::base_t, typename const_iterator::base_t>::match;
       return static_cast<const base_t&>(*this) - static_cast<const other_base_t&>(other);
    }
 private:
@@ -565,7 +564,7 @@ public:
    }
 };
 
-template <typename Iterator> inline
+template <typename Iterator>
 mimic_iterator_range<Iterator>
 as_iterator_range(const Iterator& it, typename std::enable_if<check_iterator_feature<Iterator, end_sensitive>::value, void**>::type=nullptr)
 {
@@ -654,12 +653,12 @@ struct assess_iterator_value
 
 template <typename Container, bool _has_category=has_container_category<Container>::value>
 struct container_category_traits {
-   typedef typename iterator_traits<typename Container::iterator>::iterator_category category;
+   using category = typename iterator_traits<typename Container::iterator>::iterator_category;
 };
 
 template <typename Container>
 struct container_category_traits<Container, true> {
-   typedef typename Container::container_category category;
+   using category = typename Container::container_category;
 };
 
 template <typename Container,
@@ -688,7 +687,7 @@ struct isomorphic_to_container_of
                     (std::is_same<typename object_traits<Element>::generic_tag, typename object_traits<Element>::model>::value ||
                      std::is_same<typename object_traits<Element>::generic_tag, typename object_traits<typename Container::value_type>::generic_tag>::value ||
                      (std::is_same<exclude_generic_tag, allow_conversion>::value &&
-                      (std::is_convertible<typename Container::value_type, Element>::value || explicitly_convertible_to<typename Container::value_type, Element>::value))) > {};
+                      (std::is_convertible<typename Container::value_type, Element>::value || is_explicitly_convertible_to<typename Container::value_type, Element>::value))) > {};
 
 template <typename Container, typename Element, typename exclude_generic_tag>
 struct isomorphic_to_container_of<Container, Element, exclude_generic_tag, false> : std::false_type {};
@@ -732,7 +731,7 @@ struct container_traits
 template <typename Container>
 struct is_assoc_container : bool_constant<has_key_type<Container>::value && has_mapped_type<Container>::value> {};
 
-template <typename Iterator> inline
+template <typename Iterator>
 int count_it(Iterator src)
 {
    typename iterator_traits<Iterator>::difference_type cnt=0;
@@ -781,23 +780,23 @@ public:
    friend ptr_wrapper operator+ (int i, const ptr_wrapper& p) { return p+i; }
 
    template <typename Other>
-   typename std::enable_if<is_derived_from_any<Other, iterator, const_iterator>::value, ptrdiff_t>::type
+   std::enable_if_t<is_derived_from_any<Other, iterator, const_iterator>::value, ptrdiff_t>
    operator- (const Other& other) const
    {
-      const typename is_derived_from_any<Other, iterator, const_iterator>::type& other_it=other;
+      const typename is_derived_from_any<Other, iterator, const_iterator>::match& other_it = other;
       return is_reversed ? other_it.cur-cur : cur-other_it.cur;
    }
 
    template <typename Other>
-   typename std::enable_if<is_derived_from_any<Other, iterator, const_iterator>::value, bool>::type
+   std::enable_if_t<is_derived_from_any<Other, iterator, const_iterator>::value, bool>
    operator== (const Other& other) const
    {
-      const typename is_derived_from_any<Other, iterator, const_iterator>::type& other_it=other;
+      const typename is_derived_from_any<Other, iterator, const_iterator>::match& other_it = other;
       return cur==other_it.cur;
    }
 
    template <typename Other>
-   typename std::enable_if<is_derived_from_any<Other, iterator, const_iterator>::value, bool>::type
+   std::enable_if_t<is_derived_from_any<Other, iterator, const_iterator>::value, bool>
    operator!= (const Other& other) const
    {
      return !(*this==other);
@@ -837,24 +836,24 @@ protected:
 
 template <typename Iterator>
 struct pointer_as_iterator {
-   typedef pure_type_t<Iterator> type;
+   using type = Iterator;
 };
 
 template <typename T>
 struct pointer_as_iterator<T*> {
-   typedef ptr_wrapper<T, false> type;
+   using type = ptr_wrapper<T, false>;
 };
 
 template <typename Iterator>
-using pointer2iterator_t = typename pointer_as_iterator<Iterator>::type;
+using pointer2iterator_t = typename pointer_as_iterator<pure_type_t<Iterator>>::type;
 
-template <typename Iterator> inline
+template <typename Iterator>
 Iterator&& pointer2iterator(Iterator&& it) { return std::forward<Iterator>(it); }
 
-template <typename T> inline
+template <typename T>
 ptr_wrapper<T, false> pointer2iterator(T* ptr) { return ptr; }
 
-template <typename Iterator> inline
+template <typename Iterator>
 auto make_iterator_range(Iterator&& first, Iterator&& last)
 {
    return iterator_range<pointer2iterator_t<Iterator>>(pointer2iterator(std::forward<Iterator>(first)), pointer2iterator(std::forward<Iterator>(last)));
@@ -998,185 +997,97 @@ template <typename E>
 struct spec_object_traits<std::initializer_list<E>>
    : spec_object_traits<initializer_list_adapter<E>> {};
 
-/// the following should die when all C arrays disappear from client code
-
-template <typename E, size_t Tsize>
-class fixed_array
-   : public plain_array< fixed_array<E, Tsize>, E> {
-   E data[Tsize];
-public:
-   E* get_data() { return data; }
-   const E* get_data() const { return data; }
-   int size() const { return Tsize; }
-   int max_size() const { return Tsize; }
-protected:
-   fixed_array();
-   ~fixed_array();
-};
-
-template <typename E, size_t Tsize, size_t Tsubsize>
-class fixed_array<E[Tsubsize], Tsize>
-   : public plain_array< fixed_array<E[Tsubsize], Tsize>, fixed_array<E, Tsubsize> > {
-   fixed_array<E, Tsubsize> data[Tsize];
-public:
-   fixed_array<E, Tsubsize>* get_data() { return data; }
-   const fixed_array<E, Tsubsize>* get_data() const { return data; }
-   int size() const { return Tsize; }
-   int max_size() const { return Tsize; }
-protected:
-   fixed_array();
-   ~fixed_array();
-};
-
-template <typename E, size_t Tsize> inline
-typename std::enable_if<sizeof(E[Tsize])==sizeof(fixed_array<E, Tsize>), fixed_array<E, Tsize>>::type&
-array2container(E (&a)[Tsize])
-{
-   return reinterpret_cast<fixed_array<E, Tsize>&>(a);
-}
-
-template <typename E, size_t Tsize> inline
-const typename std::enable_if<sizeof(E[Tsize])==sizeof(fixed_array<E, Tsize>), fixed_array<E, Tsize>>::type&
-array2container(const E (&a)[Tsize])
-{
-   return reinterpret_cast<const fixed_array<E, Tsize>&>(a);
-}
-
 template <typename E>
 struct spec_object_traits< array_traits<E> >
-   : spec_object_traits<is_container> {};
-
-template <typename E, size_t Tsize>
-struct spec_object_traits< fixed_array<E, Tsize> >
    : spec_object_traits<is_container> {};
 
 template <typename E, size_t Tsize>
 struct spec_object_traits< E[Tsize] >
    : spec_object_traits<is_opaque> {};
 
-
 template <typename FeatureList1, typename FeatureList2>
-struct mix_features {
-   typedef typename concat_list< typename list_search_all<FeatureList1, FeatureList2, absorbing_feature>::negative2,
-           typename concat_list< typename list_search_all<FeatureList2, FeatureList1, absorbing_feature>::negative2,
-                                 typename list_search_all<FeatureList1, FeatureList2, std::is_same>::positive >::type >::type
-      type;
-};
-
-template <typename List, typename Feature>
-struct min_feature
-   : list_logical_or< typename list_search_all<List, Feature, absorbing_feature>::positive, Feature > {};
+using mix_features
+   = mlist_concat<typename mlist_match_all<FeatureList1, FeatureList2, absorbing_feature>::complement2,
+                  typename mlist_match_all<FeatureList2, FeatureList1, absorbing_feature>::complement2,
+                  typename mlist_intersection<FeatureList1, FeatureList2>::type>;
 
 template <typename FeatureList1, typename FeatureList2>
-struct toggle_features {
-   typedef typename concat_list< typename list_search_all<FeatureList1, FeatureList2, equivalent_features>::negative,
-                                 typename list_search_all<FeatureList1, FeatureList2, equivalent_features>::negative2 >::type
-      type;
-};
+using toggle_features
+   = mlist_concat<typename mlist_match_all<FeatureList1, FeatureList2, equivalent_features>::complement,
+                  typename mlist_match_all<FeatureList1, FeatureList2, equivalent_features>::complement2>;
 
 template <typename Container, int kind=object_classifier::what_is<Container>::value>
 struct enforce_feature_helper {
-   typedef void must_enforce_features;
-   typedef void can_enforce_features;
-   typedef void cannot_enforce_features;
+   using must_enforce_features = mlist<>;
+   using can_enforce_features = mlist<>;
+   using cannot_enforce_features = mlist<>;
 };
 
 template <typename Container>
 struct enforce_feature_helper<Container, object_classifier::is_manip> {
-   typedef typename list_search_all<typename Container::expected_features,
-                                    typename Container::must_enforce_features, absorbing_feature>::negative2
-      must_enforce_features;
-   typedef typename Container::can_enforce_features can_enforce_features;
-   typedef typename Container::cannot_enforce_features cannot_enforce_features;
+   using must_enforce_features
+      = typename mlist_match_all<typename Container::expected_features,
+                                 typename Container::must_enforce_features, absorbing_feature>::complement2;
+   using can_enforce_features = typename Container::can_enforce_features;
+   using cannot_enforce_features = typename Container::cannot_enforce_features;
 };
 
 struct checked_via_iterator {};
 
 // to be specialized on the second parameter only
 template <typename Container, typename Feature>
-struct default_check_container_feature : checked_via_iterator {
-   static const bool value=
-      check_iterator_feature<typename container_traits<Container>::iterator, Feature>::value &&
-      !list_search_all<Feature, typename enforce_feature_helper<Container>::must_enforce_features, absorbing_feature>::value;
-};
+struct default_check_container_feature
+   : bool_constant<(check_iterator_feature<typename container_traits<Container>::iterator, Feature>::value &&
+                    mlist_is_empty<typename mlist_match_all<Feature, typename enforce_feature_helper<Container>::must_enforce_features, absorbing_feature>::type>::value)>
+   , checked_via_iterator {};
 
 // can be specialized either on the first parameter or on both
 template <typename Container, typename Feature>
-struct check_container_feature : default_check_container_feature<Container,Feature> {};
+struct check_container_feature
+   : default_check_container_feature<Container, Feature> {};
 
 template <typename ContainerRef, typename Feature>
-struct check_container_ref_feature : check_container_feature<typename deref<ContainerRef>::type, Feature> {};
-
-template <typename Container, typename Features>
-struct check_container_features : check_container_feature<Container, Features> {};
-
-template <typename Container>
-struct check_container_features<Container, void> : std::true_type {};
-
-template <typename Container, typename Head, typename Tail>
-struct check_container_features<Container, cons<Head,Tail> > {
-   static const bool value=check_container_features<Container, Head>::value &&
-                           check_container_features<Container, Tail>::value;
-};
+using check_container_ref_feature
+   = check_container_feature<typename deref<ContainerRef>::type, Feature>;
 
 template <typename Feature, typename Container>
-struct filter_iterator_features_helper
-   : is_derived_from<default_check_container_feature<Container,Feature>, checked_via_iterator> {};
+struct is_iterator_feature
+   : is_derived_from<default_check_container_feature<Container, Feature>, checked_via_iterator> {};
 
 template <typename Feature, typename Container>
-struct filter_iterator_features_helper<provide_construction<Feature,false>, Container> 
-   : filter_iterator_features_helper<Feature, Container> {};
+struct is_iterator_feature<provide_construction<Feature, false>, Container> 
+   : is_iterator_feature<Feature, Container> {};
 
-template <typename Feature>
-struct filter_iterator_features 
-   : list_search_all<Feature, fixed_array<int,1>, filter_iterator_features_helper> {};
-
-template <typename Feature>
-struct reorder_features_helper {
-   typedef Feature type;
-};
-
-template <typename Head, typename Tail,
-          typename before=typename list_search_all<Head,Tail,feature_allow_order>::negative2,
-          typename after=typename list_search_all<Head,Tail,feature_allow_order>::positive2>
-struct reorder_features_helper2
-   : reorder_features_helper< typename concat_list<before, typename concat_list<Head,after>::type >::type > {};
-
-template <typename Head, typename Tail, typename after>
-struct reorder_features_helper2<Head, Tail, void, after> {
-   typedef cons<Head, typename reorder_features_helper<Tail>::type> type;
-};
-
-template <typename Head, typename Tail>
-struct reorder_features_helper< cons<Head,Tail> >
-   : reorder_features_helper2<Head, Tail> {};
+template <typename Features>
+using filter_iterator_features 
+   = mlist_match_all<Features, array_traits<char>, is_iterator_feature>;
 
 template <typename Features>
 struct reorder_features {
    // 'int' here serves just as some inexisting feature
-   typedef typename list_search_all<Features,int,feature_allow_order>::positive normal;
-   typedef typename list_search_all<Features,int,feature_allow_order>::negative last;
-   typedef typename concat_list< typename filter_iterator_features<normal>::negative,
-                                 typename filter_iterator_features<normal>::positive >::type
-      normal_list;
-   typedef typename concat_list< typename reorder_features_helper<normal_list>::type, last >::type type;
+   using normal_features = typename mlist_match_all<Features, int, feature_allow_order>::type;
+   using always_last_features = typename mlist_match_all<Features, int, feature_allow_order>::complement;
+   using non_iterator_features_first = typename mlist_concat< typename filter_iterator_features<normal_features>::complement,
+                                                              typename filter_iterator_features<normal_features>::type >::type;
+   using type = typename mlist_concat< typename mlist_sort<non_iterator_features_first, feature_allow_order>::type,
+                                       always_last_features >::type;
 };
 
-/* Provides a construction (masquerading Container) that will have a desired feature.
-   Must be specialized for each enforcible feature. */
+// Provides a construction (masquerading Container) that will have a desired feature.
+// Must be specialized for each enforcible feature.
 template <typename Container, typename Feature>
 struct default_enforce_feature;
 
 // Can be specialized for some container classes. Handles exactly one missing feature.
 template <typename Container, typename Feature>
 struct enforce_feature {
-   typedef typename default_enforce_feature<Container,Feature>::container container;
+   using container = typename default_enforce_feature<Container, Feature>::container;
 };
 
 // Can be specialized for various container families (according to object_classifier::what_is).
 template <typename Container, typename Features, int kind>
 struct default_enforce_features
-   : enforce_feature<Container,Features> {};
+   : enforce_feature<Container, Features> {};
 
 // Can be specialized for some container classes. Handles a list of missing features
 template <typename Container, typename Features>
@@ -1184,38 +1095,43 @@ struct enforce_features
    : default_enforce_features<Container, Features, object_classifier::what_is<Container>::value> {};
 
 template <typename Container>
-struct default_enforce_feature<Container, void> {
-   typedef Container container;
+struct default_enforce_feature<Container, mlist<>> {
+   using container = Container;
 };
 
 template <typename Container, typename Feature, bool on_top>
-struct default_enforce_feature<Container, provide_construction<Feature,on_top> >
+struct default_check_container_feature<Container, provide_construction<Feature, on_top> >
+   : std::false_type {};
+
+template <typename Container, typename Feature, bool on_top>
+struct default_enforce_feature<Container, provide_construction<Feature, on_top>>
    : enforce_feature<Container, Feature> {};
 
-template <typename Container, typename Features, typename Lacking>
+template <typename Container, typename Lacking>
 struct enforce_lacking_features_helper
-   : enforce_features<Container,Lacking> {};
+   : enforce_features<Container, Lacking> {};
 
-template <typename Container, typename Features>
-struct enforce_lacking_features_helper<Container, Features, void> {
-   typedef Container container;
+template <typename Container>
+struct enforce_lacking_features_helper<Container, mlist<>> {
+   using container = Container;
 };
 
 template <typename Container, typename Features>
 struct enforce_lacking_features {
-   typedef typename list_search_all<Container,Features,check_container_feature>::negative2 lacking;
-   typedef typename enforce_lacking_features_helper<Container, Features, lacking>::container container;
+   using lacking = typename mlist_match_all<Container, Features, check_container_feature>::complement2;
+   using container = typename enforce_lacking_features_helper<Container, lacking>::container;
 };
 
-template <typename Container, typename Head, typename Tail>
-struct default_enforce_features<Container, cons<Head,Tail>, object_classifier::is_opaque> {
-   typedef typename reorder_features< cons<Head,Tail> >::type needed_features;
-   typedef typename enforce_feature<Container, typename needed_features::head>::container enforced_head;
-   typedef typename enforce_lacking_features<enforced_head, typename needed_features::tail>::container container;
+template <typename Container, typename Feature, typename... MoreFeatures>
+struct default_enforce_features<Container, mlist<Feature, MoreFeatures...>, object_classifier::is_opaque> {
+   using needed_features = typename reorder_features<mlist<Feature, MoreFeatures...>>::type;
+   using container = typename enforce_lacking_features<typename enforce_feature<Container, typename mlist_head<needed_features>::type>::container,
+                                                       typename mlist_tail<needed_features>::type>::container;
 };
 
 template <typename Container, typename Features>
-class feature_collector : public enforce_lacking_features<Container, Features>::container {
+class feature_collector
+   : public enforce_lacking_features<Container, Features>::container {
 protected:
    feature_collector();
    ~feature_collector();
@@ -1224,54 +1140,59 @@ protected:
 template <typename Container, typename Features>
 struct redirect_object_traits< feature_collector<Container, Features> >
    : object_traits<Container> {
-   typedef Container masquerade_for;
-   static const bool is_temporary=false;
+   using masquerade_for = Container;
+   static constexpr bool is_temporary = false;
 };
 
 template <typename Container, typename ProvidedFeatures, typename Feature>
-struct check_container_feature<feature_collector<Container, ProvidedFeatures>, Feature> {
-   static const bool value=check_container_feature<Container,Feature>::value ||
-                           list_search<ProvidedFeatures, Feature, absorbing_feature>::value;
-};
+struct check_container_feature<feature_collector<Container, ProvidedFeatures>, Feature>
+   : mlist_or< check_container_feature<Container, Feature>,
+               mlist_contains<ProvidedFeatures, Feature, absorbing_feature> > {};
 
 template <typename Container, typename Features>
 struct ensure_features_helper {
-   typedef typename inherit_const<feature_collector<typename deref<Container>::type, Features>, Container>::type
-      container;
+   using container = typename inherit_const<feature_collector<typename deref<Container>::type, Features>, Container>::type;
 };
 
 template <typename Container, typename ProvidedFeatures, typename Features>
 struct ensure_features_helper<feature_collector<Container, ProvidedFeatures>, Features>
-   : ensure_features_helper<Container, typename mix_features<ProvidedFeatures,Features>::type> {};
+   : ensure_features_helper<Container, typename mix_features<ProvidedFeatures, Features>::type> {};
 
 template <typename Container, typename ProvidedFeatures, typename Features>
 struct ensure_features_helper<const feature_collector<Container, ProvidedFeatures>, Features>
-   : ensure_features_helper<const Container, typename mix_features<ProvidedFeatures,Features>::type> {};
+   : ensure_features_helper<const Container, typename mix_features<ProvidedFeatures, Features>::type> {};
 
 template <typename Container, typename Features>
 struct ensure_features
    : ensure_features_helper<Container, Features>
    , container_traits<typename ensure_features_helper<Container, Features>::container> {};
 
-template <typename Container, typename Features> inline
-typename ensure_features<Container, Features>::container&
-ensure(Container& c, Features*)
+template <typename Container, typename... Features>
+decltype(auto) ensure(Container&& c, Features...)
 {
-   return reinterpret_cast<typename ensure_features<Container, Features>::container&>(c);
+   using result = typename ensure_features<std::remove_reference_t<Container>, typename mlist_wrap<Features...>::type>::container;
+   return reinterpret_cast<inherit_reference_t<result, Container&&>>(c);
 }
 
-template <typename Container, typename Features> inline
-typename ensure_features<const Container, Features>::container&
-ensure(const Container& c, Features*)
+template <typename Container>
+Container&& ensure(Container&& c)
 {
-   return reinterpret_cast<typename ensure_features<const Container, Features>::container&>(c);
+   return std::forward<Container>(c);
 }
 
-template <typename Container> inline
-Container& ensure(Container& c, void*) { return c; }
 
-template <typename Container> inline
-const Container& ensure(const Container& c, void*) { return c; }
+// not to be used in for-loops and other contexts prolonging the life of the iterator beyond the next sequence point
+template <typename... MoreFeatures, typename Container>
+auto entire_range(Container& c)
+{
+   return ensure(c, typename mix_features<end_sensitive, typename mlist_wrap<MoreFeatures...>::type>::type()).begin();
+}
+
+template <typename... MoreFeatures, typename Container>
+auto entire_range(const Container& c)
+{
+   return ensure(c, typename mix_features<end_sensitive, typename mlist_wrap<MoreFeatures...>::type>::type()).begin();
+}
 
 
 template <typename E, typename Features>
@@ -1282,28 +1203,29 @@ template <typename E, typename Features>
 struct ensure_features<const std::initializer_list<E>, Features>
    : ensure_features<const initializer_list_adapter<E>, Features> {};
 
-template <typename E, typename Features> inline
-typename ensure_features<std::initializer_list<E>, Features>::type
-ensure(std::initializer_list<E>& l, Features*)
+template <typename E, typename... Features>
+typename ensure_features<std::initializer_list<E>, typename mlist_wrap<Features...>::type>::type
+ensure(std::initializer_list<E>& l, Features...)
 {
-   return typename ensure_features<std::initializer_list<E>, Features>::type(l);
+   return typename ensure_features<std::initializer_list<E>, typename mlist_wrap<Features...>::type>::type(l);
 }
 
-template <typename E, typename Features> inline
-typename ensure_features<std::initializer_list<E>, Features>::type
-ensure(const std::initializer_list<E>& l, Features*)
+template <typename E, typename... Features>
+typename ensure_features<std::initializer_list<E>, typename mlist_wrap<Features...>::type>::type
+ensure(const std::initializer_list<E>& l, Features...)
 {
-   return typename ensure_features<std::initializer_list<E>, Features>::type(l);
+   return typename ensure_features<std::initializer_list<E>, typename mlist_wrap<Features...>::type>::type(l);
 }
 
 
 template <typename ContainerRef, typename Features>
-struct masquerade_add_features : inherit_ref<typename ensure_features<typename deref<ContainerRef>::minus_ref, Features>::container, ContainerRef> {};
+struct masquerade_add_features
+   : inherit_ref<typename ensure_features<typename deref<ContainerRef>::minus_ref, Features>::container, ContainerRef> {};
 
 template <typename ContainerRef, typename Features>
 struct deref< masquerade_add_features<ContainerRef,Features> >
    : deref< typename masquerade_add_features<ContainerRef,Features>::type > {
-   typedef masquerade_add_features<typename attrib<ContainerRef>::plus_const, Features> plus_const;
+   using  plus_const = masquerade_add_features<typename attrib<ContainerRef>::plus_const, Features>;
 };
 
 namespace operations {
@@ -1441,6 +1363,9 @@ struct binary_helper<IteratorPair, pair<Operation, IndexOperation> >
 template <typename> class ContainerTag;
 template <typename> class Container1Tag;
 template <typename> class Container2Tag;
+template <typename> class ContainerRefTag;
+template <typename> class Container1RefTag;
+template <typename> class Container2RefTag;
 template <typename> class OperationTag;
 template <typename> class IteratorConstructorTag;
 template <typename> class IteratorCouplerTag;
@@ -1452,31 +1377,73 @@ template <typename> class FeaturesViaSecondTag;
 template <typename> class BijectiveTag;
 template <typename> class PartiallyDefinedTag;
 
-template <typename Top, typename TParams, bool THas_hidden=mtagged_list_extract<TParams, HiddenTag>::is_specified>
-class manip_container_top : public manip_container_base {
+template <typename ContainerRef, typename Features>
+struct extract_iterator_with_features {
+   using type = typename ensure_features<std::remove_reference_t<ContainerRef>, muntag_t<Features>>::iterator;
+};
+
+template <typename ContainerRef, typename Features>
+struct extract_const_iterator_with_features {
+   using type = typename ensure_features<std::remove_reference_t<ContainerRef>, muntag_t<Features>>::const_iterator;
+};
+
+template <typename ContainerRef, typename Features>
+struct extract_reverse_iterator_with_features {
+   using type = typename ensure_features<std::remove_reference_t<ContainerRef>, muntag_t<Features>>::reverse_iterator;
+};
+
+template <typename ContainerRef, typename Features>
+struct extract_const_reverse_iterator_with_features {
+   using type = typename ensure_features<std::remove_reference_t<ContainerRef>, muntag_t<Features>>::const_reverse_iterator;
+};
+
+template <typename ContainerRef>
+using extract_iterator = extract_iterator_with_features<ContainerRef, mlist<>>;
+
+template <typename ContainerRef>
+using extract_const_iterator = extract_const_iterator_with_features<ContainerRef, mlist<>>;
+
+template <typename ContainerRef>
+using extract_reverse_iterator = extract_reverse_iterator_with_features<ContainerRef, mlist<>>;
+
+template <typename ContainerRef>
+using extract_const_reverse_iterator = extract_const_reverse_iterator_with_features<ContainerRef, mlist<>>;
+
+template <typename ContainerRef>
+struct extract_category {
+   using type = typename container_traits<ContainerRef>::category;
+};
+
+template <typename Params, template <typename> class RefTag, template <typename> class NoRefTag, typename Default=void>
+using extract_container_ref
+   = mtagged_list_extract<Params, RefTag,
+                          std::add_lvalue_reference_t<typename mtagged_list_extract<Params, NoRefTag, Default>::type>>;
+
+template <typename Top, typename Params, bool has_hidden=mtagged_list_extract<Params, HiddenTag>::is_specified>
+class manip_container_top
+   : public manip_container_base {
 public:
-   typedef void hidden_type;
-   typedef typename mtagged_list_extract<TParams, ExpectedFeaturesTag>::type expected_features;
-   typedef Top manip_top_type;
-   typedef void must_enforce_features;
-   typedef void can_enforce_features;
-   typedef void cannot_enforce_features;
+   using hidden_type = void;
+   using expected_features = typename mtagged_list_extract<Params, ExpectedFeaturesTag, mlist<>>::type;
+   using manip_top_type = Top;
+   using must_enforce_features = mlist<>;
+   using can_enforce_features = mlist<>;
+   using cannot_enforce_features = mlist<>;
 
    Top& manip_top() { return *static_cast<Top*>(this); }
    const Top& manip_top() const { return *static_cast<const Top*>(this); }
 };
 
-template <typename Container, typename ProvidedFeatures, typename TParams>
-class manip_container_top<manip_feature_collector<Container, ProvidedFeatures>, TParams, false>
+template <typename Container, typename ProvidedFeatures, typename Params>
+class manip_container_top<manip_feature_collector<Container, ProvidedFeatures>, Params, false>
    : public manip_container_base {
 public:
-   typedef void hidden_type;
-   typedef typename mix_features<typename mtagged_list_extract<TParams, ExpectedFeaturesTag>::type, ProvidedFeatures>::type
-      expected_features;
-   typedef typename Container::manip_top_type manip_top_type;
-   typedef void must_enforce_features;
-   typedef typename Container::can_enforce_features can_enforce_features;
-   typedef typename Container::cannot_enforce_features cannot_enforce_features;
+   using hidden_type = void;
+   using expected_features = typename mix_features<typename mtagged_list_extract<Params, ExpectedFeaturesTag, mlist<>>::type, ProvidedFeatures>::type;
+   using manip_top_type = typename Container::manip_top_type;
+   using must_enforce_features = mlist<>;
+   using can_enforce_features = typename Container::can_enforce_features;
+   using cannot_enforce_features = typename Container::cannot_enforce_features;
 
    manip_top_type& manip_top()
    {
@@ -1488,67 +1455,72 @@ public:
    }
 };
 
-template <typename Top, typename THidden>
+template <typename Top, typename Hidden>
 struct manip_container_hidden_helper {
-   typedef THidden type;
+   using type = Hidden;
 };
 
 template <typename Top>
 struct manip_container_hidden_helper<Top, std::true_type>
    : mget_template_parameter<Top, 0> {};
 
-template <typename Top, typename TParams,
-          bool TBinary=(mtagged_list_extract<TParams, Container1Tag>::is_specified ||
-                        mtagged_list_extract<TParams, Container2Tag>::is_specified)>
+template <typename Top, typename Params,
+          bool is_binary=(mtagged_list_extract<Params, Container1Tag>::is_specified ||
+                          mtagged_list_extract<Params, Container2Tag>::is_specified ||
+                          mtagged_list_extract<Params, Container1RefTag>::is_specified ||
+                          mtagged_list_extract<Params, Container2RefTag>::is_specified)>
 class manip_container_hidden_defaults {
 public:
-   typedef typename manip_container_hidden_helper<Top, typename mtagged_list_extract<TParams, HiddenTag>::type>::type hidden_type;
-   typedef typename deref<typename mtagged_list_extract<TParams, ContainerTag, hidden_type>::type>::minus_ref container;
+   using hidden_type = typename manip_container_hidden_helper<Top, typename mtagged_list_extract<Params, HiddenTag>::type>::type;
+   using container_ref_raw = typename extract_container_ref<Params, ContainerRefTag, ContainerTag, hidden_type>::type;
+   using container = typename deref<container_ref_raw>::minus_ref;
 
    container& get_container()
    {
-      return reinterpret_cast<container&>(static_cast<manip_container_top<Top, TParams, true>*>(this)->manip_top());
+      return reinterpret_cast<container&>(static_cast<manip_container_top<Top, Params, true>*>(this)->manip_top());
    }
    const container& get_container() const
    {
-      return reinterpret_cast<const container&>(static_cast<const manip_container_top<Top, TParams, true>*>(this)->manip_top());
+      return reinterpret_cast<const container&>(static_cast<const manip_container_top<Top, Params, true>*>(this)->manip_top());
    }
 };
 
-template <typename Top, typename TParams>
-class manip_container_hidden_defaults<Top, TParams, true> {
+template <typename Top, typename Params>
+class manip_container_hidden_defaults<Top, Params, true> {
 public:
-   typedef typename manip_container_hidden_helper<Top, typename mtagged_list_extract<TParams, HiddenTag>::type>::type hidden_type;
-   typedef typename deref<typename mtagged_list_extract<TParams, Container1Tag, hidden_type>::type>::minus_ref container1;
-   typedef typename deref<typename mtagged_list_extract<TParams, Container2Tag, hidden_type>::type>::minus_ref container2;
+   using hidden_type = typename manip_container_hidden_helper<Top, typename mtagged_list_extract<Params, HiddenTag>::type>::type;
+   using container1_ref_raw = typename extract_container_ref<Params, Container1RefTag, Container1Tag, hidden_type>::type;
+   using container2_ref_raw = typename extract_container_ref<Params, Container2RefTag, Container2Tag, hidden_type>::type;
+   using container1 = typename deref<container1_ref_raw>::minus_ref;
+   using container2 = typename deref<container2_ref_raw>::minus_ref;
 
    container1& get_container1()
    {
-      return reinterpret_cast<container1&>(static_cast<manip_container_top<Top, TParams, true>*>(this)->manip_top());
+      return reinterpret_cast<container1&>(static_cast<manip_container_top<Top, Params, true>*>(this)->manip_top());
    };
    const container1& get_container1() const
    {
-      return reinterpret_cast<const container1&>(static_cast<const manip_container_top<Top, TParams, true>*>(this)->manip_top());
+      return reinterpret_cast<const container1&>(static_cast<const manip_container_top<Top, Params, true>*>(this)->manip_top());
    }
    container2& get_container2()
    {
-      return reinterpret_cast<container2&>(static_cast<manip_container_top<Top, TParams, true>*>(this)->manip_top());
+      return reinterpret_cast<container2&>(static_cast<manip_container_top<Top, Params, true>*>(this)->manip_top());
    }
    const container2& get_container2() const
    {
-      return reinterpret_cast<const container2&>(static_cast<const manip_container_top<Top, TParams, true>*>(this)->manip_top());
+      return reinterpret_cast<const container2&>(static_cast<const manip_container_top<Top, Params, true>*>(this)->manip_top());
    }
 };
 
-template <typename Top, typename TParams>
-class manip_container_top<Top, TParams, true>
-   : public manip_container_top<Top, TParams, false>
-   , public manip_container_hidden_defaults<Top, TParams> {
+template <typename Top, typename Params>
+class manip_container_top<Top, Params, true>
+   : public manip_container_top<Top, Params, false>
+   , public manip_container_hidden_defaults<Top, Params> {
 protected:
    manip_container_top() = delete;
    ~manip_container_top() = delete;
 public:
-   typedef typename manip_container_hidden_defaults<Top, TParams>::hidden_type hidden_type;
+   using typename manip_container_hidden_defaults<Top, Params>::hidden_type;
 
    hidden_type& hidden()
    {
@@ -1564,60 +1536,54 @@ template <typename Container, typename ProvidedFeatures>
 class manip_feature_collector
    : public Container::template rebind_feature_collector< manip_feature_collector<Container, ProvidedFeatures> >::type {
 protected:
-   manip_feature_collector();
-   ~manip_feature_collector();
+   manip_feature_collector() = delete;
+   ~manip_feature_collector() = delete;
 };
 
 template <typename Container, typename Features>
 struct manip_feature_collector_helper {
-   typedef manip_feature_collector<Container, Features> container;
+   using container = manip_feature_collector<Container, Features>;
 };
 template <typename Container, typename PrevFeatures, typename Features>
-struct manip_feature_collector_helper<manip_feature_collector<Container,PrevFeatures>, Features> {
-   typedef manip_feature_collector<Container, typename concat_list<PrevFeatures,Features>::type> container;
+struct manip_feature_collector_helper<manip_feature_collector<Container, PrevFeatures>, Features> {
+   using container = manip_feature_collector<Container, typename mlist_concat<PrevFeatures, Features>::type>;
 };
 template <typename Container>
-struct manip_feature_collector_helper<Container,void> {
-   typedef Container container;
+struct manip_feature_collector_helper<Container, mlist<>> {
+   using container = Container;
 };
 template <typename Container, typename PrevFeatures>    // resolving ambiguity
-struct manip_feature_collector_helper<manip_feature_collector<Container,PrevFeatures>, void> {
-   typedef manip_feature_collector<Container,PrevFeatures> container;
+struct manip_feature_collector_helper<manip_feature_collector<Container, PrevFeatures>, mlist<>> {
+   using container = manip_feature_collector<Container, PrevFeatures>;
 };
 
 template <typename Container, typename Features>
 struct default_enforce_features<Container, Features, object_classifier::is_manip> {
-   typedef typename list_search_all<Features, int, feature_allow_order>::negative after1;
-   typedef typename list_search_all<Features, int, feature_allow_order>::positive not_last;
-   typedef typename list_search_all<not_last, typename Container::cannot_enforce_features, absorbing_feature>::positive
-      after2;
-   typedef typename list_search_all<not_last, typename Container::cannot_enforce_features, absorbing_feature>::negative
-      not_after;
-   typedef typename list_search_all<not_after, typename Container::can_enforce_features, equivalent_features>::positive
-      via_manip1;
-   typedef typename filter_iterator_features<typename list_search_all<not_after, typename Container::can_enforce_features, equivalent_features>::negative>::positive
-      via_manip2;
-   typedef typename concat_list<via_manip1,via_manip2>::type via_manip;
-   typedef typename list_search_all<not_after, via_manip, equivalent_features>::negative before;
-   typedef typename concat_list<after2,after1>::type after;
+   using after1 = typename mlist_match_all<Features, int, feature_allow_order>::complement;
+   using not_last = typename mlist_match_all<Features, int, feature_allow_order>::type;
+   using after2 = typename mlist_match_all<not_last, typename Container::cannot_enforce_features, absorbing_feature>::type;
+   using not_after = typename mlist_match_all<not_last, typename Container::cannot_enforce_features, absorbing_feature>::complement;
+   using via_manip1 = typename mlist_match_all<not_after, typename Container::can_enforce_features, equivalent_features>::type;
+   using via_manip2 = typename filter_iterator_features<typename mlist_match_all<not_after, typename Container::can_enforce_features, equivalent_features>::complement>::type;
+   using via_manip = typename mlist_concat<via_manip1, via_manip2>::type;
+   using before = typename mlist_match_all<not_after, via_manip, equivalent_features>::complement;
+   using after = typename mlist_concat<after2, after1>::type;
 
-   typedef typename default_enforce_features<Container, before, object_classifier::is_opaque>::container
-      enforced_before;
-   typedef typename manip_feature_collector_helper<enforced_before, via_manip>::container enforced_via_manip;
-   typedef typename default_enforce_features<enforced_via_manip, after, object_classifier::is_opaque>::container
-      container;
+   using enforced_before = typename default_enforce_features<Container, before, object_classifier::is_opaque>::container;
+   using enforced_via_manip = typename manip_feature_collector_helper<enforced_before, via_manip>::container;
+   using container = typename default_enforce_features<enforced_via_manip, after, object_classifier::is_opaque>::container;
 };
 
 template <typename Container,
-          bool is_reversible=container_traits<Container>::is_bidirectional>
+          bool is_bidir=container_traits<Container>::is_bidirectional>
 class construct_rewindable
    : public std::enable_if<container_traits<Container>::is_forward, Container>::type {
 protected:
-   construct_rewindable();
-   ~construct_rewindable();
+   construct_rewindable() = delete;
+   ~construct_rewindable() = delete;
 public:
-   typedef rewindable_iterator<typename Container::iterator> iterator;
-   typedef rewindable_iterator<typename Container::const_iterator> const_iterator;
+   using iterator = rewindable_iterator<typename Container::iterator>;
+   using const_iterator = rewindable_iterator<typename Container::const_iterator>;
 
    iterator begin() { return Container::begin(); }
    iterator end() { return Container::end(); }
@@ -1629,8 +1595,8 @@ template <typename Container>
 class construct_rewindable<Container, true>
    : public construct_rewindable<Container, false> {
 public:
-   typedef rewindable_iterator<typename Container::reverse_iterator> reverse_iterator;
-   typedef rewindable_iterator<typename Container::const_reverse_iterator> const_reverse_iterator;
+   using reverse_iterator = rewindable_iterator<typename Container::reverse_iterator>;
+   using const_reverse_iterator = rewindable_iterator<typename Container::const_reverse_iterator>;
 
    reverse_iterator rbegin() { return Container::rbegin(); }
    reverse_iterator rend() { return Container::rend(); }
@@ -1638,34 +1604,33 @@ public:
    const_reverse_iterator rend() const { return Container::rend(); }
 };
 
-template <typename Container, bool _reversible>
-struct redirect_object_traits< construct_rewindable<Container,_reversible> >
+template <typename Container, bool is_bidir>
+struct redirect_object_traits< construct_rewindable<Container, is_bidir> >
    : object_traits<Container> {
-   typedef Container masquerade_for;
-   static const bool is_temporary=false;
+   using masquerade_for = Container;
+   static constexpr bool is_temporary=false;
 };
 
 template <typename Container>
 struct end_sensitive_helper {
-   typedef Container end_source;
+   using end_source = Container;
 };
 
-template <typename Container, bool _reversible>
-struct end_sensitive_helper<construct_rewindable<Container,_reversible> > {
-   typedef Container end_source;
+template <typename Container, bool is_bidir>
+struct end_sensitive_helper< construct_rewindable<Container, is_bidir> > {
+   using end_source = Container;
 };
 
-template <typename Container,
-          bool _reversible=container_traits<Container>::is_bidirectional>
+template <typename Container, bool is_bidir=container_traits<Container>::is_bidirectional>
 class construct_end_sensitive : public Container {
 protected:
-   construct_end_sensitive();
-   ~construct_end_sensitive();
+   construct_end_sensitive() = delete;
+   ~construct_end_sensitive() = delete;
 
-   typedef typename end_sensitive_helper<Container>::end_source end_source;
+   using end_source = typename end_sensitive_helper<Container>::end_source;
 public:
-   typedef iterator_range<typename Container::iterator> iterator;
-   typedef iterator_range<typename Container::const_iterator> const_iterator;
+   using iterator = iterator_range<typename Container::iterator>;
+   using const_iterator = iterator_range<typename Container::const_iterator>;
 
    iterator begin() { return iterator(Container::begin(), end_source::end()); }
    iterator end() { return iterator(Container::end()); }
@@ -1676,15 +1641,14 @@ public:
 template <typename Container>
 class construct_end_sensitive<Container, true>
    : public construct_end_sensitive<Container, false> {
-   typedef construct_end_sensitive<Container, false> base_t;
+   using base_t = construct_end_sensitive<Container, false>;
 public:
-   typedef iterator_range<typename Container::reverse_iterator> reverse_iterator;
-   typedef iterator_range<typename Container::const_reverse_iterator> const_reverse_iterator;
+   using reverse_iterator = iterator_range<typename Container::reverse_iterator>;
+   using const_reverse_iterator = iterator_range<typename Container::const_reverse_iterator>;
 
    reverse_iterator rbegin()
    {
-      typedef typename base_t::end_source end_source;
-      return reverse_iterator(Container::rbegin(), end_source::rend());
+      return reverse_iterator(Container::rbegin(), base_t::end_source::rend());
    }
    reverse_iterator rend()
    {
@@ -1692,8 +1656,7 @@ public:
    }
    const_reverse_iterator rbegin() const
    {
-      typedef typename base_t::end_source end_source;
-      return const_reverse_iterator(Container::rbegin(), end_source::rend());
+      return const_reverse_iterator(Container::rbegin(), base_t::end_source::rend());
    }
    const_reverse_iterator rend() const
    {
@@ -1701,78 +1664,44 @@ public:
    }
 };
 
-template <typename Container, bool _reversible>
-struct redirect_object_traits< construct_end_sensitive<Container,_reversible> >
+template <typename Container, bool is_bidir>
+struct redirect_object_traits< construct_end_sensitive<Container, is_bidir> >
    : object_traits<Container> {
-   typedef Container masquerade_for;
-   static const bool is_temporary=false;
+   using masquerade_for = Container;
+   static constexpr bool is_temporary=false;
 };
 
 template <typename Container>
 struct default_enforce_feature<Container, rewindable> {
-   typedef construct_rewindable<Container> container;
+   using container = construct_rewindable<Container>;
 };
 
 template <typename Container>
 struct default_enforce_feature<Container, end_sensitive> {
-   typedef construct_end_sensitive<Container> container;
+   using container = construct_end_sensitive<Container>;
 };
 
 template <bool on_top>
 struct absorbing_feature<provide_construction<end_sensitive, on_top>, contractable> : std::true_type {};
 
-template <typename Container, typename Feature, bool on_top>
-struct default_check_container_feature<Container, provide_construction<Feature,on_top> > : std::false_type {};
-
-template <typename Container>
-struct Entire : ensure_features<Container, end_sensitive> {};
-
-template <typename Container> inline
-typename Entire<typename Concrete<Container>::type>::iterator
-entire(Container& c)
-{
-   return ensure(c, (end_sensitive*)0).begin();
-}
-
-template <typename Container> inline
-typename Entire<typename Concrete<Container>::type>::const_iterator
-entire(const Container& c)
-{
-   return ensure(c, (end_sensitive*)0).begin();
-}
-
-template <typename Container> inline
-typename Entire<typename Concrete<Container>::type>::reverse_iterator
-rentire(Container& c)
-{
-   return ensure(c, (end_sensitive*)0).rbegin();
-}
-
-template <typename Container> inline
-typename Entire<typename Concrete<Container>::type>::const_reverse_iterator
-rentire(const Container& c)
-{
-   return ensure(c, (end_sensitive*)0).rbegin();
-}
-
-struct _reversed {};
+struct reversed {};
 
 template <typename Container,
-          bool _random=container_traits<Container>::is_random>
+          bool is_random=container_traits<Container>::is_random>
 class construct_reversed {
 protected:
    Container& hidden() { return reinterpret_cast<Container&>(*this); }
    const Container& hidden() const { return reinterpret_cast<const Container&>(*this); }
 public:
-   typedef typename container_traits<Container>::value_type value_type;
-   typedef typename container_traits<Container>::reference reference;
-   typedef typename container_traits<Container>::const_reference const_reference;
-   typedef typename container_traits<Container>::category container_category;
+   using value_type = typename container_traits<Container>::value_type;
+   using reference = typename container_traits<Container>::reference;
+   using const_reference = typename container_traits<Container>::const_reference;
+   using container_category = typename container_traits<Container>::category;
 
-   typedef typename container_traits<Container>::reverse_iterator iterator;
-   typedef typename container_traits<Container>::const_reverse_iterator const_iterator;
-   typedef typename container_traits<Container>::iterator reverse_iterator;
-   typedef typename container_traits<Container>::const_iterator const_reverse_iterator;
+   using iterator = typename container_traits<Container>::reverse_iterator;
+   using const_iterator = typename container_traits<Container>::const_reverse_iterator;
+   using reverse_iterator = typename container_traits<Container>::iterator;
+   using const_reverse_iterator = typename container_traits<Container>::const_iterator;
 
    iterator begin() { return hidden().rbegin(); }
    iterator end() { return hidden().rend(); }
@@ -1796,7 +1725,7 @@ public:
 template <typename Container>
 class construct_reversed<Container, true>
    : public construct_reversed<Container,false> {
-   typedef construct_reversed<Container,false> base_t;
+   using base_t = construct_reversed<Container,false>;
 public:
    typename base_t::reference operator[] (int i)
    {
@@ -1810,47 +1739,50 @@ public:
 };
 
 template <typename Container>
-struct default_check_container_feature<Container, _reversed> : std::false_type {};
+struct default_check_container_feature<Container, reversed>
+   : std::false_type {};
 
 template <typename Container>
-struct default_enforce_feature<Container, _reversed> {
-   typedef construct_reversed<Container> container;
+struct default_enforce_feature<Container, reversed> {
+   using container = construct_reversed<Container>;
 };
 
 template <typename Feature>
-struct feature_allow_order<_reversed,Feature> : std::false_type {};
+struct feature_allow_order<reversed, Feature>
+   : std::false_type {};
 
-template <typename Container, bool _random>
-struct redirect_object_traits< construct_reversed<Container,_random> >
+template <typename Container, bool is_random>
+struct redirect_object_traits< construct_reversed<Container, is_random> >
    : spec_object_traits<Container> {
-   typedef Container masquerade_for;
-   static const bool is_temporary=false;
+   using masquerade_for = Container;
+   static constexpr bool is_temporary=false;
 };
 
-template <typename Container, bool _random, typename Feature>
-struct check_container_feature<construct_reversed<Container,_random>, Feature>
-   : check_container_feature<Container,Feature> {};
+template <typename Container, bool is_random, typename Feature>
+struct check_container_feature<construct_reversed<Container, is_random>, Feature>
+   : check_container_feature<Container, Feature> {};
 
-template <typename Container, bool _random>
-struct check_container_feature<construct_reversed<Container,_random>, _reversed> : std::true_type {};
+template <typename Container, bool is_random>
+struct check_container_feature<construct_reversed<Container, is_random>, reversed>
+   : std::true_type {};
 
-template <typename Container, bool _random, typename Features>
-struct enforce_features<construct_reversed<Container,_random>, Features> {
-   typedef construct_reversed<typename enforce_features<Container,Features>::container> container;
+template <typename Container, bool is_random, typename Features>
+struct enforce_features<construct_reversed<Container, is_random>, Features> {
+   using container = construct_reversed<typename enforce_features<Container, Features>::container>;
 };
 
-template <typename Container> inline
-typename ensure_features<Container,_reversed>::container&
-reversed(Container& c)
+template <typename Container>
+typename ensure_features<Container, reversed>::container&
+reversed_view(Container& c)
 {
-   return reinterpret_cast<typename ensure_features<Container,_reversed>::container&>(c);
+   return reinterpret_cast<typename ensure_features<Container, reversed>::container&>(c);
 }
 
-template <typename Container> inline
-const typename ensure_features<Container,_reversed>::container&
-reversed(const Container& c)
+template <typename Container>
+const typename ensure_features<Container, reversed>::container&
+reversed_view(const Container& c)
 {
-   return reinterpret_cast<const typename ensure_features<Container,_reversed>::container&>(c);
+   return reinterpret_cast<const typename ensure_features<Container, reversed>::container&>(c);
 }
 
 template <typename Value, bool is_simple=std::is_pod<Value>::value>
@@ -1963,7 +1895,7 @@ protected:
    operation op;
    typedef Operation op_arg_type;
 
-   unary_transform_eval() {}
+   unary_transform_eval() = default;
 
    template <typename Operation2>
    unary_transform_eval(const unary_transform_eval<typename iterator_traits<Iterator>::iterator, Operation2>& it)
@@ -2005,7 +1937,7 @@ protected:
    typename ihelper::operation iop;
    typedef pair<Operation, IndexOperation> op_arg_type;
 
-   unary_transform_eval() {}
+   unary_transform_eval() = default;
 
    template <typename Operation2, typename IndexOperation2>
    unary_transform_eval(const unary_transform_eval<typename iterator_traits<Iterator>::iterator, pair<Operation2, IndexOperation2> >& it)
@@ -2039,7 +1971,7 @@ protected:
    typename ihelper::operation iop;
    typedef IndexOperation op_arg_type;
 
-   unary_transform_eval() {}
+   unary_transform_eval() = default;
 
    template <typename IndexOperation2>
    unary_transform_eval(const unary_transform_eval<typename iterator_traits<Iterator>::iterator, pair<nothing, IndexOperation2> >& it)
@@ -2064,27 +1996,29 @@ public:
    }
 };
 
-template <typename Target, typename SourceIterator> inline
-const typename is_derived_from_any<SourceIterator, typename const_compatible_with<Target>::type>::type&
-prepare_iterator_arg(const SourceIterator& it)
+template <typename Target, typename SourceIterator>
+decltype(auto)
+prepare_iterator_arg(const SourceIterator& it,
+                     std::enable_if_t<is_derived_from_any<SourceIterator, const_compatible_with<Target>>::value, void**> =nullptr)
 {
-   return it;
+   return static_cast<const typename is_derived_from_any<SourceIterator, const_compatible_with<Target>>::match&>(it);
 }
 
-template <typename Target, typename SourceIterator> inline
+template <typename Target, typename SourceIterator>
 typename mproject1st<const SourceIterator&, typename iterator_traits<SourceIterator>::iterator_category>::type
 prepare_iterator_arg(const SourceIterator& it,
-                     typename std::enable_if<(!is_derived_from_any<SourceIterator, typename const_compatible_with<Target>::type>::value &&
-                                              can_construct_any<SourceIterator, typename const_compatible_with<Target>::type>::value),
-                                             void**>::type=nullptr)
+                     std::enable_if_t<(!is_derived_from_any<SourceIterator, const_compatible_with<Target>>::value &&
+                                       can_construct_any<SourceIterator, const_compatible_with<Target>>::value),
+                                      void**> =nullptr)
 {
    return it;
 }
 
+// TODO: revise its use, derived classes might not be accepted everywhere
 template <typename SourceIterator, typename Target>
 struct suitable_arg_for_iterator
-   : std::enable_if<is_derived_from_any<SourceIterator, typename const_compatible_with<Target>::type>::value ||
-                    can_construct_any<SourceIterator, typename const_compatible_with<Target>::type>::value> {};
+   : std::enable_if<is_derived_from_any<SourceIterator, const_compatible_with<Target>>::value ||
+                    can_construct_any<SourceIterator, const_compatible_with<Target>>::value> {};
 
 
 template <typename Iterator, typename Operation>
@@ -2106,7 +2040,7 @@ public:
                                     typename operation_cross_const_helper<Operation>::const_operation>
       const_iterator;
 
-   unary_transform_iterator() {}
+   unary_transform_iterator() = default;
 
    template <typename Operation2>
    unary_transform_iterator(const unary_transform_iterator<typename iterator_traits<Iterator>::iterator, Operation2>& it)
@@ -2117,13 +2051,13 @@ public:
       : base_t(it) {}
 
    template <typename SourceIterator,
-             typename suitable=typename std::enable_if<std::is_default_constructible<op_arg_type>::value,
-                                                       typename suitable_arg_for_iterator<SourceIterator, Iterator>::type>::type>
+             typename=std::enable_if_t<std::is_default_constructible<op_arg_type>::value,
+                                       typename suitable_arg_for_iterator<SourceIterator, Iterator>::type>>
    unary_transform_iterator(const SourceIterator& cur_arg)
       : base_t(prepare_iterator_arg<Iterator>(cur_arg), op_arg_type()) {}
 
    template <typename SourceIterator,
-             typename suitable=typename suitable_arg_for_iterator<SourceIterator, Iterator>::type>
+             typename=typename suitable_arg_for_iterator<SourceIterator, Iterator>::type>
    unary_transform_iterator(const SourceIterator& cur_arg, const op_arg_type& op_arg)
       : base_t(prepare_iterator_arg<Iterator>(cur_arg), op_arg) {}
 
@@ -2146,40 +2080,38 @@ public:
       unary_transform_iterator copy=*this;  operator--();  return copy;
    }
 
-   unary_transform_iterator& operator+= (int i)
+   unary_transform_iterator& operator+= (ptrdiff_t i)
    {
       static_assert(iterator_traits<raw_it>::is_random, "iterator is not random-access");
       raw_it::operator+=(i);
       return *this;
    }
-   unary_transform_iterator& operator-= (int i)
+   unary_transform_iterator& operator-= (ptrdiff_t i)
    {
       static_assert(iterator_traits<raw_it>::is_random, "iterator is not random-access");
       raw_it::operator-=(i);
       return *this;
    }
-   unary_transform_iterator operator+ (int i) const
+   unary_transform_iterator operator+ (ptrdiff_t i) const
    {
-      static_assert(iterator_traits<raw_it>::is_random, "iterator is not random-access");
       unary_transform_iterator copy=*this;  return copy+=i;
    }
-   unary_transform_iterator operator- (int i) const
+   unary_transform_iterator operator- (ptrdiff_t i) const
    {
-      static_assert(iterator_traits<raw_it>::is_random, "iterator is not random-access");
       unary_transform_iterator copy=*this; return copy-=i;
    }
-   friend unary_transform_iterator operator+ (int i, const unary_transform_iterator& me)
+   friend unary_transform_iterator operator+ (ptrdiff_t i, const unary_transform_iterator& me)
    {
       return me+i;
    }
 
    template <typename Other>
-   typename std::enable_if<is_derived_from_any<Other, typename iterator::raw_it, typename const_iterator::raw_it>::value,
-                           typename raw_it::difference_type>::type
+   std::enable_if_t<is_derived_from_any<Other, typename iterator::raw_it, typename const_iterator::raw_it>::value,
+                    typename raw_it::difference_type>
    operator- (const Other& it) const 
    {
       static_assert(iterator_traits<raw_it>::is_random, "iterator is not random-access");
-      typedef typename is_derived_from_any<Other, typename iterator::raw_it, typename const_iterator::raw_it>::type other_raw_it;
+      using other_raw_it = typename is_derived_from_any<Other, typename iterator::raw_it, typename const_iterator::raw_it>::match;
       return static_cast<const raw_it&>(*this) - static_cast<const other_raw_it&>(it);
    }
 
@@ -2205,28 +2137,27 @@ struct check_iterator_feature<unary_transform_iterator<Iterator, Operation>, Fea
    : check_iterator_feature<Iterator, Feature> {};
 
 template <typename Iterator, typename Operation>
-struct check_iterator_feature<unary_transform_iterator<Iterator, Operation>, indexed> {
-   static const bool value=is_instance_of<Operation, pair>::value ||
-                           check_iterator_feature<Iterator,indexed>::value;
-};
+struct check_iterator_feature<unary_transform_iterator<Iterator, Operation>, indexed>
+   : mlist_or< is_instance_of<Operation, pair>,
+               check_iterator_feature<Iterator,indexed> > {};
 
-template <typename Iterator, typename Operation> inline
+template <typename Iterator, typename Operation>
 auto make_unary_transform_iterator(Iterator&& it, const Operation& op)
 {
    return unary_transform_iterator<pointer2iterator_t<Iterator>, Operation>(pointer2iterator(std::forward<Iterator>(it)), op);
 }
 
-template <typename... TParams>
+template <typename... Params>
 struct unary_transform_constructor {
-   typedef typename mlist_wrap<TParams...>::type params;
+   using params = typename mlist_wrap<Params...>::type;
 
-   template <typename Iterator, typename Operation, typename ExpectedFeatures>
+   template <typename Iterator, typename Operation, typename... ExpectedFeatures>
    struct defs {
-      typedef typename std::conditional<is_instance_of<Operation, pair>::value,
-                                        typename list_search_all<ExpectedFeatures, indexed, equivalent_features>::negative,
-                                        ExpectedFeatures>::type
-         needed_features;
-      typedef unary_transform_iterator<Iterator, Operation> iterator;
+      using expected_features = typename mlist_wrap<ExpectedFeatures...>::type;
+      using needed_features = std::conditional_t<is_instance_of<Operation, pair>::value,
+                                                 typename mlist_match_all<expected_features, indexed, equivalent_features>::complement,
+                                                 expected_features>;
+      using iterator = unary_transform_iterator<Iterator, Operation>;
    };
 };
 
@@ -2242,36 +2173,36 @@ template <typename Container>
 struct default_check_container_feature<Container, pure_sparse> : std::false_type {};
 
 template <typename Container>
-struct default_check_container_feature<Container, dense> {
-   static const bool value=!check_container_feature<Container, sparse>::value;
-};
+struct default_check_container_feature<Container, dense>
+   : bool_not<check_container_feature<Container, sparse>> {};
 
-template <typename Container> inline
-typename std::enable_if<check_container_feature<Container, sparse_compatible>::value, int>::type
+template <typename Container>
+std::enable_if_t<check_container_feature<Container, sparse_compatible>::value, int>
 get_dim(const Container& c)
 {
    return c.dim();
 }
-template <typename Container> inline
-typename std::enable_if<!check_container_feature<Container, sparse_compatible>::value, int>::type
+
+template <typename Container>
+std::enable_if_t<!check_container_feature<Container, sparse_compatible>::value, int>
 get_dim(const Container& c)
 {
    return c.size();
 }
 
-template <typename Container> inline
+template <typename Container>
 int total_size(const Container& c)
 {
    return c.size();
 }
 
-template <typename First, typename Second, typename... Other> inline
+template <typename First, typename Second, typename... Other>
 int total_size(const First& c1, const Second& c2, const Other&... other)
 {
    return c1.size() + total_size(c2, other...);
 }
 
-template <typename Container> inline
+template <typename Container>
 int index_within_range(const Container& c, int i)
 {
    const int d=get_dim(c);
@@ -2291,7 +2222,7 @@ public:
    typedef output_iterator_tag iterator_category;
    typedef typename deref<std::remove_reference_t<typename Operation::argument_type>>::type value_type;
 
-   output_transform_iterator() {}
+   output_transform_iterator() = default;
 
    output_transform_iterator(const Iterator& cur_arg, const Operation& op_arg=Operation())
       : base_t(cur_arg)
@@ -2315,7 +2246,7 @@ public:
    output_transform_iterator& operator++ (int) { return *this; }
 };
 
-template <typename Iterator, typename Operation> inline
+template <typename Iterator, typename Operation>
 output_transform_iterator<Iterator,Operation>
 make_output_transform_iterator(Iterator it, const Operation& op)
 {
@@ -2323,42 +2254,39 @@ make_output_transform_iterator(Iterator it, const Operation& op)
 }
 
 struct output_transform_constructor {
-   template <typename Iterator, typename Operation, typename ExpectedFeatures>
+   template <typename Iterator, typename Operation, typename... ExpectedFeatures>
    struct defs {
-      typedef ExpectedFeatures needed_features;
-      typedef output_transform_iterator<Iterator,Operation> iterator;
+      using expected_features = typename mlist_wrap<ExpectedFeatures...>::type;
+      using needed_features = expected_features;
+      using iterator = output_transform_iterator<Iterator, Operation>;
    };
 };
 
-template <typename Iterator1, typename Iterator2, typename TParams=mlist<>>
+template <typename Iterator1, typename Iterator2, typename Params=mlist<>>
 class iterator_pair
    : public Iterator1 {
 public:
-   typedef Iterator1 first_type;
-   typedef Iterator2 second_type;
+   using first_type = Iterator1;
+   using second_type = Iterator2;
 
    Iterator2 second;
 
-   typedef typename mtagged_list_extract<TParams, FeaturesViaSecondTag>::type features_via_second;
+   using features_via_second = typename mtagged_list_extract<Params, FeaturesViaSecondTag, mlist<>>::type;
 
-   typedef typename least_derived_class<typename iterator_traits<Iterator1>::iterator_category,
-                                        typename iterator_traits<Iterator2>::iterator_category>::type
-      iterator_category;
-   typedef typename iterator_traits< typename std::conditional<check_iterator_feature<Iterator1, unlimited>::value,
-                                                               Iterator2, Iterator1>::type >::difference_type
-      difference_type;
-   typedef iterator_pair<typename iterator_traits<Iterator1>::iterator,
-                         typename iterator_traits<Iterator2>::iterator, TParams>
-      iterator;
-   typedef iterator_pair<typename iterator_traits<Iterator1>::const_iterator,
-                         typename iterator_traits<Iterator2>::const_iterator, TParams>
-      const_iterator;
+   using iterator_category = typename least_derived_class<typename iterator_traits<Iterator1>::iterator_category,
+                                                          typename iterator_traits<Iterator2>::iterator_category>::type;
+   using difference_type = typename iterator_traits<std::conditional_t<check_iterator_feature<Iterator1, unlimited>::value,
+                                                                       Iterator2, Iterator1>>::difference_type;
+   using iterator = iterator_pair<typename iterator_traits<Iterator1>::iterator,
+                                  typename iterator_traits<Iterator2>::iterator, Params>;
+   using const_iterator = iterator_pair<typename iterator_traits<Iterator1>::const_iterator,
+                                        typename iterator_traits<Iterator2>::const_iterator, Params>;
 
-   iterator_pair() {}
+   iterator_pair() = default;
 
    template <typename SourceIterator1, typename SourceIterator2,
-             typename suitable1=typename suitable_arg_for_iterator<SourceIterator1, Iterator1>::type,
-             typename suitable2=typename suitable_arg_for_iterator<SourceIterator2, Iterator2>::type>
+             typename=typename suitable_arg_for_iterator<SourceIterator1, Iterator1>::type,
+             typename=typename suitable_arg_for_iterator<SourceIterator2, Iterator2>::type>
    iterator_pair(const SourceIterator1& first_arg, const SourceIterator2& second_arg)
       : first_type(prepare_iterator_arg<Iterator1>(first_arg))
       , second(prepare_iterator_arg<Iterator2>(second_arg)) {}
@@ -2442,27 +2370,27 @@ private:
       return second==it.second;
    }
 
-   typedef bool_constant<(list_search<features_via_second, end_sensitive, absorbing_feature>::value ||
-                          check_iterator_feature<Iterator1, unlimited>::value)> diff_via_second;
+   using diff_via_second = bool_constant<(mlist_contains<features_via_second, end_sensitive, absorbing_feature>::value ||
+                                          check_iterator_feature<Iterator1, unlimited>::value)>;
 
 public:
    template <typename Other>
-   typename std::enable_if<is_derived_from_any<Other, iterator, const_iterator>::value, difference_type>::type
+   std::enable_if_t<is_derived_from_any<Other, iterator, const_iterator>::value, difference_type>
    operator- (const Other& it) const
    {
       static_assert(iterator_pair_traits<Iterator1, Iterator2>::is_random, "iterator is not random-access");
-      return diff_impl(static_cast<const typename is_derived_from_any<Other, iterator, const_iterator>::type&>(it), diff_via_second());
+      return diff_impl(static_cast<const typename is_derived_from_any<Other, iterator, const_iterator>::match&>(it), diff_via_second());
    }
 
    template <typename Other>
-   typename std::enable_if<is_derived_from_any<Other, iterator, const_iterator>::value, bool>::type
+   std::enable_if_t<is_derived_from_any<Other, iterator, const_iterator>::value, bool>
    operator== (const Other& it) const
    {
-      return eq_impl(static_cast<const typename is_derived_from_any<Other, iterator, const_iterator>::type&>(it), diff_via_second());
+      return eq_impl(static_cast<const typename is_derived_from_any<Other, iterator, const_iterator>::match&>(it), diff_via_second());
    }
 
    template <typename Other>
-   typename std::enable_if<is_derived_from_any<Other, iterator, const_iterator>::value, bool>::type
+   std::enable_if_t<is_derived_from_any<Other, iterator, const_iterator>::value, bool>
    operator!= (const Other& it) const
    {
       return !operator==(it);
@@ -2477,11 +2405,10 @@ private:
    {
       return second.at_end();
    }
-   typedef bool_constant<(list_search<features_via_second, end_sensitive, absorbing_feature>::value ||
-                          !check_iterator_feature<Iterator1, end_sensitive>::value)>
-      at_end_via_second;
-   static const bool at_end_defined= at_end_via_second::value ? check_iterator_feature<Iterator2, end_sensitive>::value
-                                                              : check_iterator_feature<Iterator1, end_sensitive>::value;
+   using at_end_via_second = bool_constant<(mlist_contains<features_via_second, end_sensitive, absorbing_feature>::value ||
+                                            !check_iterator_feature<Iterator1, end_sensitive>::value)>;
+   static constexpr bool at_end_defined=
+      check_iterator_feature<std::conditional_t<at_end_via_second::value, Iterator2, Iterator1>, end_sensitive>::value;
 public:
    bool at_end() const
    {
@@ -2497,11 +2424,10 @@ private:
    {
       return second.index();
    }
-   typedef bool_constant<(list_search<features_via_second, indexed, absorbing_feature>::value ||
-                          !check_iterator_feature<Iterator1, indexed>::value)>
-      index_via_second;
-   static const bool index_defined= index_via_second::value ? check_iterator_feature<Iterator2, indexed>::value
-                                                            : check_iterator_feature<Iterator1, indexed>::value;
+   using index_via_second = bool_constant<(mlist_contains<features_via_second, indexed, absorbing_feature>::value ||
+                                           !check_iterator_feature<Iterator1, indexed>::value)>;
+   static constexpr bool index_defined=
+      check_iterator_feature<std::conditional_t<index_via_second::value, Iterator2, Iterator1>, indexed>::value;
 public:
    int index() const
    {
@@ -2509,8 +2435,7 @@ public:
       return index_impl(index_via_second());
    }
 protected:
-   typedef bool_constant<(!list_search<features_via_second, rewindable, absorbing_feature>::value)>
-      rewind_first;
+   using rewind_first = typename bool_not<mlist_contains<features_via_second, rewindable, absorbing_feature>>::type;
    static const bool rewind_defined= (check_iterator_feature<Iterator1, rewindable>::value || !rewind_first::value) &&
                                      check_iterator_feature<Iterator2, rewindable>::value;
 
@@ -2543,50 +2468,49 @@ protected:
 public:
    void contract(bool renumber, int distance_front, int distance_back=0)
    {
-      if (!list_search<features_via_second, contractable, equivalent_features>::value)
+      if (!mlist_contains<features_via_second, contractable, equivalent_features>::value)
          contract1(renumber, distance_front, distance_back, bool_constant<check_iterator_feature<Iterator1, contractable>::value>());
       contract2(renumber, distance_front, distance_back, bool_constant<check_iterator_feature<Iterator2, contractable>::value>());
    }
 };
 
-template <typename Iterator1, typename Iterator2, typename TParams, typename Feature>
-struct check_iterator_feature< iterator_pair<Iterator1, Iterator2, TParams>, Feature> {
-   typedef cons<end_sensitive, indexed> usual_or_features;
+template <typename Iterator1, typename Iterator2, typename Params, typename Feature>
+struct check_iterator_feature< iterator_pair<Iterator1, Iterator2, Params>, Feature> {
+   using usual_or_features = mlist<end_sensitive, indexed>;
 
-   static const bool
+   static constexpr bool
       check1 = check_iterator_feature<Iterator1, Feature>::value,
       check2 = check_iterator_feature<Iterator2, Feature>::value,
-      value = list_search<typename mtagged_list_extract<TParams, FeaturesViaSecondTag>::type, Feature, absorbing_feature>::value
+      value = mlist_contains<typename mtagged_list_extract<Params, FeaturesViaSecondTag, mlist<>>::type, Feature, absorbing_feature>::value
               ? check2 :
-              list_contains<usual_or_features, Feature>::value
+              mlist_contains<usual_or_features, Feature>::value
               ? check1 || check2
               : check1 && check2;
+
+   using type = bool_constant<value>;
+   using value_type = bool;
 };
 
-template <typename TParams=mlist<>>
+template <typename Params=mlist<>>
 struct pair_coupler {
-   typedef cons<end_sensitive, indexed> usual_or_features;
+   using usual_or_features = mlist<end_sensitive, indexed>;
 
-   template <typename Iterator1, typename Iterator2, typename ExpectedFeatures>
+   template <typename Iterator1, typename Iterator2, typename... ExpectedFeatures>
    struct defs {
-      typedef typename list_search_all<ExpectedFeatures, usual_or_features, equivalent_features>::positive or_features;
-      typedef typename list_search_all<ExpectedFeatures, usual_or_features, equivalent_features>::negative and_features;
-      typedef typename list_search_all<Iterator1, or_features, check_iterator_feature>::positive2 first_can;
-      typedef typename list_search_all<Iterator1, or_features, check_iterator_feature>::negative2 first_can_not;
-      typedef typename std::conditional<check_iterator_feature<Iterator2,unlimited>::value, void, first_can_not>::type
-         explicitly_via_second;
-      typedef typename mlist_prepend_if<mlist_length<explicitly_via_second>::value != 0,
-                                        FeaturesViaSecondTag<explicitly_via_second>, TParams>::type
-         it_params;
-      typedef iterator_pair<Iterator1, Iterator2, it_params> iterator;
-      typedef typename std::conditional<check_iterator_feature<Iterator2, unlimited>::value,
-                                        ExpectedFeatures,
-                                        and_features >::type
-         needed_features1;
-      typedef typename std::conditional<check_iterator_feature<Iterator2, unlimited>::value,
-                                        and_features,
-                                        typename list_search_all<ExpectedFeatures, first_can, equivalent_features>::negative >::type
-         needed_features2;
+      using expected_features = typename mlist_wrap<ExpectedFeatures...>::type;
+      using or_features = typename mlist_match_all<expected_features, usual_or_features, equivalent_features>::type;
+      using and_features = typename mlist_match_all<expected_features, usual_or_features, equivalent_features>::complement;
+      using first_can = typename mlist_match_all<Iterator1, or_features, check_iterator_feature>::type2;
+      using first_can_not = typename mlist_match_all<Iterator1, or_features, check_iterator_feature>::complement2;
+      using explicitly_via_second = std::conditional_t<check_iterator_feature<Iterator2,unlimited>::value, mlist<>, first_can_not>;
+      using it_params = typename mlist_prepend_if<!mlist_is_empty<explicitly_via_second>::value,
+                                                  FeaturesViaSecondTag<explicitly_via_second>, Params>::type;
+      using iterator = iterator_pair<Iterator1, Iterator2, it_params>;
+      using needed_features1 = std::conditional_t<check_iterator_feature<Iterator2, unlimited>::value,
+                                                  expected_features, and_features>;
+      using needed_features2 = std::conditional_t<check_iterator_feature<Iterator2, unlimited>::value,
+                                                  and_features,
+                                                  typename mlist_match_all<expected_features, first_can, equivalent_features>::complement>;
    };
 };
 
@@ -2602,7 +2526,7 @@ protected:
 
    typedef Operation op_arg_type;
 
-   binary_transform_eval() {}
+   binary_transform_eval() = default;
 
    template <typename Operation2>
    binary_transform_eval(const binary_transform_eval<typename iterator_traits<IteratorPair>::iterator, Operation2, is_partial>& it)
@@ -2641,7 +2565,7 @@ protected:
    typename ihelper::operation iop;
    typedef pair<Operation, IndexOperation> op_arg_type;
 
-   binary_transform_eval() {}
+   binary_transform_eval() = default;
 
    template <typename Operation2, typename IndexOperation2>
    binary_transform_eval(const binary_transform_eval<typename iterator_traits<IteratorPair>::iterator, pair<Operation2, IndexOperation2>, is_partial>& it)
@@ -2675,7 +2599,7 @@ protected:
    typename ihelper::operation iop;
    typedef IndexOperation op_arg_type;
 
-   binary_transform_eval() {}
+   binary_transform_eval() = default;
 
    template <typename IndexOperation2>
    binary_transform_eval(const binary_transform_eval<typename iterator_traits<IteratorPair>::iterator, pair<nothing, IndexOperation2>, is_partial>& it)
@@ -2718,35 +2642,35 @@ public:
                                      typename operation_cross_const_helper<Operation>::const_operation, is_partial>
       const_iterator;
 
-   binary_transform_iterator() {}
+   binary_transform_iterator() = default;
 
    template <typename Operation2>
    binary_transform_iterator(const binary_transform_iterator<typename iterator_traits<IteratorPair>::iterator, Operation2, is_partial>& it)
       : base_t(it) {}
 
    template <typename SourceIteratorPair,
-             typename suitable=typename std::enable_if<std::is_default_constructible<op_arg_type>::value,
-                                                       typename suitable_arg_for_iterator<SourceIteratorPair, IteratorPair>::type>::type>
+             typename=std::enable_if_t<std::is_default_constructible<op_arg_type>::value,
+                                       typename suitable_arg_for_iterator<SourceIteratorPair, IteratorPair>::type>>
    binary_transform_iterator(const SourceIteratorPair& cur_arg)
       : base_t(prepare_iterator_arg<IteratorPair>(cur_arg), op_arg_type()) {}
 
    template <typename SourceIteratorPair,
-             typename suitable=typename suitable_arg_for_iterator<SourceIteratorPair, IteratorPair>::type>
+             typename=typename suitable_arg_for_iterator<SourceIteratorPair, IteratorPair>::type>
    binary_transform_iterator(const SourceIteratorPair& cur_arg, const op_arg_type& op_arg)
       : base_t(prepare_iterator_arg<IteratorPair>(cur_arg), op_arg) {}
 
    template <typename SourceIterator1, typename SourceIterator2,
-             typename suitable1=typename std::enable_if<std::is_default_constructible<op_arg_type>::value,
-                                                        typename suitable_arg_for_iterator<SourceIterator1, typename IteratorPair::first_type>::type>::type,
-             typename suitable2=typename suitable_arg_for_iterator<SourceIterator2, typename IteratorPair::second_type>::type>
+             typename=std::enable_if_t<std::is_default_constructible<op_arg_type>::value,
+                                       typename suitable_arg_for_iterator<SourceIterator1, typename IteratorPair::first_type>::type>,
+             typename=typename suitable_arg_for_iterator<SourceIterator2, typename IteratorPair::second_type>::type>
    binary_transform_iterator(const SourceIterator1& first_arg, const SourceIterator2& second_arg)
       : base_t(prepare_iterator_arg<typename IteratorPair::first_type>(first_arg),
                prepare_iterator_arg<typename IteratorPair::second_type>(second_arg),
                op_arg_type()) {}
 
    template <typename SourceIterator1, typename SourceIterator2,
-             typename suitable1=typename suitable_arg_for_iterator<SourceIterator1, typename IteratorPair::first_type>::type,
-             typename suitable2=typename suitable_arg_for_iterator<SourceIterator2, typename IteratorPair::second_type>::type>
+             typename=typename suitable_arg_for_iterator<SourceIterator1, typename IteratorPair::first_type>::type,
+             typename=typename suitable_arg_for_iterator<SourceIterator2, typename IteratorPair::second_type>::type>
    binary_transform_iterator(const SourceIterator1& first_arg, const SourceIterator2& second_arg, const op_arg_type& op_arg)
       : base_t(prepare_iterator_arg<typename IteratorPair::first_type>(first_arg),
                prepare_iterator_arg<typename IteratorPair::second_type>(second_arg),
@@ -2798,12 +2722,12 @@ public:
    }
 
    template <typename Other>
-   typename std::enable_if<is_derived_from_any<Other, typename iterator::raw_it, typename const_iterator::raw_it>::value,
-                           typename raw_it::difference_type>::type
+   std::enable_if_t<is_derived_from_any<Other, typename iterator::raw_it, typename const_iterator::raw_it>::value,
+                    typename raw_it::difference_type>
    operator- (const Other& it) const
    {
       static_assert(iterator_traits<raw_it>::is_random, "iterator is not random-access");
-      typedef typename is_derived_from_any<Other, typename iterator::raw_it, typename const_iterator::raw_it>::type other_raw_it;
+      using other_raw_it = typename is_derived_from_any<Other, typename iterator::raw_it, typename const_iterator::raw_it>::match;
       return static_cast<const raw_it&>(*this) - static_cast<const other_raw_it&>(it);
    }
 
@@ -2837,33 +2761,32 @@ struct check_iterator_feature<binary_transform_iterator<IteratorPair, Operation,
    : check_iterator_feature<IteratorPair,Feature> {};
 
 template <typename IteratorPair, typename Operation, bool is_partial>
-struct check_iterator_feature<binary_transform_iterator<IteratorPair, Operation, is_partial>, indexed> {
-   static const bool value=is_instance_of<Operation, pair>::value ||
-                           check_iterator_feature<IteratorPair, indexed>::value;
-};
+struct check_iterator_feature<binary_transform_iterator<IteratorPair, Operation, is_partial>, indexed>
+   : mlist_or< is_instance_of<Operation, pair>,
+               check_iterator_feature<IteratorPair, indexed> > {};
 
 template <typename Iterator>
 struct has_partial_state : std::false_type {};
 
-template <typename... TParams>
+template <typename... Params>
 struct binary_transform_constructor {
-   typedef typename mlist_wrap<TParams...>::type params;
+   using params = typename mlist_wrap<Params...>::type;
 
-   template <typename IteratorPair, typename Operation, typename ExpectedFeatures>
+   template <typename IteratorPair, typename Operation, typename... ExpectedFeatures>
    struct defs {
+      using expected_features = typename mlist_wrap<ExpectedFeatures...>::type;
       static const bool is_partially_defined = tagged_list_extract_integral<params, PartiallyDefinedTag>(has_partial_state<IteratorPair>::value);
 
-      typedef typename std::conditional<is_instance_of<Operation, pair>::value,
-                                        typename list_search_all<ExpectedFeatures, indexed, equivalent_features>::negative,
-                                        ExpectedFeatures >::type
-         needed_pair_features;
-      typedef void needed_features1;
-      typedef void needed_features2;
-      typedef binary_transform_iterator<IteratorPair, Operation, is_partially_defined> iterator;
+      using needed_pair_features = std::conditional_t<is_instance_of<Operation, pair>::value,
+                                                      typename mlist_match_all<expected_features, indexed, equivalent_features>::complement,
+                                                      expected_features>;
+      using needed_features1 = mlist<>;
+      using needed_features2 = mlist<>;
+      using iterator = binary_transform_iterator<IteratorPair, Operation, is_partially_defined>;
    };
 };
 
-template <typename Iterator1, typename Iterator2, typename Operation> inline
+template <typename Iterator1, typename Iterator2, typename Operation>
 auto make_binary_transform_iterator(Iterator1&& first, Iterator2&& second, const Operation& op)
 {
    return binary_transform_iterator<iterator_pair<pointer2iterator_t<Iterator1>, pointer2iterator_t<Iterator2>>, Operation>
@@ -2873,9 +2796,6 @@ auto make_binary_transform_iterator(Iterator1&& first, Iterator2&& second, const
 } // end namespace pm
 
 namespace polymake {
-   using pm::array2container;
-   using pm::Entire;
-   using pm::entire;
    using pm::BuildUnary;
    using pm::BuildBinary;
    using pm::BuildUnaryIt;
@@ -2884,8 +2804,10 @@ namespace polymake {
    using pm::make_binary_transform_iterator;
    using pm::make_output_transform_iterator;
    using pm::as_iterator_range;
+   using pm::indexed;
    using pm::rewindable;
    using pm::reversed;
+   using pm::reversed_view;
    using pm::black_hole;
    using pm::inserter;
    using pm::allow_conversion;

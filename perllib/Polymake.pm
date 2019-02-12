@@ -38,7 +38,7 @@ use Polymake::Ext;
 # Global variables
 #
 
-declare $Version="3.2";
+declare $Version="3.3";
 declare $VersionNumber=eval "v$Version";        # for string comparisons with vM.N literals
 
 declare ($Scope,                # Scope object for the current cycle
@@ -46,12 +46,6 @@ declare ($Scope,                # Scope object for the current cycle
         );
 
 declare $Shell=new NoShell;     # alternatively: Shell object listening to the console or some pipe
-
-declare $CoreVCS;               # version control system for core source files
-if ($DeveloperMode) {
-   require Polymake::SourceVersionControl;
-   $CoreVCS=new SourceVersionControl($InstallTop);
-}
 
 # resources for third-party programs launched by polymake
 declare $Resources=$ENV{POLYMAKE_RESOURCE_DIR} // "$InstallTop/resources";
@@ -69,13 +63,12 @@ require Polymake::OverwriteFile;
 require Polymake::Overload;
 require Polymake::Core::Customize;
 require Polymake::Core::Preference;
-require Polymake::Core::UserSettings;
 require Polymake::User;
 require Polymake::Core::PropertyType;
 require Polymake::Core::Property;
 require Polymake::Core::Permutation;
-require Polymake::Core::Rule;
 require Polymake::Core::PropertyValue;
+require Polymake::Core::Rule;
 require Polymake::Core::ObjectType;
 require Polymake::Core::Scheduler;
 require Polymake::Core::XMLfile;
@@ -83,10 +76,19 @@ require Polymake::Core::Object;
 require Polymake::Core::Application;
 require Polymake::Core::Extension;
 require Polymake::Core::CPlusPlus;
+require Polymake::Core::StoredScript;
 require Polymake::Core::RuleFilter;
+require Polymake::Core::UserSettings;
 
-declare $Custom=new Core::Customize;
-declare $Prefs=new Core::Preference;
+package Polymake::Core;
+
+declare $Custom = new Customize;
+declare $Prefs = new Preference;
+
+my @custom_blocks;
+sub add_custom_vars {
+   push @custom_blocks, @_;
+}
 
 ########################################################################
 #
@@ -94,6 +96,9 @@ declare $Prefs=new Core::Preference;
 # the polymake shell.
 #
 package Polymake::Main;
+
+# is set to true when a user script is executed directly from the command line, without interactive shell
+declare $standalone_script = false;
 
 sub greeting {
    my $verbose = $_[0] // 2;
@@ -132,9 +137,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 # initialize some modules in proper order
 # "config path" =>
 sub init {
-   &Polymake::Core::UserSettings::init;
-   Polymake::Core::Extension::init();
-   Polymake::Core::CPlusPlus::init();
+   Core::UserSettings::init(@_, @custom_blocks);
+   Core::Extension::init();
+   Core::CPlusPlus::init();
 }
 
 ########################################################################

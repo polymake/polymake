@@ -85,9 +85,9 @@ user_method MIN_MAX_FACE(; LinearProgram { min => $Visual::Color::min, max => $V
       $lp=$self->Polytope->LP;
    }
    foreach (values %$decor) {
-      unless (is_hash($_)) {
-         my $c=get_RGB($_);
-         $_={ VertexColor=>$c, FacetColor=>$c };
+      unless (is_like_hash($_)) {
+         my $c = get_RGB($_);
+         $_ = { VertexColor => $c, FacetColor => $c };
       }
    }
 
@@ -257,19 +257,6 @@ method VisualSimplices {
    } @$Simplices;
 }
 
-# @category Visualization
-# Options for visualizing polytopes.
-# Optional transformations take please within the space in which the polytopes are visualized;
-# hence we describe them in affine terms.
-options %geometric_options=(
-  # Matrix useful for unbounded polyhedra
-  BoundingBox => undef, 
-  # Matrix<Float> linear transformation, to be applied after dehomogenization
-  Transformation => undef, 
-  # Vector<Float> shift, to be applied after dehomogenization and the linear transformation
-  Offset => undef, 
-);
-
 sub apply_bounding_box($;$) {
     my ($this,$bbox) = @_; # Polytope object, Matrix
 
@@ -297,20 +284,6 @@ sub apply_bounding_box($;$) {
     #        Polytope  Set<Int>      Map<Vector<Scalar>, Int>
 }
 
-sub convert_to_float_dehomogenize_and_transform($;$$) {
-    my ($M,$T,$v) = @_; # Matrix, Matrix<Float>, Vector<Float>
-    my $MM = dehomogenize(convert_to<Float>($M));
-    if (defined($T)) {
-        die "transformation invalid" unless $MM->cols()==$T->rows() && $T->cols()<=3;
-        $MM = $MM*$T;
-    }
-    if (defined($v)) {
-        die "offset invalid" unless $MM->cols()==$v->dim() && $v->dim()<=3;
-        for (my $i=0; $i<$MM->rows(); ++$i) { $MM->[$i] = $MM->[$i]+$v }
-    }
-    return $MM;
-}
-
 # @category Visualization
 # Visualize a polytope as a graph (if 1d), or as a solid object (if 2d or 3d),
 # or as a Schlegel diagram (4d).
@@ -323,9 +296,9 @@ sub convert_to_float_dehomogenize_and_transform($;$$) {
 user_method VISUAL(%Visual::PointSet::decorations, %geometric_options) : CONE_DIM {
    my ($this, $decor, $geom)=@_;
    my $P=new Visual::PointSet( Name => $this->name,
-                               Points => convert_to_float_dehomogenize_and_transform($this->VERTICES,$geom->{Transformation},$geom->{Offset}),
+                               Points => Visual::transform_float(dehomogenize(convert_to<Float>($this->VERTICES)),$geom->{Transformation},$geom->{Offset}),
                                PointLabels => $this->lookup("VERTEX_LABELS"),
-                               $decor, $geom
+                               $decor
                              );
    visualize($P);
 }
@@ -336,7 +309,7 @@ precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM<=4 }
 # @hide
 user_method VISUAL(%Visual::Wire::decorations, %geometric_options) : CONE_DIM {
    my ($this, $decor, $geom)=@_;
-   my $G=$this->GRAPH->VISUAL(Name=>$this->name, Coord=>convert_to_float_dehomogenize_and_transform($this->VERTICES,$geom->{Transformation},$geom->{Offset}), $decor, $geom);
+   my $G=$this->GRAPH->VISUAL(Name=>$this->name, Coord=>Visual::transform_float(dehomogenize(convert_to<Float>($this->VERTICES)),$geom->{Transformation},$geom->{Offset}), $decor);
    visualize( new Visual::Polytope(Name => $this->name, Polytope => $this, $G) );
 }
 precondition : CONE_DIM { $this->CONE_DIM==2 }
@@ -361,17 +334,17 @@ user_method VISUAL(%Visual::Polygons::decorations, %geometric_options) : VERTICE
 
    my $P= $this->CONE_DIM==3
        ? new Visual::Polygon( Name => $this->name,
-                              Vertices => convert_to_float_dehomogenize_and_transform($this->VERTICES,$geom->{Transformation},$geom->{Offset}),
+                              Vertices => Visual::transform_float(dehomogenize(convert_to<Float>($this->VERTICES)),$geom->{Transformation},$geom->{Offset}),
                               VertexLabels => $this->lookup("VERTEX_LABELS"),
                               Facet => $this->VIF_CYCLIC_NORMAL->[0],
                               NEdges => $this->N_EDGES,
                               $decor
        )
        : new Visual::Polygons( Name => $this->name,
-                               Vertices => convert_to_float_dehomogenize_and_transform($this->VERTICES,$geom->{Transformation},$geom->{Offset}),
+                               Vertices => Visual::transform_float(dehomogenize(convert_to<Float>($this->VERTICES)),$geom->{Transformation},$geom->{Offset}),
                                VertexLabels => $this->lookup("VERTEX_LABELS"),
                                Facets => $this->VIF_CYCLIC_NORMAL,
-                               FacetNormals => $this->FACETS,
+                               FacetNormals => Visual::transform_float_facets(convert_to<Float>($this->FACETS),$geom->{Transformation},$geom->{Offset}),
                                FacetNeighbors => $this->NEIGHBOR_FACETS_CYCLIC_NORMAL,
                                FacetLabels => $this->lookup("FACET_LABELS") || "hidden",
                                Closed => 1,
@@ -426,7 +399,7 @@ user_method VISUAL(%Visual::Polygons::decorations, %geometric_options) : CONE_DI
    if (scalar(@vertex_colors)>0) {
        $decor->{VertexColor} = \@vertex_colors;
    }
-   $bv = $bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " }, $decor);
+   $bv = $bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " }, $decor, $geom);
    $bv->basis_solid->merge(%to_merge);
    visualize($bv);
 }
@@ -450,27 +423,29 @@ precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM >= 6 }
 # @category Visualization
 # Visualize the dual polytope as a solid 3-d object. The polytope must be [[BOUNDED]] and [[CENTERED]].
 # @options %Visual::Polygons::decorations
+# @options %geometric_options
 # @return Visual::Object
-user_method VISUAL_DUAL(%Visual::Polygons::decorations,%geometric_options) : FACETS, FTV_CYCLIC_NORMAL {
+
+user_method VISUAL_DUAL(%Visual::Polygons::decorations, %geometric_options) : FACETS, FTV_CYCLIC_NORMAL {
    my ($this, $decor, $geom)=@_;
    my $P= $this->CONE_AMBIENT_DIM==3
           ? new Visual::Polygon( Name => "dual of ".$this->name,
-				 Vertices => convert_to_float_dehomogenize_and_transform($this->FACETS,$geom->{Transformation},$geom->{Offset}),
+				 Vertices => Visual::transform_float(dehomogenize(convert_to<Float>($this->FACETS)),$geom->{Transformation},$geom->{Offset}),
 				 VertexLabels => $this->lookup("FACET_LABELS"),
 				 Facet => $this->FTV_CYCLIC_NORMAL->[0],
 				 NEdges => $this->N_EDGES,
-				 $decor, $geom,
+				 $decor,
 			       )
 	  : new Visual::Polygons( Name => "dual of ".$this->name,
-				  Vertices => convert_to_float_dehomogenize_and_transform($this->FACETS,$geom->{Transformation},$geom->{Offset}),
+				  Vertices => Visual::transform_float(dehomogenize(convert_to<Float>($this->FACETS)),$geom->{Transformation},$geom->{Offset}),
 				  VertexLabels => $this->lookup("FACET_LABELS"),
 				  Facets => $this->FTV_CYCLIC_NORMAL,
-                                  FacetNormals=> $this->VERTICES,
+                                  FacetNormals => Visual::transform_float_facets(convert_to<Float>($this->VERTICES),$geom->{Transformation},$geom->{Offset}),
 				  FacetNeighbors => $this->NEIGHBOR_VERTICES_CYCLIC_NORMAL,
 				  FacetLabels => $this->lookup("VERTEX_LABELS") || "hidden",
 				  Closed => 1,
 				  NEdges => $this->N_EDGES,
-				  $decor, $geom,
+				  $decor,
 				);
    visualize($P);
 }
@@ -496,10 +471,12 @@ object Cone {
 
 # @category Visualization
 # Visualizes the cone, intersected with the unit ball.
+# @options %Visual::Polygons::decorations
+# @options %geometric_options_linear
 # @return Visual::Cone
 
-user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cutoff}, {BoundingBox => undef}) : RAYS, LINEALITY_SPACE {
-   my ($this,$decor,$cutoff_decor, $bb)=@_;
+user_method VISUAL(%Visual::Polygons::decorations, %geometric_options_linear, {CutOff => $Visual::Color::cutoff}, {BoundingBox => undef}) : RAYS, LINEALITY_SPACE {
+   my ($this,$decor,$geom,$cutoff_decor, $bb)=@_;
    $decor->{VertexStyle} ||= "hidden";
    $cutoff_decor=$cutoff_decor->{CutOff};
    my $cutoff_decor3d=$cutoff_decor;
@@ -533,8 +510,8 @@ user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cu
    my $p=new polytope::Polytope<Float>(VERTICES => $v, LINEALITY_SPACE => zero_vector<Float>() | $lineality, FACETS_THRU_VERTICES=>$ftv);
    
    my $pv= ($lineality->rows > 0 && $this->CONE_DIM > 1) ?
-      $p->VISUAL( $decor , BoundingBox=>$bb->{BoundingBox} ) :
-      $p->VISUAL( $decor );
+      $p->VISUAL( $decor , $geom, BoundingBox=>$bb->{BoundingBox} ) :
+      $p->VISUAL( $decor , $geom);
    my (@cutoff_attrs);
    my $dim=$p->DIM;
    if ($dim==3) {

@@ -210,9 +210,9 @@ user_method MIN_MAX_FACE(; LinearProgram { min => $Visual::Color::min, max => $V
       $lp=$self->SchlegelObject->parent->LP;
    }
    foreach (values %$decor) {
-      unless (is_hash($_)) {
-         my $c=get_RGB($_);
-         $_={ NodeColor=>$c };
+      unless (is_like_hash($_)) {
+         my $c = get_RGB($_);
+         $_ = { NodeColor => $c };
       }
    }
    $self->basis_graph->add_node_subset($lp->MINIMAL_FACE, $decor->{min});

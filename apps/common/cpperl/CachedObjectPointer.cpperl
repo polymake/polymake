@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"pkg": "Polymake::common::CachedObjectPointer"},
+ null ],
+"version": 3}

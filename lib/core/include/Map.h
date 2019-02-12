@@ -39,13 +39,13 @@ namespace pm {
 */
 
 
-template <typename K, typename D, typename Comparator=operations::cmp>
+template <typename K, typename D, typename... Params>
 class Map
-   : public modified_tree< Map<K, D, Comparator>,
-                           mlist< ContainerTag< AVL::tree< AVL::traits<K, D, Comparator> > >,
+   : public modified_tree< Map<K, D, Params...>,
+                           mlist< ContainerTag< AVL::tree< AVL::traits<K, D, Params...> > >,
                                   OperationTag< BuildUnary<AVL::node_accessor> > > > {
 protected:
-   typedef AVL::tree< AVL::traits<K,D,Comparator> > tree_type;
+   using tree_type = AVL::tree<AVL::traits<K, D, Params...>>;
    shared_object<tree_type, AliasHandlerTag<shared_alias_handler>> tree;
 
    friend Map& make_mutable_alias(Map& alias, Map& owner)
@@ -54,12 +54,14 @@ protected:
       return alias;
    }
 public:
-   typedef K key_type;
-   typedef D mapped_type;
-   typedef Comparator key_comparator_type;
+   using key_type = K;
+   using mapped_type = D;
+   using params = typename mlist_wrap<Params...>::type;
+   using key_comparator_type = typename mtagged_list_extract<params, ComparatorTag, operations::cmp>::type;
+   static constexpr bool is_multimap = tagged_list_extract_integral<params, MultiTag>(false);
 
-   static_assert(!std::is_same<Comparator, operations::cmp_unordered>::value, "comparator must define a total ordering");
-   static_assert(!std::is_same<Comparator, operations::cmp>::value || is_ordered<K>::value, "keys must have a total ordering");
+   static_assert(!std::is_same<key_comparator_type, operations::cmp_unordered>::value, "comparator must define a total ordering");
+   static_assert(!std::is_same<key_comparator_type, operations::cmp>::value || is_ordered<K>::value, "keys must have a total ordering");
 
    tree_type& get_container() { return *tree; }
    const tree_type& get_container() const { return *tree; }
@@ -68,7 +70,7 @@ public:
    Map() {}
 
    /// Create an empty Map with non-default comparator.
-   explicit Map(const Comparator& cmp_arg)
+   explicit Map(const key_comparator_type& cmp_arg)
       : tree(cmp_arg) {}
 
    /// Construct from an iterator.
@@ -109,10 +111,10 @@ public:
 
        k can also be a container with keys; the result will be a sequence of corresponding values.
    */
-   template <typename TKeys>
-   typename assoc_helper<Map, TKeys>::result_type operator[] (const TKeys& k)
+   template <typename Keys>
+   typename assoc_helper<Map, Keys>::result_type operator[] (const Keys& k)
    {
-      return assoc_helper<Map, TKeys>()(*this, k);
+      return assoc_helper<Map, Keys>()(*this, k);
    }
 
    /** @brief Associative search (const).
@@ -123,17 +125,37 @@ public:
 
        k can also be a container with keys; the result will be a sequence of corresponding values.
    */
-   template <typename TKeys>
-   typename assoc_helper<const Map, TKeys>::result_type operator[] (const TKeys& k) const
+   template <typename Keys>
+   typename assoc_helper<const Map, Keys>::result_type operator[] (const Keys& k) const
    {
-      return assoc_helper<const Map, TKeys>()(*this, k);
+      return assoc_helper<const Map, Keys>()(*this, k);
    }
 
    /// synonym for const key lookup
-   template <typename TKeys>
-   typename assoc_helper<const Map, TKeys>::result_type map(const TKeys& k) const
+   template <typename Keys>
+   typename assoc_helper<const Map, Keys>::result_type map(const Keys& k) const
    {
-      return assoc_helper<const Map, TKeys>()(*this, k);
+      return assoc_helper<const Map, Keys>()(*this, k);
+   }
+
+   template <typename TKey>
+   iterator_range<typename Map::iterator>
+   equal_range(const TKey& key)
+   {
+      auto left=this->find_nearest(keys, polymake::operations::lt());
+      auto right=this->find_nearest(keys, polymake::operations::gt());
+      if (!left.at_end() || !right.at_end()) ++left;
+      return iterator_range<typename Map::iterator>(left, right);
+   }
+
+   template <typename TKey>
+   iterator_range<typename Map::const_iterator>
+   equal_range(const TKey& key) const
+   {
+      auto left=this->find_nearest(keys, polymake::operations::lt());
+      auto right=this->find_nearest(keys, polymake::operations::gt());
+      if (!left.at_end() || !right.at_end()) ++left;
+      return iterator_range<typename Map::const_iterator>(left, right);
    }
 
    friend
@@ -152,25 +174,25 @@ public:
    void check(const char* label) const { tree->check(label); }
 
 private:
-   void dump(std::false_type) const { cerr << "elements are not printable" << std::flush; }
-   void dump(std::true_type) const { cerr << *this << std::flush; }
+   void dump(std::false_type) const { cerr << "elements are not printable" << endl; }
+   void dump(std::true_type) const { cerr << *this << endl; }
 public:
    void dump() const __attribute__((used)) { dump(bool_constant<is_printable<K>::value && is_printable<D>::value>()); }
 #endif
 };
 
-template <typename K, typename D, typename Comparator>
-struct spec_object_traits< Map<K,D,Comparator> >
+template <typename K, typename D, typename... Params>
+struct spec_object_traits< Map<K, D, Params...> >
    : spec_object_traits<is_container> {
    static const IO_separator_kind IO_separator=IO_sep_inherit;
 };
 
-template <typename K, typename D, typename Comparator>
-struct choose_generic_object_traits< Map<K, D, Comparator>, false, false > :
-      spec_object_traits< Map<K,D,Comparator> > {
-   typedef void generic_type;
-   typedef is_map generic_tag;
-   typedef Map<K,D,Comparator> persistent_type;
+template <typename K, typename D, typename... Params>
+struct choose_generic_object_traits< Map<K, D, Params...>, false, false>
+   : spec_object_traits< Map<K, D, Params...> > {
+   using generic_type = void;
+   using generic_tag = is_map;
+   using persistent_type = Map<K, D, Params...>;
 };
 
 } // end namespace pm
@@ -180,8 +202,8 @@ namespace polymake {
 }
 
 namespace std {
-   template <typename K, typename D, typename Comparator> inline
-   void swap(pm::Map<K,D,Comparator>& m1, pm::Map<K,D,Comparator>& m2) { m1.swap(m2); }
+   template <typename K, typename D, typename... Params>
+   void swap(pm::Map<K, D, Params...>& m1, pm::Map<K, D, Params...>& m2) { m1.swap(m2); }
 }
 
 #endif // POLYMAKE_MAP_H

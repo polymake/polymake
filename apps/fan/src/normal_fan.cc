@@ -25,8 +25,7 @@ namespace polymake { namespace fan {
 template <typename Coord>
 perl::Object normal_fan(perl::Object p)
 {
-   perl::ObjectType t=perl::ObjectType::construct<Coord>("PolyhedralFan");
-   perl::Object f(t);
+   perl::Object f("PolyhedralFan", mlist<Coord>());
 
    const int dim   = p.call_method("AMBIENT_DIM");
    const int p_dim = p.call_method("DIM");
@@ -73,13 +72,13 @@ perl::Object normal_fan(perl::Object p)
       // as this might be needed for the {0} cone
       id_collector coll;
       ftv.squeeze_cols(coll);
-      facets = facets.minor(coll.oldids, ~scalar2set(0));
+      facets = facets.minor(coll.oldids, range_from(1));
 
       if (has_group)
          gens = permutation_subgroup_generators(gens, coll.oldids);
 
    } else {
-      facets = facets.minor(All,~scalar2set(0));
+      facets = facets.minor(All, range_from(1));
    }
    
    f.take("RAYS")            << facets;
@@ -87,7 +86,7 @@ perl::Object normal_fan(perl::Object p)
    f.take("REGULAR")         << bounded;
    f.take("PSEUDO_REGULAR")  << true;
   
-   f.take("LINEALITY_SPACE") << ls.minor(All, ~scalar2set(0));
+   f.take("LINEALITY_SPACE") << ls.minor(All, range_from(1));
 
    f.take("COMPLETE")        << bounded;
    f.take("FAN_DIM")         << dim - ldim;

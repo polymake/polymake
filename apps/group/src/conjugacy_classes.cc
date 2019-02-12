@@ -17,6 +17,7 @@
 #include "polymake/client.h"
 #include "polymake/Array.h"
 #include "polymake/Set.h"
+#include "polymake/ApproximateSet.h"
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
 #include "polymake/Rational.h"
@@ -27,13 +28,36 @@
 
 namespace polymake { namespace group {
 
+namespace {      
+
+template<typename Element>
+struct set_chooser {
+   typedef hash_set<Element> type;
+};
+
+template<>
+struct set_chooser<Matrix<double>> {
+   typedef ApproximateSet<Matrix<double>> type;
+};
+   
+   
 template<typename Element>
 auto
 all_group_elements_impl(const Array<Element>& generators)
 {
-   return orbit_impl<LeftAction<Element>, Element, Element>(generators, identity(degree(generators[0]), Element()));
+   return orbit_impl<LeftAction<Element>, Element, Element, typename set_chooser<Element>::type>(generators, identity(degree(generators[0]), Element()));
+}
+   
+template<typename Element>
+auto
+conjugacy_class_impl(const Array<Element>& generators,
+                     const Element& class_rep)
+{
+   return Set<Element>(entire(orbit_impl<ConjugationAction<Element>, Element, Element, typename set_chooser<Element>::type>(generators, class_rep)));
 }
 
+} // end anonymous namespace
+      
 template<typename Scalar>
 auto
 all_group_elements(perl::Object MatrixAction)
@@ -48,7 +72,7 @@ auto conjugacy_classes(const Array<Element>& generators,
 {
    Array<Set<Element>> conjugacy_classes(conjugacy_classes_representatives.size());
    for (int i=0; i<conjugacy_classes_representatives.size(); ++i)
-      conjugacy_classes[i] = Set<Element>(entire(orbit_impl<ConjugationAction<Element>, Element, Element>(generators, conjugacy_classes_representatives[i])));
+      conjugacy_classes[i] = conjugacy_class_impl(generators, conjugacy_classes_representatives[i]);
 
    return conjugacy_classes;
 }
@@ -57,16 +81,8 @@ template<typename Element>
 auto conjugacy_class(perl::Object A, const Element& element)
 {
    const Array<Element> generators = A.give("GENERATORS");
-   return Set<Element>(entire(orbit_impl<ConjugationAction<Element>, Element, Element>(generators, element)));
+   return conjugacy_class_impl(generators, element);
 }
-
-template<typename Scalar>
-auto conjugacy_class(perl::Object A, const Matrix<Scalar>& element)
-{
-   const Array<Matrix<Scalar>> generators = A.give("GENERATORS");
-   return Set<Matrix<Scalar>>(entire(orbit_impl<ConjugationAction<Matrix<Scalar>>, Matrix<Scalar>, Matrix<Scalar>>(generators, element)));
-}
-      
       
 template<typename Element>
 auto conjugacy_classes_and_reps(const Array<Element>& generators)
@@ -76,13 +92,13 @@ auto conjugacy_classes_and_reps(const Array<Element>& generators)
    std::vector<Set<Element>> classes;
    std::vector<Element> reps;
    while (sorted_group.size()) {
-      const Set<Element> new_class(entire(orbit_impl<ConjugationAction<Element>, Element, Element>(generators, sorted_group.front())));
+      const Set<Element> new_class(entire(orbit_impl<ConjugationAction<Element>, Element, Element, typename set_chooser<Element>::type>(generators, sorted_group.front())));
       classes.push_back(new_class);
       reps.push_back(classes.back().front());
       sorted_group -= new_class;
    }
-   return std::make_pair(Array<Set<Element>>(classes.size(), entire(classes)),
-                         Array<Element>(reps.size(), entire(reps)));
+   return std::make_pair(Array<Set<Element>>(classes.size(), classes.begin()),
+                         Array<Element>(reps.size(), reps.begin()));
 }
       
 

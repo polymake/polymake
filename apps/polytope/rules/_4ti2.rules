@@ -29,8 +29,13 @@ CONFIGURE {
     # FIXME temporarily excluded 4ti2 version 1.5 from configuration, as its interface is not compatible to version 1.3
     my $ver = `$groebner -h 2>&1 | grep -o \"version 1\..\"`;
     chomp $ver;
-    if ( $ver eq "version 1.5" ) { die "polymake currently does not work with 4ti2 version 1.5 bundled with latte integrale. Please install version 1.3 available from www.4ti2.de" ; }
-    ($zsolve=$groebner) =~ s/groebner$/zsolve/;
+    if ($ver eq "version 1.5") {
+       die <<'.';
+polymake currently does not work with 4ti2 version 1.5 bundled with latte integrale.
+Please install version 1.3 available from www.4ti2.de .
+.
+    }
+    $zsolve = $groebner =~ s/groebner$/zsolve/r;
 }
 
 # additional command line parameter for 4ti2's "groebner"

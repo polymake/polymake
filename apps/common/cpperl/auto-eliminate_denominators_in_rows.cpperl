@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Rational>&>"], "func": "eliminate_denominators_in_rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/common/lattice_tools.h"], "sig": "eliminate_denominators_in_rows.X"},
+  {"args": ["perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>"], "func": "eliminate_denominators_in_rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/common/lattice_tools.h"], "sig": "eliminate_denominators_in_rows.X"},
+ null ],
+"version": 3}

@@ -45,46 +45,55 @@ RayComputationBeneathBeyond::RayComputationBeneathBeyond()
 {
 }
 
-bool RayComputationBeneathBeyond::initialize() {
-	return m_lrs->initialize();
+bool RayComputationBeneathBeyond::initialize()
+{
+  return m_lrs->initialize();
 }
 
-bool RayComputationBeneathBeyond::finish() {
-	return m_lrs->finish();
+bool RayComputationBeneathBeyond::finish()
+{
+  return m_lrs->finish();
 }
 
 /**
  * computes dual description of data into rays
  */
-bool RayComputationBeneathBeyond::dualDescription(const Polyhedron & data, std::vector<FaceWithDataPtr> & rays) const {
-	Matrix<Rational> points(data.rows(), data.dimension());
-	
-	int i = 0;
-	BOOST_FOREACH(const QArray& row, data.rowPair()) {
-	  if ( ! data.isLinearity(row)) {
-		for (unsigned int j = 0; j < data.dimension(); j++) {
-			points[i][j].copy_from(row[j]);
-		}
-		++i;
-	  }
-	}
-	points.resize(i, data.dimension());
-	beneath_beyond_algo<Rational> bb_algo(points, true);
-	bb_algo.compute(entire(sequence(0,points.rows())));
-	
-	Matrix<Rational> facets = bb_algo.getFacets();
-	bool is_homogenized = true;
-	std::list<QArray> facetList = sympol_wrapper::matrix2QArray(facets, is_homogenized);
-	BOOST_FOREACH(const QArray& r, facetList) {
-		QArrayPtr qRay(new QArray(r));
-		qRay->normalizeArray();
+bool RayComputationBeneathBeyond::dualDescription(const Polyhedron & data, std::vector<FaceWithDataPtr>& rays) const
+{
+  const int dim = data.dimension();
+  int n_lins = 0, n_points = 0;
+  BOOST_FOREACH(const QArray& row, data.rowPair()) {
+    if (data.isLinearity(row))
+      ++n_lins;
+    else
+      ++n_points;
+  }
+  Matrix<Rational> lins(n_lins, dim), points(n_points, dim);
 
-		const Face f = data.faceDescription(*qRay);
-		FaceWithDataPtr fdPtr(new FaceWithData(f, qRay, data.incidenceNumber(f)));
-		rays.push_back(fdPtr);
-	}
+  int l = 0, p = 0;
+  BOOST_FOREACH(const QArray& row, data.rowPair()) {
+    const bool is_linearity = data.isLinearity(row);
+    Matrix<Rational>& m = is_linearity ? lins : points;
+    const int r = is_linearity ? l++ : p++;
+    for (int j = 0; j < dim; ++j) {
+      m(r, j).copy_from(row[j]);
+    }
+  }
+  const BeneathBeyondConvexHullSolver<Rational> bb_solver{};
+  const Matrix<Rational> facets = bb_solver.enumerate_facets(points, lins, true).first;
 
-	return true;
+  bool is_homogenized = true;
+  std::list<QArray> facetList = sympol_wrapper::matrix2QArray(facets, is_homogenized);
+  for (const QArray& r : facetList) {
+    QArrayPtr qRay(new QArray(r));
+    qRay->normalizeArray();
+
+    const Face f = data.faceDescription(*qRay);
+    FaceWithDataPtr fdPtr(new FaceWithData(f, qRay, data.incidenceNumber(f)));
+    rays.push_back(fdPtr);
+  }
+
+  return true;
 }
 
 bool RayComputationBeneathBeyond::firstVertex(const Polyhedron & data, Face & f, QArray & q, bool requireRay) const {

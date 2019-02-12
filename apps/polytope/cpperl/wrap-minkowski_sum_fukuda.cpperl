@@ -1,0 +1,9 @@
+{"app": "polytope", "embed": "minkowski_sum_fukuda.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "minkowski_sum_fukuda", "include": ["polymake/Rational.h"], "sig": "minkowski_sum_fukuda:T1.B", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void"], "func": "minkowski_sum_fukuda", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "minkowski_sum_fukuda:T1.B", "tp": "1"},
+  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "void"], "func": "zonotope_vertices_fukuda", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "zonotope_vertices_fukuda:T1.X.o", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "perl::Canned<const Matrix<QuadraticExtension<Rational>>&>", "void"], "func": "zonotope_vertices_fukuda", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "zonotope_vertices_fukuda:T1.X.o", "tp": "1"},
+  {"args": ["Rational", "void"], "func": "minkowski_sum_vertices_fukuda", "include": ["polymake/Rational.h"], "sig": "minkowski_sum_vertices_fukuda:T1.B", "tp": "1"},
+ null ],
+"version": 3}

@@ -32,8 +32,8 @@ Graph<> vertex_graph(perl::Object HD_obj)
 
    // vertex sets stored by the polytope edge faces (dim==1)
    // are exactly the vertex pairs we need for the graph
-   if(hd_rank > 1) {
-      for(auto f_it = entire(attach_member_accessor(select(HD.decoration(), HD.nodes_of_rank(2)), ptr2type<graph::lattice::BasicDecoration, Set<int>, &graph::lattice::BasicDecoration::face>())); !f_it.at_end(); ++f_it) {
+   if (hd_rank > 1) {
+      for (auto f_it = entire(attach_member_accessor(select(HD.decoration(), HD.nodes_of_rank(2)), ptr2type<graph::lattice::BasicDecoration, Set<int>, &graph::lattice::BasicDecoration::face>())); !f_it.at_end(); ++f_it) {
          G.edge(f_it->front(), f_it->back());
       }
    }
@@ -46,17 +46,17 @@ Graph<> facet_graph(perl::Object HD_obj)
    const graph::Lattice<Decoration, SeqType> HD(HD_obj);
    const int hd_rank = HD.rank();
    if (hd_rank<=0) return Graph<>(0);
-   const typename graph::Lattice<Decoration, SeqType>::nodes_of_rank_type facet_nodes = HD.nodes_of_rank(hd_rank-1);
+   const auto& facet_nodes = HD.nodes_of_rank(hd_rank-1);
    Graph<> G(facet_nodes.size());
 
    // the node numbers of the polytope facets (which are neighbors of the ridge faces, dim==-2)
    // relate to the whole Hasse diagram graph!
    int node_shift = facet_nodes.front();
-   if(hd_rank > 1) {
-      for(auto f_it = entire(select(rows(adjacency_matrix(HD.graph())), HD.nodes_of_rank(hd_rank-2)));
+   if (hd_rank > 1) {
+      for (auto f_it = entire(select(rows(adjacency_matrix(HD.graph())), HD.nodes_of_rank(hd_rank-2)));
             !f_it.at_end(); ++f_it) {
-         if(f_it->size() > 1)
-            for(auto pair_it = entire(all_subsets_of_k(*f_it,2)); !pair_it.at_end(); ++pair_it)
+         if (f_it->size() > 1)
+            for (auto pair_it = entire(all_subsets_of_k(*f_it,2)); !pair_it.at_end(); ++pair_it)
                G.edge( pair_it->front() - node_shift, pair_it->back() - node_shift);
       }
    }

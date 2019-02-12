@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "cartesian_product.cc",
+ "inst": [
+  {"args": ["Max", "void"], "func": "cartesian_product", "include": ["polymake/TropicalNumber.h"], "sig": "cartesian_product:T1.B", "tp": "1"},
+  {"args": ["Min", "void"], "func": "cartesian_product", "include": ["polymake/TropicalNumber.h"], "sig": "cartesian_product:T1.B", "tp": "1"},
+ null ],
+"version": 3}

@@ -1,0 +1,13 @@
+{"app": "common",
+ "inst": [
+  {"pkg": "Polymake::common::NodeHashMap"},
+  {"class": "NodeHashMap<Directed, bool>", "include": ["polymake/Graph.h"], "pkg": "Polymake::common::NodeHashMap_A_Directed_I_Bool_Z"},
+  {"args": ["NodeHashMap<Directed, bool>", "perl::Canned<const Graph<Directed>&>"], "include": ["polymake/Graph.h"], "op": "new", "sig": "new.X"},
+  {"args": ["perl::Canned<NodeHashMap<Directed, bool>&>", "int"], "include": ["polymake/Graph.h"], "op": "brk", "ret": "lvalue", "sig": "brk:O.X2.X"},
+  {"args": ["perl::AnchorArg<perl::Canned<const NodeHashMap<Directed, bool>&>>", "int"], "func": "pm::perl::find_element", "include": ["polymake/Graph.h", "polymake/perl/assoc.h"], "sig": "assoc_find.X8.X"},
+  {"class": "NodeHashMap<Undirected, bool>", "include": ["polymake/Graph.h"], "pkg": "Polymake::common::NodeHashMap_A_Undirected_I_Bool_Z"},
+  {"args": ["NodeHashMap<Undirected, bool>", "perl::Canned<const Graph<Undirected>&>"], "include": ["polymake/Graph.h"], "op": "new", "sig": "new.X"},
+  {"args": ["perl::Canned<NodeHashMap<Undirected, bool>&>", "int"], "include": ["polymake/Graph.h"], "op": "brk", "ret": "lvalue", "sig": "brk:O.X2.X"},
+  {"args": ["perl::AnchorArg<perl::Canned<const NodeHashMap<Undirected, bool>&>>", "int"], "func": "pm::perl::find_element", "include": ["polymake/Graph.h", "polymake/perl/assoc.h"], "sig": "assoc_find.X8.X"},
+ null ],
+"version": 3}

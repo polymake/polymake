@@ -125,7 +125,8 @@ void ProjectAndLift<IntegerPL,IntegerRet>::compute_projections(size_t dim, size_
     
     INTERRUPT_COMPUTATION_BY_EXCEPTION
     
-    const Matrix<IntegerPL> & Supps=AllSupps[dim];
+    const Matrix<IntegerPL> & Supps=AllSupps[dim];    
+    
     size_t dim1=dim-1;
     
     if(verbose)
@@ -198,8 +199,6 @@ void ProjectAndLift<IntegerPL,IntegerRet>::compute_projections(size_t dim, size_
     // cout << "Nach Pos/Neg " << EqusProj.nr_of_rows() << " " << Pos.size() << " " << Neg.size() << endl;
     
     // now the elimination, matching Pos and Neg
-    
-    // cout << "rank_goes_up " << rank_goes_up << endl;
     
         bool skip_remaining;
 #ifndef NCATCH
@@ -298,8 +297,6 @@ void ProjectAndLift<IntegerPL,IntegerRet>::compute_projections(size_t dim, size_
 #ifndef NCATCH
         try {
 #endif
- 
-            INTERRUPT_COMPUTATION_BY_EXCEPTION
             
             size_t p=Pos[i];
             IntegerPL PosVal=Supps[p][dim1];
@@ -309,6 +306,9 @@ void ProjectAndLift<IntegerPL,IntegerRet>::compute_projections(size_t dim, size_
                     PosKey.push_back(k);
             
             for(size_t j=0;j<Neg.size();++j){
+                
+                INTERRUPT_COMPUTATION_BY_EXCEPTION
+                            
                 size_t n=Neg[j];
                 // // to give a facet of the extended cone
                 // match incidence vectors

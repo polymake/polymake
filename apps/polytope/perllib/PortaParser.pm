@@ -165,7 +165,7 @@ sub print_dim {
 
 sub print_valid_point {
    my ($self, $V)=@_;
-   $self->out->print("VALID\n", $V->slice(1), "\n");
+   $self->out->print("VALID\n", $V->slice(range_from(1)), "\n");
 }
 
 sub print_points {
@@ -173,15 +173,15 @@ sub print_points {
    my (@conv, @cone);
    foreach my $p (@$Points) {
       if (!$p->[0]) {
-         push @cone, join(" ", $p->slice(1))."\n";
+         push @cone, join(" ", $p->slice(range_from(1)))."\n";
       } else {
-         push @conv, join(" ", $p->slice(1))."\n";
+         push @conv, join(" ", $p->slice(range_from(1)))."\n";
       }
    }
    if ( defined($Lin) ) {
        foreach my $p (@$Lin) {
-         push @cone, join(" ", $p->slice(1))."\n";
-         push @cone, join(" ", -$p->slice(1))."\n";
+         push @cone, join(" ", $p->slice(range_from(1)))."\n";
+         push @cone, join(" ", -$p->slice(range_from(1)))."\n";
       }
    }
    $self->out->print("CONV_SECTION\n", @conv) if @conv;
@@ -192,7 +192,7 @@ sub print_ineq_matrix {
    my ($Matrix, $out, $sign)=@_;
    foreach my $h (@$Matrix) {
       my $n=0;
-      my @lhs=map { ++$n; !$_ ? () : ($_>0 && "+").$_."x".$n } @{$h->slice(1)};
+      my @lhs=map { ++$n; !$_ ? () : ($_>0 && "+").$_."x".$n } @{$h->slice(range_from(1))};
       # skip the far hyperplane
       if (@lhs) {
         print $out @lhs, $sign, -$h->[0], "\n";

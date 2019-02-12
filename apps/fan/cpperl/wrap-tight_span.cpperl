@@ -1,0 +1,5 @@
+{"app": "fan", "embed": "tight_span.cc",
+ "inst": [
+  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Vector<Rational>&>"], "func": "tight_span_vertices", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Vector.h"], "sig": "tight_span_vertices:T1.X.X.X", "tp": "1"},
+ null ],
+"version": 3}

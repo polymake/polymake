@@ -1,0 +1,7 @@
+{"app": "polytope", "embed": "inner_point.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Rational>&>"], "func": "inner_point", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "inner_point.X"},
+  {"args": ["perl::Canned<const Matrix<double>&>"], "func": "inner_point", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "inner_point.X"},
+  {"args": ["perl::Canned<const Matrix<QuadraticExtension<Rational>>&>"], "func": "inner_point", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "inner_point.X"},
+ null ],
+"version": 3}

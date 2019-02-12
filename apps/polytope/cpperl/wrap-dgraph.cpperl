@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "dgraph.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void", "void"], "func": "dgraph", "include": ["polymake/Rational.h"], "sig": "dgraph:T1.B.B.o", "tp": "1"},
+  {"args": ["Rational", "void", "void"], "func": "objective_values_for_embedding", "include": ["polymake/Rational.h"], "sig": "objective_values_for_embedding:T1.B.B", "tp": "1"},
+ null ],
+"version": 3}

@@ -38,11 +38,10 @@ perl::Object foldable_prism (perl::Object p_in, perl::OptionSet options)
    std::list< Set<int> > C_out;
 
    int v=0;
-   for (Entire< Cols< IncidenceMatrix<> > >::const_iterator star=entire( cols(C_in) );
-        !star.at_end(); ++star, ++v)
-      for (Entire< IncidenceMatrix<>::col_type >::const_iterator f=entire(*star); !f.at_end(); ++f) {
+   for (auto star=entire(cols(C_in)); !star.at_end(); ++star, ++v)
+      for (auto f=entire(*star); !f.at_end(); ++f) {
          Set<int> new_f;
-         for (Entire< IncidenceMatrix<>::row_type >::const_iterator w=entire(C_in[f.index()]); !w.at_end(); ++w) {
+         for (auto w=entire(C_in[f.index()]); !w.at_end(); ++w) {
             if (Coloring[v] <= Coloring[*w])
                new_f += *w + n_vert;
             if (Coloring[v] >= Coloring[*w])
@@ -52,10 +51,9 @@ perl::Object foldable_prism (perl::Object p_in, perl::OptionSet options)
       }
 
    const bool realize = options["geometric_realization"];
-   perl::Object p_out = realize ?
-      perl::Object(perl::ObjectType::construct<Scalar>("topaz::GeometricSimplicialComplex")) :
-      perl::Object("topaz::SimplicialComplex");
-   //   perl::Object p_out(perl::ObjectType::construct<Scalar>("topaz::GeometricSimplicialComplex"));
+   perl::Object p_out = realize
+      ? perl::Object("GeometricSimplicialComplex", mlist<Scalar>())
+      : perl::Object("SimplicialComplex");
    p_out.set_description()  << "foldable prism of " << p_in.name() << "."<<endl;
    p_out.take("FACETS") << as_array(C_out);
    

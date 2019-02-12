@@ -1,0 +1,10 @@
+{"app": "tropical", "embed": "hurwitz_combinatorial.cc",
+ "inst": [
+  {"args": ["Max", "void", "perl::Canned<const Vector<int>&>", "perl::Canned<const Vector<Rational>&>", "void"], "func": "hurwitz_cycle", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "hurwitz_cycle:T1.x.X.X.o", "tp": "1"},
+  {"args": ["Min", "void", "perl::Canned<const Vector<int>&>", "perl::Canned<const Vector<Rational>&>", "void"], "func": "hurwitz_cycle", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "hurwitz_cycle:T1.x.X.X.o", "tp": "1"},
+  {"args": ["Max", "void", "perl::Canned<const Vector<int>&>", "void", "void"], "func": "hurwitz_pair_local", "include": ["polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "hurwitz_pair_local:T1.x.X.B.o", "tp": "1"},
+  {"args": ["Min", "void", "perl::Canned<const Vector<int>&>", "void", "void"], "func": "hurwitz_pair_local", "include": ["polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "hurwitz_pair_local:T1.x.X.B.o", "tp": "1"},
+  {"args": ["Max", "void", "perl::Canned<const Vector<int>&>", "perl::Canned<const Vector<Rational>&>", "void"], "func": "hurwitz_subdivision", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "hurwitz_subdivision:T1.x.X.X.o", "tp": "1"},
+  {"args": ["Min", "void", "perl::Canned<const Vector<int>&>", "perl::Canned<const Vector<Rational>&>", "void"], "func": "hurwitz_subdivision", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "hurwitz_subdivision:T1.x.X.X.o", "tp": "1"},
+ null ],
+"version": 3}

@@ -28,8 +28,8 @@ namespace {
 
 void convert_labels(const Array<std::string>& string_labels, Array<Set<Set<int>>>& labels_as_set)
 {
-   Entire<Array<Set<Set<int>>>>::iterator lsit = entire(labels_as_set);
-   for (Entire<Array<std::string>>::const_iterator lit = entire(string_labels); !lit.at_end(); ++lit) {
+   auto lsit = entire(labels_as_set);
+   for (auto lit = entire(string_labels); !lit.at_end(); ++lit) {
       std::istringstream is(*lit);
       is.ignore(1); // "{"
       Set<Set<int>> labels;
@@ -56,16 +56,16 @@ void convert_labels(const Array<std::string>& string_labels, Array<Set<Set<int>>
 bool on_boundary (const Set<Set<int>>& label, int d, const IncidenceMatrix<>& VIF)
 {
    Set<int> face;
-   for (Entire<Set<Set<int>>>::const_iterator lit = entire(label); !lit.at_end(); ++lit)
+   for (auto lit = entire(label); !lit.at_end(); ++lit)
       face += *lit;
-   for (Entire<Rows<IncidenceMatrix<>>>::const_iterator rit = entire(rows(VIF)); !rit.at_end(); ++rit) 
+   for (auto rit = entire(rows(VIF)); !rit.at_end(); ++rit) 
       if (!(face - *rit).size()) return true; // it's contained in the boundary
    return false;
 }
 
 void identify_labels(int d, const group::PermlibGroup& identification_group, const IncidenceMatrix<>& VIF, Array<Set<Set<int>>>& labels_as_set)
 {
-   for (Entire<Array<Set<Set<int>>>>::iterator lit = entire(labels_as_set); !lit.at_end(); ++lit)
+   for (auto lit = entire(labels_as_set); !lit.at_end(); ++lit)
       if (on_boundary(*lit, d, VIF)) 
          *lit = *(identification_group.orbit(*lit).begin());
 }

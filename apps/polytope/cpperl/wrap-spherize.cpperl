@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "spherize.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "spherize", "include": ["polymake/Rational.h"], "sig": "spherize:T1.B", "tp": "1"},
+ null ],
+"version": 3}

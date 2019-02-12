@@ -1,0 +1,9 @@
+{"app": "topaz",
+ "inst": [
+  {"pkg": "Polymake::topaz::ChainComplex"},
+  {"class": "ChainComplex<SparseMatrix<Integer, NonSymmetric>>", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h", "polymake/topaz/ChainComplex.h"], "pkg": "Polymake::topaz::ChainComplex__SparseMatrix_A_Integer_I_NonSymmetric_Z"},
+  {"args": ["ChainComplex<SparseMatrix<Integer, NonSymmetric>>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h", "polymake/topaz/ChainComplex.h"], "op": "new", "sig": "new"},
+  {"args": ["ChainComplex<SparseMatrix<Integer, NonSymmetric>>", "perl::Canned<const Array<SparseMatrix<Integer, NonSymmetric>>&>", "void"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h", "polymake/topaz/ChainComplex.h"], "op": "new", "sig": "new.X.x"},
+  {"args": ["perl::Canned<const ChainComplex<SparseMatrix<Integer, NonSymmetric>>&>", "perl::Canned<const ChainComplex<SparseMatrix<Integer, NonSymmetric>>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h", "polymake/topaz/ChainComplex.h"], "op": "_eq", "sig": "_eq:O.X.X"},
+ null ],
+"version": 3}

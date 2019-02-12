@@ -58,7 +58,7 @@ namespace polymake { namespace matroid {
                                                       const Set<int> &one_matching) {
       IncidenceMatrix<> result(one_matching.size(), n);
       int i = 0;
-      for(Entire<Set<int> >::const_iterator om = entire(one_matching); !om.at_end(); om++,i++) {
+      for (auto om = entire(one_matching); !om.at_end(); om++,i++) {
          result.row(i) = transversal_presentation[*om] + 
             find_coloops_of_deletion(bases, transversal_presentation[*om] );
 

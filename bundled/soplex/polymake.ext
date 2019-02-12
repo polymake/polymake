@@ -5,3 +5,6 @@ CREDIT
   SoPlex is an LP solver that also allows to solve LP with exact
   rational arithmetic.
   http://soplex.zib.de
+
+REQUIRE_OPT
+   bundled:scip

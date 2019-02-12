@@ -1,0 +1,5 @@
+{"app": "graph",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Undirected>&>"], "func": "canonical_form", "include": ["polymake/Graph.h", "polymake/graph/compare.h"], "sig": "canonical_form.X"},
+ null ],
+"version": 3}

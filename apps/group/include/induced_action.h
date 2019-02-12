@@ -77,12 +77,12 @@ induced_permutation_impl(const PERM& perm,
   * converting an action on VERTICES to one on facets and vice versa, via
 
      DomainType          = Set<int>,
-     DomainConstIterator = Entire<Rows<IncidenceMatrix<>>>::const_iterator,
+     DomainConstIterator = Rows<IncidenceMatrix<>>::const_iterator,
 
   * converting an action on coordinates to an action on indices, for instance for VERTICES or FACETS, via
 
      DomainType          = Vector<Scalar>,
-     DomainConstIterator = Entire<Rows<GenericMatrix<MatrixTop, Scalar>>>::const_iterator
+     DomainConstIterator = Rows<GenericMatrix<MatrixTop, Scalar>>::const_iterator
 */    
 template<typename op_tag, typename PERM, typename DomainConstIterator, typename MapType>
 Array<Array<int>> induced_permutations_impl(const Array<PERM>& original_permutations,

@@ -1,0 +1,8 @@
+{"app": "polytope", "embed": "conv.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "conv", "include": ["polymake/Rational.h"], "sig": "conv:T1.B", "tp": "1"},
+  {"args": ["pm::ListMatrix<pm::Vector<pm::Rational> >", "perl::Canned<const Matrix<Rational>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "op": "convert", "ret": "empty", "sig": "convert:O"},
+  {"args": ["Matrix<Rational>", "perl::Canned<const pm::ListMatrix<pm::Vector<pm::Rational> >&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "op": "new", "sig": "new.X"},
+  {"args": ["pm::ListMatrix<pm::Vector<pm::Rational> >", "perl::Canned<const Matrix<Rational>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "op": "assign", "ret": "empty", "sig": "assign:O"},
+ null ],
+"version": 3}

@@ -38,6 +38,9 @@ using pm::perl::temporary;
 using pm::perl::Canned;
 using pm::perl::TryCanned;
 using pm::perl::Enum;
+using pm::perl::Returns;
+using pm::perl::CrossApp;
+using pm::perl::AnchorArg;
 using pm::perl::Object;
 using pm::perl::ObjectType;
 using pm::perl::load_data;
@@ -63,12 +66,12 @@ class GlueRegistratorTag;
 
 using PolymakeGlueRegistratorTag = bundled::POLYMAKE_BUNDLED_EXT::GlueRegistratorTag;
 
-#  define EmbeddedItemsKey4perl(app, bundled) FirstArgAsString(app) ":" FirstArgAsString(bundled)
+#  define EmbeddedItemsKey4perl(app, bundled) MacroTokenAsString(app) ":" MacroTokenAsString(bundled)
 # else
 
 using PolymakeGlueRegistratorTag = GlueRegistratorTag;
 
-#  define EmbeddedItemsKey4perl(app, bundled) FirstArgAsString(app)
+#  define EmbeddedItemsKey4perl(app, bundled) MacroTokenAsString(app)
 # endif
 
 template <typename Tag, pm::perl::RegistratorQueue::Kind kind>
@@ -79,21 +82,6 @@ const pm::perl::RegistratorQueue& get_registrator_queue(mlist<Tag>, std::integra
 };
 
 namespace {
-
-template <typename Fptr>
-class IndirectFunctionWrapper
-   : public pm::perl::FunctionTemplateBase {
-   IndirectFunctionWrapper() = delete;
-public:
-   void add__me(const AnyString& file, int line) const
-   {
-      register_it(reinterpret_cast<pm::perl::wrapper_type>(&call), ".wrp", file, line,
-                  pm::perl::TypeListUtils<Fptr>::get_type_names());
-   }
-
-   using fptr_type = Fptr*;
-   static SV* call(void*, SV**);
-};
 
 template <typename What, int id>
 class QueueingRegistrator4perl {
@@ -130,6 +118,9 @@ namespace polymake { namespace perl_bindings {
 
    template <typename T, typename T0, typename T1>
    RecognizeType4perl("Polymake::common::Pair", (T0,T1), std::pair<T0,T1>)
+
+   template <typename T, typename T0, typename... T1>
+   RecognizeType4perl("Polymake::common::CachedObjectPointer", (T1...), const CachedObjectPointer<T0,T1...>)
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } }

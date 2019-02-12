@@ -1,0 +1,206 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# Functions defined here deliver filters for comparing output files produced by various visualisation functions
+# with specimen files.
+# The purpose of these filters is to remove variable parts of the output like timestamps or
+# architecture-dependent values like point coordinates computed by spring embedder.
+# Each filter is an anonymous subroutine expecting the current line in $_.
+
+###################################################################################
+sub filter_JVX {
+   sub {
+      s{(^\s*<meta (?:date|generator)=)".*?"(\s*/>)}{$1"XXX"$2};
+   }
+}
+
+sub filter_JVX_random_points {
+   my $dim=shift;
+   --$dim;
+   ( filter_JVX(),
+     sub {
+        s{(^\s* <p (?:\s+ name=".*?")? >) [0-9.e+-]+ (?:\s+ [0-9.e+-]+){$dim} (</p>)}{${1}XXX${2}}x;
+     }
+   )
+}
+###################################################################################
+sub filter_OFF_random_points {
+   my $dim=shift;
+   --$dim;
+   my $active=0;
+   sub {
+      if ($active==0) {
+         $active=-1 if /SKEL|COFF/;
+      } elsif ($active<0) {
+         ($active)=/^(\d+)/;   # number of points on the following lines
+      } else {
+         --$active;
+         s{^ [0-9.e+-]+ (?:\s+ [0-9.e+-]+){$dim} $}{XXX}x;
+      }
+   }
+}
+###################################################################################
+sub filter_Java_random_points {
+   my $dim=shift;
+   --$dim;
+   sub {
+      s{\{ [0-9.e+-]+ (?:, [0-9.e+-]+){$dim} \}}{{XXX}}x;
+   }
+}
+###################################################################################
+sub filter_PS_random_points {
+   sub {
+      s{(%%(?:Page)?BoundingBox:)(?: [0-9.]+){4}$}{$1 X Y X Y}
+        or
+      s{(?: [0-9.]+){4} (edge)$}{X Y X Y $1}
+        or
+      s{(?: [0-9.]+){2} (CenteredLabel)$}{X Y $1}
+   }
+}
+###################################################################################
+sub filter_MP {
+   sub {
+      s{^(% (?:produced by polymake for|date:)) .*}{$1 XXX};
+   }
+}
+
+sub filter_MP_random_points {
+   my $dim=shift;
+   --$dim;
+   ( filter_MP(),
+     sub {
+        s{(^\s* p\[\d+\] \s* := \s* \() [0-9.-]+ (?:, [0-9.-]+){$dim} (\))}{${1}XXX${2}}x;
+     }
+   )
+}
+###################################################################################
+sub filter_graphviz {
+   # remove name
+   sub {
+      s{^(di)*graph\s+"(.*)"\s+}{};
+   }
+}
+###################################################################################
+sub filter_POV {
+   # remove absolute paths
+   sub {
+      s{(?:/[^/]+)+?(/povray/)}{/XXX$1};
+   }
+}
+
+sub filter_POV_random_points {
+   my $dim=shift;
+   --$dim;
+   ( filter_POV(),
+     sub {
+        s{< [0-9.e+-]+ (?:, [0-9.e+-]+){$dim} >}{XXX}x;
+     }
+   )
+}
+###################################################################################
+sub filter_sketch {
+   # remove comments and take care of floating errors
+   sub {
+      s{^%.*}{};
+      s{\.(\d{4})\d+}{\.$1}g;
+      s{(\d+)\.9999}{$1+1}e;
+      s{(\d+)\.0000}{$1};
+      s{-0([^.])}{0$1};
+   }
+}
+###################################################################################
+sub filter_svg {
+   my ($nocoord) = @_;
+   my $comment = 0;
+   # remove comments and take care of floating errors
+   sub {
+      if ($_ =~ s{^\s*<!--.*$}{}) {
+         $comment = 1;
+         return;
+      }
+      if ($_ =~ s{^\s*-->}{}) {
+         $comment = 0;
+         return;
+      }
+      if ($comment) {
+         undef $_;
+         return;
+      }
+      if (/style="([^"]*)"/) {
+         my $style = join("; ", sort(split(/;\s*/,$1)));
+         s{style="([^"]*)"}{style="$style"}g;
+      }
+
+      s{<(\w+)\s+>}{<$1>}g;
+      s{<!--.*-->}{}g;
+      if ($nocoord) {
+	 s{"(?:-?\d+(?:\.\d+)? ?)+"}{X.XXX}g;
+      } else {
+	 s{\.(\d{1})\d+}{\.$1}g;
+	 s{(\d+)\.9}{$1+1}e;
+	 s{(\d+)\.0}{$1};
+      }
+   }
+}
+
+sub filter_svg_random_points {
+   filter_svg(true);
+}
+###################################################################################
+sub filter_threejs {
+   my ($nocoord) = @_;
+   my $in_common_code_block = 0;
+   # remove comments, timestamp and code that does not depend on the object to visualize and take care of floating errors
+   sub {
+      if ($_ =~ s{^// COMMON_CODE_BLOCK_BEGIN\b\K.*$}{}) {
+	 $in_common_code_block = 1;
+	 return;
+      }
+      if ($_ =~ s{^// COMMON_CODE_BLOCK_END\b\K.*$}{}) {
+	 $in_common_code_block = 0;
+	 return;
+      }
+      if ($in_common_code_block) {
+	 undef $_;
+	 return;
+      }
+
+      s{^//.*}{};
+      s{<!--.*-->}{}g;
+      if ($nocoord) {
+         s{new PMPoint\(\K(\s*-?\d+(?:\.\d+)\s*),(?-1),(?-1)(?=\))}{XXX,XXX,XXX}g;
+      }
+      s{\.(\d{2})\d+}{\.$1}g;
+      s{(\d+)\.99}{$1+1}e;
+      s{(\d+)\.00}{$1};
+      s{-0([^.])}{0$1};
+      s{^polymake for .*$}{};
+      s{^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \w{3} .*$}{};
+      s{^<div id=\"model[0-9]*\"></div>}{<div id=\"model\"></div>};
+
+      # strip absolute paths from resource links
+      s{src='\K/.*?/(?=js/)}{};
+   }
+}
+
+sub filter_threejs_random_points {
+   filter_threejs(true);
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# End:

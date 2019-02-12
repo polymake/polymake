@@ -236,7 +236,6 @@ private:
 
 
 template <ptr_pair<cell> cell::* links, bool _rev>
-inline
 const facet* cell_iterator<links, _rev>::get_facet() const
 {
    return links == &cell::facet ? facet::from_head_cell(head) : facet::from_cell(this->cur);
@@ -532,17 +531,17 @@ private:
 template <typename TSet, bool check_range>
 class subset_iterator {
 public:
-   typedef forward_iterator_tag iterator_category;
-   typedef facet value_type;
-   typedef const value_type& reference;
-   typedef const value_type* pointer;
-   typedef ptrdiff_t difference_type;
-   typedef subset_iterator iterator;
-   typedef iterator const_iterator;
+   using iterator_category = forward_iterator_tag;
+   using value_type = facet;
+   using reference = const value_type&;
+   using pointer = const value_type*;
+   using difference_type = ptrdiff_t;
+   using iterator = subset_iterator;
+   using const_iterator = iterator;
 protected:
-   typedef typename Entire<TSet>::const_iterator set_iterator;
-   typedef std::pair<facet::iterator, set_iterator> it_pair;
-   typedef std::list<it_pair> it_list;
+   using set_iterator = typename ensure_features<TSet, end_sensitive>::const_iterator;
+   using it_pair = std::pair<facet::iterator, set_iterator>;
+   using it_list = std::list<it_pair>;
 
    col_ruler::const_iterator columns;
    int n_columns;
@@ -730,7 +729,7 @@ public:
       , next_id(0)
    {
       for (; !src.at_end(); ++src)
-         insert_from_it(entire(*src), new_id());
+         insert_from_it(entire_range(*src), new_id());
    }
 
    template <typename Iterator>
@@ -756,7 +755,7 @@ public:
       , next_id(0)
    {
       for (; !src.at_end(); ++src)
-         push_back_from_it(entire(*src));
+         push_back_from_it(entire_range(*src));
    }
 
    const facet* end_facet() const
@@ -782,7 +781,7 @@ protected:
    void push_back_facet(facet* f);
 
    template <typename Iterator>
-   void insert_cells(facet* f, Iterator src)
+   void insert_cells(facet* f, Iterator&& src)
    {
       vertex_list::inserter inserter;
       int v;
@@ -806,17 +805,17 @@ protected:
    }
 
    template <typename Iterator>
-   facet* insert_from_it(Iterator src, facet_id_t nid)
+   facet* insert_from_it(Iterator&& src, facet_id_t nid)
    {
       facet* f=new(facet_alloc.allocate()) facet(nid);
       push_back_facet(f);
       ++_size;
-      insert_cells(f, src);
+      insert_cells(f, std::move(src));
       return f;
    }
 
    template <typename Iterator>
-   void push_back_from_it(Iterator src)
+   void push_back_from_it(Iterator&& src)
    {
       int new_vertex=*src;
       facet* f=new(facet_alloc.allocate()) facet(new_id());
@@ -946,7 +945,7 @@ public:
    template <typename TSet> static
    int back_or_nothing(const TSet& f)
    {
-      auto last=entire(reversed(f));
+      auto last=entire<reversed>(f);
       return last.at_end() ? -1 : *last;
    }
 
@@ -1150,9 +1149,9 @@ public:
 
    template <typename Iterator>
    explicit FacetList(Iterator&& src,
-                      typename std::enable_if<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value &&
-                                              assess_iterator_value<Iterator, isomorphic_types, Set<int>>::value,
-                                              void**>::type=nullptr)
+                      std::enable_if_t<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value &&
+                                       assess_iterator_value<Iterator, isomorphic_types, Set<int>>::value,
+                                       void**> =nullptr)
       : table(sizeof(fl_internal::facet), std::forward<Iterator>(src), std::false_type()) {}
 
    /** @brief Initialize the facets from the input sequence.
@@ -1167,9 +1166,9 @@ public:
    */
    template <typename Iterator>
    FacetList(int n_vertices, Iterator&& src,
-             typename std::enable_if<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value &&
-                                     assess_iterator_value<Iterator, isomorphic_types, Set<int>>::value,
-                                     void**>::type=nullptr)
+             std::enable_if_t<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value &&
+                              assess_iterator_value<Iterator, isomorphic_types, Set<int>>::value,
+                              void**> =nullptr)
       : table(sizeof(fl_internal::facet), n_vertices, std::forward<Iterator>(src), std::false_type()) {}
 
    template <typename TSet>
@@ -1184,7 +1183,7 @@ public:
    FacetList(const GenericIncidenceMatrix<TMatrix>& m)
       : table(sizeof(fl_internal::facet), m.cols(), entire(rows(m)), std::false_type()) {}
 
-   template <typename Container, typename enabled=typename std::enable_if<isomorphic_to_container_of<Container, Set<int>, is_set>::value>::type>
+   template <typename Container, typename=std::enable_if_t<isomorphic_to_container_of<Container, Set<int>, is_set>::value>>
    FacetList(const Container& src)
       : table(sizeof(fl_internal::facet), entire(src), std::false_type()) {}
 
@@ -1250,7 +1249,7 @@ public:
    template <typename TSet>
    iterator insert(const GenericSet<TSet, int, operations::cmp>& f)
    {
-      if (POLYMAKE_DEBUG || !Unwary<TSet>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TSet>()) {
          if (f.top().empty())
             throw std::runtime_error("FacetList::insert - empty facet");
       }
@@ -1269,7 +1268,7 @@ public:
    template <typename TSet>
    void push_back(const GenericSet<TSet, int, operations::cmp>& f)
    {
-      if (POLYMAKE_DEBUG || !Unwary<TSet>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TSet>()) {
          if (f.top().empty())
             throw std::runtime_error("FacetList::push_back - empty facet");
       }
@@ -1416,7 +1415,7 @@ public:
    template <typename TSet>
    bool replaceMax(const GenericSet<TSet, int, operations::cmp>& f)
    {
-      if (POLYMAKE_DEBUG || !Unwary<TSet>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TSet>()) {
          if (!set_within_range(f.top(), this->cols()))
             throw std::runtime_error("FacetList::replaceMax - invalid face");
       }
@@ -1430,7 +1429,7 @@ public:
    template <typename TSet>
    bool replaceMin(const GenericSet<TSet, int, operations::cmp>& f)
    {
-      if (POLYMAKE_DEBUG || !Unwary<TSet>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TSet>()) {
          if (!set_within_range(f.top(), this->cols()))
             throw std::runtime_error("FacetList::replaceMin - invalid face");
       }
@@ -1440,7 +1439,7 @@ public:
    template <typename TSet, typename Consumer>
    bool replaceMax(const GenericSet<TSet, int, operations::cmp>& f, Consumer consumer)
    {
-      if (POLYMAKE_DEBUG || !Unwary<TSet>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TSet>()) {
          if (!set_within_range(f.top(), this->cols()))
             throw std::runtime_error("FacetList::replaceMax - invalid face");
       }
@@ -1450,7 +1449,7 @@ public:
    template <typename TSet, typename Consumer>
    bool replaceMin(const GenericSet<TSet, int, operations::cmp>& f, Consumer consumer)
    {
-      if (POLYMAKE_DEBUG || !Unwary<TSet>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TSet>()) {
          if (!set_within_range(f.top(), this->cols()))
             throw std::runtime_error("FacetList::replaceMin - invalid face");
       }

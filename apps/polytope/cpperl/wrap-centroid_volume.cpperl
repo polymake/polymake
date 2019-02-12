@@ -1,0 +1,8 @@
+{"app": "polytope", "embed": "centroid_volume.cc",
+ "inst": [
+  {"args": ["void", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Array<Set<int>>&>"], "func": "centroid_volume", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "centroid_volume.B.X.X"},
+  {"args": ["void", "perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>", "perl::Canned<const Array<Set<int>>&>"], "func": "centroid_volume", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/Set.h", "polymake/SparseMatrix.h"], "sig": "centroid_volume.B.X.X"},
+  {"args": ["void", "perl::Canned<const SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>&>", "perl::Canned<const Array<Set<int>>&>"], "func": "centroid_volume", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/Set.h", "polymake/SparseMatrix.h"], "sig": "centroid_volume.B.X.X"},
+  {"args": ["void", "perl::Canned<const Matrix<PuiseuxFraction<Min, Rational, Rational>>&>", "perl::Canned<const Array<Set<int>>&>"], "func": "centroid_volume", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/Set.h", "polymake/TropicalNumber.h"], "sig": "centroid_volume.B.X.X"},
+ null ],
+"version": 3}

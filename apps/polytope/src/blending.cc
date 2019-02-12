@@ -108,7 +108,7 @@ perl::Object blending(perl::Object p_in1, const int vertex1, perl::Object p_in2,
       const std::string tick="'";
       copy_range(entire(concatenate(select(labels1, ~scalar2set(vertex1)),
                                     attach_operation(select(labels2, ~scalar2set(vertex2)),
-                                                     constant(tick), operations::add()))),
+                                                     same_value(tick), operations::add()))),
                  labels_out.begin());
 
       p_out.take("VERTEX_LABELS") << labels_out;
@@ -149,7 +149,7 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# @example The following gives the smallest [[EVEN]] 3-polytope which is not a zonotope."
                   "# > $c = cube(3); $bc = blending($c,0,$c,0);"
                   "# > print $bc->EVEN"
-                  "# | 1"
+                  "# | true"
                   "# > print $bc->F_VECTOR"
                   "# | 14 21 9",
                   &blending, "blending(Polytope $ Polytope $ { permutation => undef, no_labels => 0 })");

@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const UniPolynomial<Rational, int>&>"], "func": "lower_deg", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "meth", "sig": "lower_deg:M"},
+  {"args": ["perl::Canned<const UniPolynomial<Rational, Integer>&>"], "func": "lower_deg", "include": ["polymake/Integer.h", "polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "meth", "sig": "lower_deg:M"},
+ null ],
+"version": 3}

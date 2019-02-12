@@ -48,8 +48,8 @@ public:
  */
 void check_k_face(const Set<int>& face, const int k, const Lattice<BasicDecoration, Sequential>& HD)
 {
-   for (auto f=entire(HD.nodes_of_rank(k+1)); !f.at_end(); ++f)
-      if (HD.face(*f) == face)
+   for (const auto f : HD.nodes_of_rank(k+1))
+      if (HD.face(f) == face)
          return; // found !!!
 
    throw MissingFace(face);
@@ -177,7 +177,7 @@ Matrix<int>  validate_moebius_strip_quads (perl::Object p, bool verbose)
       if (verbose) cout << " yes"<< endl;
 
       Matrix<int> moebius_strip_edges(MS.rows(),2);
-      Entire< Rows<Matrix<int> > >::iterator mse_it = entire(rows(moebius_strip_edges));
+      auto mse_it = entire(rows(moebius_strip_edges));
 
       // Search first edge
       typedef Graph<>::out_edge_list::iterator edge_iterator;

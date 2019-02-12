@@ -44,6 +44,7 @@ INCLUDE
   lattice.rules
   tropical_parser.rules
   polydb.rules
+  x3d.rules
 
 # for algorithms shipped with polymake, as opposed to those imported from external software packages
 label default

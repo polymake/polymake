@@ -16,12 +16,13 @@
 # persisted polynomial variable names by package
 custom %polynomial_var_names=();
 
+function polynomial_type($) { undef }
+
 # @category Algebraic Types
 # @tparam Coefficient default: [[Rational]]
 # @tparam Exponent default: [[Int]]
 declare property_type Polynomial<Coefficient=Rational, Exponent=Int> \
-   : upgrades(Coefficient) \
-   : c++ (operators => '@arith **(pow(*):method) ^ ^= @compare', include => "polymake/Polynomial.h", default_constructor => 'Deserializing') {
+   : upgrades(Coefficient) : c++ (include => "polymake/Polynomial.h", default_constructor => 'Deserializing') {
 
    method construct(Int) : c++;
 
@@ -32,6 +33,10 @@ declare property_type Polynomial<Coefficient=Rational, Exponent=Int> \
 
    # with explicitly given number of variables
    method construct(String, Int) { &parse_polynomial; }
+
+   operator neg @arith ^ ^= @compare : c++;
+
+   method pow(*) : operator ** : c++;
 
    # The degree of the polynomial
    # @return Int
@@ -51,7 +56,7 @@ declare property_type Polynomial<Coefficient=Rational, Exponent=Int> \
    
    # Print a polynomial with terms sorted according to a given [[Matrix]] //m//.
    # @param Matrix m
-   user_method print_ordered(Matrix<Exponent>) : c++ : void;
+   user_method print_ordered(Matrix<Exponent>) : c++;
 
    # The initial form with respect to a weight-vector //v//
    # @param Vector<Exponent> v weights
@@ -133,16 +138,16 @@ declare property_type Polynomial<Coefficient=Rational, Exponent=Int> \
    # construct a monomial of degree 1 with a given variable
    # @param Int var_index index of the variable
    # @param Int n_vars number of variables
-   user_method monomial(Int, Int) : static : c++;
+   user_method monomial(:static, Int, Int) : c++;
 
    # set the variable names
-   user_method get_var_names() : static : c++;
+   user_method get_var_names(:static) : c++;
 
    # set the variable names
-   user_method set_var_names($) : static : c++ : void;
+   user_method set_var_names(:static, $) : c++;
 
    # reset the variable names according to the default naming scheme
-   user_method reset_var_names() : static : c++ : void;
+   user_method reset_var_names(:static) : c++;
 
    type_method init {
       my ($proto)=@_;
@@ -150,17 +155,16 @@ declare property_type Polynomial<Coefficient=Rational, Exponent=Int> \
          set_var_names($proto, $names);
       }
    }
-
-   method polynomial_type() { $_[0]->type }
 }
+
+function polynomial_type(Polynomial) { $_[0]->type }
 
 # @category Algebraic Types
 # A class for __univariate__ polynomials.
 # @tparam Coefficient default: [[Rational]]
 # @tparam Exponent default: [[Int]]
 declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> \
-   : upgrades(Coefficient) \
-   : c++ (operators => '@arith % %= **(pow(*):method) ^ ^= @compare', include => "polymake/RationalFunction.h") {
+   : upgrades(Coefficient) : c++ (include => "polymake/RationalFunction.h") {
 
    method construct(type_upgrades_to<Coefficient>) : c++;
 
@@ -168,6 +172,10 @@ declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> \
    method construct(*,*) : c++;
 
    type_method parse { &parse_polynomial }
+
+   operator neg @arith ^ ^= % %= @compare : c++;
+
+   method pow(*) : operator ** : c++;
 
    # The highest degree occuring in the polynomial.
    # @return Exponent
@@ -192,7 +200,7 @@ declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> \
 
    # Print a polynomial with terms sorted according to //exponent*x//.
    # @param Exponent x
-   user_method print_ordered($) : c++ : void;
+   user_method print_ordered($) : c++;
 
    # Approximate evaluation of the polynomial at a [[Float]] //x//.
    # @param Float x
@@ -229,16 +237,16 @@ declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> \
    user_method monomials_as_vector() : c++;
 
    # create a monomial of degree 1
-   user_method monomial() : static : c++;
+   user_method monomial(:static) : c++;
 
    # get the variable name
-   user_method get_var_names() : static : c++;
+   user_method get_var_names(:static) : c++;
 
    # set the variable name
-   user_method set_var_names($) : static : c++ : void;
+   user_method set_var_names(:static, $) : c++;
 
    # reset the variable name according to the default naming scheme
-   user_method reset_var_names() : static : c++ : void;
+   user_method reset_var_names(:static) : c++;
 
    type_method init {
       my ($proto)=@_;
@@ -246,9 +254,9 @@ declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> \
          set_var_names($proto, $names);
       }
    }
-
-   method polynomial_type() { $_[0]->type }
 }
+
+function polynomial_type(UniPolynomial) { $_[0]->type }
 
 # @category Data Conversion
 # Explicit conversion to a different coefficient type.
@@ -280,8 +288,8 @@ user_function convert_to<Coefficient>(UniPolynomial) : c++ {
 # Get the current list of variable names used for pretty printing and string parsing of the given polynomial class
 # @return Array<String>
 
-user_function get_var_names<PolynomialType>[ UNIVERSAL::can(PolynomialType, "polynomial_type") ]() {
-   PolynomialType->polynomial_type->pkg->get_var_names;
+user_function get_var_names<PolynomialType>[ polynomial_type(PolynomialType) ]() {
+   polynomial_type(typeof PolynomialType)->pkg->get_var_names;
 }
 
 
@@ -300,8 +308,8 @@ user_function get_var_names<PolynomialType>[ UNIVERSAL::can(PolynomialType, "pol
 # @param String names ... variable names; may also be bundled in an array
 #                         an empty list resets to the default naming scheme
 
-user_function set_var_names<PolynomialType>[ UNIVERSAL::can(PolynomialType, "polynomial_type") ](@) {
-   my $pkg=PolynomialType->polynomial_type->pkg;
+user_function set_var_names<PolynomialType>[ polynomial_type(PolynomialType) ](@) {
+   my $pkg=polynomial_type(typeof PolynomialType)->pkg;
 
    if (@_==0) {
       self()->_reset_custom(undef, "%polynomial_var_names", $pkg);
@@ -319,13 +327,13 @@ user_function set_var_names<PolynomialType>[ UNIVERSAL::can(PolynomialType, "pol
 # similarly to [[core::prefer_now]].
 # @param String names ... variable names, see [[set_var_names]].
 
-user_function local_var_names<PolynomialType>[ UNIVERSAL::can(PolynomialType, "polynomial_type") ](@) {
-   my $pkg=PolynomialType->polynomial_type->pkg;
-   my $names=prepare_var_names(@_, $pkg);
-   my $saver=new VarNameSaver($pkg, exists $polynomial_var_names{$pkg} ? @{ $pkg->get_var_names } : ());
-   $Scope->begin_locals;
-   local $polynomial_var_names{$pkg}=$saver;
-   $Scope->end_locals;
+user_function local_var_names<PolynomialType>[ polynomial_type(PolynomialType) ](@) {
+   my $pkg = polynomial_type(typeof PolynomialType)->pkg;
+   my $names = prepare_var_names(@_, $pkg);
+   my $saver = new VarNameSaver($pkg, exists $polynomial_var_names{$pkg} ? @{ $pkg->get_var_names } : ());
+   local with($Scope->locals) {
+      local $polynomial_var_names{$pkg} = $saver;
+   }
    if (@$names) {
       $pkg->set_var_names($names);
    } else {
@@ -429,7 +437,7 @@ sub parse_polynomial {
       push @num_vars, [ $proto, 0 ];
 
       $proto=$proto->params->[0];
-   } while (UNIVERSAL::can($proto->pkg, "polynomial_type"));
+   } while (polynomial_type($proto));
 
    # recognize agglutinated monomials like x5y3 if they do not occur as variable names on their own
    pos($string)=0;
@@ -526,8 +534,7 @@ user_function gcd(UniPolynomial, UniPolynomial) : c++;
 # @tparam Coefficient default: [[Rational]]
 # @tparam Exponent default: [[Int]]
 declare property_type RationalFunction<Coefficient=Rational, Exponent=Int> \
-   : upgrades( UniPolynomial<Coefficient, Exponent> ) \
-   : c++ (operators => '@arith @eq', include => "polymake/RationalFunction.h") {
+   : upgrades( UniPolynomial<Coefficient, Exponent> ) : c++ (include => "polymake/RationalFunction.h") {
 
    method construct() : c++;
 
@@ -535,8 +542,10 @@ declare property_type RationalFunction<Coefficient=Rational, Exponent=Int> \
 
    method construct(*,*) : c++;
 
-   method polynomial_type() { typeof UniPolynomial<Coefficient, Exponent> }
+   operator neg @arith @eq : c++;
 }
+
+function polynomial_type<Coefficient, Exponent>(RationalFunction<Coefficient, Exponent>) { typeof UniPolynomial<Coefficient, Exponent> }
 
 # @category Arithmetic
 # Returns the __numerator__ of a [[RationalFunction]] //f//.
@@ -556,12 +565,13 @@ user_function denominator(RationalFunction:anchor) : c++;
 # @tparam Coefficient default: [[Rational]]
 # @tparam Exponent default: [[Rational]]
 declare property_type PuiseuxFraction<MinMax, Coefficient=Rational, Exponent=Rational> \
-   : upgrades( Coefficient ) \
-   : c++ (operators => '@arith @compare', include => "polymake/PuiseuxFraction.h") {
+   : upgrades( Coefficient ) : c++ (include => "polymake/PuiseuxFraction.h") {
 
    method construct(type_upgrades_to< RationalFunction<Coefficient,Exponent> >) : c++;
 
    method construct(type_upgrades_to< UniPolynomial<Coefficient,Exponent> >, type_upgrades_to< UniPolynomial<Coefficient,Exponent> >) : c++;
+
+   operator neg @arith @compare : c++;
 
    # The __valuation__.
    # @return TropicalNumber<MinMax>
@@ -576,13 +586,13 @@ declare property_type PuiseuxFraction<MinMax, Coefficient=Rational, Exponent=Rat
    # @param Matrix m
    # @param Float x
    # @return Float
-   user_method evaluate_float(Matrix,*) : static : c++;
+   user_method evaluate_float(:static, Matrix, *) : c++;
 
    # Approximate evaluation of a [[Vector]] at //x//
    # @param Vector v
    # @param Float x
    # @return Float
-   user_method evaluate_float(Vector,*) : static : c++;
+   user_method evaluate_float(:static, Vector, *) : c++;
 
    # Evaluate all [[PuiseuxFraction]]s in a [[Matrix]] at a [[Rational]] number (//x^exp//).
    # Let //explcm// be the lcm of the denominators of all exponents.
@@ -594,7 +604,7 @@ declare property_type PuiseuxFraction<MinMax, Coefficient=Rational, Exponent=Rat
    # @param Coefficient x
    # @param Int exp (default: 1)
    # @return Matrix<Coefficient>
-   user_method evaluate(Matrix,*;$=1) : static : c++;
+   user_method evaluate(:static, Matrix, *; $=1) : c++;
 
    # Evaluate all [[PuiseuxFraction]]s in a [[Vector]] at a [[Rational]] number (//x^exp//).
    # Let //explcm// be the lcm of the denominators of all exponents.
@@ -606,7 +616,7 @@ declare property_type PuiseuxFraction<MinMax, Coefficient=Rational, Exponent=Rat
    # @param Coefficient x
    # @param Int exp (default: 1)
    # @return Vector<Coefficient>
-   user_method evaluate(Vector,*;$=1) : static : c++;
+   user_method evaluate(:static, Vector, *; $=1) : c++;
 
    # Evaluate a [[PuiseuxFraction]] at a [[Rational]] number (//x^exp//).
    # Let //explcm// be the lcm of the denominators of all exponents.
@@ -618,9 +628,9 @@ declare property_type PuiseuxFraction<MinMax, Coefficient=Rational, Exponent=Rat
    # @param Int exp (default: 1)
    # @return Coefficient
    user_method evaluate(*;$=1) : c++;
-
-   method polynomial_type() { typeof UniPolynomial<Coefficient, Exponent> }
 }
+
+function polynomial_type<Coefficient, Exponent>(PuiseuxFraction<Coefficient, Exponent>) { typeof UniPolynomial<Coefficient, Exponent> }
 
 function is_ordered_field_with_unlimited_precision(PuiseuxFraction) { 1 }
 

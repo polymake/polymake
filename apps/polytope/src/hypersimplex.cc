@@ -53,26 +53,26 @@ perl::Object hypersimplex(int k, int d, perl::OptionSet options)
    if ( k==1 || k==d-1 ) {
       nof_flag = novif_flag = true;
    }
-   
-   if ( !nov_flag ) {
-      Array<std::string> labels(n);
+
+   if (!nov_flag) {
       std::ostringstream label;
-      int i(0);
+      Array<std::string> labels(n);
+      auto label_it = labels.begin();
       Matrix<Rational> Vertices(n,d+1);
-      Rows< Matrix<Rational> >::iterator v=rows(Vertices).begin();
-      for (auto s=entire(all_subsets_of_k(range(0,d-1),k)); !s.at_end(); ++s, ++v,++i) {
+      auto v = rows(Vertices).begin();
+      for (auto s=entire(all_subsets_of_k(range(0,d-1),k)); !s.at_end(); ++s, ++v, ++label_it) {
          (*v)[0]=1;
-         v->slice(1).slice(*s).fill(1);
+         v->slice(range_from(1)).slice(*s).fill(1);
          label.str("");
          wrap(label) << *s;
-         labels[i] = label.str();
+         *label_it = label.str();
       }
       p.take("VERTEX_LABELS") << labels;
       p.take("VERTICES") << Vertices;
 
-      if ( !novif_flag ) {
+      if (!novif_flag) {
          IncidenceMatrix<> VIF(2*d,n);
-         for (int i=0; i<d; ++i) {
+         for (int i = 0; i < d; ++i) {
             VIF.row(2*i)  = indices(attach_selector(Vertices.col(i+1), operations::non_zero()));
             VIF.row(2*i+1)= indices(attach_selector(Vertices.col(i+1), operations::is_zero()));
          }
@@ -80,10 +80,10 @@ perl::Object hypersimplex(int k, int d, perl::OptionSet options)
       }
    }
 
-   if ( nov_flag && !novif_flag ) {
+   if (nov_flag && !novif_flag) {
       IncidenceMatrix<> VIF(2*d,n);
       int j(0);
-      for (Entire<Subsets_of_k<const sequence&> >::const_iterator s=entire(all_subsets_of_k(range(0,d-1),k)); !s.at_end(); ++s, ++j) {
+      for (auto s=entire(all_subsets_of_k(range(0,d-1), k)); !s.at_end(); ++s, ++j) {
          for (int i=0; i<d; ++i) {
             if (Set<int>(*s).contains(i)) {
                VIF.row(2*i) += j;
@@ -99,8 +99,8 @@ perl::Object hypersimplex(int k, int d, perl::OptionSet options)
    // the facets are not unique
    if ( !nof_flag ) {
       SparseMatrix<Rational> F(2*d,d+1);
-      Rows< SparseMatrix<Rational> >::iterator f=rows(F).begin();   
-      for (int i=1; i<=d; ++i) { // Facet 2*i and Facet 2*i+1 are parallel  
+      Rows< SparseMatrix<Rational> >::iterator f=rows(F).begin();
+      for (int i=1; i<=d; ++i) { // Facet 2*i and Facet 2*i+1 are parallel
          (*f)[0]=1;
          (*f)[i]=-1;
          ++f;
@@ -110,7 +110,7 @@ perl::Object hypersimplex(int k, int d, perl::OptionSet options)
       }
       Matrix<Rational> A(1,d+1);
       A.row(0)=ones_vector<Rational>(d+1);
-      A.row(0)[0]=-k;   
+      A.row(0)[0]=-k;
       p.take("FACETS") << F;
       p.take("AFFINE_HULL") << A;
    }
@@ -122,10 +122,10 @@ perl::Object hypersimplex(int k, int d, perl::OptionSet options)
       gen[0]=1;
       gen[1]=0;
       gens[0]=gen;
-         
+
       gen[0]=d-1;
       for (int j=1; j<=d-1; ++j) {
-         gen[j]=j-1; 
+         gen[j]=j-1;
       }
       gens[1]=gen;
 

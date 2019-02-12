@@ -21,65 +21,72 @@
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
 #include "polymake/Bitset.h"
-#include "polymake/polytope/lpch_dispatcher.h"
+#include "polymake/polytope/solve_LP.h"
+#include "polymake/polytope/convex_hull.h"
 
 namespace polymake { namespace polytope { namespace lrs_interface {
 
-class solver {
+class LrsInstance {
+   class Initializer {
+      friend class LrsInstance;
+      Initializer();
+      ~Initializer();
+
+      static void (* const global_construct)();
+      static void (* const global_destroy)();
+   };
+protected:
+   LrsInstance()
+   {
+      static Initializer init{};
+   }
+};
+
+class ConvexHullSolver : public LrsInstance, public polytope::ConvexHullSolver<Rational> {
 public:
-   typedef Rational coord_type;
+   explicit ConvexHullSolver(bool verbose_ = false)
+      : verbose(verbose_) {}
 
-   typedef std::pair< Matrix<Rational>, Matrix<Rational> > matrix_pair;
+   convex_hull_result<Rational>
+   enumerate_facets(const Matrix<Rational>& Points, const Matrix<Rational>& Lineality, bool isCone) const override; 
 
-   /// @retval first: facets, second: affine hull
-   matrix_pair
-   enumerate_facets(const Matrix<Rational>& Points, const Matrix<Rational>& Lineality, const bool isCone = false, const bool primal = false); 
-
-   // only used for lrs
    long
-   count_facets(const Matrix<Rational>& Points,const Matrix<Rational>& Lineality, const bool isCone = false);
+   count_facets(const Matrix<Rational>& Points,const Matrix<Rational>& Lineality, bool isCone) const;
 
-   // FIXME argument 3 unused, for consitency with cdd_interface
-   // as cdd does not return the origin for cones represented as polyhedra
-   matrix_pair
-   enumerate_vertices(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations, bool isCone = false, const bool primal = true);
+   convex_hull_result<Rational>
+   enumerate_vertices(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations, bool isCone) const override;
 
-   // verts: pair of integers: first:  number of vertices
-   //                          second: number of bounded vertices
-   //        the first entry is 0 if only N_BOUNDED_VERTICES is requested
-   //        (doing this for a cone leads to an error
-   // lin: dimension (== num of generators) for lineality space
-   // only used for lrs
-   struct vertex_count { std::pair<long,long> verts; long lin; };
+   struct vertex_count {
+      long n_vertices;
+      long n_bounded_vertices;
+      long lineality_dim;
+   };
 
-   // only used for lrs
    vertex_count
-   count_vertices(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations,
-                  bool only_bounded=false);
+   count_vertices(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations, bool only_bounded) const;
 
-   typedef std::pair<Bitset, Matrix<Rational> > non_redundant;
+   using non_redundant = std::pair<Bitset, Matrix<Rational>>;
 
    /// @retval first: indices of vertices, second: affine hull (primal)
    /// @retval first: indices of facets, second: lineality space (dual)
    // function only works for pointed objects: lrs does not remove generators in the lineality space from input
-   non_redundant find_irredundant_representation(const Matrix<Rational>& Points, const Matrix<Rational>& Lineality, const bool dual);
-
-   Vector<Rational>
-   find_a_vertex(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations);
-
-   bool check_feasibility(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations);
-   bool check_feasibility(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations, Vector<Rational>& ValidPoint);
-
-   typedef std::pair<Rational, Vector<Rational> > lp_solution;
-
-   /// @retval first: objective value, second: solution
-   lp_solution
-   solve_lp(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations,
-            const Vector<Rational>& Objective, bool maximize, int* linearity_dim_p = 0);
+   non_redundant find_irredundant_representation(const Matrix<Rational>& Points, const Matrix<Rational>& Lineality, const bool dual) const;
 
 private:
-   struct dictionary;
+   const bool verbose;
 };
+
+class LP_Solver : public LrsInstance, public polytope::LP_Solver<Rational> {
+public:
+   LP_Solution<Rational>
+   solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations,
+         const Vector<Rational>& Objective, bool maximize, bool=false) const override;
+
+   bool check_feasibility(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations) const;
+   bool check_feasibility(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations, Vector<Rational>& ValidPoint) const;
+};
+
+struct dictionary;
 
 } } }
 

@@ -1,0 +1,7 @@
+{"app": "polytope", "embed": "cayley_embedding.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "cayley_embedding", "include": ["polymake/Rational.h"], "sig": "cayley_embedding:T1.B.o", "tp": "1"},
+  {"args": ["Rational", "void", "void", "Rational(int)", "Rational(int)", "void"], "func": "cayley_embedding", "include": ["polymake/Rational.h"], "sig": "cayley_embedding:T1.B.B.C0.C0.o", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void", "void", "QuadraticExtension<Rational>(int)", "QuadraticExtension<Rational>(int)", "void"], "func": "cayley_embedding", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "cayley_embedding:T1.B.B.C0.C0.o", "tp": "1"},
+ null ],
+"version": 3}

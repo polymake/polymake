@@ -16,17 +16,15 @@
 # An affine cone with an exact coordinate type, like Rational.
 declare object_specialization ExactCoord<Scalar> = Cone<Scalar> [is_ordered_field_with_unlimited_precision(Scalar)] {
 
+rule TRIVIAL : LINEAR_SPAN, CONE_AMBIENT_DIM {
+    $this->TRIVIAL = rank($this->LINEAR_SPAN) == $this->CONE_AMBIENT_DIM;
+}	
+
 # A Cone defined with an empty [[RAYS]] or [[INPUT_RAYS]] matrix gets trivial [[FACETS]] assigned
 # Note that all convex hull clients need at least one ray.
-rule FACETS, LINEAR_SPAN : {
-   my $ambientdim = $this->lookup("CONE_AMBIENT_DIM");
-   if (!defined($ambientdim)) {
-      foreach (qw(INEQUALITIES EQUATIONS INPUT_LINEALITY LINEALITY_SPACE)) {
-	 my $m;
-	 last if (defined($m = $this->lookup($_)) && ($ambientdim = $m->cols) > 0);
-      }
-   }
-   $this->FACETS = new Matrix<Scalar>();
+rule FACETS, LINEAR_SPAN : CONE_AMBIENT_DIM {
+   my $ambientdim = $this->CONE_AMBIENT_DIM;
+   $this->FACETS = new Matrix<Scalar>(0, $ambientdim);
    my $ls = $this->lookup("LINEALITY_SPACE | INPUT_LINEALITY");
    if (defined($ls) && $ls->rows > 0) {
       $this->LINEAR_SPAN = null_space($ls);
@@ -36,7 +34,7 @@ rule FACETS, LINEAR_SPAN : {
 }
 precondition : defined(INPUT_RAYS | RAYS);
 precondition : INPUT_RAYS | RAYS {
-   $this->lookup("INPUT_RAYS | RAYS")->rows == 0;
+   $this->give("INPUT_RAYS | RAYS")->rows == 0;
 }
 weight 1.10;
 
@@ -47,120 +45,48 @@ label beneath_beyond
 
 rule beneath_beyond.convex_hull.primal, default.triangulation.poly: \
      FACETS, LINEAR_SPAN, RAYS_IN_FACETS, DUAL_GRAPH.ADJACENCY, TRIANGULATION(new).FACETS, ESSENTIALLY_GENERIC : RAYS {
-   beneath_beyond($this, 1, 0);
+   beneath_beyond_find_facets($this, non_redundant => true);
 }
 weight 4.10;
-precondition : N_RAYS;
-precondition : POINTED;
 incurs FacetPerm;
 
 rule beneath_beyond.convex_hull.primal: \
      FACETS, RAYS, LINEAR_SPAN, LINEALITY_SPACE, RAYS_IN_FACETS, DUAL_GRAPH.ADJACENCY, TRIANGULATION_INT : INPUT_RAYS {
-   beneath_beyond($this, 0, 0);
+   beneath_beyond_find_facets($this);
 }
 weight 4.10;
-precondition : N_INPUT_RAYS;
-precondition : POINTED;
 incurs FacetPerm;
 
 rule beneath_beyond.convex_hull.dual: \
      RAYS, LINEALITY_SPACE, RAYS_IN_FACETS, GRAPH.ADJACENCY : FACETS {
-   beneath_beyond($this, 1, 1);
+   beneath_beyond_find_vertices($this, non_redundant => true);
 }
 weight 4.10;
-precondition : N_FACETS;
-precondition : FULL_DIM;
 incurs VertexPerm;
 
 rule beneath_beyond.convex_hull.dual: \
      FACETS, RAYS, LINEAR_SPAN, LINEALITY_SPACE, RAYS_IN_FACETS, GRAPH.ADJACENCY : INEQUALITIES {
-   beneath_beyond($this, 0, 1);
+   beneath_beyond_find_vertices($this);
 }
 weight 4.10;
-precondition : FULL_DIM;
 incurs VertexPerm;
 
 rule default.triangulation.poly: TRIANGULATION(new).FACETS : RAYS {
-   $this->TRIANGULATION->FACETS=placing_triangulation($this->RAYS, non_redundant => 1);
+   $this->TRIANGULATION->FACETS=placing_triangulation($this->RAYS, non_redundant => true);
 }
 weight 4.10;
 
-rule LINEALITY_SPACE : INPUT_RAYS {
-   my $inputls = new Matrix<Scalar>($this->lookup("INPUT_LINEALITY") // ());
-   $this->LINEALITY_SPACE = lineality_via_lp<Scalar>($this->INPUT_RAYS, $inputls);
+rule LINEALITY_SPACE : INPUT_RAYS, CONE_AMBIENT_DIM {
+   $this->LINEALITY_SPACE = lineality_via_lp<Scalar>($this->INPUT_RAYS, $this->lookup("INPUT_LINEALITY") // new Matrix<Scalar>(0,$this->CONE_AMBIENT_DIM));
 }
 weight 4.5;
 
-rule LINEAR_SPAN : INEQUALITIES { 
-   my $spangen = new Matrix<Scalar>($this->lookup("EQUATIONS") // ());
-   $this->LINEAR_SPAN = lineality_via_lp<Scalar>($this->INEQUALITIES, $spangen);
+rule LINEAR_SPAN : INEQUALITIES, CONE_AMBIENT_DIM {
+   $this->LINEAR_SPAN = lineality_via_lp<Scalar>($this->INEQUALITIES, $this->lookup("EQUATIONS") // new Matrix<Scalar>(0,$this->CONE_AMBIENT_DIM));
 }
 weight 4.5;
 
-rule beneath_beyond.convex_hull.primal: \
-     FACETS, RAYS, LINEAR_SPAN, RAYS_IN_FACETS, DUAL_GRAPH.ADJACENCY, TRIANGULATION_INT : INPUT_RAYS, LINEALITY_SPACE {
-   my $inrays = $this->INPUT_RAYS;
-   my $ls = $this->LINEALITY_SPACE;
-   my $dd = $ls->rows;
-  
-   #construct transformation matrix
-   my $A_inv = new Matrix(null_space($ls)/$ls);
-   my $A = inv($A_inv);
-   my $A_T = transpose($A);
-
-   my $tinrays = $inrays*$A;
-   my $pcone = new Cone<Scalar>();
-   $pcone->INPUT_RAYS = [grep { !is_zero($_) } @{$tinrays->minor(All,sequence(0,$inrays->cols-$dd))}];
-   beneath_beyond($pcone, 0, 0);
-
-   my $pfacets = $pcone->FACETS | zero_matrix<Scalar>(0, $dd);
-   my $prays = $pcone->RAYS | zero_matrix<Scalar>(0, $dd);
-   my $plinspan = $pcone->LINEAR_SPAN | zero_matrix<Scalar>(0, $dd);
-  
-   $this->FACETS = $pfacets*$A_T;
-   $this->RAYS = $prays*$A_inv;
-   $this->LINEAR_SPAN = $plinspan*$A_T;
-   $this->RAYS_IN_FACETS = $pcone->RAYS_IN_FACETS;
-   $this->DUAL_GRAPH->ADJACENCY = $pcone->DUAL_GRAPH->ADJACENCY;
-   $this->TRIANGULATION_INT = $pcone->TRIANGULATION_INT;
 }
-weight 4.10;
-precondition : N_INPUT_RAYS;
-precondition : !POINTED;
-incurs FacetPerm;
-
-rule beneath_beyond.convex_hull.dual: \
-     FACETS, RAYS, LINEALITY_SPACE, RAYS_IN_FACETS, GRAPH.ADJACENCY : INEQUALITIES, LINEAR_SPAN {
-   my $ineq = $this->INEQUALITIES;
-   my $linspan = $this->LINEAR_SPAN;
-   my $dd = $linspan->rows;
-
-   my $A_inv = new Matrix(null_space($linspan)/$linspan);
-   my $A = inv($A_inv);
-   my $A_T = transpose($A);
-
-   my $tineq = $ineq*$A;
-   my $fcone = new Cone<Scalar>();
-   $fcone->INEQUALITIES = [grep { !is_zero($_) } @{$tineq->minor(All,sequence(0,$ineq->cols-$dd))}];
-   beneath_beyond($fcone, 0, 1); 
-        
-   my $ffacets = $fcone->FACETS | zero_matrix<Scalar>(0, $dd);
-   my $frays = $fcone->RAYS | zero_matrix<Scalar>(0, $dd);
-   my $fls = $fcone->LINEALITY_SPACE | zero_matrix<Scalar>(0, $dd);
-   
-   $this->LINEALITY_SPACE = $fls*$A_T;
-   $this->RAYS = $frays*$A_T;
-   $this->FACETS = $ffacets*$A_inv;  
-   $this->RAYS_IN_FACETS = $fcone->RAYS_IN_FACETS;
-   $this->GRAPH->ADJACENCY = $fcone->GRAPH->ADJACENCY;
-}
-weight 4.10;
-precondition : !FULL_DIM;
-incurs VertexPerm;
-
-}
-
-
 
 object Polytope {
 
@@ -240,7 +166,7 @@ user_function zonotope<Scalar> (Matrix<Scalar>, { rows_are_points => 1, centered
 
 # @category Producing a polytope from polytopes
 # Orthogonally project a pointed polyhedron to a coordinate subspace.
-# 
+#
 # The subspace the polyhedron //P// is projected on is given by indices in the set //indices//.
 # The option //revert// inverts the coordinate list.
 # The client scans for all coordinate sections and produces proper output from each.
@@ -252,7 +178,7 @@ user_function zonotope<Scalar> (Matrix<Scalar>, { rows_are_points => 1, centered
 # @option Bool revert inverts the coordinate list
 # @option Bool nofm suppresses Fourier-Motzkin elimination
 # @return Cone
-# @example [prefer cdd] project the 3-cube along the first coordinate, i.e. to the subspace 
+# @example [prefer cdd] project the 3-cube along the first coordinate, i.e. to the subspace
 # spanned by the second and third coordinate:
 # > $p = projection(cube(3),[1],revert=>1);
 # > print $p->VERTICES;
@@ -279,8 +205,8 @@ user_function projection<Scalar>(Cone<Scalar>; $=[ ], { revert=>0, nofm=>0 }) {
 # @option Bool nofm suppresses Fourier-Motzkin elimination
 # @option Bool no_labels Do not copy [[VERTEX_LABELS]] to the projection. default: 0
 # @return Cone
-user_function project_full<Scalar>(Cone<Scalar>; {nofm => 0, no_labels=>0}) { 
-   projection(@_); 
+user_function project_full<Scalar>(Cone<Scalar>; {nofm => 0, no_labels=>0}) {
+   projection(@_);
 }
 
 # @category Producing a polytope from polytopes
@@ -296,7 +222,7 @@ user_function project_full<Scalar>(Cone<Scalar>; {nofm => 0, no_labels=>0}) {
 # | 1 -1 -1 -1 -1
 # | 1 1 -1 1 -1
 # | 1 -1 1 -1 1
-# | 1 1 1 1 1  
+# | 1 1 1 1 1
 user_function projection_preimage<Scalar>(Cone<Scalar> +) {
     my $a = new Array<Cone<Scalar>>(@_);
     projection_preimage_impl($a);
@@ -348,11 +274,12 @@ user_function free_sum_decomposition<Scalar>(Polytope<Scalar>) {
 
 
 # @category Producing a cone
-# Computes the normal cone of //p// at the vertex //v//.
+# Computes the normal cone of //p// at a face //F// (or a vertex //v//).
 # By default this is the inner normal cone.
 # @param Cone p
 # @param Set<Int> F (or Int v) vertex indices which are not contained in the far face
 # @option Bool outer Calculate outer normal cone?  Default value is 0 (= inner)
+# @option Bool attach Attach the cone to //F//? Default 0 (ie, return the cone inside the hyperplane at infinity)
 # @return Cone
 # @example To compute the outer normal cone at a vertex of the 3-cube, do this:
 # > $c = normal_cone(cube(3), 0, outer=>1);
@@ -364,13 +291,128 @@ user_function free_sum_decomposition<Scalar>(Polytope<Scalar>) {
 # > print normal_cone(cube(3), [0,1], outer=>1)->RAYS;
 # | 0 -1 0
 # | 0 0 -1
-user_function normal_cone<Scalar>(Cone<Scalar> $; { outer => 0 }) {
+# @example If you want to attach the cone to the polytope, specify the corresponding option:
+# > print normal_cone(cube(3), [0,1], outer=>1, attach=>1)->RAYS;
+# | 1 -1 -1 -1
+# | 1 1 -1 -1
+# | 0 0 -1 0
+# | 0 0 0 -1
+user_function normal_cone<Scalar>(Cone<Scalar> $; { outer => 0, attach => 0 }) {
     my ($c, $F, $options) = @_;
     if ($F =~ /^\d+/ || ref($F) == "ARRAY") {
 	$F = new Set($F);
     }
-    return normal_cone_impl<Scalar>($c, $F, "FACETS_THRU_RAYS", "FACETS", $options);
+    return normal_cone_impl<Scalar>($c, $F, "FACETS_THRU_RAYS", "RAYS", "FACETS", $options);
 }
+
+# @category Producing a cone
+# Computes the inner cone of //p// at a face //F// (or a vertex //v//).
+# @param Cone p
+# @param Set<Int> F (or Int v) vertex indices which are not contained in the far face
+# @option Bool outer Make it point outside the polytope? Default value is 0 (= point inside)
+# @option Bool attach Attach the cone to //F//? Default 0 (ie, return the cone inside the hyperplane at infinity)
+# @return Cone
+# @example To compute the inner cone at a vertex of the 3-cube, do this:
+# > $c = inner_cone(cube(3), 1);
+# > print $c->RAYS;
+# | -1 0 0
+# | 0 1 0
+# | 0 0 1
+# @example [nocompare] To compute the inner cone along an edge of the 3-cube, and make it point outside the polytope, do this:
+# > print inner_cone(cube(3), [0,1], outer=>1)->RAYS;
+# | 0 0 -1
+# | 0 -1 0
+# @example If you want to attach the cone to the polytope, specify the corresponding option:
+# > print normal_cone(cube(3), [0,1], attach=>1)->RAYS;
+# | 1 -1 -1 -1
+# | 1 1 -1 -1
+# | 0 0 1 0
+# | 0 0 0 1
+user_function inner_cone<Scalar>(Cone<Scalar> $; { outer => 0, attach => 0 }) {
+    my ($c, $F, $options) = @_;
+    if ($F =~ /^\d+/ || ref($F) == "ARRAY") {
+	$F = new Set($F);
+    }
+    return inner_cone_impl<Scalar>($c, $F, $options);
+}
+
+
+# @category Geometry
+# For a face //F// of a cone or polytope //P//, return the polyhedral cone //C// such that
+# taking the convex hull of //P// and any point in //C// destroys the face //F//
+# @param Cone P
+# @param Set F
+# @return Cone
+# @example To find the occluding cone of an edge of the 3-cube, type
+# > $c=occluding_cone(cube(3), [0,1]);
+# > print $c->FACETS;
+# | -1 0 -1 0
+# | -1 0 0 -1
+user_function occluding_cone<Scalar>(Cone<Scalar> $) {
+    my ($c, $face, $options) = @_;
+    if ($face =~ /^\d+/ || ref($face) == "ARRAY") {
+	$face = new Set($face);
+    }
+    my $F   = $c->FACETS;
+    my $ls  = $c->LINEAR_SPAN;
+    my $vif = $c->RAYS_IN_FACETS;
+
+    my @occluding_facets;
+    for (0..$F->rows-1) {
+	if (incl($face, $vif->[$_]) <= 0) {
+	    push @occluding_facets, $_;
+	}
+    }
+    if (scalar @occluding_facets == 0) {
+	croak("The set $face does not index a face of the input polytope or cone");
+    }
+
+    my $ineqs = -$F->minor(\@occluding_facets, All);
+    return new Cone<Scalar>(INEQUALITIES=>$ineqs, EQUATIONS=>$ls, CONE_AMBIENT_DIM=>$F->cols);
+}
+
+# @category Combinatorics
+# Calculate the codegree of a cone or polytope P.
+# This is the maximal positive integer c such that every subset of size < c lies in a common facet of conv P.
+# Moreover, the relation degree(P) + codegree(P) = dim(P) + 1 holds.
+# @param Cone P
+# @tparam Scalar the underlying number type,
+# @example To find the codegree of the 3-cube, type
+# > print codegree(cube(3));
+# | 1
+user_function codegree<Scalar>(Cone<Scalar>) {
+    my $p = shift;
+    return codegree_impl($p->COMBINATORIAL_DIM, $p->RAYS_IN_FACETS);
+}
+
+# @category Combinatorics
+# Calculate the codegree of a point configuration P.
+# This is the maximal positive integer c such that every subset of size < c lies in a common facet of conv P.
+# Moreover, the relation degree(P) + codegree(P) = dim(P) + 1 holds.
+# @param PointConfiguration P
+# @tparam Scalar the underlying number type,
+user_function codegree<Scalar>(PointConfiguration<Scalar>) {
+    my $p = shift;
+    return codegree_impl($p->CONVEX_HULL->COMBINATORIAL_DIM, $p->CONVEX_HULL->POINTS_IN_FACETS);
+}
+
+# @category Combinatorics
+# Calculate the degree of a cone, polytope or point configuration P.
+# This is the maximal dimension of an interior face of P,
+# where an interior face is a subset of the points of P whose convex hull does not lie on the boundary of P.
+# Moreover, the relation degree(P) + codegree(P) = dim(P) + 1 holds.
+# @param PointConfiguration P (or Cone or Polytope)
+# @tparam Scalar the underlying number type,
+# @example To find the degree of the 3-cube, type
+# > print degree(cube(3));
+# | 3
+user_function degree($) {
+    my $p = shift;
+    my $d   = $p->isa("PointConfiguration") ? $p->CONVEX_HULL->COMBINATORIAL_DIM : $p->COMBINATORIAL_DIM;
+    my $pif = $p->isa("PointConfiguration") ? $p->CONVEX_HULL->POINTS_IN_FACETS : $p->RAYS_IN_FACETS;
+    return $d + 1 - codegree_impl($d, $pif);
+}
+
 
 # Local Variables:
 # cperl-indent-level:3

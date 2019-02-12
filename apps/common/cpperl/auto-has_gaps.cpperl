@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Undirected>&>"], "func": "has_gaps", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "has_gaps:M"},
+  {"args": ["perl::Canned<const Graph<Directed>&>"], "func": "has_gaps", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "has_gaps:M"},
+ null ],
+"version": 3}

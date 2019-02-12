@@ -25,14 +25,14 @@ sub tab_completion {
 }
 
 sub properties_for_type {
-	
+
 	my $type = shift;
 	my $properties=new Map<String,String>;
 	my @overridden_properties;
 
 	foreach my $t (@{$type->linear_isa}, $type) {
 		foreach (values %{$t->properties} ) {
-			if ( !($_->flags & $Core::Property::is_permutation) && $_->name !~ /\.pure$/ ) {
+			if ( !($_->flags & Core::Property::Flags::is_permutation) && $_->name !~ /\.pure$/ ) {
 				my $fn;
 				if ( instanceof Polymake::Core::ObjectType($_->type) ) {
 					$fn = $_->type->pure_type->full_name;
@@ -54,16 +54,16 @@ sub properties_for_type {
 }
 
 sub properties_for_object {
-	
+
 	my $obj = shift;
 	return properties_for_type($obj->type);
 }
 
 sub methods_for_object {
-	
+
 	my $obj = shift;
 	my $methods = new Map<String,String>;
-	
+
 	foreach my $t (@{$obj->type->linear_isa},$obj->type) {
 		if ( defined($t->help_topic) ) {
 			foreach ($t->help_topic->find("methods", ".*")) {
@@ -72,12 +72,12 @@ sub methods_for_object {
 			}
 		}
 	}
-	
+
 	return $methods;
 }
 
 sub big_objects {
-	
+
 	my $app = User::application();
 	my @big_objects;
 	foreach ($app->help->find("objects",".*") ) {
@@ -86,7 +86,7 @@ sub big_objects {
 			push @big_objects, $name;
 		}
 	}
-	
+
 	return new Array<String>(\@big_objects);
 }
 
@@ -122,7 +122,7 @@ sub complete_function_name {
 sub function_annex {
     my ($fname, $i) =  @_;
     my $f = $User::application->help->find("!rel", "functions", $fname);
-    my $n_ov = n_overloads($f); 
+    my $n_ov = n_overloads($f);
     if (!defined($i) && $n_ov > 0) { # if there are overloads, default to the 0-th
 	$i=0;
     }
@@ -182,15 +182,10 @@ sub is_polymake_object {
 }
 
 
-sub retrieve_return_type {
-	
-	retrieve_return_type
-}
-
 sub completions_for_object {
-	
+
 	my $obj = shift;
-	
+
 	my $props = properties_for_object($obj);
 	my $meth = methods_for_object($obj);
 	foreach ( keys %$meth ) {
@@ -205,4 +200,3 @@ sub completions_for_object {
 # mode: perl
 # cperl-indent-level:3
 # End:
-

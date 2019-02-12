@@ -1,0 +1,8 @@
+{"app": "polytope", "embed": "minkowski_sum.cc",
+ "inst": [
+  {"args": ["QuadraticExtension<Rational>", "QuadraticExtension<Rational>(int)", "perl::Canned<const Matrix<QuadraticExtension<Rational>>&>", "QuadraticExtension<Rational>(int)", "perl::Canned<const Matrix<QuadraticExtension<Rational>>&>"], "func": "minkowski_sum_client", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "minkowski_sum_client:T1.C0.X.C0.X", "tp": "1"},
+  {"args": ["Rational", "Rational(int)", "perl::Canned<const Matrix<Rational>&>", "Rational(int)", "perl::Canned<const Matrix<Rational>&>"], "func": "minkowski_sum_client", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "minkowski_sum_client:T1.C0.X.C0.X", "tp": "1"},
+  {"args": ["Rational", "Rational(int)", "perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>", "Rational(int)", "perl::Canned<const Matrix<Rational>&>"], "func": "minkowski_sum_client", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "minkowski_sum_client:T1.C0.X.C0.X", "tp": "1"},
+  {"args": ["Rational", "Rational(int)", "perl::Canned<const Matrix<Rational>&>", "Rational(int)", "perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>"], "func": "minkowski_sum_client", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "minkowski_sum_client:T1.C0.X.C0.X", "tp": "1"},
+ null ],
+"version": 3}

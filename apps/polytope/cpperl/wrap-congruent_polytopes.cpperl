@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "congruent_polytopes.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "congruent", "include": ["polymake/Rational.h"], "sig": "congruent:T1.B.B", "tp": "1"},
+ null ],
+"version": 3}

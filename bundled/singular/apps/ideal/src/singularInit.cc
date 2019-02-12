@@ -49,6 +49,11 @@ void load_library(std::string lib){
    loaded_libraries[lib]=1;
 }
 
+void singular_output_handler(const char* output)
+{
+   cout << output << std::flush;
+}
+
 void singular_error_handler(const char* error)
 {
    errorreported = 0;
@@ -75,6 +80,7 @@ void init_singular()
    char* cpath = omStrDup(dli.dli_fname);
    siInit(cpath);
    WerrorS_callback = &singular_error_handler;
+   PrintS_callback = &singular_output_handler;
    
 #if POLYMAKE_DEBUG
    cerr << "*** singular siInit done. ***" << endl;

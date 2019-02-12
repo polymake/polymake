@@ -1,0 +1,5 @@
+{"app": "graph",
+ "inst": [
+  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>"], "func": "find_row_col_permutation", "include": ["polymake/IncidenceMatrix.h", "polymake/graph/compare.h"], "sig": "find_row_col_permutation.X.X"},
+ null ],
+"version": 3}

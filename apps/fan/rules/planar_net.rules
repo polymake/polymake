@@ -210,9 +210,9 @@ user_method VISUAL(%Visual::Polygons::decorations) : VERTICES, MAXIMAL_POLYTOPES
       $dependmap{$f} += $depend;
    }
    my ($first,$second) = @$vf_map_inv[0..1];
-   my $rootfirst = convert_to<Float>($this->POLYTOPE->VERTICES->[$first]->slice(1));
-   my $edge = convert_to<Float>($this->POLYTOPE->VERTICES->[$second]->slice(1)) - $rootfirst;
-   my $rootnormal = convert_to<Float>(-1 * $this->POLYTOPE->FACETS->[$this->DUAL_TREE->[0]->first]->slice(1));
+   my $rootfirst = convert_to<Float>($this->POLYTOPE->VERTICES->[$first]->slice(range_from(1)));
+   my $edge = convert_to<Float>($this->POLYTOPE->VERTICES->[$second]->slice(range_from(1))) - $rootfirst;
+   my $rootnormal = convert_to<Float>(-1 * $this->POLYTOPE->FACETS->[$this->DUAL_TREE->[0]->first]->slice(range_from(1)));
    my $rootup = [ $rootnormal->[1] * $edge->[2] - $rootnormal->[2] * $edge->[1],
                   $rootnormal->[2] * $edge->[0] - $rootnormal->[0] * $edge->[2],
                   $rootnormal->[0] * $edge->[1] - $rootnormal->[1] * $edge->[0] ];

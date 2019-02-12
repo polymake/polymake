@@ -70,13 +70,13 @@ public:
    template <typename Vector2>
    SharedMemoryVector(const GenericVector<Vector2, E>& v)
       : SharedMemorySegment(alloc_size(v.dim()))
-      , base_t(shmaddr, v.dim(), ensure(v.top(), (pm::dense*)0).begin()) {}
+      , base_t(shmaddr, v.dim(), ensure(v.top(), pm::dense()).begin()) {}
    
    template <typename Vector2, typename E2>
    explicit SharedMemoryVector(const GenericVector<Vector2, E2>& v,
                                typename std::enable_if<pm::can_initialize<E2, E>::value, void**>::type=nullptr)
       : SharedMemorySegment(alloc_size(v.dim()))
-      , base_t(shmaddr, v.dim(), ensure(v.top(), (pm::dense*)0).begin()) {}
+      , base_t(shmaddr, v.dim(), ensure(v.top(), pm::dense()).begin()) {}
 
    template <typename E2,
              typename=typename std::enable_if<pm::can_initialize<E2, E>::value>::type>
@@ -154,7 +154,7 @@ public:
    SharedMemoryMatrix(const GenericMatrix<Matrix2, E2>& m,
                       typename std::enable_if<pm::can_initialize<E2, E>::value>::type** = nullptr)
       : SharedMemorySegment(alloc_size(m.rows(), m.cols()))
-      , base_t(shmaddr, m.rows(), m.cols(), ensure(concat_rows(m), (pm::dense*)0).begin()) {}
+      , base_t(shmaddr, m.rows(), m.cols(), ensure(concat_rows(m), pm::dense()).begin()) {}
 
    template <typename Container>
    SharedMemoryMatrix(const Container& src,

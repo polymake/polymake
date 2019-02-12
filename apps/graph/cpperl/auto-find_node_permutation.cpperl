@@ -1,0 +1,5 @@
+{"app": "graph",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Undirected>&>", "perl::Canned<const Graph<Undirected>&>"], "func": "find_node_permutation", "include": ["polymake/Graph.h", "polymake/graph/compare.h"], "sig": "find_node_permutation.X.X"},
+ null ],
+"version": 3}

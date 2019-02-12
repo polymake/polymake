@@ -1,0 +1,5 @@
+{"app": "group", "embed": "sparse_isotypic_components.cc",
+ "inst": [
+  {"args": ["Bitset", "perl::Canned<const Array<hash_map<Bitset, Rational>>&>", "perl::Canned<const Array<hash_map<Bitset, Rational>>&>"], "func": "span_same_subspace", "include": ["polymake/Array.h", "polymake/Bitset.h", "polymake/Rational.h", "polymake/hash_map"], "sig": "span_same_subspace:T1.X.X", "tp": "1"},
+ null ],
+"version": 3}

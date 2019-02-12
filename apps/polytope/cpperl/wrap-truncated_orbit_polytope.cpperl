@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "truncated_orbit_polytope.cc",
+ "inst": [
+  {"args": ["Rational", "void", "Rational(perl::Canned<const Rational&>)"], "func": "truncated_orbit_polytope", "include": ["polymake/Rational.h"], "sig": "truncated_orbit_polytope:T1.B.C0", "tp": "1"},
+ null ],
+"version": 3}

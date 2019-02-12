@@ -86,7 +86,7 @@ Integer count_mn_cones(int n,int k)
   p.take("INEQUALITIES") << ineq;
   p.take("EQUATIONS") << eq;
   Matrix<Integer> latt = p.call_method("LATTICE_POINTS");
-  latt = latt.minor(All,~scalar2set(0));
+  latt = latt.minor(All, range_from(1));
 
   Integer total(0);
   for (int l = 0; l < latt.rows(); ++l) {
@@ -184,7 +184,7 @@ Vector<Set<int> > decodePrueferSequence(const Vector<int> &pseq, int n)
       rayset = adjacencies[lasttwo[0]-n];
     } else {
       // Find the minimal element in V that is not in the sequence (starting at firstindex)
-      Set<int> pset(pseq.slice(~sequence(0,firstindex)));
+      Set<int> pset(pseq.slice(range_from(firstindex)));
       int smallest = -1;
       for (auto vit = entire(V); !vit.at_end(); ++vit) {
         if (!pset.contains(*vit)) {
@@ -299,7 +299,7 @@ perl::Object m0n(int n)
     for (int i = 0; i < n; ++i) {
       adjacent[baseSequence[0]-n] += i;
       V -= i;
-      baseSequence = baseSequence.slice(1);
+      baseSequence = baseSequence.slice(range_from(1));
     }
     // Now create edges:
     int enumber = n-3;
@@ -323,7 +323,7 @@ perl::Object m0n(int n)
         adjacent[baseSequence[0]-n] += adjacent[smallest-n];
         // Remove v and p_i
         V -= smallest;
-        baseSequence = baseSequence.slice(1);
+        baseSequence = baseSequence.slice(range_from(1));
       }
       // The new edge is: v_{adjacent[smallest]}. If it containst the last leaf, take the complement
       if (rayset.contains(n-1)) {
@@ -391,7 +391,7 @@ perl::Object m0n(int n)
     cones[mc] += (rays.rows()-1);
   }
 
-  perl::Object result(perl::ObjectType::construct<Addition>("Cycle"));
+  perl::Object result("Cycle", mlist<Addition>());
   result.take("PROJECTIVE_VERTICES") << rays;
   result.take("MAXIMAL_POLYTOPES") << cones;
   result.take("WEIGHTS") << ones_vector<int>(cones.dim());
@@ -400,13 +400,6 @@ perl::Object m0n(int n)
 }
 
 		
-template <typename Addition>
-perl::Object m0n_wrap(int n, Addition a)
-{
-  return m0n<Addition>(n);
-}
-
-
 template <typename Addition>
 perl::Object space_of_stable_maps(int n, int d, int r)
 {
@@ -443,8 +436,6 @@ UserFunctionTemplate4perl("# @category Moduli of rational curves"
                           "# @tparam Addition Min or Max"
                           "# @return Cycle The tropical moduli space M_0,n",
                           "m0n<Addition>($)");
-
-FunctionTemplate4perl("m0n_wrap<Addition>($,Addition)");
 
 UserFunctionTemplate4perl("# @category Moduli of rational curves"
                           "# Creates the moduli space of stable maps of rational n-marked curves into a "

@@ -75,8 +75,7 @@ void store_homologies_and_cycles_sc(const Complex& CC, const FaceMap& SC,
       //chain_complex::cycle_type::face_list::iterator cycle_face_it=cycle_it->faces.begin();
       auto cycle_face_it=cycle_it->faces.begin();
 
-      for (typename Entire< typename FaceMap::Faces_of_Dim >::iterator
-              face_it=entire(SC.faces_of_dim(chain_it.dim()));  !face_it.at_end();  ++face_it)
+      for (auto face_it=entire(SC.faces_of_dim(chain_it.dim()));  !face_it.at_end();  ++face_it)
          if (! chain_it.cycle_coeffs().col(face_it.data()).empty()) {
             *cycle_face_it = *face_it;  ++cycle_face_it;
             *coeff_it = chain_it.cycle_coeffs().col(face_it.data());  ++coeff_it;

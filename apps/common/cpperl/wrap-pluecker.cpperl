@@ -1,0 +1,5 @@
+{"app": "common", "embed": "pluecker.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Rational>&>"], "func": "pluecker", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "pluecker.X"},
+ null ],
+"version": 3}

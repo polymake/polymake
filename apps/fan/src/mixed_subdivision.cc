@@ -43,14 +43,15 @@ perl::Object mixed_subdivision(int m,
    hash_map<Vector<Scalar>, int> index_of_point;
    int n_points(0);
 
+   perl::ObjectType poly_type("Polytope", mlist<Scalar>());
    std::vector<Set<int>> vif_vector;
    for (auto vicit = entire(vertices_in_cells); !vicit.at_end(); ++vicit) {
 
-      perl::Object cayley_cell(perl::ObjectType::construct<Scalar>("Polytope"));
+      perl::Object cayley_cell(poly_type);
       cayley_cell.take("POINTS") << V.minor(*vicit, All);
       const Matrix<Scalar> F = cayley_cell.give("FACETS");
 
-      perl::Object cayley_slice(perl::ObjectType::construct<Scalar>("Polytope"));
+      perl::Object cayley_slice(poly_type);
       cayley_slice.take("INEQUALITIES") << F;
       cayley_slice.take("EQUATIONS") << slice_eqs;
       const Matrix<Scalar> P = cayley_slice.give("VERTICES");
@@ -58,7 +59,7 @@ perl::Object mixed_subdivision(int m,
          throw std::runtime_error("mixed_subdivision: unexpectedly empty slice polytope");
 
       Set<int> vif;
-      for (typename Entire<Rows<Matrix<Scalar> > >::const_iterator rit = entire(rows(P)); !rit.at_end(); ++rit) {
+      for (auto rit = entire(rows(P)); !rit.at_end(); ++rit) {
          const Vector<Scalar> pt(*rit);
          if (!index_of_point.exists(pt))
             index_of_point[pt] = n_points++;
@@ -68,10 +69,10 @@ perl::Object mixed_subdivision(int m,
    }
 
    Matrix<Scalar> V_out(index_of_point.size(), d+1);
-   for (typename Entire<hash_map<Vector<Scalar>,int> >::const_iterator hit = entire(index_of_point); !hit.at_end(); ++hit)
-      V_out[hit->second] = hit->first.slice(0, d+1);
+   for (auto hit = entire(index_of_point); !hit.at_end(); ++hit)
+      V_out[hit->second] = hit->first.slice(sequence(0, d+1));
 
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("PolyhedralComplex"));
+   perl::Object p_out("PolyhedralComplex", mlist<Scalar>());
    p_out.take("VERTICES") << V_out;
    p_out.take("MAXIMAL_POLYTOPES") << IncidenceMatrix<>(vif_vector);
    return p_out;

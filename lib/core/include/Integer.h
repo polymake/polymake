@@ -76,7 +76,7 @@ public:
 
 // forward declarations needed for friend and specializations
 
-class Integer; class Rational; class AccurateFloat;
+class Integer; class Rational; class AccurateFloat; class Bitset;
 
 template <> struct spec_object_traits<Integer>;
 
@@ -1255,8 +1255,10 @@ public:
 
    /// Power.
    static
-   Integer pow(const Integer& a, unsigned long k)
+   Integer pow(const Integer& a, long k)
    {
+      if (__builtin_expect(k < 0, 0))
+         throw GMP::NaN();
       Integer result;
       if (__builtin_expect(isfinite(a), 1))
          mpz_pow_ui(&result, &a, k);
@@ -1268,8 +1270,10 @@ public:
    }
 
    static
-   Integer pow(long a, unsigned long k)
+   Integer pow(long a, long k)
    {
+      if (__builtin_expect(k < 0, 0))
+         throw GMP::NaN();
       Integer result;
       if (a>=0) {
          mpz_ui_pow_ui(&result, a, k);
@@ -1281,7 +1285,7 @@ public:
    }
 
    static
-   Integer pow(int a, unsigned long k)
+   Integer pow(int a, long k)
    {
       return pow(long(a), k);
    }
@@ -1502,6 +1506,7 @@ protected:
 
    friend class Rational;
    friend class AccurateFloat;
+   friend class Bitset;
    friend struct spec_object_traits<Integer>;
 };
 
@@ -1948,7 +1953,7 @@ struct hash_func<Integer, is_scalar> : hash_func<MP_INT>
 
 template <>
 Integer
-pow(const Integer& base, int exp);
+pow(const Integer& base, long exp);
 
 }
 

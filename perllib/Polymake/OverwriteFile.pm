@@ -40,6 +40,25 @@ sub new {
    ($self->handle, $self);
 }
 
+# delete the new file, preserve the original one
+sub abandon {
+   my ($self)=@_;
+      if (defined(fileno($self->handle))) {
+      close($self->handle);
+   }
+   unlink $self->tempname;
+   undef $self->tempname;
+}
+
+# delete both the new and the original files
+sub unlink_both {
+   my ($self)=@_;
+   &abandon;
+   unless (unlink $self->dst) {
+      warn_print( "could not remove file ", $self->dst, ": $!" );
+   }
+}
+
 sub DESTROY {
    my ($self)=@_;
    if (defined(fileno($self->handle))) {
@@ -54,7 +73,7 @@ sub DESTROY {
          unlink $self->tempname;
          Carp::croak( "creation of new copy of ", $self->dst, " is not properly completed" );
       }
-   } elsif (!rename($self->tempname, $self->dst)) {
+   } elsif (defined $self->tempname && !rename($self->tempname, $self->dst)) {
       warn_print( "could not rename temporary file ", $self->tempname, " to destination ", $self->dst, ": $!" );
    }
 }

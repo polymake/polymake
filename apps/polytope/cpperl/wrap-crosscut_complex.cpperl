@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "crosscut_complex.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "crosscut_complex", "include": ["polymake/Rational.h"], "sig": "crosscut_complex:T1.B.o", "tp": "1"},
+ null ],
+"version": 3}

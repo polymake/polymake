@@ -43,6 +43,22 @@ object Cone {
       # @category Symmetry
       property REPRESENTATIVE_FACETS : Matrix<Scalar>;
 
+   }
+}
+
+object Cone<Float> {
+
+    rule GROUP.MATRIX_ACTION.IRREDUCIBLE_DECOMPOSITION : GROUP.MATRIX_ACTION.CHARACTER, GROUP.CHARACTER_TABLE, GROUP.CONJUGACY_CLASS_SIZES, GROUP.ORDER {
+        $this->GROUP->MATRIX_ACTION->IRREDUCIBLE_DECOMPOSITION = group::irreducible_decomposition(new Vector<Float>($this->GROUP->MATRIX_ACTION->CHARACTER), $this->GROUP);
+    }
+    weight 1.10;
+        
+    
+}
+
+object Cone {
+
+    property GROUP {
       # First, some rules that apply to all actions
 
       rule ORDER : RAYS_ACTION.TRANSVERSAL_SIZES | FACETS_ACTION.TRANSVERSAL_SIZES | HOMOGENEOUS_COORDINATE_ACTION.TRANSVERSAL_SIZES {
@@ -187,19 +203,47 @@ object Cone {
    # induce MATRIX_ACTION
    #
    rule GROUP.MATRIX_ACTION : GROUP.INPUT_RAYS_ACTION, INPUT_RAYS {
-       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "INPUT_RAYS_ACTION", "INPUT_RAYS", new Matrix<Scalar>());
+       my $kernel = new Matrix<Scalar>;
+       if (defined(my $ls = $this->lookup("LINEAR_SPAN"))) {
+           $kernel /= $ls;
+       }
+       if (defined(my $ls = $this->lookup("LINEALITY_SPACE"))) {
+           $kernel /= $ls;
+       }
+       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "INPUT_RAYS_ACTION", "INPUT_RAYS", $kernel);
    }
 
    rule GROUP.MATRIX_ACTION : GROUP.RAYS_ACTION, RAYS {
-       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "RAYS_ACTION", "RAYS", new Matrix<Scalar>());
+       my $kernel = new Matrix<Scalar>;
+       if (defined(my $ls = $this->lookup("LINEAR_SPAN"))) {
+           $kernel /= $ls;
+       }
+       if (defined(my $ls = $this->lookup("LINEALITY_SPACE"))) {
+           $kernel /= $ls;
+       }
+       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "RAYS_ACTION", "RAYS", $kernel);
    }
 
    rule GROUP.MATRIX_ACTION : GROUP.INEQUALITIES_ACTION, INEQUALITIES {
-       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "INEQUALITIES_ACTION", "INEQUALITIES", new Matrix<Scalar>());
+       my $kernel = new Matrix<Scalar>;
+       if (defined(my $ls = $this->lookup("LINEAR_SPAN"))) {
+           $kernel /= $ls;
+       }
+       if (defined(my $ls = $this->lookup("LINEALITY_SPACE"))) {
+           $kernel /= $ls;
+       }
+       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "INEQUALITIES_ACTION", "INEQUALITIES", $kernel);
    }
 
    rule GROUP.MATRIX_ACTION : GROUP.FACETS_ACTION, FACETS {
-       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "FACETS_ACTION", "FACETS", new Matrix<Scalar>());
+       my $kernel = new Matrix<Scalar>;
+       if (defined(my $ls = $this->lookup("LINEAR_SPAN"))) {
+           $kernel /= $ls;
+       }
+       if (defined(my $ls = $this->lookup("LINEALITY_SPACE"))) {
+           $kernel /= $ls;
+       }
+       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "FACETS_ACTION", "FACETS", $kernel);
    }
    
    #
@@ -497,15 +541,15 @@ object PointConfiguration {
 # | 1 0 2 3
 # > $p = cube(2); combinatorial_symmetries($p);
 # > print $p->GROUP->VERTICES_ACTION->GENERATORS;
-# | 2 3 0 1
-# | 1 0 2 3
-# > print $p->GROUP->FACETS_ACTION->GENERATORS;
 # | 0 2 1 3
 # | 1 0 3 2
+# > print $p->GROUP->FACETS_ACTION->GENERATORS;
+# | 2 3 0 1
+# | 1 0 2 3
 
 user_function combinatorial_symmetries(polytope::Cone) {
     my ($p) = @_;
-    return group::combinatorial_symmetries_impl($p, "RAYS_IN_FACETS", "RAYS_ACTION", "FACETS_ACTION");
+    return group::combinatorial_symmetries_impl($p, "RAYS_IN_FACETS", "FACETS_ACTION", "RAYS_ACTION");
 }
 
 # @category Symmetry
@@ -642,7 +686,7 @@ user_function orbit_polytope(Matrix, group::Group) {
 # | 1 6 0 5 -5 0 -5
 
 
-user_function orbit_polytope(Matrix, @) {
+user_function orbit_polytope(Matrix, can_convert_to<Array<Array<Int>>>) {
     my ($input_points, $gens) = @_;
     my $a = new group::PermutationAction(GENERATORS=>$gens, INPUT_RAYS_GENERATORS=>$input_points);
     my $g = new group::Group;
@@ -706,6 +750,45 @@ user_function orbit_polytope<Scalar>(Matrix<Scalar>, group::MatrixActionOnVector
     my $p = new Polytope<Scalar>;
     $p->add("GROUP", $g, MATRIX_ACTION=>$aind);
     return $p;
+}
+
+# @category Symmetry
+# Given a polytope that has a matrix group acting on it, return the projections of the vertices to the //i//-th isotypic component //C_i//.
+# If the input is a group with a permutation action //a//, regard //a// as acting on the unit basis vectors of the ambient space
+# and return the projection of the unit basis vectors to the //i//-th isotypic component.
+# @param Polytope P a polytope with a matrix action, or a group::Group g with a permutation action
+# @param Int i the index of the desired isotypic component
+# @return polytope::PointConfiguration<Float>
+# @example Consider the symmetry group of the cyclic polytope c(4,10) in the Carathéodory realization.
+# > $p = cyclic_caratheodory(4,10,group=>1);
+# For i=4, we obtain a 10-gon:
+# > print isotypic_configuration($p,4)->POINTS;
+# | 1 1 0
+# | 1 0.8090169944 0.5877852523
+# | 1 0.3090169944 0.9510565163
+# | 1 -0.3090169944 0.9510565163
+# | 1 -0.8090169944 0.5877852523
+# | 1 -1 0
+# | 1 -0.8090169944 -0.5877852523
+# | 1 -0.3090169944 -0.9510565163
+# | 1 0.3090169944 -0.9510565163
+# | 1 0.8090169944 -0.5877852523
+# Similarly, for i=5 we get two copies of a pentagon.
+
+user_function isotypic_configuration($$) {
+    my ($p, $i) = @_;
+    my $projector;
+    if ($p->isa("Polytope") ||
+        $p->isa("PointConfiguration")) {
+        $projector = group::isotypic_projector($p->GROUP, $p->GROUP->MATRIX_ACTION, $i, permute_to_orbit_order=>0);
+    } else {
+        $projector = group::isotypic_projector($g, $g->PERMUTATION_ACTION, $i, permute_to_orbit_order=>0);
+    }
+    my $basis = orthonormal_row_basis($projector);
+    my $projection = new Matrix<Float>($p->VERTICES * $projector);
+    my $v = solve_left($basis, $projection);
+    my $o = ones_vector<Float>($v->rows());
+    return new PointConfiguration<Float>(POINTS=>($o|$v));
 }
 
 # Local Variables:

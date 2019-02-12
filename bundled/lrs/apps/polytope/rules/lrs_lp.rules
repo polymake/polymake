@@ -16,12 +16,12 @@
 object Polytope<Rational> {
 
 rule lrs.simplex: LP.MAXIMAL_VALUE, LP.MAXIMAL_VERTEX, FEASIBLE, LINEALITY_DIM : LP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
-   lrs_solve_lp($this, $this->LP, 1);
+   lrs_lp_client($this, $this->LP, true);
 }
 weight 3.20;
 
 rule lrs.simplex: LP.MINIMAL_VALUE, LP.MINIMAL_VERTEX, FEASIBLE, LINEALITY_DIM : LP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
-   lrs_solve_lp($this, $this->LP, 0);
+   lrs_lp_client($this, $this->LP, false);
 }
 weight 3.20;
 

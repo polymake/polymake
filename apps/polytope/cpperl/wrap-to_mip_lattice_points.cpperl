@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "to_mip_lattice_points.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "to_lattice_points", "include": ["polymake/Rational.h"], "sig": "to_lattice_points:T1.B", "tp": "1"},
+ null ],
+"version": 3}

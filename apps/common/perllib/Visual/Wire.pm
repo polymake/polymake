@@ -33,10 +33,10 @@ use Polymake::Struct (
 sub unify_edge_decor {
    my ($name, $decor, $default)=@_;
    my $unified;
-   if (is_container($decor)) {
+   if (is_like_array($decor)) {
       $unified=&unify_decor;
       sub { $unified->(${$_[0]}) }
-   } elsif (is_hash($decor)) {
+   } elsif (is_like_hash($decor)) {
       if (is_code($default)) {
          # assuming that $default was already filtered thru unify_edge_decor,
          # we must avoid repeated dereferencing
@@ -91,7 +91,7 @@ use Polymake::Struct (
 
 sub check_edges {
    my ($name, $edges)=@_;
-   is_array($edges) ? $edges : croak( "$name is not an array" );
+   is_like_array($edges) ? $edges : croak( "$name is not an array" );
 }
 
 sub n_nodes { scalar(@{(shift)->Vertices}) }

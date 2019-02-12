@@ -1,0 +1,6 @@
+{"app": "graph", "embed": "LatticePermutation.cc",
+ "inst": [
+  {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Sequential", "Array<int>", "void", "void", "Array<int>(perl::Canned<const Array<int>&>)"], "func": "find_lattice_permutation", "include": ["polymake/Array.h", "polymake/graph/Decoration.h"], "sig": "find_lattice_permutation:T3.B.B.C2", "tp": "3"},
+  {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Nonsequential", "Array<int>", "void", "void", "Array<int>(perl::Canned<const Array<int>&>)"], "func": "find_lattice_permutation", "include": ["polymake/Array.h", "polymake/graph/Decoration.h"], "sig": "find_lattice_permutation:T3.B.B.C2", "tp": "3"},
+ null ],
+"version": 3}

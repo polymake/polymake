@@ -177,7 +177,7 @@ public:
    }
 
 private:
-   PmPerlInterpreterMemberDecl(const pi);
+   PmPerlInterpreterMemberDecl(pi);
    std::vector<AV*>& rule_deputies;
 };
 
@@ -443,7 +443,7 @@ public:
 
 private:
    RuleGraph& me;
-   PmPerlInterpreterMemberDecl(const pi);
+   PmPerlInterpreterMemberDecl(pi);
    SV* const tell_sv;
 };
 
@@ -1046,29 +1046,33 @@ new(pkg)
    SV* pkg;
 PPCODE:
 {
+   using polymake::AnyString;
+
    if (!RuleGraph::class_descr) {
       // this initialization can't be done in the BOOT block because CPlusPlus is not yet initialized that early
-      RuleGraph::class_descr=OpaqueClassRegistrator<RuleGraph>::register_it("Polymake::Core::Scheduler::RuleGraph", nullptr);
-      RuleGraph::RuleChain_rgr_index=CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::rgr", false));
-      RuleGraph::RuleChain_rgr_state_index=CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::rgr_state", false));
-      RuleGraph::RuleChain_ready_rules_index=CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::ready", false));
-      RuleGraph::RuleDeputy_rgr_node_index=CvDEPTH(get_cv("Polymake::Core::Scheduler::RuleDeputy::rgr_node", false));
-      RuleGraph::RuleDeputy_flags_index=CvDEPTH(get_cv("Polymake::Core::Rule::Deputy::flags", false));
-      RuleGraph::RuleDeputy_weight_index=CvDEPTH(get_cv("Polymake::Core::Rule::Deputy::weight", false));
+      RuleGraph::class_descr = OpaqueClassRegistrator<RuleGraph>::register_it("Polymake::Core::Scheduler::RuleGraph", nullptr, nullptr);
+      RuleGraph::RuleChain_rgr_index = CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::rgr", false));
+      RuleGraph::RuleChain_rgr_state_index = CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::rgr_state", false));
+      RuleGraph::RuleChain_ready_rules_index = CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::ready", false));
+      RuleGraph::RuleDeputy_rgr_node_index = CvDEPTH(get_cv("Polymake::Core::Scheduler::RuleDeputy::rgr_node", false));
+      RuleGraph::RuleDeputy_flags_index = CvDEPTH(get_cv("Polymake::Core::Rule::Deputy::flags", false));
+      RuleGraph::RuleDeputy_weight_index = CvDEPTH(get_cv("Polymake::Core::Rule::Deputy::weight", false));
 
-      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_inactive_arc", FALSE),  RuleGraph::inactive_arc);
-      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_weak_arc", FALSE),      RuleGraph::weak_arc);
-      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_initial_arc", FALSE),   RuleGraph::initial_arc);
-      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_exclusive_arc", FALSE), RuleGraph::exclusive_arc);
-      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_unique_arc", FALSE),    RuleGraph::unique_arc);
-      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_resolved_arc", FALSE),  RuleGraph::resolved_arc);
-      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_source_arc", FALSE),    RuleGraph::source_arc);
+      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_inactive_arc", false),  RuleGraph::inactive_arc);
+      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_weak_arc", false),      RuleGraph::weak_arc);
+      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_initial_arc", false),   RuleGraph::initial_arc);
+      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_exclusive_arc", false), RuleGraph::exclusive_arc);
+      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_unique_arc", false),    RuleGraph::unique_arc);
+      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_resolved_arc", false),  RuleGraph::resolved_arc);
+      sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_source_arc", false),    RuleGraph::source_arc);
 
-      RuleGraph::Rule_is_precondition=SvIVX(get_sv("Polymake::Core::Rule::is_precondition", false));
-      RuleGraph::Rule_is_perm_action=SvIVX(get_sv("Polymake::Core::Rule::is_perm_action", false));
+      const AnyString RuleFlags_pkg("Polymake::Core::Rule::Flags");
+      HV* RuleFlags_stash = gv_stashpvn(RuleFlags_pkg.ptr, RuleFlags_pkg.len, false);
+      RuleGraph::Rule_is_precondition = get_named_constant(aTHX_ RuleFlags_stash, "is_precondition");
+      RuleGraph::Rule_is_perm_action = get_named_constant(aTHX_ RuleFlags_stash, "is_perm_action");
    }
-   SV* ref=newSV_type(SVt_NULL);
-   MAGIC* mg=glue::allocate_canned_magic(aTHX_ ref, RuleGraph::class_descr, value_alloc_magic, 0);
+   SV* ref = newSV_type(SVt_NULL);
+   MAGIC* mg = glue::allocate_canned_magic(aTHX_ ref, RuleGraph::class_descr, ValueFlags::alloc_magic, 0);
    new(mg->mg_ptr) RuleGraph();
    PUSHs(sv_2mortal(ref));
    PERL_UNUSED_ARG(pkg);

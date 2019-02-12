@@ -1,0 +1,11 @@
+{"app": "common",
+ "inst": [
+  {"pkg": "Polymake::common::ApproximateSet"},
+  {"class": "ApproximateSet<Matrix<double>>", "include": ["polymake/ApproximateSet.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "pkg": "Polymake::common::ApproximateSet__Matrix_A_Float_I_NonSymmetric_Z"},
+  {"class": "ApproximateSet<double>", "include": ["polymake/ApproximateSet.h"], "pkg": "Polymake::common::ApproximateSet__Float"},
+  {"args": ["ApproximateSet<double>"], "include": ["polymake/ApproximateSet.h"], "op": "new", "sig": "new"},
+  {"args": ["ApproximateSet<Matrix<double>>"], "include": ["polymake/ApproximateSet.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<ApproximateSet<Matrix<double>>&>", "perl::Canned<const Matrix<double>&>"], "include": ["polymake/ApproximateSet.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "op": "Add", "ret": "lvalue", "sig": "Add:O.X1.X"},
+  {"args": ["perl::Canned<ApproximateSet<Matrix<double>>&>", "perl::Canned<const pm::DiagMatrix<pm::SameElementVector<double const&>, true>&>"], "include": ["polymake/ApproximateSet.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/linalg.h"], "op": "Add", "ret": "lvalue", "sig": "Add:O.X1.X"},
+ null ],
+"version": 3}

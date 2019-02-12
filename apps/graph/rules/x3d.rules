@@ -1,0 +1,54 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+REQUIRE
+   common::x3d.rules
+
+#require X3dGraph;
+
+package X3d;
+
+# between the nodes of a face lattice (relative to the face label box width)
+custom $face_spacing=0.2;
+
+# roundness in x-coordinate of the label frame
+custom $roundness_x=0;
+
+# roundness in y-coordinate of the label frame
+custom $roundness_y=0;
+
+# space between glyphs (regarding node numbers above 9)
+custom $glyph_seperator=0.4; 
+
+# width of a glyph
+custom $glyph_width=0.68;
+
+package X3d::Viewer;
+
+global_method x3d.graph: draw(Visual::Graph, @) {
+   my ($self, $G)=@_;
+   $self->append(new Wire($G));
+}
+
+#global_method vrml.lattice: draw(Visual::Lattice, @) {
+#   my ($self, $G)=@_;
+#   $self->append(new Lattice($G));
+#}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# End:

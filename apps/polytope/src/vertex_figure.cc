@@ -19,7 +19,7 @@
 #include "polymake/Graph.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/linalg.h"
-#include "polymake/polytope/to_interface.h"
+#include "polymake/polytope/solve_LP.h"
 #include "polymake/common/labels.h"
 
 namespace polymake { namespace polytope {
@@ -40,7 +40,7 @@ perl::Object vertex_figure(perl::Object p_in, int v_cut_off, perl::OptionSet opt
 
    IncidenceMatrix<> VIF_out=VIF.minor(VIF.col(v_cut_off), G.adjacent_nodes(v_cut_off));
 
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "vertex figure of " << p_in.name() << " at vertex " << v_cut_off << endl;
 
    p_out.take("VERTICES_IN_FACETS") << VIF_out;
@@ -52,22 +52,21 @@ perl::Object vertex_figure(perl::Object p_in, int v_cut_off, perl::OptionSet opt
       }
    } else {
 
-       Scalar cutoff_factor = Scalar(1)/Scalar(2);
-       if (options["cutoff"] >> cutoff_factor && (cutoff_factor<=0 || cutoff_factor>=1))
-           throw std::runtime_error("vertex_figure: cutoff factor must be within (0,1]");
+      Scalar cutoff_factor = Scalar(1)/Scalar(2);
+      if (options["cutoff"] >> cutoff_factor && (cutoff_factor<=0 || cutoff_factor>=1))
+         throw std::runtime_error("vertex_figure: cutoff factor must be within (0,1]");
 
       const Matrix<Scalar> V=p_in.give("VERTICES"),
                            F=p_in.give("FACETS"),
                            AH=p_in.give("AFFINE_HULL");
 
-      to_interface::solver<Scalar> S;
       Matrix<Scalar> orth(AH);
       if (orth.cols()) orth.col(0).fill(0);
       Matrix<Scalar> basis(G.out_degree(v_cut_off), V.cols());
 
       const bool simple_vertex=basis.rows()+AH.rows()==V.cols()-1;
-      typename Rows< Matrix<Scalar> >::iterator b=rows(basis).begin();
-      for (Entire< Graph<>::adjacent_node_list >::const_iterator nb_v=entire(G.adjacent_nodes(v_cut_off)); !nb_v.at_end(); ++nb_v, ++b)
+      auto b = rows(basis).begin();
+      for (auto nb_v = entire(G.adjacent_nodes(v_cut_off)); !nb_v.at_end(); ++nb_v, ++b)
          *b = cutoff_factor * (V[*nb_v] - V[v_cut_off]);
       basis.col(0) = -ones_vector<Scalar>(basis.rows());
 
@@ -77,7 +76,10 @@ perl::Object vertex_figure(perl::Object p_in, int v_cut_off, perl::OptionSet opt
          cutting_plane=null_space(basis/orth)[0];
       } else {
          // look for a valid separating hyperplane furthest from the vertex being cut off
-         cutting_plane=S.solve_lp(basis, orth, average(rows(basis)), false).second;
+         const auto S = solve_LP(basis, orth, average(rows(basis)), false);
+         if (S.status != LP_status::valid)
+            throw std::runtime_error("vertex_figure: wrong LP");
+         cutting_plane = S.solution;
       }
       cutting_plane[0] = - cutting_plane * V[v_cut_off];
 

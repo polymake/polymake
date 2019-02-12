@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "symmetrized_codim_2_angle_sums.cc",
+ "inst": [
+  {"args": ["Rational", "void", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Array<Array<int>>&>", "perl::Canned<const Array<Set<int>>&>", "Rational(perl::Canned<const Rational&>)", "perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>"], "func": "simplexity_ilp_with_angles", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h", "polymake/SparseMatrix.h"], "sig": "simplexity_ilp_with_angles:T1.x.X.X.X.X.X.X.C0.X", "tp": "1"},
+ null ],
+"version": 3}

@@ -1,0 +1,5 @@
+{"app": "graph",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Directed>&>"], "func": "is_strongly_connected", "include": ["polymake/Graph.h", "polymake/graph/strong_connected.h"], "sig": "is_strongly_connected.X"},
+ null ],
+"version": 3}

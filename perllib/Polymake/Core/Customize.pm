@@ -20,17 +20,28 @@ use warnings qw(FATAL void syntax misc);
 package Polymake::Core::Customize;
 
 use Polymake::Ext;
-use Polymake::Enum qw( state: undefined private=1 default=2 global=4 saved=1+4 config=8 tied=16 hidden=32 accumulating=64 noexport=128 );
+use Polymake::Enum State => {
+   undefined => 0,
+   private => 1,
+   default => 2,
+   global => 4,
+   saved => 1+4,
+   config => 8,
+   tied => 16,
+   hidden => 32,
+   accumulating => 64,
+   noexport => 128
+};
 
 my $file_state;
-my $var_state=0;
-my $sep_line="########################\n";
-my $print_state=$state_private;
-my $export_state=0;
+my $var_state = State::undefined;
+my $sep_line = "########################\n";
+my $print_state = State::private;
+my $export_state = State::undefined;
 
 sub ARCH {
    $_[0] eq $Arch
-   and $var_state=$state_config
+   and $var_state = State::config
 }
 
 sub help2comment {
@@ -54,8 +65,8 @@ use Polymake::Struct (
 
 sub state_after_set {
    my $self=shift;
-   $self->state &= ~$state_default;
-   $self->state |= $state_private;
+   $self->state &= ~State::default;
+   $self->state |= State::private;
 }
 
 #################################################################################
@@ -68,69 +79,69 @@ use Polymake::Struct (
 );
 
 sub TIESCALAR {
-   my $self=shift;
+   my $self = shift;
    if (is_object($self)) {
-      $self->state |= $state_tied;
+      $self->state |= State::tied;
    } else {
-      $self=_new($self, undef, $var_state | $file_state | $state_tied);
-      $var_state=0;
-      $self->global_value=$_[0] if $file_state & $state_global;
-      $self->private_value=$_[0];
+      $self = _new($self, undef, $var_state | $file_state | State::tied);
+      $var_state = State::undefined;
+      $self->global_value = $_[0] if $file_state & State::global;
+      $self->private_value = $_[0];
    }
    $self;
 }
 
 sub re_tie {
-   my $self=shift;
-   unless ($self->state & $state_tied) {
+   my $self = shift;
+   unless ($self->state & State::tied) {
       no strict 'refs';
       tie $ {$self->name}, $self;
    }
 }
 
 sub un_tie {
-   my $self=shift;
-   $self->state &= ~$state_tied;
-   if ($self->state & $state_config) {
-      $self->default_value=$self->private_value;
+   my $self = shift;
+   $self->state &= ~State::tied;
+   if ($self->state & State::config) {
+      $self->default_value = $self->private_value;
    }
    no strict 'refs';
    untie $ {$self->name};
-   $ {$self->name}=$self->private_value;
+   $ {$self->name} = $self->private_value;
 }
 
 sub FETCH { $_[0]->private_value }
 
 sub STORE {
-   my $self=shift;
+   my $self = shift;
    if (defined $file_state) {
       $self->state |= $var_state | $file_state;
-      $var_state=0;
-      $self->global_value=$_[0] if $file_state & $state_global;
-      $self->private_value=$_[0];
-   } elsif ($self->state & $state_config) {
-      $self->state |= $state_private;
-      $self->private_value=$_[0];
+      $var_state = State::undefined;
+      $self->global_value = $_[0] if $file_state & State::global;
+      $self->private_value = $_[0];
+   } elsif ($self->state & State::config) {
+      $self->state |= State::private;
+      $self->private_value = $_[0];
    } else {
-      $self->default_value=$_[0];
+      $self->default_value = $_[0];
    }
 }
 
 sub new {
    no strict 'refs';
-   my $self=tied ${$_[1]};
+   my $self = tied ${$_[1]};
    if (defined $self) {
-      $self->name=$_[1];
-      $self->state|=$_[2];
-      $self->help=$_[3];
+      $self->name = $_[1];
+      $self->state |= $_[2];
+      $self->help = $_[3];
    } else {
-      $self=&_new;
+      $self = &_new;
       if (declared_scalar(*{$self->name})) {
-         if (!($self->state & $state_config) and defined ($self->default_value=$ {$self->name})) {
-            $self->state |= $state_default;
+         if (!($self->state & State::config) and defined ($self->default_value = $ {$self->name})) {
+            $self->state |= State::default;
          } else {
             tie $ {$self->name}, $self;
-            $self->state |= $state_tied;
+            $self->state |= State::tied;
          }
       } else {
          croak( "undefined custom variable \$", $self->name );
@@ -140,37 +151,37 @@ sub new {
 }
 
 sub set {
-   my $self=$_[0];
+   my $self = $_[0];
    &state_after_set;
    no strict 'refs';
    if (@_) {
-      $ {$self->name}=$self->private_value=$_[0];
+      $ {$self->name} = $self->private_value = $_[0];
    } else {
-      $self->private_value=$ {$self->name};
+      $self->private_value = $ {$self->name};
    }
 }
 
 sub reset {
-   my $self=shift;
-   my $val=$self->default_value;
-   if ($self->state & $state_config) {
-      $self->private_value=$val;
-   } elsif ($self->state & $state_global) {
-      $self->private_value=$self->global_value;
-      $self->state &= ~$state_private;
-      $val=$self->global_value;
-   } elsif ($self->state & $state_private) {
-      $self->state=$state_default;
+   my $self = shift;
+   my $val = $self->default_value;
+   if ($self->state & State::config) {
+      $self->private_value = $val;
+   } elsif ($self->state & State::global) {
+      $self->private_value = $self->global_value;
+      $self->state &= ~State::private;
+      $val = $self->global_value;
+   } elsif ($self->state & State::private) {
+      $self->state = State::default;
       undef $self->private_value;
    }
    no strict 'refs';
-   $ {$self->name}=$val;
+   $ {$self->name} = $val;
 }
 
 sub unset {
-   my $self=shift;
-   if (($self->state & ($state_config | $state_private)) == ($state_config | $state_private)) {
-      $self->state=$state_undefined;
+   my $self = shift;
+   if (($self->state & (State::config | State::private)) == (State::config | State::private)) {
+      $self->state = State::undefined;
       undef $self->default_value;
       undef $self->private_value;
       undef $self->global_value;
@@ -182,7 +193,7 @@ sub unset {
 sub prefix { "\$" }
 
 sub printable_value {
-   my ($self)=@_;
+   my ($self) = @_;
    printable_scalar($self->state & $print_state ? $self->private_value : $self->default_value);
 }
 
@@ -196,46 +207,46 @@ use Polymake::Struct (
 );
 
 sub TIEARRAY {
-   my $self=shift;
+   my $self = shift;
    if (is_object($self)) {
-      $self->state |= $state_tied;
+      $self->state |= State::tied;
    } else {
-      $self=_new($self, undef, $var_state | $file_state | $state_tied);
-      $var_state=0;
-      @{$self->private_value}=@{$_[0]};
-      $self->global_value=$self->private_value if $file_state & $state_global;
+      $self = _new($self, undef, $var_state | $file_state | State::tied);
+      $var_state = State::undefined;
+      @{$self->private_value} = @{$_[0]};
+      $self->global_value = $self->private_value if $file_state & State::global;
    }
    $self;
 }
 
 
 sub re_tie {
-   my $self=shift;
-   unless ($self->state & $state_tied) {
+   my $self = shift;
+   unless ($self->state & State::tied) {
       no strict 'refs';
       tie @{$self->name}, $self;
    }
 }
 
 sub un_tie {
-   my $self=shift;
-   $self->state &= ~$state_tied;
-   if ($self->state & $state_config) {
-      @{$self->default_value}=@{$self->private_value};
+   my $self = shift;
+   $self->state &= ~State::tied;
+   if ($self->state & State::config) {
+      @{$self->default_value} = @{$self->private_value};
    }
    no strict 'refs';
    untie @{$self->name};
-   @{$self->name}=@{$self->private_value};
+   @{$self->name} = @{$self->private_value};
 }
 
 sub _changed_value {
-   my $self=shift;
+   my $self = shift;
    if (defined $file_state) {
       $self->state |= $var_state | $file_state;
-      $var_state=0;
+      $var_state = State::undefined;
       $self->private_value;
-   } elsif ($self->state & $state_config) {
-      $self->state |= $state_private;
+   } elsif ($self->state & State::config) {
+      $self->state |= State::private;
       $self->private_value;
    } else {
       $self->default_value;
@@ -244,52 +255,52 @@ sub _changed_value {
 
 sub FETCH { $_[0]->private_value->[$_[1]] }
 
-sub FETCHSIZE { $#{$_[0]->private_value}+1 }
+sub FETCHSIZE { $#{$_[0]->private_value} + 1 }
 
 sub EXTEND {
-   my $n=pop;
-   $#{&_changed_value}=$n-1;
+   my $n = pop @_;
+   $#{&_changed_value} = $n - 1;
 }
 
 *STORESIZE=\&EXTEND;
 
 sub CLEAR {
-   my $self=shift;
+   my $self = shift;
    if (defined $file_state) {
-      if ($file_state & $state_private) {
-         if ($self->state & $state_global) {
+      if ($file_state & State::private) {
+         if ($self->state & State::global) {
             # divorce the global and private values
-            $self->private_value=[ ];
+            $self->private_value = [ ];
          }
       } else {
-         @{$self->global_value}=();
+         @{$self->global_value} = ();
       }
       $self->state |= $var_state | $file_state;
-      $var_state=0;
-   } elsif ($self->state & $state_config) {
-      @{$self->private_value}=();
+      $var_state = State::undefined;
+   } elsif ($self->state & State::config) {
+      @{$self->private_value} = ();
    } else {
-      @{$self->default_value}=();
+      @{$self->default_value} = ();
    }
 }
 
 sub STORE {
-   my $arr=&_changed_value;
-   $arr->[$_[0]]=$_[1];
+   my $arr = &_changed_value;
+   $arr->[$_[0]] = $_[1];
 }
 
 sub PUSH {
-   my $arr=&_changed_value;
+   my $arr = &_changed_value;
    push @$arr, @_;
 }
 
 sub UNSHIFT {
-   my $arr=&_changed_value;
+   my $arr = &_changed_value;
    unshift @$arr, @_;
 }
 
 sub SPLICE {
-   my $arr=&_changed_value;
+   my $arr = &_changed_value;
    splice @$arr, @_;
 }
 
@@ -303,30 +314,30 @@ sub SHIFT {
 
 sub new {
    no strict 'refs';
-   my $self=tied @{$_[1]};
+   my $self = tied @{$_[1]};
    if ($self) {
-      $self->name=$_[1];
-      $self->state|=$_[2];
-      $self->help=$_[3];
-      if ($self->state & $state_accumulating) {
-         if ($self->state & $state_global) {
-            if ($self->state & $state_private) {
+      $self->name = $_[1];
+      $self->state |= $_[2];
+      $self->help = $_[3];
+      if ($self->state & State::accumulating) {
+         if ($self->state & State::global) {
+            if ($self->state & State::private) {
                unshift @{$self->private_value}, @{$self->default_value}, @{$self->global_value};
             } else {
-               $self->private_value=[ @{$self->default_value}, @{$self->global_value} ];
+               $self->private_value = [ @{$self->default_value}, @{$self->global_value} ];
             }
          } else {
             unshift @{$self->private_value}, @{$self->default_value};
          }
       }
    } else {
-      $self=&_new;
+      $self = &_new;
       if (defined *{$self->name}{ARRAY}) {
-         if (!($self->state & $state_config) and @{$self->default_value}=@{$self->name}) {
-            $self->state |= $state_default;
+         if (!($self->state & State::config) and @{$self->default_value} = @{$self->name}) {
+            $self->state |= State::default;
          } else {
             tie @{$self->name}, $self;
-            $self->state |= $state_tied;
+            $self->state |= State::tied;
          }
       } else {
          croak( "undefined custom variable \@", $self->name );
@@ -336,38 +347,38 @@ sub new {
 }
 
 sub set {
-   my $self=$_[0];
-   $self->private_value=[ ] if ($self->state & $state_saved)==$state_global;
+   my $self = $_[0];
+   $self->private_value = [ ] if ($self->state & State::saved) == State::global;
    &state_after_set;
    no strict 'refs';
    if (@_) {
-      @{$self->name}=@_;
-      @{$self->private_value}=@_;
+      @{$self->name} = @_;
+      @{$self->private_value} = @_;
    } else {
-      @{$self->private_value}=@{$self->name};
+      @{$self->private_value} = @{$self->name};
    }
 }
 
 sub reset {
-   my $self=shift;
-   my $val=$self->default_value;
-   if ($self->state & $state_config) {
-      @{$self->private_value}=@$val;
-   } elsif ($self->state & $state_global) {
-      $val=$self->private_value=$self->global_value;
-      $self->state &= ~$state_private;
-   } elsif ($self->state & $state_private) {
-      $self->state=$state_default;
+   my $self = shift;
+   my $val = $self->default_value;
+   if ($self->state & State::config) {
+      @{$self->private_value} = @$val;
+   } elsif ($self->state & State::global) {
+      $val = $self->private_value = $self->global_value;
+      $self->state &= ~State::private;
+   } elsif ($self->state & State::private) {
+      $self->state = State::default;
       undef @{$self->private_value};
    }
    no strict 'refs';
-   @{$self->name}=@$val;
+   @{$self->name} = @$val;
 }
 
 sub unset {
-   my $self=shift;
-   if (($self->state & ($state_config | $state_private)) == ($state_config | $state_private)) {
-      $self->state=$state_undefined;
+   my $self = shift;
+   if (($self->state & (State::config | State::private)) == (State::config | State::private)) {
+      $self->state = State::undefined;
       undef @{$self->default_value};
       undef @{$self->private_value};
       undef $self->global_value;
@@ -379,24 +390,25 @@ sub unset {
 sub prefix { '@' }
 
 sub printable_value {
-   my ($self)=@_;
+   my ($self) = @_;
    my $comment_mark=
       $self->state & $print_state
       ? "" :
-      $self->state & $state_global
+      $self->state & State::global
       ? "#G# "
       : "# ";
    "(" .
-   join(',', map { "\n$comment_mark   ".printable_scalar($_) }
-        $self->state & $state_accumulating
-        ? do { my $offset=@{$self->default_value} + (($self->state & $state_global) > ($self->state & $print_state) && @{$self->global_value});
-               @{$self->private_value}[$offset..$#{$self->private_value}] }
+   join(',', map { "\n$comment_mark   " . printable_scalar($_) }
+        $self->state & State::accumulating
+        ? do { my $offset = @{$self->default_value} + (($self->state & State::global) > ($self->state & $print_state) && @{$self->global_value});
+               @{$self->private_value}[$offset .. $#{$self->private_value}] }
         : @{ $self->state & $print_state ? $self->private_value : $self->default_value }) .
    "\n$comment_mark)"
 }
 
 #################################################################################
 package Polymake::Core::Customize::Hash;
+
 use Polymake::Struct (
    [ '@ISA' => 'Var' ],
    '%private_value',
@@ -405,35 +417,35 @@ use Polymake::Struct (
 );
 
 sub TIEHASH {
-   my $self=shift;
+   my $self = shift;
    if (is_object($self)) {
-      $self->state |= $state_tied;
+      $self->state |= State::tied;
    } else {
-      $self=_new($self, undef, $var_state | $file_state | $state_tied);
-      $var_state=0;
-      %{$self->private_value}=%{$_[0]};
-      $self->global_value=$self->private_value if $file_state & $state_global;
+      $self = _new($self, undef, $var_state | $file_state | State::tied);
+      $var_state = State::undefined;
+      %{$self->private_value} = %{$_[0]};
+      $self->global_value = $self->private_value if $file_state & State::global;
    }
    $self;
 }
 
 sub re_tie {
-   my $self=shift;
-   unless ($self->state & $state_tied) {
+   my $self = shift;
+   unless ($self->state & State::tied) {
       no strict 'refs';
       tie %{$self->name}, $self;
    }
 }
 
 sub un_tie {
-   my $self=shift;
-   $self->state &= ~$state_tied;
-   if ($self->state & $state_config) {
-      %{$self->default_value}=%{$self->private_value};
+   my $self = shift;
+   $self->state &= ~State::tied;
+   if ($self->state & State::config) {
+      %{$self->default_value} = %{$self->private_value};
    }
    no strict 'refs';
    untie %{$self->name};
-   %{$self->name}=%{$self->private_value};
+   %{$self->name} = %{$self->private_value};
 }
 
 sub FETCH { $_[0]->private_value->{$_[1]} }
@@ -445,65 +457,65 @@ sub FIRSTKEY { each %{$_[0]->private_value} }
 *NEXTKEY=\&FIRSTKEY;
 
 sub CLEAR {
-   my ($self)=@_;
+   my ($self) = @_;
    if (defined $file_state) {
-      if ($file_state & $state_private  &&  $self->state & $state_global) {
+      if ($file_state & State::private  &&  $self->state & State::global) {
          # divorce the global and private values
          $self->private_value={ %{$self->global_value} };
       }
       $self->state |= $var_state | $file_state;
-      $var_state=0;
-   } elsif ($self->state & $state_config) {
-      if ($self->state & $state_accumulating  &&  $self->state & $state_global) {
-         $self->private_value={ %{$self->global_value} };
+      $var_state = State::undefined;
+   } elsif ($self->state & State::config) {
+      if ($self->state & State::accumulating  &&  $self->state & State::global) {
+         $self->private_value = { %{$self->global_value} };
       } else {
-         %{$self->private_value}=();
+         %{$self->private_value} = ();
       }
-      $self->state |= $state_private;
+      $self->state |= State::private;
    } else {
-      %{$self->default_value}=();
+      %{$self->default_value} = ();
    }
 }
 
 sub STORE {
-   my ($self, $key, $value)=@_;
+   my ($self, $key, $value) = @_;
    if (defined $file_state) {
       # state business already done in CLEAR
-      $self->private_value->{$key}=$value;
-   } elsif ($self->state & $state_config) {
-      if (($self->state & $state_saved) == $state_global) {
-         $self->private_value={ %{$self->global_value} };
+      $self->private_value->{$key} = $value;
+   } elsif ($self->state & State::config) {
+      if (($self->state & State::saved) == State::global) {
+         $self->private_value = { %{$self->global_value} };
       }
-      $self->private_value->{$key}=$value;
-      $self->state |= $state_private;
+      $self->private_value->{$key} = $value;
+      $self->state |= State::private;
    } else {
       $self->private_value->{$key} //= $value;
-      $self->default_value->{$key}=$value;
+      $self->default_value->{$key} = $value;
    }
 }
 
 sub DELETE {
-   my ($self, $key)=@_;
-   if ($self->state & $state_config) {
-      if (($self->state & ($state_global | $state_accumulating)) == ($state_global | $state_accumulating)) {
+   my ($self, $key) = @_;
+   if ($self->state & State::config) {
+      if (($self->state & (State::global | State::accumulating)) == (State::global | State::accumulating)) {
          if ($self->global_value != $self->private_value) {
-            my $changed=exists $self->private_value->{$key};
+            my $changed = exists $self->private_value->{$key};
             if (exists $self->global_value->{$key}) {
-               $self->private_value->{$key}=$self->global_value->{$key};
+               $self->private_value->{$key} = $self->global_value->{$key};
             } else {
                delete $self->private_value->{$key};
             }
             if ($changed && equal_string_hashes($self->global_value, $self->private_value)) {
-               $self->private_value=$self->global_value;
-               $self->state &= ~$state_private;
+               $self->private_value = $self->global_value;
+               $self->state &= ~State::private;
             }
          }
          return;
-      } elsif (($self->state & $state_saved) == $state_global) {
-         $self->private_value={ %{$self->global_value} };
+      } elsif (($self->state & State::saved) == State::global) {
+         $self->private_value = { %{$self->global_value} };
       }
       delete $self->private_value->{$key};
-      $self->state |= $state_private;
+      $self->state |= State::private;
    } else {
       delete $self->default_value->{$key};
    }
@@ -511,20 +523,20 @@ sub DELETE {
 
 sub new {
    no strict 'refs';
-   my $self=tied %{$_[1]};
+   my $self = tied %{$_[1]};
    if ($self) {
-      $self->name=$_[1];
-      $self->state|=$_[2];
-      $self->help=$_[3];
+      $self->name = $_[1];
+      $self->state |= $_[2];
+      $self->help = $_[3];
    } else {
-      $self=&_new;
+      $self = &_new;
       if (defined *{$self->name}{HASH}) {
-         if (!($self->state & $state_config) and
-             do { %{$self->default_value}=%{$self->name}; keys %{$self->default_value} }) {
-            $self->state |= $state_default;
+         if (!($self->state & State::config) and
+             do { %{$self->default_value} = %{$self->name}; keys %{$self->default_value} }) {
+            $self->state |= State::default;
          } else {
             tie %{$self->name}, $self;
-            $self->state |= $state_tied;
+            $self->state |= State::tied;
          }
       } elsif (!$self->state) {
          die "undefined custom variable %", $self->name, "\n";
@@ -534,61 +546,61 @@ sub new {
 }
 
 sub set {
-   my $self=$_[0];
-   my $divorce= ($self->state & $state_saved)==$state_global;
+   my $self = $_[0];
+   my $divorce = ($self->state & State::saved) == State::global;
    &state_after_set;
    no strict 'refs';
-   if (@_==0) {
-      $self->private_value={ } if $divorce;
-      %{$self->private_value}=%{$self->name};
+   if (@_ ==0 ) {
+      $self->private_value = { } if $divorce;
+      %{$self->private_value} = %{$self->name};
    } elsif (@_==1) {
-      $self->private_value={ %{$self->global_value} } if $divorce;
-      $self->private_value->{$_[0]}=$self->name->{$_[0]};
+      $self->private_value = { %{$self->global_value} } if $divorce;
+      $self->private_value->{$_[0]} = $self->name->{$_[0]};
    } elsif (@_==2) {
-      $self->private_value={ %{$self->global_value} } if $divorce;
-      $self->private_value->{$_[0]}=$_[1];
-      $self->name->{$_[0]}=$_[1];
+      $self->private_value = { %{$self->global_value} } if $divorce;
+      $self->private_value->{$_[0]} = $_[1];
+      $self->name->{$_[0]} = $_[1];
    } else {
       $self->private_value={ } if $divorce;
-      %{$self->private_value}=@_;
-      %{$self->name}=@_;
+      %{$self->private_value} = @_;
+      %{$self->name} = @_;
    }
 }
 
 sub reset {
-   my $self=shift;
+   my $self = shift;
    if (@_) {
       foreach my $key (@_) {
          no strict 'refs';
-         if ($self->state & $state_global && exists $self->global_value->{$key}) {
-            ${$self->name}{$key}=$self->private_value->{$key}=$self->global_value->{$key};
+         if ($self->state & State::global && exists $self->global_value->{$key}) {
+            ${$self->name}{$key} = $self->private_value->{$key} = $self->global_value->{$key};
          } elsif (exists $self->default_value->{$key}) {
-            ${$self->name}{$key}=$self->private_value->{$key}=$self->default_value->{$key};
+            ${$self->name}{$key} = $self->private_value->{$key} = $self->default_value->{$key};
          } else {
             delete $self->private_value->{$key};
             delete ${$self->name}{$key};
          }
       }
    } else {
-      my $val=$self->default_value;
-      if ($self->state & $state_config) {
-         %{$self->private_value}=%$val;
-      } elsif ($self->state & $state_global) {
-         $val=$self->private_value=$self->global_value;
-         $self->state &= ~$state_private;
-      } elsif ($self->state & $state_private) {
-         $self->state=$state_default;
+      my $val = $self->default_value;
+      if ($self->state & State::config) {
+         %{$self->private_value} = %$val;
+      } elsif ($self->state & State::global) {
+         $val = $self->private_value = $self->global_value;
+         $self->state &= ~State::private;
+      } elsif ($self->state & State::private) {
+         $self->state = State::default;
          undef %{$self->private_value};
       }
       no strict 'refs';
-      %{$self->name}=%$val;
+      %{$self->name} = %$val;
    }
 }
 
 sub unset {
-   my $self=shift;
-   if (($self->state & ($state_config | $state_private)) == ($state_config | $state_private)) {
-      $self->state=$state_undefined;
+   my $self = shift;
+   if (($self->state & (State::config | State::private)) == (State::config | State::private)) {
+      $self->state = State::undefined;
       undef %{$self->default_value};
       undef %{$self->private_value};
       undef $self->global_value;
@@ -600,22 +612,22 @@ sub unset {
 sub prefix { '%' }
 
 sub printable_value {
-   my ($self)=@_;
-   my $help=$self->help;
+   my ($self) = @_;
+   my $help = $self->help;
    sanitize_help($help);
-   my ($preface, %elements)=split /^\s*\@key\s+(\S+)\s+/m, $help;
+   my ($preface, %elements) = split /^\s*\@key\s+(\S+)\s+/m, $help;
    # don't use for rulefile configured status in export mode
-   my $glob_vals= ($self->state & $state_global)
-                  && !($export_state && ($self->state & ($state_config | $state_accumulating)) == ($state_config | $state_accumulating))
-                  && $self->global_value;
+   my $glob_vals = $self->state & State::global
+                   && !($export_state && ($self->state & (State::config | State::accumulating)) == (State::config | State::accumulating))
+                   && $self->global_value;
 
    if ($self->state & $print_state) {
       ( join("", map {
-                    my $quoted= /\W/ ? "'$_'" : $_;
-                    my $h=$elements{$_};
-                    my $comment_mark="#  ";
+                    my $quoted = /\W/ ? "'$_'" : $_;
+                    my $h = $elements{$_};
+                    my $comment_mark = "#  ";
                     ( ($glob_vals && $glob_vals->{$_} eq $self->private_value->{$_}  and  $comment_mark="#G#  ") ||
-                      (!($self->state & $state_config) && $self->default_value->{$_} eq $self->private_value->{$_})
+                      (!($self->state & State::config) && $self->default_value->{$_} eq $self->private_value->{$_})
                       ? "$comment_mark  $quoted => " . printable_scalar($self->default_value->{$_})
                       : "   $quoted => " . printable_scalar($self->private_value->{$_}),
                       defined($h) ? " ,  " . help2comment($1) : " ,\n"
@@ -625,8 +637,8 @@ sub printable_value {
       )
    } else {
       ( join("", map {
-                    my $quoted= /\W/ ? "'$_'" : $_;
-                    my $h=$elements{$_};
+                    my $quoted = /\W/ ? "'$_'" : $_;
+                    my $h = $elements{$_};
                     ( $glob_vals && defined($glob_vals->{$_}) ? "#G#  " : "#  ",
                       $quoted, " => ", printable_scalar($self->default_value->{$_}),
                       defined($h) ? " ,  " . help2comment($1) : " ,\n"
@@ -638,8 +650,8 @@ sub printable_value {
 }
 
 sub printable {
-   my $self=$_[0];
-   my ($v, $h)=&printable_value;
+   my $self = $_[0];
+   my ($v, $h) = &printable_value;
    $h .= "# \n" if $h =~ /^.*[^\#\s]\s*\Z/m;
    $h . &printable_decl . "(\n" . $v .
    ($self->state & $print_state ? "" : "# ") . ");\n"
@@ -687,17 +699,17 @@ my $arch_prefix="ARCH('$Arch') and\n";
 
 sub printable_decl {
    my $self=$_[0];
-   if (($self->state & ($state_global | $state_private | $state_config)) == ($state_global | $state_private | $state_config)
+   if (($self->state & (State::global | State::private | State::config)) == (State::global | State::private | State::config)
        and $self->equal_global_private) {
-      $self->state &= ~$state_private;
+      $self->state &= ~State::private;
    }
    my $comment_mark=
       $self->state & $print_state
       ? "" :
-      $self->state & $state_global
+      $self->state & State::global
       ? "#G# "
       : "# ";
-   ( $self->state & $state_config
+   ( $self->state & State::config
      ? $comment_mark . $arch_prefix . $comment_mark
      : $comment_mark
    ) . &full_name . "=" 
@@ -729,21 +741,21 @@ use Polymake::Struct (
 );
 
 sub new {
-   my $self=&_new;
-   my $global_text=delete $self->handler->global_pieces->{$self->default_pkg};
-   my $private_text=$self->handler->private_pieces->{$self->default_pkg};
+   my $self = &_new;
+   my $global_text = delete $self->handler->global_pieces->{$self->default_pkg};
+   my $private_text = $self->handler->private_pieces->{$self->default_pkg};
    if (defined($global_text) || defined($private_text)) {
       { no strict 'refs';
-        *{$self->default_pkg."::ARCH"}=\&ARCH;
+        *{$self->default_pkg."::ARCH"} = \&ARCH;
       }
       compile_start();
       if (defined $global_text) {
-         $file_state=$state_global;
+         $file_state = State::global;
          eval $global_text;
          die $@ if $@;
       }
       if (defined $private_text) {
-         $file_state=$state_private;
+         $file_state = State::private;
          eval $private_text;
          die $@ if $@;
       }
@@ -753,52 +765,52 @@ sub new {
         unimport_function(*{$self->default_pkg."::ARCH"});
       }
    } elsif (defined($self->handler->private_file)) {
-      $self->handler->need_save=1;
+      $self->handler->need_save = true;
    }
    $self;
 }
 
 #################################################################################
 sub add {
-   my ($self, $name, $help_text, $state, $pkg)=@_;
+   my ($self, $name, $help_text, $state, $pkg) = @_;
    if (defined $pkg) {
-      substr($name,1,0).="$pkg\::";
-   } elsif ((my $pkg_end=rindex($name, "::"))>0) {
-      $pkg=substr($name,1,$pkg_end-1);
+      substr($name, 1, 0) .= "$pkg\::";
+   } elsif ((my $pkg_end = rindex($name, "::")) > 0) {
+      $pkg = substr($name, 1, $pkg_end - 1);
    } else {
-      $pkg=caller;
-      substr($name,1,0).="$pkg\::";
+      $pkg = caller;
+      substr($name, 1, 0) .= "$pkg\::";
    }
    my $var= ( $self->per_pkg->{$pkg}->{$name} &&= croak( "multiple definition of custom variable '$name'" ) )
-        ||= new Var($name,$state,$help_text);
-   if ($var->state & $state_tied) {
+        ||= new Var($name, $state, $help_text);
+   if ($var->state & State::tied) {
       push @{$self->tied_vars}, $var;
    }
    $var;
 }
 #################################################################################
 sub find {
-   my ($self, $name, $skip_default)=@_;
+   my ($self, $name, $skip_default) = @_;
    my $pkg_end=rindex($name, "::");
    my $dict;
-   if ($pkg_end>0) {
-      if (not $dict=$self->per_pkg->{substr($name,1,$pkg_end-1)} and
+   if ($pkg_end > 0) {
+      if (not $dict=$self->per_pkg->{substr($name, 1, $pkg_end - 1)} and
           !$skip_default and
-          $dict=$self->per_pkg->{$self->default_pkg . "::" . substr($name,1,$pkg_end-1)}) {
-         substr($name,1,0)=$self->default_pkg."::";
+          $dict = $self->per_pkg->{$self->default_pkg . "::" . substr($name, 1, $pkg_end - 1)}) {
+         substr($name, 1, 0) = $self->default_pkg . "::";
       }
    } elsif (!$skip_default) {
-      $dict=$self->per_pkg->{$self->default_pkg};
-      substr($name,1,0)=$self->default_pkg."::";
+      $dict = $self->per_pkg->{$self->default_pkg};
+      substr($name, 1, 0) = $self->default_pkg . "::";
    }
    $dict && $dict->{$name};
 }
 #################################################################################
 sub list_completions_in_pkg {
-   my ($dict, $type, $prefix)=@_;
+   my ($dict, $type, $prefix) = @_;
    my $var;
    # don't expose variables declared as hidden, as well as unconfigured variables; the latter shall be set via rule reconfiguration
-   grep { $var=$dict->{$_}; not (($var->state & $state_hidden) || ($var->state & ($state_config | $state_saved)) == $state_config) }
+   grep { $var=$dict->{$_}; not (($var->state & State::hidden) || ($var->state & (State::config | State::saved)) == State::config) }
       do {
          if ($type eq "\$") {
             grep { /^[%\$]\Q$prefix\E/ } keys %$dict;
@@ -824,9 +836,9 @@ sub list_completions {
       }
       my $remove_default_prefix= !$skip_default && substr($pkg,0,$l) eq $self->default_pkg && substr($pkg,$l,2) eq "::";
       if ($remove_default_prefix ? substr($pkg,$l+2) =~ /^$prefix/ : $pkg ne $self->default_pkg && $pkg =~ /^$prefix/) {
-         while ((undef, my $var)=each %$dict) {
-            unless (($var->state & $state_hidden) || ($var->state & ($state_config | $state_saved)) == $state_config) {
-               push @answer, ($remove_default_prefix ? substr($pkg,$l+2) : $pkg)."::";
+         while ((undef, my $var) = each %$dict) {
+            unless (($var->state & State::hidden) || ($var->state & (State::config | State::saved)) == State::config) {
+               push @answer, ($remove_default_prefix ? substr($pkg, $l + 2) : $pkg) . "::";
                keys %$dict;  # reset the iterator!
                last;
             }
@@ -837,50 +849,50 @@ sub list_completions {
 }
 #################################################################################
 sub set {
-   my ($self, $name)=splice @_, 0, 2;
-   if (defined (my $var=$self->find($name))) {
+   my ($self, $name) = splice @_, 0, 2;
+   if (defined (my $var = $self->find($name))) {
       $var->set(@_);
-      $self->handler->need_save=1;
+      $self->handler->need_save = true;
    } else {
       croak( "unknown custom variable $name" );
    }
 }
 #################################################################################
 sub reset {
-   my ($self, $name)=splice @_, 0, 2;
-   if (defined (my $var=$self->find($name))) {
+   my ($self, $name) = splice @_, 0, 2;
+   if (defined (my $var = $self->find($name))) {
       $var->reset(@_);
-      $self->handler->need_save=1;
+      $self->handler->need_save = true;
    } else {
       croak( "unknown custom variable $name" );
    }
 }
 #################################################################################
 sub unset {
-   my ($self, $name, $pkg)=@_;
+   my ($self, $name, $pkg) = @_;
    if (defined $pkg) {
-      substr($name,1,0).="$pkg\::";
+      substr($name, 1, 0).="$pkg\::";
    } else {
-      my $pkg_end=rindex($name, "::");
-      $pkg=substr($name,1,$pkg_end-1);
+      my $pkg_end = rindex($name, "::");
+      $pkg=substr($name, 1, $pkg_end - 1);
    }
-   if (defined (my $var=$self->per_pkg->{$pkg}->{$name})) {
+   if (defined (my $var = $self->per_pkg->{$pkg}->{$name})) {
       $var->unset;
-      $self->handler->need_save=1;
+      $self->handler->need_save = true;
    } else {
       croak( "unknown custom variable $name" );
    }
 }
 #################################################################################
 sub delete_from_private_list {
-   my ($self, $name, $pos)=@_;
-   if (defined (my $var=$self->find($name))) {
-      if ($var->state & $state_accumulating) {
-         if ($pos >= @{$var->default_value} + ($var->state & $state_global && @{$var->global_value})) {
+   my ($self, $name, $pos) = @_;
+   if (defined (my $var = $self->find($name))) {
+      if ($var->state & State::accumulating) {
+         if ($pos >= @{$var->default_value} + ($var->state & State::global && @{$var->global_value})) {
             splice @{$var->private_value}, $pos, 1;
             no strict 'refs';
             splice @{$var->name}, $pos, 1;
-            $self->handler->need_save=1;
+            $self->handler->need_save = true;
          } else {
             # not allowed
             0
@@ -894,13 +906,13 @@ sub delete_from_private_list {
 }
 #################################################################################
 sub cleanup {
-   my $self=shift;
+   my $self = shift;
    $_->un_tie for @{$self->tied_vars};
-   @{$self->tied_vars}=() if @_==0;     # called directly
+   @{$self->tied_vars} = () if @_ == 0;     # called directly
 }
 #################################################################################
 sub re_tie {
-   my ($self, $name, $help_text, $state, $pkg)=@_;
+   my ($self, $name, $help_text, $state, $pkg) = @_;
    if (defined $pkg) {
       substr($name,1,0).="$pkg\::";
    } else {
@@ -917,12 +929,12 @@ sub re_tie {
 }
 #################################################################################
 sub obliterate_extension {
-   my ($self, $ext)=@_;
+   my ($self, $ext) = @_;
    while (my ($pkg, $per_pkg)=each %{$self->per_pkg}) {
       while (my ($name, $var)=each %$per_pkg) {
          if ($var->extension==$ext) {
             delete $per_pkg->{$name};
-            $self->handler->need_save=1;
+            $self->handler->need_save = true;
          }
       }
       unless (keys %$per_pkg) {
@@ -954,10 +966,10 @@ sub export {
    my $seen_in_app;
    foreach my $pkg (sort { $a eq $self->default_pkg ? -1 : $b eq $self->default_pkg ? 1 : $a cmp $b } keys %{$self->per_pkg}) {
       my $seen_in_pkg;
-      while (my ($name, $var)=each %{$self->per_pkg->{$pkg}}) {
+      while (my ($name, $var) = each %{$self->per_pkg->{$pkg}}) {
          if ($filter->($name, $var)
              and $var->state & $print_state
-             and !($var->state & $state_noexport)) {
+             and !($var->state & State::noexport)) {
             $seen_in_app ||= print $cf $sep_line, "package ".$self->default_pkg.";\n\n";
             $seen_in_pkg ||= do {
                if (defined (my $h=$self->pkg_help->{$pkg})) {
@@ -984,8 +996,8 @@ sub create_help_topics {
    while (my ($pkg, $dict)=each %{$self->per_pkg}) {
       my $skip= $pkg eq $self->default_pkg || index($pkg, $self->default_pkg."::")==0 ? $l : 0;
       while (my ($name, $var)=each %{$self->per_pkg->{$pkg}}) {
-         unless ($var->state & $state_hidden) {
-            $self->help->add([ $var->prefix.substr($var->name,$skip) ], $var->help);
+         unless ($var->state & State::hidden) {
+            $self->help->add([ $var->prefix . substr($var->name, $skip) ], $var->help);
          }
       }
    }
@@ -1080,7 +1092,7 @@ sub load_private {
       $self->need_save= !defined($Version) || $self->private_file->version lt $VersionNumber;
       add AtEnd("Customize", sub { $self->save if $self->need_save });
    } else {
-      $self->need_save=1;
+      $self->need_save = true;
       add AtEnd("Customize", sub { $self->save($filename) });
    }
 }
@@ -1235,18 +1247,18 @@ sub save {
    }
 
    close $cf;
-   $self->need_save=0;
+   $self->need_save = false;
 }
 ##################################################################################
 sub export {
-   my ($self, $filename, $opts, @also)=@_;
+   my ($self, $filename, $opts, @also) = @_;
 
-   my ($merge_with_global, $only_configured, $suppress)=delete @$opts{qw(merge_with_global only_configured suppress)};
+   my ($merge_with_global, $only_configured, $suppress) = delete @$opts{qw(merge_with_global only_configured suppress)};
    if (keys %$opts) {
       die "unknown option", keys(%$opts)>1 && "s", ": ", join(" ", keys(%$opts)), "\n";
    }
 
-   my ($cf, $cf_k)=new OverwriteFile($filename);
+   my ($cf, $cf_k) = new OverwriteFile($filename);
    print $cf <<".";
 #########################################################################
 #
@@ -1260,28 +1272,28 @@ sub export {
 \$version=v$Version;
 
 .
-   local_scalar($export_state, $merge_with_global ? $state_saved : $state_private);
-   local_scalar($print_state, $export_state) if $merge_with_global;
+   local scalar $export_state = $merge_with_global ? State::saved : State::private;
+   local scalar $print_state = $export_state if $merge_with_global;
 
-   my $change_scope= $only_configured && new Scope();
-   my $suppress_re= qr/$suppress/;
-   my $filter=sub {
-      my ($name, $var)=@_;
+   my $change_scope = $only_configured && new Scope();
+   my $suppress_re = qr/$suppress/;
+   my $filter = sub {
+      my ($name, $var) = @_;
       if (length($suppress) && $name =~ $suppress_re) {
-         return 0;
+         return false;
       }
-      if ($only_configured && ($var->state & $state_config)) {
-         my $value=$var->private_value;
-         if ($var->state & $state_accumulating) {
-            my %configured=map { $value->{$_} =~ /^[1-9]\d+$/ ? ($_ => $value->{$_}) : () } keys %$value;
-            $change_scope->begin_locals;
-            local_hash($value, \%configured);
-            $change_scope->end_locals;
+      if ($only_configured && $var->state & State::config) {
+         my $value = $var->private_value;
+         if ($var->state & State::accumulating) {
+            my %configured = map { $value->{$_} =~ /^[1-9]\d+$/ ? ($_ => $value->{$_}) : () } keys %$value;
+            local with($change_scope->locals) {
+               local ref $value = \%configured;
+            }
          } else {
             return defined($value);
          }
       }
-      1
+      true
    };
 
    foreach my $per_app (@{$self->per_app}, @also) {
@@ -1292,10 +1304,10 @@ sub export {
 }
 ##################################################################################
 sub obliterate_application {
-   my ($self, $per_app)=@_;
+   my ($self, $per_app) = @_;
    if (delete_from_list($self->per_app, $per_app)) {
       delete $self->private_pieces->{$per_app->default_pkg};
-      $self->need_save=1;
+      $self->need_save = true;
    }
 }
 

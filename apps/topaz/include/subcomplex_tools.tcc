@@ -19,10 +19,9 @@ namespace polymake { namespace topaz {
 template <typename Complex>
 PowerSet<int> k_skeleton(const Complex& C, const int k)
 {
-   typedef typename Complex::value_type Facet;
    PowerSet<int> SK;
   
-   for (typename Entire<Complex>::const_iterator f_it=entire(C); !f_it.at_end(); ++f_it) {
+   for (auto f_it=entire(C); !f_it.at_end(); ++f_it) {
       // the k skeleton are all faces of dimension <= k.
       if (f_it->size()<=k) {
          // facets are either equal or none contains the other.
@@ -31,8 +30,7 @@ PowerSet<int> k_skeleton(const Complex& C, const int k)
       }
 
       // the k skeleton a facet are all subsets of size k+1
-      Subsets_of_k< const Facet& > enumerator(*f_it, k+1);     
-      for (typename Entire< Subsets_of_k< const Facet& > >::iterator s_it=entire(enumerator); !s_it.at_end(); ++s_it) {
+      for (auto s_it=entire(all_subsets_of_k(*f_it, k+1)); !s_it.at_end(); ++s_it) {
         // facets are either equal or none contains the other.
         SK+=*s_it;
       }

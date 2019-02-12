@@ -76,7 +76,7 @@ perl::Object simplex(int d, const Scalar& s, perl::OptionSet options)
    if (s==0)
       throw std::runtime_error("scale must be non-zero");
 
-   perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p("Polytope", mlist<Scalar>());
    p.set_description() << "standard simplex of dimension " << d << endl;
 
    SparseMatrix<Scalar> V( ones_vector<Scalar>(d+1) | (zero_vector<Scalar>(d) / (s*unit_matrix<Scalar>(d))));
@@ -102,7 +102,7 @@ perl::Object regular_simplex(const int d, perl::OptionSet options)
    p.set_description() << "regular simplex of dimension " << d << endl;
 
    QE c(Rational(1,d),Rational(-1,d),d+1);
-   SparseMatrix<QE> V( ones_vector<QE>(d+1) | (unit_matrix<QE>(d) / same_element_vector<QE>(c,d)));
+   SparseMatrix<QE> V( ones_vector<QE>(d+1) | (unit_matrix<QE>(d) / same_element_vector(c,d)));
 
    p.take("VERTICES") << V;
    p.take("CONE_AMBIENT_DIM") << d+1;
@@ -118,7 +118,7 @@ perl::Object fano_simplex(int d, perl::OptionSet options)
    if (d <= 0)
       throw std::runtime_error("fano_simplex : dimension must be postive");
 
-   perl::Object p(perl::ObjectType::construct<Rational>("Polytope"));
+   perl::Object p("Polytope<Rational>");
    p.set_description() << "Fano simplex of dimension " << d << endl;
 
    SparseMatrix<Rational> V( ones_vector<Rational>(d+1) | (unit_matrix<Rational>(d) / same_element_vector<Rational>(-1,d)) );
@@ -137,7 +137,7 @@ perl::Object lecture_hall_simplex(int d, perl::OptionSet options)
    if (d <= 0)
       throw std::runtime_error("lecture_hall_simplex : dimension must be postive");
 
-   perl::Object p(perl::ObjectType::construct<Rational>("Polytope"));
+   perl::Object p("Polytope<Rational>");
    p.set_description() << "lecture hall simplex of dimension " << d << endl;
 
    Matrix<Rational> V(d+1,d+1);

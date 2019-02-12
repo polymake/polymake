@@ -38,7 +38,7 @@ bool is_generalized_shelling(const Array< Set<int> >& FaceList, perl::OptionSet 
   std::vector<int> h; // h-vector
   bool success(true); // let's be optimistic
 
-  for (Entire< Array< Set<int> > >::const_iterator i=entire(FaceList); !i.at_end(); ++i) {
+  for (auto i=entire(FaceList); !i.at_end(); ++i) {
     const Set<int>& thisFace(*i);
     const int thisSize(thisFace.size());
     const int thisDim(thisSize-1);
@@ -52,14 +52,13 @@ bool is_generalized_shelling(const Array< Set<int> >& FaceList, perl::OptionSet 
 
     // collect maximal intersection with previous facets
     PowerSet<int> maxIntersections;
-    for (Entire< Array< Set<int> > >::const_iterator j=entire(FaceList); j!=i; ++j)
+    for (auto j=entire(FaceList); j!=i; ++j)
       maxIntersections.insertMax(thisFace*(*j));
     
     // examine the intersections
     bool allIntersectionsAreRidges(true);
     Set<int> missingVertices;
-    for (Entire< PowerSet<int> >::const_iterator s=entire(maxIntersections);
-	 allIntersectionsAreRidges && !s.at_end(); ++s) {
+    for (auto s=entire(maxIntersections);  allIntersectionsAreRidges && !s.at_end();  ++s) {
       allIntersectionsAreRidges = (s->size() == thisDim);
       missingVertices += thisFace - (*s);
     }

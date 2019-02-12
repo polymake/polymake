@@ -59,7 +59,7 @@ bool is_vertex_decomposition(perl::Object p, const Array<int>& ShedVert, perl::O
    Lattice<BasicDecoration> HD_obj = p.give("HASSE_DIAGRAM");
    ShrinkingLattice<BasicDecoration> HD(HD_obj);
    // for all v in ShedVert
-   for (Entire< Array<int> >::const_iterator v_it=entire(ShedVert); !v_it.at_end(); ++v_it) {
+   for (auto v_it=entire(ShedVert); !v_it.at_end(); ++v_it) {
       const int v=*v_it;
       // if the remaining complex consists of v only -> complex is decomposed
       const auto rest_vertex_nodes=HD.nodes_of_rank(1);

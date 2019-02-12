@@ -1,0 +1,77 @@
+#  Copyright (c) 1997-2017
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# FIXME 
+#   here we need a configure block that checks 
+#     - whether the ntl extension is installed
+#     - can read the ntl path and appropriate includes from it
+#   (see ticket #504)
+# 
+#     - the current version uses CallPolymakeFunction to access integer_kernel
+#        and fails with an error if this is not found
+# CONFIGURE { }
+
+
+object NormalToricVariety {
+
+   # the methods for the following three rules are implemented in the file class_group.cc
+   rule RATIONAL_DIVISOR_CLASS_GROUP.PROJECTION, RATIONAL_DIVISOR_CLASS_GROUP.LIFTING : RAYS {
+       my $class_group_data = rational_divisor_class_group($this);
+       $this->RATIONAL_DIVISOR_CLASS_GROUP->PROJECTION = $class_group_data->first;
+       $this->RATIONAL_DIVISOR_CLASS_GROUP->LIFTING = $class_group_data->second;
+   }
+   precondition : COMPLETE;
+
+   rule EFFECTIVE_CONE.INPUT_RAYS : RATIONAL_DIVISOR_CLASS_GROUP.PROJECTION {
+      $this->EFFECTIVE_CONE->INPUT_RAYS = $this->RATIONAL_DIVISOR_CLASS_GROUP->PROJECTION;
+   }
+   precondition : COMPLETE;
+
+declare $a, $b;
+
+   # Computes the nef cone of the toric variety corresponding to the fan ''F''
+   # given in the input also known as the (closure of the) Kaehler cone dual to
+   # the Mori cone in the space of the rational divisor class group
+   #
+   # algorithm: 
+   # Take the matrix 'proj' of the projection to the rational divisor class
+   # group.  Let C be the cone spanned by the columns of 'proj' with index not
+   # in the cone a divisor is nef if it lies in all cones C_i
+   #
+   # Probably not the most efficient algorithm: involves several ch
+   # computations maybe better approach: 
+   # Use that a divisor ''D'' is nef if and only if its intersection with all
+   # T-invariant curves is non-negative i.e. in the polytope ''P_D'' all edge
+   # lengths of edges defined by codim(1)-faces of ''F'' must be non-negative
+   rule NEF_CONE.INEQUALITIES, NEF_CONE.EQUATIONS : MAXIMAL_CONES, RATIONAL_DIVISOR_CLASS_GROUP.PROJECTION {
+      $this->NEF_CONE = List::Util::reduce { 
+         polytope::intersection($a,$b)
+      } map { 
+         new polytope::Cone(INPUT_RAYS=>$this->RATIONAL_DIVISOR_CLASS_GROUP->PROJECTION->minor(~$_,All))
+      } @{$this->MAXIMAL_CONES}
+   }
+   precondition : COMPLETE; 
+   precondition : POINTED;
+   precondition : FAN_AMBIENT_DIM {$this->FAN_AMBIENT_DIM > 0};
+
+
+  # dualize a cone
+  rule MORI_CONE.RAYS, MORI_CONE.LINEALITY_SPACE : NEF_CONE.FACETS, NEF_CONE.LINEAR_SPAN {
+    $this->MORI_CONE->RAYS = $this->NEF_CONE->FACETS;
+    $this->MORI_CONE->LINEALITY_SPACE =  $this->NEF_CONE->LINEAR_SPAN;
+  }
+  precondition : COMPLETE; 
+
+}

@@ -33,7 +33,7 @@ solid Default
 
   for (my $f=0; $f<$n_facets; ++$f) {
     # facet normals pointing outwards
-    my $facet_normal=new Vector<Float>(-$self->FACETS->[$f]->slice(1));
+    my $facet_normal=new Vector<Float>(-$self->FACETS->[$f]->slice(range_from(1)));
     # each facet needs to be triangulated
     my $vif=$self->VIF_CYCLIC_NORMAL->[$f];
     my $k=$vif->size();

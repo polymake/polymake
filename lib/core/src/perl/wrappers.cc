@@ -20,78 +20,58 @@
 
 namespace pm { namespace perl {
 
-namespace {
-
-inline
-SV* register_function(pTHX_ SV* wrap_sv, SV* func_ptr_sv, SV* name_sv, SV* file_sv, SV* arg_types, SV* cross_apps)
+void FunctionWrapperBase::register_it(bool is_template,
+                                      wrapper_type wrapper, const AnyString& uniq_name, const AnyString& cpperl_file, int inst_num,
+                                      SV* arg_types, SV* cross_apps, type_reg_fn_type result_type_reg) const
 {
-   AV* const descr=newAV();
+   // FIXME: arg_types and cross_apps may be created by ArrayHolder which does not own the SV, and this is bad design.
+   // When that's fixed, refcounts of both must be incremented here.
+
+   dTHX;
+   AV* const descr = newAV();
    av_fill(descr, glue::FuncDescr_fill);
-   SV** array=AvARRAY(descr);
-   *array++=wrap_sv;
-   *array++=func_ptr_sv;
-   *array++=name_sv;
-   *array++=file_sv;
-   *array++=SvREFCNT_inc_simple_NN(arg_types);
-   if (cross_apps) *array=cross_apps;
-   return sv_bless(newRV_noinc((SV*)descr), glue::FuncDescr_stash);
+   AvFILLp(descr) = glue::FuncDescr_fill_visible;
+   SV** const descr_array = AvARRAY(descr);
+   SV* descr_ref=sv_bless(newRV_noinc((SV*)descr), glue::FuncDescr_stash);
+
+   descr_array[glue::FuncDescr_arg_types_index] = arg_types;   // for regular functions: number of arguments
+   descr_array[glue::FuncDescr_wrapper_index] = reinterpret_cast<SV*>(wrapper);
+   descr_array[glue::FuncDescr_return_type_reg_index] = reinterpret_cast<SV*>(result_type_reg);
+
+   if (is_template) {
+      descr_array[glue::FuncDescr_name_index] = Scalar::const_string(uniq_name.ptr, uniq_name.len);
+      descr_array[glue::FuncDescr_cpperl_file_index] = Scalar::const_string_with_int(cpperl_file.ptr, cpperl_file.len, inst_num);
+      if (cross_apps)
+         descr_array[glue::FuncDescr_cross_apps_index] = cross_apps;
+
+      AV* const functions = (AV*)queue;
+      av_push(functions, descr_ref);
+   } else {
+      AV* const regular_functions = (AV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_regular_functions_index]);
+      av_push(regular_functions, descr_ref);
+      const int index=AvFILLp(regular_functions);
+
+      AV* const embedded_rules = (AV*)queue;
+      av_push(embedded_rules, newSVpv(cpperl_file.ptr, cpperl_file.len));   // source line
+      av_push(embedded_rules, newSVpvf(uniq_name.ptr, index));
+   }
 }
 
-inline
-SV* pointer_as_const_string(char* p)
-{
-   SV* sv=Scalar::const_string(p, sizeof(p));
-   SvFLAGS(sv) &= ~SVf_POK;
-   return sv;
-}
-
-}
-
-void FunctionTemplateBase::register_it(wrapper_type wrapper, const AnyString& sig, const AnyString& file, int line,
-                                       SV* arg_types, SV* cross_apps) const
-{
-   dTHX;
-   SV* const wrap_sv=wrapper ? pointer_as_const_string(reinterpret_cast<char*>(wrapper)) : &PL_sv_undef;
-   SV* const file_sv= file ? Scalar::const_string_with_int(file.ptr, file.len, line) : &PL_sv_undef;
-   SV* descr=register_function(aTHX_ wrap_sv, newSViv(-1), newSVpvn(sig.ptr, sig.len),
-                               file_sv, arg_types, cross_apps);
-   AV* functions=(AV*)queue;
-   av_push(functions, descr);
-}
-
-void RegularFunctionBase::register_it(const AnyString& file, int line, const char* text,
-                                      indirect_wrapper_type get_flags_ptr, SV* arg_types, void* func_ptr, const char* func_ptr_type) const
-{
-   dTHX;
-   SV* descr=register_function(aTHX_ pointer_as_const_string(reinterpret_cast<char*>(get_flags_ptr)),
-                               Scalar::const_string_with_int(reinterpret_cast<char*>(func_ptr), -1),
-                               Scalar::const_string(func_ptr_type),
-                               Scalar::const_string_with_int(file.ptr, file.len, line), arg_types, nullptr);
-
-   AV* const regular_functions=(AV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_regular_functions_index]);
-   av_push(regular_functions, descr);
-   const int index=AvFILLp(regular_functions);
-
-   AV* embedded_rules=(AV*)queue;
-   av_push(embedded_rules, newSVpvf("#line %d \"%s\"\n", line, file.ptr));
-   av_push(embedded_rules, newSVpvf(text, index));
-}
-
-void EmbeddedRule::add__me(const AnyString& file, int line, const AnyString& text) const
+void EmbeddedRule::add__me(const AnyString& text, const AnyString& source_line) const
 {
    dTHX;
    AV* embedded_rules=(AV*)queue;
-   av_push(embedded_rules, newSVpvf("#line %d \"%s\"\n", line, file.ptr));
+   av_push(embedded_rules, newSVpv(source_line.ptr, source_line.len));
    av_push(embedded_rules, newSVpv(text.ptr, text.len));
 }
 
 AnyString class_with_prescribed_pkg(nullptr, 1);
 AnyString relative_of_known_class(nullptr, 0);
 
-SV* ClassRegistratorBase::register_class(const AnyString& name, const AnyString& file, int line,
-                                         SV* someref,
+SV* ClassRegistratorBase::register_class(const AnyString& name, const AnyString& cpperl_file, int inst_num,
+                                         SV* someref, SV* generated_by,
                                          const char* typeid_name,
-                                         bool is_mutable, class_kind kind,
+                                         bool is_mutable, ClassFlags class_flags,
                                          SV* vtbl_sv)
 {
    dTHX;
@@ -104,13 +84,17 @@ SV* ClassRegistratorBase::register_class(const AnyString& name, const AnyString&
    SV* const descr_ref=*hv_fetch((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_typeids_index]), typeid_name, typeid_len, true);
    if (SvOK(descr_ref)) {
       // already exists; someref -> list of duplicate classes
-      if (!name.ptr) Perl_croak(aTHX_ "internal error: duplicate call of register_class for an undeclared type");
+      if (!name.ptr)
+         Perl_croak(aTHX_ "internal error: duplicate call of register_class for an undeclared type");
+      if (!cpperl_file.ptr)
+         Perl_croak(aTHX_ "multiple definition of an opaque class %.*s", (int)name.len, name.ptr);
       assert(SvTYPE(someref)==SVt_PVAV);
       SV* const dup_ref=newRV_noinc((SV*)descr);
       sv_bless(dup_ref, glue::TypeDescr_stash);
 
-      descr_array[glue::TypeDescr_pkg_index]=Scalar::const_string(name.ptr, name.len);
-      descr_array[glue::TypeDescr_vtbl_index]=Scalar::const_string_with_int(file.ptr, file.len, line);
+      AV* orig_descr=(AV*)SvRV(descr_ref);
+      descr_array[glue::TypeDescr_pkg_index]=SvREFCNT_inc_simple_NN(AvARRAY(orig_descr)[glue::TypeDescr_pkg_index]);
+      descr_array[glue::TypeDescr_cpperl_file_index]=Scalar::const_string_with_int(cpperl_file.ptr, cpperl_file.len, inst_num);
       av_push((AV*)someref, dup_ref);
       return descr_ref;
    }
@@ -120,34 +104,34 @@ SV* ClassRegistratorBase::register_class(const AnyString& name, const AnyString&
    SvROK_on(descr_ref);
    sv_bless(descr_ref, glue::TypeDescr_stash);
 
-   glue::base_vtbl* const vtbl=reinterpret_cast<glue::base_vtbl*>(SvPVX(vtbl_sv));
-   SV* const typeid_sv=Scalar::const_string_with_int(typeid_name, typeid_len, !is_mutable);
-   vtbl->typeid_name_sv=typeid_sv;
-   vtbl->const_typeid_name_sv= is_mutable ? Scalar::const_string_with_int(typeid_name, typeid_len, 1) : typeid_sv;
-   vtbl->flags=kind;
+   glue::base_vtbl* const vtbl = reinterpret_cast<glue::base_vtbl*>(SvPVX(vtbl_sv));
+   vtbl->const_ref_typeid_name_sv = Scalar::const_string_with_int(typeid_name, typeid_len, arg_is_const_ref);
+   vtbl->mutable_ref_typeid_name_sv = is_mutable ? Scalar::const_string_with_int(typeid_name, typeid_len, arg_is_lval_ref) : vtbl->const_ref_typeid_name_sv;
+   vtbl->typeid_name_sv = Scalar::const_string_with_int(typeid_name, typeid_len, arg_is_univ_ref);
+   vtbl->flags = class_flags;
 
    HV* stash=nullptr;
-   SV* generated_by=PmEmptyArraySlot;
 
    if (name) {
       // a known persistent class declared in the rules or an instance of a declared class template used in the rules
       stash=gv_stashpvn(name.ptr, name.len, TRUE);
-      (void)hv_store((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_classes_index]), name.ptr, name.len, newRV((SV*)descr), 0);
-      vtbl->flags |= class_is_declared;
+      (void)hv_store((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_type_descr_index]), name.ptr, name.len, newRV((SV*)descr), 0);
+      vtbl->flags |= ClassFlags::is_declared;
+      if (generated_by)
+         Perl_croak(aTHX_ "internal error: wrong call of register_class");
+      generated_by=PmEmptyArraySlot;
 
    } else if (name.len) {
-      // a member of an abstract class family with prescribed perl package name; someref -> PropertyType
       if (SvROK(someref)) {
+         // a member of an abstract class family with prescribed perl package name; someref -> PropertyType
          AV* const proto=(AV*)SvRV(someref);
          SV* const pkg=AvARRAY(proto)[glue::PropertyType_pkg_index];
-         size_t namelen;
-         const char* name=SvPV(pkg, namelen);
-         stash=gv_stashpvn(name, namelen, true);
-         (void)hv_store((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_classes_index]), name, namelen, newRV((SV*)descr), 0);
-         vtbl->flags |= class_is_declared;
-         // prescribed package can only appear in the context of an auto-function, no container access method or such
-         generated_by= SvROK(glue::cur_wrapper_cv) ? SvREFCNT_inc_simple_NN(glue::cur_wrapper_cv)
-                                                   : newRV((SV*)CvXSUBANY(glue::cur_wrapper_cv).any_ptr);
+         size_t pkgnamelen;
+         const char* pkgname=SvPV(pkg, pkgnamelen);
+         stash = gv_stashpvn(pkgname, pkgnamelen, true);
+         // (void)hv_store((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_type_descr_index]), pkgname, pkgnamelen, newRV((SV*)descr), 0);
+         vtbl->flags |= ClassFlags::is_declared;
+         SvREFCNT_inc_simple_void_NN(generated_by);
       } else {
          Perl_croak(aTHX_ "internal error: wrong call of register_class");
       }
@@ -158,34 +142,37 @@ SV* ClassRegistratorBase::register_class(const AnyString& name, const AnyString&
          Perl_croak(aTHX_ "internal error: wrong call of register_class");
       AV* const proto=(AV*)SvRV(someref);
       SV* const pkg=AvARRAY(proto)[glue::PropertyType_pkg_index];
-      size_t namelen;
-      const char* name=SvPV(pkg, namelen);
-      stash=gv_stashpvn(name, namelen, false);
-      if (glue::cur_class_vtbl)
+      size_t pkgnamelen;
+      const char* pkgname=SvPV(pkg, pkgnamelen);
+      stash = gv_stashpvn(pkgname, pkgnamelen, false);
+      if (generated_by)
+         SvREFCNT_inc_simple_void_NN(generated_by);
+      else if (glue::cur_class_vtbl)
          generated_by=newSVsv(glue::cur_class_vtbl->typeid_name_sv);
       else if (glue::cur_wrapper_cv)
          generated_by=newRV((SV*)CvXSUBANY(glue::cur_wrapper_cv).any_ptr);
-      // else
-      // non-declared class created in an external application: currently don't know how to handle this case
+      else
+         // non-declared class created in an external application: currently don't know how to handle this case
+         generated_by=PmEmptyArraySlot;
    }
 
-   if ((kind & class_is_kind_mask)==class_is_container) {
+   if ((class_flags & ClassFlags::kind_mask)==ClassFlags::is_container) {
       glue::container_vtbl* const t=static_cast<glue::container_vtbl*>(vtbl);
-      if (kind & class_is_assoc_container) {
+      if (class_flags * ClassFlags::is_assoc_container) {
          t->assoc_methods=(AV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_auto_assoc_methods_index]);
-         t->std.svt_free     =&glue::destroy_canned_assoc_container;
-         t->std.svt_copy     =&glue::canned_assoc_container_access;
-         t->std.svt_clear    =&glue::clear_canned_assoc_container;
-         t->sv_maker         =&glue::create_assoc_container_magic_sv;
-         t->sv_cloner        =&glue::clone_assoc_container_magic_sv;
+         t->svt_free     =&glue::destroy_canned_assoc_container;
+         t->svt_copy     =&glue::canned_assoc_container_access;
+         t->svt_clear    =&glue::clear_canned_assoc_container;
+         t->sv_maker     =&glue::create_assoc_container_magic_sv;
+         t->sv_cloner    =&glue::clone_assoc_container_magic_sv;
       } else {
-         if (kind & class_is_set)
+         if (class_flags * ClassFlags::is_set)
             t->assoc_methods=(AV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_auto_set_methods_index]);
-         t->std.svt_copy     =&glue::canned_container_access;
-         t->std.svt_clear    =&glue::clear_canned_container;
-         t->sv_maker         =&glue::create_container_magic_sv;
-         t->sv_cloner        =&glue::clone_container_magic_sv;
-         if (vtbl->flags & class_is_declared) {
+         t->svt_copy     =&glue::canned_container_access;
+         t->svt_clear    =&glue::clear_canned_container;
+         t->sv_maker     =&glue::create_container_magic_sv;
+         t->sv_cloner    =&glue::clone_container_magic_sv;
+         if (vtbl->flags * ClassFlags::is_declared) {
             GV *neg_ind_gv=(GV*)HeVAL(hv_fetch_ent(stash, glue::negative_indices_key, true, SvSHARED_HASH(glue::negative_indices_key)));
             if (SvTYPE(neg_ind_gv) != SVt_PVGV)
                gv_init_pvn(neg_ind_gv, stash, SvPVX(glue::negative_indices_key), SvCUR(glue::negative_indices_key), GV_ADDMULTI);
@@ -196,7 +183,9 @@ SV* ClassRegistratorBase::register_class(const AnyString& name, const AnyString&
 
    descr_array[glue::TypeDescr_pkg_index]=newRV((SV*)stash);
    descr_array[glue::TypeDescr_vtbl_index]=vtbl_sv;
-   descr_array[glue::TypeDescr_typeid_index]=typeid_sv;
+   if (cpperl_file)
+      descr_array[glue::TypeDescr_cpperl_file_index]=Scalar::const_string_with_int(cpperl_file.ptr, cpperl_file.len, inst_num);
+   descr_array[glue::TypeDescr_typeid_index]=vtbl->const_ref_typeid_name_sv;
    descr_array[glue::TypeDescr_generated_by_index]=generated_by;
 
    SvREFCNT_inc_simple_void_NN(vtbl_sv);       // let it survive all objects pointing to it via magic
@@ -213,7 +202,6 @@ void ClassTemplate::add__me(const AnyString& name)
 namespace {
 
 template <typename vtbl_type>
-inline
 SV* allocate_vtbl(vtbl_type*& t, STRLEN size=0)
 {
    dTHX;
@@ -245,11 +233,11 @@ SV* ClassRegistratorBase::create_builtin_vtbl(
    t->obj_dimension    =0;
    t->copy_constructor =copy_constructor;
    t->assignment       =assignment;
-   t->std.svt_free     =&glue::destroy_canned;
+   t->svt_free         =&glue::destroy_canned;
    if (primitive_lvalue) {
-      t->std.svt_set   =&glue::assigned_to_primitive_lvalue;
+      t->svt_set       =&glue::assigned_to_primitive_lvalue;
    } else {
-      t->std.svt_dup   =&glue::canned_dup;
+      t->svt_dup       =&glue::canned_dup;
       t->destructor    =destructor;
       t->sv_maker      =&glue::create_builtin_magic_sv;
       t->sv_cloner     =&glue::clone_builtin_magic_sv;
@@ -272,8 +260,8 @@ SV* ClassRegistratorBase::create_scalar_vtbl(
 {
    glue::scalar_vtbl* t;
    SV* vtbl=allocate_vtbl(t);
-   t->std.svt_free            =&glue::destroy_canned;
-   t->std.svt_dup             =&glue::canned_dup;
+   t->svt_free                =&glue::destroy_canned;
+   t->svt_dup                 =&glue::canned_dup;
    t->type                    =&type;
    t->obj_size                =obj_size;
    t->obj_dimension           =0;
@@ -291,6 +279,7 @@ SV* ClassRegistratorBase::create_scalar_vtbl(
    return vtbl;
 }
 
+
 SV* ClassRegistratorBase::create_opaque_vtbl(
    const std::type_info& type,
    size_t obj_size,
@@ -304,8 +293,8 @@ SV* ClassRegistratorBase::create_opaque_vtbl(
 {
    glue::common_vtbl* t;
    SV* vtbl=allocate_vtbl(t);
-   t->std.svt_free            =&glue::destroy_canned;
-   t->std.svt_dup             =&glue::canned_dup;
+   t->svt_free                =&glue::destroy_canned;
+   t->svt_dup                 =&glue::canned_dup;
    t->type                    =&type;
    t->obj_size                =obj_size;
    t->obj_dimension           =0;
@@ -333,8 +322,8 @@ SV* ClassRegistratorBase::create_iterator_vtbl(
 {
    glue::iterator_vtbl* t;
    SV* vtbl=allocate_vtbl(t);
-   t->std.svt_free     =&glue::destroy_canned;
-   t->std.svt_dup      =&glue::canned_dup;
+   t->svt_free         =&glue::destroy_canned;
+   t->svt_dup          =&glue::canned_dup;
    t->type             =&type;
    t->obj_size         =obj_size;
    t->obj_dimension    =0;
@@ -369,9 +358,9 @@ SV* ClassRegistratorBase::create_container_vtbl(
 {
    glue::container_vtbl* t;
    SV* vtbl=allocate_vtbl(t);
-   t->std.svt_len             =&glue::canned_container_size;
-   t->std.svt_free            =&glue::destroy_canned_container;
-   t->std.svt_dup             =&glue::canned_dup;
+   t->svt_len                 =&glue::canned_container_size;
+   t->svt_free                =&glue::destroy_canned_container;
+   t->svt_dup                 =&glue::canned_dup;
    t->type                    =&type;
    t->obj_size                =obj_size;
    t->obj_dimension           =total_dimension;
@@ -446,10 +435,10 @@ SV* ClassRegistratorBase::create_composite_vtbl(
 {
    glue::composite_vtbl* t;
    SV* vtbl=allocate_vtbl(t, (n_members-1)*sizeof(t->acc));
-   t->std.svt_len             =&glue::canned_composite_size;
-   t->std.svt_copy            =&glue::canned_composite_access;
-   t->std.svt_free            =&glue::destroy_canned;
-   t->std.svt_dup             =&glue::canned_dup;
+   t->svt_len                 =&glue::canned_composite_size;
+   t->svt_copy                =&glue::canned_composite_access;
+   t->svt_free                =&glue::destroy_canned;
+   t->svt_dup                 =&glue::canned_dup;
    t->type                    =&type;
    t->obj_size                =obj_size;
    t->obj_dimension           =obj_dimension;
@@ -473,7 +462,7 @@ SV* ClassRegistratorBase::create_composite_vtbl(
 SV* Unprintable::impl(const char*)
 {
    Value v;
-   v.put("<UNPRINTABLE OBJECT>", 0);
+   v.put("<UNPRINTABLE OBJECT>");
    return v.get_temp();
 }
 
@@ -481,7 +470,7 @@ RegistratorQueue::RegistratorQueue(const AnyString& name, Kind kind)
 {
    dTHX;
    queue=(SV*)newAV();
-   (void)hv_store((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[kind]), name.ptr, name.len, newRV_noinc(queue), 0);
+   (void)hv_store((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[static_cast<int>(kind)]), name.ptr, name.len, newRV_noinc(queue), 0);
 }
 
 } }

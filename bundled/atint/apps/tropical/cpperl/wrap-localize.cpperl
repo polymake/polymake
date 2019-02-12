@@ -1,0 +1,11 @@
+{"app": "tropical", "embed": "localize.cc",
+ "inst": [
+  {"args": ["Max", "void", "void"], "func": "local_restrict", "include": ["polymake/TropicalNumber.h"], "sig": "local_restrict:T1.B.x", "tp": "1"},
+  {"args": ["Min", "void", "void"], "func": "local_restrict", "include": ["polymake/TropicalNumber.h"], "sig": "local_restrict:T1.B.x", "tp": "1"},
+  {"args": ["Max", "void", "void"], "func": "local_point", "include": ["polymake/TropicalNumber.h"], "sig": "local_point:T1.B.x", "tp": "1"},
+  {"args": ["Min", "void", "void"], "func": "local_point", "include": ["polymake/TropicalNumber.h"], "sig": "local_point:T1.B.x", "tp": "1"},
+  {"args": ["Max", "void", "void"], "func": "local_vertex", "include": ["polymake/TropicalNumber.h"], "sig": "local_vertex:T1.B.x", "tp": "1"},
+  {"args": ["Min", "void", "void"], "func": "local_vertex", "include": ["polymake/TropicalNumber.h"], "sig": "local_vertex:T1.B.x", "tp": "1"},
+  {"args": ["Max", "void", "void"], "func": "local_codim_one", "include": ["polymake/TropicalNumber.h"], "sig": "local_codim_one:T1.B.x", "tp": "1"},
+ null ],
+"version": 3}

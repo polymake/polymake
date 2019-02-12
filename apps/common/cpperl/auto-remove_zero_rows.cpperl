@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Rational>&>"], "func": "remove_zero_rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "remove_zero_rows.X"},
+  {"args": ["perl::Canned<const pm::BlockMatrix<mlist<pm::RepeatedCol<pm::SameElementVector<pm::Rational const&> > const, pm::Matrix<pm::Rational> const&>, std::integral_constant<bool, false> >&>"], "func": "remove_zero_rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "remove_zero_rows.X"},
+ null ],
+"version": 3}

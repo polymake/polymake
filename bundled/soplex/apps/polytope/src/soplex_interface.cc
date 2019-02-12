@@ -24,9 +24,9 @@ namespace polymake { namespace polytope { namespace soplex_interface {
 
 
 /** This method uses the exact version of Soplex to solve the given LP. */
-solver::lp_solution
-solver::solve_lp(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations,
-                 const Vector<Rational>& Objective, bool maximize)
+LP_Solution<Rational>
+Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations,
+              const Vector<Rational>& Objective, bool maximize, const Set<int>& initial_basis) const
 {
    // create soplex instance
    soplex::SoPlex soplex;
@@ -44,17 +44,14 @@ solver::solve_lp(const Matrix<Rational>& Inequalities, const Matrix<Rational>& E
    // turn off output
    soplex.setIntParam(soplex::SoPlex::IntParam::VERBOSITY, soplex::SoPlex::VERBOSITY_ERROR);
 #if POLYMAKE_DEBUG
-   if ( debug_print )
-   {
+   if (debug_print) {
       soplex.setIntParam(soplex::SoPlex::IntParam::VERBOSITY, soplex::SoPlex::VERBOSITY_NORMAL);
    }
 #endif
 
    // set objective sense
-   if ( maximize )
-      soplex.setIntParam(soplex::SoPlex::IntParam::OBJSENSE, soplex::SoPlex::OBJSENSE_MAXIMIZE);
-   else
-      soplex.setIntParam(soplex::SoPlex::IntParam::OBJSENSE, soplex::SoPlex::OBJSENSE_MINIMIZE);
+   soplex.setIntParam(soplex::SoPlex::IntParam::OBJSENSE,
+                      maximize ? soplex::SoPlex::OBJSENSE_MAXIMIZE : soplex::SoPlex::OBJSENSE_MINIMIZE);
 
    // get value for infinity
    const double realinfty = soplex.realParam(soplex::SoPlex::RealParam::INFTY);
@@ -63,8 +60,7 @@ solver::solve_lp(const Matrix<Rational>& Inequalities, const Matrix<Rational>& E
 
    const int n(Inequalities.cols() - 1); // beware of leading constant term
 
-   if ( Equations.rows() > 0 && n != Equations.cols() - 1 )
-   {
+   if (Equations.rows() > 0 && n != Equations.cols() - 1) {
       throw std::runtime_error("Dimensions do not fit.\n");
    }
 
@@ -73,8 +69,7 @@ solver::solve_lp(const Matrix<Rational>& Inequalities, const Matrix<Rational>& E
    mpq_t* lower = new mpq_t [n];
    mpq_t* upper = new mpq_t [n];
 
-   for (int j = 0; j < n; ++j)
-   {
+   for (int j = 0; j < n; ++j) {
       mpq_init(obj[j]);
       mpq_set(obj[j], Objective[j+1].get_rep());
 
@@ -88,8 +83,7 @@ solver::solve_lp(const Matrix<Rational>& Inequalities, const Matrix<Rational>& E
    soplex.addColsRational(obj, lower, 0, 0, 0, 0, n, 0, upper);
 
    // free space
-   for (int j = 0; j < n; ++j)
-   {
+   for (int j = 0; j < n; ++j) {
       mpq_clear(lower[j]);
       mpq_clear(upper[j]);
       mpq_clear(obj[j]);
@@ -112,14 +106,11 @@ solver::solve_lp(const Matrix<Rational>& Inequalities, const Matrix<Rational>& E
    mpq_init(lhs);
 
    // create rows - inequalities
-   for (int i = 0; i < Inequalities.rows(); ++i)
-   {
+   for (int i = 0; i < Inequalities.rows(); ++i) {
       int cnt = 0;
-      for (int j = 0; j < n; ++j)
-      {
+      for (int j = 0; j < n; ++j) {
          Rational val = Inequalities(i,j+1);
-         if ( ! is_zero(val) )
-         {
+         if (!is_zero(val)) {
             mpq_set(rowValues[cnt], val.get_rep());
             rowIndices[cnt++] = j;
          }
@@ -133,14 +124,11 @@ solver::solve_lp(const Matrix<Rational>& Inequalities, const Matrix<Rational>& E
    }
 
    // create rows - equations
-   for (int i = 0; i < Equations.rows(); ++i)
-   {
+   for (int i = 0; i < Equations.rows(); ++i) {
       int cnt = 0;
-      for (int j = 0; j < n; ++j)
-      {
+      for (int j = 0; j < n; ++j) {
          Rational val = Equations(i,j+1);
-         if ( ! is_zero(val) )
-         {
+         if (!is_zero(val)) {
             // mpq_clear(obj[j]);
             mpq_set(rowValues[cnt], val.get_rep());
             rowIndices[cnt++] = j;
@@ -163,16 +151,14 @@ solver::solve_lp(const Matrix<Rational>& Inequalities, const Matrix<Rational>& E
    delete [] rowIndices;
 
 #if POLYMAKE_DEBUG
-   if ( debug_print )
-   {
+   if ( debug_print ) {
       std::cout << "Number of columns: " << soplex.numColsRational() << std::endl;
       std::cout << "Number of rows: " << soplex.numRowsRational() << std::endl;
    }
 #endif
 
    // add start basis
-   if ( ! initial_basis.empty() )
-   {
+   if (!initial_basis.empty()) {
       int m(Inequalities.rows() + Equations.rows());
 
       soplex::SPxSolver::VarStatus* rows = new soplex::SPxSolver::VarStatus [m];
@@ -186,10 +172,9 @@ solver::solve_lp(const Matrix<Rational>& Inequalities, const Matrix<Rational>& E
          rows[i] = soplex::SPxSolver::VarStatus::BASIC;
 
       int count = 0;
-      for (Entire< Set<int> >::const_iterator it = entire(initial_basis); ! it.at_end(); ++it)
-      {
-         rows[*it] = soplex::SPxSolver::VarStatus::ON_LOWER;
-         if ( ++count >= n )
+      for (const int i : initial_basis) {
+         rows[i] = soplex::SPxSolver::VarStatus::ON_LOWER;
+         if (++count >= n)
             break;
       }
       soplex.setBasis(rows, cols);
@@ -199,18 +184,18 @@ solver::solve_lp(const Matrix<Rational>& Inequalities, const Matrix<Rational>& E
    }
 
 #if POLYMAKE_DEBUG
-   if ( debug_print )
-   {
+   if (debug_print) {
       soplex.writeFileRational("debug.lp", 0, 0, 0);
       std::cout << "Wrote debug output of LP to 'debug.lp'." << std::endl;
    }
 #endif
 
-   // solves the LP
-   soplex::SPxSolver::Status status = soplex.solve();
+   LP_Solution<Rational> result;
 
-   switch ( status )
-   {
+   // solves the LP
+   const soplex::SPxSolver::Status status = soplex.solve();
+
+   switch (status) {
    case soplex::SPxSolver::ERROR:
    case soplex::SPxSolver::NO_RATIOTESTER:
    case soplex::SPxSolver::NO_PRICER:
@@ -233,6 +218,7 @@ solver::solve_lp(const Matrix<Rational>& Inequalities, const Matrix<Rational>& E
 
    case soplex::SPxSolver::OPTIMAL:
    {
+      result.status = LP_status::valid;
       // get solution
       auto soplexsol=std::make_unique<mpq_t[]>(n+1);
       for (int j = 0; j <= n; ++j)
@@ -241,30 +227,30 @@ solver::solve_lp(const Matrix<Rational>& Inequalities, const Matrix<Rational>& E
       soplex.getPrimalRational(&soplexsol[1], n);
 
       // convert to polymake rationals;
-      // add constant term from objective funtion
-      return lp_solution(Rational(std::move(soplex.objValueRational().getMpqRef())) + Objective[0],
-                         Vector<Rational>(n+1, enforce_movable_values(&soplexsol[0])));
+      // add constant term from objective function
+      result.objective_value = Rational(std::move(soplex.objValueRational().getMpqRef())) + Objective[0];
+      result.solution = Vector<Rational>(n+1, enforce_movable_values(&soplexsol[0]));
+      break;
    }
    case soplex::SPxSolver::UNBOUNDED:
-      throw unbounded();
+      result.status = LP_status::unbounded;
+      break;
 
    case soplex::SPxSolver::INFEASIBLE:
-      throw infeasible();
+      result.status = LP_status::infeasible;
+      break;
 
    case soplex::SPxSolver::INForUNBD:
       // not sure what to do ...
-      throw infeasible();
+      result.status = LP_status::infeasible;
+      break;
 
    default:
       throw std::runtime_error("Unknown error.");
    }
-}
 
-void solver::set_basis(const Set<int>& basis)
-{
-   initial_basis = basis;
+   return result;
 }
-
 
 } } }
 

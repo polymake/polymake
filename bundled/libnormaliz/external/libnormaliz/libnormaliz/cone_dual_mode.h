@@ -82,7 +82,7 @@ public:
     void select_HB(CandidateList<Integer>& Cand, size_t guaranteed_HB_deg, 
                                 CandidateList<Integer>& Irred, bool all_irreducible);
 
-    Cone_Dual_Mode(Matrix<Integer>& M, const vector<Integer>& Truncation);            //main constructor
+    Cone_Dual_Mode(Matrix<Integer>& M, const vector<Integer>& Truncation, bool keep_order);            //main constructor
 
 /*---------------------------------------------------------------------------
  *                      Data access

@@ -21,87 +21,59 @@
 #include <stdexcept>
 
 namespace pm {
-namespace virtuals {
+
+template <typename TypeList, typename heap_based=std::false_type>
+class type_union;
+
+namespace unions {
 
 struct empty_union_def {
-   using invalid_op_t = void (*)(char*, ...);
    static void invalid_op(char*, ...) __attribute__((noreturn));
-   static void trivial_op(char*);
-   static void trivial_op2(char*, const char*);
-   static invalid_op_t no_op() { return &invalid_op; }
+   static void trivial_op(char*, ...);
 };
 
-template <typename Definitions>
-class table {
-   using fpointer = typename Definitions::fpointer;
+template <typename TypeList, typename Operation>
+class Function
+   : public Function<typename mlist_wrap<TypeList>::type, Operation> {};
 
-   struct _impl {
-      static const int length=Definitions::length;
+template <typename... T, typename Operation>
+class Function<mlist<T...>, Operation> {
+   using fpointer = typename Operation::fpointer;
+   static constexpr int length = sizeof...(T);
 
-      template <int discr>
-      void init_impl(fpointer* ptr, int_constant<discr>)
-      {
-         *ptr=&Definitions::template defs<discr>::_do;
-         init_impl(ptr-1, int_constant<discr-1>());
-      }
-
-      void init_impl(fpointer* ptr, int_constant<-1>)
-      {
-         *ptr=reinterpret_cast<fpointer>(Definitions::no_op());
-      }
-
-      fpointer _table[length+1];
-
-      _impl() { init_impl(_table+length, int_constant<length-1>()); }
-   };
-
-   static _impl const vt;
+   static const fpointer table[length+1];
 public:
-   static fpointer call(int discr) { return vt._table[discr+1]; }
+   static fpointer get(int discr) { return table[discr+1]; }
 };
 
-template <typename Definitions>
-typename table<Definitions>::_impl const table<Definitions>::vt=typename table<Definitions>::_impl();
+template <typename... T, typename Operation>
+const typename Function<mlist<T...>, Operation>::fpointer
+Function<mlist<T...>, Operation>::table[] = { Operation::no_op(), &Operation::template execute<T>... };
 
-template <typename Mapping> struct mapping;
+template <typename TypeList1, typename TypeList2>
+class Mapping
+   : public Mapping<TypeList1, typename mlist_wrap<TypeList2>::type> {};
 
-template <typename Mapping, int pos, int last=list_length<Mapping>::value-1>
-struct mapping_impl : public mapping_impl<typename Mapping::tail, pos+1, last> {
-   template <typename> friend struct mapping;
-protected:
-   mapping_impl()
-   {
-      typedef typename Mapping::head head;
-      this->_table[pos]=head::value;
-   }
-};
-
-template <typename Mapping, int last>
-struct mapping_impl<Mapping, last, last> {
-   template <typename> friend struct mapping;
-protected:
-   int _table[last+1];
-   mapping_impl()
-   {
-      _table[last]=Mapping::value;
-   }
+template <typename TypeList1, typename... T>
+class Mapping<TypeList1, mlist<T...>> {
+   static const int table[sizeof...(T)];
 public:
-   int operator[] (int i) const { return _table[i]; }
+   static int get(int discr) { return table[discr]; }
 };
 
-template <typename Mapping>
-struct mapping {
-   static const mapping_impl<Mapping, 0> table;
-};
+template <typename TypeList1, typename... T>
+const int Mapping<TypeList1, mlist<T...>>::table[] = { mlist_find<TypeList1, T>::pos... };
 
-template <typename Mapping>
-mapping_impl<Mapping, 0> const mapping<Mapping>::table=mapping_impl<Mapping, 0>();
+template <typename T, typename Arg>
+using fits_as_init = bool_constant<(same_pure_type<T, Arg>::value &&
+                                    (!std::is_lvalue_reference<T>::value ||
+                                     (std::is_lvalue_reference<Arg>::value && is_const<T>::value >= is_const<Arg>::value)))>;
 
 template <typename T,
-          bool _is_mutable=is_mutable<T>::value,
-          bool _is_reference=attrib<T>::is_reference>
+          bool IsMutable=is_mutable<T>::value,
+          bool IsReference=std::is_reference<T>::value>
 struct basics {         // non-reference, const
-   typedef T type;
+   using type = T;
 
    static const type& get(const char* obj)
    {
@@ -114,9 +86,9 @@ struct basics {         // non-reference, const
    }
 
    template <typename Source>
-   static void construct(char* dst, const Source& src)
+   static void construct(char* dst, Source&& src)
    {
-      new(dst) type(src);
+      new(dst) type(std::forward<Source>(src));
    }
 
    static void destroy(char* obj)
@@ -127,9 +99,9 @@ struct basics {         // non-reference, const
 
 template <typename T>
 struct basics<T, false, true> { // reference, const
-   typedef typename deref<T>::type type;
+   using type = std::remove_reference_t<T>;
 
-   static const type& get(const char* obj)
+   static std::add_const_t<type>& get(const char* obj)
    {
       return **reinterpret_cast<const type* const*>(obj);
    }
@@ -150,198 +122,214 @@ struct basics<T, false, true> { // reference, const
 template <typename T>
 struct basics<T, true, false>   // non-reference, non-const
    : basics<T, false, false> {
-   typedef basics<T, false, false> read_only;
 
-   static typename read_only::type& get(char* obj)
+   static T& get(char* obj)
    {
-      return *reinterpret_cast<typename read_only::type*>(obj);
+      return *reinterpret_cast<T*>(obj);
    }
-   using read_only::get;
+   using basics<T, false, false>::get;
 };
 
 template <typename T>
 struct basics<T, true, true>    // reference, non-const
    : basics<T, false, true> {
-   typedef basics<T, false, true> read_only;
 
-   static typename read_only::type& get(char* obj)
+   static std::remove_reference_t<T>& get(char* obj)
    {
-      return **reinterpret_cast<typename read_only::type**>(obj);
+      return **reinterpret_cast<std::remove_reference_t<T>**>(obj);
    }
-   using read_only::get;
+   using basics<T, false, true>::get;
 };
 
-template <typename T>
-struct default_constructor {
-   static void _do(char* dst)
+template <typename F>
+struct for_defined_only {
+   using fpointer = F*;
+   static fpointer no_op()
+   {
+      return reinterpret_cast<fpointer>(&empty_union_def::invalid_op);
+   }
+};
+
+template <typename F>
+struct for_any_state {
+   using fpointer = F*;
+   static fpointer no_op()
+   {
+      return reinterpret_cast<fpointer>(&empty_union_def::trivial_op);
+   }
+};
+
+struct default_constructor : for_defined_only<void(char*)> {
+   template <typename T>
+   static void execute(char* dst)
    {
       basics<T>::construct_default(dst);
    }
 };
-template <typename T>
-struct copy_constructor {
-   static void _do(char* dst, const char* src)
+
+struct copy_constructor : for_any_state<void(char*, const char*)> {
+   template <typename T>
+   static void execute(char* dst, const char* src)
    {
       basics<T>::construct(dst, basics<T>::get(src));
    }
 };
-template <typename T>
-struct destructor {
-   static void _do(char* obj)
+
+struct move_constructor : for_any_state<void(char*, char*)> {
+   template <typename T>
+   static void execute(char* dst, char* src)
+   {
+      basics<T>::construct(dst, std::move(basics<T>::get(src)));
+   }
+};
+
+struct destructor : for_any_state<void(char*)> {
+   template <typename T>
+   static void execute(char* obj)
    {
       basics<T>::destroy(obj);
    }
 };
 
+template <typename T, typename TypeList,
+          bool is_possible = is_derived_from_instance_of<T, type_union>::value>
+struct is_smaller_union : std::false_type {};
+
+template <typename T, typename TypeList>
+struct is_smaller_union<T, TypeList, true> {
+   using type_list = typename mget_template_parameter<typename is_derived_from_instance_of<T, type_union>::instance_type, 0>::type;
+   static constexpr bool value = mlist_is_included<type_list, TypeList>::value && !std::is_same<type_list, TypeList>::value;
+};
+
+} // end namespace unions
+
+template <typename T>
+struct union_element_traits {
+   struct type {
+      using element_type = pure_type_t<T>;
+      static constexpr bool homogeneous = true;
+      static constexpr size_t size = std::is_reference<T>::value ? sizeof(element_type*) : sizeof(element_type);
+      static constexpr size_t alignment = std::is_reference<T>::value ? alignof(element_type*) : alignof(element_type);
+      static constexpr bool trivial_destructor = std::is_trivially_destructible<element_type>::value;
+   };
+};
+
+template <typename Traits1, typename Traits2>
+struct combine_union_traits {
+   struct type {
+      using element_type = typename Traits1::element_type;
+      static constexpr bool homogeneous = Traits2::homogeneous && isomorphic_types<element_type, typename Traits2::element_type>::value;
+      static constexpr size_t size = Traits1::size >= Traits2::size ? Traits1::size : Traits2::size;
+      static constexpr size_t alignment = Traits1::alignment >= Traits2::alignment ? Traits1::alignment : Traits2::alignment;
+      static constexpr bool trivial_destructor = Traits1::trivial_destructor && Traits2::trivial_destructor;
+   };
+};
+
 template <typename TypeList>
-struct type_union_functions {
-   template <int discr>
-   struct basics : virtuals::basics<typename n_th<TypeList,discr>::type> { };
-
-   struct length_def : empty_union_def {
-      static const int length=list_length<TypeList>::value;
-   };
-   struct default_constructor : length_def {
-      template <int discr> struct defs : virtuals::default_constructor<typename n_th<TypeList,discr>::type> { };
-      typedef void (*fpointer)(char*);
-   };
-   struct copy_constructor : length_def {
-      template <int discr> struct defs : virtuals::copy_constructor<typename n_th<TypeList,discr>::type> { };
-      typedef void (*fpointer)(char*, const char*);
-      static fpointer no_op() { return &empty_union_def::trivial_op2; }
-   };
-   struct destructor : length_def {
-      template <int discr> struct defs : virtuals::destructor<typename n_th<TypeList,discr>::type> { };
-      typedef void (*fpointer)(char*);
-      static fpointer no_op() { return &empty_union_def::trivial_op; }
-   };
-};
-} // end namespace virtuals
-
-template <typename Object>
-struct union_traits {
-   static const int size=attrib<Object>::is_reference ? sizeof(typename deref<Object>::type*)
-                                                      : sizeof(typename deref<Object>::type);
-
-   template <typename Object2>
-   struct isomorphic_types_helper
-      : isomorphic_types_deref<Object, Object2> {};
-
-   template <typename Head2, typename Tail2>
-   struct isomorphic_types_helper< cons<Head2, Tail2> > {
-      typedef isomorphic_types_helper<Head2> helper_for_head;
-      typedef isomorphic_types_helper<Tail2> helper_for_tail;
-      static const bool value = helper_for_head::value && helper_for_tail::value;
-      typedef typename std::is_same<typename helper_for_head::discriminant, typename helper_for_tail::discriminant>::type discriminant;
-   };
-};
-
-template <typename Head, typename Tail>
-struct union_traits< cons<Head, Tail> > {
-   typedef union_traits<Head> traits_head;
-   typedef union_traits<Tail> traits_tail;
-   static const int size= traits_head::size >= traits_tail::size ? traits_head::size : traits_tail::size;
-
-   template <typename Object2>
-   struct isomorphic_types_helper {
-      typedef typename traits_head::template isomorphic_types_helper<Object2> helper_for_head;
-      typedef typename traits_tail::template isomorphic_types_helper<Object2> helper_for_tail;
-      static const bool value = helper_for_head::value && helper_for_tail::value;
-      typedef typename std::is_same<typename helper_for_head::discriminant, typename helper_for_tail::discriminant>::type discriminant;
-   };
-};
+using union_traits = typename mlist_fold_transform<typename mlist_reverse<TypeList>::type, union_element_traits, combine_union_traits>::type;
 
 template <typename TypeList, bool heap_based>
-class type_union_base {
+class type_union_area {
 protected:
-   POLYMAKE_ALIGN(char area[union_traits<TypeList>::size], 8);
+   alignas(union_traits<TypeList>::alignment) char area[union_traits<TypeList>::size];
 };
 
 template <typename TypeList>
-class type_union_base<TypeList, true> {
+class type_union_area<TypeList, true> {
 protected:
-   char *area;
+   char* area;
 
-   type_union_base()
+   type_union_area()
       : area(new char[union_traits<TypeList>::size]) { }
 
-   ~type_union_base() { delete[] area; }
+   ~type_union_area() { delete[] area; }
 };
 
-template <typename TypeList, bool heap_based=false>
-class type_union : protected type_union_base<TypeList, heap_based> {
+template <typename TypeList, typename heap_based>
+class type_union : protected type_union_area<TypeList, heap_based::value> {
 protected:
    int discriminant;
-   typedef virtuals::type_union_functions<TypeList> Functions;
+
+   template <int discr>
+   using basics = unions::basics<typename mlist_at<TypeList, discr>::type>;
+
+   template <typename Operation>
+   using function = unions::Function<TypeList, Operation>;
+
+   template <typename Source>
+   using mapping = unions::Mapping<TypeList, typename unions::is_smaller_union<pure_type_t<Source>, TypeList>::type_list>;
+
+   void destroy(std::true_type) {}
+
+   void destroy(std::false_type)
+   {
+      function<unions::destructor>::get(discriminant)(this->area);
+   }
+
+   void destroy()
+   {
+      destroy(bool_constant<union_traits<TypeList>::trivial_destructor>());
+   }
 
    template <typename Source, int discr>
-   void init_from_value(const Source& src, int_constant<discr>)
+   void init_from_value(Source&& src, int_constant<discr>)
    {
-      discriminant=discr;
-      Functions::template basics<discr>::construct(this->area,src);
-   }
-
-   template <typename OtherList, bool other_heap>
-   void init_from_value(const type_union<OtherList,other_heap>& src, int_constant<-1>)
-   {
-      init_from_union(src, bool_constant<list_mapping<OtherList, TypeList>::mismatch>());
-   }
-
-   template <typename OtherList, bool other_heap>
-   void init_from_union(const type_union<OtherList,other_heap>& src, std::false_type)
-   {
-      discriminant=virtuals::mapping< typename list_mapping<OtherList, TypeList>::type >::table[src.discriminant];
-      virtuals::table<typename Functions::copy_constructor>::call(discriminant)(this->area,src.area);
+      discriminant = discr;
+      basics<discr>::construct(this->area, std::forward<Source>(src));
    }
 
    template <typename Source>
-   void init_impl(const Source& src, std::false_type)
+   std::enable_if_t<std::is_lvalue_reference<Source>::value && unions::is_smaller_union<pure_type_t<Source>, TypeList>::value>
+   init_from_value(Source&& src, int_constant<-1>)
    {
-      init_from_value(src, int_constant<list_search<TypeList, Source, identical_minus_const_ref>::pos>());
+      discriminant=mapping<Source>::get(src.discriminant);
+      function<unions::copy_constructor>::get(discriminant)(this->area, src.area);
    }
 
    template <typename Source>
-   void init_impl(const Source& src, std::true_type)
+   std::enable_if_t<!std::is_lvalue_reference<Source>::value && unions::is_smaller_union<pure_type_t<Source>, TypeList>::value>
+   init_from_value(Source&& src, int_constant<-1>)
+   {
+      discriminant=mapping<Source>::get(src.discriminant);
+      function<unions::move_constructor>::get(discriminant)(this->area, src.area);
+   }
+
+   template <typename Source>
+   void init_impl(Source&& src, std::false_type)
+   {
+      init_from_value(std::forward<Source>(src), int_constant<mlist_find_if<TypeList, unions::fits_as_init, Source>::pos>());
+   }
+
+   template <typename Source>
+   std::enable_if_t<std::is_lvalue_reference<Source>::value>
+   init_impl(Source&& src, std::true_type)
    {
       discriminant=src.discriminant;
-      virtuals::table<typename Functions::copy_constructor>::call(discriminant)(this->area,src.area);
-   }
-
-   template <typename Source, int discr>
-   void assign_value(const Source& src, int_constant<discr>)
-   {
-      virtuals::table<typename Functions::destructor>::call(discriminant)(this->area);
-      discriminant=discr;
-      Functions::template basics<discr>::construct(this->area,src);
-   }
-
-   template <typename OtherList, bool other_heap>
-   void assign_value(const type_union<OtherList,other_heap>& src, int_constant<-1>)
-   {
-      assign_union(src, bool_constant<list_mapping<OtherList, TypeList>::mismatch>());
-   }
-
-   template <typename OtherList, bool other_heap>
-   void assign_union(const type_union<OtherList,other_heap>& src, std::false_type)
-   {
-      const int discr=virtuals::mapping< typename list_mapping<OtherList, TypeList>::type >::table[src.discriminant];
-      virtuals::table<typename Functions::destructor>::call(discriminant)(this->area);
-      discriminant=discr;
-      virtuals::table<typename Functions::copy_constructor>::call(discriminant)(this->area,src.area);
+      function<unions::copy_constructor>::get(discriminant)(this->area, src.area);
    }
 
    template <typename Source>
-   void assign_impl(const Source& src, std::false_type)
+   std::enable_if_t<!std::is_lvalue_reference<Source>::value>
+   init_impl(Source&& src, std::true_type)
    {
-      assign_value(src, int_constant<list_search<TypeList, Source, identical_minus_const_ref>::pos>());
+      discriminant=src.discriminant;
+      function<unions::move_constructor>::get(discriminant)(this->area, src.area);
    }
 
    template <typename Source>
-   void assign_impl(const Source& src, std::true_type)
+   void assign_impl(Source&& src, std::false_type)
    {
-      virtuals::table<typename Functions::destructor>::call(discriminant)(this->area);
-      init_impl(src, std::true_type());
+      destroy();
+      init_from_value(std::forward<Source>(src), int_constant<mlist_find_if<TypeList, unions::fits_as_init, Source>::pos>());
    }
+
+   template <typename Source>
+   void assign_impl(Source&& src, std::true_type)
+   {
+      destroy();
+      init_impl(std::forward<Source>(src), std::true_type());
+   }
+
 public:
    type_union() : discriminant(-1) { }
 
@@ -350,28 +338,36 @@ public:
       init_impl(src, std::true_type());
    }
 
-   template <typename Source>
-   type_union(const Source& src)
+   type_union(type_union&& src)
    {
-      init_impl(src, is_derived_from<Source, type_union>());
+      init_impl(std::move(src), std::true_type());
    }
 
-   template <typename Source>
+   template <typename Source,
+             typename=std::enable_if_t<(is_derived_from<pure_type_t<Source>, type_union>::value ||
+                                        mlist_find_if<TypeList, unions::fits_as_init, Source>::value ||
+                                        unions::is_smaller_union<pure_type_t<Source>, TypeList>::value)>>
+   explicit type_union(Source&& src)
+   {
+      init_impl(std::forward<Source>(src), is_derived_from<pure_type_t<Source>, type_union>());
+   }
+
+   template <typename Source, typename=std::enable_if_t<mlist_find_if<TypeList, unions::fits_as_init, Source>::value>>
    Source* init()
    {
-      const int discr=list_search<TypeList, Source, std::is_same>::pos;
+      constexpr int discr=mlist_find_if<TypeList, unions::fits_as_init, Source>::pos;
       if (discriminant>=0) {
-         if (discriminant != discr) return 0;
+         if (discriminant != discr) return nullptr;
       } else {
          discriminant=discr;
-         Functions::template basics<discr>::construct_default(this->area);
+         basics<discr>::construct_default(this->area);
       }
-      return &Functions::template basics<discr>::get(this->area);
+      return &basics<discr>::get(this->area);
    }
 
    ~type_union()
    {
-      virtuals::table<typename Functions::destructor>::call(discriminant)(this->area);
+      destroy();
    }
 
    type_union& operator= (const type_union& src)
@@ -380,50 +376,64 @@ public:
       return *this;
    }
 
-   template <typename Source>
-   type_union& operator= (const Source& src)
+   type_union& operator= (type_union&& src)
    {
-      assign_impl(src, is_derived_from<Source, type_union>());
+      assign_impl(std::move(src), std::true_type());
       return *this;
    }
 
-   template <typename T>
-   T* as()
+   template <typename Source>
+   std::enable_if_t<(is_derived_from<pure_type_t<Source>, type_union>::value ||
+                     mlist_find_if<TypeList, unions::fits_as_init, Source>::value ||
+                     unions::is_smaller_union<pure_type_t<Source>, TypeList>::value), type_union&>
+   operator= (Source&& src)
    {
-      const int discr=list_search<TypeList, T, identical_minus_const_ref>::pos;
-      if (discriminant != discr) return 0;
-      return &Functions::template basics<discr>::get(this->area);
+      assign_impl(std::forward<Source>(src), is_derived_from<pure_type_t<Source>, type_union>());
+      return *this;
    }
 
-   template <typename T>
-   typename attrib<T>::plus_const* as() const
+   template <typename T, typename=std::enable_if_t<mlist_find_if<TypeList, same_pure_type, T>::value>>
+   T* as()
    {
-      const int discr=list_search<TypeList, T, identical_minus_const_ref>::pos;
-      if (discriminant != discr) return 0;
-      return &Functions::template basics<discr>::get(this->area);
+      constexpr int discr=mlist_find_if<TypeList, same_pure_type, T>::pos;
+      if (discriminant != discr) return nullptr;
+      return &basics<discr>::get(this->area);
+   }
+
+   template <typename T, typename=std::enable_if_t<mlist_find_if<TypeList, same_pure_type, T>::value>>
+   std::add_const_t<T>* as() const
+   {
+      constexpr int discr=mlist_find_if<TypeList, same_pure_type, T>::pos;
+      if (discriminant != discr) return nullptr;
+      return &basics<discr>::get(this->area);
    }
 
    int get_discriminant() const { return discriminant; }
    bool valid() const { return discriminant>=0; }
 
-   template <typename,bool> friend class type_union;
+   template <typename, typename> friend class type_union;
 };
 
-template <typename TypeList, bool heap_based, typename Object2>
-struct isomorphic_types< type_union<TypeList, heap_based>, Object2>
-   : union_traits<TypeList>::template isomorphic_types_helper<Object2> {};
+template <typename TypeList, typename heap_based, typename Object2>
+struct isomorphic_types<type_union<TypeList, heap_based>, Object2>
+   : std::conditional_t<union_traits<TypeList>::homogeneous, isomorphic_types<typename union_traits<TypeList>::element_type, Object2>, anisomorphic_types> {};
 
-template <typename Object1, typename TypeList, bool heap_based>
+template <typename Object1, typename TypeList, typename heap_based>
 struct isomorphic_types<Object1, type_union<TypeList, heap_based> >
-   : union_traits<TypeList>::template isomorphic_types_helper<Object1> {
-   typedef typename reverse_cons<typename union_traits<TypeList>::template isomorphic_types_helper<Object1>::discriminant>::type discriminant;
-};
+   : std::conditional_t<union_traits<TypeList>::homogeneous, isomorphic_types<Object1, typename union_traits<TypeList>::element_type>, anisomorphic_types> {};
 
-template <typename TypeList1, bool heap_based1, typename TypeList2, bool heap_based2>
+template <typename TypeList1, typename heap_based1, typename TypeList2, typename heap_based2>
 struct isomorphic_types< type_union<TypeList1, heap_based1>, type_union<TypeList2, heap_based2> >
-   : union_traits<TypeList1>::template isomorphic_types_helper<TypeList2> {};
+   : std::conditional_t<union_traits<TypeList1>::homogeneous && union_traits<TypeList2>::homogeneous,
+                        isomorphic_types<typename union_traits<TypeList1>::element_type, typename union_traits<TypeList2>::element_type>, anisomorphic_types> {};
 
 } // end namespace pm
+
+namespace polymake {
+
+using pm::type_union;
+
+}
 
 #endif // POLYMAKE_INTERNAL_TYPE_UNION_H
 

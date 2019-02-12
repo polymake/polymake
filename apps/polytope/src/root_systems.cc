@@ -19,8 +19,6 @@
 #include "polymake/QuadraticExtension.h"
 #include "polymake/polytope/simple_roots.h"
 #include "polymake/Set.h"
-#include "polymake/hash_map"
-#include "polymake/hash_set"
 #include "polymake/linalg.h"
 
 namespace polymake { namespace polytope {
@@ -283,11 +281,14 @@ SparseMatrix<QE> simple_roots_type_H4()
    */
    SparseMatrix<QE> R(4, 5);
    auto rit = rows(R).begin();
- 
-   SparseVector<QE> v(5);
-   v[1] = (1+tau)/2;
-   v[2] = v[3] = v[4] = (1-tau)/2;
-   *rit = v; ++rit;
+
+   {
+      SparseVector<QE> v(5);
+      v[1] = (1+tau)/2;
+      v[2] = v[3] = v[4] = (1-tau)/2;
+      *rit = v;
+      ++rit;
+   }
    for (int i=0; i<3; ++i, ++rit) {
       SparseVector<QE> v(5);
       v[i+1] = QE(-1, 0, 5);
@@ -299,51 +300,6 @@ SparseMatrix<QE> simple_roots_type_H4()
 
 namespace {
 
-template<typename E>
-perl::Object
-root_system_impl(const SparseMatrix<E>& simple_roots)
-{
-   hash_set<SparseVector<E>> R_old, R_new;
-   hash_map<SparseVector<E>,int> index_of;
-   int index(0);
-   for (; index < simple_roots.rows(); ++index) {
-      index_of[simple_roots.row(index)] = index;
-      R_new += simple_roots.row(index);
-   }
-
-   while (R_new != R_old) {
-      R_old = R_new;
-      for (const auto& r: R_old)
-         for (const auto& s: R_old)
-            R_new += reflect(s, r);
-   }
-   const int n = R_new.size();
-
-   SparseMatrix<E> V(n, simple_roots.cols());
-   for (const auto& r: Set<SparseVector<E>>(entire(R_new))) { // ensure canonical ordering of roots
-      if (!index_of.exists(r))
-         index_of[r] = index++;
-      V.row(index_of[r]) = r;
-   }
-   
-   Array<Array<int>> gens(simple_roots.rows());
-   for (int i=0; i<gens.size(); ++i) {
-      Array<int> gen(n);
-      const SparseVector<E> h(simple_roots.row(i));
-      for (int j=0; j<n; ++j)
-         gen[j] = index_of[reflect(SparseVector<E>(V.row(j)), h)];
-      gens[i] = gen;
-   }
-
-   perl::Object a("group::PermutationAction");
-   a.take("GENERATORS") << gens;
-   perl::Object g("group::Group");
-   g.take("VECTOR_ACTION") << a;
-   perl::Object R(perl::ObjectType::construct<E>("VectorConfiguration"));
-   R.take("VECTORS") << V;
-   R.take("GROUP") << g;
-   return R;
-}
 
 } // end anonymous namespace
 

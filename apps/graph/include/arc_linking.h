@@ -16,22 +16,22 @@
 
 #ifndef POLYMAKE_GRAPH_ARC_LINKING_H
 #define POLYMAKE_GRAPH_ARC_LINKING_H
-    
+
 #include "polymake/client.h"
 #include "polymake/Array.h"
 #include "polymake/Set.h"
 #include "polymake/Map.h"
 #include "polymake/Graph.h"
 #include <vector>
-  
+
 namespace polymake { namespace graph {
 
-      //The implementation is adapted from the dancing links implementation by 
+      //The implementation is adapted from the dancing links implementation by
       //Julian Pfeifle, https://github.com/julian-upc/2015-algorithms/tree/master/dancing_links/c%2B%2B
       //
-      //Donald E. Knuth, Dancing Links, arXiv:cs/0011047 
+      //Donald E. Knuth, Dancing Links, arXiv:cs/0011047
       //Donald E. Knuth, The Art of Computer Programming, Volume 4, Fascicle 4, 24-31, 2006, Pearson Education Inc.
-      
+
 
 
 
@@ -44,86 +44,86 @@ private:
    public:
       IncidenceCellBase* up;
       IncidenceCellBase* down;
-      int id;   
+      int id;
       int tip;
 
       IncidenceCellBase() {}
 
-      IncidenceCellBase(IncidenceCellBase* up,
-                     IncidenceCellBase* down,
-                     const int id,
-                     const int tip)
-         : up(up)
-         , down(down)
-         , id(id)
-         , tip(tip)
+      IncidenceCellBase(IncidenceCellBase* up_,
+                        IncidenceCellBase* down_,
+                        const int id_,
+                        const int tip_)
+         : up(up_)
+         , down(down_)
+         , id(id_)
+         , tip(tip_)
       {}
 
-      IncidenceCellBase(const int id, const int tip)
+      IncidenceCellBase(const int id_, const int tip_)
          : up(this)
          , down(this)
-         , id(id)
-         , tip(tip)
+         , id(id_)
+         , tip(tip_)
       {}
-  
-      IncidenceCellBase &operator=(const IncidenceCellBase&) = delete;
+
+      IncidenceCellBase(const IncidenceCellBase&) = delete;
+      IncidenceCellBase& operator=(const IncidenceCellBase&) = delete;
    };
-   
+
 public:
    class ColumnObject;
 
-   // Cells representing arcs 
+   // Cells representing arcs
    class IncidenceCell : public IncidenceCellBase {
       friend class ArcLinking;
    public:
       IncidenceCell* left;
       IncidenceCell* right;
       IncidenceCell* link;
-      
+
       ColumnObject* list_header;
 
       IncidenceCell() {}
 
-      IncidenceCell(IncidenceCell* left, 
-                    IncidenceCell* right, 
-                    IncidenceCellBase* up,
-                    IncidenceCellBase* down,
-                    ColumnObject* list_header,
-                    const int id,
-                    const int tip)
-         : IncidenceCellBase(up, down, id, tip)
-         , left(left)
-         , right(right)
+      IncidenceCell(IncidenceCell* left_,
+                    IncidenceCell* right_,
+                    IncidenceCellBase* up_,
+                    IncidenceCellBase* down_,
+                    ColumnObject* list_header_,
+                    const int id_,
+                    const int tip_)
+         : IncidenceCellBase(up_, down_, id_, tip_)
+         , left(left_)
+         , right(right_)
          , link(nullptr)
-         , list_header(list_header)
+         , list_header(list_header_)
       {}
-      
+
       IncidenceCell(const IncidenceCell&) = delete;
-  
       IncidenceCell &operator=(const IncidenceCell&) = delete;
    };
 
    // Bidirectional iterator traversing the IncidenceCells to which the ColumnObject points
    // While this iterator lives, changes to up and down pointers have to be made with caution (see definition of end()).
-   class ColumnIterator {  
+   class ColumnIterator {
       friend class ArcLinking;
    protected:
       const IncidenceCellBase& col;
       IncidenceCellBase* current;
-      
+
    public:
       typedef std::bidirectional_iterator_tag iterator_category;
-      typedef IncidenceCellBase* value_type;    
+      typedef IncidenceCellBase* value_type;
       typedef value_type& reference;
       typedef value_type* pointer;
       typedef ptrdiff_t difference_type;
 
       typedef ColumnIterator iterator;
-      
+
       ColumnIterator() = default;
-      
+
       ColumnIterator(ColumnObject& col_arg);
- 
+
       reference operator* () { return current; }
       pointer operator-> () { return &current; }
 
@@ -133,13 +133,13 @@ public:
          return *this;
       }
       const iterator operator++ (int) { iterator copy(*this);  operator++();  return copy; }
-      
+
       iterator& operator-- ()
       {
          current = current->up;
          return *this;
       }
-      
+
       const iterator operator-- (int) { iterator copy(*this);  operator--();  return copy; }
 
       bool operator== (const iterator& it) const
@@ -155,36 +155,36 @@ public:
       friend class ArcLinking;
    public:
       typedef ColumnIterator iterator;
-      
+
       ColumnObject* left;
-      ColumnObject* right; 
+      ColumnObject* right;
       int size;
-      ColumnObject(ColumnObject* left, 
-                   ColumnObject* right, 
-                   IncidenceCellBase* up,
-                   IncidenceCellBase* down,
-                   const int id)
-         : IncidenceCellBase(up, down, id, -1)
-         , left(left)
-         , right(right)
-         , size(0) 
+      ColumnObject(ColumnObject* left_,
+                   ColumnObject* right_,
+                   IncidenceCellBase* up_,
+                   IncidenceCellBase* down_,
+                   const int id_)
+         : IncidenceCellBase(up_, down_, id_, -1)
+         , left(left_)
+         , right(right_)
+         , size(0)
       {}
 
-      ColumnObject(const int id) 
-         : IncidenceCellBase(id, -1) 
+      ColumnObject(const int id_)
+         : IncidenceCellBase(id_, -1)
          , left(this)
          , right(this)
-         , size(0) 
+         , size(0)
       {}
-      
+
       ColumnObject(const ColumnObject&) = delete;
-  
+
       ColumnObject &operator=(const ColumnObject&) = delete;
-      
+
       iterator begin() { return iterator( *this ); }
-    
+
       iterator end() { return --iterator( *this ); }
-      
+
       iterator rbegin() { return ----iterator( *this ); }
 
       iterator rend() { return --iterator( *this ); }
@@ -195,33 +195,33 @@ private:
    int rows;
    Map<int, ColumnObject*> column_object_of_id;
 
-public:   
+public:
    ArcLinking()
       : h(new ColumnObject(-1))
       , rows(0)
-      , column_object_of_id() 
+      , column_object_of_id()
    {
       column_object_of_id[-1] = h;
    }
-   
+
    ArcLinking(const std::vector<int>& ids)
       : ArcLinking()
    {
       append_column_objects(ids);
    }
-   
+
    ArcLinking(int n) : ArcLinking()
-   { 
+   {
       std::vector<int> ids;
       for (int i = 0; i < n; ++i)
          ids.push_back(i);
       append_column_objects(ids);
    }
-      
+
    ArcLinking(const Graph<Undirected>& G, Array<IncidenceCell*>& a ) : ArcLinking(G.nodes())
-   { 
+   {
       int i = 0;
-      for (Entire<Edges<Graph<> > >::const_iterator eit = entire(edges(G)); !eit.at_end(); ++eit, ++i) {
+      for (auto eit = entire(edges(G)); !eit.at_end(); ++eit, ++i) {
          std::vector<std::tuple<int,int,int>> row;
          row.push_back(std::make_tuple(eit.to_node(),i,eit.from_node()));
          row.push_back(std::make_tuple(eit.from_node(),i,eit.to_node()));
@@ -230,7 +230,7 @@ public:
    }
 
    ArcLinking(const ArcLinking&) = delete;
-  
+
    ArcLinking &operator=(const ArcLinking&) = delete;
 
    //appends column objects to the right
@@ -256,7 +256,7 @@ public:
       left->right = x;
       ++h->size;
    }
-   
+
    //appends a row of IncidenceCells, where each tuple in the vector has the form <list_header,id,tip>
    IncidenceCell* append_row(const std::vector<std::tuple<int, int, int>>& elements) {
       auto eit = elements.cbegin();
@@ -275,8 +275,8 @@ public:
       while (++eit != elements.cend()) {
          ColumnObject* list_header = column_object_of_id[std::get<0>(*eit)];
          IncidenceCell* x = new IncidenceCell(
-            row_header->left, 
-            row_header, 
+            row_header->left,
+            row_header,
             list_header->up,
             list_header,
             list_header,
@@ -288,7 +288,7 @@ public:
       ++rows;
       return row_header;
    }
-   
+
    //before calling the destructor, the initial linking must be restored
    ~ArcLinking() {
       for (auto column_it = entire(column_object_of_id); !column_it.at_end(); ++column_it) {
@@ -298,72 +298,78 @@ public:
             next = current_cell->down;
             delete static_cast<IncidenceCell*>(current_cell);
             current_cell = next;
-         }  
+         }
          delete (*column_it).second;
       }
    }
 
-   ColumnObject* get_column_object(const int& i) {
+   ColumnObject* get_column_object(int i) const
+   {
       return column_object_of_id[i];
    }
-   
-   int get_rows() {
+
+   int get_rows() const
+   {
       return rows;
    }
 
-   pm::Set<int> ids_of_column(ColumnObject* c) {
-      pm::Set<int> ids;
+   static Set<int> ids_of_column(ColumnObject* c)
+   {
+      Set<int> ids;
       for (auto it = c->begin(); it != c->end(); ++it)
          ids += (*it)->id;
       return ids;
    }
-   
-   IncidenceCell* reverse(IncidenceCell* i) {
+
+   static IncidenceCell* reverse(IncidenceCell* i)
+   {
       return i->right;
    }
-   
-   void delete_incidenceCell(IncidenceCell* i) {
+
+   static void delete_incidenceCell(IncidenceCell* i)
+   {
       i->up->down = i->down;
       i->down->up = i->up;
       --i->list_header->size;
    }
-   
-   void undelete_incidenceCell(IncidenceCell* i) {
+
+   static void undelete_incidenceCell(IncidenceCell* i)
+   {
       i->up->down = i;
       i->down->up = i;
       ++i->list_header->size;
    }
-   
-   void delete_row_exclusive(IncidenceCell* r) 
+
+   static void delete_row_exclusive(IncidenceCell* r)
    {
       IncidenceCell* i = r->right;
       while (i != r) {
-         delete_incidenceCell(i);         
-         i = i->right;      
-      } 
+         delete_incidenceCell(i);
+         i = i->right;
+      }
    }
-   
-   void undelete_row_exclusive(IncidenceCell* r) 
+
+   static void undelete_row_exclusive(IncidenceCell* r)
    {
       IncidenceCell* i = r->left;
       while (i != r) {
          undelete_incidenceCell(i);
-         i = i->left;      
+         i = i->left;
       }
    }
-   
-   void delete_row(IncidenceCell* r) 
+
+   static void delete_row(IncidenceCell* r)
    {
       delete_incidenceCell(r);
-      delete_row_exclusive(r); 
+      delete_row_exclusive(r);
    }
-   
-   void undelete_row(IncidenceCell* r) 
+
+   static void undelete_row(IncidenceCell* r)
    {
-      undelete_row_exclusive(r); 
+      undelete_row_exclusive(r);
       undelete_incidenceCell(r);
    }
-   
+
    //deletes all arcs between u to v, bends all arcs with tip being u to v and hangs the list of u into v
    IncidenceCell* contract_edge(ColumnObject* u, ColumnObject* v) {
       IncidenceCell* g = 0;
@@ -372,26 +378,26 @@ public:
                delete_row(static_cast<IncidenceCell*>(*it));
                static_cast<IncidenceCell*>(*it)->link = g;
                g = static_cast<IncidenceCell*>(*it);
-         } 
-         else 
+         } else {
             reverse(static_cast<IncidenceCell*>(*it))->tip = v->id;
+         }
       }
       hang_in(u,v);
       return g;
    }
-   
+
    //reverts contract_edge()
    void expand_edge(ColumnObject* u, ColumnObject* v, IncidenceCell* l) {
       hang_out(u,v);
-      for (auto it = u->rbegin(); it != u->rend(); --it) { 
+      for (auto it = u->rbegin(); it != u->rend(); --it) {
          reverse(static_cast<IncidenceCell*>(*it))->tip = u->id;
-      }     
+      }
       while (l != nullptr) {
          undelete_row(reverse(l));
          l = l->link;
-      }     
+      }
    }
-   
+
    void hang_in(ColumnObject* a, ColumnObject* b) {
       a->up->down = b->down;
       b->down->up = a->up;
@@ -399,15 +405,15 @@ public:
       b->down = a->down;
       b->size += a->size;
    }
-   
+
    void hang_out(ColumnObject* a, ColumnObject* b) {
       b->down = a->up->down;
       b->down->up = b;
       a->up->down = a;
       a->down->up = a;
       b->size -= a->size;
-   } 
-   
+   }
+
    void cover_column(ColumnObject* c) {
       c->right->left = c->left;
       c->left->right = c->right;

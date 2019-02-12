@@ -411,12 +411,12 @@ struct dir_permute_entries {
 
    void operator()(ruler* Rold, ruler* R)
    {
-      inv_perm.resize(R->size(), -1);
+      inv_perm_store.resize(R->size(), -1);
       int nto=0;
       for (entry_t& entry : *R) {
          const int old_n=entry._in.line_index;
          if (old_n >= 0)
-            inv_perm[old_n]=nto;
+            inv_perm_store[old_n]=nto;
          ++nto;
       }
 
@@ -427,7 +427,7 @@ struct dir_permute_entries {
             entry._in.line_index=nto;
             for (auto e=(*Rold)[old_nto]._in.begin(); !e.at_end(); ++e) {
                Node* node=e.operator->();
-               const int old_nfrom=node->key-old_nto, nfrom=inv_perm[old_nfrom];
+               const int old_nfrom=node->key-old_nto, nfrom=inv_perm_store[old_nfrom];
                node->key=nfrom+nto;
                (*R)[nfrom]._out.push_back_node(node);
             }
@@ -468,7 +468,7 @@ struct dir_permute_entries {
       complete_in_trees(R_dst);
    }
 
-   std::vector<int> inv_perm;
+   std::vector<int> inv_perm_store;
    int* free_node_id_ptr;
 };
 
@@ -540,26 +540,31 @@ struct EdgeMapDenseBase : public EdgeMapBase {
    void **buckets;
    size_t n_alloc;
 
-   EdgeMapDenseBase() : buckets(0) {}
+   EdgeMapDenseBase() : buckets(nullptr) {}
+
    void alloc(size_t n)
    {
-      n_alloc=n;
-      buckets=new void*[n];
-      std::memset(buckets, 0, n*sizeof(void*));
+      n_alloc = n;
+      buckets = new void*[n];
+      std::fill_n(buckets, n, nullptr);
    }
    void realloc(size_t new_n_alloc)
    {
       if (new_n_alloc > n_alloc) {
-         void **old_buckets=buckets;
-         buckets=new void*[new_n_alloc];
-         std::memcpy(buckets, old_buckets, n_alloc*sizeof(void*));
-         std::memset(buckets+n_alloc, 0, (new_n_alloc-n_alloc)*sizeof(void*));
+         void** old_buckets = buckets;
+         buckets = new void*[new_n_alloc];
+         std::fill_n(std::copy(old_buckets, old_buckets + n_alloc, buckets), new_n_alloc - n_alloc, nullptr);
          delete[] old_buckets;
-         n_alloc=new_n_alloc;
+         n_alloc = new_n_alloc;
       }
    }
 
-   void destroy() { delete[] buckets; buckets=nullptr; n_alloc=0; }
+   void destroy()
+   {
+      delete[] buckets;
+      buckets = nullptr;
+      n_alloc = 0;
+   }
 };
 
 template <typename MapList>
@@ -647,13 +652,13 @@ public:
 
 protected:
    template <typename TSet>
-   static typename std::enable_if<check_container_feature<TSet, sparse_compatible>::value, int>::type
+   static std::enable_if_t<check_container_feature<TSet, sparse_compatible>::value, int>
    get_dim_of(const TSet& s)
    {
       return s.dim();
    }
    template <typename TSet>
-   static typename std::enable_if<!check_container_feature<TSet, sparse_compatible>::value, int>::type
+   static std::enable_if_t<!check_container_feature<TSet, sparse_compatible>::value, int>
    get_dim_of(const TSet& s)
    {
       return s.empty() ? 0 : s.back()+1;
@@ -987,7 +992,7 @@ public:
    {
       auto permuter=permute_entries(dir());
       R=ruler::permute(R, perm, permuter, _inverse());
-      for (auto& map : node_maps) map.permute_entries(permuter.inv_perm);
+      for (auto& map : node_maps) map.permute_entries(permuter.inv_perm_store);
    }
 
    template <typename TPerm, typename TInvPerm>
@@ -1228,7 +1233,7 @@ public:
    static const bool multigraph=Tree::allow_multiple;
 
    template <typename Input>
-   typename std::enable_if<!multigraph, typename mproject2nd<Input, void>::type>::type
+   std::enable_if_t<!multigraph, typename mproject2nd<Input, void>::type>
    read(Input& in)
    {
       typedef typename Input::template list_cursor< std::list<int> >::type cursor;
@@ -1238,7 +1243,7 @@ public:
    }
 
    template <typename Input>
-   typename std::enable_if<multigraph, typename mproject2nd<Input, void>::type>::type
+   std::enable_if_t<multigraph, typename mproject2nd<Input, void>::type>
    read(Input& in)
    {
       typedef typename Input::template list_cursor< SparseVector<int> >::type cursor;
@@ -1265,15 +1270,13 @@ public:
       return in.top();
    }
 
-   typedef typename std::conditional<multigraph,
+   using parallel_edge_iterator = std::conditional_t<multigraph,
                                      input_truncator<typename base_t::iterator, truncate_after_index>,
-                                     single_position_iterator<typename base_t::iterator> >::type
-      parallel_edge_iterator;
+                                     single_position_iterator<typename base_t::iterator> >;
 
-   typedef typename std::conditional<multigraph,
+   using parallel_edge_const_iterator = std::conditional_t<multigraph,
                                      input_truncator<typename base_t::const_iterator, truncate_after_index>,
-                                     single_position_iterator<typename base_t::const_iterator> >::type
-      parallel_edge_const_iterator;
+                                     single_position_iterator<typename base_t::const_iterator> >;
 
 private:
    parallel_edge_const_iterator all_edges_to(int n2, std::false_type) const
@@ -1360,18 +1363,18 @@ struct valid_node_selector {
       return t.get_line_index()>=0;
    }
 
-   typedef typename entry_type::out_tree_type out_tree_type;
-   typedef typename entry_type::in_tree_type in_tree_type;
-   typedef incident_edge_list<out_tree_type> out_edge_list;
-   typedef incident_edge_list<in_tree_type> in_edge_list;
-   typedef typename std::conditional<out_edge_list::multigraph, multi_adjacency_line<out_tree_type>, incidence_line<out_tree_type> >::type out_adjacent_node_list;
-   typedef typename std::conditional<out_edge_list::multigraph, multi_adjacency_line<in_tree_type>,  incidence_line<in_tree_type>  >::type in_adjacent_node_list;
-   typedef out_adjacent_node_list adjacent_node_list;
-   typedef typename inherit_ref<out_edge_list, EntryRef>::type out_edge_list_ref;
-   typedef typename inherit_ref<in_edge_list, EntryRef>::type in_edge_list_ref;
-   typedef typename inherit_ref<out_adjacent_node_list, EntryRef>::type out_adjacent_node_list_ref;
-   typedef typename inherit_ref<in_adjacent_node_list, EntryRef>::type in_adjacent_node_list_ref;
-   typedef out_adjacent_node_list_ref adjacent_node_list_ref;
+   using out_tree_type = typename entry_type::out_tree_type;
+   using in_tree_type = typename entry_type::in_tree_type;
+   using out_edge_list = incident_edge_list<out_tree_type>;
+   using in_edge_list = incident_edge_list<in_tree_type>;
+   using out_adjacent_node_list = std::conditional_t<out_edge_list::multigraph, multi_adjacency_line<out_tree_type>, incidence_line<out_tree_type>>;
+   using in_adjacent_node_list = std::conditional_t<out_edge_list::multigraph, multi_adjacency_line<in_tree_type>, incidence_line<in_tree_type>>;
+   using adjacent_node_list = out_adjacent_node_list;
+   using out_edge_list_ref = typename inherit_ref<out_edge_list, EntryRef>::type;
+   using in_edge_list_ref = typename inherit_ref<in_edge_list, EntryRef>::type;
+   using out_adjacent_node_list_ref = typename inherit_ref<out_adjacent_node_list, EntryRef>::type;
+   using in_adjacent_node_list_ref = typename inherit_ref<in_adjacent_node_list, EntryRef>::type;
+   using adjacent_node_list_ref = out_adjacent_node_list_ref;
 
    out_edge_list_ref out_edges(EntryRef t) const
    {
@@ -1606,9 +1609,8 @@ template <typename TOut_edges, template <typename> class MasqueradeLine, typenam
 class line_factory {
 public:
    typedef EntryRef argument_type;
-   typedef typename std::conditional<TOut_edges::value, typename deref<EntryRef>::type::out_tree_type,
-                                                        typename deref<EntryRef>::type::in_tree_type >::type
-      tree_type;
+   using tree_type = std::conditional_t<TOut_edges::value, typename deref<EntryRef>::type::out_tree_type,
+                                                           typename deref<EntryRef>::type::in_tree_type>;
    typedef typename inherit_ref<MasqueradeLine<tree_type>, EntryRef>::type result_type;
 
    result_type operator() (argument_type e) const
@@ -1672,7 +1674,7 @@ public:
 };
 
 template <typename TDir>
-template <bool for_copy> inline
+template <bool for_copy>
 void edge_agent<TDir>::init(Table<TDir>* t, bool_constant<for_copy>)
 {
    table=t;
@@ -1686,7 +1688,7 @@ void edge_agent<TDir>::init(Table<TDir>* t, bool_constant<for_copy>)
 }
 
 template <typename TDir>
-template <typename NumberConsumer> inline
+template <typename NumberConsumer>
 void edge_agent<TDir>::renumber(const NumberConsumer& nc)
 {
    int id=0;
@@ -1791,10 +1793,10 @@ public:
 
    template <typename TMatrix>
    explicit Graph(const GenericIncidenceMatrix<TMatrix>& m,
-                  typename std::enable_if<!TDir::multigraph, mlist<TMatrix>*>::type=nullptr)
+                  std::enable_if_t<!TDir::multigraph, mlist<TMatrix>**> =nullptr)
       : data(m.rows())
    {
-      if (POLYMAKE_DEBUG || !Unwary<TMatrix>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
          if (!TMatrix::is_symmetric && m.rows() != m.cols())
             throw std::runtime_error("Graph - non-quadratic source adjacency matrix");
       }
@@ -1932,7 +1934,7 @@ public:
 
    /// permute the nodes
    template <typename TPerm>
-   typename std::enable_if<isomorphic_to_container_of<TPerm, int>::value>::type
+   std::enable_if_t<isomorphic_to_container_of<TPerm, int>::value>
    permute_nodes(const TPerm& perm)
    {
       data->permute_nodes(perm, std::false_type());
@@ -1940,7 +1942,7 @@ public:
 
    /// inverse permutation of nodes
    template <typename TInvPerm>
-   typename std::enable_if<isomorphic_to_container_of<TInvPerm, int>::value>::type
+   std::enable_if_t<isomorphic_to_container_of<TInvPerm, int>::value>
    permute_inv_nodes(const TInvPerm& inv_perm)
    {
       data->permute_nodes(inv_perm, std::true_type());
@@ -1948,9 +1950,9 @@ public:
 
    /// permuted copy
    template <typename TPerm, typename TInvPerm>
-   typename std::enable_if<isomorphic_to_container_of<TPerm, int>::value &&
-                           isomorphic_to_container_of<TInvPerm, int>::value,
-                           Graph>::type
+   std::enable_if_t<isomorphic_to_container_of<TPerm, int>::value &&
+                    isomorphic_to_container_of<TInvPerm, int>::value,
+                    Graph>
    copy_permuted(const TPerm& perm, const TInvPerm& inv_perm) const
    {
       Graph result(dim());
@@ -1990,23 +1992,23 @@ public:
    typedef in_edge_list& in_edge_list_ref;
    typedef const in_edge_list& const_in_edge_list_ref;
 
-   typedef typename std::conditional<TDir::multigraph, typename edge_access<multi_adjacency_line>::out, typename edge_access<incidence_line>::out>::type adjacency_rows_container;
+   using adjacency_rows_container = std::conditional_t<TDir::multigraph, typename edge_access<multi_adjacency_line>::out, typename edge_access<incidence_line>::out>;
    typedef adjacency_rows_container& adjacency_rows_container_ref;
    typedef const adjacency_rows_container& const_adjacency_rows_container_ref;
 
-   typedef typename std::conditional<TDir::multigraph, typename edge_access<multi_adjacency_line>::in, typename edge_access<incidence_line>::in>::type adjacency_cols_container;
+   using adjacency_cols_container = std::conditional_t<TDir::multigraph, typename edge_access<multi_adjacency_line>::in, typename edge_access<incidence_line>::in>;
    typedef adjacency_cols_container& adjacency_cols_container_ref;
    typedef const adjacency_cols_container& const_adjacency_cols_container_ref;
 
    typedef typename adjacency_rows_container::value_type out_adjacent_node_list;
    typedef typename adjacency_cols_container::value_type in_adjacent_node_list;
-   typedef typename std::conditional<Graph::is_directed, nothing, out_adjacent_node_list>::type adjacent_node_list;
+   using adjacent_node_list = std::conditional_t<Graph::is_directed, nothing, out_adjacent_node_list>;
    typedef typename assign_const<out_adjacent_node_list, TDir::multigraph>::type& out_adjacent_node_list_ref;
    typedef const out_adjacent_node_list& const_out_adjacent_node_list_ref;
    typedef typename assign_const<in_adjacent_node_list, TDir::multigraph>::type& in_adjacent_node_list_ref;
    typedef const in_adjacent_node_list& const_in_adjacent_node_list_ref;
-   typedef typename std::conditional<Graph::is_directed, nothing, out_adjacent_node_list_ref>::type adjacent_node_list_ref;
-   typedef typename std::conditional<Graph::is_directed, nothing, const_out_adjacent_node_list_ref>::type const_adjacent_node_list_ref;
+   using adjacent_node_list_ref = std::conditional_t<Graph::is_directed, nothing, out_adjacent_node_list_ref>;
+   using const_adjacent_node_list_ref = std::conditional_t<Graph::is_directed, nothing, const_out_adjacent_node_list_ref>;
 
    template <typename MasqueradeRef>
    MasqueradeRef pretend()
@@ -2308,15 +2310,19 @@ public:
             construct_at(data+*it, dflt());
       }
 
-      void init(const E& val)
+      template <typename Init>
+      void init(const Init& val,
+                std::enable_if_t<can_initialize<Init, E>::value, void**> =nullptr)
       {
          for (auto it=entire(get_index_container()); !it.at_end(); ++it)
             construct_at(data+*it, val);
       }
 
       template <typename Iterator>
-      void init(Iterator src)
+      void init(Iterator&& src_it,
+                std::enable_if_t<assess_iterator_value<Iterator, can_initialize, E>::value, void**> =nullptr)
       {
+         decltype(auto) src=ensure_private_mutable(std::forward<Iterator>(src_it));
          for (auto it=entire(get_index_container()); !it.at_end(); ++it, ++src)
             construct_at(data+*it, *src);
       }
@@ -2450,15 +2456,19 @@ public:
             construct_at(index2addr(*it), dflt());
       }
 
-      void init(const E& val)
+      template <typename Init>
+      void init(const Init& val,
+                std::enable_if_t<can_initialize<Init, E>::value, void**> =nullptr)
       {
          for (auto it=entire(get_index_container()); !it.at_end(); ++it)
             construct_at(index2addr(*it), val);
       }
 
       template <typename Iterator>
-      void init(Iterator src)
+      void init(Iterator&& src_it,
+                std::enable_if_t<assess_iterator_value<Iterator, can_initialize, E>::value, void**> =nullptr)
       {
+         decltype(auto) src=ensure_private_mutable(std::forward<Iterator>(src_it));
          for (auto it=entire(get_index_container()); !it.at_end(); ++it, ++src)
             construct_at(index2addr(*it), *src);
       }
@@ -2681,8 +2691,15 @@ public:
 
       void divorce();
       void divorce(const table_type& t);
-      void leave() { if (--map->refc == 0) delete map; }
-      void mutable_access() { if (__builtin_expect(map->refc>1, 0)) divorce(); }
+      void leave()
+      {
+         if (--map->refc == 0) delete map;
+      }
+      map_type* mutable_access()
+      {
+         if (__builtin_expect(map->refc>1, 0)) divorce();
+         return map;
+      }
 
       template <bool may_need_detach>
       void attach_to(const Graph& G, bool_constant<may_need_detach>)
@@ -2704,9 +2721,9 @@ public:
          this->al_set.enter(G.data.get_divorce_handler().al_set);
       }
 
-      SharedMap() : map(0) {}
+      SharedMap() : map(nullptr) {}
 
-      explicit SharedMap(const default_value_supplier& dflt_arg) : map(0), dflt(dflt_arg) {}
+      explicit SharedMap(const default_value_supplier& dflt_arg) : map(nullptr), dflt(dflt_arg) {}
 
       explicit SharedMap(const Graph& G) { attach_to(G, std::false_type()); }
 
@@ -2746,18 +2763,13 @@ public:
       m.map->init();
    }
 
-   template <typename Map>
-   void attach(SharedMap<Map>& m, typename function_argument<typename Map::value_type>::type val) const
+   template <typename Map, typename Init>
+   void attach(SharedMap<Map>& m, Init&& init,
+               std::enable_if_t<can_initialize<Init, typename Map::value_type>::value ||
+                                assess_iterator_value<Init, can_initialize, typename Map::value_type>::value, void**> =nullptr) const
    {
       m.attach_to(*this, std::true_type());
-      m.map->init(val);
-   }
-
-   template <typename Map, typename Iterator>
-   void attach(SharedMap<Map>& m, Iterator src) const
-   {
-      m.attach_to(*this, std::true_type());
-      m.map->init(src);
+      m.map->init(std::forward<Init>(init));
    }
 
 protected:
@@ -2774,7 +2786,7 @@ protected:
    template <typename TContainer, bool TAllowSparse>
    static void prepare_attach_static(TContainer& c, int n, io_test::as_array<0, TAllowSparse>)
    {
-      if (POLYMAKE_DEBUG || !Unwary<TContainer>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TContainer>()) {
          if (get_dim(unwary(c)) != n)
             throw std::runtime_error("Graph::init_map - dimension mismatch");
       }
@@ -2902,7 +2914,7 @@ template <typename TDir, typename E, typename... TParams>
 class NodeMap
    : public Graph<TDir>::template SharedMap<typename Graph<TDir>::template NodeMapData<E, TParams...>>
    , public modified_container_impl< NodeMap<TDir, E, TParams...>,
-                                     mlist< ContainerTag< typename Graph<TDir>::const_node_container_ref >,
+                                     mlist< ContainerRefTag< typename Graph<TDir>::const_node_container_ref >,
                                             OperationTag< operations::random_access<ptr_wrapper<E, false>> > > > {
    typedef modified_container_impl<NodeMap> base_t;
    typedef typename Graph<TDir>::template SharedMap<typename Graph<TDir>::template NodeMapData<E, TParams...>> shared_base;
@@ -2913,54 +2925,57 @@ public:
 
    NodeMap() {}
 
-   explicit NodeMap(const default_value_supplier& dflt_arg) : shared_base(dflt_arg) {}
+   explicit NodeMap(const default_value_supplier& dflt_arg)
+      : shared_base(dflt_arg) {}
 
-   explicit NodeMap(const graph_type& G) : shared_base(G)
+   explicit NodeMap(const graph_type& G)
+      : shared_base(G)
    {
       this->map->init();
    }
 
-   NodeMap(const graph_type& G, const default_value_supplier& dflt_arg) : shared_base(G, dflt_arg)
+   NodeMap(const graph_type& G, const default_value_supplier& dflt_arg)
+      : shared_base(G, dflt_arg)
    {
       this->map->init();
    }
 
-   NodeMap(const graph_type& G, typename function_argument<E>::type val) : shared_base(G)
+   template <typename Init>
+   NodeMap(const graph_type& G, Init&& init,
+           std::enable_if_t<can_initialize<Init, E>::value ||
+                            assess_iterator_value<Init, can_initialize, E>::value, void**> =nullptr)
+      : shared_base(G)
    {
-      this->map->init(val);
+      this->map->init(std::forward<Init>(init));
    }
 
-   NodeMap(const graph_type& G, typename function_argument<E>::type val,
-           const default_value_supplier& dflt_arg) : shared_base(G, dflt_arg)
+   template <typename Init>
+   NodeMap(const graph_type& G, Init&& init,
+           const default_value_supplier& dflt_arg,
+           std::enable_if_t<can_initialize<Init, E>::value ||
+                            assess_iterator_value<Init, can_initialize, E>::value, void**> =nullptr)
+      : shared_base(G, dflt_arg)
    {
-      this->map->init(val);
+      this->map->init(std::forward<Init>(init));
    }
 
-   template <typename Iterator>
-   NodeMap(const graph_type& G, Iterator src) : shared_base(G)
+   decltype(auto) get_container()
    {
-      this->map->init(src);
+      return this->mutable_access()->get_index_container();
    }
-
-   template <typename Iterator>
-   NodeMap(const graph_type& G, Iterator src,
-           const default_value_supplier& dflt_arg) : shared_base(G, dflt_arg)
-   {
-      this->map->init(src);
-   }
-
-   typename shared_base::map_type::index_container_ref get_container()
-   {
-      this->mutable_access();
-      return this->map->get_index_container();
-   }
-   typename shared_base::map_type::index_container_ref get_container() const
+   decltype(auto) get_container() const
    {
       return this->map->get_index_container();
    }
 
-   typename base_t::operation get_operation() { return pointer2iterator(this->map->data); }
-   typename base_t::const_operation get_operation() const { return pointer2iterator(const_cast<const E*>(this->map->data)); }
+   auto get_operation()
+   {
+      return pointer2iterator(this->mutable_access()->data);
+   }
+   auto get_operation() const
+   {
+      return pointer2iterator(const_cast<const E*>(this->map->data));
+   }
 
    friend int index_within_range(const NodeMap& me, int n)
    {
@@ -2972,8 +2987,7 @@ public:
 
    E& operator[] (int n)
    {
-      this->mutable_access();
-      return this->map->data[n];
+      return this->mutable_access()->data[n];
    }
 
    const E& operator[] (int n) const
@@ -3012,63 +3026,72 @@ public:
 
    EdgeMap() {}
 
-   explicit EdgeMap(const default_value_supplier& dflt_arg) : shared_base(dflt_arg) {}
+   explicit EdgeMap(const default_value_supplier& dflt_arg)
+      : shared_base(dflt_arg) {}
 
-   explicit EdgeMap(const graph_type& G) : shared_base(G)
+   explicit EdgeMap(const graph_type& G)
+      : shared_base(G)
    {
       this->map->init();
    }
 
-   EdgeMap(const graph_type& G, const default_value_supplier& dflt_arg) : shared_base(G, dflt_arg)
+   EdgeMap(const graph_type& G, const default_value_supplier& dflt_arg)
+      : shared_base(G, dflt_arg)
    {
       this->map->init();
    }
 
-   EdgeMap(const graph_type& G, typename function_argument<E>::type val) : shared_base(G)
+   template <typename Init>
+   EdgeMap(const graph_type& G, Init&& init,
+           std::enable_if_t<can_initialize<Init, E>::value ||
+                            assess_iterator_value<Init, can_initialize, E>::value, void**> =nullptr)
+      : shared_base(G)
    {
-      this->map->init(val);
+      this->map->init(std::forward<Init>(init));
    }
 
-   EdgeMap(const graph_type& G, typename function_argument<E>::type val,
-           const default_value_supplier& dflt_arg) : shared_base(G, dflt_arg)
+   template <typename Init>
+   EdgeMap(const graph_type& G, Init&& init,
+           const default_value_supplier& dflt_arg,
+           std::enable_if_t<can_initialize<Init, E>::value ||
+                            assess_iterator_value<Init, can_initialize, E>::value, void**> =nullptr)
+      : shared_base(G, dflt_arg)
    {
-      this->map->init(val);
+      this->map->init(std::forward<Init>(init));
    }
 
-   template <typename Iterator>
-   EdgeMap(const graph_type& G, Iterator src) : shared_base(G)
+   decltype(auto) get_container()
    {
-      this->map->init(src);
+      return this->mutable_access()->get_index_container();
    }
-
-   template <typename Iterator>
-   EdgeMap(const graph_type& G, Iterator src,
-           const default_value_supplier& dflt_arg) : shared_base(G, dflt_arg)
-   {
-      this->map->init(src);
-   }
-
-   typename shared_base::map_type::index_container_ref get_container()
-   {
-      this->mutable_access();
-      return this->map->get_index_container();
-   }
-   typename shared_base::map_type::index_container_ref get_container() const
+   decltype(auto) get_container() const
    {
       return this->map->get_index_container();
    }
 
-   EdgeMapDataAccess<E> get_operation() { return this->map->buckets; }
-   EdgeMapDataAccess<const E> get_operation() const { return this->map->buckets; }
+   EdgeMapDataAccess<E> get_operation()
+   {
+      return this->mutable_access()->buckets;
+   }
+   EdgeMapDataAccess<const E> get_operation() const
+   {
+      return this->map->buckets;
+   }
 
-   E& operator[] (int e) { this->mutable_access(); return *this->map->index2addr(e); }
-   const E& operator[] (int e) const { return *this->map->index2addr(e); }
+   E& operator[] (int e)
+   {
+      return *this->mutable_access()->index2addr(e);
+   }
+   const E& operator[] (int e) const
+   {
+      return *this->map->index2addr(e);
+   }
 
    E& operator() (int n1, int n2)
    {
-      this->mutable_access();
       typename graph_type::node_acc n;
-      return *this->map->index2addr(n.out_edge(this->map->table()[n1], n2));
+      auto m = this->mutable_access();
+      return *m->index2addr(n.out_edge(m->table()[n1], n2));
    }
 
    const E& operator() (int n1, int n2) const
@@ -3118,8 +3141,7 @@ public:
 
    hash_map_t& get_container()
    {
-      this->mutable_access();
-      return this->map->data;
+      return this->mutable_access()->data;
    }
    const hash_map_t& get_container() const
    {
@@ -3142,7 +3164,7 @@ public:
       return it->second;
    }
 
-   typename base_t::iterator insert(int n, typename function_argument<E>::type v)
+   typename base_t::iterator insert(int n, const E& v)
    {
       if (POLYMAKE_DEBUG) {
          if (this->invalid_node(n))
@@ -3205,8 +3227,7 @@ public:
 
    hash_map_t& get_container()
    {
-      this->mutable_access();
-      return this->map->data;
+      return this->mutable_access()->data;
    }
    const hash_map_t& get_container() const
    {
@@ -3228,7 +3249,7 @@ public:
       return get_container()[n.out_edge(this->map->table()[n1], n2)];
    }
 
-   typename base_t::iterator insert(int e, typename function_argument<E>::type v)
+   typename base_t::iterator insert(int e, const E& v)
    {
       return get_container().insert(e,v);
    }
@@ -3238,7 +3259,10 @@ public:
       return get_container().insert(v);
    }
 
-   typename base_t::const_iterator find(int e) const { return get_container().find(e); }
+   typename base_t::const_iterator find(int e) const
+   {
+      return get_container().find(e);
+   }
 
    typename base_t::const_iterator find(int n1, int n2) const
    {
@@ -3246,16 +3270,19 @@ public:
       return e.at_end() ? get_container().end() : find(*e);
    }
 
-   void erase(int e) { return get_container().erase(e); }
+   void erase(int e)
+   {
+      return get_container().erase(e);
+   }
 
    typename base_t::iterator erase(typename base_t::iterator where) { return get_container().erase(where); }
 
    void erase(int n1, int n2)
    {
-      this->mutable_access();   // an iterator into the tree becomes invalid after divorce()
+      auto m = this->mutable_access();
       typename Graph<TDir>::node_acc n;
-      typename Graph<TDir>::out_edge_list::iterator e=n.out_edges(this->map->table()[n1]).find(n2);
-      if (!e.at_end()) this->map->data.erase(*e);
+      auto e=n.out_edges(m->table()[n1]).find(n2);
+      if (!e.at_end()) m->data.erase(*e);
    }
 
    friend class Graph<TDir>;
@@ -3334,11 +3361,11 @@ template <typename TDir>
 struct spec_object_traits< Serialized<graph::Graph<TDir>> >
    : spec_object_traits< AdjacencyMatrix<graph::Graph<TDir>> > { };
 
-template <typename TGraph, typename TPerm> inline
+template <typename TGraph, typename TPerm>
 typename TGraph::persistent_type
 permuted_nodes(const GenericGraph<TGraph>& g, const TPerm& perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<TGraph>::value) {
+   if (POLYMAKE_DEBUG || is_wary<TGraph>()) {
       if (g.top().dim() != perm.size())
          throw std::runtime_error("permuted_nodes - dimension mismatch");
    }
@@ -3347,11 +3374,11 @@ permuted_nodes(const GenericGraph<TGraph>& g, const TPerm& perm)
    return g.top().copy_permuted(perm, inv_perm);
 }
 
-template <typename TGraph, typename TPerm> inline
-typename std::enable_if<container_traits<TPerm>::is_random, typename TGraph::persistent_type>::type
+template <typename TGraph, typename TPerm>
+std::enable_if_t<container_traits<TPerm>::is_random, typename TGraph::persistent_type>
 permuted_inv_nodes(const GenericGraph<TGraph>& g, const TPerm& inv_perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<TGraph>::value) {
+   if (POLYMAKE_DEBUG || is_wary<TGraph>()) {
       if (g.top().dim() != inv_perm.size())
          throw std::runtime_error("permuted_inv_nodes - dimension mismatch");
    }
@@ -3360,11 +3387,11 @@ permuted_inv_nodes(const GenericGraph<TGraph>& g, const TPerm& inv_perm)
    return g.top().copy_permuted(perm, inv_perm);
 }
 
-template <typename TGraph, typename TPerm> inline
-typename std::enable_if<!container_traits<TPerm>::is_random, typename TGraph::persistent_type>::type
+template <typename TGraph, typename TPerm>
+std::enable_if_t<!container_traits<TPerm>::is_random, typename TGraph::persistent_type>
 permuted_inv_nodes(const GenericGraph<TGraph>& g, const TPerm& inv_perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<TGraph>::value) {
+   if (POLYMAKE_DEBUG || is_wary<TGraph>()) {
       if (g.top().dim() != inv_perm.size())
          throw std::runtime_error("permuted_inv_nodes - dimension mismatch");
    }
@@ -3451,7 +3478,7 @@ namespace polymake {
 }
 
 namespace std {
-   template <typename TDir> inline
+   template <typename TDir>
    void swap(pm::graph::Graph<TDir>& G1, pm::graph::Graph<TDir>& G2) { G1.swap(G2); }
 }
 

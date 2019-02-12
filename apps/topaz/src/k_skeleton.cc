@@ -48,7 +48,7 @@ perl::Object combinatorial_k_skeleton(perl::Object p_in, const int k, perl::Opti
 template <typename Scalar>
 perl::Object k_skeleton(perl::Object p_in, const int k, perl::OptionSet options)
 {
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("topaz::GeometricSimplicialComplex"));
+   perl::Object p_out("GeometricSimplicialComplex", mlist<Scalar>());
    combinatorial_k_skeleton_impl(p_in, p_out, k, options);
    
    Matrix<Scalar> GR;

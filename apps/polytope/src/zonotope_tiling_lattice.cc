@@ -36,14 +36,14 @@ perl::Object zonotope_tiling_lattice(perl::Object P, perl::OptionSet options)
       b = dehomogenize(_b);
 
    Matrix<E> lattice_gens(VIF.rows(), emb_d); 
-   typename Entire<Rows<Matrix<E> > >::iterator rlit = entire(rows(lattice_gens));
-   for (Entire<Rows<IncidenceMatrix<> > >::const_iterator rit = entire(rows(VIF)); !rit.at_end(); ++rit, ++rlit) {
+   auto rlit = entire(rows(lattice_gens));
+   for (auto rit = entire(rows(VIF)); !rit.at_end(); ++rit, ++rlit) {
       const Set<int> vif(*rit);
       const Vector<E> facet_barycenter = dehomogenize(ones_vector<E>(vif.size()) * V.minor(vif, All)); 
       *rlit = zero_vector<E>(1) | (2 * (facet_barycenter - b)); 
    }
 
-   perl::Object L(perl::ObjectType::construct<E>("AffineLattice"));
+   perl::Object L("AffineLattice", mlist<E>());
 
    const bool lattice_origin_is_vertex = options["lattice_origin_is_vertex"];
    if (lattice_origin_is_vertex)

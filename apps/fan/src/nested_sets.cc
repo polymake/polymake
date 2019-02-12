@@ -29,13 +29,13 @@ PowerSet<int> building_set(const Set<Set<int> >& B, int n)
       building_set += scalar2set(i);
 
    std::list<Set<int> > queue;
-   for (Entire<Set<Set<int> > >::const_iterator ait = entire(B); !ait.at_end(); ++ait)
+   for (auto ait = entire(B); !ait.at_end(); ++ait)
       queue.push_back(*ait);
 
    while (queue.size()) {
       const Set<int> b = queue.front(); queue.pop_front();
       building_set += b;
-      for (Entire<PowerSet<int> >::const_iterator pit = entire(building_set); !pit.at_end(); ++pit) {
+      for (auto pit = entire(building_set); !pit.at_end(); ++pit) {
          const Set<int> p(*pit);
          if ((p * b).size() > 0) {
             const Set<int> u (p + b);
@@ -56,7 +56,7 @@ bool is_building_set(const PowerSet<int>& building_set, int n)
          cout << "The set does not contain the singleton " << i << endl;
          return false;
       }
-   for (Entire<Subsets_of_k<const PowerSet<int>&> >::const_iterator p=entire(all_subsets_of_k(building_set,2)); !p.at_end(); ++p) {
+   for (auto p=entire(all_subsets_of_k(building_set,2)); !p.at_end(); ++p) {
       const Set<Set<int> > pair(*p);
       const Set<int> a(pair.front()), b(pair.back());
       if ((a*b).size() == 0) continue;
@@ -70,13 +70,13 @@ bool is_building_set(const PowerSet<int>& building_set, int n)
 
 bool is_B_nested(const Set<Set<int> >& nested, const PowerSet<int>& building)
 {
-   for (Entire<Set<Set<int> > >::const_iterator nit = entire(nested); !nit.at_end(); ++nit) {
+   for (auto nit = entire(nested); !nit.at_end(); ++nit) {
       if (!building.contains(*nit)) {
          cout << "The building set does not contain " << *nit << endl;
          return false;
       }
    }
-   for (Entire<Subsets_of_k<const Set<Set<int> >&> >::const_iterator p=entire(all_subsets_of_k(nested,2)); !p.at_end(); ++p) {
+   for (auto p=entire(all_subsets_of_k(nested,2)); !p.at_end(); ++p) {
       const Set<Set<int> > pair(*p);
       const Set<int> a(pair.front()), b(pair.back());
       if (! ( (a*b).size() == 0 ||
@@ -87,10 +87,10 @@ bool is_B_nested(const Set<Set<int> >& nested, const PowerSet<int>& building)
       }
    }
    for (int k=2; k <= nested.size(); ++k) {
-      for (Entire<Subsets_of_k<const Set<Set<int> >&> >::const_iterator p=entire(all_subsets_of_k(nested,k)); !p.at_end(); ++p) {
+      for (auto p=entire(all_subsets_of_k(nested,k)); !p.at_end(); ++p) {
          const Set<Set<int> > family(*p);
          bool pairwise_intersections_empty(true);
-         for (Entire<Subsets_of_k<const Set<Set<int> >&> >::const_iterator f=entire(all_subsets_of_k(family,2)); !f.at_end() && pairwise_intersections_empty; ++f) {
+         for (auto f=entire(all_subsets_of_k(family,2)); !f.at_end() && pairwise_intersections_empty; ++f) {
             const Set<Set<int> > pair(*f);
             pairwise_intersections_empty = ((pair.front() * pair.back()).size() == 0);
          }

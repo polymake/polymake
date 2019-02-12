@@ -48,7 +48,7 @@ void pseudo_simplex(perl::Object p, perl::Object lp, bool maximize)
    do {
       better = false;
       // steepest ascent/descent
-      for (Entire<Graph<>::out_edge_list>::const_iterator v=entire(G.out_edges(current_vertex));  !v.at_end();  ++v) {
+      for (auto v=entire(G.out_edges(current_vertex));  !v.at_end();  ++v) {
          const int neighbor=v.to_node();
          if (visited[neighbor])  // this neighbor can't be better
             continue;
@@ -81,7 +81,7 @@ void pseudo_simplex(perl::Object p, perl::Object lp, bool maximize)
          current_vertex = optimal_vertices.front();
          optimal_vertices.pop_front();
 
-         for (Entire<Graph<>::out_edge_list>::const_iterator v=entire(G.out_edges(current_vertex));  !v.at_end();  ++v) {
+         for (auto v=entire(G.out_edges(current_vertex));  !v.at_end();  ++v) {
             const int neighbor=v.to_node();
             if (!visited[neighbor]) {
                visited[neighbor]=true;
@@ -99,7 +99,7 @@ void pseudo_simplex(perl::Object p, perl::Object lp, bool maximize)
       // linear program is unbounded
       // nonetheless: the optimal face is the subset of the far face
       optimal_face.clear();
-      for (Entire< Set<int> >::const_iterator v=entire(far_face); !v.at_end(); ++v) {
+      for (auto v=entire(far_face); !v.at_end(); ++v) {
          if (sign(objective * V[*v]) == sense)
             optimal_face.push_back(*v);
       }
@@ -113,7 +113,7 @@ void pseudo_simplex(perl::Object p, perl::Object lp, bool maximize)
    lp.take(maximize ? "MAXIMAL_FACE" : "MINIMAL_FACE") << optimal_face;
 }
 
-FunctionTemplate4perl("pseudo_simplex<Scalar> (Polytope<Scalar>, LinearProgram<Scalar>, $) : void");
+FunctionTemplate4perl("pseudo_simplex<Scalar> (Polytope<Scalar>, LinearProgram<Scalar>, $)");
 
 } }
 

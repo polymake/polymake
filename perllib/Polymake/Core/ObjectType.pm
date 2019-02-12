@@ -95,11 +95,10 @@ sub new {
    my $generic_type;
 
    unless ($construct_node) {
-      $construct_node=new Overload::Node(undef, undef, 0);
-      Overload::add_instance("Polymake::Core::Object", ".construct",
-                             \&Object::new_empty, undef,
+      $construct_node=new_root Overload::Node;
+      Overload::add_instance("Polymake::Core::Object", ".construct", undef, \&Object::new_empty,
                              [0, 0], undef, $construct_node);
-      Overload::add_fallback_to_node($construct_node, \&Object::new_filled);
+      $construct_node->add_fallback(\&Object::new_filled);
    }
 
    if (defined($self->application)) {
@@ -109,10 +108,10 @@ sub new {
          undef $self->perform_typecheck;
          $self->params=new_generic PropertyParamedType($self->name, $self->pkg, $self->application, $tparams, undef, "objects");
       }
-      Overload::add_instance($self->pkg, ".construct", \&Object::new_copy,        undef,
+      Overload::add_instance($self->pkg, ".construct", undef, \&Object::new_copy,
                              [1, 1, $self->pkg ], undef, $construct_node);
-      Overload::add_instance($self->pkg, ".construct", \&Object::new_filled_copy, undef,
-                             [3, 3+$Overload::has_trailing_list, $self->pkg, '$', '$'], undef, $construct_node);
+      Overload::add_instance($self->pkg, ".construct", undef, \&Object::new_filled_copy,
+                             [3, 3+Overload::SignatureFlags::has_trailing_list, $self->pkg, '$', '$'], undef, $construct_node);
    } else {
       # it is an instance of an abstract Object type
       # the first super-Object is always the own abstract type
@@ -290,9 +289,9 @@ sub lookup_property {
       my $prop;
       foreach my $super (@{$self->linear_isa}) {
          if (defined ($prop=$super->properties->{$prop_name})) {
-            if ($prop->flags & $Property::is_permutation) {
+            if ($prop->flags & Property::Flags::is_permutation) {
                $prop=instantiate_permutation($self, $prop);
-            } elsif (!$self->abstract && ($prop->flags & $Property::is_subobject || !($prop->flags & $Property::is_concrete))) {
+            } elsif (!$self->abstract && ($prop->flags & Property::Flags::is_subobject || !($prop->flags & Property::Flags::is_concrete))) {
                $prop=instantiate_property($self, $prop_name, $prop);
             }
             return $self->properties->{$prop_name}=$prop;
@@ -338,13 +337,13 @@ sub instantiate_property {
       $owner=$gen_proto;
    }
    if ($owner == $self->generic) {
-      unless ($prop->flags & $Property::is_concrete) {
+      unless ($prop->flags & Property::Flags::is_concrete) {
          $prop=$prop->clone_for_owner($self);
          create_prop_method($self, $prop);
       }
       $prop
    } else {
-      if ($prop->flags & $Property::is_subobject) {
+      if ($prop->flags & Property::Flags::is_subobject) {
          # instantiate the property for each of the concrete ancestors; they are dwelling at the end of the base class list
          # augmented instances might need to be mixed in the case of multiple inheritance
          if (my @instances=collect_augmented_super_instances($self, $prop_name)) {
@@ -355,7 +354,7 @@ sub instantiate_property {
             } else {
                return $instances[0];
             }
-         } elsif ($prop->flags & $Property::is_concrete) {
+         } elsif ($prop->flags & Property::Flags::is_concrete) {
             return $prop;
          }
       }
@@ -417,8 +416,8 @@ sub collect_augmented_super_instances {
    my @list;
    foreach my $super ($self->concrete_super_instances) {
       if (defined (my $found_prop=$super->lookup_property($prop_name))) {
-         if ($found_prop->flags & $Property::is_augmented) {
-            if (@list==1 && !($list[0]->flags & $Property::is_augmented)) {
+         if ($found_prop->flags & Property::Flags::is_augmented) {
+            if (@list==1 && !($list[0]->flags & Property::Flags::is_augmented)) {
                $list[0]=$found_prop;
             } elsif (!@list || list_index(\@list, $found_prop)<0) {
                push @list, $found_prop;
@@ -464,7 +463,7 @@ sub list_permutations {
 sub create_prop_method {
    my ($self, $prop)=@_;
    define_function($self->pkg, $prop->name,
-                   create_prop_accessor($prop->flags & $Property::is_multiple
+                   create_prop_accessor($prop->flags & Property::Flags::is_multiple
                                         ? [ $prop, \&Object::get_multi, \&Object::put_multi ]
                                         : [ $prop, \&Object::get,       \&Object::put       ],
                                         $self->pkg));
@@ -498,7 +497,7 @@ sub add_property {      # => Property
 sub add_permutation {
    my ($self, $name, $pure_prop)=@_;
    if ($Application::plausibility_checks && defined (my $old_prop=$self->lookup_property($name))) {
-      croak( $old_prop->flags & $Property::is_permutation
+      croak( $old_prop->flags & Property::Flags::is_permutation
              ? ( $old_prop->belongs_to == $self
                  ? "multiple definition of permutation '$name'"
                  : "redefinition of inherited permutation '$name' not allowed" )
@@ -507,7 +506,7 @@ sub add_permutation {
    my $perm=new Permutation($name, $self->augment($pure_prop), $self);
    create_prop_method($self, $perm);
    $pure_prop->name .= ".pure";
-   $pure_prop->flags |= $Property::is_non_storable;
+   $pure_prop->flags |= Property::Flags::is_non_storable;
    $self->properties->{$pure_prop->name}=$pure_prop;
    $self->permutations->{$name}=
    $self->properties->{$name}=$perm;
@@ -545,9 +544,9 @@ sub override_property {        # "new name", "old name", Help => Property
    my $old_prop=find_overridden_property($self, $old_prop_name // $prop_name);
 
    if ($Application::plausibility_checks && defined($new_type)) {
-      $old_prop->flags & $Property::is_subobject
+      $old_prop->flags & Property::Flags::is_subobject
         or croak( "invalid type override for an atomic property ", $old_prop_name // $prop_name );
-      if ($old_prop->flags & $Property::is_twin and $new_type != $self) {
+      if ($old_prop->flags & Property::Flags::is_twin and $new_type != $self) {
          croak( "Twin property $prop_name automatically inherits the enclosing object type, the override definition must end with ': self'" );
       }
       if ($new_type->pkg eq $old_prop->type->pkg) {
@@ -559,7 +558,7 @@ sub override_property {        # "new name", "old name", Help => Property
 
    my $prop=$old_prop->override_by($prop_name, $self, $new_type);
 
-   if (defined($new_type) and $old_prop->flags & $Property::is_augmented) {
+   if (defined($new_type) and $old_prop->flags & Property::Flags::is_augmented) {
       $prop->change_to_augmented(new Augmented($prop, $self));
    }
 
@@ -581,7 +580,7 @@ sub override_property {        # "new name", "old name", Help => Property
          my $cached_prop=$derived->properties->{$prop_name} or next;
          if ($cached_prop==$old_prop) {
             $derived->properties->{$prop_name}=$prop;
-         } elsif ($cached_prop->flags & $Property::is_concrete && $self->isa($cached_prop->belongs_to->generic // $cached_prop->belongs_to)) {
+         } elsif ($cached_prop->flags & Property::Flags::is_concrete && $self->isa($cached_prop->belongs_to->generic // $cached_prop->belongs_to)) {
             delete $derived->properties->{$prop_name};
          }
       }
@@ -651,7 +650,7 @@ sub get_shortcuts_for {
 sub invalidate_label_cache {
    my ($self, $wildcard)=@_;
    if (defined (delete $self->all_rules_by_label->{$wildcard})) {
-      invalidate_label_cache($_,$wildcard) for $self->derived;
+      invalidate_label_cache($_, $wildcard) for $self->derived;
    }
 }
 
@@ -669,12 +668,12 @@ sub get_rules_by_label {
 sub add_rule_labels {
    my ($self, $rule, $labels)=@_;
    foreach my $label (@$labels) {
-      my $wildcard=$label->wildcard_name;
+      my $wildcard = $label->wildcard_name;
       my $ctl_list;
-      if (defined ($ctl_list=$self->rules_by_label->{$wildcard})) {
+      if (defined ($ctl_list = $self->rules_by_label->{$wildcard})) {
          invalidate_label_cache($self, $wildcard);
       } else {
-         $self->rules_by_label->{$wildcard}=$ctl_list=[ ];
+         $self->rules_by_label->{$wildcard} = $ctl_list = [ ];
       }
       $label->add_control($ctl_list, $rule);
    }
@@ -725,17 +724,17 @@ sub encode_property_path {
 }
 
 # 'NAME.NAME | ...' => [ [ Property, ... ] ]
-# flags(RETVAL)==$Property::is_permutation if the paths descend into a permutation subobject
+# flags(RETVAL)==Property::Flags::is_permutation if the paths descend into a permutation subobject
 sub encode_read_request {
    my ($self, $req)=@_;
    my $perm_seen;
    my @alternatives=map {
       my @path=encode_descending_path($self, $_);
-      $perm_seen ||= Property::find_first_in_path(\@path, $Property::is_permutation)>=0;
+      $perm_seen ||= Property::find_first_in_path(\@path, Property::Flags::is_permutation)>=0;
       \@path
    } split /\s*\|\s*/, $req;
    if ($perm_seen) {
-      set_array_flags(\@alternatives, $Property::is_permutation);
+      set_array_flags(\@alternatives, Property::Flags::is_permutation);
    }
    \@alternatives
 }
@@ -804,13 +803,13 @@ sub disable_rules {
 ####################################################################################
 sub add_method_rule {
    my ($self, $header, $code, $name)=@_;
-   my $rule=special Rule($header, $code, $self);
-   $rule->flags=$Rule::is_function;
-   substr($rule->header,0,0)="user_method ";
+   my $rule = special Rule($header, $code, $self);
+   $rule->flags = Rule::Flags::is_function;
+   substr($rule->header, 0, 0) = "user_method ";
    $rule->analyze_spez_preconditions;
    if (defined($name)) {
       # non-polymorphic method, no call redirection via overload resolution
-      my $rules=[ $rule ];
+      my $rules = [ $rule ];
       define_function($self->pkg, $name,
                       sub : method {
                          &{ (Scheduler::resolve_rules($_[0], $rules) // croak("could not provide all required input properties") )->code };
@@ -823,20 +822,20 @@ sub augment {
    my ($self, $prop)=@_;
    my ($augm, $augm_super, $cloned_prop, $pure_prop, $update_caches);
 
-   if ($prop->flags & $Property::is_permutation) {
+   if ($prop->flags & Property::Flags::is_permutation) {
       $pure_prop=$prop->type->pure_property;
       $augm=$prop->change_to_augmented($self->augment($pure_prop))->type;
       $update_caches=1;
 
    } elsif ($prop->belongs_to == $self) {
-      if ($prop->flags & $Property::is_augmented  and
+      if ($prop->flags & Property::Flags::is_augmented  and
           !defined($prop->overrides) || $prop->type->parent_property == $prop) {
          return $prop->type;
       }
       $augm=new Augmented($prop, $self);
       $prop->change_to_augmented($augm);
       create_self_method_in_anon_full_spez($self, $prop, $augm) if $scope_owner->is_anon_full_spez;
-      $update_caches=!($prop->flags & $Property::is_concrete);
+      $update_caches=!($prop->flags & Property::Flags::is_concrete);
 
    } elsif ($prop->belongs_to == $self->full_spez_for) {
       return $self->augment_in_full_spez($prop);
@@ -861,13 +860,13 @@ sub augment {
          } elsif ($cached_prop==$prop) {
             if (defined $cloned_prop) {
                # the derived class has inherited the original property, now it is shadowed by the cloned one
-               if ($cloned_prop->flags & $Property::is_concrete || $derived->abstract) {
+               if ($cloned_prop->flags & Property::Flags::is_concrete || $derived->abstract) {
                   $derived->properties->{$prop->name}=$cloned_prop;
                } else {
                   # augmentation is parametrized, the concrete instance will be created later on demand
                   delete $derived->properties->{$prop->name};
                }
-            } elsif (!($prop->flags & $Property::is_concrete || $derived->abstract) || $prop->flags & $Property::is_permutation) {
+            } elsif (!($prop->flags & Property::Flags::is_concrete || $derived->abstract) || $prop->flags & Property::Flags::is_permutation) {
                # augmentation is parametrized, the concrete instance will be created later on demand
                delete $derived->properties->{$prop->name};
             }
@@ -887,7 +886,7 @@ sub augment {
                   delete $derived->properties->{$prop->name};
                }
             }
-         } elsif ($cached_prop->flags & $Property::is_augmented) {
+         } elsif ($cached_prop->flags & Property::Flags::is_augmented) {
             # this augmentation was at the root of the hierarchy, now it has to absorb the new one
             if ($cached_prop->type->super->[0] == $cached_prop->type->pure_type) {
                $cached_prop->type->inject_inheritance($augm);
@@ -895,7 +894,7 @@ sub augment {
 
          } else {
             # cached_prop must be a concrete instance of the generic original property
-            ($cached_prop->flags & $Property::is_concrete) > ($prop->flags & $Property::is_concrete)
+            ($cached_prop->flags & Property::Flags::is_concrete) > ($prop->flags & Property::Flags::is_concrete)
               or croak( "internal error: unexpected property instance of ", $cached_prop->name,
                         " found in ", $derived->full_name );
             if (defined($cloned_prop) || $derived->generic != ($self->generic // $self)) {
@@ -916,7 +915,7 @@ sub augment {
 
 sub create_augmentation {
    my ($self, $prop)=@_;
-   my @augm_super= $prop->flags & $Property::is_augmented ? ($prop->type) : ();
+   my @augm_super= $prop->flags & Property::Flags::is_augmented ? ($prop->type) : ();
    my $augm=new Augmented($prop, $self, @augm_super);
    ($augm, $augm_super[0], 1);
 }
@@ -956,9 +955,9 @@ sub reopen_subobject {
    my ($self, $path)=@_;
    foreach my $prop_name (split /\./, $path) {
       my $prop=$self->property($prop_name);
-      if (($prop->flags & ($Property::is_subobject | $Property::is_twin)) == $Property::is_subobject) {
+      if (($prop->flags & (Property::Flags::is_subobject | Property::Flags::is_twin)) == Property::Flags::is_subobject) {
          $self=$self->augment($prop);
-      } elsif ($prop->flags & $Property::is_twin) {
+      } elsif ($prop->flags & Property::Flags::is_twin) {
          croak( "a twin property cannot be augmented" );
       } else {
          croak( "an atomic property definition cannot be augmented" );
@@ -967,24 +966,41 @@ sub reopen_subobject {
    $self
 }
 ####################################################################################
-package Polymake::Core::ObjectType::MethodAsRule;
+package Polymake::Core::ObjectType::RuleLikeMethodNode;
 
-sub add_control {
-   my ($pkg, $list, $rule)=@_;
-   if (!@$list) {
-      bless $list, $pkg;
-   }
-   push @$list, $rule;
+use Polymake::Struct(
+   [ '@ISA' => 'Overload::Node' ],
+);
+
+# instead of single sub references, every code slot contains a list of rule-like methods
+
+sub store_code {
+   my ($self, $i, $rule)=@_;
+   push @{$self->code->[$i] //= [ ]}, $rule;
 }
 
-sub dup {
-   my $list=shift;
-   inherit_class([ @$list ], $list);
+sub store_ellipsis_code {
+   my ($self, $rule)=@_;
+   push @{$self->ellipsis_code //= [ ]}, $rule;
+}
+
+sub dup_ellipsis_code {
+   my ($self, $upto)=@_;
+   push @{$self->code}, map { [ @{$self->ellipsis_code} ] } @{$self->code}..$upto;
+}
+
+sub push_code {
+   my ($self, $n, $rule)=@_;
+   push @{$self->code}, map { [ $rule ] } 1..$n;
 }
 
 sub resolve {
    my ($self, $args)=@_;
-   (Scheduler::resolve_rules($args->[0], $self) // croak( "could not provide all required input properties" ))->code;
+   if (defined (my $rulelist=&Overload::Node::resolve)) {
+      (Scheduler::resolve_rules($args->[0], $rulelist) // croak( "could not provide all required input properties" ))->code;
+   } else {
+      undef
+   }
 }
 
 ####################################################################################
@@ -1026,7 +1042,7 @@ sub new {
    my $inherit_pure_type;
    if (!@super && defined($prop->overrides)) {
       my $overridden=$owner->lookup_overridden_property($prop);
-      if ($overridden->flags & $Property::is_augmented) {
+      if ($overridden->flags & Property::Flags::is_augmented) {
          push @super, $overridden->type;
          $inherit_pure_type= $overridden->type->pure_type != $self->pure_type;
       }
@@ -1091,7 +1107,7 @@ sub concrete_type {
 
       weak($self->outer_object_type=$owner->outer_object_type);
       if (!@concrete_super) {
-         @concrete_super=map { $_->type } grep { $_->flags & $Property::is_augmented } $owner->collect_augmented_super_instances($prop_name);
+         @concrete_super=map { $_->type } grep { $_->flags & Property::Flags::is_augmented } $owner->collect_augmented_super_instances($prop_name);
       }
       $self->pure_type= @concrete_super
                         ? $concrete_super[0]->pure_type :
@@ -1304,7 +1320,7 @@ sub provide_help_topic {
    my ($owner, $force, @descend)=@_;
    my $topic=$owner->help_topic($force) or return;
    foreach my $prop (@descend) {
-      my $help_group=$prop->flags & $Property::is_permutation ? "permutations" : "properties";
+      my $help_group=$prop->flags & Property::Flags::is_permutation ? "permutations" : "properties";
       $topic=$topic->find("!rel", $help_group, $prop->name) // do {
          $force or return;
          my $text="";
@@ -1378,7 +1394,7 @@ use Polymake::Struct (
 
 sub create_derived {
    my ($src, $prop, $autonomous_type)=@_;
-   my $self=new_derived($prop->flags & $Property::is_permutation ? "Polymake::Core::ObjectType::Permuted" : __PACKAGE__, @_);
+   my $self=new_derived($prop->flags & Property::Flags::is_permutation ? "Polymake::Core::ObjectType::Permuted" : __PACKAGE__, @_);
    $self->pkg=$autonomous_type->pkg."::__as__".$src->pkg;
    define_function($self->pkg, "type", sub { $self }, 1);
    establish_inheritance($self, 0, $src, $autonomous_type);
@@ -1445,7 +1461,7 @@ sub new {
             $def_line-=2;       # accounting for code inserted in RuleFilter
             $gen_proto->name." defined at $file, line $line"
          };
-         $self->match_node=new Overload::Node(undef, undef, 0);
+         $self->match_node=new_root Overload::Node;
          push @{$gen_proto->specializations //= [ ]}, $self;
       } else {
          # new full specialization
@@ -1526,19 +1542,19 @@ sub augment_in_full_spez {
    my ($self, $prop)=@_;
    my ($augm, $augm_generic, $augm_concrete);
 
-   if ($prop->flags & $Property::is_augmented) {
+   if ($prop->flags & Property::Flags::is_augmented) {
       $augm_concrete=$prop->type;
       $augm_generic=$augm_concrete->generic;
    } elsif (defined (my $gen_proto=$self->full_spez_for->generic)) {
       $augm_generic=$gen_proto->augment($gen_proto->property($prop->name));
       # $prop must be updated here
-      $prop->flags & $Property::is_augmented
+      $prop->flags & Property::Flags::is_augmented
         or croak( "internal error: property instance ", $prop->name, " for ", $prop->belongs_to->full_name,
                   " not updated after augment(", $gen_proto->full_name, ")" );
       $augm_concrete=$prop->type;
    } else {
       $augm_concrete=$self->full_spez_for->augment($prop);
-      $prop->flags & $Property::is_augmented
+      $prop->flags & Property::Flags::is_augmented
         or croak( "internal error: property instance ", $prop->name, " for ", $prop->belongs_to->full_name,
                   " not updated after augment(", $self->full_spez_for->full_name, ")" );
    }
@@ -1601,10 +1617,10 @@ sub create_augmentation {
 }
 ####################################################################################
 sub append_precondition {
-   my ($self, $header, $code, $checks_definedness)=@_;
-   my $precond=special Rule($header, $code, $self);
-   $precond->flags=($checks_definedness ? $Rule::is_precondition | $Rule::is_definedness_check : $Rule::is_precondition) | $Rule::is_spez_precondition;
-   $precond->header="precondition " . $precond->header . " ( specialization " . $self->name . " )";
+   my ($self, $header, $code, $checks_definedness) = @_;
+   my $precond = special Rule($header, $code, $self);
+   $precond->flags = ($checks_definedness ? Rule::Flags::is_precondition | Rule::Flags::is_definedness_check : Rule::Flags::is_precondition) | Rule::Flags::is_spez_precondition;
+   $precond->header = "precondition " . $precond->header . " ( specialization " . $self->name . " )";
    push @{$self->preconditions //= [ ]}, $precond;
 }
 
@@ -1750,9 +1766,8 @@ sub construct_with_size_str : method {
 
 sub new_generic {
    my $self=&_new;
-   $self->construct_node=new Overload::Node(undef, undef, 0);
-   Overload::add_instance(__PACKAGE__, ".construct",
-                          \&construct_with_size, undef,
+   $self->construct_node=new_root Overload::Node;
+   Overload::add_instance(__PACKAGE__, ".construct", undef, \&construct_with_size,
                           [1, 1, Overload::integer_package()], undef, $self->construct_node);
    $self;
 }
@@ -1762,9 +1777,8 @@ sub typeof { state $me=&new_generic; }
 sub init_constructor : method {
    my ($super, $self)=@_;
    $self->construct_node=$super->construct_node;
-   Overload::add_instance($self->pkg, ".construct",
-                          \&construct_from_list, undef,
-                          [1, 1+$Overload::has_repeated, [$self->params->[0]->pkg, "+"]], undef, $self->construct_node);
+   Overload::add_instance($self->pkg, ".construct", undef, \&construct_from_list,
+                          [1, 1+Overload::SignatureFlags::has_repeated, [$self->params->[0]->pkg, "+"]], undef, $self->construct_node);
 
    $self->parse=\&construct_with_size_str;
    overload::OVERLOAD($self->pkg, '""' => ($self->toString = sub { "BigObjectArray" }));

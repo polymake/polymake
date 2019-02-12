@@ -67,11 +67,11 @@ perl::Object intersection(const Array<perl::Object>& pp_in)
       ++p_in;
    }
 
-   perl::ObjectType t=perl::ObjectType::construct<Scalar>(containsPolytope ? Str("Polytope") : Str("Cone"));
+   perl::ObjectType t(containsPolytope ? Str("Polytope") : Str("Cone"), mlist<Scalar>());
    perl::Object p_out(t);
 
    p_out.take("INEQUALITIES") << Inequalities;
-   if (Equations.rows()) p_out.take("EQUATIONS") << Equations;
+   p_out.take("EQUATIONS") << Equations;
    p_out.take("CONE_AMBIENT_DIM") << dim;
 
    if (containsCone) {
@@ -86,7 +86,17 @@ perl::Object intersection(const Array<perl::Object>& pp_in)
 
    return p_out;
 }
-    
+
+template <typename Scalar, typename Matrix1, typename Matrix2, typename Matrix3>
+bool
+cone_intersects_subspace(const GenericMatrix<Matrix1,Scalar> &cone_ineqs,
+                         const GenericMatrix<Matrix2,Scalar> &cone_eqs,
+                         const GenericMatrix<Matrix3,Scalar> &subspace_eqs)
+{
+   return true;
+}
+      
+      
 UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Construct a new polyhedron or cone as the intersection of given polyhedra and/or cones."
                           "# Works only if all [[CONE_AMBIENT_DIM]] values are equal."

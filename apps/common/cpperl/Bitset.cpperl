@@ -1,0 +1,11 @@
+{"app": "common",
+ "inst": [
+  {"class": "Bitset", "include": ["polymake/Bitset.h"], "pkg": "Polymake::common::Bitset"},
+  {"args": ["Bitset"], "include": ["polymake/Bitset.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<const Bitset&>", "perl::Canned<const Bitset&>"], "include": ["polymake/Bitset.h"], "op": "_eq", "sig": "_eq:O.X.X"},
+  {"args": ["perl::Canned<Bitset&>", "int"], "include": ["polymake/Bitset.h"], "op": "Add", "ret": "lvalue", "sig": "Add:O.X1.X"},
+  {"args": ["perl::Canned<Bitset&>", "int"], "include": ["polymake/Bitset.h"], "op": "Sub", "ret": "lvalue", "sig": "Sub:O.X1.X"},
+  {"args": ["Bitset", "perl::Canned<const Bitset&>"], "include": ["polymake/Bitset.h"], "op": "new", "sig": "new.X"},
+  {"args": ["Bitset", "perl::Canned<const Set<int>&>"], "include": ["polymake/Bitset.h", "polymake/Set.h"], "op": "new", "sig": "new.X"},
+ null ],
+"version": 3}

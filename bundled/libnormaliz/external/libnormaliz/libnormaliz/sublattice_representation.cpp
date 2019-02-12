@@ -66,11 +66,12 @@ Sublattice_Representation<Integer>::Sublattice_Representation(size_t n) {
  */
  
  template<typename Integer>
-Sublattice_Representation<Integer>::Sublattice_Representation(const Matrix<Integer>& M, bool take_saturation) {
+Sublattice_Representation<Integer>::Sublattice_Representation(const Matrix<Integer>& M, bool take_saturation, bool use_LLL) {
     bool success;
     initialize(M,take_saturation,success);
     if(success){
-        LLL_improve();        
+        if(use_LLL)
+            LLL_improve();        
     }
     else{
         Matrix<mpz_class> mpz_M(M.nr,M.nc);
@@ -78,7 +79,8 @@ Sublattice_Representation<Integer>::Sublattice_Representation(const Matrix<Integ
         convert(mpz_M,M);
         Sublattice_Representation<mpz_class> mpz_SLR;
         mpz_SLR.initialize(mpz_M,take_saturation,success);
-        mpz_SLR.LLL_improve();
+        if(use_LLL)
+            mpz_SLR.LLL_improve();
         A=Matrix<Integer>(mpz_SLR.A.nr,mpz_SLR.A.nc);
         B=Matrix<Integer>(mpz_SLR.B.nr,mpz_SLR.B.nc);
         // mat_to_Int(mpz_SLR.A,A);

@@ -1,0 +1,8 @@
+{"app": "polytope", "embed": "truncation.cc",
+ "inst": [
+  {"args": ["Rational", "void", "int", "void"], "func": "truncation", "include": ["polymake/Rational.h"], "sig": "truncation:T1.B.X.o", "tp": "1"},
+  {"args": ["Rational", "void", "perl::TryCanned<const Array<int>>", "void"], "func": "truncation", "include": ["polymake/Array.h", "polymake/Rational.h"], "sig": "truncation:T1.B.X.o", "tp": "1"},
+  {"args": ["Rational", "void", "perl::Enum<pm::all_selector>", "void"], "func": "truncation", "include": ["polymake/Matrix.h", "polymake/Rational.h"], "sig": "truncation:T1.B.X.o", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void", "int", "void"], "func": "truncation", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "truncation:T1.B.X.o", "tp": "1"},
+ null ],
+"version": 3}

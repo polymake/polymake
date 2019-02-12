@@ -35,76 +35,97 @@ namespace libnormaliz {
  */
 namespace ConeProperty {
     enum Enum {
-        //
-        // goals that can be computed (or are defined by input data)
-        //
-        // matrix valued
-        Generators,
+        FIRST_MATRIX,
+        Generators = ConeProperty::FIRST_MATRIX,
         ExtremeRays,
-        VerticesFloat,
         VerticesOfPolyhedron,
         SupportHyperplanes,
         HilbertBasis,
         ModuleGenerators,
         Deg1Elements,
+        LatticePoints,
         ModuleGeneratorsOverOriginalMonoid,
-        Sublattice, 
         ExcludedFaces,
         OriginalMonoidGenerators,
         MaximalSubspace,
         Equations,
         Congruences,
-        //vector valued
-        Grading,
+        LAST_MATRIX = ConeProperty::Congruences,
+        FIRST_MATRIX_FLOAT,
+        SuppHypsFloat = ConeProperty::FIRST_MATRIX_FLOAT,
+        VerticesFloat,
+        LAST_MATRIX_FLOAT = ConeProperty::VerticesFloat,
+        // Vector values
+        FIRST_VECTOR,
+        Grading = ConeProperty::FIRST_VECTOR,
         Dehomogenization,
         WitnessNotIntegrallyClosed,
         GeneratorOfInterior,
-        // Cardinalities
-        TriangulationSize,
-        // Integer valued,        
-        TriangulationDetSum,
+        ClassGroup,
+        LAST_VECTOR = ConeProperty::ClassGroup,
+        // Integer valued,
+        FIRST_INTEGER,
+        TriangulationDetSum = ConeProperty::FIRST_INTEGER,
         ReesPrimaryMultiplicity,
         GradingDenom,
         UnitGroupIndex,
         InternalIndex,
-        ExternalIndex,
+        LAST_INTEGER = ConeProperty::InternalIndex,
+        FIRST_GMP_INTEGER,
+        ExternalIndex = FIRST_GMP_INTEGER,
+        LAST_GMP_INTEGER = ConeProperty::ExternalIndex,
         // rational valued
-        Multiplicity,
+        FIRST_RATIONAL,
+        Multiplicity = ConeProperty::FIRST_RATIONAL,
         Volume,
         Integral,
         VirtualMultiplicity,
+        LAST_RATIONAL = ConeProperty::VirtualMultiplicity,
         // floating point valued
-        EuclideanVolume,
+        FIRST_FLOAT,
+        EuclideanVolume = ConeProperty::FIRST_FLOAT,
+        EuclideanIntegral,
+        LAST_FLOAT = ConeProperty::EuclideanIntegral,
         // dimensions
+        FIRST_MACHINE_INTEGER,
+        TriangulationSize = ConeProperty::FIRST_MACHINE_INTEGER,
         RecessionRank,
         AffineDim,
         ModuleRank,
         Rank,
-        EmbeddingDim,      
+        EmbeddingDim,
+        LAST_MACHINE_INTEGER = ConeProperty::EmbeddingDim,
         // boolean valued 
-        IsPointed,
+        FIRST_BOOLEAN,
+        IsPointed = ConeProperty::FIRST_BOOLEAN,
         IsDeg1ExtremeRays,
         IsDeg1HilbertBasis,
         IsIntegrallyClosed,
         IsReesPrimary,
         IsInhomogeneous,
-        IsGorenstein,        
+        IsGorenstein,
+        LAST_BOOLEAN = ConeProperty::IsGorenstein,
         // complex structures
-        Triangulation,
+        FIRST_COMPLEX_STRUCTURE,
+        Triangulation = ConeProperty::FIRST_COMPLEX_STRUCTURE,
         StanleyDec,
-        InclusionExclusionData,        
-        ClassGroup,        
+        InclusionExclusionData,
         IntegerHull,
         ProjectCone,
         ConeDecomposition,
         HilbertSeries,
         HilbertQuasiPolynomial,
+        EhrhartSeries,
+        EhrhartQuasiPolynomial,
         WeightedEhrhartSeries,
-        WeightedEhrhartQuasiPolynomial,        
+        WeightedEhrhartQuasiPolynomial,
+        Sublattice,
+        LAST_COMPLEX_STRUCTURE = ConeProperty::Sublattice,
         //
         // integer type for computations
         //
-        BigInt,
+        FIRST_PROPERTY,
+        BigInt = ConeProperty::FIRST_PROPERTY,
         //
         // algorithmic variants
         //
@@ -127,6 +148,10 @@ namespace ConeProperty {
         SCIP,
         NoLLL,
         NoRelax,
+        Descent,
+        NoDescent,
+        NoGradingDenom,
+        GradingIsPositive,
         //
         // checking properties of already computed data
         // (cannot be used as a computation goal)
@@ -138,9 +163,25 @@ namespace ConeProperty {
         //
         ExplicitHilbertSeries,
         NakedDual,
-        
-        EnumSize // this has to be the last entry, to get the number of entries in the enum
+        EnumSize,
+        LAST_PROPERTY = ConeProperty::EnumSize // this has to be the last entry, to get the number of entries in the enum
     }; // remember to change also the string conversion function if you change this enum
+}
+
+namespace OutputType{
+    enum Enum {
+        Matrix,
+        MatrixFloat,
+        Vector,
+        Integer,
+        GMPInteger,
+        Rational,
+        Float,
+        MachineInteger,
+        Bool,
+        Complex,
+        Void
+    };
 }
 
 class ConeProperties {
@@ -194,6 +235,7 @@ bool isConeProperty(ConeProperty::Enum& cp, const std::string& s);
 ConeProperty::Enum toConeProperty(const std::string&);
 const std::string& toString(ConeProperty::Enum);
 std::ostream& operator<<(std::ostream&, const ConeProperties&);
+OutputType::Enum output_type(ConeProperty::Enum);
 
 }
 

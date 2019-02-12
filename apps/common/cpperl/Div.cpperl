@@ -1,0 +1,7 @@
+{"app": "common",
+ "inst": [
+  {"pkg": "Polymake::common::Div"},
+  {"class": "Div<UniPolynomial<Rational, int>>", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/numerical_functions.h"], "pkg": "Polymake::common::Div__UniPolynomial_A_Rational_I_Int_Z"},
+  {"class": "Div<long>", "include": ["polymake/numerical_functions.h"], "pkg": "Polymake::common::Div__Long"},
+ null ],
+"version": 3}

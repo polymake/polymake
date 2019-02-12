@@ -7,15 +7,15 @@ chunk_allocator::chunk_allocator(size_t obj_size_arg, size_t n_objects_in_chunk_
    , n_objects_in_chunk(n_objects_in_chunk_arg
                         ? n_objects_in_chunk_arg
                         : (default_chunk_size-sizeof(char*)) / obj_size)
-   , free_obj(NULL)
-   , last_obj(NULL)
-   , chunk_end(NULL)
+   , free_obj(nullptr)
+   , last_obj(nullptr)
+   , chunk_end(nullptr)
 {}
 
 void* chunk_allocator::allocate()
 {
    void* result;
-   if (free_obj != NULL) {
+   if (free_obj) {
       result=free_obj;
       free_obj=*reinterpret_cast<char**>(free_obj);
    } else if (last_obj != chunk_end) {
@@ -42,7 +42,7 @@ void chunk_allocator::reclaim(void* p)
 void chunk_allocator::release()
 {
    const size_t chunk_length=sizeof(char*) + obj_size * n_objects_in_chunk;
-   while (chunk_end != NULL) {
+   while (chunk_end) {
       char* chunk=chunk_end-chunk_length;
       chunk_end=*reinterpret_cast<char**>(chunk);
       delete[] chunk;
@@ -52,9 +52,9 @@ void chunk_allocator::release()
 void chunk_allocator::clear()
 {
    release();
-   free_obj=NULL;
-   last_obj=NULL;
-   chunk_end=NULL;
+   free_obj=nullptr;
+   last_obj=nullptr;
+   chunk_end=nullptr;
 }
 
 }

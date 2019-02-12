@@ -299,7 +299,7 @@ user_function project_out<Scalar>(Cone<Scalar> Matrix<Scalar>) {
     my ($v,$B) = @_;
     my $O = new Matrix<Scalar>($B);
     orthogonalize_subspace($O);
-    my $V = new Matrix<Scalar>($v->RAYS);
+    my $V = new Matrix<Scalar>($v->give("RAYS|INPUT_RAYS"));
     project_to_orthogonal_complement($V, $O);
     my $first_col_zero = ($B->col(0) == zero_vector<Scalar>($B->rows));
     my $ret;

@@ -180,7 +180,7 @@ partition_representatives_impl(const IndexedGroup& H,
    const int n(GMT.size()/H.size());
    Array<int> reps(n);
    hash_set<int> remaining(sequence(0, GMT.size()));
-   Entire<Array<int>>::iterator rit = entire(reps);
+   auto rit = entire(reps);
    while (!remaining.empty()) {
       const int r = *remaining.begin();
       *rit = r; ++rit;

@@ -25,13 +25,14 @@ using namespace polymake::operations;
 
 template <typename SetRef>
 struct contains {
-   typename pm::deref<SetRef>::type::element_type elem;
-public:
    typedef typename pm::deref<SetRef>::type set_type;
    typedef set_type argument_type;
    typedef bool result_type;
+   typedef typename pm::deref<SetRef>::type::element_type element_type;
 
-   contains(typename set_type::element_type e) : elem(e) {}
+   element_type elem;
+
+   contains(element_type e = element_type()) : elem(e) {}
 
    result_type operator() (typename pm::function_argument<SetRef>::const_type set) const
    {
@@ -47,7 +48,7 @@ public:
    typedef scalar_type argument_type;
    typedef scalar_type result_type;
 
-   dropshift(scalar_type e) : elem(e) {}
+   dropshift(scalar_type e = scalar_type()) : elem(e) {}
 
    result_type operator() (argument_type value) const
    {

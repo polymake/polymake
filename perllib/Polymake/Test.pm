@@ -35,6 +35,7 @@ require Polymake::Test::Shell;
 require Polymake::Test::Examples;
 
 declare $disable_viewers = 0;
+declare @alternative_suffixes;
 
 use Exporter 'import';
 
@@ -44,6 +45,20 @@ declare @EXPORT=
     compare_object compare_transformed_object compare_schedule check_rules
     compare_output compare_expected_error diff_with
     check_completion check_context_help neutralized_ERROR);
+
+##################################################################
+#
+#  Public function for global test setup, e.g. in test.rules
+#
+#  Add an alternative suffix for data files
+#  @param String suffix
+sub add_alternative_suffix(&$) {
+   my ($suffix)=@_;
+   if (string_list_index(\@alternative_suffixes, $suffix) >= 0) {
+      die "multiple definition of alternative suffix $suffix\n";
+   }
+   push @alternative_suffixes, $suffix;
+}
 
 ##################################################################
 #
@@ -373,11 +388,10 @@ sub compare_expected_error(&$@) {
 
 ##################################################################
 # Compare the output file produced by a function with the specimen.
-# The specimen file name is derived from ID: either <ID>.OK or <ID>.<Arch>.OK
+# The specimen file name is derived from ID: <ID>.OK
 # Primarily for testing visualization functions offering a File option:
 #   user_func(..., File => diff_with('ID'))
-# If several variants of correct output exist, they can be listed in an anonymous array:
-#   ... diff_with([ 'ID', 'alt1', ... ])
+#
 # @param String ID unique test name
 # @param CODE+ filters optional filters converting both produced and expected contents
 #              before comparison.  Each filter function should work linewise, with the
@@ -386,18 +400,10 @@ sub compare_expected_error(&$@) {
 # @option Float max_exec_time maximal allowed execution time in seconds
 #
 sub diff_with {
-   unless (@_>0 && (ref($_[0]) eq "ARRAY" ? $#{$_[0]} > 0 && not(grep { !is_string($_) } @{$_[0]})
-                                          : is_string($_[0]) || is_integer($_[0]))) {
+   unless (@_>0 && (is_string($_[0]) || is_integer($_[0]))) {
       croak( "usage: diff_with('ID', filters...)" );
    }
-   my $options=splice_options(\@_, 1);
-   my @filters=splice @_, 1;
-   if (ref($_[0]) eq "ARRAY") {
-      my $mainID=shift @{$_[0]};
-      $options->{altOK}=$_[0];
-      $_[0]=$mainID;
-   }
-   my $case=new Stream(@_, \@filters, $options);
+   my $case=new Stream(@_);
    $case->handle;
 }
 
@@ -434,26 +440,6 @@ sub check_context_help {
 #
 #  Internal functions shared by various test case specializations
 #
-
-my $SystemArch=`uname -p`;  chomp $SystemArch;
-if ($^O eq "darwin") {
-   $SystemArch="darwin.$SystemArch";
-} elsif ($SystemArch eq "unknown") {
-   $SystemArch=`uname -m`;  chomp $SystemArch;
-}
-
-sub find_matching_file {
-   foreach my $file (@_) {
-      -f "$file.$SystemArch" and return "$file.$SystemArch";
-      -f $file and return $file;
-   }
-   die "no matching file for @_ found\n";
-}
-
-sub find_object_file {
-   my ($stem, $app)=@_;
-   find_matching_file($stem =~ /\.[a-z]+$/ ? $stem : map { "$stem.$_" } map { @{$_->file_suffixes} } $app, values %{$app->used});
-}
 
 # makes the content of $@ invariant to current installation
 sub neutralized_ERROR {

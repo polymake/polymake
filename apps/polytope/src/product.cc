@@ -35,11 +35,11 @@ struct product_label {
    }
 };
 
-template<typename Scalar>
+template <typename Scalar>
 Matrix<Scalar>
 product_vertices(const Matrix<Scalar>& V1, const Matrix<Scalar>& V2,
-              int& n_vertices1, int& n_vertices2, int& n_vertices_out, int n_rays,
-              const Set<int>& rays1, const Set<int>& rays2)
+                 int& n_vertices1, int& n_vertices2, int& n_vertices_out, int n_rays,
+                 const Set<int>& rays1, const Set<int>& rays2)
 {
    if (!n_vertices_out)
       n_vertices1=V1.rows(), n_vertices2=V2.rows(),
@@ -73,27 +73,29 @@ product_facets(const Matrix<Scalar>& F1, const Matrix<Scalar>& F2)
 }
 
 //creates an array of length n, permuting blocks of block_size using perm
-Array<int> permute_blocks(int n, Array<int> perm, int block_size){
+Array<int> permute_blocks(int n, const Array<int>& perm, int block_size)
+{
    Array<int> out(n);
-   for(int i=0; i<perm.size(); ++i)
-      for(int j=0; j<block_size; ++j)
+   for (int i=0; i<perm.size(); ++i)
+      for (int j=0; j<block_size; ++j)
          out[i*block_size+j] = perm[i]*block_size + j;
    return out;
 }
 
 //creates an array of length n, permuting each of the blocks using perm
-Array<int> permute_inside_blocks(int n, Array<int> perm, int n_blocks){
+Array<int> permute_inside_blocks(int n, const Array<int>& perm, int n_blocks)
+{
    Array<int> out(n);
    int block_size = perm.size();
-   for(int i=0; i<n_blocks; ++i)
-      for(int j=0; j<block_size; ++j)
+   for (int i=0; i<n_blocks; ++i)
+      for (int j=0; j<block_size; ++j)
          out[i*block_size+j] = perm[j] + i*block_size;
    return out;
 }
 
 } // end unnamed namespace
 
-template<typename Scalar>
+template <typename Scalar>
 perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet options)
 {
    int n_vertices1=0, n_vertices2=0, n_vertices_out=0, n_rays=0;
@@ -114,7 +116,7 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
       n_rays=rays1.size()+rays2.size();
    }
 
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Product of " << p_in1.name() << " and " << p_in2.name() << endl;
 
    if (noc || v_present &&  p_in1.exists("VERTICES_IN_FACETS") && p_in2.exists("VERTICES_IN_FACETS")) {
@@ -265,8 +267,8 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
          auto l=labels_out.begin();
          l=copy_range(entire(pm::product(select(labels1,~rays1), select(labels2,~rays2), product_label())), l);
          const std::string all("all");
-         l=copy_range(entire(attach_operation(select(labels1,rays1), constant(all), product_label())), l);
-         copy_range(entire(attach_operation(constant(all), select(labels2,rays2), product_label())), l);
+         l=copy_range(entire(attach_operation(select(labels1,rays1), same_value(all), product_label())), l);
+         copy_range(entire(attach_operation(same_value(all), select(labels2,rays2), product_label())), l);
       }
       p_out.take("VERTEX_LABELS") << labels_out;
    }

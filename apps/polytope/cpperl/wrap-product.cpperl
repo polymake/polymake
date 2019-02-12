@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "product.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void", "void"], "func": "product", "include": ["polymake/Rational.h"], "sig": "product:T1.B.B.o", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void", "void", "void"], "func": "product", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "product:T1.B.B.o", "tp": "1"},
+ null ],
+"version": 3}

@@ -18,6 +18,7 @@
 #define POLYMAKE_GENERIC_IO_H
 
 #include "polymake/internal/sparse.h"
+#include "polymake/internal/shared_object.h"
 #include "polymake/internal/matrix_rows_cols.h"
 #include <typeinfo>
 
@@ -150,63 +151,60 @@ struct unknown_columns<T, false> : int_constant<-1> {};
 
 struct fallback {
    template <typename Any>
-   fallback(const Any&);
+   fallback(Any&&);
 };
 
 nothing& operator>> (const fallback&, const fallback&);
 nothing& operator<< (const fallback&, const fallback&);
 
-#define DeclHasIOoperatorCHECK(name,arrow)                        \
-template <typename Data, typename Stream, typename Result=Stream> \
-struct has_##name##_operator_impl {                               \
-   static Stream& stream();                                       \
-   static Data& data();                                           \
-   struct helper {                                                \
-      static derivation::yes Test(Result&);                       \
-      static derivation::no Test(nothing&);                       \
-   };                                                             \
-   static const bool value= sizeof(helper::Test( stream() arrow data() )) == sizeof(derivation::yes); \
+#define DeclHasIOoperatorCHECK(name, arrow)                       \
+template <typename Data, typename Stream, typename Result=Stream>    \
+struct has_##name##_operator_impl {                                  \
+   struct helper {                                                   \
+      static std::true_type Test(Result&);                           \
+      static std::false_type Test(nothing&);                         \
+   };                                                                   \
+   using type = decltype(helper::Test( std::declval<Stream&>() arrow std::declval<Data&>() )); \
 }
 
 DeclHasIOoperatorCHECK(input,>>);
 DeclHasIOoperatorCHECK(output,<<);
 
 template <typename Input, typename Data>
-struct has_generic_input_operator
-   : bool_constant< has_input_operator_impl<Data,GenericInput<Input>,Input>::value > {};
+using has_generic_input_operator
+   = typename has_input_operator_impl<Data, GenericInput<Input>, Input>::type;
 
 template <typename Output, typename Data>
-struct has_generic_output_operator
-   : bool_constant< has_output_operator_impl<Data,GenericOutput<Output>,Output>::value > {};
+using has_generic_output_operator
+   = typename has_output_operator_impl<Data, GenericOutput<Output>, Output>::type;
 
 template <typename Data>
-struct has_std_input_operator
-   : bool_constant< has_input_operator_impl<Data,std::istream>::value > {};
+using has_std_input_operator
+   = typename has_input_operator_impl<Data, std::istream>::type;
 
 template <typename Data>
-struct has_std_output_operator
-   : bool_constant< has_output_operator_impl<Data,std::ostream>::value > {};
+using has_std_output_operator
+   = typename has_output_operator_impl<Data, std::ostream>::type;
 
 template <typename Container>
 struct has_insert {
 // std::<something>::insert takes a const_iterator since C++11
-   typedef typename Container::const_iterator container_it;
+   using const_it = typename Container::const_iterator;
+   using value_type = typename Container::value_type;
 
    struct helper {
-      static derivation::yes Test(const typename Container::iterator&);
-      static derivation::yes Test(const std::pair<typename Container::iterator, bool>&); 
-      static derivation::no Test(nothing&);
+      static std::true_type Test(const typename Container::iterator&);
+      static std::true_type Test(const std::pair<typename Container::iterator, bool>&);
+      static std::false_type Test(nothing&);
    };
    struct mix_in : public Container {
       using Container::insert;
       nothing& insert(const fallback&);
-      nothing& insert(container_it, const fallback&);
+      nothing& insert(const_it, const fallback&);
    };
-   static container_it it();
-   static const typename Container::value_type& val();
 
-   static const bool without_position= sizeof(helper::Test(std::declval<mix_in&>().insert(val()) )) == sizeof(derivation::yes),
-                     with_position= sizeof(helper::Test(std::declval<mix_in&>().insert(it(),val()) )) == sizeof(derivation::yes);
+   using without_position = decltype(helper::Test(std::declval<mix_in&>().insert(std::declval<const value_type&>())));
+   using with_position= decltype(helper::Test(std::declval<mix_in&>().insert(std::declval<const_it>(), std::declval<const value_type&>())));
 };
 
 template <typename Apparent> struct as_list {};
@@ -221,8 +219,8 @@ template <typename Data, bool trusted=true,
 struct input_mode;
 
 template <typename Data, bool trusted,
-          bool TOrderedItems=(has_insert<Data>::with_position && trusted) || !has_insert<Data>::without_position,
-          bool TMutable=is_mutable<typename iterator_traits<typename Data::iterator>::reference>::value>
+          bool OrderedItems=(has_insert<Data>::with_position::value && trusted) || !has_insert<Data>::without_position::value,
+          bool Mutable=is_mutable<typename iterator_traits<typename Data::iterator>::reference>::value>
 struct input_list {
    // primary: ordered items, mutable
    typedef as_list<Data> type;
@@ -255,7 +253,7 @@ struct input_mode1<Data, trusted, true, false, TResizeable, true> {     // rando
 template <typename Data, bool trusted, bool TRandom, int TResizeable, bool TMutable>
 struct input_mode1<Data, trusted, TRandom, true, TResizeable, TMutable> {       // sparse
    static const int element_dim=object_traits<typename Data::value_type>::total_dimension;
-   typedef typename std::conditional<element_dim==0, as_sparse<TResizeable>, as_array<TResizeable, false>>::type type;
+   using type = std::conditional_t<element_dim==0, as_sparse<TResizeable>, as_array<TResizeable, false>>;
 };
 
 template <typename Data, bool trusted>
@@ -283,13 +281,6 @@ public:
    Input& operator>> (Data& data)
    {
       dispatch_generic_io(concrete(data), io_test::has_generic_input_operator<Input, Data>());
-      return this->top();
-   }
-
-   template <typename Data, size_t n>
-   Input& operator>> (Data (&a)[n])
-   {
-      retrieve_container(this->top(), array2container(a), io_test::as_array<0, false>());
       return this->top();
    }
 
@@ -403,33 +394,39 @@ void retrieve_container(Input& src, Data& data, io_test::by_inserting)
 template <typename Value, typename CursorRef>
 class list_reader {
 protected:
-   alias<CursorRef> cursor;
-   typedef typename deref<CursorRef>::type cursor_type;
+   using alias_t = alias<CursorRef>;
+   using cursor_type = typename deref<CursorRef>::type;
+   alias_t cursor;
    Value item;
-   bool _end;
+   bool end_;
 
    void load()
    {
-      typename attrib<cursor_type>::plus_ref c=*cursor;
+      auto&& c=*cursor;
       if (c.at_end())
-         _end=true;
+         end_=true;
       else
          c >> item;
    }
 public:
-   list_reader(typename alias<CursorRef>::arg_type cursor_arg)
-      : cursor(cursor_arg), _end(false) { load(); }
+   template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
+   explicit list_reader(Arg&& cursor_arg)
+      : cursor(std::forward<Arg>(cursor_arg))
+      , end_(false)
+   {
+      load();
+   }
 
-   typedef input_iterator_tag iterator_category;
-   typedef Value value_type;
-   typedef const Value& reference;
-   typedef const Value* pointer;
-   typedef ptrdiff_t difference_type;
+   using iterator_category = input_iterator_tag;
+   using value_type = Value;
+   using reference = const Value&;
+   using pointer = const Value*;
+   using difference_type = ptrdiff_t;
 
    reference operator* () const { return item; }
    pointer operator-> () const { return &item; }
 
-   bool at_end() const { return _end; }
+   bool at_end() const { return end_; }
 
    list_reader& operator++ () { load(); return *this; }
 private:
@@ -439,8 +436,8 @@ private:
 template <typename Input, typename Data> inline
 void fill_dense_from_dense(Input& src, Data& data)
 {
-   for (typename Entire<Data>::iterator dst=entire(data); !dst.at_end(); ++dst) {
-      typename Entire<Data>::iterator::reference dst_item=*dst;
+   for (auto dst=entire(data); !dst.at_end(); ++dst) {
+      auto&& dst_item=*dst;
       src >> dst_item;
    }
    src.finish();
@@ -470,8 +467,8 @@ void fill_dense_from_sparse(Input& src, Data& data, int d)
 template <typename Input, typename Data>
 void fill_sparse_from_dense(Input& src, Data& data)
 {
-   typename Entire<Data>::iterator dst=entire(data);
-   typename Data::value_type v;
+   auto dst=entire(data);
+   typename Data::value_type v{};
    int i=-1;
    if (!dst.at_end()) {
       for (;;) {
@@ -499,7 +496,7 @@ void fill_sparse_from_dense(Input& src, Data& data)
 template <typename Input, typename Data, typename LimitDim>
 void fill_sparse_from_sparse(Input& src, Data& data, const LimitDim& limit_dim)
 {
-   typename Entire<Data>::iterator dst=entire(data);
+   auto dst=entire(data);
    if (!dst.at_end()) {
       while (!src.at_end()) {
          const int index=src.index();
@@ -746,25 +743,27 @@ retrieve_container(Input& src, Data& data, io_test::as_matrix<TResizeable>)
 template <typename T, typename CursorRef>
 class composite_reader : public composite_reader<typename list_tail<T>::type, CursorRef> {
 protected:
-   typedef composite_reader<typename list_tail<T>::type, CursorRef> super;
-   static const bool is_last=false;
+   using base_t = composite_reader<typename list_tail<T>::type, CursorRef>;
+   using typename base_t::alias_t;
+   static constexpr bool is_last=false;
 public:
-   typedef typename list_head<T>::type element_type;
-   typedef typename deref<element_type>::type value_type;
+   using element_type = typename list_head<T>::type;
+   using value_type = typename deref<element_type>::type;
 
-   composite_reader(typename alias<CursorRef>::arg_type cursor_arg)
-      : super(cursor_arg) {}
+   template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
+   explicit composite_reader(Arg&& cursor_arg)
+      : base_t(std::forward<Arg>(cursor_arg)) {}
 
-   super& operator<< (typename attrib<element_type>::plus_ref elem)
+   base_t& operator<< (typename attrib<element_type>::plus_ref elem)
    {
-      typename attrib<CursorRef>::plus_ref c=*this->cursor;
+      auto&& c=*this->cursor;
       if (c.at_end()) {
          operations::clear<value_type> zero;
          zero(elem);
       } else {
          c >> elem;
       }
-      if (super::is_last) c.finish();
+      if (base_t::is_last) c.finish();
       return *this;
    }
 };
@@ -772,9 +771,12 @@ public:
 template <typename CursorRef>
 class composite_reader<void, CursorRef> {
 protected:
-   alias<CursorRef> cursor;
+   using alias_t = alias<CursorRef>;
+   alias_t cursor;
 
-   composite_reader(typename alias<CursorRef>::arg_type cursor_arg) : cursor(cursor_arg) {}
+   template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
+   composite_reader(Arg&& cursor_arg)
+      : cursor(std::forward<Arg>(cursor_arg)) {}
 
    static const bool is_last=true;
 };
@@ -797,13 +799,6 @@ public:
    Output& operator<< (const Data& data)
    {
       dispatch_generic_io(concrete(data), io_test::has_generic_output_operator<Output, Data>());
-      return this->top();
-   }
-
-   template <typename Data, size_t n>
-   Output& operator<< (const Data (&data)[n])
-   {
-      store_container(array2container(data), std::false_type());
       return this->top();
    }
 
@@ -947,8 +942,7 @@ template <typename Masquerade, typename Data>
 void GenericOutputImpl<Output>::store_list_as(const Data& data)
 {
    auto&& c=this->top().begin_list(reinterpret_cast<const Masquerade*>(&data));
-   for (auto src=ensure(data, (cons<dense, end_sensitive>*)0).begin();
-        !src.at_end(); ++src)
+   for (auto src=entire<dense>(data); !src.at_end(); ++src)
       c << *src;
    c.finish();
 }
@@ -985,18 +979,21 @@ void GenericOutputImpl<Output>::store_sparse_as(const Data& data)
 template <typename T, typename CursorRef>
 class composite_writer : public composite_writer<typename list_tail<T>::type, CursorRef> {
 protected:
-   typedef composite_writer<typename list_tail<T>::type, CursorRef> super;
-   static const bool is_last=false;
+   using base_t = composite_writer<typename list_tail<T>::type, CursorRef>;
+   using typename base_t::alias_t;
+   static constexpr bool is_last=false;
 public:
-   typedef typename list_head<T>::type element_type;
+   using element_type = typename list_head<T>::type;
 
-   composite_writer(typename alias<CursorRef>::arg_type cursor_arg) : super(cursor_arg) {}
+   template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
+   explicit composite_writer(Arg&& cursor_arg)
+      : base_t(std::forward<Arg>(cursor_arg)) {}
 
-   super& operator<< (typename attrib<element_type>::plus_const_ref elem)
+   base_t& operator<< (typename attrib<element_type>::plus_const_ref elem)
    {
-      typename attrib<CursorRef>::plus_ref c=*this->cursor;
+      auto&& c=*this->cursor;
       c << elem;
-      if (super::is_last) c.finish();
+      if (base_t::is_last) c.finish();
       return *this;
    }
 };
@@ -1004,9 +1001,12 @@ public:
 template <typename CursorRef>
 class composite_writer<void, CursorRef> {
 protected:
-   alias<CursorRef> cursor;
+   using alias_t = alias<CursorRef>;
+   alias_t cursor;
 
-   composite_writer(typename alias<CursorRef>::arg_type cursor_arg) : cursor(cursor_arg) {}
+   template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
+   explicit composite_writer(Arg&& cursor_arg)
+      : cursor(std::forward<Arg>(cursor_arg)) {}
 
    static const bool is_last=true;
 };

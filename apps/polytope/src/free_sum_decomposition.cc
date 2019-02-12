@@ -20,13 +20,13 @@
 #include "polymake/PowerSet.h"
 #include "polymake/Array.h"
 #include "polymake/linalg.h"
-#include "polymake/polytope/to_interface.h"
+#include "polymake/polytope/solve_LP.h"
 
 namespace polymake { namespace polytope {
 
 namespace {
 
-template<typename Scalar>
+template <typename Scalar>
 bool is_origin_inside(const Matrix<Scalar>& V,
                       const Set<int>& indices)
 {
@@ -41,11 +41,11 @@ bool is_origin_inside(const Matrix<Scalar>& V,
    if (row_basis.size() == t_eqs.cols())
       return false;
 
-   return to_interface::to_input_feasible_impl(ineqs, Matrix<Scalar>(t_eqs.minor(row_basis, All)));
+   return H_input_feasible(ineqs, t_eqs.minor(row_basis, All));
 }
 
 // return value: true means to continue decomposing, false means we're done in dimension e
-template<typename Scalar>
+template <typename Scalar>
 bool decompose_impl(int e,
                     const Matrix<Scalar>& V, 
                     Set<int>& active_indices,
@@ -55,7 +55,7 @@ bool decompose_impl(int e,
                                                          unit_vector<Scalar>(V.cols(), 0)));
    const Array<int> original_vertex(active_indices);
    
-   for (Entire< Subsets_of_k<const Set<int>&> >::const_iterator a=entire(all_subsets_of_k(active_indices, e+1)); !a.at_end(); ++a) {
+   for (auto a=entire(all_subsets_of_k(active_indices, e+1)); !a.at_end(); ++a) {
 
       // the linear hull is the affine hull of the vertices and the origin
       const Matrix<Scalar> linear_hull_of_selected(null_space(V.minor(*a, All) / 

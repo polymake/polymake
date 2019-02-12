@@ -1,0 +1,12 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<const Wary<Graph<Undirected>>&>>", "perl::AnchorArg<perl::Canned<const Set<int>&>>"], "func": "induced_subgraph", "include": ["polymake/Graph.h", "polymake/IndexedSubgraph.h", "polymake/Set.h"], "sig": "induced_subgraph.X15.X11"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Wary<Graph<Undirected>>&>>", "perl::AnchorArg<perl::Canned<Set<int>>>"], "func": "induced_subgraph", "include": ["polymake/Graph.h", "polymake/IndexedSubgraph.h", "polymake/Set.h"], "sig": "induced_subgraph.X15.X11"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Wary<Graph<Undirected>>&>>", "perl::AnchorArg<perl::Canned<pm::Series<int, true>>>"], "func": "induced_subgraph", "include": ["polymake/Graph.h", "polymake/IndexedSubgraph.h", "polymake/Set.h"], "sig": "induced_subgraph.X15.X11"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Wary<Graph<Undirected>>&>>", "perl::AnchorArg<perl::Canned<pm::Complement<pm::Set<int, pm::operations::cmp> const>>>"], "func": "induced_subgraph", "include": ["polymake/Graph.h", "polymake/IndexedSubgraph.h", "polymake/Set.h"], "sig": "induced_subgraph.X15.X11"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Wary<Graph<Directed>>&>>", "perl::AnchorArg<perl::Canned<pm::Complement<pm::Set<int, pm::operations::cmp> const&>>>"], "func": "induced_subgraph", "include": ["polymake/Graph.h", "polymake/IndexedSubgraph.h", "polymake/Set.h"], "sig": "induced_subgraph.X15.X11"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Wary<Graph<Undirected>>&>>", "perl::AnchorArg<perl::Canned<const pm::Series<int, true>&>>"], "func": "induced_subgraph", "include": ["polymake/Graph.h", "polymake/IndexedSubgraph.h", "polymake/Set.h"], "sig": "induced_subgraph.X15.X11"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Wary<Graph<Undirected>>&>>", "perl::AnchorArg<perl::Canned<pm::Complement<pm::Set<int, pm::operations::cmp> const&>>>"], "func": "induced_subgraph", "include": ["polymake/Graph.h", "polymake/IndexedSubgraph.h", "polymake/Set.h"], "sig": "induced_subgraph.X15.X11"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Wary<Graph<Directed>>&>>", "perl::AnchorArg<perl::Canned<const pm::Nodes<pm::graph::Graph<pm::graph::Undirected> >&>>"], "func": "induced_subgraph", "include": ["polymake/Graph.h", "polymake/IndexedSubgraph.h"], "sig": "induced_subgraph.X15.X11"},
+ null ],
+"version": 3}

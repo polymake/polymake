@@ -1,0 +1,5 @@
+{"app": "fan", "embed": "remove_redundancies.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "remove_redundancies", "include": ["polymake/Rational.h"], "sig": "remove_redundancies:T1.B", "tp": "1"},
+ null ],
+"version": 3}

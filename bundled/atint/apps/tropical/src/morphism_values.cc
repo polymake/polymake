@@ -65,8 +65,8 @@ namespace polymake { namespace tropical {
 		converted_rays /= linspace;
 		converted_values /= lin_values;
 		//Remove leading coordinate
-		converted_rays = converted_rays.minor(All,~scalar2set(0));
-		basepoint = basepoint.slice(~scalar2set(0));
+		converted_rays = converted_rays.minor(All, range_from(1));
+		basepoint = basepoint.slice(range_from(1));
 
 
 		//Compute basis of rays
@@ -147,8 +147,8 @@ namespace polymake { namespace tropical {
 		Matrix<Rational> matrix = morphism.give("MATRIX");
 		Vector<Rational> translate = morphism.give("TRANSLATE");
 
-		Matrix<Rational> vertex_values = T(matrix * T(rays.minor(All,~scalar2set(0))));
-		Matrix<Rational> lineality_values = T(matrix * T(lineality.minor(All,~scalar2set(0))));
+		Matrix<Rational> vertex_values = T(matrix * T(rays.minor(All, range_from(1))));
+		Matrix<Rational> lineality_values = T(matrix * T(lineality.minor(All, range_from(1))));
 
 		//For each nonfar vertex, we have to add the translate
 		for(int r = 0; r < rays.rows(); r++) {
@@ -161,7 +161,7 @@ namespace polymake { namespace tropical {
 	}
 
 
-	FunctionTemplate4perl("computeDomainFromMatrix<Addition>(Morphism<Addition>) : void");
-	Function4perl(&computeValuesFromMatrix, "computeValuesFromMatrix(Morphism) : void");
+	FunctionTemplate4perl("computeDomainFromMatrix<Addition>(Morphism<Addition>)");
+	Function4perl(&computeValuesFromMatrix, "computeValuesFromMatrix(Morphism)");
 
 }}

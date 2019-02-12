@@ -1,0 +1,16 @@
+{"app": "polytope", "embed": "canonical_initial.cc",
+ "inst": [
+  {"args": ["perl::Canned<SparseMatrix<Rational, NonSymmetric>&>"], "func": "add_extra_polytope_ineq", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "add_extra_polytope_ineq.X1"},
+  {"args": ["perl::Canned<Matrix<Rational>&>"], "func": "add_extra_polytope_ineq", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "add_extra_polytope_ineq.X1"},
+  {"args": ["perl::Canned<Matrix<Rational>&>"], "func": "canonicalize_polytope_generators", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "canonicalize_polytope_generators.X1"},
+  {"args": ["perl::Canned<Matrix<QuadraticExtension<Rational>>&>"], "func": "add_extra_polytope_ineq", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "add_extra_polytope_ineq.X1"},
+  {"args": ["perl::Canned<Matrix<double>&>"], "func": "canonicalize_polytope_generators", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "canonicalize_polytope_generators.X1"},
+  {"args": ["perl::Canned<Matrix<PuiseuxFraction<Min, Rational, Rational>>&>"], "func": "add_extra_polytope_ineq", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "add_extra_polytope_ineq.X1"},
+  {"args": ["perl::Canned<Matrix<QuadraticExtension<Rational>>&>"], "func": "canonicalize_polytope_generators", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "canonicalize_polytope_generators.X1"},
+  {"args": ["perl::Canned<SparseMatrix<double, NonSymmetric>&>"], "func": "add_extra_polytope_ineq", "include": ["polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "sig": "add_extra_polytope_ineq.X1"},
+  {"args": ["perl::Canned<SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>&>"], "func": "add_extra_polytope_ineq", "include": ["polymake/IncidenceMatrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "add_extra_polytope_ineq.X1"},
+  {"args": ["perl::Canned<Matrix<double>&>"], "func": "add_extra_polytope_ineq", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "add_extra_polytope_ineq.X1"},
+  {"args": ["perl::Canned<Matrix<PuiseuxFraction<Max, Rational, Rational>>&>"], "func": "add_extra_polytope_ineq", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "add_extra_polytope_ineq.X1"},
+  {"args": ["perl::Canned<SparseMatrix<Rational, NonSymmetric>&>"], "func": "canonicalize_polytope_generators", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "canonicalize_polytope_generators.X1"},
+ null ],
+"version": 3}

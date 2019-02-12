@@ -1,0 +1,9 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Vector<Rational>&>"], "func": "sqr", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "sqr.X"},
+  {"args": ["perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true> const, mlist<> >&>"], "func": "sqr", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Vector.h"], "sig": "sqr.X"},
+  {"args": ["perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double>&>, pm::Series<int, true> const, mlist<> >&>"], "func": "sqr", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Vector.h"], "sig": "sqr.X"},
+  {"args": ["perl::Canned<const Vector<double>&>"], "func": "sqr", "include": ["polymake/Vector.h"], "sig": "sqr.X"},
+  {"args": ["perl::Canned<const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<double, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&, pm::NonSymmetric>&>"], "func": "sqr", "include": ["polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h", "polymake/Vector.h"], "sig": "sqr.X"},
+ null ],
+"version": 3}

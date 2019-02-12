@@ -26,7 +26,7 @@ EdgeMap<Dir,double> edge_lengths(const Graph<Dir>& G, const GenericMatrix<Matrix
 {
    EdgeMap<Dir,double> L(G);
    Matrix<double> C(coords);
-   for (typename Entire< Edges< Graph<Dir> > >::const_iterator e_it=entire(edges(G)); !e_it.at_end(); ++e_it)
+   for (auto e_it=entire(edges(G)); !e_it.at_end(); ++e_it)
       L[*e_it]=std::sqrt(sqr(C[e_it.from_node()]-C[e_it.to_node()]));
 
    return L;

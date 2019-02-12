@@ -276,7 +276,7 @@ sub resolve_ref {
        ($help->parent->category ? $help->parent->parent : $help->parent)->name ne "methods") {
       $func_help= $ovcnt ? $help->topics->{"overload#0"} : $help;
    }
-   local_array($help->related, ($application ? $application->help : $Core::Help::core)->related_objects($func_help)) if defined($func_help);
+   local ref $help->related = ($application ? $application->help : $Core::Help::core)->related_objects($func_help) if defined($func_help);
    search($help, $ref);
 }
 
@@ -360,7 +360,7 @@ sub write_function {
                           // die "Internal error: orphaned option group help node ", $opt_group->full_path, "\n";
             $writer->emptyTag("common-option-list", name => $opt_group->name, href => $group_ref);
          } else {
-            my $group_text=local_shift($opt_group);
+            my $group_text = local shift @$opt_group;
             if (length($group_text)) {
                $writer->startTag("options");
                write_descr_string($writer, $help, $group_text);
@@ -731,7 +731,7 @@ foreach my $app (@ARGV) {
 
 {
    local $application;
-   local_push($Core::Help::core->related, application("common")->help);
+   local push @{$Core::Help::core->related}, application("common")->help;
 
    my $writer=open_app_doc_file("core");
 

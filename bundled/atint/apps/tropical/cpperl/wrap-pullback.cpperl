@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "pullback.cc",
+ "inst": [
+  {"args": ["Min", "void", "void"], "func": "pullback", "include": ["polymake/TropicalNumber.h"], "sig": "pullback:T1.B.B", "tp": "1"},
+  {"args": ["Max", "void", "void"], "func": "pullback", "include": ["polymake/TropicalNumber.h"], "sig": "pullback:T1.B.B", "tp": "1"},
+ null ],
+"version": 3}

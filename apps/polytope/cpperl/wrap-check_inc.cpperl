@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "check_inc.cc",
+ "inst": [
+  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Matrix<Rational>&>", "void", "void"], "func": "check_inc", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "check_inc:T1.X.X.x.x", "tp": "1"},
+  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const pm::MatrixMinor<pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::Array<int> const&, pm::all_selector const&>&>", "void", "void"], "func": "check_inc", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "check_inc:T1.X.X.x.x", "tp": "1"},
+ null ],
+"version": 3}

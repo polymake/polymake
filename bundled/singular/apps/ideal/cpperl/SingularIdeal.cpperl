@@ -1,0 +1,9 @@
+{"app": "ideal",
+ "inst": [
+  {"class": "SingularIdeal", "include": ["polymake/ideal/singularIdeal.h"], "pkg": "Polymake::ideal::SingularIdeal"},
+  {"args": ["SingularIdeal", "perl::Canned<const Array<Polynomial<Rational, int>>&>", "std::string(std::string)"], "include": ["polymake/Array.h", "polymake/Polynomial.h", "polymake/Rational.h", "polymake/ideal/singularIdeal.h"], "op": "new", "sig": "new.X.std::string"},
+  {"args": ["SingularIdeal", "perl::Canned<const Array<Polynomial<Rational, int>>&>", "perl::Canned<const Vector<int>&>"], "include": ["polymake/Array.h", "polymake/Polynomial.h", "polymake/Rational.h", "polymake/Vector.h", "polymake/ideal/singularIdeal.h"], "op": "new", "sig": "new.X.X"},
+  {"args": ["SingularIdeal", "perl::Canned<const Array<Polynomial<Rational, int>>&>", "perl::Canned<const Matrix<int>&>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Polynomial.h", "polymake/Rational.h", "polymake/ideal/singularIdeal.h"], "op": "new", "sig": "new.X.X"},
+  {"args": ["SingularIdeal", "perl::Canned<const Array<Polynomial<Rational, int>>&>", "perl::Canned<const SparseMatrix<int, NonSymmetric>&>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Polynomial.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/ideal/singularIdeal.h"], "op": "new", "sig": "new.X.X"},
+ null ],
+"version": 3}

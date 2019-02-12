@@ -1,0 +1,8 @@
+{"app": "polytope", "embed": "representative_simplices.cc",
+ "inst": [
+  {"args": ["Rational", "void", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Array<Array<int>>&>"], "func": "representative_max_interior_simplices", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "representative_max_interior_simplices:T1.x.X.X", "tp": "1"},
+  {"args": ["Rational", "void", "void"], "func": "representative_interior_and_boundary_ridges", "include": ["polymake/Rational.h"], "sig": "representative_interior_and_boundary_ridges:T1.x.o", "tp": "1"},
+  {"args": ["Rational", "void", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Array<Array<int>>&>"], "func": "representative_simplices", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "representative_simplices:T1.x.X.X", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void", "perl::Canned<const SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>&>", "perl::Canned<const Array<Array<int>>&>"], "func": "representative_simplices", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "representative_simplices:T1.x.X.X", "tp": "1"},
+ null ],
+"version": 3}

@@ -28,9 +28,9 @@ namespace polymake { namespace matroid {
  */
 int rank_of_set(const Set<int> set, const Set<Set<int> > bases){
    int rank=0;
-   for (Entire<Set<Set<int> > >::const_iterator it=entire(bases);!it.at_end();++it){
+   for (auto it=entire(bases);!it.at_end();++it) {
       int r=((*it)*set).size();
-      if(r>rank)
+      if (r>rank)
          rank=r;
    }
    return rank;
@@ -46,11 +46,11 @@ perl::ListReturn matroid_plueckervector(perl::Object matroid)
    Vector<int> rank_vec(k);
 
    int l=0;
-   for (Entire< Subsets_of_k<const sequence&> >::const_iterator i=entire(all_subsets_of_k(sequence(0,n),r)); !i.at_end(); ++i,++l){
-      if(bases.contains(*i)){
+   for (auto i=entire(all_subsets_of_k(sequence(0,n), r)); !i.at_end(); ++i,++l) {
+      if(bases.contains(*i)) {
          char_vec[l]=1;
          rank_vec[l]=r;
-      }else{
+      } else {
          rank_vec[l]=rank_of_set(*i,bases);
       }
    }
@@ -71,8 +71,8 @@ perl::Object matroid_from_characteristic_vector(const Vector<Integer>& vec, cons
    int n_bases=0;
    int j=0;
 
-   //test for each subset of size r
-   for (Entire< Subsets_of_k<const sequence&> >::const_iterator i=entire(all_subsets_of_k(sequence(0,n),r)); !i.at_end(); ++i,++j) {    
+   // test for each subset of size r
+   for (auto i=entire(all_subsets_of_k(sequence(0,n), r)); !i.at_end(); ++i, ++j) {
       if (vec[j]==1) {
 	 bases.push_back(*i);
 	 ++n_bases;

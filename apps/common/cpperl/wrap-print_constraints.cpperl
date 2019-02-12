@@ -1,0 +1,6 @@
+{"app": "common", "embed": "print_constraints.cc",
+ "inst": [
+  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "void"], "func": "print_constraints", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "print_constraints:T1.X.o", "tp": "1"},
+  {"args": ["double", "perl::Canned<const Matrix<double>&>", "void"], "func": "print_constraints", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "print_constraints:T1.X.o", "tp": "1"},
+ null ],
+"version": 3}

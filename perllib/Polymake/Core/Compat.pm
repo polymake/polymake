@@ -112,7 +112,7 @@ sub printable {
 	 # we give up here
 	 ref($thing)
       }
-   } elsif (is_ARRAY($thing)) {
+   } elsif (is_array($thing)) {
       # it is a plain array
       @$thing;
 

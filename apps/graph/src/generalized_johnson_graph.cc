@@ -40,7 +40,7 @@ perl::Object generalized_johnson_graph (const int n,const int k,const int i) {
    int ct(0);
    auto lit = entire(labels);
    std::ostringstream os;
-   for (Entire<Subsets_of_k<const sequence&> >::const_iterator sit = entire(all_subsets_of_k(sequence(0,n), k)); !sit.at_end(); ++sit, ++lit) {
+   for (auto sit = entire(all_subsets_of_k(sequence(0,n), k)); !sit.at_end(); ++sit, ++lit) {
       const Set<int> the_set(*sit);
       index_of[the_set] = ct++;
       wrap(os) << the_set;

@@ -1,0 +1,6 @@
+{"app": "graph", "embed": "hd_embedder.cc",
+ "inst": [
+  {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Sequential", "void", "void", "void"], "func": "hd_embedder", "include": ["polymake/graph/Decoration.h"], "sig": "hd_embedder:T2.B.x.o", "tp": "2"},
+  {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Nonsequential", "void", "void", "void"], "func": "hd_embedder", "include": ["polymake/graph/Decoration.h"], "sig": "hd_embedder:T2.B.x.o", "tp": "2"},
+ null ],
+"version": 3}

@@ -1,0 +1,5 @@
+{"app": "topaz", "embed": "k_skeleton.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void", "void"], "func": "k_skeleton", "include": ["polymake/Rational.h"], "sig": "k_skeleton:T1.B.x.o", "tp": "1"},
+ null ],
+"version": 3}

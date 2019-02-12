@@ -142,7 +142,7 @@ struct action<OpRef, on_nonhomog_container, Perm, op_tag, is_container> {
   const Perm perm;
   
   action(const Perm& p)
-   : perm(concatenate(pm::single_value_container<int>(0), translate(p, 1))) {}
+   : perm(concatenate(single_value_as_container(0), translate(p, 1))) {}
   
   result_type operator() (typename function_argument<argument_type>::const_type x) const
   {
@@ -247,7 +247,7 @@ struct action<OpRef, on_nonhomog_cols, Perm, is_matrix, is_container> {
    const Perm perm;
 
    action(const Perm& p)
-      : perm(concatenate(pm::single_value_container<int>(0), translate(p, 1))) {}
+      : perm(concatenate(single_value_as_container(0), translate(p, 1))) {}
 
    result_type operator() (typename function_argument< argument_type >::const_type x) const
    {

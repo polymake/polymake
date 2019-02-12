@@ -16,50 +16,32 @@
 
 #include "polymake/client.h"
 #include "polymake/polytope/soplex_interface.h"
+#include "polymake/polytope/generic_lp_client.h"
 
+namespace polymake { namespace polytope { namespace soplex_interface {
 
-namespace polymake { namespace polytope {
-
-
-void soplex_solve_lp(perl::Object p, perl::Object lp, bool maximize, perl::OptionSet options)
+template <typename Scalar=Rational>
+auto create_LP_solver()
 {
-   typedef soplex_interface::solver Solver;
+   return cached_LP_solver<Rational>(new Solver(), true);
+}
+
+}
+
+void soplex_lp_client(perl::Object p, perl::Object lp, bool maximize, perl::OptionSet options)
+{
    const Matrix<Rational> H = p.give("FACETS | INEQUALITIES");
    const Matrix<Rational> E = p.lookup("AFFINE_HULL | EQUATIONS");
    const Vector<Rational> Obj = lp.give("LINEAR_OBJECTIVE");
 
-   try
-   {
-      Solver solver;
-      if ( options.exists("initial_basis") )
-      {
-         const Set<int> basis = options["initial_basis"];
-         solver.set_basis(basis);
-      }
-
-      typename Solver::lp_solution S = solver.solve_lp(H, E, Obj, maximize);
-      lp.take(maximize ? "MAXIMAL_VALUE" : "MINIMAL_VALUE") << S.first;
-      lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << S.second;
-      p.take("FEASIBLE") << true;
-   }
-   catch (const infeasible&)
-   {
-      lp.take(maximize ? "MAXIMAL_VALUE" : "MINIMAL_VALUE") << perl::undefined();
-      lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << perl::undefined();
-      p.take("FEASIBLE") << false;
-   }
-   catch (const unbounded&)
-   {
-      if (maximize)
-         lp.take("MAXIMAL_VALUE") << std::numeric_limits<Rational>::infinity();
-      else
-         lp.take("MINIMAL_VALUE") << -std::numeric_limits<Rational>::infinity();
-      lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << perl::undefined();
-      p.take("FEASIBLE") << true;
-   }
+   const Set<int> initial_basis = options["initial_basis"];
+   const soplex_interface::Solver solver{};
+   store_LP_Solution(p, lp, maximize, solver.solve(H, E, Obj, maximize, initial_basis));
 }
 
-FunctionTemplate4perl("soplex_solve_lp(Polytope<Rational>, LinearProgram<Rational>, $; {initial_basis => undef}) : void");
+Function4perl(&soplex_lp_client, "soplex_lp_client(Polytope<Rational>, LinearProgram<Rational>, $; {initial_basis => undef})");
+
+InsertEmbeddedRule("function soplex.simplex: create_LP_solver<Scalar> [Scalar==Rational] () : c++ (name => 'soplex_interface::create_LP_solver') : returns(cached);\n");
 
 } }
 

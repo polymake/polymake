@@ -99,7 +99,7 @@ void createChildren( std::vector<Face>* lowerFaces, std::vector<Face>* upperFace
 
 // try to find a row R in affine hull that has a nonzero value at the current coordinate
 // if found reduce all other rows at this coordinate using R and return R
-Vector<Rational>* tryAffineHull(Matrix<Rational> ** affineHull, int coord, int verbose)
+Vector<Rational>* tryAffineHull(Matrix<Rational>** affineHull, int coord, int verbose)
 {
    if(verbose)
       cout << "trying to find affine hull row for coord "<< coord << " ... ";
@@ -109,10 +109,8 @@ Vector<Rational>* tryAffineHull(Matrix<Rational> ** affineHull, int coord, int v
       {
          Matrix<Rational> * newAffineHull = new Matrix<Rational>((*affineHull)->minor(~scalar2set(row),All));
          Vector<Rational> * ahrow = new Vector<Rational>((*affineHull)->row(row));
-         for(Entire< Rows< Matrix<Rational> > >::iterator r = entire(rows(*newAffineHull)); !r.at_end(); ++r)
-         {
-            if((*r)[coord] != 0)
-            {
+         for (auto r = entire(rows(*newAffineHull)); !r.at_end(); ++r) {
+            if (!is_zero((*r)[coord])) {
                (*r) -= ((*r)[coord] / (*ahrow)[coord]) * (*ahrow);
             }
          }

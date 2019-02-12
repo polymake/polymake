@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<FacetList&>", "perl::Canned<const Set<int>&>"], "func": "erase", "include": ["polymake/FacetList.h", "polymake/Set.h"], "kind": "meth", "sig": "erase:M1.X"},
+ null ],
+"version": 3}

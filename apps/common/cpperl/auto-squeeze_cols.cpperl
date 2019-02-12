@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<IncidenceMatrix<NonSymmetric>&>"], "func": "squeeze_cols", "include": ["polymake/IncidenceMatrix.h"], "kind": "meth", "sig": "squeeze_cols:M1"},
+ null ],
+"version": 3}

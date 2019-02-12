@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<const Wary<Graph<Directed>>&>>", "void"], "func": "in_edges", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "in_edges:R_EdgeList:M12.x"},
+ null ],
+"version": 3}

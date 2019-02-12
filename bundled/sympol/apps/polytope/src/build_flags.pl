@@ -9,8 +9,8 @@ if ($ConfigFlags{'bundled.sympol.UseBundled'}) {
                         symmetrygroupconstruction/graphconstructiondefault.cpp symmetrygroupconstruction/matrixconstruction.cpp symmetrygroupconstruction/matrixconstructiondefault.cpp ) ],
        'raycomputationcdd.cpp' => '-DGMPRATIONAL ${bundled.cdd.CFLAGS}',
        'raycomputationlrs.cpp' => '-DGMP -DMA ${bundled.lrs.CFLAGS}',
-       $ConfigFlags{ExternalHeaders} =~ /\bpermlib\b/
-       ? ( CXXFLAGS => '-I${root}/include/external/permlib' ) : (),
+       CXXFLAGS => '-Wno-shadow' . ($ConfigFlags{ExternalHeaders} =~ /\bpermlib\b/
+				    ? ' -I${root}/include/external/permlib' : ''),
     },
   )
 } else {

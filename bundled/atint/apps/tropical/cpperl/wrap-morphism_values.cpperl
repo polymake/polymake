@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "morphism_values.cc",
+ "inst": [
+  {"args": ["Max", "void"], "func": "computeDomainFromMatrix", "include": ["polymake/TropicalNumber.h"], "sig": "computeDomainFromMatrix:T1.B", "tp": "1"},
+  {"args": ["Min", "void"], "func": "computeDomainFromMatrix", "include": ["polymake/TropicalNumber.h"], "sig": "computeDomainFromMatrix:T1.B", "tp": "1"},
+ null ],
+"version": 3}

@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "facet_to_infinity.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "facet_to_infinity", "include": ["polymake/Rational.h"], "sig": "facet_to_infinity:T1.B.x", "tp": "1"},
+ null ],
+"version": 3}

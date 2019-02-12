@@ -1,0 +1,7 @@
+{"app": "fan", "embed": "secondary_fan.cc",
+ "inst": [
+  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "void"], "func": "secondary_fan_impl", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "secondary_fan_impl:T1.X.o", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "perl::Canned<const SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>&>", "void"], "func": "secondary_fan_impl", "include": ["polymake/IncidenceMatrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "secondary_fan_impl:T1.X.o", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "perl::Canned<const Matrix<QuadraticExtension<Rational>>&>", "void"], "func": "secondary_fan_impl", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "secondary_fan_impl:T1.X.o", "tp": "1"},
+ null ],
+"version": 3}

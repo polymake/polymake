@@ -19,7 +19,7 @@ use strict;
 
 my $proto="XS(boot_DynaLoader);\n";
 my $bind=<<'.';
-   newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, __FILE__);
+   newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, "Main.cc");
 .
 
 foreach my $file (@ARGV) {

@@ -33,7 +33,7 @@ Vector<int> cut_vector(const graph_type& G, const Set<int>& cut)
    Vector<int> cv(G.edges()+1);
    cv[0]=1; // homogenizing coordinate
    int i=1;
-   for (Entire< Edges< graph_type > >::const_iterator e=entire(edges(G));  !e.at_end();  ++e) {
+   for (auto e=entire(edges(G));  !e.at_end();  ++e) {
       const int u(e.from_node()), v(e.to_node());
       if ((cut.contains(u) && !cut.contains(v)) || (cut.contains(v) && !cut.contains(u)))
          cv[i] = 1;
@@ -60,8 +60,7 @@ perl::Object fractional_cut_polytope(const graph_type& G)
 
    for (int k=0; k<=max_k; ++k) {
       // each cut considered here has a complement which contains more than half of the nodes
-      for (Entire< Subsets_of_k<const sequence&> >::const_iterator ei = entire(all_subsets_of_k(sequence(0,n_nodes),k)); 
-           !ei.at_end(); ++ei) {
+      for (auto ei = entire(all_subsets_of_k(sequence(0,n_nodes),k)); !ei.at_end(); ++ei) {
          *r=cut_vector(G,*ei);
          ++r;
       }

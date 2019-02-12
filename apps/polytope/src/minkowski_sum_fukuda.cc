@@ -16,13 +16,15 @@
 // This code was originally written by Silke Moeser in 2011.
 // It was later modified by Benjamin Schroeter and others.
 
-#include "polymake/polytope/minkowski_sum_fukuda.h"
+#include "polymake/client.h"
+#include "polymake/Array.h"
 #include "polymake/Vector.h"
 #include "polymake/Matrix.h"
 #include "polymake/ListMatrix.h"
 #include "polymake/Graph.h"
 #include "polymake/hash_set"
 #include "polymake/list"
+#include "polymake/polytope/solve_LP.h"
 
 namespace polymake { namespace polytope {
 
@@ -39,18 +41,17 @@ Matrix<E> list2matrix(const vertex_list<E>& v)
    return Matrix<E>(v.size(), v_it->dim(), v_it);
 }
 
-/* LP solver uses cdd for Rational and Integer, and TOSimplex for other types
- *
+/*
  * returns optimal solution
  * called by Adj
  */
 template <typename E>
-Vector<E> solve_lp(const Matrix<E>& constraints, const Vector<E>& objective) {
-   typedef typename choose_solver<E>::solver Solver;
-   Solver solver;
-   Matrix<E> eqs;
-   typename Solver::lp_solution S=solver.solve_lp(constraints, eqs, objective, 1);
-   return S.second;
+Vector<E> solve_lp(const Matrix<E>& constraints, const Vector<E>& objective)
+{
+   const auto S = solve_LP(constraints, objective, true);
+   if (S.status != LP_status::valid)
+      throw std::runtime_error("minkowski_sum_fukuda: wrong LP");
+   return S.solution;
 }
 
 /* computes the minkowski sum of the points listed in components (and rows of polytopes)
@@ -95,7 +96,7 @@ Vector<E> canonical_vector(const int k, const Array<int>& components, const matr
    const Vector<E> r = solve_lp(constraints, obj);
 
    const E d(r[r.size()-1]);    // the "minimal distance" of r to the bounding hyperplanes
-   const Vector<E> x(r.slice(0,r.size()-1));
+   const Vector<E> x(r.slice(sequence(0, r.size()-1)));
    assert(x.size()>=2);
 
    Vector<E> eps(x.size());
@@ -106,7 +107,7 @@ Vector<E> canonical_vector(const int k, const Array<int>& components, const matr
    for (int i=2; i<eps.size(); ++i)
       eps[i] = eps[i-1]/E(-i);
 
-   return r.slice(0,r.size()-1) | eps;
+   return r.slice(sequence(0, r.size()-1)) | eps;
 }
 
 /* checks whether two Vectors are parallel
@@ -114,29 +115,26 @@ Vector<E> canonical_vector(const int k, const Array<int>& components, const matr
  * returns boolean
  * called by local_search_compare and Adj
  */
-template<typename E>
-bool parallel_edges(const Vector<E>& e1, const Vector<E>& e2) {
-   const int dim=e1.size();
-   int j=1;
-   bool quotient_found=0;
+template <typename E>
+bool parallel_edges(const Vector<E>& e1, const Vector<E>& e2)
+{
+   const int dim = e1.dim();
    E q(0);              // quotient e2[j]/e1[j] -- should be constant
-   while (!quotient_found) {
+   int j = 1;
+   for (; j < dim; ++j) {
       if (is_zero(e1[j])) {
          if (!is_zero(e2[j]))
-            return 0;
+            return false;
+      } else {
+         q = e2[j] / e1[j];
+         break;
       }
-      else {
-         q=e2[j]/e1[j];
-         quotient_found=1;
-      }
-      ++j;
-
    }
-   for (j=1; j<dim; ++j) {
-      if ((e1[j]) * q != e2[j])
-         return 0;
+   while (++j < dim) {
+      if (e1[j] * q != e2[j])
+         return false;
    }
-   return 1;
+   return true;
 }
 
 /* computes the normal Vector for the by [c,c_st] first intersectet hyperplane (part of Normalcone N(v,P))
@@ -146,12 +144,13 @@ bool parallel_edges(const Vector<E>& e1, const Vector<E>& e2) {
  * called by local_search and local_search_compare
  */
 template<typename E>
-Vector<E> search_direction(const int k, const Vector<E>& c_st1, const Vector<E>& c_st2, const Array<int>& components, const matrix_list<E>& polytopes, const graph_list& graphs) {
+Vector<E> search_direction(const int k, const Vector<E>& c_st1, const Vector<E>& c_st2, const Array<int>& components, const matrix_list<E>& polytopes, const graph_list& graphs)
+{
    // computes canonical vector for v
    const Vector<E> c_eps = canonical_vector(k, components, polytopes, graphs);
    const int size(c_eps.size()/2);
-   Vector<E> c = c_eps.slice(0,size);
-   const Vector<E> eps = c_eps.slice(size,size);
+   Vector<E> c = c_eps.slice(sequence(0, size));
+   const Vector<E> eps = c_eps.slice(sequence(size, size));
    const Vector<E> c_st = parallel_edges(c_st2, c) ? c_st1 : c_st2;
    E best_theta(2);                             // smallest theta value (so far)
    Vector<E> best_hyperplane;   // the hyperplane intersected first
@@ -160,7 +159,7 @@ Vector<E> search_direction(const int k, const Vector<E>& c_st1, const Vector<E>&
    int hyperplane_counter = 0;
    int restart_count = 0;
    for (int j=0; j<k; ++j) {
-      for (Entire<Graph<>::adjacent_node_list>::const_iterator it=entire(graphs[j].adjacent_nodes(components[j])); !it.at_end(); ++it) {
+      for (auto it=entire(graphs[j].adjacent_nodes(components[j])); !it.at_end(); ++it) {
          const Vector<E> hyperplane = polytopes[j].row(*it)-polytopes[j].row(components[j]); //= e_j(next_j,i)
          // now compute theta such that c+theta(c_st-c) lies on the hyperplane
          const E d = hyperplane * (c-c_st);
@@ -191,14 +190,14 @@ Vector<E> search_direction(const int k, const Vector<E>& c_st1, const Vector<E>&
 
 
 template <class E>
-Vector<E> local_search(const int k, const Vector<E>& c_st, const Vector<E>& c_st2, Array<int>& components, const matrix_list<E>& polytopes, const graph_list& graphs) 
+Vector<E> local_search(const int k, const Vector<E>& c_st, const Vector<E>& c_st2, Array<int>& components, const matrix_list<E>& polytopes, const graph_list& graphs)
 {
    //search normal Vector for the first intersected hyperplane (part of Normalcone)
    const Vector<E> hyperplane=search_direction(k, c_st, c_st2, components, polytopes, graphs);
 
    // now find the summands of f(v)
    for (int j=0; j<k; ++j) {
-      for (Entire<Graph<>::adjacent_node_list>::const_iterator it=entire(graphs[j].adjacent_nodes(components[j])); !it.at_end(); ++it) {
+      for (auto it = entire(graphs[j].adjacent_nodes(components[j])); !it.at_end(); ++it) {
          const Vector<E> w (polytopes[j].row(*it) - polytopes[j].row(components[j]));
          if (parallel_edges(hyperplane, w)) {
             components[j] = *it;
@@ -216,7 +215,7 @@ Vector<E> local_search(const int k, const Vector<E>& c_st, const Vector<E>& c_st
  * TODO: kann verbessert werden in dem die richtung von next-v genutzt wird um ein erstes theta vorzugeben
  */
 template <typename E>
-bool local_search_compare(const int k, const Vector<E>& v_st, const Vector<E>& c_st, const Vector<E>& c_st2, const Vector<E>& v, const Vector<E>& next, const Array<int>& next_components, const matrix_list<E>& polytopes, const graph_list& graphs) 
+bool local_search_compare(const int k, const Vector<E>& v_st, const Vector<E>& c_st, const Vector<E>& c_st2, const Vector<E>& v, const Vector<E>& next, const Array<int>& next_components, const matrix_list<E>& polytopes, const graph_list& graphs)
 {
    if (next==v_st) return 0;
 
@@ -240,7 +239,7 @@ bool Adj(const int k, Array<int>& next_components, const Array<int>& components,
    ListMatrix<Vector<E>> ineq_list;    // list of ineq. (3.6) e_j(v_j,i)^T lambda >=0
    ineq_list /= -e_s;                  // and e_s(v_s,r)^T lambda < 0
    next_components=components;
-   for (int j=0; j<k ;++j) {
+   for (int j=0; j<k; ++j) {
       for (auto it = entire(graphs[j].adjacent_nodes(components[j])); !it.at_end(); ++it) {
          e_j = polytopes[j].row(*it) - polytopes[j].row(components[j]);
          if (parallel_edges(e_s, e_j)) {
@@ -349,7 +348,7 @@ Set<int> find_max_face(const Matrix<E>& V, const Graph<Undirected>& G, const Vec
    do {
       better = false;
       // steepest ascent/descent
-      for (Entire<Graph<>::out_edge_list>::const_iterator v=entire(G.out_edges(current_vertex));  !v.at_end();  ++v) {
+      for (auto v=entire(G.out_edges(current_vertex));  !v.at_end();  ++v) {
          const int neighbor=v.to_node();
          if (visited[neighbor])  // this neighbor can't be better
             continue;
@@ -373,7 +372,7 @@ Set<int> find_max_face(const Matrix<E>& V, const Graph<Undirected>& G, const Vec
       current_vertex = optimal_vertices.front();
       optimal_vertices.pop_front();
 
-      for (Entire<Graph<>::out_edge_list>::const_iterator v=entire(G.out_edges(current_vertex));  !v.at_end();  ++v) {
+      for (auto v=entire(G.out_edges(current_vertex));  !v.at_end();  ++v) {
          const int neighbor=v.to_node();
          if (!visited[neighbor]) {
             visited[neighbor]=true;
@@ -393,17 +392,10 @@ Set<int> find_max_face(const Matrix<E>& V, const Graph<Undirected>& G, const Vec
  * returns a or b
  * called by initial
  */
-template<typename E>
-int lex_max(const int a, const int b, const Matrix<E>& mat){
-   const Vector<E> v = mat.row(a)-mat.row(b);
-   for (typename Vector<E>::const_iterator it=v.begin(); it!=v.end(); ++it) {
-      if (*it>0)
-         return a;
-      if (*it<0)
-         return b;
-   }
-   assert(0);
-   return a; //unreachable
+template <typename E>
+int lex_max(const int a, const int b, const Matrix<E>& mat)
+{
+   return operations::cmp()(mat.row(a), mat.row(b)) >= pm::cmp_eq ? a : b;
 }
 
 /* initialize graphs, polytopes, components, v_st and c_st (c_st2)
@@ -416,39 +408,40 @@ template <typename E>
 void initialize(const Array<perl::Object>& summands, const int k, graph_list& graphs,
                 matrix_list<E>& polytopes, Array<int>& components, Vector<E>& v_st, Vector<E>& c_st, Vector<E>& c_st2)
 {
-   //initialize graphs and polytopes:
-   int j=0;
+   // initialize graphs and polytopes:
+   int j = 0;
    for (const perl::Object& s : summands) {
       const Matrix<E> m=s.give("VERTICES");
-      polytopes[j]=m;
+      polytopes[j] = m;
       const Graph<Undirected> graph=s.give("GRAPH.ADJACENCY");
-      graphs[j]=graph;
+      graphs[j] = graph;
       ++j;
    }
+   const int dim = polytopes[0].cols();
 
-   //initialize components and v_st:
-   Vector<E> obj = ones_vector<E>(polytopes[0].row(0).size()); //LP Vector;
+   // initialize components and v_st:
+   Vector<E> obj = ones_vector<E>(polytopes[0].row(0).size()); // LP Vector;
    bool find_new_direction = false;
-   for (int i=0; i<k; ++i) {
-      Set<int> max_face = find_max_face(polytopes[i], graphs[i], obj);  //solves LP over P_j
-      if(max_face.size()>1){
-         if(find_new_direction){
-            for(int j=1;j<polytopes[0].row(0).size();++j){
-               if(obj[j]<3001){
-                  obj[j]*=j;
+   for (int i = 0; i < k; ++i) {
+      Set<int> max_face = find_max_face(polytopes[i], graphs[i], obj);  // solves LP over P_j
+      if (max_face.size()>1) {
+         if (find_new_direction) {
+            for (int col = 1; col < dim; ++col) {
+               if (obj[col] < 3001) {
+                  obj[col] *= col;
                } else {
-                  obj[j]-=3000;
+                  obj[col] -= 3000;
                }
             }
-            i=0;
+            i = 0;
             max_face = find_max_face(polytopes[0], graphs[0], obj);
-            if(max_face.size()==1)
+            if (max_face.size() == 1)
                find_new_direction = false;
-         }else{
+         } else {
             find_new_direction = true;
          }
-         while (max_face.size()>1) {
-            Set<int>::iterator SetIterator=max_face.begin();
+         while (max_face.size() > 1) {
+            auto SetIterator = max_face.begin();
             ++SetIterator;
             max_face.erase(lex_max(*(max_face.begin()),*SetIterator, polytopes[i])); //delete some, chosen by lex. order)
          }
@@ -461,8 +454,8 @@ void initialize(const Array<perl::Object>& summands, const int k, graph_list& gr
    //initialize c_st and c_st2 (canonical Vectors in N(P,v_st)):
    const Vector<E> c = canonical_vector(k, components, polytopes, graphs);
    const int size = c.size()/2;
-   c_st = c.slice(0,size);
-   c_st2= c_st + c.slice(size,size);
+   c_st = c.slice(sequence(0, size));
+   c_st2= c_st + c.slice(sequence(size, size));
 }
 
 template <typename E>
@@ -485,8 +478,8 @@ Matrix<E> minkowski_sum_vertices_fukuda(const Array<perl::Object>& summands)
 template <typename E>
 perl::Object minkowski_sum_fukuda(const Array<perl::Object>& summands)
 {
-   const Matrix<E> vertices = minkowski_sum_vertices_fukuda<E>(summands);  
-   perl::Object p(perl::ObjectType::construct<E>("Polytope"));
+   const Matrix<E> vertices = minkowski_sum_vertices_fukuda<E>(summands);
+   perl::Object p("Polytope", mlist<E>());
    p.take("VERTICES") << vertices;
    return p;
 }
@@ -494,18 +487,15 @@ perl::Object minkowski_sum_fukuda(const Array<perl::Object>& summands)
 template <typename E>
 Matrix<E> zonotope_vertices_fukuda(const Matrix<E>& Z, perl::OptionSet options)
 {
-   const int 
-      n = Z.rows(),
-      d = Z.cols();
-   Array<perl::Object> summands(perl::ObjectType::construct<E>("Polytope"), n);
+   const int n = Z.rows();
+   const int d = Z.cols();
+   Array<perl::Object> summands(perl::ObjectType("Polytope", mlist<E>()), n);
    const bool centered_zonotope = options["centered_zonotope"];
 
    Graph<Undirected> G(2);
    G.edge(0,1);
 
-   Vector<E> 
-      point, 
-      opposite = unit_vector<E>(d, 0);
+   Vector<E> point, opposite = unit_vector<E>(d, 0);
    for (int i=0; i<n; ++i) {
       point = Z.row(i);
 
@@ -513,14 +503,14 @@ Matrix<E> zonotope_vertices_fukuda(const Matrix<E>& Z, perl::OptionSet options)
          point[0] *= 2;  // make the segment half as long to compensate for the addition of opposite
          opposite = -point;
          opposite[0].negate();
-      } 
+      }
 
       // take care of the origin
-      if (is_zero(point.slice(1))) {
+      if (is_zero(point.slice(range_from(1)))) {
          summands[i].take("VERTICES") << Matrix<E>(vector2row(point));
          summands[i].take("GRAPH.ADJACENCY") << Graph<Undirected>(1);
       } else {
-         summands[i].take("VERTICES") << Matrix<E>(point/opposite);
+         summands[i].take("VERTICES") << Matrix<E>(vector2row(point)/opposite);
          summands[i].take("GRAPH.ADJACENCY") << G;
       }
    }
@@ -559,6 +549,8 @@ UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
                           "# | 1 -1 -1/2"
                           "# | 1 1 1/2",
                           "zonotope_vertices_fukuda<E>(Matrix<E> { centered_zonotope => 1 })");
+
+FunctionTemplate4perl("minkowski_sum_vertices_fukuda<E>(Polytope<type_upgrade<E>> +)");
 
 } }
 

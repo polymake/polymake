@@ -58,10 +58,10 @@ void make_pentagon(Matrix<QE>& V)
    // The order of reflections is dictated by the root vectors above;
    // the vertices will be in the order given by their convex hull.
    V.row(0) = r1+r2; V(0,0) = QE(1,0,5);  // a point to start reflecting in
-   V.row(1) = reflect(SparseVector<QE>(V.row(0)), r0);  // FIXME: Get rid of the explicit SparseVector<QE>() 
-   V.row(2) = reflect(SparseVector<QE>(V.row(1)), r2);
-   V.row(3) = reflect(SparseVector<QE>(V.row(2)), r4);
-   V.row(4) = reflect(SparseVector<QE>(V.row(3)), r1);
+   V.row(1) = reflect(V.row(0), r0);
+   V.row(2) = reflect(V.row(1), r2);
+   V.row(3) = reflect(V.row(2), r4);
+   V.row(4) = reflect(V.row(3), r1);
 }
 
 void complete_configuration(Matrix<QE>& V)
@@ -124,7 +124,7 @@ void complete_configuration(Matrix<QE>& V)
    V.row(10) = - V.row(3); 
    V.row(11) = - V.row(4); 
 
-   V = V.minor(All, ~scalar2set(0));
+   V = V.minor(All, range_from(1));
 }
 
 void apply_transform(Matrix<QE>& V)
@@ -152,8 +152,8 @@ void apply_transform(Matrix<QE>& V)
       throw std::runtime_error("Couldn't find an all-positive kernel vector");
 
    // rescale the relevant vectors so that the configuration is balanced
-   Entire<Vector<QE> >::const_iterator vit = entire(coeffs);
-   for (Entire<Set<int> >::const_iterator sit = entire(rowset); !sit.at_end(); ++sit, ++vit)
+   auto vit = entire(coeffs);
+   for (auto sit = entire(rowset); !sit.at_end(); ++sit, ++vit)
       V.row(*sit) *= *vit;
    
    // ... and check.

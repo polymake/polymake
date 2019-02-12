@@ -62,9 +62,9 @@ perl::Object mapping_polytope(perl::Object p_in1, perl::Object p_in2, perl::Opti
    Matrix<Scalar> H_out(m*n,(q-1)*p+1);
 
    int i = 0, j = 0, l = 0;
-   for (typename Entire< Rows< Matrix<Scalar> > >::const_iterator vi = entire(rows(V)); !vi.at_end(); ++vi, ++i) {
+   for (auto vi = entire(rows(V)); !vi.at_end(); ++vi, ++i) {
       j = 0;
-      for (typename Entire< Rows< Matrix<Scalar> > >::const_iterator fi = entire(rows(H)); !fi.at_end(); ++fi, ++j) {
+      for (auto fi = entire(rows(H)); !fi.at_end(); ++fi, ++j) {
          H_out(l,0) = (*fi)[0];
          for (int k = 0; k < q-1; ++k) {
             H_out[l].slice(sequence(k*p+1,p)) = (*fi)[k+1]*(*vi);

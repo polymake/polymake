@@ -14,7 +14,8 @@
 --------------------------------------------------------------------------------
 */
 
-#include <Singular/libsingular.h>
+#include "polymake/ideal/internal/singularInclude.h"
+
 #include <kernel/combinatorics/stairc.h>
 #include <coeffs/mpr_complex.h>
 

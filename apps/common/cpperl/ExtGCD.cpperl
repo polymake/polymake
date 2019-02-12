@@ -1,0 +1,7 @@
+{"app": "common",
+ "inst": [
+  {"pkg": "Polymake::common::ExtGCD"},
+  {"class": "ExtGCD<UniPolynomial<Rational, int>>", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/numerical_functions.h"], "pkg": "Polymake::common::ExtGCD__UniPolynomial_A_Rational_I_Int_Z"},
+  {"class": "ExtGCD<long>", "include": ["polymake/numerical_functions.h"], "pkg": "Polymake::common::ExtGCD__Long"},
+ null ],
+"version": 3}

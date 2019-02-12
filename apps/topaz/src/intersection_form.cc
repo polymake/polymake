@@ -110,8 +110,8 @@ void intersection_form(perl::Object p)
    if (signs.rows() != 1)
       throw std::runtime_error("intersection_form: Expected exactly one top level homology class, found " + std::to_string(signs.rows()));
 
-   Entire<cycle_type::face_list>::const_iterator f(entire(facets));
-   Entire<cycle_type::coeff_matrix::row_type>::const_iterator s(entire(signs[0]));
+   auto f = entire(facets);
+   auto s = entire(signs[0]);
    hash_map<Bitset,Integer> SignedFacets;
    for ( ; !f.at_end() && !s.at_end(); ++f, ++s)
       SignedFacets[Bitset(*f)]=*s;
@@ -125,24 +125,21 @@ void intersection_form(perl::Object p)
 
    int parity=0; // until we are not convinced of the converse we assume that the intersection form is even
 
-   int i(0);
-   for (Entire< Rows<cycle_type::coeff_matrix> >::const_iterator c(entire(rows(small_cocycles)));
-        !c.at_end(); ++c, ++i) {
-      int j(0);
-      for (Entire< Rows<cycle_type::coeff_matrix> >::const_iterator d(entire(rows(small_cocycles))); !d.at_end(); ++d, ++j) {
+   for (auto c1 = entire<indexed>(rows(small_cocycles)); !c1.at_end(); ++c1) {
+      for (auto c2 = entire<indexed>(rows(small_cocycles)); !c2.at_end(); ++c2) {
          Integer cup_product(0);
-         for (Entire<cycle_type::coeff_matrix::row_type>::const_iterator x(entire(*c)); !x.at_end(); ++x) {
+         for (auto x = entire(*c1); !x.at_end(); ++x) {
             const Set<int> face_x(small_faces[x.index()]);
             const Bitset bit_face_x(face_x);
-            for (Entire<cycle_type::coeff_matrix::row_type>::const_iterator y(entire(*d)); !y.at_end(); ++y) {
+            for (auto y = entire(*c2); !y.at_end(); ++y) {
                const Set<int> face_y(small_faces[y.index()]);
                Bitset this_union(bit_face_x+Bitset(face_y));
                if (face_x.back()==face_y.front() && SignedFacets.find(this_union)!=SignedFacets.end())
                   cup_product+=SignedFacets[this_union]*(*x)*(*y);
             }
          }
-         Cup(i,j)=cup_product;
-         if (i==j && cup_product.odd())
+         Cup(c1.index(), c2.index())=cup_product;
+         if (c1.index() == c2.index() && cup_product.odd())
             parity=1;
       }
    }

@@ -37,7 +37,7 @@ int getNext( const AngleMap& list, int node ) {
    // find the node
     
    bool found = false; 
-   Entire< AngleMap >::const_iterator list_i = entire(list);
+   auto list_i = entire(list);
    while (! list_i.at_end() && !found) {
       found = list_i->second == node;
       ++list_i;
@@ -79,11 +79,10 @@ perl::Object tutte_lifting(perl::Object g) {
       const Set<int> neigh_i = G.adjacent_nodes(i) - checked_verts;
       Set<int> checked_neighs;
     
-      for( Entire< Set< int > >::const_iterator ni = entire(neigh_i); !ni.at_end() && !cycle_found; ++ni) {
+      for (auto ni = entire(neigh_i); !ni.at_end() && !cycle_found; ++ni) {
          const Set<int> cycles = neigh_i * G.adjacent_nodes(*ni) - checked_neighs; 
          checked_neighs += *ni;
-         for( Entire< Set< int > >::const_iterator ci = entire(cycles); !ci.at_end() && !cycle_found; ++ci) {
-        
+         for (auto ci = entire(cycles); !ci.at_end() && !cycle_found; ++ci) {
             act_cycle.clear();
             ( ( act_cycle += i) += *ci) += *ni;
             // check if the rest is connected via BFS
@@ -91,7 +90,7 @@ perl::Object tutte_lifting(perl::Object g) {
             Bitset visited(n_nodes);
             std::list<int> node_queue(n_nodes);
         
-            for( Entire< Set< int > >::iterator vi = entire(act_cycle); !vi.at_end(); ++vi)
+            for (auto vi = entire(act_cycle); !vi.at_end(); ++vi)
                visited += *vi;
         
             node_queue.clear();
@@ -108,7 +107,7 @@ perl::Object tutte_lifting(perl::Object g) {
             while (!node_queue.empty()) {
                const int n=node_queue.front();
                node_queue.pop_front();
-               for (Entire<Graph<>::out_edge_list>::const_iterator e=entire(G.out_edges(n)); !e.at_end(); ++e) {
+               for (auto e=entire(G.out_edges(n)); !e.at_end(); ++e) {
                   const int nn = e.to_node();
                   if (!visited.contains(nn)) {         // nn not been visited yet -> add nn to the queue.
                      visited += nn;
@@ -148,10 +147,10 @@ perl::Object tutte_lifting(perl::Object g) {
    Vector<Rational> rhs_y(n_inner_verts);
   
    int m=0;
-   for (Entire< Set < int > >::const_iterator vi = entire(inner_verts); !vi.at_end(); ++vi,++m) {
+   for (auto vi = entire(inner_verts); !vi.at_end(); ++vi, ++m) {
       const Set<int> neigh_i = G.adjacent_nodes(*vi);
       stress_matrix[*vi][*vi] = - neigh_i.size();
-      for (Entire< Set < int > >::const_iterator ni = entire(neigh_i); !ni.at_end(); ++ni) {
+      for (auto ni = entire(neigh_i); !ni.at_end(); ++ni) {
          if ( inner_verts.contains(*ni) ) {
             stress_matrix[*vi][*ni] = 1;          
          } else {
@@ -177,7 +176,7 @@ perl::Object tutte_lifting(perl::Object g) {
       const Set<int> neigh_i = G.adjacent_nodes(i);
       const Matrix<Rational> V_coords = V.minor(All,xy_coord);
     
-      for (Entire< Set < int > >::const_iterator ni = entire(neigh_i); !ni.at_end(); ++ni) {
+      for (auto ni = entire(neigh_i); !ni.at_end(); ++ni) {
          Vector<Rational> ang_vec = V_coords[*ni] - V_coords[i];
          ang_vec /= (abs(ang_vec[0])+abs(ang_vec[1]));
          Rational angle = ((ang_vec[1] < 0 )?1 : -1)*(ang_vec[0]-1);
@@ -194,7 +193,7 @@ perl::Object tutte_lifting(perl::Object g) {
    // push the outer triangle into the edge_queue
    Array< int > outer_verts(3);
    int l=0;
-   for (Entire< Set < int > >::const_iterator ei = entire(act_cycle);!ei.at_end(); ++ei, ++l) {
+   for (auto ei = entire(act_cycle);!ei.at_end(); ++ei, ++l) {
       outer_verts[l]=*ei;
    }
   
@@ -255,25 +254,25 @@ perl::Object tutte_lifting(perl::Object g) {
    facets_done += 1;
    facet_queue.clear();
    facet_queue.push_back(1);
-   facet_count--;
-   int i;
+   --facet_count;
+
    while (!facet_queue.empty() ) {
-      i = facet_queue.front();
+      const int i = facet_queue.front();
       facet_queue.pop_front();
-      const Set< int > neigh_i = DG.adjacent_nodes(i) - facets_done;
     
-      for (Entire< Set< int > >::const_iterator ni = entire(neigh_i); !ni.at_end(); ++ni) {
+      for (const int ni : DG.adjacent_nodes(i) - facets_done) {
          // pts in i and *ni
-         const Matrix< Rational > pts = V.minor(VIF[*ni]*VIF[i],All);
-         // !!!!!!!!!! pay atttention to the direction of the edge !!!!!!!!!!
-         const Vector< Rational > vp = pts[1].slice(xy_coord) - pts[0].slice(xy_coord);
-         const Vector< Rational > vc = cell_centers[*ni-1]-cell_centers[i-1];
+         const Matrix<Rational> pts = V.minor(VIF[ni] * VIF[i], All);
+         // !!!!!!!!!! pay attention to the direction of the edge !!!!!!!!!!
+         const Vector<Rational> vp = pts[1].slice(xy_coord) - pts[0].slice(xy_coord);
+         const Vector<Rational> vc = cell_centers[ni-1]-cell_centers[i-1];
          const bool right_way = (vc[0]*vp[1]-vc[1]*vp[0] < 0);
-         const Vector<Rational> cp = crossProd(pts.row(0),pts.row(1));
-         Facets[*ni] = Facets[i] + (right_way?1:-1) * cp;
+         Vector<Rational> cp = crossProd(pts.row(0),pts.row(1));
+         if (!right_way) cp.negate();
+         Facets[ni] = Facets[i] + cp;
          --facet_count;
-         facets_done += *ni;
-         facet_queue.push_back(*ni);
+         facets_done += ni;
+         facet_queue.push_back(ni);
       }
    }
   

@@ -44,10 +44,9 @@ template <typename TMatrix>
 struct default_check_container_feature<TMatrix, FlatStorage> : std::false_type {};
 
 template <typename TMatrix>
-struct default_check_container_feature<TMatrix, NonSymmetric> {
-   static const bool value= !check_container_feature<TMatrix, Symmetric>::value &&
-                            !check_container_feature<TMatrix, SkewSymmetric>::value;
-};
+struct default_check_container_feature<TMatrix, NonSymmetric>
+   : bool_not< mlist_or< check_container_feature<TMatrix, Symmetric>,
+                         check_container_feature<TMatrix, SkewSymmetric> > > {};
 
 template <typename TMatrix>
 struct matrix_symmetry_type
@@ -56,7 +55,7 @@ struct matrix_symmetry_type
               NonSymmetric > {};
 
 
-template <typename TMatrix> inline
+template <typename TMatrix>
 int empty_rows(const TMatrix& m)
 {
    int cnt=0;
@@ -65,7 +64,7 @@ int empty_rows(const TMatrix& m)
    return cnt;
 }
 
-template <typename TMatrix> inline
+template <typename TMatrix>
 int empty_cols(const TMatrix& m)
 {
    int cnt=0;
@@ -74,7 +73,7 @@ int empty_cols(const TMatrix& m)
    return cnt;
 }
 
-template <typename E> inline
+template <typename E>
 int count_columns(const std::initializer_list<std::initializer_list<E>>& l)
 {
    if (l.size()==0) return 0;
@@ -95,57 +94,51 @@ int count_columns(const std::initializer_list<std::initializer_list<E>>& l)
  *  Matrix masquerade: Transposed
  * ------------------------------- */
 
-template <typename Matrix>
+template <typename TMatrix>
 class Transposed
-   : public inherit_generic<Transposed<Matrix>, Matrix>::type {
+   : public inherit_generic<Transposed<TMatrix>, TMatrix>::type {
 protected:
    ~Transposed();
 public:
-   typedef typename Matrix::value_type value_type;
-   typedef typename Matrix::reference reference;
-   typedef typename Matrix::const_reference const_reference;
+   typedef typename TMatrix::value_type value_type;
+   typedef typename TMatrix::reference reference;
+   typedef typename TMatrix::const_reference const_reference;
 
-   Matrix& hidden() { return reinterpret_cast<Matrix&>(*this); }
-   const Matrix& hidden() const { return reinterpret_cast<const Matrix&>(*this); }
+   TMatrix& hidden() { return reinterpret_cast<TMatrix&>(*this); }
+   const TMatrix& hidden() const { return reinterpret_cast<const TMatrix&>(*this); }
 
    void clear() { hidden().clear(); }
    void clear(int r, int c) { hidden().clear(c,r); }
 };
 
-template <typename Matrix>
-struct spec_object_traits< Transposed<Matrix> >
+template <typename TMatrix>
+struct spec_object_traits< Transposed<TMatrix> >
    : spec_object_traits<is_container> {
-   typedef Matrix masquerade_for;
-   static const bool is_lazy         = object_traits<Matrix>::is_lazy,
-                     is_always_const = object_traits<Matrix>::is_always_const;
-   static const int is_resizeable= object_traits<Matrix>::is_resizeable;
+   typedef TMatrix masquerade_for;
+   static const bool is_lazy         = object_traits<TMatrix>::is_lazy,
+                     is_always_const = object_traits<TMatrix>::is_always_const;
+   static const int is_resizeable= object_traits<TMatrix>::is_resizeable;
 };
 
-template <typename Matrix>
-struct check_container_feature<Transposed<Matrix>, sparse>
-   : check_container_feature<Matrix, sparse> {};
+template <typename TMatrix>
+struct check_container_feature<Transposed<TMatrix>, sparse>
+   : check_container_feature<TMatrix, sparse> {};
 
-template <typename Matrix>
-struct check_container_feature<Transposed<Matrix>, pure_sparse>
-   : check_container_feature<Matrix, pure_sparse> {};
+template <typename TMatrix>
+struct check_container_feature<Transposed<TMatrix>, pure_sparse>
+   : check_container_feature<TMatrix, pure_sparse> {};
 
-template <typename Matrix> inline
-Transposed<typename Concrete<Matrix>::type>& T(Matrix& m)
+template <typename TMatrix>
+decltype(auto) T(TMatrix&& m)
 {
-   return reinterpret_cast<Transposed<typename Concrete<Matrix>::type>&>(concrete(m));
+   return reinterpret_cast<typename inherit_ref_norv<Transposed<unwary_t<pure_type_t<TMatrix>>>, TMatrix&>::type>(unwary(m));
 }
 
-template <typename Matrix> inline
-const Transposed<typename Concrete<Matrix>::type>& T(const Matrix& m)
-{
-   return reinterpret_cast<const Transposed<typename Concrete<Matrix>::type>&>(concrete(m));
-}
+template <typename TMatrix>
+class Rows< Transposed<TMatrix> > : public Cols<TMatrix> {};
 
-template <typename Matrix>
-class Rows< Transposed<Matrix> > : public Cols<Matrix> {};
-
-template <typename Matrix>
-class Cols< Transposed<Matrix> > : public Rows<Matrix> {};
+template <typename TMatrix>
+class Cols< Transposed<TMatrix> > : public Rows<TMatrix> {};
 
 /* ------------------------------------------------
  *  Methods defined for all matrices,
@@ -153,214 +146,219 @@ class Cols< Transposed<Matrix> > : public Rows<Matrix> {};
  * ------------------------------------------------ */
 template <typename MatrixRef, typename RowIndexSetRef, typename ColIndexSetRef> class MatrixMinor;
 
-template <typename Matrix, typename RowCategory=typename container_traits< Rows<Matrix> >::category>
+template <typename TMatrix, typename RowCategory=typename container_traits< Rows<TMatrix> >::category>
 class matrix_row_methods {
 public:
-   typedef typename deref<typename container_traits< Rows<Matrix> >::reference>::type row_type;
-   typedef typename deref<typename container_traits< Rows<Matrix> >::const_reference>::minus_ref const_row_type;
+   typedef typename deref<typename container_traits< Rows<TMatrix> >::reference>::type row_type;
+   typedef typename deref<typename container_traits< Rows<TMatrix> >::const_reference>::minus_ref const_row_type;
 
    int rows() const
    {
-      return pm::rows(static_cast<const Matrix&>(*this)).size();
+      return pm::rows(static_cast<const TMatrix&>(*this)).size();
    }
 
-   // stub for ColChain
-   void stretch_rows(int r) const
+   // stub for BlockMatrix
+   void stretch_rows(int) const
    {
-      if (r) throw std::runtime_error("rows number mismatch");
+      throw std::runtime_error("row dimension mismatch");
    }
 };
 
-template <typename Matrix>
-class matrix_row_methods<Matrix, output_iterator_tag> {};
+template <typename TMatrix>
+class matrix_row_methods<TMatrix, output_iterator_tag> {};
 
-template <typename Matrix>
-class matrix_row_methods<Matrix, random_access_iterator_tag>
-   : public matrix_row_methods<Matrix, forward_iterator_tag> {
+template <typename TMatrix>
+class matrix_row_methods<TMatrix, random_access_iterator_tag>
+   : public matrix_row_methods<TMatrix, forward_iterator_tag> {
 public:
-   typename container_traits< Rows<Matrix> >::reference
-   row(int i)
+   decltype(auto) row(int i)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
          if (i<0 || i>=this->rows())
             throw std::runtime_error("matrix row index out of range");
       }
-      return pm::rows(*static_cast<Matrix*>(this))[i];
+      return pm::rows(*static_cast<TMatrix*>(this))[i];
    }
-   typename container_traits< Rows<Matrix> >::reference
-   operator[] (int i)
+
+   decltype(auto) operator[] (int i)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
          if (i<0 || i>=this->rows())
             throw std::runtime_error("matrix row index out of range");
       }
-      return pm::rows(*static_cast<Matrix*>(this))[i];
+      return pm::rows(*static_cast<TMatrix*>(this))[i];
    }
-   typename container_traits< Rows<Matrix> >::const_reference
-   row(int i) const
+
+   decltype(auto) row(int i) const
    {
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
          if (i<0 || i>=this->rows())
             throw std::runtime_error("matrix row index out of range");
       }
-      return pm::rows(*static_cast<const Matrix*>(this))[i];
+      return pm::rows(*static_cast<const TMatrix*>(this))[i];
    }
-   typename container_traits< Rows<Matrix> >::const_reference
-   operator[] (int i) const
+
+   decltype(auto) operator[] (int i) const
    {
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
          if (i<0 || i>=this->rows())
             throw std::runtime_error("matrix row index out of range");
       }
-      return pm::rows(*static_cast<const Matrix*>(this))[i];
+      return pm::rows(*static_cast<const TMatrix*>(this))[i];
    }
 };
 
-template <typename Matrix, typename ColCategory=typename container_traits< Cols<Matrix> >::category>
+template <typename TMatrix, typename ColCategory=typename container_traits< Cols<TMatrix> >::category>
 class matrix_col_methods {
 public:
-   typedef typename deref<typename container_traits< Cols<Matrix> >::reference>::type col_type;
-   typedef typename deref<typename container_traits< Cols<Matrix> >::const_reference>::minus_ref const_col_type;
+   typedef typename deref<typename container_traits< Cols<TMatrix> >::reference>::type col_type;
+   typedef typename deref<typename container_traits< Cols<TMatrix> >::const_reference>::minus_ref const_col_type;
 
    int cols() const
    {
-      return pm::cols(*static_cast<const Matrix*>(this)).size();
+      return pm::cols(*static_cast<const TMatrix*>(this)).size();
    }
 
-   // stub for RowChain
-   void stretch_cols(int c) const
+   // stub for BlockMatrix
+   void stretch_cols(int) const
    {
-      if (c) throw std::runtime_error("columns number mismatch");
+      throw std::runtime_error("col dimension mismatch");
    }
 };
 
-template <typename Matrix>
-class matrix_col_methods<Matrix, output_iterator_tag> {};
+template <typename TMatrix>
+class matrix_col_methods<TMatrix, output_iterator_tag> {};
 
-template <typename Matrix>
-class matrix_col_methods<Matrix, random_access_iterator_tag>
-   : public matrix_col_methods<Matrix, forward_iterator_tag> {
+template <typename TMatrix>
+class matrix_col_methods<TMatrix, random_access_iterator_tag>
+   : public matrix_col_methods<TMatrix, forward_iterator_tag> {
 public:
-   typename container_traits< Cols<Matrix> >::reference
-   col(int i)
+   decltype(auto) col(int i)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
          if (i<0 || i>=this->cols())
             throw std::runtime_error("matrix column index out of range");
       }
-      return pm::cols(*static_cast<Matrix*>(this))[i];
+      return pm::cols(*static_cast<TMatrix*>(this))[i];
    }
-   typename container_traits< Cols<Matrix> >::const_reference
-   col(int i) const
+
+   decltype(auto) col(int i) const
    {
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
+      if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
          if (i<0 || i>=this->cols())
             throw std::runtime_error("matrix column index out of range");
       }
-      return pm::cols(*static_cast<const Matrix*>(this))[i];
+      return pm::cols(*static_cast<const TMatrix*>(this))[i];
    }
 };
 
-template <typename Matrix, typename E=typename Matrix::element_type,
-          typename RowCategory=typename container_traits< Rows<Matrix> >::category,
-          typename ColCategory=typename container_traits< Cols<Matrix> >::category>
+template <typename IndexSetRef>
+struct final_index_set<IndexSetRef, std::enable_if_t<std::is_same<pure_type_t<IndexSetRef>, all_selector>::value>> {
+   using type = const all_selector&;
+};
+
+template <typename TMatrix, typename E=typename TMatrix::element_type,
+          typename RowCategory=typename container_traits< Rows<TMatrix> >::category,
+          typename ColCategory=typename container_traits< Cols<TMatrix> >::category>
 class matrix_methods
-   : public matrix_row_methods<Matrix>
-   , public matrix_col_methods<Matrix> {
+   : public matrix_row_methods<TMatrix>
+   , public matrix_col_methods<TMatrix> {
 public:
-   typedef E element_type;
+   using element_type = E;
 
-   typedef typename mevaluate<least_derived_class<typename container_traits< Rows<Matrix> >::category,
-                                                  typename container_traits< Cols<Matrix> >::category>,
-                              output_iterator_tag>::type
-      container_category;
+   using container_category = typename mprefer1st<typename least_derived_class<typename container_traits< Rows<TMatrix> >::category,
+                                                                               typename container_traits< Cols<TMatrix> >::category>::type,
+                                                  output_iterator_tag>::type;
 
-   template <typename RowIndexSet, typename ColIndexSet>
-   MatrixMinor<unwary_t<Matrix>&,
-               typename Diligent<const RowIndexSet&>::type,
-               typename Diligent<const ColIndexSet&>::type>
-   minor(const RowIndexSet& row_indices, const ColIndexSet& col_indices)
+protected:
+   template <typename MatrixRef, typename RowIndexSetRef, typename ColIndexSetRef>
+   static auto make_minor(MatrixRef&& matrix, RowIndexSetRef&& row_indices, ColIndexSetRef&& col_indices)
    {
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
-         if (!set_within_range(row_indices, this->rows()))
+      if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
+         if (!set_within_range(row_indices, matrix.rows()))
             throw std::runtime_error("matrix minor - row indices out of range");
 
-         if (!set_within_range(col_indices, this->cols()))
+         if (!set_within_range(col_indices, matrix.cols()))
             throw std::runtime_error("matrix minor - column indices out of range");
       }
-                                                                                            
-      return MatrixMinor<unwary_t<Matrix>&,
-                         typename Diligent<const RowIndexSet&>::type,
-                         typename Diligent<const ColIndexSet&>::type>
-                        (static_cast<Matrix&>(*this).top(), diligent(row_indices), diligent(col_indices));
+      using result_type = MatrixMinor<MatrixRef, typename final_index_set<RowIndexSetRef>::type, typename final_index_set<ColIndexSetRef>::type>;
+      return result_type(std::forward<MatrixRef>(matrix),
+                         prepare_index_set(std::forward<RowIndexSetRef>(row_indices), [&](){ return matrix.rows(); }),
+                         prepare_index_set(std::forward<ColIndexSetRef>(col_indices), [&](){ return matrix.cols(); }));
+   }
+public:
+   template <typename RowIndexSetRef, typename ColIndexSetRef>
+   // gcc 5 can't digest auto here
+   MatrixMinor<const typename Unwary<TMatrix>::type&, typename final_index_set<RowIndexSetRef>::type, typename final_index_set<ColIndexSetRef>::type>
+   minor(RowIndexSetRef&& row_indices, ColIndexSetRef&& col_indices) const &
+   {
+      return make_minor(unwary(static_cast<const TMatrix&>(*this)),
+                        std::forward<RowIndexSetRef>(row_indices),
+                        std::forward<ColIndexSetRef>(col_indices));
    }
 
-   template <typename RowIndexSet, typename ColIndexSet>
-   const MatrixMinor<const unwary_t<Matrix>&,
-                     typename Diligent<const RowIndexSet&>::type,
-                     typename Diligent<const ColIndexSet&>::type>
-   minor(const RowIndexSet& row_indices, const ColIndexSet& col_indices) const
+   template <typename RowIndexSetRef, typename ColIndexSetRef>
+   // gcc 5 can't digest auto here
+   MatrixMinor<typename Unwary<TMatrix>::type&, typename final_index_set<RowIndexSetRef>::type, typename final_index_set<ColIndexSetRef>::type>
+   minor(RowIndexSetRef&& row_indices, ColIndexSetRef&& col_indices) &
    {
-      if (POLYMAKE_DEBUG || !Unwary<Matrix>::value) {
-         if (!set_within_range(row_indices, this->rows()))
-            throw std::runtime_error("matrix minor - row indices out of range");
+      return make_minor(unwary(static_cast<TMatrix&>(*this)),
+                        std::forward<RowIndexSetRef>(row_indices),
+                        std::forward<ColIndexSetRef>(col_indices));
+   }
 
-         if (!set_within_range(col_indices, this->cols()))
-            throw std::runtime_error("matrix minor - column indices out of range");
-      }
-                                                                                            
-      return MatrixMinor<const unwary_t<Matrix>&,
-                         typename Diligent<const RowIndexSet&>::type,
-                         typename Diligent<const ColIndexSet&>::type>
-                        (static_cast<const Matrix&>(*this).top(), diligent(row_indices), diligent(col_indices));
+   template <typename RowIndexSetRef, typename ColIndexSetRef>
+   // gcc 5 can't digest auto here
+   MatrixMinor<typename Unwary<TMatrix>::type, typename final_index_set<RowIndexSetRef>::type, typename final_index_set<ColIndexSetRef>::type>
+   minor(RowIndexSetRef&& row_indices, ColIndexSetRef&& col_indices) &&
+   {
+      return make_minor(unwary(static_cast<TMatrix&&>(*this)),
+                        std::forward<RowIndexSetRef>(row_indices),
+                        std::forward<ColIndexSetRef>(col_indices));
    }
 };
 
-template <typename Matrix> class matrix_random_access_methods {};
+template <typename TMatrix> class matrix_random_access_methods {};
 
-template <typename Matrix, typename E>
-class matrix_methods<Matrix, E, random_access_iterator_tag, random_access_iterator_tag>
-   : public matrix_methods<Matrix, E, forward_iterator_tag, forward_iterator_tag>,
-     public matrix_random_access_methods<Matrix> {};
+template <typename TMatrix, typename E>
+class matrix_methods<TMatrix, E, random_access_iterator_tag, random_access_iterator_tag>
+   : public matrix_methods<TMatrix, E, forward_iterator_tag, forward_iterator_tag>,
+     public matrix_random_access_methods<TMatrix> {};
 
-template <typename Matrix, typename E>
-class matrix_methods<Wary<Matrix>, E, random_access_iterator_tag, random_access_iterator_tag>
-   : public matrix_methods<Wary<Matrix>, E, forward_iterator_tag, forward_iterator_tag>
+template <typename TMatrix, typename E>
+class matrix_methods<Wary<TMatrix>, E, random_access_iterator_tag, random_access_iterator_tag>
+   : public matrix_methods<Wary<TMatrix>, E, forward_iterator_tag, forward_iterator_tag>
 {
 public:
-   typename Matrix::reference
-   operator() (int i, int j)
+   decltype(auto) operator() (int i, int j)
    {
       if (i<0 || i>=this->rows() || j<0 || j>=this->cols())
          throw std::runtime_error("matrix element access - index out of range");
-      return unwary(static_cast<Wary<Matrix>&>(*this))(i,j);
+      return unwary(static_cast<Wary<TMatrix>&>(*this))(i,j);
    }
-   typename Matrix::const_reference
-   operator() (int i, int j) const
+   decltype(auto) operator() (int i, int j) const
    {
       if (i<0 || i>=this->rows() || j<0 || j>=this->cols())
          throw std::runtime_error("matrix element access - index out of range");
-      return unwary(static_cast<const Wary<Matrix>&>(*this))(i,j);
+      return unwary(static_cast<const Wary<TMatrix>&>(*this))(i,j);
    }
 };
 
-template <typename Matrix>
-class matrix_random_access_methods< Transposed<Matrix> > {
+template <typename TMatrix>
+class matrix_random_access_methods< Transposed<TMatrix> > {
 public:
-   typename Matrix::reference
-   operator() (int i, int j)
+   decltype(auto) operator() (int i, int j)
    {
-      return static_cast<Transposed<Matrix>*>(this)->hidden()(j,i);
+      return static_cast<Transposed<TMatrix>*>(this)->hidden()(j, i);
    }
-   typename Matrix::const_reference
-   operator() (int i, int j) const
+   decltype(auto) operator() (int i, int j) const
    {
-      return static_cast<const Transposed<Matrix>*>(this)->hidden()(j,i);
+      return static_cast<const Transposed<TMatrix>*>(this)->hidden()(j, i);
    }
 };
 
-template <typename Matrix>
-class Transposed< Transposed<Matrix> > : public Matrix {
+template <typename TMatrix>
+class Transposed< Transposed<TMatrix> > : public TMatrix {
 protected:
    Transposed();
    ~Transposed();
@@ -371,7 +369,7 @@ protected:
  * ------------- */
 
 template <>
-class alias<const all_selector&, object_classifier::alias_ref> {
+class alias<const all_selector&, alias_kind::ref> {
 public:
    typedef const all_selector& arg_type;
    typedef const alias& reference;
@@ -383,62 +381,68 @@ public:
    int operator[] (int i) const { return i; }
 };
 
-inline bool set_within_range(const all_selector&, int) { return true; }
+constexpr bool set_within_range(const all_selector&, int) { return true; }
+
+template <typename GetDim>
+const all_selector& prepare_index_set(all_selector&& s, const GetDim&)
+{
+   return s;
+}
 
 template <typename MatrixRef, typename RowIndexSetRef, typename ColIndexSetRef>
 class minor_base {
 public:
-   typedef typename deref<MatrixRef>::type matrix_type;
-   typedef typename deref<RowIndexSetRef>::type row_set_type;
-   typedef typename deref<ColIndexSetRef>::type col_set_type;
+   using matrix_type = typename deref<MatrixRef>::type;
+   using row_set_type =typename deref<RowIndexSetRef>::type;
+   using col_set_type = typename deref<ColIndexSetRef>::type;
 
 protected:
-   alias<MatrixRef> matrix;
-   alias<RowIndexSetRef> rset;
-   alias<ColIndexSetRef> cset;
-
-   typedef typename alias<MatrixRef>::arg_type matrix_arg_type;
-   typedef typename alias<RowIndexSetRef>::arg_type row_set_arg_type;
-   typedef typename alias<ColIndexSetRef>::arg_type col_set_arg_type;
-
-   minor_base(matrix_arg_type matrix_arg, row_set_arg_type rset_arg, col_set_arg_type cset_arg)
-      : matrix(matrix_arg), rset(rset_arg), cset(cset_arg) {}
+   using matrix_alias_t = alias<MatrixRef>;
+   using rset_alias_t = alias<RowIndexSetRef>;
+   using cset_alias_t = alias<ColIndexSetRef>;
+   matrix_alias_t matrix;
+   rset_alias_t rset;
+   cset_alias_t cset;
 
 public:
-   typename alias<MatrixRef>::reference get_matrix() { return *matrix; }
-   typename alias<MatrixRef>::const_reference get_matrix() const { return *matrix; }
+   template <typename Arg1, typename Arg2, typename Arg3,
+             typename=std::enable_if_t<std::is_constructible<matrix_alias_t, Arg1>::value &&
+                                       std::is_constructible<rset_alias_t, Arg2>::value &&
+                                       std::is_constructible<cset_alias_t, Arg3>::value>>
+   minor_base(Arg1&& matrix_arg, Arg2&& rset_arg, Arg3&& cset_arg)
+      : matrix(std::forward<Arg1>(matrix_arg))
+      , rset(std::forward<Arg2>(rset_arg))
+      , cset(std::forward<Arg3>(cset_arg)) {}
 
-   const alias<RowIndexSetRef>& get_subset_alias(int_constant<1>) const { return rset; }
-   const alias<ColIndexSetRef>& get_subset_alias(int_constant<2>) const { return cset; }
-   typename alias<RowIndexSetRef>::const_reference get_subset(int_constant<1>) const { return *rset; }
-   typename alias<ColIndexSetRef>::const_reference get_subset(int_constant<2>) const { return *cset; }
+   decltype(auto) get_matrix() { return *matrix; }
+   decltype(auto) get_matrix() const { return *matrix; }
 
-   template <typename RowIndexSet>
-   int random_row(int i, type2type<RowIndexSet>) const { return get_subset(int_constant<1>())[i]; }
-   template <typename ColIndexSet>
-   int random_col(int i, type2type<ColIndexSet>) const { return get_subset(int_constant<2>())[i]; }
-   int random_row(int i, type2type<all_selector>) const { return i; }
-   int random_col(int i, type2type<all_selector>) const { return i; }
+   const rset_alias_t& get_subset_alias(int_constant<1>) const { return rset; }
+   const cset_alias_t& get_subset_alias(int_constant<2>) const { return cset; }
+   decltype(auto) get_subset(int_constant<1>) const { return *rset; }
+   decltype(auto) get_subset(int_constant<2>) const { return *cset; }
 
-   int random_row(int i) const { return random_row(i, type2type<typename deref<RowIndexSetRef>::type>()); }
-   int random_col(int i) const { return random_col(i, type2type<typename deref<ColIndexSetRef>::type>()); }
+   int random_row(int i, std::false_type) const { return get_subset(int_constant<1>())[i]; }
+   int random_col(int i, std::false_type) const { return get_subset(int_constant<2>())[i]; }
+   int random_row(int i, std::true_type) const { return i; }
+   int random_col(int i, std::true_type) const { return i; }
+
+   int random_row(int i) const { return random_row(i, std::is_same<pure_type_t<RowIndexSetRef>, all_selector>()); }
+   int random_col(int i) const { return random_col(i, std::is_same<pure_type_t<ColIndexSetRef>, all_selector>()); }
 };
 
 template <typename MatrixRef, typename RowIndexSetRef, typename ColIndexSetRef>
 class MatrixMinor
    : public minor_base<MatrixRef, RowIndexSetRef, ColIndexSetRef>
    , public inherit_generic<MatrixMinor<MatrixRef,RowIndexSetRef,ColIndexSetRef>, typename deref<MatrixRef>::type>::type {
-   typedef minor_base<MatrixRef, RowIndexSetRef, ColIndexSetRef> base_t;
+   using base_t = minor_base<MatrixRef, RowIndexSetRef, ColIndexSetRef>;
 public:
-   typedef typename base_t::matrix_type matrix_type;
-   typedef typename container_traits<MatrixRef>::value_type value_type;
-   typedef typename container_traits<MatrixRef>::reference reference;
-   typedef typename container_traits<MatrixRef>::const_reference const_reference;
+   using matrix_type = typename base_t::matrix_type;
+   using value_type = typename container_traits<MatrixRef>::value_type;
+   using reference = typename container_traits<MatrixRef>::reference;
+   using const_reference = typename container_traits<MatrixRef>::const_reference;
 
-   MatrixMinor(typename base_t::matrix_arg_type matrix_arg,
-               typename base_t::row_set_arg_type rset_arg,
-               typename base_t::col_set_arg_type cset_arg)
-      : base_t(matrix_arg,rset_arg,cset_arg) {}
+   using minor_base<MatrixRef, RowIndexSetRef, ColIndexSetRef>::minor_base;
 
    /// Assignment operator should copy elements instead of alias pointers
    MatrixMinor& operator= (const MatrixMinor& other) { return MatrixMinor::generic_type::operator=(other); }
@@ -466,9 +470,10 @@ public:
 template <typename MatrixRef, typename RowIndexSetRef, typename ColIndexSetRef>
 struct spec_object_traits< MatrixMinor<MatrixRef, RowIndexSetRef, ColIndexSetRef> >
    : spec_object_traits<is_container> {
-   static const bool is_temporary    = true,
-                     is_lazy         = object_traits<typename deref<MatrixRef>::type>::is_lazy,
-                     is_always_const = effectively_const<MatrixRef>::value;
+   static constexpr bool
+      is_temporary = true,
+      is_lazy = object_traits<typename deref<MatrixRef>::type>::is_lazy,
+      is_always_const = is_effectively_const<MatrixRef>::value;
 };
 
 template <typename MatrixRef, typename RowIndexSetRef, typename ColIndexSetRef>
@@ -481,10 +486,8 @@ struct check_container_feature<MatrixMinor<MatrixRef, RowIndexSetRef, ColIndexSe
 
 template <typename MatrixRef, typename RowIndexSetRef, typename ColIndexSetRef>
 struct check_container_feature<MatrixMinor<MatrixRef, RowIndexSetRef, ColIndexSetRef>, FlatStorage>
-{
-   static const bool value=check_container_ref_feature<MatrixRef, FlatStorage>::value &&
-                           identical_minus_const_ref<ColIndexSetRef, all_selector>::value;
-};
+   : mlist_and< check_container_ref_feature<MatrixRef, FlatStorage>,
+                same_pure_type<ColIndexSetRef, all_selector> > {};
 
 template <typename MatrixRef, typename RowIndexSetRef, typename ColIndexSetRef>
 class matrix_random_access_methods< MatrixMinor<MatrixRef, RowIndexSetRef, ColIndexSetRef> > {
@@ -517,8 +520,8 @@ struct RowCol_helper<TMinor, 2> : masquerade<Cols, typename mget_template_parame
 template <typename TMinor, typename TRenumber, int TDir, typename TSelector=typename mget_template_parameter<TMinor, TDir>::type>
 class RowColSubset
    : public indexed_subset_impl< RowColSubset<TMinor, TRenumber, TDir, TSelector>,
-                                 mlist< Container1Tag< typename RowCol_helper<TMinor, TDir>::type >,
-                                        Container2Tag< TSelector >,
+                                 mlist< Container1RefTag< typename RowCol_helper<TMinor, TDir>::type >,
+                                        Container2RefTag< TSelector >,
                                         RenumberTag< TRenumber >,
                                         HiddenTag< TMinor > > > {
    typedef indexed_subset_impl<RowColSubset> base_t;
@@ -540,7 +543,7 @@ public:
 template <typename TMinor, typename TRenumber, int TDir>
 class RowColSubset<TMinor, TRenumber, TDir, const all_selector&>
    : public redirected_container< RowColSubset<TMinor, TRenumber, TDir, const all_selector&>,
-                                  mlist< ContainerTag< typename RowCol_helper<TMinor, TDir>::type >,
+                                  mlist< ContainerRefTag< typename RowCol_helper<TMinor, TDir>::type >,
                                          HiddenTag< TMinor > > > {
    typedef redirected_container<RowColSubset> base_t;
 public:
@@ -559,16 +562,16 @@ template <typename TMinor, typename TRenumber, int TDir, typename TSliceConstruc
 class RowsCols
    : public modified_container_pair_impl< RowsCols<TMinor, TRenumber, TDir, TSliceConstructor, TCrossSelector>,
                                           mlist< Container1Tag< RowColSubset<TMinor, TRenumber, TDir> >,
-                                                 Container2Tag< constant_value_container<TCrossSelector> >,
+                                                 Container2Tag< same_value_container<TCrossSelector> >,
                                                  HiddenTag< TMinor >,
                                                  OperationTag< TSliceConstructor > > > {
    typedef modified_container_pair_impl<RowsCols> base_t;
 protected:
    ~RowsCols();
 public:
-   const typename base_t::container2& get_container2() const
+   decltype(auto) get_container2() const
    {
-      return constant(this->hidden().get_subset_alias(int_constant<3-TDir>()));
+      return as_same_value_container(this->hidden().get_subset_alias(int_constant<3-TDir>()));
    }
 };
 
@@ -596,335 +599,250 @@ protected:
 };
 
 /* ----------
- *  RowChain
+ *  BlockMatrix
  * ---------- */
 
-template <typename MatrixRef1, typename MatrixRef2>
-class RowChain
-   : public container_pair_base<MatrixRef1, MatrixRef2>
-   , public inherit_generic< RowChain<MatrixRef1,MatrixRef2>,
-                             cons<typename deref<MatrixRef1>::type, typename deref<MatrixRef2>::type> >::type {
+template <typename MatrixList, typename rowwise>
+class BlockMatrix
+   : public alias_tuple<MatrixList>
+   , public inherit_generic< BlockMatrix<MatrixList, rowwise>,
+                             typename mlist_transform_unary<MatrixList, deref>::type >::type {
 
-   typedef container_pair_base<MatrixRef1, MatrixRef2> base_t;
-   typedef typename deref<MatrixRef1>::type matrix1_type;
-   typedef typename deref<MatrixRef2>::type matrix2_type;
-public:
-   typedef typename container_traits<MatrixRef1>::value_type value_type;
+   using arg_helper = chain_arg_helper<pm::BlockMatrix, rowwise>;
 
-   static_assert(std::is_same<value_type, typename container_traits<MatrixRef2>::value_type>::value,
+   using element_types = typename mlist_transform_unary<MatrixList, extract_element_type>::type;
+   static_assert(mlist_length<typename mlist_remove_duplicates<element_types>::type>::value == 1,
                  "blocks with different element types");
 
-   typedef typename compatible<typename container_traits<MatrixRef1>::reference,
-                               typename container_traits<MatrixRef2>::reference>::type
-      reference;
-   typedef typename compatible<typename container_traits<MatrixRef1>::const_reference,
-                               typename container_traits<MatrixRef2>::const_reference>::type
-      const_reference;
+public:
+   using traits = typename prepare_union_container_traits<MatrixList>::type;
+   using value_type = typename traits::value_type;
+   using reference = typename traits::reference;
+   using const_reference = typename traits::const_reference;
 
-   RowChain(typename base_t::first_arg_type m1, typename base_t::second_arg_type m2)
-      : base_t(m1, m2)
+   // TODO: =delete
+   BlockMatrix(const BlockMatrix&) = default;
+   BlockMatrix(BlockMatrix&&) = default;
+
+   template <typename... Args,
+             typename=std::enable_if_t<arg_helper::allow(MatrixList(), mlist<Args...>())>>
+   explicit BlockMatrix(Args&&... args)
+      : alias_tuple<MatrixList>(arg_helper(), std::forward<Args>(args)...)
    {
-      const int c1=m1.cols(), c2=m2.cols();
-      if (c1) {
-         if (c2) {
-            if (c1!=c2) throw std::runtime_error("block matrix - different number of columns");
+      int d=0;
+      bool saw_zero_dim=false;
+      foreach_in_tuple(this->aliases, [&d, &saw_zero_dim](auto&& a) -> void {
+         const int d_cur= rowwise::value ? a->cols() : a->rows();
+         if (d_cur) {
+            if (d) {
+               if (d_cur != d) throw std::runtime_error(rowwise::value ? "block matrix - col dimension mismatch"
+                                                                       : "block matrix - row dimension mismatch");
+            } else {
+               d=d_cur;
+            }
          } else {
-            this->src2.get_object().stretch_cols(c1);
+            saw_zero_dim=true;
          }
-      } else if (c2) {
-         this->src1.get_object().stretch_cols(c2);
+      });
+
+      if (saw_zero_dim && d) {
+         foreach_in_tuple(this->aliases, [d](auto&& a) -> void {
+            if (rowwise::value) {
+               if (a->cols() == 0) a.get_object().stretch_cols(d);
+            } else {
+               if (a->rows() == 0) a.get_object().stretch_rows(d);
+            }
+         });
       }
    }
 
-   RowChain& operator= (const RowChain& other) { return RowChain::generic_type::operator=(other); }
-   using RowChain::generic_type::operator=;
+   template <typename OtherList, typename otherwise,
+             typename=std::enable_if_t<mlist_length<MatrixList>::value == mlist_length<OtherList>::value>>
+   explicit BlockMatrix(const BlockMatrix<OtherList, otherwise>& other)
+      : alias_tuple<MatrixList>(chain_arg_helper<pm::BlockMatrix, otherwise>(), other) {}
+
+   template <typename OtherList, typename otherwise,
+             typename=std::enable_if_t<mlist_length<MatrixList>::value == mlist_length<OtherList>::value>>
+   explicit BlockMatrix(BlockMatrix<OtherList, otherwise>&& other)
+      : alias_tuple<MatrixList>(chain_arg_helper<pm::BlockMatrix, otherwise>(), std::move(other)) {}
+
+   BlockMatrix& operator= (const BlockMatrix& other) { return BlockMatrix::generic_type::operator=(other); }
+   using BlockMatrix::generic_type::operator=;
 };
 
-template <typename MatrixRef1, typename MatrixRef2>
-struct spec_object_traits< RowChain<MatrixRef1, MatrixRef2> >
+template <typename MatrixList, typename rowwise>
+struct spec_object_traits< BlockMatrix<MatrixList, rowwise> >
    : spec_object_traits<is_container> {
-   static const bool
+   static constexpr bool
       is_temporary = true,
-      is_lazy = object_traits<typename deref<MatrixRef1>::type>::is_lazy || object_traits<typename deref<MatrixRef2>::type>::is_lazy,
-      is_always_const = effectively_const<MatrixRef1>::value || effectively_const<MatrixRef2>::value;
+      is_lazy = mlist_or<typename mlist_transform_unary<MatrixList, extract_lazy>::type>::value,
+      is_always_const = prepare_union_container_traits<MatrixList>::type::is_always_const;
 };
 
-template <typename MatrixRef1, typename MatrixRef2>
-struct check_container_feature< RowChain<MatrixRef1, MatrixRef2>, sparse> {
-   static const bool value=check_container_ref_feature<MatrixRef1, sparse>::value ||
-                           check_container_ref_feature<MatrixRef2, sparse>::value;
+template <typename MatrixList, typename rowwise>
+struct check_container_feature< BlockMatrix<MatrixList, rowwise>, sparse>
+   : mlist_or< typename mlist_transform_binary<MatrixList, mrepeat<sparse>, check_container_ref_feature>::type > {};
+
+template <typename MatrixList, typename rowwise>
+struct check_container_feature< BlockMatrix<MatrixList, rowwise>, pure_sparse>
+   : mlist_and< typename mlist_transform_binary<MatrixList, mrepeat<pure_sparse>, check_container_ref_feature>::type > {};
+
+template <typename MatrixList, typename rowwise>
+struct check_container_feature< BlockMatrix<MatrixList, rowwise>, FlatStorage>
+   : mlist_and< typename mlist_transform_binary<MatrixList, mrepeat<FlatStorage>, check_container_ref_feature>::type > {};
+
+template <typename T>
+struct masquerade_as_Rows {
+   using type = masquerade<Rows, T>;
+};
+template <typename T>
+struct masquerade_as_Cols {
+   using type = masquerade<Cols, T>;
+};
+template <typename T>
+struct masquerade_as_Transposed {
+   using type = masquerade<Transposed, T>;
 };
 
-template <typename MatrixRef1, typename MatrixRef2>
-struct check_container_feature< RowChain<MatrixRef1, MatrixRef2>, pure_sparse> {
-   static const bool value=check_container_ref_feature<MatrixRef1, pure_sparse>::value &&
-                           check_container_ref_feature<MatrixRef2, pure_sparse>::value;
-};
+// to be specialized for various generic types
+template <typename TGenericMatrix>
+struct concat_lines_op {};
 
-template <typename MatrixRef1, typename MatrixRef2>
-struct check_container_feature< RowChain<MatrixRef1, MatrixRef2>, FlatStorage> {
-   static const bool value=check_container_ref_feature<MatrixRef1, FlatStorage>::value &&
-                           check_container_ref_feature<MatrixRef2, FlatStorage>::value;
-};
+template <typename Result, typename TGenericVector>
+struct generic_of_repeated_line {};
 
-template <typename MatrixRef1, typename MatrixRef2>
-class matrix_random_access_methods< RowChain<MatrixRef1, MatrixRef2> > {
-   typedef RowChain<MatrixRef1,MatrixRef2> master;
-public:
-   typename compatible<typename container_traits<MatrixRef1>::reference,
-                       typename container_traits<MatrixRef2>::reference>::type
-   operator() (int i, int j)
-   {
-      master& me=static_cast<master&>(*this);
-      const int r1=me.get_container1().rows();
-      if (i < r1) return me.get_container1()(i,j);
-      return me.get_container2()(i-r1,j);
-   }
-   typename compatible<typename container_traits<MatrixRef1>::const_reference,
-                       typename container_traits<MatrixRef2>::const_reference>::type
-   operator() (int i, int j) const
-   {
-      const master& me=static_cast<const master&>(*this);
-      const int r1=me.get_container1().rows();
-      if (i < r1) return me.get_container1()(i,j);
-      return me.get_container2()(i-r1,j);
-   }
-};
+template <typename MatrixList>
+using concat_lines_op_for
+= typename concat_lines_op<typename deref<typename mlist_head<MatrixList>::type>::type::generic_type>::type;
 
-template <typename MatrixRef1, typename MatrixRef2>
-class Rows< RowChain<MatrixRef1, MatrixRef2> >
-   : public container_chain_impl< Rows< RowChain<MatrixRef1, MatrixRef2> >,
-                                  mlist< Container1Tag< masquerade<pm::Rows, MatrixRef1> >,
-                                         Container2Tag< masquerade<pm::Rows, MatrixRef2> >,
+template <typename MatrixList>
+class Rows< BlockMatrix<MatrixList, std::true_type> >
+   : public container_chain_impl< Rows< BlockMatrix<MatrixList, std::true_type> >,
+                                  mlist< ContainerRefTag< typename mlist_transform_unary<MatrixList, masquerade_as_Rows>::type >,
                                          MasqueradedTop > > {
-   typedef container_chain_impl<Rows> base_t;
 protected:
    ~Rows();
 public:
-   typename base_t::container1& get_container1()
+   template <int i>
+   decltype(auto) get_container(int_constant<i>)
    {
-      return rows(this->hidden().get_container1());
+      return rows(this->hidden().get_container(int_constant<i>()));
    }
-   typename base_t::container2& get_container2()
+   template <int i>
+   decltype(auto) get_container(int_constant<i>) const
    {
-      return rows(this->hidden().get_container2());
-   }
-   const typename base_t::container1& get_container1() const
-   {
-      return rows(this->hidden().get_container1());
-   }
-   const typename base_t::container2& get_container2() const
-   {
-      return rows(this->hidden().get_container2());
-   }
-   int size() const
-   {
-      return get_container1().size() + get_container2().size();
+      return rows(this->hidden().get_container(int_constant<i>()));
    }
 };
 
-template <typename MatrixRef1, typename MatrixRef2>
-class Cols< RowChain<MatrixRef1, MatrixRef2> >
-   : public modified_container_pair_impl< Cols< RowChain<MatrixRef1, MatrixRef2> >,
-                                          mlist< Container1Tag< masquerade<pm::Cols, MatrixRef1> >,
-                                                 Container2Tag< masquerade<pm::Cols, MatrixRef2> >,
-                                                 OperationTag< BuildBinary<operations::concat> >,
-                                                 MasqueradedTop > > {
-   typedef modified_container_pair_impl<Cols> base_t;
+template <typename MatrixList>
+class Cols< BlockMatrix<MatrixList, std::true_type> >
+   : public modified_container_tuple_impl< Cols< BlockMatrix<MatrixList, std::true_type> >,
+                                           mlist< ContainerRefTag< typename mlist_transform_unary<MatrixList, masquerade_as_Cols>::type >,
+                                                  OperationTag< concat_lines_op_for<MatrixList> >,
+                                                  MasqueradedTop > > {
 protected:
    ~Cols();
 public:
-   typename base_t::container1& get_container1()
+   template <int i>
+   decltype(auto) get_container(int_constant<i>)
    {
-      return cols(this->hidden().get_container1());
+      return cols(this->hidden().get_container(int_constant<i>()));
    }
-   typename base_t::container2& get_container2()
+   template <int i>
+   decltype(auto) get_container(int_constant<i>) const
    {
-      return cols(this->hidden().get_container2());
+      return cols(this->hidden().get_container(int_constant<i>()));
    }
-   const typename base_t::container1& get_container1() const
+   static constexpr auto get_operation()
    {
-      return cols(this->hidden().get_container1());
-   }
-   const typename base_t::container2& get_container2() const
-   {
-      return cols(this->hidden().get_container2());
-   }
-   int size() const
-   {
-      int c=get_container1().size();
-      if (!c) c=get_container2().size();
-      return c;
-   }
-};
-
-/* ----------
- *  ColChain
- * ---------- */
-
-template <typename MatrixRef1, typename MatrixRef2>
-class ColChain
-   : public container_pair_base<MatrixRef1, MatrixRef2>
-   , public inherit_generic< ColChain<MatrixRef1,MatrixRef2>,
-                             cons<typename deref<MatrixRef1>::type, typename deref<MatrixRef2>::type> >::type {
-
-   typedef container_pair_base<MatrixRef1, MatrixRef2> base_t;
-   typedef typename deref<MatrixRef1>::type matrix1_type;
-   typedef typename deref<MatrixRef2>::type matrix2_type;
-public:
-   typedef typename container_traits<MatrixRef1>::value_type value_type;
-
-   static_assert(std::is_same<value_type, typename container_traits<MatrixRef2>::value_type>::value,
-                 "blocks with different element types");
-      
-   typedef typename compatible<typename container_traits<MatrixRef1>::reference,
-                               typename container_traits<MatrixRef2>::reference>::type
-      reference;
-   typedef typename compatible<typename container_traits<MatrixRef1>::const_reference,
-                               typename container_traits<MatrixRef2>::const_reference>::type
-      const_reference;
-
-   ColChain(typename base_t::first_arg_type m1, typename base_t::second_arg_type m2)
-      : base_t(m1, m2)
-   {
-      const int r1=m1.rows(), r2=m2.rows();
-      if (r1) {
-         if (r2) {
-            if (r1!=r2) throw std::runtime_error("block matrix - different number of rows");
-         } else {
-            this->src2.get_object().stretch_rows(r1);
-         }
-      } else if (r2) {
-         this->src1.get_object().stretch_rows(r2);
-      }
-   }
-
-   ColChain& operator= (const ColChain& other) { return ColChain::generic_type::operator=(other); }
-   using ColChain::generic_type::operator=;
-};
-
-template <typename MatrixRef1, typename MatrixRef2>
-struct spec_object_traits< ColChain<MatrixRef1, MatrixRef2> >
-   : spec_object_traits< RowChain<MatrixRef1, MatrixRef2> > {};
-
-template <typename MatrixRef1, typename MatrixRef2>
-struct check_container_feature<ColChain<MatrixRef1, MatrixRef2>, sparse> {
-   static const bool value=check_container_ref_feature<MatrixRef1, sparse>::value ||
-                           check_container_ref_feature<MatrixRef2, sparse>::value;
-};
-
-template <typename MatrixRef1, typename MatrixRef2>
-struct check_container_feature<ColChain<MatrixRef1, MatrixRef2>, pure_sparse> {
-   static const bool value=check_container_ref_feature<MatrixRef1, pure_sparse>::value &&
-                           check_container_ref_feature<MatrixRef2, pure_sparse>::value;
-};
-
-template <typename MatrixRef1, typename MatrixRef2>
-class matrix_random_access_methods< ColChain<MatrixRef1, MatrixRef2> > {
-   typedef ColChain<MatrixRef1,MatrixRef2> master;
-public:
-   typename compatible<typename container_traits<MatrixRef1>::reference,
-                       typename container_traits<MatrixRef2>::reference>::type
-   operator() (int i, int j)
-   {
-      master& me=static_cast<master&>(*this);
-      const int c1=me.get_container1().cols();
-      if (j < c1) return me.get_container1()(i,j);
-      return me.get_container2()(i,j-c1);
-   }
-   typename compatible<typename container_traits<MatrixRef1>::const_reference,
-                       typename container_traits<MatrixRef2>::const_reference>::type
-   operator() (int i, int j) const
-   {
-      const master& me=static_cast<const master&>(*this);
-      const int c1=me.get_container1().cols();
-      if (j < c1) return me.get_container1()(i,j);
-      return me.get_container2()(i,j-c1);
+      return concat_lines_op_for<MatrixList>();
    }
 };
 
-template <typename MatrixRef1, typename MatrixRef2>
-class Rows< ColChain<MatrixRef1,MatrixRef2> >
-   : public modified_container_pair_impl< Rows< ColChain<MatrixRef1, MatrixRef2> >,
-                                          mlist< Container1Tag< masquerade<pm::Rows, MatrixRef1> >,
-                                                 Container2Tag< masquerade<pm::Rows, MatrixRef2> >,
-                                                 OperationTag< BuildBinary<operations::concat> >,
+template <typename MatrixList>
+class Rows< BlockMatrix<MatrixList, std::false_type> >
+   : public modified_container_tuple_impl< Rows< BlockMatrix<MatrixList, std::false_type> >,
+                                          mlist< ContainerRefTag< typename mlist_transform_unary<MatrixList, masquerade_as_Rows>::type >,
+                                                 OperationTag< concat_lines_op_for<MatrixList> >,
                                                  MasqueradedTop > > {
-   typedef modified_container_pair_impl<Rows> base_t;
 protected:
    ~Rows();
 public:
-   typename base_t::container1& get_container1()
+   template <int i>
+   decltype(auto) get_container(int_constant<i>)
    {
-      return rows(this->hidden().get_container1());
+      return rows(this->hidden().get_container(int_constant<i>()));
    }
-   typename base_t::container2& get_container2()
+   template <int i>
+   decltype(auto) get_container(int_constant<i>) const
    {
-      return rows(this->hidden().get_container2());
+      return rows(this->hidden().get_container(int_constant<i>()));
    }
-   const typename base_t::container1& get_container1() const
+   static constexpr auto get_operation()
    {
-      return rows(this->hidden().get_container1());
-   }
-   const typename base_t::container2& get_container2() const
-   {
-      return rows(this->hidden().get_container2());
-   }
-   int size() const
-   {
-      int r=get_container1().size();
-      if (!r) r=get_container2().size();
-      return r;
+      return concat_lines_op_for<MatrixList>();
    }
 };
 
-template <typename MatrixRef1, typename MatrixRef2>
-class Cols< ColChain<MatrixRef1,MatrixRef2> >
-   : public container_chain_impl< Cols< ColChain<MatrixRef1, MatrixRef2> >,
-                                  mlist< Container1Tag< masquerade<pm::Cols, MatrixRef1> >,
-                                         Container2Tag< masquerade<pm::Cols, MatrixRef2> >,
+template <typename MatrixList>
+class Cols< BlockMatrix<MatrixList, std::false_type> >
+   : public container_chain_impl< Cols< BlockMatrix<MatrixList, std::false_type> >,
+                                  mlist< ContainerRefTag< typename mlist_transform_unary<MatrixList, masquerade_as_Cols>::type >,
                                          MasqueradedTop > > {
-   typedef container_chain_impl<Cols> base_t;
 protected:
    ~Cols();
 public:
-   typename base_t::container1& get_container1()
+   template <int i>
+   decltype(auto) get_container(int_constant<i>)
    {
-      return cols(this->hidden().get_container1());
+      return cols(this->hidden().get_container(int_constant<i>()));
    }
-   typename base_t::container2& get_container2()
+   template <int i>
+   decltype(auto) get_container(int_constant<i>) const
    {
-      return cols(this->hidden().get_container2());
-   }
-   const typename base_t::container1& get_container1() const
-   {
-      return cols(this->hidden().get_container1());
-   }
-   const typename base_t::container2& get_container2() const
-   {
-      return cols(this->hidden().get_container2());
-   }
-   int size() const
-   {
-      return get_container1().size() + get_container2().size();
+      return cols(this->hidden().get_container(int_constant<i>()));
    }
 };
-
-/* ------------------------------
- *  base for SingleRow, SingleCol
- * ------------------------------ */
 
+template <typename MatrixList, bool rowwise>
+auto T(const BlockMatrix<MatrixList, bool_constant<rowwise>>& M)
+{
+   return BlockMatrix<typename mlist_transform_unary<MatrixList, masquerade_as_Transposed>::type, bool_constant<!rowwise>>(M);
+}
+
+template <typename MatrixList, bool rowwise>
+auto T(BlockMatrix<MatrixList, bool_constant<rowwise>>&& M)
+{
+   return BlockMatrix<typename mlist_transform_unary<MatrixList, masquerade_as_Transposed>::type, bool_constant<!rowwise>>(std::move(M));
+}
+
+
+/* ----------------------------------
+ *  base for RepeatedRow, RepeatedCol
+ * ---------------------------------- */
+// TODO: merge with RepeatedRow, RepeatedCol, SingleIncidenceRow, SingleIncidenceCol
 template <typename LineRef>
-class single_line_matrix {
+class repeated_line_matrix {
 protected:
-   single_value_container<LineRef> _line;
-   static const bool is_always_const=object_traits< single_value_container<LineRef> >::is_always_const;
+   using line_container_t = repeated_value_container<LineRef>;
+   line_container_t line_container;
 public:
-   typedef typename single_value_container<LineRef>::arg_type arg_type;
-   single_line_matrix(arg_type arg) : _line(arg) {}
+   using line_t = pure_type_t<LineRef>;
+   using value_type = typename line_t::value_type;
+   using reference = std::conditional_t<is_const<LineRef>::value, typename line_t::const_reference, typename line_t::reference>;
+   using const_reference = typename line_t::const_reference;
 
-   typename single_value_container<LineRef>::reference get_line() { return _line.front(); }
-   typename single_value_container<LineRef>::const_reference get_line() const { return _line.front(); }
+   template <typename Arg, typename=std::enable_if_t<std::is_constructible<line_container_t, Arg, int>::value>>
+   repeated_line_matrix(Arg&& line_arg, int cnt_arg)
+      : line_container(std::forward<Arg>(line_arg), cnt_arg) {}
+
+   const line_container_t& get_line_container() const { return line_container; }
+
+   decltype(auto) get_line() { return line_container.front(); }
+   decltype(auto) get_line() const { return line_container.front(); }
+
+   int get_count() const { return line_container.size(); }
 };
 
 } // end namespace pm
@@ -939,27 +857,21 @@ namespace polymake {
 namespace std {
 
 // due to silly overloading rules
-template <typename Matrix> inline
+template <typename Matrix>
 void swap(pm::Transposed<Matrix>& m1, pm::Transposed<Matrix>& m2)
 {
    m1.swap(m2);
 }
 
-template <typename MatrixRef, typename RowIndexSetRef, typename ColIndexSetRef> inline
+template <typename MatrixRef, typename RowIndexSetRef, typename ColIndexSetRef>
 void swap(pm::MatrixMinor<MatrixRef,RowIndexSetRef,ColIndexSetRef>& m1,
           pm::MatrixMinor<MatrixRef,RowIndexSetRef,ColIndexSetRef>& m2)
 {
    m1.swap(m2);
 }
 
-template <typename MatrixRef1, typename MatrixRef2> inline
-void swap(pm::RowChain<MatrixRef1,MatrixRef2>& m1, pm::RowChain<MatrixRef1,MatrixRef2>& m2)
-{
-   m1.swap(m2);
-}
-
-template <typename MatrixRef1, typename MatrixRef2> inline
-void swap(pm::ColChain<MatrixRef1,MatrixRef2>& m1, pm::ColChain<MatrixRef1,MatrixRef2>& m2)
+template <typename MatrixList, typename rowwise>
+void swap(pm::BlockMatrix<MatrixList, rowwise>& m1, pm::BlockMatrix<MatrixList, rowwise>& m2)
 {
    m1.swap(m2);
 }

@@ -182,7 +182,7 @@ user_function db_get_list_db_col ({db => undef, collection => undef, local => 0,
 
    undef $client;
 
-   return \@ret;
+   return new Array<String>(@ret);
 }
 
 # @category Database
@@ -214,7 +214,7 @@ user_function db_get_list_col_for_db ({db=> undef, local => 0, username => $Poly
    }
 
    undef $client;
-   return \@ret;
+   return new Array<String>(@ret);
 }
 
 # @category Database
@@ -243,7 +243,7 @@ user_function db_get_list_db ({local => 0, username => $PolyDB::default::db_user
    }
    undef $client;
 
-   return \@ret;
+   return new Array<String>(\@ret);
 }
 
 # @category Database Admin

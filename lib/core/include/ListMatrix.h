@@ -39,6 +39,11 @@ protected:
    typedef std::list<TVector> row_list;
    shared_object<ListMatrix_data<TVector>, AliasHandlerTag<shared_alias_handler>> data;
 
+   template <typename Iterator>
+   struct fits_as_input_iterator
+      : bool_constant<(assess_iterator_value<Iterator, can_initialize, typename TVector::element_type>::value ||
+                       assess_iterator_value<Iterator, can_initialize, TVector>::value)> {};
+
    friend ListMatrix& make_mutable_alias(ListMatrix& alias, ListMatrix& owner)
    {
       alias.data.make_mutable_alias(owner.data);
@@ -47,7 +52,7 @@ protected:
 
    // elementwise
    template <typename Iterator>
-   void copy_impl(int r, int c, Iterator src, std::false_type)
+   void copy_impl(int r, int c, Iterator&& src, std::false_type)
    {
       data->dimr=r;
       data->dimc=c;
@@ -62,7 +67,7 @@ protected:
 
    // rowwise
    template <typename Iterator>
-   void copy_impl(int r, int c, Iterator src, std::true_type)
+   void copy_impl(int r, int c, Iterator&& src, std::true_type)
    {
       data->dimr=r;
       data->dimc=c;
@@ -73,10 +78,10 @@ protected:
    }
 
 public:
-   typedef typename TVector::value_type value_type;
-   typedef typename TVector::reference reference;
-   typedef typename TVector::const_reference const_reference;
-   typedef typename TVector::element_type element_type;
+   using value_type = typename TVector::value_type;
+   using reference = typename TVector::reference;
+   using const_reference = typename TVector::const_reference;
+   using element_type = typename TVector::element_type;
 
    /// create as empty
    ListMatrix() {}
@@ -99,26 +104,27 @@ public:
    /** Create a matrix with given dimensions.  Elements are initialized from an input sequence.
        Elements are assumed to come in the row order.
    */
-   template <typename Iterator>
-   ListMatrix(int r, int c, Iterator src)
+   template <typename Iterator, typename=std::enable_if_t<fits_as_input_iterator<Iterator>::value>>
+   ListMatrix(int r, int c, Iterator&& src)
    {
-      copy_impl(r, c, src, bool_constant<isomorphic_types<TVector, typename iterator_traits<Iterator>::value_type>::value>());
+      copy_impl(r, c, ensure_private_mutable(std::forward<Iterator>(src)),
+                bool_constant<isomorphic_types<TVector, typename iterator_traits<Iterator>::value_type>::value>());
    }
 
    template <typename Matrix2>
-   ListMatrix(const GenericMatrix<Matrix2,element_type>& M)
+   ListMatrix(const GenericMatrix<Matrix2, element_type>& M)
    {
       copy_impl(M.rows(), M.cols(), pm::rows(M).begin(), std::true_type());
    }
 
    template <typename Matrix2, typename E2>
-   explicit ListMatrix(const GenericMatrix<Matrix2,E2>& M)
+   explicit ListMatrix(const GenericMatrix<Matrix2, E2>& M)
    {
       copy_impl(M.rows(), M.cols(), pm::rows(M).begin(), std::true_type());
    }
 
-   template <typename Container, typename enabled=typename std::enable_if<isomorphic_to_container_of<Container, TVector>::value>::type>
-   ListMatrix(const Container& src)
+   template <typename Container, typename=std::enable_if_t<isomorphic_to_container_of<Container, TVector>::value>>
+   explicit ListMatrix(const Container& src)
    {
       copy_impl(src.size(), src.empty() ? 0 : get_dim(src.front()), src.begin(), std::true_type());
    }
@@ -164,7 +170,7 @@ public:
       for (; old_r>r; --old_r) R.pop_back();
 
       if (data->dimc != c) {
-         for (typename Entire<row_list>::iterator row=entire(R); !row.at_end(); ++row)
+         for (auto row=entire(R); !row.at_end(); ++row)
             row->resize(c);
          data->dimc=c;
       }
@@ -188,7 +194,7 @@ public:
    {
       if (!this->rows()) {
          data->dimc=v.dim();
-      } else if (POLYMAKE_DEBUG || !Unwary<TVector2>::value) {
+      } else if (POLYMAKE_DEBUG || is_wary<TVector2>()) {
          if (this->cols() != v.dim())
             throw std::runtime_error("ListMatrix::insert_row - dimension mismatch");
       }
@@ -251,7 +257,7 @@ protected:
    template <typename TVector2>
    void append_col(const TVector2& v)
    {
-      auto e=ensure(v.top(), (dense*)0).begin();
+      auto e=ensure(v.top(), dense()).begin();
       for (auto row=entire(data->R); !row.at_end(); ++row, ++e)
          *row |= *e;
       ++data->dimc;

@@ -70,8 +70,8 @@ sub attrs2text {
    my $attrs=shift;
    join(", ", map {
       "$_=" . do {
-	 my $val=$attrs->{$_};
-	 is_ARRAY($val) ? '"'.join(",", @$val).'"' : $val
+         my $val = $attrs->{$_};
+         is_array($val) ? '"'.join(",", @$val).'"' : $val
       }
    # We sort the keys to have consistent output for all perl versions (especially >=5.18)
    } sort keys %$attrs)
@@ -141,22 +141,22 @@ sub toString {
    for (my ($n, $end)=(0, $self->Graph->n_nodes); $n<$end; ++$n) {
       %node_attrs=();
       if (defined($node_labels)) {
-	 $node_attrs{label}='"'.$node_labels->($n).'"';
+         $node_attrs{label}='"'.$node_labels->($n).'"';
       }
       if (defined($node_color)) {
-	 process_fill_color(\%node_attrs, $node_color->($n));
+         process_fill_color(\%node_attrs, $node_color->($n));
       }
       if (defined($node_border_color)) {
-	 process_color(\%node_attrs, $node_border_color->($n));
+         process_color(\%node_attrs, $node_border_color->($n));
       }
       if (defined($node_thickness)) {
-	 process_box_thickness(\%node_attrs, $node_thickness->($n));
+         process_box_thickness(\%node_attrs, $node_thickness->($n));
       }
       if (defined($node_border_thickness))  {
-	 process_line_thickness(\%node_attrs, $node_border_thickness->($n));
+         process_line_thickness(\%node_attrs, $node_border_thickness->($n));
       }
       if (defined($node_style)) {
-	 process_style(\%node_attrs, $node_style->($n));
+         process_style(\%node_attrs, $node_style->($n));
       }
       $text.="  n$n" . (keys %node_attrs ? " [" . attrs2text(\%node_attrs) . "];\n" : ";\n");
    }
@@ -164,19 +164,19 @@ sub toString {
    for (my $e=$self->Graph->all_edges; $e; ++$e) {
       %edge_attrs=();
       if (defined($edge_labels)) {
-	 $edge_attrs{label}='"'.$edge_labels->($e).'"';
+         $edge_attrs{label}='"'.$edge_labels->($e).'"';
       }
       if (defined($edge_color)) {
-	 process_color(\%edge_attrs, $edge_color->($e));
+         process_color(\%edge_attrs, $edge_color->($e));
       }
       if (defined($edge_thickness)) {
-	 process_line_thickness(\%edge_attrs, $edge_thickness->($e));
+         process_line_thickness(\%edge_attrs, $edge_thickness->($e));
       }
       if (defined($edge_style)) {
-	 process_style(\%edge_attrs, $edge_style->($e));
+         process_style(\%edge_attrs, $edge_style->($e));
       }
       if (defined($arrows)) {
-	 process_dir(\%edge_attrs, $arrows->($e));
+         process_dir(\%edge_attrs, $arrows->($e));
       }
       my ($s,$t)=$self->reverse_arrows ? reverse(@$e) : @$e;
       $text.="  n$s " . $self->edge_symbol . " n$t" .
@@ -220,7 +220,7 @@ sub extract_seed {
    my $Graph=shift;
    if (is_object(my $emb=$Graph->Coord)) {
       if (instanceof Visual::GraphEmbedding($emb) && defined (my $seed=$emb->options->{seed})) {
-	 return "; start=$seed";
+         return "; start=$seed";
       }
    }
    "";
@@ -253,5 +253,7 @@ sub addLattice {
 1
 
 # Local Variables:
-# c-basic-offset:3
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
 # End:

@@ -31,8 +31,8 @@ struct type2type { typedef T type; };
 template <typename Scalar, typename SetType>
 class simplex_rep_iterator {
 
-   typedef Array<Set<int>> Orbits;
-   typedef ListMatrix<SparseVector<Scalar>> Kernel_type;
+   using Orbits = Array<Set<int>>;
+   using Kernel_type = ListMatrix<SparseVector<Scalar>>;
 
 public:
    simplex_rep_iterator(const Matrix<Scalar>& _V, 
@@ -183,7 +183,7 @@ protected:
 
    void make_current_simplex() {
       reset_current_simplex<SetType>();
-      for (Entire<Array<Entire<Orbits>::const_iterator>>::const_iterator ait = entire(next_orbit_iterator); !ait.at_end(); ++ait)
+      for (auto ait = entire(next_orbit_iterator); !ait.at_end(); ++ait)
          if (!ait->at_end()) current_simplex += (*ait)->front();
       current_simplex_rep = sym_group.lex_min_representative(current_simplex);
    }
@@ -194,7 +194,7 @@ protected:
    int k;
    Array<Kernel_type> current_kernel;
    Array<Orbits> next_orbits;
-   Array<Entire<Orbits>::const_iterator> next_orbit_iterator;
+   Array<pm::iterator_range<Orbits::const_iterator>> next_orbit_iterator;
    SetType current_simplex, current_simplex_rep;
 };
    

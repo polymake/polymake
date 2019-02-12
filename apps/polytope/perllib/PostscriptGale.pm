@@ -136,8 +136,7 @@ sub new {
    }
 
    # We sort the keys to have consistent output for all perl versions (especially >=5.18)
-   foreach (sort keys %{$G->different_x_y}) {
-      my $p = $G->different_x_y->{$_};
+   foreach my $p (values %{$G->different_x_y}) {
       my ($x, $y)=@{$G->points->[$p->[0]]};
       assign_min_max($self->minX, $self->maxX, $x);
       assign_min_max($self->minY, $self->maxY, $y) if $dim==2;

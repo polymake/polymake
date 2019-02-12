@@ -50,7 +50,7 @@ UserFunction4perl("# @category Comparing"
                   "# quadrangles."
                   "# > $p = new Polytope(POINTS=>[[1,-1,-1],[1,1,-1],[1,-1,1],[1,1,1],[1,0,0]]);"
                   "# > print isomorphic(cube(2),$p);"
-                  "# | 1",
+                  "# | true",
                   &isomorphic, "isomorphic(Cone,Cone)");
 
 UserFunction4perl("# @category Comparing"

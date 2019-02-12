@@ -1,5 +1,5 @@
-/* Copyright (c) 2011-2014
-   Thomas Opfer (Technische Universitaet Darmstadt, Germany)
+/* Copyright (c) 2011-2018
+   Thomas Opfer
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -11,13 +11,13 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
 --------------------------------------------------------------------------------
-   $Id: TOSimplex.h 11319 2013-08-18 10:28:33Z opfer $
 */
 
 #ifndef TOSIMPLEX_H
 #define TOSIMPLEX_H
 
 #include "TORationalInf.h"
+#include "TOmath.h"
 
 #ifndef TO_WITHOUT_DOUBLE
 #include "TOFileReaderLP.h"
@@ -90,28 +90,22 @@ class TOSolver
 		void setVarLB( int index, TORationalInf<T> newLBound );
 		void setVarUB( int index, TORationalInf<T> newUBound );
 		void setVarBounds( int index, TORationalInf<T> newLBound, TORationalInf<T> newUBound );
+		void setObj( int index, T obj );
 		void getBase( std::vector<int>& varStati, std::vector<int>& conStati );
 		void setBase( const std::vector<int>& varStati, const std::vector<int>& conStati );
 		unsigned int getNumRows();
 		unsigned int getNumCols();
 		void setInexactFarkasInfeasibilityGuess( std::vector<double> ray );
 		std::vector<T> getFarkasInfeasibilityProof();
+		void setInfeasibilityBound( TORationalInf<T> bound );
 		int opt();
 		std::vector<T> getX();
 		std::vector<T> getY();
 		std::vector<T> getD();
 		std::pair<TORationalInf<T>,TORationalInf<T> > getConstraintBounds( const unsigned int i );
-		std::pair<std::vector<T>, T> getGMI( int i, std::vector<bool> iV, unsigned int k = 1 );
+		std::pair<std::vector<T>, T> getGMI( int i, std::vector<bool> iV, T k = T( 1 ) );
 		T getObj();
 		void read( const char* filename );
-
-		#ifndef TO_WITHOUT_DOUBLE
-			static mpz_class mpq2mpz_floor( mpq_class a ){
-				mpz_class b;
-				mpz_fdiv_q( b.get_mpz_t(), a.get_num_mpz_t(), a.get_den_mpz_t() );
-				return b;
-			}
-		#endif
 
 	private:
 
@@ -203,6 +197,8 @@ class TOSolver
 		std::vector<T> farkasProof;
 
 		int lastLeavingBaseVar;
+
+		TORationalInf<T> infeasibilityBound;
 
 		void copyTransposeA( int orgLen, const std::vector<T>& orgVal, const std::vector<int>& orgInd, const std::vector<int>& orgPointer, int newLen, std::vector<T>& newVal, std::vector<int>& newInd, std::vector<int>& newPointer );
 		void mulANT( T* result, T* vector );
@@ -334,7 +330,7 @@ TOSolver<T>::~TOSolver(){
 template <class T>
 void TOSolver<T>::init(){
 	#ifndef TO_DISABLE_OUTPUT
-		std::cout << "Simplex initialisiert." << std::endl;
+		pm::cout << "Simplex initialisiert." << std::endl;
 	#endif
 
 	this->halfNumUpdateLetas = 20;
@@ -346,6 +342,8 @@ void TOSolver<T>::init(){
 	this->lastLeavingBaseVar = -1;
 
 	this->hasPerturbated = false;
+
+	this->infeasibilityBound = true;
 }
 
 
@@ -580,6 +578,12 @@ inline void TOSolver<mpq_class>::read( const char* filename ){
 	this->clearBasis();
 }
 #endif
+
+
+template <class T>
+void TOSolver<T>::setObj( int index, T obj ){
+	this->c.at( index ) = obj;
+}
 
 
 template <class T>
@@ -827,6 +831,12 @@ void TOSolver<T>::copyTransposeA( int orgLen, const std::vector<T>& orgVal, cons
 
 
 template <class T>
+void TOSolver<T>::setInfeasibilityBound( TORationalInf<T> bound ){
+	this->infeasibilityBound = bound;
+}
+
+
+template <class T>
 void TOSolver<T>::mulANT( T* result, T* vector ){
 	for( int i = 0; i < m; ++i ){
 		if( vector[i] == 0 ){
@@ -867,10 +877,10 @@ void TOSolver<T>::FTran( T* work, T* permSpike, int* permSpikeInd, int* permSpik
 
 	// FTranL-U
 
-	for( int l = this->Lnetaf; l < this->Lneta; ++l ){
-		const int p = Letapos[l];
-		const int kend = this->Llbeg[l+1];
-		for( int k = this->Llbeg[l]; k < kend; ++k ){
+	for( int li = this->Lnetaf; li < this->Lneta; ++li ){
+		const int p = Letapos[li];
+		const int kend = this->Llbeg[li+1];
+		for( int k = this->Llbeg[li]; k < kend; ++k ){
 			int j = Lind[k];
 			if( work[j] != 0 ){
 				work[p] += Letas[k] * work[j];
@@ -1049,8 +1059,8 @@ void TOSolver<T>::findPiv( const std::vector<std::vector<int> >& Urowind, const 
 					// MarkCount begin
 
 					long long M = llmm;
-					for( unsigned int l = 0; l < Urowind[jj].size(); ++l ){
-						int itmp = Urowind[jj][l];
+					for( unsigned int li = 0; li < Urowind[jj].size(); ++li ){
+						int itmp = Urowind[jj][li];
 						if( Ra[itmp].used ){
 							long long tmp = (long long) ( nnzRs[itmp] - 1 ) * ( nnzCs[jj] - 1 );
 							if( k == 1 ){
@@ -1102,8 +1112,8 @@ void TOSolver<T>::findPiv( const std::vector<std::vector<int> >& Urowind, const 
 					// MarkCount begin
 
 					long long M = llmm;
-					for( unsigned int l = 0; l < Ucolind[ii].size(); ++l ){
-						int jtmp = Ucolind[ii][l];
+					for( unsigned int li = 0; li < Ucolind[ii].size(); ++li ){
+						int jtmp = Ucolind[ii][li];
 						if( Ca[jtmp].used ){
 							long long tmp = (long long) ( nnzCs[jtmp] - 1 ) * ( nnzRs[ii] - 1 );
 							if( tmp < M ){
@@ -1142,7 +1152,7 @@ void TOSolver<T>::findPiv( const std::vector<std::vector<int> >& Urowind, const 
 template <class T>
 bool TOSolver<T>::refactor(){
 
-	// std::cout << "Refaktorisiere Basismatrix (" << this->baseIter << " Iterationen vergangen)." << std::endl;
+	// pm::cout << "Refaktorisiere Basismatrix (" << this->baseIter << " Iterationen vergangen)." << std::endl;
 
 	this->baseIter = 0;
 
@@ -1332,8 +1342,8 @@ bool TOSolver<T>::refactor(){
 		}
 
 		// Spalten-nnz aktualisieren, hier finden einige sinnlose Anpassungen statt, diese sparen aber die Überprüfung, ob nötig
-		for( unsigned int l = 0; l < Ucolind[p].size(); ++l ){
-			--nnzCs[Ucolind[p][l]];
+		for( unsigned int li = 0; li < Ucolind[p].size(); ++li ){
+			--nnzCs[Ucolind[p][li]];
 		}
 
 
@@ -1354,16 +1364,16 @@ bool TOSolver<T>::refactor(){
 
 			// Pivot-Zeile speichern
 			{
-				for( unsigned int l = 0; l < Urow[p].size(); ++l ){
-					Up[Ucolind[p][l]] = Urow[p][l];
+				for( unsigned int li = 0; li < Urow[p].size(); ++li ){
+					Up[Ucolind[p][li]] = Urow[p][li];
 				}
 			}
 
-			for( unsigned int l = 0; l < Ucol[q].size(); ){
-				int i = Urowind[q][l];
+			for( unsigned int li = 0; li < Ucol[q].size(); ){
+				int i = Urowind[q][li];
 				if( PPa[i].used ){
 
-					T L = - Ucol[q][l] / Up[q];
+					T L = - Ucol[q][li] / Up[q];
 
 					RationalWithInd Ltmp;
 					Ltmp.value = L;
@@ -1478,13 +1488,13 @@ bool TOSolver<T>::refactor(){
 
 				} else {
 					// Im obigen Fall muss das verschobene Element auch geprüft werden.
-					++l;
+					++li;
 				}
 			}
 
 			// gespeicherte Pivot-Zeile löschen
-			for( unsigned int l = 0; l < Urow[p].size(); ++l ){
-				Up[Ucolind[p][l]] = 0;
+			for( unsigned int li = 0; li < Urow[p].size(); ++li ){
+				Up[Ucolind[p][li]] = 0;
 			}
 
 			Llbeg[Lnetaf] = Lpos;	// Startposition für nächsten ETA-Vektor
@@ -1744,11 +1754,11 @@ void TOSolver<T>::updateB( int r, T* permSpike, int* permSpikeInd, int* permSpik
 			int cptr = Ucptr[i];
 
 			// Letztes Element der Spalte an diese Position holen, Zeile um 1 kürzen
-			int colend = this->Ucbeg[cind] + --this->Uclen[cind];
-			if( cptr < colend ){
-				this->Ucval[cptr] = this->Ucval[colend];
-				this->Urind[cptr] = this->Urind[colend];
-				this->Urptr[cptr] = this->Urptr[colend];
+			int colend2 = this->Ucbeg[cind] + --this->Uclen[cind];
+			if( cptr < colend2 ){
+				this->Ucval[cptr] = this->Ucval[colend2];
+				this->Urind[cptr] = this->Urind[colend2];
+				this->Urptr[cptr] = this->Urptr[colend2];
 				this->Ucptr[this->Urptr[cptr]] = cptr;
 			}
 		}
@@ -1801,7 +1811,7 @@ template <class T>
 int TOSolver<T>::phase1(){
 
 	#ifndef TO_DISABLE_OUTPUT
-		std::cout << "Duale Phase 1 gestartet." << std::endl;
+		pm::cout << "Duale Phase 1 gestartet." << std::endl;
 	#endif
 
 	std::vector<TORationalInf<T> > ltmp( n + m );
@@ -1866,7 +1876,7 @@ int TOSolver<T>::opt(){
 	if( !this->hasBase ){
 
 		#ifndef TO_DISABLE_OUTPUT
-			std::cout << "Starte CPLEX um möglicherweise Startbasis zu bestimmen..." << std::endl << std::endl;
+			pm::cout << "Starte CPLEX um möglicherweise Startbasis zu bestimmen..." << std::endl << std::endl;
 		#endif
 
 		int status;
@@ -1973,18 +1983,18 @@ int TOSolver<T>::opt(){
 				#ifndef TO_DISABLE_OUTPUT
 					double objval;
 					CPLEX_EXEC( CPXXgetobjval( env, lp, &objval ) );
-					std::cout << std::endl << "CPLEX-Optimallösung gefunden: " << objval << "." << std::endl;
+					pm::cout << std::endl << "CPLEX-Optimallösung gefunden: " << objval << "." << std::endl;
 				#endif
 			} else {
 				#ifndef TO_DISABLE_OUTPUT
 				{
 					char cpxstatus[CPXMESSAGEBUFSIZE];
 					char* statstring = CPXXgetstatstring( env, status, cpxstatus );
-					std::cout << std::endl << "Keine Optimallösung mit CPLEX gefunden." << std::endl;
+					pm::cout << std::endl << "Keine Optimallösung mit CPLEX gefunden." << std::endl;
 					if( statstring ){
-						std::cout << "CPLEX-Status = " << statstring << std::endl;
+						pm::cout << "CPLEX-Status = " << statstring << std::endl;
 					}
-					std::cout << "Deaktiviere Presolver, optimiere erneut." << std::endl << std::endl;
+					pm::cout << "Deaktiviere Presolver, optimiere erneut." << std::endl << std::endl;
 				}
 				#endif
 
@@ -2006,14 +2016,14 @@ int TOSolver<T>::opt(){
 					char cpxstatus[CPXMESSAGEBUFSIZE];
 					char* statstring = CPXXgetstatstring( env, status, cpxstatus );
 					if( statstring ){
-						std::cout << std::endl << "CPLEX-Status nach weiterem Durchlauf = " << statstring << std::endl;
+						pm::cout << std::endl << "CPLEX-Status nach weiterem Durchlauf = " << statstring << std::endl;
 					}
 				}
 				#endif
 			}
 
 			#ifndef TO_DISABLE_OUTPUT
-				std::cout << "Übertrage Basis." << std::endl;
+				pm::cout << "Übertrage Basis." << std::endl;
 			#endif
 
 			// Basis übertragen
@@ -2080,7 +2090,7 @@ int TOSolver<T>::opt(){
 
 			if( status == CPX_STAT_INFEASIBLE ){
 				#ifndef TO_DISABLE_OUTPUT
-					std::cout << "CPLEX infeasible." << std::endl;
+					pm::cout << "CPLEX infeasible." << std::endl;
 				#endif
 
 				this->rayGuess.resize( m );
@@ -2089,13 +2099,13 @@ int TOSolver<T>::opt(){
 
 		} catch( std::runtime_error& ex ){
 			#ifndef TO_DISABLE_OUTPUT
-				std::cerr << std::endl << "Unerwarteter Fehler bei Bestimmung der Basis mit CPLEX:" << std::endl << ex.what() << std::endl << std::endl;
-				std::cout << "Bestimme Basis selbst." << std::endl;
+				pm::cerr << std::endl << "Unerwarteter Fehler bei Bestimmung der Basis mit CPLEX:" << std::endl << ex.what() << std::endl << std::endl;
+				pm::cout << "Bestimme Basis selbst." << std::endl;
 			#endif
 		} catch( ... ){
 			#ifndef TO_DISABLE_OUTPUT
-				std::cerr << std::endl << "Völlig unerwarteter Fehler bei Bestimmung der Basis mit CPLEX." << std::endl << std::endl;
-				std::cout << "Bestimme Basis selbst." << std::endl;
+				pm::cerr << std::endl << "Völlig unerwarteter Fehler bei Bestimmung der Basis mit CPLEX." << std::endl << std::endl;
+				pm::cout << "Bestimme Basis selbst." << std::endl;
 			#endif
 		}
 
@@ -2116,7 +2126,7 @@ int TOSolver<T>::opt(){
 	if( !this->hasBase ){
 
 		#ifndef TO_DISABLE_OUTPUT
-			std::cout << "Starte Gurobi um möglicherweise Startbasis zu bestimmen..." << std::endl << std::endl;
+			pm::cout << "Starte Gurobi um möglicherweise Startbasis zu bestimmen..." << std::endl << std::endl;
 		#endif
 
 		GRBenv *env = NULL; // TODO für Nachoptimierungen auslagern und behalten
@@ -2203,7 +2213,7 @@ int TOSolver<T>::opt(){
 
 
 			#ifndef TO_DISABLE_OUTPUT
-				std::cout << "Übertrage Basis." << std::endl;
+				pm::cout << "Übertrage Basis." << std::endl;
 			#endif
 
 			// Basis übertragen
@@ -2275,7 +2285,7 @@ int TOSolver<T>::opt(){
 
 			if( status == GRB_INFEASIBLE ){
 				#ifndef TO_DISABLE_OUTPUT
-					std::cout << "Gurobi infeasible." << std::endl;
+					pm::cout << "Gurobi infeasible." << std::endl;
 				#endif
 
 				this->rayGuess.resize( m );
@@ -2287,13 +2297,13 @@ int TOSolver<T>::opt(){
 
 		} catch( std::runtime_error& ex ){
 			#ifndef TO_DISABLE_OUTPUT
-				std::cerr << std::endl << "Unerwarteter Fehler bei Bestimmung der Basis mit Gurobi:" << std::endl << ex.what() << std::endl << std::endl;
-				std::cout << "Bestimme Basis selbst." << std::endl;
+				pm::cerr << std::endl << "Unerwarteter Fehler bei Bestimmung der Basis mit Gurobi:" << std::endl << ex.what() << std::endl << std::endl;
+				pm::cout << "Bestimme Basis selbst." << std::endl;
 			#endif
 		} catch( ... ){
 			#ifndef TO_DISABLE_OUTPUT
-				std::cerr << std::endl << "Völlig unerwarteter Fehler bei Bestimmung der Basis mit Gurobi." << std::endl << std::endl;
-				std::cout << "Bestimme Basis selbst." << std::endl;
+				pm::cerr << std::endl << "Völlig unerwarteter Fehler bei Bestimmung der Basis mit Gurobi." << std::endl << std::endl;
+				pm::cout << "Bestimme Basis selbst." << std::endl;
 			#endif
 		}
 
@@ -2353,7 +2363,7 @@ int TOSolver<T>::opt(){
 
 
 			#ifndef TO_DISABLE_OUTPUT
-				std::cout << "Übertrage Basis." << std::endl;
+				pm::cout << "Übertrage Basis." << std::endl;
 			#endif
 
 			// Basis übertragen
@@ -2417,13 +2427,13 @@ int TOSolver<T>::opt(){
 
 		} catch( std::runtime_error& ex ){
 			#ifndef TO_DISABLE_OUTPUT
-				std::cerr << std::endl << "Unerwarteter Fehler bei Bestimmung der Basis mit CLP:" << std::endl << ex.what() << std::endl << std::endl;
-				std::cout << "Bestimme Basis selbst." << std::endl;
+				pm::cerr << std::endl << "Unerwarteter Fehler bei Bestimmung der Basis mit CLP:" << std::endl << ex.what() << std::endl << std::endl;
+				pm::cout << "Bestimme Basis selbst." << std::endl;
 			#endif
 		} catch( ... ){
 			#ifndef TO_DISABLE_OUTPUT
-				std::cerr << std::endl << "Völlig unerwarteter Fehler bei Bestimmung der Basis mit CLP." << std::endl << std::endl;
-				std::cout << "Bestimme Basis selbst." << std::endl;
+				pm::cerr << std::endl << "Völlig unerwarteter Fehler bei Bestimmung der Basis mit CLP." << std::endl << std::endl;
+				pm::cout << "Bestimme Basis selbst." << std::endl;
 			#endif
 		}
 
@@ -2494,8 +2504,8 @@ int TOSolver<T>::opt(){
 			splex.solve();
 
 			#ifndef TO_DISABLE_OUTPUT
-				std::cout << "SoPlex:" << std::endl << splex.statistics() << std::endl;
-				std::cout << "Übertrage Basis." << std::endl;
+				pm::cout << "SoPlex:" << std::endl << splex.statistics() << std::endl;
+				pm::cout << "Übertrage Basis." << std::endl;
 			#endif
 
 			// Basis übertragen
@@ -2585,20 +2595,20 @@ int TOSolver<T>::opt(){
 				if( splex.getDualfarkas( tmpray ) < 0 ){
 					this->rayGuess.clear();
 					#ifndef TO_DISABLE_OUTPUT
-						std::cout << "SoPlex lieferte kein Farkas-Zertifikat." << std::endl;
+						pm::cout << "SoPlex lieferte kein Farkas-Zertifikat." << std::endl;
 					#endif
 				}
 			}
 			this->hasBase = true;
 		} catch( std::runtime_error& ex ){
 			#ifndef TO_DISABLE_OUTPUT
-				std::cerr << std::endl << "Unerwarteter Fehler bei Bestimmung der Basis mit SoPlex:" << std::endl << ex.what() << std::endl << std::endl;
-				std::cout << "Bestimme Basis selbst." << std::endl;
+				pm::cerr << std::endl << "Unerwarteter Fehler bei Bestimmung der Basis mit SoPlex:" << std::endl << ex.what() << std::endl << std::endl;
+				pm::cout << "Bestimme Basis selbst." << std::endl;
 			#endif
 		} catch( ... ){
 			#ifndef TO_DISABLE_OUTPUT
-				std::cerr << std::endl << "Völlig unerwarteter Fehler bei Bestimmung der Basis mit SoPlex." << std::endl << std::endl;
-				std::cout << "Bestimme Basis selbst." << std::endl;
+				pm::cerr << std::endl << "Völlig unerwarteter Fehler bei Bestimmung der Basis mit SoPlex." << std::endl << std::endl;
+				pm::cout << "Bestimme Basis selbst." << std::endl;
 			#endif
 		}
 
@@ -2608,7 +2618,7 @@ int TOSolver<T>::opt(){
 
 	if( this->checkDualFarkas() ){
 		#ifndef TO_DISABLE_OUTPUT
-			std::cout << "DualFarkas ok! No optimization needed. Problem is infeasible." << std::endl;
+			pm::cout << "DualFarkas ok! No optimization needed. Problem is infeasible." << std::endl;
 		#endif
 
 		// x und d berechnen
@@ -2706,7 +2716,7 @@ int TOSolver<T>::opt(){
 		if( retval == -1 ){
 
 			#ifndef TO_DISABLE_OUTPUT
-				std::cout << "Perturbiere." << std::endl;
+				pm::cout << "Perturbiere." << std::endl;
 			#endif
 
 			T cmin( 1 );
@@ -2729,11 +2739,16 @@ int TOSolver<T>::opt(){
 
 			this->hasPerturbated = true;
 
+			TORationalInf<T> infeasibilityBoundOld = this->infeasibilityBound;
+			this->infeasibilityBound = true;
+
 			this->opt( false );
 
 			#ifndef TO_DISABLE_OUTPUT
-				std::cout << "Ende Perturbierung." << std::endl;
+				pm::cout << "Ende Perturbierung." << std::endl;
 			#endif
+
+			this->infeasibilityBound = infeasibilityBoundOld;
 
 			this->c = cold;
 		}
@@ -2742,19 +2757,19 @@ int TOSolver<T>::opt(){
 
 	#ifndef TO_DISABLE_OUTPUT
 		#ifdef TO_WITH_CPLEX
-			std::cout << "CPLEX-Zeit: " << cplextime / (double) CLOCKS_PER_SEC << std::endl;
+			pm::cout << "CPLEX-Zeit: " << cplextime / (double) CLOCKS_PER_SEC << std::endl;
 		#endif
 		#ifdef TO_WITH_GUROBI
-			std::cout << "Gurobi-Zeit: " << gurobitime / (double) CLOCKS_PER_SEC << std::endl;
+			pm::cout << "Gurobi-Zeit: " << gurobitime / (double) CLOCKS_PER_SEC << std::endl;
 		#endif
 		#ifdef TO_WITH_CLP
-			std::cout << "CLP-Zeit: " << clptime / (double) CLOCKS_PER_SEC << std::endl;
+			pm::cout << "CLP-Zeit: " << clptime / (double) CLOCKS_PER_SEC << std::endl;
 		#endif
 		#ifdef TO_WITH_SOPLEX
-			std::cout << "SoPlex-Zeit: " << soplextime / (double) CLOCKS_PER_SEC << std::endl;
+			pm::cout << "SoPlex-Zeit: " << soplextime / (double) CLOCKS_PER_SEC << std::endl;
 		#endif
 
-		std::cout << "Optimierungszeit: " << ( ( clock() - fulltime ) / (double) CLOCKS_PER_SEC ) << " Sekunden" << std::endl;
+		pm::cout << "Optimierungszeit: " << ( ( clock() - fulltime ) / (double) CLOCKS_PER_SEC ) << " Sekunden" << std::endl;
 	#endif
 
 	if( !retval ){
@@ -2770,7 +2785,7 @@ template <class T>
 int TOSolver<T>::opt( bool P1 ){
 
 	#ifndef TO_DISABLE_OUTPUT
-		std::cout << "Optimiere..." << std::endl;
+		pm::cout << "Optimiere..." << std::endl;
 		clock_t starttime = clock();
 	#endif
 
@@ -2788,6 +2803,12 @@ int TOSolver<T>::opt( bool P1 ){
 		for( int i = 0; i < n; ++i ){
 			const int j = this->N[i];
 			if( !l[j].isInf && !u[j].isInf && x[j] != l[j].value && x[j] != u[j].value ){
+				if( l[j].value > u[j].value ){
+					#ifndef TO_DISABLE_OUTPUT
+						pm::cout << "Dual unbounded (widersprüchliche Schranken)." << std::endl;
+					#endif
+					return 1;
+				}
 				x[j] = l[j].value;
 			} else if( !l[j].isInf && u[j].isInf && x[j] != l[j].value ){
 				x[j] = l[j].value;
@@ -2864,7 +2885,7 @@ int TOSolver<T>::opt( bool P1 ){
 
 			#ifndef TO_DISABLE_OUTPUT
 				if( dfcdone ){
-					std::cout << "DFC done." << std::endl;
+					pm::cout << "DFC done." << std::endl;
 				}
 			#endif
 		} while( dfcdone );
@@ -2891,7 +2912,7 @@ int TOSolver<T>::opt( bool P1 ){
 			}
 			if( !feas ){
 				#ifndef TO_DISABLE_OUTPUT
-					std::cout << "Basis dual infeasible. Starte Phase 1." << std::endl << std::endl;
+					pm::cout << "Basis dual infeasible. Starte Phase 1." << std::endl << std::endl;
 				#endif
 				if( P1 ){
 					// Should not happen
@@ -2900,7 +2921,7 @@ int TOSolver<T>::opt( bool P1 ){
 				int p1retval = this->phase1();
 				if( p1retval > 0 ){
 					#ifndef TO_DISABLE_OUTPUT
-						std::cout << "Phase 1: LP dual infeasible!" << std::endl << std::endl;
+						pm::cout << "Phase 1: LP dual infeasible!" << std::endl << std::endl;
 					#endif
 					return 2;
 				}
@@ -2909,7 +2930,7 @@ int TOSolver<T>::opt( bool P1 ){
 				}
 
 				#ifndef TO_DISABLE_OUTPUT
-					std::cout << "Phase 1 fertig." << std::endl << std::endl;
+					pm::cout << "Phase 1 fertig." << std::endl << std::endl;
 				#endif
 			}
 		}
@@ -2937,6 +2958,7 @@ int TOSolver<T>::opt( bool P1 ){
 	this->antiCycle = false;
 
 	bool dualUnbounded = false;
+	bool infeasibleDueToBound = false;
 
 	clock_t time1;
 	clock_t time2 = clock();
@@ -2949,6 +2971,7 @@ int TOSolver<T>::opt( bool P1 ){
 	unsigned long long time_ftran = 0;
 	unsigned long long time_update = 0;
 
+	T Z( 0 );
 
 	while( true ){
 
@@ -2958,15 +2981,20 @@ int TOSolver<T>::opt( bool P1 ){
 		#endif
 
 		// TODO weq, mit Updateformel updaten
-		T Z( 0 );
+		Z = 0;
 		for( int i = 0; i < n; ++i ){
 			Z += c[i] * x[i];
+		}
+
+		if( !this->infeasibilityBound.isInf && Z >= this->infeasibilityBound.value ){
+			infeasibleDueToBound = true;
+			break;
 		}
 
 		// Kreiselvermeidung
 		if( Z == Zold && ++cyclecounter > 5 && !this->antiCycle ){
 			#ifndef TO_DISABLE_OUTPUT
-				std::cout << "Starte Routine zur Vermeidung von Kreiseln." << std::endl;
+				pm::cout << "Starte Routine zur Vermeidung von Kreiseln." << std::endl;
 			#endif
 			this->antiCycle = true;
 		} else if( Z != Zold ){
@@ -2975,7 +3003,7 @@ int TOSolver<T>::opt( bool P1 ){
 				++nocyclecounter;
 				if( nocyclecounter > 5 ){
 					#ifndef TO_DISABLE_OUTPUT
-						std::cout << "Beende Routine zur Vermeidung von Kreiseln." << std::endl;
+						pm::cout << "Beende Routine zur Vermeidung von Kreiseln." << std::endl;
 					#endif
 					this->antiCycle = false;
 					nocyclecounter = 0;
@@ -2995,8 +3023,8 @@ int TOSolver<T>::opt( bool P1 ){
 		{
 			#ifndef TO_DISABLE_OUTPUT
 				std::string info = P1 ? "(Duale Phase 1) Duale Unzulässigkeit: " : "(Duale Phase 2) Primaler Zielfunktionswert: ";
-				std::cout << "Iteration " << iter << ".\t" << info << Z.get_d() << std::endl;
-				std::cout << "Dauer: " << ( itertime - oldtime ) / (double) CLOCKS_PER_SEC << " s." << std::endl;
+				pm::cout << "Iteration " << iter << ".\t" << info << TOmath<T>::toShortString( Z ) << std::endl;
+				pm::cout << "Dauer: " << ( itertime - oldtime ) / (double) CLOCKS_PER_SEC << " s." << std::endl;
 			#endif
 		}
 
@@ -3007,7 +3035,7 @@ int TOSolver<T>::opt( bool P1 ){
 
 
 		// Step 2: Pricing
-//		std::cout << "Pricing" << std::endl;
+//		pm::cout << "Pricing" << std::endl;
 
 		int r = 0;
 		int p = m+n;
@@ -3051,7 +3079,7 @@ int TOSolver<T>::opt( bool P1 ){
 
 		if( p == m+n ){
 			#ifndef TO_DISABLE_OUTPUT
-				std::cout << "OPTIMAL!!!" << std::endl;
+				pm::cout << "OPTIMAL!!!" << std::endl;
 			#endif
 			break;
 		} else {
@@ -3065,7 +3093,7 @@ int TOSolver<T>::opt( bool P1 ){
 				ratioNeg = false;
 			}
 
-//			std::cout << "(Noch) nicht optimal." << std::endl;
+//			pm::cout << "(Noch) nicht optimal." << std::endl;
 		}
 
 
@@ -3075,7 +3103,7 @@ int TOSolver<T>::opt( bool P1 ){
 		time_pricing += time2-time1;
 
 		// Step 3: BTran
-//		std::cout << "BTran" << std::endl;
+//		pm::cout << "BTran" << std::endl;
 
 		std::vector<T> rhor(m);
 		rhor[r] = 1;
@@ -3117,7 +3145,7 @@ int TOSolver<T>::opt( bool P1 ){
 
 
 				// Step 4: Pivot row
-		//		std::cout << "Pivot row" << std::endl;
+		//		pm::cout << "Pivot row" << std::endl;
 
 				std::vector<T> alphar( n, T( 0 ) );
 
@@ -3131,7 +3159,7 @@ int TOSolver<T>::opt( bool P1 ){
 
 
 				// Step 5: Ratio Test
-		//		std::cout << "Ratio Test" << std::endl;
+		//		pm::cout << "Ratio Test" << std::endl;
 
 				if( ratioNeg ){
 					for( int i = 0; i < n; ++i ){
@@ -3268,7 +3296,7 @@ int TOSolver<T>::opt( bool P1 ){
 
 					// TODO in extra Thread auslagern?
 					// Step 6: FTran
-			//		std::cout << "FTran" << std::endl;
+			//		pm::cout << "FTran" << std::endl;
 
 					std::vector<T> alphaq(m);
 					if( q < n ){
@@ -3291,7 +3319,7 @@ int TOSolver<T>::opt( bool P1 ){
 
 
 					// Step 7: Basis change and update
-			//		std::cout << "Update" << std::endl;
+			//		pm::cout << "Update" << std::endl;
 
 					T thetaD = d[s] / alphar[s];
 
@@ -3303,7 +3331,7 @@ int TOSolver<T>::opt( bool P1 ){
 
 					if( flip )
 					{
-			//			std::cout << "FLIP!!!" << std::endl;
+			//			pm::cout << "FLIP!!!" << std::endl;
 						FTran( atilde.data() );
 						for( int i = 0; i < m; ++i ){
 							x[B[i]] -= atilde[i];
@@ -3386,13 +3414,13 @@ int TOSolver<T>::opt( bool P1 ){
 				unsigned long long time_sum = time_pricing + time_btran + time_dse + time_pivot + time_ratio + time_ftran + time_update;
 
 				if( time_sum > 0) {
-					std::cout << "Pricing: " << 100 * time_pricing / time_sum << std::endl;
-					std::cout << "BTran: " << 100 * time_btran / time_sum << std::endl;
-					std::cout << "DSE-FTran: " << 100 * time_dse / time_sum << std::endl;
-					std::cout << "Pivot: " << 100 * time_pivot / time_sum << std::endl;
-					std::cout << "Ratio Test: " << 100 * time_ratio / time_sum << std::endl;
-					std::cout << "Ftran: " << 100 * time_ftran / time_sum << std::endl;
-					std::cout << "Update: " << 100 * time_update / time_sum << std::endl;
+					pm::cout << "Pricing: " << 100 * time_pricing / time_sum << std::endl;
+					pm::cout << "BTran: " << 100 * time_btran / time_sum << std::endl;
+					pm::cout << "DSE-FTran: " << 100 * time_dse / time_sum << std::endl;
+					pm::cout << "Pivot: " << 100 * time_pivot / time_sum << std::endl;
+					pm::cout << "Ratio Test: " << 100 * time_ratio / time_sum << std::endl;
+					pm::cout << "Ftran: " << 100 * time_ftran / time_sum << std::endl;
+					pm::cout << "Update: " << 100 * time_update / time_sum << std::endl;
 				}
 			#endif
 
@@ -3424,53 +3452,64 @@ int TOSolver<T>::opt( bool P1 ){
 		time2 = clock();
 
 		time_update += time2-time1;
-
+		
 	}
-
+	
 
 	#ifndef TO_DISABLE_OUTPUT
 		if( dualUnbounded ){
-			std::cout << "dual unbounded" << std::endl;
+			pm::cout << "dual unbounded" << std::endl;
+		} else if( infeasibleDueToBound ){
+			pm::cout << "infeasibility bound reached" << std::endl;
+			pm::cout << "Cutoff: " << TOmath<T>::toShortString( Z ) << " >= " << TOmath<T>::toShortString( this->infeasibilityBound.value ) << std::endl;
 		} else {
-			T Z;
+			Z = 0;
 			for( int i = 0; i < n; ++i ){
 				Z += c[i] * x[i];
 			}
-			std::cout << "Zielfunktionswert: Double: " << Z.get_d() << std::endl;
-			std::cout << "Zielfunktionswert: GMP-Float: ";
-			mpf_class Zfl( 0, 256 );
-			Zfl = Z;
+			pm::cout << "Zielfunktionswert: Exakt: " << Z << std::endl;
+			pm::cout << "Zielfunktionswert: gekuerzt: " << TOmath<T>::toShortString( Z ) << std::endl;
 
-			std::streamsize oldp = std::cout.precision(75);
-			std::cout << Zfl << std::endl;
-			std::cout.precision( oldp );
+			#ifndef TO_WITHOUT_DOUBLE
+			{
+				pm::cout << "Zielfunktionswert: GMP-Float: ";
+				mpf_class Zfl( 0, 256 );
+				Zfl = Z;
 
-			std::cout << "Exakt: " << Z << std::endl;
+				std::streamsize oldp = pm::cout.precision(75);
+				pm::cout << Zfl << std::endl;
+				pm::cout.precision( oldp );
 
-			// simple Messung der Größe des Ergebnisses
-			std::string base2res = Z.get_str(2);
-	//		std::cout << "Base 2: " << base2res << std::endl;
-			int base2size = base2res.size() + 1;	// 1 für Vorzeichen
+				// simple Messung der Größe des Ergebnisses
+				std::string base2res = Z.get_str(2);
+//				pm::cout << "Base 2: " << base2res << std::endl;
+				int base2size = base2res.size() + 1;	// 1 für Vorzeichen
 
-			// - und / nicht mitzählen
-			if( base2res.find( "-" ) != std::string::npos ){
-				// Ein Bit für ein Vorzeichen rechnen wir sowieso oben.
-				--base2size;
+				// - und / nicht mitzählen
+				if( base2res.find( "-" ) != std::string::npos ){
+					// Ein Bit für ein Vorzeichen rechnen wir sowieso oben.
+					--base2size;
+				}
+				if( base2res.find( "/" ) != std::string::npos ){
+					// Den Bruchstrich nicht mitzählen
+					--base2size;
+				} else {
+					// Ein Bit für den Nenner 1 dazurechnen
+					++base2size;
+				}
+				pm::cout << "Kodierungslänge: " << base2size << std::endl;
 			}
-			if( base2res.find( "/" ) != std::string::npos ){
-				// Den Bruchstrich nicht mitzählen
-				--base2size;
-			} else {
-				// Ein Bit für den Nenner 1 dazurechnen
-				++base2size;
-			}
-			std::cout << "Kodierungslänge: " << base2size << std::endl;
+			#endif
 		}
 
-		std::cout << iter << " Iterationen" << std::endl;
+		pm::cout << iter << " Iterationen" << std::endl;
 
-		std::cout << "Zeit: " << ( ( clock() - starttime ) / (double) CLOCKS_PER_SEC ) << " Sekunden" << std::endl;
+		pm::cout << "Zeit: " << ( ( clock() - starttime ) / (double) CLOCKS_PER_SEC ) << " Sekunden" << std::endl;
 	#endif
+
+	if( infeasibleDueToBound ){
+		return 3;
+	}
 
 	if( dualUnbounded ){
 		return 1;
@@ -3535,29 +3574,26 @@ std::pair<TORationalInf<T>,TORationalInf<T> > TOSolver<T>::getConstraintBounds( 
 }
 
 
-#ifndef TO_WITHOUT_DOUBLE
-
-template<>
-inline std::pair<std::vector<mpq_class>, mpq_class> TOSolver<mpq_class>::getGMI( int ind, std::vector<bool> intVars, unsigned int kcut ){
+template <class T>
+inline std::pair<std::vector<T>, T> TOSolver<T>::getGMI( int ind, std::vector<bool> intVars, T kcut ){
 
 	if( ind >= n+m ){
 		throw std::runtime_error( "Invalid index" );
 	}
 
-	if( !kcut ){
+	if( kcut <= T( 0 ) || !TOmath<T>::isInt( kcut ) ){
 		throw std::runtime_error( "Invalid k." );
 	}
 
-	std::vector<mpq_class> tmp( m, 0 );
+	std::vector<T> tmp( m, T(0) );
 	tmp[ Binv[ ind ] ] = 1;
 	BTran( tmp.data() );
-	std::vector<mpq_class> gmicoeff( n, 0 );
+	std::vector<T> gmicoeff( n, T(0) );
 	mulANT( gmicoeff.data(), tmp.data() );
 
 
 	// Generate GMI
-//	std::vector<mpq_class> s(n+m);
-	mpq_class ai0;
+	T ai0;
 	for( int k = 0; k < n; ++k ){
 		int nind = N[k];
 		if( !l[nind].isInf && x[nind] == l[nind].value ){
@@ -3576,17 +3612,17 @@ inline std::pair<std::vector<mpq_class>, mpq_class> TOSolver<mpq_class>::getGMI(
 
 
 	// Cut from row
-	std::vector<mpq_class> cutcoeff(n);
-	mpq_class fi0 = ai0 * kcut - mpq2mpz_floor( ai0 * kcut );
+	std::vector<T> cutcoeff(n);
+	T fi0 = ai0 * kcut - TOmath<T>::floor( ai0 * kcut );
 	if( fi0 == 0 ){
 		throw std::runtime_error( "Separation impossible." );
 	}
 	for( int k = 0; k < n; ++k ){
 		int nind = N[k];
-		mpq_class & aij = gmicoeff[k];
+		T & aij = gmicoeff[k];
 		if( (unsigned int) nind < intVars.size() && intVars[nind] ){
 			// Integer nonbasic Variables
-			mpq_class fij = aij * kcut - mpq2mpz_floor( aij * kcut );
+			T fij = aij * kcut - TOmath<T>::floor( aij * kcut );
 			if( fij <= fi0 ){
 				cutcoeff[k] = fij;
 			} else {
@@ -3597,13 +3633,13 @@ inline std::pair<std::vector<mpq_class>, mpq_class> TOSolver<mpq_class>::getGMI(
 			if( aij >= 0 ){
 				cutcoeff[k] = aij * kcut;
 			} else {
-				cutcoeff[k] = fi0*(-aij*kcut)/(1-fi0);
+				cutcoeff[k] = fi0 * ( -aij * kcut ) / ( 1 - fi0 );
 			}
 		}
 	}
 
 	// Cut zurückrechnen
-	mpq_class beta = fi0;
+	T beta = fi0;
 	for( int k = 0; k < n; ++k ){
 		int nind = N[k];
 		if( !l[nind].isInf && x[nind] == l[nind].value ){
@@ -3617,15 +3653,15 @@ inline std::pair<std::vector<mpq_class>, mpq_class> TOSolver<mpq_class>::getGMI(
 		}
 	}
 
-	std::vector<mpq_class> cut(n);
+	std::vector<T> cut(n);
 	for( int k = 0; k < n; ++k ){
 		int nind = N[k];
 		if( nind < n ){
 			cut[nind] += cutcoeff[k];
 		} else {
 			if( cutcoeff[k] != 0 ){
-				for( int l = Arowpointer[nind - n]; l < Arowpointer[nind - n + 1]; ++l ){
-					cut[ Arowwiseind[l] ] -= cutcoeff[k] * Arowwise[l];
+				for( int li = Arowpointer[nind - n]; li < Arowpointer[nind - n + 1]; ++li ){
+					cut[ Arowwiseind[li] ] -= cutcoeff[k] * Arowwise[li];
 				}
 			}
 		}
@@ -3635,13 +3671,15 @@ inline std::pair<std::vector<mpq_class>, mpq_class> TOSolver<mpq_class>::getGMI(
 }
 
 
+#ifndef TO_WITHOUT_DOUBLE
+
 template <>
 inline bool TOSolver<mpq_class>::checkDualFarkas(){
 
 	if( this->rayGuess.size() && ( this->hasBasisMatrix || ( this->hasBase && this->refactor() ) ) ){
 
 		#ifndef TO_DISABLE_OUTPUT
-			std::cout << "Prüfe Farkas-Zertifikat." << std::endl;
+			pm::cout << "Prüfe Farkas-Zertifikat." << std::endl;
 		#endif
 
 		unsigned int counter = 0;
@@ -3678,7 +3716,7 @@ inline bool TOSolver<mpq_class>::checkDualFarkas(){
 
 				mpq_class tmpval = er[i] + mpq_class( 1, 2 );
 
-				mpz_class tmpval2 = mpq2mpz_floor( tmpval );
+				mpq_class tmpval2 = TOmath<mpq_class>::floor( tmpval );
 				mpq_class tmpval3 = er[i] - tmpval2;
 
 

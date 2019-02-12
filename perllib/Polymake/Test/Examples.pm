@@ -98,13 +98,23 @@ sub create_testcases {
                $app=eval { User::application($app_name) } or return;
             }
 	 } elsif (my ($label)= $hint =~ /^\s*prefer\s+($id_re)\s*$/o) {
-	    if (defined $app->prefs->find_label($label)) {
+	    if (defined($app->prefs->find_label($label))) {
 	       push @snippets, "prefer_now('$label');\n"
 	    } else {
 	       $disable_reason .= "requires an unknown preference label '$label'\n";
 	       $disable_this=1;
 	       last;
 	    }
+         } elsif (my ($URI)= $hint =~ /^\s*require\s+(bundled:$id_re)\s*$/o) {
+            if (defined(my $ext = $Core::Extension::registered_by_URI{$URI})) {
+               unless ($ext->is_active) {
+                  $disable_this=1;
+                  last;
+               }
+            } else {
+	       $@="help topic ".$self->topic->full_path." example #$id requires to an unknown extension $URI at $source_file, line $source_line\n";
+               return;
+            }
 	 } elsif ($hint eq "nocompare") {
 	    $nocompare=1;
 	 } elsif ($hint eq "notest") {
@@ -179,14 +189,10 @@ sub new {
    my $self=&Case::new;
    local $disable_viewers = 1;
    before_run($self);
-   if ($self->restore_application) {
-      local_save_scalar($User::application);
-      eval $self->body;
-   } else {
-      eval $self->body;
-   }
-   $self->gotten_error=$@;
-   $@="";
+   local scalar $User::application if $self->restore_application;
+   eval $self->body;
+   $self->gotten_error = $@;
+   $@ = "";
    after_run($self);
    close $self->handle;
    $self;

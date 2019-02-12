@@ -40,7 +40,7 @@ sub allOnesVec{
     my $dim=$_[0];
     my @allOnesVec=();
     for(my $i=0;$i<$dim;$i++){
-	push(@allOnesVec,1);
+        push(@allOnesVec,1);
     }
     return new Vector<Rational>(@allOnesVec);
 }
@@ -55,7 +55,7 @@ sub fstColToAllOnes{
     my $newMatrix=new Matrix<Rational>($matrix->rows,$matrix->cols);
     $newMatrix->col(0)=allOnesVec($matrix->rows);
     for(my $i=1;$i<$matrix->cols;$i++){
-	$newMatrix->col($i)=$matrix->col($i);	
+        $newMatrix->col($i)=$matrix->col($i);   
     }
     return $newMatrix;
 }
@@ -102,14 +102,14 @@ sub rationalToString{
     my $rational=convert_to<Rational>($rational_in);
     my $string="";
     if($rational<0){
-	$string.="m";
-	$rational*=-1;
+        $string.="m";
+        $rational*=-1;
     }
     my $num=numerator($rational);
     my $denom=denominator($rational);
     $string.="".$num."";
     if($denom!=1){
-	$string.="d".$denom."";
+        $string.="d".$denom."";
     }
     return $string;
 }
@@ -122,7 +122,7 @@ sub rationalVecToString {
     my $vec=$_[0];
     my $string="";
     foreach (@$vec) {
-	$string.="".rationalToString($_)."";
+        $string.="".rationalToString($_)."";
     }
     return $string;
 }
@@ -135,9 +135,9 @@ sub rationalVecToString {
 sub getIndexFromMatrix {
     my ($vec, $mat) = @_;
     for ( my $i = 0; $i < $mat->rows; ++$i ) {
-	if ( $vec == $mat->row($i) ) {
-	    return $i;
-	}
+        if ( $vec == $mat->row($i) ) {
+            return $i;
+        }
     }
     return -1;
 }
@@ -154,15 +154,15 @@ sub getArrayNumberFromArrayOfSets {
     my $found = 0;
 
     for ( my $i=0; $i<$arrOfSets->size; ++$i ) {
-	my $set = $arrOfSets->[$i];  
-	if ( $set->contains($index) ) {
-	    $found = 1;
-	    return $i;
-	}
+        my $set = $arrOfSets->[$i];  
+        if ( $set->contains($index) ) {
+            $found = 1;
+            return $i;
+        }
     }
 
     if ( !$found ) {
-	croak("The index $index was not contained in the array of sets");
+        croak("The index $index was not contained in the array of sets");
     }
 
 }
@@ -173,14 +173,14 @@ sub getArrayNumberFromArrayOfSets {
 # @param String v the given string representing the vector
 # @return Vector the string //v// converted to a vector
 sub w2v {
-	my $v = shift;
-	return new Vector(split /[,\s]+/, $v);
+        my $v = shift;
+        return new Vector(split /[,\s]+/, $v);
 }
 
 # copied from w2v, see above
 sub string2Vec { 
-	my $v = shift;
-	return new Vector(split /[,\s]+/, $v);
+        my $v = shift;
+        return new Vector(split /[,\s]+/, $v);
 }
 
 # Transforms a matrix //m// into a Set<Vector>.
@@ -229,9 +229,9 @@ sub vlabels {
     my ($vertices, $wo_zero) = @_;
     my @vlabels=();
     if ($wo_zero) {
-	@vlabels = map {"(".join(",",@{$vertices->[$_]->slice(1,$vertices->cols-1)}).")"} 0..$vertices->rows-1;
+        @vlabels = map {"(".join(",",@{$vertices->[$_]->slice(sequence(1, $vertices->cols-1))}).")"} 0..$vertices->rows-1;
     } else {
-	@vlabels = map {"(".join(",",@{$vertices->[$_]}).")"} 0..$vertices->rows-1;
+        @vlabels = map {"(".join(",",@{$vertices->[$_]}).")"} 0..$vertices->rows-1;
     }
     return \@vlabels;
 }

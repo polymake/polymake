@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "split_compatibility_graph.cc",
+ "inst": [
+  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "void"], "func": "split_compatibility_graph", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "split_compatibility_graph:T1.X.B", "tp": "1"},
+ null ],
+"version": 3}

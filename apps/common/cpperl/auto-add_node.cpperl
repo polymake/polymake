@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<Graph<Directed>&>"], "func": "add_node", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "add_node:M1"},
+ null ],
+"version": 3}

@@ -1,0 +1,202 @@
+#  Copyright (c) 1997-2018
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+package X3d;
+
+# X3d viewer
+custom $x3dviewer;
+
+CONFIGURE_OPT {
+   find_program($x3dviewer, qw( view3dscene blender titania freewrl open ), { prompt => "an X3d viewer. When choosing blender without arguments. It will be executed together with a python script that handles the x3d import. blender -P $Polymake::Resources/blender/pm_to_blender.py -- --info   for more infos. That" });
+}
+
+CONFIGURE {
+   eval("require XML::Writer;");
+   if ($@) {
+      die "Could not load perl XML::Writer module: $@\n";
+   } else {
+      return 1;
+   }
+}
+
+# @topic custom
+# The first two numeric constants defined here are in postscript points (1/72"). The following one are in px and are scaled to match the DIN A4 sheet.
+
+# text labels: font family; recognized values "SERIF","SANS","TYPEWRITER"
+custom $font_family="SANS";
+
+# text labels: font style; recognized values "PLAIN","BOLD","ITALIC", "BOLDITALIC"
+custom $font_style="PLAIN";
+
+# text labels
+custom $font_size=14;
+
+# point thickness
+custom $points_thickness=4;
+
+# edge thickness
+custom $lines_thickness=1;
+
+# spacing between points (lines) and labels
+custom $text_spacing=2;
+
+# for arrows in directed graphs
+custom $arrowheadlength=25;
+
+# for arrows in directed graphs
+custom $arrowheadwidth=3.5;
+
+# for arrows in directed graphs 
+custom $arrowheadoffset=0.5*$arrowheadlength;
+
+# scale factor for text size/spacing, points/lines thickness and arrow head measures 
+custom $scale = 0.01;
+
+# for arrows in directed graphs: keep undef for the same color as the edge
+custom $arrowheadcolor=undef;
+
+# coordinates of the viewpoint
+custom @view_point=(10,11,9);
+
+# coordinates of a point on the view axis: default is the origin
+custom @view_at=(0,0,0);
+
+# camera orientation: default is Y-axis towards zenith (Z-axis in blender)
+custom @view_up=(0,1,0);
+
+# show coord axes?
+custom $coordinate_axes=0;
+
+custom @axeslabels=qw(x y z);    
+
+###########################################################################################
+#
+#  Basic class implementing the required back-end interface.
+
+package X3d::Viewer;
+
+require X3d;
+
+use BackgroundViewer;
+
+use Polymake::Struct [ '@ISA' => 'SimpleViewer' ];
+
+sub file_suffix { ".x3d" } # world
+
+sub new {
+   unless (defined $x3dviewer) {
+      die <<'.';
+no x3d viewer configured: please specify the output File option
+or call reconfigure("common::x3d.rules");
+.
+   }
+   my $self=&_new;
+   my $temp_file=new Tempfile;
+   $self->tempfile = $temp_file;
+   $self;
+}
+
+sub command {
+   my ($self, $filename)=@_;
+   if ($x3dviewer=~'blender$') {
+      "$x3dviewer -P $Polymake::Resources/blender/pm_to_blender.py -- -vc --file $filename";
+   } else {
+      "$x3dviewer $filename";
+   }
+}
+
+sub new_drawing {
+   my ($self, $title)=@_;
+   $self->SUPER::new_drawing($title);
+   $self;
+}
+
+sub append {
+   my $self=shift;
+   $self->graphics->append(@_);
+}
+
+# @category Visualization
+# Create an x3d drawing and show it with your favorite viewer.
+label x3d
+
+global_method x3d.geometry: draw(Visual::PointSet, @) {
+   my ($self, $P)=@_;
+   $self->append(X3d::PointSet->new($P));
+}
+
+global_method x3d.geometry: draw(Visual::Wire, @) {
+   my ($self, $G)=@_;
+   $self->append(X3d::Wire->new($G));
+}
+
+global_method x3d.geometry: draw(Visual::Polygon, @) {
+   my ($self, $P)=@_;
+   $self->append(X3d::Solid->new($P));
+}
+
+global_method x3d.geometry: draw(Visual::Polygons, @) {
+   my ($self, $P)=@_;
+   $self->append(X3d::Solid->new($P));
+}
+
+
+###########################################################################################
+#
+#  Writes an X3D file without rendering
+#
+
+package X3d::File::Writer;
+import Visual::FileWriter;
+
+sub file_suffix { ".x3d" }
+
+sub new_drawing {
+   my ($self, $title)=@_;
+   $self->title=$title;
+   $self;
+}
+
+sub DESTROY { }
+
+###########################################################################################
+
+package application;
+
+# @category Visualization
+# Create an X3D drawing with the given visual objects.
+#
+# @param Visual::Object vis_obj ... objects to draw
+#
+# @option String File "filename" or "AUTO"
+#  Store the drawing in a file without starting the viewer.
+#  The ''.x3d'' suffix is automatically added to the file name.
+#
+#  Specify //AUTO// if you want the filename be automatically derived
+#  from the drawing title.
+#
+#  You can also use any expression allowed for the ''open'' function,
+#  including "-" for terminal output, "&HANDLE" for an already opened file handle,
+#  or "| program" for a pipe.
+
+user_function x3d(Visual::Object+, { File => undef }) {
+   visualize_explicit(@_, "X3d");
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# End:

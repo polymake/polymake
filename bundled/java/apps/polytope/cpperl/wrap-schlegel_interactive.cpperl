@@ -1,0 +1,7 @@
+{"app": "polytope", "embed": "schlegel_interactive.cc",
+ "inst": [
+  {"args": ["perl::Canned<const std::unique_ptr<SchlegelWindow>&>"], "func": "port", "kind": "meth", "sig": "port:M"},
+  {"args": ["perl::Canned<const std::unique_ptr<SchlegelWindow>&>"], "func": "store", "kind": "meth", "sig": "store:M"},
+  {"args": ["perl::Canned<const std::unique_ptr<SchlegelWindow>&>"], "func": "shutdown", "kind": "meth", "sig": "shutdown:M"},
+ null ],
+"version": 3}

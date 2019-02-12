@@ -1,0 +1,5 @@
+{"app": "topaz", "embed": "graph.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Array<Set<int>>&>"], "func": "vertex_graph", "include": ["polymake/Array.h", "polymake/Set.h"], "sig": "vertex_graph.X"},
+ null ],
+"version": 3}

@@ -31,22 +31,22 @@ Vector<Rational> random_edge_epl(const Graph<Directed>& G)
    Vector<Rational> average_path_length(nodes);
    std::list<int> node_queue;
 
-   for (int v=0; v<nodes; ++v)          // initialize all nodes
-      if (!(outgoing_edges[v]=G.out_degree(v)))
-         node_queue.push_back(v);
+   for (int n = 0; n < nodes; ++n)          // initialize all nodes
+      if (!(outgoing_edges[n] = G.out_degree(n)))
+         node_queue.push_back(n);
 
    while (!node_queue.empty()) {
-      const int v=node_queue.front();
+      const int n = node_queue.front();
       node_queue.pop_front();
       Rational APL(0);
-      for (Entire<Graph<Directed>::out_edge_list>::const_iterator e=entire(G.out_edges(v));  !e.at_end();  ++e)
-         APL+=average_path_length[e.to_node()];
+      for (auto e = entire(G.out_edges(n));  !e.at_end();  ++e)
+         APL += average_path_length[e.to_node()];
 
-      if (G.out_degree(v)) average_path_length[v] = APL/G.out_degree(v) + 1;
+      if (G.out_degree(n)) average_path_length[n] = APL/G.out_degree(n) + 1;
 
-      for (Entire<Graph<Directed>::in_edge_list>::const_iterator e=entire(G.in_edges(v));  !e.at_end();  ++e) {
-         const int v=e.from_node();
-         if (!(--outgoing_edges[v])) node_queue.push_back(v);
+      for (auto e = entire(G.in_edges(n));  !e.at_end();  ++e) {
+         const int f = e.from_node();
+         if (!(--outgoing_edges[f])) node_queue.push_back(f);
       }
    }
 

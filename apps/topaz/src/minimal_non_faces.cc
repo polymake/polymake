@@ -50,25 +50,24 @@ Array<Set<int>> minimal_non_faces(const perl::Object HD_obj)
 
       // create hash set containing all faces of this dimension
       hash_set< Set<int> > faces(HD.nodes_of_rank(d+1).size());
-      for (auto it=entire(HD.nodes_of_rank(d+1)); !it.at_end(); ++it)
-         faces.insert(HD.face(*it));
-      const hash_set< Set<int> >::iterator faces_end = faces.end();
+      for (const auto n : HD.nodes_of_rank(d+1))
+         faces.insert(HD.face(n));
+      const auto faces_end = faces.end();
 
       // iterate over all faces of this dimension
-      for (auto it=entire(HD.nodes_of_rank(d+1)); !it.at_end(); ++it) {
-         const int n=*it;
+      for (const auto n : HD.nodes_of_rank(d+1)) {
          const Set<int>& f= HD.face(n);
 
          Bitset non_candidates(n_vertices);
-         for (Entire<Graph<Directed>::out_edge_list>::const_iterator e=entire(HD.out_edges(n)); !e.at_end(); ++e)
+         for (auto e=entire(HD.out_edges(n)); !e.at_end(); ++e)
             if (e.to_node() != top_node)
                non_candidates += (HD.face(e.to_node())-f).front();
 #if POLYMAKE_DEBUG
          if (debug_print) cout << "\nface " << n << ": " << f << "\nnon_candidates: " << non_candidates << endl;
 #endif
          // generate non-faces
-         for (Entire<Graph<Directed>::in_edge_list>::const_iterator in_e=entire(HD.in_edges(n)); !in_e.at_end(); ++in_e) {
-            for (Entire<Graph<Directed>::out_edge_list>::const_iterator out_e=entire(HD.out_edges(in_e.from_node())); !out_e.at_end(); ++out_e) {
+         for (auto in_e=entire(HD.in_edges(n)); !in_e.at_end(); ++in_e) {
+            for (auto out_e=entire(HD.out_edges(in_e.from_node())); !out_e.at_end(); ++out_e) {
                const int nn = out_e.to_node();
                if (n==nn)
                   continue;
@@ -81,7 +80,7 @@ Array<Set<int>> minimal_non_faces(const perl::Object HD_obj)
 #endif
                // test the candidate
                bool is_minimal = true;
-               for (Entire< Subsets_less_1<const Set<int>&> >::const_iterator f_it=entire(all_subsets_less_1(f)); !f_it.at_end(); ++f_it)
+               for (auto f_it=entire(all_subsets_less_1(f)); !f_it.at_end(); ++f_it)
                   if ( faces.find(*f_it + candidate) == faces_end ) {
                      is_minimal = false;
                      break;

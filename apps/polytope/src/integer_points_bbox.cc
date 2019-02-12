@@ -20,8 +20,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/ListMatrix.h"
 #include "polymake/Integer.h"
-#include "polymake/polytope/to_interface.h"
-#include <sstream>
+#include "polymake/polytope/solve_LP.h"
 
 namespace polymake {
 namespace polytope {
@@ -30,9 +29,6 @@ namespace polytope {
 template <typename Scalar>
 Matrix<Integer> integer_points_bbox(perl::Object p_in)
 {
-   typedef polytope::to_interface::solver<Scalar> Solver;
-   //typedef Solver::coord_type coord_type;
-
    // get specification of polytope
    const Matrix<Scalar> H = p_in.give("FACETS | INEQUALITIES");
    const Matrix<Scalar> E = p_in.lookup("AFFINE_HULL | EQUATIONS");
@@ -42,12 +38,9 @@ Matrix<Integer> integer_points_bbox(perl::Object p_in)
    // direction. The order does not matter, since the LP solver (currently) does not allow for a
    // warm start.
 
-   // initialize LP solver
-   Solver LPsolver;
-
    Vector<Scalar> obj(d+1);    // objective
-   Vector<Integer> L(d+1);        // lower bounds
-   Vector<Integer> U(d+1);        // upper bounds
+   Vector<Integer> L(d+1);     // lower bounds
+   Vector<Integer> U(d+1);     // upper bounds
 
    // initialize 0 component
    L[0] = 1;
@@ -55,76 +48,53 @@ Matrix<Integer> integer_points_bbox(perl::Object p_in)
    obj[0] = 0;
 
    // pass through dimensions
-   for (int i = 1; i <= d; ++i)
-   {
+   for (int i = 1; i <= d; ++i) {
       // set up unit vector
-      for (int j = 1; j <= d; ++j)
-      {
-         if ( i != j )
+      for (int j = 1; j <= d; ++j) {
+         if (i != j)
             obj[j] = 0;
          else
             obj[j] = 1;
       }
 
       // maximize along unit vector
-      typename Solver::lp_solution solution;
-      try
-      {
-         solution = LPsolver.solve_lp(H, E, obj, true);
-      }
-      catch (const linalg_error& error)
-      {
-         std::stringstream s;
-         s << "Cannot determine bounds for generating integer points: " << error.what() << std::ends;
-         throw std::runtime_error(s.str());
-      }
+      auto S = solve_LP(H, E, obj, true);
+      if (S.status != LP_status::valid)
+         throw std::runtime_error("Cannot determine upper bounds for generating integer points");
 
       // set upper bound to rounded objective function value
-      U[i] = floor(solution.first);
+      U[i] = floor(S.objective_value);
 
       // minimize along unit vector (do not catch exceptions)
-      try
-      {
-         solution = LPsolver.solve_lp(H, E, obj, false);
-      }
-      catch (const linalg_error& error)
-      {
-         std::stringstream s;
-         s << "Cannot determine bounds for generating integer points: " << error.what() << std::ends;
-         throw std::runtime_error(s.str());
-      }
+      S = solve_LP(H, E, obj, false);
+      if (S.status != LP_status::valid)
+         throw std::runtime_error("Cannot determine lower bounds for generating integer points");
 
       // set lower bound to rounded objective function value
-      L[i] = ceil(solution.first);
+      L[i] = ceil(S.objective_value);
    }
 
    // Second, enumerate all integer points within the bounds
 
    ListMatrix< Vector<Integer> > P(0,d+1);        // to collect the integer points
    Vector<Integer> cur(L);   // stores current point
-   bool finished = false;
-   do
-   {
+
+   for (;;) {
       // test whether point is valid
       bool valid = true;
 
       // check whether current point satisfies all equations
-      for (int i = 0; i < E.rows(); ++i)
-      {
-         if ( convert_to<Scalar>(cur) * E.row(i) != 0 )
-         {
+      for (int i = 0; i < E.rows(); ++i) {
+         if (convert_to<Scalar>(cur) * E.row(i) != 0) {
             valid = false;
             break;
          }
       }
 
       // check whether current point satisfies all inequalities
-      if ( valid )
-      {
-         for (int i = 0; i < H.rows(); ++i)
-         {
-            if ( convert_to<Scalar>(cur) * H.row(i) < 0 )
-            {
+      if (valid) {
+         for (int i = 0; i < H.rows(); ++i) {
+            if (convert_to<Scalar>(cur) * H.row(i) < 0) {
                valid = false;
                break;
             }
@@ -132,23 +102,21 @@ Matrix<Integer> integer_points_bbox(perl::Object p_in)
       }
 
       // append point if it is valid
-      if ( valid )
+      if (valid)
          P /= cur;
 
       // propagate carry if necessary
       int curd = 1;
-      while ( curd <= d && cur[curd] >= U[curd] )
-      {
+      while (curd <= d && cur[curd] >= U[curd]) {
          cur[curd] = L[curd];
          ++curd;
       }
 
-      if ( curd <= d)
+      if (curd <= d)
          cur[curd] += 1;
       else
-         finished = true;
+         break;
    }
-   while (! finished );
 
    // return Matrix of generated points
    return P;
@@ -161,7 +129,7 @@ UserFunctionTemplate4perl("# @category Geometry"
                           "# @param  Polytope<Scalar> P"
                           "# @return Matrix<Integer>"
                           "# @example"
-                          "# > $p = new Polytope(VERTICES=>[[1,1.3,0.5],[1,0.2,1.2],[1,0.1,-1.5],[1,-1.4,0.2]]);"
+                          "# > $p = new Polytope(VERTICES=>[[1,13/10,1/2],[1,1/5,6/5],[1,1/10,-3/2],[1,-7/5,1/5]]);"
                           "# > print integer_points_bbox($p);"
                           "# | 1 0 -1"
                           "# | 1 -1 0"

@@ -56,13 +56,9 @@ rule CONE_DIM, REL_INT_POINT : FACETS | INEQUALITIES, ONE_VERTEX, BOUNDED {
 weight 3.25;
 
 rule REL_INT_POINT : FACETS | INEQUALITIES, LINEALITY_SPACE {
-   my $p;
-   if (defined (my $AH = $this->lookup("AFFINE_HULL | EQUATIONS"))) {
-      $p=new Polytope(INEQUALITIES=>$this->give("FACETS | INEQUALITIES"), EQUATIONS=>$this->LINEALITY_SPACE/$AH);
-   }
-   else {
-      $p=new Polytope(INEQUALITIES=>$this->give("FACETS | INEQUALITIES"), EQUATIONS=>$this->LINEALITY_SPACE);
-   }
+   my $AH = $this->lookup("AFFINE_HULL | EQUATIONS");
+   my $p = new Polytope(INEQUALITIES => $this->give("FACETS | INEQUALITIES"),
+                        EQUATIONS => (defined($AH) ? $this->LINEALITY_SPACE/$AH : $this->LINEALITY_SPACE));
    $this->REL_INT_POINT = $p->REL_INT_POINT;
 }
 precondition : !POINTED;

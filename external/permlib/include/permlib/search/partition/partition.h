@@ -194,7 +194,6 @@ inline bool Partition::intersect(ForwardIterator otherCellBegin, ForwardIterator
 	vector_t::reverse_iterator newCellIt;
 	vector_t::reverse_iterator newCellBeginIt;
 	vector_t::iterator newCell2It;
-	vector_t::iterator borderIt;
 	bool createdNewCell = false;
 	const unsigned int partitionCellSize = partitionCellLength[j];
 	if (j >= cellCounter)

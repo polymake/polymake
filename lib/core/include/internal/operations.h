@@ -21,14 +21,6 @@
 #include "polymake/internal/iterators.h"
 
 namespace pm {
-namespace operators {
-
-/* Generic classes representing groups of operands should be derived from this
-   in order to involve this namespace in Koenig lookup for operators */
-struct base {};
-
-}
-
 namespace operations {
 
 template <typename Operation>
@@ -41,8 +33,8 @@ class is_partially_defined {
       second_argument_type;
    struct helper {
       template <typename Result>
-      static derivation::yes Test(const Result&);
-      static derivation::no Test(helper*);
+      static std::true_type Test(const Result&);
+      static std::false_type Test(helper*);
    };
    struct catch_first {
       catch_first(typename function_argument<first_argument_type>::const_type) {}
@@ -54,15 +46,12 @@ class is_partially_defined {
       using Operation::operator();
       helper* operator() (partial_left, catch_first, catch_second) const;
       helper* operator() (partial_right, catch_first, catch_second) const;
-      mix_in();
-      static typename is_partially_defined::first_argument_type first;
-      static typename is_partially_defined::second_argument_type second;
    };
 public:
-   static const bool value= sizeof(helper::Test( mix_in()(partial_left(), mix_in::first, mix_in::second) ))
-                            == sizeof(derivation::yes) &&
-                            sizeof(helper::Test( mix_in()(partial_right(), mix_in::first, mix_in::second) ))
-                            == sizeof(derivation::yes);
+   using type = typename mlist_or< decltype(helper::Test( std::declval<mix_in&>()(partial_left(), std::declval<first_argument_type&>(), std::declval<second_argument_type&>()))),
+                                   decltype(helper::Test( std::declval<mix_in&>()(partial_right(), std::declval<first_argument_type&>(), std::declval<second_argument_type&>())))
+                >::type;
+   static constexpr bool value = type::value;
 };
 
 template <typename Operation, typename Container1, typename Container2>
@@ -93,10 +82,6 @@ struct div_impl;
 template <typename LeftRef, typename RightRef,
           typename Discr=typename isomorphic_types<typename deref<LeftRef>::type, typename deref<RightRef>::type>::discriminant>
 struct divexact_impl;
-
-template <typename LeftRef, typename RightRef,
-          typename Discr=typename isomorphic_types<typename deref<LeftRef>::type, typename deref<RightRef>::type>::discriminant>
-struct mod_impl;
 
 template <typename LeftRef, typename RightRef,
           typename Discr=typename isomorphic_types<typename deref<LeftRef>::type, typename deref<RightRef>::type>::discriminant>
@@ -131,25 +116,15 @@ struct divexact_impl<LeftRef, RightRef, cons<is_scalar, is_scalar> >
    : divexact_scalar<typename deref<LeftRef>::type, typename deref<RightRef>::type,
                      typename div_result<typename deref<LeftRef>::type, typename deref<RightRef>::type>::type> {};
 
-template <typename LeftRef, typename RightRef>
-struct mod_impl<LeftRef, RightRef, cons<is_scalar, is_scalar> >
-   : mod_scalar<typename deref<LeftRef>::type, typename deref<RightRef>::type,
-                typename mod_result<typename deref<LeftRef>::type, typename deref<RightRef>::type>::type> {};
-
-template <typename LeftRef, typename RightRef>
-struct tensor_impl<LeftRef, RightRef, cons<is_scalar, is_scalar> >
-   : mul_scalar<typename deref<LeftRef>::type, typename deref<RightRef>::type,
-                typename mul_result<typename deref<LeftRef>::type, typename deref<RightRef>::type>::type> {};
-
 template <typename OpRef,
           typename Discr=typename object_traits<typename deref<OpRef>::type>::generic_tag>
-struct square_impl : mul_impl<OpRef,OpRef> {
-   typedef mul_impl<OpRef,OpRef> _super;
-   typedef typename _super::first_argument_type argument_type;
+struct square_impl {
+   typedef OpRef argument_type;
+   typedef decltype(sqr(std::declval<OpRef>())) result_type;
 
-   typename _super::result_type operator() (typename function_argument<argument_type>::type a) const
+   result_type operator() (argument_type a) const
    {
-      return _super::operator()(a,a);
+      return sqr(a);
    }
 };
 
@@ -162,7 +137,19 @@ struct add_impl<std::basic_string<Char, Traits, Alloc>&, const std::basic_string
    add_scalar<std::basic_string<Char, Traits, Alloc>, std::basic_string<Char, Traits, Alloc>, std::basic_string<Char, Traits, Alloc> > {};
 
 template <typename Char, typename Traits, typename Alloc>
+struct add_impl<const std::basic_string<Char, Traits, Alloc>&, std::basic_string<Char, Traits, Alloc>&, cons<is_opaque, is_opaque> > :
+   add_scalar<std::basic_string<Char, Traits, Alloc>, std::basic_string<Char, Traits, Alloc>, std::basic_string<Char, Traits, Alloc> > {};
+
+template <typename Char, typename Traits, typename Alloc>
+struct add_impl<std::basic_string<Char, Traits, Alloc>&, std::basic_string<Char, Traits, Alloc>&, cons<is_opaque, is_opaque> > :
+   add_scalar<std::basic_string<Char, Traits, Alloc>, std::basic_string<Char, Traits, Alloc>, std::basic_string<Char, Traits, Alloc> > {};
+
+template <typename Char, typename Traits, typename Alloc>
 struct add_impl<const std::basic_string<Char, Traits, Alloc>&, const Char*, cons<is_opaque, is_not_object> > :
+   add_scalar<std::basic_string<Char, Traits, Alloc>, const Char*, std::basic_string<Char, Traits, Alloc> > {};
+
+template <typename Char, typename Traits, typename Alloc>
+struct add_impl<std::basic_string<Char, Traits, Alloc>&, const Char*, cons<is_opaque, is_not_object> > :
    add_scalar<std::basic_string<Char, Traits, Alloc>, const Char*, std::basic_string<Char, Traits, Alloc> > {};
 
 template <typename OpRef>
@@ -177,12 +164,36 @@ template <typename LeftRef, typename RightRef>
 struct div : div_impl<LeftRef,RightRef> {};
 template <typename LeftRef, typename RightRef>
 struct divexact : divexact_impl<LeftRef,RightRef> {};
-template <typename LeftRef, typename RightRef>
-struct mod : mod_impl<LeftRef,RightRef> {};
 template <typename OpRef>
 struct square : square_impl<OpRef> {};
 template <typename LeftRef, typename RightRef>
 struct tensor : tensor_impl<LeftRef,RightRef> {};
+
+// TODO: replace with a generic swap_operands
+template <typename LeftRef, typename RightRef>
+struct mul_from_left : mul_impl<RightRef, LeftRef> {
+   typedef RightRef first_argument_type;
+   typedef LeftRef second_argument_type;
+
+   template <typename L, typename R>
+   decltype(auto) operator() (L&& l, R&& r) const
+   {
+      return r * l;
+   }
+
+   template <typename L, typename R>
+   void assign(L&& l, R&& r) const
+   {
+      l = r * l;
+   }
+};
+
+template <typename LeftRef, typename RightRef,
+          typename Discr=typename isomorphic_types<typename deref<LeftRef>::type, typename deref<RightRef>::type>::discriminant>
+struct bitwise_xor_impl;
+
+template <typename LeftRef, typename RightRef>
+struct bitwise_xor : bitwise_xor_impl<LeftRef,RightRef> {};
 
 struct unary_noop {
    typedef void argument_type;
@@ -198,193 +209,6 @@ struct binary_noop {
    template <typename Any1, typename Any2>
    result_type operator() (const Any1&, const Any2&) const {}
 };
-
-} // end namespace operations
-
-namespace operators {
-
-template <typename Op> inline
-typename operations::neg_impl<const typename Concrete<Op>::type&>::result_type
-operator- (const Op& x)
-{
-   operations::neg_impl<const typename Concrete<Op>::type&> op;
-   return op(concrete(x));
-}
-
-template <typename Left, typename Right> inline
-typename operations::mul_impl<const typename Concrete<Left>::type&, const typename Concrete<Right>::type&>::result_type
-operator* (const Left& l, const Right& r)
-{
-   operations::mul_impl<const typename Concrete<Left>::type&, const typename Concrete<Right>::type&> op;
-   return op(concrete(l), concrete(r));
-}
-
-template <typename Left, typename Right> inline
-typename operations::div_impl<typename Concrete<Left>::type&, typename Concrete<Right>::type&>::result_type
-operator/ (Left& l, Right& r)
-{
-   operations::div_impl<typename Concrete<Left>::type&, typename Concrete<Right>::type&> op;
-   return op(concrete(l), concrete(r));
-}
-
-template <typename Left, typename Right> inline
-typename operations::div_impl<typename Concrete<Left>::type&, const typename Concrete<Right>::type&>::result_type
-operator/ (Left& l, const Right& r)
-{
-   operations::div_impl<typename Concrete<Left>::type&, const typename Concrete<Right>::type&> op;
-   return op(concrete(l), concrete(r));
-}
-
-template <typename Left, typename Right> inline
-typename operations::div_impl<const typename Concrete<Left>::type&, typename Concrete<Right>::type&>::result_type
-operator/ (const Left& l, Right& r)
-{
-   operations::div_impl<const typename Concrete<Left>::type&, typename Concrete<Right>::type&> op;
-   return op(concrete(l), concrete(r));
-}
-
-template <typename Left, typename Right> inline
-typename operations::div_impl<const typename Concrete<Left>::type&, const typename Concrete<Right>::type&>::result_type
-operator/ (const Left& l, const Right& r)
-{
-   operations::div_impl<const typename Concrete<Left>::type&, const typename Concrete<Right>::type&> op;
-   return op(concrete(l), concrete(r));
-}
-
-template <typename Left, typename Right> inline
-typename operations::mod_impl<const typename Concrete<Left>::type&, const typename Concrete<Right>::type&>::result_type
-operator% (const Left& l, const Right& r)
-{
-   operations::mod_impl<const typename Concrete<Left>::type&, const typename Concrete<Right>::type&> op;
-   return op(concrete(l), concrete(r));
-}
-
-template <typename Left, typename Right> inline
-typename operations::tensor_impl<const typename Concrete<Left>::type&, const typename Concrete<Right>::type&>::result_type
-tensor_product(const Left& l, const Right& r)
-{
-   operations::tensor_impl<const typename Concrete<Left>::type&, const typename Concrete<Right>::type&> op;
-   return op(concrete(l), concrete(r));
-}
-
-template <typename Op> inline
-typename operations::square_impl<const typename Concrete<Op>::type&>::result_type
-sqr(const Op& x)
-{
-   operations::square_impl<const typename Concrete<Op>::type&> op;
-   return op(concrete(x));
-}
-} // end namespace operators
-
-namespace operations {
-
-template <typename OpRef,
-          typename Discr=typename object_traits<typename deref<OpRef>::type>::generic_tag>
-struct bitwise_inv_impl;
-
-template <typename LeftRef, typename RightRef,
-          typename Discr=typename isomorphic_types<typename deref<LeftRef>::type, typename deref<RightRef>::type>::discriminant>
-struct bitwise_or_impl;
-
-template <typename LeftRef, typename RightRef,
-          typename Discr=typename isomorphic_types<typename deref<LeftRef>::type, typename deref<RightRef>::type>::discriminant>
-struct bitwise_and_impl;
-
-template <typename LeftRef, typename RightRef,
-          typename Discr=typename isomorphic_types<typename deref<LeftRef>::type, typename deref<RightRef>::type>::discriminant>
-struct bitwise_xor_impl;
-
-template <typename OpRef>
-struct bitwise_inv_impl<OpRef, is_scalar>
-   : inv_scalar<typename deref<OpRef>::type, typename deref<OpRef>::type> {};
-
-template <typename LeftRef, typename RightRef>
-struct bitwise_or_impl<LeftRef, RightRef, cons<is_scalar, is_scalar> >
-   : or_scalar<typename deref<LeftRef>::type, typename deref<RightRef>::type,
-               typename or_result<typename deref<LeftRef>::type, typename deref<RightRef>::type>::type> {};
-
-template <typename LeftRef, typename RightRef>
-struct bitwise_and_impl<LeftRef, RightRef, cons<is_scalar, is_scalar> >
-   : and_scalar<typename deref<LeftRef>::type, typename deref<RightRef>::type,
-                typename and_result<typename deref<LeftRef>::type, typename deref<RightRef>::type>::type> {};
-
-template <typename LeftRef, typename RightRef>
-struct bitwise_xor_impl<LeftRef, RightRef, cons<is_scalar, is_scalar> >
-   : xor_scalar<typename deref<LeftRef>::type, typename deref<RightRef>::type,
-                typename xor_result<typename deref<LeftRef>::type, typename deref<RightRef>::type>::type> {};
-
-template <typename OpRef>
-struct bitwise_inv : bitwise_inv_impl<OpRef> {};
-template <typename LeftRef, typename RightRef>
-struct bitwise_or : bitwise_or_impl<LeftRef,RightRef> {};
-template <typename LeftRef, typename RightRef>
-struct bitwise_and : bitwise_and_impl<LeftRef,RightRef> {};
-template <typename LeftRef, typename RightRef>
-struct bitwise_xor : bitwise_xor_impl<LeftRef,RightRef> {};
-
-} // end namespace operations;
-
-namespace operators {
-
-template <typename Op> inline
-typename operations::bitwise_inv_impl<const typename Concrete<Op>::type&>::result_type
-operator~ (const Op& x)
-{
-   operations::bitwise_inv_impl<const typename Concrete<Op>::type&> op;
-   return op(concrete(x));
-}
-
-template <typename Left, typename Right> inline
-typename operations::bitwise_or_impl<typename Concrete<Left>::type&, typename Concrete<Right>::type&>::result_type
-operator| (Left& l, Right& r)
-{
-   operations::bitwise_or_impl<typename Concrete<Left>::type&, typename Concrete<Right>::type&> op;
-   return op(concrete(l), concrete(r));
-}
-
-template <typename Left, typename Right> inline
-typename operations::bitwise_or_impl<typename Concrete<Left>::type&, const typename Concrete<Right>::type&>::result_type
-operator| (Left& l, const Right& r)
-{
-   operations::bitwise_or_impl<typename Concrete<Left>::type&, const typename Concrete<Right>::type&> op;
-   return op(concrete(l), concrete(r));
-}
-
-template <typename Left, typename Right> inline
-typename operations::bitwise_or_impl<const typename Concrete<Left>::type&, typename Concrete<Right>::type&>::result_type
-operator| (const Left& l, Right& r)
-{
-   operations::bitwise_or_impl<const typename Concrete<Left>::type&, typename Concrete<Right>::type&> op;
-   return op(concrete(l), concrete(r));
-}
-
-template <typename Left, typename Right> inline
-typename operations::bitwise_or_impl<const typename Concrete<Left>::type&, const typename Concrete<Right>::type&>::result_type
-operator| (const Left& l, const Right& r)
-{
-   operations::bitwise_or_impl<const typename Concrete<Left>::type&, const typename Concrete<Right>::type&> op;
-   return op(concrete(l), concrete(r));
-}
-
-template <typename Left, typename Right> inline
-typename operations::bitwise_and_impl<const typename Concrete<Left>::type&, const typename Concrete<Right>::type&>::result_type
-operator& (const Left& l, const Right& r)
-{
-   operations::bitwise_and_impl<const typename Concrete<Left>::type&, const typename Concrete<Right>::type&> op;
-   return op(concrete(l), concrete(r));
-}
-
-template <typename Left, typename Right> inline
-typename operations::bitwise_xor_impl<const typename Concrete<Left>::type&, const typename Concrete<Right>::type&>::result_type
-operator^ (const Left& l, const Right& r)
-{
-   operations::bitwise_xor_impl<const typename Concrete<Left>::type&, const typename Concrete<Right>::type&> op;
-   return op(concrete(l), concrete(r));
-}
-
-} // end namespace operators
-
-namespace operations {
 
 template <typename T> class composite_clear;
 
@@ -972,24 +796,6 @@ struct swap_op {
    }
 };
 
-template <typename PropertyMap>
-struct property_map {
-   typedef typename PropertyMap::key_type argument_type;
-   typedef typename attrib<typename PropertyMap::mapped_type>::plus_const_ref result_type;
-
-   property_map() : map(0) {}
-   property_map(const PropertyMap& map_arg)
-      : map(&map_arg) {}
-
-   result_type operator() (typename function_argument<argument_type>::type k) const
-   {
-      return (*map)(k);
-   }
-
-protected:
-   const PropertyMap* map;
-};
-
 template <typename TRef>
 struct move {
    typedef TRef argument_type;
@@ -1249,7 +1055,7 @@ construct_indirect_operation(const Iterator1& src1, const Iterator2& src2)
                                      (src1,src2);
 }
 
-template <typename Iterator1, typename Iterator2, template <typename,typename> class Operation> inline
+template <typename Iterator1, typename Iterator2, template <typename,typename> class Operation>
 operations::binary_indirect< Operation<typename iterator_traits<Iterator1>::reference,
                                        typename iterator_traits<Iterator2>::reference>, Iterator1, Iterator2 >
 construct_indirect_operation(const Iterator1& src1, const Iterator2& src2, const BuildBinary<Operation>&)
@@ -1259,53 +1065,58 @@ construct_indirect_operation(const Iterator1& src1, const Iterator2& src2, const
                                      (src1,src2);
 }
 
-template <typename Iterator, typename Operation> inline
-void perform_assign(Iterator dst, const Operation& op_arg)
+template <typename Iterator, typename Operation>
+void perform_assign(Iterator&& dst, const Operation& op_arg)
 {
-   typedef unary_op_builder<Operation, Iterator> opb;
+   typedef unary_op_builder<Operation, pure_type_t<Iterator>> opb;
    const typename opb::operation& op=opb::create(op_arg);
    for (; !dst.at_end(); ++dst)
       op.assign(*dst);
 }
 
-template <typename Iterator1, typename Iterator2, typename Operation> inline
-void perform_assign(Iterator1 dst, Iterator2 src2, const Operation& op_arg)
+template <typename Iterator1, typename Iterator2, typename Operation>
+void perform_assign(Iterator1&& dst, Iterator2&& src2, const Operation& op_arg,
+                    std::enable_if_t<check_iterator_feature<pure_type_t<Iterator1>, end_sensitive>::value, void**> =nullptr)
 {
-   typedef binary_op_builder<Operation, Iterator1, Iterator2> opb;
+   typedef binary_op_builder<Operation, pure_type_t<Iterator1>, pure_type_t<Iterator2>> opb;
    const typename opb::operation& op=opb::create(op_arg);
    for (; !dst.at_end(); ++dst, ++src2)
-      op.assign(*dst,*src2);
+      op.assign(*dst, *src2);
 }
 
-template <typename Iterator, typename Operation, typename Object> inline
-void accumulate_in(Iterator src, const Operation& op_arg, Object& x)
+template <typename Iterator1, typename Iterator2, typename Operation>
+void perform_assign(Iterator1&& dst, Iterator2&& src2, const Operation& op_arg,
+                    std::enable_if_t<!check_iterator_feature<pure_type_t<Iterator1>, end_sensitive>::value &&
+                                     check_iterator_feature<pure_type_t<Iterator2>, end_sensitive>::value, void**> =nullptr)
 {
-   typedef binary_op_builder<Operation, const Object*, Iterator> opb;
+   typedef binary_op_builder<Operation, pure_type_t<Iterator1>, pure_type_t<Iterator2>> opb;
    const typename opb::operation& op=opb::create(op_arg);
-   for (; !src.at_end(); ++src) op.assign(x,*src);
+   for (; !src2.at_end(); ++dst, ++src2)
+      op.assign(*dst, *src2);
 }
 
-template <typename Iterator, typename Operation, typename Object> inline
-void accumulate_in(Iterator src, const Operation& op_arg, const Object& x,
-                   typename std::enable_if<object_traits<Object>::is_temporary, void**>::type=nullptr)
+template <typename Iterator, typename Operation, typename Object,
+          typename=std::enable_if_t<!is_effectively_const<Object>::value>>
+void accumulate_in(Iterator&& src, const Operation& op_arg, Object&& x)
 {
-   Object xc(x);
-   accumulate_in(src, op_arg, xc);
+   typedef binary_op_builder<Operation, const pure_type_t<Object>*, pure_type_t<Iterator>> opb;
+   const typename opb::operation& op=opb::create(op_arg);
+   for (; !src.at_end(); ++src) op.assign(x, *src);
 }
 
-template <typename Container, typename Operation> inline
+template <typename Container, typename Operation>
 typename object_traits<typename Container::value_type>::persistent_type
 accumulate(const Container& c, const Operation& op_arg)
 {
    typedef typename object_traits<typename Container::value_type>::persistent_type Object;
    if (c.empty()) return Object();
-   typename Entire<Container>::const_iterator src=entire(c);
+   auto src=entire_range(c);
    Object x=*src;
    accumulate_in(++src, op_arg, x);
    return x;
 }
 
-template <typename Container> inline
+template <typename Container>
 typename object_traits<typename Container::value_type>::persistent_type
 average(const Container& c)
 {
@@ -1319,9 +1130,10 @@ struct construct_unary {
    typedef ArgRef argument_type;
    typedef Result<ArgRef> result_type;
 
-   result_type operator() (typename function_argument<ArgRef>::type x) const
+   template <typename X>
+   result_type operator() (X&& x) const
    {
-      return result_type(x);
+      return result_type(std::forward<X>(x));
    }
 };
 
@@ -1331,11 +1143,12 @@ struct construct_unary<Result, void> : incomplete {};
 template <template <typename,typename> class Result, typename Second, typename ArgRef=void>
 struct construct_unary2 {
    typedef ArgRef argument_type;
-   typedef Result<ArgRef,Second> result_type;
+   typedef Result<ArgRef, Second> result_type;
 
-   result_type operator() (typename function_argument<ArgRef>::type x) const
+   template <typename X>
+   result_type operator() (X&& x) const
    {
-      return result_type(x);
+      return result_type(std::forward<X>(x));
    }
 };
 
@@ -1345,11 +1158,12 @@ struct construct_unary2<Result, Second, void> : incomplete {};
 template <template <typename,typename,typename> class Result, typename Second, typename Third, typename ArgRef=void>
 struct construct_unary3 {
    typedef ArgRef argument_type;
-  typedef Result<ArgRef,Second,Third> result_type;
+   typedef Result<ArgRef, Second, Third> result_type;
 
-   result_type operator() (typename function_argument<ArgRef>::type x) const
+   template <typename X>
+   result_type operator() (X&& x) const
    {
-      return result_type(x);
+      return result_type(std::forward<X>(x));
    }
 };
 
@@ -1367,9 +1181,10 @@ public:
    construct_unary_with_arg() {}
    construct_unary_with_arg(const Second& second_arg) : second(second_arg) {}
 
-   result_type operator() (typename function_argument<ArgRef>::type x) const
+   template <typename X>
+   result_type operator() (X&& x) const
    {
-      return result_type(x, second);
+      return result_type(std::forward<X>(x), second);
    }
 };
 
@@ -1390,14 +1205,15 @@ protected:
    Second second;
 public:
    typedef ArgRef argument_type;
-   typedef Result<ArgRef,Second> result_type;
+   typedef Result<ArgRef, Second> result_type;
 
    construct_unary2_with_arg() {}
    construct_unary2_with_arg(const Second& second_arg) : second(second_arg) {}
 
-   result_type operator() (typename function_argument<ArgRef>::type x) const
+   template <typename X>
+   result_type operator() (X&& x) const
    {
-      return result_type(x, second);
+      return result_type(std::forward<X>(x), second);
    }
 };
 
@@ -1418,9 +1234,10 @@ struct construct_binary {
    typedef RightRef second_argument_type;
    typedef Result<LeftRef, RightRef> result_type;
 
-   result_type operator() (typename function_argument<LeftRef>::type l, typename function_argument<RightRef>::type r) const
+   template <typename L, typename R>
+   result_type operator() (L&& l, R&& r) const
    {
-      return result_type(l,r);
+      return result_type(std::forward<L>(l), std::forward<R>(r));
    }
 };
 
@@ -1433,9 +1250,10 @@ struct construct_binary2 {
    typedef RightRef second_argument_type;
    typedef Result<LeftRef, RightRef, Third> result_type;
 
-   result_type operator() (typename function_argument<LeftRef>::type l, typename function_argument<RightRef>::type r) const
+   template <typename L, typename R>
+   result_type operator() (L&& l, R&& r) const
    {
-      return result_type(l, r);
+      return result_type(std::forward<L>(l), std::forward<R>(r));
    }
 };
 
@@ -1449,14 +1267,15 @@ protected:
 public:
    typedef LeftRef first_argument_type;
    typedef RightRef second_argument_type;
-   typedef Result<LeftRef,RightRef> result_type;
+   typedef Result<LeftRef, RightRef> result_type;
 
    construct_binary_with_arg() {}
    construct_binary_with_arg(const Third& third_arg) : third(third_arg) {}
 
-   result_type operator() (typename function_argument<LeftRef>::type l, typename function_argument<RightRef>::type r) const
+   template <typename L, typename R>
+   result_type operator() (L&& l, R&& r) const
    {
-      return result_type(l, r, third);
+      return result_type(std::forward<L>(l), std::forward<R>(r), third);
    }
 };
 
@@ -1478,14 +1297,15 @@ protected:
 public:
    typedef LeftRef first_argument_type;
    typedef RightRef second_argument_type;
-   typedef Result<LeftRef,RightRef,Third> result_type;
+   typedef Result<LeftRef, RightRef, Third> result_type;
 
    construct_binary2_with_arg() {}
    construct_binary2_with_arg(const Third& third_arg) : third(third_arg) {}
 
-   result_type operator() (typename function_argument<LeftRef>::type l, typename function_argument<RightRef>::type r) const
+   template <typename L, typename R>
+   result_type operator() (L&& l, R&& r) const
    {
-      return result_type(l, r, third);
+      return result_type(std::forward<L>(l), std::forward<R>(r), third);
    }
 };
 
@@ -1668,13 +1488,9 @@ namespace polymake {
       typedef BuildBinary<pm::operations::mul> mul;
       typedef BuildBinary<pm::operations::div> div;
       typedef BuildBinary<pm::operations::divexact> divexact;
-      typedef BuildBinary<pm::operations::mod> mod;
       typedef BuildUnary<pm::operations::square> square;
       typedef BuildBinary<pm::operations::tensor> tensor;
 
-      typedef BuildUnary<pm::operations::bitwise_inv> bitwise_inv;
-      typedef BuildBinary<pm::operations::bitwise_and> bitwise_and;
-      typedef BuildBinary<pm::operations::bitwise_or> bitwise_or;
       typedef BuildBinary<pm::operations::bitwise_xor> bitwise_xor;
 
       typedef BuildUnary<pm::operations::clear> clear;
@@ -1686,7 +1502,6 @@ namespace polymake {
       using pm::operations::composed21;
       using pm::operations::member;
       typedef BuildBinary<pm::operations::swap_op> swap_op;
-      using pm::operations::property_map;
 
       using pm::operations::construct_unary;
       using pm::operations::construct_unary2;

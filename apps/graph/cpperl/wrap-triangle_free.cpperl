@@ -1,0 +1,5 @@
+{"app": "graph", "embed": "triangle_free.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Undirected>&>"], "func": "triangle_free", "include": ["polymake/Graph.h"], "sig": "triangle_free.X"},
+ null ],
+"version": 3}

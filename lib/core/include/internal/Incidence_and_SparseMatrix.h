@@ -24,28 +24,31 @@ class SameElementSparseMatrix
    : public GenericMatrix< SameElementSparseMatrix<IncMatrixRef, ElemRef>,
                            typename object_traits<typename deref<ElemRef>::type>::persistent_type > {
 protected:
-   alias<IncMatrixRef> matrix;
-   alias<ElemRef> apparent_elem;
+   using matrix_alias_t = alias<IncMatrixRef>;
+   using elem_alias_t = alias<ElemRef>;
+   matrix_alias_t matrix;
+   elem_alias_t apparent_elem;
 
 public:
-   typedef typename alias<IncMatrixRef>::arg_type first_arg_type;
-   typedef typename alias<ElemRef>::arg_type second_arg_type;
+   using value_type = typename deref<ElemRef>::type;
+   using const_reference = const value_type&;
+   using reference = const_reference;
 
-   typedef typename deref<ElemRef>::type value_type;
-   typedef const value_type& const_reference;
-   typedef const_reference reference;
+   template <typename Arg1, typename Arg2,
+             typename=std::enable_if_t<std::is_constructible<matrix_alias_t, Arg1>::value &&
+                                       std::is_constructible<elem_alias_t, Arg2>::value>>
+   SameElementSparseMatrix(Arg1&& matrix_arg, Arg2&& data_arg)
+      : matrix(std::forward<Arg1>(matrix_arg))
+      , apparent_elem(std::forward<Arg2>(data_arg)) {}
 
-   SameElementSparseMatrix(first_arg_type matrix_arg, second_arg_type data_arg)
-      : matrix(matrix_arg), apparent_elem(data_arg) {}
-
-   typename alias<IncMatrixRef>::const_reference get_matrix() const { return *matrix; }
-   const alias<ElemRef>& get_apparent_element() const { return apparent_elem; }
+   decltype(auto) get_matrix() const { return *matrix; }
+   const elem_alias_t& get_apparent_element() const { return apparent_elem; }
 };
 
 template <typename IncMatrixRef, typename ElemRef>
 struct spec_object_traits< SameElementSparseMatrix<IncMatrixRef, ElemRef> >
    : spec_object_traits<is_container> {
-   static const bool is_temporary=true, is_always_const=true;
+   static constexpr bool is_temporary = true, is_always_const = true;
 };
 
 template <typename IncMatrixRef, typename ElemRef>
@@ -70,68 +73,69 @@ public:
 template <typename IncMatrixRef, typename ElemRef>
 class Rows< SameElementSparseMatrix<IncMatrixRef, ElemRef> >
    : public modified_container_pair_impl< Rows< SameElementSparseMatrix<IncMatrixRef, ElemRef> >,
-                                          mlist< Container1Tag< masquerade<Rows, IncMatrixRef> >,
-                                                 Container2Tag< constant_value_container<ElemRef> >,
+                                          mlist< Container1RefTag< masquerade<Rows, IncMatrixRef> >,
+                                                 Container2RefTag< same_value_container<ElemRef> >,
                                                  OperationTag< operations::construct_binary<SameElementSparseVector> >,
                                                  MasqueradedTop > > {
    typedef modified_container_pair_impl<Rows> base_t;
 public:
-   const typename base_t::container1& get_container1() const
+   decltype(auto) get_container1() const
    {
       return rows(this->hidden().get_matrix());
    }
-   const typename base_t::container2& get_container2() const
+   decltype(auto) get_container2() const
    {
-      return constant(this->hidden().get_apparent_element());
+      return as_same_value_container(this->hidden().get_apparent_element());
    }
 };
 
 template <typename IncMatrixRef, typename ElemRef>
 class Cols< SameElementSparseMatrix<IncMatrixRef, ElemRef> >
    : public modified_container_pair_impl< Cols< SameElementSparseMatrix<IncMatrixRef,ElemRef> >,
-                                          mlist< Container1Tag< masquerade<Cols, IncMatrixRef> >,
-                                                 Container2Tag< constant_value_container<ElemRef> >,
+                                          mlist< Container1RefTag< masquerade<Cols, IncMatrixRef> >,
+                                                 Container2RefTag< same_value_container<ElemRef> >,
                                                  OperationTag< operations::construct_binary<SameElementSparseVector> >,
                                                  MasqueradedTop > > {
    typedef modified_container_pair_impl<Cols> base_t;
 public:
-   const typename base_t::container1& get_container1() const
+   decltype(auto) get_container1() const
    {
       return cols(this->hidden().get_matrix());
    }
-   const typename base_t::container2& get_container2() const
+   decltype(auto) get_container2() const
    {
-      return constant(this->hidden().get_apparent_element());
+      return as_same_value_container(this->hidden().get_apparent_element());
    }
 };
 
-template <typename E, typename Matrix> inline
-const SameElementSparseMatrix<const Matrix&, E>
-same_element_sparse_matrix(const GenericIncidenceMatrix<Matrix>& m)
+template <typename E, typename TMatrix>
+auto same_element_sparse_matrix(TMatrix&& m, E&& x, std::enable_if_t<is_generic_incidence_matrix<TMatrix>::value, void**> =nullptr)
 {
-   return SameElementSparseMatrix<const Matrix&, E>(m.top(), E(1));
+   return SameElementSparseMatrix<add_const_t<unwary_t<TMatrix&&>>, E&&>(unwary(std::forward<TMatrix>(m)), std::forward<E>(x));
 }
 
-template <typename E, typename Matrix> inline
-const SameElementSparseMatrix<const Matrix&, const E&>
-same_element_sparse_matrix(const GenericIncidenceMatrix<Matrix>& m, const E& x)
+template <typename E, typename TMatrix>
+auto same_element_sparse_matrix(TMatrix&& m, std::enable_if_t<is_generic_incidence_matrix<TMatrix>::value, void**> =nullptr)
 {
-   return SameElementSparseMatrix<const Matrix&, const E&>(m.top(), x);
+   return same_element_sparse_matrix(std::forward<TMatrix>(m), one_value<E>(), nullptr);
 }
 
 template <typename MatrixRef>
 class IndexMatrix
    : public GenericIncidenceMatrix< IndexMatrix<MatrixRef> > {
 protected:
-   alias<MatrixRef> m;
+   using alias_t = alias<MatrixRef>;
+   alias_t matrix;
 public:
-   typedef bool value_type;
-   typedef bool reference;
-   typedef const bool const_reference;
+   using value_type = bool;
+   using reference = bool;
+   using const_reference = bool;
 
-   IndexMatrix(typename alias<MatrixRef>::arg_type m_arg) : m(m_arg) {}
+   template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
+   explicit IndexMatrix(Arg&& matrix_arg)
+      : matrix(std::forward<Arg>(matrix_arg)) {}
 
-   const typename deref<MatrixRef>::plus_const_ref get_matrix() const { return *m; }
+   decltype(auto) get_matrix() const { return *matrix; }
 };
 
 template <typename MatrixRef>
@@ -141,7 +145,7 @@ struct check_container_feature< IndexMatrix<MatrixRef>, Symmetric >
 template <typename MatrixRef>
 struct spec_object_traits< IndexMatrix<MatrixRef> >
    : spec_object_traits<is_container> {
-   static const bool is_temporary=true, is_always_const=true;
+   static constexpr bool is_temporary = true, is_always_const = true;
 };
 
 template <typename MatrixRef>
@@ -159,35 +163,32 @@ template <typename MatrixRef>
 class Rows< IndexMatrix<MatrixRef> >
    : public modified_container_impl< Rows< IndexMatrix<MatrixRef> >,
                                      mlist< MasqueradedTop,
-                                            ContainerTag< masquerade<pm::Rows, MatrixRef> >,
+                                            ContainerRefTag< masquerade<pm::Rows, MatrixRef> >,
                                             OperationTag< operations::construct_unary<Indices> > > > {
-   typedef modified_container_impl<Rows> base_t;
 protected:
    Rows();
    ~Rows();
 public:
-   const typename base_t::container& get_container() const { return rows(this->hidden().get_matrix()); }
+   decltype(auto) get_container() const { return rows(this->hidden().get_matrix()); }
 };
 
 template <typename MatrixRef>
 class Cols< IndexMatrix<MatrixRef> >
    : public modified_container_impl< Cols< IndexMatrix<MatrixRef> >,
                                      mlist< MasqueradedTop,
-                                            ContainerTag< masquerade<pm::Cols, MatrixRef> >,
+                                            ContainerRefTag< masquerade<pm::Cols, MatrixRef> >,
                                             OperationTag< operations::construct_unary<Indices> > > > {
-   typedef modified_container_impl<Cols> base_t;
 protected:
    Cols();
    ~Cols();
 public:
-   const typename base_t::container& get_container() const { return cols(this->hidden().get_matrix()); }
+   decltype(auto) get_container() const { return cols(this->hidden().get_matrix()); }
 };
 
-template <typename TMatrix> inline
-typename std::enable_if<check_container_feature<TMatrix, sparse>::value, const IndexMatrix<const TMatrix&>>::type
-index_matrix(const GenericMatrix<TMatrix>& m)
+template <typename TMatrix, typename=std::enable_if_t<check_container_feature<TMatrix, sparse>::value>>
+auto index_matrix(const GenericMatrix<TMatrix>& m)
 {
-   return m.top();
+   return IndexMatrix<const TMatrix&>(m.top());
 }
 
 } // end namespace pm

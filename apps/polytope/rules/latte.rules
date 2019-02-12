@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2018
+#  Copyright (c) 1997-2015
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -181,12 +181,12 @@ object Polytope<Rational> {
 
 object_specialization Polytope::Lattice {
 
-    rule EHRHART_POLYNOMIAL_COEFF : {
-      $this->EHRHART_POLYNOMIAL_COEFF = ones_vector<Rational>(1);
+    rule EHRHART_POLYNOMIAL : {
+	$this->EHRHART_POLYNOMIAL = new UniPolynomial<Rational>(1);
     }
     precondition : CONE_DIM { $this->CONE_DIM == 1 }
 
-    rule latte.ehrhartpoly: LATTICE, EHRHART_POLYNOMIAL_COEFF : CONE_AMBIENT_DIM, FACETS | INEQUALITIES {
+    rule latte.ehrhartpoly: LATTICE, EHRHART_POLYNOMIAL : CONE_AMBIENT_DIM, FACETS | INEQUALITIES {
         my $temp_dir=new Tempdir;
         my $input_file="input.ine";
         write_latte_ineq($this, "$temp_dir/$input_file");
@@ -208,17 +208,18 @@ object_specialization Polytope::Lattice {
                 #					+ 1 * t^0 + 8/3 * t^1 + 2 * t^2 + 4/3 * t^3
 		s/ //g;
                 my @list = m/\+?(-?\d+\/?\d*)\*t\^(\d+)/gc;
-                my $poly = new Vector<Rational>($list[-1]+1);
+                my $coeffs = new Vector<Rational>($list[-1]+1);
                 while (@list) {
-                    $poly->[shift(@list)] = shift(@list);
+                    $coeffs->[shift(@list)] = shift(@list);
                 }
-                $this->EHRHART_POLYNOMIAL_COEFF = $poly;
+		my $exps = new Array<Int>(sequence(0,$coeffs->dim()));
+                $this->EHRHART_POLYNOMIAL = new UniPolynomial($coeffs,$exps);
                 $this->LATTICE=1;
                 close $P;
                 return;
             } elsif (/^The number of lattice points is 1\./ || /Total number of lattice points: 1/) {
                 $this->LATTICE=1;
-                $this->EHRHART_POLYNOMIAL_COEFF = ones_vector<Rational>(1);
+                $this->EHRHART_POLYNOMIAL = new UniPolynomial<Rational>(1);
                 close $P;
                 return;
             }
@@ -229,7 +230,7 @@ object_specialization Polytope::Lattice {
     weight 5.8;
     precondition override : BOUNDED && FEASIBLE;
     precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM > 0 && $this->CONE_AMBIENT_DIM <= 100 } # upper limits for matrix dimension: 
-    precondition : FACETS | INEQUALITIES { $this->give("FACETS | INEQUALITIES")->rows <= 50000 }      # default values stored explicitly for cdd used by latte
+    precondition : FACETS | INEQUALITIES { ($this->give("FACETS | INEQUALITIES"))->rows <= 50000 }            # default values stored explicitly for cdd used by latte
     precondition : CONE_DIM { $this->CONE_DIM > 1 }                                                   # latte does not like polytopes that only have a far facet
 
 }

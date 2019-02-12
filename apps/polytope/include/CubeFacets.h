@@ -24,18 +24,18 @@ namespace polymake { namespace polytope {
 template <typename E>
 class CubeFacet_iterator {
 public:
-   typedef std::forward_iterator_tag iterator_category;
-   typedef E value_type;
-   typedef const E& reference;
-   typedef const E* pointer;
-   typedef ptrdiff_t difference_type;
-   typedef CubeFacet_iterator iterator;
-   typedef iterator const_iterator;
+   using iterator_category = std::forward_iterator_tag;
+   using value_type = E;
+   using reference = const E&;
+   using pointer = const E*;
+   using difference_type = ptrdiff_t;
+   using iterator = CubeFacet_iterator;
+   using const_iterator = iterator;
 
    CubeFacet_iterator() { }
-   CubeFacet_iterator(typename pm::function_argument<E>::type cur_arg,
-                      typename pm::function_argument<E>::type step_arg,
-                      typename pm::function_argument<E>::type end_arg)
+   CubeFacet_iterator(const E& cur_arg,
+                      const E& step_arg,
+                      const E& end_arg)
       : cur(cur_arg), lim(cur_arg+step_arg), step(step_arg), end(end_arg) { }
 
    reference operator* () const { return cur; }
@@ -62,28 +62,28 @@ template <typename E>
 class CubeFacet
    : public GenericSet< CubeFacet<E>, E, operations::cmp> {
 public:
-   typedef E value_type;
-   typedef const E& const_reference;
-   typedef const_reference reference;
+   using value_type = E;
+   using const_reference = const E&;
+   using reference = const_reference;
 
    CubeFacet() { }
-   CubeFacet(typename pm::function_argument<E>::type start_arg,
-             typename pm::function_argument<E>::type step_arg,
-             typename pm::function_argument<E>::type size_arg)
-      : start(start_arg), step(step_arg), _size(size_arg) { }
+   CubeFacet(const E& start_arg,
+             const E& step_arg,
+             const E& size_arg)
+      : start(start_arg), step(step_arg), size_(size_arg) { }
 
-   typedef CubeFacet_iterator<E> iterator;
-   typedef iterator const_iterator;
+   using iterator = CubeFacet_iterator<E>;
+   using const_iterator = iterator;
 
-   iterator begin() const { return iterator(start, step, start+_size); }
-   iterator end() const { return iterator(start+_size, step, start+_size); }
+   iterator begin() const { return iterator(start, step, start+size_); }
+   iterator end() const { return iterator(start+size_, step, start+size_); }
    reference front() const { return start; }
 
-   const E& size() const { return _size; }
-   bool empty() const { return !_size; }
+   const E& size() const { return size_; }
+   bool empty() const { return size_ == 0; }
 
 protected:
-   E start, step, _size;
+   E start, step, size_;
 };
 
 template <typename E>
@@ -98,10 +98,11 @@ public:
    typedef iterator const_iterator;
 
    CubeFacets_iterator() { }
-   CubeFacets_iterator(typename pm::function_argument<E>::type start_arg,
-                       typename pm::function_argument<E>::type step_arg,
-                       typename pm::function_argument<E>::type size_arg)
-      : value_type(start_arg,step_arg,size_arg), start(start_arg) { }
+   CubeFacets_iterator(const E& start_arg,
+                       const E& step_arg,
+                       const E& size_arg)
+      : value_type(start_arg, step_arg, size_arg)
+      , start(start_arg) { }
 
    reference operator* () const { return *this; }
    pointer operator-> () const { return this; }
@@ -110,7 +111,8 @@ public:
       if (value_type::start == start) {
          value_type::start += this->step;
       } else {
-         value_type::start=start; this->step<<=1;
+         value_type::start=start;
+         this->step <<= 1;
       }
       return *this;
    }
@@ -121,7 +123,7 @@ public:
       return this->step==it.step && value_type::start==it.value_type::start;
    }
    bool operator!= (const iterator& it) const { return !operator==(it); }
-   bool at_end() const { return this->step==this->_size; }
+   bool at_end() const { return this->step==this->size_; }
 protected:
    E start;
 };
@@ -138,7 +140,7 @@ public:
    /** @param dim_arg dimension of the cube
        @param start_arg index of the first vertex
    */
-   explicit CubeFacets(int dim_arg, typename pm::function_argument<E>::type start_arg=E(0))
+   explicit CubeFacets(int dim_arg, const E& start_arg=E(0))
       : start(start_arg), dim(dim_arg) { }
 
    int size() const { return 2*dim; }

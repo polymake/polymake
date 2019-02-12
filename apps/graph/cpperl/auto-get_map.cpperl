@@ -1,0 +1,6 @@
+{"app": "graph",
+ "inst": [
+  {"args": ["perl::Canned<const graph::lattice::InverseRankMap<graph::lattice::Sequential>&>"], "func": "get_map", "include": ["polymake/graph/Decoration.h"], "kind": "meth", "sig": "get_map:M"},
+  {"args": ["perl::Canned<const graph::lattice::InverseRankMap<graph::lattice::Nonsequential>&>"], "func": "get_map", "include": ["polymake/graph/Decoration.h"], "kind": "meth", "sig": "get_map:M"},
+ null ],
+"version": 3}

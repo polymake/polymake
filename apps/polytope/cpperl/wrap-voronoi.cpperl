@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "voronoi.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "voronoi", "include": ["polymake/Rational.h"], "sig": "voronoi:T1.B", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void"], "func": "voronoi", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "voronoi:T1.B", "tp": "1"},
+ null ],
+"version": 3}

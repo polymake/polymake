@@ -56,7 +56,7 @@ namespace polymake { namespace polytope {
                SparseMatrix<Rational> Iu_eval = PuiseuxFraction<Max, Rational, Rational>::evaluate(I/u, value, exp);
                SparseMatrix<Rational> I_eval = Iu_eval.minor(~scalar2set(m),All);;
                Vector<Rational> u_eval = Iu_eval.row(m);
-               p = perl::Object(perl::ObjectType::construct<Rational>("Polytope"));
+               p = perl::Object("Polytope", mlist<Rational>());
                p.take("INEQUALITIES") << I_eval;
                for (int i=0; is_interior_point && (i<m); ++i) {
                   if (I_eval[i]*u_eval <= 0) is_interior_point=false;
@@ -74,7 +74,7 @@ namespace polymake { namespace polytope {
                SparseMatrix<double> Iu_eval = PuiseuxFraction<Max, Rational, Rational>::evaluate_float(I/u, value);
                SparseMatrix<double> I_eval = Iu_eval.minor(~scalar2set(m),All);;
                Vector<double> u_eval = Iu_eval.row(m);
-               p = perl::Object(perl::ObjectType::construct<double>("Polytope"));
+               p = perl::Object("Polytope<double>");
                p.take("INEQUALITIES") << I_eval;
                for (int i=0; is_interior_point && (i<m); ++i) {
                   if (I_eval[i]*u_eval <= 0) is_interior_point=false;
@@ -85,7 +85,7 @@ namespace polymake { namespace polytope {
                   p.take("FULL_DIM") << true;
                }
             } else {
-               p = perl::Object(perl::ObjectType::construct<puiseux_field>("Polytope"));
+               p = perl::Object("Polytope", mlist<puiseux_field>());
                p.take("FACETS") << I;
                p.take("AFFINE_HULL") << SparseMatrix<puiseux_field>(0,d);
                p.take("REL_INT_POINT") << u;

@@ -1,0 +1,5 @@
+{"app": "graph", "embed": "connectivity.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Undirected>&>"], "func": "connectivity", "include": ["polymake/Graph.h"], "sig": "connectivity.X"},
+ null ],
+"version": 3}

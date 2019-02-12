@@ -19,18 +19,34 @@
 
 #include <cstddef> // needed for gcc 4.9, see http://gcc.gnu.org/gcc-4.9/porting_to.html
 #include <gmpxx.h> //for mpz/mpq-handling
+
+#include "polymake/ListMatrix.h"
+#include "polymake/internal/gmpxx_traits.h"
 #include "polymake/polytope/ppl_interface.h"
 #include "polymake/common/lattice_tools.h"
 #include "polymake/linalg.h"
 #include "polymake/hash_set"
 #include "polymake/polytope/compress_incidence.h"
+
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshadow"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#endif
+
 #include <ppl.hh>
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 #include <fenv.h>
 
 namespace PPL = Parma_Polyhedra_Library;
-
-
 
 namespace polymake { namespace polytope { namespace ppl_interface {
 
@@ -72,354 +88,291 @@ private:
 
 namespace {
 
-     // Constructs an (integral) mpz-vector by multiplying with lcm of denominators.
-     // Note: this is different from 'primitive', e.g. (2/3,4/3)->(2,4), not (1,2)
-     template <typename Coord>
-     std::vector<mpz_class> convert_to_mpz(const Vector<Coord>& v, const Integer& denom) {
+// Constructs an (integral) mpz-vector by multiplying with lcm of denominators.
+// Note: this is different from 'primitive', e.g. (2/3,4/3)->(2,4), not (1,2)
+template <typename Scalar>
+std::vector<mpz_class> convert_to_mpz(const Vector<Scalar>& v, const Integer& denom)
+{
+   Vector<Integer> v_multi(denom*v); //This cast works since denom*v is integral by construction!!
 
-        Vector<Integer> v_multi(denom*v); //This cast works since denom*v is integral by construction!! 
+   std::vector<mpz_class> mpz_vec(v.dim());
+   for ( int i = 0; i < v.dim(); ++i ) {
+      mpz_vec[i] = mpz_class(v_multi[i].get_rep());
+   }
+   return mpz_vec;
+}
 
-        std::vector<mpz_class> mpz_vec(v.dim());
-        for ( int i = 0; i < v.dim(); ++i ) {
-           mpz_vec[i] = mpz_class(v_multi[i].get_rep());
-        }
-        return mpz_vec;
-     }
-        
-     // Translates a ppl generator into a (homogenized) polymake vector,
-     // depending on its type (point, ray, line).
-     template <typename Coord>
-     Vector<Coord> ppl_gen_to_vec(const PPL::Generator& gen, const bool isCone) {
+// Translates a ppl generator into a (homogenized) polymake vector,
+// depending on its type (point, ray, line).
+template <typename Scalar>
+Vector<Scalar> ppl_gen_to_vec(const PPL::Generator& gen, const bool isCone)
+{
+   const int dim = gen.space_dimension() + 1;
+   Vector<Scalar> vec(dim);
 
-        unsigned int n = gen.space_dimension();
-        int dim = n+1;
-        Vector<Coord> vec(dim);
-         
-        for ( int i = 0; i < dim-1; ++i )
-           vec[i+1] = Integer(gen.coefficient(PPL::Variable(i)));
+   for (int i = 1; i < dim; ++i)
+      vec[i] = Integer(gen.coefficient(PPL::Variable(i-1)));
 
-        if ( gen.is_point() ) { // in case of isCone, generators are rays or lines except for (0,...,0)
+   if (gen.is_point()) { // in case of isCone, generators are rays or lines except for (0,...,0)
 
-           // gen.divisor only works for PPL-(closure-)points
-           vec /= Integer(gen.divisor());
-           vec[0] = 1;
+      // gen.divisor only works for PPL-(closure-)points
+      vec /= Integer(gen.divisor());
+      vec[0] = 1;
+   } else {
+      assert(gen.is_ray() || gen.is_line());
+   }
 
-        } else {
-           assert( gen.is_ray() || gen.is_line() );
-        } 
+   return vec;
+}
 
-        return vec;
-     }
+// Translates a ppl constraint (n entries, inhomogeneous term as an attribute)
+// into a polymake vector.
+template <typename Scalar>
+Vector<Scalar> ppl_constraint_to_vec(const PPL::Constraint& cons, const bool isCone)
+{
+   const int dim = cons.space_dimension() + 1;
+   Vector<Scalar> vec(dim);
+   vec[0] = cons.inhomogeneous_term(); // will be overwritten if isCone = true
+   for (int i = 1; i < dim; ++i)
+      vec[i] = Integer(cons.coefficient(PPL::Variable(i - 1)));
 
-     // Translates a ppl constraint (n entries, inhomogeneous term as an attribute)
-     // into a polymake vector.    
-     template <typename Coord>
-     Vector<Coord> ppl_constraint_to_vec(const PPL::Constraint& cons, const bool isCone) {
-
-        unsigned int n = cons.space_dimension();
-        Vector<Coord> vec(n + 1);
-        vec[0] = cons.inhomogeneous_term(); // will be overwritten if isCone = true
-        for ( unsigned int i = 0; i < n; ++i )
-           vec[i+1] = Integer(cons.coefficient(PPL::Variable(i)));
-
-        return vec;
-     }
+   return vec;
+}
 
 
-     template <typename Coord>     
-     PPL::C_Polyhedron construct_ppl_polyhedron_H(const Matrix<Coord>& Inequalities, const Matrix<Coord>& Equations, const bool isCone) {
+template <typename Scalar>
+PPL::C_Polyhedron construct_ppl_polyhedron_H(const Matrix<Scalar>& Inequalities, const Matrix<Scalar>& Equations, const bool isCone)
+{
+   /* Linear expressions in H representations store the inhomogeneous term at index 0,
+    * and the variables' coefficients at indices 1, 2, ..., space_dim.
+    */
 
-        /* Linear expressions in H representations store the inhomogeneous term at index 0,
-         * and the variables' coefficients at indices 1, 2, ..., space_dim. 
-         */
-        
-        PPL::Constraint_System cs;
+   PPL::Constraint_System cs;
 
-        int num_columns = std::max(Inequalities.cols(),Equations.cols());
+   const int dim = std::max(Inequalities.cols(), Equations.cols()) - 1;
 
-        cs.set_space_dimension(num_columns-1);
+   cs.set_space_dimension(dim);
 
-        // insert inequalities
-        for ( auto row_it = entire(rows(Inequalities)); !row_it.at_end(); ++row_it ) {
-              Integer lcm_of_row_denom(lcm(denominators(*row_it))); 
-              std::vector<mpz_class> coefficients = convert_to_mpz<Coord>(*row_it, lcm_of_row_denom); 
-              // PPL variables have indices 0, 1, ..., space_dim-1.
-              PPL::Linear_Expression e;
-              for (int j = num_columns-1; j >= 1; j-- ) {
-                 e += coefficients[j] * PPL::Variable(j-1);
-              }
-              e += coefficients[0];
-              
-              cs.insert(e >= 0);
-           } 
+   // insert inequalities
+   for (auto row_it = entire(rows(Inequalities)); !row_it.at_end(); ++row_it) {
+      Integer lcm_of_row_denom(lcm(denominators(*row_it)));
+      std::vector<mpz_class> coefficients = convert_to_mpz<Scalar>(*row_it, lcm_of_row_denom);
+      // PPL variables have indices 0, 1, ..., space_dim-1.
+      PPL::Linear_Expression e;
+      for (int j = dim; j >= 1; --j) {
+         e += coefficients[j] * PPL::Variable(j-1);
+      }
+      e += coefficients[0];
 
-        // insert equations
-        for ( auto row_it = entire(rows(Equations)); !row_it.at_end(); ++row_it ) {
-              Integer lcm_of_row_denom(lcm(denominators(*row_it))); 
-              std::vector<mpz_class> coefficients = convert_to_mpz<Coord>(*row_it, lcm_of_row_denom); 
-              // PPL variables have indices 0, 1, ..., space_dim-1.
-              PPL::Linear_Expression e;
-              for (int j = num_columns-1; j >= 1; j-- ) {
-                 e += coefficients[j] * PPL::Variable(j-1);
-              }
-              e += coefficients[0];
-              
-              cs.insert(e == 0);
-           } 
-              
-           PPL::C_Polyhedron ppl_poly(cs);
-           return ppl_poly;
-            
-         }
+      cs.insert(e >= 0);
+   }
 
+   // insert equations
+   for (auto row_it = entire(rows(Equations)); !row_it.at_end(); ++row_it) {
+      Integer lcm_of_row_denom(lcm(denominators(*row_it)));
+      std::vector<mpz_class> coefficients = convert_to_mpz<Scalar>(*row_it, lcm_of_row_denom);
+      // PPL variables have indices 0, 1, ..., space_dim-1.
+      PPL::Linear_Expression e;
+      for (int j = dim; j >= 1; --j) {
+         e += coefficients[j] * PPL::Variable(j-1);
+      }
+      e += coefficients[0];
 
-     template <typename Coord>     
-     PPL::C_Polyhedron construct_ppl_polyhedron_V(const Matrix<Coord>& Points, const Matrix<Coord>& Lineality, const bool isCone) {
-        
-        // The V representation 
-        PPL::Generator_System gs;
-        int num_columns = std::max(Points.cols(), Lineality.cols()); // necessary if only one matrix has entries
+      cs.insert(e == 0);
+   }
 
-        gs.set_space_dimension(num_columns-1);
-
-        /* Cones need an additional point (0,...,0) in ppl.
-         * Furthermore, the cone is translated into a polytope.
-         */
-        if (isCone) {
-           PPL::Generator v = PPL::point(0*PPL::Variable(num_columns-2)); //origin
-           gs.insert(v);
-        }
-
-        // insert points/rays
-        for ( auto row_it = entire(rows(Points)); !row_it.at_end(); ++row_it ) {
-              Integer lcm_of_row_denom(lcm(denominators(*row_it))); 
-              std::vector<mpz_class> coefficients = convert_to_mpz<Coord>(*row_it, lcm_of_row_denom); 
-              // PPL variables have indices 0, 1, ..., space_dim-1.
-              PPL::Linear_Expression e;
-              for (unsigned j = num_columns - 1; j >= 1; j-- ) {
-                 e += coefficients[j] * PPL::Variable(j-1);
-              }
-
-              if (coefficients[0] != 0) {
-                 PPL::Generator v = PPL::point(e, lcm_of_row_denom.gmp() ); // v is a point
-                 gs.insert(v);
-              } else {
-                 PPL::Generator v = PPL::ray(e); // v is a ray
-                 gs.insert(v);
-              }
-           } 
+   PPL::C_Polyhedron ppl_poly(cs);
+   return ppl_poly;
+}
 
 
-        // insert linealities
-        for ( auto row_it = entire(rows(Lineality)); !row_it.at_end(); ++row_it ) {
-              Integer lcm_of_row_denom(lcm(denominators(*row_it))); 
-              std::vector<mpz_class> coefficients = convert_to_mpz<Coord>(*row_it, lcm_of_row_denom); 
-              // PPL variables have indices 0, 1, ..., space_dim-1.
-              PPL::Linear_Expression e;
-              for (unsigned j = num_columns - 1; j >= 1; j-- ) {
-                 e += coefficients[j] * PPL::Variable(j-1);
-              }
-              PPL::Generator l = line(e);
-              gs.insert(l);
-           } 
-              
-           PPL::C_Polyhedron ppl_poly(gs);
-           return ppl_poly;
-            
-         }
+template <typename Scalar>
+PPL::C_Polyhedron construct_ppl_polyhedron_V(const Matrix<Scalar>& Points, const Matrix<Scalar>& Lineality, const bool isCone)
+{
+   // The V representation
+   PPL::Generator_System gs;
+   const unsigned int dim = std::max(Points.cols(), Lineality.cols()) - 1; // necessary if only one matrix has entries
+
+   gs.set_space_dimension(dim);
+
+   /* Cones need an additional point (0,...,0) in ppl.
+    * Furthermore, the cone is translated into a polytope.
+    */
+   if (isCone) {
+      PPL::Generator v = PPL::point(0*PPL::Variable(dim-1)); //origin
+      gs.insert(v);
+   }
+
+   // insert points/rays
+   for (auto row_it : attach_selector(rows(Points), operations::non_zero())) {
+      Integer lcm_of_row_denom(lcm(denominators(row_it)));
+      std::vector<mpz_class> coefficients = convert_to_mpz<Scalar>(row_it, lcm_of_row_denom);
+      // PPL variables have indices 0, 1, ..., space_dim-1.
+      PPL::Linear_Expression e;
+      for (int j = dim; j >= 1; --j) {
+         e += coefficients[j] * PPL::Variable(j-1);
+      }
+
+      if (coefficients[0] != 0) {
+         PPL::Generator v = PPL::point(e, lcm_of_row_denom.gmp() ); // v is a point
+         gs.insert(v);
+      } else {
+         PPL::Generator v = PPL::ray(e); // v is a ray
+         gs.insert(v);
+      }
+   }
+
+   // insert linealities
+   for (auto row_it : attach_selector(rows(Lineality), operations::non_zero())) {
+      Integer lcm_of_row_denom(lcm(denominators(row_it)));
+      std::vector<mpz_class> coefficients = convert_to_mpz<Scalar>(row_it, lcm_of_row_denom);
+      // PPL variables have indices 0, 1, ..., space_dim-1.
+      PPL::Linear_Expression e;
+      for (int j = dim; j >= 1; --j) {
+         e += coefficients[j] * PPL::Variable(j-1);
+      }
+      PPL::Generator l = line(e);
+      gs.insert(l);
+   }
+
+   PPL::C_Polyhedron ppl_poly(gs);
+   return ppl_poly;
+}
+
+} // End of namespace
 
 
-     } // End of namespace
-
-
-
-
-  /* FIXME (1): Don't know how to handle Float and Rational
+/* FIXME (1): Don't know how to handle Float and Rational
      simultaneously w.r.t. defining the optimal value */
-  template <typename Coord>
-  solver<Coord>::solver() {}
+
+template <typename Scalar>
+convex_hull_result<Scalar>
+ConvexHullSolver<Scalar>::enumerate_facets(const Matrix<Scalar>& Points, const Matrix<Scalar>& Lineality, const bool isCone) const
+{
+   const int num_columns = std::max(Points.cols(), Lineality.cols());
+
+   PPL::C_Polyhedron polyhedron = construct_ppl_polyhedron_V(Points, Lineality, isCone);
+   Set<int> far_face(far_points(Points));
+
+   PPL::Constraint_System cs = polyhedron.minimized_constraints();
+   ListMatrix< Vector<Scalar> > facet_list(0, num_columns);
+   ListMatrix< Vector<Scalar> > affine_hull_list(0, num_columns);
+
+   const auto triv_ineq=unit_vector<Scalar>(num_columns, 0);
+
+   for (PPL::Constraint_System::const_iterator csi = cs.begin(); csi != cs.end(); ++csi) {
+      const PPL::Constraint& c = *csi;
+      Vector<Scalar> row = ppl_constraint_to_vec<Scalar>(c, isCone);
+      if (!(isCone && row == triv_ineq )) {
+         if (c.is_inequality()) {
+            // TODO: std::move(row) when move constructors implemented for vector classes
+            facet_list /= row;
+         } else {
+            assert(c.is_equality());
+            // TODO: std::move(row) when move constructors implemented for vector classes
+            affine_hull_list  /= row;
+         }
+      }
+   }
+
+   // ppl seems to compute the far face inequality (shown in cs.ascii_dump())
+   // but the iterator above skips it...
+   // So we use the following to determine whether it is needed and add it manually:
+
+   // We use the rank of the far-face rays to determine
+   // whether we need to add the trivial inequality as facet.
+   // The case that p is just a point is also covered by this!
+   if (!isCone && rank(Points.minor(far_face,All)/Lineality) + 1 == num_columns - affine_hull_list.rows()) {
+      facet_list /= triv_ineq;
+   }
+
+   return { Matrix<Scalar>(facet_list), Matrix<Scalar>(affine_hull_list) };
+}
 
 
-  template <typename Coord>
-  typename solver<Coord>::matrix_pair
-  solver<Coord>::enumerate_facets(const Matrix<Coord>& Points, const Matrix<Coord>& Lineality, const bool isCone, const bool primal)
-  {
-     int num_columns = std::max(Points.cols(),Lineality.cols());
+template <typename Scalar>
+convex_hull_result<Scalar>
+ConvexHullSolver<Scalar>::enumerate_vertices(const Matrix<Scalar>& Inequalities, const Matrix<Scalar>& Equations, const bool isCone) const
+{
+   const int num_columns = std::max(Inequalities.cols(), Equations.cols());
+   // an empty exterior description defines the empty (infeasible) polytope
+   // (ppl would return the whole space)
+   // for cones this is the full space and correctly handled later on
+   if (!isCone && Inequalities.rows() + Equations.rows() == 0)
+      return { Matrix<Scalar>(0, num_columns), Matrix<Scalar>(0, num_columns) };
 
-     PPL::C_Polyhedron polyhedron = construct_ppl_polyhedron_V(Points, Lineality, isCone);
-     Set<int> far_face(far_points(Points));
+   PPL::C_Polyhedron polyhedron = construct_ppl_polyhedron_H(Inequalities, Equations, isCone);
+   PPL::Generator_System gs = polyhedron.minimized_generators();
+   ListMatrix<Vector<Scalar>> vertex_list(0,num_columns);
+   ListMatrix<Vector<Scalar>> lin_space_list(0,num_columns);
 
-     PPL::Constraint_System cs = polyhedron.minimized_constraints();
-     ListMatrix< Vector<Coord> > facet_list(0,num_columns);
-     ListMatrix< Vector<Coord> > affine_hull_list(0,num_columns);
+   const auto cone_origin=unit_vector<Scalar>(num_columns, 0);
 
-     const auto triv_ineq=unit_vector<Coord>(num_columns, 0);
+   for (PPL::Generator_System::const_iterator gsi = gs.begin(); gsi != gs.end(); ++gsi) {
+      const PPL::Generator& g = *gsi;
+      Vector<Scalar> row = ppl_gen_to_vec<Scalar>(g, isCone);
+      if (!(isCone && row == cone_origin)) {
+         if (g.is_point() || g.is_ray()) {
+            // TODO: std::move(row) when move constructors implemented for vector classes
+            vertex_list /= row;
+         } else {
+            assert(g.is_line());
+            // TODO: std::move(row) when move constructors implemented for vector classes
+            lin_space_list  /= row;
+         }
+      }
+   }
 
-     for (PPL::Constraint_System::const_iterator csi = cs.begin(); csi != cs.end(); ++csi) {
-        const PPL::Constraint& c = *csi;
-        Vector<Coord> row = ppl_constraint_to_vec<Coord>(c, isCone);
-        if ( !( isCone && row == triv_ineq ) ) { 
-           if (c.is_inequality()) {
-              // TODO: std::move(row) when move constructors implemented for vector classes
-              facet_list /= row;
-           } else {
-              assert(c.is_equality());
-              // TODO: std::move(row) when move constructors implemented for vector classes
-              affine_hull_list  /= row;
-           }
-        }
-     }
+   return { Matrix<Scalar>(vertex_list), Matrix<Scalar>(lin_space_list) };
+}
 
-     // ppl seems to compute the far face inequality (shown in cs.ascii_dump())
-     // but the iterator above skips it...
-     // So we use the following to determine whether it is needed and add it manually:
+template <typename Scalar>
+LP_Solution<Scalar>
+LP_Solver<Scalar>::solve(const Matrix<Scalar>& Inequalities, const Matrix<Scalar>& Equations,
+                         const Vector<Scalar>& Objective, bool maximize, bool) const
+{
+   // establish the PPL rounding mode temporarily
+   fp_mode_setter fp_mode;
 
-     // We use the rank of the far-face rays to determine
-     // whether we need to add the trivial inequality as facet.
-     // The case that p is just a point is also covered by this!
-     if (!isCone && rank(Points.minor(far_face,All)/Lineality) + 1 == num_columns - affine_hull_list.rows()) {
-        facet_list /= triv_ineq;
-     }
+   LP_Solution<Scalar> result;
 
-     // TODO: std::move(XXX_list) when move constructors implemented for matrix classes
-     Matrix<Coord> facets(facet_list);
-     Matrix<Coord> affine_hull(affine_hull_list);
-     return typename solver<Coord>::matrix_pair(facets, affine_hull);
-  }
+   const int num_columns = std::max(Inequalities.cols(),Equations.cols())-1;
+   if (num_columns == -1) {
+      result.status = LP_status::infeasible;
+      return result;
+   }
 
+   PPL::C_Polyhedron polyhedron = construct_ppl_polyhedron_H(Inequalities, Equations, 0); // isCone = 0
 
-  template <typename Coord>
-  typename solver<Coord>::matrix_pair
-  solver<Coord>::enumerate_vertices(const Matrix<Coord>& Inequalities, const Matrix<Coord>& Equations, const bool isCone, const bool primal )
-  {
-     int num_columns = std::max(Inequalities.cols(),Equations.cols());
-     // an empty exterior description defines the empty (infeasible) polytope
-     // (ppl would return the whole space)
-     // for cones this is the full space and correctly handled later on
-     if (!isCone && Inequalities.rows() + Equations.rows() == 0)
-        return typename solver<Coord>::matrix_pair(Matrix<Coord>(0,num_columns),Matrix<Coord>(0,num_columns));
+   // Linear program
+   const Integer lcm_of_obj_denom = lcm(denominators(Objective));
+   std::vector<mpz_class> objective = convert_to_mpz<Scalar>(Objective, lcm_of_obj_denom);
 
-     PPL::C_Polyhedron polyhedron = construct_ppl_polyhedron_H(Inequalities, Equations, isCone);
-     PPL::Generator_System gs = polyhedron.minimized_generators();
-     ListMatrix< Vector<Coord> > vertex_list(0,num_columns);
-     ListMatrix< Vector<Coord> > lin_space_list(0,num_columns);
+   PPL::Linear_Expression e;
+   for (int j = num_columns; j >= 1; --j) {
+      e += objective[j] * PPL::Variable(j-1);
+   }
+   e += objective[0];
+   PPL::Coefficient bound_n, bound_d;   // same as mpz_class
+   bool is_opt;
+   PPL::Generator g_opt = PPL::point();
+   const bool solvable = maximize ? polyhedron.maximize(e, bound_n, bound_d, is_opt, g_opt)
+                                  : polyhedron.minimize(e, bound_n, bound_d, is_opt, g_opt);
 
-     const auto cone_origin=unit_vector<Coord>(num_columns, 0);
+   if (!solvable) { // ppl returns false if input is infeasible OR unbounded!
+      result.status = polyhedron.is_empty() ? LP_status::infeasible : LP_status::unbounded;
+   } else {
+      result.status = LP_status::valid;
+      result.solution = ppl_gen_to_vec<Scalar>(g_opt, false);
 
-     for (PPL::Generator_System::const_iterator gsi = gs.begin(); gsi != gs.end(); ++gsi) {
-        const PPL::Generator& g = *gsi;
-        Vector<Coord> row = ppl_gen_to_vec<Coord>(g, isCone);
-        if ( !(isCone && row == cone_origin) ) {
-           if (g.is_point() || g.is_ray()) {
-              // TODO: std::move(row) when move constructors implemented for vector classes
-              vertex_list /= row;
-           } else {
-              assert(g.is_line());
-              // TODO: std::move(row) when move constructors implemented for vector classes
-              lin_space_list  /= row;
-           }
-        }
-     }
-
-     // TODO: std::move(XXX_list) when move constructors are implemented for matrix classes
-     Matrix<Coord> vertices(vertex_list);
-     Matrix<Coord> lin_space(lin_space_list);
-     return typename solver<Coord>::matrix_pair(vertices, lin_space);
-  }
-
-  template <typename Coord>
-  Bitset
-  solver<Coord>::find_vertices_among_points(const Matrix<Coord>& Points, const Matrix<Coord>& Lineality, const bool isCone) {
-    return find_vertices_among_points_given_inequalities(Points, enumerate_facets(Points, Lineality, isCone).first);
-  }
-
-  template <typename Coord>
-  Bitset
-  solver<Coord>::find_vertices_among_points_given_inequalities(const Matrix<Coord>& Points, const Matrix<Coord>& Inequalities) {
-    IncidenceMatrix<> incidence(Points.rows(), Inequalities.rows(), attach_operation(product(rows(Points), rows(Inequalities), operations::mul()), operations::is_zero()).begin());
-    int r = Points.rows();
-    Bitset vertices(r,true);
-    vertices -= compress_incidence(incidence).first;
-    return vertices;
-  }
-
-  template <typename Coord>
-  Bitset
-  solver<Coord>::find_facets_among_inequalities(const Matrix<Coord>& Inequalities, const Matrix<Coord>& Equations, const bool isCone) {
-    return find_facets_among_inequalities_given_points(Inequalities, enumerate_vertices(Inequalities, Equations, isCone).first);
-  }
-
-
-  template <typename Coord>
-  Bitset
-  solver<Coord>::find_facets_among_inequalities_given_points(const Matrix<Coord>& Inequalities, const Matrix<Coord>& Points) {
-    IncidenceMatrix<> incidence(Inequalities.rows(), Points.rows(), attach_operation(product(rows(Inequalities), rows(Points), operations::mul()), operations::is_zero()).begin());
-    int r = Inequalities.rows();
-    Bitset facets(r,true);
-    facets -= compress_incidence(incidence).first;
-    return facets;
-  }
-
-  template <typename Coord>
-  typename solver<Coord>::lp_solution
-  solver<Coord>::solve_lp(const Matrix<Coord>& Inequalities, const Matrix<Coord>& Equations,
-  const Vector<Coord>& Objective, bool maximize) 
-  {
-     // establish the PPL rounding mode temporarily
-     fp_mode_setter fp_mode;
-
-     int num_columns = std::max(Inequalities.cols(),Equations.cols())-1;
-     if ( num_columns == -1 ) {
-        throw infeasible();
-     }
-     PPL::C_Polyhedron polyhedron = construct_ppl_polyhedron_H(Inequalities, Equations, 0); // isCone = 0
- 
-     // Linear program
-     Integer lcm_of_obj_denom(lcm(denominators(Objective))); 
-     std::vector<mpz_class> objective = convert_to_mpz<Coord>(Objective, lcm_of_obj_denom);
- 
-     PPL::Linear_Expression e;
-     for (unsigned j = num_columns; j >= 1; j--) {
-        e += objective[j] * PPL::Variable(j-1);
-     }
-     e += objective[0];
-     PPL::Coefficient bound_n, bound_d;   // same as mpz_class
-     bool is_opt;
-     PPL::Generator g_opt = PPL::point();
-     bool solvable;
-     if ( maximize ) {
-        solvable = polyhedron.maximize(e, bound_n, bound_d, is_opt, g_opt);
-     } else {
-        solvable = polyhedron.minimize(e, bound_n, bound_d, is_opt, g_opt);
-     }
-     if ( !solvable ) { // ppl returns false if input is infeasible OR unbounded!
-        if ( polyhedron.is_empty() ) {
-           throw infeasible();
-        } else {          
-           throw unbounded();
-        }
-     }
-
-     Vector<Coord> opt_sol( ppl_gen_to_vec<Coord>(g_opt, 0) );
-     Integer bound_n_Int(bound_n);
-     Integer bound_d_Int(bound_d);
-
-     // see FIXME (1)
-     //Coord opt_val(bound_n_Int / bound_d_Int); //dividing an Integer by an Integer returns an Integer, not a Rational
-
-
-     //opt_val needs to be divided additionally by the lcm of the denominators
-     //of the objective vector since the constructed Linear_Expression e
-     //has been multiplied by this factor in 'convert_to_mpz'.
-     //Note that ppl seems to work only with integral objective functions. 
-     Rational opt_val(bound_n_Int, (bound_d_Int*lcm_of_obj_denom) );
-
-     return lp_solution(opt_val, opt_sol);
-
-  }
-
-
-
+      // opt_val needs to be divided additionally by the lcm of the denominators
+      // of the objective vector since the constructed Linear_Expression e
+      // has been multiplied by this factor in 'convert_to_mpz'.
+      // Note that ppl seems to work only with integral objective functions.
+      result.objective_value.set(Integer(bound_n), Integer(bound_d)*lcm_of_obj_denom);
+   }
+   return result;
+}
 
 } } }
 

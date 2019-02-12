@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Rational&>"], "func": "ceil", "include": ["polymake/Rational.h"], "sig": "ceil.X"},
+ null ],
+"version": 3}

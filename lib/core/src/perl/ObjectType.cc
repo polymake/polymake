@@ -297,7 +297,7 @@ pm::Array<Object> Object::lookup_multi(const AnyString& name, all_selector) cons
    mPUSHp(name.ptr, name.len);
    mPUSHp("*", 1);
    PUTBACK;
-   return pm::Array<Object>(glue::call_method_scalar(aTHX_ "lookup"), value_allow_undef);
+   return pm::Array<Object>(glue::call_method_scalar(aTHX_ "lookup"), ValueFlags::allow_undef);
 }
 
 Object Object::give_multi(const AnyString& name, const OptionSet& props, property_type t) const
@@ -338,7 +338,7 @@ PropertyValue Object::get_attachment(const AnyString& name) const
    check_ref(obj_ref);
    dTHX;
    SV** const valp=hv_fetch((HV*)SvRV(PmArray(obj_ref)[glue::Object_attachments_index]), name.ptr, name.len, FALSE);
-   return PropertyValue(valp ? SvREFCNT_inc(PmArray(*valp)[0]) : &PL_sv_undef, value_allow_undef);
+   return PropertyValue(valp ? SvREFCNT_inc(PmArray(*valp)[0]) : &PL_sv_undef, ValueFlags::allow_undef);
 }
 
 bool Object::exists(const AnyString& name) const
@@ -399,13 +399,6 @@ void Object::remove(const Object& sub_obj)
    glue::call_func_void(aTHX_ remove_cv);
 }
 
-SV* ObjectType::construct_parameterized_type(const AnyString& type_name)
-{
-   dTHX;
-   // type arguments are already pushed on the stack
-   return glue::call_func_scalar(aTHX_ glue::fetch_typeof_gv(aTHX_ type_name.ptr, type_name.len), true);
-}
-
 bool ObjectType::isa(const ObjectType& other) const
 {
    check_ref(obj_ref);
@@ -447,14 +440,10 @@ bool ObjectType::isa(const AnyString& type_name) const
    return glue::call_func_bool(aTHX_ object_type_isa_cv, true);
 }
 
-ObjectType::ObjectType(const AnyString& type_name)
+AnyString ObjectType::TypeBuilder::app_method_name()
 {
-   dTHX;
-   PmStartFuncall(2);
-   SP=glue::push_current_application(aTHX_ SP);
-   mPUSHp(type_name.ptr, type_name.len);
-   PUTBACK;
-   obj_ref=glue::call_method_scalar(aTHX_ "eval_type_throw");
+   // must be aligned with Application.pm
+   return Str("construct_type");
 }
 
 bool Object::isa(const AnyString& type_name) const
@@ -572,7 +561,7 @@ Object Object::parent() const
 std::false_type* Value::retrieve(Object& x) const
 {
    dTHX;
-   if (!(options & value_not_trusted) ||
+   if (!(options * ValueFlags::not_trusted) ||
        __builtin_expect(SvROK(sv) && sv_derived_from(sv, "Polymake::Core::Object"), 1)) {
       copy_ref(x.obj_ref, sv);
    } else if (SvOK(sv)) {
@@ -586,7 +575,7 @@ std::false_type* Value::retrieve(Object& x) const
 std::false_type* Value::retrieve(ObjectType& x) const
 {
    dTHX;
-   if (!(options & value_not_trusted) ||
+   if (!(options * ValueFlags::not_trusted) ||
        __builtin_expect(SvROK(sv) && sv_derived_from(sv, "Polymake::Core::ObjectType"), 1)) {
       copy_ref(x.obj_ref, sv);
    } else if (SvOK(sv)) {
@@ -597,7 +586,7 @@ std::false_type* Value::retrieve(ObjectType& x) const
    return nullptr;
 }
 
-Value::NoAnchors Value::put_val(const ObjectType& x, int, int)
+Value::NoAnchors Value::put_val(const ObjectType& x, int)
 {
    check_ref(x.obj_ref);
    copy_ref(sv, x.obj_ref);
@@ -605,14 +594,14 @@ Value::NoAnchors Value::put_val(const ObjectType& x, int, int)
 }
 
 
-Value::NoAnchors Value::put_val(const Object& x, int, int)
+Value::NoAnchors Value::put_val(const Object& x, int)
 {
    check_ref(x.obj_ref);
    dTHX;
 
    // If the read_only flag is set, then this call is part of the preparation for parent_object.take();
    // in this case the child's transaction will be hung into the parent's one.
-   if ((options & (value_read_only | value_expect_lval)) != value_read_only &&
+   if ((options & (ValueFlags::read_only | ValueFlags::expect_lval)) != ValueFlags::read_only &&
        has_init_transaction(x.obj_ref)) {
       PmStartFuncall(1);
       PUSHs(x.obj_ref);
@@ -621,8 +610,8 @@ Value::NoAnchors Value::put_val(const Object& x, int, int)
    }
    copy_ref(sv, x.obj_ref);
 
-   if ((options & (value_read_only | value_allow_non_persistent | value_allow_store_any_ref)) ==
-       (value_allow_non_persistent | value_allow_store_ref)) {
+   if ((options & (ValueFlags::read_only | ValueFlags::allow_non_persistent | ValueFlags::allow_store_any_ref)) ==
+       (ValueFlags::allow_non_persistent | ValueFlags::allow_store_ref)) {
       // returning a new Object thru the glueing layer
       SV* const name=PmArray(x.obj_ref)[glue::Object_name_index];
       if (!SvOK(name)) {
@@ -635,12 +624,12 @@ Value::NoAnchors Value::put_val(const Object& x, int, int)
 }
 
 
-Value::NoAnchors Value::put_val(const pm::Array<Object>& ar, int, int)
+Value::NoAnchors Value::put_val(const pm::Array<Object>& ar, int)
 {
    dTHX;
    // If the read_only flag is set, then this call is part of the preparation for parent_object.take();
    // in this case the children's transactions will be hung into the parent's one.
-   if ((options & (value_read_only | value_expect_lval)) == value_read_only) {
+   if ((options & (ValueFlags::read_only | ValueFlags::expect_lval)) == ValueFlags::read_only) {
       if (!ar.empty() && !ar.element_type().valid())
          throw std::runtime_error("can't create a property from an a big object array with incompatible element types");
    } else if (!SvREADONLY(SvRV(ar.get()))) {

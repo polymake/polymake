@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "rand_vert.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Rational>&>", "void", "void"], "func": "rand_vert", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "rand_vert.X.x.o"},
+ null ],
+"version": 3}

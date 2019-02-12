@@ -20,29 +20,28 @@ GNU General Public License for more details.
 #include "polymake/tropical/dual_addition_version.h"
 
 namespace polymake { namespace tropical {
-	
-	//Note: This is not in dual_addition_version.h, as the compiler gets confused 
-	//with all the overloaded functions when dealing with big objects.
 
-	template <typename Addition, typename Scalar>
-		perl::Object dual_addition_version_cone(perl::Object cone, bool strong = true) {
-			Matrix<TropicalNumber<Addition,Scalar> > points = cone.give("POINTS");
+// Note: This is not in dual_addition_version.h, as the compiler gets confused 
+// with all the overloaded functions when dealing with big objects.
 
-			typedef typename pm::concat_list<typename Addition::dual, Scalar>::type cone_type;
-			perl::Object result(perl::ObjectType::construct<cone_type>("Polytope"));
-				result.take("POINTS") << dual_addition_version(points,strong);
+template <typename Addition, typename Scalar>
+perl::Object dual_addition_version_cone(perl::Object cone, bool strong = true)
+{
+  Matrix<TropicalNumber<Addition,Scalar> > points = cone.give("POINTS");
 
-			return result;
-		}
+  perl::Object result("Polytope", mlist<typename Addition::dual, Scalar>());
+  result.take("POINTS") << dual_addition_version(points,strong);
 
-	//FIXME This should be a direct UserFunctionTemplate4perl as the others, but it seems to confuse
-	// perl, as there is some conflict with the Cycle-version. Currently there is a wrapper function
-	// in cone_properties.rules.
+  return result;
+}
 
-	FunctionTemplate4perl("dual_addition_version_cone<Addition,Scalar>(Polytope<Addition,Scalar>;$=1)");
+// FIXME This should be a direct UserFunctionTemplate4perl as the others, but it seems to confuse
+// perl, as there is some conflict with the Cycle-version. Currently there is a wrapper function
+// in cone_properties.rules.
 
+FunctionTemplate4perl("dual_addition_version_cone<Addition, Scalar>(Polytope<Addition, Scalar>;$=1)");
 
-}}
+} }
 
 
 

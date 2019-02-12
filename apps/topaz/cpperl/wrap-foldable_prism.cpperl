@@ -1,0 +1,5 @@
+{"app": "topaz", "embed": "foldable_prism.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "foldable_prism", "include": ["polymake/Rational.h"], "sig": "foldable_prism:T1.B.o", "tp": "1"},
+ null ],
+"version": 3}

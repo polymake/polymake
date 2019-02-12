@@ -1,0 +1,8 @@
+{"app": "tropical", "embed": "moduli_rational.cc",
+ "inst": [
+  {"args": ["Min", "void"], "func": "m0n", "include": ["polymake/TropicalNumber.h"], "sig": "m0n:T1.x", "tp": "1"},
+  {"args": ["Max", "void"], "func": "m0n", "include": ["polymake/TropicalNumber.h"], "sig": "m0n:T1.x", "tp": "1"},
+  {"args": ["Max", "void", "void", "void"], "func": "space_of_stable_maps", "include": ["polymake/TropicalNumber.h"], "sig": "space_of_stable_maps:T1.x.x.x", "tp": "1"},
+  {"args": ["Min", "void", "void", "void"], "func": "space_of_stable_maps", "include": ["polymake/TropicalNumber.h"], "sig": "space_of_stable_maps:T1.x.x.x", "tp": "1"},
+ null ],
+"version": 3}

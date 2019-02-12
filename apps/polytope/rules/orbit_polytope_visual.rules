@@ -17,7 +17,7 @@ REQUIRE graph::graphviz.rules
 
 sub getRadius_sq {
    my $vec = $_[0];
-   my $vec_sliced=$vec->slice(1,$vec->dim-1); # cut off homog. 1
+   my $vec_sliced=$vec->slice(sequence(1, $vec->dim-1)); # cut off homog. 1
    my $rad_sq=0;
    foreach my $entry (@$vec_sliced) {
       $rad_sq+=$entry*$entry;

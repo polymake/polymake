@@ -65,11 +65,11 @@ property DIAMETER : Int;
 # A single edge with its endpoints is obviously connected. We construct the adjacency matrix beforehand:
 # > $IM = new IncidenceMatrix<Symmetric>([[1],[0]]);
 # > print new Graph(ADJACENCY=>$IM)->CONNECTED;      
-# | 1
+# | true
 # The same procedure yields the opposite outcome after adding an isolated node:
 # > $IM = new IncidenceMatrix<Symmetric>([[1],[0],[]]);
 # > print new Graph(ADJACENCY=>$IM)->CONNECTED;      
-# | 
+# | false
 property CONNECTED : Bool;
 
 # Labels of the nodes of the graph.
@@ -150,7 +150,7 @@ property BICONNECTED_COMPONENTS : IncidenceMatrix;
 # @example The following checks if a square (as a graph) is bipartite:
 # > $g = new Graph<Undirected>(ADJACENCY=>[[1,3],[0,2],[1,3],[0,2]]);
 # > print $g->BIPARTITE;
-# | 1
+# | true
 property BIPARTITE : Bool;
 
 # Difference of the black and white nodes if the graph is [[BIPARTITE]].
@@ -164,7 +164,7 @@ property SIGNATURE : Int;
 # Determine whether the graph has triangles or not.
 # @example The following checks if the petersen graph contains triangles:
 # > print petersen()->TRIANGLE_FREE;
-# | 1
+# | true
 property TRIANGLE_FREE : Bool;
 
 # Node connectivity of the graph, that is, the minimal number of nodes to be removed
@@ -207,7 +207,7 @@ object Graph<Directed> {
 # check the property:
 # > $g = new Graph<Directed>(ADJACENCY=>[[1],[0,2],[3],[2]]);
 # > print $g->WEAKLY_CONNECTED;
-# | 1
+# | true
 property WEAKLY_CONNECTED : Bool;
 
 # Weakly connected components.
@@ -231,11 +231,11 @@ property WEAKLY_CONNECTED_COMPONENTS : IncidenceMatrix;
 # the property:
 # > $g = new Graph<Directed>(ADJACENCY=>[[1],[0,2],[3],[2]]);
 # > print $g->STRONGLY_CONNECTED;
-# | 
+# | false
 # The same procedure yields the opposite result for the graph with the reversed edge added in the middle: 
 # > $g = new Graph<Directed>(ADJACENCY=>[[1],[0,2],[1,3],[2]]);
 # > print $g->STRONGLY_CONNECTED;
-# | 1
+# | true
 property STRONGLY_CONNECTED : Bool;
 
 # Strong components.

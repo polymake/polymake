@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<const Vector<Rational>&>>"], "func": "anti_diag", "include": ["polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/Vector.h"], "sig": "anti_diag.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true>&>>", "perl::AnchorArg<perl::Canned<const pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true>&>>"], "func": "anti_diag", "include": ["polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/linalg.h"], "sig": "anti_diag.X8.X8"},
+ null ],
+"version": 3}

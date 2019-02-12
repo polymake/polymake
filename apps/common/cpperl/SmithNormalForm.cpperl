@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"pkg": "Polymake::common::SmithNormalForm"},
+  {"class": "SmithNormalForm<Integer>", "include": ["polymake/Integer.h", "polymake/Smith_normal_form.h"], "pkg": "Polymake::common::SmithNormalForm__Integer"},
+ null ],
+"version": 3}

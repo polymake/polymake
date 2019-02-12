@@ -41,7 +41,7 @@ perl::Object weighted_digraph_polyhedron(const GenericMatrix<MatrixType, Scalar>
          }
       }
   
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("polytope::Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Weighted digraph polyhedron" <<endl;
    p_out.take("INEQUALITIES") << Ineq;
    Matrix<Scalar> wd(W);

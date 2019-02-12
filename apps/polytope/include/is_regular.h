@@ -20,7 +20,7 @@
 #include "polymake/PowerSet.h"
 #include "polymake/Matrix.h"
 #include "polymake/ListMatrix.h"
-#include "polymake/Rational.h"
+#include "polymake/SparseVector.h"
 #include "polymake/Array.h"
 #include "polymake/linalg.h"
 #include <fstream>
@@ -29,15 +29,15 @@ namespace polymake { namespace polytope {
 
 namespace {    
 
-template<typename Scalar, typename SetInt>
-Vector<Scalar>
+template<typename Scalar, typename SetInt, typename Matrix>
+SparseVector<Scalar>
 new_row(int i,
-        const Matrix<Scalar>& vertices,
+        const GenericMatrix<Matrix,Scalar>& vertices,
         const SetInt& basis,
         int basis_sign,
         Scalar basis_det)
 {
-   Vector<Scalar> new_row(vertices.rows());
+   SparseVector<Scalar> new_row(vertices.rows());
    int s = basis_sign;
    new_row[i] = s * basis_det;
    for (const auto& k: basis) {
@@ -48,13 +48,34 @@ new_row(int i,
 }	
   
 } // end anonymous namespace
-  
-template<typename Scalar, typename SetInt>
-std::pair<const Matrix<Scalar>, const Matrix<Scalar>>
-secondary_cone_ineq(const Matrix<Scalar> &verts, const Array<SetInt>& subdiv, perl::OptionSet options)
+
+template<typename Scalar, typename TMatrix>
+Matrix<Scalar>
+full_dim_projection(const GenericMatrix<TMatrix,Scalar>& verts)
 {
-   const int n_vertices  = verts.rows();
    const int ambient_dim = verts.cols()-1;
+   const auto affine_hull = null_space(verts);
+   const int codim = affine_hull.rows();
+   if (!codim)
+      return verts;
+   for (auto i=entire(all_subsets_of_k(sequence(0,ambient_dim),codim)); !i.at_end(); ++i)
+      if (!is_zero(det(affine_hull.minor(All, *i))))
+         return verts.minor(All, ~(Set<int>(*i)));
+
+   throw std::runtime_error("full_dim_projection: This shouldn't happen");
+}
+      
+template<typename Scalar, typename SetInt, typename Matrix>
+std::pair<const SparseMatrix<Scalar>, const SparseMatrix<Scalar>>
+secondary_cone_ineq(const GenericMatrix<Matrix,Scalar> &full_dim_verts, const Array<SetInt>& subdiv, perl::OptionSet options)
+{
+#if POLYMAKE_DEBUG
+   if (rank(full_dim_verts) != full_dim_verts.cols())
+      throw std::runtime_error("secondary_cone_ineq: need full-dimensional vertices. Use full_dim_projection on your vertices first.");
+#endif
+
+   const int n_vertices  = full_dim_verts.rows();
+   const int ambient_dim = full_dim_verts.cols()-1;
    const int n_facets    = subdiv.size();
 
    //compute the set of all points that is not used in any face
@@ -62,25 +83,12 @@ secondary_cone_ineq(const Matrix<Scalar> &verts, const Array<SetInt>& subdiv, pe
    for (const auto& sd: subdiv)
       not_used -= sd;
 
-   //compute a full-dimensional orthogonal projection if verts is not full_dimensional
-   const Matrix<Scalar> affine_hull = null_space(verts);
-   const int codim = affine_hull.rows();
-   SetInt coords;
-   for (auto i=entire(all_subsets_of_k(sequence(0,ambient_dim),codim)); !i.at_end(); ++i) {
-     if (!is_zero(det(affine_hull.minor(All, *i)))) {
-       coords = *i;
-       break;
-     }
-   }
-   const Matrix<Scalar> vertices = verts.minor(All,~coords);  
-   const int dim = vertices.cols()-1;
-
    // the equations and inequalities for the possible weight vectors
    // (without right hand side which will be 0)
-   ListMatrix<Vector<Scalar>> equats(0,n_vertices);
-   ListMatrix<Vector<Scalar>> inequs(0,n_vertices);
+   ListMatrix<SparseVector<Scalar>> equats(0,n_vertices);
+   ListMatrix<SparseVector<Scalar>> inequs(0,n_vertices);
 
-   Matrix<Scalar> eqs;
+   SparseMatrix<Scalar> eqs;
    if (options["equations"] >> eqs)
       equats /= eqs;
 
@@ -94,40 +102,42 @@ secondary_cone_ineq(const Matrix<Scalar> &verts, const Array<SetInt>& subdiv, pe
 
 
    // generate the equation and inequalities
-   for (int i=0; i<n_facets; ++i) {
-      const SetInt b(basis_rows(vertices.minor(subdiv[i],All)));
+   for (int i = 0; i < n_facets; ++i) {
+      const SetInt b(basis_rows(full_dim_verts.minor(subdiv[i], All)));
 
       // we have to map the numbers the right way:
       SetInt basis;
-      int k = 0;
-      auto l = entire(subdiv[i]);
-      for(auto j=entire(b); !j.at_end(); ++j, ++k, ++l) {
-         while(k<*j) {
-            ++k;
-            ++l;
+      {
+         int k = 0;
+         auto l = entire(subdiv[i]);
+         for (auto j = entire(b); !j.at_end(); ++j, ++k, ++l) {
+            while (k < *j) {
+               ++k;
+               ++l;
+            }
+            basis.push_back(*l);
          }
-         basis.push_back(*l);
       }
-      const Scalar basis_det  = det(vertices.minor(basis,All));
+      const Scalar basis_det  = det(full_dim_verts.minor(basis, All));
       const int    basis_sign = basis_det>0 ? 1 : -1;
       const SetInt non_basis  = subdiv[i]-basis;
 
       // for each maximal face F, all points have to be lifted to the same facet
       for (const auto& j: non_basis)
-         equats /= new_row(j, vertices, basis, basis_sign, basis_det);
+         equats /= new_row(j, full_dim_verts, basis, basis_sign, basis_det);
 
       // for all adjacent maximal faces, all vertices not contained in F have to be lifted
       // in the same direction
-      for (int l=i+1; l<n_facets; ++l)
-         if (rank(vertices.minor(subdiv[i]*subdiv[l],All)) == dim)
-            inequs /= new_row(*((subdiv[l]-subdiv[i]).begin()), vertices, basis, basis_sign, basis_det);
+      for (int f = i + 1; f < n_facets; ++f)
+         if (rank(full_dim_verts.minor(subdiv[i] * subdiv[f], All)) == ambient_dim)
+            inequs /= new_row(*((subdiv[f]-subdiv[i]).begin()), full_dim_verts, basis, basis_sign, basis_det);
 
       // additional equations for the non-used points
       for (const auto& l: not_used)
-         inequs /= new_row(l, vertices, basis, basis_sign, basis_det);
+         inequs /= new_row(l, full_dim_verts, basis, basis_sign, basis_det);
 
    }
-   return std::pair<const Matrix<Scalar>,const Matrix<Scalar>>(inequs, equats);
+   return std::pair<const SparseMatrix<Scalar>,const SparseMatrix<Scalar>>(inequs, equats);
 }
 
 } }

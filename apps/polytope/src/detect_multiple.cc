@@ -25,7 +25,7 @@ template <typename Matrix>
 bool detect_multiple(const GenericMatrix<Matrix> &mat)
 {
    hash_set<typename Matrix::const_row_type> all;
-   for (typename Entire<Rows<Matrix> >::const_iterator v=entire(rows(mat)); !v.at_end(); ++v)
+   for (auto v=entire(rows(mat)); !v.at_end(); ++v)
       if (!all.insert(*v).second) return true;
    return false;
 }

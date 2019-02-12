@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "recession_fan.cc",
+ "inst": [
+  {"args": ["Max", "void"], "func": "recession_fan", "include": ["polymake/TropicalNumber.h"], "sig": "recession_fan:T1.B", "tp": "1"},
+  {"args": ["Min", "void"], "func": "recession_fan", "include": ["polymake/TropicalNumber.h"], "sig": "recession_fan:T1.B", "tp": "1"},
+ null ],
+"version": 3}

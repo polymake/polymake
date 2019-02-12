@@ -1,0 +1,15 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Vector<Rational>&>"], "func": "primitive", "include": ["polymake/Rational.h", "polymake/Vector.h", "polymake/common/lattice_tools.h"], "sig": "primitive.X"},
+  {"args": ["perl::Canned<const Matrix<Rational>&>"], "func": "primitive", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/common/lattice_tools.h"], "sig": "primitive.X"},
+  {"args": ["perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>"], "func": "primitive", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/common/lattice_tools.h"], "sig": "primitive.X"},
+  {"args": ["perl::Canned<const Vector<Integer>&>"], "func": "primitive", "include": ["polymake/Integer.h", "polymake/Vector.h", "polymake/common/lattice_tools.h"], "sig": "primitive.X"},
+  {"args": ["perl::Canned<const Vector<int>&>"], "func": "primitive", "include": ["polymake/Vector.h", "polymake/common/lattice_tools.h"], "sig": "primitive.X"},
+  {"args": ["perl::Canned<const Matrix<Integer>&>"], "func": "primitive", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h", "polymake/common/lattice_tools.h"], "sig": "primitive.X"},
+  {"args": ["perl::Canned<const Matrix<int>&>"], "func": "primitive", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/common/lattice_tools.h"], "sig": "primitive.X"},
+  {"args": ["perl::Canned<const pm::IndexedSlice<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer> const&>, pm::Series<int, true> const, mlist<> >, pm::Series<int, true> const, mlist<> >&>"], "func": "primitive", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h", "polymake/Set.h", "polymake/common/lattice_tools.h"], "sig": "primitive.X"},
+  {"args": ["perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Integer>&>, pm::Series<int, true> const, mlist<> >&>"], "func": "primitive", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h", "polymake/common/lattice_tools.h"], "sig": "primitive.X"},
+  {"args": ["perl::Canned<const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Integer, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&, pm::NonSymmetric>&>"], "func": "primitive", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h", "polymake/common/lattice_tools.h"], "sig": "primitive.X"},
+  {"args": ["perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<int, true> const, mlist<> >&>"], "func": "primitive", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/common/lattice_tools.h"], "sig": "primitive.X"},
+ null ],
+"version": 3}

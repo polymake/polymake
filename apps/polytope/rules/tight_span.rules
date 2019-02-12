@@ -24,7 +24,7 @@ user_function tight_span_envelope($;{extended=>0}){
    if($$options{"extended"}){
       my $d = $sd->POINTS->cols()-1;
       my $vec = new Vector($sd->WEIGHTS->dim()+$d);
-      $vec->slice(0,$sd->WEIGHTS->dim()) = $sd->WEIGHTS;
+      $vec->slice(sequence(0, $sd->WEIGHTS->dim())) = $sd->WEIGHTS;
       my $mat = $sd->POINTS->minor(All,~[0])/unit_matrix($d);
       return new Polytope(INEQUALITIES=>$vec|$mat);
    }else{

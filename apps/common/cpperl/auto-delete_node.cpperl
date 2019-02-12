@@ -1,0 +1,8 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<Wary<Graph<Directed>>&>", "void"], "func": "delete_node", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "delete_node:M5.x"},
+  {"args": ["perl::Canned<Wary<Graph<DirectedMulti>>&>", "void"], "func": "delete_node", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "delete_node:M5.x"},
+  {"args": ["perl::Canned<Wary<Graph<Undirected>>&>", "void"], "func": "delete_node", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "delete_node:M5.x"},
+  {"args": ["perl::Canned<Wary<Graph<UndirectedMulti>>&>", "void"], "func": "delete_node", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "delete_node:M5.x"},
+ null ],
+"version": 3}

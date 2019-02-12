@@ -23,7 +23,7 @@
 namespace polymake { namespace polytope {
 namespace {
 
-template <typename Scalar> inline
+template <typename Scalar>
 void fill_distances(int nv, const Matrix<Scalar>& M, Graph<>& G, Vector<Scalar>& dist)
 {
    for (int i=0, n=nv-1; i<n; ++i)
@@ -49,11 +49,11 @@ Scalar congruent(perl::Object p1, perl::Object p2)
    fill_distances(nv, V1, G1, dist1);
    fill_distances(nv, V2, G2, dist2);
 
-   Scalar min1=accumulate(dist1.slice(nv), operations::min()),
-      min2=accumulate(dist2.slice(nv), operations::min());
+   Scalar min1 = accumulate(dist1.slice(range_from(nv)), operations::min()),
+          min2 = accumulate(dist2.slice(range_from(nv)), operations::min());
 
    min1 /= min2;
-   if (min1 != 1) dist2.slice(nv)*=min1;
+   if (min1 != 1) dist2.slice(range_from(nv)) *= min1;
    
    return graph::isomorphic(G1, dist1, G2, dist2) ? min1 : Scalar(0);
 }

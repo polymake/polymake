@@ -18,15 +18,6 @@
 
 namespace pm { namespace perl {
 
-SV* get_parameterized_type_impl(const AnyString& pkg, bool exact_match)
-{
-   dTHX;
-   PL_stack_base[TOPMARK+1]=sv_2mortal(Scalar::const_string(pkg.ptr, pkg.len));
-   if (!exact_match)
-      sv_setiv(save_scalar(glue::PropertyType_nesting_level), 1);
-   return glue::call_method_scalar(aTHX_ "typeof");
-}
-
 bool type_infos::set_descr(const std::type_info& ti)
 {
    dTHX;
@@ -39,7 +30,7 @@ bool type_infos::set_descr(const std::type_info& ti)
    return false;
 }
 
-bool type_infos::set_descr()
+void type_infos::set_descr()
 {
    dTHX;
    SV* const opts=PmArray(proto)[glue::PropertyType_cppoptions_index];
@@ -58,7 +49,6 @@ bool type_infos::set_descr()
          descr=PmArray(opts)[glue::CPPOptions_descr_index];
       }
    }
-   return descr;
 }
 
 void type_infos::set_proto(SV* known_proto)
@@ -82,7 +72,7 @@ void type_infos::set_proto(SV* known_proto)
    }
 }
 
-void type_infos::set_proto(SV* prescribed_pkg, const std::type_info& ti, SV* super_proto)
+void type_infos::set_proto_with_prescribed_pkg(SV* prescribed_pkg, SV* app_stash_ref, const std::type_info& ti, SV* super_proto)
 {
    dTHX;
    PmStartFuncall(3);
@@ -91,62 +81,56 @@ void type_infos::set_proto(SV* prescribed_pkg, const std::type_info& ti, SV* sup
    mPUSHp(type_name, strlen(type_name));
    if (super_proto) PUSHs(super_proto);
    PUTBACK;
-   proto=glue::call_func_scalar(aTHX_ glue::fetch_typeof_gv(aTHX_ SvPVX(prescribed_pkg), SvCUR(prescribed_pkg)), true);
+   proto=glue::call_func_scalar(aTHX_ glue::fetch_typeof_gv(aTHX_ (HV*)SvRV(app_stash_ref), SvPVX(prescribed_pkg), SvCUR(prescribed_pkg)), true);
    magic_allowed=true;
 }
 
 namespace {
-
 SV* resolve_auto_function_cv=nullptr;
-SV* fake_args_ref=nullptr;
-AV* fake_args=nullptr;
-
 }
 
-wrapper_type type_cache_base::get_function_wrapper(SV* src, SV* dst_descr, int auto_func_index)
+char* type_cache_base::get_function_wrapper(SV* src, SV* dst_descr, int auto_func_index)
 {
    dTHX; dSP;
-   SV* auto_func=PmArray(GvSV(glue::CPP_root))[auto_func_index];
-   wrapper_type ret=nullptr;
-   if (!resolve_auto_function_cv) {
-      resolve_auto_function_cv=(SV*)get_cv("Polymake::Core::CPlusPlus::resolve_auto_function", FALSE);
-      fake_args=newAV();
-      av_extend(fake_args,2);
-      AvFILLp(fake_args)=1;
-      AvREAL_off(fake_args);
-      fake_args_ref=newRV_noinc((SV*)fake_args);
-   }
+   SV* auto_func = PmArray(GvSV(glue::CPP_root))[auto_func_index];
+   char* ret = nullptr;
+   if (!resolve_auto_function_cv)
+      resolve_auto_function_cv = (SV*)get_cv("Polymake::Core::CPlusPlus::resolve_auto_function", FALSE);
+
+   AV* fake_args = newAV();
+   av_extend(fake_args, 2);
+   AvFILLp(fake_args) = 1;
+   AvREAL_off(fake_args);
+   SV* fake_args_ref = newRV_noinc((SV*)fake_args);
+
    ENTER; SAVETMPS;
    PUSHMARK(SP);
    XPUSHs(auto_func);
-   AvARRAY(fake_args)[0]=dst_descr;
-   AvARRAY(fake_args)[1]=src;
+   AvARRAY(fake_args)[0] = dst_descr;
+   AvARRAY(fake_args)[1] = src;
    XPUSHs(fake_args_ref);
    PUTBACK;
    call_sv(resolve_auto_function_cv, G_SCALAR | G_EVAL);
    SPAGAIN;
-   SV* cv=POPs;
-   if (SvROK(cv) && (cv=SvRV(cv), CvISXSUB(cv))) {
-      AV* func_descr=(AV*)CvXSUBANY(cv).any_ptr;
-      ret=(wrapper_type)SvPVX(AvARRAY(func_descr)[glue::FuncDescr_wrapper_index]);
+   SV* cv = POPs;
+   if (SvROK(cv) && (cv = SvRV(cv), CvISXSUB(cv))) {
+      AV* func_descr = (AV*)CvXSUBANY(cv).any_ptr;
+      ret = reinterpret_cast<char*>(AvARRAY(func_descr)[glue::FuncDescr_wrapper_index]);
    }
    PUTBACK; FREETMPS; LEAVE;
+   SvREFCNT_dec(fake_args_ref);
+
    if (__builtin_expect(SvTRUE(ERRSV), 0))
       throw exception();
    return ret;
 }
 
-wrapper_type type_cache_base::get_conversion_operator(SV* src, SV* dst_descr)
+char* type_cache_base::get_conversion_operator(SV* src, SV* dst_descr)
 {
    return dst_descr ? get_function_wrapper(src, dst_descr, glue::CPP_auto_conversion_index) : nullptr;
 }
 
-wrapper_type type_cache_base::get_conversion_constructor(SV* src, SV* dst_descr)
-{
-   return dst_descr ? get_function_wrapper(src, dst_descr, glue::CPP_auto_convert_constructor_index) : nullptr;
-}
-
-wrapper_type type_cache_base::get_assignment_operator(SV* src, SV* dst_descr)
+char* type_cache_base::get_assignment_operator(SV* src, SV* dst_descr)
 {
    return dst_descr ? get_function_wrapper(src, dst_descr, glue::CPP_auto_assignment_index) : nullptr;
 }

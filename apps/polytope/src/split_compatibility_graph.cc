@@ -28,7 +28,7 @@ Graph<> split_compatibility_graph(const Matrix<Scalar>& SplitEquations, perl::Ob
    const int n_splits=SplitEquations.rows();
 
    Graph<> S(n_splits);
-   perl::ObjectType Polytope(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::ObjectType Polytope("Polytope", mlist<Scalar>());
 
    for (int s1=0; s1<n_splits; ++s1) {
       for (int s2=s1+1; s2<n_splits; ++s2) {

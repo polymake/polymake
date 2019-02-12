@@ -24,7 +24,7 @@ IMPORT
   graph
 
 USE
-  common polytope
+  polytope
 
 file_suffix mat
 

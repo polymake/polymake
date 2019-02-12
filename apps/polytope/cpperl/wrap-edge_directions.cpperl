@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "edge_directions.cc",
+ "inst": [
+  {"args": ["void", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Set<int>&>"], "func": "edge_directions", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "edge_directions.B.X.X"},
+  {"args": ["void", "perl::Canned<const SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>&>", "perl::Canned<const Set<int>&>"], "func": "edge_directions", "include": ["polymake/IncidenceMatrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/Set.h", "polymake/SparseMatrix.h"], "sig": "edge_directions.B.X.X"},
+ null ],
+"version": 3}

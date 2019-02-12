@@ -1,5 +1,5 @@
-/* Copyright (c) 2011-2013
-   Thomas Opfer (Technische Universitaet Darmstadt, Germany)
+/* Copyright (c) 2011-2018
+   Thomas Opfer
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -11,7 +11,6 @@
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
 --------------------------------------------------------------------------------
-   $Id$
 */
 
 #ifndef TORATIONALINF_H
@@ -22,16 +21,17 @@ namespace TOSimplex {
 template <class T>
 class TORationalInf
 {
-	public:
-		TORationalInf( bool isInf = false ){
-			this->isInf = isInf;
-		}
-		TORationalInf( T value ){
-			this->isInf = false;
-			this->value = value;
-		}
-		T value;
-		bool isInf;
+public:
+  TORationalInf(bool isInf_ = false)
+    : isInf(isInf_) {}
+
+  TORationalInf(const T& value_)
+    : value(value_)
+    , isInf(false)
+  {}
+
+  T value;
+  bool isInf;
 };
 
 }

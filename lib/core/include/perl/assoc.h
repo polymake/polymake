@@ -35,7 +35,7 @@ public:
 template <typename Container>
 class element_finder_helper<Container, false> {
 protected:
-   typename Entire<Container>::iterator pos;
+   typename ensure_features<Container, end_sensitive>::iterator pos;
 public:
    element_finder_helper(Container& c, typename container_traits<Container>::iterator where)
       : pos(entire(c)) { pos=where; }
@@ -43,8 +43,7 @@ public:
 
 template <typename Container>
 class element_finder
-   : protected element_finder_helper<const Container>
-   , public MaybeUndefined< element_finder<Container> > {
+   : protected element_finder_helper<const Container> {
 public:
    template <typename Key>
    element_finder(const Container& c, const Key& key)
@@ -52,10 +51,14 @@ public:
 
    bool defined() const { return !this->pos.at_end(); }
 
-   decltype(auto) get_val() const { return this->pos->second; }
+   const auto& get_val() const { return this->pos->second; }
 };
 
-template <typename Container, typename Key> inline
+template <typename Container>
+struct can_be_undefined< element_finder<Container> >
+   : std::true_type {};
+
+template <typename Container, typename Key>
 element_finder<Container> find_element(const Container& c, const Key& key)
 {
    return element_finder<Container>(c, key);
@@ -63,8 +66,7 @@ element_finder<Container> find_element(const Container& c, const Key& key)
 
 template <typename Container>
 class delayed_eraser
-   : protected element_finder_helper<Container>
-   , public MaybeUndefined< delayed_eraser<Container> > {
+   : protected element_finder_helper<Container> {
 public:
    template <typename Key>
    delayed_eraser(Container& c_arg, const Key& key)
@@ -74,6 +76,7 @@ public:
    bool defined() const { return !this->pos.at_end(); }
 
    decltype(auto) get_val() const { return std::move(this->pos->second); }
+   operator undefined () const { return undefined(); }
 
    ~delayed_eraser()
    {
@@ -83,7 +86,11 @@ private:
    Container& c;
 };
 
-template <typename Container, typename Key> inline
+template <typename Container>
+struct can_be_undefined< delayed_eraser<Container> >
+   : std::true_type {};
+
+template <typename Container, typename Key>
 delayed_eraser<Container> delayed_erase(Container& c, const Key& key)
 {
    return delayed_eraser<Container>(c, key);

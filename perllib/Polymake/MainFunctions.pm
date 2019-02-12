@@ -38,13 +38,13 @@ package Polymake::Main;
 # private: only called from import()
 sub _init {
    &Main::init;
-   $Scope=new Scope();
+   $Scope = new Scope();
    add AtEnd "FinalCleanup", sub { undef $Scope }, after => "Object";
 }
 
 sub createNewScope {
-   my $prevScope=$Scope;
-   $Scope=new Scope();
+   my $prevScope = $Scope;
+   $Scope = new Scope();
    $prevScope
 }
 
@@ -53,61 +53,61 @@ sub application_from_object {
 }
 
 sub set_custom {
-   my $name=shift;
-   if (@_==1 && substr($name,0,1) eq '@' && is_ARRAY($_[0])) {
-      $User::application->_set_custom($Prefs->custom, $name, @{$_[0]});
-   } elsif (@_==1 && substr($name,0,1) eq '%' && is_hash($_[0])) {
-      $User::application->_set_custom($Prefs->custom, $name, %{$_[0]});
+   my $name = shift;
+   if (@_==1 && substr($name, 0, 1) eq '@' && is_array($_[0])) {
+      $User::application->_set_custom($Core::Prefs->custom, $name, @{$_[0]});
+   } elsif (@_==1 && substr($name, 0, 1) eq '%' && is_hash($_[0])) {
+      $User::application->_set_custom($Core::Prefs->custom, $name, %{$_[0]});
    } elsif (@_) {
-      $User::application->_set_custom($Prefs->custom, $name, @_);
+      $User::application->_set_custom($Core::Prefs->custom, $name, @_);
    } else {
       die "set_custom: value missing\n";
    }
 }
 
 sub reset_custom {
-   my $name=shift;
-   $User::application->_reset_custom($Prefs->custom, $name, @_);
+   my $name = shift;
+   $User::application->_reset_custom($Core::Prefs->custom, $name, @_);
 }
 
 sub local_custom {
-   my $var=$User::application->find_custom_var(shift, $Prefs->custom);
-   $Scope->begin_locals;
-   no strict 'refs';
-   $var->prefix eq '$'
-   ? local_scalar(*{$var->name}, $_[0]) :
-   $var->prefix eq '@'
-   ? local_array(*{$var->name}, $_[0]) :
-   @_==2
-   ? local_hash(*{$var->name}, $_[0])
-   : (local ${$var->name}{$_[0]}=$_[1]);
-   $Scope->end_locals;
+   my $var = $User::application->find_custom_var(shift, $Core::Prefs->custom);
+   local with($Scope->locals) {
+      no strict 'refs';
+      $var->prefix eq '$'
+      ? (local ${$var->name} = $_[0]) :
+      $var->prefix eq '@'
+      ? (local ref *{$var->name} = $_[0]) :
+      @_==2
+      ? (local ref *{$var->name} = $_[0])
+      : (local ${$var->name}{$_[0]} = $_[1]);
+   }
 }
 
 sub shell_enable {
-   state $init_shell=do {
+   state $init_shell = do {
       require Polymake::Core::ShellMock;
-      $Shell=new Core::Shell::Mock;
+      $Shell = new Core::Shell::Mock;
       1
    };
 }
 
 sub shell_execute {
    if (!defined $User::application) {
-      $@="current application not set";
+      $@ = "current application not set";
       return;
    }
    open my $saved_STDOUT, ">&=STDOUT";
    close STDOUT;
-   my $gather_stdout="";
+   my $gather_stdout = "";
    open STDOUT, ">:utf8", \$gather_stdout;
    open my $saved_STDERR, ">&=STDERR";
    close STDERR;
-   my $gather_stderr="";
+   my $gather_stderr = "";
    open STDERR, ">:utf8", \$gather_stderr;
-   my $executed=$Shell->process_input(@_);
-   my $exc=$@;
-   $@="";
+   my $executed = $Shell->process_input(@_);
+   my $exc = $@;
+   $@ = "";
    close STDOUT;
    open STDOUT, ">&=", $saved_STDOUT;
    close STDERR;
@@ -117,7 +117,7 @@ sub shell_execute {
 
 sub shell_complete {
    if (!defined $User::application) {
-      $@="current application not set";
+      $@ = "current application not set";
       return;
    }
    $_[0] =~ /\S/ or return (0, "");
@@ -127,16 +127,16 @@ sub shell_complete {
 
 sub shell_context_help {
    if (!defined $User::application) {
-      $@="current application not set";
+      $@ = "current application not set";
       return;
    }
-   my ($input, $pos, $full, $html)=@_;
+   my ($input, $pos, $full, $html) = @_;
    require Polymake::Core::HelpAsHTML if $html;
 
    $input =~ /\S/ or return;
    $Shell->context_help($input, $pos);
    map {
-      my $writer= $html ? new Core::HelpAsHTML() : new Core::HelpAsPlainText(0);
+      my $writer = $html ? new Core::HelpAsHTML() : new Core::HelpAsPlainText(0);
       $_->write_text($writer, $full);
       $writer->text
    } @{$Shell->help_topics};

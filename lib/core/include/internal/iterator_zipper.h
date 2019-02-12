@@ -68,19 +68,16 @@ template <typename Iterator1, typename Iterator2, typename Comparator, typename 
           bool use_index1=false, bool use_index2=false>
 class iterator_zipper : public Iterator1 {
 public:
-   typedef Iterator1 first_type;
-   typedef Iterator2 second_type;
-   typedef typename least_derived_class<bidirectional_iterator_tag,
-                                        typename iterator_traits<Iterator1>::iterator_category,
-                                        typename iterator_traits<Iterator2>::iterator_category>::type
-      iterator_category;
+   using first_type = Iterator1;
+   using second_type = Iterator2;
+   using iterator_category = typename least_derived_class<bidirectional_iterator_tag,
+                                                          typename iterator_traits<Iterator1>::iterator_category,
+                                                          typename iterator_traits<Iterator2>::iterator_category>::type;
 
-   typedef iterator_zipper<typename iterator_traits<Iterator1>::iterator, typename iterator_traits<Iterator2>::iterator,
-                           Comparator, Controller, use_index1, use_index2>
-      iterator;
-   typedef iterator_zipper<typename iterator_traits<Iterator1>::const_iterator, typename iterator_traits<Iterator2>::const_iterator,
-                           Comparator, Controller, use_index1, use_index2>
-      const_iterator;
+   using iterator = iterator_zipper<typename iterator_traits<Iterator1>::iterator, typename iterator_traits<Iterator2>::iterator,
+                                    Comparator, Controller, use_index1, use_index2>;
+   using const_iterator = iterator_zipper<typename iterator_traits<Iterator1>::const_iterator, typename iterator_traits<Iterator2>::const_iterator,
+                                          Comparator, Controller, use_index1, use_index2>;
 
    Iterator2 second;
 protected:
@@ -203,10 +200,10 @@ public:
    bool at_end() const { return state==0; }
 
    template <typename Other>
-   typename std::enable_if<is_derived_from_any<Other, iterator, const_iterator>::value, bool>::type
+   std::enable_if_t<is_derived_from_any<Other, iterator, const_iterator>::value, bool>
    operator== (const Other& it) const
    {
-      typedef typename is_derived_from_any<Other, iterator, const_iterator>::type other_iterator;
+      using other_iterator = typename is_derived_from_any<Other, iterator, const_iterator>::match;
 
       return at_end() ? it.at_end() :
              static_cast<const first_type&>(*this)==static_cast<const typename other_iterator::first_type&>(it)
@@ -214,7 +211,7 @@ public:
    }
 
    template <typename Other>
-   typename std::enable_if<is_derived_from_any<Other, iterator, const_iterator>::value, bool>::type
+   std::enable_if_t<is_derived_from_any<Other, iterator, const_iterator>::value, bool>
    operator!= (const Other& it) const
    {
       return !operator==(it);
@@ -231,11 +228,9 @@ public:
 
 template <typename Iterator1, typename Iterator2, typename Comparator, typename Controller,
           bool use_index1, bool use_index2, typename Feature>
-struct check_iterator_feature<iterator_zipper<Iterator1, Iterator2, Comparator, Controller, use_index1, use_index2>,
-                              Feature> {
-   static const bool value=check_iterator_feature<Iterator1, Feature>::value &&
-                           check_iterator_feature<Iterator2, Feature>::value;
-};
+struct check_iterator_feature<iterator_zipper<Iterator1, Iterator2, Comparator, Controller, use_index1, use_index2>, Feature>
+   : mlist_and< check_iterator_feature<Iterator1, Feature>,
+                check_iterator_feature<Iterator2, Feature> > {};
 
 template <typename Iterator1, typename Iterator2, typename Comparator, typename Controller,
           bool use_index1, bool use_index2>
@@ -243,30 +238,30 @@ struct has_partial_state< iterator_zipper<Iterator1, Iterator2, Comparator, Cont
 
 template <typename Comparator, typename Controller, bool use_index1=false, bool use_index2=false>
 struct zipping_coupler {
-   template <typename Iterator1, typename Iterator2, typename ExpectedFeatures>
+   template <typename Iterator1, typename Iterator2, typename... ExpectedFeatures>
    struct defs {
-      typedef iterator_zipper<Iterator1, Iterator2, Comparator, Controller, use_index1, use_index2> iterator;
+      using expected_features = typename mlist_wrap<ExpectedFeatures...>::type;
 
-      typedef typename mix_features<ExpectedFeatures,
-                                    typename concat_if<use_index1, indexed, end_sensitive>::type >::type
-         needed_features1;
-      typedef typename mix_features<ExpectedFeatures,
-                                    typename concat_if<use_index2, indexed, end_sensitive>::type >::type
-         needed_features2;
+      using iterator = iterator_zipper<Iterator1, Iterator2, Comparator, Controller, use_index1, use_index2>;
+
+      using needed_features1 = typename mix_features<expected_features,
+                                                     typename mlist_prepend_if<use_index1, indexed, end_sensitive>::type >::type;
+      using needed_features2 = typename mix_features<expected_features,
+                                                     typename mlist_prepend_if<use_index2, indexed, end_sensitive>::type >::type;
    };
 };
 
 template <typename Comparator, typename Controller, bool use_index1, bool use_index2>
 struct reverse_coupler< zipping_coupler<Comparator, Controller, use_index1, use_index2> > {
-   typedef zipping_coupler< Comparator, reverse_zipper<Controller>, use_index1, use_index2> type;
+   using type = zipping_coupler< Comparator, reverse_zipper<Controller>, use_index1, use_index2>;
 };
 
 namespace operations {
 
 template <typename OpRef1, typename OpRef2,
-          bool _equal=identical_minus_const_ref<OpRef1,OpRef2>::value,
-          bool _numeric=(std::numeric_limits<typename deref<OpRef1>::type>::is_specialized &&
-                         std::numeric_limits<typename deref<OpRef2>::type>::is_specialized)>
+          bool are_equal=same_pure_type<OpRef1,OpRef2>::value,
+          bool are_numeric=(std::numeric_limits<typename deref<OpRef1>::type>::is_specialized &&
+                            std::numeric_limits<typename deref<OpRef2>::type>::is_specialized)>
 struct zipper_helper
    : union_reference<OpRef1, OpRef2> {};
 
@@ -302,7 +297,7 @@ struct zipper_index {
 template <typename IteratorPair, typename Operation>
 class binary_transform_eval<IteratorPair, Operation, true>
    : public transform_iterator_base<IteratorPair, Operation>::type {
-   typedef typename transform_iterator_base<IteratorPair, Operation>::type base_t;
+   using base_t = typename transform_iterator_base<IteratorPair, Operation>::type;
 public:
    typedef binary_helper<IteratorPair, Operation> helper;
    typedef typename helper::operation operation;
@@ -347,7 +342,7 @@ public:
 template <typename IteratorPair, typename Operation, typename IndexOperation>
 class binary_transform_eval<IteratorPair, pair<Operation, IndexOperation>, true>
    : public binary_transform_eval<IteratorPair, Operation, true> {
-   typedef binary_transform_eval<IteratorPair, Operation, true> base_t;
+   using base_t = binary_transform_eval<IteratorPair, Operation, true>;
 protected:
    typedef binary_helper<IteratorPair,IndexOperation> ihelper;
    typename ihelper::operation iop;

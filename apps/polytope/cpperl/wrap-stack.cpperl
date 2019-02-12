@@ -1,0 +1,8 @@
+{"app": "polytope", "embed": "stack.cc",
+ "inst": [
+  {"args": ["void", "perl::TryCanned<const Array<int>>", "void"], "func": "stack", "include": ["polymake/Array.h"], "sig": "stack.B.X.o"},
+  {"args": ["void", "perl::Enum<pm::all_selector>", "void"], "func": "stack", "include": ["polymake/Matrix.h"], "sig": "stack.B.X.o"},
+  {"args": ["void", "int", "void"], "func": "stack", "sig": "stack.B.X.o"},
+  {"args": ["void", "perl::Canned<const Set<int>&>", "void"], "func": "stack", "include": ["polymake/Set.h"], "sig": "stack.B.X.o"},
+ null ],
+"version": 3}

@@ -28,7 +28,7 @@ custom $neato;
 CONFIGURE {
    find_program($dot, "dot", { prompt => "the `dot' program from the graphviz package" })
       and
-   ($neato=$dot) =~ s/\bdot$/neato/;
+   $neato= $dot =~ s/\bdot$/neato/r;
 }
 
 use Graphviz;

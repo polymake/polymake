@@ -37,11 +37,11 @@ perl::Object tensor(perl::Object p_in1, perl::Object p_in2)
   
    Matrix<Scalar> V_out(n_points_out, adim_out+1);
 
-   copy_range(entire(product(rows(V1.minor(All,range(1,adim1))), rows(V2.minor(All,range(1,adim2))), operations::tensor())),
-              rows(V_out.minor(All,range(1,adim_out)).top()).begin());
+   copy_range(entire(product(rows(V1.minor(All, range(1, adim1))), rows(V2.minor(All, range(1, adim2))), operations::tensor())),
+              rows(V_out.minor(All, range(1, adim_out))).begin());
    V_out.col(0).fill(1);
 
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Tensor-product of " << p_in1.name() << " and " << p_in2.name() << endl;;
   
    p_out.take("POINTS") << V_out;

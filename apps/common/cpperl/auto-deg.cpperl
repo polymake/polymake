@@ -1,0 +1,10 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Polynomial<QuadraticExtension<Rational>, int>&>"], "func": "deg", "include": ["polymake/Polynomial.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "kind": "meth", "sig": "deg:M"},
+  {"args": ["perl::Canned<const Polynomial<Rational, int>&>"], "func": "deg", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "kind": "meth", "sig": "deg:M"},
+  {"args": ["perl::Canned<const Polynomial<TropicalNumber<Max, Rational>, int>&>"], "func": "deg", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "kind": "meth", "sig": "deg:M"},
+  {"args": ["perl::Canned<const Polynomial<TropicalNumber<Min, Rational>, int>&>"], "func": "deg", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "kind": "meth", "sig": "deg:M"},
+  {"args": ["perl::Canned<const UniPolynomial<Rational, int>&>"], "func": "deg", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "meth", "sig": "deg:M"},
+  {"args": ["perl::Canned<const UniPolynomial<Rational, Integer>&>"], "func": "deg", "include": ["polymake/Integer.h", "polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "meth", "sig": "deg:M"},
+ null ],
+"version": 3}

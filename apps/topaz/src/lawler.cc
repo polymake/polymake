@@ -31,15 +31,15 @@ Array<Set<int>> lawler(const Array<Set<int> > F, const int n_vertices )
    FacetList C=all_subsets_of_1(Vertices-F[0]);
 
    // incrementally insert the facets into the complex (skip the first facet)
-   Entire< Array< Set<int> > >::const_iterator f=entire(F);
+   auto f=entire(F);
    for (++f; !f.at_end(); ++f) {
       Set<int> V = Vertices-*f;    // compute the complement of the current facet
       FacetList Cnew(n_vertices);
       // for every element in C
-      for (Entire<FacetList>::const_iterator cit=entire(C); !cit.at_end(); ++cit) {
+      for (auto cit=entire(C); !cit.at_end(); ++cit) {
 
          // and every vertex in the complement of the facet
-         for (Entire< Set<int> >::const_iterator vit=entire(V); !vit.at_end(); ++vit)
+         for (auto vit=entire(V); !vit.at_end(); ++vit)
             Cnew.replaceMin(*cit + *vit);
       }
       C = Cnew;

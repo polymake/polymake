@@ -28,6 +28,7 @@
 #include "libnormaliz/project_and_lift.cpp"
 #include "libnormaliz/reduction.cpp"
 #include "libnormaliz/cone_dual_mode.cpp"
+#include "libnormaliz/descent.cpp"
 
 #ifdef NMZ_MIC_OFFLOAD
 #pragma offload_attribute (pop)

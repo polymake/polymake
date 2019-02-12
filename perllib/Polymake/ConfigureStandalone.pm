@@ -27,9 +27,10 @@ use vars qw(@conf_vars);
 BEGIN {
    # variables used in the configuration files and ninja rules
 
-   @conf_vars=qw( CC CXX CFLAGS CXXFLAGS ARCHFLAGS CsharedFLAGS CXXOPT CXXDEBUG CXXCOV CXXSANITIZE
+   @conf_vars=qw( CC CXX CCACHE CCWRAPPER
+                  CFLAGS CXXFLAGS ARCHFLAGS CsharedFLAGS CXXOPT CXXDEBUG CXXCOV CXXSANITIZE
                   CflagsSuppressWarnings
-                  GCCversion ICCversion CLANGversion CPPStd AppleClang
+                  GCCversion ICCversion CLANGversion CPPStd XcodeVersion
                   LDFLAGS LDsharedFLAGS LDcallableFLAGS LDsonameFLAGS LIBS
                   LIBXML2_CFLAGS LIBXML2_LIBS ExternalHeaders
                   Arch FinkBase BrewBase BundledExts BuildModes
@@ -331,10 +332,10 @@ sub add_build_modes {
 }
 ##############################################################################
 sub create_build_trees {
-   my ($buildroot, @options)=@_;
+   my ($root, $buildroot, @options)=@_;
 
    # create a dummy target list, it will automatically be regenerated later
-   unless (-f "$buildroot/targets.ninja") {
+   unless (-f "$buildroot/targets.ninja" && (stat _)[9] >= (stat "$root/support/generate_ninja_targets.pl")[9]) {
       open my $targ, ">", "$buildroot/targets.ninja"
         or die "can't create $buildroot/targets.ninja: $!\n";
       print $targ <<'---';
@@ -415,6 +416,7 @@ include \${buildroot}/\${perlxpath}/config.ninja
 include \${root}/support/rules.ninja
 CmodeFLAGS=\${C${mode}FLAGS}
 CexternModeFLAGS=\${Cextern${mode}FLAGS}
+CmodeCACHE=\${C${mode}CACHE}
 LDmodeFLAGS=\${LD${mode}FLAGS}
 
 include \${buildroot}/targets.ninja
@@ -430,31 +432,18 @@ build $filename: phony | $depends \${buildroot}/targets.ninja
 # translate apple xcode to clang versions
 # some of the versions can be found here:
 # https://en.wikipedia.org/wiki/Xcode#Toolchain_versions
-sub clang_ver {
-   my $ver = shift;
-   return $ver unless defined($AppleClang);
-   # earlier versions are too old
-   if (v_cmp($ver,"4.6") < 0) {
-      return "3.1";
-   } elsif (v_cmp($ver,"5.0") < 0) {
-      return "3.2";
-   } elsif (v_cmp($ver,"5.1") < 0) {
-      return "3.3";
-   } elsif (v_cmp($ver,"6.0") < 0) {
-      return "3.4";
-   } elsif (v_cmp($ver,"6.3") < 0) {
-      return "3.5";
-   } elsif (v_cmp($ver,"7.0") < 0) {
-      return "3.6";
-   } elsif (v_cmp($ver,"7.3") < 0) {
-      return "3.7";
-   } elsif (v_cmp($ver,"8.0") < 0) {
-      return "3.8";
-   } elsif (v_cmp($ver,"8.0") >= 0) {
-      return "3.9";
-   } else {
-      die "invalid apple clang version string";
-   }
+sub xcode2clang_version {
+   my $ver = eval "v$XcodeVersion";
+   return "6.0" if $ver ge v10.0;
+   return "5.0" if $ver ge v9.3;
+   return "4.0" if $ver ge v9.0;
+   return "3.9" if $ver ge v8.0;
+   return "3.8" if $ver ge v7.3;
+   return "3.7" if $ver ge v7.0;
+   return "3.6" if $ver ge v6.3;
+   return "3.5" if $ver ge v6.0;
+   return "3.4" if $ver ge v5.1;
+   die "Apple Xcode version is too old, minimal required version is 5.1\n";
 }
 
 1

@@ -38,23 +38,19 @@ void odd_complex(perl::Object p)
 
    bool output = false;
    std::list< Set<int> > odd_complex;
-   for (auto f=entire(HD.nodes_of_rank(HD.rank()-3));
-        !f.at_end(); ++f) {
+   for (const auto f : HD.nodes_of_rank(HD.rank()-3)) {
 
       Set<int> star_facets;
       const Graph<Directed> HDgraph=HD.graph();
-      for (Entire< Graph<Directed>::const_out_adjacent_node_list_ref >::const_iterator n=entire(HD.out_adjacent_nodes(*f));
-           !n.at_end(); ++n) {
-         for (Entire<Graph<Directed>::const_out_adjacent_node_list_ref >::const_iterator nn=entire(HD.out_adjacent_nodes(*n));
-              !nn.at_end(); ++nn)
-            star_facets += *nn;
+      for (const auto n : HD.out_adjacent_nodes(f)) {
+         for (const auto nn : HD.out_adjacent_nodes(n))
+            star_facets += nn;
       }
 
       std::list< Set<int> > Link;
       Set<int> V_of_Link;
-      for (Entire< Set<int> >::iterator s_it=entire(star_facets);
-           !s_it.at_end(); ++s_it) {
-         const Set<int> l = HD.face(*s_it)-HD.face(*f);
+      for (const auto sf : star_facets) {
+         const Set<int> l = HD.face(sf)-HD.face(f);
          Link.push_back(l);
          V_of_Link += l;
       }
@@ -62,18 +58,16 @@ void odd_complex(perl::Object p)
       // create hash map for the vertices of Link
       hash_map<int, int> vertex_map(V_of_Link.size());
       int count=0;
-      for (Entire< Set<int> >::iterator s_it=entire(V_of_Link);
-           !s_it.at_end(); ++s_it, ++count)
+      for (auto s_it=entire(V_of_Link); !s_it.at_end(); ++s_it, ++count)
          vertex_map[*s_it] = count;
 
       Graph<> G(V_of_Link.size());
-      for (Entire< std::list< Set<int> > >::iterator l_it=entire(Link);
-           !l_it.at_end(); ++l_it)
-         G.edge( vertex_map[ l_it->front() ], vertex_map[ l_it->back() ] );
+      for (const auto& link : Link)
+         G.edge( vertex_map[ link.front() ], vertex_map[ link.back() ] );
 
       if (graph::bipartite_sign(G)<0) {
          output = true;
-         odd_complex.push_back(HD.face(*f));
+         odd_complex.push_back(HD.face(f));
       }
    }
 

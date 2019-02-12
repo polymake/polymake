@@ -34,7 +34,7 @@ bool delete_face(FacetList &C, const Set<int>& face)
          // insert the parts of the boundary not containing the face
          const Set<int> deleted = deletedFaces.front();  deletedFaces.pop_front();
          const bool exact_match = deleted.size() == face.size();
-         for (Subsets_less_1<const Set<int>&>::const_iterator boundaryIt=all_subsets_less_1(deleted).begin();  !boundaryIt.at_end(); ++boundaryIt) {
+         for (auto boundaryIt=entire(all_subsets_less_1(deleted));  !boundaryIt.at_end(); ++boundaryIt) {
             if (!exact_match && (face - *boundaryIt).empty()) {
                // face is a proper subset of the boundary face too
                deletedFaces.push_back(*boundaryIt);

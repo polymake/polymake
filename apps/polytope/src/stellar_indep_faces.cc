@@ -45,8 +45,7 @@ perl::Object stellar_indep_faces(perl::Object p_in, const Array< Set<int> >& in_
    const Graph<> DG=p_in.give("DUAL_GRAPH.ADJACENCY");
 
    PowerSet<int> spec_faces;
-   for (Entire< Array< Set<int> > >::const_iterator it=entire(in_faces);
-        !it.at_end(); ++it)
+   for (auto it=entire(in_faces); !it.at_end(); ++it)
       spec_faces += *it;
 
    const int dim = HD.rank()-1;
@@ -57,9 +56,8 @@ perl::Object stellar_indep_faces(perl::Object p_in, const Array< Set<int> >& in_
 
    // iterate over dimensions dim-1..0 and over all faces of each dimension
    for (int d=dim-1; d>=0; --d) {
-      for (auto it=entire(HD.nodes_of_rank(d+1));
-           !it.at_end(); ++it) {
-         const Set<int>& face = HD.face(*it);
+      for (const auto face_index : HD.nodes_of_rank(d+1)) {
+         const Set<int>& face = HD.face(face_index);
          if (spec_faces.contains(face)) {
 
             // produce all relevant inequalities = each neighbour (in the dual graph) of the nodes
@@ -68,17 +66,15 @@ perl::Object stellar_indep_faces(perl::Object p_in, const Array< Set<int> >& in_
             Scalar t_max(2);
             
             // compute star(face)
-            Entire< Set<int> >::const_iterator s_it=entire(face);
+            auto s_it=entire(face);
             Set<int> star_facets = VIF.col(*s_it);  ++s_it;
             for ( ; !s_it.at_end(); ++s_it)
                star_facets *= VIF.col(*s_it);
 
-            for (Entire< Set<int> >::iterator st_it=entire(star_facets);
-                 !st_it.at_end(); ++st_it) {
+            for (auto st_it=entire(star_facets); !st_it.at_end(); ++st_it) {
                const Set<int> neighbors = DG.adjacent_nodes(*st_it) - star_facets;
 
-               for (Entire< Set<int> >::const_iterator n_it=entire(neighbors);
-                    !n_it.at_end(); ++n_it) {
+               for (auto n_it=entire(neighbors); !n_it.at_end(); ++n_it) {
                   const int v= (VIF[*st_it] * VIF[*n_it]).front();
                   const Vector<Scalar> inequ = bisector(F[*st_it], F[*n_it], V[v]);
 
@@ -113,7 +109,7 @@ perl::Object stellar_indep_faces(perl::Object p_in, const Array< Set<int> >& in_
 
    V.resize( v_count,V.cols() );
 
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Stellar subdivision of " << p_in.name() << endl;
    p_out.take("VERTICES") << V;
    p_out.take("LINEALITY_SPACE") << lineality_space;

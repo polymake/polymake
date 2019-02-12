@@ -60,46 +60,46 @@ void all_cones_symmetry(perl::Object f, int dim)
    Array<std::vector<Set<int>>> cone_orbits(dim); // all cones up to symmetry
    Array<std::vector<int>> cone_orbit_sizes(dim); // the sizes of all arbits of cones
 
-   int j=0;
+   int c_i = 0;
    for (const auto& cone : cones) {
       const int n_rays=cone.size();
       const Array<int> cone_A(n_rays, entire(cone));
       perl::Object c("Cone");
       c.take("RAYS") << rays.minor(cone, All);
       c.take("LINEALITY_SPACE") << lin_space;
-      const Lattice<BasicDecoration, Sequential>& hd = c.give("HASSE_DIAGRAM");
+      const Lattice<BasicDecoration, Sequential> hd = c.give("HASSE_DIAGRAM");
       const int c_dim(hd.rank());
       if (!dim_given) {
          res_dim = std::max(res_dim, c_dim);
-         max_cones_dims[j++] = c_dim + lin_dim;
+         max_cones_dims[c_i++] = c_dim + lin_dim;
       }
-      for (int l=0; l<c_dim; ++l) {
-         for(auto f=entire(hd.nodes_of_rank(l+1)); !f.at_end(); ++f) {
-            const Set<int> face_old = hd.face(*f);
+      for (int l = 0; l < c_dim; ++l) {
+         for (const auto fn : hd.nodes_of_rank(l+1)) {
+            const Set<int>& face_old = hd.face(fn);
 
             Set<int> face;
             for (const auto& k : face_old) {
                face.insert(cone_A[k]);
             }
 
-            if (all_cones[l].find(face)==all_cones[l].end()) {
-               //if the face does not exist so far, we create its whole orbit
-                int orbit_size=0;
-                for (int j=0; j<n_syms; ++j) {
-                   Set<int> new_cone;
-                   for (const auto& k : face) {
-                      new_cone.insert(symmetry[k][j]);
-                   }
-                   if (all_cones[l].insert(new_cone).second) {
-                      ++orbit_size;
-                      ++dims[l];
-                   }
-                }
-                cone_orbits[l].push_back(face);
-                cone_orbit_sizes[l].push_back(orbit_size);
-                ++orbit_dims[l];
-             }
-          }
+            if (all_cones[l].find(face) == all_cones[l].end()) {
+               // if the face does not exist so far, we create its whole orbit
+               int orbit_size = 0;
+               for (int j = 0; j < n_syms; ++j) {
+                  Set<int> new_cone;
+                  for (const auto& k : face) {
+                     new_cone.insert(symmetry[k][j]);
+                  }
+                  if (all_cones[l].insert(new_cone).second) {
+                     ++orbit_size;
+                     ++dims[l];
+                  }
+               }
+               cone_orbits[l].push_back(face);
+               cone_orbit_sizes[l].push_back(orbit_size);
+               ++orbit_dims[l];
+            }
+         }
       }
    }
 

@@ -62,10 +62,10 @@ perl::Object clip_graph(const Graph<>& G, const Matrix<Rational>& V, const Matri
 
    for (int i=0; i<n; ++i)
       if (!valid.contains(i)) {
-         for (Entire<Graph<>::out_edge_list>::const_iterator e=G.out_edges(i).begin(); !e.at_end(); ++e) {
+         for (auto e=G.out_edges(i).begin(); !e.at_end(); ++e) {
             const int j=e.to_node();
             if (valid.contains(j)) {
-               Entire< Rows< Matrix<Rational> > >::const_iterator ineq_it=entire(rows(BB));
+               auto ineq_it=entire(rows(BB));
                while (!ineq_it.at_end() && (*ineq_it)*V[i]>=0) ++ineq_it;
                // there must be at least one invalid inequality for V[i]
                Rational mu=mu_intersect(V[i],V[j],*ineq_it);

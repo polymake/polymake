@@ -45,7 +45,7 @@ splits_in_subdivision(const Matrix<Rational>& verts, const Faces& subdivision, c
          }
       }
       bool cut=false;
-      for (typename Entire<Faces>::const_iterator k=entire(subdivision); !k.at_end();  ++k) {
+      for (auto k=entire(subdivision); !k.at_end();  ++k) {
          if (!((*k)*left).empty() && !((*k)*right).empty()) {
             cut=true;
             break;

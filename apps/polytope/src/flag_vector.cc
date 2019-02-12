@@ -37,31 +37,31 @@ Vector<Integer>::iterator calcEntry(const graph::Lattice<graph::lattice::BasicDe
 {
    // INVARIANT for G here: layer k is connected to some upper layer, all layers below k have no edges at all
    Integer Entry=0;
-   for (auto k_node=entire(F.nodes_of_rank(k+1)); !k_node.at_end(); ++k_node)
-      Entry += (Inc[*k_node] = accumulate(select(Inc, G.out_adjacent_nodes(*k_node)), operations::add()));
+   for (const auto k_node : F.nodes_of_rank(k+1))
+      Entry += (Inc[k_node] = accumulate(select(Inc, G.out_adjacent_nodes(k_node)), operations::add()));
 
    int i=k-2;
    if (i>=0) {
       // connect layer k-2 with layer k
-      for (auto i_node=entire(F.nodes_of_rank(i+1)); !i_node.at_end(); ++i_node)
+      for (const auto i_node : F.nodes_of_rank(i+1))
          // iterate over the adjacent nodes in the layer between (==k-1)
-         for (PartialLattice::out_adjacent_node_list::const_iterator btw_node=F.out_adjacent_nodes(*i_node).begin(); !btw_node.at_end(); ++btw_node)
-            G.out_adjacent_nodes(*i_node) += F.out_adjacent_nodes(*btw_node);
+         for (const auto btw_node : F.out_adjacent_nodes(i_node))
+            G.out_adjacent_nodes(i_node) += F.out_adjacent_nodes(btw_node);
 
       for (;;) {
-         fl=calcEntry(F,G,Inc,i,fl);
+         fl=calcEntry(F, G, Inc, i, fl);
          if (i==0) break;
          // move the edges from layer i to layer i-1
-         for (auto i_node=entire(F.nodes_of_rank(i+1)); !i_node.at_end(); ++i_node) {
-            for (PartialLattice::in_adjacent_node_list::const_iterator down_node=F.in_adjacent_nodes(*i_node).begin(); !down_node.at_end(); ++down_node)
-               G.out_adjacent_nodes(*down_node) += G.out_adjacent_nodes(*i_node);
-            G.out_edges(*i_node).clear();
+         for (const auto i_node : F.nodes_of_rank(i+1)) {
+            for (const auto down_node : F.in_adjacent_nodes(i_node))
+               G.out_adjacent_nodes(down_node) += G.out_adjacent_nodes(i_node);
+            G.out_edges(i_node).clear();
          }
          --i;
       }
       // remove all edges betwen layers 0 and k, thus restoring the entry invariant
-      for (auto k_node=entire(F.nodes_of_rank(k+1)); !k_node.at_end(); ++k_node)
-         G.in_edges(*k_node).clear();
+      for (const auto k_node : F.nodes_of_rank(k+1))
+         G.in_edges(k_node).clear();
    }
    *--fl=Entry;
    return fl;

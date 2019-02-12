@@ -52,14 +52,21 @@ template <typename T>
 class conv<T, T> : public trivial_conv<T> {};
 
 template <typename From, typename To>
-struct explicitly_convertible_to {
-   static const bool value = !is_derived_from<conv<From, To>, nothing>::value;
-};
+using is_explicitly_convertible_to
+   = bool_not<is_derived_from<conv<From, To>, nothing>>;
+
+template <typename From, typename To>
+using is_only_explicitly_convertible_to
+   = bool_constant<is_explicitly_convertible_to<From, To>::value && !std::is_convertible<From, To>::value>;
 
 template <typename Source, typename Target>
 struct can_initialize
    : bool_constant< isomorphic_types<Source, Target>::value &&
-                    ( std::is_convertible<Source, Target>::value || explicitly_convertible_to<Source, Target>::value) > {};
+                    ( std::is_convertible<Source, Target>::value || is_explicitly_convertible_to<Source, Target>::value) > {};
+
+template <typename T>
+struct can_initialize<std::nullptr_t, T*>
+   : std::true_type {};
 
 template <typename Source, typename Target>
 struct can_upgrade

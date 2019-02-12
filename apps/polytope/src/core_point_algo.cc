@@ -77,7 +77,7 @@ perl::ListReturn find_transitive_lp_sol(const Matrix<Rational>& Inequalities)
    } else if(isinf(upper_bound)) {
       max_bounded=false;
    }
-   Vector<Rational> optLPsolution(1|same_element_vector<Rational>(a,dim));
+   Vector<Rational> optLPsolution(1 | same_element_vector(a,dim));
    Rational optLPvalue=upper_bound;
    perl::ListReturn result;
    result << optLPsolution
@@ -241,8 +241,12 @@ UserFunction4perl("# @category Optimization"
                   "# @param Matrix Inequalities the inequalities describing the feasible region"
                   "# @return List (Vector<Rational> optimal solution, Rational optimal value, Bool feasible, Bool max_bounded)"
                   "# @example Consider the LP described by the facets of the 3-cube:"
-                  "# > print find_transitive_lp_sol(cube(3)->FACETS);"
-                  "# | 1 1 1 1311"
+                  "# > @sol=find_transitive_lp_sol(cube(3)->FACETS);"
+                  "# > print $_, \"\\n\" for @sol;"
+                  "# | 1 1 1 1"
+                  "# | 3"
+                  "# | true"
+                  "# | true"
                   "# The optimal solution is [1,1,1,1], its value under c is 3, and the LP is feasible and bounded in direction of c.",
                   &find_transitive_lp_sol, "find_transitive_lp_sol(Matrix)");
 } }

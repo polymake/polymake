@@ -14,7 +14,7 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/perl/Ext.h"
+#include "polymake/perl/glue.h"
 #include <sys/time.h>
 #include <sys/resource.h>
 
@@ -148,6 +148,7 @@ SV* name_of_ret_var(pTHX)
 
 SV* temp_errsv=nullptr;
 SV* true_errsv=nullptr;
+SV* boolean_string_sv[2]={ nullptr, nullptr };
 
 int preserve_errsv(pTHX_ int idx, SV* bufsv, int maxlen)
 {
@@ -161,6 +162,189 @@ int preserve_errsv(pTHX_ int idx, SV* bufsv, int maxlen)
    LEAVE;
    return ret;
 }
+
+bool is_boolean_value(pTHX_ SV* sv)
+{
+   if (sv == &PL_sv_yes || sv == &PL_sv_no)
+      return true;
+
+   constexpr auto boolean_const_flags = SVf_POK | SVf_NOK | SVf_IOK | SVp_POK | SVp_NOK | SVp_IOK;
+   if ((SvFLAGS(sv) & (boolean_const_flags | SVs_GMG | SVs_SMG | SVs_RMG)) == boolean_const_flags &&
+       (SvIVX(sv)==0 || SvIVX(sv)==1) &&
+       (SvCUR(sv)==0 || SvCUR(sv)==1 && SvPVX(sv)[0]=='1'))
+      return true;
+
+   return false;
+}
+
+SV* get_boolean_string(SV* sv)
+{
+   return boolean_string_sv[SvIVX(sv)];
+}
+
+}
+namespace ops {
+using namespace pm::perl::glue;
+
+OP* is_boolean(pTHX)
+{
+   dSP;
+   dTOPss;
+   SV* result = is_boolean_value(aTHX_ sv) ? &PL_sv_yes : &PL_sv_no;
+   SETs(result);
+   RETURN;
+}
+
+OP* is_string(pTHX)
+{
+   dSP;
+   dTOPss;
+   SV* result= (SvFLAGS(sv) & (SVf_IOK | SVf_NOK | SVf_POK | SVf_ROK | SVs_GMG | SVs_RMG)) == SVf_POK ? &PL_sv_yes : &PL_sv_no;
+   SETs(result);
+   RETURN;
+}
+
+OP* is_integer(pTHX)
+{
+   dSP;
+   dTOPss;
+   SV* result = SvIOK(sv) ? &PL_sv_yes : &PL_sv_no;
+   SETs(result);
+   RETURN;
+}
+
+OP* is_float(pTHX)
+{
+   dSP;
+   dTOPss;
+   SV* result = SvNOK(sv) ? &PL_sv_yes : &PL_sv_no;
+   SETs(result);
+   RETURN;
+}
+
+OP* is_numeric(pTHX)
+{
+   dSP;
+   dTOPss;
+   SV* result = (!SvPOK(sv) || SvCUR(sv)>0) && (SvIOK(sv) | SvNOK(sv)) ? &PL_sv_yes : &PL_sv_no;
+   SETs(result);
+   RETURN;
+}
+
+OP* is_object(pTHX)
+{
+   dSP;
+   dTOPss;
+   SV* result = SvROK(sv) && SvOBJECT(SvRV(sv)) ? &PL_sv_yes : &PL_sv_no;
+   SETs(result);
+   RETURN;
+}
+
+OP* is_code(pTHX)
+{
+   dSP;
+   dTOPss;
+   SV* result = SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVCV ? &PL_sv_yes : &PL_sv_no;
+   SETs(result);
+   RETURN;
+}
+
+OP* is_constant_sub(pTHX)
+{
+   dSP;
+   dTOPss;
+   CV* cv = SvROK(sv) ? (CV*)SvRV(sv) : SvTYPE(sv) == SVt_PVGV ? GvCV(sv) : nullptr;
+   SV* result = cv && CvCONST(cv) ? &PL_sv_yes : &PL_sv_no;
+   SETs(result);
+   RETURN;
+}
+
+OP* is_array(pTHX)
+{
+   dSP;
+   dTOPss;
+   SV* result = SvROK(sv) && !SvOBJECT(SvRV(sv)) && SvTYPE(SvRV(sv)) == SVt_PVAV ? &PL_sv_yes : &PL_sv_no;
+   SETs(result);
+   RETURN;
+}
+
+OP* is_hash(pTHX)
+{
+   dSP;
+   dTOPss;
+   SV* result = SvROK(sv) && !SvOBJECT(SvRV(sv)) && SvTYPE(SvRV(sv)) == SVt_PVHV ? &PL_sv_yes : &PL_sv_no;
+   SETs(result);
+   RETURN;
+}
+
+OP* is_like_array(pTHX)
+{
+   dSP;
+   dTOPss;
+   SV* result = &PL_sv_no;
+   if (SvROK(sv)) {
+      SV* obj = SvRV(sv);
+      if (SvOBJECT(obj)) {
+         if (SvRMAGICAL(obj) && SvTYPE(obj) == SVt_PVAV) {
+            if (MAGIC* mg = mg_find(obj, PERL_MAGIC_tied)) {
+               // canned C++ containers and composites both behave as magic arrays in perl machinery,
+               // but composites should not be viewed as arrays in the sense of application logic
+               if (mg->mg_virtual->svt_dup != &canned_dup ||
+                   (as_vtbl<base_vtbl>(mg)->flags & ClassFlags::kind_mask) == ClassFlags::is_container)
+                  result = &PL_sv_yes;
+            }
+         } else if (SvAMAGIC(sv) && gv_fetchmeth(SvSTASH(obj), "(@{}", 4, 0)) {
+            result = &PL_sv_yes;
+         }
+      } else {
+         if (SvTYPE(obj) == SVt_PVAV)
+            result = &PL_sv_yes;
+      }
+   }
+   SETs(result);
+   RETURN;
+}
+
+OP* is_like_hash(pTHX)
+{
+   dSP;
+   dTOPss;
+   SV* result = &PL_sv_no;
+   if (SvROK(sv)) {
+      SV* obj = SvRV(sv);
+      if (SvOBJECT(obj)) {
+         if (SvRMAGICAL(obj) && SvTYPE(obj) == SVt_PVHV) {
+            if (mg_find(obj, PERL_MAGIC_tied))
+               result = &PL_sv_yes;
+         } else if (SvAMAGIC(sv) && gv_fetchmeth(SvSTASH(obj), "(%{}", 4, 0)) {
+            result = &PL_sv_yes;
+         }
+      } else {
+         if (SvTYPE(obj) == SVt_PVHV)
+            result = &PL_sv_yes;
+      }
+   }
+   SETs(result);
+   RETURN;
+}
+
+OP* make_weak(pTHX)
+{
+   dSP;
+   dPOPss;
+   sv_rvweaken(sv);
+   RETURN;
+}
+
+OP* is_defined_and_false(pTHX)
+{
+   dSP;
+   dTOPss;
+   SV* result = SvIOK(sv) && SvIVX(sv)==0 ? &PL_sv_yes : &PL_sv_no;
+   SETs(result);
+   RETURN;
+}
+
 
 } } }
 
@@ -191,25 +375,6 @@ PPCODE:
 }
 
 void
-weak(ref)
-   SV* ref;
-PROTOTYPE: $
-PPCODE:
-{
-   sv_rvweaken(ref);
-}
-
-void
-is_weak(ref)
-   SV* ref;
-PROTOTYPE: $
-PPCODE:
-{
-   SV* result= SvWEAKREF(ref) ? &PL_sv_yes : &PL_sv_no;
-   PUSHs(result);
-}
-
-void
 guarded_weak(ref, owner, clear_cv)
    SV* ref;
    SV* owner;
@@ -218,8 +383,8 @@ PROTOTYPE: $$$
 PPCODE:
 {
    sv_rvweaken(ref);
-   MAGIC* mg=sv_magicext(ref, SvRV(clear_cv), PERL_MAGIC_ext, &clear_weakref_vtbl, Nullch, 0);
-   mg->mg_ptr=(char*)SvRV(owner);
+   MAGIC* mg = sv_magicext(ref, SvRV(clear_cv), PERL_MAGIC_ext, &clear_weakref_vtbl, nullptr, 0);
+   mg->mg_ptr = (char*)SvRV(owner);
 }
 
 void
@@ -243,7 +408,7 @@ PPCODE:
       write_protect_on(aTHX_ x);
       MAGIC* mg;
       if (SvMAGICAL(x) && (mg=get_cpp_magic(x))) {
-         mg->mg_flags |= pm::perl::value_read_only;
+         mg->mg_flags |= uint8_t(pm::perl::ValueFlags::read_only);
       } else if (SvTYPE(x) == SVt_PVAV) {
          I32 l=av_len((AV*)x);
          if (l>=0) {
@@ -285,15 +450,13 @@ is_lvalue(subref)
 PROTOTYPE: $
 CODE:
 {
-   // result: 0: rvalue, 1: magic lvalue (from C++), 2: pure lvalue
-   // this must correspond to the decision logic for maybe-lvalue closures in namespaces.xs
    CV* sub;
    if (!SvROK(subref) || (sub=(CV*)SvRV(subref), SvTYPE(sub) != SVt_PVCV))
       croak_xs_usage(cv, "\\&sub");
    if (CvLVALUE(sub)) {
-      RETVAL= CvISXSUB(sub) || CvROOT(sub)->op_type != OP_LEAVESUBLV ? 1 : 2;
+      RETVAL = CvISXSUB(sub) || CvROOT(sub)->op_type != OP_LEAVESUBLV ? magic_lvalue : pure_lvalue;
    } else {
-      RETVAL=0;
+      RETVAL = no_lvalue;
    }
 }
 OUTPUT:
@@ -399,16 +562,6 @@ PPCODE:
 }
 
 void
-is_string(x)
-   SV* x;
-PROTOTYPE: $
-PPCODE:
-{
-   SV* result= (SvFLAGS(x) & (SVf_IOK|SVf_NOK|SVf_POK|SVf_ROK|SVs_GMG|SVs_RMG)) == SVf_POK ? &PL_sv_yes : &PL_sv_no;
-   PUSHs(result);
-}
-
-void
 mark_as_utf8string(x)
    SV* x;
 PROTOTYPE: $
@@ -436,92 +589,47 @@ PPCODE:
 }
 
 void
-is_integer(x)
+extract_boolean(x)
    SV* x;
 PROTOTYPE: $
 PPCODE:
 {
-   SV* result= SvIOK(x) ? &PL_sv_yes : &PL_sv_no;
-   PUSHs(result);
-}
-
-void
-is_float(x)
-   SV* x;
-PROTOTYPE: $
-PPCODE:
-{
-   SV* result= SvNOK(x) ? &PL_sv_yes : &PL_sv_no;
-   PUSHs(result);
-}
-
-void
-is_numeric(x)
-   SV* x;
-PROTOTYPE: $
-PPCODE:
-{
-   SV* result= (!SvPOK(x) || SvCUR(x)>0) && (SvIOK(x) | SvNOK(x)) ? &PL_sv_yes : &PL_sv_no;
-   PUSHs(result);
-}
-
-void
-is_boolean(x)
-   SV* x;
-PROTOTYPE: $
-PPCODE:
-{
-   SV* result= x==&PL_sv_yes || x==&PL_sv_no || (SvIOK(x) && (SvIVX(x)==1 || SvIVX(x)==0)) ? &PL_sv_yes : &PL_sv_no;
-   PUSHs(result);
-}
-
-void
-is_acceptable_as_boolean(x)
-   SV* x;
-PROTOTYPE: $
-PPCODE:
-{
-   SV* result=&PL_sv_no;
-   if (x==&PL_sv_yes || x==&PL_sv_no || (SvIOK(x) && (SvIVX(x)==1 || SvIVX(x)==0))) {
-      result=&PL_sv_yes;
-   } else if (SvAMAGIC(x)) {
-      HV* stash=SvSTASH(SvRV(x));
-      if (gv_fetchmeth(stash, "(bool", 5, 0)) result=&PL_sv_yes;
+   SV* result=nullptr;
+   if (is_boolean_value(aTHX_ x)) {
+      result=x;
+   } else if (SvIOK(x)) {
+      if (SvIVX(x)==1)
+         result=&PL_sv_yes;
+      else if (SvIVX(x)==0)
+         result=&PL_sv_no;
+      else
+         Perl_croak(aTHX_ "parse error: invalid boolean value %d, allowed values are 0 and 1", (int)SvIVX(x));
+   } else if (SvPOK(x)) {
+      STRLEN l;
+      char* s=SvPV(x, l);
+      // tolerate trailing spaces
+      while (l > 1 && isSPACE(s[l-1])) --l;
+      switch (l) {
+      case 1:
+         if (*s=='1')
+            result=&PL_sv_yes;
+         else if (*s=='0')
+            result=&PL_sv_no;
+         break;
+      case 4:
+         if (!strncmp(s, "true", 4))
+            result=&PL_sv_yes;
+         break;
+      case 5:
+         if (!strncmp(s, "false", 5))
+            result=&PL_sv_no;
+         break;
+      }
+      if (!result)
+         Perl_croak(aTHX_ "parse error: invalid boolean value '%.*s', allowed values are 0, 1, 'false', 'true'", (int)l, s);
    }
    PUSHs(result);
 }
-
-void
-is_boolean_true(x)
-   SV* x;
-PROTOTYPE: $
-PPCODE:
-{
-   SV* result= x==&PL_sv_yes || (SvIOK(x) && SvIVX(x)==1) ? &PL_sv_yes : &PL_sv_no;
-   PUSHs(result);
-}
-
-void
-is_boolean_false(x)
-   SV* x;
-PROTOTYPE: $
-PPCODE:
-{
-   SV* result= x==&PL_sv_no || (SvIOK(x) && SvIVX(x)==0) ? &PL_sv_yes : &PL_sv_no;
-   PUSHs(result);
-}
-
-void
-true()
-PROTOTYPE:
-PPCODE:
-   XSRETURN_YES;
-
-void
-false()
-PROTOTYPE:
-PPCODE:
-   XSRETURN_NO;
 
 void
 extract_integer(str)
@@ -532,7 +640,7 @@ PPCODE:
    dTARGET;
    STRLEN l;
    char* start=SvPV(str, l);
-   char* end=Nullch;
+   char* end=nullptr;
    long val=strtol(start, &end, 10);
    for (; end < start+l; ++end)
       if (!isSPACE(*end))
@@ -553,7 +661,7 @@ PPCODE:
    NV val=0;
    char* end=my_atof2(start, &val);
 #else
-   char* end=Nullch;
+   char* end=nullptr;
    NV val=strtod(start, &end);
 #endif
    for (; end < start+l; ++end)
@@ -563,12 +671,14 @@ PPCODE:
 }
 
 void
-is_object(x)
+to_boolean_string(x)
    SV* x;
 PROTOTYPE: $
 PPCODE:
 {
-   SV* result= SvROK(x) && SvOBJECT(SvRV(x)) ? &PL_sv_yes : &PL_sv_no;
+   // be paranoid
+   SV* bool_sv=is_boolean_value(aTHX_ x) ? x : SvTRUE(x) ? &PL_sv_yes : &PL_sv_no;
+   SV* result=get_boolean_string(bool_sv);
    PUSHs(result);
 }
 
@@ -582,13 +692,13 @@ PPCODE:
    if (SvROK(src)) {
       src=SvRV(src);
       if (SvOBJECT(src))
-         stash=SvSTASH(src);
+         stash = SvSTASH(src);
       else
          goto DONE;
    } else {
       STRLEN l;
-      const char* p=SvPV(src,l);
-      if (!(stash=gv_stashpvn(p, l, FALSE)))
+      const char* p=SvPV(src, l);
+      if (!(stash = gv_stashpvn(p, l, FALSE)))
          Perl_croak(aTHX_ "unknown package %.*s",(int)l,p);
    }
    sv_bless(obj, stash);
@@ -597,71 +707,17 @@ PPCODE:
 }
 
 void
-get_symtab(pkg_name)
+get_symtab(pkg_name, ...)
    SV* pkg_name;
-   PROTOTYPE: $
 PPCODE:
 {
+   const bool create_new = items == 2 && SvTRUE(ST(1));
    // do not cache stash pointers in lexical variables and string literals
-   const bool cache_result=!(SvFLAGS(pkg_name) & (SVf_READONLY | SVs_PADTMP | SVs_PADMY));
-   if (HV* stash= cache_result ? get_cached_stash(aTHX_ pkg_name) : gv_stashsv(pkg_name, FALSE))
+   const bool cache_result = !create_new && !(SvFLAGS(pkg_name) & (SVf_READONLY | SVs_PADTMP | SVs_PADMY));
+   if (HV* stash= cache_result ? get_cached_stash(aTHX_ pkg_name) : gv_stashsv(pkg_name, create_new))
       PUSHs(sv_2mortal(newRV((SV*)stash)));
    else
       Perl_croak(aTHX_ "unknown package %.*s", (int)SvCUR(pkg_name), SvPVX(pkg_name));
-}
-
-void
-is_ARRAY(x)
-   SV* x;
-PROTOTYPE: $
-PPCODE:
-{
-   SV* result= SvROK(x) && SvTYPE(SvRV(x)) == SVt_PVAV ? &PL_sv_yes : &PL_sv_no;
-   PUSHs(result);
-}
-
-void
-is_array(x)
-   SV* x;
-PROTOTYPE: $
-PPCODE:
-{
-   SV* result=&PL_sv_no;
-   if (SvROK(x)) {
-      SV* obj=SvRV(x);
-      if (SvOBJECT(obj)) {
-         if (SvAMAGIC(x) && gv_fetchmeth(SvSTASH(obj),"(@{}",4,0)) {
-            result=&PL_sv_yes;
-         } else if (SvGMAGICAL(obj)) {
-            if (mg_find(obj, PERL_MAGIC_tied)) result=&PL_sv_yes;
-         } else {
-            if (!gv_fetchmeth(SvSTASH(obj),".constructor",12,0)) result=&PL_sv_yes;
-         }
-      } else {
-         if (SvTYPE(obj)==SVt_PVAV) result=&PL_sv_yes;
-      }
-   }
-   PUSHs(result);
-}
-
-void
-is_hash(x)
-   SV* x;
-PROTOTYPE: $
-PPCODE:
-{
-   SV* result= SvROK(x) && SvTYPE(SvRV(x)) == SVt_PVHV ? &PL_sv_yes : &PL_sv_no;
-   PUSHs(result);
-}
-
-void
-is_code(x)
-   SV* x;
-PROTOTYPE: $
-PPCODE:
-{
-   SV* result= SvROK(x) && SvTYPE(SvRV(x))== SVt_PVCV ? &PL_sv_yes : &PL_sv_no;
-   PUSHs(result);
 }
 
 void
@@ -691,9 +747,8 @@ unimport_function(gv)
 PROTOTYPE: $
 CODE:
 {
-   CV* cv=GvCV(gv);
-   if (cv) {
-      SvREFCNT_dec(cv);
+   if (CV* funcv=GvCV(gv)) {
+      SvREFCNT_dec(funcv);
       GvCV_set(gv, Nullcv);
    }
    GvIMPORTED_CV_off(gv);
@@ -819,24 +874,6 @@ if (!SvROK(sub) ||
 
 
 void
-set_sub_name(sub, name_sv)
-   SV* sub;
-   SV* name_sv;
-PPCODE:
-if (SvROK(name_sv) || !SvROK(sub) || (sub=SvRV(sub), SvTYPE(sub) != SVt_PVCV)) {
-   croak_xs_usage(cv, "\\&sub, \"name\"");
-} else {
-   STRLEN namelen;
-   const char* name=SvPV(name_sv,namelen);
-   GV* glob=(GV*)*hv_fetch(GvSTASH(CvGV(sub)), name, namelen, TRUE);
-   if (SvTYPE(glob) != SVt_PVGV)
-      gv_init_pvn(glob, GvSTASH(CvGV(sub)), name, namelen, GV_ADDMULTI);
-   CvANON_off(sub);
-   CvGV_set((CV*)sub, glob);
-}
-
-
-void
 can(obj, method, ...)
    SV* obj;
    SV* method;
@@ -904,26 +941,6 @@ PPCODE:
    SV** array1=AvARRAY(av1);
    AvARRAY(av1)=AvARRAY(av2);
    AvARRAY(av2)=array1;
-}
-
-void
-swap_array_elems(avref, ix1, ix2)
-   SV* avref;
-   IV ix1;
-   IV ix2;
-PPCODE:
-{
-   AV* av;
-   if (!SvROK(avref) || (av=(AV*)SvRV(avref), SvTYPE(av) != SVt_PVAV))
-      croak_xs_usage(cv, "\\@array, index1, index2");
-   I32 s=AvFILL(av)+1;
-   if (ix1<0) ix1+=s;
-   if (ix2<0) ix2+=s;
-   if (ix1==ix2 || ix1<0 || ix2<0 || ix1>=s || ix2>=s)
-      croak("swap_array_elems: invalid indices");
-   SV* tmp=AvARRAY(av)[ix1];
-   AvARRAY(av)[ix1]=AvARRAY(av)[ix2];
-   AvARRAY(av)[ix2]=tmp;
 }
 
 void
@@ -1075,8 +1092,8 @@ PPCODE:
 #if PerlVersion >= 5220
                      case OP_MULTIDEREF:
                         {
-                           UNOP_AUX_item* items = cUNOP_AUXo->op_aux;
-                           UV actions = items->uv;
+                           const UNOP_AUX_item* aux_items = cUNOP_AUXo->op_aux;
+                           const UV actions = aux_items->uv;
                            if (actions == (MDEREF_HV_gvhv_helem | MDEREF_INDEX_const | MDEREF_FLAG_last)) {
                               SV *key_sv;
                               XPUSHs(compose_varname(aTHX_ o, 0, &key_sv, '%', cx, cx_bottom));
@@ -1146,7 +1163,7 @@ PPCODE:
    if (items <= 3 && SvROK(avref) && (av=SvRV(avref), SvTYPE(av)==SVt_PVAV)) {
       MAGIC* mg=array_flags_magic(aTHX_ av);
       if (!mg)
-         mg=sv_magicext(av, Nullsv, PERL_MAGIC_ext, &array_flags_vtbl, Nullch, 0);
+         mg=sv_magicext(av, Nullsv, PERL_MAGIC_ext, &array_flags_vtbl, nullptr, 0);
       mg->mg_len=flags;
       if (items==3)
          mg->mg_obj=ST(2);
@@ -1301,21 +1318,25 @@ PPCODE:
 
 
 BOOT:
-if (PL_DBgv) {
-   CvNODEBUG_on(get_cv("Polymake::select_method", FALSE));
-   CvNODEBUG_on(get_cv("Polymake::disable_debugging", FALSE));
-   CvNODEBUG_on(get_cv("Polymake::enable_debugging", FALSE));
-   CvNODEBUG_on(get_cv("Polymake::weak", FALSE));
-   CvNODEBUG_on(get_cv("Polymake::capturing_group_boundaries", FALSE));
-   CvNODEBUG_on(get_cv("Polymake::Core::name_of_arg_var", FALSE));
-   CvNODEBUG_on(get_cv("Polymake::Core::name_of_ret_var", FALSE));
-   CvNODEBUG_on(get_cv("Polymake::Core::name_of_custom_var", FALSE));
-   CvNODEBUG_on(get_cv("Polymake::Core::rescue_static_code", FALSE));
+{
+   if (PL_DBgv) {
+      CvNODEBUG_on(get_cv("Polymake::select_method", FALSE));
+      CvNODEBUG_on(get_cv("Polymake::disable_debugging", FALSE));
+      CvNODEBUG_on(get_cv("Polymake::enable_debugging", FALSE));
+      CvNODEBUG_on(get_cv("Polymake::capturing_group_boundaries", FALSE));
+      CvNODEBUG_on(get_cv("Polymake::Core::name_of_arg_var", FALSE));
+      CvNODEBUG_on(get_cv("Polymake::Core::name_of_ret_var", FALSE));
+      CvNODEBUG_on(get_cv("Polymake::Core::name_of_custom_var", FALSE));
+      CvNODEBUG_on(get_cv("Polymake::Core::rescue_static_code", FALSE));
+   }
+   CvFLAGS(get_cv("Polymake::readonly", FALSE)) |= CVf_NODEBUG | CVf_LVALUE;
+   CvFLAGS(get_cv("Polymake::readonly_deep", FALSE)) |= CVf_NODEBUG | CVf_LVALUE;
+   CvFLAGS(get_cv("Polymake::readwrite", FALSE)) |= CVf_NODEBUG | CVf_LVALUE;
+   CvFLAGS(get_cv("Polymake::stop_here_gdb", FALSE)) |= CVf_NODEBUG | CVf_LVALUE;
+
+   boolean_string_sv[0]=newSVpvn_share("false",5,0);
+   boolean_string_sv[1]=newSVpvn_share("true",4,0);
 }
-CvFLAGS(get_cv("Polymake::readonly", FALSE)) |= CVf_NODEBUG | CVf_LVALUE;
-CvFLAGS(get_cv("Polymake::readonly_deep", FALSE)) |= CVf_NODEBUG | CVf_LVALUE;
-CvFLAGS(get_cv("Polymake::readwrite", FALSE)) |= CVf_NODEBUG | CVf_LVALUE;
-CvFLAGS(get_cv("Polymake::stop_here_gdb", FALSE)) |= CVf_NODEBUG | CVf_LVALUE;
 
 =pod
 // Local Variables:

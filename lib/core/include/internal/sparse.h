@@ -17,10 +17,9 @@
 #ifndef POLYMAKE_INTERNAL_SPARSE_H
 #define POLYMAKE_INTERNAL_SPARSE_H
 
-#include "polymake/Series.h"
-#include "polymake/internal/comparators_ops.h"
-#include "polymake/SelectedSubset.h"
+#include "polymake/internal/iterator_filters.h"
 #include "polymake/internal/iterator_zipper.h"
+#include "polymake/internal/SeriesRaw.h"
 
 namespace pm {
 
@@ -32,7 +31,7 @@ template <typename Container>
 class construct_sparse_compatible
    : public redirected_container< construct_sparse_compatible<Container>,
                                   mlist< HiddenTag< Container >,
-                                         ExpectedFeaturesTag< cons<end_sensitive, indexed> > > > {
+                                         ExpectedFeaturesTag< mlist<end_sensitive, indexed> > > > {
    typedef redirected_container<construct_sparse_compatible> base_t;
 public:
    int dim() const { return this->size(); }
@@ -56,7 +55,7 @@ template <typename Container>
 struct redirect_object_traits< construct_sparse_compatible<Container> >
    : object_traits<Container> {
    typedef Container masquerade_for;
-   static const bool is_temporary=false;
+   static constexpr bool is_temporary=false;
 };
 
 template <typename Container>
@@ -65,10 +64,9 @@ struct check_container_feature<construct_sparse_compatible<Container>, sparse_co
 struct pure_sparse_constructor {
    template <typename Iterator, typename Predicate, typename ExpectedFeatures>
    struct defs : public unary_predicate_selector_constructor::defs<Iterator,Predicate,ExpectedFeatures> {
-      typedef typename mix_features<typename unary_predicate_selector_constructor::template
-                                       defs<Iterator,Predicate,ExpectedFeatures>::needed_features,
-                                    sparse_compatible>::type
-         needed_features;
+      using needed_features = typename mix_features<typename unary_predicate_selector_constructor::template
+                                                    defs<Iterator,Predicate,ExpectedFeatures>::needed_features,
+                                                    sparse_compatible>::type;
    };
 };
 
@@ -110,7 +108,7 @@ template <typename Container>
 struct redirect_object_traits< construct_pure_sparse<Container> >
    : object_traits<Container> {
    typedef Container masquerade_for;
-   static const bool is_temporary=false;
+   static constexpr bool is_temporary=false;
 };
 
 template <typename Container, int kind>
@@ -149,8 +147,7 @@ struct construct_sparse_iterator<Iterator, Target,
                                  typename std::enable_if<(check_iterator_feature<Iterator, indexed>::value &&
                                                           check_iterator_feature<Iterator, end_sensitive>::value &&
                                                           isomorphic_types<typename iterator_traits<Iterator>::value_type, Target>::value &&
-                                                          !std::is_convertible<typename iterator_traits<Iterator>::value_type, Target>::value &&
-                                                          explicitly_convertible_to<typename iterator_traits<Iterator>::value_type, Target>::value)>::type>
+                                                          is_only_explicitly_convertible_to<typename iterator_traits<Iterator>::value_type, Target>::value)>::type>
 {
    static const bool enabled=true;
    typedef pure_type_t<Iterator> src_iterator;
@@ -164,8 +161,7 @@ template <typename Iterator, typename Target>
 struct construct_sparse_iterator<Iterator, Target,
                                  typename std::enable_if<(check_iterator_feature<Iterator, end_sensitive>::value &&
                                                           isomorphic_types<typename iterator_traits<Iterator>::value_type, pair<int, Target> >::value &&
-                                                          !std::is_convertible<typename iterator_traits<Iterator>::value_type::second_type, Target>::value &&
-                                                          explicitly_convertible_to<typename iterator_traits<Iterator>::value_type::second_type, Target>::value)>::type>
+                                                          is_only_explicitly_convertible_to<typename iterator_traits<Iterator>::value_type::second_type, Target>::value)>::type>
 {
    static const bool enabled=true;
    typedef pure_type_t<Iterator> src_iterator;
@@ -180,15 +176,15 @@ struct construct_sparse_iterator<Iterator, Target,
                                                           isomorphic_types<typename iterator_traits<Iterator>::value_type, Target>::value &&
                                                           std::is_convertible<typename iterator_traits<Iterator>::value_type, Target>::value)>::type>
 {
-   static const bool enabled=true;
-   typedef pure_type_t<Iterator> src_iterator;
-   typedef ensure_features<sequence, sparse_compatible>::const_iterator indexer;
-   typedef iterator_pair<src_iterator, indexer, mlist<FeaturesViaSecondTag<indexed>>> it_pair;
-   typedef unary_predicate_selector<it_pair, BuildUnary<operations::non_zero>> iterator;
+   static constexpr bool enabled=true;
+   using src_iterator = pure_type_t<Iterator>;
+   using indexer = ensure_features<sequence_raw, sparse_compatible>::const_iterator;
+   using it_pair = iterator_pair<src_iterator, indexer, mlist<FeaturesViaSecondTag<indexed>>>;
+   using iterator = unary_predicate_selector<it_pair, BuildUnary<operations::non_zero>>;
 
    iterator operator() (const Iterator& src, int dim) const
    {
-      return it_pair(src, ensure(sequence(0, dim), (sparse_compatible*)0).begin());
+      return it_pair(src, ensure(sequence_raw(0, dim), sparse_compatible()).begin());
    }
 };
 
@@ -196,20 +192,19 @@ template <typename Iterator, typename Target>
 struct construct_sparse_iterator<Iterator, Target,
                                  typename std::enable_if<(!check_iterator_feature<Iterator, indexed>::value &&
                                                           isomorphic_types<typename iterator_traits<Iterator>::value_type, Target>::value &&
-                                                          !std::is_convertible<typename iterator_traits<Iterator>::value_type, Target>::value &&
-                                                          explicitly_convertible_to<typename iterator_traits<Iterator>::value_type, Target>::value)>::type>
+                                                          is_only_explicitly_convertible_to<typename iterator_traits<Iterator>::value_type, Target>::value)>::type>
 {
-   static const bool enabled=true;
-   typedef pure_type_t<Iterator> src_iterator;
-   typedef ensure_features<sequence, sparse_compatible>::const_iterator indexer;
-   typedef iterator_pair<src_iterator, indexer, mlist<FeaturesViaSecondTag<indexed>>> it_pair;
-   typedef unary_predicate_selector<it_pair, BuildUnary<operations::non_zero>> filter;
-   typedef conv<typename object_traits<typename iterator_traits<Iterator>::value_type>::persistent_type, Target> converter;
-   typedef unary_transform_iterator<filter, converter> iterator;
+   static constexpr bool enabled=true;
+   using src_iterator = pure_type_t<Iterator>;
+   using indexer = ensure_features<sequence_raw, sparse_compatible>::const_iterator;
+   using it_pair = iterator_pair<src_iterator, indexer, mlist<FeaturesViaSecondTag<indexed>>>;
+   using filter = unary_predicate_selector<it_pair, BuildUnary<operations::non_zero>>;
+   using converter = conv<typename object_traits<typename iterator_traits<Iterator>::value_type>::persistent_type, Target>;
+   using iterator = unary_transform_iterator<filter, converter>;
 
    iterator operator() (const Iterator& src, int dim) const
    {
-      return filter(it_pair(src, ensure(sequence(0,dim), (sparse_compatible*)0).begin()));
+      return filter(it_pair(src, ensure(sequence_raw(0,dim), sparse_compatible()).begin()));
    }
 };
 
@@ -239,7 +234,7 @@ deref_sparse_iterator(const Iterator& it)
 template <typename Container>
 struct dense_helper {
    typedef mlist< Container1Tag< Container >,
-                  Container2Tag< sequence >,
+                  Container2Tag< sequence_raw >,
                   IteratorCouplerTag< zipping_coupler< operations::cmp, set_union_zipper, true, false> >,
                   HiddenTag< Container > > params;
 };
@@ -249,7 +244,7 @@ class construct_dense_pair
    : public container_pair_impl< construct_dense_pair<Container>, typename dense_helper<Container>::params> {
 public:
    const Container& get_container1() const { return this->hidden(); }
-   sequence get_container2() const { return sequence(0, this->size()); }
+   sequence_raw get_container2() const { return sequence_raw(0, this->size()); }
    int size() const { return this->hidden().dim(); }
 };
 
@@ -261,7 +256,7 @@ class construct_dense
                                                                  typename dense_helper<Container>::params >::type > {
 public:
    const Container& get_container1() const { return this->hidden(); }
-   sequence get_container2() const { return sequence(0, this->size()); }
+   sequence_raw get_container2() const { return sequence_raw(0, this->size()); }
    int size() const { return this->hidden().dim(); }
 };
 
@@ -274,14 +269,14 @@ template <typename Container>
 struct redirect_object_traits< construct_dense<Container> >
    : object_traits<Container> {
    typedef Container masquerade_for;
-   static const bool is_temporary=false;
+   static constexpr bool is_temporary=false;
 };
 
 template <typename Container>
 struct redirect_object_traits< construct_dense_pair<Container> >
    : object_traits<Container> {
    typedef Container masquerade_for;
-   static const bool is_temporary=false;
+   static constexpr bool is_temporary=false;
 };
 
 template <typename Container>
@@ -290,11 +285,12 @@ struct check_container_feature<construct_dense<Container>, dense> : std::true_ty
 template <typename Controller>
 struct sparse_coupler {
    typedef operations::cmp Comparator;
-   template <typename Iterator1, typename Iterator2, typename ExpectedFeatures>
+   template <typename Iterator1, typename Iterator2, typename... ExpectedFeatures>
    struct defs {
-      typedef iterator_zipper<Iterator1, Iterator2, Comparator, Controller, true, true> iterator;
-      typedef typename mix_features<ExpectedFeatures, sparse_compatible>::type needed_features1;
-      typedef needed_features1 needed_features2;
+      using expected_features = typename mlist_wrap<ExpectedFeatures...>::type;
+      using iterator = iterator_zipper<Iterator1, Iterator2, Comparator, Controller, true, true>;
+      using needed_features1 = typename mix_features<expected_features, sparse_compatible>::type;
+      using needed_features2 = needed_features1;
    };
 };
 
@@ -303,185 +299,389 @@ struct reverse_coupler< sparse_coupler<Controller> > {
    typedef sparse_coupler< reverse_zipper<Controller> > type;
 };
 
-template <typename Base, typename E=typename Base::value_type, typename Params=void>
+template <typename Base, typename E=typename Base::value_type, typename... Params>
 class sparse_elem_proxy : public Base {
 protected:
-   static const bool is_skew=list_contains<Params,SkewSymmetric>::value;
-
-   typename std::conditional<is_skew, operations::neg<const E&>, nothing>::type op;
-
-   bool inversed_impl(std::false_type) const { return false; }
-   bool inversed_impl(std::true_type) const { return this->i > this->vec->get_line_index(); }
-   bool inversed() const { return inversed_impl(bool_constant<is_skew>()); }
-
    void store(const E& x, bool, std::false_type) { this->insert(x); }
-   void store(const E& x, bool do_inverse, std::true_type) { if (do_inverse) this->insert(op(x)); else this->insert(x); }
 
-   const E& get_impl(std::false_type) const { return Base::get(); }
-   E get_impl(std::true_type) const { return inversed(std::true_type()) ? op(Base::get()) : Base::get(); }
+   template <typename T>
+   static
+   std::enable_if_t<!is_instance_of<T, pm::sparse_elem_proxy>::value, bool>
+   op_is_non_zero(const T& x)
+   {
+      return !is_zero(x);
+   }
+
+   template <typename Base2, typename E2, typename... Params2>
+   static
+   bool op_is_non_zero(const sparse_elem_proxy<Base2, E2, Params2...>& x)
+   {
+      return x.exists();
+   }
+
+   template <typename T, bool allow_explicit_conversion>
+   static
+   std::enable_if_t<std::is_convertible<pure_type_t<T>, E>::value &&
+                    !is_instance_of<pure_type_t<T>, pm::sparse_elem_proxy>::value, T&&>
+   op_value(T&& x, bool_constant<allow_explicit_conversion>)
+   {
+      return std::forward<T>(x);
+   }
+
+   template <typename T>
+   static
+   std::enable_if_t<is_only_explicitly_convertible_to<pure_type_t<T>, E>::value &&
+                    !is_instance_of<pure_type_t<T>, pm::sparse_elem_proxy>::value, E>
+   op_value(T&& x, std::true_type)
+   {
+      return conv<pure_type_t<T>, E>()(std::forward<T>(x));
+   }
+
+   template <typename Base2, typename E2, typename... Params2, bool allow_explicit_conversion>
+   static
+   std::enable_if_t<std::is_convertible<E2, E>::value, const E2&>
+   op_value(const sparse_elem_proxy<Base2, E2, Params2...>& x, bool_constant<allow_explicit_conversion>)
+   {
+      return x.get();
+   }
+
+   template <typename Base2, typename E2, typename... Params2>
+   static
+   std::enable_if_t<is_only_explicitly_convertible_to<E2, E>::value, E>
+   op_value(const sparse_elem_proxy<Base2, E2, Params2...>& x, std::true_type)
+   {
+      return conv<E2, E>()(x.get());
+   }
+
+   template <typename T, typename=void>
+   struct can_assign : std::false_type {};
+
+   template <typename T>
+   struct can_assign<T, accept_valid_type<decltype(op_value(std::declval<const pure_type_t<T>&>(), std::true_type()))>>
+      : std::true_type {};
+
+   template <typename T>
+   void assign(T&& x)
+   {
+      if (op_is_non_zero(x))
+         this->insert(op_value(std::forward<T>(x), std::true_type()));
+      else
+         this->erase();
+   }
+
+   template <typename Operation, typename T>
+   struct defined_operation
+      : cleanOperations::can<Operation, E, T> {};
+
+   template <typename Operation, typename Base2, typename E2, typename... Params2>
+   struct defined_operation<Operation, sparse_elem_proxy<Base2, E2, Params2...>>
+      : cleanOperations::can<Operation, E, E2> {};
 
 public:
-   typedef Params parameters;
+   sparse_elem_proxy(Base&& base_arg) : Base(std::move(base_arg)) {}
 
-   sparse_elem_proxy(const Base& base_arg) : Base(base_arg) {}
-   typedef typename std::conditional<is_skew, const E, const E&>::type const_reference;
+   template <typename OtherBase>
+   static sparse_elem_proxy<OtherBase, E, Params...> construct(OtherBase&& base_arg)
+   {
+      return sparse_elem_proxy<OtherBase, E, Params...>(std::forward<OtherBase>(base_arg));
+   }
 
-   const_reference get() const { return get_impl(bool_constant<is_skew>()); }
+   using const_reference = const E&;
 
-   operator const_reference () const { return get(); }
+   operator const_reference () const { return this->get(); }
 
    template <typename T,
-             typename=typename std::enable_if<std::is_constructible<T, E>::value && !is_derived_from<E, T>::value>::type>
+             std::enable_if_t<std::is_constructible<T, E>::value && !is_derived_from<E, T>::value>>
    explicit operator T () const
    {
-      return static_cast<T>(get());
+      return static_cast<T>(this->get());
    }
 
-   sparse_elem_proxy& operator= (const sparse_elem_proxy& p2)
+   sparse_elem_proxy& operator= (const sparse_elem_proxy& x)
    {
-      if (p2.exists())
-         store(p2.get_impl(std::false_type()), this->inversed() != p2.inversed(), bool_constant<is_skew>());
+      if (x.exists())
+         this->insert(x.get());
       else
          this->erase();
       return *this;
    }
 
-   template <typename E2>
-   typename std::enable_if<std::is_convertible<E2, E>::value, sparse_elem_proxy>::type&
-   operator= (const E2& x)
+   template <typename T>
+   std::enable_if_t<can_assign<T>::value, sparse_elem_proxy&>
+   operator= (T&& x)
    {
-      if (!is_zero(x))
-         store(x, this->inversed(), bool_constant<is_skew>());
-      else
-         this->erase();
-      return *this;
-   }
-
-   template <typename E2>
-   typename std::enable_if<explicitly_convertible_to<E2, E>::value && !std::is_convertible<E2, E>::value, sparse_elem_proxy>::type&
-   operator= (const E2& x)
-   {
-      if (!is_zero(x))
-         store(conv<E2, E>()(x), this->inversed(), bool_constant<is_skew>());
-      else
-         this->erase();
+      assign(std::forward<T>(x));
       return *this;
    }
 
    sparse_elem_proxy& negate()
    {
-      if (this->exists()) pm::negate(*this->find());
+      if (this->exists())
+         cleanOperations::assign<cleanOperations::neg>()(*this->find());
       return *this;
    }
 
    sparse_elem_proxy& operator++ ()
    {
-      typename Base::iterator_type where=this->find();
-      if (this->inversed()) {
-         if (is_zero(--(*where))) this->erase(where);
-      } else {
-         if (is_zero(++(*where))) this->erase(where);
-      }
+      auto where=this->find();
+      if (is_zero(++(*where))) this->erase(where);
       return *this;
    }
 
    sparse_elem_proxy& operator-- ()
    {
-      typename Base::iterator_type where=this->find();
-      if (this->inversed()) {
+      auto where=this->find();
+      if (is_zero(--(*where))) this->erase(where);
+      return *this;
+   }
+
+   E operator++ (int)
+   {
+      if (this->exists()) {
+         auto where=this->find();
+         const E v=*where;
          if (is_zero(++(*where))) this->erase(where);
-      } else {
+         return v;
+      }
+      this->insert(one_value<E>());
+      return zero_value<E>();
+   }
+
+   E operator-- (int)
+   {
+      if (this->exists()) {
+         auto where=this->find();
+         const E v=*where;
          if (is_zero(--(*where))) this->erase(where);
+         return v;
+      }
+      this->insert(-one_value<E>());
+      return zero_value<E>();
+   }
+
+   template <typename T>
+   std::enable_if_t<defined_operation<cleanOperations::add, T>::value, sparse_elem_proxy&>
+   operator+= (const T& x)
+   {
+      if (op_is_non_zero(x)) {
+         auto where=this->find();
+         if (is_zero(*where += op_value(x, std::false_type()))) this->erase(where);
       }
       return *this;
    }
 
-   const E operator++ (int)
+   template <typename T>
+   std::enable_if_t<defined_operation<cleanOperations::sub, T>::value, sparse_elem_proxy&>
+   operator-= (const T& x)
    {
-      typename Base::iterator_type where=this->find();
-      E v=*where;
-      if (this->inversed()) {
-         if (is_zero(--(*where))) this->erase(where);
+      if (op_is_non_zero(x)) {
+         auto where=this->find();
+         if (is_zero(*where -= op_value(x, std::false_type()))) this->erase(where);
+      }
+      return *this;
+   }
+
+   template <typename T>
+   std::enable_if_t<defined_operation<cleanOperations::mul, T>::value, sparse_elem_proxy&>
+   operator*= (const T& x)
+   {
+      if (op_is_non_zero(x)) {
+         auto where=this->find();
+         if (is_zero(*where *= op_value(x, std::false_type()))) this->erase(where);
       } else {
-         if (is_zero(++(*where))) this->erase(where);
+         this->erase();
       }
-      return v;
+      return *this;
    }
 
-   const E operator-- (int)
+   template <typename T>
+   std::enable_if_t<defined_operation<cleanOperations::div, T>::value, sparse_elem_proxy&>
+   operator/= (const T& x)
    {
-      typename Base::iterator_type where=this->find();
-      E v=*where;
-      if (this->inversed()) {
-         if (is_zero(++(*where))) this->erase(where);
+      if (op_is_non_zero(x)) {
+         auto where=this->find();
+         if (is_zero(*where /= op_value(x, std::false_type()))) this->erase(where);
       } else {
-         if (is_zero(--(*where))) this->erase(where);
+         throw std::domain_error("zero division");
       }
-      return v;
+      return *this;
    }
 
-   template <typename E2>
-   sparse_elem_proxy& operator+= (const E2& x)
+   template <typename T>
+   std::enable_if_t<defined_operation<cleanOperations::mod, T>::value, sparse_elem_proxy&>
+   operator%= (const T& x)
    {
-      typename Base::iterator_type where=this->find();
-      if (this->inversed()) {
-         if (is_zero(*where -= x)) this->erase(where);
+      if (op_is_non_zero(x)) {
+         auto where=this->find();
+         if (is_zero(*where %= op_value(x, std::false_type()))) this->erase(where);
       } else {
-         if (is_zero(*where += x)) this->erase(where);
+         throw std::domain_error("zero division");
       }
       return *this;
    }
 
-   template <typename E2>
-   sparse_elem_proxy& operator-= (const E2& x)
+   template <typename T>
+   std::enable_if_t<defined_operation<cleanOperations::lshift, T>::value, sparse_elem_proxy&>
+   operator<<= (const T& x)
    {
-      typename Base::iterator_type where=this->find();
-      if (this->inversed()) {
-         if (is_zero(*where += x)) this->erase(where);
+      if (op_is_non_zero(x)) {
+         auto where=this->find();
+         if (is_zero(*where <<= op_value(x, std::false_type()))) this->erase(where);
+      }
+      return *this;
+   }
+
+   template <typename T>
+   std::enable_if_t<defined_operation<cleanOperations::rshift, T>::value, sparse_elem_proxy&>
+   operator>>= (const T& x)
+   {
+      if (op_is_non_zero(x)) {
+         auto where=this->find();
+         if (is_zero(*where >>= op_value(x, std::false_type()))) this->erase(where);
+      }
+      return *this;
+   }
+
+private:
+   template <typename E2, template <typename, typename> class Check,
+             bool=is_instance_of<E2, pm::sparse_elem_proxy>::value>
+   struct is_suitable_for : std::false_type {};
+
+   template <typename E2, template <typename, typename> class Check>
+   struct is_suitable_for<E2, Check, false> : Check<E, E2> {};
+
+   template <typename E2, template <typename, typename> class Check>
+   using cmp_result = std::enable_if_t<is_suitable_for<E2, Check>::value, bool>;
+
+public:
+   template <typename E2> friend
+   cmp_result<E2, are_comparable>
+   operator== (const sparse_elem_proxy& l, const E2& r)
+   {
+      return l.exists() ? l.get()==r : is_zero(r);
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_comparable>
+   operator== (const E2& l, const sparse_elem_proxy& r)
+   {
+      return r==l;
+   }
+
+   template <typename Base2, typename E2, typename... Params2>
+   std::enable_if_t<are_comparable<E, E2>::value, bool>
+   operator== (const sparse_elem_proxy<Base2, E2, Params2...>& r) const
+   {
+      return this->exists() ? (r.exists() && this->get()==r.get()) : !r.exists();
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_comparable>
+   operator!= (const sparse_elem_proxy& l, const E2& r)
+   {
+      return !(l==r);
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_comparable>
+   operator!= (const E2& l, const sparse_elem_proxy& r)
+   {
+      return !(r==l);
+   }
+
+   template <typename Base2, typename E2, typename... Params2>
+   std::enable_if_t<are_comparable<E, E2>::value, bool>
+   operator!= (const sparse_elem_proxy<Base2, E2, Params2...>& r) const
+   {
+      return !(*this==r);
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_less_greater_comparable>
+   operator< (const sparse_elem_proxy& l, const E2& r)
+   {
+      return l.exists() ? l.get() < r : zero_value<E>() < r;
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_less_greater_comparable>
+   operator> (const sparse_elem_proxy& l, const E2& r)
+   {
+      return l.exists() ? l.get() > r : zero_value<E>() > r;
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_less_greater_comparable>
+   operator<= (const sparse_elem_proxy& l, const E2& r)
+   {
+      return l.exists() ? l.get() <= r : zero_value<E>() <= r;
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_less_greater_comparable>
+   operator>= (const sparse_elem_proxy& l, const E2& r)
+   {
+      return l.exists() ? l.get() >= r : zero_value<E>() >= r;
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_less_greater_comparable>
+   operator< (const E2& l, const sparse_elem_proxy& r)
+   {
+      return r > l;
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_less_greater_comparable>
+   operator> (const E2& l, const sparse_elem_proxy& r)
+   {
+      return r < l;
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_less_greater_comparable>
+   operator<= (const E2& l, const sparse_elem_proxy& r)
+   {
+      return r >= l;
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_less_greater_comparable>
+   operator>= (const E2& l, const sparse_elem_proxy& r)
+   {
+      return r <= l;
+   }
+
+   template <typename Base2, typename E2, typename... Params2>
+   std::enable_if_t<are_less_greater_comparable<E, E2>::value, bool>
+   operator< (const sparse_elem_proxy<Base2, E2, Params2...>& r) const
+   {
+      if (this->exists()) {
+         return r.exists() ? this->get() < r.get() : this->get() < zero_value<E>();
       } else {
-         if (is_zero(*where -= x)) this->erase(where);
+         return r.exists() && zero_value<E2>() < r.get();
       }
-      return *this;
    }
 
-   template <typename E2>
-   sparse_elem_proxy& operator*= (const E2& x)
+   template <typename Base2, typename E2, typename... Params2>
+   std::enable_if_t<are_less_greater_comparable<E, E2>::value, bool>
+   operator> (const sparse_elem_proxy<Base2, E2, Params2...>& r) const
    {
-      typename Base::iterator_type where=this->find();
-      if (is_zero(*where *= x)) this->erase(where);
-      return *this;
+      return r < *this;
    }
 
-   template <typename E2>
-   sparse_elem_proxy& operator/= (const E2& x)
+   template <typename Base2, typename E2, typename... Params2>
+   std::enable_if_t<are_less_greater_comparable<E, E2>::value, bool>
+   operator<= (const sparse_elem_proxy<Base2, E2, Params2...>& r) const
    {
-      typename Base::iterator_type where=this->find();
-      if (is_zero(*where /= x)) this->erase(where);
-      return *this;
+      return !(r < *this);
    }
 
-   template <typename E2>
-   sparse_elem_proxy& operator%= (const E2& x)
+   template <typename Base2, typename E2, typename... Params2>
+   std::enable_if_t<are_less_greater_comparable<E, E2>::value, bool>
+   operator>= (const sparse_elem_proxy<Base2, E2, Params2...>& r) const
    {
-      typename Base::iterator_type where=this->find();
-      if (is_zero(*where %= x)) this->erase(where);
-      return *this;
-   }
-
-   template <typename E2>
-   sparse_elem_proxy& operator<<= (const E2& x)
-   {
-      typename Base::iterator_type where=this->find();
-      if (is_zero(*where <<= x)) this->erase(where);
-      return *this;
-   }
-
-   template <typename E2>
-   sparse_elem_proxy& operator>>= (const E2& x)
-   {
-      typename Base::iterator_type where=this->find();
-      if (is_zero(*where >>= x)) this->erase(where);
-      return *this;
+      return !(*this < r);
    }
 
    template <typename Traits> friend
@@ -509,12 +709,425 @@ public:
    }
 };
 
-template <typename Base>
-class sparse_elem_proxy<Base, bool, void> : public Base {
-public:
-   typedef void parameters;
+template <typename Base, typename E>
+class sparse_elem_proxy<Base, E, SkewSymmetric> : public sparse_elem_proxy<Base, E> {
+#if 0
+// TODO: resurrect when needed
+protected:
+   using params = typename mlist_wrap<Params...>::type;
+   static const bool is_skew=mlist_contains<params, >::value;
 
-   sparse_elem_proxy(const Base& base_arg) : Base(base_arg) {}
+   typename std::conditional<is_skew, operations::neg<const E&>, nothing>::type op;
+
+   bool inversed_impl(std::false_type) const { return false; }
+   bool inversed_impl(std::true_type) const { return this->i > this->vec->get_line_index(); }
+   bool inversed() const { return inversed_impl(bool_constant<is_skew>()); }
+
+   void store(const E& x, bool, std::false_type) { this->insert(x); }
+   void store(const E& x, bool do_inverse, std::true_type) { if (do_inverse) this->insert(op(x)); else this->insert(x); }
+
+   const E& get_impl(std::false_type) const { return Base::get(); }
+   E get_impl(std::true_type) const { return inversed(std::true_type()) ? op(Base::get()) : Base::get(); }
+
+public:
+   sparse_elem_proxy(Base&& base_arg) : Base(std::move(base_arg)) {}
+
+   template <typename OtherBase>
+   static sparse_elem_proxy<OtherBase, E, Params...> construct(OtherBase&& base_arg)
+   {
+      return sparse_elem_proxy<OtherBase, E, Params...>(std::forward<OtherBase>(base_arg));
+   }
+
+   using const_reference = std::conditional_t<is_skew, const E, const E&>;
+
+   const_reference get() const { return get_impl(bool_constant<is_skew>()); }
+
+   operator const_reference () const { return get(); }
+
+   template <typename T,
+             std::enable_if_t<std::is_constructible<T, E>::value && !is_derived_from<E, T>::value>>
+   explicit operator T () const
+   {
+      return static_cast<T>(get());
+   }
+
+   sparse_elem_proxy& operator= (const sparse_elem_proxy& p2)
+   {
+      if (p2.exists())
+         store(p2.get_impl(std::false_type()), this->inversed() != p2.inversed(), bool_constant<is_skew>());
+      else
+         this->erase();
+      return *this;
+   }
+
+   template <typename E2>
+   std::enable_if_t<std::is_convertible<E2, E>::value, sparse_elem_proxy>&
+   operator= (const E2& x)
+   {
+      if (!is_zero(x))
+         store(x, this->inversed(), bool_constant<is_skew>());
+      else
+         this->erase();
+      return *this;
+   }
+
+   template <typename E2>
+   std::enable_if_t<explicitly_convertible_to<E2, E>::value && !std::is_convertible<E2, E>::value, sparse_elem_proxy>&
+   operator= (const E2& x)
+   {
+      if (!is_zero(x))
+         store(conv<E2, E>()(x), this->inversed(), bool_constant<is_skew>());
+      else
+         this->erase();
+      return *this;
+   }
+
+   sparse_elem_proxy& negate()
+   {
+      if (this->exists()) pm::negate(*this->find());
+      return *this;
+   }
+
+   sparse_elem_proxy& operator++ ()
+   {
+      auto where=this->find();
+      if (this->inversed()) {
+         if (is_zero(--(*where))) this->erase(where);
+      } else {
+         if (is_zero(++(*where))) this->erase(where);
+      }
+      return *this;
+   }
+
+   sparse_elem_proxy& operator-- ()
+   {
+      auto where=this->find();
+      if (this->inversed()) {
+         if (is_zero(++(*where))) this->erase(where);
+      } else {
+         if (is_zero(--(*where))) this->erase(where);
+      }
+      return *this;
+   }
+
+   E operator++ (int)
+   {
+      auto where=this->find();
+      E v=*where;
+      if (this->inversed()) {
+         if (is_zero(--(*where))) this->erase(where);
+      } else {
+         if (is_zero(++(*where))) this->erase(where);
+      }
+      return v;
+   }
+
+   E operator-- (int)
+   {
+      auto where=this->find();
+      E v=*where;
+      if (this->inversed()) {
+         if (is_zero(++(*where))) this->erase(where);
+      } else {
+         if (is_zero(--(*where))) this->erase(where);
+      }
+      return v;
+   }
+
+   template <typename E2, typename=std::enable_if_t<!is_instance_of<E2, pm::sparse_elem_proxy>::value,
+                                                    accept_valid_type<decltype(std::declval<E&>() += std::declval<E2>())>>>
+   sparse_elem_proxy& operator+= (const E2& x)
+   {
+      auto where=this->find();
+      if (this->inversed()) {
+         if (is_zero(*where -= x)) this->erase(where);
+      } else {
+         if (is_zero(*where += x)) this->erase(where);
+      }
+      return *this;
+   }
+
+   template <typename Base2, typename E2, typename... Params2,
+             typename=accept_valid_type<decltype(std::declval<E&>() += std::declval<E2>())>>
+   sparse_elem_proxy& operator+= (const sparse_elem_proxy<Base2, E2, Params2...>& x)
+   {
+      if (x.exists()) *this += x.get();
+      return *this;
+   }
+
+   template <typename E2, typename=std::enable_if_t<!is_instance_of<E2, pm::sparse_elem_proxy>::value,
+                                                    accept_valid_type<decltype(std::declval<E&>() -= std::declval<E2>())>>>
+   sparse_elem_proxy& operator-= (const E2& x)
+   {
+      auto where=this->find();
+      if (this->inversed()) {
+         if (is_zero(*where += x)) this->erase(where);
+      } else {
+         if (is_zero(*where -= x)) this->erase(where);
+      }
+      return *this;
+   }
+
+   template <typename Base2, typename E2, typename... Params2,
+             typename=accept_valid_type<decltype(std::declval<E&>() -= std::declval<E2>())>>
+   sparse_elem_proxy& operator-= (const sparse_elem_proxy<Base2, E2, Params2...>& x)
+   {
+      if (x.exists()) *this -= x.get();
+      return *this;
+   }
+
+   template <typename E2, typename=std::enable_if_t<!is_instance_of<E2, pm::sparse_elem_proxy>::value,
+                                                    accept_valid_type<decltype(std::declval<E&>() *= std::declval<E2>())>>>
+   sparse_elem_proxy& operator*= (const E2& x)
+   {
+      auto where=this->find();
+      if (is_zero(*where *= x)) this->erase(where);
+      return *this;
+   }
+
+   template <typename Base2, typename E2, typename... Params2,
+             typename=accept_valid_type<decltype(std::declval<E&>() *= std::declval<E2>())>>
+   sparse_elem_proxy& operator*= (const sparse_elem_proxy<Base2, E2, Params2...>& x)
+   {
+      if (x.exists())
+         *this *= x.get();
+      else
+         this->erase();
+      return *this;
+   }
+
+   template <typename E2, typename=std::enable_if_t<!is_instance_of<E2, pm::sparse_elem_proxy>::value,
+                                                    accept_valid_type<decltype(std::declval<E&>() /= std::declval<E2>())>>>
+   sparse_elem_proxy& operator/= (const E2& x)
+   {
+      auto where=this->find();
+      if (is_zero(*where /= x)) this->erase(where);
+      return *this;
+   }
+
+   template <typename Base2, typename E2, typename... Params2,
+             typename=accept_valid_type<decltype(std::declval<E&>() /= std::declval<E2>())>>
+   sparse_elem_proxy& operator/= (const sparse_elem_proxy<Base2, E2, Params2...>& x)
+   {
+      if (x.exists())
+         *this /= x.get();
+      else
+         throw std::domain_error("zero division");
+   }
+
+   template <typename E2, typename=std::enable_if_t<!is_instance_of<E2, pm::sparse_elem_proxy>::value,
+                                                    accept_valid_type<decltype(std::declval<E&>() %= std::declval<E2>())>>>
+   sparse_elem_proxy& operator%= (const E2& x)
+   {
+      auto where=this->find();
+      if (is_zero(*where %= x)) this->erase(where);
+      return *this;
+   }
+
+   template <typename Base2, typename E2, typename... Params2,
+             typename=accept_valid_type<decltype(std::declval<E&>() %= std::declval<E2>())>>
+   sparse_elem_proxy& operator%= (const sparse_elem_proxy<Base2, E2, Params2...>& x)
+   {
+      if (x.exists())
+         *this %= x.get();
+      else
+         throw std::domain_error("zero division");
+   }
+
+   template <typename E2, typename=accept_valid_type<decltype(std::declval<E&>() <<= std::declval<E2>())>>
+   sparse_elem_proxy& operator<<= (const E2& x)
+   {
+      auto where=this->find();
+      if (is_zero(*where <<= x)) this->erase(where);
+      return *this;
+   }
+
+   template <typename E2, typename=accept_valid_type<decltype(std::declval<E&>() >>= std::declval<E2>())>>
+   sparse_elem_proxy& operator>>= (const E2& x)
+   {
+      auto where=this->find();
+      if (is_zero(*where >>= x)) this->erase(where);
+      return *this;
+   }
+
+private:
+   template <typename E2, template <typename, typename> class Check,
+             bool=is_instance_of<E2, pm::sparse_elem_proxy>::value>
+   struct is_suitable_for : std::false_type {};
+
+   template <typename E2, template <typename, typename> class Check>
+   struct is_suitable_for<E2, Check, false> : Check<E, E2> {};
+
+   template <typename E2, template <typename, typename> class Check>
+   using cmp_result = std::enable_if_t<is_suitable_for<E2, Check>::value, bool>;
+
+public:
+   template <typename E2> friend
+   cmp_result<E2, are_comparable>
+   operator== (const sparse_elem_proxy& l, const E2& r)
+   {
+      return l.exists() ? l.get()==r : is_zero(r);
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_comparable>
+   operator== (const E2& l, const sparse_elem_proxy& r)
+   {
+      return r==l;
+   }
+
+   template <typename Base2, typename E2, typename... Params2>
+   std::enable_if_t<are_comparable<E, E2>::value, bool>
+   operator== (const sparse_elem_proxy<Base2, E2, Params2...>& r) const
+   {
+      return this->exists() ? (r.exists() && this->get()==r.get()) : !r.exists();
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_comparable>
+   operator!= (const sparse_elem_proxy& l, const E2& r)
+   {
+      return !(l==r);
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_comparable>
+   operator!= (const E2& l, const sparse_elem_proxy& r)
+   {
+      return !(r==l);
+   }
+
+   template <typename Base2, typename E2, typename... Params2>
+   std::enable_if_t<are_comparable<E, E2>::value, bool>
+   operator!= (const sparse_elem_proxy<Base2, E2, Params2...>& r) const
+   {
+      return !(*this==r);
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_less_greater_comparable>
+   operator< (const sparse_elem_proxy& l, const E2& r)
+   {
+      return l.exists() ? l.get() < r : zero_value<E>() < r;
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_less_greater_comparable>
+   operator> (const sparse_elem_proxy& l, const E2& r)
+   {
+      return l.exists() ? l.get() > r : zero_value<E>() > r;
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_less_greater_comparable>
+   operator<= (const sparse_elem_proxy& l, const E2& r)
+   {
+      return l.exists() ? l.get() <= r : zero_value<E>() <= r;
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_less_greater_comparable>
+   operator>= (const sparse_elem_proxy& l, const E2& r)
+   {
+      return l.exists() ? l.get() >= r : zero_value<E>() >= r;
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_less_greater_comparable>
+   operator< (const E2& l, const sparse_elem_proxy& r)
+   {
+      return r > l;
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_less_greater_comparable>
+   operator> (const E2& l, const sparse_elem_proxy& r)
+   {
+      return r < l;
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_less_greater_comparable>
+   operator<= (const E2& l, const sparse_elem_proxy& r)
+   {
+      return r >= l;
+   }
+
+   template <typename E2> friend
+   cmp_result<E2, are_less_greater_comparable>
+   operator>= (const E2& l, const sparse_elem_proxy& r)
+   {
+      return r <= l;
+   }
+
+   template <typename Base2, typename E2, typename... Params2>
+   std::enable_if_t<are_less_greater_comparable<E, E2>::value, bool>
+   operator< (const sparse_elem_proxy<Base2, E2, Params2...>& r) const
+   {
+      if (this->exists()) {
+         return r.exists() ? this->get() < r.get() : this->get() < zero_value<E>();
+      } else {
+         return r.exists() && zero_value<E2>() < r.get();
+      }
+   }
+
+   template <typename Base2, typename E2, typename... Params2>
+   std::enable_if_t<are_less_greater_comparable<E, E2>::value, bool>
+   operator> (const sparse_elem_proxy<Base2, E2, Params2...>& r) const
+   {
+      return r < *this;
+   }
+
+   template <typename Base2, typename E2, typename... Params2>
+   std::enable_if_t<are_less_greater_comparable<E, E2>::value, bool>
+   operator<= (const sparse_elem_proxy<Base2, E2, Params2...>& r) const
+   {
+      return !(r < *this);
+   }
+
+   template <typename Base2, typename E2, typename... Params2>
+   std::enable_if_t<are_less_greater_comparable<E, E2>::value, bool>
+   operator>= (const sparse_elem_proxy<Base2, E2, Params2...>& r) const
+   {
+      return !(*this < r);
+   }
+
+   template <typename Traits> friend
+   std::basic_ostream<char, Traits>& operator<< (std::basic_ostream<char, Traits>& os, const sparse_elem_proxy& me)
+   {
+      return os << me.get();
+   }
+
+   template <typename Traits> friend
+   std::basic_istream<char, Traits>& operator>> (std::basic_istream<char, Traits>& is, sparse_elem_proxy& me)
+   {
+      E x;
+      is >> x;
+      me=x;
+      return is;
+   }
+
+   template <typename Input> friend
+   Input& operator>> (GenericInput<Input>& is, sparse_elem_proxy& me)
+   {
+      E x;
+      is.top() >> x;
+      me=x;
+      return is.top();
+   }
+#endif
+};
+
+template <typename Base>
+class sparse_elem_proxy<Base, bool> : public Base {
+public:
+   sparse_elem_proxy(Base&& base_arg) : Base(std::move(base_arg)) {}
+
+   template <typename OtherBase>
+   static sparse_elem_proxy<OtherBase, bool> construct(OtherBase&& base_arg)
+   {
+      return sparse_elem_proxy<OtherBase, bool>(std::forward<OtherBase>(base_arg));
+   }
 
    using Base::get;
 
@@ -583,7 +1196,7 @@ protected:
    typedef Vector container_type;
    typedef Iterator iterator_type;
 public:
-   typedef typename iterator_traits<iterator_type>::value_type value_type;
+   using value_type = typename iterator_traits<iterator_type>::value_type;
 protected:
    Vector* vec;
    int i;
@@ -608,15 +1221,15 @@ public:
 };
 
 template <typename Vector, typename Iterator>
-class sparse_proxy_it_base : public sparse_proxy_base<Vector,Iterator> {
-   typedef sparse_proxy_base<Vector,Iterator> super;
+class sparse_proxy_it_base : public sparse_proxy_base<Vector, Iterator> {
+   using base_t = sparse_proxy_base<Vector, Iterator>;
 protected:
-   typedef Iterator iterator_type;
+   using iterator_type = Iterator;
    mutable iterator_type where;
 
    iterator_type find()
    {
-      return where=super::find();
+      return where=base_t::find();
    }
 public:
    bool exists() const
@@ -624,13 +1237,13 @@ public:
       return !where.at_end() && where.index()==this->i;
    }
 protected:
-   const typename super::value_type& get() const
+   const typename base_t::value_type& get() const
    {
       if (exists()) return *where;
-      return zero_value<typename super::value_type>();
+      return zero_value<typename base_t::value_type>();
    }
 
-   void insert(const typename super::value_type& x)
+   void insert(const typename base_t::value_type& x)
    {
       if (exists())
          *where=x;
@@ -640,34 +1253,35 @@ protected:
 
    void erase()
    {
-      if (exists()) super::erase(where++);
+      if (exists()) base_t::erase(where++);
    }
 
    void erase(const iterator_type& it)
    {
-      where=it; ++where;
-      super::erase(it);
+      where=it;  ++where;
+      base_t::erase(it);
    }
 public:
    sparse_proxy_it_base(Vector& vec_arg, const iterator_type& it_arg, int i_arg)
-      : super(vec_arg,i_arg), where(it_arg) {}
+      : base_t(vec_arg,i_arg)
+      , where(it_arg) {}
 };
 
-template <typename Base, typename E, typename Params>
-struct object_traits< sparse_elem_proxy<Base, E, Params> >
+template <typename Base, typename E, typename... Params>
+struct object_traits< sparse_elem_proxy<Base, E, Params...> >
    : object_traits<E> {
    typedef E proxy_for;
    static const bool is_temporary=true, is_persistent=false;
 };
 
-template <typename Base, typename E, typename Params> inline
-bool is_zero(const sparse_elem_proxy<Base, E, Params>& x)
+template <typename Base, typename E, typename... Params>
+bool is_zero(const sparse_elem_proxy<Base, E, Params...>& x)
 {
    return !x.exists();
 }
 
-template <typename Base, typename E, typename Params> inline
-bool is_one(const sparse_elem_proxy<Base, E, Params>& x)
+template <typename Base, typename E, typename... Params>
+bool is_one(const sparse_elem_proxy<Base, E, Params...>& x)
 {
    return x.exists() && is_one(x.get());
 }

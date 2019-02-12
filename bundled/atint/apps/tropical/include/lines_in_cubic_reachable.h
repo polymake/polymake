@@ -32,36 +32,35 @@
 
 namespace polymake { namespace tropical {
 
-	/**
-	 * This contains the result of reachablePoints(...):
-	 * - The rays of the complex (non-tropically homogeneous)
-	 * - The maximal two-dimensional cells in terms of the rays
-	 * - The maximal one-dimensional cells in terms of the rays
-	 */
-	struct ReachableResult {
-		Matrix<Rational> rays;
-		IncidenceMatrix<> cells;
-		IncidenceMatrix<> edges;
-	};
+/**
+ * This contains the result of reachablePoints(...):
+ * - The rays of the complex (non-tropically homogeneous)
+ * - The maximal two-dimensional cells in terms of the rays
+ * - The maximal one-dimensional cells in terms of the rays
+ */
+struct ReachableResult {
+  Matrix<Rational> rays;
+  IncidenceMatrix<> cells;
+  IncidenceMatrix<> edges;
+};
 
-	/**
-	  @brief Computes whether in a list of values the maximum is attained at least twice.
-	  @param Vector<Rational> values A list of values
-	  @return True, if the maximum is attained at least twice, false otherwise
-	  */
-	bool maximumAttainedTwice(Vector<Rational> values);
+/**
+   @brief Computes whether in a list of values the maximum is attained at least twice.
+   @param Vector<Rational> values A list of values
+   @return True, if the maximum is attained at least twice, false otherwise
+*/
+bool maximumAttainedTwice(const Vector<Rational>& values);
 
+/**
+   @brief This takes a cubic surface defined by a tropical polynomial f and a direction index in 0,1,2,3 and computes the set of all points p such that the line from p in the direction of e_0,-e1,..,-e3 lies in X.
+   @param Polynomial<TropicalNumber<Max> > f A tropical polynomial of degree 3
+   @param Cycle<Addition> X The divisor of f (in R^3)
+   @param int direction Lies in 0,1,2,3 and means we consider the direction e_0 = (1,1,1) or -e_i for i > 0
+   (respectively the inverse for min).
+   @return ReachableResult
+*/
+ReachableResult reachablePoints(const Polynomial<TropicalNumber<Max>>& f, perl::Object X, int direction); 
 
-	/**
-	  @brief This takes a cubic surface defined by a tropical polynomial f and a direction index in 0,1,2,3 and computes the set of all points p such that the line from p in the direction of e_0,-e1,..,-e3 lies in X.
-	  @param Polynomial<TropicalNumber<Max> > f A tropical polynomial of degree 3
-	  @param Cycle<Addition> X The divisor of f (in R^3)
-	  @param int direction Lies in 0,1,2,3 and means we consider the direction e_0 = (1,1,1) or -e_i for i > 0
-	  (respectively the inverse for min).
-	  @return ReachableResult
-	  */
-	ReachableResult reachablePoints(const Polynomial<TropicalNumber<Max>>& f, perl::Object X, int direction); 
-
-}}
+} }
 
 #endif

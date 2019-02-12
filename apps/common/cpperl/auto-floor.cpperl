@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["double"], "func": "floor", "include": ["polymake/Rational.h"], "sig": "floor.X"},
+ null ],
+"version": 3}

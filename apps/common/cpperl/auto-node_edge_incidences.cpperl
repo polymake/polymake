@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["int", "perl::Canned<const Graph<Undirected>&>"], "func": "node_edge_incidences", "include": ["polymake/Graph.h", "polymake/node_edge_incidences.h"], "sig": "node_edge_incidences:T1.X", "tp": "1"},
+ null ],
+"version": 3}

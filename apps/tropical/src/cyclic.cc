@@ -21,39 +21,39 @@ GNU General Public License for more details.
 
 namespace polymake { namespace tropical {
 
-        template <typename Addition>
-                perl::Object cyclic(const int d, const int n)
-                {
-                        if (d<2 || n<=d) {
-                                throw std::runtime_error("n > d >= 2 required");
-                        }
-                        Matrix<TropicalNumber<Addition> > V(n,d+1);
+template <typename Addition>
+perl::Object cyclic(const int d, const int n)
+{
+   if (d<2 || n<=d) {
+      throw std::runtime_error("n > d >= 2 required");
+   }
+   Matrix<TropicalNumber<Addition> > V(n,d+1);
 
-                        for (int i=0; i<n; ++i)
-                                for (int j=0; j<=d; ++j)
-                                        V(i,j)= TropicalNumber<Addition>(Addition::orientation() * i*j);
-                        perl::Object p(perl::ObjectType::construct<Addition>("Polytope"));
-                        p.set_description()<<"Tropical cyclic "<<d<<"-polytope with "<<n<< " vertices"<<endl;
-                        p.take("POINTS") << V;
-                        return p;
-                }
+   for (int i=0; i<n; ++i)
+      for (int j=0; j<=d; ++j)
+         V(i,j)= TropicalNumber<Addition>(Addition::orientation() * i*j);
+   perl::Object p("Polytope", mlist<Addition>());
+   p.set_description()<<"Tropical cyclic "<<d<<"-polytope with "<<n<< " vertices"<<endl;
+   p.take("POINTS") << V;
+   return p;
+}
 
-        UserFunctionTemplate4perl("# @category Producing a tropical polytope"
-                                  "# Produces a tropical cyclic //d//-polytope with //n// vertices."
-                                  "# Cf."
-                                  "# \t Josephine Yu & Florian Block, arXiv: math.MG/0503279."
-                                  "# @param Int d the dimension"
-                                  "# @param Int n the number of generators"
-                                  "# @tparam Addition Min or Max."
-                                  "# @return Polytope<Addition>"
-                                  "# @example"
-                                  "# > $c = cyclic<Min>(3,4);"
-                                  "# > print $c->VERTICES;"
-                                  "# | 0 0 0 0"
-                                  "# | 0 1 2 3"
-                                  "# | 0 2 4 6"
-                                  "# | 0 3 6 9",
-                                  "cyclic<Addition>($,$)");
+UserFunctionTemplate4perl("# @category Producing a tropical polytope"
+                          "# Produces a tropical cyclic //d//-polytope with //n// vertices."
+                          "# Cf."
+                          "# \t Josephine Yu & Florian Block, arXiv: math.MG/0503279."
+                          "# @param Int d the dimension"
+                          "# @param Int n the number of generators"
+                          "# @tparam Addition Min or Max."
+                          "# @return Polytope<Addition>"
+                          "# @example"
+                          "# > $c = cyclic<Min>(3,4);"
+                          "# > print $c->VERTICES;"
+                          "# | 0 0 0 0"
+                          "# | 0 1 2 3"
+                          "# | 0 2 4 6"
+                          "# | 0 3 6 9",
+                          "cyclic<Addition>($,$)");
 } }
 
 // Local Variables:

@@ -49,14 +49,14 @@ struct cmp_lex_containers<Matrix1, Matrix2, ComparatorFamily, 2, 2>
    }
 
    template <typename Iterator2>
-   typename std::enable_if<partially_defined, typename mproject1st<cmp_value, Iterator2>::type>::type
+   std::enable_if_t<partially_defined, typename mproject1st<cmp_value, Iterator2>::type>
    operator() (partial_left, const Matrix1& a, const Iterator2& b) const
    {
       return cmp_rows()(partial_left(), rows(a), b);
    }
 
    template <typename Iterator1>
-   typename std::enable_if<partially_defined, typename mproject1st<cmp_value, Iterator1>::type>::type
+   std::enable_if_t<partially_defined, typename mproject1st<cmp_value, Iterator1>::type>
    operator() (partial_right, const Iterator1& a, const Matrix2& b) const
    {
       return cmp_rows()(partial_right(), a, rows(b));
@@ -127,7 +127,7 @@ protected:
    {
       if (std::is_same<ComparatorFamily, cmp_unordered>::value && get_dim(a) != get_dim(b))
          return cmp_ne;
-      const cmp_value result=first_differ_in_range(entire(attach_operation(a, b, ComparatorFamily())), cmp_eq);
+      const cmp_value result=first_differ_in_range(entire_range(attach_operation(a, b, ComparatorFamily())), cmp_eq);
       if (result != cmp_eq || std::is_same<ComparatorFamily, cmp_unordered>::value)
          return result;
       return cmp_value(sign(get_dim(a) - get_dim(b)));
@@ -142,7 +142,7 @@ public:
    }
 
    template <typename Iterator2>
-   typename std::enable_if<partially_defined, typename mproject1st<cmp_value, Iterator2>::type>::type
+   std::enable_if_t<partially_defined, typename mproject1st<cmp_value, Iterator2>::type>
    operator() (partial_left, const Container1& a, const Iterator2&) const
    {
       ComparatorFamily cmp_el;
@@ -153,7 +153,7 @@ public:
    }
 
    template <typename Iterator1>
-   typename std::enable_if<partially_defined, typename mproject1st<cmp_value, Iterator1>::type>::type
+   std::enable_if_t<partially_defined, typename mproject1st<cmp_value, Iterator1>::type>
    operator() (partial_right, const Iterator1&, const Container2& b) const
    {
       ComparatorFamily cmp_el;
@@ -177,9 +177,9 @@ struct is_comparable_container<T, cmp_unordered>
 
 template <typename T1, typename T2, typename ComparatorFamily, typename Tag>
 struct define_comparator<T1, T2, ComparatorFamily, is_container, is_container, cons<Tag, Tag>,
-                         typename std::enable_if<(isomorphic_types<T1, T2>::value &&
-                                                  is_comparable_container<T1, ComparatorFamily>::value &&
-                                                  is_comparable_container<T2, ComparatorFamily>::value), cmp_value>::type> {
+                         std::enable_if_t<(isomorphic_types<T1, T2>::value &&
+                                           is_comparable_container<T1, ComparatorFamily>::value &&
+                                           is_comparable_container<T2, ComparatorFamily>::value), cmp_value>> {
    typedef cmp_lex_containers<T1, T2, ComparatorFamily> type;
    static const bool partially_defined=type::partially_defined;
 };
@@ -230,9 +230,9 @@ struct is_comparable_composite<T, cmp_unordered>
 
 template <typename T1, typename T2, typename ComparatorFamily, typename Tag>
 struct define_comparator<T1, T2, ComparatorFamily, is_composite, is_composite, cons<Tag, Tag>,
-                         typename std::enable_if<(isomorphic_types<T1, T2>::value &&
-                                                  is_comparable_composite<T1, ComparatorFamily>::value &&
-                                                  is_comparable_composite<T2, ComparatorFamily>::value), cmp_value>::type> {
+                         std::enable_if_t<(isomorphic_types<T1, T2>::value &&
+                                           is_comparable_composite<T1, ComparatorFamily>::value &&
+                                           is_comparable_composite<T2, ComparatorFamily>::value), cmp_value>> {
    typedef cmp_lex_composite<T1, T2, ComparatorFamily> type;
    static const bool partially_defined=false;
 };
@@ -282,8 +282,7 @@ struct is_unordered_set;
 
 // copied from boost/functional/hash.hpp
 template <typename SizeT>
-inline
-typename std::enable_if<sizeof(SizeT)==sizeof(uint64_t)>::type hash_combine(SizeT& h, SizeT k)
+std::enable_if_t<sizeof(SizeT)==sizeof(uint64_t)> hash_combine(SizeT& h, SizeT k)
 {
    const uint64_t m = 0xc6a4a7935bd1e995ul;
    const int r = 47;
@@ -297,8 +296,7 @@ typename std::enable_if<sizeof(SizeT)==sizeof(uint64_t)>::type hash_combine(Size
 }
 
 template <typename SizeT>
-inline
-typename std::enable_if<sizeof(SizeT)==sizeof(uint32_t)>::type hash_combine(SizeT& h, SizeT k)
+std::enable_if_t<sizeof(SizeT)==sizeof(uint32_t)> hash_combine(SizeT& h, SizeT k)
 {
    const size_t c1 = 0xcc9e2d51;
    const size_t c2 = 0x1b873593;

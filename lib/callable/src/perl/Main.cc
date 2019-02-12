@@ -33,7 +33,7 @@
 # define PmGetEnvironPtr &environ
 #endif
 
-#define ConfParamAsString(x) FirstArgAsString(x)
+#define ConfParamAsString(x) MacroTokenAsString(x)
 
 namespace pm { namespace perl {
 namespace {
@@ -124,17 +124,17 @@ void deduce_install_dirs(std::string lib_path, std::string& install_top, std::st
 }
 
 #if POLYMAKE_DEBUG
+#  define scr_debug0(line) line
 #  define scr_debug1 "$DebugLevel=1; $DB::single=1;"
 #  define scr_debug2 "sub stop_here { print STDERR \"@_\\n\" if @_ } my $loaded=1;\n"
 #else
+#  define scr_debug0(line)
 #  define scr_debug1 ""
 #  define scr_debug2 ""
 #endif
 
-#define ToString1(x) FirstArgAsString(x)
-
 const char scr0[]=
-"#line " ToString1(__LINE__) " \"" __FILE__ "\"\n" "package Polymake;\n"
+scr_debug0("#line " ConfParamAsString(__LINE__) " \"" __FILE__ "\"\n") "package Polymake;\n"
 "BEGIN { " scr_debug1 "\n"
 "   $InstallTop='",   scr8InstallTop[]="';\n"
 "   $InstallArch='",  scr8InstallArch[]="';\n"
@@ -149,7 +149,6 @@ scr_debug2
 #undef addlibs
 #undef scr_debug1
 #undef scr_debug2
-#undef ToString1
 }
 
 Main::Main(const std::string& user_opts, std::string install_top, std::string install_arch)

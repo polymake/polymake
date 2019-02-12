@@ -162,8 +162,8 @@ void neighbors_cyclic_normal_dual(perl::Object p)
    p.take("NEIGHBOR_RAYS_CYCLIC_NORMAL", perl::temporary) << DG_cyclic;
 }
 
-FunctionTemplate4perl("neighbors_cyclic_normal_primal<Scalar> (Cone<Scalar>) : void");
-FunctionTemplate4perl("neighbors_cyclic_normal_dual<Scalar> (Cone<Scalar>) : void");
+FunctionTemplate4perl("neighbors_cyclic_normal_primal<Scalar> (Cone<Scalar>)");
+FunctionTemplate4perl("neighbors_cyclic_normal_dual<Scalar> (Cone<Scalar>)");
 
 } }
 

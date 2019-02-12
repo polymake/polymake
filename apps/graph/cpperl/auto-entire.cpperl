@@ -1,0 +1,5 @@
+{"app": "graph",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<const NodeMap<Directed, graph::lattice::BasicDecoration>&>>"], "func": "entire", "include": ["polymake/Graph.h", "polymake/graph/Decoration.h"], "sig": "entire:R_Iterator.X8"},
+ null ],
+"version": 3}

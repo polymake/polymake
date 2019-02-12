@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "interior_and_boundary_simplices.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "max_interior_simplices_impl", "include": ["polymake/Rational.h"], "sig": "max_interior_simplices_impl:T1.x.o", "tp": "1"},
+  {"args": ["Rational", "void", "void"], "func": "interior_and_boundary_ridges", "include": ["polymake/Rational.h"], "sig": "interior_and_boundary_ridges:T1.x.o", "tp": "1"},
+ null ],
+"version": 3}

@@ -51,7 +51,7 @@ struct node {
    // tree for the next face element
    tree_type *descend;
 
-   node(typename function_argument<typename Traits::key_type>::type key_arg)
+   node(const typename Traits::key_type& key_arg)
       : key(key_arg), data(Traits::initialize_data()), descend(0) { }
 
    template <typename TreeAllocator>
@@ -92,7 +92,7 @@ protected:
 
    static typename Traits::mapped_type& data(Node& n) { return n.data; }
 
-   Node* create_node(typename function_argument<key_type>::type key_arg)
+   Node* create_node(const key_type& key_arg)
    {
       return new(node_allocator.allocate(1)) Node(key_arg);
    }
@@ -300,7 +300,7 @@ public:
    {
       if (!face.top().empty()) {
          tree_type *current_tree=&head;
-         typename Entire<Set2>::const_iterator f_i=entire(face.top());
+         auto f_i=entire(face.top());
 
          while (true) {
             // invariants: current_tree!=0, !f_i.at_end()

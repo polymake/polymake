@@ -1,0 +1,5 @@
+{"app": "matroid", "embed": "minimal_base.cc",
+ "inst": [
+  {"args": ["void", "perl::Canned<const Vector<Rational>&>"], "func": "minimal_base", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "minimal_base.B.X"},
+ null ],
+"version": 3}

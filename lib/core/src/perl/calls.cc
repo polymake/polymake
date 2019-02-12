@@ -23,7 +23,7 @@ namespace {
 
 glue::cached_cv load_data_cv{ "Polymake::User::load_data" },
                 save_data_cv{ "Polymake::User::save_data" },
-               get_custom_cv{ "Polymake::Core::Application::get_custom_var" };
+                get_custom_cv{ "Polymake::Core::Application::get_custom_var" };
 }
 
 PropertyValue::PropertyValue(const PropertyValue& x)
@@ -38,7 +38,7 @@ PropertyValue::~PropertyValue()
    SvREFCNT_dec(sv);
 }
 
-SV* PropertyValue::_load_data(const std::string& filename)
+SV* PropertyValue::load_data_impl(const std::string& filename)
 {
    dTHX;
    PmStartFuncall(1);
@@ -47,7 +47,7 @@ SV* PropertyValue::_load_data(const std::string& filename)
    return glue::call_func_scalar(aTHX_ load_data_cv);
 }
 
-void PropertyValue::_save_data(const std::string& filename, const std::string& description)
+void PropertyValue::save_data_impl(const std::string& filename, const std::string& description)
 {
    dTHX;
    PmStartFuncall(3);
@@ -65,23 +65,17 @@ PropertyValue get_custom(const AnyString& name, const AnyString& key)
    mPUSHp(name.ptr, name.len);
    if (key) mPUSHp(key.ptr, key.len);
    PUTBACK;
-   return PropertyValue(glue::call_func_scalar(aTHX_ get_custom_cv), value_allow_undef);
+   return PropertyValue(glue::call_func_scalar(aTHX_ get_custom_cv), ValueFlags::allow_undef);
 }
 
-FunCall::FunCall(bool is_method, const AnyString& name, int reserve)
-   : Stack(reserve)
-   , func(nullptr)
-   , method_name(nullptr)
+FunCall::FunCall(bool is_method, ValueFlags val_flags_, const AnyString& name, int reserve)
+   : FunCall(nullptr, val_flags_, reserve)
 {
    dTHXa(pi);
    if (is_method) {
-      func=&PL_sv_undef;
       method_name=name.ptr;
    } else {
-      dSP;
-      SP=glue::push_current_application(aTHX_ SP);
-      SV* const app=POPs;
-      PUTBACK;
+      SV* const app=glue::get_current_application(aTHX);
       if (!(func=(SV*)glue::namespace_lookup_sub(aTHX_ glue::User_stash, name.ptr, name.len, (CV*)SvRV(PmArray(app)[glue::Application_eval_expr_index])))) {
          PmCancelFuncall;
          throw std::runtime_error("polymake function " + name + " not found");
@@ -89,9 +83,15 @@ FunCall::FunCall(bool is_method, const AnyString& name, int reserve)
    }
 }
 
+FunCall::FunCall(std::nullptr_t, ValueFlags val_flags_,  int reserve)
+   : Stack(reserve)
+   , func(nullptr)
+   , method_name(nullptr)
+   , val_flags(val_flags_) {}
+
 FunCall::~FunCall()
 {
-   if (func) {
+   if (val_flags != ValueFlags::is_mutable) {
       dTHXa(pi);
       if (std::uncaught_exception()) {
          // error during preparation of arguments
@@ -99,44 +99,105 @@ FunCall::~FunCall()
       } else {
          // call not triggered because result not consumed yet: must be a void context
          if (method_name) {
-            func=nullptr;
             glue::call_method_void(aTHX_ method_name);
          } else {
-            SV* sv=func;  func=nullptr;
-            glue::call_func_void(aTHX_ sv);
+            glue::call_func_void(aTHX_ func);
          }
       }
    }
 }
 
+void FunCall::push_current_application()
+{
+   dTHXa(pi);
+   push(glue::get_current_application(aTHX));
+}
+
+void FunCall::push_current_application_pkg()
+{
+   dTHXa(pi);
+   SV* app=glue::get_current_application(aTHX);
+   push(PmArray(app)[glue::Application_pkg_index]);
+}
+
+void FunCall::create_explicit_typelist(int size)
+{
+   dTHXa(pi);
+   // TODO: consider caching lists created once
+   SV* list_ref=glue::namespace_create_explicit_typelist(aTHX_ size);
+   push(sv_2mortal(list_ref));
+}
+
 SV* FunCall::call_scalar_context()
 {
    dTHXa(pi);
+   check_call();
    if (method_name) {
-      func=nullptr;
       return glue::call_method_scalar(aTHX_ method_name);
    } else {
-      SV* sv=func;  func=nullptr;
-      return glue::call_func_scalar(aTHX_ sv);
+      return glue::call_func_scalar(aTHX_ func);
    }
 }
 
 int FunCall::call_list_context()
 {
    dTHXa(pi);
+   check_call();
    if (method_name) {
-      func=nullptr;
       return glue::call_method_list(aTHX_ method_name);
    } else {
-      SV* sv=func;  func=nullptr;
-      return glue::call_func_list(aTHX_ sv);
+      return glue::call_func_list(aTHX_ func);
    }
+}
+
+void FunCall::check_call()
+{
+   if (val_flags == ValueFlags::is_mutable)
+      throw std::runtime_error("attempt to perform a second call with the same argument list");
+   val_flags = ValueFlags::is_mutable;
 }
 
 void FunCall::push_arg(FunCall&& x)
 {
    dTHXa(pi);
    push(sv_2mortal(x.call_scalar_context()));
+}
+
+void VarFunCall::check_push() const
+{
+   if (val_flags == ValueFlags::is_mutable)
+      throw std::runtime_error("attempt to append arguments after a call");
+}
+
+void VarFunCall::begin_type_params(int n)
+{
+   dTHXa(pi);
+   PmStartFuncall(n + 1);
+   push_current_application();
+}
+
+void VarFunCall::push_type_param(const AnyString& param)
+{
+   dTHXa(pi);
+   dSP;
+   mPUSHp(param.ptr, param.len);
+   PUTBACK;
+}
+
+void VarFunCall::end_type_params()
+{
+   dTHXa(pi);
+   SV* typelist = glue::call_method_scalar(aTHX_ "construct_explicit_typelist", false);
+   dSP;
+   XPUSHs(typelist);
+   sv_2mortal(typelist);
+   PUTBACK;
+}
+
+void PropertyTypeBuilder::nonexact_match()
+{
+   dTHXa(pi);
+   sv_setiv(save_scalar(glue::PropertyType_nested_instantiation), 1);
 }
 
 ListResult::ListResult(int items, FunCall& fc)
@@ -163,24 +224,8 @@ int get_debug_level()
 
 namespace glue {
 
-HV* current_application_pkg(pTHX)
+SV* fetch_typeof_gv(pTHX_ HV* app_stash, const char* class_name, size_t class_namelen)
 {
-   if (cur_wrapper_cv) {
-      return CvSTASH(glue::cur_wrapper_cv);
-   } else {
-      SV* const current_app=GvSV(User_application);
-      if (current_app && SvROK(current_app)) {
-         return gv_stashsv(PmArray(current_app)[Application_pkg_index], false);
-      } else {
-         PmCancelFuncall;
-         throw std::runtime_error("current application not set");
-      }
-   }
-}
-
-SV* fetch_typeof_gv(pTHX_ const char* class_name, size_t class_namelen)
-{
-   HV* const app_stash=current_application_pkg(aTHX);
    HV* const stash=glue::namespace_lookup_class(aTHX_ app_stash, class_name, class_namelen, 0);
    if (__builtin_expect(!stash, 0)) {
       sv_setpvf(ERRSV, "unknown perl class %.*s::%.*s", PmPrintHvNAME(app_stash), int(class_namelen), class_name);
@@ -196,28 +241,22 @@ SV* fetch_typeof_gv(pTHX_ const char* class_name, size_t class_namelen)
    return *gvp;
 }
 
-SV** push_current_application(pTHX_ SV **SP)
+SV* get_current_application(pTHX)
 {
    if (cur_wrapper_cv) {
-      PUSHMARK(SP);
-      PUTBACK;
-      call_sv(*hv_fetch(CvSTASH(cur_wrapper_cv), "self", 4, 0), G_SCALAR | G_EVAL);
-      SPAGAIN;
-      if (__builtin_expect(SvTRUE(ERRSV), 0)) {
-         PmCancelFuncall;
-         throw exception();
+      HV* const app_stash=CvSTASH(cur_wrapper_cv);
+      SV** const gvp = hv_fetch(app_stash, ".APPL", 5, false);
+      if (gvp != nullptr && SvTYPE(*gvp) == SVt_PVGV) {
+         SV* app_sv = GvSV(*gvp);
+         if (app_sv && SvROK(app_sv)) return app_sv;
       }
-      PUTBACK;
-   } else {
-      SV* current_app=GvSV(User_application);
-      if (current_app && SvROK(current_app)) {
-         XPUSHs(current_app);
-      } else {
-         PmCancelFuncall;
-         throw exception("current application not set");
-      }
+      PmCancelFuncall;
+      throw exception("corrupted cpperl wrapper: can't find the application it belongs to");
    }
-   return SP;
+   SV* app_sv=GvSV(User_application);
+   if (app_sv && SvROK(app_sv)) return app_sv;
+   PmCancelFuncall;
+   throw exception("current application not set");
 }
 
 void fill_cached_cv(pTHX_ cached_cv& cv)

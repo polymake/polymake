@@ -22,7 +22,8 @@
 #include "polymake/client.h"
 #include "polymake/Map.h"
 
-#include <Singular/libsingular.h>
+#include "polymake/ideal/internal/singularInclude.h"
+
 #include "polymake/ideal/internal/singularTermOrderData.h"
 #include "polymake/ideal/internal/singularTermOrderMap.h"
 #include "polymake/ideal/internal/singularConvertTypes.h"

@@ -19,7 +19,6 @@
 #include "polymake/list"
 #include "polymake/Array.h"
 #include "polymake/Set.h"
-#include "polymake/Series.h"
 #include "polymake/Matrix.h"
 #include "polymake/ListMatrix.h"
 #include "polymake/linalg.h"
@@ -45,7 +44,7 @@ perl::Object mixed_integer_hull(perl::Object p_in, const Array<int>& int_coords)
   perl::Object p_project = call_function("projection", p_in, int_coords);
   Matrix<Rational> proj_lattice_points = p_project.call_method("LATTICE_POINTS");
 
-  ListMatrix<Vector<Rational> > out_points, temp_points;
+  ListMatrix<Vector<Rational>> out_points, temp_points;
   Matrix<Rational> temp_ineq(unit_matrix<Rational>(d).minor(scalar2set(0), All));
 
   // for every lattice point in the projected polyhedron compute the intersection
@@ -54,8 +53,8 @@ perl::Object mixed_integer_hull(perl::Object p_in, const Array<int>& int_coords)
   {
     // computing the equation-set of the affine space
     Vector<Rational> right_side;
-    right_side = proj_lattice_points.row(i).slice(~scalar2set(0));
-    Matrix<Rational> temp_eq(-right_side | unit_matrix<Rational>(d).minor(int_coords, ~scalar2set(0)));
+    right_side = proj_lattice_points.row(i).slice(range_from(1));
+    Matrix<Rational> temp_eq(-right_side | unit_matrix<Rational>(d).minor(int_coords, range_from(1)));
 
     perl::Object p_fiber("Polytope<Rational>");
     p_fiber.take("INEQUALITIES") << temp_ineq;

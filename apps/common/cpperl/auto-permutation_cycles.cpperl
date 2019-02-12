@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::TryCanned<const Array<int>>"], "func": "permutation_cycles", "include": ["polymake/Array.h", "polymake/permutations.h"], "ret": "list", "sig": "permutation_cycles:L.X"},
+ null ],
+"version": 3}

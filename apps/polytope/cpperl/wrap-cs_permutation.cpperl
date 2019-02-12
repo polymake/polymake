@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "cs_permutation.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "cs_permutation", "include": ["polymake/Rational.h"], "sig": "cs_permutation:T1.B", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void"], "func": "cs_permutation", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "cs_permutation:T1.B", "tp": "1"},
+ null ],
+"version": 3}

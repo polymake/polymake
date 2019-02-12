@@ -305,7 +305,7 @@ PowerSet<int> tubes_of_graph(const perl::Object& g)
       tubes += scalar2set(i);
 
    for (int k=2; k <= n; ++k) {
-      for (Entire<Subsets_of_k<const sequence&> >::const_iterator p=entire(all_subsets_of_k(sequence(0,n), k)); !p.at_end(); ++p) {
+      for (auto p=entire(all_subsets_of_k(sequence(0,n), k)); !p.at_end(); ++p) {
          const Set<int> support(*p);
          const Set<int> cc=connected_component(induced_subgraph(G, support), support.front());
          if (cc.size() == support.size())

@@ -1,0 +1,7 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::TryCanned<const Array<int>>", "perl::TryCanned<const Array<int>>"], "func": "are_permuted", "include": ["polymake/Array.h", "polymake/permutations.h"], "sig": "are_permuted.X.X"},
+  {"args": ["perl::Canned<const Array<Set<Set<int>>>&>", "perl::Canned<const Array<Set<Set<int>>>&>"], "func": "are_permuted", "include": ["polymake/Array.h", "polymake/Set.h", "polymake/permutations.h"], "sig": "are_permuted.X.X"},
+  {"args": ["perl::Canned<const Array<Set<int>>&>", "perl::Canned<const Array<Set<int>>&>"], "func": "are_permuted", "include": ["polymake/Array.h", "polymake/Set.h", "polymake/permutations.h"], "sig": "are_permuted.X.X"},
+ null ],
+"version": 3}

@@ -14,7 +14,7 @@
 #-------------------------------------------------------------------------------
 
 # @Category Combinatorics
-object Hypersurface { 
+object Hypersurface {
 
 # Homogeneous tropical polynomial defining the hypersurface.
 
@@ -56,10 +56,10 @@ rule REDUNDANT_MONOMIALS : TermPerm.REDUNDANT_MONOMIALS, TermPerm.PERMUTATION {
 weight 1.10;
 
 # The __dome__ of a tropical polynomial \(F:\mathbb R^d\to\mathbb R\) (and the corresponding tropical hypersurface) is the set 
-# \[D(F)=\left\{(p,s)\in\mathbb R^{d+1}\mid p\in\mathbb R^d, s\in\mathbb R, s \oplus F(p) = s\right\}.\]
+# \[D(F)=\left\{(p,s)\in\mathbb R^{d+1}\mid p\in\mathbb R^d, s\in\mathbb R, s \oplus F(p) = s\right\}\].
 # It is an unbounded convex polyhedron, c.f.
 # 
-# 	Michael Joswig, [[http://page.math.tu-berlin.de/~joswig/etc/ETC-130412.pdf|Essentials of Tropical Combinatorics]], Chapter 1.
+# 	Michael Joswig, [[http://page.math.tu-berlin.de/~joswig/etc/|Essentials of Tropical Combinatorics]], Chapter 1.
 
 property DOME : polytope::Polytope<Rational>;
 
@@ -116,7 +116,6 @@ user_method GENUS : MONOMIALS, REDUNDANT_MONOMIALS {
 precondition : PROJECTIVE_DIM {
    $this->PROJECTIVE_DIM == 1 
 }
-
 
 } # object Hypersurface
 

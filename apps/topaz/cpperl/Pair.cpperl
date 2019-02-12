@@ -1,0 +1,6 @@
+{"app": "topaz",
+ "inst": [
+  {"class": "std::pair<HomologyGroup<Integer>, SparseMatrix<Integer, NonSymmetric>>", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h", "polymake/client.h", "polymake/topaz/HomologyComplex.h"], "pkg": "Polymake::common::Pair_A_HomologyGroup__Integer_I_SparseMatrix_A_Integer_I_NonSymmetric_Z_Z"},
+  {"class": "std::pair<CycleGroup<Integer>, Map<std::pair<int, int>, int>>", "include": ["polymake/Integer.h", "polymake/Map.h", "polymake/client.h", "polymake/topaz/HomologyComplex.h"], "pkg": "Polymake::common::Pair_A_CycleGroup__Integer_I_Map_A_Pair_A_Int_I_Int_Z_I_Int_Z_Z"},
+ null ],
+"version": 3}

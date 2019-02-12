@@ -43,7 +43,7 @@ Array<Set<int> > delaunay_triangulation(perl::Object p)
    }
 
    std::vector<Set<int>> triang;
-   perl::ObjectType poly_type=perl::ObjectType::construct<E>("Polytope");
+   perl::ObjectType poly_type("Polytope", mlist<E>());
 
    for (auto sim=entire(cols(v_i_f_without_far_face)); !sim.at_end(); ++sim) {
       if (sim->size()==dim) {

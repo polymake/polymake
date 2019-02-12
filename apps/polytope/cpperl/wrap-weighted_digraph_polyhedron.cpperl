@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "weighted_digraph_polyhedron.cc",
+ "inst": [
+  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>"], "func": "weighted_digraph_polyhedron", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "weighted_digraph_polyhedron:T1.X", "tp": "1"},
+ null ],
+"version": 3}

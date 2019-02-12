@@ -117,6 +117,7 @@ inline bool int_quotient(long long& Quot, const pm::Integer& Num, const pm::Inte
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-variable"
+#pragma clang diagnostic ignored "-Wshadow"
 #if __clang_major__ >= (defined(__APPLE__) ? 9 : 4)
 #pragma clang diagnostic ignored "-Winstantiation-after-specialization"
 #endif
@@ -125,6 +126,7 @@ inline bool int_quotient(long long& Quot, const pm::Integer& Num, const pm::Inte
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#pragma GCC diagnostic ignored "-Wshadow"
 #if __GNUC__ >= 6
 #pragma GCC diagnostic ignored "-Wmisleading-indentation"
 #if __GNUC__ >= 8

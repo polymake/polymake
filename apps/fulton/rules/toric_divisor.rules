@@ -33,6 +33,12 @@ object TDivisor {
 
 object NormalToricVariety {
 
+   rule DIVISOR.COEFFICIENTS : RaysPerm.PERMUTATION, RaysPerm.DIVISOR.COEFFICIENTS {
+      my $old = $this->RaysPerm->DIVISOR->COEFFICIENTS;
+      my $perm = $this->RaysPerm->PERMUTATION;
+      $this->DIVISOR->COEFFICIENTS = permuted($old, $perm);
+   }
+
    rule DIVISOR.SECTION_POLYTOPE.INEQUALITIES : RAYS, DIVISOR.COEFFICIENTS {
       my $a = $this->DIVISOR->COEFFICIENTS;
       my $rays = primitive($this->RAYS);		
@@ -106,20 +112,20 @@ object NormalToricVariety {
       $lin = zero_vector($lin->rows) | convert_to<Rational>($lin);
       my $coefficients = $this->DIVISOR->COEFFICIENTS;
       foreach my $s (@$maxcones){
-	 my $eq = $coefficients->slice($s) | convert_to<Rational>($rays->minor($s,All));
-	 my $ns=new Matrix;
-	 if ( $lin->rows ) {
-	    $ns = null_space($eq/$lin);
-	 } else {
-	    $ns = null_space($eq);
-	 }
-	 die "too many solutions for Cartier data\n" if $ns->rows > 1;
-	 if ( $ns->rows == 0 ) {
-	    $this->DIVISOR->Q_CARTIER = 0;
-	    return;
-	 }
-	 my $v = $ns->row(0);
-	 $map->{$s} = $v/$v->[0];
+         my $eq = $coefficients->slice($s) | convert_to<Rational>($rays->minor($s,All));
+         my $ns=new Matrix;
+         if ( $lin->rows ) {
+            $ns = null_space($eq/$lin);
+         } else {
+            $ns = null_space($eq);
+         }
+         die "too many solutions for Cartier data\n" if $ns->rows > 1;
+         if ( $ns->rows == 0 ) {
+            $this->DIVISOR->Q_CARTIER = 0;
+            return;
+         }
+         my $v = $ns->row(0);
+         $map->{$s} = $v/$v->[0];
       }
       $this->DIVISOR->Q_CARTIER = 1;
       $this->DIVISOR->CARTIER_DATA = $map;
@@ -140,7 +146,91 @@ object NormalToricVariety {
       $this->DIVISOR->CARTIER=1;
    }
    precondition : DIVISOR.Q_CARTIER;
+	
+   
+   rule DIVISOR.BASEPOINT_FREE : DIVISOR.CARTIER_DATA, MAXIMAL_CONES, DIVISOR.SECTION_POLYTOPE {
+      my $maxcones = $this->MAXIMAL_CONES;
+      my $P = $this->DIVISOR->SECTION_POLYTOPE;
+      my $map = $this->DIVISOR->CARTIER_DATA;
+      foreach my $s (@$maxcones){
+         if (!$P->contains($map->{$s})){
+            $this->DIVISOR->BASEPOINT_FREE = 0;
+            return;
+         }
 
+      }
+      $this->DIVISOR->BASEPOINT_FREE = 1;
+   }
+   precondition : DIVISOR.CARTIER;
+   precondition : PURE;
+   precondition : FULL_DIM;
+
+
+   # ampleness implies that  the divisor is Cartier and the fan is complete
+   # Hence, [[CARTIER_DATA]] is defined and contains integral points
+   # for any two adjacent maximal cones s,s' with intersection t we have to check the following:
+   # if m, m' are the vertices corresponding to the cones, and u is a generator of s'/t, then (m-m')*u must be positive
+   # (note that any vector u pointing in the right direction in s'/t suffices to check this)
+   rule DIVISOR.AMPLE : DIVISOR.COEFFICIENTS, DIVISOR.CARTIER_DATA, RAYS, MAXIMAL_CONES, DUAL_GRAPH.ADJACENCY {
+      my $mc = $this->MAXIMAL_CONES;
+      my $rays = primitive($this->RAYS);
+      my $d =$this->DIVISOR->COEFFICIENTS;
+      my $cd = $this->DIVISOR->CARTIER_DATA;
+      my $dg = $this->DUAL_GRAPH->ADJACENCY;
+
+      foreach my $i (0..$mc->rows-1) {
+         foreach my $adj (@{$dg->adjacent_nodes($i)})  {
+            if ( $adj > $i ) {
+               my $j = @{($mc->[$adj]-$mc->[$i])}[0];
+               if ( ($cd->{$mc->[$i]}-$cd->{$mc->[$adj]})->slice(range_from(1)) * $rays->[$j] <= 0 ) {
+                  $this->DIVISOR->AMPLE = 0;
+                  return;
+               }
+            }
+         }
+      }
+      $this->DIVISOR->AMPLE = 1;
+   }
+   weight 3.10;
+   #  precondition : DIVISOR.CARTIER;
+   precondition : COMPLETE;
+
+
+   # computes whether a toric divisor is [[NEF]]
+   # algorithm: check whether the divisor is in the nef cone of the variety
+   rule DIVISOR.NEF : DIVISOR.COEFFICIENTS, NEF_CONE.FACETS | NEF_CONE.INEQUALITIES, NEF_CONE.LINEAR_SPAN | NEF_CONE.EQUATIONS, RATIONAL_DIVISOR_CLASS_GROUP.PROJECTION {
+      my $nef = $this->NEF_CONE;
+      my $pd = $this->DIVISOR->COEFFICIENTS * $this->RATIONAL_DIVISOR_CLASS_GROUP->PROJECTION;
+      $this->DIVISOR->NEF = $nef->contains($pd);
+   }
+   weight 1.10;
+
+
+   # computes whether a toric divisor is [[EFFECTIVE]]
+   # algorithm: check whether the divisor is in the effective cone of the variety    
+   rule DIVISOR.EFFECTIVE : DIVISOR.COEFFICIENTS, EFFECTIVE_CONE.FACETS | EFFECTIVE_CONE.INEQUALITIES, EFFECTIVE_CONE.LINEAR_SPAN | EFFECTIVE_CONE.EQUATIONS, RATIONAL_DIVISOR_CLASS_GROUP.PROJECTION {
+      my $eff = $this->EFFECTIVE_CONE;
+      my $pd = $this->DIVISOR->COEFFICIENTS * $this->RATIONAL_DIVISOR_CLASS_GROUP->PROJECTION;
+      $this->DIVISOR->EFFECTIVE = $eff->contains($pd);
+   }
+   weight 1.10;
+
+}
+
+
+# ---------------------
+# user functions
+# ---------------------
+
+
+# # @category Normal Toric Varieties
+# return the polytope defined by an element of the nef or effective cone
+# first argument is the fan, second the Vector defining the divisor class
+user_function polytope_of_divisor_class(NormalToricVariety, Vector) {
+  my ($tv,$d)=@_;
+  my $ld = $d*$tv->RATIONAL_DIVISOR_CLASS_GROUP->LIFTING;
+  my $div = $tv->DIVISOR(COEFFICIENTS=>$ld, temporary);
+  return $div->SECTION_POLYTOPE;
 }
 
 

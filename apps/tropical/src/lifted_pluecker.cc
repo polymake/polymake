@@ -38,11 +38,10 @@ Vector<TropicalNumber<Addition> > lifted_pluecker(const Matrix<TropicalNumber<Ad
 
    // first merging given and extra rows and then taking them apart again
    // yields the desired ordering of the coefficients of the tropical Pluecker vector
-   for (Entire< Subsets_of_k<const sequence&> >::const_iterator rho = entire(all_subsets_of_k(all_rows,d));
-        !rho.at_end(); ++rho) {
+   for (auto rho = entire(all_subsets_of_k(all_rows,d)); !rho.at_end(); ++rho) {
       const Set<int> ri(*rho);
       Set<int> sigma, tau;
-      for (Entire< Set<int> >::const_iterator rii=entire(ri); !rii.at_end(); ++rii)
+      for (auto rii=entire(ri); !rii.at_end(); ++rii)
          // take given and extra rows apart
          if (*rii < d)
             tau.push_back(*rii);

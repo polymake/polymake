@@ -1,0 +1,5 @@
+{"app": "tropical", "embed": "nearest_point.cc",
+ "inst": [
+  {"args": ["Min", "Rational", "void", "perl::Canned<const Vector<TropicalNumber<Min, Rational>>&>"], "func": "nearest_point", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "nearest_point:T2.B.X", "tp": "2"},
+ null ],
+"version": 3}

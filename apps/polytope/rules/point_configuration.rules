@@ -367,11 +367,12 @@ user_function minkowski_sum<Scalar> (type_upgrade<Scalar>, PointConfiguration<ty
 
 
 # @category Producing a cone
-# Computes the normal cone of //p// at the vertex //v//.
+# Computes the normal cone of //p// at a face //F// (or vertex //v//).
 # By default this is the inner normal cone.
 # @param PointConfiguration p
 # @param Set<Int> F (or Int v) point indices which are not contained in the far face
 # @option Bool outer Calculate outer normal cone?  Default value is 0 (= inner)
+# @option Bool attach Attach the cone to //F//? Default 0 (ie, return the cone inside the hyperplane at infinity)
 # @return Cone
 # @example [prefer cdd] To compute the outer normal cone of a doubled 2-cube, do this:
 # > $v = cube(2)->VERTICES;
@@ -379,12 +380,12 @@ user_function minkowski_sum<Scalar> (type_upgrade<Scalar>, PointConfiguration<ty
 # > print normal_cone($p, 4, outer=>1)->RAYS;
 # | 0 -1
 # | -1 0
-user_function normal_cone<Scalar>(PointConfiguration<Scalar> $; { outer => 0 }) {
+user_function normal_cone<Scalar>(PointConfiguration<Scalar> $; { outer => 0, attach => 0 }) {
     my ($c, $F, $options) = @_;
     if ($F =~ /^\d+/ || ref($F) == "ARRAY") {
 	$F = new Set($F);
     }
-    return normal_cone_impl<Scalar>($c, $F, "CONVEX_HULL.FACETS_THRU_POINTS", "CONVEX_HULL.FACETS", $options);
+    return normal_cone_impl<Scalar>($c, $F, "CONVEX_HULL.FACETS_THRU_POINTS", "CONVEX_HULL.POINTS", "CONVEX_HULL.FACETS", $options);
 }
 
 # @category Triangulations, subdivisions and volume

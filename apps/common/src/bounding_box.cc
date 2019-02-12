@@ -19,37 +19,40 @@
 
 namespace polymake { namespace common {
 
-   //for sparse matrices
-   template<typename MatrixTop, typename Coord>
-      typename std::enable_if<MatrixTop::is_sparse, Matrix<Coord>>::type bounding_box(const GenericMatrix<MatrixTop, Coord>& V){
-         const int d=V.cols();
-         Matrix<Coord> BB(2,d);
-         if(d){
-            for(typename Entire< Cols<MatrixTop> >::const_iterator c =  entire(cols(V.top())); !c.at_end(); ++c){
-               if((*c).size() == V.rows()){ //non-sparse col
-                  BB(0,c.index()) = (*c)[0];
-                  BB(1,c.index()) = (*c)[0];
-               }
-               for(auto it = entire(*c); !it.at_end(); ++it){
-                  assign_min_max(BB(0,c.index()), BB(1,c.index()),(*it));
-               }
-            }
+// for sparse matrices
+template<typename MatrixTop, typename Coord>
+std::enable_if_t<MatrixTop::is_sparse, Matrix<Coord>>
+bounding_box(const GenericMatrix<MatrixTop, Coord>& V)
+{
+   const int d=V.cols();
+   Matrix<Coord> BB(2,d);
+   if (d) {
+      for (auto c = entire(cols(V)); !c.at_end(); ++c) {
+         if (c->size() == V.rows()) { //non-sparse col
+            BB(0, c.index()) = (*c)[0];
+            BB(1, c.index()) = (*c)[0];
          }
-         return BB;
+         for (auto it = entire(*c); !it.at_end(); ++it) {
+            assign_min_max(BB(0,c.index()), BB(1,c.index()), *it);
+         }
       }
+   }
+   return BB;
+}
 
-   //for non-sparse matrices
+// for non-sparse matrices
 template <typename MatrixTop, typename Coord>
-      typename std::enable_if<!MatrixTop::is_sparse, Matrix<Coord>>::type bounding_box(const GenericMatrix<MatrixTop, Coord>& V)
+std::enable_if_t<!MatrixTop::is_sparse, Matrix<Coord>>
+bounding_box(const GenericMatrix<MatrixTop, Coord>& V)
 {
    const int d=V.cols();
    Matrix<Coord> BB(2,d);
    if (V.rows()) {
-      typename Entire< Rows<MatrixTop> >::const_iterator r=entire(rows(V.top()));
+      auto r=entire(rows(V));
       BB[0]=*r;
       BB[1]=*r;
       while (!(++r).at_end()) {
-         typename MatrixTop::row_type::const_iterator c=r->begin();
+         auto c=r->begin();
          for (int j=0; j<d; ++j, ++c)
             assign_min_max(BB(0,j), BB(1,j), *c);
       }
@@ -77,7 +80,7 @@ UserFunctionTemplate4perl("# @category Utilities"
                           "# @return Matrix a Matrix with two rows and //m//->[[Matrix::cols|cols]] columns; [[Matrix::row|row]](0) contains lower bounds, [[Matrix::row|row]](1) contains upper bounds.",
                           "bounding_box(Matrix)");
 
-FunctionTemplate4perl("extend_bounding_box(Matrix& Matrix) : void");
+FunctionTemplate4perl("extend_bounding_box(Matrix& Matrix)");
 
 } }
 

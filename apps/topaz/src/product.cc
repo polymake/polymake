@@ -31,7 +31,7 @@ namespace {
 // m_set is an m-element set of {0,...,m+n-1}
 Array<bool> shuffle_from_m_set(const int m, const int n, const Set<int>& m_set) {
    Array<bool> shuffle(m+n-2,false);
-   for (Entire< Set<int> >::const_iterator it=entire(m_set); !it.at_end(); ++it)
+   for (auto it=entire(m_set); !it.at_end(); ++it)
       shuffle[*it]=true;
    return shuffle;
 }
@@ -46,14 +46,12 @@ Set<int> facet_from_m_set(const std::list<int>& s1, const std::list<int>& s2,
    facet += vert_map(*v1,*v2);
    //      cout << *v1 << "," << *v2 << " -- " << vert_map(*v1,*v2) << endl;
    const Array<bool> shuffle = shuffle_from_m_set(s1.size(),s2.size(),m_set);
-   for (Entire< Array<bool> >::const_iterator it=entire(shuffle); !it.at_end(); ++it) {
+   for (auto it=entire(shuffle); !it.at_end(); ++it) {
       if (*it)  ++v1;
       else      ++v2;
       facet += vert_map(*v1,*v2);
-      //         cout << *v1 << "," << *v2 << " -- " << vert_map(*v1,*v2) << endl;
    }
       
-   //      cout << "facet: " << facet << endl;
    return facet;
 }
    
@@ -69,9 +67,8 @@ Array<int> collor_cons_ordering(const Array<int>& C) {
    }
     
    int i=0;
-   for (Entire<  Set<int> >::const_iterator c=entire(colors); !c.at_end(); ++c)
-      for (Entire< std::list<int> >::const_iterator v=entire(vert_of_color[*c]);
-           !v.at_end(); ++v, ++i)
+   for (auto c=entire(colors); !c.at_end(); ++c)
+      for (auto v=entire(vert_of_color[*c]); !v.at_end(); ++v, ++i)
          ordering[i] = *v;
 
    return ordering;
@@ -118,17 +115,13 @@ void combinatorial_simplicial_product_impl (perl::Object p_in1, perl::Object p_i
    // compute vertex map
    Matrix<int> vert_map(n_vert1,n_vert2);
    int c=0;
-   for (Entire< Array<int> >::const_iterator v2=entire(order2); !v2.at_end(); ++v2)
-      for (Entire< Array<int> >::const_iterator v1=entire(order1); !v1.at_end(); ++v1, ++c)
+   for (auto v2=entire(order2); !v2.at_end(); ++v2)
+      for (auto v1=entire(order1); !v1.at_end(); ++v1, ++c)
          vert_map(*v1,*v2) = c;
    
-   //   cout << "order1\n" << order1 << "\norder2\n" << order2
-   //   << "\nvert_map\n" << vert_map << endl;
-
-   std::list< Set<int> > F;
-   for (Entire< Array< Set<int> > >::const_iterator f1=entire(C1); !f1.at_end(); ++f1)
-      for (Entire< Array< Set<int> > >::const_iterator f2=entire(C2); !f2.at_end(); ++f2) {
-         //      cout << "\n-------------  " << *f1 << " X " << *f2 << "  -------------\n";
+   std::list<Set<int>> F;
+   for (auto f1=entire(C1); !f1.at_end(); ++f1)
+      for (auto f2=entire(C2); !f2.at_end(); ++f2) {
          const int m=f1->size()-1;
          const int n=f2->size()-1;
 
@@ -139,12 +132,10 @@ void combinatorial_simplicial_product_impl (perl::Object p_in1, perl::Object p_i
          for (int i=0; i<n_vert2; ++i)
             if (f2->contains(order2[i]))
                s2.push_back(order2[i]);
-         //      cout << "ordered: " << s1 << " X " << s2 << endl;
 
          // compute faces
-         Subsets_of_k<sequence> enumerator(range(0,m+n-1), m);
-         for (Subsets_of_k<sequence>::iterator m_set=entire(enumerator); !m_set.at_end(); ++m_set)
-            F.push_back(facet_from_m_set(s1,s2,vert_map,*m_set));
+         for (auto m_set=entire(all_subsets_of_k(range(0,m+n-1), m)); !m_set.at_end(); ++m_set)
+            F.push_back(facet_from_m_set(s1, s2, vert_map, *m_set));
       }
    
    p_out.set_description() << "Simplicial product of " << p_in1.name() << " and " << p_in2.name() << "."<<endl;
@@ -176,9 +167,9 @@ template <typename Scalar>
 perl::Object simplicial_product (perl::Object p_in1, perl::Object p_in2, perl::OptionSet options)
 {
    const bool realize = options["geometric_realization"];
-   perl::ObjectType result_type =
-                      realize ? perl::ObjectType::construct<Scalar>("GeometricSimplicialComplex")
-                              : perl::ObjectType("SimplicialComplex");
+   perl::ObjectType result_type = realize
+      ? perl::ObjectType("GeometricSimplicialComplex", mlist<Scalar>())
+      : perl::ObjectType("SimplicialComplex");
    perl::Object p_out(result_type);
    Array<int> order1, order2;
    combinatorial_simplicial_product_impl(p_in1, p_in2, p_out, order1, order2, options);
@@ -188,8 +179,8 @@ perl::Object simplicial_product (perl::Object p_in1, perl::Object p_in2, perl::O
       const Matrix<Scalar> GR2 = p_in2.give("COORDINATES");
       Matrix<Scalar> GR(GR1.rows()*GR2.rows(),GR1.cols()+GR2.cols());
       int c=0;
-      for (Entire< Array<int> >::const_iterator v2=entire(order2); !v2.at_end(); ++v2)
-         for (Entire< Array<int> >::const_iterator v1=entire(order1); !v1.at_end(); ++v1, ++c)
+      for (auto v2=entire(order2); !v2.at_end(); ++v2)
+         for (auto v1=entire(order1); !v1.at_end(); ++v1, ++c)
             GR[c] = GR1[*v1] | GR2[*v2];
       
       p_out.take("COORDINATES") << GR;

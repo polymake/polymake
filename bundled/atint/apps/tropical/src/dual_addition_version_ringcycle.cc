@@ -26,25 +26,26 @@
 
 namespace polymake { namespace tropical {
 
-   template <typename Addition>
-      perl::Object dual_addition_version(perl::Object ring_cycle) {
-         int n = ring_cycle.give("N_ELEMENTS");
-         int r = ring_cycle.give("RANK");
-         Array<IncidenceMatrix<> > pres = ring_cycle.give("NESTED_PRESENTATIONS");
-         Array<int> coef = ring_cycle.give("NESTED_COEFFICIENTS");
+template <typename Addition>
+perl::Object dual_addition_version(perl::Object ring_cycle)
+{
+  int n = ring_cycle.give("N_ELEMENTS");
+  int r = ring_cycle.give("RANK");
+  Array<IncidenceMatrix<> > pres = ring_cycle.give("NESTED_PRESENTATIONS");
+  Array<int> coef = ring_cycle.give("NESTED_COEFFICIENTS");
 
-         perl::Object result(perl::ObjectType::construct<typename Addition::dual>("MatroidRingCycle"));
-            result.take("N_ELEMENTS") << n;
-            result.take("RANK") << r;
-            result.take("NESTED_PRESENTATIONS") << pres;
-            result.take("NESTED_COEFFICIENTS") << coef;
-         return result;
-      }
+  perl::Object result("MatroidRingCycle", mlist<typename Addition::dual>());
+  result.take("N_ELEMENTS") << n;
+  result.take("RANK") << r;
+  result.take("NESTED_PRESENTATIONS") << pres;
+  result.take("NESTED_COEFFICIENTS") << coef;
+  return result;
+}
   
-   UserFunctionTemplate4perl("# @category Conversion of tropical addition"
-         "# Takes a MatroidRingCycle and converts it to the dual tropical addition"
-         "# @param MatroidRingCycle<Addition> M"
-         "# @return MatroidRingCycle",
-         "dual_addition_version<Addition>(MatroidRingCycle<Addition>)");
+UserFunctionTemplate4perl("# @category Conversion of tropical addition"
+                          "# Takes a MatroidRingCycle and converts it to the dual tropical addition"
+                          "# @param MatroidRingCycle<Addition> M"
+                          "# @return MatroidRingCycle",
+                          "dual_addition_version<Addition>(MatroidRingCycle<Addition>)");
 
-}}
+} }

@@ -450,7 +450,7 @@ private:
       }
       link_index Down;
       cur=root_node();
-      typename Diligent<const Key&>::type K=diligent(k);
+      const auto& K=diligent(k);
       while (1) {
          Down=link_index(comparator(K, this->key(*cur)));
          if (Down==P ||
@@ -618,7 +618,7 @@ public:
                return found;
             treeify();
          }
-         typename Diligent<const Key&>::type K=diligent(k);
+         const auto& K=diligent(k);
          Ptr cur=root_node();
          do {
             const cmp_value diff=comparator(this->key(*cur), K);
@@ -665,6 +665,16 @@ public:
       return n;
    }
 
+   template <typename Arg>
+   struct insert_arg_helper {
+      static const bool is_reverse_iterator=is_derived_from<Arg, reverse_iterator>::value || is_derived_from<Arg, const_reverse_iterator>::value;
+      static const bool is_iterator=is_derived_from<Arg, iterator>::value || is_derived_from<Arg, const_iterator>::value || is_reverse_iterator;
+      static const bool is_pair=isomorphic_to_first<key_type, Arg>::value;
+      static const int d=is_iterator*2+is_pair;
+      using discr = int_constant<d>;
+      using return_type = std::conditional_t<is_reverse_iterator, reverse_iterator, iterator>;
+   };
+
    template <typename Key>
    iterator insert_impl(const Key& k, int_constant<0>)
    {
@@ -695,28 +705,18 @@ public:
       return iterator(this->get_it_traits(), find_insert(p.first, p.second, op));
    }
 
-   template <typename Key>
-   iterator insert_impl(const iterator& pos, const Key& k, int_constant<2>)
+   template <typename Iterator, typename Key>
+   auto insert_impl(const Iterator& pos, const Key& k, int_constant<2>)
    {
-      return iterator(this->get_it_traits(), insert_node_at(pos.cur, L, this->create_node(k)));
+      using result_type = std::conditional_t<insert_arg_helper<Iterator>::is_reverse_iterator, reverse_iterator, iterator>;
+      return result_type(this->get_it_traits(), insert_node_at(pos.cur, insert_arg_helper<Iterator>::is_reverse_iterator ? R : L, this->create_node(k)));
    }
 
-   template <typename Key, typename Data>
-   iterator insert_impl(const iterator& pos, const Key& k, const Data& data, int_constant<2>)
+   template <typename Iterator, typename Key, typename Data>
+   auto insert_impl(const Iterator& pos, const Key& k, const Data& data, int_constant<2>)
    {
-      return iterator(this->get_it_traits(), insert_node_at(pos.cur, L, this->create_node(k, data)));
-   }
-
-   template <typename Key>
-   reverse_iterator insert_impl(const reverse_iterator& pos, const Key& k, int_constant<2>)
-   {
-      return reverse_iterator(this->get_it_traits(), insert_node_at(pos.cur, R, this->create_node(k)));
-   }
-
-   template <typename Key, typename Data>
-   reverse_iterator insert_impl(const reverse_iterator& pos, const Key& k, const Data& data, int_constant<2>)
-   {
-      return reverse_iterator(this->get_it_traits(), insert_node_at(pos.cur, R, this->create_node(k, data)));
+      using result_type = std::conditional_t<insert_arg_helper<Iterator>::is_reverse_iterator, reverse_iterator, iterator>;
+      return result_type(this->get_it_traits(), insert_node_at(pos.cur, insert_arg_helper<Iterator>::is_reverse_iterator ? R : L, this->create_node(k, data)));
    }
 
    template <typename Key>
@@ -747,25 +747,14 @@ public:
       this->destroy_node(p.first);
    }
 
-   void erase_impl(const iterator& pos, int_constant<2>)
+   template <typename Iterator>
+   void erase_impl(const Iterator& pos, int_constant<2>)
    {
       this->destroy_node(remove_node(pos.cur));
    }
 
-   void erase_impl(const reverse_iterator& pos, int_constant<2>)
-   {
-      this->destroy_node(remove_node(pos.cur));
-   }
-
-   void erase_impl(iterator pos, const iterator& end, int_constant<2>)
-   {
-      while (pos != end) {
-         Node *n=pos.cur;  ++pos;
-         this->destroy_node(remove_node(n));
-      }
-   }
-
-   void erase_impl(reverse_iterator pos, const reverse_iterator& end, int_constant<2>)
+   template <typename Iterator>
+   void erase_impl(Iterator pos, const Iterator& end, int_constant<2>)
    {
       while (pos != end) {
          Node *n=pos.cur;  ++pos;
@@ -828,16 +817,6 @@ public:
       return ! find_node(k,this->key_comparator).end();
    }
 
-   template <typename Arg>
-   struct insert_arg_helper {
-      static const bool is_reverse_iterator=is_derived_from<Arg, reverse_iterator>::value;
-      static const bool is_iterator=is_derived_from<Arg, iterator>::value || is_reverse_iterator;
-      static const bool is_pair=isomorphic_to_first<key_type, Arg>::value;
-      static const int d=is_iterator*2+is_pair;
-      typedef int_constant<d> discr;
-      typedef typename std::conditional<is_reverse_iterator, reverse_iterator, iterator>::type return_type;
-   };
-
    template <typename First>
    typename insert_arg_helper<First>::return_type
    insert(const First& first_arg)
@@ -860,19 +839,32 @@ public:
    }
 
    template <typename First>
-   typename std::enable_if<Traits::allow_multiple, typename insert_arg_helper<First>::return_type>::type
+   std::enable_if_t<!Traits::allow_multiple, typename insert_arg_helper<First>::return_type>
+   insert_new(const First& first_arg)
+   {
+      return insert_impl(first_arg, typename insert_arg_helper<First>::discr());
+   }
+
+   template <typename First, typename Second>
+   std::enable_if_t<!Traits::allow_multiple, typename insert_arg_helper<First>::return_type>
+   insert_new(const First& first_arg, const Second& second_arg)
+   {
+      return insert_impl(first_arg, second_arg, typename insert_arg_helper<First>::discr());
+   }
+
+   template <typename First>
+   std::enable_if_t<Traits::allow_multiple, typename insert_arg_helper<First>::return_type>
    insert_new(const First& first_arg)
    {
       return insert_new_impl(first_arg, typename insert_arg_helper<First>::discr());
    }
 
    template <typename First, typename Second>
-   typename std::enable_if<Traits::allow_multiple, typename insert_arg_helper<First>::return_type>::type
+   std::enable_if_t<Traits::allow_multiple, typename insert_arg_helper<First>::return_type>
    insert_new(const First& first_arg, const Second& second_arg)
    {
       return insert_new_impl(first_arg, second_arg, typename insert_arg_helper<First>::discr());
    }
-   
 
    /// Insert a given node in the tree corresponding to the value of its key field.
    /// @return NULL if the key of the given node already occurs in the tree, //n// otherwise.
@@ -899,7 +891,7 @@ public:
                }
             }
          } else if (p.second == P) {
-            return NULL;
+            return nullptr;
          }
          ++n_elem;
          insert_rebalance(n,p.first,p.second);
@@ -1083,7 +1075,12 @@ public:
    /// Creates an empty tree.
    tree() { init(); }
 
-   tree(typename Traits::arg_type traits_arg) : Traits(traits_arg) { init(); }
+   template <typename... Args, typename=std::enable_if_t<std::is_constructible<Traits, Args...>::value>>
+   explicit tree(Args&&... args)
+      : Traits(std::forward<Args>(args)...)
+   {
+      init();
+   }
 
    /** Create a copy of another tree.
        The current form (list or tree) is also inherited.
@@ -1127,7 +1124,7 @@ private:
 public:
    template <typename Iterator>
    explicit tree(Iterator&& src,
-                 typename std::enable_if<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value, void**>::type=nullptr)
+                 std::enable_if_t<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value, void**> =nullptr)
    {
       init();
       fill_impl(ensure_private_mutable(std::forward<Iterator>(src)));
@@ -1162,7 +1159,7 @@ public:
    }
 
    template <typename Iterator,
-             typename=typename std::enable_if<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value>::type>
+             typename=std::enable_if_t<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value>>
    void assign(Iterator&& src)
    {
       clear();
@@ -1583,7 +1580,7 @@ struct node_accessor_impl<NodeRef, true> {
 template <typename NodeRef>
 struct node_accessor : node_accessor_impl<NodeRef> {};
 
-template <typename K, typename D, typename Comparator>
+template <typename K, typename D>
 struct it_traits {
    typedef node<K,D> Node;
 
@@ -1592,15 +1589,16 @@ struct it_traits {
    const it_traits& get_it_traits() const { return *this; }
 };
 
-template <typename K, typename D, typename Comparator>
-class traits : public it_traits<K,D,Comparator> {
+template <typename K, typename D, typename... Params>
+class traits : public it_traits<K, D> {
 public:
-   typedef it_traits<K,D,Comparator> traits_for_iterator;
-   typedef typename traits_for_iterator::Node Node;
-   typedef K key_type;
-   typedef Comparator key_comparator_type;
-   static const bool allow_multiple=false;
-   typedef std::allocator<Node> node_allocator_type;
+   using traits_for_iterator = it_traits<K, D>;
+   using Node = typename traits_for_iterator::Node;
+   using key_type = K;
+   using params = typename mlist_wrap<Params...>::type;
+   using key_comparator_type = typename mtagged_list_extract<params, ComparatorTag, operations::cmp>::type;
+   static const bool allow_multiple = tagged_list_extract_integral<params, MultiTag>(false);
+   using node_allocator_type = std::allocator<Node>;
 
 protected:
    mutable Ptr<Node> root_links[3];
@@ -1668,6 +1666,16 @@ public:
    }
 
    const key_comparator_type& get_comparator() const { return key_comparator; }
+};
+
+template <typename K, typename D, typename Comparator>
+struct single_key_traits {
+   using type = traits<K, D, ComparatorTag<Comparator>>;
+};
+
+template <typename K, typename D>
+struct single_key_traits<K, D, operations::cmp> {
+   using type = traits<K, D>;
 };
 
 } // end namespace AVL

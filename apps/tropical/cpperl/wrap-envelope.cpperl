@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "envelope.cc",
+ "inst": [
+  {"args": ["Min", "Rational", "perl::Canned<const Matrix<TropicalNumber<Min, Rational>>&>"], "func": "envelope", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "envelope:T2.X", "tp": "2"},
+  {"args": ["Max", "Rational", "perl::Canned<const Matrix<TropicalNumber<Max, Rational>>&>"], "func": "envelope", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "envelope:T2.X", "tp": "2"},
+ null ],
+"version": 3}

@@ -31,18 +31,14 @@ namespace pm {
 
        value_type
          elements stored in the queue
-       key_type
-         comparison keys associated with elements
-       key_comparator_type
-         comparator for the keys
 
        int position(value_type) const
          current position (index) of the element in the heap
        void update_position(value_type, int old, int new)
          change the current position of stored in/with the element;  -1 on any side means "none"
-       key_type key(value_type)
+       <any_type> key(value_type)
          retrieve the key of the element
-       key_comparator_type key_comparator() const
+       <any_type> key_comparator() const
          retrieve the key comparator object
 
        keys, values, and comparator may be passed and/or returned by const reference if desired
@@ -50,18 +46,25 @@ namespace pm {
 template <typename Policy>
 class Heap : public Policy {
 public:
-   typedef typename Policy::value_type value_type;
-   typedef typename Policy::key_type key_type;
-   typedef typename Policy::key_comparator_type key_comparator_type;
-   typedef std::vector<value_type> queue_t;
+   using typename Policy::value_type;
 
-   /** Create an empty heap
-       @param expected_qlen expected maximal heap size (helps to avoid extra reallocations)
-   */
-   explicit Heap(const Policy& policy_init, size_t expected_qlen=0)
-      : Policy(policy_init)
+   // TODO: investigate whether std::deque performs better for large problem instances
+   using queue_t = std::vector<value_type>;
+
+   //! Create an empty heap
+   template <typename... Args, typename=std::enable_if_t<std::is_constructible<Policy, Args...>::value>>
+   explicit Heap(Args&&... args)
+      : Policy(std::forward<Args>(args)...)
+   {}
+
+   //! Create an empty heap
+   //! @param expected_qlen expected maximal heap size (helps to avoid extra reallocations)
+   //! @param args optional arguments for constructing the base Policy
+   template <typename... Args, typename=std::enable_if_t<std::is_constructible<Policy, Args...>::value>>
+   explicit Heap(size_t expected_qlen, Args&&... args)
+      : Policy(std::forward<Args>(args)...)
    {
-      if (expected_qlen>0) queue.reserve(expected_qlen);
+      queue.reserve(expected_qlen);
    }
 
    const queue_t& get_queue() const { return queue; }
@@ -97,7 +100,7 @@ public:
    /// Remove the element
    void erase(const value_type& elem)
    {
-      erase(this->position(elem));
+      erase_at(this->position(elem));
    }
 
    /// Remove element at the given queue position
@@ -128,12 +131,11 @@ void Heap<Policy>::push(const value_type& elem)
       assert(size_t(old_pos)<queue.size() && queue[old_pos]==elem);
    }
 
-   const key_type& k=this->key(elem);
-   const key_comparator_type& cmp=this->key_comparator();
+   const auto& k=this->key(elem);
+   auto&& cmp=this->key_comparator();
    while (pos>0) {
-      const int p_pos=(pos-1)/2;
-      const key_type& p_k=this->key(queue[p_pos]);  // parent node in the heap tree
-      if (cmp(p_k, k) <= 0) break;
+      const int p_pos=(pos-1)/2;  // parent node in the heap tree
+      if (cmp(this->key(queue[p_pos]), k) <= 0) break;
       this->update_position(queue[pos]=queue[p_pos], p_pos, pos);
       pos=p_pos;
       moved=true;
@@ -152,8 +154,8 @@ template <typename Policy>
 void Heap<Policy>::sift_down(int old_pos, int pos, int shrinking)
 {
    const int end=queue.size()-shrinking;
-   const key_type& k=this->key(queue[old_pos]);
-   const key_comparator_type& cmp=this->key_comparator();
+   const auto& k=this->key(queue[old_pos]);
+   auto&& cmp=this->key_comparator();
    int c_pos;
    while ((c_pos=2*pos+1) < end) {
       if (c_pos+1 < end &&
@@ -168,14 +170,14 @@ void Heap<Policy>::sift_down(int old_pos, int pos, int shrinking)
 }
 
 template <typename Policy>
-typename Policy::value_type Heap<Policy>::erase_at(int pos)
+typename Heap<Policy>::value_type Heap<Policy>::erase_at(int pos)
 {
    const value_type v=queue[pos];
    this->update_position(v, pos, -1);
    const int last_q=queue.size()-1;
    if (pos < last_q) {
-      const key_type& k=this->key(queue.back());
-      const key_comparator_type& cmp=this->key_comparator();
+      const auto& k=this->key(queue.back());
+      auto&& cmp=this->key_comparator();
       bool bubble_up=false;
       int p_pos;
       while ((p_pos=(pos-1)/2) > 0) {

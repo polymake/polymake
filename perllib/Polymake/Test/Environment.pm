@@ -31,12 +31,11 @@ use Polymake::Struct (
    [ '$last_timestamp' => 'undef' ],
    [ '$ignore_random_failures' => '#%' ],
    [ '$validate' => '#%' ],
-   [ '$no_new_glue_code' => '#%' ],
    [ '$shuffle_seed' => '#%' ],
    [ '&shuffle' => 'sub { @_ }' ],
    [ '$annotate_mode' => '#%' ],
-   [ '$cur_group' => 'undef' ],
    [ '$preserve_load' => '#%' ],
+   [ '$cur_group' => 'undef' ],
    '@skipped',
    '@random_failed',
    '@failed',
@@ -48,9 +47,6 @@ use Polymake::Struct (
 sub new {
    my $self=&_new;
    my ($scope)=@_;
-
-   # suppress using and generating C++ glue code in the private wrappers extension
-   Core::CPlusPlus::forbid_code_generation($scope, $self->no_new_glue_code);
 
    if ($self->validate) {
       Core::XMLfile::enforce_validation($scope);
@@ -69,25 +65,22 @@ sub new {
       }
    }
 
-   $scope->begin_locals;
+   local with($scope->locals) {
+      # suppress printing credit notes
+      local $Polymake::User::Verbose::credits=0;
 
-   # suppress printing credit notes
-   local $Polymake::User::Verbose::credits=0;
-
-   # replace the standard 'load' user function
-   local *Polymake::User::load = sub {
-      load_object_file($self, find_object_file($_[0], $User::application));
-   }
+      # replace the standard 'load' user function
+      local *Polymake::User::load = sub {
+         load_object_file($self, $_[0], $User::application);
+      }
       unless $self->preserve_load;
 
-   # replace the standard 'load_data' user function
-   local *Polymake::User::load_data = sub {
-      load_data_file($self, find_matching_file($_[0]));
-   }
+      # replace the standard 'load_data' user function
+      local *Polymake::User::load_data = sub {
+         load_data_file($self, $_[0]);
+      }
       unless $self->preserve_load;
-
-   $scope->end_locals;
-
+   }
    $self
 }
 
@@ -211,9 +204,32 @@ sub full_path_and_copy {
    (substr($full_path, 1), $copies_dir.$full_path)
 }
 
-sub load_object_file {
+sub find_file_with_alternatives {
+   my ($filename)=@_;
+   foreach my $alt (@alternative_suffixes) {
+      -f "$filename.$alt" and return "$filename.$alt";
+   }
+   -f $filename ? $filename : undef;
+}
+
+sub find_object_file {
+   my ($self, $stem, $app)=@_;
+   my $result;
+   foreach my $filename ($stem =~ /\.[a-z]+$/ ? $stem : map { "$stem.$_" } map { @{$_->file_suffixes} } $app, values %{$app->used}) {
+      defined ($result=find_file_with_alternatives($filename)) and return $result;
+   }
+   die "no matching object file for $stem\n";
+}
+
+sub find_data_file {
    my ($self, $filename)=@_;
+   find_file_with_alternatives($filename) // die "no matching data file for $filename\n";
+}
+
+sub load_object_file {
+   my ($self, $filename, $app)=@_;
    $self->cur_group->file_cache->{$filename} //= do {
+      $filename = &find_object_file;
       my $obj;
       if ($self->validate) {
          local $Verbose::files=0;
@@ -250,6 +266,7 @@ sub load_object_file {
 sub load_data_file {
    my ($self, $filename)=@_;
    $self->cur_group->file_cache->{$filename} //= do {
+      $filename = &find_data_file;
       if ($self->validate) {
          local $Verbose::files=0;
          my $data=load_trusted_data_file($filename);
@@ -266,6 +283,7 @@ sub load_data_file {
    }
 }
 
+##################################################################
 sub create_validation_schemata {
    my ($self)=@_;
    my %schemata;

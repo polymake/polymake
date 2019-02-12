@@ -20,9 +20,8 @@ use feature 'state';
 
 package Polymake::Core::PropertyType;
 
-declare @delimiters;
-declare $nesting_level;
 declare $trusted_value;
+declare $nested_instantiation=0;
 
 sub canonical_fallback { }
 sub equal_fallback { $_[0] == $_[1] }
@@ -46,6 +45,7 @@ use Polymake::Struct (
    [ '$application' => '#3' ],
    [ '$extension' => '$Application::extension' ],
    [ '$super' => '#4' ],
+   [ '$params' => 'undef' ],
    [ '$dimension' => '0' ],
    [ '&canonical' => '->super || \&canonical_fallback' ],          # object => void
    [ '&equal'  => '->super || \&equal_fallback' ],                 # object1, object2 => bool
@@ -64,14 +64,11 @@ use Polymake::Struct (
    [ '&init' => '->super || \&init_fallback' ],
    [ '$context_pkg' => 'undef' ],
    [ '$cppoptions' => 'undef' ],
+   [ '$operators' => 'undef' ],
    [ '$help' => 'undef' ],              # InteractiveHelp (in interactive mode, when comments are supplied for user methods)
 );
 
 declare @override_methods=qw( canonical equal isa coherent_type parse toString XMLdatatype init );
-
-declare @string_ops=map { $_ => eval <<"." } qw( . cmp eq ne lt le gt ge );
-sub { \$_[2] ? "\$_[1]" $_ "\$_[0]" : "\$_[0]" $_ "\$_[1]" }
-.
 
 ####################################################################################
 #
@@ -88,6 +85,8 @@ sub new {
    define_function($pkg, ".type", $self_sub);
    if ($self->super) {
       $self->dimension=$self->super->dimension;
+      $self->params=$self->super->params;
+      $self->operators=$self->super->operators;
       if ($self->construct_node=$self->super->construct_node) {
          create_method_new($self);
       }
@@ -123,12 +122,12 @@ if ($] < 5.018) {
 }
 ##################################################################################
 sub add_constructor {
-   my ($self, $name, $code, $arg_types)=@_;
+   my ($self, $name, $label, $code, $arg_types)=@_;
    $self->construct_node //= do {
       create_method_new($self);
-      new Overload::Node(undef, undef, 0);
+      new_root Overload::Node;
    };
-   Overload::add_instance($self->pkg, ".$name", $code, undef, $arg_types, undef, $self->construct_node);
+   Overload::add_instance($self->pkg, ".$name", $label, $code, $arg_types, undef, $self->construct_node);
 }
 
 sub create_method_new : method {
@@ -183,6 +182,8 @@ sub concrete_typecheck : method {
    ? $self : undef
 }
 
+sub no_typecheck : method { croak( $_[0]->name, " inadvertently involved in overload resolution" ) }
+
 sub descend_to_generic {
    my ($self, $pkg)=@_;
    if (defined $pkg) {
@@ -196,9 +197,9 @@ sub descend_to_generic {
 ##################################################################################
 # used in overload resolution
 sub typecheck : method {
-   my ($self, $arg_list, $arg, $backtrack)=@_;
-   if (defined (my $obj_proto=Overload::fetch_type($arg))) {
-      $self->perform_typecheck->($arg_list, $obj_proto, $backtrack);
+   my ($self, $full_args, $args, $arg_index, $backtrack)=@_;
+   if (defined (my $obj_proto = Overload::fetch_type($args->[$arg_index]))) {
+      $self->perform_typecheck->($full_args, $obj_proto, $backtrack);
    }
 }
 ##################################################################################
@@ -258,8 +259,8 @@ use Polymake::Struct (
    [ '$application' => '#1->application' ],
    [ '$extension' => '#1->extension' ],
    [ '$super' => '#2 // #1' ],
-   [ '$generic' => '#1' ],
    [ '$params' => '#3' ],
+   [ '$generic' => '#1' ],
    '@derived_abstract',
 );
 
@@ -288,7 +289,7 @@ sub new {
    Struct::learn_package_retrieval($self, \&PropertyType::pkg);
    scan_params($self);
    unless ($self->abstract) {
-      if ($self->super && $self->super != $self->generic) {
+      if (defined($self->super) && $self->super != $self->generic) {
          # methods defined for the own generic class have precedence over those from the super class
          my $generic_index=Struct::get_field_index(\&generic);
          foreach my $method (@override_methods) {
@@ -301,9 +302,13 @@ sub new {
       define_function($self->pkg, "type", $self_sub, 1);
       define_function($self->pkg, ".type", $self_sub);
       $self->dimension=$self->super->dimension;
+      $self->operators=$self->super->operators;
       $self->construct_node=$self->super->construct_node;
       $self->create_method_new();
       establish_inheritance($self, $self->generic, $self->super);
+      if (defined($self->generic->cppoptions)) {
+         $self->application->cpp->add_template_instance($self, $self->generic, $nested_instantiation);
+      }
       $self->init->();
    }
    $self;
@@ -361,6 +366,7 @@ sub new_generic {
       $self=_new_generic($self_pkg, $name, $pkg, $app, $super, \@param_holders);
       if ($super) {
          $self->dimension=$super->dimension;
+         $self->operators=$super->operators;
          if ($self->construct_node=$super->construct_node) {
             $self->create_method_new();
          }
@@ -515,6 +521,9 @@ sub new {
    define_function($self->pkg, "type", $self_sub, 1);
    define_function($self->pkg, ".type", $self_sub);
    establish_inheritance($self, $self->generic, $self->super);
+   if (defined($self->generic->cppoptions)) {
+      $self->application->cpp->add_template_instance($self, $self->generic, $nested_instantiation);
+   }
    $self;
 }
 
@@ -542,6 +551,7 @@ use Polymake::Struct (
    [ '$super' => 'undef' ],
    [ '&abstract' => '\&extract_type' ],
    [ '&perform_typecheck' => '\&no_typecheck' ],
+   [ '$pkg' => '"UNIVERSAL"' ],
    [ '$context_pkg' => '#2' ],
    [ '$type_param_index' => '#4' ],
 );
@@ -553,9 +563,12 @@ sub extract_type : method {
    (is_object($_[1]) ? $_[1] : $_[1]->[0])->params->[$_[0]->type_param_index]
 }
 
-*concrete_type=\&PropertyParamedType::concrete_type;
+sub typecheck : method {
+   my ($self, $full_args, $args, $arg_index)=@_;
+   &extract_type->isa->($args->[$arg_index]) && $self;
+}
 
-sub no_typecheck : method { croak( $_[0]->name, " inadvertently involved in overload resolution" ) }
+*concrete_type=\&PropertyParamedType::concrete_type;
 
 sub full_name {
    my ($self)=@_;
@@ -651,7 +664,7 @@ sub typeof {
       instanceof FunctionTypeParam($_[1])
         or croak( "type_upgrade is only applicable to function type parameters" );
       state %inst_cache;
-      $inst_cache{ $_[1] } ||= &new;
+      $inst_cache{ $_[1] } //= &new;
 
    } elsif (@_==3) {
       # final typecheck clause
@@ -687,22 +700,25 @@ use Polymake::Struct (
    [ '$super' => 'undef' ],
    [ '$generic' => 'undef' ],
    [ '$params' => '[ #1 ]' ],
-   [ '$context_pkg' => '#1->context_pkg' ],
+   [ '$context_pkg' => 'undef' ],
    [ '&perform_typecheck' => '\&check_upgradable' ],
 );
 
 sub new {
    my $self=&_new;
-   $self->abstract= $self->params->[0]->abstract
-                    ? sub : method { $_[0]->params->[0]->abstract->($_[1]) }
-                    : sub : method { $_[0]->params->[0] };
+   if ($self->params->[0]->abstract) {
+      $self->abstract = sub : method { $_[0]->params->[0]->abstract->($_[1]) };
+      $self->context_pkg = $self->params->[0]->context_pkg;
+   } else {
+      $self->abstract = sub : method { $_[0]->params->[0] };
+   }
    $self;
 }
 
 sub typeof {
    @_==2 or croak( "type_upgrades_to requires exactly one type parameter" );
    state %inst_cache;
-   $inst_cache{ $_[1] } ||= &new;
+   $inst_cache{ $_[1] } //= &new;
 }
 
 sub check_upgradable : method {
@@ -718,6 +734,38 @@ sub check_upgradable : method {
 sub type_param_index : method { $_[0]->params->[0]->type_param_index }
 
 #################################################################################
+package Polymake::Core::PropertyType::ConvertTo;
+
+use Polymake::Struct (
+   [ '@ISA' => 'UpgradesTo' ],
+   [ new => '$' ],
+   [ '$name' => '"can_convert_to"' ],
+   [ '&perform_typecheck' => '\&no_typecheck' ],
+);
+
+sub typeof {
+   @_==2 or croak( "can_convert_to requires exactly one type parameter" );
+   state %inst_cache;
+   $inst_cache{ $_[1] } //= &new;
+}
+
+sub typecheck : method {
+   my ($self, $full_args, $args, $arg_index, $backtrack)=@_;
+   if (defined (my $target_proto=$self->abstract->($full_args))) {
+      my $given=$args->[$arg_index];
+      if ($target_proto->isa->($given)) {
+         return $self;
+      }
+      if (defined (my $converted=eval { $target_proto->construct->($given) })) {
+         push @$backtrack, sub { $args->[$arg_index]=$given };
+         $args->[$arg_index]=$converted;
+         return $self;
+      }
+   }
+   undef
+}
+
+#################################################################################
 package main;
 
 # fallback for normal packages without prototype objects
@@ -725,6 +773,7 @@ sub UNIVERSAL::typeof_gen { @_==1 && $_[0] }
 
 *type_upgrades_to::=\%Polymake::Core::PropertyType::UpgradesTo::;
 *type_upgrade::=\%Polymake::Core::PropertyType::Upgrade::;
+*can_convert_to::=\%Polymake::Core::PropertyType::ConvertTo::;
 
 1
 

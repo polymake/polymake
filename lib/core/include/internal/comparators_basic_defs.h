@@ -352,6 +352,12 @@ struct spec_object_traits< maximal<T> > : spec_object_traits<T> {};
 template <typename T>
 struct spec_object_traits< minimal<T> > : spec_object_traits<T> {};
 
+template <typename T1, typename T2, typename Comparator, typename=cmp_value>
+struct are_comparable_via : std::false_type {};
+
+template <typename T1, typename T2, typename Comparator>
+struct are_comparable_via<T1, T2, Comparator, decltype(std::declval<Comparator>()(std::declval<const T1&>(), std::declval<const T2&>()))> : std::true_type {};
+
 } // end namespace pm
 
 #endif // POLYMAKE_INTERNAL_COMPARATORS_BASIC_DEFS_H

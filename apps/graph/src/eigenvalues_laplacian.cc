@@ -52,7 +52,7 @@ Vector<double> eigenvalues_laplacian(const GenericGraph<TGraph>& p)
 }
          
 UserFunctionTemplate4perl("# @category Combinatorics"
-                          "# Compute the unsigned vertex-edge incidence matrix of the graph."
+                          "# Compute the Laplacian matrix of a graph."
                           "# @param Graph G"
                           "# @return SparseMatrix<Rational>"
                           "# @example"
@@ -65,7 +65,7 @@ UserFunctionTemplate4perl("# @category Combinatorics"
                           "laplacian<Dir>(Graph<Dir>)");
 
 UserFunctionTemplate4perl("# @category Combinatorics"
-                          "# Compute the eigenvalues of the discrete laplacian a graph."
+                          "# Compute the eigenvalues of the discrete Laplacian of a graph."
                           "# @param Graph G"
                           "# @return Vector<Float>"
                           "# @example"
@@ -75,7 +75,7 @@ UserFunctionTemplate4perl("# @category Combinatorics"
                           "eigenvalues_laplacian<Dir>(Graph<Dir>)");
 
 UserFunctionTemplate4perl("# @category Combinatorics"
-                          "# Compute the unsigned vertex-edge incidence matrix of the graph."
+                          "# Compute the Laplacian matrix of a graph."
                           "# @param Graph G"
                           "# @return SparseMatrix<Rational>"
                           "# @example"
@@ -88,7 +88,7 @@ UserFunctionTemplate4perl("# @category Combinatorics"
                           "laplacian(props::Graph)");
 
 UserFunctionTemplate4perl("# @category Combinatorics"
-                          "# Compute the eigenvalues of the discrete laplacian a graph."
+                          "# Compute the eigenvalues of the discrete Laplacian of a graph."
                           "# @param Graph G"
                           "# @return Vector<Float>"
                           "# @example"

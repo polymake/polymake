@@ -35,7 +35,7 @@ Array<Array<int>> induced_symmetry_group_generators(int n,
    // construct BSGS of symmetry group
    permlib::SchreierSimsConstruction<PERM, TRANSVERSAL> schreierSims(n);
    std::list<PERM::ptr> gen_list;
-   for (Entire<Array<Array<int>>>::const_iterator perm = entire(sym_group_generators); !perm.at_end(); ++perm){
+   for (auto perm = entire(sym_group_generators); !perm.at_end(); ++perm){
       PERM::ptr gen(new PERM((*perm).begin(), (*perm).end()));
       gen_list.push_back(gen);
    }
@@ -57,7 +57,7 @@ Array<Array<int>> induced_symmetry_group_generators(int n,
 
    // extract a strong generating set
    Array<Array<int>> new_bsgs(stabilizer.S.size());
-   Entire<Array<Array<int>>>::iterator pit = entire(new_bsgs);
+   auto pit = entire(new_bsgs);
    for (const auto& perm : stabilizer.S)
       *pit++ = group::PermlibGroup::perm2Array(perm);
    return new_bsgs;

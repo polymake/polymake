@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<const Wary<Graph<Directed>>&>>", "void"], "func": "in_adjacent_nodes", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "in_adjacent_nodes:M14.x"},
+ null ],
+"version": 3}

@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<SparseMatrix<Rational, NonSymmetric>&>", "void", "void"], "func": "resize", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "kind": "meth", "sig": "resize:M1.x.x"},
+ null ],
+"version": 3}

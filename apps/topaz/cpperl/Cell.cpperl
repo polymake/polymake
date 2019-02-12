@@ -1,0 +1,6 @@
+{"app": "topaz",
+ "inst": [
+  {"class": "Cell", "include": ["polymake/topaz/Filtration.h"], "pkg": "Polymake::topaz::Cell"},
+  {"args": ["Cell", "int", "int", "int"], "include": ["polymake/topaz/Filtration.h"], "op": "new", "sig": "new.X.X.X"},
+ null ],
+"version": 3}

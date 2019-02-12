@@ -1,0 +1,7 @@
+{"app": "polytope", "embed": "hasse_diagram.cc",
+ "inst": [
+  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "void"], "func": "hasse_diagram", "include": ["polymake/IncidenceMatrix.h"], "sig": "hasse_diagram.X.x"},
+  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "void", "void"], "func": "upper_hasse_diagram", "include": ["polymake/IncidenceMatrix.h"], "sig": "upper_hasse_diagram.X.x.x"},
+  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "void"], "func": "lower_hasse_diagram", "include": ["polymake/IncidenceMatrix.h"], "sig": "lower_hasse_diagram.X.x"},
+ null ],
+"version": 3}

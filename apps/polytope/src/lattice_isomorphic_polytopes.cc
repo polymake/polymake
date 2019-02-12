@@ -31,10 +31,8 @@ void facet_vertex_distance_graph(Graph<>& G, Vector<int>& C, const SparseMatrix<
    G.resize(m+D.rows());
    C = ones_vector<int>(m)|zero_vector<int>(D.rows());
       
-   for ( Entire<Rows<SparseMatrix<int> > >::const_iterator r = entire(rows(D));
-         !r.at_end(); ++r )
-      for ( Entire<SparseMatrix<int>::row_type>::const_iterator c = entire(*r);
-            !c.at_end(); ++c ) {
+   for (auto r = entire(rows(D)); !r.at_end(); ++r)
+      for (auto c = entire(*r); !c.at_end(); ++c) {
          int n = G.add_node();
          G.edge(m+r.index(),n);
          G.edge(c.index(),n);
@@ -80,7 +78,7 @@ Array< Array<int> > lattice_automorphisms_smooth_polytope(perl::Object p)
    facet_vertex_distance_graph(G,C,D);
 
    Array<Array<int> > A = graph::automorphisms(G,C);
-   for (Entire<Array<Array<int> > >::iterator a = entire(A); !a.at_end(); ++a)
+   for (auto a = entire(A); !a.at_end(); ++a)
       a->resize(n);
 
    return A;
@@ -96,7 +94,7 @@ UserFunction4perl("# @category Comparing"
                   "# @example"
                   "# > $t = new Vector(2,2);"
                   "# > print lattice_isomorphic_smooth_polytopes(cube(2),translate(cube(2),$t));"
-                  "# | 1",
+                  "# | true",
                   &lattice_isomorphic_smooth_polytopes, "lattice_isomorphic_smooth_polytopes(Polytope,Polytope)");
 
 UserFunction4perl("# @category Symmetry"

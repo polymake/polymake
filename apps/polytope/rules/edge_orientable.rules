@@ -21,11 +21,11 @@ object Polytope {
 # @example The following checks a 3-dimensional cube for edge orientability:
 # > $p = cube(3);
 # > print $p->EDGE_ORIENTABLE;
-# | 1
+# | true
 # @example A 3-dimensinal cube with one stacked facet is still 2-cubical. Therefore we can check for edge orientability:
 # > $p = stack(cube(3),5);
 # > print $p->EDGE_ORIENTABLE;
-# | 1
+# | true
 
 property EDGE_ORIENTABLE : Bool;
 

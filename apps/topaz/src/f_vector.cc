@@ -28,7 +28,7 @@ Array<int> f_vector(const Array< Set<int> > &C,const int dim,const bool is_pure)
          f_vector[k] = skeleton.size();
       } else {
          int f_k=0;
-         for (Entire< PowerSet<int> >::const_iterator f=entire(skeleton); !f.at_end(); ++f)
+         for (auto f=entire(skeleton); !f.at_end(); ++f)
             if (f->size()==k+1)
                ++f_k;
 

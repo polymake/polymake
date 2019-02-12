@@ -23,11 +23,10 @@ package Polymake::Test::Stream;
 
 use Polymake::Struct (
    [ '@ISA' => 'Case' ],
-   [ new => '$$%' ],
+   [ new => '$@' ],
    '$buffer',
    '$handle',
-   [ '$filters' => '#2' ],
-   [ '$altOK' => '#%' ],
+   [ '$filters' => '@' ],
 );
 
 sub new {
@@ -42,22 +41,20 @@ sub execute {
    close $self->handle;
    my (@expected, @gotten);
    local $_;
-   foreach my $expected_file (map { find_matching_file("$_.OK") }
-                              $self->name, ref($self->altOK) ? @{$self->altOK} : ()) {
-      open my $expected, "<", $expected_file
-        or die "can't read $expected_file: $!\n";
-      my @expected_lines;
-      while (<$expected>) {
-         foreach my $filter (@{$self->filters}) {
-            &$filter;
-            defined($_) or last;
-         }
-         if (defined $_) {
-            push @expected_lines, Scalar::Util::dualvar($., $_);
-         }
+   my $expected_file = $self->subgroup->group->env->find_data_file($self->name."$_.OK");
+   open my $expected, "<", $expected_file
+     or die "can't read $expected_file: $!\n";
+
+   while (<$expected>) {
+      foreach my $filter (@{$self->filters}) {
+         &$filter;
+         defined($_) or last;
       }
-      push @expected, \@expected_lines;
+      if (defined $_) {
+         push @expected, Scalar::Util::dualvar($., $_);
+      }
    }
+
    foreach (split /(?<=\n)/, $self->buffer) {
       foreach my $filter (@{$self->filters}) {
          &$filter;
@@ -68,33 +65,30 @@ sub execute {
       }
    }
 
-   foreach my $expected_lines (@expected) {
-      my $lineno;
-      my $gotten_lineno=-1;
-      $self->fail_log="";
-      foreach my $expected_line (@$expected_lines) {
-         $lineno=$expected_line+0;
-         if (++$gotten_lineno > $#gotten) {
-            $self->fail_log .= "line $lineno:\n".
-                               "expected: $expected_line\n".
-                               "     got: __END__\n";
-            last;
-         }
-         if ($expected_line ne $gotten[$gotten_lineno]) {
-            $self->fail_log .= "line $lineno:\n".
-                               "expected: $expected_line\n".
-                               "     got: $gotten[$gotten_lineno]\n";
-         }
-      }
-      if (++$gotten_lineno <= $#gotten) {
-         ++$lineno;
+   my $lineno;
+   my $gotten_lineno=-1;
+   $self->fail_log="";
+   foreach my $expected_line (@expected) {
+      $lineno=$expected_line+0;
+      if (++$gotten_lineno > $#gotten) {
          $self->fail_log .= "line $lineno:\n".
-                            "expected: __END__\n".
+                            "expected: $expected_line\n".
+                            "     got: __END__\n";
+         last;
+      }
+      if ($expected_line ne $gotten[$gotten_lineno]) {
+         $self->fail_log .= "line $lineno:\n".
+                            "expected: $expected_line\n".
                             "     got: $gotten[$gotten_lineno]\n";
       }
-      return 1 unless $self->fail_log;
    }
-   0
+   if (++$gotten_lineno <= $#gotten) {
+      ++$lineno;
+      $self->fail_log .= "line $lineno:\n".
+                         "expected: __END__\n".
+                         "     got: $gotten[$gotten_lineno]\n";
+   }
+   length($self->fail_log) == 0
 }
 
 1

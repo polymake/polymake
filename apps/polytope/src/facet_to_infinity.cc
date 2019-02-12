@@ -24,21 +24,20 @@ namespace polymake { namespace polytope {
 template <typename Scalar>
 perl::Object facet_to_infinity(perl::Object p_in, const int inf_facet)
 {
+   perl::Object p_out("Polytope", mlist<Scalar>());
 
-  perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   const Matrix<Scalar> facets=p_in.give("FACETS");
 
-  const Matrix<Scalar> facets=p_in.give("FACETS");
-
-  const Vector<Scalar> inf_f= facets.row(inf_facet);
-  const Matrix<Scalar> tau=null_space(inf_f);
-  transform_section(p_out, p_in, "FACETS | INEQUALITIES", T(inf_f/tau));
-  transform_section(p_out, p_in, "AFFINE_HULL | EQUATIONS", T(inf_f/tau));
-  transform_section(p_out, p_in, "VERTICES", inv(inf_f/tau));
-  transform_section(p_out, p_in, "LINEALITY_SPACE", inv(inf_f/tau));
+   const Vector<Scalar> inf_f= facets.row(inf_facet);
+   const Matrix<Scalar> tau=null_space(inf_f);
+   transform_section(p_out, p_in, "FACETS | INEQUALITIES", T(inf_f/tau));
+   transform_section(p_out, p_in, "AFFINE_HULL | EQUATIONS", T(inf_f/tau));
+   transform_section(p_out, p_in, "VERTICES", inv(inf_f/tau));
+   transform_section(p_out, p_in, "LINEALITY_SPACE", inv(inf_f/tau));
   
-  p_out.take("BOUNDED") << false;
+   p_out.take("BOUNDED") << false;
 
-  return p_out;
+   return p_out;
 }
 
   UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"

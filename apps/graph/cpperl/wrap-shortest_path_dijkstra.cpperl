@@ -1,0 +1,6 @@
+{"app": "graph", "embed": "shortest_path_dijkstra.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Undirected>&>", "perl::Canned<const EdgeMap<Undirected, int>&>", "void", "void", "void"], "func": "shortest_path_dijkstra", "include": ["polymake/Graph.h"], "sig": "shortest_path_dijkstra.X.X.x.x.x"},
+  {"args": ["perl::Canned<const Graph<Directed>&>", "perl::Canned<const EdgeMap<Directed, int>&>", "void", "void", "void"], "func": "shortest_path_dijkstra", "include": ["polymake/Graph.h"], "sig": "shortest_path_dijkstra.X.X.x.x.x"},
+ null ],
+"version": 3}

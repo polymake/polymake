@@ -287,6 +287,26 @@ options %Visual::Polygons::decorations=(
 );
 
 
+# @category Visualization
+# Options for visualizing objects with homogeneous coordinates like Polytope, PolyhedralComplex, SubdivisionOfPoints and PointConfiguration.
+
+options %geometric_options=(
+  # Matrix useful for unbounded polyhedra
+  BoundingBox => undef, 
+  # Matrix<Float> linear transformation, to be applied after dehomogenization
+  Transformation => undef, 
+  # Vector<Float> shift, to be applied after dehomogenization and the linear transformation
+  Offset => undef, 
+);
+
+# @category Visualization
+# Options for visualizing objects with nonhomogeneous coordinates like Cone, PolyhedralFan and VectorConfiguration.
+
+options %geometric_options_linear=(
+  # Matrix<Float> linear transformation, to be applied on rays/vectors
+  Transformation => undef, 
+);
+
 ###############################################################################
 #
 #  basic visualization functions
@@ -353,7 +373,7 @@ function enforce_static(Visual::PointSet) {
 }
 
 function enforce_static($) {
-   croak( "don't know how to disable dynamic coordinates in ", (ref($_[0]) || "'$_[0]'") ) unless is_ARRAY($_[0]);
+   croak( "don't know how to disable dynamic coordinates in ", (ref($_[0]) || "'$_[0]'") ) unless is_like_array($_[0]);
    foreach (@{$_[0]}) {
       enforce_static($_);
    }

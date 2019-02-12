@@ -206,55 +206,6 @@ function homog_container_orbit($$) {
     return orbit<on_container>($gens, $elem);
 }
 
-# @category Symmetry
-# Given a group //g//, a permutation action //a// on some indices and an index //i//,
-# regard //a// as acting on the unit basis vectors of the ambient space, 
-# and return the projections of the unit basis vectors to the //i//-th isotypic component //C_i//
-# expressed in a basis of //C_i//.
-# @param Group g a group with a permutation action that acts on some indices
-# @param Int i the index of the desired isotypic component
-# @option Action a the action by which //g// acts. By default, this is the PERMUTATION_ACTION.
-# @option Bool affine prepend a column of ones to the vectors? Default 0
-# @return polytope::VectorConfiguration<QuadraticExtension>
-# @example [application polytope] Consider the symmetry group of the 3-cube acting on vertices, and calculate the vector configuration
-# corresponding to the isotypic component number 8, which has dimension 3 and multiplicity 1:
-# > $g = group::cube_group(3);
-# > print group::isotypic_configuration($g,8)->VECTORS;
-# | 0 0 1
-# | 0 1 0
-# | 1 0 0
-# | -1 -1 -1
-# | -1 -1 -1
-# | 1 0 0
-# | 0 1 0
-# | 0 0 1
-# To get the configuration as POINTS, ask for affine=>1: 
-# > print group::isotypic_configuration($g,8,affine=>1)->POINTS;
-# | 1 0 0 1
-# | 1 0 1 0
-# | 1 1 0 0
-# | 1 -1 -1 -1
-# | 1 -1 -1 -1
-# | 1 1 0 0
-# | 1 0 1 0
-# | 1 0 0 1
-
-user_function isotypic_configuration(Group, $; $='undef', { affine=>0 }) {
-    my ($g, $i, $a, $options) = @_;
-    if ($a eq 'undef') {
-        $a = $g->PERMUTATION_ACTION;
-    }
-    my $v = solve_left(isotypic_basis    ($g, $a, $i, permute_to_orbit_order=>0),
-                       isotypic_projector($g, $a, $i, permute_to_orbit_order=>0));
-    if ( $options->{'affine'} ) {
-        my $o = ones_vector<QuadraticExtension>($v->rows());
-        return new polytope::PointConfiguration<QuadraticExtension>(POINTS=>($o|$v),
-                                                                    GROUP=>Polymake::Core::Object::new_copy($g->type, $g));
-    }
-    return new polytope::VectorConfiguration<QuadraticExtension>(VECTORS=>$v,
-                                                                 GROUP=>Polymake::Core::Object::new_copy($g->type, $g));
-}
-
                                              
 # @category Symmetry
 # Given a matrix action //a// of a group //G// on some //n//-dimensional vector space and a total degree //d//,

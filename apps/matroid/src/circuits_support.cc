@@ -34,7 +34,7 @@ namespace polymake { namespace matroid {
   void circuits_supports(perl::Object vm) {
       //Extract valuated circuits
       Matrix<TropicalNumber<Addition,Scalar> > valuation = vm.give("VALUATION_ON_CIRCUITS");
-      
+
       Array<Set<int> > circuits(valuation.rows());
       for(int r = 0; r < valuation.rows(); r++) {
 	   Set<int> c;
@@ -43,12 +43,12 @@ namespace polymake { namespace matroid {
 	   }
 	   circuits[r] = c;
       }
-      
+
       vm.take("CIRCUITS") << circuits;
       vm.take("N_ELEMENTS") << valuation.cols();
-      
+
   }//END circuits_supports
-  
-  FunctionTemplate4perl("circuits_supports<Addition,Scalar>(ValuatedMatroid<Addition,Scalar>) : void");
-  
-}}
+
+  FunctionTemplate4perl("circuits_supports<Addition,Scalar>(ValuatedMatroid<Addition,Scalar>)");
+
+} }

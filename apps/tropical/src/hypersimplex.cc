@@ -22,48 +22,46 @@ GNU General Public License for more details.
 
 namespace polymake { namespace tropical {
 
-        template<typename Addition>
-                perl::Object hypersimplex(int d, int k)
-                {
-                        if (d < 1)
-                                throw std::runtime_error("hypersimplex: dimension >= 2 required");
-                        if (k < 1 || k > d)
-                                throw std::runtime_error("hypersimplex: 1 <= k <= d required");
+template<typename Addition>
+perl::Object hypersimplex(int d, int k)
+{
+   if (d < 1)
+      throw std::runtime_error("hypersimplex: dimension >= 2 required");
+   if (k < 1 || k > d)
+      throw std::runtime_error("hypersimplex: 1 <= k <= d required");
 
-                        perl::Object p(perl::ObjectType::construct<Addition>("Polytope"));
-                        p.set_description() << "tropical (" << k << "," << d << ")-hypersimplex" << endl;
+   perl::Object p("Polytope", mlist<Addition>());
+   p.set_description() << "tropical (" << k << "," << d << ")-hypersimplex" << endl;
 
-                        // number of vertices
-                        const int n(Integer::binom(d+1,k));
+   // number of vertices
+   const int n(Integer::binom(d+1,k));
 
-                        Matrix<TropicalNumber<Addition> > Vertices(n,d+1);
-                                Vertices.fill( TropicalNumber<Addition>::one());
-                        typename Rows< Matrix<TropicalNumber<Addition> > >::iterator v=rows(Vertices).begin();
-                        Subsets_of_k<sequence> enumerator(range(0,d), k);
-                        for (Subsets_of_k<sequence>::iterator s=entire(enumerator); !s.at_end(); ++s, ++v) {
-                                v->slice(*s).fill(TropicalNumber<Addition>(-Addition::orientation()));
-                        }
-                        p.take("POINTS") << Vertices;
+   Matrix<TropicalNumber<Addition>> Vertices(n, d+1, same_value(TropicalNumber<Addition>::one()).begin());
+   auto v=rows(Vertices).begin();
+   for (auto s=entire(all_subsets_of_k(range(0,d), k));  !s.at_end();  ++s, ++v) {
+      v->slice(*s).fill(TropicalNumber<Addition>(-Addition::orientation()));
+   }
+   p.take("POINTS") << Vertices;
 
-                        return p;
-                }
+   return p;
+}
 
-        UserFunctionTemplate4perl("# @category Producing a tropical polytope"
-                        "# Produce the tropical hypersimplex &Delta;(//k//,//d//)."
-                        "# Cf." 
-                        "# \t M. Joswig math/0312068v3, Ex. 2.10."
-                        "# The value of //k// defaults to 1, yielding a tropical standard simplex."
-                        "# @param Int d the dimension"
-                        "# @param Int k the number of +/-1 entries"
-                        "# @tparam Addition Max or Min"
-                        "# @return Polytope<Addition>"
-                        "# @example"
-                        "# > $h = hypersimplex<Min>(2,1);"
-                        "# > print $h->VERTICES;"
-                        "# | 0 1 1"
-                        "# | 0 -1 0"
-                        "# | 0 0 -1",
-                        "hypersimplex<Addition>($;$=1)");
+UserFunctionTemplate4perl("# @category Producing a tropical polytope"
+                          "# Produce the tropical hypersimplex &Delta;(//k//,//d//)."
+                          "# Cf." 
+                          "# \t M. Joswig math/0312068v3, Ex. 2.10."
+                          "# The value of //k// defaults to 1, yielding a tropical standard simplex."
+                          "# @param Int d the dimension"
+                          "# @param Int k the number of +/-1 entries"
+                          "# @tparam Addition Max or Min"
+                          "# @return Polytope<Addition>"
+                          "# @example"
+                          "# > $h = hypersimplex<Min>(2,1);"
+                          "# > print $h->VERTICES;"
+                          "# | 0 1 1"
+                          "# | 0 -1 0"
+                          "# | 0 0 -1",
+                          "hypersimplex<Addition>($;$=1)");
 } }
 
 // Local Variables:

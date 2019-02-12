@@ -79,7 +79,7 @@ namespace polymake { namespace tropical {
 		Set<int> zero_classes; //List of classes that must have weight 0.
 		Set<int> hasBeenAdded; //List of cones that know their class
 		Map<int,int> class_index; //Maps each cone to the index of its class in subdivision_classes
-		for(int mc = 0; mc < maximal_cones.rows(); mc++) {
+		for(int mc = 0; mc < maximal_cones.rows(); ++mc) {
 			if(!hasBeenAdded.contains(mc)) {
 				Set<int> mc_class; mc_class += mc;
 				class_index[mc] = subdivision_classes.dim();
@@ -87,10 +87,10 @@ namespace polymake { namespace tropical {
 				//Elements in this queue are already in the class but their neighbours might not:
 				std::list<int> queue;
 				queue.push_back(mc);
-				while(queue.size() > 0) {
+				while(!queue.empty()) {
 					int node = queue.front(); queue.pop_front();
 					Set<int> node_codim = maximal_to_codim.row(node);
-					for(Entire<Set<int> >::iterator nc = entire(node_codim); !nc.at_end(); nc++) {
+					for (auto nc = entire(node_codim); !nc.at_end(); ++nc) {
 						if(codim_in_maximal.row(*nc).size() == 2) {
 							int other_cone = *((codim_in_maximal.row(*nc) - node).begin());
 							if(!hasBeenAdded.contains(other_cone)) {
@@ -126,9 +126,9 @@ namespace polymake { namespace tropical {
 			//Find signature neighbours
 			Set<int> nonsig_neighbours;
 			Set<int> all_neighbours = codim_in_maximal.row(tau);
-			for(Entire<Set<int> >::iterator mc = entire(all_neighbours); !mc.at_end(); mc++) {
+			for (auto mc = entire(all_neighbours); !mc.at_end(); ++mc) {
 				//See if there is another one with the same class
-				for(Entire<Set<int> >::iterator other_mc = entire(all_neighbours); !other_mc.at_end(); other_mc++) {
+				for (auto other_mc = entire(all_neighbours); !other_mc.at_end(); ++other_mc) {
 					if(*other_mc != *mc && class_index[*mc] == class_index[*other_mc]) {
 						nonsig_neighbours += *mc; break;
 					}
@@ -161,7 +161,7 @@ namespace polymake { namespace tropical {
 			}//END copy results
 
 			//The remaining classes can have arbitrary weights here, so we append the appropriate unit vectors
-			for(Entire<Set<int> >::iterator rc = entire(remaining_classes); !rc.at_end(); rc++) {
+			for (auto rc = entire(remaining_classes); !rc.at_end(); ++rc) {
 				Ptau /= unit_vector<Rational>(subdivision_classes.dim(),*rc);
 			}//END add unit vectors for remaining classes
 
@@ -176,7 +176,7 @@ namespace polymake { namespace tropical {
 
 		//To compute the final subdivision weight space, we add the equation that all zero classes
 		// must have weight 0
-		for(Entire<Set<int> >::iterator zc = entire(zero_classes); !zc.at_end(); zc++) {
+		for (auto zc = entire(zero_classes); !zc.at_end(); ++zc) {
 			system_matrix /= unit_vector<Rational>(system_matrix.cols(), *zc);
 		}//END add zero class equations
 
@@ -223,7 +223,7 @@ namespace polymake { namespace tropical {
 
 		//Take facets of orthant and invert chosen rows
 		Matrix<Rational> orthant = unit_matrix<Rational>(N);
-		for(Entire<Set<int> >::iterator coord = entire(negative_directions); !coord.at_end(); coord++) {
+		for (auto coord = entire(negative_directions); !coord.at_end(); ++coord) {
 			orthant.row(*coord) *= -1;
 		}
 

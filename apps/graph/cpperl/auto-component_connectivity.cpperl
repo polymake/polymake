@@ -1,0 +1,5 @@
+{"app": "graph",
+ "inst": [
+  {"args": ["perl::Canned<const Graph<Directed>&>", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>"], "func": "component_connectivity", "include": ["polymake/Graph.h", "polymake/IncidenceMatrix.h", "polymake/graph/connected.h"], "sig": "component_connectivity.X.X"},
+ null ],
+"version": 3}

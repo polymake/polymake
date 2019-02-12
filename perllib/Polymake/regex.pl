@@ -137,22 +137,32 @@ declare $type_exprs_re=qr{ ($type_expr_re (?: \s*,\s* (?-5))*+) }xo;
 # 6 capturing groups
 declare $type_param_re=qr{ (?'name' $id_re) (?: \s*=\s* (?'default' $type_expr_re) )?+ }xo;
 
-# a list of type parameters, enclosed in angle brackets, with optional typecheck expression
-# 10 capturing groups
-declare $type_params_re=qr{ \s*<\s* (?'tparams' ($type_param_re (?: \s*,\s* (?-7) )*+ )) \s*>
-                            (?: \s*\[ (?'typecheck' $balanced_re) \] )?+ }xo;
+# list of type parameters in angle brackets with optional default values
+# 7 capturing groups
+declare $type_params_re=qr{ \s*<\s* (?'tparams' ($type_param_re (?: \s*,\s* (?-7) )*+ )) \s*> }xo;
 
-# beginning of a declaration of a type or function, optionally parameterized
-declare $paramed_decl_re=qr{ (?'lead_name' $id_re) (?: $type_params_re )?+ }xo;
+# list of type parameters in angle brackets with optional default values
+# 7 capturing groups
+declare $type_params_variadic_re=qr{ \s*<\s* (?'tparams' ($type_param_re (?: \s*,\s* (?-7) )*+ ))
+                                             (?('default') | (?: \s* (?'ellipsis' \.\.\.))? ) \s*> }xo;
+
+# type-checking expressions
+declare $typechecks_re=qr{ \s*\[ (?'typecheck' $balanced_re) \] }xo;
+
+# beginning of a declaration of a type or function
+declare $parametrized_decl_re=qr{ (?'lead_name' $id_re) (?: $type_params_re (?: $typechecks_re )?+ )?+ }xo;
 
 # function declaration with optional signature
 declare $sub_re=qr{ (?'name' $id_re) \b (?: \s*\( (?'signature' $balanced_re) \) )? }xo;
 
 # function declaration with optional template parameters and signature
-declare $paramed_sub_re=qr{ $paramed_decl_re (?: \s*\( (?'signature' $balanced_re) \) )?+ (?= [\s:;\{]) }xo;
+declare $parametrized_sub_re=qr{ $parametrized_decl_re (?: \s*\( (?'signature' $balanced_re) \) )?+ (?= [\s:;\{]) }xo;
 
 # overloaded function declaration with optional labels
-declare $labeled_sub_re=qr{ (?:(?'labels' $hier_ids_re) \s*:\s*)? $paramed_sub_re }xo;
+declare $labeled_sub_re=qr{ (?:(?'label' $hier_id_re) \s*:\s*)? $parametrized_sub_re }xo;
+
+# attributes of an argument in a function signature, maybe empty
+declare $func_arg_attrs_re=qr{(?=\s*[:&]) (?> (?: \s*:\s* $id_re )* (?: \s* &&? (?: \s* const\b)?)? )}xo;
 
 # rule input clause
 declare $rule_input_re=qr{ $hier_id_re (?: \s*[|,]\s* $hier_id_re )* }xo;

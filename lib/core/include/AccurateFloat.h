@@ -1775,7 +1775,7 @@ struct algebraic_traits<AccurateFloat> {
 
 template <>
 AccurateFloat
-pow(const AccurateFloat& base, int exp);
+pow(const AccurateFloat& base, long exp);
 
 }
 namespace std {

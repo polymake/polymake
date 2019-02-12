@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "transportation.cc",
+ "inst": [
+  {"args": ["Rational", "perl::Canned<const Vector<Rational>&>", "perl::Canned<const Vector<Rational>&>"], "func": "transportation", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "transportation:T1.X.X", "tp": "1"},
+ null ],
+"version": 3}

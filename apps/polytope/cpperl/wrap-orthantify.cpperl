@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "orthantify.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "orthantify", "include": ["polymake/Rational.h"], "sig": "orthantify:T1.B.x", "tp": "1"},
+ null ],
+"version": 3}

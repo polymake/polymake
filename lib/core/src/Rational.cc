@@ -236,7 +236,7 @@ const Rational& spec_object_traits<Rational>::one()
 
 template <>
 Rational
-pow(const Rational& base, int exp)
+pow(const Rational& base, long exp)
 {
    return Rational::pow(base,exp);
 }

@@ -111,7 +111,7 @@ namespace polymake { namespace tropical {
 
 				//Now compute the vertex
 				Vector<Rational> sum_of_leaves(rays.cols()-1);
-				for(Entire<Set<int> >::iterator d = entire(edge_set); !d.at_end(); d++) {
+				for (auto d = entire(edge_set); !d.at_end(); ++d) {
 					sum_of_leaves += delta.row(*d-1);
 				}
 				sum_of_leaves = Rational(0) | sum_of_leaves;
@@ -167,7 +167,7 @@ namespace polymake { namespace tropical {
 			for(int v = 0; v < nodes_by_leaves.rows(); v++) {
 				Set<int> leaves_here = nodes_by_leaves.row(v);
 				if(leaves_here.size() > 0) {
-					for(Entire<Set<int> >::iterator l = entire(leaves_here); !l.at_end(); l++) {
+					for (auto l = entire(leaves_here); !l.at_end(); ++l) {
 						Set<int> cone_set;
 						cone_set += v;
 						cone_set += leaf_ray_index[*l-1];

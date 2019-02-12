@@ -102,9 +102,9 @@ The DVV gets initialized with the given graph G (usually only one node for the f
 the triangulation dcel (containing the lambda lengths of the edges),
 the position of the first half edge via two horocycles [p_1,q_1] and [p_2,q_2]
 */
-DomeVolumeVisitor( Graph<Directed>& G, DoublyConnectedEdgeList& dcel, Matrix<Rational> first_halfedge_horo )
+DomeVolumeVisitor( Graph<Directed>& G, DoublyConnectedEdgeList& dcel_, Matrix<Rational> first_halfedge_horo )
    : dome_graph(G)
-   , dcel(dcel)
+   , dcel(dcel_)
    , gkz_vector( dcel.getNumVertices() )
    , angleVec(dcel.angleVector())
    , num_visited(0)

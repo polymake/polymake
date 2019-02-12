@@ -1,0 +1,7 @@
+{"app": "tropical", "embed": "psi_classes.cc",
+ "inst": [
+  {"args": ["Max", "void", "void"], "func": "psi_class", "include": ["polymake/TropicalNumber.h"], "sig": "psi_class:T1.x.x", "tp": "1"},
+  {"args": ["Min", "void", "perl::Canned<const Vector<int>&>"], "func": "psi_product", "include": ["polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "psi_product:T1.x.X", "tp": "1"},
+  {"args": ["Max", "void", "perl::Canned<const Vector<int>&>"], "func": "psi_product", "include": ["polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "psi_product:T1.x.X", "tp": "1"},
+ null ],
+"version": 3}

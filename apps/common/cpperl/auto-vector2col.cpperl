@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<const Vector<Rational>&>>"], "func": "vector2col", "include": ["polymake/Matrix.h", "polymake/Rational.h", "polymake/Vector.h"], "sig": "vector2col.X8"},
+ null ],
+"version": 3}

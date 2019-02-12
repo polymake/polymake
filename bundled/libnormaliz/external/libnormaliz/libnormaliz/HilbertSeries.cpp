@@ -1246,6 +1246,10 @@ mpq_class IntegrationData::getIntegral() const{
     return integral;
 }
 
+nmz_float IntegrationData::getEuclideanIntegral() const{
+    return euclidean_integral;
+}
+
 mpz_class IntegrationData::getNumeratorCommonDenom() const{
     return weighted_Ehrhart_series.second;
 }
@@ -1258,8 +1262,12 @@ void IntegrationData::setIntegral(const mpq_class I){
     integral=I;
 }
 
+void IntegrationData::setEuclideanIntegral(const nmz_float I){
+    euclidean_integral=I;
+}
+
 void IntegrationData::setVirtualMultiplicity(const mpq_class I){
-        virtual_multiplicity=I;
+    virtual_multiplicity=I;
 }
 
 void IntegrationData::setWeightedEhrhartSeries(const pair<HilbertSeries, mpz_class>& E){

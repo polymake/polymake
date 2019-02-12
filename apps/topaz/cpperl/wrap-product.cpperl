@@ -1,0 +1,5 @@
+{"app": "topaz", "embed": "product.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void", "void"], "func": "simplicial_product", "include": ["polymake/Rational.h"], "sig": "simplicial_product:T1.B.B.o", "tp": "1"},
+ null ],
+"version": 3}

@@ -57,7 +57,7 @@ void print_constraints_sub(const Matrix<Scalar>& M, Array<std::string> coord_lab
       else
          cout << i;
       cout << ": ";
-      if (is_zero(M.row(i).slice(start))) {
+      if (is_zero(M.row(i).slice(range_from(start)))) {
          cout << "0";
       } else {
          bool first=true;

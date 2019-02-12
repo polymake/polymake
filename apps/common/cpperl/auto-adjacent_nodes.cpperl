@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<const Wary<Graph<Undirected>>&>>", "void"], "func": "adjacent_nodes", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "adjacent_nodes:M14.x"},
+  {"args": ["perl::AnchorArg<perl::Canned<Wary<Graph<Undirected>>&>>", "void"], "func": "adjacent_nodes", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "adjacent_nodes:M14.x"},
+ null ],
+"version": 3}

@@ -39,7 +39,7 @@ perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd
    for (int i=0; i<subd_faces.size(); ++i) {
       const Set<int> F = subd_faces[i];
       bool facet_found = false;
-      for (Entire< Array< Set<int> > >::const_iterator f=entire(C_in);!f.at_end(); ++f) {
+      for (auto f=entire(C_in);!f.at_end(); ++f) {
          Set<int> facet = *f;
 
          if (incl(F,facet)<1) {  // F contained in the facet
@@ -49,13 +49,12 @@ perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd
             facet += n_vert+i;
          
             // add new facets
-            Subsets_of_k< const Set<int> > enumerator( F, size-facet.size() );     
-            for (Entire< Subsets_of_k< const Set<int> > >::iterator s_it=entire(enumerator);
-                 !s_it.at_end(); ++s_it)
+            for (auto s_it=entire(all_subsets_of_k(F, size-facet.size())); !s_it.at_end(); ++s_it)
                C.push_back(facet + *s_it);
          
-         } else
+         } else {
             C.push_back(facet);
+         }
       }
      
       if (!facet_found) {
@@ -92,7 +91,7 @@ perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd
    if (!options["no_labels"]) {
       Array<std::string> L = p_in.give(is_PC ? Str("LABELS") : Str("VERTEX_LABELS"));
       hash_set<std::string> old_L(n_vert);
-      for (Entire< Array<std::string> >::const_iterator l=entire(L); !l.at_end(); ++l)
+      for (auto l=entire(L); !l.at_end(); ++l)
          old_L.insert(*l);
     
       L.resize(n_vert+subd_faces.size());
@@ -137,10 +136,10 @@ InsertEmbeddedRule("# @category  Producing a new simplicial complex from others"
                    "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                    "# @option Bool geometric_realization default 0"
                    "# @return SimplicialComplex\n"
-                   "user_function stellar_subdivision(SimplicialComplex, Set<Int> { no_labels => 0, geometric_realization => 0}) { "
-                   " my $a=new Array<Set<Int> >(1); "
-                   " my $p=shift; "
-                   " $a->[0]=shift; "
+                   "user_function stellar_subdivision(SimplicialComplex, Set<Int> { no_labels => 0, geometric_realization => 0}) {\n"
+                   " my $a=new Array<Set<Int> >(1);\n"
+                   " my $p=shift;\n"
+                   " $a->[0]=shift;\n"
                    "stellar_subdivision($p,$a,@_); }\n");
 } }
 

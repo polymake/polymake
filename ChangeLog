@@ -1,49 +1,74 @@
 Changelog
 
-=== Polymake 3.2r4 ===
+=== Polymake 3.3 ===
 
 -- distribution --
- * several small bug fixes
+ * C++ wrappers refactored into json format
+   - requires perl JSON module
+ * Add option --with-ccache for using ccache when building polymake
+ * Mac OS X
+	- removed fink as the default package manager
+   - included support for the brew package manager
+   - improve JuPyMake support
+ * support for clang 6, 7 and gcc 8
+ * support for java 10
+ * adapt to changes in boost 1.67
+ * improvements in java build/install process
+ * improve callable library file structure
+ * include INSTALL and COPYING in tarball again
+ * fix JuPyMake installation for python3 older than 3.5
+ * several improvements for polymake-in-container
+
+-- interfaces --
+ * SCIP: Add interface for solving mixed integer linear programs
+ * TOSimplex: Add interface for computing lattice points
+ * soplex: Use soplex from SCIP, if available
+ * mptopcom: Add interface for computing triangulations of point
+   configurations, optionally with group action
+ * TOPCOM: If mptopcom.rules is configured, topcom.rules can inherit from this
+ * normaliz interface: two minor fixes, added support for
+   EHRHART_QUASI_POLYNOMIAL, update normaliz version
  * support for lrslib 070
- * fix order in config.ninja for reproducibility
+
+-- general --
+ * threejs is the default viewer if jreality is not configured
+ * add x3d visualization (e.g. via blender)
+ * matrix comparison is stricter now
+ * various bug fixes
 
 -- graph --
  * fix edge number of permuted graphs
 
+-- fulton --
+ * Migrate remaining code from Andreas Paffenholz to core. Add tests and
+   bugfixes
+
+-- group --
+ * Add small object SwitchTable, used for finding lex-optimal vectors in
+	orbits under permutation action
+ * Add property SWITCH_TABLE to PermutationAction
+
 -- polytope --
+ * Add Billera-Lee construction for polytopes
+ * Add property MILP to Polytope for mixed integer linear programs
+ * Refactor covex hull solvers, introduce generic methods enumerate_facets and
+   enumerate_vertices
+ * Refactor LP solvers to generic interface
+ * Add mptopcom.rules for interfacing mptopcom
  * vertex_figure: correct intermediate LP
  * BOUNDED_COMPLEX: correct ADJACENCY
- * normaliz interface: two minor fixes
  * Cone-VISUAL: fix incidences
  * tensor: dont compare example output
    (order depends on cdd version)
+ * Introduce property EHRHART_POLYNOMIAL of type UniPolynomial<Rational, Int>
+ * Change property EHRHART_POLYNOMIAL_COEFF into a user_method
 
-=== Polymake 3.2r3 ===
+-- tropical --
+ * atint: Methods returning perl arrays for lines in tropical cubics now
+   return BigObjectarrays
+ * add tropical real hypersurfaces with geometrical realization method
+ * improve implementations around tropical determinant
 
--- distribution --
- * small bug fixes
- * threejs is the default viewer if jreality is not configured
- * support for java 10
- * adapt to changes in boost 1.67
- * fix for JuPyMake support on Mac OS X
- * removed fink as the default package manager for Mac OS X
- * included support for the brew package manager on Mac OS X
-
-
-=== Polymake 3.2r2 ===
-
--- distribution --
- * several improvements for polymake-in-container
- * improve JuPyMake support for Mac OS X
- * preliminary support for clang 6 and gcc 8
- * improvements in java build/install process
- * improve callable library file structure
- * include INSTALL and COPYING in tarball again
-
-=== Polymake 3.2r1 ===
-
--- distribution --
- * fix JuPyMake installation for python3 older than 3.5
 
 === Polymake 3.2 ===
 

@@ -39,3 +39,5 @@
 #include "libnormaliz/project_and_lift.cpp"
 #include "libnormaliz/offload_handler.cpp"
 #include "libnormaliz/nmz_integrate.cpp"
+
+#include "libnormaliz/descent.cpp"

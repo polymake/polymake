@@ -1,0 +1,8 @@
+{"app": "group",
+ "inst": [
+  {"class": "SwitchTable", "include": ["polymake/group/switch_table.h"], "pkg": "Polymake::group::SwitchTable"},
+  {"args": ["SwitchTable", "perl::Canned<const Array<Array<int>>&>"], "include": ["polymake/Array.h", "polymake/group/switch_table.h"], "op": "new", "sig": "new.X"},
+  {"args": ["SwitchTable"], "include": ["polymake/group/switch_table.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<const SwitchTable&>", "perl::Canned<const SwitchTable&>"], "include": ["polymake/group/switch_table.h"], "op": "_eq", "sig": "_eq:O.X.X"},
+ null ],
+"version": 3}

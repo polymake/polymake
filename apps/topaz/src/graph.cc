@@ -25,10 +25,9 @@ Graph<> dual_graph(const FacetList& C)
 {
    Graph<> DG(C.size());
 
-   for (Entire<FacetList>::const_iterator facet=entire(C);  !facet.at_end();  ++facet)
-      for (Entire< Subsets_less_1<FacetList::const_reference> >::iterator face=entire(all_subsets_less_1(*facet));
-           !face.at_end();  ++face)
-         for (FacetList::superset_iterator neighbor_facet=C.findSupersets(*face);  !neighbor_facet.at_end();  ++neighbor_facet)
+   for (auto facet=entire(C);  !facet.at_end();  ++facet)
+      for (auto face=entire(all_subsets_less_1(*facet)); !face.at_end();  ++face)
+         for (auto neighbor_facet=C.findSupersets(*face);  !neighbor_facet.at_end();  ++neighbor_facet)
             if ( (&*facet != &*neighbor_facet) && (neighbor_facet->size() == facet->size()))
                DG.edge(facet.index(), neighbor_facet.index());
 

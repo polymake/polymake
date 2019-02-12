@@ -18,50 +18,26 @@
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
 #include "polymake/polytope/lrs_interface.h"
+#include "polymake/polytope/generic_lp_client.h"
 
-namespace polymake { namespace polytope {
+namespace polymake { namespace polytope { namespace lrs_interface {
 
-void lrs_solve_lp(perl::Object p, perl::Object lp, bool maximize)
+template <typename Scalar=Rational>
+auto create_LP_solver()
 {
-   typedef lrs_interface::solver Solver;
-   const Matrix<Rational> H=p.give("FACETS | INEQUALITIES"),
-                          E=p.lookup("AFFINE_HULL | EQUATIONS");
-   const Vector<Rational> Obj=lp.give("LINEAR_OBJECTIVE");
+   return cached_LP_solver<Rational>(new LP_Solver(), true);
+}
 
-   if (H.cols() != E.cols() &&
-       H.cols() && E.cols())
-      throw std::runtime_error("lrs_solve_lp - dimension mismatch between Inequalities and Equations");
+}
 
-   int lineality_dim;
-
-   try {
-      Solver solver;
-      Solver::lp_solution S=solver.solve_lp(H, E, Obj, maximize, &lineality_dim);
-      lp.take(maximize ? "MAXIMAL_VALUE" : "MINIMAL_VALUE") << S.first;
-      lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << S.second;
-      p.take("FEASIBLE") << true;
-      p.take("LINEALITY_DIM") << lineality_dim;
-   }
-   catch (const unbounded&) {
-      if (maximize)
-         lp.take("MAXIMAL_VALUE") << std::numeric_limits<Rational>::infinity();
-      else
-         lp.take("MINIMAL_VALUE") << -std::numeric_limits<Rational>::infinity();
-      lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << perl::undefined();
-      p.take("FEASIBLE") << true;
-      p.take("LINEALITY_DIM") << lineality_dim;
-   }
-   catch (const infeasible&) {
-      lp.take(maximize ? "MAXIMAL_VALUE" : "MINIMAL_VALUE") << perl::undefined();
-      lp.take(maximize ? "MAXIMAL_VERTEX" : "MINIMAL_VERTEX") << perl::undefined();
-      p.take("FEASIBLE") << false;
-      p.take("LINEALITY_DIM") << 0;
-   }
+void lrs_lp_client(perl::Object p, perl::Object lp, bool maximize)
+{
+   generic_lp_client<Rational>(p, lp, maximize, lrs_interface::LP_Solver());
 }
 
 void lrs_valid_point(perl::Object p)
 {
-   lrs_interface::solver solver;
+   const lrs_interface::LP_Solver solver{};
    const Matrix<Rational> H=p.give("FACETS | INEQUALITIES"),
       E=p.lookup("LINEAR_SPAN | EQUATIONS");
    Vector<Rational> P;
@@ -72,8 +48,10 @@ void lrs_valid_point(perl::Object p)
    }
 }
 
-Function4perl(&lrs_solve_lp, "lrs_solve_lp(Polytope<Rational>, LinearProgram<Rational>, $)");
+Function4perl(&lrs_lp_client, "lrs_lp_client(Polytope<Rational>, LinearProgram<Rational>, $)");
 Function4perl(&lrs_valid_point, "lrs_valid_point(Cone<Rational>)");
+
+InsertEmbeddedRule("function lrs.simplex: create_LP_solver<Scalar> [Scalar==Rational] () : c++ (name => 'lrs_interface::create_LP_solver') : returns(cached);\n");
 
 } }
 

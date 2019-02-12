@@ -200,11 +200,11 @@ simplexity_ilp_with_angles(int d,
                      SparseMatrix<Scalar>(angle_equations)  /
                      ((-Integer::fac(d) * vol) | volume_vect | zero_vector<Scalar>(delta_cols));
 
-   perl::Object lp(perl::ObjectType::construct<Scalar>("LinearProgram"));
+   perl::Object lp("LinearProgram", mlist<Scalar>());
    lp.attach("INTEGER_VARIABLES") << Array<bool>(ae_cols, true);
    lp.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0 | ones_vector<Scalar>(facet_reps.size()));
 
-   perl::Object q(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object q("Polytope", mlist<Scalar>());
    q.take("FEASIBLE") << true;
    q.take("EQUATIONS") << Equations;
    q.take("INEQUALITIES") << Inequalities;

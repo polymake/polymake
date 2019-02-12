@@ -16,26 +16,43 @@
 
 #include "polymake/client.h"
 #include "polymake/polytope/cdd_interface.h"
+#include "polymake/polytope/generic_convex_hull_client.h"
 
-namespace polymake { namespace polytope {
+namespace polymake { namespace polytope { namespace cdd_interface {
 
 template <typename Scalar>
-void cdd_ch_primal(perl::Object p)
+auto create_convex_hull_solver(CanEliminateRedundancies needsEliminate = CanEliminateRedundancies::yes)
 {
-   cdd_interface::solver<Scalar> solver;
-   ch_primal(p, solver);
+   perl::ListReturn ret;
+   if (needsEliminate == CanEliminateRedundancies::yes)
+      ret << cached_convex_hull_solver<Scalar, CanEliminateRedundancies::yes>(new ConvexHullSolver<Scalar>(), true);
+   else
+      ret << cached_convex_hull_solver<Scalar, CanEliminateRedundancies::no>(new ConvexHullSolver<Scalar>(), true);
+   return ret;
+}
+
 }
 
 template <typename Scalar>
-void cdd_ch_dual(perl::Object p)
+void cdd_ch_primal(perl::Object p, const bool verbose, const bool isCone)
 {
-   cdd_interface::solver<Scalar> solver;
-   ch_dual(p, solver);
+   generic_convex_hull_primal<Scalar>(p, isCone, cdd_interface::ConvexHullSolver<Scalar>(verbose));
 }
 
-FunctionTemplate4perl("cdd_ch_primal<Scalar> (Cone<Scalar>) : void");
-FunctionTemplate4perl("cdd_ch_dual<Scalar> (Cone<Scalar>) : void");
+template <typename Scalar>
+void cdd_ch_dual(perl::Object p, const bool verbose, const bool isCone)
+{
+   generic_convex_hull_dual<Scalar>(p, isCone, cdd_interface::ConvexHullSolver<Scalar>(verbose));
+}
 
+FunctionTemplate4perl("cdd_ch_primal<Scalar> (Cone<Scalar>; $=false, $=true)");
+FunctionTemplate4perl("cdd_ch_dual<Scalar> (Cone<Scalar>; $=false, $=true)");
+
+FunctionTemplate4perl("cdd_ch_primal<Scalar> (Polytope<Scalar>; $=false, $=false)");
+FunctionTemplate4perl("cdd_ch_dual<Scalar> (Polytope<Scalar>; $=false, $=false)");
+
+InsertEmbeddedRule("function cdd.convex_hull: create_convex_hull_solver<Scalar> [Scalar==Rational || Scalar==Float] (;$=0)"
+                   " : c++ (name => 'cdd_interface::create_convex_hull_solver') : returns(cached);\n");
 } }
 
 // Local Variables:

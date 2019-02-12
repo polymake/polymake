@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "intersection.cc",
+ "inst": [
+  {"args": ["Max", "void", "void", "void"], "func": "intersect_check_transversality", "include": ["polymake/TropicalNumber.h"], "sig": "intersect_check_transversality:T1.B.B.x", "tp": "1"},
+  {"args": ["Min", "void", "void", "void"], "func": "intersect_check_transversality", "include": ["polymake/TropicalNumber.h"], "sig": "intersect_check_transversality:T1.B.B.x", "tp": "1"},
+ null ],
+"version": 3}

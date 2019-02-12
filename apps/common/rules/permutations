@@ -94,13 +94,46 @@ user_function find_permutation(*,*) : c++ (include => "polymake/permutations.h")
 # @category Combinatorics
 # Returns the __cycles__ of a permutation given by //p//.
 # @param Array<Int> p
-# @return Array<List<Int>>
+# @return ARRAY
 # @example
 # > print permutation_cycles([1,0,3,2]);
 # | {0 1}{2 3}
 
 user_function permutation_cycles(*) : c++ (include => "polymake/permutations.h") : returns(@);
 
+# @category Combinatorics
+# Returns the sorted cycle lengths of a permutation
+# @param Array<Int> p
+# @return Array<Int>
+# @example
+# > print permutation_cycle_lengths(new Array<Int>([1,2,0,4,3]));
+# | 2 3
+user_function permutation_cycle_lengths(Array<Int>) {
+    my @c = permutation_cycles(shift);
+    if (scalar @c == 1) {
+       my $a = new Array<Int>(1);
+       $a->[0] = $c[0]->size();
+       return $a;
+    }
+    return new Array<Int>( sort map { $_->size() } @c );
+}                                          
+
+# @category Combinatorics
+# Returns the order of a permutation
+# @param Array<Int> p
+# @return Int
+# @example
+# > print permutation_order(new Array<Int>([1,2,0,4,3]));
+# | 6
+user_function permutation_order(Array<Int>) {
+    my $p = shift;
+    my $o = 1;
+    foreach (permutation_cycles($p)) {
+        $o = lcm($o, $_->size());
+    }
+    return $o;
+}                                          
+                                          
 # @category Combinatorics
 # Returns the __sign__ of the permutation given by //p//.
 # @param Array<Int> p
@@ -128,7 +161,7 @@ user_function n_fixed_points(*) : c++ (include => "polymake/permutations.h");
 # @return Bool
 # @example
 # > print are_permuted([1,8,3,4],[3,8,4,1]);
-# | 1
+# | true
 
 user_function are_permuted(*,*) : c++ (include => "polymake/permutations.h");
 

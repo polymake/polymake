@@ -25,46 +25,42 @@ namespace polymake { namespace fan {
 
 typedef Rational Coord;
 
-perl::Object hyperplane_arrangement(const Matrix<Coord> & hyperplanes)
+perl::Object hyperplane_arrangement(const Matrix<Coord>& hyperplanes)
 {
-  perl::ObjectType t=perl::ObjectType::construct<Coord>("PolyhedralFan");
-  perl::Object f(t);
+  perl::Object f("PolyhedralFan", mlist<Coord>());
   const int n=hyperplanes.rows();
   const int d=hyperplanes.cols();
-  ListMatrix<Vector<Coord> > rays(0,d);
+  ListMatrix<Vector<Coord>> rays(0,d);
   const Integer n_subsets=Integer::binom(n,d-1);
-  //cerr<<"total subsets: "<<n_subsets<<endl;
-  //int index=0;
 
-  //test for each d-1 hyperplanes if their intersection is 1-dimensional
-  for (Entire< Subsets_of_k<const sequence&> >::const_iterator i=entire(all_subsets_of_k(sequence(0,n),d-1)); !i.at_end(); ++i) {
+  // test for each d-1 hyperplanes if their intersection is 1-dimensional
+  for (auto i=entire(all_subsets_of_k(sequence(0,n),d-1)); !i.at_end(); ++i) {
     const Matrix<Coord> h=hyperplanes.minor(*i,All);
-    
-    //they must have full rank
+
+    // they must have full rank
     if (rank(h)==d-1) {
-      bool neu=true;
+      bool is_new=true;
 
-      //exclude rays we already had
-      for (Entire< std::list<Vector <Rational> > >::const_iterator j=entire(rows(rays)); neu&&!j.at_end(); ++j) 
-         if (is_zero(h*(*j))) neu=false;
+      // exclude rays we already had
+      for (auto j=entire(rows(rays)); is_new && !j.at_end(); ++j)
+         if (is_zero(h*(*j))) is_new=false;
 
-      if (neu) {
+      if (is_new) {
           Vector<Rational> a=null_space(h).row(0);
-          //normalizes the ray, i.e. divides by the first non-zero entry
+          // normalizes the ray, i.e. divides by the first non-zero entry
           Coord fac;
-          for (int k=0;(fac=a[k])==0;++k);
+          for (int k=0; is_zero(fac=a[k]); ++k);
           a/=fac;
           rays/=a;
       }
     }
-    //if (++index%1000==0) cerr<<"HA: done "<<index<<endl;
   }
 
-  f.take("RAYS")<<(rays/(-rays));
-  f.take("FACET_NORMALS")<<hyperplanes;
-  f.take("LINEALITY_SPACE")<<Matrix<Coord>(0,d);
-  f.set_description()<<"Arrangement of the hyperplanes in FACET_NORMALS"<<endl; 
- 
+  f.take("RAYS") << rays/-rays;
+  f.take("FACET_NORMALS") << hyperplanes;
+  f.take("LINEALITY_SPACE") << Matrix<Coord>(0,d);
+  f.set_description() << "Arrangement of the hyperplanes in FACET_NORMALS" << endl;
+
   return f;
 
 }

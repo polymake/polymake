@@ -70,24 +70,60 @@ function induce_permutation_action($$$$$; $=0) {
     return $a;
 }
 
-function induce_matrix_action<Scalar>($$$ Matrix<Scalar>) {
-    my ($this, $from_action, $from_section, $dummy) = @_;
-    my $a = new MatrixActionOnVectors<Scalar>("matrix_action");
-    my @gens;
-    foreach (@{$this->GROUP->$from_action->GENERATORS}) {
-        my $m1 = new Matrix<Scalar>($this->$from_section);
-        my $m2 = new Matrix<Scalar>(permuted_rows($this->$from_section, $_));
-        push @gens, transpose(solve_right($m1, $m2));
+# helper function: Is a matrix a unit matrix?
+function is_unit_matrix(Matrix) {
+    my $m = shift;
+    return ($m == unit_matrix<$m->type->params->[0]>($m->rows)) ? 1 : 0;
+}
+
+# helper function: Is a matrix a unit matrix?
+function is_unit_matrix(Matrix<Float>) {
+    my $m = shift;
+    my $app = new ApproximateSet<Matrix<Float>>;
+    $app += unit_matrix<Float>($m->rows);
+    $app += $m;
+    return ($app->size() != 1) ? 0 : 1;
+}
+
+# helper function: is the order of a matrix equal to the order of a permutation?
+function check_generator_order<Scalar>(Array<Int>, Matrix<Scalar>) {
+    my ($perm, $candidate_gen) = @_;
+    my $product = new Matrix<Scalar>($candidate_gen);
+    foreach (2..permutation_order($perm)) {
+        $product = $product * $candidate_gen; # can't use *= here, don't know why
     }
-    $a->GENERATORS = new Array<Matrix<Scalar>>(\@gens);
-    if (defined(my $cc = $this->lookup("GROUP.$from_action.CONJUGACY_CLASS_REPRESENTATIVES"))) {
-        my @ccr;
-        my $m1 = new Matrix<Scalar>($this->$from_section);
-        foreach (@{$this->GROUP->$from_action->CONJUGACY_CLASS_REPRESENTATIVES}) {
-            my $m2 = new Matrix<Scalar>(permuted_rows($m1, $_));
-            push @ccr, transpose(solve_right($m1, $m2));
+    if (!is_unit_matrix($product)) {
+        croak("The matrix\n$candidate_gen\ncorresponding to the generator $perm has the wrong order. Thus, the given permutations do not induce a matrix action. Please check your assumptions, especially if the embedding of your polytope is really regular.");
+    }
+    return 1;
+}
+
+# convert an array of permutations of indices to an array of matrices acting on vertices/points
+function perms2matrices<Scalar>(Matrix<Scalar>, Array<Array<Int>>, Matrix<Scalar>) {
+    my ($pts_or_verts, $perms, $kernel) = @_;
+    my @gens;
+    my $pts_plus_kernel = $kernel->rows != 0 ? new Matrix<Scalar>($pts_or_verts/$kernel) : $pts_or_verts;
+    foreach (@{$perms}) {
+        my $candidate_gen = solve_right($pts_plus_kernel,
+                                        $kernel->rows != 0 ? new Matrix<Scalar>(permuted_rows($pts_or_verts, $_)/$kernel)
+                                                           : permuted_rows($pts_or_verts, $_));   # $pts_plus_kernel * X = pi($pts_plus_kernel)
+        if (check_generator_order($_, $candidate_gen)) {
+            push @gens, $candidate_gen;
         }
-        $a->CONJUGACY_CLASS_REPRESENTATIVES = new Array<Matrix<Scalar>>(\@ccr);
+    }
+    return new Array<Matrix<Scalar>>(\@gens);
+}
+
+function induce_matrix_action<Scalar>($$$ Matrix<Scalar>) {
+    my ($this, $from_action, $from_section, $kernel) = @_;
+    my $a = new MatrixActionOnVectors<Scalar>("matrix_action");
+    $a->GENERATORS = perms2matrices($this->$from_section,
+                                    $this->GROUP->$from_action->GENERATORS,
+                                    $kernel);
+    if (defined(my $cc = $this->lookup("GROUP.$from_action.CONJUGACY_CLASS_REPRESENTATIVES"))) {
+        $a->CONJUGACY_CLASS_REPRESENTATIVES = perms2matrices($this->$from_section,
+                                                             $this->GROUP->$from_action->CONJUGACY_CLASS_REPRESENTATIVES,
+                                                             $kernel);
     }
     $a->description = "induced from action on $from_section";
     return $a;

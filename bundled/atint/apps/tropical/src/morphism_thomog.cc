@@ -65,10 +65,10 @@ namespace polymake { namespace tropical {
 		Matrix<Rational> affine_matrix = matrix.minor(All, ~scalar2set(domain_chart));
 
 		affine_matrix = tdehomog( Matrix<Rational>(T(zero_vector<Rational>(affine_matrix.cols()) / affine_matrix)), target_chart);
-			affine_matrix = T(affine_matrix.minor(All,~scalar2set(0)));
+			affine_matrix = T(affine_matrix.minor(All, range_from(1)));
 
 		Vector<Rational> affine_translate =
-			tdehomog_vec( Vector<Rational>(Rational(0) | translate), target_chart).slice(~scalar2set(0));
+			tdehomog_vec( Vector<Rational>(Rational(0) | translate), target_chart).slice(range_from(1));
 
 		return std::make_pair(affine_matrix, affine_translate);
 

@@ -1,0 +1,9 @@
+{"app": "polytope", "embed": "facets_from_incidence.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "vertices_from_incidence", "include": ["polymake/Rational.h"], "sig": "vertices_from_incidence:T1.B", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void"], "func": "vertices_from_incidence", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "vertices_from_incidence:T1.B", "tp": "1"},
+  {"args": ["Rational", "void"], "func": "facets_from_incidence", "include": ["polymake/Rational.h"], "sig": "facets_from_incidence:T1.B", "tp": "1"},
+  {"args": ["double", "void"], "func": "facets_from_incidence", "sig": "facets_from_incidence:T1.B", "tp": "1"},
+  {"args": ["double", "void"], "func": "vertices_from_incidence", "sig": "vertices_from_incidence:T1.B", "tp": "1"},
+ null ],
+"version": 3}

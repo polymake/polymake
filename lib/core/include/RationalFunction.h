@@ -418,7 +418,7 @@ public:
    typename std::enable_if<fits_as_particle<T>::value, bool>::type
    operator== (const RationalFunction& l, const T& r)
    {
-      return l.den.unit() && l.num == r;
+      return l.den.is_one() && l.num == r;
    }
 
    template <typename T> friend
@@ -481,7 +481,7 @@ public:
 
    explicit operator const polynomial_type& () const
    {
-      if (!den.unit())
+      if (!den.is_one())
          throw std::runtime_error("Denominator is not one; cannot convert to a polynomial");
       return num;
    }
@@ -607,7 +607,7 @@ struct choose_generic_object_traits< RationalFunction<Coefficient, Exponent>, fa
    static
    bool is_one(const persistent_type& p)
    {
-      return numerator(p).unit() && denominator(p).unit();
+      return numerator(p).is_one() && denominator(p).is_one();
    }
 
    static

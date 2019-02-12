@@ -21,8 +21,7 @@ CREDIT 4ti2
 custom $circuits;
 
 CONFIGURE {
-    ($circuits=$polytope::groebner) =~ s/groebner$/circuits/;
-
+   $circuits = $polytope::groebner =~ s/groebner$/circuits/r;
 }
 
 label _4ti2

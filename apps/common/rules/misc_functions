@@ -108,6 +108,53 @@ user_function histogram {
 
 
 # @category Utilities
+# Checks if a given sequence is unimodal
+# @param ARRAY data (or Array<Scalar>)
+# @return Bool
+# @example 
+# > print is_unimodal([1,1,2,3,3,2,2,1]);
+# | 1                     
+# > print is_unimodal([3,3,2,-1]);
+# | 1
+# > print is_unimodal([1,3,2,3]);
+# | 0
+user_function is_unimodal {
+    my ($seq) = @_;
+    return unless @$seq;
+    my $seen_decreasing = 0;
+    my $prev=$seq->[0];
+    for (@$seq) {
+        if ($prev < $_) {
+            if ($seen_decreasing) {
+                return 0;
+            }
+        } elsif ($prev > $_) {
+            $seen_decreasing = 1;
+        }
+        $prev = $_;
+    }
+    return 1;
+}
+                     
+# @category Utilities
+# Checks if a given sequence is nonnegative
+# @param ARRAY data
+# @return Bool
+# @example 
+# > print is_nonnegative([1,0,3]);
+# | 1
+user_function is_nonnegative {
+    my ($seq) = @_;
+    return unless @$seq;
+    for (@$seq) {
+        if ($_ < 0) {
+            return 0;
+        }
+    }
+    return 1;
+}
+                     
+# @category Utilities
 # Returns the first //m// Fibonacci numbers.
 # @param Int m
 # @return ARRAY

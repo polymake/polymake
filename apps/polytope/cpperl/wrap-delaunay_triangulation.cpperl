@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "delaunay_triangulation.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "delaunay_triangulation", "include": ["polymake/Rational.h"], "sig": "delaunay_triangulation:T1.B", "tp": "1"},
+ null ],
+"version": 3}

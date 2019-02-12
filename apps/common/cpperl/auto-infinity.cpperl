@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["std::numeric_limits<double>(double)"], "func": "infinity", "kind": "stat", "sig": "Float::inf:M64"},
+ null ],
+"version": 3}

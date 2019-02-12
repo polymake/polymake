@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "circuit_completions.cc",
+ "inst": [
+  {"args": ["perl::Canned<const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Array<int> const&, pm::all_selector const&>&>", "perl::Canned<const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Array<int> const&, pm::all_selector const&>&>", "perl::Canned<const Matrix<Rational>&>"], "func": "circuit_completions_impl", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "circuit_completions_impl.X.X.X"},
+  {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Matrix<Rational>&>"], "func": "circuit_completions_impl", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "circuit_completions_impl.X.X.X"},
+ null ],
+"version": 3}

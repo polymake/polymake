@@ -23,7 +23,7 @@ use Polymake::Struct (
    '@points',
    '@colors',
    '$dim',
-   [ '$different_x_y' => 'new Map<Vector<Float>, ARRAY>' ],
+   [ '$different_x_y' => 'new Map<Vector<Float>, Set<Int>>' ],
    '%different_angles',
    [ '$whites' => 'new Map<Vector<Float>, Int>' ],
    [ '$blacks' => 'new Map<Vector<Float>, Int>' ],
@@ -43,7 +43,7 @@ sub new {
    my $v=0;
    foreach my $gv (@{$self->Polytope->GALE_VERTICES}) {
       my $color=$gv->[0];
-      my $point=$gv->slice(1);
+      my $point=$gv->slice(range_from(1));
       push @{$self->colors}, $color;
       push @{$self->points}, $point;
       if ($color) {
@@ -51,7 +51,7 @@ sub new {
             my $angle=atan2($Transform->elem($v,1), $Transform->elem($v,0));
             push @{$self->different_angles->{$angle}}, $v;
          }
-         push @{$self->different_x_y->{$point}}, $v;
+         $self->different_x_y->{$point} += $v;
          if ($color>0) {
             $self->whites->{$point}=1;
             delete $self->blacks->{$point};

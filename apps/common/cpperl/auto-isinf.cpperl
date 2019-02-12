@@ -1,0 +1,9 @@
+{"app": "common",
+ "inst": [
+  {"args": ["double"], "func": "isinf", "include": ["polymake/Integer.h"], "sig": "isinf.X"},
+  {"args": ["perl::Canned<const QuadraticExtension<Rational>&>"], "func": "isinf", "include": ["polymake/Integer.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "isinf.X"},
+  {"args": ["perl::Canned<const Rational&>"], "func": "isinf", "include": ["polymake/Integer.h", "polymake/Rational.h"], "sig": "isinf.X"},
+  {"args": ["perl::Canned<const Integer&>"], "func": "isinf", "include": ["polymake/Integer.h"], "sig": "isinf.X"},
+  {"args": ["int"], "func": "isinf", "include": ["polymake/Integer.h"], "sig": "isinf.X"},
+ null ],
+"version": 3}

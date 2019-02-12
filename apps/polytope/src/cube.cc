@@ -41,7 +41,7 @@ perl::Object cube(int d, Scalar x_up, Scalar x_low, perl::OptionSet options)
       negate(x_low);
    }
 
-   perl::Object p(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p("Polytope", mlist<Scalar>());
    p.set_description() << "cube of dimension " << d << endl;
 
    SparseMatrix<Scalar> F(2*d,d+1);

@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "pointed_part.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "pointed_part", "include": ["polymake/Rational.h"], "sig": "pointed_part:T1.B", "tp": "1"},
+ null ],
+"version": 3}

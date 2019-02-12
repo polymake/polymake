@@ -14,9 +14,9 @@
 #-------------------------------------------------------------------------------
 
 
-function equal_up_to_row_permutation(Matrix, Matrix) {
-    my ($M1, $M2)=@_;
-    $M1==$M2 || defined(eval { find_matrix_row_permutation($M1,$M2) })
+function equal_up_to_row_permutation(Matrix, Matrix; $=false) {
+   my ($M1, $M2)=@_;
+   $M1==$M2 || defined(eval { &find_matrix_row_permutation })
 }
 
 # @topic objects/Cone/specializations/Cone<Rational>
@@ -72,6 +72,10 @@ property INPUT_RAYS : Matrix<Scalar> {
           canonicalize_polytope_generators($M);
       }
   }
+
+  sub equal {
+     equal_up_to_row_permutation(@_, true);
+  }
 }
 
 # @category Geometry
@@ -100,6 +104,10 @@ property COMBINATORIAL_DIM : Int;
 # True if the cone does not contain a non-trivial linear subspace.
 property POINTED : Bool;
 
+# @category Geometry
+# True if the only valid point in the cone is the unique non-sensical point (0,...,0)
+property TRIVIAL : Bool;
+                          
 # @category Geometry
 # A ray of a pointed cone.
 property ONE_RAY : Vector<Scalar> {
@@ -173,6 +181,10 @@ property INEQUALITIES : Matrix<Scalar> {
    method canonical {
       my $self=shift;
       $self->canonical_ineq(@_);
+   }
+
+   sub equal {
+      equal_up_to_row_permutation(@_, true);
    }
 }
 

@@ -1,0 +1,6 @@
+{"app": "tropical",
+ "inst": [
+  {"class": "NodeMap<Directed, CovectorDecoration>", "include": ["polymake/Graph.h", "polymake/tropical/covectors.h"], "pkg": "Polymake::common::NodeMap_A_Directed_I_CovectorDecoration_Z"},
+  {"args": ["NodeMap<Directed, CovectorDecoration>", "perl::Canned<const Graph<Directed>&>"], "include": ["polymake/Graph.h", "polymake/tropical/covectors.h"], "op": "new", "sig": "new.X"},
+ null ],
+"version": 3}

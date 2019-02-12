@@ -18,6 +18,7 @@
 #include "polymake/Set.h"
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/Graph.h"
 
 namespace polymake { namespace polytope  {
 
@@ -25,6 +26,7 @@ template <typename Scalar>
 perl::Object normal_cone_impl(perl::Object p,
                               const Set<int>& F,
                               const std::string& ftv_section,
+                              const std::string& rays_section,
                               const std::string& facets_section,
                               perl::OptionSet options)
 {
@@ -33,20 +35,77 @@ perl::Object normal_cone_impl(perl::Object p,
       if (incl(F, far_face) <= 0)
          throw std::runtime_error("normal_cone: face is contained in the far face");
    }
-   const bool outer = options["outer"];
+   const bool
+      outer  = options["outer"],
+      attach = options["attach"];
+
    const IncidenceMatrix<> ftv = p.give(ftv_section);
    const Matrix<Scalar> facet_normals = p.give(facets_section);
-   Matrix<Scalar> cone_normals (facet_normals.minor(accumulate(rows(ftv.minor(F,All)), operations::mul()), ~scalar2set(0)));
+   Matrix<Scalar> cone_normals(facet_normals.minor(accumulate(rows(ftv.minor(F,All)), operations::mul()), range_from(1)));
    if (outer) cone_normals = -cone_normals;
-   perl::Object c(perl::ObjectType::construct<Scalar>("Cone")); 
-   c.take("INPUT_RAYS") << cone_normals; 
+
+   perl::Object c("Cone", mlist<Scalar>());
    const Matrix<Scalar> ls = p.give("LINEAR_SPAN");
-   c.take("INPUT_LINEALITY") << ls.minor(All, ~scalar2set(0));
-   c.take("CONE_AMBIENT_DIM") << cone_normals.cols();
+   if (attach) {
+      const Matrix<Scalar> rays = p.give(rays_section);
+      c.take("INPUT_RAYS") << rays.minor(F,All) / ( zero_vector<Scalar>() | cone_normals );
+      c.take("INPUT_LINEALITY") << ls;
+      c.take("CONE_AMBIENT_DIM") << cone_normals.cols() + 1;
+   } else {
+      c.take("INPUT_RAYS") << cone_normals;
+      c.take("INPUT_LINEALITY") << ls.minor(All, range_from(1));
+      c.take("CONE_AMBIENT_DIM") << cone_normals.cols();
+   }
    return c;
 }
 
-FunctionTemplate4perl("normal_cone_impl<Scalar>($$$$$)");
+template <typename Scalar>
+perl::Object inner_cone_impl(perl::Object p,
+                             const Set<int>& F,
+                             perl::OptionSet options)
+{
+   if (p.isa("Polytope")) {
+      const Set<int> far_face = p.give("FAR_FACE");
+      if (incl(F, far_face) <= 0)
+         throw std::runtime_error("normal_cone: face is contained in the far face");
+   }
+   const bool
+      outer  = options["outer"],
+      attach = options["attach"];
+
+   const Graph<> G = p.give("GRAPH.ADJACENCY");
+   const Matrix<Scalar> V = p.give("VERTICES");
+   std::vector<Vector<Scalar>> inner_rays_list;
+   for (int v: F) {
+      for (int w: G.out_adjacent_nodes(v) - F) {
+         if (outer) {
+            inner_rays_list.emplace_back(V[v] - V[w]);
+         } else {
+            inner_rays_list.emplace_back(V[w] - V[v]);
+         }
+      }
+   }
+   Matrix<Scalar> inner_rays(inner_rays_list.size(), V.cols(), entire(inner_rays_list));
+   inner_rays.col(0) = zero_vector<Scalar>(inner_rays.rows());
+
+   perl::Object c("Cone", mlist<Scalar>());
+   const Matrix<Scalar> ls = p.give("LINEAR_SPAN");
+   if (attach) {
+      const Matrix<Scalar> rays = p.give("RAYS");
+      c.take("INPUT_RAYS") << rays.minor(F,All) / inner_rays;
+      c.take("INPUT_LINEALITY") << ls;
+      c.take("CONE_AMBIENT_DIM") << V.cols();
+   } else {
+      c.take("INPUT_RAYS") << inner_rays.minor(All, range_from(1));
+      c.take("INPUT_LINEALITY") << ls.minor(All, range_from(1));
+      c.take("CONE_AMBIENT_DIM") << V.cols()-1;
+   }
+   return c;
+}
+
+FunctionTemplate4perl("normal_cone_impl<Scalar>($$$$$$)");
+
+FunctionTemplate4perl("inner_cone_impl<Scalar>($$$)");
 
 } }
 

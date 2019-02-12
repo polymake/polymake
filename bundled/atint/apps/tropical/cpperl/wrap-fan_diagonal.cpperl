@@ -1,0 +1,10 @@
+{"app": "tropical", "embed": "fan_diagonal.cc",
+ "inst": [
+  {"args": ["Max", "void"], "func": "simplicial_diagonal_system", "include": ["polymake/TropicalNumber.h"], "sig": "simplicial_diagonal_system:T1.B", "tp": "1"},
+  {"args": ["Min", "void"], "func": "simplicial_diagonal_system", "include": ["polymake/TropicalNumber.h"], "sig": "simplicial_diagonal_system:T1.B", "tp": "1"},
+  {"args": ["Max", "void"], "func": "simplicial_piecewise_system", "include": ["polymake/TropicalNumber.h"], "sig": "simplicial_piecewise_system:T1.B", "tp": "1"},
+  {"args": ["Min", "void"], "func": "simplicial_piecewise_system", "include": ["polymake/TropicalNumber.h"], "sig": "simplicial_piecewise_system:T1.B", "tp": "1"},
+  {"args": ["Max", "void"], "func": "simplicial_with_diagonal", "include": ["polymake/TropicalNumber.h"], "sig": "simplicial_with_diagonal:T1.B", "tp": "1"},
+  {"args": ["Min", "void"], "func": "simplicial_with_diagonal", "include": ["polymake/TropicalNumber.h"], "sig": "simplicial_with_diagonal:T1.B", "tp": "1"},
+ null ],
+"version": 3}

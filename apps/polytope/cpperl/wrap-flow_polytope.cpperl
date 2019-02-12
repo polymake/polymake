@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "flow_polytope.cc",
+ "inst": [
+  {"args": ["Rational", "perl::Canned<const Graph<Directed>&>", "perl::Canned<const EdgeMap<Directed, Rational>&>", "void", "void"], "func": "flow_polytope", "include": ["polymake/Graph.h", "polymake/Rational.h"], "sig": "flow_polytope:T1.X.X.x.x", "tp": "1"},
+  {"args": ["Rational", "void", "perl::Canned<const Array<Rational>&>", "void", "void"], "func": "flow_polytope", "include": ["polymake/Array.h", "polymake/Rational.h"], "sig": "flow_polytope:T1.B.X.x.x", "tp": "1"},
+ null ],
+"version": 3}

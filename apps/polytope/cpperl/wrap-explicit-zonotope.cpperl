@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "explicit-zonotope.cc",
+ "inst": [
+  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "void"], "func": "explicit_zonotope", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "explicit_zonotope:T1.X.o", "tp": "1"},
+ null ],
+"version": 3}

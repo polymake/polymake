@@ -30,7 +30,7 @@ perl::Object bipyramid(perl::Object p_in, const Scalar& z, const Scalar& z_prime
    if (z*z_prime >= 0) 
       throw std::runtime_error("bipyramid: z and z' must have opposite signs and be non-zero");
 
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Bipyramid over " << p_in.name() << endl;
 
    const bool noc = options["no_coordinates"],
@@ -91,7 +91,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# @example Here's a way to construct the 3-dimensional cross polytope:"
                           "# > $p = bipyramid(bipyramid(cube(1)));"
                           "# > print equal_polyhedra($p,cross(3));"
-                          "# | 1",
+                          "# | true",
                           "bipyramid<Scalar>(Polytope<type_upgrade<Scalar>>; type_upgrade<Scalar>=1, type_upgrade<Scalar>=(-$_[1]), {no_coordinates => undef, no_labels => 0})");
 } }
 

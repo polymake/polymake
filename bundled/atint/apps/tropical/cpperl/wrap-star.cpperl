@@ -1,0 +1,8 @@
+{"app": "tropical", "embed": "star.cc",
+ "inst": [
+  {"args": ["Max", "void", "void"], "func": "star_at_vertex", "include": ["polymake/TropicalNumber.h"], "sig": "star_at_vertex:T1.B.x", "tp": "1"},
+  {"args": ["Max", "void", "perl::Canned<const Vector<Rational>&>"], "func": "star_at_point", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "star_at_point:T1.B.X", "tp": "1"},
+  {"args": ["Min", "void", "void"], "func": "star_at_vertex", "include": ["polymake/TropicalNumber.h"], "sig": "star_at_vertex:T1.B.x", "tp": "1"},
+  {"args": ["Min", "void", "perl::Canned<const Vector<Rational>&>"], "func": "star_at_point", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "star_at_point:T1.B.X", "tp": "1"},
+ null ],
+"version": 3}

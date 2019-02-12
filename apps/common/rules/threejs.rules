@@ -49,6 +49,21 @@ custom $near_plane = .1;
 # camera far plane
 custom $far_plane = 1000;
 
+# point thickness
+custom $points_thickness = 0.04;
+
+# edge thickness
+custom $lines_thickness = 1;
+
+# for arrows in directed graphs, scaled with the edge length
+custom $arrowheadlength = 0.2;
+
+# for arrows in directed graphs
+custom $arrowheadwidth = 0.07;
+
+# for arrows in directed graphs: keep undef for the same color as the edge
+custom $arrowheadcolor=undef;
+
 
 
 package ThreeJS::Viewer;

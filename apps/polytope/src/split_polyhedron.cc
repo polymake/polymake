@@ -42,13 +42,13 @@ perl::Object split_polyhedron(perl::Object p_in)
             if (val>0) facets(j,k+1)=val;
          }
       }
-      perl::Object p_left(perl::ObjectType::construct<Scalar>("Polytope"));
+      perl::Object p_left("Polytope", mlist<Scalar>());
       p_left.take("VERTICES")<<vert.minor(left,All);
       const Vector<Scalar> left_centroid=p_left.give("CENTROID");
       const Scalar left_volume=p_left.give("VOLUME");
       facets(j,0)=-d*left_volume*(a*left_centroid);
    }
-   perl::Object p_out(perl::ObjectType::construct<Scalar>("Polytope"));
+   perl::Object p_out("Polytope", mlist<Scalar>());
    p_out.take("FACETS")<<facets;
 
    const Vector<Scalar> centroid=p_in.give("CENTROID");

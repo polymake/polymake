@@ -21,38 +21,31 @@
 
 namespace polymake { namespace matroid {
 
-    template <typename Addition, typename Scalar, typename Iterator> inline
-    void canonicalize_by_iterator(Iterator e) {
-      if (!e.at_end() && (*e) != TropicalNumber<Addition,Scalar>::one()) {
-	  const typename Iterator::value_type leading=*e;
-	  do *e /= leading; while (!(++e).at_end());
-      }
-    }
-  
-    
-    template <typename Vector, typename Addition, typename Scalar> inline
-    void canonicalize_tropical_rays(GenericVector<Vector,TropicalNumber<Addition,Scalar> >& V)
-    {
-      canonicalize_by_iterator<Addition,Scalar>(find_in_range_if(entire(V.top()), operations::non_zero()));
-    }
-
-    template <typename Matrix, typename Addition, typename Scalar> inline
-    void canonicalize_tropical_rays(GenericMatrix<Matrix,TropicalNumber<Addition,Scalar> >& M)
-    {	
-      for (typename Entire< Rows<Matrix> >::iterator r=entire(rows(M)); !r.at_end();  ++r)
-	  canonicalize_tropical_rays(r->top());
-    }
-    
-
-
-
-    
-    
- 
-    FunctionTemplate4perl("canonicalize_tropical_rays(Vector&) : void");
-    
-    FunctionTemplate4perl("canonicalize_tropical_rays(Matrix&) : void");
-    
- 
+template <typename TVector, typename Addition, typename Scalar>
+void canonicalize_tropical_rays(GenericVector<TVector, TropicalNumber<Addition, Scalar>>& V)
+{
+  auto e = entire(V.top());
+  for (;;) {
+    if (e.at_end()) return;
+    if (!is_zero(*e)) break;
+    ++e;
+  }
+  if (*e  != TropicalNumber<Addition, Scalar>::one()) {
+    const auto leading = *e;
+    *e = TropicalNumber<Addition, Scalar>::one();
+    while (!(++e).at_end())
+      *e /= leading;
+  }
 }
+
+template <typename TMatrix, typename Addition, typename Scalar>
+void canonicalize_tropical_rays(GenericMatrix<TMatrix, TropicalNumber<Addition, Scalar>>& M)
+{
+  for (auto r=entire(rows(M)); !r.at_end(); ++r)
+    canonicalize_tropical_rays(r->top());
 }
+
+FunctionTemplate4perl("canonicalize_tropical_rays(Vector&)");
+FunctionTemplate4perl("canonicalize_tropical_rays(Matrix&)");
+
+} }

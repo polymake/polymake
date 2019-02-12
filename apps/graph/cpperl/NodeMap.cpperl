@@ -1,0 +1,6 @@
+{"app": "graph",
+ "inst": [
+  {"class": "NodeMap<Directed, graph::lattice::BasicDecoration>", "include": ["polymake/Graph.h", "polymake/graph/Decoration.h"], "pkg": "Polymake::common::NodeMap_A_Directed_I_BasicDecoration_Z"},
+  {"args": ["NodeMap<Directed, graph::lattice::BasicDecoration>", "perl::Canned<const Graph<Directed>&>"], "include": ["polymake/Graph.h", "polymake/graph/Decoration.h"], "op": "new", "sig": "new.X"},
+ null ],
+"version": 3}

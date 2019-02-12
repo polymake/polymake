@@ -1,0 +1,12 @@
+{"app": "group", "embed": "conjugacy_classes.cc",
+ "inst": [
+  {"args": ["QuadraticExtension<Rational>", "void"], "func": "all_group_elements", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "all_group_elements:T1.B", "tp": "1"},
+  {"args": ["Rational", "void"], "func": "all_group_elements", "include": ["polymake/Rational.h"], "sig": "all_group_elements:T1.B", "tp": "1"},
+  {"args": ["Array<int>", "perl::Canned<const Array<Array<int>>&>", "perl::Canned<const Array<Array<int>>&>"], "func": "conjugacy_classes", "include": ["polymake/Array.h"], "sig": "conjugacy_classes:T1.X.X", "tp": "1"},
+  {"args": ["Matrix<QuadraticExtension<Rational>>", "perl::Canned<const Array<Matrix<QuadraticExtension<Rational>>>&>", "perl::Canned<const Array<Matrix<QuadraticExtension<Rational>>>&>"], "func": "conjugacy_classes", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "conjugacy_classes:T1.X.X", "tp": "1"},
+  {"args": ["Matrix<QuadraticExtension<Rational>>", "perl::Canned<const Array<Matrix<QuadraticExtension<Rational>>>&>"], "func": "conjugacy_classes_and_reps", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "conjugacy_classes_and_reps:T1.X", "tp": "1"},
+  {"args": ["Array<int>", "perl::Canned<const Array<Array<int>>&>"], "func": "conjugacy_classes_and_reps", "include": ["polymake/Array.h"], "sig": "conjugacy_classes_and_reps:T1.X", "tp": "1"},
+  {"args": ["Matrix<Rational>", "perl::Canned<const Array<Matrix<Rational>>&>", "perl::Canned<const Array<Matrix<Rational>>&>"], "func": "conjugacy_classes", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "conjugacy_classes:T1.X.X", "tp": "1"},
+  {"args": ["Matrix<double>", "perl::Canned<const Array<Matrix<double>>&>", "perl::Canned<const Array<Matrix<double>>&>"], "func": "conjugacy_classes", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "conjugacy_classes:T1.X.X", "tp": "1"},
+ null ],
+"version": 3}

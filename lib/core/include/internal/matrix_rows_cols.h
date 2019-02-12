@@ -37,28 +37,20 @@ template <typename TMatrix>
 struct spec_object_traits< Cols<TMatrix> >
    : spec_object_traits< Rows<TMatrix> > {};
 
-template <typename TMatrix> inline
-Rows<unwary_t<typename Concrete<TMatrix>::type>>& rows(TMatrix& m)
+template <typename TMatrix>
+auto rows(TMatrix&& m)
+   // gcc 5 needs this crutch
+   -> typename inherit_ref_norv<Rows<unwary_t<pure_type_t<TMatrix>>>, TMatrix&>::type
 {
-   return reinterpret_cast<Rows<unwary_t<typename Concrete<TMatrix>::type>>&>(unwary(concrete(m)));
+   return reinterpret_cast<typename inherit_ref_norv<Rows<unwary_t<pure_type_t<TMatrix>>>, TMatrix&>::type>(unwary(m));
 }
 
-template <typename TMatrix> inline
-const Rows<unwary_t<typename Concrete<TMatrix>::type>>& rows(const TMatrix& m)
+template <typename TMatrix>
+auto cols(TMatrix&& m)
+   // gcc 5 needs this crutch
+   -> typename inherit_ref_norv<Cols<unwary_t<pure_type_t<TMatrix>>>, TMatrix&>::type
 {
-   return reinterpret_cast<const Rows<unwary_t<typename Concrete<TMatrix>::type>>&>(unwary(concrete(m)));
-}
-
-template <typename TMatrix> inline
-Cols<unwary_t<typename Concrete<TMatrix>::type>>& cols(TMatrix& m)
-{
-   return reinterpret_cast<Cols<unwary_t<typename Concrete<TMatrix>::type>>&>(unwary(concrete(m)));
-}
-
-template <typename TMatrix> inline
-const Cols<unwary_t<typename Concrete<TMatrix>::type>>& cols(const TMatrix& m)
-{
-   return reinterpret_cast<const Cols<typename Concrete<TMatrix>::type>&>(unwary(concrete(m)));
+   return reinterpret_cast<typename inherit_ref_norv<Cols<unwary_t<pure_type_t<TMatrix>>>, TMatrix&>::type>(unwary(m));
 }
 
 template <typename TMatrix>

@@ -24,13 +24,13 @@ if (@ARGV != 1) {
 application($ARGV[0]);
 
 my %unique;
-my @perms=map { grep { $_->flags & $Core::Property::is_permutation and !$unique{$_}++ } values %{$_->properties} }
+my @perms=map { grep { $_->flags & Core::Property::Flags::is_permutation and !$unique{$_}++ } values %{$_->properties} }
               @{$application->object_types};
 
 foreach my $rule (@{$application->rules}) {
    next if !defined($rule->code)                # skip shortcut rules and user methods
-        or $rule->flags & $Core::Rule::is_function
-        or (grep { Core::get_array_flags($_) & $Core::Property::is_permutation } @{$rule->input});   # skip rules dealing with some permutation
+        or $rule->flags & Core::Rule::Flags::is_function
+        or (grep { Core::get_array_flags($_) & Core::Property::Flags::is_permutation } @{$rule->input});   # skip rules dealing with some permutation
 
    my (%seen_in, %seen_out);
    foreach (@{$rule->input}) {

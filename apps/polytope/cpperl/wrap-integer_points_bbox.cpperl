@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "integer_points_bbox.cc",
+ "inst": [
+  {"args": ["double", "void"], "func": "integer_points_bbox", "sig": "integer_points_bbox:T1.B", "tp": "1"},
+  {"args": ["Rational", "void"], "func": "integer_points_bbox", "include": ["polymake/Rational.h"], "sig": "integer_points_bbox:T1.B", "tp": "1"},
+ null ],
+"version": 3}

@@ -1,0 +1,8 @@
+{"app": "polytope", "embed": "neighbors_cyclic_normal.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "neighbors_cyclic_normal_primal", "include": ["polymake/Rational.h"], "sig": "neighbors_cyclic_normal_primal:T1.B", "tp": "1"},
+  {"args": ["double", "void"], "func": "neighbors_cyclic_normal_primal", "sig": "neighbors_cyclic_normal_primal:T1.B", "tp": "1"},
+  {"args": ["Rational", "void"], "func": "neighbors_cyclic_normal_dual", "include": ["polymake/Rational.h"], "sig": "neighbors_cyclic_normal_dual:T1.B", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void"], "func": "neighbors_cyclic_normal_primal", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "neighbors_cyclic_normal_primal:T1.B", "tp": "1"},
+ null ],
+"version": 3}

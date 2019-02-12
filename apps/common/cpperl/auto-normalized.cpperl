@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<double>&>"], "func": "normalized", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/linalg.h"], "sig": "normalized.X"},
+  {"args": ["perl::Canned<const pm::ListMatrix<pm::SparseVector<double> >&>"], "func": "normalized", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/linalg.h"], "sig": "normalized.X"},
+ null ],
+"version": 3}

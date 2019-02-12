@@ -54,13 +54,13 @@ struct sparse_vector_index_accessor {
 template <typename E>
 class SparseVector
    : public modified_tree< SparseVector<E>,
-                           mlist< ContainerTag< AVL::tree< AVL::traits<int, E, operations::cmp> > >,
+                           mlist< ContainerTag< AVL::tree< AVL::traits<int, E> > >,
                                   OperationTag< pair< BuildUnary<sparse_vector_accessor>,
                                                       BuildUnary<sparse_vector_index_accessor> > > > >
    , public GenericVector<SparseVector<E>, E> {
    typedef modified_tree<SparseVector> base_t;
 protected:
-   typedef AVL::tree< AVL::traits<int, E, operations::cmp> > tree_type;
+   using tree_type = AVL::tree< AVL::traits<int, E> >;
    struct impl {
       tree_type tree;
       int d;
@@ -88,8 +88,8 @@ protected:
 public:
    using typename GenericVector<SparseVector>::generic_type;
 
-   typedef random_access_iterator_tag container_category;
-   typedef sparse_elem_proxy<proxy_base> reference;
+   using container_category = random_access_iterator_tag;
+   using reference = sparse_elem_proxy<proxy_base>;
 
    tree_type& get_container() { return data->tree; }
    const tree_type& get_container() const { return data->tree; }
@@ -119,23 +119,23 @@ public:
    template <typename Vector2>
    SparseVector(const GenericVector<Vector2, E>& v)
    {
-      init(ensure(v.top(), (pure_sparse*)0).begin(), v.dim());
+      init(ensure(v.top(), pure_sparse()).begin(), v.dim());
    }
 
    /// Create a vector as a copy of another vector with a different element type.
    template <typename Vector2, typename E2>
    explicit SparseVector(const GenericVector<Vector2, E2>& v,
-                         typename std::enable_if<can_initialize<E2, E>::value, void**>::type=nullptr)
+                         std::enable_if_t<can_initialize<E2, E>::value, void**> =nullptr)
    {
-      init(make_converting_iterator<E>(ensure(v.top(), (pure_sparse*)0).begin()), v.dim());
+      init(make_converting_iterator<E>(ensure(v.top(), pure_sparse()).begin()), v.dim());
    }
 
    /// Create a vector from a list of values.
    /// Zeroes are filtered out automatically.
-   template <typename E2, typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
+   template <typename E2, typename=std::enable_if_t<can_initialize<E2, E>::value>>
    SparseVector(std::initializer_list<E2> l)
    {
-      init(make_converting_iterator<E>(ensure(l, (pure_sparse*)0).begin()), l.size());
+      init(make_converting_iterator<E>(ensure(l, pure_sparse()).begin()), l.size());
    }
 
    /// Create a vector from a list of (index, value) pairs.
@@ -191,16 +191,16 @@ public:
 
    /// append a GenericVector
    template <typename Vector2, typename E2,
-             typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
+             typename=std::enable_if_t<can_initialize<E2, E>::value>>
    SparseVector& operator|= (const GenericVector<Vector2, E2>& v)
    {
-      append(v.dim(), make_converting_iterator<E2>(ensure(v.top(), (pure_sparse*)0).begin()));
+      append(v.dim(), make_converting_iterator<E2>(ensure(v.top(), pure_sparse()).begin()));
       return *this;
    }
 
    /// append an element
    template <typename E2,
-             typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
+             typename=std::enable_if_t<can_initialize<E2, E>::value>>
    SparseVector& operator|= (E2&& r)
    {
       if (!is_zero(r)) data->tree.push_back(data->d, std::forward<E2>(r));
@@ -211,10 +211,10 @@ public:
    /// append a list of elements
    /// zeroes are filtered out automatically
    template <typename E2,
-             typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
+             typename=std::enable_if_t<can_initialize<E2, E>::value>>
    SparseVector& operator|= (std::initializer_list<E2> l)
    {
-      append(l.size(), make_converting_iterator<E2>(ensure(l, (pure_sparse*)0).begin()));
+      append(l.size(), make_converting_iterator<E2>(ensure(l, pure_sparse()).begin()));
       return *this;
    }
 
@@ -234,7 +234,7 @@ protected:
       if (data.is_shared()) {
          *this=SparseVector(v);
       } else {
-         data.get()->tree.assign(make_converting_iterator<E>(ensure(v, (pure_sparse*)0).begin()));
+         data.get()->tree.assign(make_converting_iterator<E>(ensure(v, pure_sparse()).begin()));
          data.get()->d=get_dim(v);
       }
    }
@@ -282,27 +282,27 @@ protected:
 template <typename E>
 struct check_container_feature<SparseVector<E>, pure_sparse> : std::true_type {};
 
-template <typename TVector, typename E, typename Permutation> inline
-typename std::enable_if<TVector::is_sparse, SparseVector<E>>::type
+template <typename TVector, typename E, typename Permutation>
+std::enable_if_t<TVector::is_sparse, SparseVector<E>>
 permuted(const GenericVector<TVector, E>& v, const Permutation& perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<TVector>::value) {
+   if (POLYMAKE_DEBUG || is_wary<TVector>()) {
       if (v.dim() != perm.size())
          throw std::runtime_error("permuted - dimension mismatch");
    }
    SparseVector<E> result(v.dim());
-   for (auto p=ensure(perm, (cons<end_sensitive,indexed>*)0).begin(); !p.at_end();  ++p) {
+   for (auto p = entire<indexed>(perm); !p.at_end();  ++p) {
       auto e=v.top().find(*p);
       if (!e.at_end()) result.push_back(p.index(), *e);
    }
    return result;
 }
 
-template <typename TVector, typename E, typename Permutation> inline
-typename std::enable_if<TVector::is_sparse, SparseVector<E>>::type
+template <typename TVector, typename E, typename Permutation>
+std::enable_if_t<TVector::is_sparse, SparseVector<E>>
 permuted_inv(const GenericVector<TVector, E>& v, const Permutation& perm)
 {
-   if (POLYMAKE_DEBUG || !Unwary<TVector>::value) {
+   if (POLYMAKE_DEBUG || is_wary<TVector>()) {
       if (v.dim() != perm.size())
          throw std::runtime_error("permuted_inv - dimension mismatch");
    }
@@ -324,7 +324,7 @@ namespace polymake {
 }
 
 namespace std {
-   template <typename E> inline
+   template <typename E>
    void swap(pm::SparseVector<E>& v1, pm::SparseVector<E>& v2) { v1.swap(v2); }
 }
 

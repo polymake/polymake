@@ -14,9 +14,12 @@
 --------------------------------------------------------------------------------
 */
 
-#include "polymake/polytope/minkowski_sum_fukuda.h"
+#include "polymake/client.h"
 #include "polymake/linalg.h"
+#include "polymake/Array.h"
+#include "polymake/Matrix.h"
 #include "polymake/Graph.h"
+#include "polymake/polytope/solve_LP.h"
 
 /*
   http://www.uni-frankfurt.de/fb/fb12/mathematik/dm/personen/steffens/Dokumente/MV_Computation1.pdf   [1]
@@ -46,13 +49,13 @@ Matrix<E> list2matrix(const std::vector<Matrix<E> >& v, const int rows, const in
 template<typename E>
 E solve_lp_mixed_volume(const Matrix<E>& M, const Vector<E>& objective)
 {
-    typedef typename choose_solver<E>::solver Solver;
-    Solver solver;
-    Matrix<E> eqs(M.cols()-1,M.cols());
-    for (int j=0;j<M.cols()-1;++j)
-       eqs.row(j)=unit_vector<E>(M.cols(),j+1);
-    typename Solver::lp_solution S=solver.solve_lp(eqs, M, objective, 1);
-    return S.first;
+    Matrix<E> eqs(M.cols()-1, M.cols());
+    for (int j=0; j<M.cols()-1; ++j)
+       eqs.row(j) = unit_vector<E>(M.cols(),j+1);
+    const auto S = solve_LP(eqs, M, objective, true);
+    if (S.status != LP_status::valid)
+       throw std::runtime_error("mixed_volume: wrong LP");
+    return S.objective_value;
 }
 
 template<typename E>
@@ -149,7 +152,7 @@ E mixed_volume(const Array<perl::Object>& summands)
          if (*it>i) {
             temp = (polytopes[j].row(i)+polytopes[j].row(*it))/2;
             temp = (temp | (((lifted_edges[j])[i]+(lifted_edges[j])[*it])/2));
-            temp = temp.slice(1,temp.size()-1);
+            temp = temp.slice(range_from(1));
             if (lower_envelope_check(A, n, j+1, r, Vector<E>(m+temp))) {
                node[j]=i;
                next[j]=count;
@@ -173,7 +176,7 @@ E mixed_volume(const Array<perl::Object>& summands)
                ++it;
             temp = (polytopes[j].row(i)+polytopes[j].row(*it))/2;
             temp = (temp | (((lifted_edges[j])[i]+(lifted_edges[j])[*it])/2));
-            temp = temp.slice(1,temp.size()-1);
+            temp = temp.slice(range_from(1));
             m = m-temp;
             ++it;
          }

@@ -57,11 +57,10 @@ public:
 
 //log operations that do not require gcd calculation??
 template <typename E>
-class elimination_logger : public pm::SNF_companion_logger<E,false> {
+class elimination_logger : public pm::SNF_companion_logger<E, false> {
    // R is inverted
-   typedef pm::SNF_companion_logger<E,false> super;
 public:
-   elimination_logger(SparseMatrix<E> *L, SparseMatrix<E> *Rinv) : super(L,Rinv) {}
+   using pm::SNF_companion_logger<E, false>::SNF_companion_logger;
 
    template <typename Matrix>
    void from_right(const Matrix& U) const { this->R->multiply_from_left(this->inv(U)); }
@@ -70,13 +69,14 @@ public:
 //logs companion matrices and elimination matrices
 template <typename E>
 class Smith_normal_form_logger
-   : public pm::SNF_companion_logger<E,false> {
+   : public pm::SNF_companion_logger<E, false> {
 protected:
-   typedef pm::SNF_companion_logger<E,false> super;
+   using super = pm::SNF_companion_logger<E, false>;
    elimination_logger<E> elim2;
 public:
-   Smith_normal_form_logger(SparseMatrix<E> *L, SparseMatrix<E> *L2, SparseMatrix<E> *R, SparseMatrix<E> *Rinv)
-      : super(L,R), elim2(L2, Rinv) {}
+   Smith_normal_form_logger(SparseMatrix<E>* L_, SparseMatrix<E>* L2, SparseMatrix<E>* R_, SparseMatrix<E>* Rinv)
+      : super(L_, R_)
+      , elim2(L2, Rinv) {}
 
    template <typename Matrix>
    void from_left(const Matrix& U) const  { super::from_left(U);  elim2.from_left(U); }
@@ -96,7 +96,7 @@ public:
    typedef Complex_iterator const_iterator;
 
    typedef SparseMatrix<E> matrix;
-   typedef typename std::conditional<with_cycles, matrix, nothing>::type companion_type;
+   using companion_type = std::conditional_t<with_cycles, matrix, nothing>;
 
    Complex_iterator() {}
 
@@ -139,10 +139,10 @@ public:
    const companion_type& cycle_coeffs() const { return Cycles; }
 
 protected:
-   const BaseComplex *complex;
+   const BaseComplex* complex;
    int d_cur, d_end;
    HomologyGroup<E> hom_cur, hom_next;
-   int rank_cur=0, rank_next=0;
+   int rank_cur = 0;
    Bitset elim_rows, elim_cols;
    typename MatrixType::persistent_type delta;
 
@@ -153,13 +153,13 @@ protected:
       const nothing& operator[] (int) const { return *this; }
       nothing* operator+ (int) { return this; }
    };
-   typedef typename std::conditional<with_cycles, matrix_array, nothing_array>::type companion_array;
+   using companion_array = std::conditional_t<with_cycles, matrix_array, nothing_array>;
    companion_array companions;
    //SparseMatrix supposed to hold the generators of the homology group
    companion_type Cycles;
 
-   typedef typename std::conditional<with_cycles, Smith_normal_form_logger<E>, nothing_logger>::type snf_logger_type;
-   typedef typename std::conditional<with_cycles, elimination_logger<E>, nothing_logger>::type elim_logger_type;
+   using snf_logger_type = std::conditional_t<with_cycles, Smith_normal_form_logger<E>, nothing_logger>;
+   using elim_logger_type = std::conditional_t<with_cycles, elimination_logger<E>, nothing_logger>;
 
    void first_step();
    void step(bool first=false);
@@ -328,7 +328,7 @@ template <typename E, typename MatrixType, typename BaseComplex, bool with_cycle
 void Complex_iterator<E,MatrixType,BaseComplex,with_cycles,dual>::prepare_LxR_prev(GenericMatrix<MatrixType,E> *pLxR_prev)
 {
    if (pLxR_prev)
-      for (typename Entire< Cols<typename MatrixType::persistent_type> >::iterator c=entire(cols(delta)); !c.at_end(); ++c)
+      for (auto c=entire(cols(delta)); !c.at_end(); ++c)
          if (!c->empty())
             pLxR_prev->col(c.index()).clear();
 }
@@ -336,12 +336,11 @@ void Complex_iterator<E,MatrixType,BaseComplex,with_cycles,dual>::prepare_LxR_pr
 template <typename E, typename MatrixType, typename BaseComplex, bool with_cycles, bool dual>
 void Complex_iterator<E,MatrixType,BaseComplex,with_cycles,dual>::calculate_cycles(GenericMatrix<MatrixType,E>& C)
 {
-   //number of generators = betti + number of torsion elements. torsion list is non-compressed, thus t->second is not multiplicity but the row of the torsion coefficient
+   // number of generators = betti + number of torsion elements. torsion list is non-compressed, thus t->second is not multiplicity but the row of the torsion coefficient
    Cycles.resize(hom_cur.betti_number + hom_cur.torsion.size(), delta.rows());
-   typename Entire< Rows<typename MatrixType::persistent_type> >::iterator r=entire(rows(Cycles));
-   //torsional part
-   for (typename HomologyGroup<E>::torsion_list::iterator t=hom_cur.torsion.begin(), t_end=hom_cur.torsion.end();
-        t != t_end; ++t, ++r)
+   auto r=entire(rows(Cycles));
+   // torsional part
+   for (auto t=hom_cur.torsion.begin(), t_end=hom_cur.torsion.end(); t != t_end; ++t, ++r)
       *r = companions[R_inv_prev].row(t->second);
 
    //free part

@@ -26,13 +26,13 @@ namespace polymake { namespace topaz {
 
 // this function takes a facet F and glues it around the boundary of
 // the ball defined by the WEB. It creates a new simplicial complex
-// which contains all the facets indicated by WEB. 
-void glue_facet(const Set<int>& _F, 
-                const Array<int>& F_vertex_indices, 
-                const Array<Set<int>>& facets, 
-                const Array<int>& facets_vertex_indices, 
-                const Set<int>& web, 
-                int shift, 
+// which contains all the facets indicated by WEB.
+void glue_facet(const Set<int>& F_in,
+                const Array<int>& F_vertex_indices,
+                const Array<Set<int>>& facets,
+                const Array<int>& facets_vertex_indices,
+                const Set<int>& web,
+                const int shift,
                 bool shift_facet,
                 std::vector<Set<int>>& result)
 {
@@ -53,12 +53,12 @@ void glue_facet(const Set<int>& _F,
    Array<int> vertex_indices = facets_vertex_indices;
 
    // take into account the vertex indices of F
-   Set<int> F(permuted_inv(_F,F_vertex_indices));
-   
+   Set<int> F(permuted_inv(F_in, F_vertex_indices));
+
    // shift the indices of F or boundary facet
    if (shift_facet) {
       // TODO: introduce Set::transpose instead of this madness
-      Set<int> F_shifted(entire(attach_operation(F, constant(shift), operations::add())));
+      Set<int> F_shifted(entire(attach_operation(F, same_value(shift), operations::add())));
       F=F_shifted;
    } else {
       // we shift the vertex indices of the boundary facet via the
@@ -69,13 +69,13 @@ void glue_facet(const Set<int>& _F,
    // glue everything together
    for (const auto& bf : boundary) {
       result.push_back(F + permuted_inv(bf, vertex_indices));
-   }    
+   }
 }
 
 
-template<typename Scalar>  
-perl::Object sum_triangulation(perl::Object p_in, 
-                               perl::Object q_in, 
+template<typename Scalar>
+perl::Object sum_triangulation(perl::Object p_in,
+                               perl::Object q_in,
                                const IncidenceMatrix<> webOfStars_in,
                                perl::OptionSet options)
 {
@@ -94,7 +94,7 @@ UserFunctionTemplate4perl("# @category Producing a new simplicial complex from o
                           "# @param IncidenceMatrix WebOfStars Every row corresponds to a full dimensional simplex in P and every column to a full dimensional simplex in Q."
                           "# @option Bool origin_first decides if the origin should be the first point in the resulting complex. Default=0"
                           "# @return GeometricSimplicialComplex",
-                          "sum_triangulation<Scalar>(GeometricSimplicialComplex<type_upgrade<Scalar>> GeometricSimplicialComplex<type_upgrade<Scalar>>; IncidenceMatrix=new IncidenceMatrix() { origin_first => 0 })"); 
+                          "sum_triangulation<Scalar>(GeometricSimplicialComplex<type_upgrade<Scalar>> GeometricSimplicialComplex<type_upgrade<Scalar>>; IncidenceMatrix=new IncidenceMatrix() { origin_first => 0 })");
 
 } }
 
