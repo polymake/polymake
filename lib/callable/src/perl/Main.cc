@@ -109,7 +109,7 @@ void deduce_install_dirs(std::string lib_path, std::string& install_top, std::st
 {
    const char stem_name[]="libpolymake";
    constexpr size_t stem_size=sizeof(stem_name)-1;
-   auto basename_start=lib_path.find(stem_name, stem_size);
+   auto basename_start=lib_path.find(stem_name);
    if (basename_start == std::string::npos)
       throw std::runtime_error("polymake::Main - weird callable library path " + lib_path);
 
