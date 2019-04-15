@@ -353,6 +353,16 @@ sub prepare {
    $self->caller_kind = $self->flags & FuncFlag::is_static ? "stat" : $self->flags & FuncFlag::is_method ? "meth" : "free";
 }
 #######################################################################################
+sub prescribed_return_types {
+   my ($self) = @_;
+   if ($self->returns =~ /^($id_re)\s*<\s*($id_re(?:\s*,\s*$id_re)*)\s*>$/o) {
+      my ($return_type, $value_types) = ($1, $2);
+      [ $return_type, $value_types =~ m/($id_re)/go ]
+   } else {
+      $self->returns
+   }
+}
+#######################################################################################
 sub deduce_extra_params {
    my ($self, $args)=@_;
    @{namespaces::fetch_explicit_typelist($args)};
@@ -843,15 +853,15 @@ sub add_type_template {
    croak( "parameterized type can't be declared as a C++ built-in type" )
      if $opts->builtin;
 
-   my $super_pkg=$generic_proto->pkg;
-   $generic_proto->cppoptions=$opts;
+   my $super_pkg = $generic_proto->pkg;
+   $generic_proto->cppoptions = $opts;
    if (!is_code($opts->name)) {
       if ($opts->name =~ /^(?: [\w:]+:: )?$/x) {
          $opts->name .= ($super_pkg =~ /([^:]+)$/)[0];
       }
    }
    if ($opts->template_params eq "*") {
-      $opts->default_constructor="";
+      $opts->default_constructor = "";
    } elsif (!exists $root->templates->{$super_pkg}) {
       $self->cpperl_generator->add_lacking_type_template($generic_proto);
    }
@@ -872,14 +882,23 @@ sub add_template_instance {
    if (!$proto->abstract && !$proto->cppoptions->builtin && $proto->cppoptions->template_params ne "*" &&
        $proto->cppoptions->name ne "typeid") {
       if ($nested_instantiation && !exists $root->classes->{$proto->pkg}) {
-         $proto->cppoptions->descr=sub { create_methods($self, $proto, $generic_proto->cppoptions) };
-         $proto->construct=sub : method {
-            my $proto=shift;
+         $proto->cppoptions->descr = sub { create_methods($self, $proto, $generic_proto->cppoptions) };
+         $proto->construct = sub : method {
+            my $proto = shift;
             if (is_code($proto->cppoptions->descr)) {
                $proto->cppoptions->descr->();
             }
-            $proto->construct=\&PropertyType::construct_object;
+            $proto->construct = \&PropertyType::construct_object;
             $proto->construct->(@_);
+         };
+         $proto->serialize = sub : method {
+            my $proto = shift;
+            if (is_code($proto->cppoptions->descr)) {
+               $proto->cppoptions->descr->();
+            } else {
+               croak( "internal error: ", $proto->full_name, "::serialize was not set" );
+            }
+            $proto->serialize->(@_);
          };
       } else {
          create_methods($self, $proto, $generic_proto->cppoptions);
@@ -948,7 +967,7 @@ sub add_auto_function {
       my $descr=$root->regular_functions->[$regular_index];
       $auto_func->arg_descrs=0;
       $auto_func->total_args=$descr->arg_types;
-      my $wrapper=create_function_wrapper($descr, get_symtab($application->pkg), $auto_func->total_args, $auto_func->returns);
+      my $wrapper=create_function_wrapper($descr, get_symtab($application->pkg), $auto_func->total_args, $auto_func->prescribed_return_types);
       $descr->auto_func=$auto_func;
       $auto_func->inst_cache=$code= defined($ext_code) ? sub { return &$ext_code; &$wrapper; } : $wrapper;
 
@@ -1162,26 +1181,28 @@ sub add_as_operator {
 #######################################################################################
 # private:
 sub create_methods {
-   my ($self, $proto, $generic_opts)=@_;
-   my $descr=provide_cpp_type_descr($proto);
+   my ($self, $proto, $generic_opts) = @_;
+   my $descr = provide_cpp_type_descr($proto);
    # this is only called for types declared in perl (i.e. "persistent types"),
    # the relation between PropertyType and C++ class descriptors is unambigous
-   $proto->dimension=$descr->dimension;
-   my $opts=$proto->cppoptions;
-   $opts->descr=$descr;
+   $proto->dimension = $descr->dimension;
+   my $opts = $proto->cppoptions;
+   $opts->descr = $descr;
 
    if ($descr->is_container) {
-      $proto->toXML=\&XMLwriter::set_methods;
+      $proto->serialize = \&Serializer::set_methods;
+      $proto->toXML = \&XMLwriter::set_methods;
       no strict 'refs';
       push @{$proto->pkg."::ISA"}, $descr->is_assoc_container ? "Polymake::Core::CPlusPlus::TiedHash" : "Polymake::Core::CPlusPlus::TiedArray";
 
    } elsif ($descr->is_composite) {
-      $proto->toXML=\&XMLwriter::set_methods;
+      $proto->serialize = \&Serializer::set_methods;
+      $proto->toXML = \&XMLwriter::set_methods;
       if ($proto->cppoptions->fields) {
          if ($descr->num_members != scalar(@{$proto->cppoptions->fields})) {
             croak( "number of field names does not match the C++ description of class ", $proto->full_name );
          }
-      } elsif (defined ($proto->cppoptions->fields=$descr->member_names)) {
+      } elsif (defined($proto->cppoptions->fields = $descr->member_names)) {
          $proto->cppoptions->define_field_accessors($proto->pkg);
          add_operators($self, $proto, [ '@eq' ]);
       }
@@ -1193,18 +1214,22 @@ sub create_methods {
          add_operators($self, $proto, []);
       }
       if ($descr->is_scalar) {
-         if (my $int_type=$root->builtins->{int}) {
+         if (my $int_type = $root->builtins->{int}) {
             $int_type->add_constructor("construct", undef, \&convert_to_int, [1, 1, $proto]);
          }
-         if (my $float_type=$root->builtins->{double}) {
+         if (my $float_type = $root->builtins->{double}) {
             $float_type->add_constructor("construct", undef, \&convert_to_float, [1, 1, $proto]);
+         }
+         if (!$proto->cppoptions->builtin) {
+            $proto->serialize = \&convert_to_string;
          }
       }
       if ($descr->is_serializable) {
-         $proto->toXML=\&XMLwriter::set_methods;
+         $proto->serialize = \&Serializer::set_methods;
+         $proto->toXML = \&XMLwriter::set_methods;
       }
    }
-   $proto->toString=\&convert_to_string;
+   $proto->toString = \&convert_to_string;
 
    if (!defined($generic_opts)) {
       define_constructors($proto);
@@ -1249,7 +1274,7 @@ sub bind_functions {
       }
 
       my $sub;
-      if (defined ($sub=create_function_wrapper($descr, $app_stash, $auto_func->total_args, $auto_func->returns))) {
+      if (defined ($sub=create_function_wrapper($descr, $app_stash, $auto_func->total_args, $auto_func->prescribed_return_types))) {
          declare_lvalue($sub) if $auto_func->flags & FuncFlag::returns_lvalue;
 
          if ($move_private_instances) {
@@ -1639,21 +1664,8 @@ sub create_assoc_methods {
 sub no_set_method { croak("This operation is not defined on sets") }
 
 #######################################################################################
-sub assign_any {
-   if ($#_==1 && (ref($_[1]) eq "ARRAY" || UNIVERSAL::isa($_[1], ref($_[0])))) {
-      assign_to_cpp_object(@_, $PropertyType::trusted_value);
-   } else {
-      my $obj=shift;
-      assign_to_cpp_object($obj, \@_, $PropertyType::trusted_value);
-   }
-}
-
-sub construct_any {
-   assign_any((shift)->construct->(), @_);
-}
-
 sub construct_parsed : method {
-   my $proto=shift;
+   my $proto = shift;
    if ($_[0] =~ /\S/) {
       eval { assign_to_cpp_object($proto->construct->(), $_[0], $PropertyType::trusted_value) }
       // do {
@@ -1672,65 +1684,53 @@ sub construct_parsed : method {
 
 Struct::pass_original_object(\&construct_parsed);
 
-sub construct_composite_cpp_value {
-   my ($proto)=@_;
-   if ($proto->cppoptions->descr->is_composite &&
-       @_>2 && !($#_%2)) {
-      my ($i,$last)=(1,$#_-1);
-      for (; $i<=$last; $i+=2) {
-         if (!is_keyword($_[$i])) {
-            return &construct_any;
-         }
-      }
-      my $x=$proto->construct->();
-      for ($i=1; $i<=$last; $i+=2) {
-         my $field=$_[$i];
-         $x->$field=$_[$i+1];
-      }
-      $x;
-   } else {
-      &construct_any;
-   }
-}
-
 sub std_default_constructor : method {
    &{resolve_auto_function($root->auto_default_constructor, \@_)}
 }
 
 sub std_parsing_constructor {
-   assign_to_cpp_object($_[0]->construct->(), $_[1], $PropertyType::trusted_value);
+   assign_to_cpp_object(std_default_constructor($_[0]), $_[1], $PropertyType::trusted_value);
 }
 
 sub std_convert_constructor : method {
-   if (ref($_[1]) eq "ARRAY") {
+   if (is_array($_[1])) {
+      &std_parsing_constructor;
+   } elsif (is_hash($_[1])) {
+      my $descr = $_[0]->cppoptions->descr;
+      if (defined(my $member_names = $descr->member_names)) {
+         construct_from_members(@_, $member_names);
+      } else {
+         &std_parsing_constructor;
+      }
+   } elsif (instanceof Serializer::Sparse($_[1])) {
       &std_parsing_constructor;
    } else {
       &{resolve_auto_function($root->auto_convert_constructor, \@_)};
    }
 }
 
-sub std_deserializing_constructor : method {
-   if (ref($_[1]) eq "ARRAY" && get_array_flags($_[1])<0) {
-      my $src=pop(@_);
-      assign_to_cpp_object(&std_default_constructor, $src, $PropertyType::trusted_value);
-   } else {
-      &{resolve_auto_function($root->auto_convert_constructor, \@_)};
+sub construct_from_members {
+   my ($proto, $hash, $member_names) = @_;
+   if (!$PropertyType::trusted_value and keys %$hash != @$member_names || grep { !exists $hash->{$_} } @$member_names) {
+      croak( "can't construct ", $_[0]->full_name, " - wrong member names: expected [", join("; ", @$member_names),
+             "] but got [", join("; ", keys %$hash), "]" );
    }
+   assign_to_cpp_object($proto->construct->(), [ @$hash{@$member_names} ], $PropertyType::trusted_value);
 }
 
 package Polymake::Core::CPlusPlus::StdConstr;
 
 sub set_construct_node {
+   my (undef, $proto) = @_;
    state $construct_node = do {
-      my $node=new_root Overload::Node;
+      my $node = new_root Overload::Node;
       Overload::add_instance(__PACKAGE__, ".construct", undef, \&std_default_constructor, $void_signature->[0], undef, $node);
       Overload::add_instance(__PACKAGE__, ".construct", undef, \&std_convert_constructor, $unary_op_signature->[0], undef, $node);
-      $node->add_fallback(\&construct_composite_cpp_value);
+      $node->add_fallback(sub { my $proto = shift; std_parsing_constructor($proto, \@_) });
       $node
    };
-   my (undef, $proto)=@_;
-   $proto->construct_node=$construct_node;
-   $proto->parse=\&construct_parsed;
+   $proto->construct_node = $construct_node;
+   $proto->parse = \&construct_parsed;
 }
 
 package Polymake::Core::CPlusPlus::Deserializing;
@@ -1738,19 +1738,19 @@ package Polymake::Core::CPlusPlus::Deserializing;
 sub set_construct_node {
    state $construct_node = do {
       my $node=new_root Overload::Node;
-      Overload::add_instance(__PACKAGE__, ".construct", undef, \&std_deserializing_constructor, $unary_op_signature->[0], undef, $node);
+      Overload::add_instance(__PACKAGE__, ".construct", undef, \&std_convert_constructor, $unary_op_signature->[0], undef, $node);
       $node
    };
-   my (undef, $proto)=@_;
-   $proto->construct_node=$construct_node;
+   my (undef, $proto) = @_;
+   $proto->construct_node = $construct_node;
 }
 
 package Polymake::Core::CPlusPlus;
 
 sub define_constructors {
-   my ($proto)=@_;
+   my ($proto) = @_;
    if (!defined($proto->construct_node) && length($proto->cppoptions->default_constructor)) {
-      my $pkg=namespaces::lookup_class(__PACKAGE__, $proto->cppoptions->default_constructor, $proto->application->pkg)
+      my $pkg = namespaces::lookup_class(__PACKAGE__, $proto->cppoptions->default_constructor, $proto->application->pkg)
         or croak( "class ", $proto->full_name, " tries to inherit constructors from an unknown package ", $proto->cppoptions->default_constructor );
       $pkg->set_construct_node($proto);
       $proto->create_method_new();

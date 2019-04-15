@@ -102,7 +102,7 @@ struct check_iterator_feature<RandomSubset_iterator<Iterator>, end_sensitive> : 
 
 template <typename ContainerRef>
 class RandomSubset
-   : public generic_of_subset<RandomSubset<ContainerRef>, typename deref<ContainerRef>::type> {
+   : public generic_of_subset_t<RandomSubset<ContainerRef>, typename deref<ContainerRef>::type> {
 public:
    using base_type = typename deref<ContainerRef>::minus_ref;
    using value_type = typename container_traits<ContainerRef>::value_type;

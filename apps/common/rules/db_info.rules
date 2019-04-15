@@ -559,7 +559,7 @@ user_function db_write_collection_info ({db=> undef, \
 
 # @category Database
 # Retrieve the metadata of an object
-# @param Object p the polyDB object
+# @param Core::Object p the polyDB object
 # @return HASH metadata the metadata of the database object
 user_function db_metadata ($ ) {
    my ($p) = @_;
@@ -568,7 +568,7 @@ user_function db_metadata ($ ) {
 
 # @category Database
 # print the metadata of an object
-# @param Object p the polyDB object
+# @param Core::Object p the polyDB object
 user_function db_print_metadata ($ ) {
    my ($p) = @_;
    my $metadata = db_metadata($p);

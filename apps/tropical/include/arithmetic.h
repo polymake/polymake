@@ -29,6 +29,7 @@
 #include "polymake/Set.h"
 #include "polymake/graph/hungarian_method.h"
 #include "polymake/graph/matchings.h"
+#include "polymake/permutations.h"
 
 namespace pm {
    namespace operations {
@@ -132,7 +133,7 @@ namespace polymake {
       template <typename Addition, typename Scalar, typename MatrixTop>
       std::pair< TropicalNumber<Addition, Scalar>, Array<int> > tdet_and_perm(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
       {
-         Scalar value(zero_value<Scalar>()); // empty matrix has tropical determinant zero
+         /* Scalar value(zero_value<Scalar>()); // empty matrix has tropical determinant zero */
          const int d(matrix.rows());
          if (d != matrix.cols())
             throw std::runtime_error("input matrix has to be quadratic");
@@ -150,7 +151,20 @@ namespace polymake {
          graph::HungarianMethod<Scalar> HM(Addition::orientation()*Matrix<Scalar>(matrix.top()));
          HM.stage();
          return std::make_pair(TropicalNumber<Addition, Scalar>(Addition::orientation()*HM.get_value()), HM.get_matching());
-         //return std::make_pair(TropicalNumber<Addition,Scalar>(value),perm);
+      }
+
+      template <typename Addition, typename Scalar, typename MatrixTop>
+      std::pair<TropicalNumber<Addition,Scalar>, Set<Array<int>>> tdet_and_perms (const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
+      {
+         if (matrix.rows() != matrix.cols())
+            throw std::runtime_error("input matrix has to be quadratic");
+
+         graph::HungarianMethod<Scalar> HM(Addition::orientation()*Matrix<Scalar>(matrix.top()));
+         HM.stage();
+         /* Graph<Undirected> G(HM.get_equality_subgraph()); */
+         /* Array<int> M(HM.get_matching()); */
+         graph::PerfectMatchings PM(Graph<Undirected>(HM.get_equality_subgraph()), HM.get_matching());
+         return std::make_pair(TropicalNumber<Addition, Scalar>(Addition::orientation()*HM.get_value()), PM.get_matchings());
       }
 
       template <typename Addition, typename Scalar, typename MatrixTop>
@@ -159,6 +173,11 @@ namespace polymake {
          return tdet_and_perm(matrix).first;
       }
 
+      template <typename Addition, typename Scalar, typename MatrixTop>
+      Set<Array<int>> optimal_permutations (const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
+      {
+         return tdet_and_perms(matrix).second;
+      }
       
       template <typename Addition, typename Scalar, typename MatrixTop>
       std::pair< TropicalNumber<Addition, Scalar>, Array<int> > second_tdet_and_perm(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
@@ -201,20 +220,7 @@ namespace polymake {
       template <typename Addition, typename Scalar, typename MatrixTop>
       bool tregular(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar>>& matrix)
       {
-         /* TODO 1x1 matrix? */
          return tdet_and_perm(matrix).first != second_tdet_and_perm(matrix).first;
-         /* return tdet(matrix) != second_tdet_and_perm(matrix).first; */
-      }
-
-      template <typename Addition, typename Scalar, typename MatrixTop>
-      Set<Array<int>> optimal_permutations(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
-      {
-         graph::HungarianMethod<Scalar> HM(Addition::orientation()*Matrix<Scalar>(matrix.top()));
-         HM.stage();
-         Graph<Undirected> G(HM.get_equality_subgraph());
-         Array<int> M(HM.get_matching());
-         graph::PerfectMatchings PM(G, M);
-         return PM.get_matchings();
       }
 
       template <typename Addition, typename Scalar, typename MatrixTop>
@@ -256,6 +262,53 @@ namespace polymake {
          }
          return solvec;
       }
+
+      // sign of determinant
+      template <typename Addition, typename Scalar, typename MatrixTop>
+      int tsgn(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
+      {
+         std::pair<TropicalNumber<Addition,Scalar>,Array<int>> p_1 = tdet_and_perm(matrix);
+         std::pair<TropicalNumber<Addition,Scalar>,Array<int>> p_2 = second_tdet_and_perm(matrix);
+         return p_1.first != p_2.first ? permutation_sign(p_1.second) : 0;
+         /* return tregular(matrix) ? permutation_sign(tdet_and_perm(matrix).second) : 0; */
+      }
+
+      // sign-regularity
+      template <typename Addition, typename Scalar, typename MatrixTop>
+      bool stregular(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
+      {
+         Set<int> signs;
+         for (auto r = entire(optimal_permutations(matrix)); !r.at_end(); ++r) {
+            signs += permutation_sign(*r);
+            if (signs.size() > 1)
+               return false;
+         }
+         return true;
+      }
+
+      /* template <typename Addition, typename Scalar, typename MatrixTop> */
+      /* std::pair<Vector<TropicalNumber<Addition,Scalar>,Vector<int>> scramer(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix) */
+      /* { */
+      /*    const int d(matrix.cols()); */
+      /*    if (d != matrix.rows() + 1) */
+      /*       throw std::runtime_error("input matrix has to be Nx(N+1)"); */
+      /*    Vector<TropicalNumber<Addition, Scalar>> solvec(d); */
+      /*    Vector<int> solvec_signs(d); */
+      /*    Matrix<TropicalNumber<Addition, Scalar>> matrix_0(matrix.top().minor(All, range_from(1))); */
+      /*    graph::HungarianMethod<Scalar> HM(Addition::orientation()*Matrix<Scalar>(matrix_0.top())); */
+      /*    HM.stage(); */
+      /*    solvec[0] = Addition::orientation()*HM.get_value(); */
+      /*    for (int i = 0; i < d-1; i++) { */
+      /*       HM.dynamic_stage(i, Addition::orientation()*Vector<Scalar>(matrix.col(i))); */
+      /*       solvec[i+1] = Addition::orientation()*HM.get_value(); */
+      /*    } */
+      /*    /1* return std::pair; *1/ */
+      /* } */
+
+      /* template <typename Addition, typename Scalar, typename MatrixTop> */
+      /* std::pair<TropicalNumber<Addition,Scalar>, stdet(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix, const GenericMatrix<MatrixTop, bool>& signmatrix) */
+      /* { */
+      /* } */
 
 
       // tropical distance function; notice that the tropical Addition is not relevant

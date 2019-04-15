@@ -23,12 +23,27 @@
 #include "scip/scipdefplugins.h"
 #include "scip/misc.h"
 #include "polymake/polytope/solve_LP.h"
+#include "polymake/polytope/generic_milp_client.h"
 
 #include <vector>
 
 namespace polymake { 
 namespace polytope { 
 namespace scip_interface {
+
+bool check_solution(const Vector<Rational>& solution, const Matrix<Rational>& ineq, const Matrix<Rational>& eq){
+   for(const auto& h:rows(ineq)){
+      if(h*solution < 0){
+         return false;
+      }
+   }
+   for(const auto& e:rows(eq)){
+      if(e*solution != 0){
+         return false;
+      }
+   }
+   return true;
+}
 
 SCIP_RETCODE insert_inequality(
       SCIP* scip,
@@ -48,7 +63,7 @@ SCIP_RETCODE insert_inequality(
 }
 
 
-class Solver {
+class InnerSolver {
    // All SCIP methods return a SCIP_RETCODE. Thus we do some wrapping so we
    // are able to return void or other things.
    private:
@@ -172,7 +187,7 @@ class Solver {
       }
 
    public:
-      Solver(int d, const Set<int>& iv):
+      InnerSolver(int d, const Set<int>& iv):
 #if POLYMAKE_DEBUG
          debug_print(perl::get_debug_level() > 1),
 #endif
@@ -222,7 +237,7 @@ class Solver {
          return solution;
       }
 
-      ~ Solver(){
+      ~ InnerSolver(){
          if(destroy_scip() != SCIP_OKAY){
             cerr << "Could not destroy SCIP object" << endl;
          }
@@ -231,74 +246,54 @@ class Solver {
 
 };
 
+class Solver : public MILP_Solver<Rational> {
+   public:
+      Solver() {}
+
+      MILP_Solution<Rational> solve(const Matrix<Rational>& H,
+         const Matrix<Rational>& E,
+         const Vector<Rational>& Obj,
+         const Set<int>& integerVariables,
+         bool maximize) const {
+         scip_interface::InnerSolver S(Obj.dim(), integerVariables);
+         S.read_inequalities(H);
+         S.read_equations(E);
+         S.read_objective(Obj, maximize);
+         MILP_Solution<Rational> result;
+         result.status = S.solve();
+         if(result.status == LP_status::valid){
+            result.solution = S.get_solution();
+            if(!check_solution(result.solution, H, E)){
+               S.print_scip_solution();
+               throw std::runtime_error("Solution is not inside polytope.");
+            }
+            // There should be another way to get this value directly from SCIP.
+            result.objective_value = Obj * result.solution;
+         }
+         return result;
+      }
+};
+
+template <typename Scalar=Rational>
+auto create_MILP_solver()
+{
+   return cached_MILP_solver<Rational>(new Solver(), true);
+}
+
 
 } // end namespace scip_interface
 
-bool check_solution(const Vector<Rational>& solution, const Matrix<Rational>& ineq, const Matrix<Rational>& eq){
-   for(const auto& h:rows(ineq)){
-      if(h*solution < 0){
-         return false;
-      }
-   }
-   for(const auto& e:rows(eq)){
-      if(e*solution != 0){
-         return false;
-      }
-   }
-   return true;
-}
 
 void scip_milp_client(perl::Object p, perl::Object milp, bool maximize, perl::OptionSet options)
 {
-   const Matrix<Rational> H = p.give("FACETS | INEQUALITIES");
-   const Matrix<Rational> E = p.lookup("AFFINE_HULL | EQUATIONS");
-   const Vector<Rational> Obj = milp.give("LINEAR_OBJECTIVE");
-   // const Set<int> integerVariables = milp.give("INTEGER_VARIABLES");
-   Set<int> integerVariables;
-   milp.lookup("INTEGER_VARIABLES") >> integerVariables;
-   // Default to taking all variables as integer, since otherwise one should be
-   // using a LP solver.
-   if(integerVariables.size() == 0){
-      integerVariables = pm::range(0,Obj.dim());
-   }
 
-
-   scip_interface::Solver S(Obj.dim(), integerVariables);
-   S.read_inequalities(H);
-   S.read_equations(E);
-   S.read_objective(Obj, maximize);
-   LP_status status(S.solve());
-   if( status != LP_status::infeasible ){
-      p.take("FEASIBLE") << true;
-      if(status == LP_status::unbounded ){
-         if (maximize)
-            milp.take("MAXIMAL_VALUE") << std::numeric_limits<Rational>::infinity();
-         else
-            milp.take("MINIMAL_VALUE") << -std::numeric_limits<Rational>::infinity();
-      } else {
-         const Vector<Rational>& solution(S.get_solution());
-         if(!check_solution(solution, H, E)){
-            S.print_scip_solution();
-            throw std::runtime_error("Solution is not inside polytope.");
-         }
-         // There should be another way to get this value directly from SCIP.
-         Rational val(Obj * solution);
-         if(maximize){
-            milp.take("MAXIMAL_SOLUTION") << solution;
-            milp.take("MAXIMAL_VALUE") << val;
-         } else {
-            milp.take("MINIMAL_SOLUTION") << solution;
-            milp.take("MINIMAL_VALUE") << val;
-         }
-      }
-   } else {
-      p.take("FEASIBLE") << false;
-   }
+   scip_interface::Solver S;
+   generic_milp_client<Rational, scip_interface::Solver>(p, milp, maximize, S);
 }
 
 Function4perl(&scip_milp_client, "scip_milp_client(Polytope<Rational>, MixedIntegerLinearProgram<Rational>, $; {initial_basis => undef})");
 
-// InsertEmbeddedRule("function soplex.simplex: create_LP_solver<Scalar> [Scalar==Rational] () : c++ (name => 'soplex_interface::create_LP_solver') : returns(cached);\n");
+InsertEmbeddedRule("function scip.milp: create_MILP_solver<Scalar> [Scalar==Rational] () : c++ (name => 'scip_interface::create_MILP_solver') : returns(cached);\n");
 
 } // end namespace polytope
 } // end namespace polymake

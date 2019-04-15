@@ -1,5 +1,41 @@
 Changelog
 
+=== Polymake 3.4 ===
+
+-- interfaces --
+ * TOSimplex: Add interface to MILP solver
+ * jreality: support for java 12
+ * Fix bookmarks to external software in documentation
+
+-- general --
+ * several improvements for x3d visualization (e.g. via blender)
+ * fix callable library path deduction (thanks Antonio Rojas)
+ * various improvements in ipynb tutorials 
+
+-- common --
+ * all_subsets_of_k: c++ function now accessible from perl
+ * polydb
+   - support subobject arrays
+   - add aggregate function
+
+-- fan --
+ * PolyhedralFan: fix in visualization method
+ * SubdivisionOfVectors: add property ALTSCHULER_DET
+
+-- polytope --
+ * refactor MILP solvers to provide generic interface solve_MILP
+ * Polytope: add property SPANNING, a polytope is spanning if the lattice points generate the lattice
+ * PointConfiguration: add property MASSIVE_GKZ_VECTOR for triangulation subobject
+ * rand_sphere: can sample rational points from the unit sphere
+ * n_triangulations: Renamed to n_fine_triangulations, documentation adapted
+   accordingly
+
+-- tropical --
+ * add functions: tregular, stregular, tsgn
+ * Hypersurface: fix DOME for polynomials with only one term
+ * Hypersurface: improve documentation concerning required homogenization
+ * Hypersurface: add property DUAL_SUBDIVISION
+
 === Polymake 3.3 ===
 
 -- distribution --
@@ -51,7 +87,7 @@ Changelog
 -- polytope --
  * Add Billera-Lee construction for polytopes
  * Add property MILP to Polytope for mixed integer linear programs
- * Refactor covex hull solvers, introduce generic methods enumerate_facets and
+ * Refactor convex hull solvers, introduce generic methods enumerate_facets and
    enumerate_vertices
  * Refactor LP solvers to generic interface
  * Add mptopcom.rules for interfacing mptopcom

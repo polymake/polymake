@@ -52,7 +52,9 @@ declare object Polytope<Addition, Scalar=Rational> [ is_ordered_field_with_unlim
 declare object Cycle<Addition> : fan::PolyhedralComplex<Rational>;
 
 # This is a special instance of a Cycle: It is the tropical locus of a
-# polynomial over the tropical numbers.
+# homogeneous polynomial over the tropical numbers.
+#
+# Note: Homogeneity of the polynomial is never checked.
 declare object Hypersurface<Addition> : Cycle<Addition>;
 
 # This encodes a patchworking structure on a hypersurface.

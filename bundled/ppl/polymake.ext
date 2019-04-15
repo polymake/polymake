@@ -1,7 +1,7 @@
 # This is a bundled extension.
 
 CREDIT
-  The Parma Polyhedra Library (PPL): A C++ library for convex polyhedra
+  The Parma Polyhedra Library ([[wiki:external_software#PPL]]): A C++ library for convex polyhedra
   and other numerical abstractions.
   http://www.cs.unipr.it/ppl/
 

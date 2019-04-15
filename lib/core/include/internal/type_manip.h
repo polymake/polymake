@@ -1357,9 +1357,11 @@ struct inherit_generic_helper {
    using type = typename Source::template rebind_generic<Result>::type;
 };
 
+struct generic_none {};
+
 template <typename Result, typename Source>
 struct inherit_generic_helper<Result, Source, void> {
-   struct type {};
+   using type = generic_none;
 };
 
 template <typename Result, typename Source>

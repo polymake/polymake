@@ -34,6 +34,7 @@ HELP help.rules
 
 # A polyhedral cone, not necessarily pointed.
 # Note that in contrast to the vertices of a polytope, the [[RAYS]] are given in affine coordinates.
+# @tparam Scalar numeric data type used for the coordinates, must be an ordered field
 declare object Cone<Scalar=Rational> [ is_ordered_field(Scalar) ];
 
 # Not necessarily bounded convex polyhedron, i.e., the feasible region of a linear program.
@@ -42,7 +43,6 @@ declare object Cone<Scalar=Rational> [ is_ordered_field(Scalar) ];
 # Note that a pointed polyhedron is projectively equivalent to a polytope.
 # The second reason is historical.
 # We use homogeneous coordinates, which is why Polytope is derived from [[Cone]].
-# //Scalar// is the numeric data type used for the coordinates.
 # @example To construct a polytope as the convex hull of three points in the plane use
 # > $p=new Polytope(POINTS=>[[1,0,0],[1,1,0],[1,0,1]]);
 # > print $p->N_FACETS
@@ -75,7 +75,8 @@ INCLUDE
   solids.rules
   flag_vector.rules
   lattice.rules
-  to_mip.rules
+  milp_properties.rules
+  to_milp.rules
   vector_configuration.rules
   point_configuration.rules
   polarize.rules
@@ -102,7 +103,6 @@ INCLUDE
   orbit_polytope_helpers.rules
   orbit_polytope_visual.rules
   wronski.rules
-  milp_properties.rules
 
 # self-configuring rules
 INCLUDE

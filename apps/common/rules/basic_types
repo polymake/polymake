@@ -67,6 +67,8 @@ declare property_type String : c++ (builtin => 'std::string') {
 
    type_method equal { $_[1] eq $_[2] }
 
+   type_method isa { is_string($_[1]) }
+
    type_method XMLdatatype { "text-pattern: \\S+|'.*'" }
 }
 
@@ -590,6 +592,8 @@ declare property_type Container<*> : c++ {
    # Note that for a sparse container, this number can be less or equal to scalar(@$container)
    # because the latter includes all implicit zeros and/or deleted elements
    method size() : c++;
+
+   use overload '""' => \&Core::CPlusPlus::convert_to_string;
 }
 
 ##################################################################################

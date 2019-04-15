@@ -354,7 +354,7 @@ UserFunctionTemplate4perl("# @category Orbits"
             "# Computes the orbit of the rows of the matrix //mat//"
             "# under the permutation action on coordinates //action//."
             "# @param PermutationAction a an action of a group of coordinate permutations"
-            "# @param Matrix<Scalar> M some input vectors"
+            "# @param Matrix M some input vectors"
             "# @return List( Matrix generated vectors in orbit order, Array orbits of generated vectors)",
             "orbits_in_orbit_order(PermutationAction, Matrix)");
 
@@ -362,7 +362,7 @@ UserFunctionTemplate4perl("# @category Orbits"
 UserFunction4perl("# @category Utilities"
             "# Compute all elements of a given group, expressed as a permutation action."
             "# @param PermutationAction a the action of a permutation group"
-            "# @return Array<Array<Int> all group elements ",
+            "# @return Array<Array<Int>> all group elements ",
              &all_group_elements,
             "all_group_elements(PermutationAction)");
 

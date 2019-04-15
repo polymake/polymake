@@ -297,7 +297,7 @@ sub match_cpperl_instance {
 }
 
 sub is_private {
-   $_[0]->extension == $private_wrapper_ext
+   defined($private_wrapper_ext) && $_[0]->extension == $private_wrapper_ext
 }
 
 #######################################################################################

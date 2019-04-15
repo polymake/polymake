@@ -243,6 +243,15 @@ sub isa {
    return $self==$other || list_index($self->linear_isa, $other)>=0;
 }
 ####################################################################################
+sub deserialize : method {
+   my ($self, $src) = @_;
+   if (is_hash($src)) {
+      &Object::deserialize
+   } else {
+      croak( "wrong serialized representation of ", $self->full_name, " - anonymous hash expected" );
+   }
+}
+####################################################################################
 # for compatibility with PropertyType:
 
 *type=\&PropertyType::type;
@@ -258,6 +267,10 @@ define_function(__PACKAGE__, ".type", \&type);
 
 sub qualified_name {
    defined($_[0]->params) ? &PropertyParamedType::qualified_name : &PropertyType::qualified_name
+}
+
+sub required_extensions {
+   defined($_[0]->params) ? &PropertyParamedType::required_extensions : &PropertyType::required_extensions
 }
 
 sub xml_name {
@@ -569,6 +582,7 @@ sub override_property {        # "new name", "old name", Help => Property
       if (defined $help) {
          $help->annex->{header}="property $prop_name : ".$prop->type->full_name."\n";
          weak($help->annex->{property}=$prop);
+         $help->text =~ s/UNDOCUMENTED\n//;
          $help->text .= " Alias for property [[" . $old_prop->defined_for->help_ref_to_prop($self->application, $old_prop_name) . "]].\n";
       }
    } else {
@@ -1331,9 +1345,8 @@ sub provide_help_topic {
                   $text='# @category ' . $prop_topic->parent->name . "\n";
                }
             }
-            $text .= "Augmented subobject [[" . ( $refer_to->application != $prop->belongs_to->application && $refer_to->application->name . "::" )
-                     . $refer_to->full_name . "::" . $prop->name . "\n"
-                     . "# \@display noshow\n";
+            $text .= "Augmented subobject " . $refer_to->full_name . "::" . $prop->name . "\n"
+                   . "# \@display noshow\n";
          }
          $topic=$topic->add([ $help_group, $prop->name ], $text);
          $topic->annex->{property}=$prop;
@@ -1694,6 +1707,8 @@ use Polymake::Struct (
    [ '$extension' => 'undef' ],
    [ '$dimension' => '1' ],
    [ '&toXML' => '\&toXML_meth' ],
+   [ '&serialize' => '\&serialize_func' ],
+   [ '&deserialize' => '\&deserialize_meth' ],
    [ '&equal' => '\&equal_sub' ],
    [ '&isa' => '\&isa_meth' ],
 );
@@ -1713,48 +1728,65 @@ sub toXML_meth : method {
 
 Struct::pass_original_object(\&toXML_meth);
 
+sub serialize_func {
+   my ($arr, $options) = @_;
+   [ map { $_->serialize($options) } @$arr ]
+}
+
+sub deserialize_meth : method {
+   my ($self, $src, @options) = @_;
+   if (is_array($src)) {
+      my $obj_proto = $self->params->[0];
+      bless [ map { Object::deserialize($obj_proto, $_, @options) } @$src ], $self->pkg
+   } else {
+      croak( "wrong serialized representation of ", $self->full_name, " - anonymous array expected" );
+   }
+}
+
+Struct::pass_original_object(\&deserialize_meth);
+
 sub equal_sub {
-   my ($arr1, $arr2)=@_;
-   my $e=$#$arr1;
+   my ($arr1, $arr2) = @_;
+   my $e = $#$arr1;
    return 0 if $e != $#$arr2;
-   for (my $i=0; $i<=$e; ++$i) {
+   for (my $i = 0; $i <= $e; ++$i) {
       return 0 if $arr1->[$i]->diff($arr2->[$i]);
    }
    1
 }
 
 sub isa_meth : method {
-   my ($self, $arr)=@_;
+   my ($self, $arr) = @_;
    UNIVERSAL::isa($arr, __PACKAGE__) && $arr->type->params->[0]->isa($self->params->[0]);
 }
 
 Struct::pass_original_object(\&isa_meth);
 
 sub construct_from_list : method {
-   my ($self, $list)=@_;
+   my ($self, $list) = @_;
    # the contained Objects have already been checked during overload resolution
    bless $list, $self->pkg;
 }
 
 sub construct_with_size : method {
-   my ($self, $n)=@_;
-   my $elem_type=$self->params->[0];
+   my ($self, $n) = @_;
+   my $elem_type = $self->params->[0];
    bless [ map { Object::new_named($elem_type, $_) } 0..$n-1 ], $self->pkg;
 }
 
 sub resize {
-   my ($self, $n)=@_;
-   my $old_size=@$self;
+   my ($self, $n) = @_;
+   my $old_size = @$self;
    if ($n < $old_size) {
-      $#$self=$n-1;
+      $#$self = $n-1;
    } else {
-      my $elem_type=$self->type->params->[0];
+      my $elem_type = $self->type->params->[0];
       push @$self, map { Object::new_named($elem_type, $_) } $old_size..$n-1;
    }
 }
 
 sub copy {
-   my ($self)=@_;
+   my ($self) = @_;
    inherit_class([ map { $_->copy } @$self ], $self);
 }
 
@@ -1765,28 +1797,28 @@ sub construct_with_size_str : method {
 }
 
 sub new_generic {
-   my $self=&_new;
-   $self->construct_node=new_root Overload::Node;
+   my $self = &_new;
+   $self->construct_node = new_root Overload::Node;
    Overload::add_instance(__PACKAGE__, ".construct", undef, \&construct_with_size,
-                          [1, 1, Overload::integer_package()], undef, $self->construct_node);
+                          [ 1, 1, Overload::integer_package() ], undef, $self->construct_node);
    $self;
 }
 
-sub typeof { state $me=&new_generic; }
+sub typeof { state $me = &new_generic; }
 
 sub init_constructor : method {
-   my ($super, $self)=@_;
-   $self->construct_node=$super->construct_node;
+   my ($super, $self) = @_;
+   $self->construct_node = $super->construct_node;
    Overload::add_instance($self->pkg, ".construct", undef, \&construct_from_list,
-                          [1, 1+Overload::SignatureFlags::has_repeated, [$self->params->[0]->pkg, "+"]], undef, $self->construct_node);
+                          [ 1, 1+Overload::SignatureFlags::has_repeated, [ $self->params->[0]->pkg, "+" ] ], undef, $self->construct_node);
 
-   $self->parse=\&construct_with_size_str;
+   $self->parse = \&construct_with_size_str;
    overload::OVERLOAD($self->pkg, '""' => ($self->toString = sub { "BigObjectArray" }));
 
    # put BigObjectArray in front of generic Array as to inherit the correct constructors
    # TODO: find a more elegant/generic way of achieving this, e.g. by specializing the generic types in the rules.
    no strict 'refs';
-   @{$self->pkg."::ISA"}=(__PACKAGE__, $self->generic->pkg);
+   @{$self->pkg."::ISA"} = (__PACKAGE__, $self->generic->pkg);
 }
 
 1

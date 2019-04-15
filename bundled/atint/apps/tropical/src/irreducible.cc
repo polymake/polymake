@@ -295,7 +295,7 @@ namespace polymake { namespace tropical {
 			"# Takes a polyhedral complex and computes a weight cone, i.e. "
 			"# intersects the [[WEIGHT_SPACE]] with a chosen orthant (by default the positive orthant)"
 			"# @param Cycle X A polyhedral complex"
-			"# @param Set<int> negative A subset of the coordinates {0,..,N-1}, where N is "
+			"# @param Set<Int> negative A subset of the coordinates {0,..,N-1}, where N is "
 			"# the number of maximal cells of X. Determines the orthant to"
 			"# intersect the weight space with: All coordinates in the set are negative, the others positive"
 			"# If the set is not given, it is empty by default (i.e. we take the positive orthant)",

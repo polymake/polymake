@@ -55,8 +55,8 @@ sub random_growth($$) {
   die "n>d>0 required\n" unless $n>$d && $d>0;
  
   my @set=(0..$n-1);
-  my @complete_skeleton=derefify(all_subsets_of_k($d,@set));
-  my @simplices=derefify(randomize(all_subsets_of_k($d+1,@set)));
+  my @complete_skeleton=derefify(all_subsets_of_k(\@set,$d));
+  my @simplices=derefify(randomize(all_subsets_of_k(\@set,$d+1)));
 
   print "The (d-1)-skeleton has ", scalar(@complete_skeleton), " faces, and there are ", scalar(@simplices), " possible d-faces.\n";
   my $k=0;
@@ -79,8 +79,8 @@ sub coupon_collector($$) {
   die "n>d>0 required\n" unless $n>$d && $d>0;
 
   my @set=(0..$n-1);
-  my @complete_skeleton=derefify(all_subsets_of_k($d,@set));
-  my @simplices=derefify(all_subsets_of_k($d+1,@set));
+  my @complete_skeleton=derefify(all_subsets_of_k(\@set,$d));
+  my @simplices=derefify(all_subsets_of_k(\@set,$d+1));
   my @faces=@complete_skeleton;
 
   print "The (d-1)-skeleton has ", scalar(@complete_skeleton), " faces, and there are ", scalar(@simplices), " possible d-faces.\n";

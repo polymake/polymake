@@ -17,5 +17,6 @@
   {"args": ["perl::AnchorArg<perl::Canned<const Wary<pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::all_selector const&, pm::Series<int, true> const>>&>>", "void"], "func": "row", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "kind": "meth", "ret": "lvalue", "sig": "row:F:M14.x"},
   {"args": ["perl::AnchorArg<perl::Canned<Wary<Matrix<double>>>>", "void"], "func": "row", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "kind": "meth", "ret": "lvalue", "sig": "row:F:M14.x"},
   {"args": ["perl::AnchorArg<perl::Canned<Wary<SparseMatrix<double, NonSymmetric>>>>", "void"], "func": "row", "include": ["polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "kind": "meth", "ret": "lvalue", "sig": "row:F:M14.x"},
+  {"args": ["perl::AnchorArg<perl::Canned<Wary<Matrix<Integer>>&>>", "void"], "func": "row", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h"], "kind": "meth", "ret": "lvalue", "sig": "row:F:M14.x"},
  null ],
 "version": 3}

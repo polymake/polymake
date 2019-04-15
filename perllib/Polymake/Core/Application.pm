@@ -65,7 +65,7 @@ use Polymake::Struct (
    '%preamble_end',               # 'rule_key' => last line containing a configuration command (CONFIGURE or REQUIRE)
    [ '$custom' => 'undef' ],      # Customize::perApplication
    [ '$prefs' => 'undef' ],       # Preference::perApplication
-   [ '$help' => 'new Help' ],
+   [ '$help' => 'new Help(undef, #1)' ],
    '%used',                       # 'name' => Application
    '%imported',                   # 'name' => 1
    '@import_sorted',              # 'name', ... : flattened list in DFS order
@@ -175,8 +175,7 @@ Value 0 denotes configuration failure, which disables the corresponding rulefile
 
    if ($Help::gather) {
       $self->custom->create_help_topics($self->help);
-      state $user_prefs_help=do { my $h=new Help; $Prefs->custom->create_help_topics($h); $h };
-      push @{$self->help->related}, $user_prefs_help;
+      state $user_prefs_help = $Prefs->custom->create_help_topics($Help::core), 1;
    }
 
    $self;
@@ -447,8 +446,8 @@ sub set_file_suffix {
 #################################################################################
 sub lookup_credit {
    my ($self, $product)=@_;
-   $self->credits->{$product} ||= do {
-      my @full_credits=grep { defined } map { $_->credits->{$product} } values %{$self->used};
+   $self->credits->{$product} //= do {
+      my @full_credits = grep { defined } map { $_->credits->{$product} } values %{$self->used};
       $full_credits[0];
    }
 }

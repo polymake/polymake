@@ -34,5 +34,8 @@
   {"args": ["perl::AnchorArg<perl::Canned<const Wary<IncidenceMatrix<NonSymmetric>>&>>", "perl::AnchorArg<perl::Canned<const IncidenceMatrix<NonSymmetric>&>>"], "include": ["polymake/IncidenceMatrix.h"], "op": "div", "sig": "div:O.X15.X11"},
   {"args": ["IncidenceMatrix<NonSymmetric>", "perl::Canned<const pm::BlockMatrix<mlist<pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::IncidenceMatrix<pm::NonSymmetric> const&>, std::integral_constant<bool, true> >&>"], "include": ["polymake/IncidenceMatrix.h"], "op": "new", "sig": "new.X"},
   {"args": ["IncidenceMatrix<NonSymmetric>", "perl::Canned<const pm::Rows<pm::IncidenceMatrix<pm::NonSymmetric> >&>"], "include": ["polymake/IncidenceMatrix.h"], "op": "new", "sig": "new.X"},
+  {"args": ["IncidenceMatrix<NonSymmetric>", "perl::Canned<const pm::Transposed<pm::MatrixMinor<pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::all_selector const&, pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> const&> >&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "op": "new", "sig": "new.X"},
+  {"args": ["IncidenceMatrix<NonSymmetric>", "perl::Canned<const pm::Subsets_of_k<pm::Series<int, true> const&>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/PowerSet.h", "polymake/Set.h"], "op": "new", "sig": "new.X"},
+  {"args": ["IncidenceMatrix<NonSymmetric>", "perl::Canned<const pm::Subsets_of_k<pm::Series<int, true> const>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/PowerSet.h", "polymake/Set.h"], "op": "new", "sig": "new.X"},
  null ],
 "version": 3}

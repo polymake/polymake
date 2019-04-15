@@ -104,6 +104,16 @@ rule MAXIMAL_CELLS : CellPerm.MAXIMAL_CELLS, CellPerm.PERMUTATION {
 weight 1.10;
 
 
+# If M is incidence matrix between the vertices and the [[MAXIMAL_CELLS]],
+# then the Altshuler determinant is defined as
+# max{det(M &lowast; M<sup>T</sup>), det(M<sup>T</sup> &lowast; M)}.
+property ALTSHULER_DET : Integer;
+
+rule ALTSHULER_DET : MAXIMAL_CELLS {
+   $this->ALTSHULER_DET=altshuler_det($this->MAXIMAL_CELLS);
+}
+
+
 # @category Geometry
 # True if [[VECTORS]] for each maximal cell are in convex position.
 property CONVEX : Bool;

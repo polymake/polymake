@@ -39,6 +39,17 @@ struct PerlInterpreter;
 
 namespace pm { namespace perl {
 
+class undefined : public std::runtime_error {
+public:
+   undefined();
+};
+
+class exception : public std::runtime_error {
+public:
+   exception();
+   exception(const char* msg) : std::runtime_error(msg) {}
+};
+
 class SVHolder {
 protected:
    SV* sv;
@@ -51,10 +62,10 @@ protected:
    SVHolder(SV* sv_arg, std::true_type);
    void set_copy(SV* sv_arg);
    void forget();
-   bool is_tuple() const;
 public:
    SV* get() const noexcept { return sv; }
    SV* get_temp();
+   bool is_tuple() const;
 };
 
 class Scalar : public SVHolder {
@@ -117,7 +128,7 @@ protected:
    ArrayHolder(SV* sv_arg, std::true_type)
       : SVHolder(sv_arg, std::true_type()) {}
 public:
-   explicit ArrayHolder(int reserve=0)
+   explicit ArrayHolder(int reserve = 0)
       : SVHolder(init_me(reserve)) {}
 
    explicit ArrayHolder(const Value&);
@@ -128,7 +139,7 @@ public:
       upgrade(reserve);
    }
 
-   explicit ArrayHolder(SV* sv_arg, ValueFlags flags=ValueFlags::is_trusted)
+   explicit ArrayHolder(SV* sv_arg, ValueFlags flags = ValueFlags::is_trusted)
       : SVHolder(sv_arg)
    {
       if (flags * ValueFlags::not_trusted)
@@ -142,8 +153,6 @@ public:
    void set_contains_aliases();
 
    int size() const;
-   int dim(bool& has_sparse_representation) const;
-   int cols() const;
    void resize(int n);
    SV* operator[] (int i) const;
 
@@ -226,19 +235,6 @@ public:
    }
 };
 
-class undefined : public std::runtime_error {
-public:
-   undefined();
-};
-
-class exception : public std::runtime_error {
-public:
-   exception();
-   exception(const char* msg) : std::runtime_error(msg) {}
-};
-
-SV* complain_obsolete_wrapper(const char* file, int line, const char* expr);
-
 template <typename X> struct TryCanned;
 template <typename X> struct Canned;
 template <typename X> struct Enum;
@@ -247,65 +243,109 @@ template <typename X> struct ReturningList;
 template <typename Options=mlist<>> class ValueOutput;
 template <typename Options=mlist<>> class ValueInput;
 
+class ListValueInputBase {
+protected:
+   SV* arr_or_hash;
+   SV* dim_sv;
+   int i;
+   int size_;
+   int cols_;
+   int dim_;
+   bool sparse_;
+
+   explicit ListValueInputBase(SV* sv);
+   ~ListValueInputBase() { finish(); }
+public:
+   int size() const { return size_; }
+
+   void skip_item() { ++i; }
+   void skip_rest() { i = size_; }
+   bool at_end() const { return i >= size_; }
+
+   int get_dim(bool tell_size_if_dense) const
+   {
+      return dim_ >= 0 ? dim_ : tell_size_if_dense ? size_ : -1;
+   }
+
+   bool sparse_representation() const { return sparse_; }
+
+   bool is_ordered() const;
+
+protected:
+   SV* get_first() const;
+   SV* get_next();
+   int get_index() const;
+   void retrieve_key(std::string& dst) const;
+   void finish();
+};
+
 template <typename ElementType, typename Options=mlist<>>
 class ListValueInput
-   : public ArrayHolder
+   : public ListValueInputBase
    , public GenericInputImpl< ListValueInput<ElementType, Options> >
    , public GenericIOoptions< ListValueInput<ElementType, Options>, Options, 1 > {
-   int i, _size, _dim;
 public:
    using value_type = ElementType;
 
-   ListValueInput(SV* sv_arg)
-      : ArrayHolder(sv_arg, this->get_option(TrustedValue<std::true_type>()) ? ValueFlags::is_trusted : ValueFlags::not_trusted)
-      , i(0)
-      , _size(ArrayHolder::size())
-      , _dim(-1)
+   explicit ListValueInput(SV* sv)
+      : ListValueInputBase(sv)
    {}
 
-   template <typename T> inline
-   ListValueInput& operator>> (T& x);
-
-   int size() const { return _size; }
-   bool at_end() const { return i>=_size; }
-
-   void finish()
+   template <typename T>
+   ListValueInput& operator>> (T& x)
    {
-      if (this->get_option(CheckEOF<std::false_type>()) && !at_end())
+      if (this->get_option(CheckEOF<std::false_type>()) && at_end())
          throw std::runtime_error("list input - size mismatch");
-   }
-
-   void skip_item() { ++i; }
-   void skip_rest() { i=_size; }
-
-   bool serialized_value() const { return is_tuple(); }
-
-   bool sparse_representation()
-   {
-      if (mtagged_list_extract<Options, SparseRepresentation>::is_specified)
-         return this->get_option(SparseRepresentation<std::false_type>());
-      bool has_sparse_representation;
-      _dim=ArrayHolder::dim(has_sparse_representation);
-      return has_sparse_representation;
+      retrieve(x, is_instance_of<ElementType, pair>());
+      return *this;
    }
 
    int cols(bool tell_size_if_dense);
 
-   int lookup_dim(bool tell_size_if_dense)
+   int index(const int index_bound) const
    {
-      return sparse_representation() ? _dim :
-             tell_size_if_dense ? _size : -1;
+      const int ix = get_index();
+      if (!this->get_option(TrustedValue<std::true_type>()) && (ix < 0 || ix >= index_bound))
+         throw std::runtime_error("sparse input - index out of range");
+      return ix;
    }
 
-   int index()
+   void finish()
    {
-      if (!sparse_representation())
-         throw std::runtime_error("dense/sparse input mismatch");
-      int ix=-1;
-      *this >> ix;
-      if (!this->get_option(TrustedValue<std::true_type>()) && (ix<0 || ix>=_dim))
-         throw std::runtime_error("sparse index out of range");
-      return ix;
+      ListValueInputBase::finish();
+      if (this->get_option(CheckEOF<std::false_type>()) && !at_end())
+         throw std::runtime_error("list input - size mismatch");
+   }
+
+   template <typename X>
+   ListValueInput& set_option(SparseRepresentation<X>) { return *this; }
+
+   using GenericIOoptions<ListValueInput, Options, 1>::set_option;
+private:
+   template <typename T, bool anything>
+   void retrieve(T&, bool_constant<anything>);
+
+   template <typename T>
+   void retrieve(std::pair<int, T>& x, std::true_type)
+   {
+      if (!sparse_representation()) {
+         retrieve(x, std::false_type());
+      } else {
+         // Maps with integer keys can be serialized as sparse containers
+         x.first = get_index();
+         retrieve(x.second, std::false_type());
+      }
+   }
+
+   template <typename T>
+   void retrieve(std::pair<std::string, T>& x, std::true_type)
+   {
+      if (is_ordered()) {
+         retrieve(x, std::false_type());
+      } else {
+         retrieve_key(x.first);
+         retrieve(x.second, std::false_type());
+      }
    }
 };
 
@@ -326,7 +366,7 @@ public:
       is >> x;  is.finish();
    }
 
-   bool serialized_value() const { return is_tuple(); }
+   using SVHolder::is_tuple;
 
    template <typename ObjectRef>
    struct list_cursor {
@@ -343,19 +383,19 @@ public:
    };
 
    template <typename T>
-   typename list_cursor<T>::type begin_list(T*)
+   decltype(auto) begin_list(T*)
    {
-      return sv;
+      return typename list_cursor<T>::type(sv);
    }
 
    template <typename T>
-   typename composite_cursor<T>::type begin_composite(T*)
+   decltype(auto) begin_composite(T*)
    {
-      return sv;
+      return typename composite_cursor<T>::type(sv);
    }
 };
 
-template <typename Options, bool returning_list=tagged_list_extract_integral<Options, ReturningList>(false)>
+template <typename Options, bool returning_list = tagged_list_extract_integral<Options, ReturningList>(false)>
 class ListValueOutput
    : public ArrayHolder
    , public GenericIOoptions< ListValueOutput<Options>, Options > {
@@ -363,7 +403,7 @@ class ListValueOutput
 public:
    using super = SVHolder;
    using super_arg = SV*;
-   static const bool stack_based=false;
+   static const bool stack_based = false;
 
    template <typename T>
    ListValueOutput& operator<< (T&& x);
@@ -396,6 +436,9 @@ public:
    {
       store_string(x, l, bool_constant<ListValueOutput<Options>::stack_based>());
    }
+
+   // TODO: investigate and remove
+   bool is_tuple() const { return false; }
 
 private:
    template <typename Data>
@@ -1265,24 +1308,24 @@ public:
    using SVHolder::get;
 
    template <typename T>
-   int lookup_dim(bool tell_size_if_dense)
+   int get_dim(bool tell_size_if_dense) const
    {
-      int d=-1;
+      int d = -1;
       if (is_plain_text()) {
          istream my_stream(sv);
          if (options * ValueFlags::not_trusted)
-            d=PlainParser<mlist<TrustedValue<std::false_type>>>(my_stream).begin_list((T*)0).lookup_dim(tell_size_if_dense);
+            d = PlainParser<mlist<TrustedValue<std::false_type>>>(my_stream).begin_list((T*)0).get_dim(tell_size_if_dense);
          else
-            d=PlainParser<>(my_stream).begin_list((T*)0).lookup_dim(tell_size_if_dense);
+            d = PlainParser<>(my_stream).begin_list((T*)0).get_dim(tell_size_if_dense);
 
       } else if (get_canned_typeinfo()) {
-         d=get_canned_dim(tell_size_if_dense);
+         d = get_canned_dim(tell_size_if_dense);
 
       } else {
          if (options * ValueFlags::not_trusted)
-            d=ListValueInput<T, mlist<TrustedValue<std::false_type>>>(sv).lookup_dim(tell_size_if_dense);
+            d = ListValueInput<T, mlist<TrustedValue<std::false_type>>>(sv).get_dim(tell_size_if_dense);
          else
-            d=ListValueInput<T>(sv).lookup_dim(tell_size_if_dense);
+            d = ListValueInput<T>(sv).get_dim(tell_size_if_dense);
       }
       return d;
    }
@@ -1402,31 +1445,29 @@ inline ArrayHolder::ArrayHolder(const Value& v)
 }
 
 template <typename ElementType, typename Options>
-template <typename T>
-ListValueInput<ElementType, Options>&
-ListValueInput<ElementType, Options>::operator>> (T& x)
+template <typename T, bool anything>
+void ListValueInput<ElementType, Options>::retrieve(T& x, bool_constant<anything>)
 {
-   if (this->get_option(CheckEOF<std::false_type>()) && at_end())
-      throw std::runtime_error("list input - size mismatch");
-   Value elem((*this)[i++], this->get_option(TrustedValue<std::true_type>()) ? ValueFlags::is_trusted : ValueFlags::not_trusted);
+   Value elem(get_next(), this->get_option(TrustedValue<std::true_type>()) ? ValueFlags::is_trusted : ValueFlags::not_trusted);
    elem >> x;
-   return *this;
 }
 
 template <typename ElementType, typename Options>
 int ListValueInput<ElementType, Options>::cols(bool tell_size_if_dense)
 {
-   const int c=ArrayHolder::cols();
-   if (c>=0) return c;
-   if (_size==0) return tell_size_if_dense-1;
-   Value first_elem((*this)[0], this->get_option(TrustedValue<std::true_type>()) ? ValueFlags::is_trusted : ValueFlags::not_trusted);
-   return first_elem.lookup_dim<ElementType>(tell_size_if_dense);
+   if (cols_ < 0) {
+      if (SV* first_sv = get_first()) {
+         Value first(first_sv, this->get_option(TrustedValue<std::true_type>()) ? ValueFlags::is_trusted : ValueFlags::not_trusted);
+         cols_ = first.get_dim<ElementType>(tell_size_if_dense);
+      }
+   }
+   return cols_;
 }
 
 template <typename Options>
 void ValueOutput<Options>::store_string(const char* x, size_t l, std::false_type)
 {
-   static_cast<Value*>(static_cast<super*>(this))->set_string_value(x,l);
+   static_cast<Value*>(static_cast<super*>(this))->set_string_value(x, l);
 }
 
 template <typename Options>

@@ -171,22 +171,17 @@ user_function are_permuted(*,*) : c++ (include => "polymake/permutations.h");
 # @category Combinatorics
 # Returns a list of all permutations of the set {0...n-1} as a perl-array
 # @param Int n
-# @return ARRAY
-# @example To store the result in the perl array @a, type this:
-# > @a = all_permutations(3);
-# The array contains pointers to arrays. To access the 0-th pointer, do this:
-# > $a0 = $a[0];
-# To print the 0-th array itself, you have to dereference it as follows:
-# > print @{ $a0 };
-# | 012
-# You can loop through @a using foreach. The print statement produces the string obtained by dereferencing
-# the current entry concatenated with the string " ".
-# > foreach( @a ){
-# > print @{ $_ }, " ";
-# > }
-# | 012 102 201 021 120 210
+# @return Array<Array<Int>>
+# @example
+# > print all_permutations(3);
+# | 0 1 2
+# | 1 0 2
+# | 2 0 1
+# | 0 2 1
+# | 1 2 0
+# | 2 1 0
 
-user_function all_permutations($) : c++  (include => "polymake/permutations.h") : returns(@);
+user_function all_permutations($) : c++  (include => "polymake/permutations.h") : returns(Container<Container>);
 
 # @category Combinatorics
 # Returns the __permutation matrix__ of the permutation given by //p//.
@@ -200,7 +195,7 @@ user_function all_permutations($) : c++  (include => "polymake/permutations.h") 
 # | (4) (3 1)
 # | (4) (2 1)
 
-user_function permutation_matrix<Scalar=Int>(*:anchor) : c++ (include => [ "polymake/permutations.h", "polymake/SparseMatrix.h" ]);
+user_function permutation_matrix<Scalar=Int>(*&& const) : c++ (include => [ "polymake/permutations.h", "polymake/SparseMatrix.h" ]);
 
 
 # Local Variables:

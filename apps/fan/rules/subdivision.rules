@@ -56,7 +56,7 @@ weight 0.10;
 # @category Geometry
 # Parameters for user method [[secondary_cone]].
 options %secondary_cone_options=(
-    # Matrix<Scalar> system of linear equation the cone is cut with
+    # Matrix system of linear equation the cone is cut with
     equations => undef,
     # Set<Int> restrict lifting function to zero at points designated
     lift_to_zero => undef,

@@ -437,10 +437,13 @@ sub copy_builtin : method {
    new PropertyValue($self, $type_mismatch ? $self->type->construct->($value) : $value);
 }
 ####################################################################################
-sub qual_name {
+sub qualified_name {
    my ($self)=@_;
    defined($self->application) ? $self->application->name . "::" . $self->name : $self->name
 }
+
+*required_extensions = \&PropertyType::required_extensions;
+
 sub print_path {
    my ($path)=@_;
    is_object($path->[0]) ? join(".", map { $_->name } @$path) : join(" | ", map { join(".", map { $_->name } @$_) } @$path)

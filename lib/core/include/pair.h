@@ -192,13 +192,20 @@ struct pair<pm::nothing, pm::nothing> {
 namespace pm {
 
 template <typename T1, typename T2>
-struct spec_object_traits< pair<T1,T2> > : spec_object_traits<is_composite> {
+struct spec_object_traits< pair<T1, T2> > : spec_object_traits<is_composite> {
    typedef cons<T1,T2> elements;
 
    template <typename Me, typename Visitor>
    static void visit_elements(Me& x, Visitor& v)
    {
       v << x.first << x.second;
+   }
+
+   // FIXME: temporary hack, until Matrix<pair> disappears from the singular interface
+   static const pair<T1, T2>& zero()
+   {
+      static const pair<T1, T2> z{zero_value<T1>(), zero_value<T2>()};
+      return z;
    }
 };
 

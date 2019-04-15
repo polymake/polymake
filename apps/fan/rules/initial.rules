@@ -15,25 +15,19 @@
 
 object PolyhedralFan {
 
-   # A Polytope defined by a non-empty set of [[VERTICES]] or [[POINTS]] is always [[FEASIBLE]].
    rule initial : {
       if (defined (my $ic=$this->INPUT_CONES)) {
-         if($ic->rows == 0){
+         if ($ic->rows == 0) {
             my $emptySet = new Array<Set<Int>>();
-            my $ambient_dim= $this->lookup("FAN_AMBIENT_DIM")//0 ; 
-            my $M;
-            if ((defined ($M=$this->lookup("INPUT_RAYS")) && $M->cols()>0)
-                || (defined ($M=$this->lookup("INPUT_LINEALITY")) && $M->cols()>0))
-            {
-               $ambient_dim = $M->cols();
-            }
-            my $empty = new Matrix<Scalar>(0,$ambient_dim);
-            my $repl=new Core::Object::Replacement(RAYS => $empty, LINEALITY_SPACE => $empty, MAXIMAL_CONES => $emptySet, FAN_DIM=>-1, FAN_AMBIENT_DIM=>$ambient_dim); 
-            foreach my $prop (qw(INPUT_LINEALITY)) {
-               if (defined (my $val=$this->lookup($prop))) {
-                  $repl->attach($prop, $val);
-               }
-            }
+            my $in_rays = $this->lookup("INPUT_RAYS");
+            my $in_lin = $this->lookup("INPUT_LINEALITY");
+            my $ambient_dim = (defined($in_rays) && $in_rays->cols) ||
+                              (defined($in_lin) && $in_lin->cols) ||
+                              $this->lookup("FAN_AMBIENT_DIM") // 0;
+            my $empty = new Matrix<Scalar>(0, $ambient_dim);
+            my $repl = new Core::Object::Replacement(RAYS => $empty, LINEALITY_SPACE => $empty, MAXIMAL_CONES => $emptySet, FAN_DIM => -1, FAN_AMBIENT_DIM => $ambient_dim,
+                                                     defined($in_rays) ? (INPUT_RAYS => $in_rays) : (),
+                                                     defined($in_lin) ? (INPUT_LINEALITY => $in_lin) : ());
             die $repl;
          }
       }

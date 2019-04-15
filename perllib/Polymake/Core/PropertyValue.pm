@@ -82,6 +82,28 @@ sub copy {
       $to_prop->copy->($self->value, $parent_obj, $to_prop != $self->property);
    }
 }
+
+sub serialize {
+   my ($self, $options) = @_;
+   if ($self->property->flags & Property::Flags::is_non_storable or $self->flags & Flags::is_weak_ref) {
+      ()
+   } elsif (defined($self->value)) {
+      if (is_object($self->value)) {
+         my $type = $self->value->type;
+         my $result = $type->serialize->($self->value, $options);
+         if ($self->property->flags & Property::Flags::is_subobject or $type == $self->property->type) {
+            $result
+         } else {
+            ($result, $type->qualified_name($self->property->belongs_to->application))
+         }
+      } else {
+         $self->value
+      }
+   } else {
+      undef
+   }
+}
+
 ######################################################################
 package Polymake::Core::PropertyValue::BackRefToParent;
 
@@ -97,6 +119,7 @@ sub flags { Flags::is_weak_ref }
 *copy=\&new;
 
 sub toString { '@PARENT' }
+sub serialize { () }
 
 ######################################################################
 package Polymake::Core::PropertyValue::Multiple;
@@ -120,6 +143,11 @@ sub value : method {
 sub toString {
    my ($self)=@_;
    @{$self->values} ? $self->property->type->toString->($self->value) : $PropertyValue::UNDEF;
+}
+
+sub serialize {
+   my ($self, $options) = @_;
+   [ map { $_->serialize($options) } @{$self->values} ]
 }
 
 sub flags { 0 }

@@ -15,7 +15,7 @@
 
 
 CREDIT sympol
-  A software package for polyhedral description conversion up to symmetries.
+  [[wiki:external_software#sympol]] is a software package for polyhedral description conversion up to symmetries.
   Written by Thomas Rehn and Achill Schürmann.
   http://www.math.uni-rostock.de/~rehn/software/sympol.html 
 

@@ -1514,7 +1514,7 @@ sub produce_schema_for_property {
    my ($prop, $writer)=@_;
    $writer->startTag("define", name => element_name_for_property($prop));
    $writer->startTag("attribute", name => "name");
-   $writer->dataElement("value", $prop->qual_name);
+   $writer->dataElement("value", $prop->qualified_name);
    $writer->endTag("attribute");
 
    if ($prop->flags & Property::Flags::is_subobject) {
@@ -1719,13 +1719,13 @@ sub write_object_contents {
       my $scope;
       my @ext=ext_attr($writer, $pv->property, $scope);
       if (instanceof Object($pv)) {
-         $writer->startTag( "property", name => $pv->property->qual_name, @ext );
+         $writer->startTag( "property", name => $pv->property->qualified_name, @ext );
          write_subobject($writer, $pv, $object, $pv->property->subobject_type, $scope);
          $writer->endTag("property");
       } elsif ($pv->flags & PropertyValue::Flags::is_ref) {
          # TODO: handle explicit references to other objects some day...
       } elsif ($pv->property->flags & Property::Flags::is_multiple) {
-         $writer->startTag( "property", name => $pv->property->qual_name, @ext );
+         $writer->startTag( "property", name => $pv->property->qualified_name, @ext );
          write_subobject($writer, $_, $object, $pv->property->subobject_type, $scope) for @{$pv->values};
          $writer->endTag("property");
       } elsif (defined($pv->value)) {
@@ -1745,17 +1745,17 @@ sub write_object_contents {
             }
          }
          if ($type->toXML) {
-            $writer->startTag( "property", name => $pv->property->qual_name, @show_type, @ext );
+            $writer->startTag( "property", name => $pv->property->qualified_name, @show_type, @ext );
             $type->toXML->($pv->value, $writer);
             $writer->endTag("property");
          } elsif ($type->name eq "Text") {
-            $writer->cdataElement( "property", $pv->value, name => $pv->property->qual_name, type => "text", @ext );
+            $writer->cdataElement( "property", $pv->value, name => $pv->property->qualified_name, type => "text", @ext );
          } else {
-            $writer->emptyTag( "property", name => $pv->property->qual_name, @show_type, @ext,
+            $writer->emptyTag( "property", name => $pv->property->qualified_name, @show_type, @ext,
                                value => $type->toString->($pv->value) );
          }
       } else {
-         $writer->emptyTag( "property", name => $pv->property->qual_name, @ext, undef => "true" );
+         $writer->emptyTag( "property", name => $pv->property->qualified_name, @ext, undef => "true" );
       }
    }
    while (my ($name, $at)=each %{$object->attachments}) {

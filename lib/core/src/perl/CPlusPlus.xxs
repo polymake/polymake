@@ -35,14 +35,17 @@ using polymake::AnyString;
 HV *FuncDescr_stash = nullptr,
    *TypeDescr_stash = nullptr,
    *User_stash = nullptr,
-   *Object_InitTransaction_stash = nullptr;
+   *Object_InitTransaction_stash = nullptr,
+   *Serializer_Sparse_stash = nullptr;
+
 const CV* cur_wrapper_cv = nullptr;
 const base_vtbl* cur_class_vtbl = nullptr;
 GV *CPP_root = nullptr,
    *PropertyType_nested_instantiation = nullptr,
    *User_application = nullptr,
    *Debug_level = nullptr;
-SV *negative_indices_key = nullptr;
+SV *negative_indices_key = nullptr,
+   *Serializer_Sparse_dim_key = nullptr;
 
 int Object_name_index, Object_description_index,
     Object_parent_index, Object_transaction_index, Object_attachments_index,
@@ -349,14 +352,14 @@ MAGIC* allocate_magic(pTHX_ SV* sv, char how, const base_vtbl* vtab, ValueFlags 
 
 SV* new_builtin_magic_sv(pTHX_ const base_vtbl* t, ValueFlags flags, unsigned int n_anchors)
 {
-   SV *sv=newSV_type(SVt_PVMG);
+   SV* sv = newSV_type(SVt_PVMG);
    allocate_magic(aTHX_ sv, PERL_MAGIC_ext, t, flags, n_anchors);
    return sv;
 }
 
 SV* prepare_scalar_magic_sv(pTHX_ SV* sv, const base_vtbl* t, ValueFlags flags, unsigned int n_anchors)
 {
-   MAGIC* mg=allocate_magic(aTHX_ sv, PERL_MAGIC_ext, t, flags, n_anchors);
+   MAGIC* mg = allocate_magic(aTHX_ sv, PERL_MAGIC_ext, t, flags, n_anchors);
    mg->mg_flags |= uint8_t(flags & ValueFlags::read_only) | SvIVX(t->typeid_name_sv);
    SvRMAGICAL_on(sv);
    return sv;
@@ -364,14 +367,14 @@ SV* prepare_scalar_magic_sv(pTHX_ SV* sv, const base_vtbl* t, ValueFlags flags, 
 
 SV* new_container_magic_sv(pTHX_ const container_vtbl* t, ValueFlags flags, unsigned int n_anchors)
 {
-   AV* av=newAV();
-   int last_it= t->acc[2].begin ? 2 : 1; // has reverse_iterator?
+   AV* av = newAV();
+   const int last_it = t->acc[2].begin ? 2 : 1; // has reverse_iterator?
    av_extend(av, last_it);
-   AvARRAY(av)[0]=reinterpret_cast<SV *>((IV)-1); // loop context index
-   AvFILLp(av)=-1;                       // cached real container size 
+   AvARRAY(av)[0] = reinterpret_cast<SV *>((IV)-1); // loop context index
+   AvFILLp(av) = -1;                     // cached real container size
    AvREAL_off(av);                       // we'll destroy the iterator SVs manually
 
-   MAGIC* mg=allocate_magic(aTHX_ (SV*)av, PERL_MAGIC_tied, t, flags, n_anchors);
+   MAGIC* mg = allocate_magic(aTHX_ (SV*)av, PERL_MAGIC_tied, t, flags, n_anchors);
    mg->mg_flags |= MGf_COPY | uint8_t(flags & ValueFlags::read_only) | SvIVX(t->typeid_name_sv);
    SvRMAGICAL_on(av);
    return (SV*)av;
@@ -379,8 +382,8 @@ SV* new_container_magic_sv(pTHX_ const container_vtbl* t, ValueFlags flags, unsi
 
 SV* new_composite_magic_sv(pTHX_ const composite_vtbl* t, ValueFlags flags, unsigned int n_anchors)
 {
-   AV* av=newAV();
-   MAGIC* mg=allocate_magic(aTHX_ (SV*)av, PERL_MAGIC_tied, t, flags, n_anchors);
+   AV* av = newAV();
+   MAGIC* mg = allocate_magic(aTHX_ (SV*)av, PERL_MAGIC_tied, t, flags, n_anchors);
    mg->mg_flags |= MGf_COPY | uint8_t(flags & ValueFlags::read_only) | SvIVX(t->typeid_name_sv);
    SvRMAGICAL_on(av);
    return (SV*)av;
@@ -388,37 +391,36 @@ SV* new_composite_magic_sv(pTHX_ const composite_vtbl* t, ValueFlags flags, unsi
 
 SV* new_assoc_container_magic_sv(pTHX_ const container_vtbl* t, ValueFlags flags, unsigned int n_anchors)
 {
-   HV* hv=newHV();
+   HV* hv = newHV();
    MAGIC* mg;
    const container_access_vtbl* acct = t->acc + int(flags & ValueFlags::read_only);
-   /* let it reserve at least one additional byte after the iterator to hold the 'iterator created' flag */
-   HvMAX(hv)=acct->obj_size/sizeof(HE*)+1;
+   // let it reserve at least one additional byte after the iterator to hold the 'iterator created' flag
+   HvMAX(hv) = acct->obj_size / sizeof(HE*) + 1;
    hv_iterinit(hv);
-   mg=allocate_magic(aTHX_ (SV*)hv, PERL_MAGIC_tied, t, flags, n_anchors);
+   mg = allocate_magic(aTHX_ (SV*)hv, PERL_MAGIC_tied, t, flags, n_anchors);
    mg->mg_flags |= MGf_COPY | uint8_t(flags & ValueFlags::read_only) | SvIVX(t->typeid_name_sv);
    SvRMAGICAL_on(hv);
    return (SV*)hv;
 }
 
-template <typename VTable>
-SV* extract_type_descr(pTHX_ SV* descr, provide_type VTable::* func_mem, ClassFlags mask, ClassFlags expected)
+SV* call_extractor(type_reg_fn_type func, bool get_proto)
 {
-   const auto t=get_vtable<VTable>(descr);
+   const auto p = func(nullptr, nullptr, nullptr);
+   return get_proto ? p.first : p.second;
+}
+
+SV* call_extractor(provide_type func, bool)
+{
+   return func();
+}
+
+template <typename VTable, typename ExtractorFunc>
+SV* extract_type_info(pTHX_ SV* descr, ExtractorFunc VTable::* func_mem, ClassFlags mask, ClassFlags expected, bool get_proto = false)
+{
+   const auto t = get_vtable<VTable>(descr);
    if ((t->flags & mask) == expected) {
-      if (const provide_type func=t->*func_mem) {
-         const base_vtbl* const saved_t=cur_class_vtbl;
-         try {
-            cur_class_vtbl=t;
-            SV* result=func();
-            cur_class_vtbl=saved_t;
-            return result;
-         }
-         catch (const pm::perl::exception&) {}
-         catch (const std::exception& ex) {
-            sv_setpv(ERRSV, ex.what());
-         }
-         cur_class_vtbl=saved_t;
-         raise_exception(aTHX);
+      if (const ExtractorFunc func = t->*func_mem) {
+         return guarded_call(aTHX_ [=](){ return call_extractor(func, get_proto); }, t);
       }
    }
    return &PL_sv_undef;
@@ -974,6 +976,7 @@ convert_to_serialized(src, ...)
    SV* src;
 PPCODE:
 {
+   // TODO: rename to convert_to_tuple when the result becomes always a tuple
    src = SvRV(src);
    MAGIC* mg = get_cpp_magic(src);
    const auto t = as_vtbl<common_vtbl>(mg);
@@ -1106,8 +1109,30 @@ PPCODE:
          PUTBACK;
          if (SvPOK(returns)) {
             guarded_call(aTHX_ [=](){ type_reg_fn(returns, app_stash_ref, descr); });
+         } else if (SvROK(returns)) {
+            // for containers, key and/or value types may also be prescribed
+            if (SvTYPE(SvRV(returns)) != SVt_PVAV || AvFILLp(SvRV(returns)) < 1 || !SvPOK(PmArray(returns)[0]))
+               Perl_croak(aTHX_ "Invalid return type description");
+            SV* container_descr = guarded_call(aTHX_ [=](){ return type_reg_fn(PmArray(returns)[0], app_stash_ref, descr).second; });
+            const auto vtbl = get_vtable<container_vtbl>(container_descr);
+            if ((vtbl->flags & (ClassFlags::kind_mask | ClassFlags::is_assoc_container)) == ClassFlags::is_container) {
+               if (AvFILLp(SvRV(returns)) != 1 || !SvPOK(PmArray(returns)[1]))
+                  Perl_croak(aTHX_ "Invalid container return type description");
+               guarded_call(aTHX_ [=](){ vtbl->provide_value_type(PmArray(returns)[1], app_stash_ref, descr); });
+            } else if ((vtbl->flags & (ClassFlags::kind_mask | ClassFlags::is_assoc_container)) == (ClassFlags::is_container | ClassFlags::is_assoc_container)) {
+               if (AvFILLp(SvRV(returns)) != 2)
+                  Perl_croak(aTHX_ "Invalid associative container return type description");
+               if (SvPOK(PmArray(returns)[1])) {
+                  guarded_call(aTHX_ [=](){ vtbl->provide_key_type(PmArray(returns)[1], app_stash_ref, descr); });
+               }
+               if (SvPOK(PmArray(returns)[2])) {
+                  guarded_call(aTHX_ [=](){ vtbl->provide_value_type(PmArray(returns)[2], app_stash_ref, descr); });
+               }
+            } else {
+               Perl_croak(aTHX_ "Invalid return type description: is not a container");
+            }
          } else {
-            result_proto = guarded_call(aTHX_ [=](){ return type_reg_fn(nullptr, nullptr, descr); });
+            result_proto = guarded_call(aTHX_ [=](){ return type_reg_fn(nullptr, nullptr, descr).first; });
          }
          SPAGAIN;
          if (result_proto)
@@ -1215,8 +1240,8 @@ value_type(descr)
 PPCODE:
 {
    PUTBACK;
-   SV* result=extract_type_descr(aTHX_ descr, &container_vtbl::provide_value_type,
-                                 ClassFlags::kind_mask, ClassFlags::is_container);
+   SV* result=extract_type_info(aTHX_ descr, &container_vtbl::provide_value_type,
+                                ClassFlags::kind_mask, ClassFlags::is_container, true);
    XSprePUSH;
    PUSHs(result);
 }
@@ -1227,8 +1252,8 @@ value_descr(descr)
 PPCODE:
 {
    PUTBACK;
-   SV* result=extract_type_descr(aTHX_ descr, &container_vtbl::provide_value_descr,
-                                 ClassFlags::kind_mask, ClassFlags::is_container);
+   SV* result=extract_type_info(aTHX_ descr, &container_vtbl::provide_value_type,
+                                ClassFlags::kind_mask, ClassFlags::is_container);
    XSprePUSH;
    PUSHs(result);
 }
@@ -1239,8 +1264,8 @@ element_type(descr)
 PPCODE:
 {
    PUTBACK;
-   SV* result=extract_type_descr(aTHX_ descr, &container_vtbl::provide_key_type,
-                                 ClassFlags::kind_mask | ClassFlags::is_assoc_container, ClassFlags::is_container);
+   SV* result=extract_type_info(aTHX_ descr, &container_vtbl::provide_key_type,
+                                ClassFlags::kind_mask | ClassFlags::is_assoc_container, ClassFlags::is_container, true);
    XSprePUSH;
    PUSHs(result);
 }
@@ -1251,8 +1276,8 @@ element_descr(descr)
 PPCODE:
 {
    PUTBACK;
-   SV* result=extract_type_descr(aTHX_ descr, &container_vtbl::provide_key_descr,
-                                 ClassFlags::kind_mask | ClassFlags::is_assoc_container, ClassFlags::is_container);
+   SV* result=extract_type_info(aTHX_ descr, &container_vtbl::provide_key_type,
+                                ClassFlags::kind_mask | ClassFlags::is_assoc_container, ClassFlags::is_container);
    XSprePUSH;
    PUSHs(result);
 }
@@ -1263,8 +1288,8 @@ key_type(descr)
 PPCODE:
 {
    PUTBACK;
-   SV* result=extract_type_descr(aTHX_ descr, &container_vtbl::provide_key_type,
-                                 ClassFlags::kind_mask | ClassFlags::is_assoc_container, ClassFlags::is_container | ClassFlags::is_assoc_container);
+   SV* result=extract_type_info(aTHX_ descr, &container_vtbl::provide_key_type,
+                                ClassFlags::kind_mask | ClassFlags::is_assoc_container, ClassFlags::is_container | ClassFlags::is_assoc_container, true);
    XSprePUSH;
    PUSHs(result);
 }
@@ -1275,8 +1300,8 @@ key_descr(descr)
 PPCODE:
 {
    PUTBACK;
-   SV* result=extract_type_descr(aTHX_ descr, &container_vtbl::provide_key_descr,
-                                 ClassFlags::kind_mask | ClassFlags::is_assoc_container, ClassFlags::is_container | ClassFlags::is_assoc_container);
+   SV* result=extract_type_info(aTHX_ descr, &container_vtbl::provide_key_type,
+                                ClassFlags::kind_mask | ClassFlags::is_assoc_container, ClassFlags::is_container | ClassFlags::is_assoc_container);
    XSprePUSH;
    PUSHs(result);
 }
@@ -1287,8 +1312,8 @@ member_types(descr)
 PPCODE:
 {
    PUTBACK;
-   SV* result=extract_type_descr(aTHX_ descr, &composite_vtbl::provide_member_types,
-                                 ClassFlags::kind_mask, ClassFlags::is_composite);
+   SV* result=extract_type_info(aTHX_ descr, &composite_vtbl::provide_member_types,
+                                ClassFlags::kind_mask, ClassFlags::is_composite);
    XSprePUSH;
    PUSHs(result);
 }
@@ -1299,8 +1324,8 @@ member_descrs(descr)
 PPCODE:
 {
    PUTBACK;
-   SV* result=extract_type_descr(aTHX_ descr, &composite_vtbl::provide_member_descrs,
-                                 ClassFlags::kind_mask, ClassFlags::is_composite);
+   SV* result=extract_type_info(aTHX_ descr, &composite_vtbl::provide_member_descrs,
+                                ClassFlags::kind_mask, ClassFlags::is_composite);
    XSprePUSH;
    PUSHs(result);
 }
@@ -1311,8 +1336,8 @@ member_names(descr)
 PPCODE:
 {
    PUTBACK;
-   SV* result=extract_type_descr(aTHX_ descr, &composite_vtbl::provide_member_names,
-                                 ClassFlags::kind_mask, ClassFlags::is_composite);
+   SV* result=extract_type_info(aTHX_ descr, &composite_vtbl::provide_member_names,
+                                ClassFlags::kind_mask, ClassFlags::is_composite);
    XSprePUSH;
    PUSHs(result);
 }
@@ -1335,9 +1360,10 @@ serialized_type(descr)
    SV* descr;
 PPCODE:
 {
+   // TODO: rename to tuple_type
    PUTBACK;
-   SV* result=extract_type_descr(aTHX_ descr, &common_vtbl::provide_serialized_type,
-                                 ClassFlags::is_serializable, ClassFlags::is_serializable);
+   SV* result=extract_type_info(aTHX_ descr, &common_vtbl::provide_serialized_type,
+                                ClassFlags::is_serializable, ClassFlags::is_serializable, true);
    XSprePUSH;
    PUSHs(result);
 }
@@ -1347,9 +1373,10 @@ serialized_descr(descr)
    SV* descr;
 PPCODE:
 {
+   // TODO: rename to tuple_descr
    PUTBACK;
-   SV* result=extract_type_descr(aTHX_ descr, &common_vtbl::provide_serialized_descr,
-                                 ClassFlags::is_serializable, ClassFlags::is_serializable);
+   SV* result=extract_type_info(aTHX_ descr, &common_vtbl::provide_serialized_type,
+                                ClassFlags::is_serializable, ClassFlags::is_serializable);
    XSprePUSH;
    PUSHs(result);
 }
@@ -1622,6 +1649,15 @@ PPCODE:
    PUSHs(key_sv);
 }
 
+MODULE = Polymake::Core::CPlusPlus              PACKAGE = Polymake::Core::Serializer::Sparse
+
+void
+dim_key()
+PPCODE:
+{
+   XPUSHs(Serializer_Sparse_dim_key);
+}
+
 BOOT:
 {
    const AnyString FuncDescr_pkg("Polymake::Core::CPlusPlus::FuncDescr");
@@ -1682,6 +1718,9 @@ BOOT:
    CPP_Assoc_exists_index = get_named_constant(aTHX_ assoc_stash, "exists");
    CPP_Assoc_delete_void_index = get_named_constant(aTHX_ assoc_stash, "delete_void");
    CPP_Assoc_delete_ret_index = get_named_constant(aTHX_ assoc_stash, "delete_ret");
+
+   Serializer_Sparse_stash = gv_stashpv("Polymake::Core::Serializer::Sparse", 1);
+   Serializer_Sparse_dim_key = newSVpvn_share("_dim", 4, 0);
 
    Application_pkg_index = CvDEPTH(get_cv("Polymake::Core::Application::pkg", false));
    Application_eval_expr_index = CvDEPTH(get_cv("Polymake::Core::Application::eval_expr", false));

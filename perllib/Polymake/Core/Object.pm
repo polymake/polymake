@@ -448,32 +448,32 @@ package Polymake::Core::Object;
 # They may not be called directly.
 
 sub new_empty : method {
-   my $self=new((shift)->pkg, name_of_ret_var());
+   my $self = new((shift)->pkg, name_of_ret_var());
    begin_init_transaction($self);
    $self;
 }
 
 sub new_named : method {
    my ($proto, $name)=@_;
-   my $self=new($proto->pkg, $name);
+   my $self = new($proto->pkg, $name);
    begin_init_transaction($self);
    $self;
 }
 
 sub new_filled : method {
-   my $proto=shift;
+   my $proto = shift;
    if (ref($_[0])) {
       croak( "Can't convert ", UNIVERSAL::can($_[0], "type") ? $_[0]->type->full_name : ref($_[0]), " to ", $proto->full_name );
    }
-   my $self=new($proto->pkg, @_%2 ? shift : name_of_ret_var());
+   my $self = new($proto->pkg, @_%2 ? shift : name_of_ret_var());
    fill_properties_and_commit($self, $proto, @_);
 }
 
 sub new_copy : method {
-   my ($proto, $src)=@_;
-   my $self=new($proto->pkg, $src->name);
+   my ($proto, $src) = @_;
+   my $self = new($proto->pkg, $src->name);
    copy_contents($self, $src, $proto != $src->type && ($proto->isa($src->type) ? -1 : 1));
-   $self->description=$src->description;
+   $self->description = $src->description;
    copy_attachments($self, $src);
    $self;
 }
@@ -585,17 +585,17 @@ sub add_perm_in_parent {
 }
 ####################################################################################
 sub begin_transaction {
-   my $self=shift;
+   my ($self) = @_;
    $self->transaction=new Transaction($self);
 }
 
 sub begin_init_transaction {
-   my $self=shift;
+   my ($self) = @_;
    $self->transaction=new InitTransaction($self);
 }
 ####################################################################################
 sub print_me : method {
-   my ($proto, $self)=@_;
+   my ($proto, $self) = @_;
    $proto->full_name . (length($self->name) ? ": ".$self->name : " anonymous object")
 }
 ####################################################################################
@@ -686,9 +686,9 @@ sub copy_contents {
          if ($adjust_types) {
             my $new_prop=$pv->property->instance_for_owner($self->type, $adjust_types<0)
               or next;
-            ($subobj, $pv_copy)= defined($filter) ? $filter->($self, $pv, $new_prop) : ($self, $pv->copy($self, $new_prop));
+            ($subobj, $pv_copy) = defined($filter) ? $filter->($self, $pv, $new_prop) : ($self, $pv->copy($self, $new_prop));
          } else {
-            ($subobj, $pv_copy)= defined($filter) ? $filter->($self, $pv) : ($self, $pv->copy($self));
+            ($subobj, $pv_copy) = defined($filter) ? $filter->($self, $pv) : ($self, $pv->copy($self));
          }
          if (defined $pv_copy) {
             push @{$subobj->contents}, $pv_copy;
@@ -740,8 +740,215 @@ sub set_name_trusted {
    $_[0]->[0]=$_[1];
 }
 ####################################################################################
+# create a pure perl structure suitable as input for JSON converter, Mongo client, etc.
+# options:
+#   allow_sparse => false
+#      convert all sparse matrices to dense representation
+#   filter => { PROPERTY => true, SUBOBJECT_PROPERTY => { ... } }
+#      serialize only properties listed in the filter hash; can be nested for subobjects
+#      subobjects mapped to a true scalar are serialized completely
+#   filter => sub { ... }
+#      dynamic filter, is called for every PropertyValue and subobject
+#      can return another filter sub for nested subobjects
+#   ext => generator of used extension indexes (passed by Serializer module)
+sub serialize {
+   my ($self, $options) = @_;
+   my (%result, %attrs);
+   if (length($self->name)) {
+      $result{_id} = $self->name;
+   }
+   if (length($self->description)) {
+      $result{_info}->{description} = $self->description;
+   }
+
+   my %credits;
+   while (my ($product, $credit) = each %{$self->credits}) {
+      $credits{$product} = is_object($credit) ? $credit->toFileString : $credit;
+   }
+   if (keys %credits) {
+      $result{_info}->{credits} = \%credits;
+   }
+
+   my $type = $self->type;
+   if (!defined($self->parent)) {
+      $result{_type} = $type->qualified_name();
+   } elsif ($self->property->subobject_type->pure_type != $type->pure_type) {
+      $result{_type} = $type->pure_type->qualified_name($self->parent->type->application);
+   }
+
+   my $ext2index = $options->{ext2index};
+   my $exts_used = $options->{exts_used};
+   local $options->{exts_used} = $exts_used = { } if !defined($exts_used);
+
+   local if (my %exts_of_this_type = $ext2index->($exts_used, $type->required_extensions)) {
+      push @{$result{_ext}}, values %exts_of_this_type;
+      local @$exts_used{keys %exts_of_this_type} = values %exts_of_this_type;
+   }
+
+   my $filter = $options && delete local $options->{filter};
+   foreach my $pv (@{$self->contents}) {
+      my $prop_name = $pv->property->name;
+      my $allow = !defined($filter) || (is_code($filter) ? $filter->($pv) : $filter->{$prop_name})
+        or next;
+      local $options->{filter} = $allow if ref($allow);
+      my %ext_for_prop = $ext2index->($exts_used, $pv->property->required_extensions);
+      local if (%ext_for_prop) {
+         local @$exts_used{keys %ext_for_prop} = values %ext_for_prop;
+      }
+      if (my ($value, $type) = $pv->serialize($options)) {
+         $result{$prop_name} = $value;
+         my %prop_attrs;
+         if (%ext_for_prop) {
+            push @{$prop_attrs{_ext}}, values %ext_for_prop;
+         }
+         if (defined $type) {
+            $prop_attrs{_type} = $type;
+            if (my %exts_for_type = $ext2index->($exts_used, $pv->value->type->required_extensions)) {
+               push @{$prop_attrs{_ext}}, values %exts_for_type;
+            }
+         }
+         if (defined(my $other_app = $pv->property->application)) {
+            $prop_attrs{application} = $other_app->name;
+         }
+         $attrs{$prop_name} = \%prop_attrs if keys %prop_attrs;
+      }
+   }
+
+   while (my ($name, $attachment) = each %{$self->attachments}) {
+      my ($data, $construct) = @$attachment;
+      my %att_attrs = (attachment => true);
+      if (is_object($data)) {
+         my $data_type = $data->type;
+         $result{$name} = $data_type->serialize->($data);
+         $att_attrs{_type} = $data_type->qualified_name($self->type->application);
+         if (defined $construct) {
+            $att_attrs{construct} = $construct;
+         }
+         if (my %exts_for_type = $ext2index->($exts_used, $data_type->required_extensions)) {
+            push @{$att_attrs{_ext}}, values %exts_for_type;
+         }
+      } else {
+         $result{$name} = $data;
+      }
+      $attrs{$name} = \%att_attrs;
+   }
+
+   $result{_attrs} = \%attrs if keys %attrs;
+   \%result
+}
+####################################################################################
+declare $reject_unknown_properties = 0;
+
+sub deserialize {
+   my ($proto, $src, $options, $parent, $parent_prop) = @_;
+   my $ext_check = $options->{ext};
+   my ($ext_list);
+
+   if (defined($parent) && defined(my $type = $src->{_type})) {
+      if (defined($ext_list = $src->{_ext}) && !$ext_resolver->($ext_list)) {
+         return;
+      }
+      $proto = $parent->type->application->eval_type($type) // croak( "invalid subobject type $type" );
+      $proto = $parent_prop->type->final_type($proto) if $parent_prop->flags & Property::Flags::is_augmented;
+   }
+
+   my $self = new($proto->pkg, $src->{_id});
+   if (!defined($parent)) {
+      $options->{deferred} = [ ];
+      if (!$PropertyType::trusted_value) {
+         begin_init_transaction($self);
+      }
+   }
+
+   if (defined(my $info = $src->{_info})) {
+      $self->description = $info->{description};
+      if (defined(my $credits = $info->{credits})) {
+         foreach (my ($product, $text) = each %$credits) {
+            $self->credits->{$product} = $proto->application->lookup_credit($product) // $text;
+         }
+      }
+   }
+
+   my $attrs = $src->{_attrs} || { };
+   while (my ($name, $value) = each %$src) {
+      next if $name =~ /^_/;
+      # TODO: recognize foreign prefixes
+      my $prop_attrs = $attrs->{$name};
+      if (defined($ext_list = $prop_attrs && $prop_attrs->{_ext}) && !$ext_check->($ext_list)) {
+         # TODO: store as UNDECODED
+         next;
+      }
+      my $app = $proto->application;
+      if (defined(my $app_name = $prop_attrs && $prop_attrs->{application})) {
+         $app = add Application($app_name);
+      }
+      my $type = $prop_attrs && $prop_attrs->{_type};
+      if (defined($type)) {
+         $type = $app->eval_type($type) // croak( "invalid type $type for property $name" );
+      }
+      if ($prop_attrs && $prop_attrs->{attachment}) {
+         if (defined($type) && instanceof ObjectType($type)) {
+            # resolve conflict between small and big object types with coinciding names
+            $type = $app->eval_type("props::".$prop_attrs->{_type}) // croak( "invalid type $prop_attrs->{_type} of attachment $name" );
+         }
+         if (defined(my $construct_args = $prop_attrs->{construct})) {
+            defined($type)
+              or croak( "invalid attachment $name: missing _type attribute" );
+            push @{$options->{deferred}}, sub {
+               $self->attachments->{$name} = [ $type->construct->($self->give_list($construct_args), $value), $construct_args ];
+            };
+         } else {
+            $self->attachments->{$name} = [ defined($type) ? $type->construct->($value) : $value ];
+         }
+      } elsif (defined(my $prop = $proto->lookup_property($name))) {
+         if ($prop->flags & Property::Flags::is_subobject) {
+            if ($prop->flags & Property::Flags::is_multiple) {
+               if (my @subobjs = map {
+                  if (defined(my $subobj = deserialize($prop->subobject_type, $_, $options, $self, $prop))) {
+                     $subobj
+                  } else {
+                     # TODO: store as UNDECODED
+                     ()
+                  }
+               } @$value) {
+                  _add_multis($self, $prop, \@subobjs,  $PropertyType::trusted_value);
+               }
+            } else {
+               if (defined(my $subobj = deserialize($prop->subobject_type, $value, $options, $self, $prop))) {
+                  _add($self, $prop, $subobj, $PropertyType::trusted_value);
+               } else {
+                  # TODO: store as UNDECODED
+               }
+            }
+         } elsif ($prop->flags & Property::Flags::is_subobject_array) {
+            _add($self, $prop, $prop->type->deserialize->($value, $options, $self, $prop), $PropertyType::trusted_value);
+         } elsif (defined($prop->construct)) {
+            push @{$options->{deferred}}, sub {
+               _add($self, $prop, $value, $PropertyType::trusted_value);
+            };
+         } else {
+            _add($self, $prop, defined($type) ? $type->deserialize->($value) : $value, $PropertyType::trusted_value);
+         }
+      } elsif ($reject_unknown_properties) {
+         croak( "unknown property name $prop_name for object type ", $proto->full_name );
+      } else {
+         # TODO: store as UNDECODED
+      }
+   }
+
+   if (!defined($parent)) {
+      &$_ for @{delete $options->{deferred}};
+      if (!$PropertyType::trusted_value) {
+         $self->transaction->changed = true;
+         $self->transaction->commit($self);
+      }
+   }
+
+   $self;
+}
+####################################################################################
 sub cast_me {
-   my ($self, $target_proto)=@_;
+   my ($self, $target_proto) = @_;
    my $proto=$self->type;
    return $self if $target_proto == $proto;
 
@@ -750,12 +957,12 @@ sub cast_me {
 
    if (defined($self->property)) {
       if ($self->property->flags & Property::Flags::is_augmented) {
-         if (!$self->property->type->pure_type->isa($target_proto)) {
+         if (!$self->property->subobject_type->pure_type->isa($target_proto)) {
             croak( "can't cast a subobject under ", $self->property->name, " to ", $target_proto->full_name );
          }
-         $target_proto=$self->property->type->final_type($target_proto);
+         $target_proto=$self->property->subobject_type->final_type($target_proto);
       } else {
-         if (!$self->property->type->isa($target_proto)) {
+         if (!$self->property->subobject_type->isa($target_proto)) {
             croak( "can't cast a subobject under ", $self->property->name, " to ", $target_proto->full_name );
          }
       }
@@ -1099,7 +1306,7 @@ sub lookup_property_path {
 
 sub value_at_property_path {
    my $pv=&lookup_property_path;
-   $pv ? $pv->value : croak("property path ", $prop_path->toString, " does not lead to a defined value");
+   $pv ? $pv->value : croak("property path ", $_[1]->toString, " does not lead to a defined value");
 }
 ####################################################################################
 # private:
@@ -1771,7 +1978,7 @@ sub properties {
             $data[-1] .= "\n";
          }
       } else {
-         push @data, $_, $pv->property->type->toString->($pv->value)."\n";
+         push @data, $_, $pv->toString."\n";
       }
    }
    my $text = join "\n", @data;
@@ -1885,20 +2092,20 @@ sub get_attachment {
    if (defined($self->transaction) && defined($self->transaction->rule)) {
       croak( "production rules may not access attachments" );
    }
-   my $at=$self->attachments->{$name};
-   $at && $at->[0]
+   my $att = $self->attachments->{$name};
+   $att && $att->[0]
 }
 
 sub remove_attachment {
    my ($self, $name)=@_;
    if (defined($self->transaction)) {
       if (defined($self->transaction->rule)) {
-         croak( "porduction rules may not operate on attachments" );
+         croak( "production rules may not operate on attachments" );
       }
-      $self->transaction->changed=1;
+      $self->transaction->changed = true;
    } else {
       begin_transaction($self);
-      $self->transaction->changed=1;
+      $self->transaction->changed = true;
       $self->transaction->commit($self);
    }
    delete $self->attachments->{$name};
@@ -1910,17 +2117,17 @@ sub list_attachments {
 }
 
 sub attach {
-   my ($self, $name, $data, $construct)=@_;
-   if (ref($data)) {
-      if (is_object($data) && defined (my $type=UNIVERSAL::can($data, "type"))) {
-         $type=$type->();
-         if (instanceof ObjectType($type)) {
-            croak( "can't attach a subobject of type ", $type->full_name, ": only atomic properties are allowed as attachments" );
-         }
+   my ($self, $name, $data, $construct) = @_;
+   if (defined($self->type->lookup_property($name))) {
+      croak( "attachment $name conflicts with a property of the same name" );
+   }
+   if (is_object($data)) {
+      my $type = eval { $data->type };
+      if (instanceof PropertyType($type)) {
          if ($construct) {
-            $construct=trim_spaces($construct);
+            $construct = trim_spaces($construct);
             # this will happily croak if there are unknown properties
-            my @paths=map { $self->type->encode_property_path($_) } split /\s*,\s*/, $construct;
+            my @paths = map { $self->type->encode_property_path($_) } split /\s*,\s*/, $construct;
             if (defined($type->construct_node) and
                 $type->construct_node->min_arg > @paths+1 || $type->construct_node->max_arg < @paths+1) {
                croak( "wrong number of additional constructor arguments specified for type ", $type->full_name );
@@ -1929,31 +2136,33 @@ sub attach {
             # can't be deserialized without additional arguments
             croak( "type ", $type->full_name, " needs additional constructor arguments but no property paths are specified" );
          }
+      } elsif (instanceof ObjectType($type)) {
+         croak( "big object type ", $type->full_name, " is not allowed as attachment" );
       } else {
-         croak( "can't attach ", ref($data), ": it does not belong to any declared property type" );
+         croak( "can't attach ", ref($data), ": it is not of a declared property type" );
       }
    }
    if (defined($self->transaction)) {
       if (defined($self->transaction->rule)) {
          croak( "production rules may not operate on attachments" );
       }
-      $self->transaction->changed=1;
+      $self->transaction->changed = true;
    } else {
       begin_transaction($self);
-      $self->transaction->changed=1;
+      $self->transaction->changed = true;
       $self->transaction->commit($self);
    }
-   $self->attachments->{$name}=[ $data, $construct ];
+   $self->attachments->{$name} = [ $data, $construct ];
 }
 
 sub copy_attachments {
    my ($self, $src)=@_;
-   while (my ($name, $at)=each %{$src->attachments}) {
-      my ($data, $construct)=@$at;
+   while (my ($name, $att) = each %{$src->attachments}) {
+      my ($data, $construct) = @$att;
       if (is_object($data)) {
-         $data=$data->type->construct->($construct ? $self->give_list($construct) : (), $data);
+         $data = $data->type->construct->($construct ? $self->give_list($construct) : (), $data);
       }
-      $self->attachments->{$name}=[ $data, $construct ];
+      $self->attachments->{$name} = [ $data, $construct ];
    }
 }
 ####################################################################################

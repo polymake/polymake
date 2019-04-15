@@ -25,7 +25,7 @@
 namespace polymake { namespace polytope {
 
 enum class LP_status {
-   valid, infeasible, unbounded
+   valid, infeasible, unbounded, infeasibleOrUnbounded
 };
 
 template <typename Scalar>

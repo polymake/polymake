@@ -379,14 +379,6 @@ property TWO_FACE_SIZES : Map<Int,Int>;
 # Lists for each occurring size (= number of incident facets or ridges) of a subridge how many there are.
 property SUBRIDGE_SIZES : Map<Int,Int>;
 
-# @category Combinatorics
-# Let M be the vertex-facet incidence matrix, then the Altshuler determinant is
-# defined as max{det(M &lowast; M<sup>T</sup>), det(M<sup>T</sup> &lowast; M)}.
-# @example This prints the Altshuler determinant of the built-in pentagonal pyramid (Johnson solid 2):
-# > print johnson_solid("pentagonal_pyramid")->ALTSHULER_DET;
-# | 25
-property ALTSHULER_DET : Integer;
-
 
 # @topic //properties//F_VECTOR
 # f<sub>k</sub> is the number of k-faces.

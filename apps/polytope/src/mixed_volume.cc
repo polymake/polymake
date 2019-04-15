@@ -190,10 +190,10 @@ E mixed_volume(const Array<perl::Object>& summands)
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# Produces the mixed volume of polytopes P<sub>1</sub>,P<sub>2</sub>,...,P<sub>n</sub>."
-                          "# @param Polytope<Scalar> P1 first polytope"
-                          "# @param Polytope<Scalar> P2 second polytope"
-                          "# @param Polytope<Scalar> Pn last polytope"
-                          "# @return Scalar mixed volume"
+                          "# @param Polytope P1 first polytope"
+                          "# @param Polytope P2 second polytope"
+                          "# @param Polytope Pn last polytope"
+                          "# @return SCALAR mixed volume"
                           "# @example"
                           "# > print mixed_volume(cube(2),simplex(2));"
                           "# | 4",

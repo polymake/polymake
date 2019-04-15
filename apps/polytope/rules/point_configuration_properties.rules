@@ -126,6 +126,19 @@ property TRIANGULATION : topaz::GeometricSimplicialComplex<Scalar> : multiple {
    # Weight vector to construct a regular [[TRIANGULATION]].
    # Must be generic.
    property WEIGHTS : Vector<Scalar>;
+   
+   # @category Triangulation and volume
+   # Calculate the massive GKZ vectors of the triangulations of a integral PointConfiguration //A//.
+   # For a definition see Chapter 11 of Gelfand, Kapranov, and Zelevinsky: Discriminants, Resultants and Multidimensional Determinants, Birkhäuser 1994.
+   # @param PointConfiguration<Rational> A the integral point configuration
+   # @return Vector<Integer>
+   # @example To calculate the massive GKZ vector of a triangulation of a point configuration.
+   # This example is from the book mentioned above (p. 369, top right example).
+   # > $A=new PointConfiguration(POINTS=>[[1,0,0],[1,1,0],[1,2,0],[1,3,0],[1,0,1],[1,1,1],[1,0,2]]);
+   # > $A->add("TRIANGULATION", WEIGHTS=>[0,1,0,1,1,1,0]);
+   # > print $A->TRIANGULATION->MASSIVE_GKZ_VECTOR;
+   # | 1 0 3 1 0 0 4
+   property MASSIVE_GKZ_VECTOR : Vector<Scalar>;
 
 }
 

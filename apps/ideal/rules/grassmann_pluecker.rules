@@ -40,23 +40,23 @@ user_function pluecker_ideal($$){
    my $HM = new HashMap<Set,Int>;
    my $weights = new Vector<Int>($m);
    my $i=0;
-   my @v = map{ 
+   my @v = map { 
       $subsets->[$i]=$_;
       $HM->{new Set($_)}=$i;
       my $w = 2**$n;
-      for my $j (@$_){
+      for my $j (@$_) {
          $w += 2**$j; # this is not a optimal choice
-         }
-      $weights->[$i++]= $w ;
+      }
+      $weights->[$i++] = $w;
       "p_(".join(",",@$_).")";
-      } all_subsets_of_k($d,0..$n-1);
-      # variable order in M2:
-      # my @vecs = sort { $a cmp $b } map { new Vector<Int>(reverse(@$_)) } all_subsets_of_k($d,0..$n-1);
+   } @{all_subsets_of_k(sequence(0,$n), $d)};
+   # variable order in M2:
+   # my @vecs = sort { $a cmp $b } map { new Vector<Int>(reverse(@$_)) } @{all_subsets_of_k(sequence(0,$n), $d)};
    my @var = monomials(scalar(@v));
    my @GB;
-   for my $i (0..$m-2){
-      for my $j ($i+1..$m-1){
-         next if ( ($subsets->[$i]*$subsets->[$j])->size() > $d-2 );
+   for my $i (0..$m-2) {
+      for my $j ($i+1..$m-1) {
+         next if (($subsets->[$i]*$subsets->[$j])->size() > $d-2);
          my $array = new Array<Int>($d+1);
          my $ind = 0;
          my $x = new Set();
@@ -79,16 +79,16 @@ user_function pluecker_ideal($$){
          }
          my $poly = new Polynomial(scalar(@v));
          my $set = new Set(0..$array->size-1);
-         map{
-               my $temp1=new Array<Int>([@{$array}[@{$_}]]);
-               my $temp2=new Array<Int>([@{$array}[@{($set-new Set(@{$_}))}]]);
-               $poly += term_sign($x,$temp2)*term_sign($temp1,$temp2)*term_sign($temp1,$y)*
-                        $var[$HM->{$x+new Set($temp2)}]*$var[$HM->{$y+new Set($temp1)}]; 
-            } all_subsets_of_k($x->size()+1,@{$set});
+         map {
+            my $temp1 = new Array<Int>([@{$array}[@{$_}]]);
+            my $temp2 = new Array<Int>([@{$array}[@{($set-new Set(@{$_}))}]]);
+            $poly += term_sign($x, $temp2) * term_sign($temp1, $temp2) * term_sign($temp1, $y)
+                     * $var[$HM->{$x+new Set($temp2)}] * $var[$HM->{$y+new Set($temp1)}];
+         } @{all_subsets_of_k($set, $x->size()+1)};
          push @GB, $poly;
       }
    }
-   return new ideal::Ideal("GROEBNER.ORDER_VECTOR"=>$weights,"GROEBNER.BASIS"=>\@GB,GENERATORS=>\@GB);
+   return new ideal::Ideal("GROEBNER.ORDER_VECTOR"=>$weights, "GROEBNER.BASIS"=>\@GB, GENERATORS=>\@GB);
 }
 
 # Local Variables:

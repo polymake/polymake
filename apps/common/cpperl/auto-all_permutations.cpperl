@@ -1,5 +1,5 @@
 {"app": "common",
  "inst": [
-  {"args": ["void"], "func": "all_permutations", "include": ["polymake/permutations.h"], "ret": "list", "sig": "all_permutations:L.x"},
+  {"args": ["void"], "func": "all_permutations", "include": ["polymake/permutations.h"], "sig": "all_permutations:R_Container<Container>.x"},
  null ],
 "version": 3}

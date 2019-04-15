@@ -591,29 +591,48 @@ declare @list=(
          my ($quote, $path, $prefix)=@+{qw(quote path prefix)};
 
          if (defined $quote) {
-            my $app=$User::application;
-            my $app_name;
-            if (($path // $prefix) =~ /^($id_re)::/o && $app->used->{$1}) {
-               $app_name=$1;
-               $app=$app->used->{$1};
-               if (defined($path)) { $path=$'; } else { $prefix=$'; }
+            my ($top_help, $prepend_slash, @how);
+            if (($path // $prefix) =~ m{^($id_re)(?:$|(::)|/)}o and defined(my $app = lookup Application($1))) {
+               $top_help = $app->help;
+               push @how, "!rel";
+               if (defined($path)) {
+                  $path = $';
+               } elsif ($2) {
+                  $prefix = $';
+                  push @how, "functions", "objects", "property_types";
+               } else {
+                  $path = $prefix = "";
+                  $prepend_slash = true;
+               }
+            } elsif (($path // $prefix) =~ m{^core(?:$|/)}) {
+               $top_help = $Help::core;
+               if (defined($path)) {
+                  $path = $';
+               } else {
+                  $path = $prefix = "";
+                  $prepend_slash = true;
+               }
+            } else {
+               $top_help = $User::application->help;
             }
-            my @proposals= sorted_uniq(sort( defined($path)
-                                             ? map { $_->list_toc_completions($prefix) } $app->help->get_topics($path) :
-                                             defined($app_name)
-                                             ? $app->help->list_completions("!rel", $prefix)
-                                             : $app->help->list_completions($prefix) ));
-            if (@proposals==1 &&
-                grep { @{$_->toc} } $app->help->get_topics($path.$proposals[0])) {
-               $quote="/";
+            my @proposals = sorted_uniq(sort( defined($path)
+                                              ? ( map { $_->list_toc_completions($prefix) } $top_help->get_topics($path) )
+                                              : $top_help->list_completions(@how, $prefix) ));
+            if ($prepend_slash) {
+               substr($_, 0, 0) .= "/" for @proposals;
+               push @proposals, "::";
             }
-            if (!defined($app_name) && !defined($path)) {
-               $quote="" if !@proposals;
-               push @proposals, map { $_."::" } grep { /^$prefix/ } map { $_->name } list_loaded Application;
+            if (@proposals == 1 &&
+                grep { @{$_->toc} } $top_help->get_topics($path.$proposals[0])) {
+               $quote = "/";
             }
-            $shell->completion_proposals=\@proposals;
-            $shell->completion_offset=length($prefix);
-            $shell->term->Attribs->{completion_append_character}=$quote;
+            if (!@how && !defined($path)) {
+               $quote = "" if !@proposals;
+               push @proposals, grep { /^$prefix/ } "core", map { $_->name } list_loaded Application;
+            }
+            $shell->completion_proposals = \@proposals;
+            $shell->completion_offset = length($prefix);
+            $shell->term->Attribs->{completion_append_character} = $quote;
          } else {
             $shell->completion_proposals=[ "'" ];
          }
@@ -897,7 +916,7 @@ declare @list=(
                }
             } else {
                # a free function
-               if (defined ($app= defined($app_name) ? eval { User::application($app_name) } : $User::application)) {
+               if (defined($app = defined($app_name) ? eval { User::application($app_name) } : $User::application)) {
                   if (defined $args_start) {
                      if (try_keyword_completion($shell, $preceding_args, $prefix,
                                                 $app->help->find((defined($app_name) ? "!rel" : ()), "functions", $func))) {
@@ -1226,7 +1245,7 @@ sub try_keyword_completion {
    my ($shell, $preceding_args, $prefix, @topics)=@_;
    my $arg_num=0;
    ++$arg_num while $preceding_args =~ /\G $expression_re ,\s* /xog;
-   if (my @proposals=map { $_->argument_completions($arg_num, $prefix) } @topics) {
+   if (my @proposals = map { $_->argument_completions($arg_num, $prefix) } @topics) {
       $shell->completion_proposals=[ sorted_uniq(sort(@proposals)) ];
       $shell->completion_offset=length($prefix);
       1

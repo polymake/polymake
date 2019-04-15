@@ -168,7 +168,14 @@ Function4perl(&f_from_h_vector, "f_from_h_vector");
 Function4perl(&h_from_g_vector, "h_from_g_vector");
 Function4perl(&g_from_h_vector, "g_from_h_vector");
 Function4perl(&binomial_representation, "binomial_representation");
-Function4perl(&pseudopower, "pseudopower");
+UserFunction4perl("# @category Other"
+                  "# Compute the i-th pseudopower of l, commonly denoted l^<i>."
+                  "# See \"A Proof of the Sufficiency of McMullen’s Conditions of Simplicial Convex Polytopes\""
+                  "# by Louis Billera and Carl Lee, DOI: 10.1016/0097-3165(81)90058-3, for the definition."
+                  "# @param Integer l"
+                  "# @param Int i"
+                  "# @return Integer",
+                  &pseudopower, "pseudopower");
 UserFunction4perl("# @category Other"
                   "# Test if the given vector is an M-sequence."
                   "# @param Vector<Int> h"

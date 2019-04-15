@@ -12,7 +12,7 @@
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
-  
+
 object PolyhedralFan<Rational> {
 
 # @category Toric Varieties
@@ -35,16 +35,16 @@ object PolyhedralFan<Rational> {
 
     my $r = 1;
     foreach (@{$this->MAXIMAL_CONES}) {
-      my $g = polytope::q_gorenstein_cone($this->RAYS->minor($_,All),$this->FAN_DIM);
-      if ( !$g->first ) { 
-	  $this->Q_GORENSTEIN = 0; 
-	  return; 
+      my $g = polytope::q_gorenstein_cone($this->RAYS->minor($_,All), $this->FAN_DIM);
+      if ( !$g->first ) {
+	  $this->Q_GORENSTEIN = false;
+	  return;
       } else {
         $r = lcm($r, $g->second);
       }
     }
 
-    $this->Q_GORENSTEIN = 1;
+    $this->Q_GORENSTEIN = true;
     $this->Q_GORENSTEIN_INDEX = $r;
   }
   weight 1.10;
@@ -55,8 +55,8 @@ object PolyhedralFan<Rational> {
   weight 0.1;
 
   rule GORENSTEIN, Q_GORENSTEIN, Q_GORENSTEIN_INDEX : {
-    $this->GORENSTEIN = 1;
-    $this->Q_GORENSTEIN = 1;
+    $this->GORENSTEIN = true;
+    $this->Q_GORENSTEIN = true;
     $this->Q_GORENSTEIN_INDEX = 1;
   }
   precondition : SMOOTH_FAN;
@@ -64,18 +64,18 @@ object PolyhedralFan<Rational> {
 
   rule SMOOTH_FAN : RAYS, MAXIMAL_CONES, SIMPLICIAL {
     if ( !$this->SIMPLICIAL ) {
-      $this->SMOOTH_FAN = 0;
+      $this->SMOOTH_FAN = false;
     } else {
       my $rays = primitive($this->RAYS);
-      my $smooth_fan = 1;
+      my $smooth_fan = true;
       foreach (@{$this->MAXIMAL_CONES}) {
 	my $g = 0;
 	my $m = $rays->minor($_,All);
-	foreach (all_subsets_of_k($m->rows,0..$m->cols-1)) {
-	  $g = gcd($g,abs(det($m->minor(All,$_))));
+	foreach (@{all_subsets_of_k(sequence(0, $m->cols), $m->rows)}) {
+	  $g = gcd($g, abs(det($m->minor(All,$_))));
 	  last if ($g == 1);
 	}
-	$smooth_fan = 0, last if $g != 1;
+	$smooth_fan = false, last if $g != 1;
       }
 
       $this->SMOOTH_FAN = $smooth_fan;

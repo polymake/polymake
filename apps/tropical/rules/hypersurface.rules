@@ -17,14 +17,20 @@
 object Hypersurface {
 
 # Homogeneous tropical polynomial defining the hypersurface.
+#
+# Note: Homogeneity of the polynomial is never checked.
 
 property POLYNOMIAL : Polynomial<TropicalNumber<Addition>>;
 
-# Each row corresponds to one of the monomials in [[POLYNOMIAL]], each column to a variable.
+# Exponent vectors of the homogeneous tropical polynomial [[POLYNOMIAL]]. Each
+# row corresponds to one of the monomials in [[POLYNOMIAL]], each column to a
+# variable.
 
 property MONOMIALS : Matrix<Int>;
 
-# Each row corresponds to one of the monomials in [[POLYNOMIAL]], each column to a variable.
+# Coefficients of the homogeneous tropical polynomial [[POLYNOMIAL]]. Each
+# entry corresponds to one of the terms in [[POLYNOMIAL]]. The order is
+# compatible with the order of [[MONOMIALS]].
 
 property COEFFICIENTS : Vector<TropicalNumber<Addition>>;
 
@@ -55,11 +61,14 @@ rule REDUNDANT_MONOMIALS : TermPerm.REDUNDANT_MONOMIALS, TermPerm.PERMUTATION {
 }
 weight 1.10;
 
-# The __dome__ of a tropical polynomial \(F:\mathbb R^d\to\mathbb R\) (and the corresponding tropical hypersurface) is the set 
+# The __dome__ of a (inhomogeneous) tropical polynomial \(F:\mathbb R^d\to\mathbb R\) (and the corresponding affine tropical hypersurface) is the set 
 # \[D(F)=\left\{(p,s)\in\mathbb R^{d+1}\mid p\in\mathbb R^d, s\in\mathbb R, s \oplus F(p) = s\right\}\].
 # It is an unbounded convex polyhedron, c.f.
 # 
 # 	Michael Joswig, [[http://page.math.tu-berlin.de/~joswig/etc/|Essentials of Tropical Combinatorics]], Chapter 1.
+#
+# For a projective tropical hypersurface, the __dome__ is the intersection of the dome for the affine case with the hyperplane at height 1.
+# Note: To account for negative exponents, the dome may have been repositioned by multiplying the original polynomial with a suitable monomial.
 
 property DOME : polytope::Polytope<Rational>;
 
@@ -83,21 +92,38 @@ rule POLYNOMIAL : MONOMIALS, COEFFICIENTS {
 }
 weight 0.10;
 
-rule DOME, PROJECTIVE_VERTICES, LINEALITY_SPACE, FAR_VERTICES, MAXIMAL_POLYTOPES, REDUNDANT_MONOMIALS, REGIONS, WEIGHTS : MONOMIALS, COEFFICIENTS {
-   hypersurface($this);
+rule DOME.INEQUALITIES, DOME.FEASIBLE, DOME.BOUNDED : MONOMIALS, COEFFICIENTS {
+   hypersurface_dome($this);
 }
 
+rule PROJECTIVE_VERTICES = DOME.VERTICES;
 
+rule LINEALITY_SPACE = DOME.LINEALITY_SPACE;
+
+rule FAR_VERTICES = DOME.FAR_FACE;
+
+rule MAXIMAL_POLYTOPES, REDUNDANT_MONOMIALS, REGIONS, WEIGHTS : DOME.VERTICES_IN_FACETS, DOME.VERTICES_IN_INEQUALITIES, DOME.DUAL_GRAPH.ADJACENCY, FAR_VERTICES , MONOMIALS {
+   dome_regions($this);
+}
 
 # @category Combinatorics
 # Subdivision of the Newton polytope dual to the tropical hypersurface.
 # The vertices of this PolyhedralComplex are the non-redundant [[MONOMIALS]].
-# @return fan::SubdivisionOfPoints
-user_method dual_subdivision : MONOMIALS, COEFFICIENTS {
-   my $this=shift;
+
+property DUAL_SUBDIVISION : fan::SubdivisionOfPoints;
+
+rule DUAL_SUBDIVISION.POINTS, DUAL_SUBDIVISION.WEIGHTS : MONOMIALS, COEFFICIENTS {
    my $homog = ones_vector($this->MONOMIALS->rows()) | new Matrix($this->MONOMIALS);
    my $rat_coeff = new Vector<Rational>($this->COEFFICIENTS);
-   return new fan::SubdivisionOfPoints( POINTS=> $homog, WEIGHTS=> Addition->orientation() * $rat_coeff);
+   $this->DUAL_SUBDIVISION = new fan::SubdivisionOfPoints( POINTS=> $homog, WEIGHTS=> Addition->orientation() * $rat_coeff);
+}
+
+# @category Combinatorics
+# Returns [[DUAL_SUBDIVISION]]; backward compatibility.
+# @return fan::SubdivisionOfPoints
+user_method dual_subdivision() : DUAL_SUBDIVISION {
+   my $this=shift;
+   return $this->DUAL_SUBDIVISION;
 }
 
 # @category Topology

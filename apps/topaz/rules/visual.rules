@@ -85,11 +85,10 @@ sub vis_facets($$$$$$) {
       my @labels= defined($vertex_labels) ? map {$vertex_labels->[$_]} @$face : @$face;
       
       if ($#$face >= 2) {
-         my @twofaces = all_subsets_of_k(3,0..$#$face);
          new Visual::Polygons( Name=> (join " ", @labels),
                                Vertices=>$verts,
                                VertexLabels=>\@labels,
-                               Facets => \@twofaces,
+                               Facets => all_subsets_of_k(sequence(0, $face->size), 3),
                                NEdges => $#$face*($#$face+1)/2,
                                $face_decor );
 

@@ -253,8 +253,7 @@ SV* ClassRegistratorBase::create_scalar_vtbl(
    destructor_type destructor,
    conv_to_string_type to_string,
    conv_to_serialized_type to_serialized,
-   provide_type provide_serialized_type,
-   provide_type provide_serialized_descr,
+   type_reg_fn_type provide_serialized_type,
    conv_to_int_type to_int,
    conv_to_float_type to_float)
 {
@@ -273,7 +272,6 @@ SV* ClassRegistratorBase::create_scalar_vtbl(
    t->to_string               =to_string;
    t->to_serialized           =to_serialized;
    t->provide_serialized_type =provide_serialized_type;
-   t->provide_serialized_descr=provide_serialized_descr;
    t->to_int                  =to_int;
    t->to_float                =to_float;
    return vtbl;
@@ -288,8 +286,7 @@ SV* ClassRegistratorBase::create_opaque_vtbl(
    destructor_type destructor,
    conv_to_string_type to_string,
    conv_to_serialized_type to_serialized,
-   provide_type provide_serialized_type,
-   provide_type provide_serialized_descr)
+   type_reg_fn_type provide_serialized_type)
 {
    glue::common_vtbl* t;
    SV* vtbl=allocate_vtbl(t);
@@ -306,7 +303,6 @@ SV* ClassRegistratorBase::create_opaque_vtbl(
    t->to_string               =to_string;
    t->to_serialized           =to_serialized;
    t->provide_serialized_type =provide_serialized_type;
-   t->provide_serialized_descr=provide_serialized_descr;
    return vtbl;
 }
 
@@ -346,15 +342,12 @@ SV* ClassRegistratorBase::create_container_vtbl(
    destructor_type destructor,
    conv_to_string_type to_string,
    conv_to_serialized_type to_serialized,
-   provide_type provide_serialized_type,
-   provide_type provide_serialized_descr,
+   type_reg_fn_type provide_serialized_type,
    conv_to_int_type size,
    container_resize_type resize,
    container_store_type store_at_ref,
-   provide_type provide_key_type,
-   provide_type provide_key_descr,
-   provide_type provide_value_type,
-   provide_type provide_value_descr)
+   type_reg_fn_type provide_key_type,
+   type_reg_fn_type provide_value_type)
 {
    glue::container_vtbl* t;
    SV* vtbl=allocate_vtbl(t);
@@ -370,15 +363,12 @@ SV* ClassRegistratorBase::create_container_vtbl(
    t->to_string               =to_string;
    t->to_serialized           =to_serialized;
    t->provide_serialized_type =provide_serialized_type;
-   t->provide_serialized_descr=provide_serialized_descr;
    t->own_dimension           =own_dimension;
    t->size                    =size;
    t->resize                  =resize;
    t->store_at_ref            =store_at_ref;
    t->provide_key_type        =provide_key_type;
-   t->provide_key_descr       =provide_key_descr;
    t->provide_value_type      =provide_value_type;
-   t->provide_value_descr     =provide_value_descr;
    return vtbl;
 }
 
@@ -425,8 +415,7 @@ SV* ClassRegistratorBase::create_composite_vtbl(
    destructor_type destructor,
    conv_to_string_type to_string,
    conv_to_serialized_type to_serialized,
-   provide_type provide_serialized_type,
-   provide_type provide_serialized_descr,
+   type_reg_fn_type provide_serialized_type,
    int n_members,
    provide_type provide_member_types,
    provide_type provide_member_descrs,
@@ -450,7 +439,6 @@ SV* ClassRegistratorBase::create_composite_vtbl(
    t->to_string               =to_string;
    t->to_serialized           =to_serialized;
    t->provide_serialized_type =provide_serialized_type;
-   t->provide_serialized_descr=provide_serialized_descr;
    t->n_members               =n_members;
    t->provide_member_types    =provide_member_types;
    t->provide_member_descrs   =provide_member_descrs;

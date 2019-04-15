@@ -23,7 +23,7 @@ namespace pm { namespace perl {
 SVHolder::SVHolder()
 {
    dTHX;
-   sv=newSV_type(SVt_NULL);
+   sv = newSV_type(SVt_NULL);
 }
 
 void SVHolder::forget()
@@ -41,7 +41,7 @@ SV* SVHolder::get_temp()
 SVHolder::SVHolder(SV* sv_arg, std::true_type)
 {
    dTHX;
-   sv=newSVsv(sv_arg);
+   sv = newSVsv(sv_arg);
 }
 
 void SVHolder::set_copy(SV* sv_arg)
@@ -59,7 +59,7 @@ SV* Scalar::undef()
 SV* Scalar::const_string(const char* s, size_t l)
 {
    dTHX;
-   SV* sv=newSV_type(SVt_PV);
+   SV* sv = newSV_type(SVt_PV);
    SvFLAGS(sv) |= SVf_READONLY | SVf_POK | SVp_POK;
    SvPV_set(sv, const_cast<char*>(s));
    SvCUR_set(sv, l);
@@ -69,7 +69,7 @@ SV* Scalar::const_string(const char* s, size_t l)
 SV* Scalar::const_string_with_int(const char* s, size_t l, int i)
 {
    dTHX;
-   SV* sv=newSV_type(SVt_PVIV);
+   SV* sv = newSV_type(SVt_PVIV);
    SvFLAGS(sv) |= SVf_READONLY | SVf_POK | SVp_POK | SVf_IOK | SVp_IOK;
    SvPV_set(sv, const_cast<char*>(s));
    SvCUR_set(sv, l);
@@ -102,8 +102,8 @@ double Scalar::convert_to_float(SV* sv)
 SV* ArrayHolder::init_me(int size)
 {
    dTHX;
-   AV* av=newAV();
-   if (size>0) av_extend(av, size-1);
+   AV* av = newAV();
+   if (size > 0) av_extend(av, size - 1);
    return newRV_noinc((SV*)av);
 }
 
@@ -111,17 +111,17 @@ void ArrayHolder::upgrade(int size)
 {
    dTHX;
    if (!SvROK(sv)) {
-      AV* av=newAV();
-      if (size>0) av_extend(av, size-1);
+      AV* av = newAV();
+      if (size > 0) av_extend(av, size - 1);
       (void)SvUPGRADE(sv, SVt_RV);
-      SvRV(sv)=(SV*)av;
+      SvRV(sv) = (SV*)av;
       SvROK_on(sv);
    }
 }
 
 void ArrayHolder::verify() const
 {
-   if (__builtin_expect(!(SvROK(sv) && SvTYPE(SvRV(sv))==SVt_PVAV), 0))
+   if (__builtin_expect(!(SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVAV), 0))
       throw std::runtime_error("input argument is not an array");
 }
 
@@ -133,7 +133,7 @@ void ArrayHolder::set_contains_aliases()
 int ArrayHolder::size() const
 {
    dTHX;
-   return AvFILL((AV*)SvRV(sv))+1;
+   return AvFILL((AV*)SvRV(sv)) + 1;
 }
 
 SV* ArrayHolder::operator[] (int i) const
@@ -142,39 +142,9 @@ SV* ArrayHolder::operator[] (int i) const
    return *av_fetch((AV*)SvRV(sv), i, TRUE);
 }
 
-int ArrayHolder::dim(bool& has_sparse_representation) const
-{
-   dTHX;
-   MAGIC* mg=glue::array_flags_magic(aTHX_ SvRV(sv));
-   if (mg && mg->mg_len>=0 && mg->mg_obj && SvPOKp(mg->mg_obj) && SvCUR(mg->mg_obj)==3 && !strncmp(SvPVX(mg->mg_obj), "dim", 3)) {
-      has_sparse_representation=true;
-      return mg->mg_len;
-   } else {
-      has_sparse_representation=false;
-      return -1;
-   }
-}
-
-int ArrayHolder::cols() const
-{
-   dTHX;
-   MAGIC* mg=glue::array_flags_magic(aTHX_ SvRV(sv));
-   if (mg && mg->mg_len>=0 && mg->mg_obj && SvPOKp(mg->mg_obj) && SvCUR(mg->mg_obj)==4 && !strncmp(SvPVX(mg->mg_obj), "cols", 4)) {
-      return mg->mg_len;
-   } else {
-      return -1;
-   }
-}
-
 bool SVHolder::is_tuple() const
 {
-   dTHX;
-   if (SvROK(sv)) {
-      MAGIC* mg=glue::array_flags_magic(aTHX_ SvRV(sv));
-      return mg && mg->mg_len<0;
-   } else {
-      return false;
-   }
+   return SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVAV && !SvOBJECT(SvRV(sv));
 }
 
 SV* ArrayHolder::shift()
@@ -230,8 +200,162 @@ bool HashHolder::exists(const AnyString& key) const
 SV* HashHolder::fetch(const AnyString& key, bool create) const
 {
    dTHX;
-   SV** valp=hv_fetch((HV*)SvRV(sv), key.ptr, key.len, create);
+   SV** valp = hv_fetch((HV*)SvRV(sv), key.ptr, key.len, create);
    return valp ? *valp : &PL_sv_undef;
+}
+
+ListValueInputBase::ListValueInputBase(SV* sv)
+   : dim_sv(nullptr)
+   , i(0)
+   , cols_(-1)
+   , dim_(-1)
+   , sparse_(false)
+{
+   dTHX;
+   if (SvROK(sv)) {
+      arr_or_hash = SvRV(sv);
+      const bool is_magic = SvMAGICAL(arr_or_hash) != 0;
+      if (SvTYPE(arr_or_hash) == SVt_PVAV) {
+         AV* av = (AV*)arr_or_hash;
+         size_ = (is_magic ? av_len(av) : AvFILLp(av)) + 1;
+         // TODO: remove this when XML parser vanishes
+         if (MAGIC* mg = glue::array_flags_magic(aTHX_ arr_or_hash)) {
+            if (mg->mg_len >= 0 && mg->mg_obj && SvPOKp(mg->mg_obj)) {
+               if (SvCUR(mg->mg_obj) == 3 && !strncmp(SvPVX(mg->mg_obj), "dim", 3)) {
+                  dim_ = mg->mg_len;
+                  sparse_ = true;
+               } else if (SvCUR(mg->mg_obj) == 4 && !strncmp(SvPVX(mg->mg_obj), "cols", 4)) {
+                  cols_ = mg->mg_len;
+               }
+            }
+         } else if (!is_magic) {
+            if (size_ > 0) {
+               SV* last = AvARRAY(av)[size_ - 1];
+               if (SvOBJECT(av)) {
+                  if (SvSTASH(av) == glue::Serializer_Sparse_stash) {
+                     sparse_ = true;
+                     if (size_ % 2 == 1 && SvIOK(last)) {
+                        dim_ = SvUVX(last);
+                        --size_;
+                     }
+                  }
+               } else if (SvROK(last)) {
+                  last = SvRV(last);
+                  if (SvTYPE(last) == SVt_PVHV && !SvOBJECT(last) && !SvMAGICAL(last)) {
+                     HV* attrs = (HV*)last;
+                     SV** colsp;
+                     if (HvUSEDKEYS(attrs) == 1 && (colsp = hv_fetch(attrs, "cols", 4, FALSE))) {
+                        cols_ = SvIV(*colsp);
+                        --size_;
+                     }
+                  }
+               }
+            } else {
+               cols_ = 0;  // in case, it was supposed to be an empty matrix
+            }
+         }
+         return;
+      }
+      if (!is_magic && SvTYPE(arr_or_hash) == SVt_PVHV) {
+         HV* hv = (HV*)arr_or_hash;
+         sparse_ = true;
+         UV dim_val;
+         if ((dim_sv = hv_delete_ent(hv, glue::Serializer_Sparse_dim_key, 0, SvSHARED_HASH(glue::Serializer_Sparse_dim_key)))) {
+            SvREFCNT_inc_simple_void_NN(dim_sv);  // overcome sv_2mortal
+            if (SvIOK(dim_sv)) {
+               dim_ = SvIVX(dim_sv);
+            } else if (SvPOK(dim_sv) && SvCUR(dim_sv) > 0 && grok_number(SvPVX(dim_sv), SvCUR(dim_sv), &dim_val) == IS_NUMBER_IN_UV) {
+               dim_ = dim_val;
+            } else {
+               throw std::runtime_error("wrong " + AnyString(SvPVX(glue::Serializer_Sparse_dim_key), SvCUR(glue::Serializer_Sparse_dim_key)) + " element in sparse input");
+            }
+         }
+         size_ = HvUSEDKEYS(hv);
+         hv_iterinit(hv);
+         if (!hv_iternext(hv)) i = size_;
+         return;
+      }
+   }
+   throw std::runtime_error("invalid list input: must be an array or hash");
+}
+
+bool ListValueInputBase::is_ordered() const
+{
+   return SvTYPE(arr_or_hash) == SVt_PVAV;
+}
+
+SV* ListValueInputBase::get_first() const
+{
+   dTHX;
+   if (is_ordered()) {
+      if (!sparse_representation()) {
+         return SvMAGICAL(arr_or_hash) ? *av_fetch((AV*)arr_or_hash, 0, FALSE) : AvARRAY(arr_or_hash)[0];
+      } else if (size_ > 2) {
+         return AvARRAY(arr_or_hash)[2];
+      } else {
+         return nullptr;
+      }
+   }
+   HE* entry = HvEITER((HV*)arr_or_hash);
+   return HeVAL(entry);
+}
+
+void ListValueInputBase::finish()
+{
+   if (SvTYPE(arr_or_hash) == SVt_PVHV && dim_sv) {
+      dTHX;
+      HV* hv = (HV*)arr_or_hash;
+      hv_iterinit(hv);
+      hv_store_ent(hv, glue::Serializer_Sparse_dim_key, dim_sv, SvSHARED_HASH(glue::Serializer_Sparse_dim_key));
+      dim_sv = nullptr;
+   }
+}
+
+SV* ListValueInputBase::get_next()
+{
+   dTHX;
+   if (is_ordered()) {
+      SV* sv;
+      if (sparse_representation()) {
+         sv = AvARRAY(arr_or_hash)[i + 1];
+         i += 2;
+      } else {
+         sv = SvMAGICAL(arr_or_hash) ? *av_fetch((AV*)arr_or_hash, i++, FALSE) : AvARRAY(arr_or_hash)[i++];
+      }
+      return sv;
+   }
+   HE* entry = HvEITER((HV*)arr_or_hash);
+   if (!hv_iternext((HV*)arr_or_hash)) i = size_;
+   return HeVAL(entry);
+}
+
+int ListValueInputBase::get_index() const
+{
+   if (!sparse_representation())
+      throw std::runtime_error("dense/sparse input mismatch");
+   if (is_ordered()) {
+      SV* ix_sv = AvARRAY(arr_or_hash)[i];
+      if (SvIOK(ix_sv))
+         return SvIVX(ix_sv);
+      throw std::runtime_error("sparse input - invalid index");
+   }
+   dTHX;
+   HE* entry = HvEITER((HV*)arr_or_hash);
+   I32 klen = -1;
+   const char* key = hv_iterkey(entry, &klen);
+   UV index;
+   if (klen <= 0 || grok_number(key, klen, &index) != IS_NUMBER_IN_UV)
+      throw std::runtime_error("sparse input - invalid index");
+   return index;
+}
+
+void ListValueInputBase::retrieve_key(std::string& dst) const
+{
+   dTHX;
+   HE* entry = HvEITER((HV*)arr_or_hash);
+   I32 klen = -1;
+   const char* key = hv_iterkey(entry, &klen);
+   dst.assign(key, klen);
 }
 
 Stack::Stack()
@@ -754,15 +878,6 @@ ostreambuf::int_type ostreambuf::overflow(int_type c)
 
 undefined::undefined()
    : std::runtime_error("unexpected undefined value of an input property") {}
-
-SV* complain_obsolete_wrapper(const char* file, int line, const char* expr)
-{
-   dTHX;
-   sv_setpvf(ERRSV,
-             "Obsolete automatically generated code in file \"%s\", line %d: %s\nPlease remove or edit manually.\n",
-             file, line, expr);
-   throw exception();
-}
 
 } }
 

@@ -23,12 +23,12 @@ object Polytope<Rational> {
 # It is not necessary to require EQUATIONS or AFFINE_HULL, those are dealt with
 # via lookup in the C++ client.
 
-rule scip.milp: MILP.MAXIMAL_VALUE, MILP.MAXIMAL_SOLUTION, FEASIBLE : MILP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
+rule scip.milp: MILP.MAXIMAL_VALUE, MILP.MAXIMAL_SOLUTION : MILP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
    scip_milp_client($this, $this->MILP, true);
 }
 weight 3.10;
 
-rule scip.milp: MILP.MINIMAL_VALUE, MILP.MINIMAL_SOLUTION, FEASIBLE : MILP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
+rule scip.milp: MILP.MINIMAL_VALUE, MILP.MINIMAL_SOLUTION : MILP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
    scip_milp_client($this, $this->MILP, false);
 }
 weight 3.10;

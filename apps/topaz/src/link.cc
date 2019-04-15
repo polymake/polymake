@@ -54,7 +54,7 @@ perl::Object link_complex(perl::Object p_in, const Set<int>& F, perl::OptionSet 
 UserFunction4perl("# @category  Producing a new simplicial complex from others"
                   "#  Produce the __link__ of a //face// of the //complex//"
                   "# @param SimplicialComplex complex"
-                  "# @param Set<int> face"
+                  "# @param Set<Int> face"
                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @return SimplicialComplex",
                   &link_complex,"link_complex(SimplicialComplex, $ { no_labels => 0 })");

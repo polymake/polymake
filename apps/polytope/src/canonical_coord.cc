@@ -178,13 +178,13 @@ orthonormal_col_basis(const GenericMatrix<MatrixT>& A)
 
 UserFunctionTemplate4perl("# @category Transformations"
                           "# Return an orthonormal row basis of the input matrix."
-                          "# @param Matrix<Scalar> M the input matrix"
+                          "# @param Matrix M the input matrix"
                           "# @return Matrix<Float>",
                           "orthonormal_row_basis(Matrix)");
 
 UserFunctionTemplate4perl("# @category Transformations"
                           "# Return an orthonormal column basis of the input matrix."
-                          "# @param Matrix<Scalar> M the input matrix"
+                          "# @param Matrix M the input matrix"
                           "# @return Matrix<Float>",
                           "orthonormal_col_basis(Matrix)");
 

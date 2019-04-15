@@ -784,17 +784,27 @@ protected:
    }
 };
 
-template <typename E, typename Comparator, typename Permutation> inline
+template <typename E, typename Comparator, typename Permutation>
 Set<E,Comparator> permuted(const Set<E,Comparator>& s, const Permutation& perm)
 {
    return s.copy_permuted(perm);
 }
 
-template <typename E, typename Comparator, typename Permutation> inline
+template <typename E, typename Comparator, typename Permutation>
 Set<E,Comparator> permuted_inv(const Set<E,Comparator>& s, const Permutation& perm)
 {
    return s.copy_permuted_inv(perm);
 }
+
+// FIXME: temporary hack until all Vector<Set> disappear from atint
+template <typename E, typename Comparator>
+struct spec_object_traits<Set<E, Comparator>> : spec_object_traits<is_container> {
+   static const Set<E, Comparator>& zero()
+   {
+      static const Set<E, Comparator> z{};
+      return z;
+   }
+};
 
 } // end namespace pm
 
@@ -803,13 +813,13 @@ namespace polymake {
 }
 
 namespace std {
-   template <typename Set1, typename Set2, typename E, typename Comparator> inline
+   template <typename Set1, typename Set2, typename E, typename Comparator>
    void swap(pm::GenericMutableSet<Set1,E,Comparator>& s1, pm::GenericMutableSet<Set2,E,Comparator>& s2)
    {
       s1.top().swap(s2.top());
    }
 
-   template <typename E, typename Comparator> inline
+   template <typename E, typename Comparator>
    void swap(pm::Set<E,Comparator>& s1, pm::Set<E,Comparator>& s2) { s1.swap(s2); }
 }
 

@@ -218,6 +218,10 @@ object_specialization Polytope::Lattice {
     property SMOOTH : Bool;
 
 # @category Lattice points in cones
+# The polytope is __spanning__ if the lattice points generate the lattice 
+    property SPANNING : Bool;
+
+# @category Lattice points in cones
 # The lattice polytope is __polar to smooth__ if it is [[REFLEXIVE]] and the polar of the polytope (wrt to its interior point) is a [[SMOOTH]] lattice polytope.
     property POLAR_SMOOTH : Bool;
 

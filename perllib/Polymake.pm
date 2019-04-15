@@ -38,7 +38,7 @@ use Polymake::Ext;
 # Global variables
 #
 
-declare $Version="3.3";
+declare $Version="3.4";
 declare $VersionNumber=eval "v$Version";        # for string comparisons with vM.N literals
 
 declare ($Scope,                # Scope object for the current cycle
@@ -49,6 +49,8 @@ declare $Shell=new NoShell;     # alternatively: Shell object listening to the c
 
 # resources for third-party programs launched by polymake
 declare $Resources=$ENV{POLYMAKE_RESOURCE_DIR} // "$InstallTop/resources";
+
+declare $mainURL="https://polymake.org";
 
 ########################################################################
 #
@@ -71,6 +73,7 @@ require Polymake::Core::PropertyValue;
 require Polymake::Core::Rule;
 require Polymake::Core::ObjectType;
 require Polymake::Core::Scheduler;
+require Polymake::Core::Serializer;
 require Polymake::Core::XMLfile;
 require Polymake::Core::Object;
 require Polymake::Core::Application;
@@ -120,18 +123,17 @@ sub greeting {
       }
    }
 
-   my @messages = ("polymake version $full_version", <<'.', <<'.');
+   my @messages = ("polymake version $full_version", <<'.' . $mainURL . "\n", <<'.');
 
-Copyright (c) 1997-2018
+Copyright (c) 1997-2019
 Ewgenij Gawrilow, Michael Joswig (TU Berlin)
-http://www.polymake.org
 .
 
 This is free software licensed under GPL; see the source for copying conditions.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 .
 
-   return join '',@messages[0 .. $verbose];
+   return join '', @messages[0 .. $verbose];
 }
 
 # initialize some modules in proper order

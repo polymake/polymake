@@ -32,7 +32,6 @@ CONFIGURE {
 }
 
 # @topic custom
-# The first two numeric constants defined here are in postscript points (1/72"). The following one are in px and are scaled to match the DIN A4 sheet.
 
 # text labels: font family; recognized values "SERIF","SANS","TYPEWRITER"
 custom $font_family="SANS";
@@ -43,26 +42,26 @@ custom $font_style="PLAIN";
 # text labels
 custom $font_size=14;
 
-# point thickness
-custom $points_thickness=4;
+# scale factor for text size/spacing, points/edge thickness and arrow head measures 
+custom $scale=0.01;
 
-# edge thickness
-custom $lines_thickness=1;
+# point radius; the absolut vertex radius will be VertexThickness * scale * point_radius
+custom $point_radius=4;
+
+# edge radius; the absolut edge radius will be EdgeThickness * scale * point_radius for cylinders
+custom $edge_radius=1;
+
+# use lines instead of cylinders for edges
+custom $use_lines=0;
 
 # spacing between points (lines) and labels
 custom $text_spacing=2;
 
 # for arrows in directed graphs
-custom $arrowheadlength=25;
+custom $arrowhead_length=25;
 
 # for arrows in directed graphs
-custom $arrowheadwidth=3.5;
-
-# for arrows in directed graphs 
-custom $arrowheadoffset=0.5*$arrowheadlength;
-
-# scale factor for text size/spacing, points/lines thickness and arrow head measures 
-custom $scale = 0.01;
+custom $arrowhead_radius=3.5;
 
 # for arrows in directed graphs: keep undef for the same color as the edge
 custom $arrowheadcolor=undef;
@@ -79,6 +78,7 @@ custom @view_up=(0,1,0);
 # show coord axes?
 custom $coordinate_axes=0;
 
+# labels for the coordinate axes
 custom @axeslabels=qw(x y z);    
 
 ###########################################################################################

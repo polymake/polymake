@@ -36,6 +36,8 @@ custom $latte_count_param="";
 # see $latte_count_param for details
 custom $latte_ehrhart_param="";
 
+# @category Lattice points in polytopes
+# Use [[wiki:external_software#latte|LattE]] for counting and detecting lattice points inside convex polytopes.
 label latte
 
 sub write_latte_ineq {

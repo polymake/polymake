@@ -47,7 +47,7 @@ UserFunction4perl("# @category Comparing\n"
                   "# If the complexes are not isomorphic, an exception is thrown.\n"
                   "# @param SimplicialComplex complex1"
                   "# @param SimplicialComplex complex2"
-                  "# @return Pair<Array<Int>, Array<int>>",
+                  "# @return Pair<Array<Int>, Array<Int>>",
                   &find_facet_vertex_permutations, "find_facet_vertex_permutations(SimplicialComplex,SimplicialComplex)");
 } }
 

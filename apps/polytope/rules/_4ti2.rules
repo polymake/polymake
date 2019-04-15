@@ -98,25 +98,25 @@ object Cone<Rational> {
     rule _4ti2.hilbert, _4ti2.integer_points: HILBERT_BASIS_GENERATORS : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
         my $tempname=new Tempfile;
 
-	# 4ti2 version 1.6 cannot handle the case of a full-dimensional linear space
-	# hence we handle this case separately
-	my $n_ineq = $this->give("FACETS | INEQUALITIES")->rows;
-	if (defined (my $AH = $this->lookup("LINEAR_SPAN | EQUATIONS"))) {
-	    $n_ineq += $AH->rows;
-	}
-	if ( $n_ineq == 0 ) {
-	    my $cad = $this->CONE_AMBIENT_DIM;
-	    my $rays = new Matrix<Integer>(0,$cad);
-	    my $lin = unit_matrix<Integer>($cad); 
-	    $this->HILBERT_BASIS_GENERATORS=[$rays , $lin];
-	    return;
-	}
+        # 4ti2 version 1.6 cannot handle the case of a full-dimensional linear space
+        # hence we handle this case separately
+        my $n_ineq = $this->give("FACETS | INEQUALITIES")->rows;
+        if (defined (my $AH = $this->lookup("LINEAR_SPAN | EQUATIONS"))) {
+            $n_ineq += $AH->rows;
+        }
+        if ( $n_ineq == 0 ) {
+            my $cad = $this->CONE_AMBIENT_DIM;
+            my $rays = new Matrix<Integer>(0,$cad);
+            my $lin = unit_matrix<Integer>($cad); 
+            $this->HILBERT_BASIS_GENERATORS=[$rays , $lin];
+            return;
+        }
         
-        zsolve_print($tempname,$this);
+        zsolve_print($tempname, $this);
         
         _4ti2_run($zsolve,$tempname);
         
-        zsolve_parse($tempname,$this,hilb=>1);
+        zsolve_parse($tempname, $this, hilb=>1);
     }
     weight 5.35;   
 
@@ -128,11 +128,11 @@ object Polytope<Rational> {
     rule _4ti2.integer_points: LATTICE_POINTS_GENERATORS : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
         my $tempname=new Tempfile;
         
-        zsolve_print($tempname,$this,polytope=>1);
+        zsolve_print($tempname, $this, polytope=>1);
         
         _4ti2_run($zsolve,$tempname);
         
-        zsolve_parse($tempname,$this,polytope=>1);
+        zsolve_parse($tempname, $this, polytope=>1);
     }
     weight 5.35;   
 }
@@ -241,19 +241,19 @@ sub zsolve_print {
     open(my $M, ">$tempname.mat")
         or die "can't create temporary file $tempname.mat: $!";
     if ($flags{polytope}) {
-	print $M "$n_lines $dim\n", $facets->minor(All,range(1,$dim));
+        print $M "$n_lines $dim\n", $facets->minor(All,range(1,$dim));
     } else {
-	print $M "$n_lines $dim\n", $facets;
+        print $M "$n_lines $dim\n", $facets;
     }
 
     # right hand side
     open(my $R, ">$tempname.rhs")
         or die "can't create temporary file $tempname.rhs: $!";
     if ($flags{polytope}) {
-	print $R "1 $n_lines\n", -($facets->col(0)), " ";
+        print $R "1 $n_lines\n", -($facets->col(0)), " ";
     } else {
-	my $rhs= zero_vector<Integer>($n_lines);
-	print $R "1 $n_lines\n", $rhs, " ";
+        my $rhs= zero_vector<Integer>($n_lines);
+        print $R "1 $n_lines\n", $rhs, " ";
     }
     
     # relations file
@@ -263,14 +263,14 @@ sub zsolve_print {
 
     # equalities if necessary
     if ($n_lines > $n_ineq) {
-	if ($flags{polytope}) {
-	    print $M $ah->minor(All,range(1,$dim));
-	    print $R -($ah->col(0));
-	} else {
-	    print $M $ah;
-	    # right hand side has been dealt with already above.
-	}
-	print $E "= " x ($n_lines-$n_ineq);
+        if ($flags{polytope}) {
+            print $M $ah->minor(All,range(1,$dim));
+            print $R -($ah->col(0));
+        } else {
+            print $M $ah;
+            # right hand side has been dealt with already above.
+        }
+        print $E "= " x ($n_lines-$n_ineq);
     }
 
     close $E;
@@ -279,77 +279,52 @@ sub zsolve_print {
 }
 
 sub zsolve_parse {
-    my ($tempname,$this,%flags) = @_;
+    my ($tempname, $this, %flags) = @_;
     
+    my (@rays, @points, @lineality);
+    my $is_polytope = $flags{polytope};
+
     # parse output
     open(my $outfile, "<$tempname.zhom")
-	or die "can't open output file $tempname.zhom: $!";
-    my $dimline = <$outfile>;
-    my @rays=();
-    my @points=();
-    my @lineality=();
+        or die "can't open output file $tempname.zhom: $!";
     local $_;
+    my $dimline = <$outfile>;
 
-    while(<$outfile>) {
-	if(/^$/) {
-	    next;
-	}
-	# read one point and append to output 
-	my @p;
-	if ( $flags{polytope} ) {
-	    @p = (0, split);
-	} else {
-	    @p = split;
-	}
-	push @rays, \@p;
+    while (<$outfile>) {
+        next if /^$/;
+        # read one point and append to output 
+        push @rays, [ $is_polytope ? (0, split) : split ];
     }
     close $outfile;
 
-    if ( $flags{polytope} ) {
-
-	open(my $outfile, "<$tempname.zinhom")
-	    or die "can't open output file $tempname.zinhom: $!";
-	my $dimline = <$outfile>;
-	local $_;
-	while(<$outfile>) {
-	    if(/^$/) {
-		next;
-	    }
-	    # read one point and append to output inklusive proj 1
-	    my @p = (1, split);
-	    push @points, \@p;
-	}
-	close $outfile;
+    if ($is_polytope) {
+        open(my $outfile, "<$tempname.zinhom")
+            or die "can't open output file $tempname.zinhom: $!";
+        $dimline = <$outfile>;
+        while (<$outfile>) {
+            next if /^$/;
+            # read one point and append to output including proj 1
+            push @points, [ 1, split ];
+        }
+        close $outfile;
     }
 
-    if ( $flags{polytope} || $flags{hilb} ) {
-
-	if(-e "$tempname.zfree")
-	{
-	    open(my $outfile, "<$tempname.zfree")
-		or die "can't open output file $tempname.zfree: $!";
-	    my $dimline = <$outfile>;
-	    local $_;
-	    while(<$outfile>) {
-		if(/^$/) {
-		    next;
-		}
-		# read one point and append to output inklusive proj 1
-		my @p;
-		if ( $flags{polytope} ) {
-		    @p = (0, split);
-		} else {
-		    @p = split;
-		}
-		push @lineality, \@p;
-	    }
-	    close $outfile;
-	}
+    if ($is_polytope || $flags{hilb}) {
+        if (-e "$tempname.zfree") {
+            open(my $outfile, "<$tempname.zfree")
+                or die "can't open output file $tempname.zfree: $!";
+            $dimline = <$outfile>;
+            while (<$outfile>) {
+                next if /^$/;
+                # read one point and append to output including proj 0
+                push @lineality, [ $is_polytope ? (0, split) : split ];
+            }
+            close $outfile;
+        }
     }
 
-    $this->LATTICE_POINTS_GENERATORS=[\@points, \@rays , \@lineality] if $flags{polytope};
-    $this->HILBERT_BASIS_GENERATORS=[\@rays , \@lineality] if $flags{hilb};
-    
+    $this->LATTICE_POINTS_GENERATORS = [ \@points, \@rays , \@lineality ] if $is_polytope;
+    $this->HILBERT_BASIS_GENERATORS = [ \@rays , \@lineality ] if $flags{hilb};
 }
 
 

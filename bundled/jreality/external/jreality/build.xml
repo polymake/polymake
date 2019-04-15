@@ -11,8 +11,8 @@
 		<format property="version" pattern="yyyy-MM-dd"/>
 	</tstamp>
 		
-	<property name="source" value="1.6"/>
-	<property name="target" value="1.6"/>	
+	<property name="source" value="7"/>
+	<property name="target" value="7"/>
 
 	<!-- the following should belong to core... -->
 	<property name="core" location="src-core" />

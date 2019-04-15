@@ -60,7 +60,7 @@ rule ccompile
 
 # prepare a perl extension module source
 rule xxs_to_cc
-  command = ${PERL} ${ExtUtils}/xsubpp -typemap ${ExtUtils}/typemap --output $out $in
+  command = ${PERL} ${ExtUtils}/xsubpp -typemap ${ExtUtils}/typemap ${XSextraTYPEMAPS} --output $out $in
   description = GENERATE $out
 
 # generate a bootstrapping sequence for the callable library

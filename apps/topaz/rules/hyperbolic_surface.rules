@@ -23,8 +23,8 @@ declare object HyperbolicSurface {
    # > $S3 = new Array<Array<Int>>([ [1,0,2,5],[2,1,4,1],[0,2,0,3] ]);
    # > $s = new HyperbolicSurface(DCEL_DATA=>$S3);
    property DCEL_DATA : Array<Array<Int>>;
-   
-   # Penners lambda lenghts, sometimes called Penner coordinates, of the hyperbolic surface. 
+
+   # Penners lambda lengths, sometimes called Penner coordinates, of the hyperbolic surface.
    #     Robert C. Penner. Decorated Teichmüller Theory. QGM Master Class Series. European Mathematical Society, Zürich, 2012.
    # They are given by one positive rational for each edge of the triangulation, ordered in the sense of the triangulation [[DCEL_DATA]].
    property PENNER_COORDINATES : Vector<Rational>;
@@ -34,16 +34,16 @@ declare object HyperbolicSurface {
    # Note that the k-th Delaunay triangulation also corresponds to the k-th maximal cone of the [[SECONDARY_FAN]].
    property FLIP_WORDS : Array< List<Int> >;
 
-   # In order to compute [[GKZ_VECTORS]] (or a [[secondary_polyhedron]]) one needs to specify a point on the surface, see 
+   # In order to compute [[GKZ_VECTORS]] (or a [[secondary_polyhedron]]) one needs to specify a point on the surface, see
    #     M. Joswig, R. Löwe, and B. Springborn. Secondary fans and secondary polyhedra of punctured Riemann surfaces. arXiv:1708.08714.
    # This point is specified by choosing a pair of rationals (p,x) that determine how the (decorated) 0th half edge is lifted to a geodesic in H^2.
-   # The covering is chosen in such a way that the horocycle at infinity is the vertical line at height p^2 and 
+   # The covering is chosen in such a way that the horocycle at infinity is the vertical line at height p^2 and
    # the lifted 0th half edge goes from infinity to the point x at the ideal boundary.
    property SPECIAL_POINT : Pair<Rational, Rational>;
 
    #property SECONDARY_FAN defined in fan/rules/fan_properties.rules
 
-   # @category Other 
+   # @category Other
    # Computes an approximation of the GKZ vectors of a hyperbolic surface.
    # The approximation depends on the parameter //depth// that restricts the depth of the (covering) triangles that are summed over in the definition of the GKZ vectors.
    # @param Int depth

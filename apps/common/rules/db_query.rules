@@ -210,6 +210,25 @@ user_function db_count($, \
    }
 }
 
+user_function db_aggregate($, \
+                       {db => $PolyDB::default::db_database_name, \
+                       collection => $PolyDB::default::db_collection_name, \
+                       distinct => false, \
+                       local => false, \
+                       username => $PolyDB::default::db_user, \
+                       password => $PolyDB::default::db_pwd, \
+                       client => undef}) \
+{
+   my ($query, $options) = @_;
+   
+   my ($client, $collection) = Client::get_collection_for_query($options);
+
+   my $output = $collection->aggregate($query);
+   
+   return $output;
+}
+
+
 # @category Database
 # Returns the IDs of all objects in the database //db// in //collection// that match the //query//. This is only recommended for a reasonably small number of matching objects. If you expect many such objects you should instead construct a [[DBCursor]].
 # @param HASH query

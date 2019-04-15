@@ -184,6 +184,13 @@ sub construct_set_from_anonlist {
 
 namespaces::intercept_operation(undef, '~', \&construct_set_from_anonlist);
 
+# @category Set Operations
+# Returns all subsets of size k of a given container as perl-array.
+# @param Any c any container type, e.g. [[Set]] or [[Array]]
+# @param Int k size of the subsets
+# @return Array<Array<Any>>
+user_function all_subsets_of_k(*&& const, $) : c++ (include => "polymake/PowerSet.h") : returns(Container<Container>);
+
 ##################################################################################
 
 # @category Set Types

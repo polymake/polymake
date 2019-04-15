@@ -76,70 +76,6 @@ sub generate_id {
    return $id;
 }
 
-# InteractiveHelp => WORD => [ InteractiveHelp ... ]
-my %searchTree;
-
-sub matching_topic {
-   my ($topic, $word)=@_;
-   $topic->name eq $word and
-   length($topic->text) || grep { exists $topic->annex->{$_} } qw(param tparam return options property)
-}
-
-sub search_in_tree {
-   my ($help, $word)=@_;
-   my (%taboo, @ancestors);
-
-   do {
-      foreach my $topic ($help, @{$help->related}) {
-         if (matching_topic($topic, $word)) {
-            my $me=[ $topic ];
-            $searchTree{$_}->{$word}=$me for @ancestors;
-            return $topic;
-         }
-         if (defined (my $cached=$searchTree{$topic}->{$word})) {
-            $searchTree{$_}->{$word}=$cached for @ancestors;
-            return @$cached;
-         }
-      }
-      if (my @found=uniq( map { matching_topic($_, $word) ? ($_) : $_->find("!rel", $word) } grep { !exists $taboo{$_} } values %{$help->topics})) {
-         @found=select_closest($_[0], @found) if @found>1;
-         $searchTree{$_}->{$word}=\@found for @ancestors;
-         return @found;
-      }
-      foreach my $topic (@{$help->related}) {
-         if (my @found=$topic->find("!rel", $word)) {
-            @found=select_closest($_[0], @found) if @found>1;
-            $searchTree{$_}->{$word}=\@found for @ancestors;
-            return @found;
-         }
-      }
-      $taboo{$help}=1;
-      push @ancestors, $help if $help != $_[0];
-      $help=$help->parent;
-   } while (defined $help);
-
-   my $notfound=[ ];
-   $searchTree{$_}->{$word}=$notfound for @ancestors;
-   ()
-}
-
-sub select_closest {
-   my $from=shift;
-   my @closest=@_;
-   my $mindist=100000000;
-   foreach (@_) {
-      if (defined (my $dist=$from->proximity($_))) {
-         if ($dist<$mindist) {
-            $dist=$mindist;
-            @closest=($_);
-         } elsif ($dist==$mindist) {
-            push @closest, $_;
-         }
-      }
-   }
-   @closest;
-}
-
 # try to resolve cross-references of different kinds
 sub search {
    my ($help, $what)=@_;
@@ -163,7 +99,7 @@ sub search {
    my (@topics, $obj_help);
    if ($what =~ /[.:]/ && $what =~ /^ (?: ($id_re)::)? ($hier_id_re) $/xo) {
       if ($1 eq "Core" || $1 eq "Visual") {
-         @topics=@how ? $top_help->find(@how, $what) : search_in_tree($help, $what);
+         @topics = @how ? $top_help->find(@how, $what) : $help->find_in_tree($what);
       } elsif ($1 eq "props") {
          @topics=$top_help->find(@how, "property_types", $2);
       } else {
@@ -172,7 +108,7 @@ sub search {
          foreach my $prop_name (split /\./, $2) {
             @topics=uniq( grep { defined } map { $_->find("?rel", "properties", $prop_name) } @topics );
          }
-         @topics=select_closest($top_help, @topics) if @topics>1;
+         @topics = $top_help->select_closest(@topics) if @topics>1;
       }
    }
    if (!@topics  &&
@@ -187,7 +123,7 @@ sub search {
    }
    if (!@topics) {
       # try as a single term
-      @topics=@how ? $top_help->find(@how, $what) : search_in_tree($help, $what);
+      @topics = @how ? $top_help->find(@how, $what) : $help->find_in_tree($what);
    }
 
    if (@topics==1) {
@@ -276,7 +212,7 @@ sub resolve_ref {
        ($help->parent->category ? $help->parent->parent : $help->parent)->name ne "methods") {
       $func_help= $ovcnt ? $help->topics->{"overload#0"} : $help;
    }
-   local ref $help->related = ($application ? $application->help : $Core::Help::core)->related_objects($func_help) if defined($func_help);
+   local ref $help->related = [ ($application ? $application->help : $Core::Help::core)->related_objects($func_help) ] if defined($func_help);
    search($help, $ref);
 }
 
@@ -353,19 +289,19 @@ sub write_function {
          $writer->endTag;
       }
    }
-   if (defined (my $options=$help->annex->{options})) {
-      foreach my $opt_group (@$options) {
-         if (is_object($opt_group)) {
-            my $group_ref=ref_to_topic($opt_group)
-                          // die "Internal error: orphaned option group help node ", $opt_group->full_path, "\n";
-            $writer->emptyTag("common-option-list", name => $opt_group->name, href => $group_ref);
+   if (defined (my $options = $help->annex->{options})) {
+      foreach my $opt_topic (@$options) {
+         if ($opt_topic->parent != $help) {
+            my $group_ref = ref_to_topic($opt_topic)
+                          // die "Internal error: orphaned option group help node ", $opt_topic->full_path, "\n";
+            $writer->emptyTag("common-option-list", name => $opt_topic->name, href => $group_ref);
          } else {
-            my $group_text = local shift @$opt_group;
+            my $group_text = $opt_topic->text;
             if (length($group_text)) {
                $writer->startTag("options");
                write_descr_string($writer, $help, $group_text);
             }
-            foreach my $opt (@$opt_group) {
+            foreach my $opt (@{$opt_topic->annex->{keys}}) {
                $writer->startTag("option", name => $opt->[1], type => $opt->[0], href => resolve_ref($help, $opt->[0]));
                write_descr_string($writer, $help, $opt->[2]);
                $writer->endTag;
@@ -687,6 +623,7 @@ foreach my $app (@ARGV) {
    my $writer=open_app_doc_file($application->name, ext_attr_app($application));
 
    write_descr($writer, $application->help);
+   local push @{$application->help->related}, $Core::Help::core;
 
    if (@{$application->import_sorted}) {
       $writer->startTag("imports-from");

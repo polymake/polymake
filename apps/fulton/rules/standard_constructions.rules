@@ -37,8 +37,13 @@ user_function projective_space( $ ) {
   my $d=shift;
   $d > 0 or die "projective_space: dimension must be positive\n";
   my $m=new Matrix<Rational>(unit_matrix<Rational>($d) / -ones_vector<Rational>($d));
-  my @a=();
-  foreach (all_subsets_of_k($d,0..$d)) { push @a, $_; }
-  my $f=new NormalToricVariety(RAYS=>$m, MAXIMAL_CONES=>\@a,COMPLETE=>1,PROJECTIVE=>1,SIMPLICIAL=>1,DEGENERATE=>0);
+  my $f=new NormalToricVariety(RAYS=>$m, MAXIMAL_CONES=>all_subsets_of_k(range(0,$d), $d),
+                               COMPLETE=>true, PROJECTIVE=>true, SIMPLICIAL=>true, DEGENERATE=>false);
   return $f;
 }
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

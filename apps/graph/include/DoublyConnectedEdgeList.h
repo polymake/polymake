@@ -75,6 +75,10 @@ namespace polymake { namespace graph {
       {
       };
 
+         bool operator==(const HalfEdge& other) const {
+            return (twin == other.twin && next == other.next);
+         }
+
          Rational getLength() const{
             return length;
          }
@@ -155,13 +159,13 @@ namespace polymake { namespace graph {
            , edges( list.edges )
       {}
 
-      Array<Vertex> getVertices() const
+      const Array<Vertex>& getVertices() const
       {
          return this->vertices;
       }
 
 
-      Array<HalfEdge> getEdges() const
+      const Array<HalfEdge>& getEdges() const
       {
          return this->edges;
       }

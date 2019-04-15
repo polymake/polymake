@@ -20,7 +20,7 @@
 #include "polymake/RandomSpherePoints.h"
 
 namespace polymake { namespace polytope {
-
+template<typename Num>
 perl::Object rand_sphere(int d, int n, perl::OptionSet options)
 {
    if (d<2 || n<=d) {
@@ -36,7 +36,7 @@ perl::Object rand_sphere(int d, int n, perl::OptionSet options)
    p.set_description() << "Random spherical polytope of dimension " << d << "; seed=" << seed.get()
       << "; precision=" << (use_prec ? std::to_string(my_prec) : "default") << endl;
 
-   RandomSpherePoints<> random_source(d, seed);
+   RandomSpherePoints<Num> random_source(d, seed);
    if (use_prec)
       random_source.set_precision(my_prec);
 
@@ -50,16 +50,21 @@ perl::Object rand_sphere(int d, int n, perl::OptionSet options)
    return p;
 }
 
-UserFunction4perl("# @category Producing a polytope from scratch"
-                  "# Produce a //d//-dimensional polytope with //n// random vertices"
-                  "# uniformly distributed on the unit sphere."
-                  "# @param Int d the dimension"
+UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
+                  "# Produce a rational //d//-dimensional polytope with //n// random vertices"
+                  "# approximately uniformly distributed on the unit sphere."
+                  "# @tparam Num can be AccurateFloat (the default) or Rational"
+                  "# With [[AccurateFloat]] the distribution should be closer to uniform,"
+                  "# but the vertices will not exactly be on the sphere."
+                  "# With [[Rational]] the vertices are guaranteed to be on the unit sphere,"
+                  "# at the expense of both uniformity and log-height of points."
+                  "# @param Int d the dimension of sphere"
                   "# @param Int n the number of random vertices"
                   "# @option Int seed controls the outcome of the random number generator;"
                   "#   fixing a seed number guarantees the same outcome. "
                   "# @option Int precision Number of bits for MPFR sphere approximation"
-                  "# @return Polytope",
-                  &rand_sphere, "rand_sphere($$ { seed => undef, precision => undef })");
+                  "# @return Polytope<Rational>",
+                  "rand_sphere<Num=AccurateFloat>($$ { seed => undef, precision => undef })");
 } }
 
 // Local Variables:

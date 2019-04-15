@@ -1,7 +1,7 @@
 # This is a bundled extension.
 
 CREDIT
-  Computation of automorphism groups of graphs.
+  [[wiki:external_software#bliss]] is a software for computation of automorphism groups of graphs.
   Copyright by Tommi Junttila and Petteri Kaski.
   http://www.tcs.hut.fi/Software/bliss/
 

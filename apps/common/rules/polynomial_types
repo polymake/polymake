@@ -324,7 +324,7 @@ user_function set_var_names<PolynomialType>[ polynomial_type(PolynomialType) ](@
 # @category Arithmetic
 # Set the list of variable names for given polynomial class temporarily.
 # The existing name list or the default scheme is restored at the end of the current user cycle,
-# similarly to [[core::prefer_now]].
+# similarly to [[prefer_now]].
 # @param String names ... variable names, see [[set_var_names]].
 
 user_function local_var_names<PolynomialType>[ polynomial_type(PolynomialType) ](@) {

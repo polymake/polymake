@@ -105,7 +105,7 @@ protected:
    Set<int>::const_iterator r;  // an iterator over the exposed points
    int start_node;
    BFSiterator<Graph<Directed>, VisitorTag<TreeGrowVisitor>> it; // helps growing the hungarian trees from a start node
-   Graph<Directed> test_graph;
+   /* Graph<Directed> test_graph; */
    Matrix<E> wmatrix;
    Set<int> labeled_points;
    Array<int> matching;
@@ -337,19 +337,19 @@ public:
       }
    }
 
-   void print_stuff(int flag)
-   {
-      cout << "a: " << a << endl;
-      cout << "b: " << b << endl;
-      /* cout << "slack: " << slack << endl; */
-      /* cout << "labeledcolmin: " << labeledColMin << endl; */
-      cout << "matching: " << matching << endl;
-      cout << "exposed: " << exposed_points << endl;
-      if (flag) {
-         cout << "weights:\n" << weights << endl;
-         cout << "eq_subgraph:\n" << equality_subgraph << endl;
-      }
-   }
+   /* void print_stuff(int flag) */
+   /* { */
+   /*    cout << "a: " << a << endl; */
+   /*    cout << "b: " << b << endl; */
+   /*    /1* cout << "slack: " << slack << endl; *1/ */
+   /*    /1* cout << "labeledcolmin: " << labeledColMin << endl; *1/ */
+   /*    cout << "matching: " << matching << endl; */
+   /*    cout << "exposed: " << exposed_points << endl; */
+   /*    if (flag) { */
+   /*       cout << "weights:\n" << weights << endl; */
+   /*       cout << "eq_subgraph:\n" << equality_subgraph << endl; */
+   /*    } */
+   /* } */
 
    // TODO genericvector?
    void dynamic_stage(int index, const Vector<E>& column)
@@ -387,6 +387,11 @@ public:
 
       /* print_stuff(1); */
 
+   }
+
+   std::pair<Vector<E>, Vector<E>> get_cover()
+   {
+      return std::pair<Vector<E>, Vector<E>>(a, b);
    }
 
    Array<int> get_matching()

@@ -153,8 +153,7 @@ class Serializable {
 public:
    static constexpr ClassFlags flag_value() { return ClassFlags::none; }
    static conv_to_serialized_type conv() { return nullptr; }
-   static provide_type provide() { return nullptr; }
-   static provide_type provide_descr() { return nullptr; }
+   static type_reg_fn_type provide() { return nullptr; }
 };
 
 template <typename T>
@@ -183,8 +182,7 @@ public:
    }
 
    static conv_to_serialized_type conv() { return &impl; }
-   static provide_type provide() { return &type_cache<serialized_t>::provide; }
-   static provide_type provide_descr() { return &type_cache<serialized_t>::provide_descr; }
+   static type_reg_fn_type provide() { return &type_cache<serialized_t>::provide; }
 };
 
 // This one is used in overloaded operators for sparse proxies of primitive types.
@@ -238,8 +236,7 @@ protected:
       destructor_type destructor,
       conv_to_string_type to_string,
       conv_to_serialized_type to_serialized,
-      provide_type provide_serialized_type,
-      provide_type provide_serialized_descr,
+      type_reg_fn_type provide_serialized_type,
       conv_to_int_type to_int,
       conv_to_float_type to_float
    );
@@ -265,8 +262,7 @@ protected:
       destructor_type destructor,
       conv_to_string_type to_string,
       conv_to_serialized_type to_serialized,
-      provide_type provide_serialized_type,
-      provide_type provide_serialized_descr
+      type_reg_fn_type provide_serialized_type
    );
 
    static
@@ -278,15 +274,12 @@ protected:
       destructor_type destructor,
       conv_to_string_type to_string,
       conv_to_serialized_type to_serialized,
-      provide_type provide_serialized_type,
-      provide_type provide_serialized_descr,
+      type_reg_fn_type provide_serialized_type,
       conv_to_int_type size,
       container_resize_type resize,
       container_store_type store_at_ref,
-      provide_type provide_key_type,
-      provide_type provide_key_descr,
-      provide_type provide_value_type,
-      provide_type provide_value_descr
+      type_reg_fn_type provide_key_type,
+      type_reg_fn_type provide_value_type
    );
 
    static
@@ -317,8 +310,7 @@ protected:
       destructor_type destructor,
       conv_to_string_type to_string,
       conv_to_serialized_type to_serialized,
-      provide_type provide_serialized_type,
-      provide_type provide_serialized_descr,
+      type_reg_fn_type provide_serialized_type,
       int n_members,
       provide_type provide_member_types,
       provide_type provide_member_descrs,
@@ -414,7 +406,6 @@ public:
             ToString<T>::func(),
             Serializable<T>::conv(),
             Serializable<T>::provide(),
-            Serializable<T>::provide_descr(),
             &conv<int>::func,
             &conv<double>::func
          )
@@ -441,8 +432,7 @@ public:
             Destroy<T>::func(),
             ToString<T>::func(),
             Serializable<T>::conv(),
-            Serializable<T>::provide(),
-            Serializable<T>::provide_descr()
+            Serializable<T>::provide()
          )
       );
    }
@@ -468,7 +458,6 @@ public:
             nullptr,
             Destroy<Tptr>::func(),
             Unprintable::func(),
-            nullptr,
             nullptr,
             nullptr
          )
@@ -869,38 +858,21 @@ protected:
       return &do_const_sparse<const_iterator>::deref;
    }
 
-   static provide_type provide_key_type(std::true_type)
+   static type_reg_fn_type provide_key_type(std::true_type)
    {
       return &type_cache<typename T::key_type>::provide;
    }
-   static provide_type provide_key_type(std::false_type)
+   static type_reg_fn_type provide_key_type(std::false_type)
    {
       return &type_cache<typename object_traits<typename T::value_type>::persistent_type>::provide;
    }
-   static provide_type provide_value_type(std::true_type)
+   static type_reg_fn_type provide_value_type(std::true_type)
    {
       return &type_cache<typename T::mapped_type>::provide;
    }
-   static provide_type provide_value_type(std::false_type)
+   static type_reg_fn_type provide_value_type(std::false_type)
    {
       return &type_cache<typename object_traits<typename Obj::value_type>::persistent_type>::provide;
-   }
-
-   static provide_type provide_key_descr(std::true_type)
-   {
-      return &type_cache<typename T::key_type>::provide_descr;
-   }
-   static provide_type provide_key_descr(std::false_type)
-   {
-      return &type_cache<typename object_traits<typename T::value_type>::persistent_type>::provide_descr;
-   }
-   static provide_type provide_value_descr(std::true_type)
-   {
-      return &type_cache<typename T::mapped_type>::provide_descr;
-   }
-   static provide_type provide_value_descr(std::false_type)
-   {
-      return &type_cache<typename object_traits<typename Obj::value_type>::persistent_type>::provide_descr;
    }
 
    static SV* create_vtbl()
@@ -914,14 +886,11 @@ protected:
          ToString<T>::func(),
          Serializable<T>::conv(),
          Serializable<T>::provide(),
-         Serializable<T>::provide_descr(),
          size(bool_constant<is_sparse>()),
          resize(typename input_mode<Obj>::type()),
          store_at_ref(typename input_mode<Obj, !is_associative, element_dim==0>::type()),
          provide_key_type(bool_constant<is_associative>()),
-         provide_key_descr(bool_constant<is_associative>()),
-         provide_value_type(bool_constant<is_associative>()),
-         provide_value_descr(bool_constant<is_associative>())
+         provide_value_type(bool_constant<is_associative>())
       );
       fill_iterator_access_vtbl(
          vtbl, 0,
@@ -1163,7 +1132,6 @@ public:
             ToString<T>::func(),
             Serializable<T>::conv(),
             Serializable<T>::provide(),
-            Serializable<T>::provide_descr(),
             list_length<elements>::value,
             &TypeListUtils<elements>::provide_types,
             &TypeListUtils<elements>::provide_descrs,
@@ -1274,9 +1242,9 @@ protected:
    }
 
    template <typename T>
-   static SV* result_type_registrator(SV* prescribed_pkg, SV* app_stash_ref, SV* generated_by)
+   static decltype(auto) result_type_registrator(SV* prescribed_pkg, SV* app_stash_ref, SV* generated_by)
    {
-      return type_cache<T>::get_proto_with_prescribed_pkg(prescribed_pkg, app_stash_ref, generated_by);
+      return type_cache<T>::provide(prescribed_pkg, app_stash_ref, generated_by);
    }
 
    template <typename ArgTypes>

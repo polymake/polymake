@@ -4,7 +4,7 @@
 # URIs of bundled extensions are written as bundled:NAME .
 
 CREDIT
- a-tint is an extension for tropical intersection theory.
+ [[wiki:external_software#a-tint]] is an extension for tropical intersection theory.
  (C) 2011 - 2015 Simon Hampe, simon.hampe@googlemail.com
  See also: https://github.com/simonhampe/atint 
 

@@ -112,25 +112,25 @@ public:
    template <typename ObjectRef>
    struct composite_cursor {
       typedef typename deref<ObjectRef>::type Object;
-      static const int
-         total= list_length<typename object_traits<Object>::elements>::value,
-         ignored= list_accumulate_unary<list_count, ignore_in_composite, typename object_traits<Object>::elements>::value;
-      static const bool
-         top_level=!mtagged_list_extract<Options, SeparatorChar>::is_specified,
-         compress= ignored>0 && total-ignored<=1;
-      static const char
+      static constexpr int
+         total = list_length<typename object_traits<Object>::elements>::value,
+         ignored = list_accumulate_unary<list_count, ignore_in_composite, typename object_traits<Object>::elements>::value;
+      static constexpr bool
+         top_level = !mtagged_list_extract<Options, SeparatorChar>::is_specified,
+         compress = ignored > 0 && total-ignored <= 1;
+      static constexpr char
          null_char = '\0',
          opening = top_level || compress ? null_char : '(',
          closing = top_level || compress ? null_char : ')',
-         sep= compress ? null_char : object_traits<Object>::IO_ends_with_eol ? '\n' : ' ';
+         sep = compress ? null_char : object_traits<Object>::IO_ends_with_eol ? '\n' : ' ';
 
-      typedef typename mtagged_list_replace<
+      using cursor_options = typename mtagged_list_replace<
                  typename mtagged_list_remove<Options, SparseRepresentation>::type,
                  OpeningBracket<char_constant<opening>>,
                  ClosingBracket<char_constant<closing>>,
                  SeparatorChar<char_constant<sep>> >::type
-         cursor_options;
-      typedef PlainPrinterCompositeCursor<cursor_options, Traits> type;
+         ;
+      using type = PlainPrinterCompositeCursor<cursor_options, Traits>;
    };
 
    template <typename Object>
@@ -284,7 +284,7 @@ public:
    PlainPrinterSparseCursor& operator<< (const Iterator& x)
    {
       if (this->width) {
-         int i=x.index();
+         const int i = x.index();
          while (next_index < i) {
             *this->os << std::setw(this->width) << '.';
             ++next_index;
@@ -316,17 +316,22 @@ template <typename Options> class PlainParserCompositeCursor;
 
 class PlainParserCommon {
 protected:
-   mutable std::istream* is;
+   std::istream* is;
    char *saved_egptr;
 
-   PlainParserCommon(const PlainParserCommon& other)
-      : is(other.is), saved_egptr(other.saved_egptr)
+   PlainParserCommon(const PlainParserCommon& other) = delete;
+
+   PlainParserCommon(PlainParserCommon&& other)
+      : is(other.is)
+      , saved_egptr(other.saved_egptr)
    {
-      other.is=NULL;
+      other.is = nullptr;
    }
 
    explicit PlainParserCommon(std::istream& is_arg)
-      : is(&is_arg), saved_egptr(0) { }
+      : is(&is_arg)
+      , saved_egptr(nullptr) { }
+
 public:
    ~PlainParserCommon()
    {
@@ -395,29 +400,28 @@ class PlainParser
    , public GenericInputImpl< PlainParser<Options> >
    , public GenericIOoptions< PlainParser<Options>, Options > {
 public:
-   PlainParser(std::istream& is_arg) : PlainParserCommon(is_arg) { }
+   explicit PlainParser(std::istream& is_arg) : PlainParserCommon(is_arg) {}
+   PlainParser(PlainParser&&) = default;
 
    template <typename ObjectRef>
    struct list_cursor {
-      typedef PlainParserListCursor<typename deref<ObjectRef>::type::value_type,
-                                    typename PlainPrinter<Options>::template list_cursor<ObjectRef>::cursor_options>
-         type;
+      using type = PlainParserListCursor<typename deref<ObjectRef>::type::value_type,
+                                         typename PlainPrinter<Options>::template list_cursor<ObjectRef>::cursor_options>;
    };
 
    template <typename ObjectRef>
    struct composite_cursor {
-      typedef PlainParserCompositeCursor<typename PlainPrinter<Options>::template composite_cursor<ObjectRef>::cursor_options>
-         type;
+      using type = PlainParserCompositeCursor<typename PlainPrinter<Options>::template composite_cursor<ObjectRef>::cursor_options>;
    };
 
    template <typename Object>
-   typename list_cursor<Object>::type begin_list(Object*) const
+   decltype(auto) begin_list(Object*) const
    {
       return typename list_cursor<Object>::type(*this->is);
    }
 
    template <typename Object>
-   typename composite_cursor<Object>::type begin_composite(Object*) const
+   decltype(auto) begin_composite(Object*) const
    {
       return typename composite_cursor<Object>::type(*this->is);
    }
@@ -478,12 +482,16 @@ protected:
 
 public:
    PlainParserCursor(std::istream& is_arg)
-      : PlainParserCommon(is_arg), start_pos(0)
+      : PlainParserCommon(is_arg)
+      , start_pos(nullptr)
    {
       if (is_temp)
-         start_pos=save_read_pos();
-      if (opening) set_range(opening, closing);
+         start_pos = save_read_pos();
+      if (opening)
+         set_range(opening, closing);
    }
+
+   PlainParserCursor(PlainParserCursor&&) = default;
 
    ~PlainParserCursor()
    {
@@ -493,7 +501,8 @@ public:
 
    void finish()
    {
-      if (closing) discard_range(closing);
+      if (closing)
+         discard_range(closing);
    }
 
    bool at_end()
@@ -504,9 +513,9 @@ public:
 
 template <typename Options>
 class PlainParserCompositeCursor
-   : public PlainParserCursor<Options>,
-     public GenericInputImpl< PlainParserCompositeCursor<Options> >,
-     public GenericIOoptions< PlainParserCompositeCursor<Options>, Options > {
+   : public PlainParserCursor<Options>
+   , public GenericInputImpl< PlainParserCompositeCursor<Options> >
+   , public GenericIOoptions< PlainParserCompositeCursor<Options>, Options > {
    using base_t = PlainParserCursor<Options>;
 public:
    PlainParserCompositeCursor(std::istream& is_arg)
@@ -521,9 +530,9 @@ public:
 
 template <typename Value, typename Options>
 class PlainParserListCursor
-   : public PlainParserCursor<Options>,
-     public GenericInputImpl< PlainParserListCursor<Value, Options> >,
-     public GenericIOoptions< PlainParserListCursor<Value, Options>, Options, 1 > {
+   : public PlainParserCursor<Options>
+   , public GenericInputImpl< PlainParserListCursor<Value, Options> >
+   , public GenericIOoptions< PlainParserListCursor<Value, Options>, Options, 1 > {
    using base_t = PlainParserCursor<Options>;
 
    template <typename, typename> friend class PlainParserListCursor;
@@ -566,9 +575,9 @@ protected:
    }
 
 public:
-   typedef Value value_type;
+   using value_type = Value;
 
-   PlainParserListCursor(std::istream& is_arg)
+   explicit PlainParserListCursor(std::istream& is_arg)
       : base_t(is_arg)
       , size_(-1)
       , pair_egptr(0)
@@ -576,6 +585,8 @@ public:
       if (!base_t::opening && object_traits<Value>::total_dimension==0)
          this->set_range(0, '\n');
    }
+
+   PlainParserListCursor(PlainParserListCursor&&) = default;
 
    int size()
    {
@@ -608,7 +619,7 @@ protected:
 
    bool detect_sparse_representation()
    {
-      constexpr int own_missing=missing_parens(typename object_traits<Value>::model());
+      constexpr int own_missing = missing_parens(typename object_traits<Value>::model());
       constexpr int expect_open_parens = composite_depth<Value>::value - own_missing + 1;
       if (this->count_leading('(') == expect_open_parens)
       {
@@ -617,16 +628,18 @@ protected:
       return false;
    }
 public:
-   int index()
+   int index(const int index_bound)
    {
       if (!ignore_in_composite<Value>::value) {
          if (has_sparse_representation)
-            pair_egptr=this->set_temp_range('(', ')');
+            pair_egptr = this->set_temp_range('(', ')');
          else
             this->is->setstate(std::ios::failbit);
       }
-      int i=-1;
+      int i = -1;
       *this->is >> i;
+      if (!this->get_option(TrustedValue<std::true_type>()) && (i < 0 || i >= index_bound))
+         this->is->setstate(std::ios::failbit);
       return i;
    }
 
@@ -637,12 +650,14 @@ public:
              : detect_sparse_representation();
    }
 
+   bool is_ordered() const { return true; }
+
    int cols(bool tell_size_if_dense)
    {
-      return this->sub_parser().set_option(LookForward<std::true_type>()).begin_list((Value*)0).lookup_dim(tell_size_if_dense);
+      return this->sub_parser().set_option(LookForward<std::true_type>()).begin_list((Value*)0).get_dim(tell_size_if_dense);
    }
 
-   int lookup_dim(bool tell_size_if_dense)
+   int get_dim(bool tell_size_if_dense)
    {
       return (!ignore_in_composite<Value>::value && sparse_representation())
              ? this->set_option(SparseRepresentation<std::true_type>()).get_dim() :
@@ -653,14 +668,14 @@ public:
 private:
    int get_dim()
    {
-      int d=index();
+      int d = index(std::numeric_limits<int>::max());
       if (PlainParserCommon::at_end()) {
          this->discard_temp_range(')', pair_egptr);
       } else {
-         d=-1;  // it's not the dimension but the index of the first entry
+         d = -1;  // it's not the dimension but the index of the first entry
          this->skip_temp_range(pair_egptr);
       }
-      pair_egptr=NULL;
+      pair_egptr = nullptr;
       return d;
    }
 
@@ -669,7 +684,7 @@ private:
    {
       if (has_sparse_representation) {
          this->discard_temp_range(')', pair_egptr);
-         pair_egptr=NULL;
+         pair_egptr = nullptr;
       }
    }
 
@@ -687,7 +702,7 @@ public:
    {
       if (has_sparse_representation && pair_egptr) {
          this->skip_temp_range(pair_egptr);
-         pair_egptr=NULL;
+         pair_egptr = nullptr;
       } else {
          base_t::skip_item();
       }

@@ -899,6 +899,17 @@ template <typename symmetric>
 struct check_container_feature< IncidenceMatrix<symmetric>, Symmetric >
    : bool_constant<symmetric::value> {};
 
+// FIXME: temporary hack until all Vector<IncidenceMatrix> disappear from atint
+template <typename symmetric>
+struct spec_object_traits<IncidenceMatrix<symmetric>> : spec_object_traits<is_container> {
+   static const int is_resizeable = 2-symmetric::value;
+   static const IncidenceMatrix<symmetric>& zero()
+   {
+      static const IncidenceMatrix<symmetric> z{};
+      return z;
+   }
+};
+
 template <bool rowwise, typename BaseRef>
 class incidence_line_factory {
 public:

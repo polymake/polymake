@@ -17,5 +17,8 @@
   {"args": ["perl::Canned<const Vector<TropicalNumber<Min, Rational>>&>", "perl::Canned<const Vector<TropicalNumber<Min, Rational>>&>"], "func": "tdist", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "tdist.X.X"},
   {"args": ["perl::Canned<const Matrix<TropicalNumber<Min, Rational>>&>"], "func": "optimal_permutations", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "optimal_permutations.X"},
   {"args": ["perl::Canned<const Matrix<TropicalNumber<Max, Rational>>&>"], "func": "optimal_permutations", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "optimal_permutations.X"},
+  {"args": ["perl::Canned<const Matrix<TropicalNumber<Min, Rational>>&>"], "func": "tsgn", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "tsgn.X"},
+  {"args": ["perl::Canned<const Matrix<TropicalNumber<Min, Rational>>&>"], "func": "stregular", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "stregular.X"},
+  {"args": ["perl::Canned<const Matrix<TropicalNumber<Min, Rational>>&>"], "func": "tregular", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "tregular.X"},
  null ],
 "version": 3}

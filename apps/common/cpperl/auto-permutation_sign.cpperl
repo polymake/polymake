@@ -1,5 +1,6 @@
 {"app": "common",
  "inst": [
   {"args": ["perl::TryCanned<const Array<int>>"], "func": "permutation_sign", "include": ["polymake/Array.h", "polymake/permutations.h"], "sig": "permutation_sign.X"},
+  {"args": ["perl::Canned<const std::vector<int, std::allocator<int> >&>"], "func": "permutation_sign", "include": ["polymake/permutations.h"], "sig": "permutation_sign.X"},
  null ],
 "version": 3}

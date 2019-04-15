@@ -486,6 +486,19 @@ object_specialization Polytope::Lattice {
         $this->NORMAL = ($this->N_LATTICE_POINTS == $this->N_HILBERT_BASIS);
     }
     weight 0.1;
+    
+    rule SPANNING : LATTICE_POINTS_GENERATORS, VERTICES {
+	my $v = new Vector<Integer>($this->VERTICES->[0]);
+	my $A = new Matrix<Integer>($this->LATTICE_POINTS_GENERATORS->[0]);
+	$A -= repeat_row($v, $A->rows);
+	my $N = smith_normal_form($A)->[0];
+	my $vol = 1; 
+	for my $j (0..$N->cols -2){ #ignoring zero row 
+		$vol *= $N->elem($j,$j);
+	}
+	$this->SPANNING = is_one($vol);
+    }
+    precondition : BOUNDED;
 
     rule FACET_WIDTH : FACET_WIDTHS {
         $this->FACET_WIDTH = maximum($this->FACET_WIDTHS);
@@ -530,47 +543,47 @@ object_specialization Polytope::Lattice {
 
     rule SMOOTH : N_VERTICES, GRAPH.ADJACENCY, GRAPH.EDGE_DIRECTIONS, SIMPLE {
 
-        if ( !$this->SIMPLE ) { $this->SMOOTH = 0; return; }
+        if (!$this->SIMPLE) { $this->SMOOTH = false; return; }
 
         for ( my $v=0; $v < $this->N_VERTICES; ++$v ) {
             my $m=new Matrix<Integer>; 
-            for ( my $e=entire($this->GRAPH->ADJACENCY->out_edges($v)); $e; ++$e ) { 
+            for (my $e = entire($this->GRAPH->ADJACENCY->out_edges($v)); $e; ++$e) { 
                 $m /= primitive($this->GRAPH->EDGE_DIRECTIONS->[$$e]); 
             }
 
             my $g = 0;
-            foreach (all_subsets_of_k($m->rows,1..$m->cols-1)) {
+            foreach (@{all_subsets_of_k(sequence(1, max(0, $m->cols-1)), $m->rows)}) {
                 $g = gcd($g,abs(det($m->minor(All,$_))));
                 last if ($g == 1);
             }
-        
+
             if ($g != 1) { $this->SMOOTH = 0; return; }
         }
 
-        $this->SMOOTH = 1;
+        $this->SMOOTH = true;
     }
     weight 3.10;
 
     rule POLAR_SMOOTH : VERTICES, VERTICES_IN_FACETS, INTERIOR_LATTICE_POINTS, SIMPLICIAL, CONE_DIM, CONE_AMBIENT_DIM {
       
-        if ( !$this->SIMPLICIAL ) { $this->POLAR_SMOOTH = 0; return; }
+        if (!$this->SIMPLICIAL) { $this->POLAR_SMOOTH = false; return; }
 
-        my $ip=repeat_row($this->INTERIOR_LATTICE_POINTS->[0],$this->CONE_DIM-1);
+        my $ip = repeat_row($this->INTERIOR_LATTICE_POINTS->[0],$this->CONE_DIM-1);
 
         foreach my $v (@{$this->VERTICES_IN_FACETS}) {
         
           my $m=primitive(($this->VERTICES->minor($v,All)-$ip));
 
           my $g = 0;
-          foreach (all_subsets_of_k($this->CONE_DIM-1,1..$this->CONE_AMBIENT_DIM-1)) {
+          foreach (@{all_subsets_of_k(sequence(1, $this->CONE_AMBIENT_DIM-1), $this->CONE_DIM-1)}) {
             $g = gcd($g,abs(det( $m->minor(All,$_) )));
             last if ($g == 1);
           }
         
-          if ($g != 1) { $this->POLAR_SMOOTH = 0; return; }
+          if ($g != 1) { $this->POLAR_SMOOTH = false; return; }
         }
 
-        $this->POLAR_SMOOTH=1;
+        $this->POLAR_SMOOTH = true;
     }
     precondition : REFLEXIVE;
     weight 3.10;
@@ -707,11 +720,11 @@ object Cone<Rational> {
 
   rule SMOOTH_CONE : RAYS, SIMPLICIAL_CONE {
     if ( !$this->SIMPLICIAL_CONE ) {
-      $this->SMOOTH_CONE = 0;
+      $this->SMOOTH_CONE = false;
     } else {
       my $rays = primitive($this->RAYS);
       my $g = 0;
-      foreach (all_subsets_of_k($rays->rows,0..$rays->cols-1)) {
+      foreach (@{all_subsets_of_k(sequence(0, $rays->cols), $rays->rows)}) {
         $g = gcd($g,abs(det($rays->minor(All,$_))));
         last if ($g == 1);
       } 

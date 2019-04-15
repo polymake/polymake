@@ -144,8 +144,7 @@ struct base_vtbl : public MGVTBL {
 struct common_vtbl : public base_vtbl {
    conv_to_string_type to_string;
    conv_to_serialized_type to_serialized;
-   provide_type provide_serialized_type;
-   provide_type provide_serialized_descr;
+   type_reg_fn_type provide_serialized_type;
 };
 
 struct scalar_vtbl : public common_vtbl {
@@ -167,10 +166,8 @@ struct container_vtbl : public common_vtbl {
    conv_to_int_type empty;
    container_resize_type resize;
    container_store_type store_at_ref;
-   provide_type provide_key_type;
-   provide_type provide_key_descr;
-   provide_type provide_value_type;
-   provide_type provide_value_descr;
+   type_reg_fn_type provide_key_type;
+   type_reg_fn_type provide_value_type;
    container_access_vtbl acc[4];
    AV *assoc_methods;
 };
@@ -235,11 +232,13 @@ SV* clone_composite_magic_sv(pTHX_ SV* src);
 void connect_cout(pTHX);
 
 extern const CV* cur_wrapper_cv;
-extern SV *negative_indices_key;
+extern SV *negative_indices_key,
+          *Serializer_Sparse_dim_key;
 extern HV *FuncDescr_stash,
           *TypeDescr_stash,
           *User_stash,
-          *Object_InitTransaction_stash;
+          *Object_InitTransaction_stash,
+          *Serializer_Sparse_stash;
 
 extern GV *CPP_root,
           *PropertyType_nested_instantiation,

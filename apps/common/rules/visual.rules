@@ -335,7 +335,7 @@ user_function compose(Visual::Object+, %) {
 # @param Visual::Container vis_container drawing produced by some visualization function
 # @param Visual::Object vis_obj ... objects to be added
 # @option String Title  new name for the drawing
-# @option any decorations  to be applied to all components as default values.
+# @option Any decorations  to be applied to all components as default values.
 # @return Visual::Container if called in void context, immediately starts the preferred rendering program.
 
 user_function compose(Visual::Container, Visual::Object+, %) {

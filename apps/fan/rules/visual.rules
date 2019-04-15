@@ -49,7 +49,6 @@ user_method VISUAL_METRIC_TIGHT_SPAN(%Visual::Graph::TightSpanDecorations, { nor
    }
    delete($$decor{"Taxa"});
 
-
    for (my $i=0; $i<$this->N_VERTICES; ++$i) {
       if ( $BG->ADJACENCY->degree($i) == 1) {
          for( my $j=1; $j<$this->VERTICES->cols; ++$j ){
@@ -159,7 +158,7 @@ user_method VISUAL(%Visual::Polygons::decorations, %geometric_options_linear, {C
  
    foreach (@{$this->MAXIMAL_CONES}) {
       my $maximal_cone=$_;
-      my $ftr = $ind->[$i]->minor(All, $maximal_cone);
+      my $ftr = transpose($ind->[$i]->minor(All, $maximal_cone));
 
       my $cone = new polytope::Cone<Rational>(
           RAYS => $this->RAYS->minor($maximal_cone,All),

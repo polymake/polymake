@@ -304,11 +304,11 @@ class permutation_iterator;
 
 class permutation_iterator_base {
 public:
-   typedef forward_iterator_tag iterator_category;
-   typedef std::vector<int> value_type;
-   typedef const value_type* pointer;
-   typedef const value_type& reference;
-   typedef ptrdiff_t difference_type;
+   using iterator_category = forward_iterator_tag;
+   using value_type = Array<int>;
+   using reference = value_type;
+   using pointer = const value_type*;
+   using difference_type = ptrdiff_t;
 protected:
    value_type perm;
 
@@ -327,8 +327,8 @@ class permutation_iterator<permutations_heap>
    : public permutation_iterator_base {
    friend class AllPermutations<permutations_heap>;
 public:
-   typedef permutation_iterator iterator;
-   typedef iterator const_iterator;
+   using iterator = permutation_iterator;
+   using const_iterator = iterator;
 
 protected:
    std::vector<int> cnt;
@@ -349,18 +349,18 @@ public:
       : permutation_iterator_base(n_arg)
       , cnt(size_t(n_arg), 0)
       , n(n_arg)
-      , pos(n_arg>1) {}
+      , pos(n_arg > 1) {}
 
    iterator& operator++ ()
    {
       do {
-         if (cnt[pos]<pos) {
+         if (cnt[pos] < pos) {
             std::swap(perm[pos], perm[pos%2 * cnt[pos]]);
             ++cnt[pos];
-            pos=1;
+            pos = 1;
             break;
          }
-         cnt[pos]=0;
+         cnt[pos] = 0;
       } while (++pos < n);
       return *this;
    }
@@ -370,7 +370,7 @@ public:
 
    bool operator== (const iterator& it) const
    {
-      return n==it.n && pos==it.pos && cnt==it.cnt;
+      return n == it.n && pos == it.pos && cnt == it.cnt;
    }
    bool operator!= (const iterator& it) const
    {
@@ -380,7 +380,7 @@ public:
    void rewind()
    {
       reset(n);
-      pos=1;
+      pos = 1;
       fill_range(entire(cnt), 0);
    }
 };
@@ -400,31 +400,31 @@ protected:
    void incr()
    {
       if (next==0) {
-         next=-1; return;
+         next = -1; return;
       }
-      int lim=n, offset=0;
-      std::vector<int>::iterator pos=move.begin();
+      int lim = n, offset = 0;
+      auto pos = move.begin();
       for (;;) {
-         int m=*pos;
-         if (m>0) {
-            if (m<lim) {
-               next=m+offset;
+         const int m = *pos;
+         if (m > 0) {
+            if (m < lim) {
+               next = m + offset;
                ++*pos;
                break;
             }
          } else {
-            if (m<-1) {
-               next=offset-m-1;
+            if (m < -1) {
+               next = offset - m - 1;
                ++*pos;
                break;
             }
             ++offset;
          }
          if (--lim > 1) {
-            *pos=-m;
+            *pos = -m;
             ++pos;
          } else {
-            next=0;
+            next = 0;
             break;
          }
       }
@@ -439,8 +439,8 @@ public:
       , n(n_arg)
       , next(n-1)
    {
-      if (next>0) {
-         next=1; move[0]=2;
+      if (next > 0) {
+         next = 1; move[0] = 2;
       }
    }
 
@@ -469,9 +469,9 @@ public:
    {
       reset(n);
       fill_range(entire(move), 1);
-      next=n-1;
-      if (next>1) {
-         next=1; move[0]=2;
+      next = n - 1;
+      if (next > 1) {
+         next = 1; move[0] = 2;
       }
    }
 };

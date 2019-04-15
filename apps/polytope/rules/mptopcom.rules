@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2018
+#  Copyright (c) 1997-2019
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -30,7 +30,10 @@ CONFIGURE {
    ($mptopcom) = $path =~ $directory_re;
 }
 
+require Polymake::ProgramPipe;
 
+# @category Triangulations, subdivisions and volume
+# Use [[wiki:external_software#mptopcom|mptopcom]] for computing triangulations of point configurations in parallel.
 label mptopcom
 
     
@@ -113,3 +116,9 @@ sub call_mptopcom{
       return new Array<Pair<Array<Set<Int>>, Vector<Int>>>(\@result);
    }
 }
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

@@ -29,8 +29,7 @@ class SelectedSubset
                                      mlist< ContainerRefTag< ContainerRef >,
                                             OperationTag< Predicate >,
                                             IteratorConstructorTag< unary_predicate_selector_constructor > > >
-   , public generic_of_subset< SelectedSubset<ContainerRef, Predicate>,
-                               typename deref<ContainerRef>::type> {
+   , public generic_of_subset_t<SelectedSubset<ContainerRef, Predicate>, typename deref<ContainerRef>::type> {
    using base_t = modified_container_base<ContainerRef, Predicate>;
    using impl_t = modified_container_impl<SelectedSubset>;
 public:
@@ -46,8 +45,7 @@ class TruncatedContainer
                                      mlist< ContainerRefTag< ContainerRef >,
                                             OperationTag< Predicate >,
                                             IteratorConstructorTag< input_truncator_constructor > > >
-   , public generic_of_subset< TruncatedContainer<ContainerRef, Predicate>,
-                               typename deref<ContainerRef>::type> {
+   , public generic_of_subset_t<TruncatedContainer<ContainerRef, Predicate>, typename deref<ContainerRef>::type> {
    using base_t = modified_container_base<ContainerRef, Predicate>;
    using impl_t = modified_container_impl<TruncatedContainer>;
 public:
@@ -213,8 +211,7 @@ class SelectedContainerPairSubset
                                                  Container2RefTag< ContainerRef2 >,
                                                  IteratorConstructorTag< binary_predicate_selector_constructor >,
                                                  OperationTag< Predicate > > >
-   , public generic_of_subset< SelectedContainerPairSubset<ContainerRef1, ContainerRef2, Predicate>,
-                               typename deref<ContainerRef1>::type > {
+   , public generic_of_subset_t<SelectedContainerPairSubset<ContainerRef1, ContainerRef2, Predicate>, typename deref<ContainerRef1>::type > {
    using base_t = modified_container_pair_base<ContainerRef1, ContainerRef2, Predicate>;
    using impl_t = modified_container_pair_impl<SelectedContainerPairSubset>;
 public:

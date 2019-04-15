@@ -252,13 +252,15 @@ user_function nodes(Graph:anchor) : c++ : returns(Container);
 # @tparam Dir kind of the host graph: [[Undirected]], [[Directed]], [[UndirectedMulti]], or [[DirectedMulti]]
 # @tparam Element data associated with nodes or edges
 
-declare property_type GraphMap<Dir,Element> {
+declare property_type GraphMap<Dir, Element> {
 
    method construct(Graph<Dir>) : c++;
 
    method construct(Graph<Dir>, $@) {
-      my ($proto, $graph)=splice @_,0,2;
-      Core::CPlusPlus::assign_any($proto->construct->($graph), @_);
+      my ($proto, $graph, @args) = @_;
+      Core::CPlusPlus::assign_to_cpp_object($proto->construct->($graph),
+                                            @args == 1 && (is_array($args[0]) || $proto->isa->($args[0])) ? $args[0] : \@args,
+                                            $Core::PropertyType::trusted_value);
    }
 
    operator @eq : c++;

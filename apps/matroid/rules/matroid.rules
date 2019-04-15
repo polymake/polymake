@@ -77,7 +77,7 @@ precondition : NON_BASES {
 weight 0.1;
 
 rule BASES : RANK, N_ELEMENTS {
-   $this->BASES=new Set<Set>([all_subsets_of_k($this->RANK, 0..$this->N_ELEMENTS-1)]);
+   $this->BASES = all_subsets_of_k(sequence(0, $this->N_ELEMENTS), $this->RANK);
 }
 precondition : NON_BASES {
    $this->NON_BASES->size() == 0;
@@ -520,8 +520,7 @@ user_function dual(Matroid) {
 user_function internal_activity(Set<Int>, Array<Set<Int>>) {
    my ($B, $bases) = @_;
    my $activity = $B->size();
-   foreach my $r (all_subsets_of_k($B->size()-1, @{$B})) {
-      my $ridge = new Set($r);
+   foreach my $ridge (@{all_subsets_of_k($B, $B->size()-1)}) {
       foreach my $basis (@{$bases}) {
          if ($basis == $B) {
             last;

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2018
+#  Copyright (c) 1997-2019
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -888,7 +888,7 @@ sub write_initial_description {
    print $descr <<'.';
 # This is a description file of a polymake extension rooted in this directory.
 # Please refer to the documentation under
-#   http://www.polymake.org/doku.php/reference/extensions
+#   https://polymake.org/doku.php/user_guide/extend/extensions
 # for detailed explanations of its contents.
 
 # URI is a unique identifier assigned to this extension.
@@ -983,13 +983,22 @@ package Polymake::User;
 ###############################################################################################
 sub help {
    my ($subject) = @_;
-   my $help_delim = $help_delimit ? "-------------------\n" : '';
-   my $app = $application;
-   if ($subject =~ /^($id_re)::/o && $app->used->{$1}) {
-      $subject = $';
-      $app = $app->used->{$1};
+   if (length($subject) == 0) {
+      print $Core::Help::core->display_text;
+      return;
    }
-   if (my @topics = uniq( $app->help->get_topics($subject || "top") )) {
+   my $help_delim = $help_delimit ? "-------------------\n" : '';
+   my $top_help;
+   if ($subject =~ m{^($id_re)(?:$|::|/)}o && defined(my $app = lookup Core::Application($1))) {
+      $subject = $';
+      $top_help = $app->help;
+   } elsif ($subject =~ m{^core/}) {
+      $subject = $';
+      $top_help = $Core::Help::core;
+   } else {
+      $top_help = $application->help;
+   }
+   if (my @topics = uniq( $top_help->get_topics($subject) )) {
       my (@subcats, @subtopics, $need_delim);
       foreach my $topic (@topics) {
          my $text = $topic->display_text;
@@ -1000,7 +1009,7 @@ sub help {
          foreach (@{$topic->toc}) {
             if ($topic->topics->{$_}->category & 1) {
                push @subcats, $_;
-            } else {
+            } elsif ($_ ne "any") {
                push @subtopics, $_;
             }
          }
@@ -1008,17 +1017,16 @@ sub help {
       if (@subcats || @subtopics) {
          print $help_delim if $need_delim;
       }
-      my $fp = substr($topics[0]->full_path,1);
-      $fp &&= " of $fp";
+      my $fp = $topics[0]->full_path =~ s{^/}{}r || $topics[0]->name;
       if (@subcats) {
-         print "Categories$fp:\n", (join ", ", sort @subcats), "\n";
+         print "Categories of $fp:\n", (join ", ", sort @subcats), "\n";
       }
       if (@subtopics) {
-         print "Subtopics$fp:\n", (join ", ", sort @subtopics), "\n";
+         print "Subtopics of $fp:\n", (join ", ", sort @subtopics), "\n";
       }
-   } elsif (length($subject) && index($subject, "/") < 0
-            and
-            @topics = $app->help->find($subject)) {
+   } elsif (index($subject, "/") < 0
+              and
+            @topics = $top_help->find($subject)) {
 
       if (@topics == 1) {
          print substr($topics[0]->full_path,1), ":\n", $topics[0]->display_text;

@@ -42,6 +42,7 @@ use Polymake::Struct (
    '%big_types',
    '%validation_groups',
    [ '$save_autoflush' => 'undef' ],
+   [ '$json_codec' => 'undef' ],
 );
 
 sub new {
@@ -50,6 +51,7 @@ sub new {
 
    if ($self->validate) {
       Core::XMLfile::enforce_validation($scope);
+      $self->json_codec = new JSON;
    } else {
       Core::XMLfile::suppress_validation($scope);
    }
@@ -81,6 +83,7 @@ sub new {
       }
       unless $self->preserve_load;
    }
+
    $self
 }
 
@@ -232,15 +235,23 @@ sub load_object_file {
       $filename = &find_object_file;
       my $obj;
       if ($self->validate) {
-         local $Verbose::files=0;
-         $obj=load_trusted_object_file($filename);
-         my $obj_file=$obj->persistent->filename;
-         my ($full_path, $copy)=full_path_and_copy($filename);
+         local $Verbose::files = 0;
+         $obj = load_trusted_object_file($filename);
+         my $obj_file = $obj->persistent->filename;
+         my ($full_path, $copy) = full_path_and_copy($filename);
          User::save($obj, $copy);
-         if (my $diff=Object::compare_and_report(load_trusted_object_file($copy), $obj, ignore_shortcuts => 1)) {
+         if (my $diff = Object::compare_and_report($obj, load_trusted_object_file($copy), ignore_shortcuts => true)) {
             die "save & load validation of object file $full_path failed:\n", $diff;
          }
          unlink $copy;
+
+         my $str = $self->json_codec->encode(Core::Serializer::serialize($obj));
+         local $Core::PropertyType::trusted_value = 0;
+         my $restored = Core::Serializer::deserialize($self->json_codec->decode($str));
+         if (my $diff = Object::compare_and_report($obj, $restored, ignore_shortcuts => true)) {
+            die "serialize & deserialize loop for object from file $full_path failed:\n", $diff;
+         }
+
          if ($filename !~ /\.gz$/ && !is_a Tempfile($filename) && $Core::XMLreader::reject_unknown_properties) {
             my $app_name=$obj->type->application->name;
             $self->big_types->{$app_name}->{$obj->type}=1;
@@ -264,18 +275,26 @@ sub load_object_file {
 }
 
 sub load_data_file {
-   my ($self, $filename)=@_;
+   my ($self, $filename) = @_;
    $self->cur_group->file_cache->{$filename} //= do {
       $filename = &find_data_file;
       if ($self->validate) {
-         local $Verbose::files=0;
-         my $data=load_trusted_data_file($filename);
-         my ($full_path, $copy)=full_path_and_copy($filename);
+         local $Verbose::files = 0;
+         my $data = load_trusted_data_file($filename);
+         my ($full_path, $copy) = full_path_and_copy($filename);
          User::save_data($data, $copy);
-         if (my $diff=Value::compare_and_report(load_trusted_data_file($copy), $data)) {
+         if (my $diff = Value::compare_and_report($data, load_trusted_data_file($copy))) {
             die "save & load validation of data file $full_path failed:\n", $diff;
          }
          unlink $copy;
+
+         my $str = $self->json_codec->encode(Core::Serializer::serialize($data));
+         local $Core::PropertyType::trusted_value = 0;
+         my $restored = Core::Serializer::deserialize($self->json_codec->decode($str));
+         if (my $diff = Value::compare_and_report($data, $restored)) {
+            die "serialize & deserialize loop for data from file $full_path failed:\n", $diff;
+         }
+
          $data
       } else {
          load_trusted_data_file($filename);

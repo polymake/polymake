@@ -17,29 +17,29 @@ package Polymake::polytope::LPparser;
 
 # The LPparser can be called in two ways:
 #
-# (1) LPparser($filename) 
+# (1) LPparser($filename)
 #     parses the file $filename and prepares the (arrays of) hashes @A, @P, %C, etc, detailed below
 #
 # (2) LPparser($filename, $testvec, $prefix)
 #     additionally, whenever a new constraint is read in, it is checked whether $testvec satisfies it.
 #
-#     **Precondition**: The variable names in $filename **MUST** all be of the from $prefix.$i, with $i a number. 
+#     **Precondition**: The variable names in $filename **MUST** all be of the from $prefix.$i, with $i a number.
 #
-#     The reason for this is that since the rows are read in on the fly, the total number and ordering 
+#     The reason for this is that since the rows are read in on the fly, the total number and ordering
 #     of the variables are not known at the time this test takes place. Therefore, the variable names
 #     that are read in are assumed to be directly parseable to an index in the test vector.
 
 use Polymake::Struct (
    [ new => '$;$$' ],
    [ '$LPfile' => '#1' ],       # the filename of the .lp file to be read in
-   [ '$testvec' => '#2' ],      # optionally, a reference to a test vector 
-   [ '$prefix' => '#3' ],       # optionally, a string with which all variables in the LP file are supposed to start; 
+   [ '$testvec' => '#2' ],      # optionally, a reference to a test vector
+   [ '$prefix' => '#3' ],       # optionally, a string with which all variables in the LP file are supposed to start;
                                 #   defaults to 'x'
    '$name',                     # the name of the LP
    '$ct',                       # counts how many relations have been read in
-   '@A',                        # inequalities Ax+B>=0, in the form (B, A) 
-   '@P',                        # equations Px+Q=0,     in the form (Q, P)
-   '%C',                        # objective function Cx -> min
+   '@Ineq',                     # inequalities Ax+B>=0, in the form (B, A)
+   '@Eq',                       # equations Px+Q=0,     in the form (Q, P)
+   '%Obj',                      # objective function Cx -> min
    '@L', '@U',                  # variable bounds  l <= x <= u
    '@X',                        # variable index => name
    '%Xi',                       # variable name => index
@@ -75,10 +75,10 @@ sub new {
    $lp =~ /^\s*(?:subject\s+to|such\s+that|s\.?t\.?)\s+/im
       or die "no constraints found\n";
    $lp=$'; #'
-   $self->C = $self->make_vector($`, "+");    
+   $self->Obj = $self->make_vector($`, "+");
 
    my ($constraints, @optionals)=split /^(bounds?|bin|binar(?:y|ies)|gen|generals?|end)\s*$/im, $lp;
-   
+
    while ($constraints =~ /\S/) {
       $constraints =~ /[<>]\s*=?|=\s*[<>]?/
          or die "invalid constraint\n";
@@ -92,9 +92,9 @@ sub new {
       $$vecref{0} = $rhs;
 
       if ($rel=~/[<>]/) {
-         push @{$self->A}, $vecref;
+         push @{$self->Ineq}, $vecref;
       } else {
-         push @{$self->P}, $vecref;
+         push @{$self->Eq}, $vecref;
       }
       if (defined $self->testvec) {
          my $unpermuted_vecref = $self->make_vector($line, $rel=~/</ ? "-" : "+", 1, $self->prefix);
@@ -102,7 +102,7 @@ sub new {
          $self->livecheck($unpermuted_vecref, $rel, $label);
       }
    }
-   
+
    if ($optionals[0] =~ /bounds?/i) {
       my $bounds=splice @optionals, 0, 2;
       while ($bounds =~ /\S/) {
@@ -193,83 +193,61 @@ sub new {
       die "unrecognized section '$&' near the end of file\n";
    }
 
-   for (my $x=1; $x<=$#{$self->X}; $x++) {
-      if (defined $self->L->[$x] and defined $self->U->[$x] and $self->L->[$x]==$self->U->[$x]) {
+   my $dim = @{$self->X};
+   for (my $x = 1; $x < $dim; ++$x) {
+      my $lo = $self->L->[$x];
+      my $hi = $self->U->[$x];
+      if (defined($lo) and defined($hi) and $lo == $hi) {
          my %vec;
-         $vec{ 0} = $self->L->[$x];
+         $vec{0} = $lo if $lo != 0;
          $vec{$x} = -1;
-         push @{$self->P}, \%vec;
+         push @{$self->Eq}, \%vec;
          next;
       }
-      if (defined $self->L->[$x]) {
+      if (defined($lo)) {
          my %vec;
-         $vec{ 0} = -$self->L->[$x];
+         $vec{0} = -$lo if $lo != 0;
          $vec{$x} = 1;
-         push @{$self->A}, \%vec;
+         push @{$self->Ineq}, \%vec;
       }
-      if (defined $self->U->[$x]) {
+      if (defined($hi)) {
          my %vec;
-         $vec{ 0} = $self->U->[$x];
+         $vec{0} = $hi if $hi != 0;
          $vec{$x} = -1;
-         push @{$self->A}, \%vec;
+         push @{$self->Ineq}, \%vec;
       }
    }
 
    # don't permute the 0-th, homogeneous coordinate
-   my @xorder = sort {
-         # do some clever sorting in case we have prefixed but not padded numbers
-         my ($x,$y) = ($self->X->[$a], $self->X->[$b]);
-         if (my ($xprefix,$xnumbers) = $x =~ /(\D*)(\d+)/) {
-            if ($y =~ /(\D*)(\d+)/) {
-               return $xprefix cmp $1 || $xnumbers <=> $2;
-            }
+   my @xorder = (0, sort {
+      # do some clever sorting in case we have prefixed but not padded numbers
+      my ($x, $y) = @{$self->X}[$a, $b];
+      if (my ($xprefix, $xnumbers) = $x =~ /(\D*)(\d+)/) {
+         if ($y =~ /(\D*)(\d+)/) {
+            return $xprefix cmp $1 || $xnumbers <=> $2;
          }
-         $x cmp $y;
-      } 1..$#{$self->X};
-   unshift @xorder, 0;
+      }
+      $x cmp $y;
+   } 1..$dim-1);
 
-   my @invxorder = (0);
-   my $n = scalar @xorder - 1;
-   $invxorder[$n] = 0; # reserve memory for @invxorder up front to prevent repeated reallocation
-   foreach (0..$n) {
+   my @invxorder;
+   $#invxorder = $dim-1;  # reserve memory for @invxorder up front to prevent repeated reallocation
+   foreach (0..$dim-1) {
        $invxorder[$xorder[$_]] = $_;
    }
 
-   foreach my $line (@{$self->A}, @{$self->P}) {
-      my %permline = ();
-      foreach (keys %{$line}) {
-         $permline{$invxorder[$_]} = $line->{$_};
+   foreach my $line (@{$self->Ineq}, @{$self->Eq}, $self->Obj) {
+      my %permline;
+      while (my ($x, $coeff) = each %$line) {
+         $permline{$invxorder[$x]} = $coeff;
       }
-      %{$line} = %permline;
+      $line = \%permline;
    }
-
-   # more perl-fu could integrate this loop into the previous one
-   my %permC = ();
-   while (my ($k,$v) = each %{$self->C}) {
-      $permC{$invxorder[$k]} = $v;
-   }
-   $self->C = \%permC;
-   keys %{$self->C};  # reset the iterator, just in case
-   $self->C->{0} = 0;
+   delete $self->Obj->{0};
 
    @{$self->X}=@{$self->X}[@xorder];
    @{$self->Int}=@{$self->Int}[@xorder] if @{$self->Int};
    $self;
-}
-
-sub Ineq {
-   my $self=shift;
-   @{$self->A}
-}
-
-sub Eq {
-   my $self=shift;
-   @{$self->P}
-}
-
-sub Obj {
-   my $self=shift;
-   $self->C
 }
 
 sub parse_number {              # "line", positive_sign => "advanced line", number
@@ -305,7 +283,7 @@ sub parse_name ($;$$) {                # "line" => index or undef
          $self->varindex($name)             # if we don't ask for the "unpermuted" version, give back the index in the hash
       } else {
          if ($name =~ /^$prefix(\d+)/) {    # else, the $name is supposed to be of the form $prefix.$i, and we give back $i
-            $1                         
+            $1
          } else {
             die "illegal name '$name' for prefix '$prefix'";
          }
@@ -321,20 +299,20 @@ sub make_vector($$$;$$) {   # "linear expression", positive_sign => (coefficient
                             # where we assume $prefix=='x'
    my %vec;
    my ($self, $line, $positive, $unpermuted, $prefix)=@_;
-   my $iline=$line;
+   my $iline = $line;
    my ($coef, $i);
 
-   $line =~ s/^.*://;           # remove a possible label
+   $line =~ s/^.*://;     # remove a possible label
    if ($line eq " ") {    # trivial inequality
       $vec{0} = 1;
       return \%vec;
    }
    while ($line) {
-      $coef=parse_number($line, $positive);
+      $coef = parse_number($line, $positive);
       $coef.="1" if $coef eq "" or $coef eq "-";
-      $i=$self->parse_name($line, $unpermuted, $prefix);
+      $i = $self->parse_name($line, $unpermuted, $prefix);
       die "$0: invalid expression in input line '$iline'" unless defined $i;
-      $vec{$i}=$coef;         
+      $vec{$i} = $coef;
    }
    \%vec
 }

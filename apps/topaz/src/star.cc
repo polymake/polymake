@@ -61,7 +61,7 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# Produce the __star__ of the //face// of the //complex//.\n"
                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @param SimplicialComplex complex"
-                  "# @param Set<int> face"
+                  "# @param Set<Int> face"
                   "# @return SimplicialComplex",
                   &stars, "star(SimplicialComplex $ { no_labels => 0 })");
 

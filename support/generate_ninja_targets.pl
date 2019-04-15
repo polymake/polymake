@@ -563,22 +563,26 @@ stubapps_link=\${builddir}/lib/callable/$stubapps_link
       $out_dir='${builddir}/lib/${perlxpath}';
       my $mode_flags=$Config::Config{optimize} =~ /-O[1-9]/ ? "" : "  CmodeFLAGS=\${CDebugFLAGS}\n";
 
-      my @perl_cc=glob("$root/lib/core/src/perl/*.cc");
-      my @perl_xxs=glob("$root/lib/core/src/perl/*.xxs");
+      my @perl_cc = glob("$root/lib/core/src/perl/*.cc");
+      my @perl_xxs = glob("$root/lib/core/src/perl/*.xxs");
       push @all_source_files, @perl_cc, @perl_xxs;
       my @cc_from_xxs=map { "\${buildroot}/\${perlxpath}/".basename($_,"xxs").".cc" } @perl_xxs;
 
       foreach my $src_file (@cc_from_xxs) {
-         my $xxs_file=shift(@perl_xxs);
-         $xxs_file =~ s/^\Q$root\E/$srcrootname/;
-         print "build $src_file : xxs_to_cc $xxs_file\n";
+         my $xxs_file = shift(@perl_xxs);
+         my $xxs_file_in_rules = $xxs_file =~ s/^\Q$root\E/$srcrootname/r;
+         print "build $src_file : xxs_to_cc $xxs_file_in_rules\n";
+         if (-f (my $typemap = $xxs_file =~ s/\.xxs$/.typemap/r)) {
+            $typemap =~ s/^\Q$root\E/$srcrootname/;
+            print "  XSextraTYPEMAPS = -typemap $typemap\n";
+         }
       }
       print "\n";
 
       my %glue_custom_flags=read_custom_script("$root/lib/core/src/perl/build_flags.pl");
 
       foreach my $src_file (@perl_cc, @cc_from_xxs) {
-         my ($src_name, $obj_file)=basename($src_file, "cc");
+         my ($src_name, $obj_file) = basename($src_file, "cc");
          $src_file =~ s/^\Q$root\E/$srcrootname/;
          $obj_file="$out_dir/$obj_file.o";
          push @corelib_objects, $obj_file;

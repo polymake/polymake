@@ -1043,12 +1043,8 @@ sub process_property_type {
                : "new_generic Polymake::Core::PropertyParamedType('$type_name', __PACKAGE__, application::self(), [$n_defaults, qw(@param_names)], @super_abstract)") .
               ($cpp_binding &&
                ", template_params=>" . ($tparams ne "*" ? scalar(@param_names) : "'*'") . ",$cpp_opts)") .
-              "; }\n";
-
-         if ($tparams ne "*") {
-            push @{$self->buffer},
-               "sub self { &Core::check_object_pkg; &typeof_gen }\n";
-         }
+              "; }\n",
+              "sub self { &Core::check_object_pkg; &typeof_gen }\n";
 
          my $super_arg= @super_instance
                         ? "do { local \$Polymake::Core::PropertyType::nested_instantiation=1; @super_instance }"
@@ -2638,9 +2634,9 @@ sub related { [ ] }
 my $impl;
 declare ($core, $gather);
 sub redefine {
-   $gather=defined($impl=$_[1] // caller)
+   $gather=defined($impl = $_[1] // caller)
      and
-   $core //= $impl->new(undef, "");
+   $core //= $impl->new(undef, "core");
 }
 
 sub new {

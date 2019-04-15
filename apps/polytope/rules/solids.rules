@@ -86,12 +86,11 @@ user_function archimedean_solid(String){
 	if ($name eq "truncated_octahedron"){ return truncated_octahedron(); }
 	if ($name eq "snub_cube"){
 		# coordinates from wikipedia
-		my @a = all_permutations(3);
 		my $M = new Matrix(0,3);
 		my $t = (1 + (19-3*sqrt(33))**(1/3.) + (19+3*sqrt(33))**(1/3.))/3; #FIXME: #830 - cube root in tribonacci constant is inexact
 		my $N_even = new Matrix([[-1,1/$t,$t],[1,-1/$t,$t],[1,1/$t,-$t],[-1,-1/$t,-$t]]);
 		my $N_odd = new Matrix([[-1,-1/$t,$t],[1,-1/$t,-$t],[-1,1/$t,-$t],[1,1/$t,$t]]);
-		foreach(@a){
+		foreach (@{all_permutations(3)}) {
 			my $P = permutation_matrix($_);
 			if(permutation_sign($_)==1){
 				$M = $M / ($N_even * $P);
@@ -148,8 +147,7 @@ user_function archimedean_solid(String){
 			[(-$a/$phi+$b*$phi-1),-($a-$b/$phi-$phi),($a*$phi+$b+1/$phi)],
 			[(-$a/$phi+$b*$phi-1),($a-$b/$phi-$phi),-($a*$phi+$b+1/$phi)]
 		]);
-		my @a = all_permutations(3);
-		foreach(@a){
+		foreach (@{all_permutations(3)}) {
 			my $P = permutation_matrix($_);
 			if(permutation_sign($_)==1){
 				$M = $M / ($N * $P);

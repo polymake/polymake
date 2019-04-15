@@ -1,7 +1,7 @@
 # This is a bundled extension for libnormaliz.
 
 CREDIT
-  Normaliz is a tool for computations in affine monoids, vector configurations, lattice polytopes, and rational cones.
+  [[wiki:external_software#Normaliz]] is a tool for computations in affine monoids, vector configurations, lattice polytopes, and rational cones.
   Copyright by Winfried Bruns, Bogdan Ichim, Christof Soeger.
   http://www.math.uos.de/normaliz/
 

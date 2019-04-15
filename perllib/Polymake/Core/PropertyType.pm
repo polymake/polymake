@@ -29,6 +29,8 @@ sub isa_fallback : method { UNIVERSAL::isa($_[1], $_[0]->pkg) }
 sub coherent_type_fallback { undef }
 sub parse_fallback : method { croak( "no string parsing routine defined for class ", $_[0]->full_name ) }
 sub toString_fallback { "$_[0]" }
+sub serialize_fallback { $_[0] }
+sub deserialize_meth : method { $_[0]->construct->($_[1]) }
 
 sub init_fallback { }
 sub performs_deduction { 0 }
@@ -56,6 +58,9 @@ use Polymake::Struct (
    [ '&toXML' => '->super' ],                                      # object, XMLwriter, opt. attributes =>
    [ '&toXMLschema' => 'undef || \&Polymake::Core::XMLwriter::type_toXMLschema' ],          # XMLwriter, opt. attributes =>
    [ '&XMLdatatype' => '->super' ],                                # => "string" referring to a XML Schema datatype or a pattern
+   [ '&serialize' => '->super || \&serialize_fallback' ],          # object, { options } => ( value, { attrs } ) or nothing
+   [ '&deserialize' => '->super || \&deserialize_meth' ],
+   [ '&JSONschema' => 'undef' ],                                   # TODO
    [ '$construct_node' => 'undef' ],                               # Overload::Node
    [ '&construct' => '\&construct_object' ],                       # args ... => object
    [ '&parse' => '->super || \&parse_fallback' ],                  # "string" => object
@@ -68,7 +73,7 @@ use Polymake::Struct (
    [ '$help' => 'undef' ],              # InteractiveHelp (in interactive mode, when comments are supplied for user methods)
 );
 
-declare @override_methods=qw( canonical equal isa coherent_type parse toString XMLdatatype init );
+declare @override_methods=qw( canonical equal isa coherent_type serialize parse toString XMLdatatype init );
 
 ####################################################################################
 #
@@ -221,8 +226,14 @@ sub add_upgrade_relations {
 #################################################################################
 # produce a name sufficient for reconstruction from a data file
 sub qualified_name {
-   my ($self, $in_app)=@_;
-   (not(defined($in_app) and $in_app==$self->application || $in_app->imported->{$self->application->name}) && $self->application->name . "::") . $self->name
+   my ($self, $in_app) = @_;
+   (not(defined($in_app) and $in_app == $self->application || $in_app->imported->{$self->application->name}) && $self->application->name . "::") .
+   $self->name
+}
+
+sub required_extensions {
+   my ($self, $include_bundled) = @_;
+   defined($self->extension) && ($include_bundled >= $self->extension->is_bundled) ? ($self->extension) : ()
 }
 #################################################################################
 sub locate_own_help_topic {
@@ -245,7 +256,7 @@ sub locate_own_help_topic {
 }
 
 sub help_topic {
-   my $self=shift;
+   my $self = shift;
    $self->help // locate_own_help_topic($self, "property_types", @_);
 }
 #################################################################################
@@ -444,9 +455,14 @@ sub xml_name {
 
 # produce a name sufficient for reconstruction from a data file
 sub qualified_name {
-   my ($self, $in_app)=@_;
+   my ($self, $in_app) = @_;
    $in_app //= $self->application;
    &PropertyType::qualified_name . "<" . join(", ", map { $_->qualified_name($in_app) } @{$self->params}) . ">"
+}
+
+sub required_extensions {
+   my ($self, $include_bundled) = @_;
+   map { PropertyType::required_extensions($_, $include_bundled) } $self, @{$self->params}
 }
 #################################################################################
 # Update the list of independent extensions in $_[0].

@@ -150,7 +150,7 @@ UserFunctionTemplate4perl("# @category Symmetry"
                           "# @param MatrixActionOnVectors<Scalar> action the action of the group"
                           "# @param Matrix<Scalar> e the element to be acted upon"
                           "# @tparam Scalar E the underlying number type"
-                          "# @return Set<Matrix<Element>> S a set containing the conjugacy class of the element",
+                          "# @return Set<Matrix<Scalar>> S a set containing the conjugacy class of the element",
                           "conjugacy_class<Scalar>(MatrixActionOnVectors<Scalar> Matrix<Scalar>)");
       
 FunctionTemplate4perl("conjugacy_classes_and_reps<Element>(Array<Element>)");

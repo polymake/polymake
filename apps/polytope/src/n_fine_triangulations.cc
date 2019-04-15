@@ -168,7 +168,7 @@ int lower_upper_boundary(Bitset& lower, Bitset& upper, perl::Object p)
 
 //calculate the number of triangulations in the input points
 template <typename Scalar>
-Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
+Integer n_fine_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
 {
    const bool opt(options["optimization"]);
    const int n = points.rows();
@@ -369,7 +369,7 @@ Integer n_triangulations(const Matrix<Scalar>& points, perl::OptionSet options)
 
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
-                          "# Calculates the number of triangulations of a planar point configuration. This can be space intensive."
+                          "# Calculates the number of fine triangulations of a planar point configuration. This can be space intensive."
                           "# "
                           "# Victor Alvarez, Raimund Seidel:"
                           "# A Simple Aggregative Algorithm for Counting Triangulations of Planar Point Sets and Related Problems."
@@ -377,10 +377,10 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# "
                           "# @param Matrix M in the plane (homogeneous coordinates)"
                           "# @param Bool optimization defaults to 1, where 1 includes optimization and 0 excludes it"
-                          "# @return Integer number of triangulations"
-                          "# @example To print the number of possible triangulations of a square, do this:"
-                          "# > print n_triangulations(cube(2)->VERTICES);"
-                          "# | 2","n_triangulations(Matrix { optimization => 1})");
+                          "# @return Integer number of fine triangulations"
+                          "# @example To print the number of possible fine triangulations of a square, do this:"
+                          "# > print n_fine_triangulations(cube(2)->VERTICES);"
+                          "# | 2","n_fine_triangulations(Matrix { optimization => 1})");
 
 } }
 

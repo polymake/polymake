@@ -1188,15 +1188,16 @@ protected:
    template <typename Input>
    void init_multi_from_sparse(Input& src)
    {
+      const int d = dim();
       if (!src.get_option(TrustedValue<std::true_type>()) &&
-          src.lookup_dim(false) != dim())
+          src.get_dim(false) != d)
          throw std::runtime_error("multigraph input - dimension mismatch");
 
-      auto dst=this->end();
-      const int diag= Tree::symmetric ? this->hidden().get_line_index() : 0;
+      auto dst = this->end();
+      const int diag = Tree::symmetric ? this->hidden().get_line_index() : 0;
 
       while (!src.at_end()) {
-         const int index=src.index();
+         const int index = src.index(d);
          if (Tree::symmetric && index > diag) {
             src.skip_item();
             src.skip_rest();
@@ -1215,8 +1216,8 @@ protected:
           src.size() != dim())
          throw std::runtime_error("multigraph input - dimension mismatch");
 
-      auto dst=this->end();
-      const int diag= Tree::symmetric ? this->hidden().get_line_index() : 0;
+      auto dst = this->end();
+      const int diag = Tree::symmetric ? this->hidden().get_line_index() : 0;
 
       for (int i=0; !src.at_end(); ++i) {
          if (Tree::symmetric && i > diag) {
@@ -2835,15 +2836,19 @@ protected:
    template <typename Input>
    void read_with_gaps(Input& in)
    {
-      const int end=in.lookup_dim(false);
-      clear(end);
-      int n=0;
-      for (auto l=entire(out_edge_lists(*this));  !in.at_end();  ++l, ++n) {
-         const int i=in.index();
-         while (n<i) ++l, data.get()->delete_node(n++);
+      const int d = in.get_dim(false);
+      clear(d);
+      int n = 0;
+      for (auto l = entire(out_edge_lists(*this));  !in.at_end();  ++l, ++n) {
+         const int i = in.index(d);
+         while (n < i) {
+            ++l;
+            data.get()->delete_node(n++);
+         }
          in >> *l;
       }
-      while (n<end) data.get()->delete_node(n++);
+      while (n < d)
+         data.get()->delete_node(n++);
    }
 
    template <typename Input>
@@ -2853,7 +2858,7 @@ protected:
          read_with_gaps(in.set_option(SparseRepresentation<std::true_type>()));
       } else {
          clear(in.size());
-         for (auto l=entire(out_edge_lists(*this));  !in.at_end();  ++l)
+         for (auto l = entire(out_edge_lists(*this));  !in.at_end();  ++l)
             in >> *l;
       }
    }
@@ -2862,15 +2867,18 @@ protected:
    void copy_impl(NodeIterator src, need_merge, need_contraction, bool has_gaps)
    {
       if (has_gaps) {
-         int n=0, end=dim();
-         for (auto l=entire(out_edge_lists(*this));  !src.at_end();  ++l, ++src, ++n) {
-            const int i=src.index();
-            while (n<i) ++l, data.get()->delete_node(n++);
+         int n = 0, end = dim();
+         for (auto l = entire(out_edge_lists(*this));  !src.at_end();  ++l, ++src, ++n) {
+            const int i = src.index();
+            while (n < i) {
+               ++l;
+               data.get()->delete_node(n++);
+            }
             l->init_from_edge_list(src.out_edges().begin(), need_merge(), need_contraction());
          }
          while (n<end) data.get()->delete_node(n++);
       } else {
-         for (auto l=entire(out_edge_lists(*this));  !l.at_end();  ++l, ++src)
+         for (auto l = entire(out_edge_lists(*this));  !l.at_end();  ++l, ++src)
             l->init_from_edge_list(src.out_edges().begin(), need_merge(), need_contraction());
       }
    }
@@ -2878,7 +2886,7 @@ protected:
    template <typename RowIterator, typename need_merge>
    void copy_impl(RowIterator src, need_merge)
    {
-      for (auto l=entire(out_edge_lists(*this));  !l.at_end();  ++l, ++src)
+      for (auto l = entire(out_edge_lists(*this));  !l.at_end();  ++l, ++src)
          l->init_from_set(src->begin(), need_merge());
    }
 

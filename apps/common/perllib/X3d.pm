@@ -116,9 +116,9 @@ use Polymake::Struct (
 
 sub coord_axes {
    my ($self,$x)=@_;
-   my $ahead_l = $arrowheadlength * $scale; 
-   my $ahead_r = $arrowheadwidth * $scale;
-   my $cyl_r = $lines_thickness * $scale * 0.8;
+   my $ahead_l = $arrowhead_length * $scale; 
+   my $ahead_r = $arrowhead_radius * $scale;
+   my $cyl_r = $edge_radius * $scale * 0.8;
    my $cyl_h = 4;
    my $ahead_tr = new Vector<Float>([0, ($cyl_h+$ahead_l)/2, 0]);
    my @colors = ('1 0 0','0 0 1','0 1 0');   # blenders coord axes colors
@@ -270,12 +270,12 @@ sub init {
    my $self = shift;
    my $P = $self->source;
    $self->coords = embed_3d($P->Vertices); #TODO reuse?: that sub is probably somewhere
-   my $thickness = $P->VertexThickness // 1;
+   my $thickness = $P->VertexThickness;
    my $labels = $P->VertexLabels;
-   my $style = $P->VertexStyle // 1;
+   my $style = $P->VertexStyle;
    foreach (0..scalar(@{$P->Vertices})-1) {
       my $thick = is_code($thickness) ? $thickness->($_) : $thickness;
-      my $radius = ($style =~ $Visual::hidden_re) ? 0 : $scale * $thick * $points_thickness;
+      my $radius = ($style =~ $Visual::hidden_re) ? 0 : $scale * $point_radius * $thick;
       push @{$self->radii}, $radius;
       my $label = defined($labels) ? $labels->($_) : undef;
       push @{$self->label_widths}, $scale * ($avg_char_width * $font_size * length($label) + $text_spacing ) + $radius;
@@ -288,6 +288,31 @@ sub new {
    $self;
 }
 
+sub draw_def {
+   my ($self,$writedefto,$x)=@_;
+   my $P=$self->source;
+   
+   # NOTES ON THE BLENDER IMPORT:
+   # does not resolve prototypes properly
+   # strangely reverts the X axis...
+   
+   # quote /usr/share/blender/scripts/addons/io_scene_x3d/import_x3d.py    line 1878  ff:
+   #     # we need unflattened coord array here, while
+   #     # importmesh_readvertices uses flattened. can't cache both :(
+   #     # todo: resolve that somehow, so that vertex set can be effectively
+   #     # reused between different mesh types?
+   # end of quote
+   # thus, we can't use a coordinate def in, for example, a pointset if we want to 
+   # use it in an indexedfaceset
+   
+   $x->startTag('Shape');
+		$x->startTag($writedefto, solid => "false");
+			$x->emptyTag('Coordinate', DEF => "pointCoords", 
+			                           point => join(' ', map { Visual::print_coords($_) } @{$self->coords}));
+		$x->endTag($writedefto);
+	$x->endTag('Shape');
+}
+
 
 sub draw_point {
    my ($self,$x,$coord,$radius,$color,$label)=@_;
@@ -296,7 +321,7 @@ sub draw_point {
    #the vertex sphere
    if ($radius) {
       $x->startTag('Shape');
-         $x->startTag('Sphere', radius => $scale*$points_thickness);
+         $x->startTag('Sphere', radius => $radius);
          $x->endTag('Sphere');
          $x->startTag('Appearance');
             $x->emptyTag('Material', diffuseColor => $color);
@@ -311,53 +336,78 @@ sub draw_point {
 }
 
 sub draw_edge {
-   my ($self,$x,$edge,$cyl_r,$cyl_col,$label,$arrow_dir,$ahead_col)=@_; 
+   my ($self,$x,$edge,$cyl_r,$edge_color,$label,$arrow_dir,$ahead_col)=@_; 
    my ($f, $t) = $arrow_dir!=-1 ? @$edge : reverse @$edge;
-   my $fr = @{$self->coords}[$f];
-   my $to = @{$self->coords}[$t];
-   my $d = norm($to - $fr);
-   my $ahead_l = (!$arrow_dir) ? 0 : $arrowheadlength * $scale; 
-   my $ahead_r = $arrowheadwidth * $scale;
-   my $to_r = @{$self->radii}[$t];
-   my $fr_r = @{$self->radii}[$f];
-   my $fr_rr = sqrt(max(0,$fr_r**2-$cyl_r**2));
-   my $cyl_h = $d - $ahead_l - $fr_rr - $to_r;
-   my $maxy = ($cyl_h/2 + $to_r + $ahead_l);
-   my $q = $maxy/$d;
-   my $tr = $fr + (1-$q)*($to-$fr);
-
-   my $rot_fr = new Vector<Float>([0, $maxy, 0]);
-   my $rot_to = $q*($to-$fr);
-   my $ahead_tr = new Vector<Float>([0, ($cyl_h+$ahead_l)/2, 0]);
-   my $raxis = ($rot_fr + $rot_to)/2;
-   my $label_offset = new Vector<Float>([0,0,0]);
-   $x->startTag('Transform',  translation => Visual::print_coords($tr)); 
-      $x->startTag('Transform',  rotation=> Visual::print_coords($raxis)." ".$PI);
-	   if ($ahead_l) {
-         $x->startTag('Transform',  translation => Visual::print_coords($ahead_tr)); 
-   	      $x->startTag('Shape');
-   		      $x->startTag('Appearance');
-   			      $x->emptyTag('Material', diffuseColor => $ahead_col);
-   			   $x->endTag('Appearance');
-   			   $x->emptyTag('Cone', bottomRadius => $ahead_r,
-   			                  		height => $ahead_l);
-   		   $x->endTag('Shape');
-   	   $x->endTag('Transform');
-      }
-            $x->startTag('Shape');
-   	      $x->startTag('Appearance');
-   			   $x->emptyTag('Material', diffuseColor => $cyl_col);
-   			$x->endTag('Appearance');
-   			$x->emptyTag('Cylinder',   radius => $cyl_r,
-   			                  		   height => $cyl_h);
-   		$x->endTag('Shape');
-   	$x->endTag('Transform');
+	
+	my $ahead_l = (!$arrow_dir) ? 0 : $arrowhead_length * $scale; 
+	my $ahead_r = $arrowhead_radius * $scale;
    
-   if (defined($label) && $label!~/^\s*$/) {
-      $self->draw_label($x,$label,$label_offset,'0 0 0');
-   }
+   if ($ahead_l || !$use_lines || defined($label)) {
+		my $fr = @{$self->coords}[$f];
+		my $to = @{$self->coords}[$t];
+		my $to_r = @{$self->radii}[$t];
+		my $fr_r = @{$self->radii}[$f];
+		my $to_offset = $ahead_l ? $to_r : sqrt(max(0,$to_r**2-$cyl_r**2));
+		my $fr_offset = sqrt(max(0,$fr_r**2-$cyl_r**2));
+	
+		my $diff = $to - $fr;
+		my $dist =  norm($diff);
+		my $length = $dist - $fr_offset - $to_offset;
+		my $cyl_h = $length - $ahead_l;
+		my $min_y = $cyl_h/2;
+		
+		my $q = ($min_y + $fr_offset)/$dist;	
+		my $translation = $fr + $q * $diff;
+	
+		my $rot_from = new Vector<Float>([0, - $min_y - $fr_offset, 0]);
+		my $rot_to = $q * (-$diff);
+		my $rot_axis = ($rot_from + $rot_to)/2;
+		my $label_offset = new Vector<Float>([0,0,0]);
+	
+		$x->startTag('Transform',  translation => Visual::print_coords($translation)); 
+			if ($ahead_l || !$use_lines) {
+				$x->startTag('Transform',  rotation=> Visual::print_coords($rot_axis)." ".$PI);
+				if ($ahead_l) {
+					my $ahead_translation = new Vector<Float>([0, ($cyl_h+$ahead_l)/2, 0]);
+					$x->startTag('Transform',  translation => Visual::print_coords($ahead_translation)); 
+						$x->startTag('Shape');
+							$x->startTag('Appearance');
+								$x->emptyTag('Material', diffuseColor => $ahead_col);
+							$x->endTag('Appearance');
+							$x->emptyTag('Cone', bottomRadius => $ahead_r,
+														height => $ahead_l);
+						$x->endTag('Shape');
+					$x->endTag('Transform');
+				}
 
-	$x->endTag('Transform');
+				if (!$use_lines) {
+						$x->startTag('Shape');
+						$x->startTag('Appearance');
+							$x->emptyTag('Material', diffuseColor => $edge_color);
+						$x->endTag('Appearance');
+						$x->emptyTag('Cylinder',   radius => $cyl_r,
+															height => $cyl_h);
+					$x->endTag('Shape');
+				}
+			}
+			$x->endTag('Transform');
+
+		if (defined($label) && $label!~/^\s*$/) {
+			$self->draw_label($x,$label,$label_offset,'0 0 0');
+		}
+		$x->endTag('Transform');
+	}	
+	if ($use_lines) {
+		$x->startTag('Shape');
+			$x->startTag('Appearance');
+				$x->emptyTag('Material', diffuseColor => $edge_color);
+			$x->endTag('Appearance');
+			$x->startTag('IndexedLineSet', coordIndex => $f." ".$t);
+				$x->emptyTag('Coordinate', USE => "pointCoords");
+			$x->endTag('IndexedLineSet');
+		$x->endTag('Shape');
+	}
+
 }
 
 sub draw_points {
@@ -394,30 +444,6 @@ package X3d::Solid;
 
 use Polymake::Struct [ '@ISA' => 'PointSet' ];
 
-sub draw_def {
-   my ($self,$x)=@_;
-   my $P=$self->source;
-   
-   # NOTES ON THE BLENDER IMPORT:
-   # does not resolve prototypes properly
-   # strangely reverts the X axis...
-   
-   # quote /usr/share/blender/scripts/addons/io_scene_x3d/import_x3d.py    line 1878  ff:
-   #     # we need unflattened coord array here, while
-   #     # importmesh_readvertices uses flattened. can't cache both :(
-   #     # todo: resolve that somehow, so that vertex set can be effectively
-   #     # reused between different mesh types?
-   # end of quote
-   # thus, we can't use a coordinate def in, for example, a pointset if we want to 
-   # use it in an indexedfaceset
-   
-   $x->startTag('Shape');
-		$x->startTag('IndexedFaceSet', solid => "false");
-			$x->emptyTag('Coordinate', DEF => "pointCoords", 
-			                           point => join(' ', map { Visual::print_coords($_) } @{$self->coords}));
-		$x->endTag('IndexedFaceSet');
-	$x->endTag('Shape');
-}
 
 sub draw_facet {
    my ($self,$x,$facet,$color,$transparency,$label)=@_;
@@ -473,7 +499,7 @@ sub draw_edges {
    my $color = $P->EdgeColor // Visual::get_RGB($Visual::Color::edges);
    $color = $color->toFloat;
 
-   my $radius = $thickness * $lines_thickness * $scale;
+   my $radius = $scale * $edge_radius * $thickness; 
    
    # there is probably a better way to get an edge iterator?
    my $G = graph::graph_from_cycles($P->Facets);
@@ -485,7 +511,10 @@ sub draw_edges {
 sub draw {
    my ($self,$x)=@_;
    $self->draw_points($x) unless $self->source->VertexStyle =~ $Visual::hidden_re;
-   $self->draw_def($x);
+   $self->draw_def('IndexedFaceSet',$x);
+   if ($use_lines) { #this is just because the blender import script limps
+   	$self->draw_def('IndexedLineSet',$x); 
+   }
    $self->draw_edges($x) unless $self->source->EdgeStyle =~ $Visual::hidden_re;
    $self->draw_facets($x) unless $self->source->FacetStyle =~ $Visual::hidden_re;
    $x;
@@ -520,7 +549,7 @@ sub draw_edges {
 
    for (my $e=$G->all_edges; $e; ++$e) {
       my $thick = (is_code($thickness)) ? $thickness->($e) : $thickness;
-      my $radius = $thick * $lines_thickness * $scale;
+      my $radius = $scale * $edge_radius * $thick;
       my $label = defined($labels) ? $labels->($e) : undef;
       next unless $radius || $label;
       my $col = $static_color // $color->($e) // Visual::get_RGB($Visual::Color::edges);
@@ -533,6 +562,9 @@ sub draw_edges {
 
 sub draw {
    my ($self,$x)=@_;
+   if ($use_lines) { 
+   	$self->draw_def('IndexedLineSet',$x); 
+   }
    $self->draw_points($x) unless $self->source->VertexStyle =~ $Visual::hidden_re;
    $self->draw_edges($x) unless $self->source->EdgeStyle =~ $Visual::hidden_re;
    $x;

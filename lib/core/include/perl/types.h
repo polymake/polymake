@@ -22,7 +22,7 @@
 namespace pm { namespace perl {
 
 using wrapper_type = SV* (*)(SV**);
-using type_reg_fn_type = SV* (*)(SV* prescribed_pkg, SV* app_stash_ref, SV* generated_by);
+using type_reg_fn_type = std::pair<SV*, SV*> (*)(SV* prescribed_pkg, SV* app_stash_ref, SV* generated_by);
 using destructor_type = void (*)(char*);
 using copy_constructor_type = void (*)(void*, const char*);
 using assignment_type = void (*)(char*, SV*, ValueFlags);
@@ -161,20 +161,20 @@ protected:
    }
 
 public:
-   static SV* get_descr(SV* known_proto=nullptr)
+   static SV* get_descr(SV* known_proto = nullptr)
    {
       return data(known_proto, nullptr, nullptr, nullptr).descr;
    }
-   static SV* get_proto(SV* known_proto=nullptr)
+   static SV* get_proto(SV* known_proto = nullptr)
    {
       return data(known_proto, nullptr, nullptr, nullptr).proto;
    }
-   static SV* get_proto_with_prescribed_pkg(SV* prescribed_pkg, SV* app_stash_ref, SV* generated_by)
+   // for ClassRegistrator
+   static std::pair<SV*, SV*> provide(SV* prescribed_pkg, SV* app_stash_ref, SV* generated_by)
    {
-      return data(nullptr, prescribed_pkg, app_stash_ref, generated_by).proto;
+      const type_infos& ti = data(nullptr, prescribed_pkg, app_stash_ref, generated_by);
+      return { ti.proto, ti.descr };
    }
-   static SV* provide() { return get_proto(); }       // for ClassRegistrator
-   static SV* provide_descr() { return get_descr(); } // for ClassRegistrator
 
    static bool magic_allowed()
    {
@@ -243,16 +243,15 @@ protected:
    {
       type_infos infos;
       assert(!known_proto);
-      infos.proto=type_cache<data_t>::get_proto();
-      infos.magic_allowed=true;
-      infos.descr=polymake::perl_bindings::Class<T>::register_it(relative_of_known_class, infos.proto, generated_by);
+      infos.proto = type_cache<data_t>::get_proto();
+      infos.magic_allowed = true;
+      infos.descr = polymake::perl_bindings::Class<T>::register_it(relative_of_known_class, infos.proto, generated_by);
       return infos;
    }
 
    static type_infos init(SV* prescribed_pkg, SV* app_stash_ref, SV* generated_by)
    {
-      assert(false);
-      return type_infos{};
+      return init(nullptr, generated_by);
    }
 };
 
@@ -268,14 +267,13 @@ protected:
       type_infos infos;
       assert(!known_proto);
       recognize(infos, recognizer_bait(), (T*)0, (T*)0);
-      infos.descr=polymake::perl_bindings::Class<T>::register_it(relative_of_known_class, infos.proto, generated_by);
+      infos.descr = polymake::perl_bindings::Class<T>::register_it(relative_of_known_class, infos.proto, generated_by);
       return infos;
    }
 
    static type_infos init(SV* prescribed_pkg, SV* app_stash_ref, SV* generated_by)
    {
-      assert(false);
-      return type_infos{};
+      return init(nullptr, generated_by);
    }
 };
 
@@ -301,8 +299,7 @@ protected:
 
    static type_infos init(SV* prescribed_pkg, SV* app_stash_ref, SV* generated_by)
    {
-      assert(false);
-      return type_infos{};
+      return init(nullptr, nullptr);
    }
 };
 

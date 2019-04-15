@@ -16,7 +16,7 @@
 INCLUDE
   global_categories.rules
 
-# @topic core/top
+# @topic core
 # You are in the interactive mode of polymake.
 #
 # You may type in any valid perl expression, it will be evaluated as soon as it is complete,
@@ -48,8 +48,8 @@ INCLUDE
 #    How to navigate in the help system.
 # help 'functions/Interactive';
 #    Other commands available in the interactive shell mode.
-# help '/';
-#    Describe the current application and list all subtopics in the help tree.
+# help 'APPLICATION_NAME';
+#    Describe the application and list all subtopics in the help tree.
 # help 'citation';
 #    How to cite polymake correctly.
 #
@@ -67,17 +67,20 @@ INCLUDE
 # @category Basic
 #
 # Called in void context sets the current application to the one given by //name//
-# (loading its rules if necessary) or by an object of type ''Polymake::Core::Application''.
+# loading its rules if necessary.
 #
 # Called in non-void context loads the application if necessary and returns the ''Application''
 # object representing it, but does not make it the current application.
 #
 # Finally, if called without arguments, just returns the current ''Application'' object,
 # which is also always available in the variable ''$application''.
-# Say ''print $application->name;'' to see its name.
+# Type ''print $application->name;'' to see its name.
 #
-# @param String name | Application app_obj
-# @example To set the graph application as current, type this:
+# To obtain the introductory help topic on an application,
+# type ''help "APPLICATION_NAME";''
+#
+# @param String name
+# @example To set the graph application as the current one, type this:
 # > application "graph";
 
 
@@ -96,10 +99,10 @@ INCLUDE
 # If the data file is in old plain ASCII format and does not contain a type declaration,
 # the default type of the current application is assumed.
 # @param String filename
-# @return Object
+# @return Core::Object
 
 
-# @topic core/functions/save (Object;$)
+# @topic core/functions/save (Core::Object;$)
 # @category Basic
 #
 # Store the given //object// in a data file.
@@ -115,7 +118,7 @@ INCLUDE
 # of the form ''ObjectType_NNN'' will be generated, where ''NNN'' is an ordinal number.
 #
 # The save operation is only performed if the boolean attribute ''object->changed'' has the true value.
-# @param Object object
+# @param Core::Object object
 # @param String filename
 
 
@@ -124,7 +127,7 @@ INCLUDE
 #
 # Read the data file created earlier by [[save_data]] and return the data object stored there.
 # @param String filename
-# @return any data object; in list context additionally returns the optional description read from in the file.
+# @return Any data object; in list context additionally returns the optional description read from in the file.
 
 
 # @topic core/functions/save_data ($$;$)
@@ -133,7 +136,7 @@ INCLUDE
 # Create an XML data file and store the given data object there, together with an optional description.
 # Only objects of complex types declared as ''property_type'' can be stored this way.
 # The filename may have the suffix ".gz" in which case the contents are compressed with gzip.
-# @param any data object
+# @param Any data object
 # @param String filename
 # @param String description
 
@@ -143,7 +146,7 @@ INCLUDE
 #
 # Generate a Relax-NG schema describing one or more `big' or `small' object types in the form as they
 # would appear when saved with commands [[save]] resp. [[save_data]].
-# @param any object ... an object whose type should be described, may be specified as a type expression as well.
+# @param Any object ... an object whose type should be described, may be specified as a type expression as well.
 #        Multiple objects or type expressions may be passed as a list.
 #        Mixing `big' and `small' object types is not allowed.
 # @param String filename  a suffix .rng is appended automatically if no suffix is given
@@ -221,7 +224,7 @@ INCLUDE
 # Set the custom variable, array, hash, or hash element to a new value and store it perpetually
 # in your personal settings file ''~/.polymake/customize.pl''
 #
-# @param any assignment : following expressions are allowed:
+# @param Any assignment : following expressions are allowed:
 #  ''$var=value;''
 #  ''@array=(values);''
 #  ''%hash=( key => value, ... );''
@@ -233,7 +236,7 @@ INCLUDE
 #
 # Reset the custom variable, array, hash, or hash element to the default value(s) as defined in the rule base
 # and store it perpetually in your personal settings file ''~/.polymake/customize.pl''
-# @param any Variable : following expressions are allowed:
+# @param Any variable : following expressions are allowed:
 #  ''$var;''
 #  ''@array;''
 #  ''%hash;''
@@ -590,10 +593,10 @@ INCLUDE
 # @param String prop : property name or a path to a property in a subobject in dotted notation,
 #                      Several properties may be removed at once.
 
-# @topic core/objects/Core::Object/methods/remove (Object+)
+# @topic core/objects/Core::Object/methods/remove (Core::Object+)
 # Remove the multiple subobject instance(s) from the object.
-# @param Object subobj : multiple subobject instance.
-#                        Several subobjects may be removed at once.
+# @param Core::Object subobj : multiple subobject instance.
+#                     Several subobjects may be removed at once.
 
 
 # @topic core/objects/Core::Object/methods/attach (String,$;String)
@@ -636,9 +639,9 @@ INCLUDE
 # @topic core/objects/Core::RuleChain/methods/list_new_properties
 # Return the names of properties computed by the rule chain.
 
-# @topic core/objects/Core::RuleChain/methods/apply (Object)
+# @topic core/objects/Core::RuleChain/methods/apply (Core::Object)
 # Apply the rule chain to an object.
-# @param Object o
+# @param Core::Object o
 
 # @topic core/functions/exit
 # @category Interactive

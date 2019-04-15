@@ -39,7 +39,7 @@ use Polymake::Struct (
    [ '$version' => 'undef' ],       # version as string
    [ '$version_num' => 'undef' ],   # version as comparable v-string
    [ '$credit' => 'undef' ],        # Credit credit note, if present in metadata
-   [ '$short_name' => '#3'],
+   [ '$short_name' => '#3' ],
    [ '$is_bundled' => 'defined(#3)' ],    # boolean
    [ '$build_dir' => 'undef' ],     # for standalone externsions: where to find architecture-dependent files (configuration, shared modules...)
    [ '$meta_tm' => 'undef' ],       # timestamp of the meta-file
@@ -82,7 +82,7 @@ sub new {
                 "NAME section is not allowed in the extension description file ", $self->dir, "/polymake.ext\n";
          }
          $short_name =~ s/^\s+//s;  $short_name =~ s/\s+$//s;
-         $self->short_name=$short_name;
+         $self->short_name = $short_name;
       }
 
       if (defined (my $requires=delete $sections{REQUIRE})) {
@@ -105,7 +105,7 @@ sub new {
          $credit =~ s/(?<=\n)(?:[ \t]*\n)*\Z//s;
          $credit =~ s/^[ \t]*/  /gm;
          if ($self->is_bundled) {
-            $self->credit=new Rule::Credit($self->short_name, $credit);
+            $self->credit = new Rule::Credit($self->short_name, $credit);
          } else {
             if (defined($self->short_name)) {
                $credit .= "\n  ".$self->URI."\n";
@@ -130,23 +130,23 @@ sub new {
 
    } elsif (-f $self->dir."/URI") {
       open my $U, $self->dir."/URI";
-      my $URI=<$U>;
+      my $URI = <$U>;
       process_URI($self, $URI);
       if (-w $self->dir) {
-         $self->untrusted=1;
+         $self->untrusted = true;
          require Polymake::Core::InteractiveCommands;
          write_initial_description($self);
       }
 
    } elsif ($self->URI eq "private:") {
-      $self->untrusted=1;
+      $self->untrusted = true;
 
    } else {
       if (defined($self->URI)) {
          die "The extension ", $self->dir, " does not have any URI while ", $self->URI, " was expected\n";
       } else {
-         $self->URI="file://".$self->dir;
-         $self->untrusted=1;
+         $self->URI = "file://".$self->dir;
+         $self->untrusted = true;
          require Polymake::Core::InteractiveCommands;
          write_initial_description($self);
       }
@@ -157,13 +157,13 @@ sub new {
 
 # private:
 sub process_URI {
-   my ($self, $URI)=@_;
+   my ($self, $URI) = @_;
    chomp $URI;
    if ($URI =~ s/\#([\d.]+)$//) {
-      $self->version=$1;
-      $self->version_num=eval "v$1";
+      $self->version = $1;
+      $self->version_num = eval "v$1";
    }
-   $self->URI=$URI;
+   $self->URI = $URI;
    delete $refused{$URI};
 }
 ######################################################################################
@@ -174,27 +174,27 @@ sub init {
    {
       # extensions are ordered by inter-dependencies, prerequisites coming first
       foreach my $name (@BundledExts) {
-         my $ext=new(__PACKAGE__, "$InstallTop/bundled/$name", "bundled:$name", $name);
+         my $ext = new(__PACKAGE__, "$InstallTop/bundled/$name", "bundled:$name", $name);
          if ($DeveloperMode && $ext->meta_tm > $ConfigTime) {
             warn_print("meta-file of bundled extension $name has been changed since last configuration;\nPerforming automatic reconfiguration, please be patient...\n");
-            my $build_opt= $ENV{POLYMAKE_BUILD_ROOT} && "--build $ENV{POLYMAKE_BUILD_ROOT}";
-            my $config_log=`cd $InstallTop; $^X support/configure.pl $build_opt 2>&1`;
+            my $build_opt = $ENV{POLYMAKE_BUILD_ROOT} && "--build $ENV{POLYMAKE_BUILD_ROOT}";
+            my $config_log = `cd $InstallTop; $^X support/configure.pl $build_opt 2>&1`;
             if ($?) {
                die "Automatic reconfiguration failed, the complete log including the error diagnostics is shown below.\n",
                   "Please investigate the reasons and rerun the configure script manually, possibly with different options.\n\n",
                   $config_log;
             }
-            my %ConfigFlags=load_config_file("$InstallArch/config.ninja", $InstallTop);
-            $ConfigTime=(stat "$InstallArch/config.ninja")[9];
-            @BundledExts=$ConfigFlags{BundledExts} =~ /(\S+)/g;
-            @active=();
+            my %ConfigFlags = load_config_file("$InstallArch/config.ninja", $InstallTop);
+            $ConfigTime = (stat "$InstallArch/config.ninja")[9];
+            @BundledExts = $ConfigFlags{BundledExts} =~ /(\S+)/g;
+            @active = ();
             redo LOAD;
          }
-         $registered_by_URI{$_}=$ext for $ext->URI, @{$ext->replaces};
-         $registered_by_dir{$ext->dir}=$ext;
-         $ext->configured_at=max($ConfigTime, $Application::configured_at);
+         $registered_by_URI{$_} = $ext for $ext->URI, @{$ext->replaces};
+         $registered_by_dir{$ext->dir} = $ext;
+         $ext->configured_at = max($ConfigTime, $Application::configured_at);
          my @bad;
-         my @prereqs=map { $registered_by_URI{$_} // do { push @bad, $_; () } } @{$ext->requires};
+         my @prereqs = map { $registered_by_URI{$_} // do { push @bad, $_; () } } @{$ext->requires};
          if (@bad) {
             die "Corrupted configuration of bundled extensions: prerequisites @bad appear after the dependent extension $name or are disabled.\n",
                 "Please investigate and re-run the configure script.\n";
@@ -202,30 +202,30 @@ sub init {
          push @prereqs, grep { defined } map { $registered_by_URI{$_} } @{$ext->requires_opt};
          @{$ext->requires}=uniq(map { ($_, @{$_->requires}) } @prereqs) if @prereqs;
          push @active, $ext;
-         $ext->is_active=1;
+         $ext->is_active = true;
       }
    }
 
    # register the inactive bundled extensions in order to recognize them as prerequisites of other extensions and rulefiles
    foreach my $bundled_dir (glob("$InstallTop/bundled/*")) {
       unless (exists $registered_by_dir{$bundled_dir}) {
-         my ($name)=$bundled_dir =~ $filename_re;
-         my $ext=new(__PACKAGE__, $bundled_dir, "bundled:$name", 1);
-         $registered_by_URI{$ext->URI}=$ext;
+         my ($name) = $bundled_dir =~ $filename_re;
+         my $ext = new(__PACKAGE__, $bundled_dir, "bundled:$name", $name);
+         $registered_by_URI{$ext->URI} = $ext;
       }
    }
 
-   $num_bundled=@active;
+   $num_bundled = @active;
 
    # perform dependency checks on standalone extensions
-   my @pending=map { new(__PACKAGE__, $_) } @User::extensions;
+   my @pending = map { new(__PACKAGE__, $_) } @User::extensions;
    my ($list_updated, @survived, %failed);
 
-   my $rounds=0;
+   my $rounds = 0;
    while (@pending) {
       my @next_round;
       foreach my $ext (@pending) {
-         if (defined (my $other=$registered_by_URI{$ext->URI})) {
+         if (defined(my $other = $registered_by_URI{$ext->URI})) {
             if ($other->URI eq $ext->URI) {
                warn_print( "Extensions ", $other->dir, " and ", $ext->dir, " have identical URI: ", $ext->URI, <<'.' );
 
@@ -240,14 +240,14 @@ and assign distinct URIs.
                            "The first one is therefore removed from your settings.\n",
                            "If this is in error, revise the REPLACE sections in the extension description files" );
             }
-            $list_updated=1;
+            $list_updated = true;
             next;
          }
 
-         my $conflicting=$conflicts{$ext->URI};
+         my $conflicting = $conflicts{$ext->URI};
          unless ($conflicting) {
             foreach (@{$ext->conflicts}) {
-               $conflicting=$registered_by_URI{$_} and last;
+               $conflicting = $registered_by_URI{$_} and last;
             }
          }
          if ($conflicting) {
@@ -256,25 +256,26 @@ and assign distinct URIs.
                         "The first one is therefore removed from your settings.\n",
                         "If this is in error, revise the CONFLICT sections in the extension description files" );
 
-            $failed{$_}="conflicts with other extensions" for $ext->URI, @{$ext->replaces};
-            $list_updated=1;
+            $failed{$_} = "conflicts with other extensions" for $ext->URI, @{$ext->replaces};
+            $list_updated = true;
             next;
          }
 
          my @prereqs;
-         my $satisfied=1;
+         my $satisfied = true;
          for (@{$ext->requires}) {
-            my $prereq_version= s/\#([\d.]+)$// && $1;
-            if (defined (my $prereq=$registered_by_URI{$_})) {
+            my $prereq_version = s/\#([\d.]+)$// && $1;
+            if (defined(my $prereq = $registered_by_URI{$_})) {
                if (length($prereq_version)) {
                   if ($prereq->is_bundled) {
                      warn_print( "Extension ", $ext->URI, " installed at ", $ext->dir, "\n",
                                  "imposes a forbidden version requirement on a bundled extension ", $prereq->dir, "\n",
                                  "Please revise the REQUIRE section in the description file ", $ext->dir."/polymake.ext\n",
                                  "and re-import the extension.\n" );
-                     $failed{$_}="wrong dependencies" for $ext->URI, @{$ext->replaces};
-                     $list_updated=1;
-                     $satisfied=0;  last;
+                     $failed{$_} = "wrong dependencies" for $ext->URI, @{$ext->replaces};
+                     $list_updated = true;
+                     $satisfied = false;
+                     last;
 
                   } elsif ($prereq->URI ne $_) {
                      warn_print( "Extension ", $ext->URI, " installed at ", $ext->dir, "\n",
@@ -296,35 +297,38 @@ and assign distinct URIs.
                                  "If this is in error, revise the REQUIRE section in the extension description file\n",
                                  "or try to upgrade the second one to a newer version if available and then re-import the first one" );
 
-                     $failed{$_}="unsatisfied versioned dependencies" for $ext->URI, @{$ext->replaces};
-                     $list_updated=1;
-                     $satisfied=0;  last;
+                     $failed{$_} = "unsatisfied versioned dependencies" for $ext->URI, @{$ext->replaces};
+                     $list_updated = true;
+                     $satisfied = false;
+                     last;
                   }
                }
                push @prereqs, $prereq, @{$prereq->requires};
 
-            } elsif (defined (my $reason=$failed{$_})) {
+            } elsif (defined(my $reason = $failed{$_})) {
                warn_print( "Extension ", $ext->URI, " installed at ", $ext->dir, "\n",
                            "depends on another extension $_ which could not be loaded due to $reason.\n",
                            "More details have been reported in the log above.\n",
                            "Re-import this extension when you have fixed the problem in the first place" );
 
-               $failed{$_}="unsatisfied dependencies" for $ext->URI, @{$ext->replaces};
-               $list_updated=1;
-               $satisfied=0;  last;
+               $failed{$_} = "unsatisfied dependencies" for $ext->URI, @{$ext->replaces};
+               $list_updated = true;
+               $satisfied = false;
+               last;
 
             } else {
                push @next_round, $ext;
-               $satisfied=0;  last;
+               $satisfied = false;
+               last;
             }
          }
          next unless $satisfied;
 
-         $registered_by_dir{$ext->dir}=$ext;
-         $registered_by_URI{$ext->URI}=$ext;
+         $registered_by_dir{$ext->dir} = $ext;
+         $registered_by_URI{$ext->URI} = $ext;
          my @old_replaces;
          foreach (@{$ext->replaces}) {
-            if (defined (my $other=$registered_by_URI{$_})) {
+            if (defined(my $other = $registered_by_URI{$_})) {
                if ($other->URI eq $_) {
                   warn_print( "Extension $_ installed at ", $other->dir, "\n",
                               "is declared as replaced by extension ", $ext->URI, " installed at ", $ext->dir, "\n",
@@ -335,13 +339,13 @@ and assign distinct URIs.
                   push @old_replaces, @{$other->replaces};
                   delete @registered_by_URI{@{$other->replaces}};
                   delete_from_list(\@survived, $other);
-                  $list_updated=1;
+                  $list_updated = true;
                }
             }
-            $registered_by_URI{$_}=$ext;
+            $registered_by_URI{$_} = $ext;
          }
 
-         if (my @forgotten_replaces=grep { !exists $registered_by_URI{$_} } @old_replaces) {
+         if (my @forgotten_replaces = grep { !exists $registered_by_URI{$_} } @old_replaces) {
             warn_print( "Extension(s) phased out as announced above provided additional compatibility URIs\n",
                         "which do not occur any more in the current extension ", $ext->dir, "\n",
                         (map { "  $_\n" } @forgotten_replaces),
@@ -351,8 +355,8 @@ and assign distinct URIs.
                         "or consider upgrading dependent extensions to newer versions, if available." );
          }
 
-         $conflicts{$_}=$ext for @{$ext->conflicts};
-         @{$ext->requires}=uniq(@prereqs) if @prereqs;
+         $conflicts{$_} = $ext for @{$ext->conflicts};
+         @{$ext->requires} = uniq(@prereqs) if @prereqs;
          push @survived, $ext;
       }
       last if @next_round == @pending;
@@ -360,15 +364,15 @@ and assign distinct URIs.
          warn_print( "Extension order in your settings \@User::extensions is incompatible with the inter-dependencies\n",
                      "between the extensions, they will be automatically reordered.\n",
                      "Please revise the results in $PrivateDir/prefer.pl after finishing the running polymake session." );
-         $list_updated=1;
+         $list_updated = true;
       }
-      @pending=@next_round;
+      @pending = @next_round;
    }
 
    if (@pending) {
-      my %would_provide=map { ($_ => 1) } map { $_->URI, @{$_->replaces} } @pending;
+      my %would_provide = map { ($_ => true) } map { $_->URI, @{$_->replaces} } @pending;
       foreach my $ext (@pending) {
-         if (my @unknown=grep { !$would_provide{$_} } @{$ext->requires}) {
+         if (my @unknown = grep { !$would_provide{$_} } @{$ext->requires}) {
             warn_print( "Extension ", $ext->URI, " installed at ", $ext->dir, "\n",
                         "has unresolved prerequisite(s)\n",
                         ( map { "  $_\n" } @unknown ),
@@ -385,11 +389,11 @@ and assign distinct URIs.
                         "and re-import the needed extensions in proper order induced by justified dependencies.\n" );
          }
       }
-      $list_updated=1;
+      $list_updated = true;
    }
 
    if ($list_updated) {
-      @User::extensions=grep { exists $registered_by_dir{$_} } @User::extensions;
+      @User::extensions = grep { exists $registered_by_dir{$_} } @User::extensions;
       $Prefs->custom->set('@extensions');
    }
 
@@ -409,7 +413,8 @@ and assign distinct URIs.
                               "which has been disabled for the current architecture $Arch\n",
                               "because of failed build configuration or further dependencies.\n" );
                }
-               $ext->is_active=0;  last;
+               $ext->is_active = false;
+               last;
             }
          }
          unless ($ext->is_active &&= $ext->configure) {
@@ -434,16 +439,16 @@ and assign distinct URIs.
 }
 #######################################################################################
 sub configure {
-   my ($self, @options)=@_;
-   my $ext_dir=$self->dir;
-   my $ext_build_dir=$ext_dir;
+   my ($self, @options) = @_;
+   my $ext_dir = $self->dir;
+   my $ext_build_dir = $ext_dir;
 
    if ($ext_build_dir =~ s{^\Q${InstallTop}\E(?=/ext/)}{$InstallArch}o) {
-      $self->build_dir=$ext_build_dir;
+      $self->build_dir = $ext_build_dir;
       if (@options == 1 && $options[0] eq "--help") {
          warn_print( "Extension $ext_dir is already built and installed, it does not need any further configuration." );
       } elsif (-f "$ext_build_dir/config.ninja") {
-         $self->configured_at=max((stat _)[9], $Application::configured_at);
+         $self->configured_at = max((stat _)[9], $Application::configured_at);
          @options and warn_print( "Extension $ext_dir is already built and installed, ignoring configuration options @options." );
          1
       } else {
@@ -459,8 +464,8 @@ For the meanwhile, the extension will stay disabled for architecture $Arch.
       set_build_dir($self);
       unless (@options) {
          if (-f (my $build_file=$self->build_dir."/build.ninja")) {
-            my $conf_tm=(stat _)[9];
-            $self->configured_at=max($conf_tm, $Application::configured_at);
+            my $conf_tm = (stat _)[9];
+            $self->configured_at = max($conf_tm, $Application::configured_at);
             if ($conf_tm >= $self->meta_tm and open my $bf, $build_file) {
                local $_;
                while (<$bf>) {
@@ -488,21 +493,21 @@ For the meanwhile, the extension will stay disabled for architecture $Arch.
 }
 
 sub set_build_dir {
-   my ($self)=@_;
+   my ($self) = @_;
    # workspace polymake and workspace extension should use the same build directory names
    if ($InstallArch =~ m{/build(?:\.[^/]+)?/\w+$}) {
-      $self->build_dir=$self->dir.$&;
+      $self->build_dir = $self->dir.$&;
    } else {
-      $self->build_dir=$self->dir."/build/".($ENV{POLYMAKE_BUILD_MODE} || "Opt");
+      $self->build_dir = $self->dir."/build/".($ENV{POLYMAKE_BUILD_MODE} || "Opt");
    }
 }
 ########################################################################################
 sub lookup {
-   (undef, my $what)=@_;
+   (undef, my $what) = @_;
    my $by_dir;
    unless ($what =~ s{^($id_re)$}{bundled:$1}o) {
       replace_special_paths($what);
-      $by_dir=-d $what and $what=Cwd::abs_path($what);
+      $by_dir = -d $what and $what = Cwd::abs_path($what);
    }
    if ($by_dir) {
       $registered_by_dir{$what} || croak( "Extension at location $what is not registered" )
@@ -514,7 +519,7 @@ sub lookup {
 sub app_dir { $_[0]->dir."/apps/".$_[1]->name }
 
 sub versioned_URI {
-   my $self=shift;
+   my $self = shift;
    $self->URI . (defined($self->version) && "#".$self->version)
 }
 #####################################################################################
@@ -526,10 +531,10 @@ sub versioned_URI {
 # Throws an exception if $mandatory and no Extension loaded.
 
 sub provide {
-   my ($pkg, $URI, $mandatory)=@_;
-   if (defined (my $ext=$registered_by_URI{$URI})) {
+   my ($pkg, $URI, $mandatory) = @_;
+   if (defined (my $ext = $registered_by_URI{$URI})) {
       if ($ext->is_active) {
-         $ext;
+         $ext
       } elsif ($mandatory) {
          die "Extension $URI is not configured for the current architecture $Arch.\n",
              "Activate it by polymake shell command\n",
@@ -541,7 +546,7 @@ sub provide {
                      "If you need them, activate the extension by polymake shell command\n",
                      "  reconfigure_extension(\"$URI\");\n",
                      "then reload the object from the file backup copy." );
-         undef;
+         undef
       }
 
    } elsif ($URI =~ m|^file://| and -d (my $ext_dir=$')) {
@@ -556,7 +561,7 @@ sub provide {
                         "import the extension with polymake shell commmand\n",
                         "  import_extension(\"$ext_dir\");\n",
                         "then reload the object from the file backup copy." );
-            undef;
+            undef
          }
       }
 
@@ -566,31 +571,31 @@ sub provide {
       } else {
          warn_print( "Extension $URI is not known.\n",
                      "The properties defined in this extension will be missing in your object.\n" );
-         undef;
+         undef
       }
 
-   } elsif (!exists $refused{$URI} && defined ($ext=&locate_unknown)) {
-      $ext;
+   } elsif (!exists $refused{$URI} && defined ($ext = &locate_unknown)) {
+      $ext
 
    } elsif ($refused{$URI} eq "ignore") {
-      0;
+      0
 
    } elsif ($refused{$URI} eq "stop" || $mandatory) {
       die "Extension $URI is required for loading the data.\n";
 
    } else {
-      undef;
+      undef
    }
 }
 #####################################################################################
 # private:
 sub activate {
-   my ($self)=@_;
-   local $Application::extension=$self;
-   $self->is_active=1;
+   my ($self) = @_;
+   local $Application::extension = $self;
+   $self->is_active = true;
    foreach my $app_dir (glob($self->dir."/apps/*")) {
       $app_dir =~ $filename_re;
-      if (defined (my $app=lookup Application($1))) {
+      if (defined (my $app = lookup Application($1))) {
          $app->load_extension($app_dir);
       }
    }
@@ -598,11 +603,11 @@ sub activate {
 }
 #####################################################################################
 sub get_source_tree {
-   my ($self)=@_;
+   my ($self) = @_;
    if ($self->untrusted) {
       require Polymake::SourceTree;
       new SourceTree($self->is_bundled ? $InstallTop : $self->dir);
-   } elsif ($self->is_bundled || index($self->dir, "$InstallTop/ext/")==0) {
+   } elsif ($self->is_bundled || index($self->dir, "$InstallTop/ext/") == 0) {
       die "Can't modify an installed bundled extension\n";
    } else {
       die "You don't have permission to create or change files in ", $self->dir, "\n";
@@ -610,7 +615,7 @@ sub get_source_tree {
 }
 ###############################################################################################
 sub list_prerequisite_extensions {
-   my ($self)=@_;
+   my ($self) = @_;
    join(" ", map { $_->is_bundled ? $_->short_name : $_->dir } @{$self->requires});
 }
 #####################################################################################
@@ -621,13 +626,13 @@ use Polymake::Struct (
 );
 
 sub display {
-   my ($self)=@_;
+   my ($self) = @_;
    dbg_print( "used extension ", $self->product, "\n", $self->text, "\n" );
-   $self->shown=1;
+   $self->shown = 1;
 }
 
 sub toFileString {
-   my ($self)=@_;
+   my ($self) = @_;
    $self->file_string //= do {
       my ($copyright)= $self->text =~ /(copyright\b.*)/im;
       (defined($copyright) ? "\n$copyright\n" : $self->text) . $self->product . "\n"

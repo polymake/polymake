@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "scip_milp_client.cc",
+ "inst": [
+  {"args": ["Rational"], "func": "scip_interface::create_MILP_solver", "include": ["polymake/Rational.h"], "sig": "create_MILP_solver#scip.milp:T1", "tp": "1"},
+ null ],
+"version": 3}

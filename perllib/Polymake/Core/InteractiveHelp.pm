@@ -37,18 +37,18 @@ use Polymake::Struct (
 );
 
 # between several entries with the same topic path
-declare $separator="-----\n";
+declare $separator = "-----\n";
 
 # Global flag whether the point of definition of every help topic should be stored.
 # This is relatively expensive and used only in the scripts generating documentation pages.
-declare $store_provenience=0;
+declare $store_provenience = false;
 
 sub full_path {
-   my ($self)=@_;
-   my $path=$self->name;
-   while (defined ($self=$self->parent)) {
-      $path=$self->name."/$path";
-   }
+   my ($self) = @_;
+   my $path = "";
+   do {
+      $path = "/" . $self->name . $path;
+   } while (defined($self = $self->parent));
    $path
 }
 
@@ -104,15 +104,15 @@ sub add {
 
          if ($text =~ s/$help_line_start \@category $stripped//xomi) {
             splice @$path, -1, 0, $1;
-            $cat=1;
+            $cat = true;
          }
 
          if ($text =~ s/$help_line_start \@relates \s+ $stripped//xomi) {
-            my $related=$1;
-            $top=$self->top;
-            @related=map {
-               if (my @to_topic= index($_, "/") >= 0 ? $top->get_topics($_) : $top->find($_)) {
-                  if (@to_topic>1) {
+            my $related = $1;
+            $top = $self->top;
+            @related = map {
+               if (my @to_topic = index($_, "/") >= 0 ? $top->get_topics($_) : $top->find($_)) {
+                  if (@to_topic > 1) {
                      croak( "help tag \@related '$_' refers to more than one topic, please qualify appropriately" );
                   }
                   ($to_topic[0], @{$to_topic[0]->related})
@@ -122,28 +122,28 @@ sub add {
             } split /(?: \s*,\s* | \s+)/x, $related;
          }
 
-         my ($opt_group, @option_lists);
+         my ($private_options, @option_lists);
          while ($text =~ s/$help_line_start \@($id_re) (?:[ \t]+|$) ( .*\n (?:(?>$help_line_start) (?! \@$id_re) .*\n)* )//xom) {
-            my ($tag, $value)=(lc($1), $2);
+            my ($tag, $value) = (lc($1), $2);
             sanitize_help($value);
 
             if ($tag eq "author" or $tag eq "display" or $tag eq "header") {
-               $annex{$tag}=$value;
+               $annex{$tag} = $value;
 
             } elsif ($tag eq "super") {
                if ($value =~ /^\s* ($type_re) \s*$/xo) {
-                  $annex{$tag}=$1;
+                  $annex{$tag} = $1;
                } else {
                   croak( "help tag \@super '$value' does not refer to a valid type" );
                }
 
             } elsif ($tag eq "return") {
                if ($value =~ s/^\s* ($type_re) \s*//xos) {
-                  $annex{$tag}=[$1, $value];
+                  $annex{$tag} = [$1, $value];
                } else {
                   croak( "help tag \@return '$value' does not start with a valid type" );
                }
-               $annex{function}=0;
+               $annex{function} = 0;
 
             } elsif ($tag eq "tparam") {
                if ($value =~ s/^\s* ($id_re) \s*//xos) {
@@ -157,12 +157,16 @@ sub add {
                if ($value =~ /^\s* %($qual_id_re) \s*$/xo) {
                   push @option_lists, $1;
                } else {
-                  push @{$annex{options}}, $opt_group=[ $value ];
+                  push @{$annex{options}}, $private_options = new Help(undef, 'options', $value);
+                  $private_options->annex->{keys} = [ ];
                }
-               $annex{function}=0;
+               $annex{function} = 0;
 
             } elsif ($tag eq "param") {
                if ($value =~ s/^\s* (?'type' $type_re) \s+ (?'name' $id_re (?: \s+\.\.\.)?) \s*//xos) {
+                  if ($+{name} eq "the") {
+                     croak( "\"the\" used as a parameter name" );
+                  }
                   push @{$annex{$tag}}, [$+{type}, $+{name}, $value];
                } else {
                   croak( "help tag \@param '$value' does not start with valid type and name" );
@@ -185,18 +189,21 @@ sub add {
             } elsif ($tag eq "option" || $tag eq "key") {
                if ($value =~ s/^\s* (?'type' $type_re) \s+ (?'name' (?!\d)[\w-]+) \s*//xos) {
                   if ($tag eq "key") {
-                     $opt_group=($annex{keys} ||= [ ]);
-                  } elsif (!$opt_group) {
-                     $annex{options}=[ $opt_group=[ "" ] ];
+                     push @{$annex{keys}}, [$+{type}, $+{name}, $value];
+                  } else {
+                     if (!defined($private_options)) {
+                        push @{$annex{options}}, $private_options = new Help(undef, 'options', '');
+                     }
+                     push @{$private_options->annex->{keys} //= [ ]}, [$+{type}, $+{name}, $value];
                   }
-                  push @$opt_group, [$+{type}, $+{name}, $value];
                } else {
                   croak( "help tag \@$tag '$value' does not start with valid type and name" );
                }
-               $annex{function}=0 if $tag eq "option";
+               $annex{function} = 0 if $tag eq "option";
 
             } elsif ($tag eq "depends") {
-               $annex{$tag}=$value;
+               chomp $value;
+               $annex{$tag} = $value;
 
             } elsif ($tag eq "example") {
                my @hints;
@@ -210,27 +217,29 @@ sub add {
             }
          }
          if ($signature =~ /[;{\@%]/) {
-            my $mandatory=$`;
-            my $cnt=0;
+            my $mandatory = $`;
+            my $cnt = 0;
             while ($mandatory =~ m/\G\s* (?: [*\$] (?: \s* (?:,\s*)? | $ )
                                            | $type_re (?: \s*\+ )? (?: \s+ | \s*,\s* | $ ))/xog) { ++$cnt; }
-            $annex{mandatory}=$cnt-1;
-            $annex{ellipsis}=1 if $signature =~ /\@/;
+            $annex{mandatory} = $cnt-1;
+            $annex{ellipsis} = 1 if $signature =~ /\@/;
             unless (@option_lists) {
-               @option_lists= ($signature =~ /%($qual_id_re)/go);
+               @option_lists = ($signature =~ /%($qual_id_re)/go);
             }
          }
 
          foreach (@option_lists) {
-            $top ||= $self->top;
-            if (defined (my $opt_topic=$top->find("options", $_))) {
-               push @{$annex{options}}, $opt_topic;
+            $top //= $self->top;
+            if (defined(my $opt_topic = $top->find("options", $_))) {
+               if (is_array($opt_topic->annex->{keys})) {
+                  push @{$annex{options}}, $opt_topic;
+               }
             }
          }
 
          sanitize_help($text);
          if (!$cat && $text !~ /\S/) {
-            $text="UNDOCUMENTED\n";
+            $text = "UNDOCUMENTED\n";
          }
       }
    }
@@ -250,44 +259,46 @@ sub add {
       # some topics automatically come into existence before the description is encountered in the rules
       my $h;
       if ($cat) {
-         $self->category=1;
+         $self->category = 1;
 
-         if (length($self->text)==0) {
+         if (length($self->text) == 0) {
             # the category has not been introduced so far, let's look in the global items...
-            $top ||= $self->top;
+            $top //= $self->top;
             my @app_being_loaded;
             if (is_object($INC[0]) && instanceof Application($INC[0]) && $INC[0]->help != $top) {
                push @app_being_loaded, $INC[0]->help;
             }
             my ($specific_cat_group, $any_node, $matching_cat);
             foreach my $app_top_help ($top, @app_being_loaded, @{$top->related}) {
-               if ($specific_cat_group=$app_top_help->topics->{$self->parent->name} and
-                   $any_node=$specific_cat_group->topics->{any} and
-                   $matching_cat=$any_node->topics->{$self->name}) {
-                  $self->text=$matching_cat->text;
+               if ($specific_cat_group = $app_top_help->topics->{$self->parent->name}
+                     and
+                   $any_node = $specific_cat_group->topics->{any}
+                     and
+                   $matching_cat = $any_node->topics->{$self->name}) {
+                  $self->text = $matching_cat->text;
                   last;
-               } elsif ($any_node=$app_top_help->topics->{any} and
-                        $matching_cat=$any_node->topics->{$self->name}) {
-                  $self->text=$matching_cat->text;
-                  $self->text =~ s/\Q+++\E/$self->parent->name/e;
+               } elsif ($any_node = $app_top_help->topics->{any}
+                          and
+                        $matching_cat = $any_node->topics->{$self->name}) {
+                  $self->text = $matching_cat->text =~ s/\Q+++\E/$self->parent->name/re;
                   last;
                }
             }
-            if (length($self->text)==0) {
+            if (length($self->text) == 0) {
                croak( "undocumented category ", $self->full_path );
             }
          }
 
-         if (defined ($h=delete $self->parent->topics->{$topic})) {
-            my $old_toc=$self->parent->toc;
-            for (my ($i, $l)=(0, $#$old_toc); $i<=$l; ++$i) {
+         if (defined($h = delete $self->parent->topics->{$topic})) {
+            my $old_toc = $self->parent->toc;
+            for (my ($i, $l) = (0, $#$old_toc); $i <= $l; ++$i) {
                if ($old_toc->[$i] eq $topic) {
                   splice @$old_toc, $i, 1;
                   last;
                }
             }
-            $self->topics->{$topic}=$h;
-            weak($h->parent=$self);
+            $self->topics->{$topic} = $h;
+            weak($h->parent = $self);
             push @{$self->toc}, $topic;
          }
       }
@@ -298,42 +309,51 @@ sub add {
                if (length($h->text)) {
                   $h->text .= $separator . $text if index($h->text,$text)<0;
                } else {
-                  $h->text=$text;
+                  $h->text = $text;
                }
             }
             return $h;
          }
-         if (my $ovcnt=$h->annex->{function}++) {
-            $self=$h;
+         if (my $ovcnt = $h->annex->{function}++) {
+            $self = $h;
             ++$ovcnt;
-            $topic="overload#$ovcnt";
+            $topic = "overload#$ovcnt";
          } else {
-            $self=$self->topics->{$topic}=new Help($self, $topic);
+            $self = $self->topics->{$topic} = new Help($self, $topic);
             $h->name="overload#0";
-            $self->topics->{$h->name}=$h;
-            weak($h->parent=$self);
-            $self->text=$h->text;
-            $self->annex->{function}=delete $h->annex->{function};
-            $topic="overload#1";
+            $self->topics->{$h->name} = $h;
+            weak($h->parent = $self);
+            $self->text = $h->text;
+            $self->annex->{function} = delete $h->annex->{function};
+            $topic = "overload#1";
          }
          delete $annex{function};
       } else {
          push @{$self->toc}, $topic;
       }
 
-      $self=($self->topics->{$topic}=new Help($self, $topic, $text));
-      $self->category= $signature eq "category";
-      $self->defined_at="$source_file, line $source_line";
+      $self = ($self->topics->{$topic} = new Help($self, $topic, $text));
+      $self->category = $signature eq "category";
+      $self->defined_at = "$source_file, line $source_line";
 
    } else {
       if (length($self->text)) {
          $self->text .= $separator . $text;
       } else {
-         $self->text=$text;
+         $self->text = $text;
       }
    }
 
-   $self->annex=\%annex;
+   $self->annex = \%annex;
+   if (exists $annex{options}) {
+      foreach my $opt_topic (@{$annex{options}}) {
+         # connect private option groups to this help topic
+         unless (defined($opt_topic->parent)) {
+            weak($opt_topic->parent = $self);
+            $opt_topic->defined_at = $self->defined_at;
+         }
+      }
+   }
    push @{$self->related}, @related;
    $self;
 }
@@ -394,14 +414,8 @@ sub write_function_text {
          $writer->function_args($params);
       }
       if (defined $options) {
-         foreach my $opt_group (@$options) {
-            if (is_object($opt_group)) {
-               my $keys;
-               $writer->function_options($opt_group->text, map { defined($keys=$_->annex->{keys}) ? @$keys : () } $opt_group, @{$opt_group->related});
-            } else {
-               my $comment = local shift @$opt_group;
-               $writer->function_options($comment, @$opt_group);
-            }
+         foreach my $opt_topic (@$options) {
+            $writer->function_options($opt_topic->text, map { @{$_->annex->{keys}} } $opt_topic, @{$opt_topic->related});
          }
       }
       $writer->function_return($return);
@@ -416,17 +430,11 @@ sub write_function_text {
    } else {
       my @options;
       if (defined $options) {
-         foreach my $opt_group (@$options) {
-            if (is_object($opt_group)) {
-               my $keys;
-               push @options, map { defined($keys=$_->annex->{keys}) ? @$keys : () } $opt_group, @{$opt_group->related};
-            } else {
-               local shift @$opt_group;
-               push @options, @$opt_group;
-            }
+         foreach my $opt_topic (@$options) {
+            push @options, map { $_->[1] } map { @{$_->annex->{keys}} } $opt_topic, @{$opt_topic->related};
          }
       }
-      $writer->function_brief(map { $_->[1] } @options);
+      $writer->function_brief(@options);
    }
 }
 
@@ -495,6 +503,7 @@ sub descend {
 
 sub get_topics {
    my ($self, $path)=@_;
+   return $self if !length($path);
    $path =~ s'^/'';
    my @path=split m'/', $path;
    map { $_->descend(@path) } $self, @{$self->related};
@@ -502,10 +511,10 @@ sub get_topics {
 #################################################################################
 sub list_shallow_matching {
    my ($self, $re, @subtopics)=@_;
-   grep { $_->name =~ $re }
+   grep { $_->name =~ $re && $_->name ne "any" }
    map { $_->category ? values(%{$_->topics}) : $_ }
    map {
-      if (defined (my $topic=$self->topics->{$_})) {
+      if (defined (my $topic = $self->topics->{$_})) {
          values(%{$topic->topics})
       } else {
          ()
@@ -515,43 +524,44 @@ sub list_shallow_matching {
 
 sub list_matching_leaves {
    my ($self, $test)=@_;
-   map { ( @{$_->toc} ? list_matching_leaves($_,$test) : (),
+   map { ( @{$_->toc} ? list_matching_leaves($_, $test) : (),
            !$_->category && $test->($_) ? $_ : () )
    } values %{$self->topics};
 }
 
 sub list_toc_completions {
    my ($self, $prefix)=@_;
-   grep { index($_,$prefix)==0 } @{$self->toc};
+   grep { $_ ne "any" && index($_, $prefix) == 0 } @{$self->toc};
 }
 
 sub list_completions {
-   my $self=shift;
-   my $prefix=pop;
-   my $norel=shift if $_[0] eq "!rel";
+   my $self = shift;
+   my $prefix = pop;
+   my $norel = shift if $_[0] eq "!rel";
    map {
       if (@_) {
          map { $_->name } list_shallow_matching($_, qr/^$prefix/, @_);
       } else {
          ( list_toc_completions($_, $prefix),
-           map { $_->name } list_matching_leaves($_, sub { length($_->text) && index($_->name, $prefix)==0 }) )
+           map { $_->name } list_matching_leaves($_, sub { length($_->text) && index($_->name, $prefix)==0 })
+         )
       }
    } $norel ? $self : ($self, @{$self->related})
 }
 
 sub find_in_topic {
-   my $self=shift;
-   my $what=pop;
+   my $self = shift;
+   my $what = pop;
    @_ ? list_shallow_matching($self, qr/^$what$/, @_)
       : ( @{$self->toc} ? list_matching_leaves($self, sub { $_->name eq $what }) : (),
           !$self->category && $self->name eq $what ? $self : () )
 }
 
 sub find {
-   my $self=shift;
-   my $norel=shift if $_[0] eq "!rel";
-   my $opt=shift if $_[0] eq "?rel";
-   my @topics=find_in_topic($self, @_);
+   my $self = shift;
+   my $norel = shift if $_[0] eq "!rel";
+   my $opt = shift if $_[0] eq "?rel";
+   my @topics = find_in_topic($self, @_);
    if ($opt ? !@topics : !$norel) {
       push @topics, map { find_in_topic($_, @_) } @{$self->related};
    }
@@ -559,37 +569,31 @@ sub find {
 }
 #################################################################################
 sub argument_completions {
-   my ($self, $arg_num, $prefix)=@_;
+   my ($self, $arg_num, $prefix) = @_;
    my ($param_list, $param, $value_list);
 
-   if (my $ovcnt=$self->annex->{function}) {
+   if (my $ovcnt = $self->annex->{function}) {
       map { argument_completions($self->topics->{"overload#$_"}, $arg_num, $prefix) } 0..$ovcnt;
 
-   } elsif (defined ($param_list=$self->annex->{param}) and
-            defined ($param=$param_list->[$arg_num])    and
-            defined ($value_list=$param->[3])) {
-      if ((my $quote)= $prefix =~ /^$quote_re/o) {
+   } elsif (defined($param_list = $self->annex->{param})
+              and
+            defined($param = $param_list->[$arg_num])
+              and
+            defined($value_list = $param->[3])) {
+      if ((my $quote) = $prefix =~ /^$quote_re/o) {
          # accept both kinds of quotes
          grep { /^\Q$prefix\E/ } map { $_->[0] =~ $quoted_re ? $quote.$+{quoted}.$quote : $_->[0] } @$value_list;
       } else {
          grep { /^\Q$prefix\E/ } map { $_->[0] } @$value_list;
       }
 
-   } elsif (defined (my $mandatory=$self->annex->{mandatory})) {
+   } elsif (defined(my $mandatory = $self->annex->{mandatory})) {
       return if $arg_num <= $mandatory;
 
       my @matching;
-      if (defined (my $options=$self->annex->{options})) {
-         foreach my $opt_group (@$options) {
-            if (is_object($opt_group)) {
-               foreach my $topic ($opt_group, @{$opt_group->related}) {
-                  my $keys=$topic->annex->{keys} or next;
-                  push @matching, grep { /^\Q$prefix\E/ } map { $_->[1] } @$keys;
-               }
-            } else {
-               local shift @$opt_group;
-               push @matching, grep { /^\Q$prefix\E/ } map { $_->[1] } @$opt_group;
-            }
+      if (defined (my $options = $self->annex->{options})) {
+         foreach my $opt_topic (@$options) {
+            push @matching, grep { /^\Q$prefix\E/ } map { $_->[1] } map { @{$_->annex->{keys}} } $opt_topic, @{$opt_topic->related};
          }
       }
       map { "$_=>" } @matching;
@@ -600,10 +604,10 @@ sub argument_completions {
 }
 #################################################################################
 sub get_examples {
-   my ($self)=@_;
-   if (defined (my $examples=$self->annex->{examples})) {
+   my ($self) = @_;
+   if (defined(my $examples = $self->annex->{examples})) {
       @$examples
-   } elsif (my $ovcnt=$self->annex->{function}) {
+   } elsif (my $ovcnt = $self->annex->{function}) {
       map { get_examples($self->topics->{"overload#$_"}) } 0..$ovcnt
    } else {
       ()
@@ -652,27 +656,87 @@ sub return_type {
 sub related_objects {
    my ($self, $func_topic)=@_;
    my ($params, $return)=@{$func_topic->annex}{qw(param return)};
-   [ uniq( map { $_, @{$_->related} }
-               ( defined($params) ? $self->find("objects", $params->[0]->[0]) : (),
-                 defined($return) ? $self->find("objects", $return->[0]) : () ) ) ]
+   uniq( map { $_, @{$_->related} }
+         ( defined($params) ? $self->find("objects", $params->[0]->[0]) : (),
+           defined($return) ? $self->find("objects", $return->[0]) : () ) )
 }
 #################################################################################
+# can be target of a cross-reference
+sub is_addressable {
+   my ($self) = @_;
+   length($self->text) || grep { exists $self->annex->{$_} } qw(param tparam return options property)
+}
+
+sub find_in_tree {
+   my ($self, $word)=@_;
+   my (%taboo, @descendants);
+   do {
+      foreach my $topic ($self, @{$self->related}) {
+         if ($topic->name eq $word && is_addressable($topic)) {
+            my $me = [ $topic ];
+            $_->annex->{searchTree}->{$word}=$me for @descendants;
+            return $topic;
+         }
+         if (defined(my $cached = $topic->annex->{searchTree}->{$word})) {
+            $_->annex->{searchTree}->{$word} = $cached for @descendants;
+            return @$cached;
+         }
+      }
+      if (my @found = uniq( map { $_->name eq $word && is_addressable($_) ? ($_) : $_->find("!rel", $word) }
+                            grep { !exists $taboo{$_} } values %{$self->topics})) {
+         @found = select_closest($_[0], @found) if @found > 1;
+         $_->annex->{searchTree}->{$word} = \@found for @descendants;
+         return @found;
+      }
+      foreach my $topic (@{$self->related}) {
+         if (my @found = $topic->find("!rel", $word)) {
+            @found = select_closest($_[0], @found) if @found > 1;
+            $_->annex->{searchTree}->{$word} = \@found for @descendants;
+            return @found;
+         }
+      }
+      $taboo{$self} = true;
+      push @descendants, $self if $self != $_[0];
+      $self = $self->parent;
+   } while (defined $self);
+
+   my $notfound = [ ];
+   $_->annex->{searchTree}->{$word} = $notfound for @descendants;
+   ()
+}
 
 # => length of the path up to the first common ancestor
 sub proximity {
-   my ($from, $to)=@_;
+   my ($from, $to) = @_;
    my %parents;
    do {
-      $parents{$to}=1;
-   } while (defined($to=$to->parent));
+      $parents{$to} = 1;
+   } while (defined($to = $to->parent));
 
-   my $l=0;
+   my $l = 0;
    do {
       return $l if exists $parents{$from};
       ++$l;
-   } while (defined($from=$from->parent));
+   } while (defined($from = $from->parent));
 
    undef
+}
+
+sub select_closest {
+   my $from = shift;
+   my @closest = @_;
+   my $mindist = 100000000;
+   foreach (@_) {
+      if (defined (my $dist = proximity($from, $_))) {
+         if ($dist < $mindist) {
+            $dist = $mindist;
+            @closest = ($_);
+         } elsif ($dist == $mindist) {
+            push @closest, $_;
+         }
+      }
+   }
+   @closest;
 }
 
 #################################################################################

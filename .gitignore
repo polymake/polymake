@@ -1,2 +1,23 @@
+# common patterns for the core codebase and extensions
+# please remember to add new patterns in support/gitignore.template too
+*~
+*.swp
 build
+build.*
+**/cpperl/generated
+
+# patterns specific for the core codebase
+testscenarios/*/work*
 .ipynb_checkpoints
+resources/JuPyMake/JuPyMake.o
+resources/JuPyMake/build
+
+# ancient stuff
+Packages/FreeBSD/port/polymake/distinfo
+Packages/FreeBSD/port/polymake/pkg-plist
+Packages/rpm/BUILD
+Packages/rpm/RPMS/i586/*.rpm
+Packages/rpm/RPMS/x86_64/*.rpm
+Packages/rpm/SOURCES/polymake-*.tar.bz2
+Packages/rpm/SOURCES/polymake-*.diff
+Packages/rpm/SRPMS/*.rpm

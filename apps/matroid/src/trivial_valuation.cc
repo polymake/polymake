@@ -56,6 +56,7 @@ UserFunctionTemplate4perl("# @category Producing a matroid from matroids"
                           "# to produce a valuated matroid"
                           "# @param Matroid M A matroid"
                           "# @tparam Addition The tropical addition to use, i.e. Min or Max"
-                          "# @return ValuatedMatroid<Addition,Scalar> The matroid with a trivial valuation",
-                          "trivial_valuation<Addition,Scalar=Rational>(Matroid)");
+                          "# @tparam Scalar Coordinate type to use, default is [[Rational]]"
+                          "# @return ValuatedMatroid<Addition, Scalar> The matroid with a trivial valuation",
+                          "trivial_valuation<Addition, Scalar=Rational>(Matroid)");
 } }

@@ -1,0 +1,7 @@
+{"app": "polytope", "embed": "to_milp.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "to_lattice_points", "include": ["polymake/Rational.h"], "sig": "to_lattice_points:T1.B", "tp": "1"},
+  {"args": ["Rational", "void", "void", "void"], "func": "to_milp_client", "include": ["polymake/Rational.h"], "sig": "to_milp_client:T1.B.B.x", "tp": "1"},
+  {"args": ["Rational"], "func": "to_interface::create_MILP_solver", "include": ["polymake/Rational.h"], "sig": "create_MILP_solver#to.milp:T1", "tp": "1"},
+ null ],
+"version": 3}

@@ -100,6 +100,15 @@ property CONE_AMBIENT_DIM : Int;
 # with a hyperplane that creates a bounded intersection.
 property COMBINATORIAL_DIM : Int;
 
+# @category Combinatorics
+# Let M be the vertex-facet incidence matrix, then the Altshuler determinant is
+# defined as max{det(M &lowast; M<sup>T</sup>), det(M<sup>T</sup> &lowast; M)}.
+# @example This prints the Altshuler determinant of the built-in pentagonal pyramid (Johnson solid 2):
+# > print johnson_solid("pentagonal_pyramid")->ALTSHULER_DET;
+# | 25
+property ALTSHULER_DET : Integer;
+
+
 # @category Geometry
 # True if the cone does not contain a non-trivial linear subspace.
 property POINTED : Bool;

@@ -22,21 +22,21 @@
 # @category Data Conversion
 # This converts a string into a tropical polynomial. The syntax for the string is as follows:
 # It is of the form "min(...)" or "max(...)" or "min{...}" or "max{...}", where ...
-# is a comma-separated list of sums of the form "a + bx + c + dy + ...", where a,c are 
-# rational numbers, b,d are Ints and x,y are variables. 
-# Such a sum can contain several such terms for the same variable and they need not be in any order. 
+# is a comma-separated list of sums of the form "a + bx + c + dy + ...", where a,c are
+# rational numbers, b,d are Ints and x,y are variables.
+# Such a sum can contain several such terms for the same variable and they need not be in any order.
 # Any text that starts with a letter and does not contain any of +-*,(){} or whitespace can be a variable.
 # A term in a sum can be of the form "3x", "3*x", but "x3"will be interpreted as 1 * "x3".
-# Coefficients should not contain letters and there is no evaluation of arithmetic, i.e. "(2+4)*x" does 
-# not work (though "2x+4x" would be fine). 
-# In fact, further brackets should only be used (but are not necessary!) for single coefficienst, 
+# Coefficients should not contain letters and there is no evaluation of arithmetic, i.e. "(2+4)*x" does
+# not work (though "2x+4x" would be fine).
+# In fact, further brackets should only be used (but are not necessary!) for single coefficienst,
 # e.g. "(-3)*x".
 # Warning: The parser will remove all brackets before parsing the individual sums.
 # If no further arguments are given, the function will take the number of occuring variables
 # as total number of variables and create a ring for the result. The variables will be sorted alphabetically.
 # @param String s The string to be parsed
-# @param String vars Optional. A list of variables. If this is given, all variables used in s must match one of the variables in this list. 
-# @return Polynomial<TropicalNumber<Addition,Rational> >, where Addition depends on 
+# @param String vars Optional list of variables. If this is given, all variables used in s must match one of the variables in this list.
+# @return Polynomial<TropicalNumber<Addition, Rational>>, where Addition depends on
 # whether min or max was used in the string.
 user_function toTropicalPolynomial(String; @) {
    my ($string,@vars) = @_;
@@ -57,7 +57,7 @@ user_function toTropicalPolynomial(String; @) {
    # First separate min/max from the list of the functions
    # The first part will contain min or max, the second the rest
    my @minmax_separator = ($string =~ /^(max|min)[\(\{](.+)[\)\}]$/i);
-        
+
    if (scalar(@minmax_separator) != 2) {
       die "Error: Wrong syntax. See documentation.";
    }
@@ -97,7 +97,7 @@ user_function toTropicalPolynomial(String; @) {
       else {
          @signlist = ("+",@signlist);
       }
-      # If the last term is empty that means there is an empty term at the end. 
+      # If the last term is empty that means there is an empty term at the end.
       if ($termlist[scalar(@termlist)-1] eq "") {
          die "Error: Empy term at the end of function $functionlist[$index]";
       }
@@ -134,7 +134,7 @@ user_function toTropicalPolynomial(String; @) {
          if ($termsep[1] eq "") {
             $coefficients->[$index] *= $termcoeff;
          } else {
-            # Add the variable, if none were given in the function call. 
+            # Add the variable, if none were given in the function call.
             if (!$vars_defined) {
                $varset = $varset + (new String($termsep[1]));
             }
@@ -149,7 +149,7 @@ user_function toTropicalPolynomial(String; @) {
             $functionCoeffMap{$termsep[1]} = $termcoeff;
          } else {
             $functionCoeffMap{$termsep[1]} *= $termcoeff;
-         }                      
+         }
       }#END parse all terms
 
       $monomial_maps[$index] = \%functionCoeffMap;
@@ -160,7 +160,7 @@ user_function toTropicalPolynomial(String; @) {
       if ($varset->size() == 0) {
          die "Error: There must be at least one variable.";
       }
-      @vars = sort(@{$varset});         
+      @vars = sort(@{$varset});
    }
 
    # Now create exponent matrix

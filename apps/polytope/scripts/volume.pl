@@ -22,9 +22,8 @@ sub vol_union(@) {
   my $total = 0;
   my $sign = 1;
   for (my $k=1; $k<=$n; ++$k) {
-    my @idx = all_subsets_of_k($k,0..($n-1));
     my $v = 0;
-    foreach my $subset (@idx) {
+    foreach my $subset (@{all_subsets_of_k(sequence(0, $n), $k)}) {
       $v += intersection(@_[@$subset])->VOLUME; 
     }
     $total += $sign * $v;

@@ -39,7 +39,7 @@ template <typename SetRef1, typename SetRef2, typename Controller> class LazySet
 template <typename Eref, typename Comparator> class SingleElementSetCmp;
 template <typename SetRef> class Complement;
 
-template <typename E, typename Comparator, typename Etag=typename object_traits<E>::generic_tag>
+template <typename E, typename Comparator, typename Etag = typename object_traits<E>::generic_tag>
 struct persistent_set {
    using type = Set<E, Comparator>;
 };
@@ -398,27 +398,33 @@ range(const E& start, const E& end)
    return Series<E, true>(start, int(end-start)+1);
 }
 
-template <typename Subset, typename Source,
-          typename source_generic=typename object_traits<Source>::generic_type>
-class generic_of_subset {};
+template <typename Subset, typename Source, typename = void>
+struct generic_of_subset {
+   using type = generic_none;
+};
 
-template <typename Subset, typename Source, typename Set, typename E, typename Comparator>
-class generic_of_subset<Subset, Source, GenericSet<Set, E, Comparator> >
-   : public GenericSet<Subset, E, Comparator> {};
+template <typename Subset, typename Source>
+struct generic_of_subset<Subset, Source, std::enable_if_t<is_generic_set<Source>::value>> {
+   using type = GenericSet<Subset, typename Source::element_type, typename Source::element_comparator>;
+};
 
-template <typename Subsets, typename Source,
-          typename source_generic=typename object_traits<Source>::generic_type>
-class generic_of_subsets {
-public:
+template <typename Subset, typename Source>
+using generic_of_subset_t = typename generic_of_subset<Subset, Source>::type;
+
+template <typename Subsets, typename Source, typename = void>
+struct generic_of_subsets {
+   using type = generic_none;
    using subset_element_comparator = operations::cmp;
 };
 
-template <typename Subsets, typename Source, typename Set>
-class generic_of_subsets<Subsets, Source, GenericSet<Set> >
-   : public GenericSet<Subsets, typename object_traits<Source>::persistent_type, operations::cmp> {
-public:
+template <typename Subsets, typename Source>
+struct generic_of_subsets<Subsets, Source, std::enable_if_t<is_generic_set<Source>::value>> {
    using subset_element_comparator = typename Source::element_comparator;
+   using type = GenericSet<Subsets, typename persistent_set<typename Source::element_type, subset_element_comparator>::type, operations::cmp>;
 };
+
+template <typename Subset, typename Source>
+using generic_of_subsets_t = typename generic_of_subsets<Subset, Source>::type;
 
 /* ------------------
  *  SingleElementSet

@@ -19,8 +19,8 @@
 # (aka ancestor in the inheritance hierarchy).
 # The object loses all properties that are unknown in the target type.
 # @tparam Target  the desired new type
-# @param Object object to be modified
-# @return Object  the same //object//, but with modified type
+# @param Core::Object object to be modified
+# @return Core::Object  the same //object//, but with modified type
 
 user_function cast<Target>(Core::Object) { $_[0]->cast_me(typeof Target); }
 
@@ -91,7 +91,7 @@ user_function median($) {
 # @category Utilities
 # Produce a histogram of an array: each different element value is mapped on the number of its occurences.
 # @param ARRAY data
-# @return Map<Element, Int>
+# @return Map<Any, Int>
 # @example
 # > $H = histogram([1,1,2,2,2,3,3,2,3,3,1,1,1,3,2,3]);
 # > print $H;
@@ -109,7 +109,7 @@ user_function histogram {
 
 # @category Utilities
 # Checks if a given sequence is unimodal
-# @param ARRAY data (or Array<Scalar>)
+# @param ARRAY data
 # @return Bool
 # @example 
 # > print is_unimodal([1,1,2,3,3,2,2,1]);
@@ -172,31 +172,6 @@ user_function fibonacci {
    }
    return @numbers;
 }
-
-# FIXME: replace with C++ function from PowerSet.h ?
-# k, item, item, ... => list of k_subsets: [ item, ... ], ...
-function all_subsets_of_k {
-   my $k=shift;
-   my $n=@_;
-   croak( "parameter k=$k out of range" ) if $k<0 || $k>$n;
-   return [] if !$k;
-   my @result;
-   my @index=0..$k-1;
-   my $ptr=$k-1;
-
-   while (1) {
-      push @result, [ @_[@index] ];
-      next if ++$index[$ptr] < $n;
-      do {
-         return @result if --$ptr<0;
-      } while ((++$index[$ptr])+$k-$ptr > $n);
-      while ($ptr<$k-1) {
-         ++$ptr;
-         $index[$ptr]=$index[$ptr-1]+1;
-      }
-   }
-}
-
 
 # Takes (vertex) labels and incidence information to produce new (facet) labels.
 function induced_labels(Array, IncidenceMatrix) {

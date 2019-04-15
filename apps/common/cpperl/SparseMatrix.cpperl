@@ -86,5 +86,6 @@
   {"args": ["perl::Canned<const Wary<SparseMatrix<Rational, NonSymmetric>>&>", "perl::Canned<const Vector<Rational>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/Vector.h"], "op": "mul", "sig": "mul:O.X4.X"},
   {"args": ["perl::Canned<const Wary<SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>>&>", "perl::Canned<const Matrix<QuadraticExtension<Rational>>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "op": "_eq", "sig": "_eq:O.X4.X"},
   {"args": ["SparseMatrix<Rational, NonSymmetric>", "perl::Canned<const pm::BlockMatrix<mlist<pm::Matrix<pm::Rational> const&, pm::RepeatedRow<pm::SameElementSparseVector<pm::SingleElementSetCmp<int, pm::operations::cmp> const, pm::Rational const&> const&> const>, std::integral_constant<bool, true> >&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/linalg.h"], "op": "new", "sig": "new.X"},
+  {"args": ["perl::AnchorArg<perl::Canned<Wary<SparseMatrix<Integer, NonSymmetric>>&>>", "void", "void"], "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h"], "op": "cal", "ret": "lvalue", "sig": "cal:O:F:M14.x.x"},
  null ],
 "version": 3}

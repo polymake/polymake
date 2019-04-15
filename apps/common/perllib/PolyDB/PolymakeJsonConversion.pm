@@ -41,30 +41,14 @@ my $rational_numbertype_re = qr{^common::Rational$};
 my $float_numbertype_re = qr{^common::Float$};
 
 
-sub store_builtin_from_handling {
-   my ($value,$handling) = @_;
-   
-   my $content;
-   if ( $handling->{'int'}) {
-      $content = $value;
-   } elsif($handling->{'boolean'}) {
-      $content = $value == 1 ? boolean::true : boolean::false;
-   } else {
-      $content = $value;
-   }
-}
-
-
 # store a builtin number type
 sub store_builtin {
    my ($value,$type,$handling) = @_;
    my $qualified_name = $type->qualified_name;
 
    my $content;
-   if ( $qualified_name =~ $builtin_numbertype_re || defined($handling->{'int'}) ) {
+   if ( $qualified_name =~ $builtin_numbertype_re || $qualified_name =~ $builtin_booltype_re || defined($handling->{'int'}) || defined($handling->{'boolean'}) ) {
       $content = $value;
-   } elsif ( $qualified_name =~ $builtin_booltype_re ) {
-      $content = $value == 1 ? boolean::true : boolean::false;
    } else {
       $content = $type->toString->($value);
    }
@@ -258,7 +242,12 @@ sub store_multiple_subobject {
 
 sub store_subobject_array {
    my ($content, $property_mask, $excludes, $keep_all_props) = @_;
-   croak("conversion of subobject_arrays not implemented\n");
+   my $ret;
+
+   foreach (@{$content} ) {
+      push @$ret, store_subobject($_,$property_mask, $excludes, $keep_all_props);
+   }
+   return $ret;
 }
 
 # $obj: the object to store
@@ -340,7 +329,7 @@ sub store_subobject {
          if ( defined($property_mask) ) {
             my $property_mask_for_next_level = $property_mask->{$name};
          }
-         $po->{$name} = store_subobject_array($_->value,$pre,$property_mask_for_next_level, $excludes_for_next_level, $keep_all_props);
+         $po->{$name} = store_subobject_array($_->value,$property_mask_for_next_level, $excludes_for_next_level, $keep_all_props);
       } else {
          my $handling = undef;
          if ( defined($property_mask) && ref $property_mask->{$name} eq "HASH" ) {
@@ -367,7 +356,7 @@ sub store_attachments {
       if ( is_object($pv) ) {
          ($po->{$at}) = store_value($pv,$pv->type,$handling);
       } else {
-         ($po->{$at}) = store_builtin_from_handling($pv,$handling);
+         ($po->{$at}) = $pv;
       }
    }
    return $po;

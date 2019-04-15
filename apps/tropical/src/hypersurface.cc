@@ -30,29 +30,28 @@ GNU General Public License for more details.
 namespace polymake { namespace tropical {
 
 template <typename Addition>
-void hypersurface(perl::Object h)
+void hypersurface_dome(perl::Object h)
 {
-  const Matrix<int> monoms_int = h.give("MONOMIALS");
-  Matrix<Rational> monoms(monoms_int); // cast coefficients Integer -> Rational
+  Matrix<Rational> monoms = h.give("MONOMIALS"); // cast coefficients Integer -> Rational
   const Vector< TropicalNumber<Addition> > coefs=h.give("COEFFICIENTS");
   const int d=monoms.cols();
   const int n=monoms.rows();
 
-  if (monoms.rows()!=coefs.size())
+  if (n != coefs.size())
     throw std::runtime_error("Coefficient vector has the wrong dimension.");
 
   // We have to make all exponents positive, otherwise the below equations produce
   // a wrong result. We multiply the polynomial with a single monomial, which 
   // does not change the hypersurface.
-  Vector<Rational> min_degrees(monoms.cols());
-  for (int v = 0; v < monoms.cols(); ++v) {
-    min_degrees[v] = accumulate(monoms.col(v),operations::min());
-    // If the minimal degree is positive, we're good
-    min_degrees[v] = std::min(min_degrees[v],Rational(0));
+  Vector<Rational> min_degrees(d);
+  for (auto c = entire<indexed>(cols(monoms)); !c.at_end(); ++c) {
+    accumulate_in(entire(*c),operations::min(),min_degrees[c.index()]);
   }
-  for (int m = 0; m < monoms.rows(); ++m) {
-    monoms.row(m) -= min_degrees; 
-  }
+  // make sure we dont hit the zero vector which can only happen with exactly one term.
+  if (n == 1)
+    min_degrees -= ones_vector<Rational>(d);
+
+  monoms -= repeat_row(min_degrees,n);
 
   // dual to extended Newton polyhedron
   ListMatrix< Vector<Rational> > ineq;
@@ -64,16 +63,19 @@ void hypersurface(perl::Object h)
       ineq /= Addition::orientation()*(Rational(coefs[i])|monoms[i]);
   }
 
-  perl::Object dome("polytope::Polytope<Rational>");
-  dome.take("INEQUALITIES") << ineq;
-  dome.take("FEASIBLE") << true;
-  dome.take("BOUNDED") << false;
+  h.take("DOME.INEQUALITIES") << ineq;
+  h.take("DOME.FEASIBLE") << true;
+  h.take("DOME.BOUNDED") << false;
+}
 
-  const Matrix<Rational> vertices=dome.give("VERTICES");
-  const Matrix<Rational> lineality=dome.give("LINEALITY_SPACE");
-  const Set<int> far_vertices=dome.give("FAR_FACE");
+template <typename Addition>
+void dome_regions(perl::Object h)
+{
+  const Set<int> far_vertices=h.give("FAR_VERTICES");
+  perl::Object dome = h.give("DOME");
 
   // here we explicitly want to take redundant MONOMIALS into account ...
+  const SparseMatrix<int> monoms = h.give("MONOMIALS");
   const IncidenceMatrix<> vii=dome.give("VERTICES_IN_INEQUALITIES");
   const Set<int> redundant_monomials = polytope::compress_incidence(vii).first;
 
@@ -101,16 +103,12 @@ void hypersurface(perl::Object h)
   for (auto e=entire(edges(dg));  !e.at_end();  ++e, ++i) {
     cells[i]=vif.row(e.from_node())*vif.row(e.to_node());
     // Compute the weight of this cell
-    Vector<Integer> lattice_diff(monoms_int.row(old_index[e.from_node()]) - monoms_int.row(old_index[e.to_node()]));
+    Vector<Integer> lattice_diff(monoms.row(old_index[e.from_node()]) - monoms.row(old_index[e.to_node()]));
     weights[i] = 0;
     for (int ld = 0; ld < lattice_diff.dim(); ++ld)
       weights[i] = gcd(weights[i],lattice_diff[ld]);
   }
 
-  h.take("DOME") << dome;
-  h.take("PROJECTIVE_VERTICES") << vertices;
-  h.take("LINEALITY_SPACE") << lineality;
-  h.take("FAR_VERTICES") << far_vertices;
   h.take("MAXIMAL_POLYTOPES") << cells;
   h.take("REDUNDANT_MONOMIALS") << redundant_monomials;
   // This takes care of constant polynomials - otherwise the regions would be empty
@@ -120,7 +118,8 @@ void hypersurface(perl::Object h)
   h.take("WEIGHTS") << weights;
 }
 
-FunctionTemplate4perl("hypersurface<Addition>(Hypersurface<Addition>)");
+FunctionTemplate4perl("hypersurface_dome<Addition>(Hypersurface<Addition>)");
+FunctionTemplate4perl("dome_regions<Addition>(Hypersurface<Addition>)");
 
 } }
 

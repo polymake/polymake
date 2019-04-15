@@ -61,8 +61,8 @@ declare property_type Vector<Element=Rational> : c++ (include => ["polymake/Vect
 
 # @category Arithmetic
 # Compute the __greatest common divisor__ of the elements of the given vector.
-# @param Vector<Element> v
-# @return Element
+# @param Vector<SCALAR> v
+# @return SCALAR
 # @example
 # > $v = new Vector<Int>(3,6,9);
 # > print gcd($v);
@@ -72,8 +72,8 @@ user_function gcd(Vector) : c++ (include => "polymake/linalg.h");
 
 # @category Arithmetic
 # Compute the least common multiple of the elements of the given vector.
-# @param Vector<Element> v
-# @return Element
+# @param Vector<SCALAR> v
+# @return SCALAR
 # @example
 # > $v = new Vector<Integer>(1,3,6,9);
 # > print lcm($v);
@@ -460,8 +460,8 @@ user_function transpose(Matrix:anchor) : c++ (name => 'T');
 # type upgrade to element of the quotient field is performed.
 # The result is recast as a Scalar, which is possible without roundoff 
 # since the so-computed determinant is an element of the (embedded) ring R.
-# @param Matrix<Scalar> A
-# @return Scalar det(A)
+# @param Matrix<SCALAR> A
+# @return SCALAR det(A)
 # @example
 # > print det(unit_matrix(3));
 # | 1
@@ -534,8 +534,8 @@ user_function normalized(Matrix) : c++ (include => "polymake/linalg.h");
 
 # @category Linear Algebra
 # Calculate the average over the rows of a matrix.
-# @param Matrix<Scalar> A
-# @return Vector<Scalar>
+# @param Matrix A
+# @return Vector
 # @example
 # > $A = new Matrix([3,0,0],[0,3,0],[0,0,3]);
 # > print barycenter($A);
@@ -546,8 +546,8 @@ user_function barycenter(Matrix) : c++ (include => "polymake/linalg.h");
 
 # @category Linear Algebra
 # Return the sum of the squared entries of a vector //v//.
-# @param Vector<Scalar> v
-# @return Scalar
+# @param Vector<SCALAR> v
+# @return SCALAR
 
 user_function sqr(Vector) : c++ (include => "polymake/Vector.h");
 
@@ -970,18 +970,23 @@ user_function dense(Matrix) { $_[0] }
 ##################################################################################
 
 # @category Algebraic Types
-# A SparseVector is an associative container with element indices (coordinates) as keys; elements equal to the default value (ElementType(), which is 0 for most numerical types) are not stored, but implicitly encoded by the gaps in the key set. It is based on an AVL tree.
+# A SparseVector is a special form of a [[Vector]] optimized for large vectors with few non-zero elements.
+# Physically it is stored as a balanced binary tree with element index as a search key.
 #
 # The printable representation of a SparseVector looks like a sequence (l) (p<sub>1</sub> v<sub>1</sub>) ... (p<sub>k</sub> v<sub>k</sub>),
 # where l is the dimension of the vector and each pair (p<sub>i</sub> v<sub>i</sub>) denotes an entry with value
 # v<sub>i</sub> at position p<sub>i</sub>. All other entries are zero.
 #
-# Use [[dense]] to convert this into its dense form.
+# Use [[dense]] to convert a sparse vector into the [[Vector|dense form]].
 #
-# You can create a new SparseVector by entering its printable encoding as described above, e.g.:
-#	$v = new SparseVector<Int>(<< '.');
-#	(6) (1 1) (2 2)
-#	.
+# @example construct a SparseVector from a contiguous list of scalars; zero values are filtered out automatically:
+# > $v = new SparseVector<Integer>(0, 1, 2, 0, 0, 0);
+# > print $v, "\n";
+# | (6) (1 1) (2 2)
+# @example construct a SparseVector from a hash map with non-zero values; dimension is provided explicitly:
+# > $v = new SparseVector<Integer>({ 1 => 1, 2 => 2, _dim => 6 });
+# > print $v, "\n";
+# | (6) (1 1) (2 2)
 # @tparam Element
 declare property_type SparseVector<Element=Rational> : Vector<Element> : c++ (include => ["polymake/SparseVector.h"]) {
 
@@ -1001,17 +1006,31 @@ property_type Vector {
 }
 
 # @category Algebraic Types
-# A SparseMatrix is a two-dimensional associative array with row and column indices as keys; elements equal to the default value (ElementType(), which is 0 for most numerical types) are not stored, but implicitly encoded by the gaps in the key set. Each row and column is organized as an AVL-tree.
+# A SparseMatrix is a special form of a [[Matrix]] optimized for large matrices with few non-zero elements.
+# Physically it is stored as a two-dimensional grid of balanced binary trees with row and column indexes as search keys.
 #
-# Use [[dense]] to convert this into its dense form.
+# Use [[dense]] to convert a sparsematric into the [[Matrix|dense form]].
 #
-# You can create a new SparseMatrix by entering its entries row by row, as a list of [[SparseVector|SparseVectors]] e.g.:
-#	$A = new SparseMatrix<Int>(<< '.');
-#	(5) (1 1)
-#	(5) (4 2)
-#	(5)
-#	(5) (0 3) (1 -1)
-#	.
+# @example construct a SparseMatrix from a list of row vectors.  Each row can be specified in a dense or sparse form.
+# Number of columns is determined by the size of dense rows or by the maximal index value in sparse rows.
+# > $A = new SparseMatrix<Integer>(
+# >  [0, 1, 0, 0, 0],
+# >  {4 => 2},
+# >  {},
+# >  [3, -1, 0, 0, 0]);
+# > print $A;
+# | (5) (1 1)
+# | (5) (4 2)
+# | (5)
+# | (5) (0 3) (1 -1)
+# @example construct a SparseMatrix with explicitly given number of columns:
+# > $A = new SparseMatrix<Integer>(
+# >   {1 => 10},
+# >   {2 => 20},
+# >   {cols => 5});
+# > print $A;
+# | (5) (1 10)
+# | (5) (2 20)
 # @tparam Element
 # @tparam Sym one of [[Symmetric]] or [[NonSymmetric]], default: [[NonSymmetric]]
 declare property_type SparseMatrix<Element=Rational, Sym=NonSymmetric> : Matrix<Element,Sym> : c++ (include => ["polymake/SparseMatrix.h"]) {
@@ -1147,6 +1166,11 @@ declare property_type Max : c++ (special => 'Max', include => "polymake/Tropical
 
     user_method apply {my ($o,$x,$y) = @_; return max($x,$y);}
 }
+
+# @topic property_types/Arithmetic/Addition
+# Type parameter of many functions and data types from the domain of tropical geometry.
+# Specifies the mode of tropical addition, must be [[Min]] or [[Max]].
+# There is on purpose no default value for it.
 
 # @category Arithmetic
 # @tparam Addition

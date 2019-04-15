@@ -83,8 +83,8 @@ perl::Object matroid_from_cyclic_flats(const Array<Set<int>>& Faces, const Array
 
 UserFunction4perl("# @category Producing a matroid from other objects"
                   "# Computes the face lattice of the given sets by inclusion."
-                  "# @param Array<Set<int>> F faces of the lattice of cyclic flats"
-                  "# @param Array<Set<int>> R ranks of the faces"
+                  "# @param Array<Set<Int>> F faces of the lattice of cyclic flats"
+                  "# @param Array<Set<Int>> R ranks of the faces"
                   "# @param Int N number of elements"
                   "# @return Matroid matroid with the specified lattice of cylcic flats",
                   &matroid_from_cyclic_flats, "matroid_from_cyclic_flats(Array<Set<Int>>, Array<Int>, Int)");

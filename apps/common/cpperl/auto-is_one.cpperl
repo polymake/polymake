@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Integer&>"], "func": "is_one", "include": ["polymake/Integer.h", "polymake/internal/comparators.h"], "sig": "is_one.X"},
+ null ],
+"version": 3}

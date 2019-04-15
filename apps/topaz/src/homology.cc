@@ -158,7 +158,7 @@ betti_numbers(perl::Object SC){
 
 UserFunction4perl("# @category Topology\n"
                   "# Calculate the reduced __(co-)homology groups__ of a simplicial complex.\n"
-                  "# @param Array<Set<int>> complex"
+                  "# @param Array<Set<Int>> complex"
                   "# @param Bool co set to true for __co__homology"
                   "# @option Int dim_low narrows the dimension range of interest, with negative values being treated as co-dimensions"
                   "# @option Int dim_high see //dim_low//",
@@ -166,7 +166,7 @@ UserFunction4perl("# @category Topology\n"
 
 UserFunction4perl("# @category Topology\n"
                   "# Calculate the reduced __(co-)homology groups__ and __cycle representatives__ of a simplicial complex.\n"
-                  "# @param Array<Set<int>> complex"
+                  "# @param Array<Set<Int>> complex"
                   "# @param Bool co set to true for __co__homology"
                   "# @option Int dim_low narrows the dimension range of interest, with negative values being treated as co-dimensions"
                   "# @option Int dim_high see //dim_low//",

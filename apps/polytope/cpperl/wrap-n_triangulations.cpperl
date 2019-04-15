@@ -1,5 +1,0 @@
-{"app": "polytope", "embed": "n_triangulations.cc",
- "inst": [
-  {"args": ["perl::Canned<const Matrix<Rational>&>", "void"], "func": "n_triangulations", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "n_triangulations.X.o"},
- null ],
-"version": 3}
