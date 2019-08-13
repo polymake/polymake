@@ -33,6 +33,40 @@
 #include <forward_list>
 
 namespace pm {
+
+
+template <typename Coefficient, typename Exponent>
+class UniPolynomial;
+template <typename Coefficient, typename Exponent>
+class Polynomial;
+template <typename Coefficient, typename Exponent>
+class RationalFunction;
+
+// some magic needed for operator construction
+struct is_polynomial {};
+
+// forward declarations needed for friends
+template <typename Coefficient, typename Exponent>
+Div< UniPolynomial<Coefficient, Exponent> >
+div(const UniPolynomial<Coefficient, Exponent>& num, const UniPolynomial<Coefficient, Exponent>& den);
+
+template <typename Coefficient, typename Exponent>
+UniPolynomial<Coefficient, Exponent>
+gcd(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficient, Exponent>& b);
+
+template <typename Coefficient, typename Exponent>
+ExtGCD< UniPolynomial<Coefficient, Exponent> >
+ext_gcd(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficient, Exponent>& b,
+        bool normalize_gcd=true);
+
+template <typename Coefficient, typename Exponent>
+UniPolynomial<Coefficient, Exponent>
+lcm(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficient, Exponent>& b);
+
+template <typename T, typename std::enable_if<std::is_same<typename object_traits<T>::generic_tag,is_polynomial>::value, int>::type=0>
+T pow(const T& base, long exp);
+
+
 namespace polynomial_impl {
 
 // how to convert something to a coefficient of a Polynomial ---------------------
@@ -190,6 +224,8 @@ struct nesting_level : int_constant<0> {};
 
 template <typename Exponent>
 struct UnivariateMonomial {
+  template <typename exp>
+  using new_type = UnivariateMonomial<exp>;
   using exponent_type = Exponent;
   using monomial_type = Exponent;
   using monomial_list_type = Vector<Exponent>;
@@ -238,6 +274,8 @@ struct UnivariateMonomial {
 
 template <typename Exponent>
 struct MultivariateMonomial {
+  template <typename exp>
+  using new_type = MultivariateMonomial<exp>;
   using exponent_type = Exponent;
   using monomial_type = SparseVector<Exponent>;
   using monomial_list_type = Matrix<Exponent>;
@@ -316,6 +354,7 @@ template <typename Monomial, typename Coefficient>
 class GenericImpl {
 
   template <typename> friend struct pm::spec_object_traits;
+  template <typename, typename> friend class GenericImpl;
 
 public:
   using coefficient_type = Coefficient;
@@ -324,6 +363,21 @@ public:
   using sorted_terms_type = typename std::forward_list<monomial_type>;
   using term_hash = hash_map<monomial_type, coefficient_type>;
   using monomial_list_type = typename Monomial::monomial_list_type;
+
+
+  friend
+     Div< UniPolynomial<Coefficient, exponent_type> >
+     div<>(const UniPolynomial<Coefficient, exponent_type>& num, const UniPolynomial<Coefficient, exponent_type>& den);
+  friend
+     UniPolynomial<Coefficient, exponent_type>
+     gcd<>(const UniPolynomial<Coefficient, exponent_type>& a, const UniPolynomial<Coefficient, exponent_type>& b);
+  friend
+     ExtGCD< UniPolynomial<Coefficient, exponent_type> >
+     ext_gcd<>(const UniPolynomial<Coefficient, exponent_type>& a, const UniPolynomial<Coefficient, exponent_type>& b,
+           bool normalize_gcd);
+  friend
+     UniPolynomial<Coefficient, exponent_type>
+     lcm<>(const UniPolynomial<Coefficient, exponent_type>& a, const UniPolynomial<Coefficient, exponent_type>& b);
 
   static constexpr int coefficient_nesting_level=nesting_level<coefficient_type>::value;
 
@@ -363,11 +417,14 @@ public:
       add_term(*m, *c, std::false_type());
   }
 
-  GenericImpl(const int n_vars, const term_hash& src)
+  GenericImpl(const term_hash& src, const int n_vars)
     : n_variables(n_vars)
     , the_terms(src)
     , the_sorted_terms_set(false) {}
                
+  GenericImpl(const int n_vars, const term_hash& src)
+    : GenericImpl(src,n_vars) {}
+
   // Can't have this as constructor, might be ambiguous if coefficient_type = int
   static GenericImpl fromMonomial(const monomial_type&m, const coefficient_type& c, const int n_vars)
   {
@@ -395,7 +452,7 @@ public:
     if (n_vars() != other.n_vars()) throw std::runtime_error("Polynomials of different rings");
   }
 
-  int n_vars() const { return n_variables; }
+  const int& n_vars() const { return n_variables; }
 
   int n_terms() const { return the_terms.size(); }
 
@@ -636,6 +693,20 @@ public:
     return *this;
   }
 
+  GenericImpl div_exact(const GenericImpl& b)
+  {
+    GenericImpl quot;
+    remainder(b, quot);
+    return quot;
+  }
+
+  GenericImpl& operator%= (const GenericImpl& b)
+  {
+      quot_black_hole black_hole;
+      remainder(b, black_hole);
+      return *this;
+  }
+
   //! Divide by the coefficient of the leading monomial
   GenericImpl& normalize()
   {
@@ -715,7 +786,7 @@ public:
 
     GenericImpl result(one_value<coefficient_type>(), n_variables);
     if (exp != 0) {
-      int e=exp;
+      long e=exp;
       GenericImpl pow2(*this);
       for (;;) {
         if (e & 1) {
@@ -729,6 +800,16 @@ public:
       }
     }
     return result;
+  }
+
+  template <typename Exp=exponent_type, typename T>
+  auto substitute_monomial(const T& exponent) const
+  {
+    typedef typename Monomial::template new_type<Exp> mon;
+    GenericImpl<mon,Coefficient> tmp(n_variables);
+    for (const auto& term : the_terms)
+      tmp.the_terms.emplace(typename mon::monomial_type(convert_to<Exp>(term.first * exponent)), term.second);
+    return tmp;
   }
 
   GenericImpl operator- () const
@@ -941,27 +1022,6 @@ public:
     return compare_ordered(p, cmp_monomial_ordered_base<exponent_type>());
   }
 
-  friend
-  bool operator< (const GenericImpl& p1, const GenericImpl& p2)
-  {
-    return p1.compare(p2) == cmp_lt;
-  }
-  friend
-  bool operator> (const GenericImpl& p1, const GenericImpl& p2)
-  {
-    return p1.compare(p2) == cmp_gt;
-  }
-  friend
-  bool operator<= (const GenericImpl& p1, const GenericImpl& p2)
-  {
-    return p1.compare(p2) != cmp_gt;
-  }
-  friend
-  bool operator>= (const GenericImpl& p1, const GenericImpl& p2)
-  {
-    return p1.compare(p2) != cmp_lt;
-  }
-
   size_t get_hash() const noexcept
   {
     return hash_func<int>()(n_variables) * hash_func<term_hash>()(the_terms);
@@ -1024,6 +1084,57 @@ public:
     return lt_it;
   }
 
+private:
+  struct quot_black_hole
+  {
+    template <bool trusted>
+    void add_term(const monomial_type&, const Coefficient&, bool_constant<trusted>) const {}
+  };
+
+    // replace this with a remainder of division by b, consume the quotient
+  // data must be brought in exclusive posession before calling this method.
+  template <typename QuotConsumer>
+  void remainder(const GenericImpl& b, QuotConsumer& quot_consumer)
+  {
+    const auto b_lead=b.find_lex_lm();
+    typename term_hash::const_iterator this_lead;
+
+    while ((this_lead=find_lex_lm()) != get_mutable_terms().cend() && this_lead->first >= b_lead->first) {
+      const Coefficient k = this_lead->second / b_lead->second;
+      const monomial_type d = this_lead->first - b_lead->first;
+      quot_consumer.add_term(d, k, std::false_type());
+      forget_sorted_terms();
+
+      for (const auto& b_term : b.get_terms()) {
+        auto it = get_mutable_terms().find_or_insert(b_term.first + d);
+        if (it.second) {
+          it.first->second= -k * b_term.second;
+        } else if (is_zero(it.first->second -= k * b_term.second)) {
+          get_mutable_terms().erase(it.first);
+        }
+      }
+    }
+  }
+
+  // replace this with a remainder of division by b, consume the quotient
+  // data must be brought in exclusive posession before calling this method.
+  template <typename QuotConsumer>
+  void remainder(const monomial_type& b, QuotConsumer& quot_consumer)
+  {
+    for (auto it=the_terms.begin(), end=the_terms.end();  it != end;  ) {
+      if (it->first < b) {
+        ++it;
+      } else {
+        if (!std::is_same<QuotConsumer, quot_black_hole>::value)
+          quot_consumer.add_term(it->first - b, it->second, std::false_type());
+        the_terms.erase(it++);
+      }
+    }
+    forget_sorted_terms();
+  }
+
+private:
+
   template <typename T, bool trusted>
   void add_term(const monomial_type& m, T&& c, bool_constant<trusted>)
   {
@@ -1071,56 +1182,13 @@ protected:
   mutable bool the_sorted_terms_set;
 };
 
+
+template <typename Monomial, typename Coefficient>
+struct impl_chooser {
+  typedef GenericImpl< Monomial, Coefficient> type;
+};
+
 } //end namespace polynomial_impl 
-
-
-template <typename Coefficient, typename Exponent>
-struct spec_object_traits< Serialized< polynomial_impl::GenericImpl<polynomial_impl::UnivariateMonomial<Exponent>, Coefficient> > >
-  : spec_object_traits<is_composite> {
-
-  using Monomial = polynomial_impl::UnivariateMonomial<Exponent>;
-  using masquerade_for = polynomial_impl::GenericImpl<Monomial,Coefficient>;
-
-  using elements = typename polynomial_impl::GenericImpl<Monomial,Coefficient>::term_hash;
-
-  template <typename Me, typename Visitor>
-  static void visit_elements(Me& me, Visitor& v)
-  {
-    // here we read a serialized polynomial and should clear the sorted terms first
-    me.forget_sorted_terms();
-    v << me.the_terms;
-    me.n_variables = 1;
-  }
-
-  template <typename Me, typename Visitor>
-  static void visit_elements(const Me& me, Visitor& v)
-  {
-    v << me.the_terms;
-  }
-};
-
-template <typename Coefficient, typename Exponent>
-struct spec_object_traits< Serialized< polynomial_impl::GenericImpl<polynomial_impl::MultivariateMonomial<Exponent>, Coefficient> > >
-  : spec_object_traits<is_composite> {
-
-  using Monomial = polynomial_impl::MultivariateMonomial<Exponent>;
-  using masquerade_for = polynomial_impl::GenericImpl<Monomial,Coefficient>;
-  using elements = cons<typename polynomial_impl::GenericImpl<Monomial,Coefficient>::term_hash, int>;
-
-  template <typename Me, typename Visitor>
-  static void visit_elements(Me& me, Visitor& v)
-  {
-    // here we read a serialized polynomial and should clear the sorted terms first
-    me.forget_sorted_terms();
-    v << me.the_terms << me.n_variables;
-  }
-
-  template <typename Me, typename Visitor>
-  static void visit_elements(const Me& me, Visitor& v)
-  {
-    v << me.the_terms << me.n_variables;
-  }
-};
 
 } //end namespace pm
 

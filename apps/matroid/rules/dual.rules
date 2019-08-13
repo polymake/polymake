@@ -91,7 +91,7 @@ object Matroid {
    weight 0.1;
 
    rule IDENTICALLY_SELF_DUAL : CIRCUITS, DUAL.CIRCUITS {
-      $this->IDENTICALLY_SELF_DUAL = defined(eval { find_permutation($this->CIRCUITS, $this->DUAL->CIRCUITS) });
+      $this->IDENTICALLY_SELF_DUAL = defined(find_permutation($this->CIRCUITS, $this->DUAL->CIRCUITS));
    }
    weight 2.10;
    precondition : N_ELEMENTS, RANK {
@@ -99,7 +99,7 @@ object Matroid {
    }
 
    rule SELF_DUAL : CIRCUITS, DUAL.CIRCUITS {
-      $this->SELF_DUAL = defined(eval { find_row_col_permutation( (new IncidenceMatrix($this->CIRCUITS)), new IncidenceMatrix($this->DUAL->CIRCUITS)) });
+      $this->SELF_DUAL = defined(find_row_col_permutation(new IncidenceMatrix($this->CIRCUITS), new IncidenceMatrix($this->DUAL->CIRCUITS)));
    }
    weight 5.10;
    precondition : N_ELEMENTS, RANK {
@@ -128,15 +128,15 @@ object Matroid {
    precondition : IDENTICALLY_SELF_DUAL;
    
    rule IDENTICALLY_SELF_DUAL : BASES, DUAL.BASES {
-      $this->IDENTICALLY_SELF_DUAL = defined(eval { find_permutation($this->BASES, $this->DUAL->BASES) });
+      $this->IDENTICALLY_SELF_DUAL = defined(find_permutation($this->BASES, $this->DUAL->BASES));
    }
    weight 2.10;
    precondition : N_ELEMENTS, RANK {
-      2*$this->RANK == $this->N_ELEMENTS;
+      2 * $this->RANK == $this->N_ELEMENTS;
    }
 
    rule SELF_DUAL : BASES, DUAL.BASES {
-      $this->SELF_DUAL = defined(eval { find_row_col_permutation( (new IncidenceMatrix($this->BASES)), new IncidenceMatrix($this->DUAL->BASES)) });
+      $this->SELF_DUAL = defined(find_row_col_permutation(new IncidenceMatrix($this->BASES), new IncidenceMatrix($this->DUAL->BASES)));
    }
    weight 5.10;
    precondition : N_ELEMENTS, RANK {
@@ -164,3 +164,9 @@ object Matroid {
    }
 
 }
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

@@ -21,12 +21,10 @@ namespace pm { namespace perl { namespace glue {
 ostreambuf_bridge::ostreambuf_bridge(pTHX_ GV* gv_arg)
 {
    if (gv_arg && GvIO(gv_arg) && IoOFP(GvIO(gv_arg))) {
-      pi=getTHX;
-      gv=gv_arg;
+      gv = gv_arg;
       setp(buf, buf+sizeof(buf));
    } else {
-      pi=NULL;
-      gv=Nullgv;
+      gv = nullptr;
    }
 }
 
@@ -45,15 +43,15 @@ ostreambuf_bridge::int_type ostreambuf_bridge::overflow(int_type c)
 
 bool ostreambuf_bridge::handover(bool with_sync)
 {
-   dTHXa(pi);
-   IO* io=GvIO(gv);
-   if (io == NULL)
+   dTHX;
+   IO* io = GvIO(gv);
+   if (!io)
       throw std::runtime_error("internal error: STDOUT IO handle disappeared");
    PerlIO* fp=IoOFP(io);
-   if (fp == NULL)
+   if (!fp)
       throw std::runtime_error("internal error: STDOUT IO handle not opened for writing");
-   int out_size=pptr() - pbase();
-   if (out_size>0) {
+   const int out_size = pptr() - pbase();
+   if (out_size > 0) {
       if (PerlIO_write(fp, buf, out_size) != out_size)
          throw std::runtime_error("internal error: buffered STDOUT not consumed completely");
       setp(buf, buf+sizeof(buf));
@@ -70,13 +68,13 @@ int ostreambuf_bridge::sync()
 
 void connect_cout(pTHX)
 {
-   static ostreambuf_bridge cout_bridge_buf(aTHX_ gv_fetchpv("STDOUT", false, SVt_PVGV));
+   static ostreambuf_bridge cout_bridge_buf(aTHX_ get_named_variable(aTHX_ "STDOUT", SVt_PVGV));
    cout.rdbuf(&cout_bridge_buf);
 }
 
 }
 
-std::ostream cout(NULL);
+std::ostream cout(nullptr);
 
 } }
 

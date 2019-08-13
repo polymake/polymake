@@ -70,19 +70,19 @@ my $stripped=qr{ [ \t]* (.*(?<!\s)) [ \t]*\n }xm;
 my $help_line_start=qr{^[ \t]*\#[ \t]*}m;
 
 sub add {
-   my ($self, $path, $text, $signature)=@_;
+   my ($self, $path, $text, $signature) = @_;
    unless (is_array($path)) {
-      $path=[ split m'/', $path ];
+      $path = [ split m'/', $path ];
    }
    my ($source_file, $source_line, @example_start_lines);
    if ($store_provenience) {
       ($source_file, $source_line)=(caller)[1,2];
       if ($source_file =~ /(?:ObjectType|InteractiveHelp)\.pm/) {
-         ($source_file, $source_line)=(caller(1))[1,2];
+         ($source_file, $source_line) = (caller(1))[1, 2];
       }
 
       if ($text =~ /\@example\s/) {
-         my @lines=split /\n/, $text;
+         my @lines = split /\n/, $text;
          # in embedded rules, compiler sees everything on a single (last) line because of a macro
          my $line = $source_file =~ /\.(?:cc|cpp|C|h|hh|H)$/ ? $source_line-@lines : $source_line;
          foreach (@lines) {
@@ -135,6 +135,12 @@ sub add {
                   $annex{$tag} = $1;
                } else {
                   croak( "help tag \@super '$value' does not refer to a valid type" );
+               }
+            } elsif ($tag eq "field") {
+               if ($value =~ s/^\s* (?'type' $type_re) \s+ (?'name' $id_re) \s+//xo) {
+                  push @{$annex{fields}}, [$+{type}, $+{name}, $value];
+               } else {
+                  croak( "help tag \@field '$value' does not start with a valid type and name" );
                }
 
             } elsif ($tag eq "return") {
@@ -245,14 +251,14 @@ sub add {
    }
 
    if (@$path) {
-      my $topic=pop @$path;
+      my $topic = pop @$path;
       foreach (@$path) {
-         if (defined (my $h=$self->topics->{$_})) {
-            $self=$h;
+         if (defined (my $h = $self->topics->{$_})) {
+            $self = $h;
          } else {
             push @{$self->toc}, $_;
-            $self=$self->topics->{$_}=new Help($self, $_);
-            $self->defined_at="$source_file, line $source_line";
+            $self = $self->topics->{$_} = new Help($self, $_);
+            $self->defined_at = "$source_file, line $source_line";
          }
       }
 
@@ -352,6 +358,12 @@ sub add {
             weak($opt_topic->parent = $self);
             $opt_topic->defined_at = $self->defined_at;
          }
+      }
+   }
+   if (defined (my $fields = delete $annex{fields})) {
+      foreach (@$fields) {
+         my $field_topic = add($self, [ "methods", $_->[1] ], $_->[2]);
+         $field_topic->annex->{return} = [ $_->[0], "data member" ];
       }
    }
    push @{$self->related}, @related;
@@ -649,96 +661,6 @@ sub return_type {
    }
    undef
 }
-#################################################################################
-# guess the search context for a function:
-# consider the first argument and the return type
-
-sub related_objects {
-   my ($self, $func_topic)=@_;
-   my ($params, $return)=@{$func_topic->annex}{qw(param return)};
-   uniq( map { $_, @{$_->related} }
-         ( defined($params) ? $self->find("objects", $params->[0]->[0]) : (),
-           defined($return) ? $self->find("objects", $return->[0]) : () ) )
-}
-#################################################################################
-# can be target of a cross-reference
-sub is_addressable {
-   my ($self) = @_;
-   length($self->text) || grep { exists $self->annex->{$_} } qw(param tparam return options property)
-}
-
-sub find_in_tree {
-   my ($self, $word)=@_;
-   my (%taboo, @descendants);
-   do {
-      foreach my $topic ($self, @{$self->related}) {
-         if ($topic->name eq $word && is_addressable($topic)) {
-            my $me = [ $topic ];
-            $_->annex->{searchTree}->{$word}=$me for @descendants;
-            return $topic;
-         }
-         if (defined(my $cached = $topic->annex->{searchTree}->{$word})) {
-            $_->annex->{searchTree}->{$word} = $cached for @descendants;
-            return @$cached;
-         }
-      }
-      if (my @found = uniq( map { $_->name eq $word && is_addressable($_) ? ($_) : $_->find("!rel", $word) }
-                            grep { !exists $taboo{$_} } values %{$self->topics})) {
-         @found = select_closest($_[0], @found) if @found > 1;
-         $_->annex->{searchTree}->{$word} = \@found for @descendants;
-         return @found;
-      }
-      foreach my $topic (@{$self->related}) {
-         if (my @found = $topic->find("!rel", $word)) {
-            @found = select_closest($_[0], @found) if @found > 1;
-            $_->annex->{searchTree}->{$word} = \@found for @descendants;
-            return @found;
-         }
-      }
-      $taboo{$self} = true;
-      push @descendants, $self if $self != $_[0];
-      $self = $self->parent;
-   } while (defined $self);
-
-   my $notfound = [ ];
-   $_->annex->{searchTree}->{$word} = $notfound for @descendants;
-   ()
-}
-
-# => length of the path up to the first common ancestor
-sub proximity {
-   my ($from, $to) = @_;
-   my %parents;
-   do {
-      $parents{$to} = 1;
-   } while (defined($to = $to->parent));
-
-   my $l = 0;
-   do {
-      return $l if exists $parents{$from};
-      ++$l;
-   } while (defined($from = $from->parent));
-
-   undef
-}
-
-sub select_closest {
-   my $from = shift;
-   my @closest = @_;
-   my $mindist = 100000000;
-   foreach (@_) {
-      if (defined (my $dist = proximity($from, $_))) {
-         if ($dist < $mindist) {
-            $dist = $mindist;
-            @closest = ($_);
-         } elsif ($dist == $mindist) {
-            push @closest, $_;
-         }
-      }
-   }
-   @closest;
-}
-
 #################################################################################
 sub new_specialization {
    my ($self, $spez)=@_;

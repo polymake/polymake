@@ -39,7 +39,7 @@ const char Extension[]="Polymake::Core::Extension";
 
 void Main::set_application(const AnyString& appname)
 {
-   dTHXa(pi);
+   dTHX;
    PmStartFuncall(1);
    mPUSHp(appname.ptr, appname.len);
    PUTBACK;
@@ -48,7 +48,7 @@ void Main::set_application(const AnyString& appname)
 
 void Main::set_application_of(const Object& x)
 {
-   dTHXa(pi);
+   dTHX;
    PmStartFuncall(1);
    PUSHs(x.obj_ref);
    PUTBACK;
@@ -57,7 +57,7 @@ void Main::set_application_of(const Object& x)
 
 void Main::add_extension(const AnyString& path)
 {
-   dTHXa(pi);
+   dTHX;
    PmStartFuncall(2);
    mPUSHp(Extension, sizeof(Extension)-1);
    mPUSHp(path.ptr, path.len);
@@ -82,7 +82,7 @@ void Main::reset_preference(const AnyString& label_exp)
 
 SV* Main::lookup_extension(const AnyString& path)
 {
-   dTHXa(pi);
+   dTHX;
    PmStartFuncall(2);
    mPUSHp(Extension, sizeof(Extension)-1);
    mPUSHp(path.ptr, path.len);
@@ -92,7 +92,7 @@ SV* Main::lookup_extension(const AnyString& path)
 
 void Main::call_app_method(const char* method, const AnyString& arg)
 {
-   dTHXa(pi);
+   dTHX;
    PmStartFuncall(2);
    SV* const app=glue::get_current_application(aTHX);
    PUSHs(app);
@@ -103,7 +103,7 @@ void Main::call_app_method(const char* method, const AnyString& arg)
 
 void Main::set_custom_var(const AnyString& name, const AnyString& key, Value& x)
 {
-   dTHXa(pi);
+   dTHX;
    PmStartFuncall(3);
    mPUSHp(name.ptr, name.len);
    if (key.ptr) mPUSHp(key.ptr, key.len);
@@ -114,7 +114,7 @@ void Main::set_custom_var(const AnyString& name, const AnyString& key, Value& x)
 
 void Main::reset_custom(const AnyString& name, const AnyString& key)
 {
-   dTHXa(pi);
+   dTHX;
    PmStartFuncall(2);
    mPUSHp(name.ptr, name.len);
    if (key.ptr) mPUSHp(key.ptr, key.len);
@@ -124,7 +124,7 @@ void Main::reset_custom(const AnyString& name, const AnyString& key)
 
 Scope Main::newScope()
 {
-   dTHXa(pi);
+   dTHX;
    PmStartFuncall(0);
    return Scope(this, call_func_scalar(aTHX_ new_scope_cv));
 }
@@ -136,7 +136,7 @@ void Scope::prefer_now(const AnyString& labels) const
 
 void Scope::set_custom_var(const AnyString& name, const AnyString& key, Value& x) const
 {
-   dTHXa(pm_main->pi);
+   dTHX;
    PmStartFuncall(3);
    mPUSHp(name.ptr, name.len);
    if (key.ptr) mPUSHp(key.ptr, key.len);
@@ -147,7 +147,7 @@ void Scope::set_custom_var(const AnyString& name, const AnyString& key, Value& x
 
 std::string Main::greeting(int verbose)
 {
-   dTHXa(pi);
+   dTHX;
    PmStartFuncall(1);
    mPUSHi(verbose);
    PUTBACK;
@@ -156,7 +156,7 @@ std::string Main::greeting(int verbose)
 
 void Main::shell_enable()
 {
-   dTHXa(pi);
+   dTHX;
    PmStartFuncall(0);
    glue::call_func_void(aTHX_ shell_enable_cv);
 }
@@ -166,7 +166,7 @@ Main::shell_execute_t Main::shell_execute(const std::string& input)
    if (input.empty())
       return shell_execute_t(true, input, input, input);
 
-   dTHXa(pi);
+   dTHX;
    PmStartFuncall(1);
    mPUSHp(input.c_str(), input.size());
    PUTBACK;
@@ -174,7 +174,7 @@ Main::shell_execute_t Main::shell_execute(const std::string& input)
       return shell_execute_t(false, "", "", "unknown error");
 
    SPAGAIN;
-   bool executed=false;
+   bool executed = false;
    std::string out, err, exc;
    Value(POPs) >> exc;
    Value(POPs) >> err;
@@ -186,13 +186,13 @@ Main::shell_execute_t Main::shell_execute(const std::string& input)
 
 Main::shell_complete_t Main::shell_complete(const std::string& input)
 {
-   dTHXa(pi);
+   dTHX;
    PmStartFuncall(1);
    mPUSHp(input.c_str(), input.size());
    PUTBACK;
-   int n=glue::call_func_list(aTHX_ shell_complete_cv);
-   int offset=0;
-   char append=0;
+   int n = glue::call_func_list(aTHX_ shell_complete_cv);
+   int offset = 0;
+   char append = 0;
    std::vector<std::string> proposals(n>2 ? n-2 : 0);
    if (n >= 2) {
       dSP;
@@ -208,18 +208,18 @@ Main::shell_complete_t Main::shell_complete(const std::string& input)
 
 std::vector<std::string> Main::shell_context_help(const std::string& input, size_t pos, bool full, bool html)
 {
-   dTHXa(pi);
+   dTHX;
    PmStartFuncall(4);
    mPUSHp(input.c_str(), input.size());
    if (pos == std::string::npos)
-      pos=input.size();
+      pos = input.size();
    mPUSHi(pos);
-   SV* bool_sv=full ? &PL_sv_yes : &PL_sv_no;
+   SV* bool_sv = full ? &PL_sv_yes : &PL_sv_no;
    PUSHs(bool_sv);
-   bool_sv=html ? &PL_sv_yes : &PL_sv_no;
+   bool_sv = html ? &PL_sv_yes : &PL_sv_no;
    PUSHs(bool_sv);
    PUTBACK;
-   int n=glue::call_func_list(aTHX_ shell_context_help_cv);
+   int n = glue::call_func_list(aTHX_ shell_context_help_cv);
    std::vector<std::string> results(n);
    if (n) {
       dSP;
@@ -229,6 +229,12 @@ std::vector<std::string> Main::shell_context_help(const std::string& input, size
       PmFinishFuncall;
    }
    return results;
+}
+
+void Main::set_interrupt_signal(int signum)
+{
+   dTHX;
+   glue::set_interrupt_signal(aTHX_ signum);
 }
 
 } }

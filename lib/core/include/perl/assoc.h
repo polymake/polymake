@@ -20,6 +20,7 @@
 #include "polymake/internal/iterators.h"
 #include "polymake/perl/constants.h"
 #include "polymake/perl/Value.h"
+#include "polymake/optional"
 
 namespace pm { namespace perl {
 
@@ -49,13 +50,13 @@ public:
    element_finder(const Container& c, const Key& key)
       : element_finder_helper<const Container>(c, c.find(key)) {}
 
-   bool defined() const { return !this->pos.at_end(); }
+   explicit operator bool() const noexcept { return !this->pos.at_end(); }
 
-   const auto& get_val() const { return this->pos->second; }
+   const auto& value() const { return this->pos->second; }
 };
 
 template <typename Container>
-struct can_be_undefined< element_finder<Container> >
+struct is_optional_value<element_finder<Container>>
    : std::true_type {};
 
 template <typename Container, typename Key>
@@ -73,21 +74,21 @@ public:
       : element_finder_helper<Container>(c_arg, c_arg.find(key))
       , c(c_arg) {}
 
-   bool defined() const { return !this->pos.at_end(); }
+   explicit operator bool() const noexcept { return !this->pos.at_end(); }
 
-   decltype(auto) get_val() const { return std::move(this->pos->second); }
-   operator undefined () const { return undefined(); }
+   decltype(auto) value() const { return std::move(this->pos->second); }
 
    ~delayed_eraser()
    {
-      if (defined()) c.erase(this->pos);
+      if (operator bool()) c.erase(this->pos);
    }
+
 private:
    Container& c;
 };
 
 template <typename Container>
-struct can_be_undefined< delayed_eraser<Container> >
+struct is_optional_value<delayed_eraser<Container>>
    : std::true_type {};
 
 template <typename Container, typename Key>

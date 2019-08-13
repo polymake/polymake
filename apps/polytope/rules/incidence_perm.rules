@@ -25,13 +25,15 @@ rule SELF_DUAL : RAYS_IN_FACETS {
 
 # @notest  Rule defined "in stock" - currently without use
 rule VertexPerm.PERMUTATION : VertexPerm.RAYS_IN_FACETS, RAYS_IN_FACETS {
-   $this->VertexPerm->PERMUTATION=find_row_col_permutation($this->VertexPerm->RAYS_IN_FACETS, $this->RAYS_IN_FACETS)->second;
+   $this->VertexPerm->PERMUTATION = (find_row_col_permutation($this->VertexPerm->RAYS_IN_FACETS, $this->RAYS_IN_FACETS)
+                                     // die "no permutation")->second;
 }
 weight 5.10;
 
 # @notest  Rule defined "in stock" - currently without use
 rule FacetPerm.PERMUTATION : FacetPerm.RAYS_IN_FACETS, RAYS_IN_FACETS {
-   $this->FacetPerm->PERMUTATION=find_row_col_permutation($this->FacetPerm->RAYS_IN_FACETS, $this->RAYS_IN_FACETS)->first;
+   $this->FacetPerm->PERMUTATION = (find_row_col_permutation($this->FacetPerm->RAYS_IN_FACETS, $this->RAYS_IN_FACETS)
+                                    // die "no permutation")->first;
 }
 weight 5.10;
 

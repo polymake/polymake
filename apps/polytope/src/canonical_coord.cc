@@ -117,13 +117,14 @@ void orthogonalize_facets(Matrix<E>& F, const GenericMatrix<Matrix2,E>& AH)
 }
 
 template <typename Matrix1, typename Matrix2, typename Matrix3, typename E>
-Array<int> find_representation_permutation(const GenericMatrix<Matrix1,E>& Facets, const GenericMatrix<Matrix2,E>& otherFacets,
-                                  const GenericMatrix<Matrix3,E>& AH, bool dual)
+optional<Array<int>>
+find_representation_permutation(const GenericMatrix<Matrix1,E>& Facets, const GenericMatrix<Matrix2,E>& otherFacets,
+                                const GenericMatrix<Matrix3,E>& AH, bool dual)
 {
    if (Facets.rows() != otherFacets.rows() || Facets.cols() != otherFacets.cols())
-      throw no_match("find_representation_permutation: dimension mismatch");
+      return nullopt;
    if (Facets.rows() == 0)
-      return Array<int>();
+      return make_optional(Array<int>());
    Matrix<E> F1(Facets), F2(otherFacets);
    if (AH.rows()) {
       orthogonalize_facets(F1, AH);

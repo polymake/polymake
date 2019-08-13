@@ -69,8 +69,8 @@ property CRUST_GRAPH : Graph;
 
 # Graph of the nearest neighbor crust, as defined in:
 #
-#       T. K. Dey and P. Kumar: A simple provable algorithm for curve reconstruction.
-#       Proc. 10th. Annu. ACM-SIAM Sympos. Discrete Alg., 1999, 893-894.
+#	T. K. Dey and P. Kumar: A simple provable algorithm for curve reconstruction.
+#	Proc. 10th. Annu. ACM-SIAM Sympos. Discrete Alg., 1999, 893-894.
 #
 # Polygonal reconstruction of a smooth planar curve from a finite set of samples.
 # Sampling rate of <= 1/3 suffices.
@@ -107,12 +107,12 @@ rule VORONOI_VERTICES : VERTICES, FAR_FACE {
 
 rule VORONOI_GRAPH.BOUNDING_BOX : SITES, VERTICES, FAR_FACE, N_VERTICES {
   my $Points = $this->SITES / $this->VERTICES->minor($this->BOUNDED_VERTICES, range(0, $this->VERTICES->cols-2));
-  $this->VORONOI_GRAPH->BOUNDING_BOX = bounding_box($Points,1/10,1);
+  $this->VORONOI_GRAPH->BOUNDING_BOX = bounding_box_facets($Points, surplus_k=>1/10, fulldim=>1);
 }
 precondition : POINTED;
 
 rule VORONOI_GRAPH.BOUNDING_BOX : SITES {
-  $this->VORONOI_GRAPH->BOUNDING_BOX = bounding_box($this->SITES,1/10,1);
+  $this->VORONOI_GRAPH->BOUNDING_BOX = bounding_box_facets($this->SITES, surplus_k=>1/10, fulldim=>1);
 }
 precondition : !POINTED;
 

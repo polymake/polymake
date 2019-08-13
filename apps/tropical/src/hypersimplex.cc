@@ -47,7 +47,7 @@ perl::Object hypersimplex(int d, int k)
 }
 
 UserFunctionTemplate4perl("# @category Producing a tropical polytope"
-                          "# Produce the tropical hypersimplex &Delta;(//k//,//d//)."
+                          "# Produce the tropical hypersimplex Δ(//k//,//d//)."
                           "# Cf." 
                           "# \t M. Joswig math/0312068v3, Ex. 2.10."
                           "# The value of //k// defaults to 1, yielding a tropical standard simplex."

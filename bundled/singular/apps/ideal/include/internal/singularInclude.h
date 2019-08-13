@@ -17,14 +17,14 @@
 #ifndef POLYMAKE_IDEAL_INTERNAL_SINGULAR_INCLUDE_H
 #define POLYMAKE_IDEAL_INTERNAL_SINGULAR_INCLUDE_H
 
-#if !defined(__clang__) && defined(__GNUC__) && __GNUC__ == 8
+#if !defined(__clang__) && defined(__GNUC__) && __GNUC__ >= 8
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wclass-memaccess"
 #endif
 
 #include <Singular/libsingular.h>
 
-#if !defined(__clang__) && defined(__GNUC__) && __GNUC__ == 8
+#if !defined(__clang__) && defined(__GNUC__) && __GNUC__ >= 8
 #pragma GCC diagnostic pop
 #endif
 

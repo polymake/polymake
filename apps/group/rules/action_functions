@@ -156,7 +156,6 @@ function induce_matrix_action<Scalar>($$$ Matrix<Scalar>) {
 # | {0 1 2 5}
 # | {0 1 2 7}
 # | {0 3 5 6}
-
 user_function induce_implicit_action<SetType>($,$, Array<SetType>, $) {
     my ($c, $original_action, $induced_dom_reps, $induced_dom_name) = @_;
     my $orig_name = $original_action->name;
@@ -175,6 +174,30 @@ user_function induce_implicit_action<SetType>($,$, Array<SetType>, $) {
     return $ia;
 }
 
+# @category Symmetry
+# Find the automorphism group of the graph.
+# @param props::Graph graph
+# @return Group
+user_function automorphism_group(props::Graph) {
+    my ($g) = @_;
+    my $action = new PermutationAction(GENERATORS=>graph::automorphisms($g));
+    return new Group(PERMUTATION_ACTION=>$action);
+}
+
+# @category Symmetry
+# Find the automorphism group of the incidence matrix.
+# @param IncidenceMatrix<NonSymmetric> m
+# @param Bool on_rows true (default) for row action
+# @return Group
+user_function automorphism_group(IncidenceMatrix<NonSymmetric>;$) {
+    my ($m,$on_rows) = @_;
+    $on_rows = true if!defined($on_rows);
+    my $pairs_of_gens = graph::automorphisms($m);
+    my @row_gens = map {$_->first}  @$pairs_of_gens;
+    my @col_gens = map {$_->second} @$pairs_of_gens;
+    my $aut = $on_rows ? new PermutationAction(GENERATORS=>\@row_gens) : new PermutationAction(GENERATORS=>\@col_gens);
+    return new Group(PERMUTATION_ACTION=>$aut);
+}
 
 function combinatorial_symmetries_impl($$$$) {
     my ($p, $incidence_name, $row_action_name, $col_action_name) = @_;

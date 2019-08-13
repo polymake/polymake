@@ -1,0 +1,33 @@
+Main::load_apps();
+
+my %proto2node;
+
+@ARGV==1 or die "usage: OUTFILE\n";
+
+open my $out, ">", $ARGV[0]
+  or die "can't create outfile $ARGV[0]: $!\n";
+
+print $out <<'.';
+digraph "Big Object Zoo" {
+.
+
+foreach my $app (Core::Application::list_loaded()) {
+  foreach my $proto (@{$app->object_types}) {
+    my $node_id="n".scalar(keys %proto2node);
+    $proto2node{$proto}=$node_id;
+    print $out "  $node_id [label=\"", $app->name, "::", $proto->full_name, "\"];\n";
+  }
+}
+
+while (my ($proto, $to_node)=each %proto2node) {
+  my %ancestors;
+  @ancestors{grep { exists $proto2node{$_} } @{$proto->linear_isa}}=();
+  foreach my $super (grep { exists $proto2node{$_} } @{$proto->linear_isa}) {
+    delete @ancestors{@{$super->linear_isa}};
+  }
+  my $to_node=$proto2node{$proto};
+  print $out "  $proto2node{$_} -> $to_node;\n" for keys %ancestors;
+}
+
+print $out "}\n";
+close $out;

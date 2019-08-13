@@ -77,20 +77,20 @@ sub context_help {
 }
 
 sub process_input {
-   my ($self, $input)=@_;
+   my ($self, $input) = @_;
    local unshift @INC, $self;
-   $self->partial_input=$input;
-   { local $Scope=new Scope(); package Polymake::User; do "input:"; 1; }
-   if ($self->line_cnt==-1) {
+   $self->partial_input = $input;
+   { local $Scope = new Scope(); package Polymake::User; do "input:"; 1; }
+   if ($self->line_cnt == -1) {
       # just an incomplete input
-      $@="";
+      $@ = "";
    } else {
-      if ($self->line_cnt==-3) {
-         $@=delete $self->Attribs->{parse_errors};
+      if ($self->line_cnt == -3) {
+         $@ = delete $self->Attribs->{parse_errors};
       }
       $@ =~ s{ at input line \d+[.,]}{}g;
    }
-   return $self->line_cnt>=2;
+   return $self->line_cnt >= 2;
 }
 
 sub Polymake::Core::Shell::Mock::INC {

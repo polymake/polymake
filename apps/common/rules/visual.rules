@@ -115,10 +115,10 @@ property_type RGB {
 # like points, edges, facets, etc. accept a wide range of possible values, allowing for different grades
 # of flexibility (and complexity):
 #
-#  SCALAR  the same attribute value is applied to all elements
-#  ARRAY   each element gets its individual attribute value
-#  HASH    elements found in the hash get their individual attribute values, for the rest the appropriate default applies
-#  SUB     a piece of code computing the attribute value for the given element
+#  * SCALAR  the same attribute value is applied to all elements
+#  * ARRAY   each element gets its individual attribute value
+#  * HASH    elements found in the hash get their individual attribute values, for the rest the appropriate default applies
+#  * SUB     a piece of code computing the attribute value for the given element
 #
 # Unless specified explicitly in the detailed option description, the indices, keys, or
 # subroutine arguments used for retrieval of the attribute values are just the zero-based ordinal numbers of the elements.
@@ -291,10 +291,13 @@ options %Visual::Polygons::decorations=(
 # Options for visualizing objects with homogeneous coordinates like Polytope, PolyhedralComplex, SubdivisionOfPoints and PointConfiguration.
 
 options %geometric_options=(
+
   # Matrix useful for unbounded polyhedra
-  BoundingBox => undef, 
+  BoundingFacets => undef,
+
   # Matrix<Float> linear transformation, to be applied after dehomogenization
-  Transformation => undef, 
+  Transformation => undef,
+
   # Vector<Float> shift, to be applied after dehomogenization and the linear transformation
   Offset => undef, 
 );
@@ -303,6 +306,7 @@ options %geometric_options=(
 # Options for visualizing objects with nonhomogeneous coordinates like Cone, PolyhedralFan and VectorConfiguration.
 
 options %geometric_options_linear=(
+  
   # Matrix<Float> linear transformation, to be applied on rays/vectors
   Transformation => undef, 
 );

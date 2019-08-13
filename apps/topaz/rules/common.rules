@@ -461,14 +461,14 @@ declare property_type Filtration<MatrixType> : c++ (include => "polymake/topaz/F
    # Construct a Filtration.
    # @param Array<Cell> C An array containing all cells in the filtration.
    # @param Array<MatrixType> bd The boundary matrices of the last frame of the filtration, indexed by dimension.
-   # @optional Bool s Indicates whether the cell array is already sorted by degree first and dimension second, default: 0
-   method construct(Array<Cell>, Array<MatrixType>; $=0) : c++;
+   # @optional Bool s Indicates whether the cell array is already sorted by degree first and dimension second, default: false
+   method construct(Array<Cell>, Array<MatrixType>; $=false) : c++;
 
    # Construct a Filtration from a HasseDiagram and an integer array.
    # @param Lattice The last frame of the filtration.
    # @param Array<Int> degs The degrees of the simplices in the input complex.
    #                        Indexing after sorting them first by dimension, second lexicographically (like in the HasseDiagram)
-   method construct(Lattice<BasicDecoration>,Array<Int>) : c++;
+   method construct(Lattice<BasicDecoration>, Array<Int>) : c++;
 
    operator @eq : c++;
 

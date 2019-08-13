@@ -45,12 +45,14 @@ START_EXTERN_C
 END_EXTERN_C
 
 #ifdef PERL_IMPLICIT_CONTEXT
-// pass the interpreter via my_perl variable as far as possible, avoid expensive pthread_getspecific
+// pass the interpreter via my_perl variable as far as possible
+// don't use TLS, polymake never lets perl clone itself
 #  define PERL_NO_GET_CONTEXT
 #  define getTHX aTHX
-#  define PmPerlInterpreterMemberDecl(name) PerlInterpreter* const name
-#  define PmPerlInterpreterMemberInit(name) name(aTHX),
-#  define PmPerlInterpreterMemberCopy(name, from) name(from.name)
+#  ifdef dTHX
+#    undef dTHX
+#  endif
+#  define dTHX dTHXa(PERL_GET_INTERP)
 #else
 #  ifdef dTHX
 #    undef dTHX
@@ -61,9 +63,6 @@ END_EXTERN_C
 #    define dTHXa(a)
 #  endif
 #  define getTHX nullptr
-#  define PmPerlInterpreterMemberDecl(name) enum unused_##name {}
-#  define PmPerlInterpreterMemberInit(name)
-#  define PmPerlInterpreterMemberCopy(name, from)
 #endif
 
 // avoid annoying compiler warnings about unused variables
@@ -180,6 +179,10 @@ bool cpp_has_assoc_methods(const MAGIC* mg);
 SV* retrieve_pkg(pTHX_ SV* obj);
 HV* retrieve_pkg_stash(pTHX_ SV* obj);
 
+// public export from interrupts
+void set_interrupt_signal(pTHX_ int signum, bool must_reset_state = true);
+void reset_interrupt_signal();
+
 // CvROOT and CvXSUB are in the same union
 inline bool is_well_defined_sub(CV* x)
 {
@@ -251,13 +254,30 @@ int get_named_constant(pTHX_ HV* stash, const AnyString& name)
    return SvIV((SV*)XSANY.any_ptr);
 }
 
+inline
+HV* get_named_stash(pTHX_ const AnyString& name, int flags = 0)
+{
+   HV* stash = gv_stashpvn(name.ptr, name.len, flags);
+   if (!stash)
+      Perl_croak(aTHX_ "unknown package %.*s", (int)name.len, name.ptr);
+   return stash;
+}
+
+inline
+GV* get_named_variable(pTHX_ const AnyString& name, svtype type, int flags = 0)
+{
+   GV* gv = gv_fetchpvn_flags(name.ptr, name.len, flags, type);
+   if (!gv)
+      Perl_croak(aTHX_ "unknown variable %.*s", (int)name.len, name.ptr);
+   return gv;
+}
+
 // a sort of light-weight unique_ptr for OPs under construction
 template <typename OpType>
 class op_keeper {
 public:
    op_keeper(pTHX_ OpType* o)
-      : PmPerlInterpreterMemberInit(pi)
-        op(o) {}
+      : op(o) {}
 
    op_keeper& operator= (OpType* o)
    {
@@ -278,7 +298,7 @@ public:
 
    ~op_keeper()
    {
-      dTHXa(pi);
+      dTHX;
       if (op) op_free(op);
    }
 
@@ -288,7 +308,6 @@ private:
    op_keeper(const op_keeper&) = delete;
    void operator=(const op_keeper&) = delete;
 
-   PmPerlInterpreterMemberDecl(pi);
    OpType* op;
 };
 
@@ -304,13 +323,14 @@ inline OP* set_op_type(OP* o, uint32_t type)
 # define PmNewCustomOP(type, ...) set_op_type(new##type((OA_##type==OA_SVOP ? OP_CONST : OP_NULL), __VA_ARGS__), OP_CUSTOM)
 #endif
 
-}
-
 #define report_parse_error(...) \
    Perl_qerror(aTHX_ Perl_mess(aTHX_ __VA_ARGS__))
 
 int parse_enhanced_local(pTHX_ OP** op_ptr);
+OP* parse_expression_in_parens(pTHX);
+int parse_interrupts_op(pTHX_ const bool localize, OP** op_ptr);
 
+}
 namespace ops {
 
 OP* is_boolean(pTHX);
@@ -328,7 +348,9 @@ OP* is_like_hash(pTHX);
 OP* is_defined_and_false(pTHX);
 OP* local_ref(pTHX);
 void localize_scalar(pTHX_ SV* var);
+void localize_scalar(pTHX_ SV* var, SV* value);
 OP* make_weak(pTHX);
+void init_globals(pTHX);
 
 } } }
 

@@ -38,7 +38,7 @@ use Polymake::Ext;
 # Global variables
 #
 
-declare $Version="3.4";
+declare $Version="3.5";
 declare $VersionNumber=eval "v$Version";        # for string comparisons with vM.N literals
 
 declare ($Scope,                # Scope object for the current cycle
@@ -58,9 +58,13 @@ declare $mainURL="https://polymake.org";
 #
 
 require 'Polymake/utils.pl';
+require Polymake::Interrupts;
 require Polymake::Scope;
 require Polymake::Pipe;
 require Polymake::Tempfile;
+require Polymake::TempTextFile;
+require Polymake::Tempdir;
+require Polymake::TempChangeDir;
 require Polymake::OverwriteFile;
 require Polymake::Overload;
 require Polymake::Core::Customize;

@@ -574,17 +574,16 @@ void
 make_body(...)
 PPCODE:
 {
-   AV* av=newAV();
-   HV* stash;
-   SV **ary, **src=SP+1, **src_end=SP+items, *pkg_from=*src_end, *rv;
+   AV* av = newAV();
+   SV **ary, **src = SP + 1, **src_end = SP + items, *pkg_from = *src_end, *rv;
    Newx(ary, items-1, SV*);
    AvALLOC(av) = ary;
    AvARRAY(av) = ary;
-   AvFILLp(av) = items-2;
-   AvMAX(av) = items-2;
+   AvFILLp(av) = items - 2;
+   AvMAX(av) = items - 2;
    for (; src < src_end; ++src, ++ary) {
-      SV *sv=*src;
-      if ((SvFLAGS(sv) & (SVs_TEMP|PmDenyStealingScalar))==SVs_TEMP) {
+      SV* sv = *src;
+      if ((SvFLAGS(sv) & (SVs_TEMP|PmDenyStealingScalar)) == SVs_TEMP) {
          SvTEMP_off(sv);
          SvREFCNT_inc_simple_void_NN(sv);
          *ary = sv;
@@ -593,18 +592,18 @@ PPCODE:
       }
    }
    rv = newRV_noinc((SV*)av);
+   HV* stash = nullptr;
    if (SvROK(pkg_from)) {
       pkg_from = SvRV(pkg_from);
       if (SvOBJECT(pkg_from))
          stash = SvSTASH(pkg_from);
-      else
-         Perl_croak(aTHX_ "anonymous reference given instead of class name");
-   } else {
-      STRLEN l;
-      const char* p = SvPV(pkg_from, l);
-      stash = gv_stashpvn(p, l, GV_ADD);
+   } else if (SvPOK(pkg_from)) {
+      stash = gv_stashsv(pkg_from, GV_ADD);
    }
-   sv_bless(rv, stash);
+   if (stash)
+      sv_bless(rv, stash);
+   else
+      Perl_croak(aTHX_ "Struct::make_body expects an object reference or package name");
    PUSHs(sv_2mortal(rv));
 }
 
@@ -615,10 +614,10 @@ make_alias(body, index)
 PROTOTYPE: $$
 PPCODE:
 {
-   SV** dst=AvARRAY(SvRV(body))+index;
-   GV* gv=gv_fetchpv(SvPV_nolen(*dst), TRUE, SVt_PV);
+   SV** dst = AvARRAY(SvRV(body)) + index;
+   GV* gv = gv_fetchsv(*dst, GV_ADD, SVt_PV);
    SvREFCNT_dec(*dst);
-   *dst=SvREFCNT_inc(GvSV(gv));
+   *dst = SvREFCNT_inc(GvSV(gv));
 }
 
 void

@@ -1,0 +1,33 @@
+#  Copyright (c) 1997-2019
+#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+#  http://www.polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Polytope {
+
+rule SLACK_IDEAL.NON_SATURATED.GENERATORS, SLACK_IDEAL.NON_SATURATED.N_VARIABLES : SLACK_MATRIX, CONE_DIM {
+   $this->SLACK_IDEAL->NON_SATURATED = ideal::slack_ideal_non_saturated($this);
+}
+
+}
+
+object SlackIdeal {
+   
+   rule GENERATORS, N_VARIABLES : NON_SATURATED.GENERATORS, NON_SATURATED.N_VARIABLES {
+      my $m = new Polynomial(ones_vector(1), ones_matrix<Int>(1,$this->NON_SATURATED->N_VARIABLES));
+      my $sat = $this->NON_SATURATED->SATURATION(new Array<Polynomial>([$m]));
+      $this->GENERATORS = $sat->GENERATORS;
+      $this->N_VARIABLES = $this->NON_SATURATED->N_VARIABLES;
+   }
+
+}

@@ -17,7 +17,9 @@
 #include "polymake/ideal/internal/singularInclude.h"
 
 #include <kernel/combinatorics/stairc.h>
+#include <singular/polys/matpol.h>
 #include <coeffs/mpr_complex.h>
+#include <kernel/linear_algebra/MinorInterface.h>
 
 #include "polymake/ideal/singularIdeal.h"
 #include "polymake/ideal/internal/singularTermOrderData.h"
@@ -183,6 +185,45 @@ public:
       iiRETURNEXPR.CleanUp();
       iiRETURNEXPR.Init();
       return radical_wrap;
+   }
+
+   SingularIdeal_wrap* saturation(const Array<Polynomial<>>& rhs) const {
+      check_ring(singRing);
+      load_library("elim.lib");
+      idhdl sathdl = get_singular_function("sat");
+      
+      ::ideal J = idInit(rhs.size(),1);
+      // Converting monomials as described in libsing-test2.cc.
+      for (int j = 0; j<rhs.size(); ++j) {
+         J->m[j] = convert_Polynomial_to_poly(rhs[j], IDRING(singRing));
+      }
+
+
+      sleftv arg;
+      memset(&arg,0,sizeof(arg));
+      arg.rtyp=IDEAL_CMD;
+      arg.data=(void *)idCopy(singIdeal);
+      arg.next=(leftv)omAlloc0(sizeof(sleftv));
+      arg.next->rtyp=IDEAL_CMD;
+      arg.next->data=(void *)idCopy(J);
+      // call primdecSY
+      BOOLEAN res=iiMake_proc(sathdl,NULL,&arg);
+      if(!res && (iiRETURNEXPR.Typ() == LIST_CMD)){
+         lists L = (lists)iiRETURNEXPR.Data();
+         SingularIdeal_wrap* result;
+         if(L->m[0].Typ() == IDEAL_CMD){
+            result = new SingularIdeal_impl((::ideal) (L->m[0].Data()),singRing);
+         } else {
+            throw std::runtime_error("Something went wrong for the primary decomposition");
+         }
+         iiRETURNEXPR.CleanUp();
+         iiRETURNEXPR.Init();
+         return result;
+      } else {
+         iiRETURNEXPR.Init();
+         throw std::runtime_error("Something went wrong for the saturation");
+      }
+
    }
 
    Array<SingularIdeal_wrap*> primary_decomposition() const {
@@ -380,6 +421,46 @@ perl::Object quotient(perl::Object I, perl::Object J)
    return res;
 }
 
+std::pair<SingularIdeal_wrap*, int> build_slack_ideal_minors(const Matrix<Rational>& slackMatrix, int dim) {
+   init_singular();
+   int nvars = 0;
+   for(const auto& row : rows(slackMatrix)){
+      for(const auto& e : row){
+         nvars += e != 0;
+      }
+   }
+   idhdl singRingHdl = check_ring(nvars);
+   ring singRing = IDRING(singRingHdl);
+   matrix variableSlackMatrix = mp_InitI(slackMatrix.rows(), slackMatrix.cols(), 0, singRing);
+   int varcount = 0;
+   for(int i=0; i<slackMatrix.rows(); i++){
+      for(int j=0; j<slackMatrix.cols(); j++){
+         if(slackMatrix(i,j) != 0){
+            poly m = rGetVar(varcount+1, singRing);
+            MATELEM(variableSlackMatrix,i+1,j+1) = p_Copy(m, singRing);
+            varcount++;
+         }
+      }
+   }
+
+   int minorrk = dim+2;
+   // The parameters may still be changed.
+   ::ideal singMinor = getMinorIdeal(variableSlackMatrix, minorrk, 0, "Bareiss", NULL, true);
+   return std::pair<SingularIdeal_wrap*, int>(new SingularIdeal_impl(singMinor, singRingHdl), nvars);
+}
+
+perl::Object slack_ideal_non_saturated(perl::Object P) {
+   const Matrix<Rational> slackMatrix = P.give("SLACK_MATRIX");
+   int dim = P.give("CONE_DIM");
+   dim--;
+   std::pair<SingularIdeal_wrap*, int> minor_wrap = build_slack_ideal_minors(slackMatrix, dim);
+   perl::Object result("Ideal");
+   result.take("N_VARIABLES") << minor_wrap.second;
+   result.take("GENERATORS") << minor_wrap.first->polynomials();
+   delete minor_wrap.first;
+   return result;
+}
+
 } // end namespace singular
 
 SingularIdeal_wrap* SingularIdeal_wrap::create(const Array<Polynomial<>>& gens, const Vector<int>& ord) 
@@ -406,6 +487,12 @@ UserFunction4perl("# @category Singular interface"
                   "# @return Ideal",
                   &singular::quotient, "quotient(Ideal, Ideal)");
 
+UserFunction4perl("# @category Singular interface"
+                  "# Computes the non-saturated slack ideal of a polytope, as described in"
+                  "# > João Gouveia, Antonio Macchia, Rekha R. Thomas, Amy Wiebe:"
+                  "# > The Slack Realization Space of a Polytope"
+                  "# > (https://arxiv.org/abs/1708.04739)",
+                  &singular::slack_ideal_non_saturated, "slack_ideal_non_saturated($)");
 
 } // end namespace ideal
 } // end namespace polymake

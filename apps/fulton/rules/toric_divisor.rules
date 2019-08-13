@@ -223,7 +223,7 @@ object NormalToricVariety {
 # ---------------------
 
 
-# # @category Normal Toric Varieties
+# @category Combinatorics
 # return the polytope defined by an element of the nef or effective cone
 # first argument is the fan, second the Vector defining the divisor class
 user_function polytope_of_divisor_class(NormalToricVariety, Vector) {

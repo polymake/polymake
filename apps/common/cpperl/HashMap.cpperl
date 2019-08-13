@@ -36,5 +36,7 @@
   {"args": ["perl::AnchorArg<perl::Canned<const hash_map<Set<int>, int>&>>", "perl::Canned<const Set<int>&>"], "func": "pm::perl::find_element", "include": ["polymake/Set.h", "polymake/hash_map", "polymake/perl/assoc.h"], "sig": "assoc_find.X8.X"},
   {"args": ["perl::AnchorArg<perl::Canned<const hash_map<SparseVector<int>, Rational>&>>", "perl::Canned<const SparseVector<int>&>"], "func": "pm::perl::find_element", "include": ["polymake/Rational.h", "polymake/SparseVector.h", "polymake/hash_map", "polymake/perl/assoc.h"], "sig": "assoc_find.X8.X"},
   {"class": "hash_map<Set<Set<int>>, int>", "include": ["polymake/Set.h", "polymake/hash_map"], "pkg": "Polymake::common::HashMap_A_Set__Set__Int_I_Int_Z"},
+  {"class": "hash_map<int, std::string>", "include": ["polymake/hash_map"], "pkg": "Polymake::common::HashMap_A_Int_I_String_Z"},
+  {"args": ["hash_map<int, std::string>"], "include": ["polymake/hash_map"], "op": "new", "sig": "new"},
  null ],
 "version": 3}

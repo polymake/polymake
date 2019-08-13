@@ -15,8 +15,7 @@
 
 
 function equal_up_to_row_permutation(Matrix, Matrix; $=false) {
-   my ($M1, $M2)=@_;
-   $M1==$M2 || defined(eval { &find_matrix_row_permutation })
+   defined(find_matrix_row_permutation(@_))
 }
 
 # @topic objects/Cone/specializations/Cone<Rational>
@@ -102,7 +101,7 @@ property COMBINATORIAL_DIM : Int;
 
 # @category Combinatorics
 # Let M be the vertex-facet incidence matrix, then the Altshuler determinant is
-# defined as max{det(M &lowast; M<sup>T</sup>), det(M<sup>T</sup> &lowast; M)}.
+# defined as max{det(M ∗ M<sup>T</sup>), det(M<sup>T</sup> ∗ M)}.
 # @example This prints the Altshuler determinant of the built-in pentagonal pyramid (Johnson solid 2):
 # > print johnson_solid("pentagonal_pyramid")->ALTSHULER_DET;
 # | 25
@@ -165,18 +164,32 @@ property LINEALITY_DIM : Int;
 permutation VertexPerm : PermBase;
 
 rule VertexPerm.PERMUTATION : VertexPerm.RAYS, RAYS, LINEALITY_SPACE {
-   my $cmp=$this->prepare_computations;
-   $this->VertexPerm->PERMUTATION=find_representation_permutation($this->VertexPerm->RAYS, $this->RAYS, $this->LINEALITY_SPACE, 0);
+   my $cmp = $this->prepare_computations;
+   $this->VertexPerm->PERMUTATION = find_representation_permutation($this->VertexPerm->RAYS, $this->RAYS, $this->LINEALITY_SPACE, 0)
+      // die "no permutation";
 }
 
 rule RAYS : VertexPerm.RAYS, VertexPerm.PERMUTATION {
-   $this->RAYS=permuted_rows($this->VertexPerm->RAYS, $this->VertexPerm->PERMUTATION);
+   $this->RAYS = permuted_rows($this->VertexPerm->RAYS, $this->VertexPerm->PERMUTATION);
 }
 weight 1.10;
 
 # @category Combinatorics
 # The number of [[RAYS]]
 property N_RAYS : Int;
+
+# @category Combinatorics
+# The number of [[FACETS]].
+property N_FACETS : Int;
+
+# @category Combinatorics
+# The number of ridges (faces of codimension 2)
+# equals the number of edges of the [[DUAL_GRAPH]]
+property N_RIDGES : Int;
+
+# @category Combinatorics
+# The number of edges of the [[GRAPH]]
+property N_EDGES : Int;
 
 
 # @category Input property
@@ -233,26 +246,19 @@ property FACETS : Matrix<Scalar>;
 permutation FacetPerm : PermBase;
 
 rule FacetPerm.PERMUTATION : FacetPerm.FACETS, FACETS, LINEAR_SPAN {
-   my $cmp=$this->prepare_computations;
-   $this->FacetPerm->PERMUTATION=find_representation_permutation($this->FacetPerm->FACETS, $this->FACETS, $this->LINEAR_SPAN,1);
+   my $cmp = $this->prepare_computations;
+   $this->FacetPerm->PERMUTATION = find_representation_permutation($this->FacetPerm->FACETS, $this->FACETS, $this->LINEAR_SPAN, 1)
+      // die "no permutation";
 }
 
 rule FacetPerm.LINEAR_SPAN = LINEAR_SPAN;
 
 rule FACETS : FacetPerm.FACETS, FacetPerm.PERMUTATION {
-   $this->FACETS=permuted_rows($this->FacetPerm->FACETS, $this->FacetPerm->PERMUTATION);
+   $this->FACETS = permuted_rows($this->FacetPerm->FACETS, $this->FacetPerm->PERMUTATION);
 }
 weight 1.10;
 
 
-# @category Geometry
-# The number of [[FACETS]].
-property N_FACETS : Int;
-
-# @category Geometry
-# The number of [[RIDGES]].
-property N_RIDGES : Int;
-                          
 # @category Geometry
 # The i-th row is the normal vector of a hyperplane separating the i-th vertex from the others.
 # This property is a by-product of redundant point elimination algorithm.

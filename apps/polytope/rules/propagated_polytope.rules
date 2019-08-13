@@ -18,9 +18,8 @@
 # of the polytopes at the translated sources of the inward pointing arcs.
 #
 # For details see 
-#       Joswig: Polytope Propagation on Graphs.
-#       Chapter 6 in 
-#       Pachter/Sturmfels: Algebraic Statistics for Computational Biology, Cambridge 2005.
+#	Joswig: Polytope Propagation on Graphs.
+#	Chapter 6 in Pachter/Sturmfels: Algebraic Statistics for Computational Biology, Cambridge 2005.
 declare object PropagatedPolytope<Scalar=Rational> : Polytope<Scalar> {
 
 # Directed graph to define the propagated polytope.  There is a (translation) vector assigned to each arc.

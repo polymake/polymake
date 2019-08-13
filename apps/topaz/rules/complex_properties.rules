@@ -18,11 +18,12 @@
 # A group is encoded as a sequence ( { (t<sub>1</sub> m<sub>1</sub>) ...  (t<sub>n</sub>  m<sub>n</sub>) } f) of non-negative integers,
 # with t<sub>1</sub> > t<sub>2</sub> > ... > t<sub>n</sub> > 1, plus an extra non-negative integer f.
 #
-# The group is isomorphic to (Z/t<sub>1</sub>)<sup>m<sub>1</sub></sup> &times; ... &times; (Z/t<sub>n</sub>)<sup>m<sub>n</sub></sup> &times; Z<sup>f</sup>, 
+# The group is isomorphic to (Z/t<sub>1</sub>)<sup>m<sub>1</sub></sup> × ... × (Z/t<sub>n</sub>)<sup>m<sub>n</sub></sup> × Z<sup>f</sup>, 
 # where Z<sup>0</sup> is the trivial group.
 #
-# Access methods: //torsion// delivers the list of Z-groups, //betti_number// the number f.
-#
+# @field List<Pair<Scalar, Int>> torsion list of Z-groups
+# @field Int betti_number the number //f//
+# @tparam Scalar integer type of torsion coefficients
 declare property_type HomologyGroup<Scalar> : c++ (include => "polymake/topaz/HomologyComplex.h");
 
 # @category Topology
@@ -30,8 +31,8 @@ declare property_type HomologyGroup<Scalar> : c++ (include => "polymake/topaz/Ho
 # A group is encoded as a pair of an integer matrix and a vector of faces.
 # The elements of the group can be obtained by symbolic multiplication of both.
 #
-# Access methods: //coeff// delivers the integer matrix, //faces// the vector of faces.
-#
+# @field SparseMatrix<Scalar> coeff the integer matrix
+# @field Array<Set<Int>> faces the faces
 # @tparam Scalar integer type of matrix elements
 
 declare property_type CycleGroup<Scalar> : c++ (include => "polymake/topaz/HomologyComplex.h");
@@ -131,11 +132,12 @@ weight 1.20;
 permutation FacetPerm : PermBase;
 
 rule FacetPerm.PERMUTATION : FacetPerm.FACETS, FACETS {
-   $this->FacetPerm->PERMUTATION=find_permutation($this->FacetPerm->FACETS, $this->FACETS);
+   $this->FacetPerm->PERMUTATION = find_permutation($this->FacetPerm->FACETS, $this->FACETS)
+      // die "no permutation";
 }
 
 rule FACETS : FacetPerm.FACETS, FacetPerm.PERMUTATION {
-   $this->FACETS=permuted($this->FacetPerm->FACETS, $this->FacetPerm->PERMUTATION);
+   $this->FACETS = permuted($this->FacetPerm->FACETS, $this->FacetPerm->PERMUTATION);
 }
 weight 1.10;
 

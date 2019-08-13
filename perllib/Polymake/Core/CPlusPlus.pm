@@ -21,7 +21,17 @@ use feature 'state';
 package Polymake::Core::CPlusPlus;
 
 declare ($private_wrapper_ext, $custom_handler);
-declare $code_generation="private";
+
+# controls whether and where new cpperl glue definitions are generated:
+#   "private"   - in "wrappers" folder in user's settings area
+#   "shared"    - in the source code tree
+#   "none"      - completely forbidden
+declare $code_generation = "private";
+
+# path prefix for new and updated cpperl files
+# it should point to a unique per-process location
+# if several processes are run in parallel
+declare $cpperl_src_root;
 
 my ($BigObject_cpp_options, $BigObjectArray_cpp_options);
 my $move_private_instances;
@@ -1364,18 +1374,19 @@ add_custom_vars sub {
 .
 
    $custom_handler->cleanup;
+   $custom_handler->end_loading;
 };
 
 sub compile {
    my ($build_dir)=@_;
    warn_print( "Recompiling in $build_dir, please be patient..." );
    if ($Verbose::cpp) {
-      if (system("ninja -C $build_dir -v")) {
+      if (Interrupts::system("ninja -C $build_dir -v")) {
          die "Compilation in $build_dir failed\n";
       }
    } else {
       my $errfile=new Tempfile();
-      if (system("ninja -C $build_dir >$errfile.err 2>&1")) {
+      if (Interrupts::system("ninja -C $build_dir >$errfile.err 2>&1")) {
          die "Compilation failed; see the error log below\n\n" . `cat $errfile.err`;
       }
    }

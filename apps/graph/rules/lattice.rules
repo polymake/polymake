@@ -13,16 +13,19 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-# @category Combinatorics
-# Sequential lattices are those where all nodes are sorted to rank.
+# @category Artificial
+# Designates a sequential lattice, that is, having all nodes sorted by rank.
+# This is a preferred flavor, because it allows more compact and efficient persistent storage.
 declare property_type Sequential : c++(special => 'graph::lattice::Sequential', include => "polymake/graph/Decoration.h");
 
-# @category Combinatorics
-# Nonsequential lattices are those where not all nodes are necessarily sorted to rank.
+# @category Artificial
+# Designates a non-sequential lattice, that is, having nodes in arbitrary order.
+# This flavor should only be used if an algorithm creating the lattice can't guarantee node ordering by rank.
 declare property_type Nonsequential : c++(special => 'graph::lattice::Nonsequential', include => "polymake/graph/Decoration.h");
 
 # @category Combinatorics
-# This provides an efficient way to obtain all nodes of a lattice of given rank.
+# Mapping of lattice nodes to their ranks.
+# @tparam SeqType tag describing node order, must be [[Sequential]] or [[Nonsequential]].
 declare property_type InverseRankMap<SeqType> : c++ (name=>"graph::lattice::InverseRankMap", include=>"polymake/graph/Decoration.h") {
 
    operator @eq : c++;
@@ -39,7 +42,7 @@ declare property_type InverseRankMap<SeqType> : c++ (name=>"graph::lattice::Inve
    user_method nodes_of_rank_range($,$) : c++;
 
    # @category Combinatorics
-   # @return Map<Int, List<Int> > or Map<Int, Pair<Int,Int> >. An actual map object sorting nodes according to rank.
+   # @return Map<Int, List<Int>> or Map<Int, Pair<Int, Int>>. An actual map object sorting nodes according to rank.
    # In the nonsequential case, each integer (= rank) is mapped to a list of the corresponding nodes.\
    # In the sequential case, it is mapped to the first and last index of all nodes of that rank.
    user_method get_map() : c++;
@@ -47,21 +50,18 @@ declare property_type InverseRankMap<SeqType> : c++ (name=>"graph::lattice::Inve
 }
 
 # @category Combinatorics
-# This is the prototype of decorations attached to a Lattice. It consists of two properties, face and rank of type
-# Set<Int> and Int, respectively.
+# Minimal required data associated with [[Lattice]] nodes.
+# @field Set<Int> face face represented by the node
+# @field Int rank node rank
 declare property_type BasicDecoration : c++ (name=>"graph::lattice::BasicDecoration", include=>"polymake/graph/Decoration.h");
+
 
 # @category Combinatorics
 # A Lattice is a poset where join and meet exist for any two elements.
-# It is realized as a directed graph, such that an arbitrar decoration is attached
-# to each node.
-# It is assumed that this decoration always contains at least a face (a Set<Int>) and
-# a rank (an Int). 
-# Lattices occur in two different flavors: [[Sequential]] and [[Nonsequential]]. They are sequential,
-# if it is clear that all nodes occur sorted according to rank (forwards or backwards).
-# Otherwise they should be declared nonsequential. Sequential Lattices are more efficient in terms
-# of storing them in XML files.
-declare object Lattice<Decoration, SeqType = Nonsequential> : Graph<Directed> {
+# It is realized as a directed graph.
+# @tparam Decoration additional data associated with each node.  Should be derived from [[BasicDecoration]].
+# @tparam SeqType tag describing the node ordering, should be [[Sequential]] or [[Nonsequential]].
+declare object Lattice<Decoration, SeqType = Nonsequential> [isa(Decoration, BasicDecoration)] : Graph<Directed> {
 
    # @category Combinatorics
    # This is the data associated to each node. The prototype for this is [[BasicDecoration]],
@@ -80,8 +80,8 @@ declare object Lattice<Decoration, SeqType = Nonsequential> : Graph<Directed> {
 
    # @category Combinatorics
    # This property provides an efficient way to enumerate all nodes of a given rank.
-   # Internally these are realized differently, depending on whether the Lattice 
-   # is [[Sequential]] or [[Nonsequential]]. 
+   # Internally these are realized differently, depending on whether the Lattice
+   # is [[Sequential]] or [[Nonsequential]].
    # Both provide the same user methods though.
    # @example [application polytope] [prefer cdd]The following prints this property of the face lattice of the 2-simplex (triangle), where the tuples represent the ranges of nodes belonging to a specific rank:
    # > print simplex(2)->HASSE_DIAGRAM->INVERSE_RANK_MAP;
@@ -103,7 +103,7 @@ declare object Lattice<Decoration, SeqType = Nonsequential> : Graph<Directed> {
    property BOTTOM_NODE : Int;
 
    # @category Combinatorics
-   # The face of each node, realized as a NodeMap. 
+   # The face of each node, realized as a NodeMap.
    # This property is kept for two reasons: As a convenient way to access only the face part
    # of the decoration (in this case the property is temporary) and
    # for reasons of backwards compatibility.
@@ -120,7 +120,7 @@ declare object Lattice<Decoration, SeqType = Nonsequential> : Graph<Directed> {
    property FACES : NodeMap<Directed, Set > : construct(ADJACENCY);
 
    # @category Combinatorics
-   # Kept only for backwards compatibility. Basically encodes the [[INVERSE_RANK_MAP]] in 
+   # Kept only for backwards compatibility. Basically encodes the [[INVERSE_RANK_MAP]] in
    # FaceLattice objects prior to 3.0.7
    property DIMS : Array<Int>;
 

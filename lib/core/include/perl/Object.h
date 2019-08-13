@@ -21,27 +21,20 @@
 
 namespace pm { namespace perl {
 
-enum property_type { _done, _normal, temporary, attachment };
-
-// the PerlInterpreter might be unused depending on the perl configuration
-// but we do not want to check all the perl stuff here
-#if defined(__clang__) && !defined(__APPLE__) && __clang_major__ == 6
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-private-field"
-#endif
+enum property_type { done_, normal_, temporary, attachment };
 
 class PropertyOut {
 private:
    Value val;
-   PerlInterpreter* pi;
+   AnyString construct_paths;
    property_type t;
    void finish();
    void cancel();
 protected:
-   explicit PropertyOut(PerlInterpreter* pi_arg, property_type t_arg)
-      : val(t_arg==_normal ? ValueFlags::read_only :
-            t_arg==temporary ? ValueFlags::allow_non_persistent | ValueFlags::read_only : ValueFlags::is_mutable)
-      , pi(pi_arg)
+   explicit PropertyOut(property_type t_arg, const AnyString& construct_paths_arg = AnyString())
+      : val(t_arg == normal_ ? ValueFlags::read_only :
+            t_arg == temporary ? ValueFlags::allow_non_persistent | ValueFlags::read_only : ValueFlags::is_mutable)
+      , construct_paths(construct_paths_arg)
       , t(t_arg) {}
 
 public:
@@ -57,16 +50,11 @@ public:
 
    ~PropertyOut()
    {
-      if (__builtin_expect(t != _done, 0)) cancel();
+      if (__builtin_expect(t != done_, 0)) cancel();
    }
 
    friend class Object;
 };
-
-#if defined(__clang__) && !defined(__APPLE__) && __clang_major__ == 6
-#pragma clang diagnostic pop
-#endif
-
 
 class ObjectType {
 public:
@@ -241,7 +229,7 @@ protected:
    SV* lookup_impl(const AnyString& name) const;
    SV* lookup_with_property_name_impl(const AnyString& name, std::string& given) const;
 
-   PerlInterpreter* take_impl(const AnyString& name) const;
+   void take_impl(const AnyString& name) const;
    SV* add_impl(const AnyString& name, SV* sub_obj, property_type t) const;
 public:
    template <typename... TOptions>
@@ -270,7 +258,7 @@ public:
 
    Object lookup_multi(const AnyString& name, const std::string& subobj_name) const;
 
-   Object give_multi(const AnyString& name, const OptionSet& props, property_type t=_normal) const;
+   Object give_multi(const AnyString& name, const OptionSet& props, property_type t = normal_) const;
 
    Object lookup_multi(const AnyString& name, const OptionSet& props) const;
 
@@ -278,17 +266,18 @@ public:
 
    bool exists(const AnyString& name) const;
 
-   PropertyOut take(const AnyString& name, property_type t=_normal)
+   PropertyOut take(const AnyString& name, property_type t = normal_)
    {
-      return PropertyOut(take_impl(name), t);
+      take_impl(name);
+      return PropertyOut(t);
    }
 
-   Object add(const AnyString& name, const Object& sub_obj, property_type t=_normal)
+   Object add(const AnyString& name, const Object& sub_obj, property_type t = normal_)
    {
       return Object(add_impl(name, sub_obj.obj_ref, t));
    }
 
-   Object add(const AnyString& name, property_type t=_normal)
+   Object add(const AnyString& name, property_type t = normal_)
    {
       return Object(add_impl(name, nullptr, t));
    }
@@ -299,9 +288,10 @@ public:
 
    PropertyValue get_attachment(const AnyString& name) const;
 
-   PropertyOut attach(const AnyString& name)
+   PropertyOut attach(const AnyString& name, const AnyString& construct_paths = AnyString())
    {
-      return PropertyOut(take_impl(name), attachment);
+      take_impl(name);
+      return PropertyOut(attachment, construct_paths);
    }
 
    void remove_attachment(const AnyString& name);

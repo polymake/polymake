@@ -37,10 +37,15 @@
 # @topic category any/Other
 # Special purpose +++.
 
-
 # @topic category any/Combinatorics
 # These +++ capture combinatorial information of the object. 
 # Combinatorial properties only depend on combinatorial data of the object like, e.g., the face lattice.
+
+# @topic category functions/any/Combinatorics
+# Combinatorial functions.
+
+# @topic category functions/any/Data Conversion
+# This contains functions for data conversions and type casts.
 
 # @topic category any/Symmetry
 # These +++ capture information of the object that is concerned with the action of permutation groups.
@@ -58,5 +63,10 @@
 # These +++ capture geometric information of the object. 
 # Geometric properties depend on geometric information of the object, like, e.g., vertices or facets.
 
+# @topic category property_types/any/Artificial
+# These types are auxiliary artifacts helping to build other classes,
+# primarily representing template parameters or enumeration constants.
+# They should not be used alone as property types or function arguments.
+# In the most cases they won't even have user-accessible constructors.
 
 

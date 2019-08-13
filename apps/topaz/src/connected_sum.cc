@@ -90,7 +90,7 @@ perl::Object connected_sum_complex(perl::Object p_in1, perl::Object p_in2, const
 UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# Compute the __connected sum__ of two complexes.\n"
                   "# "
-                  "# Parameters //f_1 and //f_2// specify which facet of the first and second complex correspondingly are glued together.\n"
+                  "# Parameters //f_1// and //f_2// specify which facet of the first and second complex correspondingly are glued together.\n"
                   "# Default is the 0-th facet of both.\n"
                   "# "
                   "# The vertices in the selected facets are identified with each other according to their order in the facet\n"

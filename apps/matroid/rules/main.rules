@@ -35,8 +35,8 @@ declare object Matroid;
 
 # A valuated matroid. It is given by a matroid and some form of valuation, either on bases
 # or circuits. It has two template parameters:
-# Addition: Either Min or Max. Has no default.
-# Scalar: An ordered group in which the valuation lives, Rational by default.
+# @tparam Addition Either [[Min]] or [[Max]], has no default on purpose.
+# @tparam Scalar An ordered group in which the valuation lives, [[Rational]] by default.
 declare object ValuatedMatroid<Addition,Scalar=Rational> : Matroid;
 
 INCLUDE

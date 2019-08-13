@@ -17,6 +17,7 @@
 # @category Optimization
 # A linear program specified by a linear or abstract objective function
 # @relates objects/Polytope
+# @tparam Scalar numeric type of variables and objective function
 declare object LinearProgram<Scalar=Rational> {
 
 # Linear objective function. In d-space a linear objective function is given by a (d+1)-vector. 

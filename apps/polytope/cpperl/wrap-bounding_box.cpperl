@@ -1,8 +1,0 @@
-{"app": "polytope", "embed": "bounding_box.cc",
- "inst": [
-  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "void", "void"], "func": "bounding_box", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "bounding_box:T1.X.x.x", "tp": "1"},
-  {"args": ["double", "perl::Canned<const Matrix<double>&>", "void", "void"], "func": "bounding_box", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "bounding_box:T1.X.x.x", "tp": "1"},
-  {"args": ["double", "perl::Canned<const pm::BlockMatrix<mlist<pm::RepeatedCol<pm::SameElementVector<double const&> > const, pm::Matrix<double> const&>, std::integral_constant<bool, false> >&>", "void", "void"], "func": "bounding_box", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/linalg.h"], "sig": "bounding_box:T1.X.x.x", "tp": "1"},
-  {"args": ["Rational", "perl::Canned<const pm::BlockMatrix<mlist<pm::Matrix<pm::Rational> const&, pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Set<int, pm::operations::cmp> const, pm::Series<int, true> const> const>, std::integral_constant<bool, true> >&>", "void", "void"], "func": "bounding_box", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "bounding_box:T1.X.x.x", "tp": "1"},
- null ],
-"version": 3}

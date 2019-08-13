@@ -1,5 +1,37 @@
 Changelog
 
+=== Polymake 3.5 ===
+
+-- distribution --
+ * support for clang 8 and gcc 9
+ * support for perl 5.30
+ * better interrupt handling
+ * improve callable library compatibility with threads:
+   - remove access to perl interpreter via TLS
+ * docs:
+   - new script for json docs file
+   - remove xml based docs generation
+
+-- interfaces --
+ * singular: Attach saturation function
+ * TOSimplex: Fix bug in MILP solver for empty polytope
+ * flint: new interface:
+   - improved polynomial arithmetic for UniPolynomial<Rational,int>
+   - new user function smith_normal_form_flint
+
+-- common --
+ * Visualization: improve bounding box and related functions
+
+-- fan --
+ * Introduce new object HyperplaneArrangement
+ * SubdivisionOfVectors: new property MIN_WEIGHTS
+
+-- polytope --
+ * Introduce object SlackIdeal
+ * Polytope: Introduce property SLACK_MATRIX
+ * Polytope: Introduce property SLACK_IDEAL
+ * Polytope: new user method LATTICE_HOLLOW
+
 === Polymake 3.4 ===
 
 -- interfaces --

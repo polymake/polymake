@@ -63,8 +63,11 @@ void sort_vertices_and_facets(Lattice<Decoration, SeqType> &l, const IncidenceMa
     const IncidenceMatrix<> lfacets(VIF.rows(), VIF.cols(), 
       entire(attach_member_accessor( select(l.decoration(), facet_nodes), 
                                      ptr2type< Decoration, Set<int>, &Decoration::face>())));
-    Array<int> fperm = find_permutation(rows(lfacets), rows(VIF));
-    copy_range(entire(permuted(facet_nodes, fperm)), select(perm, facet_nodes).begin()); 
+    const auto fperm = find_permutation(rows(lfacets), rows(VIF));
+    if (fperm)
+      copy_range(entire(permuted(facet_nodes, fperm.value())), select(perm, facet_nodes).begin());
+    else
+      throw std::runtime_error("sort_vertices_and_facets: decoration facets do not match the incidence matrix");
   }
 
   l.permute_nodes_in_levels(perm);

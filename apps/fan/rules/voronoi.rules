@@ -74,8 +74,8 @@ user_method VISUAL_VORONOI(%Visual::Polygons::decorations) : SITES, VORONOI_DIAG
    if($this->POINTED){
       $points /= convert_to<Float>($this->VERTICES->minor($this->BOUNDED_VERTICES, range(0, $this->VERTICES->cols-2)));
    }
-   my $bbox = bounding_box($points,1);
-   return compose($p, $this->VORONOI_DIAGRAM->VISUAL(FacetTransparency=>0.5,BoundingBox=>$bbox,$decor));
+   my $bbox = bounding_box_facets($points,surplus_k=>1);
+   return compose($p, $this->VORONOI_DIAGRAM->VISUAL(FacetTransparency=>0.5,BoundingFacets=>$bbox,$decor));
 }
 
 

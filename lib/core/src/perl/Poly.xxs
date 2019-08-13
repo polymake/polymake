@@ -690,19 +690,18 @@ PPCODE:
 {
    HV* stash;
    if (SvROK(src)) {
-      src=SvRV(src);
-      if (SvOBJECT(src))
+      src = SvRV(src);
+      if (SvOBJECT(src)) {
          stash = SvSTASH(src);
-      else
-         goto DONE;
+         sv_bless(obj, stash);
+      }
+   } else if (SvPOK(src)) {
+      if (!(stash = gv_stashsv(src, FALSE)))
+         Perl_croak(aTHX_ "unknown package %.*s", (int)SvCUR(src), SvPVX(src));
+      sv_bless(obj, stash);
    } else {
-      STRLEN l;
-      const char* p=SvPV(src, l);
-      if (!(stash = gv_stashpvn(p, l, FALSE)))
-         Perl_croak(aTHX_ "unknown package %.*s",(int)l,p);
+      croak_xs_usage(cv, "newObject, \"pkg\" || otherObject");
    }
-   sv_bless(obj, stash);
- DONE:
    ++SP;        // let obj appear at the stack top again
 }
 
@@ -1273,8 +1272,8 @@ PPCODE:
          This op will reside in an unused NULL enclosing this XSUB's call.
       3. Store the root operation (LEAVEEVAL) and increase its refcount,
          otherwise get destroyed in pp_require
-      4. Provide CvDEPTH be decreased on exit, since LEAVEEVAL doesn't care about it.
-         At least this was the case until 5.23.8: see 9d876b687d and 4f12ed775a
+      4. Provide CvDEPTH be decreased on exit, since LEAVEEVAL doesn't always care about it,
+         in particular when the script execution is terminated by an exception.
    */
    OP* start=PL_op;
    OP* tmp_start=cUNOPx(start)->op_first;
@@ -1307,13 +1306,11 @@ PPCODE:
    CvROOT(script_cv)=root;
    PUSHs(sv_2mortal(newRV((SV*)script_cv)));
    // 4.
-#if PerlVersion < 5238
    LEAVE;
    CvDEPTH(script_cv)=0;
    SAVELONG(CvDEPTH(script_cv));
    CvDEPTH(script_cv)=1;
    ENTER;
-#endif
 }
 
 

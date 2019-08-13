@@ -97,9 +97,9 @@ int next_not_in_set(const Set<int>& the_set,
 }
 
 /// Calculates a set of orbit representatives for a permutation action
-template<typename GeneratorType>
+template <typename GeneratorType>
 Array<int>
-orbit_representatives(const Array<GeneratorType>& generators) 
+orbit_representatives(const Array<GeneratorType>& generators)
 {
    const int degree = generators[0].size();
    Set<int> seen_elements;

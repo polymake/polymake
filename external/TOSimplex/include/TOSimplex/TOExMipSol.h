@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2018
+/* Copyright (c) 2015-2019
    Thomas Opfer
 
    This program is free software; you can redistribute it and/or modify it
@@ -115,12 +115,12 @@ class BnBNode
 
 				#ifndef TO_DISABLE_OUTPUT
 					if( leftChild )
-						pm::cout << leftChild->deleted << std::endl;
+						std::cout << leftChild->deleted << std::endl;
 
 					if( rightChild )
-						pm::cout << rightChild->deleted << std::endl;
+						std::cout << rightChild->deleted << std::endl;
 
-					pm::cout << this->deleted << std::endl;
+					std::cout << this->deleted << std::endl;
 				#endif
 
 				throw std::runtime_error( "Node still has children" );
@@ -250,7 +250,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 	unsigned int numsol = 0;
 
 	#ifndef TO_DISABLE_OUTPUT
-		pm::cout << "Starte BnB" << std::endl;
+		std::cout << "Starte BnB" << std::endl;
 	#endif
 	std::priority_queue<BnBNode<T>*,std::vector<BnBNode<T>*>,ComparePointerPriorities<BnBNode<T>*>> queue;
 	queue.push( new BnBNode<T>( plex.getObj() ) );
@@ -276,7 +276,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 
 		if( !allSolutions && optimalAssignment.size() && bs->bound >= optimalValue ){
 			#ifndef TO_DISABLE_OUTPUT
-				pm::cout << "Cutoff 1: " << TOmath<T>::toShortString( bs->bound ) << " / " << TOmath<T>::toShortString( optimalValue ) << std::endl;
+				std::cout << "Cutoff 1: " << TOmath<T>::toShortString( bs->bound ) << " / " << TOmath<T>::toShortString( optimalValue ) << std::endl;
 			#endif
 			delete bs;
 			continue;
@@ -319,16 +319,16 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 
 		if( plex.opt() ){
 			#ifndef TO_DISABLE_OUTPUT
-				pm::cout << "Node-LP Infeasible.";
+				std::cout << "Node-LP Infeasible.";
 				if( optimalAssignment.size() ){
-					pm::cout << " (current best: " << optimalValue << ")";
+					std::cout << " (current best: " << optimalValue << ")";
 				}
-				pm::cout << std::endl;
+				std::cout << std::endl;
 			#endif
 
 			if( bs->vars.size() == 1 ){
 				#ifndef TO_DISABLE_OUTPUT
-					pm::cout << "Backtracking" << std::endl;
+					std::cout << "Backtracking" << std::endl;
 				#endif
 
 				BnBNode<T>* backTrackStart = bs->parent;
@@ -365,12 +365,12 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 
 					if( plex.opt() || ( !allSolutions && optimalAssignment.size() && plex.getObj() > optimalValue ) ){
 						#ifndef TO_DISABLE_OUTPUT
-							pm::cout << "Success" << std::endl;
+							std::cout << "Success" << std::endl;
 						#endif
 						++branchPriorities[bs->vars[0]];
 					} else {
 						#ifndef TO_DISABLE_OUTPUT
-							pm::cout << "No success" << std::endl;
+							std::cout << "No success" << std::endl;
 						#endif
 						break;
 					}
@@ -394,7 +394,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 			} else {
 				// TODO: Kommt das noch vor?
 				#ifndef TO_DISABLE_OUTPUT
-					pm::cout << "No backtracking." << std::endl;
+					std::cout << "No backtracking." << std::endl;
 				#endif
 			}
 
@@ -407,7 +407,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 
 		if( !allSolutions && optimalAssignment.size() && objval >= optimalValue ){
 			#ifndef TO_DISABLE_OUTPUT
-				pm::cout << "Cutoff 2: " << TOmath<T>::toShortString( objval ) << " / " << TOmath<T>::toShortString( optimalValue ) << std::endl;
+				std::cout << "Cutoff 2: " << TOmath<T>::toShortString( objval ) << " / " << TOmath<T>::toShortString( optimalValue ) << std::endl;
 			#endif
 			delete bs;
 			continue;
@@ -417,7 +417,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 		std::vector<T> x = plex.getX();
 		for( unsigned int i = 0; i < n; ++i ){
 			if( mip.numbersystems[i] != 'R' && !TOmath<T>::isInt( x[i] ) ){
-//				cout << "x" << i << " = " << x[i] << " fractional. Branching." << endl;
+//				cout << "x" << i << " = " << TOmath<T>::toShortString( x[i] ) << " fractional. Branching." << endl;
 				if( branchVar == -1 || branchPriorities[i] > branchPriorities[branchVar] ){
 					branchVar = i;
 				}
@@ -428,7 +428,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 			for( unsigned int i = 0; i < n; ++i ){
 				if( mip.numbersystems[i] != 'R' && tmplbounds[i] != tmpubounds[i] ){
 					x[i] = tmplbounds[i] + ( T(1) / T(2) );
-//					cout << "x" << i << " = " << x[i] << " forced fractional. Branching." << endl;
+//					cout << "x" << i << " = " << TOmath<T>::toShortString( x[i] ) << " forced fractional. Branching." << endl;
 					if( branchVar == -1 || branchPriorities[i] > branchPriorities[branchVar] ){
 						branchVar = i;
 					}
@@ -448,18 +448,18 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 				allAssignments->push_back( plex.getX() );
 			}
 			#ifndef TO_DISABLE_OUTPUT
-				pm::cout << "found incumbent: " << TOmath<T>::toShortString( mip.maximize ? - objval : objval ) << std::endl;
+				std::cout << "found incumbent: " << TOmath<T>::toShortString( mip.maximize ? - objval : objval ) << std::endl;
 			#endif
 			if( bs->parent && bs->parent->vars.size() == 1 ){
 				branchPriorities[bs->vars[0]] += 10;
 			}
 //			{
 //				std::vector<T> incumbent = plex.getX();
-//				pm::cout << "x =";
+//				std::cout << "x =";
 //				for( unsigned int i = 0; i < incumbent.size(); ++i ){
-//					pm::cout << " " << incumbent[i];
+//					std::cout << " " << TOmath<T>::toShortString( incumbent[i] );
 //				}
-//				pm::cout << std::endl;
+//				std::cout << std::endl;
 //			}
 			++numsol;
 			delete bs;
@@ -475,8 +475,8 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 			optimalValue = - optimalValue;
 		}
 		#ifndef TO_DISABLE_OUTPUT
-			pm::cout << "Solution: " << TOmath<T>::toShortString( optimalValue ) << std::endl;
-			pm::cout << "Found " << numsol << " solutions" << std::endl;
+			std::cout << "Solution: " << TOmath<T>::toShortString( optimalValue ) << std::endl;
+			std::cout << "Found " << numsol << " solutions" << std::endl;
 		#endif
 		return solstatus::OPTIMAL;
 	}
@@ -492,7 +492,7 @@ template <class T>
 typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSolutions, T& optimalValue, std::vector<T>& optimalAssignment, std::vector<std::vector<T> >* allAssignments ){
 
 	#ifndef TO_DISABLE_OUTPUT
-		pm::cout << "Initialisiere LP-Solver." << std::endl;
+		std::cout << "Initialisiere LP-Solver." << std::endl;
 	#endif
 
 	{
@@ -511,7 +511,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 						mip.uinf[var] = false;
 						mip.ubounds[var] = rhs;
 						#ifndef TO_DISABLE_OUTPUT
-							pm::cout << "Info: Adjusting upper bound of variable " << mip.varNames.at( var ) << " <= " << rhs << std::endl;
+							std::cout << "Info: Adjusting upper bound of variable " << mip.varNames.at( var ) << " <= " << rhs << std::endl;
 						#endif
 					}
 				}
@@ -521,7 +521,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 						mip.linf[var] = false;
 						mip.lbounds[var] = rhs;
 						#ifndef TO_DISABLE_OUTPUT
-							pm::cout << "Info: Adjusting lower bound of variable " << mip.varNames.at( var ) << " >= " << rhs << std::endl;
+							std::cout << "Info: Adjusting lower bound of variable " << mip.varNames.at( var ) << " >= " << rhs << std::endl;
 						#endif
 					}
 				}
@@ -543,32 +543,32 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 		nnz += mip.matrix.at( i ).constraintElements.size();
 	}
 
-	const T hugenegint = TOmath<T>::hugenegint();
-	const T hugeposint = TOmath<T>::hugeposint();
+	const T& hugenegint = TOmath<T>::hugenegint();
+	const T& hugeposint = TOmath<T>::hugeposint();
 
 	for( unsigned int i = 0; i < n; ++i ){
 		if( mip.numbersystems.at( i ) == 'G' ){
 //			if( mip.linf.at( i ) || mip.lbounds.at( i ) < hugenegint ){
-//				pm::cout << "Warning: unbounded / huge integer variable. Setting " << mip.varNames.at( i ) << " >= " << hugenegint << std::endl;
+//				std::cout << "Warning: unbounded / huge integer variable. Setting " << mip.varNames.at( i ) << " >= " << TOmath<T>::toShortString( hugenegint ) << std::endl;
 //				mip.linf.at( i ) = 0;
 //				mip.lbounds.at( i ) = hugenegint;
 //			}
 //			if( mip.uinf.at( i ) || mip.ubounds.at( i ) > hugeposint ){
-//				pm::cout << "Warning: unbounded / huge integer variable. Setting " << mip.varNames.at( i ) << " <= " << hugeposint << std::endl;
+//				std::cout << "Warning: unbounded / huge integer variable. Setting " << mip.varNames.at( i ) << " <= " << TOmath<T>::toShortString( hugeposint ) << std::endl;
 //				mip.uinf.at( i ) = 0;
 //				mip.ubounds.at( i ) = hugeposint;
 //			}
 		} else if( mip.numbersystems.at( i ) == 'B' ){
 			if( mip.uinf.at( i ) || mip.ubounds.at( i ) > 1 ){
 				#ifndef TO_DISABLE_OUTPUT
-					pm::cout << "Warning: Adjusting upper bound of binary variable " << mip.varNames.at( i ) << std::endl;
+					std::cout << "Warning: Adjusting upper bound of binary variable " << mip.varNames.at( i ) << std::endl;
 				#endif
 				mip.uinf.at( i ) = false;
 				mip.ubounds.at( i ) = 1;
 			}
 			if( mip.linf.at( i ) || mip.lbounds.at( i ) < 0 ){
 				#ifndef TO_DISABLE_OUTPUT
-					pm::cout << "Warning: Adjusting lower bound of binary variable " << mip.varNames.at( i ) << std::endl;
+					std::cout << "Warning: Adjusting lower bound of binary variable " << mip.varNames.at( i ) << std::endl;
 				#endif
 				mip.linf.at( i ) = false;
 				mip.lbounds.at( i ) = 0;
@@ -577,13 +577,13 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 		if( mip.numbersystems.at( i ) != 'R' ){
 			if( !TOmath<T>::isInt( mip.lbounds.at( i ) ) ){
 				#ifndef TO_DISABLE_OUTPUT
-					pm::cout << "Warning: Adjusting fractional bounds to integer variables " << mip.varNames.at( i ) << std::endl;
+					std::cout << "Warning: Adjusting fractional bounds to integer variables " << mip.varNames.at( i ) << std::endl;
 				#endif
 				mip.lbounds.at( i ) = TOmath<T>::ceil( mip.lbounds.at( i ) );
 			}
 			if( !TOmath<T>::isInt( mip.ubounds.at( i ) ) ){
 				#ifndef TO_DISABLE_OUTPUT
-					pm::cout << "Warning: Adjusting fractional bounds to integer variables " << mip.varNames.at( i ) << std::endl;
+					std::cout << "Warning: Adjusting fractional bounds to integer variables " << mip.varNames.at( i ) << std::endl;
 				#endif
 				mip.ubounds.at( i ) = TOmath<T>::floor( mip.ubounds.at( i ) );
 			}
@@ -654,7 +654,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 
 	TOSimplex::TOSolver<T> plex( rows, colinds, rowbegininds, obj, rowlowerbounds, rowupperbounds, varlowerbounds, varupperbounds );
 	#ifndef TO_DISABLE_OUTPUT
-		pm::cout << "LP-Solver initialisiert." << std::endl;
+		std::cout << "LP-Solver initialisiert." << std::endl;
 	#endif
 
 	{
@@ -678,10 +678,10 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 				if( !plex.opt() ){
 					newlbounds.at( i ) = TOmath<T>::ceil( plex.getObj() );
 					#ifndef TO_DISABLE_OUTPUT
-						pm::cout << "Info: Adjusting lower bound of integer variable " << mip.varNames.at( i ) << " >= " << newlbounds.at( i ) << std::endl;
+						std::cout << "Info: Adjusting lower bound of integer variable " << mip.varNames.at( i ) << " >= " << TOmath<T>::toShortString( newlbounds.at( i ) ) << std::endl;
 					#endif
 				} else {
-					pm::cerr << "Warning: unbounded / huge integer variable. Setting " << mip.varNames.at( i ) << " >= " << hugenegint << std::endl;
+					std::cerr << "Warning: unbounded / huge integer variable. Setting " << mip.varNames.at( i ) << " >= " << TOmath<T>::toShortString( hugenegint ) << std::endl;
 					newlbounds.at( i ) = hugenegint;
 				}
 				newlinf.at( i ) = false;
@@ -692,10 +692,10 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 				if( !plex.opt() ){
 					newubounds.at( i ) = TOmath<T>::floor( - plex.getObj() );
 					#ifndef TO_DISABLE_OUTPUT
-						pm::cout << "Info: Adjusting upper bound of integer variable " << mip.varNames.at( i ) << " <= " << newubounds.at( i ) << std::endl;
+						std::cout << "Info: Adjusting upper bound of integer variable " << mip.varNames.at( i ) << " <= " << TOmath<T>::toShortString( newubounds.at( i ) ) << std::endl;
 					#endif
 				} else {
-					pm::cerr << "Warning: unbounded / huge integer variable. Setting " << mip.varNames.at( i ) << " <= " << hugeposint << std::endl;
+					std::cerr << "Warning: unbounded / huge integer variable. Setting " << mip.varNames.at( i ) << " <= " << TOmath<T>::toShortString( hugeposint ) << std::endl;
 					newubounds.at( i ) = hugeposint;
 				}
 				newuinf.at( i ) = false;
@@ -728,7 +728,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 	}
 
 	#ifndef TO_DISABLE_OUTPUT
-		pm::cout << "Löse R00t-LP." << std::endl;
+		std::cout << "Löse R00t-LP." << std::endl;
 	#endif
 
 	{
@@ -773,7 +773,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 							}
 
 							#ifndef TO_DISABLE_OUTPUT
-								pm::cout << "Variable " << mip.varNames.at( i ) << " fractional: " << rootSol.at( i ) << " Cutsize: " << cutsize << std::endl;
+								std::cout << "Variable " << mip.varNames.at( i ) << " fractional: " << TOmath<T>::toShortString( rootSol.at( i ) ) << " Cutsize: " << cutsize << std::endl;
 							#endif
 
 							if( cutsize <= 5 ){	// TODO
@@ -783,11 +783,11 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 										continue;
 									}
 									#ifndef TO_DISABLE_OUTPUT
-										pm::cout << " + " << gmiCut.first.at( j ) << " " << mip.varNames.at( j );
+										std::cout << " + " << TOmath<T>::toShortString( gmiCut.first.at( j ) ) << " " << mip.varNames.at( j );
 									#endif
 								}
 								#ifndef TO_DISABLE_OUTPUT
-									pm::cout << " >= " << gmiCut.second << std::endl;
+									std::cout << " >= " << TOmath<T>::toShortString( gmiCut.second ) << std::endl;
 								#endif
 
 								cuts2add.push_back( gmiCut );

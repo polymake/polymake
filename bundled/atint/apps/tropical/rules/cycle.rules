@@ -219,16 +219,24 @@ object Cycle {
 	## METHODS ##############################################
 
 	# @category Visualization
-	# Takes a chart and a positive Rational as input and computes the relative bounding box of the cycle, i.e.
-	# it takes the coordinate-wise minimum and maximum over the coordinates of the nonfar vertices and 
-	# adds/subtracts the given number. This is returned as a 2xdim matrix.
-	# @param Rational dist. Optional, 1 by default.
-	# @param Int chart. The chart to be used fot he computation.
-	user_method bounding_box(;$=1,$=0) {
-		my ($X,$dist,$chart) = @_;
+	# Takes a chart as input and computes the column-wise minimum and maximum of the coordinates of the nonfar vertices in homogeneous coordinates (the two opposing vertices of a bounding box). One can extend such a bounding box $bb1 with another $bb2 by using extend_bounding_box($bb1, $bb2).
+	# @param Int chart. The chart to be used for the computation.
+	user_method bounding_box(;$=0) {
+		my ($X,$chart) = @_;
 		my $aff = $X->affine_chart($chart);
-		return boundingBox($aff->VERTICES->minor(~$aff->FAR_VERTICES, ~[0]), $dist,0);
+		return common::bounding_box($aff->VERTICES->minor(~$aff->FAR_VERTICES, All));
 	}
+	
+	# @category Visualization
+	# Takes offset and a chart as input and computes the facets of a bounding box. \
+	# @param Int offset. The offset of a facet from the nearest bounded vertex in the affine chart
+	# @param Int chart. The chart to be used for the computation.
+	user_method bounding_box_facets(;$=1,$=0,$=0) {
+		my ($X,$offset,$makecube,$chart) = @_;
+		my $aff = $X->affine_chart($chart);
+		return polytope::bounding_box_facets($aff->VERTICES, offset=>$offset, make_cube=>$makecube);
+	}
+
 
 	# @category Basic polyhedral operations
 	# Checks whether this polyhedral structure is a fan, i.e. has only a single vertex at the origin.

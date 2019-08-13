@@ -68,11 +68,12 @@ property BASES : Array<Set>;
 permutation BasesPerm : PermBase;
 
 rule BasesPerm.PERMUTATION : BasesPerm.BASES, BASES {
-   $this->BasesPerm->PERMUTATION=find_permutation($this->BasesPerm->BASES, $this->BASES);
+   $this->BasesPerm->PERMUTATION = find_permutation($this->BasesPerm->BASES, $this->BASES)
+      // die "no permutation";
 }
 
 rule BASES : BasesPerm.BASES, BasesPerm.PERMUTATION {
-   $this->BASES=permuted($this->BasesPerm->BASES, $this->BasesPerm->PERMUTATION);
+   $this->BASES = permuted($this->BasesPerm->BASES, $this->BasesPerm->PERMUTATION);
 }
 weight 1.10;
 
@@ -91,8 +92,8 @@ property MATROID_HYPERPLANES : Array<Set>;
 permutation HyperplanePerm : PermBase;
 
 rule HyperplanePerm.PERMUTATION : HyperplanePerm.MATROID_HYPERPLANES, MATROID_HYPERPLANES {
-   $this->HyperplanePerm->PERMUTATION = find_permutation( $this->HyperplanePerm->MATROID_HYPERPLANES,
-      $this->MATROID_HYPERPLANES);
+   $this->HyperplanePerm->PERMUTATION = find_permutation($this->HyperplanePerm->MATROID_HYPERPLANES, $this->MATROID_HYPERPLANES)
+      // die "no permutation";
 }
 weight 2.10;
 
@@ -217,7 +218,7 @@ property CONNECTED : Bool;
 # The connected components
 property CONNECTED_COMPONENTS : Array<Set> {
    sub equal {
-      defined(eval { find_permutation(@_) })
+      defined(find_permutation(@_))
    }
 }
 

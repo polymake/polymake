@@ -117,38 +117,39 @@ bool GraphIso::operator== (const GraphIso& g2) const
    return std::equal(cg1, cg1_end, cg2);
 }
 
-Array<int> GraphIso::find_permutation(const GraphIso& g2) const
+optional<Array<int>>
+GraphIso::find_permutation(const GraphIso& g2) const
 {
    if (*this != g2)
-      throw no_match("not isomorphic");
+      return nullopt;
 
    Array<int> perm(p_impl->n);
    auto dst=perm.begin();
-   for (int *lab1=p_impl->canon_labels.get(), *lab1_end=lab1+p_impl->n, *lab2=g2.p_impl->canon_labels.get();
+   for (int *lab1 = p_impl->canon_labels.get(), *lab1_end = lab1+p_impl->n, *lab2 = g2.p_impl->canon_labels.get();
         lab1 != lab1_end; ++lab1, ++lab2)
-      dst[*lab2]=*lab1;
-   return perm;
+      dst[*lab2] = *lab1;
+   return make_optional(std::move(perm));
 }
 
-std::pair<Array<int>, Array<int>>
+optional<std::pair<Array<int>, Array<int>>>
 GraphIso::find_permutations(const GraphIso& g2, int n_cols) const
 {
    if (*this != g2)
-      throw no_match("not isomorphic");
+      return nullopt;
 
-   Array<int> row_perm(p_impl->n-n_cols), col_perm(n_cols);
+   Array<int> row_perm(p_impl->n - n_cols), col_perm(n_cols);
 
-   auto dst=col_perm.begin();
-   int *lab1=p_impl->canon_labels.get(), *lab1_end=lab1+n_cols, *lab2=g2.p_impl->canon_labels.get();
+   auto dst = col_perm.begin();
+   int *lab1 = p_impl->canon_labels.get(), *lab1_end = lab1+n_cols, *lab2 = g2.p_impl->canon_labels.get();
    for (; lab1 != lab1_end; ++lab1, ++lab2)
-      dst[*lab2]=*lab1;
+      dst[*lab2] = *lab1;
 
-   dst=row_perm.begin();
-   lab1_end=p_impl->canon_labels.get()+p_impl->n;
-   for (; lab1<lab1_end; ++lab1, ++lab2)
-      dst[*lab2-n_cols]=*lab1-n_cols;
+   dst = row_perm.begin();
+   lab1_end = p_impl->canon_labels.get() + p_impl->n;
+   for (; lab1 < lab1_end; ++lab1, ++lab2)
+      dst[*lab2 - n_cols] = *lab1 - n_cols;
 
-   return std::make_pair(row_perm, col_perm);
+   return make_optional(std::make_pair(std::move(row_perm), std::move(col_perm)));
 }
 
 void GraphIso::next_color(std::pair<int, int>& c)

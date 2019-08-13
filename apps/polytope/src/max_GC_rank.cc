@@ -64,7 +64,7 @@ perl::Object max_GC_rank(int d)
 }
 
 UserFunction4perl("# @category Producing a polytope from scratch"
-                  "# Produce a //d//-dimensional polytope of maximal Gomory-Chvatal rank Omega(d/log(d)),"
+                  "# Produce a //d//-dimensional polytope of maximal Gomory-Chvatal rank $ Omega( d/log(d) ) $ ,"
                   "# integrally infeasible."
                   "# With symmetric linear objective function (0,1,1..,1)."
                   "# Construction due to Pokutta and Schulz."

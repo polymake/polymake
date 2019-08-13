@@ -155,8 +155,7 @@ int RuleGraph::add_node(pTHX_ AV* rule)
 class RuleGraph::renumber_nodes {
 public:
    renumber_nodes(pTHX_ std::vector<AV*>& rule_deputies_arg)
-      : PmPerlInterpreterMemberInit(pi)
-        rule_deputies(rule_deputies_arg) {}
+      : rule_deputies(rule_deputies_arg) {}
 
    void operator() (int old_n, int new_n) const
    {
@@ -164,7 +163,7 @@ public:
          assert(!rule_deputies[new_n]);
          AV* rule=rule_deputies[old_n];
          if (rule) {
-            dTHXa(pi);
+            dTHX;
             SV* node_sv=AvARRAY(rule)[RuleDeputy_rgr_node_index];
             assert(SvIOKp(node_sv) && SvIVX(node_sv)==old_n);
             sv_setiv(node_sv, new_n);
@@ -177,7 +176,6 @@ public:
    }
 
 private:
-   PmPerlInterpreterMemberDecl(pi);
    std::vector<AV*>& rule_deputies;
 };
 
@@ -382,8 +380,7 @@ class RuleGraph::bare_graph_adapter {
 public:
    bare_graph_adapter(pTHX_ RuleGraph& me_arg, SV* tell_arg)
       : me(me_arg)
-      , PmPerlInterpreterMemberInit(pi)
-        tell_sv(tell_arg) {}
+      , tell_sv(tell_arg) {}
 
    arc_state_t& arc_state(int edge_id) const
    {
@@ -394,7 +391,7 @@ public:
    {
       if (tell_sv) {
          if (AV* rule=me.rule_deputies[node]) {
-            dTHXa(pi);
+            dTHX;
             PmStartFuncall(2);
             mPUSHs(newRV((SV*)rule));
             mPUSHi(reason);
@@ -419,7 +416,7 @@ public:
       me.graph.delete_node(node);
       if (AV* rule=me.rule_deputies[node]) {
 #if PerlVersion < 5220
-         dTHXa(pi);
+         dTHX;
 #endif
          SvOK_off(AvARRAY(rule)[RuleDeputy_rgr_node_index]);
          me.rule_deputies[node]=nullptr;
@@ -443,7 +440,6 @@ public:
 
 private:
    RuleGraph& me;
-   PmPerlInterpreterMemberDecl(pi);
    SV* const tell_sv;
 };
 
@@ -1066,8 +1062,7 @@ PPCODE:
       sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_resolved_arc", false),  RuleGraph::resolved_arc);
       sv_setiv(get_sv("Polymake::Core::Scheduler::rgr_source_arc", false),    RuleGraph::source_arc);
 
-      const AnyString RuleFlags_pkg("Polymake::Core::Rule::Flags");
-      HV* RuleFlags_stash = gv_stashpvn(RuleFlags_pkg.ptr, RuleFlags_pkg.len, false);
+      HV* RuleFlags_stash = get_named_stash(aTHX_ "Polymake::Core::Rule::Flags");
       RuleGraph::Rule_is_precondition = get_named_constant(aTHX_ RuleFlags_stash, "is_precondition");
       RuleGraph::Rule_is_perm_action = get_named_constant(aTHX_ RuleFlags_stash, "is_perm_action");
    }

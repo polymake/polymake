@@ -38,11 +38,12 @@ property COEFFICIENTS : Vector<TropicalNumber<Addition>>;
 permutation TermPerm : PermBase;
 
 rule TermPerm.PERMUTATION : TermPerm.MONOMIALS, MONOMIALS {
-   $this->TermPerm->PERMUTATION=find_matrix_row_permutation($this->TermPerm->MONOMIALS, $this->MONOMIALS);
+   $this->TermPerm->PERMUTATION = find_matrix_row_permutation($this->TermPerm->MONOMIALS, $this->MONOMIALS)
+      // die "no permutation";
 }
 
 rule MONOMIALS : TermPerm.MONOMIALS, TermPerm.PERMUTATION {
-   $this->MONOMIALS=permuted_rows($this->TermPerm->MONOMIALS, $this->TermPerm->PERMUTATION);
+   $this->MONOMIALS = permuted_rows($this->TermPerm->MONOMIALS, $this->TermPerm->PERMUTATION);
 }
 weight 1.10;
 

@@ -21,10 +21,11 @@
 #
 # You can perform algebraic operations such as addition or scalar multiplication.
 #
+# @example
 # You can create a new Vector by entering its elements, e.g.:
-#	$v = new Vector<Int>(1,2,3);
+# > $v = new Vector<Int>(1,2,3);
 # or
-#	$v = new Vector<Int>([1,2,3]);
+# >$v = new Vector<Int>([1,2,3]);
 # @tparam Element
 declare property_type Vector<Element=Rational> : c++ (include => ["polymake/Vector.h"]) {
 
@@ -61,8 +62,8 @@ declare property_type Vector<Element=Rational> : c++ (include => ["polymake/Vect
 
 # @category Arithmetic
 # Compute the __greatest common divisor__ of the elements of the given vector.
-# @param Vector<SCALAR> v
-# @return SCALAR
+# @param Vector<__Scalar__> v
+# @return __Scalar__
 # @example
 # > $v = new Vector<Int>(3,6,9);
 # > print gcd($v);
@@ -72,8 +73,8 @@ user_function gcd(Vector) : c++ (include => "polymake/linalg.h");
 
 # @category Arithmetic
 # Compute the least common multiple of the elements of the given vector.
-# @param Vector<SCALAR> v
-# @return SCALAR
+# @param Vector<__Scalar__> v
+# @return __Scalar__
 # @example
 # > $v = new Vector<Integer>(1,3,6,9);
 # > print lcm($v);
@@ -175,8 +176,12 @@ declare property_type Matrix<Element=Rational, Sym=NonSymmetric> : c++ (name => 
    user_method col(:wary&&, $) : c++ : returns(lvalue);
 
    # Returns a __minor__ of the matrix containing the rows in //r// and the columns in //c//. You can pass [[all_rows_or_cols|All]] if you want all rows or columns and ~ for the complement of a set. E.g.
-   #	$A->minor(All, ~[0]);
-   # will give you the minor of a matrix containing all rows and all but the 0-th column.
+   # @example
+   # The following will give you the minor of a matrix containing all rows and all but the 0-th column.
+   # > print unit_matrix(3)->minor(All, ~[0]);
+   # | (2)
+   # | 1 0
+   # | 0 1
    # @param Set r the rows
    # @param Set c the columns
    # @return Matrix
@@ -218,10 +223,10 @@ user_function project_to_orthogonal_complement(Matrix&, Matrix) : c++ (include =
 
 # find a permutation of rows between two given matrices
 # matrices with [[Float]] coefficients are compared with some tolerance
-# it throws an excepion if there is no permutation
 # @param Matrix m1 first matrix
 # @param Matrix m2 second matrix
 # @param Bool expect_duplicate_rows if true, matrices may contain duplicate rows
+# @return Array<int> row indexes, or undef if there are unmatched rows
 function find_matrix_row_permutation(Matrix, Matrix; $=false) : c++ (include => ["polymake/common/find_matrix_row_permutation.h"]);
 
 # @category Algebraic Types
@@ -458,14 +463,14 @@ user_function transpose(Matrix:anchor) : c++ (name => 'T');
 # Computes the __determinant__ of a matrix using Gaussian elimination.
 # If Scalar is not of field type, but element of a Euclidean ring R,
 # type upgrade to element of the quotient field is performed.
-# The result is recast as a Scalar, which is possible without roundoff 
+# The result is recast as a Scalar, which is possible without roundoff
 # since the so-computed determinant is an element of the (embedded) ring R.
-# @param Matrix<SCALAR> A
-# @return SCALAR det(A)
+# @param Matrix<__Scalar__> A
+# @return __Scalar__ det(A)
 # @example
 # > print det(unit_matrix(3));
 # | 1
-# @example 
+# @example
 # > $p = new UniPolynomial<Rational,Int>("x2+3x");
 # > $M = new Matrix<UniPolynomial<Rational,Int>>([[$p, $p+1],[$p+1,$p]]);
 # > print det($M);
@@ -546,8 +551,8 @@ user_function barycenter(Matrix) : c++ (include => "polymake/linalg.h");
 
 # @category Linear Algebra
 # Return the sum of the squared entries of a vector //v//.
-# @param Vector<SCALAR> v
-# @return SCALAR
+# @param Vector<__Scalar__> v
+# @return __Scalar__
 
 user_function sqr(Vector) : c++ (include => "polymake/Vector.h");
 
@@ -924,9 +929,9 @@ user_function qr_decomp(Matrix<Float>) : c++ (include => "polymake/linalg.h");
 # Complete result of the __singular value decomposition__ of a matrix //M//,
 # such that left_companion * sigma * transpose(right_companion) = //M//
 # Contains the following fields:
-#	Matrix<Float> sigma: the diagonalized matrix
-#	Matrix<Float> left_companion: matrix of left singular vectors
-#	Matrix<Float> right_companion: matrix of right singular vectors
+# @field Matrix<Float> sigma the diagonalized matrix
+# @field Matrix<Float> left_companion matrix of left singular vectors
+# @field Matrix<Float> right_companion matrix of right singular vectors
 declare property_type SingularValueDecomposition : c++ (include => "polymake/linalg.h");
 
 # @category Linear Algebra
@@ -1167,9 +1172,8 @@ declare property_type Max : c++ (special => 'Max', include => "polymake/Tropical
     user_method apply {my ($o,$x,$y) = @_; return max($x,$y);}
 }
 
-# @topic property_types/Arithmetic/Addition
-# Type parameter of many functions and data types from the domain of tropical geometry.
-# Specifies the mode of tropical addition, must be [[Min]] or [[Max]].
+# @topic any/tparam/Addition
+# Mode of tropical addition, must be [[Min]] or [[Max]].
 # There is on purpose no default value for it.
 
 # @category Arithmetic
@@ -1204,21 +1208,21 @@ declare property_type TropicalNumber<Addition, Scalar=Rational> : upgrades( Scal
 # These types are needed as return types of algebraic computations.
 
 # @category Linear Algebra
-# Complete result of the __Smith normal form__ computation.
-# Contains the following fields:
-#	SparseMatrix<Scalar> form: the Smith normal form S of the given matrix //M//
-#	List<Pair<Scalar, Int>> torsion:  absolute values of the entries greater than 1 of the diagonal together with their multiplicity
-#	Int rank: rank of //M//
-#	SparseMatrix<Scalar> left_companion, right_companion: unimodular matrices L and R such that
-#                        M = LSR in normal case, or S = LMR in inverted case (as specified in the call to [[smith_normal_form]] function).
+# Complete result of the __Smith normal form__ computation of the input matrix //M//.
+# @field SparseMatrix<Scalar> form the Smith normal form
+# @field List<Pair<Scalar, Int>> torsion absolute values of the entries greater than 1 of the diagonal together with their multiplicity
+# @field Int rank rank of //M//
+# @field SparseMatrix<Scalar> left_companion unimodular matrix L such that //M// = L*S*R
+# @field SparseMatrix<Scalar> right_companion unimodular matrix R such that //M// = L*S*R
+# @tparam Scalar matrix element type
 declare property_type SmithNormalForm<Scalar> : c++ (include => "polymake/Smith_normal_form.h");
 
 # @category Linear Algebra
 # Compute the __Smith normal form__ of a given matrix //M//.
-# M = LSR in normal case, or S = LMR in inverted case.
+# M = L*S*R in normal case, or S = L*M*R in inverted case.
 # @param Matrix M must be of integer type
-# @param Bool inv optional, if true, compute the inverse of the companion matrices
-# @return SmithNormalForm<Integer>
+# @param Bool inv if true, the companion matrices in the result will be inverted 
+# @return SmithNormalForm
 # @example
 # > $M = new Matrix<Integer>([1,2],[23,24]);
 # > $SNF = smith_normal_form($M);
@@ -1233,22 +1237,22 @@ declare property_type SmithNormalForm<Scalar> : c++ (include => "polymake/Smith_
 # | 1 2
 # | 0 1
 
-user_function smith_normal_form(Matrix; $=0) : c++ (include => "polymake/Smith_normal_form.h");
+user_function smith_normal_form(Matrix; $=false) : c++ (include => "polymake/Smith_normal_form.h");
 
 # @category Linear Algebra
-# Complete result of the __Hermite normal form__ computation.
-# Contains the following fields:
-#  Matrix<Scalar> hnf: the Hermite normal form N of //M//
-#  SparseMatrix<Scalar> companion: unimodular Matrix R such that M*R = N.
-#  Int rank: rank of //M//
+# Complete result of the __Hermite normal form__ computation of the input matrix //M//.
+# @field Matrix<Scalar> hnf the Hermite normal form
+# @field SparseMatrix<Scalar> companion unimodular matrix R such that M*R = H
+# @field Int rank rank of //M//
+# @tparam Scalar matrix element type
 declare property_type HermiteNormalForm<Scalar> : c++ (include => "polymake/integer_linalg.h");
 
 # @category Linear Algebra
 # Computes the (column) Hermite normal form of an integer matrix.
 # Pivot entries are positive, entries to the left of a pivot are non-negative and strictly smaller than the pivot.
-# @param Matrix M Matrix to be transformed.
+# @param Matrix M matrix to be transformed.
 # @option Bool reduced If this is false, entries to the left of a pivot are left untouched. True by default
-# @return HermiteNormalForm object H with H.hnf, H.companion and H.rank with M*H.companion=H.hnf and rank(M) = H.rank.
+# @return HermiteNormalForm
 # @example The following stores the result for a small matrix M in H and then prints both hnf and companion:
 # > $M = new Matrix<Integer>([1,2],[2,3]);
 # > $H = hermite_normal_form($M);
@@ -1258,7 +1262,7 @@ declare property_type HermiteNormalForm<Scalar> : c++ (include => "polymake/inte
 # > print $H->companion;
 # | -3 2
 # | 2 -1
-user_function hermite_normal_form(Matrix; $=1) : c++ (include => "polymake/integer_linalg.h");
+user_function hermite_normal_form(Matrix; $=true) : c++ (include => "polymake/integer_linalg.h");
 
 # @category Linear Algebra
 # Computes the __lattice null space__ of the integer matrix //A//.

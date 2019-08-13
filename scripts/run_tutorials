@@ -26,14 +26,14 @@ require Polymake::Test::Tutorials;
 #
 
 my (@tutorials, $jenkins_report, $annotate_mode, $emacs_style, $shuffle_seed,
-    $no_new_glue_code, $exit, $base_dir);
+    $cpperl_root, $exit, $base_dir);
 
 if ( !GetOptions('jenkins-report=s' => \$jenkins_report,
                  'annotate-mode=s' => \$annotate_mode,
                  'base-dir=s' => \$base_dir,
                  'emacs-style' => \$emacs_style,
                  'shuffle:i' => \$shuffle_seed,
-                 'no-new-glue-code' => \$no_new_glue_code,
+                 'cpperl-root=s' => \$cpperl_root,
                 )
      or $jenkins_report ? ($emacs_style || @ARGV) : ($annotate_mode)) {
 die <<'.'
@@ -48,8 +48,8 @@ Options are:
     permute tutorials randomly
     specify an integer SEED to reproduce a (failed) run;
     if omitted, a random seed is generated and reported on stdout
---no-new-glue-code
-    forbid automatic generation and compilation of C++/perl interface code snippets (aka wrappers)
+--cpperl-root PATH
+    write new or updated cpperl files beneath the given root directory
 --jenkins-report REPORT
     produce a JUnit-compatible test report REPORT_tutorials.xml,
     do not print any test results or warnings to STDOUT.
@@ -89,18 +89,19 @@ unless (@tutorials = @ARGV) {
    push @tutorials, "*";
 }
 
-local $Core::CPlusPlus::code_generation= $no_new_glue_code ? "none" : "shared";
+local $Core::CPlusPlus::code_generation = $cpperl_root eq "/dev/null" ? "none" : "shared";
+$Core::CPlusPlus::cpperl_src_root = "$cpperl_root/$$" if defined($cpperl_root);
 
 $env->start_testsuite($jenkins_report, "tutorials");
 
 foreach my $pattern (@tutorials) {
-   my $group=new Test::Tutorials($env, $pattern, $base_dir);
+   my $group = new Test::Tutorials($env, $pattern, $base_dir);
    if (@{$group->subgroups}) {
-      my $OK=$group->run;
-      $exit ||= $OK<=0;
+      my $OK = $group->run;
+      $exit ||= $OK <= 0;
    } elsif (@tutorials > 1 || $tutorials[0] ne "*") {
       warn("No tutorials found matching $pattern\n");
-      $exit=1;
+      $exit = 1;
    } else {
       print "No tutorials found\n";
    }

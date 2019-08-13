@@ -140,7 +140,8 @@ object MatroidRingCycle {
    permutation PresentationPerm : PermBase;
 
    rule PresentationPerm.PERMUTATION : PresentationPerm.NESTED_PRESENTATIONS, NESTED_PRESENTATIONS {
-      $this->PresentationPerm->PERMUTATION = find_permutation( $this->PresentationPerm->NESTED_PRESENTATIONS, $this->NESTED_PRESENTATIONS);
+      $this->PresentationPerm->PERMUTATION = find_permutation($this->PresentationPerm->NESTED_PRESENTATIONS, $this->NESTED_PRESENTATIONS)
+	// die "no permutation";
    }
    weight 5.10;
 

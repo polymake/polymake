@@ -146,10 +146,11 @@ bool GraphIso::operator== (const GraphIso& g2) const
    }
 }
 
-Array<int> GraphIso::find_permutation(const GraphIso& g2) const
+optional<Array<int>>
+GraphIso::find_permutation(const GraphIso& g2) const
 {
    if (*this != g2)
-      throw no_match("not isomorphic");
+      return nullopt;
   
    const int n = p_impl->src_graph->get_nof_vertices();
    unsigned int* invCanonLabels = new unsigned int[n];
@@ -161,14 +162,14 @@ Array<int> GraphIso::find_permutation(const GraphIso& g2) const
       perm[i] = invCanonLabels[ g2.p_impl->canon_labels[i] ];
    
    delete[] invCanonLabels;
-   return perm;
+   return make_optional(std::move(perm));
 }
 
-std::pair< Array<int>, Array<int> >
+optional<std::pair<Array<int>, Array<int>>>
 GraphIso::find_permutations(const GraphIso& g2, int n_cols) const
 {
    if (*this != g2)
-      throw no_match("not isomorphic");
+      return nullopt;
    
    const int n = p_impl->src_graph->get_nof_vertices();
    unsigned int* invCanonLabels = new unsigned int[n];
@@ -184,7 +185,7 @@ GraphIso::find_permutations(const GraphIso& g2, int n_cols) const
    
    delete[] invCanonLabels;
 
-   return std::make_pair(row_perm, col_perm);
+   return make_optional(std::make_pair(std::move(row_perm), std::move(col_perm)));
 }
 
 Array<int> GraphIso::canonical_perm() const

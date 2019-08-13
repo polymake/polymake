@@ -27,10 +27,7 @@ class type_union;
 
 namespace unions {
 
-struct empty_union_def {
-   static void invalid_op(char*, ...) __attribute__((noreturn));
-   static void trivial_op(char*, ...);
-};
+void invalid_null_op() __attribute__((noreturn));
 
 template <typename TypeList, typename Operation>
 class Function
@@ -38,7 +35,7 @@ class Function
 
 template <typename... T, typename Operation>
 class Function<mlist<T...>, Operation> {
-   using fpointer = typename Operation::fpointer;
+   using fpointer = decltype(&Operation::null);
    static constexpr int length = sizeof...(T);
 
    static const fpointer table[length+1];
@@ -48,7 +45,7 @@ public:
 
 template <typename... T, typename Operation>
 const typename Function<mlist<T...>, Operation>::fpointer
-Function<mlist<T...>, Operation>::table[] = { Operation::no_op(), &Operation::template execute<T>... };
+Function<mlist<T...>, Operation>::table[] = { &Operation::null, &Operation::template execute<T>... };
 
 template <typename TypeList1, typename TypeList2>
 class Mapping
@@ -141,25 +138,9 @@ struct basics<T, true, true>    // reference, non-const
    using basics<T, false, true>::get;
 };
 
-template <typename F>
-struct for_defined_only {
-   using fpointer = F*;
-   static fpointer no_op()
-   {
-      return reinterpret_cast<fpointer>(&empty_union_def::invalid_op);
-   }
-};
+struct default_constructor {
+   static void null(char* dst) { invalid_null_op(); }
 
-template <typename F>
-struct for_any_state {
-   using fpointer = F*;
-   static fpointer no_op()
-   {
-      return reinterpret_cast<fpointer>(&empty_union_def::trivial_op);
-   }
-};
-
-struct default_constructor : for_defined_only<void(char*)> {
    template <typename T>
    static void execute(char* dst)
    {
@@ -167,7 +148,9 @@ struct default_constructor : for_defined_only<void(char*)> {
    }
 };
 
-struct copy_constructor : for_any_state<void(char*, const char*)> {
+struct copy_constructor {
+   static void null(char* dst, const char* src) {}
+
    template <typename T>
    static void execute(char* dst, const char* src)
    {
@@ -175,7 +158,9 @@ struct copy_constructor : for_any_state<void(char*, const char*)> {
    }
 };
 
-struct move_constructor : for_any_state<void(char*, char*)> {
+struct move_constructor {
+   static void null(char* dst, char* src) {}
+
    template <typename T>
    static void execute(char* dst, char* src)
    {
@@ -183,7 +168,9 @@ struct move_constructor : for_any_state<void(char*, char*)> {
    }
 };
 
-struct destructor : for_any_state<void(char*)> {
+struct destructor {
+   static void null(char* obj) {}
+
    template <typename T>
    static void execute(char* obj)
    {

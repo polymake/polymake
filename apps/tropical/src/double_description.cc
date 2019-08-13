@@ -27,10 +27,10 @@ namespace polymake { namespace tropical {
 			      "# This computes the __extremal generators__ of a tropical cone "
 			      "# given by generators //G// intersected with one inequality //a//x ~ //b//x."
 			      "# Here, ~ is >= for min and <= for max."
-			      "# @param Matrix<TropicalNumber<Addition, SCALAR> > G"
-			      "# @param Vector<TropicalNumber<Addition, SCALAR> > a"
-			      "# @param Vector<TropicalNumber<Addition, SCALAR> > b"
-			      "# @return Matrix<TropicalNumber<Addition, SCALAR> > extrls"
+			      "# @param Matrix<TropicalNumber> G"
+			      "# @param Vector<TropicalNumber> a"
+			      "# @param Vector<TropicalNumber> b"
+			      "# @return Matrix<TropicalNumber> extrls"
 			      "# @example"
 			      "# > $G = new Matrix<TropicalNumber<Min>>([[0,0,2],[0,4,0],[0,3,1]]);"
 			      "# > $a = new Vector<TropicalNumber<Min>>([0,-1,'inf']);"
@@ -44,8 +44,8 @@ namespace polymake { namespace tropical {
     UserFunctionTemplate4perl("# @category Tropical operations"
 			      "# compute the dual description of "
 			      "# a monomial tropical cone. "
-			      "# @param Matrix<SCALAR> monomial_generators"
-			      "# @return Pair<Matrix<SCALAR>, IncidenceMatrix>",
+			      "# @param Matrix monomial_generators"
+			      "# @return Pair<Matrix, IncidenceMatrix>",
 			      "dual_description(Matrix)");
 
 
@@ -53,16 +53,16 @@ namespace polymake { namespace tropical {
 			      "# Reformulate the description of an "
 			      "# inequality system given by two matrices"
 			      "# to the description by apices and infeasible sectors " 
-			      "# @param Matrix<TropicalNumber<Addition, SCALAR>> G"
-			      "# @param Matrix<TropicalNumber<Addition, SCALAR>> A"
-			      "# @return Pair<Matrix<TropicalNumber<Addition, SCALAR>>, Array<Set<Int>>> signed_apices",
+			      "# @param Matrix<TropicalNumber> G"
+			      "# @param Matrix<TropicalNumber> A"
+			      "# @return Pair<Matrix<TropicalNumber>, Array<Set<Int>>> signed_apices",
 			      "matrixPair2apexSet(Matrix, Matrix)");
 
     UserFunctionTemplate4perl("# @category Tropical operations"
 			      "# Check if a point is contained in "
 			      "# all tropical halfspaces given by "
 			      "# their apices and the infeasible sectors " 
-			      "# @param Matrix<TropicalNumber<Addition, SCALAR>> apices"
+			      "# @param Matrix<TropicalNumber> apices"
 			      "# @param Array<Set<Int>> sectors"
 			      "# @return Bool",
 			      "is_contained(Vector, Matrix, Array)");

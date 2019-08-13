@@ -32,11 +32,11 @@ bool is_self_dual(perl::Object p)
    return graph::isomorphic(M, T(M));
 }
 
-std::pair< Array<int>, Array<int> >
+optional<std::pair<Array<int>, Array<int>>>
 find_facet_vertex_permutations(perl::Object p1, perl::Object p2)
 {
-   const IncidenceMatrix<> M1=p1.give("RAYS_IN_FACETS"), M2=p2.give("RAYS_IN_FACETS");
-   return graph::find_row_col_permutation(M1,M2);
+   const IncidenceMatrix<> M1 = p1.give("RAYS_IN_FACETS"), M2 = p2.give("RAYS_IN_FACETS");
+   return graph::find_row_col_permutation(M1, M2);
 }
 
 UserFunction4perl("# @category Comparing"
@@ -58,10 +58,9 @@ UserFunction4perl("# @category Comparing"
                   "# The facet permutation is the first component, the vertex permutation is the second component of the return value."
                   "# "
                   "# Only the combinatorial isomorphism is considered."
-                  "# If the polytopes are not isomorphic, an exception is thrown."
                   "# @param Cone P1 the first cone/polytope"
                   "# @param Cone P2 the second cone/polytope"
-                  "# @return Pair<Array<Int>, Array<Int>> the facet and the vertex permutations"
+                  "# @return Pair<Array<Int>, Array<Int>> the facet and the vertex permutations, or undef if polytopes are not isomorphic"
                   "# @example [prefer cdd] To print the vertex permutation that maps the 3-simplex to its mirror image, type this:"
                   "# > $p = find_facet_vertex_permutations(simplex(3),scale(simplex(3),-1));"
                   "# > print $p->first;"

@@ -22,6 +22,7 @@
 #include "polymake/internal/CharBuffer.h"
 #include "polymake/internal/Wary.h"
 #include "polymake/internal/Array.h"
+#include "polymake/optional"
 
 #include <limits>
 #include <cmath>
@@ -34,7 +35,6 @@
 #ifndef POLYMAKE_WITHIN_PERL
 struct sv;
 #define SV ::sv
-struct PerlInterpreter;
 #endif
 
 namespace pm { namespace perl {
@@ -526,7 +526,6 @@ public:
 
 class Stack {
 protected:
-   PerlInterpreter* pi;
    Stack();
    Stack(SV** start);
    explicit Stack(int reserve);
@@ -648,7 +647,8 @@ struct generic_representative<T, true> {
 using primitive_lvalues = mlist<bool, int, unsigned int, long, unsigned long, double, std::string>;
 
 template <typename T>
-struct can_be_undefined : std::false_type {};
+struct is_optional_value
+   : is_instance_of<T, optional> {};
 
 template <typename T>
 struct numeric_traits : std::numeric_limits<type_behind_t<T>> {
@@ -1160,7 +1160,7 @@ protected:
    std::enable_if_t<is_class_or_union<pure_type_t<SourceRef>>::value &&
                     !(is_derived_from_any<pure_type_t<SourceRef>, nomagic_types>::value ||
                       represents_big_Object<pure_type_t<SourceRef>>::value ||
-                      can_be_undefined<pure_type_t<SourceRef>>::value ||
+                      is_optional_value<pure_type_t<SourceRef>>::value ||
                       !std::is_same<typename object_traits<pure_type_t<SourceRef>>::proxy_for, void>::value),
                     Anchor*>
    put_val(SourceRef&& x, int n_anchors)
@@ -1199,13 +1199,12 @@ protected:
       }
    }
 
-   // currently only helpers for associative containers, see assoc.h
-   template <typename Source>
-   std::enable_if_t<can_be_undefined<Source>::value, Anchor*>
-   put_val(const Source& x, int n_anchors)
+   template <typename SourceRef>
+   std::enable_if_t<is_optional_value<pure_type_t<SourceRef>>::value, Anchor*>
+   put_val(SourceRef&& x, int n_anchors)
    {
-      if (x.defined()) {
-         return put_val(x.get_val(), n_anchors);
+      if (x) {
+         return put_val(std::forward<SourceRef>(x).value(), n_anchors);
       } else {
          put_val(undefined());
          return nullptr;

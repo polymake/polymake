@@ -1,5 +1,6 @@
 {"app": "common",
  "inst": [
   {"args": ["Rational", "void", "void"], "func": "ones_matrix", "include": ["polymake/Rational.h", "polymake/linalg.h"], "sig": "ones_matrix:T1.x.x", "tp": "1"},
+  {"args": ["int", "void", "void"], "func": "ones_matrix", "include": ["polymake/linalg.h"], "sig": "ones_matrix:T1.x.x", "tp": "1"},
  null ],
 "version": 3}

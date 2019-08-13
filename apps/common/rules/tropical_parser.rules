@@ -36,7 +36,7 @@
 # as total number of variables and create a ring for the result. The variables will be sorted alphabetically.
 # @param String s The string to be parsed
 # @param String vars Optional list of variables. If this is given, all variables used in s must match one of the variables in this list.
-# @return Polynomial<TropicalNumber<Addition, Rational>>, where Addition depends on
+# @return Polynomial<TropicalNumber<__Addition__, Rational>>, where __Addition__ depends on
 # whether min or max was used in the string.
 user_function toTropicalPolynomial(String; @) {
    my ($string,@vars) = @_;

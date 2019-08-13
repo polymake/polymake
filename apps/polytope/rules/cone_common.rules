@@ -208,12 +208,12 @@ rule N_RAYS : RAYS_IN_FACETS {
 weight 0.1;
 
 rule N_FACETS : RAYS_IN_FACETS {
-        $this->N_FACETS=$this->RAYS_IN_FACETS->rows;
+   $this->N_FACETS=$this->RAYS_IN_FACETS->rows;
 }
 weight 0.1;
 
 rule N_RIDGES : RAYS_IN_RIDGES {
-        $this->N_RIDGES=$this->RAYS_IN_RIDGES->rows;
+   $this->N_RIDGES=$this->RAYS_IN_RIDGES->rows;
 }
 weight 0.1;
 
@@ -397,6 +397,10 @@ rule F_VECTOR : N_FACETS, N_RAYS, COMBINATORIAL_DIM {
 precondition : COMBINATORIAL_DIM { $this->COMBINATORIAL_DIM < 4 }
 weight 0.10;
 
+rule N_RIDGES = DUAL_GRAPH.N_EDGES;
+
+rule N_EDGES = GRAPH.N_EDGES;
+
 rule F_VECTOR : N_FACETS, N_RAYS, GRAPH.N_EDGES, DUAL_GRAPH.N_EDGES, COMBINATORIAL_DIM {
     my $dim =  $this->COMBINATORIAL_DIM;
     my $vec = new Vector<Integer>($dim);
@@ -505,17 +509,25 @@ rule RAYS_IN_FACETS, FACETS, LINEAR_SPAN : RAYS_IN_INEQUALITIES, INEQUALITIES {
 incurs FacetPerm;
 
 rule RAYS_IN_RIDGES : RAYS_IN_FACETS, COMBINATORIAL_DIM {
-    my $uhd = upper_hasse_diagram($this->RAYS_IN_FACETS, $this->COMBINATORIAL_DIM, $this->COMBINATORIAL_DIM - 2);
-    my $nodes = $uhd->nodes_of_rank($this->COMBINATORIAL_DIM - 2);
-    my @rir = map {$uhd->FACES->[$_]} (@{$nodes});
-    $this->RAYS_IN_RIDGES = new IncidenceMatrix(\@rir);
+   if ($this->COMBINATORIAL_DIM >= 2) {
+      my $uhd = upper_hasse_diagram($this->RAYS_IN_FACETS, $this->COMBINATORIAL_DIM, $this->COMBINATORIAL_DIM - 2);
+      my $nodes = $uhd->nodes_of_rank($this->COMBINATORIAL_DIM - 2);
+      my @rir = map {$uhd->FACES->[$_]} (@{$nodes});
+      $this->RAYS_IN_RIDGES = new IncidenceMatrix(\@rir);
+   } else {
+      $this->RAYS_IN_RIDGES = new IncidenceMatrix(0, $this->RAYS_IN_FACETS->cols);
+   }
 }
 precondition : !exists(HASSE_DIAGRAM);
 
 rule RAYS_IN_RIDGES : HASSE_DIAGRAM {
-    my $nodes = $this->HASSE_DIAGRAM->nodes_of_dim($this->HASSE_DIAGRAM->dim - 2);
-    my @rir = map {$this->HASSE_DIAGRAM->FACES->[$_]} (@{$nodes});
-    $this->RAYS_IN_RIDGES = new IncidenceMatrix(\@rir);
+   if ($this->HASSE_DIAGRAM->dim >= 2) {
+      my $nodes = $this->HASSE_DIAGRAM->nodes_of_dim($this->HASSE_DIAGRAM->dim - 2);
+      my @rir = map {$this->HASSE_DIAGRAM->FACES->[$_]} (@{$nodes});
+      $this->RAYS_IN_RIDGES = new IncidenceMatrix(\@rir);
+   } else {
+      $this->RAYS_IN_RIDGES = new IncidenceMatrix(0, $this->HASSE_DIAGRAM->dim + 1);
+   }
 }
 
 rule FACETS, LINEAR_SPAN : RAYS, LINEALITY_SPACE, RAYS_IN_FACETS {
@@ -715,7 +727,7 @@ user_function iterated_barycentric_subdivision<Scalar>(Cone<Scalar> $ { no_label
 
 # @category Other
 # @param Matrix M
-# Create the Lawrence matrix Lambda(M) corresponding to M.
+# Create the Lawrence matrix $ Lambda(M) $ corresponding to M.
 # If //M// has //n// rows and //d// columns, then Lambda(M) equals
 # ( //M//       //I_n// )
 # ( //0_{n,d}// //I_n// ).
@@ -731,9 +743,9 @@ user_function lawrence_matrix<Scalar>(Matrix<Scalar>) {
 
 
 # @category Producing a polytope from polytopes
-# Create the Lawrence polytope Lambda(P) corresponding to P.
-# Lambda(P) has the property that
-# Gale(Lambda(P)) = Gale(P) union -Gale(P).
+# Create the Lawrence polytope $ Lambda(P) $ corresponding to P.
+# $ Lambda(P) $ has the property that
+# $ Gale( Lambda(P) ) = Gale(P) union -Gale(P) $.
 # @param Cone P an input cone or polytope
 # @return Cone the Lawrence cone or polytope to P
 user_function lawrence<Scalar>(Cone<Scalar>) {

@@ -120,8 +120,6 @@ public:
 
       typedef ColumnIterator iterator;
 
-      ColumnIterator() = default;
-
       ColumnIterator(ColumnObject& col_arg);
 
       reference operator* () { return current; }

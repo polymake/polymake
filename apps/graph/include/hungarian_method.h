@@ -49,8 +49,6 @@ class TreeGrowVisitor : public NodeVisitor<> {
    const Graph<Directed>* H;
    Set<int> start_nodes;
 public:
-   TreeGrowVisitor() = default;
-
    TreeGrowVisitor(const Graph<Directed>& G)
       : base_t(G)
       , label(G.top().dim(), -1)

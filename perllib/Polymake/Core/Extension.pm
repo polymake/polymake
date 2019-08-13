@@ -58,7 +58,7 @@ sub new {
    if (-f $self->dir."/polymake.ext") {
       $self->untrusted= -w _ && (!$self->is_bundled || $DeveloperMode);
       $self->meta_tm=(stat _)[9];
-      open my $meta, $self->dir."/polymake.ext"
+      open my $meta, "<:utf8", $self->dir."/polymake.ext"
         or die "can't read extension description ", $self->dir, "/polymake.ext: $!\n";
       local $/;
       local $_=<$meta>;

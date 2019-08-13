@@ -18,6 +18,7 @@
 #include "polymake/Array.h"
 #include "polymake/PowerSet.h"
 #include "polymake/FacetList.h"
+#include "polymake/topaz/lawler.h"
 
 namespace polymake { namespace topaz {
   

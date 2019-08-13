@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2018
+#  Copyright (c) 1997-2019
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -94,6 +94,18 @@ user_method secondary_cone(%secondary_cone_options) : VECTORS, MAXIMAL_CELLS {
     }
     
     return $sc;
+}
+
+rule MIN_WEIGHTS : VECTORS, MAXIMAL_CELLS {
+    my $n_vectors = $this->VECTORS->rows();
+    my $secT = $this->secondary_cone(); # no normalization etc
+    my $secTineqs = new Matrix<Rational>(primitive($secT->INEQUALITIES));
+    my $minus_ones = new Vector<Rational>(-ones_vector<Rational>($secTineqs->rows()));
+    my $positive_orthant = zero_vector<Rational>|unit_matrix<Rational>($n_vectors);
+    my $ineqs = ($minus_ones|$secTineqs) / $positive_orthant; # shifted ineqs intersected with positive orthant
+    my $ilp = new polytope::MixedIntegerLinearProgram<Rational>(LINEAR_OBJECTIVE=>(0|ones_vector<Rational>($n_vectors)));
+    my $secTilp = new polytope::Polytope(INEQUALITIES=>$ineqs,MILP=>$ilp);
+    $this->MIN_WEIGHTS = $secTilp->MILP->MINIMAL_SOLUTION->slice(~[0]);
 }
 
 } # object SubdivisionOfVectors

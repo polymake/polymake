@@ -114,12 +114,12 @@ namespace polymake { namespace graph {
                int path_head;
             public:
                CycleVisitor() {}
-               CycleVisitor(const Graph<Directed>& D)
-                  : base_t(D)
+               CycleVisitor(const Graph<Directed>& Din)
+                  : base_t(Din)
                   , cycle_found(false)
-                  , cycle(D.dim(), -1)
-                  , parent(D.dim(), -1)
-                  , child(D.dim(), -1)
+                  , cycle(Din.dim(), -1)
+                  , parent(Din.dim(), -1)
+                  , child(Din.dim(), -1)
                   , path_set()
                   , path_head(-1)
                {}

@@ -26,16 +26,16 @@ namespace polymake { namespace tropical {
 
 
 	UserFunctionTemplate4perl("# @category Moduli of rational curves" 
-			"# This creates the i-th evaluation function on M_0,n^(lab)(R^r,Delta)"
-			"# (which is actually realized as M_0,(n+|Delta|) x R^r"
+			"# This creates the i-th evaluation function on $ M_{0,n}^{(lab)}(R^r,Delta) $"
+			"# (which is actually realized as $ M_{0,(n+|Delta|)} \\times R^r $ )"
 			"# and can be created via [[space_of_stable_maps]])."
 			"# @param Int n The number of marked (contracted) points"
 			"# @param Matrix<Rational> Delta The directions of the unbounded edges (given as row vectors "
 			"# in tropical projective coordinates without leading coordinate, i.e. have r+1 columns)"
 			"# @param Int i The index of the marked point that should be evaluated."
 			"# Should lie in between 1 and n"
-			"# Note that the i-th marked point is realized as the |Delta|+i-th leaf in M_0,(n+|Delta|)"
-			"# and that the R^r - coordinate is interpreted as the position of the n-th leaf. "
+			"# Note that the i-th marked point is realized as the $ (|Delta|+i) $-th leaf in $ M_{0,n+|Delta|} $"
+			"# and that the $ R^r $ - coordinate is interpreted as the position of the n-th leaf. "
 			"# In particular, ev_n is just the projection to the R^r-coordinates"
 			"# @tparam Addition Min or Max"
 			"# @return Morphism<Addition> ev_i. Its domain is the ambient space of the moduli space "
@@ -46,11 +46,11 @@ namespace polymake { namespace tropical {
 	FunctionTemplate4perl("evaluation_map_d<Addition>($,$,$,$)");
 
 	InsertEmbeddedRule("# @category Moduli of rational curves"
-			"# This creates the i-th evaluation function on M_0,n^(lab)(R^r,d)"
-			"# (which is actually realized as M_0,(n+d(r+1)) x R^r)"
+			"# This creates the i-th evaluation function on $ M_{0,n}^{(lab)}(R^r,d) $"
+			"# (which is actually realized as $ M_{0,n+d(r+1)} \\times R^r $ )"
 			"# This is the same as calling the function"
 			"# evaluation_map(Int,Int,Matrix<Rational>,Int) with the standard d-fold"
-			"# degree as matrix (i.e. each (inverted) unit vector of R^(r+1) occuring d times)."
+			"# degree as matrix (i.e. each (inverted) unit vector of $ R^{r+1} $ occuring d times)."
 			"# @param Int n The number of marked (contracted) points"
 			"# @param Int r The dimension of the target space"
 			"# @param Int d The degree of the embedding. The direction matrix will be"
@@ -91,12 +91,12 @@ namespace polymake { namespace tropical {
 			"}\n");
 
 	UserFunctionTemplate4perl("# @category Moduli of rational curves"
-			"# This computes the forgetful map from the moduli space M_0,n to M_0,(n-|S|)"
-			"# @param Int n The number of leaves in the moduli space M_0,n"
+			"# This computes the forgetful map from the moduli space $ M_{0,n} $ to $ M_{0,n-|S|} $"
+			"# @param Int n The number of leaves in the moduli space $ M_{0,n} $"
 			"# @param Set<Int> S The set of leaves to be forgotten. Should be a subset of (1,..,n)"
 			"# @tparam Addition Min or Max"
 			"# @return Morphism The forgetful map. It will identify the remaining leaves "
-			"# i_1,..,i_(n-|S|) with the leaves of M_0,(n-|S|) in canonical order."
+			"# $ i_1,..,i_(n-|S|) $ with the leaves of $ M_{0,n-|S|} $ in canonical order."
 			"# The domain of the morphism is the ambient space of the morphism in matroid coordinates,"
 			"# as created by [[m0n]].",
 			"forgetful_map<Addition>($,Set<Int>)");

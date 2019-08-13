@@ -22,38 +22,24 @@
 #include "polymake/Rational.h"
 #include "polymake/linalg.h"
 
+#ifdef POLYMAKE_WITH_FLINT
+#include "polymake/FlintPolynomial.h"
+
 namespace pm {
+namespace polynomial_impl {
 
-template <typename Coefficient, typename Exponent>
-class UniPolynomial;
-template <typename Coefficient, typename Exponent>
-class Polynomial;
-template <typename Coefficient, typename Exponent>
-class RationalFunction;
+using FlintImplQ = FlintPolynomial;
 
-// some magic needed for operator construction
-struct is_polynomial {};
+template <>
+struct impl_chooser<polynomial_impl::UnivariateMonomial<int>, Rational> {
+  typedef FlintImplQ type;
+};
 
-// forward declarations needed for friends
-template <typename Coefficient, typename Exponent>
-Div< UniPolynomial<Coefficient, Exponent> >
-div(const UniPolynomial<Coefficient, Exponent>& num, const UniPolynomial<Coefficient, Exponent>& den);
+} }
 
-template <typename Coefficient, typename Exponent>
-UniPolynomial<Coefficient, Exponent>
-gcd(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficient, Exponent>& b);
+#endif
 
-template <typename Coefficient, typename Exponent>
-ExtGCD< UniPolynomial<Coefficient, Exponent> >
-ext_gcd(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficient, Exponent>& b,
-        bool normalize_gcd=true);
-
-template <typename Coefficient, typename Exponent>
-UniPolynomial<Coefficient, Exponent>
-lcm(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficient, Exponent>& b);
-
-template <typename T, typename std::enable_if<std::is_same<typename object_traits<T>::generic_tag,is_polynomial>::value, int>::type=0>
-T pow(const T& base, long exp);
+namespace pm {
 
 template <typename Coefficient = Rational, typename Exponent = int>
 class UniPolynomial {
@@ -61,7 +47,7 @@ class UniPolynomial {
   friend class RationalFunction<Coefficient, Exponent>;
   template <typename> friend struct spec_object_traits;
 public:
-  typedef polynomial_impl::GenericImpl< polynomial_impl::UnivariateMonomial<Exponent>, Coefficient> impl_type;
+  typedef typename polynomial_impl::impl_chooser< polynomial_impl::UnivariateMonomial<Exponent>, Coefficient>::type impl_type;
   typedef typename impl_type::monomial_type monomial_type;
   typedef Coefficient coefficient_type;
   typedef typename impl_type::term_hash term_hash;
@@ -107,6 +93,9 @@ public:
   UniPolynomial(const Container1& coefficients, const Container2& monomials)
     : impl_ptr{std::make_unique<impl_type>(coefficients, monomials, 1)} {}
 
+  explicit UniPolynomial(const term_hash& terms, int nvars=1)
+    : impl_ptr{std::make_unique<impl_type>(terms,1)} {}
+
   /// construct a monomial of degree 1
   static UniPolynomial monomial() { return UniPolynomial(one_value<Coefficient>(), 1); }
 
@@ -120,8 +109,8 @@ public:
     impl_ptr->croak_if_incompatible(other);
   }
 
-  int n_vars() const { return impl_ptr->n_vars(); }
-  int n_terms() const { return impl_ptr->n_terms(); }
+  int n_vars() const { return 1; }
+  const int& n_terms() const { return impl_ptr->n_terms(); }
   const term_hash& get_terms() const { return impl_ptr->get_terms(); }
   bool trivial() const { return impl_ptr->trivial(); }
   bool is_one() const { return impl_ptr->is_one(); }
@@ -146,7 +135,7 @@ public:
   typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
   operator!=(const T&c, const UniPolynomial& p) { return p != c; }
 
-  const Coefficient& get_coefficient(const monomial_type& m) const { return impl_ptr->get_coefficient(m); }
+  Coefficient get_coefficient(const monomial_type& m) const { return impl_ptr->get_coefficient(m); }
 
   bool exists(const monomial_type& m) const { return impl_ptr->exists(m); }
 
@@ -161,9 +150,9 @@ public:
 
   monomial_type lm() const { return impl_ptr->lm(); }
   monomial_type lm(const Exponent& order) const { return impl_ptr->lm(order); }
-  const Coefficient& lc() const { return impl_ptr->lc(); }
-  const Coefficient& lc(const Exponent& order) const { return impl_ptr->lc(order); }
-  const Coefficient& constant_coefficient() const { return impl_ptr->get_coefficient(0); }
+  Coefficient lc() const { return impl_ptr->lc(); }
+  Coefficient lc(const Exponent& order) const { return impl_ptr->lc(order); }
+  Coefficient constant_coefficient() const { return impl_ptr->get_coefficient(0); }
 
   UniPolynomial initial_form(const Exponent& weights) const
   {
@@ -256,6 +245,12 @@ public:
     return result;
   }
 
+  // more efficient variant of the above for substituting x^exp
+  template <typename Exp, typename T>
+  UniPolynomial<Coefficient,Exp> substitute_monomial(const T& exponent) const
+  {
+    return UniPolynomial<Coefficient,Exp>(impl_ptr->template substitute_monomial<Exp,T>(exponent));
+  }
 
   template <typename T>
   typename std::enable_if<is_field_of_fractions<Exponent>::value && fits_as_coefficient<T>::value,
@@ -306,9 +301,7 @@ public:
     croak_if_incompatible(b);
     if (b.trivial()) throw GMP::ZeroDivide();
 
-    UniPolynomial quot;
-    remainder(b, quot.get_mutable_terms().make_filler());
-    swap(quot);
+    impl_ptr = std::make_unique<impl_type>(impl_ptr->div_exact(*b.impl_ptr));
     return *this;
   }
 
@@ -323,7 +316,7 @@ public:
     croak_if_incompatible(b);
     if (b.trivial()) throw GMP::ZeroDivide();
     if (!trivial()) {
-      remainder(b, quot_black_hole());
+       *impl_ptr %= *b.impl_ptr;
     }
     return *this;
   }
@@ -566,56 +559,14 @@ protected:
 
   term_hash& get_mutable_terms() const { return impl_ptr->get_mutable_terms(); }
 
-  typename term_hash::const_iterator find_lex_lm() const { return impl_ptr->find_lex_lm(); }
-
-private:
-
-  struct quot_black_hole
-  {
-    void operator() (const Exponent&, const Coefficient&) const {}
-  };
-
-  // replace this with a remainder of division by b, consume the quotient
-  // data must be brought in exclusive posession before calling this method.
-  template <typename QuotConsumer>
-  void remainder(const UniPolynomial& b, const QuotConsumer& quot_consumer)
-  {
-    const auto b_lead=b.find_lex_lm();
-    typename term_hash::const_iterator this_lead;
-
-    while ((this_lead=find_lex_lm()) != get_mutable_terms().cend() && this_lead->first >= b_lead->first) {
-      const Coefficient k = this_lead->second / b_lead->second;
-      const Exponent d = this_lead->first - b_lead->first;
-      quot_consumer(d, k);
-      impl_ptr->forget_sorted_terms();
-
-      for (const auto& b_term : b.get_terms()) {
-        auto it = get_mutable_terms().find_or_insert(b_term.first + d);
-        if (it.second) {
-          it.first->second= -k * b_term.second;
-        } else if (is_zero(it.first->second -= k * b_term.second)) {
-          get_mutable_terms().erase(it.first);
-        }
-      }
-    }
+  impl_type& get_impl() {
+      return *impl_ptr;
   }
 
-  // replace this with a remainder of division by b, consume the quotient
-  // data must be brought in exclusive posession before calling this method.
-  template <typename QuotConsumer>
-  void remainder(const Exponent& b, const QuotConsumer& quot_consumer)
-  {
-    for (auto it=impl_ptr->the_terms.begin(), end=impl_ptr->the_terms.end();  it != end;  ) {
-      if (it->first < b) {
-        ++it;
-      } else {
-        if (!std::is_same<QuotConsumer, quot_black_hole>::value)
-          quot_consumer(it->first - b, it->second);
-        impl_ptr->the_terms.erase(it++);
-      }
-    }
-    impl_ptr->forget_sorted_terms();
+  const impl_type& get_impl() const {
+      return *impl_ptr;
   }
+
 };
 
 template <typename Coefficient, typename Exponent> inline
@@ -627,7 +578,7 @@ div(const UniPolynomial<Coefficient, Exponent>& num, const UniPolynomial<Coeffic
   if (den.trivial()) throw GMP::ZeroDivide();
   Div< UniPolynomial<Coefficient, Exponent> > res;
   res.rem.impl_ptr=std::make_unique<impl_type>(*num.impl_ptr);
-  res.rem.remainder(den, res.quot.impl_ptr->get_mutable_terms().make_filler());
+  res.rem.impl_ptr->remainder(*den.impl_ptr, *res.quot.impl_ptr);
   return res;
 }
 
@@ -643,8 +594,9 @@ gcd(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficie
   UniPolynomial<Coefficient, Exponent> p1(*(sw ? b : a).impl_ptr),
                                        p2(*(sw ? a : b).impl_ptr);
 
+  typename polynomial_impl::GenericImpl<polynomial_impl::UnivariateMonomial<Exponent>,Coefficient>::quot_black_hole black_hole;
   while (!p2.trivial() && !is_zero(p2.lm())) {
-    p1.remainder(p2, typename UniPolynomial<Coefficient, Exponent>::quot_black_hole());
+    p1.impl_ptr->remainder(*p2.impl_ptr, black_hole);
     p1.swap(p2);
   }
   if (p2.trivial())
@@ -684,7 +636,7 @@ ext_gcd(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coeff
 
     for (;;) {
       k.clear();
-      p1.remainder(p2, k.get_mutable_terms().make_filler());
+      p1.impl_ptr->remainder(*p2.impl_ptr, *k.impl_ptr);
       // multiply U from left with { {1, -k}, {0, 1} }
       U[0][0] -= k * U[1][0];
       U[0][1] -= k * U[1][1];
@@ -697,7 +649,7 @@ ext_gcd(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coeff
       }
 
       k.clear();
-      p2.remainder(p1, k.get_mutable_terms().make_filler());
+      p2.impl_ptr->remainder(*p1.impl_ptr, *k.impl_ptr);
       // multiply U from left with { {1, 0}, {-k, 1} }
       U[1][0] -= k * U[0][0];
       U[1][1] -= k * U[0][1];
@@ -725,6 +677,7 @@ ext_gcd(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coeff
   return res;
 }
 
+
 template <typename Coefficient, typename Exponent> inline
 UniPolynomial<Coefficient, Exponent>
 lcm(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficient, Exponent>& b)
@@ -751,7 +704,7 @@ class Polynomial {
 
   template <typename> friend struct spec_object_traits;
 public:
-  typedef polynomial_impl::GenericImpl< polynomial_impl::MultivariateMonomial<Exponent>, Coefficient> impl_type;
+  typedef typename polynomial_impl::impl_chooser< polynomial_impl::MultivariateMonomial<Exponent>, Coefficient>::type impl_type;
   typedef typename impl_type::monomial_type monomial_type;
   typedef Coefficient coefficient_type;
   typedef typename impl_type::term_hash term_hash;
@@ -799,6 +752,9 @@ public:
   Polynomial(const Container& coefficients, const GenericMatrix<TMatrix, Exponent>& monomials)
     : impl_ptr{std::make_unique<impl_type>(coefficients, rows(monomials), monomials.cols())} {}
 
+  Polynomial(const term_hash& terms, int nvars)
+    : impl_ptr{std::make_unique<impl_type>(terms,nvars)} {}
+
   /// construct a monomial of the given variable
   static Polynomial monomial(int var_index, int n_vars)
   {
@@ -821,7 +777,7 @@ public:
     impl_ptr->croak_if_incompatible(other);
   }
 
-  int n_vars() const { return impl_ptr->n_vars(); }
+  const int& n_vars() const { return impl_ptr->n_vars(); }
   int n_terms() const { return impl_ptr->n_terms(); }
   const term_hash& get_terms() const { return impl_ptr->get_terms(); }
   bool trivial() const { return impl_ptr->trivial(); }
@@ -848,7 +804,7 @@ public:
   typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
   operator!=(const T&c, const Polynomial& p) { return p != c; }
 
-  const Coefficient& get_coefficient(const monomial_type& m) const { return impl_ptr->get_coefficient(m); }
+  Coefficient get_coefficient(const monomial_type& m) const { return impl_ptr->get_coefficient(m); }
   bool exists(const monomial_type& m) const { return impl_ptr->exists(m); }
 
   Exponent deg() const { return impl_ptr->deg(); }
@@ -870,10 +826,10 @@ public:
     return impl_ptr->lm(order);
   }
 
-  const Coefficient& lc() const { return impl_ptr->lc(); }
+  Coefficient lc() const { return impl_ptr->lc(); }
 
   template <typename TMatrix>
-  const Coefficient& lc(const GenericMatrix<TMatrix, Exponent>& order) const
+  Coefficient lc(const GenericMatrix<TMatrix, Exponent>& order) const
   {
     return impl_ptr->lc(order);
   }
@@ -884,7 +840,7 @@ public:
     return Polynomial(impl_ptr->initial_form(weights));
   }
 
-  const Coefficient& constant_coefficient() const { return get_coefficient(monomial_type(n_vars())); }
+  Coefficient constant_coefficient() const { return get_coefficient(monomial_type(n_vars())); }
 
   template <typename T>
   typename std::enable_if<fits_as_coefficient<T>::value, Polynomial>::type
@@ -1029,21 +985,25 @@ public:
     return impl_ptr->compare(*p.impl_ptr);
   }
 
-  friend bool operator< (const Polynomial& p1, const Polynomial& p2)
+  friend
+  bool operator< (const Polynomial& p1, const Polynomial& p2)
   {
-    return *p1.impl_ptr < *p2.impl_ptr;
+    return p1.impl_ptr->compare(*p2.impl_ptr) == cmp_lt;
   }
-  friend bool operator> (const Polynomial& p1, const Polynomial& p2)
+  friend
+  bool operator> (const Polynomial& p1, const Polynomial& p2)
   {
-    return *p1.impl_ptr > *p2.impl_ptr;
+    return p1.impl_ptr->compare(*p2.impl_ptr) == cmp_gt;
   }
-  friend bool operator<= (const Polynomial& p1, const Polynomial& p2)
+  friend
+  bool operator<= (const Polynomial& p1, const Polynomial& p2)
   {
-    return *p1.impl_ptr <= *p2.impl_ptr;
+    return p1.impl_ptr->compare(*p2.impl_ptr) != cmp_gt;
   }
-  friend bool operator>= (const Polynomial& p1, const Polynomial& p2)
+  friend
+  bool operator>= (const Polynomial& p1, const Polynomial& p2)
   {
-    return *p1.impl_ptr >= *p2.impl_ptr;
+    return p1.impl_ptr->compare(*p2.impl_ptr) != cmp_lt;
   }
 
   template <typename Container,
@@ -1058,7 +1018,6 @@ public:
     if (values.size() != n_vars())
        throw std::runtime_error("substitute polynomial: number of values does not match variables");
     typedef typename Container::value_type T;
-    typename impl_type::sorted_terms_type temp = impl_ptr->get_sorted_terms();
     // using the return type of a product allows upgrades in both directions:
     // e.g. T=int upgraded to coefficient type,
     //      or Coeff=Rational to T=QuadraticExtension
@@ -1100,6 +1059,14 @@ public:
     }
     return result;
   }
+
+  // more efficient variant of the above for substituting x^exp
+  template <typename Exp=Exponent, typename T>
+  Polynomial<Coefficient,Exp> substitute_monomial(const T& exponent) const
+  {
+    return Polynomial<Coefficient,Exp>(impl_ptr->template substitute_monomial<Exp,T>(exponent));
+  }
+
 
   template < typename MapType,
              typename std::enable_if<
@@ -1227,6 +1194,15 @@ public:
 
 protected:
   std::unique_ptr<impl_type> impl_ptr;
+
+  impl_type& get_impl() {
+      return *impl_ptr;
+  }
+
+  const impl_type& get_impl() const {
+      return *impl_ptr;
+  }
+
 };
 
 template <typename Coefficient, typename Exponent>
@@ -1534,25 +1510,26 @@ template <typename Coefficient, typename Exponent>
 struct spec_object_traits< Serialized< UniPolynomial<Coefficient,Exponent> > >
   : spec_object_traits<is_composite> {
 
-  typedef typename UniPolynomial<Coefficient,Exponent>::impl_type impl_type;
+  using impl_type = typename UniPolynomial<Coefficient,Exponent>::impl_type;
 
-  typedef spec_object_traits< Serialized<impl_type> > impl_spec;
+  using masquerade_for = UniPolynomial<Coefficient, Exponent>;
 
-  typedef UniPolynomial<Coefficient, Exponent> masquerade_for;
+  using terms_type = typename polynomial_impl::GenericImpl<polynomial_impl::UnivariateMonomial<Exponent>,Coefficient>::term_hash;
 
-  typedef typename impl_spec::elements elements;
+  using elements = terms_type;
 
   template <typename Visitor>
   static void visit_elements(Serialized<masquerade_for> & me, Visitor& v)
   {
-    me.impl_ptr = std::make_unique<impl_type>();
-    impl_spec::visit_elements(*me.impl_ptr,v);
+    terms_type terms;
+    v << terms;
+    me.impl_ptr = std::make_unique<impl_type>(terms,1);
   }
 
   template <typename Visitor>
   static void visit_elements(const Serialized<masquerade_for>& me, Visitor& v)
   {
-    impl_spec::visit_elements(*me.impl_ptr,v);
+    v << me.get_impl().get_terms();
   }
 };
 
@@ -1560,25 +1537,27 @@ template <typename Coefficient, typename Exponent>
 struct spec_object_traits< Serialized< Polynomial<Coefficient,Exponent> > >
   : spec_object_traits<is_composite> {
 
-  typedef typename Polynomial<Coefficient,Exponent>::impl_type impl_type;
+  using impl_type = typename Polynomial<Coefficient,Exponent>::impl_type;
 
-  typedef spec_object_traits< Serialized<impl_type> > impl_spec;
+  using masquerade_for = Polynomial<Coefficient, Exponent>;
 
-  typedef Polynomial<Coefficient, Exponent> masquerade_for;
+  using terms_type = typename polynomial_impl::GenericImpl<polynomial_impl::MultivariateMonomial<Exponent>,Coefficient>::term_hash;
 
-  typedef typename impl_spec::elements elements;
+  using elements = cons<terms_type, int>;
 
   template <typename Visitor>
   static void visit_elements(Serialized<masquerade_for> & me, Visitor& v)
   {
-    me.impl_ptr = std::make_unique<impl_type>();
-    impl_spec::visit_elements(*me.impl_ptr,v);
+     terms_type terms;
+     int nvars = 0;
+     v << terms << nvars;
+     me.impl_ptr = std::make_unique<impl_type>(terms,nvars);
   }
 
   template <typename Visitor>
   static void visit_elements(const Serialized<masquerade_for>& me, Visitor& v)
   {
-    impl_spec::visit_elements(*me.impl_ptr,v);
+     v << me.get_terms() << me.n_vars();
   }
 };
 
@@ -1671,6 +1650,19 @@ convert_to(const UniPolynomial<Coefficient, Exponent>& p)
 {
    return UniPolynomial<TargetType,Exponent>(convert_to<TargetType>(p.coefficients_as_vector()),p.monomials_as_vector());
 }
+
+// flint specializations 
+#ifdef POLYMAKE_WITH_FLINT
+
+template <>
+UniPolynomial<Rational, int>
+gcd(const UniPolynomial<Rational, int>& a, const UniPolynomial<Rational, int>& b);
+
+template <>
+ExtGCD< UniPolynomial<Rational, int> >
+ext_gcd(const UniPolynomial<Rational, int>& a, const UniPolynomial<Rational, int>& b, bool normalize_gcd);
+
+#endif
 
 
 

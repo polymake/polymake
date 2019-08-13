@@ -1,6 +1,6 @@
 {"app": "topaz", "embed": "persistent_homology.cc",
  "inst": [
-  {"args": ["SparseMatrix<Rational, NonSymmetric>", "void"], "func": "persistent_homology", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "persistent_homology:T1.x", "tp": "1"},
-  {"args": ["SparseMatrix<Integer, NonSymmetric>", "void", "void", "void", "void"], "func": "persistent_homology", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h"], "sig": "persistent_homology:T1.x.x.x.x", "tp": "1"},
+  {"args": ["perl::Canned<const Filtration<SparseMatrix<Rational, NonSymmetric>>&>"], "func": "persistent_homology", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/topaz/Filtration.h"], "sig": "persistent_homology.X"},
+  {"args": ["perl::Canned<const Filtration<SparseMatrix<Integer, NonSymmetric>>&>", "void", "void", "void"], "func": "persistent_homology", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h", "polymake/topaz/Filtration.h"], "sig": "persistent_homology.X.x.x.x"},
  null ],
 "version": 3}

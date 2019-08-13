@@ -44,14 +44,14 @@ options %Visual::Cycle::BoundingDecorations=(
    CoordLabels => enum("show"),
 
    # Flexible<Rational> The distance of the border of the bounding box from the smallest box 
-   # containing the affine points of the complex. This is only relevant, if BoundingMode is "relative"
-   BoundingDistance => 1,
+   # containing the affine points of the complex. This is only relevant, if you do not specify BoundingFacets
+   BoundingOffset => 1,
 
-   # Matrix<Rational> A fixed bounding box, determined by two row vectors that specify two of its vertices (on "on top" and one "at the bottom"). Is only relevant, if BoundingMode is "absolute"
-   BoundingBox => undef,
+   # Bool make it a bounding cube. This is only relevant, if you do not specify BoundingFacets
+	MakeCube => 1,
 
-   # String If set to "relative", the function determines the smallest possible box containing all affine points of the complex and then enlarges the box by BoundingDistance to all sides. If set to "absolute", BoundingBox must be specified and the complex will be intersected with that box. "cube" does a similar thing as relative, except that the resulting bounding box is always a cube. By default this is set to "cube".
-   BoundingMode => enum("cube","relative","absolute"),
+   # Matrix<Rational> A fixed bounding polytope described by facets.
+   BoundingFacets => undef,
 
    # Array<String> A list of strings to be displayed as labels for the maximal cones. If this is not empty, weight and length labels are suppressed regardless of other options.
    ConeLabels => undef,
@@ -60,16 +60,14 @@ options %Visual::Cycle::BoundingDecorations=(
 object Cycle {
 
    # @category Visualization
-   # Displays a (possibly weighted) polyhedral complex by intersecting it with a bounding box. This bounding box
-   # is either defined by the vertices of the complex and the option "BoundingDistance" or explicitly given by
-   # "BoundingBox" and by setting "BoundingMode" to "absolute"
+   # Displays a (possibly weighted) polyhedral complex by intersecting it with a bounding polytope described by BoundingFacets.
+	# If BoundingFacets are not explicitly given one may use the MakeCube and BoundingOffset keywords for further settings of the automatically created bounding box.
    # @options
    # @option Int Chart Which affine chart to visualize, i.e. which coordinate to shift to 0. This is 0 by default.
    # @option String WeightLabels If "hidden", no weight labels are displayed. Not hidden by default.
    # @option String CoordLabels If "show", coordinate labels are displayed at vertices. Hidden by default.
-   # @option String BoundingMode Can be "relative" (intersects with the bounding box returned by the method  boundingBox(BoundingDistance)) or "absolute" (intersects with the given BoundingBox) or "cube" (essentially the same as "relative", but the bounding box is always a cube). "cube" by default.
-   # @option Rational BoundingDistance The distance parameter for relative bounding mode
-   # @option Matrix<Rational> BoundingBox The bounding parameter for absolute bounding mode
+   # @option Rational BoundingOffset The distance from a bounding facet to the nearest bounded vertex
+   # @option Matrix<Rational> BoundingFacets describing the bounding polytope
    user_method VISUAL(%Visual::Cycle::BoundingDecorations, {CutOff => $Visual::Color::cutoff}) {
       my ($this,$decor,$cutoff_decor)=@_;
 
@@ -89,12 +87,9 @@ object Cycle {
          $decor->{VertexLabels} = "hidden";
       }
 
-      my $boundingMode = delete($decor->{BoundingMode});
-      my $isRelative = $boundingMode eq "relative";
-      my $isCube = $boundingMode ne "absolute" && $boundingMode ne "relative";
-                
-      my $boundingDistance = delete($decor->{BoundingDistance}) // new Rational(1);
-      my $boundingBox = delete($decor->{BoundingBox}) // new Matrix<Rational>();
+      my $boundingOffset = delete($decor->{BoundingOffset});
+      my $makecube = delete($decor->{MakeCube});
+      my $boundingFacets = delete($decor->{BoundingFacets}) // $this->bounding_box_facets($boundingOffset,$makecube,$chart);
                 
       my $clabels = delete($decor->{ConeLabels});
       my $haveConeLabels = defined($clabels)
@@ -109,17 +104,8 @@ object Cycle {
 
       # Create bounding box
       my $affine_version = $this->affine_chart($chart);
-      if ($isCube || $isRelative) {
-         $boundingBox = boundingBox($affine_version->VERTICES->minor(~$affine_version->FAR_VERTICES, ~[0]),
-                                    $boundingDistance, $isCube);
-      } else {
-         # Make sure that the bounding box has the right dimension
-         if ($boundingBox->rows() != 2 || $boundingBox->cols() != $this->PROJECTIVE_AMBIENT_DIM) {
-            die "Bounding box has invalid dimension\n";
-         }
-      }
 
-      my @result = computeBoundedVisual($this->affine_chart($chart), $boundingBox, $clabels);
+      my @result = computeBoundedVisual($this->affine_chart($chart), $boundingFacets, $clabels);
       my @cells_visual;
       my $weightCenters = pop(@result);
 

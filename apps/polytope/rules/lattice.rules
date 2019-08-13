@@ -380,6 +380,11 @@ object_specialization Polytope::Lattice {
     }
     weight 0.10;   
     
+    user_method LATTICE_HOLLOW {
+        my $p = shift;
+        return $p->N_INTERIOR_LATTICE_POINTS == 0;
+    }
+
     rule LATTICE_VOLUME : H_STAR_VECTOR {
         my $h = $this->H_STAR_VECTOR;
         my $dim = $#$h;
@@ -588,9 +593,9 @@ object_specialization Polytope::Lattice {
     precondition : REFLEXIVE;
     weight 3.10;
   
-    rule VERY_AMPLE : GRAPH.ADJACENCY, GRAPH.EDGE_DIRECTIONS, N_VERTICES, VERTICES, FACETS | INEQUALITIES {
+    rule VERY_AMPLE : GRAPH.ADJACENCY, GRAPH.EDGE_DIRECTIONS, N_VERTICES, VERTICES, FACETS | INEQUALITIES, AFFINE_HULL | EQUATIONS {
         my $sched;
-        for ( my $v=0; $v < $this->N_VERTICES; ++$v ) {
+        for (my $v = 0; $v < $this->N_VERTICES; ++$v) {
             my @dirs = ();
             push @dirs, unit_vector<Rational>($this->VERTICES->cols, 0);
             for (my $e = entire($this->GRAPH->ADJACENCY->out_edges($v)); $e; ++$e) {
@@ -601,32 +606,31 @@ object_specialization Polytope::Lattice {
                    || die "don't know how to compute HILBERT_BASIS: please install 4ti2 or activate bundled:libnormaliz\n";
             $sched->apply($p);
             foreach my $h (@{$p->HILBERT_BASIS_GENERATORS->[0]}) {
-                next if ($h->[0]==1);
+                next if ($h->[0] == 1);
                 foreach (@{$this->give("FACETS | INEQUALITIES")}) {
-                    if ($_*($h+$this->VERTICES->[$v]) < 0) {
-                        $this->VERY_AMPLE=0;
+                    if ($_ * ($h + $this->VERTICES->[$v]) < 0) {
+                        $this->VERY_AMPLE = false;
                         return;
                     }
                 }
-                if (defined (my $AH = $this->lookup("AFFINE_HULL | EQUATIONS"))) {
-                    foreach (@$AH) {
-                        if ($_*($h+$this->VERTICES->[$v]) != 0) {
-                            $this->VERY_AMPLE=0;
-                            return;
-                        }
+                my $AH = $this->give("AFFINE_HULL | EQUATIONS");
+                foreach (@$AH) {
+                    if ($_ * ($h + $this->VERTICES->[$v]) != 0) {
+                        $this->VERY_AMPLE = false;
+                        return;
                     }
                 }
             }
         }
-        $this->VERY_AMPLE=1;
+        $this->VERY_AMPLE = true;
     }
     weight 5.50;
 
-    rule VERY_AMPLE : { $this->VERY_AMPLE = 1; }
+    rule VERY_AMPLE : { $this->VERY_AMPLE = true; }
     precondition : SMOOTH;
     weight 0.1;
 
-    rule VERY_AMPLE : { $this->VERY_AMPLE = 1; }
+    rule VERY_AMPLE : { $this->VERY_AMPLE = true; }
     precondition : NORMAL;
     weight 0.1;
 

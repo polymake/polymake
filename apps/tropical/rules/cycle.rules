@@ -38,11 +38,12 @@ object Cycle {
    }
 
    rule RaysPerm.PERMUTATION : RaysPerm.PROJECTIVE_VERTICES, PROJECTIVE_VERTICES {
-      $this->RaysPerm->PERMUTATION=find_matrix_row_permutation($this->RaysPerm->PROJECTIVE_VERTICES, $this->PROJECTIVE_VERTICES);
+      $this->RaysPerm->PERMUTATION = find_matrix_row_permutation($this->RaysPerm->PROJECTIVE_VERTICES, $this->PROJECTIVE_VERTICES)
+         // die "no permutation";
    }
 
    rule PROJECTIVE_VERTICES : RaysPerm.PROJECTIVE_VERTICES, RaysPerm.PERMUTATION {
-      $this->PROJECTIVE_VERTICES=permuted_rows($this->RaysPerm->PROJECTIVE_VERTICES, $this->RaysPerm->PERMUTATION);
+      $this->PROJECTIVE_VERTICES = permuted_rows($this->RaysPerm->PROJECTIVE_VERTICES, $this->RaysPerm->PERMUTATION);
    }
    weight 1.10;
 
@@ -87,7 +88,9 @@ object Cycle {
    permutation CodimPerm : PermBase;
 
    rule CodimPerm.PERMUTATION : CodimPerm.CODIMENSION_ONE_POLYTOPES, CODIMENSION_ONE_POLYTOPES {
-      $this->CodimPerm->PERMUTATION=find_permutation(new Array<Set<Int>>(rows($this->CodimPerm->CODIMENSION_ONE_POLYTOPES)), new Array<Set<Int>>(rows($this->CODIMENSION_ONE_POLYTOPES)));
+      $this->CodimPerm->PERMUTATION = find_permutation(new Array<Set<Int>>(rows($this->CodimPerm->CODIMENSION_ONE_POLYTOPES)),
+                                                       new Array<Set<Int>>(rows($this->CODIMENSION_ONE_POLYTOPES)))
+         // die "no permutation";
    }
    weight 5.10;
 

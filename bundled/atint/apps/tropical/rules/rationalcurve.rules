@@ -88,7 +88,7 @@ object RationalCurve {
 
    # @category Combinatorics
    # This incidence matrix gives a list of the vertices of the curve
-   # Each row corresponds to a vertex and contains as a set the [[LEAVES] that are
+   # Each row corresponds to a vertex and contains as a set the leaves that are
    # attached to that vertex (again, counting from 1!)
    property NODES_BY_LEAVES : IncidenceMatrix;
 

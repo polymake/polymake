@@ -23,9 +23,7 @@ USE ideal
 
 file_suffix fan
 
-
-HELP
-	help.rules
+HELP help.rules
 
 # @category Geometry
 # A polyhedral fan.
@@ -34,12 +32,34 @@ HELP
 #
 # Once non-trivial linealities are allowed the following will apply:
 # The [[RAYS]] always lie in a linear subspace which is complementary to the [[LINEALITY_SPACE]].
+# @tparam Scalar numeric data type used for the coordinates, must be an ordered field
 # @example A typical example is the normal fan of a convex polytope.
 # > $f=normal_fan(polytope::cube(3));
 # > print $f->F_VECTOR;
 # | 6 12 8
 
 declare object PolyhedralFan<Scalar=Rational> [ is_ordered_field(Scalar) ];
+
+# @category Geometry
+# A hyperplane arrangement.
+# The hyperplane arrangement is given by a matrix [[HYPERPLANES]] whose rows
+# are the linear equations of the hyperplanes and an optional support cone. The
+# support cone defaults to being the whole space. Duplicate hyperplanes are
+# ignored, as well as hyperplanes that intersect the support cone trivially.
+# The support cone is subdivided by the hyperplanes resulting in a fan
+# [[CELL_DECOMPOSITION]].
+# @tparam Scalar numeric data type used for the coordinates, must be an ordered field
+# @example Take the 2-dimensional positive orthant and slice it along the ray through (1,1)
+# > $HA = new HyperplaneArrangement(INPUT_HYPERPLANES=>[[-1,1]], "SUPPORT.INPUT_RAYS"=>[[1,0],[0,1]]);
+# > $CD = $HA->CELL_DECOMPOSITION;
+# > print $CD->RAYS;
+# | 0 1
+# | 1 0
+# | 1 1
+# > print $CD->MAXIMAL_CONES;
+# | {0 2}
+# | {1 2}
+declare object HyperplaneArrangement<Scalar=Rational> [ is_ordered_field(Scalar) ];
 
 # @category Geometry
 # A polyhedral complex.  The derivation from [[PolyhedralFan]] works like the derivation of [[Polytope]] from [[Cone]].
@@ -88,6 +108,7 @@ INCLUDE
   action.rules
   symmetric_fan.rules
   voronoi.rules
+  hyperplane_arrangement.rules
 
 # Local Variables:
 # mode: perl

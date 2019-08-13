@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2018
+#  Copyright (c) 1997-2019
 #  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
 #  http://www.polymake.org
 #
@@ -33,11 +33,12 @@ property VECTORS : Matrix<Scalar> {
 permutation VectorPerm : PermBase;
 
 rule VectorPerm.PERMUTATION : VectorPerm.VECTORS, VECTORS {
-   $this->VectorPerm->PERMUTATION=find_matrix_row_permutation($this->VectorPerm->VECTORS, $this->VECTORS);
+   $this->VectorPerm->PERMUTATION = find_matrix_row_permutation($this->VectorPerm->VECTORS, $this->VECTORS)
+      // die "no permutation";
 }
 
 rule VECTORS : VectorPerm.VECTORS, VectorPerm.PERMUTATION {
-   $this->VECTORS=permuted($this->VectorPerm->VECTORS, $this->VectorPerm->PERMUTATION);
+   $this->VECTORS = permuted($this->VectorPerm->VECTORS, $this->VectorPerm->PERMUTATION);
 }
 weight 1.10;
 
@@ -95,28 +96,32 @@ weight 1.10;
 permutation CellPerm : PermBase;
 
 rule CellPerm.PERMUTATION : CellPerm.MAXIMAL_CELLS, MAXIMAL_CELLS {
-   $this->CellPerm->PERMUTATION=find_permutation(rows($this->CellPerm->MAXIMAL_CELLS), rows($this->MAXIMAL_CELLS));
+   $this->CellPerm->PERMUTATION = find_permutation(rows($this->CellPerm->MAXIMAL_CELLS), rows($this->MAXIMAL_CELLS))
+      // die "no permutation";
 }
 
 rule MAXIMAL_CELLS : CellPerm.MAXIMAL_CELLS, CellPerm.PERMUTATION {
-   $this->MAXIMAL_CELLS=permuted_rows($this->CellPerm->MAXIMAL_CELLS, $this->CellPerm->PERMUTATION);
+   $this->MAXIMAL_CELLS = permuted_rows($this->CellPerm->MAXIMAL_CELLS, $this->CellPerm->PERMUTATION);
 }
 weight 1.10;
 
 
 # If M is incidence matrix between the vertices and the [[MAXIMAL_CELLS]],
 # then the Altshuler determinant is defined as
-# max{det(M &lowast; M<sup>T</sup>), det(M<sup>T</sup> &lowast; M)}.
+# max{det(M ∗ M<sup>T</sup>), det(M<sup>T</sup> ∗ M)}.
 property ALTSHULER_DET : Integer;
 
 rule ALTSHULER_DET : MAXIMAL_CELLS {
    $this->ALTSHULER_DET=altshuler_det($this->MAXIMAL_CELLS);
 }
 
-
 # @category Geometry
 # True if [[VECTORS]] for each maximal cell are in convex position.
 property CONVEX : Bool;
+
+# @category Geometry
+# Minimal lattice vector in secondary cone of triangulation [[MAXIMAL_CELLS]].
+property MIN_WEIGHTS : Vector<Int>; 
 
 # @category Geometry
 # Returns the //i//-th cell of the complex as a [[VectorConfiguration]]

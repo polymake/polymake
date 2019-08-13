@@ -13,5 +13,6 @@
   {"args": ["perl::AnchorArg<perl::Canned<const pm::MatrixMinor<pm::IncidenceMatrix<pm::NonSymmetric> const&, pm::all_selector const&, pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&> const&>&>>"], "func": "T", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "transpose.X8"},
   {"args": ["perl::AnchorArg<perl::Canned<const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&>&>>"], "func": "T", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "transpose.X8"},
   {"args": ["perl::AnchorArg<perl::Canned<const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::PointedSubset<pm::Series<int, true> > const&, pm::all_selector const&>&>>"], "func": "T", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/PowerSet.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "transpose.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>>"], "func": "T", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "transpose.X8"},
  null ],
 "version": 3}

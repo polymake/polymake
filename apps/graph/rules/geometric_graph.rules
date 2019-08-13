@@ -13,9 +13,9 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-# An undirected graph with given node coordinates and a bounding box.
-
 # @category Combinatorics
+# An undirected graph with given node coordinates and a bounding box.
+# @tparam Scalar node coordinate type
 declare object GeometricGraph<Scalar=Rational> : Graph {
 
    # The coordinates of the nodes of the graph.

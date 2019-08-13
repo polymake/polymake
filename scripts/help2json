@@ -65,13 +65,13 @@ sub resolve_ref {
                and
              ($help->parent->category ? $help->parent->parent : $help->parent)->name ne "methods") {
       local push @{$help->related},
-                 map { $top_help->related_objects($_) } ($ovcnt ? @{$help->topics}{map {"overload#$_"} 0..$ovcnt} : $help);
+                 map { related_objects($top_help, $_) } ($ovcnt ? @{$help->topics}{map {"overload#$_"} 0..$ovcnt} : $help);
    }
 
    my (@topics, $obj_help);
    if ($ref =~ /[.:]/ && $ref =~ /^ (?: ($id_re)::)? ($hier_id_re) $/xo) {
       if ($1 eq "Core" || $1 eq "Visual") {
-         @topics = @how ? $top_help->find(@how, $ref) : $help->find_in_tree($ref);
+         @topics = @how ? $top_help->find(@how, $ref) : select_closest($help, find_in_tree($help, $ref));
       } elsif ($1 eq "props") {
          @topics = $top_help->find(@how, "property_types", $2);
       } else {
@@ -80,7 +80,7 @@ sub resolve_ref {
          foreach my $prop_name (split /\./, $2) {
             @topics = uniq( grep { defined } map { $_->find("?rel", "properties", $prop_name) } @topics );
          }
-         @topics = $top_help->select_closest(@topics) if @topics > 1;
+         @topics = select_closest($top_help, @topics) if @topics > 1;
       }
    }
    if (!@topics  &&
@@ -95,11 +95,104 @@ sub resolve_ref {
    }
    if (!@topics) {
       # try as a single term
-      @topics = @how ? $top_help->find(@how, $ref) : $help->find_in_tree($ref);
+      @topics = @how ? $top_help->find(@how, $ref) : select_closest($help, find_in_tree($help, $ref));
    }
 
    choose_single_topic($help, $_[1], "term", 0, @topics);
 }
+#################################################################################
+# => length of the path up to the first common ancestor
+sub proximity {
+   my ($from, $to) = @_;
+   my %parents;
+   do {
+      $parents{$to} = 1;
+   } while (defined($to = $to->parent));
+
+   my $l = 0;
+   do {
+      return $l if exists $parents{$from};
+      ++$l;
+   } while (defined($from = $from->parent));
+
+   undef
+}
+
+sub select_closest {
+   my $from = shift;
+   if (@_ > 1) {
+      my @closest = @_;
+      my $mindist = 100000000;
+      foreach (@_) {
+         if (defined (my $dist = proximity($from, $_))) {
+            if ($dist < $mindist) {
+               $dist = $mindist;
+               @closest = ($_);
+            } elsif ($dist == $mindist) {
+               push @closest, $_;
+            }
+         }
+      }
+      @closest
+   } else {
+      @_
+   }
+}
+#################################################################################
+# guess the search context for a function:
+# consider the first argument and the return type
+
+sub related_objects {
+   my ($help, $func_topic)=@_;
+   my ($params, $return) = @{$func_topic->annex}{qw(param return)};
+   uniq( map { $_, @{$_->related} }
+         ( defined($params) ? $help->find("objects", $params->[0]->[0]) : (),
+           defined($return) ? $help->find("objects", $return->[0]) : () ) )
+}
+####################################################################
+# can be target of a cross-reference
+sub is_addressable {
+   my ($help) = @_;
+   length($help->text) || grep { exists $help->annex->{$_} } qw(param tparam return options property)
+}
+
+sub find_in_tree {
+   my ($help, $word) = @_;
+   my $start = $help;
+   my (%taboo, @descendants);
+   do {
+      foreach my $topic ($help, @{$help->related}) {
+         if ($topic->name eq $word && is_addressable($topic)) {
+            my $me = [ $topic ];
+            $_->annex->{searchTree}->{$word} = $me for @descendants;
+            return $topic;
+         }
+         if (defined(my $cached = $topic->annex->{searchTree}->{$word})) {
+            $_->annex->{searchTree}->{$word} = $cached for @descendants;
+            return @$cached;
+         }
+      }
+      if (my @found = uniq( map { $_->name eq $word && is_addressable($_) ? ($_) : $_->find("!rel", $word) }
+                            grep { !exists $taboo{$_} } values %{$help->topics})) {
+         $_->annex->{searchTree}->{$word} = \@found for @descendants;
+         return @found;
+      }
+      foreach my $topic (@{$help->related}) {
+         if (my @found = $topic->find("!rel", $word)) {
+            $_->annex->{searchTree}->{$word} = \@found for @descendants;
+            return @found;
+         }
+      }
+      $taboo{$help} = true;
+      push @descendants, $help if $help != $start;
+      $help = $help->parent;
+   } while (defined $help);
+
+   my $notfound = [ ];
+   $_->annex->{searchTree}->{$word} = $notfound for @descendants;
+   ()
+}
+
 ####################################################################
 sub where_is {
    my ($topic) = @_;
@@ -128,13 +221,13 @@ sub choose_single_topic {
          }
       }
       if (@topics) {
-         err_print( "Help topic ", $_[0]->full_path, " defined at ", $_[0]->defined_at, " refers to an ambiguous $what $ref\n",
+         err_print( "Help topic ", $help->full_path, " defined at ", $help->defined_at, " refers to an ambiguous $what $ref\n",
                     "Candidates are:\n",
                     (map { "  " . $_->full_path . "\n" } @topics),
                     "Please disambiguate by qualification with application name and/or big object type" );
          ++$errors;
       } elsif (!$try_only) {
-         err_print( "Help topic ", $_[0]->full_path, " defined at ", $_[0]->defined_at, " refers to an unknown $what $ref\n",
+         err_print( "Help topic ", $help->full_path, " defined at ", $help->defined_at, " refers to an unknown $what $ref\n",
                     "Please double-check the spelling and/or qualify with application name or big object type");
          ++$errors;
       }
@@ -142,19 +235,19 @@ sub choose_single_topic {
    }
 }
 ####################################################################
-my %ignore_types = map { ($_ => true) } qw(ARRAY SCALAR HASH CODE Any);
+my %ignore_types = map { ($_ => true) } qw(ARRAY HASH CODE Any);
 
 sub find_simple_type {
    my ($help, $type, $try_only, @where) = @_;
    if ($type =~ /^$id_re$/o) {
-      if ($ignore_types{$type}) {
+      if ($ignore_types{$type} || $type =~ s{^__(\w+)__$}{//$1//}) {
          return $type;
       }
       for (my $topic = $help; defined($topic); $topic = $topic->parent) {
          foreach my $obj_topic ($topic, @{$topic->related}) {
             if (defined (my $tparams = $obj_topic->annex->{tparam})) {
-               if (grep { $_->[0] eq $type } @$tparams) {
-                  return $obj_topic->full_path . "/tparams/$type";
+               if (my ($tparam_descr) = grep { $_->[0] eq $type } @$tparams) {
+                  return defined($tparam_descr->[1]) ? $obj_topic->full_path . "/tparams/$type" : $type;
                }
             }
          }
@@ -193,7 +286,7 @@ sub process_text {
    $text
 }
 ####################################################################
-sub ref_to_type {
+sub ref_to_simple_type {
    my ($referrer, $type) = @_;
    if (defined (my $help = $type->help_topic)) {
       $help->full_path
@@ -210,12 +303,62 @@ sub ref_to_type {
    }
 }
 ####################################################################
+sub ref_to_type {
+   my ($referrer, $type) = @_;
+   if (defined($type->params) and !$type->abstract || defined($type->generic)) {
+      &ref_to_simple_type . "<" . join(",", map { ref_to_type($referrer, $_) } @{$type->params}) . ">"
+   } elsif ($type->abstract && instanceof Core::ClassTypeParam($type)) {
+      ref_to_simple_type($referrer, $type->context_pkg->typeof_gen) . "/tparams/" . $type->name
+   } else {
+      &ref_to_simple_type
+   }
+}
+####################################################################
 sub add_type_params {
-   my ($tree, $help) = @_;
-   if (defined(my $tparams = $help->annex->{tparam})) {
+   my ($tree, $help, $proto) = @_;
+   my $tparam_docs = $help->annex->{tparam};
+   if (defined($proto) && defined($proto->params)) {
+      my @tparams;
+      foreach my $type_param (@{$proto->params}) {
+         my ($text, $tparam_descr);
+         if (defined($tparam_docs)) {
+            if (defined($tparam_descr = $tparam_docs->[$type_param->type_param_index])
+                && $tparam_descr->[0] eq $type_param->name) {
+               if (defined($tparam_descr->[1])) {
+                  $text = process_text($help, $tparam_descr->[1]);
+               }
+            } else {
+               err_print( "Type parameter ", $type_param->name, " without description in help topic ", $help->full_path, " defined at ", $help->defined_at );
+               ++$errors;
+               next;
+            }
+         }
+         if (!defined($text)) {
+            # check for any/tparam topics
+            my $generic_topic;
+            if (($generic_topic) = $proto->application->help->get_topics("any/tparam/" . $type_param->name)
+                  or
+                ($generic_topic) = $proto->application->help->get_topics((instanceof Core::ObjectType($proto) ? "objects" : "property_types") . "/any/tparam/" . $type_param->name)) {
+               $text = process_text($generic_topic);
+            } elsif (defined (my $super_type_param = $proto->find_super_type_param($type_param->name))) {
+               $text = "inherited from [[" . ref_to_type($help, $super_type_param) . "]]";
+            } else {
+               err_print( "Type parameter ", $type_param->name, " without description in help topic ", $help->full_path, " defined at ", $help->defined_at );
+               ++$errors;
+               next;
+            }
+         }
+         unless (defined($tparam_descr)) {
+            # make it visible for references from parameter and return types
+            $help->annex->{tparam}->[$type_param->type_param_index] = [ $type_param->name, "" ];
+         }
+         push @tparams, { name => $type_param->name, '$text' => $text };
+      }
+      $tree->{tparams} = \@tparams;
+   } elsif (defined($tparam_docs)) {
       if (my @tparams = map { { name => $_->[0],
                                 '$text' => process_text($help, $_->[1]) } }
-                        grep { @$_>1 } @$tparams) {
+                        grep { @$_>1 } @$tparam_docs) {
          $tree->{tparams} = \@tparams;
       }
    }
@@ -238,6 +381,14 @@ sub process_example {
    \@portions;
 }
 ####################################################################
+sub add_defined_at {
+   my ($tree, $help) = @_;
+   if (defined($help->defined_at)) {
+      $tree->{defined_at} = $help->defined_at =~ s{$InstallTop/}{}r;
+      $tree->{defined_at} =~ s{, line (\d+)}{:$1};
+   }
+}
+####################################################################
 sub add_examples {
    my ($tree, $help) = @_;
    if (my $examples = $help->annex->{examples}) {
@@ -258,12 +409,17 @@ sub process_property_type {
       if (defined($proto->super) and defined(my $super_ref = ref_to_type($help, $proto->super))) {
          $tree->{derived_from} = [ $super_ref ];
       }
+      if ($proto->abstract) {
+         add_type_params($tree, $help, $proto);
+      }
+   } else {
+      add_type_params($tree, $help);
    }
-   add_type_params($tree, $help);
    if (defined(my $methods = $help->topics->{methods})) {
       $tree->{methods} = process_categories($methods, \&process_function);
    }
    add_examples($tree, $help);
+   add_defined_at($tree, $help);
    $tree
 }
 ####################################################################
@@ -292,6 +448,7 @@ sub add_property_contents {
       $tree->{depends} = $depends;
    }
    &add_examples;
+   add_defined_at($tree, $help);
 }
 ####################################################################
 sub process_property {
@@ -343,6 +500,9 @@ sub process_object {
           @{$proto->super}) {
          $tree->{derived_from} = \@derived_from;
       }
+      if ($proto->abstract) {
+         add_type_params($tree, $help, $proto);
+      }
       if (defined(my $properties = $help->topics->{properties})) {
          $tree->{properties} = process_categories($properties, \&process_property);
       }
@@ -353,12 +513,13 @@ sub process_object {
       if (defined(my $super = $help->annex->{super})) {
          $tree->{derived_from} = [ find_type($help, $super, "objects") ];
       }
+      add_type_params($tree, $help);
    }
-   add_type_params($tree, $help);
    if (defined(my $methods = $help->topics->{methods})) {
       $tree->{methods} = process_categories($methods, \&process_function);
    }
    add_examples($tree, $help);
+   add_defined_at($tree, $help);
    $tree
 }
 ####################################################################
@@ -401,6 +562,7 @@ sub process_function {
          $tree->{depends} = $depends;
       }
       add_examples($tree, $help);
+      add_defined_at($tree, $help);
    }
    $tree
 }

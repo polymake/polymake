@@ -381,30 +381,27 @@ incurs RaysPerm;
 
 }
 
+
 # @category Producing a fan
-# Orthogonally project a pointed fan to a coordinate subspace.
+# Orthogonally project a fan to a coordinate subspace such that redundant
+# columns are omitted, i.e., the affine hull of the support of the projection
+# is full-dimensional, without changing the combinatorial type.
 #
-# The subspace the fan //P// is projected on is given by indices in the set //indices//.
-# The option //revert// inverts the coordinate list.
 # @param PolyhedralFan P
-# @param Array<Int> indices
-# @option Bool revert inverts the coordinate list
+# @option Bool no_labels Do not copy [[VERTEX_LABELS]] to the projection. default: 0
 # @return PolyhedralFan
-user_function projection<Scalar>(PolyhedralFan<Scalar>; $=[ ], { revert=>0 }) {
-   my ($P, $indices, $options) = @_;
-   my $first_coord = ($P->isa("PolyhedralComplex") ? 1 : 0);
-   projection_impl($P, "FAN", "LINEAR_SPAN_NORMALS", $first_coord, $indices, $options);
-}
-
-
-# @category Producing a fan
-# Orthogonally project a fan to a coordinate subspace such that redundant columns are omitted,
-# i.e., the projection becomes full-dimensional without changing the combinatorial type.
-# @param PolyhedralFan P
-# @option Bool no_labels VERTEX_LABELS]] to the projection. default: 0
-# @return PolyhedralFan
+#
+# @example x and y axis in 3-space
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0,0],[0,1,0]], INPUT_CONES=>[[0],[1]]);
+# > $pf = project_full($f);
+# > print $pf->RAYS;
+# | 1 0
+# | 0 1
+# > print $pf->MAXIMAL_CONES;
+# | {0}
+# | {1}
 user_function project_full<Scalar>(PolyhedralFan<Scalar>; {no_labels=>0}) {
-   projection(@_);
+   project_full_fan_impl(@_);
 }
 
 

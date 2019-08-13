@@ -33,43 +33,10 @@
 namespace polymake { namespace tropical {
 
 /**
-   This takes a list of vertices (as row vectors, without leading ones)
-   and computes the corresponding bounding box,
-   i.e. it computes the minima /maxima over all coordinates, subtracts/adds a given distance
-   and returns the resulting 2x(no of coordinates)-matrix.
-   The first row contains the min-coords, the second the max-coords
-   @param Matrix<Rational> rays The vertices
-   @param Rational distance The minimal distance the box should have from all vertices
-   @param Bool make_it_a_cube If this is true (it is false by default), the bounding box is made
-   a cube, by setting all coordinates to be the respective maximum / minimum
-*/
-Matrix<Rational> boundingBox(const Matrix<Rational> &rays, const Rational &distance, bool make_it_a_cube = 0)
-{
-  if(rays.rows() == 0) return Matrix<Rational>(2,rays.cols());
-  Vector<Rational> min_values = rays.row(0);
-  Vector<Rational> max_values = rays.row(0);
-  for (auto c = entire<indexed>(cols(rays)); !c.at_end(); ++c) {
-    min_values[c.index()] = accumulate(*c, operations::min());
-    max_values[c.index()] = accumulate(*c, operations::max());
-  }
-  if (make_it_a_cube) {
-    Rational total_max = accumulate( max_values, operations::max());
-    Rational total_min = accumulate( min_values, operations::min());
-    max_values = ones_vector<Rational>(rays.cols()) * total_max;
-    min_values = ones_vector<Rational>(rays.cols()) * total_min;
-  }
-  // Add distance
-  min_values -= distance* ones_vector<Rational>(rays.cols());
-  max_values += distance* ones_vector<Rational>(rays.cols());
-  return vector2row(min_values) / max_values;
-} //END boundingBox
-
-/**
    Computes the polyhedral data necessary for visualization with a bounding box.
    @param fan::PolyhedralComplex fan The polyhedral complex to be visualized, in
           non-tropically-homogeneous coordinates
-   @param Matrix<Rational> bBox The bounding box.
-          Given by two row vectors indicating the extreme points of the box
+   @param Matrix<Rational> bbFacets the bounding facets
    @param Array<String> clabels If this array has positive length,
           these strings will be used to label the maximal cones (missing labels are replaced by the emtpy string)
    @return A perl::ListReturn containing
@@ -78,7 +45,7 @@ Matrix<Rational> boundingBox(const Matrix<Rational> &rays, const Rational &dista
               labelled with the corresponding weight.
               This is only computed if showWeights is true, but is contained in the ListReturn in any case.
 */
-perl::ListReturn computeBoundedVisual(perl::Object fan, const Matrix<Rational> &bBox, const Array<std::string> &clabels)
+perl::ListReturn computeBoundedVisual(perl::Object fan, const Matrix<Rational> &bbFacets, const Array<std::string> &clabels)
 {
   // Extract values
   const int ambient_dim = fan.call_method("AMBIENT_DIM");
@@ -90,24 +57,7 @@ perl::ListReturn computeBoundedVisual(perl::Object fan, const Matrix<Rational> &
 
   bool use_labels = clabels.size() > 0;
 
-  // Compute facets of the bounding box
-  Matrix<Rational> bbFacets(0,ambient_dim+1);
-
-  // For each coordinate, contain minimum and maximum
-  Vector<Rational> minCoord(ambient_dim);
-  Vector<Rational> maxCoord(ambient_dim);
-  for (int i = 0; i < ambient_dim; i++) {
-    maxCoord[i] = std::max(bBox(0,i), bBox(1,i));
-    minCoord[i] = std::min(bBox(0,i), bBox(1,i));
-  }
-  // Now make these coordinates into facets
-  for (int i = 0; i < ambient_dim; i++) {
-    Vector<Rational> facetVector = unit_vector<Rational>(ambient_dim,i);
-    bbFacets /= (maxCoord[i] | -facetVector);
-    bbFacets /= (-minCoord[i] | facetVector);
-  }
-
-  perl::ListReturn result;
+    perl::ListReturn result;
 
   // This will contain the cell centers with the weight labels
   perl::Object weightCenters("polytope::PointConfiguration");
@@ -161,7 +111,6 @@ perl::ListReturn computeBoundedVisual(perl::Object fan, const Matrix<Rational> &
   return result;
 }
 
-Function4perl(&boundingBox, "boundingBox(Matrix;$=1,$=0)");
 Function4perl(&computeBoundedVisual, "computeBoundedVisual(fan::PolyhedralComplex, Matrix<Rational>, Array<String>)");
 
 } }

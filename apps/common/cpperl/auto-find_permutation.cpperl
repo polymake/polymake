@@ -5,5 +5,6 @@
   {"args": ["perl::Canned<const Array<Polynomial<Rational, int>>&>", "perl::Canned<const Array<Polynomial<Rational, int>>&>"], "func": "find_permutation", "include": ["polymake/Array.h", "polymake/Polynomial.h", "polymake/Rational.h", "polymake/permutations.h"], "sig": "find_permutation.X.X"},
   {"args": ["perl::Canned<const pm::Rows<pm::IncidenceMatrix<pm::NonSymmetric> >&>", "perl::Canned<const pm::Rows<pm::IncidenceMatrix<pm::NonSymmetric> >&>"], "func": "find_permutation", "include": ["polymake/IncidenceMatrix.h", "polymake/permutations.h"], "sig": "find_permutation.X.X"},
   {"args": ["perl::Canned<const Array<IncidenceMatrix<NonSymmetric>>&>", "perl::Canned<const Array<IncidenceMatrix<NonSymmetric>>&>"], "func": "find_permutation", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/permutations.h"], "sig": "find_permutation.X.X"},
+  {"args": ["perl::Canned<const pm::Rows<pm::Matrix<pm::Rational> >&>", "perl::Canned<const pm::Rows<pm::Matrix<pm::Rational> >&>"], "func": "find_permutation", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/permutations.h"], "sig": "find_permutation.X.X"},
  null ],
 "version": 3}

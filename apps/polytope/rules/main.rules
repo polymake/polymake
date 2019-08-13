@@ -103,6 +103,7 @@ INCLUDE
   orbit_polytope_helpers.rules
   orbit_polytope_visual.rules
   wronski.rules
+  slack_ideal.rules
 
 # self-configuring rules
 INCLUDE

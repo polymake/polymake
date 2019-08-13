@@ -292,7 +292,7 @@ sub script {
 # enforce creation of a unique lexical scope with this operation inherited by all nested packages
 use namespaces 'Polymake::User';
 namespaces::memorize_lexical_scope;
-namespaces::intercept_operation(undef, "P", "bool");
+namespaces::intercept_operation(undef, "print", "bool");
 
 #################################################################################
 # prepare for custom variables and preferences
@@ -380,6 +380,7 @@ $ch->add('$help_delimit', <<'.');
 .
 
    $ch->cleanup;
+   $ch->end_loading;
 
    # rescue the old-fashioned lookup_applications list
    if (defined (my $lookup_apps=*lookup_applications{ARRAY})) {

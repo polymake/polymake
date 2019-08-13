@@ -102,8 +102,9 @@ property RAYS : Matrix<Scalar> {
 permutation RaysPerm : PermBase;
 
 rule RaysPerm.PERMUTATION : RaysPerm.RAYS, RAYS, LINEALITY_SPACE {
-   my $cmp=$this->prepare_computations;
-   $this->RaysPerm->PERMUTATION=find_representation_permutation($this->RaysPerm->RAYS, $this->RAYS, $this->LINEALITY_SPACE, 0);
+   my $cmp = $this->prepare_computations;
+   $this->RaysPerm->PERMUTATION = find_representation_permutation($this->RaysPerm->RAYS, $this->RAYS, $this->LINEALITY_SPACE, 0)
+      // die "no permutation";
 }
 
 rule RAYS : RaysPerm.RAYS, RaysPerm.PERMUTATION {
@@ -128,20 +129,21 @@ property N_INPUT_RAYS : Int;
 property MAXIMAL_CONES : IncidenceMatrix;
 
 rule MAXIMAL_CONES : RaysPerm.MAXIMAL_CONES, RaysPerm.PERMUTATION {
-   $this->MAXIMAL_CONES=permuted_cols($this->RaysPerm->MAXIMAL_CONES, $this->RaysPerm->PERMUTATION);
+   $this->MAXIMAL_CONES = permuted_cols($this->RaysPerm->MAXIMAL_CONES, $this->RaysPerm->PERMUTATION);
 }
 
 # permuting the [[MAXIMAL_CONES]]
 permutation ConesPerm : PermBase;
 
 rule ConesPerm.PERMUTATION : ConesPerm.MAXIMAL_CONES, MAXIMAL_CONES  {
-   $this->ConesPerm->PERMUTATION=find_permutation(new Array<Set<Int>>(rows($this->ConesPerm->MAXIMAL_CONES)), new Array<Set<Int>>(rows($this->MAXIMAL_CONES)));
+   $this->ConesPerm->PERMUTATION = find_permutation(new Array<Set<Int>>(rows($this->ConesPerm->MAXIMAL_CONES)), new Array<Set<Int>>(rows($this->MAXIMAL_CONES)))
+      // die "no permutation";
 }
 weight 1.10;
 
 
 rule MAXIMAL_CONES : ConesPerm.MAXIMAL_CONES, ConesPerm.PERMUTATION {
-   $this->MAXIMAL_CONES=permuted_rows($this->ConesPerm->MAXIMAL_CONES, $this->ConesPerm->PERMUTATION);
+   $this->MAXIMAL_CONES = permuted_rows($this->ConesPerm->MAXIMAL_CONES, $this->ConesPerm->PERMUTATION);
 }
 weight 1.10;
 

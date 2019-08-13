@@ -24,7 +24,7 @@ use Polymake::Test;
 #
 
 my (@apps, @extensions, @testgroups, @examples, $jenkins_report, $annotate_mode, $emacs_style,
-    $validate, $ignore_random_failures, $shuffle_seed, $no_new_glue_code, $single_script,
+    $validate, $ignore_random_failures, $shuffle_seed, $cpperl_root, $single_script,
     %extensions, %found_testgroups, $exit, $auto_adjust);
 
 if ( !GetOptions( 'applications=s' => sub { collect_arglist(\@apps, $_[1]) },
@@ -37,7 +37,7 @@ if ( !GetOptions( 'applications=s' => sub { collect_arglist(\@apps, $_[1]) },
                   'validate-XML' => \$validate,
                   'shuffle:i' => \$shuffle_seed,
                   'random-failures=s' => \$ignore_random_failures,
-                  'no-new-glue-code' => \$no_new_glue_code,
+                  'cpperl-root=s' => \$cpperl_root,
                   'allow-exec-time=f' => \$Test::Case::allowed_exec_time,
                   'auto-adjust' =>\$auto_adjust,
                 )
@@ -80,8 +80,8 @@ Options are:
    --validate-XML
        perform additional sanity checks on data files: generate elaborated schemata,
        validate all input files, and check the idempotence of a save & load sequence
-   --no-new-glue-code
-       forbid automatic generation and compilation of C++/perl interface code snippets (aka wrappers)
+   --cpperl-root PATH
+       write new or updated cpperl files beneath the given root directory
    --allow-exec-time SEC
        increase the allowed execution time for a single test case;
        test scripts may still override this for especially slow cases
@@ -181,11 +181,12 @@ if (!@testgroups && !@examples && !@extensions && !-d "$InstallTop/testscenarios
    push @examples, "*";
 }
 
-my $disable_examples= @examples==1 && uc($examples[0]) eq "NONE"
+my $disable_examples = @examples == 1 && uc($examples[0]) eq "NONE"
   and pop @examples;
-$Core::InteractiveHelp::store_provenience=!$disable_examples;
+$Core::InteractiveHelp::store_provenience = !$disable_examples;
 
-local $Core::CPlusPlus::code_generation= $no_new_glue_code ? "none" : "shared";
+local $Core::CPlusPlus::code_generation = $cpperl_root eq "/dev/null" ? "none" : "shared";
+$Core::CPlusPlus::cpperl_src_root = "$cpperl_root/$$" if defined($cpperl_root);
 
 ########################################
 #

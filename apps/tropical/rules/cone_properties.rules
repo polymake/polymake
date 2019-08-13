@@ -25,36 +25,38 @@ object Polytope {
 	# This is the fixed system of generators with respect
 	# to which many combinatorial properties are expressed.
 	property POINTS : Matrix<TropicalNumber<Addition,Scalar>> {
-		sub canonical { &canonicalize_to_leading_zero_and_check_columns; }
+	   sub canonical { &canonicalize_to_leading_zero_and_check_columns; }
 	}
 
         # permuting the [[POINTS]]
 	permutation PointsPerm : PermBase;
 
 	rule PointsPerm.PERMUTATION : PointsPerm.POINTS, POINTS {
-		$this->PointsPerm->PERMUTATION=find_permutation($this->PointsPerm->POINTS, $this->POINTS);
+	   $this->PointsPerm->PERMUTATION = find_permutation($this->PointsPerm->POINTS, $this->POINTS)
+              // die "no permutation";
 	}
 
 	rule POINTS : PointsPerm.POINTS, PointsPerm.PERMUTATION {
-		$this->POINTS=permuted_rows($this->PointsPerm->POINTS, $this->PointsPerm->PERMUTATION);
+	   $this->POINTS = permuted_rows($this->PointsPerm->POINTS, $this->PointsPerm->PERMUTATION);
 	}
 	weight 1.10;
 
 	# @category Geometry
 	# Vertices of the tropical convex hull, a submatrix of [[POINTS]]
 	property VERTICES : Matrix<TropicalNumber<Addition,Scalar>> {
-		sub canonical { &canonicalize_to_leading_zero; }
+           sub canonical { &canonicalize_to_leading_zero; }
 	}
 
         # permuting the [[VERTICES]]
 	permutation VertexPerm : PermBase;
 
 	rule VertexPerm.PERMUTATION : VertexPerm.VERTICES, VERTICES {
-		$this->VertexPerm->PERMUTATION=find_permutation($this->VertexPerm->VERTICES, $this->VERTICES);
+	   $this->VertexPerm->PERMUTATION = find_permutation($this->VertexPerm->VERTICES, $this->VERTICES)
+              // die "no permutation";
 	}
 
 	rule VERTICES : VertexPerm.VERTICES, VertexPerm.PERMUTATION {
-		$this->VERTICES=permuted_rows($this->VertexPerm->VERTICES, $this->VertexPerm->PERMUTATION);
+	   $this->VERTICES = permuted_rows($this->VertexPerm->VERTICES, $this->VertexPerm->PERMUTATION);
 	}
 	weight 1.10;
 

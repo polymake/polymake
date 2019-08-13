@@ -114,7 +114,7 @@ SV* ClassRegistratorBase::register_class(const AnyString& name, const AnyString&
 
    if (name) {
       // a known persistent class declared in the rules or an instance of a declared class template used in the rules
-      stash=gv_stashpvn(name.ptr, name.len, TRUE);
+      stash = gv_stashpvn(name.ptr, name.len, GV_ADD);
       (void)hv_store((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_type_descr_index]), name.ptr, name.len, newRV((SV*)descr), 0);
       vtbl->flags |= ClassFlags::is_declared;
       if (generated_by)
@@ -124,12 +124,9 @@ SV* ClassRegistratorBase::register_class(const AnyString& name, const AnyString&
    } else if (name.len) {
       if (SvROK(someref)) {
          // a member of an abstract class family with prescribed perl package name; someref -> PropertyType
-         AV* const proto=(AV*)SvRV(someref);
-         SV* const pkg=AvARRAY(proto)[glue::PropertyType_pkg_index];
-         size_t pkgnamelen;
-         const char* pkgname=SvPV(pkg, pkgnamelen);
-         stash = gv_stashpvn(pkgname, pkgnamelen, true);
-         // (void)hv_store((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_type_descr_index]), pkgname, pkgnamelen, newRV((SV*)descr), 0);
+         AV* const proto = (AV*)SvRV(someref);
+         SV* const pkg = AvARRAY(proto)[glue::PropertyType_pkg_index];
+         stash = gv_stashsv(pkg, GV_ADD);
          vtbl->flags |= ClassFlags::is_declared;
          SvREFCNT_inc_simple_void_NN(generated_by);
       } else {
@@ -140,11 +137,9 @@ SV* ClassRegistratorBase::register_class(const AnyString& name, const AnyString&
       // non-declared class created in a client; someref -> PropertyType for the persistent (declared) type
       if (!someref)
          Perl_croak(aTHX_ "internal error: wrong call of register_class");
-      AV* const proto=(AV*)SvRV(someref);
-      SV* const pkg=AvARRAY(proto)[glue::PropertyType_pkg_index];
-      size_t pkgnamelen;
-      const char* pkgname=SvPV(pkg, pkgnamelen);
-      stash = gv_stashpvn(pkgname, pkgnamelen, false);
+      AV* const proto = (AV*)SvRV(someref);
+      SV* const pkg = AvARRAY(proto)[glue::PropertyType_pkg_index];
+      stash = gv_stashsv(pkg, 0);
       if (generated_by)
          SvREFCNT_inc_simple_void_NN(generated_by);
       else if (glue::cur_class_vtbl)
@@ -181,12 +176,12 @@ SV* ClassRegistratorBase::register_class(const AnyString& name, const AnyString&
       }
    }
 
-   descr_array[glue::TypeDescr_pkg_index]=newRV((SV*)stash);
-   descr_array[glue::TypeDescr_vtbl_index]=vtbl_sv;
+   descr_array[glue::TypeDescr_pkg_index] = newRV((SV*)stash);
+   descr_array[glue::TypeDescr_vtbl_index] = vtbl_sv;
    if (cpperl_file)
-      descr_array[glue::TypeDescr_cpperl_file_index]=Scalar::const_string_with_int(cpperl_file.ptr, cpperl_file.len, inst_num);
-   descr_array[glue::TypeDescr_typeid_index]=vtbl->const_ref_typeid_name_sv;
-   descr_array[glue::TypeDescr_generated_by_index]=generated_by;
+      descr_array[glue::TypeDescr_cpperl_file_index] = Scalar::const_string_with_int(cpperl_file.ptr, cpperl_file.len, inst_num);
+   descr_array[glue::TypeDescr_typeid_index] = vtbl->const_ref_typeid_name_sv;
+   descr_array[glue::TypeDescr_generated_by_index] = generated_by;
 
    SvREFCNT_inc_simple_void_NN(vtbl_sv);       // let it survive all objects pointing to it via magic
    SvREADONLY_on(vtbl_sv);

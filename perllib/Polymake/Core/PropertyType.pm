@@ -433,6 +433,17 @@ sub scan_params {
    }
 }
 #################################################################################
+sub find_super_type_param {
+   my ($self, $name) = @_;
+   my $result;
+   while (defined ($self = $self->super)) {
+      if (defined($self->params) and my ($param) = grep { $_->name eq $name } @{$self->params}) {
+         $result = $param;
+      }
+   }
+   $result;
+}
+#################################################################################
 sub full_name {
    my ($self)=@_;
    if ($self->abstract ? !$self->performs_deduction : !defined($self->params)) {

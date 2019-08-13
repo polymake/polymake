@@ -26,6 +26,7 @@
 #include "polymake/hash_map"
 #include "polymake/vector"
 #include "polymake/list"
+#include "polymake/optional"
 #include <algorithm>
 #include <sstream>
 
@@ -197,73 +198,61 @@ struct permutation_map<Value, operations::cmp, std::true_type, typename std::ena
 };
 
 template <typename Input1, typename Input2, typename Output, typename Comparator, typename ExpectDuplicates>
-void find_permutation_impl(Input1&& src1, Input2&& src2, Output&& dst, const Comparator& comparator, ExpectDuplicates)
+bool find_permutation_impl(Input1&& src1, Input2&& src2, Output&& dst, const Comparator& comparator, ExpectDuplicates)
 {
    typename permutation_map<typename iterator_traits<Input1>::value_type, Comparator, ExpectDuplicates>::type index_map;
 
-   for (int i=0; !src1.at_end(); ++src1, ++i)
+   for (int i = 0; !src1.at_end(); ++src1, ++i)
       index_map.emplace(*src1, i);
 
    for (; !src2.at_end(); ++src2, ++dst) {
-      const auto where=index_map.find(*src2);
-      if (where == index_map.end()) {
-         std::string reason;
-         if (index_map.empty()) {
-            reason="not a permutation: first sequence is shorter";
-         } else {
-            std::ostringstream os;
-            wrap(os) << "not a permutation: no match for <" << *src2 << ">";
-            reason=os.str();
-         }
-         throw no_match(reason);
-      }
-      *dst=where->second;
+      const auto where = index_map.find(*src2);
+      if (where == index_map.end())
+         return false;
+      *dst = where->second;
       index_map.erase(where);
    }
 
-   if (!index_map.empty())
-      throw no_match("not a permutation: second sequence is shorter");
+   return index_map.empty();
 }
 
-template <typename Container1, typename Container2, typename Comparator=polymake::operations::cmp>
-Array<int> find_permutation(const Container1& c1, const Container2& c2, const Comparator& comparator=Comparator())
+template <typename Container1, typename Container2, typename Comparator = polymake::operations::cmp>
+optional<Array<int>>
+find_permutation(const Container1& c1, const Container2& c2, const Comparator& comparator = Comparator())
 {
    Array<int> perm(c1.size());
-   find_permutation_impl(entire(c1), entire(c2), perm.begin(), comparator, std::false_type());
-   return perm;
+   if (find_permutation_impl(entire(c1), entire(c2), perm.begin(), comparator, std::false_type()))
+      return make_optional(std::move(perm));
+   else
+      return nullopt;
 }
 
-template <typename Container1, typename Container2, typename Comparator=polymake::operations::cmp>
-Array<int> find_permutation_with_duplicates(const Container1& c1, const Container2& c2, const Comparator& comparator=Comparator())
+template <typename Container1, typename Container2, typename Comparator = polymake::operations::cmp>
+optional<Array<int>>
+find_permutation_with_duplicates(const Container1& c1, const Container2& c2, const Comparator& comparator = Comparator())
 {
    Array<int> perm(c1.size());
-   find_permutation_impl(entire(c1), entire(c2), perm.begin(), comparator, std::true_type());
-   return perm;
+   if (find_permutation_impl(entire(c1), entire(c2), perm.begin(), comparator, std::true_type()))
+      return make_optional(std::move(perm));
+   else
+      return nullopt;
+}
+
+template <typename Container1, typename Container2, typename Comparator = polymake::operations::cmp>
+bool are_permuted(const Container1& c1, const Container2& c2, const Comparator& comparator = Comparator())
+{
+   return !!find_permutation(c1, c2, comparator);
 }
 
 template <typename Container1, typename Container2, typename Comparator=polymake::operations::cmp>
-bool are_permuted(const Container1& c1, const Container2& c2, const Comparator& comparator=Comparator())
+bool are_permuted_with_duplicates(const Container1& c1, const Container2& c2, const Comparator& comparator = Comparator())
 {
-   try {
-      find_permutation(c1, c2, comparator);
-      return true;
-   } catch (const no_match&) {}
-   return false;
-}
-
-template <typename Container1, typename Container2, typename Comparator=polymake::operations::cmp>
-bool are_permuted_with_duplicates(const Container1& c1, const Container2& c2, const Comparator& comparator=Comparator())
-{
-   try {
-      find_permutation_with_duplicates(c1, c2, comparator);
-      return true;
-   } catch (const no_match&) {}
-   return false;
+   return !!find_permutation_with_duplicates(c1, c2, comparator);
 }
 
 template <typename Container, typename Permutation>
-typename std::enable_if<std::is_same<typename object_traits<Container>::generic_tag, is_container>::value,
-                        typename object_traits<Container>::persistent_type>::type
+std::enable_if_t<std::is_same<typename object_traits<Container>::generic_tag, is_container>::value,
+                 typename object_traits<Container>::persistent_type>
 permuted(const Container& c, const Permutation& perm)
 {
    if (POLYMAKE_DEBUG) {
@@ -276,8 +265,8 @@ permuted(const Container& c, const Permutation& perm)
 }
 
 template <typename Container, typename Permutation>
-typename std::enable_if<std::is_same<typename object_traits<Container>::generic_tag, is_container>::value,
-                        typename object_traits<Container>::persistent_type>::type
+std::enable_if_t<std::is_same<typename object_traits<Container>::generic_tag, is_container>::value,
+                 typename object_traits<Container>::persistent_type>
 permuted_inv(const Container& c, const Permutation& perm)
 {
    if (POLYMAKE_DEBUG) {

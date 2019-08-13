@@ -609,6 +609,13 @@ sub unset {
    }
 }
 
+sub hide {
+   local with($_[2]) {
+      delete local $_[0]->private_value->{$_[1]};
+      local scalar $_[0]->state;
+   }
+}
+
 sub prefix { '%' }
 
 sub printable_value {
@@ -730,6 +737,8 @@ sub equal_global_private {
 #################################################################################
 package Polymake::Core::Customize::perApplication;
 
+use Polymake::Enum LoadState => qw( in_progress changed complete );
+
 use Polymake::Struct (
    [ new => '$$' ],
    [ '$handler' => 'weak(#1)' ],
@@ -737,6 +746,7 @@ use Polymake::Struct (
    '%pkg_help',                 # package_name => help text
    [ '$default_pkg' => '#2' ],
    [ '$help' => 'undef' ],
+   [ '$load_state' => 'LoadState::in_progress' ],
    '@tied_vars',
 );
 
@@ -765,11 +775,18 @@ sub new {
         unimport_function(*{$self->default_pkg."::ARCH"});
       }
    } elsif (defined($self->handler->private_file)) {
-      $self->handler->need_save = true;
+      $self->load_state = LoadState::changed;
    }
    $self;
 }
-
+#################################################################################
+sub end_loading {
+   my ($self) = @_;
+   if ($self->load_state == LoadState::changed) {
+      $self->handler->need_save = true;
+   }
+   $self->load_state = LoadState::complete;
+}
 #################################################################################
 sub add {
    my ($self, $name, $help_text, $state, $pkg) = @_;
@@ -850,9 +867,9 @@ sub list_completions {
 #################################################################################
 sub set {
    my ($self, $name) = splice @_, 0, 2;
-   if (defined (my $var = $self->find($name))) {
+   if (defined(my $var = $self->find($name))) {
       $var->set(@_);
-      $self->handler->need_save = true;
+      set_changed($self);
    } else {
       croak( "unknown custom variable $name" );
    }
@@ -860,9 +877,9 @@ sub set {
 #################################################################################
 sub reset {
    my ($self, $name) = splice @_, 0, 2;
-   if (defined (my $var = $self->find($name))) {
+   if (defined(my $var = $self->find($name))) {
       $var->reset(@_);
-      $self->handler->need_save = true;
+      set_chaged($self);
    } else {
       croak( "unknown custom variable $name" );
    }
@@ -871,16 +888,25 @@ sub reset {
 sub unset {
    my ($self, $name, $pkg) = @_;
    if (defined $pkg) {
-      substr($name, 1, 0).="$pkg\::";
+      substr($name, 1, 0) .= "$pkg\::";
    } else {
       my $pkg_end = rindex($name, "::");
       $pkg=substr($name, 1, $pkg_end - 1);
    }
    if (defined (my $var = $self->per_pkg->{$pkg}->{$name})) {
       $var->unset;
-      $self->handler->need_save = true;
+      set_changed($self)
    } else {
       croak( "unknown custom variable $name" );
+   }
+}
+#################################################################################
+sub set_changed {
+   my ($self) = @_;
+   if ($self->load_state == LoadState::complete) {
+      $self->handler->need_save = true;
+   } else {
+      $self->load_state = LoadState::changed;
    }
 }
 #################################################################################
@@ -892,7 +918,7 @@ sub delete_from_private_list {
             splice @{$var->private_value}, $pos, 1;
             no strict 'refs';
             splice @{$var->name}, $pos, 1;
-            $self->handler->need_save = true;
+            set_changed($self);
          } else {
             # not allowed
             0
@@ -930,11 +956,11 @@ sub re_tie {
 #################################################################################
 sub obliterate_extension {
    my ($self, $ext) = @_;
-   while (my ($pkg, $per_pkg)=each %{$self->per_pkg}) {
-      while (my ($name, $var)=each %$per_pkg) {
-         if ($var->extension==$ext) {
+   while (my ($pkg, $per_pkg) = each %{$self->per_pkg}) {
+      while (my ($name, $var) = each %$per_pkg) {
+         if ($var->extension == $ext) {
             delete $per_pkg->{$name};
-            $self->handler->need_save = true;
+            set_changed($self);
          }
       }
       unless (keys %$per_pkg) {
@@ -944,11 +970,18 @@ sub obliterate_extension {
 }
 #################################################################################
 sub printMe {
-   my ($self, $cf, $old_text)=@_;
+   my ($self, $cf, $old_text) = @_;
    print $cf "package ".$self->default_pkg.";\n\n";
    if (length($old_text)) {
-      local $_=$old_text;
-      recycle_piece($cf,$self);
+      if ($self->load_state != LoadState::complete) {
+         # rules for this application were not loaded completely, preserve the old text
+         $old_text =~ s{\A(.*\n)*?\#line.*\npackage .*\n\n}{}m;
+         $old_text =~ s{(^\#+\n)+\Z}{}m;
+         print $cf $old_text;
+         return;
+      }
+      local $_ = $old_text;
+      recycle_piece($cf, $self);
    }
    foreach my $pkg (sort { $a eq $self->default_pkg ? -1 : $b eq $self->default_pkg ? 1 : $a cmp $b } keys %{$self->per_pkg}) {
       if (defined (my $h=$self->pkg_help->{$pkg})) {
@@ -1085,11 +1118,11 @@ use Polymake::Struct (
 );
 
 sub load_private {
-   my ($self, $filename)=@_;
+   my ($self, $filename) = @_;
    if (-f $filename) {
-      $self->private_file=new File($filename) or return;
-      $self->private_pieces=$self->private_file->pieces;
-      $self->need_save= !defined($Version) || $self->private_file->version lt $VersionNumber;
+      $self->private_file = new File($filename) or return;
+      $self->private_pieces = $self->private_file->pieces;
+      $self->need_save = !defined($Version) || $self->private_file->version lt $VersionNumber;
       add AtEnd("Customize", sub { $self->save if $self->need_save });
    } else {
       $self->need_save = true;
@@ -1098,9 +1131,9 @@ sub load_private {
 }
 
 sub load_global {
-   my ($self, $filename)=@_;
-   my $file=new File($filename) or return;
-   if (defined $file->version) {
+   my ($self, $filename) = @_;
+   my $file = new File($filename) or return;
+   if (defined($file->version)) {
       if ($file->version lt $VersionNumber) {
          warn_print( "global configuration file $filename seems to be left over from an older version.\n",
                      "To get rid of this warning, please revise it and set the version number to $Version" );
@@ -1109,14 +1142,14 @@ sub load_global {
          return;
       }
    }
-   while (my ($pkg, $text)=each %{$file->pieces}) {
+   while (my ($pkg, $text) = each %{$file->pieces}) {
       $self->global_pieces->{$pkg} .= $text;
    }
 }
 
 sub app_handler {
-   my ($self, $pkg)=@_;
-   my $per_app=new perApplication($self,$pkg);
+   my ($self, $pkg) = @_;
+   my $per_app = new perApplication($self, $pkg);
    push @{$self->per_app}, $per_app;
    $per_app
 }
@@ -1222,13 +1255,13 @@ sub recycle_piece {
 }
 
 sub save {
-   my ($self, $filename)=@_;
+   my ($self, $filename) = @_;
    if (!defined($filename)) {
       die "no customization file to save\n" unless $self->private_file;
-      $filename=$self->private_file->filename;
+      $filename = $self->private_file->filename;
    }
 
-   my ($cf, $cf_k)=new OverwriteFile($filename);
+   my ($cf, $cf_k) = new OverwriteFile($filename);
    print $cf $preface;
 
    foreach my $per_app (@{$self->per_app}) {
@@ -1237,8 +1270,8 @@ sub save {
       $per_app->printMe($cf, delete $self->private_pieces->{$per_app->default_pkg});
    }
 
-   my $sep=$sep_line;
-   while (my ($pkg, $orphan)=each %{$self->private_pieces}) {
+   my $sep = $sep_line;
+   while (my ($pkg, $orphan) = each %{$self->private_pieces}) {
       if ($pkg !~ /^(?:Modules|Apps)::/) {
          $orphan =~ s/\A(?s:.*?)^\#line.*\n^\s*package\s+$qual_id_re;[ \t]*\n//mo;
          print $cf $sep, "package $pkg;\n", $orphan;

@@ -519,7 +519,7 @@ Matrix<E> zonotope_vertices_fukuda(const Matrix<E>& Z, perl::OptionSet options)
 }
 
 UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
-                          "# Computes the ([[VERTICES]] of the) __Minkowski sum__ of a list of polytopes using the algorithm by Fukuda described in"
+                          "# Computes the ([[Polytope::VERTICES]] of the) __Minkowski sum__ of a list of polytopes using the algorithm by Fukuda described in"
                           "#\t   Komei Fukuda, From the zonotope construction to the Minkowski addition of convex polytopes, J. Symbolic Comput., 38(4):1261-1272, 2004."
                           "# @param Array<Polytope> summands"
                           "# @return Polytope"

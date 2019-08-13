@@ -136,9 +136,10 @@ use Polymake::Struct (
    [ '$source_file' => '#3' ],
 );
 
-sub new {
-   my $self=&Case::new;
-   local $disable_viewers = 1;
+sub run_code {
+   my ($self) = @_;
+   local $disable_viewers = true;
+
    my $tdir = new TempChangeDir($self->subgroup->temp_dir);
    # files created in tutorials via save(), save_data() etc. must be automatically destroyed
    # script() must be exempt from this transformation because it refers to existing scripts
@@ -151,15 +152,12 @@ sub new {
 	 }
       }
    };
-   before_run($self);
+
    eval $self->body;
    if ($@) {
-      $self->gotten_error=neutralized_ERROR();
-      $@="";
+      $self->gotten_error = neutralized_ERROR();
+      $@ = "";
    }
-   after_run($self);
-   close $self->handle;
-   $self;
 }
 
 sub execute {
@@ -169,7 +167,6 @@ sub execute {
                       "     got: EXCEPTION: ".$self->gotten_error;
       return 0;
    }
-
    1
 }
 

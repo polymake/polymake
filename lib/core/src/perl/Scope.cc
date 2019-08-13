@@ -16,16 +16,11 @@
 
 #include "polymake/perl/Ext.h"
 
-namespace pm { namespace perl {
-namespace glue {
-
-Perl_ppaddr_t def_pp_LEAVE;
-
-}
-
-using namespace pm::perl::glue;
+namespace pm { namespace perl { namespace glue {
 
 namespace {
+
+Perl_ppaddr_t def_pp_LEAVE, def_pp_OPEN;
 
 template <typename LocalHandler>
 struct local_wrapper {
@@ -87,13 +82,34 @@ struct local_ref_handler {
 };
 
 }
+
+OP* parse_expression_in_parens(pTHX)
+{
+   lex_read_space(0);
+   if (PL_parser->bufptr == PL_parser->bufend || *PL_parser->bufptr != '(')
+      return nullptr;
+   lex_read_to(PL_parser->bufptr + 1);
+   OP* o = parse_termexpr(0);
+   if (!o) return nullptr;
+   lex_read_space(0);
+   if (PL_parser->bufptr == PL_parser->bufend || *PL_parser->bufptr != ')') {
+      op_free(o);
+      return nullptr;
+   }
+   lex_read_to(PL_parser->bufptr + 1);
+   return o;
+}
+
+}
 namespace ops {
+
+using namespace pm::perl::glue;
 
 OP* local_ref(pTHX)
 {
    dSP;
-   SV *left = POPs;
-   SV *right = GIMME_V != G_VOID ? TOPs : POPs;
+   SV* left = POPs;
+   SV* right = GIMME_V != G_VOID ? TOPs : POPs;
    if (!SvROK(right))
       DIE(aTHX_ "local ref value must be a reference");
    SV* value = SvRV(right);
@@ -140,7 +156,7 @@ OP* local_ref(pTHX)
 }
 
 }
-namespace {
+namespace glue { namespace {
 
 int parse_local_ref(pTHX_ OP** op_ptr)
 {
@@ -198,17 +214,23 @@ OP* local_scalar_op(pTHX)
 
 // --------------------
 
-}
+} }
 namespace ops {
+
+void
+localize_scalar(pTHX_ SV* var, SV* value)
+{
+   local_do<local_scalar_handler>(aTHX_ var, value);
+}
 
 void
 localize_scalar(pTHX_ SV* var)
 {
-   local_do<local_scalar_handler>(aTHX_ var, sv_mortalcopy(var));
+   localize_scalar(aTHX_ var, sv_mortalcopy(var));
 }
 
 }
-namespace {
+namespace glue { namespace {
 
 OP* local_save_scalar_op(pTHX)
 {
@@ -388,9 +410,8 @@ struct local_pop_handler {
    SV* val;
 
    local_pop_handler(pTHX_ AV* av_)
-      : av(av_)
+      : av((AV*)SvREFCNT_inc_simple_NN(av_))
    {
-      SvREFCNT_inc_simple_void_NN(av);
       val = av_pop(av);
    }
 
@@ -813,20 +834,11 @@ OP* leave_local_block_op(pTHX)
 
 int parse_local_block(pTHX_ OP** op_ptr)
 {
-   lex_read_space(0);
-   if (PL_parser->bufptr == PL_parser->bufend || *PL_parser->bufptr != '(') {
+   op_keeper<OP> scope(aTHX_ parse_expression_in_parens(aTHX));
+   if (!scope) {
       report_parse_error("expected: local with(EXPR) { BLOCK }");
       return KEYWORD_PLUGIN_DECLINE;
    }
-   lex_read_to(PL_parser->bufptr + 1);
-   op_keeper<OP> scope(aTHX_ parse_termexpr(0));
-   if (!scope) return KEYWORD_PLUGIN_DECLINE;
-   lex_read_space(0);
-   if (PL_parser->bufptr == PL_parser->bufend || *PL_parser->bufptr != ')') {
-      report_parse_error("expected: local with(EXPR) { BLOCK }");
-      return KEYWORD_PLUGIN_DECLINE;
-   }
-   lex_read_to(PL_parser->bufptr + 1);
    lex_read_space(0);
    if (PL_parser->bufptr == PL_parser->bufend || *PL_parser->bufptr != '{') {
       report_parse_error("expected: local with(EXPR) { BLOCK }");
@@ -913,6 +925,71 @@ int parse_local_caller(pTHX_ OP** op_ptr)
    return KEYWORD_PLUGIN_EXPR;
 }
 
+// --------------------
+
+struct local_saveio_handler {
+   GV* gv;
+   GV* saved;
+
+   local_saveio_handler(pTHX_ GV* gv_)
+      : gv((GV*)SvREFCNT_inc_simple_NN(gv_))
+   {
+      if (GvIOp(gv)) {
+         saved = (GV*)newSV(0);
+         gv_init(saved, nullptr, "__ANONIO__", 10, 0);
+         if (do_openn(saved, ">&=", 3, FALSE, 0, 0, nullptr, (SV**)&gv, 1)) {
+            do_close(gv, FALSE);
+         } else {
+            SvREFCNT_dec(saved);
+            saved = nullptr;
+         }
+      } else {
+         saved = nullptr;
+      }
+   }
+
+   void undo (pTHX) const
+   {
+      if (GvIOp(gv)) do_close(gv, FALSE);
+      if (saved) {
+         (void)do_openn(gv, ">&=", 3, FALSE, 0, 0, nullptr, (SV**)&saved, 1);
+         SvREFCNT_dec(saved);
+      }
+      SvREFCNT_dec(gv);
+   }
+};
+
+OP* local_close_op(pTHX)
+{
+   dSP;
+   dPOPss;
+   if (SvTYPE(sv) != SVt_PVGV)
+      DIE(aTHX_ "not an IO handle in local close");
+   local_do<local_saveio_handler>(aTHX_ (GV*)sv);
+   RETURN;
+}
+
+OP* local_open_op(pTHX)
+{
+   SV* sv = PL_stack_base[TOPMARK + 1];
+   if (SvTYPE(sv) != SVt_PVGV)
+      DIE(aTHX_ "not an IO handle in local open");
+   local_do<local_saveio_handler>(aTHX_ (GV*)sv);
+   return def_pp_OPEN(aTHX);
+}
+
+int parse_local_open_close(pTHX_ OP** op_ptr, OP* (*ppaddr)(pTHX))
+{
+   OP* o = parse_termexpr(0);
+   if (!o) return KEYWORD_PLUGIN_DECLINE;
+   o->op_ppaddr = ppaddr;
+   *op_ptr = o;
+   PL_hints |= HINT_BLOCK_SCOPE;
+   return KEYWORD_PLUGIN_EXPR;
+}
+
+// --------------------
+
 bool following_keyword(pTHX_ const AnyString& kw, bool skip_it = false)
 {
    if (PL_parser->bufptr + kw.len < PL_parser->bufend
@@ -940,10 +1017,18 @@ int parse_enhanced_local(pTHX_ OP** op_ptr)
    case 'c':
       if (following_keyword(aTHX_ "caller", true))
          return parse_local_caller(aTHX_ op_ptr);
+      if (following_keyword(aTHX_ "close"))
+         return parse_local_open_close(aTHX_ op_ptr, local_close_op);
       break;
    case 'i':
       if (following_keyword(aTHX_ "if"))
          return parse_local_if(aTHX_ op_ptr);
+      if (following_keyword(aTHX_ "interrupts", true))
+         return parse_interrupts_op(aTHX_ true, op_ptr);
+      break;
+   case 'o':
+      if (following_keyword(aTHX_ "open"))
+         return parse_local_open_close(aTHX_ op_ptr, local_open_op);
       break;
    case 'p':
       if (following_keyword(aTHX_ "pop"))
@@ -977,7 +1062,16 @@ int parse_enhanced_local(pTHX_ OP** op_ptr)
    return KEYWORD_PLUGIN_DECLINE;
 }
 
-} }
+}
+namespace ops {
+
+void init_globals(pTHX)
+{
+   def_pp_LEAVE = PL_ppaddr[OP_LEAVE];
+   def_pp_OPEN  = PL_ppaddr[OP_OPEN];
+}
+
+} } }
 
 // Local Variables:
 // mode:C++

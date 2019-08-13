@@ -25,8 +25,6 @@ CONFIGURE {
    find_program($qhull, "qhull");
 }
 
-require Polymake::ProgramPipe;
-
 object Polytope<Float> {
 
 # @category Convex hull computation
@@ -34,32 +32,34 @@ object Polytope<Float> {
 label qhull
 
 sub run_qhull_primal {
-   my ($points)=@_;
-   my $Q=new ProgramPipe($qhull, qw{Fd n i});
-   print $Q "begin\n", $points->rows, " ", $points->cols, " real\n", dense($points), "end\n";
+   my ($points) = @_;
+   my $input = new TempTextFile;
+   print $input "begin\n", $points->rows, " ", $points->cols, " real\n", dense($points), "end\n";
 
-   local $_=<$Q>;	# dimension
+   open my $output, "$qhull Fd n i <$input |"
+     or die "can't start $qhull: $!\n";
+
+   local $_ = <$output>;	# dimension
    my ($d)= /(\d+)/;
-   $_=<$Q>;		# number of facets
+   $_ = <$output>;		# number of facets
    my ($n)= /(\d+)/;
-   my $FACETS=new Matrix<Float>($n,$d);  --$d;
+   my $FACETS = new Matrix<Float>($n, $d);  --$d;
 
    # toggle the signs and move the facet offset in the first position
-   for (my $i=0; $i<$n; ++$i) {
-      defined($_=<$Q>) or die "premature end of input\n";
-      my $f=new Vector<Float>($_);
-      @{$FACETS->[$i]}=(-$f->[$d], @{ -($f->slice(sequence(0,$d))) });
+   for (my $i = 0; $i < $n; ++$i) {
+      defined($_ = <$output>) or die "premature end of input\n";
+      my $f = new Vector<Float>($_);
+      @{$FACETS->[$i]} = (-$f->[$d], @{ -($f->slice(sequence(0,$d))) });
    }
 
-   $_=<$Q>;
-   /(\d+)/ && $1==$n or die "inconsistency in qhull output\n";
-   my @VIF; $#VIF=$n-1;
-   for (my $i=0; $i<$n; ++$i) {
-      defined($_=<$Q>) or die "premature end of input\n";
+   $_ = <$output>;
+   /(\d+)/ && $1 == $n or die "inconsistency in qhull output\n";
+   my @VIF; $#VIF = $n-1;
+   for (my $i = 0; $i < $n; ++$i) {
+      defined($_ = <$output>) or die "premature end of input\n";
       chomp;
-      $VIF[$i]="{$_}";
+      $VIF[$i] = "{$_}";
    }
-   close $Q;
    ($n, $FACETS, \@VIF);
 }
 
@@ -76,10 +76,10 @@ incurs FacetPerm;
 
 # @notest
 rule qhull.convex_hull.primal: FACETS, N_FACETS, POINTS_IN_FACETS : POINTS {
-   my ($n, $FACETS, $VIF)=run_qhull_dual($this->POINTS);
-   $this->FACETS=$FACETS;
-   $this->N_FACETS=$n;
-   $this->POINTS_IN_FACETS=$VIF;
+   my ($n, $FACETS, $VIF) = run_qhull_dual($this->POINTS);
+   $this->FACETS = $FACETS;
+   $this->N_FACETS = $n;
+   $this->POINTS_IN_FACETS = $VIF;
 }
 precondition : BOUNDED;
 precondition : FULL_DIM;
@@ -87,46 +87,49 @@ weight 4.10;
 incurs FacetPerm;
 
 sub run_qhull_dual {
-   my ($rip,$ineqs)=@_;
+   my ($rip, $ineqs)=@_;
+   my $input = new TempTextFile;
+   print $input $rip->dim-1, " 1\n" , dense(dehomogenize($rip)),
+                "\nbegin\n", $ineqs->rows, " ", $ineqs->cols, " real\n", dense($ineqs), "end\n";
+
    #Fp = vertex coordinates 
    #FN = vertices in inequalties/facets
    #Fx = facet defining inequalities
-   my $Q=new ProgramPipe($qhull, qw{Fd H Fp FN});
-   print $Q $rip->dim-1, " 1\n" , dense(dehomogenize($rip)), "\nbegin\n", $ineqs->rows, " ", $ineqs->cols, " real\n", dense($ineqs), "end\n";
+   open my $output, "$qhull Fd H Fp FN <$input |"
+     or die "can't start $qhull: $!\n";
 
-   local $_=<$Q>;	# dimension
+   local $_ = <$output>;	# dimension
    my ($d)= /(\d+)/;
-   $_=<$Q>;		# number of vertices
-   my ($n)= /(\d+)/;
-   my $vertices=new Matrix<Float>($n,$d+1);
+   $_ = <$output>;		# number of vertices
+   my ($n) = /(\d+)/;
+   my $vertices = new Matrix<Float>($n,$d+1);
 
    # read vertices
-   for (my $i=0; $i<$n; ++$i) {
-      defined($_=<$Q>) or die "premature end of input\n";
-      my $v=new Vector<Float>($_);
-      @{$vertices->[$i]}=(1,@$v);
+   for (my $i = 0; $i < $n; ++$i) {
+      defined($_ = <$output>) or die "premature end of input\n";
+      my $v = new Vector<Float>($_);
+      @{$vertices->[$i]} = (1, @$v);
    }
    
-   $_=<$Q>;
+   $_ = <$output>;
    my ($m) = /(\d+)/;
    my @vertices_in_ineqs; 
-   $#vertices_in_ineqs=$m-1;
-   for (my $i=0; $i<$m; ++$i) {
-      defined($_=<$Q>) or die "premature end of input\n";
+   $#vertices_in_ineqs = $m - 1;
+   for (my $i = 0; $i < $m; ++$i) {
+      defined($_ = <$output>) or die "premature end of input\n";
       chomp;
       my @vii = $_ =~ /(\d+)/g;
       splice @vii, 0, 1;
       $vertices_in_ineqs[$i]="{@vii}";
    }
-   close $Q;
    ($n, $vertices, \@vertices_in_ineqs);
 }
 
 rule qhull.convex_hull.dual: VERTICES, N_VERTICES, VERTICES_IN_FACETS : FACETS, REL_INT_POINT {
-   my ($n, $vertices, $vif)=run_qhull_dual($this->REL_INT_POINT,$this->FACETS);
-   $this->VERTICES=$vertices;
-   $this->N_VERTICES=$n;
-   $this->VERTICES_IN_FACETS=$vif;
+   my ($n, $vertices, $vif) = run_qhull_dual($this->REL_INT_POINT,$this->FACETS);
+   $this->VERTICES = $vertices;
+   $this->N_VERTICES = $n;
+   $this->VERTICES_IN_FACETS = $vif;
 }
 precondition : BOUNDED;
 precondition : FULL_DIM;
@@ -135,10 +138,10 @@ incurs VertexPerm;
 
 # @notest
 rule qhull.convex_hull.dual: VERTICES, N_VERTICES, VERTICES_IN_INEQUALITIES : INEQUALITIES, REL_INT_POINT {
-   my ($n, $vertices, $vii)=run_qhull_dual($this->REL_INT_POINT,$this->INEQUALITIES);
-   $this->VERTICES=$vertices;
-   $this->N_VERTICES=$n;
-   $this->VERTICES_IN_INEQUALITIES=$vii;
+   my ($n, $vertices, $vii) = run_qhull_dual($this->REL_INT_POINT,$this->INEQUALITIES);
+   $this->VERTICES = $vertices;
+   $this->N_VERTICES = $n;
+   $this->VERTICES_IN_INEQUALITIES = $vii;
 }
 precondition : BOUNDED;
 precondition : FULL_DIM;

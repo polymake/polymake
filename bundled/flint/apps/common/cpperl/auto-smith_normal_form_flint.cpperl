@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Integer>&>"], "func": "smith_normal_form_flint", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h", "polymake/common/FlintSNF.h"], "sig": "smith_normal_form_flint.X"},
+ null ],
+"version": 3}

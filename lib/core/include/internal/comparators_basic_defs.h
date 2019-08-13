@@ -164,16 +164,16 @@ struct cmp_scalar<T1, T2, typename std::enable_if<std::numeric_limits<T1>::is_si
    using cmp_partial_scalar::operator();
 
    template <typename Left, typename Right>
-   typename std::enable_if<(std::numeric_limits<Left>::is_integer && std::numeric_limits<Right>::is_signed &&
-                            std::numeric_limits<Left>::is_integer && std::numeric_limits<Right>::is_signed), cmp_value>::type
+   typename std::enable_if<(std::numeric_limits<Left>::is_integer && std::numeric_limits<Left>::is_signed &&
+                            std::numeric_limits<Right>::is_integer && std::numeric_limits<Right>::is_signed), cmp_value>::type
    operator() (const Left& a, const Right& b) const
    {
       return cmp_value(sign(a-b));
    }
 
    template <typename Left, typename Right>
-   typename std::enable_if<!(std::numeric_limits<Left>::is_integer && std::numeric_limits<Right>::is_signed &&
-                             std::numeric_limits<Left>::is_integer && std::numeric_limits<Right>::is_signed), cmp_value>::type
+   typename std::enable_if<!(std::numeric_limits<Left>::is_integer && std::numeric_limits<Left>::is_signed &&
+                             std::numeric_limits<Right>::is_integer && std::numeric_limits<Right>::is_signed), cmp_value>::type
    operator() (const Left& a, const Right& b) const
    {
       return cmp_basic<Left, Right>()(a, b);

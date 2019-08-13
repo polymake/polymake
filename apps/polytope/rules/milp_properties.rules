@@ -16,6 +16,7 @@
 # @category Optimization
 # A mixed integer linear program specified by a linear or abstract objective function
 # @relates objects/Polytope
+# @tparam Scalar numeric type of variables and objective function
 declare object MixedIntegerLinearProgram<Scalar=Rational> {
    
    # Linear objective funtion. In d-space a linear objective function is given

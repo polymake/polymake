@@ -31,7 +31,6 @@ protected:
 private:
    bool handover(bool with_sync);
 
-   PerlInterpreter* pi;
    GV* gv;
    char buf[1024];
 };

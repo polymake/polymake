@@ -37,7 +37,7 @@ object Ideal {
    # A set of generators usually given by the user and not unique.
    property GENERATORS : Array<Polynomial> {
       sub equal {
-         defined(eval { find_permutation(@_) })
+         defined(find_permutation(@_))
       }
    }
 
@@ -117,7 +117,7 @@ object Groebner {
    
    # @category Input properties
    # A weight vector for the monomial ordering, a reverse lexicographic order will be used
-   # as tie-breaker. (Singular: wp(vector))
+   # as tie-breaker. (Singular: ''wp(vector)'')
    # This vector is expected to consist of positive integers only.
    #
    # Note that only one of [[ORDER_MATRIX]], [[ORDER_VECTOR]], [[ORDER_NAME]]

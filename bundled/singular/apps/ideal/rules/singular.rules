@@ -45,6 +45,9 @@ declare property_type SingularIdeal : c++ (include => ["polymake/ideal/singularI
    # Compute the radical of the ideal.
    method radical() : c++ ;
 
+   # Compute the saturation of the ideal.
+   method saturation(Array<Polynomial>) : c++ ;
+
    method division(Polynomial) : c++;
 
    method solve() : c++;
@@ -184,6 +187,16 @@ object Ideal {
   	   my $radical = $si->radical();
   	   $this->RADICAL = new Ideal(GENERATORS=>$radical->polynomials(),N_VARIABLES=>$this->N_VARIABLES);
   	}
+
+   user_method SATURATION(Array<Polynomial>) : N_VARIABLES, GENERATORS {
+      my ($this, $polys) = @_;
+      my $si;
+      unless (defined($si = $this->lookup("GROEBNER.SINGULAR_IDEAL"))) {
+         $si = $this->GROEBNER(ORDER_NAME=>"dp",temporary)->SINGULAR_IDEAL;
+      }
+      my $saturation = $si->saturation($polys);
+      return new Ideal(GENERATORS=>$saturation->polynomials(),N_VARIABLES=>$this->N_VARIABLES);
+   }
 
   	# Check via saturation whether the ideal contains a monomial.
   	# Returns a monomial from the ideal or the trivial monomial if there is none.

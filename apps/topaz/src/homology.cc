@@ -190,7 +190,7 @@ UserFunction4perl("# @category Topology"
                   &homology<ChainComplex<SparseMatrix<Integer>>>, "homology(ChainComplex<SparseMatrix<Integer>> $; $=0, $=-1)");
 
 UserFunction4perl("# @category Topology"
-                  "# Calculate the __(co-)homology groups__ and __cycle coefficient matrices_ of a chain complex.\n"
+                  "# Calculate the __(co-)homology groups__ and __cycle coefficient matrices__ of a chain complex.\n"
 "# @param ChainComplex<SparseMatrix<Integer>> CC The chain complex for which to compute homology."
 "# @param Bool co set to true for __co__homology"
 "# @option Int dim_low narrows the dimension range of interest, with negative values being treated as co-dimensions"

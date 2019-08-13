@@ -18,7 +18,6 @@ use namespaces;
 use warnings qw(FATAL void syntax misc);
 
 package Polymake::Core::Rule;
-use POSIX qw( :signal_h :sys_wait_h );
 
 use Polymake::Enum Flags => {
    is_function => 0x1,            #  does not return anything, can be called arbitrarily many times
@@ -787,24 +786,10 @@ sub create {
    $self
 }
 ####################################################################################
-my $break_reason;
-
-sub break_rule {
-   $break_reason = shift;
-   if ($break_reason eq 'ALRM') {
-      $SIG{INT} = 'IGNORE';
-      $SIG{ALRM} = 'IGNORE';
-      kill -(SIGINT), $$;       # kill the subprocesses
-   }
-   die "\n" if waitpid(-$$,WNOHANG)==-1;        # there were no subprocesses - leave eval{} in execute().
-}
-
-my $breaksignals=new POSIX::SigSet(SIGINT, SIGALRM);
-my $sa_break=new POSIX::SigAction(\&break_rule, $breaksignals, 0);
-my $sa_INT_save=new POSIX::SigAction('IGNORE');
 
 # Execute the rule on a separate transaction level
 sub execute {
+   local interrupts(block);
    my ($self, $object, $force) = @_;
    unless ($self->flags & Flags::is_precondition) {
       my $trans = new RuleTransaction($object, $self);
@@ -820,26 +805,23 @@ sub execute {
 # private:
 sub _execute {
    my ($self, $object) = @_;
-   my $died = 1;
    my ($rc, $retval) = (Exec::failed);
-   undef $break_reason;
    eval {
-      sigaction SIGINT, $sa_break, $sa_INT_save;
-      sigaction SIGALRM, $sa_break;
-      my $alarm_time = $timeout && !($self->flags & Flags::is_precondition);
-      alarm $alarm_time if $alarm_time;
+      ## my $alarm_time = $timeout && !($self->flags & Flags::is_precondition);
+      ## alarm $alarm_time if $alarm_time;
+      local interrupts(enable);
       if (wantarray || $self->flags & Flags::is_precondition) {
          $retval=$self->code->($object);
       } else {
          # call production rules in void context
          $self->code->($object);
       }
-      alarm 0 if $alarm_time;
+      ## alarm 0 if $alarm_time;
       if ($self->flags & Flags::is_precondition) {
          $rc= $retval ? Exec::OK : Exec::failed;
-         if ($Verbose::rules>1) {
+         if ($Verbose::rules > 1) {
             if ($retval) {
-               dbg_print( $self->header, " satisfied" ) if $self->flags & Flags::is_precondition and $Verbose::rules>2;
+               dbg_print( $self->header, " satisfied" ) if $self->flags & Flags::is_precondition and $Verbose::rules > 2;
             } else {
                warn_print( $self->header, $self->flags & Flags::is_precondition ? " not satisfied" : " failed" );
             }
@@ -850,22 +832,15 @@ sub _execute {
          $rc = Exec::OK;
       }
       $object->commit unless ($self->flags & Flags::is_precondition);
-      $died=0;
    };
-   sigaction SIGINT, $sa_INT_save;
-   $SIG{ALRM}='IGNORE';
-
-   if ($died) {
-      $rc = Exec::failed;
-      if ($break_reason eq "ALRM") {
-         $@ = "timeout elapsed\n";
-      } elsif ($break_reason eq "INT") {
-         $@ = "killed by signal\n";
-         $rc = Exec::retry;
-      }
-      $object->failed_rules->{$self}=1;
-      $object->failed_rules->{$self->with_permutation}=1 if defined $self->with_permutation;
+   if ($@) {
       $object->rollback unless ($self->flags & Flags::is_precondition);
+      if ($@ eq "Interrupted\n") {
+         die $@;
+      }
+      $rc = Exec::failed;
+      $object->failed_rules->{$self} = 1;
+      $object->failed_rules->{$self->with_permutation} = 1 if defined $self->with_permutation;
    }
    wantarray ? ($rc, $retval) : $rc;
 }
@@ -928,6 +903,7 @@ sub descend_to_source {
 }
 
 sub execute {
+   local interrupts(block);
    my ($self, $object)=@_;
    dbg_print("applying rule ", $self->header) if $Verbose::rules>2;
    if (defined (my $pv=&descend_to_source)) {
@@ -1006,6 +982,7 @@ sub with_permutation { undef }
 sub without_permutation { $_[0]->rule }
 
 sub execute {
+   local interrupts(block);
    my ($self, $object)=@_;
    new RuleTransactionWithPerm($object, $self);
    dbg_print("applying rule ", $self->header) if $Verbose::rules>2;

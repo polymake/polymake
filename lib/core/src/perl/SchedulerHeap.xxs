@@ -109,8 +109,7 @@ public:
    SchedulerHeap(pTHX_ int max_weight, int n_props)
       : super(sizeof(ChainAgent) + sizeof(int) * max_weight, n_props)
       , heap(64, max_weight)
-      , PmPerlInterpreterMemberInit(pi)
-        tell_dropped(nullptr)
+      , tell_dropped(nullptr)
       , chain_in_progress(nullptr)
       , ancestor_agent(nullptr)
       , tentative_agent(nullptr)
@@ -174,7 +173,6 @@ private:
    Set<int> vertex_filter;
    Set<int> tentative_vertex_set;
 
-   PmPerlInterpreterMemberDecl(pi);
    SV* tell_dropped;
    SV* chain_in_progress;
    ChainAgent* ancestor_agent;
@@ -201,7 +199,7 @@ void SchedulerHeap::new_tentative_agent(SV* chain)
 
 bool SchedulerHeap::push(SV* chain)
 {
-   dTHXa(pi);
+   dTHX;
    if (SvRV(chain) != chain_in_progress) return false;
    SV* agent_sv=PmArray(chain)[RuleChain_agent_index];
    sv_setuv(agent_sv, PTR2UV(tentative_agent));
@@ -243,7 +241,7 @@ bool SchedulerHeap::push(SV* chain)
 
 void SchedulerHeap::kill_chains()
 {
-   dTHXa(pi);
+   dTHX;
    for (auto q_it=entire(heap.get_queue());  !q_it.at_end();  ++q_it)
       SvREFCNT_dec(*q_it);
 }
@@ -299,7 +297,7 @@ bool SchedulerHeap::is_promising(AV* set_list)
 #if POLYMAKE_DEBUG
 void SchedulerHeap::sanity_check() const
 {
-   dTHXa(pi);
+   dTHX;
    int pos=0;
    for (auto q_it=entire(heap.get_queue());  !q_it.at_end();  ++q_it, ++pos) {
       const ChainAgent* agent=extract_agent_wary(*q_it);

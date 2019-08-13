@@ -1660,18 +1660,12 @@ PPCODE:
 
 BOOT:
 {
-   const AnyString FuncDescr_pkg("Polymake::Core::CPlusPlus::FuncDescr");
-   const AnyString TypeDescr_pkg("Polymake::Core::CPlusPlus::TypeDescr");
-   const AnyString CPP_Assoc_pkg("Polymake::Core::CPlusPlus::Assoc");
-   const AnyString User_pkg("Polymake::User");
-   const AnyString InitTransaction_pkg("Polymake::Core::InitTransaction");
+   CPP_root = get_named_variable(aTHX_ "Polymake::Core::CPlusPlus::root", SVt_PV);
+   PropertyType_nested_instantiation = get_named_variable(aTHX_ "Polymake::Core::PropertyType::nested_instantiation", SVt_PV);
+   User_application = get_named_variable(aTHX_ "Polymake::User::application", SVt_PV);
+   Debug_level = get_named_variable(aTHX_ "Polymake::DebugLevel", SVt_PV);
 
-   CPP_root = gv_fetchpv("Polymake::Core::CPlusPlus::root", false, SVt_PV);
-   PropertyType_nested_instantiation = gv_fetchpv("Polymake::Core::PropertyType::nested_instantiation", false, SVt_PV);
-   User_application = gv_fetchpv("Polymake::User::application", false, SVt_PV);
-   Debug_level = gv_fetchpv("Polymake::DebugLevel", false, SVt_PV);
-
-   FuncDescr_stash = gv_stashpvn(FuncDescr_pkg.ptr, FuncDescr_pkg.len, false);
+   FuncDescr_stash = get_named_stash(aTHX_ "Polymake::Core::CPlusPlus::FuncDescr");
    FuncDescr_fill_visible = get_sizeof(aTHX_ FuncDescr_stash) - 1;
    FuncDescr_wrapper_index = FuncDescr_fill_visible + 1;
    FuncDescr_return_type_reg_index = FuncDescr_wrapper_index + 1;
@@ -1682,15 +1676,15 @@ BOOT:
    FuncDescr_cross_apps_index = CvDEPTH(get_cv("Polymake::Core::CPlusPlus::FuncDescr::cross_apps", false));
    FuncDescr_return_type_index = CvDEPTH(get_cv("Polymake::Core::CPlusPlus::FuncDescr::return_type", false));
 
-   TypeDescr_stash = gv_stashpvn(TypeDescr_pkg.ptr, TypeDescr_pkg.len, false);
-   TypeDescr_fill = get_sizeof(aTHX_ TypeDescr_stash)-1;
+   TypeDescr_stash = get_named_stash(aTHX_ "Polymake::Core::CPlusPlus::TypeDescr");
+   TypeDescr_fill = get_sizeof(aTHX_ TypeDescr_stash) - 1;
    TypeDescr_pkg_index = CvDEPTH(get_cv("Polymake::Core::CPlusPlus::TypeDescr::pkg", false));
    TypeDescr_vtbl_index = CvDEPTH(get_cv("Polymake::Core::CPlusPlus::TypeDescr::vtbl", false));
    TypeDescr_cpperl_file_index = CvDEPTH(get_cv("Polymake::Core::CPlusPlus::TypeDescr::cpperl_file", false));
    TypeDescr_typeid_index = CvDEPTH(get_cv("Polymake::Core::CPlusPlus::TypeDescr::typeid", false));
    TypeDescr_generated_by_index = CvDEPTH(get_cv("Polymake::Core::CPlusPlus::TypeDescr::generated_by", false));
 
-   User_stash = gv_stashpvn(User_pkg.ptr, User_pkg.len, false);
+   User_stash = get_named_stash(aTHX_ "Polymake::User");
 
    CPPOptions_builtin_index = CvDEPTH(get_cv("Polymake::Core::CPlusPlus::Options::builtin", false));
    CPPOptions_descr_index = CvDEPTH(get_cv("Polymake::Core::CPlusPlus::Options::descr", false));
@@ -1712,7 +1706,7 @@ BOOT:
    CPP_auto_assoc_methods_index = CvDEPTH(get_cv("Polymake::Core::CPlusPlus::auto_assoc_methods", false));
    CPP_auto_set_methods_index = CvDEPTH(get_cv("Polymake::Core::CPlusPlus::auto_set_methods", false));
 
-   HV* assoc_stash = gv_stashpvn(CPP_Assoc_pkg.ptr, CPP_Assoc_pkg.len, false);
+   HV* assoc_stash = get_named_stash(aTHX_ "Polymake::Core::CPlusPlus::Assoc");
    CPP_Assoc_helem_index = get_named_constant(aTHX_ assoc_stash, "helem");
    CPP_Assoc_find_index = get_named_constant(aTHX_ assoc_stash, "find");
    CPP_Assoc_exists_index = get_named_constant(aTHX_ assoc_stash, "exists");
@@ -1730,7 +1724,7 @@ BOOT:
    Object_parent_index = CvDEPTH(get_cv("Polymake::Core::Object::parent", false));
    Object_transaction_index = CvDEPTH(get_cv("Polymake::Core::Object::transaction", false));
    Object_attachments_index = CvDEPTH(get_cv("Polymake::Core::Object::attachments", false));
-   Object_InitTransaction_stash = gv_stashpvn(InitTransaction_pkg.ptr, InitTransaction_pkg.len, true);
+   Object_InitTransaction_stash = get_named_stash(aTHX_ "Polymake::Core::InitTransaction");
 
    CvLVALUE_on(get_cv("Polymake::Core::CPlusPlus::Iterator::hidden", false));
    CvMETHOD_on(get_cv("Polymake::Core::CPlusPlus::convert_to_int", false));
@@ -1752,8 +1746,7 @@ BOOT:
       CvNODEBUG_on(get_cv("Polymake::Core::CPlusPlus::convert_to_serialized", false));
    }
 
-   const AnyString FuncFlag_pkg("Polymake::Core::CPlusPlus::FuncFlag");
-   HV* FuncFlag_stash = gv_stashpvn(FuncFlag_pkg.ptr, FuncFlag_pkg.len, false);
+   HV* FuncFlag_stash = get_named_stash(aTHX_ "Polymake::Core::CPlusPlus::FuncFlag");
    if (arg_is_lval_ref != get_named_constant(aTHX_ FuncFlag_stash, "arg_is_lval_ref") ||
        arg_is_univ_ref != get_named_constant(aTHX_ FuncFlag_stash, "arg_is_univ_ref") ||
        arg_is_const_or_rval_ref != get_named_constant(aTHX_ FuncFlag_stash, "arg_is_const_or_rval_ref"))

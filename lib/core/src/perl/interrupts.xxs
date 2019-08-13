@@ -1,0 +1,245 @@
+/* Copyright (c) 1997-2018
+   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
+   http://www.polymake.org
+
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+--------------------------------------------------------------------------------
+*/
+
+#include "polymake/perl/Ext.h"
+#include <signal.h>
+#include <errno.h>
+#include <unistd.h>
+
+namespace pm { namespace perl { namespace glue {
+
+namespace {
+
+SV* state = nullptr;
+SV* handler = nullptr;
+SV* safe_interrupt_cv = nullptr;
+int interrupt_signum = 0;
+
+bool must_reset_state = false;
+
+void prepare_safe_interrupt(pTHX)
+{
+   if (PL_psig_pend[SIGINT] == 0) {
+      PL_psig_pend[SIGINT] = 1;
+      ++PL_sig_pending;
+      SvREFCNT_dec(PL_psig_ptr[SIGINT]);
+      PL_psig_ptr[SIGINT] = SvREFCNT_inc_simple_NN(safe_interrupt_cv);
+   }
+}
+
+int reset_state(pTHX_ SV* sv, MAGIC* mg)
+{
+   sv_setiv(state, 0);
+   PL_tmps_stack[++PL_tmps_ix] = mg->mg_obj;
+   return 0;
+}
+
+int handle_deferred(pTHX_ SV* sv, MAGIC* mg)
+{
+   prepare_safe_interrupt(aTHX);
+   return 0;
+}
+
+const MGVTBL reset_state_vtbl = { nullptr, nullptr, nullptr, nullptr, &reset_state };
+
+const MGVTBL handle_deferred_vtbl = { nullptr, nullptr, nullptr, nullptr, &handle_deferred };
+
+void interrupt_handler(int)
+{
+   dTHX;
+   // repeated signal while still processing the first one
+   if (SvIVX(state) != 0) return;
+   if (PL_curstackinfo->si_prev || cxstack_ix >= 0 && PL_tmps_ix >= 0) {
+      // we are deep enough within the perl code
+      if (SvROK(handler)) {
+         if (SvTYPE(SvRV(handler)) == SVt_PVCV) {
+            // execute the handler immediately
+            SvREFCNT_dec(PL_psig_ptr[SIGINT]);
+            PL_psig_ptr[SIGINT] = SvREFCNT_inc_simple_NN(handler);
+            Perl_sighandler(SIGINT, nullptr, nullptr);
+         } else {
+            // set the interrupt flag, do nothing else
+            sv_setiv(SvRV(handler), 1);
+         }
+      } else if (SvOK(handler)) {
+         if (SvTRUE(handler)) {
+            // interrupts are blocked, prepare for deferred handling
+            if (SvTYPE(handler) < SVt_PVMG)
+               sv_magicext(handler, nullptr, PERL_MAGIC_ext, &handle_deferred_vtbl, nullptr, 0);
+         }
+         // else: disabled altogether
+      } else {
+         // default case: break at the next OP
+         prepare_safe_interrupt(aTHX);
+         // kill child processes started via 'open pipes'
+         if (PL_fdpid && AvFILLp(PL_fdpid) >= 0) {
+            for (SV **pidp = AvARRAY(PL_fdpid), **last = pidp + AvFILLp(PL_fdpid);  pidp <= last;  ++pidp) {
+               SV* pidsv = *pidp;
+               int child_pid;
+               if (pidsv && SvTYPE(pidsv) == SVt_IV && (child_pid = SvIVX(pidsv)) > 0)
+                  kill(child_pid, SIGINT);
+            }
+         }
+      }
+   }
+}
+
+OP* pp_local_set_handler(pTHX)
+{
+   dSP;
+   dPOPss;
+   ops::localize_scalar(aTHX_ handler, sv);
+   RETURN;
+}
+
+OP* pp_set_handler(pTHX)
+{
+   dSP;
+   dPOPss;
+   sv_setsv(handler, sv);
+   RETURN;
+}
+
+}
+
+void set_interrupt_signal(pTHX_ int signum, bool must_reset_state_arg)
+{
+   if (signum <= 0 || signum >= SIG_SIZE)
+      Perl_croak(aTHX_ "set_interrupt_signal: invalid signal number %d\n", signum);
+   must_reset_state = must_reset_state_arg;
+   if (interrupt_signum == signum)
+      return;
+   reset_interrupt_signal();
+   struct sigaction sa;
+   sa.sa_handler = interrupt_handler;
+   sa.sa_flags = 0;
+   sigemptyset(&sa.sa_mask);
+   sigaddset(&sa.sa_mask, SIGINT);
+   sigaddset(&sa.sa_mask, SIGQUIT);
+   sigaddset(&sa.sa_mask, SIGALRM);
+   sigaddset(&sa.sa_mask, SIGPIPE);
+   if (sigaction(signum, &sa, nullptr) < 0)
+      Perl_croak(aTHX_ "set_interrupt_signal: sigaction failed: %d\n", errno);
+   interrupt_signum = signum;
+}
+
+void reset_interrupt_signal()
+{
+   if (interrupt_signum != 0) {
+      struct sigaction sa;
+      sa.sa_handler = SIG_DFL;
+      sa.sa_flags = 0;
+      sigaction(interrupt_signum, &sa, nullptr);
+      interrupt_signum = 0;
+   }
+}
+
+int parse_interrupts_op(pTHX_ const bool localize, OP** op_ptr)
+{
+   OP* value_op = parse_expression_in_parens(aTHX);
+   if (!value_op) {
+      report_parse_error(localize ? "expected: local interrupts(EXPR);" : "expected: interrupts(EXPR);");
+      return KEYWORD_PLUGIN_DECLINE;
+   }
+   if (value_op->op_type == OP_CONST) {
+      SV* sv = cSVOPx_sv(value_op);
+      SV* new_value = nullptr;
+      if (SvPOK(sv)) {
+         switch (SvCUR(sv)) {
+         case 0:
+            new_value = sv;  // false = disable
+            break;
+         case 1:
+            if (*SvPVX(sv) == '1')
+               new_value = &PL_sv_undef;     // true = enable
+            break;
+         case 5:
+            if (!strncmp(SvPVX(sv), "block", 5))
+               new_value = &PL_sv_yes;
+            break;
+         case 6:
+            if (!strncmp(SvPVX(sv), "enable", 6))
+               new_value = &PL_sv_undef;
+            break;
+         case 7:
+            if (!strncmp(SvPVX(sv), "disable", 7))
+               new_value = &PL_sv_no;
+            break;
+         }
+      }
+      op_free(value_op);
+      if (!new_value) {
+         report_parse_error("invalid interrupts operation; expected \"enable\", \"disable\", \"block\", or a bolean constant");
+         return KEYWORD_PLUGIN_DECLINE;
+      }
+      value_op = newSVOP(OP_CONST, 0, new_value);
+   }
+   OP* set_op = newUNOP(OP_CUSTOM, 0, Perl_scalar(aTHX_ value_op));
+   set_op->op_ppaddr = localize ? pp_local_set_handler : pp_set_handler;
+   *op_ptr = set_op;
+   return KEYWORD_PLUGIN_EXPR;
+}
+
+} } }
+
+using namespace pm::perl::glue;
+
+MODULE = Polymake::Interrupts          PACKAGE = Polymake::Interrupts
+
+PROTOTYPES: DISABLE
+
+void
+safe_interrupt(...)
+PPCODE:
+{
+   sv_setiv(state, 1);
+   if (must_reset_state) {
+      // In a callable library setup, there is no unique place where the state flag could be reset
+      // because there are many entry points into the library.
+      // We capture the very first temporary variable slot for this cleanup.
+      SV* some_temp = PL_tmps_stack[0];
+      SV* reset_sv = newSV_type(SVt_PVMG);
+      sv_magicext(reset_sv, some_temp, PERL_MAGIC_ext, &reset_state_vtbl, nullptr, 0);
+      SvTEMP_on(reset_sv);
+      PL_tmps_stack[0] = reset_sv;
+   }
+   Perl_croak(aTHX_ "Interrupted\n");
+}
+
+void
+install_handler()
+PPCODE:
+{
+   set_interrupt_signal(aTHX_ SIGINT, false);
+}
+
+BOOT:
+{
+   state = GvSV(get_named_variable(aTHX_ "Polymake::Interrupts::state", SVt_PV));
+   handler = newSV(0);
+   safe_interrupt_cv = newRV((SV*)get_cv("Polymake::Interrupts::safe_interrupt", 0));
+   if (PL_DBgv) {
+      CvNODEBUG_on(SvRV(safe_interrupt_cv));
+   }
+}
+
+=pod
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:
+=cut

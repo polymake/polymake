@@ -22,10 +22,12 @@
 
 namespace polymake { namespace polytope {
  
-template<typename Scalar>
+template<typename Scalar, typename MatrixType, typename VectorType>
 Array<Set<int>>
-regular_subdivision(const Matrix<Scalar> &vertices, const Vector<Scalar>& weight)
+regular_subdivision(const GenericMatrix<MatrixType> &vertices_in, const GenericVector<VectorType>& weight_in)
 {
+   auto vertices = convert_to<Scalar>(vertices_in);
+   auto weight = convert_to<Scalar>(weight_in);
    //construct the lifted polytope + a ray
    const Matrix<Scalar> lifted_vertices=(vertices|weight)/unit_vector<Scalar>(vertices.cols()+1,vertices.cols());
    perl::Object p("Polytope", mlist<Scalar>());
@@ -65,7 +67,7 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# | {0 2 3}"
                           "# | {0 1 3}"
                           "# @author Sven Herrmann",
-                          "regular_subdivision<Scalar>(Matrix<type_upgrade<Scalar>> Vector<type_upgrade<Scalar>>)");
+                          "regular_subdivision<Scalar> [ is_ordered_field(type_upgrade<Scalar, Rational>) ](Matrix<type_upgrade<Scalar>> Vector<type_upgrade<Scalar>>)");
 } }
 
 // Local Variables:

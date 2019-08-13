@@ -25,7 +25,8 @@ use Polymake::Struct (
 );
 
 sub DESTROY {
-   my ($self)=@_;
+   local interrupts(block);
+   my ($self) = @_;
 
    # undo locals before performing cleanup actions
    delete $self->[0];
@@ -48,6 +49,8 @@ package Polymake::AtEnd;
 my (%names, @actions, @before, @after);
 
 END {
+   local interrupts(block);
+
    my ($delayed, $succeeded);
    # remove dependencies on unregistered actions
    my $n = keys %names;

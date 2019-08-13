@@ -20,7 +20,6 @@
 
 #include <memory>
 #include <signal.h>
-#include <gmp.h>
 
 #include <dlfcn.h>
 #include <unistd.h>
@@ -38,9 +37,7 @@
 namespace pm { namespace perl {
 namespace {
 
-const char globalScope[]="Polymake::Scope";
-
-GV* globalScope_gv=nullptr;
+GV* globalScope_gv = nullptr;
 
 void destroy_perl(pTHXx)
 {
@@ -55,11 +52,14 @@ void emergency_cleanup()
 {
    if (PL_curinterp) {
 #ifdef PERL_IMPLICIT_CONTEXT
-      dTHX;
-      destroy_perl(aTHX);
-#else
-      destroy_perl(PL_curinterp);
+      // global destruction usually happens in the main thread;
+      // when polymake and perl have been created in other thread, the context must be populated
+      // for some nasty modules like LibXML
+      if (!PERL_GET_CONTEXT)
+         PERL_SET_CONTEXT(PL_curinterp);
 #endif
+      destroy_perl(PL_curinterp);
+      glue::reset_interrupt_signal();
    }
 }
 
@@ -153,7 +153,14 @@ scr_debug2
 
 Main::Main(const std::string& user_opts, std::string install_top, std::string install_arch)
 {
-   if (PL_curinterp) return;
+   if (PL_curinterp) {
+#ifdef PERL_IMPLICIT_CONTEXT
+      // copy the global address into this thread, some nasty modules like LibXML use implicit context
+      if (!PERL_GET_CONTEXT)
+         PERL_SET_CONTEXT(PL_curinterp);
+#endif
+      return;
+   }
 
    Dl_info dli_polymake, dli_perl;
    void* polyhandle = nullptr;
@@ -213,12 +220,9 @@ Main::Main(const std::string& user_opts, std::string install_top, std::string in
       PL_curinterp = nullptr;
       throw std::runtime_error("could not initialize the perl interpreter");
    }
-#ifdef PERL_IMPLICIT_CONTEXT
-   pi=aTHXx;
-#endif
    perl_run(aTHXx);
 
-   globalScope_gv=gv_fetchpvn_flags(globalScope, sizeof(globalScope)-1, false, SVt_RV);
+   globalScope_gv = glue::get_named_variable(aTHX_ "Polymake::Scope", SVt_RV);
 }
 
 unsigned int Scope::depth=0;
@@ -226,7 +230,7 @@ unsigned int Scope::depth=0;
 Scope::~Scope()
 {
    if (saved) {
-      dTHXa(pm_main->pi);
+      dTHX;
       if (depth-- != id) {
          // can't throw an exception from a destructor
          std::cerr << "polymake::perl::Scope nesting violation" << std::endl;

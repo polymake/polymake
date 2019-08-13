@@ -277,33 +277,20 @@ sub toggle_list {
 user_function visualize_in_surface<Addition>(Cycle<Addition>, @) {
 	my ($X,@p) = @_;
 
-
-
 	#First determine bounding box
-	my $bb = $X->bounding_box(1);
-	my $xmax = $bb->row(1)->[0];
-	for my $i (1 .. $bb->cols()-1) {
-		if($bb->row(1)->[$i] > $xmax) {$xmax = $bb->row(1)->[$i];}
-	}
-
-
-#   my @minv = @{$bb->row(0)};
-#   my @maxv = @{$bb->row(1)};
+	my $bb = $X->bounding_box();
 	for my $p ( @p) {
-		my $pb = $p->bounding_box(1);
-		$bb = new Matrix<Rational>($bb / $pb);
+		my $pb = $p->bounding_box();
+		extend_bounding_box($bb,$pb);
 	}
-	$bb = boundingBox($bb,0);
-
-
-
+	$bb = polytope::bounding_box_facets($bb,offset=>1,surplus_k=>0);
 	my @vis = ();
 	if($X->PROJECTIVE_DIM == 2) {
-		@vis = (@vis, $X->VISUAL(VertexStyle=>"hidden",BoundingMode=>"absolute",BoundingBox=>$bb,FacetTransparency=>0.7));}
+		@vis = (@vis, $X->VISUAL(VertexStyle=>"hidden",BoundingFacets=>$bb,FacetTransparency=>0.7));}
 	if($X->PROJECTIVE_DIM == 1) {
-	@vis = (@vis, $X->VISUAL(VertexStyle=>"hidden",BoundingMode=>"absolute",BoundingBox=>$bb));
+	@vis = (@vis, $X->VISUAL(VertexStyle=>"hidden",BoundingFacets=>$bb));
 	}
-
+	
 
 	#Then produce visuals
 	for my $p (@p) {
@@ -325,13 +312,13 @@ user_function visualize_in_surface<Addition>(Cycle<Addition>, @) {
 		my $pedges = new Cycle<Addition>(VERTICES=>$p->RAYS,MAXIMAL_POLYTOPES=>$p->MAXIMAL_POLYTOPES->minor($edges,All));
 		my $pcells  = new Cycle<Addition>(VERTICES=>$p->RAYS,MAXIMAL_POLYTOPES=>$p->MAXIMAL_POLYTOPES->minor($cells,All));
 		if($points->size() > 0) {
-			@vis = (@vis, $ppoints->VISUAL(VertexThickness=>2,VertexColor=>$color, BoundingMode=>"absolute",BoundingBox=>$bb));
+			@vis = (@vis, $ppoints->VISUAL(VertexThickness=>2,VertexColor=>$color,BoundingFacets=>$bb));
 		}
 		if($edges->size() > 0) {
-			@vis = (@vis,$pedges->VISUAL(EdgeThickness=>2,EdgeColor=>$color,VertexStyle=>"hidden", BoundingMode=>"absolute",BoundingBox=>$bb));
+			@vis = (@vis,$pedges->VISUAL(EdgeThickness=>2,EdgeColor=>$color,VertexStyle=>"hidden",BoundingFacets=>$bb));
 		}
 		if($cells->size() > 0) {
-			@vis = (@vis,$pcells->VISUAL(EdgeColor=>$color,EdgeThickness=>2,FacetColor=>$color, BoundingMode=>"absolute",BoundingBox=>$bb));
+			@vis = (@vis,$pcells->VISUAL(EdgeColor=>$color,EdgeThickness=>2,FacetColor=>$color,BoundingFacets=>$bb));
 		}
 	}#END iterate p's
 

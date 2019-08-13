@@ -25,7 +25,7 @@ declare object HyperbolicSurface {
    property DCEL_DATA : Array<Array<Int>>;
 
    # Penners lambda lengths, sometimes called Penner coordinates, of the hyperbolic surface.
-   #     Robert C. Penner. Decorated Teichmüller Theory. QGM Master Class Series. European Mathematical Society, Zürich, 2012.
+   #	Robert C. Penner. Decorated Teichmüller Theory. QGM Master Class Series. European Mathematical Society, Zürich, 2012.
    # They are given by one positive rational for each edge of the triangulation, ordered in the sense of the triangulation [[DCEL_DATA]].
    property PENNER_COORDINATES : Vector<Rational>;
 
@@ -35,7 +35,7 @@ declare object HyperbolicSurface {
    property FLIP_WORDS : Array< List<Int> >;
 
    # In order to compute [[GKZ_VECTORS]] (or a [[secondary_polyhedron]]) one needs to specify a point on the surface, see
-   #     M. Joswig, R. Löwe, and B. Springborn. Secondary fans and secondary polyhedra of punctured Riemann surfaces. arXiv:1708.08714.
+   #	M. Joswig, R. Löwe, and B. Springborn. Secondary fans and secondary polyhedra of punctured Riemann surfaces. arXiv:1708.08714.
    # This point is specified by choosing a pair of rationals (p,x) that determine how the (decorated) 0th half edge is lifted to a geodesic in H^2.
    # The covering is chosen in such a way that the horocycle at infinity is the vertical line at height p^2 and
    # the lifted 0th half edge goes from infinity to the point x at the ideal boundary.

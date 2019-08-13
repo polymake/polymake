@@ -244,7 +244,7 @@ sub warn_print {
 sub croak {
    my ($pkg, $file, $line, $sub);
    my $i=0;
-   if (is_object($INC[0]) && defined($INC[0]->compile_scope)) {
+   if (is_object($INC[0]) && ref($INC[0]) eq "Polymake::Core::Application" && defined($INC[0]->compile_scope)) {
       do {
          ($pkg, $file, $line, $sub)=caller(++$i);
       } while ($pkg =~ /^Polymake(?:$|::Core::|::Overload\b|::Struct\b)/ || $sub =~ /::check_object_pkg$/ );

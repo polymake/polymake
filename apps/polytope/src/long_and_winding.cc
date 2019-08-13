@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2018
+/* Copyright (c) 1997-2019
    Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
    http://www.polymake.org
 
@@ -66,6 +66,9 @@ namespace polymake { namespace polytope {
                   p.take("FEASIBLE") << true;
                   p.take("FULL_DIM") << true;
                }
+               perl::Object LP("LinearProgram", mlist<Rational>());
+               LP.take("LINEAR_OBJECTIVE") << unit_vector<Rational>(d,1);
+               p.take("LP") << LP;
             }
             else if ( eval_float_flag ) {
                double value = options["eval_float"];
@@ -84,11 +87,17 @@ namespace polymake { namespace polytope {
                   p.take("FEASIBLE") << true;
                   p.take("FULL_DIM") << true;
                }
+               perl::Object LP("LinearProgram", mlist<double>());
+               LP.take("LINEAR_OBJECTIVE") << unit_vector<double>(d,1);
+               p.take("LP") << LP;
             } else {
                p = perl::Object("Polytope", mlist<puiseux_field>());
                p.take("FACETS") << I;
                p.take("AFFINE_HULL") << SparseMatrix<puiseux_field>(0,d);
                p.take("REL_INT_POINT") << u;
+               perl::Object LP("LinearProgram", mlist<puiseux_field>());
+               LP.take("LINEAR_OBJECTIVE") << unit_vector<puiseux_field>(d,1);
+               p.take("LP") << LP;
             }
 
             p.take("BOUNDED") << true;
@@ -180,10 +189,8 @@ perl::Object perturbed_long_and_winding(int r, perl::OptionSet options)
 
 UserFunction4perl("# @category Producing a polytope from scratch"
                   "# Produce polytope in dimension 2r with 3r+2 facets such that the total curvature"
-                  "# of the central path is at least Omega(2^r).  This establishes a counter-example to" 
-                  "# a continuous analog of the Hirsch conjecture by Deza, Terlaky and Zinchenko,"
-                  "# Adv. Mech. Math. 17 (2009).  The same construction (written in a slightly different form)"
-                  "# and its analysis can be found in Allamigeon, Benchimol, Gaubert and Joswig, arXiv:1405.4161"
+                  "# of the central path is at least Omega(2^r); see "
+                  "# Allamigeon, Benchimol, Gaubert and Joswig, SIAM J. Appl. Algebra Geom. (2018)."
                   "# See also [[perturbed_long_and_winding]]."
                   "# @param Int r defining parameter"
                   "# @option Rational eval_ratio parameter for evaluating the puiseux rational functions"

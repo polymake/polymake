@@ -467,7 +467,7 @@ ObjectType Object::type() const
    return ObjectType(glue::call_method_scalar(aTHX_ "type", true));
 }
 
-PerlInterpreter* Object::take_impl(const AnyString& name) const
+void Object::take_impl(const AnyString& name) const
 {
    check_ref(obj_ref);
    dTHX;
@@ -475,21 +475,22 @@ PerlInterpreter* Object::take_impl(const AnyString& name) const
    PUSHs(obj_ref);
    mPUSHp(name.ptr, name.len);
    PUTBACK;
-   return getTHX;
 }
 
 void PropertyOut::finish()
 {
-   dTHXa(pi);
+   dTHX;
    dSP;
    XPUSHs(val.get_temp());
-   if (t==attachment) {
-      t=_done;
+   if (t == attachment) {
+      if (construct_paths)
+         mPUSHp(construct_paths.ptr, construct_paths.len);
+      t = done_;
       PUTBACK;
       glue::call_func_void(aTHX_ attach_cv);
    } else {
-      if (t==temporary) XPUSHs(&PL_sv_yes);
-      t=_done;
+      if (t == temporary) XPUSHs(&PL_sv_yes);
+      t = done_;
       PUTBACK;
       glue::call_func_void(aTHX_ take_cv);
    }
@@ -497,7 +498,7 @@ void PropertyOut::finish()
 
 void PropertyOut::cancel()
 {
-   dTHXa(pi);
+   dTHX;
    PmCancelFuncall;
 }
 

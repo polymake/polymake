@@ -42,32 +42,37 @@ object Matroid {
 # The circuits are given as a matrix such that vA=0 for all rows v.
 # @param Matrix A Matrix containing the points as rows.
 # @return Matrix
-user_function _4ti2Circuits(Matrix){
-   my($A) = @_;
+user_function _4ti2Circuits(Matrix) {
+   my ($A) = @_;
    my $tempname = new Tempfile;
-   open(my $filePipe, ">".$tempname.".mat");
+   open my $filePipe, ">", "$tempname.mat";
    print $filePipe $A->cols." ".$A->rows."\n";
    print $filePipe dense(transpose(primitive($A)));
    close($filePipe);
-   
+
    if ($Verbose::external) {
       dbg_print( "running 4ti2: $circuits -q $tempname" );
    }
    system("$circuits -q $tempname".(!$DebugLevel && " >/dev/null 2>&1"))
-      and die "couldn't run 4ti2: $circuits -q $tempname.mat\n";
+     and die "couldn't run 4ti2: $circuits -q $tempname.mat\n";
 
-   
-   open(my $outfile, "<$tempname.cir")
-      or die "can't open output file $tempname.cir: $!";
-   
+   open(my $outfile, "<", "$tempname.cir")
+     or die "can't open output file $tempname.cir: $!";
+
    my $dimline = <$outfile>;
-   my @circuits=();
-	local $_;
+   my @circuits;
+   local $_;
    while (<$outfile>) {
-       my @vec = split;
-       push @circuits, \@vec;
+      my @vec = split;
+      push @circuits, \@vec;
    }
    close $outfile;
    return new SparseMatrix(\@circuits);
 }
 
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

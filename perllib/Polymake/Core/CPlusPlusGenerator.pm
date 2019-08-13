@@ -16,71 +16,88 @@
 use strict;
 use namespaces;
 use warnings qw(FATAL void syntax misc);
+use feature 'state';
 
 require JSON;
 require Config;
 
 package Polymake::Core::CPlusPlus::CPPerlFile;
 
-my $cpperl_version=3;
+my $cpperl_version = 3;
 
 use Polymake::Struct (
-   [ new => '$;$' ],
+   [ new => '$;$$' ],
    [ '$filename' => '#1' ],
-   [ '$embed' => '#2' ],
+   [ '$rebuild_in' => '#2' ],
+   [ '$embed' => '#3' ],
    [ '$instances' => 'undef' ],
-   [ '$codec' => 'JSON->new->utf8->canonical->relaxed->space_after->indent(0)' ],
-   [ '$rebuild_in' => 'undef' ],
-   '$needs_squeeze',
+   '$has_removed_instances',
 );
 
+sub codec {
+   state $codec = JSON->new->utf8->canonical->relaxed->space_after->indent(0);
+}
+
 sub new {
-   my $self=&_new;
-   if (@_ == 1) {
+   my $self = &_new;
+   if (@_ <= 2) {
       open my $F, "<:utf8", $self->filename
         or die "can't read ", self->filename, ": $!\n";
       local $/;
-      my $contents=$self->codec->decode(<$F>);
-      $self->embed=$contents->{embed};
-      $self->instances= ref($contents->{inst}) eq "ARRAY" ? $contents->{inst} : [];
+      my $contents = codec()->decode(<$F>);
+      $self->embed = $contents->{embed};
+      $self->instances = ref($contents->{inst}) eq "ARRAY" ? $contents->{inst} : [];
       if (@{$self->instances} && !defined($self->instances->[-1])) {
          pop @{$self->instances};
       }
    } else {
-      $self->instances=[];
+      $self->instances = [];
    }
    $self
 }
 
+sub output_filename {
+   my ($self, $path_prefix) = @_;
+   my $filename = $self->filename;
+   if (length($path_prefix)) {
+      $filename =~ s/^\Q$InstallTop\E/$path_prefix/;
+   }
+   my ($dir) = $filename =~ $directory_re;
+   -d $dir or File::Path::make_path($dir);
+   $filename
+}
+
 sub save {
-   my ($self, $app)=@_;
-   my %contents=( version => $cpperl_version, app => $app->name,
-                  inst => ($self->needs_squeeze ? [ grep { defined } @{$self->instances} ] : $self->instances) );
+   my ($self, $app, $path_prefix) = @_;
+   my %contents = ( version => $cpperl_version, app => $app->name,
+                    inst => ($self->has_removed_instances ? [ grep { defined } @{$self->instances} ] : $self->instances) );
    if ($self->embed) {
-      $contents{embed}=$self->embed;
+      $contents{embed} = $self->embed;
    }
 
-   my $text=$self->codec->encode(\%contents);
+   my $text = codec()->encode(\%contents);
    # place every instance on a separate line with a trailing comma, facilitating merge conflict resolution
    # append a `null' element to preserve well-formedness
    $text =~ s/\s* (?'pre' "inst":\s*\[) (?'inst' $balanced_re) (?'post' \],?) \s*/"\n $+{pre}\n" . indent_instances($+{inst}) . " null $+{post}\n"/xe;
    # some old versions of JSON module do not insert spaces after commas
    $text =~ s/,"/, "/g;
 
-   open my $F, ">:utf8", $self->filename
-     or die "can't write to ", $self->filename, ": $!\n";
+   my $filename = output_filename($self, $path_prefix);
+   open my $F, ">:utf8", $filename
+     or die "can't write to $filename: $!\n";
    print $F $text, "\n";
    close $F;
 }
 
 sub indent_instances {
-   my ($text)=@_;
+   my ($text) = @_;
    my @instances;
    while ($text =~ /\{$balanced_re\}/g) {
       push @instances, "  $&,\n";
    }
    join("", @instances);
 }
+
 #######################################################################################
 package Polymake::Core::CPlusPlus::HeaderFile;
 
@@ -137,12 +154,11 @@ sub subst_vars {
 }
 
 sub save {
-   my ($self)=@_;
-   my ($dir)= $self->filename =~ $directory_re;
-   -d $dir or File::Path::make_path($dir);
-   open my $F, ">", $self->filename
-     or die "can't write to ", $self->filename, ": $!\n";
-   my $contents=$self->prologue . $self->declarations . $self->epilogue;
+   my ($self) = @_;
+   my $filename = &CPPerlFile::output_filename;
+   open my $F, ">", $filename
+     or die "can't write to $filename: $!\n";
+   my $contents = $self->prologue . $self->declarations . $self->epilogue;
    # kill superfluous empty lines
    $contents =~ s/^\n{2,}/\n/mg;
    print $F $contents;
@@ -271,10 +287,6 @@ sub cpperl_definition {
 
 sub override_extension { }
 
-sub describe {
-   JSON->new->canonical->pretty->encode(&cpperl_definition)
-}
-
 #######################################################################################
 package Polymake::Core::CPlusPlus::FuncDescr;
 
@@ -380,8 +392,6 @@ sub override_extension {
    my ($self)=@_;
    $self->is_instance_of->cppoptions->extension=$self->extension;
 }
-
-*describe=\&LackingFunctionInstance::describe;
 
 #######################################################################################
 package Polymake::Core::CPlusPlus::TypeDescr;
@@ -686,11 +696,15 @@ use Polymake::Struct (
    '@instances_to_remove',            # LackingXXXInstance describing duplicates or obsolete instances
 );
 
+my %enforce_rebuild;
+
 sub new {
-   my $self=&_new;
-   if ($PrivateDir) {
+   my $self = &_new;
+   if ($PrivateDir or $code_generation eq "shared" && $cpperl_src_root ne "") {
+      state $finalize = $cpperl_src_root eq "" && add AtEnd("Finalize:C++", \&enforce_rebuild, after => "Private:C++");
       add AtEnd($self->application->name.":C++", sub { generate_files($self) },
-                before=>[ "Customize", "Private:C++", map { "$_:C++" } keys(%{$self->application->used}) ], after => 'Object');
+                before => [ "Customize", "Private:C++", "Finalize:C++", map { "$_:C++" } keys(%{$self->application->used}) ],
+                after => "Object");
    }
    $self;
 }
@@ -821,7 +835,7 @@ sub build_temp_shared_module {
 
    if ($code_generation eq "none") {
       croak( "cpperl interface generation is forbidden!\nMissing interface is:\n",
-             $lacking->describe, "\n " );
+             JSON->new->canonical->pretty->encode($lacking->cpperl_definition), "\n " );
    }
 
    my $define_with=$lacking->cpperl_define_with;
@@ -845,7 +859,7 @@ sub build_temp_shared_module {
    my $so_file=new Tempfile();
    my $so_name=$so_file->rename.".$DynaLoader::dl_dlext";
    my $cpperl_filename=$define_with->cpperl_filename;
-   my $cpperl_file=new CPPerlFile("$dir/$cpperl_filename.cpperl", $src_name);
+   my $cpperl_file=new CPPerlFile("$dir/$cpperl_filename.cpperl", undef, $src_name);
    push @{$cpperl_file->instances}, $lacking->cpperl_definition;
    $cpperl_file->save($self->application);
 
@@ -879,11 +893,23 @@ config.file=$InstallArch/config.ninja
 include \${config.file}
 PERL=$Config::Config{perlpath}
 ---
+   my $cxxflags="-DPOLYMAKE_APPNAME=".$app->name;
+   my $cxxincludes='${app.includes} ${core.includes}';
+   my $extra_ldflags="";
+   my $extra_libs="";
+   my $needs_bundled=false;
    if ($extension) {
       foreach my $ext (is_object($extension) ? ($extension, @{$extension->requires}) :
                        uniq(map { ($_, @{$_->requires}) } @{$extension})) {
          if (!$ext->is_bundled) {
             print $conf "include ", $ext->build_dir."/config.ninja\n";
+         } else {
+            $needs_bundled=true;
+            my $bundled=$ext->short_name;
+            $cxxflags.=" \${bundled.$bundled.CXXFLAGS}";
+            $extra_ldflags.=" \${bundled.$bundled.LDFLAGS}";
+            $extra_libs.=" \${bundled.$bundled.LIBS}";
+            $cxxincludes="\${bundled.$bundled.includes} $cxxincludes";
          }
       }
    }
@@ -895,21 +921,14 @@ CmodeFLAGS=\${C${mode}FLAGS}
 CexternModeFLAGS=\${Cextern${mode}FLAGS}
 LDmodeFLAGS=\${LD${mode}FLAGS}
 ---
-   my $cxxflags="-DPOLYMAKE_APPNAME=".$app->name;
-   my $cxxincludes='${app.includes} ${core.includes}';
-   my $extra_ldflags="";
-   my $extra_libs="";
    if (is_object($extension) && $extension->is_bundled) {
       my $bundled=$extension->short_name;
-      $cxxflags.=" -DPOLYMAKE_BUNDLED_EXT=$bundled \${bundled.$bundled.CXXFLAGS}";
-      $extra_ldflags="\${bundled.$bundled.LDFLAGS}";
-      $extra_libs="\${bundled.$bundled.LIBS}";
-      if (-f "$InstallArch/../bundled_flags.ninja") {
-         $cxxincludes="\${bundled.$bundled.includes} $cxxincludes";
-         print $conf <<"---";
+      $cxxflags.=" -DPOLYMAKE_BUNDLED_EXT=$bundled";
+   }
+   if ($needs_bundled and -f "$InstallArch/../bundled_flags.ninja") {
+      print $conf <<"---";
 include $InstallArch/../bundled_flags.ninja
 ---
-      }
    }
 
    if (defined $src_name) {
@@ -936,12 +955,12 @@ include $InstallArch/../bundled_flags.ninja
 }
 #######################################################################################
 sub generate_files {
-   my ($self)=@_;
+   my ($self) = @_;
    my (%cpperl_files, %h_files);
 
    foreach my $inst (values %{$self->lacking_types}) {
       process_lacking_instance($self, \%cpperl_files, $inst);
-      if (defined (my $recognizing_type=$inst->recognizing_type)) {
+      if (defined (my $recognizing_type = $inst->recognizing_type)) {
          my $h_file=load_h_file($self, \%h_files, $inst->is_instance_of->cppoptions);
          $h_file->declarations .= $recognizing_type . "\n";
       }
@@ -955,30 +974,33 @@ sub generate_files {
       remove_instance($self, \%cpperl_files, $inst);
    }
 
-   %{$self->lacking_types}=();
-   @{$self->lacking_functions}=();
-   @{$self->instances_to_remove}=();
+   %{$self->lacking_types} = ();
+   @{$self->lacking_functions} = ();
+   @{$self->instances_to_remove} = ();
 
-   while (my ($filename, $file)=each %h_files) {
+   while (my ($filename, $file) = each %h_files) {
       if ($Verbose::cpp) {
          dbg_print( -e $filename ? "Updating" : "Creating", " header file $filename" );
       }
-      $file->save;
+      $file->save($cpperl_src_root);
    }
 
-   my %rebuild_enforced;
-   while (my ($filename, $file)=each %cpperl_files) {
+   while (my ($filename, $file) = each %cpperl_files) {
       next unless defined($file);
 
       if ($Verbose::cpp) {
          dbg_print( -e $filename ? "Updating" : "Creating", " interface definition file $filename" );
       }
-      $file->save($self->application);
-      my $rebuild_in=$file->rebuild_in;
+      $file->save($self->application, $cpperl_src_root);
 
-      # remove the build success markers in all modes, not only in the current one
-      $rebuild_enforced{$rebuild_in} //= unlink(glob("$rebuild_in/../*/.apps.built"));
+      $file->rebuild_in =~ $directory_re;
+      $enforce_rebuild{$1} = 1;
    }
+}
+#######################################################################################
+sub enforce_rebuild {
+   # remove the build success markers in all modes, not only in the current one
+   unlink(map { glob("$_/*/.apps.built") } keys %enforce_rebuild);
 }
 #######################################################################################
 sub load_h_file {
@@ -998,17 +1020,18 @@ sub load_h_file {
 }
 #######################################################################################
 sub process_lacking_instance {
-   my ($self, $files, $inst)=@_;
-   my $document=$inst->cpperl_definition;
+   my ($self, $files, $inst) = @_;
+   my $document = $inst->cpperl_definition;
    if ($inst->is_private) {
+      $PrivateDir or return;
       $private_wrapper_ext //= PrivateWrappers->create;
       if (defined $inst->extension) {
          $private_wrapper_ext->ensure_prerequisites($inst->extension);
-         $document->{ext}=[ map { $_->is_bundled ? $_->short_name : $_->dir }
-                                is_object($inst->extension) ? $inst->extension : @{$inst->extension} ];
+         $document->{ext} = [ map { $_->is_bundled ? $_->short_name : $_->dir }
+                                  is_object($inst->extension) ? $inst->extension : @{$inst->extension} ];
       }
    }
-   if (my $cpperl_file=load_cpperl_file($self, $files, $inst->cpperl_define_with->cpperl_filename, $inst, 1)) {
+   if (my $cpperl_file = load_cpperl_file($self, $files, $inst->cpperl_define_with->cpperl_filename, $inst, 1)) {
       push @{$cpperl_file->instances}, $document;
    }
 }
@@ -1020,8 +1043,8 @@ sub remove_instance {
    my $inst_num = $inst->cpperl_file + 0;
    if ($inst_num < @{$cpperl_file->instances} &&
        $inst->match_cpperl_instance($cpperl_file->instances->[$inst_num])) {
-      undef $cpperl_file->instances->[$inst_num];
-      $cpperl_file->needs_squeeze = true;
+      $cpperl_file->has_removed_instances = true;
+      delete $cpperl_file->instances->[$inst_num];
    } else {
       warn_print( "contents of interface definition file ", $cpperl_file->filename, " must have been manipulated\n",
                   "can't locate the duplicate instance at original position $inst_num" );
@@ -1029,36 +1052,55 @@ sub remove_instance {
 }
 #######################################################################################
 sub load_cpperl_file {
-   my ($self, $files, $cpperl_filename, $inst, $create_if_missing)=@_;
-   my $in_private=$inst->is_private;
-   my $src_top=$in_private
-               ? $private_wrapper_ext->dir :
-               defined($inst->extension)
-               ? $inst->extension->dir
-               : $self->application->installTop;
+   my ($self, $files, $cpperl_filename, $inst, $create_if_missing) = @_;
+   my $in_private = $inst->is_private;
+   my $src_top = $in_private
+                 ? $private_wrapper_ext->dir :
+                 defined($inst->extension)
+                 ? $inst->extension->dir
+                 : $self->application->installTop;
 
-   my $shared_mod=$self->shared_modules->{!$in_private && $inst->extension && $inst->extension->is_bundled ? $InstallTop : $src_top};
+   my $shared_mod = $self->shared_modules->{!$in_private && $inst->extension && $inst->extension->is_bundled ? $InstallTop : $src_top};
    # if the extension has been obliterated, this file won't be registered in %files and thus avoids modification.
    return if defined($shared_mod) && !defined($shared_mod->so_name);
 
-   my $dir="$src_top/apps/". $self->application->name . "/cpperl";
-   my $filename="$dir/$cpperl_filename.cpperl";
+   my $dir = "$src_top/apps/". $self->application->name . "/cpperl";
+   my $filename = "$dir/$cpperl_filename.cpperl";
 
    $files->{$filename} //= do {
-      my $file;
-      if (-r $filename && -w _) {
-         if (defined($shared_mod) && defined($shared_mod->so_timestamp) && (stat _)[9] > $shared_mod->so_timestamp) {
-            my $so_name=$shared_mod->so_name;
+
+      my $rebuild_in = $in_private ? $private_wrapper_ext : $inst->extension // $self->application->origin_extension;
+      if (defined($rebuild_in) && !$rebuild_in->is_bundled) {
+         $rebuild_in = $rebuild_in->build_dir;
+      } else {
+         $rebuild_in = $InstallArch;
+      }
+
+      if (-r $filename and -w _ || $cpperl_src_root ne "") {
+         my $file_mtime = (stat _)[9];
+         if (defined(my $last_built = (stat "$rebuild_in/.apps.built")[9])) {
+            if ($file_mtime > $last_built) {
+               warn_print( <<"." );
+Automatic update of the interface definition file $filename refused:
+The compiled subtree $rebuild_in is out-of-date.
+It will be rebuilt automatically at the begin of the next polymake session.
+.
+               $rebuild_in =~ $directory_re;
+               $enforce_rebuild{$1} = true;
+               return;
+            }
+         } else {
             warn_print( <<"." );
 Automatic update of the interface definition file $filename refused:
-The shared module $so_name is out-of-date!
-It will be recompiled at the very beginning of the next polymake session.
+Timestamp file $rebuild_in/.apps.built is missing unxpectedly.
+It will be rebuilt automatically at the begin of the next polymake session.
 .
             return;
          }
-         $file=new CPPerlFile($filename);
-         if ($create_if_missing && defined (my $embed=$inst->cpperl_define_with->in_cc_file)) {
-            if ($embed != $file->embed) {
+
+         my $file = new CPPerlFile($filename, $rebuild_in);
+         if ($create_if_missing && defined(my $embed = $inst->cpperl_define_with->in_cc_file)) {
+            if ($embed ne $file->embed) {
                warn_print( <<"." );
 The interface definition file $filename is corrupted.
 It was expected to contain an attribute "embed": "$embed".
@@ -1066,6 +1108,7 @@ It was expected to contain an attribute "embed": "$embed".
                return;
             }
          }
+         $file
 
       } elsif (-e _) {
          warn_print( <<"." );
@@ -1076,30 +1119,25 @@ Until this file is writable for you, you can't maintain persistent C++ bindings!
 
       } elsif ($create_if_missing) {
          if (-d $dir) {
-            unless (-r _ && -w _) {
+            unless (-r _ && -w _ or $cpperl_src_root ne "") {
                warn_print( <<"." );
 The interface definition file $filename can't be created due to lacking permissions.
 Until the directory $dir is writable for you, you can't maintain persistent C++ bindings!
 .
                return;
             }
-         } else {
-            File::Path::make_path($dir);
          }
-         $file=new CPPerlFile($filename, $inst->cpperl_define_with->in_cc_file);
+         new CPPerlFile($filename, $rebuild_in, $inst->cpperl_define_with->in_cc_file)
 
       } else {
          warn_print( <<"." );
-The interface definition file $filename which must have contained a duplicate definition of a function or class
-does not exist.  Should this message appear repeatedly after every session, try a clean build
+The interface definition file $filename which must have contained
+a duplicate definition of a function or class does not exist.
+Should this message appear repeatedly after every session, try a clean build
 of the component or extension where this file was supposed to reside.
 .
          return;
       }
-
-      my $rebuild_in= $in_private ? $private_wrapper_ext : $inst->extension // $self->application->origin_extension;
-      $file->rebuild_in= $rebuild_in && !$rebuild_in->is_bundled ? $rebuild_in->build_dir : $InstallArch;
-      $file
    };
 }
 

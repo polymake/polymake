@@ -82,7 +82,7 @@ function permuted_inv_nodes(Graph, *) : c++;
 # Returns the permutation that maps //a// to //b//.
 # @param Array a
 # @param Array b
-# @return Array<Int>
+# @return Array<Int> permutation of element indexes, or undef if there are unmatched elements
 # @example
 # > $p = find_permutation([1,8,3,4],[3,8,4,1]);
 # > print $p;

@@ -53,7 +53,7 @@ template<typename Scalar, typename TMatrix>
 Matrix<Scalar>
 full_dim_projection(const GenericMatrix<TMatrix,Scalar>& verts)
 {
-   const int ambient_dim = verts.cols()-1;
+   const int ambient_dim = verts.cols();
    const auto affine_hull = null_space(verts);
    const int codim = affine_hull.rows();
    if (!codim)

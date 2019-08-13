@@ -17,6 +17,11 @@
 #ifndef POLYMAKE_INTERNAL_EXTEND_ALGO_H
 #define POLYMAKE_INTERNAL_EXTEND_ALGO_H
 
+#if !defined(__clang__) && __GNUC__ >= 9
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpessimizing-move"
+#endif
+
 namespace pm {
 
 template <typename Iterator1, typename Iterator2>
@@ -160,6 +165,10 @@ find_in_range_if(Iterator&& src, const Predicate& pred_arg)
 }
 
 } // end namespace pm
+
+#if !defined(__clang__) && __GNUC__ >= 9
+#pragma GCC diagnostic pop
+#endif
 
 #endif // POLYMAKE_INTERNAL_EXTEND_ALGO_H
 

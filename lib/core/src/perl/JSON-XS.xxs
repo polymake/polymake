@@ -405,9 +405,6 @@ json_nonref (pTHX_ SV *scalar)
 // structure used for encoding JSON
 typedef struct
 {
-#ifdef PERL_IMPLICIT_CONTEXT
-  PerlInterpreter* pi;
-#endif
   char *cur;  // SvPVX (sv) + current output position
   char *end;  // SvEND (sv)
   SV *sv;     // result scalar
@@ -421,7 +418,7 @@ need (enc_t *enc, STRLEN len)
 {
   if (expect_false ((uintptr_t)(enc->end - enc->cur) < len))
     {
-      dTHXa(enc->pi);
+      dTHX;
       STRLEN cur = enc->cur - (char *)SvPVX (enc->sv);
       char *buf = json_sv_grow (aTHX_ enc->sv, cur, len);
       enc->cur = buf + cur;
@@ -439,7 +436,7 @@ encode_ch (enc_t *enc, char ch)
 static void
 encode_str (enc_t *enc, const char *str, STRLEN len, int is_utf8)
 {
-  dTHXa(enc->pi);
+  dTHX;
   const char *end = str + len;
 
   need (enc, len);
@@ -594,7 +591,7 @@ static void encode_sv (enc_t *enc, SV *sv);
 static void
 encode_av (enc_t *enc, AV *av)
 {
-  dTHXa(enc->pi);
+  dTHX;
   int i, len = av_len (av);
 
   if (enc->indent >= enc->json.max_depth)
@@ -637,7 +634,7 @@ static void encode_colon(enc_t* enc)
 static void
 encode_hk (enc_t *enc, HE *he)
 {
-  dTHXa(enc->pi);
+  dTHX;
   encode_ch (enc, '"');
 
   if (HeKLEN (he) == HEf_SVKEY)
@@ -682,14 +679,14 @@ he_cmp_fast (const void *a_, const void *b_)
 static int
 he_cmp_slow_r (void* pi, const void* a, const void* b)
 {
-  dTHXa(pi);
+  dTHX;
   return sv_cmp (HeSVKEY_force (*(HE **)b), HeSVKEY_force (*(HE **)a));
 }
 # else
 static int
 he_cmp_slow_r (const void* a, const void* b, void* pi)
 {
-  dTHXa(pi);
+  dTHX;
   return sv_cmp (HeSVKEY_force (*(HE **)b), HeSVKEY_force (*(HE **)a));
 }
 # endif
@@ -704,7 +701,7 @@ he_cmp_slow (const void* a, const void* b)
 static void
 encode_hv (enc_t *enc, HV *hv)
 {
-  dTHXa(enc->pi);
+  dTHX;
   HE *he;
 
   if (enc->indent >= enc->json.max_depth)
@@ -829,7 +826,7 @@ encode_hv (enc_t *enc, HV *hv)
 static void
 encode_rv (enc_t *enc, SV *sv)
 {
-  dTHXa(enc->pi);
+  dTHX;
   svtype svt;
   GV *method;
 
@@ -975,7 +972,7 @@ encode_rv (enc_t *enc, SV *sv)
 static void
 encode_sv (enc_t *enc, SV *sv)
 {
-  dTHXa(enc->pi);
+  dTHX;
   SvGETMAGIC (sv);
 
   if (SvPOKp (sv))
@@ -1071,10 +1068,6 @@ encode_json (pTHX_ SV *scalar, JSON *json)
                 : enc.json.flags & F_LATIN1 ? 0x000100UL
                                             : 0x110000UL;
 
-#ifdef PERL_IMPLICIT_CONTEXT
-  enc.pi = aTHX;
-#endif
-
   SvPOK_only (enc.sv);
   encode_sv (&enc, scalar);
   encode_nl (&enc);
@@ -1097,9 +1090,6 @@ encode_json (pTHX_ SV *scalar, JSON *json)
 // structure used for decoding JSON
 typedef struct
 {
-#ifdef PERL_IMPLICIT_CONTEXT
-  PerlInterpreter* pi;
-#endif
   char *cur; // current parser pointer
   char *end; // end of input string
   const char *err; // parse error, if != 0
@@ -1183,7 +1173,7 @@ fail:
 static SV *
 decode_str (dec_t *dec)
 {
-  dTHXa(dec->pi);
+  dTHX;
   SV *sv = 0;
   int utf8 = 0;
   char *dec_cur = dec->cur;
@@ -1341,7 +1331,7 @@ fail:
 static SV *
 decode_num (dec_t *dec)
 {
-  dTHXa(dec->pi);
+  dTHX;
   int is_nv = 0;
   char *start = dec->cur;
 
@@ -1459,7 +1449,7 @@ fail:
 static SV *
 decode_av (dec_t *dec)
 {
-  dTHXa(dec->pi);
+  dTHX;
   AV *av = newAV ();
 
   DEC_INC_DEPTH;
@@ -1536,7 +1526,7 @@ static bool add_sparse_item(pTHX_ AV*& sparse_data_av, const char* key, STRLEN l
 static SV *
 decode_hv (dec_t *dec)
 {
-  dTHXa(dec->pi);
+  dTHX;
   SV *sv;
   HV *hv = newHV ();
   AV* sparse_data_av = nullptr;
@@ -1746,7 +1736,7 @@ fail:
 static SV *
 decode_tag (dec_t *dec)
 {
-  dTHXa(dec->pi);
+  dTHX;
   SV *tag = 0;
   SV *val = 0;
 
@@ -1830,7 +1820,7 @@ fail:
 static SV *
 decode_sv (dec_t *dec)
 {
-  dTHXa(dec->pi);
+  dTHX;
   // the beauty of JSON: you need exactly one character lookahead
   // to parse everything.
   switch (*dec->cur)
@@ -1952,10 +1942,6 @@ decode_json (pTHX_ SV *string, JSON *json, STRLEN *offset_return)
     dec.json.flags |= F_HOOK;
 
   *dec.end = 0; // this should basically be a nop, too, but make sure it's there
-
-#ifdef PERL_IMPLICIT_CONTEXT
-  dec.pi = aTHX;
-#endif
 
   decode_ws (&dec);
   sv = decode_sv (&dec);

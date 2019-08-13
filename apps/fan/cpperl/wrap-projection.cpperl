@@ -1,0 +1,5 @@
+{"app": "fan", "embed": "projection.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "project_full_fan_impl", "include": ["polymake/Rational.h"], "sig": "project_full_fan_impl:T1.B.o", "tp": "1"},
+ null ],
+"version": 3}

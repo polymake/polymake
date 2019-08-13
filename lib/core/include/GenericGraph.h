@@ -104,8 +104,8 @@ protected:
 
 public:
    using dir = dir_val;
-   static constexpr bool is_directed=dir::value==graph::Directed::value;
-   static constexpr bool is_multigraph=dir::multigraph;
+   static constexpr bool is_directed = dir::value == graph::Directed::value;
+   static constexpr bool is_multigraph = dir::multigraph;
    using generic_type = GenericGraph;
    using persistent_type = graph::Graph<dir>;
    using typename Generic<TGraph>::top_type;

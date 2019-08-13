@@ -20,17 +20,17 @@ use warnings qw(FATAL void syntax misc);
 package Polymake::Background;
 use POSIX qw( :sys_wait_h );
 
-my %active;	# pid => something to destroy on termination
+my %active;     # pid => something to destroy on termination
 my $init;
 
 sub gather_zombies {
    my $flag=shift // 0;
    if (!$flag) {
       foreach (grep { ref($_) eq "CODE" } values %active) {
-	 eval { $_->() };
-	 if ($@) {
-	    warn_print( "cleanup after background process failed: $@\n" );
-	 }
+         eval { $_->() };
+         if ($@) {
+            warn_print( "cleanup after background process failed: $@\n" );
+         }
       }
    }
    while (keys(%active) && (my $pid=waitpid(-1, $flag)) > 0) {
@@ -68,7 +68,7 @@ sub new {
       $cleanup=delete $options->{CLEANUP};
       $redirect=delete $options->{REDIRECT};
       if (keys %$options) {
-	 croak( "unknown option(s) for Background::Process: ", join(",", keys %$options) );
+         croak( "unknown option(s) for Background::Process: ", join(",", keys %$options) );
       }
    }
    my $pid=launch($redirect, 1, @_);
@@ -83,15 +83,15 @@ sub launch {
    if (!$pid) {
       die "Background::Process: fork failed: $!\n" if !defined($pid);
       if (defined($redirect)) {
-	 POSIX::dup2(fileno($redirect->[0]), 0);
-	 POSIX::dup2(fileno($redirect->[1]), 1);
+         POSIX::dup2(fileno($redirect->[0]), 0);
+         POSIX::dup2(fileno($redirect->[1]), 1);
       } else {
-	 STDIN->close;
+         STDIN->close;
       }
       if ($hide) {
-	 POSIX::setsid();
-	 $SIG{INT}='IGNORE';
-	 $SIG{ALRM}='IGNORE';
+         POSIX::setsid();
+         $SIG{INT}='IGNORE';
+         $SIG{ALRM}='IGNORE';
       }
       if (ref($cmdline[0]) eq "ARRAY") {
          # internal subprocess: [ \&sub, leading arguments ], further arguments
@@ -106,7 +106,7 @@ sub launch {
             print STDERR "internal subprocess terminated with an error: $@";
             POSIX::_exit(1);
          } else {
-            POSIX::_exit(0);	# avoid executing global destructors
+            POSIX::_exit(0);    # avoid executing global destructors
          }
 
       } else {
@@ -114,28 +114,16 @@ sub launch {
          or do {
             my ($progname)= @cmdline==1 ? $cmdline[0] =~ /^\s*(\S+)/ : @cmdline;
             print STDERR "could not start $progname: $!\n";
-            POSIX::_exit(1);	# avoid executing global destructors
+            POSIX::_exit(1);    # avoid executing global destructors
          }
       }
    }
    return $pid;
 }
 
-package Polymake::Background::Pipe;
-use Symbol 'gensym';
-use POSIX ':fcntl_h';
-
-# "command", "args" ... => IN handle, OUT handle, PID
-sub new {
-   shift;
-   my @handles=(gensym, gensym);
-   my @pipends=(gensym, gensym);
-   pipe $pipends[0], $handles[1];
-   pipe $handles[0], $pipends[1];
-   fcntl($_, F_SETFD, FD_CLOEXEC) for (@pipends, @handles);
-   my $pid=Process::launch(\@pipends, 0, @_);
-   $handles[1]->autoflush;
-   (@handles, $pid);
-}
-
 1
+
+# Local Variables:
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

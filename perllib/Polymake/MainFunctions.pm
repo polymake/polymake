@@ -20,7 +20,7 @@ sub import {
 }
 BEGIN {
    bootstrap();
-   $INC{"Polymake/Ext.pm"}=$INC{"Polymake/Main.pm"};
+   $INC{"Polymake/Ext.pm"} = $INC{"Polymake/Main.pm"};
 }
 
 package Polymake;
@@ -37,6 +37,8 @@ package Polymake::Main;
 
 # private: only called from import()
 sub _init {
+   # this guarantees initialization of internal structures for signal handling
+   local $SIG{INT} = 'IGNORE';
    &Main::init;
    $Scope = new Scope();
    add AtEnd "FinalCleanup", sub { undef $Scope }, after => "Object";
@@ -97,21 +99,13 @@ sub shell_execute {
       $@ = "current application not set";
       return;
    }
-   open my $saved_STDOUT, ">&=STDOUT";
-   close STDOUT;
    my $gather_stdout = "";
-   open STDOUT, ">:utf8", \$gather_stdout;
-   open my $saved_STDERR, ">&=STDERR";
-   close STDERR;
+   local open STDOUT, ">:utf8", \$gather_stdout;
    my $gather_stderr = "";
-   open STDERR, ">:utf8", \$gather_stderr;
+   local open STDERR, ">:utf8", \$gather_stderr;
    my $executed = $Shell->process_input(@_);
    my $exc = $@;
    $@ = "";
-   close STDOUT;
-   open STDOUT, ">&=", $saved_STDOUT;
-   close STDERR;
-   open STDERR, ">&=", $saved_STDERR;
    ($executed, $gather_stdout, $gather_stderr, $exc);
 }
 

@@ -24,7 +24,8 @@ namespace polymake { namespace graph {
 // This computes a nodes permutation from two Lattices, given a permutation to apply to the
 // face decoration.
 template <typename Decoration, typename SeqType, typename Permutation>
-Permutation find_lattice_permutation(perl::Object hd_obj, perl::Object perm_hd_obj, const Permutation& perm)
+optional<Permutation>
+find_lattice_permutation(perl::Object hd_obj, perl::Object perm_hd_obj, const Permutation& perm)
 {
   Lattice<Decoration, SeqType> hd(hd_obj);
   Lattice<Decoration, SeqType> perm_hd(perm_hd_obj);
@@ -49,11 +50,14 @@ Permutation find_lattice_permutation(perl::Object hd_obj, perl::Object perm_hd_o
     const Array<Set<int> > perm_level_faces(perm_level_nodes.size(),
             entire( attach_member_accessor( select(perm_hd.decoration(), perm_level_nodes),
                                                   ptr2type<Decoration, Set<int>, &Decoration::face>())));
-    Array<int> level_perm = find_permutation( perm_level_faces, level_faces);
-    copy_range(entire(permuted(perm_level_nodes, level_perm)), select(nodes_perm, level_nodes).begin());
+    const auto level_perm = find_permutation( perm_level_faces, level_faces);
+    if (level_perm)
+      copy_range(entire(permuted(perm_level_nodes, level_perm.value())), select(nodes_perm, level_nodes).begin());
+    else
+      return nullopt;
   }
 
-  return nodes_perm;
+  return make_optional(std::move(nodes_perm));
 }
 
 UserFunctionTemplate4perl("# @category Combinatorics"
@@ -64,7 +68,6 @@ UserFunctionTemplate4perl("# @category Combinatorics"
                           "# @param Lattice L2 Another lattice, having the same decoration and sequential type"
                           "# @param Permutation permutation A permutation to be applied to the faces. If empty, "
                           "# the identity permutation is chosen"
-                          "# @return Permutation A permutation on the nodes of the graph, if the lattices are isomorphic."
-                          "# Otherwise an exeption is thrown.",
+                          "# @return Permutation A permutation on the nodes of the graph, or undef if the lattices are not isomorphic.",
                           "find_lattice_permutation<Decoration, SeqType, Permutation>(Lattice<Decoration, SeqType>, Lattice<Decoration,SeqType>, Permutation)");
 } }

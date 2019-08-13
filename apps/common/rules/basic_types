@@ -16,24 +16,15 @@
 # @topic category property_types/Basic Types
 # This category contains all basic types, in particular those that wrap C++, GMP or perl types such as [[Int]], [[Integer]], [[Rational]], [[Long]], [[Float]], [[Array]], [[String]], ...
 
-# @topic category property_types/Artificial
-# These types are auxiliary artifacts helping to build other classes,
-# primarily representing template parameters or enumeration constants.
-# They should not be used alone as property types or function arguments.
-# In the most cases they won't even have user-accessible constructors.
-
-# @topic category functions/Combinatorics
-# This category contains combinatorial functions.
-
 # @topic category functions/Arithmetic
 # These are functions that perform arithmetic computations.
 
 # @topic category functions/Linear Algebra
 # These functions are for algebraic computations and constructions of special matrices.
 
-# @topic category functions/Data Conversion
-# This contains functions for data conversions and type casts.
-
+# make system() function interruptible
+# this should be called early enough, before all other rules and application-specific modules are loaded
+Interrupts::override_system();
 
 # @category Basic Types
 # Plain text without any imposed structure.
@@ -182,7 +173,7 @@ declare property_type Integer : upgrades(Int) : c++ (include => "polymake/Intege
 
 
 # use automatically for all literal long integral constants in perl input
-namespaces::intercept_operation(undef, 'I', sub { (typeof Integer)->construct->($_[0]) });
+namespaces::intercept_operation(undef, 'INT', sub { (typeof Integer)->construct->($_[0]) });
 
 # @category Combinatorics
 # Computes the binomial coefficient __//n// choose //k//__.
@@ -282,7 +273,7 @@ user_function ceil(*) : c++ (include => "polymake/Rational.h");
 
 # @category Arithmetic
 # Check whether the given number has a finite value.
-# @param SCALAR a
+# @param __Scalar__ a
 # @return Bool
 # @example
 # > print isfinite('inf');
@@ -295,7 +286,7 @@ user_function isfinite(*) : c++ (include => "polymake/Integer.h");
 
 # @category Arithmetic
 # Check whether the given number has an infinite value.  Return -1/+1 for infinity and 0 for all finite values.
-# @param SCALAR a
+# @param __Scalar__ a
 # @return Int
 # @example
 # > print isinf('inf');
@@ -320,23 +311,17 @@ user_function div_exact(*:int, *:int) : c++ (include => "polymake/numerical_func
 # These types are needed as return types of arithmetic computations.
 
 # @category Arithmetic
-# The complete result of an integral division, [[quot|quotient]] and [[rem|remainder]].
-# @tparam Scalar
+# The complete result of an integral division
+# @field Scalar quot the quotient
+# @field Scalar rem the remainder
+# @tparam Scalar type supporting modulo division, e.g. [[Integer]] or [[UniPolynomial]]
 declare property_type Div<Scalar> : c++ (include => "polymake/numerical_functions.h");
-
-# @topic property_types/Arithmetic/Div/methods/quot
-# The __quotient__.
-# @return Scalar
-
-# @topic property_types/Arithmetic/Div/methods/rem
-# The __remainder__.
-# @return Scalar
 
 # @category Arithmetic
 # Compute the quotient and remainder of //a// and //b// in one operation.
-# @param Int a
-# @param Int b
-# @return Div
+# @param __Scalar__ a
+# @param __Scalar__ b
+# @return Div<__Scalar__>
 # @example
 # > $d = div(10,3);
 # > print $d->quot;
@@ -359,37 +344,18 @@ user_function gcd(*:int, *:int) : c++ (include => "polymake/numerical_functions.
 
 # @category Arithmetic
 # The complete result of the calculation of the __greatest common divisor__ of two numbers //a// and //b//:
-#	[[g]]=gcd(a,b)
-#	[[g]]=a*[[p]]+b*[[q]]
-#	a=[[g]]*[[k1]]
-#	b=[[g]]*[[k2]]
+# @field Scalar g The greatest common divisor, gcd(//a//,//b//)
+# @field Scalar p The __co-factor__ of //a//: [[g]]=//a//*p+//b//*[[q]]
+# @field Scalar q The __co-factor__ of //b//: [[g]]=//a//*[[p]]+//b//*q
+# @field Scalar k1 The __factor__ of //a//: //a//=[[g]]*k1
+# @field Scalar	k2 The __factor__ of //b//: //b//=[[g]]*k2
+# @tparam Scalar type of operands, must be a GCD domain
 declare property_type ExtGCD<Scalar> : c++ (include => "polymake/numerical_functions.h");
-
-# @topic property_types/Arithmetic/ExtGCD/methods/g
-# The __greatest common divisor__ of //a// and //b//.
-# @return Int
-
-# @topic property_types/Arithmetic/ExtGCD/methods/p
-# The __co-factor__ of //a//.
-# @return Int
-
-# @topic property_types/Arithmetic/ExtGCD/methods/q
-# The __co-factor__ of //b//.
-# @return Int
-
-# @topic property_types/Arithmetic/ExtGCD/methods/k1
-# The __factor__ of //a//.
-# @return Int
-
-# @topic property_types/Arithmetic/ExtGCD/methods/k2
-# The __factor__ of //b//.
-# @return Int
-
 
 # @category Arithmetic
 # Compute the greatest common divisor of two numbers (a,b) and accompanying co-factors.
-# @param Int a
-# @param Int b
+# @param __Scalar__ a
+# @param __Scalar__ b
 # @return ExtGCD
 # @example
 # > $GCD = ext_gcd(15,6);
@@ -399,7 +365,7 @@ declare property_type ExtGCD<Scalar> : c++ (include => "polymake/numerical_funct
 # The ExtGCD type also stores the Bezout coefficients (thus integers p and q such that g=a*p+b*q)...
 # > print $GCD->p;
 # | 1
-# print $GCD->q;
+# > print $GCD->q;
 # | -2
 # ...and the quotients k1 of a and k2 of b by g.
 # > print $GCD->k1;
@@ -423,7 +389,7 @@ user_function lcm(*:int, *:int) : c++ (include => "polymake/numerical_functions.
 
 
 # @category Arithmetic
-# Computes the factorial //n//! = n&middot;(n-1)&middot;(n-2)&middot;...&middot;2&middot;1.
+# Computes the factorial //n//! = n·(n-1)·(n-2)·...·2·1.
 # @param Int n >=0
 # @return Integer //n//!
 user_function fac(*:int) : c++ (name => 'fac', class => 'Integer', include => "polymake/Integer.h");
@@ -447,20 +413,20 @@ function is_ordered_field(Float) { 1 }
 
 # @category Arithmetic
 # Compare with the zero (0) value of the corresponding data type.
-# @param SCALAR s
+# @param __Scalar__ s
 # @return Bool
 user_function is_zero(*) : c++ (include => "polymake/internal/comparators.h");
 
 # @category Arithmetic
 # Compare with the one (1) value of the corresponding data type.
-# @param SCALAR s
+# @param __Scalar__ s
 # @return Bool
 user_function is_one(*) : c++ (include => "polymake/internal/comparators.h");
 
 
-# Explicit conversion to different scalar type.
+# Explicit conversion to a different scalar type.
 # @tparam Target
-# @param SCALAR s
+# @param __Scalar__ s
 # @return Target
 user_function convert_to<Target>($) {
    my $target_type=typeof Target;

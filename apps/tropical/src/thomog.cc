@@ -30,7 +30,7 @@ namespace polymake { namespace tropical {
 			      "# assuming a certain coordinate has been set to 0."
 			      "# I.e. it will return the matrix with a 0 column inserted at"
 			      "# the position indicated by chart"
-			      "# @param Matrix<Rational> A The matrix. Can also be given as an anonymous array [[..],[..],..]"
+			      "# @param Matrix<Rational> A The matrix. Can also be given as an anonymous perl array reference."
 			      "# @param Int chart Optional. Indicates, which coordinate of"
 			      "# R<sup>n</sup> mod (1,..,1) should be set to 0 to identify it"
 			      "# with R<sup>n-1</sup>. Note that if there is a leading coordinate, "

@@ -245,8 +245,7 @@ if ($touch) {
    }
    require Polymake::Core::Shell;
    if (Main::load_apps()) {
-      Core::Shell::start($socket, $redirects);
-      Core::Shell::run_pipe();
+      Core::Shell::run_pipe($socket, $redirects);
    }
 
 } elsif (@ARGV<=1) {
@@ -270,8 +269,7 @@ if ($touch) {
          ### anonymous pipe
          require Polymake::Core::Shell;
          if (Main::load_apps()) {
-            Core::Shell::start(\*STDIN, 0);
-            Core::Shell::run_pipe();
+            Core::Shell::run_pipe(\*STDIN, 0);
          }
       } elsif ($arg !~ /[\s'"(){}\[\]\$]/) {
          ### script file

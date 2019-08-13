@@ -168,7 +168,7 @@ Set<int> matroid_indices_of_hypersimplex_vertices(perl::Object m)
 
 
 UserFunction4perl("# @category Producing a polytope from scratch"
-                  "# Produce the hypersimplex &Delta;(//k//,//d//), that is the the convex hull of all 0/1-vector in R<sup>//d//</sup>"
+                  "# Produce the hypersimplex $ Δ(k,d) $, that is the the convex hull of all 0/1-vector in $ R^d $"
                   "# with exactly //k// 1s."
                   "# Note that the output is never full-dimensional."
                   "# @param Int k number of 1s"

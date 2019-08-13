@@ -14,9 +14,10 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_VALUATED_RATIONAL_FUNCTION_H
-#define POLYMAKE_VALUATED_RATIONAL_FUNCTION_H
+#ifndef POLYMAKE_PUISEUX_FRACTION_H
+#define POLYMAKE_PUISEUX_FRACTION_H
 
+#include <cstddef>
 #include "polymake/Rational.h"
 #include "polymake/RationalFunction.h"
 #include "polymake/TropicalNumber.h"
@@ -24,8 +25,6 @@
 
 
 namespace pm {
-
-struct is_valuated_rational_function {};
 
 namespace operations {
 
@@ -37,13 +36,65 @@ struct evaluate<OpRef,double>;
 
 }
 
-template <typename MinMax, typename Coefficient=Rational, typename Exponent=Rational>
-class PuiseuxFraction {
+template <typename MinMax, typename Coefficient, typename Exponent>
+class PuiseuxFraction;
+template <typename MinMax, typename Coefficient, typename Exponent>
+class PuiseuxFraction_generic;
+template <typename MinMax>
+class PuiseuxFraction_subst;
+
+namespace {
+
+template <typename MinMax, typename Coefficient, typename Exponent>
+struct pf_impl_chooser {
+   using type = PuiseuxFraction_generic<MinMax,Coefficient,Exponent>;
+};
+
+template <typename MinMax>
+struct pf_impl_chooser<MinMax,Rational,Rational> {
+   using type = PuiseuxFraction_subst<MinMax>;
+};
+
+template <typename T, std::enable_if_t<is_unipolynomial_type<T,Rational,Rational>::value>* = nullptr>
+decltype(auto) exp_to_int(const T& t, int& exp_den)
+{
+   auto exps = t.monomials_as_vector();
+   exp_den = int(lcm(denominators(exps)|exp_den));
+   return UniPolynomial<Rational,int>(t.coefficients_as_vector(),convert_to<int>(exps*exp_den));
+}
+
+template <typename T, std::enable_if_t<is_unipolynomial_type<T,Rational,Rational>::value>* = nullptr>
+decltype(auto) exp_to_int(const T& t1, const T& t2, int& exp_den)
+{
+   auto exps1 = t1.monomials_as_vector();
+   auto exps2 = t2.monomials_as_vector();
+   exp_den = int(lcm(denominators(exps1)|denominators(exps2)|exp_den));
+   return RationalFunction<Rational,int>(
+            UniPolynomial<Rational,int>(t1.coefficients_as_vector(),convert_to<int>(exps1*exp_den)),
+            UniPolynomial<Rational,int>(t2.coefficients_as_vector(),convert_to<int>(exps2*exp_den))
+          );
+}
+
+template <typename T, std::enable_if_t<UniPolynomial<Rational,Rational>::fits_as_coefficient<T>::value>* = nullptr>
+decltype(auto) exp_to_int(const T& t, int& exp_den)
+{
+   return UniPolynomial<Rational,int>(t);
+}
+
+template <typename T, std::enable_if_t<std::is_same<T,RationalFunction<Rational,Rational>>::value>* = nullptr>
+decltype(auto) exp_to_int(const T& t, int& exp_den)
+{
+   return exp_to_int(numerator(t),denominator(t),exp_den);
+}
+
+}
+
+
+template <typename MinMax, typename Coefficient, typename Exponent>
+class PuiseuxFraction_base {
 public:
    typedef RationalFunction<Coefficient, Exponent> rf_type;
-protected:
-   rf_type rf;
-public:
+
    typedef typename rf_type::polynomial_type polynomial_type;
    typedef Exponent exponent_type;
    typedef Coefficient coefficient_type;
@@ -59,568 +110,213 @@ public:
    using fits_as_particle = typename rf_type::template fits_as_particle<T>;
 
    template <typename T>
+   struct is_compatible
+      : bool_constant<fits_as_particle<T>::value || std::is_same<T, PuiseuxFraction<MinMax, Coefficient, Exponent>>::value> {};
+
+   template <typename T>
    struct is_comparable
       : bool_constant<fits_as_particle<T>::value || std::is_same<T, TropicalNumber<MinMax, Exponent>>::value> {};
 
    template <typename T>
    struct is_comparable_or_same
-      : bool_constant<is_comparable<T>::value || std::is_same<T, PuiseuxFraction>::value> {};
+      : bool_constant<is_comparable<T>::value || std::is_same<T, PuiseuxFraction<MinMax,Coefficient,Exponent>>::value> {};
+
+   const int orientation() const
+   {
+      return MinMax::orientation();
+   }
+
+
+};
+
+template <typename MinMax, typename Coefficient, typename Exponent>
+class PuiseuxFraction_generic : public PuiseuxFraction_base<MinMax,Coefficient,Exponent> {
+protected:
+   using base = PuiseuxFraction_base<MinMax,Coefficient,Exponent>;
+
+public:
+   using rf_type = typename base::rf_type;
+   using polynomial_type = typename base::polynomial_type;
+   template <typename T>
+   using fits_as_particle = typename base::template fits_as_particle<T>;
+   template <typename T>
+   using fits_as_coefficient = typename base::template fits_as_coefficient<T>;
+   template <typename T>
+   using is_compatible = typename base::template is_compatible<T>;
+   template <typename T>
+   using is_comparable = typename base::template is_comparable<T>;
+   template <typename T>
+   using is_comparable_or_same = typename base::template is_comparable_or_same<T>;
+
+protected:
+   rf_type rf;
+
+public:
+   template <typename> friend struct spec_object_traits;
+   template <typename,bool,bool> friend struct choose_generic_object_traits;
+   template <typename> friend class std::numeric_limits;
 
    /// Construct a zero value.
-   PuiseuxFraction() : rf() {}
+   PuiseuxFraction_generic() : rf() {}
 
    /// One argument which may be a coefficient-compatible type or a unipolynomial
    template <typename T,
-             typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   explicit PuiseuxFraction(const T& t)
+             typename=std::enable_if_t<fits_as_particle<T>::value>>
+   explicit PuiseuxFraction_generic(const T& t)
       : rf(t) {}
 
-   PuiseuxFraction(const rf_type& t)
+   PuiseuxFraction_generic(const rf_type& t)
       : rf(numerator(t),denominator(t)) {}
 
    /// Two arguments which may be coefficient-compatible type or unipolynomial
    template <typename T1, typename T2,
-             typename=typename std::enable_if<fits_as_particle<T1>::value && fits_as_particle<T2>::value>::type>
-   PuiseuxFraction(const T1& t1, const T2& t2)
+             typename=std::enable_if_t<fits_as_particle<T1>::value && fits_as_particle<T2>::value>>
+   PuiseuxFraction_generic(const T1& t1, const T2& t2)
       : rf(t1, t2) {}
 
    template <typename T,
-             typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   PuiseuxFraction& operator= (const T& t)
+             typename=std::enable_if_t<fits_as_particle<T>::value>>
+   PuiseuxFraction_generic& operator= (const T& t)
    {
       rf = rf_type(t);
       return *this;
    }
 
-   const int orientation()
+   PuiseuxFraction_generic& operator= (const PuiseuxFraction_generic& pf)
    {
-      return MinMax::orientation();
+      rf = pf.rf;
+      return *this;
    }
 
    friend
-   const polynomial_type& numerator(const PuiseuxFraction& me) { return numerator(me.rf); }
+   const polynomial_type& numerator(const PuiseuxFraction_generic& me) { return numerator(me.rf); }
 
    friend
-   const polynomial_type& denominator(const PuiseuxFraction& me) { return denominator(me.rf); }
+   const polynomial_type& denominator(const PuiseuxFraction_generic& me) { return denominator(me.rf); }
 
-   void swap(PuiseuxFraction& other)
+   bool is_zero() const
+   {
+      return pm::is_zero(rf);
+   }
+
+   bool is_one() const
+   {
+      return pm::is_one(rf);
+   }
+
+   void swap(PuiseuxFraction_generic& other)
    {
       rf.swap(other);
    }
 
-   PuiseuxFraction& negate()
+   PuiseuxFraction_generic& negate()
    {
       rf.negate();
       return *this;
    }
 
    friend
-   PuiseuxFraction operator- (const PuiseuxFraction& me)
+   PuiseuxFraction_generic operator- (const PuiseuxFraction_generic& me)
    {
-      return PuiseuxFraction(-me.rf);
+      return PuiseuxFraction_generic(-me.rf);
    }
 
    /// PLUS
 
    template <typename T,
-             typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   PuiseuxFraction& operator+= (const T& r)
+             typename=std::enable_if_t<fits_as_particle<T>::value>>
+   PuiseuxFraction_generic& operator+= (const T& r)
    {
       rf += r;
       return *this;
    }
 
-   PuiseuxFraction& operator+= (const PuiseuxFraction& r)
+   PuiseuxFraction_generic& operator+= (const PuiseuxFraction_generic& r)
    {
       rf += r.rf;
       return *this;
    }
 
-   template <typename T,
-             typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   friend
-   PuiseuxFraction operator+ (const PuiseuxFraction& l, const T& r)
-   {
-      return PuiseuxFraction(l.rf + r);
-   }
-
-   template <typename T,
-             typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   friend
-   PuiseuxFraction operator+ (const T& l, const PuiseuxFraction& r)
-   {
-      return PuiseuxFraction(l + r.rf);
-   }
-
-   friend
-   PuiseuxFraction operator+ (const PuiseuxFraction& l, const PuiseuxFraction& r)
-   {
-      return PuiseuxFraction(l.rf + r.rf);
-   }
-
 
    /// MINUS
+
    template <typename T,
-             typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   PuiseuxFraction& operator-= (const T& r)
+             typename=std::enable_if_t<fits_as_particle<T>::value>>
+   PuiseuxFraction_generic& operator-= (const T& r)
    {
       rf -= r;
       return *this;
    }
 
-   PuiseuxFraction& operator-= (const PuiseuxFraction& r)
+   PuiseuxFraction_generic& operator-= (const PuiseuxFraction_generic& r)
    {
       rf -= r.rf;
       return *this;
    }
 
-   template <typename T,
-             typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   friend 
-   PuiseuxFraction operator- (const PuiseuxFraction& l, const T& r)
-   {
-      return PuiseuxFraction(l.rf - r);
-   }
-
-   template <typename T,
-             typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   friend
-   PuiseuxFraction operator- (const T& l, const PuiseuxFraction& r)
-   {
-      return PuiseuxFraction(l - r.rf);
-   }
-
-   friend
-   PuiseuxFraction operator- (const PuiseuxFraction& l, const PuiseuxFraction& r)
-   {
-      return PuiseuxFraction(l.rf - r.rf);
-   }
 
 
    /// MULTIPLICATION
    template <typename T,
-             typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   PuiseuxFraction& operator*= (const T& r)
+             typename=std::enable_if_t<fits_as_particle<T>::value>>
+   PuiseuxFraction_generic& operator*= (const T& r)
    {
       rf *= r;
       return *this;
    }
 
-   PuiseuxFraction& operator*= (const PuiseuxFraction& r)
+   PuiseuxFraction_generic& operator*= (const PuiseuxFraction_generic& r)
    {
       rf *= r.rf;
       return *this;
    }
 
-   template <typename T,
-             typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   friend
-   PuiseuxFraction operator* (const PuiseuxFraction& l, const T& r)
-   {
-      return PuiseuxFraction(l.rf * r);
-   }
-
-   template <typename T,
-             typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   friend
-   PuiseuxFraction operator* (const T& l, const PuiseuxFraction& r)
-   {
-      return PuiseuxFraction(l * r.rf);
-   }
-
-   friend
-   PuiseuxFraction operator* (const PuiseuxFraction& l, const PuiseuxFraction& r)
-   {
-      return PuiseuxFraction(l.rf * r.rf);
-   }
-
-
    /// DIVISION
    template <typename T,
-             typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   PuiseuxFraction& operator/= (const T& r)
+             typename=std::enable_if_t<fits_as_particle<T>::value>>
+   PuiseuxFraction_generic& operator/= (const T& r)
    {
       rf /= r;
       return *this;
    }
 
-   PuiseuxFraction& operator/= (const PuiseuxFraction& r)
+   PuiseuxFraction_generic& operator/= (const PuiseuxFraction_generic& r)
    {
       rf /= r.rf;
       return *this;
    }
 
-   template <typename T,
-             typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   friend
-   PuiseuxFraction operator/ (const PuiseuxFraction& l, const T& r)
-   {
-      return PuiseuxFraction(l.rf / r);
-   }
-
-   template <typename T,
-             typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   friend
-   PuiseuxFraction operator/ (const T& l, const PuiseuxFraction& r)
-   {
-      return PuiseuxFraction(l / r.rf);
-   }
-
-   friend
-   PuiseuxFraction operator/ (const PuiseuxFraction& l, const PuiseuxFraction& r)
-   {
-      return PuiseuxFraction(l.rf / r.rf);
-   }
-
-
    /// EQUALITY
-   friend
-   bool operator== (const PuiseuxFraction& l, const PuiseuxFraction& r)
+   bool operator== (const PuiseuxFraction_generic& r) const
    {
-      return l.rf == r.rf;
+      return rf == r.rf;
    }
 
    template <typename T,
-             typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   friend
-   bool operator== (const PuiseuxFraction& l, const T& r)
+             typename=std::enable_if_t<fits_as_particle<T>::value>>
+   bool operator== (const T& r) const
    {
-      return l.rf == r;
-   }
-
-   friend
-   bool operator== (const PuiseuxFraction& l, const TropicalNumber<MinMax, Exponent>& r)
-   {
-      return l.val() == r;
+      return rf == r;
    }
 
    template <typename T,
-             typename=typename std::enable_if<is_comparable<T>::value>::type>
+             typename=std::enable_if_t<is_comparable<T>::value>>
    friend
-   bool operator== (const T& l, const PuiseuxFraction& r)
+   bool operator== (const T& l, const PuiseuxFraction_generic& r)
    {
       return r==l;
    }
 
-   template <typename T,
-             typename=typename std::enable_if<is_comparable_or_same<T>::value>::type>
-   friend
-   bool operator!= (const PuiseuxFraction& l, const T& r)
-   {
-      return !(l == r);
-   }
 
-   template <typename T,
-             typename=typename std::enable_if<is_comparable<T>::value>::type> friend
-   bool operator!= (const T& l, const PuiseuxFraction& r)
-   {
-      return !(r == l);
-   }
-
-
-   /// COMPARISON depending on Min / Max
-   // Max::orientation = -1 and we need the highest term
-   // Min::orientation =  1 and we need the lowest term
-   int compare(const PuiseuxFraction& vrf) const
-   {
-      if (std::is_same<Max, MinMax>::value)
-         return sign((numerator(rf)*denominator(vrf) - numerator(vrf)*denominator(rf)).lc());
-      else
-         return sign(denominator(rf).lc(-1)) * sign(denominator(vrf).lc(-1)) *
-                sign((numerator(rf)*denominator(vrf) - numerator(vrf)*denominator(rf)).lc(-1));
-   }
-
-   template <typename T>
-   typename std::enable_if<fits_as_coefficient<T>::value, int>::type
-   compare(const T& c) const
-   {
-      if (std::is_same<Max, MinMax>::value) {
-         if (!numerator(rf).trivial() && (is_zero(c) || numerator(rf).deg() > denominator(rf).deg()))
-            return sign(numerator(rf).lc());
-         else if (numerator(rf).deg() < denominator(rf).deg())
-            return -sign(c);
-         else
-            return sign(numerator(rf).lc()-c);
-      } else {
-         const Exponent minus_one = -one_value<Exponent>();
-         if (!numerator(rf).trivial() && (is_zero(c) || numerator(rf).lower_deg() < denominator(rf).lower_deg()))
-            return sign(numerator(rf).lc(minus_one)) * sign(denominator(rf).lc(minus_one));
-         else if (numerator(rf).lower_deg() > denominator(rf).lower_deg())
-            return -sign(c);
-         else
-            return sign(numerator(rf).lc(minus_one) * sign(denominator(rf).lc(minus_one)) - c*abs(denominator(rf).lc(minus_one)));
-      }
-   }
-
-   template <typename T>
-   typename std::enable_if<is_unipolynomial_type<T, Coefficient, Exponent>::value, int>::type
-   compare(const T& c) const
-   {
-      return compare(PuiseuxFraction(c));
-   }
-
-   int compare(const TropicalNumber<MinMax, Exponent>& c) const
-   {
-      return val().compare(c);
-   }
-
-   template <typename T,
-             typename=typename std::enable_if<is_comparable_or_same<T>::value>::type>
-   friend
-   bool operator< (const PuiseuxFraction& l, const T& r)
-   {
-      return l.compare(r) < 0;
-   }
-
-   template <typename T,
-             typename=typename std::enable_if<is_comparable<T>::value>::type>
-   friend
-   bool operator< (const T& l, const PuiseuxFraction& r)
-   {
-      return r.compare(l) > 0;
-   }
-
-   template <typename T,
-             typename=typename std::enable_if<is_comparable_or_same<T>::value>::type>
-   friend
-   bool operator<= (const PuiseuxFraction& l, const T& r)
-   {
-      return l.compare(r) <= 0;
-   }
-
-   template <typename T,
-             typename=typename std::enable_if<is_comparable<T>::value>::type>
-   friend
-   bool operator<= (const T& l, const PuiseuxFraction& r)
-   {
-      return r.compare(l) >= 0;
-   }
-
-   template <typename T,
-             typename=typename std::enable_if<is_comparable_or_same<T>::value>::type>
-   friend
-   bool operator> (const PuiseuxFraction& l, const T& r)
-   {
-      return l.compare(r) > 0;
-   }
-
-   template <typename T,
-             typename=typename std::enable_if<is_comparable<T>::value>::type>
-   friend
-   bool operator> (const T& l, const PuiseuxFraction& r)
-   {
-      return r.compare(l) < 0;
-   }
-
-   template <typename T,
-             typename=typename std::enable_if<is_comparable_or_same<T>::value>::type>
-   friend
-   bool operator>= (const PuiseuxFraction& l, const T& r)
-   {
-      return l.compare(r) >= 0;
-   }
-
-   template <typename T,
-             typename=typename std::enable_if<is_comparable<T>::value>::type> friend
-   bool operator>= (const T& l, const PuiseuxFraction& r)
-   {
-      return r.compare(l) <= 0;
-   }
-
-   static
-   const Array<std::string>& get_var_names()
-   {
-      return rf_type::get_var_names();
-   }
-
-   static
-   void set_var_names(const Array<std::string>& names)
-   {
-      rf_type::set_var_names(names);
-   }
-
-   static
-   void reset_var_names()
-   {
-      rf_type::reset_var_names();
-   }
-
-   static
-   void swap_var_names(PolynomialVarNames& other_names)
-   {
-      rf_type::swap_var_names(other_names);
-   }
-
-   template <typename Output> friend
-   Output& operator<< (GenericOutput<Output>& out, const PuiseuxFraction& vrf)
-   {
-      out.top() << '(';
-      numerator(vrf).print_ordered(out, -MinMax::orientation());
-      out.top() << ')';
-      if (!is_one(denominator(vrf))) {
-         out.top() << "/(";
-         denominator(vrf).print_ordered(out, -MinMax::orientation());
-         out.top() << ')';
-      }
-      return out.top();
-   }
-
-   rf_type to_rationalfunction() const
+   const rf_type& to_rationalfunction() const
    {
       return rf;
    }
 
-   TropicalNumber<MinMax, Exponent> val() const
+   template <typename Exp=Exponent, typename T>
+   PuiseuxFraction_generic<MinMax,Coefficient,Exp> substitute_monomial(const T& t) const
    {
-      if (is_zero(rf))
-         return TropicalNumber<MinMax, Exponent>::zero();
-      
-      if (std::is_same<MinMax, Max>::value)
-         return TropicalNumber<MinMax, Exponent>(numerator(rf).deg() - denominator(rf).deg());
-      else
-         return TropicalNumber<MinMax, Exponent>(numerator(rf).lower_deg() - denominator(rf).lower_deg());
-   }
-
-   friend PuiseuxFraction abs(const PuiseuxFraction& vrf)
-   {
-      return vrf >= 0 ? vrf : -vrf;
-   }
-
-   friend bool abs_equal(const PuiseuxFraction& vrf1, const PuiseuxFraction& vrf2)
-   {
-      return abs(vrf1).compare(abs(vrf2)) == 0;
-   }
-
-
-   // this evaluates at t^exp_lcm and exp_lcm must be large enough such that this makes all needed
-   // exponents integral
-   template <typename T,
-             typename=typename std::enable_if<fits_as_coefficient<T>::value>::type>
-   typename algebraic_traits<T>::field_type
-   evaluate_exp(const T& t, const long exp_lcm=1) const
-   {
-      typedef typename algebraic_traits<T>::field_type field;
-      field val = numerator(*this).evaluate(t,exp_lcm);
-      val /= denominator(*this).evaluate(t,exp_lcm);
-      return val;
-   }
-
-   double evaluate_float(const double arg) const
-   {
-      double val = numerator(*this).evaluate_float(arg);
-      val /= denominator(*this).evaluate_float(arg);
-      return val;
-   }
-
-
-   template <typename T>
-   typename std::enable_if<is_field_of_fractions<Exponent>::value && fits_as_coefficient<T>::value,
-                           typename algebraic_traits<T>::field_type>::type
-   evaluate(const T& t, const long exp=1) const
-   {
-      Integer exp_lcm(exp);
-      exp_lcm = lcm(denominators(numerator(rf).monomials_as_vector() | denominator(rf).monomials_as_vector()) | exp_lcm);
-      const double t_approx = std::pow(convert_to<double>(t),1.0/convert_to<double>(exp_lcm));
-      Coefficient base = exp_lcm == exp ? t : t_approx;
-
-      return this->evaluate_exp(base, long(exp_lcm));
-   }
-
-   template <typename T>
-   typename std::enable_if<std::numeric_limits<Exponent>::is_integer && fits_as_coefficient<T>::value,
-                           typename algebraic_traits<T>::field_type>::type
-   evaluate(const T& t, const long exp=1) const
-   {
-      return this->evaluate_exp(t, exp);
-   }
-
-
-   template <typename VectorType, typename T> static
-   typename std::enable_if<fits_as_coefficient<T>::value && is_field_of_fractions<Exponent>::value,
-                           const LazyVector1<const VectorType&, operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type> > >::type
-   evaluate(const GenericVector<VectorType, PuiseuxFraction>& vec, const T& t, const long exp=1)
-   {
-      Integer exp_lcm(exp);
-      for (auto v = entire(vec.top()); !v.at_end(); ++v)
-         exp_lcm = lcm(denominators(numerator(*v).monomials_as_vector() | denominator(*v).monomials_as_vector()) | exp_lcm);
-
-      const double t_approx = std::pow(convert_to<double>(t),1.0/convert_to<double>(exp_lcm));
-      const typename algebraic_traits<T>::field_type base = exp_lcm == exp ? t : t_approx;
-
-      return LazyVector1<
-               const VectorType&,
-               operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type>
-             >(vec.top(), operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type>(base, long(exp_lcm)));
-   }
-
-   template <typename VectorType, typename T> static
-   typename std::enable_if<fits_as_coefficient<T>::value && std::numeric_limits<Exponent>::is_integer,
-                           const LazyVector1<const VectorType&, operations::evaluate<PuiseuxFraction,T> > >::type
-   evaluate(const GenericVector<VectorType,PuiseuxFraction>& vec, const T& t, const long exp=1)
-   {
-      return LazyVector1<const VectorType&, operations::evaluate<PuiseuxFraction,T> >(vec.top(),operations::evaluate<PuiseuxFraction,T>(t,exp));
-   }
-
-   template <typename MatrixType, typename T> static
-   typename std::enable_if<fits_as_coefficient<T>::value && is_field_of_fractions<Exponent>::value,
-                           const LazyMatrix1<const MatrixType&, operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type> > >::type
-   evaluate(const GenericMatrix<MatrixType, PuiseuxFraction>& m, const T& t, const long exp=1)
-   {
-      Integer exp_lcm(exp);
-      for (auto e = entire(concat_rows(m.top())); !e.at_end(); ++e)
-         exp_lcm = lcm(denominators(numerator(*e).monomials_as_vector() | denominator(*e).monomials_as_vector()) | exp_lcm);
-
-      const double t_approx = std::pow(convert_to<double>(t),1.0/convert_to<double>(exp_lcm));
-      const typename algebraic_traits<T>::field_type base = exp_lcm == exp ? t : t_approx;
-
-      return LazyMatrix1<
-               const MatrixType&,
-               operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type>
-             >(m.top(), operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type>(base, long(exp_lcm)));
-   }
-
-   template <typename MatrixType, typename T> static
-   typename std::enable_if<fits_as_coefficient<T>::value && std::numeric_limits<Exponent>::is_integer,
-                           const LazyMatrix1<const MatrixType&, operations::evaluate<PuiseuxFraction, T> > >::type
-   evaluate(const GenericMatrix<MatrixType, PuiseuxFraction>& m, const T& t, const long exp=1)
-   {
-      return LazyMatrix1<
-               const MatrixType&,
-               operations::evaluate<PuiseuxFraction,T>
-             >(m.top(),operations::evaluate<PuiseuxFraction,T>(t,exp));
-   }
-
-
-
-   template <typename VectorType> static
-   const LazyVector1<const VectorType&, operations::evaluate<PuiseuxFraction,double> >
-   evaluate_float(const GenericVector<VectorType,PuiseuxFraction>& vec, const double t)
-   {
-      return LazyVector1<const VectorType&, operations::evaluate<PuiseuxFraction,double> >(vec.top(),operations::evaluate<PuiseuxFraction,double>(t));
-   }
-
-   template <typename MatrixType> static
-   const LazyMatrix1<const MatrixType&, operations::evaluate<PuiseuxFraction,double> >
-   evaluate_float(const GenericMatrix<MatrixType,PuiseuxFraction>& vec, const double t)
-   {
-      return LazyMatrix1<const MatrixType&, operations::evaluate<PuiseuxFraction,double> >(vec.top(),operations::evaluate<PuiseuxFraction,double>(t));
-   }
-
-
-   template <typename Scalar, 
-             typename=typename std::enable_if<can_initialize<Coefficient, Scalar>::value>::type>
-   explicit operator Scalar () const
-   {
-      if (denominator(*this).is_one() &&
-          numerator(*this).deg() == 0 && numerator(*this).lower_deg() == 0)
-         return static_cast<Scalar>(numerator(*this).lc());
-
-      throw std::runtime_error("Conversion to scalar not possible.");
-   }
-
-   explicit operator TropicalNumber<MinMax, Exponent> () const
-   {
-      return val();
+      return PuiseuxFraction_generic<MinMax,Coefficient,Exp>(rf.template substitute_monomial<Exp>(t));
    }
 
    size_t get_hash() const noexcept { return rf.get_hash(); }
@@ -628,7 +324,883 @@ public:
 #if POLYMAKE_DEBUG
    void dump() const __attribute__((used)) { rf.dump(); }
 #endif
+
+   template <typename,typename,typename>
+   friend class PuiseuxFraction;
 };
+
+
+
+template <typename MinMax>
+class PuiseuxFraction_subst : public PuiseuxFraction_base<MinMax,Rational,Rational> {
+   public:
+      using pf_type = PuiseuxFraction_generic<MinMax,Rational,Rational>;
+      using rf_type = typename pf_type::rf_type;
+      using polynomial_type = typename pf_type::polynomial_type;
+      using Coefficient = Rational;
+      using Exponent = Rational;
+   protected:
+      using base = PuiseuxFraction_base<MinMax,Rational,Rational>;
+      using subst_exponent = int;
+      using subst_pf_type = PuiseuxFraction<MinMax,Coefficient,subst_exponent>;
+      using subst_rf_type = typename subst_pf_type::rf_type;
+      using subst_poly_type = UniPolynomial<Coefficient,subst_exponent>;
+
+   public:
+
+      template <typename T>
+      using fits_as_coefficient = typename base::template fits_as_coefficient<T>;
+      template <typename T>
+      using fits_as_particle = typename base::template fits_as_particle<T>;
+      template <typename T>
+      using is_compatible = typename base::template is_compatible<T>;
+      template <typename T>
+      using is_comparable = typename base::template is_comparable<T>;
+      template <typename T>
+      using is_comparable_or_same = typename base::template is_comparable_or_same<T>;
+      template <typename T>
+      using is_subst_polynomial = is_unipolynomial_type<T,Coefficient,subst_exponent>;
+      template <typename T>
+      using is_base_polynomial = is_unipolynomial_type<T,Coefficient,Exponent>;
+
+
+   protected:
+
+      // the exp_den must be the first member
+      int exp_den=1;
+      subst_pf_type subst_pf;
+
+      mutable std::unique_ptr<rf_type> rf_cache;
+
+      template <typename T, std::enable_if_t<is_subst_polynomial<T>::value, std::nullptr_t > = nullptr >
+      explicit PuiseuxFraction_subst(const T& t)
+         : exp_den(1), subst_pf(t)
+      { }
+
+      template <typename T, std::enable_if_t<is_subst_polynomial<T>::value, std::nullptr_t > = nullptr >
+      explicit PuiseuxFraction_subst(const T& num, const T& den)
+         : exp_den(1), subst_pf(num,den)
+      { }
+
+      template <typename T, std::enable_if_t<std::is_same<T,subst_rf_type>::value || std::is_same<T,subst_pf_type>::value, std::nullptr_t > = nullptr >
+      explicit PuiseuxFraction_subst(const T& rf)
+         : exp_den(1), subst_pf(rf)
+      { }
+
+      void normalize_den()
+      {
+         if (exp_den == 1)
+            return;
+         auto exps1 = numerator(subst_pf).monomials_as_vector();
+         auto exps2 = denominator(subst_pf).monomials_as_vector();
+         int expgcd = gcd(exps1|exps2|exp_den);
+         if (expgcd == 1)
+            return;
+         subst_pf = subst_pf.template substitute_monomial<int>(Rational(1,expgcd));
+         exp_den /= expgcd;
+      }
+
+   public:
+
+      /// Construct a zero value.
+      PuiseuxFraction_subst() : exp_den(1), subst_pf() {}
+
+      /// copy
+      PuiseuxFraction_subst(const PuiseuxFraction_subst& pf) : exp_den(pf.exp_den), subst_pf(pf.subst_pf) {}
+
+
+      PuiseuxFraction_subst(const subst_pf_type& pf, int expden) : exp_den(expden), subst_pf(pf) {}
+
+      /// construct from coefficient or unipolynomial
+      template <typename T, std::enable_if_t<fits_as_particle<T>::value, std::nullptr_t> = nullptr>
+      explicit PuiseuxFraction_subst(const T& t)
+         : exp_den(1), subst_pf(exp_to_int(t,exp_den))
+      { }
+
+      /// construct from two coefficient or unipolynomial
+      template <typename T1, typename T2, std::enable_if_t<fits_as_particle<T1>::value && fits_as_particle<T2>::value, std::nullptr_t> = nullptr>
+      PuiseuxFraction_subst(const T1& t1, const T2& t2)
+         : exp_den(1), subst_pf(exp_to_int(polynomial_type(t1),polynomial_type(t2),exp_den))
+      { }
+
+      /// construct from rational function
+      explicit PuiseuxFraction_subst(const rf_type& t)
+      : exp_den(1), subst_pf(exp_to_int(numerator(t),denominator(t),exp_den)) {}
+
+      template <typename T,
+               typename=std::enable_if_t<fits_as_particle<T>::value || std::is_same<T,rf_type>::value>>
+      PuiseuxFraction_subst& operator= (const T& t)
+      {
+         exp_den = 1;
+         subst_pf = subst_pf_type(exp_to_int(t,exp_den));
+         rf_cache.reset(nullptr);
+         return *this;
+      }
+
+      PuiseuxFraction_subst& operator= (const PuiseuxFraction_subst& pf)
+      {
+         exp_den = pf.exp_den;
+         subst_pf = pf.subst_pf;
+         rf_cache.reset(nullptr);
+         return *this;
+      }
+
+      friend
+      const polynomial_type& numerator(const PuiseuxFraction_subst& me) {
+         return numerator(me.to_rationalfunction());
+      }
+
+      friend
+      const polynomial_type& denominator(const PuiseuxFraction_subst& me) {
+         return denominator(me.to_rationalfunction());
+      }
+
+      bool is_zero() const
+      {
+         return pm::is_zero(subst_pf);
+      }
+
+      bool is_one() const
+      {
+         return pm::is_one(subst_pf);
+      }
+
+
+      const rf_type& to_rationalfunction() const
+      {
+         if (!rf_cache)
+            rf_cache.reset(new rf_type(
+                     numerator(subst_pf).template substitute_monomial<Rational>(Rational(1,exp_den)),
+                     denominator(subst_pf).template substitute_monomial<Rational>(Rational(1,exp_den))));
+         return *rf_cache;
+      }
+
+
+      void swap(PuiseuxFraction_subst& other)
+      {
+         std::swap(exp_den,other.exp_den);
+         subst_pf.swap(other);
+         std::swap(rf_cache,other.rf_cache);
+      }
+
+      PuiseuxFraction_subst& negate()
+      {
+         subst_pf.negate();
+         rf_cache.reset(nullptr);
+         return *this;
+      }
+
+      friend
+      PuiseuxFraction_subst operator- (const PuiseuxFraction_subst& me)
+      {
+         return PuiseuxFraction_subst(-me.subst_pf,me.exp_den);
+      }
+
+
+      /// PLUS
+      template <typename T>
+      std::enable_if_t<fits_as_coefficient<T>::value, PuiseuxFraction_subst&>
+      operator+= (const T& r)
+      {
+         subst_pf += r;
+         normalize_den();
+         rf_cache.reset(nullptr);
+         return *this;
+      }
+
+      template <typename T>
+      std::enable_if_t<is_base_polynomial<T>::value, PuiseuxFraction_subst&>
+      operator+= (const T& r)
+      {
+         int old_den = exp_den;
+         auto poly_int = exp_to_int(r,exp_den);
+         if (old_den != exp_den)
+            subst_pf = subst_pf.template substitute_monomial<int>(exp_den/old_den);
+         subst_pf += poly_int;
+         normalize_den();
+         rf_cache.reset(nullptr);
+         return *this;
+      }
+
+      PuiseuxFraction_subst& operator+= (const PuiseuxFraction_subst& r)
+      {
+         int new_den = lcm(exp_den,r.exp_den);
+         if (new_den != exp_den)
+            subst_pf = subst_pf.template substitute_monomial<int>(new_den/exp_den);
+         if (new_den != r.exp_den) {
+            subst_pf += r.subst_pf.template substitute_monomial<int>(new_den/r.exp_den);
+         } else {
+            subst_pf += r.subst_pf;
+         }
+         exp_den = new_den;
+         normalize_den();
+         rf_cache.reset(nullptr);
+         return *this;
+      }
+
+      /// MINUS
+      template <typename T,
+                typename=std::enable_if_t<
+                                          fits_as_particle<T>::value ||
+                                          std::is_same<T,PuiseuxFraction_subst>::value
+                                         >>
+      PuiseuxFraction_subst& operator-= (const T& r)
+      {
+         subst_pf += -r;
+         normalize_den();
+         rf_cache.reset(nullptr);
+         return *this;
+      }
+
+      /// MULTIPLICATION
+      template <typename T>
+      std::enable_if_t<fits_as_coefficient<T>::value, PuiseuxFraction_subst&>
+      operator*= (const T& r)
+      {
+         subst_pf *= r;
+         if (pm::is_zero(r))
+            exp_den = 1;
+         rf_cache.reset(nullptr);
+         return *this;
+      }
+
+      template <typename T>
+      std::enable_if_t<is_base_polynomial<T>::value, PuiseuxFraction_subst&>
+      operator*= (const T& r)
+      {
+         int old_den = exp_den;
+         auto poly_int = exp_to_int(r,exp_den);
+         if (old_den != exp_den)
+            subst_pf = subst_pf.template substitute_monomial<int>(exp_den/old_den);
+         subst_pf *= poly_int;
+         normalize_den();
+         rf_cache.reset(nullptr);
+         return *this;
+      }
+
+      PuiseuxFraction_subst& operator*= (const PuiseuxFraction_subst& r)
+      {
+         int new_den = lcm(exp_den,r.exp_den);
+         if (new_den != exp_den)
+            subst_pf = subst_pf.template substitute_monomial<int>(new_den/exp_den);
+         if (new_den != r.exp_den) {
+            subst_pf *= r.subst_pf.template substitute_monomial<int>(new_den/r.exp_den);
+         } else {
+            subst_pf *= r.subst_pf;
+         }
+         exp_den = new_den;
+         normalize_den();
+         rf_cache.reset(nullptr);
+         return *this;
+      }
+
+      /// DIVISION
+      template <typename T>
+      std::enable_if_t<fits_as_coefficient<T>::value, PuiseuxFraction_subst&>
+      operator/= (const T& r)
+      {
+         subst_pf /= r;
+         rf_cache.reset(nullptr);
+         return *this;
+      }
+
+      template <typename T>
+      std::enable_if_t<is_base_polynomial<T>::value, PuiseuxFraction_subst&>
+      operator/= (const T& r)
+      {
+         int old_den = exp_den;
+         auto poly_int = exp_to_int(r,exp_den);
+         if (old_den != exp_den)
+            subst_pf = subst_pf.template substitute_monomial<int>(exp_den/old_den);
+         subst_pf /= poly_int;
+         normalize_den();
+         rf_cache.reset(nullptr);
+         return *this;
+      }
+
+      PuiseuxFraction_subst& operator/= (const PuiseuxFraction_subst& r)
+      {
+         int new_den = lcm(exp_den,r.exp_den);
+         if (new_den != exp_den)
+            subst_pf = subst_pf.template substitute_monomial<int>(new_den/exp_den);
+         if (new_den != r.exp_den) {
+            subst_pf /= r.subst_pf.template substitute_monomial<int>(new_den/r.exp_den);
+         } else {
+            subst_pf /= r.subst_pf;
+         }
+         exp_den = new_den;
+         normalize_den();
+         rf_cache.reset(nullptr);
+         return *this;
+      }
+
+      /// EQUALITY
+      bool operator== (const PuiseuxFraction_subst& r) const
+      {
+         return exp_den == r.exp_den && subst_pf == r.subst_pf;
+      }
+
+      template <typename T>
+      std::enable_if_t<fits_as_coefficient<T>::value, bool>
+      operator== (const T& r) const
+      {
+         return subst_pf == r;
+      }
+
+      template <typename T>
+      std::enable_if_t<is_base_polynomial<T>::value, bool>
+      operator== (const T& r) const
+      {
+         int den = exp_den;
+         return subst_pf == exp_to_int(r,den) && exp_den == den;
+      }
+
+      template <typename Exp=Exponent, typename T>
+      auto substitute_monomial(const T& t, std::enable_if_t<!std::is_same<Exp,Rational>::value,std::nullptr_t> = nullptr) const
+      {
+         return PuiseuxFraction_generic<MinMax,Coefficient,Exp>(subst_pf.template substitute_monomial<Exp>(t/exp_den));
+      }
+
+      template <typename Exp=Exponent,typename T>
+      auto substitute_monomial(const T& t, std::enable_if_t<std::is_same<Exp,Rational>::value,std::nullptr_t> = nullptr) const
+      {
+         Rational exp(t);
+         exp /= exp_den;
+         return PuiseuxFraction_subst(subst_pf.template substitute_monomial<int>(numerator(exp)),denominator(exp));
+      }
+
+
+      size_t get_hash() const noexcept { size_t h = exp_den; hash_combine(h,subst_pf.get_hash()); return h; }
+
+#if POLYMAKE_DEBUG
+      void dump() const __attribute__((used))
+      {
+         std::cerr << "exp_den: " << exp_den << std::endl;
+         subst_pf.dump();
+      }
+#endif
+
+      template <typename,typename,typename>
+      friend class PuiseuxFraction;
+
+};
+
+
+template <typename MinMax, typename Coefficient=Rational, typename Exponent=Rational>
+class PuiseuxFraction : public pf_impl_chooser<MinMax,Coefficient,Exponent>::type {
+   protected:
+      using impl_type = typename pf_impl_chooser<MinMax,Coefficient,Exponent>::type;
+      using base = PuiseuxFraction_base<MinMax,Coefficient,Exponent>;
+
+   public:
+      using rf_type = typename base::rf_type;
+      using polynomial_type = typename base::polynomial_type;
+      template <typename T>
+      using fits_as_coefficient = typename base::template fits_as_coefficient<T>;
+      template <typename T>
+      using fits_as_particle = typename base::template fits_as_particle<T>;
+      template <typename T>
+      using is_compatible = typename base::template is_compatible<T>;
+      template <typename T>
+      using is_comparable = typename base::template is_comparable<T>;
+      template <typename T>
+      using is_comparable_or_same = typename base::template is_comparable_or_same<T>;
+
+      // constructors
+      using impl_type::impl_type;
+
+      PuiseuxFraction() : impl_type() {}
+
+      // upgrade from impl
+      PuiseuxFraction(const impl_type& pf) : impl_type(pf) {}
+
+
+      template <typename T,
+               typename=std::enable_if_t<fits_as_particle<T>::value || std::is_same<T,rf_type>::value>>
+      PuiseuxFraction& operator= (const T& t)
+      {
+         static_cast<impl_type&>(*this) = t;
+         return *this;
+      }
+
+      // forwards to impl type
+
+      friend
+      PuiseuxFraction operator- (const PuiseuxFraction& me)
+      {
+         return impl_type(me).negate();
+      }
+
+      PuiseuxFraction& negate()
+      {
+         impl_type::negate();
+         return *this;
+      }
+
+      // PLUS
+      template <typename T,
+                typename=std::enable_if_t<is_compatible<T>::value>>
+      PuiseuxFraction& operator+= (const T& r)
+      {
+         impl_type::operator+=(r);
+         return *this;
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<fits_as_particle<T>::value>>
+      friend
+      PuiseuxFraction operator+ (const PuiseuxFraction& l, const T& r)
+      {
+         return impl_type(l) += r;
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<fits_as_particle<T>::value>>
+      friend
+      PuiseuxFraction operator+ (const T& l, const PuiseuxFraction& r)
+      {
+         return impl_type(l) += r;
+      }
+
+      friend
+      PuiseuxFraction operator+ (const PuiseuxFraction& l, const PuiseuxFraction& r)
+      {
+         return impl_type(l) += impl_type(r);
+      }
+
+      // MINUS
+      template <typename T,
+                typename=std::enable_if_t<is_compatible<T>::value>>
+      PuiseuxFraction& operator-= (const T& r)
+      {
+         impl_type::operator+=(-r);
+         return *this;
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<fits_as_particle<T>::value>>
+      friend
+      PuiseuxFraction operator- (const PuiseuxFraction& l, const T& r)
+      {
+         return impl_type(l) += -r;
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<fits_as_particle<T>::value>>
+      friend
+      PuiseuxFraction operator- (const T& l, const PuiseuxFraction& r)
+      {
+         return impl_type(l) += -r;
+      }
+
+      friend
+      PuiseuxFraction operator- (const PuiseuxFraction& l, const PuiseuxFraction& r)
+      {
+         return impl_type(l) += -r;
+      }
+
+
+      // MULTIPLICATION
+      template <typename T,
+                typename=std::enable_if_t<is_compatible<T>::value>>
+      PuiseuxFraction& operator*= (const T& r)
+      {
+         impl_type::operator*=(r);
+         return *this;
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<fits_as_particle<T>::value>>
+      friend
+      PuiseuxFraction operator* (const PuiseuxFraction& l, const T& r)
+      {
+         return impl_type(l) *= r;
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<fits_as_particle<T>::value>>
+      friend
+      PuiseuxFraction operator* (const T& l, const PuiseuxFraction& r)
+      {
+         return impl_type(l) *= r;
+      }
+
+      friend
+      PuiseuxFraction operator* (const PuiseuxFraction& l, const PuiseuxFraction& r)
+      {
+         return impl_type(l) *= r;
+      }
+
+
+      // DIVISION
+      template <typename T,
+                typename=std::enable_if_t<is_compatible<T>::value>>
+      PuiseuxFraction& operator/= (const T& r)
+      {
+         impl_type::operator/=(r);
+         return *this;
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<fits_as_particle<T>::value>>
+      friend
+      PuiseuxFraction operator/ (const PuiseuxFraction& l, const T& r)
+      {
+         return impl_type(l) /= r;
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<fits_as_particle<T>::value>>
+      friend
+      PuiseuxFraction operator/ (const T& l, const PuiseuxFraction& r)
+      {
+         return impl_type(l) /= r;
+      }
+
+      friend
+      PuiseuxFraction operator/ (const PuiseuxFraction& l, const PuiseuxFraction& r)
+      {
+         return impl_type(l) /= r;
+      }
+
+
+      template <typename VectorType, typename T> static
+      std::enable_if_t<fits_as_coefficient<T>::value && is_field_of_fractions<Exponent>::value,
+                              const LazyVector1<const VectorType&, operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type> > >
+      evaluate(const GenericVector<VectorType, PuiseuxFraction>& vec, const T& t, const long exp=1)
+      {
+         Integer exp_lcm(exp);
+         for (auto v = entire(vec.top()); !v.at_end(); ++v)
+            exp_lcm = lcm(denominators(numerator(*v).monomials_as_vector() | denominator(*v).monomials_as_vector()) | exp_lcm);
+
+         const double t_approx = std::pow(convert_to<double>(t),1.0/convert_to<double>(exp_lcm));
+         const typename algebraic_traits<T>::field_type baseval = exp_lcm == exp ? t : t_approx;
+
+         return LazyVector1<
+                  const VectorType&,
+                  operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type>
+                >(vec.top(), operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type>(baseval, long(exp_lcm)));
+      }
+
+      template <typename VectorType, typename T> static
+      std::enable_if_t<fits_as_coefficient<T>::value && std::numeric_limits<Exponent>::is_integer,
+                              const LazyVector1<const VectorType&, operations::evaluate<PuiseuxFraction,T> > >
+      evaluate(const GenericVector<VectorType,PuiseuxFraction>& vec, const T& t, const long exp=1)
+      {
+         return LazyVector1<const VectorType&, operations::evaluate<PuiseuxFraction,T> >(vec.top(),operations::evaluate<PuiseuxFraction,T>(t,exp));
+      }
+
+      template <typename MatrixType, typename T> static
+      std::enable_if_t<fits_as_coefficient<T>::value && is_field_of_fractions<Exponent>::value,
+                              const LazyMatrix1<const MatrixType&, operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type> > >
+      evaluate(const GenericMatrix<MatrixType, PuiseuxFraction>& m, const T& t, const long exp=1)
+      {
+         Integer exp_lcm(exp);
+         for (auto e = entire(concat_rows(m.top())); !e.at_end(); ++e)
+            exp_lcm = lcm(denominators(numerator(*e).monomials_as_vector() | denominator(*e).monomials_as_vector()) | exp_lcm);
+
+         const double t_approx = std::pow(convert_to<double>(t),1.0/convert_to<double>(exp_lcm));
+         const typename algebraic_traits<T>::field_type baseval = exp_lcm == exp ? t : t_approx;
+
+         return LazyMatrix1<
+                  const MatrixType&,
+                  operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type>
+                >(m.top(), operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type>(baseval, long(exp_lcm)));
+      }
+
+      template <typename MatrixType, typename T> static
+      std::enable_if_t<fits_as_coefficient<T>::value && std::numeric_limits<Exponent>::is_integer,
+                              const LazyMatrix1<const MatrixType&, operations::evaluate<PuiseuxFraction, T> > >
+      evaluate(const GenericMatrix<MatrixType, PuiseuxFraction>& m, const T& t, const long exp=1)
+      {
+         return LazyMatrix1<
+                  const MatrixType&,
+                  operations::evaluate<PuiseuxFraction,T>
+                >(m.top(),operations::evaluate<PuiseuxFraction,T>(t,exp));
+      }
+
+
+
+      template <typename VectorType> static
+      const LazyVector1<const VectorType&, operations::evaluate<PuiseuxFraction,double> >
+      evaluate_float(const GenericVector<VectorType,PuiseuxFraction>& vec, const double t)
+      {
+         return LazyVector1<const VectorType&, operations::evaluate<PuiseuxFraction,double> >(vec.top(),operations::evaluate<PuiseuxFraction,double>(t));
+      }
+
+      template <typename MatrixType> static
+      const LazyMatrix1<const MatrixType&, operations::evaluate<PuiseuxFraction,double> >
+      evaluate_float(const GenericMatrix<MatrixType,PuiseuxFraction>& vec, const double t)
+      {
+         return LazyMatrix1<const MatrixType&, operations::evaluate<PuiseuxFraction,double> >(vec.top(),operations::evaluate<PuiseuxFraction,double>(t));
+      }
+
+
+      template <typename T,
+                typename=std::enable_if_t<is_comparable_or_same<T>::value>>
+      friend
+      bool operator< (const PuiseuxFraction& l, const T& r)
+      {
+         return l.compare(r) < 0;
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<is_comparable<T>::value>>
+      friend
+      bool operator< (const T& l, const PuiseuxFraction& r)
+      {
+         return r.compare(l) > 0;
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<is_comparable_or_same<T>::value>>
+      friend
+      bool operator<= (const PuiseuxFraction& l, const T& r)
+      {
+         return l.compare(r) <= 0;
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<is_comparable<T>::value>>
+      friend
+      bool operator<= (const T& l, const PuiseuxFraction& r)
+      {
+         return r.compare(l) >= 0;
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<is_comparable_or_same<T>::value>>
+      friend
+      bool operator> (const PuiseuxFraction& l, const T& r)
+      {
+         return l.compare(r) > 0;
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<is_comparable<T>::value>>
+      friend
+      bool operator> (const T& l, const PuiseuxFraction& r)
+      {
+         return r.compare(l) < 0;
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<is_comparable_or_same<T>::value>>
+      friend
+      bool operator>= (const PuiseuxFraction& l, const T& r)
+      {
+         return l.compare(r) >= 0;
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<is_comparable<T>::value>>
+      friend
+      bool operator>= (const T& l, const PuiseuxFraction& r)
+      {
+         return r.compare(l) <= 0;
+      }
+
+      static
+      const Array<std::string>& get_var_names()
+      {
+         return rf_type::get_var_names();
+      }
+
+      static
+      void set_var_names(const Array<std::string>& names)
+      {
+         rf_type::set_var_names(names);
+      }
+
+      static
+      void reset_var_names()
+      {
+         rf_type::reset_var_names();
+      }
+
+      /// COMPARISON depending on Min / Max
+      // Max::orientation = -1 and we need the highest term
+      // Min::orientation =  1 and we need the lowest term
+      int compare(const PuiseuxFraction& pf) const
+      {
+         if (std::is_same<Max, MinMax>::value)
+            return  sign((numerator(*this)*denominator(pf) - numerator(pf)*denominator(*this)).lc());
+         else
+            return sign(denominator(*this).lc(-1)) * sign(denominator(pf).lc(-1)) *
+                   sign((numerator(*this)*denominator(pf) - numerator(pf)*denominator(*this)).lc(-1));
+      }
+
+      template <typename T>
+      std::enable_if_t<fits_as_coefficient<T>::value, int>
+      compare(const T& c) const
+      {
+         if (std::is_same<Max, MinMax>::value) {
+            if (!numerator(*this).trivial() && (is_zero(c) || numerator(*this).deg() > denominator(*this).deg()))
+               return sign(numerator(*this).lc());
+            else if (numerator(*this).deg() < denominator(*this).deg())
+               return -sign(c);
+            else
+               return sign(numerator(*this).lc()-c);
+         } else {
+            const Exponent minus_one = -one_value<Exponent>();
+            if (!numerator(*this).trivial() && (is_zero(c) || numerator(*this).lower_deg() < denominator(*this).lower_deg()))
+               return sign(numerator(*this).lc(minus_one)) * sign(denominator(*this).lc(minus_one));
+            else if (numerator(*this).lower_deg() > denominator(*this).lower_deg())
+               return -sign(c);
+            else
+               return sign(numerator(*this).lc(minus_one) * sign(denominator(*this).lc(minus_one)) - c*abs(denominator(*this).lc(minus_one)));
+         }
+      }
+
+
+      template <typename T>
+      std::enable_if_t<is_unipolynomial_type<T, Coefficient, Exponent>::value, int>
+      compare(const T& c) const
+      {
+         return compare(PuiseuxFraction(c));
+      }
+
+      int compare(const TropicalNumber<MinMax, Exponent>& c) const
+      {
+         return val().compare(c);
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<is_comparable_or_same<T>::value>>
+      bool operator== (const T& r) const
+      {
+         return impl_type::operator==(r);
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<is_comparable<T>::value>>
+      friend
+      bool operator== (const T& l, const PuiseuxFraction& r)
+      {
+         return r.operator==(l);
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<is_comparable_or_same<T>::value>>
+      friend
+      bool operator!= (const PuiseuxFraction& l, const T& r)
+      {
+         return !(l == r);
+      }
+
+      template <typename T,
+                typename=std::enable_if_t<is_comparable<T>::value>>
+      friend
+      bool operator!= (const T& l, const PuiseuxFraction& r)
+      {
+         return !(r == l);
+      }
+
+      friend
+      bool operator== (const PuiseuxFraction& l, const TropicalNumber<MinMax, Exponent>& r)
+      {
+         return l.val() == r;
+      }
+
+      static
+      void swap_var_names(PolynomialVarNames& other_names)
+      {
+         rf_type::swap_var_names(other_names);
+      }
+
+      friend PuiseuxFraction abs(const PuiseuxFraction& pf)
+      {
+         return pf >= 0 ? pf : -pf;
+      }
+
+      friend bool abs_equal(const PuiseuxFraction& pf1, const PuiseuxFraction& pf2)
+      {
+         return abs(pf1).compare(abs(pf2)) == 0;
+      }
+
+      TropicalNumber<MinMax, Exponent> val() const
+      {
+         if (std::is_same<MinMax, Max>::value)
+            return TropicalNumber<MinMax, Exponent>(numerator(*this).deg() - denominator(*this).deg());
+         else
+            return TropicalNumber<MinMax, Exponent>(numerator(*this).lower_deg() - denominator(*this).lower_deg());
+      }
+
+      explicit operator TropicalNumber<MinMax, Exponent> () const
+      {
+         return val();
+      }
+
+      template <typename Output, typename Order>
+      void pretty_print(Output& out, const Order& order) const
+      {
+         out << '(';
+         static_cast<polynomial_type>(numerator(*this)).print_ordered(out, order);
+         out << ')';
+         if (!denominator(*this).is_one()) {
+            out << "/(";
+            static_cast<polynomial_type>(denominator(*this)).print_ordered(out, order);
+            out << ')';
+         }
+      }
+
+      template <typename Output> friend
+      Output& operator<< (GenericOutput<Output>& out, const PuiseuxFraction& pf)
+      {
+         pf.pretty_print(out.top(),-MinMax::orientation());
+         return out.top();
+      }
+
+      // this evaluates at t^exp_lcm and exp_lcm must be large enough such that this makes all needed
+      // exponents integral
+      template <typename T,
+                typename=std::enable_if_t<fits_as_coefficient<T>::value>>
+      typename algebraic_traits<T>::field_type
+      evaluate_exp(const T& t, const long exp_lcm=1) const
+      {
+         typedef typename algebraic_traits<T>::field_type field;
+         field val = numerator(*this).evaluate(t,exp_lcm);
+         val /= denominator(*this).evaluate(t,exp_lcm);
+         return val;
+      }
+
+      double evaluate_float(const double arg) const
+      {
+         double val = numerator(*this).evaluate_float(arg);
+         val /= denominator(*this).evaluate_float(arg);
+         return val;
+      }
+
+
+      template <typename T>
+      std::enable_if_t<is_field_of_fractions<Exponent>::value && fits_as_coefficient<T>::value,
+                       typename algebraic_traits<T>::field_type>
+      evaluate(const T& t, const long exp=1) const
+      {
+         Integer exp_lcm(exp);
+         exp_lcm = lcm(denominators(numerator(*this).monomials_as_vector() | denominator(*this).monomials_as_vector()) | exp_lcm);
+         const double t_approx = std::pow(convert_to<double>(t),1.0/convert_to<double>(exp_lcm));
+         Coefficient base_coeff = exp_lcm == exp ? t : t_approx;
+
+         return this->evaluate_exp(base_coeff, long(exp_lcm));
+      }
+
+      template <typename T>
+      std::enable_if_t<std::numeric_limits<Exponent>::is_integer && fits_as_coefficient<T>::value,
+                       typename algebraic_traits<T>::field_type>
+      evaluate(const T& t, const long exp=1) const
+      {
+         return this->evaluate_exp(t, exp);
+      }
+
+      template <typename Exp=Exponent,typename T>
+      PuiseuxFraction<MinMax,Coefficient,Exp> substitute_monomial(const T& t) const
+      {
+         return impl_type::template substitute_monomial<Exp>(t);
+      }
+};
+
+
 
 template <typename MinMax, typename Coefficient, typename Exponent>
 inline
@@ -685,14 +1257,21 @@ template <typename MinMax, typename Coefficient, typename Exponent>
 struct spec_object_traits< Serialized< PuiseuxFraction<MinMax, Coefficient, Exponent> > >
    : spec_object_traits<is_composite> {
 
-   typedef PuiseuxFraction<MinMax, Coefficient, Exponent> masquerade_for;
+   using masquerade_for = PuiseuxFraction<MinMax, Coefficient, Exponent>;
+   using rf_type = typename masquerade_for::rf_type;
+   using elements = rf_type;
 
-   typedef RationalFunction<Coefficient, Exponent> elements;
-
-   template <typename Me, typename Visitor>
-   static void visit_elements(Me& me, Visitor& v)
+   template <typename Visitor>
+   static void visit_elements(Serialized<masquerade_for>& me, Visitor& v)
    {
-      v << me.rf;
+      rf_type tmp;
+      v << tmp;
+      me = masquerade_for(tmp);
+   }
+   template <typename Visitor>
+   static void visit_elements(const Serialized<masquerade_for>& me, Visitor& v)
+   {
+      v << me.to_rationalfunction();
    }
 };
 
@@ -707,13 +1286,13 @@ struct choose_generic_object_traits< PuiseuxFraction<MinMax,Coefficient,Exponent
    static
    bool is_zero(const persistent_type& p)
    {
-      return pm::is_zero(p.rf);
+      return p.is_zero();
    }
 
    static
    bool is_one(const persistent_type& p)
    {
-      return pm::is_one(p.rf);
+      return p.is_one();
    }
 
    static
@@ -766,7 +1345,7 @@ namespace std {
    };
 }
 
-#endif // POLYMAKE_VALUATED_RATIONAL_FUNCTION_H
+#endif // POLYMAKE_PUISEUX_FRACTION_H
 
 // Local Variables:
 // mode:C++

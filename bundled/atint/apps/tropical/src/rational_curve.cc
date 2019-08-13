@@ -756,7 +756,7 @@ UserFunction4perl("# @category Abstract rational curves"
                   &curveFromMetric,"rational_curve_from_metric(Vector<Rational>)");
 
 UserFunctionTemplate4perl("# @category Abstract rational curves"
-                          "# Takes a vector from Q^((n-1) over 2) that lies in M_0,n (in its matroid coordinates) "
+                          "# Takes a vector from $ Q^{(n-1) over 2} $ that lies in $ M_{0,n} $ (in its matroid coordinates) "
                           "# and computes the corresponding rational curve."
                           "# In the isomorphism of the metric curve space and the moduli coordinates"
                           "# the last leaf is considered as the special leaf"

@@ -16,7 +16,7 @@
 #
 #  Mostly forwarding to ninja, for backward compatibility reasons
 #
-.PHONY: all install docs release-docs clean distclean test
+.PHONY: all install clean distclean test
 
 NINJA := ninja
 
@@ -35,13 +35,6 @@ all install :
 
 test : all
 	perl/polymake --script run_testcases
-
-docs : all
-	perl/polymake --script generate_docs ${BuildRoot}/doc
-	$(if ${DeveloperMode}, perl/polymake --script doxygen ${BuildRoot}/doc/PTL >/dev/null 2>&1)
-
-release-docs : all
-	perl/polymake --ignore-config --script generate_docs
 
 clean :
 	${NINJA} -C $(_BuildDir) clean.all

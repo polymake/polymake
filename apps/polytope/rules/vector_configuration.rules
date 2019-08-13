@@ -164,9 +164,7 @@ user_function deletion(VectorConfiguration $) {
 # @return VectorConfiguration
 user_function projection<Scalar>(VectorConfiguration<Scalar>; $=[ ], { revert=>0 }) {
    my ($P, $indices, $options) = @_;
-   my $first_coord = ($P->isa("PointConfiguration") ? 1 : 0);
-   my $linear_hull_section = ($P->isa("PointConfiguration") ? "AFFINE_HULL" : "LINEAR_SPAN");
-   projection_impl($P, "VECTOR", $linear_hull_section, $first_coord, $indices, $options);
+   projection_vectorconfiguration_impl($P, $indices, $options);
 }
 
 

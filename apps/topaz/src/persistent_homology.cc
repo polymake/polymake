@@ -186,18 +186,16 @@ persistent_homology(Filtration<MatrixType> F, int i, int p, int k)
 
 UserFunctionTemplate4perl("# @category Other"
                           "# Given a Filtration and three indices i,p and k, this computes the p-persistent k-th homology group of the i-th frame of the filtration for coefficients from any PID. Returns a basis for the free part and a list of torsion coefficients with bases."
-                          "# @param Filtration<MatrixType> F"
+                          "# @param Filtration<Matrix<__Scalar__>> F"
                           "# @param Int i the filtration frame"
                           "# @param Int p the number of frames to consider"
                           "# @param Int k the dimension in which to compute"
-                          "# @tparam MatrixType type of boundary matrices"
-                          "# @return Pair<SparseMatrix<SCALAR>, List< Pair<SCALAR, SparseMatrix<SCALAR> > > >",
-                          "persistent_homology<MatrixType>($$$$)");
+                          "# @return Pair<SparseMatrix<__Scalar__>, List<Pair<__Scalar__, SparseMatrix<__Scalar__>>>>",
+                          "persistent_homology(Filtration,$$$)");
 
 UserFunctionTemplate4perl("# @category Other"
                           "# Given a Filtration, this computes its persistence barcodes in all dimension, using the algorithm described in the 2005 paper 'Computing Persistent Homology' by Afra Zomorodian and Gunnar Carlsson. It only works for field coefficients."
-                          "# @param Filtration<MatrixType> F"
-                          "# @tparam MatrixType type of the boundary matrices"
-                          "# @return Array<List<Pair<Int, Int> > >",
-                          "persistent_homology<MatrixType>($)");
+                          "# @param Filtration F"
+                          "# @return Array<List<Pair<Int, Int>>>",
+                          "persistent_homology(Filtration)");
 } }

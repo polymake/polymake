@@ -115,7 +115,7 @@ sub do_reconfigure {
             &$code;
             $rc = $self->rulefiles->{$rule_key};
          } else {
-            $rc=parse_rulefile($self, $rule_key, $filename);
+            $rc = parse_rulefile($self, $rule_key, $filename);
          }
          if ($rc && defined (my $to_wake=$rules_to_wake{$self})) {
             if (defined ($to_wake=delete $to_wake->{$rule_key})) {
@@ -199,7 +199,7 @@ sub unconfigure {
             &$code;
          } else {
             $self->configured->{$rule_key} = -$load_time;
-            $self->custom->handler->need_save = 1;
+            $self->custom->set_changed;
          }
       } elsif (defined $config_state) {
          die "rulefile $rulefile is already unconfigured\n";
@@ -218,7 +218,7 @@ sub valid_configured_entry {
       if ($rule_key =~ m{^/}) {
          -f $rule_key or do {
             delete $self->configured->{$rule_key};
-            $self->custom->handler->need_save = true;
+            $self->custom->set_changed;
             false
          }
       } else {
@@ -230,7 +230,7 @@ sub valid_configured_entry {
             !$ext || $ext->is_active;
          } else {
             delete $self->configured->{$rule_key};
-            $self->custom->handler->need_save = true;
+            $self->custom->set_changed;
             false
          }
       }
@@ -351,24 +351,23 @@ sub include_rule {
    if (my $code = $self->rule_code->{$rule_key}) {
       my $credit = $self->credits_by_rulefile->{$rule_key};
       if (defined($credit) && !is_object($credit)) {
-         local bless $self;
          my $reread = new Reconf($self, true);
-         local unshift @INC, $self;
          no strict 'refs';
          local ref *{$self->pkg."::self"} = sub { $reread };
          &$code;
       }
    } else {
-      my ($rulefile, $ext_URI)=split /\@/, $rule_key;
-      local $extension=$Extension::registered_by_URI{$ext_URI} if $ext_URI;
-      my $conf=$self->configured->{$rule_key};
-      if ($conf>0 || !defined($conf)) {
-         local $Shell=new NoShell();
+      local bless $self;
+      my ($rulefile, $ext_URI) = split /\@/, $rule_key;
+      local $extension = $Extension::registered_by_URI{$ext_URI} if $ext_URI;
+      my $conf = $self->configured->{$rule_key};
+      if ($conf > 0 || !defined($conf)) {
+         local $Shell = new NoShell();
          include_rules($self, $rulefile);
       } else {
+         my $save_buf;
          delete local $self->rulefiles->{$rule_key};
-         delete local $self->configured->{$rule_key};
-         local bless $self;
+         tied(%{$self->configured})->hide($rule_key, $save_buf);
          include_rules($self, $rulefile);
       }
    }
@@ -406,22 +405,22 @@ sub add_credit {
 }
 
 sub add_custom {
-   my $self=shift;
-   if (!$self->simulate_failure  and  my $var=$self->application->custom->re_tie(@_)) {
-      $var->extension=$extension;
+   my $self = shift;
+   if (!$self->simulate_failure  and  defined(my $var = $self->application->custom->re_tie(@_))) {
+      $var->extension = $extension;
    }
 }
 
 sub close_preamble {
-   my ($app, $rule_key, $line, $success)=@_;
+   my ($app, $rule_key, $line, $success) = @_;
    if ($line >= $app->preamble_end->{$rule_key}) {
-      ($app->rulefiles->{$rule_key} &&= return 0)=$success;   # avoid repeated execution of the rulefile body
+      ($app->rulefiles->{$rule_key} &&= return 0) = $success;   # avoid repeated execution of the rulefile body
    }
    $success;
 }
 
 sub configure {
-   my ($self, $code, $rule_key, $line, $optional)=@_;
+   my ($self, $code, $rule_key, $line, $optional) = @_;
    if ($self->simulate_failure) {
       $line < $self->preamble_end->{$rule_key};
    } else {
@@ -430,7 +429,7 @@ sub configure {
 }
 
 sub include_required {
-   my ($self, $block, $rule_key, $line)=@_;
+   my ($self, $block, $rule_key, $line) = @_;
    if ($self->simulate_failure) {
       $line < $self->preamble_end->{$rule_key};
    } else {
@@ -439,7 +438,7 @@ sub include_required {
 }
 
 sub require_ext {
-   my ($self, $block, $rule_key, $line)=@_;
+   my ($self, $block, $rule_key, $line) = @_;
    if ($self->simulate_failure) {
       $line < $self->preamble_end->{$rule_key};
    } else {
@@ -448,8 +447,8 @@ sub require_ext {
 }
 
 sub AUTOLOAD {
-   my $self=shift;
-   my ($method)= $AUTOLOAD =~ /::(\w+)$/;
+   my $self = shift;
+   my ($method) = $AUTOLOAD =~ /::(\w+)$/;
    $self->application->$method(@_);
 }
 
@@ -478,22 +477,24 @@ sub add_credit {
 }
 
 sub add_custom {
-   my ($self, $varname, $help_text, $state, $pkg)=@_;
+   my ($self, $varname, $help_text, $state, $pkg) = @_;
    $self->application->custom->unset($varname, $pkg) if $state;
 }
 
 # pretend the last configuration step in the preamble to fail
 sub configure {
-   my ($self, $code, $rule_key, $line)=@_;
+   my ($self, $code, $rule_key, $line) = @_;
    $line < $self->application->preamble_end->{$rule_key} or do {
-      $self->application->configured->{$rule_key}=-$load_time;
-      $self->application->custom->handler->need_save=1;
+      $self->application->configured->{$rule_key} = -$load_time;
+      $self->application->custom->set_changed;
       0
    }
 }
 
-*include_required=\&configure;
-*require_ext=\&configure;
+*include_required = \&configure;
+*require_ext = \&configure;
+
+sub include_rule_block {}
 
 ###############################################################################################
 package Polymake::Core::Extension;
@@ -559,10 +560,10 @@ sub obliterate {
             $app->custom->obliterate_extension($self);
             $app->cpp->obliterate_extension($self);
             my $had_configured;
-            while (my ($rule_key)=each %{$app->configured}) {
+            while (my ($rule_key) = each %{$app->configured}) {
                if (index($rule_key, '@'.$self->URI)==0) {
                   delete $app->configured->{$rule_key};
-                  $had_configured=1;
+                  $had_configured = true;
                }
             }
             if ($had_configured) {
@@ -1281,15 +1282,9 @@ sub unconfigure {
 ###############################################################################################
 sub show_unconfigured {
    my (%shown_credits, $credit, $shown);
-   foreach my $rule_key ($application->list_configured(-1)) {
-      print "$rule_key\n",
-            ($credit = $application->first_credit_in($rule_key) and !($shown_credits{$credit->product}++))
-            ? ($credit->text, "\n") : ();
-      $shown = true;
-   }
-   while (my ($name, $app)=each %{$application->used}) {
+   foreach my $app ($application, values %{$application->used}) {
       foreach my $rule_key ($app->list_configured(-1)) {
-         print "$name\::$rule_key\n",
+         print $app != $application ? $app->name."::" : "", $rule_key, "\n",
                ($credit = $app->first_credit_in($rule_key) and !($shown_credits{$credit->product}++))
                ? ($credit->text, "\n") : ();
          $shown = true;

@@ -51,6 +51,8 @@ public:
 
    virtual SingularIdeal_wrap* radical() const = 0;
 
+   virtual SingularIdeal_wrap* saturation(const Array<Polynomial<>>& rhs) const = 0;
+
    virtual SingularIdeal_wrap* initial_ideal() const = 0;
 
    virtual Matrix< std::pair<double,double> > solve() const = 0;
@@ -124,6 +126,10 @@ public:
       return SingularIdeal(singIdeal->radical());
    }
    
+   SingularIdeal saturation(const Array<Polynomial<>>& rhs) const  {
+      return SingularIdeal(singIdeal->saturation(rhs));
+   }
+
    perl::ListReturn primary_decomposition() const {
       Array<SingularIdeal_wrap*> pd = singIdeal->primary_decomposition();
       perl::ListReturn result;

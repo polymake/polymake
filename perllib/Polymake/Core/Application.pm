@@ -144,17 +144,17 @@ sub new {
       push @{$self->scriptpath}, $dir;
    }
 
-   local $plausibility_checks=$self->untrusted;
-   local $Shell=new NoShell();         # disable interactive configuration
+   local $plausibility_checks = $self->untrusted;
+   local $Shell = new NoShell();         # disable interactive configuration
 
-   $self->configured=namespaces::declare_var($self->pkg, "%configured");
-   $self->custom=$Custom->app_handler($self->pkg);
+   $self->configured = namespaces::declare_var($self->pkg, "%configured");
+   $self->custom = $Custom->app_handler($self->pkg);
    $self->custom->add('%configured', <<'.', Customize::State::config | Customize::State::hidden | Customize::State::accumulating, $self->pkg);
 Rulefiles with autoconfiguration sections and their exit codes.
 Value 0 denotes configuration failure, which disables the corresponding rulefile.
 .
-   $self->prefs=$Prefs->app_handler($self);
-   $self->cpp=new CPlusPlus::perApplication($self);
+   $self->prefs = $Prefs->app_handler($self);
+   $self->cpp = new CPlusPlus::perApplication($self);
    include_rules($self);
 
    foreach $extension (@Extension::active) {
@@ -164,9 +164,9 @@ Value 0 denotes configuration failure, which disables the corresponding rulefile
    }
 
    $self->cpp->load_private_wrapper;
-
+   $self->custom->end_loading;
    $self->prefs->end_loading;
-   if (length(my $cmds=$self->prefs->user_commands)) {
+   if (length(my $cmds = $self->prefs->user_commands)) {
       local $User::application = $self;
       local unshift @INC, $self;
       $self->eval_expr->("package Polymake::User; $cmds");
@@ -313,12 +313,12 @@ sub exclude_rule {
    if ($rulename =~ /^($id_re)::(.*)/o) {
       exclude_rule($self->used->{$1} || croak( "application $1 is not declared as USE'd or IMPORT'ed - may not load its rules here" ), "$2");
    } else {
-      if (my ($filename, $ext, $rule_key)=lookup_rulefile($self, $rulename)) {
+      if (my ($filename, $ext, $rule_key) = lookup_rulefile($self, $rulename)) {
          # don't exclude if already loaded from elsewhere
          if (!exists $self->rulefiles->{$rule_key}) {
-            $self->rulefiles->{$rule_key}=0;
+            $self->rulefiles->{$rule_key} = 0;
             if (defined (delete $self->configured->{$rule_key})) {
-               $self->custom->handler->need_save=1;
+               $self->custom->set_changed;
             }
          }
       } else {
@@ -598,10 +598,11 @@ sub get_custom_var {
 }
 
 sub _set_custom {
-   (my ($self, $alt, $name, @tail)=@_)>1 or croak( "custom variable, array, hash, or hash element assignment expected" );
-   my ($bunch, $var)=find_custom_var($self,$name,$alt);
+   (my ($self, $alt, $name, @tail) = @_) > 1
+     or croak( "custom variable, array, hash, or hash element assignment expected" );
+   my ($bunch, $var) = find_custom_var($self, $name, $alt);
    $var->set(@tail);
-   $bunch->handler->need_save=1;
+   $bunch->set_changed;
 }
 
 sub set_custom {
@@ -609,10 +610,11 @@ sub set_custom {
 }
 
 sub _reset_custom {
-   (my ($self, $alt, $name, @tail)=@_)>1 or croak( "custom variable, array, hash, or hash element expected" );
-   my ($bunch, $var)=find_custom_var($self,$name,$alt);
+   (my ($self, $alt, $name, @tail) = @_) > 1
+     or croak( "custom variable, array, hash, or hash element expected" );
+   my ($bunch, $var) = find_custom_var($self, $name, $alt);
    $var->reset(@tail);
-   $bunch->handler->need_save=1;
+   $bunch->set_changed;
 }
 
 sub reset_custom {

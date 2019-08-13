@@ -127,7 +127,9 @@ struct alt_assignment : copy_constructor {
 };
 
 template <typename Ref>
-struct star : for_defined_only<Ref(const char*)> {
+struct star {
+   static Ref null(const char* it) { invalid_null_op(); }
+
    template <typename Iterator>
    static Ref execute(const char* it)
    {
@@ -136,7 +138,9 @@ struct star : for_defined_only<Ref(const char*)> {
 };
 
 template <typename Ptr>
-struct arrow : for_defined_only<Ptr(const char*)> {
+struct arrow {
+   static Ptr null(const char* it) { invalid_null_op(); }
+
    template <typename Iterator>
    static Ptr execute(const char* it)
    {
@@ -144,7 +148,9 @@ struct arrow : for_defined_only<Ptr(const char*)> {
    }
 };
 
-struct increment : for_defined_only<void(char*)> {
+struct increment {
+   static void null(char* it) { invalid_null_op(); }
+
    template <typename Iterator>
    static void execute(char* it)
    {
@@ -152,7 +158,7 @@ struct increment : for_defined_only<void(char*)> {
    }
 };
 
-struct decrement : for_defined_only<void(char*)> {
+struct decrement : increment {
    template <typename Iterator>
    static void execute(char* it)
    {
@@ -160,7 +166,9 @@ struct decrement : for_defined_only<void(char*)> {
    }
 };
 
-struct advance_plus : for_defined_only<void(char*, int)> {
+struct advance_plus {
+   static void null(char* it, int i) { invalid_null_op(); }
+
    template <typename Iterator>
    static void execute(char* it, int i)
    {
@@ -176,7 +184,9 @@ struct advance_minus : advance_plus {
    }
 };
 
-struct equality : for_defined_only<bool(const char*, const char*)> {
+struct equality {
+   static bool null(const char* it1, const char* it2) { invalid_null_op(); }
+
    template <typename Iterator>
    static bool execute(const char* it1, const char* it2)
    {
@@ -185,7 +195,9 @@ struct equality : for_defined_only<bool(const char*, const char*)> {
 };
 
 template <typename DiffType>
-struct difference : for_defined_only<DiffType(const char*, const char*)> {
+struct difference {
+   DiffType null(const char* it1, const char* it2) { invalid_null_op(); }
+
    template <typename Iterator>
    DiffType execute(const char* it1, const char* it2)
    {
@@ -193,7 +205,9 @@ struct difference : for_defined_only<DiffType(const char*, const char*)> {
    }
 };
 
-struct index : for_defined_only<int(const char*)> {
+struct index {
+   static int null(const char* it) { invalid_null_op(); }
+
    template <typename Iterator>
    static int execute(const char* it)
    {
@@ -201,7 +215,9 @@ struct index : for_defined_only<int(const char*)> {
    }
 };
 
-struct at_end : for_defined_only<bool(const char*)> {
+struct at_end {
+   static bool null(const char* it) { invalid_null_op(); }
+
    template <typename Iterator>
    static bool execute(const char* it)
    {
@@ -209,7 +225,9 @@ struct at_end : for_defined_only<bool(const char*)> {
    }
 };
 
-struct rewind : for_defined_only<void(char*)> {
+struct rewind {
+   static void null(char* it) { invalid_null_op(); }
+
    template <typename Iterator>
    static void execute(char* it)
    {
@@ -218,7 +236,9 @@ struct rewind : for_defined_only<void(char*)> {
 };
 
 template <typename Ref>
-struct random_it : for_defined_only<Ref(const char*, int)> {
+struct random_it {
+   static Ref null(const char* it, int i) { invalid_null_op(); }
+
    template <typename Iterator>
    static Ref execute(const char* it, int i)
    {
@@ -653,7 +673,7 @@ struct union_container_traits<ContainerList, Features, true, true>
 
 namespace unions {
 
-struct size : for_defined_only<int(const char*)> {
+struct size : index {
    template <typename Container>
    static int execute(const char *c)
    {
@@ -661,7 +681,7 @@ struct size : for_defined_only<int(const char*)> {
    }
 };
 
-struct dim : size {
+struct dim : index {
    template <typename Container>
    static int execute(const char *c)
    {
@@ -669,7 +689,7 @@ struct dim : size {
    };
 };
 
-struct empty : for_defined_only<bool(const char*)> {
+struct empty : at_end {
    template <typename Container>
    static bool execute(const char *c)
    {
@@ -677,7 +697,9 @@ struct empty : for_defined_only<bool(const char*)> {
    }
 };
 
-struct resize : for_defined_only<void(char*, int)> {
+struct resize {
+   static void null(char *c, int n) { invalid_null_op(); }
+
    template <typename Container>
    static void execute(char *c, int n)
    {
@@ -686,7 +708,9 @@ struct resize : for_defined_only<void(char*, int)> {
 };
 
 template <typename Iterator, typename Features>
-struct begin : for_defined_only<Iterator(char*)> {
+struct begin {
+   static Iterator null(char* c) { invalid_null_op(); }
+
    template <typename Container>
    static Iterator execute(char* c)
    {
@@ -704,7 +728,9 @@ struct end : begin<Iterator, Features> {
 };
 
 template <typename Iterator, typename Features>
-struct cbegin : for_defined_only<Iterator(const char*)> {
+struct cbegin {
+   static Iterator null(const char* c) { invalid_null_op(); }
+
    template <typename Container>
    static Iterator execute(const char* c)
    {
@@ -722,7 +748,7 @@ struct cend : cbegin<Iterator, Features> {
 };
 
 template <typename Iterator, typename Features>
-struct rbegin : for_defined_only<Iterator(char*)> {
+struct rbegin : begin<Iterator, Features> {
    template <typename Container>
    static Iterator execute(char* c)
    {
@@ -731,7 +757,7 @@ struct rbegin : for_defined_only<Iterator(char*)> {
 };
 
 template <typename Iterator, typename Features>
-struct rend : rbegin<Iterator, Features> {
+struct rend : begin<Iterator, Features> {
    template <typename Container>
    static Iterator execute(char* c)
    {
@@ -740,7 +766,7 @@ struct rend : rbegin<Iterator, Features> {
 };
 
 template <typename Iterator, typename Features>
-struct crbegin : for_defined_only<Iterator(const char*)> {
+struct crbegin : cbegin<Iterator, Features> {
    template <typename Container>
    static Iterator execute(const char* c)
    {
@@ -749,7 +775,7 @@ struct crbegin : for_defined_only<Iterator(const char*)> {
 };
 
 template <typename Iterator, typename Features>
-struct crend : crbegin<Iterator, Features> {
+struct crend : cbegin<Iterator, Features> {
    template <typename Container>
    static Iterator execute(const char* c)
    {
@@ -758,7 +784,9 @@ struct crend : crbegin<Iterator, Features> {
 };
 
 template <typename Ref>
-struct front : for_defined_only<Ref(char*)> {
+struct front {
+   static Ref null(char* c) { invalid_null_op(); }
+
    template <typename Container>
    static Ref execute(char* c)
    {
@@ -767,7 +795,9 @@ struct front : for_defined_only<Ref(char*)> {
 };
 
 template <typename Ref>
-struct cfront : for_defined_only<Ref(const char*)> {
+struct cfront {
+   static Ref null(const char* c) { invalid_null_op(); }
+
    template <typename Container>
    static Ref execute(const char* c)
    {
@@ -794,7 +824,9 @@ struct cback : cfront<Ref> {
 };
 
 template <typename Ref>
-struct random : for_defined_only<Ref(char*, int)> {
+struct random {
+   static Ref null(char* c, int i) { invalid_null_op(); }
+
    template <typename Container>
    static Ref execute(char* c, int i)
    {
@@ -803,7 +835,9 @@ struct random : for_defined_only<Ref(char*, int)> {
 };
 
 template <typename Ref>
-struct crandom : for_defined_only<Ref(const char*, int)> {
+struct crandom {
+   static Ref null(const char* c, int i) { invalid_null_op(); }
+
    template <typename Container>
    static Ref execute(const char* c, int i)
    {

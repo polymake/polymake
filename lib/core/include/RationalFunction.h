@@ -408,6 +408,12 @@ public:
       return *this;
    }
 
+   template <typename Exp=Exponent, typename T>
+   RationalFunction<Coefficient,Exp> substitute_monomial(const T& exponent) const
+   {
+      return RationalFunction<Coefficient,Exp>(num.template substitute_monomial<Exp>(exponent),den.template substitute_monomial<Exp>(exponent));
+   }
+
    friend
    bool operator== (const RationalFunction& l, const RationalFunction& r)
    {
@@ -578,15 +584,25 @@ template <typename Coefficient, typename Exponent>
 struct spec_object_traits< Serialized< RationalFunction<Coefficient, Exponent> > > :
    spec_object_traits<is_composite> {
 
-   typedef RationalFunction<Coefficient, Exponent> masquerade_for;
+   using masquerade_for = RationalFunction<Coefficient, Exponent>;
 
-   typedef cons<typename RationalFunction<Coefficient, Exponent>::term_hash,
-                typename RationalFunction<Coefficient, Exponent>::term_hash> elements;
+   using terms_type = typename masquerade_for::term_hash;
+   using poly_type = typename masquerade_for::polynomial_type;
 
-   template <typename Me, typename Visitor>
-   static void visit_elements(Me& me, Visitor& v)
+   using elements = cons<terms_type,terms_type>;
+
+   template <typename Visitor>
+   static void visit_elements(const Serialized<masquerade_for>& me, Visitor& v)
    {
-      v << me.num.get_mutable_terms() << me.den.impl_ptr->get_mutable_terms();
+      v << me.num.get_terms() << me.den.get_terms();
+   }
+
+   template <typename Visitor>
+   static void visit_elements(Serialized<masquerade_for>& me, Visitor& v)
+   {
+      terms_type num, den;
+      v << num << den;
+      me = masquerade_for(poly_type(num,1),poly_type(den,1));
    }
 
 };

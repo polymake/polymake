@@ -16,7 +16,7 @@
 # @topic category functions/Producing a group
 # With these clients you can produce objects of type [[Group]] -- groups from certain parameterized families, as stabilizers of sets in other groups or from different kinds of cycle notations.
 
-# @topic category /functions/Symmetry
+# @topic category functions/Symmetry
 # These functions are dealing with symmetries.
 
 # @topic category functions/Orbits

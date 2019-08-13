@@ -526,34 +526,34 @@ package Polymake::Core::Scheduler::TentativeRuleChain;
 # $suppliers: [ RuleDeputy ] : suppliers of filtered preconditions to be executed first
 
 sub filter_preconditions_with_cheap_suppliers {
-   my ($self, $pending, $suppliers)=@_;
+   my ($self, $pending, $suppliers) = @_;
    my $expensive_wt = $Rule::std_weight->[0];
    my $rule;
 
    # initialize the rule states
    foreach $rule (@{$self->rules}) {
       # set to 1 if too expensive
-      $rule->temp_state= (!exists $self->run->{$rule} && $rule->weight->[0] >= $expensive_wt) ||
-                         grep { !exists $self->run->{$_} } @{$rule->preconditions};
+      $rule->temp_state = (!exists $self->run->{$rule} && $rule->weight->[0] >= $expensive_wt) ||
+                          (grep { !exists $self->run->{$_} } @{$rule->preconditions}) != 0;
    }
    $_->temp_state=0 for @$pending;
 
    foreach $rule (@{$self->rules}) {
       if ($rule->temp_state) {
          # propagate the "too expensive" status to all dependees
-         $_->temp_state=1 for $self->get_resolved_consumers($rule);
+         $_->temp_state = 1 for $self->get_resolved_consumers($rule);
       }
    }
 
    my @result;
-   for (my ($i, $last)=(0, $#$pending); $i<=$last; ) {
+   for (my ($i, $last) = (0, $#$pending); $i <= $last; ) {
       if ($pending->[$i]->temp_state) {
          ++$i;
       } else {
          # mark all suppliers not executed yet
-         ($rule)=splice @$pending, $i, 1;
+         ($rule) = splice @$pending, $i, 1;
          push @result, $rule;
-         $_->temp_state=2 for grep { !exists $self->run->{$_} } $self->get_resolved_suppliers($rule);
+         $_->temp_state = 2 for grep { !exists $self->run->{$_} } $self->get_resolved_suppliers($rule);
          --$last;
       }
    }
@@ -561,11 +561,11 @@ sub filter_preconditions_with_cheap_suppliers {
    if (@result) {
       # make the transitive closure of all suppliers
       foreach $rule (reverse @{$self->rules}) {
-         if ($rule->temp_state==2) {
-            $_->temp_state=2 for grep { !exists $self->run->{$_} } $self->get_resolved_suppliers($rule);
+         if ($rule->temp_state == 2) {
+            $_->temp_state = 2 for grep { !exists $self->run->{$_} } $self->get_resolved_suppliers($rule);
          }
       }
-      @$suppliers=grep { $_->temp_state==2 } @{$self->rules};
+      @$suppliers = grep { $_->temp_state == 2 } @{$self->rules};
    }
    @result;
 }
@@ -739,6 +739,7 @@ sub producers_of_property {
          # store the vertex set in all production rules but actions
          my $vertex_set=($object->prop_vertex_sets->{$prop->key} //= [ $self->last_prop_vertex++ ]);
          my $prop_node=($self->prop_nodes->[$vertex_set->[0]] //= $self->rgr->add_node);
+
          foreach my $rule (@list) {
             if ($rule->flags & Rule::Flags::is_production) {
                push @{$rule->prop_vertex_sets}, $vertex_set;

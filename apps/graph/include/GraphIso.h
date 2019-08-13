@@ -23,6 +23,7 @@
 #include "polymake/Map.h"
 #include "polymake/vector"
 #include "polymake/list"
+#include "polymake/optional"
 
 namespace polymake { namespace graph {
 
@@ -133,8 +134,8 @@ public:
    template <typename TGraph, typename Colors>
    static bool prepare_colored(GraphIso& GI, const GenericGraph<TGraph>& G, const Colors& colors);
 
-   Array<int> find_permutation(const GraphIso& g2) const;
-   std::pair<Array<int>, Array<int>> find_permutations(const GraphIso& g2, int n_cols) const;
+   optional<Array<int>> find_permutation(const GraphIso& g2) const;
+   optional<std::pair<Array<int>, Array<int>>> find_permutations(const GraphIso& g2, int n_cols) const;
 
    int n_automorphisms() const { return n_autom; }
    const std::list<Array<int>>& automorphisms() const { return autom; }
@@ -143,7 +144,7 @@ public:
    long hash(long key) const;
 };
 
-template <typename TGraph1, typename TGraph2> inline
+template <typename TGraph1, typename TGraph2>
 bool isomorphic(const GenericGraph<TGraph1>& G1, const GenericGraph<TGraph2>& G2)
 {
    if (G1.is_directed != G2.is_directed || G1.nodes() != G2.nodes())
@@ -154,8 +155,8 @@ bool isomorphic(const GenericGraph<TGraph1>& G1, const GenericGraph<TGraph2>& G2
    return GI1==GI2;
 }
 
-template <typename TGraph1, typename Colors1, typename TGraph2, typename Colors2> inline
-typename std::enable_if<std::is_same<typename Colors1::value_type, typename Colors2::value_type>::value, bool>::type
+template <typename TGraph1, typename Colors1, typename TGraph2, typename Colors2>
+std::enable_if_t<std::is_same<typename Colors1::value_type, typename Colors2::value_type>::value, bool>
 isomorphic(const GenericGraph<TGraph1>& G1, const Colors1& colors1,
            const GenericGraph<TGraph2>& G2, const Colors2& colors2)
 {
@@ -167,63 +168,62 @@ isomorphic(const GenericGraph<TGraph1>& G1, const Colors1& colors1,
    return GraphIso::prepare_colored(GI1, G1, colors1, GI2, G2, colors2) && GI1==GI2;
 }
 
-template <typename TGraph1, typename TGraph2> inline
-Array<int> find_node_permutation(const GenericGraph<TGraph1>& G1, const GenericGraph<TGraph2>& G2)
+template <typename TGraph1, typename TGraph2, typename = std::enable_if_t<TGraph1::is_directed == TGraph2::is_directed>>
+optional<Array<int>>
+find_node_permutation(const GenericGraph<TGraph1>& G1, const GenericGraph<TGraph2>& G2)
 {
-   if (G1.is_directed != G2.is_directed)
-      throw no_match("graphs of different kind");
    if (G1.nodes() != G2.nodes())
-      throw no_match("graphs of different size");
+      return nullopt;
    if (G1.nodes() <= 1)
-      return Array<int>(G1.nodes(), 0);
+      return make_optional(Array<int>(G1.nodes(), 0));
    GraphIso GI1(G1), GI2(G2);
    return GI1.find_permutation(GI2);
 }
 
-template <typename TGraph1, typename Colors1, typename TGraph2, typename Colors2> inline
-typename std::enable_if<std::is_same<typename Colors1::value_type, typename Colors2::value_type>::value, Array<int>>::type
+template <typename TGraph1, typename Colors1, typename TGraph2, typename Colors2,
+          typename = std::enable_if_t<(TGraph1::is_directed == TGraph2::is_directed &&
+                                       std::is_same<typename Colors1::value_type, typename Colors2::value_type>::value)>>
+optional<Array<int>>
 find_node_permutation(const GenericGraph<TGraph1>& G1, const Colors1& colors1,
                       const GenericGraph<TGraph2>& G2, const Colors2& colors2)
 {
-   if (G1.is_directed != G2.is_directed)
-      throw no_match("graphs of different kind");
    if (G1.nodes() != G2.nodes())
-      throw no_match("graphs of different size");
+      return nullopt;
    if (G1.nodes() <= 1) {
       if (G1.nodes() == 1 && colors1.front() != colors2.front())
-         throw no_match("different colors");
-      return Array<int>(G1.nodes(), 0);
+         return nullopt;
+      return make_optional(Array<int>(G1.nodes(), 0));
    }
    GraphIso GI1, GI2;
    if (GraphIso::prepare_colored(GI1, G1, colors1, GI2, G2, colors2))
       return GI1.find_permutation(GI2);
    else
-      throw no_match("different colors");
+      return nullopt;
 }
 
-template <typename TGraph> inline
-Array< Array<int> > automorphisms(const GenericGraph<TGraph>& G)
+template <typename TGraph>
+Array<Array<int>> automorphisms(const GenericGraph<TGraph>& G)
 {
    GraphIso GI(G, true);
    return Array< Array<int> >(GI.n_automorphisms(), GI.automorphisms().begin());
 }
 
-template <typename TGraph, typename Colors> inline
-Array< Array<int> > automorphisms(const GenericGraph<TGraph>& G, const Colors& colors)
+template <typename TGraph, typename Colors>
+Array<Array<int>> automorphisms(const GenericGraph<TGraph>& G, const Colors& colors)
 {
    GraphIso GI;
    GraphIso::prepare_colored(GI, G, colors);
    return Array< Array<int> >(GI.n_automorphisms(), GI.automorphisms().begin());
 }
 
-template <typename TGraph> inline
+template <typename TGraph>
 int n_automorphisms(const GenericGraph<TGraph>& G)
 {
    GraphIso GI(G, true);
    return GI.n_automorphisms();
 }
 
-template <typename TGraph, typename Colors> inline
+template <typename TGraph, typename Colors>
 int n_automorphisms(const GenericGraph<TGraph>& G, const Colors& colors)
 {
    GraphIso GI;
@@ -231,8 +231,8 @@ int n_automorphisms(const GenericGraph<TGraph>& G, const Colors& colors)
    return GI.n_automorphisms();
 }
 
-template <typename TMatrix1, typename TMatrix2> inline
-typename std::enable_if<TMatrix1::is_symmetric==TMatrix2::is_symmetric, bool>::type
+template <typename TMatrix1, typename TMatrix2>
+std::enable_if_t<TMatrix1::is_symmetric == TMatrix2::is_symmetric, bool>
 isomorphic(const GenericIncidenceMatrix<TMatrix1>& M1, const GenericIncidenceMatrix<TMatrix2>& M2)
 {
    if (M1.rows() != M2.rows() || (!TMatrix1::is_symmetric && M1.cols() != M2.cols()))
@@ -243,36 +243,38 @@ isomorphic(const GenericIncidenceMatrix<TMatrix1>& M1, const GenericIncidenceMat
    return GI1==GI2;
 }
 
-template <typename TMatrix1, typename TMatrix2> inline
-typename std::enable_if<TMatrix1::is_symmetric && TMatrix2::is_symmetric, Array<int>>::type
+template <typename TMatrix1, typename TMatrix2>
+std::enable_if_t<TMatrix1::is_symmetric && TMatrix2::is_symmetric,
+                 optional<Array<int>>>
 find_row_permutation(const GenericIncidenceMatrix<TMatrix1>& M1, const GenericIncidenceMatrix<TMatrix2>& M2)
 {
    if (M1.rows() != M2.rows())
-      throw no_match("matrices of different dimensions");
+      return nullopt;
    if (M1.rows() == 0)
-      return Array<int>();
+      return make_optional(Array<int>());
    GraphIso GI1(M1), GI2(M2);
    return GI1.find_permutation(GI2);
 }
 
-template <typename TMatrix1, typename TMatrix2> inline
-typename std::enable_if<!TMatrix1::is_symmetric && !TMatrix2::is_symmetric, std::pair<Array<int>, Array<int>>>::type
+template <typename TMatrix1, typename TMatrix2>
+std::enable_if_t<!TMatrix1::is_symmetric && !TMatrix2::is_symmetric,
+                 optional<std::pair<Array<int>, Array<int>>>>
 find_row_col_permutation(const GenericIncidenceMatrix<TMatrix1>& M1, const GenericIncidenceMatrix<TMatrix2>& M2)
 {
    if (M1.rows() != M2.rows() || M1.cols() != M2.cols())
-      throw no_match("matrices of different dimensions");
+      return nullopt;
    if (M1.rows() == 0 && M1.cols() == 0)
-      return std::pair< Array<int>, Array<int> >();
+      return make_optional(std::pair<Array<int>, Array<int>>());
    GraphIso GI1(M1), GI2(M2);
    return GI1.find_permutations(GI2, M1.cols());
 }
 
-template <typename TMatrix> inline
-typename std::enable_if<TMatrix::is_symmetric, Array<Array<int>>>::type
+template <typename TMatrix>
+std::enable_if_t<TMatrix::is_symmetric, Array<Array<int>>>
 automorphisms(const GenericIncidenceMatrix<TMatrix>& M)
 {
    GraphIso GI(M, true);
-   return Array< Array<int> >(GI.n_automorphisms(), GI.automorphisms().begin());
+   return Array<Array<int>>(GI.n_automorphisms(), GI.automorphisms().begin());
 }
 
 template <typename Matrix>
@@ -350,7 +352,7 @@ bool GraphIso::prepare_colored(GraphIso& GI, const GenericGraph<TGraph>& G, cons
    return true;
 }
 
-template <typename TGraph> inline
+template <typename TGraph>
 typename TGraph::persistent_type canonical_form(const GenericGraph<TGraph>& G)
 {
    if (G.nodes() <= 1)
@@ -362,14 +364,14 @@ typename TGraph::persistent_type canonical_form(const GenericGraph<TGraph>& G)
       return permuted_nodes(G, GI.canonical_perm());
 }
 
-template <typename TGraph> inline
+template <typename TGraph>
 long canonical_hash(const GenericGraph<TGraph>& G, long k)
 {
    GraphIso GI(G);
    return GI.hash(k);
 }
 
-template <typename TMatrix> inline
+template <typename TMatrix>
 long canonical_hash(const GenericIncidenceMatrix<TMatrix>& M, long k)
 {
    GraphIso GI(M);

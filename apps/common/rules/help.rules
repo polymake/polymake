@@ -89,7 +89,7 @@ INCLUDE
 # Read additional rule files, interpret them in the context of the current application.
 # The rule files may reside in the application's standard subdirectory ''rules'' or in any
 # of the known extensions.
-# @param String rulefile : one or more filenames.
+# @param String rulefile one or more filenames.
 
 
 # @topic core/functions/load
@@ -147,8 +147,8 @@ INCLUDE
 # Generate a Relax-NG schema describing one or more `big' or `small' object types in the form as they
 # would appear when saved with commands [[save]] resp. [[save_data]].
 # @param Any object ... an object whose type should be described, may be specified as a type expression as well.
-#        Multiple objects or type expressions may be passed as a list.
-#        Mixing `big' and `small' object types is not allowed.
+#  Multiple objects or type expressions may be passed as a list.
+#  Mixing `big' and `small' object types is not allowed.
 # @param String filename  a suffix .rng is appended automatically if no suffix is given
 #
 # @example [notest] create a schema for a Polytope<Rational> and save it in the file poly_rat.rng
@@ -173,7 +173,7 @@ INCLUDE
 #
 # For the sake of symmetry you can call this function by its alias name //set_preference//.
 #
-# @param String label_expression : may have one of the following forms:
+# @param String label_expression may have one of the following forms:
 #
 #   "top_label" or "top_label.sublevels"
 #      selects all items whose labels start with the given path,
@@ -205,9 +205,8 @@ INCLUDE
 # This change is permanent, the former settings are wiped out from your preference file
 # ''~/.polymake/prefer.pl''
 #
-# @param String label_expression : "label" or "label.sublevels" or "*.sublevels" or "*" or "all"
-#
-#   Two last forms match all preference lists visible from the current application.
+# @param String label_expression "label" or "label.sublevels" or "*.sublevels" or "*" or "all"
+#  Two last forms match all preference lists visible from the current application.
 
 
 # @topic core/functions/show_preferences
@@ -224,7 +223,7 @@ INCLUDE
 # Set the custom variable, array, hash, or hash element to a new value and store it perpetually
 # in your personal settings file ''~/.polymake/customize.pl''
 #
-# @param Any assignment : following expressions are allowed:
+# @param Any assignment following expressions are allowed:
 #  ''$var=value;''
 #  ''@array=(values);''
 #  ''%hash=( key => value, ... );''
@@ -236,7 +235,7 @@ INCLUDE
 #
 # Reset the custom variable, array, hash, or hash element to the default value(s) as defined in the rule base
 # and store it perpetually in your personal settings file ''~/.polymake/customize.pl''
-# @param Any variable : following expressions are allowed:
+# @param Any variable following expressions are allowed:
 #  ''$var;''
 #  ''@array;''
 #  ''%hash;''
@@ -256,12 +255,12 @@ INCLUDE
 #  ''$obj->type->disable_rules(...)''
 #  ''$obj->disable_rules(...)''
 #
-# @param String pattern : either a label (see [[prefer]]) or a rule header.
-#        The rule header must exactly match the definition in the rulefile,
-#        up to white spaces around property names.
-#        If the given pattern matches headers of several rules, or the given label
-#        is associated with several rules, they all will be disabled regardless
-#        their precoditions, weights, or other attributes.
+# @param String pattern either a label (see [[prefer]]) or a rule header.
+#  The rule header must exactly match the definition in the rulefile,
+#  up to white spaces around property names.
+#  If the given pattern matches headers of several rules, or the given label
+#  is associated with several rules, they all will be disabled regardless
+#  their precoditions, weights, or other attributes.
 
 
 # @topic core/functions/help
@@ -280,7 +279,7 @@ INCLUDE
 # Descend via 'functions', 'objects', 'types', or 'preferences' to the topics
 # of interest.  If you stop in an intermediate category level, both the comment
 # specific to this category and the list of subtopics will be displayed.
-# @param String item : "word" | "category/subcategory/.../item"
+# @param String item "word" | "category/subcategory/.../item"
 
 
 # @topic core/functions/apropos
@@ -334,8 +333,8 @@ INCLUDE
 # The scripts specified without path are first looked for in the current application's ''scripts'' subdirectory,
 # then in the user's script directories (custom array ''@lookup_scripts''), and finally in the
 # top-level ''scripts'' subdirectory.
-# @param String filename : script code
-# @param Any Arguments : arbitrary many arguments passed to the script
+# @param String filename script code
+# @param Any Arguments arbitrary many arguments passed to the script
 
 
 # @topic core/functions/found_extension ($)
@@ -352,15 +351,15 @@ INCLUDE
 # extension with new rules, scripts, clients, etc. you must execute the command [[extend_application]] for every application
 # you want to to extend.
 #
-# @param String path : top-level directory of the extension, or ''"bundled:NAME"'' for a bundled extension.
+# @param String path top-level directory of the extension, or ''"bundled:NAME"'' for a bundled extension.
 
 
 # @topic core/functions/extend_application ($;$)
 # @category Interactive
 #
 # Create a directory tree for rules, scripts, clients, etc. in the given //extension// pertaining to the given application.
-# @param String extension : URI or top-level directory of a registered extension.
-# @param String app_name : name of the application to be extended; by default, the current application is assumed.
+# @param String extension URI or top-level directory of a registered extension.
+# @param String app_name name of the application to be extended; by default, the current application is assumed.
 
 
 # @topic core/functions/found_application ($$)
@@ -375,8 +374,8 @@ INCLUDE
 # A new core application can be created by entering the string "core" instead of the //extension// argument.
 # This action is only allowed in developer's mode, i.e. when polymake is invoked from the git copy of the source tree.
 #
-# @param String extension : URI or top-level directory of a registered extension, or special string ''"core"''.
-# @param String app_name : name of the new application
+# @param String extension URI or top-level directory of a registered extension, or special string ''"core"''.
+# @param String app_name name of the new application
 
 
 # @topic core/functions/import_extension ($;@)
@@ -401,7 +400,7 @@ INCLUDE
 # Re-run the configuration script of the extension, passing some options to it.  The extension must already have been imported;
 # if not, please use the command [[import_extension]], which supports passing configuration options too.
 #
-# @param String path : URI or top-level directory of the extension.
+# @param String path URI or top-level directory of the extension.
 # @param List options options passed to the extension script configure.pl
 
 
@@ -420,16 +419,16 @@ INCLUDE
 # If the configuration succeeds, and the rulefile hasn't been configured until now, it will be loaded, as well as all other known rulefiles
 # depending on it.
 # @param String rulename name of the rulefile with optional prefix and suffix: "[APPNAME::]rulefile[@URI]".
-#                        APPNAME is to be specified when the rulefile does not belong to the current application;
-#                        URI specifies an extension the rulefile comes from.
+#  APPNAME should be specified when the rulefile does not belong to the current application;
+#  URI specifies an extension the rulefile comes from.
 
 
 # @topic core/functions/unconfigure ($)
 # @category Interactive
 # Forgets the configuration made for the given rulefile and disables it for the //following// polymake sessions.
 # @param String rulename name of the rulefile with optional prefix and suffix: "[APPNAME::]rulefile[@URI]".
-#                        APPNAME is to be specified when the rulefile does not belong to the current application;
-#                        URI specifies an extension the rulefile comes from.
+#  APPNAME should be specified when the rulefile does not belong to the current application;
+#  URI specifies an extension the rulefile comes from.
 
 
 # @topic core/functions/show_unconfigured
@@ -448,12 +447,12 @@ INCLUDE
 # The obtained file can be edited manually, if needed, and used as a global configuration
 # source (see also [[wiki:howto/configure|How to configure polymake for a group of users]]).
 # @param String filename where to store the settings
-# @option Bool merge_with_global if TRUE, the settings inherited from *your* global configuration
-#                                will be included in the resulting file as well.
-# @option Bool only_configured if TRUE, configuration status of unconfigured or only partially
-#                              configured rulefiles is not exported
+# @option Bool merge_with_global include the settings inherited from *your* global
+#  configuration in the resulting file
+# @option Bool only_configured do not export the status of unconfigured
+#  or only partially configured rulefiles
 # @option String suppress regular expression matching fully qualified names of custom variables
-#                         that should not be exported
+#  that should not be exported
 
 
 # @topic core/functions/show_credits (;$)
@@ -462,7 +461,7 @@ INCLUDE
 # including the copyright holders and project site URLs.
 # Please note that here you will see only packages for which the polymake interface has been
 # successfully configured; try [[show_unconfigured]] command to see what's you currently missing.
-# @param Bool brief : list the product names only, no descriptive text
+# @param Bool brief list the product names only, no descriptive text
 
 
 # @topic core/functions/show_extensions
@@ -476,7 +475,7 @@ INCLUDE
 # for the case that you might want to store the commands in an alternative file and/or don't want to
 # exit the session.
 # Commands can be loaded using [[load_commands]].
-# @param String filename : defaults to ~/.polymake/history
+# @param String filename defaults to ~/.polymake/history
 
 
 # @topic core/citation
@@ -508,7 +507,7 @@ INCLUDE
 # To watch the rule scheduler at work, e.g. to see announcements about tried preconditions,
 # you may temporarily increase the verbosity levels ''$Verbose::rules'' and ''$Verbose::scheduler''.
 #
-# @param String request : name of a property with optional alternatives or a property path in dotted notation.
+# @param String request name of a property with optional alternatives or a property path in dotted notation.
 #                         Several requests may be listed.
 # @return Core::RuleChain
 # @example generate an optimal rule chain for a parameterized family of polytopes:
@@ -530,7 +529,7 @@ INCLUDE
 #
 # Works much like the user function [[disable_rules]] but only affecting
 # the given object.
-# @param String pattern : either a label (see [[prefer]]) or a rule header.
+# @param String pattern either a label (see [[prefer]]) or a rule header.
 #        The rule header must exactly match the definition in the rulefile,
 #        up to white spaces around property names.
 #        If the given pattern matches headers of several rules, or the given label
@@ -542,7 +541,7 @@ INCLUDE
 # Executes the specified production rule.
 # If the object does not possess enough initial properties to provide all required
 # rule sources, or any of its preconditions are not satisfied, an exception is raised.
-# @param String pattern : either a label (see [[prefer]]) or a rule header.
+# @param String pattern either a label (see [[prefer]]) or a rule header.
 #        The rule header must exactly match the definition in the rulefile,
 #        up to white spaces around property names.
 #        If the given pattern matches headers of several rules, or the given label
@@ -579,7 +578,7 @@ INCLUDE
 
 # @topic core/objects/Core::Object/methods/list_properties (;$)
 # Returns the list of names of all properties kept in the object.
-# @param Bool deep : recursively descend in all subobjects
+# @param Bool deep recursively descend in all subobjects
 #                    and list their properties in dotted notation.
 
 # @topic core/objects/Core::Object/methods/properties (;maxdepth=>0)
@@ -590,12 +589,12 @@ INCLUDE
 # Remove the property //prop// from the object.
 # The property must be //mutable//, //multiple//,
 # or unambiguously reconstructible from the remaining properties.
-# @param String prop : property name or a path to a property in a subobject in dotted notation,
+# @param String prop property name or a path to a property in a subobject in dotted notation,
 #                      Several properties may be removed at once.
 
 # @topic core/objects/Core::Object/methods/remove (Core::Object+)
 # Remove the multiple subobject instance(s) from the object.
-# @param Core::Object subobj : multiple subobject instance.
+# @param Core::Object subobj multiple subobject instance.
 #                     Several subobjects may be removed at once.
 
 
@@ -603,13 +602,13 @@ INCLUDE
 # Attach an arbitrary data item to a `big' object.
 # Attachments are saved in the same data file as the `big' object itself.
 # They can be retrieved by calling [[get_attachment]].
-# @param String name : attachment name, can be an arbitrary string.
+# @param String name attachment name, can be an arbitrary string.
 #                      If an attachment with the given name already exists,
 #                      it is silently replaced with new data.
-# @param Any data : attachment data, can be a simple numeric scalar, a string,
+# @param Any data attachment data, can be a simple numeric scalar, a string,
 #                   or a complex data type, e.g. a [[Matrix]] or [[Polynomial]].
 #                   `Big' objects, anonymous arrays or hashes are not allowed.
-# @param String constructor_args : optional list of property names of the owning `big' object
+# @param String constructor_args optional list of property names of the owning `big' object
 #               which should be passed to the attached data constructor when it will be
 #               restored from a data file.  Properties of subobjects are specified
 #               in dotted path notation.  For example, for an attachment of type [[NodeMap]]
@@ -618,11 +617,11 @@ INCLUDE
 
 # @topic core/objects/Core::Object/methods/get_attachment (String)
 # Retrieve data stored in the given attachment.
-# @param String name : attachment name
+# @param String name attachment name
 
 # @topic core/objects/Core::Object/methods/remove_attachment (String)
 # Remove the given attachment from the `big' object.
-# @param String name : attachment name
+# @param String name attachment name
 # @return Any attachment data
 
 # @topic core/objects/Core::Object/methods/list_attachments ()

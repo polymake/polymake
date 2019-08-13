@@ -130,7 +130,7 @@ perl::Object projective_plane(const int p){
 
 
 UserFunction4perl("# @category Producing a matroid from scratch\n"
-                  "# Creates the projective plane matroid of rank 3 with //p**2+p+1// elements, where p is a prime."
+                  "# Creates the projective plane matroid of rank 3 with //p^2+p+1// elements, where p is a prime."
                   "# @param Integer p"
                   "# @return Matroid",
                   &projective_plane, "projective_plane");

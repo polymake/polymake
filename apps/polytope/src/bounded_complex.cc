@@ -31,7 +31,8 @@ Array<int> find_bounded_mapping(const Matrix<Scalar>& bounded_matrix,
                                 const Matrix<Scalar>& parent_matrix,
                                 const Set<int>& unbounded_rows)
 {
-   Array<int> total_perm = find_permutation(rows(bounded_matrix), rows(parent_matrix.minor(~unbounded_rows, All)));
+   // this will throw an exception in the case of mismatch
+   Array<int> total_perm = find_permutation(rows(bounded_matrix), rows(parent_matrix.minor(~unbounded_rows, All))).value();
    Array<int> bounded_order(sequence(0, parent_matrix.rows()) - unbounded_rows);
    return permuted(bounded_order, total_perm);
 }

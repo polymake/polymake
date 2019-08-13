@@ -30,33 +30,23 @@ use Polymake::Struct(
 );
 
 sub new {
-   my $self=&Case::new;
-   before_run($self);
-   eval { $self->body->() };
-   if ($@) {
-      $self->gotten_error=neutralized_ERROR();
-      $@="";
-   }
-   after_run($self);
+   my $self = &Case::new;
+   local open STDOUT, ">:utf8", \($self->buffer);
+   $self->run_code;
    $self;
 }
 
-sub before_run {
-   my ($self)=@_;
-   open my $saved_STDOUT, ">&=STDOUT";
-   $self->handle=$saved_STDOUT;
-   close STDOUT;
-   open STDOUT, ">:utf8", \($self->buffer);
-}
-
-sub after_run {
-   my ($self)=@_;
-   close STDOUT;
-   open STDOUT, ">&=", $self->handle;
+sub run_code {
+   my ($self) = @_;
+   eval { $self->body->() };
+   if ($@) {
+      $self->gotten_error = neutralized_ERROR();
+      $@ = "";
+   }
 }
 
 sub execute {
-   my ($self)=@_;
+   my ($self) = @_;
    if (length($self->gotten_error)) {
       if ($self->expected_error) {
          $self->buffer .= $self->gotten_error;

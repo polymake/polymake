@@ -575,6 +575,24 @@ declare property_type PuiseuxFraction<MinMax, Coefficient=Rational, Exponent=Rat
 
    # The __valuation__.
    # @return TropicalNumber<MinMax>
+   # @example
+   # > $x = monomials<Rational,Rational>(1);
+   # > print new PuiseuxFraction<Max>(2*$x*$x-$x+2)->val;
+   # | 2
+   # @example [application polytope]
+   # The valuation can also be applied to Containers via convert_to
+   # > $m = long_and_winding(3)->FACETS;
+   # > print convert_to<TropicalNumber<Max>>($m);
+   # | (7) (0 2) (1 0)
+   # | (7) (0 1) (2 0)
+   # | (7) (1 1) (3 0)
+   # | (7) (2 1) (3 0)
+   # | (7) (1 1/2) (2 1/2) (4 0)
+   # | (7) (3 1) (5 0)
+   # | (7) (4 1) (5 0)
+   # | (7) (3 3/4) (4 3/4) (6 0)
+   # | (7) (5 0)
+   # | (7) (6 0)
    user_method val() : c++;
 
    # Approximate evaluation at //x//
@@ -604,6 +622,19 @@ declare property_type PuiseuxFraction<MinMax, Coefficient=Rational, Exponent=Rat
    # @param Coefficient x
    # @param Int exp (default: 1)
    # @return Matrix<Coefficient>
+   # @example [application polytope]
+   # The evaluation can also be applied to containers, unfortunately
+   # static methods dont play nicely with the perl interface but the following
+   # can be used:
+   # > $m = long_and_winding(2)->FACETS;
+   # > print ((typeof PuiseuxFraction<Max>)->pkg->evaluate($m,2,4));
+   # | (5) (0 256) (1 -1)
+   # | (5) (0 16) (2 -1)
+   # | (5) (1 16) (3 -1)
+   # | (5) (2 16) (3 -1)
+   # | 0 4 4 0 -1
+   # | (5) (3 1)
+   # | (5) (4 1)
    user_method evaluate(:static, Matrix, *; $=1) : c++;
 
    # Evaluate all [[PuiseuxFraction]]s in a [[Vector]] at a [[Rational]] number (//x^exp//).

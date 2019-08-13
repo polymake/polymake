@@ -31,8 +31,6 @@ CONFIGURE {
    ($topcom) = $path =~ $directory_re;
 }
 
-require Polymake::ProgramPipe;
-
 # @category Triangulation and volume
 # Use the [[wiki:external_software#TOPCOM]] package for computing polytope triangulations.
 
@@ -81,13 +79,18 @@ user_function topcom_input_format($) {
 # @return String
 sub chirotope_impl($$) {
     my ($p, $V) = @_;
-    my $P=new ProgramPipe("$topcom/points2chiro", $p->lookup("GROUP") ? () : ("--nosymmetries"), $DebugLevel ? () : ("2>/dev/null"));
-    print $P "[", join(",", map { "[".join(",", @{$_})."]" } @{$V}), "]" . "\n" . topcom_sym_string($p) . "\n";
-    local $/;
-    local $_=<$P>;
-    my @result = split("\n",$_);
-    return join("\n",@result[0..(scalar(@result)-2)])."\n";#TOPCOM appends the symmetry generators as text, which we forget here.
-    #Note: While TOPCOM returns the chirotope with line breaks (I guess for readability), it does not actually need them as input. One could, theoretically, do the join above with ""..
+    my $input = new TempTextFile;
+    print $input "[", join(",", map { "[".join(",", @{$_})."]" } @{$V}), "]" . "\n" . topcom_sym_string($p) . "\n";
+    my $cmd = "$topcom/points2chiro";
+    unless (defined($p->lookup("GROUP"))) {
+       $cmd .= " --nosymmetries";
+    }
+    unless ($DebugLevel) {
+       $cmd .= " 2>/dev/null";
+    }
+    my $result = `$cmd <$input`;
+    $result =~ s/^.*\n\Z//m;   # TOPCOM appends the symmetry generators as text, which we forget here.
+    return $result;
 }
 
 # @category Triangulations, subdivisions and volume
@@ -129,25 +132,31 @@ user_function chirotope (VectorConfiguration<QuadraticExtension>) {
 
 sub call_topcom_co_or_circuits {
     my ($p, $executable) = @_;
-    my $P=new ProgramPipe($executable, $DebugLevel ? () : ("2>/dev/null"));
-    print $P $p->CHIROTOPE . "\n" . topcom_sym_string($p) . "\n";
+    my $input = new TempTextFile;
+    print $input $p->CHIROTOPE , "\n" , topcom_sym_string($p) , "\n";
+    my $cmd = $executable;
+    unless ($DebugLevel) {
+       $cmd .= " 2>/dev/null";
+    }
+    open my $output, "$cmd <$input |"
+      or die "can't start $executable: $!\n";
     local $_;
-    <$P>; # dimensions
-    <$P>; # opening bracket
-    my @circuits=();
-    while (<$P>) {
-        if ( $_ =~ /\{/ ) {  # not the closing bracket
+    <$output>; # dimensions
+    <$output>; # opening bracket
+    my @circuits;
+    while (<$output>) {
+        if ($_ =~ /\{/) {  # not the closing bracket
             chomp;
-            my $pair=new Pair<Set<Int>,Set<Int>>;
-            my @e =( split /\},\{/, $_ );
-            $_=$e[0];
+            my $pair = new Pair<Set<Int>,Set<Int>>;
+            my @e = split /\},\{/, $_;
+            $_ = $e[0];
             s/\{//g; s/\[//g; s/\]//g; s/\}//g;
             my @x=( split /,/, $_ );
             $pair->first=\@x;
 
-            $_=$e[1];
+            $_ = $e[1];
             s/\{//g; s/\[//g; s/\]//g; s/\}//g;
-            @x=( split /,/, $_ );                 #/
+            @x = split /,/, $_;
             $pair->second=\@x;
 
             push @circuits, $pair;
@@ -167,22 +176,31 @@ sub call_topcom_cocircuits($)
 }
 
 sub call_topcom_chiro2placingtriang($) {
-   my $P=new ProgramPipe("$topcom/chiro2placingtriang", $DebugLevel ? () : ("2>/dev/null"));
-   print $P $_[0], "\n";
-   local $/;
-   local $_=<$P>;
+   my $input = new TempTextFile;
+   print $input $_[0], "\n";
+   my $cmd = "$topcom/chiro2placingtriang";
+   unless ($DebugLevel) {
+      $cmd .= " 2>/dev/null";
+   }
+   local $_ = `$cmd <$input`;
    chomp;
    s/^\{//; s/\}$//; s/\},\{/}\n{/g; tr/,/ /;
    [ split /\n/, $_ ];
 }
 
 sub call_topcom_chiro2triangs {
-    my $p = shift;
-    my $P=new ProgramPipe("$topcom/chiro2triangs", $DebugLevel ? () : ("2>/dev/null"));
-    print $P $p->CHIROTOPE, "\n", topcom_sym_string($p), "\n";
+    my ($p) = @_;
+    my $input = new TempTextFile;
+    print $input $p->CHIROTOPE, "\n", topcom_sym_string($p), "\n";
+    my $cmd = "$topcom/chiro2triangs";
+    unless ($DebugLevel) {
+       $cmd .= " 2>/dev/null";
+    }
+    open my $output, "$cmd <$input |"
+      or die "can't run $topcom/chiro2triangs: $!\n";
     local $_;
     my @triangs=();
-    while (<$P>) {
+    while (<$output>) {
         s/T.*://; s/\];//; s/^\{//; s/\}$//; s/\},\{/}\n{/g; tr/,/ /;
         my @e = split /\n/, $_;
         push @triangs, \@e;
@@ -192,28 +210,40 @@ sub call_topcom_chiro2triangs {
 
 
 sub call_topcom_chiro2finetriangs($) {
-    my $p = shift;
-    my $P=new ProgramPipe("$topcom/chiro2finetriangs", $DebugLevel ? () : ("2>/dev/null"));
-    print $P $p->CHIROTOPE, "\n", topcom_sym_string($p), "\n";
+    my ($p) = @_;
+    my $input = new TempTextFile;
+    print $input $p->CHIROTOPE, "\n", topcom_sym_string($p), "\n";
+    my $cmd = "$topcom/chiro2finetriangs";
+    unless ($DebugLevel) {
+       $cmd .= " 2>/dev/null";
+    }
+    open my $output, "$cmd <$input |"
+      or die "can't start $topcom/chiro2finetriangs: $!\n";
     local $_;
-    my @triangs=();
-    while (<$P>) {
-        s/T.*://; s/\];//; s/^\{//; s/\}$//; s/\},\{/}\n{/g; tr/,/ /;
-        my @e = split /\n/, $_;
-        push @triangs, \@e;
+    my @triangs;
+    while (<$output>) {
+       s/T.*://; s/\];//; s/^\{//; s/\}$//; s/\},\{/}\n{/g; tr/,/ /;
+       my @e = split /\n/, $_;
+       push @triangs, \@e;
     }
     \@triangs;
 }
 
 sub call_topcom_chiro2alltriangs($) {
-   my $P=new ProgramPipe("$topcom/chiro2alltriangs", $DebugLevel ? () : ("2>/dev/null"));
-   print $P $_[0], "\n";
+   my $input = new TempTextFile;
+   print $input $_[0], "\n";
+   my $cmd = "$topcom/chiro2alltriangs";
+   unless ($DebugLevel) {
+      $cmd .= " 2>/dev/null";
+   }
+   open my $output, "$cmd <$input |"
+     or die "can't start $topcom/chiro2alltriangs: $!\n";
    local $_;
-   my @triangs=();
-   while (<$P>) {
-     s/T.*://; s/\];//; s/^\{//; s/\}$//; s/\},\{/}\n{/g; tr/,/ /;
-     my @e = split /\n/, $_;
-     push @triangs, \@e;
+   my @triangs;
+   while (<$output>) {
+      s/T.*://; s/\];//; s/^\{//; s/\}$//; s/\},\{/}\n{/g; tr/,/ /;
+      my @e = split /\n/, $_;
+      push @triangs, \@e;
    }
    \@triangs;
 }
@@ -395,7 +425,6 @@ rule topcom.triangulation.pc : TRIANGULATION(new).FACETS : CHIROTOPE {
 precondition : FULL_DIM;
 
 } # end object PointConfiguration
-
 
 
 

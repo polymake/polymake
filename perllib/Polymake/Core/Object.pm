@@ -149,8 +149,8 @@ sub forget_temporary_subobject {
 }
 
 sub commit {
-   my ($self, $object, $parent_trans)=@_;
-   $object->transaction=$self->outer;
+   my ($self, $object, $parent_trans) = @_;
+   $object->transaction = $self->outer;
    $_->transaction->commit($_, $self) for keys %{$self->subobjects};
 
    if (defined $parent_trans) {
@@ -160,46 +160,46 @@ sub commit {
       $parent_trans->changed ||= $self->changed;
       return;
    }
-   if (defined $self->outer) {
+   if (defined($self->outer)) {
       if (@{$self->temporaries} && !$object->is_temporary) {
          if (@{$self->outer->temporaries}) {
             merge_temporaries($self->outer->temporaries, $self->temporaries);
          } else {
-            $self->outer->temporaries=$self->temporaries;
+            $self->outer->temporaries = $self->temporaries;
          }
       }
       $self->outer->changed ||= $self->changed;
       return;
    }
-   if (defined (my $parent_obj=$object->parent)) {
+   if (defined(my $parent_obj = $object->parent)) {
       return if $object->is_temporary;
       if (@{$self->temporaries}) {
          if (defined ($parent_trans=$parent_obj->transaction)) {
             propagate_temporaries($self, $object, $parent_trans->temporaries);
             $parent_trans->changed ||= $self->changed;
          } else {
-            $parent_trans=$parent_obj->begin_transaction;
+            $parent_trans = $parent_obj->begin_transaction;
             propagate_temporaries($self, $object, $parent_trans->temporaries);
-            $parent_trans->changed=$self->changed;
+            $parent_trans->changed = $self->changed;
             $parent_trans->commit($parent_obj);
          }
          return;
       }
       if ($self->changed) {
          do {
-            $object=$parent_obj;
-            if (defined $object->transaction) {
-               $object->transaction->changed=1;
+            $object = $parent_obj;
+            if (defined($object->transaction)) {
+               $object->transaction->changed = 1;
                return;
             }
-         } while (defined($parent_obj=$object->parent));
+         } while (defined($parent_obj = $object->parent));
       } else {
          return;
       }
    }
    if ($self->changed) {
       if (!$object->changed) {
-         $object->changed=1;
+         $object->changed = 1;
          $object->ensure_save_changes if $object->persistent;
       }
    }
@@ -207,39 +207,39 @@ sub commit {
       if ($object->has_cleanup) {
          merge_temporaries($Scope->cleanup->{$object}, $self->temporaries);
       } else {
-         $object->has_cleanup=1;
-         $Scope->cleanup->{$object}=$self->temporaries;
+         $object->has_cleanup = 1;
+         $Scope->cleanup->{$object} = $self->temporaries;
       }
    }
 }
 
 sub rollback {
    my ($self, $object)=@_;
-   if ((my $limit=$self->content_end)>=0) {
-      while (my ($index, $old_pv)=each %{$self->backup}) {
+   if ((my $limit = $self->content_end) >= 0) {
+      while (my ($index, $old_pv) = each %{$self->backup}) {
          if ($index <= $limit) {
-            if (defined( my $changed_pv=$object->contents->[$index] )) {
+            if (defined(my $changed_pv = $object->contents->[$index])) {
                $changed_pv->delete_from_subobjects($self, $old_pv);
             } else {
-               $object->dictionary->{$old_pv->property->key}=$index;
+               $object->dictionary->{$old_pv->property->key} = $index;
             }
-            $object->contents->[$index]=$old_pv;
+            $object->contents->[$index] = $old_pv;
          }
       }
 
-      foreach my $pv (@{$object->contents}[$limit+1..$#{$object->contents}]) {
+      foreach my $pv (@{$object->contents}[$limit+1 .. $#{$object->contents}]) {
          if (ref($pv)) {
             delete $object->dictionary->{$pv->property->key};
             $pv->delete_from_subobjects($self);
          }
       }
-      $#{$object->contents}=$limit;
+      $#{$object->contents} = $limit;
       $_->transaction->rollback($_) for keys %{$self->subobjects};
    } else {
-      $#{$object->contents}=-1;
-      $object->dictionary={ };
+      $#{$object->contents} = -1;
+      $object->dictionary = { };
    }
-   $object->transaction=$self->outer;
+   $object->transaction = $self->outer;
 }
 
 sub descend {
@@ -510,33 +510,33 @@ sub fill_properties_and_commit {
 }
 ####################################################################################
 sub _add {
-   my ($self, $prop, $value, $trusted)=@_;
+   my ($self, $prop, $value, $trusted) = @_;
    if (!$trusted && exists $self->dictionary->{$prop->key}) {
       croak( "multiple values for property ", $prop->name );
    }
    push @{$self->contents}, $prop->accept->($value, $self, $trusted);
-   $self->dictionary->{$prop->key}=$#{$self->contents};
+   $self->dictionary->{$prop->key} = $#{$self->contents};
 }
 ####################################################################################
 # private:
 sub _add_multi {
-   my ($self, $prop, $value, $temp)=@_;
-   $value=$prop->accept->($value, $self, 0, $temp);
+   my ($self, $prop, $value, $temp) = @_;
+   $value = $prop->accept->($value, $self, 0, $temp);
    my $pv;
-   if (defined (my $content_index=$self->dictionary->{$prop->key})) {
-      $pv=$self->contents->[$content_index];
+   if (defined (my $content_index = $self->dictionary->{$prop->key})) {
+      $pv = $self->contents->[$content_index];
       push @{$pv->values}, $value;
    } else {
-      $pv=new PropertyValue::Multiple($value->property, [ $value ]);
+      $pv = new PropertyValue::Multiple($value->property, [ $value ]);
       push @{$self->contents}, $pv;
-      $self->dictionary->{$prop->key}=$#{$self->contents};
+      $self->dictionary->{$prop->key} = $#{$self->contents};
    }
    $pv
 }
 
 # protected:
 sub _add_multis {
-   my ($self, $prop, $values, $trusted)=@_;
+   my ($self, $prop, $values, $trusted) = @_;
    unless ($trusted) {
       if (exists $self->dictionary->{$prop->key}) {
          croak( "multiple occurence of property ", $prop->name );
@@ -1311,25 +1311,25 @@ sub value_at_property_path {
 ####################################################################################
 # private:
 sub _put_pv {
-   my ($self, $prop, $pv)=@_;
-   my $content_index=$self->dictionary->{$prop->key};
-   if (defined $self->transaction->rule) {
+   my ($self, $prop, $pv) = @_;
+   my $content_index = $self->dictionary->{$prop->key};
+   if (defined($self->transaction->rule)) {
       # creating a property in a rule
       defined($content_index)
          or croak( "Attempt to create property '", $prop->name, "' which is not declared as a rule target" );
       if ($prop->flags & Property::Flags::is_multiple) {
          # storing the entire instance at once
-         $self->contents->[$content_index]->values->[0]=$pv;
+         $self->contents->[$content_index]->values->[0] = $pv;
       } else {
-         $self->contents->[$content_index]=$pv;
+         $self->contents->[$content_index] = $pv;
       }
 
    } elsif (defined $content_index) {
       # overwriting an existing property
       if ($prop->flags & Property::Flags::is_multiple) {
          croak( "There is already an instance of a multiple subobject ", $prop->name, "; use method add() for additional instances" );
-      } elsif ($self->transaction->content_end<0 || $prop->flags & Property::Flags::is_mutable) {
-         $self->contents->[$content_index]=$pv;
+      } elsif ($self->transaction->content_end < 0 || $prop->flags & Property::Flags::is_mutable) {
+         $self->contents->[$content_index] = $pv;
       } else {
          croak( "May not change the property ", $prop->name );
       }
@@ -1337,38 +1337,39 @@ sub _put_pv {
    } else {
       # new property created outside of a production rule
       if ($prop->flags & Property::Flags::is_multiple) {
-         $pv=new PropertyValue::Multiple($pv->property, [ $pv ]);
+         $pv = new PropertyValue::Multiple($pv->property, [ $pv ]);
       }
       push @{$self->contents}, $pv;
-      $self->dictionary->{$prop->key}=$content_index=$#{$self->contents};
+      $self->dictionary->{$prop->key} = $content_index=$#{$self->contents};
    }
 }
 ####################################################################################
 sub put {
+   local interrupts(block);
    my ($self, $temp, $prop, $value);
-   if (@_==3) {
-      ($self, $prop, $value)=@_;
+   if (@_ == 3) {
+      ($self, $prop, $value) = @_;
    } else {
-      ($self, $temp, $prop, $value)=@_;
+      ($self, $temp, $prop, $value) = @_;
    }
    my $need_commit;
    if (defined $self->transaction) {
       $temp ||= $self->transaction->entirely_temp;
    } else {
       if ($prop->flags & (Property::Flags::is_multiple | Property::Flags::is_mutable)) {
-         $need_commit=1;
+         $need_commit = true;
          begin_transaction($self);
       } else {
          croak( "can't add or change the property ", $prop->name );
       }
    }
-   my $pv=$prop->accept->($value, $self, 0, $temp);
+   my $pv = $prop->accept->($value, $self, 0, $temp);
    _put_pv($self, $prop, $pv);
    if ($temp) {
       assign_max($#{$self->transaction->temporaries}, 0);
       push @{$self->transaction->temporaries}, ($prop->flags & Property::Flags::is_multiple ? [ $prop, $pv->values->[0] ] : $prop);
    } elsif (not $prop->flags & Property::Flags::is_non_storable) {
-      $self->transaction->changed=1;
+      $self->transaction->changed = true;
    }
    $self->transaction->commit($self) if $need_commit;
    $pv->value if defined(wantarray);
@@ -1380,12 +1381,13 @@ sub put_ref {
 }
 ####################################################################################
 sub add {
-   my ($self, $prop_name)=splice @_, 0, 2;
+   local interrupts(block);
+   my ($self, $prop_name) = splice @_, 0, 2;
    my $need_commit;
-   my $prop=$self->type->property($prop_name);
+   my $prop = $self->type->property($prop_name);
    if ($prop->flags & Property::Flags::is_multiple) {
-      my $temp= is_integer($_[0]) && $_[0] == PropertyValue::Flags::is_temporary && shift;
-      my $value = is_object($_[0]) ? shift : new_named($prop->type, @_%2 ? shift : undef);
+      my $temp = is_integer($_[0]) && $_[0] == PropertyValue::Flags::is_temporary && shift;
+      my $value = is_object($_[0]) ? shift : new_named($prop->type, @_ % 2 ? shift : undef);
 
       if (defined($self->transaction)) {
          if (!$temp) {
@@ -1395,12 +1397,12 @@ sub add {
             $temp=$self->transaction->entirely_temp;
          }
       } else {
-         $need_commit=@_>0;
+         $need_commit = @_ > 0;
          begin_transaction($self);
       }
 
-      my $pv=_add_multi($self, $prop, $value, $temp);
-      $value=$pv->values->[-1];    # might be replaced by a copy
+      my $pv = _add_multi($self, $prop, $value, $temp);
+      $value = $pv->values->[-1];    # might be replaced by a copy
       $pv->ensure_unique_name($value, $temp);
       if (@_) {
          eval { fill_properties($value, $value->type, @_) };
@@ -1423,18 +1425,19 @@ sub add {
 }
 ####################################################################################
 sub take {
+   local interrupts(block);
    my ($self, $prop_name, $value, $temp)=@_;
-   my @req=$self->type->encode_descending_path($prop_name);
+   my @req = $self->type->encode_descending_path($prop_name);
    my $need_commit;
    if (!defined($self->transaction)) {
       if ($req[-1]->flags & (Property::Flags::is_multiple | Property::Flags::is_mutable)) {
-         $need_commit = 1;
+         $need_commit = true;
          begin_transaction($self);
       } else {
          croak( "can't add or change the property $prop_name" );
       }
    }
-   my ($obj, $prop)=descend_and_create($self, \@req);
+   my ($obj, $prop) = descend_and_create($self, \@req);
    put($obj, $temp, $prop, $value);
    $self->transaction->commit($self) if $need_commit;
 }
@@ -1445,17 +1448,17 @@ sub add_twin_backref {
         defined($parent) && $parent != $self->parent
         ? new PropertyValue($prop, $parent, PropertyValue::Flags::is_weak_ref)
         : new PropertyValue::BackRefToParent($self);
-   $self->dictionary->{$prop->key}=$#{$self->contents};
+   $self->dictionary->{$prop->key} = $#{$self->contents};
 }
 ####################################################################################
 sub forget_parent_property {
-   my ($self)=@_;
-   my $prop=$self->property;
+   my ($self) = @_;
+   my $prop = $self->property;
    undef $self->property;
    if ($prop->flags & (Property::Flags::is_augmented | Property::Flags::is_twin)) {
       begin_transaction($self);
       if ($prop->flags & Property::Flags::is_twin) {
-         my $content_index=delete $self->dictionary->{$prop->key};
+         my $content_index = delete $self->dictionary->{$prop->key};
          defined($content_index)
            or die "internal error: missing back-reference for twin property ", $prop->name, "\n";
          undef $self->contents->[$content_index];
@@ -1464,16 +1467,17 @@ sub forget_parent_property {
       if ($prop->flags & Property::Flags::is_augmented) {
          perform_cast($self, $prop->type->pure_type);
       }
-      $self->transaction->changed=1;
+      $self->transaction->changed = 1;
       $self->transaction->commit($self);
    }
 }
 ####################################################################################
 sub remove {
+   local interrupts(block);
    my ($need_commit, @adjust_subobjects);
-   if (@_==1) {
-      my ($sub_obj)=@_;
-      my $self=$sub_obj->parent;
+   if (@_ == 1) {
+      my ($sub_obj) = @_;
+      my $self = $sub_obj->parent;
       # some sanity checks up front
       defined($self) && $sub_obj->property->flags & Property::Flags::is_multiple
         or croak( "only multiple sub-objects can be removed by reference" );
@@ -1483,13 +1487,13 @@ sub remove {
             croak( "attempt to remove a sub-object in a rule" );
          }
       } else {
-         $need_commit=1;
+         $need_commit = true;
          begin_transaction($self);
       }
-      my $content_index=$self->dictionary->{$sub_obj->property->key};
+      my $content_index = $self->dictionary->{$sub_obj->property->key};
       my $pv;
       if (defined($content_index)  and
-          defined($pv=$self->contents->[$content_index])) {
+          defined($pv = $self->contents->[$content_index])) {
          if (defined($sub_obj->transaction) && !$need_commit) {
             $sub_obj->transaction->rollback($sub_obj);
             delete $self->transaction->subobjects->{$sub_obj};
@@ -1506,7 +1510,7 @@ sub remove {
          $self->rollback;
          croak( "internal inconsistency: parent object has lost the property ", $sub_obj->property->name );
       }
-      $self->transaction->changed=1;
+      $self->transaction->changed = true;
       $self->transaction->commit($self) if $need_commit;
 
    } else {
@@ -1593,19 +1597,23 @@ sub remove {
 }
 ####################################################################################
 sub commit {
-   my ($self)=@_;
+   local interrupts(block);
+   my ($self) = @_;
    while ($self->transaction->dependent) {
-      $self=$self->parent;
+      $self = $self->parent;
    }
    $self->transaction->commit($self);
 }
 
 sub rollback {
-   my ($self)=@_;
-   while ($self->transaction->dependent) {
-      $self=$self->parent;
+   local interrupts(block);
+   my ($self) = @_;
+   if (defined($self->transaction)) {
+      while ($self->transaction->dependent) {
+         $self = $self->parent;
+      }
+      $self->transaction->rollback($self);
    }
-   $self->transaction->rollback($self);
 }
 
 # private:
@@ -1615,34 +1623,34 @@ sub delete_from_subobjects {
 }
 ####################################################################################
 sub cleanup {
-   my ($self, $data)=@_;
-   my $deleted_index=shift @$data;
+   my ($self, $data) = @_;
+   my $deleted_index = shift @$data;
    foreach (@$data) {
       my $content_index;
       if (!is_object($_)) {
-         defined($content_index=$self->dictionary->{$_->[0]->key}) or next;
-         my $pv=$self->contents->[$content_index];
-         if (is_object(my $sub_obj=$_->[1])) {
+         defined($content_index = $self->dictionary->{$_->[0]->key}) or next;
+         my $pv = $self->contents->[$content_index];
+         if (is_object(my $sub_obj = $_->[1])) {
             # via multiple sub-object (might be removed in the meanwhile)
-            if ($#$_==2) {
+            if ($#$_ == 2) {
                # only single properties are temporary
                cleanup($sub_obj, $_->[2]);
-               next if $#{$sub_obj->contents}>=0;
+               next if $#{$sub_obj->contents} >= 0;
             }
             $pv->remove_instance($sub_obj) if defined($sub_obj->parent);
             next if @{$pv->values};
          } else {
             # via singular sub-object: $pv==subobject, $sub_obj==list of properties
             cleanup($pv, $sub_obj);
-            next if $#{$pv->contents}>=0;
+            next if $#{$pv->contents} >= 0;
          }
          delete $self->dictionary->{$_->[0]->key};
 
       } else {
          # atomic property
-         defined($content_index=delete $self->dictionary->{$_->key}) or next;
+         defined($content_index = delete $self->dictionary->{$_->key}) or next;
       }
-      if ($content_index==$#{$self->contents}) {
+      if ($content_index == $#{$self->contents}) {
          pop @{$self->contents};
       } else {
          undef $self->contents->[$content_index];
@@ -1651,29 +1659,30 @@ sub cleanup {
    }
 
    if (defined $deleted_index) {
-      my ($gap, $last)=(1, $#{$self->contents});
-      while (++$deleted_index<=$last) {
-         my $pv=$self->contents->[$deleted_index];
+      my ($gap, $last) = (1, $#{$self->contents});
+      while (++$deleted_index <= $last) {
+         my $pv = $self->contents->[$deleted_index];
          if (defined($pv)) {
-            $self->contents->[$deleted_index-$gap]=$pv;
-            $self->dictionary->{$pv->property->key}=$deleted_index-$gap;
+            $self->contents->[$deleted_index - $gap] = $pv;
+            $self->dictionary->{$pv->property->key} = $deleted_index - $gap;
          } else {
             ++$gap;
          }
       }
-      $#{$self->contents}-=$gap;
+      $#{$self->contents} -= $gap;
    }
 
-   $self->has_cleanup=0;
+   $self->has_cleanup = 0;
 }
 
 sub cleanup_now {
-   my ($self)=@_;
+   local interrupts(block);
+   my ($self) = @_;
    cleanup($self, delete $Scope->cleanup->{$self});
 }
 ####################################################################################
 sub save : method {
-   my $self=shift;
+   my $self = shift;
    if (defined($self->property)) {
       croak( "A sub-object can't be saved without its parent" );
    }
@@ -1690,9 +1699,10 @@ sub save : method {
 }
 ####################################################################################
 sub DESTROY {
-   my $self=shift;
+   local interrupts(block);
+   my $self = shift;
    if (defined($self->parent)) {
-      if (defined($self->transaction) && defined (my $parent_trans=$self->parent->transaction)) {
+      if (defined($self->transaction) && defined (my $parent_trans = $self->parent->transaction)) {
          delete $parent_trans->subobjects->{$self};
       }
 
@@ -1720,7 +1730,8 @@ sub DESTROY {
 }
 
 sub dont_save {
-   my ($self)=@_;
+   local interrupts(block);
+   my ($self) = @_;
    if (!defined($self->property) && defined($Scope) && defined($self->persistent)) {
       if (defined($self->transaction)) {
          $self->transaction->rollback($self);
@@ -1729,7 +1740,7 @@ sub dont_save {
          if ($self->has_cleanup) {
             cleanup($self, delete $Scope->cleanup->{$self});
          }
-         $self->changed=0;
+         $self->changed = 0;
          delete $save_at_end{$self};
       }
    }
@@ -1991,8 +2002,8 @@ sub schedule {
 }
 ####################################################################################
 sub get {
-   my ($self, $prop)=@_;
-   my $content_index=$self->dictionary->{$prop->key};
+   my ($self, $prop) = @_;
+   my $content_index = $self->dictionary->{$prop->key};
    unless (defined $content_index) {
       if (defined($self->transaction)) {
          if (defined($self->transaction->rule)) {
@@ -2002,13 +2013,13 @@ sub get {
       }
 
       if ($prop->flags & Property::Flags::is_subobject
-          and my @sub_prop_names=_get_descend_path()) {
+          and my @sub_prop_names = _get_descend_path()) {
 
-         $prop=$prop->instance_for_owner($self->type, 1);
-         my $sub_type=$prop->type;
-         my @req_path=($prop);
+         $prop = $prop->instance_for_owner($self->type, 1);
+         my $sub_type = $prop->type;
+         my @req_path = ($prop);
          foreach (@sub_prop_names) {
-            if (defined (my $sub_prop=$sub_type->lookup_property($_))) {
+            if (defined (my $sub_prop = $sub_type->lookup_property($_))) {
                push @req_path, $sub_prop;
                last unless $sub_prop->flags & Property::Flags::is_subobject;
                $sub_type=$sub_prop->type;
@@ -2016,12 +2027,12 @@ sub get {
                last;
             }
          }
-         my @req=( \@req_path );
+         my @req = ( \@req_path );
          provide_request($self, [ \@req ]);
       } else {
          provide_request($self, [ [ [ $prop ] ] ]);
       }
-      defined($content_index=$self->dictionary->{$prop->key})
+      defined($content_index = $self->dictionary->{$prop->key})
         or die "can't create property ", $prop->name, "\n";
    }
    $self->contents->[$content_index]->value // &allow_undef_value;
@@ -2029,16 +2040,16 @@ sub get {
 ####################################################################################
 sub get_multi {
    my $iterate;
-   if (@_==2 && !($iterate=_expect_array_access())) {
+   if (@_==2 && !($iterate = _expect_array_access())) {
       &get;
    } else {
-      my $self=shift;
-      my $prop=pop;
-      my $content_index=$self->dictionary->{$prop->key};
+      my $self = shift;
+      my $prop = pop;
+      my $content_index = $self->dictionary->{$prop->key};
       if ($iterate) {
          return defined($content_index) ? $self->contents->[$content_index]->values : [ ];
       }
-      if (@_==1) {
+      if (@_ == 1) {
          my $arg_ref=ref($_[0]);
          if ($arg_ref eq "CODE") {
             # filter by arbitrary expression
@@ -2063,25 +2074,26 @@ sub get_multi {
 }
 ####################################################################################
 sub put_multi {
-   if (@_==3 or @_==4 && !ref($_[1])) {
+   if (@_ == 3 or @_ == 4 && !ref($_[1])) {
       &put;
    } else {
-      my $self=shift;
-      my ($prop, $value)=splice @_, -2;
+      local interrupts(block);
+      my $self = shift;
+      my ($prop, $value) = splice @_, -2;
       my $need_commit;
       if (!defined($self->transaction)) {
-         $need_commit=1;
+         $need_commit = true;
          begin_transaction($self);
       }
-      my $content_index=$self->dictionary->{$prop->key};
+      my $content_index = $self->dictionary->{$prop->key};
       if (defined $content_index) {
          $self->contents->[$content_index]->replace_or_add($self, @_, $value);
       } else {
          $value = $prop->accept->($value, $self);
          push @{$self->contents}, new PropertyValue::Multiple($value->property, [ $value ]);
-         $self->dictionary->{$prop->key}=$#{$self->contents};
+         $self->dictionary->{$prop->key} = $#{$self->contents};
       }
-      $self->transaction->changed=1;
+      $self->transaction->changed = true;
       $self->transaction->commit($self) if $need_commit;
       $value;
    }
@@ -2097,6 +2109,7 @@ sub get_attachment {
 }
 
 sub remove_attachment {
+   local interrupts(block);
    my ($self, $name)=@_;
    if (defined($self->transaction)) {
       if (defined($self->transaction->rule)) {
@@ -2117,6 +2130,7 @@ sub list_attachments {
 }
 
 sub attach {
+   local interrupts(block);
    my ($self, $name, $data, $construct) = @_;
    if (defined($self->type->lookup_property($name))) {
       croak( "attachment $name conflicts with a property of the same name" );

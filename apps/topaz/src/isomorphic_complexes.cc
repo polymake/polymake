@@ -26,7 +26,7 @@ bool isomorphic(perl::Object p1, perl::Object p2)
    return graph::isomorphic(M1, M2);
 }
 
-std::pair< Array<int>, Array<int> >
+optional<std::pair<Array<int>, Array<int>>>
 find_facet_vertex_permutations(perl::Object p1, perl::Object p2)
 {
    const IncidenceMatrix<> M1=p1.give("FACETS"), M2=p2.give("FACETS");
@@ -44,10 +44,9 @@ UserFunction4perl("# @category Comparing\n"
 UserFunction4perl("# @category Comparing\n"
                   "# Find the permutations of facets and vertices which maps the first complex to the second one.\n"
                   "# The facet permutation is the first component of the return value.\n"
-                  "# If the complexes are not isomorphic, an exception is thrown.\n"
                   "# @param SimplicialComplex complex1"
                   "# @param SimplicialComplex complex2"
-                  "# @return Pair<Array<Int>, Array<Int>>",
+                  "# @return Pair<Array<Int>, Array<Int>> permutations of facet and vertex indexes, or undef when complexes are not isomorphic",
                   &find_facet_vertex_permutations, "find_facet_vertex_permutations(SimplicialComplex,SimplicialComplex)");
 } }
 

@@ -124,7 +124,8 @@ RETRY:
 
       my $error=Polymake::Configure::build_test_program($testcode, LIBS => "-l$lrs_libname -lgmp", CXXFLAGS => "$CFLAGS", LDFLAGS => "$LDFLAGS");
 
-      if ($error =~ /cannot find -llrs/ && $lrs_libname eq "lrs") {
+      # gnu ld and gold | ld64 (osx) | llvm-lld
+      if ($error =~ /(cannot find|library not found for|unable to find library) -llrs/ && $lrs_libname eq "lrs") {
          $lrs_libname = "lrsgmp";
          goto RETRY;
       }

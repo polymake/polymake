@@ -114,12 +114,14 @@ sub function_args {
       my $comment=$_->[2];
       clean_text($comment);
       $comment =~ s/\n[ \t]*(?=\S)/\n    /g;
-      my ($name)= $_->[1] =~ /^($id_re)/;
-      $self->text .= "  $_->[0] " . underline($self, $name) . " $comment";
+      my $type = $_->[0];
+      $type =~ s/^__(\w+)__$/$1/;
+      my ($name) = $_->[1] =~ /^($id_re)/;
+      $self->text .= "  $type " . underline($self, $name) . " $comment";
       if (defined (my $value_list=$_->[3])) {
          $self->text .= "    Possible values:\n";
          foreach my $value (@$value_list) {
-            $comment=$value->[1];
+            $comment = $value->[1];
             clean_text($comment);
             $self->text .= "      " . $value->[0] . " : $comment";
          }

@@ -39,7 +39,7 @@ object ValuatedMatroid {
   # [[VALUATION_ON_BASES]] (or minus [[VALUATION_ON_BASES]] in the case of max).
   property SUBDIVISION : Array<Set<Int>> {
       sub equal {
-          defined(eval { find_permutation(@_) })
+         defined(find_permutation(@_))
       }
   }
  

@@ -494,7 +494,7 @@ property COCUBICALITY : Int;
 
 # @category Combinatorics
 # True if the polytope is neighborly.
-# @example This checks the 4-dimensional cyclic polytope with 6 points on the moment curve for neighborliness, i.e. if it is &lfloor;dim/2&rfloor; neighborly:
+# @example This checks the 4-dimensional cyclic polytope with 6 points on the moment curve for neighborliness, i.e. if it is ⌊dim/2⌋ neighborly:
 # > print cyclic(4,6)->NEIGHBORLY;
 # | true
 property NEIGHBORLY : Bool;
@@ -566,6 +566,7 @@ property CENTERED_ZONOTOPE : Bool;
 # @category Geometry
 # a lattice that is displaced from the origin, i.e.,
 # a set of the form x + L, where x is a non-zero vector and L a (linear) lattice
+# @tparam Scalar coordinate type
 declare object AffineLattice<Scalar=Rational> {
 
 # an affine point, ie first coordinate non-zero
@@ -723,6 +724,20 @@ property CIRCUITS : Set<Pair<Set<Int>,Set<Int>>>;
 # Cocircuits in [[VECTORS]]
 # @depends topcom
 property COCIRCUITS : Set<Pair<Set<Int>,Set<Int>>>;
+
+# @category Geometry
+# The slack matrix of the polytope. The (i,j)-th entry is the value of the j-th
+# facet on the i-th vertex.
+#
+# See
+# > João Gouveia, Antonio Macchia, Rekha R. Thomas, Amy Wiebe:
+# > The Slack Realization Space of a Polytope
+# > (https://arxiv.org/abs/1708.04739)
+property SLACK_MATRIX : Matrix<Scalar>;
+
+rule SLACK_MATRIX : VERTICES, FACETS {
+   $this->SLACK_MATRIX = $this->VERTICES * transpose($this->FACETS);
+}
 
 # @category Geometry
 # Returns the inner description of a Polytope:

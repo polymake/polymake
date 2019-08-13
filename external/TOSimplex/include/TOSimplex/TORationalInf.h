@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2018
+/* Copyright (c) 2011-2019
    Thomas Opfer
 
    This program is free software; you can redistribute it and/or modify it
@@ -21,17 +21,16 @@ namespace TOSimplex {
 template <class T>
 class TORationalInf
 {
-public:
-  TORationalInf(bool isInf_ = false)
-    : isInf(isInf_) {}
+	public:
+		TORationalInf( bool isInf_ = false ):
+			isInf( isInf_ ){}
 
-  TORationalInf(const T& value_)
-    : value(value_)
-    , isInf(false)
-  {}
+		TORationalInf( const T& value_ ):
+			value( value_ ),
+			isInf( false ){}
 
-  T value;
-  bool isInf;
+	T value;
+	bool isInf;
 };
 
 }

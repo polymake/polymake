@@ -44,16 +44,15 @@ HELP
 declare object Group;
 
 # parametrized object used for encoding group actions (representations).
-#
-# //GeneratorType// is Array<Int>      for permutation groups,
-#                   or Matrix<Scalar>  for matrix groups.
-#
-# //DomainType// is Int                for permutation groups,
-#                   Vector<Scalar>     for matrix groups acting on facets or vertices,
-#                   Set<Int> or Bitset for groups acting on simplices,
-#                   IncidenceMatrix    for groups acting on (maximal) cones of a fan
-#
-# //OrbitGeneratorScalarType// is the type of the entries of vectors that generate a geometric orbit; default Rational
+# * //GeneratorType// is 
+#   * ''Array<Int>'' for permutation groups, or 
+#   * ''Matrix<Scalar>'' for matrix groups.
+# * //DomainType// is 
+#   * ''Int'' for permutation groups,
+#   * ''Vector<Scalar> ''for matrix groups acting on facets or vertices,
+#   * ''Set<Int>'' or ''Bitset'' for groups acting on simplices,
+#   * ''IncidenceMatrix'' for groups acting on (maximal) cones of a fan
+# * //OrbitGeneratorScalarType// is the type of the entries of vectors that generate a geometric orbit; default ''Rational''
 #
 declare object Action<GeneratorType, DomainType, OrbitGeneratorScalarType=Rational>;
 

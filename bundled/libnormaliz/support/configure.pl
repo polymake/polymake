@@ -74,7 +74,6 @@ int main() {
 #include <vector>
 #include <fstream>
 #include <iostream>
-#include <omp.h>
 #include <gmpxx.h>
 #include <libnormaliz/libnormaliz.h>
 #include <libnormaliz/cone.h>
@@ -105,11 +104,11 @@ int main (int argc, char *argv[])
          } else {
             ($nmz_version) = $message =~ /version ([0-9]\.[0-9]\.[0-9])/;
             my $minversion = "3.6.0";
-            if (Polymake::Configure::v_cmp($nmz_version,$minversion) >= 0) {
+            if (Polymake::Configure::v_cmp($nmz_version,$minversion) >= 0 && $nmz_version ne "3.7.0") {
                $UseBundled = 0;
             } else {
                check_bundled() and !defined($nmz_path) or
-                  die "Your libnormaliz version $nmz_version is too old, at least version $minversion is required.\nPlease install a newer version or use the bundled version by omitting\n--with-libnormaliz during configuration.\n";
+                  die "Your libnormaliz version $nmz_version is not supported, at least version $minversion is required and\nversion 3.7.0 is broken due to missing configuration flags.\nPlease install a newer version or use the bundled version by omitting\n--with-libnormaliz during configuration.\n";
             }
          }
       } else {

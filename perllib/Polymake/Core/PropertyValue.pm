@@ -279,19 +279,20 @@ sub find_by_name {
 }
 
 sub find_or_create {
-   my ($self, $parent, $filter)=@_;
+   my ($self, $parent, $filter) = @_;
    &find_instance // do {
+      local interrupts(block);
       my $need_commit;
       if (!defined($parent->transaction)) {
-         $need_commit=1;
+         $need_commit = true;
          $parent->begin_transaction;
       }
       if (!@{$self->values}) {
          push @{$parent->contents}, $self;
          $parent->dictionary->{$self->property->key}=$#{$parent->contents};
       }
-      my $temp= @_%2 && pop;
-      my $obj=$self->property->accept->($self->property->type->pure_type->construct->(is_hash($filter) ? (%$filter) : (), @_), $parent, 0, $temp);
+      my $temp = @_ % 2 && pop;
+      my $obj = $self->property->accept->($self->property->type->pure_type->construct->(is_hash($filter) ? (%$filter) : (), @_), $parent, 0, $temp);
       ensure_unique_name($self, $obj, $temp);
       push @{$self->values}, $obj;
       if ($temp) {
@@ -306,11 +307,12 @@ sub find_or_create {
 }
 
 sub replace_or_add {
-   my $obj=pop;
-   my ($self, $parent, $filter)=@_;
-   $obj=$self->property->accept->($obj, $parent);
+   local interrupts(block);
+   my $obj = pop;
+   my ($self, $parent, $filter) = @_;
+   $obj = $self->property->accept->($obj, $parent);
    ensure_unique_name($self, $obj);
-   if (my ($index, $old)=&find_instance) {
+   if (my ($index, $old) = &find_instance) {
       splice @{$self->values}, $index, 1, $obj;
       if ($old->is_temporary) {
          $parent->transaction->forget_temporary_subobject($old);
@@ -328,7 +330,7 @@ sub replace_or_add {
 
 sub remove_instance {
    my ($self, $sub_obj)=@_;
-   my $sub_index=list_index($self->values, $sub_obj);
+   my $sub_index = list_index($self->values, $sub_obj);
    if ($sub_index>=0) {
       splice @{$self->values}, $sub_index, 1;
    } else {

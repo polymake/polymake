@@ -238,7 +238,7 @@ sub v_cmp($$) {
 }
 ###############################################################################################
 
-my $autonomous=!exists &Polymake::Tempfile::new;
+my $autonomous = !exists &Polymake::Tempdir::new;
 my $tempdir;
 
 sub get_tempdir {

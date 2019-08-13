@@ -71,12 +71,12 @@ PropertyValue get_custom(const AnyString& name, const AnyString& key)
 FunCall::FunCall(bool is_method, ValueFlags val_flags_, const AnyString& name, int reserve)
    : FunCall(nullptr, val_flags_, reserve)
 {
-   dTHXa(pi);
+   dTHX;
    if (is_method) {
-      method_name=name.ptr;
+      method_name = name.ptr;
    } else {
-      SV* const app=glue::get_current_application(aTHX);
-      if (!(func=(SV*)glue::namespace_lookup_sub(aTHX_ glue::User_stash, name.ptr, name.len, (CV*)SvRV(PmArray(app)[glue::Application_eval_expr_index])))) {
+      SV* const app = glue::get_current_application(aTHX);
+      if (!(func = (SV*)glue::namespace_lookup_sub(aTHX_ glue::User_stash, name.ptr, name.len, (CV*)SvRV(PmArray(app)[glue::Application_eval_expr_index])))) {
          PmCancelFuncall;
          throw std::runtime_error("polymake function " + name + " not found");
       }
@@ -92,7 +92,7 @@ FunCall::FunCall(std::nullptr_t, ValueFlags val_flags_,  int reserve)
 FunCall::~FunCall()
 {
    if (val_flags != ValueFlags::is_mutable) {
-      dTHXa(pi);
+      dTHX;
       if (std::uncaught_exception()) {
          // error during preparation of arguments
          PmCancelFuncall;
@@ -109,28 +109,28 @@ FunCall::~FunCall()
 
 void FunCall::push_current_application()
 {
-   dTHXa(pi);
+   dTHX;
    push(glue::get_current_application(aTHX));
 }
 
 void FunCall::push_current_application_pkg()
 {
-   dTHXa(pi);
-   SV* app=glue::get_current_application(aTHX);
+   dTHX;
+   SV* app = glue::get_current_application(aTHX);
    push(PmArray(app)[glue::Application_pkg_index]);
 }
 
 void FunCall::create_explicit_typelist(int size)
 {
-   dTHXa(pi);
+   dTHX;
    // TODO: consider caching lists created once
-   SV* list_ref=glue::namespace_create_explicit_typelist(aTHX_ size);
+   SV* list_ref = glue::namespace_create_explicit_typelist(aTHX_ size);
    push(sv_2mortal(list_ref));
 }
 
 SV* FunCall::call_scalar_context()
 {
-   dTHXa(pi);
+   dTHX;
    check_call();
    if (method_name) {
       return glue::call_method_scalar(aTHX_ method_name);
@@ -141,7 +141,7 @@ SV* FunCall::call_scalar_context()
 
 int FunCall::call_list_context()
 {
-   dTHXa(pi);
+   dTHX;
    check_call();
    if (method_name) {
       return glue::call_method_list(aTHX_ method_name);
@@ -159,7 +159,7 @@ void FunCall::check_call()
 
 void FunCall::push_arg(FunCall&& x)
 {
-   dTHXa(pi);
+   dTHX;
    push(sv_2mortal(x.call_scalar_context()));
 }
 
@@ -171,14 +171,14 @@ void VarFunCall::check_push() const
 
 void VarFunCall::begin_type_params(int n)
 {
-   dTHXa(pi);
+   dTHX;
    PmStartFuncall(n + 1);
    push_current_application();
 }
 
 void VarFunCall::push_type_param(const AnyString& param)
 {
-   dTHXa(pi);
+   dTHX;
    dSP;
    mPUSHp(param.ptr, param.len);
    PUTBACK;
@@ -186,7 +186,7 @@ void VarFunCall::push_type_param(const AnyString& param)
 
 void VarFunCall::end_type_params()
 {
-   dTHXa(pi);
+   dTHX;
    SV* typelist = glue::call_method_scalar(aTHX_ "construct_explicit_typelist", false);
    dSP;
    XPUSHs(typelist);
@@ -196,7 +196,7 @@ void VarFunCall::end_type_params()
 
 void PropertyTypeBuilder::nonexact_match()
 {
-   dTHXa(pi);
+   dTHX;
    sv_setiv(save_scalar(glue::PropertyType_nested_instantiation), 1);
 }
 
@@ -204,21 +204,22 @@ ListResult::ListResult(int items, FunCall& fc)
    : Array(items)
 {
    if (items) {
-      dTHXa(fc.pi);
+      dTHX;
       dSP;
-      SV **dst=PmArray(sv)+items-1;
+      SV** dst = PmArray(sv) + items - 1;
       do {
-         if (SvTEMP(*SP)) SvREFCNT_inc_simple_void_NN(*SP);
-         *dst=*SP;
+         if (SvTEMP(*SP))
+            SvREFCNT_inc_simple_void_NN(*SP);
+         *dst = *SP;
          --dst; --SP;
-      } while (--items>0);
+      } while (--items > 0);
       PUTBACK; FREETMPS; LEAVE;
    }
 }
 
 int get_debug_level()
 {
-   SV* dbg=GvSV(glue::Debug_level);
+   SV* dbg = GvSV(glue::Debug_level);
    return SvIOK(dbg) ? SvIVX(dbg) : 0;
 }
 
@@ -226,13 +227,13 @@ namespace glue {
 
 SV* fetch_typeof_gv(pTHX_ HV* app_stash, const char* class_name, size_t class_namelen)
 {
-   HV* const stash=glue::namespace_lookup_class(aTHX_ app_stash, class_name, class_namelen, 0);
+   HV* const stash = glue::namespace_lookup_class(aTHX_ app_stash, class_name, class_namelen, 0);
    if (__builtin_expect(!stash, 0)) {
       sv_setpvf(ERRSV, "unknown perl class %.*s::%.*s", PmPrintHvNAME(app_stash), int(class_namelen), class_name);
       PmCancelFuncall;
       throw exception();
    }
-   SV** const gvp=hv_fetch(stash, "typeof", 6, false);
+   SV** const gvp = hv_fetch(stash, "typeof", 6, false);
    if (__builtin_expect(!gvp, 0)) {
       sv_setpvf(ERRSV, "%.*s is not an Object or Property type", PmPrintHvNAME(stash));
       PmCancelFuncall;
@@ -244,7 +245,7 @@ SV* fetch_typeof_gv(pTHX_ HV* app_stash, const char* class_name, size_t class_na
 SV* get_current_application(pTHX)
 {
    if (cur_wrapper_cv) {
-      HV* const app_stash=CvSTASH(cur_wrapper_cv);
+      HV* const app_stash = CvSTASH(cur_wrapper_cv);
       SV** const gvp = hv_fetch(app_stash, ".APPL", 5, false);
       if (gvp != nullptr && SvTYPE(*gvp) == SVt_PVGV) {
          SV* app_sv = GvSV(*gvp);
@@ -253,7 +254,7 @@ SV* get_current_application(pTHX)
       PmCancelFuncall;
       throw exception("corrupted cpperl wrapper: can't find the application it belongs to");
    }
-   SV* app_sv=GvSV(User_application);
+   SV* app_sv = GvSV(User_application);
    if (app_sv && SvROK(app_sv)) return app_sv;
    PmCancelFuncall;
    throw exception("current application not set");
@@ -261,7 +262,7 @@ SV* get_current_application(pTHX)
 
 void fill_cached_cv(pTHX_ cached_cv& cv)
 {
-   if (!(cv.addr=(SV*)get_cv(cv.name, false))) {
+   if (!(cv.addr = (SV*)get_cv(cv.name, 0))) {
       sv_setpvf(ERRSV, "unknown perl subroutine %s", cv.name);
       PmCancelFuncall;
       throw exception();
@@ -275,9 +276,9 @@ SV* call_func_scalar(pTHX_ SV* cv, bool undef_to_null)
    if (__builtin_expect(SvTRUE(ERRSV), 0)) {
       PmFuncallFailed;
    }
-   SV* ret=POPs;
+   SV* ret = POPs;
    if (undef_to_null && !SvOK(ret)) {
-      ret=nullptr;
+      ret = nullptr;
    } else if (SvTEMP(ret)) {
       SvREFCNT_inc_simple_void_NN(ret);  // prevent from being destroyed in FREETMPS
    }
@@ -292,9 +293,9 @@ std::string call_func_string(pTHX_ SV* cv, bool protect_with_eval)
    if (__builtin_expect(SvTRUE(ERRSV), 0)) {
       PmFuncallFailed;
    }
-   SV *retval=POPs;
-   size_t l=0;
-   const char* s=SvPV(retval, l);
+   SV* retval = POPs;
+   size_t l = 0;
+   const char* s = SvPV(retval, l);
    std::string ret(s, l);
    PmFinishFuncall;
    return ret;
@@ -307,20 +308,20 @@ bool call_func_bool(pTHX_ SV* cv, int boolean_check)
    if (__builtin_expect(SvTRUE(ERRSV), 0)) {
       PmFuncallFailed;
    }
-   SV *retval=POPs;
-   const bool ret=boolean_check ? SvTRUE(retval) : SvOK(retval);
+   SV* retval = POPs;
+   const bool ret = boolean_check ? SvTRUE(retval) : SvOK(retval);
    PmFinishFuncall;
    return ret;
 }
 
 int call_func_list(pTHX_ SV* cv)
 {
-   const int ret=call_sv(cv, G_ARRAY | G_EVAL);
+   const int ret = call_sv(cv, G_ARRAY | G_EVAL);
    if (__builtin_expect(SvTRUE(ERRSV), 0)) {
       FREETMPS; LEAVE;
       throw exception();
    }
-   if (ret==0) {
+   if (ret == 0) {
       FREETMPS; LEAVE;
    }
    return ret;
@@ -328,8 +329,8 @@ int call_func_list(pTHX_ SV* cv)
 
 void call_func_void(pTHX_ SV* cv)
 {
-   const int ret=call_sv(cv, G_VOID | G_EVAL);
-   if (ret>0) {
+   const int ret = call_sv(cv, G_VOID | G_EVAL);
+   if (ret > 0) {
       dSP;
       (void)POPs;
       PUTBACK;
@@ -347,9 +348,9 @@ SV* call_method_scalar(pTHX_ const char* name, bool undef_to_null)
    if (SvTRUE(ERRSV)) {
       PmFuncallFailed;
    }
-   SV* ret=POPs;
+   SV* ret = POPs;
    if (undef_to_null && !SvOK(ret)) {
-      ret=nullptr;
+      ret = nullptr;
    } else if (SvTEMP(ret)) {
       SvREFCNT_inc_simple_void_NN(ret);  // prevent from being destroyed in FREETMPS
    }
@@ -359,12 +360,12 @@ SV* call_method_scalar(pTHX_ const char* name, bool undef_to_null)
 
 int call_method_list(pTHX_ const char* name)
 {
-   const int ret=Perl_call_method(aTHX_ name, G_ARRAY | G_EVAL);
+   const int ret = Perl_call_method(aTHX_ name, G_ARRAY | G_EVAL);
    if (__builtin_expect(SvTRUE(ERRSV), 0)) {
       FREETMPS; LEAVE;
       throw exception();
    }
-   if (ret==0) {
+   if (ret == 0) {
       FREETMPS; LEAVE;
    }
    return ret;
@@ -372,8 +373,8 @@ int call_method_list(pTHX_ const char* name)
 
 void call_method_void(pTHX_ const char* name)
 {
-   const int ret=Perl_call_method(aTHX_ name, G_VOID | G_EVAL);
-   if (ret>0) {
+   const int ret = Perl_call_method(aTHX_ name, G_VOID | G_EVAL);
+   if (ret > 0) {
       dSP;
       (void)POPs;
       PUTBACK;

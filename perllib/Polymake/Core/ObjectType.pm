@@ -294,6 +294,17 @@ sub descend_to_generic {
    undef
 }
 ####################################################################################
+sub find_super_type_param {
+   my ($self, $name) = @_;
+   my $result;
+   foreach my $super (@{$self->linear_isa}) {
+      if (!instanceof Augmented($super) and defined($super->params) and my ($param) = grep { $_->name eq $name } @{$super->params}) {
+         $result = $param;
+      }
+   }
+   $result;
+}
+####################################################################################
 # "property name" => Property or undef
 sub lookup_property {
    my ($self, $prop_name)=@_;

@@ -20,7 +20,8 @@ CREDIT graph_compare
 object PolyhedralFan {
 
 rule RaysPerm.PERMUTATION : RaysPerm.MAXIMAL_CONES, MAXIMAL_CONES {
-   $this->RaysPerm->PERMUTATION=find_row_col_permutation($this->RaysPerm->MAXIMAL_CONES, $this->MAXIMAL_CONES)->second;
+   $this->RaysPerm->PERMUTATION = (find_row_col_permutation($this->RaysPerm->MAXIMAL_CONES, $this->MAXIMAL_CONES)
+                                   // die "no permutation")->second;
 }
 weight 5.10;
 

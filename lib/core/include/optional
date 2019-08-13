@@ -1,0 +1,99 @@
+#ifndef POLYMAKE_OPTIONAL_
+#define POLYMAKE_OPTIONAL_
+
+// Until we have migrated to C++17, we have to use std::experimental::optional.
+// While GCC comes with a fully functional implementation,
+// clang libc++ has a broken one in versions up to 6 and completely lacks it from version 7 upwards.
+// For this configuration, we include a minimal implementation just covering our needs.
+
+#if defined(__clang__) && defined(_LIBCPP_STD_VER)
+
+#include "polymake/internal/type_union.h"
+
+namespace pm {
+
+struct nullopt_t
+{
+   enum class Construct { Token };
+   explicit constexpr nullopt_t(Construct) { }
+};
+
+constexpr nullopt_t nullopt { nullopt_t::Construct::Token };
+
+template <typename T>
+class optional
+   : private type_union<T> {
+   using base_t = type_union<T>;
+public:
+   optional(nullopt_t) noexcept {}
+
+   explicit optional(const T& x)
+      : base_t(x) {}
+
+   explicit optional(T&& x)
+      : base_t(std::forward<T>(x)) {}
+
+   explicit operator bool() const noexcept
+   {
+      return this->valid();
+   }
+
+   const T& value() const&
+   {
+      if (const T* ptr = this->template as<T>())
+         return *ptr;
+      throw std::logic_error("bad optional access");
+   }
+
+   T& value() &
+   {
+      if (T* ptr = this->template as<T>())
+         return *ptr;
+      throw std::logic_error("bad optional access");
+   }
+
+   T&& value() &&
+   {
+      if (T* ptr = this->template as<T>())
+         return std::move(*ptr);
+      throw std::logic_error("bad optional access");
+   }
+};
+
+template <typename T>
+optional<pure_type_t<T>> make_optional(T&& x)
+{
+   return optional<pure_type_t<T>>{ std::forward<T>(x) };
+}
+
+}
+namespace polymake {
+using pm::optional;
+using pm::nullopt;
+using pm::make_optional;
+}
+
+#else
+
+# include <experimental/optional>
+
+namespace polymake {
+using std::experimental::optional;
+using std::experimental::nullopt;
+using std::experimental::make_optional;
+}
+namespace pm {
+using std::experimental::optional;
+using std::experimental::nullopt;
+using std::experimental::make_optional;
+}
+
+#endif
+
+#endif // POLYMAKE_OPTIONAL_
+
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:

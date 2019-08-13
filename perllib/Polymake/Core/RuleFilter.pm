@@ -186,6 +186,11 @@ sub translate_type_expr {
    $_[0] =~ s{ (?: ^ | [\(\{,?:] | == | \|\| | && )\s* \K (?! typeof | instanceof | undef) ($type_re) (?! \s*(?: [\(\[\{\$\@%<>] | -> | => )) }{(typeof $1)}xog;
    $_[0] =~ s/^\s*(?=\{)/do /;
 }
+
+sub translate_typecheck_expr {
+   $_[0] =~ s{\b (?<! -> )(?<! :: ) isa \s*\(\s* (?'t1' $type_re ) \s*,\s* (?'t2' $type_re ) \s*\)}{UNIVERSAL::isa((typeof $+{t1})->pkg, (typeof $+{t2})->pkg)}xg;
+   &translate_type_expr;
+}
 #################################################################################
 sub line_directive {
    if ((my ($line, $file)=@_) == 2) {
@@ -1032,7 +1037,7 @@ sub process_property_type {
                return;
             }
             push @{$self->buffer}, generate_scope_type_params(@param_names);
-            translate_type_expr($typecheck) if defined($typecheck);
+            translate_typecheck_expr($typecheck) if defined($typecheck);
          }
 
          push @{$self->buffer},
@@ -1151,7 +1156,7 @@ sub process_object_decl {
                $self->buffer->[$first_line]="BEGIN { die 'invalid object declaration: $n_defaults' }\n";
                return;
             }
-            translate_type_expr($typecheck) if defined($typecheck);
+            translate_typecheck_expr($typecheck) if defined($typecheck);
 
             push @{$self->buffer},
                  generate_scope_type_params(@param_names),
@@ -1601,7 +1606,7 @@ sub add_overloaded_instance {
 
    if ($typecheck_code) {
       my $final_typecheck="${unique_name}_tpck";
-      translate_type_expr($typecheck_code);
+      translate_typecheck_expr($typecheck_code);
 
       push @{$self->buffer},
            "sub $final_typecheck {\n",
@@ -1993,14 +1998,14 @@ sub erase_comments_filter : method {
 #################################################################################
 
 sub fill {
-   my ($self, $line, $lineno)=@_;
-   my $trailer_pending=@{$self->trailer};
+   my ($self, $line, $lineno) = @_;
+   my $trailer_pending = @{$self->trailer};
 
    if (!length($line)) {
       # EOF
-      my $lastline=$lineno;
+      my $lastline = $lineno;
       if ($trailer_pending) {
-         my $firstline=$lastline-@{$self->buffer}+1;
+         my $firstline = $lastline - @{$self->buffer} + 1;
          unshift @{$self->buffer},
                  $accurate_linenumbers && $trailer_pending > 1
                  ? ( injected_line_directive($self) ) : (),
@@ -2009,15 +2014,15 @@ sub fill {
                  ? ( line_directive($firstline, $accurate_linenumbers ? ($self->path) : ()) ) : ();
       }
       if ($self->preamble_end) {
-         $self->application->preamble_end->{$self->rule_key}=$self->preamble_end;
+         $self->application->preamble_end->{$self->rule_key} = $self->preamble_end;
       }
       if (!$self->has_config_items &&
           defined(delete $self->application->configured->{$self->rule_key})) {
-         $self->application->custom->handler->need_save=1;
+         $self->application->custom->set_changed;
       }
       if ($self->from_embedded_rules) {
          push @{$self->buffer_phase1}, "1; __END__\n";
-         $self->from_embedded_rules=0;
+         $self->from_embedded_rules = 0;
       } elsif (defined $self->handle) {
          push @{$self->buffer}, "1; __END__\n";
          close $self->handle;
@@ -2028,16 +2033,16 @@ sub fill {
          # Without the following operation, the error message is replaced with something incomprehensible.
          remove_error_preserving_source_filter();
       }
-      $self->header_line=$lastline;
+      $self->header_line = $lastline;
 
       return;
    }
 
    if ($line =~ /^(?:\#line\s+(\d+)(?:\s+"(.*)")?)?\s*$/) {
       # empty line
-      my $set_line_number=defined($1);
+      my $set_line_number = defined($1);
       if ($set_line_number && $self->from_embedded_rules) {
-         $.=$1-1;
+         $. = $1 - 1;
          if (length($2)) {
             $self->path=$2;
             $self->credit_seen= $extension && defined($extension->credit);
@@ -2174,65 +2179,65 @@ sub fill {
 package Polymake::Core::Application;
 
 sub configure {
-   my ($self, $code, $rule_key, $line, $optional)=@_;
+   my ($self, $code, $rule_key, $line, $optional) = @_;
    if (($self->configured->{$rule_key} //= "0") > 0) {
       # successful configuration status from past sessions still valid
       1
    } else {
       require Polymake::Configure;
-      my $success=eval { $code->() };
+      my $success = eval { $code->() };
       if ($@) {
          warn_print( (caller)[1], ", line $line: autoconfiguration failed:\n", $@ ) if $Shell->interactive;
          $@="";
       }
       if (!$success && $optional) {
-         $self->configured->{$rule_key}="0#";
-         $success=1;
+         $self->configured->{$rule_key} = "0#";
+         $success = true;
       }
       if ($success) {
          if ($line >= $self->preamble_end->{$rule_key}) {
             # no further CONFIGURE blocks follow
-            substr($self->configured->{$rule_key},0,1)=$load_time;
-            $self->custom->handler->need_save=1;
+            substr($self->configured->{$rule_key}, 0, 1) = $load_time;
+            $self->custom->set_changed;
          }
          1
       } else {
-         $self->configured->{$rule_key}=-$load_time;
-         $self->custom->handler->need_save=1;
+         $self->configured->{$rule_key} = -$load_time;
+         $self->custom->set_changed;
          $self->load_state |= LoadState::has_failed_config;
          if (is_object(my $credit = $self->credits_by_rulefile->{$rule_key})) {
             $credit->shown = Rule::Credit::hide;
          }
-         $self->rulefiles->{$rule_key}=0;
+         $self->rulefiles->{$rule_key} = 0;
       }
    }
 }
 #################################################################################
 # private:
 sub summarize_rule_failed_prerequisites {
-   my ($self, $rule_key, $failed)=@_;
-   $self->configured->{$rule_key}=$failed;
-   $self->custom->handler->need_save=1;
+   my ($self, $rule_key, $failed) = @_;
+   $self->configured->{$rule_key} = $failed;
+   $self->custom->set_changed;
    $self->load_state |= LoadState::has_failed_config;
    if (is_object(my $credit = $self->credits_by_rulefile->{$rule_key})) {
       $credit->shown = Rule::Credit::hide;
    }
-   $self->rulefiles->{$rule_key}=0
+   $self->rulefiles->{$rule_key} = 0
 }
 
 sub summarize_rule_successful_prerequisites {
-   my ($self, $rule_key, $line)=@_;
+   my ($self, $rule_key, $line) = @_;
    if ($line >= $self->preamble_end->{$rule_key} && $self->configured->{$rule_key} =~ /^0\#?/) {
       # some CONFIGURE blocks passed and no further CONFIGURE blocks
-      substr($self->configured->{$rule_key},0,1)=$load_time;
-      $self->custom->handler->need_save=1;
+      substr($self->configured->{$rule_key}, 0, 1) = $load_time;
+      $self->custom->set_changed;
    }
    1
 }
 #################################################################################
 sub include_required {
-   my ($self, $block, $rule_key, $line)=@_;
-   if (my @failed=include_rule_block($self, 1, $block)) {
+   my ($self, $block, $rule_key, $line) = @_;
+   if (my @failed = include_rule_block($self, 1, $block)) {
       if ($has_interactive_commands) {
          store_rule_to_wake($self, (caller)[1], $extension, $rule_key, 1, map { /^($id_re)::/ ? ($self->used->{$1}, $') : ($self, $_) } @failed);
       }
@@ -2388,12 +2393,12 @@ sub start_preamble {
 sub process_included_rule {
    my ($self, $rulefile, $filename, $ext, $rule_key, $rc) = @_;
    return $rc if defined($rc);
-   if (defined (my $config_state = $self->configured->{$rule_key})) {
+   if (defined(my $config_state = $self->configured->{$rule_key})) {
       if ($config_state > 0) {
          if ($config_state < ($ext // $self)->configured_at) {
             # enforce reconfiguration
             delete $self->configured->{$rule_key};
-            $self->custom->handler->need_save = true;
+            $self->custom->set_changed;
          }
       } else {
          $self->rulefiles->{$rule_key} = 0;
@@ -2438,7 +2443,7 @@ sub process_included_rule {
          }
          # prerequisite was successfully reconfigured in the meanwhile, or reconfiguration forced
          delete $self->configured->{$rule_key};
-         $self->custom->handler->need_save = true;
+         $self->custom->set_changed;
       }
    }
    local $extension=$ext if $ext != $extension;

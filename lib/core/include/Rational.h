@@ -1353,7 +1353,7 @@ public:
    friend
    Rational&& operator>> (Rational&& a, long k)
    {
-      return std::move(a >> k);
+      return std::move(a >>= k);
    }
    friend
    Rational operator>> (const Rational& a, int k)

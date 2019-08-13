@@ -491,10 +491,7 @@ user_method rank(Set) {
 # @return Bool Whether this matroid is isomorphic to M
 user_method is_isomorphic_to(Matroid) {
    my ($self, $M) = @_;
-   my $result = eval {
-      find_row_col_permutation( (new IncidenceMatrix($self->BASES)), (new IncidenceMatrix($M->BASES)));
-   };
-   return defined($result);
+   return defined(find_row_col_permutation(new IncidenceMatrix($self->BASES), new IncidenceMatrix($M->BASES)));
 }
 
 }

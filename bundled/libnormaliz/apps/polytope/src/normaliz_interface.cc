@@ -85,8 +85,8 @@ Matrix<Scalar> stdvectorvector_to_pmMatrix(const std::vector<std::vector<FromSca
   return Matrix<Scalar>(vec.size(), vec.empty() ? 0 : vec.front().size(), vec.begin());
 }
 
-template <typename Scalar>
-std::vector<std::vector<Scalar>> pmMatrix_to_stdvectorvector(const Matrix<Rational>& m)
+template <typename Scalar, typename FromScalar>
+std::vector<std::vector<Scalar>> pmMatrix_to_stdvectorvector(const Matrix<FromScalar>& m)
 {
   const auto pmdata = common::primitive(m);
   std::vector<std::vector<Scalar>> data;
@@ -105,21 +105,21 @@ libnormaliz::Cone<Scalar> libnormaliz_create_cone(perl::Object c, bool from_ineq
   Matrix<Rational> data;
   if (from_ineq) {
     const Matrix<Rational>& f = c.give("FACETS | INEQUALITIES");
-    inputmap[libnormaliz::Type::inequalities] = pmMatrix_to_stdvectorvector<Scalar>(f);
+    inputmap[libnormaliz::Type::inequalities] = pmMatrix_to_stdvectorvector<Scalar, Rational>(f);
     if (c.lookup("LINEAR_SPAN | EQUATIONS") >> data)
-      inputmap[libnormaliz::Type::equations] = pmMatrix_to_stdvectorvector<Scalar>(data);
+      inputmap[libnormaliz::Type::equations] = pmMatrix_to_stdvectorvector<Scalar, Rational>(data);
   } else {
     const Matrix<Rational>& r = c.give("RAYS | INPUT_RAYS");
-    inputmap[libnormaliz::Type::integral_closure] = pmMatrix_to_stdvectorvector<Scalar>(r);
+    inputmap[libnormaliz::Type::integral_closure] = pmMatrix_to_stdvectorvector<Scalar, Rational>(r);
     if(c.lookup("INPUT_LINEALITY | LINEALITY_SPACE") >> data){
-       inputmap[libnormaliz::Type::subspace] = pmMatrix_to_stdvectorvector<Scalar>(data);
+       inputmap[libnormaliz::Type::subspace] = pmMatrix_to_stdvectorvector<Scalar, Rational>(data);
     }
     // lookup dual description if we do not want to compute it
     if (!compute_facets) {
       if (c.lookup("FACETS | INEQUALITIES") >> data)
-        inputmap[libnormaliz::Type::inequalities] = pmMatrix_to_stdvectorvector<Scalar>(data);
+        inputmap[libnormaliz::Type::inequalities] = pmMatrix_to_stdvectorvector<Scalar, Rational>(data);
       if (c.lookup("LINEAR_SPAN | EQUATIONS") >> data)
-        inputmap[libnormaliz::Type::equations] = pmMatrix_to_stdvectorvector<Scalar>(data);
+        inputmap[libnormaliz::Type::equations] = pmMatrix_to_stdvectorvector<Scalar, Rational>(data);
     }
   }
   if (with_grading) {
@@ -196,6 +196,28 @@ perl::ListReturn normaliz_compute_with(perl::Object c, perl::OptionSet options,
 
 }
 
+
+template <typename Scalar>
+Matrix<Integer> normaliz_compute_lattice_with(const Matrix<Integer> & V)
+{
+
+   std::map<libnormaliz::InputType, std::vector<std::vector<Scalar>>> inputmap;
+   inputmap[libnormaliz::Type::integral_closure] = pmMatrix_to_stdvectorvector<Scalar, Integer>(V);
+   libnormaliz::Cone<Scalar> nmzCone = libnormaliz::Cone<Scalar>(inputmap);
+
+   if (std::is_same<Scalar,Integer>::value)
+      nmzCone.deactivateChangeOfPrecision();
+
+   libnormaliz::ConeProperties todo;
+   todo.set(libnormaliz::ConeProperty::Deg1Elements);
+
+   nmzCone.compute(todo);
+
+   return stdvectorvector_to_pmMatrix<Integer>(nmzCone.getDeg1Elements());
+}
+
+
+
 perl::ListReturn normaliz_compute(perl::Object c, perl::OptionSet options)
 {
   libnormaliz::verbose=options["verbose"];
@@ -245,6 +267,42 @@ perl::ListReturn normaliz_compute(perl::Object c, perl::OptionSet options)
 
 }
 
+
+// just compute the lattice points in a polytope given by vertices V
+// using at most the number of threads specified
+Matrix<Integer> normaliz_compute_lattice(const Matrix<Integer> & V, int threads = 0)
+{
+
+   if(threads)
+      libnormaliz::set_thread_limit(threads);
+
+#ifdef BUNDLED_LIBNORMALIZ
+   try {
+      // try with long first
+      return normaliz_compute_lattice_with<long>(V);
+   }
+   catch(const pm::GMP::error& ex) {
+      if (libnormaliz::verbose)
+         cerr << "libnormaliz: error converting coordinates to long, retrying with arbitrary precision" << endl;
+      return normaliz_compute_lattice_with<Integer>(V);
+   }
+   catch(const libnormaliz::ArithmeticException& ex) {
+      if (libnormaliz::verbose)
+         cerr << "libnormaliz: arithmetic error detected, retrying with arbitrary precision" << endl;
+      return normaliz_compute_lattice_with<Integer>(V);
+   }
+#else
+   /*
+    * non-bundled installation of libnormaliz doesnt support using our own type
+    * for mpz_class cones libnormaliz will first try to compute with long long,
+    thus we do not need do it separately
+    */
+   return normaliz_compute_lattice_with<mpz_class>(V);
+#endif
+
+}
+
+
 UserFunction4perl("# @category Geometry"
 		  "# Compute degree one elements, Hilbert basis or Hilbert series of a cone C with libnormaliz"
                   "# Hilbert series and Hilbert h-vector depend on the given grading"
@@ -264,4 +322,5 @@ UserFunction4perl("# @category Geometry"
                   "# @return List (Matrix<Integer> degree one generators, Matrix<Integer> Hilbert basis, Vector<Integer> Hilbert h-vector, RationalFunction Hilbert series, Matrix<Rational> facets, Matrix<Rational> linear_span, Matrix<Rational> rays) (only requested items)",
                   &normaliz_compute, "normaliz_compute(Cone { from_facets => 0, degree_one_generators=>0, hilbert_basis=>0, h_star_vector=>0, hilbert_series=>0, facets=>0, rays=>0, dual_algorithm=>0, ehrhart_quasi_polynomial=>0, skip_long=>0, verbose => 0 })");
 
+   Function4perl(&normaliz_compute_lattice, "normaliz_compute_lattice($$)");
 } }

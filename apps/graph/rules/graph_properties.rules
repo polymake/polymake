@@ -15,7 +15,7 @@
 
 # @category Combinatorics
 # A graph with optional node and edge attributes.
-#
+# @tparam Dir tag describing the kind of the graph: [[Directed]], [[Undirected]], [[DirectedMulti]], or [[UndirectedMulti]].
 declare object Graph<Dir=Undirected> {
 
 file_suffix graph

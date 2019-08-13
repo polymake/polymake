@@ -69,18 +69,6 @@ rule VALID_POINT : VERTICES | POINTS {
 weight 0.10;
 
 
-# @category Backward compatibility
-# The number of edges of the [[GRAPH]]
-# @return Int
-user_method N_EDGES = GRAPH.N_EDGES;
-
-# @category Combinatorics
-# The number of ridges (faces of codimension 2) of the polytope
-# equals the number of edges of the [[DUAL_GRAPH]]
-# @return Int
-user_method N_RIDGES = DUAL_GRAPH.N_EDGES;
-
-
 # IMPORTANT
 # For the combinatorial rules below bear in mind the following semantics:
 # (1) The combinatorics of an unbounded and pointed polyhedron is defined to be the combinatorics

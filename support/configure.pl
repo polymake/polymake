@@ -71,7 +71,7 @@ my (%options, %vars, %allowed_options, %allowed_with, %allowed_flags, %allowed_v
 
 # expected options for the core script
 @allowed_options{ qw( prefix exec-prefix bindir includedir libdir libexecdir datadir docdir build build-modes ) }=();
-@allowed_with{ qw( gmp mpfr libxml2 boost permlib toolchain ccache ccwrapper) }=();
+@allowed_with{ qw( gmp mpfr libxml2 boost permlib toolchain ccache ccwrapper ) }=();
 @allowed_flags{ qw( prereq callable native openmp libcxx ) }=();
 @allowed_vars{ qw( CC CFLAGS CXX CXXFLAGS CXXOPT CXXDEBUG LDFLAGS LIBS Arch DESTDIR ) }=();
 
@@ -941,6 +941,9 @@ sub collect_compiler_specific_options {
       if (v_cmp($GCCversion, "6.3.0") >= 0 && v_cmp($GCCversion, "7.0.0") < 0) {
          $CXXFLAGS .= " -Wno-maybe-uninitialized";
       }
+      if (v_cmp($GCCversion, "9.1.0") >= 0) {
+         $CXXFLAGS .= " -Wno-stringop-overflow";
+      }
 
    } elsif (defined($ICCversion)) {
       $CsharedFLAGS="-fPIC";
@@ -1234,7 +1237,9 @@ Please install the library and specify its location using --with-boost option, i
    }
 }
 
+
 ###############################################################
+
 sub locate_permlib {
    my $permlib_path = $options{permlib};
    if (defined($permlib_path) and $permlib_path ne "bundled") {
@@ -1327,19 +1332,17 @@ Otherwise, reconfigure and reinstall your perl.
 #include <EXTERN.h>
 #include <perl.h>
 
-static PerlInterpreter *my_perl;
-
 int main(int argc, char **argv, char **env)
 {
    const char* embedding[] = { "", "-e", "print $];", 0 };
    PERL_SYS_INIT3(&argc, &argv, &env);
-   my_perl = perl_alloc();
-   perl_construct(my_perl);
+   pTHXx = perl_alloc();
+   perl_construct(aTHXx);
    PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
-   perl_parse(my_perl, NULL, 3, (char**)embedding, (char **)NULL);
-   perl_run(my_perl);
-   perl_destruct(my_perl);
-   perl_free(my_perl);
+   perl_parse(aTHXx_ nullptr, 3, (char**)embedding, nullptr);
+   perl_run(aTHXx);
+   perl_destruct(aTHXx);
+   perl_free(aTHXx);
    PERL_SYS_TERM();
 }
 ---
@@ -1624,7 +1627,7 @@ sub finalize_compiler_flags {
       $LIBS .= " -ldl";
    }
 
-   $LIBS="-lmpfr -lgmp -lpthread $LIBS";
+   $LIBS="$LIBS -lmpfr -lgmp -lpthread";
 
    # be rigorous about own code
    if ($Polymake::DeveloperMode) {
@@ -1650,7 +1653,7 @@ It can usually be installed as a ready-to-use package, e.g.
 on Ubuntu:
    apt-get install ninja-build
 on MacOS with Homebrew:
-   brew install ninja-build
+   brew install ninja
 
 As a fallback, you can obtain its source code from GitHub, build it yourself,
 and install at a location of your choice:
@@ -1722,11 +1725,16 @@ sub write_perl_specific_configuration_file {
    # Xcode 10 deeply hides perl headers at unpredictable locations, it requires a special clang option to find them
    my $includePerlCore = defined($XcodeVersion) && v_cmp($XcodeVersion, "10.0") >= 0 && $Config::Config{perlpath} eq "/usr/bin/perl" ? "-iwithsysroot " : "-I";
 
+   # fedora has ExtUtils::ParseXS in vendorlib
+   my ($xsubpp) = grep { -e $_ } map { "$Config::Config{$_}/ExtUtils/xsubpp" } qw(privlib vendorlib);
+   my ($typemap) = grep { -e $_ } map { "$Config::Config{$_}/ExtUtils/typemap" } qw(privlib vendorlib);
+
    print $conf <<"---";
 PERL=$Config::Config{perlpath}
 CXXglueFLAGS=$includePerlCore$Config::Config{archlibexp}/CORE $Config::Config{ccflags} -DPerlVersion=$PerlVersion $no_warn
 LIBperlFLAGS=-L$Config::Config{archlib}/CORE -lperl $Config::Config{ccdlflags}
-ExtUtils=$Config::Config{privlib}/ExtUtils
+ExtUtils_xsubpp=$xsubpp
+ExtUtils_typemap=$typemap
 ---
 
    close $conf;

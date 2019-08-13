@@ -104,7 +104,7 @@ perl::Object mixed_subdivision(const perl::Object& p_in1, const perl::Object& p_
 
 
 UserFunctionTemplate4perl("# @category Producing a polyhedral complex"
-                          "# Create a weighted mixed subdivision of the Minkowski sum of two polytopes, using the Cayley trick."
+                          "# Create a weighted mixed subdivision of the scaled Minkowski sum of two polytopes, using the Cayley trick."
                           "# The polytopes must have the same dimension, at least one of them must be pointed. "
                           "# The vertices of the first polytope //P_0// are weighted with //t_0//,"
                           "# and the vertices of the second polytope //P_1// with //t_1//."
@@ -140,6 +140,7 @@ UserFunctionTemplate4perl("# @category Producing a polyhedral complex"
                           "# Each vertex //v// of the //i//-th polytope is weighted with //t_i//, "
                           "# the //i//-th entry of the optional array //t//. "
                           "# @param Array<Polytope> A the input polytopes"
+			  "# @param Array<Set> VIF the indices of the vertices of the mixed cells"
                           "# @option Vector<Scalar> t scaling for the Cayley embedding; defaults to the all-1 vector"
                           "# @option Bool no_labels Do not copy [[VERTEX_LABELS]] from the original polytopes. default: 0"
                           "# @return PolyhedralComplex",

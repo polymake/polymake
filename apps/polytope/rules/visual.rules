@@ -257,15 +257,16 @@ method VisualSimplices {
    } @$Simplices;
 }
 
-sub apply_bounding_box($;$) {
+sub apply_bounding_facets($;$) {
     my ($this,$bbox) = @_; # Polytope object, Matrix
-
+	 
+	 # if no facets are specified we simply make a box
     # the surplus of 6/5 for the bounding box is just a random choice
-    $bbox //= bounding_box($this->VERTICES, 6/5, 1);
+    $bbox //= bounding_box_facets($this->VERTICES, surplus_k=>6/5, fulldim=>1);
     
     my $bounded=$this->type->construct->($this->name."_bounded", INEQUALITIES => $this->FACETS / $bbox, EQUATIONS=>$this->AFFINE_HULL);
     if (!$bounded->BOUNDED) {
-        die "apply_bounding_box: Invalid bounding box!";
+        die "apply_bounding_facets: Invalid bounding facets! There is an unbounded object.";
     }
 
     # mark artificial facets
@@ -324,9 +325,9 @@ user_method VISUAL(%Visual::Polygons::decorations, %geometric_options) : VERTICE
    my $to_visualize=$this;
    my $bbox_facets={};
 
-   if (defined($geom->{BoundingBox})) {
+   if (defined($geom->{BoundingFacets})) {
        my $vertex_map={};
-       ($to_visualize, $bbox_facets, $vertex_map) = @{apply_bounding_box($this,$geom->{BoundingBox})};
+       ($to_visualize, $bbox_facets, $vertex_map) = @{apply_bounding_facets($this,$geom->{BoundingFacets})};
 
        my @vertex_labels=map { $vertex_map->{$_} // " " } @{$to_visualize->VERTICES};
        $vertex_labels=\@vertex_labels;
@@ -373,7 +374,7 @@ user_method VISUAL(%Visual::Polygons::decorations, %geometric_options) : CONE_DI
    my ($this, $decor, $geom)=@_;
 
    # since we are unbounded we have to cut off somewhere
-   my ($bounded, $bbox_facets, $vertex_map) = @{apply_bounding_box($this,$geom->{BoundingBox})};
+   my ($bounded, $bbox_facets, $vertex_map) = @{apply_bounding_facets($this,$geom->{BoundingFacets})};
 
    my @vertex_labels;
    if (defined (my $labels=$this->lookup("VERTEX_LABELS"))) {
@@ -399,7 +400,7 @@ user_method VISUAL(%Visual::Polygons::decorations, %geometric_options) : CONE_DI
    if (scalar(@vertex_colors)>0) {
        $decor->{VertexColor} = \@vertex_colors;
    }
-   $bv = $bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " }, $decor, $geom);
+	$bv = $bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " }, $decor, $geom);
    $bv->basis_solid->merge(%to_merge);
    visualize($bv);
 }
@@ -475,7 +476,7 @@ object Cone {
 # @options %geometric_options_linear
 # @return Visual::Cone
 
-user_method VISUAL(%Visual::Polygons::decorations, %geometric_options_linear, {CutOff => $Visual::Color::cutoff}, {BoundingBox => undef}) : RAYS, LINEALITY_SPACE {
+user_method VISUAL(%Visual::Polygons::decorations, %geometric_options_linear, {CutOff => $Visual::Color::cutoff}, {BoundingFacets => undef}) : RAYS, LINEALITY_SPACE {
    my ($this,$decor,$geom,$cutoff_decor, $bb)=@_;
    $decor->{VertexStyle} ||= "hidden";
    $cutoff_decor=$cutoff_decor->{CutOff};
@@ -488,11 +489,11 @@ user_method VISUAL(%Visual::Polygons::decorations, %geometric_options_linear, {C
    my $d=$this->RAYS->cols;
    my $rays=normalized(convert_to<Float>($this->RAYS));
    my $lineality = convert_to<Float>($this->LINEALITY_SPACE);
-   if(!(defined $bb->{BoundingBox})) {
+   if(!(defined $bb->{BoundingFacets})) {
        my $bbox = $lineality->rows > 0 ?
-           polytope::bounding_box<Float>(ones_vector<Float>() | $rays, 6/5, 1)
+           polytope::bounding_box_facets<Float>(ones_vector<Float>() | $rays, surplus_k=>6/5, fulldim=>1)
            : undef;
-       $bb->{BoundingBox} = $bbox;
+       $bb->{BoundingFacets} = $bbox;
    }
    my $zero=new Vector<Float>($d);
    my @cells_visual = ();
@@ -510,7 +511,7 @@ user_method VISUAL(%Visual::Polygons::decorations, %geometric_options_linear, {C
    my $p=new polytope::Polytope<Float>(VERTICES => $v, LINEALITY_SPACE => zero_vector<Float>() | $lineality, FACETS_THRU_VERTICES=>$ftv);
    
    my $pv= ($lineality->rows > 0 && $this->CONE_DIM > 1) ?
-      $p->VISUAL( $decor , $geom, BoundingBox=>$bb->{BoundingBox} ) :
+      $p->VISUAL( $decor , $geom, BoundingFacets=>$bb->{BoundingFacets} ) :
       $p->VISUAL( $decor , $geom);
    my (@cutoff_attrs);
    my $dim=$p->DIM;

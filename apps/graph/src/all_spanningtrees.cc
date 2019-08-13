@@ -29,9 +29,7 @@ Array<Set<int> > calc_all_spanningtrees(const Graph<>& G)
 
 UserFunction4perl("# @category Combinatorics"
                   "# Calculate all spanning trees for a connected graph along the lines of"
-                  "#\t Donald E. Knuth:"
-                  "#\t The Art of Computer Programming"
-                  "#\t Volume 4, Fascicle 4, 24-31, 2006, Pearson Education Inc."
+                  "#\t Donald E. Knuth: The Art of Computer Programming, Volume 4, Fascicle 4, 24-31, 2006, Pearson Education Inc."
                   "# @param Graph G beeing connected"
                   "# @return Array<Set<Int>>"
                   "# @example The following prints all spanning trees of the complete graph with"

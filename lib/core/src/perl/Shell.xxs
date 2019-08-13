@@ -32,14 +32,14 @@ PPCODE:
    if (PL_parser->yyerrstatus) {
       // error message pending parser recovery
       PUSHi(-1);
-   } else if (PL_parser->lex_brackets==0 && PL_parser->lex_state==LEX_NORMAL && PL_parser->expect==XSTATE) {
+   } else if (PL_parser->lex_brackets == 0 && PL_parser->lex_state == LEX_NORMAL && PL_parser->expect == XSTATE) {
       PUSHi(0);
    } else {
-      int l=CopLINE(&PL_compiling);
-      for (const char *b=PL_parser->bufptr; b < PL_parser->bufend; ++b) {
+      int l = CopLINE(&PL_compiling);
+      for (const char* b = PL_parser->bufptr; b < PL_parser->bufend; ++b) {
          if (*b == '\n') {
             // will consume the linebreak as soon as the next line is received
-            ++l; break;
+            ++l;  break;
          }
       }
       PUSHi(l);

@@ -358,30 +358,24 @@ void ListValueInputBase::retrieve_key(std::string& dst) const
    dst.assign(key, klen);
 }
 
-Stack::Stack()
-{
-   dTHX;
-   pi=getTHX;
-}
+Stack::Stack() {}
 
 Stack::Stack(SV** start)
 {
    dTHX;
-   pi=getTHX;
-   PL_stack_sp=start;
+   PL_stack_sp = start;
 }
 
 Stack::Stack(int reserve)
 {
    dTHX;
-   pi=getTHX;
    PmStartFuncall(reserve);
    PUTBACK;
 }
 
 void Stack::push(SV* x) const
 {
-   dTHXa(pi);
+   dTHX;
    dSP;
    PUSHs(x);
    PUTBACK;
@@ -389,7 +383,7 @@ void Stack::push(SV* x) const
 
 void Stack::xpush(SV* x) const
 {
-   dTHXa(pi);
+   dTHX;
    dSP;
    XPUSHs(x);
    PUTBACK;
@@ -397,7 +391,7 @@ void Stack::xpush(SV* x) const
 
 void Stack::extend(int n)
 {
-   dTHXa(pi);
+   dTHX;
    dSP;
    EXTEND(SP, n);
    PUTBACK;
@@ -405,7 +399,7 @@ void Stack::extend(int n)
 
 void Stack::push(const AnyString& s) const
 {
-   dTHXa(pi);
+   dTHX;
    dSP;
    mPUSHp(s.ptr, s.len);
    PUTBACK;
@@ -413,13 +407,13 @@ void Stack::push(const AnyString& s) const
 
 void Stack::cancel()
 {
-   dTHXa(pi);
+   dTHX;
    PmCancelFuncall;
 }
 
 void ListReturn::upgrade(int size)
 {
-   dTHXa(pi);
+   dTHX;
    dSP;
    EXTEND(SP, size);
 }

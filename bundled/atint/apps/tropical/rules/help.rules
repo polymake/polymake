@@ -28,7 +28,8 @@
 # These +++ are used to define morphisms or rational functions on a Cycle.
 
 # @topic category any/Local computations
-# These +++ are used for doing computations locally around a specified part of a Cycle.
+# These +++ are used for doing computations locally around a specified part of a Cycle,
+# given via a nontrivial [[LOCAL_RESTRICTION]].
 
 # @topic category any/Creation functions for specific cycles
 # These +++ are special +++ for creating special tropical cycles.
@@ -60,10 +61,6 @@
 
 # @topic category any/Morphisms
 # These are general +++ that deal with morphisms and their arithmetic.
-
-# @topic category any/Local computations
-# These +++ deal with the creation and modification of cycles with nontrivial
-# [[LOCAL_RESTRICTION]].
 
 # @topic category any/Weight space
 # These +++ deal with the weight space of a cycle, i.e. the space of weights

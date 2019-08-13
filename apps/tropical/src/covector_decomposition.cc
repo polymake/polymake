@@ -163,7 +163,7 @@ void compute_covector_decomposition(perl::Object cone, perl::OptionSet options) 
     cone.take("POLYTOPE_COVECTOR_DECOMPOSITION") << result;
   } else {
     // Torus cells might be in a different order
-    Array<int> cell_perm = find_permutation( cone_max_cells, rows(max_covector_cells));
+    Array<int> cell_perm = find_permutation( cone_max_cells, rows(max_covector_cells)).value();
     cone.take("MAXIMAL_COVECTORS") << permuted(max_covectors, cell_perm);
     cone.take("TORUS_COVECTOR_DECOMPOSITION") << result;
   }

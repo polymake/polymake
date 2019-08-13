@@ -185,17 +185,13 @@ use Polymake::Struct (
    [ '$restore_application' => '#6' ],
 );
 
-sub new {
-   my $self=&Case::new;
-   local $disable_viewers = 1;
-   before_run($self);
+sub run_code {
+   my ($self) = @_;
+   local $disable_viewers = true;
    local scalar $User::application if $self->restore_application;
    eval $self->body;
    $self->gotten_error = $@;
    $@ = "";
-   after_run($self);
-   close $self->handle;
-   $self;
 }
 
 my $end_marker_re= qr/=== END \# \d+ ===/;

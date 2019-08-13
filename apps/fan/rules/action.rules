@@ -437,10 +437,9 @@ object PolyhedralComplex {
 # | MAXIMAL_CONES_ACTION
 # | type: PermutationAction<Int, Rational> as PolyhedralFan<Rational>::GROUP::MAXIMAL_CONES_ACTION
 # |
-# Now you can calculate the RAYS and MAXIMAL_CONES of the orbit fan.
+# Now you can calculate the [[RAYS]] and [[MAXIMAL_CONES]] of the orbit fan.
 #
-# IMPORTANT: You must ask for $of->RAYS before $of->MAXIMAL_CONES.
-#
+# IMPORTANT: You must ask for [[RAYS]] before [[MAXIMAL_CONES]].
 # > print $of->RAYS;
 # | 1 1
 # | 1 0
@@ -483,10 +482,9 @@ user_function orbit_fan(fan::PolyhedralFan, can_convert_to<Array<Array<Int>>>) {
 # | MAXIMAL_CONES_ACTION
 # | type: PermutationAction<Int, Rational> as PolyhedralFan<Rational>::GROUP::MAXIMAL_CONES_ACTION
 # |
-# Now you can calculate the RAYS and MAXIMAL_CONES of the orbit fan.
+# Now you can calculate the [[RAYS]] and [[MAXIMAL_CONES]] of the orbit fan.
 #
-# IMPORTANT: You must ask for $of->RAYS before $of->MAXIMAL_CONES.
-#
+# IMPORTANT: You must ask for [[RAYS]] before [[MAXIMAL_CONES]].
 # > print $of->RAYS;
 # | 1 1 1
 # | 1 1 0
@@ -538,10 +536,9 @@ user_function orbit_fan<Scalar>(fan::PolyhedralFan<Scalar>, group::MatrixActionO
 # | MAXIMAL_POLYTOPES_ACTION
 # | type: PermutationAction<Int, Rational> as PolyhedralComplex<Rational>::GROUP::MAXIMAL_POLYTOPES_ACTION
 #
-# Now you can calculate the VERTICES and MAXIMAL_POLYTOPES of the orbit fan.
+# Now you can calculate the [[VERTICES]] and [[MAXIMAL_POLYTOPES]] of the orbit fan.
 #
-# IMPORTANT: You must ask for $oc->VERTICES before $oc->MAXIMAL_POLYTOPES.
-#
+# IMPORTANT: You must ask for [[VERTICES]] before [[MAXIMAL_POLYTOPES]].
 # > print $oc->VERTICES;
 # | 1 1 1
 # | 1 1 0
@@ -580,10 +577,9 @@ user_function orbit_complex(fan::PolyhedralComplex, can_convert_to<Array<Array<I
 # | MAXIMAL_POLYTOPES_ACTION
 # | type: PermutationAction<Int, Rational> as PolyhedralComplex<Rational>::GROUP::MAXIMAL_POLYTOPES_ACTION
 # 
-# Now you can calculate the VERTICES and MAXIMAL_POLYTOPES of the orbit fan.
+# Now you can calculate the [[VERTICES]] and [[MAXIMAL_POLYTOPES]] of the orbit fan.
 #
-# IMPORTANT: You must ask for $oc->VERTICES before $oc->MAXIMAL_POLYTOPES.
-#
+# IMPORTANT: You must ask for [[VERTICES]] before [[MAXIMAL_POLYTOPES]].
 # > print $oc->VERTICES;
 # | 1 1 1
 # | 1 1 0
@@ -619,13 +615,12 @@ user_function orbit_complex<Scalar>(fan::PolyhedralComplex<Scalar>, group::Matri
 # @category Symmetry
 # Returns the permutation action induced by the symmetry group of the fan //f// on the set of //k//-dimensional cones.
 # This action is not stored as a property of //f//, because polymake doesn't support dynamic names of properties.
-# Be aware that the set of //k//-dimensional cones itself is $f->CONES->[$k-1].
+# Be aware that the set of //k//-dimensional cones itself is ''%% $f->CONES->[$k-1] %%''.
 # @param fan::PolyhedralFan f the input fan
 # @param Int k the dimension of the cones to induce the action on
 # @return group::PermutationAction a the action induced by //Aut//(//f//) on the set of //k//-dimensional cones
 # @example Consider a 3-cube //c//. To calculate the induced action of //Aut//(//c//) on the set of 2-dimensional cones of the normal fan, type
 # > $f = fan::normal_fan(polytope::cube(3, group=>1));
-#
 # > print fan::cones_action($f,2)->properties();
 # | name: CONES_ACTION(2)
 # | type: PermutationAction<Int, Rational>
@@ -635,7 +630,6 @@ user_function orbit_complex<Scalar>(fan::PolyhedralComplex<Scalar>, group::Matri
 # | 0 3 4 1 2 5 7 6 8 10 9 11
 # | 1 0 2 5 6 3 4 7 9 8 11 10
 # | 0 2 1 4 3 8 9 10 5 6 7 11
-#
 # > print $f->CONES->[1];
 # | {2 4}
 # | {0 4}
@@ -674,13 +668,11 @@ user_function cones_action(fan::PolyhedralFan, $) {
 # | 2 3 0 1
 # | 1 0 3 2
 # | 0 2 1 3
-#
 # > $f = normal_fan(polytope::cube(2)); combinatorial_symmetries($f);
 # > print $f->GROUP->RAYS_ACTION->GENERATORS;
 # | 0 1 3 2
 # | 1 0 2 3
 # | 2 3 0 1
-#
 # > print $f->GROUP->MAXIMAL_CONES_ACTION->GENERATORS;
 # | 2 3 0 1
 # | 1 0 3 2

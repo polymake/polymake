@@ -44,5 +44,7 @@
   {"args": ["perl::Canned<const std::list<int>&>"], "func": "size", "include": ["polymake/list"], "kind": "meth", "sig": "size:M"},
   {"args": ["perl::Canned<const Set<Matrix<double>>&>"], "func": "size", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Set.h"], "kind": "meth", "sig": "size:M"},
   {"args": ["perl::Canned<const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, false, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&>&>"], "func": "size", "include": ["polymake/IncidenceMatrix.h"], "kind": "meth", "sig": "size:M"},
+  {"args": ["perl::Canned<const Bitset&>"], "func": "size", "include": ["polymake/Bitset.h"], "kind": "meth", "sig": "size:M"},
+  {"args": ["perl::Canned<const SparseVector<PuiseuxFraction<Max, Rational, Rational>>&>"], "func": "size", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/SparseVector.h", "polymake/TropicalNumber.h"], "kind": "meth", "sig": "size:M"},
  null ],
 "version": 3}

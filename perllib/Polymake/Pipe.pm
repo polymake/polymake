@@ -96,17 +96,21 @@ sub not_alone {}
 package Polymake::Selector;
 
 sub try_read {
-   my ($member)=@_;
-   my ($rready, $wready);
-   while (select $rready=$rmask, $wready=$wmask, undef, undef) {
+   my ($member, $ignore_error) = @_;
+   my ($rready, $wready, $rc);
+   while ($rc = select($rready = $rmask, $wready = $wmask, undef, undef)) {
+      if ($rc < 0) {
+         next if $! == $ignore_error;
+         return;
+      }
       if (vec($rready, $member->rfd, 1)) {
-	 return 1;
+         return 1;
       }
       foreach my $wfd (ones($wready)) {
-	 $channels[$wfd]->out_avail;
+         $channels[$wfd]->out_avail;
       }
       foreach my $rfd (ones($rready)) {
-	 $channels[$rfd]->in_avail;
+         $channels[$rfd]->in_avail;
       }
    }
    0
@@ -117,13 +121,13 @@ sub try_write {
    my ($rready, $wready);
    while (select $rready=$rmask, $wready=$wmask, undef, 0) {
       if (vec($wready, $member->wfd, 1)) {
-	 return $member->out_avail;
+         return $member->out_avail;
       }
       foreach my $wfd (ones($wready)) {
-	 $channels[$wfd]->out_avail;
+         $channels[$wfd]->out_avail;
       }
       foreach my $rfd (ones($rready)) {
-	 $channels[$rfd]->in_avail;
+         $channels[$rfd]->in_avail;
       }
    }
    0
@@ -169,15 +173,15 @@ sub READLINE {
    my ($l, $gotten)=(0);
    if (defined $/) {
       do {
-	 if ((my $endl=index($self->rbuffer, $/, $l)) >= 0) {
-	    return substr($self->rbuffer, 0, $endl+1, "");
-	 }
-	 $l=length($self->rbuffer);
+         if ((my $endl=index($self->rbuffer, $/, $l)) >= 0) {
+            return substr($self->rbuffer, 0, $endl+1, "");
+         }
+         $l=length($self->rbuffer);
       } while ($gotten=$self->do_read($self->rbuffer,1024,$l)) > 0;
    } else {
       my $whole=$self->rbuffer;
       do {
-	 $gotten=$self->do_read($whole,2<<16,length($whole));
+         $gotten=$self->do_read($whole,2<<16,length($whole));
       } while ($gotten>0);
       return $whole if defined($gotten);
    }
@@ -191,9 +195,9 @@ sub READ {
       my (undef, $len, $offset)=@_;
       assign_min($len, length($self->rbuffer));
       if ($offset) {
-	 substr($_[0],$offset)=substr($self->rbuffer,0,$len,"");
+         substr($_[0],$offset)=substr($self->rbuffer,0,$len,"");
       } else {
-	 $_[0]=substr($self->rbuffer,0,$len,"");
+         $_[0]=substr($self->rbuffer,0,$len,"");
       }
       return $len;
    } else {
@@ -246,11 +250,11 @@ sub WRITE {
    $self->set_non_blocking_write;
    my $written=POSIX::write($self->wfd, $str, $len);
    if (!defined($written)) {
-      if ($!==POSIX::EAGAIN) {
-	 $written=0;
+      if ($! == POSIX::EAGAIN) {
+         $written=0;
       } else {
-	 $self->CLOSE;
-	 return undef;
+         $self->CLOSE;
+         return undef;
       }
    }
    $self->set_blocking_write;
@@ -278,9 +282,9 @@ sub TELL {
 sub SEEK {
    my ($self, $pos)=@_;
    if ($pos == 0) {
-      try_read($self) && $self->in_avail >= 0
+      try_read($self, POSIX::EAGAIN) && $self->in_avail >= 0
    } elsif ($pos == -1) {
-      while (try_read($self) && $self->in_avail > 0) { }
+      while (try_read($self, POSIX::EAGAIN) && $self->in_avail > 0) { }
       eof($self->handle);
    }
 }
@@ -316,21 +320,21 @@ sub out_avail {
    my ($self)=@_;
    my $written=POSIX::write($self->wfd, $self->wbuffer, length($self->wbuffer));
    if (!defined($written)) {
-      if ($!==POSIX::EAGAIN) {
-	 $written=0;
+      if ($! == POSIX::EAGAIN) {
+         $written=0;
       } else {
-	 $self->CLOSE;
-	 return undef;	# dead pipe
+         $self->CLOSE;
+         return undef;  # dead pipe
       }
    }
    if ($written == length($self->wbuffer)) {
       vec($wmask, $self->wfd, 1)=0;
       $self->wbuffer="";
       $self->alone if keys %active==1;
-      1;		# stalled output completely drained
+      1;                # stalled output completely drained
    } else {
       substr($self->wbuffer, 0, $written)="";
-      0			# still output pending
+      0                 # still output pending
    }
 }
 
@@ -340,8 +344,8 @@ sub in_avail {
 }
 
 sub do_read {
-   my ($self)=@_;
-   try_read($self) && &Pipe::do_read;
+   my ($self) = @_;
+   try_read($self, POSIX::EAGAIN) && &Pipe::do_read;
 }
 
 sub WRITE {
@@ -349,11 +353,11 @@ sub WRITE {
    if (length($self->wbuffer) and !(my $rc=try_write($self))) {
       defined($rc) or return;
       if (@_==1) {
-	 $self->wbuffer.=$_[0];
-	 length($_[0]);
+         $self->wbuffer.=$_[0];
+         length($_[0]);
       } else {
-	 $self->wbuffer.=substr($_[0],$_[2],$_[1]);
-	 $_[1];
+         $self->wbuffer.=substr($_[0],$_[2],$_[1]);
+         $_[1];
       }
    } else {
       &Pipe::WRITE;
@@ -372,3 +376,8 @@ sub not_alone {}
 #####################################################################################
 
 1
+
+# Local Variables:
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:
