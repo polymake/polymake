@@ -72,10 +72,9 @@ perl::Object skeleton_lattice(const IncidenceMatrix<>& facets, const IncidenceMa
 
 
 // the actual calculation of the massive GKZ vector
-Vector<Integer> massive_gkz_vector(const Matrix<Integer>& points, const IncidenceMatrix<>& pts_in_facets, const IncidenceMatrix<>& max_cells)
+Vector<Integer> massive_gkz_vector(const Matrix<Integer>& points, const IncidenceMatrix<>& pts_in_facets, const IncidenceMatrix<>& max_cells, const int dim)
 {
    const int n_pts = points.rows();
-   const int dim = (int)(points.cols()) - 1;
    Lattice<BasicDecoration> massive_lattice(skeleton_lattice(max_cells,pts_in_facets));
    
    Vector<Integer> gkz(n_pts);
@@ -86,6 +85,7 @@ Vector<Integer> massive_gkz_vector(const Matrix<Integer>& points, const Incidenc
          massive_faces[i].append(massive_lattice.nodes_of_rank(i+1).size(), entire(attach_member_accessor(select(massive_lattice.decoration(), massive_lattice.nodes_of_rank(i+1)), ptr2type<graph::lattice::BasicDecoration, Set<int>, &graph::lattice::BasicDecoration::face>())));
          
          // we calculate the signed lattice volume of the i-dim. massive faces and add it to the appropriate entries of gkz
+         
          for(int j = 0; j < massive_faces[i].size(); ++j)
          {
             Matrix<Integer> face_vertices(points.minor(massive_faces[i][j],All));
@@ -107,15 +107,15 @@ Vector<Integer> massive_gkz_vector(const Matrix<Integer>& points, const Incidenc
 // INPUT: a PointConfiguration and a  TRIANGULATION of it as a subobject   
 // OUTPUT: the massive GKZ vector as defined in GKZ book Chapter 11 
 
-Vector<Integer> massive_gkz_vector(perl::Object point_config, perl::Object gsc)
+Vector<Integer> massive_gkz_vector(perl::Object point_config, perl::Object gsc, int dim)
 {
    const Matrix<Integer> points = point_config.give("POINTS");
    const IncidenceMatrix<> pts_in_facets = point_config.give("CONVEX_HULL.POINTS_IN_FACETS");
    const IncidenceMatrix<> max_cells = gsc.give("FACETS");
-   return lattice::massive_gkz_vector(points, pts_in_facets, max_cells);
+   return lattice::massive_gkz_vector(points, pts_in_facets, max_cells,dim);
 }
 
-Function4perl(&massive_gkz_vector,"massive_gkz_vector(PointConfiguration,topaz::SimplicialComplex)");
+Function4perl(&massive_gkz_vector,"massive_gkz_vector(PointConfiguration,topaz::SimplicialComplex,Int)");
 
 
 } // namespace polytope

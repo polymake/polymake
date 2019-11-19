@@ -1,6 +1,7 @@
-/* Copyright (c) 1997-2018
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+/* Copyright (c) 1997-2019
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -143,19 +144,6 @@ HermiteNormalForm<E> hermite_normal_form(const GenericMatrix<TMatrix, E>& M, boo
    return res;
 }
 
-//returns indices of a minimal rowspace basis of a matrix in an euclidean ring
-template <typename TMatrix, typename E>
-Set<int> basis_rows_integer(const GenericMatrix<TMatrix, E>& M)
-{
-  HermiteNormalForm<E> H = hermite_normal_form(M,false); //non-reduced form is faster, and we won't use the matrix later so big entrys should not be an issue.
-  int pos = 0;
-  Set<int> basis;
-  for (auto cit = entire(cols(H.hnf)); !cit.at_end() && !is_zero(*cit); ++cit) {
-    while (is_zero((*cit)[pos])) ++pos; //find uppermost non-null entry in this col
-    basis += pos;
-  }
-  return basis;
-}
 
 //returns as rows a basis of the null space in an euclidean ring
 template <typename TMatrix, typename E>
@@ -173,7 +161,6 @@ namespace polymake {
 
 using pm::HermiteNormalForm;
 using pm::null_space_integer;
-using pm::basis_rows_integer;
 
 }
 

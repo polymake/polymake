@@ -1,6 +1,7 @@
-/* Copyright (c) 1997-2018
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+/* Copyright (c) 1997-2019
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -52,9 +53,9 @@ perl::Object zonotope_tiling_lattice(perl::Object P, perl::OptionSet options)
       L.take("ORIGIN") << unit_vector<E>(emb_d,0);
 
    const Integer s = lcm(denominators(concat_rows(lattice_gens)));
-   Matrix<E> integer_gens(lattice_gens);
-   integer_gens *= s;
-   const Matrix<E> B(common::lattice_basis(Matrix<Integer>(integer_gens))/s);
+   Matrix<Integer> integer_gens(lattice_gens * s);
+   integer_gens /= s;
+   const Matrix<E> B(common::lattice_basis(integer_gens.minor(All, range_from(1))));
    L.take("BASIS") << (zero_vector<E>(B.rows()) | B);
 
    return L;

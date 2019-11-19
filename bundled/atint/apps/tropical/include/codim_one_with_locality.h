@@ -17,6 +17,12 @@
 	---
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
+	---
+	Copyright (c) 2016-2019
+	Ewgenij Gawrilow, Michael Joswig, and the polymake team
+	Technische Universität Berlin, Germany
+	https://polymake.org
+
 
 	We need specialized functions to compute codimension one data due to 
 	locality and needing to do this without calls to perl side functionality.

@@ -1,6 +1,7 @@
-#  Copyright (c) 1997-2018
-#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-#  http://www.polymake.org
+#  Copyright (c) 1997-2019
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of the GNU General Public License as published by the
@@ -154,7 +155,6 @@ sub add {
             } elsif ($tag eq "tparam") {
                if ($value =~ s/^\s* ($id_re) \s*//xos) {
                   push @{$annex{$tag}}, [$1, $value];
-                  $annex{min_tparam} += $value !~ /\bdefault:/;
                } else {
                   croak( "help tag \@tparam '$value' does not start with a valid name" );
                }
@@ -378,17 +378,18 @@ sub add_tparams {
 #################################################################################
 # for functions
 sub write_function_text {
-   my ($self, $parent, $writer, $full)=@_;
-   my ($tparams, $params, $options, $mandatory, $ellipsis, $return, $depends, $examples)=@{$self->annex}{qw(tparam param options mandatory ellipsis return depends examples)};
+   my ($self, $parent, $writer, $full) = @_;
+   my ($tparams, $min_tparams, $params, $options, $mandatory, $ellipsis, $return, $depends, $examples) =
+      @{$self->annex}{qw(tparam mandatory_tparams param options mandatory ellipsis return depends examples)};
 
-   my $header=($parent // $self)->name;
-   if (defined $tparams) {
-      if (@{$tparams->[0]} > 1) {
+   my $header = ($parent // $self)->name;
+   my @visible_tparams = defined($tparams) ? grep { @$_ > 1 } @$tparams : ();
+   if ($full) {
+      if (@visible_tparams) {
          $header .= "<" . join(", ", map { $_->[0] } @$tparams) . ">";
-      } else {
-         # undescribed type parameters just for checking purposes
-         undef $tparams;
       }
+   } elsif ($min_tparams > 0) {
+      $header .= "<" . join(", ", map { $_->[0] } @$tparams[0..$min_tparams-1]) . ">";
    }
    $header .= "(";
    if (defined $params) {
@@ -418,9 +419,8 @@ sub write_function_text {
       write_spez($self, $writer);
       $writer->function_full($self->text || $parent->text);
 
-      if (defined($tparams) and
-          my @visible=grep { @$_ > 1 } @$tparams) {
-         $writer->function_type_params(@visible);
+      if (@visible_tparams) {
+         $writer->type_params(@visible_tparams);
       }
       if (defined $params) {
          $writer->function_args($params);
@@ -481,6 +481,11 @@ sub write_text {
       }
       write_spez($self, $writer);
       $writer->description($self->text);
+      if (defined(my $tparams = $self->annex->{tparam})) {
+         if (defined($tparams) and my @visible_tparams = grep { @$_ > 1 } @$tparams) {
+            $writer->type_params(@visible_tparams);
+         }
+      }
       if (exists $self->annex->{keys}) {
          my $keys;
          $writer->topics_keys(map { defined($keys=$_->annex->{keys}) ? @$keys : () } $self, @{$self->related});
@@ -630,7 +635,7 @@ sub get_examples {
 sub expects_template_params {
    my ($self, $rec)=@_;
    if (defined (my $tparams=$self->annex->{tparam})) {
-      ($self->annex->{min_tparam}, scalar @$tparams)
+      ($self->annex->{mandatory_tparams}, scalar @$tparams)
    } elsif (!$rec && (my $ovcnt=$self->annex->{function})) {
       my ($min_min, $max_max);
       my $ret;
@@ -667,6 +672,52 @@ sub new_specialization {
    my $spez_topic=$self->find("specializations", $spez->name) //
                   $self->add([ "specializations", $spez->name ], "Unnamed ".($spez->full_spez_for ? "full" : "partial")." specialization of ".$self->name."\n");
    new Specialization($self, $spez_topic);
+}
+#################################################################################
+sub find_type_topic {
+   my ($top, $proto, $whence, $force) = @_;
+   my $full_name = $proto->full_name;
+   my $topic = $top->find($whence, $full_name) //
+               (defined($proto->generic)
+                ? ($force ? croak( "internal error: asked to create a help node for a parametrized type instance" )
+                          : $top->find($whence, $proto->generic->name))
+                : ($force ? $top->add([$whence, $full_name])
+                          : return));
+   if (!exists $topic->annex->{type}) {
+      weak($topic->annex->{type} = $proto);
+      push @{$topic->related},
+           uniq( map { ($_, @{$_->related}) } grep { defined and $_ != $topic and !defined($_->spez_topic) } map { $_->help_topic }
+                 $whence eq "property_types" ? defined($proto->super) ? $proto->super : () : @{$proto->super} );
+
+      if (defined($proto->params) && $proto->abstract) {
+         $topic->annex->{mandatory_tparams} = $proto->pkg->_min_params;
+         my $tparam_docs = $topic->annex->{tparam};
+         foreach my $type_param (@{$proto->params}) {
+            if (defined($tparam_docs)
+                and my ($tparam_descr) = grep { $_->[0] eq $type_param->name} @$tparam_docs) {
+               $tparam_descr->[1] //= induced_tparam_description($top, $proto, $whence, $type_param->name);
+            } elsif (my ($tparam_text) = induced_tparam_description($top, $proto, $whence, $type_param->name)) {
+               push @{$topic->annex->{tparam}}, [ $type_param->name, $tparam_text ];
+            }
+         }
+      }
+   }
+   $proto->help = $topic;
+}
+
+# look for any/tparam topics or a description inherited from a super class
+sub induced_tparam_description {
+   my ($self, $proto, $whence, $param_name) = @_;
+   my $topic;
+   if (($topic) = $self->get_topics("any/tparam/" . $param_name)
+       or
+       ($topic) = $self->get_topics("$whence/any/tparam/" . $param_name)) {
+      $topic->text
+   } elsif (my ($super, $param) = $proto->find_super_type_param($param_name)) {
+      map { $_->[1] } grep { $_->[0] eq $param_name } @{$super->help_topic->annex->{tparam} // []}
+   } else {
+      ()
+   }
 }
 #################################################################################
 

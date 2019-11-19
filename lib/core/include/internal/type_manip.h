@@ -1,6 +1,7 @@
-/* Copyright (c) 1997-2018
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+/* Copyright (c) 1997-2019
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -1441,11 +1442,19 @@ T* construct_at(T* place, Args&&... args)
    return ::new((void*)place) T(std::forward<Args>(args)...);
 }
 
+#if __cplusplus < 201703L
+
 template <typename T>
 void destroy_at(T* obj)
 {
    obj->~T();
 }
+
+#else
+
+using std::destroy_at;
+
+#endif
 
 template <typename T>
 struct extract_element_type {

@@ -1,0 +1,6 @@
+{"app": "fan",
+ "inst": [
+  {"class": "NodeMap<Directed, fan::compactification::SedentarityDecoration>", "include": ["polymake/Graph.h", "polymake/fan/compactification.h"], "pkg": "Polymake::common::NodeMap_A_Directed_I_SedentarityDecoration_Z"},
+  {"args": ["NodeMap<Directed, fan::compactification::SedentarityDecoration>", "perl::Canned<const Graph<Directed>&>"], "include": ["polymake/Graph.h", "polymake/fan/compactification.h"], "op": "new", "sig": "new.X"},
+ null ],
+"version": 3}

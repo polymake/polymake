@@ -1,5 +1,31 @@
 Changelog
 
+=== Polymake 3.6 ===
+
+-- common --
+ * Remove basis_rows_integer, invalid functionality claim
+ * Attach lattice_basis to toplevel to replace basis_rows_integer with valid variant
+ * lattice_basis does not dehomogenize anymore
+
+-- fan --
+ * PolyhedralComplex: Introduce property COMPACTIFICATION for tropical
+   compactification
+
+-- graph --
+ * random_graph: Extended to produce G(n,M) models of random graphs optionally
+ * Fix bug when computing graph of SimplicialComplex not using all points
+
+-- topaz --
+ * New homology_flint function, using SNF from flint
+
+-- tropical --
+ * Polytope: Introduce property INEQUALITIES
+ * Polytope: Introduce property FEASIBLE
+ * Polytope: Introduce property VALID_POINT
+ * better access to functions around tropical double description
+ * fixed redundancy elimination for generators of tropical polytopes
+ * Introduce object VoronoiDiagram
+
 === Polymake 3.5 ===
 
 -- distribution --

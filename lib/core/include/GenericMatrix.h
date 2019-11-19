@@ -1,6 +1,7 @@
-/* Copyright (c) 1997-2018
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+/* Copyright (c) 1997-2019
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -933,7 +934,7 @@ private:
       const int r = matrix.rows(),
                 c = matrix.cols();
       if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
-         if (i>0 ? i>=r : -i >= c)
+         if ((i>0 ? i>=r : -i >= c) && i!=0)
             throw std::runtime_error("GenericMatrix::diagonal/anti_diagonal - index out of range");
       }
       using result_type = IndexedSlice<masquerade<ConcatRows, MatrixRef>, const series>;

@@ -1,6 +1,7 @@
-#  Copyright (c) 1997-2018
-#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-#  http://www.polymake.org
+#  Copyright (c) 1997-2019
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of the GNU General Public License as published by the
@@ -34,7 +35,7 @@ HELP help.rules
 
 # A polyhedral cone, not necessarily pointed.
 # Note that in contrast to the vertices of a polytope, the [[RAYS]] are given in affine coordinates.
-# @tparam Scalar numeric data type used for the coordinates, must be an ordered field
+# @tparam Scalar numeric data type used for the coordinates, must be an ordered field. Default is [[Rational]].
 declare object Cone<Scalar=Rational> [ is_ordered_field(Scalar) ];
 
 # Not necessarily bounded convex polyhedron, i.e., the feasible region of a linear program.

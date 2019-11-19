@@ -1,6 +1,7 @@
 /* Copyright (c) 1997-2019
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -53,7 +54,7 @@ namespace polymake { namespace polytope {
                if (value <= 0) 
                   throw std::runtime_error("long_and_winding: evaluation for positive values only");
                long exp = options.exists("eval_exp") ? options["eval_exp"] : 1;
-               SparseMatrix<Rational> Iu_eval = PuiseuxFraction<Max, Rational, Rational>::evaluate(I/u, value, exp);
+               SparseMatrix<Rational> Iu_eval = evaluate(I/u, value, exp);
                SparseMatrix<Rational> I_eval = Iu_eval.minor(~scalar2set(m),All);;
                Vector<Rational> u_eval = Iu_eval.row(m);
                p = perl::Object("Polytope", mlist<Rational>());
@@ -74,7 +75,7 @@ namespace polymake { namespace polytope {
                double value = options["eval_float"];
                if (value <= 0.0) 
                   throw std::runtime_error("long_and_winding: evaluation for positive values only");
-               SparseMatrix<double> Iu_eval = PuiseuxFraction<Max, Rational, Rational>::evaluate_float(I/u, value);
+               SparseMatrix<double> Iu_eval = evaluate_float(I/u, value);
                SparseMatrix<double> I_eval = Iu_eval.minor(~scalar2set(m),All);;
                Vector<double> u_eval = Iu_eval.row(m);
                p = perl::Object("Polytope<double>");

@@ -1,6 +1,7 @@
-#  Copyright (c) 1997-2018
-#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-#  http://www.polymake.org
+#  Copyright (c) 1997-2019
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of the GNU General Public License as published by the
@@ -97,12 +98,62 @@ declare property_type Graph<Dir=Undirected> : c++ (include => "polymake/Graph.h"
    user_method delete_node(:wary&, $) : c++;
 
    # Returns the index of the edge connecting two given nodes.
-   # The edge is created if was not there.
+   # The edge is created if was not there and if the graph is not read-only.
    # In a multigraph, an arbitrary edge from the parallel bundle will be picked.
+   #
+   # Warning: If there is no [[EdgeMap]] attached to the graph, the returned
+   # number will always be zero.
+   #
    # @param Int tail_node
    # @param Int head_node
    # @return Int
-   user_method edge(:wary&, $$) : c++;
+   #
+   # @example [application polytope] Get edge numbers for the [[polytope::Polytope::HASSE_DIAGRAM]] of a square.
+   # > $c = polytope::cube(2);
+   # > $g = $c->HASSE_DIAGRAM->ADJACENCY;
+   # > print $g;
+   # | {1 2 3 4}
+   # | {5 7}
+   # | {6 7}
+   # | {5 8}
+   # | {6 8}
+   # | {9}
+   # | {9}
+   # | {9}
+   # | {9}
+   # | {}
+   # > $E = new EdgeMap<Directed,Int>($g);
+   # > print $g->edge(0,1);
+   # | 0
+   # > print $g->edge(1,5);
+   # | 4
+   # > print $g->edge(5,9);
+   # | 12
+   #
+   # @example [application polytope] If there is no [[EdgeMap]] the returned number is always zero.
+   # > $c = polytope::cube(2);
+   # > $g = $c->HASSE_DIAGRAM->ADJACENCY;
+   # > print $g->edge(0,1);
+   # | 0
+   # > print $g->edge(1,5);
+   # | 0
+   # > print $g->edge(5,9);
+   # | 0
+   #
+   # @example [notest] [application polytope] If the graph is read-only it cannot add an edge.
+   # > $c = polytope::cube(2);
+   # > $g = $c->HASSE_DIAGRAM->ADJACENCY;
+   # > $E = new EdgeMap<Directed,Int>($g);
+   # > print $g->edge(0,1);
+   # | 0
+   # > print $g->edge(0,5);
+   # |
+   # | polymake:  ERROR: non-existing edge
+   # > $gg = new props::Graph<Directed>($g);
+   # > $EE = new EdgeMap<Directed,Int>($gg);
+   # > print $gg->edge(0,5);
+   # | 4
+   user_method edge(:wary&&, $$) : c++;
 
    # In a multigraph, creates a new edge connecting two given nodes.
    # In a normal graph, creates a new edge only if the nodes were not connected yet.

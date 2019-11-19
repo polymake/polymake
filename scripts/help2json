@@ -1,6 +1,7 @@
-#  Copyright (c) 1997-2018
-#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-#  http://www.polymake.org
+#  Copyright (c) 1997-2019
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of the GNU General Public License as published by the
@@ -316,51 +317,31 @@ sub ref_to_type {
 ####################################################################
 sub add_type_params {
    my ($tree, $help, $proto) = @_;
-   my $tparam_docs = $help->annex->{tparam};
-   if (defined($proto) && defined($proto->params)) {
-      my @tparams;
-      foreach my $type_param (@{$proto->params}) {
-         my ($text, $tparam_descr);
-         if (defined($tparam_docs)) {
-            if (defined($tparam_descr = $tparam_docs->[$type_param->type_param_index])
-                && $tparam_descr->[0] eq $type_param->name) {
-               if (defined($tparam_descr->[1])) {
-                  $text = process_text($help, $tparam_descr->[1]);
-               }
-            } else {
-               err_print( "Type parameter ", $type_param->name, " without description in help topic ", $help->full_path, " defined at ", $help->defined_at );
-               ++$errors;
-               next;
-            }
+   if (defined(my $tparam_docs = $help->annex->{tparam})) {
+      if (defined($proto) && defined($proto->params)) {
+         my %described;
+         $tree->{tparams} = [ map { $described{$_->[0]} = true;
+                                    { name => $_->[0], '$text' => process_text($help, $_->[1]) }
+                              } @$tparam_docs ];
+         if (my @undescribed = grep { not $described{$_->name} } @{$proto->params}) {
+            err_print( "Type parameter", @undescribed > 1 && "s", " ", join(", ", @undescribed),
+                       " without description in help topic ", $help->full_path, " defined at ", $help->defined_at );
+            ++$errors;
+         } elsif (keys(%described) != @{$proto->params}) {
+            delete $described{$_->name} for @{$proto->params};
+            err_print( '@tparam element', keys(%described) > 1 && "s", " ", join(", ", keys(%described)),
+                       keys(%described) > 1 ? " do" : " does",
+                       " not match type parameters in help topic ", $help->full_path, " defined at ", $help->defined_at );
+            ++$errors;
          }
-         if (!defined($text)) {
-            # check for any/tparam topics
-            my $generic_topic;
-            if (($generic_topic) = $proto->application->help->get_topics("any/tparam/" . $type_param->name)
-                  or
-                ($generic_topic) = $proto->application->help->get_topics((instanceof Core::ObjectType($proto) ? "objects" : "property_types") . "/any/tparam/" . $type_param->name)) {
-               $text = process_text($generic_topic);
-            } elsif (defined (my $super_type_param = $proto->find_super_type_param($type_param->name))) {
-               $text = "inherited from [[" . ref_to_type($help, $super_type_param) . "]]";
-            } else {
-               err_print( "Type parameter ", $type_param->name, " without description in help topic ", $help->full_path, " defined at ", $help->defined_at );
-               ++$errors;
-               next;
-            }
-         }
-         unless (defined($tparam_descr)) {
-            # make it visible for references from parameter and return types
-            $help->annex->{tparam}->[$type_param->type_param_index] = [ $type_param->name, "" ];
-         }
-         push @tparams, { name => $type_param->name, '$text' => $text };
-      }
-      $tree->{tparams} = \@tparams;
-   } elsif (defined($tparam_docs)) {
-      if (my @tparams = map { { name => $_->[0],
-                                '$text' => process_text($help, $_->[1]) } }
-                        grep { @$_>1 } @$tparam_docs) {
+      } elsif (my @tparams = map { { name => $_->[0],
+                                     '$text' => process_text($help, $_->[1]) } }
+                             grep { @$_>1 } @$tparam_docs) {
          $tree->{tparams} = \@tparams;
       }
+   } elsif (defined($proto) && defined($proto->params) && @{$proto->params} > 0) {
+      err_print( "Type parameter descriptions missing in help topic ", $help->full_path, " defined at ", $help->defined_at );
+      ++$errors;
    }
 }
 ####################################################################

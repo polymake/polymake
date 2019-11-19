@@ -1,0 +1,5 @@
+{"app": "fan",
+ "inst": [
+  {"args": ["perl::AnchorArg<perl::Canned<const NodeMap<Directed, fan::compactification::SedentarityDecoration>&>>"], "func": "entire", "include": ["polymake/Graph.h", "polymake/fan/compactification.h"], "sig": "entire:R_Iterator.X8"},
+ null ],
+"version": 3}

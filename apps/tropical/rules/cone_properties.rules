@@ -1,6 +1,7 @@
-#  Copyright (c) 1997-2018
-#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-#  http://www.polymake.org
+#  Copyright (c) 1997-2019
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of the GNU General Public License as published by the
@@ -61,6 +62,29 @@ object Polytope {
 	weight 1.10;
 
 
+        # @category Input property
+        # Inequalities giving rise to the polytope; redundancies are allowed.
+        # They must be encoded as a pair of matrices.
+        # The pair (A,B) encodes the inequality //A//x ~ //B//x,
+        # where ~ is <= for min and >= for max.
+        # All vectors in this section must be non-zero.
+        # Dual to [[POINTS]].
+        #
+        # Input section only.  
+        property INEQUALITIES : Pair<Matrix<TropicalNumber<Addition,Scalar>>,Matrix<TropicalNumber<Addition,Scalar>>>;
+
+
+        # @category Geometry
+        # Some point belonging to the polyhedron.
+        property VALID_POINT : Vector<TropicalNumber<Addition,Scalar>> {
+            sub canonical { &canonicalize_to_leading_zero; }
+        }
+
+        # @category Geometry
+        # True if the polyhedron is not empty.
+        property FEASIBLE : Bool;
+        
+        
 	# @category Geometry
 	# Entries correspond to [[VERTICES]]. They describe for each vertex, what its row
 	# index in [[POINTS]] is.
@@ -76,12 +100,17 @@ object Polytope {
 
         # @category Geometry
 	# Subset of the [[PSEUDOVERTICES]] which are not contained in the tropical projective torus.
+        
 	property FAR_PSEUDOVERTICES : Set;
 
 	# @category Combinatorics
 	# These are the maximal cells of the covector decomposition of the tropical torus with
 	# respect to [[POINTS]].
 	# Each row corresponds to a maximal cell, each column to an element of [[PSEUDOVERTICES]].
+
+
+        
+        
 	property MAXIMAL_COVECTOR_CELLS : IncidenceMatrix;
 
 	# @category Combinatorics

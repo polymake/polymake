@@ -1,6 +1,7 @@
-#  Copyright (c) 1997-2018
-#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-#  http://www.polymake.org
+#  Copyright (c) 1997-2019
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of the GNU General Public License as published by the
@@ -594,72 +595,71 @@ declare property_type PuiseuxFraction<MinMax, Coefficient=Rational, Exponent=Rat
    # | (7) (5 0)
    # | (7) (6 0)
    user_method val() : c++;
-
-   # Approximate evaluation at //x//
-   # @param Float x
-   # @return Float
-   user_method evaluate_float($) : c++;
-
-   # Approximate evaluation of a [[Matrix]] at //x//
-   # @param Matrix m
-   # @param Float x
-   # @return Float
-   user_method evaluate_float(:static, Matrix, *) : c++;
-
-   # Approximate evaluation of a [[Vector]] at //x//
-   # @param Vector v
-   # @param Float x
-   # @return Float
-   user_method evaluate_float(:static, Vector, *) : c++;
-
-   # Evaluate all [[PuiseuxFraction]]s in a [[Matrix]] at a [[Rational]] number (//x^exp//).
-   # Let //explcm// be the lcm of the denominators of all exponents.
-   # If there are no denominators or //explcm// divides //exp//, then the evaluation
-   # is computed exactly.
-   # Otherwise, some rational number close to the root //(x^exp)^-explcm// will be chosen
-   # via an intermediate floating point number.
-   # @param Matrix m
-   # @param Coefficient x
-   # @param Int exp (default: 1)
-   # @return Matrix<Coefficient>
-   # @example [application polytope]
-   # The evaluation can also be applied to containers, unfortunately
-   # static methods dont play nicely with the perl interface but the following
-   # can be used:
-   # > $m = long_and_winding(2)->FACETS;
-   # > print ((typeof PuiseuxFraction<Max>)->pkg->evaluate($m,2,4));
-   # | (5) (0 256) (1 -1)
-   # | (5) (0 16) (2 -1)
-   # | (5) (1 16) (3 -1)
-   # | (5) (2 16) (3 -1)
-   # | 0 4 4 0 -1
-   # | (5) (3 1)
-   # | (5) (4 1)
-   user_method evaluate(:static, Matrix, *; $=1) : c++;
-
-   # Evaluate all [[PuiseuxFraction]]s in a [[Vector]] at a [[Rational]] number (//x^exp//).
-   # Let //explcm// be the lcm of the denominators of all exponents.
-   # If there are no denominators or //explcm// divides //exp//, then the evaluation
-   # is computed exactly.
-   # Otherwise, some rational number close to the root //(x^exp)^-explcm// will be chosen
-   # via an intermediate floating point number.
-   # @param Vector v
-   # @param Coefficient x
-   # @param Int exp (default: 1)
-   # @return Vector<Coefficient>
-   user_method evaluate(:static, Vector, *; $=1) : c++;
-
-   # Evaluate a [[PuiseuxFraction]] at a [[Rational]] number (//x^exp//).
-   # Let //explcm// be the lcm of the denominators of all exponents.
-   # If there are no denominators or //explcm// divides //exp//, then the evaluation
-   # is computed exactly.
-   # Otherwise, some rational number close to the root //(x^exp)^-explcm// will be chosen
-   # via an intermediate floating point number.
-   # @param Coefficient x
-   # @param Int exp (default: 1)
-   # @return Coefficient
-   user_method evaluate(*;$=1) : c++;
 }
+
+# Evaluate a [[PuiseuxFraction]] at a [[Rational]] number (//x^exp//).
+# Let //explcm// be the lcm of the denominators of all exponents.
+# If there are no denominators or //explcm// divides //exp//, then the evaluation
+# is computed exactly.
+# Otherwise, some rational number close to the root //(x^exp)^-explcm// will be chosen
+# via an intermediate floating point number.
+# @param PuiseuxFraction f
+# @param __Coefficient__ x
+# @param Int exp (default: 1)
+# @return __Coefficient__
+user_function evaluate(PuiseuxFraction, *; $=1) : c++;
+
+# Evaluate all [[PuiseuxFraction]]s in a [[Matrix]] at a [[Rational]] number (//x^exp//).
+# Let //explcm// be the lcm of the denominators of all exponents.
+# If there are no denominators or //explcm// divides //exp//, then the evaluation
+# is computed exactly.
+# Otherwise, some rational number close to the root //(x^exp)^-explcm// will be chosen
+# via an intermediate floating point number.
+# @param Matrix m
+# @param Coefficient x
+# @param Int exp (default: 1)
+# @return Matrix<Coefficient>
+# @example [application polytope]
+# > $m = long_and_winding(2)->FACETS;
+# > print evaluate($m,2,4);
+# | (5) (0 256) (1 -1)
+# | (5) (0 16) (2 -1)
+# | (5) (1 16) (3 -1)
+# | (5) (2 16) (3 -1)
+# | 0 4 4 0 -1
+# | (5) (3 1)
+# | (5) (4 1)
+user_function evaluate<Coefficient=_, Exponent=_>(Matrix<PuiseuxFraction<Coefficient, Exponent>>, *; $=1) : c++;
+
+# Evaluate all [[PuiseuxFraction]]s in a [[Vector]] at a [[Rational]] number (//x^exp//).
+# Let //explcm// be the lcm of the denominators of all exponents.
+# If there are no denominators or //explcm// divides //exp//, then the evaluation
+# is computed exactly.
+# Otherwise, some rational number close to the root //(x^exp)^-explcm// will be chosen
+# via an intermediate floating point number.
+# @param Vector v
+# @param Coefficient x
+# @param Int exp (default: 1)
+# @return Vector<Coefficient>
+user_function evaluate<Coefficient=_, Exponent=_>(Vector<PuiseuxFraction<Coefficient, Exponent>>, *; $=1) : c++;
+
+# Approximate evaluation at //x//
+# @param PuiseuxFraction f
+# @param Float x
+# @return Float
+user_function evaluate_float(PuiseuxFraction, $) : c++;
+
+# Approximate evaluation of a [[Matrix]] at //x//
+# @param Matrix m
+# @param Float x
+# @return Float
+user_function evaluate_float<Coefficient=_, Exponent=_>(Matrix<PuiseuxFraction<Coefficient, Exponent>>, *) : c++;
+
+# Approximate evaluation of a [[Vector]] at //x//
+# @param Vector v
+# @param Float x
+# @return Float
+user_function evaluate_float<Coefficient=_, Exponent=_>(Vector<PuiseuxFraction<Coefficient, Exponent>>, *) : c++;
 
 function polynomial_type<Coefficient, Exponent>(PuiseuxFraction<Coefficient, Exponent>) { typeof UniPolynomial<Coefficient, Exponent> }
 

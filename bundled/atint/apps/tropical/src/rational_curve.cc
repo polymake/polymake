@@ -17,6 +17,12 @@
 	---
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
+	---
+	Copyright (c) 2016-2019
+	Ewgenij Gawrilow, Michael Joswig, and the polymake team
+	Technische Universität Berlin, Germany
+	https://polymake.org
+
 	Functions to compute the combinatorics of rational n-marked curves, e.g.
 	the metric-to-tree algorithm by Buneman
 	*/

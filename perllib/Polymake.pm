@@ -1,6 +1,7 @@
-#  Copyright (c) 1997-2018
-#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-#  http://www.polymake.org
+#  Copyright (c) 1997-2019
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of the GNU General Public License as published by the
@@ -14,6 +15,7 @@
 #-------------------------------------------------------------------------------
 
 use strict;
+use utf8;
 use IO::Handle;
 
 require Config;
@@ -38,7 +40,7 @@ use Polymake::Ext;
 # Global variables
 #
 
-declare $Version="3.5";
+declare $Version="3.6";
 declare $VersionNumber=eval "v$Version";        # for string comparisons with vM.N literals
 
 declare ($Scope,                # Scope object for the current cycle
@@ -130,7 +132,8 @@ sub greeting {
    my @messages = ("polymake version $full_version", <<'.' . $mainURL . "\n", <<'.');
 
 Copyright (c) 1997-2019
-Ewgenij Gawrilow, Michael Joswig (TU Berlin)
+Ewgenij Gawrilow, Michael Joswig, and the polymake team
+Technische Universität Berlin, Germany
 .
 
 This is free software licensed under GPL; see the source for copying conditions.

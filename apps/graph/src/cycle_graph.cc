@@ -1,6 +1,7 @@
-/* Copyright (c) 1997-2018
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+/* Copyright (c) 1997-2019
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -39,6 +40,29 @@ perl::Object cycle_graph(const int n)
    return G;
 }
 
+perl::Object wheel_graph(const int n)
+{
+   if (n < 3)
+      throw std::runtime_error("need at least 3 nodes");
+
+   Graph<> g(n+1);
+   for (int i=0; i<n-1; ++i) {
+      g.edge(i,i+1);
+      g.edge(i,n);
+   }
+   g.edge(0,n-1);
+   g.edge(n-1,n);
+   perl::Object G("Graph<>");
+   G.take("N_NODES") << n+1;
+   G.take("N_EDGES") << 2*n;
+   G.take("DIAMETER") << (n==3 ? 1 : 2);
+   G.take("CONNECTED") << true;
+   G.take("BIPARTITE") << false;
+   G.take("ADJACENCY") << g;
+   G.set_description() << "Wheel graph with " << n << " spokes." << endl;
+   return G;
+}
+
 perl::Object path_graph(const int n)
 {
    if (n < 2)
@@ -71,6 +95,21 @@ UserFunction4perl("# @category Producing a graph\n"
                   "# | {1 3}"
                   "# | {0 2}",
                   &cycle_graph, "cycle_graph");
+
+UserFunction4perl("# @category Producing a graph\n"
+                  "# Constructs a __wheel graph__ with //n// spokes."
+                  "# @param Int n"
+                  "# @return Graph"
+                  "# @example To print the adjacency representation of the wheel graph with five spokes, type this:"
+                  "# > $g = wheel_graph(5);"
+                  "# > print $g->ADJACENCY;"
+                  "# | {1 4 5}"
+                  "# | {0 2 5}"
+                  "# | {1 3 5}"
+                  "# | {2 4 5}"
+                  "# | {0 3 5}"
+                  "# | {0 1 2 3 4}",
+                  &wheel_graph, "wheel_graph");
 
 UserFunction4perl("# @category Producing a graph\n"
                   "# Constructs a __path graph__ on //n// nodes."

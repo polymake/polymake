@@ -6,5 +6,7 @@
   {"args": ["perl::Canned<Matrix<TropicalNumber<Max, Rational>>&>"], "func": "canonicalize_to_leading_zero", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "canonicalize_to_leading_zero.X1"},
   {"args": ["perl::Canned<Matrix<Rational>&>"], "func": "canonicalize_vertices_to_leading_zero", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "canonicalize_vertices_to_leading_zero.X1"},
   {"args": ["perl::Canned<pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::all_selector const&, pm::Series<int, true> const>&>"], "func": "canonicalize_scalar_to_leading_zero", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "canonicalize_scalar_to_leading_zero.X1"},
+  {"args": ["perl::Canned<Vector<TropicalNumber<Max, Rational>>&>"], "func": "canonicalize_to_leading_zero", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "canonicalize_to_leading_zero.X1"},
+  {"args": ["perl::Canned<Vector<TropicalNumber<Min, Rational>>&>"], "func": "canonicalize_to_leading_zero", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "canonicalize_to_leading_zero.X1"},
  null ],
 "version": 3}

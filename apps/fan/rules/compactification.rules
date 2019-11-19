@@ -1,0 +1,89 @@
+#  Copyright (c) 1997-2019
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+declare property_type SedentarityDecoration : c++ (name=>"fan::compactification::SedentarityDecoration", include=>"polymake/fan/compactification.h");
+
+object PolyhedralComplex {
+
+   # @category Combinatorics
+   # The Hasse diagram of the compactification of the polyhedral complex.
+   #
+   # For a simplicial polyhedral complex, this is the cubical compactification
+   # (or cubical complex, see [Omid Amini: "The combinatorial Chow ring of
+   # products of graphs"]).
+   #
+   # For tropical varieties, this is the tropical compactification, as in 
+   # [Brian Osserman and Joseph Rabinoff: "Lifting nonproper tropical
+   # intersections"].
+   #
+   # The vertices of the compactification correspond to the faces of the
+   # original complex that have the same dimension as their recession cone. We
+   # call the face corresponding to a vertex the 'realisation' of the vertex.
+   #
+   # The decoration has four entries:
+   # 1. The face in the vertices of the compactification
+   # 2. The rank of the face
+   # 3. The realisation of the face. This is the union of the realisations of
+   #    the new vertices.
+   # 4. The sedentarity of the face. This is the intersection of the
+   #    sedentarities of the vertices.
+   #
+   # @example The compactification of the positive orthant in three dimensions
+   # has the same Hasse diagram as the three dimensional cube.
+   # > $pc1 = new PolyhedralComplex(POINTS=>[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]], INPUT_POLYTOPES=>[[0,1,2,3]]);
+   # > print $pc1->COMPACTIFICATION->DECORATION;
+   # | ({} 0 {} {})
+   # | ({0} 1 {0 1 2 3} {1 2 3})
+   # | ({1} 1 {0 2 3} {2 3})
+   # | ({2} 1 {0 1 3} {1 3})
+   # | ({3} 1 {0 1 2} {1 2})
+   # | ({4} 1 {0 3} {3})
+   # | ({5} 1 {0 2} {2})
+   # | ({6} 1 {0 1} {1})
+   # | ({7} 1 {0} {})
+   # | ({0 1} 2 {0 1 2 3} {2 3})
+   # | ({0 2} 2 {0 1 2 3} {1 3})
+   # | ({0 3} 2 {0 1 2 3} {1 2})
+   # | ({1 4} 2 {0 2 3} {3})
+   # | ({1 5} 2 {0 2 3} {2})
+   # | ({2 4} 2 {0 1 3} {3})
+   # | ({2 6} 2 {0 1 3} {1})
+   # | ({3 5} 2 {0 1 2} {2})
+   # | ({3 6} 2 {0 1 2} {1})
+   # | ({4 7} 2 {0 3} {})
+   # | ({5 7} 2 {0 2} {})
+   # | ({6 7} 2 {0 1} {})
+   # | ({0 1 2 4} 3 {0 1 2 3} {3})
+   # | ({0 1 3 5} 3 {0 1 2 3} {2})
+   # | ({0 2 3 6} 3 {0 1 2 3} {1})
+   # | ({1 4 5 7} 3 {0 2 3} {})
+   # | ({2 4 6 7} 3 {0 1 3} {})
+   # | ({3 5 6 7} 3 {0 1 2} {})
+   # | ({0 1 2 3 4 5 6 7} 4 {0 1 2 3} {})
+   # | ({-1} 5 {-1} {})
+   property COMPACTIFICATION : Lattice<SedentarityDecoration>;
+
+   rule COMPACTIFICATION.ADJACENCY, COMPACTIFICATION.DECORATION, \
+      COMPACTIFICATION.INVERSE_RANK_MAP, COMPACTIFICATION.TOP_NODE, \
+      COMPACTIFICATION.BOTTOM_NODE : \
+      FAR_VERTICES, VERTICES, HASSE_DIAGRAM.ADJACENCY, \
+      HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, \
+      HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE \
+   {
+      $this->COMPACTIFICATION = compactify($this);
+   }
+
+}

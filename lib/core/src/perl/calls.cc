@@ -1,6 +1,7 @@
-/* Copyright (c) 1997-2018
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+/* Copyright (c) 1997-2019
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -93,7 +94,11 @@ FunCall::~FunCall()
 {
    if (val_flags != ValueFlags::is_mutable) {
       dTHX;
+#if __cplusplus < 201703L
       if (std::uncaught_exception()) {
+#else
+      if (std::uncaught_exceptions()) {
+#endif
          // error during preparation of arguments
          PmCancelFuncall;
       } else {

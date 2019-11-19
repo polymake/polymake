@@ -1,6 +1,7 @@
-#  Copyright (c) 1997-2018
-#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-#  http://www.polymake.org
+#  Copyright (c) 1997-2019
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of the GNU General Public License as published by the
@@ -1428,13 +1429,18 @@ sub add_overloaded_instance {
    }
 
    if (defined $type_params) {
+      my $always_deduced = 0;
       $type_params =~ s/^\s+//;
       while ($type_params =~ m{\G $type_param_re \s* (?: ,\s* | $ ) }xog) {
          my ($name, $default_type)=@+{qw(name default)};
          push @type_param_names, $name;
-         if (defined $default_type) {
-            translate_type_expr($default_type);
-            $default_types[$#type_param_names]=$default_type;
+         if (defined($default_type)) {
+            if ($default_type eq "_") {
+               ++$always_deduced;
+            } else {
+               translate_type_expr($default_type);
+               $default_types[$#type_param_names] = $default_type;
+            }
             push @type_param_mandatory, 0;
          } else {
             push @type_param_mandatory, 1;
@@ -1443,7 +1449,7 @@ sub add_overloaded_instance {
       create FunctionTypeParam(scalar(@type_param_names));
       if ($cxx) {
          $cxx_options .= "," if length($cxx_options);
-         $cxx_options .= "explicit_template_params=>" . scalar(@type_param_names);
+         $cxx_options .= "explicit_template_params=>" . (@type_param_names - $always_deduced);
       }
    }
 
@@ -1487,20 +1493,16 @@ sub add_overloaded_instance {
          if (defined $type) {
             if (@type_param_names) {
                while ($type =~ /$qual_id_re/go) {
-                  if ($type eq "_") {
-                     $type_deduction=1;
-                  } else {
-                     my $tp_index=string_list_index(\@type_param_names, $&);
-                     if ($tp_index>=0) {
-                        # If the type parameter is involved in a final typecheck, we can safely assume that
-                        # it will either be set or the typecheck will fail if no optional argument suitable for type deduction has been passed.
-                        $type_param_mandatory[$tp_index] &&= defined($min) && $typecheck_code !~ /\b$type_param_names[$tp_index]\b/;
-                        $type_deduction=1;
-                     }
+                  my $tp_index = string_list_index(\@type_param_names, $&);
+                  if ($tp_index >= 0) {
+                     # If the type parameter is involved in a final typecheck, we can safely assume that
+                     # it will either be set or the typecheck will fail if no optional argument suitable for type deduction has been passed.
+                     $type_param_mandatory[$tp_index] &&= defined($min) && $typecheck_code !~ /\b$type_param_names[$tp_index]\b/;
+                     $type_deduction = true;
                   }
                }
             }
-            my $typeof= $type =~ /</ ? "typeof" : "typeof_gen";
+            my $typeof = $type =~ /</ ? "typeof" : "typeof_gen";
             if ($repeated) {
                $max |= Overload::SignatureFlags::has_repeated;
                push @arg_list, "[ $typeof $type, '+' ]";
@@ -1856,22 +1858,27 @@ sub prepare_function {
                                  signature => $signature, type_params => $type_params,
                                  typecheck_code => $typecheck, label => $label, overload_opts => $overload_opts);
 
-      } elsif ($global || defined($label)) {
-         if ($global) {
-            push @{$self->buffer},
-                 "BEGIN { die 'global method must have a signature" . (defined($label) ? '' : ' and labels') . " }\n";
-         } else {
-            push @{$self->buffer},
-                 "BEGIN { die 'function with labels must have a signature' }\n";
-         }
-
       } else {
          if ($plausibility_checks) {
+            if ($global) {
+               push @{$self->buffer},
+                    "BEGIN { die 'global method must have a signature" . (defined($label) ? '' : ' and labels') . " }\n";
+               return;
+            }
+            if (defined($label)) {
+               push @{$self->buffer},
+                    "BEGIN { die 'function with labels must have a signature' }\n";
+               return;
+            }
+            if (defined($type_params)) {
+               push @{$self->buffer},
+                    "BEGIN { die 'parameterized function must have a signature' }\n";
+               return;
+            }
             if ($name eq "construct") {
                push @{$self->buffer},
                    "BEGIN { die '\\'construct\\' must be defined as an overloaded method' }\n";
                return;
-
             } elsif ($type_method) {
                if (string_list_index(\@PropertyType::override_methods, $name) < 0) {
                   push @{$self->buffer},
@@ -1879,16 +1886,13 @@ sub prepare_function {
                   return;
                }
             } else {
-               $context_check="BEGIN { $context_check exists &$name and Core::multiple_func_definition() }";
+               $context_check = "BEGIN { $context_check exists &$name and Core::multiple_func_definition() }";
             }
          } else {
             $context_check="";
          }
-         if (defined $type_params) {
-            push @{$self->buffer},
-                 "BEGIN { die 'parameterized function must have a signature' }\n";
 
-         } elsif ($header =~ s/^([^\#]*?) (?<!:) (:\s* $rule_input_re)/$1/xo) {
+         if ($header =~ s/^([^\#]*?) (?<!:) (:\s* $rule_input_re)/$1/xo) {
             unless ($method && $user) {
                push @{$self->buffer},
                     "BEGIN { die 'only user_methods can have rule-like input properties' }\n";
@@ -1898,7 +1902,7 @@ sub prepare_function {
             provide_short_prologue($self, $header, display_credit($self)) if $self->credit_seen;
             push @{$self->buffer},
                  "$context_check application::self()->add_method_rule(self(1), '$2', \\&__meth__$funcnt, '$name'); sub __meth__$funcnt : method $header\n";
-            $self->after_rule=1;
+            $self->after_rule = 1;
 
          } elsif ($header =~ /^\s* = \s* ($hier_id_re) \s*;\s*$/xo) {
             unless ($method && $user) {

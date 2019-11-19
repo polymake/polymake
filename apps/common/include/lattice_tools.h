@@ -1,6 +1,7 @@
-/* Copyright (c) 1997-2018
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+/* Copyright (c) 1997-2019
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -209,7 +210,7 @@ template <typename TMatrix>
 typename GenericMatrix<TMatrix, Integer>::persistent_type
 lattice_basis(const GenericMatrix<TMatrix, Integer>& gens)
 {
-   const SmithNormalForm<Integer> SNF = smith_normal_form(gens.minor(All, range_from(1)));
+   const SmithNormalForm<Integer> SNF = smith_normal_form(gens);
    return (SNF.form * SNF.right_companion).minor(range(0, SNF.rank-1),All);
 }
 

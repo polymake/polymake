@@ -1,6 +1,7 @@
-#  Copyright (c) 1997-2018
-#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-#  http://www.polymake.org
+#  Copyright (c) 1997-2019
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of the GNU General Public License as published by the
@@ -236,28 +237,9 @@ sub required_extensions {
    defined($self->extension) && ($include_bundled >= $self->extension->is_bundled) ? ($self->extension) : ()
 }
 #################################################################################
-sub locate_own_help_topic {
-   my ($self, $whence, $force)=@_;
-   return if !defined($self->application);
-   my $full_name=$self->full_name;
-   my $topic=$self->application->help->find($whence, $full_name) //
-             (defined($self->generic)
-              ? ($force ? croak( "internal error: asked to create a help node for a parametrized type instance" )
-                        : $self->application->help->find($whence, $self->generic->name))
-              : ($force ? $self->application->help->add([$whence, $full_name])
-                        : return));
-   if (!exists $topic->annex->{type}) {
-      weak($topic->annex->{type}=$self);
-      push @{$topic->related},
-           uniq( map { ($_, @{$_->related}) } grep { defined and $_ != $topic and !defined($_->spez_topic) } map { $_->help_topic }
-                 $whence eq "property_types" ? defined($self->super) ? $self->super : () : @{$self->super} );
-   }
-   $self->help=$topic;
-}
-
 sub help_topic {
    my $self = shift;
-   $self->help // locate_own_help_topic($self, "property_types", @_);
+   $self->help // ($self->application // return)->help->find_type_topic($self, "property_types", @_);
 }
 #################################################################################
 package Polymake::Core::PropertyParamedType;
@@ -435,13 +417,13 @@ sub scan_params {
 #################################################################################
 sub find_super_type_param {
    my ($self, $name) = @_;
-   my $result;
+   my @result;
    while (defined ($self = $self->super)) {
       if (defined($self->params) and my ($param) = grep { $_->name eq $name } @{$self->params}) {
-         $result = $param;
+         @result = ($self, $param);
       }
    }
-   $result;
+   @result;
 }
 #################################################################################
 sub full_name {

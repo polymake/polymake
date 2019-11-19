@@ -176,5 +176,8 @@
   {"args": ["perl::Canned<const Array<std::pair<Array<Set<int>>, Vector<int>>>&>", "perl::Canned<const Array<std::pair<Array<Set<int>>, Vector<int>>>&>"], "include": ["polymake/Array.h", "polymake/Set.h", "polymake/Vector.h", "polymake/client.h"], "op": "_eq", "sig": "_eq:O.X.X"},
   {"args": ["perl::Canned<const Array<std::pair<Array<Set<int>>, std::pair<Vector<int>, Vector<int>>>>&>", "perl::Canned<const Array<std::pair<Array<Set<int>>, std::pair<Vector<int>, Vector<int>>>>&>"], "include": ["polymake/Array.h", "polymake/Set.h", "polymake/Vector.h", "polymake/client.h"], "op": "_eq", "sig": "_eq:O.X.X"},
   {"class": "Array<Array<Integer>>", "include": ["polymake/Array.h", "polymake/Integer.h"], "pkg": "Polymake::common::Array__Array__Integer"},
+  {"class": "Array<std::pair<Matrix<Rational>, Matrix<int>>>", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/client.h"], "pkg": "Polymake::common::Array__Pair_A_Matrix_A_Rational_I_NonSymmetric_Z_I_Matrix_A_Int_I_NonSymmetric_Z_Z"},
+  {"args": ["Array<std::pair<Matrix<Rational>, Matrix<int>>>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/client.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<const Array<std::pair<Matrix<Rational>, Matrix<int>>>&>", "perl::Canned<const Array<std::pair<Matrix<Rational>, Matrix<int>>>&>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/client.h"], "op": "_eq", "sig": "_eq:O.X.X"},
  null ],
 "version": 3}

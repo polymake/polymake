@@ -1,6 +1,7 @@
-/* Copyright (c) 1997-2018
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+/* Copyright (c) 1997-2019
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -358,6 +359,8 @@ struct TopologicalType {
 
 } //END namespace lattice
 
+graph::Lattice<graph::lattice::BasicDecoration> empty_fan_hasse_diagram();
+
 perl::Object lower_hasse_diagram(perl::Object fan, int boundary_rank, bool is_pure, bool is_complete);
 
 /*
@@ -391,6 +394,9 @@ hasse_diagram_general(
       rr.rank_restricted = false;
 
   const int n_vertices = maximal_cones.cols();
+
+  if (n_vertices == 0)
+    return empty_fan_hasse_diagram();
 
   FacetList non_redundant_facets(n_vertices);
   if (!tt.is_complete) {

@@ -1,6 +1,7 @@
-#  Copyright (c) 1997-2018
-#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-#  http://www.polymake.org
+#  Copyright (c) 1997-2019
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of the GNU General Public License as published by the
@@ -26,10 +27,34 @@ object Polytope {
 	}
 	weight 0.1;
 
-   rule PROJECTIVE_AMBIENT_DIM : PSEUDOVERTICES {
-      $this->PROJECTIVE_AMBIENT_DIM=$this->PSEUDOVERTICES->cols-2;
-   }
-   weight 0.1;
+	rule PROJECTIVE_AMBIENT_DIM : PSEUDOVERTICES {
+	    $this->PROJECTIVE_AMBIENT_DIM=$this->PSEUDOVERTICES->cols-2;
+	}
+	weight 0.1;
+
+
+	# checking feasibility via a tropical linear program 
+	rule FEASIBLE, VALID_POINT  : INEQUALITIES {
+	    my $feasibility_pair = H_trop_input_feasible($this);
+	    $this->VALID_POINT = $feasibility_pair->first;
+	    $this->FEASIBLE = $feasibility_pair->second;
+	}
+	weight 3.1;
+	
+	# A Polytope defined by a non-empty set of [[VERTICES]] or [[POINTS]] is always [[FEASIBLE]].
+	rule FEASIBLE, VALID_POINT : VERTICES | POINTS {
+	    my $p=$this->give("VERTICES | POINTS");
+	    if ($p->rows > 0) {
+		$this->VALID_POINT(temporary) = $p->row(0);
+	    }
+	    $this->FEASIBLE = $this->give("VERTICES | POINTS")->rows > 0;
+	}
+	weight 0.1;
+
+	rule VERTICES : INEQUALITIES {
+	    $this->VERTICES = V_trop_input($this);
+	}
+	weight 6.10;
 
 	rule VERTICES, VERTICES_IN_POINTS : POINTS {
 		discard_non_vertices($this);
@@ -72,7 +97,10 @@ object Polytope {
 		$this->PSEUDOVERTEX_COARSE_COVECTORS=coarse_covectors_of_scalar_vertices($this->PSEUDOVERTICES, $this->POINTS);
 	}
 	weight 1.10;
-
+   
+   # In case [[VERTICES]] are known but [[POINTS]] are not, we set [[POINTS]] = [[VERTICES]].
+   # This allows to visualize a Polytope that was initialized via [[INEQUALIES]] with its coarsets [[POLYTOPE_COVECTOR_DECOMPOSITION]]. 
+   rule POINTS = VERTICES;
 
 }
 

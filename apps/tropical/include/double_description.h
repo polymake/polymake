@@ -1,6 +1,7 @@
-/* Copyright (c) 1997-2018
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+/* Copyright (c) 1997-2019
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -88,25 +89,75 @@ namespace polymake {
          return std::make_pair(W, sectors);
       }
 
+      
+      /*
+       *  @brief: convert inequality A x <= B x for min resp. A x >= B x for max
+       *  to the description by
+       *  apices and INfeasible sectors. Here, B is on the INfeasible side.
+       */
+      template <typename Addition, typename Scalar>
+      std::pair< Matrix< TropicalNumber< Addition, Scalar> >, Array<int> >matrixPair2splitApices(const Matrix< TropicalNumber<Addition, Scalar> >& A, const Matrix< TropicalNumber<Addition,Scalar> >& B)
+      {
+         if (A.rows() != B.rows())
+            throw std::runtime_error("dimension mismatch for inequality system: different number of rows");
+         if (A.cols() != B.cols())
+            throw std::runtime_error("dimension mismatch for inequality system: different number of columns");
+         
+         
+         typedef TropicalNumber<Addition,Scalar> TNumber;
+         Vector<int> negative_indices_vec;
+         Matrix<TNumber> W(0,A.cols());
+         Vector<TNumber> modified_row;
+         for(int i = 0; i < B.rows(); i++) {
+            for(int j = 0; j < B.cols(); j++) {
+               if (A(i,j) != A(i,j) + B(i,j)) {
+                  modified_row = A.row(i);
+                  modified_row[j] = B(i,j);
+                  negative_indices_vec|=j;
+                  W /= modified_row;
+               }
+            }
+         }
+         Array<int> negative_indices_array(negative_indices_vec.size(),entire(negative_indices_vec));
+         return std::make_pair(W, negative_indices_array);
+      }
+
+      
 
       /*
-       *  @brief: compute the extremals of a tropical cone given by the
-       *  intersection of a tropical halfspace with another tropical cone
-       *  which is given by an inner and and outer description.
+       *  @brief: reduce a set of generators of a tropical cone to the
+       *  extremal generators
+       *
        */
       template <typename MatrixTop, typename Addition, typename Scalar>
       Matrix<TropicalNumber<Addition, Scalar> > extremals_from_generators(const GenericMatrix<MatrixTop, TropicalNumber<Addition, Scalar> >& generators)
       {
          typedef TropicalNumber<Addition,Scalar> TNumber;
+         // Set<int> indices_extremals;
+         int dim = generators.cols();
+         
          ListMatrix<Vector<TNumber> > extremals;
 
-         for(const auto& r : rows(generators)) {
+         // removing double points
+         Set<int> reduced_generators;
+         for(int i = 0; i < generators.rows(); i++) {
+            bool redundant = false;
+            for (auto r = entire(rows(generators.minor(reduced_generators,All))); !r.at_end(); r++) {
+               if (dim == single_covector(generators[i],(*r)).size()) { redundant = true; break; }
+            }
+            if (!redundant) { reduced_generators += scalar2set(i); }
+         }
+            
+         for(auto r = entire(rows(generators.minor(reduced_generators,All))); !r.at_end(); r++) {
             bool is_extremal = false;
-            for (auto coord = entire(rows(single_covector(r, generators))); !coord.at_end(); coord++) {
+            
+            // checking covector criterion for extremality, using exposedness
+            for (auto coord = entire(rows(single_covector((*r), generators.minor(reduced_generators,All)))); !coord.at_end(); coord++) {
+               
                if (!((*coord).size() - 1)) { is_extremal = true; break; }
             }
             if (is_extremal) {
-               extremals /= r;
+               extremals /= (*r);
             }
          }
          return extremals;
@@ -120,7 +171,7 @@ namespace polymake {
        *  which is given by its extremals.
        */
       template <typename MatrixTop, typename Vector1, typename Vector2, typename Addition, typename Scalar>
-      Matrix<TropicalNumber<Addition, Scalar> > intersection_extremals(const GenericMatrix<MatrixTop, TropicalNumber<Addition, Scalar> >& generators, const GenericVector<Vector1, TropicalNumber<Addition, Scalar> >& infeasible_side, const GenericVector<Vector2, TropicalNumber<Addition, Scalar> >& feasible_side)
+      Matrix<TropicalNumber<Addition, Scalar> > intersection_extremals(const GenericMatrix<MatrixTop, TropicalNumber<Addition, Scalar> >& generators, const GenericVector<Vector1, TropicalNumber<Addition, Scalar> >& feasible_side, const GenericVector<Vector2, TropicalNumber<Addition, Scalar> >& infeasible_side)
       {
          typedef TropicalNumber<Addition,Scalar> TNumber;
 
@@ -144,14 +195,37 @@ namespace polymake {
                 new_points += normalized_first(k);
             }
          }
-         
+
          Matrix<TNumber> new_generators(new_points.size(), feasible_side.dim(), entire(new_points));
          new_generators /= generators.minor(remaining_generators,All);
-         
          return extremals_from_generators(new_generators);
       }
 
 
+      /*
+       * @brief: compute the extremals of a tropical cone given
+       * as the intersection of tropical halfspaces
+       *
+       */
+      template <typename Matrix1, typename Matrix2, typename Addition, typename Scalar>
+      Matrix<TropicalNumber<Addition, Scalar> > extremals_from_halfspaces(const GenericMatrix<Matrix1, TropicalNumber<Addition, Scalar> >& feasible_side, const GenericMatrix<Matrix2, TropicalNumber<Addition, Scalar> >& infeasible_side)
+      {
+         typedef TropicalNumber<Addition,Scalar> TNumber;
+
+         if (infeasible_side.rows() != feasible_side.rows())
+            throw std::runtime_error("dimension mismatch for inequality system: different number of rows");
+
+         int n_halfspaces = infeasible_side.rows();
+
+         Matrix<TNumber> extremals(unit_matrix<TNumber>(infeasible_side.cols()));
+
+         for(int i = 0; i < n_halfspaces; ++i)
+            {
+               extremals = intersection_extremals(extremals, feasible_side[i], infeasible_side[i]);
+            }
+         return extremals;
+      }
+      
       
       /*
        *  @brief: compute the extremals of a monomial tropical cone given by the
@@ -188,7 +262,8 @@ namespace polymake {
          for(auto g = entire(rows(generators.minor(remaining_generators,All))); !g.at_end(); ++g) {
             for(auto h = entire(rows(generators.minor(~remaining_generators,All))); !h.at_end(); ++h) {               
                k = (infeasible_side * (*h)) * (*g) + (feasible_side * (*g)) * (*h);
-               
+
+               // the next loop should determine if k is redundant; should probably be simplified -- check if pairwise incomparable
                Set<int> covered_sectors;
                Set<int> apex_sectors;
                for (auto apex : rows(apices)) {
@@ -198,6 +273,7 @@ namespace polymake {
                      covered_sectors += apex_sectors;
                   }
                }
+               // FIXME: this is a specific check of extremality for monomial tropical cones -- maybe here is a mistake
                apex_sectors = single_covector(new_apex, k);
                if (apex_sectors.contains(0)) {
                   covered_sectors += apex_sectors;
@@ -219,7 +295,7 @@ namespace polymake {
        * @return: a pair of dual generators and the incidences with the primal generators
        */
       template <typename MatrixTop, typename Scalar>
-      std::pair< Matrix<TropicalNumber<Min, Scalar> >, IncidenceMatrix<> > dual_description(const GenericMatrix<MatrixTop, Scalar>& monomial_generators) {
+      std::pair< Matrix<TropicalNumber<Min, Scalar> >, IncidenceMatrix<> > monomial_dual_description(const GenericMatrix<MatrixTop, Scalar>& monomial_generators) {
          typedef TropicalNumber<Min, Scalar> TNumber;
 
          int dim = monomial_generators.cols();

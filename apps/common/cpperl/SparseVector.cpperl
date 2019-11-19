@@ -69,5 +69,6 @@
   {"args": ["SparseVector<PuiseuxFraction<Max, Rational, Rational>>"], "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/SparseVector.h", "polymake/TropicalNumber.h"], "op": "new", "sig": "new"},
   {"args": ["perl::Canned<const Wary<SparseVector<PuiseuxFraction<Max, Rational, Rational>>>&>", "perl::Canned<const SparseVector<PuiseuxFraction<Max, Rational, Rational>>&>"], "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/SparseVector.h", "polymake/TropicalNumber.h"], "op": "_eq", "sig": "_eq:O.X4.X"},
   {"args": ["perl::Canned<const pm::SameElementSparseVector<pm::SingleElementSetCmp<int, pm::operations::cmp> const, pm::Integer const&>&>"], "include": ["polymake/Integer.h", "polymake/linalg.h"], "op": "neg", "sig": "neg:O.X"},
+  {"args": ["perl::Canned<const Wary<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> const&>, pm::Series<int, false> const, mlist<> >>&>", "perl::Canned<const SparseVector<Rational>&>"], "include": ["polymake/Rational.h", "polymake/SparseVector.h", "polymake/linalg.h"], "op": "_eq", "sig": "_eq:O.X4.X"},
  null ],
 "version": 3}

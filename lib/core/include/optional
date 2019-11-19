@@ -75,6 +75,8 @@ using pm::make_optional;
 
 #else
 
+#if __cplusplus < 201703L
+
 # include <experimental/optional>
 
 namespace polymake {
@@ -87,6 +89,23 @@ using std::experimental::optional;
 using std::experimental::nullopt;
 using std::experimental::make_optional;
 }
+
+#else
+
+#include <optional>
+
+namespace polymake {
+using std::optional;
+using std::nullopt;
+using std::make_optional;
+}
+namespace pm {
+using std::optional;
+using std::nullopt;
+using std::make_optional;
+}
+
+#endif
 
 #endif
 

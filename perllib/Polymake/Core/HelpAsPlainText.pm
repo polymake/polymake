@@ -1,6 +1,7 @@
-#  Copyright (c) 1997-2018
-#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-#  http://www.polymake.org
+#  Copyright (c) 1997-2019
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of the GNU General Public License as published by the
@@ -96,11 +97,11 @@ sub function_brief {
    $self->text .= "\n\n";
 }
 
-sub function_type_params {
-   my $self=shift;
+sub type_params {
+   my $self = shift;
    $self->text .= "\nType Parameters:\n";
    foreach (@_) {
-      my $comment=$_->[1];
+      my $comment = $_->[1];
       clean_text($comment);
       $comment =~ s/\n[ \t]*(?=\S)/\n    /g;
       $self->text .= "  " . underline($self, $_->[0]) . " $comment";

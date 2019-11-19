@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Integer>&>"], "func": "lattice_basis", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h", "polymake/common/lattice_tools.h"], "sig": "lattice_basis.X"},
+ null ],
+"version": 3}

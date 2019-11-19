@@ -1,6 +1,7 @@
-#  Copyright (c) 1997-2018
-#  Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-#  http://www.polymake.org
+#  Copyright (c) 1997-2019
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
 #
 #  This program is free software; you can redistribute it and/or modify it
 #  under the terms of the GNU General Public License as published by the
@@ -296,13 +297,13 @@ sub descend_to_generic {
 ####################################################################################
 sub find_super_type_param {
    my ($self, $name) = @_;
-   my $result;
+   my @result;
    foreach my $super (@{$self->linear_isa}) {
       if (!instanceof Augmented($super) and defined($super->params) and my ($param) = grep { $_->name eq $name } @{$super->params}) {
-         $result = $param;
+         @result = ($super, $param);
       }
    }
-   $result;
+   @result;
 }
 ####################################################################################
 # "property name" => Property or undef
@@ -947,7 +948,7 @@ sub create_augmentation {
 ####################################################################################
 sub help_topic {
    my $self=shift;
-   $self->help // PropertyType::locate_own_help_topic($self, "objects", @_);
+   $self->help // ($self->application // return)->help->find_type_topic($self, "objects", @_);
 }
 ####################################################################################
 sub override_help {

@@ -1,6 +1,7 @@
-/* Copyright (c) 1997-2018
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+/* Copyright (c) 1997-2019
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -21,6 +22,15 @@ namespace polymake { namespace fan {
 
 using namespace graph::lattice;
 using namespace fan::lattice;
+
+graph::Lattice<BasicDecoration> empty_fan_hasse_diagram()
+{
+   graph::Lattice<BasicDecoration> HD;
+   const int bottom_node = HD.add_node(BasicDecoration{ Set<int>{}, 0 });
+   const int top_node = HD.add_node(BasicDecoration{Set<int>{-1}, 1 });
+   HD.add_edge(bottom_node, top_node);
+   return HD;
+}
 
 perl::Object hasse_diagram_caller(perl::Object fan, const RankRestriction& rr, const TopologicalType& tt, 
                                   const Set<int>& far_vertices = Set<int>())

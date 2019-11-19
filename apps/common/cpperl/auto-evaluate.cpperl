@@ -1,8 +1,8 @@
 {"app": "common",
  "inst": [
-  {"args": ["perl::Canned<const PuiseuxFraction<Max, Rational, Rational>&>", "int", "void"], "func": "evaluate", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "kind": "meth", "sig": "evaluate:M.X.x"},
-  {"args": ["perl::Canned<const PuiseuxFraction<Min, Rational, Rational>&>", "int", "void"], "func": "evaluate", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "kind": "meth", "sig": "evaluate:M.X.x"},
   {"args": ["perl::Canned<const UniPolynomial<Rational, int>&>", "int", "void"], "func": "evaluate", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "meth", "sig": "evaluate:M.X.x"},
-  {"args": ["PuiseuxFraction<Max, Rational, Rational>", "perl::Canned<const SparseMatrix<PuiseuxFraction<Max, Rational, Rational>, NonSymmetric>&>", "int", "void"], "func": "evaluate", "include": ["polymake/IncidenceMatrix.h", "polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/TropicalNumber.h"], "kind": "stat", "sig": "PuiseuxFraction::evaluate:M64.X.X.x"},
+  {"args": ["perl::Canned<const SparseMatrix<PuiseuxFraction<Max, Rational, Rational>, NonSymmetric>&>", "int", "void"], "func": "evaluate", "include": ["polymake/IncidenceMatrix.h", "polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/TropicalNumber.h"], "sig": "evaluate.X.X.x"},
+  {"args": ["perl::Canned<const PuiseuxFraction<Max, Rational, Rational>&>", "int", "void"], "func": "evaluate", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "evaluate.X.X.x"},
+  {"args": ["perl::Canned<const PuiseuxFraction<Min, Rational, Rational>&>", "int", "void"], "func": "evaluate", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "evaluate.X.X.x"},
  null ],
 "version": 3}

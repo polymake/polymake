@@ -17,6 +17,12 @@
 	---
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
+	---
+	Copyright (c) 2016-2019
+	Ewgenij Gawrilow, Michael Joswig, and the polymake team
+	Technische Universität Berlin, Germany
+	https://polymake.org
+
 	This file contains the algorithms to compute bergman fans as described
 	by Felipe Rincón in his paper "Computing tropical linear spaces".
 	See also http://math.berkeley.edu/~felipe/bergman

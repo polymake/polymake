@@ -1,16 +1,17 @@
-/* Copyright (c) 1997-2018
-	Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-http://www.polymake.org
+/* Copyright (c) 1997-2019
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
-This program is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License as published by the
-Free Software Foundation; either version 2, or (at your option) any
-later version: http://www.gnu.org/licenses/gpl.txt.
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
 --------------------------------------------------------------------------------
 */
 
@@ -24,18 +25,19 @@ GNU General Public License for more details.
 #include "polymake/tropical/thomog.h"
 #include "polymake/tropical/canonicalize.h"
 #include "polymake/tropical/arithmetic.h"
+#include "polymake/tropical/double_description.h"
 #include "polymake/TropicalNumber.h"
 
 namespace polymake { namespace tropical {
 
       // auxiliary function for trop_witness
       // checks the infeasibility of the generalized covector y
-      // w.r.t. the signs given by negative_indices
+      // w.r.t. the signs given by negative_indices of coordinates in D
       // @return apex node of degree one which is incident with a negative edge
-      int infeasible (const IncidenceMatrix<>& y, const Array<int> &negative_indices) {
+      int infeasible(const IncidenceMatrix<>& y, const Array<int> &negative_indices, const Set<int> D) {
          for (int t = 0; t < y.rows(); t++) {
             // check if the incident edge of an apex node of degree one is negative
-            if (((y[t]).size() == 1) && ((y[t]).contains(negative_indices[t]))) { return (t+1); }
+            if (((y[t]).size() == 1) && ((y[t]).contains(negative_indices[t])) && (D.contains(negative_indices[t]))) { return (t+1); }
          }
          // this encodes the case that y is not infeasible
          return 0;
@@ -44,8 +46,10 @@ namespace polymake { namespace tropical {
       // auxiliary function for trop_witness
       // checks if delta is incident with a negative edge in y with the signs given by negative_indices
       int negatively_covered (const IncidenceMatrix<>& y, const Array<int> &negative_indices, int delta) {
-         for (int t : y.col(delta)) {
-            if (negative_indices[t] == delta) { return (t+1);}
+ 
+         for (int t = 0; t < y.rows(); t++) {
+            // check if the incident edge of an apex node of degree one is negative and incident with delta
+            if (((y[t]).size() == 1) && ((y[t]).contains(negative_indices[t])) && (negative_indices[t] == delta)) { return (t+1); }
          }
          return 0;
       }
@@ -54,10 +58,10 @@ namespace polymake { namespace tropical {
       // coeff is the coefficient matrix, the array negative_indices contains the entry where the corresponding row of coeff is tropically negative
       // the algorithm iteratively increases the coordinates on which a solution is defined
       // start_coord denotes the coordinate to start with
-      template <typename Addition = Min, typename Scalar>
+      template <typename Addition, typename Scalar>
       std::pair<Vector<TropicalNumber<Addition, Scalar> >, int> trop_witness(const Matrix<TropicalNumber<Addition,Scalar> > &coeff, const Array<int> &negative_indices, int start_coord = 0)
       {
-         /* int COUNTER = 0; */
+         int COUNTER = 0;
 
          // initialization
          typedef TropicalNumber<Addition, Scalar> TNumber;
@@ -78,41 +82,40 @@ namespace polymake { namespace tropical {
          
          // the loop terminates if a certificate of feasibility or infeasibility is returned
          while (true) { 
-            /* COUNTER += 1; */
+            COUNTER += 1;
                      
             // set the variable check;
             // determines the degree of feasibility
             
             // (j-1) is the minimal index of an apex node which has degree 1 and
-            // is incident with a negative edge
+            // is incident with a negative edge to D
             // there is none if j == 0
-            j = infeasible(y,negative_indices);
-            if (j--) {
+            j = infeasible(y,negative_indices,D);
+            if (j--) { check = 1; } //INFEASIBLE 
+            else {
                // (k-1) is the minimal index of an apex node which is incident to
                // delta via a negative edge
                // there is none if k == 0
                k = negatively_covered(y,negative_indices,delta);
-               if (k--) {
-                  check = 2; //TOTALLY-INFEASIBLE
-               }
-               else { check = 1; } //INFEASIBLE 
-            } else { check = 0; } //FEASIBLE
-
-
+               if (k--) { check = 2; } //TOTALLY-INFEASIBLE
+               else { check = 0; } //FEASIBLE               
+            }
+            
             // determine the next point or terminate -- depending on the feasibility status
 
             // x is feasible
             if (check == 0) 
-               {/* cout << COUNTER << endl;*/ return std::make_pair(x,1); }
+               { return std::make_pair(x,1); }
 
             // x is totally infeasible
             // increase the coordinate set or
             // terminate with certificate of infeasibility
             else if (check == 2) { 
-               if (sup.empty()) {/* cout << COUNTER << endl;*/ return std::make_pair(x,0);}
+               if (sup.empty()) { return std::make_pair(x,0); }
+               
                N += scalar2set(k);
                D += scalar2set(delta);
-               delta = accumulate(sup, operations::min()); 
+               delta = accumulate(sup, operations::min());
                sup -= scalar2set(delta);
                coords = D + scalar2set(delta);
             }
@@ -133,7 +136,7 @@ namespace polymake { namespace tropical {
             // update the current point and generalized covector defined by the modified index sets
 
             x = subcramer(coeff, N, coords);
-            y = generalized_apex_covector(x,coeff);
+            y = generalized_apex_covector(x,coeff);            
          }
       }
 
@@ -160,8 +163,16 @@ namespace polymake { namespace tropical {
          else { if ((covered_coord == col_set) && !feasible) return true; 
             else return false; }
       }
-      
 
+
+      template <typename Addition, typename Scalar>
+      std::pair<Vector<TropicalNumber<Addition,Scalar>>,bool> H_trop_input_feasible(perl::Object p) {
+         const std::pair<Matrix<TropicalNumber<Addition,Scalar>>,Matrix<TropicalNumber<Addition,Scalar>>> Ineq = p.lookup("INEQUALITIES");
+         std::pair< Matrix< TropicalNumber< Addition, Scalar> >, Array<int> > split_apices = matrixPair2splitApices(Ineq.first,Ineq.second);
+         return trop_witness(split_apices.first,split_apices.second);
+      }
+
+      FunctionTemplate4perl("H_trop_input_feasible<Addition,Scalar> (Polytope<Addition,Scalar>)");
 
       
     UserFunctionTemplate4perl("# @category Tropical operations"
@@ -174,6 +185,18 @@ namespace polymake { namespace tropical {
 			      "# @return Vector<TropicalNumber<Addition, Scalar> > ",
 			      "trop_witness<Addition,Scalar>(Matrix<TropicalNumber<Addition,Scalar> >, Array<Int>)");
 
+
+       UserFunctionTemplate4perl("# @category Tropical operations"
+			      "# checks feasibility of tropical inequality system"
+			      "# @tparam Addition"
+			      "# @tparam Scalar"
+			      "# @param Matrix<TropicalNumber<Addition, Scalar> > m"
+			      "# @param Array<Int > t"
+                              "# @param Int start"
+			      "# @return Vector<TropicalNumber<Addition, Scalar> > ",
+                                 "trop_witness<Addition,Scalar>(Matrix<TropicalNumber<Addition,Scalar> >, Array<Int>,Int)");
+      
+      
       UserFunctionTemplate4perl("# @category Tropical operations"
                                 "# computes Cramer bracket"
                                 "# |I| = |J| + 1 is required."
