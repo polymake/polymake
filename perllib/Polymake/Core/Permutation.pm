@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -56,12 +56,12 @@ sub analyze_rule {
       if (@$output == 1) {
          my $prop=$output->[0];
          if ($rule->code == \&Rule::nonexistent) {
-            if ($Application::plausibility_checks && ref($self->sensitive_props->{$prop->key})) {
+            if ($enable_plausibility_checks && ref($self->sensitive_props->{$prop->key})) {
                croak( "recovery of property ", $prop->name, " was enabled prior to this rule definition" );
             }
             $self->sensitive_props->{$prop->key}=[ ];
          } else {
-            if ($Application::plausibility_checks && exists($self->sensitive_props->{$prop->key}) &&
+            if ($enable_plausibility_checks && exists($self->sensitive_props->{$prop->key}) &&
                 @{$self->sensitive_props->{$prop->key}} == 0) {
                croak( "recovery of property ", $prop->name, " was disabled prior to this rule definition" );
             }
@@ -69,13 +69,13 @@ sub analyze_rule {
          }
          $regular_out_seen=1;
       } else {
-         if ($Application::plausibility_checks && get_array_flags($output) & Flags::is_multiple_new) {
+         if ($enable_plausibility_checks && get_array_flags($output) & Flags::is_multiple_new) {
             croak( "Rule dealing with permutations may not create new multiple subobjects" );
          }
          my $perm_pos = find_first_in_path($output, Flags::is_permutation);
          if ($perm_pos >= 0) {
             if ($perm_pos == 0) {
-               if ($Application::plausibility_checks && $output->[0] != $self) {
+               if ($enable_plausibility_checks && $output->[0] != $self) {
                   croak( "dependence between two different permutation subobjects on the same level is not allowed" );
                }
             } else {
@@ -109,12 +109,12 @@ sub add_sensitive_sub_property {
    my $rule=pop;
    my ($hash, $prop)=descend_and_create($self->sensitive_props, @_);
    if ($rule->code==\&Rule::nonexistent) {
-      if ($Application::plausibility_checks && ref($hash->{$prop->key})) {
+      if ($enable_plausibility_checks && ref($hash->{$prop->key})) {
          croak( "recovery of property ", $prop->name, " was enabled prior to this rule definition" );
       }
       $hash->{$prop->key}=[ ];
    } else {
-      if ($Application::plausibility_checks && exists($hash->{$prop->key}) && @{$hash->{$prop->key}}==0) {
+      if ($enable_plausibility_checks && exists($hash->{$prop->key}) && @{$hash->{$prop->key}}==0) {
          croak( "recovery of property ", $prop->name, " was disabled prior to this rule definition" );
       }
       push @{$hash->{$prop->key}}, $rule;

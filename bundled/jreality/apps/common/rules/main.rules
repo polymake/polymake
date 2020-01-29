@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -49,7 +49,7 @@ use Polymake::Struct (
 sub instance : lvalue { state $active }
 
 {  # capture the own extension
-   my $ext=$Polymake::Core::Application::extension;
+   my $ext = $Polymake::Core::Extension::loading;
 
    sub java_extensions { @{$ext->requires}, $ext }
 }
@@ -122,8 +122,6 @@ sub parse_transformation_matrix {
 # @category Visualization
 # Use [[wiki:external_software#jreality|jReality]], the experimental 3-D visualization software
 label jreality
-
-prefer jreality.geometry
 
 global_method jreality.geometry: draw(Visual::PointSet, @) {
    my ($self, $P)=@_;
@@ -203,7 +201,7 @@ package application;
 #
 # @param Visual::Object vis_obj ... objects to display
 #
-# @option String File "filename" or "AUTO"
+# @option [complete file] String File "filename" or "AUTO"
 #  Store the object description in a bean shell source file without starting the interactive GUI.
 #  The ''.bsh'' suffix is automatically added to the file name.
 #

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,8 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_CORE_WRAPPERS_hash_set_
-#define POLYMAKE_CORE_WRAPPERS_hash_set_
+#ifndef POLYMAKE_CORE_WRAPPERS_hash_set_H
+#define POLYMAKE_CORE_WRAPPERS_hash_set_H
 
 #include_next "polymake/hash_set"
 #include "polymake/client.h"
@@ -29,7 +29,7 @@ namespace polymake { namespace perl_bindings {
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } }
 
-#endif // POLYMAKE_CORE_WRAPPERS_hash_set_
+#endif // POLYMAKE_CORE_WRAPPERS_hash_set_H
 
 // Local Variables:
 // mode:C++

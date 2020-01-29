@@ -1,0 +1,373 @@
+#  Copyright (c) 1997-2020
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+
+# @topic core/objects/Core::BigObject
+# This is the common base class of all `big' objects in polymake.
+# It does not have any properties, but provides several useful methods
+# for scripting and interactive use.
+
+
+# @topic core/objects/Core::BigObject/methods/name
+# Get or set the name of an object.
+#
+# Big object names are in general optional and do not have to obey any strict syntactic rules.
+# However, there are several situations where they can play an important role:
+#
+#  - When a new object is to be saved in a data file, the file name is by default derived from the object name.
+#  - In a PolyDB database, names are used as unique identifiers ("_id" fields),
+#    thus all objects stored in PolyDB must have non-empty unique names within their collection.
+#    Names can also be used in cross-document and cross-collection references within the database.
+#  - Multiple subobject instances of the same parent object must have distinct names.
+#    They can be selected by names for property retrieval and other operations, see [[give]], [[lookup]],
+#    [[add]], [[set_as_default]].
+#  - Visualization tools usually include object names in the title or other metadata of the produced drawings.
+#  - Functions constructing new objects by combining or transforming others usually include input object names
+#    in the description of the output objects.
+#
+# Note that object names can also be set immediately in the object constructor or when adding a new multiple subobject.
+#
+# @example [notest] print an existing object name
+# > print $obj->name;
+# @example [notest] set a new object name
+# > $obj->name="favourite";
+
+
+# @topic core/objects/Core::BigObject/methods/description
+# Get or set the object description.
+#
+# An object description is a multi-line text string with arbitrary contents.  It can be modified freely at any time.
+# The description is saved in the data file alongside with all object properties.
+# Many functions producing new objects generate a short description text recording the genesis of the object.
+#
+# @example [notest] print an existing object description
+# > print $obj->description;
+# @example [notest] fix a typo in a description
+# > $obj->description =~ s/ taht / that /;
+
+
+# @topic core/objects/Core::BigObject/methods/type
+# Get the type of an object
+# The type is represented by a special object of class Core::BigObjectType.
+# It's primarily designed for internal use by polymake core system.
+# In the interactive session, you can ask for its name or construct a new big object of the same type.
+# @example [notest] ask for the object type in printable form
+# > print $obj->type->full_name;
+# @example [notest] create a new object of the same type as the given one
+# > $new_obj = $old_obj->type->construct->("NAME", PROPERTY => value, ...);
+
+
+# @topic core/objects/Core::BigObject/methods/isa
+# Check whether the object belongs to a given type or is derived thereof
+# @param Any type type of interest;
+#   can be specified as a string containing a type name, optionally qualified with an application name,
+#   or as a type object retrieved from another big object
+# @return Bool
+# @example [notest] check whether an object is a PolyhedralFan
+# > if ($obj->isa("fan::PolyhedralFan")) { print "it's a Fan: ", $obj->type->full_name; }
+
+
+# @topic core/objects/Core::BigObject/methods/give ($@)
+# Retrieve the value of a property.
+#
+# If the property is not present in the object, it will be computed using appropriate production rules.
+# ''undef'' return value will indicate that the property can't be computed at all
+# because there are not enough initial properties it could be computed from,
+# or that necessary preconditions for the existence of the property are not fulfilled.
+#
+# If a list of alternatives is specified, the first existing property will be returned.
+# If none of the alternatives is present in the object, one will be computed using the cheapest
+# feasible sequence of production rules.
+#
+# If the requested property refers to a multiple subobject, the default instance (with index 0) will be
+# returned, unless some filtering criteria are specified as //multi_choice// parameters.
+#
+# Note that a single property can also be retrieved using direct method call syntax:
+# ''$p->give("PROPERTY")'' and ''$p->PROPERTY'' are fully equivalent,
+# albeit the latter form has slightly smaller implementation overhead.
+#
+# @param [complete Core::Property(give)] String property_name name of the property of interest.
+#   A property in a subobject is written in dotted path notation: ''"NAME1.NAME2.NAME3..."''
+#   Names of alternative properties are separated by bars: ''"NAME1 | NAME2 | ..."''.
+# @param [complete Core::Property::InMulti] Any multi_choice criteria for choosing an instance of a multiple subobject:
+#   - a string with the subobject name
+#   - one or more pairs ''PROPERTY => value'' specifying desired values for certain subobject properties.
+#     If no subobject instance matches this filter, a new one will be created with exactly these properties.
+#   - a hash map containing such ''PROPERTY => value'' pairs
+#   - a string "*" selecting //all// existing instances - they will be returned in an anonymous array
+
+
+# @topic core/objects/Core::BigObject/methods/lookup ($@)
+# Retrieve the value of an exising property.
+#
+# Unlike [[give]], this method will not try to compute a missing property except when some trivial
+# shortcut rules are available.  The return value ''undef'' may indicate both the absence of the property
+# and its presence with an undefined value.  If you have to distinguish between these cases,
+# call ''$object->lookup_pv'' instead and fetch the ''->value'' from its result if that is defined.
+#
+# If a list of alternatives is specified, the first existing property will be returned.
+#
+# If the requested property refers to a multiple subobject, the default instance (with index 0) will be
+# returned, unless some filtering criteria are specified as //multi_choice// parameters.
+#
+# @param [complete Core::Property(give)] String property_name name of the property of interest.
+#   A property in a subobject is written in dotted path notation: ''"NAME1.NAME2.NAME3..."''
+#   Names of alternative properties are separated by bars: ''"NAME1 | NAME2 | ..."''.
+# @param [complete Core::Property::InMulti] Any multi_choice criteria for choosing an instance of a multiple subobject:
+#   - a string with the subobject name
+#   - one or more pairs ''PROPERTY => value'' specifying desired values for certain subobject properties.
+#     If no subobject instance matches this filter, ''undef'' is returned.
+#   - a hash map containing such ''PROPERTY => value'' pairs
+#   - a string "*" selecting //all// existing instances - they will be returned in an anonymous array
+
+
+# @topic core/objects/Core::BigObject/methods/provide ($@)
+# Prepare the object for optimal retrieval of one or more properties.
+# It finds an optimal sequence of feasible production rules creating all requested properties that are not yet
+# present in the object.  This method does not return anything, you still have to retrieve every
+# single property of interest using [[give]], [[lookup]] or direct property name.
+# @param [complete Core::Property(give)] String property_name name of the property of interest.
+#   A property in a subobject is written in dotted path notation: ''"NAME1.NAME2.NAME3..."''
+#   Names of alternative properties are separated by bars: ''"NAME1 | NAME2 | ..."''.
+# @example [notest]
+# > $p->provide("FACETS", "TRIANGULATION.FACETS");
+# > $f=$p->FACETS;
+# > $tf=$p->TRIANGULATION->FACETS;
+
+
+# @topic core/objects/Core::BigObject/methods/get_schedule ($@)
+# Compose an optimal chain of production rules providing all requested properties.
+# The returned RuleChain object can be applied to the original object as well as to any other object
+# with the same initial set of properties.  If no feasible rule chain exists, ''undef'' is returned.
+#
+# To watch the rule scheduler at work, e.g. to see announcements about tried preconditions,
+# you may temporarily increase the verbosity levels ''$Verbose::rules'' and ''$Verbose::scheduler''.
+#
+# @param [complete Core::Property(give)] String property_name name of the property of interest.
+#   A property in a subobject is written in dotted path notation: ''"NAME1.NAME2.NAME3..."''
+#   Names of alternative properties are separated by bars: ''"NAME1 | NAME2 | ..."''.
+# @return Core::RuleChain
+# @example [notest] generate an optimal rule chain for a parameterized family of polytopes:
+# > @p=map { new Polytope("POINTS" => my_matrix($_) ) } 1..10;
+# > $s=$p[0]->get_schedule("FACETS", "TRIANGULATION.FACETS");
+# > $s->apply($_) for @p;
+
+
+# @topic core/objects/Core::BigObject/methods/dont_save
+# Clear the `changed' flag in the object, so that it won't be saved in the data file it was loaded from.
+# This method is primarily designed for unit tests, but could be also useful in interactive mode
+# if you want to revert all recent changes and reload the object from the data file.
+
+
+# @topic core/objects/Core::BigObject/methods/disable_rules
+# Temporarily disable production rules matching given pattern for an object.
+# Rules are re-enabled after the complete execution of the current script
+# or input expression in interactive mode.
+#
+# Works much like the user function [[functions/disable_rules]] but only affecting
+# the given object.
+# @param [complete Core::Rule] String pattern either a label (see [[prefer]]) or a rule header.
+#   The rule header must exactly match the definition in the rulefile,
+#   up to white spaces around property names.
+#   If the given pattern matches headers of several rules, or the given label
+#   is associated with several rules, they all will be disabled regardless
+#   their precoditions, weights, or other attributes.
+
+
+# @topic core/objects/Core::BigObject/methods/apply_rule
+# Executes the specified production rule.
+# If the object does not possess enough initial properties to provide all required
+# rule sources, or any of its preconditions are not satisfied, an exception is raised.
+# @param [complete Core::Rule] String pattern either a label (see [[prefer]]) or a rule header.
+#   The rule header must exactly match the definition in the rulefile,
+#   up to white spaces around property names.
+#   If the given pattern matches headers of several rules, or the given label
+#   is associated with several rules, the rule chain with smallest total weight
+#   (including the rules supplying the source properties) is chosen.
+
+
+# @topic core/objects/Core::BigObject/methods/set_as_default
+# Makes the multiple subobject instance the default one.
+# Physically this means moving it at the 0-th position in the instance list.
+#
+# The instance can be selected by give() or PROPERTY_NAME access method.
+# @example [notest] by current position:
+#  > $p->TRIANGULATION->[$i]->set_as_default;
+# @example [notest] by subobject name:
+#  > $p->TRIANGULATION("placing")->set_as_default;
+# @example [notest] by checking for a specific property:
+#  > $p->TRIANGULATION(sub { defined($_->lookup("WEIGHTS")) })->set_as_default;
+# @example [notest] by analyzing all instances and picking the best one:
+#  > { my $min_facets;
+#  > for (@{$p->TRIANGULATION}) { assign_min($min_facets, $_->N_FACETS) and $t=$_ }
+#  > $t->set_as_default; }
+
+
+# @topic core/objects/Core::BigObject/methods/set_as_default_now
+# Temporarily make the multiple subobject instance the default one.
+# The change is automatically reverted at the end of the current user cycle.
+# Usage as [[set_as_default]].
+
+# @topic core/objects/Core::BigObject/methods/list_names
+# Return the list of names of multiple subobject instances.
+# This method can be applied to any instance of a multiple subobject.
+# For a normal (non-multiple) subobject or a top-level object just returns its name.
+# @example [notest] List all names of linear programs associated with a polytope:
+# > print join(" ", $p->LP->list_names);
+
+
+# @topic core/objects/Core::BigObject/methods/list_properties (;$)
+# Return the list of names of all properties stored in the object.
+# @param Bool deep recursively descend in all subobjects and list their properties in dotted notation.
+
+# @topic core/objects/Core::BigObject/methods/properties (%)
+# Return or print a string with all properties (names and values) and subobjects.
+# @option Int maxdepth descend into subobjects up to given depth, default 0
+
+# @topic core/objects/Core::BigObject/methods/remove ($@)
+# Remove one or more properties from the object.
+# All properties must be //mutable//, //multiple//,
+# or unambiguously reconstructible from the remaining ones.
+# @param [complete Core::Property(take)] String property_name name of the property to be removed.
+#   A property in a subobject is written in dotted path notation: ''"NAME1.NAME2.NAME3..."''
+# @example [notest]
+# > $p->remove("HASSE_DIAGRAM");
+
+# @topic core/objects/Core::BigObject/methods/remove
+# Remove this multiple subobject instance from its parent object.
+# @example [notest] remove a subobject instance with the given name
+# > $p->TRIANGULATION("name")->remove;
+
+
+# @topic core/objects/Core::BigObject/methods/take ($$;$)
+# Store a property in an object.  Existing properties are overwritten.
+# Use of this method is restricted to the following situations:
+#  - an object has been just created with a constructor and is still in the state of initial property collection
+#  - the property is declared as //mutable//
+#  - within a production rule body, where the property is listed as one of the targets
+# In all other cases the operation is refused and an exception raised.
+#
+# Note that a single property can also be set using direct assignment syntax:
+# ''$p->take("PROPERTY", $value);'' and ''$p->PROPERTY=$value;'' are fully equivalent,
+# albeit the latter form has slightly smaller implementation overhead.
+#
+# @param [complete Core::Property(take)] String property_name name of the property to be added.
+#   A property in a subobject is written in dotted path notation: ''"NAME1.NAME2.NAME3..."''
+# @param Any value new value of the property
+# @param Int temp unquoted keyword ''temporary'' indicating that the property should be removed automatically
+#   at the end of the current execution cycle, that is, after finishing the current script or shell input line.
+#   Temporary properties are never saved in data files.
+
+
+# @topic core/objects/Core::BigObject/methods/add ($$@)
+# Add a new instance of a multiple subobject to this object.
+# The subobject may already exist or may be constructed on the fly.
+# Note that multiple subobject instances of the same parent must have distinct names.
+# If no name is present, a unique name "unnamed#NNN" will be assigned to the subobject.
+# @param [complete Core::Property(add)] String multi_property_name name of the multiple subobject property to be added.
+#   This parameter can be followed by an optional unquoted keyword ''temporary'' indicating that the subobject should be
+#   removed automatically at the end of the current execution cycle, that is, after finishing the current script or shell input line.
+# @param [complete Core::Property::InMulti(add)] Any subobject an already existing object,
+#   or a string with desired name of the new subobject, or nothing if an automatically generated subobject name is fine.
+# @param [complete Core::Property::InMulti] Any properties list of pairs ''PROPERTY_NAME => value'' to be added to the subobject instance.
+# @example [notest] construct a LinearProgram subobject and add it to a Polytope step by step
+# > $lp=new LinearProgram<Rational>("problem1");
+# > $lp->LINEAR_OBJECTIVE=new Vector<Rational>(1,100,-200,300);
+# > $p->add("LP", $lp);
+# @example [notest] construct a LinearProgram subobject on the fly
+# > p->add("LP", "problem1", LINEAR_OBJECTIVE => new Vector<Rational>(1,100,-200,300));
+
+
+# @topic core/objects/Core::BigObject/methods/commit
+# Finish construction of an object.
+# After a commit, no further properties can be added to the object, except for mutable ones and multiple subobjects.
+# An automatic commit is executed when the object is queried for a property not present yet, when it is saved in a data file
+# or in a database.
+
+
+# @topic core/objects/Core::BigObject/methods/attach ($$@)
+# Attach an arbitrary data item to a `big' object.
+# Attachments are saved in the same data file as the `big' object itself.
+# They can be retrieved by calling [[get_attachment]].
+# @param String name attachment name.  Should not coincide with names of any properties defined for this big object type.
+#   If an attachment with the given name already exists, it is silently replaced with new data.
+# @param Any data attachment data, can be a simple numeric scalar, a string,
+#   a complex data type like a [[Matrix]] or [[Polynomial]], or an anonymous array or a hash map.
+#   `Big' objects are not allowed.
+# @param [complete Core::Property(give)] String constructor_arg name of a property of the owning `big' object
+#   which should be passed to the attached data constructor when it will be restored from a data file.
+#   Properties of subobjects are specified in dotted path notation. 
+#   For example, for an attachment of type [[NodeMap]] you must specify the "ADJACENCY" property
+#   containing the graph the map is referring to.
+
+# @topic core/objects/Core::BigObject/methods/get_attachment
+# Retrieve data stored in the given attachment.
+# @param [complete attachment] String name attachment name
+# @return Any attachment data
+
+# @topic core/objects/Core::BigObject/methods/remove_attachment
+# Remove the given attachment from the `big' object.
+# @param [complete attachment] String name attachment name
+# @return Any attachment data
+
+# @topic core/objects/Core::BigObject/methods/list_attachments
+# Return names of all attachments as a list of strings.
+
+
+# @topic core/objects/Core::RuleChain
+# A rule chain to compute properties of a `big' object.
+# It can be obtained by calling the method [[get_schedule]].
+
+# @topic core/objects/Core::RuleChain/methods/list
+# Return the headers of rules in the chain.
+
+# @topic core/objects/Core::RuleChain/methods/list_new_properties
+# Return the names of properties computed by the rule chain.
+
+# @topic core/objects/Core::RuleChain/methods/apply
+# Apply the rule chain to an object.
+# @param Core::BigObject o
+
+
+# @topic core/objects/Schema
+# JSON schema used for validation and filtering, see [[save]].
+# See also functions for most common manipulations of restricted schemas, [[Schema::prescribe_property_types]]
+
+# @topic core/objects/Schema/methods/validate_self
+# Validate the given schema against the general meta-schema for schemas.
+# Throw an exception in case of any errors.
+# Validation is in particular useful after manual editing the schema.
+# @return Schema itself
+
+# @topic core/objects/Schema/methods/validate
+# Validate a primitive perl value suitable as JSON encoder input (like the outcome of Core::Serialize::serialize).
+# Throw an exception in case of any errors.
+# @param Any primitive perl value, that is, a plain string, number, anonymous list, or anonymous hash
+
+# @topic core/objects/Schema/methods/source
+# Get access to the schema source data, as it comes from the JSON decoder.
+# The schema can be changed manually if the standard manipulations offered by [[Schema::prescribe_property_types]]
+# are insufficient for a particular use case.
+#
+# Be sure to call [[validate_self]] after making changes, to be sure that the schema is still valid.
+# @return HASH top-level JSON-like document defining the schema.
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

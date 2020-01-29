@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,7 +32,7 @@ namespace polymake { namespace topaz {
 
 namespace {
 
-   typedef Set<int> face_type;
+   typedef Set<Int> face_type;
    typedef Set<face_type> complex_type;
    typedef hash_set<complex_type> ballhash_type;
 
@@ -41,7 +41,7 @@ namespace {
 template<typename Scalar>
 bool still_star_shaped_after_extension(const Matrix<Scalar>& vertices,
                                        const face_type& simplex,
-                                       int new_vertex)
+                                       Int new_vertex)
 {
    for (const auto& s : simplex) {
       if (s == new_vertex) continue;
@@ -66,13 +66,13 @@ template<typename Scalar>
 void extensible_ridges_and_facets(const Matrix<Scalar>& vertices,
                                   const complex_type& candidate_ridges,
                                   const complex_type& current_ball,
-                                  const Set<int>& current_support,
-                                  const Map<face_type, std::vector<int>>& link_of_ridge,
+                                  const Set<Int>& current_support,
+                                  const Map<face_type, std::vector<Int>>& link_of_ridge,
                                   std::vector<face_type>& extensible_ridges,
                                   std::vector<face_type>& extensible_facets)
 {
    for (const auto& cr : candidate_ridges) {
-      const std::vector<int>& link(link_of_ridge[cr]);
+      const std::vector<Int>& link(link_of_ridge[cr]);
       if (link.size() < 2) continue; // the ridge is not on the global boundary
       
       if (current_support.contains(link[0]) &&
@@ -86,7 +86,7 @@ void extensible_ridges_and_facets(const Matrix<Scalar>& vertices,
             }
          }
       } else { // one vertex in the link is outside the ball, so we have to test for star-shapedness
-         const int v = current_support.contains(link[0]) 
+         const Int v = current_support.contains(link[0]) 
             // Of the two vertices in the link, which one is outside the current support?
             ? link[1]
             : link[0];
@@ -100,7 +100,7 @@ void extensible_ridges_and_facets(const Matrix<Scalar>& vertices,
 
 // update the boundary and the candidate ridges with the ridges of new_facet
 void update_boundary_ridges(const face_type& new_facet,
-                            const Map<face_type, std::vector<int>>& link_of_ridge,
+                            const Map<face_type, std::vector<Int>>& link_of_ridge,
                             complex_type& new_boundary,
                             complex_type& new_candidate_ridges)
 {
@@ -123,7 +123,7 @@ void enumerate_star_shaped_balls(const Matrix<Scalar>& vertices,
                                  const complex_type& current_boundary,    // all ridges in the boundary of B
                                  const complex_type& candidate_ridges,    // for extension across them
                                  const face_type& current_support,
-                                 const Map<face_type, std::vector<int>>& link_of_ridge,
+                                 const Map<face_type, std::vector<Int>>& link_of_ridge,
                                  ballhash_type &balls_processed)
 {
    std::vector<face_type> extensible_ridges, extensible_facets;
@@ -131,7 +131,7 @@ void enumerate_star_shaped_balls(const Matrix<Scalar>& vertices,
                                 extensible_ridges, extensible_facets);
 
    // iterate over all ridges that can be extended, add the simplex on the other side and recurse
-   for (unsigned int i=0; i<extensible_ridges.size(); ++i) {
+   for (Int i = 0; i < Int(extensible_ridges.size()); ++i) {
       const complex_type new_ball(current_ball + extensible_facets[i]);
       const face_type new_support(current_support + extensible_facets[i]);
       complex_type new_boundary(current_boundary);
@@ -148,11 +148,11 @@ void enumerate_star_shaped_balls(const Matrix<Scalar>& vertices,
 } // end anonymous namespace
 
 template<typename Scalar>  
-Array<complex_type> star_shaped_balls(perl::Object triangulation)
+Array<complex_type> star_shaped_balls(BigObject triangulation)
 {
    const Array<face_type> facets = triangulation.give("FACETS");
    const Matrix<Scalar> _vertices = triangulation.give("COORDINATES");
-   Array<int> vertex_indices;
+   Array<Int> vertex_indices;
    Matrix<Scalar> vertices;
    const bool must_rename = (triangulation.lookup("VERTEX_INDICES") >> vertex_indices);
    if (must_rename)
@@ -160,9 +160,9 @@ Array<complex_type> star_shaped_balls(perl::Object triangulation)
    else
       vertices = ones_vector<Scalar>(_vertices.rows()) | _vertices; // we work with homogeneous coordinates
 
-   perl::Object HD_obj = triangulation.give("HASSE_DIAGRAM");
+   BigObject HD_obj = triangulation.give("HASSE_DIAGRAM");
    const graph::Lattice<graph::lattice::BasicDecoration> HD(HD_obj);
-   const Map<face_type, std::vector<int>> link_of_ridge = links_of_ridges(HD);
+   const Map<face_type, std::vector<Int>> link_of_ridge = links_of_ridges(HD);
 
    const complex_type st0(star_of_zero_impl(vertices, facets));
    complex_type current_ball(st0);
@@ -192,11 +192,11 @@ Array<complex_type> star_shaped_balls(perl::Object triangulation)
 }
 
 template<typename Scalar>  
-complex_type star_of_zero(perl::Object triangulation)
+complex_type star_of_zero(BigObject triangulation)
 {
    const Array<face_type> facets = triangulation.give("FACETS");
    const Matrix<Scalar> _vertices = triangulation.give("COORDINATES");
-   Array<int> vertex_indices;
+   Array<Int> vertex_indices;
    Matrix<Scalar> vertices;
    const bool must_rename = (triangulation.lookup("VERTEX_INDICES") >> vertex_indices);
    if (must_rename)
@@ -212,23 +212,6 @@ complex_type star_of_zero(perl::Object triangulation)
       output += permuted_inv(*sit, vertex_indices);
    return output;
 }
-
-
-template<typename Container>
-Graph<Directed> poset_by_inclusion(const Array<Container>& collection)
-{
-   const int m(collection.size());
-   Graph<Directed> poset(m);
-   for (int i=0; i<m-1; ++i) {
-      for (int j=i+1; j<m; ++j) {
-         const int result_of_compare=incl(collection[i], collection[j]);
-         if (result_of_compare==-1) poset.edge(i,j);
-         else if (result_of_compare==1) poset.edge(j,i);
-      }
-   }
-   return poset;
-}
-
 
 UserFunctionTemplate4perl("# @category Other\n"
                           "# Enumerate all balls formed by the simplices of a geometric simplicial complex"
@@ -248,19 +231,6 @@ UserFunctionTemplate4perl("# @category Other\n"
                           "# @param GeometricSimplicialComplex C"
                           "# @return Set<Set<Int>> ",
                           "star_of_zero<Scalar>(GeometricSimplicialComplex<type_upgrade<Scalar>>)");
-
-UserFunctionTemplate4perl("# @category Other\n"
-                          "# Construct the inclusion poset from a given container."
-                          "# The elements of the container are interpreted as sets.  They define a poset"
-                          "# by inclusion.  The function returns this poset encoded as a directed graph."
-                          "# The direction is towards to larger sets.  All relations are encoded, not"
-                          "# only the covering relations."
-                          "# For details see Assarf, Joswig & Pfeifle:"
-                          "# Webs of stars or how to triangulate sums of polytopes, to appear"
-                          "# @param Array<T> P"
-                          "# @return Graph<Directed>",
-                          "poset_by_inclusion<T>(Array<T>)"); 
-
 } }
 
 // Local Variables:

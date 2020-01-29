@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -26,6 +26,7 @@ user_function hirzebruch_surface( $ ) {
   my $m=new Matrix<Rational>(unit_matrix<Rational>(2) / -unit_matrix<Rational>(2));
   $m->elem(2,1)=$r;
   my $f=new NormalToricVariety(RAYS=>$m, MAXIMAL_CONES=>[[0,1],[1,2],[2,3],[0,3]],COMPLETE=>1,PROJECTIVE=>1,SIMPLICIAL=>1,DEGENERATE=>0);
+  $f->description = "Hirzebruch surface of index $r";
   return $f;
 }
 
@@ -40,8 +41,25 @@ user_function projective_space( $ ) {
   my $m=new Matrix<Rational>(unit_matrix<Rational>($d) / -ones_vector<Rational>($d));
   my $f=new NormalToricVariety(RAYS=>$m, MAXIMAL_CONES=>all_subsets_of_k(range(0,$d), $d),
                                COMPLETE=>true, PROJECTIVE=>true, SIMPLICIAL=>true, DEGENERATE=>false);
+  $f->description = "$d-dimensional projective space"; 
   return $f;
 }
+
+# @category Producing a normal toric variety
+# Takes a vector //a// and returns the fan corresponding to the weighted
+# projective space associated to //a//.
+# @param Vector<Int> a the weights
+# @return NormalToricVariety
+user_function weighted_projective_space( Vector<Int> ) {
+   my $a = shift;
+   $a->dim > 2 or die "weighted_projective_space: require at least 3 weights\n";
+   my $rays = transpose(primitive(null_space($a)));
+   my $maxcones = all_subsets_of_k(sequence(0,$a->dim), $a->dim-1);
+   my $result = new NormalToricVariety(RAYS=>$rays, MAXIMAL_CONES=>$maxcones, COMPLETE=>true, PROJECTIVE=>true);
+   $result->description = "weighted projective space for weights $a";
+   return $result;
+}
+
 
 # Local Variables:
 # mode: perl

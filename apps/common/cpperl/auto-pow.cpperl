@@ -1,11 +1,11 @@
 {"app": "common",
  "inst": [
-  {"args": ["Integer()", "perl::Canned<const Integer&>", "long"], "func": "pow", "include": ["polymake/Integer.h"], "kind": "stat", "sig": "Integer::pow.X.X16"},
-  {"args": ["perl::Canned<const Polynomial<Rational, int>&>", "int"], "func": "pow", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "kind": "meth", "sig": "pow:M.X"},
-  {"args": ["perl::Canned<const UniPolynomial<Rational, int>&>", "int"], "func": "pow", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "meth", "sig": "pow:M.X"},
-  {"args": ["perl::Canned<const UniPolynomial<UniPolynomial<Rational, int>, Rational>&>", "perl::Canned<const Rational&>"], "func": "pow", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "meth", "sig": "pow:M.X"},
-  {"args": ["perl::Canned<const UniPolynomial<TropicalNumber<Min, Rational>, int>&>", "int"], "func": "pow", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/TropicalNumber.h"], "kind": "meth", "sig": "pow:M.X"},
-  {"args": ["Rational()", "perl::Canned<const Rational&>", "long"], "func": "pow", "include": ["polymake/Rational.h"], "kind": "stat", "sig": "Rational::pow.X.X16"},
-  {"args": ["Rational()", "perl::Canned<const Integer&>", "long"], "func": "pow", "include": ["polymake/Integer.h", "polymake/Rational.h"], "kind": "stat", "sig": "Rational::pow.X.X16"},
+  {"args": ["Integer()", "perl::Canned<const Integer&>", "Int"], "func": "pow", "include": ["polymake/Integer.h"], "kind": "stat", "sig": "Integer::pow.X.X16"},
+  {"args": ["perl::Canned<const Polynomial<Rational, Int>&>", "Int"], "func": "pow", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "kind": "meth", "sig": "pow:M.X"},
+  {"args": ["perl::Canned<const UniPolynomial<Rational, Int>&>", "Int"], "func": "pow", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "meth", "sig": "pow:M.X"},
+  {"args": ["perl::Canned<const UniPolynomial<UniPolynomial<Rational, Int>, Rational>&>", "perl::Canned<const Rational&>"], "func": "pow", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "meth", "sig": "pow:M.X"},
+  {"args": ["perl::Canned<const UniPolynomial<TropicalNumber<Min, Rational>, Int>&>", "Int"], "func": "pow", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/TropicalNumber.h"], "kind": "meth", "sig": "pow:M.X"},
+  {"args": ["Rational()", "perl::Canned<const Rational&>", "Int"], "func": "pow", "include": ["polymake/Rational.h"], "kind": "stat", "sig": "Rational::pow.X.X16"},
+  {"args": ["Rational()", "perl::Canned<const Integer&>", "Int"], "func": "pow", "include": ["polymake/Integer.h", "polymake/Rational.h"], "kind": "stat", "sig": "Rational::pow.X.X16"},
  null ],
 "version": 3}

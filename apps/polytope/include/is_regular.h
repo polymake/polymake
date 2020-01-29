@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,17 +32,17 @@ namespace {
 
 template<typename Scalar, typename SetInt, typename Matrix>
 SparseVector<Scalar>
-new_row(int i,
+new_row(Int i,
         const GenericMatrix<Matrix,Scalar>& vertices,
         const SetInt& basis,
-        int basis_sign,
+        Int basis_sign,
         Scalar basis_det)
 {
    SparseVector<Scalar> new_row(vertices.rows());
-   int s = basis_sign;
+   Int s = basis_sign;
    new_row[i] = s * basis_det;
    for (const auto& k: basis) {
-      s=-s;
+      s = -s;
       new_row[k] = s * det(vertices[i] / vertices.minor(basis-scalar2set(k), All));
    }
    return new_row;
@@ -52,32 +52,32 @@ new_row(int i,
 
 template<typename Scalar, typename TMatrix>
 Matrix<Scalar>
-full_dim_projection(const GenericMatrix<TMatrix,Scalar>& verts)
+full_dim_projection(const GenericMatrix<TMatrix, Scalar>& verts)
 {
-   const int ambient_dim = verts.cols();
+   const Int ambient_dim = verts.cols();
    const auto affine_hull = null_space(verts);
-   const int codim = affine_hull.rows();
-   if (!codim)
+   const Int codim = affine_hull.rows();
+   if (codim == 0)
       return verts;
-   for (auto i=entire(all_subsets_of_k(sequence(0,ambient_dim),codim)); !i.at_end(); ++i)
+   for (auto i = entire(all_subsets_of_k(sequence(0, ambient_dim),codim)); !i.at_end(); ++i)
       if (!is_zero(det(affine_hull.minor(All, *i))))
-         return verts.minor(All, ~(Set<int>(*i)));
+         return verts.minor(All, ~(Set<Int>(*i)));
 
    throw std::runtime_error("full_dim_projection: This shouldn't happen");
 }
       
 template<typename Scalar, typename SetInt, typename Matrix>
 std::pair<const SparseMatrix<Scalar>, const SparseMatrix<Scalar>>
-secondary_cone_ineq(const GenericMatrix<Matrix,Scalar> &full_dim_verts, const Array<SetInt>& subdiv, perl::OptionSet options)
+secondary_cone_ineq(const GenericMatrix<Matrix, Scalar>& full_dim_verts, const Array<SetInt>& subdiv, OptionSet options)
 {
 #if POLYMAKE_DEBUG
    if (rank(full_dim_verts) != full_dim_verts.cols())
       throw std::runtime_error("secondary_cone_ineq: need full-dimensional vertices. Use full_dim_projection on your vertices first.");
 #endif
 
-   const int n_vertices  = full_dim_verts.rows();
-   const int ambient_dim = full_dim_verts.cols()-1;
-   const int n_facets    = subdiv.size();
+   const Int n_vertices  = full_dim_verts.rows();
+   const Int ambient_dim = full_dim_verts.cols()-1;
+   const Int n_facets    = subdiv.size();
 
    //compute the set of all points that is not used in any face
    SetInt not_used(sequence(0,n_vertices));
@@ -93,8 +93,8 @@ secondary_cone_ineq(const GenericMatrix<Matrix,Scalar> &full_dim_verts, const Ar
    if (options["equations"] >> eqs)
       equats /= eqs;
 
-   Set<int> tozero = options["lift_to_zero"];
-   int face;
+   Set<Int> tozero = options["lift_to_zero"];
+   Int face;
    if (!equats.rows() && tozero.empty() && options["lift_face_to_zero"]>>face)
       tozero += subdiv[face];
 
@@ -103,13 +103,13 @@ secondary_cone_ineq(const GenericMatrix<Matrix,Scalar> &full_dim_verts, const Ar
 
 
    // generate the equation and inequalities
-   for (int i = 0; i < n_facets; ++i) {
+   for (Int i = 0; i < n_facets; ++i) {
       const SetInt b(basis_rows(full_dim_verts.minor(subdiv[i], All)));
 
       // we have to map the numbers the right way:
       SetInt basis;
       {
-         int k = 0;
+         Int k = 0;
          auto l = entire(subdiv[i]);
          for (auto j = entire(b); !j.at_end(); ++j, ++k, ++l) {
             while (k < *j) {
@@ -120,7 +120,7 @@ secondary_cone_ineq(const GenericMatrix<Matrix,Scalar> &full_dim_verts, const Ar
          }
       }
       const Scalar basis_det  = det(full_dim_verts.minor(basis, All));
-      const int    basis_sign = basis_det>0 ? 1 : -1;
+      const Int    basis_sign = basis_det > 0 ? 1 : -1;
       const SetInt non_basis  = subdiv[i]-basis;
 
       // for each maximal face F, all points have to be lifted to the same facet
@@ -129,7 +129,7 @@ secondary_cone_ineq(const GenericMatrix<Matrix,Scalar> &full_dim_verts, const Ar
 
       // for all adjacent maximal faces, all vertices not contained in F have to be lifted
       // in the same direction
-      for (int f = i + 1; f < n_facets; ++f)
+      for (Int f = i+1; f < n_facets; ++f)
          if (rank(full_dim_verts.minor(subdiv[i] * subdiv[f], All)) == ambient_dim)
             inequs /= new_row(*((subdiv[f]-subdiv[i]).begin()), full_dim_verts, basis, basis_sign, basis_det);
 

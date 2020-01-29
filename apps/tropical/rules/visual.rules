@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -14,101 +14,96 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-
-# creates an array of colors to distinguish generators and
-# pseudo-vertices of a tropical polytope 
-sub choose_colors($$$$) {
-  my ($points,$pseudovertices,$p_color,$pv_color)=@_;
-  my $indices = points_in_pseudovertices($points,$pseudovertices);
-   
-  my @pseudovertex_colors = map {$indices->contains($_) ? $pv_color : $p_color} (0..$pseudovertices->rows()-1);
-  return @pseudovertex_colors;
-} 
-
-package Visual::TropicalPolytope;
-use Polymake::Struct (
-	[ '@ISA' => 'Container' ],
-	[ '$Polytope' => '#%' ],
-);
-
 package Visual::Color;
 
-custom $polytopegenerators="255 255 0"; 
+# default color for the finite [[POINTS]] of a tropical polytope
+custom $polytopegenerators = "255 255 0";
 
-options %Visual::TropicalPolytope::decorations=(
-	%Visual::Polygons::decorations,
-    
-	# Flexible<Int> The visualization is always in affine coordinates. This chooses the chart.
-	Chart => 0,
-    
-    # Flexible<Color> color of the finite [[POINTS]] of a polytope 
-    GeneratorColor => $Visual::Color::polytopegenerators,
+package Visual::TropicalPolytope;
 
-    # Flexible<Color> color of the finite [[PSEUDOVERTICES]] of a polytope 
-    PseudovertexColor => $Visual::Color::vertices,
+use Polymake::Struct (
+   [ '@ISA' => 'Container' ],
+   [ '$Polytope' => '#%' ],
+);
+
+options %decorations = (
+   %Visual::Polygons::decorations,
+
+   # Flexible<Int> The visualization is always in affine coordinates. This chooses the chart.
+   Chart => 0,
+
+   # [complete color] Flexible<Color> color of the finite [[POINTS]] of a polytope
+   GeneratorColor => $Visual::Color::polytopegenerators,
+
+   # [complete color] Flexible<Color> color of the finite [[PSEUDOVERTICES]] of a polytope
+   PseudovertexColor => $Visual::Color::vertices,
 );
 
 object Polytope {
 
+# creates an array of colors to distinguish generators and
+# pseudo-vertices of a tropical polytope
+sub pseudovertex_colors($$$$) {
+   my ($points, $pseudovertices, $p_color, $pv_color) = @_;
+   my $indices = points_in_pseudovertices($points, $pseudovertices);
+   map { $indices->contains($_) ? $pv_color : $p_color } (0..$pseudovertices->rows()-1);
+}
 
 # @category Visualization
 # Visualize the subdivision of the polytope induced by [[POINTS]].
 # @options %Visual::TropicalPolytope::decorations
 # @return fan::Visual::PolyhedralFan
 
-	user_method VISUAL(%Visual::TropicalPolytope::decorations) {
-		my ($this, $decor)=@_;
-		
-		my $chart = $$decor{"Chart"};
-		delete($$decor{"Chart"});
+user_method VISUAL(%Visual::TropicalPolytope::decorations) {
+   my ($this, $decor) = @_;
 
-		my $used_pvs = new Set<Int>();
-		for my $i (0 .. $this->POLYTOPE_MAXIMAL_COVECTOR_CELLS->rows()-1) {
-			$used_pvs += $this->POLYTOPE_MAXIMAL_COVECTOR_CELLS->row($i);
-		}
+   my $chart = delete $decor->{Chart};
 
-		my $vertices = new Matrix<Scalar>($this->PSEUDOVERTICES->minor($used_pvs,All));
-		my $cells = $this->POLYTOPE_MAXIMAL_COVECTOR_CELLS->minor(All, $used_pvs);
+   my $used_pvs = new Set<Int>();
+   for my $i (0 .. $this->POLYTOPE_MAXIMAL_COVECTOR_CELLS->rows()-1) {
+      $used_pvs += $this->POLYTOPE_MAXIMAL_COVECTOR_CELLS->row($i);
+   }
 
-                my @pseudovertex_colors=choose_colors($this->POINTS,$vertices,$$decor{"PseudovertexColor"},$$decor{"GeneratorColor"});
+   my $vertices = new Matrix<Scalar>($this->PSEUDOVERTICES->minor($used_pvs,All));
+   my $cells = $this->POLYTOPE_MAXIMAL_COVECTOR_CELLS->minor(All, $used_pvs);
 
-                $vertices = tdehomog($vertices,$chart);
+   my @pseudovertex_colors = pseudovertex_colors($this->POINTS, $vertices, delete $decor->{PseudovertexColor}, delete $decor->{GeneratorColor});
 
-                delete $$decor{"GeneratorColor"};
-                delete $$decor{"PseudovertexColor"};
-		my $p = new fan::PolyhedralComplex(VERTICES=>$vertices, MAXIMAL_POLYTOPES=>$cells);
-		$p->VISUAL(VertexColor=>\@pseudovertex_colors,$decor);
-	}
+   $vertices = tdehomog($vertices,$chart);
+
+   my $p = new fan::PolyhedralComplex(VERTICES=>$vertices, MAXIMAL_POLYTOPES=>$cells);
+   $p->VISUAL(VertexColor => \@pseudovertex_colors, $decor);
+}
+
 
 # @category Visualization
-# Visualize the subdivision of the torus induced by [[POINTS]]. 
+# Visualize the subdivision of the torus induced by [[POINTS]].
 # @options %Visual::TropicalPolytope::decorations
 # @return fan::Visual::PolyhedralFan
-	user_method VISUAL_SUBDIVISION(%Visual::TropicalPolytope::decorations) {
-		my ($this,$decor) = @_;
+user_method VISUAL_SUBDIVISION(%Visual::TropicalPolytope::decorations) {
+   my ($this, $decor) = @_;
 
-		my $chart = $$decor{"Chart"};
-		delete($$decor{"Chart"});
+   my $chart = delete $decor->{"Chart"};
 
-		my $vertices = tdehomog($this->PSEUDOVERTICES,$chart);
-		my $cells = $this->MAXIMAL_COVECTOR_CELLS;
-                my @pseudovertex_colors=choose_colors($this->POINTS,$this->PSEUDOVERTICES,$$decor{"PseudovertexColor"},$$decor{"GeneratorColor"});
-                delete $$decor{"GeneratorColor"};
-                delete $$decor{"PseudovertexColor"};
-		my $p = new fan::PolyhedralComplex(VERTICES=>$vertices, MAXIMAL_POLYTOPES=>$cells);
-		$p->VISUAL(VertexColor=>\@pseudovertex_colors,$decor);
+   my $vertices = tdehomog($this->PSEUDOVERTICES,$chart);
+   my $cells = $this->MAXIMAL_COVECTOR_CELLS;
+   my @pseudovertex_colors = pseudovertex_colors($this->POINTS, $this->PSEUDOVERTICES, delete $decor->{PseudovertexColor}, delete $decor->{GeneratorColor});
+   my $p = new fan::PolyhedralComplex(VERTICES=>$vertices, MAXIMAL_POLYTOPES=>$cells);
+   $p->VISUAL(VertexColor => \@pseudovertex_colors, $decor);
+}
 
-	}
 
 # @category Visualization
 # Visualize the arrangement of hyperplanes with apices in the [[POINTS]] of the tropical polytope.
 # @return fan::Visual::PolyhedralFan
-	user_method VISUAL_HYPERPLANE_ARRANGEMENT(%Visual::Polygons::decorations) : VERTICES, PROJECTIVE_AMBIENT_DIM {
-		my ($this,$decor) = @_;	
-		points2hypersurface($this->POINTS)->VISUAL($decor);
-	}
-	precondition : PROJECTIVE_AMBIENT_DIM { $this->PROJECTIVE_AMBIENT_DIM<=3 }
+user_method VISUAL_HYPERPLANE_ARRANGEMENT(%Visual::Polygons::decorations) : VERTICES, PROJECTIVE_AMBIENT_DIM {
+   my ($this, $decor) = @_;
+   points2hypersurface($this->POINTS)->VISUAL($decor);
 }
+precondition : PROJECTIVE_AMBIENT_DIM { $this->PROJECTIVE_AMBIENT_DIM<=3 }
+
+}
+
 
 # Local Variables:
 # mode: perl

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,29 +29,35 @@ namespace singular {
 
 class SingularTermOrderMap {
 
-  Map<std::pair<int, SingularTermOrderData<Matrix<int>>>, idhdl> matrixOrderings;
-  Map<std::pair<int, SingularTermOrderData<Vector<int>>>, idhdl> vectorOrderings;
+  Map<std::pair<int, SingularTermOrderData<Matrix<Int>>>, idhdl> matrixOrderings;
+  Map<std::pair<int, SingularTermOrderData<Vector<Int>>>, idhdl> vectorOrderings;
   Map<std::pair<int, SingularTermOrderData<std::string>>, idhdl> singularOrderings;
 
 public:
     // Assignment operators:
-    idhdl& operator [] (const std::pair<int, SingularTermOrderData<Matrix<int> > > &pair){
+    idhdl& operator[] (const std::pair<int, SingularTermOrderData<Matrix<Int>>>& pair)
+    {
         return matrixOrderings[pair];
     }
-    idhdl& operator [] (const std::pair<int, SingularTermOrderData<Vector<int> > > &pair){
+    idhdl& operator[] (const std::pair<int, SingularTermOrderData<Vector<Int>>>& pair)
+    {
         return vectorOrderings[pair];
     }
-    idhdl& operator [] (const std::pair<int, SingularTermOrderData<std::string > > &pair){
+    idhdl& operator[] (const std::pair<int, SingularTermOrderData<std::string>>& pair)
+    {
         return singularOrderings[pair];
     }
     // Existence operators:
-    bool exists (const std::pair<int, SingularTermOrderData<Matrix<int> > > &pair){
+    bool exists(const std::pair<int, SingularTermOrderData<Matrix<Int>>>& pair)
+    {
         return matrixOrderings.exists(pair);
     }
-    bool exists (const std::pair<int, SingularTermOrderData<Vector<int> > > &pair){
+    bool exists(const std::pair<int, SingularTermOrderData<Vector<Int>>>& pair)
+    {
         return vectorOrderings.exists(pair);
     }
-    bool exists (const std::pair<int, SingularTermOrderData<std::string > > &pair){
+    bool exists(const std::pair<int, SingularTermOrderData<std::string>>& pair)
+    {
         return singularOrderings.exists(pair);
     }
 };

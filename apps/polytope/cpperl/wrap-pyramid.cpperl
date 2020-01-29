@@ -1,7 +1,7 @@
 {"app": "polytope", "embed": "pyramid.cc",
  "inst": [
-  {"args": ["Rational", "void", "Rational(int)", "void"], "func": "pyramid", "include": ["polymake/Rational.h"], "sig": "pyramid:T1.B.C0.o", "tp": "1"},
-  {"args": ["QuadraticExtension<Rational>", "void", "QuadraticExtension<Rational>(int)", "void"], "func": "pyramid", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "pyramid:T1.B.C0.o", "tp": "1"},
+  {"args": ["Rational", "void", "Rational(Int)", "void"], "func": "pyramid", "include": ["polymake/Rational.h"], "sig": "pyramid:T1.B.C0.o", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void", "QuadraticExtension<Rational>(Int)", "void"], "func": "pyramid", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "pyramid:T1.B.C0.o", "tp": "1"},
   {"args": ["QuadraticExtension<Rational>", "void", "QuadraticExtension<Rational>(perl::Canned<const QuadraticExtension<Rational>&>)", "void"], "func": "pyramid", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "pyramid:T1.B.C0.o", "tp": "1"},
  null ],
 "version": 3}

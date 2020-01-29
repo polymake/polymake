@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
         Ewgenij Gawrilow, Michael Joswig, and the polymake team
         Technische Universität Berlin, Germany
         https://polymake.org
@@ -25,12 +25,12 @@ namespace polymake { namespace tropical {
 // with all the overloaded functions when dealing with big objects.
         
 template <typename Addition>
-perl::Object dual_addition_version(perl::Object c, bool strong = true)
+BigObject dual_addition_version(BigObject c, bool strong = true)
 {
   // Extract defining values
   Matrix<Rational> vertices = c.give("VERTICES");
   vertices.minor(All, range_from(1)) *= (strong? -1 : 1);
-  perl::Object result("Cycle", mlist<typename Addition::dual>());
+  BigObject result("Cycle", mlist<typename Addition::dual>());
   result.take("VERTICES") << vertices;
   result.take("MAXIMAL_POLYTOPES") << c.give("MAXIMAL_POLYTOPES");
   result.take("LINEALITY_SPACE") << c.give("LINEALITY_SPACE");

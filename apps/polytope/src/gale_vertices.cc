@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -34,19 +34,19 @@ namespace polymake { namespace polytope {
 template <typename Scalar>
 Matrix<double> gale_vertices(const Matrix<Scalar>& G)
 {
-   const int n=G.rows();
+   const Int n = G.rows();
    UniformlyRandom<Rational> random(log2_ceil(n)+1);
    Vector<Scalar> y(G.cols(), Scalar(1)), G_y(G.rows());
 
    bool feasible;
    do {
-      G_y=G*y;
-      feasible=true;
-      for (auto g_y=find_in_range_if(entire(G_y), operations::is_zero());
-           !g_y.at_end();  g_y=find_in_range_if(++g_y, operations::is_zero())) {
+      G_y = G*y;
+      feasible = true;
+      for (auto g_y = find_in_range_if(entire(G_y), operations::is_zero());
+           !g_y.at_end();  g_y = find_in_range_if(++g_y, operations::is_zero())) {
          if (!is_zero(G[g_y - G_y.begin()])) {
             copy_range(translate(random, Scalar(Rational(-1,2))).begin(), entire(y));
-            feasible=false;
+            feasible = false;
             break;
          }
       }
@@ -58,8 +58,8 @@ Matrix<double> gale_vertices(const Matrix<Scalar>& G)
 
    Matrix<double> GV(G.rows(), G.cols());
 
-   for (int i=0; i<n; ++i)
-      if ( (GV(i,0)=sign(G_y[i])) ) {
+   for (Int i = 0; i < n; ++i)
+      if ((GV(i,0) = double(sign(G_y[i]))) != 0) {
          GV[i].slice(range_from(1)) = convert_to<double>(P*(G[i]/G_y[i] - y));
       }
    return GV;

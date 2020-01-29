@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,13 +29,9 @@
 #include "polymake/polytope/simple_roots.h"
 #include "polymake/list"
 #include "polymake/group/permlib.h"
+#include "polymake/polytope/solve_MILP.h"
 #include <sstream>
 #include <vector>
-
-#define TO_WITHOUT_DOUBLE
-#define TO_DISABLE_OUTPUT
-#include "TOSimplex/TOExMipSol.h"
-#include "polymake/common/TOmath_decl.h"
 
 namespace polymake { namespace polytope {
 
@@ -44,7 +40,7 @@ namespace {
 typedef QuadraticExtension<Rational> QE;
 
 template <typename E>
-SparseVector<E> find_regular_initial_point(const Set<int>& rings, const SparseMatrix<E>& R, int d, char type)
+SparseVector<E> find_regular_initial_point(const Set<Int>& rings, const SparseMatrix<E>& R, Int d, char type)
 {
    SparseMatrix<E> equations (R);
 
@@ -100,7 +96,7 @@ SparseVector<E> find_regular_initial_point(const Set<int>& rings, const SparseMa
 }
 
 template <typename E>
-SparseVector<E> find_integral_initial_point(const Set<int>& rings, const SparseMatrix<E>& R, int d, char type)
+SparseVector<E> find_integral_initial_point(const Set<Int>& rings, const SparseMatrix<E>& R, Int d, char type)
 {
    if ( 'h' == type ||
         'H' == type )
@@ -115,8 +111,8 @@ SparseVector<E> find_integral_initial_point(const Set<int>& rings, const SparseM
      
         min sum_j lambda_j
         s.t.
-        <v_i, x>   = 0     for i notin R
-        <v_i, x>  >= 1     for i in R
+        <v_i, x>   = 0     for i notin rings
+        <v_i, x>  >= 1     for i    in rings
         x = sum_j lambda_j v_j
         lambda_j >= 0
         lambda_j in Z
@@ -125,75 +121,38 @@ SparseVector<E> find_integral_initial_point(const Set<int>& rings, const SparseM
 
         min sum_j lambda_j
         s.t.
-        sum_j lambda_j <v_i,v_j>   = 0    for i notin R
-        sum_l lambda_j <v_i,v_j>  >= 1    for i in R
+        sum_j lambda_j <v_i,v_j>   = 0    for i notin rings
+        sum_j lambda_j <v_i,v_j>  >= 1    for i    in rings
         lambda_j >= 0
         lambda_j in Z
 
-     The subsequent code is lifted from to_mip_lattice_points.cc .
+    Also, TOSimplex needs explicit upper and lower bounds on the variables.
+    Here, we use 0 <= lambda_j <= 1 000 000.
    */
 
    const SparseMatrix<E> Gramian(R * T(R));
-
-   const unsigned int numCols = Gramian.rows();	// number of columns/variables
-   TOExMipSol::MIP<E> mip;
-
-   mip.linf = std::vector<bool>( numCols, false );	// true: variable i has no lower bound, false: variable i has lower bound
-   mip.uinf = std::vector<bool>( numCols, false );	// true: variable i has no upper bound, false: variable i has upper bound
-   mip.lbounds = std::vector<E>( numCols, E(0) );	// lower bound for variable i (if any)
-   mip.ubounds = std::vector<E>( numCols, E(1000) );	// upper bound for variable i (if any)
-   mip.numbersystems = std::vector<char>( numCols, 'G' );	// variable i is: G: Integer, B: Binary, R: Real
-   mip.objfunc = std::vector<TOExMipSol::rowElement<E>>();	// objective function (sparse)
-   mip.matrix = std::vector<TOExMipSol::constraint<E>>();	// constraints (sparse)
-   mip.varNames = std::vector<std::string>( numCols );	// names of the variables
-   mip.maximize = false;	// true: maximize, false: minimize
+   const Matrix<E>
+        eqs(    zero_vector<E>(d - rings.size()) | Gramian.minor(~rings,All) ),
+      ineqs(( - ones_vector<E>(    rings.size()) | Gramian.minor( rings,All) ) /   // real inequalities
+            ( zero_vector<E>(Gramian.cols())                     |   unit_matrix<E>(Gramian.cols()) ) /   // lambda >= 0
+            ( same_element_vector<E>(E(1000000), Gramian.cols()) | - unit_matrix<E>(Gramian.cols()) ) );  // lambda <= 1 000 000
    
-   // Temporary variables
-   TOExMipSol::constraint<E> row;
-   TOExMipSol::rowElement<E> element;
+   const Set<Int> integer_variables(entire(sequence(0,d+1)));
 
-   for (int i=0; i<Gramian.rows(); ++i) {
-      row.rhs  = rings.contains(i) ? E(1) : E(0);
-      row.type = rings.contains(i) ? 1 : 0; 	// -1: <=, 0: =, 1: >=
-      row.constraintElements = std::vector<TOExMipSol::rowElement<E>>();
+   const auto milp_sol = solve_MILP(ineqs, eqs, ones_vector<E>(d+1), integer_variables, false); // false == minimize
 
-      for (auto rit = entire<indexed>(Gramian[i]); !rit.at_end(); ++rit) {
-         element.index = rit.index();
-         element.mult  = *rit;
-         row.constraintElements.push_back( element );
-      }
-      mip.matrix.push_back( row );
-
-      element.index = i;
-      element.mult = E(1);
-      mip.objfunc.push_back( element );
-   }
-
-   // Solver
-   TOExMipSol::TOMipSolver<E> solver;
-
-   // Results go here
-   E objval;
-   std::vector<E> assignment;
-
-   // Solve
-   // second argument true: search all integer feasible solutions, false: only search optimal solution
-   // last argument: contains all solutions discovered during solution process, can be NULL
-   typename TOExMipSol::TOMipSolver<E>::solstatus stat = solver.solve( mip, false, objval, assignment, nullptr );
-
-   if ( stat != TOExMipSol::TOMipSolver<E>::OPTIMAL &&
-        stat != TOExMipSol::TOMipSolver<E>::INFEASIBLE &&
-        stat != TOExMipSol::TOMipSolver<E>::INForUNB ) {
+   if (milp_sol.status == LP_status::unbounded)
       throw std::runtime_error("wythoff::find_integral_initial_point: unbounded polyhedron or computation failed");
-   }
 
-   if ( stat == TOExMipSol::TOMipSolver<E>::INFEASIBLE ||
-        stat == TOExMipSol::TOMipSolver<E>::INForUNB ) {
+   if (milp_sol.status == LP_status::infeasible)
       throw std::runtime_error("wythoff::find_integral_initial_point: infeasible problem");
-   }
 
-   const Vector<Integer> lambdas (numCols, assignment.begin());
-   Vector<E> solution(lambdas * R);
+   Vector<Integer> lambdas (ineqs.cols(), entire(milp_sol.solution));
+   if (is_zero(lambdas[0]))
+      throw std::runtime_error("wythoff::find_integral_initial_point: unexpected infinite solution");
+
+   lambdas.dehomogenize();
+   Vector<E> solution(lambdas.slice(range_from(1)) * R);
    solution[0] = 1;
    return solution;
 }
@@ -201,23 +160,23 @@ SparseVector<E> find_integral_initial_point(const Set<int>& rings, const SparseM
 template <typename E>
 SparseMatrix<E> orbit (const SparseVector<E>& p0, 
                        const SparseMatrix<E>& simple_roots, 
-                       hash_map<SparseVector<E>, int>& index_of)
+                       hash_map<SparseVector<E>, Int>& index_of)
 {
    index_of[p0] = 0;
-   int new_point_index(1);
-   const int n_simple_roots(simple_roots.rows());
+   Int new_point_index = 1;
+   const Int n_simple_roots = simple_roots.rows();
 
-   typedef std::pair<int, SparseVector<E>> key_type; // (root_index, point) not yet reflected
+   typedef std::pair<Int, SparseVector<E>> key_type; // (root_index, point) not yet reflected
    std::list<key_type> point_queue; 
-   for (int i=0; i<n_simple_roots; ++i) 
+   for (Int i = 0; i < n_simple_roots; ++i) 
       point_queue.push_back(key_type(i, p0)); 
 
    while (!point_queue.empty()) {
       const key_type a(point_queue.front());  point_queue.pop_front();
-      const int root_index(a.first);
+      const Int root_index = a.first;
       const SparseVector<E> new_point(reflect(a.second, simple_roots[root_index]));
       if (!index_of.exists(new_point)) {
-         for (int i=0; i<n_simple_roots; ++i)
+         for (Int i = 0; i < n_simple_roots; ++i)
             if (i != root_index)
                point_queue.push_back(key_type(i, new_point));
          index_of[new_point] = new_point_index++;
@@ -234,16 +193,16 @@ SparseMatrix<E> orbit (const SparseVector<E>& p0,
 
 template <typename E>
 void wythoff(const std::string& type, 
-             const Set<int>& rings, 
+             const Set<Int>& rings, 
              const SparseMatrix<E>& R,
              const bool lattice,
              SparseMatrix<E>& V, 
-             Array<Array<int>>& generators)
+             Array<Array<Int>>& generators)
 {
-   const int n_simple_roots = R.rows();
+   const Int n_simple_roots = R.rows();
    if (accumulate(rings, operations::max()) >= n_simple_roots)
       throw std::runtime_error("Set specifies non-existing rows of the root matrix");
-   const int d = R.cols()-1;
+   const Int d = R.cols()-1;
 
    const SparseVector<E> p0 = lattice
       ? find_integral_initial_point(rings, R, d, type[0])
@@ -251,31 +210,31 @@ void wythoff(const std::string& type,
    if (p0 == unit_vector<E>(d+1, 0))
       throw std::runtime_error("Could not calculate a valid initial point");
 
-   hash_map<SparseVector<E>, int> index_of;
+   hash_map<SparseVector<E>, Int> index_of;
    V = orbit(p0, R, index_of);
-   const int n_points = V.rows();
-   generators = Array<Array<int>>(n_simple_roots);
-   for (int i=0; i<n_simple_roots; ++i) {
-      Array<int> g(n_points);
-      for (int j=0; j<n_points; ++j) 
+   const Int n_points = V.rows();
+   generators = Array<Array<Int>>(n_simple_roots);
+   for (Int i = 0; i < n_simple_roots; ++i) {
+      Array<Int> g(n_points);
+      for (Int j = 0; j < n_points; ++j) 
          g[j] = index_of[reflect(V.row(j), R.row(i))];
       generators[i] = g;
    }
 }
 
-perl::Object wythoff_dispatcher(const std::string& type,
-                                const Set<int>& rings,
+BigObject wythoff_dispatcher(const std::string& type,
+                                const Set<Int>& rings,
                                 const bool lattice = false)
 {
    if (type.size() < 2)
       throw std::runtime_error("Type needs single letter followed by rank.");
 
    const char t(type[0]);
-   int n;
+   Int n;
    std::istringstream is (type.substr(1));
    is >> n;
 
-   Array<Array<int>> generators;
+   Array<Array<Int>> generators;
 
    SparseMatrix<Rational> RM;
    SparseMatrix<QE> EM;
@@ -366,20 +325,20 @@ perl::Object wythoff_dispatcher(const std::string& type,
    } else
       throw std::runtime_error("Did not recognize the Coxeter group.");
 
-   perl::Object p;
+   BigObject p;
 
    if (needs_QE) {
-      p = perl::Object("Polytope<QuadraticExtension>");
+      p = BigObject("Polytope<QuadraticExtension>");
       p.take("VERTICES") << EM;
       p.take("N_VERTICES") << EM.rows();
    } else {
-      p = perl::Object("Polytope<Rational>");
+      p = BigObject("Polytope<Rational>");
       p.take("VERTICES") << RM;
       p.take("N_VERTICES") << RM.rows();
    }
    p.set_description() << "Wythoff polytope of type " << type << " with rings " << rings << endl;
 
-   const int ambient_dim= (t == 'A' || t == 'a') ? n+2 : n+1;
+   const Int ambient_dim = (t == 'A' || t == 'a') ? n+2 : n+1;
 
    p.take("CONE_AMBIENT_DIM") << ambient_dim;
    p.take("CONE_DIM") << n+1;
@@ -390,25 +349,25 @@ perl::Object wythoff_dispatcher(const std::string& type,
    p.take("POINTED") << true;
    p.take("CENTERED") << true;
 
-   perl::Object a("group::PermutationAction");
+   BigObject a("group::PermutationAction");
    a.take("GENERATORS") << generators;
-   perl::Object g("group::Group");
+   BigObject g("group::Group");
    p.take("GROUP") << g;
    p.take("GROUP.VERTICES_ACTION") << a;
 
    return p;
 }
 
-// wythoff_dispatcher("A3", Set<int>(0)) gives tetrahedron, but embedded in 4-space
+// wythoff_dispatcher("A3", Set<Int>(0)) gives tetrahedron, but embedded in 4-space
 // That's why we explictly give a full-dimensional representation here.
 
 template <typename Scalar>
-perl::Object tetrahedron()
+BigObject tetrahedron()
 {
    Matrix<Scalar> RM(same_element_matrix(1,4,4));
    RM(0,2) = RM(0,3) = RM(1,1) = RM(1,3) = RM(2,1) = RM(2,2) = -1;
 
-   perl::Object p("Polytope", mlist<Scalar>());
+   BigObject p("Polytope", mlist<Scalar>());
    p.set_description() << "regular tetrahedron" << endl;
 
    p.take("VERTICES") << RM;
@@ -425,96 +384,96 @@ perl::Object tetrahedron()
    return p;
 }
 
-// wythoff_dispatcher("B3", Set<int>(0)) gives octahedron
+// wythoff_dispatcher("B3", Set<Int>(0)) gives octahedron
 //
-perl::Object truncated_cube() {
-   perl::Object p(wythoff_dispatcher("B3", {1, 2}));
+BigObject truncated_cube() {
+   BigObject p(wythoff_dispatcher("B3", {1, 2}));
    p.set_description("= truncated cube",true);
    return p;
 }
 
-perl::Object cuboctahedron() {
-   perl::Object p(wythoff_dispatcher("B3", {1}));
+BigObject cuboctahedron() {
+   BigObject p(wythoff_dispatcher("B3", {1}));
    p.set_description("= cuboctahedron",true);
    return p;
 }
 
-// wythoff_dispatcher("B3", Set<int>(2)) gives cube
+// wythoff_dispatcher("B3", Set<Int>(2)) gives cube
 
-perl::Object truncated_octahedron() {
-   perl::Object p(wythoff_dispatcher("B3", {0, 1}));
+BigObject truncated_octahedron() {
+   BigObject p(wythoff_dispatcher("B3", {0, 1}));
    p.set_description("= truncated octahedron",true);
    return p;
 }
 
-perl::Object truncated_cuboctahedron() {
-   perl::Object p(wythoff_dispatcher("B3", {0, 1, 2}));
+BigObject truncated_cuboctahedron() {
+   BigObject p(wythoff_dispatcher("B3", {0, 1, 2}));
    p.set_description("= truncated cuboctahedron",true);
    return p;
 }
 
-perl::Object rhombicuboctahedron() {
-   perl::Object p(wythoff_dispatcher("B3", {0, 2}));
+BigObject rhombicuboctahedron() {
+   BigObject p(wythoff_dispatcher("B3", {0, 2}));
    p.set_description("= rhombicuboctahedron",true);
    return p;
 }
 
-perl::Object regular_24_cell() {
-   perl::Object p(wythoff_dispatcher("F4", {0}));
+BigObject regular_24_cell() {
+   BigObject p(wythoff_dispatcher("F4", {0}));
    p.set_description("= regular 24-cell",true);
    return p;
 }
 
-perl::Object regular_120_cell() {
-   perl::Object p(wythoff_dispatcher("H4", {0}));
+BigObject regular_120_cell() {
+   BigObject p(wythoff_dispatcher("H4", {0}));
    p.set_description("= regular 120-cell",true);
    return p;
 }
 
-perl::Object regular_600_cell() {
-   perl::Object p(wythoff_dispatcher("H4", {3}));
+BigObject regular_600_cell() {
+   BigObject p(wythoff_dispatcher("H4", {3}));
    p.set_description("= regular 600-cell",true);
    return p;
 }
 
-perl::Object dodecahedron() {
-   perl::Object p(wythoff_dispatcher("H3", {0}));
+BigObject dodecahedron() {
+   BigObject p(wythoff_dispatcher("H3", {0}));
    p.set_description("= regular dodecahedron",true);
    return p;
 }
 
-perl::Object icosidodecahedron() {
-   perl::Object p(wythoff_dispatcher("H3", {1}));
+BigObject icosidodecahedron() {
+   BigObject p(wythoff_dispatcher("H3", {1}));
    p.set_description("= icosidodecahedron",true);
    return p;
 }
 
-perl::Object icosahedron() {
-   perl::Object p(wythoff_dispatcher("H3", {2}));
+BigObject icosahedron() {
+   BigObject p(wythoff_dispatcher("H3", {2}));
    p.set_description("= regular icosahedron",true);
    return p;
 }
 
-perl::Object truncated_dodecahedron() {
-   perl::Object p(wythoff_dispatcher("H3", {0, 1}));
+BigObject truncated_dodecahedron() {
+   BigObject p(wythoff_dispatcher("H3", {0, 1}));
    p.set_description("= truncated dodecahedron",true);
    return p;
 }
 
-perl::Object rhombicosidodecahedron() {
-   perl::Object p(wythoff_dispatcher("H3", {0, 2}));
+BigObject rhombicosidodecahedron() {
+   BigObject p(wythoff_dispatcher("H3", {0, 2}));
    p.set_description("= rhombicosidodecahedron",true);
    return p;
 }
 
-perl::Object truncated_icosahedron() {
-   perl::Object p(wythoff_dispatcher("H3", {1, 2}));
+BigObject truncated_icosahedron() {
+   BigObject p(wythoff_dispatcher("H3", {1, 2}));
    p.set_description("= truncated icosahedron",true);
    return p;
 }
 
-perl::Object truncated_icosidodecahedron() {
-   perl::Object p(wythoff_dispatcher("H3", {0, 1, 2}));
+BigObject truncated_icosidodecahedron() {
+   BigObject p(wythoff_dispatcher("H3", {0, 1, 2}));
    p.set_description("= truncated icosidodecahedron",true);
    return p;
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -50,7 +50,7 @@ public:
 
       bool at_end() const { return !cur_label; }
 
-      int cur_node() const { return cur_label->node; }
+      Int cur_node() const { return cur_label->node; }
 
       decltype(auto) cur_weight() const { return cur_label->get_min_cost(); }
 
@@ -73,14 +73,14 @@ public:
    //! @param target predicate telling whether the label is on the target
    //! @param backward_mode if true, search backwards (inverting the edge directions; only defined for directed graphs)
    template <typename Predicate>
-   PathReverseIterator solve(int source, const Predicate& target, bool backward=false)
+   PathReverseIterator solve(Int source, const Predicate& target, bool backward = false)
    {
       algo_t algo(data);
       return PathReverseIterator(algo.solve(source, target, backward));
    }
 
    //! convenience wrapper for node-to-node search
-   PathReverseIterator solve(int source, int target, bool backward=false)
+   PathReverseIterator solve(Int source, Int target, bool backward = false)
    {
       return solve(source, [target](const label_t& label) { return label.node == target; }, backward);
    }

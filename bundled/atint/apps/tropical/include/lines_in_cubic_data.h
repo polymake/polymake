@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -76,7 +76,7 @@ struct FacetData {
  */
 struct VertexLine {
   Vector<Rational> vertex;
-  Set<int> cells;
+  Set<Int> cells;
 };
 
 /**
@@ -102,7 +102,7 @@ struct EdgeLine {
   Vector<Rational> vertexAwayZero;
   Vector<Rational> maxDistAtZero;
   Vector<Rational> maxDistAwayZero;
-  int leafAtZero;
+  Int leafAtZero;
   bool spanAtZero;
   bool spanAwayZero;
 };
@@ -122,7 +122,7 @@ struct EdgeFamily {
   Matrix<Rational> borderAtZero;
   Matrix<Rational> borderAwayZero;
   Matrix<Rational> center;
-  int leafAtZero;
+  Int leafAtZero;
 };
 
 } }

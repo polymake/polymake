@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,8 +29,8 @@ FacetList faces_below(const FacetList& F, const GenericIncidenceMatrix<IMatrix>&
    FacetList F_below(F.cols());
    for (auto face=entire(F); !face.at_end(); ++face) {
       // intersecting k-faces with facets
-      for (auto facet=entire(rows(VIF)); !facet.at_end(); ++facet) {
-         Set<int> face_below=(*face) * (*facet);
+      for (auto facet = entire(rows(VIF)); !facet.at_end(); ++facet) {
+         Set<Int> face_below = (*face) * (*facet);
          if (face_below.size() &&
              face_below.size() < face->size() )  // only real subsets of the k-face are canditates for faces below
             F_below.replaceMax(face_below);
@@ -39,7 +39,7 @@ FacetList faces_below(const FacetList& F, const GenericIncidenceMatrix<IMatrix>&
    return F_below;
 }
 
-template <typename Layer> inline
+template <typename Layer>
 void print_layer(pm::PlainPrinter<>& os, const Layer& L)
 {
    os << "{";

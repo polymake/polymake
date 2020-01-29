@@ -1,12 +1,12 @@
 {"app": "common",
  "inst": [
-  {"args": ["Polynomial<Rational, int>", "int(int)", "int(int)"], "func": "monomial", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "kind": "stat", "sig": "Polynomial::monomial:M64.int.int"},
-  {"args": ["UniPolynomial<UniPolynomial<Rational, int>, Rational>"], "func": "monomial", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "stat", "sig": "UniPolynomial::monomial:M64"},
-  {"args": ["UniPolynomial<Rational, int>"], "func": "monomial", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "stat", "sig": "UniPolynomial::monomial:M64"},
-  {"args": ["UniPolynomial<TropicalNumber<Min, Rational>, int>"], "func": "monomial", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/TropicalNumber.h"], "kind": "stat", "sig": "UniPolynomial::monomial:M64"},
+  {"args": ["Polynomial<Rational, Int>", "Int(Int)", "Int(Int)"], "func": "monomial", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "kind": "stat", "sig": "Polynomial::monomial:M64.Int.Int"},
+  {"args": ["UniPolynomial<UniPolynomial<Rational, Int>, Rational>"], "func": "monomial", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "stat", "sig": "UniPolynomial::monomial:M64"},
+  {"args": ["UniPolynomial<Rational, Int>"], "func": "monomial", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "stat", "sig": "UniPolynomial::monomial:M64"},
+  {"args": ["UniPolynomial<TropicalNumber<Min, Rational>, Int>"], "func": "monomial", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/TropicalNumber.h"], "kind": "stat", "sig": "UniPolynomial::monomial:M64"},
   {"args": ["UniPolynomial<Rational, Rational>"], "func": "monomial", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "stat", "sig": "UniPolynomial::monomial:M64"},
-  {"args": ["Polynomial<PuiseuxFraction<Min, Rational, Rational>, int>", "int(int)", "int(int)"], "func": "monomial", "include": ["polymake/Polynomial.h", "polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "kind": "stat", "sig": "Polynomial::monomial:M64.int.int"},
+  {"args": ["Polynomial<PuiseuxFraction<Min, Rational, Rational>, Int>", "Int(Int)", "Int(Int)"], "func": "monomial", "include": ["polymake/Polynomial.h", "polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "kind": "stat", "sig": "Polynomial::monomial:M64.Int.Int"},
   {"args": ["UniPolynomial<PuiseuxFraction<Min, Rational, Rational>, Rational>"], "func": "monomial", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/RationalFunction.h", "polymake/TropicalNumber.h"], "kind": "stat", "sig": "UniPolynomial::monomial:M64"},
-  {"args": ["UniPolynomial<TropicalNumber<Max, Rational>, int>"], "func": "monomial", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/TropicalNumber.h"], "kind": "stat", "sig": "UniPolynomial::monomial:M64"},
+  {"args": ["UniPolynomial<TropicalNumber<Max, Rational>, Int>"], "func": "monomial", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/TropicalNumber.h"], "kind": "stat", "sig": "UniPolynomial::monomial:M64"},
  null ],
 "version": 3}

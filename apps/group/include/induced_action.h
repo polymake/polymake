@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -35,7 +35,7 @@ valid_index_of(DomainConstIterator domain_it,
 {
    if (_index_of.size()) return _index_of;
 
-   int i(0);
+   Int i = 0;
    for (DomainConstIterator d = domain_it; !d.at_end(); ++d, ++i) {
       _new_index_of[*d] = i;
    }
@@ -45,9 +45,9 @@ valid_index_of(DomainConstIterator domain_it,
 } // end anonymous namespace
 
 template<typename op_tag, typename PERM, typename DomainConstIterator, typename MapType>
-Array<int>
+Array<Int>
 induced_permutation_impl(const PERM& perm,
-                         int domain_size,
+                         Int domain_size,
                          DomainConstIterator domain_it,
                          const MapType& _index_of)
 {
@@ -55,7 +55,7 @@ induced_permutation_impl(const PERM& perm,
    MapType _new_index_of;
    const MapType& index_of(valid_index_of(domain_it, _index_of, _new_index_of));
 
-   Array<int> induced_perm(domain_size);
+   Array<Int> induced_perm(domain_size);
    const pm::operations::group::action<DomainType, op_tag, PERM> a(perm);
    try {
       for (auto& iperm : induced_perm)
@@ -77,7 +77,7 @@ induced_permutation_impl(const PERM& perm,
 
   * converting an action on VERTICES to one on facets and vice versa, via
 
-     DomainType          = Set<int>,
+     DomainType          = Set<Int>,
      DomainConstIterator = Rows<IncidenceMatrix<>>::const_iterator,
 
   * converting an action on coordinates to an action on indices, for instance for VERTICES or FACETS, via
@@ -86,15 +86,15 @@ induced_permutation_impl(const PERM& perm,
      DomainConstIterator = Rows<GenericMatrix<MatrixTop, Scalar>>::const_iterator
 */    
 template<typename op_tag, typename PERM, typename DomainConstIterator, typename MapType>
-Array<Array<int>> induced_permutations_impl(const Array<PERM>& original_permutations,
-                                            int domain_size,
+Array<Array<Int>> induced_permutations_impl(const Array<PERM>& original_permutations,
+                                            Int domain_size,
                                             DomainConstIterator domain_it,
                                             const MapType& _index_of) 
 {
    MapType _new_index_of;
    const MapType& index_of(valid_index_of(domain_it, _index_of, _new_index_of));
 
-   Array<Array<int>> induced_permutations(original_permutations.size());
+   Array<Array<Int>> induced_permutations(original_permutations.size());
    auto iit = entire(induced_permutations);
 
    for (const auto& g : original_permutations) {

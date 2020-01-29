@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -375,7 +375,7 @@ object PolyhedralComplex {
    weight 1.10;
 
    # Generates an array with a specified number of different colors.
-   # @param int number      the number of colors
+   # @param Int number      the number of colors
    # @return array          the colors as strings
    sub generateColors {
        my $number=$_[0];

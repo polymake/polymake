@@ -1,7 +1,7 @@
 {"app": "common",
  "inst": [
-  {"args": ["perl::Canned<const Polynomial<QuadraticExtension<Rational>, int>&>"], "func": "lc", "include": ["polymake/Polynomial.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "kind": "meth", "sig": "lc:M"},
-  {"args": ["perl::Canned<const Polynomial<Rational, int>&>"], "func": "lc", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "kind": "meth", "sig": "lc:M"},
-  {"args": ["perl::Canned<const UniPolynomial<Rational, int>&>"], "func": "lc", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "meth", "sig": "lc:M"},
+  {"args": ["perl::Canned<const Polynomial<QuadraticExtension<Rational>, Int>&>"], "func": "lc", "include": ["polymake/Polynomial.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "kind": "meth", "sig": "lc:M"},
+  {"args": ["perl::Canned<const Polynomial<Rational, Int>&>"], "func": "lc", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "kind": "meth", "sig": "lc:M"},
+  {"args": ["perl::Canned<const UniPolynomial<Rational, Int>&>"], "func": "lc", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "meth", "sig": "lc:M"},
  null ],
 "version": 3}

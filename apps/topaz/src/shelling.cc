@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,30 +24,28 @@ namespace polymake { namespace topaz {
 namespace {
 
 struct LabeledFacet {
-   Set<int> facet;
-   int label;
-   unsigned int index;
+   Set<Int> facet;
+   Int label;
+   Int index;
         
-   bool operator==(const LabeledFacet& otherLF) const 
+   bool operator== (const LabeledFacet& otherLF) const 
    {
-      return (facet==otherLF.facet && index==otherLF.index) ? true : false;
+      return facet == otherLF.facet && index == otherLF.index;
    }
         
-   LabeledFacet(const Set<int>& F, const int lab, const unsigned int ind)
-   { 
-      facet = F;
-      label = lab;
-      index = ind;
-   }
+   LabeledFacet(const Set<Int>& F, const Int lab, const Int ind)
+      : facet(F)
+      , label(lab)
+      , index(ind) {}
 };
 
 typedef std::list<LabeledFacet> LabeledFacetList;
-typedef std::vector<Set<int> > facet_vector;
-typedef std::pair<int,int> pair_int;
+typedef std::vector<Set<Int>> facet_vector;
+typedef std::pair<Int, Int> pair_int;
 
-bool is_boundary_ridge(const facet_vector& C, const Set<int>& F)
+bool is_boundary_ridge(const facet_vector& C, const Set<Int>& F)
 {
-   int num_inc = 0;
+   Int num_inc = 0;
    for (facet_vector::const_iterator i=C.begin(); i!=C.end(); ++i) {            
       if(!i->empty() && (F - *i).empty()) {
          if (num_inc == 1) return false;
@@ -57,20 +55,20 @@ bool is_boundary_ridge(const facet_vector& C, const Set<int>& F)
    return (num_inc == 1) ? true : false;
 }
 
-int num_boundary_ridges(const facet_vector& C, const Set<int>& facet)
+Int num_boundary_ridges(const facet_vector& C, const Set<Int>& facet)
 {
-   int num = 0;
-   for (auto i=entire(all_subsets_less_1(facet));  !i.at_end(); ++i) {
+   Int num = 0;
+   for (auto i = entire(all_subsets_less_1(facet));  !i.at_end(); ++i) {
       if (is_boundary_ridge(C,*i)) ++num;
    }
    return num;
 }
 
-bool next_candidate(const facet_vector& fta, const Array<int>& hvec, const unsigned int smallest_index, unsigned int* cur_index)
+bool next_candidate(const facet_vector& fta, const Array<Int>& hvec, const Int smallest_index, Int* cur_index)
 {
-   const int dim = hvec.size()-2;
-   for (unsigned int candidate=smallest_index; candidate < fta.size(); ++candidate) {
-      if( !fta[candidate].empty() && hvec[dim + 1 - num_boundary_ridges(fta, fta[candidate]) ] > 0 ) {
+   const Int dim = hvec.size()-2;
+   for (Int candidate = smallest_index; candidate < Int(fta.size()); ++candidate) {
+      if (!fta[candidate].empty() && hvec[dim+1-num_boundary_ridges(fta, fta[candidate]) ] > 0) {
          *cur_index = candidate;
          return true;
       }
@@ -78,30 +76,30 @@ bool next_candidate(const facet_vector& fta, const Array<int>& hvec, const unsig
    return false;
 }
 
-bool larger_facet_exists(const LabeledFacetList& assigned_facets, const facet_vector& facets_to_assign, const unsigned int cur_index)
+bool larger_facet_exists(const LabeledFacetList& assigned_facets, const facet_vector& facets_to_assign, const Int cur_index)
 {
-   int k = num_boundary_ridges(facets_to_assign,facets_to_assign[cur_index]);           
+   Int k = num_boundary_ridges(facets_to_assign, facets_to_assign[cur_index]);           
    facet_vector next_fta = facets_to_assign;
-   next_fta[cur_index] = Set<int>();
-   for (LabeledFacetList::const_iterator delIt = assigned_facets.begin(); delIt != assigned_facets.end();  ++delIt) {
-      if(delIt->label == k && (facets_to_assign[cur_index] - delIt->facet).empty() 
-         && num_boundary_ridges(next_fta,delIt->facet) == k ) {
+   next_fta[cur_index] = Set<Int>();
+   for (const auto& del : assigned_facets) {
+      if (del.label == k && (facets_to_assign[cur_index] - del.facet).empty() 
+          && num_boundary_ridges(next_fta, del.facet) == k) {
          return true;
       }
    }
    return false;
 }
 
-Array<int> binomial_expansion(const int n, const int k)
+Array<Int> binomial_expansion(const Int n, const Int k)
 {
-   int tmp_n = n;
-   int tmp_k = k;
-   Array<int> bexp(k);
+   Int tmp_n = n;
+   Int tmp_k = k;
+   Array<Int> bexp(k);
    while (0 < tmp_n && tmp_k != 0) {
       Integer tmp;
-      for (tmp=tmp_k-1; Integer::binom(tmp+1,tmp_k) <= tmp_n; ++tmp);
-      bexp[k - tmp_k] = int(tmp);
-      tmp_n -= int(Integer::binom(tmp, tmp_k));
+      for (tmp = tmp_k-1; Integer::binom(tmp+1, tmp_k) <= tmp_n; ++tmp);
+      bexp[k - tmp_k] = Int(tmp);
+      tmp_n -= Int(Integer::binom(tmp, tmp_k));
       --tmp_k;
    }
    for (; tmp_k > 0; --tmp_k)
@@ -109,19 +107,19 @@ Array<int> binomial_expansion(const int n, const int k)
    return bexp;
 }
 
-int binomial_delta(const Array<int>& bexp)
+Int binomial_delta(const Array<Int>& bexp)
 {
-   int bdelta = 0;
-   const int k = bexp.size();
+   Int bdelta = 0;
+   const Int k = bexp.size();
    if (bexp[0] == 0) return bdelta;
-   for(int i=0; i < k-1; ++i) {
+   for (Int i = 0; i < k-1; ++i) {
       if (bexp[i] == 0) break;
-      bdelta += int(Integer::binom(bexp[i]-1,k-i-1));
+      bdelta += Int(Integer::binom(bexp[i]-1, k-i-1));
    }
    return bdelta;
 }
 
-bool is_M_sequence(const Array<int>& vec, hash_map<pair_int,Array<int> >& expansion, const int ci)
+bool is_M_sequence(const Array<Int>& vec, hash_map<pair_int, Array<Int>>& expansion, const Int ci)
 {
    pair_int cur_index(ci,vec[ci]);
    if (ci==0) {
@@ -142,47 +140,47 @@ bool is_M_sequence(const Array<int>& vec, hash_map<pair_int,Array<int> >& expans
 // returns an ordered list of facets consituting a shelling if p_in is shellable,
 // returns a list containing only the empty set otherwise
 // note: the simplicial complex has to be pure
-Array<Set<int>> shelling(perl::Object p_in)
+Array<Set<Int>> shelling(BigObject p_in)
 {       
    facet_vector facets_to_assign= p_in.give("FACETS");
-   Array<int > h_vector = p_in.give("H_VECTOR");
-   const unsigned int nf = facets_to_assign.size();
-   const int dim = h_vector.size()-2;
-   std::list<Set<int>> shell;
+   Array<Int> h_vector = p_in.give("H_VECTOR");
+   const Int nf = facets_to_assign.size();
+   const Int dim = h_vector.size()-2;
+   std::list<Set<Int>> shell;
         
-   unsigned int cur_index = 0;
+   Int cur_index = 0;
    bool found = next_candidate(facets_to_assign, h_vector, 0, &cur_index);
    LabeledFacetList assigned_facets;
         
    // compute the binomial expansions of the h-vector coordinates
    // at the same time check if any of them is negative
-   if (h_vector[0]<0)
-      return Array<Set<int>>(shell); 
+   if (h_vector[0] < 0)
+      return Array<Set<Int>>(shell); 
 
-   hash_map<pair_int,Array<int> > binom_exp;
-   for ( int i=1; i < h_vector.size(); ++i ) {
-      if (h_vector[0]<0)
-         return Array<Set<int>>(shell); 
+   hash_map<pair_int, Array<Int>> binom_exp;
+   for (Int i = 1; i < h_vector.size(); ++i) {
+      if (h_vector[0] < 0)
+         return Array<Set<Int>>(shell); 
       if (binom_exp.find(pair_int(i,h_vector[i]))==binom_exp.end())
          binom_exp[pair_int(i,h_vector[i])] = binomial_expansion(h_vector[i],i);
    }
 
-   while ( assigned_facets.size() < nf ) {
-      if ( found ) {                    
-         int k = num_boundary_ridges(facets_to_assign,facets_to_assign[cur_index]);                     
+   while (Int(assigned_facets.size()) < nf) {
+      if (found) {                    
+         Int k = num_boundary_ridges(facets_to_assign,facets_to_assign[cur_index]);                     
          if (!larger_facet_exists(assigned_facets, facets_to_assign, cur_index) ) {
             assigned_facets.push_back(LabeledFacet(facets_to_assign[cur_index],dim+1-k,cur_index));     
-            facets_to_assign[cur_index] = Set<int>();
+            facets_to_assign[cur_index] = Set<Int>();
             --h_vector[dim+1-k];
             found = next_candidate(facets_to_assign, h_vector, 0, &cur_index) && is_M_sequence(h_vector,binom_exp,dim+1-k);                     
          }              
       } else if (assigned_facets.empty()) {
-         shell.push_back(Set<int>());
-         return Array<Set<int>>(shell);
+         shell.push_back(Set<Int>());
+         return Array<Set<Int>>(shell);
       }
       else {
          LabeledFacet to_remove = assigned_facets.back();
-         int new_index = to_remove.index + 1;
+         Int new_index = to_remove.index+1;
          ++h_vector[to_remove.label];
          to_remove.label = -1;
          facets_to_assign[to_remove.index] = to_remove.facet;
@@ -192,7 +190,7 @@ Array<Set<int>> shelling(perl::Object p_in)
    }
    for (const auto& af : assigned_facets)
       shell.push_front(af.facet);
-   return Array<Set<int>>(shell);
+   return Array<Set<Int>>(shell);
 }
 
 Function4perl(&shelling, "shelling");

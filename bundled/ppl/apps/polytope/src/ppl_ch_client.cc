@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,12 +30,12 @@ auto create_convex_hull_solver()
 
 }
 
-void ppl_ch_primal(perl::Object p, bool isCone)
+void ppl_ch_primal(BigObject p, bool isCone)
 {
    generic_convex_hull_primal<Rational>(p, isCone, ppl_interface::ConvexHullSolver<Rational>());
 }
     
-void ppl_ch_dual(perl::Object p, bool isCone)
+void ppl_ch_dual(BigObject p, bool isCone)
 {
    generic_convex_hull_dual<Rational>(p, isCone, ppl_interface::ConvexHullSolver<Rational>());
 }

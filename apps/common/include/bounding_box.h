@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,8 +28,8 @@ template<typename Coord, typename MatrixTop>
 std::enable_if_t<MatrixTop::is_sparse, Matrix<Coord>>
 bounding_box(const GenericMatrix<MatrixTop, Coord>& V)
 {
-   const int d=V.cols();
-   Matrix<Coord> BB(2,d);
+   const Int d = V.cols();
+   Matrix<Coord> BB(2, d);
    if (d) {
       for (auto c = entire(cols(V)); !c.at_end(); ++c) {
          if (c->size() == V.rows()) { //non-sparse col
@@ -49,15 +49,15 @@ template <typename Coord, typename MatrixTop>
 std::enable_if_t<!MatrixTop::is_sparse, Matrix<Coord>>
 bounding_box(const GenericMatrix<MatrixTop, Coord>& V)
 {
-   const int d=V.cols();
+   const Int d = V.cols();
    Matrix<Coord> BB(2,d);
    if (V.rows()) {
-      auto r=entire(rows(V));
-      BB[0]=*r;
-      BB[1]=*r;
+      auto r = entire(rows(V));
+      BB[0] = *r;
+      BB[1] = *r;
       while (!(++r).at_end()) {
-         auto c=r->begin();
-         for (int j=0; j<d; ++j, ++c)
+         auto c = r->begin();
+         for (Int j = 0; j < d; ++j, ++c)
             assign_min_max(BB(0,j), BB(1,j), *c);
       }
    }
@@ -68,13 +68,13 @@ template <typename Coord>
 void extend_bounding_box(Matrix<Coord>& BB, const Matrix<Coord>& BB2)
 {
    if (BB.rows()) {
-      const int d=BB.cols();
-      auto src=concat_rows(BB2).begin();
-      auto dst=concat_rows(BB).begin();
-      for (int j=0; j<d; ++j, ++dst, ++src) assign_min(*dst, *src);
-      for (int j=0; j<d; ++j, ++dst, ++src) assign_max(*dst, *src);
+      const Int d = BB.cols();
+      auto src = concat_rows(BB2).begin();
+      auto dst = concat_rows(BB).begin();
+      for (Int j = 0; j < d; ++j, ++dst, ++src) assign_min(*dst, *src);
+      for (Int j = 0; j < d; ++j, ++dst, ++src) assign_max(*dst, *src);
    } else {
-      BB=BB2;
+      BB = BB2;
    }
 }
 

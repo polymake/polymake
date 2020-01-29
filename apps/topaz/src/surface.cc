@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,18 +22,18 @@
 
 namespace polymake { namespace topaz {
 
-perl::Object surface(int g)
+BigObject surface(Int g)
 {
    const bool oriented= g<0 ? false : true;
    g = abs(g);
 
-   perl::Object p("SimplicialComplex");
+   BigObject p("SimplicialComplex");
    std::ostringstream description;
    description << (oriented ? "Oriented " : "Non-oriented ") << "surface of genus "<< g << ".\n";
    p.set_description() << description.str();
 
    if (g==0) {    // return 2-sphere
-      Array<Set<int>> C(4, all_subsets_less_1(sequence(0,4)).begin());
+      Array<Set<Int>> C(4, all_subsets_less_1(sequence(0,4)).begin());
 
       p.take("FACETS") << C;
       p.take("DIM") << 2;
@@ -44,17 +44,17 @@ perl::Object surface(int g)
 
    } else {
       // produce g toruses / projective planes and compute their connected sum
-      std::list< Set<int> > C;
+      std::list<Set<Int>> C;
       if (oriented) {
-         const Array< Set<int> > T = torus_facets();
+         const Array<Set<Int>> T = torus_facets();
          copy_range(entire(T), std::back_inserter(C));
-         for (int i=0; i<g-1; ++i) {
+         for (Int i = 0; i < g-1; ++i) {
             C=connected_sum(C,T);
          }
       } else {
-         const Array< Set<int> > PJP = real_projective_plane_facets();
+         const Array<Set<Int>> PJP = real_projective_plane_facets();
          copy_range(entire(PJP), std::back_inserter(C));
-         for (int i=0; i<g-1; ++i) {
+         for (Int i = 0; i<g-1; ++i) {
             C=connected_sum(C,PJP);
          }
       }

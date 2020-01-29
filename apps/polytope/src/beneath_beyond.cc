@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -49,7 +49,7 @@ BeneathBeyondConvexHullSolver<Scalar>::enumerate_vertices(const Matrix<Scalar>& 
 }
 
 template <typename Scalar>
-std::pair<Bitset, Set<int>>
+std::pair<Bitset, Set<Int>>
 BeneathBeyondConvexHullSolver<Scalar>::get_non_redundant_points(const Matrix<Scalar>& Points, const Matrix<Scalar>& Linealities, bool isCone) const
 {
    beneath_beyond_algo<Scalar> algo;
@@ -59,7 +59,7 @@ BeneathBeyondConvexHullSolver<Scalar>::get_non_redundant_points(const Matrix<Sca
 }
 
 template <typename Scalar>
-std::pair<Bitset, Set<int>>
+std::pair<Bitset, Set<Int>>
 BeneathBeyondConvexHullSolver<Scalar>::get_non_redundant_inequalities(const Matrix<Scalar>& Inequalities, const Matrix<Scalar>& Equations, bool isCone) const
 {
    beneath_beyond_algo<Scalar> algo;
@@ -69,7 +69,7 @@ BeneathBeyondConvexHullSolver<Scalar>::get_non_redundant_inequalities(const Matr
 }
 
 template <typename Scalar>
-Array<Set<int>>
+Array<Set<Int>>
 BeneathBeyondConvexHullSolver<Scalar>::placing_triangulation(const Matrix<Scalar>& Points, const Matrix<Scalar>& Lineality) const
 {
    beneath_beyond_algo<Scalar> algo;
@@ -84,7 +84,7 @@ template class BeneathBeyondConvexHullSolver<Rational>;
 template <typename Scalar>
 auto create_beneath_beyond_solver(CanEliminateRedundancies needsEliminate = CanEliminateRedundancies::yes)
 {
-   perl::ListReturn ret;
+   ListReturn ret;
    if (needsEliminate == CanEliminateRedundancies::yes)
       ret << cached_convex_hull_solver<Scalar, CanEliminateRedundancies::yes>(new BeneathBeyondConvexHullSolver<Scalar>(), true);
    else
@@ -93,7 +93,7 @@ auto create_beneath_beyond_solver(CanEliminateRedundancies needsEliminate = CanE
 }
 
 template <typename Scalar>
-void beneath_beyond_find_facets(perl::Object p, const bool isCone, perl::OptionSet options)
+void beneath_beyond_find_facets(BigObject p, const bool isCone, OptionSet options)
 {
    const bool non_redundant = options["non_redundant"];
    const Matrix<Scalar> Points = p.give(non_redundant ? Str("RAYS") : Str("INPUT_RAYS"));
@@ -110,7 +110,7 @@ void beneath_beyond_find_facets(perl::Object p, const bool isCone, perl::OptionS
 
    if (non_redundant) {
       p.take("ESSENTIALLY_GENERIC") << algo.getGenericPosition();
-      perl::Object t("topaz::GeometricSimplicialComplex", mlist<Scalar>());
+      BigObject t("topaz::GeometricSimplicialComplex", mlist<Scalar>());
       t.take("FACETS") << algo.getTriangulation();
       p.take("TRIANGULATION") << t;
    } else {
@@ -121,7 +121,7 @@ void beneath_beyond_find_facets(perl::Object p, const bool isCone, perl::OptionS
 }
 
 template <typename Scalar>
-void beneath_beyond_find_vertices(perl::Object p, const bool isCone, perl::OptionSet options)
+void beneath_beyond_find_vertices(BigObject p, const bool isCone, OptionSet options)
 {
    const bool non_redundant = options["non_redundant"];
    const Matrix<Scalar> Points = p.give(non_redundant ? Str("FACETS") : Str("INEQUALITIES"));
@@ -143,13 +143,13 @@ void beneath_beyond_find_vertices(perl::Object p, const bool isCone, perl::Optio
 }
 
 template <typename Scalar>
-Array< Set<int> >
-placing_triangulation(const Matrix<Scalar>& Points, perl::OptionSet options)
+Array<Set<Int>>
+placing_triangulation(const Matrix<Scalar>& Points, OptionSet options)
 {
    const bool non_redundant = options["non_redundant"];
    beneath_beyond_algo<Scalar> algo;
    algo.expecting_redundant(!non_redundant).for_cone(true).making_triangulation(true);
-   Array<int> permutation;
+   Array<Int> permutation;
    if (options["permutation"] >> permutation) {
       if (permutation.size() != Points.rows())
          throw std::runtime_error("placing_triangulation: wrong permutation");
@@ -161,8 +161,8 @@ placing_triangulation(const Matrix<Scalar>& Points, perl::OptionSet options)
 }
 
 template <typename Scalar>
-Array< Set<int> >
-placing_triangulation(const SparseMatrix<Scalar>& Points, perl::OptionSet options)
+Array<Set<Int>>
+placing_triangulation(const SparseMatrix<Scalar>& Points, OptionSet options)
 {
    const Matrix<Scalar> full_points(Points);
    return placing_triangulation(full_points, options);

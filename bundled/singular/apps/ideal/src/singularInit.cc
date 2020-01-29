@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -101,7 +101,7 @@ idhdl get_singular_function(std::string s) {
    if(!singular_function_map.exists(s)) {
       // now, get the procedure to call
       idhdl function=ggetid(s.c_str());
-      if (function==NULL)
+      if (function == nullptr)
          throw std::runtime_error("singular function not found: "+s);
       singular_function_map[s] = function;
    }

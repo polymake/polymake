@@ -1,7 +1,7 @@
 {"app": "polytope", "embed": "is_subdivision.cc",
  "inst": [
-  {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Array<Set<int>>&>", "void"], "func": "is_subdivision", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "is_subdivision.X.X.o"},
+  {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Array<Set<Int>>&>", "void"], "func": "is_subdivision", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "is_subdivision.X.X.o"},
   {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "void"], "func": "is_subdivision", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "is_subdivision.X.X.o"},
-  {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::TryCanned<const Array<Array<int>>>", "void"], "func": "is_subdivision", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "is_subdivision.X.X.o"},
+  {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::TryCanned<const Array<Array<Int>>>", "void"], "func": "is_subdivision", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "is_subdivision.X.X.o"},
  null ],
 "version": 3}

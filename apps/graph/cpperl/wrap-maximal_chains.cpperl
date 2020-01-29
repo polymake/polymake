@@ -1,7 +1,7 @@
 {"app": "graph", "embed": "maximal_chains.cc",
  "inst": [
   {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Sequential", "void", "void"], "func": "maximal_chains_of_lattice", "include": ["polymake/graph/Decoration.h"], "sig": "maximal_chains_of_lattice:T2.B.o", "tp": "2"},
-  {"apps": ["tropical"], "args": ["CovectorDecoration", "graph::lattice::Nonsequential", "void", "void"], "func": "maximal_chains_of_lattice", "include": ["polymake/graph/Decoration.h", "polymake/tropical/covectors.h"], "sig": "maximal_chains_of_lattice:T2.B.o", "tp": "2"},
+  {"apps": ["tropical"], "args": ["tropical::CovectorDecoration", "graph::lattice::Nonsequential", "void", "void"], "func": "maximal_chains_of_lattice", "include": ["polymake/graph/Decoration.h", "polymake/tropical/covectors.h"], "sig": "maximal_chains_of_lattice:T2.B.o", "tp": "2"},
   {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Sequential", "void"], "func": "lattice_of_chains", "include": ["polymake/graph/Decoration.h"], "sig": "lattice_of_chains:T2.B", "tp": "2"},
  null ],
 "version": 3}

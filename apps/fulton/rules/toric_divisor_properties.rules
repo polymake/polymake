@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -16,6 +16,10 @@
 
 # A //T//-invariant divisor on a normal toric variety.
 declare object TDivisor {
+   
+   # @category Algebraic Geometry
+   # True if the divisor is __very ample__.
+   property VERY_AMPLE : Bool;
 
    # @category Algebraic Geometry
    # True if the divisor is __ample__.

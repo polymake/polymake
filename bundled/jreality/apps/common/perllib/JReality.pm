@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -130,7 +130,7 @@ sub add_vertex_colors {
       $text=<<'.';
 colors = new double[]{
 .
-      $text .= join(",\n", map { "  ".($different_colors ? $color->($_) : $color)->toFloat(",") } 0..$#{$self->source->Vertices});
+      $text .= join(",\n", map { "  ".( is_code($color) ? $color->($_) : $color)->toFloat(",") } 0..$#{$self->source->Vertices});
       $text .= "};\n";
       $text .= "$factory_name.setVertexColors(new DoubleArrayArray.Inlined(colors, 3) );\n";
 #   } else {

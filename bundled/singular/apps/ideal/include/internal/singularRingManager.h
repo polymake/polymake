@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,6 +28,7 @@
 #include "polymake/ideal/internal/singularTermOrderData.h"
 #include "polymake/ideal/internal/singularTermOrderMap.h"
 #include "polymake/ideal/internal/singularConvertTypes.h"
+#include "polymake/ideal/internal/singularUtils.h"
 #include "polymake/ideal/singularInit.h"
 
 namespace polymake { 
@@ -56,7 +57,7 @@ namespace singular {
            {
              variableNames[i] = omStrDup(("x_" + std::to_string(i)).c_str());
            }
-           int ord_size = termOrder.get_ord_size();
+           int ord_size = safe_cast(termOrder.get_ord_size());
            singular_order_type *ord = termOrder.get_ord();
            int *block0 = termOrder.get_block0();
            int *block1 = termOrder.get_block1();

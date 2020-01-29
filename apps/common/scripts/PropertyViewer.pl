@@ -110,16 +110,16 @@ sub tree_nodes {
 
     next if !defined($pv) || $pv->property->flags & Core::Property::Flags::is_non_storable;
 
-    if (instanceof Core::Object($pv)) {
+    if (instanceof Core::BigObject($pv)) {
        my $iter = $tree_store->append($iter_parent);
-       my $name=$pv->property->qualified_name;
+       my $name=$pv->property->name;
        my $display_name = $name;
        $tree_store->set ($iter,0 => $name, 1 => $display_name);
        tree_nodes($tree_store, $pv, $iter);
     } elsif ($pv->property->flags & Core::Property::Flags::is_multiple) {
        my $count = 0;
        my @pv_array = @{$pv->values};
-       my $name = $pv->property->qualified_name;
+       my $name = $pv->property->name;
        my $length = scalar(@pv_array);
        foreach my $val (@pv_array) {
           my $iter = $tree_store->append($iter_parent);
@@ -134,7 +134,7 @@ sub tree_nodes {
        }
      } elsif (defined($pv->value) && !($pv->flags & PropertyValue::Flags::is_weak_ref)) {
        my $iter = $tree_store->append($iter_parent);
-       my $name=$pv->property->qualified_name;
+       my $name=$pv->property->name;
        my $display_name = $name;
        $tree_store->set ($iter,0 => $name, 1 => $display_name);
      }

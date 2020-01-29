@@ -1,5 +1,5 @@
 {"app": "common",
  "inst": [
-  {"class": "HSV", "include": ["polymake/color.h"], "pkg": "Polymake::common::HSV"},
+  {"class": "HSV", "guard_name": "CORE_WRAPPERS_color", "include": ["polymake/color.h"], "pkg": "Polymake::common::HSV", "wrapper_file": "include/core-wrappers/polymake/color.h"},
  null ],
 "version": 3}

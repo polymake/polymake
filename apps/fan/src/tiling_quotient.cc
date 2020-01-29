@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -48,9 +48,9 @@ Matrix<E> express_in_basis(const Matrix<E>& A, const Matrix<E>& B)
 }  // end anonymous namespace
 
 template <typename E>
-perl::Object tiling_quotient(perl::Object P, perl::Object Q)
+BigObject tiling_quotient(BigObject P, BigObject Q)
 {
-   const int
+   const Int
       d = P.give("COMBINATORIAL_DIM"),
       e = Q.give("COMBINATORIAL_DIM");
    if (d!=e) throw std::runtime_error("The dimensions of P and Q must be equal");
@@ -74,15 +74,15 @@ perl::Object tiling_quotient(perl::Object P, perl::Object Q)
    VQL -= repeat_row(barycenter, VQL.rows());
 
    // Take the Minkowski sum of the transformed P and Q 
-   perl::ObjectType Polytope("Polytope", mlist<E>());
-   perl::Object summand1(Polytope);
-   perl::Object summand2(Polytope);
+   BigObjectType Polytope("Polytope", mlist<E>());
+   BigObject summand1(Polytope);
+   BigObject summand2(Polytope);
    summand1.take("VERTICES") << (ones_vector<E>() | VPL);
    summand2.take("VERTICES") << (ones_vector<E>() | VQL);
    const Matrix<E> MV = call_function("polytope::minkowski_sum_vertices_fukuda", mlist<E>(), summand1, summand2);
 
    // Find the interior and boundary lattice points of the Minkowski sum
-   perl::Object M("Polytope", mlist<E>());
+   BigObject M("Polytope", mlist<E>());
    M.take("VERTICES") << MV;
    const Matrix<E> 
       ILP = M.give("INTERIOR_LATTICE_POINTS"),
@@ -96,8 +96,8 @@ perl::Object tiling_quotient(perl::Object P, perl::Object Q)
       FP = summand1.give("FACETS"),
       FQ = summand2.give("FACETS");
 
-   Map<Vector<E>, int> index_of;
-   int n(0);
+   Map<Vector<E>, Int> index_of;
+   Int n = 0;
 
    // We will store the cells of the complex in a FacetList.
    // Initially, we reserve space for #vert Q vertices, 
@@ -115,17 +115,17 @@ perl::Object tiling_quotient(perl::Object P, perl::Object Q)
       translated_facets.col(0) -= FQ.minor(All, range_from(1)) * (*lit);
 
       // intersect the translated polytope with P
-      perl::Object Cell("Polytope", mlist<E>());
+      BigObject Cell("Polytope", mlist<E>());
       Cell.take("INEQUALITIES") << (translated_facets / FP);
 
       // only proceed with full-dimensional faces
-      const int dd = Cell.give("COMBINATORIAL_DIM");
+      const Int dd = Cell.give("COMBINATORIAL_DIM");
       if (dd != d) continue;
 
       const Matrix<E> translated_vertices = Cell.give("VERTICES");
 
       // translate back, simultaneously store vertices and cell information
-      Set<int> vif;
+      Set<Int> vif;
       for (auto rit = entire(rows(translated_vertices)); !rit.at_end(); ++rit) {
          // translate back from the lattice point and undo the translation of the barycenter 
          const Vector<E> v (dehomogenize(*rit) - *lit + barycenter);
@@ -140,7 +140,7 @@ perl::Object tiling_quotient(perl::Object P, perl::Object Q)
    }
 
    // done
-   perl::Object PS("PolyhedralComplex", mlist<E>());
+   BigObject PS("PolyhedralComplex", mlist<E>());
    PS.take("VERTICES") << coos;
    PS.take("MAXIMAL_POLYTOPES") << F;
    return PS;

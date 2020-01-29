@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -55,6 +55,7 @@ protected:
       return alias;
    }
 public:
+   static_assert(!std::is_same<K, int>::value && !std::is_same<D, int>::value, "use Int instead");
    using key_type = K;
    using mapped_type = D;
    using params = typename mlist_wrap<Params...>::type;

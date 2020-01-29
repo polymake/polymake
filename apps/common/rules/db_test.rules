@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -15,23 +15,65 @@
 #-------------------------------------------------------------------------------
 
 # Setup and functions necessary for running unit tests involving PolyDB
+#
+#  This file is part of the polymake database interface polyDB.
+#
+#   @author Silke Horn, Andreas Paffenholz
+#   http://www.mathematik.tu-darmstadt.de/~paffenholz
+#
+
 
 REQUIRE
    polydb.rules
 
 package PolyDB::Test;
 
-# host with an admin-free Mongo DB, preferably in a docker container without persistent storage
+# host with a Mongo DB and root user admin/admin, preferably in a docker container without persistent storage
 custom $db_host="localhost";
 
 # port number of test Mongo server, cf. db_host
 custom $db_port=27017;
 
+# test mongo admin auth db, used once to create db admin
+custom $db_mongoadmin_user = "admin";
+
+# test mongo admin auth db, used once to create db admin
+custom $db_mongoadmin_pwd = "admin";
+
+# test mongo admin auth db, used once to create db admin
+custom $db_mongoadmin_auth_db = "admin";
+
+# the name of the database
+custom $db_name = "polydb_data";
+
+# test normal db user
+custom $db_user = "polymake";
+
+# test normal db password
+custom $db_pwd= "database";
+
+# test normal user auth db
+custom $db_auth_db = "admin";
+
+# user name of test admin user
+custom $db_admin_user = "admin";
+
+# password of test admin user
+custom  $db_admin_pwd = "admin";
+
+# password of test admin user
+custom  $db_testsection_name = "TestSection";
+
+# test normal user auth db
+custom $pretty_print_doc = false;
+
+# start docker with
+# docker run --name polydb -d -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=admin -e MONGO_INITDB_ROOT_PASSWORD=admin mongo
 
 CONFIGURE {
    if ($db_host ne "" && $db_port != 0) {
       defined(eval {
-         MongoDB::MongoClient->new(host => "${db_host}:${db_port}", socket_timeout_ms => 1000)->database_names
+         MongoDB::MongoClient->new(host => "${db_host}:${db_port}", db_name=> $Test::db_auth_db, username=>$Test::db_admin_user, password=>$Test::db_admin_pwd, socket_timeout_ms => 1000)->database_names
         })
       or die <<".";
 Test Mongo instance at ${db_host}:${db_port} not available:
@@ -47,50 +89,49 @@ Please start the Mongo server or adjust the settings:
 # the default collection name is set to the current testgroup name
 function prepare() {
    my ($collection_name) = (Cwd::getcwd =~ $filename_re);
-   my $type_info_collection_name = "type_info_${collection_name}";
    my $info_collection_name = "Info_${collection_name}";
 
    local with($Scope->locals) {
       local $PolyDB::default::db_host = $db_host;
       local $PolyDB::default::db_port = $db_port;
       local $PolyDB::default::useSSL = 0;
-      local $PolyDB::default::db_user;
-      local $PolyDB::default::db_pwd;
-      local $PolyDB::default::db_database_name = "test_db";
+      
+      local $PolyDB::default::db_user = $db_user;
+      local $PolyDB::default::db_pwd = $db_pwd;
+      local $PolyDB::default::db_auth_db = $db_auth_db;
+      
+      local $PolyDB::default::db_section_name = $db_testsection_name;
       local $PolyDB::default::db_collection_name = $collection_name;
-      local $PolyDB::default::db_type_information = $type_info_collection_name;
-      local $PolyDB::default::db_info_db = "test_info_db";
-      local $PolyDB::default::db_info_collection = $info_collection_name;
+
+      local $PolyDB::default::pretty_print_doc = $pretty_print_doc;
    }
 
-   my $client = Client::get_client();
-   my $db = $client->get_database($PolyDB::default::db_database_name);
+   my $client = polyDB(user=>$db_admin_user, password=>$db_admin_pwd);
+
    my $max_tries = 9;
    for (my $retry = 0; ; ++$retry) {
       eval {
-         $db->get_collection($collection_name)->drop;
+         MongoDB::Collection::drop($client->get_collection($PolyDB::default::db_section_name.".".$collection_name));
       };
       last if !$@;
-      die $@ if $retry == $max_tries or $@ !~ /Could not connect to '.*': Connection refused/;
-      if ($retry == 0) {
-         warn_print("No connection to Mongo test server, retrying for ", $max_tries+1, "s");
-      }
-      sleep 1;
+      die $@ if $retry == $max_tries or $@ !~ /Could not connect to '.*': Connection refused|MongoDB::NetworkTimeout/;
+      warn_print("No connection to Mongo test server, retrying...");
+      sleep min($retry + 1, 5);
    }
-   $db->get_collection($type_info_collection_name)->drop;
-   my $info_db =  $client->get_database($PolyDB::default::db_info_db);
-   $info_db->get_collection($info_collection_name)->drop;
+
+   $client->create_default_user_and_role();
 }
 
 function read_json_for_id($) {
    my ($id) = @_;
 
    my $client = Client::get_client();
-   my $db = $client->get_database($PolyDB::default::db_database_name);
+   my $db = $client->get_database($PolyDB::default::db_name);
    my $query = { _id => $id };
-   my $collection = $db->get_collection($PolyDB::default::db_collection_name);
+   my $collection = $db->get_collection($PolyDB::default::db_section_name.".".$PolyDB::default::db_collection_name);
    $collection->find_one($query) // die "No such object in the database.\n";
 }
+
 
 # Local Variables:
 # mode: perl

@@ -16,7 +16,17 @@
 #ifndef TOMATH_H
 #define TOMATH_H
 
+#if defined(__APPLE__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
+
 #include <gmpxx.h>
+
+#if defined(__APPLE__)
+#pragma clang diagnostic pop
+#endif
+
 #include <sstream>
 
 template <class T>

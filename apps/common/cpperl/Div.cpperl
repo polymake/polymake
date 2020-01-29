@@ -1,7 +1,7 @@
 {"app": "common",
  "inst": [
-  {"pkg": "Polymake::common::Div"},
-  {"class": "Div<UniPolynomial<Rational, int>>", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/numerical_functions.h"], "pkg": "Polymake::common::Div__UniPolynomial_A_Rational_I_Int_Z"},
-  {"class": "Div<long>", "include": ["polymake/numerical_functions.h"], "pkg": "Polymake::common::Div__Long"},
+  {"guard_name": "CORE_WRAPPERS_numerical_functions", "include": ["polymake/numerical_functions.h"], "pkg": "Polymake::common::Div", "wrapper_file": "include/core-wrappers/polymake/numerical_functions.h"},
+  {"class": "Div<UniPolynomial<Rational, Int>>", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/numerical_functions.h"], "pkg": "Polymake::common::Div__UniPolynomial_A_Rational_I_Int_Z"},
+  {"class": "Div<Int>", "include": ["polymake/numerical_functions.h"], "pkg": "Polymake::common::Div__Int"},
  null ],
 "version": 3}

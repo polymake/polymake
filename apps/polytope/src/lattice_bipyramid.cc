@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,7 +26,7 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object lattice_bipyramid_vv(perl::Object p_in, const Vector<Rational>& v, const Vector<Rational>& v_prime, const Rational& z, const Rational& z_prime, perl::OptionSet options)
+BigObject lattice_bipyramid_vv(BigObject p_in, const Vector<Rational>& v, const Vector<Rational>& v_prime, const Rational& z, const Rational& z_prime, OptionSet options)
 {
    const bool pointed=p_in.give("POINTED");
    if (!pointed)
@@ -35,17 +35,17 @@ perl::Object lattice_bipyramid_vv(perl::Object p_in, const Vector<Rational>& v, 
    if (z*z_prime >= 0)
       throw std::runtime_error("lattice_bipyramid: z and z' must have opposite signs and be non-zero");
 
-   perl::Object p_out("Polytope<Rational>");
+   BigObject p_out("Polytope<Rational>");
    p_out.set_description() << "Lattice Bipyramid over " << p_in.name() << endl;
 
    const bool relabel = !options["no_labels"];
 
-   int n_vertices=0;
+   Int n_vertices = 0;
    if (p_in.exists("VERTICES_IN_FACETS")) {
-      const IncidenceMatrix<> VIF=p_in.give("VERTICES_IN_FACETS");
-      n_vertices=VIF.cols();
-      const int n_facets=VIF.rows();
-      const IncidenceMatrix<> VIF_out= (VIF / VIF) | sequence(0,n_facets) | sequence(n_facets,n_facets);
+      const IncidenceMatrix<> VIF = p_in.give("VERTICES_IN_FACETS");
+      n_vertices = VIF.cols();
+      const Int n_facets = VIF.rows();
+      const IncidenceMatrix<> VIF_out = (VIF / VIF) | sequence(0,n_facets) | sequence(n_facets,n_facets);
 
       p_out.take("N_VERTICES") << n_vertices+2;
       p_out.take("VERTICES_IN_FACETS") << VIF_out;
@@ -68,12 +68,12 @@ perl::Object lattice_bipyramid_vv(perl::Object p_in, const Vector<Rational>& v, 
    return p_out;
 }
 
-perl::Object lattice_bipyramid_v(perl::Object p_in, const Vector<Rational>& v, const Rational& z, const Rational& z_prime, perl::OptionSet options)
+BigObject lattice_bipyramid_v(BigObject p_in, const Vector<Rational>& v, const Rational& z, const Rational& z_prime, OptionSet options)
 {
     return lattice_bipyramid_vv(p_in, v, v, z, z_prime, options);
 }
 
-perl::Object lattice_bipyramid_innerpoint(perl::Object p_in, const Rational& z, const Rational& z_prime, perl::OptionSet options)
+BigObject lattice_bipyramid_innerpoint(BigObject p_in, const Rational& z, const Rational& z_prime, OptionSet options)
 {
     const Matrix<Rational> v = p_in.give("INTERIOR_LATTICE_POINTS");
     if (is_zero(v)) {
@@ -83,20 +83,20 @@ perl::Object lattice_bipyramid_innerpoint(perl::Object p_in, const Rational& z, 
     return lattice_bipyramid_vv(p_in, v0, v0, z, z_prime, options);
 }
 
-perl::Object lattice_bipyramid(perl::Object p_in, const Rational& z, const Rational& z_prime, perl::OptionSet options)
+BigObject lattice_bipyramid(BigObject p_in, const Rational& z, const Rational& z_prime, OptionSet options)
 {
    const bool pointed=p_in.give("POINTED");
    if (!pointed)
       throw std::runtime_error("lattice_bipyramid: input polyhedron not pointed");
 
-    const int n_vert = p_in.give("N_VERTICES");
-    const int dim = p_in.call_method("DIM");
+    const Int n_vert = p_in.give("N_VERTICES");
+    const Int dim = p_in.call_method("DIM");
     if (n_vert > dim+1) {
        const Matrix<Rational> V = p_in.give("VERTICES");
        const IncidenceMatrix<> VIF = p_in.give("VERTICES_IN_FACETS");
        for (auto v_pair=entire(all_subsets_of_k(sequence(0, V.rows()), 2)); !v_pair.at_end(); ++v_pair) {
-           const int v0 = (*v_pair)[0];
-           const int v1 = (*v_pair)[1];
+           const Int v0 = (*v_pair)[0];
+           const Int v1 = (*v_pair)[1];
            if ((VIF.col(v0) * VIF.col(v1)).empty()) {
               return lattice_bipyramid_vv(p_in, V.row(v0), V.row(v1), z, z_prime, options);
            }

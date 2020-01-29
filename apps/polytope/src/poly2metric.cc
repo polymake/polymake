@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,34 +25,34 @@ namespace polymake { namespace polytope {
 
 Matrix<double> points2metric_Euclidean(const Matrix<double> &V)
 { 
-  const int n=V.rows();
-  Matrix<double> dist(n,n);
+  const Int n = V.rows();
+  Matrix<double> dist(n, n);
 
-  for (int i=0; i<n; ++i)
-      for (int j=i; j<n; ++j)
-        dist(i,j)=dist(j,i)=sqrt(sqr(V.row(i)-V.row(j))); // Euclidean distance
+  for (Int i = 0; i < n; ++i)
+      for (Int j = i; j < n; ++j)
+        dist(i,j) = dist(j,i) = sqrt(sqr(V.row(i)-V.row(j))); // Euclidean distance
   return dist;
 }
 
 template <typename Scalar>
 Matrix<Scalar> points2metric_max(const Matrix<Scalar> &V)
 {
-  const int n=V.rows();
+  const Int n = V.rows();
   Matrix<Scalar> dist(n,n);
-  for (int i=0; i<n; ++i)
-      for (int j=i; j<n; ++j)
-        dist(i,j)=dist(j,i)=accumulate(attach_operation(V.row(i)-V.row(j), operations::abs_value()), operations::max());
+  for (Int i = 0; i < n; ++i)
+      for (Int j = i; j < n; ++j)
+        dist(i,j) = dist(j,i) = accumulate(attach_operation(V.row(i)-V.row(j), operations::abs_value()), operations::max());
   return dist;
 }
 
 template <typename Scalar>
 Matrix<Scalar> points2metric_l1(const Matrix<Scalar> &V)
 {
-  const int n=V.rows();
-  Matrix<Scalar> dist(n,n);
-  for (int i=0; i<n; ++i)
-      for (int j=i; j<n; ++j)
-        dist(i,j)=dist(j,i)=accumulate(attach_operation(V.row(i)-V.row(j), operations::abs_value()), operations::add());
+  const Int n = V.rows();
+  Matrix<Scalar> dist(n, n);
+  for (Int i = 0; i < n; ++i)
+      for (Int j = i; j < n; ++j)
+        dist(i,j) = dist(j,i) = accumulate(attach_operation(V.row(i)-V.row(j), operations::abs_value()), operations::add());
   return dist;
 }
 

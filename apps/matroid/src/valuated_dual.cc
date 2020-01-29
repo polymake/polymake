@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,21 +32,21 @@ namespace polymake { namespace matroid {
   
   template
   <typename Addition, typename Scalar>
-  perl::Object dual(perl::Object vm) {
+  BigObject dual(BigObject vm) {
     //Extract values
-    int n = vm.give("N_ELEMENTS");
-    Array<Set<int> > bases = vm.give("BASES");
+    Int n = vm.give("N_ELEMENTS");
+    Array<Set<Int>> bases = vm.give("BASES");
     Vector<TropicalNumber<Addition,Scalar> > valuation = vm.give("VALUATION_ON_BASES");
     
     //Convert bases
-    Array<Set<int> > dual_bases(bases.size());
-    for(int b = 0; b < bases.size(); b++) {
+    Array<Set<Int>> dual_bases(bases.size());
+    for(Int b = 0; b < bases.size(); b++) {
 	dual_bases[b] = sequence(0,n) - bases[b];
     }
     
-    perl::ObjectType t = vm.type();
+    BigObjectType t = vm.type();
     
-    perl::Object dvm(t);
+    BigObject dvm(t);
       dvm.take("N_ELEMENTS") << n;
       dvm.take("BASES") << dual_bases;
       dvm.take("VALUATION_ON_BASES") << valuation;

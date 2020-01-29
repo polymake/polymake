@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,37 +26,38 @@
 
 namespace polymake { namespace tropical {
 
-   Array<Rational> cycle_edge_lengths(perl::Object cycle) {
-      const Matrix<Rational>& vertices = cycle.give("VERTICES");
-      const Set<int>& far_vertices = cycle.give("FAR_VERTICES");
-      const Map< std::pair<int,int>, Vector<Integer> >& lattice_normals = cycle.give("LATTICE_NORMALS");
-      const IncidenceMatrix<>& maximal_polytopes = cycle.give("MAXIMAL_POLYTOPES");
-      const IncidenceMatrix<>& codim_one_incidence = cycle.give("MAXIMAL_AT_CODIM_ONE");
-      const auto& maximal_incidence = T(codim_one_incidence);
+Array<Rational> cycle_edge_lengths(BigObject cycle)
+{
+  const Matrix<Rational>& vertices = cycle.give("VERTICES");
+  const Set<Int>& far_vertices = cycle.give("FAR_VERTICES");
+  const Map<std::pair<Int, Int>, Vector<Integer>>& lattice_normals = cycle.give("LATTICE_NORMALS");
+  const IncidenceMatrix<>& maximal_polytopes = cycle.give("MAXIMAL_POLYTOPES");
+  const IncidenceMatrix<>& codim_one_incidence = cycle.give("MAXIMAL_AT_CODIM_ONE");
+  const auto& maximal_incidence = T(codim_one_incidence);
 
-      Array<Rational> result( maximal_polytopes.rows() );
-      auto result_it = entire(result);
-      auto incidence_it = entire(rows(maximal_incidence));
-      int mp_index = 0;
-      for(auto mp = entire(rows(maximal_polytopes)); !mp.at_end(); 
+  Array<Rational> result(maximal_polytopes.rows());
+  auto result_it = entire(result);
+  auto incidence_it = entire(rows(maximal_incidence));
+  Int mp_index = 0;
+  for (auto mp = entire(rows(maximal_polytopes)); !mp.at_end(); 
             ++mp, ++mp_index, ++result_it, ++incidence_it) {
-         if( ! ((*mp) * far_vertices).empty()) {
-            *result_it = std::numeric_limits<Rational>::infinity(); continue;
-         }
-         const int adj_codim = *(incidence_it->begin());
-         Vector<Integer> lnormal = lattice_normals[ std::make_pair(adj_codim, mp_index)];
-         const Matrix<Rational> ends = vertices.minor( *mp, All);
-         const Vector<Rational> diff = ends.row(0) - ends.row(1);
-         auto lnormal_it = entire(lnormal);
-         for(auto diff_it = entire(diff); !diff_it.at_end(); ++diff_it, ++lnormal_it) {
-            if(*diff_it != 0) {
-               *result_it = abs(*diff_it / *lnormal_it); break;
-            }
-         }
+    if (! ((*mp) * far_vertices).empty()) {
+      *result_it = std::numeric_limits<Rational>::infinity(); continue;
+    }
+    const Int adj_codim = *(incidence_it->begin());
+    Vector<Integer> lnormal = lattice_normals[ std::make_pair(adj_codim, mp_index)];
+    const Matrix<Rational> ends = vertices.minor( *mp, All);
+    const Vector<Rational> diff = ends.row(0) - ends.row(1);
+    auto lnormal_it = entire(lnormal);
+    for (auto diff_it = entire(diff); !diff_it.at_end(); ++diff_it, ++lnormal_it) {
+      if (*diff_it != 0) {
+        *result_it = abs(*diff_it / *lnormal_it); break;
       }
-      return result;
-   }
+    }
+  }
+  return result;
+}
 
-   Function4perl(&cycle_edge_lengths, "cycle_edge_lengths(Cycle)");
+Function4perl(&cycle_edge_lengths, "cycle_edge_lengths(Cycle)");
 
-}}
+} }

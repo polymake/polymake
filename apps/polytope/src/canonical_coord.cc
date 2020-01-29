@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -118,14 +118,14 @@ void orthogonalize_facets(Matrix<E>& F, const GenericMatrix<Matrix2,E>& AH)
 }
 
 template <typename Matrix1, typename Matrix2, typename Matrix3, typename E>
-optional<Array<int>>
+optional<Array<Int>>
 find_representation_permutation(const GenericMatrix<Matrix1,E>& Facets, const GenericMatrix<Matrix2,E>& otherFacets,
                                 const GenericMatrix<Matrix3,E>& AH, bool dual)
 {
    if (Facets.rows() != otherFacets.rows() || Facets.cols() != otherFacets.cols())
       return nullopt;
    if (Facets.rows() == 0)
-      return make_optional(Array<int>());
+      return make_optional(Array<Int>());
    Matrix<E> F1(Facets), F2(otherFacets);
    if (AH.rows()) {
       orthogonalize_facets(F1, AH);
@@ -148,7 +148,7 @@ FunctionTemplate4perl("find_representation_permutation(Matrix, Matrix, Matrix,$)
 // CAUTION: resulting matrix is applicable to affine coordinates (from the right)!
 
 template <typename Vector>
-Matrix<double> rotate_hyperplane(const GenericVector<Vector>& F, int last_sign)
+Matrix<double> rotate_hyperplane(const GenericVector<Vector>& F, Int last_sign)
 {
    Matrix<double> R(T(null_space_oriented(F.slice(range_from(1)), last_sign)));
    orthogonalize(entire(cols(R)));

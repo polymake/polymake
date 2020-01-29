@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,18 +22,15 @@
 #include "polymake/EquivalenceRelation.h"
 
 namespace polymake { namespace matroid {
-namespace {
 
-Array<Set<int>> connected_components_from_circuits(const Set<Set<int>>& circuits, const int n) //cast Array to Set, sorting the sets
+Array<Set<Int>> connected_components_from_circuits(const Set<Set<Int>>& circuits, const Int n) //cast Array to Set, sorting the sets
 {
    EquivalenceRelation components(n);
    for(auto c : circuits) {
       components.merge_classes(c);
    }
-   return Array<Set<int> >(components.equivalence_classes());
+   return Array<Set<Int>>(components.equivalence_classes());
 }
-
-}//end anonymous namespace
 
 Function4perl(&connected_components_from_circuits, "connected_components_from_circuits");
 

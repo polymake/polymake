@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,11 +32,11 @@ class ShrinkingLattice : public Lattice<Decoration, SeqType> {
 
 protected:
   // returns 1 + the maximal rank of a node connected to the top node
-  int implicit_top_rank() const
+  Int implicit_top_rank() const
   {
     return accumulate( attach_member_accessor(
-                        select(this->D,this->in_adjacent_nodes(this->top_node())),
-                        ptr2type<Decoration,int,&Decoration::rank>()), operations::max()) + 1;
+                        select(this->D, this->in_adjacent_nodes(this->top_node())),
+                        ptr2type<Decoration, Int, &Decoration::rank>()), operations::max())+1;
   }
 
 public:
@@ -44,13 +44,13 @@ public:
   ShrinkingLattice() : Lattice<Decoration,SeqType>() {}
   ShrinkingLattice(const Lattice<Decoration, SeqType>& l) : Lattice<Decoration, SeqType>(l) {}
 
-  void delete_node(int n)
+  void delete_node(Int n)
   {
     this->G.delete_node(n);
   }
 
   template <typename TSet>
-  void delete_nodes(const GenericSet<TSet,int> &nlist)
+  void delete_nodes(const GenericSet<TSet, Int> &nlist)
   {
     for (auto n_it : nlist.top()) delete_node(n_it);
   }
@@ -66,17 +66,17 @@ public:
     node_exists_pred() : G(nullptr) {}
     node_exists_pred(const Graph<Directed>& G_arg) : G(&G_arg) {}
 
-    typedef int argument_type;
+    typedef Int argument_type;
     typedef bool result_type;
-    result_type operator() (int n) const { return G->node_exists(n); }
+    result_type operator() (Int n) const { return G->node_exists(n); }
   };
 
-  auto nodes_of_rank(int d) const
+  auto nodes_of_rank(Int d) const
   {
     return attach_selector(this->rank_map.nodes_of_rank(d), node_exists_pred(this->G));
   }
 
-  auto nodes_of_rank_range(int d1, int d2) const
+  auto nodes_of_rank_range(Int d1, Int d2) const
   {
     return attach_selector(this->rank_map.nodes_of_rank_range(d1,d2), node_exists_pred(this->G));
   }

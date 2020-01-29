@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,7 +31,7 @@ PropertyValue get_custom(const AnyString& name, const AnyString& key=AnyString()
 class FunCall;
 
 class PropertyValue : public Value {
-   friend class Object;   friend class ObjectType;
+   friend class BigObject;   friend class BigObjectType;
    friend class FunCall;
 
    friend PropertyValue load_data(const std::string& filename);
@@ -135,18 +135,18 @@ public:
       Value v(sv, ValueFlags::not_trusted);
       v.retrieve_nomagic(c.container);
       forget();
-      sv=nullptr;
+      sv = nullptr;
    }
 
    void operator>> (Unrolled<Array&>&& c)
    {
-      c.container=static_cast<Array&&>(*this);
+      c.container = static_cast<Array&&>(*this);
    }
 
 protected:
    ListResult(int items, FunCall& fc);
 
-   friend class Object;
+   friend class BigObject;
    friend class FunCall;
 
 private:
@@ -209,14 +209,14 @@ public:
    }
 
 protected:
-   FunCall(std::nullptr_t, ValueFlags val_flags_, int reserve);
+   FunCall(std::nullptr_t, ValueFlags val_flags_, Int reserve);
 
-   FunCall(std::nullptr_t, int reserve)
+   FunCall(std::nullptr_t, Int reserve)
       : FunCall(nullptr, ValueFlags::allow_non_persistent | ValueFlags::allow_store_any_ref, reserve) {}
 
-   FunCall(bool is_method, ValueFlags val_flags_, const AnyString& name, int reserve);
+   FunCall(bool is_method, ValueFlags val_flags_, const AnyString& name, Int reserve);
 
-   FunCall(bool is_method, const AnyString& name, int reserve)
+   FunCall(bool is_method, const AnyString& name, Int reserve)
       : FunCall(is_method, ValueFlags::allow_non_persistent | ValueFlags::allow_store_any_ref, name, reserve) {}
 
    template <typename Arg>
@@ -225,7 +225,7 @@ protected:
 
    template <typename... Args>
    static constexpr
-   std::enable_if_t<!mlist_or<count_separately<Args>...>::value, int>
+   std::enable_if_t<!mlist_or<count_separately<Args>...>::value, Int>
    count_args(Args&&... args)
    {
       return sizeof...(Args);
@@ -233,21 +233,21 @@ protected:
 
    template <typename Container, typename... MoreArgs>
    static
-   int count_args(Unrolled<Container>&& c, MoreArgs&&... more_args)
+   Int count_args(Unrolled<Container>&& c, MoreArgs&&... more_args)
    {
       return c.container.size() + count_args(std::forward<MoreArgs>(more_args)...);
    }
 
    template <typename... Types, typename... MoreArgs>
    static
-   int count_args(const mlist<Types...>&, MoreArgs&&... more_args)
+   Int count_args(const mlist<Types...>&, MoreArgs&&... more_args)
    {
       return sizeof...(Types) + count_args(std::forward<MoreArgs>(more_args)...);
    }
 
    template <typename FirstArg, typename... MoreArgs>
    static
-   std::enable_if_t<!count_separately<FirstArg>::value && mlist_or<count_separately<MoreArgs>...>::value, int>
+   std::enable_if_t<!count_separately<FirstArg>::value && mlist_or<count_separately<MoreArgs>...>::value, Int>
    count_args(FirstArg&& first_arg, MoreArgs&&... more_args)
    {
       return 1 + count_args(std::forward<MoreArgs>(more_args)...);
@@ -284,7 +284,7 @@ protected:
       if (proto)
          push(proto);
       else
-         throw undefined();
+         throw Undefined();
    }
 
    template <typename... Types>
@@ -296,7 +296,7 @@ protected:
 
    void push_current_application();
    void push_current_application_pkg();
-   void create_explicit_typelist(int size);
+   void create_explicit_typelist(size_t size);
 
    void push_arg(FunCall&& x);
 
@@ -388,7 +388,7 @@ public:
 protected:
    using FunCall::FunCall;
 
-   void begin_type_params(int n);
+   void begin_type_params(size_t n);
    void push_type_param(const AnyString& param);
    void end_type_params();
 
@@ -442,7 +442,7 @@ private:
    bool reset_on_destruction = false;
 };
 
-int get_debug_level();
+Int get_debug_level();
 
 class PropertyTypeBuilder
    : protected FunCall {
@@ -459,7 +459,7 @@ public:
          if (!exact_match) b.nonexact_match();
          return b.call_scalar_context();
       }
-      catch (const undefined&) {
+      catch (const Undefined&) {
          return nullptr;
       }
    }

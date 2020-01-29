@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
         Ewgenij Gawrilow, Michael Joswig, and the polymake team
         Technische Universität Berlin, Germany
         https://polymake.org
@@ -22,8 +22,8 @@ GNU General Public License for more details.
 namespace polymake { namespace tropical {
 
         template <typename Addition, typename Scalar>
-                perl::Object minkowski_sum(const TropicalNumber<Addition,Scalar>& lambda, perl::Object P, 
-                                const TropicalNumber<Addition,Scalar>& mu, perl::Object Q)
+                BigObject minkowski_sum(const TropicalNumber<Addition,Scalar>& lambda, BigObject P, 
+                                const TropicalNumber<Addition,Scalar>& mu, BigObject Q)
                 {
                         typedef TropicalNumber<Addition,Scalar> TNumber;
                         const Matrix<TNumber> pointsP=P.give("VERTICES | POINTS"),
@@ -36,7 +36,7 @@ namespace polymake { namespace tropical {
                                         entire(product(rows(lambda * pointsP),
                                         rows(mu *pointsQ),
                                         operations::add())));
-                        perl::Object PQ(P.type());
+                        BigObject PQ(P.type());
                         PQ.set_description() << "Tropical Minkowski sum of " << P.name() << " and " << Q.name() << endl;
 
                         PQ.take("POINTS") << result;

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,18 +24,18 @@
 
 namespace polymake { namespace topaz {
 
-IncidenceMatrix<> web_of_stars(const Array<int>& poset_hom,
-                                    const Array<Set<Set<int> > >& star_shaped_balls,
-                                    const Array<Set<int> >& simplices)
+IncidenceMatrix<> web_of_stars(const Array<Int>& poset_hom,
+                               const Array<Set<Set<Int>>>& star_shaped_balls,
+                               const Array<Set<Int>>& simplices)
 {
-   Map<Set<int>, int> index_of;
-   int index(-1);
+   Map<Set<Int>, Int> index_of;
+   Int index = -1;
    for (auto ait = entire(simplices); !ait.at_end(); ++ait)
       index_of[*ait] = ++index;
 
    IncidenceMatrix<> wos(poset_hom.size(), simplices.size());
-   for (int i=0; i<poset_hom.size(); ++i) {
-      Set<int> image_indices;
+   for (Int i = 0; i < poset_hom.size(); ++i) {
+      Set<Int> image_indices;
       for (auto sit = entire(star_shaped_balls[poset_hom[i]]); !sit.at_end(); ++sit)
          image_indices += index_of[*sit];
       wos[i] = image_indices;

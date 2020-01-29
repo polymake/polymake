@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -34,7 +34,7 @@ struct LP_Solution {
    LP_status status;
    Scalar objective_value;
    Vector<Scalar> solution;
-   int lineality_dim = -1;
+   Int lineality_dim = -1;
 };
 
 template <typename Scalar>
@@ -83,7 +83,7 @@ bool H_input_feasible(const GenericMatrix<Matrix1, Scalar>& inequalities, const 
        inequalities.cols() && equations.cols())
       throw std::runtime_error("H_input_feasible - dimension mismatch between Inequalities and Equations");
 
-   const int d = std::max(inequalities.cols(), equations.cols());
+   const Int d = std::max(inequalities.cols(), equations.cols());
    if (d == 0)
       return true;
 

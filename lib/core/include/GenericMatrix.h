@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -36,14 +36,14 @@ class ConcatRows_default
                                  MasqueradedTop > > {
    using base_t = cascade_impl<ConcatRows_default>;
 
-   int size_impl(std::false_type) const { return dim(); }
-   int size_impl(std::true_type) const { return base_t::size(); }
+   Int size_impl(std::false_type) const { return dim(); }
+   Int size_impl(std::true_type) const { return base_t::size(); }
 public:
-   int dim() const
+   Int dim() const
    {
       return this->hidden().rows() * this->hidden().cols();
    }
-   int size() const
+   Int size() const
    {
       return size_impl(bool_constant<check_container_feature<TMatrix, sparse>::value>());
    }
@@ -69,8 +69,8 @@ class ConcatCols
 template <typename TMatrix>
 struct spec_object_traits< ConcatRows<TMatrix> >
    : spec_object_traits<is_container> {
-   static const bool is_always_const=object_traits<TMatrix>::is_always_const;
-   static const int is_resizeable=0;
+   static constexpr bool is_always_const = object_traits<TMatrix>::is_always_const;
+   static constexpr int is_resizeable = 0;
    typedef TMatrix masquerade_for;
 };
 
@@ -130,8 +130,8 @@ template <typename VectorRef> class RepeatedCol;
 namespace internal {
 
 template <typename LeftRef, typename RightRef,
-          typename Left =typename deref<unwary_t<LeftRef>>::type,
-          typename Right=typename deref<unwary_t<RightRef>>::type>
+          typename Left = typename deref<unwary_t<LeftRef>>::type,
+          typename Right = typename deref<unwary_t<RightRef>>::type>
 struct matrix_product;
 
 }
@@ -146,17 +146,20 @@ class GenericMatrix
    , public matrix_methods<TMatrix, E> {
    template <typename, typename> friend class GenericMatrix;
 
+   // TODO: allow only numeric types (after refactoring in atint)
+   static_assert(!is_among<E, bool, int>::value, "invalid Matrix element type");
+
 protected:
    GenericMatrix() {}
    GenericMatrix(const GenericMatrix&) {}
 
 public:
-   static const bool
-      is_sparse= check_container_feature<TMatrix, sparse>::value,
-      is_symmetric=check_container_feature<TMatrix, Symmetric>::value,
-      is_skew=check_container_feature<TMatrix, SkewSymmetric>::value,
-      is_nonsymmetric=!is_symmetric && !is_skew,
-      is_flat=check_container_feature<TMatrix, FlatStorage>::value;
+   static constexpr bool
+      is_sparse = check_container_feature<TMatrix, sparse>::value,
+      is_symmetric = check_container_feature<TMatrix, Symmetric>::value,
+      is_skew = check_container_feature<TMatrix, SkewSymmetric>::value,
+      is_nonsymmetric = !is_symmetric && !is_skew,
+      is_flat = check_container_feature<TMatrix, FlatStorage>::value;
 
    using sym_discr = typename matrix_symmetry_type<TMatrix>::type;
    using typename Generic<TMatrix>::top_type;
@@ -394,7 +397,7 @@ protected:
                   std::enable_if_t<isomorphic_types<E, pure_type_t<Right>>::value &&
                                    is_this<Left>::value &&
                                    temp_ignore<true, !std::is_same<Left, persistent_type>::value>::value>> {
-      using scalar_type = SameElementMatrix<diligent_ref_t<unwary_t<Right>>>;
+      using scalar_type = SameElementMatrix<prevent_int_element<diligent_ref_t<unwary_t<Right>>, E>>;
       using m_s_type = LazyMatrix2<add_const_t<unwary_t<Left>>, scalar_type, Operation>;
 
       static m_s_type make(Left&& l, Right&& r)
@@ -417,7 +420,7 @@ protected:
                   std::enable_if_t<isomorphic_types<E, pure_type_t<Left>>::value &&
                                    is_this<Right>::value &&
                                    temp_ignore<true, !std::is_same<Right, persistent_type>::value>::value>> {
-      using scalar_type = SameElementMatrix<diligent_ref_t<unwary_t<Left>>>;
+      using scalar_type = SameElementMatrix<prevent_int_element<diligent_ref_t<unwary_t<Left>>, E>>;
       using s_m_type = LazyMatrix2<scalar_type, add_const_t<unwary_t<Right>>, Operation>;
 
       static s_m_type make(Left&& l, Right&& r)
@@ -690,7 +693,7 @@ public:
    operator*= (const Right& r)
    {
       if (!is_zero(r))
-         this->top().assign_op(SameElementMatrix<const Right&>(r), BuildBinary<operations::mul>());
+         this->top().assign_op(SameElementMatrix<prevent_int_element<const Right&, E>>(r), BuildBinary<operations::mul>());
       else
          fill(r);
       return this->top();
@@ -702,7 +705,7 @@ public:
    mul_from_left(const Left& l)
    {
       if (!is_zero(l))
-         this->top().assign_op(SameElementMatrix<const Left&>(l), BuildBinary<operations::mul_from_left>());
+         this->top().assign_op(SameElementMatrix<prevent_int_element<const Left&, E>>(l), BuildBinary<operations::mul_from_left>());
       else
          fill(l);
       return this->top();
@@ -730,7 +733,7 @@ public:
                     cleanOperations::can<cleanOperations::div, E, Right>::value, top_type&>
    operator/= (const Right& r)
    {
-      this->top().assign_op(SameElementMatrix<const Right&>(r), BuildBinary<operations::div>());
+      this->top().assign_op(SameElementMatrix<prevent_int_element<const Right&, E>>(r), BuildBinary<operations::div>());
       return this->top();
    }
 
@@ -756,7 +759,7 @@ public:
                     cleanOperations::can<cleanOperations::div, E, Right>::value, top_type&>
    div_exact(const Right& r)
    {
-      this->top().assign_op(SameElementMatrix<const Right&>(r), BuildBinary<operations::divexact>());
+      this->top().assign_op(SameElementMatrix<prevent_int_element<const Right&, E>>(r), BuildBinary<operations::divexact>());
       return this->top();
    }
 
@@ -929,19 +932,19 @@ public:
 
 private:
    template <typename MatrixRef>
-   static auto make_diagonal(MatrixRef&& matrix, int i, bool anti)
+   static auto make_diagonal(MatrixRef&& matrix, Int i, bool anti)
    {
-      const int r = matrix.rows(),
-                c = matrix.cols();
+      const Int r = matrix.rows();
+      const Int c = matrix.cols();
       if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
-         if ((i>0 ? i>=r : -i >= c) && i!=0)
+         if ((i > 0 ? i >= r : -i >= c) && i != 0)
             throw std::runtime_error("GenericMatrix::diagonal/anti_diagonal - index out of range");
       }
       using result_type = IndexedSlice<masquerade<ConcatRows, MatrixRef>, const series>;
 
-      const int start = anti ? (i>0 ? (i+1)*c-1 : c+i-1) : (i>0 ? i*c : -i);
-      const int size = i>0 ? std::min(r-i, c) : std::min(r, c+i);
-      const int step = anti ? c-1 : c+1;
+      const Int start = anti ? (i>0 ? (i+1)*c-1 : c+i-1) : (i>0 ? i*c : -i);
+      const Int size = i>0 ? std::min(r-i, c) : std::min(r, c+i);
+      const Int step = anti ? c-1 : c+1;
       return result_type(std::forward<MatrixRef>(matrix), series(start, size, step));
    }
 
@@ -949,21 +952,21 @@ public:
    /// @param i==0: main diagonal; i>0: i-th diagonal below the main; i<0: (-i)-th above the main
    // gcc 5 can't digest auto here
    IndexedSlice<masquerade<ConcatRows, const typename Unwary<TMatrix>::type&>, const series>
-   diagonal(int i=0) const &
+   diagonal(Int i = 0) const &
    {
       return make_diagonal(unwary(*this), i, false);
    }
 
    // gcc 5 can't digest auto here
    IndexedSlice<masquerade<ConcatRows, typename Unwary<TMatrix>::type&>, const series>
-   diagonal(int i=0) &
+   diagonal(Int i = 0) &
    {
       return make_diagonal(unwary(*this), i, false);
    }
 
    // gcc 5 can't digest auto here
    IndexedSlice<masquerade<ConcatRows, typename Unwary<TMatrix>::type>, const series>
-   diagonal(int i=0) &&
+   diagonal(Int i = 0) &&
    {
       return make_diagonal(unwary(std::move(*this)), i, false);
    }
@@ -971,21 +974,21 @@ public:
    /// @param i==0: main anti-diagonal; i>0: i-th diagonal below the main; i<0: (-i)-th above the main
    // gcc 5 can't digest auto here
    IndexedSlice<masquerade<ConcatRows, const typename Unwary<TMatrix>::type&>, const series>
-   anti_diagonal(int i=0) const &
+   anti_diagonal(Int i = 0) const &
    {
       return make_diagonal(unwary(*this), i, true);
    }
 
    // gcc 5 can't digest auto here
    IndexedSlice<masquerade<ConcatRows, typename Unwary<TMatrix>::type&>, const series>
-   anti_diagonal(int i=0) &
+   anti_diagonal(Int i = 0) &
    {
       return make_diagonal(unwary(*this), i, true);
    }
 
    // gcc 5 can't digest auto here
    IndexedSlice<masquerade<ConcatRows, typename Unwary<TMatrix>::type>, const series>
-   anti_diagonal(int i=0) &&
+   anti_diagonal(Int i = 0) &&
    {
       return make_diagonal(unwary(std::move(*this)), i, true);
    }
@@ -1007,10 +1010,10 @@ protected:
    static void multiply_with2x2(Line&& l_i, Line&& l_j,
                                 const E2& a_ii, const E2& a_ij, const E2& a_ji, const E2& a_jj, std::true_type)
    {
-      auto e_i=l_i.begin(), e_j=l_j.begin();
-      int state=zipper_both;
-      if (e_i.at_end()) state>>=3;
-      if (e_j.at_end()) state>>=6;
+      auto e_i = l_i.begin(), e_j = l_j.begin();
+      int state = zipper_both;
+      if (e_i.at_end()) state >>= 3;
+      if (e_j.at_end()) state >>= 6;
       while (state) {
          if (state >= zipper_both) {
             state &= ~zipper_cmp;
@@ -1109,11 +1112,11 @@ struct is_matrix;
 template <typename TMatrix, typename E>
 struct spec_object_traits< GenericMatrix<TMatrix, E> >
    : spec_or_model_traits<TMatrix, is_container> {
-   static const int dimension=2, is_resizeable= spec_or_model_traits<TMatrix, is_container>::is_resizeable ? 2 : 0;
-   static const bool allow_sparse=true;
+   static constexpr int dimension = 2, is_resizeable= spec_or_model_traits<TMatrix, is_container>::is_resizeable ? 2 : 0;
+   static constexpr bool allow_sparse = true;
    typedef is_matrix generic_tag;
 
-   static bool is_zero(const TMatrix& m) { return !m.non_zero(); }
+   static bool is_zero(const GenericMatrix<TMatrix>& m) { return !m.non_zero(); }
 };
 
 
@@ -1229,7 +1232,7 @@ class matrix_random_access_methods< LazyMatrix1<MatrixRef, Operation> > {
    using self_t = LazyMatrix1<MatrixRef,Operation>;
 public:
    typename lazy1_traits<MatrixRef,Operation>::reference
-   operator() (int i, int j) const
+   operator() (Int i, Int j) const
    {
       const self_t& me=static_cast<const self_t&>(*this);
       typedef typename lazy1_traits<MatrixRef,Operation>::op_builder opb;
@@ -1343,7 +1346,7 @@ class matrix_random_access_methods< LazyMatrix2<MatrixRef1, MatrixRef2, Operatio
    using self_t = LazyMatrix2<MatrixRef1,MatrixRef2,Operation>;
 public:
    typename lazy2_traits<MatrixRef1,MatrixRef2,Operation>::reference
-   operator() (int i, int j) const
+   operator() (Int i, Int j) const
    {
       const self_t& me=static_cast<const self_t&>(*this);
       typedef typename lazy2_traits<MatrixRef1,MatrixRef2,Operation>::op_builder opb;
@@ -1483,7 +1486,7 @@ public:
       return sequence(this->hidden().get_subset(int_constant<1>()).front() * this->hidden().cols(), dim());
    }
 
-   int dim() const { return this->hidden().rows() * this->hidden().cols(); }
+   Int dim() const { return this->hidden().rows() * this->hidden().cols(); }
 };
 
 template <typename MatrixRef, typename RowIndexSetRef, typename ColIndexSetRef>
@@ -1494,7 +1497,7 @@ class ConcatRows< MatrixMinor<MatrixRef, RowIndexSetRef, ColIndexSetRef> >
 protected:
    ~ConcatRows();
 public:
-   int dim() const
+   Int dim() const
    {
       return this->hidden().rows() * this->hidden().cols();
    }
@@ -1518,15 +1521,15 @@ class ConcatRows< BlockMatrix<MatrixList, std::true_type> >
 protected:
    ~ConcatRows();
 public:
-   template <int i>
-   decltype(auto) get_container(int_constant<i>)
+   template <size_t i>
+   decltype(auto) get_container(size_constant<i>)
    {
-      return concat_rows(this->hidden().template get_container(int_constant<i>()));
+      return concat_rows(this->hidden().template get_container(size_constant<i>()));
    }
-   template <int i>
-   decltype(auto) get_container(int_constant<i>) const
+   template <size_t i>
+   decltype(auto) get_container(size_constant<i>) const
    {
-      return concat_rows(this->hidden().template get_container(int_constant<i>()));
+      return concat_rows(this->hidden().template get_container(size_constant<i>()));
    }
 
    ConcatRows& operator= (const ConcatRows& other) { return ConcatRows::generic_type::operator=(other); }
@@ -1550,12 +1553,12 @@ protected:
    using GenericMatrix<RepeatedRow>::stretch_rows;
    using GenericMatrix<RepeatedRow>::stretch_cols;
 
-   void stretch_rows(int r)
+   void stretch_rows(Int r)
    {
       this->line_container.stretch_dim(r);
    }
 
-   void stretch_cols(int c)
+   void stretch_cols(Int c)
    {
       this->line_container.get_elem_alias().get_object().stretch_dim(c);
    }
@@ -1576,12 +1579,12 @@ protected:
    using GenericMatrix<RepeatedCol>::stretch_rows;
    using GenericMatrix<RepeatedCol>::stretch_cols;
 
-   void stretch_rows(int r)
+   void stretch_rows(Int r)
    {
       this->line_container.get_elem_alias().get_object().stretch_dim(r);
    }
 
-   void stretch_cols(int c)
+   void stretch_cols(Int c)
    {
       this->line_container.stretch_dim(c);
    }
@@ -1629,7 +1632,7 @@ template <typename VectorRef>
 class matrix_random_access_methods< RepeatedRow<VectorRef> > {
    using self_t = RepeatedRow<VectorRef>;
 public:
-   decltype(auto) operator() (int i, int j)
+   decltype(auto) operator() (Int i, Int j)
    {
       self_t& me=static_cast<self_t&>(*this);
       if (POLYMAKE_DEBUG && (i<0 || i>me.rows()))
@@ -1637,7 +1640,7 @@ public:
       return me.get_line()[j];
    }
 
-   decltype(auto) operator() (int i, int j) const
+   decltype(auto) operator() (Int i, Int j) const
    {
       const self_t& me=static_cast<const self_t&>(*this);
       if (POLYMAKE_DEBUG && (i<0 || i>me.rows()))
@@ -1650,7 +1653,7 @@ template <typename VectorRef>
 class matrix_random_access_methods< RepeatedCol<VectorRef> > {
    using self_t = RepeatedCol<VectorRef>;
 public:
-   decltype(auto) operator() (int i, int j)
+   decltype(auto) operator() (Int i, Int j)
    {
       self_t& me=static_cast<self_t&>(*this);
       if (POLYMAKE_DEBUG && (j<0 || j>me.cols()))
@@ -1658,7 +1661,7 @@ public:
       return me.get_line()[i];
    }
 
-   decltype(auto) operator() (int i, int j) const
+   decltype(auto) operator() (Int i, Int j) const
    {
       const self_t& me=static_cast<const self_t&>(*this);
       if (POLYMAKE_DEBUG && (j<0 || j>me.cols()))
@@ -1677,7 +1680,7 @@ public:
    count_down get_container1() const { return count_down(this->hidden().get_count()); }
    decltype(auto) get_container2() const { return this->hidden().get_line(); }
 
-   int dim() const
+   Int dim() const
    {
       return this->hidden().get_count() * get_container2().dim();
    }
@@ -1693,11 +1696,11 @@ public:
    {
       return this->hidden().get_line().get_elem_alias();
    }
-   int size() const
+   Int size() const
    {
       return this->hidden().get_count() * this->hidden().get_line().size();
    }
-   int dim() const
+   Int dim() const
    {
       return this->hidden().get_count() * this->hidden().get_line().dim();
    }
@@ -1714,7 +1717,7 @@ public:
    decltype(auto) get_container1() const { return this->hidden().get_line(); }
    count_down get_container2() const { return count_down(this->hidden().get_count()); }
 
-   int dim() const
+   Int dim() const
    {
       return this->hidden().get_count() * get_container1().dim();
    }
@@ -1778,7 +1781,7 @@ template <typename VectorRef, bool is_sparse=check_container_ref_feature<VectorR
 class repeated_line_across
    : public modified_container_impl< repeated_line_across<VectorRef, is_sparse>,
                                      mlist< ContainerRefTag< typename attrib<VectorRef>::plus_const >,
-                                            OperationTag< operations::construct_unary_with_arg<SameElementVector, int> >,
+                                            OperationTag< operations::construct_unary_with_arg<SameElementVector, Int> >,
                                             HiddenTag< repeated_line_matrix<VectorRef> > > > {
    using base_t = modified_container_impl<repeated_line_across>;
 public:
@@ -1799,7 +1802,7 @@ public:
    sequence get_container1() const { return sequence(0, size()); }
    decltype(auto) get_container2() const { return this->hidden().get_line(); }
    typename base_t::operation get_operation() const { return this->hidden().get_count(); }
-   int size() const { return get_container2().dim(); }
+   Int size() const { return get_container2().dim(); }
 };
 
 template <typename VectorRef>
@@ -1819,7 +1822,7 @@ protected:
 
 /// Create a matrix with n rows, each equal to v.
 template <typename TVector, typename=std::enable_if_t<is_generic_vector<TVector>::value>>
-auto repeat_row(TVector&& v, int n=0)
+auto repeat_row(TVector&& v, Int n = 0)
      // gcc 5 needs this crutch
      -> RepeatedRow<diligent_ref_t<unwary_t<TVector>>>
 {
@@ -1829,7 +1832,7 @@ auto repeat_row(TVector&& v, int n=0)
 
 /// Create a matrix with n columns, each equal to v.
 template <typename TVector, typename=std::enable_if_t<is_generic_vector<TVector>::value>>
-auto repeat_col(TVector&& v, int n=0)
+auto repeat_col(TVector&& v, Int n = 0)
      // gcc 5 needs this crutch
      -> RepeatedCol<diligent_ref_t<unwary_t<TVector>>>
 {
@@ -1840,15 +1843,15 @@ auto repeat_col(TVector&& v, int n=0)
 /// Create a matrix with m rows and n columns whose entries
 /// are all equal to the given element x.
 template <typename E>
-auto same_element_matrix(E&& x, int m, int n)
+auto same_element_matrix(E&& x, Int m, Int n)
 {
-   return RepeatedRow<SameElementVector<E>>(same_element_vector(std::forward<E>(x), n), m);
+   return RepeatedRow<SameElementVector<prevent_int_element<E>>>(same_element_vector(std::forward<E>(x), n), m);
 }
 
 /// Create a matrix with m rows and n columns whose entries
 /// are all equal to 1.
 template <typename E>
-auto ones_matrix(int m, int n)
+auto ones_matrix(Int m, Int n)
 {
    using vector_t = decltype(ones_vector<E>(0));
    return RepeatedRow<vector_t>(ones_vector<E>(n), m);
@@ -1857,7 +1860,7 @@ auto ones_matrix(int m, int n)
 /// Create a matrix with m rows and n columns whose entries
 /// are all equal to 0.
 template <typename E>
-auto zero_matrix(int m, int n)
+auto zero_matrix(Int m, Int n)
 {
    using vector_t = decltype(zero_vector<E>(0));
    return RepeatedRow<vector_t>(zero_vector<E>(n), m);
@@ -1896,7 +1899,7 @@ class SameElementMatrix
 public:
    using same_value_container<ERef>::same_value_container;
 
-   decltype(auto) operator() (int, int) const { return this->front(); }
+   decltype(auto) operator() (Int, Int) const { return this->front(); }
 };
 
 template <typename ERef>
@@ -1962,11 +1965,11 @@ protected:
    using GenericMatrix<DiagMatrix>::stretch_rows;
    using GenericMatrix<DiagMatrix>::stretch_cols;
 
-   void stretch_rows(int r)
+   void stretch_rows(Int r)
    {
       vector.get_object().stretch_dim(r);
    }
-   void stretch_cols(int c)
+   void stretch_cols(Int c)
    {
       vector.get_object().stretch_dim(c);
    }
@@ -1985,7 +1988,7 @@ class matrix_random_access_methods< DiagMatrix<VectorRef, is_main> > {
    using self_t = DiagMatrix<VectorRef, is_main>;
 public:
    typename container_traits<VectorRef>::const_reference
-   operator() (int i, int j) const
+   operator() (Int i, Int j) const
    {
       const self_t& me=static_cast<const self_t&>(*this);
       if (is_main ? i==j : i+j==me.get_vector().dim()-1)
@@ -2013,13 +2016,13 @@ public:
 
    series get_container2() const
    {
-      const int d=this->hidden().get_vector().dim();
+      const Int d = this->hidden().get_vector().dim();
       return series(main_diag ? 0 : d-1, d, main_diag ? d+1 : d-1);
    }
 
-   int dim() const
+   Int dim() const
    {
-      const int d=this->hidden().get_vector().dim();
+      const Int d = this->hidden().get_vector().dim();
       return d*d;
    }
 };
@@ -2035,7 +2038,7 @@ template <typename VectorRef, bool main_diag, typename TReversed,
 struct DiagRowsCols_helper {
    static const bool use_sequence_index= !main_diag && std::is_same<TReversed, void>::value;
    typedef zipping_coupler< operations::cmp, set_union_zipper, use_sequence_index, true > zipper;
-   typedef mlist< Container1RefTag< Series<int, main_diag> >,
+   typedef mlist< Container1RefTag< Series<Int, main_diag> >,
                   Container2RefTag< masquerade_add_features<VectorRef, typename mlist_concat<pure_sparse, TReversed>::type> >,
                   IteratorCouplerTag< typename reverse_coupler_helper<zipper, TReversed>::type >,
                   OperationTag< SameElementSparseVector_factory<3> >,
@@ -2044,7 +2047,7 @@ struct DiagRowsCols_helper {
 
 template <typename VectorRef, bool main_diag, typename TReversed>
 struct DiagRowsCols_helper<VectorRef, main_diag, TReversed, true> {
-   typedef mlist< Container1RefTag< Series<int, main_diag> >,
+   typedef mlist< Container1RefTag< Series<Int, main_diag> >,
                   Container2RefTag< VectorRef >,
                   OperationTag< SameElementSparseVector_factory<2> >,
                   HiddenTag< DiagMatrix<VectorRef, main_diag> > > params;
@@ -2057,10 +2060,10 @@ class DiagRowsCols
                                           typename DiagRowsCols_helper<VectorRef, main_diag, TReversed>::params> {
    typedef modified_container_pair_impl<DiagRowsCols> base_t;
 public:
-   Series<int, main_diag> get_container1() const
+   Series<Int, main_diag> get_container1() const
    {
-      const int n=size();
-      return Series<int, main_diag>(main_diag ? 0 : n-1, n, main_diag ? 1 : -1);
+      const Int n = size();
+      return Series<Int, main_diag>(main_diag ? 0 : n-1, n, main_diag ? 1 : -1);
    }
    const typename base_t::container2& get_container2() const
    {
@@ -2068,7 +2071,7 @@ public:
    }
 
    typename base_t::operation get_operation() const { return size(); }
-   int size() const { return this->hidden().get_vector().dim(); }
+   Int size() const { return this->hidden().get_vector().dim(); }
 };
 
 template <typename VectorRef>
@@ -2108,7 +2111,7 @@ auto anti_diag(const GenericVector<TVector>& v)
 
 /// Create a unit_matrix of dimension dim.
 template <typename E>
-auto unit_matrix(int dim)
+auto unit_matrix(Int dim)
 {
    // TODO: replace with direct call to diag() when it starts using urefs
    using vector_t = decltype(ones_vector<E>(dim));
@@ -2135,10 +2138,10 @@ public:
    using container_pair_base<typename attrib<MatrixRef1>::plus_const, typename attrib<MatrixRef2>::plus_const>::container_pair_base;
 
    /// the number of rows
-   int rows() const { return this->get_container1().rows() + this->get_container2().rows(); }
+   Int rows() const { return this->get_container1().rows() + this->get_container2().rows(); }
 
    /// the number of columns
-   int cols() const { return this->get_container1().cols() + this->get_container2().cols(); }
+   Int cols() const { return this->get_container1().cols() + this->get_container2().cols(); }
 };
 
 template <typename MatrixRef1, typename MatrixRef2, bool is_main>
@@ -2166,18 +2169,18 @@ class matrix_random_access_methods< BlockDiagMatrix<MatrixRef1, MatrixRef2, is_m
 public:
    typename compatible<typename container_traits<MatrixRef1>::const_reference,
                        typename container_traits<MatrixRef2>::const_reference>::type
-   operator() (int i, int j) const
+   operator() (Int i, Int j) const
    {
-      const self_t& me=static_cast<const self_t&>(*this);
-      const int c1=me.get_container1().cols();
+      const self_t& me = static_cast<const self_t&>(*this);
+      const Int c1 = me.get_container1().cols();
       if (is_main) {
-         const int r1=me.get_container1().rows();
-         if (i<r1 && j<c1) return me.get_container1()(i,j);
-         if (i>=r1 && j>=c1) return me.get_container2()(i-r1,j-c1);
+         const Int r1 = me.get_container1().rows();
+         if (i < r1 && j < c1) return me.get_container1()(i, j);
+         if (i >= r1 && j >= c1) return me.get_container2()(i-r1, j-c1);
       } else {
-         const int r2=me.get_container2().rows();
-         if (i>=r2 && j<c1) return me.get_container1()(i-r2,j);
-         if (i<r2 && j>=c1) return me.get_container2()(i,j-c1);
+         const Int r2 = me.get_container2().rows();
+         if (i >= r2 && j < c1) return me.get_container1()(i-r2,j);
+         if (i < r2 && j >= c1) return me.get_container2()(i,j-c1);
       }
       return zero_value<typename self_t::element_type>();
    }
@@ -2201,17 +2204,17 @@ class BlockDiagRowsCols
       return reinterpret_cast<const typename base_t::container&>(this->hidden().get_container2());
    }
 
-   int dim_impl(std::true_type)  const { return this->hidden().get_container1().cols() + this->hidden().get_container2().cols(); }
-   int dim_impl(std::false_type) const { return this->hidden().get_container1().rows() + this->hidden().get_container2().rows(); }
+   Int dim_impl(std::true_type)  const { return this->hidden().get_container1().cols() + this->hidden().get_container2().cols(); }
+   Int dim_impl(std::false_type) const { return this->hidden().get_container1().rows() + this->hidden().get_container2().rows(); }
 
-   int offset_impl(std::true_type,  std::true_type,  std::true_type)  const { return 0; }
-   int offset_impl(std::true_type,  std::true_type,  std::false_type) const { return this->hidden().get_container1().cols(); }
-   int offset_impl(std::true_type,  std::false_type, std::true_type)  const { return 0; }
-   int offset_impl(std::true_type,  std::false_type, std::false_type) const { return this->hidden().get_container1().rows(); }
-   int offset_impl(std::false_type, std::true_type,  std::true_type)  const { return this->hidden().get_container1().cols(); }
-   int offset_impl(std::false_type, std::true_type,  std::false_type) const { return 0; }
-   int offset_impl(std::false_type, std::false_type, std::true_type)  const { return this->hidden().get_container2().rows(); }
-   int offset_impl(std::false_type, std::false_type, std::false_type) const { return 0; }
+   Int offset_impl(std::true_type,  std::true_type,  std::true_type)  const { return 0; }
+   Int offset_impl(std::true_type,  std::true_type,  std::false_type) const { return this->hidden().get_container1().cols(); }
+   Int offset_impl(std::true_type,  std::false_type, std::true_type)  const { return 0; }
+   Int offset_impl(std::true_type,  std::false_type, std::false_type) const { return this->hidden().get_container1().rows(); }
+   Int offset_impl(std::false_type, std::true_type,  std::true_type)  const { return this->hidden().get_container1().cols(); }
+   Int offset_impl(std::false_type, std::true_type,  std::false_type) const { return 0; }
+   Int offset_impl(std::false_type, std::false_type, std::true_type)  const { return this->hidden().get_container2().rows(); }
+   Int offset_impl(std::false_type, std::false_type, std::false_type) const { return 0; }
 
 public:
    const typename base_t::container& get_container() const
@@ -2234,11 +2237,11 @@ class Rows< BlockDiagMatrix<MatrixRef1, MatrixRef2, main_diag> >
 protected:
    ~Rows();
 public:
-   decltype(auto) get_container(int_constant<0>) const
+   decltype(auto) get_container(size_constant<0>) const
    {
       return reinterpret_cast<const BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, pm::Rows, true, true>&>(this->hidden());
    }
-   decltype(auto) get_container(int_constant<1>) const
+   decltype(auto) get_container(size_constant<1>) const
    {
       return reinterpret_cast<const BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, pm::Rows, true, false>&>(this->hidden());
    }
@@ -2253,11 +2256,11 @@ class Cols< BlockDiagMatrix<MatrixRef1, MatrixRef2, main_diag> >
 protected:
    ~Cols();
 public:
-   decltype(auto) get_container(int_constant<0>) const
+   decltype(auto) get_container(size_constant<0>) const
    {
       return reinterpret_cast<const BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, pm::Cols, false, true>&>(this->hidden());
    }
-   decltype(auto) get_container(int_constant<1>) const
+   decltype(auto) get_container(size_constant<1>) const
    {
       return reinterpret_cast<const BlockDiagRowsCols<MatrixRef1, MatrixRef2, main_diag, pm::Cols, false, false>&>(this->hidden());
    }
@@ -2370,12 +2373,12 @@ public:
    using reference = E&;
    using const_reference = const E&;
 
-   int i, j;    // row & col
+   Int i, j;    // row & col
    E a_ii, a_ij, a_ji, a_jj;
 
    SparseMatrix2x2() {}
 
-   SparseMatrix2x2(int i_arg, int j_arg,
+   SparseMatrix2x2(Int i_arg, Int j_arg,
                    const E& a_ii_arg, const E& a_ij_arg,
                    const E& a_ji_arg, const E& a_jj_arg)
       : i(i_arg), j(j_arg), a_ii(a_ii_arg), a_ij(a_ij_arg), a_ji(a_ji_arg), a_jj(a_jj_arg) {}
@@ -2437,9 +2440,9 @@ class matrix_random_access_methods< MatrixProduct<MatrixRef1, MatrixRef2> > {
 public:
    typename operations::mul<typename container_traits<MatrixRef1>::const_reference,
                             typename container_traits<MatrixRef2>::const_reference>::result_type
-   operator() (int i, int j) const
+   operator() (Int i, Int j) const
    {
-      const self_t& me=static_cast<const self_t&>(*this);
+      const self_t& me = static_cast<const self_t&>(*this);
       return me.get_container1().row(i) * me.get_container2().col(j);
    }
 };

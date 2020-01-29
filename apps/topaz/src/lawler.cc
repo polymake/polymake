@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,9 +23,9 @@
 
 namespace polymake { namespace topaz {
   
-Array<Set<int>> lawler(const Array<Set<int> > F, const int n_vertices )
+Array<Set<Int>> lawler(const Array<Set<Int>>& F, const Int n_vertices)
 {
-   sequence Vertices(0,n_vertices);
+   sequence Vertices(0, n_vertices);
 
    // C stores the candidates for minimal non-faces
    // insert every single element in the complement of the first facet
@@ -33,9 +33,9 @@ Array<Set<int>> lawler(const Array<Set<int> > F, const int n_vertices )
    FacetList C=all_subsets_of_1(Vertices-F[0]);
 
    // incrementally insert the facets into the complex (skip the first facet)
-   auto f=entire(F);
+   auto f = entire(F);
    for (++f; !f.at_end(); ++f) {
-      Set<int> V = Vertices-*f;    // compute the complement of the current facet
+      Set<Int> V = Vertices-*f;    // compute the complement of the current facet
       FacetList Cnew(n_vertices);
       // for every element in C
       for (auto cit=entire(C); !cit.at_end(); ++cit) {
@@ -47,7 +47,7 @@ Array<Set<int>> lawler(const Array<Set<int> > F, const int n_vertices )
       C = Cnew;
    }
 
-   return Array<Set<int>>(C);
+   return Array<Set<Int>>(C);
 }
 
 Function4perl(&lawler, "lawler_minimal_non_faces(Array<Set<Int>>, $)");

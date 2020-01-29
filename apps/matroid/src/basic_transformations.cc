@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,65 +21,65 @@
 
 namespace polymake { namespace matroid {
 
-using SArray = Array<Set<int>>;
+using SArray = Array<Set<Int>>;
 
-SArray bases_to_circuits(const SArray& bases, const int n)
+SArray bases_to_circuits(const SArray& bases, const Int n)
 {
    if (bases.empty()) {
       return SArray(n, entire(all_subsets_of_k(sequence(0,n),1)));
    }
-   const int r=bases[0].size();
-   if (r==0) {
+   const Int r = bases[0].size();
+   if (r == 0) {
       SArray c(n);
-      for (int i=0; i<n; ++i)
-         c[i]=scalar2set(i);
+      for (Int i = 0; i < n; ++i)
+         c[i] = scalar2set(i);
       return c;
    }
-   if (r==n) return SArray(0);
-   int n_circuits=0;
-   std::vector<Set<int>> circuits;
-   for (int k=1; k<=r; ++k) {
-      for (auto j=entire(all_subsets_of_k(sequence(0,n),k));!j.at_end();++j) {
-         bool is_circuit=true;
-         for (auto i=entire(circuits); is_circuit && !i.at_end(); ++i)
-            if (incl(*i,*j)<=0) is_circuit=false;
+   if (r == n) return SArray(0);
+   Int n_circuits = 0;
+   std::vector<Set<Int>> circuits;
+   for (Int k = 1; k <= r; ++k) {
+      for (auto j = entire(all_subsets_of_k(sequence(0, n), k)); !j.at_end(); ++j) {
+         bool is_circuit = true;
+         for (auto i = entire(circuits); is_circuit && !i.at_end(); ++i)
+            if (incl(*i, *j) <= 0) is_circuit = false;
          for (auto i = entire(bases); is_circuit && !i.at_end(); ++i) {
-            const int l=incl(*i,*j);
-            if (l==0 || l==1) is_circuit=false;
+            const Int l = incl(*i,*j);
+            if (l == 0 || l == 1) is_circuit = false;
          }
          if (is_circuit) {
-            circuits.push_back(Set<int>(*j));
+            circuits.push_back(Set<Int>(*j));
             ++n_circuits;
          }
       }
    }
-   for (auto j=entire(all_subsets_of_k(sequence(0,n), r+1)); !j.at_end(); ++j) {
-      bool is_circuit=true;
-      for (auto i=entire(circuits); is_circuit && !i.at_end(); ++i)
-         if (incl(*i,*j)<=0) is_circuit=false;
+   for (auto j = entire(all_subsets_of_k(sequence(0, n), r+1)); !j.at_end(); ++j) {
+      bool is_circuit = true;
+      for (auto i = entire(circuits); is_circuit && !i.at_end(); ++i)
+         if (incl(*i, *j) <= 0) is_circuit = false;
       if (is_circuit) {
-         circuits.push_back(Set<int>(*j));
+         circuits.push_back(Set<Int>(*j));
          ++n_circuits;
       }
    }
    return SArray(n_circuits, entire(circuits));
 }
 
-SArray circuits_to_bases(const SArray& circuits,const int n)
+SArray circuits_to_bases(const SArray& circuits, const Int n)
 {
    if (circuits.empty())
-      return SArray(1, Set<int>(sequence(0,n)));
-   int n_bases=0;
-   std::vector<Set<int>> bases;
-   int r=1;
-   for (int k=n; k>=r; --k)
-      for (auto j=entire(all_subsets_of_k(sequence(0,n),k)); !j.at_end(); ++j) {
-         bool is_basis=true;
+      return SArray(1, Set<Int>(sequence(0, n)));
+   Int n_bases = 0;
+   std::vector<Set<Int>> bases;
+   Int r = 1;
+   for (Int k = n; k >= r; --k)
+      for (auto j = entire(all_subsets_of_k(sequence(0, n), k)); !j.at_end(); ++j) {
+         bool is_basis = true;
          for (auto i = entire(circuits); is_basis && !i.at_end(); ++i){
-            if (incl(*i,*j)<=0) is_basis=false;
+            if (incl(*i, *j) <= 0) is_basis = false;
          }
          if (is_basis) {
-            bases.push_back(Set<int>(*j));
+            bases.push_back(Set<Int>(*j));
             ++n_bases;
             r=k;
          }
@@ -90,36 +90,36 @@ SArray circuits_to_bases(const SArray& circuits,const int n)
 }
 
 
-SArray circuits_to_bases_rank(const SArray& circuits, const int n, const int rank)
+SArray circuits_to_bases_rank(const SArray& circuits, const Int n, const Int rank)
 {
-   if (circuits.empty()) return SArray(1, Set<int>(sequence(0,n)));
-   int n_bases=0;
-   std::vector<Set<int>> bases;
-   for (auto j=entire(all_subsets_of_k(sequence(0,n),rank)); !j.at_end(); ++j) {
+   if (circuits.empty()) return SArray(1, Set<Int>(sequence(0, n)));
+   Int n_bases = 0;
+   std::vector<Set<Int>> bases;
+   for (auto j = entire(all_subsets_of_k(sequence(0, n), rank)); !j.at_end(); ++j) {
       bool is_basis=true;
       for (auto i = entire(circuits); is_basis && !i.at_end(); ++i) {
-         if (incl(*i,*j)<=0) is_basis=false;
+         if (incl(*i,*j) <= 0) is_basis = false;
       }
       if (is_basis) {
-         bases.push_back(Set<int>(*j));
+         bases.push_back(Set<Int>(*j));
          ++n_bases;
       }
    }
    return SArray(n_bases, entire(bases));
 }
 
-SArray circuits_to_hyperplanes(const SArray& circuits, const int n, const int rank)
+SArray circuits_to_hyperplanes(const SArray& circuits, const Int n, const Int rank)
 {
    if (rank==0) {
       return SArray(0);
    }
-   Set<Set<int>> hyp;
-   for (auto j=entire(all_subsets_of_k(sequence(0,n),rank-1)); !j.at_end(); ++j) {
-      bool is_ind=true;
-      Set<int> h=*j;
+   Set<Set<Int>> hyp;
+   for (auto j = entire(all_subsets_of_k(sequence(0, n), rank-1)); !j.at_end(); ++j) {
+      bool is_ind = true;
+      Set<Int> h = *j;
       for (auto c = entire(circuits); is_ind && !c.at_end(); ++c) {
-         if (incl(*c,*j)<=0) is_ind=false;
-         if ((*c-*j).size()==1) {
+         if (incl(*c,*j) <=0 ) is_ind = false;
+         if ((*c-*j).size() == 1) {
             h+=*c;
          }
       }

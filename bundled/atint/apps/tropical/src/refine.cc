@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -47,12 +47,12 @@ namespace polymake { namespace tropical {
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
-RefinementResult refinement(perl::Object X, perl::Object Y,
+RefinementResult refinement(BigObject X, BigObject Y,
                             bool repFromX, bool repFromY,bool computeAssoc,bool refine, bool forceLatticeComputation)
 {
   // Sanity check
   if (call_function("is_empty", X)) {
-    int ambient_dim=X.give("PROJECTIVE_AMBIENT_DIM");
+    Int ambient_dim = X.give("PROJECTIVE_AMBIENT_DIM");
     ambient_dim+=2;
     RefinementResult r;
     r.complex = X;
@@ -60,7 +60,7 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
     r.linRepFromX = Matrix<Rational>(0, ambient_dim);
     r.rayRepFromY = Matrix<Rational>(0, ambient_dim);
     r.linRepFromY = Matrix<Rational>(0, ambient_dim);
-    r.associatedRep = Vector<int>();
+    r.associatedRep = Vector<Int>();
     return r;
   }
 
@@ -81,9 +81,9 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
   const IncidenceMatrix<> &x_cmplx_cones = repFromX? X.give("SEPARATED_MAXIMAL_POLYTOPES") : IncidenceMatrix<>();
   const Matrix<Rational> &x_lineality_ref = X.give("LINEALITY_SPACE");
   const Matrix<Rational> x_lineality = tdehomog(x_lineality_ref);
-  const int x_lineality_dim = X.give("LINEALITY_DIM");
-  const int ambient_dim = x_rays.cols();
-  const int x_dimension = X.give("PROJECTIVE_DIM");
+  const Int x_lineality_dim = X.give("LINEALITY_DIM");
+  const Int ambient_dim = x_rays.cols();
+  const Int x_dimension = X.give("PROJECTIVE_DIM");
   Vector<Integer> weights; bool weightsExist = false;
   if (X.exists("WEIGHTS")) {
     X.give("WEIGHTS") >> weights;
@@ -117,27 +117,26 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
 
 
   // Prepare result variables
-  perl::Object complex(X.type());
+  BigObject complex(X.type());
   Matrix<Rational> c_rays(0,ambient_dim);
   Matrix<Rational> c_lineality(0,ambient_dim);
-  int c_lineality_dim = 0;
-  Vector<Set<int>> c_cones;
+  Int c_lineality_dim = 0;
+  Vector<Set<Int>> c_cones;
   Vector<Integer> c_weights;
   Matrix<Integer> c_lattice_g = lattice_generators;
-  Vector<Set<int>> c_lattice_b;
+  Vector<Set<Int>> c_lattice_b;
   Matrix<Rational> rayRepFromX;
   Matrix<Rational> rayRepFromY;
   Matrix<Rational> linRepFromX;
   Matrix<Rational> linRepFromY;
-  Vector<int> associatedRep;
-
+  Vector<Int> associatedRep;
 
   // If we don't refine, we already know most of the results concerning X
   if (!refine) {
     c_rays = x_rays;
-    for (int xr = 0; xr < x_cones.rows(); ++xr) c_cones |= x_cones.row(xr);
+    for (Int xr = 0; xr < x_cones.rows(); ++xr) c_cones |= x_cones.row(xr);
     c_weights = weights;
-    // if(computeAssoc) associatedRep = Vector<int>(x_cones.rows());
+    // if(computeAssoc) associatedRep = Vector<Int>(x_cones.rows());
     if (repFromX) rayRepFromX = unit_matrix<Rational>(x_cmplx_rays.rows()) |
                                 zero_matrix<Rational>(x_cmplx_rays.rows(),x_lineality.rows());
   }
@@ -188,9 +187,9 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
     y_equations.reserve(1);
     y_equations.push_back(polytope::enumerate_facets(Matrix<Rational>(0,y_lineality.cols()), y_lineality, false));
   } else {
-    const int n_y_equations = y_cones.rows();
+    const Int n_y_equations = y_cones.rows();
     y_equations.reserve(n_y_equations);
-    for (int yc = 0; yc < n_y_equations; ++yc) {
+    for (Int yc = 0; yc < n_y_equations; ++yc) {
       y_equations.push_back(polytope::enumerate_facets(y_rays.minor(y_cones.row(yc), All), y_lineality, false));
     }
   }
@@ -198,11 +197,11 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
   // This saves for each x-cone (index in x_cones) the cones that have been created as refinements.
   // Since doubles can only occur when the same x-cone is contained in the intersection of several y-cones,
   // we only have to check the cones in xrefinements[xc]
-  Vector<Set<Set<int>>> xrefinements(x_onlylineality ? 1 : x_cones.rows());
+  Vector<Set<Set<Int>>> xrefinements(x_onlylineality ? 1 : x_cones.rows());
 
   // These variables save for each cone of the intersection the indices of the cones in X and Y containing it
-  Vector<int> xcontainers;
-  Vector<int> ycontainers;
+  Vector<Int> xcontainers;
+  Vector<Int> ycontainers;
 
   // Data on local restriction
   // This variable declares whether local cone i has been subdivided yet
@@ -213,12 +212,12 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
   // -----------------------------------------------------------------------------------
   if (refine || repFromX || repFromY) {
     // Iterate all cones of X
-    for (int xc = 0; xc < (x_onlylineality ? 1 : x_cones.rows()); ++xc) {
+    for (Int xc = 0; xc < (x_onlylineality ? 1 : x_cones.rows()); ++xc) {
       // If we have local restriction, we have to find all not-yet-subdivided local cones
       // contained in xc
-      Vector<int> xc_local_cones;  // Saves position indices in array local_restriction
+      Vector<Int> xc_local_cones;  // Saves position indices in array local_restriction
       if (local_restriction.rows() > 0) {
-        for (int lc = 0; lc < local_restriction.rows(); ++lc) {
+        for (Int lc = 0; lc < local_restriction.rows(); ++lc) {
           if (!local_subdivided[lc]) {
             if ((local_restriction.row(lc) * x_cones.row(xc)).size() == local_restriction.row(lc).size()) {
               xc_local_cones |= lc;
@@ -227,13 +226,13 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
         }
       }
       // Initalize refinement cone set
-      xrefinements[xc] = Set<Set<int> >();
+      xrefinements[xc] = Set<Set<Int>>();
       // Compute a facet representation for the X-cone
       const auto x_equations = polytope::enumerate_facets( x_onlylineality ? Matrix<Rational>(0,x_lineality.cols()) :
                                                            x_rays.minor(x_cones.row(xc),All), x_lineality, false );
 
       // Iterate all cones of Y
-      for (int yc = 0; yc < (y_onlylineality? 1 : y_cones.rows()); ++yc) {
+      for (Int yc = 0; yc < (y_onlylineality? 1 : y_cones.rows()); ++yc) {
         // Compute a V-representation of the intersection
         Matrix<Rational> interrays = polytope::try_enumerate_vertices(x_equations.first / y_equations[yc].first,
                                                                       x_equations.second / y_equations[yc].second, false).first;
@@ -241,21 +240,21 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
         // Check if it is full-dimensional (and has at least one ray - lin.spaces are not interesting)
         if (interrays.rows() > 0 && rank(interrays) + c_lineality_dim - 1 == x_dimension) {
           // If we refine, add the cone. Otherwise just remember the indices
-          Set<int> interIndices;
+          Set<Int> interIndices;
           if (!refine) {
             // Copy indices
             interIndices = x_cones.row(xc);
             ycontainers |= yc;
           } else {
             // Now we canonicalize the rays and assign ray indices
-            Set<int> newRays;
-            for (int rw = 0; rw < interrays.rows(); ++rw) {
+            Set<Int> newRays;
+            for (Int rw = 0; rw < interrays.rows(); ++rw) {
               if (interrays(rw,0) != 0) {
                 // Vertices start with a 1
                 interrays.row(rw) /= interrays(rw,0);
               } else {
                 // The first non-zero entry in a directional ray is +-1
-                for (int cl = 0; cl < interrays.cols(); ++cl) {
+                for (Int cl = 0; cl < interrays.cols(); ++cl) {
                   if (interrays(rw,cl) != 0) {
                     interrays.row(rw) /= abs(interrays(rw,cl));
                     break;
@@ -265,9 +264,9 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
 
 
               // Go through the existing rays and compare
-              int nrays = c_rays.rows();
-              int newrayindex = -1;
-              for (int oray = 0; oray < nrays; ++oray) {
+              Int nrays = c_rays.rows();
+              Int newrayindex = -1;
+              for (Int oray = 0; oray < nrays; ++oray) {
                 if (interrays.row(rw) == c_rays.row(oray)) {
                   newrayindex = oray;
                   break;
@@ -310,14 +309,14 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
       // lies in the local cone. If the cone spanned by these has the right dimension
       // add it as a local cone
       if (local_restriction.rows() > 0 && refine) {
-        for (int t = 0; t < xc_local_cones.dim(); ++t) {
+        for (Int t = 0; t < xc_local_cones.dim(); ++t) {
           // Will contain the subdivision cones of the local cone we currently study
-          Set<Set<int>> local_subdivision_cones;
+          Set<Set<Int>> local_subdivision_cones;
           Matrix<Rational> lrays = x_rays.minor(local_restriction[xc_local_cones[t]],All);
-          int local_cone_dim = rank(lrays) + x_lineality_dim;
+          Int local_cone_dim = rank(lrays) + x_lineality_dim;
           for (auto s = entire(xrefinements[xc]); !s.at_end(); ++s) {
             // Check which rays of refinement cone lie in local cone
-            Set<int> cone_subset;
+            Set<Int> cone_subset;
             for (auto cs = entire(*s); !cs.at_end(); ++cs) {
               if (is_ray_in_cone(lrays, x_lineality, c_rays.row(*cs), false)) {
                 cone_subset += *cs;
@@ -344,8 +343,8 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
   // At the end we still have to check if all maximal cones are still compatible
   // and remove those that aren't
   if (local_restriction.rows() > 0 && refine) {
-    Set<int> removableCones;
-    for (int c = 0; c < c_cones.dim(); ++c) {
+    Set<Int> removableCones;
+    for (Int c = 0; c < c_cones.dim(); ++c) {
       if (!is_coneset_compatible(c_cones[c],local_restriction_result)) {
         removableCones += c;
       }
@@ -356,7 +355,7 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
     xcontainers = xcontainers.slice(~removableCones);
     ycontainers = ycontainers.slice(~removableCones);
     // Remove unused rays
-    Set<int> used_rays = accumulate(c_cones, operations::add());
+    Set<Int> used_rays = accumulate(c_cones, operations::add());
     c_rays = c_rays.minor(used_rays,All);
     if (lattice_exists) {
       c_lattice_b = c_lattice_b.slice(~removableCones);
@@ -391,22 +390,22 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
     rayRepFromX = Matrix<Rational>(c_cmplx_rays.rows(),x_cmplx_rays.rows() + x_lineality.rows());
     rayRepFromY = Matrix<Rational>(c_cmplx_rays.rows(),y_cmplx_rays.rows() + y_lineality.rows());
     // Compute representations for X (mode 0) and/or Y (mode 1)
-    for (int mode = 0; mode <= 1; ++mode) {
+    for (Int mode = 0; mode <= 1; ++mode) {
       if ((mode == 0 && repFromX) || (mode == 1 && repFromY)) {
         // Recalls for which ray we already computed a representation
-        Vector<bool> repComputed(c_cmplx_rays.rows());
+        std::vector<bool> repComputed(c_cmplx_rays.rows());
         Matrix<Rational> raysForComputation = (mode == 0? x_cmplx_rays : y_cmplx_rays);
         Matrix<Rational> linForComputation = (mode == 0? x_lineality : y_lineality);
         // Go through all complex cones
-        for (int cone = 0; cone < c_cmplx_cones.rows(); ++cone) {
+        for (Int cone = 0; cone < c_cmplx_cones.rows(); ++cone) {
           // Go through all rays for which we have not yet computed a representation
-          Set<int> raysOfCone = c_cmplx_cones.row(cone);
+          Set<Int> raysOfCone = c_cmplx_cones.row(cone);
           for (auto r = entire(raysOfCone); !r.at_end(); ++r) {
             if (!repComputed[*r]) {
               repComputed[*r] = true;
               // The ray used for computing the representation are the rays of the containing
               // cone (or none, if the corr. fan is only a lineality space)
-              Set<int> rfc;
+              Set<Int> rfc;
               if (mode == 0 && !x_onlylineality)
                 rfc = x_cmplx_cones.row(xcontainers[cone]);
               if (mode == 1 && !y_onlylineality)
@@ -426,14 +425,14 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
     if (computeAssoc) {
       // For each cmplx_ray, in which cone does it lie?
       IncidenceMatrix<> c_cmplx_cones_t = T(c_cmplx_cones);
-      for (int cr = 0; cr < c_cmplx_rays.rows(); ++cr) {
+      for (Int cr = 0; cr < c_cmplx_rays.rows(); ++cr) {
         if (c_cmplx_rays(cr,0) == 1) {
           associatedRep |= cr;
         } else {
           // Take a cone containing ray cr
-          int mc = *(c_cmplx_cones_t.row(cr).begin());
+          Int mc = *(c_cmplx_cones_t.row(cr).begin());
           // Find an affine ray in this cone
-          Set<int> mcrays = c_cmplx_cones.row(mc);
+          Set<Int> mcrays = c_cmplx_cones.row(mc);
           for (auto mcr = entire(mcrays); !mcr.at_end(); ++mcr) {
             if (c_cmplx_rays(*mcr,0) == 1) {
               associatedRep |= *mcr;
@@ -459,7 +458,7 @@ RefinementResult refinement(perl::Object X, perl::Object Y,
 } // END refinement
 
 
-perl::Object intersect_container(perl::Object cycle, perl::Object container,
+BigObject intersect_container(BigObject cycle, BigObject container,
                                  bool forceLatticeComputation)
 {
   RefinementResult r = refinement(cycle, container, false, false, false, true, forceLatticeComputation);

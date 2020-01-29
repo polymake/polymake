@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -168,20 +168,20 @@ struct decrement : increment {
 };
 
 struct advance_plus {
-   static void null(char* it, int i) { invalid_null_op(); }
+   static void null(char* it, Int i) { invalid_null_op(); }
 
    template <typename Iterator>
-   static void execute(char* it, int i)
+   static void execute(char* it, Int i)
    {
-      basics<Iterator>::get(it)+=i;
+      basics<Iterator>::get(it) += i;
    }
 };
 
 struct advance_minus : advance_plus {
    template <typename Iterator>
-   static void execute(char* it, int i)
+   static void execute(char* it, Int i)
    {
-      basics<Iterator>::get(it)-=i;
+      basics<Iterator>::get(it) -= i;
    }
 };
 
@@ -207,10 +207,10 @@ struct difference {
 };
 
 struct index {
-   static int null(const char* it) { invalid_null_op(); }
+   static Int null(const char* it) { invalid_null_op(); }
 
    template <typename Iterator>
-   static int execute(const char* it)
+   static Int execute(const char* it)
    {
       return basics<Iterator>::get(it).index();
    }
@@ -238,10 +238,10 @@ struct rewind {
 
 template <typename Ref>
 struct random_it {
-   static Ref null(const char* it, int i) { invalid_null_op(); }
+   static Ref null(const char* it, Int i) { invalid_null_op(); }
 
    template <typename Iterator>
-   static Ref execute(const char* it, int i)
+   static Ref execute(const char* it, Int i)
    {
       return basics<Iterator>::get(it)[i];
    }
@@ -271,8 +271,8 @@ protected:
    template <typename Iterator, int own_discr, int alt_discr>
    void init_from_value(Iterator&& it, mlist<int_constant<own_discr>, int_constant<alt_discr>>)
    {
-      constexpr int discr= own_discr >= 0 ? own_discr : alt_discr;
-      this->discriminant=discr;
+      constexpr int discr = own_discr >= 0 ? own_discr : alt_discr;
+      this->discriminant = discr;
       basics<discr>::construct(this->area, std::forward<Iterator>(it));
    }
 
@@ -280,7 +280,7 @@ protected:
    std::enable_if_t<unions::is_smaller_union<Iterator, IteratorList>::value>
    init_from_value(const Iterator& it, mlist<int_constant<-1>, int_constant<-1>>)
    {
-      this->discriminant=mapping<Iterator>::get(it.discriminant);
+      this->discriminant = mapping<Iterator>::get(it.discriminant);
       function<unions::copy_constructor>::get(this->discriminant)(this->area, it.area);
    }
 
@@ -289,7 +289,7 @@ protected:
                     unions::is_smaller_union<Iterator, alt_it_list>::value>
    init_from_value(const Iterator& it, mlist<int_constant<-1>, int_constant<-1>>)
    {
-      this->discriminant=alt_mapping<Iterator>::get(it.discriminant);
+      this->discriminant = alt_mapping<Iterator>::get(it.discriminant);
       function<unions::alt_copy_constructor>::get(this->discriminant)(this->area, it.area);
    }
 
@@ -321,7 +321,7 @@ protected:
          basics<discr>::get(this->area) = std::forward<Iterator>(it);
       } else {
          this->destroy();
-         this->discriminant=discr;
+         this->discriminant = discr;
          basics<discr>::construct(this->area, std::forward<Iterator>(it));
       }
    }
@@ -335,7 +335,7 @@ protected:
          function<unions::assignment>::get(discr)(this->area, it.area);
       } else {
          this->destroy();
-         this->discriminant=discr;
+         this->discriminant = discr;
          function<unions::copy_constructor>::get(discr)(this->area, it.area);
       }
    }
@@ -345,12 +345,12 @@ protected:
                     unions::is_smaller_union<Iterator, alt_it_list>::value>
    assign_value(const Iterator& it, mlist<int_constant<-1>, int_constant<-1>>)
    {
-      constexpr int discr=alt_mapping<Iterator>::get(it.discriminant);
-      if (this->discriminant==discr) {
+      constexpr int discr = alt_mapping<Iterator>::get(it.discriminant);
+      if (this->discriminant == discr) {
          function<unions::alt_assignment>::get(discr)(this->area, it.area);
       } else {
          this->destroy();
-         this->discriminant=discr;
+         this->discriminant = discr;
          function<unions::alt_copy_constructor>::get(this->discriminant)(this->area, it.area);
       }
    }
@@ -458,7 +458,7 @@ public:
       return function<unions::at_end>::get(this->discriminant)(this->area);
    }
 
-   int index() const
+   Int index() const
    {
       static_assert(check_iterator_feature<iterator_union, indexed>::value, "iterator is not indexed");
       return function<unions::index>::get(this->discriminant)(this->area);
@@ -512,26 +512,26 @@ public:
       return *this;
    }
 
-   iterator_union& operator+= (int i)
+   iterator_union& operator+= (Int i)
    {
       base_t::template function<unions::advance_plus>::get(this->discriminant)(this->area);
       return *this;
    }
-   iterator_union& operator-= (int i)
+   iterator_union& operator-= (Int i)
    {
       base_t::template function<unions::advance_minus>::get(this->discriminant)(this->area);
       return *this;
    }
-   iterator_union operator+ (int i) const { iterator_union copy=*this; return copy+=i; }
-   iterator_union operator- (int i) const { iterator_union copy=*this; return copy-=i; }
-   friend iterator_union operator+ (int i, const iterator_union& it) { return it+i; }
+   iterator_union operator+ (Int i) const { iterator_union copy=*this; return copy+=i; }
+   iterator_union operator- (Int i) const { iterator_union copy=*this; return copy-=i; }
+   friend iterator_union operator+ (Int i, const iterator_union& it) { return it+i; }
 
    difference_type operator- (const iterator_union& it) const
    {
       return base_t::template function<unions::difference<difference_type>>::get(this->discriminant)(this->area);
    }
 
-   reference operator[] (int i) const
+   reference operator[] (Int i) const
    {
       return base_t::template function<unions::random_it<reference>>::get(this->discriminant)(this->area,i);
    }
@@ -676,7 +676,7 @@ namespace unions {
 
 struct size : index {
    template <typename Container>
-   static int execute(const char *c)
+   static Int execute(const char *c)
    {
       return basics<Container>::get(c).size();
    }
@@ -684,7 +684,7 @@ struct size : index {
 
 struct dim : index {
    template <typename Container>
-   static int execute(const char *c)
+   static Int execute(const char *c)
    {
       return get_dim(basics<Container>::get(c));
    };
@@ -699,10 +699,10 @@ struct empty : at_end {
 };
 
 struct resize {
-   static void null(char *c, int n) { invalid_null_op(); }
+   static void null(char *c, Int n) { invalid_null_op(); }
 
    template <typename Container>
-   static void execute(char *c, int n)
+   static void execute(char *c, Int n)
    {
       basics<Container>::get(c).resize(n);
    }
@@ -826,10 +826,10 @@ struct cback : cfront<Ref> {
 
 template <typename Ref>
 struct random {
-   static Ref null(char* c, int i) { invalid_null_op(); }
+   static Ref null(char* c, Int i) { invalid_null_op(); }
 
    template <typename Container>
-   static Ref execute(char* c, int i)
+   static Ref execute(char* c, Int i)
    {
       return basics<Container>::get(c)[i];
    }
@@ -837,10 +837,10 @@ struct random {
 
 template <typename Ref>
 struct crandom {
-   static Ref null(const char* c, int i) { invalid_null_op(); }
+   static Ref null(const char* c, Int i) { invalid_null_op(); }
 
    template <typename Container>
-   static Ref execute(const char* c, int i)
+   static Ref execute(const char* c, Int i)
    {
       return basics<Container>::get(c)[i];
    }
@@ -941,7 +941,7 @@ public:
    {
       return it_function<unions::cend, const_iterator>::get(this->discriminant)(this->area);
    }
-   int size() const
+   Int size() const
    {
       return function<unions::size>::get(this->discriminant)(this->area);
    }
@@ -949,7 +949,7 @@ public:
    {
       return function<unions::empty>::get(this->discriminant)(this->area);
    }
-   int dim() const
+   Int dim() const
    {
       return function<unions::dim>::get(this->discriminant)(this->area);
    }
@@ -1042,14 +1042,14 @@ public:
    using typename base_t::reference;
    using typename base_t::const_reference;
 
-   reference operator[] (int i)
+   reference operator[] (Int i)
    {
-      auto& me=static_cast<typename base_t::master&>(*this);
+      auto& me = static_cast<typename base_t::master&>(*this);
       return function<unions::random<reference>>::get(me.discriminant)(me.area, i);
    }
-   const_reference operator[] (int i) const
+   const_reference operator[] (Int i) const
    {
-      auto& me=static_cast<const typename base_t::master&>(*this);
+      auto& me = static_cast<const typename base_t::master&>(*this);
       return function<unions::crandom<const_reference>>::get(me.discriminant)(me.area, i);
    }
 };
@@ -1063,9 +1063,9 @@ protected:
    template <typename Operation>
    using function = typename base_t::template function<Operation>;
 public:
-   void resize(int n)
+   void resize(Int n)
    {
-      master& me=static_cast<master&>(*this);
+      master& me = static_cast<master&>(*this);
       function<unions::resize>::get(me.discriminant)(me.area, n);
    }
 };
@@ -1078,9 +1078,9 @@ struct enforce_features<ContainerUnion<ContainerList, ProvidedFeatures>, Feature
 template <typename ContainerList, typename ProvidedFeatures>
 struct spec_object_traits< ContainerUnion<ContainerList, ProvidedFeatures> >
    : spec_object_traits<is_container> {
-   static const int is_resizeable    = union_container_traits<ContainerList, ProvidedFeatures>::is_resizeable;
-   static const bool is_always_const = union_container_traits<ContainerList, ProvidedFeatures>::is_always_const,
-                     is_persistent=false;
+   static constexpr int is_resizeable    = union_container_traits<ContainerList, ProvidedFeatures>::is_resizeable;
+   static constexpr bool is_always_const = union_container_traits<ContainerList, ProvidedFeatures>::is_always_const,
+                         is_persistent=false;
 };
 
 template <typename ContainerList, typename ProvidedFeatures, typename Feature>

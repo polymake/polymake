@@ -1,5 +1,5 @@
 {"app": "common",
  "inst": [
-  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::TryCanned<const Array<int>>"], "func": "permuted_cols", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h"], "sig": "permuted_cols.X.X"},
+  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::TryCanned<const Array<Int>>"], "func": "permuted_cols", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h"], "sig": "permuted_cols.X.X"},
  null ],
 "version": 3}

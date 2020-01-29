@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,7 +21,7 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
-int poly2lp(perl::Object p, perl::Object lp, const bool maximize, const std::string& file)
+Int poly2lp(BigObject p, BigObject lp, const bool maximize, const std::string& file)
 {
    if (file.empty() || file=="-") {
       print_lp<Scalar>(p, lp, maximize, perl::cout);

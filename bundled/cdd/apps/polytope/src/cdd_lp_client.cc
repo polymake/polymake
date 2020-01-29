@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,7 +30,7 @@ auto create_LP_solver()
 }
 
 template <typename Scalar>
-void cdd_lp_client(perl::Object p, perl::Object lp, bool maximize)
+void cdd_lp_client(BigObject p, BigObject lp, bool maximize)
 {
    generic_lp_client<Scalar>(p, lp, maximize, cdd_interface::LP_Solver<Scalar>());
 }

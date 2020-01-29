@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,19 +24,19 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-perl::Object subcone(perl::Object c_in, const Set<int> selection, perl::OptionSet options)
+BigObject subcone(BigObject c_in, const Set<Int>& selection, OptionSet options)
 {
    const Matrix<Scalar> V=c_in.give("RAYS");
-   const int n_rays=V.rows();
-   const int n_rays_out=selection.size();
+   const Int n_rays = V.rows();
+   const Int n_rays_out = selection.size();
 
    if (n_rays_out && (selection.front() < 0 || selection.back() >= n_rays))
       throw std::runtime_error("subcone: not a proper ray selection");
 
-   const Matrix<Scalar> L=c_in.give("LINEALITY_SPACE");
-   const int adim=c_in.give("CONE_AMBIENT_DIM"); // don't look at V.cols() because of trivial cone
+   const Matrix<Scalar> L = c_in.give("LINEALITY_SPACE");
+   const Int adim = c_in.give("CONE_AMBIENT_DIM"); // don't look at V.cols() because of trivial cone
 
-   perl::Object c_out("Cone", mlist<Scalar>());
+   BigObject c_out("Cone", mlist<Scalar>());
    c_out.set_description() << "subcone of " << c_in.name() << endl;
 
    c_out.take("RAYS") << V.minor(selection,All);

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -21,50 +21,46 @@ use Polymake::Struct (
    [ '$CovectorLattice' => '#%' ],
 );
 
-options %Visual::CovectorLattice::decorations=(
-	%Visual::Lattice::decorations,
+options %decorations = (
+   %Visual::Lattice::decorations,
 
-	# String if set to "hidden", the covectors are not displayed.
-	Covectors => enum("hidden"),
-
+   # String if set to "hidden", the covectors are not displayed.
+   Covectors => enum("hidden"),
 );
 
 object CovectorLattice {
 
-	# @category Visualization
-	# Visualizes the covector lattice. This works the same as a visualization of a Hasse diagram
-	# except that by default, covectors are displayed. This can be turned off by the option Covectors=>"hidden"
-	user_method VISUAL(%Visual::CovectorLattice::decorations, {seed => undef }) {
-		my ($this, $decor, $seed)=@_;
+# @category Visualization
+# Visualizes the covector lattice. This works the same as a visualization of a Hasse diagram
+# except that by default, covectors are displayed. This can be turned off by the option Covectors=>"hidden"
+user_method VISUAL(%Visual::CovectorLattice::decorations, { seed => undef }) {
+   my ($this, $decor, $seed)=@_;
 
-		my $show_covectors = 1;
-		if(defined($$decor{"Covectors"})) {
-			if($$decor{"Covectors"} eq "hidden") {
-				$show_covectors = 0;
-			}
-		}
-		delete($$decor{"Covectors"});
+   my $show_covectors = delete($decor->{Covectors}) ne "hidden";
 
-		#Add the covector to the node label
-		if($show_covectors) {
-			$$decor{"LabelAlignment"} = "center";
-			my @s = ();
-			for my $i (0 .. $this->N_NODES-1) {
-				#No label for extreme nodes
-				if($i == $this->BOTTOM_NODE || $i == $this->TOP_NODE) {
-					push @s, ""; next;
-				}
-				my @covector_string = map {$_->size() == 0? "-" : join(" ", @{$_})} @{rows($this->COVECTORS->[$i])};
-				push @s, ($this->FACES->[$i])."\\\\( ".join(" , ",@covector_string)." )";
-			}
-			$$decor{"NodeLabels"} = \@s;
-		}
+   # Add the covector to the node label
+   if ($show_covectors) {
+      $decor->{LabelAlignment} = "center";
+      my @s;
+      for my $i (0 .. $this->N_NODES-1) {
+         # No label for extreme nodes
+         if ($i == $this->BOTTOM_NODE || $i == $this->TOP_NODE) {
+            push @s, ""; next;
+         }
+         my @covector_string = map {$_->size() == 0? "-" : join(" ", @{$_})} @{rows($this->COVECTORS->[$i])};
+         push @s, ($this->FACES->[$i])."\\\\( ".join(" , ",@covector_string)." )";
+      }
+      $decor->{NodeLabels} = \@s;
+   }
 
-		$this->SUPER::VISUAL($decor,$seed);
-
-	}
-
+   $this->SUPER::VISUAL($decor, $seed);
+}
 
 }
 
 
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

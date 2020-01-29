@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,9 +26,18 @@ namespace {
 
 void remove_uninteresting_ns_prefix(std::string& name, const AnyString& prefix)
 {
-  size_t pos=0;
-  while ((pos=name.find(prefix.ptr, pos, prefix.len)) != name.npos) {
+  size_t pos = 0;
+  while ((pos = name.find(prefix.ptr, pos, prefix.len)) != name.npos) {
     name.erase(pos, prefix.len);
+  }
+}
+
+void replace_substr(std::string& name, const AnyString& from, const AnyString& to)
+{
+  size_t pos = 0;
+  while ((pos = name.find(from.ptr, pos, from.len)) != name.npos) {
+     name.replace(pos, from.len, to.ptr, to.len);
+     pos += to.len;
   }
 }
 
@@ -42,14 +51,14 @@ std::string legible_typename(const std::type_info& ti)
 std::string legible_typename(const char* typeid_name)
 {
   int status;
-  char* dem_buffer=abi::__cxa_demangle(typeid_name, nullptr, nullptr, &status);
-  const char* dem=dem_buffer;
+  char* dem_buffer = abi::__cxa_demangle(typeid_name, nullptr, nullptr, &status);
+  const char* dem = dem_buffer;
   if (status) return typeid_name;
   std::string name;
-  while (const char* e=strstr(dem, "polymake::")) {
+  while (const char* e = strstr(dem, "polymake::")) {
     name.append(dem, e);
-    dem=e+10;
-    if (strncmp(dem, "test::", 6)==0) dem+=6;
+    dem = e+10;
+    if (strncmp(dem, "test::", 6) == 0) dem += 6;
   }
   name.append(dem);
   std::free(dem_buffer);
@@ -58,7 +67,7 @@ std::string legible_typename(const char* typeid_name)
   remove_uninteresting_ns_prefix(name, "__1::");
 #endif
   remove_uninteresting_ns_prefix(name, "__cxx11::");
-
+  replace_substr(name, "long int", "Int");
   return name;
 }
 

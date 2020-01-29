@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -41,7 +41,7 @@ template <typename Traits> class tree_traits;
 **/
 template <typename Traits>
 struct node {
-   typedef AVL::tree< tree_traits<Traits> > tree_type;
+   using tree_type = AVL::tree<tree_traits<Traits>>;
    
    AVL::Ptr<node> links[3];
    
@@ -50,18 +50,19 @@ struct node {
    typename Traits::mapped_type data;
 
    // tree for the next face element
-   tree_type *descend;
+   tree_type* descend;
 
    node(const typename Traits::key_type& key_arg)
-      : key(key_arg), data(Traits::initialize_data()), descend(0) { }
+      : key(key_arg)
+      , data(Traits::initialize_data())
+      , descend(nullptr)
+   {}
 
-   template <typename TreeAllocator>
-   node(const node& o, TreeAllocator& tree_allocator)
-      : key(o.key), data(o.data), descend(0)
-   {
-      if (o.descend)
-         descend=new(tree_allocator.allocate(1)) tree_type(*o.descend);
-   }
+   node(const node& o, allocator& allocator)
+      : key(o.key)
+      , data(o.data)
+      , descend(o.descend ? allocator.construct<tree_type>(*o.descend) : nullptr)
+   {}
 };
 
 template <typename Traits>
@@ -80,12 +81,11 @@ public:
    typedef typename traits_for_iterator::Node Node;
    typedef typename Traits::key_type key_type;
    typedef typename Traits::key_comparator_type key_comparator_type;
-   static const bool allow_multiple=false;
-   typedef std::allocator<Node> node_allocator_type;
+   static constexpr bool allow_multiple = false;
 protected:
    mutable AVL::Ptr<Node> root_links[3];
    key_comparator_type key_comparator;
-   node_allocator_type node_allocator;
+   allocator node_allocator;
 
    Node* head_node() const { return reinterpret_cast<Node*>(&root_links[0]); }
 
@@ -95,24 +95,18 @@ protected:
 
    Node* create_node(const key_type& key_arg)
    {
-      return new(node_allocator.allocate(1)) Node(key_arg);
+      return node_allocator.construct<Node>(key_arg);
    }
 
    Node* clone_node(Node* n)
    {
-      typename node_allocator_type::template rebind<typename Node::tree_type>::other tree_allocator(node_allocator);
-      return new(node_allocator.allocate(1)) Node(*n, tree_allocator);
+      return node_allocator.construct<Node>(*n, node_allocator);
    }
 
    void destroy_node(Node* n)
    {
-      if (n->descend) {
-         typename node_allocator_type::template rebind<typename Node::tree_type>::other tree_allocator(node_allocator);
-         tree_allocator.destroy(n->descend);
-         tree_allocator.deallocate(n->descend,1);
-      }
+      if (n->descend) node_allocator.destroy(n->descend);
       node_allocator.destroy(n);
-      node_allocator.deallocate(n,1);
    }
 
    static bool own_node(Node*) { return true; }
@@ -123,7 +117,7 @@ public:
    tree_traits() { }
    tree_traits(arg_type cmp_arg) : key_comparator(cmp_arg) { }
 
-   static int max_size() { return std::numeric_limits<int>::max(); }
+   static Int max_size() { return std::numeric_limits<Int>::max(); }
    const key_comparator_type& get_comparator() const { return key_comparator; }
 };
 
@@ -152,7 +146,7 @@ public:
    const std::vector<elem_iterator>& get_container() const { return ptr; }
 
    element() { }
-   element(int size_arg) : ptr(size_arg) { }
+   element(Int size_arg) : ptr(size_arg) { }
 };
 
 template <typename Traits>
@@ -170,12 +164,12 @@ public:
 
    Iterator() { }
 
-   explicit Iterator(typename value_type::elem_iterator cur, int face_size=0)
-      : value_type(face_size>0 ? face_size : 1), max_depth(face_size-1)
+   explicit Iterator(typename value_type::elem_iterator cur, Int face_size = 0)
+      : value_type(face_size > 0 ? face_size : 1), max_depth(face_size-1)
    {
-      this->ptr[0]=cur;
+      this->ptr[0] = cur;
       if (cur.at_end()) return;
-      if (max_depth>=0)
+      if (max_depth >= 0)
          find_to_depth(0);
       else
          find_descend(cur);
@@ -188,7 +182,7 @@ public:
    Iterator& operator++ ()
    {
       if (max_depth>=0) {
-         int depth=max_depth;
+         Int depth = max_depth;
          while ((++this->ptr[depth]).at_end()) {
             if (--depth<0) return *this;
          }
@@ -221,9 +215,9 @@ protected:
    }
 
    // precondition: ! ptr[depth].at_end()
-   void find_to_depth(int depth)
+   void find_to_depth(Int depth)
    {
-      typename value_type::elem_iterator cur=this->ptr[depth];
+      auto cur = this->ptr[depth];
       while (depth < max_depth || Traits::unvisited(cur->data)) {
          while (true) {
             if (this->ptr[depth].at_end()) {
@@ -233,25 +227,25 @@ protected:
             }
             ++this->ptr[depth];
          }
-         cur=this->ptr[depth]->descend->begin();
+         cur = this->ptr[depth]->descend->begin();
          this->ptr[++depth]=cur;
       }
    }
 
-   int max_depth;
+   Int max_depth;
 };
 
-template <typename Vertex=int>
+template <typename Vertex = Int>
 struct index_traits {
    /// search key in the AVL trees
    typedef Vertex key_type;
    typedef operations::cmp key_comparator_type;
    /// data associated with the face, here: the node index in the HasseDiagram
-   typedef int mapped_type;
+   typedef Int mapped_type;
    /// initial value: non-existing node
-   static int initialize_data() { return -1; }
-   /// face is unvisiited if no node assigned
-   static bool unvisited(int k) { return k==-1; }
+   static Int initialize_data() { return -1; }
+   /// face is unvisited if no node assigned
+   static bool unvisited(Int k) { return k == -1; }
 };
 
 } // end namespace face_map
@@ -272,11 +266,10 @@ struct check_iterator_feature<face_map::Iterator<Traits>, end_sensitive> : std::
    Pfetsch and Kaibel.
 **/
 
-template <typename Traits=face_map::index_traits<int> >
+template <typename Traits = face_map::index_traits<>>
 class FaceMap {
-   typedef AVL::tree< face_map::tree_traits<Traits> > tree_type;
-   typedef typename tree_type::node_allocator_type::template rebind<tree_type>::other subtree_allocator_type;
-   subtree_allocator_type subtree_allocator;
+   using tree_type = AVL::tree<face_map::tree_traits<Traits>>;
+   allocator subtree_allocator;
 public:
    typedef typename Traits::key_type key_type;
    typedef typename Traits::mapped_type mapped_type;
@@ -293,24 +286,24 @@ public:
    iterator begin() const { return iterator(head.begin()); }
    iterator end() const { return iterator(head.end()); }
 
-   iterator begin_of_dim(int d) const { return iterator(head.begin(), d+1); }
-   iterator end_of_dim(int d) const { return iterator(head.end(), d+1); }
+   iterator begin_of_dim(Int d) const { return iterator(head.begin(), d+1); }
+   iterator end_of_dim(Int d) const { return iterator(head.end(), d+1); }
 
    template <typename Set2>
    mapped_type& operator[] (const GenericSet<Set2, key_type, key_comparator_type>& face)
    {
       if (!face.top().empty()) {
-         tree_type *current_tree=&head;
-         auto f_i=entire(face.top());
+         tree_type* current_tree = &head;
+         auto f_i = entire(face.top());
 
          while (true) {
             // invariants: current_tree!=0, !f_i.at_end()
-            typename tree_type::iterator current_node=current_tree->insert(*f_i);
+            auto current_node = current_tree->insert(*f_i);
             ++f_i;
             if (f_i.at_end()) return current_node->data;
             if (!current_node->descend)
-               current_node->descend=new(subtree_allocator.allocate(1)) tree_type();
-            current_tree=current_node->descend;
+               current_node->descend = subtree_allocator.construct<tree_type>();
+            current_tree = current_node->descend;
          }
       }
       return data_of_empty_face;
@@ -319,8 +312,8 @@ public:
    bool empty() const { return head.empty(); }
 
    /// Caution: counting via full enumeration!
-   int size() const { return count_it(begin()); }
-   int faces_of_dim(int d) const { return count_it(begin_of_dim(d)); }
+   Int size() const { return count_it(begin()); }
+   Int faces_of_dim(Int d) const { return count_it(begin_of_dim(d)); }
 
    void clear() { head.clear(); }
 private:

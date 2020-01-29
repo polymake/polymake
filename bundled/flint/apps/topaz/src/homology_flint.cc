@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,13 +24,13 @@
 
 namespace polymake { namespace topaz {
 
-typedef SimplicialComplex_as_FaceMap<int> FaceMap;
+typedef SimplicialComplex_as_FaceMap<Int> FaceMap;
 
 //////homology computation
 
 namespace{
 template<typename Coeff, typename MatrixType, typename ComplexType>
-Array<HomologyGroup<Coeff>> compute_homology_flint(const HomologyComplexFlint<Coeff,MatrixType,ComplexType> & HC, bool co, int dim_low, int dim_high)
+Array<HomologyGroup<Coeff>> compute_homology_flint(const HomologyComplexFlint<Coeff,MatrixType,ComplexType> & HC, bool co, Int dim_low, Int dim_high)
 {
    Array<HomologyGroup<Coeff>> H(HC.size());
    if (!co)
@@ -41,12 +41,14 @@ Array<HomologyGroup<Coeff>> compute_homology_flint(const HomologyComplexFlint<Co
 }}
 
 template<typename Complex>
-Array<HomologyGroup<Integer>> homology_flint(const Complex & CC, bool co, int dim_low, int dim_high){
+Array<HomologyGroup<Integer>> homology_flint(const Complex & CC, bool co, Int dim_low, Int dim_high)
+{
    HomologyComplexFlint< Integer, SparseMatrix<Integer>, Complex > HC(CC, dim_high, dim_low);
    return compute_homology_flint<Integer,SparseMatrix<Integer>,Complex>(HC,co,dim_low,dim_high);
 }
 
-Array<HomologyGroup<Integer>> homology_sc_flint(const Array< Set<int> >& F, bool co, int dim_low, int dim_high){
+Array<HomologyGroup<Integer>> homology_sc_flint(const Array<Set<Int>>& F, bool co, Int dim_low, Int dim_high)
+{
    const FaceMap SC(F);
    return homology_flint<FaceMap>(SC,co,dim_low,dim_high);
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -43,7 +43,7 @@ class SchlegelWindow {
 protected:
    pthread_t thr;
    socketstream js;
-   int d, proj_facet;
+   Int d, proj_facet;
    Matrix<double> Vertices, NeighborFacets, inv_Rotation;
    common::SharedMemoryMatrix<double> Points;
    Vector<double> ViewRay, FacetPoint, LastDragged;
@@ -52,7 +52,7 @@ protected:
    common::SimpleGeometryParser::param_map params;
    common::SimpleGeometryParser::iparam_map iparams;
    double zoom;
-   int dragged_point;
+   Int dragged_point;
    enum drag_response_t { drag_OK, drag_ignore, drag_boundary };
    drag_response_t drag_response;
    bool constrained;
@@ -66,7 +66,7 @@ protected:
 public:
    SchlegelWindow(const Matrix<double>& V, const Matrix<double>& F, const IncidenceMatrix<>& VIF_arg, const Graph<>& FG,
                   const Vector<double>& FacetPoint_arg, const Vector<double>& InnerPoint,
-                  int facet_index, double zoom_arg);
+                  Int facet_index, double zoom_arg);
 
    int port() const { return js.port(); }
 
@@ -91,12 +91,12 @@ public:
          }
       }
    }
-   void set_point(int i);
+   void set_point(Int i);
    void restart(common::SimpleGeometryParser& parser);
 
-   perl::Object store() const;
+   BigObject store() const;
 
-   void set_facet(const Set<int>&) { cerr << "SchlegelWindow got an 'f' command!" << endl; }
+   void set_facet(const Set<Int>&) { cerr << "SchlegelWindow got an 'f' command!" << endl; }
    void set_points() { cerr << "SchlegelWindow got an 'P' command!" << endl; }
 
    static const bool has_shared_matrix=true;
@@ -105,7 +105,7 @@ public:
 
 SchlegelWindow::SchlegelWindow(const Matrix<double>& V, const Matrix<double>& F, const IncidenceMatrix<>& VIF_arg, const Graph<>& FG,
                                const Vector<double>& FacetPoint_arg, const Vector<double>& InnerPoint,
-                               int facet_index, double zoom_arg)
+                               Int facet_index, double zoom_arg)
    : d(V.cols()-1), proj_facet(facet_index), Points(V.rows(),d-1),
      ViewRay(d+1), FacetPoint(unit_vector<double>(d+1,0)), LastDragged(d-1), VIF(VIF_arg),
      zoom(zoom_arg), dragged_point(-1)
@@ -124,7 +124,7 @@ SchlegelWindow::SchlegelWindow(const Matrix<double>& V, const Matrix<double>& F,
 
 void SchlegelWindow::start_thread()
 {
-   if (pthread_create(&thr, 0, &run_it, this))
+   if (pthread_create(&thr, nullptr, &run_it, this))
       throw std::runtime_error("error creating schlegel_interactive thread");
 }
 
@@ -189,7 +189,7 @@ void SchlegelWindow::compute_points()
    }
 }
 
-void SchlegelWindow::set_point(int i)
+void SchlegelWindow::set_point(Int i)
 {
    if (i != dragged_point) {
       dragged_point=i;
@@ -205,7 +205,7 @@ void SchlegelWindow::set_point(int i)
 
    const bool on_proj_facet=VIF(proj_facet,i);
    if (!on_proj_facet)
-      delta *= ViewRay[d]/Vertices(i,d) - 1.;
+      delta *= ViewRay[d]/Vertices(i,d)-1.;
 
    const double beta = schlegel_nearest_neighbor_crossing(NeighborFacets,
                                                           FacetPoint + ViewRay,
@@ -236,9 +236,9 @@ void SchlegelWindow::set_point(int i)
    LastDragged=Points[i];
 }
 
-perl::Object SchlegelWindow::store() const
+BigObject SchlegelWindow::store() const
 {
-   perl::Object SD("SchlegelDiagram");
+   BigObject SD("SchlegelDiagram");
    const Vector<double> FP=FacetPoint * T(inv_Rotation),
       IP=FP - ViewRay * T(inv_Rotation);
    SD.take("FACET") << proj_facet;
@@ -265,17 +265,17 @@ void SchlegelWindow::restart(common::SimpleGeometryParser& parser)
 }
 
 std::unique_ptr<SchlegelWindow>
-schlegel_interactive(perl::Object SD, const Matrix<double>& Points)
+schlegel_interactive(BigObject SD, const Matrix<double>& Points)
 {
-   perl::Object P=SD.parent();
-   const Matrix<double> F=P.give("FACETS");
-   const IncidenceMatrix<> VIF=P.give("VERTICES_IN_FACETS");
-   const Graph<> FG=P.give("DUAL_GRAPH.ADJACENCY");
+   BigObject P = SD.parent();
+   const Matrix<double> F = P.give("FACETS");
+   const IncidenceMatrix<> VIF = P.give("VERTICES_IN_FACETS");
+   const Graph<> FG = P.give("DUAL_GRAPH.ADJACENCY");
 
-   const Vector<double> FacetPoint=SD.give("FACET_POINT"),
+   const Vector<double> FacetPoint = SD.give("FACET_POINT"),
       InnerPoint=SD.give("INNER_POINT");
-   const int proj_facet=SD.give("FACET");
-   const double zoom=SD.give("ZOOM");
+   const Int proj_facet = SD.give("FACET");
+   const double zoom = SD.give("ZOOM");
 
    std::unique_ptr<SchlegelWindow> sw=std::make_unique<SchlegelWindow>(Points, F, VIF, FG, FacetPoint, InnerPoint, proj_facet, zoom);
    sw->start_thread();

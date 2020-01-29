@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -38,24 +38,24 @@ bool equivalent_modulo_nullspace(const Vector<Rational>& vec1,
 
 } // end anonymous namespace
 
-typedef std::pair<Matrix<Rational>, Array<hash_set<int>>> MatrixOrbitPair;
+typedef std::pair<Matrix<Rational>, Array<hash_set<Int>>> MatrixOrbitPair;
 
 // works for both facets/linear span and rays/lineality space
 MatrixOrbitPair symmetrize_poly_reps(const Matrix<Rational>& facets_in, 
                                      const Matrix<Rational>& linspan, 
-                                     perl::Object action) 
+                                     BigObject action) 
 {
    const Matrix<Rational> facets(common::primitive(facets_in));
    const Matrix<Rational> nullspace(null_space(linspan));
    Matrix<Rational> symmetric_facets(facets.rows(),facets.cols());
-   std::vector<hash_set<int>> facet_orbit_list;
-   Set<int> not_checked(range(0,facets.rows()-1));
+   std::vector<hash_set<Int>> facet_orbit_list;
+   Set<Int> not_checked(range(0,facets.rows()-1));
     
-   for(int i=0; i<facets.rows(); ++i) {
+   for (Int i = 0; i < facets.rows(); ++i) {
       if (not_checked.contains(i)) {
          symmetric_facets.row(i) = facets.row(i);
          not_checked -= i;
-         hash_set<int> cur_facet_orbit;
+         hash_set<Int> cur_facet_orbit;
          cur_facet_orbit += i;
          const auto orbit = group::orbits_in_orbit_order_impl(action, vector2row(facets.row(i)));
          for (auto row = entire(rows(orbit.first)); !row.at_end(); ++row) {
@@ -71,7 +71,7 @@ MatrixOrbitPair symmetrize_poly_reps(const Matrix<Rational>& facets_in,
          facet_orbit_list.push_back(cur_facet_orbit);
       }
    }
-   return MatrixOrbitPair(symmetric_facets, Array<hash_set<int>>(facet_orbit_list));
+   return MatrixOrbitPair(symmetric_facets, Array<hash_set<Int>>(facet_orbit_list));
 }
 
 

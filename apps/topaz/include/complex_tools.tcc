@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,8 +31,8 @@ bool adj_numbering(Complex& C, const Set& V)
    const bool renumber= V.front()!=0 || V.back()+1!=V.size();
 
    if (renumber) {
-      hash_map<int, int> vertex_map(V.size());
-      int count=0;
+      hash_map<Int, Int> vertex_map(V.size());
+      Int count = 0;
       for (auto s_it=entire(V); !s_it.at_end(); ++s_it, ++count)
          vertex_map[*s_it]=count;
 
@@ -48,7 +48,7 @@ bool adj_numbering(Complex& C, const Set& V)
 }
 
 template <typename OutputIterator>
-bool is_pseudo_manifold(const Lattice<BasicDecoration>& HD, bool known_pure, OutputIterator boundary_consumer, int *bad_face_p)
+bool is_pseudo_manifold(const Lattice<BasicDecoration>& HD, bool known_pure, OutputIterator boundary_consumer, Int* bad_face_p)
 {
    if (HD.in_degree(HD.top_node())==0)
       return true;
@@ -59,7 +59,7 @@ bool is_pseudo_manifold(const Lattice<BasicDecoration>& HD, bool known_pure, Out
    }
 
    for (const auto n : HD.nodes_of_rank(HD.rank()-2)) {
-      const int d = HD.out_degree(n);
+      const Int d = HD.out_degree(n);
       if (d > 2) {
          if (bad_face_p) *bad_face_p=n;
          return false;
@@ -73,14 +73,14 @@ bool is_pseudo_manifold(const Lattice<BasicDecoration>& HD, bool known_pure, Out
 
 // return values: 1=true, 0=false, -1=undef
 template <typename Complex, int d>
-int is_ball_or_sphere(const Complex& C, int_constant<d>)
+Int is_ball_or_sphere(const Complex& C, int_constant<d>)
 {
    if (POLYMAKE_DEBUG) {
       if (C.empty())
          throw std::runtime_error("is_ball_or_sphere: empty complex");
    }
    // compute the vertex set and test whether C is a pure d-complex
-   Set<int> V;
+   Set<Int> V;
    for (auto c_it=entire(C); !c_it.at_end(); ++c_it) {
       V += *c_it;
       if (POLYMAKE_DEBUG) {
@@ -98,14 +98,14 @@ int is_ball_or_sphere(const Complex& C, int_constant<d>)
 
 // return values: 1=true, 0=false, -1=undef
 template <typename Complex, int d>
-int is_manifold(const Complex& C, int_constant<d>, int* bad_link_p)
+Int is_manifold(const Complex& C, int_constant<d>, Int* bad_link_p)
 {
    if (POLYMAKE_DEBUG) {
       if (C.empty())
          throw std::runtime_error("is_manifold: empty complex");
    }
    // compute the vertex set and test whether C is a pure 1-complex
-   Set<int> V;
+   Set<Int> V;
    for (auto c_it=entire(C); !c_it.at_end(); ++c_it) {
       V+=*c_it;
       if (POLYMAKE_DEBUG) {
@@ -125,13 +125,13 @@ int is_manifold(const Complex& C, int_constant<d>, int* bad_link_p)
 
 // return values: 1=true, 0=false, -1=undef
 template <typename Complex, typename VertexSet, int d>
-int is_manifold(const Complex& C, const GenericSet<VertexSet>& V, int_constant<d>, int* bad_link_p)
+Int is_manifold(const Complex& C, const GenericSet<VertexSet>& V, int_constant<d>, Int* bad_link_p)
 {
    // iterate over the vertices and test if their links are (d-1)-balls or (d-1)-spheres
    for (auto it=entire(V.top()); !it.at_end(); ++it) {
-      const int bos=is_ball_or_sphere(link(C, scalar2set(*it)), int_constant<d-1>());
-      if (bos<=0) { // false or undef
-         if (bad_link_p) *bad_link_p=*it;
+      const Int bos = is_ball_or_sphere(link(C, scalar2set(*it)), int_constant<d-1>());
+      if (bos <= 0) { // false or undef
+         if (bad_link_p) *bad_link_p = *it;
          return bos;
       }
    }

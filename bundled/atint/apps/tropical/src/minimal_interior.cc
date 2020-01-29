@@ -19,7 +19,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -53,10 +53,10 @@ namespace polymake { namespace tropical {
  * @param Vector v The vector
  * @param bool search_zeros: If true, find all zero entries, if false all non-zero
  * entries
- * @return Set<int>
+ * @return Set<Int>
  */
 template <typename T>
-Set<int> binaryFinder(const GenericVector<T>& v, bool search_zeros)
+Set<Int> binaryFinder(const GenericVector<T>& v, bool search_zeros)
 {
   if (search_zeros)
     return indices(attach_selector(v.top(), operations::is_zero()));
@@ -67,11 +67,11 @@ Set<int> binaryFinder(const GenericVector<T>& v, bool search_zeros)
 /**
  * @brief Finds all the maximal sets and returns the row indices
  */
-Set<int> find_maximal_faces(const IncidenceMatrix<>& mat)
+Set<Int> find_maximal_faces(const IncidenceMatrix<>& mat)
 {
-  Set<int> smaller_sets;
-  for (int i = 0; i < mat.rows(); ++i) {
-    for (int j = 0; j < mat.rows(); ++j) {
+  Set<Int> smaller_sets;
+  for (Int i = 0; i < mat.rows(); ++i) {
+    for (Int j = 0; j < mat.rows(); ++j) {
       if (i != j) {
         if (mat.row(i) * mat.row(j) == mat.row(i)) smaller_sets += i;
       }
@@ -80,9 +80,9 @@ Set<int> find_maximal_faces(const IncidenceMatrix<>& mat)
   return sequence(0,mat.rows()) - smaller_sets;
 }
 
-inline Set<int> pairset(int i, int j)
+inline Set<Int> pairset(Int i, Int j)
 {
-  return Set<int>{ i, j };
+  return Set<Int>{ i, j };
 }
 
 IncidenceMatrix<> minimal_interior(const Matrix<Rational>& vertices, const IncidenceMatrix<>& polytopes)
@@ -102,10 +102,10 @@ IncidenceMatrix<> minimal_interior(const Matrix<Rational>& vertices, const Incid
   // Exterior one are the maximal intersections of the facet normals with the polytopes
   // FIXME: growing IncidenceMatrix
   IncidenceMatrix<> intersect_fn_with_polytopes(0, vertices.rows());
-  for (int f = 0; f < facet_normals.rows(); f++) {
+  for (Int f = 0; f < facet_normals.rows(); f++) {
     // Find the vertices of the polytopes lying in the facet
-    Set<int> facet_vertices = binaryFinder(vertices * facet_normals.row(f), true);
-    for (int p = 0; p < polytopes.rows(); ++p) {
+    Set<Int> facet_vertices = binaryFinder(vertices * facet_normals.row(f), true);
+    for (Int p = 0; p < polytopes.rows(); ++p) {
       intersect_fn_with_polytopes /= facet_vertices * polytopes.row(p);
     }
   }
@@ -116,13 +116,13 @@ IncidenceMatrix<> minimal_interior(const Matrix<Rational>& vertices, const Incid
   // Interior ones are the maximal intersections of the polytopes
   IncidenceMatrix<> pairwise_intersections(0,vertices.rows());
   IncidenceMatrix<> associated_pairs(0,polytopes.rows());
-  for (int p1 = 0; p1 < polytopes.rows(); ++p1) {
-    for (int p2 = p1+1; p2 < polytopes.rows(); ++p2) {
+  for (Int p1 = 0; p1 < polytopes.rows(); ++p1) {
+    for (Int p2 = p1+1; p2 < polytopes.rows(); ++p2) {
       pairwise_intersections /= (polytopes.row(p1)*polytopes.row(p2));
       associated_pairs /= pairset(p1,p2);
     }
   }
-  Set<int> pairwise_maximal = find_maximal_faces(pairwise_intersections);
+  Set<Int> pairwise_maximal = find_maximal_faces(pairwise_intersections);
   IncidenceMatrix<> interior_codim = pairwise_intersections.minor(pairwise_maximal,All);
   // Tells for all polytopes, which interior codim 1 cells they contain.
   IncidenceMatrix<> interior_in_max = T(associated_pairs.minor(pairwise_maximal,All));
@@ -137,46 +137,46 @@ IncidenceMatrix<> minimal_interior(const Matrix<Rational>& vertices, const Incid
   // in another maximal cone so far (Since any minimal face in such a face is hence also a minimal
   // face of this other maximal cone, so we already computed it).
 
-  Set<int> markedFaces;
+  Set<Int> markedFaces;
 
-  for (int mc = 0; mc < polytopes.rows(); ++mc) {
+  for (Int mc = 0; mc < polytopes.rows(); ++mc) {
     // Compute all non-marked codim-1-cells of mc. If there are none left, go to the next cone
-    Vector<int> nonmarked(interior_in_max.row(mc) - markedFaces);
+    Vector<Int> nonmarked(interior_in_max.row(mc) - markedFaces);
     if (nonmarked.dim() == 0) continue;
-    int k = nonmarked.dim();
+    Int k = nonmarked.dim();
     // ordered list of indices of interior codim-1-cells (in nonmarked)
     // indices != -1 correspond to codim-1-cells that we intersect to obtain a minimal face
-    Vector<int> currentSet(k,-1); 
+    Vector<Int> currentSet(k,-1); 
     currentSet[0] = 0;
     // Indicates the index below the next cone index (in nonmarked) we should try to add. Is always
     // larger equal than the last element != -1 in currentSet
-    int lowerBound = 0;
+    Int lowerBound = 0;
     // Indicates the current position in currentSet we're trying to fill
-    int currentPosition = 1;
+    Int currentPosition = 1;
     // Indicates at position i < currentPosition the intersection of the cones specified by the
     // elements currentSet[0] .. currentSet[i]
-    Vector<Set<int> > currentIntersections(k);
+    Vector<Set<Int>> currentIntersections(k);
     currentIntersections[0] = interior_codim.row(nonmarked[0]);
     // Now iterate all intersections in a backtrack algorithm:
     // If an intersection is maximal, we don't need to go any further
     // We stop when we have tried all possibilities at the first position
     while (!(currentPosition == 0 && lowerBound == k-1)) {
       // Try the next posssible index
-      int j = lowerBound+1;
+      Int j = lowerBound+1;
       // If we're already beyond k-1, we have found a maximal intersection	
       // Check if it is a minimal face, then go back one step
       if (j == k) {
         // We test whether the set is not contained in any border face and does not contain
         // any existing minimal face
-        Set<int> potentialMinimal(currentIntersections[currentPosition-1]);
+        Set<Int> potentialMinimal(currentIntersections[currentPosition-1]);
         bool invalid = false;
-        for (int ec = 0; ec < exterior_codim.rows(); ++ec) {
+        for (Int ec = 0; ec < exterior_codim.rows(); ++ec) {
           if (potentialMinimal.size() == (potentialMinimal * exterior_codim.row(ec)).size()) {
             invalid = true;
             break;
           }
         }
-        for (int mf = 0; mf < result.rows() && !invalid; ++mf) {
+        for (Int mf = 0; mf < result.rows() && !invalid; ++mf) {
           if (result.row(mf).size() == (result.row(mf) * potentialMinimal).size()) {
             invalid = true;
             break;
@@ -190,7 +190,7 @@ IncidenceMatrix<> minimal_interior(const Matrix<Rational>& vertices, const Incid
       } else {
         // Compute the intersection with the next codim 1 cell
         // (If we're at the first position, we just insert a cell)
-        Set<int> intersection;
+        Set<Int> intersection;
         if (currentPosition == 0)
           intersection = interior_codim.row(nonmarked[j]);
         else
@@ -217,31 +217,31 @@ IncidenceMatrix<> minimal_interior(const Matrix<Rational>& vertices, const Incid
 } //END minimal_interior
 
 
-IncidenceMatrix<> refined_local_cones(perl::Object localized_cycle, perl::Object refining_cycle)
+IncidenceMatrix<> refined_local_cones(BigObject localized_cycle, BigObject refining_cycle)
 {
   IncidenceMatrix<> local_restriction = localized_cycle.give("LOCAL_RESTRICTION");
   Matrix<Rational> local_vertices = localized_cycle.give("VERTICES");
   local_vertices = tdehomog(local_vertices);
   Matrix<Rational> local_lineality = localized_cycle.give("LINEALITY_SPACE");
   local_lineality = tdehomog(local_lineality);
-  int local_lineality_dim = localized_cycle.give("LINEALITY_DIM");
+  Int local_lineality_dim = localized_cycle.give("LINEALITY_DIM");
 
   Matrix<Rational> refining_vertices = refining_cycle.give("VERTICES");
   refining_vertices = tdehomog(refining_vertices);
   IncidenceMatrix<> refining_polytopes = refining_cycle.give("MAXIMAL_POLYTOPES");
-  int refining_lineality_dim = refining_cycle.give("LINEALITY_DIM");
+  Int refining_lineality_dim = refining_cycle.give("LINEALITY_DIM");
 
-  Set<Set<int>> result;
+  Set<Set<Int>> result;
 
   // Iterate all local cones of the localized cycle
-  for (int lc = 0; lc < local_restriction.rows(); ++lc) {
+  for (Int lc = 0; lc < local_restriction.rows(); ++lc) {
     // Go through maximal cones of refining complex and check which ones intersect in the right dimension
     Matrix<Rational> lc_vertices = local_vertices.minor(local_restriction.row(lc),All);
-    int local_dim = rank(lc_vertices) + local_lineality_dim;
+    Int local_dim = rank(lc_vertices) + local_lineality_dim;
     RestrictedIncidenceMatrix<> lc_refiners;
-    for (int mc = 0; mc < refining_polytopes.rows(); ++mc) {
-      Set<int> contained_vertices;
-      Set<int> mcset = refining_polytopes.row(mc);
+    for (Int mc = 0; mc < refining_polytopes.rows(); ++mc) {
+      Set<Int> contained_vertices;
+      Set<Int> mcset = refining_polytopes.row(mc);
       for (auto vert = entire(mcset); !vert.at_end(); ++vert) {
         if (is_ray_in_cone(lc_vertices, local_lineality, refining_vertices.row(*vert), false)) 
           contained_vertices += (*vert);

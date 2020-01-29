@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -84,7 +84,7 @@ template <typename Addition, typename Scalar>
 class TropicalNumber;
 
 template <typename Addition, typename Scalar>
-int isinf(const TropicalNumber<Addition, Scalar>& x) noexcept;
+Int isinf(const TropicalNumber<Addition, Scalar>& x) noexcept;
 
 /**
  * TropicalNumber models a modification of a chosen scalar type. Its multiplication is the
@@ -96,22 +96,23 @@ int isinf(const TropicalNumber<Addition, Scalar>& x) noexcept;
  */
 template <typename Addition, typename Scalar = Rational>
 class TropicalNumber {
+  static_assert(!std::is_same<Scalar, int>::value, "use Int instead");
 public:
    template <typename T>
-   struct can_initialize_scalar
-      : bool_constant<can_initialize<pure_type_t<T>, Scalar>::value && !std::is_same<pure_type_t<T>, TropicalNumber>::value> {};
+   using can_initialize_scalar
+      = bool_constant<can_initialize<pure_type_t<T>, Scalar>::value && !std::is_same<pure_type_t<T>, TropicalNumber>::value>;
 
    template <typename T>
-   struct can_assign_scalar
-      : bool_constant<isomorphic_types<pure_type_t<T>, Scalar>::value && can_assign_to<pure_type_t<T>, Scalar>::value && !std::is_same<pure_type_t<T>, TropicalNumber>::value> {};
+   using can_assign_scalar
+      = bool_constant<isomorphic_types<pure_type_t<T>, Scalar>::value && can_assign_to<pure_type_t<T>, Scalar>::value && !std::is_same<pure_type_t<T>, TropicalNumber>::value>;
 
    template <typename T>
-   struct fits_as_scalar
-      : bool_constant<can_upgrade<pure_type_t<T>, Scalar>::value && !std::is_same<pure_type_t<T>, TropicalNumber>::value> {};
+   using fits_as_scalar
+      = bool_constant<can_upgrade<pure_type_t<T>, Scalar>::value && !std::is_same<pure_type_t<T>, TropicalNumber>::value>;
 
    template <typename T>
-   struct fits_as_operand
-      : bool_constant<can_upgrade<pure_type_t<T>, Scalar>::value || std::is_same<pure_type_t<T>, TropicalNumber>::value> {};
+   using fits_as_operand
+      = bool_constant<can_upgrade<pure_type_t<T>, Scalar>::value || std::is_same<pure_type_t<T>, TropicalNumber>::value>;
 
    // *** CONSTRUCTORS ***
 
@@ -122,7 +123,7 @@ public:
    TropicalNumber(const TropicalNumber&) = default;
    TropicalNumber(TropicalNumber&&) = default;
 
-   template <typename T, typename=typename std::enable_if<can_initialize_scalar<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<can_initialize_scalar<T>::value>>
    explicit TropicalNumber(T&& x)
       : scalar(std::forward<T>(x)) {}
 
@@ -161,7 +162,7 @@ public:
    explicit operator const Scalar& () const noexcept { return scalar; }
 
    template <typename T,
-             typename=typename std::enable_if<!std::is_same<T, Scalar>::value && can_initialize<Scalar, T>::value>::type>
+             typename = std::enable_if_t<!std::is_same<T, Scalar>::value && can_initialize<Scalar, T>::value>>
    explicit operator T () const
    {
       return static_cast<T>(scalar);
@@ -172,7 +173,7 @@ public:
    TropicalNumber& operator= (const TropicalNumber&) = default;
    TropicalNumber& operator= (TropicalNumber&&) = default;
 
-   template <typename T, typename=typename std::enable_if<can_assign_scalar<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<can_assign_scalar<T>::value>>
    TropicalNumber& operator= (T&& a)
    {
       scalar=std::forward<T>(a);
@@ -234,10 +235,10 @@ public:
    TropicalNumber& operator*= (const TropicalNumber& b)
    {
       if (!std::numeric_limits<Scalar>::has_infinity) {
-         const int i1=isinf(*this), i2=isinf(b);
+         const Int i1 = isinf(*this), i2 = isinf(b);
          if (i1 || i2) {
-            if (i1+i2==0) throw GMP::NaN();
-            if (!i1) *this=b;
+            if (i1+i2 == 0) throw GMP::NaN();
+            if (!i1) *this = b;
             return *this;
          }
       }
@@ -249,9 +250,9 @@ public:
    TropicalNumber operator* (const TropicalNumber& a, const TropicalNumber& b)
    {
       if (!std::numeric_limits<Scalar>::has_infinity) {
-         const int i1=isinf(a), i2=isinf(b);
+         const Int i1 = isinf(a), i2 = isinf(b);
          if (i1 || i2) {
-            if (i1+i2==0) throw GMP::NaN();
+            if (i1+i2 == 0) throw GMP::NaN();
             return i1 ? a : b;
          }
       }
@@ -281,10 +282,10 @@ public:
    TropicalNumber& operator/= (const TropicalNumber& b)
    {
       if (!std::numeric_limits<Scalar>::has_infinity) {
-         const int i1=isinf(*this), i2=isinf(b);
+         const Int i1 = isinf(*this), i2 = isinf(b);
          if (i1 || i2) {
-            if (i1==i2) throw GMP::NaN();
-            if (!i1) scalar=-b.scalar;
+            if (i1 == i2) throw GMP::NaN();
+            if (!i1) scalar = -b.scalar;
          }
       }
       scalar -= b.scalar;
@@ -295,9 +296,9 @@ public:
    TropicalNumber operator/ (const TropicalNumber& a, const TropicalNumber& b)
    {
       if (!std::numeric_limits<Scalar>::has_infinity) {
-         const int i1=isinf(a), i2=isinf(b);
+         const Int i1 = isinf(a), i2 = isinf(b);
          if (i1 || i2) {
-            if (i1==i2) throw GMP::NaN();
+            if (i1 == i2) throw GMP::NaN();
             return TropicalNumber(i1 ? a.scalar : -b.scalar);
          }
       }
@@ -326,7 +327,7 @@ public:
 
    // *** comparisons ***
 
-   int compare(const TropicalNumber& a) const
+   Int compare(const TropicalNumber& a) const
    {
       return operations::cmp()(scalar, a.scalar);
    }
@@ -337,28 +338,28 @@ public:
       return a.scalar == b.scalar;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_scalar<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_scalar<T>::value>>
    friend
    bool operator== (const TropicalNumber& a, const T& b)
    {
       return a.scalar==b;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_scalar<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_scalar<T>::value>>
    friend
    bool operator== (const T& a, const TropicalNumber& b)
    {
       return b==a;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_operand<T>::value>>
    friend
    bool operator!= (const TropicalNumber& a, const T& b)
    {
       return !(a==b);
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_scalar<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_scalar<T>::value>>
    friend
    bool operator!= (const T& a, const TropicalNumber& b)
    {
@@ -415,8 +416,8 @@ protected:
    template <typename Input>
    Input& read(Input& in, std::true_type)
    {
-      if (const int inf=in.probe_inf())
-         scalar=inf*std::numeric_limits<Scalar>::max();
+      if (const int inf = in.probe_inf())
+         scalar = inf * std::numeric_limits<Scalar>::max();
       else
          in >> scalar;
       return in;
@@ -431,7 +432,7 @@ protected:
    template <typename Output>
    Output& write(Output& out, std::true_type) const
    {
-      if (const int inf=isinf(*this))
+      if (const Int inf = isinf(*this))
          out << (inf>0 ? "inf" : "-inf");
       else
          out << scalar;
@@ -491,7 +492,6 @@ struct spec_object_traits<TropicalNumber<Addition, Scalar> >
 };
 
 template <typename Addition, typename Scalar>
-inline
 bool isfinite(const TropicalNumber<Addition, Scalar>& x) noexcept
 {
    return std::numeric_limits<Scalar>::has_infinity
@@ -501,8 +501,7 @@ bool isfinite(const TropicalNumber<Addition, Scalar>& x) noexcept
 }
 
 template <typename Addition, typename Scalar>
-inline
-int isinf(const TropicalNumber<Addition, Scalar>& x) noexcept
+Int isinf(const TropicalNumber<Addition, Scalar>& x) noexcept
 {
    return std::numeric_limits<Scalar>::has_infinity
           ? isinf(static_cast<const Scalar&>(x)) :
@@ -512,15 +511,14 @@ int isinf(const TropicalNumber<Addition, Scalar>& x) noexcept
 
 // for comparisons with implicit zero in sparse containers
 template <typename Addition, typename Scalar>
-inline
-int sign(const TropicalNumber<Addition, Scalar>& x) noexcept
+Int sign(const TropicalNumber<Addition, Scalar>& x) noexcept
 {
    return is_zero(x) ? 0 : -Addition::orientation();
 }
 
 template <typename TPrimitive, typename Addition, typename Scalar>
 constexpr
-typename std::enable_if<std::is_arithmetic<Scalar>::value, TPrimitive>::type
+std::enable_if_t<std::is_arithmetic<Scalar>::value, TPrimitive>
 max_value_as(mlist<TropicalNumber<Addition, Scalar>>)
 {
    return max_value_as<TPrimitive>(mlist<Scalar>());
@@ -528,7 +526,7 @@ max_value_as(mlist<TropicalNumber<Addition, Scalar>>)
 
 template <typename TPrimitive, typename Addition, typename Scalar>
 constexpr
-typename std::enable_if<std::is_arithmetic<Scalar>::value, TPrimitive>::type
+std::enable_if_t<std::is_arithmetic<Scalar>::value, TPrimitive>
 min_value_as(mlist<TropicalNumber<Addition, Scalar>>)
 {
    return min_value_as<TPrimitive>(mlist<Scalar>());
@@ -539,7 +537,6 @@ min_value_as(mlist<TropicalNumber<Addition, Scalar>>)
 namespace std {
 
 template <typename Addition, typename Scalar>
-inline
 void swap(pm::TropicalNumber<Addition, Scalar>& a, pm::TropicalNumber<Addition, Scalar>& b)
 {
    a.swap(b);

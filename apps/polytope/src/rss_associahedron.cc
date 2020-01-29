@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,18 +24,18 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object rss_associahedron(const int n)
+BigObject rss_associahedron(const Int n)
 {
    if (n<2) {
       throw std::runtime_error("rss_associahedron: n>=2\n");
    }
 
-   const int m=(n*(n-1))/2-1; // number of facets
+   const Int m = (n*(n-1))/2-1; // number of facets
    Matrix<Rational> I(m,n+1); // initialized as zero matrix
    std::vector<std::string> facet_labels(m);
-   int k=0;
-   for (int i=1; i<=n; ++i)
-      for (int j=i+1; j<=n; ++j) {
+   Int k = 0;
+   for (Int i = 1; i <= n; ++i)
+      for (Int j = i+1; j <= n; ++j) {
          if (i!=1 || j!=n) {
             I(k,0) = -(i-j)*(i-j);
             I(k,i) = -1; I(k,j) = 1;
@@ -48,7 +48,7 @@ perl::Object rss_associahedron(const int n)
    normalizing_equations(0,1)=1;
    normalizing_equations(1,0)=-(n-1)*(n-1); normalizing_equations(1,1)=-1; normalizing_equations(1,n)=1;
 
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.take("FACETS") << I;
    p.take("AFFINE_HULL") << normalizing_equations;
    p.take("FACET_LABELS") << facet_labels;

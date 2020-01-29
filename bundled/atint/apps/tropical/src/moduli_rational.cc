@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -43,14 +43,14 @@ namespace polymake { namespace tropical {
 
 
 //Counts maximal cones by a simple formula
-Integer count_maximal_mn_cones(int n)
+Integer count_maximal_mn_cones(Int n)
 {
   if (n == 3) {
     return 1;
   }
   Integer result = 1;
   Integer nint(n);
-  for (int i = 0; i <= n-4; ++i) {
+  for (Int i = 0; i <= n-4; ++i) {
     result *= 2*(nint-i) - 5;
   }
   return result;
@@ -58,7 +58,7 @@ Integer count_maximal_mn_cones(int n)
 
 
 // Documentation see perl wrapper
-Integer count_mn_cones(int n,int k)
+Integer count_mn_cones(Int n, Int k)
 {
   if (n == 3) {
     return Integer(1);
@@ -66,8 +66,8 @@ Integer count_mn_cones(int n,int k)
   if (k == n-3)
     return count_maximal_mn_cones(n);
 
-  int vertex_count = k+1;
-  int seq_length = n + k-1;
+  Int vertex_count = k+1;
+  Int seq_length = n + k-1;
 
   // We compute the number of ways that a Prüfer sequence of appropriate length and
   // order can be created:
@@ -88,18 +88,18 @@ Integer count_mn_cones(int n,int k)
   Matrix<Rational> ineq = unit_matrix<Rational>(vertex_count);
   ineq = ( -2 * ones_vector<Rational>(vertex_count)) | ineq;
 
-  perl::Object p("polytope::Polytope");
+  BigObject p("polytope::Polytope");
   p.take("INEQUALITIES") << ineq;
   p.take("EQUATIONS") << eq;
   Matrix<Integer> latt = p.call_method("LATTICE_POINTS");
   latt = latt.minor(All, range_from(1));
 
   Integer total(0);
-  for (int l = 0; l < latt.rows(); ++l) {
+  for (Int l = 0; l < latt.rows(); ++l) {
     Integer prod(1);
-    int sum_vi = 0;
-    for (int v = 0; v < vertex_count-1; ++v) {
-      int vi(latt(l,v));
+    Int sum_vi = 0;
+    for (Int v = 0; v < vertex_count-1; ++v) {
+      Int vi(latt(l, v));
       prod *= Integer::binom(seq_length-sum_vi-1, vi-1);
       sum_vi += vi;
     }
@@ -111,7 +111,7 @@ Integer count_mn_cones(int n,int k)
 ///////////////////////////////////////////////////////////////////////////////////////
 
 //Documentation see perl wrapper
-Integer count_mn_rays(int n)
+Integer count_mn_rays(Int n)
 {
   if (n == 3) {
     return Integer(0);
@@ -127,17 +127,17 @@ Integer count_mn_rays(int n)
 ///////////////////////////////////////////////////////////////////////////////////////
 
 /**
-   @brief Does exactly the same as count_mn_rays, but returns an int. Only works for n<=12, since larger values produce too large integers
+   @brief Does exactly the same as count_mn_rays, but returns an Int. Only works for n<=12, since larger values produce too large integers
 */
-int count_mn_rays_int(int n)
+Int count_mn_rays_int(Int n)
 {
   if (n == 3) {
     return 0;
   }
-  int result = 0;
-  int nint = n;
-  for (long i = 1; i <= n-3; ++i) {
-    result += int(Integer::binom(nint-1,i));
+  Int result = 0;
+  Int nint = n;
+  for (Int i = 1; i <= n-3; ++i) {
+    result += Int(Integer::binom(nint-1,i));
   }
   return result;
 }
@@ -145,12 +145,12 @@ int count_mn_rays_int(int n)
 ///////////////////////////////////////////////////////////////////////////////////////
 
 // Documentation see header
-Matrix<int> pair_index_map(int n)
+Matrix<Int> pair_index_map(Int n)
 {
-  Matrix<int> E(n,n);
-  int nextindex = 0;
-  for (int i = 0; i < n-1; ++i) {
-    for (int j = i+1; j < n; ++j) {
+  Matrix<Int> E(n,n);
+  Int nextindex = 0;
+  for (Int i = 0; i < n-1; ++i) {
+    for (Int j = i+1; j < n; ++j) {
       E(i,j) = E(j,i) = nextindex;
       ++nextindex;
     }
@@ -161,20 +161,20 @@ Matrix<int> pair_index_map(int n)
 ///////////////////////////////////////////////////////////////////////////////////////
 
 // Documentation see header
-Vector<Set<int> > decodePrueferSequence(const Vector<int> &pseq, int n)
+Vector<Set<Int>> decodePrueferSequence(const Vector<Int>& pseq, Int n)
 {
   // Construct vertex set
   if (n < 0) n = pseq[0];  // The first element is always the number of leaves
   // Compute number of bounded edges
-  int no_of_edges = pseq.dim() - n + 1;
-  Set<int> V = sequence(0,n + no_of_edges +1);
-  Vector<Set<int>> adjacencies(no_of_edges +1);  // Which leaves lie "behind" which interior vertex?
-  Vector<Set<int>> result;
-  Set<int> allLeafs = sequence(0,n);
+  Int no_of_edges = pseq.dim()-n+1;
+  Set<Int> V = sequence(0, n+no_of_edges+1);
+  Vector<Set<Int>> adjacencies(no_of_edges+1);  // Which leaves lie "behind" which interior vertex?
+  Vector<Set<Int>> result;
+  const auto allLeafs = sequence(0,n);
 
-  int firstindex = 0; //We pretend that pseq starts at this index
+  Int firstindex = 0; //We pretend that pseq starts at this index
   // Connect leaves
-  for (int i = 0; i < n; ++i) {
+  for (Int i = 0; i < n; ++i) {
     adjacencies[pseq[firstindex]-n] += i;
     V -= i;
     ++firstindex;
@@ -182,23 +182,23 @@ Vector<Set<int> > decodePrueferSequence(const Vector<int> &pseq, int n)
 
 
   // Now create edges
-  for (int i = 1; i <= no_of_edges; ++i) {
-    Set<int> rayset;
+  for (Int i = 1; i <= no_of_edges; ++i) {
+    Set<Int> rayset;
     // If there are only two vertices left, connect them
     if (i == no_of_edges) {
-      Vector<int> lasttwo(V);
+      Vector<Int> lasttwo(V);
       rayset = adjacencies[lasttwo[0]-n];
     } else {
       // Find the minimal element in V that is not in the sequence (starting at firstindex)
-      Set<int> pset(pseq.slice(range_from(firstindex)));
-      int smallest = -1;
+      Set<Int> pset(pseq.slice(range_from(firstindex)));
+      Int smallest = -1;
       for (auto vit = entire(V); !vit.at_end(); ++vit) {
         if (!pset.contains(*vit)) {
           smallest = *vit;
           break;
         }
       } //END look for smallest in V\P
-      Set<int> Av = adjacencies[smallest-n];
+      Set<Int> Av = adjacencies[smallest-n];
       rayset = Av;
       adjacencies[pseq[firstindex]-n] += Av;
       V -= smallest;
@@ -220,7 +220,7 @@ Vector<Set<int> > decodePrueferSequence(const Vector<int> &pseq, int n)
 
 //Documentation see perl wrapper
 template <typename Addition>
-perl::Object m0n(int n)
+BigObject m0n(Int n)
 {
   if (n == 3) {
     return projective_torus<Addition>(0,1);	
@@ -231,10 +231,10 @@ perl::Object m0n(int n)
 
   // First we create the edge index matrix E(i,j) that contains at element i,j the edge index of edge (i,j)
   // in the complete graph on n-1 nodes
-  int nextindex = 0;
-  Matrix<int> E(n-1, n-1);
-  for (int i = 0; i < n-2; ++i) {
-    for (int j = i+1; j < n-1; ++j) {
+  Int nextindex = 0;
+  Matrix<Int> E(n-1, n-1);
+  for (Int i = 0; i < n-2; ++i) {
+    for (Int j = i+1; j < n-1; ++j) {
       E(i,j) = nextindex;
       E(j,i) = nextindex;
       ++nextindex;
@@ -247,42 +247,42 @@ perl::Object m0n(int n)
   // From each such Prüfer sequence we then construct a maximal cone
 
   // Will contain the rays of the moduli space in matroid coordinates
-  int raydim = (n*(n-3))/2 + 1;
-  int raycount = count_mn_rays_int(n);
-  Matrix<Rational> rays(raycount,raydim);
+  Int raydim = (n*(n-3))/2 + 1;
+  Int raycount = count_mn_rays_int(n);
+  Matrix<Rational> rays(raycount, raydim);
 
   // Will contain value 'true' for each ray that has been computed
-  Vector<bool> raysComputed(count_mn_rays_int(n));
+  std::vector<bool> raysComputed(count_mn_rays_int(n));
   //Will contain the set of maximal cones
-  Vector<Set<int> > cones;
+  RestrictedIncidenceMatrix<> cones;
 
   // Compute the number of sequences = number of maximal cones
-  int noOfMax(count_mn_cones(n, n-3));
+  Int noOfMax(count_mn_cones(n, n-3));
 
   // Things we will need:
-  Set<int> allLeafs = sequence(0,n); //The complete sequence of leaves (for taking complements)
-  Vector<int> rayIndices(n-2); //Entry k contains the sum from i = 1 to k of binomial(n-1,i)
+  const auto allLeafs = sequence(0,n); //The complete sequence of leaves (for taking complements)
+  Vector<Int> rayIndices(n-2); //Entry k contains the sum from i = 1 to k of binomial(n-1,i)
   rayIndices[0] = 0;
-  for (int i = 1; i < rayIndices.dim(); ++i) {
-    rayIndices[i] = rayIndices[i-1] + int(Integer::binom(n-1,i));
+  for (Int i = 1; i < rayIndices.dim(); ++i) {
+    rayIndices[i] = rayIndices[i-1] + Int(Integer::binom(n-1,i));
   }
 
   // Iterate through all Prüfer sequences -------------------------------------------------
 
-  Vector<int> indices = ones_vector<int>(n-2);
-  Vector<int> baseSequence(2*n-4);
-  Vector<Set<int>> adjacent(n-2);  // These will be the partitions of the edges
+  Vector<Int> indices = ones_vector<Int>(n-2);
+  Vector<Int> baseSequence(2*n-4);
+  Vector<Set<Int>> adjacent(n-2);  // These will be the partitions of the edges
   Vector<Rational> newray(raydim);  // Container for new rays
-  for (int iteration = 0; iteration < noOfMax; ++iteration) {
+  for (Int iteration = 0; iteration < noOfMax; ++iteration) {
 
     // Create the sequence currently represented by indices and append it------------------
     baseSequence.resize(2*n-4);
     baseSequence.fill(0);
-    for (int i = 0; i < n-1; ++i) {
+    for (Int i = 0; i < n-1; ++i) {
       // Go through the non-zero entries of baseSequence. If it is the first or the indices[i]+1-th,
       // insert an n+i
-      int nonzero_count = -1;
-      for (int entry = 0; entry < baseSequence.dim(); ++entry) {
+      Int nonzero_count = -1;
+      for (Int entry = 0; entry < baseSequence.dim(); ++entry) {
         if (baseSequence[entry] == 0) {
           ++nonzero_count;
           if (nonzero_count == 0) {
@@ -297,26 +297,26 @@ perl::Object m0n(int n)
     }
 
     // We now decode the Prüfer sequence to obtain the corresponding cone---------------------
-    Set<int> newcone;
+    Set<Int> newcone;
 
-    Set<int> V = sequence(0,2*n-2);
-    adjacent.fill(Set<int>());
+    Set<Int> V = sequence(0,2*n-2);
+    adjacent.fill(Set<Int>());
     // First: Connect the leaves
-    for (int i = 0; i < n; ++i) {
+    for (Int i = 0; i < n; ++i) {
       adjacent[baseSequence[0]-n] += i;
       V -= i;
       baseSequence = baseSequence.slice(range_from(1));
     }
     // Now create edges:
-    int enumber = n-3;
-    for (int i = 1; i <= enumber; ++i) {
+    Int enumber = n-3;
+    for (Int i = 1; i <= enumber; ++i) {
       // Construct the leaf partition represented by the curve corresponding to the sequence
-      Set<int> rayset;
+      Set<Int> rayset;
       if (i == enumber) {  // If V only has two elements left, simply connect these
         rayset = adjacent[V.front() - n];
       } else {
-        Set<int> pset(baseSequence);
-        int smallest = -1;
+        Set<Int> pset(baseSequence);
+        Int smallest = -1;
         // Find the smallest element in V that is not in P
         for (auto vit = entire(V); !vit.at_end(); ++vit) {
           if (!pset.contains(*vit)) {
@@ -338,19 +338,19 @@ perl::Object m0n(int n)
 
       // Now we compute the index of the ray -----------------------------------------
       // Consider ray as a vector of length n filled with a's and b's where entry i is a iff i is in I
-      int k = n - rayset.size();
-      int bsleft = k-1;
-      int l = 1;
-      int rIndex (rayIndices[k-2]);
+      Int k = n - rayset.size();
+      Int bsleft = k-1;
+      Int l = 1;
+      Int rIndex = rayIndices[k-2];
       while (bsleft > 1) {
         if (rayset.contains(n-l-1)) {
-          rIndex += int(Integer::binom(n-l-1,bsleft-1));
+          rIndex += Int(Integer::binom(n-l-1,bsleft-1));
         } else {
           --bsleft;
         }
         ++l;
       }
-      int m = 0;
+      Int m = 0;
       while (rayset.contains(m)) { ++m; }
       // at last we add the difference of the indices of the second b' and the first b (-1)
       rIndex += (n-1-l)-m;
@@ -362,7 +362,7 @@ perl::Object m0n(int n)
         raysComputed[rIndex] = true;
         newray.fill(0);
         for (auto raypair = entire(all_subsets_of_k(rayset,2)); !raypair.at_end(); ++raypair) {
-          int newrayindex = E((*raypair).front(),(*raypair).back());
+          Int newrayindex = E((*raypair).front(),(*raypair).back());
           // If the newrayindex is one higher than the ray dimension,
           // this means it is the last pair. Also, we don't
           // add -e_n but e_1 + ... + e_{n-1} (as we mod out lineality)
@@ -371,11 +371,11 @@ perl::Object m0n(int n)
         rays.row(rIndex) = newray;
       }
     } //END iterate edges
-    cones |= newcone;
+    cones /= newcone;
 
     // Increase the indices vector by "1"---------------------------------------------------
     if (iteration < noOfMax-1) {
-      int counterindex = n-3;
+      Int counterindex = n-3;
       while (indices[counterindex] == 2*(n-counterindex)-5) {
         indices[counterindex] = 1;
         --counterindex;
@@ -390,28 +390,29 @@ perl::Object m0n(int n)
   // Add the vertex at the origin
   rays = zero_vector<Rational>(rays.rows()) | rays;
 
-  rays /= unit_vector<Rational>(rays.cols(),0);
+  rays /= unit_vector<Rational>(rays.cols(), 0);
 
   // Add the vertex to all cones
-  for (int mc = 0; mc < cones.dim(); ++mc) {
-    cones[mc] += (rays.rows()-1);
+  const Int vertex = rays.rows() - 1;
+  for (auto mc = entire(rows(cones)); !mc.at_end(); ++mc) {
+    *mc += vertex;
   }
 
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
+  result.take("WEIGHTS") << ones_vector<Int>(cones.rows());
   result.take("PROJECTIVE_VERTICES") << rays;
-  result.take("MAXIMAL_POLYTOPES") << cones;
-  result.take("WEIGHTS") << ones_vector<int>(cones.dim());
+  result.take("MAXIMAL_POLYTOPES") << IncidenceMatrix<>{std::move(cones)};
   result.set_description() << dsc.str();
   return result;
 }
 
 		
 template <typename Addition>
-perl::Object space_of_stable_maps(int n, int d, int r)
+BigObject space_of_stable_maps(Int n, Int d, Int r)
 {
-  perl::Object moduli = m0n<Addition>(n+d);
-  perl::Object torus = projective_torus<Addition>(r,1);
-  perl::Object result = call_function("cartesian_product", moduli, torus);
+  BigObject moduli = m0n<Addition>(n+d);
+  BigObject torus = projective_torus<Addition>(r,1);
+  BigObject result = call_function("cartesian_product", moduli, torus);
   result.set_description() << "Moduli space of stable rational maps with " << n << " contracted ends, " << d << " non-contracted ends into the torus of dimension " << d;
   return result;
 }

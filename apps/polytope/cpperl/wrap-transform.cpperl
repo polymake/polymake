@@ -3,7 +3,7 @@
   {"args": ["Rational", "void", "Rational(perl::Canned<const Rational&>)", "void"], "func": "scale", "include": ["polymake/Rational.h"], "sig": "scale:T1.B.C0.x", "tp": "1"},
   {"args": ["Rational", "void", "perl::Canned<const Vector<Rational>&>", "void"], "func": "translate", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "translate:T1.B.X.x", "tp": "1"},
   {"args": ["Rational", "void", "perl::Canned<const Matrix<Rational>&>", "void"], "func": "transform", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "transform:T1.B.X.x", "tp": "1"},
-  {"args": ["double", "void", "double(int)", "void"], "func": "scale", "sig": "scale:T1.B.C0.x", "tp": "1"},
-  {"args": ["Rational", "void", "Rational(int)", "void"], "func": "scale", "include": ["polymake/Rational.h"], "sig": "scale:T1.B.C0.x", "tp": "1"},
+  {"args": ["double", "void", "double(Int)", "void"], "func": "scale", "sig": "scale:T1.B.C0.x", "tp": "1"},
+  {"args": ["Rational", "void", "Rational(Int)", "void"], "func": "scale", "include": ["polymake/Rational.h"], "sig": "scale:T1.B.C0.x", "tp": "1"},
  null ],
 "version": 3}

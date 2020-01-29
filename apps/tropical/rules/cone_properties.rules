@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -116,7 +116,7 @@ object Polytope {
 	# @category Combinatorics
 	# This is the face lattice of the polyhedral complex, whose vertices are [[PSEUDOVERTICES]] and
 	# whose cells are the cells of the covector decomposition. For each face in this lattice, we save the following information:
-	# 1) What PSEUDOVERTICES make up this face, i.e. a Set<int>
+	# 1) What PSEUDOVERTICES make up this face, i.e. a Set<Int>
 	# 2) What is the covector of this face, i.e. an IncidenceMatrix (whose rows correspond to coordinates and
 	# whose columns to [[POINTS]]).
 	# NOTE: This lattice does not contain any far faces of the polyhedral cells, as they do not have well-defined covectors.

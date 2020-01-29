@@ -18,7 +18,7 @@
    Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
    ---
-   Copyright (c) 2016-2019
+   Copyright (c) 2016-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -39,84 +39,86 @@
 
 namespace polymake { namespace tropical {
 
-   //Computes the set of indices of nodes that lie above a given node
-   Bitset nodes_above(const Lattice<BasicDecoration>& HD, int node) {
-      Bitset result(HD.out_adjacent_nodes( node));
-      std::list<int> queue;
-      for(const auto& oa : result) queue.push_back(oa);
+// Computes the set of indices of nodes that lie above a given node
+Set<Int> nodes_above(const Lattice<BasicDecoration>& HD, Int node)
+{
+  Set<Int> result{ HD.out_adjacent_nodes(node) };
+  std::list<Int> queue;
+  for (const auto& oa : result)
+    queue.push_back(oa);
 
-      while(queue.size() > 0) {
-         int next = queue.front();
-         queue.pop_front();
-         Set<int> nbrs = HD.out_adjacent_nodes( next);
-         for(auto &adj : nbrs) {
-            result += adj;
-            queue.push_back(adj);
-         }
+  while (!queue.empty()) {
+    const Int next = queue.front();
+    queue.pop_front();
+    Set<Int> nbrs = HD.out_adjacent_nodes(next);
+    for (auto &adj : nbrs) {
+      result += adj;
+      queue.push_back(adj);
+    }
+  }
+  return result;
+}
+
+/*
+ * @brief Takes a Hasse diagram and computes for each node n the value of the moebius function
+ * mu(n,1), where 1 is the maximal element.
+ * @return Vector<Int> Each entry corresponds to the node of the same index.
+ */
+Vector<Int> top_moebius_function(const Lattice<BasicDecoration>& HD)
+{
+  Vector<Int> result(HD.nodes());
+
+  result[ HD.top_node() ] = 1;
+  Int HD_dim = HD.rank();
+
+  for (Int r = HD_dim-1; r >= 0; --r) {
+    auto n_of_dim = HD.nodes_of_rank(r);
+    for (auto& nr : n_of_dim) {
+      Int value = 0;
+      const auto above = nodes_above(HD, nr);
+      for (const auto& ab : above) {
+        value -= result[ ab];
       }
-      return result;
-   }
+      result[nr] = value;
+    }
+  }
 
-   /*
-    * @brief Takes a Hasse diagram and computes for each node n the value of the moebius function
-    * mu(n,1), where 1 is the maximal element.
-    * @return Vector<int> Each entry corresponds to the node of the same index.
-    */
-   Vector<int> top_moebius_function(const Lattice<BasicDecoration>& HD) {
-      Vector<int> result(HD.nodes());
+  // The bottom node needs to be set manually - its minus the sum over all other values
+  Int bottom_value = accumulate(result, operations::add());
+  result[HD.bottom_node()] = -bottom_value;
 
-      result[ HD.top_node() ] = 1;
-      int HD_dim = HD.rank();
+  return result;
+}
 
-      for(int r = HD_dim-1; r >= 0; r--) {
-         auto n_of_dim = HD.nodes_of_rank(r);
-         for(auto& nr : n_of_dim) {
-            int value = 0;
-            Bitset above = nodes_above(HD, nr);
-            for(const auto& ab : above) {
-               value -= result[ ab];
-            }
-            result[nr] = value;
-         }
-      }
+// Computes the lattice of chains which contain bottom and top node
+Lattice<BasicDecoration> cyclic_chains(const Lattice<BasicDecoration, Sequential>& lattice)
+{
+  IncidenceMatrix<> max_chains(maximal_chains(lattice,false,false));
+  const Int bottom_index = lattice.bottom_node();
+  const Int top_index = lattice.top_node();
+  Array<IncidenceMatrix<>> max_coatoms(max_chains.rows());
+  Array<Int> maximal_dims(max_chains.rows());
+  if (lattice.graph().nodes() <= 2) {
+    return fan::hasse_diagram_general(max_chains, max_coatoms, 0, maximal_dims, graph::lattice::RankRestriction(),
+                                      fan::lattice::TopologicalType(true,true), Set<Int>{});
+  }
+  auto mv_it = entire(max_coatoms);
+  auto mc_it = entire(rows(max_chains));
+  auto md_it = entire(maximal_dims);
+  Int dim = 0;
+  const Set<Int> extreme_nodes{ bottom_index, top_index };
+  for (; !mc_it.at_end(); ++mc_it, ++mv_it, ++md_it) {
+    Int size = mc_it->size();
+    *md_it = size-1;
+    dim = std::max(dim, size-1);
+    *mv_it = IncidenceMatrix<>(size-2,lattice.graph().nodes());
+    Set<Int> non_extremal = *mc_it - extreme_nodes;
+    auto removals = entire(all_subsets_of_k( non_extremal, size-3));
+    for (auto inc_rows = entire(rows(*mv_it)); !inc_rows.at_end(); ++inc_rows, ++removals) {
+      *inc_rows = extreme_nodes + *removals;
+    }
+  }
+  return fan::hasse_diagram_general(max_chains, max_coatoms, dim, maximal_dims, graph::lattice::RankRestriction(), fan::lattice::TopologicalType(), Set<Int>{});
+}
 
-      //The bottom node needs to be set manually - its minus the sum over all other values
-      int bottom_value = accumulate( result, operations::add());
-      result[ HD.bottom_node()] = -bottom_value;
-
-      return result;
-   }
-
-   //Computes the lattice of chains which contain bottom and top node
-   Lattice<BasicDecoration> cyclic_chains(const Lattice<BasicDecoration, Sequential>& lattice) {
-      IncidenceMatrix<> max_chains(maximal_chains(lattice,false,false));
-      const int bottom_index = lattice.bottom_node();
-      const int top_index = lattice.top_node();
-      Array<IncidenceMatrix<> > max_coatoms(max_chains.rows());
-      Array<int> maximal_dims(max_chains.rows());
-      if(lattice.graph().nodes() <= 2){
-         return fan::hasse_diagram_general(max_chains, max_coatoms, 0, maximal_dims, graph::lattice::RankRestriction(),
-               fan::lattice::TopologicalType(true,true), Set<int>());
-      }
-      auto mv_it = entire(max_coatoms);
-      auto mc_it = entire(rows(max_chains));
-      auto md_it = entire(maximal_dims);
-      int dim = 0;
-      const Set<int> extreme_nodes = scalar2set(bottom_index) + scalar2set(top_index);
-      for(; !mc_it.at_end(); ++mc_it, ++mv_it, ++md_it) {
-         int size = mc_it->size();
-         *md_it = size-1;
-         dim = std::max(dim, size-1);
-         *mv_it = IncidenceMatrix<>(size-2,lattice.graph().nodes());
-         Set<int> non_extremal = *mc_it - extreme_nodes;
-         auto removals = entire(all_subsets_of_k( non_extremal, size-3));
-         for(auto inc_rows = entire(rows(*mv_it)); !inc_rows.at_end(); ++inc_rows, ++removals) {
-            *inc_rows = extreme_nodes + *removals;
-         }
-      }
-      return fan::hasse_diagram_general(max_chains, max_coatoms, dim, maximal_dims, graph::lattice::RankRestriction(), fan::lattice::TopologicalType(), Set<int>());
-
-   }
-
-
-}}
+} }

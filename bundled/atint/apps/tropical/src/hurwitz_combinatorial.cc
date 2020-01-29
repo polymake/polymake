@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -48,33 +48,33 @@
 namespace polymake { namespace tropical {
 
 struct HurwitzResult {
-  perl::Object subdivision;
-  perl::Object cycle;
+  BigObject subdivision;
+  BigObject cycle;
 };
 
 /**
    @brief Takes a RationalCurve and a list of node indices. Then inserts additional leaves (starting from N_LEAVES+1) at these nodes and returns the resulting RationalCurve object
-   @param perl::Object curve A RationalCurve object
-   @param Vector<int> nodes A list of node indices of the curve
+   @param BigObject curve A RationalCurve object
+   @param Vector<Int> nodes A list of node indices of the curve
 */
-perl::Object insert_leaves(perl::Object curve, const Vector<int>& nodes)
+BigObject insert_leaves(BigObject curve, const Vector<Int>& nodes)
 {
   // Extract values
-  int max_leaf = curve.give("N_LEAVES");
+  Int max_leaf = curve.give("N_LEAVES");
   IncidenceMatrix<> setsInc = curve.give("SETS");
-  Vector<Set<int>> sets = incMatrixToVector(setsInc);
+  Vector<Set<Int>> sets = incMatrixToVector(setsInc);
   Vector<Rational> coeffs = curve.give("COEFFS");
   IncidenceMatrix<> nodes_by_sets = curve.give("NODES_BY_SETS");
   IncidenceMatrix<> nodes_by_leavesInc = curve.give("NODES_BY_LEAVES");
-  Vector<Set<int> > nodes_by_leaves = incMatrixToVector(nodes_by_leavesInc);
+  Vector<Set<Int> > nodes_by_leaves = incMatrixToVector(nodes_by_leavesInc);
 
-  for (int n_el = 0; n_el < nodes.dim(); ++n_el) {
-    int n = nodes[n_el];
+  for (Int n_el = 0; n_el < nodes.dim(); ++n_el) {
+    Int n = nodes[n_el];
     ++max_leaf;
     // Easy case: There is already a leaf at this vertex
     if (nodes_by_leaves[n].size() > 0) {
-      int ref_leaf = *( nodes_by_leaves[n].begin());
-      for (int s = 0; s < sets.dim(); ++s) {
+      Int ref_leaf = *( nodes_by_leaves[n].begin());
+      for (Int s = 0; s < sets.dim(); ++s) {
         if (sets[s].contains(ref_leaf)) {
           sets[s] += max_leaf;
         }
@@ -85,22 +85,22 @@ perl::Object insert_leaves(perl::Object curve, const Vector<int>& nodes)
       // Intersect the first two, I_1 and I_2: I_1 points away from the node, if and only if
       // I_1 cap I_2 = empty or I_1. The subsequent sets I_k only have to fulfill
       // I_k cap I_1 = empty
-      Vector<int> adjacent_sets(nodes_by_sets.row(n));
-      Vector<Set<int> > normalized_sets;
+      Vector<Int> adjacent_sets(nodes_by_sets.row(n));
+      Vector<Set<Int>> normalized_sets;
       // FIXME: misuse of vector concatenation
-      Set<int> first_inter = sets[adjacent_sets[0]] * sets[adjacent_sets[1]];
+      Set<Int> first_inter = sets[adjacent_sets[0]] * sets[adjacent_sets[1]];
       normalized_sets |=
         (first_inter.size() == 0 || first_inter.size() == sets[adjacent_sets[0]].size()) ? sets[adjacent_sets[0]] : (sequence(1, max_leaf-1) - sets[adjacent_sets[0]]);
-      for (int as = 1; as < adjacent_sets.dim(); ++as) {
-        Set<int> subseq_inter = normalized_sets[0] * sets[adjacent_sets[as]];
+      for (Int as = 1; as < adjacent_sets.dim(); ++as) {
+        Set<Int> subseq_inter = normalized_sets[0] * sets[adjacent_sets[as]];
         normalized_sets |=
           (subseq_inter.size() == 0)? sets[adjacent_sets[as]] : (sequence(1,max_leaf-1) - sets[adjacent_sets[as]]);
       }
       // Now for each set count, how many of the adjacent sets intersect it nontrivially
       // It points away from the node, if and only if this number is 1 (otherwise its all)
-      for (int s = 0; s < sets.dim(); ++s) {
-        int inter_count = 0;
-        for (int ns = 0; ns < normalized_sets.dim(); ++ns) {
+      for (Int s = 0; s < sets.dim(); ++s) {
+        Int inter_count = 0;
+        for (Int ns = 0; ns < normalized_sets.dim(); ++ns) {
           if ((sets[s] * normalized_sets[ns]).size() > 0) ++inter_count;
           if (inter_count > 1) break;
         }
@@ -114,7 +114,7 @@ perl::Object insert_leaves(perl::Object curve, const Vector<int>& nodes)
   } //END iterate nodes
 
   // Create result
-  perl::Object result("RationalCurve");
+  BigObject result("RationalCurve");
   result.take("SETS") << sets;
   result.take("COEFFS") << coeffs;
   result.take("N_LEAVES") << max_leaf;
@@ -123,17 +123,17 @@ perl::Object insert_leaves(perl::Object curve, const Vector<int>& nodes)
 
 /**
    @brief Takes a RationalCurve object and returns the rays v_I corresponding to its bounded edges as a matrix of row vectors in matroid coordinates (with leading coordinate 0).
-   @param perl::Object curve A RationalCurve object
+   @param BigObject curve A RationalCurve object
    @return Matrix<Rational> The rays corresponding to the bounded edges
 */
 template <typename Addition>
-Matrix<Rational> edge_rays(perl::Object curve)
+Matrix<Rational> edge_rays(BigObject curve)
 {
   IncidenceMatrix<> sets = curve.give("SETS");
-  int n = curve.give("N_LEAVES");
+  Int n = curve.give("N_LEAVES");
   Matrix<Rational> result(0, n*(n-3)/2 + 2);
-  for (int s = 0; s < sets.rows(); ++s) {
-    perl::Object rcurve("RationalCurve");
+  for (Int s = 0; s < sets.rows(); ++s) {
+    BigObject rcurve("RationalCurve");
     rcurve.take("SETS") << sets.minor(scalar2set(s),All);
     rcurve.take("N_LEAVES") << n;
     rcurve.take("COEFFS") << ones_vector<Rational>(1);
@@ -145,22 +145,22 @@ Matrix<Rational> edge_rays(perl::Object curve)
 
 /**
    @brief Computes all ordered lists of k elements in {0,...,n-1}
-   @param int n The size of the set {0,...,n-1}
-   @param int k The size of the ordered subsets
-   @return Matrix<int> All ordered k-sets as a list of row vectors, i.e. a matrix of dimension ( (n choose k) * k!) x k
+   @param Int n The size of the set {0,...,n-1}
+   @param Int k The size of the ordered subsets
+   @return Matrix<Int> All ordered k-sets as a list of row vectors, i.e. a matrix of dimension ( (n choose k) * k!) x k
 */
-Matrix<int> ordered_k_choices(int n, int k)
+Matrix<Int> ordered_k_choices(Int n, Int k)
 {
-  Matrix<int> result(0,k);
+  Matrix<Int> result(0,k);
 
   // Compute all k-choices of the set {0,..,n-1}
-  Array<Set<int>> kchoices{ all_subsets_of_k(sequence(0,n),k) };
+  const auto kchoices = all_subsets_of_k(sequence(0, n), k);
 
   // Compute all permutations on a k-set
-  AllPermutations<> kperm = all_permutations(k);
+  const auto kperm = all_permutations(k);
 
   for (const auto& kchoice : kchoices) {
-    Vector<int> kvec(kchoice);
+    Vector<Int> kvec(kchoice);
     for (auto p = entire(kperm); !p.at_end(); ++p) {
       result /= permuted(kvec, *p);
     }
@@ -174,7 +174,7 @@ Matrix<int> ordered_k_choices(int n, int k)
 */
 Integer gcd_maxminor(const Matrix<Rational>& map)
 {
-  Array<Set<int>> r_choices{ all_subsets_of_k(sequence(0, map.cols()), map.rows()) };
+  const auto r_choices = all_subsets_of_k(sequence(0, map.cols()), map.rows());
   Integer g = 0;
   for (const auto& r_choice : r_choices) {
     g = gcd(g, Integer(det(map.minor(All, r_choice))));
@@ -185,10 +185,10 @@ Integer gcd_maxminor(const Matrix<Rational>& map)
 /**
    @brief This takes a list of cones (in terms of ray indices) and their weights and inserts another cone with given weight. If the new cone already exists in the list, the weight is added
 */
-void insert_cone(Vector<Set<int>>& cones, Vector<Integer>& weights, const Set<int>& ncone, const Integer& nweight)
+void insert_cone(Vector<Set<Int>>& cones, Vector<Integer>& weights, const Set<Int>& ncone, const Integer& nweight)
 {
-  int ncone_index = -1;
-  for (int c = 0; c < cones.dim(); ++c) {
+  Int ncone_index = -1;
+  for (Int c = 0; c < cones.dim(); ++c) {
     if (ncone == cones[c]) {
       ncone_index = c; break;
     }
@@ -207,9 +207,9 @@ void insert_cone(Vector<Set<int>>& cones, Vector<Integer>& weights, const Set<in
 bool is_valid_choice(const Matrix<Rational>& ev_maps)
 {
   // Check if all maps have a positive entry.
-  for (int r = 0; r < ev_maps.rows(); ++r) {
+  for (Int r = 0; r < ev_maps.rows(); ++r) {
     bool found_positive = false;
-    for (int c = 0; c < ev_maps.cols(); ++c) {
+    for (Int c = 0; c < ev_maps.cols(); ++c) {
       if (ev_maps(r,c) > 0) {
         found_positive = true; break;
       }
@@ -225,8 +225,8 @@ bool is_valid_choice(const Matrix<Rational>& ev_maps)
   try {
     Matrix<Rational> rays = polytope::enumerate_vertices(ineq, eq, false).first;
     bool found_positive = false;
-    for (int c = 1; c < rays.cols(); ++c) {
-      for (int r = 0; r < rays.rows(); ++r) {
+    for (Int c = 1; c < rays.cols(); ++c) {
+      for (Int r = 0; r < rays.rows(); ++r) {
         if (rays(r,c) > 0) {
           found_positive = true; break;
         }
@@ -242,10 +242,10 @@ bool is_valid_choice(const Matrix<Rational>& ev_maps)
 }
 
 /**
-   @brief Computes a subdivision of M_0,n containing H_k(degree) and (possibly) the cycle itself. The function returns a struct containing the subdivision as subobject "subdivision" and the Hurwitz cycle as subobject "cycle", both as perl::Object. Optionally one can specify a RationalCurve object representing a ray around which the whole computation is performed locally (the vector is only for default initalization).
+   @brief Computes a subdivision of M_0,n containing H_k(degree) and (possibly) the cycle itself. The function returns a struct containing the subdivision as subobject "subdivision" and the Hurwitz cycle as subobject "cycle", both as BigObject. Optionally one can specify a RationalCurve object representing a ray around which the whole computation is performed locally (the vector is only for default initalization).
 */
 template <typename Addition>
-HurwitzResult hurwitz_computation(int k, const Vector<int>& degree, Vector<Rational> points, bool compute_cycle, perl::Object local_restriction, bool output_progress)
+HurwitzResult hurwitz_computation(Int k, const Vector<Int>& degree, Vector<Rational> points, bool compute_cycle, BigObject local_restriction, bool output_progress)
 {
   // Make points default points ( = 0)
   if (points.dim() < degree.dim() - 3- k) {
@@ -255,12 +255,12 @@ HurwitzResult hurwitz_computation(int k, const Vector<int>& degree, Vector<Ratio
     points = points.slice(sequence(0,degree.dim()-3-k));
   }
 
-  int n = degree.dim();
-  int big_n = 2*n - k -2;
-  int big_moduli_dim = big_n * (big_n - 3) / 2;//Affine ambient dimension of the stable maps.
+  Int n = degree.dim();
+  Int big_n = 2*n - k -2;
+  Int big_moduli_dim = big_n * (big_n - 3) / 2;//Affine ambient dimension of the stable maps.
 
   // Compute M_0,n and extract cones
-  perl::Object m0n;
+  BigObject m0n;
   Vector<Rational> compare_vector;
   bool restrict_local = local_restriction.valid();
 
@@ -282,8 +282,8 @@ HurwitzResult hurwitz_computation(int k, const Vector<int>& degree, Vector<Ratio
   Matrix<Rational> rat_degree(n,0);
   rat_degree |= degree;
   Vector<Rational> zero_translate(2);
-  for (int i = n+2; i <= 2*n-2-k; ++i) {
-    perl::Object evi = evaluation_map<Addition>(n-2-k, thomog(rat_degree,0,false), i-n-1);
+  for (Int i = n+2; i <= 2*n-2-k; ++i) {
+    BigObject evi = evaluation_map<Addition>(n-2-k, thomog(rat_degree,0,false), i-n-1);
     Matrix<Rational> evimatrix = evi.give("MATRIX");
     // We take the representation of the evaluation map on charts 0 and 0.
     evimatrix = tdehomog_morphism(evimatrix, zero_translate).first;
@@ -292,35 +292,35 @@ HurwitzResult hurwitz_computation(int k, const Vector<int>& degree, Vector<Ratio
   }
 
   // Affine ambient dim of m0n
-  int mn_ambient_dim = n*(n-3)/2;
+  Int mn_ambient_dim = n*(n-3)/2;
   // Will contain the rays/cones of the subdivided M_0,n (with leading coordinates)
   Matrix<Rational> subdiv_rays(0,mn_ambient_dim);
-  Vector<Set<int> > subdiv_cones;
+  Vector<Set<Int>> subdiv_cones;
   Vector<Integer> subdiv_weights;
 
   // Will contain the rays/cones/weights of the Hurwitz cycle
   Matrix<Rational> cycle_rays(0,mn_ambient_dim);
-  Vector<Set<int> > cycle_cones;
+  Vector<Set<Int>> cycle_cones;
   Vector<Integer> cycle_weights;
 
   // Iterate all cones of M_0,n and compute their refinement as well as the
   // Hurwitz cycle cones within
-  for (int mc = 0; mc < mn_cones.rows(); ++mc) {
+  for (Int mc = 0; mc < mn_cones.rows(); ++mc) {
     if (output_progress)
       cout << "Refining cone " << mc << " of " << mn_cones.rows() << endl;
 
     // Extract the combinatorial type to compute evaluation maps
-    perl::Object mc_type = call_function("rational_curve_from_cone", m0n, degree.dim(), mc);
+    BigObject mc_type = call_function("rational_curve_from_cone", m0n, degree.dim(), mc);
 
     // This will be a model of the subdivided cone of M_0,n
     Matrix<Rational> model_rays = unit_matrix<Rational>(degree.dim()-2);
-    Vector<Set<int> > model_cones; model_cones |= sequence(0, degree.dim()-2);
+    Vector<Set<Int>> model_cones; model_cones |= sequence(0, degree.dim()-2);
     // Translate the local restriction if necessary
-    Vector<Set<int>> model_local_restrict;
+    Vector<Set<Int>> model_local_restrict;
     if (restrict_local) {
-      Set<int> single_index_set;
+      Set<Int> single_index_set;
       Matrix<Rational> erays = edge_rays<Addition>(mc_type);
-      for (int er = 0; er < erays.rows(); ++er) {
+      for (Int er = 0; er < erays.rows(); ++er) {
         if (tdehomog_vec(Vector<Rational>(erays.row(er))) == compare_vector) {
           single_index_set += er; break;
         }
@@ -328,7 +328,7 @@ HurwitzResult hurwitz_computation(int k, const Vector<int>& degree, Vector<Ratio
       model_local_restrict |= single_index_set;
     }
 
-    perl::Object model_complex("Cycle", mlist<Addition>());
+    BigObject model_complex("Cycle", mlist<Addition>());
     model_complex.take("VERTICES") << thomog(model_rays);
     model_complex.take("MAXIMAL_POLYTOPES") << model_cones;
     if (restrict_local) {
@@ -336,15 +336,15 @@ HurwitzResult hurwitz_computation(int k, const Vector<int>& degree, Vector<Ratio
     }
 
     // Iterate over all possible ordered choices of (#vert-k)-subsets of nodes
-    Matrix<int> fix_node_sets = ordered_k_choices(n-2, n-2-k);
+    Matrix<Int> fix_node_sets = ordered_k_choices(n-2, n-2-k);
 
     // We save the evaluation matrices for use in the computation
     // of tropical weights in the Hurwitz cycle
     Vector<Matrix<Rational> > evmap_list;
 
-    for (int nchoice = 0 ; nchoice < fix_node_sets.rows(); ++nchoice) {
+    for (Int nchoice = 0 ; nchoice < fix_node_sets.rows(); ++nchoice) {
       // Compute combinatorial type obtained by adding further ends to chosen nodes
-      perl::Object higher_type = insert_leaves(mc_type, fix_node_sets.row(nchoice));
+      BigObject higher_type = insert_leaves(mc_type, fix_node_sets.row(nchoice));
       // Convert evaluation maps to local basis of rays
       Matrix<Rational> local_basis = tdehomog(edge_rays<Addition>(higher_type)).minor(All, range_from(1));
       Matrix<Rational> converted_maps = ev_maps * T(local_basis);
@@ -356,7 +356,7 @@ HurwitzResult hurwitz_computation(int k, const Vector<int>& degree, Vector<Ratio
       }
 
       // Now refine along each evaluation map
-      for (int evmap = 0; evmap < converted_maps.rows(); ++evmap) {
+      for (Int evmap = 0; evmap < converted_maps.rows(); ++evmap) {
         // Compute half-space fan induced by the equation ev_i >= / = / <= p_i
         // Then refine the model cone along this halfspace
         if (!is_zero(converted_maps.row(evmap))) {
@@ -365,7 +365,7 @@ HurwitzResult hurwitz_computation(int k, const Vector<int>& degree, Vector<Ratio
           // TODO: replace with sum()
           hom_converted_map = ( - ones_vector<Rational>(hom_converted_map.dim()) * hom_converted_map) | hom_converted_map;
 
-          perl::Object evi_halfspace = halfspace_subdivision<Addition>(points[evmap],hom_converted_map,1);
+          BigObject evi_halfspace = halfspace_subdivision<Addition>(points[evmap],hom_converted_map,1);
           model_complex = refinement(model_complex, evi_halfspace, false,false,false,true,false).complex;
         }
       } //END iterate evaluation maps
@@ -378,22 +378,22 @@ HurwitzResult hurwitz_computation(int k, const Vector<int>& degree, Vector<Ratio
     IncidenceMatrix<> model_hurwitz_cones;
     Vector<Integer> model_hurwitz_weights;
     Matrix<Rational> model_hurwitz_rays;
-    Vector<Set<int> > model_hurwitz_local;
+    Vector<Set<Int>> model_hurwitz_local;
     if (compute_cycle) {
-      perl::Object skeleton = call_function("skeleton_complex", model_complex, k, false);
+      BigObject skeleton = call_function("skeleton_complex", model_complex, k, false);
       // We go through all dimension - k cones of the subdivision
       Matrix<Rational> k_rays = skeleton.give("VERTICES");
       k_rays = tdehomog(k_rays);
       IncidenceMatrix<> k_cones = skeleton.give("MAXIMAL_POLYTOPES");
       model_hurwitz_weights = zero_vector<Integer>(k_cones.rows());
-      Set<int> non_zero_cones;
-      for (int m = 0; m < evmap_list.dim(); ++m) {
+      Set<Int> non_zero_cones;
+      for (Int m = 0; m < evmap_list.dim(); ++m) {
         // Compute gcd of max-minors
         Integer g = gcd_maxminor(evmap_list[m]);
-        for (int c = 0; c < k_cones.rows(); ++c) {
+        for (Int c = 0; c < k_cones.rows(); ++c) {
           // Check if ev maps to the p_i on this cone (rays have to be mapped to 0!)
           bool maps_to_pi = true;
-          for (const int c_elem : k_cones.row(c)) {
+          for (const Int c_elem : k_cones.row(c)) {
             Vector<Rational> cmp_vector =
               k_rays(c_elem, 0) == 1 ? points : zero_vector<Rational>(points.dim());
             if (evmap_list[m] * k_rays.row(c_elem).slice(range_from(1)) != cmp_vector) {
@@ -407,7 +407,7 @@ HurwitzResult hurwitz_computation(int k, const Vector<int>& degree, Vector<Ratio
         }
       } //END iterate evaluation maps
       // Identify cones with non-zero weight and the rays they use
-      Set<int> used_rays = accumulate(rows(k_cones.minor(non_zero_cones,All)),operations::add());
+      Set<Int> used_rays = accumulate(rows(k_cones.minor(non_zero_cones,All)),operations::add());
       model_hurwitz_rays = Matrix<Rational>(k_rays.minor(used_rays,All));
       model_hurwitz_cones = IncidenceMatrix<>(k_cones).minor(non_zero_cones,used_rays);
       model_hurwitz_weights = model_hurwitz_weights.slice(non_zero_cones);
@@ -421,7 +421,7 @@ HurwitzResult hurwitz_computation(int k, const Vector<int>& degree, Vector<Ratio
     Vector<Integer> model_subdiv_weights = ones_vector<Integer>(model_subdiv_cones.rows());
     // If we want to compute the Hurwitz cycle, we take the k-cones instead
 
-    for (int i = 0; i <= 1; ++i) {
+    for (Int i = 0; i <= 1; ++i) {
       if (i == 1 && !compute_cycle) break;
       Matrix<Rational> rays_to_convert = i==0 ? model_subdiv_rays : model_hurwitz_rays;
       IncidenceMatrix<> cones_to_convert = i == 0 ? model_subdiv_cones: model_hurwitz_cones;
@@ -433,16 +433,16 @@ HurwitzResult hurwitz_computation(int k, const Vector<int>& degree, Vector<Ratio
         rays_to_convert.col(0) |
         (rays_to_convert.minor(All, range_from(1)) *
          tdehomog(edge_rays<Addition>(mc_type)).minor(All, range_from(1)));
-      Vector<int> model_rays_perm  = insert_rays(i == 0? subdiv_rays : cycle_rays, model_conv_rays,false);
-      Map<int,int> ray_index_map;
-      for (int mrp = 0; mrp < model_rays_perm.dim(); ++mrp) {
+      Vector<Int> model_rays_perm  = insert_rays(i == 0? subdiv_rays : cycle_rays, model_conv_rays,false);
+      Map<Int, Int> ray_index_map;
+      for (Int mrp = 0; mrp < model_rays_perm.dim(); ++mrp) {
         ray_index_map[mrp] = model_rays_perm[mrp];
       }
       // Then use the above index list to transform the cones
-      for (int msc = 0; msc < cones_to_convert.rows(); ++msc) {
+      for (Int msc = 0; msc < cones_to_convert.rows(); ++msc) {
         insert_cone(i == 0 ? subdiv_cones : cycle_cones,
                     i == 0 ? subdiv_weights : cycle_weights,
-                    Set<int>{ ray_index_map.map(cones_to_convert.row(msc)) },
+                    Set<Int>{ ray_index_map.map(cones_to_convert.row(msc)) },
                     weights_to_convert[msc]);
       }
     }
@@ -450,34 +450,34 @@ HurwitzResult hurwitz_computation(int k, const Vector<int>& degree, Vector<Ratio
   } //END iterate cones of M_0,n
 
   // Finally find the localizing ray in both complexes
-  Set<int> subdiv_local;
-  Set<int> cycle_local;
+  Set<Int> subdiv_local;
+  Set<Int> cycle_local;
   if (restrict_local) {
-    for (int sr = 0; sr < subdiv_rays.rows(); ++sr) {
+    for (Int sr = 0; sr < subdiv_rays.rows(); ++sr) {
       if (subdiv_rays.row(sr) == compare_vector) {
         subdiv_local += sr; break;
       }
     }
-    for (int cr = 0; cr < cycle_rays.rows(); ++cr) {
+    for (Int cr = 0; cr < cycle_rays.rows(); ++cr) {
       if (cycle_rays.row(cr) == compare_vector) {
         cycle_local += cr; break;
       }
     }
 
     // Find vertex
-    for (int sr = 0; sr < subdiv_rays.rows(); ++sr) {
+    for (Int sr = 0; sr < subdiv_rays.rows(); ++sr) {
       if (subdiv_rays.row(sr) == unit_vector<Rational>(subdiv_rays.cols(),0)) {
         subdiv_local += sr; break;
       }
     }
-    for (int cr = 0; cr < cycle_rays.rows(); ++cr) {
+    for (Int cr = 0; cr < cycle_rays.rows(); ++cr) {
       if (cycle_rays.row(cr) == unit_vector<Rational>(cycle_rays.cols(),0)) {
         cycle_local += cr; break;
       }
     }
   } //END restrict
 
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << thomog(subdiv_rays);
   result.take("MAXIMAL_POLYTOPES") << subdiv_cones;
   result.take("WEIGHTS") << subdiv_weights;
@@ -485,7 +485,7 @@ HurwitzResult hurwitz_computation(int k, const Vector<int>& degree, Vector<Ratio
     result=call_function("local_restrict", result, IncidenceMatrix<>(1, subdiv_local.back()+1, &subdiv_local));
   }
 
-  perl::Object cycle("Cycle", mlist<Addition>());
+  BigObject cycle("Cycle", mlist<Addition>());
   cycle.take("VERTICES") << thomog(cycle_rays);
   cycle.take("MAXIMAL_POLYTOPES") << cycle_cones;
   cycle.take("WEIGHTS") << cycle_weights;
@@ -498,24 +498,24 @@ HurwitzResult hurwitz_computation(int k, const Vector<int>& degree, Vector<Ratio
 
 // Documentation see perl wrapper
 template <typename Addition>
-perl::Object hurwitz_subdivision(int k, const Vector<int>& degree, const Vector<Rational>& points, perl::OptionSet options)
+BigObject hurwitz_subdivision(Int k, const Vector<Int>& degree, const Vector<Rational>& points, OptionSet options)
 {
-  return hurwitz_computation<Addition>(k,degree, points, false, perl::Object(), options["Verbose"]).subdivision;
+  return hurwitz_computation<Addition>(k,degree, points, false, BigObject(), options["Verbose"]).subdivision;
 }
 
 // Documentation see perl wrapper
 template <typename Addition>
-perl::Object hurwitz_cycle(int k, const Vector<int>& degree, const Vector<Rational>& points, perl::OptionSet options)
+BigObject hurwitz_cycle(Int k, const Vector<Int>& degree, const Vector<Rational>& points, OptionSet options)
 {
-  return hurwitz_computation<Addition>(k, degree, points, true, perl::Object(), options["Verbose"]).cycle;
+  return hurwitz_computation<Addition>(k, degree, points, true, BigObject(), options["Verbose"]).cycle;
 }
 
 // Documentation see perl wrapper
 template <typename Addition>
-perl::ListReturn hurwitz_pair(int k, const Vector<int>& degree, const Vector<Rational>& points, perl::OptionSet options)
+ListReturn hurwitz_pair(Int k, const Vector<Int>& degree, const Vector<Rational>& points, OptionSet options)
 {
-  const HurwitzResult r = hurwitz_computation<Addition>(k, degree, points, true, perl::Object(), options["Verbose"]);
-  perl::ListReturn l;
+  const HurwitzResult r = hurwitz_computation<Addition>(k, degree, points, true, BigObject(), options["Verbose"]);
+  ListReturn l;
   l << r.subdivision;
   l << r.cycle;
   return l;
@@ -523,10 +523,10 @@ perl::ListReturn hurwitz_pair(int k, const Vector<int>& degree, const Vector<Rat
 
 // Documentation see perl wrapper
 template <typename Addition>
-perl::ListReturn hurwitz_pair_local(int k, const Vector<int>& degree, perl::Object local_restriction, perl::OptionSet options)
+ListReturn hurwitz_pair_local(Int k, const Vector<Int>& degree, BigObject local_restriction, OptionSet options)
 {
   HurwitzResult r = hurwitz_computation<Addition>(k, degree, Vector<Rational>(), true, local_restriction, options["Verbose"]);
-  perl::ListReturn l;
+  ListReturn l;
   l << r.subdivision;
   l << r.cycle;
   return l;

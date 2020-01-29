@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -276,7 +276,7 @@ protected:
       using line_type = std::conditional_t<Rowwise::value, SingleIncidenceRow<set_type>, SingleIncidenceCol<set_type>>;
       using m_s_type = typename chain_compose<BlockMatrix, true, Rowwise>::template with<unwary_t<Left>, line_type>;
 
-      static m_s_type make(Left&& l, Right&& r, int dim)
+      static m_s_type make(Left&& l, Right&& r, Int dim)
       {
          return m_s_type(unwary(std::forward<Left>(l)),
                          line_type(set_type(unwary(std::forward<Right>(r)), dim)));
@@ -290,7 +290,7 @@ protected:
       using line_type = std::conditional_t<Rowwise::value, SingleIncidenceRow<set_type>, SingleIncidenceCol<set_type>>;
       using s_m_type = typename chain_compose<BlockMatrix, true, Rowwise>::template with<line_type, unwary_t<Right>>;
 
-      static s_m_type make(Left&& l, Right&& r, int dim)
+      static s_m_type make(Left&& l, Right&& r, Int dim)
       {
          return s_m_type(line_type(set_type(unwary(std::forward<Left>(l)), dim)),
                          unwary(std::forward<Right>(r)));
@@ -366,7 +366,7 @@ public:
 
    template <typename TSet>
    std::enable_if_t<is_expandable_by<TSet>(), top_type&>
-   operator/= (const GenericSet<TSet, int, operations::cmp>& s)
+   operator/= (const GenericSet<TSet, Int, operations::cmp>& s)
    {
       if (POLYMAKE_DEBUG || is_wary<TMatrix>() || is_wary<TSet>())
          check_append_row(s.top());
@@ -390,7 +390,7 @@ public:
 
    template <typename TSet>
    std::enable_if_t<is_expandable_by<TSet>(), top_type&>
-   operator|= (const GenericSet<TSet, int, operations::cmp>& s)
+   operator|= (const GenericSet<TSet, Int, operations::cmp>& s)
    {
       if (POLYMAKE_DEBUG || is_wary<TMatrix>() || is_wary<TSet>())
          check_append_col(s.top());
@@ -443,15 +443,15 @@ struct spec_object_traits< GenericIncidenceMatrix<TMatrix> >
 private:
    typedef spec_or_model_traits<TMatrix, is_container> base_t;
 public:
-   static const int dimension=2,
-                    is_symmetric=check_container_feature<TMatrix, Symmetric>::value,
-                    is_resizeable= base_t::is_specialized ? base_t::is_resizeable : 2-is_symmetric;
+   static constexpr int dimension=2,
+                        is_symmetric = check_container_feature<TMatrix, Symmetric>::value,
+                        is_resizeable = base_t::is_specialized ? base_t::is_resizeable : 2-is_symmetric;
    typedef is_incidence_matrix generic_tag;
 };
 
 
 template <typename Result, typename TSet>
-struct generic_of_repeated_line<Result, GenericSet<TSet, int, operations::cmp>> {
+struct generic_of_repeated_line<Result, GenericSet<TSet, Int, operations::cmp>> {
    using type = GenericIncidenceMatrix<Result>;
 };
 
@@ -465,13 +465,13 @@ typename GenericIncidenceMatrix<TMatrix>::top_type& GenericIncidenceMatrix<TMatr
    }
    bool changed;
    do {
-      changed=false;
-      for (auto r_i=entire(pm::rows(this->top()));  !r_i.at_end();  ++r_i) {
-         const int ones=r_i->size();
-         for (auto e=r_i->begin(); !e.at_end(); ++e)
+      changed = false;
+      for (auto r_i = entire(pm::rows(this->top()));  !r_i.at_end();  ++r_i) {
+         const Int ones = r_i->size();
+         for (auto e = r_i->begin(); !e.at_end(); ++e)
             if (e.index() != r_i.index())
                (*r_i) += this->row(e.index());
-         if (r_i->size() > ones) changed=true;
+         if (r_i->size() > ones) changed = true;
       }
    } while (changed);
    return this->top();
@@ -491,7 +491,7 @@ public:
    using reference = bool;
    using const_reference = bool;
 
-   template <typename Arg, typename=std::enable_if_t<std::is_constructible<base_t, Arg, int>::value>>
+   template <typename Arg, typename = std::enable_if_t<std::is_constructible<base_t, Arg, Int>::value>>
    SingleIncidenceRow(Arg&& arg)
       : base_t(std::forward<Arg>(arg), 1) {}
 
@@ -509,7 +509,7 @@ public:
    using reference = bool;
    using const_reference = bool;
 
-   template <typename Arg, typename=std::enable_if_t<std::is_constructible<base_t, Arg, int>::value>>
+   template <typename Arg, typename = std::enable_if_t<std::is_constructible<base_t, Arg, Int>::value>>
    SingleIncidenceCol(Arg&& arg)
       : base_t(std::forward<Arg>(arg), 1) {}
 
@@ -527,17 +527,17 @@ struct spec_object_traits< SingleIncidenceCol<SetRef> >
 
 class SingleElementIncidenceLine
    : public modified_container_impl< SingleElementIncidenceLine,
-                                     mlist< ContainerTag< repeated_value_container<int> >,
+                                     mlist< ContainerTag< repeated_value_container<Int> >,
                                             OperationTag< BuildUnaryIt<operations::index2element> > > >
-   , public GenericSet<SingleElementIncidenceLine, int, operations::cmp> {
+   , public GenericSet<SingleElementIncidenceLine, Int, operations::cmp> {
 protected:
-   repeated_value_container<int> index;
+   repeated_value_container<Int> index;
 public:
-   SingleElementIncidenceLine(int i, int size)
+   SingleElementIncidenceLine(Int i, Int size)
       : index(+i, size) {}
 
-   const repeated_value_container<int>& get_container() const { return index; }
-   int dim() const { return 1; }
+   const repeated_value_container<Int>& get_container() const { return index; }
+   Int dim() const { return 1; }
 };
 
 template <>
@@ -571,7 +571,7 @@ class IncidenceLines_across
 public:
    sequence get_container1() const { return sequence(0, size()); }
    decltype(auto) get_container2() const { return this->hidden().get_line(); }
-   int size() const { return this->hidden().get_line().dim(); }
+   Int size() const { return this->hidden().get_line().dim(); }
 };
 
 template <typename SetRef>
@@ -619,7 +619,7 @@ class IncidenceLineChain
    : public modified_container_impl< IncidenceLineChain<ContainerList>,
                                      mlist< ContainerTag< ContainerChain<ContainerList> >,
                                             OperationTag< BuildUnaryIt<operations::index2element> > > >
-   , public GenericSet<IncidenceLineChain<ContainerList>, int, operations::cmp> {
+   , public GenericSet<IncidenceLineChain<ContainerList>, Int, operations::cmp> {
 protected:
    using chain_t = ContainerChain<ContainerList>;
    chain_t chain;
@@ -641,7 +641,7 @@ public:
    explicit IncidenceLineChain(Args&&... args)
       : chain(std::forward<Args>(args)...) {}
 
-   int dim() const
+   Int dim() const
    {
       return chain.dim();
    }
@@ -673,19 +673,19 @@ public:
    using reference = bool;
    using const_reference = bool;
 
-   SameElementIncidenceMatrix(int r_arg, int c_arg)
+   SameElementIncidenceMatrix(Int r_arg, Int c_arg)
       : r(r_arg) , c(c_arg) {}
 protected:
-   void stretch_rows(int new_r)
+   void stretch_rows(Int new_r)
    {
-      r=new_r;
+      r = new_r;
    }
-   void stretch_cols(int new_c)
+   void stretch_cols(Int new_c)
    {
-      c=new_c;
+      c = new_c;
    }
 
-   int r, c;
+   Int r, c;
 
    friend class Rows<SameElementIncidenceMatrix>;
    friend class Cols<SameElementIncidenceMatrix>;
@@ -696,12 +696,12 @@ template <bool elem>
 class SameElementIncidenceLine
    : public modified_container_impl< SameElementIncidenceLine<elem>,
                                      mlist< ContainerTag< sequence >,
-                                            OperationTag< pair<nothing, operations::identity<int> > >,
+                                            OperationTag< pair<nothing, operations::identity<Int> > >,
                                             ExpectedFeaturesTag< end_sensitive > > >,
-     public GenericSet<SameElementIncidenceLine<elem>, int, operations::cmp> {
+     public GenericSet<SameElementIncidenceLine<elem>, Int, operations::cmp> {
 public:
-   int dim() const { return reinterpret_cast<const int&>(*this); }
-   int size() const { return elem ? dim() : 0; }
+   Int dim() const { return reinterpret_cast<const Int&>(*this); }
+   Int size() const { return elem ? dim() : 0; }
    bool empty() const { return !elem; }
 
    sequence get_container() const { return sequence(0, size()); }
@@ -723,7 +723,7 @@ public:
    {
       return reinterpret_cast<const typename _super::container&>(this->hidden().c);
    }
-   int size() const { return this->hidden().r; }
+   Int size() const { return this->hidden().r; }
    bool empty() const { return !size(); }
 };
 
@@ -740,7 +740,7 @@ public:
    {
       return reinterpret_cast<const typename base_t::container&>(this->hidden().r);
    }
-   int size() const { return this->hidden().c; }
+   Int size() const { return this->hidden().c; }
    bool empty() const { return !size(); }
 };
 
@@ -810,7 +810,7 @@ struct check_container_feature< ComplementIncidenceMatrix<MatrixRef>, Symmetric 
 template <typename MatrixRef>
 class matrix_random_access_methods< ComplementIncidenceMatrix<MatrixRef> > {
 public:
-   bool operator() (int i, int j) const
+   bool operator() (Int i, Int j) const
    {
       return !static_cast<const ComplementIncidenceMatrix<MatrixRef>&>(*this).get_matrix()(i, j);
    }
@@ -889,10 +889,10 @@ template <typename MatrixRef1, typename MatrixRef2, typename Controller>
 class matrix_random_access_methods< LazyIncidenceMatrix2<MatrixRef1,MatrixRef2,Controller> > {
    typedef LazyIncidenceMatrix2<MatrixRef1,MatrixRef2,Controller> master;
 public:
-   bool operator() (int i, int j) const
+   bool operator() (Int i, Int j) const
    {
       const master& me=static_cast<const master&>(*this);
-      return me.get_operation().contains(me.get_container1()(i,j), me.get_container2()(i,j));
+      return me.get_operation().contains(me.get_container1()(i, j), me.get_container2()(i, j));
    }
 };
 

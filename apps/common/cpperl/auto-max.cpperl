@@ -2,5 +2,6 @@
  "inst": [
   {"args": ["std::numeric_limits<Integer>(Integer)"], "func": "max", "include": ["polymake/Integer.h"], "kind": "stat", "sig": "Integer::inf:M64"},
   {"args": ["std::numeric_limits<Rational>(Rational)"], "func": "max", "include": ["polymake/Rational.h"], "kind": "stat", "sig": "Rational::inf:M64"},
+  {"args": ["std::numeric_limits<Int>(Int)"], "func": "max", "kind": "stat", "sig": "Int::max:M64"},
  null ],
 "version": 3}

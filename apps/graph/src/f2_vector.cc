@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,21 +23,20 @@
 namespace polymake { namespace graph {
 
 template <typename Decoration, typename SeqType>
-Matrix<Integer> f2_vector(perl::Object p)
+Matrix<Integer> f2_vector(BigObject p)
 {
    const Lattice<Decoration, SeqType> HD(p);
-   const int d=HD.rank()-1;
+   const Int d = HD.rank()-1;
 
    Matrix<Integer> F2(d,d);
-   if(d == 0) return F2;
+   if (d == 0) return F2;
    F2(0,0) = HD.nodes_of_rank(1).size();
    if (d>1) {
       Graph<Directed> G(HD.graph());
-      for (int i=1;;) {
-         /* Loop invariant:
-          * All edges starting in layers 0..i-1 end in the layer i
-          */
-         for (int j=0; j<i; ++j) {
+      for (Int i = 1; ;) {
+         // Loop invariant:
+         // All edges starting in layers 0..i-1 end in the layer i
+         for (Int j = 0; j < i; ++j) {
             Integer cnt(0);
             for (auto f=entire(HD.nodes_of_rank(j+1)); !f.at_end(); ++f)
                cnt += G.out_degree(*f);

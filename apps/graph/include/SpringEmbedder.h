@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -39,7 +39,7 @@ protected:
    double min_edge_weight, avg_edge_weight;
    Vector<double> z_ordering;
    double z_min, z_max;
-   Set<int> fixed_vertices;
+   Set<Int> fixed_vertices;
 
    Matrix<double> V;            // current velocity
    Vector<double> barycenter;
@@ -48,11 +48,11 @@ protected:
 #if POLYMAKE_DEBUG
    bool debug_print;
 #endif
-   void init_params(const perl::OptionSet& options);
+   void init_params(const OptionSet& options);
    void calculate_forces(const Matrix<double>& X, RandomSpherePoints<double>& random_points, Matrix<double>& F);
 
 public:
-   SpringEmbedder(const Graph<>& G_arg, const perl::OptionSet& options)
+   SpringEmbedder(const Graph<>& G_arg, const OptionSet& options)
       : G(G_arg)
    {
       init_params(options);
@@ -70,7 +70,12 @@ public:
    double set_repulsion(double r) { double old=rep; rep=r; return old; }
    double set_z_factor(double f) { double old=z_factor; z_factor=f; return old; }
 
-   const Set<int> set_fixed_vertices(const Set<int>& v) { Set<int> old=fixed_vertices; fixed_vertices=v; return old; }
+   const Set<Int> set_fixed_vertices(const Set<Int>& v)
+   {
+      Set<Int> old = fixed_vertices;
+      fixed_vertices = v;
+      return old;
+   }
 
    const double get_repulsion() { return rep; }
    const double get_z_factor() { return z_factor; }
@@ -95,7 +100,7 @@ public:
 
    void restart(const Matrix<double>& X);
 
-   bool calculate(Matrix<double>& X, RandomSpherePoints<double>& random_points, int max_iterations);
+   bool calculate(Matrix<double>& X, RandomSpherePoints<double>& random_points, Int max_iterations);
 
 #if POLYMAKE_DEBUG
    bool debug_print_enabled() const { return debug_print; }

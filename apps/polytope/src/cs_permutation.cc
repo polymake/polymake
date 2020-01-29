@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,23 +23,23 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
-void cs_permutation(perl::Object p)
+void cs_permutation(BigObject p)
 {
    const Matrix<Scalar> V = p.give("VERTICES");
 
-   Map<Vector<Scalar>,int> index_of;
-   int index(0);
+   Map<Vector<Scalar>, Int> index_of;
+   Int index = 0;
    for (auto rit = entire(rows(V)); !rit.at_end(); ++rit)
       index_of[*rit] = index++;
 
-   Array<int> generator(V.rows());
+   Array<Int> generator(V.rows());
    auto ait = entire(generator);
    for (auto rit = entire(rows(V)); !rit.at_end(); ++rit) {
       Vector<Scalar> v(-(*rit));
       v[0].negate();
       if (!index_of.contains(v)) {
          p.take("CENTRALLY_SYMMETRIC") << false;
-         p.take("CS_PERMUTATION") << perl::undefined();
+         p.take("CS_PERMUTATION") << Undefined();
          return;
       }
       *ait++ = index_of[v];

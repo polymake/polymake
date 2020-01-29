@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,7 +27,7 @@ namespace polymake { namespace polytope {
 // function only computes rays, object must be a polytope or known to be pointed
 // input_rays/input_lineality remain untouched
 template <typename Scalar>
-void cdd_eliminate_redundant_points(perl::Object p)
+void cdd_eliminate_redundant_points(BigObject p)
 {
    cdd_interface::ConvexHullSolver<Scalar> solver;
    Matrix<Scalar> P=p.give("INPUT_RAYS");
@@ -51,7 +51,7 @@ void cdd_eliminate_redundant_points(perl::Object p)
 // compute rays separators from rays
 // FIXME: assumption: normal returned by cdd is contained in affine hull of rays. true?
 template<typename Scalar>
-void cdd_vertex_normals(perl::Object p)
+void cdd_vertex_normals(BigObject p)
 {
    cdd_interface::ConvexHullSolver<Scalar> solver;
    Matrix<Scalar> P=p.give("RAYS");
@@ -68,7 +68,7 @@ void cdd_vertex_normals(perl::Object p)
 // remove redundancies from INPUT_RAYS/INPUT_LINEALITY
 // move implicit linealities from INPUT_RAYS to LINEALITY_SPACE
 template <typename Scalar>
-void cdd_get_non_redundant_points(perl::Object p, const bool isCone)
+void cdd_get_non_redundant_points(BigObject p, const bool isCone)
 {
    cdd_interface::ConvexHullSolver<Scalar> solver;
    Matrix<Scalar> P = p.give("INPUT_RAYS"),
@@ -98,7 +98,7 @@ void cdd_get_non_redundant_points(perl::Object p, const bool isCone)
 // remove redundancies from INEQUALITIES/EQUATIONS
 // move implicit linealities from INEQUALITIES to LINEAR_SPAN
 template <typename Scalar>
-void cdd_get_non_redundant_inequalities(perl::Object p, const bool isCone)
+void cdd_get_non_redundant_inequalities(BigObject p, const bool isCone)
 {
    cdd_interface::ConvexHullSolver<Scalar> solver;
    Matrix<Scalar> P = p.give("INEQUALITIES"),
@@ -106,7 +106,7 @@ void cdd_get_non_redundant_inequalities(perl::Object p, const bool isCone)
 
    if (!align_matrix_column_dim(P, L, isCone))
       throw std::runtime_error("cdd_get_non_redundant_inequalities - dimension mismatch between input properties");
-
+   
    const auto PL = P / L;
    if (PL.rows() != 0) {
       const auto non_red = solver.get_non_redundant_inequalities(P, L, isCone);
@@ -120,7 +120,17 @@ void cdd_get_non_redundant_inequalities(perl::Object p, const bool isCone)
             p.take("FACETS") << Matrix<Scalar>(0, P.cols());
             p.take("AFFINE_HULL") << Matrix<Scalar>(PL.minor(basis_rows(PL), All));
          } else {
-            p.take("FACETS") << Matrix<Scalar>(PL.minor(non_red.first, All));
+            // For some reason cdd does not return the trivial facet for
+            // polytopes.  Nevertheless it may be implied by the facets
+            // returned from cdd. So we check for containment, and if it isn't
+            // there, we add it.
+            Matrix<Scalar> F(PL.minor(non_red.first, All));
+            Matrix<Scalar> tmp(F / unit_vector<Scalar>(F.cols(), 0));
+            if(rank(tmp) > rank(F)){
+               p.take("FACETS") << tmp;
+            } else {
+               p.take("FACETS") << F;
+            }
             p.take("AFFINE_HULL") << Matrix<Scalar>(PL.minor(non_red.second, All));
          }
       }
@@ -133,7 +143,7 @@ void cdd_get_non_redundant_inequalities(perl::Object p, const bool isCone)
 
 // find implicit linealities in INPUT_RAYS and write LINEALITY_SPACE
 template <typename Scalar>
-void cdd_get_lineality_space(perl::Object p, const bool isCone)
+void cdd_get_lineality_space(BigObject p, const bool isCone)
 {
    cdd_interface::ConvexHullSolver<Scalar> solver;
    Matrix<Scalar> P = p.give("INPUT_RAYS"),
@@ -154,7 +164,7 @@ void cdd_get_lineality_space(perl::Object p, const bool isCone)
 
 // find implicit linealities in INEQUALITIES and write LINEAR_SPAN
 template <typename Scalar>
-void cdd_get_linear_span(perl::Object p, const bool isCone)
+void cdd_get_linear_span(BigObject p, const bool isCone)
 {
    cdd_interface::ConvexHullSolver<Scalar> solver;
    Matrix<Scalar> P = p.give("INEQUALITIES"),

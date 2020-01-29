@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,26 +23,25 @@
 
 namespace polymake { namespace matroid {
 
-Array< Set <int> > bases_from_matroid_polytope(const Matrix<Rational>& verts)
+Array<Set<Int>> bases_from_matroid_polytope(const Matrix<Rational>& verts)
 {
-  Array<Set<int>> bases(verts.rows());
+  Array<Set<Int>> bases(verts.rows());
 
-  for (int i=0;i<verts.rows();++i) {
-    Set<int> b;
-    for (int j=1;j<verts.cols();++j)
-      if (verts(i,j)!=0) b.insert(j-1);
-    bases[i]=b;
+  for (Int i = 0; i < verts.rows(); ++i) {
+     Set<Int> b;
+     for (Int j = 1; j < verts.cols(); ++j)
+        if (verts(i, j) != 0) b.insert(j-1);
+     bases[i] = b;
   }
 
   return bases;
 }
 
-
-perl::Object matroid_from_matroid_polytope(perl::Object p)
+BigObject matroid_from_matroid_polytope(BigObject p)
 {
-  perl::Object m("Matroid");
+  BigObject m("Matroid");
   m.take("BASES") << bases_from_matroid_polytope(p.give("VERTICES"));
-  const int n_elements = p.call_method("AMBIENT_DIM");
+  const Int n_elements = p.call_method("AMBIENT_DIM");
   m.take("N_ELEMENTS") << n_elements;
   m.take("POLYTOPE") << p;
 

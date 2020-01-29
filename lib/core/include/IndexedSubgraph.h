@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -72,11 +72,11 @@ public:
       return op.in_edges(*this, *helper::get2(this->second));
    }
 
-   int out_degree() const
+   Int out_degree() const
    {
       return op.out_degree(*this, *helper::get2(this->second));
    }
-   int in_degree() const
+   Int in_degree() const
    {
       return op.in_degree(*this, *helper::get2(this->second));
    }
@@ -103,11 +103,11 @@ struct subgraph_node_access_constructor : binary_transform_constructor<> {
 };
 
 struct subgraph_edge_accessor {
-   typedef int first_argument_type;
+   typedef Int first_argument_type;
    typedef void second_argument_type;
-   typedef int result_type;
+   typedef Int result_type;
    template <typename Iterator2>
-   int operator() (int edge_id, const Iterator2&) const { return edge_id; }
+   Int operator() (Int edge_id, const Iterator2&) const { return edge_id; }
 
    template <typename IteratorPair>
    class mix_in : public IteratorPair {
@@ -121,14 +121,14 @@ struct subgraph_edge_accessor {
       mix_in(const SourceIterator1& first_arg, const SourceIterator2& second_arg)
          : IteratorPair(first_arg, second_arg) {}
 
-      int from_node() const
+      Int from_node() const
       {
          return (Iterator1::symmetric || Iterator1::row_oriented)
                 ? *Iterator1::second
                 : this->second.index();
       }
 
-      int to_node() const
+      Int to_node() const
       {
          return (Iterator1::symmetric || Iterator1::row_oriented)
                 ? this->second.index()
@@ -141,22 +141,22 @@ template <typename EdgeListRef>
 class subgraph_edge_list
    : public container_pair_impl< subgraph_edge_list<EdgeListRef>,
                                  mlist< Container1RefTag< EdgeListRef >,
-                                        Container2RefTag< same_value_container<int> > > > {
+                                        Container2RefTag< same_value_container<Int> > > > {
 protected:
    using alias_t = alias<EdgeListRef>;
    alias_t edges;
-   int own_index;
+   Int own_index;
 public:
    template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
-   subgraph_edge_list(Arg&& edges_arg, int index_arg)
-      : edges(std::forward<Arg>(edges_arg)),
-        own_index(index_arg) {}
+   subgraph_edge_list(Arg&& edges_arg, Int index_arg)
+      : edges(std::forward<Arg>(edges_arg))
+      , own_index(index_arg) {}
 
    decltype(auto) get_container1() { return *edges; }
    decltype(auto) get_container1() const { return *edges; }
-   auto get_container2() const { return same_value_container<int>(own_index); }
+   auto get_container2() const { return same_value_container<Int>(own_index); }
 
-   int dim() const { return get_container1().dim(); }
+   Int dim() const { return get_container1().dim(); }
 };
 
 template <typename EdgeListRef>
@@ -295,27 +295,27 @@ public:
 
       out_edge_list out_edges(const Iterator& it, second_arg_type set) const
       {
-         return out_edge_list(out_intermed(it, renumber_nodes()),set);
+         return out_edge_list(out_intermed(it, renumber_nodes()), set);
       }
       in_edge_list in_edges(const Iterator& it, second_arg_type set) const
       {
-         return in_edge_list(in_intermed(it, renumber_nodes()),set);
+         return in_edge_list(in_intermed(it, renumber_nodes()), set);
       }
       out_adjacent_node_list out_adjacent_nodes(const Iterator& it, second_arg_type set) const
       {
-         return out_adjacent_node_list(it.out_adjacent_nodes(),set);
+         return out_adjacent_node_list(it.out_adjacent_nodes(), set);
       }
       in_adjacent_node_list in_adjacent_nodes(const Iterator& it, second_arg_type set) const
       {
-         return in_adjacent_node_list(it.in_adjacent_nodes(),set);
+         return in_adjacent_node_list(it.in_adjacent_nodes(), set);
       }
-      int out_degree(const Iterator& it, second_arg_type set) const
+      Int out_degree(const Iterator& it, second_arg_type set) const
       {
-         return out_edges(it,set).size();
+         return out_edges(it, set).size();
       }
-      int in_degree(const Iterator& it, second_arg_type set) const
+      Int in_degree(const Iterator& it, second_arg_type set) const
       {
-         return in_edges(it,set).size();
+         return in_edges(it, set).size();
       }
    };
 
@@ -397,27 +397,27 @@ struct IndexedSubgraph_random_access {
 
 template <typename GraphRef, typename SetRef, typename Params=mlist<>>
 class IndexedSubgraph
-   : public IndexedSubgraph_base<GraphRef, SetRef, Params>,
-     public IndexedSubgraph_random_access<GraphRef, SetRef, Params>::type,
-     public GenericGraph< IndexedSubgraph<GraphRef, SetRef, Params>, typename deref<GraphRef>::type::dir > {
+   : public IndexedSubgraph_base<GraphRef, SetRef, Params>
+   , public IndexedSubgraph_random_access<GraphRef, SetRef, Params>::type
+   , public GenericGraph< IndexedSubgraph<GraphRef, SetRef, Params>, typename deref<GraphRef>::type::dir > {
    using base_t = IndexedSubgraph_base<GraphRef, SetRef, Params>;
    template <typename, typename, typename, bool> friend class IndexedSubgraph_random_access_methods;
 protected:
    bool has_gaps_impl(std::false_type) const { return true; }
    bool has_gaps_impl(std::true_type) const { return this->get_node_set().front() != 0; }
 
-   int dim_impl(std::false_type) const { return this->get_graph().dim(); }
-   int dim_impl(std::true_type) const { return nodes(); }
+   Int dim_impl(std::false_type) const { return this->get_graph().dim(); }
+   Int dim_impl(std::true_type) const { return nodes(); }
 
 public:
    using IndexedSubgraph_base<GraphRef, SetRef, Params>::IndexedSubgraph_base;
 
-   int nodes() const
+   Int nodes() const
    {
       return this->get_node_set().size();
    }
-   int edges() const;
-   int dim() const
+   Int edges() const;
+   Int dim() const
    {
       return dim_impl(typename base_t::renumber_nodes());
    }
@@ -440,12 +440,12 @@ public:
 };
 
 template <typename GraphRef, typename SetRef, typename Params>
-int IndexedSubgraph<GraphRef, SetRef, Params>::edges() const
+Int IndexedSubgraph<GraphRef, SetRef, Params>::edges() const
 {
-   int cnt=0;
-   for (typename Nodes<IndexedSubgraph>::const_iterator n_it=entire(pm::nodes(*this)); !n_it.at_end(); ++n_it)
-      cnt+=n_it.out_degree();
-   if (deref<GraphRef>::type::dir::value) cnt/=2;
+   Int cnt = 0;
+   for (auto n_it = entire(pm::nodes(*this)); !n_it.at_end(); ++n_it)
+      cnt += n_it.out_degree();
+   if (deref<GraphRef>::type::dir::value) cnt /= 2;
    return cnt;
 }
 
@@ -458,75 +458,75 @@ class IndexedSubgraph_random_access_methods<GraphRef, SetRef, Params, true> {
    master& me() { return static_cast<master&>(*this); }
    const master& me() const { return static_cast<const master&>(*this); }
 
-   int node_index(int n, std::false_type) const
+   Int node_index(Int n, std::false_type) const
    {
       assert(me().get_node_set().contains(n));
       return n;
    }
-   int node_index(int n, std::true_type) const
+   Int node_index(Int n, std::true_type) const
    {
       return me().get_node_set()[n];
    }
-   int node_index(int n) const
+   Int node_index(Int n) const
    {
       return node_index(n, typename base::renumber_nodes());
    }
 public:
-   typename base::out_edge_list out_edges(int n)
+   typename base::out_edge_list out_edges(Int n)
    {
       return typename base::out_edge_list(me().get_graph().out_edges(node_index(n)), me().get_node_set());
    }
-   typename base::const_out_edge_list out_edges(int n) const
+   typename base::const_out_edge_list out_edges(Int n) const
    {
       return typename base::const_out_edge_list(me().get_graph().out_edges(node_index(n)), me().get_node_set());
    }
-   typename base::in_edge_list in_edges(int n)
+   typename base::in_edge_list in_edges(Int n)
    {
       return typename base::in_edge_list(me().get_graph().in_edges(node_index(n)), me().get_node_set());
    }
-   typename base::const_in_edge_list in_edges(int n) const
+   typename base::const_in_edge_list in_edges(Int n) const
    {
       return typename base::const_in_edge_list(me().get_graph().in_edges(node_index(n)), me().get_node_set());
    }
 
-   int out_degree(int n) const
+   Int out_degree(Int n) const
    {
       return out_edges(n).size();
    }
-   int in_degree(int n) const
+   Int in_degree(Int n) const
    {
       return in_edges(n).size();
    }
-   int degree (int n) const
+   Int degree(Int n) const
    {
-      int d=out_degree(n);
-      if (is_directed_local) d+=in_degree(n);
+      Int d = out_degree(n);
+      if (is_directed_local) d += in_degree(n);
       return d;
    }
 
-   typename base::out_adjacent_node_list out_adjacent_nodes(int n) const
+   typename base::out_adjacent_node_list out_adjacent_nodes(Int n) const
    {
       return typename base::out_adjacent_node_list(me().get_graph().out_adjacent_nodes(node_index(n)), me().get_node_set());
    }
-   typename base::in_adjacent_node_list in_adjacent_nodes(int n) const
+   typename base::in_adjacent_node_list in_adjacent_nodes(Int n) const
    {
       return typename base::in_adjacent_node_list(me().get_graph().in_adjacent_nodes(node_index(n)), me().get_node_set());
    }
 
-   int edge(int n1, int n2)
+   Int edge(Int n1, Int n2)
    {
       return me().get_graph().edge(node_index(n1), node_index(n2));
    }
-   int edge(int n1, int n2) const
+   Int edge(Int n1, Int n2) const
    {
       return me().get_graph().edge(node_index(n1), node_index(n2));
    }
 
-   bool edge_exists(int n1, int n2) const
+   bool edge_exists(Int n1, Int n2) const
    {
       return me().get_graph().edge_exists(node_index(n1), node_index(n2));
    }
-   void delete_edge(int n1, int n2)
+   void delete_edge(Int n1, Int n2)
    {
       me().get_graph().delete_edge(node_index(n1), node_index(n2));
    }
@@ -545,12 +545,12 @@ struct spec_object_traits< IndexedSubgraph<GraphRef, SetRef, Params> >
    static constexpr bool
       is_temporary = true,
       is_always_const = is_effectively_const<GraphRef>::value;
-   static constexpr int is_resizeable=0;
+   static constexpr int is_resizeable = 0;
 };
 
 template <typename TGraph, typename IndexSet,
           typename = std::enable_if_t<is_generic_graph<TGraph>::value &&
-                                      isomorphic_to_container_of<pure_type_t<IndexSet>, int>::value>>
+                                      isomorphic_to_container_of<pure_type_t<IndexSet>, Int>::value>>
 auto induced_subgraph(TGraph&& G, IndexSet&& node_indices)
      // gcc 5 needs this crutch
      -> IndexedSubgraph<unwary_t<TGraph>, add_const_t<unwary_t<IndexSet>>>

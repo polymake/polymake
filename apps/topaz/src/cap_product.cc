@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,17 +31,17 @@ namespace polymake { namespace topaz {
 
 namespace {
 
-typedef Set<int> face_type;
+typedef Set<Int> face_type;
 typedef Integer coeff_type;
-typedef HomologyComplex< coeff_type, SparseMatrix<coeff_type>, SimplicialComplex_as_FaceMap<int> > chain_complex;
+typedef HomologyComplex< coeff_type, SparseMatrix<coeff_type>, SimplicialComplex_as_FaceMap<Int>> chain_complex;
 typedef chain_complex::cycle_type cycle_type;
-// cycle_type  CycleGroup: PolymakeStruct coeffs (SparseMatrix<E>) faces (Array<Set<int>>)
+// cycle_type  CycleGroup: PolymakeStruct coeffs (SparseMatrix<E>) faces (Array<Set<Int>>)
 
-void split_face(face_type& sigma_p, face_type& sigma_q, const face_type& sigma, const int p)
+void split_face(face_type& sigma_p, face_type& sigma_q, const face_type& sigma, const Int p)
 {
    auto v = entire(sigma);
    sigma_p.clear();
-   for (int i=0; i<p; ++i, ++v)
+   for (Int i = 0; i < p; ++i, ++v)
       sigma_p.push_back(*v);
    sigma_p.push_back(*v);  // this is the unique vertex contained in both
    sigma_q.clear();
@@ -54,17 +54,17 @@ void split_face(face_type& sigma_p, face_type& sigma_q, const face_type& sigma, 
 
 // computes the cap-product of a cocycle and a cycle
 template <typename E, typename VectorType>
-Map< Set<int>, E >
-cap_product(const GenericVector<VectorType,E>& co_coeffs, const Array< Set<int> >& co_faces,
-            const GenericVector<VectorType,E>& coeffs,    const Array< Set<int> >& faces)
+Map<Set<Int>, E>
+cap_product(const GenericVector<VectorType,E>& co_coeffs, const Array<Set<Int>>& co_faces,
+            const GenericVector<VectorType,E>& coeffs,    const Array<Set<Int>>& faces)
 {
-   Map< Set<int>, E > cap_product_map;
+   Map<Set<Int>, E> cap_product_map;
 
    if (co_faces.size() == 0 || faces.size() == 0)
       return cap_product_map;
 
-   int dim = faces[0].size()-1;
-   int codim = co_faces[0].size()-1;
+   const Int dim = faces[0].size()-1;
+   const Int codim = co_faces[0].size()-1;
    const int dim_sign = ((dim-codim)*codim)%2 == 0 ? 1 : -1;
 
    auto sigma = entire(coeffs.top());
@@ -91,25 +91,25 @@ cap_product(const GenericVector<VectorType,E>& co_coeffs, const Array< Set<int> 
 
 // computes the cap-product of a cocycle-group and a cycle-group
 template <typename E>
-std::pair< CycleGroup<E> , Map< std::pair<int,int>, int > >
+std::pair<CycleGroup<E>, Map<std::pair<Int, Int>, Int>>
 cap_product(const CycleGroup<E>& cocycles, const CycleGroup<E>& cycles)
 {
    CycleGroup<E> res_group;
-   Map< std::pair<int,int>, int> index_map;
-   int count = 0;
-   std::vector< Set<int> > facevector;
-   hash_map< Set<int>, int > facevector_indices;
+   Map<std::pair<Int, Int>, Int> index_map;
+   Int count = 0;
+   std::vector<Set<Int>> facevector;
+   hash_map<Set<Int>, Int> facevector_indices;
 
    for (auto cocycle = entire<indexed>(rows(cocycles.coeffs)); !cocycle.at_end(); ++cocycle) {
       for (auto cycle = entire<indexed>(rows(cycles.coeffs)); !cycle.at_end(); ++cycle) {
-         index_map[std::pair<int,int>(cocycle.index(), cycle.index())] = count++;
-         const int rows = res_group.coeffs.rows()+1;
+         index_map[std::pair<Int, Int>(cocycle.index(), cycle.index())] = count++;
+         const Int rows = res_group.coeffs.rows()+1;
          res_group.coeffs.resize(rows, res_group.coeffs.cols());
 
-         Map<Set<int>, E> prod(cap_product(*cocycle,cocycles.faces,*cycle,cycles.faces));
+         Map<Set<Int>, E> prod = cap_product(*cocycle,cocycles.faces,*cycle,cycles.faces);
          for (auto prod_pair = entire(prod); !prod_pair.at_end(); ++prod_pair) {
-            hash_map< Set<int>, int >::iterator facevec_it = facevector_indices.find(prod_pair->first);
-            int col = res_group.coeffs.cols();
+            auto facevec_it = facevector_indices.find(prod_pair->first);
+            Int col = res_group.coeffs.cols();
             if (facevec_it == facevector_indices.end()) {
                facevector_indices[prod_pair->first] = col;
                facevector.push_back(prod_pair->first);
@@ -122,8 +122,8 @@ cap_product(const CycleGroup<E>& cocycles, const CycleGroup<E>& cycles)
       }
    }
 
-   res_group.faces = Array< Set<int> >(facevector);
-   return std::make_pair(res_group,index_map);
+   res_group.faces = Array<Set<Int>>(facevector);
+   return { res_group, index_map };
 }
 
 UserFunctionTemplate4perl("# @category Topology"

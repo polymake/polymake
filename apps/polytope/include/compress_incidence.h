@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,11 +26,11 @@ namespace polymake { namespace polytope {
 
 /// @retval row indices of (non-facets, hidden equations), first includes second
 template <typename IM>
-std::pair< Set<int>, Set<int> >
+std::pair<Set<Int>, Set<Int>>
 compress_incidence(const GenericIncidenceMatrix<IM>& VIF)
 {
-   Set<int> non_facets, hidden_equations;
-   const int nv=VIF.cols();
+   Set<Int> non_facets, hidden_equations;
+   const Int nv = VIF.cols();
    FacetList facets(nv);
 
    for (auto f=entire(rows(VIF)); !f.at_end(); ++f) {

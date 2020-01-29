@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,20 +20,24 @@
 
 namespace polymake { namespace polytope {
 namespace {
-inline
-int index (int i, int n) { return i < 0 ? 0 : i > n ? n : i; }
+
+Int index(Int i, Int n)
+{
+   return i < 0 ? 0 : i > n ? n : i;
 }
 
-perl::Object multiplex(int d, int n)
+}
+
+BigObject multiplex(Int d, Int n)
 {
    if (d < 2 || d > n)
       throw std::runtime_error("multiplex: 2 <= d <= n required");
 
    // FIXME: CombinatorialPolytope
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    IncidenceMatrix<> VIF(n+1,n+1);
-   for (int j=0; j < n+1; ++j) 
-      for (int k=1; k < d; ++k) 
+   for (Int j = 0; j < n+1; ++j) 
+      for (Int k = 1; k < d; ++k) 
          VIF(j,index(j+k,n)) = VIF(j,index(j-k,n)) = true;
 
    p.take("VERTICES_IN_FACETS") << VIF;

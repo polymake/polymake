@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,16 +23,9 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/tropical/patchwork.h"
 
-/* #include "polymake/ListMatrix.h" */
-/* #include "polymake/Graph.h" */
-/* #include "polymake/common/incidence_tools.h" */
-/* #include "polymake/polytope/compress_incidence.h" */
-/* #include "polymake/tropical/arithmetic.h" */
-/* #include "polymake/tropical/thomog.h" */
-
 namespace polymake { namespace tropical {
 
-FunctionTemplate4perl("real_facets<Addition>(Vector<Bool>, Matrix<Int>, Vector<TropicalNumber<Addition>>, Matrix<Rational>, IncidenceMatrix<NonSymmetric>)");
+FunctionTemplate4perl("real_facets<Addition>(Array<Bool>, Matrix<Int>, Vector<TropicalNumber<Addition>>, Matrix<Rational>, IncidenceMatrix<NonSymmetric>)");
 
 FunctionTemplate4perl("real_part_realize<Addition>(Matrix<Int>, Vector<TropicalNumber<Addition>>, Matrix<Rational>, IncidenceMatrix<NonSymmetric>, Set<Int>, IncidenceMatrix<NonSymmetric>, String)");
 

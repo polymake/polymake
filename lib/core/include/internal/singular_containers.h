@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -61,17 +61,17 @@ public:
    reference operator* () const { return *value; }
    pointer operator-> () const { return value.operator->(); }
 
-   reference operator[] (int) const { return *value; }
+   reference operator[] (Int) const { return *value; }
 
    same_value_iterator& operator++ () { return *this; }
    const same_value_iterator& operator++ (int) { return *this; }
    same_value_iterator& operator-- () { return *this; }
    const same_value_iterator& operator-- (int) { return *this; }
-   same_value_iterator& operator+= (int) { return *this; }
-   same_value_iterator& operator-= (int) { return *this; }
-   const same_value_iterator& operator+ (int) const { return *this; }
-   const same_value_iterator& operator- (int) const { return *this; }
-   friend const same_value_iterator& operator+ (int, const same_value_iterator& me) { return me; }
+   same_value_iterator& operator+= (Int) { return *this; }
+   same_value_iterator& operator-= (Int) { return *this; }
+   const same_value_iterator& operator+ (Int) const { return *this; }
+   const same_value_iterator& operator- (Int) const { return *this; }
+   friend const same_value_iterator& operator+ (Int, const same_value_iterator& me) { return me; }
 
    difference_type operator- (const same_value_iterator& it) const { return this!=&it; }
    bool operator== (const same_value_iterator& it) const { return this==&it; }
@@ -82,7 +82,7 @@ public:
    bool operator>= (const same_value_iterator& it) const { return true; }
 
    void rewind() {}
-   void contract(bool, int, int) {}
+   void contract(bool, Int, Int) {}
 };
 
 
@@ -142,11 +142,11 @@ protected:
 
 private:
    // delete these if the original iterator is a random-access one
-   void operator+=(int) = delete;
-   void operator-=(int) = delete;
-   void operator+ (int) = delete;
-   void operator- (int) = delete;
-   void operator[](int) = delete;
+   void operator+=(Int) = delete;
+   void operator-=(Int) = delete;
+   void operator+ (Int) = delete;
+   void operator- (Int) = delete;
+   void operator[](Int) = delete;
 };
 
 template <typename TRef>
@@ -189,10 +189,10 @@ public:
    using const_reverse_iterator = const_iterator;
    reference front() { return *value; }
    reference back() { return *value; }
-   reference operator[] (int) { return *value; }
+   reference operator[] (Int) { return *value; }
    const_reference front() const { return *value; }
    const_reference back() const { return *value; }
-   const_reference operator[] (int) const { return *value; }
+   const_reference operator[] (Int) const { return *value; }
 
    iterator begin() & { return iterator(value); }
    iterator begin() && { return iterator(std::move(value)); }
@@ -207,7 +207,7 @@ public:
    const_iterator rend() const { return const_iterator(); }
 
    bool empty() const { return false; }
-   int size() const { return std::numeric_limits<int>::max(); }
+   Int size() const { return std::numeric_limits<Int>::max(); }
 
    static same_value_container& cast_from(alias_t& a)
    {
@@ -247,15 +247,15 @@ public:
    const constant_pointer_iterator& operator++ (int) { return *this; }
    constant_pointer_iterator& operator-- () { return *this; }
    const constant_pointer_iterator& operator-- (int) { return *this; }
-   constant_pointer_iterator& operator+= (int) { return *this; }
-   constant_pointer_iterator& operator-= (int) { return *this; }
-   const constant_pointer_iterator& operator+ (int) { return *this; }
-   const constant_pointer_iterator& operator- (int) { return *this; }
-   friend const constant_pointer_iterator& operator+ (int, const constant_pointer_iterator& me) { return me; }
+   constant_pointer_iterator& operator+= (Int) { return *this; }
+   constant_pointer_iterator& operator-= (Int) { return *this; }
+   const constant_pointer_iterator& operator+ (Int) { return *this; }
+   const constant_pointer_iterator& operator- (Int) { return *this; }
+   friend const constant_pointer_iterator& operator+ (Int, const constant_pointer_iterator& me) { return me; }
 
    ptrdiff_t operator- (const constant_pointer_iterator& it) const { return (this->cur != nullptr) != (it.cur != nullptr); }
    void rewind() {}
-   void contract(bool, int, int) {}
+   void contract(bool, Int, Int) {}
 };
 
 template <typename T>
@@ -293,14 +293,14 @@ public:
 
    reference front() { return reinterpret_cast<reference>(*this); }
    reference back() { return front(); }
-   reference operator[] (int) { return front(); }
+   reference operator[] (Int) { return front(); }
 
    const_reference front() const { return reinterpret_cast<const_reference>(*this); }
    const_reference back() const { return front(); }
-   const_reference operator[] (int) const { return front(); }
+   const_reference operator[] (Int) const { return front(); }
 
    bool empty() const { return false; }
-   int size() const { return std::numeric_limits<int>::max(); }
+   Int size() const { return std::numeric_limits<Int>::max(); }
 };
 
 template <typename T>
@@ -320,7 +320,13 @@ struct check_container_feature<constant_masquerade_container<T>, provide_constru
 template <typename T>
 auto same_value(T&& x)
 {
-   return same_value_container<T>(std::forward<T>(x));
+   return same_value_container<prevent_int_element<T>>(std::forward<T>(x));
+}
+
+template <typename Context, typename T>
+auto same_value_in_context(T&& x)
+{
+   return same_value_container<prevent_int_element<T, Context>>(std::forward<T>(x));
 }
 
 template <typename T>
@@ -336,7 +342,7 @@ const same_value_container<T>& as_same_value_container(const alias<T>& x)
 }
 
 namespace object_classifier {
-   enum { is_constant=is_manip+1 };
+   enum { is_constant = is_manip+1 };
 
    namespace _impl {
       template <typename TRef>

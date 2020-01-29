@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,37 +26,37 @@
 namespace polymake { namespace polytope {
       
 template <typename Scalar>
-perl::Object cube(int d, Scalar x_up, Scalar x_low, perl::OptionSet options)
+BigObject cube(Int d, Scalar x_up, Scalar x_low, OptionSet options)
 {
    if (d < 1)
       throw std::runtime_error("cube: dimension d >= 1 required");
    
-   if (d > std::numeric_limits<int>::digits-1)
-      throw std::runtime_error("cube: in this dimension the number of vertices exceeds the machine int size ");
+   if (size_t(d) >= sizeof(Int)*8-1)
+      throw std::runtime_error("cube: in this dimension the number of vertices exceeds the machine Int size");
    
-   if (x_up==0 && x_low==0) {
-      x_up=1;
+   if (x_up == 0 && x_low == 0) {
+      x_up = 1;
    } else {
       if (x_up <= x_low)
          throw std::runtime_error("cube: x_up > x_low required");
       negate(x_low);
    }
 
-   perl::Object p("Polytope", mlist<Scalar>());
+   BigObject p("Polytope", mlist<Scalar>());
    p.set_description() << "cube of dimension " << d << endl;
 
-   SparseMatrix<Scalar> F(2*d,d+1);
+   SparseMatrix<Scalar> F(2*d, d+1);
    auto f=rows(F).begin();
-   for (int i=1; i<=d; ++i) { // Facet 2*i and Facet 2*i+1 are parallel  
-      (*f)[0]=x_low;
-      (*f)[i]=1;
+   for (Int i = 1; i <= d; ++i) { // Facet 2*i and Facet 2*i+1 are parallel  
+      (*f)[0] = x_low;
+      (*f)[i] = 1;
       ++f;
-      (*f)[0]=x_up;
-      (*f)[i]=-1;
+      (*f)[0] = x_up;
+      (*f)[i] = -1;
       ++f;
    }
 
-   IncidenceMatrix<> VIF(2*d, 1<<d, CubeFacets<int>(d).begin());
+   IncidenceMatrix<> VIF(2*d, 1L<<d, CubeFacets<Int>(d).begin());
    
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("CONE_DIM") << d+1;

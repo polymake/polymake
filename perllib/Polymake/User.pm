@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -40,12 +40,10 @@ sub application {
             add Core::Application($new_app);
          }
       } else {
-         $new_app=add Core::Application($new_app) unless ref($new_app);
-         if (defined($application)) {
-            return if $application == $new_app;
-            readwrite($application);
-         }
-         $application=$new_app;
+         $new_app = add Core::Application($new_app) unless ref($new_app);
+         return if $application == $new_app;
+         readonly_off($application);
+         $application = $new_app;
          readonly($application);
       }
    } else {
@@ -56,7 +54,7 @@ sub application {
 
 #################################################################################
 sub include {
-   my $rc=$application->include_rules(@_);
+   my $rc = $application->include_rules(@_);
    if ($rc != @_) {
       foreach (@_) {
          my ($app, $rulefile)= /^($id_re)::/o ? ($application->used->{$1}, $') : ($application, $_);
@@ -75,8 +73,8 @@ sub include {
 }
 #################################################################################
 sub load {
-   my ($name)=@_;
-   my $filename=$name;
+   my ($name) = @_;
+   my $filename = $name;
    replace_special_paths($filename);
    unless (-f $filename
            or
@@ -84,36 +82,39 @@ sub load {
            -f ($filename .= "." . $application->default_file_suffix)) {
       croak( "no such file: $name" );
    }
-   my $obj=load Core::Object($filename);
-   $obj;
+   load Core::Datafile($filename);
 }
 #################################################################################
 sub save {
-   my ($obj, $filename)=@_;
-   if (!is_object($obj) || !instanceof Core::Object($obj)) {
-      croak( "only polymake Objects can be stored with the function save()" );
-   }
-   if (defined($obj->parent)) {
-      croak( "A sub-object can't be saved without its parent" );
-   }
-   if (!$obj->persistent || defined($filename)) {
-      if (defined $filename) {
+   my ($obj, $filename, %options) = @_;
+   if (instanceof Core::BigObject($obj)) {
+      my ($schema, $datafile);
+      if (defined($filename)) {
+         $schema = delete $options{schema};
          replace_special_paths($filename);
          if ($filename !~ /\.\w+$/) {
             $filename .= "." . $obj->default_file_suffix;
          }
+         $datafile = new Core::Datafile($filename, \%options);
+         $obj->persistent = $datafile unless defined($schema);
+
+      } elsif (defined($datafile = $obj->persistent)) {
+         unless ($obj->changed) {
+            warn_print( "no changes need to be saved" );
+            return;
+         }
 
       } else {
          if (!length($obj->name)) {
-            $obj->name=Core::name_of_arg_var(0);
+            $obj->name = Core::name_of_arg_var(0);
          }
          if (length($obj->name)) {
-            $filename=$obj->name.".".$obj->default_file_suffix;
+            $filename = $obj->name . "." . $obj->default_file_suffix;
             if (-f $filename) {
                if ($Shell->interactive) {
                   print "The file $filename already exists.\n",
                         "Please specify another file name or confirm it to be overwritten:\n";
-                  $filename=$Shell->enter_filename($filename, { prompt => "data file" }) or return;
+                  $filename = $Shell->enter_filename($filename, { prompt => "data file" }) or return;
                } else {
                   croak( "Can't save an object '", $obj->name, "' since the file $filename already exists.\n",
                          "Please specify the explicit file name as the second argument to save() or delete the existing file (unlink \"$filename\")" );
@@ -122,69 +123,34 @@ sub save {
          } else {
             if ($Shell->interactive) {
                print "Please specify the file name for the anonymous ", $obj->type->full_name, " object:\n";
-               $filename=$Shell->enter_filename("", { prompt => "data file" }) or return;
+               $filename = $Shell->enter_filename("", { prompt => "data file" }) or return;
             } else {
-               my $i=1;
-               while (-f ($filename=($obj->name=$obj->type->name."_$i".".".$obj->default_file_suffix))) { ++$i }
+               my $i = 1;
+               while (-f ($filename = $obj->type->name . "_$i" . "." . $obj->default_file_suffix)) { ++$i }
                warn_print( "saving object as $filename" );
             }
          }
+         $datafile = $obj->persistent = new Core::Datafile($filename, \%options);
       }
-      $obj->persistent=new Core::XMLfile($filename);
-      $obj->changed=1;
+      $datafile->save($obj, schema => $schema);
 
-   } elsif (! $obj->changed) {
-      warn_print( "no changes need to be saved" );
-      return;
+   } else {
+      &save_data;
    }
-
-   $obj->save;
-}
-#################################################################################
-sub save_schema {
-   if (@_<2) {
-      die "usage: save_schema(Object or ObjectType, ..., \"filename\"\n";
-   }
-   my $filename=pop;
-   if ($filename !~ /\.\w+$/) {
-      $filename .= ".rng";
-   }
-   replace_special_paths($filename);
-   my $xf=new Core::XMLfile($filename);
-   $xf->save_schema(map {
-           if (is_object($_) && UNIVERSAL::can($_, "type")) {
-              $_->type
-           } else {
-              die "argument ", ref($_) || "'$_'", " is not an object or a type expression\n";
-           }
-        } @_);
 }
 #################################################################################
 sub load_data {
-   my ($filename)=@_;
+   my ($filename) = @_;
    replace_special_paths($filename);
-   my $xf=new Core::XMLfile($filename);
-   scalar($xf->load_data);
+   load Core::Datafile($filename);
 }
 
 sub save_data {
-   my ($data, $filename, $description)=@_;
-   if (!is_object($data)) {
-      croak( "only complex data types can be saved in separate files" );
-   }
-   if (instanceof Core::Object($data)) {
-      croak( "an object of type ", $data->type->full_name, " can't be saved with save_data: please use save() instead" );
-   }
-   if (defined (my $type=UNIVERSAL::can($data, ".type"))) {
-      $type=$type->();
-      if (instanceof Core::PropertyType($type)) {
-         replace_special_paths($filename);
-         my $xf=new Core::XMLfile($filename);
-         $xf->save_data($data, $description);
-         return;
-      }
-   }
-   croak( "can't save ", ref($data), ": it does not belong to any declared property type" );
+   my ($data, $filename, %options) = @_;
+   defined($filename) or croak( "filename missing" );
+   replace_special_paths($filename);
+   my $df = new Core::Datafile($filename, \%options);
+   $df->save($data);
 }
 #################################################################################
 use subs qw(rename unlink mkdir chdir rmdir);
@@ -247,39 +213,33 @@ sub reset_custom {
 }
 #################################################################################
 sub script {
-   my $name=shift;
+   my $name = shift;
    replace_special_paths($name);
-   my ($code, $full_path, $in_app)=find Core::StoredScript($name);
+   my ($code, $full_path, $in_app) = find Core::StoredScript($name);
    if (defined $code) {
-      local *ARGV=\@_;
+      local *ARGV = \@_;
       &$code;
    } else {
       local @ARGV = @_;
       local if (defined($in_app)) {
-         if ($in_app != $User::application) {
-            local $User::application = $in_app;
+         if ($in_app != $application) {
+            local $application = $in_app;
             if (ref($INC[0])) {
                local $INC[0] = $in_app;
             } else {
                local unshift @INC, $in_app;
             }
          }
-      } elsif (defined (local scalar $User::application)) {
-         if (!ref($INC[0])) {
-            local unshift @INC, $User::application;
-         }
-      } else {
-         if (!ref($INC[0])) {
-            local unshift @INC, new Core::NeutralScriptLoader();
-         }
+      } elsif (!ref($INC[0])) {
+         local unshift @INC, $application;
       }
-      $name="script" . (defined($in_app) ? ":" : "=") . $full_path;
+      $name = "script" . (defined($in_app) ? ":" : "=") . $full_path;
       if (wantarray) {
-         my @ret=do $name;
+         my @ret = do $name;
          die $@ if $@;
          @ret
       } elsif (defined wantarray) {
-         my $ret=do $name;
+         my $ret = do $name;
          die $@ if $@;
          $ret
       } else {

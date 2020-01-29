@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,10 +29,10 @@ template <typename TMatrix>
 struct spec_object_traits< Rows<TMatrix> >
    : spec_object_traits<is_container> {
    typedef TMatrix masquerade_for;
-   static const bool is_lazy         = object_traits<TMatrix>::is_lazy,
-                     is_always_const = object_traits<TMatrix>::is_always_const;
-   static const int is_resizeable= object_traits<TMatrix>::is_resizeable ? 1 : 0;
-   static const IO_separator_kind IO_separator=IO_sep_enforce;
+   static constexpr bool is_lazy         = object_traits<TMatrix>::is_lazy,
+                         is_always_const = object_traits<TMatrix>::is_always_const;
+   static constexpr int is_resizeable= object_traits<TMatrix>::is_resizeable ? 1 : 0;
+   static constexpr IO_separator_kind IO_separator = IO_sep_enforce;
 };
 template <typename TMatrix>
 struct spec_object_traits< Cols<TMatrix> >

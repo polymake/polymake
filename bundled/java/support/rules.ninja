@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -18,12 +18,12 @@
 
 # compile a java package
 rule jcompile
-  command = JAVA_HOME=${bundled.java.JDKHome} ${bundled.java.ANT} -S -q -f $in -Dpolymake.top=${root} -Dbuild.dir=${builddir} -Djar.name=`basename $out` ${ANTFLAGS} -Ddebug=`if [ ${buildmode} = Debug ]; then echo on; else echo off; fi` all
+  command = JAVA_HOME=${bundled.java.JDKHome} ${bundled.java.ANT} -S -q -f $in -Dpolymake.top=${root} -Dbuild.dir=${buildtop} -Djar.name=`basename $out` ${ANTFLAGS} -Ddebug=`if [ ${buildmode} = Debug ]; then echo on; else echo off; fi` all
   description = BUILD $out
 
 # clean java targets
 rule jclean
-  command = JAVA_HOME=${bundled.java.JDKHome} ${bundled.java.ANT} -S -q -f $in -Dpolymake.top=${root} -Dbuild.dir=${builddir} -Djar.name=`basename $out` ${ANTFLAGS} -Ddebug=`if [ ${buildmode} = Debug ]; then echo on; else echo off; fi` clean
+  command = JAVA_HOME=${bundled.java.JDKHome} ${bundled.java.ANT} -S -q -f $in -Dpolymake.top=${root} -Dbuild.dir=${buildtop} -Djar.name=`basename $out` ${ANTFLAGS} -Ddebug=`if [ ${buildmode} = Debug ]; then echo on; else echo off; fi` clean
   description = CLEAN $out
 
 # link a native module

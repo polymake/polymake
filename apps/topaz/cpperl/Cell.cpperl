@@ -1,6 +1,6 @@
 {"app": "topaz",
  "inst": [
-  {"class": "Cell", "include": ["polymake/topaz/Filtration.h"], "pkg": "Polymake::topaz::Cell"},
-  {"args": ["Cell", "int", "int", "int"], "include": ["polymake/topaz/Filtration.h"], "op": "new", "sig": "new.X.X.X"},
+  {"class": "Cell", "guard_name": "APP_WRAPPERS_topaz_Filtration", "include": ["polymake/topaz/Filtration.h"], "pkg": "Polymake::topaz::Cell", "wrapper_file": "include/app-wrappers/polymake/topaz/Filtration.h"},
+  {"args": ["Cell", "Int", "Int", "Int"], "include": ["polymake/topaz/Filtration.h"], "op": "new", "sig": "new.X.X.X"},
  null ],
 "version": 3}

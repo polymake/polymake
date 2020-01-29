@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -125,7 +125,7 @@ static const long polymake_primes[] = {  // how we long for c++11
     7841,   7853,   7867,   7873,   7877,   7879,   7883,   7901,   7907,   7919
 };
 
-const int n_polymake_primes = 1000;
+constexpr int n_polymake_primes = 1000;
 
 } // end anonymous namespace
 
@@ -139,7 +139,7 @@ ExponentMap naive_partial_prime_factorization(const Integer& n)
    Integer rest(n);
    ExponentMap exponent_of;
    number_t const* pptr = polymake_primes;
-   int i=0;
+   int i = 0;
    while (i < n_polymake_primes && rest > 1) {
       const Div<Integer> qr = div(rest, *pptr);
       if (qr.rem == 0) { 

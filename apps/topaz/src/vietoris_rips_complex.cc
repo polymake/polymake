@@ -1,3 +1,20 @@
+/* Copyright (c) 1997-2020
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
+
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+--------------------------------------------------------------------------------
+*/
+
 #include "polymake/Graph.h"
 #include "polymake/PowerSet.h"
 #include "polymake/topaz/Filtration.h"
@@ -6,73 +23,72 @@
 
 namespace polymake { namespace topaz {
 
-perl::Object vietoris_rips_complex(Matrix<Rational> dist, Rational step)
+BigObject vietoris_rips_complex(const Matrix<Rational>& dist, Rational step)
 {
-  perl::Object NG = call_function("neighborhood_graph", dist, step);
-  perl::Object vr_complex = call_function("clique_complex", NG);
+  BigObject NG = call_function("neighborhood_graph", dist, step);
+  BigObject vr_complex = call_function("clique_complex", NG);
   vr_complex.set_description() << "Vietoris Rips complex of the input point set." << endl;
   return vr_complex;
 }
 
 // this does not use the existing clique/flag complex functionality, as we need to calculate degrees for each face.
 template <typename Coeff>
-Filtration<SparseMatrix<Coeff>> vietoris_rips_filtration(const Matrix<float>& dist, const Array<int>& point_degs, float step, int k)
+Filtration<SparseMatrix<Coeff>> vietoris_rips_filtration(const Matrix<double>& dist, const Array<Int>& point_degs, double step, Int k)
 {
-  using pair = std::pair<int, int>;
+  using pair = std::pair<Int, Int>;
 
-  int n = dist.rows();
+  Int n = dist.rows();
 
   if (k>=n) k=n-1; //TODO this is ugly
 
-  Map<Set<int>, pair> deg_idx; //first pair entry is degree in filtration, second is index in bd matrix
+  Map<Set<Int>, pair> deg_idx; //first pair entry is degree in filtration, second is index in bd matrix
 
-  int size = 0;
-  for (int i=1; i<=k+1; ++i)
-    size += int(Integer::binom(n,i)); //number of all subsets of [n] with <=k members
+  Int size = 0;
+  for (Int i = 1; i <= k+1; ++i)
+    size += Int(Integer::binom(n, i)); //number of all subsets of [n] with <=k members
   Array<Cell> F(size); //TODO: IntType thingy
 
-  int cell_index = 0; //index in filtration
+  Int cell_index = 0; //index in filtration
 
   Array<SparseMatrix<Coeff>> bd(k+1);
   bd[0] = SparseMatrix<Coeff>(n,1);
 
-  for (int index = 0; index < n; ++index) {
+  for (Int index = 0; index < n; ++index) {
     bd[0][index][0] = 1;
-    deg_idx[Set<int>{index}] = pair(point_degs[index], index); //get point degrees from input array
+    deg_idx[Set<Int>{index}] = pair(point_degs[index], index); //get point degrees from input array
     Cell c(point_degs[index], 0, index);
     F[cell_index++] = c;
   }
-  Set<int> facet = sequence(0,n); //the full-dimensional simplex
+  Set<Int> facet = sequence(0, n); //the full-dimensional simplex
 
-  for (int d = 1; d<=k; ++d) { //iterate over dimensions to max_dim
-    bd[d]=SparseMatrix<Coeff>(int(Integer::binom(n,d+1)),int(Integer::binom(n,d)));
+  for (Int d = 1; d <= k; ++d) { //iterate over dimensions to max_dim
+    bd[d] = SparseMatrix<Coeff>(Int(Integer::binom(n,d+1)), Int(Integer::binom(n,d)));
 
-    int index = 0; //index in bd matrix
+    Int index = 0; //index in bd matrix
 
-    for (auto i=entire(all_subsets_of_k(facet,d+1)); !i.at_end(); ++i) { //iterate over all simplices of dimension d
+    for (auto i = entire(all_subsets_of_k(facet,d+1)); !i.at_end(); ++i) { //iterate over all simplices of dimension d
 
-      int sgn = 1;  //entry in bd matrix simply alternates as simplices are enumerated lexicographically
-      int max = 0; //maximal degree of boundary simplices
-      Set<int> simplex(*i);
+      Int sgn = 1;  //entry in bd matrix simply alternates as simplices are enumerated lexicographically
+      Int max = 0; //maximal degree of boundary simplices
+      Set<Int> simplex(*i);
 
       for (auto s=entire(all_subsets_of_k(simplex,d)); !s.at_end(); ++s){ //iterate over boundary and find maximal degree
 
         pair p = deg_idx[*s];
 
-        int s_deg = p.first;
+        Int s_deg = p.first;
         if (s_deg > max) max = s_deg;
 
         bd[d][index][p.second] = sgn; // set bd matrix entry
         sgn *= -1;
       }
-      if (d==1) { //for edges, calculate degree from distance matrix
-        float l = dist(simplex.front(),simplex.back());
-        int edge_deg = ceil(l/step);
-        if(edge_deg > max) max = edge_deg;
+      if (d == 1) { //for edges, calculate degree from distance matrix
+         const double l = double(dist(simplex.front(), simplex.back()));
+        assign_max(max, Int(ceil(l / step)));
       }
 
       deg_idx[simplex] =  pair(max,index);
-      Cell c(max,d,index);
+      Cell c(max, d, index);
       F[cell_index++] = c;
       ++index;
     }
@@ -99,3 +115,9 @@ UserFunctionTemplate4perl("# @category Other"
                           "# @return Filtration<SparseMatrix<Coeff, NonSymmetric> >",
                           "vietoris_rips_filtration<Coeff>($$$$)");
 } }
+
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:

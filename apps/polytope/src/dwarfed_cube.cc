@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,17 +21,17 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object dwarfed_cube(int d)
+BigObject dwarfed_cube(Int d)
 {
    if (d < 2) {
       throw std::runtime_error("dwarfed_cube: d >= 2 required");
    }
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.set_description() << "dwarfed cube of dimension " << d << endl;
 
    Matrix<Rational> F(2*d+1,d+1);
    Rows<Matrix <Rational> >::iterator f=rows(F).begin();
-   for (int i=1; i<=d; ++i) {
+   for (Int i = 1; i <= d; ++i) {
       //         (*f)[0]=0;
       (*f)[i]=1;
       ++f;

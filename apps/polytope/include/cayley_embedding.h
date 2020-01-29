@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,7 +31,7 @@ namespace polymake { namespace polytope {
 namespace {
    
 template<typename Scalar>
-Matrix<Scalar> embedding_matrix(const Matrix<Scalar>& V, int i, int m, const Scalar& t)
+Matrix<Scalar> embedding_matrix(const Matrix<Scalar>& V, Int i, Int m, const Scalar& t)
 {
    assert(m>=1 && i>=0 && i<m);
    Matrix<Scalar> embedding_matrix(V.rows(), m);
@@ -43,18 +43,18 @@ Matrix<Scalar> embedding_matrix(const Matrix<Scalar>& V, int i, int m, const Sca
 
 
 template<typename Scalar>
-perl::Object cayley_embedding(const Array<perl::Object>& p_array,
+BigObject cayley_embedding(const Array<BigObject>& p_array,
                               const Vector<Scalar>& t_vec,
-                              perl::OptionSet options)
+                              OptionSet options)
 {
-   const int m = p_array.size();
+   const Int m = p_array.size();
 
    // input sanity checks
    if (!m)
       throw std::runtime_error("cayley_embedding: empty array given.");
 
    bool any_pointed(false);
-   for (const perl::Object& p : p_array) {
+   for (const BigObject& p : p_array) {
       const bool pointed = p.give("POINTED");
       if (pointed) {
          any_pointed=true;
@@ -64,8 +64,8 @@ perl::Object cayley_embedding(const Array<perl::Object>& p_array,
    if (!any_pointed)
       throw std::runtime_error("cayley_embedding: at least one input polyhedron must be POINTED");
 
-   Set<int> dimensions;
-   std::vector<int> n_vertices(m); 
+   Set<Int> dimensions;
+   std::vector<Int> n_vertices(m); 
 
    // rays
    std::string has_VERTICES;
@@ -79,7 +79,7 @@ perl::Object cayley_embedding(const Array<perl::Object>& p_array,
    std::ostringstream odesc;
    odesc << "Cayley embedding of ";
 
-   for (int i=0; i<m; ++i) {
+   for (Int i = 0; i < m; ++i) {
       // vertices
       const Matrix<Scalar> V = p_array[i].give_with_property_name("VERTICES | POINTS", has_VERTICES);
       n_vertices[i] = V.rows();
@@ -103,8 +103,7 @@ perl::Object cayley_embedding(const Array<perl::Object>& p_array,
       odesc << p_array[i].name();
    }
 
-
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    odesc << endl;
    p_out.set_description() << odesc.str();
 
@@ -113,15 +112,12 @@ perl::Object cayley_embedding(const Array<perl::Object>& p_array,
 
    if (relabel) {
       std::vector<std::string> labels(accumulate(n_vertices, operations::add()));
-      int v_ct(0);
-      for (int i=0; i<m; ++i) {
+      Int v_ct = 0;
+      for (Int i = 0; i < m; ++i) {
          common::read_labels(p_array[i], "VERTEX_LABELS", select(labels, sequence(v_ct, n_vertices[i])));
-         for (std::vector<std::string>::iterator 
-                 l     = labels.begin() + v_ct, 
-                 l_end = labels.begin() + v_ct + n_vertices[i]; 
-              l != l_end; ++l) {
+         for (auto l = labels.begin() + v_ct, l_end = l + n_vertices[i]; l != l_end; ++l) {
             *l += '_';
-            *l += '0' + i;
+            *l += std::to_string(i);
          }
          v_ct += n_vertices[i];
       }

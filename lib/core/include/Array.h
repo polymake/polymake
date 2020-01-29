@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -49,6 +49,8 @@ namespace pm {
 template <typename E, typename... SharedParams>
 class Array
    : public plain_array< Array<E, SharedParams...>, E> {
+
+   static_assert(!std::is_same<E, int>::value, "use Int instead");
 protected:
    /// data array
    shared_array<E, typename mtagged_list_add_default<typename mlist_wrap<SharedParams...>::type, AliasHandlerTag<shared_alias_handler>>::type> data;
@@ -69,42 +71,42 @@ public:
    Array() {}
 
    /// Create an array with @a n elements, initialized with the default constructor.
-   explicit Array(int n)
+   explicit Array(Int n)
       : data(n) {}
 
    /// Create an array with @a n elements, initialized with the same value.
    template <typename E2>
-   Array(int n, const E2& init,
-         typename std::enable_if<can_initialize<E2, E>::value, void**>::type=nullptr)
+   Array(Int n, const E2& init,
+         std::enable_if_t<can_initialize<E2, E>::value, std::nullptr_t> = nullptr)
       : data(n, init) {}
 
    /// Create an array with @a n, initialized from a data sequence.
    template <typename Iterator>
-   Array(int n, Iterator&& src,
-         typename std::enable_if<assess_iterator_value<Iterator, can_initialize, E>::value, void**>::type=nullptr)
+   Array(Int n, Iterator&& src,
+         std::enable_if_t<assess_iterator_value<Iterator, can_initialize, E>::value, std::nullptr_t> = nullptr)
       : data(n, ensure_private_mutable(make_converting_iterator<E>(std::forward<Iterator>(src)))) {}
 
    template <typename Iterator>
    Array(Iterator&& src, Iterator&& src_end,
-         typename std::enable_if<assess_iterator_value<Iterator, can_initialize, E>::value, void**>::type=nullptr)
+         std::enable_if_t<assess_iterator_value<Iterator, can_initialize, E>::value, std::nullptr_t> = nullptr)
       : data(std::distance(src, src_end), ensure_private_mutable(make_converting_iterator<E>(std::forward<Iterator>(src)))) {}
 
-   template <typename E2, typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
+   template <typename E2, typename = std::enable_if_t<can_initialize<E2, E>::value>>
    Array(std::initializer_list<E2> l)
       : data(l.size(), make_converting_iterator<E>(l.begin())) {}
 
-   template <typename E2, typename=typename std::enable_if<can_initialize<std::initializer_list<E2>, E>::value>::type>
+   template <typename E2, typename = std::enable_if_t<can_initialize<std::initializer_list<E2>, E>::value>>
    Array(std::initializer_list< std::initializer_list<E2> > l)
       : data(l.size(), l.begin()) {}
 
    template <typename... Containers,
-             typename=typename std::enable_if<isomorphic_to_container_of<mlist<Containers...>, E, allow_conversion>::value>::type>
+             typename = std::enable_if_t<isomorphic_to_container_of<mlist<Containers...>, E, allow_conversion>::value>>
    explicit Array(const Containers&... src)
       : data(total_size(src...),
              make_converting_iterator<E>(ensure(src, std::conditional_t<sizeof...(Containers)==1, dense, mlist<dense, end_sensitive>>()).begin())...) {}
 
    /// number of elements
-   int size() const { return data.size(); }
+   Int size() const { return data.size(); }
 
    /// truncate to zero size
    void clear() { data.clear(); }
@@ -115,27 +117,27 @@ public:
    ///
    /// Unlike @c std::vector, @c Array never allocates extra stock
    /// storage. Each resize operation causes the data area reallocation.
-   void resize(int n) { data.resize(n); }
+   void resize(Int n) { data.resize(n); }
 
    /// Same as above, with explicit element construction.
-   void resize(int n, const E& x)
+   void resize(Int n, const E& x)
    {
       data.append(n-size(), x);
    }
 
-   void assign(int n, const E& x)
+   void assign(Int n, const E& x)
    {
       data.assign(n, x);
    }
 
-   template <typename E2, typename=typename std::enable_if<can_assign_to<E2, E>::value>::type>
+   template <typename E2, typename = std::enable_if_t<can_assign_to<E2, E>::value>>
    Array& operator= (std::initializer_list<E2> l)
    {
       data.assign(l.size(), make_converting_iterator<E>(l.begin()));
       return *this;
    }
 
-   template <typename E2, typename=typename std::enable_if<can_initialize<std::initializer_list<E2>, E>::value>::type>
+   template <typename E2, typename = std::enable_if_t<can_initialize<std::initializer_list<E2>, E>::value>>
    Array& operator= (std::initializer_list< std::initializer_list<E2> > l)
    {
       data.assign(l.size(), l.begin());
@@ -143,7 +145,7 @@ public:
    }
 
    // TODO: introduce 'allow_implicit_conversion' and restrict to it here and elsewhere
-   template <typename Container, typename=typename std::enable_if<isomorphic_to_container_of<Container, E, allow_conversion>::value>::type>
+   template <typename Container, typename = std::enable_if<isomorphic_to_container_of<Container, E, allow_conversion>::value>>
    Array& operator= (const Container& src)
    {
       data.assign(src.size(), make_converting_iterator<E>(ensure(src, dense()).begin()));
@@ -152,8 +154,8 @@ public:
 
    /// Keep the old elements, add @a n new elements at the tail, assign them values from the data sequence.
    template <typename Iterator,
-             typename=typename std::enable_if<assess_iterator_value<Iterator, can_initialize, E>::value>::type>
-   Array& append(int n, Iterator&& src)
+             typename = std::enable_if_t<assess_iterator_value<Iterator, can_initialize, E>::value>>
+   Array& append(Int n, Iterator&& src)
    {
       data.append(n, ensure_private_mutable(make_converting_iterator<E>(std::forward<Iterator>(src))));
       return *this;
@@ -161,7 +163,7 @@ public:
 
    /// Add new elements at the tail
    template <typename... Containers,
-             typename=typename std::enable_if<isomorphic_to_container_of<mlist<Containers...>, E, allow_conversion>::value, void>::type>
+             typename = std::enable_if_t<isomorphic_to_container_of<mlist<Containers...>, E, allow_conversion>::value, void>>
    Array& append(const Containers&... src)
    {
       data.append(total_size(src...),
@@ -169,14 +171,14 @@ public:
       return *this;
    }
 
-   template <typename E2, typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
+   template <typename E2, typename = std::enable_if_t<can_initialize<E2, E>::value>>
    Array& append(std::initializer_list<E2> l)
    {
       data.append(l.size(), make_converting_iterator<E>(l.begin()));
       return *this;
    }
 
-   template <typename E2, typename=typename std::enable_if<can_initialize<std::initializer_list<E2>, E>::value>::type>
+   template <typename E2, typename = std::enable_if_t<can_initialize<std::initializer_list<E2>, E>::value>>
    Array& append(std::initializer_list< std::initializer_list<E2> > l)
    {
       data.append(l.size(), l.begin());
@@ -185,7 +187,7 @@ public:
 
    /// Assign @a x to all elements.
    template <typename E2>
-   typename std::enable_if<std::is_convertible<E2, E>::value>::type
+   std::enable_if_t<std::is_convertible<E2, E>::value>
    fill(const E2& x)
    {
       data.assign(size(), x);

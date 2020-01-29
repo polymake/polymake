@@ -1,6 +1,6 @@
 {"app": "fan", "embed": "mixed_subdivision.cc",
  "inst": [
-  {"args": ["Rational", "void", "perl::Canned<const Array<Set<int>>&>", "perl::Canned<const pm::SameElementVector<pm::Rational const&>&>", "void"], "func": "mixed_subdivision", "include": ["polymake/Array.h", "polymake/Rational.h", "polymake/Set.h", "polymake/linalg.h"], "sig": "mixed_subdivision:T1.B.X.X.o", "tp": "1"},
-  {"args": ["Rational", "void", "void", "perl::Canned<const Array<Set<int>>&>", "perl::Canned<const pm::SameElementVector<pm::Rational const&>&>"], "func": "mixed_subdivision", "include": ["polymake/Array.h", "polymake/Rational.h", "polymake/Set.h", "polymake/linalg.h"], "sig": "mixed_subdivision:T1.x.B.X.X", "tp": "1"},
+  {"args": ["Rational", "void", "perl::Canned<const Array<Set<Int>>&>", "perl::Canned<const pm::SameElementVector<pm::Rational const&>&>", "void"], "func": "mixed_subdivision", "include": ["polymake/Array.h", "polymake/Rational.h", "polymake/Set.h", "polymake/linalg.h"], "sig": "mixed_subdivision:T1.B.X.X.o", "tp": "1"},
+  {"args": ["Rational", "void", "void", "perl::Canned<const Array<Set<Int>>&>", "perl::Canned<const pm::SameElementVector<pm::Rational const&>&>"], "func": "mixed_subdivision", "include": ["polymake/Array.h", "polymake/Rational.h", "polymake/Set.h", "polymake/linalg.h"], "sig": "mixed_subdivision:T1.x.B.X.X", "tp": "1"},
  null ],
 "version": 3}

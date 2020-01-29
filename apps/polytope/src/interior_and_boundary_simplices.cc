@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,19 +28,16 @@
 
 namespace polymake { namespace polytope {
 
-typedef Set<int> SetType;
+typedef Set<Int> SetType;
 
 template <typename Scalar>
-Array<SetType> max_interior_simplices_impl(perl::Object p, perl::OptionSet options)
+Array<SetType> max_interior_simplices_impl(BigObject p, OptionSet options)
 {
    const bool is_config = p.isa("PointConfiguration");
 
-   const int d = is_config
-      ? int(p.give("CONVEX_HULL.COMBINATORIAL_DIM"))
-      : int(p.give("COMBINATORIAL_DIM"));
-
+   const Int d = p.give(is_config ? Str("CONVEX_HULL.COMBINATORIAL_DIM") : Str("COMBINATORIAL_DIM"));
    const Matrix<Scalar> V = p.give(is_config ? Str("POINTS") : Str("RAYS"));
-   const int n = V.rows();
+   const Int n = V.rows();
 
    AnyString VIF_property = options["VIF_property"];
    if (!VIF_property)
@@ -59,13 +56,11 @@ Array<SetType> max_interior_simplices_impl(perl::Object p, perl::OptionSet optio
 }
 
 template <typename Scalar>
-std::pair< Array<SetType>, Array<SetType> > interior_and_boundary_ridges(perl::Object p, perl::OptionSet options)
+std::pair< Array<SetType>, Array<SetType> > interior_and_boundary_ridges(BigObject p, OptionSet options)
 {
    const bool is_config = p.isa("PointConfiguration");
 
-   const int d = is_config
-      ? int(p.give("CONVEX_HULL.COMBINATORIAL_DIM"))
-      : int(p.give("COMBINATORIAL_DIM"));
+   const Int d = p.give(is_config ? Str("CONVEX_HULL.COMBINATORIAL_DIM") : Str("COMBINATORIAL_DIM"));
 
    AnyString VIF_property = options["VIF_property"];
    if (!VIF_property)
@@ -74,11 +69,9 @@ std::pair< Array<SetType>, Array<SetType> > interior_and_boundary_ridges(perl::O
                      : Str("RAYS_IN_FACETS");
    const IncidenceMatrix<> VIF = p.give(VIF_property);
 
-   const Matrix<Scalar> V = is_config
-      ? p.give("POINTS")
-      : p.give("RAYS");
+   const Matrix<Scalar> V = p.give(is_config ? Str("POINTS") : Str("RAYS"));
 
-   const int n = V.rows();
+   const Int n = V.rows();
 
    std::vector<SetType> interior_ridges, boundary_ridges;
    for (auto fit = entire(all_subsets_of_k(sequence(0,n), d)); !fit.at_end(); ++fit) {

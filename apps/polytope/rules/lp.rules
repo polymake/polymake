@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -101,7 +101,7 @@ rule RANDOM_EDGE_EPL : DIRECTED_GRAPH.ADJACENCY {
 # and convert it to a [[Polytope<Scalar>]] object.
 #
 # @tparam Scalar coordinate type of the resulting polytope; default is [[Rational]].
-# @param String file filename of a linear programming problem in LP-Format
+# @param [complete file] String file filename of a linear programming problem in LP-Format
 # @param Vector testvec If present, after reading in each line of the LP it is checked whether testvec fulfills it
 # @param String prefix If testvec is present, all variables in the LP file are assumed to have the form $prefix$i
 # @option Bool nocheck Do not automatically compute [[FEASIBLE]] for the polytope (recommended for very large LPs)
@@ -113,7 +113,7 @@ user_function lp2poly<Scalar=Rational>(String; Vector, String, {nocheck => false
 
    my $parser = new LPparser($filename, $testvec, $prefix);
 
-   my $P=new Polytope<Scalar>($parser->name);
+   my $P = new Polytope<Scalar>($parser->name);
    $P->description = "Linear problem converted from file " . $parser->LPfile . "\n";
 
    my $labels = new Array<String>($parser->X);
@@ -131,8 +131,8 @@ user_function lp2poly<Scalar=Rational>(String; Vector, String, {nocheck => false
    $P->INEQUALITIES = new SparseMatrix<Scalar>($parser->Ineq);
    $P->EQUATIONS = new SparseMatrix<Scalar>($parser->Eq);
 
-   my $lp=new LinearProgram<Scalar>;
-   $lp->description="Objective sense was ".($parser->objsense eq "+" ? "MAXIMIZE" : "MINIMIZE")."\n";
+   my $lp = new LinearProgram<Scalar>($parser->lp_name // ());
+   $lp->description = "Objective sense was ".($parser->objsense eq "+" ? "MAXIMIZE" : "MINIMIZE")."\n";
 
    $lp->LINEAR_OBJECTIVE = new SparseVector<Scalar>($parser->Obj);
 
@@ -140,7 +140,7 @@ user_function lp2poly<Scalar=Rational>(String; Vector, String, {nocheck => false
       $lp->attach("INTEGER_VARIABLES", new Array<Bool>($parser->Int));
    }
    $P->commit unless($options->{nocheck});
-   $P->add("LP",$lp);
+   $P->add("LP", $lp);
    $P;
 }
 

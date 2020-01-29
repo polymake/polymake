@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -42,21 +42,21 @@ namespace polymake { namespace tropical {
 
 using matrix_pair = std::pair<Matrix<Rational>, Matrix<Rational>>;
 
-IncidenceMatrix<> all_cones_as_incidence(perl::Object complex)
+IncidenceMatrix<> all_cones_as_incidence(BigObject complex)
 {
   Array<IncidenceMatrix<>> all_cones = complex.give("CONES");
   if (all_cones.size() == 0) return IncidenceMatrix<>();
   return IncidenceMatrix<>(rowwise(), all_cones);
 }
 
-Matrix<Rational> binaryMatrix(int n)
+Matrix<Rational> binaryMatrix(Int n)
 {
   ListMatrix<Vector<Rational>> result(0,n);
   Vector<Rational> prev_row = -ones_vector<Rational>(n);
   result /= prev_row;
   // Now increase the last row of result by "one" in each iteration and append the new row to result
   Integer iterations = Integer::pow(2,n)-1;
-  for (int i = 1; i <= iterations; ++i) {
+  for (Int i = 1; i <= iterations; ++i) {
     // Find the first -1-entry
     Vector<Rational> newrow(prev_row);
     auto neg_it = find_in_range_if(entire(newrow), operations::negative());
@@ -75,14 +75,14 @@ Matrix<Rational> binaryMatrix(int n)
 
 /**
    @brief Computes the labels for each cell of a function domain, given its ray and lineality values
-   @param perl::Object domain A Cycle object, representing the domain of the function
+   @param BigObject domain A Cycle object, representing the domain of the function
    @param Matrix<Rationl> ray_values Values of the function on the rays, given as row vectors in non-homog. coordinates
    @param Matrix<Rational> lin_values Values of the function on the lineality space, given as row vectors in non-homog. coordinates.
    @param bool values_are_homogeneous Whether vertex and lineality values are given in tropical projective
    coordinates.
    @return A list of std::strings
 */
-perl::ListReturn computeFunctionLabels(perl::Object domain, Matrix<Rational> ray_values, Matrix<Rational> lin_values, const bool values_are_homogeneous)
+ListReturn computeFunctionLabels(BigObject domain, Matrix<Rational> ray_values, Matrix<Rational> lin_values, const bool values_are_homogeneous)
 {
   // Extract values
   const Matrix<Rational>& rays_ref = domain.give("SEPARATED_VERTICES");
@@ -96,7 +96,7 @@ perl::ListReturn computeFunctionLabels(perl::Object domain, Matrix<Rational> ray
     lin_values = tdehomog(lin_values,0);
   }
 
-  perl::ListReturn result;
+  ListReturn result;
 
   for (auto mc = entire(rows(cones)); !mc.at_end(); ++mc) {
     Matrix<Rational> matrix;
@@ -115,7 +115,7 @@ perl::ListReturn computeFunctionLabels(perl::Object domain, Matrix<Rational> ray
     // We have a special representation format for functions to R
     else {
       bool hadnonzeroterm = false;
-      for (int i = 0; i < matrix.cols(); ++i) {
+      for (Int i = 0; i < matrix.cols(); ++i) {
         if (matrix(0,i) != 0) {
           if (hadnonzeroterm) rep << " + ";
           hadnonzeroterm = true;
@@ -137,7 +137,7 @@ perl::ListReturn computeFunctionLabels(perl::Object domain, Matrix<Rational> ray
 }
 
 // Documentation see perl wrapper
-bool contains_point(perl::Object complex, const Vector<Rational>& point)
+bool contains_point(BigObject complex, const Vector<Rational>& point)
 {
   // Special case: Empty cycle
   if (call_function("is_empty", complex))
@@ -152,7 +152,7 @@ bool contains_point(perl::Object complex, const Vector<Rational>& point)
     throw std::runtime_error("Point does not have the same ambient dimension as the complex.");
   }
 
-  for (int mc = 0; mc < cones.rows(); ++mc) {
+  for (Int mc = 0; mc < cones.rows(); ++mc) {
     if (is_ray_in_cone(rays.minor(cones.row(mc),All), linspace, point, true))
       return true;
   }

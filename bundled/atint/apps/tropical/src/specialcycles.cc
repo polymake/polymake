@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -32,13 +32,12 @@
 
 namespace polymake { namespace tropical {
 
-	bool is_empty_cycle(perl::Object cycle) {
-		int proj_ambient_dim = cycle.give("PROJECTIVE_AMBIENT_DIM");
-		IncidenceMatrix<> mpol = cycle.give("MAXIMAL_POLYTOPES");
-		return proj_ambient_dim < 0 || mpol.rows() == 0;
-	}//END is_empty
-
-	// PERL WRAPPER -------------------------------------------
+bool is_empty_cycle(BigObject cycle)
+{
+  Int proj_ambient_dim = cycle.give("PROJECTIVE_AMBIENT_DIM");
+  IncidenceMatrix<> mpol = cycle.give("MAXIMAL_POLYTOPES");
+  return proj_ambient_dim < 0 || mpol.rows() == 0;
+}
 
 UserFunctionTemplate4perl("# @category Creation functions for specific cycles"
 			  "# Creates the empty cycle in a given ambient dimension"
@@ -125,6 +124,4 @@ UserFunctionTemplate4perl("# @category Creation functions for specific cycles"
 			  "# @return Cycle<Addition> The k-skeleton of the tropical hypersurface dual to the cross"
 			  "# polytope. It is a smooth (for weight 1), irreducible (for h > 0) variety, which is invariant under reflection.",
 			  "cross_variety<Addition>($,$; $=1,$=1)");
-
-
-}}
+} }

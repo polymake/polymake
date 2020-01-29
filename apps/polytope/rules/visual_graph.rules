@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -63,8 +63,8 @@ sub LP_influence_on_embedding {
 # corresponding to the objective function values.
 # 
 # @param LinearProgram lp a LinearProgram object attached to the polytope.
-# @option Color min minimal face color (default: yellow)
-# @option Color max maximal face color (default: red)
+# @option [complete color] Color min minimal face color (default: yellow)
+# @option [complete color] Color max maximal face color (default: red)
 # @return Visual::PolytopeGraph
 
 user_method VERTEX_COLORS(; LinearProgram { min => $Visual::Color::min, max => $Visual::Color::max }) {
@@ -89,8 +89,8 @@ user_method VERTEX_COLORS(; LinearProgram { min => $Visual::Color::min, max => $
 # corresponding to the objective function values.
 # 
 # @param LinearProgram lp a LinearProgram object attached to the polytope
-# @option Color min minimal face decoration (default: yellow nodes)
-# @option Color max maximal face decoration (default: red nodes)
+# @option [complete color] Color min minimal face decoration (default: yellow nodes)
+# @option [complete color] Color max maximal face decoration (default: red nodes)
 # @return Visual::PolytopeGraph
 
 user_method MIN_MAX_FACE(; LinearProgram { min => $Visual::Color::min, max => $Visual::Color::max }) {
@@ -206,8 +206,8 @@ method basis_lattice { $_[0]->elements->[0] }
 # Draw the filters of the [[MAXIMAL_FACE]] and [[MINIMAL_FACE]] in distinct colors.
 #
 # @param LinearProgram lp a LinearProgram object attached to the polytope
-# @option Color min minimal face decoration (default: yellow border and ingoing edges)
-# @option Color max maximal face decoration (default: red border and ingoing edges)
+# @option [complete color] Color min minimal face decoration (default: yellow border and ingoing edges)
+# @option [complete color] Color max maximal face decoration (default: red border and ingoing edges)
 # @return Visual::PolytopeLattice
 
 user_method MIN_MAX_FACE(; LinearProgram { min => $Visual::Color::min, max => $Visual::Color::max }) {

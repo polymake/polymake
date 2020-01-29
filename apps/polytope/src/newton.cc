@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,14 +23,14 @@
 namespace polymake { namespace polytope {
 
 template <typename Coefficient, typename Exponent>
-perl::Object newton(const Polynomial<Coefficient,Exponent>& p)
+BigObject newton(const Polynomial<Coefficient,Exponent>& p)
 {
-   perl::Object np("Polytope<Rational>");
+   BigObject np("Polytope<Rational>");
    np.set_description() << "Newton polytope of " << p << endl;
 
    const Matrix<Exponent> exps(p.template monomials_as_matrix< Matrix<Exponent> >());
-   const int n=exps.rows();
-   const int d=exps.cols();
+   const Int n = exps.rows();
+   const Int d = exps.cols();
 
    np.take("POINTS") << (same_element_vector(1,n) | exps);
    np.take("CONE_AMBIENT_DIM") << d+1;

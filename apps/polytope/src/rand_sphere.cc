@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,9 +22,9 @@
 
 namespace polymake { namespace polytope {
 template<typename Num>
-perl::Object rand_sphere(int d, int n, perl::OptionSet options)
+BigObject rand_sphere(Int d, Int n, OptionSet options)
 {
-   if (d<2 || n<=d) {
+   if (d < 2 || n <= d) {
       throw std::runtime_error("rand_sphere: 2 <= dim < #vertices\n");
    }
    const RandomSeed seed(options["seed"]);
@@ -33,7 +33,7 @@ perl::Object rand_sphere(int d, int n, perl::OptionSet options)
    if (use_prec && my_prec < MPFR_PREC_MIN)
       throw std::runtime_error("rand_sphere: MPFR precision too low ( < MPFR_PREC_MIN )");
 
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.set_description() << "Random spherical polytope of dimension " << d << "; seed=" << seed.get()
       << "; precision=" << (use_prec ? std::to_string(my_prec) : "default") << endl;
 

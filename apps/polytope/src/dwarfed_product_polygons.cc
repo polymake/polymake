@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,7 +21,7 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object dwarfed_product_polygons(int d, int s)
+BigObject dwarfed_product_polygons(Int d, Int s)
 {
    if (d <= 2 || d%2 != 0) {
       throw std::runtime_error("dwarfed_product_polygons: d >= 4 and even required");
@@ -30,24 +30,23 @@ perl::Object dwarfed_product_polygons(int d, int s)
       throw std::runtime_error("dwarfed_product_polygons: s >= 3 required");
    }
 
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.set_description() << "dwarfed product of polygons of dimension " << d << " and size " << s << endl;
 
-   Matrix<int> F((d/2)*s+1,d+1);
-   Rows<Matrix <int> >::iterator f=rows(F).begin();
-   int i;
-   for (i = 1; i<=d/2; ++i) {
+   Matrix<Int> F((d/2)*s+1,d+1);
+   auto f = rows(F).begin();
+   for (Int i = 1; i <= d/2; ++i) {
       (*f)[2*i]=1; //y_i >= 0
       ++f;
    }
-   for (i = 1; i<=d/2; ++i) {
+   for (Int i = 1; i <= d/2; ++i) {
       (*f)[2*i-1] = s; //sx_i
       (*f)[2*i] = -1; //-y_i
       ++f;
    }
 
-   for (int k = 0; k <= s-4; k++) {
-      for (i = 1; i<=d/2; ++i) {
+   for (Int k = 0; k <= s-4; ++k) {
+      for (Int i = 1; i <= d/2; ++i) {
          (*f)[2*i-1] = -2*k-1; //-(2k+1)x_i
          (*f)[2*i] = -1; //-y_i
          (*f)[0] = (2*k+1)*(s+k)-k*k+s*s;
@@ -55,15 +54,15 @@ perl::Object dwarfed_product_polygons(int d, int s)
       }
    }
 
-   for (i = 1; i<=d/2; ++i) {
+   for (Int i = 1; i <= d/2; ++i) {
       (*f)[2*i-1] = -2*s+3; //-(2*s-3)x_i
       (*f)[2*i] = -1; //-y_i
       (*f)[0] = 2*s*(2*s-3);
       ++f;
    }
     
-   //dwarfing halfspace
-   for (i=1;i<=d/2;++i) {
+   // dwarfing halfspace
+   for (Int i = 1; i <= d/2; ++i) {
       (*f)[2*i-1] = -1;
    }
    (*f)[0] = 2*s-1;

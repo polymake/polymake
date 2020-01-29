@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
         Ewgenij Gawrilow, Michael Joswig, and the polymake team
         Technische Universität Berlin, Germany
         https://polymake.org
@@ -23,17 +23,17 @@ GNU General Public License for more details.
 namespace polymake { namespace tropical {
 
 template <typename Addition>
-perl::Object cyclic(const int d, const int n)
+BigObject cyclic(const Int d, const Int n)
 {
    if (d<2 || n<=d) {
       throw std::runtime_error("n > d >= 2 required");
    }
    Matrix<TropicalNumber<Addition> > V(n,d+1);
 
-   for (int i=0; i<n; ++i)
-      for (int j=0; j<=d; ++j)
+   for (Int i = 0; i < n; ++i)
+      for (Int j = 0; j <= d; ++j)
          V(i,j)= TropicalNumber<Addition>(Addition::orientation() * i*j);
-   perl::Object p("Polytope", mlist<Addition>());
+   BigObject p("Polytope", mlist<Addition>());
    p.set_description()<<"Tropical cyclic "<<d<<"-polytope with "<<n<< " vertices"<<endl;
    p.take("POINTS") << V;
    return p;

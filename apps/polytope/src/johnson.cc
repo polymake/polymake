@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -34,16 +34,17 @@ typedef QuadraticExtension<Rational> QE;
 
 namespace {
 
- double norm(Vector<double> v){
+double norm(Vector<double> v)
+{
   double n = 0;
-  int d = v.size();
-  int i = 0;
-  if(d == 4) i=1; //hom.coords...
-  for(;i<v.size(); i++){
-    n = n + v[i]*v[i];
+  Int d = v.size();
+  Int i = 0;
+  if (d == 4) i = 1; //hom.coords...
+  for (; i < v.size(); ++i) {
+    n += sqr(v[i]);
   }
   return sqrt(n);
- }
+}
 
 Vector<double> cross_product(const Vector<double>& a, const Vector<double>& b)
 {
@@ -54,14 +55,14 @@ Vector<double> cross_product(const Vector<double>& a, const Vector<double>& b)
    return result;
 }
 
-Vector<double> find_facet_normal(Matrix<double> V, Set<int> f_vert){
-
+Vector<double> find_facet_normal(Matrix<double> V, const Set<Int>& f_vert)
+{
    Matrix<double> FV = V.minor(f_vert,All);
    Vector<double> cp = cross_product(FV[2]-FV[0],FV[1]-FV[0]);
 
    Vector<double> non_facet_point = V[(sequence(0,V.rows()) - f_vert).front()];
    //if nfp lies on the negative side of the plane, the normal vector points inwards
-   if(cp*(non_facet_point - FV[0]) < 0)
+   if (cp*(non_facet_point - FV[0]) < 0)
       cp *= -1;
 
    cp /= norm(cp); //unit facet normal
@@ -70,11 +71,11 @@ Vector<double> find_facet_normal(Matrix<double> V, Set<int> f_vert){
 }
 
 //get the indices of the facet sorted in counterclockwise order.
-Array<int> neighbors(Matrix<double> V,Set<int> f_vert){
-
+Array<Int> neighbors(const Matrix<double>& V, const Set<Int>& f_vert)
+{
    Matrix<double> FV = V.minor(f_vert,All);
 
-   perl::Object facet("Polytope<Float>");
+   BigObject facet("Polytope<Float>");
 
    //project the points to a plane to make sure we get one polygon
    //even though the coords are inexact
@@ -88,81 +89,82 @@ Array<int> neighbors(Matrix<double> V,Set<int> f_vert){
    //sort VIF lexicographically to ensure the facet polytope is
    //independent of permutations through convex hull algos
    IncidenceMatrix<> VIF = facet.give("VERTICES_IN_FACETS");
-   Set<Set<int>> VIF_sorted;
-   for(auto f = entire(rows(VIF)); !f.at_end(); ++f)
+   Set<Set<Int>> VIF_sorted;
+   for (auto f = entire(rows(VIF)); !f.at_end(); ++f)
       VIF_sorted += *f;
 
-   perl::Object facetlex("Polytope<Float>");
+   BigObject facetlex("Polytope<Float>");
    facetlex.take("VERTICES")<<FV;
    facetlex.take("VERTICES_IN_FACETS")<<VIF_sorted;
 
    //vertex indices in counterclockwise order
-   Array<Array<int>> FVIF = facetlex.give("VIF_CYCLIC_NORMAL");
-   Array<int> perm = FVIF[0];
-   int n = perm.size();
-   Array<int> result(n);
-   Array<int> farr(f_vert);
-   for(int i = 0; i<n; ++i)
+   Array<Array<Int>> FVIF = facetlex.give("VIF_CYCLIC_NORMAL");
+   Array<Int> perm = FVIF[0];
+   const Int n = perm.size();
+   Array<Int> result(n);
+   Array<Int> farr(f_vert);
+   for (Int i = 0; i < n; ++i)
       result[i] = farr[perm[i]];
    return result;
 }
 
- //rotates vectors in V by angle a about axis u (given in hom. coords) using rodrigues' rotation formula
- Matrix<double> rotate(Matrix<double> V, Vector<double> u, double a){
+// rotates vectors in V by angle a about axis u (given in hom. coords) using rodrigues' rotation formula
+Matrix<double> rotate(const Matrix<double>& V, Vector<double> u, const double a)
+{
+   u[0] = 0; //projection to plane
+   u /= norm(u); //unit length vector
 
-    u[0]=0; //projection to plane
-    u /= norm(u); //unit length vector
+   Matrix<double> K(3,3); //cross product matrix of axis u
+   K(1,0) = u[3];
+   K(0,2) = u[2];
+   K(2,1) = u[1];
+   K(0,1) = -u[3];
+   K(2,0) = -u[2];
+   K(1,2) = -u[1];
 
-    Matrix<double> K(3,3); //cross product matrix of axis u
-    K(1,0) = u[3];
-    K(0,2) = u[2];
-    K(2,1) = u[1];
-    K(0,1) = -u[3];
-    K(2,0) = -u[2];
-    K(1,2) = -u[1];
+   Matrix<double> R = unit_matrix<double>(3) + sin(a)*K;
+   R += (1-cos(a))*K*K;
 
-    Matrix<double> R = unit_matrix<double>(3) + sin(a)*K;
-    R += (1-cos(a))*K*K;
+   return V.minor(All, sequence(0,1)) | V.minor(All,sequence(1,3))*T(R);
+}
 
-    return V.minor(All, sequence(0,1)) | V.minor(All,sequence(1,3))*T(R);
- }
-
- template<typename T>
- Matrix<T> create_square_vertices()
- {
+template<typename T>
+Matrix<T> create_square_vertices()
+{
    Matrix<T> V(4,3);
 
    V(0,0)=V(1,0)=V(2,0)=V(3,0)=V(1,1)=V(2,2)=V(3,1)=V(3,2)=1;
    V(1,2)=V(2,1)=V(0,1)=V(0,2)=-1;
 
    return V;
- }
+}
 
 //FIXME: coordinates #830
 //creates vertices of regular n-gon with the origin as center, radius r and angle of first vertex s
-  Matrix<double> create_regular_polygon_vertices(int n, double r, double s){
-   if (n<3)
+Matrix<double> create_regular_polygon_vertices(const Int n, const double r, const double s)
+{
+   if (n < 3)
       throw std::runtime_error("At least three vertices required.");
-   if (r<=0)
+   if (r <= 0)
       throw std::runtime_error("Radius must be >0");
-   Matrix<double> V(n,3);
+   Matrix<double> V(n, 3);
    V.col(0).fill(1);
 
-   double phi = 2*M_PI/n;
-   for(int i=0; i<n; i++){
-     V(i,1)=r*cos(s+i*phi);
-     V(i,2)=r*sin(s+i*phi);
+   double phi = 2*M_PI/double(n);
+   for (Int i = 0; i < n; ++i) {
+     V(i, 1) = r*cos(s+double(i)*phi);
+     V(i, 2) = r*sin(s+double(i)*phi);
    }
    return V;
- }
+}
 
 //creates an exact octagonal prism with z-coordinates z_1 and z_2
-perl::Object exact_octagonal_prism(QE z_1, QE z_2)
+BigObject exact_octagonal_prism(QE z_1, QE z_2)
 {
-  perl::Object p("Polytope<QuadraticExtension>");
+  BigObject p("Polytope<QuadraticExtension>");
   Matrix<QE> V(16,4);
   V.col(0).fill(1);
-  for (int i=0; i<8; ++i) {
+  for (Int i = 0; i < 8; ++i) {
     V(i,3) = z_1;
     V(i+8,3) = z_2;
   }
@@ -181,11 +183,11 @@ perl::Object exact_octagonal_prism(QE z_1, QE z_2)
 
 //augments the facet given as a vertex index set
 //uses sqrt and cos to calculate height, thus not exact
-perl::Object augment(perl::Object p, Set<int> f_vert){
-
+BigObject augment(BigObject p, const Set<Int>& f_vert)
+{
    Matrix<double> V = p.give("VERTICES");
 
-   Array<int> neigh = neighbors(V,f_vert);
+   Array<Int> neigh = neighbors(V,f_vert);
    double side_length = norm(V[neigh[0]]-V[neigh[1]]);
 
    Matrix<double> FV = V.minor(f_vert,All);
@@ -193,18 +195,18 @@ perl::Object augment(perl::Object p, Set<int> f_vert){
 
    Vector<double> normal = find_facet_normal(V,f_vert);
 
-  int n_vert = f_vert.size();
-   if(n_vert == 3 || n_vert == 4 || n_vert == 5){ //pyramid
-      double height = side_length*sqrt(1-1/(2-2*cos(2*M_PI/n_vert)));
+   const Int n_vert = f_vert.size();
+   if (n_vert == 3 || n_vert == 4 || n_vert == 5) { // pyramid
+      double height = side_length*sqrt(1-1/(2-2*cos(2*M_PI/double(n_vert))));
       normal *= height;
       V /= (bary - normal);
-   }else{
+   } else {
       Matrix<double> trans = zero_vector<double>( V.rows()) | repeat_row(-average(rows(FV)), V.rows()).minor(All,sequence(1,3));
       V += trans; //translate barycenter to zero
-      double r = (side_length/(2*sin(M_PI/(n_vert/2)))) ; //circumradius of n-gon with side_length
-      Matrix<double> H(0,4);
+      double r = (side_length/(2*sin(M_PI/(double(n_vert)/2)))) ; //circumradius of n-gon with side_length
+      Matrix<double> H(0, 4);
       Vector<double> v;
-      for(int i = 0; i<n_vert-1; i=i+2){
+      for (Int i = 0; i < n_vert-1; i += 2) {
          v = (V.row(neigh[i])+V.row(neigh[i+1]))/2;
          H /= r*v/norm(v);
       }
@@ -217,7 +219,7 @@ perl::Object augment(perl::Object p, Set<int> f_vert){
 
       V /= H;
    }
-   perl::Object p_out("Polytope<Float>");
+   BigObject p_out("Polytope<Float>");
    p_out.take("VERTICES") << V;
 
    return p_out;
@@ -225,12 +227,12 @@ perl::Object augment(perl::Object p, Set<int> f_vert){
 
 //places a rotunda on a facet given as a vertex index set (must be a decagonal facet)
 //not exact
-perl::Object rotunda(perl::Object p, Set<int> f_vert){
-
-   if(10 != f_vert.size()) throw std::runtime_error("Facet must be decagon.");
+BigObject rotunda(BigObject p, const Set<Int>& f_vert)
+{
+   if (10 != f_vert.size()) throw std::runtime_error("Facet must be decagon.");
 
    Matrix<double> V = p.give("VERTICES");
-   Array<int> neigh = neighbors(V,f_vert);
+   Array<Int> neigh = neighbors(V,f_vert);
    double side_length = norm(V[neigh[0]]-V[neigh[1]]);
 
    Vector<double> normal = find_facet_normal(V,f_vert);
@@ -245,7 +247,7 @@ perl::Object rotunda(perl::Object p, Set<int> f_vert){
    Matrix<double> H_l(0,4);
    Matrix<double> H_s(0,4);
    Vector<double> v;
-   for(int i = 0; i<9; i=i+2){
+   for (Int i = 0; i < 9; i += 2) {
       v = (V.row(neigh[i])+V.row(neigh[i+1]))/2;
       H_l /= r_l*v/norm(v);
       if(i!=8) v = (V.row(neigh[i+1])+V.row(neigh[i+2]))/2;
@@ -266,7 +268,7 @@ perl::Object rotunda(perl::Object p, Set<int> f_vert){
    Matrix<double>H = ones_vector<double>(10) | (H_l.minor(All,sequence(1,3)) / H_s.minor(All,sequence(1,3))); //adjust hom.coords
    V /= H;
 
-   perl::Object p_out("Polytope<Float>");
+   BigObject p_out("Polytope<Float>");
    p_out.take("VERTICES") << V;
 
    return p_out;
@@ -274,11 +276,12 @@ perl::Object rotunda(perl::Object p, Set<int> f_vert){
 
 //places a rotated rotunda on a facet given as vertex index set (must be a decagonal facet)
 //inexact
-perl::Object gyrotunda(perl::Object p, Set<int> f_vert){
-   if(10 != f_vert.size()) throw std::runtime_error("Facet must be decagon.");
+BigObject gyrotunda(BigObject p, const Set<Int>& f_vert)
+{
+   if (10 != f_vert.size()) throw std::runtime_error("Facet must be decagon.");
 
    Matrix<double> V = (p.give("VERTICES"));
-   Array<int> neigh = neighbors(V,f_vert);
+   Array<Int> neigh = neighbors(V,f_vert);
    double side_length = norm(V[neigh[0]]-V[neigh[1]]);
 
    Vector<double> normal = find_facet_normal(V,f_vert);
@@ -293,7 +296,7 @@ perl::Object gyrotunda(perl::Object p, Set<int> f_vert){
    Matrix<double> H_l(0,4);
    Matrix<double> H_s(0,4);
    Vector<double> v;
-   for(int i = 0; i<9; i=i+2){
+   for (Int i = 0; i < 9; i += 2) {
       v = (V.row(neigh[i])+V.row(neigh[i+1]))/2;
       H_s /= r_s*v/norm(v);
       if(i!=8) v = (V.row(neigh[i+1])+V.row(neigh[i+2]))/2;
@@ -314,7 +317,7 @@ perl::Object gyrotunda(perl::Object p, Set<int> f_vert){
    Matrix<double>H = ones_vector<double>(10) | (H_l.minor(All,sequence(1,3)) / H_s.minor(All,sequence(1,3))); //adjust hom.coords
    V /= H;
 
-   perl::Object p_out("Polytope<Float>");
+   BigObject p_out("Polytope<Float>");
    p_out.take("VERTICES") << V;
 
    return p_out;
@@ -322,18 +325,18 @@ perl::Object gyrotunda(perl::Object p, Set<int> f_vert){
 
 //elongates the facet given as vertex index set
 //uses sqrt to calculate side length, thus not exact
-perl::Object elongate(perl::Object p, Set<int> f_vert){
-
+BigObject elongate(BigObject p, const Set<Int>& f_vert)
+{
    Matrix<double> V = (p.give("VERTICES"));
 
    Matrix<double> FV = V.minor(f_vert,All);
 
-   Array<int> neigh = neighbors(V,f_vert);
+   Array<Int> neigh = neighbors(V,f_vert);
    double side_length = norm(V[neigh[0]]-V[neigh[1]]);
 
-   int n_vert = f_vert.size();
+   Int n_vert = f_vert.size();
 
-   perl::Object p_out("Polytope<Float>");
+   BigObject p_out("Polytope<Float>");
 
    Vector<double> normal = find_facet_normal(V,f_vert);
    normal *= side_length; //facet normal of length side_length
@@ -344,12 +347,12 @@ perl::Object elongate(perl::Object p, Set<int> f_vert){
 
 //rotates the facet given as vertex index set by angle a
 //uses sqrt to calculate side length, thus not exact
-  perl::Object rotate_facet(perl::Object p, Set<int> f_vert, double a){
+BigObject rotate_facet(BigObject p, const Set<Int>& f_vert, double a)
+{
+  Matrix<double> V = p.give("VERTICES");
 
-  Matrix<double> V = (p.give("VERTICES"));
-
-  Matrix<double> FV = V.minor(f_vert,All);
-  Matrix<double> W = V.minor(~f_vert,All);
+  Matrix<double> FV = V.minor(f_vert, All);
+  Matrix<double> W = V.minor(~f_vert, All);
 
   Vector<double> normal = find_facet_normal(V,f_vert);
 
@@ -357,7 +360,7 @@ perl::Object elongate(perl::Object p, Set<int> f_vert){
 
   Matrix<double> Rot = rotate(FV+trans, normal, a)-trans;
 
-  perl::Object p_out("Polytope<Float>");
+  BigObject p_out("Polytope<Float>");
   p_out.take("VERTICES") << (W/Rot);
 
   return p_out;
@@ -365,41 +368,41 @@ perl::Object elongate(perl::Object p, Set<int> f_vert){
 
 //gyroelongates the facet given as vertex index set
 //uses sqrt to calculate side length, thus not exact
-perl::Object gyroelongate(perl::Object p, Set<int> f_vert){
-
-  Matrix<double> V = (p.give("VERTICES"));
+BigObject gyroelongate(BigObject p, const Set<Int>& f_vert)
+{
+  Matrix<double> V = p.give("VERTICES");
 
   Matrix<double> FV = V.minor(f_vert,All);
   Vector<double> normal = find_facet_normal(V,f_vert);
 
-  int n_vert = FV.rows();
+  const Int n_vert = FV.rows();
   Matrix<double> trans = zero_vector<double>(n_vert) | repeat_row(normal - average(rows(FV)), FV.rows()).minor(All,sequence(1,3)); //translate barycenter to axis
-  FV = rotate(FV+trans, normal, M_PI/n_vert)-trans; //rotate the facet by pi/n
+  FV = rotate(FV+trans, normal, M_PI/double(n_vert))-trans; //rotate the facet by pi/n
 
-   Array<int> neigh = neighbors(V,f_vert);
-   double side_length = norm(V[neigh[0]]-V[neigh[1]]);
+  Array<Int> neigh = neighbors(V,f_vert);
+  double side_length = norm(V[neigh[0]]-V[neigh[1]]);
 
   // wikipedia seems to be wrong https://en.wikipedia.org/wiki/Antiprism
   //   double height = 2*sqrt((cos(M_PI/n_vert)-cos(2.0*M_PI/n_vert))/2);
   //   the reciprocal might be correct
   // source: http://mathworld.wolfram.com/Antiprism.html
-  double height = sqrt(1-1.0/(4.0*cos(M_PI/(2*n_vert))*cos(M_PI/(2*n_vert))));
+  double height = sqrt(1-1.0/(4.0*cos(M_PI/double(2*n_vert))*cos(M_PI/double(2*n_vert))));
   normal = (side_length*height)*normal; //facet normal of right length (height of a triangle)
 
-  perl::Object p_out("Polytope<Float>");
+  BigObject p_out("Polytope<Float>");
   p_out.take("VERTICES") << (V / (FV - repeat_row(normal, n_vert)));
 
   return p_out;
 }
 
 //creates regular n-gonal prism
-perl::Object create_prism(int n)
+BigObject create_prism(Int n)
 {
    Matrix<double> V = create_regular_polygon_vertices(n, 1, 0);
 
    double side_length = norm(V[0]-V[1]);
 
-   perl::Object p_out("Polytope<Float>");
+   BigObject p_out("Polytope<Float>");
 
    p_out.take("VERTICES") << (V | zero_vector<double>()) / (V | same_element_vector(side_length, n));
 
@@ -408,14 +411,14 @@ perl::Object create_prism(int n)
 
 //removes the facet given as vertex index set
 template <typename T>
-perl::Object diminish(perl::Object p, Set<int> f_vert){
-
+BigObject diminish(BigObject p, const Set<Int>& f_vert)
+{
   Matrix<T> V = p.give("VERTICES");
 
-  Set<int> v = sequence(0,V.rows());
+  Set<Int> v = sequence(0, V.rows());
   v -= f_vert;
 
-  perl::Object p_out("Polytope", mlist<T>());
+  BigObject p_out("Polytope", mlist<T>());
   p_out.take("VERTICES") << V.minor(v,All);
 
   return p_out;
@@ -435,16 +438,16 @@ Matrix<QE> truncated_cube_vertices()
 }
 
 template <typename E>
-void centralize(perl::Object& p)
+void centralize(BigObject& p)
 {
   p.take("AFFINE_HULL") << Matrix<E>(0, 4);
   p=call_function("center", p);
 }
 
 template <typename E>
-perl::Object build_from_vertices(const Matrix<E>& V, bool do_centralize=true)
+BigObject build_from_vertices(const Matrix<E>& V, bool do_centralize=true)
 {
-  perl::Object p("Polytope", mlist<E>());
+  BigObject p("Polytope", mlist<E>());
   p.take("VERTICES") << V;
   if (do_centralize) centralize<E>(p);
   return p;
@@ -452,7 +455,7 @@ perl::Object build_from_vertices(const Matrix<E>& V, bool do_centralize=true)
 
 } // end anonymous namespace
 
-perl::Object square_pyramid()
+BigObject square_pyramid()
 {
   Vector<QE> tip(4);
   tip[0]=1;
@@ -460,39 +463,39 @@ perl::Object square_pyramid()
   tip[3]=QE(0,1,2);
 
   Matrix<QE> V((create_square_vertices<QE>() | zero_vector<QE>()) / tip);
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
   p.set_description() << "Johnson solid J1: Square pyramid" << endl;
 
   return p;
 }
 
-perl::Object pentagonal_pyramid()
+BigObject pentagonal_pyramid()
 {
-  perl::Object ico = call_function("icosahedron");
+  BigObject ico = call_function("icosahedron");
   Matrix<QE> V = ico.give("VERTICES");
   V = V.minor(sequence(0,6),All);
 
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
   p.set_description() << "Johnson solid J2: Pentagonal pyramid" << endl;
 
   return p;
 }
 
-perl::Object triangular_cupola()
+BigObject triangular_cupola()
 {
-  perl::Object cub = call_function("cuboctahedron");
+  BigObject cub = call_function("cuboctahedron");
   Matrix<QE> V = cub.give("VERTICES");
   V = V.minor(sequence(0,9),All);
 
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
   p.set_description() << "Johnson solid J3: Triangular cupola" << endl;
 
   return p;
 }
 
-perl::Object square_cupola_impl(bool centered)
+BigObject square_cupola_impl(bool centered)
 {
-  perl::Object base = exact_octagonal_prism(QE(0,0,0),QE(1,0,0));
+  BigObject base = exact_octagonal_prism(QE(0,0,0),QE(1,0,0));
 
   Matrix<QE> B =  base.give("VERTICES");
   Matrix<QE> V = B.minor(sequence(0,8),All);
@@ -507,42 +510,42 @@ perl::Object square_cupola_impl(bool centered)
 
   V/= W;
 
-  perl::Object p=build_from_vertices(V, centered);
+  BigObject p=build_from_vertices(V, centered);
   p.set_description() << "Johnson solid J4: Square cupola" << endl;
 
   return p;
 }
 
-perl::Object square_cupola()
+BigObject square_cupola()
 {
   return square_cupola_impl(true);
 }
 
-perl::Object pentagonal_cupola()
+BigObject pentagonal_cupola()
 {
-  perl::Object rico = call_function("rhombicosidodecahedron");
+  BigObject rico = call_function("rhombicosidodecahedron");
   Matrix<QE> V = rico.give("VERTICES");
   V= V.minor(sequence(0,7),All) / V.minor(sequence(8,3),All) / V.row(13) / V.row(14) / V.row(18) / V.row(19) / V.row(24);
 
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
   p.set_description() << "Johnson solid J5: Pentagonal cupola" << endl;
 
   return p;
 }
 
-perl::Object pentagonal_rotunda()
+BigObject pentagonal_rotunda()
 {
-  perl::Object ico = call_function("icosidodecahedron");
+  BigObject ico = call_function("icosidodecahedron");
   Matrix<QE> V = ico.give("VERTICES");
   V= V.minor(sequence(0,17),All) / V.row(18) / V.row(19) / V.row(21);
 
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
   p.set_description() << "Johnson solid J6: Pentagonal rotunda" << endl;
 
   return p;
 }
 
-perl::Object elongated_triangular_pyramid()
+BigObject elongated_triangular_pyramid()
 {
   QE c(Rational(-1,3),0,0);
 
@@ -550,13 +553,13 @@ perl::Object elongated_triangular_pyramid()
 
   Matrix<QE> V( ones_vector<QE>(7) | (same_element_vector(c,3) / unit_matrix<QE>(3) / (unit_matrix<QE>(3) + same_element_matrix(s, 3, 3))));
 
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
   p.set_description() << "Johnson solid J7: Elongated triangular bipyramid" << endl;
 
   return p;
 }
 
-perl::Object elongated_square_pyramid_impl(bool centered)
+BigObject elongated_square_pyramid_impl(bool centered)
 {
   Matrix<QE> square_vertices =  create_square_vertices<QE>();
 
@@ -567,21 +570,21 @@ perl::Object elongated_square_pyramid_impl(bool centered)
 
   Matrix<QE> V( ((square_vertices | zero_vector<QE>(4)) / (square_vertices | -2*ones_vector<QE>(4))) / tip );
 
-  perl::Object p=build_from_vertices(V, centered);
+  BigObject p=build_from_vertices(V, centered);
   p.set_description() << "Johnson solid J8: Elongated square pyramid" << endl;
 
   return p;
 }
 
-perl::Object elongated_square_pyramid()
+BigObject elongated_square_pyramid()
 {
   return elongated_square_pyramid_impl(true);
 }
 
 //FIXME: #830 coordinates
-perl::Object elongated_pentagonal_pyramid()
+BigObject elongated_pentagonal_pyramid()
 {
-  perl::Object p = pentagonal_pyramid();
+  BigObject p = pentagonal_pyramid();
   p = elongate(p,sequence(1,5));
 
   IncidenceMatrix<> VIF{ {6,7,8,9,10},
@@ -605,9 +608,9 @@ perl::Object elongated_pentagonal_pyramid()
 }
 
 //FIXME: coordinates #830
-perl::Object gyroelongated_square_pyramid()
+BigObject gyroelongated_square_pyramid()
 {
-   perl::Object p = square_pyramid();
+   BigObject p = square_pyramid();
    p = gyroelongate(p,sequence(0,4));
 
    IncidenceMatrix<> VIF{ {1,3,4},
@@ -632,34 +635,34 @@ perl::Object gyroelongated_square_pyramid()
    return p;
 }
 
-perl::Object gyroelongated_pentagonal_pyramid()
+BigObject gyroelongated_pentagonal_pyramid()
 {
-   perl::Object ico = call_function("icosahedron");
+   BigObject ico = call_function("icosahedron");
    Matrix<QE> V = ico.give("VERTICES");
    V = V.minor(sequence(0,11),All);
 
-   perl::Object p=build_from_vertices(V);
+   BigObject p=build_from_vertices(V);
    p.set_description() << "Johnson solid J11: Gyroelongated pentagonal pyramid" << endl;
 
    return p;
 }
 
-perl::Object triangular_bipyramid()
+BigObject triangular_bipyramid()
 {
   Rational c(-1,3);
 
   Matrix<Rational> V( ones_vector<Rational>(5) | unit_matrix<Rational>(3) / ones_vector<Rational>(3) / same_element_vector(c, 3));
 
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
   p.set_description() << "Johnson solid J12: Triangular bipyramid" << endl;
 
   return p;
 }
 
 //FIXME: coordinates #830
-perl::Object pentagonal_bipyramid()
+BigObject pentagonal_bipyramid()
 {
-  perl::Object p = pentagonal_pyramid();
+  BigObject p = pentagonal_pyramid();
   p = augment(p,sequence(1,5));
 
   IncidenceMatrix<> VIF { {0,4,5},
@@ -681,7 +684,7 @@ perl::Object pentagonal_bipyramid()
   return p;
 }
 
-perl::Object elongated_triangular_bipyramid()
+BigObject elongated_triangular_bipyramid()
 {
   QE c(Rational(-1,3),0,0);
 
@@ -689,15 +692,15 @@ perl::Object elongated_triangular_bipyramid()
 
   Matrix<QE> V( ones_vector<QE>() | (same_element_vector(1+s, 3) / (same_element_vector(c, 3) / unit_matrix<QE>(3) / (unit_matrix<QE>(3) + same_element_matrix(s, 3, 3)))));
 
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
   p.set_description() << "Johnson solid J14: Elongated triangular bipyramid" << endl;
 
   return p;
 }
 
-perl::Object elongated_square_bipyramid()
+BigObject elongated_square_bipyramid()
 {
-  perl::Object esp = elongated_square_pyramid_impl(false);
+  BigObject esp = elongated_square_pyramid_impl(false);
 
   Matrix<QE> esp_vertices =  esp.give("VERTICES");
 
@@ -708,7 +711,7 @@ perl::Object elongated_square_bipyramid()
 
   Matrix<QE> V = ( esp_vertices / tip);
 
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
   p.set_description() << "Johnson solid J15: Elongated square bipyramid" << endl;
 
   return p;
@@ -716,9 +719,9 @@ perl::Object elongated_square_bipyramid()
 }
 
 //FIXME: coordinates #830
-perl::Object elongated_pentagonal_bipyramid()
+BigObject elongated_pentagonal_bipyramid()
 {
-  perl::Object p = elongated_pentagonal_pyramid();
+  BigObject p = elongated_pentagonal_pyramid();
 
   p = augment(p,sequence(6,5));
 
@@ -747,9 +750,9 @@ perl::Object elongated_pentagonal_bipyramid()
 }
 
 //FIXME: coordinates #830
-perl::Object gyroelongated_square_bipyramid()
+BigObject gyroelongated_square_bipyramid()
 {
-   perl::Object p = gyroelongated_square_pyramid();
+   BigObject p = gyroelongated_square_pyramid();
    p = augment(p,sequence(5,4));
 
    IncidenceMatrix<> VIF{ {1,3,4},
@@ -778,9 +781,9 @@ perl::Object gyroelongated_square_bipyramid()
 }
 
 //FIXME: coordinates #830
-perl::Object elongated_triangular_cupola()
+BigObject elongated_triangular_cupola()
 {
-   perl::Object p = triangular_cupola();
+   BigObject p = triangular_cupola();
    p = elongate(p,sequence(3,6));
 
    IncidenceMatrix<> VIF{ {1,2,6,8},
@@ -807,29 +810,29 @@ perl::Object elongated_triangular_cupola()
 }
 
 
-perl::Object elongated_square_cupola_impl(bool centered)
+BigObject elongated_square_cupola_impl(bool centered)
 {
-  perl::Object base = exact_octagonal_prism(QE(-2,0,0),QE(0,0,0));
+  BigObject base = exact_octagonal_prism(QE(-2,0,0),QE(0,0,0));
   Matrix<QE> V =  base.give("VERTICES");
   Matrix<QE> T = square_cupola_impl(false).give("VERTICES");
   V /= T.minor(sequence(8,4),All);
 
-  perl::Object p=build_from_vertices(V, centered);
+  BigObject p=build_from_vertices(V, centered);
   p.set_description() << "Johnson solid J19: Elongated square cupola" << endl;
 
   return p;
 }
 
-perl::Object elongated_square_cupola()
+BigObject elongated_square_cupola()
 {
    return elongated_square_cupola_impl(true);
 }
 
 //FIXME: coordinates #830
-perl::Object elongated_pentagonal_cupola()
+BigObject elongated_pentagonal_cupola()
 {
-   perl::Object p = pentagonal_cupola();
-   p = elongate(p, Set<int>{2,4,5,7,8,10,11,12,13,14});
+   BigObject p = pentagonal_cupola();
+   p = elongate(p, Set<Int>{2,4,5,7,8,10,11,12,13,14});
 
    IncidenceMatrix<> VIF{ {15,16,17,18,19,20,21,22,23,24},
                           {0,1,2,4},
@@ -863,10 +866,10 @@ perl::Object elongated_pentagonal_cupola()
 }
 
 //FIXME: coordinates #830
-perl::Object elongated_pentagonal_rotunda()
+BigObject elongated_pentagonal_rotunda()
 {
-   perl::Object p = pentagonal_rotunda();
-   p = elongate(p, Set<int>{7,9,10,12,13,15,16,17,18,19});
+   BigObject p = pentagonal_rotunda();
+   p = elongate(p, Set<Int>{7,9,10,12,13,15,16,17,18,19});
 
    IncidenceMatrix<> VIF{ {20,21,22,23,24,25,26,27,28,29},
                           {7,10,20,22},
@@ -905,9 +908,9 @@ perl::Object elongated_pentagonal_rotunda()
 }
 
 //FIXME: coordinates #830
-perl::Object gyroelongated_triangular_cupola()
+BigObject gyroelongated_triangular_cupola()
 {
-  perl::Object p = triangular_cupola();
+  BigObject p = triangular_cupola();
 
   p = gyroelongate(p,sequence(3,6));
 
@@ -940,13 +943,13 @@ perl::Object gyroelongated_triangular_cupola()
 }
 
 //FIXME: coordinates #830
-perl::Object gyroelongated_square_cupola()
+BigObject gyroelongated_square_cupola()
 {
   Matrix<double> V = square_cupola_impl(false).give("VERTICES");
   const double height = -2*sqrt(1-1.0/(4.0*cos(M_PI/16)*cos(M_PI/16)));
   Matrix<double> W = create_regular_polygon_vertices(8, sqrt(2)*sqrt(2+sqrt(2)), 0);
 
-  perl::Object p("Polytope<Float>");
+  BigObject p("Polytope<Float>");
   Matrix<double> X = (W.minor(All, sequence(0,3)) | same_element_vector(height, 8)) / V;
 
   IncidenceMatrix<> VIF{ {0,1,9},
@@ -986,10 +989,10 @@ perl::Object gyroelongated_square_cupola()
 }
 
 //FIXME: coordinates #830
-perl::Object gyroelongated_pentagonal_cupola()
+BigObject gyroelongated_pentagonal_cupola()
 {
-  perl::Object p = pentagonal_cupola();
-  p = gyroelongate(p, Set<int>{2,4,5,7,8,10,11,12,13,14});
+  BigObject p = pentagonal_cupola();
+  p = gyroelongate(p, Set<Int>{2,4,5,7,8,10,11,12,13,14});
 
   IncidenceMatrix<> VIF{ {15,16,17,18,19,20,21,22,23,24},
                          {5,17,18},
@@ -1033,10 +1036,10 @@ perl::Object gyroelongated_pentagonal_cupola()
 }
 
 //FIXME: coordinates #830
-perl::Object gyroelongated_pentagonal_rotunda()
+BigObject gyroelongated_pentagonal_rotunda()
 {
-   perl::Object p = pentagonal_rotunda();
-   p = gyroelongate(p, Set<int>{7,9,10,12,13,15,16,17,18,19});
+   BigObject p = pentagonal_rotunda();
+   p = gyroelongate(p, Set<Int>{7,9,10,12,13,15,16,17,18,19});
 
    IncidenceMatrix<> VIF{ {20,21,22,23,24,25,26,27,28,29},
                           {10,22,23},
@@ -1084,7 +1087,7 @@ perl::Object gyroelongated_pentagonal_rotunda()
    return p;
 }
 
-perl::Object gyrobifastigium(){
+BigObject gyrobifastigium(){
 
   QE o(0), l(1), h(0,1,3);
   Matrix<QE> V{ {l, -l, -l,  o},
@@ -1095,13 +1098,13 @@ perl::Object gyrobifastigium(){
                 {l,  o,  l, -h},
                 {l, -l,  o,  h},
                 {l,  o, -l, -h} };
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
   p.set_description() << "Johnson solid J26: Gyrobifastigium" << endl;
 
   return p;
 }
 
-perl::Object triangular_orthobicupola()
+BigObject triangular_orthobicupola()
 {
   QE s(0,Rational(-1,9),3);
   Vector<QE> trans(4); //unit normal vector
@@ -1132,24 +1135,24 @@ perl::Object triangular_orthobicupola()
 
   Matrix<QE> V=( hexagon_V / (triangle_V + repeat_row(6*trans,3)) / (triangle_V - repeat_row(6*trans,3)));
 
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
   p.set_description() << "Johnson solid J27: Triangular orthobicupola" << endl;
 
   return p;
 }
 
-perl::Object square_orthobicupola()
+BigObject square_orthobicupola()
 {
   Matrix<QE> V = square_cupola_impl(false).give("VERTICES");
   V /= (ones_vector<QE>(4) | (-1)*V.minor(sequence(8,4),sequence(1,3)));
 
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
   p.set_description() << "Johnson solid J28: Square orthobicupola" << endl;
 
   return p;
 }
 
-perl::Object square_gyrobicupola()
+BigObject square_gyrobicupola()
 {
   QE rot(0,Rational(1,2),2);
   Matrix<QE> R(3,3);
@@ -1159,17 +1162,17 @@ perl::Object square_gyrobicupola()
   Matrix<QE> V = square_cupola_impl(false).give("VERTICES");
   V /= (ones_vector<QE>(4) | (-1)*(V.minor(sequence(8,4),sequence(1,3))*R));
 
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
   p.set_description() << "Johnson solid J29: Square gyrobicupola" << endl;
 
   return p;
 }
 
-perl::Object pentagonal_orthobicupola()
+BigObject pentagonal_orthobicupola()
 {
-   perl::Object p = pentagonal_cupola();
-   p = augment(p, Set<int>{2,4,5,7,8,10,11,12,13,14});
-   p = rotate_facet(p, Set<int>{0,1,3,6,9}, M_PI/5);
+   BigObject p = pentagonal_cupola();
+   p = augment(p, Set<Int>{2,4,5,7,8,10,11,12,13,14});
+   p = rotate_facet(p, Set<Int>{0,1,3,6,9}, M_PI/5);
 
    IncidenceMatrix<> VIF{{0,2,15,16},
                           {0,2,10},
@@ -1202,8 +1205,8 @@ perl::Object pentagonal_orthobicupola()
    return p;
 }
 
-perl::Object pentagonal_gyrobicupola(){
-   perl::Object p = pentagonal_pyramid();
+BigObject pentagonal_gyrobicupola(){
+   BigObject p = pentagonal_pyramid();
    p = call_function("minkowski_sum", 1, p, -1, p);
 
    p.set_description() << "Johnson solid J31: Pentagonal gyrobicupola" << endl;
@@ -1212,10 +1215,10 @@ perl::Object pentagonal_gyrobicupola(){
 }
 
 //FIXME: coordinates #830
-perl::Object pentagonal_orthocupolarotunda()
+BigObject pentagonal_orthocupolarotunda()
 {
-   perl::Object p = pentagonal_rotunda();
-   p = augment(p, Set<int>{7,9,10,12,13,15,16,17,18,19});
+   BigObject p = pentagonal_rotunda();
+   p = augment(p, Set<Int>{7,9,10,12,13,15,16,17,18,19});
 
    IncidenceMatrix<> VIF{{4,8,14,16,17},
                           {1,4,8},
@@ -1254,9 +1257,9 @@ perl::Object pentagonal_orthocupolarotunda()
 }
 
 //FIXME: coordinates #830
-perl::Object pentagonal_gyrocupolarotunda()
+BigObject pentagonal_gyrocupolarotunda()
 {
-   perl::Object p = pentagonal_orthocupolarotunda();
+   BigObject p = pentagonal_orthocupolarotunda();
    p = rotate_facet(p, sequence(20,5), M_PI/5);
 
    IncidenceMatrix<> VIF{ {4,8,14,16,17},
@@ -1296,11 +1299,11 @@ perl::Object pentagonal_gyrocupolarotunda()
 }
 
 //FIXME: coordinates #830
-perl::Object pentagonal_orthobirotunda()
+BigObject pentagonal_orthobirotunda()
 {
-   perl::Object p = pentagonal_rotunda();
+   BigObject p = pentagonal_rotunda();
    Vector<double> normal{ 0., 0., (1+sqrt(5))/2, 1. };
-   p = gyrotunda(p, Set<int>{7,9,10,12,13,15,16,17,18,19});
+   p = gyrotunda(p, Set<Int>{7,9,10,12,13,15,16,17,18,19});
 
 /*   IncidenceMatrix<> VIF{
                        };
@@ -1314,11 +1317,11 @@ perl::Object pentagonal_orthobirotunda()
 }
 
 //FIXME: coordinates #830
-perl::Object elongated_triangular_orthobicupola()
+BigObject elongated_triangular_orthobicupola()
 {
-   perl::Object p = elongated_triangular_cupola();
-   p = augment(p, Set<int>{9,10,11,12,13,14});
-   p = rotate_facet(p, Set<int>{15,16,17}, M_PI/3);
+   BigObject p = elongated_triangular_cupola();
+   p = augment(p, Set<Int>{9,10,11,12,13,14});
+   p = rotate_facet(p, Set<Int>{15,16,17}, M_PI/3);
 
    IncidenceMatrix<> VIF{ {1,2,6,8},
                           {1,5,6},
@@ -1350,9 +1353,9 @@ perl::Object elongated_triangular_orthobicupola()
 }
 
 //FIXME: coordinates #830
-perl::Object elongated_triangular_gyrobicupola()
+BigObject elongated_triangular_gyrobicupola()
 {
-   perl::Object p = elongated_triangular_cupola();
+   BigObject p = elongated_triangular_cupola();
    p = augment(p,sequence(9,6));
 
    IncidenceMatrix<> VIF{ {1,2,6,8},
@@ -1384,23 +1387,23 @@ perl::Object elongated_triangular_gyrobicupola()
    return p;
 }
 
-perl::Object elongated_square_gyrobicupola()
+BigObject elongated_square_gyrobicupola()
 {
   Matrix<QE> V = elongated_square_cupola_impl(false).give("VERTICES");
   Matrix<QE> W = square_gyrobicupola().give("VERTICES");
   V /= W.minor(sequence(12,4),All);
   V(20,3)=V(21,3)=V(22,3)=V(23,3)= V(20,3)-2;
 
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
   p.set_description() << "Johnson solid J37: Elongated square gyrobicupola" << endl;
 
   return p;
 }
 
 //FIXME: coordinates #830
-perl::Object elongated_pentagonal_orthobicupola()
+BigObject elongated_pentagonal_orthobicupola()
 {
-   perl::Object p = elongated_pentagonal_cupola();
+   BigObject p = elongated_pentagonal_cupola();
    p = augment(p,sequence(15,10));
    p = rotate_facet(p, sequence(25,5), M_PI/5);
 
@@ -1446,9 +1449,9 @@ perl::Object elongated_pentagonal_orthobicupola()
 }
 
 //FIXME: coordinates #830
-perl::Object elongated_pentagonal_gyrobicupola()
+BigObject elongated_pentagonal_gyrobicupola()
 {
-   perl::Object p = elongated_pentagonal_cupola();
+   BigObject p = elongated_pentagonal_cupola();
    p = augment(p,sequence(15,10));
 
    IncidenceMatrix<> VIF{ {17,18,25,26},
@@ -1493,9 +1496,9 @@ perl::Object elongated_pentagonal_gyrobicupola()
 }
 
 //FIXME: coordinates #830
-perl::Object elongated_pentagonal_orthocupolarotunda()
+BigObject elongated_pentagonal_orthocupolarotunda()
 {
-   perl::Object p = elongated_pentagonal_rotunda();
+   BigObject p = elongated_pentagonal_rotunda();
    p = augment(p, sequence(20,10));
    p = rotate_facet(p, sequence(30,5), M_PI/5);
 
@@ -1546,9 +1549,9 @@ perl::Object elongated_pentagonal_orthocupolarotunda()
 }
 
       //FIXME: coordinates #830
-perl::Object elongated_pentagonal_gyrocupolarotunda()
+BigObject elongated_pentagonal_gyrocupolarotunda()
 {
-   perl::Object p = elongated_pentagonal_rotunda();
+   BigObject p = elongated_pentagonal_rotunda();
    p = augment(p, sequence(20,10));
 
    IncidenceMatrix<> VIF{ {22,23,30,31},
@@ -1598,9 +1601,9 @@ perl::Object elongated_pentagonal_gyrocupolarotunda()
 }
 
 //FIXME: coordinates #830
-perl::Object elongated_pentagonal_orthobirotunda()
+BigObject elongated_pentagonal_orthobirotunda()
 {
-   perl::Object p = elongated_pentagonal_rotunda();
+   BigObject p = elongated_pentagonal_rotunda();
    p = rotunda(p,sequence(20,10));
 
    IncidenceMatrix<> VIF{ {22,23,30,31,35},
@@ -1655,9 +1658,9 @@ perl::Object elongated_pentagonal_orthobirotunda()
 }
 
       //FIXME: coordinates #830
-perl::Object elongated_pentagonal_gyrobirotunda()
+BigObject elongated_pentagonal_gyrobirotunda()
 {
-   perl::Object p = elongated_pentagonal_rotunda();
+   BigObject p = elongated_pentagonal_rotunda();
    p = gyrotunda(p, sequence(20,10));
 
    IncidenceMatrix<> VIF{ {23,26,30,31,36},
@@ -1712,9 +1715,9 @@ perl::Object elongated_pentagonal_gyrobirotunda()
 }
 
 //FIXME: coordinates #830
-perl::Object gyroelongated_triangular_bicupola()
+BigObject gyroelongated_triangular_bicupola()
 {
-   perl::Object p = gyroelongated_triangular_cupola();
+   BigObject p = gyroelongated_triangular_cupola();
    p = augment(p, sequence(9,6));
 
    IncidenceMatrix<> VIF{  {1,2,6,8},
@@ -1753,9 +1756,9 @@ perl::Object gyroelongated_triangular_bicupola()
 }
 
 //FIXME: coordinates #830
-perl::Object gyroelongated_square_bicupola()
+BigObject gyroelongated_square_bicupola()
 {
-   perl::Object p = gyroelongated_square_cupola();
+   BigObject p = gyroelongated_square_cupola();
    p = augment(p,sequence(0,8));
 
    IncidenceMatrix<> VIF{ {9,10,16,17},
@@ -1802,9 +1805,9 @@ perl::Object gyroelongated_square_bicupola()
 }
 
       //FIXME: coordinates #830
-perl::Object gyroelongated_pentagonal_bicupola()
+BigObject gyroelongated_pentagonal_bicupola()
 {
-   perl::Object p = gyroelongated_pentagonal_cupola();
+   BigObject p = gyroelongated_pentagonal_cupola();
    p = augment(p,sequence(15,10));
 
    IncidenceMatrix<> VIF{ {17,18,25,26},
@@ -1859,9 +1862,9 @@ perl::Object gyroelongated_pentagonal_bicupola()
 }
 
 //FIXME: coordinates #830
-perl::Object gyroelongated_pentagonal_cupolarotunda()
+BigObject gyroelongated_pentagonal_cupolarotunda()
 {
-   perl::Object p = gyroelongated_pentagonal_rotunda();
+   BigObject p = gyroelongated_pentagonal_rotunda();
    p = augment(p, sequence(20,10));
 
    IncidenceMatrix<> VIF{ {22,23,30,31},
@@ -1921,9 +1924,9 @@ perl::Object gyroelongated_pentagonal_cupolarotunda()
 }
 
 //FIXME: coordinates #830
-perl::Object gyroelongated_pentagonal_birotunda()
+BigObject gyroelongated_pentagonal_birotunda()
 {
-   perl::Object p = gyroelongated_pentagonal_rotunda();
+   BigObject p = gyroelongated_pentagonal_rotunda();
    p = rotunda(p, sequence(20,10));
 
    IncidenceMatrix<> VIF{  {22,23,30,31,35},
@@ -1988,7 +1991,7 @@ perl::Object gyroelongated_pentagonal_birotunda()
 }
 
 //FIXME: coordinates 830. this could be done exactly if QE was more powerful
-perl::Object augmented_triangular_prism()
+BigObject augmented_triangular_prism()
 {
   QE height(0,1,3);
   Matrix<QE> ledge(2,4);
@@ -2013,7 +2016,7 @@ perl::Object augmented_triangular_prism()
                          {1,3,4},
                          {2,3,4,5} };
 
-  perl::Object p("Polytope<Float>");
+  BigObject p("Polytope<Float>");
   p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
 
@@ -2023,7 +2026,7 @@ perl::Object augmented_triangular_prism()
   return p;
 }
 
-perl::Object biaugmented_triangular_prism()
+BigObject biaugmented_triangular_prism()
 {
   QE height(0,1,3);
   Matrix<QE> ledge(2,4);
@@ -2034,10 +2037,10 @@ perl::Object biaugmented_triangular_prism()
 
   Matrix<QE> V = ((create_square_vertices<QE>() | zero_vector<QE>(4)) / ledge );
 
-  perl::Object p("Polytope<Float>");
+  BigObject p("Polytope<Float>");
   p.take("VERTICES") << V;
 
-  p = augment(p, Set<int>{0,1,4,5});
+  p = augment(p, Set<Int>{0,1,4,5});
 
   p = augment(p, sequence(0,4));
 
@@ -2062,13 +2065,13 @@ perl::Object biaugmented_triangular_prism()
 }
 
 //FIXME: coordinates #830
-perl::Object triaugmented_triangular_prism()
+BigObject triaugmented_triangular_prism()
 {
-  perl::Object p = create_prism(3);
+  BigObject p = create_prism(3);
 
-  p = augment(p, Set<int>{1,2,4,5});
-  p = augment(p, Set<int>{0,2,3,5});
-  p = augment(p, Set<int>{0,1,3,4});
+  p = augment(p, Set<Int>{1,2,4,5});
+  p = augment(p, Set<Int>{0,2,3,5});
+  p = augment(p, Set<Int>{0,1,3,4});
 
   IncidenceMatrix<> VIF{ {0,1,8},
                          {0,2,7},
@@ -2094,11 +2097,11 @@ perl::Object triaugmented_triangular_prism()
 }
 
 //FIXME: coordinates #830
-perl::Object augmented_pentagonal_prism()
+BigObject augmented_pentagonal_prism()
 {
-  perl::Object p = create_prism(5);
+  BigObject p = create_prism(5);
 
-  p = augment(p, Set<int>{2,3,7,8});
+  p = augment(p, Set<Int>{2,3,7,8});
 
   IncidenceMatrix<> VIF{ {0,1,2,3,4},
                          {2,3,10},
@@ -2120,12 +2123,12 @@ perl::Object augmented_pentagonal_prism()
 }
 
 //FIXME: coordinates #830
-perl::Object biaugmented_pentagonal_prism()
+BigObject biaugmented_pentagonal_prism()
 {
-  perl::Object p = create_prism(5);
+  BigObject p = create_prism(5);
 
-  p = augment(p, Set<int>{2,3,7,8});
-  p = augment(p, Set<int>{0,4,5,9});
+  p = augment(p, Set<Int>{2,3,7,8});
+  p = augment(p, Set<Int>{0,4,5,9});
 
   IncidenceMatrix<> VIF{ {0,1,5,6},
                          {5,6,7,8,9},
@@ -2151,11 +2154,11 @@ perl::Object biaugmented_pentagonal_prism()
 
 
 //FIXME: coordinates #830
-perl::Object augmented_hexagonal_prism()
+BigObject augmented_hexagonal_prism()
 {
-  perl::Object p = create_prism(6);
+  BigObject p = create_prism(6);
 
-  p = augment(p, Set<int>{3,4,9,10});
+  p = augment(p, Set<Int>{3,4,9,10});
 
   IncidenceMatrix<> VIF{ {0,1,2,3,4,5},
                          {3,4,12},
@@ -2178,11 +2181,11 @@ perl::Object augmented_hexagonal_prism()
 }
 
 //FIXME: coordinates #830
-perl::Object parabiaugmented_hexagonal_prism()
+BigObject parabiaugmented_hexagonal_prism()
 {
-  perl::Object p = augmented_hexagonal_prism();
+  BigObject p = augmented_hexagonal_prism();
 
-  p = augment(p, Set<int>{0,1,6,7});
+  p = augment(p, Set<Int>{0,1,6,7});
 
   IncidenceMatrix<> VIF{ {0,5,6,11},
                          {6,7,8,9,10,11},
@@ -2208,11 +2211,11 @@ perl::Object parabiaugmented_hexagonal_prism()
 }
 
 //FIXME: coordinates #830
-perl::Object metabiaugmented_hexagonal_prism()
+BigObject metabiaugmented_hexagonal_prism()
 {
-  perl::Object p = augmented_hexagonal_prism();
+  BigObject p = augmented_hexagonal_prism();
 
-  p = augment(p, Set<int>{1,2,7,8});
+  p = augment(p, Set<Int>{1,2,7,8});
 
   IncidenceMatrix<> VIF{ {0,1,2,3,4,5},
                          {1,2,13},
@@ -2238,11 +2241,11 @@ perl::Object metabiaugmented_hexagonal_prism()
 }
 
 //FIXME: coordinates #830
-perl::Object triaugmented_hexagonal_prism()
+BigObject triaugmented_hexagonal_prism()
 {
-  perl::Object p = metabiaugmented_hexagonal_prism();
+  BigObject p = metabiaugmented_hexagonal_prism();
 
-  p = augment(p, Set<int>{0,5,6,11});
+  p = augment(p, Set<Int>{0,5,6,11});
 
   IncidenceMatrix<> VIF{ {0,1,6,7},
                          {6,7,8,9,10,11},
@@ -2271,10 +2274,10 @@ perl::Object triaugmented_hexagonal_prism()
 }
 
 //FIXME: coordinates #830
-perl::Object augmented_dodecahedron()
+BigObject augmented_dodecahedron()
 {
-  perl::Object p = call_function("dodecahedron");
-  p = augment(p, Set<int>{0,2,4,8,9});
+  BigObject p = call_function("dodecahedron");
+  p = augment(p, Set<Int>{0,2,4,8,9});
 
   IncidenceMatrix<> VIF{ {8,9,13,16,18},
                          {2,5,8,12,13},
@@ -2302,11 +2305,11 @@ perl::Object augmented_dodecahedron()
 }
 
 //FIXME: coordinates #830
-perl::Object parabiaugmented_dodecahedron()
+BigObject parabiaugmented_dodecahedron()
 {
-  perl::Object p = augmented_dodecahedron();
+  BigObject p = augmented_dodecahedron();
 
-  p = augment(p, Set<int>{10,11,15,17,19});
+  p = augment(p, Set<Int>{10,11,15,17,19});
 
   IncidenceMatrix<> VIF{ {8,9,13,16,18},
                          {2,5,8,12,13},
@@ -2338,11 +2341,11 @@ perl::Object parabiaugmented_dodecahedron()
 }
 
 //FIXME: coordinates #830
-perl::Object metabiaugmented_dodecahedron()
+BigObject metabiaugmented_dodecahedron()
 {
-  perl::Object p = augmented_dodecahedron();
+  BigObject p = augmented_dodecahedron();
 
-  p = augment(p, Set<int>{12,13,15,18,19});
+  p = augment(p, Set<Int>{12,13,15,18,19});
 
   IncidenceMatrix<> VIF{ {8,9,13,16,18},
                          {2,5,8,12,13},
@@ -2374,11 +2377,11 @@ perl::Object metabiaugmented_dodecahedron()
 }
 
 //FIXME: coordinates #830
-perl::Object triaugmented_dodecahedron()
+BigObject triaugmented_dodecahedron()
 {
-  perl::Object p = metabiaugmented_dodecahedron();
+  BigObject p = metabiaugmented_dodecahedron();
 
-  p = augment(p, Set<int>{1,3,6,10,11});
+  p = augment(p, Set<Int>{1,3,6,10,11});
 
   IncidenceMatrix<> VIF{ {8,9,13,16,18},
                          {2,5,8,12,13},
@@ -2413,38 +2416,38 @@ perl::Object triaugmented_dodecahedron()
   return p;
 }
 
-perl::Object metabidiminished_icosahedron()
+BigObject metabidiminished_icosahedron()
 {
-  perl::Object ico = call_function("icosahedron");
+  BigObject ico = call_function("icosahedron");
 
   Matrix<QE> V = ico.give("VERTICES");
 
   V = ((V.minor(sequence(1,5),All)) / (V.minor(sequence(7,5),All)));
 
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
 
   p.set_description() << "Johnson solid J62: metabidiminished icosahedron" << endl;
   return p;
 }
 
-perl::Object tridiminished_icosahedron()
+BigObject tridiminished_icosahedron()
 {
-  perl::Object dimico = metabidiminished_icosahedron();
+  BigObject dimico = metabidiminished_icosahedron();
 
   Matrix<QE> V = dimico.give("VERTICES");
   V = ((V.minor(sequence(0,7),All)) / (V.minor(sequence(8,2),All)));
 
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
 
   p.set_description() << "Johnson solid J63: tridiminished icosahedron" << endl;
   return p;
 }
 
 //FIXME: coordinates #830
-perl::Object augmented_tridiminished_icosahedron()
+BigObject augmented_tridiminished_icosahedron()
 {
-  perl::Object p = tridiminished_icosahedron();
-  p = augment(p, Set<int>{0,2,5});
+  BigObject p = tridiminished_icosahedron();
+  p = augment(p, Set<Int>{0,2,5});
 
   IncidenceMatrix<> VIF{ {3,6,7},
                          {6,7,8},
@@ -2465,7 +2468,7 @@ perl::Object augmented_tridiminished_icosahedron()
   return p;
 }
 
-perl::Object augmented_truncated_tetrahedron()
+BigObject augmented_truncated_tetrahedron()
 {
   Rational r(1,3);
   Rational s(1,9);
@@ -2479,42 +2482,42 @@ perl::Object augmented_truncated_tetrahedron()
   V(13,1)=-5*s; V(13,2)=11*s; V(13,3)=5*s;
   V(14,1)=V(13,1); V(14,2)=V(13,3); V(14,3)=V(13,2);
 
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
   p.set_description() << "Johnson solid J65: Augmented truncated tetrahedron" << endl;
 
   return p;
 }
 
-perl::Object augmented_truncated_cube()
+BigObject augmented_truncated_cube()
 {
    Matrix<QE> W = square_cupola_impl(false).give("VERTICES");
    W.col(3) += same_element_vector(QE(2,2,2),12);
    Matrix<QE> V = truncated_cube_vertices() / W.minor(sequence(8,4), All);
 
-   perl::Object p=build_from_vertices(V);
+   BigObject p=build_from_vertices(V);
    p.set_description() << "Johnson solid J66: Augmented truncated cube" << endl;
 
    return p;
 }
 
-perl::Object biaugmented_truncated_cube()
+BigObject biaugmented_truncated_cube()
 {
    Matrix<QE> W = square_cupola_impl(false).give("VERTICES");
    W = W.minor(sequence(8,4),sequence(1,3));
    Matrix<QE> V = truncated_cube_vertices() /
      (ones_vector<QE>() | ((W + repeat_row(unit_vector(3, 2, QE(2,2,2)), 4)) / -W));
 
-   perl::Object p=build_from_vertices(V);
+   BigObject p=build_from_vertices(V);
    p.set_description() << "Johnson solid J67: Biaugmented truncated cube" << endl;
 
    return p;
 }
 
-perl::Object augmented_truncated_dodecahedron()
+BigObject augmented_truncated_dodecahedron()
 {
-   perl::Object p = call_function("truncated_dodecahedron");
+   BigObject p = call_function("truncated_dodecahedron");
 
-   p = augment(p, Set<int>{0,1,5,7,9,11,13,16,18,21});
+   p = augment(p, Set<Int>{0,1,5,7,9,11,13,16,18,21});
 
    IncidenceMatrix<> VIF{ {22,27,38},
                           {13,16,19,22,32,35,38,41,43,46},
@@ -2563,10 +2566,10 @@ perl::Object augmented_truncated_dodecahedron()
 }
 
 
-perl::Object parabiaugmented_truncated_dodecahedron()
+BigObject parabiaugmented_truncated_dodecahedron()
 {
-   perl::Object p = augmented_truncated_dodecahedron();
-   p = augment(p, Set<int>{36,39,42,45,49,51,53,55,58,59});
+   BigObject p = augmented_truncated_dodecahedron();
+   p = augment(p, Set<Int>{36,39,42,45,49,51,53,55,58,59});
 
    IncidenceMatrix<> VIF{ {22,27,38},
                           {13,16,19,22,32,35,38,41,43,46},
@@ -2620,10 +2623,10 @@ perl::Object parabiaugmented_truncated_dodecahedron()
 }
 
 //FIXME: coordinates #830
-perl::Object metabiaugmented_truncated_dodecahedron()
+BigObject metabiaugmented_truncated_dodecahedron()
 {
-   perl::Object p = augmented_truncated_dodecahedron();
-   p = augment(p, Set<int>{43,46,48,50,52,54,56,57,58,59});
+   BigObject p = augmented_truncated_dodecahedron();
+   p = augment(p, Set<Int>{43,46,48,50,52,54,56,57,58,59});
 
    IncidenceMatrix<> VIF{ {22,27,38},
                           {13,16,19,22,32,35,38,41,43,46},
@@ -2677,10 +2680,10 @@ perl::Object metabiaugmented_truncated_dodecahedron()
 }
 
 //FIXME: coordinates #830
-perl::Object triaugmented_truncated_dodecahedron()
+BigObject triaugmented_truncated_dodecahedron()
 {
-   perl::Object p = metabiaugmented_truncated_dodecahedron();
-   p = augment(p, Set<int>{12,15,20,23,26,29,37,40,42,45});
+   BigObject p = metabiaugmented_truncated_dodecahedron();
+   p = augment(p, Set<Int>{12,15,20,23,26,29,37,40,42,45});
 
    IncidenceMatrix<> VIF{ {22,27,38},
                           {13,16,19,22,32,35,38,41,43,46},
@@ -2739,10 +2742,10 @@ perl::Object triaugmented_truncated_dodecahedron()
 }
 
 //FIXME: coordinates #830
-perl::Object gyrate_rhombicosidodecahedron()
+BigObject gyrate_rhombicosidodecahedron()
 {
-  perl::Object p = call_function("rhombicosidodecahedron");
-  p = rotate_facet(p, Set<int>{5,8,12,16,21}, M_PI/5);
+  BigObject p = call_function("rhombicosidodecahedron");
+  p = rotate_facet(p, Set<Int>{5,8,12,16,21}, M_PI/5);
 
   IncidenceMatrix<> VIF{ {27,32,37,41,45},
                          {18,27,28,37},
@@ -2816,10 +2819,10 @@ perl::Object gyrate_rhombicosidodecahedron()
 }
 
 //FIXME: coordinates #830
-perl::Object parabigyrate_rhombicosidodecahedron()
+BigObject parabigyrate_rhombicosidodecahedron()
 {
-   perl::Object p = gyrate_rhombicosidodecahedron();
-   p = rotate_facet(p, Set<int>{33,38,42,46,49}, M_PI/5);
+   BigObject p = gyrate_rhombicosidodecahedron();
+   p = rotate_facet(p, Set<Int>{33,38,42,46,49}, M_PI/5);
 
    IncidenceMatrix<> VIF{ {27,32,36,39,42},
                           {18,27,28,36},
@@ -2893,10 +2896,10 @@ perl::Object parabigyrate_rhombicosidodecahedron()
 }
 
 //FIXME: coordinates #830
-perl::Object metabigyrate_rhombicosidodecahedron()
+BigObject metabigyrate_rhombicosidodecahedron()
 {
-   perl::Object p = gyrate_rhombicosidodecahedron();
-   p = rotate_facet(p, Set<int>{44,48,51,53,54}, M_PI/5);
+   BigObject p = gyrate_rhombicosidodecahedron();
+   p = rotate_facet(p, Set<Int>{44,48,51,53,54}, M_PI/5);
 
    IncidenceMatrix<> VIF{ {27,32,37,41,44},
                           {18,27,28,37},
@@ -2970,10 +2973,10 @@ perl::Object metabigyrate_rhombicosidodecahedron()
 }
 
 //FIXME: coordinates #830
-perl::Object trigyrate_rhombicosidodecahedron()
+BigObject trigyrate_rhombicosidodecahedron()
 {
-   perl::Object p = metabigyrate_rhombicosidodecahedron();
-   p = rotate_facet(p, Set<int>{15,19,24,29,34}, M_PI/5);
+   BigObject p = metabigyrate_rhombicosidodecahedron();
+   p = rotate_facet(p, Set<Int>{15,19,24,29,34}, M_PI/5);
 
    IncidenceMatrix<> VIF{ {24,28,32,36,39},
                           {17,24,25,32},
@@ -3046,10 +3049,10 @@ perl::Object trigyrate_rhombicosidodecahedron()
   return p;
 }
 
-perl::Object diminished_rhombicosidodecahedron()
+BigObject diminished_rhombicosidodecahedron()
 {
-   perl::Object p = call_function("rhombicosidodecahedron");
-   p = diminish<QE>(p,  Set<int>{5,8,12,16,21});
+   BigObject p = call_function("rhombicosidodecahedron");
+   p = diminish<QE>(p,  Set<Int>{5,8,12,16,21});
    centralize<QE>(p);
 
    p.set_description() << "Johnson solid J76: diminished rhombicosidodecahedron" << endl;
@@ -3057,11 +3060,11 @@ perl::Object diminished_rhombicosidodecahedron()
 }
 
 //FIXME: coordinates #830
-perl::Object paragyrate_diminished_rhombicosidodecahedron()
+BigObject paragyrate_diminished_rhombicosidodecahedron()
 {
-   perl::Object p = gyrate_rhombicosidodecahedron();
+   BigObject p = gyrate_rhombicosidodecahedron();
 
-   p = diminish<double>(p, Set<int>{33,38,42,46,49});
+   p = diminish<double>(p, Set<Int>{33,38,42,46,49});
 
    IncidenceMatrix<> VIF{ {27,32,36,39,42},
                           {18,27,28,36},
@@ -3123,11 +3126,11 @@ perl::Object paragyrate_diminished_rhombicosidodecahedron()
 }
 
 //FIXME: coordinates #830
-perl::Object metagyrate_diminished_rhombicosidodecahedron()
+BigObject metagyrate_diminished_rhombicosidodecahedron()
 {
-   perl::Object p = gyrate_rhombicosidodecahedron();
+   BigObject p = gyrate_rhombicosidodecahedron();
 
-   p = diminish<double>(p, Set<int>{44,48,51,53,54});
+   p = diminish<double>(p, Set<Int>{44,48,51,53,54});
 
    IncidenceMatrix<> VIF{ {27,32,37,41,44},
                           {18,27,28,37},
@@ -3189,11 +3192,11 @@ perl::Object metagyrate_diminished_rhombicosidodecahedron()
 }
 
 //FIXME: coordinates #830
-perl::Object bigyrate_diminished_rhombicosidodecahedron()
+BigObject bigyrate_diminished_rhombicosidodecahedron()
 {
-   perl::Object p = metabigyrate_rhombicosidodecahedron();
+   BigObject p = metabigyrate_rhombicosidodecahedron();
 
-   p = diminish<double>(p, Set<int>{15,19,24,29,34});
+   p = diminish<double>(p, Set<Int>{15,19,24,29,34});
    IncidenceMatrix<> VIF{ {24,28,32,36,39},
                           {17,24,25,32},
                           {3,11,46,48},
@@ -3253,20 +3256,20 @@ perl::Object bigyrate_diminished_rhombicosidodecahedron()
    return p;
 }
 
-perl::Object parabidiminished_rhombicosidodecahedron()
+BigObject parabidiminished_rhombicosidodecahedron()
 {
-   perl::Object p = diminished_rhombicosidodecahedron();
-   p = diminish<QE>(p, Set<int>{33,38,42,46,49});
+   BigObject p = diminished_rhombicosidodecahedron();
+   p = diminish<QE>(p, Set<Int>{33,38,42,46,49});
    centralize<QE>(p);
 
    p.set_description() << "Johnson solid J80: parabidiminished rhombicosidodecahedron" << endl;
    return p;
 }
 
-perl::Object metabidiminished_rhombicosidodecahedron()
+BigObject metabidiminished_rhombicosidodecahedron()
 {
-   perl::Object p = diminished_rhombicosidodecahedron();
-   p = diminish<QE>(p, Set<int>{7,10,13,17,22});
+   BigObject p = diminished_rhombicosidodecahedron();
+   p = diminish<QE>(p, Set<Int>{7,10,13,17,22});
    centralize<QE>(p);
 
    p.set_description() << "Johnson solid J81: metabidiminished rhombicosidodecahedron" << endl;
@@ -3274,10 +3277,10 @@ perl::Object metabidiminished_rhombicosidodecahedron()
 }
 
 //FIXME: coordinates #830
-perl::Object gyrate_bidiminished_rhombicosidodecahedron()
+BigObject gyrate_bidiminished_rhombicosidodecahedron()
 {
-   perl::Object p = metabidiminished_rhombicosidodecahedron();
-   p = rotate_facet(p, Set<int>{34,38,42,45,47}, M_PI/5);
+   BigObject p = metabidiminished_rhombicosidodecahedron();
+   p = rotate_facet(p, Set<Int>{34,38,42,45,47}, M_PI/5);
 
    IncidenceMatrix<> VIF{ {20,27,30,35},
                           {13,16,20,25,30},
@@ -3328,10 +3331,10 @@ perl::Object gyrate_bidiminished_rhombicosidodecahedron()
    return p;
 }
 
-perl::Object tridiminished_rhombicosidodecahedron()
+BigObject tridiminished_rhombicosidodecahedron()
 {
-   perl::Object p = metabidiminished_rhombicosidodecahedron();
-   p = diminish<QE>(p, Set<int>{39,43,46,48,49});
+   BigObject p = metabidiminished_rhombicosidodecahedron();
+   p = diminish<QE>(p, Set<Int>{39,43,46,48,49});
    centralize<QE>(p);
 
    p.set_description() << "Johnson solid J83: tridiminished rhombicosidodecahedron" << endl;
@@ -3339,7 +3342,7 @@ perl::Object tridiminished_rhombicosidodecahedron()
 }
 
 //FIXME: coordinates #830
-perl::Object snub_disphenoid()
+BigObject snub_disphenoid()
 {
   //coordinates calculated according to https://de.wikipedia.org/wiki/Trigondodekaeder
   //double r = -sqrt(28.0/3)*cos(acos(-sqrt(27.0/343)/3))+1;
@@ -3370,7 +3373,7 @@ perl::Object snub_disphenoid()
                          {2,5,6},
                          {2,4,6} };
 
-  perl::Object p("Polytope<Float>");
+  BigObject p("Polytope<Float>");
   p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
   centralize<double>(p);
@@ -3380,7 +3383,7 @@ perl::Object snub_disphenoid()
 }
 
 //FIXME: coordinates #830
-perl::Object snub_square_antiprism()
+BigObject snub_square_antiprism()
 {
   //coordinates from:  Weisstein, Eric W. "Snub Square Antiprism." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/SnubSquareAntiprism.html
   Matrix<double> V(16,4);
@@ -3429,7 +3432,7 @@ perl::Object snub_square_antiprism()
                          {10,14,15},
                          {13,14,15} };
 
-  perl::Object p("Polytope<Float>");
+  BigObject p("Polytope<Float>");
   p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
   centralize<double>(p);
@@ -3439,7 +3442,7 @@ perl::Object snub_square_antiprism()
 }
 
 //FIXME: coordinates #830
-perl::Object sphenocorona()
+BigObject sphenocorona()
 {
   //coordinates from:  Weisstein, Eric W. "Sphenocorona." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/Sphenocorona.html
 
@@ -3489,7 +3492,7 @@ perl::Object sphenocorona()
                          {5,6,7},
                          {0,1,5,7} };
 
-  perl::Object p("Polytope<Float>");
+  BigObject p("Polytope<Float>");
   p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
 
@@ -3500,10 +3503,10 @@ perl::Object sphenocorona()
 }
 
 //FIXME: coordinates #830
-perl::Object augmented_sphenocorona()
+BigObject augmented_sphenocorona()
 {
-  perl::Object p = sphenocorona();
-  p = augment(p, Set<int>{0,1,2,4});
+  BigObject p = sphenocorona();
+  p = augment(p, Set<Int>{0,1,2,4});
 
   IncidenceMatrix<> VIF{  {6,7,9},
                           {0,7,9},
@@ -3531,7 +3534,7 @@ perl::Object augmented_sphenocorona()
 }
 
 //FIXME: coordinates #830
-perl::Object sphenomegacorona()
+BigObject sphenomegacorona()
 {
   //coordinates from:  Weisstein, Eric W. "Sphenomegacorona." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/Sphenomegacorona.html
   Matrix<double> V(12,4);
@@ -3568,7 +3571,7 @@ perl::Object sphenomegacorona()
                          {8,10,11},
                          {9,10,11} };
 
-  perl::Object p("Polytope<Float>");
+  BigObject p("Polytope<Float>");
   p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
   centralize<double>(p);
@@ -3578,7 +3581,7 @@ perl::Object sphenomegacorona()
 }
 
 //FIXME: coordinates #830
-perl::Object hebesphenomegacorona()
+BigObject hebesphenomegacorona()
 {
   //coordinates from:   Weisstein, Eric W. "Hebesphenomegacorona." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/Hebesphenomegacorona.html
   Matrix<double> V(14,4);
@@ -3620,7 +3623,7 @@ perl::Object hebesphenomegacorona()
                          {0,3,5,6},
                          {5,6,11} };
 
-  perl::Object p("Polytope<Float>");
+  BigObject p("Polytope<Float>");
   p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
   centralize<double>(p);
@@ -3630,7 +3633,7 @@ perl::Object hebesphenomegacorona()
 }
 
 //FIXME: coordinates #830
-perl::Object disphenocingulum()
+BigObject disphenocingulum()
 {
   //coordinates from:    Weisstein, Eric W. "Disphenocingulum." From MathWorld--A Wolfram Web Resource. http://mathworld.wolfram.com/Disphenocingulum.html
   Matrix<double> V(16,4);
@@ -3677,7 +3680,7 @@ perl::Object disphenocingulum()
                          {12,13,14,15},
                          {11,14,15} };
 
-  perl::Object p("Polytope<Float>");
+  BigObject p("Polytope<Float>");
   p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
   centralize<double>(p);
@@ -3686,7 +3689,7 @@ perl::Object disphenocingulum()
   return p;
 }
 
-perl::Object bilunabirotunda()
+BigObject bilunabirotunda()
 {
   //coordiantes from https://en.wikipedia.org/wiki/Bilunabirotunda
   Rational s(1,2);
@@ -3708,14 +3711,14 @@ perl::Object bilunabirotunda()
   V(12,1)=-s; V(12,2)=-s*r; V(12,3)=s;
   V(13,1)=-s; V(13,2)=-s*r; V(13,3)=-s;
 
-  perl::Object p=build_from_vertices(V);
+  BigObject p=build_from_vertices(V);
   p.set_description() << "Johnson solid J91: bilunabirotunda" << endl;
 
   return p;
 }
 
 //FIXME: coordinates #830
-perl::Object triangular_hebesphenorotunda()
+BigObject triangular_hebesphenorotunda()
 {
   //coordiantes from https://en.wikipedia.org/wiki/Triangular_hebesphenorotunda
   Rational s(1,2);
@@ -3763,7 +3766,7 @@ perl::Object triangular_hebesphenorotunda()
                          {6,9,11,15,16},
                          {0,1,2,3,4,5} };
 
-  perl::Object p("Polytope<Float>");
+  BigObject p("Polytope<Float>");
   p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
   centralize<double>(p);
@@ -3775,7 +3778,7 @@ perl::Object triangular_hebesphenorotunda()
 namespace {
 
 struct dispatcher_t {
-   typedef perl::Object (*fptr)();
+   typedef BigObject (*fptr)();
 
    const char* name;
    fptr func;
@@ -3886,7 +3889,7 @@ const size_t dispatcher_size = sizeof(dispatcher) / sizeof(dispatcher[0]);
 
 }
 
-perl::Object johnson_int(int n)
+BigObject johnson_int(Int n)
 {
   const size_t index(n-1);
   if (index < dispatcher_size)
@@ -3895,7 +3898,7 @@ perl::Object johnson_int(int n)
     throw std::runtime_error("invalid index of Johnson polytope");
 }
 
-perl::Object johnson_str(std::string s)
+BigObject johnson_str(std::string s)
 {
   using func_map_t = hash_map<std::string, dispatcher_t::fptr> ;
   static const func_map_t func_map(make_unary_transform_iterator(dispatcher+0, dispatcher_t::to_map_value()),

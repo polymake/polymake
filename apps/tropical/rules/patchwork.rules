@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -18,7 +18,7 @@
 object Patchwork {
 
   # Sign distribution on the support of the [[POLYNOMIAL]].
-  property SIGNS : Vector<Bool>;
+  property SIGNS : Array<Bool>;
 
   # Facets of the real part of the patchworked hypersurface.
   # Each row gives the indices of those facets of the original trop. hypersurface,
@@ -98,7 +98,7 @@ user_function harnack_curve( Int ) {
 
   my $m = new Matrix<Int>(\@monoms);
   my $c = new Vector<TropicalNumber<Min>>(\@weights);
-  my $s = new Vector<Bool>(\@signs);
+  my $s = new Array<Bool>(\@signs);
   my $h = new Hypersurface<Min>(MONOMIALS=>$m, COEFFICIENTS=>$c);
   return $h->PATCHWORK(SIGNS=>$s)->realize("uniform");
 }
@@ -141,7 +141,7 @@ user_function ragsdale_counterexample {
 
   my $m = new Matrix<Int>(\@monoms);
   my $c = new Vector<TropicalNumber<Min>>($weights);
-  my $s = new Vector<Bool>($signs);
+  my $s = new Array<Bool>($signs);
   my $h = new Hypersurface<Min>(MONOMIALS=>$m, COEFFICIENTS=>$c);
   return $h->PATCHWORK(SIGNS=>$s)->realize("uniform");
 }
@@ -176,7 +176,7 @@ user_function gudkov_curve {
   ];
   my $m = new Matrix<Int>(\@monoms);
   my $c = new Vector<TropicalNumber<Min>>($weights);
-  my $s = new Vector<Bool>($signs);
+  my $s = new Array<Bool>($signs);
   my $h = new Hypersurface<Min>(MONOMIALS=>$m, COEFFICIENTS=>$c);
   return $h->PATCHWORK(SIGNS=>$s)->realize("uniform");
 }

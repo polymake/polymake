@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -33,14 +33,14 @@
 namespace polymake { namespace tropical {
 
 template <typename Addition>
-perl::Object dual_addition_version(perl::Object ring_cycle)
+BigObject dual_addition_version(BigObject ring_cycle)
 {
-  int n = ring_cycle.give("N_ELEMENTS");
-  int r = ring_cycle.give("RANK");
-  Array<IncidenceMatrix<> > pres = ring_cycle.give("NESTED_PRESENTATIONS");
-  Array<int> coef = ring_cycle.give("NESTED_COEFFICIENTS");
+  const Int n = ring_cycle.give("N_ELEMENTS");
+  const Int r = ring_cycle.give("RANK");
+  Array<IncidenceMatrix<>> pres = ring_cycle.give("NESTED_PRESENTATIONS");
+  Array<Int> coef = ring_cycle.give("NESTED_COEFFICIENTS");
 
-  perl::Object result("MatroidRingCycle", mlist<typename Addition::dual>());
+  BigObject result("MatroidRingCycle", mlist<typename Addition::dual>());
   result.take("N_ELEMENTS") << n;
   result.take("RANK") << r;
   result.take("NESTED_PRESENTATIONS") << pres;

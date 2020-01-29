@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -33,9 +33,9 @@ BEGIN {
                   CflagsSuppressWarnings
                   GCCversion ICCversion CLANGversion CPPStd XcodeVersion
                   LDFLAGS LDsharedFLAGS LDcallableFLAGS LDsonameFLAGS LIBS
-                  LIBXML2_CFLAGS LIBXML2_LIBS ExternalHeaders
+                  ExternalHeaders
                   Arch FinkBase BrewBase BundledExts BuildModes
-                  InstallTop InstallArch InstallBin InstallInc InstallLib InstallDoc DESTDIR );
+                  InstallTop InstallArch InstallBin InstallInc InstallLib DESTDIR );
 }
 
 use vars map { "\$$_" } @conf_vars;
@@ -333,12 +333,12 @@ sub add_build_modes {
 }
 ##############################################################################
 sub create_build_trees {
-   my ($root, $buildroot, @options)=@_;
+   my ($root, $builddir, @options) = @_;
 
    # create a dummy target list, it will automatically be regenerated later
-   unless (-f "$buildroot/targets.ninja" && (stat _)[9] >= (stat "$root/support/generate_ninja_targets.pl")[9]) {
-      open my $targ, ">", "$buildroot/targets.ninja"
-        or die "can't create $buildroot/targets.ninja: $!\n";
+   unless (-f "$builddir/targets.ninja" && (stat _)[9] >= (stat "$root/support/generate_ninja_targets.pl")[9]) {
+      open my $targ, ">", "$builddir/targets.ninja"
+        or die "can't create $builddir/targets.ninja: $!\n";
       print $targ <<'---';
 build all: phony
 build install: phony
@@ -348,17 +348,18 @@ build install: phony
 
    # create output directories for all supported build modes
    foreach my $mode ($BuildModes =~ /(\S+)/g) {
-      create_build_mode_subtree($buildroot, $mode);
-      write_build_ninja_file($buildroot, $mode, "build.ninja", @options);
+      create_build_mode_subtree($builddir, $mode);
+      write_build_ninja_file($builddir, $mode, "build.ninja", @options);
    }
 }
 #######################################################################
 sub create_build_mode_subtree {
-   my ($buildroot, $mode)=@_;
-   my $path="$buildroot/$mode";
+   my ($builddir, $mode) = @_;
+   my $path = "$builddir/$mode";
    if (-d $path) {
       # remove the build timestamp in order to enforce a rebuild at the next polymake start
-      unlink "$path/.apps.built";
+      # also remove old ninja logs and deps, if any: they are now living upstairs
+      unlink "$path/.apps.built", "$path/.ninja_deps", "$path/.ninja_log";
    } else {
       File::Path::make_path($path);
    }
@@ -368,7 +369,7 @@ sub create_build_mode_subtree {
 }
 #######################################################################
 sub write_build_ninja_file {
-   my ($buildroot, $mode, $filename, %options)=@_;
+   my ($builddir, $mode, $filename, %options) = @_;
 
    my @sanitize_flags;
    if ($mode eq "San") {
@@ -381,17 +382,17 @@ sub write_build_ninja_file {
       }
    }
 
-   open my $conf, ">", "$buildroot/$mode/$filename"
-     or die "can't create $buildroot/$mode/$filename: $!\n";
+   open my $conf, ">", "$builddir/$mode/$filename"
+     or die "can't create $builddir/$mode/$filename: $!\n";
 
-   my $include_list=$options{include};
-   my $depends=$include_list ? join(" ", @$include_list) : '${config.file}';
+   my $include_list = $options{include};
+   my $depends = $include_list ? join(" ", @$include_list) : '${config.file}';
 
    print $conf <<"---";
-buildroot=$buildroot
+builddir=$builddir
 buildmode=$mode
-builddir=\${buildroot}/\${buildmode}
-config.file=\${buildroot}/config.ninja
+buildtop=\${builddir}/\${buildmode}
+config.file=\${builddir}/config.ninja
 ---
    if ($include_list) {
       print $conf <<"---";
@@ -410,7 +411,7 @@ include \${config.file}
    if ($options{perlxpath}) {
       print $conf <<"---";
 perlxpath=$options{perlxpath}
-include \${buildroot}/\${perlxpath}/config.ninja
+include \${builddir}/\${perlxpath}/config.ninja
 ---
    }
    print $conf $options{addvars}, <<"---";
@@ -420,10 +421,10 @@ CexternModeFLAGS=\${Cextern${mode}FLAGS}
 CmodeCACHE=\${C${mode}CACHE}
 LDmodeFLAGS=\${LD${mode}FLAGS}
 
-include \${buildroot}/targets.ninja
+include \${builddir}/targets.ninja
 
 # should rerun the target generation if any of the included files changes
-build $filename: phony | $depends \${buildroot}/targets.ninja
+build $filename: phony | $depends \${builddir}/targets.ninja
 ---
 
    close $conf;
@@ -435,6 +436,8 @@ build $filename: phony | $depends \${buildroot}/targets.ninja
 # https://en.wikipedia.org/wiki/Xcode#Toolchain_versions
 sub xcode2clang_version {
    my $ver = eval "v$XcodeVersion";
+   return "8.0" if $ver ge v11.0;
+   return "7.0" if $ver ge v10.2;
    return "6.0" if $ver ge v10.0;
    return "5.0" if $ver ge v9.3;
    return "4.0" if $ver ge v9.0;

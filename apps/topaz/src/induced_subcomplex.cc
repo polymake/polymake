@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,10 +24,10 @@
 
 namespace polymake { namespace topaz {
 
-perl::Object induced_subcomplex(perl::Object p_in,const Set<int>& V_in, perl::OptionSet options)
+BigObject induced_subcomplex(BigObject p_in,const Set<Int>& V_in, OptionSet options)
 {
-   const Array< Set<int> > C = p_in.give("FACETS");
-   const int n_vert = p_in.give("N_VERTICES");
+   const Array<Set<Int>> C = p_in.give("FACETS");
+   const Int n_vert = p_in.give("N_VERTICES");
    
    // checking input
    if (V_in.front()<0 || V_in.back()>n_vert-1)
@@ -41,7 +41,7 @@ perl::Object induced_subcomplex(perl::Object p_in,const Set<int>& V_in, perl::Op
    // adjust numbering
    sub.squeeze();
    
-   perl::Object p_out("SimplicialComplex");
+   BigObject p_out("SimplicialComplex");
    p_out.set_description()<<"Subcomplex of " <<p_in.name() << " induced by the vertices " << V_in<<"."<<endl;
 
    p_out.take("FACETS") << sub;

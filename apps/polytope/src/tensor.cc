@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,7 +21,7 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
-perl::Object tensor(perl::Object p_in1, perl::Object p_in2)
+BigObject tensor(BigObject p_in1, BigObject p_in2)
 {
    const bool bounded1=p_in1.give("BOUNDED"),
       bounded2=p_in2.give("BOUNDED");
@@ -30,11 +30,11 @@ perl::Object tensor(perl::Object p_in1, perl::Object p_in2)
   
    const Matrix<Scalar> V1=p_in1.give("VERTICES | POINTS"),
       V2=p_in2.give("VERTICES | POINTS");
-   const int
-      adim1=V1.cols()-1,
-      adim2=V2.cols()-1,
-      adim_out=adim1*adim2,
-      n_points_out=V1.rows()*V2.rows();
+   const Int
+      adim1 = V1.cols()-1,
+      adim2 = V2.cols()-1,
+      adim_out = adim1*adim2,
+      n_points_out = V1.rows()*V2.rows();
   
    Matrix<Scalar> V_out(n_points_out, adim_out+1);
 
@@ -42,7 +42,7 @@ perl::Object tensor(perl::Object p_in1, perl::Object p_in2)
               rows(V_out.minor(All, range(1, adim_out))).begin());
    V_out.col(0).fill(1);
 
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Tensor-product of " << p_in1.name() << " and " << p_in2.name() << endl;;
   
    p_out.take("POINTS") << V_out;

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -32,9 +32,9 @@ weight 1.10;
 
 }
 
-object topaz::HyperbolicSurface{
+object topaz::HyperbolicSurface {
  
- # @category Other 
+   # @category Other 
    # Computes the GKZ dome of the //k//-th Delaunay trianglation up to a given //depth//.
    # Note that //k// is also the index of the corresponding flip word in [[FLIP_WORDS]].
    # Projection to the disc yields (a part of) the covering triangulation of the Klein disc.

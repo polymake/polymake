@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,7 +32,7 @@ RandomSeed::RandomSeed(perl::Value v) :
    if (!(v >> data)) renew();
 }
 
-int RandomSeed::rfd=-2;
+int RandomSeed::rfd = -2;
 
 void RandomSeed::renew()
 {
@@ -43,7 +43,7 @@ void RandomSeed::renew()
    }
    static unsigned long counter=getpid();
    struct timeval tv;
-   gettimeofday(&tv, 0);
+   gettimeofday(&tv, nullptr);
    data=long(tv.tv_usec + (counter+=1000));
 }
 
@@ -96,18 +96,18 @@ void RandomState::fix_for_mpfr()
 
 void DiscreteRandom::normalize()
 {
-   double acc_sum=0.;
-   for (auto d=entire(distribution); !d.at_end(); ++d)
-      *d=(acc_sum+=*d);
-   for (auto d=entire(distribution); !d.at_end(); ++d)
-      *d/=acc_sum;
+   double acc_sum = 0.;
+   for (auto d = entire(distribution); !d.at_end(); ++d)
+      *d = (acc_sum += *d);
+   for (auto d = entire(distribution); !d.at_end(); ++d)
+      *d /= acc_sum;
 }
 
-int DiscreteRandom::get()
+Int DiscreteRandom::get()
 {
-   const double r=rg.get();
-   Vector<double>::const_iterator d=distribution.begin(), e=distribution.end();
-   return std::lower_bound(d,e,r)-d;
+   const double r = rg.get();
+   Vector<double>::const_iterator d = distribution.begin(), e = distribution.end();
+   return std::lower_bound(d, e, r) - d;
 }
 
 } // end namespace pm

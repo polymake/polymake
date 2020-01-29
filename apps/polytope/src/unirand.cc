@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,21 +28,21 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object unirand(perl::Object p_in, int n_points_out, perl::OptionSet options)
+BigObject unirand(BigObject p_in, Int n_points_out, OptionSet options)
 {
    const bool bounded=p_in.give("BOUNDED");
    if (!bounded)
       throw std::runtime_error("unirand: input polyhedron must be bounded");
 
-   const Matrix<Rational> V=p_in.give("VERTICES");
-   const int d=V.cols(), dim=p_in.call_method("DIM");
-   if (dim!=d-1) {
+   const Matrix<Rational> V = p_in.give("VERTICES");
+   const Int d = V.cols(), dim = p_in.call_method("DIM");
+   if (dim != d-1) {
       throw std::runtime_error("unirand: polytope must be full-dimensional");
    }
 
    Rational total_volume(0);
    // partial_volume[i] = sum(volume(simplex[j])), j=[0..i]
-   Map<Rational, const Set<int> > partial_volume;
+   Map<Rational, const Set<Int>> partial_volume;
 
    const bool boundary=options["boundary"];
 
@@ -50,12 +50,12 @@ perl::Object unirand(perl::Object p_in, int n_points_out, perl::OptionSet option
    UniformlyRandom<Rational> rg(seed);
    UniformlyRandom<Rational>::iterator random=rg.begin();
 
-   perl::Object p_out("Polytope<Rational>");
+   BigObject p_out("Polytope<Rational>");
 
    if (boundary) {
       p_out.set_description() << "Uniformly distributed random points from the boundary of " << p_in.name() << "; seed=" << seed.get() << endl;
 
-      typedef Array< Set<int> > triangulation;
+      typedef Array<Set<Int>> triangulation;
       const triangulation Triangulation=p_in.give("TRIANGULATION.BOUNDARY.FACETS");
       const triangulation f_triangs=p_in.give("TRIANGULATION.BOUNDARY.FACET_TRIANGULATIONS");
       Matrix<Rational> F=p_in.give("FACETS");
@@ -72,7 +72,7 @@ perl::Object unirand(perl::Object p_in, int n_points_out, perl::OptionSet option
    } else {
       p_out.set_description() << "Uniformly distributed random inner points of " << p_in.name() << "; seed=" << seed.get() << endl;
 
-      typedef Array< Set<int> > triangulation;
+      typedef Array<Set<Int>> triangulation;
       const triangulation Triangulation=p_in.give("TRIANGULATION.FACETS");
 
       for (auto s=entire(Triangulation); !s.at_end(); ++s) {
@@ -87,7 +87,7 @@ perl::Object unirand(perl::Object p_in, int n_points_out, perl::OptionSet option
 
    for (auto p_i=entire(rows(points_out)); !p_i.at_end(); ++p_i) {
       // choose the simplex randomly
-      const Set<int>& simplex=partial_volume.find_nearest((*random)*total_volume, operations::le())->second;
+      const Set<Int>& simplex = partial_volume.find_nearest((*random)*total_volume, operations::le())->second;
 
       // produce a random partition of 1 for the simplex vertices
       copy_range(random, entire(part_1));

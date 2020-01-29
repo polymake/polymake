@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -57,12 +57,12 @@ public:
       }
    }
 
-   bool operator()(int n)
+   bool operator()(Int n)
    {
       return operator()(n, n);
    }
 
-   bool operator()(int n_from, int n_to)
+   bool operator()(Int n_from, Int n_to)
    {
       if (TInversed == visited.contains(n_to)) {
          if (TInversed)
@@ -101,9 +101,9 @@ public:
                                      int_constant<1>>::type traverse_edges;
 
    typedef std::forward_iterator_tag iterator_category;
-   typedef int value_type;
-   typedef const int& reference;
-   typedef const int* pointer;
+   typedef Int value_type;
+   typedef const Int& reference;
+   typedef const Int* pointer;
    typedef ptrdiff_t difference_type;
 
    const visitor_t& node_visitor() const { return visitor; }
@@ -123,29 +123,29 @@ protected:
       , visitor(std::move(visitor_arg))
       , undiscovered(graph->nodes()) {}
 
-   decltype(auto) edges(int n, int_constant<1>) const
+   decltype(auto) edges(Int n, int_constant<1>) const
    {
       return graph->out_edges(n);
    }
 
-   decltype(auto) edges(int n, int_constant<-1>) const
+   decltype(auto) edges(Int n, int_constant<-1>) const
    {
       return graph->in_edges(n);
    }
 
-   decltype(auto) edges(int n, int_constant<0>) const
+   decltype(auto) edges(Int n, int_constant<0>) const
    {
       return concatenate(graph->out_edges(n), graph->in_edges(n));
    }
 
 public:
-   decltype(auto) edges(int n) const
+   decltype(auto) edges(Int n) const
    {
       return entire(edges(n, traverse_edges()));
    }
 
    /// get the number of nodes which haven't been touched so far
-   int undiscovered_nodes() const { return undiscovered; }
+   Int undiscovered_nodes() const { return undiscovered; }
 
 protected:
    void reset()
@@ -156,35 +156,35 @@ protected:
 
    template <typename TEdgeIterator>
    static
-   int from_node(const TEdgeIterator& e, int_constant<1>)
+   Int from_node(const TEdgeIterator& e, int_constant<1>)
    {
       return e.from_node();
    }
 
    template <typename TEdgeIterator>
    static
-   int from_node(const TEdgeIterator& e, int_constant<-1>)
+   Int from_node(const TEdgeIterator& e, int_constant<-1>)
    {
       return e.to_node();
    }
 
    template <typename TEdgeIterator>
    static
-   int to_node(const TEdgeIterator& e, int_constant<1>)
+   Int to_node(const TEdgeIterator& e, int_constant<1>)
    {
       return e.to_node();
    }
 
    template <typename TEdgeIterator>
    static
-   int to_node(const TEdgeIterator& e, int_constant<-1>)
+   Int to_node(const TEdgeIterator& e, int_constant<-1>)
    {
       return e.from_node();
    }
 
    template <typename TEdgeIterator>
    static
-   int from_node(const TEdgeIterator& e, int_constant<0>)
+   Int from_node(const TEdgeIterator& e, int_constant<0>)
    {
       return e.get_leg()==0
              ? std::get<0>(e.get_it_tuple()).from_node()
@@ -193,7 +193,7 @@ protected:
 
    template <typename TEdgeIterator>
    static
-   int to_node(const TEdgeIterator& e, int_constant<0>)
+   Int to_node(const TEdgeIterator& e, int_constant<0>)
    {
       return e.get_leg()==0
              ? std::get<0>(e.get_it_tuple()).to_node()
@@ -202,14 +202,14 @@ protected:
 
    template <typename TEdgeIterator>
    static
-   int from_node(const TEdgeIterator& e)
+   Int from_node(const TEdgeIterator& e)
    {
       return from_node(e, traverse_edges());
    }
 
    template <typename TEdgeIterator>
    static
-   int to_node(const TEdgeIterator& e)
+   Int to_node(const TEdgeIterator& e)
    {
       return to_node(e, traverse_edges());
    }
@@ -226,21 +226,21 @@ protected:
 
    template <typename TEdgeIterator>
    typename std::enable_if<visitor_needs_edge::value, typename mproject2nd<TEdgeIterator, bool>::type>::type
-   visit_edge(int n_from, int n_to, const TEdgeIterator& e)
+   visit_edge(Int n_from, Int n_to, const TEdgeIterator& e)
    {
       return visitor(n_from, n_to, *e);
    }
 
    template <typename TEdgeIterator>
    typename std::enable_if<!visitor_needs_edge::value, typename mproject2nd<TEdgeIterator, bool>::type>::type
-   visit_edge(int n_from, int n_to, const TEdgeIterator& e)
+   visit_edge(Int n_from, Int n_to, const TEdgeIterator& e)
    {
       return visitor(n_from, n_to);
    }
 
    const graph_t *graph;
    visitor_t visitor;
-   int undiscovered;
+   Int undiscovered;
 };
 
 
@@ -251,7 +251,7 @@ class BFSiterator
 public:
    using typename base_t::visitor_t;
    using typename base_t::reference;
-   using queue_t = std::deque<int>;
+   using queue_t = std::deque<Int>;
 
    using iterator = BFSiterator;
    using const_iterator = BFSiterator;
@@ -264,13 +264,13 @@ public:
    BFSiterator(const GenericGraph<TGraph>& graph_arg, visitor_t&& visitor_arg)
       : base_t(graph_arg.top(), std::move(visitor_arg)) {}
 
-   BFSiterator(const GenericGraph<TGraph>& graph_arg, int start_node)
+   BFSiterator(const GenericGraph<TGraph>& graph_arg, Int start_node)
       : base_t(graph_arg.top())
    {
       process(start_node);
    }
 
-   BFSiterator(const GenericGraph<TGraph>& graph_arg, visitor_t&& visitor_arg, int start_node)
+   BFSiterator(const GenericGraph<TGraph>& graph_arg, visitor_t&& visitor_arg, Int start_node)
       : base_t(graph_arg.top(), std::move(visitor_arg))
    {
       process(start_node);
@@ -282,7 +282,7 @@ public:
    /// add the neighbors of the current node to the search front, then switch to the next node
    iterator& operator++ ()
    {
-      const int n=queue.front();  queue.pop_front();
+      const Int n = queue.front();  queue.pop_front();
       if (visitor_t::visit_all_edges || this->undiscovered != 0)
          propagate(n, this->edges(n));
       return *this;
@@ -303,14 +303,14 @@ public:
    bool operator!= (const iterator& it) const { return !operator==(it); }
 
    /// restore the initial state of the iterator, make all nodes undiscovered
-   void reset(int start_node)
+   void reset(Int start_node)
    {
       base_t::reset();
       restart(start_node);
    }
 
    /// empty the queue, make the given node the current one
-   void restart(int n)
+   void restart(Int n)
    {
       queue.clear();
       process(n);
@@ -318,11 +318,11 @@ public:
 
    /// make the given node the current one without clearing the visited state of any nodes
    /// and preserving the queue.
-   void process(int n)
+   void process(Int n)
    {
-      if (const int dim=this->graph->dim()) {
+      if (const Int dim = this->graph->dim()) {
          if (POLYMAKE_DEBUG) {
-            if (n<0 || n>=dim)
+            if (n < 0 || n >= dim)
                throw std::runtime_error("BFSiterator - start node out of range");
          }
          if (this->visitor(n)) {
@@ -334,10 +334,10 @@ public:
 
 protected:
    template <typename TEdgeIterator>
-   void propagate(int n, TEdgeIterator&& e)
+   void propagate(Int n, TEdgeIterator&& e)
    {
       for (; !e.at_end(); ++e) {
-         const int to_n = this->to_node(e);
+         const Int to_n = this->to_node(e);
          if (this->visit_edge(n, to_n, e)) {
             queue.push_back(to_n);
             --this->undiscovered;
@@ -374,14 +374,14 @@ public:
       : base_t(graph_arg.top(), std::move(visitor_arg))
       , cur(-1) {}
 
-   DFSiterator(const GenericGraph<TGraph>& graph_arg, int start_node)
+   DFSiterator(const GenericGraph<TGraph>& graph_arg, Int start_node)
       : base_t(graph_arg.top())
       , cur(-1)
    {
       process(start_node);
    }
 
-   DFSiterator(const GenericGraph<TGraph>& graph_arg, visitor_t&& visitor_arg, int start_node)
+   DFSiterator(const GenericGraph<TGraph>& graph_arg, visitor_t&& visitor_arg, Int start_node)
       : base_t(graph_arg.top(), std::move(visitor_arg))
       , cur(-1)
    {
@@ -420,28 +420,28 @@ public:
    bool operator!= (const iterator& it) const { return !operator==(it); }
 
    /// restore the initial state of the iterator, make all nodes undiscovered
-   void reset(int start_node)
+   void reset(Int start_node)
    {
       base_t::reset();
       restart(start_node);
    }
 
    /// empty the stack, start from the given node
-   void restart(int n)
+   void restart(Int n)
    {
       it_stack.clear();
       process(n);
    }
 
-   void process(int n)
+   void process(Int n)
    {
-      if (const int dim=this->graph->dim()) {
+      if (const Int dim = this->graph->dim()) {
          if (POLYMAKE_DEBUG) {
-            if (n<0 || n>=dim)
+            if (n < 0 || n >= dim)
                throw std::runtime_error("DFSiterator - start node out of range");
          }
          if (this->visitor(n)) {
-            cur=n;
+            cur = n;
             --this->undiscovered;
             if (!visit_parent_first) {
                it_stack.push_back(this->edges(n));
@@ -456,14 +456,14 @@ public:
 
    const it_stack_t& get_stack() const { return it_stack; }
 
-   int predecessor() const { return it_stack.empty() ? -1 : base_t::from_node(it_stack.back()); }
+   Int predecessor() const { return it_stack.empty() ? -1 : base_t::from_node(it_stack.back()); }
 
 protected:
    void descend()
    {
       while (!it_stack.back().at_end()) {
          edge_iterator& e = it_stack.back();
-         const int to_n = this->to_node(e);
+         const Int to_n = this->to_node(e);
          if (!is_back_edge(to_n) && this->visit_edge(cur, to_n, e)) {
             cur = to_n;
             --this->undiscovered;
@@ -480,7 +480,7 @@ protected:
       for (;; ++it_stack.back()) {
          edge_iterator& e = it_stack.back();
          if (!e.at_end()) {
-            const int to_n = this->to_node(e);
+            const Int to_n = this->to_node(e);
             if (!is_back_edge(to_n) && this->visit_edge(cur, to_n, e)) {
                cur = to_n;
                --this->undiscovered;
@@ -496,15 +496,15 @@ protected:
       }
    }
 
-   bool is_back_edge(int n) const
+   bool is_back_edge(Int n) const
    {
       if (!visitor_t::visit_all_edges || TGraph::is_directed) return false;
-      const int s=it_stack.size();
-      return s>=2 && base_t::from_node(it_stack[s-2])==n;
+      const Int s = it_stack.size();
+      return s >= 2 && base_t::from_node(it_stack[s-2]) == n;
    }
 
    it_stack_t it_stack;
-   int cur;
+   Int cur;
 };
 
 
@@ -527,51 +527,51 @@ public:
       std::fill(rank.begin(), rank.end(), 0);
    }
 
-   bool operator()(int n)
+   bool operator()(Int n)
    {
-      if (rank[n]==0) {
-         rank[n]=max_rank;
+      if (rank[n] == 0) {
+         rank[n] = max_rank;
          return true;
       }
       return false;
    }
 
-   bool operator()(int n_from, int n_to)
+   bool operator()(Int n_from, Int n_to)
    {
-      if (rank[n_to]==0) {
-         rank[n_to]=max_rank;
+      if (rank[n_to] == 0) {
+         rank[n_to] = max_rank;
          return true;
       }
       propagate_back(n_from, n_to);
       return false;
    }
 
-   void propagate_back(int n_from, int n_to)
+   void propagate_back(Int n_from, Int n_to)
    {
       assign_min(rank[n_from], rank[n_to]-1);
    }
 
-   const std::vector<int>& get_ranks() const { return rank; }
-   std::vector<int>& get_ranks() { return rank; }
+   const std::vector<Int>& get_ranks() const { return rank; }
+   std::vector<Int>& get_ranks() { return rank; }
 
 private:
-   std::vector<int> rank;
-   int max_rank;
+   std::vector<Int> rank;
+   Int max_rank;
 };
 
 
-template <typename TGraph, typename=typename std::enable_if<TGraph::is_directed>::type>
-std::pair<std::vector<int>, int> topological_sort(const GenericGraph<TGraph>& G)
+template <typename TGraph, typename = std::enable_if_t<TGraph::is_directed>>
+std::pair<std::vector<Int>, Int> topological_sort(const GenericGraph<TGraph>& G)
 {
-   int min_rank=G.top().nodes();
-   if (min_rank <= 1) return { std::vector<int>(min_rank, 1), min_rank };
+   Int min_rank = G.top().nodes();
+   if (min_rank <= 1) return { std::vector<Int>(min_rank, 1), min_rank };
 
    DFSiterator<TGraph, VisitorTag<TopologicalSortVisitor>> search_it(G.top());
-   std::vector<int>& ranks=search_it.node_visitor_mutable().get_ranks();
+   std::vector<Int>& ranks = search_it.node_visitor_mutable().get_ranks();
 
    for (auto nodes_it=entire(nodes(G));  !nodes_it.at_end(); ) {
       for (search_it.restart(*nodes_it);  !search_it.at_end();  ++search_it) {
-         const int n_pred=search_it.predecessor();
+         const Int n_pred = search_it.predecessor();
          if (n_pred >= 0)
             search_it.node_visitor_mutable().propagate_back(n_pred, *search_it);
          else

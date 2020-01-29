@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,15 +26,15 @@ namespace polymake { namespace graph {
    using namespace lattice;
 
    template <typename SeqType>
-   void migrate_hasse_properties(perl::Object lattice) {
-      const NodeMap<Directed, Set<int> >& faces = lattice.give("FACES");
-      const Array<int>& dims = lattice.give("DIMS");
+   void migrate_hasse_properties(BigObject lattice) {
+      const NodeMap<Directed, Set<Int>>& faces = lattice.give("FACES");
+      const Array<Int>& dims = lattice.give("DIMS");
       const Graph<Directed>& g = lattice.give("ADJACENCY");
 
       bool built_dually = g.out_adjacent_nodes(0).size() == 0;
-      int rank = dims.size();
-      int top_node = built_dually? 0 : g.nodes()-1;
-      int bottom_node = built_dually? g.nodes()-1 : 0;
+      Int rank = dims.size();
+      Int top_node = built_dually? 0 : g.nodes()-1;
+      Int bottom_node = built_dually? g.nodes()-1 : 0;
 
       InverseRankMap<SeqType> irm;
       std::list<BasicDecoration> decor;

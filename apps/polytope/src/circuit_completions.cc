@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,14 +28,14 @@ namespace {
 
 // This implements Theorem 8.1.8 in de Loera, Rambau, Santos   
 template<typename Scalar>
-std::tuple<Set<int>, Set<int>, Set<int>>
-circuit_signature(const Matrix<Scalar>& C, int hull_dim)
+std::tuple<Set<Int>, Set<Int>, Set<Int>>
+circuit_signature(const Matrix<Scalar>& C, Int hull_dim)
 {
-   const int rank(C.rows()-hull_dim);
-   bool counter_is_even(true);
-   Set<int> plus, minus, zero;
-   for (int i=0; i < rank; ++i, counter_is_even = !counter_is_even) {
-      int s (sign(det(C.minor(sequence(0,C.rows()) - scalar2set(i), All))));
+   const Int rank = C.rows()-hull_dim;
+   bool counter_is_even = true;
+   Set<Int> plus, minus, zero;
+   for (Int i=0; i < rank; ++i, counter_is_even = !counter_is_even) {
+      Int s = sign(det(C.minor(sequence(0,C.rows()) - scalar2set(i), All)));
       if (0 == s) {
          zero += i; continue;
       }
@@ -50,9 +50,9 @@ circuit_signature(const Matrix<Scalar>& C, int hull_dim)
 
 template<typename Scalar>
 bool
-completes_circuit(const Matrix<Scalar>& C, int n_lhs, int hull_dim)
+completes_circuit(const Matrix<Scalar>& C, Int n_lhs, Int hull_dim)
 {
-   Set<int> plus, minus, zero;
+   Set<Int> plus, minus, zero;
    std::tie(plus, minus, zero) = circuit_signature(C, hull_dim);
    return (plus  == sequence(0,n_lhs) ||
            minus == sequence(0,n_lhs));
@@ -61,23 +61,23 @@ completes_circuit(const Matrix<Scalar>& C, int n_lhs, int hull_dim)
 } // end anonymous namespace
 
 template<typename Scalar, typename Matrix1, typename Matrix2, typename Matrix3>
-Array<Set<int>>
+Array<Set<Int>>
 circuit_completions_impl(const GenericMatrix<Matrix1,Scalar>& rhs,
                          const GenericMatrix<Matrix2,Scalar>& lhs_candidates,
                          const GenericMatrix<Matrix3,Scalar>& affine_hull_gens)
 {
    const auto c_plus (affine_hull_gens / rhs);
-   const int
-      ambient_dim      (rhs.cols()),
-      combinatorial_dim(ambient_dim - affine_hull_gens.rows()),
-      n_lhs            (combinatorial_dim + 1 - rhs.rows());
+   const Int
+      ambient_dim = rhs.cols(),
+      combinatorial_dim = ambient_dim - affine_hull_gens.rows(),
+      n_lhs = combinatorial_dim+1-rhs.rows();
 
-   std::vector<Set<int>> left_hand_sides;
+   std::vector<Set<Int>> left_hand_sides;
    for (auto c_minus = entire(all_subsets_of_k(sequence(0, lhs_candidates.rows()), n_lhs)); !c_minus.at_end(); ++c_minus) {
       if (completes_circuit(Matrix<Scalar>(lhs_candidates.minor(*c_minus, All) / c_plus), n_lhs, affine_hull_gens.rows()))
-         left_hand_sides.emplace_back(Set<int>(*c_minus));
+         left_hand_sides.emplace_back(Set<Int>(*c_minus));
    }
-   return Array<Set<int>>(left_hand_sides.size(), entire(left_hand_sides));
+   return Array<Set<Int>>(left_hand_sides.size(), entire(left_hand_sides));
 }
 
 FunctionTemplate4perl("circuit_completions_impl(Matrix,Matrix,Matrix)");

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,27 +24,27 @@
 
 namespace polymake { namespace topaz {
 
-int signature(perl::Object p)
+Int signature(BigObject p)
 {
    const Graph<> DG=p.give("DUAL_GRAPH.ADJACENCY");
    Matrix<Rational> GR=p.give("COORDINATES");
    GR = ones_vector<Rational>(GR.rows()) | GR;
 
-   const Array< Set<int> > F=p.give("FACETS");
+   const Array<Set<Int>> F=p.give("FACETS");
    graph::BFSiterator<Graph<>, graph::VisitorTag<graph::BipartiteColoring>> it(DG, nodes(DG).front());
-   int sign=0;
+   Int sign = 0;
 
    try {
       while (!it.at_end()) ++it;
 
       // if it has survived so far, then the dual graph is really bipartite
-      for (int f=0, end=F.size(); f<end; ++f)
-         if ( abs(numerator(det(GR.minor(F[f],All))))%2 == 1 )
+      for (Int f = 0, end = F.size(); f < end; ++f)
+         if (abs(numerator(det(GR.minor(F[f],All))))%2 == 1)
             sign += it.node_visitor().get_color(f);
 
-      sign=abs(sign);
-   } catch (int) {
-      sign=-1;
+      sign = abs(sign);
+   } catch (Int) {
+      sign = -1;
    }
 
    return sign;

@@ -1,10 +1,10 @@
 {"app": "common",
  "inst": [
-  {"pkg": "Polymake::common::RationalFunction"},
-  {"class": "RationalFunction<Rational, int>", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "pkg": "Polymake::common::RationalFunction_A_Rational_I_Int_Z"},
+  {"guard_name": "CORE_WRAPPERS_RationalFunction", "include": ["polymake/RationalFunction.h"], "pkg": "Polymake::common::RationalFunction", "wrapper_file": "include/core-wrappers/polymake/RationalFunction.h"},
+  {"class": "RationalFunction<Rational, Int>", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "pkg": "Polymake::common::RationalFunction_A_Rational_I_Int_Z"},
   {"class": "RationalFunction<Rational, Rational>", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "pkg": "Polymake::common::RationalFunction_A_Rational_I_Rational_Z"},
   {"class": "RationalFunction<PuiseuxFraction<Min, Rational, Rational>, Rational>", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/RationalFunction.h", "polymake/TropicalNumber.h"], "pkg": "Polymake::common::RationalFunction_A_PuiseuxFraction_A_Min_I_Rational_I_Rational_Z_I_Rational_Z"},
-  {"args": ["RationalFunction<Rational, int>"], "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "op": "new", "sig": "new"},
-  {"args": ["perl::Canned<const RationalFunction<Rational, int>&>", "perl::Canned<const RationalFunction<Rational, int>&>"], "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "op": "_eq", "sig": "_eq:O.X.X"},
+  {"args": ["RationalFunction<Rational, Int>"], "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<const RationalFunction<Rational, Int>&>", "perl::Canned<const RationalFunction<Rational, Int>&>"], "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "op": "_eq", "sig": "_eq:O.X.X"},
  null ],
 "version": 3}

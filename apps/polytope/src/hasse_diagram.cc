@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,41 +26,41 @@ using graph::lattice::SetAvoidingCut;
 using graph::lattice::RankCut;
 using graph::lattice::CutAnd;
 
-perl::Object hasse_diagram(const IncidenceMatrix<>& VIF, const int cone_dim)
+BigObject hasse_diagram(const IncidenceMatrix<>& VIF, const Int cone_dim)
 {
    const bool is_dual = VIF.rows() < VIF.cols();
    if (is_dual) {
-      const int total = VIF.rows();
+      const Int total = VIF.rows();
       BasicClosureOperator<> cop(total, T(VIF));
       TrivialCut<BasicDecoration> cut;
-      BasicDecorator<> dec(VIF.cols(), cone_dim, Set<int>());
+      BasicDecorator<> dec(VIF.cols(), cone_dim, Set<Int>());
 
       Lattice<BasicDecoration, Sequential> init_lattice;
       Lattice<BasicDecoration, Sequential> result(graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
          cop, cut, dec, 0, graph::lattice_builder::Dual(), init_lattice));
       sort_vertices_and_facets(result, VIF);
-      return static_cast<perl::Object>(result);
+      return static_cast<BigObject>(result);
    } else {
-      const int total = VIF.cols();
+      const Int total = VIF.cols();
       BasicClosureOperator<> cop(total, VIF);
       TrivialCut<BasicDecoration> cut;
-      BasicDecorator<> dec(0, Set<int>());
+      BasicDecorator<> dec(0, Set<Int>());
 
       Lattice<BasicDecoration, Sequential> init_lattice;
       Lattice<BasicDecoration, Sequential> result(graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
          cop, cut, dec, 0, graph::lattice_builder::Primal(), init_lattice));
       sort_vertices_and_facets(result, VIF);
-      return static_cast<perl::Object>(result);
+      return static_cast<BigObject>(result);
    }
 }
 
 
 Lattice<BasicDecoration, Nonsequential>
-bounded_hasse_diagram_computation(const IncidenceMatrix<>& VIF, const Set<int>& far_face, const int boundary_dim)
+bounded_hasse_diagram_computation(const IncidenceMatrix<>& VIF, const Set<Int>& far_face, const Int boundary_dim)
 {
    using bounded_cut_type = SetAvoidingCut<BasicDecoration>;
    using rank_cut_type = RankCut<BasicDecoration, graph::lattice::RankCutType::LesserEqual>;
-   int total = VIF.cols();
+   Int total = VIF.cols();
 
    BasicClosureOperator<> cop(total, VIF);
    bounded_cut_type bounded_cut(far_face);
@@ -78,37 +78,37 @@ bounded_hasse_diagram_computation(const IncidenceMatrix<>& VIF, const Set<int>& 
    }
 }
 
-perl::Object bounded_hasse_diagram(const IncidenceMatrix<>& VIF,
-                                   const Set<int>& far_face,
-                                   const int boundary_dim)
+BigObject bounded_hasse_diagram(const IncidenceMatrix<>& VIF,
+                                   const Set<Int>& far_face,
+                                   const Int boundary_dim)
 {
   // Special check for empty polytope
   if (std::min(VIF.rows(), VIF.cols()) == 0) {
     return hasse_diagram(VIF, 0);
   }
-  return static_cast<perl::Object>(bounded_hasse_diagram_computation(VIF, far_face, boundary_dim));
+  return static_cast<BigObject>(bounded_hasse_diagram_computation(VIF, far_face, boundary_dim));
 }
 
-perl::Object rank_bounded_hasse_diagram(const IncidenceMatrix<>& VIF,
-                                        int cone_dim, int boundary_dim, bool from_above)
+BigObject rank_bounded_hasse_diagram(const IncidenceMatrix<>& VIF,
+                                        Int cone_dim, Int boundary_dim, bool from_above)
 {
    if (from_above) {
-      const int total = VIF.rows();
+      const Int total = VIF.rows();
       BasicClosureOperator<> cop(total, T(VIF));
       BasicDecorator<> dec(VIF.cols(), cone_dim, scalar2set(-1));
       const auto cut_above = RankCut<BasicDecoration,graph::lattice::RankCutType::GreaterEqual>(boundary_dim);
 
       Lattice<BasicDecoration, Sequential> init_lattice;
-      return static_cast<perl::Object>(graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
+      return static_cast<BigObject>(graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
                 cop, cut_above, dec, 1, graph::lattice_builder::Dual(), init_lattice));
    } else {
-      const int total = VIF.cols();
+      const Int total = VIF.cols();
       BasicClosureOperator<> cop(total, VIF);
       BasicDecorator<> dec(0, scalar2set(-1));
       const auto cut_below = RankCut<BasicDecoration,graph::lattice::RankCutType::LesserEqual>(boundary_dim);
 
       Lattice<BasicDecoration, Sequential> init_lattice;
-      return static_cast<perl::Object>(graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
+      return static_cast<BigObject>(graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
                 cop, cut_below, dec, 1, graph::lattice_builder::Primal(), init_lattice));
    }
 }

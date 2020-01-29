@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,13 +20,13 @@
 
 namespace polymake { namespace topaz {
 
-int is_manifold_client(perl::Object p)
+Int is_manifold_client(BigObject p)
 {
-   const Array< Set<int> > C = p.give("FACETS");
-   const int d = p.give("DIM");
-   const int n_vertices = p.give("N_VERTICES");
+   const Array<Set<Int>> C = p.give("FACETS");
+   const Int d = p.give("DIM");
+   const Int n_vertices = p.give("N_VERTICES");
 
-   int answer;
+   Int answer;
    switch (d) {
    case 1:
       answer=is_manifold(C, n_vertices, int_constant<1>());

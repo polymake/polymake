@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -41,7 +41,7 @@ namespace polymake { namespace tropical {
 
 // Documentation see perl wrapper
 template <typename Addition>
-perl::Object recession_fan(perl::Object complex)
+BigObject recession_fan(BigObject complex)
 {
   // Special cases
   if (call_function("is_empty", complex))
@@ -52,16 +52,16 @@ perl::Object recession_fan(perl::Object complex)
   IncidenceMatrix<> cones = complex.give("MAXIMAL_POLYTOPES");
   Matrix<Rational> linspace = complex.give("LINEALITY_SPACE");
   Vector<Integer> weights = complex.give("WEIGHTS");
-  int dim = complex.give("PROJECTIVE_DIM");
+  Int dim = complex.give("PROJECTIVE_DIM");
 
-  const std::pair<Set<int>, Set<int>> sorted_vertices = far_and_nonfar_vertices(rays);
-  const Set<int>& directional = sorted_vertices.first;
+  const std::pair<Set<Int>, Set<Int>> sorted_vertices = far_and_nonfar_vertices(rays);
+  const Set<Int>& directional = sorted_vertices.first;
 
   // If there is only one vertex, shift it.
   if (directional.size() == rays.rows()-1) {
-    int vertex = sorted_vertices.second.front();
+    Int vertex = sorted_vertices.second.front();
     rays.row(vertex) = unit_vector<Rational>(rays.cols(), 0);
-    perl::Object result("Cycle", mlist<Addition>());
+    BigObject result("Cycle", mlist<Addition>());
     result.take("PROJECTIVE_VERTICES") << rays;
     result.take("MAXIMAL_POLYTOPES") << cones;
     result.take("WEIGHTS") << weights;
@@ -73,20 +73,20 @@ perl::Object recession_fan(perl::Object complex)
   Vector<Integer> newweights;
 
   // Re-map ray indices
-  Map<int,int> indexMap;
-  int i = 0;
+  Map<Int, Int> indexMap;
+  Int i = 0;
   for (auto d = entire(directional); !d.at_end(); ++d, ++i) {
     indexMap[*d] = i;
   }
 
   // We compute the recession cone of each cell
-  Vector<Set<int>> rec_cones;
-  for (int mc = 0; mc < cones.rows(); ++mc) {
-    Set<int> mcDirectional = directional * cones.row(mc);
+  Vector<Set<Int>> rec_cones;
+  for (Int mc = 0; mc < cones.rows(); ++mc) {
+    Set<Int> mcDirectional = directional * cones.row(mc);
     // Compute that it has the right dimension
-    const int mcDim = rank(rays.minor(mcDirectional,All));
+    const Int mcDim = rank(rays.minor(mcDirectional,All));
     if (mcDirectional.size() > 0 && mcDim == dim) {
-      Set<int> transformCone{ indexMap.map(mcDirectional) };
+      Set<Int> transformCone{ indexMap.map(mcDirectional) };
       rec_cones |= transformCone;
       newweights |= weights[mc];
     }
@@ -94,14 +94,14 @@ perl::Object recession_fan(perl::Object complex)
 
   // Add vertex
   newrays /= unit_vector<Rational>(newrays.cols(),0);
-  for (int mc = 0; mc < rec_cones.dim(); ++mc) {
+  for (Int mc = 0; mc < rec_cones.dim(); ++mc) {
     rec_cones[mc] += scalar2set(newrays.rows()-1);
   }
 
   // Compute the complexification of the recession cones
-  perl::Object cplxify = make_complex<Addition>(newrays,rec_cones,newweights);
+  BigObject cplxify = make_complex<Addition>(newrays,rec_cones,newweights);
   // Extract its values and put them into the result
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << cplxify.give("VERTICES");
   result.take("MAXIMAL_POLYTOPES") << cplxify.give("MAXIMAL_POLYTOPES");
   result.take("WEIGHTS") << cplxify.give("WEIGHTS");

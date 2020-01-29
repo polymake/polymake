@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,7 +23,7 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
-perl::Object hypertruncated_cube(const int d, const Scalar k, const Scalar lambda)
+BigObject hypertruncated_cube(const Int d, const Scalar k, const Scalar lambda)
 {
    if (d < 2)
       throw std::runtime_error("hypertruncated_cube: dimension d >= 2 required");
@@ -32,39 +32,39 @@ perl::Object hypertruncated_cube(const int d, const Scalar k, const Scalar lambd
    if (lambda*d <= k)
       throw std::runtime_error("hypertruncated_cube: lambda > k/d required");
 
-   perl::Object p("Polytope", mlist<Scalar>());
+   BigObject p("Polytope", mlist<Scalar>());
    p.set_description() << "hypertruncated_cube(" << d << "," << k << "," << lambda << ")" << endl;
 
-   const int n_ineqs=4*d;
-   Matrix<Scalar> Inequalities(n_ineqs,d+1);
-   int i=0;
+   const Int n_ineqs = 4*d;
+   Matrix<Scalar> Inequalities(n_ineqs, d+1);
+   Int i = 0;
   
    // facets through origin (= non-negativity constraints)
-   for (int j=1; j<=d; ++j, ++i)
-      Inequalities(i,j)=1;
+   for (Int j = 1; j <= d; ++j, ++i)
+      Inequalities(i,j) = 1;
   
    // opposite cube facets
-   for (int j=1; j<=d; ++j, ++i) {
-      Inequalities(i,0)=1; Inequalities(i,j)=-1;
+   for (Int j = 1; j <= d; ++j, ++i) {
+      Inequalities(i,0) = 1; Inequalities(i,j) = -1;
    }
   
    // deletion facets through lambda(1,1,...,1)
-   for (int j=1; j<=d; ++j, ++i) {
+   for (Int j = 1; j <= d; ++j, ++i) {
       Inequalities(i,0)=k;
-      for (int jj=1; jj<j; ++jj)
-         Inequalities(i,jj)=-1;
-      Inequalities(i,j)=d-1-k/lambda;
-      for (int jj=j+1; jj<=d; ++jj)
+      for (Int jj = 1; jj < j; ++jj)
+         Inequalities(i,jj) = -1;
+      Inequalities(i,j) = d-1-k/lambda;
+      for (Int jj = j+1; jj <= d; ++jj)
          Inequalities(i,jj)=-1;
    }
   
    // contraction facets through lambda(1,1,...,1)
-   for (int j=1; j<=d; ++j, ++i) {
-      Inequalities(i,0)=lambda*(d-k);
-      for (int jj=1; jj<j; ++jj)
-         Inequalities(i,jj)=lambda-1;
+   for (Int j = 1; j <= d; ++j, ++i) {
+      Inequalities(i,0) = lambda*(d-k);
+      for (Int jj = 1; jj < j; ++jj)
+         Inequalities(i,jj) = lambda-1;
       Inequalities(i,j)=k-1-lambda*(d-1);
-      for (int jj=j+1; jj<=d; ++jj)
+      for (Int jj = j+1; jj <= d; ++jj)
          Inequalities(i,jj)=lambda-1;
    }
   
@@ -75,7 +75,7 @@ perl::Object hypertruncated_cube(const int d, const Scalar k, const Scalar lambd
    p.take("ONE_VERTEX") << unit_vector<Scalar>(d+1,0);
 
    // symmetric linear objective function
-   perl::Object LP("LinearProgram", mlist<Scalar>());
+   BigObject LP("LinearProgram", mlist<Scalar>());
    LP.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0|ones_vector<Scalar>(d));
    LP.attach("INTEGER_VARIABLES") << Array<bool>(d,true);
    p.take("LP") << LP;

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,18 +25,19 @@
 
 namespace polymake { namespace topaz {
 
-perl::Object stanley_reisner(perl::Object C) {
-  const Array< Set<int> > non_faces=C.give("MINIMAL_NON_FACES");
-  const int n_non_faces=non_faces.size();
-  const int n_vertices=C.give("N_VERTICES");
+BigObject stanley_reisner(BigObject C)
+{
+  const Array<Set<Int>> non_faces=C.give("MINIMAL_NON_FACES");
+  const Int n_non_faces = non_faces.size();
+  const Int n_vertices = C.give("N_VERTICES");
 
-  Array< Polynomial<Rational,int> > gens(n_non_faces);
+  Array<Polynomial<Rational, Int>> gens(n_non_faces);
 
-  for (int k=0; k<n_non_faces; ++k) {
-     gens[k]=Polynomial<Rational, int>(1, same_element_sparse_vector<int>(non_faces[k], n_vertices));
+  for (Int k = 0; k < n_non_faces; ++k) {
+     gens[k] = Polynomial<Rational, Int>(1, same_element_sparse_vector<Int>(non_faces[k], n_vertices));
   }
 
-  perl::Object I("ideal::Ideal");
+  BigObject I("ideal::Ideal");
   I.take("GENERATORS") << gens;
   I.take("MONOMIAL") << true;
   I.take("N_VARIABLES") << n_vertices;

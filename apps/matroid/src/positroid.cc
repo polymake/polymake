@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,21 +25,21 @@
 
 namespace polymake { namespace matroid {
 
-perl::Object positroid_from_decorated_permutation(const Array<int>& perm,  const Set<int>& loops)
+BigObject positroid_from_decorated_permutation(const Array<Int>& perm, const Set<Int>& loops)
 {
-  const int n = perm.size();
-  Set<int> set;
-  perl::Object p("polytope::Polytope<Rational>");
+  const Int n = perm.size();
+  Set<Int> set;
+  BigObject p("polytope::Polytope<Rational>");
   ListMatrix<Vector<Rational>> ineq_list;
   Vector<Rational> ineq(n+1);
-  int j = 0;
+  Int j = 0;
   for (auto i = entire(perm); !i.at_end(); ++i,++j) {
     if (loops.contains(j) && *i != j)
        throw std::runtime_error("A loop has to be fix point of the permutation");
     if (*i <= j && !loops.contains(*i))
        set += *i;
   }
-  const int rank = set.size();
+  const Int rank = set.size();
   j = 0;
   for (auto it = entire(set); !it.at_end(); ++it, ++j) {
      ineq[0] = -j;
@@ -47,14 +47,14 @@ perl::Object positroid_from_decorated_permutation(const Array<int>& perm,  const
         ineq.slice(sequence(1, *it)).fill(one_value<Rational>());
         ineq_list /= -ineq;
      }
-     ineq = zero_vector<Rational>(n + 1);
+     ineq = zero_vector<Rational>(n+1);
   }
 
   ineq[0] = -rank;
   ineq.slice(range_from(1)) = ones_vector<Rational>(n);
   p.take("EQUATIONS") << ineq;
 
-  for (int s = 1; s < n; ++s) {
+  for (Int s = 1; s < n; ++s) {
      j=0;
      set.clear();
      for (auto i = entire(perm); !i.at_end(); ++i, ++j) {
@@ -90,7 +90,7 @@ perl::Object positroid_from_decorated_permutation(const Array<int>& perm,  const
      ineq_list /= -unit_vector<Rational>(n+1, 1+*it);
   }
 
-  for (int i=0; i<n; ++i) {
+  for (Int i = 0; i < n; ++i) {
      ineq_list /= unit_vector<Rational>(n+1, 1+i);
   }
   p.take("INEQUALITIES") << ineq_list;

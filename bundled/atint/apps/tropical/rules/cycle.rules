@@ -18,7 +18,7 @@
 #  Copyright (C) 2011-2015, Simon Hampe <simon.hampe@googlemail.com>
 #
 #  ---
-#  Copyright (c) 2016-2019
+#  Copyright (c) 2016-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -60,13 +60,18 @@ object Cycle {
 	# for the corresponding row of [[LATTICE_NORMAL_SUM]]. This function vector is computed 
 	# in the same way as described under [[LATTICE_NORMAL_FCT_VECTOR]].
 	# Note that for any codim-1-faces at which the complex is not balanced, the corresponding row is a zero row.
-	# If a face is balanced can be checked under [[BALANCED_FACES]].
+	# If a face is balanced can be checked under [[UNBALANCED_FACES]].
 	property LATTICE_NORMAL_SUM_FCT_VECTOR : Matrix<Rational>;
+
+	# @category Weights and lattices
+	# Indexes of faces in [[CODIMENSION_ONE_POLYTOPES]] the complex is not balanced at.
+	property UNBALANCED_FACES : Set<Int>;
 
 	# @category Weights and lattices
 	# A vector whose entries correspond to the rows of CODIMENSION_ONE_POLYTOPES. 
 	# The i-th entry is true, if and only if the complex is balanced at that face
-	property BALANCED_FACES : Vector<Bool>;
+	# TODO: DEPRECATED, replace with user_function
+	property BALANCED_FACES : Array<Bool>;
 
 	# @category Weights and lattices
 	# Whether the cycle is balanced. As many functions in a-tint can 
@@ -177,12 +182,10 @@ object Cycle {
 	}
 
 
-	rule IS_BALANCED, BALANCED_FACES : VERTICES, LINEALITY_SPACE, CODIMENSION_ONE_POLYTOPES, LATTICE_NORMALS, WEIGHTS, FAR_VERTICES, FAN_AMBIENT_DIM {
-		my $result = check_balancing($this,1);
-		$this->IS_BALANCED = $result->first;
-		my @balanced_faces = @{ones_vector<Bool>($this->CODIMENSION_ONE_POLYTOPES->rows())};
-		for my $s (@{$result->second})  { $balanced_faces[$s] = 0;}
-		$this->BALANCED_FACES = new Vector<Bool>(\@balanced_faces);
+	rule IS_BALANCED, UNBALANCED_FACES : VERTICES, LINEALITY_SPACE, CODIMENSION_ONE_POLYTOPES, LATTICE_NORMALS, WEIGHTS, FAR_VERTICES, FAN_AMBIENT_DIM {
+		my $unbalanced_faces = unbalanced_faces($this);
+		$this->IS_BALANCED = @$unbalanced_faces == 0;
+		$this->UNBALANCED_FACES = $unbalanced_faces;
 	}
 
 	

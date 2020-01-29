@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,14 +28,14 @@ namespace polymake { namespace polytope {
 /*
  *  computes the integer hull of a polyhedron
  */
-perl::Object integer_hull(perl::Object p_in)
+BigObject integer_hull(BigObject p_in)
 {
   // compute the lattice points contained in the polyhedron
   // FIXME: use LATTICE_POINTS_GENERATORS instead
   Matrix<Rational> Lattice_Points = p_in.call_method("LATTICE_POINTS");
-  const int dim = p_in.give("CONE_AMBIENT_DIM");
+  const Int dim = p_in.give("CONE_AMBIENT_DIM");
 
-  perl::Object p_out("Polytope<Rational>");
+  BigObject p_out("Polytope<Rational>");
 
   // define a new polyhedron as a convex hull of all the lattice points
   p_out.take("POINTS") << Lattice_Points;

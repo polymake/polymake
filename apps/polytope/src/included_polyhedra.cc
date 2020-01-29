@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,16 +22,16 @@
 namespace polymake { namespace polytope {
 
 template <typename Coord>
-bool included_polyhedra(perl::Object p1, perl::Object p2, perl::OptionSet options)
+bool included_polyhedra(BigObject p1, BigObject p2, OptionSet options)
 {
    
    std::string generator_type = p1.isa("Polytope") ? "point" : "ray";
    const bool verbose=options["verbose"];
    const Matrix<Coord> vert=p1.give("RAYS|INPUT_RAYS"), lin=p1.lookup("LINEALITY_SPACE|INPUT_LINEALITY"), ineq=p2.give("FACETS|INEQUALITIES"), eq=p2.lookup("LINEAR_SPAN|EQUATIONS");
 
-   const int dim1 = p1.give("CONE_AMBIENT_DIM");
-   const int dim2 = p2.give("CONE_AMBIENT_DIM");
-   if (dim1!=dim2) {
+   const Int dim1 = p1.give("CONE_AMBIENT_DIM");
+   const Int dim2 = p2.give("CONE_AMBIENT_DIM");
+   if (dim1 != dim2) {
       if (verbose) cout << "Cones/Polytopes do no live in the same ambient space."<<endl;
       return false;
    }
@@ -86,7 +86,8 @@ InsertEmbeddedRule("# @category Comparing"
                    "# @param Polytope P2 the second polytope"
                    "# @option Bool verbose Prints information on the difference between P1 and P2 if they are not equal."
                    "# @return Bool true if the two polyhedra are equal, false otherwise"
-                   "# @example [prefer cdd] > $p = new Polytope(VERTICES => [[1,-1,-1],[1,1,-1],[1,-1,1],[1,1,1]]);"
+                   "# @example [prefer cdd]"
+                   "# > $p = new Polytope(VERTICES => [[1,-1,-1],[1,1,-1],[1,-1,1],[1,1,1]]);"
                    "# > print equal_polyhedra($p,cube(2));"
                    "# | true"
                    "# To see why two polytopes are unequal, try this:"

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -16,7 +16,7 @@
 */
 
 #ifndef POLYMAKE_APP_WRAPPERS_topaz_IntersectionForm_H
-#define POLYMAKE_APP_WRAPPERS_topaz_IntersectionForm_H 
+#define POLYMAKE_APP_WRAPPERS_topaz_IntersectionForm_H
 
 #include_next "polymake/topaz/IntersectionForm.h"
 #include "polymake/client.h"

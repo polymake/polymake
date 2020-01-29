@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,10 +27,10 @@
 namespace polymake { namespace polytope {
    
 template <typename E>
-perl::Object zonotope_tiling_lattice(perl::Object P, perl::OptionSet options)
+BigObject zonotope_tiling_lattice(BigObject P, OptionSet options)
 {
    const Matrix<E> V = P.give("VERTICES");
-   const int emb_d = V.cols(); 
+   const Int emb_d = V.cols(); 
    const IncidenceMatrix<> VIF = P.give("VERTICES_IN_FACETS");
    const Vector<E> 
       _b = P.give("VERTEX_BARYCENTER"),
@@ -39,12 +39,12 @@ perl::Object zonotope_tiling_lattice(perl::Object P, perl::OptionSet options)
    Matrix<E> lattice_gens(VIF.rows(), emb_d); 
    auto rlit = entire(rows(lattice_gens));
    for (auto rit = entire(rows(VIF)); !rit.at_end(); ++rit, ++rlit) {
-      const Set<int> vif(*rit);
+      const Set<Int> vif(*rit);
       const Vector<E> facet_barycenter = dehomogenize(ones_vector<E>(vif.size()) * V.minor(vif, All)); 
       *rlit = zero_vector<E>(1) | (2 * (facet_barycenter - b)); 
    }
 
-   perl::Object L("AffineLattice", mlist<E>());
+   BigObject L("AffineLattice", mlist<E>());
 
    const bool lattice_origin_is_vertex = options["lattice_origin_is_vertex"];
    if (lattice_origin_is_vertex)

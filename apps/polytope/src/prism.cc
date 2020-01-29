@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,8 +26,8 @@ namespace polymake { namespace polytope {
 template<typename Scalar>
 Matrix<Scalar>
 prism_coord(const Matrix<Scalar>& V,
-            int& n_vertices, int& n_vertices_out,
-            const Set<int>& rays,
+            Int& n_vertices, Int& n_vertices_out,
+            const Set<Int>& rays,
             const Scalar& z, const Scalar& z_prime)
 {
 
@@ -43,7 +43,7 @@ prism_coord(const Matrix<Scalar>& V,
 }
 
 template<typename Scalar>
-perl::Object prism(perl::Object p_in, const Scalar& z, const Scalar& z_prime, perl::OptionSet options)
+BigObject prism(BigObject p_in, const Scalar& z, const Scalar& z_prime, OptionSet options)
 {
 
    if(z==z_prime)
@@ -52,20 +52,20 @@ perl::Object prism(perl::Object p_in, const Scalar& z, const Scalar& z_prime, pe
          throw std::runtime_error("prism: group of the base polytope needs to be provided in order to compute group of the pyramid.");
 
 
-   int n_vertices=0, n_vertices_out=0;
-   Set<int> rays;
+   Int n_vertices = 0, n_vertices_out = 0;
+   Set<Int> rays;
    if (!options["no_coordinates"])
       p_in.give("FAR_FACE") >> rays;
 
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "prism over " << p_in.name() << endl;
 
    if (options["no_coordinates"] || p_in.exists("VERTICES_IN_FACETS")) {
-      const IncidenceMatrix<> VIF=p_in.give("VERTICES_IN_FACETS");
-      n_vertices=VIF.cols();
-      n_vertices_out=2*n_vertices-rays.size();
+      const IncidenceMatrix<> VIF = p_in.give("VERTICES_IN_FACETS");
+      n_vertices = VIF.cols();
+      n_vertices_out = 2*n_vertices-rays.size();
 
-      Set<int> far_facet=accumulate(cols(VIF.minor(All,rays)), operations::mul());
+      Set<Int> far_facet = accumulate(cols(VIF.minor(All,rays)), operations::mul());
       if (far_facet.size() > 1) // if size()>1 then FAR_FACE is not a facet
          far_facet.clear();
 
@@ -84,7 +84,7 @@ perl::Object prism(perl::Object p_in, const Scalar& z, const Scalar& z_prime, pe
 
    if (options["no_coordinates"]) {
       if (p_in.exists("COMBINATORIAL_DIM")) {
-         const int dim=p_in.give("COMBINATORIAL_DIM");
+         const Int dim = p_in.give("COMBINATORIAL_DIM");
          p_out.take("COMBINATORIAL_DIM") << dim+1;
       }
 
@@ -99,22 +99,22 @@ perl::Object prism(perl::Object p_in, const Scalar& z, const Scalar& z_prime, pe
    }
 
    if(options["group"]){
-      Array< Array< int > > gens = p_in.give("GROUP.VERTICES_ACTION.GENERATORS");
+      Array<Array<Int>> gens = p_in.give("GROUP.VERTICES_ACTION.GENERATORS");
 
-      for(auto i = entire(gens); !i.at_end(); ++i){
+      for (auto i = entire(gens); !i.at_end(); ++i) {
           (*i).append(n_vertices,entire(*i));
-          for(int j = n_vertices; j<n_vertices_out; ++j)
-            (*i)[j]+=n_vertices;
+          for (Int j = n_vertices; j < n_vertices_out; ++j)
+            (*i)[j] += n_vertices;
       }
 
-      Array<int> swap(sequence(n_vertices,n_vertices));
+      Array<Int> swap(sequence(n_vertices, n_vertices));
       swap.append(n_vertices,entire(sequence(0,n_vertices)));
       gens.resize(gens.size()+1,swap);
 
-      perl::Object a("group::PermutationAction");
+      BigObject a("group::PermutationAction");
       a.take("GENERATORS") << gens;
 
-      perl::Object g("group::Group");
+      BigObject g("group::Group");
       g.set_description() << "canonical group induced by the group of the base polytope" << endl;
       g.set_name("canonicalGroup");
       p_out.take("GROUP") << g;

@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -48,10 +48,10 @@ namespace polymake { namespace tropical {
     /*
     * @brief Takes a Hasse diagram and computes for each node n the value of the moebius function
     * mu(n,1), where 1 is the maximal element.
-    * @return Vector<int> Each entry corresponds to the node of the same index.
+    * @return Vector<Int> Each entry corresponds to the node of the same index.
     */
-   Vector<int> top_moebius_function(const Lattice<BasicDecoration>& HD);
+   Vector<Int> top_moebius_function(const Lattice<BasicDecoration>& HD);
 
-}}
+} }
 
 #endif

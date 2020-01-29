@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,15 +28,15 @@
 namespace polymake { namespace matroid {
 
 template <typename Addition,typename Scalar>
-perl::Object trivial_valuation(perl::Object matroid)
+BigObject trivial_valuation(BigObject matroid)
 {
-  int n_elements = matroid.give("N_ELEMENTS");
-  perl::Object result("ValuatedMatroid", mlist<Addition, Scalar>());
+  Int n_elements = matroid.give("N_ELEMENTS");
+  BigObject result("ValuatedMatroid", mlist<Addition, Scalar>());
   result.take("N_ELEMENTS") << n_elements;
   if (matroid.exists("CIRCUITS")) {
-    Array<Set<int>> circuits = matroid.give("CIRCUITS");
+    Array<Set<Int>> circuits = matroid.give("CIRCUITS");
     Matrix<TropicalNumber<Addition, Scalar>> cval(circuits.size(), n_elements);
-    int index = 0;
+    Int index = 0;
     for (auto circ = entire(circuits); !circ.at_end(); ++circ, ++index) {
       cval.row(index).slice(*circ) = ones_vector<TropicalNumber<Addition, Scalar>>( (*circ).size());
     }
@@ -44,7 +44,7 @@ perl::Object trivial_valuation(perl::Object matroid)
     result.take("VALUATION_ON_CIRCUITS") << cval;
   }
 
-  Array<Set<int>> bases = matroid.give("BASES");
+  Array<Set<Int>> bases = matroid.give("BASES");
   Vector<TropicalNumber<Addition, Scalar>> bval = ones_vector<TropicalNumber<Addition, Scalar>>(bases.size());
   result.take("BASES") << bases;
   result.take("VALUATION_ON_BASES") << bval;

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,15 +24,15 @@
 namespace polymake { namespace polytope  {
 
 template <typename Scalar>
-perl::Object normal_cone_impl(perl::Object p,
-                              const Set<int>& F,
+BigObject normal_cone_impl(BigObject p,
+                              const Set<Int>& F,
                               const std::string& ftv_section,
                               const std::string& rays_section,
                               const std::string& facets_section,
-                              perl::OptionSet options)
+                              OptionSet options)
 {
    if (p.isa("Polytope")) {
-      const Set<int> far_face = p.give("FAR_FACE");
+      const Set<Int> far_face = p.give("FAR_FACE");
       if (incl(F, far_face) <= 0)
          throw std::runtime_error("normal_cone: face is contained in the far face");
    }
@@ -45,13 +45,13 @@ perl::Object normal_cone_impl(perl::Object p,
    Matrix<Scalar> cone_normals(facet_normals.minor(accumulate(rows(ftv.minor(F,All)), operations::mul()), range_from(1)));
    if (outer) cone_normals = -cone_normals;
 
-   perl::Object c("Cone", mlist<Scalar>());
+   BigObject c("Cone", mlist<Scalar>());
    const Matrix<Scalar> ls = p.give("LINEAR_SPAN");
    if (attach) {
       const Matrix<Scalar> rays = p.give(rays_section);
       c.take("INPUT_RAYS") << rays.minor(F,All) / ( zero_vector<Scalar>() | cone_normals );
       c.take("INPUT_LINEALITY") << ls;
-      c.take("CONE_AMBIENT_DIM") << cone_normals.cols() + 1;
+      c.take("CONE_AMBIENT_DIM") << cone_normals.cols()+1;
    } else {
       c.take("INPUT_RAYS") << cone_normals;
       c.take("INPUT_LINEALITY") << ls.minor(All, range_from(1));
@@ -61,12 +61,12 @@ perl::Object normal_cone_impl(perl::Object p,
 }
 
 template <typename Scalar>
-perl::Object inner_cone_impl(perl::Object p,
-                             const Set<int>& F,
-                             perl::OptionSet options)
+BigObject inner_cone_impl(BigObject p,
+                             const Set<Int>& F,
+                             OptionSet options)
 {
    if (p.isa("Polytope")) {
-      const Set<int> far_face = p.give("FAR_FACE");
+      const Set<Int> far_face = p.give("FAR_FACE");
       if (incl(F, far_face) <= 0)
          throw std::runtime_error("normal_cone: face is contained in the far face");
    }
@@ -77,8 +77,8 @@ perl::Object inner_cone_impl(perl::Object p,
    const Graph<> G = p.give("GRAPH.ADJACENCY");
    const Matrix<Scalar> V = p.give("VERTICES");
    std::vector<Vector<Scalar>> inner_rays_list;
-   for (int v: F) {
-      for (int w: G.out_adjacent_nodes(v) - F) {
+   for (Int v : F) {
+      for (Int w : G.out_adjacent_nodes(v) - F) {
          if (outer) {
             inner_rays_list.emplace_back(V[v] - V[w]);
          } else {
@@ -89,7 +89,7 @@ perl::Object inner_cone_impl(perl::Object p,
    Matrix<Scalar> inner_rays(inner_rays_list.size(), V.cols(), entire(inner_rays_list));
    inner_rays.col(0) = zero_vector<Scalar>(inner_rays.rows());
 
-   perl::Object c("Cone", mlist<Scalar>());
+   BigObject c("Cone", mlist<Scalar>());
    const Matrix<Scalar> ls = p.give("LINEAR_SPAN");
    if (attach) {
       const Matrix<Scalar> rays = p.give("RAYS");

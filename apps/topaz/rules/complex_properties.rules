@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -270,7 +270,7 @@ property INTERSECTION_FORM : IntersectionForm;
 
 
 # @category Topology
-# Mod 2 cycle representation of Stiefel-Whitney classes.  Each cycle is represented as a set of simplices.
+# Mod 2 Stiefel-Whitney homology classes per dimension.  Each cycle is represented as a set of simplices.
 property STIEFEL_WHITNEY : Array<PowerSet>;
 
 ### FIXME: could be done
@@ -437,12 +437,13 @@ rule BOUNDARY.VERTEX_MAP : VertexPerm.PERMUTATION, VertexPerm.BOUNDARY.VERTEX_MA
 }
 
 # @category Topology
-# Edge-subset of a 3-sphere which is a knot or link, that is, a collection of pairwise disjoint cycles.
+# One-dimensional subcomplex which forms a knot or link, i.e., a collection of pairwise disjoint cycles.
+# Usually that complex is a 3-sphere or a 3-ball.                            
 
-property KNOT : Array<Set>;
+property KNOT : SimplicialComplex : multiple;
 
-rule KNOT : VertexPerm.KNOT, VertexPerm.PERMUTATION {
-   $this->KNOT=permuted_elements($this->VertexPerm->KNOT, $this->VertexPerm->PERMUTATION);
+rule KNOT.FACETS : VertexPerm.KNOT.FACETS, VertexPerm.PERMUTATION {
+   $this->KNOT->FACETS=permuted_elements($this->VertexPerm->KNOT->FACETS, $this->VertexPerm->PERMUTATION);
 }
 weight 1.20;
 

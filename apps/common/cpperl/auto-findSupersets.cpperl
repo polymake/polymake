@@ -1,5 +1,5 @@
 {"app": "common",
  "inst": [
-  {"args": ["perl::Canned<const FacetList&>", "perl::Canned<const Set<int>&>"], "func": "findSupersets", "include": ["polymake/FacetList.h", "polymake/Set.h"], "kind": "meth", "sig": "findSupersets:R_Iterator:M.X"},
+  {"args": ["perl::Canned<const FacetList&>", "perl::Canned<const Set<Int>&>"], "func": "findSupersets", "include": ["polymake/FacetList.h", "polymake/Set.h"], "kind": "meth", "sig": "findSupersets:R_Iterator:M.X"},
  null ],
 "version": 3}

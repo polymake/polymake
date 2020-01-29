@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,7 +27,7 @@ template <typename Matrix, typename Scalar, typename Triangulation>
 Scalar volume(const GenericMatrix<Matrix, Scalar>& Points, const Triangulation& tr)
 {
    Scalar V(0);
-   const int dim=tr.front().size()-1;
+   const Int dim = tr.front().size()-1;
    for (auto s=entire(tr); !s.at_end(); ++s)
       V += abs(det( Points.minor(*s,All) ));
    return V / Integer::fac(dim);
@@ -38,12 +38,12 @@ Array<Scalar> squared_relative_volumes(const GenericMatrix<MatrixType, Scalar>& 
 {
    Array<Scalar> V(tr.size());
    auto vit = entire(V);
-   const int dim=tr.front().size()-1;
-   const Integer f (Integer::fac(dim));
+   const Int dim = tr.front().size()-1;
+   const Integer f = Integer::fac(dim);
    for (auto s=entire(tr); !s.at_end(); ++s, ++vit) {
       Matrix<Scalar> M(Points.minor(*s, All));
       // subtract off the first row from all the others, to place one vertex at the origin
-      for (int i=1; i<M.rows(); ++i) 
+      for (Int i = 1; i < M.rows(); ++i) 
          M.row(i) -= M.row(0);
       *vit = abs(det( M.minor(range_from(1), All) * T(M.minor(range_from(1), All)) )) / (f*f);
    }

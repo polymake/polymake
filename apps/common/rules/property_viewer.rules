@@ -7,7 +7,7 @@ CONFIGURE {
     return 0; 
 } 
 
-user_function property_viewer(Core::Object) {
+user_function property_viewer(Core::BigObject) {
   if ($ENV{DISPLAY}) { 
       Polymake::User::script("PropertyViewer.pl", @_);
   } else { 

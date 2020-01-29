@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,9 +23,9 @@
 namespace polymake { namespace common {
 
 Matrix<Rational>
-perturb_matrix(Matrix<Rational> M, const Rational& eps, bool not_hom, perl::OptionSet options)
+perturb_matrix(Matrix<Rational> M, const Rational& eps, bool not_hom, OptionSet options)
 {
-   const int n_cols=M.cols() - !not_hom;
+   const Int n_cols = M.cols() - !not_hom;
    RandomSpherePoints<> random_source(n_cols, RandomSeed(options["seed"]));
    const Matrix<Rational> randomMatrix(M.rows(), n_cols, random_source.begin());
 

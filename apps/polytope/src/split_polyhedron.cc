@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,33 +23,33 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
-perl::Object split_polyhedron(perl::Object p_in)
+BigObject split_polyhedron(BigObject p_in)
 {
    const Matrix<Scalar> vert=p_in.give("VERTICES");
-   const int n=vert.rows();  
-   const int d=vert.cols();
+   const Int n = vert.rows();  
+   const Int d = vert.cols();
   
    const Matrix<Scalar> splits=p_in.give("SPLITS");
-   int n_splits=splits.rows();
+   Int n_splits = splits.rows();
 
    SparseMatrix<Scalar> facets(n_splits,n+1);
-   for (int j=0; j<n_splits; ++j) {
+   for (Int j = 0; j < n_splits; ++j) {
       const Vector<Scalar> a=splits.row(j);
-      Set<int> left; //vertices of the left (>=) polytope
-      for (int k=0; k<n; ++k) {
+      Set<Int> left; //vertices of the left (>=) polytope
+      for (Int k = 0; k < n; ++k) {
          const Scalar val=a*vert.row(k);
          if (val>=0) {
             left.insert(k);
             if (val>0) facets(j,k+1)=val;
          }
       }
-      perl::Object p_left("Polytope", mlist<Scalar>());
+      BigObject p_left("Polytope", mlist<Scalar>());
       p_left.take("VERTICES")<<vert.minor(left,All);
       const Vector<Scalar> left_centroid=p_left.give("CENTROID");
       const Scalar left_volume=p_left.give("VOLUME");
       facets(j,0)=-d*left_volume*(a*left_centroid);
    }
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    p_out.take("FACETS")<<facets;
 
    const Vector<Scalar> centroid=p_in.give("CENTROID");

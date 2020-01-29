@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -35,13 +35,13 @@ using graph::lattice::BasicDecoration;
 // the given set
 // If the face is actually in the lattice, it returns its node index as a second value
 // (which is -1 otherwise).
-std::pair<Set<int>, int> faces_above(const Lattice<BasicDecoration, Sequential>& G, const Set<int>& face)
+std::pair<Set<Int>, Int> faces_above(const Lattice<BasicDecoration, Sequential>& G, const Set<Int>& face)
 {
-  Set<int> result;
-  int face_index = -1;
+  Set<Int> result;
+  Int face_index = -1;
 
   for (auto d_it = entire<indexed>(G.decoration()); !d_it.at_end(); ++d_it) {
-    int incl_result = incl(face, d_it->face);
+    Int incl_result = incl(face, d_it->face);
     if (incl_result < 0) {
       result += d_it.index();
     } else if (incl_result == 0) {
@@ -58,25 +58,25 @@ std::pair<Set<int>, int> faces_above(const Lattice<BasicDecoration, Sequential>&
 // arXiv: http://home.gwu.edu/~jbonin/TransversalNotes.pdf
 // Note that it is sufficient to check that the multiplicity of a flat is >= 0,
 // instead of checking this for all sets.
-perl::ListReturn check_transversality(perl::Object matroid)
+ListReturn check_transversality(BigObject matroid)
 {
-  const perl::Object flats_obj = matroid.give("LATTICE_OF_FLATS");
+  const BigObject flats_obj = matroid.give("LATTICE_OF_FLATS");
   const Lattice<BasicDecoration, Sequential> flats(flats_obj);
-  const perl::Object cyclic_flats_obj = matroid.give("LATTICE_OF_CYCLIC_FLATS");
+  const BigObject cyclic_flats_obj = matroid.give("LATTICE_OF_CYCLIC_FLATS");
   const Lattice<BasicDecoration, Sequential> cyclic_flats(cyclic_flats_obj);
-  int total_rank = matroid.give("RANK");
-  const int n_elem = matroid.give("N_ELEMENTS");
-  Set<int> loops = matroid.give("LOOPS");
+  Int total_rank = matroid.give("RANK");
+  const Int n_elem = matroid.give("N_ELEMENTS");
+  Set<Int> loops = matroid.give("LOOPS");
 
-  Map<int,int> multiplicity; // Maps cyclic flat indices to multiplicities
+  Map<Int, Int> multiplicity; // Maps cyclic flat indices to multiplicities
 
-  perl::ListReturn r;
+  ListReturn r;
 
-  for (int i = flats.rank(); i >= 0 ; --i) {
+  for (Int i = flats.rank(); i >= 0 ; --i) {
     for (const auto n : flats.nodes_of_rank(i)) {
-      std::pair<Set<int>, int> parents = faces_above(cyclic_flats, flats.face(n));
-      int mult_value = total_rank - i;
-      for (const int p : parents.first) {
+      std::pair<Set<Int>, Int> parents = faces_above(cyclic_flats, flats.face(n));
+      Int mult_value = total_rank - i;
+      for (const Int p : parents.first) {
         mult_value -= multiplicity[p];
       }
       if (mult_value < 0) {
@@ -89,18 +89,18 @@ perl::ListReturn check_transversality(perl::Object matroid)
     }
   }
 
-  std::vector<Set<int>> potential_presentation;
+  std::vector<Set<Int>> potential_presentation;
   const auto total_set = sequence(0, n_elem);
   for (const auto& mp : multiplicity) {
-    int this_mult = mp.second;
+    Int this_mult = mp.second;
     if (this_mult > 0) {
-      const Set<int> this_face = total_set - cyclic_flats.face(mp.first);
-      for (int i=0; i < this_mult; ++i)
+      const Set<Int> this_face = total_set - cyclic_flats.face(mp.first);
+      for (Int i=0; i < this_mult; ++i)
         potential_presentation.push_back(this_face);
     }
   }
 
-  r << true << Array<Set<int>>(potential_presentation);
+  r << true << Array<Set<Int>>(potential_presentation);
 
   return r;
 }

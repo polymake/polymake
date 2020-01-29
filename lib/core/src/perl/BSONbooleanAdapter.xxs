@@ -1,0 +1,185 @@
+/* Copyright (c) 1997-2020
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
+
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+--------------------------------------------------------------------------------
+*/
+
+#include "polymake/perl/Ext.h"
+
+namespace {
+
+using XSUB_t = void (*)(pTHX_ CV*);
+
+SV *true_sv = nullptr, *false_sv = nullptr;
+CV *encode_cv = nullptr, *decode_cv = nullptr;
+XSUB_t encode_xsub = nullptr, decode_xsub = nullptr;
+HV *BSON_Doc_stash = nullptr, *Tie_IxHash_stash = nullptr;
+SV *boolean_pkg = nullptr;
+
+void replace_booleans(pTHX_ SV* sv);
+
+void replace_booleans(pTHX_ AV* av, SSize_t start = 0, SSize_t step = 1)
+{
+   const SSize_t last = AvFILLp(av);
+   if (last >= 0) {
+      for (SV **svp = AvARRAY(av) + start, **lastp = svp + last;  svp <= lastp;  svp += step) {
+         SV* val = *svp;
+         if (val && SvOK(val))
+            replace_booleans(aTHX_ val);
+      }
+   }
+}
+
+void replace_booleans(pTHX_ HV* hv)
+{
+   if (hv_iterinit(hv)) {
+      while (HE* he = hv_iternext(hv)) {
+         SV* val = HeVAL(he);
+         if (SvOK(val))
+            replace_booleans(aTHX_ val);
+      }
+   }
+}
+
+void replace_booleans(pTHX_ SV* sv)
+{
+   if (SvROK(sv)) {
+      sv = SvRV(sv);
+      if (SvOBJECT(sv)) {
+         if (SvTYPE(sv) == SVt_PVAV) {
+            if (SvSTASH(sv) == Tie_IxHash_stash)
+               replace_booleans(aTHX_ (AV*)SvRV(AvARRAY(sv)[2]));
+            else if (SvSTASH(sv) == BSON_Doc_stash)
+               replace_booleans(aTHX_ (AV*)sv, 1, 2);
+         }
+      } else if (SvGMAGICAL(sv) && SvTYPE(sv) == SVt_PVHV) {
+         if (MAGIC* mg = mg_find(sv, PERL_MAGIC_tied)) {
+            SV* tied = mg->mg_obj;
+            if (tied && SvROK(tied) && (tied = SvRV(tied), SvOBJECT(tied) && SvSTASH(tied) == Tie_IxHash_stash))
+               replace_booleans(aTHX_ (AV*)SvRV(AvARRAY(tied)[2]));
+         }
+      } else if (SvTYPE(sv) == SVt_PVAV) {
+         replace_booleans(aTHX_ (AV*)sv);
+      } else if (SvTYPE(sv) == SVt_PVHV) {
+         replace_booleans(aTHX_ (HV*)sv);
+      }
+   } else if (pm::perl::glue::is_boolean_value(aTHX_ sv)) {
+      pm::perl::ops::localize_scalar(aTHX_ sv, SvTRUE(sv) ? true_sv : false_sv);
+   }
+}
+
+OP* intercept_pp_ref(pTHX)
+{
+   dSP; dTOPss;
+   if (!SvROK(sv)) {
+      if (pm::perl::glue::is_boolean_value(aTHX_ sv))
+         SETs(boolean_pkg);
+      else
+         SETs(&PL_sv_no);
+      return NORMAL;
+   }
+   return Perl_pp_ref(aTHX);
+}
+
+void replace_ref(pTHX_ OP* o)
+{
+   if (o->op_type == OP_REF) {
+      o->op_ppaddr = &intercept_pp_ref;
+   } else if (o->op_flags & OPf_KIDS) {
+      OP* kid = cUNOPo->op_first;
+      do replace_ref(aTHX_ kid); while ((kid = OpSIBLING(kid)));
+   }
+}
+
+}
+
+MODULE = Polymake::BSONbooleanAdapter          PACKAGE = Polymake::BSONbooleanAdapter
+
+PROTOTYPES: DISABLE
+
+void _encode_bson(SV* doc, SV* options)
+PPCODE:
+{
+   (void)options;  // unused
+   PUSHMARK(SP);
+   SP += 2;
+   PUTBACK;
+   replace_booleans(aTHX_ doc);
+   encode_xsub(aTHX_ encode_cv);
+   SPAGAIN;
+}
+
+void _decode_bson(SV* msg, SV* options)
+PPCODE:
+{
+   (void)msg; (void)options;  // unused
+   PUSHMARK(SP);
+   SP += 2;
+   PUTBACK;
+   pm::perl::ops::localize_scalar(aTHX_ true_sv, &PL_sv_yes);
+   pm::perl::ops::localize_scalar(aTHX_ false_sv, &PL_sv_no);
+   decode_xsub(aTHX_ decode_cv);
+   SPAGAIN;
+}
+
+void prepare_XS(SV* encode_subref, SV* decode_subref, SV* true_val, SV* false_val)
+PPCODE:
+{
+   if (encode_cv)
+      croak( "BSONbooleanAdapter::prepare called repeatedly - should only be invoked from the static part of its perl module" );
+   if (!(SvROK(encode_subref) && SvTYPE(SvRV(encode_subref)) == SVt_PVCV &&
+         (encode_cv = (CV*)SvRV(encode_subref), CvISXSUB(encode_cv))))
+      croak( "_encode_bson is not an XSUB" );
+   if (!(SvROK(decode_subref) && SvTYPE(SvRV(decode_subref)) == SVt_PVCV &&
+         (decode_cv = (CV*)SvRV(decode_subref), CvISXSUB(decode_cv))))
+      croak( "_decode_bson is not an XSUB" );
+   if (!(SvROK(true_val) && SvOBJECT(SvRV(true_val)) && SvIOK(SvRV(true_val))))
+      croak( "_true_value is not a boolean reference" );
+   if (!(SvROK(false_val) && SvOBJECT(SvRV(false_val)) && SvIOK(SvRV(false_val))))
+      croak( "_false_value is not a boolean reference" );
+
+   encode_xsub = CvXSUB(encode_cv);
+   decode_xsub = CvXSUB(decode_cv);
+   CvXSUB(encode_cv) = XS_Polymake__BSONbooleanAdapter__encode_bson;
+   CvXSUB(decode_cv) = XS_Polymake__BSONbooleanAdapter__decode_bson;
+   true_sv = true_val;
+   false_sv = false_val;
+
+   // assume for now we don't have other magic hashes in serialized form
+   Tie_IxHash_stash = pm::perl::glue::get_named_stash(aTHX_ "Tie::IxHash");
+   BSON_Doc_stash = gv_stashpvn("BSON::Doc", 9, 0);
+   if (!BSON_Doc_stash) // is absent in older Mongo drivers: make a dummy address matching nothing
+      BSON_Doc_stash = Tie_IxHash_stash+1;
+}
+
+void prepare_PP(SV* encode_subref)
+PPCODE:
+{
+   if (encode_cv)
+      croak( "BSONbooleanAdapter::prepare called repeatedly - should only be invoked from the static part of its perl module" );
+   if (!(SvROK(encode_subref) && SvTYPE(SvRV(encode_subref)) == SVt_PVCV &&
+         (encode_cv = (CV*)SvRV(encode_subref), !CvISXSUB(encode_cv) && CvROOT(encode_cv))))
+      croak( "_encode_bson is not a regular SUB" );
+   boolean_pkg = newSVpvn_share("boolean", 7, 0);
+   replace_ref(aTHX_ CvROOT(encode_cv));
+}
+
+
+=pod
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:
+=cut

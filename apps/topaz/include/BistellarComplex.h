@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,18 +29,18 @@ namespace polymake { namespace topaz {
 
 class BistellarComplex {
 protected:
-   typedef std::pair< Set<int>,Set<int> > option;
+   typedef std::pair<Set<Int>, Set<Int>> option;
 
    class OptionsList {
    protected:
-      int the_size;
-      hash_map< Set<int>,int > index_map;
+      Int the_size;
+      hash_map<Set<Int>, Int> index_map;
       Array<option> the_options;
 
    public:
       OptionsList() : the_size(0) {};
 
-      int size() const
+      Int size() const
       {
          return the_size;
       }
@@ -56,16 +56,16 @@ protected:
          ++the_size;
       }
 
-      void insert(const Set<int>& f, const Set<int>& V)
+      void insert(const Set<Int>& f, const Set<Int>& V)
       {
-         insert(option(f,V));
+         insert(option(f, V));
       }
 
-      void remove(const Set<int>& f)
+      void remove(const Set<Int>& f)
       {
-         hash_map< Set<int>,int >::const_iterator find=index_map.find(f);
-         if (find!=index_map.end()) {
-            const int index = find->second;
+         hash_map<Set<Int>, Int>::const_iterator find = index_map.find(f);
+         if (find != index_map.end()) {
+            const Int index = find->second;
             the_options[index] = the_options[the_size-1];
             index_map[the_options[the_size-1].first] = index;
             index_map.erase(f);
@@ -83,13 +83,13 @@ protected:
 
    FacetList the_facets;
    UniformlyRandom<Integer> random_source;
-   int dim;
-   int verts;
+   Int dim;
+   Int verts;
    option next_move;
    Array<OptionsList> raw_options;
-   Set<int> rev_move;
-   Array<int> the_flip_vector;
-   int apex;
+   Set<Int> rev_move;
+   Array<Int> the_flip_vector;
+   Int apex;
    bool allow_rev_move;
    bool verbose;
    bool closed;
@@ -115,52 +115,52 @@ public:
       init(HD);
    }
 
-   int n_raw_options_of_dim(const int d) const
+   Int n_raw_options_of_dim(const Int d) const
    {
       return raw_options[d].options().size();
    }
 
-   int find_move(const int dim_min, const int dim_max);
+   Int find_move(const Int dim_min, const Int dim_max);
 
    // Finds a reversed move of minimal dimension >= dim_min
    // and returns the dimension of the move. The move is != next_move.second
    // The move is stored in next_move.
-   int find_move(const int dim_min)
+   Int find_move(const Int dim_min)
    {
-      return find_move(dim_min,dim);
+      return find_move(dim_min, dim);
    }
 
-   int find_move()
+   Int find_move()
    {
-      return find_move(0,dim);
+      return find_move(0, dim);
    }
 
 protected:
    // Determines if a face is an option.
-   bool is_option(const Set<int>& f, Set<int>& V) const;
+   bool is_option(const Set<Int>& f, Set<Int>& V) const;
 
 public:
-   // Executes what ever move is set by find_move() or find_move(const int).
-   // You MUST set a move by using find_move() or find_move(const int) before executing it.
+   // Executes what ever move is set by find_move() or find_move(const Int).
+   // You MUST set a move by using find_move() or find_move(const Int) before executing it.
    void execute_move();
 
    // Finds minimal revers move >= dim_min and executes it. Return the dimension of the move.
-   int min_max_rev_move(const int dim_min, const int dim_max)
+   Int min_max_rev_move(const Int dim_min, const Int dim_max)
    {
-      const int d = find_move(dim_min,dim_max);
+      const Int d = find_move(dim_min, dim_max);
       execute_move();
       return d;
    }
 
    // Finds minimal revers move >= dim_min and executes it. Return the dimension of the move.
-   int min_rev_move(const int dim_min)
+   Int min_rev_move(const Int dim_min)
    {
-      const int d = find_move(dim_min);
+      const Int d = find_move(dim_min);
       execute_move();
       return d;
    }
 
-   int min_rev_move()
+   Int min_rev_move()
    {
       return min_rev_move(0);
    }
@@ -191,7 +191,7 @@ public:
       return IncidenceMatrix<>(F.size(), F.cols(), F.begin());
    }
 
-   int n_facets() const
+   Int n_facets() const
    {
       if (closed)
          return the_facets.size();
@@ -199,7 +199,7 @@ public:
       return facets().size();
    }
 
-   const Array<int>& flip_vector() const
+   const Array<Int>& flip_vector() const
    {
       return the_flip_vector;
    }

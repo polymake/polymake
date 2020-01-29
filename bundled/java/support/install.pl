@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -17,11 +17,11 @@
 if ($ConfigFlags{'bundled.java.ANT'} ne '.none.') {
    my $dst_dir="$InstallTop/resources/java/jars";
    make_dir($dst_dir, clean_dir => 1);
-   foreach my $jar (glob("$builddir/jars/polymake_*.jar")) {
+   foreach my $jar (glob("$buildtop/jars/polymake_*.jar")) {
       copy_file($jar, $dst_dir);
    }
 
    $dst_dir="$InstallTop/resources/java/jni";
    my $native_lib="libpolymake_java.$ConfigFlags{'bundled.java.NativeSO'}";
-   copy_file("$builddir/lib/jni/$native_lib", "$dst_dir/$native_lib", clean_dir => 1, mode => 0555);
+   copy_file("$buildtop/lib/jni/$native_lib", "$dst_dir/$native_lib", clean_dir => 1, mode => 0555);
 }

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -30,12 +30,12 @@ use Polymake::Struct (
 );
 
 sub new {
-   my $self=&_new;
+   my $self = &_new;
    if ($self->env->report_writer) {
-      substr($self->name,0,0).=$self->application->name.".";
+      substr($self->name, 0, 0) .= $self->application->name . ".";
    }
    my $filter;
-   if (defined (my $pattern=$self->dir)) {
+   if (defined(my $pattern = $self->dir)) {
       if ($pattern =~ s/\*/.*/g ||
 	  $pattern =~ s/\?/./g) {
 	 $filter = sub { $_[0]->name =~ m{^$pattern$} && scalar($_[0]->get_examples) };
@@ -47,9 +47,10 @@ sub new {
    }
    # help topics are sorted for the sake of reproducibility of test runs
    # because otherwise they appear in hash-map (=random) order
-   @{$self->subgroups}=map { new ExamplesInTopic($_, $self) }
-                       sort { $a->name cmp $b->name || $a->full_path cmp $b->full_path }
-                       $self->application->help->list_matching_leaves($filter);
+   @{$self->subgroups} = map { new ExamplesInTopic($_, $self) }
+                         sort { $a->name cmp $b->name || $a->full_path cmp $b->full_path }
+                         map { $_->list_matching_leaves($filter) }
+                         ( $self->application->help, $self->application->name eq "common" ? $Core::Help::core : () );
    $self;
 }
 
@@ -132,20 +133,20 @@ sub create_testcases {
       }
 
       my $expected = "=== BEGIN ===\n";
-      my $snippet_cnt=0;
+      my $snippet_cnt = 0;
       while ($example->body =~ /((?: ^ [ \t]*>[ \t]* \S.*?\n)+) ((?: ^ [ \t]*\|(?:[ \t] .*)?\n)*)/xmg) {
          ++$snippet_cnt;
-	 my ($snippet, $printout)=($1, $2);
-	 my $text_before=$`;
+	 my ($snippet, $printout) = ($1, $2);
+	 my $text_before = $`;
 	 $snippet =~ s/^ [ \t]*>[ \t]?//xmg;                # remove the markup
 	 $printout =~ s/^ [ \t]*\|[ \t]?//xmg;
-	 my $end_marker="=== END # $snippet_cnt ===";
+	 my $end_marker = "=== END # $snippet_cnt ===";
 	 $snippet =~ s/\n\Z/; print "\\n$end_marker\\n";\n/s;
 	 $source_line = $example->source_line - ($snippet_cnt==1);
 	 ++$source_line while $text_before =~ /\n/g;
          # the semicolon seems to soothe some pains in perl tokenizer when the first term in the expression
          # is an explicitely parametrized function template call
-	 push @snippets, $snippet_cnt==1 ? <<"--first--" : <<"--other--", $snippet;
+	 push @snippets, $snippet_cnt == 1 ? <<"--first--" : <<"--other--", $snippet;
 #line $source_line "$source_file"
 print "=== BEGIN ===\n";
 --first--
@@ -154,9 +155,8 @@ print "=== BEGIN ===\n";
 	 $expected .= $printout . "$end_marker\n";
       }
       if ($snippet_cnt) {
-	 my $body=join("", @snippets);
-	 $body= <<"---";
-$Polymake::Core::warn_options;
+	 my $body = join("", @snippets);
+	 $body = Core::RuleFilter::warn_options() . <<"---";
 package Polymake::$testpkg;
 use application '$app_name';  declare +auto;
 $body
@@ -164,12 +164,12 @@ delete \$Polymake::{"$testpkg\::"};
 ---
 	 new ExampleCase($id, $body, $nocompare ? undef : $expected, $source_file, $example->source_line, $app != $self->group->application);
       } else {
-	 $@="help topic ".$self->topic->full_path." example #$id without any input at $source_file, line $source_line\n";
+	 $@ = "help topic ".$self->topic->full_path." example #$id without any input at $source_file, line $source_line\n";
 	 return;
       }
    }
    if ($disable_cnt == $id) {
-      $self->disabled=$disable_reason // "notest";
+      $self->disabled = $disable_reason // "notest";
    }
 }
 

@@ -1,0 +1,124 @@
+#  Copyright (c) 1997-2020
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+#
+#  Store a snapshot of big object relationships in the file <TOP>/upgrades/big_objects-<TARGET_VERSION>
+#  to be used in updgrade scripts applied to the current version
+#
+
+#  Determine the target version:
+#  - if the current version is a released one (no patch number), append .1 at it
+#  - otherwise, check whether there are any upgrade rules for the current version
+#    if yes, increase the patch number, otherwise assume it has already been bumped
+
+my ($target_version, $last_upgrade_group);
+
+my $next_upgrade = (sort { $b->[1] cmp $a->[1] } map { m{/([\d.]+)$} ? [ $1, eval "v$1" ] : () } glob("$InstallTop/upgrades/[0-9]*"))[0];
+if ($VersionNumber ge $next_upgrade->[1]) {
+   undef $next_upgrade;
+}
+if (defined($next_upgrade)) {
+   require Polymake::Core::Upgrades;
+   my $upgrades = new Core::Upgrades($next_upgrade->[0]);
+   $upgrades->prepare;
+   if (@{$upgrades->groups}) {
+      $last_upgrade_group = $upgrades->groups->[0];
+      if ($VersionNumber eq $last_upgrade_group->to_v) {
+         # there are upgrade rules for the current version: it has not yet been bumped
+         $target_version = $Version =~ s/^\d+\.\d+\.\K(\d+)$/$1+1/re;
+      } elsif ($VersionNumber lt $last_upgrade_group->to_v) {
+         # there are already some new rules prepared for the next version
+         $target_version = $last_upgrade_group->to_version;
+      } else {
+         # current version has already been bumped
+         $target_version = $Version;
+      }
+   }
+}
+# when it's the first upgrade since the last release, the current version number might be already bumped or not
+$target_version //= $Version =~ /^\d+\.\d+$/ ? "$Version.1" : $Version;
+
+add Core::Application($_) for map { /$filename_re/o } glob "$InstallTop/apps/*";
+
+my (%super, %descend);
+
+sub is_base_object_type {
+   # either a standalone non-parametrized type or a base template
+   ref($_[0]) eq "Polymake::Core::BigObjectType" and !$_[0]->generic
+}
+
+sub is_base_spez {
+   ref($_[0]) eq "Polymake::Core::BigObjectType::Specialization" and !$_[0]->generic
+}
+
+sub qualified_generic_name {
+   $_[0]->application->name . "::" . $_[0]->name
+}
+
+sub collect_subobject_properties {
+   my ($proto, $outer) = @_;
+   $outer //= $proto;
+   my %result;
+   foreach my $prop (grep { $_->name !~ /\.pure$/  and
+                            $_->flags & (Core::Property::Flags::is_subobject | Core::Property::Flags::is_subobject_array)  and
+                            not($_->flags & Core::Property::Flags::is_permutation) }
+                     values %{$proto->properties}) {
+
+      my $pure_type = qualified_generic_name($prop->subobject_type->pure_type);
+      my $subobjects;
+      if ($prop->flags & Core::Property::Flags::is_augmented  and
+          $prop->type->outer_object_type == $outer  and
+          keys %{$subobjects = collect_subobject_properties($prop->type, $outer)}) {
+         $result{$prop->name} = [ $pure_type, $subobjects ];
+      } elsif ($prop->defined_for == $proto) {
+         $result{$prop->name} = $pure_type;
+      }
+   }
+   \%result
+}
+
+foreach my $app (Core::Application::list_loaded()) {
+   foreach my $proto (@{$app->object_types}) {
+      if (is_base_object_type($proto)  and
+          (my @super = sort map { qualified_generic_name($_) } grep { is_base_object_type($_) } @{$proto->linear_isa})) {
+         $super{qualified_generic_name($proto)} = \@super;
+      }
+      my $subobjects;
+      if (is_base_object_type($proto) || is_base_spez($proto)  and
+          keys %{$subobjects = collect_subobject_properties($proto)}) {
+         $descend{qualified_generic_name($proto)} = $subobjects;
+      }
+   }
+}
+
+my %big_objects = (super => \%super, descend => \%descend);
+
+if (defined($last_upgrade_group) &&
+    equal_nested_elements($last_upgrade_group->big_objects, \%big_objects)) {
+   warn_print("no changes since creation of big object inventory for ", $last_upgrade_group->to_version, " - will reuse the latter");
+} else {
+   my $result_file = "$InstallTop/upgrades/big_objects-$target_version";
+   open my $out, ">", $result_file or die "can't create result file $result_file: $!\n";
+   JSON->new->canonical->indent->space_after->write(\%big_objects, $out);
+   close $out;
+   warn_print("created an inventory file $result_file");
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

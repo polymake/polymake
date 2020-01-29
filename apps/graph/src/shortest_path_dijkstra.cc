@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,27 +25,27 @@ namespace graph {
 
 //! find the shortest path in a graph between two given nodes
 //! for the given edge weights
-//! @return List(Array<int>, Weight>) path as a sequence of nodes and total weight
+//! @return List(Array<Int>, Weight>) path as a sequence of nodes and total weight
 //!                                   empty if there is no path connecting source and target nodes
 template <typename Dir, typename Weight>
-perl::ListReturn shortest_path_dijkstra(const Graph<Dir>& G, const EdgeMap<Dir, Weight>& weights,
-                                        int source_node, int target_node, bool backward)
+ListReturn shortest_path_dijkstra(const Graph<Dir>& G, const EdgeMap<Dir, Weight>& weights,
+                                        Int source_node, Int target_node, bool backward)
 {
    if (source_node<0 || source_node>=G.nodes())
       throw std::runtime_error("invalid source node");
    if (target_node<0 || target_node>=G.nodes())
       throw std::runtime_error("invalid source node");
 
-   perl::ListReturn result;
+   ListReturn result;
    DijkstraShortestPath<DijkstraShortestPathWithScalarWeights<Dir, Weight>> DSP(G, weights);
    auto path_it = DSP.solve(source_node, target_node, backward);
    if (!path_it.at_end()) {
       const Weight w = path_it.cur_weight();
-      std::vector<int> rev_path;
+      std::vector<Int> rev_path;
       do
          rev_path.push_back(path_it.cur_node());
       while (!(++path_it).at_end());
-      result << Array<int>(rev_path.size(), rev_path.rbegin());
+      result << Array<Int>(rev_path.size(), rev_path.rbegin());
       result << w;
    }
 

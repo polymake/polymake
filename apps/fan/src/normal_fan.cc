@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,13 +24,13 @@
 namespace polymake { namespace fan {
       
 template <typename Coord>
-perl::Object normal_fan(perl::Object p)
+BigObject normal_fan(BigObject p)
 {
-   perl::Object f("PolyhedralFan", mlist<Coord>());
+   BigObject f("PolyhedralFan", mlist<Coord>());
 
-   const int dim   = p.call_method("AMBIENT_DIM");
-   const int p_dim = p.call_method("DIM");
-   const int ldim  = p.give       ("LINEALITY_DIM");
+   const Int dim   = p.call_method("AMBIENT_DIM");
+   const Int p_dim = p.call_method("DIM");
+   const Int ldim  = p.give       ("LINEALITY_DIM");
 
    if (!p.give("FEASIBLE")) {
       f.take("FAN_AMBIENT_DIM") << dim;
@@ -49,15 +49,15 @@ perl::Object normal_fan(perl::Object p)
    const Matrix<Coord> ls = p.give("AFFINE_HULL");
    const bool bounded     = p.give("BOUNDED");
    
-   Array<Array<int>> gens;
-   const bool has_group = p.lookup("GROUP");
-   if (has_group) {
-      gens = p.give("GROUP.FACETS_ACTION.GENERATORS");
-   }
+   Array<Array<Int>> gens;
+   const bool has_group = p.exists("GROUP");
+   if (has_group)
+      p.give("GROUP.FACETS_ACTION.GENERATORS") >> gens;
    
    struct id_collector {
-      mutable Set<int> oldids;
-      void operator() (const int& i, const int& j) const {
+      mutable Set<Int> oldids;
+      void operator() (Int i, Int j) const
+      {
          oldids += i;
       }
    };
@@ -66,7 +66,7 @@ perl::Object normal_fan(perl::Object p)
    // then we squeeze the cols to remove the far face
    // this also removes the facet inequality of polytopes with combinatorial dim zero
    if (!bounded || p_dim == 0) {
-      const Set<int> bounded_verts = p.call_method("BOUNDED_VERTICES");
+      const Set<Int> bounded_verts = p.call_method("BOUNDED_VERTICES");
       ftv = ftv.minor(bounded_verts,All);
 
       // we only squeeze the cols since sometimes we want to keep an empty set
@@ -94,10 +94,10 @@ perl::Object normal_fan(perl::Object p)
    f.take("FAN_AMBIENT_DIM") << dim;
 
    if (has_group && gens.size()) {
-      perl::Object a("group::PermutationAction");
+      BigObject a("group::PermutationAction");
       a.take("GENERATORS") << gens;
 
-      perl::Object g("group::Group");
+      BigObject g("group::Group");
       g.set_description() << "symmetry group induced by the group of the original polytope" << endl;
       g.set_name("Aut");
       g.take("RAYS_ACTION") << a;

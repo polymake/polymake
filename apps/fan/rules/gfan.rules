@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -36,12 +36,39 @@ CONFIGURE {
 		 "gfan_topolyhedralfan");
 }
 
-# command => Object
+# command, input_generator => serialized BigObject in JSON
 sub run_gfan {
-  my ($cmd)=@_;
-  open my $gfan_pipe, "$cmd --xml 2>/dev/null |" or die "can't run $cmd: $!\n";
-  Core::Object->fromXMLstream($gfan_pipe);
+  require Polymake::Core::XMLtoJSON;
+
+  my ($input_gen, @pipeline) = @_;
+  my $tempfile = new TempTextFile;
+  $input_gen->($tempfile);
+  $pipeline[0] .= " <$tempfile";
+  if (!$DebugLevel) {
+    $_ .= " 2>/dev/null" for @pipeline;
+  }
+  my $cmd = join(" | ", @pipeline) . " --xml |";
+  open my $P, $cmd
+    or die "can't run `$cmd': $!\n";
+  my $data = Core::XMLtoJSON::from_filehandle($P);
+  close $P;
+  die "`$cmd' failed with exit code $?\n" if $?;
+  return $data;
 }
+
+sub gfan_to_symmetric_fan {
+  my ($data) = @_;
+  my $version = $data->{_ns}{polymake}[1];
+  if ($version eq "2.9.9") {
+    # remove leading "1" from F_VECTOR
+    # other adaptations will be done by upgrade rules
+    if (defined(my $v = $data->{F_VECTOR})) {
+      shift @$v;
+    }
+  }
+  Core::Serializer::deserialize($data)
+}
+
 
 # @category Producing a fan
 # Call [[wiki:external_software#gfan]] to compute the secondary fan of a point configuration.
@@ -49,11 +76,27 @@ sub run_gfan {
 # @param Matrix M a matrix whose rows are the vectors in the configuration
 # @return PolyhedralFan
 user_function gfan_secondary_fan(Matrix) {
-  my ($M)=@_;
-  my $tempfile=new Tempfile;
-  my $input=gfan_print_matrix($tempfile, eliminate_denominators_entire_affine($M));
-  # WARNING: file automatically converted via XSLT to correct F_VECTOR
-  return run_gfan("$gfan_secondaryfan <$input");
+  my ($M) = @_;
+  return gfan_to_symmetric_fan(run_gfan(sub { gfan_print_matrix($_[0], eliminate_denominators_entire_affine($M)) },
+                                        $gfan_secondaryfan));
+}
+
+sub gfan_print_matrix {
+  my ($infile, $M) = @_;
+
+  print $infile "{";
+  my $r = $M->rows();
+  my $c = $M->cols();
+  for (my $i = 0; $i < $r; ++$i) {
+    print $infile "," if $i != 0;
+    print $infile "(";
+    for (my $j = 0; $j < $c; ++$j) {
+      print $infile "," if $j != 0;
+      print $infile $M->elem($i, $j);
+    }
+    print $infile ")";
+  }
+  print $infile "}\n";
 }
 
 # @category Producing a fan
@@ -66,54 +109,21 @@ user_function gfan_secondary_fan(polytope::PointConfiguration) {
   return gfan_secondary_fan($pc->POINTS);
 }
 
-sub gfan_print_matrix {
-  my ($tempname, $M) = @_;
-
-  open(my $infile, ">$tempname.txt")
-    or die "can't create temporary file $tempname.txt: $!";
-
-  print $infile "{";
-  my $r=$M->rows();
-  my $c=$M->cols();
-  for (my $i=0; $i<$r; ++$i) {
-    print $infile "," unless $i==0;
-    print $infile "(";
-    for (my $j=0; $j<$c; ++$j) {
-      print $infile "," unless $j==0;
-      print $infile $M->elem($i,$j);
-    }
-      print $infile ")";
-  }
-  print $infile "}\n";
-
-  close $infile;
-  return "$tempname.txt";
-}
-
 # @category Producing a fan
 # Call [[wiki:external_software#gfan]] to compute the greobner fan of an ideal.
 #
 # @param ideal::Ideal I input ideal
 # @return PolyhedralFan
 user_function groebner_fan(ideal::Ideal) {
-  my ($I)=@_;
-  my $tempfile=new Tempfile;
-  my $input=gfan_print_ideal($tempfile, $I);
-  # WARNING: file automatically converted via XSLT to correct F_VECTOR
-  return run_gfan("$gfan_bases <$input 2>/dev/null | $gfan_topolyhedralfan");
+  my ($I) = @_;
+  return gfan_to_symmetric_fan(run_gfan(sub { gfan_print_ideal($_[0], $I) }, $gfan_bases,
+                                        $gfan_topolyhedralfan));
 }
 
 sub gfan_print_ideal {
-  my ($tempname, $I) = @_;
-
-  open(my $infile, ">$tempname.txt")
-    or die "can't create temporary file $tempname.txt: $!";
-
-  print $infile "Q[", (join ",", monomials($I->N_VARIABLES)), "]\n";
-  print $infile "{", (join ",", @{$I->GENERATORS}), "}\n";
-
-  close $infile;
-  return "$tempname.txt"
+  my ($infile, $I) = @_;
+  print $infile "Q[", join(",", monomials($I->N_VARIABLES)), "]\n";
+  print $infile "{", join(",", @{$I->GENERATORS}), "}\n";
 }
 
 # Local Variables:

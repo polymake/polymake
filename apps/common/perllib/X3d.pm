@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -105,7 +105,6 @@ sub draw_label {
 ################################################################################
 
 package X3d::File;
-
 
 use Polymake::Struct (
    [ new => '$' ],
@@ -226,7 +225,6 @@ sub toString {
    my $title = $self->title // "unnamed";
    
    my $x = XML::Writer->new( OUTPUT => 'self', DATA_MODE => 1, DATA_INDENT => 3 );
-
    $x->xmlDecl('UTF-8');
    $x->doctype('X3D', "ISO//Web3D//DTD X3D 3.0//EN", "http://www.web3d.org/specifications/x3d-3.0.dtd");
    $x->startTag('X3D', profile => "Interchange", version => "3.0", 'xmlns:xsd' => "http://www.w3.org/2001/XMLSchema-instance", 'xsd:noNamespaceSchemaLocation' => "http://www.web3d.org/specifications/x3d-3.0.xsd");
@@ -290,21 +288,9 @@ sub new {
 }
 
 sub draw_def {
+   #unused atm
    my ($self,$writedefto,$x)=@_;
    my $P=$self->source;
-   
-   # NOTES ON THE BLENDER IMPORT:
-   # does not resolve prototypes properly
-   # strangely reverts the X axis...
-   
-   # quote /usr/share/blender/scripts/addons/io_scene_x3d/import_x3d.py    line 1878  ff:
-   #     # we need unflattened coord array here, while
-   #     # importmesh_readvertices uses flattened. can't cache both :(
-   #     # todo: resolve that somehow, so that vertex set can be effectively
-   #     # reused between different mesh types?
-   # end of quote
-   # thus, we can't use a coordinate def in, for example, a pointset if we want to 
-   # use it in an indexedfaceset
    
    $x->startTag('Shape');
 		$x->startTag($writedefto, solid => "false");
@@ -322,8 +308,7 @@ sub draw_point {
    #the vertex sphere
    if ($radius) {
       $x->startTag('Shape');
-         $x->startTag('Sphere', radius => $radius);
-         $x->endTag('Sphere');
+         $x->emptyTag('Sphere', radius => $radius);
          $x->startTag('Appearance');
             $x->emptyTag('Material', diffuseColor => $color);
          $x->endTag('Appearance');
@@ -342,10 +327,10 @@ sub draw_edge {
 	
 	my $ahead_l = (!$arrow_dir) ? 0 : $arrowhead_length * $scale; 
 	my $ahead_r = $arrowhead_radius * $scale;
+	my $fr = @{$self->coords}[$f];
+	my $to = @{$self->coords}[$t];
    
    if ($ahead_l || !$use_lines || defined($label)) {
-		my $fr = @{$self->coords}[$f];
-		my $to = @{$self->coords}[$t];
 		my $to_r = @{$self->radii}[$t];
 		my $fr_r = @{$self->radii}[$f];
 		my $to_offset = $ahead_l ? $to_r : sqrt(max(0,$to_r**2-$cyl_r**2));
@@ -403,9 +388,9 @@ sub draw_edge {
 			$x->startTag('Appearance');
 				$x->emptyTag('Material', diffuseColor => $edge_color);
 			$x->endTag('Appearance');
-			$x->startTag('IndexedLineSet', coordIndex => $f." ".$t);
-				$x->emptyTag('Coordinate', USE => "pointCoords");
-			$x->endTag('IndexedLineSet');
+			$x->startTag('LineSet', vertexCount => "2");
+				$x->emptyTag('Coordinate', point=> Visual::print_coords($fr)." ".Visual::print_coords($to));
+			$x->endTag('LineSet');
 		$x->endTag('Shape');
 	}
 
@@ -448,14 +433,6 @@ use Polymake::Struct [ '@ISA' => 'PointSet' ];
 
 sub draw_facet {
    my ($self,$x,$facet,$color,$transparency,$label)=@_;
-   $x->startTag('Shape');
-      $x->startTag('Appearance');
-		   $x->emptyTag('Material', diffuseColor => $color, transparency => $transparency);
-		$x->endTag('Appearance');
-		$x->startTag('IndexedFaceSet', solid => "false", coordIndex => $facet);
-			$x->emptyTag('Coordinate', USE => "pointCoords");
-		$x->endTag('IndexedFaceSet');
-	$x->endTag('Shape');
    
    my $label_offset = new Vector<Float>([0,0,0]);
    if (defined($label) && $label!~/^\s*$/) {
@@ -474,19 +451,33 @@ sub draw_facets {
    my $style = $P->FacetStyle;
    my $labels = $P->FacetLabels;
    my $transparency = $P->FacetTransparency // 0;
-   my $color = $P->FacetColor;
-   my $static_color; 
-   if (defined($color) && !is_code($color)) {
-      $static_color=$color;
+   my $color = $P->FacetColor // $Visual::Color::facets;
+   if (is_code($transparency)) {
+      print "X3d: code FacetTransparency is not supported at the moment\n";
+      $transparency = $transparency->(0);
    }
 
-   foreach my $i (0..scalar(@facets)-1) {
-      my $col = $static_color // $color->($i) // $Visual::Color::facets;
-      my $tp = (is_code($transparency)) ? $transparency->($i) : $transparency;
-      my $label = defined($labels) ? $labels->($i) : undef;
-      $col = $col->toFloat;
-      $self->draw_facet($x,$facets[$i],$col,$tp,$label);  
-   }
+   $x->startTag('Shape');
+      $x->startTag('Appearance');
+         if (!is_code($color)) {
+		      $x->emptyTag('Material', diffuseColor => $color->toFloat, transparency => $transparency);
+         } else {
+		      $x->emptyTag('Material', transparency => $transparency);
+         }
+		$x->endTag('Appearance');
+		$x->startTag('IndexedFaceSet', solid => "true", coordIndex => join(" -1 ", @facets), colorPerVertex => "false");
+			$x->emptyTag('Coordinate', point => join(' ', map { Visual::print_coords($_) } @{$self->coords}));
+         if (is_code($color)) {
+            my @colors;
+            foreach my $i (0..scalar(@facets)-1) {
+               my $col = $color->($i) // $Visual::Color::facets;
+               push @colors, $col->toFloat;
+            }
+			   $x->emptyTag('Color', color => join(' ', @colors));
+         }
+		$x->endTag('IndexedFaceSet');
+	$x->endTag('Shape');
+   
 }
 
 sub draw_edges {
@@ -512,10 +503,6 @@ sub draw_edges {
 sub draw {
    my ($self,$x)=@_;
    $self->draw_points($x) unless $self->source->VertexStyle =~ $Visual::hidden_re;
-   $self->draw_def('IndexedFaceSet',$x);
-   if ($use_lines) { #this is just because the blender import script limps
-   	$self->draw_def('IndexedLineSet',$x); 
-   }
    $self->draw_edges($x) unless $self->source->EdgeStyle =~ $Visual::hidden_re;
    $self->draw_facets($x) unless $self->source->FacetStyle =~ $Visual::hidden_re;
    $x;

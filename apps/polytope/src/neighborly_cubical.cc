@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,9 +32,9 @@ template <typename SetTop>
 std::string circuit_label (const GenericSet<SetTop>& circuit)
 {
    std::string label;
-   int pos(0);
-   for (auto it=entire(circuit.top()); !it.at_end(); ++it) {
-      const int e(*it), e2(e/2);
+   Int pos = 0;
+   for (auto it = entire(circuit.top()); !it.at_end(); ++it) {
+      const Int e(*it), e2(e/2);
       label.append(e2-pos, '0');
       label+= e%2==0? '+' : '-';
       pos=e2+1;
@@ -51,27 +51,20 @@ void add_facet (facet_matrix& VIF, label_list& labels,
 }
 
 // subset of given order represented by least significant bits
-inline int first_valid_subset(const int order) { return (1<<order)-1; }
+Int first_valid_subset(const Int order) { return (1L << order)-1; }
 
-inline bool last_bit_set(const int x) { return x&1; }
-inline bool last_bit_clear(const int x) { return !(x&1); }
-inline bool last_two_bits_clear(const int x) { return !(x&3); }
+bool last_bit_set(const Int x) { return x&1; }
+bool last_bit_clear(const Int x) { return !(x&1); }
+bool last_two_bits_clear(const Int x) { return !(x&3); }
 
-inline
-int card(int subset)
-   // count the number of bits
+// count the number of bits
+Int card(Int subset)
 {
-   int bits(0);
-   while (subset) {
-      bits+=subset&1;
-      subset>>=1;
-   }
-   return bits;
+   return __builtin_popcountl(static_cast<unsigned long>(subset));
 }
 
-inline
-bool valid(int subset)
-   // check for even gaps and set 0-bit
+// check for even gaps and set 0-bit
+bool valid(Int subset)
 {
    if (!subset) return true;
    if (last_bit_clear(subset)) return false;
@@ -83,39 +76,38 @@ bool valid(int subset)
    }
 }
 
-inline
-int next_valid_subset(const int order, int last)
-   // next subset of given order with even gaps (no gap at the beginning)
+// next subset of given order with even gaps (no gap at the beginning)
+Int next_valid_subset(const Int order, Int last)
 {
-   int subset(last | 1); // make sure it's odd
-   for(;;) {
+   Int subset(last | 1); // make sure it's odd
+   for (;;) {
       subset += 2;
-      const int c(card(subset));
-      if (c!=order) continue;
+      const Int c = card(subset);
+      if (c != order) continue;
       if (valid(subset)) return subset;
    }
 }
 
 void extend_circuits(facet_matrix& VIF,
                      label_list& labels,
-                     const Set<int>& circuit,
+                     const Set<Int>& circuit,
                      const Array<Bitset>& CubeFacets,
-                     const int n, const int d,
-                     const int p, const int k)
+                     const Int n, const Int d,
+                     const Int p, const Int k)
 {
    // enumerate some subsets of {p+k,..,n-1} of order n-d+1-p
-   const int
-      order(n-d-p+1),
-      o2(1<<order),
-      m(n-p-k), // number of bits necessary to represent subset
-      m2(1<<m); // 2**m
-   int subset(first_valid_subset(order));
-   while (subset<m2) {
+   const Int
+      order = n-d-p+1,
+      o2 = 1L <<order,
+      m = n-p-k, // number of bits necessary to represent subset
+      m2 = 1L << m; // 2**m
+   Int subset = first_valid_subset(order);
+   while (subset < m2) {
       // variate all signs
-      for (int sign_vector=0; sign_vector<o2; ++sign_vector) {
-         Set<int> S;
-         int check_signs(1);
-         for (int y=1, no=0; y<=subset; y*=2, ++no) {
+      for (Int sign_vector = 0; sign_vector < o2; ++sign_vector) {
+         Set<Int> S;
+         Int check_signs = 1;
+         for (Int y = 1, no = 0; y <= subset; y *= 2, ++no) {
             if (y&subset) {
                if (check_signs&sign_vector)
                   S += 2*(p+k+no)+1;
@@ -133,39 +125,39 @@ void extend_circuits(facet_matrix& VIF,
 
 } // end unnamed namespace
 
-perl::Object neighborly_cubical(int d, int n)
+BigObject neighborly_cubical(Int d, Int n)
 {
   // there is a certain restriction on the parameters
-  const int m=8*sizeof(int)-2;
+  const Int m = 8*sizeof(Int)-2;
   if (d < 2 || d > n || n > m)
     throw std::runtime_error("neighborly_cubical: 2 <= d <= n <= " + std::to_string(m));
 
-  perl::Object p_out("Polytope<Rational>"); //FIXME: Polytope<Combinatorial>
+  BigObject p_out("Polytope<Rational>"); //FIXME: Polytope<Combinatorial>
   p_out.set_description() << "Neighborly cubical " << d << "-polytope" << endl;
 
-  const int n_vertices(1<<n);
+  const Int n_vertices = 1L << n;
 
   // produce a combinatorial description of the n-cube
    Array<Bitset> CubeFacets(2*n);
-   for (int i=0; i<n_vertices; ++i)
-     for (int x=i, k=0; k<n; x>>=1, ++k)
+   for (Int i = 0; i < n_vertices; ++i)
+     for (Int x = i, k = 0; k < n; x >>= 1, ++k)
        CubeFacets[2*k+(x%2)] += i;
 
    facet_matrix VIF(n_vertices);
    label_list labels;
 
-   Set<int> circuit; // the one to extend
+   Set<Int> circuit; // the one to extend
 
    // the "p==0" case: Gale's evenness criterion
-   for (int k=1; k<d; ++k)
+   for (Int k = 1; k < d; ++k)
       extend_circuits(VIF,labels,circuit,CubeFacets,n,d,0,k);
 
    // take the first p but not the (p+1)st
-   for (int p=1; p<=n-d; ++p) {
-      const int pm1(p-1);
+   for (Int p = 1; p <= n-d; ++p) {
+      const Int pm1 = p-1;
          
       // the signs among the first p-1 vectors alternate, starting with -1
-      Set<int> c_pm1(series(1,pm1-pm1/2,4) + series(2,pm1/2,4));
+      Set<Int> c_pm1(series(1,pm1-pm1/2,4) + series(2,pm1/2,4));
 
       // consider an even gap; then the sign sigma at p is (-1)^p
       if (last_bit_clear(p)) // p even
@@ -174,7 +166,7 @@ perl::Object neighborly_cubical(int d, int n)
          circuit = c_pm1 + (2*pm1+1); // "-"
 
       // just a partial circuit up to now
-      for (int k=2; p+k<n; k+=2) {
+      for (Int k = 2; p+k < n; k += 2) {
          extend_circuits(VIF,labels,circuit,CubeFacets,n,d,p,k);
       }
 
@@ -184,13 +176,13 @@ perl::Object neighborly_cubical(int d, int n)
       else
          circuit = c_pm1 + (2*pm1);   // "+"
       // just a partial circuit up to now
-      for (int k=1; p+k<n; k+=2) {
+      for (Int k = 1; p+k < n; k += 2) {
          extend_circuits(VIF,labels,circuit,CubeFacets,n,d,p,k);
       }
    }
 
    // now we need the circuits consisting of the first n-d+1 (two choices for signs)
-   const int pm1(n-d);
+   const Int pm1 = n-d;
    circuit = series(1,pm1-pm1/2,4) + series(2,pm1/2,4); // always starts with a negative one
    add_facet(VIF, labels, circuit+(2*pm1), CubeFacets);
    add_facet(VIF, labels, circuit+(2*pm1+1), CubeFacets);

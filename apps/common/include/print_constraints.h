@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,7 +31,7 @@ void print_constraints_sub(const Matrix<Scalar>& M, Array<std::string> coord_lab
    if (M.cols() == 0)
       throw std::runtime_error("print_constraints - Invalid dimension 0!");
 
-   const int start = homogeneous ? 0 : 1;
+   const Int start = homogeneous ? 0 : 1;
 
    if (coord_labels.size() > 0) {
       if (!homogeneous && coord_labels.size() == M.cols()-1) {
@@ -44,16 +44,16 @@ void print_constraints_sub(const Matrix<Scalar>& M, Array<std::string> coord_lab
    } else {
       const std::string var("x");
       coord_labels.resize(M.cols());
-      for (int i=start; i<M.cols(); ++i)
-         coord_labels[i]=var+std::to_string(i);
+      for (Int i = start, d = M.cols(); i < d; ++i)
+         coord_labels[i] = var + std::to_string(i);
 
       // the coordinate label we assign below will not be used
       if (!homogeneous)
          coord_labels[0] = "inhomog_var";
    }
 
-   for (int i=0; i < M.rows(); ++i) {
-      if(i < row_labels.size())
+   for (Int i = 0, r = M.rows(); i < r; ++i) {
+      if (i < row_labels.size())
          cout << row_labels[i];
       else
          cout << i;
@@ -61,37 +61,37 @@ void print_constraints_sub(const Matrix<Scalar>& M, Array<std::string> coord_lab
       if (is_zero(M.row(i).slice(range_from(start)))) {
          cout << "0";
       } else {
-         bool first=true;
-         for (int j=start; j < M.cols(); ++j) {
-            const Scalar cur_coeff = M.row(i)[j];
-            if ( cur_coeff != 0 ) {
-               if ( ! first )
-                  cout << " ";
-               if ( cur_coeff > 0 ) {
-                  if ( ! first )
+         bool first = true;
+         for (Int j = start; j < M.cols(); ++j) {
+           const Scalar cur_coeff = M(i, j);
+            if (cur_coeff != 0) {
+               if (!first)
+                  cout << ' ';
+               if (cur_coeff > 0) {
+                  if (!first)
                      cout << "+ ";
-                  if ( cur_coeff != 1 )
-                     cout << std::setprecision(16) << cur_coeff << " ";
+                  if (cur_coeff != 1)
+                     cout << std::setprecision(16) << cur_coeff << ' ';
                }
-               if ( cur_coeff < 0 ) {
-                  if ( ! first )
+               if (cur_coeff < 0) {
+                  if (! first)
                      cout << "- ";
                   else
-                     cout << "-";
-                  if ( cur_coeff != -1 )
-                     cout << std::setprecision(16) << -cur_coeff << " ";
+                     cout << '-';
+                  if (cur_coeff != -1)
+                     cout << std::setprecision(16) << -cur_coeff << ' ';
                }
-               first=false;
+               first = false;
                cout << coord_labels[j];
             }
          }
       }
-      if ( are_eqs )
+      if (are_eqs)
          cout << " = ";
       else
          cout << " >= ";
-      Scalar neg_rhs = homogeneous ? zero_value<Scalar>() : M.row(i)[0];
-      cout << std::setprecision(16) << (neg_rhs!=0 ? -neg_rhs : neg_rhs) << '\n';
+      const Scalar neg_rhs = homogeneous ? zero_value<Scalar>() : -M(i, 0);
+      cout << std::setprecision(16) << neg_rhs << '\n';
    }
    cout << endl;
 }

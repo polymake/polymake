@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,16 +32,16 @@ struct type2type { typedef T type; };
 template <typename Scalar, typename SetType>
 class simplex_rep_iterator {
 
-   using Orbits = Array<Set<int>>;
+   using Orbits = Array<Set<Int>>;
    using Kernel_type = ListMatrix<SparseVector<Scalar>>;
 
 public:
-   simplex_rep_iterator(const Matrix<Scalar>& _V, 
-                        int _d, 
-                        const group::PermlibGroup& _sym_group) 
-      : sym_group(_sym_group)
-      , V(_V)
-      , d(_d)
+   simplex_rep_iterator(const Matrix<Scalar>& V_arg,
+                        Int d_arg,
+                        const group::PermlibGroup& sym_group_arg) 
+      : sym_group(sym_group_arg)
+      , V(V_arg)
+      , d(d_arg)
       , k(0) 
       , current_kernel(d+1)
       , next_orbits(d+1)
@@ -50,7 +50,7 @@ public:
       , current_simplex_rep(V.rows())
    {
       current_kernel[0] = unit_matrix<Scalar>(V.cols());
-      basis_of_rowspan_intersect_orthogonal_complement(current_kernel[0], V[0], black_hole<int>(), black_hole<int>());
+      basis_of_rowspan_intersect_orthogonal_complement(current_kernel[0], V[0], black_hole<Int>(), black_hole<Int>());
       next_orbits[0] = sym_group.orbits();
       next_orbit_iterator[0] = entire(next_orbits[0]);
       if (!initialize_downward())
@@ -81,9 +81,10 @@ public:
 
 protected:
 
-   int step_while_dependent_or_smaller() {
-      bool good_vertex_found(false);
-      int new_vertex(-1);
+   Int step_while_dependent_or_smaller()
+   {
+      bool good_vertex_found = false;
+      Int new_vertex = -1;
       while ( k < d+1  &&  
               !good_vertex_found  &&  
               !next_orbit_iterator[k].at_end()) {
@@ -129,7 +130,7 @@ protected:
          if (next_orbit_iterator[k].at_end()) return false; 
          if (k<d) {
             current_kernel[k+1] = current_kernel[k];
-            basis_of_rowspan_intersect_orthogonal_complement(current_kernel[k+1], V[next_orbit_iterator[k]->front()], black_hole<int>(), black_hole<int>());
+            basis_of_rowspan_intersect_orthogonal_complement(current_kernel[k+1], V[next_orbit_iterator[k]->front()], black_hole<Int>(), black_hole<Int>());
             next_orbits[k+1] = sym_group.setwise_stabilizer(current_simplex).orbits();
             next_orbit_iterator[k+1] = entire(next_orbits[k+1]);
          }
@@ -143,9 +144,10 @@ public:
    const SetType& operator* () const { return current_simplex_rep; }
    const SetType* operator-> () const { return &(operator*()); }
 
-   friend std::ostream& operator<< (std::ostream& os, const simplex_rep_iterator& sit) {
+   friend std::ostream& operator<< (std::ostream& os, const simplex_rep_iterator& sit)
+   {
       os << "its: ==(";
-      for (int i=0; i<sit.d+1; ++i)
+      for (Int i=0; i < sit.d+1; ++i)
          if (!sit.next_orbit_iterator[i].at_end()) {
             os << sit.next_orbit_iterator[i]->front() << ((i==sit.k) ? "* " : " "); 
          } else {
@@ -153,9 +155,9 @@ public:
          }
       wrap(os) << ")== set: " << sit.current_simplex << " "; 
       os << "orbits: ";
-      for (int i=0; i<sit.d+1; ++i) {
+      for (Int i = 0; i < sit.d+1; ++i) {
          os << "[";
-         for (int j=0; j<sit.next_orbits[i].size(); ++j) {
+         for (Int j = 0; j < sit.next_orbits[i].size(); ++j) {
             os << "{";
             for (const auto& s : sit.next_orbits[i][j]) 
                os << s << " ";
@@ -191,8 +193,8 @@ protected:
 
    const group::PermlibGroup sym_group;
    const Matrix<Scalar> V;
-   const int d;
-   int k;
+   const Int d;
+   Int k;
    Array<Kernel_type> current_kernel;
    Array<Orbits> next_orbits;
    Array<pm::iterator_range<Orbits::const_iterator>> next_orbit_iterator;

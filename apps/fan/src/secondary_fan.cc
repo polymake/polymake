@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -49,10 +49,10 @@ star_of(const Simplex& F, const Subdivision& S)
 auto
 boundary_of(const std::vector<Simplex>& S)
 {
-   hash_map<Simplex,int> multiplicity_of;
+   hash_map<Simplex, Int> multiplicity_of;
    for (const auto& sigma: S)
-      for (const int& i: sigma)
-         multiplicity_of[Simplex(sigma - scalar2set(i))]++;
+      for (const Int& i: sigma)
+         ++multiplicity_of[sigma - i];
    
    std::vector<Simplex> boundary;
    for (const auto& m: multiplicity_of)
@@ -77,8 +77,8 @@ find_initial_subdivision(const Matrix<Scalar>& V_full,
                          const RandomSeed& seed)
 {
    UniformlyRandom<Rational> random(seed);
-   const int n (V_full.rows());
-   const int d (V_full.cols());
+   const Int n = V_full.rows();
+   const Int d = V_full.cols();
    
    Vector<Scalar> heights(n);
    if (!restrict_to.rows())
@@ -90,14 +90,14 @@ find_initial_subdivision(const Matrix<Scalar>& V_full,
       heights = coeffs * basis;
    }
 
-   perl::Object Q("Polytope", mlist<Scalar>());
+   BigObject Q("Polytope", mlist<Scalar>());
    Q.take("POINTS") << (V_full | heights);
 
    const IncidenceMatrix<> pif = Q.give("POINTS_IN_FACETS");
    const Matrix<Scalar> F = Q.give("FACETS");
 
    Subdivision S;
-   for (int i=0; i<pif.rows(); ++i)
+   for (Int i = 0; i < pif.rows(); ++i)
       if (F(i,d) < Scalar(0))
          S += Simplex(pif[i]);
    return S;
@@ -108,7 +108,7 @@ std::pair<SparseMatrix<Scalar>, SparseMatrix<Scalar>>
 vertices_from_ineqs(const GenericMatrix<Matrix1, Scalar>& inequalities,
                     const GenericMatrix<Matrix2, Scalar>& equations)
 {
-   perl::Object C("Cone", mlist<Scalar>());
+   BigObject C("Cone", mlist<Scalar>());
    C.take("INEQUALITIES") << Matrix<Scalar>(inequalities);
    C.take("EQUATIONS") << Matrix<Scalar>(equations);
 
@@ -127,12 +127,12 @@ cone_from_subdivision(const Matrix<Scalar>& V_full,
                       SparseMatrix<Scalar>& inequalities,
                       SparseMatrix<Scalar>& equations)
 {
-   Array<Set<int>> subdivision_array(subdivision.size());
+   Array<Set<Int>> subdivision_array(subdivision.size());
    auto sa_it = entire(subdivision_array);
    for (auto s_it = entire(subdivision); !s_it.at_end(); ++s_it, ++sa_it)
-      *sa_it = Set<int>(*s_it);
+      *sa_it = Set<Int>(*s_it);
    
-   const auto matrices = polytope::secondary_cone_ineq(V_full, subdivision_array, perl::OptionSet());
+   const auto matrices = polytope::secondary_cone_ineq(V_full, subdivision_array, OptionSet());
    inequalities = matrices.first;
    equations    = matrices.second;
 
@@ -197,19 +197,19 @@ check_flip(const Subdivision& T_Z_plus,
 #endif // POLYMAKE_DEBUG
 
 template <typename Scalar>
-Set<int>
+Set<Int>
 facet_indices_among_ineqs(const SparseMatrix<Scalar>& inequalities,
                           const SparseMatrix<Scalar>& rays)
 {
-   hash_map<Set<int>,int> index_of_zeros;
-   int i(0);
+   hash_map<Set<Int>, Int> index_of_zeros;
+   Int i = 0;
    FacetList facets;
    for (auto rit = entire(rows(inequalities)); !rit.at_end(); ++rit, ++i) {
-      const Set<int> zeros = orthogonal_rows(rays, *rit);
+      const Set<Int> zeros = orthogonal_rows(rays, *rit);
       facets.insertMax(zeros);
       index_of_zeros[zeros] = i; // for facets, this won't be duplicated; and we don't care about duplication for inequalities
    }
-   Set<int> facet_indices;
+   Set<Int> facet_indices;
    for (auto fit = entire(facets); !fit.at_end(); ++fit)
       facet_indices += index_of_zeros[*fit];
    return facet_indices;
@@ -223,8 +223,8 @@ flip_from_subdivision(const Subdivision& subdivision,
                       std::list<Subdivision>& active_subdivisions,
                       const Matrix<Scalar>& V_full,
                       const SparseMatrix<Scalar>& ker,
-                      hash_map<const Vector<Scalar>, int>& index_of,
-                      int& next_index,
+                      hash_map<Vector<Scalar>, Int>& index_of,
+                      Int& next_index,
                       FacetList& rays_in_max_cones,
                       const SparseMatrix<Scalar>& restrict_to)
 {
@@ -239,9 +239,9 @@ flip_from_subdivision(const Subdivision& subdivision,
    
    // process the facets of the cone, as they correspond to flips
    const auto facet_indices(facet_indices_among_ineqs(inequalities, R));
-   for (int i : facet_indices) {
-      if (  restrict_to.rows() &&
-            ! polytope::H_input_feasible(inequalities, equations / restrict_to / inequalities[i]) )
+   for (Int i : facet_indices) {
+      if (restrict_to.rows() &&
+          ! polytope::H_input_feasible(inequalities, equations / restrict_to / inequalities[i]))
             continue;
 
       Simplex neg_part, pos_part;
@@ -271,18 +271,18 @@ flip_from_subdivision(const Subdivision& subdivision,
 } // end anonymous namespace
    
 template<typename Scalar>
-perl::Object
+BigObject
 secondary_fan_impl(const Matrix<Scalar>& V_embed,
-                   perl::OptionSet options)
+                   OptionSet options)
 {
    const Matrix<Scalar> V_full = polytope::full_dim_projection(V_embed);
-   const int n (V_embed.rows());
+   const Int n = V_embed.rows();
 
    SparseMatrix<Scalar> restrict_to = options["restrict_to"];
    if (!restrict_to.rows())
       restrict_to = SparseMatrix<Scalar>(0,n);
    
-   const Array<Set<int>> initial_subdivision_array = options["initial_subdivision"];
+   const Array<Set<Int>> initial_subdivision_array = options["initial_subdivision"];
    Subdivision initial_subdivision;
    for (const auto s: initial_subdivision_array)
       initial_subdivision += Simplex(s);
@@ -298,8 +298,8 @@ secondary_fan_impl(const Matrix<Scalar>& V_embed,
    
    hash_set<Set<Simplex>> seen_subdivisions;
    FacetList rays_in_max_cones;
-   hash_map<const Vector<Scalar>, int> index_of;
-   int next_index = 0;
+   hash_map<Vector<Scalar>, Int> index_of;
+   Int next_index = 0;
 
    while (active_subdivisions.size()) {
       flip_from_subdivision(active_subdivisions.front(), seen_subdivisions, active_subdivisions, V_full, ker, index_of, next_index, rays_in_max_cones, restrict_to);
@@ -310,7 +310,7 @@ secondary_fan_impl(const Matrix<Scalar>& V_embed,
    for (const auto& index_pair : index_of)
       ordered_rays[index_pair.second] = index_pair.first;
 
-   perl::Object F("PolyhedralFan", mlist<Scalar>());
+   BigObject F("PolyhedralFan", mlist<Scalar>());
    F.take("RAYS") << ordered_rays;   
    F.take("MAXIMAL_CONES") << IncidenceMatrix<>(rays_in_max_cones.size(), index_of.size(), entire(rays_in_max_cones));
    F.take("LINEALITY_SPACE") << null_space(ordered_rays / restrict_to);

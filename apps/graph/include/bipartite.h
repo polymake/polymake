@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,7 +27,7 @@
 namespace polymake { namespace graph {
 
 /* Determine whether an undirected graph is bipartite.
- * Returns a negative int if not bipartite. If the graph is bipartite,
+ * Returns a negative Int if not bipartite. If the graph is bipartite,
  * the absolute difference of the black and white colored nodes is returned.
  * Also works for disconnected graphs (albeit its use may be limited).
  *
@@ -35,24 +35,24 @@ namespace polymake { namespace graph {
  */
 
 template <typename Graph>
-int bipartite_sign(const GenericGraph<Graph,Undirected>& G);
+Int bipartite_sign(const GenericGraph<Graph, Undirected>& G);
 
 
 // given a bipartite graph, color it with two colors, 0 and 1
 template <typename Graph>
-Vector<int> bipartite_coloring(const GenericGraph<Graph,Undirected>& G)
+Vector<Int> bipartite_coloring(const GenericGraph<Graph,Undirected>& G)
 {
    assert(G.nodes() > 0);
 
-   Vector<int> color_of(G.nodes(), 2); // initialize to dummy color 2
-   std::list<int> queue;
+   Vector<Int> color_of(G.nodes(), 2); // initialize to dummy color 2
+   std::list<Int> queue;
    queue.push_back(0);
    color_of[0] = 1;
-   Set<int> new_nodes(sequence(0, G.nodes()));
+   Set<Int> new_nodes(sequence(0, G.nodes()));
    while (queue.size()) {
-      const int n = queue.front(); queue.pop_front();
+      const Int n = queue.front(); queue.pop_front();
       new_nodes -= n;
-      const Set<int> neighbors = G.top().adjacent_nodes(n) * new_nodes;
+      const Set<Int> neighbors = G.top().adjacent_nodes(n) * new_nodes;
       const bool color = color_of[n];
       for (auto sit = entire(neighbors); !sit.at_end(); ++sit) {
          queue.push_back(*sit);

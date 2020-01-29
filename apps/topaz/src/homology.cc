@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,13 +23,13 @@
 
 namespace polymake { namespace topaz {
 
-typedef SimplicialComplex_as_FaceMap<int> FaceMap;
+typedef SimplicialComplex_as_FaceMap<Int> FaceMap;
 
 //////homology computation
 
 namespace{
 template<typename Coeff, typename MatrixType, typename ComplexType>
-Array<HomologyGroup<Coeff>> compute_homology(const HomologyComplex<Coeff,MatrixType,ComplexType> & HC, bool co, int dim_low, int dim_high)
+Array<HomologyGroup<Coeff>> compute_homology(const HomologyComplex<Coeff,MatrixType,ComplexType> & HC, bool co, Int dim_low, Int dim_high)
 {
    Array<HomologyGroup<Coeff>> H(HC.size());
    if (!co)
@@ -41,18 +41,22 @@ Array<HomologyGroup<Coeff>> compute_homology(const HomologyComplex<Coeff,MatrixT
 
 //FIXME #975 other coefficient and matrix types would be nice
 /*template<typename Coeff, typename MatrixType>
-Array<HomologyGroup<Coeff>> homology(const ChainComplex<MatrixType> & CC, bool co, int dim_low, int dim_high){
+Array<HomologyGroup<Coeff>> homology(const ChainComplex<MatrixType> & CC, bool co, Int dim_low, Int dim_high)
+{
    HomologyComplex< Coeff, MatrixType, ChainComplex<MatrixType> > HC(CC, dim_high, dim_low);
    return compute_homology<Coeff,MatrixType,ChainComplex<MatrixType>>(HC,co,dim_low,dim_high);
-}*/
+}
+*/
 
 template<typename Complex>
-Array<HomologyGroup<Integer>> homology(const Complex & CC, bool co, int dim_low, int dim_high){
+Array<HomologyGroup<Integer>> homology(const Complex & CC, bool co, Int dim_low, Int dim_high)
+{
    HomologyComplex< Integer, SparseMatrix<Integer>, Complex > HC(CC, dim_high, dim_low);
    return compute_homology<Integer,SparseMatrix<Integer>,Complex>(HC,co,dim_low,dim_high);
 }
 
-Array<HomologyGroup<Integer>> homology_sc(const Array< Set<int> >& F, bool co, int dim_low, int dim_high){
+Array<HomologyGroup<Integer>> homology_sc(const Array<Set<Int>>& F, bool co, Int dim_low, Int dim_high)
+{
    const FaceMap SC(F);
    return homology<FaceMap>(SC,co,dim_low,dim_high);
 }
@@ -68,7 +72,7 @@ void store_homologies_and_cycles_sc(const Complex& CC, const FaceMap& SC,
    for (typename Complex::iterator chain_it=CC.begin();  !chain_it.at_end();  ++chain_it, ++hom_it, ++cycle_it) {
       *hom_it = *chain_it;
 
-      const int n=chain_it.cycle_coeffs().cols() - empty_cols(chain_it.cycle_coeffs());
+      const Int n = chain_it.cycle_coeffs().cols() - empty_cols(chain_it.cycle_coeffs());
       cycle_it->coeffs.resize(chain_it.cycle_coeffs().rows(), n);
       //Cols< chain_complex::cycle_type::coeff_matrix >::iterator coeff_it=cols(cycle_it->coeffs).begin();
       auto coeff_it=cols(cycle_it->coeffs).begin();
@@ -97,7 +101,7 @@ void store_homologies_and_cycles(const Complex& CC, HomologyOutputIterator hom_i
 
 // list return value:
 // (homology groups, cycle groups)
-perl::ListReturn homology_and_cycles_sc(const Array< Set<int> >& F, bool co, int dim_low, int dim_high)
+ListReturn homology_and_cycles_sc(const Array<Set<Int>>& F, bool co, Int dim_low, Int dim_high)
 {
    const FaceMap SC(F);
    const HomologyComplex< Integer, SparseMatrix<Integer>, FaceMap > HC(SC,dim_high,dim_low);
@@ -109,14 +113,14 @@ perl::ListReturn homology_and_cycles_sc(const Array< Set<int> >& F, bool co, int
    else
       store_homologies_and_cycles_sc(cohomologies_and_cocycles(HC), SC, H.begin(), CYC.begin());
 
-   perl::ListReturn results;
+   ListReturn results;
    results << H << CYC;
    return results;
 }
 
 // general chain complex version
 Array<std::pair<HomologyGroup<Integer>, SparseMatrix<Integer>>>
-homology_and_cycles(const ChainComplex<SparseMatrix<Integer>> & CC, bool co, int dim_low, int dim_high)
+homology_and_cycles(const ChainComplex<SparseMatrix<Integer>> & CC, bool co, Int dim_low, Int dim_high)
 {
    const HomologyComplex< Integer, SparseMatrix<Integer>, ChainComplex<SparseMatrix<Integer>> > HC(CC,dim_high,dim_low);
    Array<std::pair<HomologyGroup<Integer>,SparseMatrix<Integer>>> HCYC(HC.size());
@@ -133,12 +137,13 @@ homology_and_cycles(const ChainComplex<SparseMatrix<Integer>> & CC, bool co, int
 //////
 
 template<typename Coeff, typename Complex>
-typename std::enable_if<pm::is_field<Coeff>::value && !std::is_same<Complex, perl::Value>::value, Array<int>>::type
-betti_numbers(const Complex& C){
-   int dim = C.dim();
-   Array<int> betti(dim+1);
-   int r_next,r = 0;
-   for(int d = dim; d>=0; --d){
+std::enable_if_t<pm::is_field<Coeff>::value && !std::is_same<Complex, perl::Value>::value, Array<Int>>
+betti_numbers(const Complex& C)
+{
+   Int dim = C.dim();
+   Array<Int> betti(dim+1);
+   Int r_next, r = 0;
+   for (Int d = dim; d >= 0; --d) {
       auto delta = C.template boundary_matrix<Coeff>(d);
       r_next = rank(delta);
       betti[d] = delta.rows() - r_next - r;
@@ -147,10 +152,11 @@ betti_numbers(const Complex& C){
    return betti;
 }
 
-template<typename Coeff>
-typename std::enable_if<pm::is_field<Coeff>::value, Array<int>>::type
-betti_numbers(perl::Object SC){
-   Array<Set<int>> F = SC.give("FACETS");
+template <typename Coeff>
+std::enable_if_t<pm::is_field<Coeff>::value, Array<Int>>
+betti_numbers(BigObject SC)
+{
+   Array<Set<Int>> F = SC.give("FACETS");
    const FaceMap FM(F);
    return betti_numbers<Coeff, FaceMap>(FM);
 }

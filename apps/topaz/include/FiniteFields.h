@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,44 +24,52 @@
 
 namespace polymake { namespace topaz {
 
-enum GF2 { GF2_zero=0, GF2_one=1 };
+enum class GF2_old : uint8_t { zero = 0, one = 1 };
 
-inline GF2 operator+(GF2 x) { return x; }
-inline GF2 operator-(GF2 x) { return x; }
+inline GF2_old operator+(GF2_old x) { return x; }
+inline GF2_old operator-(GF2_old x) { return x; }
 
-inline GF2 operator+ (GF2 a, GF2 b) { return GF2(int(a)^int(b)); }
-inline GF2 operator- (GF2 a, GF2 b) { return GF2(int(a)^int(b)); }
-inline GF2 operator* (GF2 a, GF2 b) { return GF2(int(a)&int(b)); }
-inline GF2 operator/ (GF2 a, GF2 b) { return GF2(int(a)/int(b)); }
+inline GF2_old operator+ (GF2_old a, GF2_old b) { return GF2_old(int(a)^int(b)); }
+inline GF2_old operator- (GF2_old a, GF2_old b) { return GF2_old(int(a)^int(b)); }
+inline GF2_old operator* (GF2_old a, GF2_old b) { return GF2_old(int(a)&int(b)); }
+inline GF2_old operator/ (GF2_old a, GF2_old b) { return GF2_old(int(a)/int(b)); }
 
-inline GF2& operator+= (GF2& a, GF2 b) { reinterpret_cast<int&>(a)^=int(b); return a; }
-inline GF2& operator-= (GF2& a, GF2 b) { reinterpret_cast<int&>(a)^=int(b); return a; }
-inline GF2& operator*= (GF2& a, GF2 b) { reinterpret_cast<int&>(a)&=int(b); return a; }
-inline GF2& operator/= (GF2& a, GF2 b) { reinterpret_cast<int&>(a)/=int(b); return a; }
+inline GF2_old& operator+= (GF2_old& a, GF2_old b) { return a = a+b; }
+inline GF2_old& operator-= (GF2_old& a, GF2_old b) { return a = a-b; }
+inline GF2_old& operator*= (GF2_old& a, GF2_old b) { return a = a*b; }
+inline GF2_old& operator/= (GF2_old& a, GF2_old b) { return a = a/b; }
 
-template <typename Traits> inline
+template <typename Traits>
 std::basic_istream<char, Traits>&
-operator>> (std::basic_istream<char, Traits>& is, GF2& a)
+operator>> (std::basic_istream<char, Traits>& is, GF2_old& a)
 {
-   return is >> reinterpret_cast<int&>(a);
+   int val;
+   is >> val;
+   if (val == 0)
+      a = GF2_old::zero;
+   else if (val == 1)
+      a = GF2_old::one;
+   else
+      is.setstate(std::ios::failbit);
+   return is;
 }
 
-template <typename Traits> inline
+template <typename Traits>
 std::basic_ostream<char, Traits>&
-operator<< (std::basic_ostream<char, Traits>& os, GF2 a)
+operator<< (std::basic_ostream<char, Traits>& os, GF2_old a)
 {
    return os << int(a);
 }
 
-template <typename T, bool _is_integer=std::numeric_limits<T>::is_integer>
-class conv_to_GF2;
+template <typename T, bool is_integer = std::numeric_limits<T>::is_integer>
+class conv_to_GF2_old;
 
 template <typename T>
-class conv_to_GF2<T, true> {
+class conv_to_GF2_old<T, true> {
 public:
    typedef T argument_type;
-   typedef GF2 result_type;
-   result_type operator() (typename pm::function_argument<T>::type x) const { return result_type(x%2); }
+   typedef GF2_old result_type;
+   result_type operator() (const T& x) const { return result_type(x%2); }
 };
 
 } } // end namespace polymake::topaz
@@ -69,11 +77,11 @@ public:
 namespace std {
 
 template <>
-struct numeric_limits<polymake::topaz::GF2> : numeric_limits<unsigned int> {
-   static polymake::topaz::GF2 min() throw() { return polymake::topaz::GF2_zero; }
-   static polymake::topaz::GF2 max() throw() { return polymake::topaz::GF2_one; }
-   static const int digits=1;
-   static const int digits10=1;
+struct numeric_limits<polymake::topaz::GF2_old> : numeric_limits<unsigned int> {
+   static polymake::topaz::GF2_old min() throw() { return polymake::topaz::GF2_old::zero; }
+   static polymake::topaz::GF2_old max() throw() { return polymake::topaz::GF2_old::one; }
+   static const int digits = 1;
+   static const int digits10 = 1;
 };
 
 }
@@ -81,46 +89,35 @@ struct numeric_limits<polymake::topaz::GF2> : numeric_limits<unsigned int> {
 namespace pm {
 
 template <typename T>
-class conv<T, polymake::topaz::GF2> : public polymake::topaz::conv_to_GF2<T> { };
+class conv<T, polymake::topaz::GF2_old> : public polymake::topaz::conv_to_GF2_old<T> { };
 
 template <>
-class conv<polymake::topaz::GF2, polymake::topaz::GF2> : public trivial_conv<polymake::topaz::GF2> { } ;
+class conv<polymake::topaz::GF2_old, polymake::topaz::GF2_old> : public trivial_conv<polymake::topaz::GF2_old> { } ;
 
 template<>
-struct algebraic_traits<polymake::topaz::GF2> {
-   typedef polymake::topaz::GF2 field_type;
+struct algebraic_traits<polymake::topaz::GF2_old> {
+   typedef polymake::topaz::GF2_old field_type;
 };
 
 template <>
-struct choose_generic_object_traits<polymake::topaz::GF2, false, false> :
-      spec_object_traits< polymake::topaz::GF2 > {
-   typedef void generic_type;
-   typedef is_scalar generic_tag;
-   typedef polymake::topaz::GF2 persistent_type;
+struct spec_object_traits<polymake::topaz::GF2_old>
+   : spec_object_traits<is_scalar> {
 
    static
-   bool is_zero(const polymake::topaz::GF2& a)
+   bool is_zero(const polymake::topaz::GF2_old& a)
    {
-      return a == polymake::topaz::GF2_zero;
+      return a == polymake::topaz::GF2_old::zero;
    }
 
    static
-   bool is_one(const polymake::topaz::GF2& a)
+   bool is_one(const polymake::topaz::GF2_old& a)
    {
-      return a == polymake::topaz::GF2_one;
+      return a == polymake::topaz::GF2_old::one;
    }
 
-   static const persistent_type& zero() 
-   {
-      static polymake::topaz::GF2 zero = polymake::topaz::GF2_zero;
-      return zero;
-   }
+   static const polymake::topaz::GF2_old& zero() { static const auto z = polymake::topaz::GF2_old::zero; return z; }
 
-   static const persistent_type& one() 
-   {
-      static polymake::topaz::GF2 one = polymake::topaz::GF2_one;
-      return one;
-   }
+   static const polymake::topaz::GF2_old& one() { static const auto o = polymake::topaz::GF2_old::one; return o; }
 };
 
 }

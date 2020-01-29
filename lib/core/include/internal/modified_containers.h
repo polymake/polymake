@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -196,7 +196,7 @@ public:
    typedef typename container_traits<container>::value_type value_type;
    typedef typename container_traits<container>::reference reference;
    typedef typename container_traits<container>::const_reference const_reference;
-   static const int is_resizeable=object_traits<typename deref<container>::type>::is_resizeable;
+   static constexpr int is_resizeable = object_traits<typename deref<container>::type>::is_resizeable;
 };
 
 template <typename Top, typename Params,
@@ -235,7 +235,7 @@ public:
       return ensure(this->manip_top().get_container(), typename base_t::needed_features()).end();
    }
 
-   int size() const { return this->manip_top().get_container().size(); }
+   Int size() const { return this->manip_top().get_container().size(); }
    bool empty() const { return this->manip_top().get_container().empty(); }
 };
 
@@ -292,11 +292,11 @@ template <typename Top, typename Params>
 class redirected_container<Top, Params, random_access_iterator_tag>
    : public redirected_container<Top, Params, bidirectional_iterator_tag> {
 public:
-   decltype(auto) operator[] (int i)
+   decltype(auto) operator[] (Int i)
    {
       return this->manip_top().get_container()[i];
    }
-   decltype(auto) operator[] (int i) const
+   decltype(auto) operator[] (Int i) const
    {
       return this->manip_top().get_container()[i];
    }
@@ -306,7 +306,7 @@ template <typename Top, typename Params>
 class redirected_container_resize<Top, Params, true> {
    using master_t = redirected_container<Top, Params>;
 public:
-   void resize(int n)
+   void resize(Int n)
    {
       static_cast<master_t*>(this)->manip_top().get_container().resize(n);
    }
@@ -324,7 +324,7 @@ public:
       return *static_cast<const Top&>(*this).begin();
    }
 
-   int size() const
+   Int size() const
    {
       return count_it(static_cast<const Top&>(*this).begin());
    }
@@ -490,11 +490,11 @@ protected:
       return static_cast<const modified_container_impl<Top, Params>*>(this)->manip_top();
    }
 public:
-   int size() const
+   Int size() const
    {
       return _top().get_container().size();
    }
-   int dim() const
+   Int dim() const
    {
       return get_dim(_top().get_container());
    }
@@ -606,34 +606,34 @@ class modified_container_elem_access<Top, Params, random_access_iterator_tag, tr
    : public modified_container_elem_access<Top, Params, bidirectional_iterator_tag, true, false> {
    using base_t = modified_container_typebase<Top, Params>;
 
-   decltype(auto) random_impl(int i, const typename base_t::iterator::operation& op, std::true_type)
+   decltype(auto) elem_by_index(Int i, const typename base_t::iterator::operation& op, std::true_type)
    {
       return op(this->_top().get_container()[i]);
    }
-   decltype(auto) random_impl(int i, const typename base_t::const_iterator::operation& op, std::true_type) const
+   decltype(auto) elem_by_index(Int i, const typename base_t::const_iterator::operation& op, std::true_type) const
    {
       return op(this->_top().get_container()[i]);
    }
-   decltype(auto) random_impl(int i, const typename base_t::iterator::operation& op, std::false_type)
+   decltype(auto) elem_by_index(Int i, const typename base_t::iterator::operation& op, std::false_type)
    {
       return op(this->_top().get_container().begin() + i);
    }
-   decltype(auto) random_impl(int i, const typename base_t::const_iterator::operation& op, std::false_type) const
+   decltype(auto) elem_by_index(Int i, const typename base_t::const_iterator::operation& op, std::false_type) const
    {
       return op(this->_top().get_container().begin() + i);
    }
 public:
-   decltype(auto) operator[] (int i)
+   decltype(auto) operator[] (Int i)
    {
       typedef typename base_t::iterator::helper opb;
       const bool via_container=opb::data_arg || !iterator_traits<typename base_t::container::iterator>::is_random;
-      return random_impl(i, opb::create(this->_top().get_operation()), bool_constant<via_container>());
+      return elem_by_index(i, opb::create(this->_top().get_operation()), bool_constant<via_container>());
    }
-   decltype(auto) operator[] (int i) const
+   decltype(auto) operator[] (Int i) const
    {
       typedef typename base_t::const_iterator::helper opb;
       const bool via_container=opb::data_arg || !iterator_traits<typename base_t::container::const_iterator>::is_random;
-      return random_impl(i, opb::create(this->_top().get_operation()), bool_constant<via_container>());
+      return elem_by_index(i, opb::create(this->_top().get_operation()), bool_constant<via_container>());
    }
 };
 
@@ -641,11 +641,11 @@ template <typename Top, typename Params>
 class modified_container_elem_access<Top, Params, random_access_iterator_tag, true, true>
    : public modified_container_elem_access<Top, Params, bidirectional_iterator_tag, true, true> {
 public:
-   decltype(auto) operator[] (int i)
+   decltype(auto) operator[] (Int i)
    {
       return this->_top().get_container()[i];
    }
-   decltype(auto) operator[] (int i) const
+   decltype(auto) operator[] (Int i) const
    {
       return this->_top().get_container()[i];
    }
@@ -733,10 +733,10 @@ template <typename Top, typename Params=typename Top::manipulator_params,
 class container_pair_impl
    : public container_pair_typebase<Top, Params> {
    typedef container_pair_typebase<Top, Params> base_t;
-   int size_impl(std::false_type) const { return this->manip_top().get_container1().size(); }
-   int size_impl(std::true_type) const { return this->manip_top().get_container2().size(); }
-   int dim_impl(std::false_type) const { return get_dim(this->manip_top().get_container1()); }
-   int dim_impl(std::true_type) const { return get_dim(this->manip_top().get_container2()); }
+   Int size_impl(std::false_type) const { return this->manip_top().get_container1().size(); }
+   Int size_impl(std::true_type) const { return this->manip_top().get_container2().size(); }
+   Int dim_impl(std::false_type) const { return get_dim(this->manip_top().get_container1()); }
+   Int dim_impl(std::true_type) const { return get_dim(this->manip_top().get_container2()); }
    bool empty_impl(std::false_type) const { return this->manip_top().get_container1().empty(); }
    bool empty_impl(std::true_type) const { return this->manip_top().get_container2().empty(); }
 
@@ -774,8 +774,8 @@ public:
                             ensure(this->manip_top().get_container2(), typename base_t::needed_features2()).end());
    }
 
-   int size() const { return size_impl(unlimited1()); }
-   int dim() const { return dim_impl(unlimited1()); }
+   Int size() const { return size_impl(unlimited1()); }
+   Int dim() const { return dim_impl(unlimited1()); }
    bool empty() const { return empty_impl(unlimited1()); }
 };
 
@@ -839,11 +839,11 @@ template <typename Top, typename Params>
 class container_pair_impl<Top, Params, random_access_iterator_tag>
    : public container_pair_impl<Top, Params, bidirectional_iterator_tag> {
 public:
-   decltype(auto) operator[] (int i)
+   decltype(auto) operator[] (Int i)
    {
       return this->manip_top().get_container1()[i];
    }
-   decltype(auto) operator[] (int i) const
+   decltype(auto) operator[] (Int i) const
    {
       return this->manip_top().get_container1()[i];
    }
@@ -1037,18 +1037,18 @@ protected:
       return static_cast<const modified_container_pair_impl<Top, Params>*>(this)->manip_top();
    }
 private:
-   int size_impl(std::false_type) const { return _top().get_container1().size(); }
-   int size_impl(std::true_type) const { return _top().get_container2().size(); }
-   int dim_impl(std::false_type) const { return get_dim(_top().get_container1()); }
-   int dim_impl(std::true_type) const { return get_dim(_top().get_container2()); }
+   Int size_impl(std::false_type) const { return _top().get_container1().size(); }
+   Int size_impl(std::true_type) const { return _top().get_container2().size(); }
+   Int dim_impl(std::false_type) const { return get_dim(_top().get_container1()); }
+   Int dim_impl(std::true_type) const { return get_dim(_top().get_container2()); }
    bool empty_impl(std::false_type) const { return _top().get_container1().empty(); }
    bool empty_impl(std::true_type) const { return _top().get_container2().empty(); }
 
    typedef bool_constant<(object_classifier::what_is<typename deref<typename base_t::container1>::type>::value
                           == object_classifier::is_constant)> unlimited1;
 public:
-   int size() const { return size_impl(unlimited1()); }
-   int dim() const { return dim_impl(unlimited1()); }
+   Int size() const { return size_impl(unlimited1()); }
+   Int dim() const { return dim_impl(unlimited1()); }
    bool empty() const { return empty_impl(unlimited1()); }
 };
 
@@ -1206,62 +1206,62 @@ class modified_container_pair_elem_access<Top, Params, random_access_iterator_ta
    : public modified_container_pair_elem_access<Top, Params, bidirectional_iterator_tag, true, false> {
    typedef modified_container_pair_typebase<Top, Params> base_t;
 
-   decltype(auto) random_impl(int i, const typename base_t::iterator::operation& op, std::true_type, std::true_type)
+   decltype(auto) elem_by_index(Int i, const typename base_t::iterator::operation& op, std::true_type, std::true_type)
    {
       return op(this->_top().get_container1()[i],
                 this->_top().get_container2()[i]);
    }
-   decltype(auto) random_impl(int i, const typename base_t::const_iterator::operation& op, std::true_type, std::true_type) const
+   decltype(auto) elem_by_index(Int i, const typename base_t::const_iterator::operation& op, std::true_type, std::true_type) const
    {
       return op(this->_top().get_container1()[i],
                 this->_top().get_container2()[i]);
    }
-   decltype(auto) random_impl(int i, const typename base_t::iterator::operation& op, std::false_type, std::true_type)
+   decltype(auto) elem_by_index(Int i, const typename base_t::iterator::operation& op, std::false_type, std::true_type)
    {
       return op(this->_top().get_container1().begin()+i,
                 this->_top().get_container2()[i]);
    }
-   decltype(auto) random_impl(int i, const typename base_t::const_iterator::operation& op, std::false_type, std::true_type) const
+   decltype(auto) elem_by_index(Int i, const typename base_t::const_iterator::operation& op, std::false_type, std::true_type) const
    {
       return op(this->_top().get_container1().begin()+i,
                 this->_top().get_container2()[i]);
    }
-   decltype(auto) random_impl(int i, const typename base_t::iterator::operation& op, std::true_type, std::false_type)
+   decltype(auto) elem_by_index(Int i, const typename base_t::iterator::operation& op, std::true_type, std::false_type)
    {
       return op(this->_top().get_container1()[i],
                 this->_top().get_container2().begin()+i);
    }
-   decltype(auto) random_impl(int i, const typename base_t::const_iterator::operation& op, std::true_type, std::false_type) const
+   decltype(auto) elem_by_index(Int i, const typename base_t::const_iterator::operation& op, std::true_type, std::false_type) const
    {
       return op(this->_top().get_container1()[i],
                 this->_top().get_container2().begin()+i);
    }
-   decltype(auto) random_impl(int i, const typename base_t::iterator::operation& op, std::false_type, std::false_type)
+   decltype(auto) elem_by_index(Int i, const typename base_t::iterator::operation& op, std::false_type, std::false_type)
    {
       return op(this->_top().get_container1().begin()+i,
                 this->_top().get_container2().begin()+i);
    }
-   decltype(auto) random_impl(int i, const typename base_t::const_iterator::operation& op, std::false_type, std::false_type) const
+   decltype(auto) elem_by_index(Int i, const typename base_t::const_iterator::operation& op, std::false_type, std::false_type) const
    {
       return op(this->_top().get_container1().begin()+i,
                 this->_top().get_container2().begin()+i);
    }
 public:
-   decltype(auto) operator[] (int i)
+   decltype(auto) operator[] (Int i)
    {
       typedef typename base_t::iterator::helper opb;
       const bool via_container1=opb::first_data_arg || !iterator_traits<typename base_t::container1::iterator>::is_random,
                  via_container2=opb::second_data_arg || !iterator_traits<typename base_t::container2::iterator>::is_random;
-      return random_impl(i, opb::create(this->_top().get_operation()),
-                         bool_constant<via_container1>(), bool_constant<via_container2>());
+      return elem_by_index(i, opb::create(this->_top().get_operation()),
+                           bool_constant<via_container1>(), bool_constant<via_container2>());
    }
-   decltype(auto) operator[] (int i) const
+   decltype(auto) operator[] (Int i) const
    {
       typedef typename base_t::const_iterator::helper opb;
       const bool via_container1=opb::first_data_arg || !iterator_traits<typename base_t::container1::const_iterator>::is_random,
                  via_container2=opb::second_data_arg || !iterator_traits<typename base_t::container2::const_iterator>::is_random;
-      return random_impl(i, opb::create(this->_top().get_operation()),
-                         bool_constant<via_container1>(), bool_constant<via_container2>());
+      return elem_by_index(i, opb::create(this->_top().get_operation()),
+                           bool_constant<via_container1>(), bool_constant<via_container2>());
    }
 };
 
@@ -1269,11 +1269,11 @@ template <typename Top, typename Params>
 class modified_container_pair_elem_access<Top, Params, random_access_iterator_tag, true, true>
    : public modified_container_pair_elem_access<Top, Params, bidirectional_iterator_tag, true, true> {
 public:
-   decltype(auto) operator[] (int i)
+   decltype(auto) operator[] (Int i)
    {
       return this->_top().get_container1()[i];
    }
-   decltype(auto) operator[] (int i) const
+   decltype(auto) operator[] (Int i) const
    {
       return this->_top().get_container1()[i];
    }
@@ -1382,14 +1382,14 @@ class repeated_value_container
 protected:
    using alias_t = alias<ElemRef>;
    alias_t value;
-   int d;
+   Int d;
 public:
    // TODO: remove this when iterators stop outliving containers
    repeated_value_container()
       : d(0) {}
 
    template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
-   repeated_value_container(Arg&& value_arg, int dim_arg)
+   repeated_value_container(Arg&& value_arg, Int dim_arg)
       : value(std::forward<Arg>(value_arg))
       , d(dim_arg)
    {
@@ -1400,13 +1400,13 @@ public:
    alias_t& get_elem_alias() { return value; }
    const alias_t& get_elem_alias() const { return value; }
 
-   int dim() const { return d; }
-   int size() const { return d; }
+   Int dim() const { return d; }
+   Int size() const { return d; }
    bool empty() const { return d==0; }
 
-   void stretch_dim(int to_dim)
+   void stretch_dim(Int to_dim)
    {
-      d=to_dim;
+      d = to_dim;
    }
 };
 
@@ -1415,18 +1415,18 @@ struct spec_object_traits< repeated_value_container<ElemRef> >
    : spec_object_traits< same_value_container<ElemRef> > {};
 
 template <typename E>
-auto repeat_value(E&& value, int count)
+auto repeat_value(E&& value, Int count)
 {
-   return repeated_value_container<E>(std::forward<E>(value), count);
+   return repeated_value_container<prevent_int_element<E>>(std::forward<E>(value), count);
 }
 
 template <typename E>
 auto single_value_as_container(E&& value)
 {
-   return repeated_value_container<E>(std::forward<E>(value), 1);
+   return repeated_value_container<prevent_int_element<E>>(std::forward<E>(value), 1);
 }
 
-template <typename Container, int kind=object_classifier::what_is<Container>::value>
+template <typename Container, int kind = object_classifier::what_is<Container>::value>
 struct extract_expected_features {
    using type = mlist<>;
 };
@@ -1448,7 +1448,7 @@ public:
    sequence_raw get_container2() const
    {
       // the size is being determined on the first (main) container unless it is of unlimited-const nature
-      return sequence_raw(0, object_classifier::what_is<Container>::value==object_classifier::is_constant ? int(this->hidden().size()) : 1);
+      return sequence_raw(0, object_classifier::what_is<Container>::value == object_classifier::is_constant ? Int(this->hidden().size()) : 1);
    }
 };
 

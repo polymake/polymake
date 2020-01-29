@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,19 +21,19 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
-perl::Object cayley_embedding(const perl::Object& p_in1, const perl::Object& p_in2,
+BigObject cayley_embedding(const BigObject& p_in1, const BigObject& p_in2,
                               const Scalar& t, const Scalar& t_prime, 
-                              perl::OptionSet options)
+                              OptionSet options)
 {
-   const Array<perl::Object> p_array{ p_in1, p_in2 };
+   const Array<BigObject> p_array{ p_in1, p_in2 };
    const Vector<Scalar> t_vec{ t, t_prime };
 
    return cayley_embedding(p_array, t_vec, options);
 }
 
 template<typename Scalar>
-perl::Object cayley_embedding(const Array<perl::Object>& p_array,
-                              perl::OptionSet options)
+BigObject cayley_embedding(const Array<BigObject>& p_array,
+                              OptionSet options)
 {
    Vector<Scalar> t_vec;
    options["factors"] >> t_vec;

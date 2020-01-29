@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,17 +21,17 @@
 namespace polymake { namespace topaz {
 
 typedef Integer coefficient_type;
-typedef SimplicialComplex_as_FaceMap<int> base_complex_type;
+typedef SimplicialComplex_as_FaceMap<Int> base_complex_type;
 
 // checks whether the homology is the same as for a sphere of the same dimension
 // HD: Hasse diagram of pure simplicial complex
 bool is_homology_sphere(const Lattice<BasicDecoration>& HD)
 {
-   const int dim = HD.rank()-2;
+   const Int dim = HD.rank()-2;
 
-   const SimplicialComplex_as_FaceMap<int> SC(
+   const SimplicialComplex_as_FaceMap<Int> SC(
          attach_member_accessor( select(HD.decoration(), HD.nodes_of_rank(HD.rank()-1)),
-            ptr2type< BasicDecoration, Set<int>, &BasicDecoration::face>()
+            ptr2type< BasicDecoration, Set<Int>, &BasicDecoration::face>()
             ));
    Complex_iterator<coefficient_type,SparseMatrix<coefficient_type>,base_complex_type,false,false> h_it(SC,dim,0);
    if (h_it->betti_number!=1 || h_it->torsion.size()!=0)
@@ -47,20 +47,20 @@ bool is_homology_sphere(const Lattice<BasicDecoration>& HD)
 // implementation of sphere recognition heuristics algorithm described in Sphere Recognition: Heuristics and Examples by Joswig, Lutz, Tsuruga; arxiv 1405.3848
 // HD: Hasse diagram of pure simplicial complex
 // return values: 1=true, 0=false, -1=undef
-int is_sphere_h(const Lattice<BasicDecoration>& HD, const pm::SharedRandomState& random_source, int strategy, const int n_stable_rounds)
+Int is_sphere_h(const Lattice<BasicDecoration>& HD, const pm::SharedRandomState& random_source, Int strategy, const Int n_stable_rounds)
 {
-   const int dim = HD.rank()-2;
+   const Int dim = HD.rank()-2;
 
-   Array<int> sph(dim);
-   sph[0]=sph[dim-1]=1;
+   Array<Int> sph(dim);
+   sph[0] = sph[dim-1] = 1;
 
-   Map<Array<int>, int> M = random_discrete_morse(HD, UniformlyRandom<long>(random_source), strategy, 0, n_stable_rounds, sph, Array<int>(), "");
-   if(M[sph]) return 1; // found spherical acyclic matching
+   Map<Array<Int>, Int> M = random_discrete_morse(HD, UniformlyRandom<long>(random_source), strategy, 0, n_stable_rounds, sph, Array<Int>(), "");
+   if (M[sph]) return 1; // found spherical acyclic matching
 
    if (!is_homology_sphere(HD)) return 0; // check first if homology fits
 
    // strategic options
-   int max_relax=0, heating=0, preheat=0;
+   Int max_relax = 0, heating = 0, preheat = 0;
 
    if (strategy == 0) {
       max_relax= 70;
@@ -76,19 +76,19 @@ int is_sphere_h(const Lattice<BasicDecoration>& HD, const pm::SharedRandomState&
 
    BistellarComplex BC(HD,random_source,false,true);
 
-   int stable_rounds = 0;
-   int relax = 0;
-   int neg_relax = 0;
-   int full_dim_move = preheat;
-   int chilly_moves = 0;
-   int up_moves = 0;
-   int warm_moves = preheat;
-   int min_facets = BC.n_facets();
+   Int stable_rounds = 0;
+   Int relax = 0;
+   Int neg_relax = 0;
+   Int full_dim_move = preheat;
+   Int chilly_moves = 0;
+   Int up_moves = 0;
+   Int warm_moves = preheat;
+   Int min_facets = BC.n_facets();
 
    for ( ; stable_rounds<n_stable_rounds; ++stable_rounds) {
       //    cerr << "stable_rounds: " << stable_rounds << "     min_facets: " << min_facets << endl;
 
-      const int facets = BC.n_facets();
+      const Int facets = BC.n_facets();
       if (facets < min_facets) {
          min_facets = facets;
          stable_rounds = 0;
@@ -122,7 +122,7 @@ int is_sphere_h(const Lattice<BasicDecoration>& HD, const pm::SharedRandomState&
 
       if (up_moves > 0) {
          --up_moves;
-         BC.min_rev_move(dim/2 + 1);  // up move
+         BC.min_rev_move(dim/2+1);  // up move
          continue;
       }
 
@@ -133,7 +133,7 @@ int is_sphere_h(const Lattice<BasicDecoration>& HD, const pm::SharedRandomState&
       }
 
       // make smallest reversed move
-      const int move = BC.min_rev_move();
+      const Int move = BC.min_rev_move();
 
       if ( move >= (dim+1)/2 && move != 0 ) {  // up or eaven move
          neg_relax = 0;
@@ -148,19 +148,19 @@ int is_sphere_h(const Lattice<BasicDecoration>& HD, const pm::SharedRandomState&
 }
 
 // return values: 1=true, 0=false, -1=undef
-int is_ball_or_sphere_h(const Lattice<BasicDecoration>& HD, const pm::SharedRandomState& random_source, const int strategy, const int n_stable_rounds)
+Int is_ball_or_sphere_h(const Lattice<BasicDecoration>& HD, const pm::SharedRandomState& random_source, const Int strategy, const Int n_stable_rounds)
 {
   const auto B=boundary_of_pseudo_manifold(HD);
   if (B.empty())
     return is_sphere_h(HD, random_source, strategy, n_stable_rounds);
 
   // compute C + cone(bound(C))
-  std::list< Set<int> > S;
-  int v=0;
+  std::list<Set<Int>> S;
+  Int v = 0;
 
   for (const auto f : HD.nodes_of_rank(HD.rank()-2)) {
     S.push_back(HD.face(f));
-    const int w=HD.face(f).back();
+    const Int w = HD.face(f).back();
     if (w>=v)
       v=w+1;
   }

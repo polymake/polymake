@@ -3,8 +3,8 @@
   {"args": ["perl::Canned<const Vector<Rational>&>"], "func": "primitive_affine", "include": ["polymake/Rational.h", "polymake/Vector.h", "polymake/common/lattice_tools.h"], "sig": "primitive_affine.X"},
   {"args": ["perl::Canned<const Matrix<Rational>&>"], "func": "primitive_affine", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/common/lattice_tools.h"], "sig": "primitive_affine.X"},
   {"args": ["perl::Canned<const Vector<Integer>&>"], "func": "primitive_affine", "include": ["polymake/Integer.h", "polymake/Vector.h", "polymake/common/lattice_tools.h"], "sig": "primitive_affine.X"},
-  {"args": ["perl::Canned<const Vector<int>&>"], "func": "primitive_affine", "include": ["polymake/Vector.h", "polymake/common/lattice_tools.h"], "sig": "primitive_affine.X"},
+  {"args": ["perl::Canned<const Vector<Int>&>"], "func": "primitive_affine", "include": ["polymake/Vector.h", "polymake/common/lattice_tools.h"], "sig": "primitive_affine.X"},
   {"args": ["perl::Canned<const Matrix<Integer>&>"], "func": "primitive_affine", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h", "polymake/common/lattice_tools.h"], "sig": "primitive_affine.X"},
-  {"args": ["perl::Canned<const Matrix<int>&>"], "func": "primitive_affine", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/common/lattice_tools.h"], "sig": "primitive_affine.X"},
+  {"args": ["perl::Canned<const Matrix<Int>&>"], "func": "primitive_affine", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/common/lattice_tools.h"], "sig": "primitive_affine.X"},
  null ],
 "version": 3}

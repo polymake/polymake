@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,9 +20,6 @@
 namespace polymake {
 namespace ideal {
 namespace singular{
-
-static coeffs singular_rational = NULL;
-
 
 // Convert a Singular number to a GMP rational.
 Rational convert_number_to_Rational(number n, ring ring)
@@ -53,8 +50,7 @@ Rational convert_number_to_Rational(number n, ring ring)
 // Convert a GMP rational to a Singular number.
 number convert_Rational_to_number(const Rational& r)
 {
-   if (singular_rational == NULL)
-      singular_rational = nInitChar(n_Q, NULL);
+   static coeffs singular_rational = nInitChar(n_Q, nullptr);
    // cast removes the const as singular just uses it to initialize its own mpz
    number num = n_InitMPZ((mpz_ptr) numerator(r).get_rep(),singular_rational);
    number denom = n_InitMPZ((mpz_ptr) denominator(r).get_rep(),singular_rational);
@@ -64,18 +60,18 @@ number convert_Rational_to_number(const Rational& r)
    return res;
 }
 
-std::pair<std::vector<Rational>, ListMatrix<Vector<int>>> convert_poly_to_vector_and_matrix(const poly q)
+std::pair<std::vector<Rational>, ListMatrix<Vector<Int>>> convert_poly_to_vector_and_matrix(const poly q)
 {
    poly p = pCopy(q);
    poly pfull = p;
    int n = rVar(currRing);
-   ListMatrix<Vector<int>> exponents(0,n);
+   ListMatrix<Vector<Int>> exponents(0,n);
    std::vector<Rational> coefficients;
-   while (p != NULL) {
+   while (p != nullptr) {
       number c = pGetCoeff(p);
       coefficients.push_back(convert_number_to_Rational(c, currRing));
-      Vector<int> monomial(n);
-      for(int i = 1; i<=n; i++){
+      Vector<Int> monomial(n);
+      for (int i = 1; i<=n; i++) {
          monomial[i-1] = pGetExp(p, i);
       }
       exponents /= monomial;
@@ -92,7 +88,8 @@ Polynomial<> convert_poly_to_Polynomial(const poly q)
 }
 
 
-poly convert_Polynomial_to_poly(const Polynomial<>& mypoly, ring ring){
+poly convert_Polynomial_to_poly(const Polynomial<>& mypoly, ring ring)
+{
    poly p = p_ISet(0,ring);
    for (const auto& term : mypoly.get_terms())
    {

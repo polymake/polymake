@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -37,7 +37,6 @@ use File::Path;
 use strict 'vars', 'subs';
 use lib "perllib";
 
-my $root=Cwd::getcwd;
 my ($NeedsArchFlag);
 
 my $Wiki="http://www.polymake.org/doku.php";
@@ -55,8 +54,6 @@ $| = 1;
 package Polymake;
 use vars qw( $DeveloperMode $Shell $filename_re $directory_of_cmd_re );
 
-$DeveloperMode=-d "$root/testscenarios";
-
 use Polymake::ConfigureStandalone;
 
 $Shell=new FakeNoShell;
@@ -72,7 +69,7 @@ my (%options, %vars, %allowed_options, %allowed_with, %allowed_flags, %allowed_v
 
 # expected options for the core script
 @allowed_options{ qw( prefix exec-prefix bindir includedir libdir libexecdir datadir docdir build build-modes ) }=();
-@allowed_with{ qw( gmp mpfr libxml2 boost permlib toolchain ccache ccwrapper ) }=();
+@allowed_with{ qw( gmp mpfr boost permlib toolchain ccache ccwrapper ) }=();
 @allowed_flags{ qw( prereq callable native openmp libcxx ) }=();
 @allowed_vars{ qw( CC CFLAGS CXX CXXFLAGS CXXOPT CXXDEBUG LDFLAGS LIBS Arch DESTDIR ) }=();
 
@@ -83,9 +80,12 @@ if ($^O eq "darwin") {
 my (@ext, @ext_disabled, %ext_with_config, %ext_requires, %ext_requires_opt, %ext_conflicts, %ext_failed, %ext_bad,
     @ext_ordered, %ext_survived);
 
-my $repeating_config=early_parse_command_line();
-my $BuildDir= $options{build} ? "build.$options{build}" : "build";
-my $perlxpath="perlx/$Config::Config{version}/$Config::Config{archname}";
+my $repeating_config = early_parse_command_line();
+my $root = Cwd::getcwd;
+$Polymake::DeveloperMode = -d "$root/testscenarios";
+
+my $BuildDir = $options{build} ? "build.$options{build}" : "build";
+my $perlxpath = "perlx/$Config::Config{version}/$Config::Config{archname}";
 
 load_enabled_bundled_extensions();
 parse_command_line(\@ARGV, $repeating_config);
@@ -106,7 +106,6 @@ if ($options{'alt-perl'}) {
 my %store_versions;
 locate_gmp_and_mpfr_libraries();
 locate_boost_headers();
-locate_libxml2();
 locate_permlib();
 
 # there is no independent package for TOSimplex, always pick the bundled headers
@@ -195,6 +194,8 @@ Allowed options (and their default values) are:
                               or for packagers.
                               By default, a single "build" directory is created.
 
+  --builddir PATH     An alternative way of specifying an existing build directory by its full path
+
  Installation directories:
 
   --prefix=PATH       ( /usr/local )                   root of the installation tree
@@ -223,7 +224,6 @@ Allowed options (and their default values) are:
    print STDERR <<"---";
   --with-gmp=PATH     ( /usr ) GNU MultiPrecision library installation directory
   --with-mpfr=PATH    ( =gmp-path ) GNU Multiple Precision Floating-point Reliable library installation directory
-  --with-libxml2=PATH ( find via \$PATH ) GNU XML processing library
 
   --with-boost=PATH   installation path of boost library, if non-standard
 
@@ -324,21 +324,35 @@ For detailed installation instructions, please refer to the polymake Wiki site:
 
 ###################################################################################
 # * sieve out disabled extensions so that their configuration scripts are not loaded
-# * process --build, --build-modes, and --defaults
+# * process --build, --builddir, --build-modes, and --defaults
 # * restore options from previous runs if desired
 sub early_parse_command_line {
    my (@other_args, $enforce_defaults);
-   while (defined (my $arg=shift @ARGV)) {
+   while (defined(my $arg = shift @ARGV)) {
       if ($arg eq "--defaults") {
-         $enforce_defaults=1;
-      } elsif (my ($flag, $value)= $arg =~ /^--(build(?:-modes)?|alt-perl)(?:=(\S+))?$/) {
+         $enforce_defaults = 1;
+      } elsif (my ($flag, $value) = $arg =~ /^--(build(?:-modes|dir)?|alt-perl)(?:=(\S+))?$/) {
          $value //= @ARGV && $ARGV[0] =~ /^\w/ ? shift @ARGV : die "option --$flag requires a value\n";
-         $options{$flag}=$value;
+         $options{$flag} = $value;
       } elsif ($arg =~ /^--without-(\w+)$/  &&  -d "bundled/$1") {
          push @ext_disabled, $1;
-         $options{$1}=".none.";
+         $options{$1} = ".none.";
       } else {
          push @other_args, $arg;
+      }
+   }
+
+   if (my $builddir = delete $options{'builddir'}) {
+      if ($options{build}) {
+         die "--build and --builddir may not be specified together\n"
+      }
+      if (-f "$builddir/config.ninja" && $builddir =~ s{/build(?:\.([^/]+))?(?:/\w+)?$}{}) {
+         chdir $builddir or die "can't change into $builddir: $!\n";
+         if (defined($1)) {
+            $options{build} = $1;
+         }
+      } else {
+         die "$builddir does not look like a configured polymake build directory\n";
       }
    }
 
@@ -550,7 +564,6 @@ sub construct_paths {
    $InstallTop=$options{datadir} || "$prefix/share/polymake";
    $InstallArch=$options{libexecdir} || "$exec_prefix/lib/polymake";
    $InstallInc=$options{includedir} || "$prefix/include";
-   $InstallDoc=$options{docdir} || "$InstallTop/doc";
 }
 
 #####################################################
@@ -928,7 +941,7 @@ sub collect_compiler_specific_options {
       # avoid using temp files, they grow indeterminately during debug builds
       $CsharedFLAGS="-fPIC -pipe";
       # TODO: remove -fno-strict-aliasing when the core library is free from reintepret_casts
-      $CXXFLAGS .= " -ftemplate-depth-200 -fno-strict-aliasing -Wno-parentheses -Wshadow";
+      $CXXFLAGS .= " -ftemplate-depth-200 -fno-strict-aliasing";
       if ($options{openmp} ne ".none.") {
          $CXXFLAGS .= " -fopenmp";
          $LDFLAGS .= " -fopenmp";
@@ -938,7 +951,7 @@ sub collect_compiler_specific_options {
       # external libraries might be somehow dirtier
       $CflagsSuppressWarnings="";
       # gcc-specific flags
-      $CXXFLAGS .= " -Wno-error=unused-function";
+      $CXXFLAGS .= " -Wshadow -Wlogical-op -Wconversion -Wzero-as-null-pointer-constant -Wno-parentheses -Wno-error=unused-function";
       if (v_cmp($GCCversion, "6.3.0") >= 0 && v_cmp($GCCversion, "7.0.0") < 0) {
          $CXXFLAGS .= " -Wno-maybe-uninitialized";
       }
@@ -960,11 +973,13 @@ sub collect_compiler_specific_options {
       if (v_cmp($CLANGversion, "3.6") >= 0) {
          $CXXFLAGS .= " -Wno-unused-local-typedef -Wno-error=unneeded-internal-declaration";
       }
-      if (v_cmp($CLANGversion, "3.9") >= 0) {
-         # earlier versions produce bizarre false positives in nested classes methods
-         $CXXFLAGS .= " -Wshadow";
+      if (v_cmp($CLANGversion, "5") >= 0) {
+         $CXXFLAGS .= " -Wshadow -Wconversion -Wno-sign-conversion -Wzero-as-null-pointer-constant";
+      } elsif (v_cmp($CLANGversion, "4") >= 0) {
+         $CXXFLAGS .= " -Wno-unknown-pragmas -Wno-unknown-warning-option";
+      } else {
+         $CXXFLAGS .= " -Wno-unknown-pragmas";
       }
-
       # verify openmp support which is available starting with 3.7 but depends on the installation,
       # but 3.7 seems to crash when compiling libnormaliz so we skip that version
       # version 3.8 is tested to work with openmp
@@ -1397,7 +1412,7 @@ sub check_prerequisite_perl_packages {
       lib->import("$FinkBase/lib/perl5");
    }
    my @warned;
-   foreach (qw(XML::Writer XML::LibXML XML::LibXSLT Term::ReadKey Term::ReadLine JSON)) {
+   foreach (qw(XML::SAX Term::ReadKey Term::ReadLine JSON)) {
       my $pkg=$_;
       print "checking perl module $pkg ... ";
       my $warn;
@@ -1448,38 +1463,6 @@ WARNING: Please install/check the following perl modules prior to starting polym
 ---
       $warning .= "         ".join(", ",@warned)."\n";
    }
-}
-
-#######################################################################
-sub locate_libxml2 {
-   print "checking libxml2 installation ... ";
-   # gather build options for libxml2
-   my $xml2=$options{libxml2};
-   if (defined($xml2)) {
-      if (-x "$xml2/bin/xml2-config") {
-         $xml2="$xml2/bin/xml2-config";
-      } elsif (-x "$xml2/xml2-config") {
-         $xml2="$xml2/xml2-config";
-      } elsif ($xml2 !~ /-config$/ || !-x $xml2) {
-         die "Could not derive the location of the configuration program xml2-config from the option --with-libxml2\n";
-      }
-   } else {
-      $xml2="xml2-config";
-   }
-   $LIBXML2_CFLAGS=`xml2-config --cflags`;
-   if ($?) {
-      die <<"---";
-Could not find configuration program xml2-config for library libxml2.
-Probably you need to install development package for it;
-usually it is called libxml2-devel or similarly.
-If the library is installed at a non-standard location,
-please specify it in option --with-libxml2
----
-   }
-   chomp $LIBXML2_CFLAGS;
-   $LIBXML2_LIBS=`xml2-config --libs`;
-   chomp $LIBXML2_LIBS;
-   print "ok", defined($options{libxml2}) && " ($options{libxml2})", "\n";
 }
 
 #########################################################################
@@ -1671,7 +1654,7 @@ sudo install -s -m 555 ninja $INSTALL_DIR
 
 ##############################################################################
 sub write_configuration_file {
-   my ($filename)=@_;
+   my ($filename) = @_;
    open my $conf, ">", $filename
      or die "can't create $filename: $!\n";
 
@@ -1763,10 +1746,10 @@ sub create_alt_perl_configuration {
 
    File::Path::make_path("$BuildDir/$perlxpath");
    write_perl_specific_configuration_file("$BuildDir/$perlxpath/config.ninja");
-   my $buildroot="$root/$BuildDir";
+   my $builddir = "$root/$BuildDir";
    foreach my $mode ($BuildModes =~ /(\S+)/g) {
-      create_build_mode_subtree($buildroot, $mode);
-      write_build_ninja_file($buildroot, $mode, "build.$options{'alt-perl'}.ninja", perlxpath => $perlxpath);
+      create_build_mode_subtree($builddir, $mode);
+      write_build_ninja_file($builddir, $mode, "build.$options{'alt-perl'}.ninja", perlxpath => $perlxpath);
    }
 }
 

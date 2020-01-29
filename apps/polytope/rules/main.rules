@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -26,7 +26,7 @@
 # including interfaces to interactive geometry viewers (such as [[wiki:external_software#JavaView|JavaView]] or [[wiki:external_software#geomview|geomview]]), generating
 # PostScript drawings and povray scene files.
 
-IMPORT common graph
+IMPORT graph
 
 USE topaz group ideal
 

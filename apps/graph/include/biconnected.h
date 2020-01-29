@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -47,7 +47,7 @@ protected:
       void clear(const TGraph&) = delete;
 
       // for start nodes
-      bool operator() (int n)
+      bool operator() (Int n)
       {
          cur_time=-1;
          articulation_node=-1;
@@ -55,10 +55,10 @@ protected:
          return true;
       }
 
-      bool operator() (int n_from, int n_to)
+      bool operator() (Int n_from, Int n_to)
       {
-         const int d=discovery[n_to];
-         if (d>=0) {
+         const Int d = discovery[n_to];
+         if (d >= 0) {
             assign_min(low[n_from], d);
             return false;
          }
@@ -67,19 +67,19 @@ protected:
       }
 
    private:
-      bool is_discovered(int n) const
+      bool is_discovered(Int n) const
       {
          return discovery[n] >= 0;
       }
 
-      using component_type = IndexedSubset<const std::vector<int>&, const sequence>;
+      using component_type = IndexedSubset<const std::vector<Int>&, const sequence>;
 
       component_type get_cur_component() const
       {
-         return component_type(node_stack, range(discovery[articulation_node], int(node_stack.size()-1)));
+         return component_type(node_stack, range(discovery[articulation_node], Int(node_stack.size()-1)));
       }
 
-      bool is_new_component(int n_from, int n_to)
+      bool is_new_component(Int n_from, Int n_to)
       {
          if (discovery[n_to] == low[n_to]) {
             // a lone antenna node or an already seen articulation node?
@@ -102,22 +102,22 @@ protected:
          return false;
       }
 
-      void next_component(int n)
+      void next_component(Int n)
       {
          cur_time=discovery[articulation_node]-(n==articulation_node);
          node_stack.resize(cur_time+1);
          articulation_node=-1;
       }
 
-      void discover(int n)
+      void discover(Int n)
       {
          discovery[n]=low[n]= ++cur_time;
          node_stack.push_back(n);
       }
 
-      std::vector<int> node_stack, discovery, low;
+      std::vector<Int> node_stack, discovery, low;
       Bitset articulation_nodes;
-      int articulation_node, cur_time;
+      Int articulation_node, cur_time;
    };
 
    typedef DFSiterator<TGraph, VisitorTag<NodeVisitor>> search_iterator;
@@ -169,7 +169,7 @@ protected:
             if (search_it.undiscovered_nodes()==0)
                break;
             // proceed with the next connected component
-            int n;
+            Int n;
             do {
                ++nodes_it;
                assert(!nodes_it.at_end());

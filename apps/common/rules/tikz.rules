@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -34,6 +34,9 @@ custom @view_up=(0,1,0);
 
 # scaling factor
 custom $scale=2;
+
+# edge label style
+custom $edgelabelstyle="pos=0.5,sloped,below";
 
 
 package TikZ::Viewer;
@@ -93,7 +96,7 @@ my $text = <<'|';
 %---------------------------------------------------------------------------------
 %
 % Polymake LaTeX template for TikZ-Output
-% Copyright (c) 1997-2019
+% Copyright (c) 1997-2020
 % Ewgenij Gawrilow, Michael Joswig, and the polymake team
 % Technische Universität Berlin, Germany
 % https://polymake.org
@@ -148,7 +151,7 @@ my $text = <<'|';
 %---------------------------------------------------------------------------------
 %
 % Polymake LaTeX template for TikZ-Output
-% Copyright (c) 1997-2019
+% Copyright (c) 1997-2020
 % Ewgenij Gawrilow, Michael Joswig, and the polymake team
 % Technische Universität Berlin, Germany
 % https://polymake.org
@@ -221,7 +224,7 @@ package application;
 # Produce a TikZ file with given visual objects.
 # @param Visual::Object vis_obj object to display
 #
-# @option String File "filename" or "AUTO"
+# @option [complete file] String File "filename" or "AUTO"
 #
 #  For the file name you can use any expression allowed for the ''open'' function,
 #  including "-" for terminal output, "&HANDLE" for an already opened file handle,

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,33 +24,33 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object rand_inner_points(perl::Object p_in, int n, perl::OptionSet options)
+BigObject rand_inner_points(BigObject p_in, Int n, OptionSet options)
 {
    const bool bounded=p_in.give("BOUNDED");
    if (!bounded)
       throw std::runtime_error("rand_inner_points: unbounded input polyhedron");
 
    const RandomSeed seed(options["seed"]);
-   const long M=std::numeric_limits<int>::max();
-   UniformlyRandomRanged<long> rg(M, seed);
+   const Int M = std::numeric_limits<Int>::max();
+   UniformlyRandomRanged<Int> rg(M, seed);
 
-   perl::Object p_out("Polytope<Rational>");
+   BigObject p_out("Polytope<Rational>");
    p_out.set_description() << "Random inner points of " << p_in.name() << "; seed=" << seed.get() << endl;
 
    const Matrix<Rational> V=p_in.give("VERTICES");
-   const int d=V.cols(), n_vertices=V.rows();
+   const Int d = V.cols(), n_vertices = V.rows();
 
    Vector<Rational> mu(n_vertices);
    Matrix<Rational> Points_out(n,d);
    for (auto p_i=entire(rows(Points_out)); !p_i.at_end(); ++p_i) {
       // get random partition of 1
       rg.begin();
-      Set<int> partition;
-      for (int i=1; i<n_vertices; ++i)
-         partition+=abs(static_cast<int>(rg.get()));  // FIXME: check if already contained
+      Set<Int> partition;
+      for (Int i = 1; i < n_vertices; ++i)
+         partition += abs(static_cast<Int>(rg.get()));  // FIXME: check if already contained
       Rational previous(0);
-      int idx=0;
-      for (auto pit=entire(partition); !pit.at_end(); ++pit, ++idx) {
+      Int idx = 0;
+      for (auto pit = entire(partition); !pit.at_end(); ++pit, ++idx) {
          const Rational current(*pit);
          mu[idx]=(current-previous)/M;
          previous=current;

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -22,8 +22,13 @@ use Polymake::Struct (
 sub new {
    my $self=&_new;
    my $Graph=$self->source;
+   # we need more room for sloped edgelabels
+   my $widthfactor = 0.8;
+   if (defined($self->source->EdgeLabels)) {
+      $widthfactor*=2;
+   }
    my @label_width=map {
-      (line_break_label_length($Graph->NodeLabels->($_))+1)*0.8;
+      (line_break_label_length($Graph->NodeLabels->($_))+1)*$widthfactor;
    } 0..$Graph->n_nodes-1;
 
    my $embedding=$Graph->Coord;

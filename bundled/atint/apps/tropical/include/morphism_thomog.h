@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -37,30 +37,28 @@
 
 namespace polymake { namespace tropical {
 
-	/*
-	 * @brief Takes a matrix and a translate defining an affine linear map on given charts
-	 * and converts it into a homogeneous representation.
-	 * @return Pair<Matrix,Translate> 
-	 */
-	std::pair<Matrix<Rational>, Vector<Rational> > thomog_morphism(
-			const Matrix<Rational> &matrix, const Vector<Rational> &translate, int domain_chart=0,
-			int target_chart = 0); 
+/*
+ * @brief Takes a matrix and a translate defining an affine linear map on given charts
+ * and converts it into a homogeneous representation.
+ * @return Pair<Matrix,Translate> 
+ */
+std::pair<Matrix<Rational>, Vector<Rational>>
+thomog_morphism(const Matrix<Rational>& matrix, const Vector<Rational>& translate, Int domain_chart = 0,
+                Int target_chart = 0); 
 
-	/*
-	 * @brief Takes a homogeneous representation of a Morphism and converts it into a non-homogenous
-	 * one on given charts.
-	 */
-	std::pair<Matrix<Rational>, Vector<Rational> > tdehomog_morphism(
-			const Matrix<Rational> &matrix, const Vector<Rational> &translate, int domain_chart=0,
-			int target_chart=0);
+/*
+ * @brief Takes a homogeneous representation of a Morphism and converts it into a non-homogenous
+ * one on given charts.
+ */
+std::pair<Matrix<Rational>, Vector<Rational>>
+tdehomog_morphism(const Matrix<Rational>& matrix, const Vector<Rational>& translate, Int domain_chart = 0,
+                  Int target_chart = 0);
 
+/*
+ * @brief Test if the columns of a matrix add up to a multiple of the all-ones-vector.
+ */
+bool is_homogeneous_matrix(const Matrix<Rational>& m);
 
-	/*
-	 * @brief Test if the columns of a matrix add up to a multiple of the all-ones-vector.
-	 */
-	bool is_homogeneous_matrix(const Matrix<Rational> &m);
-
-
-}}
+} }
 
 #endif

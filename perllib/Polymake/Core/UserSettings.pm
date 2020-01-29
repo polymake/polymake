@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -27,7 +27,7 @@ package Polymake::Core::UserSettings;
 
 sub init {
    my ($mode, @custom_blocks) = @_;
-   if (Application::RuleFilter::allow_config($mode)) {
+   if (RuleFilter::allow_config($mode)) {
       foreach (split /;/, $mode) {
          if ($_ eq "user") {
             if ($PrivateDir) {
@@ -38,7 +38,7 @@ sub init {
             next;
          }
          if ($_ eq '@interactive') {
-            require Polymake::Core::InteractiveHelp;
+            require Polymake::Core::Help::Topic;
             next;
          }
          my $user= s/^user=//;

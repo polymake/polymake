@@ -1,13 +1,15 @@
 
-#if defined(__GNUC__)
-#ifdef __clang__
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-private-field"
 #pragma clang diagnostic ignored "-Wshadow"
-#else // gcc
+#pragma clang diagnostic ignored "-Wconversion"
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#elif defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
-#endif
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
 
 #include "polymake/polytope/sympol_config.h"
@@ -25,12 +27,10 @@
 #include "sympol/recursionstrategyidmadmlevel.h"
 #include "sympol/facesuptosymmetrylist.h"
 
-#if defined(__GNUC__)
-#ifdef __clang__
+#if defined(__clang__)
 #pragma clang diagnostic pop
-#else // gcc
+#elif defined(__GNUC__)
 #pragma GCC diagnostic pop
-#endif
 #endif
 
 namespace polymake { namespace polytope { namespace sympol_interface {
@@ -114,7 +114,7 @@ namespace sympol_interface {
    {
       bool is_homogeneous = false;
       sympol::Polyhedron* sympolPoly = assembleSympolPolyhedron(inequalities, equations, dual, is_homogeneous);
-      const unsigned int homogenity_offset = is_homogeneous
+      const int homogenity_offset = is_homogeneous
          ? 0
          : 1;
       
@@ -156,19 +156,19 @@ namespace sympol_interface {
       // compute dual description
       bool succ = rs->enumerateRaysUpToSymmetry(rayComp, *sympolPoly, *symmetryGroup, rd);
 
-      unsigned int size = rd.size();
+      Int size = rd.size();
       if (!is_homogeneous && rd.firstVertexIndex() >= 0)
          --size;
       out_inequalities = Matrix<Rational>(size, sympolPoly->dimension()-homogenity_offset);
 
       // fill list of inequalities/vertices
-      unsigned int r = 0, c;
+      int r = 0, c;
       for (sympol::FacesUpToSymmetryList::FaceIt it = rd.begin(); it != rd.end(); ++it) {
          if ( !is_homogeneous && !(*it)->ray->isRay() )
             continue;
-         assert( int(r) < out_inequalities.rows() );
-         for (c = homogenity_offset; c < sympolPoly->dimension(); ++c) {
-            assert( c < (*it)->ray->size() );
+         assert(r < out_inequalities.rows());
+         for (c = homogenity_offset; c < int(sympolPoly->dimension()); ++c) {
+            assert( c < int((*it)->ray->size()) );
             out_inequalities[r][c-homogenity_offset].copy_from((*(*it)->ray)[c]);
          }
          ++r;
@@ -179,11 +179,11 @@ namespace sympol_interface {
       rayComp->getLinearities(*sympolPoly, linearities);
       out_equations = Matrix<Rational>(linearities.size(), sympolPoly->dimension()-homogenity_offset);
       r = 0;
-      for (std::list<sympol::QArrayPtr>::const_iterator it = linearities.begin(); it != linearities.end(); ++it) {
-         assert( int(r) < out_equations.rows() );
-         for (c = homogenity_offset; c < sympolPoly->dimension(); ++c) {
-            assert( c < (*it)->size() );
-            out_equations[r][c-homogenity_offset].copy_from((**it)[c]);
+      for (const auto& lin : linearities) {
+         assert(r < out_equations.rows());
+         for (c = homogenity_offset; c < int(sympolPoly->dimension()); ++c) {
+            assert( c < int(lin->size()) );
+            out_equations[r][c-homogenity_offset].copy_from((*lin)[c]);
          }
          ++r;
       }
@@ -204,7 +204,7 @@ namespace sympol_interface {
       polyStorage->m_aQIneq.insert(polyStorage->m_aQIneq.end(), qarr.begin(), qarr.end());
 
       std::set<unsigned long> set_eqIndices;
-      for (int i = 0; i < equations.rows(); ++i)
+      for (Int i = 0; i < equations.rows(); ++i)
          set_eqIndices.insert(i + inequalities.rows());
       
       sympol::Polyhedron* p = new sympol::Polyhedron(
@@ -222,7 +222,7 @@ namespace sympol_interface {
    
    std::list<sympol::QArray> sympol_wrapper::matrix2QArray(const Matrix<Rational>& A, bool& is_homogeneous)
    {
-      const int n=A.cols();
+      const Int n = A.cols();
       is_homogeneous = true;
       
       for (auto r=entire(rows(A)); !r.at_end(); ++r) {
@@ -239,7 +239,7 @@ namespace sympol_interface {
       
       for (auto r=entire(rows(A)); !r.at_end(); ++r) {
          sympol::QArray row(n+homogenity_offset, idx++);
-         for (int j=0; j < n; ++j) {
+         for (Int j = 0; j < n; ++j) {
             mpq_set(row[j+homogenity_offset],(*r)[j].get_rep());
          }
          rowList.push_back(row);

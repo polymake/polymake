@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -31,7 +31,8 @@ use Polymake::Enum Flags => {
    is_temporary => 1024,
    is_strong_ref => 1,
    is_weak_ref => 2,
-   is_ref => 3
+   is_ref => 3,
+   is_shortcut => 4
 };
 
 ######################################################################
@@ -46,14 +47,9 @@ sub new {
       weak($self->value) if $self->flags & Flags::is_weak_ref;
       readonly($self->value);
    } else {
-      readonly_deep($self->value);
+      readonly_deref($self->value);
    }
    $self;
-}
-######################################################################
-sub DESTROY {
-   my ($self)=@_;
-   readwrite($self->value);
 }
 ######################################################################
 declare $UNDEF="==UNDEF==\n";
@@ -66,6 +62,18 @@ sub toString {
 
 sub is_temporary { $_[0]->flags & Flags::is_temporary }
 
+sub is_storable {
+   my ($self, $allow_shortcuts) = @_;
+   if (not($self->property->flags & Property::Flags::is_non_storable
+           or $self->flags & Flags::is_weak_ref)) {
+      if ($self->flags & Flags::is_shortcut) {
+         $allow_shortcuts && $allow_shortcuts->($self->property->name)
+      } else {
+         true
+      }
+   }
+}
+
 sub delete_from_subobjects {
    my ($self, $trans)=@_;
    if ($self->property->flags & Property::Flags::is_subobject_array) {
@@ -74,7 +82,7 @@ sub delete_from_subobjects {
 }
 
 sub copy {
-   my ($self, $parent_obj, $to_prop)=@_;
+   my ($self, $parent_obj, $to_prop) = @_;
    $to_prop //= $self->property;
    if ($self->flags & Flags::is_ref || !defined($self->value)) {
       # TODO: special treatment for inner-object-tree references
@@ -86,22 +94,23 @@ sub copy {
 
 sub serialize {
    my ($self, $options) = @_;
-   if ($self->property->flags & Property::Flags::is_non_storable or $self->flags & Flags::is_weak_ref) {
-      ()
-   } elsif (defined($self->value)) {
-      if (is_object($self->value)) {
-         my $type = $self->value->type;
-         my $result = $type->serialize->($self->value, $options);
-         if ($self->property->flags & Property::Flags::is_subobject or $type == $self->property->type) {
-            $result
-         } else {
-            ($result, $type->qualified_name($self->property->belongs_to->application))
-         }
+   if (is_object($self->value)) {
+      my $type = $self->value->type;
+      my $result;
+      if (defined(my $prescribed_type = $options->{type})) {
+         $prescribed_type ||= $self->property->type;
+         $result = $prescribed_type->serialize->($type == $prescribed_type ? $self->value : $prescribed_type->construct->($self->value), $options);
+         $type = $prescribed_type;
       } else {
-         $self->value
+         $result = $type->serialize->($self->value, $options);
+      }
+      if ($type == $self->property->type) {
+         $result
+      } else {
+         ($result, $type)
       }
    } else {
-      undef
+      $self->value
    }
 }
 
@@ -116,6 +125,7 @@ use Polymake::Struct (
 sub value { $_[0]->owner->parent }
 sub property { $_[0]->owner->property }
 sub is_temporary { $_[0]->owner->is_temporary }
+sub is_storable { false }
 sub flags { Flags::is_weak_ref }
 *copy=\&new;
 
@@ -134,7 +144,7 @@ use Polymake::Struct (
 
 sub value : method {
    my ($self)=@_;
-   if (Object::_expect_array_access()) {
+   if (BigObject::_expect_array_access()) {
       $self->values;
    } else {
       $self->values->[0];
@@ -148,23 +158,29 @@ sub toString {
 
 sub serialize {
    my ($self, $options) = @_;
-   [ map { $_->serialize($options) } @{$self->values} ]
+   if (defined(my $schema = $options->{schema})) {
+      my $result = [ map { ($options->{schema} = $schema->[$_]) ? $self->values->[$_]->serialize($options) : () } 0..$#$schema ];
+      @$result ? $result : ()
+   } else {
+      [ map { $_->serialize($options) } @{$self->values} ]
+   }
 }
 
 sub flags { 0 }
-sub is_temporary { 0 }
+sub is_temporary { false }
+sub is_storable { true }
 
 sub select_now {
    my ($self, $index)=@_;
    if (is_object($index)) {
-      defined($self->created_by_rule) && defined($index=$self->created_by_rule->{$index})
+      defined($self->created_by_rule) && defined($index = $self->created_by_rule->{$index})
         or return;
    }
-   if ($index && @_==3) {
-      local with(($_[2] //= new Scope())->locals) {
+   if ($index > 0) {
+      local with($_[2]) {
          local swap @{$self->values}, 0, $index;
       }
-      $index=0;
+      $index = 0;
    }
    $self->values->[$index]
 }
@@ -292,7 +308,7 @@ sub find_or_create {
          push @{$parent->contents}, $self;
          $parent->dictionary->{$self->property->key}=$#{$parent->contents};
       }
-      my $temp = @_ % 2 && pop;
+      my $temp = @_%2 && pop;
       my $obj = $self->property->accept->($self->property->type->pure_type->construct->(is_hash($filter) ? (%$filter) : (), @_), $parent, 0, $temp);
       ensure_unique_name($self, $obj, $temp);
       push @{$self->values}, $obj;

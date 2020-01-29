@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,7 +20,7 @@
 
 namespace polymake { namespace topaz {
   
-Array< Set<int> > real_projective_plane_facets()
+Array<Set<Int>> real_projective_plane_facets()
 {
    return { { 0, 1, 4 },
             { 0, 1, 5 },
@@ -34,9 +34,9 @@ Array< Set<int> > real_projective_plane_facets()
             { 3, 4, 5 } };
 }
 
-perl::Object real_projective_plane()
+BigObject real_projective_plane()
 {
-   perl::Object p("SimplicialComplex");
+   BigObject p("SimplicialComplex");
    p.set_description() << "Real projective plane on six vertices.\n";
 
    p.take("FACETS") << real_projective_plane_facets();
@@ -47,7 +47,7 @@ perl::Object real_projective_plane()
    return p;
 }
 
-Array< Set<int> > complex_projective_plane_facets()
+Array<Set<Int>> complex_projective_plane_facets()
 {
    return { {0, 1, 2, 3, 4},
             {0, 1, 2, 3, 6},
@@ -87,9 +87,9 @@ Array< Set<int> > complex_projective_plane_facets()
             {3, 4, 6, 7, 8} };
 }
 
-perl::Object complex_projective_plane()
+BigObject complex_projective_plane()
 {
-   perl::Object p("SimplicialComplex");
+   BigObject p("SimplicialComplex");
    p.set_description() << "Complex projective plane on nine vertices.\n";
 
    p.take("FACETS") << complex_projective_plane_facets();

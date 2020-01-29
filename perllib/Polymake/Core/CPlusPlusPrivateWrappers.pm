@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -27,12 +27,22 @@ use Polymake::Struct (
    '$update_me',
 );
 
+# increase this every time we want to enforce automatic deletion of private wrappers
+my $generation=1;
+
 sub init {
    my $self;
-   my $id=id();
-   if (defined (my $dir=$private_wrappers{$id})) {
-      if (-d ($dir="$PrivateDir/$dir")) {
-         $self=new(@_, $dir);
+   my $id = id();
+   if (defined(my $dir = $private_wrappers{$id})) {
+      if (-d ($dir = "$PrivateDir/$dir")) {
+         $self = new(@_, $dir);
+         if ($self->version < $generation) {
+            warn_print( "Removing outdated private wrappers in $dir" );
+            File::Path::remove_tree($dir);
+            delete $private_wrappers{$id};
+            $custom_handler->set('%private_wrappers');
+            return;
+         }
          $self->set_build_dir;
 
          my ($ext, @prereq);
@@ -133,9 +143,11 @@ sub update_metafile {
 # This extension is architecture-specific, it is linked to polymake clients installed at
 #   $InstallArch
 # It can safely be deleted at any time except during running polymake session.
+
+URI private:#$generation
 .
    if (@{$self->requires}) {
-      print $F "REQUIRE\n", map { ($_->URI, "\n") } @{$self->requires};
+      print $F "\nREQUIRE\n", map { ($_->URI, "\n") } @{$self->requires};
    }
    close $F;
 }

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -36,7 +36,8 @@ use Polymake::Struct (
    [ '$testvec' => '#2' ],      # optionally, a reference to a test vector
    [ '$prefix' => '#3' ],       # optionally, a string with which all variables in the LP file are supposed to start;
                                 #   defaults to 'x'
-   '$name',                     # the name of the LP
+   '$name',                     # the name of the entire object, dervied from the filename
+   '$lp_name',                  # the name of the LP, if specified as a comment in the input file
    '$ct',                       # counts how many relations have been read in
    '@Ineq',                     # inequalities Ax+B>=0, in the form (B, A)
    '@Eq',                       # equations Px+Q=0,     in the form (Q, P)
@@ -52,7 +53,7 @@ sub new {
    my $self=&_new;
    replace_special_paths($self->LPfile);
    if ($self->LPfile =~ m{([^/]+)\.lp$}i) {
-      $self->name=$1;
+      $self->name = $1;
    }
    $self->ct = 0;
    if (!defined($self->prefix)) { $self->prefix = 'x'; }
@@ -65,8 +66,13 @@ sub new {
    open my $LP, $self->LPfile
      or die "Can't read ", $self->LPfile, ": $!\n";
    local $/;
-   my $lp=<$LP>;
+   my $lp = <$LP>;
    close $LP;
+
+   ($self->lp_name) = $lp =~ /\\problem name:\s*(\S+)/im
+     and
+   $self->lp_name =~ s/\.lp$//i;
+
    $lp =~ s/\\.*?\n//mg;        # comments start with '\' and go up to the end of line
    $lp =~ /^\s*(maximize|minimize|maximum|minimum|max|min)\s+/im
       or die "no objective function found\n";

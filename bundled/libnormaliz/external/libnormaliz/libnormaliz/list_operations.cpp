@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2014  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2019  Winfried Bruns, Bogdan Ichim, Christof Soeger
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -21,7 +21,6 @@
  * terms of service.
  */
 
-
 //---------------------------------------------------------------------------
 
 #include <iostream>
@@ -40,55 +39,48 @@ using namespace std;
 
 //---------------------------------------------------------------------------
 
-template<typename Integer>
-vector<Integer> l_multiplication(const list< vector<Integer> >& l,const vector<Integer>& v){
-    int s=l.size();
+template <typename Integer>
+vector<Integer> l_multiplication(const list<vector<Integer> >& l, const vector<Integer>& v) {
+    int s = l.size();
     vector<Integer> p(s);
-    typename list< vector<Integer> >::const_iterator i;
-    s=0;
-    for (i =l.begin(); i != l.end(); ++i, ++s) {
-        p[s]=v_scalar_product(*i,v);             //maybe we loose time here?
+    s = 0;
+    for (const auto& i : l) {
+        p[s++] = v_scalar_product(*i, v);  // maybe we loose time here?
     }
     return p;
 }
 
 //---------------------------------------------------------------------------
 
-template<typename Integer>
-list< vector<Integer> > l_list_x_matrix(const list< vector<Integer> >& l,const Matrix<Integer>& M){
-    list< vector<Integer> > result;
+template <typename Integer>
+list<vector<Integer> > l_list_x_matrix(const list<vector<Integer> >& l, const Matrix<Integer>& M) {
+    list<vector<Integer> > result;
     vector<Integer> p;
-    typename list< vector<Integer> >::const_iterator i;
-    for (i =l.begin(); i != l.end(); i++) {
-        p=M.VxM(*i);
+    for (const auto& i : l) {
+        p = M.VxM(i);
         result.push_back(p);
     }
     return result;
 }
 //---------------------------------------------------------------------------
 
-template<typename Integer>
-void  l_cut(list<  vector<Integer> >& l, int size){
-    typename list< vector<Integer> >::iterator i;
-    for (i =l.begin(); i != l.end(); i++) {
-        (*i).resize(size);
+template <typename Integer>
+void l_cut(list<vector<Integer> >& l, int size) {
+    for (auto& i : l) {
+        i.resize(size);
     }
 }
 
 //---------------------------------------------------------------------------
 
-
-template<typename Integer>
-void  l_cut_front(list<  vector<Integer> >& l, int size){
-    typename list< vector<Integer> >::iterator i;
+template <typename Integer>
+void l_cut_front(list<vector<Integer> >& l, int size) {
     vector<Integer> tmp;
-    for (i =l.begin(); i != l.end(); ) {
-        tmp=v_cut_front(*i, size);
-        i=l.erase(i);  //important to decrease memory consumption
-        l.insert(i,tmp);
+    for (auto i = l.begin(); i != l.end();) {
+        tmp = v_cut_front(*i, size);
+        i = l.erase(i);  // important to decrease memory consumption
+        l.insert(i, tmp);
     }
 }
 
-
-
-}
+}  // namespace libnormaliz

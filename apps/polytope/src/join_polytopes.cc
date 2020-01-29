@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,7 +23,7 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-perl::Object join_polytopes(perl::Object p1, perl::Object p2, perl::OptionSet options)
+BigObject join_polytopes(BigObject p1, BigObject p2, OptionSet options)
 {
    const bool bounded=p1.give("BOUNDED") && p2.give("BOUNDED");
    if (!bounded)
@@ -31,21 +31,21 @@ perl::Object join_polytopes(perl::Object p1, perl::Object p2, perl::OptionSet op
 
    const bool noc=options["no_coordinates"];
 
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Join of " << p1.name() << " and " << p2.name() << endl;
 
    // initializations prevent wrong warnings "may be used uninitialized" with some broken gcc's
-   int n1=0;
-   int n2=0;
-   int n_vertices_out=0;
+   Int n1 = 0;
+   Int n2 = 0;
+   Int n_vertices_out = 0;
 
    if (noc || p1.exists("VERTICES_IN_FACETS") && p2.exists("VERTICES_IN_FACETS")) {
-      const IncidenceMatrix<> VIF1=p1.give("VERTICES_IN_FACETS"),
-         VIF2=p2.give("VERTICES_IN_FACETS");
-      n1=VIF1.cols();  n2=VIF2.cols();
-      n_vertices_out= n1 + n2;
+      const IncidenceMatrix<> VIF1 = p1.give("VERTICES_IN_FACETS"),
+                              VIF2 = p2.give("VERTICES_IN_FACETS");
+      n1 = VIF1.cols();  n2 = VIF2.cols();
+      n_vertices_out = n1+n2;
 
-      const IncidenceMatrix<> VIF_out=diag_1(VIF1, VIF2);
+      const IncidenceMatrix<> VIF_out = diag_1(VIF1, VIF2);
       p_out.take("VERTICES_IN_FACETS") << VIF_out;
    }
 
@@ -67,24 +67,24 @@ perl::Object join_polytopes(perl::Object p1, perl::Object p2, perl::OptionSet op
    }
 
    if (options["group"]) {
-      Array<Array<int>> gens1 = p1.give("GROUP.VERTICES_ACTION.GENERATORS");
-      Array<Array<int>> gens2 = p2.give("GROUP.VERTICES_ACTION.GENERATORS");
-      int g1 = gens1.size();
-      Array<Array<int>> gens_out(g1 + gens2.size());
+      Array<Array<Int>> gens1 = p1.give("GROUP.VERTICES_ACTION.GENERATORS");
+      Array<Array<Int>> gens2 = p2.give("GROUP.VERTICES_ACTION.GENERATORS");
+      Int g1 = gens1.size();
+      Array<Array<Int>> gens_out(g1 + gens2.size());
 
-      for (int i = 0; i < g1; ++i) {
+      for (Int i = 0; i < g1; ++i) {
          gens_out[i] = gens1[i].append(range(n1,n_vertices_out-1));
       }
-      for (int i = g1; i < gens_out.size(); ++i) {
-         gens_out[i] = Array<int>(range(0,n1-1)).append(gens2[i-g1]);
-         for (int j = n1; j < n_vertices_out; ++j)
+      for (Int i = g1; i < gens_out.size(); ++i) {
+         gens_out[i] = Array<Int>(range(0,n1-1)).append(gens2[i-g1]);
+         for (Int j = n1; j < n_vertices_out; ++j)
             gens_out[i][j]+=n1;
       }
 
-      perl::Object a("group::PermutationAction");
+      BigObject a("group::PermutationAction");
       a.take("GENERATORS") << gens_out;
 
-      perl::Object g("group::Group");
+      BigObject g("group::Group");
       g.set_description() << "canonical group induced by the group of the base polytopes" << endl;
       g.set_name("canonicalGroup");
       p_out.take("GROUP") << g;
@@ -96,7 +96,7 @@ perl::Object join_polytopes(perl::Object p1, perl::Object p2, perl::OptionSet op
 }
 
 template <typename Scalar>
-perl::Object free_sum_impl(perl::Object p1, perl::Object p2, const std::string object_prefix, const std::string linear_span_name, int first_coord, perl::OptionSet options)
+BigObject free_sum_impl(BigObject p1, BigObject p2, const std::string object_prefix, const std::string linear_span_name, Int first_coord, OptionSet options)
 {
    if ( (  (object_prefix=="CONE" && 
             !p1.exists("RAYS | INPUT_RAYS") &&
@@ -120,21 +120,21 @@ perl::Object free_sum_impl(perl::Object p1, perl::Object p2, const std::string o
       throw std::runtime_error("free_sum: input polyhedron not centered. If you want to continue, you may use the option 'force_centered=>0'");
    const bool noc=options["no_coordinates"];
 
-   perl::Object p_out(p1.type());
+   BigObject p_out(p1.type());
    p_out.set_description() << "Free sum of "<< p1.name() << " and " << p2.name() << endl;
 
-   int n1;
-   int n2;
-   int n_vertices_out=0;
+   Int n1;
+   Int n2;
+   Int n_vertices_out = 0;
 
    if (noc || object_prefix=="CONE" && p1.exists("VERTICES_IN_FACETS") && p2.exists("VERTICES_IN_FACETS")) {
       const IncidenceMatrix<> 
          VIF1=p1.give("VERTICES_IN_FACETS"),
          VIF2=p2.give("VERTICES_IN_FACETS");
       n1=VIF1.cols();  n2=VIF2.cols();
-      n_vertices_out = n1 + n2;
+      n_vertices_out = n1+n2;
       
-      const int n_facets1 = VIF1.rows(),
+      const Int n_facets1 = VIF1.rows(),
                 n_facets2 = VIF2.rows(),
              n_facets_out = n_facets1 * n_facets2;
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,22 +22,7 @@
 #include <iostream>
 #include <netinet/in.h>
 #include <sys/poll.h>
-
-#if defined(__GLIBCXX__)
-
-# define PM_SET_BUF_GET_CUR(buf,g,e) (buf)->_M_in_cur=(g), (buf)->_M_in_end=(e)
-# define PM_SET_BUF_GET_END(buf,e) (buf)->_M_in_end=(e)
-# define PM_SET_BUF_GET_END_OFF(buf,n) (buf)->_M_in_end=(buf)->_M_in_cur + (n)
-# define PM_SET_BUF_GET_CUR_END(buf) (buf)->_M_in_cur=(buf)->_M_in_end;
-
-#else
-
-# define PM_SET_BUF_GET_CUR(buf,g,e) (buf)->setg((buf)->eback(), (g), (e))
-# define PM_SET_BUF_GET_END(buf,e) (buf)->setg((buf)->eback(), (buf)->gptr(), e)
-# define PM_SET_BUF_GET_END_OFF(buf,n) (buf)->setg((buf)->eback(), (buf)->gptr(), (buf)->gptr()+(n))
-# define PM_SET_BUF_GET_CUR_END(buf) (buf)->gbump((buf)->egptr()-(buf)->gptr())
-
-#endif
+#include "polymake/internal/streambuf_ext.h"
 
 namespace pm {
 
@@ -45,42 +30,17 @@ class server_socketbuf;
 class procstream;
 class socketstream;
 
-class streambuf_with_input_width : public std::streambuf {
-protected:
-   char *input_limit;
-   streambuf_with_input_width() : input_limit(0) { }
-
+class socketbuf : public streambuf_ext {
 public:
-   streambuf_with_input_width(const std::string& src)
-      : input_limit(0)
-   {
-      char *text=const_cast<char*>(src.c_str());
-      setg(text, text, text+src.size());
-   }
-
-   bool set_input_width(int w);
-   void reset_input_width(bool slurfed);
-
-   void rewind(int w)
-   {
-      if (gptr()-w >= eback())
-	 gbump(-w);
-   }
-
-   virtual int lines() { return 0; } // to be overloaded
-};
-
-class socketbuf : public streambuf_with_input_width {
-public:
-   socketbuf(int fd) : _fd(fd), _sfd(-1), _wfd(fd) { init(); }
-   socketbuf(int rfd, int wfd) : _fd(rfd), _sfd(-1), _wfd(wfd) { init(); }
+   socketbuf(int fd) : fd_(fd), sfd_(-1), wfd_(fd) { init(); }
+   socketbuf(int rfd, int wfd) : fd_(rfd), sfd_(-1), wfd_(wfd) { init(); }
    socketbuf(in_addr_t addr, int port, int timeout, int retries);
    socketbuf(const char *hostname, const char *port, int timeout, int retries);
    ~socketbuf();
 
-   void fill(pollfd& pfd) { pfd.fd=_fd; }
+   void fill(pollfd& pfd) { pfd.fd = fd_; }
 
-   void echo(int n)
+   void echo(size_type n)
    {
       sputn(gptr(), n);
       gbump(n);
@@ -98,16 +58,17 @@ protected:
    void init();
    void connect(sockaddr_in& sa, int timeout, int retries);
 
-   int try_out(const char* start, int size);
+   std::streamsize try_out(const char* start, size_type size);
    int sync();
-   int_type overflow(int_type c=traits_type::eof());
+   int_type overflow(int_type c = traits_type::eof());
    int_type underflow();
    std::streamsize showmanyc();
-   int_type pbackfail(int_type c=traits_type::eof());
+   int_type pbackfail(int_type c = traits_type::eof());
 
    void discard_out();
 
-   int _fd, _sfd, _wfd, bufsize;
+   int fd_, sfd_, wfd_;
+   size_type bufsize;
    pollfd my_poll;
 
    friend class server_socketbuf;
@@ -126,7 +87,7 @@ public:
 
 protected:
    int sync();
-   int_type overflow(int_type c=traits_type::eof());
+   int_type overflow(int_type c = traits_type::eof());
    int_type underflow();
    std::streamsize showmanyc() { return 0; }
    int_type pbackfail(int_type) { return traits_type::eof(); }
@@ -135,50 +96,19 @@ private:
    static socketbuf* start(server_socketbuf*);
 };
 
-class istream_with_input_width : public std::istream {
-public:
-   istream_with_input_width(const std::string& src)
-      : std::istream(new streambuf_with_input_width(src)) { }
-
-   ~istream_with_input_width() { delete std::istream::rdbuf(); }
-
-   struct set_w {
-      int w;
-      mutable std::istream *s;
-
-      explicit set_w(int w_arg)
-	 : w(w_arg), s(0) { }
-
-      void apply(std::istream& s_arg) const
-      {
-	 if (static_cast<streambuf_with_input_width*>(s_arg.rdbuf())->set_input_width(w))
-	    s=&s_arg;
-	 else
-	    s_arg.setstate(std::ios::failbit|std::ios::eofbit);
-      }
-
-      ~set_w()
-      {
-	 if (s) {
-	    static_cast<streambuf_with_input_width*>(s->rdbuf())->reset_input_width(s->good());
-	    s->clear(s->rdstate() & ~std::ios::eofbit);
-	 }
-      }
-   };
-};
-
-inline istream_with_input_width::set_w setinputwidth(int w)
-{
-   return istream_with_input_width::set_w(w);
-}
-
 class procstream : public std::iostream {
 protected:
    procstream(socketbuf *buf) : std::iostream(buf) { }
 public:
    socketbuf* rdbuf() const { return static_cast<socketbuf*>(std::iostream::rdbuf()); }
 
-   void close() { exceptions(goodbit); delete std::iostream::rdbuf(0); setstate(std::ios::eofbit); }
+   void close()
+   {
+      exceptions(goodbit);
+      delete std::iostream::rdbuf(nullptr);
+      setstate(std::ios::eofbit);
+   }
+
    ~procstream() { delete std::iostream::rdbuf(); }
 
    int_type skip(char c);
@@ -193,37 +123,22 @@ class socketstream : public procstream {
 public:
    enum init_kind { init_with_port, init_with_fd };
 
-   explicit socketstream(int arg=0, init_kind kind=init_with_port) :
-      procstream(new server_socketbuf(arg, kind==init_with_port)) {}
+   explicit socketstream(int arg = 0, init_kind kind = init_with_port)
+      : procstream(new server_socketbuf(arg, kind == init_with_port)) {}
 
-   explicit socketstream(const char* path) :
-      procstream(new server_socketbuf(path)) {}
+   explicit socketstream(const char* path)
+      : procstream(new server_socketbuf(path)) {}
 
-   socketstream(const char* hostname, const char* port, int timeout=0, int retries=0) :
-      procstream(new socketbuf(hostname,port,timeout,retries)) {}
+   socketstream(const char* hostname, const char* port, int timeout = 0, int retries = 0)
+      : procstream(new socketbuf(hostname,port,timeout,retries)) {}
 
-   socketstream(in_addr_t addr, int port, int timeout=0, int retries=0) :
-      procstream(new socketbuf(addr,port,timeout,retries)) {}
+   socketstream(in_addr_t addr, int port, int timeout = 0, int retries = 0)
+      : procstream(new socketbuf(addr,port,timeout,retries)) {}
 
    int port() const;
 
    typedef socketbuf::connection_refused connection_refused;
 };
-
-
-inline
-std::istream& operator>> (istream_with_input_width& in, const istream_with_input_width::set_w& sw)
-{
-   sw.apply(in);
-   return in;
-}
-
-inline
-std::iostream& operator>> (procstream& in, const istream_with_input_width::set_w& sw)
-{
-   sw.apply(in);
-   return in;
-}
 
 }
 

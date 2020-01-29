@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,9 +24,9 @@ namespace polymake { namespace polytope {
 template <typename Scalar>
 bool check_inc(const Matrix<Scalar>& P, const Matrix<Scalar>& H, std::string sign_arg, bool verbose)
 {
-   bool ok=true,
-     minus=false, equal=false, plus=false;  // what is allowed
-   int n_minus=0, n_equal=0, n_plus=0;         // number of point/hyperplane pairs
+   bool ok = true,
+     minus = false, equal = false, plus = false;     // what is allowed
+   Int n_minus = 0, n_equal = 0, n_plus = 0;         // number of point/hyperplane pairs
 
    // analyze sign argument
    for (char c : sign_arg) {
@@ -49,33 +49,33 @@ bool check_inc(const Matrix<Scalar>& P, const Matrix<Scalar>& H, std::string sig
 
    // check all pairs
    Scalar scp;
-   for (int i=0; i<P.rows(); ++i) {
-      for (int j=0; j<H.rows(); ++j) {
+   for (Int i = 0; i < P.rows(); ++i) {
+      for (Int j = 0; j < H.rows(); ++j) {
          scp = P[i] * H[j];
-         int s=sign(scp);
-         if (s<0) {
-            n_minus++;
+         Int s = sign(scp);
+         if (s < 0) {
+            ++n_minus;
             if (!minus) {
                if (verbose)
                   cout << "<" << i << "," << j << ">   ( "
                        << P[i] << " ) * [ " << H[j] << " ] == " << scp << endl;
-               ok=false;
+               ok = false;
             }
-         } else if (s==0) {
-            n_equal++;
+         } else if (s == 0) {
+            ++n_equal;
             if (!equal) {
                if (verbose)
                   cout << "<" << i << "," << j << ">   ( "
                        << P[i] << " ) * [ " << H[j] << " ] == " << scp << endl;
-               ok=false;
+               ok = false;
             }
          } else {
-            n_plus++;
+            ++n_plus;
             if (!plus) {
                if (verbose)
                   cout << "<" << i << "," << j << ">   ( "
                        << P[i] << " ) * [ " << H[j] << " ] == " << scp << endl;
-               ok=false;
+               ok = false;
             }
          }
       }

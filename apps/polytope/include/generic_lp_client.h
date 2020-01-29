@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,17 +25,17 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar, typename Ineq>
-Set<int> initial_basis_from_known_vertex(const GenericMatrix<Ineq, Scalar>& H, const Vector<Scalar>& V)
+Set<Int> initial_basis_from_known_vertex(const GenericMatrix<Ineq, Scalar>& H, const Vector<Scalar>& V)
 {
-   const Set<int> zero_rows = orthogonal_rows(H, V);
-   const Set<int> basis_zero_rows = basis_rows(H.minor(zero_rows, All));
-   if (basis_zero_rows.size() == H.cols() - 1)
+   const Set<Int> zero_rows = orthogonal_rows(H, V);
+   const Set<Int> basis_zero_rows = basis_rows(H.minor(zero_rows, All));
+   if (basis_zero_rows.size() == H.cols()-1)
       return select(zero_rows, basis_zero_rows);
-   return Set<int>();
+   return Set<Int>();
 }
 
 template <typename Scalar>
-void store_LP_Solution(perl::Object& p, perl::Object& lp, bool maximize, const LP_Solution<Scalar>& S)
+void store_LP_Solution(BigObject& p, BigObject& lp, bool maximize, const LP_Solution<Scalar>& S)
 {
    if (S.status == LP_status::valid) {
       lp.take(maximize ? Str("MAXIMAL_VALUE") : Str("MINIMAL_VALUE")) << S.objective_value;
@@ -59,7 +59,7 @@ void store_LP_Solution(perl::Object& p, perl::Object& lp, bool maximize, const L
 template <typename Scalar, typename Solver, typename=void>
 struct allow_initial_basis : std::false_type {
 
-   bool select_arg(bool feasibility_known, const Set<int>&) const
+   bool select_arg(bool feasibility_known, const Set<Int>&) const
    {
       return feasibility_known;
    }
@@ -68,16 +68,16 @@ struct allow_initial_basis : std::false_type {
 template <typename Scalar, typename Solver>
 struct allow_initial_basis<Scalar, Solver,
    accept_valid_type<decltype(std::declval<Solver>().solve(std::declval<Matrix<Scalar>>(), std::declval<Matrix<Scalar>>(),
-                                                           std::declval<Vector<Scalar>>(), true, std::declval<Set<int>>()))>> : std::true_type {
+                                                           std::declval<Vector<Scalar>>(), true, std::declval<Set<Int>>()))>> : std::true_type {
 
-   const Set<int>& select_arg(bool, const Set<int>& initial_basis) const
+   const Set<Int>& select_arg(bool, const Set<Int>& initial_basis) const
    {
       return initial_basis;
    }
 };
 
 template <typename Scalar, typename Solver>
-void generic_lp_client(perl::Object& p, perl::Object& lp, bool maximize, const Solver& LP_solver)
+void generic_lp_client(BigObject& p, BigObject& lp, bool maximize, const Solver& LP_solver)
 {
    std::string H_name;
    const Matrix<Scalar> H = LP_solver.needs_feasibility_known()
@@ -90,7 +90,7 @@ void generic_lp_client(perl::Object& p, perl::Object& lp, bool maximize, const S
        H.cols() && E.cols())
       throw std::runtime_error("lp_client - dimension mismatch between Inequalities and Equations");
 
-   Set<int> initial_basis;
+   Set<Int> initial_basis;
    const allow_initial_basis<Scalar, Solver> allow_basis{};
 
    if (allow_basis) {

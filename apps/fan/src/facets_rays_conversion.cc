@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,9 +27,9 @@
 namespace polymake { namespace fan {
 
 template <typename Coord>
-void facetsToRays(perl::Object f) 
+void facetsToRays(BigObject f) 
 {
-   const int ambientDim = f.give("FAN_AMBIENT_DIM");
+   const Int ambientDim = f.give("FAN_AMBIENT_DIM");
    const Matrix<Coord> facets=f.give("FACET_NORMALS");
    if (!facets.rows()) {
       f.take("RAYS") << Matrix<Coord>(0, ambientDim);
@@ -38,8 +38,8 @@ void facetsToRays(perl::Object f)
       return;
    }
 
-   const SparseMatrix<int> facetIndices=f.give("MAXIMAL_CONES_FACETS");
-   const int n_cones=facetIndices.rows();
+   const SparseMatrix<Int> facetIndices = f.give("MAXIMAL_CONES_FACETS");
+   const Int n_cones = facetIndices.rows();
    Matrix<Coord> linearSpan;
    IncidenceMatrix<> linearSpanIndices;
    bool ls_exists=false;
@@ -51,13 +51,13 @@ void facetsToRays(perl::Object f)
    Matrix<Coord> lineality_space;
 
    RestrictedIncidenceMatrix<> max_cones(n_cones);
-   hash_map<Vector<Coord>, int> rays;    
-   int n_rays=0;
+   hash_map<Vector<Coord>, Int> rays;    
+   Int n_rays = 0;
    // iterate cones
-   for (int i=0; i<n_cones; ++i) {
-      Set<int> pos_eq,neg_eq;
-      for (auto e=entire(facetIndices.row(i)); !e.at_end(); ++e) {
-         if ((*e)>0)
+   for (Int i = 0; i < n_cones; ++i) {
+      Set<Int> pos_eq,neg_eq;
+      for (auto e = entire(facetIndices.row(i)); !e.at_end(); ++e) {
+         if (*e > 0)
             pos_eq.push_back(e.index());
          else if ((*e)<0)
             neg_eq.push_back(e.index());

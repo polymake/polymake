@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -24,7 +24,6 @@ use Polymake::Struct(
    [ '@ISA' => 'Stream' ],
    [ new => '$$%' ],
    [ '$name' => '#2' ],
-   [ '@filters' => '[]' ],
    [ '$body' => '#1' ],
    [ '$expected_error' => '#%' ],
    '$gotten_error',

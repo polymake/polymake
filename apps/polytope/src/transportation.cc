@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,10 +22,10 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-perl::Object transportation(const Vector<Scalar>& r, const Vector<Scalar>& c)
+BigObject transportation(const Vector<Scalar>& r, const Vector<Scalar>& c)
 {
-   const int m = r.size();
-   const int n = c.size();
+   const Int m = r.size();
+   const Int n = c.size();
   
    if (m*n == 0) 
       throw std::runtime_error("transportation polytope: r and c must have nonzero length");
@@ -41,7 +41,7 @@ perl::Object transportation(const Vector<Scalar>& r, const Vector<Scalar>& c)
       if (*x < 0)
          throw std::runtime_error("transportation polytope: r and c must have nonnegative entries");
 
-   perl::Object p("Polytope", mlist<Scalar>());
+   BigObject p("Polytope", mlist<Scalar>());
    p.set_description() << "transportation polytope for r=(" << r << ") and c=(" << c << ")" << endl;
 
    p.take("CONE_AMBIENT_DIM") << (m*n+1);
@@ -49,7 +49,7 @@ perl::Object transportation(const Vector<Scalar>& r, const Vector<Scalar>& c)
    Matrix<Scalar> ineq(m*n,m*n+1);
    ineq.minor(range(0,m*n-1),range(1,m*n)).diagonal().fill(1);
    Matrix<Scalar> eq(m+n,m*n+1);
-   for(int i = 0; i < m; i++) {
+   for (Int i = 0; i < m; ++i) {
       eq.minor(range(i,i),range(i*n+1,(i+1)*n)).fill(1);
       eq.minor(range(m,m+n-1),range(i*n+1,(i+1)*n)).diagonal().fill(1);
    }

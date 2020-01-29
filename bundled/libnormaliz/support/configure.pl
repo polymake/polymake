@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -31,13 +31,14 @@ sub usage {
 }
 
 sub check_bundled {
-   -e "bundled/libnormaliz/external/libnormaliz/libnormaliz/libnormaliz-all.cpp"
+   -e "bundled/libnormaliz/external/libnormaliz/libnormaliz/libnormaliz.h"
 }
 
 sub proceed {
    my ($options)=@_;
    my $nmz_path;
    my $nmz_version;
+   my $libs = "-lnormaliz";
    $UseBundled=1;
 
    # check GMP C++ bindings
@@ -69,7 +70,44 @@ int main() {
    }
 
    if ($nmz_path ne "bundled") {
-      my $error=Polymake::Configure::build_test_program(<<'---', LIBS => "-lnormaliz -lgmpxx -lgmp", CXXFLAGS => "$CXXFLAGS", LDFLAGS => "$LDFLAGS");
+      # check normaliz configuration first:
+      my $error=Polymake::Configure::build_test_program(<<'---', LIBS => "", CXXFLAGS => "$CXXFLAGS", LDFLAGS => "$LDFLAGS");
+#include <cstddef>
+#include <fstream>
+#include <iostream>
+#include <libnormaliz/nmz_config.h>
+
+int main (int argc, char *argv[])
+{
+#ifdef ENFNORMALIZ
+   std::cout << " -leantic";
+#endif
+#ifdef NMZ_FLINT
+   std::cout << " -lflint";
+#endif
+   std::cout << std::endl;
+   return 0;
+}
+---
+      if ($?) {
+         check_bundled() and !defined($nmz_path) or
+            die "Could not compile a test program checking for libnormaliz configuration.\n",
+                "The complete error log follows:\n\n$error\n",
+                "Please investigate the reasons and fix the installation.\n";
+      } else {
+         chomp(my $extralibs=Polymake::Configure::run_test_program());
+
+         if ($?) {
+            check_bundled() and !defined($nmz_path) or
+               die "Could not compile a test program checking for libnormaliz configuration.\n",
+                   "The complete error log follows:\n\n$extralibs\n",
+                   "Please investigate the reasons and fix the installation.\n";
+         } else {
+            $libs = "$libs $extralibs";
+         }
+      }
+
+      $error=Polymake::Configure::build_test_program(<<'---', LIBS => "$libs -lgmpxx -lgmp", CXXFLAGS => "$CXXFLAGS", LDFLAGS => "$LDFLAGS");
 
 #include <cstddef>
 #include <vector>
@@ -136,7 +174,7 @@ int main (int argc, char *argv[])
          $message .= " [OpenMP support disabled]";
       }
    } else {
-      $LIBS="-lnormaliz";
+      $LIBS="$libs";
       $message = "$nmz_version @ ".($nmz_path//"system")
    }
 

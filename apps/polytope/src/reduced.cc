@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,13 +23,13 @@
 namespace polymake { namespace polytope {
 
 
-perl::Object reduced(Rational t, Rational x, Rational s, Rational h, Rational r)
+BigObject reduced(Rational t, Rational x, Rational s, Rational h, Rational r)
 {
    if ((s<0.09) || (s>0.2) || (h<0.09) || (h>0.2)
        || (r<0.3) || (r>0.4) || (x<0.6) || (x>0.7)|| (t<0.5) || (t>0.6))
       throw std::runtime_error("reduced: s,h in [0.09,0.2], r in [0.3,0.4], x in [0.6,0.7], t in [0.5,0.6]");
    
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.set_description() << "reduced 3-polytope with t=" << t << " x=" << x << " s=" << s << " h=" << h << " r=" << r << endl;
 
    Matrix<Rational> V(12,4);

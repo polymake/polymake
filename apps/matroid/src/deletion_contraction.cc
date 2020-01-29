@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,72 +27,72 @@
 
 namespace polymake { namespace matroid {
 
-   Map<int,int> relabeling_map(const int total_set_size, const Set<int> &removed_set) {
-      Map<int,int> result;
-      int next_index = 0;
-      for(int i = 0; i < total_set_size; i++) {
-         if(!removed_set.contains(i)) {
-            result[i] = next_index; next_index++;
-         }
+Map<Int, Int> relabeling_map(const Int total_set_size, const Set<Int>& removed_set)
+{
+   Map<Int, Int> result;
+   Int next_index = 0;
+   for (Int i = 0; i < total_set_size; ++i) {
+      if (!removed_set.contains(i)) {
+         result[i] = next_index++;
       }
-    
-      return result;
    }
 
-   //FIXME This would be more efficient, if refactored into a big object type Minor (see issue #898)
+   return result;
+}
 
-   template <typename MinorType>
-   perl::Object minor( perl::Object matroid, Set<int> minor_set, perl::OptionSet options) {
-      Array<std::string> list_computed_properties = options["computed_properties"];
-      Set<std::string> computed_properties(list_computed_properties);
+//FIXME This would be more efficient, if refactored into a big object type Minor (see issue #898)
 
-      int n = matroid.give("N_ELEMENTS");
-      //This re-indexes and has nothing to do with [[LABELS]]
-      Map<int,int> label_map = relabeling_map(n, minor_set);
+template <typename MinorType>
+BigObject minor(BigObject matroid, const Set<Int>& minor_set, OptionSet options)
+{
+   Array<std::string> list_computed_properties = options["computed_properties"];
+   Set<std::string> computed_properties(list_computed_properties);
 
-      perl::Object result_matroid("Matroid");
-         result_matroid.take("N_ELEMENTS") << (n - minor_set.size());
+   Int n = matroid.give("N_ELEMENTS");
+   //This re-indexes and has nothing to do with [[LABELS]]
+   Map<Int, Int> label_map = relabeling_map(n, minor_set);
 
-      Array<std::string> labels;
-      if (matroid.lookup("LABELS") >> labels && !labels.empty()) {
-         result_matroid.take("LABELS") << select(labels, ~minor_set);
-      }
+   BigObject result_matroid("Matroid");
+   result_matroid.take("N_ELEMENTS") << (n - minor_set.size());
 
-      if (computed_properties.size() == 0  || computed_properties.contains(std::string("BASES"))) {
-         const Array<Set<int>> m_bases = matroid.give("BASES");
-         const Array<Set<int>> result_bases{ minor_bases(MinorType(), m_bases, minor_set, label_map) };
-         result_matroid.take("BASES") << result_bases;
-         computed_properties -= std::string("BASES");
-      }
+   Array<std::string> labels;
+   if (matroid.lookup("LABELS") >> labels && !labels.empty()) {
+      result_matroid.take("LABELS") << select(labels, ~minor_set);
+   }
 
-      if (computed_properties.contains(std::string("CIRCUITS"))) {
-         const Array<Set<int>> m_circuits = matroid.give("CIRCUITS");
-         const Array<Set<int>> result_circuits = minor_circuits(MinorType(), m_circuits, minor_set, label_map);
-         result_matroid.take("CIRCUITS") << result_circuits;
-         computed_properties -= std::string("CIRCUITS");
-      }
+   if (computed_properties.size() == 0  || computed_properties.contains(std::string("BASES"))) {
+      const Array<Set<Int>> m_bases = matroid.give("BASES");
+      const Array<Set<Int>> result_bases{ minor_bases(MinorType(), m_bases, minor_set, label_map) };
+      result_matroid.take("BASES") << result_bases;
+      computed_properties -= std::string("BASES");
+   }
 
-      if (computed_properties.contains(std::string("VECTORS"))) {
-         const Matrix<Rational> m_vectors = matroid.give("VECTORS");
-         const Matrix<Rational> result_vectors = minor_vectors(MinorType(), m_vectors, minor_set);
-         result_matroid.take("VECTORS") << result_vectors;
-         computed_properties -= std::string("VECTORS");
-      }
+   if (computed_properties.contains(std::string("CIRCUITS"))) {
+      const Array<Set<Int>> m_circuits = matroid.give("CIRCUITS");
+      const Array<Set<Int>> result_circuits = minor_circuits(MinorType(), m_circuits, minor_set, label_map);
+      result_matroid.take("CIRCUITS") << result_circuits;
+      computed_properties -= std::string("CIRCUITS");
+   }
 
-      if (!computed_properties.empty())
-         throw std::runtime_error("Computing minor: Invalid properties");
+   if (computed_properties.contains(std::string("VECTORS"))) {
+      const Matrix<Rational> m_vectors = matroid.give("VECTORS");
+      const Matrix<Rational> result_vectors = minor_vectors(MinorType(), m_vectors, minor_set);
+      result_matroid.take("VECTORS") << result_vectors;
+      computed_properties -= std::string("VECTORS");
+   }
+
+   if (!computed_properties.empty())
+      throw std::runtime_error("Computing minor: Invalid properties");
       
-      return result_matroid;
-   }
+   return result_matroid;
+}
 
-   // For convenience and backward compat.
-   template <typename MinorType>
-      perl::Object single_element_minor( perl::Object matroid, int element, perl::OptionSet options) {
-         return minor<MinorType>( matroid, scalar2set(element), options);
-      }
-
-
-
+// For convenience and backward compat.
+template <typename MinorType>
+BigObject single_element_minor(BigObject matroid, Int element, OptionSet options)
+{
+   return minor<MinorType>( matroid, scalar2set(element), options);
+}
 
 UserFunction4perl("# @category Producing a matroid from matroids"
                   "# The matroid obtained from a matroid //m// by __deletion__ of set //S// ."

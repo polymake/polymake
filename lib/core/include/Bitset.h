@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,46 +28,68 @@ namespace pm {
 
 class Bitset;
 
-template <bool is_reversed>
-class Bitset_iterator {
+class Bitset_iterator_base {
    friend class Bitset;
-public:
-   using iterator_category = bidirectional_iterator_tag;
-   using value_type = int;
-   using reference = int;
-   using pointer = const mp_bitcnt_t*;
-   using difference_type = ptrdiff_t;
-   using iterator = Bitset_iterator;
-   using const_iterator = Bitset_iterator;
 protected:
    mpz_srcptr bits;
    mp_bitcnt_t cur;
 
-   static constexpr int bits_per_limb
-#if __GNU_MP_VERSION_MINOR > 0 || __GNU_MP_VERSION >=5
-     =GMP_NUMB_BITS
+   static constexpr int bits_per_limb =
+#if __GNU_MP_VERSION >= 5 || __GNU_MP_VERSION_MINOR > 0
+     GMP_NUMB_BITS
 #else
-     =__GMP_BITS_PER_MP_LIMB
+     __GMP_BITS_PER_MP_LIMB
 #endif
    ;
 
    static constexpr mp_bitcnt_t end_pos = std::numeric_limits<mp_bitcnt_t>::max();
 
-   Bitset_iterator(mpz_srcptr bits_arg, mp_bitcnt_t cur_arg)
+   Bitset_iterator_base(mpz_srcptr bits_arg, mp_bitcnt_t cur_arg)
       : bits(bits_arg)
       , cur(cur_arg) {}
 
-public:
-   Bitset_iterator()
-      : bits(nullptr)
-      , cur(0) {}
+   static mp_bitcnt_t first_pos(mpz_srcptr bits)
+   {
+      return bits[0]._mp_size == 0 ? end_pos : mpz_scan1(bits, 0);
+   }
 
-   explicit Bitset_iterator(mpz_srcptr bits_arg)
-      : bits(bits_arg)
-      , cur(first_pos(bits)) {}
+   static mp_bitcnt_t last_pos(mpz_srcptr bits);
+
+   void next_pos() { cur = mpz_scan1(bits, ++cur); }
+   void prev_pos();
+
+public:
+   using iterator_category = bidirectional_iterator_tag;
+   using value_type = Int;
+   using reference = Int;
+   using pointer = const mp_bitcnt_t*;
+   using difference_type = ptrdiff_t;
 
    reference operator* () const { return cur; }
    pointer operator-> () const { return &cur; }
+
+   bool at_end() const
+   {
+      return cur == end_pos;
+   }
+};
+
+template <bool is_reversed>
+class Bitset_iterator : public Bitset_iterator_base {
+   friend class Bitset;
+public:
+   using iterator = Bitset_iterator;
+   using const_iterator = Bitset_iterator;
+
+   Bitset_iterator(mpz_srcptr bits_arg, mp_bitcnt_t cur_arg)
+      : Bitset_iterator_base(bits_arg, cur_arg) {}
+
+public:
+   Bitset_iterator()
+      : Bitset_iterator_base(nullptr, end_pos) {}
+
+   explicit Bitset_iterator(mpz_srcptr bits_arg)
+      : Bitset_iterator_base(bits_arg, is_reversed ? last_pos(bits_arg) : first_pos(bits_arg)) {}
 
    iterator& operator++ ()
    {
@@ -84,55 +106,10 @@ public:
    iterator operator++ (int) { iterator copy=*this; operator++(); return copy; }
    iterator operator-- (int) { iterator copy=*this; operator--(); return copy; }
 
-   bool operator== (const iterator& it) const { return cur==it.cur; }
+   bool operator== (const iterator& it) const { return cur == it.cur; }
    bool operator!= (const iterator& it) const { return !operator==(it); }
 
-   bool at_end() const
-   {
-      return cur == end_pos;
-   }
-
-   void rewind() { cur = first_pos(bits); }
-      
-private:
-   static mp_bitcnt_t first_pos(mpz_srcptr bits)
-   {
-      const int n = mpz_size(bits);
-      if (n == 0) return end_pos;
-      return is_reversed
-             ? (n - 1) * bits_per_limb + log2_floor(mpz_getlimbn(bits, n - 1))
-             : mpz_scan1(bits, 0);
-   }
-
-   void next_pos()
-   {
-      cur = mpz_scan1(bits, ++cur);
-   }
-
-   void prev_pos()
-   {
-      if (cur == end_pos) {
-         cur = first_pos(bits);
-      } else if (cur == 0) {
-         cur = end_pos;
-      } else {
-         --cur;
-         int n = cur / bits_per_limb;
-         const int skip = bits_per_limb - 1 - cur % bits_per_limb;
-         mp_limb_t limb = (mpz_getlimbn(bits, n) << skip) >> skip;
-         for (;;) {
-            if (limb != 0) {
-               cur = n * bits_per_limb + log2_floor(limb);
-               break;
-            }
-            if (--n < 0) {
-               cur = end_pos;
-               break;
-            }
-            limb = mpz_getlimbn(bits, n);
-         }
-      }
-   }
+   void rewind() { cur = is_reversed ? last_pos(bits) : first_pos(bits); }
 };
 
 /** \class Bitset
@@ -141,7 +118,7 @@ private:
     A special class optimized for representation of a constrained range of
     non-negative integer numbers.  Its implementation is based on the GMP
     (mpz_t), see http://www.swox.com/gmp/ You should consider to use it
-    instead of the more general Set<int> if all these criteria hold:
+    instead of the more general Set<Int> if all these criteria hold:
 
     - the element range stays constant during the lifetime of the set
 
@@ -157,7 +134,7 @@ private:
     encoded in the Bitset object, but can be dynamically changed any time.
 */
 class Bitset
-   : public GenericSet<Bitset, int, operations::cmp> {
+   : public GenericSet<Bitset, Int, operations::cmp> {
 protected:
    mpz_t rep;
 
@@ -172,7 +149,7 @@ public:
    using is_Bitset = std::is_same<pure_type_t<T>, Bitset>;
 
    template <typename T>
-   using is_element = std::is_same<pure_type_t<T>, int>;
+   using is_element = std::is_same<pure_type_t<T>, Int>;
 
    template <typename T>
    using propagate_rvalue = std::is_same<T, Bitset>;
@@ -310,8 +287,8 @@ public:
    };
 
 public:
-   using value_type = int;
-   using const_reference = const int;
+   using value_type = Int;
+   using const_reference = const Int;
    using reference = const_reference;
    using iterator = Bitset_iterator<false>;
    using const_iterator = iterator;
@@ -332,11 +309,11 @@ public:
        @param n
        @param full %Set this to 1 if the set contains all elements from 0 to n-1, defaults to 0.
        */
-   explicit Bitset(int n, bool full=false)
+   explicit Bitset(Int n, const bool full = false)
       : Bitset()
    {
       reserve(n);
-      if (full && n>0) fill1s(n);
+      if (full && n > 0) fill1s(n);
    }
 
    Bitset(const Bitset& s)
@@ -373,7 +350,7 @@ public:
 
    /// Copy of an abstract set of integers.
    template <typename TSet>
-   explicit Bitset(const GenericSet<TSet, int>& s)
+   explicit Bitset(const GenericSet<TSet, Int>& s)
       : Bitset()
    {
       assign_from(s.top());
@@ -381,7 +358,7 @@ public:
 
    /// Copy of an abstract set with element conversion.
    template <typename TSet, typename E2, typename Comparator2,
-             typename=std::enable_if_t<std::is_convertible<E2, int>::value>>
+             typename = std::enable_if_t<std::is_convertible<E2, Int>::value>>
    explicit Bitset(const GenericSet<TSet, E2, Comparator2>& s)
       : Bitset()
    {
@@ -389,7 +366,7 @@ public:
    }
 
    template <typename TContainer,
-             typename=std::enable_if_t<isomorphic_to_container_of<TContainer, int, is_set>::value>>
+             typename=std::enable_if_t<isomorphic_to_container_of<TContainer, Int, is_set>::value>>
    Bitset(const TContainer& src)
       : Bitset()
    {
@@ -397,7 +374,7 @@ public:
    }
 
    template <typename Iterator,
-             typename=std::enable_if_t<assess_iterator_value<Iterator, std::is_convertible, int>::value>>
+             typename=std::enable_if_t<assess_iterator_value<Iterator, std::is_convertible, Int>::value>>
    Bitset(Iterator&& src, Iterator&& src_end)
       : Bitset()
    {
@@ -407,14 +384,14 @@ public:
    template <typename Iterator>
    explicit Bitset(Iterator&& src,
                    std::enable_if_t<(assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value &&
-                                     assess_iterator_value<Iterator, std::is_convertible, int>::value), void**> =nullptr)
+                                     assess_iterator_value<Iterator, std::is_convertible, Int>::value), std::nullptr_t> = nullptr)
       : Bitset()
    {
       assign(ensure_private_mutable(std::forward<Iterator>(src)));
    }
 
    template <typename E2,
-             typename=std::enable_if_t<std::is_convertible<E2, int>::value>>
+             typename = std::enable_if_t<std::is_convertible<E2, Int>::value>>
    Bitset(std::initializer_list<E2> l)
       : Bitset()
    {
@@ -422,7 +399,7 @@ public:
    }
 
    template <typename E2, typename Comparator2,
-             typename=std::enable_if_t<std::is_convertible<E2, int>::value>>
+             typename = std::enable_if_t<std::is_convertible<E2, Int>::value>>
    explicit Bitset(const SingleElementSetCmp<E2, Comparator2>& s)
       : Bitset()
    {
@@ -436,7 +413,7 @@ public:
    }
 
    /// Fill with a prescribed number of random bits
-   Bitset(gmp_randstate_t rnd, unsigned long bits)
+   Bitset(gmp_randstate_t rnd, Int bits)
       : Bitset()
    {
       mpz_urandomb(rep, rnd, bits);
@@ -460,12 +437,12 @@ public:
    }
 
    template <typename E2,
-             typename=std::enable_if_t<std::is_convertible<E2, int>::value>>
+             typename = std::enable_if_t<std::is_convertible<E2, Int>::value>>
    Bitset& operator= (std::initializer_list<E2> l)
    {
       clear();
       if (l.size() > 0) {
-         reserve(l.end()[-1] + 1);
+         reserve(l.end()[-1]+1);
          assign(l.begin(), l.end());
       }
       return *this;
@@ -478,14 +455,14 @@ public:
    }
 
    /// Reserve storage for n elements
-   void reserve(int n)
+   void reserve(Int n)
    {
       if (n > rep[0]._mp_alloc * iterator::bits_per_limb)
          mpz_realloc2(rep, n);
    }
 
-   /// Synonym for reserve, for compatibility with other set classes+}
-   void resize(int n)
+   /// Synonym for reserve, for compatibility with other set classes
+   void resize(Int n)
    {
       reserve(n);
    }
@@ -499,7 +476,7 @@ public:
    /// Assign elements from an abstract set of integers.
    template <typename Set2>
    std::enable_if_t<!std::is_same<Set2, Bitset>::value, Bitset&>
-   operator= (const GenericSet<Set2, int, element_comparator>& s)
+   operator= (const GenericSet<Set2, Int, element_comparator>& s)
    {
       clear();
       assign_from(s.top());
@@ -507,7 +484,7 @@ public:
    }
 
    template <typename E2, typename Comparator2,
-             typename=std::enable_if_t<std::is_convertible<E2, int>::value>>
+             typename=std::enable_if_t<std::is_convertible<E2, Int>::value>>
    Bitset& operator= (const SingleElementSetCmp<E2, Comparator2>& s)
    {
       clear();
@@ -537,34 +514,34 @@ public:
 
    /** Count the elements.
        CAUTION: depending on the hardware, can take O(n) time! */
-   int size() const noexcept
+   Int size() const noexcept
    {
       return mpz_popcount(rep);
    }
 
-   bool contains(int i) const noexcept
+   bool contains(Int i) const noexcept
    {
       return mpz_tstbit(rep, i);
    }
 
-   bool exists(int i) const noexcept
+   bool exists(Int i) const noexcept
    {
       return mpz_tstbit(rep, i);
    }
 
-   int front() const noexcept
+   Int front() const noexcept
    {
       return iterator::first_pos(rep);
    }
 
-   int back() const noexcept
+   Int back() const noexcept
    {
       return reverse_iterator::first_pos(rep);
    }
 
    /** Insert an element.
        This is the quickest way to manipulate single elements. */
-   Bitset& operator+= (int i)
+   Bitset& operator+= (Int i)
    {
       mpz_setbit(rep, i);
       return *this;
@@ -578,16 +555,16 @@ public:
 
    template <typename Set2>
    std::enable_if_t<!std::is_same<Set2, Bitset>::value, Bitset&>
-   operator+= (const GenericSet<Set2, int, element_comparator>& s)
+   operator+= (const GenericSet<Set2, Int, element_comparator>& s)
    {
-      for (auto e=entire(s.top()); !e.at_end(); ++e)
+      for (auto e = entire(s.top()); !e.at_end(); ++e)
          *this += *e;
       return *this;
    }
 
    /** Remove an element if it existed.
        This is the quickest way to manipulate single elements. */
-   Bitset& operator-= (int i)
+   Bitset& operator-= (Int i)
    {
       mpz_clrbit(rep, i);
       return *this;
@@ -601,7 +578,7 @@ public:
 
    template <typename Set2>
    std::enable_if_t<!std::is_same<Set2, Bitset>::value, Bitset&>
-   operator-= (const GenericSet<Set2, int, element_comparator>& s)
+   operator-= (const GenericSet<Set2, Int, element_comparator>& s)
    {
       for (auto e=entire(s.top()); !e.at_end(); ++e)
          *this -= *e;
@@ -609,7 +586,7 @@ public:
    }
 
    /// intersection
-   Bitset& operator*= (int i)
+   Bitset& operator*= (Int i)
    {
       if (contains(i)) {
          clear();
@@ -628,9 +605,9 @@ public:
 
    template <typename Set2>
    std::enable_if_t<!std::is_same<Set2, Bitset>::value, Bitset&>
-   operator*= (const GenericSet<Set2, int, element_comparator>& s);
+   operator*= (const GenericSet<Set2, Int, element_comparator>& s);
 
-   Bitset& operator^= (int i)
+   Bitset& operator^= (Int i)
    {
       if (mpz_tstbit(rep, i))
          mpz_clrbit(rep, i);
@@ -647,7 +624,7 @@ public:
 
    template <typename Set2>
    std::enable_if_t<!std::is_same<Set2, Bitset>::value, Bitset&>
-   operator^= (const GenericSet<Set2, int, element_comparator>& s)
+   operator^= (const GenericSet<Set2, Int, element_comparator>& s)
    {
       for (auto e = entire(s.top()); !e.at_end(); ++e)
          *this ^= *e;
@@ -662,17 +639,17 @@ public:
 
    reverse_iterator rend() const { return reverse_iterator(rep, iterator::end_pos); }
 
-   iterator insert(int i)
+   iterator insert(Int i)
    {
       *this += i;
       return iterator(rep, i);
    }
 
-   void push_back(int i) { *this += i; }
-   void push_front(int i) { *this += i; }
-   void erase(int i) { *this -= i; }
+   void push_back(Int i) { *this += i; }
+   void push_front(Int i) { *this += i; }
+   void erase(Int i) { *this -= i; }
 
-   iterator insert(const iterator&, int i) { return insert(i); }
+   iterator insert(const iterator&, Int i) { return insert(i); }
 
    void erase(const iterator& where) { *this -= *where; }
 
@@ -693,13 +670,13 @@ public:
 
    template <typename Set2>
    std::enable_if_t<!std::is_same<Set2, Bitset>::value, bool>
-   operator== (const GenericSet<Set2, int, element_comparator>& s) const
+   operator== (const GenericSet<Set2, Int, element_comparator>& s) const
    {
       return generic_type::operator==(s);
    }
 
    template <typename Set2>
-   bool operator!= (const GenericSet<Set2, int, element_comparator>& s) const
+   bool operator!= (const GenericSet<Set2, Int, element_comparator>& s) const
    {
       return !operator==(s);
    }
@@ -731,7 +708,7 @@ protected:
    }
 
    template <typename T>
-   void assign(const GenericSet<T,int>& src)
+   void assign(const GenericSet<T, Int>& src)
    {
       assign_from(src.top());
    }
@@ -757,14 +734,13 @@ protected:
    static void difference(mpz_ptr dst, mpz_srcptr src1, mpz_srcptr src2);
 
 public:
-   // consume data as if designated for Set<int>
+   // consume data as if designated for Set<Int>
    template <typename Input> friend
    Input& operator>> (GenericInput<Input>& in, Bitset& me)
    {
       me.clear();
-      for (typename Input::template list_cursor< Set<int> >::type c=in.top().begin_list((Set<int>*)0);
-           !c.at_end(); ) {
-         int elem=-1;
+      for (auto c = in.top().begin_list((Set<Int>*)nullptr); !c.at_end(); ) {
+         Int elem = -1;
          c >> elem;
          me += elem;
       }
@@ -773,25 +749,24 @@ public:
 };
 
 /// See incl(GenericSet,GenericSet)
-int incl(const Bitset& s1, const Bitset& s2) noexcept;
+Int incl(const Bitset& s1, const Bitset& s2) noexcept;
 
 template <typename TSet>
 std::enable_if_t<!std::is_same<TSet, Bitset>::value, Bitset&>
-Bitset::operator*= (const GenericSet<TSet, int, element_comparator>& s)
+Bitset::operator*= (const GenericSet<TSet, Int, element_comparator>& s)
 {
    mp_limb_t* d = rep[0]._mp_d;
    mp_limb_t limb = 0;
    auto e = entire(s.top());
-   for (int i = 0, size = mpz_size(rep), first = 0, last = iterator::bits_per_limb;
-        i < size;
-        ++i, first = last, last += iterator::bits_per_limb) {
+   Int first = 0, last = iterator::bits_per_limb;
+   for (int i = 0, size = rep[0]._mp_size;  i < size;  ++i, first = last, last += iterator::bits_per_limb) {
       for (;;) {
          if (e.at_end()) {
             *d++ &= limb;
             rep[0]._mp_size = i + (limb != 0);
             return *this;
          }
-         int elem = *e;  ++e;
+         Int elem = *e;  ++e;
          if (elem >= last) {
             *d++ &= limb;
             limb = mp_limb_t(1) << elem-last;   // prepare for the next outer loop run
@@ -808,7 +783,7 @@ template <typename Permutation>
 Bitset permuted(const Bitset& s, const Permutation& perm)
 {
    Bitset result;
-   for (auto p=entire<indexed>(perm);  !p.at_end();  ++p)
+   for (auto p = entire<indexed>(perm);  !p.at_end();  ++p)
       if (s.contains(*p)) result.insert(p.index());
    return result;
 

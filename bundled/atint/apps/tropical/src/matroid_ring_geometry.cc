@@ -18,7 +18,7 @@
    Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
    ---
-   Copyright (c) 2016-2019
+   Copyright (c) 2016-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -39,9 +39,9 @@
 namespace polymake { namespace tropical {
 
 // Finds a vertex in a list of row vectors.
-int find_index(const Vector<Rational>& v, const Matrix<Rational>& m)
+Int find_index(const Vector<Rational>& v, const Matrix<Rational>& m)
 {
-  int i = 0;
+  Int i = 0;
   for (auto r = entire(rows(m)); !r.at_end(); ++r, ++i) {
     if (*r == v) return i;
   }
@@ -54,13 +54,13 @@ int find_index(const Vector<Rational>& v, const Matrix<Rational>& m)
  * @return Cycle<Addition>
  */
 template <typename Addition>
-perl::Object add_refined_cycles(Array<perl::Object> cycles)
+BigObject add_refined_cycles(Array<BigObject> cycles)
 {
   Array<Matrix<Rational>> vertices(cycles.size());
   Matrix<Rational> vertex_union;
   Array<IncidenceMatrix<>> cones(cycles.size());
   Array<Vector<Integer> > weights(cycles.size());
-  for (int i =0; i < cycles.size(); ++i) {
+  for (Int i =0; i < cycles.size(); ++i) {
     cycles[i].give("VERTICES") >> vertices[i];
     vertex_union /= vertices[i];
     cycles[i].give("MAXIMAL_POLYTOPES") >> cones[i];
@@ -70,18 +70,18 @@ perl::Object add_refined_cycles(Array<perl::Object> cycles)
   Matrix<Rational> vertices_total(vset);
 
   // Renumber vertices and map cones
-  Vector<Set<int> > new_cones;
-  Map<Set<int>, int> new_cone_indices;
-  int next_index = 0;
+  Vector<Set<Int>> new_cones;
+  Map<Set<Int>, Int> new_cone_indices;
+  Int next_index = 0;
   Vector<Integer> new_weights;
-  for (int i = 0; i < cycles.size(); ++i) {
-    Map<int,int> vmap;
-    for (int r =0; r < vertices[i].rows(); ++r) {
+  for (Int i = 0; i < cycles.size(); ++i) {
+    Map<Int, Int> vmap;
+    for (Int r =0; r < vertices[i].rows(); ++r) {
       vmap[r] = find_index(vertices[i].row(r), vertices_total);
     }
-    int cindex = 0;
+    Int cindex = 0;
     for (auto c = entire(rows(cones[i])); !c.at_end(); ++c, ++cindex) {
-      Set<int> mapped_cone{ vmap.map(*c) };
+      Set<Int> mapped_cone{ vmap.map(*c) };
       Integer cw = (weights[i])[cindex];
       if (!new_cone_indices.contains(mapped_cone)) {
         new_cone_indices[mapped_cone] = next_index;
@@ -95,11 +95,11 @@ perl::Object add_refined_cycles(Array<perl::Object> cycles)
   }
 
   // Remove zero-weight cones
-  Set<int> supp = support(new_weights);
-  Set<int> used_vertices = accumulate( new_cones.slice(supp), operations::add());
+  Set<Int> supp = support(new_weights);
+  Set<Int> used_vertices = accumulate( new_cones.slice(supp), operations::add());
   IncidenceMatrix<> new_cones_matrix(new_cones);
 
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << vertices_total.minor(used_vertices,All);
   result.take("MAXIMAL_POLYTOPES") << new_cones_matrix.minor(supp, used_vertices);
   result.take("WEIGHTS") << new_weights.slice(supp);

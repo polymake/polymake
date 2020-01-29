@@ -1,6 +1,7 @@
-/* Copyright (c) 1998-2016
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+/* Copyright (c) 1997-2020
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -43,24 +44,24 @@ class TreeGrowVisitor : public NodeVisitor<> {
    template <typename> friend class HungarianMethod;
 
    // label encodes the path in the hungarian trees from an exposed point to the selected node
-   std::vector<int> label;
-   int leaf;
-   const int dim;
+   std::vector<Int> label;
+   Int leaf;
+   const Int dim;
    const Graph<Directed>* H;
-   Set<int> start_nodes;
+   Set<Int> start_nodes;
 public:
    TreeGrowVisitor(const Graph<Directed>& G)
       : base_t(G)
       , label(G.top().dim(), -1)
       , leaf(-1)
-      , dim((G.top().dim() + 1)/2)
+      , dim((G.top().dim()+1)/2)
       , H(&G)
    {}
 
    void clear(const Graph<Directed>&) {}
 
    // This method provides two functionalities: If the search had found a augmenting path and hence the equality subgraph was modified, it initializes a new search. Otherwise only another starting node for the growing of an hungarian tree is set.
-   bool operator()(const int start_node)
+   bool operator()(const Int start_node)
    {
       if (start_nodes.contains(start_node) || leaf >= 0) {
          start_nodes.clear();
@@ -74,7 +75,7 @@ public:
       return true;
    }
 
-   bool operator() (int n_from, int n_to)
+   bool operator() (Int n_from, Int n_to)
    {
       if (visited.contains(n_to)) return false;
 
@@ -88,25 +89,25 @@ public:
       return true;
    }
 
-   const int& operator[] (int n) const { return label[n]; }
+   Int operator[] (Int n) const { return label[n]; }
 };
 
 template <typename E>
 class HungarianMethod {
 protected:
    Matrix<E> weights;
-   const int dim;
+   const Int dim;
 
    Vector<E> a, b, slack, labeledColMin;
    Graph<Directed> equality_subgraph;
-   Set<int> exposed_points;
-   Set<int>::const_iterator r;  // an iterator over the exposed points
-   int start_node;
+   Set<Int> exposed_points;
+   Set<Int>::const_iterator r;  // an iterator over the exposed points
+   Int start_node;
    BFSiterator<Graph<Directed>, VisitorTag<TreeGrowVisitor>> it; // helps growing the hungarian trees from a start node
    /* Graph<Directed> test_graph; */
    Matrix<E> wmatrix;
-   Set<int> labeled_points;
-   Array<int> matching;
+   Set<Int> labeled_points;
+   Array<Int> matching;
    const E INF = std::numeric_limits<E>::infinity();
    bool finished;
    bool inf_matching;
@@ -139,13 +140,13 @@ public:
       weights = input_weights - repeat_col(minvector, dim);
 
       // Initialisation of vectors for rows and columns (dual variables)
-      for (int j = 0; j < dim; ++j) {
+      for (Int j = 0; j < dim; ++j) {
          b[j] = accumulate(weights.col(j), operations::min());
       }
 
       // Build equality subgraph; it is a bipartite graph with vertex sets {0, ..., n-1} and {n, ..., 2n-1}
-      for (int j = 0; j < dim; ++j) {
-         for (int i = 0; i < dim; ++i) {
+      for (Int j = 0; j < dim; ++j) {
+         for (Int i = 0; i < dim; ++i) {
             if ((a[i] + b[j]) == weights[i][j]) {
                equality_subgraph.add_edge(i, dim + j);
             }
@@ -154,7 +155,7 @@ public:
    }
 
    // removes in the directed graph G the directed edge with starting point 'start' and end point 'end' and adds the reverse edge
-   void reverse_edge (int start, int end)
+   void reverse_edge (Int start, Int end)
    {
       assert(start >= 0 && end >= 0);
       equality_subgraph.delete_edge(start,end);
@@ -166,8 +167,8 @@ public:
       returns true, if such a path is found, and augments the matching by reversing edges in the equality subgraph. */
    bool augment()
    {
-      int node = it.node_visitor().leaf;
-      int predecessor;
+      Int node = it.node_visitor().leaf;
+      Int predecessor;
       // Going backwards in the hungarian tree from the leaf which was just found.
       while (node != start_node) {
          predecessor = it.node_visitor()[node];
@@ -193,10 +194,10 @@ public:
    }
 
    // checks for every right node (dual variable b) if the corresponding slack should be adjusted with the left node 'index' (dual variable a); the lowest value is chosen for it.
-   void compare_slack(int index)
+   void compare_slack(Int index)
    {
       E sl;
-      for (int k = 0; k < b.dim(); k++) {
+      for (Int k = 0; k < b.dim(); k++) {
          sl = weights[index][k] - a[index] - b[k];
          if((sl < slack[k] || slack[k] == -1 || slack[k] == 0)) {
             if(sl > 0) { //this excludes the case where sl == 0
@@ -211,7 +212,7 @@ public:
    }
 
    // auxiliary method for compare_slack
-   void change_slack(int n)
+   void change_slack(Int n)
    {
       if (n == start_node) compare_slack(n);
       // sets new slack if n is a node on the right shore
@@ -222,7 +223,7 @@ public:
    }
 
    // auxiliary method to find an infty entry in weights to create a minimizing permutation in the case that it is infty
-   std::pair<int, int> inf_entry()
+   std::pair<Int, Int> inf_entry()
    {
       for (const auto i : sequence(0, dim)) {
          for (const auto j : sequence(0, dim)) {
@@ -238,7 +239,7 @@ public:
    {
       E theta = -1;
       // theta is the lowest positive value of the weights[i][j], where i corresponds to labeled left nodes and j runs from 0 to dim-1
-      for (int k = 0; k < dim; k++) {
+      for (Int k = 0; k < dim; k++) {
          if ((labeledColMin[k] > 0) && (slack[k] > 0) && ((slack[k] < theta) || (theta == -1)))
             theta = slack[k];
       }
@@ -249,30 +250,30 @@ public:
          return;
       }
 
-      for (int k = 0; k < dim; ++k) {
+      for (Int k = 0; k < dim; ++k) {
          if (it.node_visitor()[k] != -1)
             a[k] = a[k] + theta;
       }
 
-      for (int k = 0; k < dim; ++k) {
+      for (Int k = 0; k < dim; ++k) {
          if (it.node_visitor()[k+dim] != -1) //(labeledColMin[k] == 0 )
             b[k] = b[k] - theta;
       }
 
-      for (int k = 0; k < dim; ++k) {
-         for (int j = 0; j < dim; ++j) {
+      for (Int k = 0; k < dim; ++k) {
+         for (Int j = 0; j < dim; ++j) {
             if (a[j] + b[k] != weights[j][k]) {
-               equality_subgraph.delete_edge(j, k + dim);
-               equality_subgraph.delete_edge(k + dim,j);
+               equality_subgraph.delete_edge(j, k+dim);
+               equality_subgraph.delete_edge(k+dim, j);
             }
          }
       }
 
-      for (int k = 0; k < dim; k++) {
+      for (Int k = 0; k < dim; ++k) {
          if (labeledColMin[k] > 0) { // slack could also be -1 -- this is a symbolic infinity
             slack[k] = slack[k] - theta;
             if (slack[k] == 0) { // at least one new edge has been created at this point
-               for (int j = 0; j < dim; j++) {
+               for (Int j = 0; j < dim; j++) {
                   if (a[j] + b[k] == weights[j][k]) {
                      equality_subgraph.delete_edge(j,dim+k); //ensures that there are no multiple edges
                      equality_subgraph.add_edge(j,dim+k);
@@ -288,7 +289,7 @@ public:
    }
 
    // initializes a bfs with start node start_node
-   int growTree ()
+   Int growTree ()
    {
       it.reset(start_node);
       // search stops, if there is no further edge to go or a leaf of the hungarian tree is found, so that one can augment
@@ -321,51 +322,32 @@ public:
             }
          }
 
-         if(!inf_matching) {
-            for (int k = 0; k < dim; k++) {
+         if (!inf_matching) {
+            for (Int k = 0; k < dim; k++) {
                matching[k] = equality_subgraph.in_adjacent_nodes(k).front() - dim;
             }
          } else {
             // inf matching recognized
-            std::pair<int,int> trans = inf_entry();
-            matching = Array<int>(sequence(0,dim));
+            std::pair<Int, Int> trans = inf_entry();
+            matching = Array<Int>(sequence(0, dim));
             matching[trans.first] = trans.second;
             matching[trans.second] = trans.first;
          }
       }
    }
 
-   /* void print_stuff(int flag) */
-   /* { */
-   /*    cout << "a: " << a << endl; */
-   /*    cout << "b: " << b << endl; */
-   /*    /1* cout << "slack: " << slack << endl; *1/ */
-   /*    /1* cout << "labeledcolmin: " << labeledColMin << endl; *1/ */
-   /*    cout << "matching: " << matching << endl; */
-   /*    cout << "exposed: " << exposed_points << endl; */
-   /*    if (flag) { */
-   /*       cout << "weights:\n" << weights << endl; */
-   /*       cout << "eq_subgraph:\n" << equality_subgraph << endl; */
-   /*    } */
-   /* } */
-
    // TODO genericvector?
-   void dynamic_stage(int index, const Vector<E>& column)
+   void dynamic_stage(Int index, const Vector<E>& column)
    {
-
-      /* print_stuff(1); */
-
       // insert new column:
       weights.col(index) = column;
-      /* for (int i = 0; i < dim; i++) */
-      /*    weights[i][index] = column[i]; */
 
       // TODO man muss mit der non-negative-machung aufpassen! (glaube ich)
       // recalculate dual variable at 'index':
       b[index] = accumulate(column - a, operations::min());
 
       // adjust the eq-subgraph and exposed point(s):
-      for (int i = 0; i < dim; i++) { // TODO iterate over equality_subgraph.adjacent_nodes() instead?
+      for (Int i = 0; i < dim; i++) { // TODO iterate over equality_subgraph.adjacent_nodes() instead?
          equality_subgraph.delete_edge(i, dim + index);
          equality_subgraph.delete_edge(dim + index, i);
          if (a[i] + b[index] == weights[i][index])
@@ -392,12 +374,12 @@ public:
       return std::pair<Vector<E>, Vector<E>>(a, b);
    }
 
-   Array<int> get_matching()
+   const Array<Int>& get_matching()
    {
       return matching;
    }
 
-   Graph<Directed> get_equality_subgraph()
+   const Graph<Directed>& get_equality_subgraph()
    {
       return equality_subgraph;
    }

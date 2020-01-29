@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -16,10 +16,10 @@
 
 if ($ConfigFlags{'bundled.java.ANT'} ne '.none.') {
    my $dst_dir="$InstallTop/resources/java/jars";
-   foreach my $jar (glob("$builddir/jars/jReality-*.jar")) {
+   foreach my $jar (glob("$buildtop/jars/jReality-*.jar")) {
       copy_file($jar, $dst_dir);
    }
-   copy_dir("$builddir/jars/jreality", "$dst_dir/jreality",
+   copy_dir("$buildtop/jars/jreality", "$dst_dir/jreality",
 	    $ConfigFlags{'bundled.jreality.JoglJars'} ne 'bundled' ? (exclude => [ "jogl-all-.*", "gluegen-rt-.*" ]) : ());
 
    if ($ConfigFlags{'bundled.jreality.JoglNative'} eq 'bundled') {

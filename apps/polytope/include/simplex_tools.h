@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,19 +24,19 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar> 
-void facets_of_simplex(const Set<int>& simplex, const Matrix<Scalar>& V, Matrix<Scalar>& facets, Matrix<Scalar>& hull)
+void facets_of_simplex(const Set<Int>& simplex, const Matrix<Scalar>& V, Matrix<Scalar>& facets, Matrix<Scalar>& hull)
 {
    if (rank(V.minor(simplex, All)) != simplex.size()){
       throw std::runtime_error("Affinely dependent point configuration wants to be a simplex");
    }
    hull = null_space(V.minor(simplex, All));
    facets = Matrix<Scalar>(simplex.size(), V.cols());
-   int i(0);
-   for (auto fbi=entire(all_subsets_less_1(simplex)); !fbi.at_end(); ++fbi, ++i) {
-      const Set<int> facet(*fbi);
+   Int i = 0;
+   for (auto fbi = entire(all_subsets_less_1(simplex)); !fbi.at_end(); ++fbi, ++i) {
+      const Set<Int> facet(*fbi);
       Vector<Scalar> nv = null_space(V.minor(facet, All) / hull).row(0);
-      const Set<int> rest = simplex - facet;
-      const int v = rest.front();
+      const Set<Int> rest = simplex - facet;
+      const Int v = rest.front();
       if (nv * V.row(v) < 0) 
             nv = -nv;
       facets.row(i) = nv;
@@ -44,10 +44,10 @@ void facets_of_simplex(const Set<int>& simplex, const Matrix<Scalar>& V, Matrix<
 }
 
 template <typename Scalar> 
-bool is_empty(const Set<int>& simplex, const Matrix<Scalar>& V)
+bool is_empty(const Set<Int>& simplex, const Matrix<Scalar>& V)
 {
    if (simplex.size()==1) return true;
-   int i(0);
+   Int i = 0;
    bool has_interior(false);
    Matrix<Scalar> facets, hull;
    facets_of_simplex(simplex, V, facets, hull);
@@ -67,8 +67,8 @@ bool is_empty(const Set<int>& simplex, const Matrix<Scalar>& V)
 template<typename SetType, typename IncidenceType>
 bool is_in_boundary(const SetType& face, const IncidenceType& VIF)
 {
-   for (int f=0; f < VIF.rows(); ++f) 
-      if (incl(face, VIF.row(f))<=0) 
+   for (Int f = 0; f < VIF.rows(); ++f) 
+      if (incl(face, VIF.row(f)) <= 0) 
          return true;
    return false;   
 }

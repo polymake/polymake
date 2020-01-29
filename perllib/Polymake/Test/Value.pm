@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -28,36 +28,75 @@ use Polymake::Struct (
 );
 
 sub execute {
-   my ($self)=@_;
-   not( $self->fail_log=compare_and_report($self->expected, $self->gotten) );
+   my ($self, @options) = @_;
+   not( $self->fail_log = compare_and_report($self->expected, $self->gotten, @options) );
 };
 
 sub compare_and_report {
-   my ($expected, $gotten)=@_;
-   if (ref($expected) ne ref($gotten)) {
-      return "result type mismatch: expected ".(ref($expected) || "SCALAR").
-             " got ".(ref($gotten) || (defined($gotten) ? "SCALAR" : "UNDEF"))."\n";
+   my ($expected, $gotten, %options) = @_;
+
+   if (ref($expected) ne ref($gotten) || defined($expected) != defined($gotten)) {
+      return "result type mismatch: expected " . (ref($expected) || (defined($expected) ? "SCALAR" : "UNDEF")) .
+             " got " . (ref($gotten) || (defined($gotten) ? "SCALAR" : "UNDEF")) . "\n";
    }
+
+   my $elem_cmp = $options{cmp};
+   my $is_big_object_array;
    if (is_object($expected)) {
-      unless ($expected->type->equal->($expected, $gotten)) {
-         if (UNIVERSAL::isa($expected->type->pkg, "Polymake::Core::BigObjectArray")) {
-            if (@$expected != @$gotten) {
-               return "expected:\n".scalar(@$expected)." objects\n".
-                      "     got:\n".scalar(@$gotten)." objects\n";
-            } else {
-               my $sum_report="";
-               for (my $i=0; $i<@$expected; ++$i) {
-                  if (my $report=Object::compare_and_report($expected->[$i], $gotten->[$i])) {
-                     $sum_report.="diff for object [$i]:\n$report\n";
-                  }
-               }
-               return $sum_report;
-            }
-         } else {
-            return "expected:\n$expected\n".
-                   "     got:\n$gotten\n";
+      if ($is_big_object_array = UNIVERSAL::isa($expected->type->pkg, "Polymake::Core::BigObjectArray")) {
+         $elem_cmp //= \&Test::BigObject::compare_and_report;
+      } elsif (instanceof Core::BigObject($expected)) {
+         return Test::BigObject::compare_and_report($expected, $gotten);
+      } elsif ($expected->type->equal->($expected, $gotten)) {
+         return "";
+      } else {
+         return "expected:\n$expected\n".
+                "     got:\n$gotten\n";
+      }
+   }
+
+   if (is_array($expected) || $is_big_object_array) {
+      $elem_cmp //= \&compare_and_report;
+      if (@$expected != @$gotten) {
+         return "expected: " . scalar(@$expected) . " elements\n" .
+                "     got: " . scalar(@$gotten) . " elements\n";
+      }
+      foreach my $i (0 .. $#$expected) {
+         if (my $elem_report = $elem_cmp->($expected->[$i], $gotten->[$i])) {
+            return "diff for element [$i]:\n$elem_report";
          }
       }
+
+   } elsif (is_hash($expected)) {
+      my $ignore = $options{ignore};
+      if (!$ignore && keys(%$expected) != keys(%$gotten)) {
+         return "expected: " . scalar(keys %$expected) . " elements\n" .
+                "     got: " . scalar(keys %$gotten) . " elements\n";
+      }
+      while (my ($key, $expected_value) = each %$expected) {
+         next if $ignore && string_list_index($ignore, $key) >= 0;
+         if (!exists($gotten->{$key})) {
+            keys %$expected;
+            return "diff for element '$key':\n" .
+                   "expected: EXISTS\n" .
+                   "     got: NONE\n";
+         }
+         if (my $elem_report = compare_and_report($expected_value, $gotten->{$key})) {
+            keys %$expected;
+            return "diff for element '$key':\n$elem_report";
+         }
+      }
+      if ($ignore) {
+         foreach my $key (keys %$gotten) {
+            unless (exists($expected->{$key}) || string_list_index($ignore, $key) >= 0) {
+               keys %$gotten;
+               return "diff for element '$key':\n" .
+                      "expected: NONE\n" .
+                      "     got: EXISTS\n";
+            }
+         }
+      }
+
    } else {
       if (is_numeric($expected) ? $expected != $gotten : $expected ne $gotten) {
          return "expected: '$expected'\n".
@@ -67,31 +106,45 @@ sub compare_and_report {
    ""
 }
 
+sub compare_arrays {
+   my ($expected, $gotten, $cmp) = @_;
+   ""
+}
+
 ##################################################################
 package Polymake::Test::Value::FromData;
 
-use Polymake::Struct(
+use Polymake::Struct (
    [ '@ISA' => 'Value' ],
    [ new => '$$%' ],
    [ '$expected' => 'undef' ],
    [ '$gotten' => '#2' ],
+   [ '$big_objects' => '#%' ],
 );
 
 sub execute {
-   my ($self)=@_;
-   $self->expected=$self->load_OK_data_file;
-   &Value::execute;
+   my ($self) = @_;
+   $self->expected = $self->load_OK_data_file;
+   if ($self->big_objects) {
+      if (is_array($self->big_objects)) {
+         Value::execute($self, cmp => sub { Test::BigObject::compare_and_report(@_, @{$self->big_objects}) });
+      } else {
+         "invalid comparison options for big objects: must be an array\n"
+      }
+   } else {
+      &Value::execute;
+   }
 }
 
 sub load_OK_data_file {
-   my ($self)=@_;
+   my ($self) = @_;
    $self->subgroup->group->env->load_data_file($self->name.".OK");
 }
 
 ##################################################################
 package Polymake::Test::Value::FromAttachment;
 
-use Polymake::Struct(
+use Polymake::Struct (
    [ '@ISA' => 'Value' ],
    [ new => '$$$%' ],
    [ '$name' => '#1->name' ],
@@ -110,7 +163,7 @@ sub execute {
 ##################################################################
 package Polymake::Test::Value::Boolean;
 
-use Polymake::Struct(
+use Polymake::Struct (
    [ '@ISA' => 'Value' ],
    [ new => '$$%' ],
    [ '$expected' => 'undef' ],

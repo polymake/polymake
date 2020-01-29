@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,7 +23,7 @@
 namespace polymake { namespace polytope {
 namespace {
 
-using face_map_type = Map<int, int>;
+using face_map_type = Map<Int, Int>;
 
 template <typename IM, typename NodeList>
 face_map_type count(const GenericIncidenceMatrix<IM>& adj, const NodeList& face_indices)
@@ -36,16 +36,16 @@ face_map_type count(const GenericIncidenceMatrix<IM>& adj, const NodeList& face_
 }
 }
 
-face_map_type two_face_sizes(perl::Object p)
+face_map_type two_face_sizes(BigObject p)
 {
    const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential> HD(p);
    return count(adjacency_matrix(HD.graph()), HD.nodes_of_rank(3));
 }
 
-face_map_type subridge_sizes(perl::Object p)
+face_map_type subridge_sizes(BigObject p)
 {
    const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential> HD(p);
-   int top_rank = HD.rank();
+   Int top_rank = HD.rank();
    return count(T(adjacency_matrix(HD.graph())), HD.nodes_of_rank(top_rank-3));
 }
 

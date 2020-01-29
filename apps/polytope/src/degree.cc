@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,15 +23,13 @@ namespace polymake { namespace polytope {
 
 namespace {      
 
-int
-codegree_impl(const int d,
-              const IncidenceMatrix<>& PIF)
+Int codegree_impl(const Int d, const IncidenceMatrix<>& PIF)
 {
-   for (int c=2; c<=d; ++c) {
+   for (Int c = 2; c <= d; ++c) {
       for (auto s = entire(all_subsets_of_k(sequence(0, PIF.cols()), c)); !s.at_end(); ++s) {
-         bool in_a_facet(false);
+         bool in_a_facet = false;
          for (auto rit = entire(rows(PIF)); !rit.at_end() && !in_a_facet; ++rit)
-            in_a_facet = (incl(*s, *rit) <= 0);
+            in_a_facet = incl(*s, *rit) <= 0;
          if (!in_a_facet)
             return c-1;
       }

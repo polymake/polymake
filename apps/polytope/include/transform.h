@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -33,7 +33,7 @@ namespace polymake { namespace polytope {
     @param tau transformation matrix
 */
 template <typename TransMatrix> inline
-void transform_section(perl::Object& p_out, perl::Object& p_in,
+void transform_section(BigObject& p_out, BigObject& p_in,
                        const AnyString& section_req,
                        const GenericMatrix<TransMatrix>& tau)
 {
@@ -52,12 +52,12 @@ void transform_section(perl::Object& p_out, perl::Object& p_in,
     @param tau transformation matrix for points
 */
 template <typename Scalar, typename TransMatrix>
-perl::Object transform(perl::Object p_in, const GenericMatrix<TransMatrix>& tau,
+BigObject transform(BigObject p_in, const GenericMatrix<TransMatrix>& tau,
                        bool store_reverse_transformation=true)
 {
    const auto tau_inv=inv(tau);
 
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
 
    transform_section(p_out, p_in, "VERTICES | POINTS", tau);
    transform_section(p_out, p_in, "LINEALITY_SPACE | INPUT_LINEALITY", tau);

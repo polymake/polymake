@@ -1,0 +1,17 @@
+{
+    "_id" : "info.2.1",
+    "description" : "0/1 Polytopes",
+    "collection" : "01Polytopes",
+    "section" : [ "Polytopes" ],
+    "creator" : "Oswin Aichholzer",
+    "contributor" : "Andreas Paffenholz",
+    "maintainer" : "Andreas Paffenholz",
+    "polydb_version" : "2.1",
+    "packages" : {
+        "polymake" : {
+            "version" : "3.4",
+            "type" : "polytope::Polytope<Rational>"
+        }
+    },
+    "uri" : "https://polymake.org"
+}

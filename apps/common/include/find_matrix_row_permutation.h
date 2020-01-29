@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -34,7 +34,7 @@ struct matrix_elem_comparator<double> {
 };
 
 template <typename Matrix1, typename Matrix2, typename E>
-optional<Array<int>>
+optional<Array<Int>>
 find_matrix_row_permutation(const GenericMatrix<Matrix1, E>& M1, const GenericMatrix<Matrix2, E>& M2,
                             bool expect_duplicate_rows = false)
 {

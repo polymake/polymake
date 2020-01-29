@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,10 +30,10 @@ namespace {
 template <typename Vector>
 void print_row(std::ostream& os,
                const std::string& tag,
-               int index,
+               Int index,
                const GenericVector<Vector>& v,
                const Array<std::string>& variable_names,
-               const char* relop=0)
+               const char* relop = nullptr)
 {
    if (v == unit_vector<typename Vector::element_type>(v.dim(),0)) // don't print the line " 0 >= -1 "
       return;
@@ -61,14 +61,14 @@ void print_row(std::ostream& os,
 } // end anonymous namespace
 
 template<typename Scalar=Rational>
-void print_lp(perl::Object p, perl::Object lp, const bool maximize, std::ostream& os)
+void print_lp(BigObject p, BigObject lp, const bool maximize, std::ostream& os)
 {
-   const int is_feasible=p.give("FEASIBLE");
+   const Int is_feasible=p.give("FEASIBLE");
    const SparseMatrix<Scalar> 
       IE = p.give("FACETS | INEQUALITIES"),
       EQ = p.lookup("AFFINE_HULL | EQUATIONS");
    const SparseVector<Scalar> LO = lp.give("LINEAR_OBJECTIVE");
-   const int n_variables = IE.cols()-1;
+   const Int n_variables = IE.cols()-1;
 
    if (!is_feasible)
       throw std::runtime_error("input is not FEASIBLE");
@@ -79,7 +79,7 @@ void print_lp(perl::Object p, perl::Object lp, const bool maximize, std::ostream
          throw std::runtime_error("dimension mismatch between the polytope and VARIABLE_NAMES");
    } else {
       variable_names.resize(n_variables);
-      for (int j=0; j<n_variables; ++j)
+      for (Int j=0; j < n_variables; ++j)
          variable_names[j]='x' + std::to_string(j+1);
    }
 
@@ -100,12 +100,12 @@ void print_lp(perl::Object p, perl::Object lp, const bool maximize, std::ostream
    }
 
    os << "BOUNDS\n";
-   for (int i=0; i<n_variables; ++i)
+   for (Int i = 0; i < n_variables; ++i)
       os << "  " << variable_names[i] << " free\n"; 
 
    if (!integers.empty()) {
       os << "GENERAL\n";
-      for (int i=0; i<integers.size(); ++i)
+      for (Int i = 0; i < integers.size(); ++i)
          if (integers[i]) os << "  " << variable_names[i] << '\n';
    }
    os << "END" << endl;

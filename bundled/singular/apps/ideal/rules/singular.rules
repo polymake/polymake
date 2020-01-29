@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -55,6 +55,9 @@ declare property_type SingularIdeal : c++ (include => ["polymake/ideal/singularI
 
    # Reduce a polynomial modulo the ideal, i.e. check ideal membership.
    method reduce(Polynomial) : c++;
+   
+   # Reduce a polynomial modulo the ideal, i.e. check ideal membership.
+   method reduce(Array<Polynomial>) : c++;
 
    method polynomials() : c++;
 
@@ -76,6 +79,15 @@ object Groebner {
       my ($self, $p) = @_;
       $self->parent->N_VARIABLES == $p->n_vars() or croak ("incompatible rings");
       return $self->SINGULAR_IDEAL->reduce($p);
+   }
+   
+   # Reduce an [[Ideal]] //I// with respect to the Groebner basis.
+   # @param Ideal I
+   # @return Array<Polynomial>
+   user_method reduce(Ideal) {
+      my ($self, $I) = @_;
+      $self->parent->N_VARIABLES == $I->N_VARIABLES or croak ("incompatible rings");
+      return $self->SINGULAR_IDEAL->reduce($I->GENERATORS);
    }
 
    user_method division(Polynomial) {

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,11 +26,11 @@
 
 namespace polymake { namespace tropical {
 
-Matrix<int> coarse_covector_from_fine(const Array<IncidenceMatrix<>>& cov)
+Matrix<Int> coarse_covector_from_fine(const Array<IncidenceMatrix<>>& cov)
 {
-   if (cov.empty()) return Matrix<int>();
-   Matrix<int> result(cov.size(), cov[0].rows());
-   int c_index = 0;
+   if (cov.empty()) return Matrix<Int>();
+   Matrix<Int> result(cov.size(), cov[0].rows());
+   Int c_index = 0;
    for (auto c = entire(cov); !c.at_end(); ++c) {
       for (auto row_it = entire(rows(*c)); !row_it.at_end(); ++row_it) {
          result(c_index, row_it.index()) = row_it->size();
@@ -41,14 +41,14 @@ Matrix<int> coarse_covector_from_fine(const Array<IncidenceMatrix<>>& cov)
 }
 
 template <typename Addition, typename Scalar>
-Matrix<int> coarse_covectors(const Matrix<TropicalNumber<Addition, Scalar>>& points,
+Matrix<Int> coarse_covectors(const Matrix<TropicalNumber<Addition, Scalar>>& points,
                              const Matrix<TropicalNumber<Addition, Scalar>>& generators)
 {
    return coarse_covector_from_fine(covectors(points, generators));
 }
 
 template <typename Addition, typename Scalar>
-Matrix<int> coarse_covectors_of_scalar_vertices(const Matrix<Scalar>& points,
+Matrix<Int> coarse_covectors_of_scalar_vertices(const Matrix<Scalar>& points,
                                                 const Matrix<TropicalNumber<Addition,Scalar>>& generators)
 {
    return coarse_covector_from_fine(covectors_of_scalar_vertices(points, generators));

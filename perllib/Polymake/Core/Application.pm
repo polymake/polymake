@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -21,9 +21,8 @@ use feature 'state';
 
 package Polymake::Core::Application;
 
-declare $configured_at=2;         # enforce renewal of obsolete config status values=1
-declare $load_time=time;
-declare $plausibility_checks=1;
+declare $configured_at = 2;       # enforce renewal of obsolete config status values=1
+declare $load_time = time;
 
 declare $extension;               # Extension contributing to the application being loaded right now
 declare $cross_apps_list;         # REQUIRE_APPLICATION active in the current compilation scope
@@ -54,7 +53,7 @@ use Polymake::Struct (
    [ '$installTop' => 'undef' ],  # installation directory
    '@myINC',                      # [ directory with perl modules, optional preamble lines ]
    '@scriptpath',                 # directories with scripts
-   '@object_types',               # ObjectType
+   '@object_types',               # BigObjectType
    '@rules',                      # Rule
    '@rules_to_finalize',          # Rule - production rules defined in the rulefiles being currently read
    '%rulefiles',                  # 'rule_key' => load status
@@ -68,9 +67,8 @@ use Polymake::Struct (
    [ '$prefs' => 'undef' ],       # Preference::perApplication
    [ '$help' => 'new Help(undef, #1)' ],
    '%used',                       # 'name' => Application
-   '%imported',                   # 'name' => 1
-   '@import_sorted',              # 'name', ... : flattened list in DFS order
-   '%EXPORT',                     # names and attributes of user functions and methods
+   '%imported',                   # 'name' => true
+   '@linear_imported',            # [ Application ] flattened list in C3 order
    [ '$compile_scope' => 'undef' ],  # Scope object spanning the load phase of a group of rules
    '$untrusted',                  # TRUE if comes from a writable location, that is, may be under development
    '&eval_expr',                  # eval'uating the given source code in the application-specific lexical context
@@ -83,28 +81,28 @@ use Polymake::Struct (
 );
 
 sub new {
-   my $self=&_new;
-   if (-d (my $top="$InstallTop/apps/".$self->name)) {
+   my $self = &_new;
+   if (-d (my $top = "$InstallTop/apps/".$self->name)) {
       if (-f "$top/rules/main.rules") {
-         $self->installTop=$InstallTop;
-         $self->top=$top;
-         $self->configured_at=$configured_at;
-         $self->untrusted=$DeveloperMode && -w _;
+         $self->installTop = $InstallTop;
+         $self->top = $top;
+         $self->configured_at = $configured_at;
+         $self->untrusted = $DeveloperMode && -w _;
       } else {
          croak( "Corrupt application ", $self->name, ": missing main.rules file in $top" );
       }
    } else {
-      foreach $extension (@Extension::active[$Extension::num_bundled..$#Extension::active]) {
-         if (-d ($top=$extension->app_dir($self))) {
+      foreach my $ext (@Extension::active[$Extension::num_bundled..$#Extension::active]) {
+         if (-d ($top = $ext->app_dir($self))) {
             if (-f "$top/rules/main.rules") {
-               $self->installTop=$extension->dir;
-               $self->top=$top;
-               $self->configured_at=$extension->configured_at;
-               $self->untrusted=-w _;
-               $self->origin_extension=$extension;
+               $self->installTop = $ext->dir;
+               $self->top = $top;
+               $self->configured_at = $ext->configured_at;
+               $self->untrusted = -w _;
+               $self->origin_extension = $ext;
                last;
             } else {
-               croak( "Extension ", $extension->dir, " contributes to application ", $self->name,
+               croak( "Extension ", $ext->dir, " contributes to application ", $self->name,
                       " but does not provide main.rules: missing dependencies and/or wrong order of extensions?" );
             }
          }
@@ -113,39 +111,26 @@ sub new {
          croak( "Unknown application ", $self->name );
       }
    }
-   {  no strict 'refs';
-      # for the rule parser
-      *{$self->pkg."::self"} = sub {
-         if (my $what=shift) {
-            if ($what<0) {
-               if ($what==-1) {
-                  # providing help path for scopes without own prototype object
-                  my $pkg=caller;
-                  $self->help->find("objects", $pkg) || $self->help->add(["objects", $pkg]);
-               } else {
-                  $self;
-               }
-            } else {
-               croak( "This declaration is only allowed in the object type scope" );
-            }
-         } else {
-            $self;
-         }
-      };
+   RuleFilter::create_self_method_for_application($self);
+   {
+      no strict 'refs';
 
       # for quick retrieval in C++ library
-      readonly(${$self->pkg."::.APPL"}=$self);
+      readonly(${$self->pkg."::.APPL"} = $self);
+
+      # prepare an artificial package for proper ordering
+      mro::set_mro($self->pkg."::.IMPORTS", "c3");
    }
 
    my $dir;
-   if (-d ($dir=$self->top."/perllib")) {
+   if (-d ($dir = $self->top."/perllib")) {
       push @{$self->myINC}, [ $dir ];
    }
-   if (-d ($dir=$self->top."/scripts")) {
+   if (-d ($dir = $self->top."/scripts")) {
       push @{$self->scriptpath}, $dir;
    }
 
-   local $plausibility_checks = $self->untrusted;
+   local $enable_plausibility_checks = $self->untrusted;
    local $Shell = new NoShell();         # disable interactive configuration
 
    $self->configured = namespaces::declare_var($self->pkg, "%configured");
@@ -158,9 +143,9 @@ Value 0 denotes configuration failure, which disables the corresponding rulefile
    $self->cpp = new CPlusPlus::perApplication($self);
    include_rules($self);
 
-   foreach $extension (@Extension::active) {
-      if ($extension->dir ne $self->installTop && -d ($dir=$extension->app_dir($self))) {
-         load_extension($self, $dir);
+   foreach my $ext (@Extension::active) {
+      if ($ext->dir ne $self->installTop && -d ($dir = $ext->app_dir($self))) {
+         load_extension($self, $ext, $dir);
       }
    }
 
@@ -175,6 +160,7 @@ Value 0 denotes configuration failure, which disables the corresponding rulefile
    }
 
    if ($Help::gather) {
+      push @{$self->help->related}, $Help::core;
       $self->custom->create_help_topics($self->help);
       state $user_prefs_help = $Prefs->custom->create_help_topics($Help::core), 1;
    }
@@ -184,18 +170,18 @@ Value 0 denotes configuration failure, which disables the corresponding rulefile
 #################################################################################
 # private:
 sub load_extension {
-   my ($self, $app_dir)=@_;
+   my ($self, $ext, $app_dir)=@_;
    my $dir;
-   if (-d ($dir="$app_dir/perllib")) {
+   if (-d ($dir = "$app_dir/perllib")) {
       push @{$self->myINC}, [ $dir ];
    }
-   if (-d ($dir="$app_dir/scripts")) {
+   if (-d ($dir = "$app_dir/scripts")) {
       push @{$self->scriptpath}, $dir;
    }
-
-   local $plausibility_checks=$extension->untrusted;
+   local $Extension::loading = $ext;
+   local $enable_plausibility_checks = $ext->untrusted;
    include_rules($self);
-   push @{$self->extensions}, $extension;
+   push @{$self->extensions}, $ext;
 }
 #################################################################################
 sub add {
@@ -217,6 +203,11 @@ sub delete {
    delete $repository{$_[1]};
 }
 
+sub used_by {
+   my ($self) = @_;
+   grep { exists($_->used->{$self->name}) } values %repository;
+}
+#################################################################################
 # try to load the application APP
 # when an expression APP::FUNCTION(...) is encountered in the user input
 sub try_auto_load {
@@ -238,28 +229,28 @@ sub try_auto_load {
 # "rulefile" => ( full_path, extension, rule_key, cached_result_code )
 # 'rule_key' is a string used as a key in various maps like rulefiles, configured, or rule_code
 sub lookup_rulefile {
-   my ($self, $rulename, $only_here)=@_;
+   my ($self, $rulename, $only_here) = @_;
    my ($filename, $ext, $rule_key, $rc, @accumulated);
-   if (defined $extension) {
+   if (defined($Extension::loading)) {
       # initial loading an extension: first look in the same extension, then in the application root, then in required extensions
-      $rule_key=$rulename.'@'.$extension->URI;
-      $filename=$extension->app_dir($self)."/rules/$rulename";
-      if (defined ($rc=$self->rulefiles->{$rule_key}) or -f $filename) {
-         if ($only_here<0) {
-            push @accumulated, [ $filename, $extension, $rule_key, $rc ];
+      $rule_key = $rulename . '@' . $Extension::loading->URI;
+      $filename = $Extension::loading->app_dir($self) . "/rules/$rulename";
+      if (defined($rc = $self->rulefiles->{$rule_key}) or -f $filename) {
+         if ($only_here < 0) {
+            push @accumulated, [ $filename, $Extension::loading, $rule_key, $rc ];
          } else {
-            return ($filename, $extension, $rule_key, $rc);
+            return ($filename, $Extension::loading, $rule_key, $rc);
          }
       }
       unless ($only_here) {
-         $filename=$self->top."/rules/$rulename";
-         if (defined ($rc=$self->rulefiles->{$rulename}) or -f $filename) {
+         $filename = $self->top."/rules/$rulename";
+         if (defined($rc = $self->rulefiles->{$rulename}) or -f $filename) {
             return ($filename, undef, $rulename, $rc);
          }
-         foreach $ext (@{$extension->requires}) {
-            $rule_key=$rulename.'@'.$ext->URI;
-            $filename=$ext->app_dir($self)."/rules/$rulename";
-            if (defined ($rc=$self->rulefiles->{$rule_key}) or -f $filename) {
+         foreach $ext (@{$Extension::loading->requires}) {
+            $rule_key = $rulename.'@'.$ext->URI;
+            $filename = $ext->app_dir($self) . "/rules/$rulename";
+            if (defined($rc = $self->rulefiles->{$rule_key}) or -f $filename) {
                return ($filename, $ext, $rule_key, $rc);
             }
          }
@@ -268,14 +259,14 @@ sub lookup_rulefile {
    } elsif ($rulename =~ m{^/}) {
       if (-f $rulename) {
          # catch rules specified by absolute path
-         $filename=$rulename;
+         $filename = $rulename;
          ($rulename) = $filename =~ $filename_re;
-         if (index($filename, $self->top."/rules/")==0) {
+         if (index($filename, $self->top."/rules/") == 0) {
             return ($filename, undef, $rulename, $self->rulefiles->{$rulename});
          }
          foreach $ext (@{$self->extensions}) {
-            if (index($filename, $ext->app_dir($self)."/rules/")==0) {
-               $rule_key=$rulename.'@'.$ext->URI;
+            if (index($filename, $ext->app_dir($self)."/rules/") == 0) {
+               $rule_key = $rulename.'@'.$ext->URI;
                return ($filename, $ext, $rule_key, $self->rulefiles->{$rule_key});
             }
          }
@@ -285,19 +276,19 @@ sub lookup_rulefile {
 
    } else {
       # loading on demand: first look in the application root, then in all extensions
-      $filename=$self->top."/rules/$rulename";
-      if (defined ($rc=$self->rulefiles->{$rulename}) or -f $filename) {
-         if ($only_here<0) {
+      $filename = $self->top."/rules/$rulename";
+      if (defined($rc = $self->rulefiles->{$rulename}) or -f $filename) {
+         if ($only_here < 0) {
             push @accumulated, [ $filename, undef, $rulename, $rc ];
          } else {
             return ($filename, undef, $rulename, $rc);
          }
       }
       foreach $ext (@{$self->extensions}) {
-         $filename=$ext->app_dir($self)."/rules/$rulename";
-         $rule_key=$rulename.'@'.$ext->URI;
-         if (defined ($rc=$self->rulefiles->{$rule_key}) or -f $filename) {
-            if ($only_here<0) {
+         $filename = $ext->app_dir($self)."/rules/$rulename";
+         $rule_key = $rulename.'@'.$ext->URI;
+         if (defined($rc = $self->rulefiles->{$rule_key}) or -f $filename) {
+            if ($only_here < 0) {
                push @accumulated, [ $filename, $ext, $rule_key, $rc ];
             } else {
                return ($filename, $ext, $rule_key, $rc);
@@ -330,16 +321,25 @@ sub exclude_rule {
 #################################################################################
 # private
 sub include_rule {
-   my ($self, $rulefile, $only_here)=@_;
+   my ($self, $rulefile, $only_here) = @_;
    if ($rulefile =~ m{^($id_re)::(.*)}o) {
       include_rules($self->used->{$1} || croak( "application $1 is not declared as USE'd or IMPORT'ed - may not load its rules here" ), "$2");
    } elsif ($rulefile =~ s{^\*/(.*)}{$1}) {
-      my $rc_all=0;
-      foreach (lookup_rulefile($self, $rulefile, -1)) {
-         $rc_all += process_included_rule($self, $rulefile, @$_);
+      my $rc_all = 0;
+      foreach my $app (reverse(@{$self->linear_imported}),
+                       (grep { !$self->imported->{$_->name} } values %{$self->used}), $self) {
+         if (my @found = lookup_rulefile($app, $rulefile, -1)) {
+            if ($app == $self) {
+               foreach (@found) {
+                  $rc_all += process_included_rule($app, $rulefile, @$_);
+               }
+            } else {
+               $rc_all += include_rules($app, $rulefile, @found);
+            }
+         }
       }
       $rc_all;
-   } elsif (my @found=&lookup_rulefile) {
+   } elsif (my @found = &lookup_rulefile) {
       process_included_rule($self, $rulefile, @found);
    } else {
       $only_here || croak( "rule file ", ($rulefile =~ m{^/} ? $rulefile : $self->name."::$rulefile"), " does not exist" );
@@ -361,25 +361,33 @@ sub include_rules {
    }
    local ref $self->custom->tied_vars = [];
    local scalar $self->compile_scope = new Scope();
-   $self->compile_scope->cleanup->{$self->custom}=undef;
+   $self->compile_scope->cleanup->{$self->custom} = undef;
    my $rc_all=0;
    eval {
       if (@_) {
          # application is already loaded, adding some optional rulefiles
-         foreach my $rulename (@_) {
-            $rc_all += include_rule($self, $rulename);
+         if (is_array($_[-1])) {
+            # recursive call from include_rule with a wildcard application
+            my $rulefile = shift;
+            foreach my $found (@_) {
+               $rc_all += process_included_rule($self, $rulefile, @$found);
+            }
+         } else {
+            foreach my $rulefile (@_) {
+               $rc_all += include_rule($self, $rulefile);
+            }
          }
       } else {
          # initializing the application or its main part in an extension
-         local $CPlusPlus::code_generation="" if $CPlusPlus::code_generation eq "private";
+         local $CPlusPlus::code_generation = "" if $CPlusPlus::code_generation eq "private";
          $self->load_state &= ~LoadState::cpp_load_initiated;
-         if ($rc_all=include_rule($self, "main.rules", 1)) {
+         if ($rc_all = include_rule($self, "main.rules", 1)) {
             unless ($self->load_state & LoadState::cpp_load_initiated) {
                # no rulefiles at all; nevertheless, there might be clients
                $self->load_state |= LoadState::cpp_load_initiated;
-               $self->cpp->start_loading($extension);
+               $self->cpp->start_loading($Extension::loading);
             }
-            $self->cpp->end_loading($extension);
+            $self->cpp->end_loading($Extension::loading);
          }
       }
       $_->finalize for @{$self->rules_to_finalize};
@@ -387,7 +395,7 @@ sub include_rules {
    if ($@) {
       die beautify_error();
    }
-   @{$self->rules_to_finalize}=();
+   @{$self->rules_to_finalize} = ();
    $rc_all;
 }
 #################################################################################
@@ -395,22 +403,22 @@ sub include_rule_block {
    my ($self, $mandatory, $block)=@_;
    while ($block =~ /\G \s* (\S+)/gx) {
       my @failed;
-      my $rulefile=$1;
-      my $success=include_rule($self, $rulefile);
+      my $rulefile = $1;
+      my $success = include_rule($self, $rulefile);
       if ($mandatory) {
          push @failed, $rulefile if !$success;
       } else {
          while ($block =~ /\G \s+\+\s+ (\S+)/gxc) {
-            $rulefile=$1;
+            $rulefile = $1;
             $success += include_rule($self, $rulefile);
          }
       }
       while ($block =~ /\G \s+\|\s+ (\S+)/gxc) {
-         $rulefile=$1;
+         $rulefile = $1;
          if ($success) {
             exclude_rule($self, $rulefile) if !$mandatory;
          } else {
-            $success=include_rule($self, $rulefile);
+            $success = include_rule($self, $rulefile);
             push @failed, $rulefile if $success < $mandatory;
          }
       }
@@ -440,38 +448,44 @@ sub construct_explicit_typelist {
 }
 #################################################################################
 sub set_file_suffix {
-   my ($self, $suffix)=@_;
+   my ($self, $suffix) = @_;
    ($self->default_file_suffix &&= croak("multiple definition of default file suffix")) ||= $suffix;
    push @{$self->file_suffixes}, $suffix;
 }
 #################################################################################
 sub lookup_credit {
-   my ($self, $product)=@_;
+   my ($self, $product) = @_;
    $self->credits->{$product} //= do {
-      my @full_credits = grep { defined } map { $_->credits->{$product} } values %{$self->used};
-      $full_credits[0];
-   }
+      my $credit;
+      foreach my $app (values %{$self->used}) {
+         if (defined($credit = $app->credits->{$product})) {
+            keys %{$self->used};
+            last;
+         }
+      }
+      $credit
+   };
 }
 #################################################################################
 sub add_custom {
-   my $self=shift;
-   $self->custom->add(@_)->extension=$extension;
+   my $self = shift;
+   $self->custom->add(@_)->extension = $Extension::loading;
 }
 #################################################################################
 sub use_apps {
-   my ($self, $import)=splice @_,0,2;
+   my ($self, $import) = splice @_, 0, 2;
    my ($i, $app);
 
-   my $in_ext=$extension;
-   local $extension;
+   my $in_ext = $Extension::loading;
+   local $Extension::loading;
 
-   my @apps=map {
-      if (my ($appname, $start_rules)= m/^\s* ($id_re) (?: \s*\(\s* (.*?) \s*\) )? \s*$/xo) {
+   my @apps = map {
+      if (my ($appname, $start_rules) = m/^\s* ($id_re) (?: \s*\(\s* (.*?) \s*\) )? \s*$/xo) {
          if (exists $repository{$appname} && !defined $repository{$appname}) {
             # requested application is itself being loaded
             croak( "Cyclic dependence between applications ", $self->name, " and $appname" );
          }
-         $app=add Application($appname);
+         $app = add Application($appname);
          if (exists $app->used->{$self->name}) {
             if ($in_ext) {
                croak( "Extension ", $in_ext->URI,
@@ -484,69 +498,41 @@ sub use_apps {
              scalar(include_rule_block($app, 1, $start_rules))) {
             croak( "could not load mandatory rulefile(s) $start_rules due to configuration issues" );
          }
-         $app;
+         $app
       } else {
          croak( "invalid application name '$_'" );
       }
    } @_;
 
    if ($import) {
-      my $ord=-1;
-      my %order=map { $_ => ++$ord } @{$self->import_sorted};
-
-    APPS:
-      for ($i=0; $i<=$#apps; ++$i) {
-         $app=$apps[$i];
-         if (exists $self->imported->{$app->name}) {
-            splice @apps, $i--, 1;  next;
-         }
-         for (my $j=$i+1; $j<=$#apps; ++$j) {
-            if (exists $apps[$j]->imported->{$app->name}) {
-               splice @apps, $i--, 1; next APPS;
-            }
-         }
-
+      {  no strict 'refs';
+         push @{$self->pkg."::.IMPORTS::ISA"}, map { $_->pkg."::.IMPORTS" } @apps;
+         my $linear_isa = mro::get_linear_isa($self->pkg."::.IMPORTS");
+         @{$self->linear_imported} = map { ${s/IMPORTS$/APPL/r} } @$linear_isa[1..$#$linear_isa];
+      }
+      foreach my $app (@{$self->linear_imported}) {
          push @{$self->myINC}, @{$app->myINC};
-         push %{$self->EXPORT}, %{$app->EXPORT};
          push %{$self->credits}, %{$app->credits};
 
          namespaces::using($self->pkg, $app->pkg);
          namespaces::using($self->pkg."::objects", $app->pkg."::objects");
          namespaces::using($self->pkg."::props", $app->pkg."::props");
 
-         $self->imported->{$app->name}=$app;
-         $order{$app->name}=++$ord;
+         $self->imported->{$app->name} = true;
 
-         # IMPORT relation is transitive
-         while (my ($other_app_name, $other_app)=each %{$app->imported}) {
-            $self->imported->{$other_app_name}=$other_app;
-            assign_min($order{$other_app_name},$ord);
-         }
-      }
-
-      my @import_sorted=sort {
-         exists $a->imported->{$b->name} ? -1 :
-         exists $b->imported->{$a->name} ? 1 :
-         $order{$a->name} <=> $order{$b->name}
-      } values %{$self->imported};
-
-      @{$self->import_sorted}=map { $_->name } @import_sorted;
-      @{$self->prefs->imported}=map { $_->prefs } @import_sorted;
-      if ($Help::gather) {
-         push @{$self->help->related}, (map { $_->help } @import_sorted), $Help::core;
+         push @{$self->prefs->imported}, $app->prefs;
+         push @{$self->help->related}, $app->help if $Help::gather;
       }
    }
 
-   foreach $app (@apps) {
-      $self->used->{$app->name}=$app;
-      # flatten the %used
-      push %{$self->used}, %{$app->used};
+   foreach my $app (@apps) {
+      $self->used->{$_->name} = $_ for $app, values %{$app->used};
    }
 }
 
 sub common {
    my ($self, $other)=@_;
-   if (!defined($other) || $self==$other || exists $self->used->{$other->name}) {
+   if (!defined($other) || $self == $other || exists $self->used->{$other->name}) {
       $self;
    } elsif (exists $other->used->{$self->name}) {
       $other;
@@ -559,14 +545,17 @@ sub common {
 sub find_custom_var {
    my ($self, $name, $alt)=@_;
    my $var;
-   if (defined ($self->custom) && !defined ($var=$self->custom->find($name))) {
+   if (defined($self->custom) && !defined($var = $self->custom->find($name))) {
       foreach my $app (values %{$self->used}) {
-         $var=$app->custom->find($name) and last;
+         if (defined($var = $app->custom->find($name))) {
+            keys %{$self->used};
+            last;
+         }
       }
    }
    if (defined($var)) {
       ($self->custom, $var)
-   } elsif (defined($alt) && defined ($var=$alt->find($name))) {
+   } elsif (defined($alt) && defined($var = $alt->find($name))) {
       ($alt, $var)
    } else {
       croak( "unknown custom variable $name" );
@@ -623,21 +612,21 @@ sub reset_custom {
 }
 #################################################################################
 sub add_top_label {
-   my ($self, $name)=@_;
-   my $label=( $self->prefs->labels->{$name} &&=
-               croak( "multiple definition of label $name" ) )=new Preference::Label($name);
-   $label->application=$self;
-   $label->extension=$extension;
+   my ($self, $name) = @_;
+   my $label = ( $self->prefs->labels->{$name} &&=
+                 croak( "multiple definition of label $name" ) ) = new Preference::Label($name);
+   $label->application = $self;
+   $label->extension = $Extension::loading;
    $label
 }
 
 sub add_label {
-   my ($self, $name)=@_;
-   my $label=$self->prefs->find_label($name, 1) or do {
+   my ($self, $name) = @_;
+   my $label = $self->prefs->find_label($name, 1) or do {
       $name =~ /^($id_re)/o;
       croak( "unknown label '$1'" );
    };
-   $label->set_application($self, $extension);
+   $label->set_application($self, $Extension::loading);
    $label
 }
 #################################################################################
@@ -685,6 +674,16 @@ sub disable_rules {
    }
 }
 #################################################################################
+# This is a placeholder with minimal functionality required for RuleFilter to load
+# scripts and data upgrade rules in an early stage, when no real application
+# is loaded yet.
+sub load_dummy {
+   $User::application = _new(__PACKAGE__, "");
+   $User::application->configured = { };
+   push @INC, $User::application;
+   readonly($User::application);
+}
+#################################################################################
 package Polymake::Core::Application::SuspendedItems;
 
 use Polymake::Struct (
@@ -701,13 +700,13 @@ use Polymake::Struct (
 my %suspended;
 
 sub add {
-   my ($application, $extension, $missing_app_name, @further_missing_apps)=@_;
-   my $list=($suspended{$missing_app_name} //= [ ]);
+   my ($application, $extension, $missing_app_name, @further_missing_apps) = @_;
+   my $list = ($suspended{$missing_app_name} //= [ ]);
    my $self;
    # Only look at the end of the list and stop by first application or extension mismatch,
    # because all suspended items are created at the same time, when the owning application is loaded.
-   for (my $i=$#$list; $i>=0; --$i) {
-      $self=$list->[$i];
+   for (my $i = $#$list; $i >= 0; --$i) {
+      $self = $list->[$i];
       if ($self->application == $application && $self->extension == $extension) {
          if (equal_lists($self->further_missing_apps, \@further_missing_apps)) {
             return $self;
@@ -716,20 +715,20 @@ sub add {
          last;
       }
    }
-   $self=new(__PACKAGE__, $application, $extension, @further_missing_apps);
+   $self = new(__PACKAGE__, $application, $extension, @further_missing_apps);
    push @$list, $self;
    $self
 }
 
 sub harvest {
-   my ($app_name)=@_;
+   my ($app_name) = @_;
 
-   if (defined (my $list=delete $suspended{$app_name})) {
+   if (defined(my $list = delete $suspended{$app_name})) {
       foreach my $self (@$list) {
-         if (my @missing_apps=grep { !exists $repository{$_} } @{$self->further_missing_apps}) {
+         if (my @missing_apps = grep { !exists $repository{$_} } @{$self->further_missing_apps}) {
             # Associate the suspended items with another missing application.
-            my $missing_app_name=shift @missing_apps;
-            my $next_list=($suspended{$missing_app_name} //= [ ]);
+            my $missing_app_name = shift @missing_apps;
+            my $next_list = ($suspended{$missing_app_name} //= [ ]);
             # Look though the entire list, because anything might have happened since the initial load of the owning application.
             foreach my $next_suspended (@$next_list) {
                if ($next_suspended->application == $self->application &&
@@ -751,11 +750,11 @@ sub harvest {
          } else {
             # ripe to be loaded
             my $app = $self->application;
-            local $extension = $self->extension;
+            local $Extension::loading = $self->extension;
             local unshift @INC, $app;
             local scalar $app->compile_scope = new Scope();
             eval {
-               local $CPlusPlus::code_generation="" if $CPlusPlus::code_generation eq "private";
+               local $CPlusPlus::code_generation = "" if $CPlusPlus::code_generation eq "private";
                if (@{$self->rulefiles}) {
                   delete @{$app->rulefiles}{@{$self->rule_keys}};
                   delete @INC{ map { "rules:$_" } @{$self->rulefiles} };

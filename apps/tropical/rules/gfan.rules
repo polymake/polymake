@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -57,9 +57,8 @@ CONFIGURE {
 # @return Cycle<Max> most likely not balanced
 user_function gfan_tropicalintersection(ideal::Ideal) {
    my ($I) = @_;
-   my $tempfile=new Tempfile;
-   my $input=fan::gfan_print_ideal($tempfile, $I);
-   return gfan_fix_lineality_space(fan::run_gfan("$gfan_tropicalintersection <$input"));
+   return gfan_to_tropical_cycle(fan::run_gfan(sub { fan::gfan_print_ideal($_[0], $I) },
+                                               $gfan_tropicalintersection));
 }
 
 # @category gfan
@@ -69,9 +68,9 @@ user_function gfan_tropicalintersection(ideal::Ideal) {
 # @return Cycle<Max>
 user_function gfan_tropicalhypersurface(Polynomial) {
    my ($g) = @_;
-   my $tempfile=new Tempfile;
-   my $input=fan::gfan_print_ideal($tempfile, new ideal::Ideal(GENERATORS=>[$g]));
-   return gfan_fix_lineality_space(fan::run_gfan("$gfan_tropicalhypersurface <$input"));
+   my $I = new ideal::Ideal(GENERATORS => [$g]);
+   return gfan_to_tropical_cycle(fan::run_gfan(sub { fan::gfan_print_ideal($_[0], $I) },
+                                               $gfan_tropicalhypersurface));
 }
 
 
@@ -83,41 +82,76 @@ user_function gfan_tropicalhypersurface(Polynomial) {
 # @return Cycle<Max>
 user_function gfan_tropicalvariety_of_prime(ideal::Ideal) {
    my ($I) = @_;
-   my $tempfile=new Tempfile;
-   my $input=fan::gfan_print_ideal($tempfile, $I);
-   return gfan_fix_lineality_space(fan::run_gfan("$gfan_tropicalstartingcone <$input 2>/dev/null | $gfan_tropicaltraverse"));
+   return gfan_to_tropical_cycle(fan::run_gfan(sub { fan::gfan_print_ideal($_[0], $I) },
+                                               $gfan_tropicalstartingcone, $gfan_tropicaltraverse));
 }
 
 # @category gfan
 # Calls gfan_tropicalbruteforce for a homogeneous ideal.
-# If the ideal contains a monomial, gfan will return an empty object and the xslt parsing fails. We do not catch this for you.
+# If the ideal contains a monomial, gfan will return an empty object. We do not catch this for you.
 # @param ideal::Ideal I homogeneous ideal
 # @return fan::PolyhedralFan
 user_function gfan_tropicalbruteforce(ideal::Ideal) {
    my ($I) = @_;
-   my $tempfile=new Tempfile;
-   my $input=fan::gfan_print_ideal($tempfile, $I);
-   return fan::run_gfan("$gfan_tropicalbruteforce <$input");
+   return fan::gfan_to_symmetric_fan(fan::run_gfan(sub { fan::gfan_print_ideal($_[0], $I) },
+                                                   $gfan_tropicalbruteforce));
 }
 
-# Tropical cycle needs to mod out 1,1...1, unable to do that in xslt.
-sub gfan_fix_lineality_space {
-   my ($gfan_out) = @_;
-
-   my $lineality = new Matrix($gfan_out->LINEALITY_SPACE);
-   canonicalize_scalar_to_leading_zero($lineality->minor(All,~[0]));
-   $lineality = $lineality->minor(basis_rows($lineality), All);
-   
+sub gfan_to_tropical_cycle {
+   my ($data) = @_;
    my $result = new Cycle<Max>();
-   $result->take("LINEALITY_SPACE", $lineality);
-   
-   my @properties = $gfan_out->list_properties();
-   @properties = grep($_ !~ m/^LINEALITY_SPACE$/, @properties);
 
-   for my $prop (@properties){
-      $result->take($prop, $gfan_out->give($prop));
+   my $ambient_dim = $data->{AMBIENT_DIM};
+   $result->FAN_AMBIENT_DIM = $ambient_dim+1;
+   $result->FAN_DIM = $data->{DIM};
+   $result->PURE = $data->{PURE};
+   $result->SIMPLICIAL = $data->{SIMPLICIAL};
+
+   # concatenate all vectors in MULTIPLICITIES and rename to WEIGHTS
+   if (defined(my $m = $data->{MULTIPLICITIES})) {
+      $result->WEIGHTS = [ map { @$_ } @$m ];
    }
 
+   # add leading 0 to RAYS and the origin, rename to PROJECTIVE_VERTICES
+   if (defined(my $rays = $data->{RAYS})) {
+      unshift @$_, "0" for @$rays;
+      push @$rays, [ "1", ("0") x $ambient_dim ];
+      $result->PROJECTIVE_VERTICES = $rays;
+   }
+
+   # add leading 0 to LINEALITY_SPACE; mod out (1,1...1)
+   my $lineality = $data->{LINEALITY_SPACE};
+   if (defined($lineality) && @$lineality) {
+      unshift @$_, "0" for @$lineality;
+      $lineality = new Matrix<Rational>($lineality);
+      canonicalize_scalar_to_leading_zero($lineality->minor(All, range_from(1)));
+      $result->LINEALITY_SPACE = $lineality->minor(basis_rows($lineality), All);
+   } else {
+      $result->LINEALITY_SPACE = new Matrix<Rational>(0, $ambient_dim+1);
+   }
+
+   # add new ray to MAXIMAL_CONES
+   my $mc = $data->{MAXIMAL_CONES};
+   if (defined($mc) && @$mc) {
+      my $last_ray = $data->{N_RAYS};
+      foreach (@$mc) {
+         if (is_hash($_)) {
+            if (defined($_->{cols})) {
+               $_->{cols}++;
+            } elsif (keys %$_ == 0) {
+               # empty row
+               $_ = [ $last_ray ];
+            } else {
+               die "unexpected row in MAXIMAL_CONES input\n";
+            }
+         } else {
+            push @$_, $last_ray;
+         }
+      }
+      $result->MAXIMAL_POLYTOPES = $mc;
+   }
+
+   $result->commit();
    return $result;
 }
 

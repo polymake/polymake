@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -35,17 +35,17 @@
 
 namespace polymake { namespace tropical {
 
-	/*
-	 * @brief Computes the lattice basis of a cone (given in not-tropically-homogeneous coordinates 
-	 * without leading coordinate) and whose dimension is known.
-	 * @param Matrix<Rational> A list of rays
-	 * @param Matrix<Rational> generators for the lineality space
-	 * @param Int the dimension of the cone 
-	 * @param Bool whether the cone has a leading coordinate (and is, in fact, a polyhedron).
-	 * @return A lattice basis, given as row vectors of a matrix and without leading coordinate.
-	 */
-	Matrix<Integer> lattice_basis_of_cone(const Matrix<Rational> &rays, const Matrix<Rational> &lineality, int dim, bool has_leading_coordinate);
+/*
+ * @brief Computes the lattice basis of a cone (given in not-tropically-homogeneous coordinates 
+ * without leading coordinate) and whose dimension is known.
+ * @param Matrix<Rational> A list of rays
+ * @param Matrix<Rational> generators for the lineality space
+ * @param Int the dimension of the cone 
+ * @param Bool whether the cone has a leading coordinate (and is, in fact, a polyhedron).
+ * @return A lattice basis, given as row vectors of a matrix and without leading coordinate.
+ */
+Matrix<Integer> lattice_basis_of_cone(const Matrix<Rational>& rays, const Matrix<Rational>& lineality, Int dim, bool has_leading_coordinate);
 
-}}
+} }
 
 #endif

@@ -1,6 +1,6 @@
 {"app": "group", "embed": "lex_min_representative.cc",
  "inst": [
-  {"args": ["Set<int>", "void", "Set<int>(perl::Canned<const Set<int>&>)"], "func": "lex_min_representative", "include": ["polymake/Set.h"], "sig": "lex_min_representative:T1.B.C0", "tp": "1"},
-  {"args": ["IncidenceMatrix<NonSymmetric>", "perl::Canned<const Array<Array<int>>&>", "IncidenceMatrix<NonSymmetric>(perl::Canned<const IncidenceMatrix<NonSymmetric>&>)"], "func": "orbit_reps_and_sizes", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h"], "sig": "orbit_reps_and_sizes:T1.X.C0", "tp": "1"},
+  {"args": ["Set<Int>", "void", "Set<Int>(perl::Canned<const Set<Int>&>)"], "func": "lex_min_representative", "include": ["polymake/Set.h"], "sig": "lex_min_representative:T1.B.C0", "tp": "1"},
+  {"args": ["IncidenceMatrix<NonSymmetric>", "perl::Canned<const Array<Array<Int>>&>", "IncidenceMatrix<NonSymmetric>(perl::Canned<const IncidenceMatrix<NonSymmetric>&>)"], "func": "orbit_reps_and_sizes", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h"], "sig": "orbit_reps_and_sizes:T1.X.C0", "tp": "1"},
  null ],
 "version": 3}

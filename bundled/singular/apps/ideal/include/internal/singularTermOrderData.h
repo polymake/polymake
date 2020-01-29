@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,6 +22,7 @@
 #include "polymake/Polynomial.h"
 
 #include "polymake/ideal/internal/singularInclude.h"
+#include "polymake/ideal/internal/singularUtils.h"
 
 namespace polymake { 
 namespace ideal {
@@ -112,14 +113,16 @@ class SingularTermOrderData<Matrix<Scalar>> : public SingularTermOrderData_base<
 public:
    using SingularTermOrderData_base<Matrix<Scalar>>::SingularTermOrderData_base;
 
-   int get_ord_size() const {
-     return this->orderData.rows()+1;
+   int get_ord_size() const
+   {
+     return safe_cast(this->orderData.rows()+1);
    }
 
-   int* get_block0() const {
+   int* get_block0() const
+   {
       int ord_size = this->get_ord_size();
       int* block0 = (int*)omalloc0((ord_size+2)*sizeof(int));
-      for(int i = 0; i < ord_size; ++i) {
+      for (int i = 0; i < ord_size; ++i) {
         block0[i] = 1;
       }
       block0[ord_size]=0;
@@ -127,7 +130,8 @@ public:
       return block0;
    }
 
-   int* get_block1() const {
+   int* get_block1() const
+   {
       int ord_size = this->get_ord_size();
       int nvars = this->n_vars;
       int* block1 = (int*)omalloc0((ord_size+2)*sizeof(int));
@@ -139,7 +143,8 @@ public:
       return block1;
    }
 
-   singular_order_type* get_ord() const {
+   singular_order_type* get_ord() const
+   {
       int ord_size = this->get_ord_size();
       singular_order_type* ord=(singular_order_type*)omalloc0((ord_size+2)*sizeof(singular_order_type));
       for(int i = 0; i < ord_size-1; ++i) {
@@ -150,7 +155,8 @@ public:
       return ord;
    }
 
-   int** get_wvhdl() const {
+   int** get_wvhdl() const
+   {
       int ord_size = this->get_ord_size();
       int nvars = this->n_vars;
       int** wvhdl=(int**)omalloc0((ord_size+2)*sizeof(int*));
@@ -160,9 +166,9 @@ public:
             wvhdl[i][j] = (int)this->orderData(i,j);
          }
       }
-      wvhdl[ord_size-1]=NULL;
-      wvhdl[ord_size]=NULL;
-      wvhdl[ord_size+1]=NULL;
+      wvhdl[ord_size-1] = nullptr;
+      wvhdl[ord_size] = nullptr;
+      wvhdl[ord_size+1] = nullptr;
       return wvhdl;
    }
 };
@@ -172,7 +178,8 @@ class SingularTermOrderData<Vector<Scalar>> : public SingularTermOrderData_base<
 public:
    using SingularTermOrderData_base<Vector<Scalar>>::SingularTermOrderData_base;
 
-   singular_order_type* get_ord() const {
+   singular_order_type* get_ord() const
+   {
       int ord_size = this->get_ord_size();
       singular_order_type* ord=(singular_order_type*)omalloc0((ord_size+1)*sizeof(singular_order_type));
       ord[1]=ringorder_c;
@@ -180,7 +187,8 @@ public:
       return ord;
    }
 
-   int** get_wvhdl() const {
+   int** get_wvhdl() const
+   {
       int ord_size = this->get_ord_size();
       int nvars = this->n_vars;
       int** wvhdl=(int**)omalloc0((ord_size+1)*sizeof(int*));
@@ -188,8 +196,8 @@ public:
       for(int i =0; i<nvars; i++){
          wvhdl[0][i] = (int) this->orderData[i];
       }
-      wvhdl[1]=NULL;
-      wvhdl[2]=NULL;
+      wvhdl[1] = nullptr;
+      wvhdl[2] = nullptr;
       return wvhdl;
    }
 };
@@ -198,7 +206,8 @@ template<> class SingularTermOrderData<std::string> : public SingularTermOrderDa
 public:
    using SingularTermOrderData_base<std::string>::SingularTermOrderData_base;
 
-   singular_order_type* get_ord() const {
+   singular_order_type* get_ord() const
+   {
       int ord_size = this->get_ord_size();
       singular_order_type* ord=(singular_order_type*)omalloc0((ord_size+1)*sizeof(singular_order_type));
       ord[1]=ringorder_c;
@@ -206,7 +215,8 @@ public:
       return ord;
    }
 
-   int** get_wvhdl() const {
+   int** get_wvhdl() const
+   {
       int ord_size = this->get_ord_size();
       int** wvhdl=(int**)omalloc0((ord_size+1)*sizeof(int*));
       return wvhdl;

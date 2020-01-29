@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,13 +22,13 @@
 namespace polymake { namespace graph { namespace lattice {
 
 template <>
-void InverseRankMap<Nonsequential>::set_rank(int n, int r)
+void InverseRankMap<Nonsequential>::set_rank(Int n, Int r)
 {
   inverse_rank_map[r].push_back(n);
 }
 
 template <>
-void InverseRankMap<Sequential>::set_rank(int n, int r)
+void InverseRankMap<Sequential>::set_rank(Int n, Int r)
 {
   auto p = inverse_rank_map.find(r);
   if (p.at_end()) {
@@ -40,7 +40,7 @@ void InverseRankMap<Sequential>::set_rank(int n, int r)
 }
 
 template <>
-void InverseRankMap<Nonsequential>::delete_node_and_squeeze(int n, int r)
+void InverseRankMap<Nonsequential>::delete_node_and_squeeze(Int n, Int r)
 {
   auto& rlist = inverse_rank_map[r];
   rlist.remove(n);
@@ -53,7 +53,7 @@ void InverseRankMap<Nonsequential>::delete_node_and_squeeze(int n, int r)
 }
 
 template <>
-void InverseRankMap<Sequential>::delete_node_and_squeeze(int n, int r)
+void InverseRankMap<Sequential>::delete_node_and_squeeze(Int n, Int r)
 {
   for (auto& kv_pair : inverse_rank_map) {
     if (kv_pair.second.first > n) --kv_pair.second.first;
@@ -63,7 +63,7 @@ void InverseRankMap<Sequential>::delete_node_and_squeeze(int n, int r)
 }
 
 template <>
-Nonsequential::nodes_of_rank_ref_type InverseRankMap<Nonsequential>::nodes_of_rank(int d) const
+Nonsequential::nodes_of_rank_ref_type InverseRankMap<Nonsequential>::nodes_of_rank(Int d) const
 {
   auto p = inverse_rank_map.find(d);
   if (p.at_end()) {
@@ -74,7 +74,7 @@ Nonsequential::nodes_of_rank_ref_type InverseRankMap<Nonsequential>::nodes_of_ra
 }
 
 template <>
-Sequential::nodes_of_rank_ref_type InverseRankMap<Sequential>::nodes_of_rank(int d) const
+Sequential::nodes_of_rank_ref_type InverseRankMap<Sequential>::nodes_of_rank(Int d) const
 {
   auto p = inverse_rank_map.find(d);
   if (p.at_end()) {
@@ -85,7 +85,7 @@ Sequential::nodes_of_rank_ref_type InverseRankMap<Sequential>::nodes_of_rank(int
 }
 
 template <>
-Nonsequential::nodes_of_rank_type InverseRankMap<Nonsequential>::nodes_of_rank_range(int d1, int d2) const
+Nonsequential::nodes_of_rank_type InverseRankMap<Nonsequential>::nodes_of_rank_range(Int d1, Int d2) const
 {
   Nonsequential::nodes_of_rank_type result;
   if (d2 < d1) std::swap(d2, d1);
@@ -98,14 +98,14 @@ Nonsequential::nodes_of_rank_type InverseRankMap<Nonsequential>::nodes_of_rank_r
 }
 
 template <>
-Sequential::nodes_of_rank_type InverseRankMap<Sequential>::nodes_of_rank_range(int d1, int d2) const
+Sequential::nodes_of_rank_type InverseRankMap<Sequential>::nodes_of_rank_range(Int d1, Int d2) const
 {
   if (d2 < d1) std::swap(d2, d1);
   auto lower_seq = inverse_rank_map.find_nearest(d1, operations::ge());
   auto upper_seq = inverse_rank_map.find_nearest(d2, operations::le());
   if (!lower_seq.at_end() && !upper_seq.at_end()) {
-    int lower_bound = std::min(lower_seq->second.first, upper_seq->second.first);
-    int upper_bound = std::max(lower_seq->second.second, upper_seq->second.second);
+    Int lower_bound = std::min(lower_seq->second.first, upper_seq->second.first);
+    Int upper_bound = std::max(lower_seq->second.second, upper_seq->second.second);
     return Sequential::nodes_of_rank_type(lower_bound, upper_bound-lower_bound+1);
   }
   return Sequential::nodes_of_rank_type();

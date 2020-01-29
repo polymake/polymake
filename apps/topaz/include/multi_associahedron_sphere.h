@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,8 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef __MULTI_ASSOCIAHEDRON_SPHERE_H
-#define __MULTI_ASSOCIAHEDRON_SPHERE_H
+#ifndef POLYMAKE_TOPAZ_MULTI_ASSOCIAHEDRON_SPHERE_H
+#define POLYMAKE_TOPAZ_MULTI_ASSOCIAHEDRON_SPHERE_H
 
 #include "polymake/hash_map"
 #include "polymake/hash_set"
@@ -28,41 +28,36 @@
 
 namespace polymake { namespace topaz {
 
-namespace {
+namespace multi_associahedron_sphere_utils {
 
-typedef std::pair<int,int> Diagonal;
-typedef hash_map<Diagonal,int> DiagonalIndex;
-typedef std::vector<Diagonal> DiagonalList;
-typedef std::vector<std::string> DiagonalLabels;
+using Diagonal = std::pair<Int, Int>;
+using DiagonalIndex = hash_map<Diagonal, Int> ;
+using DiagonalList = std::vector<Diagonal>;
+using DiagonalLabels = std::vector<std::string>;
 
-template<typename Diagonal>
-bool inside(int x, const Diagonal& d)
+bool inside(Int x, const Diagonal& d)
 {
    return x > d.first && x < d.second;
 }
 
-template<typename Diagonal>
-bool cross(const Diagonal& d1,
-           const Diagonal& d2)
+bool cross(const Diagonal& d1, const Diagonal& d2)
 {
-   assert(d1.first < d1.second && d2.first < d2.second);   
+   assert(d1.first < d1.second && d2.first < d2.second);
 
    if (d1.first==d2.first || d1.second==d2.second)
       return false;
 
-   const int v0(std::min(d1.first, d2.first));
+   const Int v0 = std::min(d1.first, d2.first);
 
-   Diagonal 
-      d1t { d1.first - v0, d1.second - v0 },
-      d2t { d2.first - v0, d2.second - v0 };
+   const Diagonal d1t{ d1.first - v0, d1.second - v0 },
+                  d2t{ d2.first - v0, d2.second - v0 };
       
    return 
       inside(d2t.first, d1t) && !inside(d2t.second, d1t) ||
       inside(d2t.second, d1t) && !inside(d2t.first, d1t);
 }
 
-template<typename DiagonalList>
-bool cross_mutually(const Set<int>& c,
+bool cross_mutually(const Set<Int>& c,
                     const DiagonalList& diagonals)
 {
    assert(c.size() >= 2);
@@ -72,9 +67,8 @@ bool cross_mutually(const Set<int>& c,
    return true;
 }
 
-template<typename DiagonalList>
-bool crosses_all(int new_d,
-                 const Set<int>& family,
+bool crosses_all(Int new_d,
+                 const Set<Int>& family,
                  const DiagonalList& diagonals)
 {
    for (const auto& i: family)
@@ -83,13 +77,12 @@ bool crosses_all(int new_d,
    return true;
 }
 
-template<typename DiagonalList>
-bool contains_new_k_plus_1_crossing(int new_d,
-                                    int k,
-                                    const Set<int>& family,
+bool contains_new_k_plus_1_crossing(Int new_d,
+                                    Int k,
+                                    const Set<Int>& family,
                                     const DiagonalList& diagonals)
 {
-   if (k>1) {
+   if (k > 1) {
       for (auto kc_it = entire(all_subsets_of_k(family, k)); !kc_it.at_end(); ++kc_it) {
          if (!crosses_all(new_d, *kc_it, diagonals)) // first, a linear test
             continue;
@@ -105,53 +98,48 @@ bool contains_new_k_plus_1_crossing(int new_d,
    }
 }
 
-template<typename DiagonalList>
-Array<int>
-induced_gen(const Array<int>& g,
-            const DiagonalList& diagonals,
-            const DiagonalIndex& index_of)
+Array<Int> induced_gen(const Array<Int>& g,
+                       const DiagonalList& diagonals,
+                       const DiagonalIndex& index_of)
 {
-   Array<int> induced_gen(diagonals.size());
+   Array<Int> induced_gen(diagonals.size());
    auto igit = entire(induced_gen);
    for (const auto& d: diagonals) {
-      Diagonal 
-         unordered_img(g[d.first], g[d.second]),
-         img( unordered_img.first < unordered_img.second
-              ? unordered_img
-              : Diagonal(unordered_img.second, unordered_img.first));
+      const Diagonal unordered_img{ g[d.first], g[d.second] };
+      const Diagonal img = unordered_img.first < unordered_img.second
+                           ? unordered_img
+                           : Diagonal{ unordered_img.second, unordered_img.first };
       *igit = index_of.at(img);
       ++igit;
    }
    return induced_gen;
 }
 
-template<typename DiagonalList>
-Array<Array<int>>
-induced_action_gens_impl(const Array<Array<int>>& gens,
+Array<Array<Int>>
+induced_action_gens_impl(const Array<Array<Int>>& gens,
                          const DiagonalList& diagonals,
                          const DiagonalIndex& index_of)
 {
-   Array<Array<int>> igens(gens.size());
+   Array<Array<Int>> igens(gens.size());
    std::transform(gens.begin(), gens.end(), igens.begin(),
                   [&diagonals, &index_of](auto gen) { return induced_gen(gen, diagonals, index_of); });
    return igens;
 }
 
-template<typename DiagonalList>
-void prepare_diagonal_data(int n,
-                           int k,
+void prepare_diagonal_data(Int n,
+                           Int k,
                            DiagonalIndex& index_of,
                            DiagonalList& diagonals,
                            DiagonalLabels& labels)
 {
-   int index(-1);
+   Int index = -1;
    std::ostringstream oss;
-   for (int steps = k+1; steps <= n/2; ++steps) {
-      for (int u=0; u<n; ++u) {
+   for (Int steps = k+1; steps <= n/2; ++steps) {
+      for (Int u = 0; u<n; ++u) {
          if (n%2==0 && steps==n/2 && u==n/2)
             break; // for even n-gons, the big diagonals must be counted only once
-         const int v((u+steps)%n);
-         const Diagonal d(std::min(u,v), std::max(u,v));
+         const Int v = (u+steps) % n;
+         const Diagonal d{ std::min(u, v), std::max(u, v) };
          index_of[d] = ++index;
          diagonals.push_back(d);
          oss.str("");
@@ -161,14 +149,9 @@ void prepare_diagonal_data(int n,
    }
 }
 
-}
+} } }
 
-
-
-} }
-
-#endif // __MULTI_ASSOCIAHEDRON_SPHERE_H
-
+#endif // POLYMAKE_TOPAZ_MULTI_ASSOCIAHEDRON_SPHERE_H
 
 // Local Variables:
 // mode:C++

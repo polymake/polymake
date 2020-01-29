@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,16 +20,16 @@
 
 namespace polymake { namespace group {
 
-Array<int> partition_representatives(const Array<Array<int>>& group_generators,
-                                     const Set<int>& S)
+Array<Int> partition_representatives(const Array<Array<Int>>& group_generators,
+                                     const Set<Int>& S)
 {
    const PermlibGroup G(group_generators);
-   Array<Array<Array<int>>> fake_cc(1);
+   Array<Array<Array<Int>>> fake_cc(1);
    fake_cc[0] = all_group_elements_impl(G);
-   const GroupIndex<Array<int>> index_of(group_index(fake_cc));
+   const GroupIndex<Array<Int>> index_of(group_index(fake_cc));
    const GroupRightMultiplicationTable GMT(group_right_multiplication_table_impl(fake_cc, index_of));
    const auto stab (all_group_elements_impl(G.setwise_stabilizer(S)));
-   std::vector<int> indexed_subgroup;
+   std::vector<Int> indexed_subgroup;
    for (const auto& s : stab)
       indexed_subgroup.push_back(index_of.at(s));
    return partition_representatives_impl(indexed_subgroup, GMT);

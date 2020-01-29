@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -40,43 +40,42 @@
 
 namespace polymake { namespace tropical {
 
-	template <typename Addition>
-	perl::Object matroid_from_fan(perl::Object cycle) {
-		//Find rank and ground set
-		int ambient_dim = cycle.give("PROJECTIVE_AMBIENT_DIM");
-		int n = ambient_dim+1;
-		int dim = cycle.give("PROJECTIVE_DIM");
-		int r = dim+1;
+template <typename Addition>
+BigObject matroid_from_fan(BigObject cycle)
+{
+  // Find rank and ground set
+  Int ambient_dim = cycle.give("PROJECTIVE_AMBIENT_DIM");
+  Int n = ambient_dim+1;
+  Int dim = cycle.give("PROJECTIVE_DIM");
+  Int r = dim+1;
 
-		if (dim == ambient_dim) {
-			return call_function("matroid::uniform_matroid", n, n);
-		}
+  if (dim == ambient_dim) {
+    return call_function("matroid::uniform_matroid", n, n);
+  }
 
-		//FIXME Testing this could be done in a more efficient way by
-		//finding all cones containing the origin and testing for
-		//complementarity with unit vectors.
-		//Take all r-sets and check if they are a basis
-		Array<Set<int>> rsets{ all_subsets_of_k(sequence(0,n), r) };
-                std::list<Set<int>> bases;
-		for (const auto& rset : rsets) {
-			perl::Object hp = affine_linear_space<Addition>(unit_matrix<Rational>(n).minor(~rset, All));
-			perl::Object inter = call_function("intersect", cycle, hp);
-			bool empty = call_function("is_empty", inter);
-			if(!empty) bases.push_back(rset);
-		}
-		perl::Object result("matroid::Matroid");
-			result.take("N_ELEMENTS") << n;
-			result.take("BASES") << Array<Set<int>>(bases);
-		return result;
-	}
+  // FIXME Testing this could be done in a more efficient way by
+  // finding all cones containing the origin and testing for
+  // complementarity with unit vectors.
+  // Take all r-sets and check if they are a basis
+  Array<Set<Int>> rsets{ all_subsets_of_k(sequence(0,n), r) };
+  std::list<Set<Int>> bases;
+  for (const auto& rset : rsets) {
+    BigObject hp = affine_linear_space<Addition>(unit_matrix<Rational>(n).minor(~rset, All));
+    BigObject inter = call_function("intersect", cycle, hp);
+    bool empty = call_function("is_empty", inter);
+    if (!empty) bases.push_back(rset);
+  }
+  BigObject result("matroid::Matroid");
+  result.take("N_ELEMENTS") << n;
+  result.take("BASES") << Array<Set<Int>>(bases);
+  return result;
+}
 
-	UserFunctionTemplate4perl("# @category Matroids"
-			"# Takes the bergman fan of a matroid and reconstructs the corresponding matroid"
-			"# The fan has to be given in its actual matroid coordinates, not as an isomorphic"
-			"# transform. The actual subdivision is not relevant."
-			"# @param Cycle<Addition> A tropical cycle, the Bergman fan of a matroid"
-			"# @return matroid::Matroid",
-			"matroid_from_fan<Addition>(Cycle<Addition>)");
-
-
-}}
+UserFunctionTemplate4perl("# @category Matroids"
+                          "# Takes the bergman fan of a matroid and reconstructs the corresponding matroid"
+                          "# The fan has to be given in its actual matroid coordinates, not as an isomorphic"
+                          "# transform. The actual subdivision is not relevant."
+                          "# @param Cycle<Addition> A tropical cycle, the Bergman fan of a matroid"
+                          "# @return matroid::Matroid",
+                          "matroid_from_fan<Addition>(Cycle<Addition>)");
+} }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,12 +32,12 @@ template <typename SeqType>
 class dim_to_rank_iterator {
 public:
   using iterator_category = std::forward_iterator_tag;
-  using value_type = std::pair<int, typename SeqType::map_value_type>;
+  using value_type = std::pair<Int, typename SeqType::map_value_type>;
   using reference = const value_type&;
   using pointer = const value_type*;
   using difference_type = ptrdiff_t;
 
-  dim_to_rank_iterator(int total_rank_, int total_size_, bool built_dually_, const Array<int>& dims_)
+  dim_to_rank_iterator(Int total_rank_, Int total_size_, bool built_dually_, const Array<Int>& dims_)
     : total_rank(total_rank_)
     , total_size(total_size_)
     , built_dually(built_dually_)
@@ -47,7 +47,7 @@ public:
   {
     if (!dims.empty()) current_index_bound = dims[0];
     result = std::make_pair(built_dually ? total_rank : 0,
-                            SeqType::make_map_value_type(0, std::max(current_index_bound, 1)-1));
+                            SeqType::make_map_value_type(0, std::max(current_index_bound, 1L)-1));
   }
 
   reference operator* () const { return result; }
@@ -63,20 +63,20 @@ protected:
   {
     ++current_dims_index;
     if (!at_end()) {
-      int old_index_bound = current_index_bound;
+      Int old_index_bound = current_index_bound;
       current_index_bound = current_dims_index == dims.size()? total_size : dims[current_dims_index];
-      int next_rank = result.first + (built_dually? -1 : 1);
+      Int next_rank = result.first + (built_dually? -1 : 1);
       result = std::make_pair(next_rank,
                               SeqType::make_map_value_type(old_index_bound, current_index_bound-1));
     }
   }
 
-  const int total_rank;
-  const int total_size;
+  const Int total_rank;
+  const Int total_size;
   const bool built_dually;
-  const Array<int>& dims;
-  int current_dims_index;
-  int current_index_bound;
+  const Array<Int>& dims;
+  Int current_dims_index;
+  Int current_index_bound;
   value_type result;
 };
 
@@ -84,13 +84,13 @@ protected:
  * @brief Computes a NodeMap which only contains the face of nodes.
  */
 template <typename Decoration>
-NodeMap<Directed, Set<int>>
+NodeMap<Directed, Set<Int>>
 faces_map_from_decoration(const Graph<Directed>& graph, const NodeMap<Directed, Decoration>& decor)
 {
-  return NodeMap<Directed, Set<int> >(
+  return NodeMap<Directed, Set<Int>>(
            graph,
-           entire(attach_member_accessor(decor, ptr2type<Decoration,Set<int>, &Decoration::face>()))
-           );
+           entire(attach_member_accessor(decor, ptr2type<Decoration, Set<Int>, &Decoration::face>()))
+         );
 }
 
 } }

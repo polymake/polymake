@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,9 +21,9 @@ namespace polymake { namespace topaz {
 
 bool is_pure(const Lattice<BasicDecoration>& HD)
 {
-   int test_dim = -1;
+   Int test_dim = -1;
    for (auto it=entire(HD.in_edges(HD.top_node())); !it.at_end(); ++it) {
-      const int n = it.from_node();
+      const Int n = it.from_node();
 
       if (test_dim == -1)  // first facet
          test_dim = HD.face(n).size()-1;
@@ -33,26 +33,26 @@ bool is_pure(const Lattice<BasicDecoration>& HD)
    return true;
 }
 
-Set<int> vertices_of_vertex_link(const Lattice<BasicDecoration>& HD, const int v)
+Set<Int> vertices_of_vertex_link(const Lattice<BasicDecoration>& HD, const Int v)
 {
-   Set<int> V;
+   Set<Int> V;
    accumulate_in(vertex_star_in_HD(HD,v), operations::add(), V);
-   V-=v;
+   V -= v;
    return V;
 }
 
-void remove_vertex_star(ShrinkingLattice<BasicDecoration>& HD, const int v)
+void remove_vertex_star(ShrinkingLattice<BasicDecoration>& HD, const Int v)
 {
    graph::BFSiterator< Graph<Directed> > n_it(HD.graph(), find_vertex_node(HD,v));
-   const int top_node=HD.top_node();
+   const Int top_node = HD.top_node();
 
    // remove all nodes of the HD that can be reached from start_node
    while (!n_it.at_end()) {
-      const int n=*n_it;  ++n_it;
+      const Int n = *n_it;  ++n_it;
       if (n != top_node) {
          for (auto e=entire(HD.in_edges(n)); !e.at_end(); ++e) {
-            const int nn=e.from_node();
-            if (HD.out_degree(nn)==1)
+            const Int nn = e.from_node();
+            if (HD.out_degree(nn) == 1)
                HD.graph().edge(nn,top_node);
          }
          HD.graph().out_edges(n).clear();
@@ -64,16 +64,16 @@ void remove_vertex_star(ShrinkingLattice<BasicDecoration>& HD, const int v)
    HD.set_implicit_top_rank();
 }
 
-void remove_facet_node(ShrinkingLattice<BasicDecoration>& HD, const int start_node)
+void remove_facet_node(ShrinkingLattice<BasicDecoration>& HD, const Int start_node)
 {
    graph::BFSiterator<Graph<Directed>, graph::TraversalDirectionTag<int_constant<-1>>> n_it(HD.graph(), start_node);
-   const int bottom_node=HD.bottom_node();
+   const Int bottom_node = HD.bottom_node();
    HD.graph().out_edges(start_node).clear();
-   Set<int> to_delete;
+   Set<Int> to_delete;
 
    // remove all nodes of the HD that can be reached from start_node only
    while (!n_it.at_end()) {
-      const int n=*n_it;
+      const Int n = *n_it;
       if (n == bottom_node || HD.graph().out_degree(n)) {
          n_it.skip_node();
       } else {

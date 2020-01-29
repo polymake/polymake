@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -67,41 +67,41 @@ void HSV::verify() const
 
 HSV::HSV(const RGB& rgb)
 {
-   const double R=rgb.red,
-      G=rgb.green,
-      B=rgb.blue;
+   const double R = rgb.red,
+                G = rgb.green,
+                B = rgb.blue;
 
-   double max=R, min=R;
+   double max = R, min = R;
    assign_min_max(min,max,G);
    assign_min_max(min,max,B);
 
    if (max == 0)
       saturation = 0;
    else
-      saturation=(max-min)/max;
+      saturation = (max-min)/max;
    
-   value=max;
+   value = max;
 
-   if (saturation) {
-      if (R==max) {
-         if (G==min)
-            hue= B==min ? 0. : 5.+(max-B)/(max-min);
+   if (saturation != 0) {
+      if (R == max) {
+         if (G == min)
+            hue = B == min ? 0. : 5.+(max-B)/(max-min);
          else
-            hue=1.-(max-G)/(max-min);
-      } else if (G==max) {
-         if (B==min)
-            hue=1.+(max-R)/(max-min);
+            hue = 1.-(max-G)/(max-min);
+      } else if (G == max) {
+         if (B == min)
+            hue = 1.+(max-R)/(max-min);
          else
-            hue=3.-(max-B)/(max-min);
+            hue = 3.-(max-B)/(max-min);
       } else {
-         if (R==min)
-            hue=3.+(max-G)/(max-min);
+         if (R == min)
+            hue = 3.+(max-G)/(max-min);
          else
-            hue=5.-(max-R)/(max-min);
+            hue = 5.-(max-R)/(max-min);
       }
-      hue*=60.;
+      hue *= 60.;
    } else {
-      hue=0.;
+      hue = 0.;
    }
 }
 

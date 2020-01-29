@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -35,7 +35,7 @@ void nearest_vertex(const GenericVector<VectorTop, Rational>& F, const Vector<Ra
 {
    Rational r=F*F_normal;
    if (r>0) {
-      r=F*Fb / r;
+      r = F*Fb/r;
       if (r<min_ratio) min_ratio=r;
    }
 }
@@ -44,7 +44,7 @@ template <typename SetTop>
 Vector<Rational>
 compute_new_vertex(const Matrix<Rational>& Facets, const Matrix<Rational>& Vertices,
                    const Vector<Rational>& Vb, const IncidenceMatrix<>& VIF,
-                   const Graph<>& DG, const GenericSet<SetTop>& stack_facets, int sf, const Rational& lift_factor)
+                   const Graph<>& DG, const GenericSet<SetTop>& stack_facets, Int sf, const Rational& lift_factor)
 {
    const Vector<Rational> Fb=average(rows(Vertices.minor(VIF[sf],All)));
    Vector<Rational> F_normal=Facets[sf];
@@ -64,7 +64,7 @@ compute_new_vertex(const Matrix<Rational>& Facets, const Matrix<Rational>& Verti
 } // end unnamed namespace
 
 template <typename TSet>
-perl::Object stack(perl::Object p_in, const GenericSet<TSet>& stack_facets, perl::OptionSet options)
+BigObject stack(BigObject p_in, const GenericSet<TSet>& stack_facets, OptionSet options)
 {
    const bool bounded = p_in.give("BOUNDED");
    if (!bounded)
@@ -79,33 +79,33 @@ perl::Object stack(perl::Object p_in, const GenericSet<TSet>& stack_facets, perl
       if (lift_factor<=0 || lift_factor>=1)
          throw std::runtime_error("lift factor must be between 0 and 1");
    }
-   const bool relabel=!options["no_labels"],
-      noc=options["no_coordinates"];
-   const int dim=p_in.give("COMBINATORIAL_DIM");
-   if (dim<=2)
+   const bool relabel = !options["no_labels"],
+                  noc = options["no_coordinates"];
+   const Int dim = p_in.give("COMBINATORIAL_DIM");
+   if (dim <= 2)
       throw std::runtime_error("dimension too low to distinguish between simpliciality and cubicality");
 
-   const bool simplicial=p_in.give("SIMPLICIAL"),
-      cubical=p_in.give("CUBICAL");
+   const bool simplicial = p_in.give("SIMPLICIAL"),
+                 cubical = p_in.give("CUBICAL");
    if (!simplicial && !cubical)
       throw std::runtime_error("polytope neither simplicial nor cubical");
 
-   const IncidenceMatrix<> VIF=p_in.give("VERTICES_IN_FACETS");
-   const int n_vertices=VIF.cols(), n_facets=VIF.rows();
+   const IncidenceMatrix<> VIF = p_in.give("VERTICES_IN_FACETS");
+   const Int n_vertices = VIF.cols(), n_facets=VIF.rows();
 
    if (stack_facets.top().empty())
       throw std::runtime_error("stack: no facets to stack specified");
    if (stack_facets.top().front() < 0 || stack_facets.top().back() >= n_facets)
       throw std::runtime_error("facet numbers out of range");
 
-   perl::Object p_out("Polytope<Rational>");
-   if (std::is_same<TSet, Set<int> >::value)
+   BigObject p_out("Polytope<Rational>");
+   if (std::is_same<TSet, Set<Int>>::value)
       p_out.set_description() << p_in.name() << " with facets " << stack_facets << " stacked" << endl;
 
-   const int n_stack_facets=stack_facets.top().size();
+   const Int n_stack_facets = stack_facets.top().size();
 
-   const int n_vertices_out= n_vertices + n_stack_facets * (simplicial ?     1 : 1 << dim-1),
-      n_facets_out  = n_facets   + n_stack_facets * (simplicial ? dim-1 : 2*(dim-1));
+   const Int n_vertices_out = n_vertices + n_stack_facets * (simplicial ?     1 : 1L << dim-1),
+              n_facets_out  = n_facets   + n_stack_facets * (simplicial ? dim-1 : 2*(dim-1));
    p_out.take("COMBINATORIAL_DIM") << dim;
    p_out.take("N_VERTICES") << n_vertices_out;
 
@@ -131,7 +131,7 @@ perl::Object stack(perl::Object p_in, const GenericSet<TSet>& stack_facets, perl
    }
 
    if (simplicial) {
-      int new_vertex = n_vertices;     // new vertex
+      Int new_vertex = n_vertices;     // new vertex
       for (auto sf=entire(stack_facets.top());  !sf.at_end();  ++sf, ++new_vertex) {
          // new facet = old facet - one of its vertices + new vertex
          for (auto ridges = entire(all_subsets_less_1(VIF[*sf]));  !ridges.at_end();  ++ridges, ++new_facet) {
@@ -158,9 +158,9 @@ perl::Object stack(perl::Object p_in, const GenericSet<TSet>& stack_facets, perl
       // cubical
       const Graph<> DG=p_in.give("DUAL_GRAPH.ADJACENCY");
 
-      int first_new_vertex=n_vertices;
-      const int vertices_per_facet=1<<dim-1;
-      std::vector<int> new_neighbors(n_vertices);
+      Int first_new_vertex = n_vertices;
+      const Int vertices_per_facet = 1L<<dim-1;
+      std::vector<Int> new_neighbors(n_vertices);
 
       for (auto sf=entire(stack_facets.top());  !sf.at_end();  ++sf) {
          *new_facet=sequence(first_new_vertex, vertices_per_facet);
@@ -169,7 +169,7 @@ perl::Object stack(perl::Object p_in, const GenericSet<TSet>& stack_facets, perl
 
          for (auto nb=DG.adjacent_nodes(*sf).begin();
               !nb.at_end();  ++nb, ++new_facet) {
-            const Set<int> ridge=VIF[*sf] * VIF[*nb];
+            const Set<Int> ridge = VIF[*sf] * VIF[*nb];
             *new_facet = ridge;
             *new_facet += assure_ordered(select(new_neighbors, ridge));
          }
@@ -201,24 +201,24 @@ perl::Object stack(perl::Object p_in, const GenericSet<TSet>& stack_facets, perl
    return p_out;
 }
 
-perl::Object stack(perl::Object p_in, const pm::all_selector&, perl::OptionSet options)
+BigObject stack(BigObject p_in, const pm::all_selector&, OptionSet options)
 {
-   const int n_facets=p_in.give("N_FACETS");
-   perl::Object p_out=stack(p_in, sequence(0,n_facets), options);
+   const Int n_facets = p_in.give("N_FACETS");
+   BigObject p_out = stack(p_in, sequence(0,n_facets), options);
    p_out.set_description() << p_in.name() << " with all facets stacked" << endl;
    return p_out;
 }
 
-perl::Object stack(perl::Object p_in, int facet, perl::OptionSet options)
+BigObject stack(BigObject p_in, Int facet, OptionSet options)
 {
-   perl::Object p_out=stack(p_in, scalar2set(facet), options);
+   BigObject p_out=stack(p_in, scalar2set(facet), options);
    p_out.set_description() << p_in.name() << " with facet " << facet << " stacked" << endl;
    return p_out;
 }
 
-perl::Object stack(perl::Object p_in, const Array<int>& facets, perl::OptionSet options)
+BigObject stack(BigObject p_in, const Array<Int>& facets, OptionSet options)
 {
-   Set<int> stack_facets;
+   Set<Int> stack_facets;
    for (auto fi = entire(facets); !fi.at_end(); ++fi)
       stack_facets += *fi;
 

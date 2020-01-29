@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -39,13 +39,13 @@ struct product_label {
 template <typename Scalar>
 Matrix<Scalar>
 product_vertices(const Matrix<Scalar>& V1, const Matrix<Scalar>& V2,
-                 int& n_vertices1, int& n_vertices2, int& n_vertices_out, int n_rays,
-                 const Set<int>& rays1, const Set<int>& rays2)
+                 Int& n_vertices1, Int& n_vertices2, Int& n_vertices_out, Int n_rays,
+                 const Set<Int>& rays1, const Set<Int>& rays2)
 {
    if (!n_vertices_out)
       n_vertices1=V1.rows(), n_vertices2=V2.rows(),
          n_vertices_out=(n_vertices1 - rays1.size()) * (n_vertices2 - rays2.size()) + n_rays;
-   const int dim=V1.cols()+V2.cols()-1;
+   const Int dim = V1.cols()+V2.cols()-1;
 
    Matrix<Scalar> V_out(n_vertices_out, dim);
    if (n_rays==0) {
@@ -74,22 +74,22 @@ product_facets(const Matrix<Scalar>& F1, const Matrix<Scalar>& F2)
 }
 
 //creates an array of length n, permuting blocks of block_size using perm
-Array<int> permute_blocks(int n, const Array<int>& perm, int block_size)
+Array<Int> permute_blocks(Int n, const Array<Int>& perm, Int block_size)
 {
-   Array<int> out(n);
-   for (int i=0; i<perm.size(); ++i)
-      for (int j=0; j<block_size; ++j)
+   Array<Int> out(n);
+   for (Int i = 0; i < perm.size(); ++i)
+      for (Int j = 0; j < block_size; ++j)
          out[i*block_size+j] = perm[i]*block_size + j;
    return out;
 }
 
 //creates an array of length n, permuting each of the blocks using perm
-Array<int> permute_inside_blocks(int n, const Array<int>& perm, int n_blocks)
+Array<Int> permute_inside_blocks(Int n, const Array<Int>& perm, Int n_blocks)
 {
-   Array<int> out(n);
-   int block_size = perm.size();
-   for (int i=0; i<n_blocks; ++i)
-      for (int j=0; j<block_size; ++j)
+   Array<Int> out(n);
+   const Int block_size = perm.size();
+   for (Int i = 0; i < n_blocks; ++i)
+      for (Int j = 0; j < block_size; ++j)
          out[i*block_size+j] = perm[j] + i*block_size;
    return out;
 }
@@ -97,9 +97,9 @@ Array<int> permute_inside_blocks(int n, const Array<int>& perm, int n_blocks)
 } // end unnamed namespace
 
 template <typename Scalar>
-perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet options)
+BigObject product(BigObject p_in1, BigObject p_in2, OptionSet options)
 {
-   int n_vertices1=0, n_vertices2=0, n_vertices_out=0, n_rays=0;
+   Int n_vertices1 = 0, n_vertices2 = 0, n_vertices_out = 0, n_rays = 0;
 
    const bool noc=options["no_coordinates"],
       nov=options["no_vertices"],
@@ -110,14 +110,14 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
    bool v_present = ( p_in1.exists("VERTICES | POINTS") && p_in2.exists("VERTICES | POINTS") ) ||
       ( !noc && !nov && ( nof || !f_present) ); //these are the conditions under which both VERTICES have to be computed (if not existent yet)
 
-   Set<int> rays1, rays2;
+   Set<Int> rays1, rays2;
    if (v_present) {
       p_in1.give("FAR_FACE") >> rays1; //this requires presence of VERTICES in p1 and p2
       p_in2.give("FAR_FACE") >> rays2;
       n_rays=rays1.size()+rays2.size();
    }
 
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Product of " << p_in1.name() << " and " << p_in2.name() << endl;
 
    if (noc || v_present &&  p_in1.exists("VERTICES_IN_FACETS") && p_in2.exists("VERTICES_IN_FACETS")) {
@@ -126,15 +126,15 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
       n_vertices1=VIF1.cols();  n_vertices2=VIF2.cols();
       n_vertices_out= (n_vertices1 - rays1.size()) * (n_vertices2 - rays2.size()) + n_rays;
 
-      Set<int> far_facet1=accumulate(cols(VIF1.minor(All,rays1)), operations::mul()),
-         far_facet2=accumulate(cols(VIF2.minor(All,rays2)), operations::mul());
+      Set<Int> far_facet1 = accumulate(cols(VIF1.minor(All,rays1)), operations::mul()),
+               far_facet2 = accumulate(cols(VIF2.minor(All,rays2)), operations::mul());
       if (far_facet1.size() > 1) far_facet1.clear();            // if size()>1 then FAR_FACE is not a facet
       if (far_facet2.size() > 1) far_facet2.clear();
 
       const bool has_far_facet= !far_facet1.empty() && !far_facet2.empty();
-      const int n_facets1=VIF1.rows() - far_facet1.size(),
-         n_facets2=VIF2.rows() - far_facet2.size(),
-         n_facets_out=n_facets1 + n_facets2 + has_far_facet;
+      const Int n_facets1 = VIF1.rows() - far_facet1.size(),
+         n_facets2 = VIF2.rows() - far_facet2.size(),
+         n_facets_out = n_facets1 + n_facets2 + has_far_facet;
       IncidenceMatrix<> VIF_out(n_facets_out, n_vertices_out);
       if (n_rays==0) {
          copy_range(entire(pm::product(cols(VIF1), cols(VIF2), operations::concat())),
@@ -156,8 +156,8 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
    }
 
    if (noc && p_in1.exists("COMBINATORIAL_DIM") && p_in2.exists("COMBINATORIAL_DIM")) {
-      const int dim1=p_in1.give("COMBINATORIAL_DIM"),
-         dim2=p_in2.give("COMBINATORIAL_DIM");
+      const int dim1 = p_in1.give("COMBINATORIAL_DIM"),
+                dim2 = p_in2.give("COMBINATORIAL_DIM");
       p_out.take("COMBINATORIAL_DIM") << dim1+dim2;
    }
 
@@ -197,11 +197,11 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
    }
 
    if(options["group"]){
-      perl::Object g("group::Group");
+      BigObject g("group::Group");
       g.set_description() << "canonical group induced by the group of the base polytopes" << endl;
       g.set_name("canonicalGroup");
 
-      Array<Array<int>> gens1, gens2;
+      Array<Array<Int>> gens1, gens2;
 
       if(p_in1.lookup("GROUP.VERTICES_ACTION.GENERATORS") >> gens1 &&
          p_in2.lookup("GROUP.VERTICES_ACTION.GENERATORS") >> gens2 ){
@@ -213,20 +213,20 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
          if(!n_vertices_out)
             n_vertices_out = n_vertices1 + n_vertices2;
 
-         int g1 = gens1.size();
+         Int g1 = gens1.size();
 
-         Array<Array<int>> gens_out(g1 + gens2.size());
+         Array<Array<Int>> gens_out(g1 + gens2.size());
 
          //each "block" of vertices of p_out corresponds to one vertex of p1
-         for(int i = 0; i < g1; ++i){
+         for (Int i = 0; i < g1; ++i) {
             gens_out[i] = permute_blocks(n_vertices_out, gens1[i], n_vertices2);
          }
          //the vertices inside a "block" correspond to the vertices of p2
-         for(int i = g1; i < gens_out.size(); ++i){
+         for (Int i = g1; i < gens_out.size(); ++i) {
             gens_out[i] = permute_inside_blocks(n_vertices_out, gens2[i-g1], n_vertices1);
          }
 
-         perl::Object a("group::PermutationAction");
+         BigObject a("group::PermutationAction");
          a.take("GENERATORS") << gens_out;
          p_out.take("GROUP") << g;
          p_out.take("GROUP.VERTICES_ACTION") << a;
@@ -234,22 +234,22 @@ perl::Object product(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opt
       else if(p_in1.lookup("GROUP.FACETS_ACTION.GENERATORS") >> gens1 &&
               p_in2.lookup("GROUP.FACETS_ACTION.GENERATORS") >> gens2 ){
 
-         int n_facets1 = gens1[0].size();
-         int n_facets_out = n_facets1 + gens2[0].size();
+         Int n_facets1 = gens1[0].size();
+         Int n_facets_out = n_facets1 + gens2[0].size();
 
-         int g1 = gens1.size();
-         Array<Array<int>> gens_out(g1 + gens2.size());
+         Int g1 = gens1.size();
+         Array<Array<Int>> gens_out(g1 + gens2.size());
 
-         for(int i = 0; i < g1; ++i){
+         for (Int i = 0; i < g1; ++i) {
             gens_out[i] = gens1[i].append(range(n_facets1,n_facets_out-1));
          }
-         for(int i = g1; i < gens_out.size(); ++i){
-            gens_out[i] = Array<int>(range(0,n_facets1-1)).append(gens2[i-g1]);
-            for(int j = n_facets1; j<n_facets_out; ++j)
+         for (Int i = g1; i < gens_out.size(); ++i) {
+            gens_out[i] = Array<Int>(range(0, n_facets1-1)).append(gens2[i-g1]);
+            for (Int j = n_facets1; j < n_facets_out; ++j)
                gens_out[i][j]+=n_facets1;
          }
 
-         perl::Object a("group::PermutationAction");
+         BigObject a("group::PermutationAction");
          a.take("GENERATORS") << gens_out;
          g.take("FACETS_ACTION") << a;
          p_out.take("GROUP") << g;

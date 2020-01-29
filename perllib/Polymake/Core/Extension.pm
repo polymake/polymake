@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -29,6 +29,8 @@ declare (%registered_by_dir,     # "AbsPath" => active or disabled Extension
          %refused,               # "URI" => "ignore", "skip", or "stop" : reaction on encountering an unwanted extension in a data file
          %conflicts,             # "URI" => conflicting Extension
         );
+
+declare $loading;                # temporarily set to Extension during loading some rules defined there
 
 # List of obsoleted bundled extensions:
 $refused{'bundled:group'} = 'ignore';
@@ -528,7 +530,7 @@ sub versioned_URI {
 # Looks for an extension specified by its URL, imports it if necessary.
 # @return the Extension object in the successful case
 # @return undef if not found or couldn't be loaded
-# @return 0 if the user chose to ignore the request
+# @return false if the user chose to ignore the request
 # Throws an exception if $mandatory and no Extension loaded.
 
 sub provide {
@@ -536,19 +538,37 @@ sub provide {
    if (defined (my $ext = $registered_by_URI{$URI})) {
       if ($ext->is_active) {
          $ext
-      } elsif ($mandatory) {
-         die "Extension $URI is not configured for the current architecture $Arch.\n",
-             "Activate it by polymake shell command\n",
-             "  reconfigure_extension(\"$URI\");\n",
-             "Then try to reload your data.\n";
       } else {
-         warn_print( "Extension $URI is not configured for the current architecture $Arch.\n",
-                     "The properties defined in this extension will be missing in your object.\n",
-                     "If you need them, activate the extension by polymake shell command\n",
-                     "  reconfigure_extension(\"$URI\");\n",
-                     "then reload the object from the file backup copy." );
-         undef
+         my $short_name = $ext->short_name;
+         my $text1 = $ext->is_bundled ? <<"..bundled.." : <<"..standalone..";
+Bundled extenstion $name is not configured for the current architecture $Arch.
+If you have built polymake from the source code, rerun the configuration script,
+find the explanation of problems in build/bundled.log and fix them,
+then rebuild polymake.
+..bundled..
+Extension $URI is not configured for the current architecture $Arch.
+Activate it with polymake shell command
+  reconfigure_extension("$URI");
+..standalone..
+         if ($mandatory) {
+            die $text1, <<".";
+
+Until then the data file can't be loaded.
+.
+         } else {
+            warn_print( $text1, <<"." );
+
+Until then properties defined in this extension will be kept as "undecoded"
+attachments in your object.  However, they will be preserved in the data file.
+.
+            undef
+         }
       }
+
+   } elsif ($refused{$URI} eq "ignore") {
+      # presumably it's a bundled extension integrated into the core system,
+      # or we already asked about it: ignore it
+      false
 
    } elsif ($URI =~ m|^file://| and -d (my $ext_dir=$')) {
       require Polymake::Core::InteractiveCommands;
@@ -556,12 +576,16 @@ sub provide {
          if ($mandatory) {
             die "Error importing extension from $ext_dir:\n$@";
          } else {
-            warn_print( "Extension at $ext_dir could not be loaded:\n$@",
-                        "The properties defined in this extension will be missing in your object.\n",
-                        "If you need them, investigate the reasons of the failure,\n",
-                        "import the extension with polymake shell commmand\n",
-                        "  import_extension(\"$ext_dir\");\n",
-                        "then reload the object from the file backup copy." );
+            warn_print( <<"." );
+Extension at $ext_dir could not be loaded:
+$@
+Investigate the reasons of the failure and import the extension
+with polymake shell commmand
+  import_extension("$ext_dir");
+
+Until then properties defined in this extension will not be visible in your object,
+although they will be preserved in the data file.
+.
             undef
          }
       }
@@ -570,16 +594,19 @@ sub provide {
       if ($mandatory) {
          die "Extension $URI is required for loading the data.\n";
       } else {
-         warn_print( "Extension $URI is not known.\n",
-                     "The properties defined in this extension will be missing in your object.\n" );
+         warn_print( <<"." );
+Extension $URI is not known.
+Properties defined in this extension will be moved temporarily into "undecoded" attachments,
+although they will be preserved in the data file.
+.
          undef
       }
 
-   } elsif (!exists $refused{$URI} && defined ($ext = &locate_unknown)) {
+   } elsif (!exists $refused{$URI} && defined($ext = &locate_unknown)) {
       $ext
 
    } elsif ($refused{$URI} eq "ignore") {
-      0
+      false
 
    } elsif ($refused{$URI} eq "stop" || $mandatory) {
       die "Extension $URI is required for loading the data.\n";
@@ -592,12 +619,11 @@ sub provide {
 # private:
 sub activate {
    my ($self) = @_;
-   local $Application::extension = $self;
    $self->is_active = true;
    foreach my $app_dir (glob($self->dir."/apps/*")) {
       $app_dir =~ $filename_re;
       if (defined (my $app = lookup Application($1))) {
-         $app->load_extension($app_dir);
+         $app->load_extension($self, $app_dir);
       }
    }
    push @active, $self;

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -32,6 +32,7 @@ HELP help.rules
 INCLUDE
   basic_types
   misc_functions
+  schema_functions
   permutations
   formatting_filters
   visual.rules

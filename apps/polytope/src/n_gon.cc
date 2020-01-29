@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,13 +22,13 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object n_gon(int n, const Rational& r, const Rational& alpha_0, perl::OptionSet options)
+BigObject n_gon(Int n, const Rational& r, const Rational& alpha_0, OptionSet options)
 {
    if ((n < 3) || (r <= 0)) {
       throw std::runtime_error("n_gon: n >= 3 and r > 0 required\n");
    }
 
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.set_description() << n << "-gon with radius " << r << " and initial angle " << alpha_0
                        << (alpha_0.is_zero() ? "" : " pi") << endl;
    
@@ -50,10 +50,10 @@ perl::Object n_gon(int n, const Rational& r, const Rational& alpha_0, perl::Opti
       }
    }
 
-   const int iend= n%2 ? (n+1)/2 : (n+2)/4;
+   const Int iend = n%2 ? (n+1)/2 : (n+2)/4;
    const AccurateFloat angle = (2 * AccurateFloat::pi()) / n;
 
-   for (int i=1; i<iend; ++i) {
+   for (Int i = 1; i < iend; ++i) {
       sin_cos(s, c, alpha_0*AccurateFloat::pi() + i*angle);
       Rational x(r*c);
       Rational y(r*s);
@@ -72,10 +72,10 @@ perl::Object n_gon(int n, const Rational& r, const Rational& alpha_0, perl::Opti
 
    bool group_flag = options["group"];
    if (group_flag) {
-      Array<Array<int>> gens(2);
-      Array<int> gen1(n);
-      Array<int> gen2(n);
-      for (int i=0; i<n; ++i) { // iterating over entries
+      Array<Array<Int>> gens(2);
+      Array<Int> gen1(n);
+      Array<Int> gen2(n);
+      for (Int i = 0; i < n; ++i) { // iterating over entries
          gen1[n-i-1]=(i+1)%n;
          gen2[i]=(i+1)%n;
       }
@@ -83,10 +83,10 @@ perl::Object n_gon(int n, const Rational& r, const Rational& alpha_0, perl::Opti
       gens[0]=gen1;
       gens[1]=gen2;
 
-      perl::Object a("group::PermutationAction");
+      BigObject a("group::PermutationAction");
       a.take("GENERATORS") << gens;
 
-      perl::Object g("group::Group");
+      BigObject g("group::Group");
       g.set_description() << "full combinatorial group on vertices" << endl;
       g.set_name("fullCombinatorialGroupOnRays");
       p.take("GROUP") << g;

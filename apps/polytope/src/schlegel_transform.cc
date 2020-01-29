@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,20 +25,20 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-void schlegel_transform(perl::Object S, perl::Object P)
+void schlegel_transform(BigObject S, BigObject P)
 {
-   const Matrix<Scalar> V=P.give("VERTICES");
-   const int d=V.cols();
-   const Matrix<Scalar> F=P.give("FACETS");
-   const Graph<> DG=P.give("DUAL_GRAPH.ADJACENCY");
+   const Matrix<Scalar> V = P.give("VERTICES");
+   const Int d = V.cols();
+   const Matrix<Scalar> F = P.give("FACETS");
+   const Graph<> DG = P.give("DUAL_GRAPH.ADJACENCY");
 
-   const int proj_facet=S.give("FACET");
-   const Scalar zoom=S.give("ZOOM");
-   const Vector<Scalar> FacetPoint=S.give("FACET_POINT"),
+   const Int proj_facet = S.give("FACET");
+   const Scalar zoom = S.give("ZOOM");
+   const Vector<Scalar> FacetPoint = S.give("FACET_POINT"),
       InnerPoint=S.give("INNER_POINT");
 
-   const Vector<Scalar> ViewRay=FacetPoint-InnerPoint;
-   const Scalar alpha=schlegel_nearest_neighbor_crossing(F.minor(DG.adjacent_nodes(proj_facet),All), FacetPoint, ViewRay),
+   const Vector<Scalar> ViewRay = FacetPoint-InnerPoint;
+   const Scalar alpha = schlegel_nearest_neighbor_crossing(F.minor(DG.adjacent_nodes(proj_facet),All), FacetPoint, ViewRay),
       FxVR=F[proj_facet] * ViewRay;
 
    Vector<Scalar> ViewPoint = FacetPoint;

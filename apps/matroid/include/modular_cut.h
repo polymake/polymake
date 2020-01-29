@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,8 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef __POLYMAKE_MATROID_MODULAR_CUT_H__
-#define __POLYMAKE_MATROID_MODULAR_CUT_H__
+#ifndef POLYMAKE_MATROID_MODULAR_CUT_H
+#define POLYMAKE_MATROID_MODULAR_CUT_H
 
 #include "polymake/Array.h"
 #include "polymake/Set.h"
@@ -29,17 +29,13 @@
 
 namespace polymake { namespace matroid {
 
-   using graph::Lattice;
-   using graph::lattice::Sequential;
-   using graph::lattice::BasicDecoration;
-namespace {
-
-template<typename HDType>
-bool covering_condition(const Set<int>& Cset, const HDType& LF, const Map<Set<int>, int>& index_of, bool verbose) {
-   for (auto pit=entire(all_subsets_of_k(Cset, 2)); !pit.at_end(); ++pit) {
-      const Set<int> p(*pit);
-      const int x(p.front()), y(p.back());
-      const int join = index_of[LF.face(x) * LF.face(y)];
+template <typename HDType>
+bool covering_condition(const Set<Int>& Cset, const HDType& LF, const Map<Set<Int>, Int>& index_of, bool verbose)
+{
+   for (auto pit = entire(all_subsets_of_k(Cset, 2)); !pit.at_end(); ++pit) {
+      const Set<Int> p(*pit);
+      const Int x(p.front()), y(p.back());
+      const Int join = index_of[LF.face(x) * LF.face(y)];
       /*
         Because of not(a => b) being equivalent to   a and (not b),
         not(x or y covers x^y => x^y in C)
@@ -60,8 +56,6 @@ bool covering_condition(const Set<int>& Cset, const HDType& LF, const Map<Set<in
    return true;
 }
 
-} // end anonymous namespace
-
 /*
   A modular cut is a subset C of a lattice of flats such that
   (1) C is convex, i.e.  x,z in C, x<y<z  implies  y in C
@@ -69,20 +63,20 @@ bool covering_condition(const Set<int>& Cset, const HDType& LF, const Map<Set<in
   (3) x,y in C,  x covers x^y  implies  x^y in C.
  */
 template<typename SetType>
-bool is_modular_cut_impl(const Array<SetType>& C, const Lattice<BasicDecoration, Sequential>& LF, bool verbose)
+bool is_modular_cut_impl(const Array<SetType>& C, const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential>& LF, bool verbose)
 {
    // prepare data structures for lattice of flats
-   Map<Set<int>, int> index_of;
-   for (int i=0; i<=LF.rank(); ++i) {
+   Map<Set<Int>, Int> index_of;
+   for (Int i = 0; i <= LF.rank(); ++i) {
       for (auto fit = entire(LF.nodes_of_rank(i)); !fit.at_end(); ++fit) {
          index_of[LF.face(*fit)] = *fit;
       }
    }
 
-   Set<int> Cset;
+   Set<Int> Cset;
    for (auto cit = entire(C); !cit.at_end(); ++cit) {
-      Map<Set<int>, int>::const_iterator tmp = index_of.find(*cit);
-      if(tmp == index_of.end()){
+      auto tmp = index_of.find(*cit);
+      if (tmp == index_of.end()) {
          if (verbose) cout << "The given array is not a modular cut because "
                            << *cit << " is  not a flat of the given matroid."
                            << endl;
@@ -117,7 +111,7 @@ bool is_modular_cut_impl(const Array<SetType>& C, const Lattice<BasicDecoration,
 
 } }
 
-#endif // __POLYMAKE_MATROID_MODULAR_CUT_H__
+#endif // POLYMAKE_MATROID_MODULAR_CUT_H
 
 // Local Variables:
 // mode:C++

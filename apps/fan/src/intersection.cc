@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,7 +24,7 @@
 namespace polymake { namespace fan {
       
 template <typename Scalar>
-perl::Object intersection(perl::Object fan,
+BigObject intersection(BigObject fan,
                           const Matrix<Scalar>& H)
 {
    const Matrix<Scalar>    R   = fan.give("RAYS");
@@ -43,8 +43,8 @@ perl::Object intersection(perl::Object fan,
      the cone [1,1] appears twice.
     */
    FacetList rays_in_max_cones;
-   hash_map<const Vector<Scalar>, int> index_of;
-   int next_index = 0;
+   hash_map<Vector<Scalar>, Int> index_of;
+   Int next_index = 0;
    
    // Remember the rays we generated in index_of, and save the indices of the rays in the list of rays_in_max_cones
    for (auto rit = entire(rows(MC)); !rit.at_end(); ++rit) {
@@ -52,7 +52,7 @@ perl::Object intersection(perl::Object fan,
                                               index_of, next_index ));
    }
    
-   perl::Object F("PolyhedralFan", mlist<Scalar>());
+   BigObject F("PolyhedralFan", mlist<Scalar>());
 
    Matrix<Scalar> ordered_rays(index_of.size(), R.cols());
    for (const auto& index_pair : index_of)

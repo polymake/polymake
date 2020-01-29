@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -34,7 +34,7 @@ protected:
    SpringEmbedder SE;
    common::SharedMemoryMatrix<double> X;
    RandomSpherePoints<double> random_points;
-   int iter_count, max_iter;
+   Int iter_count, max_iter;
    std::string geom_name;
    common::SimpleGeometryParser::param_map params, defaults;
    common::SimpleGeometryParser::iparam_map iparams;
@@ -45,7 +45,7 @@ protected:
    void run();
    static void* run_it(void *me);
 public:
-   SpringEmbedderWindow(const Graph<>& G, perl::OptionSet options)
+   SpringEmbedderWindow(const Graph<>& G, OptionSet options)
       : SE(G,options), X(G.nodes(),3), random_points(3), iter_count(0), needs_restart(false)
    {
       if (!(options["max-iterations"] >> max_iter)) max_iter=10000;
@@ -62,9 +62,9 @@ public:
    const Matrix<double>& get_points() const { return X; }
 
    void set_points() { needs_restart=true; } 
-   void set_point(int i) { cerr << "SpringEmbedderWindow got an 'p' command!" << endl; }
+   void set_point(Int i) { cerr << "SpringEmbedderWindow got an 'p' command!" << endl; }
       
-   void set_facet(const Set<int>& f) { needs_restart|=(SE.set_fixed_vertices(f) != f); }
+   void set_facet(const Set<Int>& f) { needs_restart |= (SE.set_fixed_vertices(f) != f); }
    void set_param(const std::string& key, double value);
    void restart(common::SimpleGeometryParser& parser);
 
@@ -74,7 +74,7 @@ public:
 
 void SpringEmbedderWindow::start_thread()
 {
-   if (pthread_create(&thr, 0, &run_it, this))
+   if (pthread_create(&thr, nullptr, &run_it, this))
       throw std::runtime_error("error creating spring embedder thread");
 }
 
@@ -143,28 +143,32 @@ void SpringEmbedderWindow::run()
 
 void SpringEmbedderWindow::set_param(const std::string& key, double value)
 {
-   params[key]=value;
-   if (key == p_repulsion) needs_restart|=(SE.set_repulsion(value) != value);
-   else if (key == p_orientation) needs_restart|=(SE.set_z_factor(value) != value);
-   else if (key == p_inertion) SE.set_inertion(value);
-   else if (key == p_viscosity) SE.set_viscosity(value);
+   params[key] = value;
+   if (key == p_repulsion)
+      needs_restart |= (SE.set_repulsion(value) != value);
+   else if (key == p_orientation)
+      needs_restart |= (SE.set_z_factor(value) != value);
+   else if (key == p_inertion)
+      SE.set_inertion(value);
+   else if (key == p_viscosity)
+      SE.set_viscosity(value);
 }
 
 void SpringEmbedderWindow::restart(common::SimpleGeometryParser& parser)
 {
    if (params[p_restart] != 0) {
-      defaults[p_continue]=params[p_continue];
-      params=defaults;
+      defaults[p_continue] = params[p_continue];
+      params = defaults;
       SE.start_points(X,random_points.begin());
-      if (params[p_continue]) SE.calculate(X,random_points,max_iter);
+      if (params[p_continue] != 0) SE.calculate(X,random_points,max_iter);
       parser.print_long(js,*this);
    } else {
       if (needs_restart) iter_count=0, needs_restart=false, SE.restart(X);
-      if (int step=lround(params[p_step])) {
+      if (Int step = lround(params[p_step])) {
          while (!SE.calculate(X,random_points,step) && (iter_count+=step)<max_iter) {
             parser.print_short(js,*this,p_continue);
-            if (!params[p_continue]) return;
-            usleep(lround(params[p_delay]*1000));
+            if (params[p_continue] == 0) return;
+            usleep(useconds_t(params[p_delay]*1000));
             if (js.rdbuf()->in_avail()) return;
          }
       } else {
@@ -176,7 +180,7 @@ void SpringEmbedderWindow::restart(common::SimpleGeometryParser& parser)
 }
 
 std::unique_ptr<SpringEmbedderWindow>
-interactive_spring_embedder(const Graph<>& G, perl::OptionSet options)
+interactive_spring_embedder(const Graph<>& G, OptionSet options)
 {
    std::unique_ptr<SpringEmbedderWindow> sw=std::make_unique<SpringEmbedderWindow>(G, options);
    sw->start_thread();

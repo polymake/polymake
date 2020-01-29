@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -17,6 +17,7 @@
 
 #include "polymake/AccurateFloat.h"
 #include <iostream>
+#include <sstream>
 
 namespace pm {
 
@@ -25,7 +26,7 @@ Integer& Integer::operator= (const AccurateFloat& b)
    if (__builtin_expect(mpfr_nan_p(&b), 0))
       throw GMP::NaN();
 
-   const int s=isinf(b);
+   const Int s = isinf(b);
    if (__builtin_expect(!s, 1))
       mpfr_get_z(this, &b, MPFR_RNDZ);
    else
@@ -60,9 +61,9 @@ Rational& Rational::operator= (const AccurateFloat& b)
 
 void AccurateFloat::putstr(std::ostream& os, std::ios::fmtflags flags) const
 {
-   const int i=isinf(*this);
-   if (__builtin_expect(i,0)) {
-      if (i<0)
+   const Int i = isinf(*this);
+   if (__builtin_expect(i, 0)) {
+      if (i < 0)
          os.write("-inf", 4);
       else if (flags & std::ios::showpos)
          os.write("+inf", 4);
@@ -81,28 +82,28 @@ void AccurateFloat::putstr(std::ostream& os, std::ios::fmtflags flags) const
    }
 
    mpfr_exp_t e;
-   char* const str0=mpfr_get_str(nullptr, &e, 10, 0, this, MPFR_RNDN);
-   char* str=str0;
-   const bool neg=mpfr_sgn(this)<0;
-   const int l=strlen(str);
-   const int digits=l-neg;
+   char* const str0 = mpfr_get_str(nullptr, &e, 10, 0, this, MPFR_RNDN);
+   char* str = str0;
+   const bool neg = mpfr_sgn(this) < 0;
+   const ssize_t l = strlen(str);
+   const ssize_t digits = l-neg;
 
    if (neg)
       os.put(*str++);   // '-' sign
    else if (flags & std::ios::showpos)
       os.put('+');
 
-   if (e<-3) {
+   if (e < -3) {
       os << *str++ << '.';
       os.write(str, digits-1) << 'e' << e-1;
-   } else if (e<=0) {
+   } else if (e <= 0) {
       os << '0' << '.';
-      for (; e<0; ++e) os << '0';
+      for (; e < 0; ++e) os << '0';
       os.write(str, digits);
-   } else if (e<digits) {
+   } else if (e < digits) {
       os.write(str, e) << '.';
-      os.write(str+e, digits-e);
-   } else if (e==digits) {
+      os.write(str + e, digits - e);
+   } else if (e == digits) {
       os.write(str, digits);
    } else {
       os << *str++ << '.';
@@ -131,13 +132,41 @@ const AccurateFloat& spec_object_traits<AccurateFloat>::one()
    return e;
 }
 
-template <>
-AccurateFloat
-pow(const AccurateFloat& base, long exp)
+AccurateFloat pow(const AccurateFloat& base, long exp)
 {
    return AccurateFloat::pow(base,exp);
 }
 
+
+Int AccurateFloat::round_impl(mpfr_rnd_t rnd) const
+{
+   AccurateFloat rounded;
+   const int result = mpfr_rint(&rounded, this, rnd);
+   if (result == 1 || result == -1) {
+      std::ostringstream oss;
+      oss << "AccurateFloat " << *this << " not representable as an integer";
+      throw std::runtime_error(oss.str());
+   }
+   return static_cast<Int>(rounded);
+}
+
+AccurateFloat AccurateFloat::round_if_integer_impl(bool& is_rounded, double prec, mpfr_rnd_t rnd) const
+{
+   AccurateFloat rounded;
+   const int result = mpfr_rint(&rounded, this, rnd);
+   if (result == 1 || result == -1) {
+      std::ostringstream oss;
+      oss << "AccurateFloat " << *this << " not representable as an integer";
+      throw std::runtime_error(oss.str());
+   }
+   if (result == 0 || abs(*this - rounded) <= prec) {
+      is_rounded = true;
+      return rounded;
+   } else {
+      is_rounded = false;
+      return *this;
+   }
+}
 
 }
 

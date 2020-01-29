@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-use Polymake::Core::ShellMock;
+use Polymake::Core::Shell::Mock;
 
 use strict;
 use namespaces;
@@ -23,23 +23,23 @@ use feature 'state';
 
 package Polymake::Test::Shell;
 
-use Polymake::Struct(
+use Polymake::Struct (
    [ '@ISA' => 'Polymake::Core::Shell::Mock' ],
 );
 
 sub instance {
-   state $inst=new Shell();
+   state $inst = new Shell();
 }
 
 sub complete {
    &Mock::complete;
-   my ($self)=@_;
-   ($self->completion_offset, $self->Attribs->{completion_append_character}, @{$self->completion_proposals})
+   my ($self) = @_;
+   ($self->completion_offset, $self->completion_append_character, @{$self->completion_proposals})
 }
 
 sub context_help {
-   my ($self, $string)=@_;
-   my $pos=length($string);
+   my ($self, $string) = @_;
+   my $pos = length($string);
    my @headers;
    while (Mock::context_help($self, $string, $pos)) {
       push @headers, map { $_->full_path } @{$self->help_topics};
@@ -65,31 +65,31 @@ use Polymake::Struct(
 
 sub new {
    my $self=&Case::new;
-   if (@{$self->expected_words}>1 && length($self->expected_words->[-1])==1) {
-      $self->expected_append=pop @{$self->expected_words};
+   if (@{$self->expected_words} > 1 && length($self->expected_words->[-1]) == 1) {
+      $self->expected_append = pop @{$self->expected_words};
    }
-   ($self->gotten_offset, $self->gotten_append, @{$self->gotten_words})=instance()->complete($self->partial_input);
+   ($self->gotten_offset, $self->gotten_append, @{$self->gotten_words}) = instance()->complete($self->partial_input);
    $self
 }
 
 sub execute {
-   my ($self)=@_;
-   my $eq= $self->expected_words->[-1] eq "..." ?
-         @{$self->expected_words}-1 == equal_string_list_prefixes($self->expected_words, $self->gotten_words) :
-         equal_string_lists($self->expected_words, $self->gotten_words);
-   my $eq_append=!defined($self->expected_append) || $self->expected_append eq $self->gotten_append;
+   my ($self) = @_;
+   my $eq = $self->expected_words->[-1] eq "..."
+            ? @{$self->expected_words}-1 == equal_string_list_prefixes($self->expected_words, $self->gotten_words)
+            : equal_nested_lists($self->expected_words, $self->gotten_words);
+   my $eq_append = !defined($self->expected_append) || $self->expected_append eq $self->gotten_append;
    unless ($eq && $eq_append && $self->expected_offset==$self->gotten_offset) {
       unless ($eq) {
-         $self->fail_log.="expected:\n@{$self->expected_words}\n".
-                          "     got:\n@{$self->gotten_words}\n";
+         $self->fail_log .= "expected:\n@{$self->expected_words}\n".
+                            "     got:\n@{$self->gotten_words}\n";
       }
-      unless ($self->expected_offset==$self->gotten_offset) {
-         $self->fail_log.="expected offset:".$self->expected_offset."\n".
-                          "     got offset:".$self->gotten_offset."\n";
+      unless ($self->expected_offset == $self->gotten_offset) {
+         $self->fail_log .= "expected offset:".$self->expected_offset."\n".
+                            "     got offset:".$self->gotten_offset."\n";
       }
       unless ($eq_append) {
-         $self->fail_log.="expected append char:".$self->expected_append."\n".
-                          "     got append char:".$self->gotten_append."\n";
+         $self->fail_log .= "expected append char:".$self->expected_append."\n".
+                            "     got append char:".$self->gotten_append."\n";
       }
       0;
    }
@@ -108,18 +108,18 @@ use Polymake::Struct(
 );
 
 sub new {
-   my $self=&Case::new;
-   @{$self->gotten_headers}=instance()->context_help($self->partial_input);
+   my $self = &Case::new;
+   @{$self->gotten_headers} = instance()->context_help($self->partial_input);
    $self
 }
 
 sub execute {
-   my ($self)=@_;
-   unless (equal_string_lists($self->expected_headers, $self->gotten_headers)) {
-      $self->fail_log="expected:\n".
-                      join("", (map { "  $_\n" } @{$self->expected_headers})).
-                      "     got:\n".
-                      join("", (map { "  $_\n" } @{$self->gotten_headers}));
+   my ($self) = @_;
+   unless (equal_nested_lists($self->expected_headers, $self->gotten_headers)) {
+      $self->fail_log = "expected:\n".
+                        join("", (map { "  $_\n" } @{$self->expected_headers})).
+                        "     got:\n".
+                        join("", (map { "  $_\n" } @{$self->gotten_headers}));
       0;
    }
 }

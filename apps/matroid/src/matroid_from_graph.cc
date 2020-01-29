@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,21 +26,21 @@
 
 namespace polymake { namespace matroid {
 
-perl::Object matroid_from_graph(perl::Object g)
+BigObject matroid_from_graph(BigObject g)
 {
-   const Graph<>& graph=g.give("ADJACENCY");
-   const int n_elements=g.give("N_EDGES");
-   const int n_nodes=g.give("N_NODES");
-   const int n_components=g.give("N_CONNECTED_COMPONENTS");
-   const int r=n_nodes-n_components;
-   Set<int> empty_set;
-   Array< Set<int> > bases(1,empty_set);
+   const Graph<>& graph = g.give("ADJACENCY");
+   const Int n_elements = g.give("N_EDGES");
+   const Int n_nodes = g.give("N_NODES");
+   const Int n_components = g.give("N_CONNECTED_COMPONENTS");
+   const Int r = n_nodes-n_components;
+   Set<Int> empty_set;
+   Array<Set<Int>> bases(1, empty_set);
    
-   Array<int> start_nodes(n_elements); //the starting nodes of the edges
-   Array<int> end_nodes(n_elements); //the ending nodes of the edges
+   Array<Int> start_nodes(n_elements); //the starting nodes of the edges
+   Array<Int> end_nodes(n_elements); //the ending nodes of the edges
    Array<std::string> labels(n_elements);
-   int l=0;
-   for (auto i=entire(edges(graph)); !i.at_end(); ++i) {
+   Int l = 0;
+   for (auto i = entire(edges(graph)); !i.at_end(); ++i) {
       start_nodes[l]=i.from_node();
       end_nodes[l]=i.to_node();
       std::ostringstream label;
@@ -50,7 +50,7 @@ perl::Object matroid_from_graph(perl::Object g)
    
    //compute for each relevant component of the graph the bases via all_spanningtrees() and combine them
    const IncidenceMatrix<> components=g.give("CONNECTED_COMPONENTS");
-   int n_edges = 0;
+   Int n_edges = 0;
    for (auto comp_it=entire(rows(components)); !comp_it.at_end(); ++comp_it) {
       if (comp_it->size() > 1) {
          Graph<> indg = renumber_nodes(induced_subgraph(graph,*comp_it));
@@ -59,7 +59,7 @@ perl::Object matroid_from_graph(perl::Object g)
       }
    }
 
-   perl::Object m("Matroid");  
+   BigObject m("Matroid");  
    m.take("BASES") << bases;
    m.take("N_BASES") << bases.size();
    m.take("RANK") << r;

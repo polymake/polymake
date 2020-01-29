@@ -1,16 +1,17 @@
-/* Copyright (c) 1998-2016
-Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germainy)
-http://www.polymake.org
+/* Copyright (c) 1997-2020
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
-This program is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License as published by the
-Free Software Foundation; either version 2, or (at your option) any
-later version: http://www.gnu.org/licenses/gpl.txt.
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
 --------------------------------------------------------------------------------
 */
 
@@ -24,23 +25,26 @@ GNU General Public License for more details.
 
 namespace polymake { namespace topaz {
 
-using namespace graph;
-
-using Cone = Set<Vector<Rational>>;
-using Indexed_Cones = Map<Cone, int>;
-using flip_sequence = std::list<int>;
-using Fan_Vertices = Map<Vector<Rational>, int>;
-using Fan_Max_Cells = std::list<Set<int>>;
+// TODO: REMOVE! using Cone = Set<Vector<Rational>>;
+// TODO: REMOVE! using Indexed_Cones = Map<Cone, Int>;
+// TODO: REMOVE! using flip_sequence = std::list<Int>;
+// TODO: REMOVE! using Fan_Vertices = Map<Vector<Rational>, Int>;
+// TODO: REMOVE! using Fan_Max_Cells = std::list<Set<Int>>;
 
 
-class FlipVisitor : public NodeVisitor<> {
-
+class FlipVisitor : public graph::NodeVisitor<> {
    friend class DoublyConnectedEdgeList;
    friend class SecondaryFan;
-
+public:
+   using Cone = Set<Vector<Rational>>;
+   using Indexed_Cones = Map<Cone, Int>;
+   using flip_sequence = std::list<Int>;
+   using Fan_Vertices = Map<Vector<Rational>, Int>;
+   using Fan_Max_Cells = std::list<Set<Int>>;
+   using DoublyConnectedEdgeList = graph::DoublyConnectedEdgeList;
 private:
 
-   // the graph we want to iterate through, gets build during iterating
+   // the graph we want to iterate through, built during iterations
    Graph<Directed>& delaunay_graph;
 
    // the base triangulation
@@ -50,7 +54,7 @@ private:
    Indexed_Cones cones;
 
    // for each node of the graph we save the list of indices to flip to the corresponding dcel
-   Map<int, flip_sequence> flipIds_to_node;
+   Map<Int, flip_sequence> flipIds_to_node;
 
    // a set of all vertices of the fan, each of which is labeled - we only need this to define a polyhedral complex
    Fan_Vertices fan_vertices;
@@ -59,10 +63,10 @@ private:
    Fan_Max_Cells fan_cells;
 
    // counter for the number vertices of the fan, equal to 1 + number of rays
-   int fan_num_vert;
+   Int fan_num_vert;
 
    // number of punctures +1
-   int dim;
+   Int dim;
 
    // we store the ray indices of the facets at the coordinate hyperplane boundary for the extension to a complete fan by the all -1 vector
    Fan_Max_Cells boundary_facets;
@@ -70,7 +74,7 @@ private:
 public:
 
    // this is needed for the BFS++ to not just stop in depth one
-   static const bool visit_all_edges = true;
+   static constexpr bool visit_all_edges = true;
 
    FlipVisitor(Graph<Directed>& G, DoublyConnectedEdgeList& dcel_)
       : delaunay_graph(G)
@@ -102,12 +106,10 @@ public:
       dcel.flipEdges(start_flips, true);
    }
 
-   bool operator()(int n)
+   bool operator()(Int n)
    {
       return operator()(n, n);
    }
-
-
 
    /* Preconditions:
       1) the node n_to is part of the Delaunay graph,
@@ -117,16 +119,15 @@ public:
       After this operation all the neighbors of n_to are in the graph (with the corr. edges) with their flip sequences and
       cones respectively
    */
-
-   bool operator()(int n_from, int n_to)
+   bool operator()(Int n_from, Int n_to)
    {
       if (visited.contains(n_to)) return false;
 
       // we flip the start-triangulation T(0) to the triangulation T(n_to) corresponding to node n_to
-      dcel.flipEdges( flipIds_to_node[n_to] );
+      dcel.flipEdges(flipIds_to_node[n_to]);
 
       // calculate the secondary cone of triangulation n_to
-      perl::Object p("polytope::Polytope<Rational>");
+      BigObject p("polytope::Polytope<Rational>");
       Matrix<Rational> M = dcel.DelaunayInequalities();
       p.take("INEQUALITIES") << M;
       IncidenceMatrix<> rays_in_facets = p.give("VERTICES_IN_FACETS");
@@ -136,15 +137,15 @@ public:
       // We compute a point outside each valid facet of the n_to-cone, the parameter 0 < epsilon < 1 is the distance of the point to its corresponding facet.
       // The point shall be contained in a top-dimensional cone that meets the n_to-cone in this facet.
       // If this is not the case, we consider a new point with distance epsilon^2 and try again
-      for (int i = 0 ; i < facets.rows() ; ++i) {
+      for (Int i = 0 ; i < facets.rows() ; ++i) {
          flip_sequence new_flips{};
 
          // we store the facets at the coordinate hyperplanes for purposes of the fan estension to a complete fan
-         if (dcel.nonZeros( facets[i] ) == 1 && facets[i][0] == 0) {
-            Set<int> boundary_rays_ids;
+         if (dcel.nonZeros(facets[i]) == 1 && facets[i][0] == 0) {
+            Set<Int> boundary_rays_ids;
             for (const auto it : rays_in_facets[i]) {
                if (rays[it][0] == 0) {
-                  boundary_rays_ids += fan_vertices[ dcel.normalize( rays[it] ) ] - 1;
+                  boundary_rays_ids += fan_vertices[ dcel.normalize(rays[it]) ]-1;
                }
             }
             boundary_facets.push_back(boundary_rays_ids);
@@ -175,7 +176,7 @@ public:
             }
             // add a new node to the graph and save all the corresponding data ( flip sequence, add_cone, cones )
             if (!cones.exists(new_cone) && new_cone.size() > dim-1) {
-               const int new_id = delaunay_graph.add_node();
+               const Int new_id = delaunay_graph.add_node();
                delaunay_graph.add_edge(n_to, new_id);
 
                flip_sequence new_flipIds{ flipIds_to_node[n_to] };
@@ -202,7 +203,7 @@ public:
 
    void add_cone(Cone new_cone)
    {
-      Set<int> fan_cell;
+      Set<Int> fan_cell;
       for (const auto it : new_cone) {
          // case: the vertex is new
          if (!fan_vertices.exists(it)) {
@@ -218,32 +219,32 @@ public:
       fan_cells.push_back(fan_cell);
    }
 
-   int getfan_num_vert() const
+   Int getfan_num_vert() const
    {
       return fan_num_vert;
    }
 
-   int getdim() const
+   Int getdim() const
    {
       return dim;
    }
 
-   Fan_Max_Cells getfan_cells() const
+   const Fan_Max_Cells& getfan_cells() const
    {
       return fan_cells;
    }
 
-   Fan_Vertices getfan_vertices() const
+   const Fan_Vertices& getfan_vertices() const
    {
       return fan_vertices;
    }
 
-   Fan_Max_Cells getboundary_facets() const
+   const Fan_Max_Cells& getboundary_facets() const
    {
       return boundary_facets;
    }
 
-   Map<int, flip_sequence> getflipIds_to_node() const
+   const Map<Int, flip_sequence>& getflipIds_to_node() const
    {
       return flipIds_to_node;
    }
@@ -264,7 +265,7 @@ public:
          point = 1/eps * sum;
          point = point - eps * facet_normal;
          positive = true;
-         for (int i = 1; i < point.size(); ++i) {
+         for (Int i = 1; i < point.size(); ++i) {
             if (point[i] <= 0) {
                positive = false;
                eps = eps*eps;
@@ -275,19 +276,19 @@ public:
       return point;
    }
 
-   friend std::pair< Matrix<Rational> , Array<Set<int>>> DCEL_secondary_fan_input( DoublyConnectedEdgeList& dcel);
-   friend Indexed_Cones DCEL_secondary_fan( DoublyConnectedEdgeList& dcel );
-   friend Matrix<Rational> DCEL_secondary_fan_input_vertices( DoublyConnectedEdgeList& dcel);
-   friend Array<Set<int>> DCEL_secondary_fan_input_cells( DoublyConnectedEdgeList& dcel);
+   friend std::pair<Matrix<Rational>, Array<Set<Int>>> DCEL_secondary_fan_input(DoublyConnectedEdgeList& dcel);
+   friend Indexed_Cones DCEL_secondary_fan(DoublyConnectedEdgeList& dcel);
+   friend Matrix<Rational> DCEL_secondary_fan_input_vertices(DoublyConnectedEdgeList& dcel);
+   friend Array<Set<Int>> DCEL_secondary_fan_input_cells(DoublyConnectedEdgeList& dcel);
 
 }; // end class flip visitor
 
 // the flip algorithm, we flip edges that are non-Delaunay w.r.t. the weights as long as there are some
 
-flip_sequence flipToDelaunay(DoublyConnectedEdgeList& dcel, const Vector<Rational>& weights)
+FlipVisitor::flip_sequence flipToDelaunay(graph::DoublyConnectedEdgeList& dcel, const Vector<Rational>& weights)
 {
-   flip_sequence flip_ids{};
-   int non_delaunay = dcel.is_Delaunay( weights );
+   FlipVisitor::flip_sequence flip_ids{};
+   Int non_delaunay = dcel.is_Delaunay(weights);
    while (non_delaunay != -1) {
       dcel.flipEdge(non_delaunay);
       flip_ids.push_back(non_delaunay);

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,19 +22,16 @@
 
 namespace polymake { namespace topaz {
 
-      // why a different type definition as in complex_properties.rules?
-      //typedef Array< std::list<int> > face_list;
+typedef Array<Set<Int>> face_list;
 
-typedef Array< Set<int> > face_list;
-
-void faces_to_facets(perl::Object p, const face_list& F_in)
+void faces_to_facets(BigObject p, const face_list& F_in)
 {
    FacetList F;
-   Set<int> V;
+   Set<Int> V;
 
    for (auto f_it=entire(F_in); !f_it.at_end(); ++f_it) {
       // provide vertex ordering
-      Set<int> facet;
+      Set<Int> facet;
       accumulate_in(entire(*f_it), operations::add(), facet);
 
       // add facet to vertex set
@@ -47,7 +44,7 @@ void faces_to_facets(perl::Object p, const face_list& F_in)
 
    if (renumber) F.squeeze();
    if (F.empty()) {
-      p.take("FACETS") << Array< Set<int> >(1, V);
+      p.take("FACETS") << Array<Set<Int>>(1, V);
    } else {
       p.take("FACETS") << F;
    }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -18,13 +18,28 @@
 #ifndef POLYMAKE_MATRIX_LINALG_H
 #define POLYMAKE_MATRIX_LINALG_H
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
+
+#include "boost/numeric/ublas/lu.hpp"
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
+
 #include "polymake/SparseMatrix.h"
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
 #include "polymake/internal/linalg_exceptions.h"
 #include "polymake/internal/sparse_linalg.h"
 #include "polymake/internal/dense_linalg.h"
-#include "boost/numeric/ublas/lu.hpp"
 
 namespace pm {
 
@@ -60,12 +75,12 @@ template <typename TMatrix1, typename TMatrix2, typename E>
 std::enable_if_t<is_field<E>::value, std::pair<SparseMatrix<E>, Vector<E>>>
 augmented_system(const GenericMatrix<TMatrix1, E>& A, const GenericMatrix<TMatrix2, E>& B)
 {
-   const int n(A.rows()), d(A.cols()), e(B.cols());
+   const Int n(A.rows()), d(A.cols()), e(B.cols());
    SparseMatrix<E> A_aug(n*e, d*e);
    Vector<E> rhs(n*e);
    auto rhs_it = rhs.begin();
-   for (int i=0; i<n; ++i) {
-      for (int j=0; j<e; ++j, ++rhs_it) {
+   for (Int i = 0; i < n; ++i) {
+      for (Int j = 0; j < e; ++j, ++rhs_it) {
          A_aug.minor(scalar2set(i*e+j), sequence(d*j, d)) = A.minor(scalar2set(i),All);
          *rhs_it = B[i][j];
       }
@@ -139,7 +154,7 @@ solve_right(const GenericMatrix<TMatrix1, double>& A, const GenericMatrix<TMatri
 
    const bool square( A.cols() == A.rows() );
    
-   const int
+   const Int
       Arows ( square ? A.rows() : A.cols() ),
       Brows ( square ? B.rows() : A.cols() );
 
@@ -160,8 +175,8 @@ solve_right(const GenericMatrix<TMatrix1, double>& A, const GenericMatrix<TMatri
    boost::numeric::ublas::lu_substitute(ublasA, ublasP, ublasB); // now ublasB contains the solution
    
    Matrix<double> sol(Brows, B.cols());
-   for (int i=0; i<Brows; ++i)
-      for (int j=0; j<B.cols(); ++j) {
+   for (Int i = 0; i < Brows; ++i)
+      for (Int j = 0; j < B.cols(); ++j) {
          const double b = ublasB(i,j);
          sol(i,j) = fabs(b) < 10.0 * std::numeric_limits<double>::epsilon()
                               ? 0

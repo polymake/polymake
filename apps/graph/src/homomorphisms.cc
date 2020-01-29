@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -17,12 +17,14 @@
 
 #include "polymake/client.h"
 #include "polymake/Graph.h"
-#include "polymake/topaz/poset_tools.h"
+#include "polymake/graph/poset_tools.h"
 
 namespace polymake { namespace graph {
 
-Array<Array<int>>
-graph_homomorphisms(const perl::Object g, const perl::Object h, perl::OptionSet options)
+using namespace poset_tools;
+
+Array<Array<Int>>
+graph_homomorphisms(const BigObject g, const BigObject h, OptionSet options)
 {
    const Graph<Undirected> G = g.give("ADJACENCY");
 
@@ -32,16 +34,15 @@ graph_homomorphisms(const perl::Object g, const perl::Object h, perl::OptionSet 
    for (auto eh = entire(edges(_H)); !eh.at_end(); ++eh)
       H.edge(eh.to_node(), eh.from_node());
 
-   const Array<int> prescribed_map = options["prescribed_map"];
+   const Array<Int> prescribed_map = options["prescribed_map"];
    const bool allow_loops = options["allow_loops"];
-   topaz::RecordKeeper<topaz::HomList> record_keeper;
+   RecordKeeper<HomList> record_keeper;
    
-   const auto result(topaz::poset_homomorphisms_impl(G, H, record_keeper, prescribed_map, allow_loops));
-   return Array<Array<int>>(result.size(), entire(result));
+   const auto result(poset_homomorphisms_impl(G, H, record_keeper, prescribed_map, allow_loops));
+   return Array<Array<Int>>(result.size(), entire(result));
 }
 
-int
-n_graph_homomorphisms(const perl::Object g, const perl::Object h, perl::OptionSet options)
+Int n_graph_homomorphisms(const BigObject g, const BigObject h, OptionSet options)
 {
    const Graph<Undirected> G = g.give("ADJACENCY");
 
@@ -51,11 +52,11 @@ n_graph_homomorphisms(const perl::Object g, const perl::Object h, perl::OptionSe
    for (auto eh = entire(edges(_H)); !eh.at_end(); ++eh)
       H.edge(eh.to_node(), eh.from_node());
 
-   const Array<int> prescribed_map = options["prescribed_map"];
+   const Array<Int> prescribed_map = options["prescribed_map"];
    const bool allow_loops = options["allow_loops"];
-   topaz::RecordKeeper<int> record_keeper;
+   RecordKeeper<Int> record_keeper;
    
-   return topaz::poset_homomorphisms_impl(G, H, record_keeper, prescribed_map, allow_loops);
+   return poset_homomorphisms_impl(G, H, record_keeper, prescribed_map, allow_loops);
 }
       
 UserFunction4perl("# @category Combinatorics\n"

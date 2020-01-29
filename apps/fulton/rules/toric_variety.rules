@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -30,7 +30,7 @@ object NormalToricVariety {
    # @param PolyhedralFan<Rational> fan Fan
    # @return NormalToricVariety
    method construct(PolyhedralFan<Rational>) {
-      &Core::Object::new_copy;
+      &Core::BigObject::new_copy;
    }
 
    rule AFFINE : N_MAXIMAL_CONES{

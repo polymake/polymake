@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,17 +29,17 @@ auto create_convex_hull_solver()
 
 }
 
-void lrs_ch_primal(perl::Object p, const bool verbose, const bool isCone)
+void lrs_ch_primal(BigObject p, const bool verbose, const bool isCone)
 {
    generic_convex_hull_primal<Rational>(p, isCone, lrs_interface::ConvexHullSolver(verbose));
 }
 
-void lrs_ch_dual(perl::Object p, const bool verbose, const bool isCone)
+void lrs_ch_dual(BigObject p, const bool verbose, const bool isCone)
 {
    generic_convex_hull_dual<Rational>(p, isCone, lrs_interface::ConvexHullSolver(verbose));
 }
 
-void lrs_count_vertices(perl::Object p, const bool only_bounded, const bool verbose, const bool isCone)
+void lrs_count_vertices(BigObject p, const bool only_bounded, const bool verbose, const bool isCone)
 {
    const lrs_interface::ConvexHullSolver solver(verbose);
    Matrix<Rational> H = p.give("FACETS | INEQUALITIES"),
@@ -82,7 +82,7 @@ void lrs_count_vertices(perl::Object p, const bool only_bounded, const bool verb
       p.take("N_BOUNDED_VERTICES") << 0;
 }
 
-void lrs_count_facets(perl::Object p, const bool verbose, const bool isCone)
+void lrs_count_facets(BigObject p, const bool verbose, const bool isCone)
 {
    const lrs_interface::ConvexHullSolver solver(verbose);
    Matrix<Rational> Points = p.give("RAYS | INPUT_RAYS"),

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,10 +22,10 @@
 namespace polymake { namespace polytope {
 
 template<typename E>
-perl::Object explicit_zonotope(const Matrix<E>& zones, perl::OptionSet options)
+BigObject explicit_zonotope(const Matrix<E>& zones, OptionSet options)
 {
    const bool rows_are_points = options["rows_are_points"];
-   const int dim = rows_are_points ? zones.cols()-1 : zones.cols();
+   const Int dim = rows_are_points ? zones.cols()-1 : zones.cols();
    Matrix<E> points(1, dim+1);    // one zero-filled row
 
    for (auto z=entire(rows(zones)); !z.at_end(); ++z) {
@@ -37,7 +37,7 @@ perl::Object explicit_zonotope(const Matrix<E>& zones, perl::OptionSet options)
    }
    points.col(0).fill(1); // fix the homogenizing column that has been messed up by the sums
 
-   perl::Object Z("Polytope");
+   BigObject Z("Polytope");
    Z.take("ZONOTOPE_INPUT_POINTS") << zones;
    Z.take("POINTS") << points;
 

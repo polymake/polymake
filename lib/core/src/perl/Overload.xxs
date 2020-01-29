@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,10 +30,10 @@ HV* pkg_of_object(pTHX_ SV* obj, I32 try_repeated, I32& bundled_repeated)
    if (!SvOBJECT(obj)) {
       if (try_repeated) {
          // anonymous array of objects?
-         if (SvTYPE(obj)==SVt_PVAV && AvFILLp(obj)>=0 &&
-             (obj=AvARRAY(obj)[0], SvROK(obj)) &&
-             (obj=SvRV(obj), SvOBJECT(obj))) {
-            bundled_repeated=TRUE;
+         if (SvTYPE(obj) == SVt_PVAV && AvFILLp(obj) >= 0 &&
+             (obj = AvARRAY(obj)[0], SvROK(obj)) &&
+             (obj = SvRV(obj), SvOBJECT(obj))) {
+            bundled_repeated = TRUE;
          } else {
             return UNIVERSAL_stash;
          }
@@ -41,7 +41,7 @@ HV* pkg_of_object(pTHX_ SV* obj, I32 try_repeated, I32& bundled_repeated)
          return UNIVERSAL_stash;
       }
    }
-   if (SvRMAGICAL(obj) && (stash=retrieve_pkg_stash(aTHX_ obj)))
+   if (SvRMAGICAL(obj) && (stash = retrieve_pkg_stash(aTHX_ obj)))
       return stash;
    else
       return SvSTASH(obj);
@@ -55,47 +55,31 @@ MODULE = Polymake::Overload             PACKAGE = Polymake::Overload
 
 PROTOTYPES: DISABLE
 
-void
-is_keyword_or_hash(sv)
-   SV* sv;
-PPCODE:
-{
-   if (SvROK(sv) ? (sv=SvRV(sv), SvTYPE(sv) == SVt_PVHV && SvSTASH(sv)==NULL)
-                 : (SvFLAGS(sv) & (SVf_POK|SVf_IVisUV)) == (SVf_POK|SVf_IVisUV))
-      PUSHs(&PL_sv_yes);
-   else
-      PUSHs(&PL_sv_no);
-}
-
-void
-can_signature(arg, signature, try_repeated_sv)
-   SV* arg;
-   SV* signature;
-   SV* try_repeated_sv;
+void can_signature(SV* arg, SV* signature, SV* try_repeated_sv)
 PPCODE:
 {
    HV* stash;
    STRLEN method_name_len;
-   char* method_name=SvPV(signature, method_name_len);
-   I32 try_repeated=SvIVX(try_repeated_sv);
-   I32 bundled_repeated=FALSE;
-   stash=SvROK(arg)
-         ? pkg_of_object(aTHX_ SvRV(arg), try_repeated, bundled_repeated) :
-         SvIOK(arg)
-         ? integer_stash :
-         SvNOK(arg)
-         ? float_stash :
-         SvPOK(arg)
-         ? string_stash
-         : UNIVERSAL_stash;
-   GV* glob=gv_fetchmeth(stash, method_name, method_name_len, 0);
-   if (!glob && stash==string_stash) {
+   char* method_name = SvPV(signature, method_name_len);
+   I32 try_repeated = I32(SvIVX(try_repeated_sv));
+   I32 bundled_repeated = FALSE;
+   stash = SvROK(arg)
+           ? pkg_of_object(aTHX_ SvRV(arg), try_repeated, bundled_repeated) :
+           SvIOK(arg)
+           ? integer_stash :
+           SvNOK(arg)
+           ? float_stash :
+           SvPOK(arg)
+           ? string_stash
+           : UNIVERSAL_stash;
+   GV* glob = gv_fetchmeth(stash, method_name, method_name_len, 0);
+   if (!glob && stash == string_stash) {
       // maybe this is a number stored as a string?
-      I32 num_flags=looks_like_number(arg);
+      I32 num_flags = looks_like_number(arg);
       if (num_flags & IS_NUMBER_IN_UV)
-         glob=gv_fetchmeth(integer_stash, method_name, method_name_len, 0);
+         glob = gv_fetchmeth(integer_stash, method_name, method_name_len, 0);
       else if (num_flags & IS_NUMBER_NOT_INT)
-         glob=gv_fetchmeth(float_stash, method_name, method_name_len, 0);
+         glob = gv_fetchmeth(float_stash, method_name, method_name_len, 0);
    }
    if (glob) {
       dTARGET;
@@ -112,10 +96,7 @@ PPCODE:
    }
 }
 
-void
-can_next(arg, nodesubref)
-  SV* arg;
-  SV* nodesubref;
+void can_next(SV* arg, SV* nodesubref)
 PPCODE:
 {
    /* This is a simplified version of mro::next::can, with following changes:
@@ -128,21 +109,21 @@ PPCODE:
     * so it's impossible to reuse any parts of it without dumb copying code.
     */
    I32 bundled_repeated;
-   HV* arg_pkg=SvROK(arg) ? pkg_of_object(aTHX_ SvRV(arg), TRUE, bundled_repeated) : UNIVERSAL_stash;
-   CV* nodesub=(CV*)SvRV(nodesubref);
-   GV* nodesub_gv=CvGV(nodesub);
-   const char* subname=GvNAME(nodesub_gv);
-   STRLEN subname_len=GvNAMELEN(nodesub_gv);
-   PADLIST* nodesub_padlist=CvPADLIST(nodesub);
-   SV* next_method_cache=(HV*)PAD_BASE_SV(nodesub_padlist, 1);
+   HV* arg_pkg = SvROK(arg) ? pkg_of_object(aTHX_ SvRV(arg), TRUE, bundled_repeated) : UNIVERSAL_stash;
+   CV* nodesub = (CV*)SvRV(nodesubref);
+   GV* nodesub_gv = CvGV(nodesub);
+   const char* subname = GvNAME(nodesub_gv);
+   I32 subname_len = GvNAMELEN(nodesub_gv);
+   PADLIST* nodesub_padlist = CvPADLIST(nodesub);
+   SV* next_method_cache = (HV*)PAD_BASE_SV(nodesub_padlist, 1);
    GV* candidate;
    CV* cand_cv;
    GV** gvp;
-   SV fake_stash_ref={ nullptr, 1, SVt_RV | SVf_ROK };
+   SV fake_stash_ref = { nullptr, 1, SVt_RV | SVf_ROK };
    assert(next_method_cache && SvTYPE(next_method_cache)==SVt_PVHV);
    SvRV_set(&fake_stash_ref, (SV*)arg_pkg);
-   HE* next_method_entry=refhash_fetch_ent(aTHX_ (HV*)next_method_cache, &fake_stash_ref, TRUE);
-   SV* next_method_ref=HeVAL(next_method_entry);
+   HE* next_method_entry = refhash_fetch_ent(aTHX_ (HV*)next_method_cache, &fake_stash_ref, TRUE);
+   SV* next_method_ref = HeVAL(next_method_entry);
 
    if (SvOK(next_method_ref)) {
       // already cached
@@ -155,9 +136,9 @@ PPCODE:
    }
 
    if (arg_pkg != UNIVERSAL_stash) {
-      HV* nodesub_stash=GvSTASH(nodesub_gv);
-      const char* nodesub_stash_name=HvNAME(nodesub_stash);
-      STRLEN nodesub_stash_namelen=HvNAMELEN(nodesub_stash);
+      HV* nodesub_stash = GvSTASH(nodesub_gv);
+      const char* nodesub_stash_name = HvNAME(nodesub_stash);
+      STRLEN nodesub_stash_namelen = HvNAMELEN(nodesub_stash);
 
       // *** this part is "borrowed" from ext/mro/mro.xs ***
 
@@ -165,14 +146,14 @@ PPCODE:
       struct mro_meta* arg_pkg_mro_meta = HvMROMETA(arg_pkg);
       AV* linear_av = arg_pkg_mro_meta->mro_which->resolve(aTHX_ arg_pkg, 0);
       SV** linear_svp = AvARRAY(linear_av);
-      I32 entries = AvFILLp(linear_av) + 1;
+      I32 entries = I32(AvFILLp(linear_av)+1);
 
       /* Walk down our MRO, skipping everything up
          to the contextually enclosing class */
       while (entries--) {
-         SV * const linear_sv = *linear_svp++;
+         SV* const linear_sv = *linear_svp++;
          assert(linear_sv);
-         if (SvCUR(linear_sv)==nodesub_stash_namelen && strEQ(SvPVX(linear_sv), nodesub_stash_name))
+         if (SvCUR(linear_sv) == nodesub_stash_namelen && strEQ(SvPVX(linear_sv), nodesub_stash_name))
             break;
       }
 
@@ -181,7 +162,7 @@ PPCODE:
          method */
       if (entries > 0) {
          while (entries--) {
-            SV * const linear_sv = *linear_svp++;
+            SV* const linear_sv = *linear_svp++;
             HV* curstash;
 
             assert(linear_sv);
@@ -226,38 +207,34 @@ PPCODE:
 }
 
 
-void
-store_kw_args(args, first)
-   AV* args=(AV*)SvRV(ST(0));
-   I32 first;
+void store_kw_args(SV* args_ref, I32 first)
 CODE:
 {
    /* Equivalent to
-        my @kw_args=splice @args, $first;
+        my @kw_args = splice @args, $first;
         attach_magic(\@args, \@kw_args);
       but without touching REAL flags of the arrays and refcounts of the elements
    */
-   I32 n_args=AvFILLp(args)+1-first;
-   AV* kw_args=newAV();
-   SV* kw_ref=newRV_noinc((SV*)kw_args);
-   SV** kw_start=AvARRAY(args)+first;
-   SV** kw_last=AvARRAY(args)+AvFILLp(args);
+   AV* args = (AV*)SvRV(args_ref);
+   I32 n_args = I32(AvFILLp(args)+1-first);
+   AV* kw_args = newAV();
+   SV* kw_ref = newRV_noinc((SV*)kw_args);
+   SV** kw_start = AvARRAY(args) + first;
+   SV** kw_last = AvARRAY(args) + AvFILLp(args);
    av_fill(kw_args, n_args-1);
    if (!AvREAL(args)) AvREAL_off(kw_args);
    Copy(kw_start, AvARRAY(kw_args), n_args, SV*);
    for (; kw_start <= kw_last; ++kw_start)
-      *kw_start=PmEmptyArraySlot;
-   AvFILLp(args)-=n_args;
-   sv_magicext((SV*)args, kw_ref, PERL_MAGIC_ext, &stored_kw_vtbl, Nullch, 0);
+      *kw_start = PmEmptyArraySlot;
+   AvFILLp(args) -= n_args;
+   sv_magicext((SV*)args, kw_ref, PERL_MAGIC_ext, &stored_kw_vtbl, nullptr, 0);
    SvREFCNT_dec(kw_ref);  // compensate for increment in sv_magicext
 }
 
-void
-fetch_stored_kw_args(args_ref)
-   SV* args_ref;
+void fetch_stored_kw_args(SV* args_ref)
 PPCODE:
 {
-   MAGIC* mg=mg_findext(SvRV(args_ref), PERL_MAGIC_ext, &stored_kw_vtbl);
+   MAGIC* mg = mg_findext(SvRV(args_ref), PERL_MAGIC_ext, &stored_kw_vtbl);
    if (mg) {
       PUSHs(mg->mg_obj);
    } else {
@@ -266,81 +243,74 @@ PPCODE:
 }
 
 void
-bundle_repeated_args(args, first, end)
-   AV* args=(AV*)SvRV(ST(0));
-   I32 first;
-   I32 end;
+bundle_repeated_args(SV* args_ref, I32 first, I32 end)
 CODE:
 {
    /* Equivalent to
         my @bundle;
-        @bundle=splice @args, $first, $end-$first, \@bundle;
+        @bundle = splice @args, $first, $end - $first, \@bundle;
       but without touching REAL flags of the arrays and refcounts of the elements
    */
-   AV* bundle=newAV();
-   I32 n_args=AvFILLp(args)+1;
-   I32 n_repeated=end-first;
+   AV* args = (AV*)SvRV(args_ref);
+   AV* bundle = newAV();
+   const I32 n_args = I32(AvFILLp(args)+1);
+   const I32 n_repeated = end - first;
    assert(n_repeated > 0 && end <= n_args);
    av_extend(bundle, n_repeated-1);
    if (!AvREAL(args)) AvREAL_off(bundle);
-   Copy(AvARRAY(args)+first, AvARRAY(bundle), n_repeated, SV*);
-   AvFILLp(bundle)=n_repeated-1;
-   if (first+1 < end && end < n_args) Move(AvARRAY(args)+end, AvARRAY(args)+first+1, n_args-end, SV*);
-   AvARRAY(args)[first]=newRV_noinc((SV*)bundle);
-   AvFILLp(args)-=n_repeated-1;
+   Copy(AvARRAY(args) + first, AvARRAY(bundle), n_repeated, SV*);
+   AvFILLp(bundle) = n_repeated-1;
+   if (first+1 < end && end < n_args)
+      Move(AvARRAY(args) + end, AvARRAY(args) + first+1, n_args-end, SV*);
+   AvARRAY(args)[first] = newRV_noinc((SV*)bundle);
+   AvFILLp(args) -= n_repeated-1;
 }
 
-void
-unbundle_repeated_args(args, backtrack)
-   AV* args=(AV*)SvRV(ST(0));
-   AV* backtrack=(AV*)SvRV(ST(1));
+void unbundle_repeated_args(SV* args_ref, SV* backtrack_ref)
 CODE:
 {
    // Undo bundle_repeated_args
-   SV* pos_sv=av_pop(backtrack);
-   I32 pos=SvIVX(pos_sv);
-   SV* bundle_ref=AvARRAY(args)[pos];
-   AV* bundle=(AV*)SvRV(bundle_ref);
-   I32 n_repeated=AvFILLp(bundle)+1;
-   I32 n_args=AvFILLp(args)+1;
-   assert(SvTYPE(bundle)==SVt_PVAV && AvMAX(args) >= AvFILLp(args)+n_repeated-1);
-   if (pos+1 < n_args) Move(AvARRAY(args)+pos+1, AvARRAY(args)+pos+n_repeated, n_args-pos-1, SV*);
+   AV* args = (AV*)SvRV(args_ref);
+   AV* backtrack = (AV*)SvRV(backtrack_ref);
+   SV* pos_sv = av_pop(backtrack);
+   const I32 pos = I32(SvIVX(pos_sv));
+   SV* bundle_ref = AvARRAY(args)[pos];
+   AV* bundle = (AV*)SvRV(bundle_ref);
+   const I32 n_repeated = I32(AvFILLp(bundle)+1);
+   const I32 n_args = I32(AvFILLp(args)+1);
+   assert(SvTYPE(bundle) == SVt_PVAV && AvMAX(args) >= AvFILLp(args) + n_repeated-1);
+   if (pos+1 < n_args)
+      Move(AvARRAY(args)+pos+1, AvARRAY(args)+pos+n_repeated, n_args-pos-1, SV*);
    Copy(AvARRAY(bundle), AvARRAY(args)+pos, n_repeated, SV*);
-   AvFILLp(args)+=n_repeated-1;
+   AvFILLp(args) += n_repeated-1;
    AvREAL_off(bundle);
    SvREFCNT_dec(bundle_ref);
    SvREFCNT_dec(pos_sv);
 }
 
-void
-store_string_package_stash(hvref)
-   SV* hvref;
+void store_string_package_stash(SV* hvref)
 CODE:
 {
-   string_stash=(HV*)SvRV(hvref);
+   string_stash = (HV*)SvRV(hvref);
 }
 
-void
-store_integer_package_stash(hvref)
-   SV* hvref;
+void store_integer_package_stash(SV* hvref)
 CODE:
 {
-   integer_stash=(HV*)SvRV(hvref);
+   integer_stash = (HV*)SvRV(hvref);
 }
 
-void
-store_float_package_stash(hvref)
-   SV* hvref;
+void store_float_package_stash(SV* hvref)
 CODE:
 {
-   float_stash=(HV*)SvRV(hvref);
+   float_stash = (HV*)SvRV(hvref);
 }
 
 BOOT:
-   string_stash=gv_stashpv("Polymake::Overload::string", TRUE);
-   integer_stash=gv_stashpv("Polymake::Overload::integer", TRUE);
-   float_stash=gv_stashpv("Polymake::Overload::float", TRUE);
-   UNIVERSAL_stash=gv_stashpv("UNIVERSAL", FALSE);
+   string_stash = gv_stashpv("Polymake::Overload::string", TRUE);
+   integer_stash = gv_stashpv("Polymake::Overload::integer", TRUE);
+   float_stash = gv_stashpv("Polymake::Overload::float", TRUE);
+   UNIVERSAL_stash = gv_stashpv("UNIVERSAL", FALSE);
    if (PL_DBgv) {
       CvNODEBUG_on(get_cv("Polymake::Overload::can_signature", FALSE));
       CvNODEBUG_on(get_cv("Polymake::Overload::store_kw_args", FALSE));

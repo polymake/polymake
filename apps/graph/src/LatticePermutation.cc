@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,7 +26,7 @@ namespace polymake { namespace graph {
 // face decoration.
 template <typename Decoration, typename SeqType, typename Permutation>
 optional<Permutation>
-find_lattice_permutation(perl::Object hd_obj, perl::Object perm_hd_obj, const Permutation& perm)
+find_lattice_permutation(BigObject hd_obj, BigObject perm_hd_obj, const Permutation& perm)
 {
   Lattice<Decoration, SeqType> hd(hd_obj);
   Lattice<Decoration, SeqType> perm_hd(perm_hd_obj);
@@ -36,21 +36,21 @@ find_lattice_permutation(perl::Object hd_obj, perl::Object perm_hd_obj, const Pe
 
   Permutation nodes_perm(hd.nodes());
 
-  int bottom_rank = hd.rank(hd.bottom_node());
-  int top_rank = hd.rank(hd.top_node());
+  Int bottom_rank = hd.rank(hd.bottom_node());
+  Int top_rank = hd.rank(hd.top_node());
 
   using nodes_list = typename Lattice<Decoration, SeqType>::nodes_of_rank_type;
 
   // Compute permutations for each rank
-  for (int r = bottom_rank; r <= top_rank; ++r) {
+  for (Int r = bottom_rank; r <= top_rank; ++r) {
     const nodes_list& level_nodes = hd.nodes_of_rank(r);
-    const Array<int> perm_level_nodes(perm_hd.nodes_of_rank(r));
-    const Array<Set<int> > level_faces(level_nodes.size(),
+    const Array<Int> perm_level_nodes(perm_hd.nodes_of_rank(r));
+    const Array<Set<Int> > level_faces(level_nodes.size(),
             entire( attach_member_accessor( select(hd.decoration(), level_nodes),
-                                                  ptr2type<Decoration, Set<int>, &Decoration::face>())));
-    const Array<Set<int> > perm_level_faces(perm_level_nodes.size(),
+                                                  ptr2type<Decoration, Set<Int>, &Decoration::face>())));
+    const Array<Set<Int>> perm_level_faces(perm_level_nodes.size(),
             entire( attach_member_accessor( select(perm_hd.decoration(), perm_level_nodes),
-                                                  ptr2type<Decoration, Set<int>, &Decoration::face>())));
+                                                  ptr2type<Decoration, Set<Int>, &Decoration::face>())));
     const auto level_perm = find_permutation( perm_level_faces, level_faces);
     if (level_perm)
       copy_range(entire(permuted(perm_level_nodes, level_perm.value())), select(nodes_perm, level_nodes).begin());

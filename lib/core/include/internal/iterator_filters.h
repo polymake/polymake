@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -59,8 +59,8 @@ public:
       , pred(helper::create(it.pred)) {}
 
    template <typename SourceIterator,
-             typename suitable=typename std::enable_if<std::is_default_constructible<Predicate>::value,
-                                                       typename suitable_arg_for_iterator<SourceIterator, Iterator>::type>::type>
+             typename = std::enable_if_t<std::is_default_constructible<Predicate>::value,
+                                         typename suitable_arg_for_iterator<SourceIterator, Iterator>::type>>
    unary_predicate_selector(const SourceIterator& cur_arg, bool at_valid_position=false)
       : base_t(prepare_iterator_arg<Iterator>(cur_arg))
       , pred(helper::create(Predicate()))
@@ -113,11 +113,11 @@ public:
 
 private:
    // make them undefined for the case of random_access Iterator
-   void operator+=(int) = delete;
-   void operator-=(int) = delete;
-   void operator+(int) = delete;
-   void operator-(int) = delete;
-   void operator[](int) = delete;
+   void operator+=(Int) = delete;
+   void operator-=(Int) = delete;
+   void operator+(Int) = delete;
+   void operator-(Int) = delete;
+   void operator[](Int) = delete;
 };
 
 template <typename Iterator, typename Predicate, typename Feature>
@@ -186,14 +186,14 @@ public:
    }
 
    template <typename Other>
-   typename std::enable_if<is_among<Other, iterator, const_iterator>::value, bool>::type
+   std::enable_if_t<is_among<Other, iterator, const_iterator>::value, bool>
    operator== (const Other& it) const
    {
       return at_end() ? it.at_end() : static_cast<const Iterator&>(*this)==it;
    }
 
    template <typename Other>
-   typename std::enable_if<is_among<Other, iterator, const_iterator>::value, bool>::type
+   std::enable_if_t<is_among<Other, iterator, const_iterator>::value, bool>
    operator!= (const Other& it) const
    {
       return !operator==(it);
@@ -202,11 +202,11 @@ private:
    // make them undefined for the case of bidirectional or random_access Iterator
    void operator--() = delete;
    void operator--(int) = delete;
-   void operator+=(int) = delete;
-   void operator-=(int) = delete;
-   void operator+(int) = delete;
-   void operator-(int) = delete;
-   void operator[](int) = delete;
+   void operator+=(Int) = delete;
+   void operator-=(Int) = delete;
+   void operator+(Int) = delete;
+   void operator-(Int) = delete;
+   void operator[](Int) = delete;
 };
 
 template <typename Iterator, typename Predicate, typename Feature>
@@ -271,11 +271,11 @@ public:
 private:
    // make them undefined for the case of bidirectional or random_access Iterator
    void operator--() = delete;
-   void operator+=(int) = delete;
-   void operator-=(int) = delete;
-   void operator+(int) = delete;
-   void operator-(int) = delete;
-   void operator[](int) = delete;
+   void operator+=(Int) = delete;
+   void operator-=(Int) = delete;
+   void operator+(Int) = delete;
+   void operator-(Int) = delete;
+   void operator[](Int) = delete;
 };
 
 template <typename Iterator, typename Predicate, typename Feature>
@@ -312,7 +312,7 @@ protected:
    typedef unary_helper<Iterator, FoldingOperation> helper;
 
    typename helper::operation op;
-   bool _at_end;
+   bool is_at_end;
 
    void valid_position()
    {
@@ -334,24 +334,24 @@ public:
    range_folder(const iterator& it)
       : base_t(static_cast<const typename std::remove_reference_t<decltype(it)>::base_t&>(it))
       , op(helper::create(it.op))
-      , _at_end(it._at_end) {}
+      , is_at_end(it.is_at_end) {}
 
    template <typename SourceIterator, typename suitable=typename suitable_arg_for_iterator<SourceIterator, Iterator>::type>
    range_folder(const SourceIterator& start, const FoldingOperation& op_arg=FoldingOperation())
       : base_t(prepare_iterator_arg<Iterator>(start))
       , op(helper::create(op_arg))
-      , _at_end(base_t::at_end())
+      , is_at_end(base_t::at_end())
    {
-      if (!_at_end) valid_position();
+      if (!is_at_end) valid_position();
    }
 
    reference operator* () const { return op.get(); }
-   int index() const { return op.get_index(); }
+   Int index() const { return op.get_index(); }
 
    range_folder& operator++ ()
    {
       if (base_t::at_end())
-         _at_end=true;
+         is_at_end = true;
       else
          valid_position();
       return *this;
@@ -359,24 +359,24 @@ public:
 
    const range_folder operator++ (int) { range_folder copy(*this);  operator++();  return copy; }
 
-   bool at_end() const { return _at_end; }
+   bool at_end() const { return is_at_end; }
 
    void rewind()
    {
       static_assert(check_iterator_feature<base_t, rewindable>::value, "iterator is not rewindable");
       base_t::rewind();
-      if (!(_at_end=base_t::at_end())) valid_position();
+      if (!(is_at_end = base_t::at_end())) valid_position();
    }
 
 private:
    // make them undefined for the case of bidirectional or random_access Iterator
    void operator--() = delete;
    void operator--(int) = delete;
-   void operator+=(int) = delete;
-   void operator-=(int) = delete;
-   void operator+(int) = delete;
-   void operator-(int) = delete;
-   void operator[](int) = delete;
+   void operator+=(Int) = delete;
+   void operator-=(Int) = delete;
+   void operator+(Int) = delete;
+   void operator-(Int) = delete;
+   void operator[](Int) = delete;
 };
 
 template <typename Iterator, typename FoldingOperation, typename Feature>
@@ -481,8 +481,8 @@ public:
       , pred(helper::create(it.pred)) {}
 
    template <typename SourceIteratorPair,
-             typename suitable=typename std::enable_if<std::is_default_constructible<Predicate>::value,
-                                                       typename suitable_arg_for_iterator<SourceIteratorPair, IteratorPair>::type>::type>
+             typename = std::enable_if_t<std::is_default_constructible<Predicate>::value,
+                                         typename suitable_arg_for_iterator<SourceIteratorPair, IteratorPair>::type>>
    binary_predicate_selector(const SourceIteratorPair& cur_arg,
                              bool at_valid_position=false)
       : base_t(prepare_iterator_arg<IteratorPair>(cur_arg))
@@ -503,9 +503,9 @@ public:
    }
 
    template <typename SourceIterator1, typename SourceIterator2,
-             typename suitable1=typename std::enable_if<std::is_default_constructible<Predicate>::value,
-                                                        typename suitable_arg_for_iterator<SourceIterator1, typename IteratorPair::first_type>::type>::type,
-             typename suitable2=typename suitable_arg_for_iterator<SourceIterator2, typename IteratorPair::second_type>::type>
+             typename = std::enable_if_t<std::is_default_constructible<Predicate>::value,
+                                         typename suitable_arg_for_iterator<SourceIterator1, typename IteratorPair::first_type>::type>,
+             typename = typename suitable_arg_for_iterator<SourceIterator2, typename IteratorPair::second_type>::type>
    binary_predicate_selector(const SourceIterator1& first_arg,
                              const SourceIterator2& second_arg,
                              bool at_valid_position=false)
@@ -559,11 +559,11 @@ public:
       valid_position();
    }
 private:
-   void operator+=(int) = delete;
-   void operator-=(int) = delete;
-   void operator+(int) = delete;
-   void operator-(int) = delete;
-   void operator[](int) = delete;
+   void operator+=(Int) = delete;
+   void operator-=(Int) = delete;
+   void operator+(Int) = delete;
+   void operator-(Int) = delete;
+   void operator[](Int) = delete;
 };
 
 template <typename IteratorPair, typename Predicate, typename Feature>

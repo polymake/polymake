@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -46,7 +46,7 @@ inline
 auto enumerate_homogeneous_facets(const Matrix<Rational>& rays,
                                   const Matrix<Rational>& lineality)
 {
-  const int n = std::max(rays.cols(), lineality.cols());
+  const Int n = std::max(rays.cols(), lineality.cols());
   const auto one_lin = ones_vector<Rational>(n) - unit_vector<Rational>(n,0);
   return polytope::enumerate_facets(rays, lineality / one_lin, false);
 }
@@ -64,12 +64,12 @@ auto enumerate_homogeneous_vertices(const Matrix<Rational>& facets,
   auto p = polytope::try_enumerate_vertices(facets, affine, false);
 
   if (p.second.rows() > 0) {
-    int n = p.second.cols();
+    Int n = p.second.cols();
     const auto one_lin = ones_vector<Rational>(n) - unit_vector<Rational>(n,0);
     Matrix<Rational> kernel = null_space(T(p.second /one_lin));
     if (kernel.rows() == 0)
       throw std::runtime_error("Invalid tropical homogeneous facet description. Cell does not contain (1,..,1)-lineality space");
-    for (int c = 0; c < kernel.cols(); c++) {
+    for (Int c = 0; c < kernel.cols(); c++) {
       if (kernel(0,c) != 0) {
         p.second = p.second.minor(~scalar2set(c),All);
         break;

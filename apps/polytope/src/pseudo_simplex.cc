@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,38 +25,38 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-void pseudo_simplex(perl::Object p, perl::Object lp, bool maximize)
+void pseudo_simplex(BigObject p, BigObject lp, bool maximize)
 {
-   const Graph<> G=p.give("GRAPH.ADJACENCY");
-   NodeMap<Undirected,bool> visited(G,false);
+   const Graph<> G = p.give("GRAPH.ADJACENCY");
+   NodeMap<Undirected,bool> visited(G, false);
 
-   const Vector<Scalar> objective=lp.give("LINEAR_OBJECTIVE");
-   const Set<int> far_face=p.give("FAR_FACE");
+   const Vector<Scalar> objective = lp.give("LINEAR_OBJECTIVE");
+   const Set<Int> far_face = p.give("FAR_FACE");
 
-   const Matrix<Scalar> V=p.give("VERTICES");
-   const int n_vertices = V.rows();
+   const Matrix<Scalar> V = p.give("VERTICES");
+   const Int n_vertices = V.rows();
 
    // start with an affine point
-   int current_vertex=(sequence(0,n_vertices)-far_face).front();
+   Int current_vertex = (sequence(0,n_vertices)-far_face).front();
 
    Scalar opt=objective * V[current_vertex];
-   Set<int> optimal_face=scalar2set(current_vertex);
-   visited[current_vertex]=true;
+   Set<Int> optimal_face = scalar2set(current_vertex);
+   visited[current_vertex] = true;
 
-   bool better, unbounded=false;
-   const int sense(maximize ? 1 : -1);
+   bool better, unbounded = false;
+   const Int sense = maximize ? 1 : -1;
 
    do {
       better = false;
       // steepest ascent/descent
-      for (auto v=entire(G.out_edges(current_vertex));  !v.at_end();  ++v) {
-         const int neighbor=v.to_node();
+      for (auto v = entire(G.out_edges(current_vertex));  !v.at_end();  ++v) {
+         const Int neighbor = v.to_node();
          if (visited[neighbor])  // this neighbor can't be better
             continue;
          if (!is_zero(V(neighbor,0))) {
             visited[neighbor]=true;
             const Scalar value = objective * V[neighbor];
-            int diff=sign(value - opt);
+            const Int diff = sign(value - opt);
             if (diff == sense) { // this one is better
                current_vertex = neighbor;
                opt = value;
@@ -76,14 +76,14 @@ void pseudo_simplex(perl::Object p, perl::Object lp, bool maximize)
 
    if (!unbounded) {
       // linear program is bounded, look for the entire optimal face
-      std::list<int> optimal_vertices(optimal_face.begin(), optimal_face.end());
+      std::list<Int> optimal_vertices(optimal_face.begin(), optimal_face.end());
 
       while (!optimal_vertices.empty()) {
          current_vertex = optimal_vertices.front();
          optimal_vertices.pop_front();
 
-         for (auto v=entire(G.out_edges(current_vertex));  !v.at_end();  ++v) {
-            const int neighbor=v.to_node();
+         for (auto v = entire(G.out_edges(current_vertex));  !v.at_end();  ++v) {
+            const Int neighbor = v.to_node();
             if (!visited[neighbor]) {
                visited[neighbor]=true;
                if (!is_zero(V(neighbor,0)) && objective * V[neighbor] == opt) {
@@ -100,7 +100,7 @@ void pseudo_simplex(perl::Object p, perl::Object lp, bool maximize)
       // linear program is unbounded
       // nonetheless: the optimal face is the subset of the far face
       optimal_face.clear();
-      for (auto v=entire(far_face); !v.at_end(); ++v) {
+      for (auto v = entire(far_face); !v.at_end(); ++v) {
          if (sign(objective * V[*v]) == sense)
             optimal_face.push_back(*v);
       }

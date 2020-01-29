@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,16 +22,16 @@
 
 namespace polymake { namespace topaz {
 
-bool is_locally_strongly_connected(perl::Object p, perl::OptionSet options)
+bool is_locally_strongly_connected(BigObject p, OptionSet options)
 {
    const Lattice<BasicDecoration>& HD = p.give("HASSE_DIAGRAM");
-   const int dim = HD.rank()-2;
+   const Int dim = HD.rank()-2;
 
    const bool verbose=options["verbose"],
                   all=options["all"];
    bool loc_str_conn = true;
 
-   for (int d=0; d<dim; ++d)
+   for (Int d = 0; d < dim; ++d)
       for (const auto f : HD.nodes_of_rank(d+1)) {
          const FacetList star(star_in_HD(HD, f));
 

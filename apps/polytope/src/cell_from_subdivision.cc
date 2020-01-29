@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,12 +28,12 @@ namespace polymake { namespace polytope {
 namespace {
 
 template <typename Scalar, typename _Set>
-perl::Object full_dim_cell(perl::Object p_in, const GenericSet<_Set, int>& cell_verts, perl::OptionSet options)
+BigObject full_dim_cell(BigObject p_in, const GenericSet<_Set, Int>& cell_verts, OptionSet options)
 {
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
 
    if (p_in.exists("CONE_DIM")) {
-      const int dim=p_in.call_method("DIM");
+      const Int dim = p_in.call_method("DIM");
       p_out.take("CONE_DIM") << dim+1;
    }
    const Matrix<Scalar> V=p_in.give("VERTICES");
@@ -49,7 +49,7 @@ perl::Object full_dim_cell(perl::Object p_in, const GenericSet<_Set, int>& cell_
    */
 
    if (!options["no_labels"]) {
-      const int n_vertices = V.rows();
+      const Int n_vertices = V.rows();
       std::vector<std::string> labels = common::read_labels(p_in, "VERTEX_LABELS", n_vertices);
       const Array<std::string> labels_out(select(labels, cell_verts.top()));
       p_out.take("VERTEX_LABELS") << labels_out;
@@ -61,29 +61,29 @@ perl::Object full_dim_cell(perl::Object p_in, const GenericSet<_Set, int>& cell_
 }
 
 template <typename Scalar>
-perl::Object cell_from_subdivision(perl::Object p_in, int cell_number, perl::OptionSet options)
+BigObject cell_from_subdivision(BigObject p_in, Int cell_number, OptionSet options)
 {
    const IncidenceMatrix<> subdivision = p_in.give("POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS");
    if (cell_number < 0 || cell_number >= subdivision.rows())
       throw std::runtime_error("cell number out of range");
 
-   perl::Object p_out = full_dim_cell<Scalar>(p_in, subdivision[cell_number], options);
+   BigObject p_out = full_dim_cell<Scalar>(p_in, subdivision[cell_number], options);
    p_out.set_description() << "cell " << cell_number << " of subdivision of " << p_in.name() << endl;
    return p_out;
 }
 
 template<typename Scalar>
-perl::Object cells_from_subdivision(perl::Object p_in, const Set<int>& cells, perl::OptionSet options)
+BigObject cells_from_subdivision(BigObject p_in, const Set<Int>& cells, OptionSet options)
 {
    const IncidenceMatrix<> subdivision = p_in.give("POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS");
-   Set<int> cell_verts;
+   Set<Int> cell_verts;
    for (auto i=entire(cells); !i.at_end(); ++i) {
-      int cell_number = *i;
+      Int cell_number = *i;
       if (cell_number < 0 || cell_number >= subdivision.rows())
          throw std::runtime_error("cell number out of range");
       cell_verts += subdivision[cell_number];
    }
-   perl::Object p_out = full_dim_cell<Scalar>(p_in, cell_verts, options);
+   BigObject p_out = full_dim_cell<Scalar>(p_in, cell_verts, options);
    p_out.set_description() << "cells " << cells << " of subdivision of " << p_in.name() << endl;
    return p_out;
 }

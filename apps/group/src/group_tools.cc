@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,18 +24,18 @@ namespace polymake { namespace group {
 namespace {
 
 template<typename Element>
-GroupIndex<Element> make_group_classes(perl::Object g,
-                                       perl::OptionSet options,
+GroupIndex<Element> make_group_classes(BigObject g,
+                                       OptionSet options,
                                        Array<Array<Element>>& group_classes)
 {
    const std::string action = options["action"];
    try {
       g.give(action + ".CONJUGACY_CLASSES") >> group_classes;
-   } catch (const perl::undefined&) {
+   } catch (const Undefined&) {
       const Array<Element> gens = g.give(action + ".GENERATORS");
       group_classes = Array<Array<Element>>(1);
       group_classes[0] = orbit<on_container>(gens, identity(degree(gens[0]), Element()));
-      std::sort(group_classes[0].begin(), group_classes[0].end(), pm::operations::lt<const Array<int>&, const Array<int>&>());
+      std::sort(group_classes[0].begin(), group_classes[0].end(), pm::operations::lt<const Array<Int>&, const Array<Int>&>());
    }
    return group_index(group_classes);
 }
@@ -43,18 +43,18 @@ GroupIndex<Element> make_group_classes(perl::Object g,
 } // end anonymous namespace
 
 auto
-group_right_multiplication_table(perl::Object g, perl::OptionSet options)
+group_right_multiplication_table(BigObject g, OptionSet options)
 {
-   Array<Array<Array<int>>> group_classes;
-   const GroupIndex<Array<int>> group_index = make_group_classes(g, options, group_classes);
+   Array<Array<Array<Int>>> group_classes;
+   const GroupIndex<Array<Int>> group_index = make_group_classes(g, options, group_classes);
    return group_right_multiplication_table_impl(group_classes, group_index);
 }
 
 auto
-group_left_multiplication_table(perl::Object g, perl::OptionSet options)
+group_left_multiplication_table(BigObject g, OptionSet options)
 {
-   Array<Array<Array<int>>> group_classes;
-   const GroupIndex<Array<int>> group_index = make_group_classes(g, options, group_classes);
+   Array<Array<Array<Int>>> group_classes;
+   const GroupIndex<Array<Int>> group_index = make_group_classes(g, options, group_classes);
    return group_left_multiplication_table_impl(group_classes, group_index);
 }
       

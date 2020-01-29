@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -41,7 +41,7 @@ using convex_hull_result = std::pair<Matrix<Scalar>, Matrix<Scalar>>;
 template <typename E>
 bool align_matrix_column_dim(Matrix<E>& A, Matrix<E>& B, bool prepend_0_column)
 {
-   const int d = std::max(A.cols(), B.cols());
+   const Int d = std::max(A.cols(), B.cols());
    for (auto m : { &A, &B }) {
       if (m->cols() != d) {
          if (m->rows() != 0 || m->cols() != 0)
@@ -62,7 +62,7 @@ bool align_matrix_column_dim(Matrix<E>& A, Matrix<E>& B, bool prepend_0_column)
 template <typename Scalar>
 convex_hull_result<Scalar> dehomogenize_cone_solution(const convex_hull_result<Scalar>& solution){
    auto L = solution.second.minor(All, range_from(1));
-   Set<int> ind = indices(attach_selector(rows(L), operations::non_zero()));
+   Set<Int> ind = indices(attach_selector(rows(L), operations::non_zero()));
    return convex_hull_result<Scalar>(solution.first.minor(All, range_from(1)), L.minor(ind, All));
 }
 
@@ -101,11 +101,11 @@ class ConvexHullSolver<Scalar, CanEliminateRedundancies::yes>
 public:
    // first = non-redundant points (vertices) as row indexes into points
    // second = non-redundant linealities as row indexes into points (when i < points.rows()) or linealities (i - points.rows())
-   virtual std::pair<Bitset, Set<int>> get_non_redundant_points(const Matrix<Scalar>& points, const Matrix<Scalar>& linealities, bool isCone) const = 0;
+   virtual std::pair<Bitset, Set<Int>> get_non_redundant_points(const Matrix<Scalar>& points, const Matrix<Scalar>& linealities, bool isCone) const = 0;
 
    // first = non-redundant inequalities (facets) as row indexes into inequalities
    // second = non-redundant equations as row indexes into inequalities (when i < inequalities.rows()) or equations (i - inequalities.rows())
-   virtual std::pair<Bitset, Set<int>> get_non_redundant_inequalities(const Matrix<Scalar>& inequalities, const Matrix<Scalar>& equations, bool isCone) const = 0;
+   virtual std::pair<Bitset, Set<Int>> get_non_redundant_inequalities(const Matrix<Scalar>& inequalities, const Matrix<Scalar>& equations, bool isCone) const = 0;
 };
 
 template <typename Scalar, CanEliminateRedundancies can_eliminate = CanEliminateRedundancies::no>
@@ -177,13 +177,13 @@ convex_hull_result<Scalar> try_enumerate_vertices(const GenericMatrix<Matrix1, S
       return enumerate_vertices(inequalities, equations, isCone);
    }
    catch (const infeasible&) {
-      const int d = std::max(inequalities.cols(), equations.cols());
+      const Int d = std::max(inequalities.cols(), equations.cols());
       return { Matrix<Scalar>(0, d), Matrix<Scalar>(0, d) };
    }
 }
 
 template <typename Scalar, typename Matrix1, typename Matrix2>
-std::pair<Bitset, Set<int>> get_non_redundant_points(const GenericMatrix<Matrix1, Scalar>& points, const GenericMatrix<Matrix2, Scalar>& linealities,
+std::pair<Bitset, Set<Int>> get_non_redundant_points(const GenericMatrix<Matrix1, Scalar>& points, const GenericMatrix<Matrix2, Scalar>& linealities,
                                                      bool isCone)
 {
    const auto& solver = get_convex_hull_solver<Scalar, CanEliminateRedundancies::yes>();
@@ -191,7 +191,7 @@ std::pair<Bitset, Set<int>> get_non_redundant_points(const GenericMatrix<Matrix1
 }
 
 template <typename Scalar, typename Matrix1, typename Matrix2>
-std::pair<Bitset, Set<int>> get_non_redundant_inequalities(const GenericMatrix<Matrix1, Scalar>& inequalities, const GenericMatrix<Matrix2, Scalar>& equations,
+std::pair<Bitset, Set<Int>> get_non_redundant_inequalities(const GenericMatrix<Matrix1, Scalar>& inequalities, const GenericMatrix<Matrix2, Scalar>& equations,
                                                            bool isCone)
 {
    const auto& solver = get_convex_hull_solver<Scalar, CanEliminateRedundancies::yes>();

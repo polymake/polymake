@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,9 +23,9 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-perl::Object facet_to_infinity(perl::Object p_in, const int inf_facet)
+BigObject facet_to_infinity(BigObject p_in, const Int inf_facet)
 {
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
 
    const Matrix<Scalar> facets=p_in.give("FACETS");
 

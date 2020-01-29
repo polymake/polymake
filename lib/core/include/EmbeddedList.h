@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,14 +25,14 @@ namespace pm {
 
 template <typename Class> struct ptr_pair;
 template <typename Class, ptr_pair<Class> Class::* Ptrs> class EmbeddedList;
-template <typename Class, ptr_pair<Class> Class::* Ptrs, bool _is_const, bool _rev> class embedded_list_iterator;
+template <typename Class, ptr_pair<Class> Class::* Ptrs, bool is_const_, bool reversed_> class embedded_list_iterator;
 
 template <typename Class>
 struct ptr_pair {
    Class* prev;
    Class* next;
 
-   ptr_pair() : prev(NULL), next(NULL) {}
+   ptr_pair() : prev(nullptr), next(nullptr) {}
 
    explicit ptr_pair(Class* self) : prev(self), next(self) {}
 
@@ -41,44 +41,44 @@ struct ptr_pair {
       prev=next=reverse_cast(this, pptr);
    }
 
-   void exclude() { prev=NULL; next=NULL; }
+   void exclude() { prev = nullptr; next = nullptr; }
 
-   bool is_member() const { return next != NULL; }
+   bool is_member() const { return next != nullptr; }
 };
 
-template <typename Class, ptr_pair<Class> Class::* Ptrs, bool _is_const, bool _rev>
+template <typename Class, ptr_pair<Class> Class::* Ptrs, bool is_const_, bool reversed_>
 class embedded_list_iterator {
 public:
    typedef bidirectional_iterator_tag iterator_category;
    typedef Class value_type;
-   typedef typename assign_const<Class, _is_const>::type& reference;
-   typedef typename assign_const<Class, _is_const>::type* pointer;
+   typedef typename assign_const<Class, is_const_>::type& reference;
+   typedef typename assign_const<Class, is_const_>::type* pointer;
    typedef ptrdiff_t difference_type;
-   typedef embedded_list_iterator<Class,Ptrs,false,_rev> iterator;
-   typedef embedded_list_iterator<Class,Ptrs,true,_rev> const_iterator;
+   typedef embedded_list_iterator<Class, Ptrs, false, reversed_> iterator;
+   typedef embedded_list_iterator<Class, Ptrs, true, reversed_> const_iterator;
 
    embedded_list_iterator() {}
    embedded_list_iterator(pointer arg) : cur(arg) {}
    embedded_list_iterator(const iterator& it) : cur(it.cur) {}
-   embedded_list_iterator(const embedded_list_iterator<Class,Ptrs,_is_const,!_rev>& it) : cur(it.cur) {}
-   embedded_list_iterator(typename assign_const<embedded_list_iterator<Class,Ptrs,false,!_rev>, _is_const>::type& it) : cur(it.cur) {}
+   embedded_list_iterator(const embedded_list_iterator<Class, Ptrs, is_const_, !reversed_>& it) : cur(it.cur) {}
+   embedded_list_iterator(typename assign_const<embedded_list_iterator<Class, Ptrs, false, !reversed_>, is_const_>::type& it) : cur(it.cur) {}
 
    embedded_list_iterator& operator= (const iterator& it) { cur=it.cur; return *this; }
-   embedded_list_iterator& operator= (const embedded_list_iterator<Class,Ptrs,_is_const,!_rev>& it) { cur=it.cur; return *this; }
-   embedded_list_iterator& operator= (typename assign_const<embedded_list_iterator<Class,Ptrs,false,!_rev>, _is_const>::type& it) { cur=it.cur; return *this; }
+   embedded_list_iterator& operator= (const embedded_list_iterator<Class, Ptrs, is_const_, !reversed_>& it) { cur=it.cur; return *this; }
+   embedded_list_iterator& operator= (typename assign_const<embedded_list_iterator<Class, Ptrs, false, !reversed_>, is_const_>::type& it) { cur=it.cur; return *this; }
 
    reference operator* () const { return *cur; }
    pointer operator-> () const { return cur; }
 
-   embedded_list_iterator& operator++ () { cur=_rev ? (cur->*Ptrs).prev : (cur->*Ptrs).next; return *this; }
-   embedded_list_iterator& operator-- () { cur=_rev ? (cur->*Ptrs).next : (cur->*Ptrs).prev; return *this; }
+   embedded_list_iterator& operator++ () { cur = reversed_ ? (cur->*Ptrs).prev : (cur->*Ptrs).next; return *this; }
+   embedded_list_iterator& operator-- () { cur = reversed_ ? (cur->*Ptrs).next : (cur->*Ptrs).prev; return *this; }
    const embedded_list_iterator operator++ (int) { embedded_list_iterator copy(*this); operator++(); return copy; }
    const embedded_list_iterator operator-- (int) { embedded_list_iterator copy(*this); operator--(); return copy; }
 
-   template <bool _is_const2, bool _rev2>
-   bool operator== (const embedded_list_iterator<Class,Ptrs,_is_const2,_rev2>& it) const { return cur==it.cur; }
-   template <bool _is_const2, bool _rev2>
-   bool operator!= (const embedded_list_iterator<Class,Ptrs,_is_const2,_rev2>& it) const { return cur!=it.cur; }
+   template <bool is_const2, bool rev2>
+   bool operator== (const embedded_list_iterator<Class, Ptrs, is_const2, rev2>& it) const { return cur==it.cur; }
+   template <bool is_const2, bool rev2>
+   bool operator!= (const embedded_list_iterator<Class, Ptrs, is_const2, rev2>& it) const { return cur!=it.cur; }
 protected:
    pointer cur;
    template <typename Class2, ptr_pair<Class2> Class2::* Ptrs2, bool,bool> friend class embedded_list_iterator;
@@ -117,8 +117,8 @@ public:
    const_reference front() const { return *head.next; }
    const_reference back() const { return *head.prev; }
 
-   bool empty() const { return head.next==end_node(); }
-   int size() const { return count_it(entire(*this)); }
+   bool empty() const { return head.next == end_node(); }
+   Int size() const { return count_it(entire(*this)); }
 
    void push_front(Class& obj)
    {

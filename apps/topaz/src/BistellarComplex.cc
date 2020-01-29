@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,11 +29,11 @@ void BistellarComplex::init(const Lattice<BasicDecoration>& HD)
 
       if (!closed) {
          // compute C + cone(bound(C))
-         std::list< Set<int> > S;
+         std::list<Set<Int>> S;
 
          for (const auto f : HD.nodes_of_rank(HD.rank()-1)) {
             S.push_back(HD.face(f));
-            const int w = HD.face(f).back();
+            const Int w = HD.face(f).back();
             if (w >= verts)
                verts = w+1;
          }
@@ -42,22 +42,22 @@ void BistellarComplex::init(const Lattice<BasicDecoration>& HD)
 
          for (auto b=entire(B); !b.at_end(); ++b)
             S.push_back(b->face+apex);
-         const Lattice<BasicDecoration> new_HD = hasse_diagram_from_facets(Array<Set<int> >(S));
+         const Lattice<BasicDecoration> new_HD = hasse_diagram_from_facets(Array<Set<Int>>(S));
 
          // compute raw options
-         for (int d=0; d<=dim; ++d) {
+         for (Int d = 0; d <= dim; ++d) {
             for (const auto n : new_HD.nodes_of_rank(d+1)) {
-               const Set<int>& face = new_HD.face(n);
+               const Set<Int>& face = new_HD.face(n);
 
                if (d==0 && face.front() == apex)  // the apex is not an option
                   continue;
 
                if (d==dim) {  // each facet is an option
                   the_facets.insert(face);
-                  raw_options[d].insert(face, Set<int>());
+                  raw_options[d].insert(face, Set<Int>());
 
                } else {
-                  Set<int> V;
+                  Set<Int> V;
                   accumulate_in(link_in_HD(new_HD, n), operations::add(), V);
 
                   if (V.size()+face.size()==dim+2)  // face is raw option
@@ -69,22 +69,22 @@ void BistellarComplex::init(const Lattice<BasicDecoration>& HD)
    }
 
    if (closed) {
-      for (int d=0; d<=dim; ++d) {
+      for (Int d = 0; d <= dim; ++d) {
          for (const auto n : HD.nodes_of_rank(d+1)) {
-            const Set<int> face=HD.face(n);
+            const Set<Int> face = HD.face(n);
 
             if (d==0) {    // face is a vertex
-               const int v = face.front();
+               const Int v = face.front();
                if (v >= verts)
                   verts = v+1;
             }
 
             if (d==dim) {  // each facet is an option
                the_facets.insert(face);
-               raw_options[d].insert(face, Set<int>());
+               raw_options[d].insert(face, Set<Int>());
 
             } else {
-               Set<int> V;
+               Set<Int> V;
                accumulate_in(link_in_HD(HD, n), operations::add(), V);
 
                if (V.size()+face.size()==dim+2)   // face is raw option
@@ -95,23 +95,23 @@ void BistellarComplex::init(const Lattice<BasicDecoration>& HD)
    }
 }
 
-int BistellarComplex::find_move(const int dim_min, const int dim_max)
+Int BistellarComplex::find_move(const Int dim_min, const Int dim_max)
 {
-   for (int d=dim_min; d<=dim_max; ++d) {
+   for (Int d = dim_min; d <= dim_max; ++d) {
       const RandomPermutation< Array<option> > P(raw_options[d].options(), random_source);
 
-      for (RandomPermutation< Array<option> >::const_iterator opt=P.begin(); !opt.at_end(); ++opt)
-         if ( (allow_rev_move || incl(opt->first,rev_move)!=0) &&
-              (d==dim || the_facets.findSupersets(opt->second).at_end()) ) {
+      for (auto opt = P.begin(); !opt.at_end(); ++opt)
+         if ((allow_rev_move || incl(opt->first,rev_move) != 0) &&
+             (d == dim || the_facets.findSupersets(opt->second).at_end())) {
             next_move = *opt;
-            return opt->first.size() - 1;
+            return opt->first.size()-1;
          }
    }
 
    throw std::runtime_error("BistellarComplex: No move found.");
 }
 
-bool BistellarComplex::is_option(const Set<int>& f, Set<int>& V) const
+bool BistellarComplex::is_option(const Set<Int>& f, Set<Int>& V) const
 {
    if (!closed && f.size()==1 && f.front()==apex)  // apex is not an option
       return false;
@@ -126,11 +126,11 @@ bool BistellarComplex::is_option(const Set<int>& f, Set<int>& V) const
 
 void BistellarComplex::execute_move()
 {
-   const Set<int> face = next_move.first;
-   const int face_dim = face.size()-1;
+   const Set<Int> face = next_move.first;
+   const Int face_dim = face.size()-1;
    if (face_dim==dim)  // allocate an index for the new vertex
       next_move.second = scalar2set(verts++);
-   const Set<int> co_face= next_move.second;
+   const Set<Int> co_face = next_move.second;
    if (!allow_rev_move)  rev_move = co_face;
 
    if (verbose)
@@ -146,35 +146,35 @@ void BistellarComplex::execute_move()
    }
 
    // remove star(face) from raw_options and the_facets
-   std::list< Set<int> > star;
+   std::list<Set<Int>> star;
    the_facets.eraseSupersets(face, std::back_inserter(star));
 
-   Lattice<BasicDecoration> star_HD = hasse_diagram_from_facets(Array<Set<int> >(star));
-   for (int d=0; d<=dim; ++d)
+   Lattice<BasicDecoration> star_HD = hasse_diagram_from_facets(Array<Set<Int>>(star));
+   for (Int d = 0; d <= dim; ++d)
       for (const auto n : star_HD.nodes_of_rank(d+1))
          raw_options[d].remove(star_HD.face(n));
 
    // add co_face * boundary(face)
-   std::list< Set<int> > new_facets;
+   std::list<Set<Int>> new_facets;
    for (auto w=entire(face); !w.at_end(); ++w) {
-      Set<int> f=face;
-      f-=*w;
-      f+=co_face;
+      Set<Int> f = face;
+      f -= *w;
+      f += co_face;
 
       the_facets.insert(f);
       new_facets.push_back(f);
    }
 
    // find new raw_options
-   Lattice<BasicDecoration> local_HD = hasse_diagram_from_facets(Array<Set<int> >(new_facets));
-   for (int d=0; d<=dim; ++d)
+   Lattice<BasicDecoration> local_HD = hasse_diagram_from_facets(Array<Set<Int>>(new_facets));
+   for (Int d = 0; d <= dim; ++d)
       for (const auto n : local_HD.nodes_of_rank(d+1)) {
-         const Set<int>& f = local_HD.face(n);
+         const Set<Int>& f = local_HD.face(n);
 
          if (d==dim) {
-            raw_options[d].insert(f, Set<int>());
+            raw_options[d].insert(f, Set<Int>());
          } else {
-            Set<int> V;
+            Set<Int> V;
             if (is_option(f,V))
                raw_options[d].insert(f,V);
          }

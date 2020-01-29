@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,11 +23,11 @@
 
 namespace polymake { namespace group {
 
-    template <typename Scalar>
-    Array<Array<int> > col_to_row_action(const Matrix<Scalar>& M, const Array<Array<int> > G) {
-      return rows_induced_from_cols(M,G);
-    }
-    
+template <typename Scalar>
+Array<Array<Int>> col_to_row_action(const Matrix<Scalar>& M, const Array<Array<Int>>& G)
+{
+   return rows_induced_from_cols(M, G);
+}
 
 UserFunctionTemplate4perl("#@category Symmetry"
                   "# If the action of some permutations on the entries of the rows "
@@ -39,22 +39,10 @@ UserFunctionTemplate4perl("#@category Symmetry"
 		  "# @param Array of permutations" 
                   "# @return Array of permutations",
                   "col_to_row_action<Scalar>(Matrix<Scalar>,Array)");
-}  }
-
-
+} }
 
 // Local Variables:
 // mode:C++
 // c-basic-offset:3
 // indent-tabs-mode:nil
 // End:
-
-
-
-
-
-
-
-
-
-

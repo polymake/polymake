@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,19 +24,20 @@
 namespace polymake { namespace topaz {
 
    // returns (facets, vertex_map)
-perl::ListReturn boundary_of_pseudo_manifold_client(perl::Object sc)
+ListReturn boundary_of_pseudo_manifold_client(BigObject sc)
 {
    Lattice<BasicDecoration> HD = sc.give("HASSE_DIAGRAM");
    auto faces = IncidenceMatrix<>{ attach_member_accessor( boundary_of_pseudo_manifold(HD),
-         ptr2type<BasicDecoration, Set<int>, &BasicDecoration::face>()) };
+         ptr2type<BasicDecoration, Set<Int>, &BasicDecoration::face>()) };
 
-   perl::ListReturn result;
+   ListReturn result;
    auto sq = squeeze_faces(faces);
    result << sq.first << sq.second;
    return result;
 }
 
-std::pair< Array<Set<int>>, Array<int> > squeeze_faces_client(IncidenceMatrix<> in){
+std::pair<Array<Set<Int>>, Array<Int>> squeeze_faces_client(IncidenceMatrix<> in)
+{
    return squeeze_faces(in);
 }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -33,29 +33,29 @@ using graph::lattice::Sequential;
 using graph::lattice::Nonsequential;
 
 // Compute full Hasse diagram of a cone
-perl::Object hasse_diagram(const IncidenceMatrix<>& VIF, int cone_dim);
+BigObject hasse_diagram(const IncidenceMatrix<>& VIF, Int cone_dim);
 
 //Compute Hasse diagram of bounded faces of a polytope (possibly up to a dimension)
 Lattice<BasicDecoration, Nonsequential> bounded_hasse_diagram_computation(
   const IncidenceMatrix<>& VIF,
-  const Set<int>& far_face,
-  const int boundary_dim = -1);
+  const Set<Int>& far_face,
+  const Int boundary_dim = -1);
 
-perl::Object bounded_hasse_diagram(const IncidenceMatrix<>& VIF,
-                                   const Set<int>& far_face,
-                                   const int boundary_dim = -1);
+BigObject bounded_hasse_diagram(const IncidenceMatrix<>& VIF,
+                                   const Set<Int>& far_face,
+                                   const Int boundary_dim = -1);
 
-perl::Object rank_bounded_hasse_diagram(const IncidenceMatrix<>& VIF,
-                                        int cone_dim, int boundary_dim, bool from_above);
+BigObject rank_bounded_hasse_diagram(const IncidenceMatrix<>& VIF,
+                                        Int cone_dim, Int boundary_dim, bool from_above);
 
 inline
-perl::Object lower_hasse_diagram(const IncidenceMatrix<>& VIF, int boundary_dim)
+BigObject lower_hasse_diagram(const IncidenceMatrix<>& VIF, Int boundary_dim)
 {
   return rank_bounded_hasse_diagram(VIF, 0,boundary_dim, false);
 }
 
 inline
-perl::Object upper_hasse_diagram(const IncidenceMatrix<>& VIF, int cone_dim, int boundary_dim)
+BigObject upper_hasse_diagram(const IncidenceMatrix<>& VIF, Int cone_dim, Int boundary_dim)
 {
   return rank_bounded_hasse_diagram(VIF, cone_dim, boundary_dim, true);
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,25 +23,25 @@
 
 namespace polymake { namespace polytope {
 
-perl::ListReturn triang_boundary(const Array< Set<int> >& triang, const IncidenceMatrix<>& vif)
+ListReturn triang_boundary(const Array<Set<Int>>& triang, const IncidenceMatrix<>& vif)
 {
-  IncidenceMatrix<> VIF=vif;
-  const int dim=triang[0].size()-1;             // #vertices(simplex) == dim+1
-  std::vector<Set<int> > triang_boundary;
-  Array<Set<int> > facet_triag(VIF.rows());
+  IncidenceMatrix<> VIF = vif;
+  const Int dim = triang[0].size()-1;             // #vertices(simplex) == dim+1
+  std::vector<Set<Int>> triang_boundary;
+  Array<Set<Int>> facet_triag(VIF.rows());
   // simplicial facets need not be triangulated
-  int n_simplices=0;
-  for (auto f=entire(rows(VIF)); !f.at_end(); ++f)
+  Int n_simplices = 0;
+  for (auto f = entire(rows(VIF)); !f.at_end(); ++f)
     if (f->size() == dim) {
       triang_boundary.push_back(*f);
       facet_triag[f->index()].push_back(n_simplices++);
       f->clear();
     }
      
-  for (auto t=entire(triang); !t.at_end(); ++t) {
-    for (auto face=entire(all_subsets_less_1(*t)); !face.at_end(); ++face) {
-      auto v=entire(*face);
-      Set<int> common_facets=VIF.col(*v);
+  for (auto t = entire(triang); !t.at_end(); ++t) {
+    for (auto face = entire(all_subsets_less_1(*t)); !face.at_end(); ++face) {
+      auto v = entire(*face);
+      Set<Int> common_facets=VIF.col(*v);
       for (++v; !v.at_end() && !common_facets.empty(); ++v)
         common_facets *= VIF.col(*v);
       if (!common_facets.empty()) {
@@ -52,7 +52,7 @@ perl::ListReturn triang_boundary(const Array< Set<int> >& triang, const Incidenc
   }
 
   auto sq = polymake::topaz::squeeze_faces(IncidenceMatrix<>(triang_boundary));
-  perl::ListReturn result;
+  ListReturn result;
   result << sq.first << sq.second
          << facet_triag;
   return result;

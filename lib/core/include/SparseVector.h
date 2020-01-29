@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -41,7 +41,7 @@ public:
 template <typename NodeRef>
 struct sparse_vector_index_accessor {
    typedef NodeRef argument_type;
-   typedef const int result_type;
+   typedef Int result_type;
    result_type operator() (NodeRef n) const { return n.key_and_data.first; }
 };
 
@@ -55,16 +55,16 @@ struct sparse_vector_index_accessor {
 template <typename E>
 class SparseVector
    : public modified_tree< SparseVector<E>,
-                           mlist< ContainerTag< AVL::tree< AVL::traits<int, E> > >,
+                           mlist< ContainerTag< AVL::tree< AVL::traits<Int, E> > >,
                                   OperationTag< pair< BuildUnary<sparse_vector_accessor>,
                                                       BuildUnary<sparse_vector_index_accessor> > > > >
    , public GenericVector<SparseVector<E>, E> {
    typedef modified_tree<SparseVector> base_t;
 protected:
-   using tree_type = AVL::tree< AVL::traits<int, E> >;
+   using tree_type = AVL::tree< AVL::traits<Int, E> >;
    struct impl {
       tree_type tree;
-      int d;
+      Int d;
 
       impl() : d(0) {}
       void clear() { d=0; tree.clear(); }
@@ -80,7 +80,7 @@ protected:
    typedef sparse_proxy_base<SparseVector> proxy_base;
 
    template <typename Iterator>
-   void init(Iterator&& src, int dim_arg)
+   void init(Iterator&& src, Int dim_arg)
    {
       data.get()->d=dim_arg;
       data.get()->tree.assign(std::forward<Iterator>(src));
@@ -96,18 +96,18 @@ public:
    const tree_type& get_container() const { return data->tree; }
 
    /// tell the current vector dimension, i.e., the number of non-zero elements (may differ from size)
-   int dim() const { return data->d; }
+   Int dim() const { return data->d; }
 
    /// create as empty
    SparseVector() {}
 
    /// create vector of length n, (implicitly) initialize all elements with 0
-   explicit SparseVector(int dim_arg) { data.get()->d=dim_arg; }
+   explicit SparseVector(Int dim_arg) { data.get()->d=dim_arg; }
 
    /** Create a vector of dimension n, initialize the elements from a data sequence.
-       Iterator can be either indexed, or supply index-value pairs, e.g. std::pair<int,ElementType> or a plain sequence of data items. In the latter case zero elements are filtered out.*/
+       Iterator can be either indexed, or supply index-value pairs, e.g. std::pair<Int, ElementType> or a plain sequence of data items. In the latter case zero elements are filtered out.*/
    template <typename Iterator, bool enabled=construct_sparse_iterator<Iterator, E>::enabled>
-   SparseVector(int dim_arg, Iterator&& src)
+   SparseVector(Int dim_arg, Iterator&& src)
    {
       init(construct_sparse_iterator<Iterator, E>()(std::forward<Iterator>(src), dim_arg), dim_arg);
    }
@@ -126,14 +126,14 @@ public:
    /// Create a vector as a copy of another vector with a different element type.
    template <typename Vector2, typename E2>
    explicit SparseVector(const GenericVector<Vector2, E2>& v,
-                         std::enable_if_t<can_initialize<E2, E>::value, void**> =nullptr)
+                         std::enable_if_t<can_initialize<E2, E>::value, std::nullptr_t> = nullptr)
    {
       init(make_converting_iterator<E>(ensure(v.top(), pure_sparse()).begin()), v.dim());
    }
 
    /// Create a vector from a list of values.
    /// Zeroes are filtered out automatically.
-   template <typename E2, typename=std::enable_if_t<can_initialize<E2, E>::value>>
+   template <typename E2, typename = std::enable_if_t<can_initialize<E2, E>::value>>
    SparseVector(std::initializer_list<E2> l)
    {
       init(make_converting_iterator<E>(ensure(l, pure_sparse()).begin()), l.size());
@@ -142,7 +142,7 @@ public:
    /// Create a vector from a list of (index, value) pairs.
    /// Parameter @a d specifies the dimension.
    /// Indices don't have to come in ascending order; zero values are not detected.
-   SparseVector(int d, std::initializer_list<std::pair<int, E>> l)
+   SparseVector(Int d, std::initializer_list<std::pair<Int, E>> l)
    {
       init(entire(l), d);
    }
@@ -151,7 +151,7 @@ public:
    void clear() { data.apply(shared_clear()); }
 
    /// change the size, initialize appended elements with default constructor
-   void resize(int n)
+   void resize(Int n)
    {
       if (n < data->d) {
          typename base_t::reverse_iterator i=this->rbegin();
@@ -171,7 +171,7 @@ public:
    }
 
    /// random access, may cost O(log(n)) time; \ref vector_performance
-   reference operator[] (int i)
+   reference operator[] (Int i)
    {
       if (POLYMAKE_DEBUG) {
          if (i<0 || i>=dim())
@@ -181,7 +181,7 @@ public:
    }
 
    /// constant random access, may cost O(log(n)) time; \ref vector_performance
-   const E& operator[] (int i) const
+   const E& operator[] (Int i) const
    {
       if (POLYMAKE_DEBUG) {
          if (i<0 || i>=dim())
@@ -192,7 +192,7 @@ public:
 
    /// append a GenericVector
    template <typename Vector2, typename E2,
-             typename=std::enable_if_t<can_initialize<E2, E>::value>>
+             typename = std::enable_if_t<can_initialize<E2, E>::value>>
    SparseVector& operator|= (const GenericVector<Vector2, E2>& v)
    {
       append(v.dim(), make_converting_iterator<E2>(ensure(v.top(), pure_sparse()).begin()));
@@ -201,7 +201,7 @@ public:
 
    /// append an element
    template <typename E2,
-             typename=std::enable_if_t<can_initialize<E2, E>::value>>
+             typename = std::enable_if_t<can_initialize<E2, E>::value>>
    SparseVector& operator|= (E2&& r)
    {
       if (!is_zero(r)) data->tree.push_back(data->d, std::forward<E2>(r));
@@ -212,7 +212,7 @@ public:
    /// append a list of elements
    /// zeroes are filtered out automatically
    template <typename E2,
-             typename=std::enable_if_t<can_initialize<E2, E>::value>>
+             typename = std::enable_if_t<can_initialize<E2, E>::value>>
    SparseVector& operator|= (std::initializer_list<E2> l)
    {
       append(l.size(), make_converting_iterator<E2>(ensure(l, pure_sparse()).begin()));
@@ -259,10 +259,10 @@ protected:
    }
 
    template <typename Iterator>
-   void append(int added, Iterator&& src)
+   void append(Int added, Iterator&& src)
    {
-      const int d=data->d;
-      tree_type& t=data->tree;
+      const Int d = data->d;
+      tree_type& t = data->tree;
       for (; !src.at_end();  ++src)
          t.push_back(src.index()+d, *src);
       data->d += added;
@@ -274,8 +274,8 @@ protected:
       data->tree.clear();
       if (!is_zero(x)) {
          tree_type& t=data.get()->tree;
-         const int d=data.get()->d;
-         for (int i=0; i<d; ++i) t.push_back(i,x);
+         const Int d = data.get()->d;
+         for (Int i = 0; i < d; ++i) t.push_back(i,x);
       }
    }
 };
@@ -308,11 +308,11 @@ permuted_inv(const GenericVector<TVector, E>& v, const Permutation& perm)
          throw std::runtime_error("permuted_inv - dimension mismatch");
    }
    SparseVector<E> result(v.dim());
-   int pos=0;
-   auto p=perm.begin();
-   for (auto e=entire(v.top());  !e.at_end();  ++e) {
-      std::advance(p, e.index()-pos);
-      pos=e.index();
+   Int pos = 0;
+   auto p = perm.begin();
+   for (auto e = entire(v.top());  !e.at_end();  ++e) {
+      std::advance(p, e.index() - pos);
+      pos = e.index();
       result.insert(*p,*e);
    }
    return result;

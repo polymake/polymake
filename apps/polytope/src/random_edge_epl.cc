@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,27 +26,27 @@ namespace polymake { namespace polytope {
 
 Vector<Rational> random_edge_epl(const Graph<Directed>& G)
 {
-   const int nodes=G.nodes();
+   const Int nodes = G.nodes();
 
-   std::vector<int> outgoing_edges(nodes);
+   std::vector<Int> outgoing_edges(nodes);
    Vector<Rational> average_path_length(nodes);
-   std::list<int> node_queue;
+   std::list<Int> node_queue;
 
-   for (int n = 0; n < nodes; ++n)          // initialize all nodes
+   for (Int n = 0; n < nodes; ++n)          // initialize all nodes
       if (!(outgoing_edges[n] = G.out_degree(n)))
          node_queue.push_back(n);
 
    while (!node_queue.empty()) {
-      const int n = node_queue.front();
+      const Int n = node_queue.front();
       node_queue.pop_front();
       Rational APL(0);
       for (auto e = entire(G.out_edges(n));  !e.at_end();  ++e)
          APL += average_path_length[e.to_node()];
 
-      if (G.out_degree(n)) average_path_length[n] = APL/G.out_degree(n) + 1;
+      if (G.out_degree(n)) average_path_length[n] = APL/G.out_degree(n)+1;
 
       for (auto e = entire(G.in_edges(n));  !e.at_end();  ++e) {
-         const int f = e.from_node();
+         const Int f = e.from_node();
          if (!(--outgoing_edges[f])) node_queue.push_back(f);
       }
    }

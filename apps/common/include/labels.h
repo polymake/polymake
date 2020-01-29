@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,16 +25,16 @@ namespace polymake { namespace common {
 
 //! Read a `labels' property
 //! Generate labels from integrals 0..n_labels-1 if the property does not exist
-std::vector<std::string> read_labels(const perl::Object& p, AnyString label_prop, int n_labels);
+std::vector<std::string> read_labels(const BigObject& p, AnyString label_prop, Int n_labels);
 
 //! Read a `labels' property into a properly sized container
 template <typename Container>
 std::enable_if_t<pm::isomorphic_to_container_of<pure_type_t<Container>, std::string>::value>
-read_labels(const perl::Object& p, AnyString label_prop, Container&& labels)
+read_labels(const BigObject& p, AnyString label_prop, Container&& labels)
 {
    if (!(p.lookup(label_prop) >> labels)) {
-      int i=0;
-      for (auto l=entire(labels); !l.at_end(); ++l, ++i)
+      Int i = 0;
+      for (auto l = entire(labels); !l.at_end(); ++l, ++i)
          *l = std::to_string(i);
    }
 }

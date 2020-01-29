@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,16 +26,16 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object permutahedron(int d, perl::OptionSet options)
+BigObject permutahedron(Int d, OptionSet options)
 {
    if (d < 2) {
       throw std::runtime_error("permutahedron: dimension >= 2 required\n");
    }
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.set_description() << "permutahedron of dimension " << d << endl;
    // enumerate the (d+1)! vertices of the d-permutahedron
-   Matrix<Rational> V(int(Integer::fac(d+1)), d+2);
-   Vector<int> perm(d+1, sequence(1).begin());
+   Matrix<Rational> V(Int(Integer::fac(d+1)), d+2);
+   Vector<Int> perm(d+1, sequence(1).begin());
 
    Rows<Matrix<Rational>>::iterator r=rows(V).begin();
    do {
@@ -46,23 +46,22 @@ perl::Object permutahedron(int d, perl::OptionSet options)
 // generate the combinatorial symmetry group on the coordinates
    const bool group_flag = options["group"];
    if ( group_flag ) {
-      Array<Array<int>> gens(2);
-      Array<int> gen{sequence(0,d+1)};
+      Array<Array<Int>> gens(2);
+      Array<Int> gen{sequence(0,d+1)};
       gen[0]=1;
       gen[1]=0;
       gens[0]=gen;
 
-
-      gen[0]=d;
-      for (int j=1; j<=d; ++j) {
-         gen[j]=j-1;
+      gen[0] = d;
+      for (Int j = 1; j <= d; ++j) {
+         gen[j] = j-1;
       }
-      gens[1]=gen;
+      gens[1] = gen;
 
-      perl::Object a("group::PermutationAction");
+      BigObject a("group::PermutationAction");
       a.take("GENERATORS") << gens;
 
-      perl::Object g("group::Group");
+      BigObject g("group::Group");
       g.set_description() << "full combinatorial group on coordinates of " << d << "-dim permutahedron" << endl;
       g.set_name("fullCombinatorialGroupOnCoords");
 
@@ -79,28 +78,30 @@ perl::Object permutahedron(int d, perl::OptionSet options)
    return p;
 }
 
-perl::Object signed_permutahedron(int d, perl::OptionSet options)
+BigObject signed_permutahedron(Int d, OptionSet options)
 {
-   if (d < 1) {
+   if (d < 1)
       throw std::runtime_error("permutahedron: dimension >= 2 required\n");
-   }
-   perl::Object p("Polytope<Rational>");
+   if (size_t(d) >= sizeof(Int)*8-1)
+      throw std::runtime_error("permutahedron: dimension too high");
+
+   BigObject p("Polytope<Rational>");
    p.set_description() << "signed permutahedron of dimension " << d << endl;
-   const int n(Integer::fac(d) << d);
+   const Int n(Integer::fac(d) << d);
 
    // enumerate the d! vertices of the (d-1)-permutahedron
    Matrix<Rational> V(n, d+1);
-   Vector<int> perm(d, sequence(1).begin());
+   Vector<Int> perm(d, sequence(1).begin());
 
    Rows<Matrix<Rational>>::iterator r=rows(V).begin();
-   const int m=1<<d;
+   const Int m = 1L<<d;
    do {
-      Vector<int> signed_perm(perm);
-      for (int i=0; i<m; ++i) {
+      Vector<Int> signed_perm(perm);
+      for (Int i = 0; i < m; ++i) {
          *r = 1 | signed_perm;
          ++r;
          // add one "bit"
-         for (int k=0; k<d; ++k) {
+         for (Int k = 0; k < d; ++k) {
             if (signed_perm[k] < 0)
                signed_perm[k] *= -1;
             else {
@@ -113,19 +114,19 @@ perl::Object signed_permutahedron(int d, perl::OptionSet options)
 
    // generate the combinatorial symmetry group on the coordinates
    const bool group_flag = options["group"];
-   if ( group_flag ) {
-      Array<int> gen{sequence(0,n)};
+   if (group_flag) {
+      Array<Int> gen{sequence(0,n)};
 
       //for d=2, there is only one generator for the symmetric group
-      int n_sym = (d==2) ? 1 : 2;
+      const Int n_sym = d == 2 ? 1 : 2;
 
-      Array<Array<int>> gens(d+n_sym);
+      Array<Array<Int>> gens(d+n_sym);
 
       //create generators for swapping signs for each coordinate
-      for(int i=0; i<d; ++i){
-         gen=sequence(0,n);
-         for(int j=0; j<n; ++j){
-            if(gen[j]==j){
+      for (Int i = 0; i < d; ++i){
+         gen = sequence(0, n);
+         for (Int j = 0; j < n; ++j) {
+            if (gen[j] == j){
                gen[j] = j+pow(2,i);
                gen[j+pow(2,i)] = j;
             }
@@ -134,21 +135,21 @@ perl::Object signed_permutahedron(int d, perl::OptionSet options)
       }
 
       //create generators of the symmetric group (on coordinates!)
-      Array<Array<int>> c_gens(2);
-      gen=sequence(0,d+1);
-      gen[1]=2;
-      gen[2]=1;
-      c_gens[0]=gen;
+      Array<Array<Int>> c_gens(2);
+      gen = sequence(0,d+1);
+      gen[1] = 2;
+      gen[2] = 1;
+      c_gens[0] = gen;
 
-      gen[1]=d;
-      for (int j=2; j<=d; ++j) {
-         gen[j]=j-1;
+      gen[1] = d;
+      for (Int j = 2; j <= d; ++j) {
+         gen[j] = j-1;
       }
-      c_gens[1]=gen;
+      c_gens[1] = gen;
 
       //compute the generators induced on the VERTICES
-      hash_map<Vector<Rational>, int> e;
-      Array<Array<int>> sym_gens =
+      hash_map<Vector<Rational>, Int> e;
+      Array<Array<Int>> sym_gens =
          polymake::group::induced_permutations_impl<pm::operations::group::on_container>
          (c_gens, n, entire(rows(V)), e);
 
@@ -156,10 +157,10 @@ perl::Object signed_permutahedron(int d, perl::OptionSet options)
       if(n_sym == 2)
          gens[d+1] = sym_gens[1];
 
-      perl::Object a("group::PermutationAction");
+      BigObject a("group::PermutationAction");
       a.take("GENERATORS") << gens;
 
-      perl::Object g("group::Group");
+      BigObject g("group::Group");
       g.set_description() << "full combinatorial group on vertices of " << d << "-dim signed permutahedron" << endl;
       g.set_name("fullCombinatorialGroupOnVertices");
 

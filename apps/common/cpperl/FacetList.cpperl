@@ -1,10 +1,10 @@
 {"app": "common",
  "inst": [
-  {"class": "FacetList", "include": ["polymake/FacetList.h"], "pkg": "Polymake::common::FacetList"},
+  {"class": "FacetList", "guard_name": "CORE_WRAPPERS_FacetList", "include": ["polymake/FacetList.h"], "pkg": "Polymake::common::FacetList", "wrapper_file": "include/core-wrappers/polymake/FacetList.h"},
   {"args": ["FacetList"], "include": ["polymake/FacetList.h"], "op": "new", "sig": "new"},
   {"args": ["FacetList", "perl::Canned<const FacetList&>"], "include": ["polymake/FacetList.h"], "op": "new", "sig": "new.X"},
   {"args": ["FacetList", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>"], "include": ["polymake/FacetList.h", "polymake/IncidenceMatrix.h"], "op": "new", "sig": "new.X"},
-  {"args": ["FacetList", "perl::Canned<const Array<Set<int>>&>"], "include": ["polymake/Array.h", "polymake/FacetList.h", "polymake/Set.h"], "op": "convert", "ret": "empty", "sig": "convert:O"},
+  {"args": ["FacetList", "perl::Canned<const Array<Set<Int>>&>"], "include": ["polymake/Array.h", "polymake/FacetList.h", "polymake/Set.h"], "op": "convert", "ret": "empty", "sig": "convert:O"},
   {"args": ["FacetList", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>"], "include": ["polymake/FacetList.h", "polymake/IncidenceMatrix.h"], "op": "convert", "ret": "empty", "sig": "convert:O"},
  null ],
 "version": 3}

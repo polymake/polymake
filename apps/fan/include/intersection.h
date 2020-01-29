@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,12 +31,12 @@ namespace polymake { namespace fan {
 namespace {
 
 template <typename Scalar, typename TMatrix>
-Set<int>
-indices_of(const GenericMatrix<TMatrix,Scalar>& rays,
-           hash_map<const Vector<Scalar>, int>& index_of,
-           int& i)
+Set<Int>
+indices_of(const GenericMatrix<TMatrix, Scalar>& rays,
+           hash_map<Vector<Scalar>, Int>& index_of,
+           Int& i)
 {
-   Set<int> indices_of;
+   Set<Int> indices_of;
    for (auto rit = entire(rows(rays)); !rit.at_end(); ++rit) {
       Vector<Scalar> v(*rit);
       polytope::canonicalize_oriented(entire(v));
@@ -57,12 +57,12 @@ rays_of_intersection(const GenericMatrix<TMatrix,Scalar>& V,
                      const Matrix<Scalar>& intersection_lineality,
                      const Matrix<Scalar>& H)
 {
-   perl::Object C("Cone", mlist<Scalar>());
+   BigObject C("Cone", mlist<Scalar>());
    C.take("INPUT_RAYS") << Matrix<Scalar>(V);
    C.take("INPUT_LINEALITY") << intersection_lineality;
    const Matrix<Scalar> facets = C.give("FACETS");
 
-   perl::Object D("Cone", mlist<Scalar>());
+   BigObject D("Cone", mlist<Scalar>());
    D.take("INEQUALITIES") << facets;
    D.take("EQUATIONS") << H;
    Matrix<Scalar> rays = D.give("RAYS");

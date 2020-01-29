@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,29 +29,29 @@ namespace polymake { namespace topaz {
 namespace {
   
 // prodces a triangulated cube
-std::list< Set<int> > triang_cube(const int lower_corner, const Array<int>& x_diff)
+std::list<Set<Int>> triang_cube(const Int lower_corner, const Array<Int>& x_diff)
 {
-  std::list< Set<int> > cube;
-  const int dim = x_diff.size();
+  std::list<Set<Int>> cube;
+  const Int dim = x_diff.size();
   
-  Array<int> path(dim);
-  for (int i=0; i<dim; ++i)
+  Array<Int> path(dim);
+  for (Int i = 0; i < dim; ++i)
     path[i] = i;
   
-  // iterate over all monotonous paths from vertex 0 to vertex 2^dim - 1
+  // iterate over all monotonous paths from vertex 0 to vertex 2^dim-1
   while (true) {
-    Set<int> simplex;
+    Set<Int> simplex;
     simplex += lower_corner;
     
     // follow path
-    int vertex = 0;
-    for (int i=0; i<dim; ++i) {
-      vertex |= 1<<path[i];
+    Int vertex = 0;
+    for (Int i = 0; i < dim; ++i) {
+      vertex |= 1L << path[i];
       
       // compute coordinates in the cube complex
-      int corner = lower_corner;
-      for (int j=0; j<dim; ++j)
-        if ((vertex&(1<<j)) != 0)
+      Int corner = lower_corner;
+      for (Int j = 0; j < dim; ++j)
+        if ((vertex & (1L << j)) != 0)
           corner += x_diff[dim-j-1];
       simplex += corner;
     }
@@ -68,32 +68,32 @@ std::list< Set<int> > triang_cube(const int lower_corner, const Array<int>& x_di
 
 }
 
-perl::Object cube_complex(Array<int> x_param)
+BigObject cube_complex(Array<Int> x_param)
 {
   // adjust x_param
-  for (int i=0; i<x_param.size(); ++i)
+  for (Int i = 0; i < x_param.size(); ++i)
     ++x_param[i];
 
-  const int dim = x_param.size();
-  int n = x_param[dim-1];
-  Array<int> x_diff(dim);
+  const Int dim = x_param.size();
+  Int n = x_param[dim-1];
+  Array<Int> x_diff(dim);
   x_diff[dim-1] = 1;
   
-  for (int i=dim-2; i>=0; --i) {
+  for (Int i = dim-2; i >= 0; --i) {
     x_diff[i] = x_diff[i+1] * x_param[i+1];
     n *= x_param[i];
   }
   
-  perl::Object p("GeometricSimplicialComplex<Rational>");
+  BigObject p("GeometricSimplicialComplex<Rational>");
   std::ostringstream description;
-  for (int i=0; i<dim-1; ++i)
+  for (Int i = 0; i < dim-1; ++i)
     description << x_param[i]-1 << "x";
   description << x_param[dim-1]-1 << " Pile of " << dim << "-dimensional triangulated cubes." << endl;
   p.set_description() << description.str();
   
-  Matrix<int> Coordinates(n,dim);
-  std::list< Set<int> > Pile;
-  int corner=0;
+  Matrix<Int> Coordinates(n, dim);
+  std::list<Set<Int>> Pile;
+  Int corner = 0;
   for (MultiDimCounter<false> counter(x_param); !counter.at_end(); ++corner, ++counter) {     
 
     // compute coordinates
@@ -101,14 +101,14 @@ perl::Object cube_complex(Array<int> x_param)
 
     // compute cube
     bool cube_corner = true;
-    for (int i=0; i<dim; ++i)
+    for (Int i = 0; i < dim; ++i)
       if ((*counter)[i] == x_param[i]-1) {
         cube_corner = false;
         break;
       }
     
     if (cube_corner) {
-      std::list< Set<int> > cube = triang_cube(corner, x_diff);
+      std::list<Set<Int>> cube = triang_cube(corner, x_diff);
       Pile.splice(Pile.end(), cube);
     }
   }

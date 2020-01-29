@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,7 +23,7 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object check_poly(const IncidenceMatrix<>& VIF, perl::OptionSet options)
+BigObject check_poly(const IncidenceMatrix<>& VIF, OptionSet options)
 {
    // for all comments below we assume that we read VERTICES_IN_FACETS;
    // otherwise all notions have to be dualized
@@ -31,17 +31,17 @@ perl::Object check_poly(const IncidenceMatrix<>& VIF, perl::OptionSet options)
    const bool primal = !options["dual"];
    const bool verbose = options["verbose"];
 
-   const int n= primal ? VIF.rows() : VIF.cols(),       // number of facets
-      v= primal ? VIF.cols() : VIF.rows();      // number of vertices
+   const Int n = primal ? VIF.rows() : VIF.cols(),       // number of facets
+             v = primal ? VIF.cols() : VIF.rows();      // number of vertices
 
-   int d=0,             // (co-)dimension
-      max_d=n-1,       // upper bound for the dimension
-      chi=0,           // Euler characteristic
-      chi_sgn=1,
-      simplicial,      // k-simplicity or k-simpleness
-      neighborly;      // k-neighborliness or k-balance
+   Int d = 0,             // (co-)dimension
+       max_d = n-1,       // upper bound for the dimension
+       chi = 0,           // Euler characteristic
+       chi_sgn = 1,
+       simplicial,      // k-simplicity or k-simpleness
+       neighborly;      // k-neighborliness or k-balance
   
-   PowerSet<int> F;     // all faces, we start with facets
+   PowerSet<Int> F;     // all faces, we start with facets
    if (primal) {
       for (auto vlist=entire(rows(VIF)); !vlist.at_end(); ++vlist) {
          F += *vlist;
@@ -56,23 +56,23 @@ perl::Object check_poly(const IncidenceMatrix<>& VIF, perl::OptionSet options)
 
    if (verbose) cout << "check_poly: face lattice analysis; dim <= " << max_d << endl;
 
-   Array<int> c(max_d+1); // for i>0:
+   Array<Int> c(max_d+1); // for i>0:
    // if c[i] > 0 then each i-coface contains c[i] vertices
    c[0] = n;       // c[0] = #facets
 
-   Array<int> width(max_d+1);  // number of i-cofaces
+   Array<Int> width(max_d+1);  // number of i-cofaces
    width[0] = 1;               // one polytope
 
    while (max_d > 0 && (width[d+1] = F.size()) > 1) {
       if (verbose) cout << "[ " << (primal ? -(d+1) : d) << " : " << F.size() << " ] " << std::flush;
       chi += chi_sgn * F.size(); chi_sgn = -chi_sgn;
 
-      PowerSet<int>::iterator f = F.begin(), fend = F.end();
-      int card = f->size();
+      PowerSet<Int>::iterator f = F.begin(), fend = F.end();
+      Int card = f->size();
       if (card < max_d) max_d = card;
 
       for (++f; f != fend; ++f) {
-         int l = f->size();
+         Int l = f->size();
          if (card && l != card) card = 0;
          if (l < max_d) max_d = l;
       }
@@ -84,7 +84,8 @@ perl::Object check_poly(const IncidenceMatrix<>& VIF, perl::OptionSet options)
       d++;
    }
 
-   if (primal  &&  d % 2 == 0) chi = -chi;
+   if (primal && d%2 == 0)
+      chi = -chi;
    if (verbose)
       cout << "chi = " << chi << "\n"
          "constant number of "
@@ -110,24 +111,24 @@ perl::Object check_poly(const IncidenceMatrix<>& VIF, perl::OptionSet options)
    //   we have sufficiently many edges or ridges
 
    if (!(width[d] == v
-         && ((d % 2 == 0 && chi == 0) || (d % 2 != 0 && chi == 2))
+         && ((d%2 == 0 && chi == 0) || (d%2 != 0 && chi == 2))
          && simplicial > 0)) {
       if (verbose) cout << ", but not a polytope, last (co-)dimension " << d << endl;
       throw std::runtime_error("not a polytope");
    }
 
-   perl::Object p("Polytope"); //Combinatorial Polytope
+   BigObject p("Polytope"); //Combinatorial Polytope
    if (verbose) cout << " " << d << "-polytope" << endl;
    if (primal) {
       p.take("VERTICES_IN_FACETS")<<VIF;
-      p.take("SIMPLICIAL") << (simplicial >= d - 1);
-      p.take("NEIGHBORLY") << (neighborly >= d / 2);
+      p.take("SIMPLICIAL") << (simplicial >= d-1);
+      p.take("NEIGHBORLY") << (neighborly >= d/2);
       p.take("SIMPLICIALITY") << simplicial;
       p.take("NEIGHBORLINESS") << neighborly;
    } else {
       p.take("VERTICES_IN_FACETS")<<T(VIF);
-      p.take("SIMPLE") << (simplicial >= d - 1);
-      p.take("BALANCED") << (neighborly >= d / 2);
+      p.take("SIMPLE") << (simplicial >= d-1);
+      p.take("BALANCED") << (neighborly >= d/2);
       p.take("SIMPLICITY") << simplicial;
       p.take("BALANCE") << neighborly;
    }

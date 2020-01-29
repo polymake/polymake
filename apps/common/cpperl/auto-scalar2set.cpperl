@@ -1,5 +1,5 @@
 {"app": "common",
  "inst": [
-  {"args": ["int"], "func": "scalar2set", "include": ["polymake/Set.h"], "sig": "scalar2set.X11"},
+  {"args": ["Int"], "func": "scalar2set", "include": ["polymake/Set.h"], "sig": "scalar2set.X11"},
  null ],
 "version": 3}

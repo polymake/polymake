@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,8 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef __GROUP_REPRESENTATIONS_H
-#define __GROUP_REPRESENTATIONS_H
+#ifndef POLYMAKE_GROUP_REPRESENTATIONS_H
+#define POLYMAKE_GROUP_REPRESENTATIONS_H
 
 #include "polymake/Array.h"
 #include "polymake/hash_map"
@@ -25,33 +25,33 @@
 
 namespace polymake { namespace group {
 
-namespace {
-
-template<typename SetType>
+template <typename SetType>
 class InducedAction {
 protected:
-   int degree;
+   Int degree;
    const Array<SetType>& domain;
-   const hash_map<SetType, int>& index_of;
+   const hash_map<SetType, Int>& index_of;
 
-   Array<int> inverse_permutation(const Array<int>& perm) const {
-      Array<int> inv_perm(perm.size());
-      for (int i=0; i<perm.size(); ++i)
+   Array<Int> inverse_permutation(const Array<Int>& perm) const
+   {
+      Array<Int> inv_perm(perm.size());
+      for (Int i = 0; i < perm.size(); ++i)
          inv_perm[perm[i]] = i;
       return inv_perm;
    }
 
 public:
-   InducedAction(int degree_,
+   InducedAction(Int degree_,
                  const Array<SetType>& domain_,
-                 const hash_map<SetType, int>& index_of_)
+                 const hash_map<SetType, Int>& index_of_)
       : degree(degree_)
       , domain(domain_)
       , index_of(index_of_)
    {}
 
-   int index_of_image(const Array<int>& perm,
-                      const SetType& elt) const {
+   Int index_of_image(const Array<Int>& perm,
+                      const SetType& elt) const
+   {
       SetType image;
       image.resize(perm.size());
       for (auto sit = entire(elt); !sit.at_end(); ++sit)
@@ -59,9 +59,10 @@ public:
       return index_of.at(image);
    }
 
-   int index_of_inverse_image(const Array<int>& perm,
-                              const SetType& elt) const {
-      Array<int> inv_perm(inverse_permutation(perm));
+   Int index_of_inverse_image(const Array<Int>& perm,
+                              const SetType& elt) const
+   {
+      Array<Int> inv_perm(inverse_permutation(perm));
       SetType inv_image;
       inv_image.resize(inv_perm.size());
       for (auto sit = entire(elt); !sit.at_end(); ++sit)
@@ -69,14 +70,16 @@ public:
       return index_of.at(inv_image);
    }
 
-   int index_of_inverse_image(const Array<int>& perm,
-                              const int elt_index) const {
+   Int index_of_inverse_image(const Array<Int>& perm,
+                              const Int elt_index) const
+   {
       return index_of_inverse_image(perm, domain[elt_index]);
    }
 
-   SparseMatrix<Rational> induced_rep(const Array<int>& perm) const {
+   SparseMatrix<Rational> induced_rep(const Array<Int>& perm) const
+   {
       SparseMatrix<Rational> induced_rep(degree, degree);
-      int col_index(0);
+      Int col_index = 0;
       for (auto dit = entire(domain); !dit.at_end(); ++dit, ++col_index) {
          induced_rep(index_of_image(perm, *dit), col_index) = 1;
       }
@@ -84,11 +87,9 @@ public:
    }
 };
 
-} // end anonymous namespace
-
 } }
 
-#endif // __GROUP_REPRESENTATIONS_H
+#endif // POLYMAKE_GROUP_REPRESENTATIONS_H
 
 
 // Local Variables:

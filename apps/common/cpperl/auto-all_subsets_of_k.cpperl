@@ -1,6 +1,6 @@
 {"app": "common",
  "inst": [
-  {"args": ["perl::AnchorArg<perl::Canned<pm::Series<int, true>>>", "void"], "func": "all_subsets_of_k", "include": ["polymake/PowerSet.h", "polymake/Set.h"], "sig": "all_subsets_of_k:R_Container<Container>.X11.x"},
-  {"args": ["perl::AnchorArg<perl::Canned<const Set<int>&>>", "void"], "func": "all_subsets_of_k", "include": ["polymake/PowerSet.h", "polymake/Set.h"], "sig": "all_subsets_of_k:R_Container<Container>.X11.x"},
+  {"args": ["perl::AnchorArg<perl::Canned<pm::Series<Int, true>>>", "void"], "func": "all_subsets_of_k", "include": ["polymake/PowerSet.h", "polymake/Set.h"], "sig": "all_subsets_of_k:R_Container<Container>.X11.x"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Set<Int>&>>", "void"], "func": "all_subsets_of_k", "include": ["polymake/PowerSet.h", "polymake/Set.h"], "sig": "all_subsets_of_k:R_Container<Container>.X11.x"},
  null ],
 "version": 3}

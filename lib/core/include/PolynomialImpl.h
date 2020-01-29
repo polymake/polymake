@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -64,10 +64,6 @@ template <typename Coefficient, typename Exponent>
 UniPolynomial<Coefficient, Exponent>
 lcm(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficient, Exponent>& b);
 
-template <typename T, typename std::enable_if<std::is_same<typename object_traits<T>::generic_tag,is_polynomial>::value, int>::type=0>
-T pow(const T& base, long exp);
-
-
 namespace polynomial_impl {
 
 // how to convert something to a coefficient of a Polynomial ---------------------
@@ -80,17 +76,17 @@ struct deeper_coefficient_impl
 // if T can directly be converted into Polynomial's coefficient, it will be handled by the corresponding constructor
 template <typename T, typename Coefficient>
 struct deeper_coefficient_impl<T, Coefficient,
-                               typename std::enable_if<std::is_convertible<T, Coefficient>::value>::type>
+                               typename std::enable_if_t<std::is_convertible<T, Coefficient>::value>>
 : std::false_type {};
 
 // T can be converted to Polynomial's Coefficient's coefficient
 template <typename T, typename Coefficient>
 struct deeper_coefficient_impl<T, Coefficient,
-                               typename std::enable_if<std::is_convertible<T, typename Coefficient::coefficient_type>::value>::type>
+                               typename std::enable_if_t<std::is_convertible<T, typename Coefficient::coefficient_type>::value>>
 : std::true_type {
   using coefficient_type = Coefficient;
 
-  static coefficient_type construct(const T& x, const int n_vars)
+  static coefficient_type construct(const T& x, const Int n_vars)
   {
     return coefficient_type(x, n_vars);
   }
@@ -99,13 +95,13 @@ struct deeper_coefficient_impl<T, Coefficient,
 // T can be converted to some deeper coefficient in the nesting hierarchy
 template <typename T, typename Coefficient>
 struct deeper_coefficient_impl<T, Coefficient,
-                               typename std::enable_if<!std::is_convertible<T, typename Coefficient::coefficient_type>::value &&
-                                                       deeper_coefficient_impl<T, typename Coefficient::coefficient_type>::value>::type>
+                               typename std::enable_if_t<!std::is_convertible<T, typename Coefficient::coefficient_type>::value &&
+                                                         deeper_coefficient_impl<T, typename Coefficient::coefficient_type>::value>>
 : std::true_type {
   using deeper = deeper_coefficient_impl<T, typename Coefficient::coefficient_type>;
   using coefficient_type = Coefficient;
 
-  static coefficient_type construct(const T& x, const int n_vars)
+  static coefficient_type construct(const T& x, const Int n_vars)
   {
     return coefficient_type(deeper::construct(x, n_vars), n_vars);
   }
@@ -113,7 +109,7 @@ struct deeper_coefficient_impl<T, Coefficient,
 
 // Sorting of monomials ----------------------------------------------
      
-template <typename Exponent=int, bool strict=true>
+template <typename Exponent = Int, bool strict = true>
 class cmp_monomial_ordered_base {
 public:
   // for multi-variate polynomials
@@ -232,21 +228,27 @@ struct UnivariateMonomial {
   using monomial_list_type = Vector<Exponent>;
   using homogenized_type = MultivariateMonomial<Exponent>;
   static Exponent deg(const monomial_type& m) { return m; }
-  static monomial_type default_value(const int n_vars) { return zero_value<Exponent>(); }
+  static monomial_type default_value(const Int n_vars) { return zero_value<Exponent>(); }
   static bool equals_to_default(const monomial_type& m) { return is_zero(m); }
 
-  static monomial_type empty_value(const int n_vars, int sign = 1)
+  static monomial_type empty_value(const Int n_vars, Int sign = 1)
   {
-    return std::numeric_limits<Exponent>::has_infinity ? -sign * std::numeric_limits<Exponent>::infinity() : 
-                                          sign > 0 ? std::numeric_limits<Exponent>::min() : std::numeric_limits<Exponent>::max();
+    if (std::numeric_limits<Exponent>::has_infinity)
+      return -sign * std::numeric_limits<Exponent>::infinity();
+    else if (sign > 0)
+      return std::numeric_limits<Exponent>::min();
+    else
+      return std::numeric_limits<Exponent>::max();
   }
-  static void croak_if_incompatible(const monomial_type& m, const int n_vars)
+
+  static void croak_if_incompatible(const monomial_type& m, const Int n_vars)
   {
-    if (n_vars != 1) throw std::runtime_error("Monomial has different number of variables");
+    if (n_vars != 1)
+      throw std::runtime_error("Monomial has different number of variables");
   }
 
   template <typename coefficient_type>
-  static monomial_list_type monomials(const int n_vars, const int n_terms,
+  static monomial_list_type monomials(const Int n_vars, const Int n_terms,
                                       const hash_map<monomial_type, coefficient_type>& h)
   {
     return monomial_list_type(n_terms, attach_operation(h, BuildUnary<operations::take_first>()).begin());
@@ -264,11 +266,11 @@ struct UnivariateMonomial {
     if (!is_one(m)) out << '^' << m;
   }
 
-  static typename homogenized_type::monomial_type homogenize(const monomial_type& m, int new_variable_index, const Exponent& to_degree)
+  static typename homogenized_type::monomial_type homogenize(const monomial_type& m, Int new_variable_index, const Exponent& to_degree)
   {
     typename homogenized_type::monomial_type result(2);
-    result[ new_variable_index? 1 : 0] = to_degree - m;
-    result[ new_variable_index? 0 : 1] = m;
+    result[new_variable_index != 0] = to_degree - m;
+    result[new_variable_index == 0] = m;
     return result;
   }
 };
@@ -282,23 +284,22 @@ struct MultivariateMonomial {
   using monomial_list_type = Matrix<Exponent>;
   using homogenized_type = MultivariateMonomial<Exponent>;
   static Exponent deg(const monomial_type& m) { return accumulate(m, operations::add<Exponent, Exponent>()); }
-  static monomial_type default_value(const int n_vars) { return monomial_type(n_vars); }
+  static monomial_type default_value(const Int n_vars) { return monomial_type(n_vars); }
   static bool equals_to_default(const monomial_type& m) { return m.empty(); }
 
-  static monomial_type empty_value(const int n_vars, int sign = 1)
-  { 
-    return same_element_vector<Exponent>((std::numeric_limits<Exponent>::has_infinity ? -sign * std::numeric_limits<Exponent>::infinity() : 
-                                          sign > 0 ? std::numeric_limits<Exponent>::min() : std::numeric_limits<Exponent>::max() ),
-                                         n_vars);
+  static monomial_type empty_value(const Int n_vars, Int sign = 1)
+  {
+    return same_element_vector<Exponent>(UnivariateMonomial<Exponent>::empty_value(n_vars, sign), n_vars);
   }
 
-  static void croak_if_incompatible(const monomial_type& m, const int n_vars)
+  static void croak_if_incompatible(const monomial_type& m, const Int n_vars)
   {
-    if (n_vars != m.dim()) throw std::runtime_error("Monomial has different number of variables");
+    if (n_vars != m.dim())
+      throw std::runtime_error("Monomial has different number of variables");
   }
 
   template <typename Coefficient>
-  static monomial_list_type monomials(const int n_vars, const int n_terms,
+  static monomial_list_type monomials(const Int n_vars, const Int n_terms,
                                       const hash_map<monomial_type, Coefficient>& h)
   {
     return monomial_list_type(n_terms, n_vars, 
@@ -326,7 +327,7 @@ struct MultivariateMonomial {
   }
 
   static typename homogenized_type::monomial_type
-  homogenize(const monomial_type& m, int new_variable_index, const Exponent& to_degree)
+  homogenize(const monomial_type& m, Int new_variable_index, const Exponent& to_degree)
   {
     monomial_type result(m.dim()+1);
     result[new_variable_index] = to_degree - deg(m);
@@ -335,15 +336,15 @@ struct MultivariateMonomial {
   }
 };
 
-template <typename T> inline
-typename std::enable_if<is_field<T>::value, bool>::type
+template <typename T>
+std::enable_if_t<is_field<T>::value, bool>
 is_minus_one(const T& x)
 {
   return is_one(-x);
 }
 
-template <typename T> inline
-typename std::enable_if<!is_field<T>::value, bool>::type
+template <typename T>
+std::enable_if_t<!is_field<T>::value, bool>
 is_minus_one(const T& x)
 {
   return false;
@@ -380,7 +381,7 @@ public:
      UniPolynomial<Coefficient, exponent_type>
      lcm<>(const UniPolynomial<Coefficient, exponent_type>& a, const UniPolynomial<Coefficient, exponent_type>& b);
 
-  static constexpr int coefficient_nesting_level=nesting_level<coefficient_type>::value;
+  static constexpr int coefficient_nesting_level = nesting_level<coefficient_type>::value;
 
   template <typename T>
   struct is_deeper_coefficient
@@ -390,12 +391,12 @@ public:
   struct fits_as_coefficient
     : bool_constant<can_upgrade<T, coefficient_type>::value || is_deeper_coefficient<T>::value> {};
 
-  explicit GenericImpl(const int n_vars = 0)
+  explicit GenericImpl(const Int n_vars = 0)
     : n_variables(n_vars)
     , the_sorted_terms_set(false) {}
 
-  template <typename T, typename enabled=typename std::enable_if<fits_as_coefficient<T>::value>::type>
-  GenericImpl(const T& c, const int n_vars)
+  template <typename T, typename = std::enable_if_t<fits_as_coefficient<T>::value>>
+  GenericImpl(const T& c, const Int n_vars)
     : n_variables(n_vars)
     , the_sorted_terms_set(false)
   {
@@ -405,7 +406,7 @@ public:
   }
 
   template <typename Container1, typename Container2>
-  GenericImpl(const Container1& coefficients, const Container2& monomials, const int n_vars)
+  GenericImpl(const Container1& coefficients, const Container2& monomials, const Int n_vars)
     : n_variables(n_vars)
     , the_sorted_terms_set(false)
   {
@@ -418,23 +419,23 @@ public:
       add_term(*m, *c, std::false_type());
   }
 
-  GenericImpl(const term_hash& src, const int n_vars)
+  GenericImpl(const term_hash& src, const Int n_vars)
     : n_variables(n_vars)
     , the_terms(src)
     , the_sorted_terms_set(false) {}
                
-  GenericImpl(const int n_vars, const term_hash& src)
+  GenericImpl(const Int n_vars, const term_hash& src)
     : GenericImpl(src,n_vars) {}
 
-  // Can't have this as constructor, might be ambiguous if coefficient_type = int
-  static GenericImpl fromMonomial(const monomial_type&m, const coefficient_type& c, const int n_vars)
+  // Can't have this as constructor, might be ambiguous if coefficient_type = Int
+  static GenericImpl fromMonomial(const monomial_type&m, const coefficient_type& c, const Int n_vars)
   {
     GenericImpl result(n_vars);
     result.the_terms.insert(m, c);
     return result;
   }
 
-  static GenericImpl fromMonomial(const typename term_hash::const_iterator it, const int n_vars)
+  static GenericImpl fromMonomial(const typename term_hash::const_iterator it, const Int n_vars)
   {
     GenericImpl result(n_vars);
     result.the_terms.insert(it->first, it->second);
@@ -450,12 +451,13 @@ public:
   template <typename Other>
   void croak_if_incompatible(const Other& other) const
   {
-    if (n_vars() != other.n_vars()) throw std::runtime_error("Polynomials of different rings");
+    if (n_vars() != other.n_vars())
+      throw std::runtime_error("Polynomials of different rings");
   }
 
-  const int& n_vars() const { return n_variables; }
+  const Int& n_vars() const { return n_variables; }
 
-  int n_terms() const { return the_terms.size(); }
+  Int n_terms() const { return the_terms.size(); }
 
   const term_hash& get_terms() const { return the_terms; }
   term_hash& get_mutable_terms() { return the_terms; }
@@ -487,7 +489,7 @@ public:
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, bool>
   operator== (const T& c) const
   {
     return trivial() && is_zero(c)
@@ -519,8 +521,8 @@ public:
 
   typename Monomial::exponent_type lower_deg() const
   {
-    typename Monomial::exponent_type low= Monomial::deg( Monomial::empty_value(n_variables, -1 ));
-    for (auto it=entire(get_terms()); !it.at_end(); ++it)
+    typename Monomial::exponent_type low = Monomial::deg(Monomial::empty_value(n_variables, -1));
+    for (auto it = entire(get_terms()); !it.at_end(); ++it)
       assign_min(low, Monomial::deg(it->first));
     return low;
   }
@@ -641,7 +643,7 @@ public:
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, GenericImpl>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, GenericImpl>
   operator* (const T& c) const
   {
     if (__builtin_expect(is_zero(c), 0))
@@ -651,19 +653,19 @@ public:
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, GenericImpl>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, GenericImpl>
   mult_from_right(const T& c) const
   {
     if (__builtin_expect(is_zero(c), 0))
       return GenericImpl(n_variables);
     GenericImpl prod(n_variables, the_terms);
     for (auto& term : prod.the_terms)
-      term.second = c * term.second;
+      term.second = c*term.second;
     return prod;
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, GenericImpl>::type&
+  std::enable_if_t<fits_as_coefficient<T>::value, GenericImpl&>
   operator*= (const T& c)
   {
     if (__builtin_expect(is_zero(c), 0)) {
@@ -676,7 +678,7 @@ public:
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, GenericImpl>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, GenericImpl>
   operator/ (const T& c) const
   {
     if (__builtin_expect(is_zero(c), 0)) throw GMP::ZeroDivide();
@@ -685,7 +687,7 @@ public:
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, GenericImpl>::type&
+  std::enable_if_t<fits_as_coefficient<T>::value, GenericImpl&>
   operator/= (const T& c)
   {
     if (__builtin_expect(is_zero(c), 0)) throw GMP::ZeroDivide();
@@ -718,14 +720,14 @@ public:
     return *this; 
   }
 
-  GenericImpl<typename Monomial::homogenized_type, Coefficient> homogenize(int new_variable_index = 0) const
+  GenericImpl<typename Monomial::homogenized_type, Coefficient> homogenize(Int new_variable_index = 0) const
   {
     const typename Monomial::exponent_type degree = deg();
     hash_map<typename Monomial::homogenized_type::monomial_type, Coefficient> result_hash;
     for (const auto& term : the_terms) {
       result_hash.insert( Monomial::homogenize( term.first, new_variable_index, degree), term.second);
     }
-    return GenericImpl<typename Monomial::homogenized_type, Coefficient>(n_variables + 1, result_hash);
+    return GenericImpl<typename Monomial::homogenized_type, Coefficient>(n_variables+1, result_hash);
   }
 
   GenericImpl operator* (const GenericImpl& p2) const
@@ -746,7 +748,7 @@ public:
   }
 
   template <typename E>
-  typename std::enable_if<std::numeric_limits<E>::is_integer, GenericImpl>::type
+  std::enable_if_t<std::numeric_limits<E>::is_integer, GenericImpl>
   exponentiate_monomial(const E& exp) const
   {
     if (the_terms.size() != 1)
@@ -758,7 +760,7 @@ public:
   }
 
   template <typename E>
-  typename std::enable_if<!std::numeric_limits<E>::is_integer, GenericImpl>::type
+  std::enable_if_t<!std::numeric_limits<E>::is_integer, GenericImpl>
   exponentiate_monomial(const E& exp) const
   {
     if (the_terms.size() != 1)
@@ -772,13 +774,15 @@ public:
   }
 
   template <typename E>
-  typename std::enable_if<!std::numeric_limits<E>::is_integer, GenericImpl>::type pow(const E& exp) const
+  std::enable_if_t<!std::numeric_limits<E>::is_integer, GenericImpl>
+  pow(const E& exp) const
   {
     return exponentiate_monomial(exp);
   }
 
   template <typename E>
-  typename std::enable_if<std::numeric_limits<E>::is_integer, GenericImpl>::type pow(const E& exp) const
+  std::enable_if_t<std::numeric_limits<E>::is_integer, GenericImpl>
+  pow(const E& exp) const
   {
     if (exp < 0)
       return exponentiate_monomial(exp);
@@ -787,7 +791,7 @@ public:
 
     GenericImpl result(one_value<coefficient_type>(), n_variables);
     if (exp != 0) {
-      long e=exp;
+      long e = exp;
       GenericImpl pow2(*this);
       for (;;) {
         if (e & 1) {
@@ -827,7 +831,7 @@ public:
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, GenericImpl>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, GenericImpl>
   operator+ (const T& c) const
   {
     GenericImpl sum(n_variables, the_terms);
@@ -842,14 +846,14 @@ public:
   }
 
   template <typename T>
-  typename std::enable_if<is_deeper_coefficient<T>::value, GenericImpl>::type&
+  std::enable_if_t<is_deeper_coefficient<T>::value, GenericImpl&>
   operator+= (const T& c)
   {
     return operator+=(is_deeper_coefficient<T>::construct(c, n_variables));
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, GenericImpl>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, GenericImpl>
   operator- (const T& c) const
   {
     GenericImpl diff(n_variables, the_terms);
@@ -864,7 +868,7 @@ public:
   }
 
   template <typename T>
-  typename std::enable_if<is_deeper_coefficient<T>::value, GenericImpl>::type&
+  std::enable_if_t<is_deeper_coefficient<T>::value, GenericImpl&>
   operator-= (const T& c)
   {
     return operator-=(is_deeper_coefficient<T>::construct(c, n_variables));
@@ -1025,7 +1029,7 @@ public:
 
   size_t get_hash() const noexcept
   {
-    return hash_func<int>()(n_variables) * hash_func<term_hash>()(the_terms);
+    return hash_func<Int>()(n_variables) * hash_func<term_hash>()(the_terms);
   }
 
   template <typename Order> static 
@@ -1109,8 +1113,8 @@ private:
       for (const auto& b_term : b.get_terms()) {
         auto it = get_mutable_terms().find_or_insert(b_term.first + d);
         if (it.second) {
-          it.first->second= -k * b_term.second;
-        } else if (is_zero(it.first->second -= k * b_term.second)) {
+          it.first->second= -k*b_term.second;
+        } else if (is_zero(it.first->second -= k*b_term.second)) {
           get_mutable_terms().erase(it.first);
         }
       }
@@ -1174,8 +1178,7 @@ private:
   }
 
 protected:
-
-  int n_variables;
+  Int n_variables;
   term_hash the_terms;
   // terms ordered by lex termorder 
   mutable sorted_terms_type the_sorted_terms;

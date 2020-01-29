@@ -8,24 +8,24 @@
 
 namespace polymake { namespace fan {
 
-   using namespace topaz;
+using namespace topaz;
 
-typedef std::list<int> flip_sequence;
+typedef std::list<Int> flip_sequence;
 
 // provided a hyperbolic surface given by a doubly connected edge list, this computes all
 // flip words and the coresponding secondary fan, and stores them in the surface object.
-void secondary_fan_and_flipwords(perl::Object surface){
-
-   Array<Array<int>> dcel_data = surface.give("DCEL_DATA");
+void secondary_fan_and_flipwords(BigObject surface)
+{
+   Array<Array<Int>> dcel_data = surface.give("DCEL_DATA");
    const Vector<Rational> penner_coord = surface.give("PENNER_COORDINATES");
-   DoublyConnectedEdgeList dcel{dcel_data};
+   graph::DoublyConnectedEdgeList dcel{dcel_data};
    dcel.setMetric( penner_coord );
    Vector<Rational> angleVec = dcel.angleVector();
 
    // construct the iterator that will compute the flip_words and secondary fan
    Graph<Directed> delaunay_graph(1);
    FlipVisitor fvis( delaunay_graph, dcel );
-   BFSiterator< Graph<Directed>, VisitorTag<topaz::FlipVisitor> > bfs_it
+   graph::BFSiterator< Graph<Directed>, graph::VisitorTag<topaz::FlipVisitor> > bfs_it
          ( delaunay_graph , std::move(fvis) , nodes(delaunay_graph).front() );
 
    while ( !bfs_it.at_end() )
@@ -39,15 +39,16 @@ void secondary_fan_and_flipwords(perl::Object surface){
    for( const auto it: bfs_it.node_visitor().getfan_vertices() )
    {
       Vector<Rational> vec = it.first;
-      for( int j = 1 ; j < vec.size() ; j++ ) vec[j] = angleVec[j-1]*vec[j];
+      for (Int j = 1 ; j < vec.size(); ++j)
+        vec[j] = angleVec[j-1]*vec[j];
       vec = dcel.normalize( vec );
       fan_rays_matrix[ it.second ] = vec;
    }
    Matrix<Rational> secondary_fan_rays = fan_rays_matrix.minor(range_from(1), range_from(1));
-   Array<Set<int>> secondary_fan_cells(bfs_it.node_visitor().getfan_cells());
+   Array<Set<Int>> secondary_fan_cells(bfs_it.node_visitor().getfan_cells());
 
    //TODO later we want a fan subobject instead
-   perl::Object fan("PolyhedralFan<Rational>");
+   BigObject fan("PolyhedralFan<Rational>");
    fan.take("RAYS") << secondary_fan_rays;
    fan.take("MAXIMAL_CONES") << secondary_fan_cells;
    surface.take("SECONDARY_FAN") << fan;
@@ -62,13 +63,15 @@ void secondary_fan_and_flipwords(perl::Object surface){
    {
       flip_sequence seq( it.second );
       // remove double flips at the beginning
-      if( seq.size() > 1 ){
-         int front = seq.front();
+      if (seq.size() > 1) {
+         Int front = seq.front();
          seq.pop_front();
-         if( front != seq.front() ) seq.push_front(front);
-         else seq.pop_front();
+         if (front != seq.front())
+           seq.push_front(front);
+         else
+           seq.pop_front();
       }
-      flips[ it.first ] = seq;
+      flips[it.first] = seq;
    }
    surface.take("FLIP_WORDS") << flips;
 }

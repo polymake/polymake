@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,34 +24,112 @@
 
 namespace pm {
 
+#if POLYMAKE_NEED_LONG_LONG_GMP_WRAPPERS
+
+namespace {
+
+int set_limbs(mp_limb_t* limbs, long long x)
+{
+   if (x >= 0) {
+      limbs[0] = x & ULONG_MAX;
+      limbs[1] = (x >> 32) & ULONG_MAX;
+      return 1 + (limbs[1] != 0);
+   } else {
+      x = -x;
+      limbs[0] = x & ULONG_MAX;
+      limbs[1] = (x >> 32) & ULONG_MAX;
+      return -1 - (limbs[1] != 0);
+   }
+}
+
+}
+
+Integer::Integer(long long b)
+{
+   if (b < LONG_MIN || b > LONG_MAX) {
+      mpz_init2(this, sizeof(b)*8);
+      _mp_size = set_limbs(_mp_d, b);
+   } else {
+      mpz_init_set_si(this, static_cast<long>(b));
+   }
+}
+
 Integer& Integer::operator= (long long b)
 {
-   if (sizeof(long long)==sizeof(long) || (b >= std::numeric_limits<long>::min() && b <= std::numeric_limits<long>::max())) {
-      *this=long(b);
+   if (b < LONG_MIN || b > LONG_MAX) {
+      if (__builtin_expect(_mp_d != nullptr, 1)) {
+         if (_mp_size >= -1 && _mp_size <= 1)
+            mpz_realloc2(this, sizeof(b)*8);
+      } else {
+         mpz_init2(this, sizeof(b)*8);
+      }
+      _mp_size = set_limbs(_mp_d, b);
    } else {
-      typedef std::conditional<sizeof(long long)==sizeof(long), int, long>::type shift_by;
-      if (__builtin_expect(!isfinite(*this), 0))
-         mpz_init2(this, sizeof(long long)*8);
-      mpz_set_si(this, b >> (sizeof(shift_by)*8));
-      mpz_mul_2exp(this, this, sizeof(shift_by)*8);
-      mpz_add_ui(this, this, b & ULONG_MAX);
+      operator=(static_cast<long>(b));
    }
    return *this;
 }
 
 Integer::operator long long() const
 {
-   if (sizeof(long long)==sizeof(long) || !isfinite(*this) || mpz_fits_slong_p(this)) {
-      return long(*this);
-   } else {
-      typedef std::conditional<sizeof(long long)==sizeof(long), int, long>::type shift_by;
-      Integer tmp= *this >> int(sizeof(long)*8);
-      long long result=long(tmp);
-      result <<= (sizeof(shift_by)*8);
-      result += mpz_get_ui(this);
-      return result;
+   if (isfinite(*this)) {
+      if (mpz_fits_slong_p(this))
+         return mpz_get_si(this);
+      if (_mp_size == 1 || _mp_size == -1) {
+         long long result = _mp_d[0];
+         return _mp_size > 0 ? result : -result;
+      }
+      if (_mp_size == 2 || _mp_size == -2) {
+         long long result = _mp_d[1];
+         if (!(result & (1UL << 31))) {
+            result <<= 32;
+            result |= _mp_d[0];
+            return _mp_size > 0 ? result : -result;
+         }
+      }
    }
+   throw GMP::BadCast();
 }
+
+bool Integer::fits_into_long_long() const
+{
+   if (isfinite(*this)) {
+      const int s = std::abs(_mp_size);
+      return s <= 1 || (s == 2 && !(_mp_d[1] & (1UL << 31)));
+   }
+   return false;
+}
+
+#endif
+
+Integer Integer::pow(const Integer& a, long k)
+{
+   if (__builtin_expect(k < 0, 0))
+      throw GMP::NaN();
+   Integer result;
+   if (__builtin_expect(isfinite(a), 1))
+      mpz_pow_ui(&result, &a, k);
+   else if (k != 0)
+      set_inf(&result, k%2 ? mpz_sgn(&a) : 1);
+   else
+      throw GMP::NaN();
+   return result;
+}
+
+Integer Integer::pow(long a, long k)
+{
+   if (__builtin_expect(k < 0, 0))
+      throw GMP::NaN();
+   Integer result;
+   if (a >= 0) {
+      mpz_ui_pow_ui(&result, a, k);
+   } else {
+      mpz_ui_pow_ui(&result, -a, k);
+      result.negate();
+   }
+   return result;
+}
+
 
 // fragments borrowed from read_int() of GNU libio
 size_t Integer::strsize(const std::ios::fmtflags flags) const
@@ -80,7 +158,7 @@ size_t Integer::strsize(const std::ios::fmtflags flags) const
 void Integer::putstr(std::ios::fmtflags flags, char* buf) const
 {
    if (__builtin_expect(!isfinite(*this), 0)) {
-      if (isinf(*this)<0)
+      if (isinf(*this) < 0)
          strcpy(buf, "-inf");
       else if (flags & std::ios::showpos)
          strcpy(buf, "+inf");
@@ -89,24 +167,24 @@ void Integer::putstr(std::ios::fmtflags flags, char* buf) const
       return;
    }
    int base;
-   const int plus= flags & std::ios::showpos ? mpz_sgn(this)>0 : 0;
+   const int plus = flags & std::ios::showpos ? mpz_sgn(this) > 0 : 0;
    switch (flags & (std::ios::basefield | std::ios::showbase)) {
    case int(std::ios::hex) | int(std::ios::showbase):
       mpz_get_str(buf+2+plus, 16, this);
       if (mpz_sgn(this)<0) *buf++='-'; else if (plus) *buf++='+';
-      *buf++='0';
-      *buf='x';
+      *buf++ = '0';
+      *buf = 'x';
       return;
    case int(std::ios::oct) | int(std::ios::showbase):
       mpz_get_str(buf+1+plus, 8, this);
       if (mpz_sgn(this)<0) *buf++='-'; else if (plus) *buf++='+';
-      *buf='0';
+      *buf = '0';
       return;
    case std::ios::hex:
-      base=16;
+      base = 16;
       break;
    case std::ios::oct:
-      base=8;
+      base = 8;
       break;
    default:
       base=10;
@@ -265,19 +343,18 @@ Integer Integer::binom(long n, long k)
 
 bool Integer::fill_from_file(int fd)
 {
-   int consumed=0, s, total=_mp_alloc * sizeof(mp_limb_t);
-   char* d=reinterpret_cast<char*>(_mp_d);
+   std::streamsize consumed = 0, s, total = _mp_alloc * sizeof(mp_limb_t);
+   char* d = reinterpret_cast<char*>(_mp_d);
    do {
-      s=::read(fd, d+consumed, total-consumed);
-      if (s<0) return false;
-   } while ((consumed+=s)<total);
-   _mp_size=_mp_alloc;
+      s = ::read(fd, d+consumed, total-consumed);
+      if (s < 0)
+         return false;
+   } while ((consumed += s) < total);
+   _mp_size = _mp_alloc;
    return true;
 }
 
-template <>
-Integer
-pow(const Integer& base, long exp)
+Integer pow(const Integer& base, long exp)
 {
    if (exp >= 0)
       return Integer::pow(base,exp);
@@ -308,7 +385,7 @@ namespace GMP {
 
    ZeroDivide::ZeroDivide() : error("Integer/Rational zero division") {}
 
-   BadCast::BadCast() : error("Integer/Rational number is too big for the cast to long/int") {}
+   BadCast::BadCast() : error("Integer/Rational number is too big for the cast to Int") {}
 }
 
 }

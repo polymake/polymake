@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -52,7 +52,7 @@ class DijkstraShortestPathBase {
 public:
    template <typename FullLabel>
    struct Label {
-      explicit Label(int node_arg)
+      explicit Label(Int node_arg)
          : node(node_arg) {}
 
       void set_predecessor(FullLabel* pred)
@@ -65,11 +65,11 @@ public:
       //! predecessor on the shortest path from the source, nullptr for start node
       FullLabel* predecessor = nullptr;
       //! Graph node index
-      int node;
+      Int node;
       //! number of successor labels plus 1 for the node or sibling list
-      int refc = 0;
+      Int refc = 0;
       //! position in the priority queue or -1 for already processed labels
-      int heap_pos = -1;
+      Int heap_pos = -1;
    };
 
    struct LabelCostComparator : public operations::cmp {
@@ -93,11 +93,11 @@ public:
       public:
          using value_type = label_t*;
 
-         static int position(const label_t* label)
+         static Int position(const label_t* label)
          {
             return label->heap_pos;
          }
-         static void update_position(label_t* label, int old_pos, int new_pos)
+         static void update_position(label_t* label, Int old_pos, Int new_pos)
          {
             label->heap_pos=new_pos;
          }
@@ -126,8 +126,8 @@ public:
          label_alloc.clear();
       }
 
-      template <typename... Args, typename = std::enable_if_t<std::is_constructible<label_t, int, Args...>::value>>
-      label_t* construct_label(int node, Args&&... args)
+      template <typename... Args, typename = std::enable_if_t<std::is_constructible<label_t, Int, Args...>::value>>
+      label_t* construct_label(Int node, Args&&... args)
       {
          return new(label_alloc.allocate()) label_t(node, std::forward<Args>(args)...);
       }
@@ -159,7 +159,7 @@ public:
       const algo_top& top() const { return static_cast<const algo_top&>(*this); }
 
       template <typename Predicate>
-      const label_t* solve(int source, const Predicate& target, bool backward=false) const
+      const label_t* solve(Int source, const Predicate& target, bool backward = false) const
       {
          if (backward && graph_t::dir::value)
             throw std::runtime_error("backward search is only defined for directed graphs");
@@ -172,14 +172,14 @@ public:
          return true;
       }
 
-      template <typename... Args, typename = std::enable_if_t<std::is_constructible<label_t, int, Args...>::value>>
+      template <typename... Args, typename = std::enable_if_t<std::is_constructible<label_t, Int, Args...>::value>>
       label_t* construct_label(Args&&... args) const
       {
          return data.construct_label(std::forward<Args>(args)...);
       }
 
    protected:
-      void start_search(int node) const
+      void start_search(Int node) const
       {
          label_t* const label = top().construct_label(node);
          data.labels_on_node[node] = label;
@@ -208,7 +208,7 @@ public:
          return nullptr;
       }
 
-      void propagate(label_t* const pred_label, const int cur_node, const int cur_edge_id) const
+      void propagate(label_t* const pred_label, const Int cur_node, const Int cur_edge_id) const
       {
          label_t* cur_label = data.labels_on_node[cur_node];
          if (cur_label && cur_label->heap_pos < 0) {

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,12 +25,12 @@
 namespace polymake { namespace polytope {
 
 template <typename Faces>
-typename std::enable_if<pm::isomorphic_to_container_of<Faces, Set<int> >::value, bool>::type
-is_subdivision(const Matrix<Rational>& verts, const Faces& subdiv, perl::OptionSet options)
+std::enable_if_t<pm::isomorphic_to_container_of<Faces, Set<Int>>::value, bool>
+is_subdivision(const Matrix<Rational>& verts, const Faces& subdiv, OptionSet options)
 {
-   const int n_vertices=verts.rows();
+   const Int n_vertices = verts.rows();
 
-   Set<int> all_verts; //to test the union property
+   Set<Int> all_verts; //to test the union property
 
    for (auto face_i=entire(subdiv); !face_i.at_end(); ++face_i) {
       all_verts += *face_i;
@@ -38,7 +38,7 @@ is_subdivision(const Matrix<Rational>& verts, const Faces& subdiv, perl::OptionS
       while (!(++face_l).at_end()) {
          //test the intersection property
          const Matrix<Rational> intersection=null_space(verts.minor((*face_i) * (*face_l), All)); //the (affine hull of) the intersection
-         const Set<int> rest=(*face_i) ^ (*face_l);
+         const Set<Int> rest = (*face_i) ^ (*face_l);
          //test if some other vertex of one of the two faces is contained in the affine hull
          for (auto j=entire(rest); !j.at_end(); ++j) {
             bool is_contained=true;
@@ -61,11 +61,11 @@ is_subdivision(const Matrix<Rational>& verts, const Faces& subdiv, perl::OptionS
       return true;
    }
 
-   const Set<int> missing=sequence(0,n_vertices)-all_verts;
+   const Set<Int> missing = sequence(0, n_vertices) - all_verts;
 
-   Set<int> non_vertices;
-   if (options["interior_points"]>>non_vertices) {
-      const Set<int> fail=missing-non_vertices;
+   Set<Int> non_vertices;
+   if (options["interior_points"] >> non_vertices) {
+      const Set<Int> fail = missing - non_vertices;
       if (fail.empty()) {
          if (options["verbose"]) cout << "Union property satisfied."<< endl;
          return true;
@@ -74,7 +74,7 @@ is_subdivision(const Matrix<Rational>& verts, const Faces& subdiv, perl::OptionS
       return false;
    }
 
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.take("POINTS") << verts.minor(all_verts,All);
 
    const Matrix<Rational> eq=p.give("AFFINE_HULL");
@@ -100,23 +100,25 @@ is_subdivision(const Matrix<Rational>& verts, const Faces& subdiv, perl::OptionS
    return true;
 }
 
-bool is_subdivision(const Matrix<Rational>& verts, const IncidenceMatrix<>& subdiv, perl::OptionSet options)
+bool is_subdivision(const Matrix<Rational>& verts, const IncidenceMatrix<>& subdiv, OptionSet options)
 {
    return is_subdivision(verts, rows(subdiv), options);
 }
 
 template <typename UnorderedFaces>
-typename std::enable_if<std::is_constructible<IncidenceMatrix<>, UnorderedFaces>::value &&
-                        !pm::isomorphic_to_container_of<UnorderedFaces, Set<int>>::value, bool>::type
-is_subdivision(const Matrix<Rational>& verts, const UnorderedFaces& subdiv, perl::OptionSet options)
+std::enable_if_t<(std::is_constructible<IncidenceMatrix<>, UnorderedFaces>::value &&
+                  !pm::isomorphic_to_container_of<UnorderedFaces, Set<Int>>::value), bool>
+is_subdivision(const Matrix<Rational>& verts, const UnorderedFaces& subdiv, OptionSet options)
 {
    return is_subdivision(verts, IncidenceMatrix<>(subdiv), options);
 }
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# @author Sven Herrmann"
-                          "# Checks whether //faces// forms a valid subdivision of //points//, where //points//"
-                          "# is a set of points, and //faces// is a collection of subsets of (indices of) //points//."
+                          "# Checks whether the union of the convex hulls of //faces// cover the entire set of //points// and no point lies in the interior of more than a face,"
+                          "# where //points// is a set of points, and //faces// is a collection of subsets of (indices of) //points//."
+                          "# It doesn't check if the intersection of faces is a proper face or if the faces covers the entire"
+                          "# convex hull of the set of //points//. "
                           "# If the set of interior points of //points// is known, this set can be passed by assigning"
                           "# it to the option //interior_points//. If //points// are in convex position"
                           "# (i.e., if they are vertices of a polytope),"
@@ -124,11 +126,17 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# @param Matrix points"
                           "# @param Array<Set<Int>> faces"
                           "# @option Set<Int> interior_points"
-                          "# @example Two potential subdivisions of the square without innter points:"
+                          "# @example Two potential subdivisions of the square without inner points:"
                           "# > $points = cube(2)->VERTICES;"
                           "# > print is_subdivision($points,[[0,1,3],[1,2,3]],interior_points=>[ ]);"
                           "# | true"
                           "# > print is_subdivision($points,[[0,1,2],[1,2]],interior_points=>[ ]);"
+                          "# | false"
+                          "# @example Three points in RR^1"
+                          "# > $points = new Matrix([[1,0],[1,1],[1,2]]);"
+                          "# > print is_subdivision($points, [[0,2]]);"
+                          "# | true"
+                          "# > print is_subdivision($points, [[0,1]]);"
                           "# | false",
                           "is_subdivision(Matrix,*; {verbose => undef, interior_points => undef})");
 } }

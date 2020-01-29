@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -18,6 +18,16 @@
 #ifndef POLYMAKE_GROUP_PERMLIB_TOOLS_H
 #define POLYMAKE_GROUP_PERMLIB_TOOLS_H
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconversion"
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
+
 #include "permlib/common.h"
 #include "permlib/permutation.h"
 #include "permlib/bsgs.h"
@@ -26,20 +36,33 @@
 #include "permlib/search/classic/set_stabilizer_search.h"
 #include "permlib/predicate/subgroup_predicate.h"
 
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 namespace permlib {
+
+template <typename INT>
+permlib::dom_int safe_to_dom_int(INT i)
+{
+   if (i > static_cast<INT>(std::numeric_limits<permlib::dom_int>::max()))
+      throw std::runtime_error("input is too big for permlib");
+   return static_cast<permlib::dom_int>(i);
+}
 
 // the following could probably be incorporated into permlib, as follows.
 
 /*  
     This function is recursively instantiated to evaluate the action of p on a nested container.
-    An example usage is for containers of type Set<Set<int>>, in which case this gets instantiated with
-    PERM = permlib::Permutation; T = pm::Set<int, pm::operations::cmp>; Comparator = pm::operations::cmp; Container = pm::Set]
+    An example usage is for containers of type Set<Set<Int>>, in which case this gets instantiated with
+    PERM = permlib::Permutation; T = pm::Set<Int, pm::operations::cmp>; Comparator = pm::operations::cmp; Container = pm::Set]
     In this case, the function is then recursively instantiated with
-    PERM = permlib::Permutation; T = int; helper_type = pm::operations::cmp; Container = pm::Set
+    PERM = permlib::Permutation; T = Int; helper_type = pm::operations::cmp; Container = pm::Set
 */
-template <class PERM, typename T, typename Comparator, template <typename, typename> class Container> inline
-Container<T, Comparator> action_on_container (const PERM& p, const Container<T, Comparator>& c)
+template <class PERM, typename T, typename Comparator, template <typename, typename> class Container>
+Container<T, Comparator> action_on_container(const PERM& p, const Container<T, Comparator>& c)
 {
    Container<T, Comparator> image;
    for (const T& s : c) 
@@ -47,18 +70,10 @@ Container<T, Comparator> action_on_container (const PERM& p, const Container<T, 
    return image;
 }
 
-// Two base cases, to catch the actual action of p on integers
-template <class PERM> inline
-unsigned long action_on_container (const PERM& p, unsigned long i)
+template <typename Perm>
+permlib::dom_int action_on_container(const Perm& p, long i)
 {
-   return p / i;
-}
-
-// Second base case
-template <class PERM> inline
-int action_on_container (const PERM& p, int i)
-{
-   return int(p / (unsigned long) i);
+   return p/safe_to_dom_int(i);
 }
 
 // A struct to pass into Orbit classes and their derivatives as ACTION parameter

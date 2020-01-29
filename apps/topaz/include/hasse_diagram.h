@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,7 +31,7 @@ using graph::lattice::FaceIndexingData;
 class simplicial_closure_iterator {
 public:
   using iterator_category = std::forward_iterator_tag;
-  using value_type = Set<int>;
+  using value_type = Set<Int>;
   using reference = const value_type&;
   using pointer = const value_type*;
   using difference_type = ptrdiff_t;
@@ -51,15 +51,15 @@ public:
   bool at_end() const { return it.at_end(); }
 
 protected:
-  std::list<Set<int>> data;
-  pm::iterator_range<std::list<Set<int>>::const_iterator> it;
+  std::list<Set<Int>> data;
+  pm::iterator_range<std::list<Set<Int>>::const_iterator> it;
 };
 
 
 template <typename Decoration = BasicDecoration>
 class SimplicialClosure {
 public:
-  using ClosureData = Set<int>;
+  using ClosureData = Set<Int>;
 
   SimplicialClosure(const IncidenceMatrix<>& facets_)
     : facets(facets_)
@@ -77,7 +77,7 @@ public:
 
   FaceIndexingData get_indexing_data(const ClosureData& data)
   {
-    int &fi = face_index_map[data];
+    Int& fi = face_index_map[data];
     return FaceIndexingData(fi, fi == -1, fi == -2);
   }
 
@@ -90,43 +90,43 @@ public:
 
 protected:
   const IncidenceMatrix<> facets;
-  const int total_size;
+  const Int total_size;
   FaceMap<> face_index_map;
 };
 
 class SimplicialDecorator {
 protected:
-  const Set<int> artificial_set;
-  int top_rank;
+  const Set<Int> artificial_set;
+  Int top_rank;
 public:
-  SimplicialDecorator(int top_rank_arg, const Set<int>& artificial_set_arg)
+  SimplicialDecorator(Int top_rank_arg, const Set<Int>& artificial_set_arg)
     : artificial_set(artificial_set_arg)
     , top_rank(top_rank_arg) {}
 
   template <typename TSet>
-  BasicDecoration compute_initial_decoration(const GenericSet<TSet, int>& face) const
+  BasicDecoration compute_initial_decoration(const GenericSet<TSet, Int>& face) const
   {
     return BasicDecoration(artificial_set, top_rank);
   }
 
   template <typename TSet>
-  BasicDecoration compute_decoration(const GenericSet<TSet, int>& face,
+  BasicDecoration compute_decoration(const GenericSet<TSet, Int>& face,
                                      const BasicDecoration& predecessor_data) const
   {
     return BasicDecoration(face, face.top().size());   
   }
 
   BasicDecoration compute_artificial_decoration(const NodeMap<Directed, BasicDecoration> &decor,
-               const std::list<int>& max_nodes) const
+               const std::list<Int>& max_nodes) const
   {
-    return BasicDecoration(Set<int>(), 0);
+    return BasicDecoration(Set<Int>(), 0);
   }
 };
 
 graph::Lattice<graph::lattice::BasicDecoration>
-hasse_diagram_from_facets(const Array<Set<int>>& facets, const graph::lattice::RankRestriction& rr = graph::lattice::RankRestriction());
+hasse_diagram_from_facets(const Array<Set<Int>>& facets, const graph::lattice::RankRestriction& rr = graph::lattice::RankRestriction());
 
-perl::Object upper_hasse_diagram(perl::Object complex, int boundary_rank);
+BigObject upper_hasse_diagram(BigObject complex, Int boundary_rank);
 
 } }
 

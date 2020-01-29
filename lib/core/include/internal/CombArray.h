@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -75,9 +75,9 @@ class CombArray_helper<Row, is_reverse, false>
 protected:
    using typename CombArray_helper<Row, is_reverse+2, false>::it_container;
 
-   void incr(it_container& itc, int& index)
+   void incr(it_container& itc, Int& index)
    {
-      for (auto it=entire(itc); !it.at_end(); ++it)
+      for (auto it = entire(itc); !it.at_end(); ++it)
          ++(*it);
       !is_reverse ? ++index : --index;
    }
@@ -139,14 +139,14 @@ protected:
       typedef typename it_container::value_type::first_type argument_type;
       typedef bool result_type;
 
-      it_filter(int index_arg=0) : index(index_arg) {}
+      it_filter(Int index_arg = 0) : index(index_arg) {}
 
       bool operator() (const argument_type& it) const
       {
          return !it.at_end() && test(it, std::is_same<typename object_traits<typename deref<Row>::type>::generic_tag, is_set>());
       }
    protected:
-      int index;
+      Int index;
 
       bool test(const argument_type& it, std::false_type) const { return it.index()==index; }
       bool test(const argument_type& it, std::true_type) const { return *it==index; }
@@ -154,7 +154,7 @@ protected:
 
    static it_container& get_c(CombArray<Row, is_reverse>& cv) { return cv.it_array; }
    static const it_container& get_c(const CombArray<Row, is_reverse>& cv) { return cv.it_array; }
-   static int get_i(const CombArray<Row, is_reverse>& cv) { return cv.index; }
+   static Int get_i(const CombArray<Row, is_reverse>& cv) { return cv.index; }
 
    class intermediate
       : public modified_container_impl< intermediate,
@@ -171,10 +171,10 @@ protected:
       typename base_t::operation get_operation() const { return it_filter(get_i(this->hidden())); }
    };
 
-   void incr(it_container& itc, int& index)
+   void incr(it_container& itc, Int& index)
    {
       const it_filter cf(index);
-      for (auto it=entire(itc); !it.at_end(); ++it)
+      for (auto it = entire(itc); !it.at_end(); ++it)
          if (cf(it->first)) ++it->first;
       !is_reverse ? ++index : --index;
    }
@@ -191,28 +191,28 @@ public:
    intermediate& get_container() { return reinterpret_cast<intermediate&>(*this); }
    const intermediate& get_container() const { return reinterpret_cast<const intermediate&>(*this); }
 
-   void insert(int i)
+   void insert(Int i)
    {
-      typename it_container::reference it_vec=this->hidden().it_array[i];
-      it_vec.first=it_vec.second->insert(it_vec.first, this->hidden().index);
+      auto&& it_vec = this->hidden().it_array[i];
+      it_vec.first = it_vec.second->insert(it_vec.first, this->hidden().index);
    }
-   template <typename Iterator, typename=std::enable_if_t<is_derived_from<Iterator, typename intermediate::iterator>::value>>
-   void insert(const Iterator&, int i)
+   template <typename Iterator, typename = std::enable_if_t<is_derived_from<Iterator, typename intermediate::iterator>::value>>
+   void insert(const Iterator&, Int i)
    {
       insert(i);
    }
-   template <typename Iterator, typename Data, typename=std::enable_if_t<is_derived_from<Iterator, typename intermediate::iterator>::value>>
-   void insert(const Iterator&, int i, const Data& d)
+   template <typename Iterator, typename Data, typename = std::enable_if_t<is_derived_from<Iterator, typename intermediate::iterator>::value>>
+   void insert(const Iterator&, Int i, const Data& d)
    {
-      typename it_container::reference it_vec=this->hidden().it_array[i];
-      it_vec.first=it_vec.second->insert(it_vec.first, this->hidden().index, d);
+      auto&& it_vec = this->hidden().it_array[i];
+      it_vec.first = it_vec.second->insert(it_vec.first, this->hidden().index, d);
    }
-   void erase(int i)
+   void erase(Int i)
    {
-      typename it_container::reference it_vec=this->hidden().it_array[i];
+      auto&& it_vec = this->hidden().it_array[i];
       it_vec.second->erase(it_vec.first++);
    }
-   template <typename Iterator, typename=std::enable_if_t<is_derived_from<Iterator, typename intermediate::iterator>::value>>
+   template <typename Iterator, typename = std::enable_if_t<is_derived_from<Iterator, typename intermediate::iterator>::value>>
    void erase(const Iterator& pos)
    {
       erase(pos.index());
@@ -232,7 +232,7 @@ class CombArray
    friend class CombArray_helper<Row, is_reverse>;
 protected:
    typename helper_t::it_container it_array;
-   int index;
+   Int index;
 
 public:
    CombArray() = default;
@@ -252,7 +252,7 @@ public:
    using CombArray::generic_type::operator=;
 
    template <typename Iterator>
-   CombArray(int n, Iterator&& src)
+   CombArray(Int n, Iterator&& src)
       : it_array(n)
       , index(!is_reverse ? 0 : n-1)
    {
@@ -260,7 +260,7 @@ public:
    }
 
    template <typename Iterator>
-   CombArray(int n, maximal<int>, Iterator&& src)
+   CombArray(Int n, maximal<Int>, Iterator&& src)
       : it_array(n)
       , index(!is_reverse ? n : -1)
    {
@@ -268,15 +268,15 @@ public:
    }
 
    template <typename Iterator>
-   CombArray(int n, int index_arg, Iterator&& src)
+   CombArray(Int n, Int index_arg, Iterator&& src)
       : it_array(n)
       , index(index_arg)
    {
-      for (auto it=entire(it_array); !it.at_end(); ++it, ++src)
-         *it = src->begin()+index;
+      for (auto it = entire(it_array); !it.at_end(); ++it, ++src)
+         *it = src->begin() + index;
    }
 
-   int dim() const { return it_array.size(); }
+   Int dim() const { return it_array.size(); }
 
 protected:
    template <typename Other,
@@ -307,7 +307,7 @@ public:
    comb_iterator(const comb_iterator& it) = default;
 
    template <typename Other,
-             typename=std::enable_if_t<std::is_constructible<typename container_traits<Row>::iterator, typename container_traits<Other>::iterator>::value>>
+             typename = std::enable_if_t<std::is_constructible<typename container_traits<Row>::iterator, typename container_traits<Other>::iterator>::value>>
    explicit comb_iterator(const comb_iterator<Other, is_reverse>& other)
       : cv(other.cv)
       , last(other.last) {}
@@ -315,7 +315,7 @@ public:
    comb_iterator& operator= (const comb_iterator&) = default;
 
    template <typename Other,
-             typename=std::enable_if_t<std::is_assignable<typename container_traits<Row>::iterator&, typename container_traits<Other>::iterator>::value>>
+             typename = std::enable_if_t<std::is_assignable<typename container_traits<Row>::iterator&, typename container_traits<Other>::iterator>::value>>
    comb_iterator& operator= (const comb_iterator<Other, is_reverse>& other)
    {
       cv.copy(other.cv);
@@ -324,17 +324,17 @@ public:
    }
 
    template <typename Iterator>
-   comb_iterator(int m, int n, Iterator&& src)
+   comb_iterator(Int m, Int n, Iterator&& src)
       : cv(m, ensure_private_mutable(std::forward<Iterator>(src)))
       , last(n) {}
 
    template <typename Iterator>
-   comb_iterator(int m, int n, maximal<int>, Iterator&& src)
-      : cv(m, maximal<int>(), ensure_private_mutable(std::forward<Iterator>(src)))
+   comb_iterator(Int m, Int n, maximal<Int>, Iterator&& src)
+      : cv(m, maximal<Int>(), ensure_private_mutable(std::forward<Iterator>(src)))
       , last(n) {}
 
    template <typename Iterator>
-   comb_iterator(int m, int n, int index_arg, Iterator&& src)
+   comb_iterator(Int m, Int n, Int index_arg, Iterator&& src)
       : cv(m, index_arg, ensure_private_mutable(std::forward<Iterator>(src)))
       , last(n) {}
 
@@ -358,11 +358,11 @@ public:
    std::enable_if_t<is_among<Other, iterator, const_iterator>::value, bool>
    operator!= (const Other& it) const { return !operator==(it); }
 
-   bool at_end() const { return index()==last; }
-   int index() const { return cv.index; }
+   bool at_end() const { return index() == last; }
+   Int index() const { return cv.index; }
 protected:
    value_type cv;
-   int last;
+   Int last;
 };
 
 template <typename Row, int is_reverse>
@@ -381,7 +381,7 @@ struct check_container_feature<CombArray<Row, is_reverse>, pure_sparse>
 template <typename Row>
 struct ListMatrix_data {
    std::list<Row> R;
-   int dimr, dimc;
+   Int dimr, dimc;
 
    ListMatrix_data() : dimr(0), dimc(0) {}
 
@@ -412,7 +412,7 @@ public:
    }
    iterator end()
    {
-      return iterator(hidden().rows(), hidden().cols(), maximal<int>(), hidden().data->R.begin());
+      return iterator(hidden().rows(), hidden().cols(), maximal<Int>(), hidden().data->R.begin());
    }
    const_iterator begin() const
    {
@@ -420,7 +420,7 @@ public:
    }
    const_iterator end() const
    {
-      return const_iterator(hidden().rows(), hidden().cols(), maximal<int>(), hidden().data->R.begin());
+      return const_iterator(hidden().rows(), hidden().cols(), maximal<Int>(), hidden().data->R.begin());
    }
 
    reference front()
@@ -432,9 +432,9 @@ public:
       return const_reference(hidden().rows(), hidden().data->R.begin());
    }
 
-   int size() const { return hidden().cols(); }
+   Int size() const { return hidden().cols(); }
    bool empty() const { return size()==0; }
-   void resize(int n) { hidden().resize(hidden().rows(), n); }
+   void resize(Int n) { hidden().resize(hidden().rows(), n); }
 };
 
 template <typename Matrix, typename Row>
@@ -451,7 +451,7 @@ public:
    }
    reverse_iterator rend()
    {
-      return reverse_iterator(this->hidden().rows(), this->hidden().cols(), maximal<int>(), this->hidden().data->R.begin());
+      return reverse_iterator(this->hidden().rows(), this->hidden().cols(), maximal<Int>(), this->hidden().data->R.begin());
    }
    const_reverse_iterator rbegin() const
    {
@@ -459,7 +459,7 @@ public:
    }
    const_reverse_iterator rend() const
    {
-      return reverse_iterator(this->hidden().rows(), this->hidden().cols(), maximal<int>(), this->hidden().data->R.begin());
+      return reverse_iterator(this->hidden().rows(), this->hidden().cols(), maximal<Int>(), this->hidden().data->R.begin());
    }
 
    CombArray<Row,1> back()
@@ -478,11 +478,11 @@ class ListMatrix_cols<Matrix, Row, random_access_iterator_tag>
 public:
    typedef random_access_iterator_tag container_category;
 
-   CombArray<Row,0> operator[] (int c)
+   CombArray<Row,0> operator[] (Int c)
    {
       return CombArray<Row,0>(this->hidden().rows(), c, this->hidden().data->R.begin());
    }
-   CombArray<const Row,0> operator[] (int c) const
+   CombArray<const Row,0> operator[] (Int c) const
    {
       return CombArray<const Row,0>(this->hidden().rows(), c, this->hidden().data->R.begin());
    }

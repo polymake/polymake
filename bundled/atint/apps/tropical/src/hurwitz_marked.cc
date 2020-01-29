@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -45,11 +45,11 @@ namespace polymake { namespace tropical {
 
 //Documentation see perl wrapper
 template <typename Addition>
-perl::Object hurwitz_marked_cycle(int k, Vector<int> degree,
+BigObject hurwitz_marked_cycle(Int k, Vector<Int> degree,
                                   Vector<Rational> pullback_points = Vector<Rational>())
 {
   //First, compute the psi-class product
-  int n = degree.dim();
+  Int n = degree.dim();
 
   //Sanity check
   if (k < 0 || k > n) {
@@ -60,20 +60,20 @@ perl::Object hurwitz_marked_cycle(int k, Vector<int> degree,
     pullback_points |= zero_vector<Rational>(n-3-k - pullback_points.dim());
   }
 
-  const int big_n = 2*n - k - 2;
-  Vector<int> exponents = zero_vector<int>(n) | ones_vector<int>(n-2-k);
-  perl::Object P = psi_product<Addition>(big_n, exponents);
+  const Int big_n = 2*n - k - 2;
+  Vector<Int> exponents = zero_vector<Int>(n) | ones_vector<Int>(n-2-k);
+  BigObject P = psi_product<Addition>(big_n, exponents);
 
   if (n == 4) return P;
 
   //Compute evalutation maps and pullbacks
-  std::vector<perl::Object> pb_functions;
+  std::vector<BigObject> pb_functions;
   pb_functions.reserve(big_n-n-1);
   Matrix<Rational> rat_degree(degree.dim(),0);
   Vector<Rational> zero_translate(2);
   rat_degree |= degree;
-  for (int i = n+2; i <= big_n; ++i) {
-    perl::Object evi = evaluation_map<Addition>(n-2-k, thomog(rat_degree,0,false), i-n-1);
+  for (Int i = n+2; i <= big_n; ++i) {
+    BigObject evi = evaluation_map<Addition>(n-2-k, thomog(rat_degree,0,false), i-n-1);
     Matrix<Rational> evi_matrix = evi.give("MATRIX");
     evi_matrix = tdehomog_morphism(evi_matrix, zero_translate).first;
 
@@ -83,14 +83,14 @@ perl::Object hurwitz_marked_cycle(int k, Vector<int> degree,
 
     //Since we restrict ourselves to M_0,N x {0}, we actually ignore the last coefficient
     //of ev_i and replace it by the constant coefficient 0 (for the min-max-function)
-    Matrix<int> monoms(evi_matrix.minor(All, sequence(0, evi_matrix.cols()-1)));
+    Matrix<Int> monoms(evi_matrix.minor(All, sequence(0, evi_matrix.cols()-1)));
 
     Vector<TropicalNumber<Addition> > coeffs(2);
     coeffs[0] = TropicalNumber<Addition>(0);
     coeffs[1] = TropicalNumber<Addition>(pullback_points[i-n-2]);
 
     Polynomial<TropicalNumber<Addition>> p(coeffs, monoms);
-    perl::Object pb = call_function("rational_fct_from_affine_numerator", p);
+    BigObject pb = call_function("rational_fct_from_affine_numerator", p);
     pb_functions.push_back(pb);
   }//END compute pullback functions
 

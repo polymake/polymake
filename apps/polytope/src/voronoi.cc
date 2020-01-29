@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,29 +25,29 @@
 namespace polymake { namespace polytope {
 
 template <typename E>
-void voronoi(perl::Object p)
+void voronoi(BigObject p)
 {
    const Matrix<E> sites=p.give("SITES");
-   const int n=sites.rows(), d=sites.cols();
+   const Int n = sites.rows(), d = sites.cols();
 
    // if not all SITES have first coordinate 1, we consider
    // the sites as a vector configuration
    bool is_vector_configuration = false;
-   for (int i=0; i<n; ++i) {
+   for (Int i = 0; i < n; ++i) {
       if (sites(i,0) != 1) {
          is_vector_configuration=true;
          break;
       }
    }
 
-   const int poly_dim=d+1+is_vector_configuration;
+   const Int poly_dim = d+1+is_vector_configuration;
    Matrix<E> voronoi_ineq(n+1, poly_dim);
    auto ineq_it = concat_rows(voronoi_ineq).begin();
 
-   for (int i=0; i<n; ++i, ++ineq_it) {
+   for (Int i = 0; i < n; ++i, ++ineq_it) {
       *ineq_it = sqr(sites[i])+(is_vector_configuration-1); // -1 compensates for homogenizing coordinate
       ++ineq_it;
-      for (int k=1-is_vector_configuration; k<d; ++k, ++ineq_it)
+      for (Int k = 1-is_vector_configuration; k < d; ++k, ++ineq_it)
          *ineq_it = -2 * sites(i, k);
 
       *ineq_it = 1;

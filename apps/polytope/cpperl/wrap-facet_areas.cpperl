@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "facet_areas.cc",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Matrix<Rational>&>"], "func": "facet_areas", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "facet_areas.X.X.X"},
+  {"args": ["perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Matrix<Rational>&>"], "func": "facet_areas", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "facet_areas.X.X.X"},
+ null ],
+"version": 3}

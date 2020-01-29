@@ -1,6 +1,6 @@
 {"app": "topaz",
  "inst": [
-  {"pkg": "Polymake::topaz::HomologyGroup"},
+  {"guard_name": "APP_WRAPPERS_topaz_HomologyComplex", "include": ["polymake/topaz/HomologyComplex.h"], "pkg": "Polymake::topaz::HomologyGroup", "wrapper_file": "include/app-wrappers/polymake/topaz/HomologyComplex.h"},
   {"class": "HomologyGroup<Integer>", "include": ["polymake/Integer.h", "polymake/topaz/HomologyComplex.h"], "pkg": "Polymake::topaz::HomologyGroup__Integer"},
  null ],
 "version": 3}

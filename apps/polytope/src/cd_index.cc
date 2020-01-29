@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -47,23 +47,23 @@ namespace {
 class ivec
 {
 private:
-   Array<int> iota;
-   Array<int> mvec;
+   Array<Int> iota;
+   Array<Int> mvec;
    bool is_at_end;
 
 public:
    // (i_1,...,i_p), starts with (m_0,...,m_{p-1})
-   ivec (Array<int> m = Array<int>(1))
+   explicit ivec (const Array<Int>& m = Array<Int>(1))
+      : iota(m.size())
+      , mvec(m)
    {
-      mvec = m;
-      iota = Array<int>(mvec.size());
       reset();
    }
 
    void reset()
    {
       iota[0] = 0;
-      for (int i=1, s=iota.size(); i<s; ++i)
+      for (Int i = 1, s = iota.size(); i < s; ++i)
          iota[i] = mvec[i-1];
       is_at_end = false;
    }
@@ -73,7 +73,7 @@ public:
    ivec& operator++ ()
    {
       if (!at_end()) {
-         for (int i=1, s=iota.size(); i<s; ++i)
+         for (Int i = 1, s = iota.size(); i < s; ++i)
             if (iota[i] == mvec[i]-2) {
                if (i == s-1) {
                   is_at_end = true;
@@ -90,8 +90,8 @@ public:
 
    int ksign () const
    {
-      int exponent = 0;
-      for (int i = 1; i < iota.size(); ++i)
+      Int exponent = 0;
+      for (Int i = 1; i < iota.size(); ++i)
          exponent += (mvec[i]-iota[i]);
       return (exponent%2==0 ? 1 : -1);
 
@@ -100,20 +100,20 @@ public:
       // and update it with every ++
    }
 
-   int to_idx (const Array<int>& Fib) const
+   Int to_idx (const Array<Int>& Fib) const
    {
-      int idx = 0;
-      for (int i=1, s=iota.size(); i<s; ++i)
+      Int idx = 0;
+      for (Int i=1, s=iota.size(); i<s; ++i)
          idx += Fib[iota[i]+1];
       return idx;
    }
 };
 
-/* calculates the m-vector for a given monomial */
-Array<int> m_vector (int mon, int d, const Array<int>& Fib)
+// calculates the m-vector for a given monomial
+Array<Int> m_vector (Int mon, Int d, const Array<Int>& Fib)
 {
-   std::list<int> n;
-   int no_of_c = 0;
+   std::list<Int> n;
+   Int no_of_c = 0;
    while (d > 1) {
       if (mon >= Fib[d-1]) {
          mon -= Fib[d-1];
@@ -126,25 +126,25 @@ Array<int> m_vector (int mon, int d, const Array<int>& Fib)
       }
    }
 
-   int p = n.size();
-   Array<int> m (p+1); // p+2 ?
+   Int p = n.size();
+   Array<Int> m (p+1); // p+2 ?
    m[0] = 0;
-   std::list<int>::const_iterator lit = n.begin();
-   for (int i = 1; i <= p; ++i, ++lit)
-      m[i] = m[i-1] + (*lit) + 2;
+   auto lit = n.begin();
+   for (Int i = 1; i <= p; ++i, ++lit)
+      m[i] = m[i-1]+(*lit)+2;
 
    return m;
 }
 
 /* calculates the row adjoined to the given monomial of the matrix below */
-Vector<Integer> kvec_combination(int mon, int d, const Array<int>& Fib)
+Vector<Integer> kvec_combination(Int mon, Int d, const Array<Int>& Fib)
 {
    Vector<Integer> r(Fib[d]);
 
-   if (mon==0) {                // mon is ccc...c
+   if (mon == 0) {                // mon is ccc...c
       r[0] = 1;
    } else {                     // mon contains at least one d
-      Array<int> m = m_vector(mon, d, Fib);
+      Array<Int> m = m_vector(mon, d, Fib);
       for (ivec i(m); !i.at_end(); ++i)
          r[i.to_idx(Fib)] += i.ksign();
    }
@@ -162,30 +162,30 @@ Vector<Integer> kvec_combination(int mon, int d, const Array<int>& Fib)
 class subset_iterator
 {
 private:
-   int spset;
-   int subset;
-   int coeff;
-   int dim;
-   const Array<int> Fib;
+   Int spset;
+   Int subset;
+   Int coeff;
+   Int dim;
+   const Array<Int> Fib;
 
 public:
    subset_iterator()
-      : spset(0), subset(0), coeff(0), dim(0), Fib(Array<int>()) { }
+      : spset(0), subset(0), coeff(0), dim(0), Fib(Array<Int>()) { }
 
-   subset_iterator(int start_set, int d, const Array<int>& Fib_arg)
+   subset_iterator(Int start_set, Int d, const Array<Int>& Fib_arg)
       : spset(start_set), subset(start_set), coeff(1), dim(d), Fib(Fib_arg) { }
 
    bool at_end() const { return (coeff==0); }
 
-   int operator* () const { return subset; }
+   Int operator* () const { return subset; }
 
-   int coefficient() const { return coeff; }
+   Int coefficient() const { return coeff; }
 
    subset_iterator& operator++ ()
    {
       if (!at_end()) {
-         int d = dim;
-         int spsetcopy = spset;
+         Int d = dim;
+         Int spsetcopy = spset;
          for ( ; d > 0; --d)
             if (spsetcopy >= Fib[d-1]) {
                spsetcopy -= Fib[d-1];
@@ -196,7 +196,7 @@ public:
             subset -= Fib[d-1];
             coeff *= -2;
             spsetcopy = spset;
-            for (int i = dim; i > d; --i)
+            for (Int i = dim; i > d; --i)
                if (spsetcopy >= Fib[i-1])
                {
                   subset += Fib[i-1];
@@ -211,7 +211,7 @@ public:
    }
 };
 
-Vector<Integer> flag_combination(int spset, int d, const Array<int>& Fib)
+Vector<Integer> flag_combination(Int spset, Int d, const Array<Int>& Fib)
 {
    Vector<Integer> r(Fib[d]);
 
@@ -231,14 +231,14 @@ enum transformation_type { flag_to_kvec, kvec_to_cd };
  * flag-vector -> k-vector  for t == flag_to_kvec,
  * k-vector -> cd-index     for t == kvec_to_cd
  */
-Matrix<Integer> transformation_matrix(int d, transformation_type t, const Array<int>& Fib)
+Matrix<Integer> transformation_matrix(Int d, transformation_type t, const Array<Int>& Fib)
 {
    Matrix<Integer> T(Fib[d],Fib[d]);
 
    if (d==0) {
       T(0,0) = 1;
    } else {
-      int objit = 0;
+      Int objit = 0;
       for (auto rit = entire(rows(T)); !rit.at_end(); ++rit, ++objit)
          switch (t) {
          case kvec_to_cd:
@@ -254,9 +254,9 @@ Matrix<Integer> transformation_matrix(int d, transformation_type t, const Array<
 }
 } // end anonymous namespace
 
-void cd_index(perl::Object p)
+void cd_index(BigObject p)
 {
-   int d = p.give("COMBINATORIAL_DIM");
+   Int d = p.give("COMBINATORIAL_DIM");
    Vector<Integer> flag = p.give("FLAG_VECTOR");
    Vector<Integer> cd(flag.dim());
 
@@ -266,7 +266,7 @@ void cd_index(perl::Object p)
    }
 
    // precalculate the fibonacci-numbers
-   const Array<int> Fib(d+1, fibonacci_numbers());
+   const Array<Int> Fib(d+1, fibonacci_numbers());
 
    // transform the flag vector into the k-vector
    const Matrix<Integer> T1 = transformation_matrix(d, flag_to_kvec, Fib);

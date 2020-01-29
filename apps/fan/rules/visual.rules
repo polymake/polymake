@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -136,7 +136,7 @@ user_method VISUAL(%Visual::Polygons::decorations, %geometric_options_linear, {C
          : undef;
    my $zero=new Vector<Float>($d);
    my @cells_visual = ();
-   my $rays_graph = new props::Graph($rays->rows + 1);
+   my $rays_graph = new props::Graph($rays->rows+1);
    $rays_graph->edge(0,$_) for 1 .. $rays->rows;
    my @labels;
    if ((@labels=@{$this->lookup("RAY_LABELS")})==undef) {
@@ -189,11 +189,11 @@ object SubdivisionOfPoints {
 user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cutoff}, %geometric_options) : POINTS, POLYHEDRAL_COMPLEX.VERTICES, POLYHEDRAL_COMPLEX.GRAPH, MAXIMAL_CELLS {
    my ($this,$decor,$cutoff_decor,$geom)=@_;
    my $d=$this->POINTS->cols;
-   my $vertices=convert_to<Float>($this->POLYHEDRAL_COMPLEX->VERTICES);
-   my $points=convert_to<Float>($this->POINTS);
+   my $vertices=$this->POLYHEDRAL_COMPLEX->VERTICES;
+   my $points=$this->POINTS;
    my @cells_visual = ();
    my $vpoints=new Visual::PointSet( Name => 'points',
-                                     Points => Visual::transform_float(dehomogenize($points),$geom->{Transformation},$geom->{Offset}),
+                                     Points => Visual::transform_float(dehomogenize(convert_to<Float>($points)),$geom->{Transformation},$geom->{Offset}),
                                      PointLabels =>$this->lookup("POINT_LABELS"),
                                      PointColor =>"0 0 0",
                                      $decor);
@@ -201,14 +201,15 @@ user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cu
    push @cells_visual, $vpoints;
    my $vgraph = new Visual::Graph( Name =>  "Vertices",
                                    Graph => $this->POLYHEDRAL_COMPLEX->GRAPH,
-                                   Coord => Visual::transform_float(dehomogenize($vertices),$geom->{Transformation},$geom->{Offset}),
+                                   Coord => Visual::transform_float(dehomogenize(convert_to<Float>($vertices)),$geom->{Transformation},$geom->{Offset}),
                                    NodeStyle => "hidden",
                                    EdgeColor => "0 0 0", $decor);
    push @cells_visual, $vgraph;
    foreach (@{$this->MAXIMAL_CELLS}) {
+      $decor->{VertexLabels} = "hidden";
       my $cell=$_;
       my $v=$points->minor($cell,All);
-      my $p=new polytope::PointConfiguration<Rational>(POINTS => $v);
+      my $p=new polytope::PointConfiguration<Scalar>(POINTS => $v);
       push @cells_visual, (my $pv=$p->VISUAL( $decor, $geom ));
    }
    visualize(new Visual::PolyhedralFan( Name => "pcom:".$this->name,
@@ -229,19 +230,19 @@ user_method VISUAL(%Visual::Polygons::decorations, %geometric_options, {CutOff =
    my ($this,$decor,$geom,$cutoff_decor)=@_;
    $decor->{VertexLabels} ||= "hidden";
    my $d=$this->VERTICES->cols;
-   my $vertices=convert_to<Float>($this->VERTICES);
+   my $vertices=$this->VERTICES;
    my @cells_visual = ();
    my @vcolor = ();
    my $dv = $decor->{VertexColor};
    if (defined($dv) and ref($dv) eq "ARRAY")  {
        @vcolor = @{$decor->{VertexColor}};
    }
+   my $bbox = defined($geom->{BoundingFacets}) ? new Matrix<Scalar>($geom->{BoundingFacets}) : polytope::bounding_box_facets($vertices, surplus_k=>6/5, fulldim=>1);
    foreach (@{$this->MAXIMAL_POLYTOPES}) {
       my $cell=$_;
       my $v= ($vertices->minor($cell,All) );
-      my $p=new polytope::Polytope<Float>(VERTICES => $v, LINEALITY_SPACE => $this->LINEALITY_SPACE);
+      my $p=new polytope::Polytope<Scalar>(VERTICES => $v, LINEALITY_SPACE => $this->LINEALITY_SPACE);
       my @pcolor = map {$vcolor[$_]} @{$cell};
-      my $bbox = defined($geom->{BoundingFacets}) ? new Matrix<Float>($geom->{BoundingFacets}) : undef;
       my $pv = scalar(@vcolor)>1
              ? $p->VISUAL($decor,$geom, VertexColor=>\@pcolor, BoundingFacets=>$bbox)
              : $p->VISUAL($decor,$geom, BoundingFacets=>$bbox);
@@ -256,6 +257,20 @@ user_method VISUAL(%Visual::Polygons::decorations, %geometric_options, {CutOff =
 precondition : FAN_AMBIENT_DIM { $this->FAN_AMBIENT_DIM<=4 }
 
 
+}
+
+
+object HyperplaneArrangement {
+
+# @category Visualization
+# Visualizes the fan, intersected with the unit ball.
+# @options %geometric_options_linear
+# @return Visual::PolyhedralFan
+
+user_method VISUAL( @ ) {
+   my ($this, @args)=@_;
+   $this->CELL_DECOMPOSITION->VISUAL(@args);
+}
 }
 
 package Visual::Color;

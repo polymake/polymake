@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -15,7 +15,7 @@
 #-------------------------------------------------------------------------------
 
 # @topic category property_types/Basic Types
-# This category contains all basic types, in particular those that wrap C++, GMP or perl types such as [[Int]], [[Integer]], [[Rational]], [[Long]], [[Float]], [[Array]], [[String]], ...
+# This category contains all basic types, in particular those that wrap C++, GMP or perl types such as [[Int]], [[Integer]], [[Rational]], [[Float]], [[Array]], [[String]], ...
 
 # @topic category functions/Arithmetic
 # These are functions that perform arithmetic computations.
@@ -38,6 +38,8 @@ declare property_type Text {
    type_method parse { $_[1] }
 
    type_method equal { $_[1] eq $_[2] }
+
+   type_method JSONschema { return { type => "string" }; }
 }
 
 ##################################################################################
@@ -61,14 +63,14 @@ declare property_type String : c++ (builtin => 'std::string') {
 
    type_method isa { is_string($_[1]) }
 
-   type_method XMLdatatype { "text-pattern: \\S+|'.*'" }
+   type_method JSONschema { return { type => "string" }; }
 }
 
 ##################################################################################
 
 # @category Basic Types
-# Corresponds to the C++ type __int__.
-declare property_type Int : c++ (builtin => 'int') {
+# Corresponds to the C++ type __Int__.
+declare property_type Int : c++ (builtin => 'Int') {
 
    method construct() { 0 }
 
@@ -81,14 +83,14 @@ declare property_type Int : c++ (builtin => 'int') {
 
    type_method isa { is_integer($_[1]) }
 
-   type_method XMLdatatype { "integer" }
-}
+   type_method JSONschema { return { type => "integer" }; }
 
-# @category Basic Types
-# Corresponds to the C++ type __long__.
-# This type is primarily needed for automatic generated function wrappers,
-# because perl integral constants are always kept as a long.
-declare property_type Long : Int : c++ (builtin => 'long');
+   # produce the highest possible value
+   user_method max(:static) : c++ (class => 'std::numeric_limits<Int>');
+
+   # produce the lowest possible value
+   user_method min(:static) : c++ (class => 'std::numeric_limits<Int>');
+}
 
 # @category Basic Types
 # Corresponds to the C++ type __bool__.
@@ -104,7 +106,7 @@ declare property_type Bool : c++ (builtin => 'bool') {
 
    type_method toString { to_boolean_string($_[1]) }
 
-   type_method XMLdatatype { "boolean" }
+   type_method JSONschema { return { type => "boolean" }; }
 }
 
 # @category Basic Types
@@ -134,10 +136,7 @@ declare property_type Float : upgrades(Int) : c++ (builtin => 'double') {
    # produce an infinitely large negative value
    user_method minus_inf() { -&inf }
 
-   # the XSD library type allows only INF for infinite values,
-   # while perl prints them as Inf and c++ library as inf
-   # fortunately, the input method is case-insensitive
-   type_method XMLdatatype { ("double", "pattern: -?[Ii]nf") }
+   type_method JSONschema { return { type => [ "number", "string" ], pattern => '^-?[Ii]nf$' }; }
 }
 
 # @category Artificial
@@ -161,7 +160,7 @@ declare property_type Integer : upgrades(Int) : c++ (include => "polymake/Intege
 
    operator ++ -- bool neg ! << <<= >> >>= @compare : c++;
 
-   operator + - * / % += -= *= /= %= (*,*:int) : c++;
+   operator + - * / % += -= *= /= %= (*,*:num) : c++;
 
    function abs(*) : operator abs : c++;
 
@@ -169,7 +168,7 @@ declare property_type Integer : upgrades(Int) : c++ (include => "polymake/Intege
 
    use overload '0+' => \&inhibited_num;
 
-   type_method XMLdatatype { "pattern: -?(\\d+|inf)" }
+   type_method JSONschema { return { type => "string", pattern => '^-?(\\d+|inf)$' }; }
 }
 
 
@@ -177,15 +176,33 @@ declare property_type Integer : upgrades(Int) : c++ (include => "polymake/Intege
 namespaces::intercept_operation(undef, 'INT', sub { (typeof Integer)->construct->($_[0]) });
 
 # @category Combinatorics
-# Computes the binomial coefficient __//n// choose //k//__.
+# Compute the binomial coefficient __//n// choose //k//__.
 # Negative values of //n// (and //k//) are supported.
 # @param Int n
 # @param Int k
-# @return Int //n// choose //k//
+# @return Integer //n// choose //k//
 # @example Print 6 choose 4 like this:
 # > print binomial(6,4);
 # | 15
 user_function binomial(*,$) : c++ (name => 'binom', class => 'Integer', include => "polymake/Integer.h");
+
+# @category Combinatorics
+# Compute the __n__-th Fibonacci number
+# @param Int n
+# @return Integer
+# @example
+# > print fibonacci(6);
+# | 8
+user_function fibonacci(Int) : c++ (class => 'Integer', include => "polymake/Integer.h");
+
+# @category Combinatorics
+# Compute the __n__-th and __n__-1-th Fibonacci numbers
+# @param Int n
+# @return List<Integer>
+# @example
+# > print join " ", fibonacci2(6);
+# | 8 5
+user_function fibonacci2(Int) : returns(@) : c++ (class => 'Integer', include => "polymake/Integer.h");
 
 # @category Basic Types
 # A class for rational numbers.
@@ -203,9 +220,9 @@ declare property_type Rational : upgrades(Integer) : c++ (include => "polymake/R
 
    operator ++ -- bool neg ! << <<= >> >>= @compare : c++;
 
-   operator + - * / += -= *= /= (*,*:int) : c++;
+   operator + - * / += -= *= /= (*,*:num) : c++;
 
-   function pow(*,*:int) : operator ** : c++ (name => 'pow', class => 'Rational', include => "polymake/Rational.h");
+   function pow(*,*:num) : operator ** : c++ (name => 'pow', class => 'Rational', include => "polymake/Rational.h");
 
    function abs(*) : operator abs : c++;
 
@@ -213,12 +230,12 @@ declare property_type Rational : upgrades(Integer) : c++ (include => "polymake/R
 
    use overload '0+' => \&inhibited_num;
 
-   type_method XMLdatatype { "pattern: -?(\\d+(/\\d+)?|inf)" }
+   type_method JSONschema { return { type => "string", pattern => '^-?(\\d+(/\\d+)?|inf)$' }; }
 }
 
 property_type Integer {
 
-   function pow(*,*:int) : operator ** : c++ (name => 'pow', class => 'Integer', include => "polymake/Integer.h") {
+   function pow(*,*:num) : operator ** : c++ (name => 'pow', class => 'Integer', include => "polymake/Integer.h") {
       if ($_[1] < 0) {
          CROAK_SKIP:
          return &Rational::pow;
@@ -305,7 +322,7 @@ user_function isinf(*) : c++ (include => "polymake/Integer.h");
 # @example
 # > print div_exact(10,5);
 # | 2
-user_function div_exact(*:int, *:int) : c++ (include => "polymake/numerical_functions.h");
+user_function div_exact(*:num, *:num) : c++ (include => "polymake/numerical_functions.h");
 
 
 # @topic category property_types/Arithmetic
@@ -341,7 +358,7 @@ user_function div(*,*) : c++ (include => "polymake/numerical_functions.h");
 # @example
 # > print gcd(6,9);
 # | 3
-user_function gcd(*:int, *:int) : c++ (include => "polymake/numerical_functions.h");
+user_function gcd(*:num, *:num) : c++ (include => "polymake/numerical_functions.h");
 
 # @category Arithmetic
 # The complete result of the calculation of the __greatest common divisor__ of two numbers //a// and //b//:
@@ -374,7 +391,7 @@ declare property_type ExtGCD<Scalar> : c++ (include => "polymake/numerical_funct
 # > print $GCD->k2;
 # | 2
 
-user_function ext_gcd(*:int, *:int) : c++ (include => "polymake/numerical_functions.h");
+user_function ext_gcd(*:num, *:num) : c++ (include => "polymake/numerical_functions.h");
 
 
 # @category Arithmetic
@@ -386,14 +403,14 @@ user_function ext_gcd(*:int, *:int) : c++ (include => "polymake/numerical_functi
 # > print lcm(6,9);
 # | 18
 
-user_function lcm(*:int, *:int) : c++ (include => "polymake/numerical_functions.h");
+user_function lcm(*:num, *:num) : c++ (include => "polymake/numerical_functions.h");
 
 
 # @category Arithmetic
 # Computes the factorial //n//! = n·(n-1)·(n-2)·...·2·1.
 # @param Int n >=0
 # @return Integer //n//!
-user_function fac(*:int) : c++ (name => 'fac', class => 'Integer', include => "polymake/Integer.h");
+user_function fac(*:num) : c++ (name => 'fac', class => 'Integer', include => "polymake/Integer.h");
 
 
 # @category Internal
@@ -457,7 +474,11 @@ declare property_type QuadraticExtension<Field=Rational> : upgrades(Field) : c++
    # @param Field a
    method construct(type_upgrades_to<Field>) : c++;
 
-   operator ! neg @arith @compare : c++;
+   operator ! neg : c++;
+
+   operator @arith (*, *:num) : c++;
+
+   operator @compare : c++;
 
    function abs(*) : operator abs : c++;
 
@@ -510,7 +531,7 @@ function compare_float_sequences($$) {
 # An array with elements of type //Element//.
 # Corresponds to the C++ type [[Array]].
 # @tparam Element
-declare property_type Array<Element> : (instanceof Polymake::Core::ObjectType(Element) ? Polymake::Core::BigObjectArray : undef) \
+declare property_type Array<Element> : (instanceof Polymake::Core::BigObjectType(Element) ? Polymake::Core::BigObjectArray : undef) \
    : c++ (include => "polymake/Array.h") {
 
    operator @eq : c++;
@@ -585,6 +606,22 @@ declare property_type Serialized<X> : c++ (name => "pm::Serialized", include => 
 declare property_type CachedObjectPointer<X...> : c++ (name => "typeid", include => "polymake/client.h");
 
 ##################################################################################
+
+# @category Basic Types
+# The Galois field of order 2
+declare property_type GF2 : upgrades(Bool) : c++ (include => "polymake/GF2.h") {
+
+   method construct() : c++;
+
+   method construct(*) : c++;
+
+   operator == != : c++;
+
+   operator + - * / += -= *= /= : c++;
+
+   operator ++ -- neg : c++;
+
+}
 
 INCLUDE
   set_types

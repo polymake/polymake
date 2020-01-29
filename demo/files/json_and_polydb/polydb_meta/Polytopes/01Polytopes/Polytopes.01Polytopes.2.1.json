@@ -1,0 +1,29 @@
+{
+    "_id" : "Polytopes.01Polytopes.2.1",
+    "description" : "0/1-Polytopes up to rotation and reflection",
+    "collection" : "01Polytopes",
+    "section" : [ 
+        "Polytopes"
+    ],
+    "polydb_version" : "2.1",
+    "author" : [ 
+        {
+            "name" : "Oswin Aichholzer"
+        }
+    ],
+    "short_description" : "0/1-Polytopes up to rotation and reflection",
+    "contributor" : [ 
+        {
+            "email" : "paffenholz@opt.tu-darmstadt.de",
+            "affiliation" : "TU Darmstadt",
+            "name" : "Andreas Paffenholz"
+        }
+    ],
+    "maintainer" : [ 
+        {
+            "email" : "paffenholz@opt.tu-darmstadt.de",
+            "affiliation" : "TU Darmstadt",
+            "name" : "Andreas Paffenholz"
+        }
+    ]
+}

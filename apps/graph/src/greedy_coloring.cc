@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,15 +22,15 @@
 
 namespace polymake { namespace graph {
 
-NodeMap<Undirected,int> greedy_coloring(const Graph<>& G)
+NodeMap<Undirected, Int> greedy_coloring(const Graph<>& G)
 {
-   NodeMap<Undirected,int> C(G,-1);
+   NodeMap<Undirected, Int> C(G, -1);
 
    BFSiterator<Graph<>, VisitorTag<NodeVisitor<true>>> it(G, nodes(G).front());
    while (true) {
       while (!it.at_end()) {
-         const int n=*it;
-         Set<int> forbidden_colors;
+         const Int n = *it;
+         Set<Int> forbidden_colors;
          for (auto to_node : G.out_adjacent_nodes(n))
             forbidden_colors += C[to_node];
          forbidden_colors -= -1;

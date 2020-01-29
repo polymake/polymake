@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,11 +21,11 @@
 
 namespace polymake { namespace topaz {
 
-perl::Object simplex(const int n)
+BigObject simplex(const Int n)
 {
-   perl::Object p("SimplicialComplex");
-   Array<Set<int> > facet(1);
-   facet[0]=sequence(0,n+1);
+   BigObject p("SimplicialComplex");
+   Array<Set<Int>> facet(1);
+   facet[0] = sequence(0, n+1);
    p.take("FACETS")<<facet;
    p.take("N_VERTICES")<<n+1;
    p.take("BALL")<<true;

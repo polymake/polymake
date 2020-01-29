@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,7 +23,7 @@
 #include "polymake/SparseVector.h"
 #include "polymake/ListMatrix.h"
 #include "polymake/Set.h"
-#include "polymake/Rational.h"  // need this for algebraic_traits of int and Integer
+#include "polymake/Rational.h"  // need this for algebraic_traits of Int and Integer
 
 #include "polymake/internal/linalg_exceptions.h"
 #include "polymake/internal/dense_linalg.h"
@@ -205,7 +205,7 @@ Vector<E> barycenter(const GenericMatrix<TMatrix, E>& V)
 
 /// Compute the determinant of a matrix using the Gauss elimination method
 template <typename TMatrix, typename E>
-typename std::enable_if<is_field<E>::value, E>::type
+std::enable_if_t<is_field<E>::value, E>
 det(const GenericMatrix<TMatrix, E>& m)
 {
    if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
@@ -228,7 +228,7 @@ E trace(const GenericMatrix<TMatrix, E>& m)
 
 
 template <typename TMatrix, typename E>
-typename std::enable_if<!std::is_same<E, typename algebraic_traits<E>::field_type>::value, E>::type
+std::enable_if_t<!std::is_same<E, typename algebraic_traits<E>::field_type>::value, E>
 det(const GenericMatrix<TMatrix, E>& m)
 {
    if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
@@ -240,7 +240,7 @@ det(const GenericMatrix<TMatrix, E>& m)
 
 /// Reduce a vector with a given matrix using the Gauss elimination method
 template <typename TMatrix, typename TVector, typename E>
-typename std::enable_if<is_field<E>::value, typename TVector::persistent_type>::type
+std::enable_if_t<is_field<E>::value, typename TVector::persistent_type>
 reduce(const GenericMatrix<TMatrix, E>& A, const GenericVector<TVector, E>& V)
 {
    if (POLYMAKE_DEBUG || is_wary<TMatrix>() || is_wary<TVector>()) {
@@ -252,8 +252,8 @@ reduce(const GenericMatrix<TMatrix, E>& A, const GenericVector<TVector, E>& V)
 }
 
 template <typename TMatrix, typename TVector, typename E>
-typename std::enable_if<!std::is_same<E, typename algebraic_traits<E>::field_type>::value,
-                        Vector<typename algebraic_traits<E>::field_type> >::type
+std::enable_if_t<!std::is_same<E, typename algebraic_traits<E>::field_type>::value,
+                 Vector<typename algebraic_traits<E>::field_type>>
 reduce(const GenericMatrix<TMatrix, E>& A, const GenericVector<TVector, E>& V)
 {
    if (POLYMAKE_DEBUG || is_wary<TMatrix>() || is_wary<TVector>()) {
@@ -269,7 +269,8 @@ reduce(const GenericMatrix<TMatrix, E>& A, const GenericVector<TVector, E>& V)
     @exception degenerate_matrix if det(A)==0
 */
 template <typename TMatrix, typename E>
-typename std::enable_if<is_field<E>::value, typename TMatrix::persistent_nonsymmetric_type>::type
+std::enable_if_t<is_field<E>::value,
+                 typename TMatrix::persistent_nonsymmetric_type>
 inv(const GenericMatrix<TMatrix, E>& m)
 {
    if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
@@ -280,8 +281,8 @@ inv(const GenericMatrix<TMatrix, E>& m)
 }
 
 template <typename TMatrix, typename E>
-typename std::enable_if<!std::is_same<E, typename algebraic_traits<E>::field_type>::value,
-                        typename GenericMatrix<TMatrix, typename algebraic_traits<E>::field_type>::persistent_nonsymmetric_type>::type
+std::enable_if_t<!std::is_same<E, typename algebraic_traits<E>::field_type>::value,
+                 typename GenericMatrix<TMatrix, typename algebraic_traits<E>::field_type>::persistent_nonsymmetric_type>
 inv(const GenericMatrix<TMatrix, E>& m)
 {
    if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
@@ -297,7 +298,7 @@ inv(const GenericMatrix<TMatrix, E>& m)
     @exception infeasible if rank(A) != rank(A|b)
 */
 template <typename TMatrix, typename TVector, typename E>
-typename std::enable_if<is_field<E>::value, Vector<E>>::type
+std::enable_if_t<is_field<E>::value, Vector<E>>
 lin_solve(const GenericMatrix<TMatrix, E>& A, const GenericVector<TVector, E>& b)
 {
    if (POLYMAKE_DEBUG || is_wary<TMatrix>() || is_wary<TVector>()) {
@@ -308,8 +309,8 @@ lin_solve(const GenericMatrix<TMatrix, E>& A, const GenericVector<TVector, E>& b
 }
 
 template <typename TMatrix, typename TVector, typename E>
-typename std::enable_if<!std::is_same<E, typename algebraic_traits<E>::field_type>::value,
-                        Vector<typename algebraic_traits<E>::field_type> >::type
+std::enable_if_t<!std::is_same<E, typename algebraic_traits<E>::field_type>::value,
+                 Vector<typename algebraic_traits<E>::field_type>>
 lin_solve(const GenericMatrix<TMatrix, E>& A, const GenericVector<TVector, E>& b)
 {
    if (POLYMAKE_DEBUG || is_wary<TMatrix>() || is_wary<TVector>()) {
@@ -321,9 +322,9 @@ lin_solve(const GenericMatrix<TMatrix, E>& A, const GenericVector<TVector, E>& b
 }
 
 template <typename TMatrix, typename TVector, typename E>
-typename std::enable_if<is_field<E>::value, Vector<E>>::type
+std::enable_if_t<is_field<E>::value, Vector<E>>
 cramer(const GenericMatrix<TMatrix, E>& A, const GenericVector<TVector, E>& b) {
-   const int d=A.rows();
+   const Int d = A.rows();
    if (POLYMAKE_DEBUG || is_wary<TMatrix>() || is_wary<TVector>()) {
       if (A.cols() != d)
          throw std::runtime_error("cramer - non square matrix");
@@ -336,7 +337,7 @@ cramer(const GenericMatrix<TMatrix, E>& A, const GenericVector<TVector, E>& b) {
          throw std::runtime_error("cramer - matrix singular");
    }
    Vector<E> x(d);
-   for (int i=0; i<d; ++i) {
+   for (Int i = 0; i < d; ++i) {
       x[i] = det(A.minor(All,sequence(0,i)) | b | A.minor(All,sequence(i+1,d-i-1))) / det_A;
    }
    return x;
@@ -352,7 +353,7 @@ cramer(const GenericMatrix<TMatrix, E>& A, const GenericVector<TVector, E>& b) {
    @return true if the matrix has been modified, false otherwise
 */
 template<typename AHRowIterator, typename VectorType, typename RowBasisOutputIterator, typename ColBasisOutputIterator>
-bool project_rest_along_row (AHRowIterator &h, const VectorType& v, RowBasisOutputIterator row_basis_consumer, ColBasisOutputIterator col_basis_consumer, int i=0)
+bool project_rest_along_row (AHRowIterator &h, const VectorType& v, RowBasisOutputIterator row_basis_consumer, ColBasisOutputIterator col_basis_consumer, Int i = 0)
 {
    const typename iterator_traits<AHRowIterator>::value_type::element_type pivot = (*h) * v;
    if (is_zero(pivot)) // *h is already orthogonal to v, nothing to do
@@ -385,7 +386,7 @@ bool project_rest_along_row (AHRowIterator &h, const VectorType& v, RowBasisOutp
 */
 template <typename VectorType, typename RowBasisOutputIterator, typename ColBasisOutputIterator, typename E>
 bool
-basis_of_rowspan_intersect_orthogonal_complement(ListMatrix< SparseVector<E> >& H, const VectorType& v, RowBasisOutputIterator row_basis_consumer, ColBasisOutputIterator col_basis_consumer, int i=0)
+basis_of_rowspan_intersect_orthogonal_complement(ListMatrix< SparseVector<E> >& H, const VectorType& v, RowBasisOutputIterator row_basis_consumer, ColBasisOutputIterator col_basis_consumer, Int i = 0)
 {
    for (auto h=entire(rows(H)); !h.at_end(); ++h) {
       if (project_rest_along_row(h, v, row_basis_consumer, col_basis_consumer, i)) {
@@ -402,30 +403,30 @@ basis_of_rowspan_intersect_orthogonal_complement(ListMatrix< SparseVector<E> >& 
     @param kernel_so_far a matrix whose rows are supposed to be orthogonal to the rows of M.
     @param v a vector to be added to M iff this increases the dimension of the rowspan of M. We allow the entries of v and kernel_so_far to be of different type, e.g. T=Integer, R=Rational
 */
-template<typename T, typename R>
+template <typename T, typename R>
 bool add_row_if_rowspace_increases(ListMatrix<SparseVector<T> >& M, const SparseVector<T>& v, ListMatrix<SparseVector<R> >& kernel_so_far)
 {
-   const bool modified = basis_of_rowspan_intersect_orthogonal_complement(kernel_so_far, v, black_hole<int>(), black_hole<int>());
+   const bool modified = basis_of_rowspan_intersect_orthogonal_complement(kernel_so_far, v, black_hole<Int>(), black_hole<Int>());
     if (modified) M.insert_row(rows(M).begin(), v);
     return modified;
 }
 
 template <typename Iterator, typename E>
-typename std::enable_if<is_field<E>::value, void>::type
+std::enable_if_t<is_field<E>::value>
 reduce_row(Iterator& h2, Iterator& h, const E& pivot, const E& x)
 {
    *h2 -= (x/pivot)*(*h);
 }
 
 template <typename Iterator, typename E>
-typename std::enable_if<!is_field<E>::value, void>::type
+std::enable_if_t<!is_field<E>::value>
 reduce_row(Iterator& h2, Iterator& h, const E& pivot, const E& x)
 {
    *h2 *= pivot;  *h2 -= x*(*h);
 }
 
 template <typename TMatrix>
-typename std::enable_if<is_gcd_domain<typename TMatrix::element_type>::value, void>::type
+std::enable_if_t<is_gcd_domain<typename TMatrix::element_type>::value>
 simplify_rows(GenericMatrix<TMatrix>& M)
 {
    for (auto r=entire(rows(M)); !r.at_end(); ++r) {
@@ -435,7 +436,7 @@ simplify_rows(GenericMatrix<TMatrix>& M)
 }
 
 template <typename TMatrix>
-typename std::enable_if<!is_gcd_domain<typename TMatrix::element_type>::value, void>::type
+std::enable_if_t<!is_gcd_domain<typename TMatrix::element_type>::value>
 simplify_rows(GenericMatrix<TMatrix>& M)
 {}
 
@@ -449,9 +450,9 @@ simplify_rows(GenericMatrix<TMatrix>& M)
 */
 template <typename VectorIterator, typename RowBasisOutputIterator, typename ColBasisOutputIterator, typename AH_matrix>
 void
-null_space(VectorIterator v, RowBasisOutputIterator row_basis_consumer, ColBasisOutputIterator col_basis_consumer, AH_matrix& H, bool simplify=false)
+null_space(VectorIterator v, RowBasisOutputIterator row_basis_consumer, ColBasisOutputIterator col_basis_consumer, AH_matrix& H, bool simplify = false)
 {
-   for (int i=0; H.rows()>0 && !v.at_end(); ++v, ++i)
+   for (Int i = 0; H.rows() > 0 && !v.at_end(); ++v, ++i)
       basis_of_rowspan_intersect_orthogonal_complement(H, *v, row_basis_consumer, col_basis_consumer, i);
    if (simplify) simplify_rows(H);
 }
@@ -462,7 +463,7 @@ typename TMatrix::persistent_nonsymmetric_type
 null_space(const GenericMatrix<TMatrix, E>& M)
 {
    ListMatrix< SparseVector<E> > H=unit_matrix<E>(M.cols());
-   null_space(entire(rows(M)), black_hole<int>(), black_hole<int>(), H, true);
+   null_space(entire(rows(M)), black_hole<Int>(), black_hole<Int>(), H, true);
    return H;
 }
 
@@ -471,21 +472,21 @@ ListMatrix< SparseVector<E> >
 null_space(const GenericVector<TVector, E>& V)
 {
    ListMatrix< SparseVector<E> > H=unit_matrix<E>(V.dim());
-   null_space(entire(single_value_as_container(V.top())), black_hole<int>(), black_hole<int>(), H, true);
+   null_space(entire(single_value_as_container(V.top())), black_hole<Int>(), black_hole<Int>(), H, true);
    return H;
 }
 
 /// @param req_sign expected sign of det( null_space(V) / V )
 template <typename TVector, typename E>
 ListMatrix< SparseVector<E> >
-null_space_oriented(const GenericVector<TVector, E>& V, int req_sign)
+null_space_oriented(const GenericVector<TVector, E>& V, Int req_sign)
 {
    ListMatrix< SparseVector<E> > H=unit_matrix<E>(V.dim());
-   null_space(entire(single_value_as_container(V.top())), black_hole<int>(), black_hole<int>(), H, true);
+   null_space(entire(single_value_as_container(V.top())), black_hole<Int>(), black_hole<Int>(), H, true);
    auto v_pivot=ensure(V.top(), pure_sparse()).begin();
-   if (v_pivot.at_end() && req_sign)
+   if (v_pivot.at_end() && req_sign != 0)
       throw infeasible("null_space_oriented: zero vector has no orientation");
-   if ((sign(*v_pivot)==req_sign) == ((v_pivot.index()+V.dim()+1)%2))
+   if ((sign(*v_pivot) == req_sign) == (v_pivot.index() + V.dim()+1)%2)
       rows(H).back().negate();
    return H;
 }
@@ -495,108 +496,108 @@ typename TMatrix::persistent_nonsymmetric_type
 lineality_space(const GenericMatrix<TMatrix, E>& M)
 {
    ListMatrix< SparseVector<E> > H=unit_matrix<E>(M.cols()-1);
-   null_space(entire(rows(M.minor(All, range(1,M.cols()-1)))), black_hole<int>(), black_hole<int>(), H, true);
+   null_space(entire(rows(M.minor(All, range(1,M.cols()-1)))), black_hole<Int>(), black_hole<Int>(), H, true);
    return zero_vector<E>(H.rows()) | H;
 }
 
 template <typename VectorIterator>
-Set<int>
+Set<Int>
 basis_vectors(VectorIterator v)
 {
    typedef typename iterator_traits<VectorIterator>::value_type::element_type E;
    ListMatrix< SparseVector<E> > H=unit_matrix<E>(v.at_end() ? 0 : v->dim());
-   Set<int> b;
-   null_space(v, std::back_inserter(b), black_hole<int>(), H);
+   Set<Int> b;
+   null_space(v, std::back_inserter(b), black_hole<Int>(), H);
    return b;
 }
 
 template <typename TMatrix, typename E>
-Set<int>
+Set<Int>
 basis_rows(const GenericMatrix<TMatrix, E>& M)
 {
    ListMatrix< SparseVector<E> > H=unit_matrix<E>(M.cols());
-   Set<int> b;
-   null_space(entire(rows(M)), std::back_inserter(b), black_hole<int>(), H);
+   Set<Int> b;
+   null_space(entire(rows(M)), std::back_inserter(b), black_hole<Int>(), H);
    return b;
 }
 
 template <typename TMatrix>
-Set<int>
+Set<Int>
 basis_cols(const GenericMatrix<TMatrix>& M)
 {
    return basis_rows(T(M));
 }
 
 template <typename TMatrix, typename E>
-std::pair<Set<int>, Set<int>>
+std::pair<Set<Int>, Set<Int>>
 basis(const GenericMatrix<TMatrix, E>& M)
 {
    ListMatrix< SparseVector<E> > H=unit_matrix<E>(M.cols());
-   Set<int> br, bc;
+   Set<Int> br, bc;
    null_space(entire(rows(M)), std::back_inserter(br), inserter(bc), H);
    return std::make_pair(br, bc);
 }
 
 template <typename TMatrix, typename E>
-int rank(const GenericMatrix<TMatrix, E>& M)
+Int rank(const GenericMatrix<TMatrix, E>& M)
 {
    if (M.rows() <= M.cols()) {
       ListMatrix< SparseVector<E> > H=unit_matrix<E>(M.rows());
-      null_space(entire(cols(M)), black_hole<int>(), black_hole<int>(), H);
-      return M.rows()-H.rows();
+      null_space(entire(cols(M)), black_hole<Int>(), black_hole<Int>(), H);
+      return M.rows() - H.rows();
    }
    ListMatrix< SparseVector<E> > H=unit_matrix<E>(M.cols());
-   null_space(entire(rows(M)), black_hole<int>(), black_hole<int>(), H);
+   null_space(entire(rows(M)), black_hole<Int>(), black_hole<Int>(), H);
    return M.cols()-H.rows();
 }
 
 template <typename TMatrix>
-Set<int>
+Set<Int>
 basis_rows(const GenericMatrix<TMatrix, double>& M)
 {
    ListMatrix< SparseVector<double> > H=unit_matrix<double>(M.cols());
-   Set<int> b;
+   Set<Int> b;
    null_space(entire(attach_operation(rows(M), polymake::operations::normalize_vectors())),
-              std::back_inserter(b), black_hole<int>(), H);
+              std::back_inserter(b), black_hole<Int>(), H);
    return b;
 }
 
 template <typename TMatrix>
-std::pair<Set<int>, Set<int>>
+std::pair<Set<Int>, Set<Int>>
 basis(const GenericMatrix<TMatrix, double>& M)
 {
    ListMatrix< SparseVector<double> > H=unit_matrix<double>(M.cols());
-   Set<int> br, bc;
+   Set<Int> br, bc;
    null_space(entire(attach_operation(rows(M), polymake::operations::normalize_vectors())),
               std::back_inserter(br), inserter(bc), H);
    return std::make_pair(br,bc);
 }
 
 template <typename TMatrix>
-int rank(const GenericMatrix<TMatrix, double>& M)
+Int rank(const GenericMatrix<TMatrix, double>& M)
 {
    if (M.rows() <= M.cols()) {
       ListMatrix< SparseVector<double> > H=unit_matrix<double>(M.rows());
       null_space(entire(attach_operation(cols(M), polymake::operations::normalize_vectors())),
-                 black_hole<int>(), black_hole<int>(), H);
+                 black_hole<Int>(), black_hole<Int>(), H);
       return M.rows()-H.rows();
    }
    ListMatrix< SparseVector<double> > H=unit_matrix<double>(M.cols());
    null_space(entire(attach_operation(rows(M), polymake::operations::normalize_vectors())),
-              black_hole<int>(), black_hole<int>(), H);
-   return M.cols()-H.rows();
+              black_hole<Int>(), black_hole<Int>(), H);
+   return M.cols() - H.rows();
 }
 
 /// The same as basis(), but ignoring the first column of the matrix.
 template <typename TMatrix, typename E>
-std::pair< Set<int>, Set<int>>
+std::pair< Set<Int>, Set<Int>>
 basis_affine(const GenericMatrix<TMatrix, E>& M)
 {
-   int ad=M.cols()-1;
-   ListMatrix< SparseVector<E> > H=unit_matrix<E>(ad);
-   Set<int> br, bc;
-   null_space(entire(rows(M.minor(All,range(1,ad)))), std::back_inserter(br),
-              make_output_transform_iterator(inserter(bc), operations::fix2<int, operations::add<int,int> >(1)),
+   Int ad = M.cols()-1;
+   ListMatrix<SparseVector<E>> H = unit_matrix<E>(ad);
+   Set<Int> br, bc;
+   null_space(entire(rows(M.minor(All, range(1, ad)))), std::back_inserter(br),
+              make_output_transform_iterator(inserter(bc), operations::fix2<Int, operations::add<Int, Int> >(1)),
               H);
    return std::make_pair(br,bc);
 }
@@ -633,7 +634,7 @@ project_to_orthogonal_complement(Matrix1& M, const Matrix2& N)
 
 /// the indices of nonzero entries
 template <typename TVector>
-Set<int> support(const GenericVector<TVector>& v)
+Set<Int> support(const GenericVector<TVector>& v)
 {
    return indices(ensure(v.top(), pure_sparse()));
 }
@@ -761,16 +762,16 @@ void orthogonalize_affine(VectorIterator v)
 
 /// Find row indices of all far points (that is, having zero in the first column).
 template <typename TMatrix>
-Set<int>
+Set<Int>
 far_points(const GenericMatrix<TMatrix>& M)
 {
-   if (M.cols() == 0) return Set<int>();
+   if (M.cols() == 0) return Set<Int>();
    return indices(attach_selector(M.col(0), polymake::operations::is_zero()));
 }
 
 /// Find indices of rows orthogonal to the given vector
 template <typename E, typename TMatrix, typename TVector>
-Set<int>
+Set<Int>
 orthogonal_rows(const GenericMatrix<TMatrix, E>& M, const GenericVector<TVector, E>& v)
 {
    return indices(attach_selector(attach_operation(rows(M), same_value(v), polymake::operations::mul()),
@@ -815,33 +816,29 @@ E lcm(const GenericVector<TVector, E>& v)
 }
 
 template <typename TVector, typename E>
-typename std::enable_if<is_field_of_fractions<E>::value,
-                        LazyVector1<const TVector&, polymake::operations::get_numerator> >::type
-numerators(const GenericVector<TVector, E>& v)
+auto numerators(const GenericVector<TVector, E>& v,
+                std::enable_if_t<is_field_of_fractions<E>::value, std::nullptr_t> = nullptr)
 {
    return apply_operation(v, polymake::operations::get_numerator());
 }
 
 template <typename TVector, typename E>
-typename std::enable_if<is_field_of_fractions<E>::value,
-                        LazyVector1<const TVector&, polymake::operations::get_denominator> >::type
-denominators(const GenericVector<TVector, E>& v)
+auto denominators(const GenericVector<TVector, E>& v,
+                  std::enable_if_t<is_field_of_fractions<E>::value, std::nullptr_t> = nullptr)
 {
    return apply_operation(v, polymake::operations::get_denominator());
 }
 
 template <typename TMatrix, typename E>
-typename std::enable_if<is_field_of_fractions<E>::value,
-                        LazyMatrix1<const TMatrix&, polymake::operations::get_numerator> >::type
-numerators(const GenericMatrix<TMatrix, E>& m)
+auto numerators(const GenericMatrix<TMatrix, E>& m,
+                std::enable_if_t<is_field_of_fractions<E>::value, std::nullptr_t> = nullptr)
 {
    return apply_operation(m, polymake::operations::get_numerator());
 }
 
 template <typename TMatrix, typename E>
-typename std::enable_if<is_field_of_fractions<E>::value,
-                        LazyMatrix1< const TMatrix&, polymake::operations::get_denominator> >::type
-denominators(const GenericMatrix<TMatrix, E>& m)
+auto denominators(const GenericMatrix<TMatrix, E>& m,
+                  std::enable_if_t<is_field_of_fractions<E>::value, std::nullptr_t> = nullptr)
 {
    return apply_operation(m, polymake::operations::get_denominator());
 }

@@ -1,0 +1,333 @@
+#  Copyright (c) 1997-2020
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# == SUMMARY ==
+#
+# - In Groups:
+#   * move all properties but few ones like CHARACTER_TABLE and ORDER into new Action subobjects
+#   * transform GroupOfPolytope and GroupOfCone to Groups with RAY_ACTION or FACET_ACTION
+#   * rename IDENTIFICATION_GROUP into IDENTIFICATION_ACTION
+#   * rename SYMMETRIC_VERTICES into SYMMETRIC_RAYS
+#   * convert *_IN_ORBITS to attachments
+#   * convert SYMMETRIZED_COCIRCUIT_EQUATIONS from a matrix to a subobject, insert default ISOTYPIC_COMPONENTS
+#   * remove N_ORBITS_OF_*, REPRESENTATIVE_SIMPLICES, N_REPRESENTATIVE_SIMPLICES
+#
+# - For SymmetricPolytope, OrbitPolytope, and SymmetricCone:
+#   * rename them into Polytope resp. Cone
+#   * rename GENERATING_GROUP into GROUP
+#
+# - Insert a "cols" attribute in empty coordinate matrices like AFFINE_HULL or LINEALITY_SPACE
+#   wherever possible; remove ones when no dimension property is at hand.
+#
+# - In Matroids:
+#   * switch variables in Tutte polynomial to match mainstream notation
+#   * move COCIRCUITS and COLOOPS to a new DUAL subobject as CIRCUITS and LOOPS
+#   * remove SPLITTING_FLACETS
+#   * remove undef TERNARY properties, since this can now be computed deterministically
+#   * rename SPLIT_COMPATIBLE to SPLIT or remove it in some cases
+#   * correct faulty DIMS array in LATTICE_OF_FLATS
+#
+# - Rename FaceLattice to Lattice<BasicDecoration>
+# - Rename tropical::Cone to tropical::Polytope and its properties CONE_* to POLYTOPE_*
+# - Rename TightSpan to Polytope, move all specific properties into attachments
+# - Remove Ideal.RING
+# - Remove SubdivisionOfPoints.REFINED_SPLITS
+
+
+upgrade 3.0.1 polytope::QuotientSpace.IDENTIFICATION_GROUP {
+   my ($obj, $prop) = @_;
+   my $group = delete $obj->{$prop};
+   delete $group->{_type};
+   delete $group->{ORDER};
+   $obj->{IDENTIFICATION_ACTION} = $group;
+   true
+}
+
+my @domain2action_name = qw( PERMUTATION_ACTION RAYS_ACTION FACETS_ACTION HOMOGENEOUS_COORDINATE_ACTION );
+my %keep_in_Group;
+@keep_in_Group{qw( CHARACTER_TABLE ORDER CONJUGACY_CLASS_SIZES REPRESENTATIVE_FACETS
+                   REPRESENTATIVE_VERTICES REPRESENTATIVE_RAYS REPRESENTATIVE_AFFINE_HULL
+                   SYMMETRIC_RAYS SYMMETRIC_FACETS
+                   REPRESENTATIVE_MAX_INTERIOR_SIMPLICES REPRESENTATIVE_MAX_BOUNDARY_SIMPLICES
+                   REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES SIMPLEXITY_LOWER_BOUND )} = ();
+
+my %symmetricProps2Action = qw( GEN_POINTS           POINTS_GENERATORS
+                                GEN_POINT            POINTS_GENERATORS
+                                GEN_EQUATIONS        EQUATIONS_GENERATORS
+                                GEN_INEQUALITIES     INEQUALITIES_GENERATORS
+                                GEN_INPUT_RAYS       INEQUALITIES_GENERATORS
+                                GEN_INPUT_LINEALITY  INPUT_LINEALITY_GENERATORS
+                                NOP_GRAPH            NOP_GRAPH
+                                CP_INDICES           CP_INDICES
+                           REPRESENTATIVE_CERTIFIERS REPRESENTATIVE_CERTIFIERS
+                         N_REPRESENTATIVE_CERTIFIERS N_REPRESENTATIVE_CERTIFIERS
+                          REPRESENTATIVE_CORE_POINTS REPRESENTATIVE_CORE_POINTS
+                        N_REPRESENTATIVE_CORE_POINTS N_REPRESENTATIVE_CORE_POINTS );
+
+upgrade 3.0.1 group::Group {
+   my ($group) = @_;
+   if (exists $group->{_type}) {
+      $group->{_type} = "group::Group";
+   }
+   my $domain = delete $group->{DOMAIN} // 0;
+   my $action_name = $domain2action_name[$domain];
+   defined($action_name)
+     or die "unexpected DOMAIN value; must be 0..3\n";
+   my %action = (_type => 'group::PermutationAction');
+   foreach my $group_prop (keys %$group) {
+      unless ($group_prop =~ /^_/ || exists $keep_in_Group{$group_prop}) {
+         if ($group_prop eq "SYMMETRIC_VERTICES") {
+            rename_property($group, $group_prop, "SYMMETRIC_RAYS");
+         } elsif ($group_prop =~ /^(?:N_ORBITS_OF_|(?:N_)?REPRESENTATIVE_SIMPLICES)$/) {
+            delete $group->{$group_prop};
+         } elsif ($group_prop =~ /_IN_ORBITS$/) {
+            $group->{_attrs}{$group_prop} = { attachment => true, _type => "Array<Set<Int>>" };
+         } elsif ($group_prop eq "SYMMETRIZED_COCIRCUIT_EQUATIONS") {
+            my $value = $group->{$group_prop};
+            if (is_array($value)) {
+               my $ridges = $group->{REPRESENTATIVE_INTERIOR_RIDGE_SIMPLICES};
+               $group->{$group_prop} = {
+                  ISOTYPIC_COMPONENTS => [ 0 ],
+                  defined($ridges) ? (RIDGES => $ridges) : (),
+                  PROJECTED_EQUATIONS => $value
+               };
+            }
+         } else {
+            move_property($group, $group_prop, \%action);
+         }
+      }
+   }
+   $group->{$action_name} = \%action;
+   true
+}
+
+upgrade 3.0.2 polytope::SymmetricCone {
+   my ($obj) = @_;
+   $obj->{_type} =~ s/(?:Symmetric|Orbit)//;
+   my $gen_group = delete $obj->{GENERATING_GROUP} // { };
+   my $action = $gen_group->{HOMOGENEOUS_COORDINATE_ACTION} // { };
+   while (my ($old_prop_name, $new_prop_name) = each %symmetricProps2Action) {
+      if (exists $obj->{$old_prop_name}) {
+         move_property($obj, $old_prop_name, $action, $new_prop_name);
+         if ($old_prop_name eq "GEN_POINT") {
+            $action->{$new_prop_name} = [ $action->{$new_prop_name} ];
+         }
+      }
+   }
+   if (keys %$action) {
+      $action->{_type} = "group::PermutationAction";
+      $gen_group->{HOMOGENEOUS_COORDINATE_ACTION} = $action;
+   }
+   if (keys %$gen_group) {
+      $gen_group->{_id} //= "generating_group";
+      if (is_hash(my $other_group = $obj->{GROUP})) {
+         $obj->{GROUP} = [ $gen_group, $other_group ];
+      } else {
+         unshift @{$obj->{GROUP} //= [ ]}, $gen_group;
+      }
+      true
+   }
+}
+
+upgrade 3.0.3 polytope::Cone.INPUT_RAYS | INPUT_LINEALITY | EQUATIONS | LINEAR_SPAN | LINEALITY_SPACE {
+   add_cols(@_, "CONE_AMBIENT_DIM");
+}
+
+upgrade 3.0.3 polytope::Polytope.AFFINE_HULL {
+   add_cols(@_, "CONE_AMBIENT_DIM");
+}
+
+upgrade 3.0.3 polytope::PointConfiguration.AFFINE_HULL {
+   add_cols(@_, "VECTOR_AMBIENT_DIM");
+}
+
+upgrade 3.0.3 polytope::VectorConfiguration.LINEAR_SPAN {
+   add_cols(@_, "VECTOR_AMBIENT_DIM");
+}
+
+upgrade 3.0.3 fan::PolyhedralFan.INPUT_RAYS | INPUT_LINEALITY | LINEAR_SPAN_NORMALS | LINEALITY_SPACE {
+   add_cols(@_, "FAN_AMBIENT_DIM");
+}
+
+upgrade 3.0.3 fan::PolyhedralComplex.AFFINE_HULL {
+   add_cols(@_, "FAN_AMBIENT_DIM");
+}
+
+upgrade 3.0.3 fan::SubdivisionOfVectors.LINEAR_SPAN {
+   add_cols(@_, "VECTOR_AMBIENT_DIM");
+}
+
+upgrade 3.0.3 tropical::Morphism.LINEALITY_VALUES = \&add_cols;
+
+upgrade 3.0.3 tropical::RationalFunction.LINEALITY_VALUES = \&add_cols;
+
+sub add_cols {
+   my ($obj, $prop, $dim_prop) = @_;
+   my $value = $obj->{$prop};
+   if (is_array($value) && !@$value  or  is_hash($value) && !keys %$value) {
+      # an empty matrix: try to find the dimension
+      if (defined($dim_prop)  and
+          defined(my $dim = $obj->{$dim_prop})) {
+         $obj->{$prop} = [ { cols => $dim } ];
+      } else {
+         delete $obj->{$prop};
+      }
+      true
+   }
+}
+
+
+#  Switch variables in Tutte polynomial
+
+upgrade 3.0.5 matroid::Matroid.TUTTE_POLYNOMIAL {
+   my ($obj, $prop) = @_;
+   my $value = $obj->{$prop};
+   # swap the 0th and 1st elements in every monomial
+   foreach my $term (@{$value->[0]}) {
+      my $monomial = $term->[0];
+      if (is_array($monomial)) {
+         # dense representation
+         splice @$monomial, 1, 0, shift @$monomial;
+      } else {
+         # sparse representation
+         my $e0 = delete $monomial->{"0"};
+         my $e1 = delete $monomial->{"1"};
+         $monomial->{"1"} = $e0 if defined($e0);
+         $monomial->{"0"} = $e1 if defined($e1);
+      }
+   }
+   true
+}
+
+
+# Move necessary properties to new DUAL subobject of matroid
+
+upgrade 3.0.5 matroid::Matroid.COCIRCUITS | COLOOPS | N_COCIRCUITS | N_COLOOPS {
+   my ($obj, $prop) = @_;
+   $obj->{DUAL}{$prop =~ s/CO//r} = delete $obj->{$prop};
+   true
+}
+
+upgrade 3.0.5 matroid::Matroid.SPLITTING_FLACETS = delete;
+
+upgrade 3.0.5 matroid::Matroid.TERNARY {
+   my ($obj, $prop) = @_;
+   if (!defined($obj->{$prop})) {
+      delete $obj->{$prop};
+      # Only remove undef ternary vectors, if TERNARY was also undef
+      if (exists($obj->{TERNARY_VECTORS}) && !defined($obj->{TERNARY_VECTORS})) {
+         delete $obj->{TERNARY_VECTORS};
+      }
+      true
+   }
+}
+
+# remove template parameter HasDual / HasNoDual, introduced temporarily
+
+upgrade 3.0.5 matroid::Matroid {
+   my ($obj) = @_;
+   if (exists $obj->{_type}) {
+      $obj->{_type} =~ s/<Has(?:No)?Dual>//;
+   }
+}
+
+
+upgrade 3.0.5 matroid::Matroid.SPLIT_COMPATIBLE {
+   my ($obj, $prop) = @_;
+   my $value = delete $obj->{$prop};
+   if (is_defined_and_false($value) || $obj->{CONNECTED}) {
+      $obj->{SPLIT} = $value;
+   }
+   true
+}
+
+
+upgrade 3.0.6 tropical::Cone {
+   my ($obj) = @_;
+   my $changed = false;
+   if (exists $obj->{_type}) {
+      $changed |= $obj->{_type} =~ s/Cone/Polytope/;
+   }
+   foreach my $prop_name (qw( CONE_COVECTOR_DECOMPOSITION CONE_MAXIMAL_COVECTORS CONE_MAXIMAL_COVECTOR_CELLS )) {
+      if (exists $obj->{$prop_name}) {
+         rename_property($obj, $prop_name, $prop_name =~ s/CONE/POLYTOPE/r);
+         $changed = true;
+      }
+   }
+   $changed
+}
+
+
+upgrade 3.0.7 graph::FaceLattice {
+   my ($obj) = @_;
+   if (exists $obj->{_type}) {
+      $obj->{_type} = "graph::Lattice<BasicDecoration>";
+      true
+   }
+}
+
+
+# remove the leading 0 and the last entry
+upgrade 3.0.7 matroid::Matroid.LATTICE_OF_FLATS.DIMS {
+   my ($obj, $prop) = @_;
+   if (is_array(my $value = $obj->{$prop})) {
+      pop @$value;
+      shift @$value if $value->[0] == 0;
+      true
+   }
+}
+
+
+upgrade 3.0.8 polytope::TightSpan {
+   my ($obj) = @_;
+   my $changed = false;
+   if (exists $obj->{_type}) {
+      $changed |= $obj->{_type} =~ s/TightSpan/Polytope/;
+   }
+   foreach my $prop_name (qw(METRIC COHERENT_SPLITS TAXA VERTICES_IN_METRIC)) {
+      if (exists $obj->{$prop_name}) {
+         if (defined($obj->{$prop_name})) {
+            $obj->{_attrs}->{$prop_name}->{attachment} = true;
+            if ($prop_name eq "METRIC") {
+               # copy the coordinate type parameter, if known
+               if ($obj->{_type} =~ /<$type_re>$/) {
+                  $obj->{_attrs}->{$prop_name}->{_type} = "Matrix$&";
+               }
+            } elsif ($prop_name eq "COHERENT_SPLITS") {
+               $obj->{_attrs}->{$prop_name}->{_type} = "Array<Pair<Set,Set>>";
+            }
+            # other attachments can stay as primitive perl lists
+         } else {
+            delete $obj->{$prop_name};
+         }
+         $changed = true;
+      }
+   }
+}
+
+
+upgrade 3.0.9 ideal::Ideal.RING = delete;
+
+# Note: Ring objects are replaced by numbers of variables in a polynomial directly in XMLtoJSON.pm
+
+upgrade 3.0.9 fan::SubdivisionOfPoints.REFINED_SPLITS = delete;
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

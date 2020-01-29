@@ -1,5 +1,5 @@
 {"app": "polytope", "embed": "newton.cc",
  "inst": [
-  {"args": ["perl::Canned<const Polynomial<Rational, int>&>"], "func": "newton", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "sig": "newton.X"},
+  {"args": ["perl::Canned<const Polynomial<Rational, Int>&>"], "func": "newton", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "sig": "newton.X"},
  null ],
 "version": 3}

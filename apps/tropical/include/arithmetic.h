@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -33,310 +33,290 @@
 #include "polymake/permutations.h"
 
 namespace pm {
-   namespace operations {
-      template <typename Addition, typename Scalar>
-      struct div_skip_zero {
-         typedef TropicalNumber<Addition, Scalar> first_argument_type;
-         typedef TropicalNumber<Addition, Scalar> second_argument_type;
-         typedef const TropicalNumber<Addition, Scalar> result_type;
+namespace operations {
 
-         result_type operator() (typename function_argument<first_argument_type>::type a, typename function_argument<second_argument_type>::type b) const
-         {
-            if (is_zero(b)) {
-               if (is_zero(a))
-                  return TropicalNumber<Addition, Scalar>::zero();
-               else if (std::is_same<Addition, Max>::value)
-                  return TropicalNumber<Addition, Scalar>(std::numeric_limits<Scalar>::infinity());
-               else
-                  return TropicalNumber<Addition, Scalar>::dual_zero();
-            }
-            return a/b;
-         }
+template <typename Addition, typename Scalar>
+struct div_skip_zero {
+   typedef TropicalNumber<Addition, Scalar> first_argument_type;
+   typedef TropicalNumber<Addition, Scalar> second_argument_type;
+   typedef const TropicalNumber<Addition, Scalar> result_type;
 
-         template <typename Iterator2>
-         const first_argument_type& operator() (partial_left, typename function_argument<first_argument_type>::type a, const Iterator2&) const
-         {
-            if (is_zero(a))
-               return zero_value<TropicalNumber<Addition, Scalar> >();
-            else if (std::is_same<Addition, Max>::value)
-               return TropicalNumber<Addition, Scalar>::zero();
-            else
-               return TropicalNumber<Addition, Scalar>::dual_zero();
-         }
-
-         template <typename Iterator1>
-         const second_argument_type& operator() (partial_right, const Iterator1&, typename function_argument<second_argument_type>::type b) const
-         {
-            return zero_value<TropicalNumber<Addition, Scalar> >();
-         }
-
-      };
+   result_type operator() (typename function_argument<first_argument_type>::type a, typename function_argument<second_argument_type>::type b) const
+   {
+      if (is_zero(b)) {
+         if (is_zero(a))
+            return TropicalNumber<Addition, Scalar>::zero();
+         else if (std::is_same<Addition, Max>::value)
+            return TropicalNumber<Addition, Scalar>(std::numeric_limits<Scalar>::infinity());
+         else
+            return TropicalNumber<Addition, Scalar>::dual_zero();
+      }
+      return a/b;
    }
-}
+
+   template <typename Iterator2>
+   const first_argument_type& operator() (partial_left, typename function_argument<first_argument_type>::type a, const Iterator2&) const
+   {
+      if (is_zero(a))
+         return zero_value<TropicalNumber<Addition, Scalar> >();
+      else if (std::is_same<Addition, Max>::value)
+         return TropicalNumber<Addition, Scalar>::zero();
+      else
+         return TropicalNumber<Addition, Scalar>::dual_zero();
+   }
+
+   template <typename Iterator1>
+   const second_argument_type& operator() (partial_right, const Iterator1&, typename function_argument<second_argument_type>::type b) const
+   {
+      return zero_value<TropicalNumber<Addition, Scalar> >();
+   }
+};
+
+} }
 
 namespace polymake {
-   namespace operations {
-      using pm::operations::div_skip_zero;
-   }
-
-   namespace tropical {
-
-     /*
-     *
-     * @brief compute the tropical sum w.r.t. Addition and the entries where the extremum is attained
-     */
-        template <typename Addition, typename Scalar, typename VectorTop>
-      std::pair< TropicalNumber<Addition, Scalar>, Set<int> > extreme_value_and_index (const GenericVector<VectorTop, TropicalNumber<Addition,Scalar> >& vector)
-      {
-	typedef TropicalNumber<Addition, Scalar> TNumber;
-	TNumber extremum = accumulate(vector.top(), operations::add());
-	Set<int> extremal_entries;
-	int td_index = 0;
-	for(auto td = entire(vector.top()); !td.at_end(); td++, td_index++) {
-	  if(*td == extremum) extremal_entries += td_index;
-	}
-	return std::make_pair(extremum,extremal_entries);
-	}
-
-      /*
-       * @brief coordinatewise tropical quotient of two vectors with special treatment for 
-       * inf entries
-       */
-
-      template <typename Vector1, typename Vector2, typename Addition, typename Scalar>
-      pm::LazyVector2<const Vector1&, const Vector2&, operations::div_skip_zero<Addition, Scalar> > 
-      rel_coord(const GenericVector<Vector1, TropicalNumber<Addition, Scalar> > &point, 
-                const GenericVector<Vector2, TropicalNumber<Addition, Scalar> > &apex) {
-         return pm::LazyVector2<const Vector1&, const Vector2&, operations::div_skip_zero<Addition, Scalar> >(point.top(), apex.top());
-      }
-
-      /*
-       * @brief compute a solution of a tropical linear equality as the tropical
-       * nearest point projection on the tropical cone generated by the columns of the matrix
-       * @param Matrix A 
-       * @param Vector b
-       * @return solution of the tropical linear equality if existent;
-       * if there is no solution the result yields a 'nearest non-solution'
-       */
-      template <typename Addition, typename Scalar, typename MatrixTop, typename VectorTop>
-      Vector<TropicalNumber<Addition, Scalar> > principal_solution(const GenericMatrix<MatrixTop, TropicalNumber<Addition, Scalar> > &A, const GenericVector<VectorTop, TropicalNumber<Addition, Scalar> > &b) {
-         typedef TropicalNumber<Addition, Scalar> TNumber;
-         int n(A.cols());
-         Vector<TNumber> x(n);
-         TNumber t_one(TNumber::one());
-         for (auto col=entire<indexed>(cols(A.top())); !col.at_end(); ++col) {
-            x[col.index()] = t_one/accumulate(rel_coord(*col, b.top()), operations::add());
-         }
-         return x;
-      }
-     
-         
-      template <typename Addition, typename Scalar, typename MatrixTop>
-      std::pair< TropicalNumber<Addition, Scalar>, Array<int> > tdet_and_perm(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
-      {
-         /* Scalar value(zero_value<Scalar>()); // empty matrix has tropical determinant zero */
-         const int d(matrix.rows());
-         if (d != matrix.cols())
-            throw std::runtime_error("input matrix has to be quadratic");
-         
-         // Checking for zero columns or rows
-         for (auto c = entire(cols(matrix.top())); !c.at_end(); ++c) {
-            if (is_zero(*c))
-               return std::make_pair(zero_value<TropicalNumber<Addition, Scalar> >(), Array<int>(sequence(0,d)));
-         }
-         for (auto r = entire(rows(matrix.top())); !r.at_end(); ++r) {
-            if (is_zero(*r))
-               return std::make_pair(zero_value<TropicalNumber<Addition, Scalar> >(), Array<int>(sequence(0,d)));
-         }
-
-         graph::HungarianMethod<Scalar> HM(Addition::orientation()*Matrix<Scalar>(matrix.top()));
-         HM.stage();
-         return std::make_pair(TropicalNumber<Addition, Scalar>(Addition::orientation()*HM.get_value()), HM.get_matching());
-      }
-
-      template <typename Addition, typename Scalar, typename MatrixTop>
-      std::pair<TropicalNumber<Addition,Scalar>, Set<Array<int>>> tdet_and_perms (const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
-      {
-         if (matrix.rows() != matrix.cols())
-            throw std::runtime_error("input matrix has to be quadratic");
-
-         graph::HungarianMethod<Scalar> HM(Addition::orientation()*Matrix<Scalar>(matrix.top()));
-         HM.stage();
-         /* Graph<Undirected> G(HM.get_equality_subgraph()); */
-         /* Array<int> M(HM.get_matching()); */
-         graph::PerfectMatchings PM(Graph<Undirected>(HM.get_equality_subgraph()), HM.get_matching());
-         return std::make_pair(TropicalNumber<Addition, Scalar>(Addition::orientation()*HM.get_value()), PM.get_matchings());
-      }
-
-      template <typename Addition, typename Scalar, typename MatrixTop>
-      TropicalNumber<Addition, Scalar> tdet(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
-      {
-         return tdet_and_perm(matrix).first;
-      }
-
-      template <typename Addition, typename Scalar, typename MatrixTop>
-      Set<Array<int>> optimal_permutations (const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
-      {
-         return tdet_and_perms(matrix).second;
-      }
-      
-      template <typename Addition, typename Scalar, typename MatrixTop>
-      std::pair< TropicalNumber<Addition, Scalar>, Array<int> > second_tdet_and_perm(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
-      {
-         typedef TropicalNumber<Addition,Scalar> TNumber;
-         TNumber value(zero_value<TNumber>()); // empty matrix has tropical determinant zero
-         const int d(matrix.rows());
-         if (d != matrix.cols())
-            throw std::runtime_error("input matrix has to be quadratic");
-         
-         // Checking for zero columns or rows
-         for (auto c = entire(cols(matrix.top())); !c.at_end(); ++c) {
-            if (is_zero(*c)) return std::make_pair(zero_value<TNumber >(), Array<int>(sequence(0,d)));
-         }
-         for (auto r = entire(rows(matrix.top())); !r.at_end(); ++r) {
-            if (is_zero(*r)) return std::make_pair(zero_value<TNumber >(), Array<int>(sequence(0,d)));
-         }
-
-         const Array<int> perm(tdet_and_perm(matrix).second);//perm(graph::HungarianMethod<Scalar>(Addition::orientation()*Matrix<Scalar>(matrix.top())).stage());
-
-         // successively setting the entries which form the optimal permutation to tropical zero
-         // -- this should be replaced by an incremental change of entries resulting in
-         // O(n^2) operations per changed entry and O(n^3) in total --
-         Matrix<TNumber> modmatrix(matrix.top());
-         Array< Array<int> > modperm(d);
-         Vector<TNumber> modval(ones_vector<TNumber>(d));
-         TNumber oldentry;
-         for(int j = 0; j < d; ++j) {
-            oldentry = modmatrix(j, perm[j]);
-            modmatrix(j, perm[j]) = zero_value<TNumber>();
-            modperm[j] = tdet_and_perm(modmatrix).second; //graph::HungarianMethod<Scalar>(Addition::orientation()*Matrix<Scalar>(modmatrix)).stage();
-            for(int k = 0; k < d; ++k) modval[j] *= modmatrix(k,modperm[j][k]);
-            modmatrix(j, perm[j]) = oldentry;
-         }
-         value = extreme_value_and_index(modval).first;
-         int index = (extreme_value_and_index(modval).second).front();
-         return std::make_pair(value,modperm[index]);
-      }
-
-      template <typename Addition, typename Scalar, typename MatrixTop>
-      bool tregular(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar>>& matrix)
-      {
-         return tdet_and_perm(matrix).first != second_tdet_and_perm(matrix).first;
-      }
-
-      template <typename Addition, typename Scalar, typename MatrixTop>
-      Vector<TropicalNumber<Addition, Scalar>> cramer(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar>>& matrix)
-      {
-         // For reference see:
-         //
-         // Mills-Tettey, Stentz, Dias - The Dynamic Hungarian Algorithm
-         // for the Assignment Problem with Changing Costs
-
-         const int d(matrix.cols());
-         if (d != matrix.rows() + 1)
-            throw std::runtime_error("input matrix has to be Nx(N+1)");
-         
-         Vector<TropicalNumber<Addition, Scalar>> solvec(d);
-
-         Matrix<TropicalNumber<Addition, Scalar>> matrix_0(matrix.top().minor(All, range_from(1)));
-         graph::HungarianMethod<Scalar> HM(Addition::orientation()*Matrix<Scalar>(matrix_0.top()));
-
-         HM.stage();
-         solvec[0] = Addition::orientation()*HM.get_value();
-         for (int i = 0; i < d-1; i++) {
-            HM.dynamic_stage(i, Addition::orientation()*Vector<Scalar>(matrix.col(i)));
-            solvec[i+1] = Addition::orientation()*HM.get_value();
-         }
-
-         return solvec;
-      }
-      
-      template <typename Addition, typename Scalar, typename MatrixTop>
-      Vector<TropicalNumber<Addition, Scalar> > subcramer(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix, Set<int> J, Set<int> I)
-      {
-         if (I.size() != J.size()+1)
-            throw std::runtime_error("|I| = |J| + 1 is required.");
-
-         Vector<TropicalNumber<Addition,Scalar> > solvec(matrix.cols());
-         for(auto i : I) {
-            solvec[i] = tdet(matrix.top().minor(J, (I-scalar2set(i))));
-         }
-         return solvec;
-      }
-
-      // sign of determinant
-      template <typename Addition, typename Scalar, typename MatrixTop>
-      int tsgn(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
-      {
-         std::pair<TropicalNumber<Addition,Scalar>,Array<int>> p_1 = tdet_and_perm(matrix);
-         std::pair<TropicalNumber<Addition,Scalar>,Array<int>> p_2 = second_tdet_and_perm(matrix);
-         return p_1.first != p_2.first ? permutation_sign(p_1.second) : 0;
-         /* return tregular(matrix) ? permutation_sign(tdet_and_perm(matrix).second) : 0; */
-      }
-
-      // sign-regularity
-      template <typename Addition, typename Scalar, typename MatrixTop>
-      bool stregular(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
-      {
-         Set<int> signs;
-         for (auto r = entire(optimal_permutations(matrix)); !r.at_end(); ++r) {
-            signs += permutation_sign(*r);
-            if (signs.size() > 1)
-               return false;
-         }
-         return true;
-      }
-
-      /* template <typename Addition, typename Scalar, typename MatrixTop> */
-      /* std::pair<Vector<TropicalNumber<Addition,Scalar>,Vector<int>> scramer(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix) */
-      /* { */
-      /*    const int d(matrix.cols()); */
-      /*    if (d != matrix.rows() + 1) */
-      /*       throw std::runtime_error("input matrix has to be Nx(N+1)"); */
-      /*    Vector<TropicalNumber<Addition, Scalar>> solvec(d); */
-      /*    Vector<int> solvec_signs(d); */
-      /*    Matrix<TropicalNumber<Addition, Scalar>> matrix_0(matrix.top().minor(All, range_from(1))); */
-      /*    graph::HungarianMethod<Scalar> HM(Addition::orientation()*Matrix<Scalar>(matrix_0.top())); */
-      /*    HM.stage(); */
-      /*    solvec[0] = Addition::orientation()*HM.get_value(); */
-      /*    for (int i = 0; i < d-1; i++) { */
-      /*       HM.dynamic_stage(i, Addition::orientation()*Vector<Scalar>(matrix.col(i))); */
-      /*       solvec[i+1] = Addition::orientation()*HM.get_value(); */
-      /*    } */
-      /*    /1* return std::pair; *1/ */
-      /* } */
-
-      /* template <typename Addition, typename Scalar, typename MatrixTop> */
-      /* std::pair<TropicalNumber<Addition,Scalar>, stdet(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix, const GenericMatrix<MatrixTop, bool>& signmatrix) */
-      /* { */
-      /* } */
-
-
-      // tropical distance function; notice that the tropical Addition is not relevant
-      template <typename Addition, typename Scalar, typename VectorTop>
-      Scalar tdist(const GenericVector< VectorTop, TropicalNumber<Addition, Scalar> >& v, const GenericVector< VectorTop, TropicalNumber<Addition, Scalar> >& w) {
-         Vector<Scalar> diff(Vector<Scalar>(v) - Vector<Scalar>(w)); // this is ordinary subtraction
-         Scalar min,max;
-         for (int i=0; i<diff.dim(); ++i)
-            assign_min_max(min,max,diff[i]);
-         return max-min;
-      }
-
-      // tropical diameter of a simplex; notice that the tropical Addition is not relevant
-      template <typename Addition, typename Scalar, typename MatrixTop>
-      Scalar tdiam(const GenericMatrix< MatrixTop, TropicalNumber<Addition,Scalar> >& matrix) {
-         const int d(matrix.cols());
-         Scalar td(zero_value<Scalar>());
-         for (int i=0; i<d-1; ++i) {
-            for (int k=i+1; k<d; ++k)
-               assign_max(td, tdist(matrix.col(i), matrix.col(k)));
-         }
-         return td;
-      }
-
-   }
-
+namespace operations {
+  using pm::operations::div_skip_zero;
 }
+
+namespace tropical {
+
+/*
+ *
+ * @brief compute the tropical sum w.r.t. Addition and the entries where the extremum is attained
+ */
+template <typename Addition, typename Scalar, typename VectorTop>
+std::pair<TropicalNumber<Addition, Scalar>, Set<Int>>
+extreme_value_and_index(const GenericVector<VectorTop, TropicalNumber<Addition,Scalar>>& vector)
+{
+   typedef TropicalNumber<Addition, Scalar> TNumber;
+   TNumber extremum = accumulate(vector.top(), operations::add());
+   Set<Int> extremal_entries;
+   Int td_index = 0;
+   for (auto td = entire(vector.top()); !td.at_end(); ++td, ++td_index) {
+      if (*td == extremum)
+         extremal_entries += td_index;
+   }
+   return std::make_pair(extremum,extremal_entries);
+}
+
+/*
+ * @brief coordinatewise tropical quotient of two vectors with special treatment for 
+ * inf entries
+ */
+template <typename Vector1, typename Vector2, typename Addition, typename Scalar>
+auto
+rel_coord(const GenericVector<Vector1, TropicalNumber<Addition, Scalar>>& point, 
+          const GenericVector<Vector2, TropicalNumber<Addition, Scalar>>& apex)
+{
+   return pm::LazyVector2<const Vector1&, const Vector2&, operations::div_skip_zero<Addition, Scalar> >(point.top(), apex.top());
+}
+
+/*
+ * @brief compute a solution of a tropical linear equality as the tropical
+ * nearest point projection on the tropical cone generated by the columns of the matrix
+ * @param Matrix A 
+ * @param Vector b
+ * @return solution of the tropical linear equality if existent;
+ * if there is no solution the result yields a 'nearest non-solution'
+ */
+template <typename Addition, typename Scalar, typename MatrixTop, typename VectorTop>
+Vector<TropicalNumber<Addition, Scalar>>
+principal_solution(const GenericMatrix<MatrixTop, TropicalNumber<Addition, Scalar>>& A,
+                   const GenericVector<VectorTop, TropicalNumber<Addition, Scalar>> &b)
+{
+   typedef TropicalNumber<Addition, Scalar> TNumber;
+   const Int n = A.cols();
+   Vector<TNumber> x(n);
+   TNumber t_one(TNumber::one());
+   for (auto col = entire<indexed>(cols(A.top())); !col.at_end(); ++col) {
+      x[col.index()] = t_one / accumulate(rel_coord(*col, b.top()), operations::add());
+   }
+   return x;
+}
+     
+template <typename Addition, typename Scalar, typename MatrixTop>
+std::pair<TropicalNumber<Addition, Scalar>, Array<Int>>
+tdet_and_perm(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar>>& matrix)
+{
+   const Int d = matrix.rows();
+   if (d != matrix.cols())
+      throw std::runtime_error("input matrix has to be quadratic");
+
+   // Checking for zero columns or rows
+   for (auto c = entire(cols(matrix.top())); !c.at_end(); ++c) {
+      if (is_zero(*c))
+         return std::make_pair(zero_value<TropicalNumber<Addition, Scalar> >(), Array<Int>(sequence(0, d)));
+   }
+   for (auto r = entire(rows(matrix.top())); !r.at_end(); ++r) {
+      if (is_zero(*r))
+         return std::make_pair(zero_value<TropicalNumber<Addition, Scalar> >(), Array<Int>(sequence(0, d)));
+   }
+
+   graph::HungarianMethod<Scalar> HM(Addition::orientation() * Matrix<Scalar>(matrix.top()));
+   HM.stage();
+   return std::make_pair(TropicalNumber<Addition, Scalar>(Addition::orientation()*HM.get_value()), HM.get_matching());
+}
+
+template <typename Addition, typename Scalar, typename MatrixTop>
+std::pair<TropicalNumber<Addition, Scalar>, Set<Array<Int>>>
+tdet_and_perms(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar>>& matrix)
+{
+   if (matrix.rows() != matrix.cols())
+      throw std::runtime_error("input matrix has to be quadratic");
+
+   graph::HungarianMethod<Scalar> HM(Addition::orientation() * Matrix<Scalar>(matrix.top()));
+   HM.stage();
+   graph::PerfectMatchings PM(Graph<Undirected>(HM.get_equality_subgraph()), HM.get_matching());
+   return std::make_pair(TropicalNumber<Addition, Scalar>(Addition::orientation()*HM.get_value()), PM.get_matchings());
+}
+
+template <typename Addition, typename Scalar, typename MatrixTop>
+TropicalNumber<Addition, Scalar>
+tdet(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar> >& matrix)
+{
+   return tdet_and_perm(matrix).first;
+}
+
+template <typename Addition, typename Scalar, typename MatrixTop>
+Set<Array<Int>> optimal_permutations(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar>>& matrix)
+{
+   return tdet_and_perms(matrix).second;
+}
+      
+template <typename Addition, typename Scalar, typename MatrixTop>
+std::pair<TropicalNumber<Addition, Scalar>, Array<Int>>
+second_tdet_and_perm(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar>>& matrix)
+{
+   typedef TropicalNumber<Addition,Scalar> TNumber;
+   TNumber value(zero_value<TNumber>()); // empty matrix has tropical determinant zero
+   const Int d = matrix.rows();
+   if (d != matrix.cols())
+      throw std::runtime_error("input matrix has to be quadratic");
+
+   // Checking for zero columns or rows
+   for (auto c = entire(cols(matrix.top())); !c.at_end(); ++c) {
+      if (is_zero(*c)) return std::make_pair(zero_value<TNumber >(), Array<Int>(sequence(0, d)));
+   }
+   for (auto r = entire(rows(matrix.top())); !r.at_end(); ++r) {
+      if (is_zero(*r)) return std::make_pair(zero_value<TNumber >(), Array<Int>(sequence(0, d)));
+   }
+
+   const Array<Int> perm(tdet_and_perm(matrix).second);
+
+   // successively setting the entries which form the optimal permutation to tropical zero
+   // -- this should be replaced by an incremental change of entries resulting in
+   // O(n^2) operations per changed entry and O(n^3) in total --
+   Matrix<TNumber> modmatrix(matrix.top());
+   Array<Array<Int>> modperm(d);
+   Vector<TNumber> modval(ones_vector<TNumber>(d));
+   TNumber oldentry;
+   for (Int j = 0; j < d; ++j) {
+      oldentry = modmatrix(j, perm[j]);
+      modmatrix(j, perm[j]) = zero_value<TNumber>();
+      modperm[j] = tdet_and_perm(modmatrix).second; //graph::HungarianMethod<Scalar>(Addition::orientation()*Matrix<Scalar>(modmatrix)).stage();
+      for (Int k = 0; k < d; ++k)
+         modval[j] *= modmatrix(k, modperm[j][k]);
+      modmatrix(j, perm[j]) = oldentry;
+   }
+   value = extreme_value_and_index(modval).first;
+   Int index = extreme_value_and_index(modval).second.front();
+   return std::make_pair(value,modperm[index]);
+}
+
+template <typename Addition, typename Scalar, typename MatrixTop>
+bool tregular(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar>>& matrix)
+{
+   return tdet_and_perm(matrix).first != second_tdet_and_perm(matrix).first;
+}
+
+template <typename Addition, typename Scalar, typename MatrixTop>
+Vector<TropicalNumber<Addition, Scalar>> cramer(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar>>& matrix)
+{
+   // For reference see:
+   //
+   // Mills-Tettey, Stentz, Dias - The Dynamic Hungarian Algorithm
+   // for the Assignment Problem with Changing Costs
+
+   const Int d = matrix.cols();
+   if (d != matrix.rows()+1)
+      throw std::runtime_error("input matrix has to be Nx(N+1)");
+         
+   Vector<TropicalNumber<Addition, Scalar>> solvec(d);
+
+   Matrix<TropicalNumber<Addition, Scalar>> matrix_0(matrix.top().minor(All, range_from(1)));
+   graph::HungarianMethod<Scalar> HM(Addition::orientation()*Matrix<Scalar>(matrix_0.top()));
+
+   HM.stage();
+   solvec[0] = Addition::orientation()*HM.get_value();
+   for (Int i = 0; i < d-1; ++i) {
+      HM.dynamic_stage(i, Addition::orientation()*Vector<Scalar>(matrix.col(i)));
+      solvec[i+1] = Addition::orientation()*HM.get_value();
+   }
+
+   return solvec;
+}
+      
+template <typename Addition, typename Scalar, typename MatrixTop>
+Vector<TropicalNumber<Addition, Scalar>> subcramer(const GenericMatrix<MatrixTop, TropicalNumber<Addition,Scalar>>& matrix, const Set<Int>& J, const Set<Int>& I)
+{
+   if (I.size() != J.size()+1)
+      throw std::runtime_error("|I| = |J| + 1 is required.");
+
+   Vector<TropicalNumber<Addition,Scalar> > solvec(matrix.cols());
+   for (auto i : I) {
+      solvec[i] = tdet(matrix.top().minor(J, I-i));
+   }
+   return solvec;
+}
+
+// sign of determinant
+template <typename Addition, typename Scalar, typename MatrixTop>
+Int tsgn(const GenericMatrix<MatrixTop, TropicalNumber<Addition, Scalar>>& matrix)
+{
+   std::pair<TropicalNumber<Addition, Scalar>, Array<Int>> p_1 = tdet_and_perm(matrix);
+   std::pair<TropicalNumber<Addition, Scalar>, Array<Int>> p_2 = second_tdet_and_perm(matrix);
+   return p_1.first != p_2.first ? permutation_sign(p_1.second) : 0;
+}
+
+// sign-regularity
+template <typename Addition, typename Scalar, typename MatrixTop>
+bool stregular(const GenericMatrix<MatrixTop, TropicalNumber<Addition, Scalar>>& matrix)
+{
+   Set<Int> signs;
+   for (auto r = entire(optimal_permutations(matrix)); !r.at_end(); ++r) {
+      signs += permutation_sign(*r);
+      if (signs.size() > 1)
+         return false;
+   }
+   return true;
+}
+
+// tropical distance function; notice that the tropical Addition is not relevant
+template <typename Addition, typename Scalar, typename VectorTop>
+Scalar tdist(const GenericVector<VectorTop, TropicalNumber<Addition, Scalar>>& v, const GenericVector<VectorTop, TropicalNumber<Addition, Scalar>>& w)
+{
+   const Vector<Scalar> diff(Vector<Scalar>(v) - Vector<Scalar>(w)); // this is ordinary subtraction
+   Scalar min, max;
+   for (Int i = 0; i < diff.dim(); ++i)
+      assign_min_max(min, max, diff[i]);
+   return max - min;
+}
+
+// tropical diameter of a simplex; notice that the tropical Addition is not relevant
+template <typename Addition, typename Scalar, typename MatrixTop>
+Scalar tdiam(const GenericMatrix<MatrixTop, TropicalNumber<Addition, Scalar>>& matrix)
+{
+   const Int d = matrix.cols();
+   Scalar td(zero_value<Scalar>());
+   for (Int i = 0; i < d-1; ++i) {
+      for (Int k = i+1; k < d; ++k)
+         assign_max(td, tdist(matrix.col(i), matrix.col(k)));
+   }
+   return td;
+}
+
+} }
 
 #endif // POLYMAKE_TROPICAL_ARITHMETIC_H
 

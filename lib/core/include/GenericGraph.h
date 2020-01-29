@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -75,7 +75,7 @@ class uniq_edge_list
                                             IteratorConstructorTag< input_truncator_constructor >,
                                             OperationTag< BuildUnaryIt<uniq_edge_predicate> > > > {
 public:
-   int dim() const { return this->hidden().dim(); }
+   Int dim() const { return this->hidden().dim(); }
 };
 
 template <typename TGraph, bool directed=TGraph::is_directed,
@@ -116,7 +116,7 @@ public:
       typedef GenericGraph<Result, dir> type;
    };
 
-   int nodes() const
+   Int nodes() const
    {
       AssertOVERLOADED(GenericGraph, top_type, nodes);
       return this->top().nodes();
@@ -268,7 +268,7 @@ class Nodes
    : public redirected_container< Nodes<TGraph>,
                                   mlist< ContainerRefTag< typename TGraph::node_container_ref >,
                                          MasqueradedTop > >
-   , public GenericSet<Nodes<TGraph>, int, operations::cmp> {
+   , public GenericSet<Nodes<TGraph>, Int, operations::cmp> {
 protected:
    Nodes();
    ~Nodes();
@@ -295,8 +295,8 @@ protected:
    ~Edges();
 public:
    using graph::edge_container_impl<TGraph>::get_container;
-   int size() const { return this->hidden().edges(); }
-   int max_size() const { return size(); }
+   Int size() const { return this->hidden().edges(); }
+   Int max_size() const { return size(); }
 };
 
 namespace graph {
@@ -384,14 +384,14 @@ public:
 
 template <typename TGraph>
 class AdjacencyMatrix<TGraph, true>
-   : public GenericMatrix< AdjacencyMatrix<TGraph, true>, int > {
+   : public GenericMatrix<AdjacencyMatrix<TGraph, true>, Int> {
 protected:
    AdjacencyMatrix();
    ~AdjacencyMatrix();
 public:
-   typedef int value_type;
-   typedef int reference;
-   typedef const int const_reference;
+   typedef Int value_type;
+   typedef Int reference;
+   typedef const Int const_reference;
 
    TGraph& hidden() { return reinterpret_cast<TGraph&>(*this); }
    const TGraph& hidden() const { return reinterpret_cast<const TGraph&>(*this); }
@@ -408,7 +408,7 @@ struct check_container_feature< AdjacencyMatrix<TGraph, true>, pure_sparse >
 template <typename TGraph>
 class matrix_random_access_methods< AdjacencyMatrix<TGraph, false> > {
 public:
-   bool operator() (int i, int j) const
+   bool operator() (Int i, Int j) const
    {
       return static_cast<const AdjacencyMatrix<TGraph>&>(*this).hidden().edge_exists(i,j);
    }
@@ -417,7 +417,7 @@ public:
 template <typename TGraph>
 class matrix_random_access_methods< AdjacencyMatrix<TGraph, true> > {
 public:
-   int operator() (int i, int j) const
+   Int operator() (Int i, Int j) const
    {
       return count_it(static_cast<const AdjacencyMatrix<TGraph>&>(*this).hidden().all_edges(i,j));
    }
@@ -438,7 +438,7 @@ public:
       return this->hidden().template pretend<typename TGraph::const_adjacency_rows_container_ref>();
    }
 
-   int dim() const { return this->hidden().dim(); }
+   Int dim() const { return this->hidden().dim(); }
 
    bool prefer_sparse_representation() const
    {
@@ -461,7 +461,7 @@ public:
       return this->hidden().template pretend<typename TGraph::const_adjacency_cols_container_ref>();
    }
 
-   int dim() const { return this->hidden().dim(); }
+   Int dim() const { return this->hidden().dim(); }
 
    bool prefer_sparse_representation() const
    {
@@ -584,97 +584,97 @@ template <typename TGraph, bool TMultigraph>
 struct spec_object_traits< AdjacencyMatrix<TGraph, TMultigraph> >
    : spec_object_traits<is_container> {
    typedef TGraph masquerade_for;
-   static const bool is_always_const=object_traits<TGraph>::is_always_const || TMultigraph;
-   static const int is_resizeable=object_traits<TGraph>::is_resizeable;
+   static constexpr bool is_always_const = object_traits<TGraph>::is_always_const || TMultigraph;
+   static constexpr int is_resizeable = object_traits<TGraph>::is_resizeable;
 };
 
 template <typename TGraph>
 class WaryGraph : public GenericGraph<Wary<TGraph>, typename TGraph::dir> {
 public:
-   int out_degree(int n) const
+   Int out_degree(Int n) const
    {
       if (this->top().invalid_node(n))
          throw std::runtime_error("Graph::out_degree - node id out of range or deleted");
       return this->top().out_degree(n);
    }
-   int in_degree(int n) const
+   Int in_degree(Int n) const
    {
       if (this->top().invalid_node(n))
          throw std::runtime_error("Graph::in_degree - node id out of range or deleted");
       return this->top().in_degree(n);
    }
-   int degree(int n) const
+   Int degree(Int n) const
    {
       if (this->top().invalid_node(n))
          throw std::runtime_error("Graph::degree - node id out of range or deleted");
       return this->top().degree(n);
    }
 
-   bool node_exists(int n) const
+   bool node_exists(Int n) const
    {
       if (this->top().node_out_of_range(n))
          throw std::runtime_error("Graph::node_exists - node id out of range");
       return this->top().node_exists(n);
    }
-   void delete_node(int n)
+   void delete_node(Int n)
    {
       if (this->top().invalid_node(n))
          throw std::runtime_error("Graph::delete_node - node id out of range or already deleted");
       this->top().delete_node(n);
    }
 
-   int edge(int n1, int n2)
+   Int edge(Int n1, Int n2)
    {
       if (this->top().invalid_node(n1) || this->top().invalid_node(n2))
          throw std::runtime_error("Graph::edge - node id out of range or deleted");
       return this->top().edge(n1,n2);
    }
-   int edge(int n1, int n2) const
+   Int edge(Int n1, Int n2) const
    {
       if (this->top().invalid_node(n1) || this->top().invalid_node(n2))
          throw std::runtime_error("Graph::edge - node id out of range or deleted");
       return this->top().edge(n1,n2);
    }
-   int add_edge(int n1, int n2)
+   Int add_edge(Int n1, Int n2)
    {
       if (this->top().invalid_node(n1) || this->top().invalid_node(n2))
          throw std::runtime_error("Graph::add_edge - node id out of range or deleted");
       return this->top().add_edge(n1,n2);
    }
 
-   bool edge_exists(int n1, int n2) const
+   bool edge_exists(Int n1, Int n2) const
    {
       if (this->top().invalid_node(n1) || this->top().invalid_node(n2))
          throw std::runtime_error("Graph::edge_exists - node id out of range or deleted");
       return this->top().edge_exists(n1,n2);
    }
-   typename TGraph::parallel_edge_iterator all_edges(int n1, int n2)
+   typename TGraph::parallel_edge_iterator all_edges(Int n1, Int n2)
    {
       if (this->top().invalid_node(n1) || this->top().invalid_node(n2))
          throw std::runtime_error("Graph::all_edges - node id out of range or deleted");
       return this->top().all_edges(n1,n2);
    }
-   typename TGraph::parallel_edge_const_iterator all_edges(int n1, int n2) const
+   typename TGraph::parallel_edge_const_iterator all_edges(Int n1, Int n2) const
    {
       if (this->top().invalid_node(n1) || this->top().invalid_node(n2))
          throw std::runtime_error("Graph::all_edges - node id out of range or deleted");
       return this->top().all_edges(n1,n2);
    }
 
-   void delete_edge(int n1, int n2)
+   void delete_edge(Int n1, Int n2)
    {
       if (this->top().invalid_node(n1) || this->top().invalid_node(n2))
          throw std::runtime_error("Graph::delete_edge - node id out of range or deleted");
       this->top().delete_edge(n1,n2);
    }
-   void delete_all_edges(int n1, int n2)
+   void delete_all_edges(Int n1, Int n2)
    {
       if (this->top().invalid_node(n1) || this->top().invalid_node(n2))
          throw std::runtime_error("Graph::delete_all_edges - node id out of range or deleted");
       this->top().delete_all_edges(n1,n2);
    }
 
-   void contract_edge(int n1, int n2)
+   void contract_edge(Int n1, Int n2)
    {
       if (this->top().invalid_node(n1) || this->top().invalid_node(n2))
          throw std::runtime_error("Graph::contract_edge - node id out of range or deleted");
@@ -683,63 +683,63 @@ public:
       this->top().contract_edge(n1,n2);
    }
 
-   typename TGraph::out_edge_list_ref out_edges(int n)
+   typename TGraph::out_edge_list_ref out_edges(Int n)
    {
       if (this->top().invalid_node(n))
          throw std::runtime_error("Graph::out_edges - node id out of range or deleted");
       return this->top().out_edges(n);
    }
-   typename TGraph::const_out_edge_list_ref out_edges(int n) const
+   typename TGraph::const_out_edge_list_ref out_edges(Int n) const
    {
       if (this->top().invalid_node(n))
          throw std::runtime_error("Graph::out_edges - node id out of range or deleted");
       return this->top().out_edges(n);
    }
 
-   typename TGraph::in_edge_list_ref in_edges(int n)
+   typename TGraph::in_edge_list_ref in_edges(Int n)
    {
       if (this->top().invalid_node(n))
          throw std::runtime_error("Graph::in_edges - node id out of range or deleted");
       return this->top().in_edges(n);
    }
-   typename TGraph::const_in_edge_list_ref in_edges(int n) const
+   typename TGraph::const_in_edge_list_ref in_edges(Int n) const
    {
       if (this->top().invalid_node(n))
          throw std::runtime_error("Graph::in_edges - node id out of range or deleted");
       return this->top().in_edges(n);
    }
 
-   typename TGraph::out_adjacent_node_list_ref out_adjacent_nodes(int n)
+   typename TGraph::out_adjacent_node_list_ref out_adjacent_nodes(Int n)
    {
       if (this->top().invalid_node(n))
          throw std::runtime_error("Graph::out_adjacent_nodes - node id out of range or deleted");
       return this->top().out_adjacent_nodes(n);
    }
-   typename TGraph::const_out_adjacent_node_list_ref out_adjacent_nodes(int n) const
+   typename TGraph::const_out_adjacent_node_list_ref out_adjacent_nodes(Int n) const
    {
       if (this->top().invalid_node(n))
          throw std::runtime_error("Graph::out_adjacent_nodes - node id out of range or deleted");
       return this->top().out_adjacent_nodes(n);
    }
-   typename TGraph::in_adjacent_node_list_ref in_adjacent_nodes(int n)
+   typename TGraph::in_adjacent_node_list_ref in_adjacent_nodes(Int n)
    {
       if (this->top().invalid_node(n))
          throw std::runtime_error("Graph::in_adjacent_nodes - node id out of range or deleted");
       return this->top().in_adjacent_nodes(n);
    }
-   typename TGraph::const_in_adjacent_node_list_ref in_adjacent_nodes(int n) const
+   typename TGraph::const_in_adjacent_node_list_ref in_adjacent_nodes(Int n) const
    {
       if (this->top().invalid_node(n))
          throw std::runtime_error("Graph::in_adjacent_nodes - node id out of range or deleted");
       return this->top().in_adjacent_nodes(n);
    }
-   typename TGraph::adjacent_node_list_ref adjacent_nodes(int n)
+   typename TGraph::adjacent_node_list_ref adjacent_nodes(Int n)
    {
       if (this->top().invalid_node(n))
          throw std::runtime_error("Graph::adjacent_nodes - node id out of range or deleted");
       return this->top().adjacent_nodes(n);
    }
-   typename TGraph::const_adjacent_node_list_ref adjacent_nodes(int n) const
+   typename TGraph::const_adjacent_node_list_ref adjacent_nodes(Int n) const
    {
       if (this->top().invalid_node(n))
          throw std::runtime_error("Graph::adjacent_nodes - node id out of range or deleted");
@@ -747,7 +747,7 @@ public:
    }
 
    template <typename TPerm>
-   typename std::enable_if<isomorphic_to_container_of<TPerm, int>::value>::type
+   typename std::enable_if<isomorphic_to_container_of<TPerm, Int>::value>::type
    permute_nodes(const TPerm& perm)
    {
       if (perm.size() != this->top().dim())
@@ -781,8 +781,8 @@ public:
    iterator begin() const { return get_graph(); }
    iterator end() const { return iterator(); }
    reference front() const { return *begin(); }
-   int size() const { return count_it(begin()); }
-   bool empty() const { return get_graph().nodes()==0; }
+   Int size() const { return count_it(begin()); }
+   bool empty() const { return get_graph().nodes() == 0; }
 };
 
 template <typename GraphRef, template <typename> class Iterator>

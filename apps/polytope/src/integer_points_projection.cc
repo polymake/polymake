@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,6 +28,8 @@
 #include "polymake/common/lattice_tools.h"
 
 // FIXME: use std::vector instead of naked heap allocations when all containers are movable
+// Try to figure out what all this fiddling with naked pointers should be good for,
+// and whether there is a more sane alternative to it.
 
 namespace polymake { namespace polytope {
 namespace {
@@ -37,9 +39,9 @@ Matrix<Rational> vertices;
 class Face {
 public:
    Vector<Rational> projFace;
-   Set<int> vertices;
+   Set<Int> vertices;
 
-   Face(int coord, Set<int>& vert, Face* lower, Face* upper)
+   Face(Int coord, Set<Int>& vert, Face* lower, Face* upper)
    {
       vertices = vert;
       projFace = lower->projFace;
@@ -47,15 +49,15 @@ public:
          projFace -= (projFace[coord]/upper->projFace[coord]) * (upper->projFace);
       projFace = common::primitive(projFace);
    }
-   Face(Set<int>& vert, Vector<Rational>& proj)
+   Face(Set<Int>& vert, Vector<Rational>& proj)
    {
       vertices = vert;
       projFace = proj;
    }
 };
 
-void createChildren( std::vector<Face>* lowerFaces, std::vector<Face>* upperFaces, int faceDim, int coord,
-                     std::vector<Face>* lowerChildren, std::vector<Face>* upperChildren, int verbose)
+void createChildren(std::vector<Face>* lowerFaces, std::vector<Face>* upperFaces, Int faceDim, Int coord,
+                    std::vector<Face>* lowerChildren, std::vector<Face>* upperChildren, Int verbose)
 {
    if (verbose)
       cout << "creating faces of dim " << faceDim << " from " << lowerFaces->size()<<"+"
@@ -66,14 +68,11 @@ void createChildren( std::vector<Face>* lowerFaces, std::vector<Face>* upperFace
    // search through all pairs of faces of lower and upper hull to find pairs
    // which intersect in a lower dimensional face
    for (std::vector<Face>::iterator lowerFaceIt=lowerFaces->begin();
-        lowerFaceIt!=lowerFaces->end(); ++lowerFaceIt)
-   {
+        lowerFaceIt!=lowerFaces->end(); ++lowerFaceIt) {
       for (std::vector<Face>::iterator upperFaceIt=upperFaces->begin();
-           upperFaceIt!=upperFaces->end(); ++upperFaceIt)
-      {
-         Set<int> child = (lowerFaceIt->vertices)*(upperFaceIt->vertices);
-         if (child.size() >= faceDim+1 && pm::rank(vertices.minor(child,range(0,coord-1))) >= faceDim+1)
-         {
+           upperFaceIt!=upperFaces->end(); ++upperFaceIt) {
+         Set<Int> child = (lowerFaceIt->vertices)*(upperFaceIt->vertices);
+         if (child.size() >= faceDim+1 && pm::rank(vertices.minor(child,range(0,coord-1))) >= faceDim+1) {
             Face childFace(coord, child, &(*lowerFaceIt), &(*upperFaceIt));
 
             // we want to have each face only once
@@ -81,8 +80,7 @@ void createChildren( std::vector<Face>* lowerFaces, std::vector<Face>* upperFace
             std::vector<Face> * childList = (childFace.projFace[coord-1] < 0) ? upperChildren : lowerChildren;
             bool add = true;
             for (std::vector<Face>::iterator childIt = childList->begin();
-                 childIt != childList->end(); ++childIt)
-            {
+                 childIt != childList->end(); ++childIt) {
                if (childFace.projFace == childIt->projFace) {
                   childIt->vertices += child;
                   add = false;
@@ -100,14 +98,12 @@ void createChildren( std::vector<Face>* lowerFaces, std::vector<Face>* upperFace
 
 // try to find a row R in affine hull that has a nonzero value at the current coordinate
 // if found reduce all other rows at this coordinate using R and return R
-Vector<Rational>* tryAffineHull(Matrix<Rational>** affineHull, int coord, int verbose)
+Vector<Rational>* tryAffineHull(Matrix<Rational>** affineHull, Int coord, Int verbose)
 {
-   if(verbose)
+   if (verbose)
       cout << "trying to find affine hull row for coord "<< coord << " ... ";
-   for (int row = 0; row < (*affineHull)->rows(); ++row)
-   {
-      if ((((*affineHull)->row(row))[coord]) != 0)
-      {
+   for (Int row = 0; row < (*affineHull)->rows(); ++row) {
+      if ((((*affineHull)->row(row))[coord]) != 0) {
          Matrix<Rational> * newAffineHull = new Matrix<Rational>((*affineHull)->minor(~scalar2set(row),All));
          Vector<Rational> * ahrow = new Vector<Rational>((*affineHull)->row(row));
          for (auto r = entire(rows(*newAffineHull)); !r.at_end(); ++r) {
@@ -122,21 +118,17 @@ Vector<Rational>* tryAffineHull(Matrix<Rational>** affineHull, int coord, int ve
          return ahrow;
       }
    }
-   if(verbose)
+   if (verbose)
       cout << "none found" << endl;
-   return NULL;
+   return nullptr;
 }
 
 // reduce all faces using the affine hull row and resort them according to the next coordinate
-void affineProjection(std::vector<Face>* Faces, Vector<Rational>* affineHullRow, int coord,
-                      std::vector<Face>* lowerChildren, std::vector<Face>* upperChildren, int verbose)
+void affineProjection(std::vector<Face>* Faces, Vector<Rational>* affineHullRow, Int coord,
+                      std::vector<Face>* lowerChildren, std::vector<Face>* upperChildren, Int verbose)
 {
-   for (std::vector<Face>::iterator faceIt=Faces->begin();
-        faceIt!=Faces->end(); ++faceIt)
-   {
-      Face f(*faceIt);
-      if (f.projFace[coord] != 0)
-      {
+   for (Face f : *Faces) {
+      if (f.projFace[coord] != 0) {
          f.projFace -= (f.projFace[coord] / (*affineHullRow)[coord] ) * (*affineHullRow);
       }
       if (f.projFace[coord-1] >= 0) 
@@ -150,9 +142,9 @@ void affineProjection(std::vector<Face>* Faces, Vector<Rational>* affineHullRow,
 // then create matrix of all lifted points
 Matrix<Integer>* liftPoints(Matrix<Integer>* projPoints, 
                             std::vector<Face>* lowerFaces, std::vector<Face>* upperFaces, 
-                            int coord, int verbose)
+                            Int coord, Int verbose)
 {
-   int npoints = projPoints->rows();
+   Int npoints = projPoints->rows();
    if (verbose)
       cout << "lifting " << npoints << " points using coord " << coord << " ... ";
     
@@ -160,38 +152,34 @@ Matrix<Integer>* liftPoints(Matrix<Integer>* projPoints,
    Matrix<Rational> lowerBoundMatrix(lowerFaces->size(),npoints);
    Matrix<Rational> upperBoundMatrix(upperFaces->size(),npoints);
     
-   int nlower = 0;
-   for(std::vector<Face>::iterator lowerF=lowerFaces->begin(); 
-       lowerF!=lowerFaces->end(); ++lowerF)
-   {
-      if (lowerF->projFace[coord] > 0) {
-         lowerBoundMatrix[nlower] = -(*projPoints)*(lowerF->projFace) / lowerF->projFace[coord];
+   Int nlower = 0;
+   for (const auto& lowerF : *lowerFaces) {
+      if (lowerF.projFace[coord] > 0) {
+         lowerBoundMatrix[nlower] = -(*projPoints)*lowerF.projFace / lowerF.projFace[coord];
          ++nlower;
       }
    }
    lowerBoundMatrix = lowerBoundMatrix.minor(sequence(0,nlower),All);
-   int nupper = 0;
-   for(std::vector<Face>::iterator upperF=upperFaces->begin(); 
-       upperF!=upperFaces->end(); ++upperF)
-   {
-      upperBoundMatrix[nupper] = -(*projPoints)*(upperF->projFace) / upperF->projFace[coord];
+   Int nupper = 0;
+   for (const auto& upperF : *upperFaces) {
+      upperBoundMatrix[nupper] = -(*projPoints)*upperF.projFace / upperF.projFace[coord];
       ++nupper;
    }
     
-   if (verbose>=2)
+   if (verbose >= 2)
       cout << "[nlower=" << nlower << ",nupper=" << nupper << "] ";
    // find the bounds for each lattice point
    Vector<Integer> lowerBounds(lowerBoundMatrix.cols(), std::numeric_limits<Integer>::min());
    Vector<Integer>::iterator lowerBound = lowerBounds.begin();
 
-   for (auto LBcol=entire(cols(lowerBoundMatrix)); !LBcol.at_end(); ++LBcol, ++lowerBound) {
+   for (auto LBcol = entire(cols(lowerBoundMatrix)); !LBcol.at_end(); ++LBcol, ++lowerBound) {
       for (auto LBcolentry = entire(*LBcol); !LBcolentry.at_end(); ++LBcolentry) {
          if (*lowerBound < *LBcolentry)
             *lowerBound = ceil(*LBcolentry);
       }
    }
     
-   if (verbose>=2)
+   if (verbose >= 2)
       cout << "[apply] ";
    Vector<Integer> upperBounds(upperBoundMatrix.cols(), std::numeric_limits<Integer>::max());
    Vector<Integer>::iterator upperBound = upperBounds.begin();
@@ -203,16 +191,14 @@ Matrix<Integer>* liftPoints(Matrix<Integer>* projPoints,
       }
    }
     
-   if (verbose>=2)
+   if (verbose >= 2)
       cout << "[matrix] ";
    // generate matrix containing all lifted lattice points, using the projected lattice point with all valid values in the (coord) coordinate
-   const int count = int(accumulate(upperBounds - lowerBounds, operations::add())) + npoints;
+   const Int count = Int(accumulate(upperBounds - lowerBounds, operations::add())) + npoints;
    Matrix<Integer>* points = new Matrix<Integer>(count, projPoints->cols());
-   Rows< Matrix<Integer> >::iterator point = rows(*points).begin();
-   for(int i = 0; i < npoints; ++i) 
-   {
-      for(Integer j = lowerBounds[i]; j <= upperBounds[i]; ++j, ++point) 
-      {
+   auto point = rows(*points).begin();
+   for (Int i = 0; i < npoints; ++i) {
+      for (Integer j = lowerBounds[i]; j <= upperBounds[i]; ++j, ++point) {
          *point = projPoints->row(i);
          (*point)[coord] = j;
       }
@@ -223,13 +209,12 @@ Matrix<Integer>* liftPoints(Matrix<Integer>* projPoints,
 }
   
 // calculate the next coordinate using an affine hull row
-Matrix<Integer>* liftPointsAffine(Matrix<Integer>* projPoints, Vector<Rational>* affineHullRow, int coord, int verbose)
+Matrix<Integer>* liftPointsAffine(Matrix<Integer>* projPoints, Vector<Rational>* affineHullRow, Int coord, Int verbose)
 {
-   if(verbose)
+   if (verbose)
       cout << "calculating coord "<< coord << " for "<< projPoints->rows() <<" points using affine hull row ... " ;
-   Set<int> noninteger;
-   for(int i = 0; i < projPoints->rows(); i++)
-   {
+   Set<Int> noninteger;
+   for (Int i = 0; i < projPoints->rows(); ++i) {
       Rational entry = (*projPoints)[i] * (*affineHullRow) / (*affineHullRow)[coord];
       if (entry != 0) {
          if (entry.is_integral())
@@ -238,47 +223,40 @@ Matrix<Integer>* liftPointsAffine(Matrix<Integer>* projPoints, Vector<Rational>*
             noninteger += i;
       }
    }
-   if (noninteger.size() > 0) 
-   {
+   if (noninteger.size() > 0) {
       Matrix<Integer>* liftedPoints = new Matrix<Integer>(projPoints->minor(~noninteger,All));
       delete projPoints;
-      if(verbose)
+      if (verbose)
          cout << "done, removed " << noninteger.size() << " non-integer points." << endl;
       return liftedPoints;
-   }
-   else
-   {
-      if(verbose)
+   } else {
+      if (verbose)
          cout << "done." << endl;
       return projPoints;
    }
 }
 
 // main recursion calling the projection and lifting functions
-Matrix<Integer> * points(std::vector<Face>* lowerFaces, std::vector<Face>* upperFaces, 
-                         Matrix<Rational> * affineHull, int faceDim, int coord, int totalDim, int verbose) 
+Matrix<Integer>* points(std::vector<Face>* lowerFaces, std::vector<Face>* upperFaces, 
+                        Matrix<Rational>* affineHull, Int faceDim, Int coord, Int totalDim, Int verbose) 
 {
-   Matrix<Integer> * projPoints;
-   Vector<Rational> * affineHullRow = NULL;
-   if (coord > 1)
-   {
+   Matrix<Integer>* projPoints = nullptr;
+   Vector<Rational>* affineHullRow = nullptr;
+   if (coord > 1) {
       // create lists of upper and lower hull in one dimension lower
       std::vector<Face> * lowerChildren = new std::vector<Face>();
       std::vector<Face> * upperChildren = new std::vector<Face>();
       
       affineHullRow = tryAffineHull(&affineHull,coord,verbose);
       
-      if (affineHullRow != NULL) 
-      {
+      if (affineHullRow) {
          if(verbose)
             cout << "reducing coord "<< coord << " using affine hull ... ";
          affineProjection(lowerFaces,affineHullRow,coord,lowerChildren,upperChildren,verbose);
          affineProjection(upperFaces,affineHullRow,coord,lowerChildren,upperChildren,verbose);
          if(verbose)
             cout << "done." << endl;
-      }
-      else
-      {
+      } else {
          faceDim--;
          createChildren(lowerFaces,upperFaces,faceDim,coord,lowerChildren,upperChildren, verbose);
       }
@@ -287,9 +265,7 @@ Matrix<Integer> * points(std::vector<Face>* lowerFaces, std::vector<Face>* upper
       projPoints = points(lowerChildren,upperChildren,affineHull,faceDim,coord-1,totalDim,verbose);
       delete lowerChildren;
       delete upperChildren;
-   }
-   else
-   {
+   } else {
       if (verbose) 
          cout << "*** projecting done ***" << endl << endl << "*** lifting points now ***" << endl;
       // create one lattice point for the zero dimensional projection
@@ -302,13 +278,10 @@ Matrix<Integer> * points(std::vector<Face>* lowerFaces, std::vector<Face>* upper
     
    // lift points up one dimension
    Matrix<Integer> * liftedPoints;
-   if (affineHullRow != NULL) 
-   {
+   if (affineHullRow) {
       liftedPoints = liftPointsAffine(projPoints,affineHullRow,coord,verbose);
       delete affineHullRow;
-   }
-   else
-   {
+   } else {
       liftedPoints = liftPoints(projPoints, lowerFaces, upperFaces, coord, verbose);
       delete projPoints;  
    }
@@ -318,16 +291,15 @@ Matrix<Integer> * points(std::vector<Face>* lowerFaces, std::vector<Face>* upper
   
 } // end anonymous namespace
 
-Matrix<Integer> integer_points_projection(perl::Object p, int verbose)
+Matrix<Integer> integer_points_projection(BigObject p, Int verbose)
 {
-   const int ambient = p.call_method("AMBIENT_DIM");
-   const int dim = p.call_method("DIM");
+   const Int ambient = p.call_method("AMBIENT_DIM");
+   const Int dim = p.call_method("DIM");
 
    if (dim == -1)
       return Matrix<Integer>();
 
-   if (ambient == 0)
-   {
+   if (ambient == 0) {
       Matrix<Integer> LP = unit_matrix<Integer>(1);
       return LP;
    }
@@ -341,10 +313,9 @@ Matrix<Integer> integer_points_projection(perl::Object p, int verbose)
    // create first faces = facets
    std::vector<Face> * lowerFaces = new std::vector<Face>();
    std::vector<Face> * upperFaces = new std::vector<Face>();
-   for(int i = 0; i < facets.rows(); ++i)
-   {
+   for (Int i = 0; i < facets.rows(); ++i) {
       Vector<Rational> facet(facets[i]);
-      Set<int> vif(VIF[i]);
+      Set<Int> vif(VIF[i]);
       if(facet[ambient] >= 0)
          lowerFaces->push_back(Face(vif,facet));
       else

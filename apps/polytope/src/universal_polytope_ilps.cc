@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,7 +31,7 @@ namespace polymake { namespace polytope {
 namespace {
 
 template<typename Scalar>
-void write_output(const perl::Object& q, const perl::Object& lp, const std::string& filename)
+void write_output(const BigObject& q, const BigObject& lp, const std::string& filename)
 {
    if (filename.empty()) {
       return;
@@ -47,13 +47,13 @@ void write_output(const perl::Object& q, const perl::Object& lp, const std::stri
 } // end anonymous namespace
 
 template <typename Scalar, typename SetType>
-perl::Object universal_polytope_impl(int d, 
+BigObject universal_polytope_impl(Int d, 
                                      const Matrix<Scalar>& points, 
                                      const Array<SetType>& facet_reps, 
                                      const Scalar& vol, 
                                      const SparseMatrix<Rational>& cocircuit_equations)
 {
-   const int 
+   const Int 
       n_reps = facet_reps.size(), 
       n_cols = cocircuit_equations.cols();
    if (n_reps > n_cols)
@@ -68,7 +68,7 @@ perl::Object universal_polytope_impl(int d,
    const SparseMatrix<Scalar> Equations(((-Integer::fac(d) * vol) | volume_vect | zero_vector<Scalar>(n_cols - n_reps))
                                        / (zero_vector<Scalar>(cocircuit_equations.rows()) | Matrix<Scalar>(cocircuit_equations)));
 
-   perl::Object q("Polytope", mlist<Scalar>());
+   BigObject q("Polytope", mlist<Scalar>());
    q.take("FEASIBLE") << true;
    q.take("INEQUALITIES") << Inequalities;
    q.take("EQUATIONS") << Equations;
@@ -76,40 +76,40 @@ perl::Object universal_polytope_impl(int d,
 }
 
 template <typename Scalar, typename SetType>
-perl::Object simplexity_ilp(int d, 
+BigObject simplexity_ilp(Int d, 
                             const Matrix<Scalar>& points, 
                             const Array<SetType>& facet_reps, 
                             Scalar vol, 
                             const SparseMatrix<Rational>& cocircuit_equations)
 {
-   const int 
+   const Int 
       n_reps = facet_reps.size(), 
       n_cols = cocircuit_equations.cols();
    if (n_reps > n_cols)
       throw std::runtime_error("Need at least #{simplex reps} many columns in the cocircuit equation matrix");
 
-   perl::Object lp("LinearProgram", mlist<Scalar>());
+   BigObject lp("LinearProgram", mlist<Scalar>());
    lp.attach("INTEGER_VARIABLES") << Array<bool>(n_reps, true);
    lp.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0 | ones_vector<Scalar>(n_reps) | zero_vector<Scalar>(n_cols-n_reps));
 
-   perl::Object q = universal_polytope_impl(d, points, facet_reps, vol, cocircuit_equations);
+   BigObject q = universal_polytope_impl(d, points, facet_reps, vol, cocircuit_equations);
    q.take("LP") << lp;
    return q;
 }
 
 template <typename SetType, typename EquationsType>
-perl::Object foldable_max_signature_ilp(int d,
+BigObject foldable_max_signature_ilp(Int d,
                                         const Matrix<Rational>& points,
                                         const Array<SetType>& max_simplices,
                                         const Rational& vol,
                                         const EquationsType& foldable_cocircuit_equations)
 {
-   const int n = max_simplices.size();
+   const Int n = max_simplices.size();
    Vector<Integer> volume_vect(2*n);
    SparseMatrix<Integer> selection(n,2*n);
    Vector<Integer>::iterator vit = volume_vect.begin();
-   int s = 0;
-   for (const auto& f: max_simplices) {
+   Int s = 0;
+   for (const auto& f : max_simplices) {
       // points have integer coordinates. This is ensured by the check for $p->LATTICE in universal_polytope.rules
       const Integer max_simplex_vol (numerator(abs(det(points.minor(f, All)))));
       *vit = max_simplex_vol; ++vit; // black maximal simplex
@@ -126,17 +126,17 @@ perl::Object foldable_max_signature_ilp(int d,
    
    // signature = absolute difference of normalized volumes of black minus white maximal simplices
    // (provided that normalized volume is odd)
-   for (int i = 0; i < n; ++i)
+   for (Int i = 0; i < n; ++i)
       if (volume_vect[2*i].even()) 
          volume_vect[2*i] = volume_vect[2*i+1] = 0;
       else 
          volume_vect[2*i+1].negate();
    
-   perl::Object lp("LinearProgram<Rational>");
+   BigObject lp("LinearProgram<Rational>");
    lp.attach("INTEGER_VARIABLES") << Array<bool>(2*n,true);
    lp.take("LINEAR_OBJECTIVE") << Vector<Rational>(0|volume_vect);
 
-   perl::Object q("Polytope<Rational>");
+   BigObject q("Polytope<Rational>");
    q.take("FEASIBLE") << true;
    q.take("INEQUALITIES") << Inequalities;
    q.take("EQUATIONS") << Equations;
@@ -145,26 +145,26 @@ perl::Object foldable_max_signature_ilp(int d,
 }
 
 template <typename Scalar, typename SetType>
-Integer simplexity_lower_bound(int d, 
+Integer simplexity_lower_bound(Int d, 
                                const Matrix<Scalar>& points, 
                                const Array<SetType>& max_simplices, 
                                Scalar vol, 
                                const SparseMatrix<Rational>& cocircuit_equations)
 {
-   perl::Object q = simplexity_ilp(d, points, max_simplices, vol, cocircuit_equations);
+   BigObject q = simplexity_ilp(d, points, max_simplices, vol, cocircuit_equations);
    const Scalar sll=q.give("LP.MINIMAL_VALUE");
    const Integer int_sll(floor(sll));
    return sll==int_sll? int_sll : int_sll+1;
 }
 
 template <typename SetType>
-Integer foldable_max_signature_upper_bound(int d, 
+Integer foldable_max_signature_upper_bound(Int d, 
                                            const Matrix<Rational>& points, 
                                            const Array<SetType>& max_simplices, 
                                            const Rational& vol, 
                                            const SparseMatrix<Rational>& foldable_cocircuit_equations)
 {
-   perl::Object q = foldable_max_signature_ilp(d, points, max_simplices, vol, foldable_cocircuit_equations);
+   BigObject q = foldable_max_signature_ilp(d, points, max_simplices, vol, foldable_cocircuit_equations);
    const Rational sll=q.give("LP.MAXIMAL_VALUE");
    return floor(sll);
 }
@@ -216,4 +216,3 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
 // c-basic-offset:3
 // indent-tabs-mode:nil
 // End:
-

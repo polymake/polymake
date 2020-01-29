@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,7 +20,7 @@
 
 namespace polymake { namespace graph {
 
-void SpringEmbedder::init_params(const perl::OptionSet& options)
+void SpringEmbedder::init_params(const OptionSet& options)
 {
    if (!(options["eps"] >> epsilon)) epsilon=1e-4;
    epsilon_2=epsilon*epsilon;
@@ -55,37 +55,37 @@ void SpringEmbedder::init_params(const perl::OptionSet& options)
    G.init_edge_map(inv_wanted_length);
 
    if (options["edge-weights"] >> wanted_edge_length) {
-      min_edge_weight=std::numeric_limits<double>::infinity();
-      avg_edge_weight=0;
+      min_edge_weight = std::numeric_limits<double>::infinity();
+      avg_edge_weight = 0;
 
-      for (auto e=entire(wanted_edge_length); !e.at_end(); ++e) {
+      for (auto e = entire(wanted_edge_length); !e.at_end(); ++e) {
          if (*e <= 0)
             throw std::runtime_error("non-positive edge length encountered");
          pm::assign_min(min_edge_weight, *e);
          avg_edge_weight += *e;
       }
-      avg_edge_weight/=(min_edge_weight*G.edges());
+      avg_edge_weight /= min_edge_weight * double(G.edges());
    } else {
-      min_edge_weight=1/scale;
-      avg_edge_weight=scale;
+      min_edge_weight = 1/scale;
+      avg_edge_weight = scale;
       fill_range(entire(wanted_edge_length), avg_edge_weight);
    }
 
-   for (auto e=entire(wanted_edge_length), ie=entire(inv_wanted_length);
+   for (auto e = entire(wanted_edge_length), ie = entire(inv_wanted_length);
         !e.at_end(); ++e, ++ie)
-      *ie=min_edge_weight/(*e);
+      *ie = min_edge_weight/(*e);
 
-   gravity=true;
+   gravity = true;
 
-   const double n_nodes=G.nodes();
-   eff_scale=avg_edge_weight/4*std::sqrt(n_nodes);
-   const double avg_deg=2.0*G.edges()/n_nodes;
-   if (avg_deg>=3) {
-      const double x=2*M_PI/avg_deg;
-      eff_scale*=std::sqrt(std::sin(x)/x);
+   const double n_nodes = double(G.nodes());
+   eff_scale = avg_edge_weight/4*std::sqrt(n_nodes);
+   const double avg_deg = 2*double(G.edges())/n_nodes;
+   if (avg_deg >= 3) {
+      const double x = 2*M_PI/avg_deg;
+      eff_scale *= std::sqrt(std::sin(x)/x);
    }
 #if POLYMAKE_DEBUG
-   debug_print = perl::get_debug_level() > 1;
+   debug_print = get_debug_level() > 1;
    if (debug_print) {
       cout << "initial adjustment:"
               "\n  min_edge_weight=" << min_edge_weight
@@ -158,10 +158,11 @@ void SpringEmbedder::calculate_forces(const Matrix<double>& X, RandomSpherePoint
       }
    }
 
-   z_min=new_z_min;  z_max=new_z_max;
+   z_min = new_z_min;
+   z_max = new_z_max;
    if (gravity) {
-      barycenter /= X.rows();
-      if (!z_ordering.empty()) barycenter.back()=0;
+      barycenter /= double(X.rows());
+      if (!z_ordering.empty()) barycenter.back() = 0;
    }
 
    for (auto fi = entire(fixed_vertices); !fi.at_end(); ++fi)
@@ -189,25 +190,25 @@ void calc_internal_constants(double& a, double& b, double& c, double& d, double 
 
 }
 
-bool SpringEmbedder::calculate(Matrix<double>& X, RandomSpherePoints<double>& random_points, int max_iterations)
+bool SpringEmbedder::calculate(Matrix<double>& X, RandomSpherePoints<double>& random_points, Int max_iterations)
 {
-   const int n_nodes=G.nodes();
+   const Int n_nodes = G.nodes();
    Matrix<double> F(n_nodes,X.cols());  // forces
 
    const double viscosity_increasing_factor=1.2;
 
-   int incr_viscosity=0, decr_viscosity=0;
-   double a,b,c,d;
-   calc_internal_constants(a,b,c,d,viscosity,inertion);
+   Int incr_viscosity = 0, decr_viscosity = 0;
+   double a, b, c, d;
+   calc_internal_constants(a, b, c, d, viscosity, inertion);
 
-   for (int iter = 0; iter < max_iterations; ++iter) {
+   for (Int iter = 0; iter < max_iterations; ++iter) {
       calculate_forces(X, random_points, F);
 #if POLYMAKE_DEBUG
       if (debug_print) cout << "iteration " << iter << endl;
 #endif
 
-      int oscillated=0, moved=0;
-      auto x=rows(X).begin(), f=rows(F).begin(), v=rows(V).begin();
+      Int oscillated = 0, moved = 0;
+      auto x = rows(X).begin(), f = rows(F).begin(), v = rows(V).begin();
       for (auto this_node = entire(nodes(G)); !this_node.at_end();  ++this_node, ++x, ++f, ++v) {
 #if POLYMAKE_DEBUG
          if (debug_print) cout << '[' << *this_node << "]: x=(" << *x << "); f=(" << *f << "); v=(" << *v << ")\n";

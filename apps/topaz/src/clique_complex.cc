@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,17 +24,17 @@
 
 namespace polymake { namespace topaz {
 
-perl::Object clique_complex(perl::Object graph, perl::OptionSet options)
+BigObject clique_complex(BigObject graph, OptionSet options)
 {
-   const PowerSet<int> maxCliques = graph.give("MAX_CLIQUES");
+   const PowerSet<Int> maxCliques = graph.give("MAX_CLIQUES");
    const bool no_labels = options["no_labels"];
    
-   perl::Object complex("topaz::SimplicialComplex");
+   BigObject complex("topaz::SimplicialComplex");
    complex.set_description() << "Clique complex of graph " << graph.name() << "." << endl;
    complex.take("FACETS") << as_array(maxCliques);
    
    if (!no_labels) {
-     const int n_nodes=graph.give("N_NODES");
+     const Int n_nodes = graph.give("N_NODES");
      const std::vector<std::string> labels = common::read_labels(graph, "NODE_LABELS", n_nodes);
      complex.take("VERTEX_LABELS") << labels;
    }

@@ -1,0 +1,12 @@
+{
+    "section" : [ "Polytopes" ],
+    "sectionDepth" : 1,
+    "polydb_version" : "2.1",
+    "short_description" : "A collection of families of polytopes",
+    "description" : "A collection of families of polytopes",
+    "maintainer" : {
+        "affiliation" : "TU Darmstadt",
+        "email" : "paffenholz@opt.tu-darmstadt.de",
+        "name" : "Andreas Paffenholz"
+    }
+}

@@ -1,0 +1,126 @@
+{
+   "descend": {
+      "fan::PolyhedralFan": {
+         "DUAL_GRAPH": "graph::Graph",
+         "GRAPH": "graph::Graph",
+         "HASSE_DIAGRAM": "graph::FaceLattice",
+         "INTERSECTION_COMPLEX": "topaz::SimplicialComplex"
+      },
+      "matroid::Matroid": {
+         "POLYTOPE": "polytope::Polytope"
+      },
+      "polytope::Cone": {
+         "BOUNDED_DUAL_GRAPH": "graph::Graph",
+         "BOUNDED_GRAPH": "graph::Graph",
+         "DUAL_GRAPH": "graph::Graph",
+         "GRAPH": "graph::Graph",
+         "GROUP": "group::GroupOfCone",
+         "HASSE_DIAGRAM": "graph::FaceLattice",
+         "TRIANGULATION": "topaz::GeometricSimplicialComplex"
+      },
+      "polytope::LatticePolytope": {
+         "GROEBNER_BASIS": "polytope::GroebnerBasis"
+      },
+      "polytope::LinearProgram": {
+         "DIRECTED_BOUNDED_GRAPH": "graph::Graph",
+         "DIRECTED_GRAPH": "graph::Graph"
+      },
+      "polytope::PointConfiguration": {
+         "CONVEX_HULL": "polytope::Polytope",
+         "GRAPH": "graph::Graph",
+         "POLYTOPAL_SUBDIVISION": "fan::PolyhedralComplex",
+         "SPLIT_COMPATIBILITY_GRAPH": "graph::Graph",
+         "TRIANGULATION": "topaz::GeometricSimplicialComplex"
+      },
+      "polytope::Polytope": {
+         "BOUNDED_HASSE_DIAGRAM": "graph::FaceLattice",
+         "LP": "polytope::LinearProgram",
+         "MINKOWSKI_SUMMAND_CONE": "polytope::Cone",
+         "POLYTOPAL_SUBDIVISION": "fan::PolyhedralComplex",
+         "SCHLEGEL_DIAGRAM": "polytope::SchlegelDiagram",
+         "SPLIT_COMPATIBILITY_GRAPH": "graph::Graph"
+      },
+      "polytope::PropagatedPolytope": {
+         "SUM_PRODUCT_GRAPH": "graph::Graph"
+      },
+      "polytope::SymmetricCone": {
+         "GENERATING_GROUP": "group::GroupOfCone"
+      },
+      "polytope::VoronoiDiagram": {
+         "CRUST_GRAPH": "graph::Graph",
+         "DELAUNAY_GRAPH": "graph::Graph",
+         "ITERATED_DELAUNAY_GRAPH": "graph::Graph",
+         "ITERATED_VORONOI_GRAPH": "polytope::GeometricGraph",
+         "NN_CRUST_GRAPH": "graph::Graph",
+         "NN_GRAPH": "graph::Graph",
+         "VORONOI_GRAPH": "polytope::GeometricGraph"
+      },
+      "topaz::SimplicialComplex": {
+         "BOUNDARY": "topaz::SimplicialComplex",
+         "DUAL_GRAPH": "graph::Graph",
+         "GRAPH": "graph::Graph",
+         "HASSE_DIAGRAM": "graph::FaceLattice",
+         "MIXED_GRAPH": "topaz::MixedGraph",
+         "MORSE_MATCHING": "graph::Graph",
+         "ODD_SUBCOMPLEX": "topaz::SimplicialComplex"
+      },
+      "tropical::TropicalPolytope": {
+         "ENVELOPE": "polytope::Polytope",
+         "PSEUDOVERTEX_GRAPH": "graph::Graph"
+      }
+   },
+   "super": {
+      "fan::PolyhedralComplex": [
+         "fan::PolyhedralFan"
+      ],
+      "fan::SymmetricFan": [
+         "fan::PolyhedralFan"
+      ],
+      "fan::TropicalVariety": [
+         "fan::PolyhedralFan"
+      ],
+      "graph::FaceLattice": [
+         "graph::Graph"
+      ],
+      "group::GroupOfCone": [
+         "group::Group"
+      ],
+      "group::GroupOfPolytope": [
+         "group::Group",
+         "group::GroupOfCone"
+      ],
+      "polytope::GeometricGraph": [
+         "graph::Graph"
+      ],
+      "polytope::LatticePolytope": [
+         "polytope::Cone",
+         "polytope::Polytope"
+      ],
+      "polytope::Polytope": [
+         "polytope::Cone"
+      ],
+      "polytope::PropagatedPolytope": [
+         "polytope::Cone",
+         "polytope::Polytope"
+      ],
+      "polytope::SymmetricCone": [
+         "polytope::Cone"
+      ],
+      "polytope::SymmetricPolytope": [
+         "polytope::Cone",
+         "polytope::Polytope",
+         "polytope::SymmetricCone"
+      ],
+      "polytope::TightSpan": [
+         "polytope::Cone",
+         "polytope::Polytope"
+      ],
+      "polytope::VoronoiDiagram": [
+         "polytope::Cone",
+         "polytope::Polytope"
+      ],
+      "topaz::MixedGraph": [
+         "graph::Graph"
+      ]
+   }
+}

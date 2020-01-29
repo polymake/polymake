@@ -18,14 +18,14 @@
 #  Copyright (C) 2011-2015, Simon Hampe <simon.hampe@googlemail.com>
 #
 #  ---
-#  Copyright (c) 2016-2019
+#  Copyright (c) 2016-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
 #
 #
-#	Functions in this file deal with comparing tropical additions of objects
-#	and converting an object to another tropical addition.
+#       Functions in this file deal with comparing tropical additions of objects
+#       and converting an object to another tropical addition.
 #
 ########################################################################
 
@@ -33,51 +33,51 @@
 package Visual::RationalCurve;
 
 
-options %Visual::RationalCurve::decorations=(
-	%Visual::Graph::decorations,
-	
-	# String if set to "hidden", the labels indicating the lengths are hidden
-	LengthLabels => enum("hidden"),
+options %Visual::RationalCurve::decorations = (
+   %Visual::Graph::decorations,
+        
+   # String if set to "hidden", the edges are not labelled with their lengths
+   LengthLabels => enum("hidden"),
 );
 
 
 object RationalCurve {
 
-	# @category Visualization
-	# Visualizes a RationalCurve object. This visualization uses the VISUAL method of its GRAPH, so 
-	# it accepts all the options of Visual::Graph::decorations. In addition it has another option
-	# @options
-	# @option String LengthLabels If "hidden", the edges are not labelled with their lengths. Any other text is ignored. Not set to "hidden" by default.
-	user_method VISUAL(%Visual::RationalCurve::decorations) {
-		my ($this,$decor) = @_;
-		# Find out if edge labelling is turned off
-		my $showLengths = 1;
-		if(defined($$decor{"LengthLabels"})) {
-			if($$decor{"LengthLabels"} eq "hidden") {
-				$showLengths = 0;
-			}
-		}
-		if($showLengths) {
-			# We only need to compute the edge lengths for labelling the edges
-			# The edges with nodes in (0,..,n-1) get no label
-			# The other edges get the COEFFS as labels in the order they appear
-			my @labels = ();
-			my $coeffIndex = 0;
-			for my $i (0 .. ($this->GRAPH->EDGES->size()-1)) {
-				my $edge = $this->GRAPH->EDGES->[$i];
-				if($edge->[0] < $this->N_LEAVES) {
-					@labels = (@labels,"");
-				}
-				else {
-					my $length = $this->GRAPH_EDGE_LENGTHS->[$coeffIndex];
-					@labels = (@labels,"<$length>");
-					$coeffIndex++;
-				}
-			}
-			$$decor{"EdgeLabels"} = \@labels;
-		}
-		delete($$decor{"LengthLabels"});
-		$this->GRAPH->VISUAL($decor);
-	}
+# @category Visualization
+# Visualizes a RationalCurve object. This visualization uses the VISUAL method of its GRAPH, so 
+# it accepts all the options of Visual::Graph::decorations. In addition it has another option
+# @options %Visual::RationalCurve::decorations
+user_method VISUAL(%Visual::RationalCurve::decorations) {
+   my ($this, $decor) = @_;
+   # Find out if edge labelling is turned off
+   my $showLengths = delete($decor->{LengthLabels}) ne "hidden";
+
+   if ($showLengths) {
+      # We only need to compute the edge lengths for labelling the edges
+      # The edges with nodes in (0,..,n-1) get no label
+      # The other edges get the COEFFS as labels in the order they appear
+      my @labels;
+      my $coeffIndex = 0;
+      for my $i (0 .. ($this->GRAPH->EDGES->size()-1)) {
+         my $edge = $this->GRAPH->EDGES->[$i];
+         if ($edge->[0] < $this->N_LEAVES) {
+            push @labels, "";
+         } else {
+            my $length = $this->GRAPH_EDGE_LENGTHS->[$coeffIndex];
+            push @labels, "<$length>";
+            $coeffIndex++;
+         }
+      }
+      $decor->{EdgeLabels} = \@labels;
+   }
+   $this->GRAPH->VISUAL($decor);
+}
 
 }
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

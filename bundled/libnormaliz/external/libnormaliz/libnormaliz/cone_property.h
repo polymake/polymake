@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2014  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2019  Winfried Bruns, Bogdan Ichim, Christof Soeger
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -21,171 +21,220 @@
  * terms of service.
  */
 
-#ifndef CONE_PROPERTY_H_
-#define CONE_PROPERTY_H_
+#ifndef LIBNORMALIZ_CONE_PROPERTY_H_
+#define LIBNORMALIZ_CONE_PROPERTY_H_
 
 #include <bitset>
 #include <ostream>
 
 namespace libnormaliz {
 
+/****************************************************************************
+**
+**  'START_ENUM_RANGE' and 'END_ENUM_RANGE' simplify creating "ranges" of
+**  enum variables.
+**
+**  Usage example:
+**    enum {
+**      START_ENUM_RANGE(FIRST),
+**        FOO,
+**        BAR,
+**      END_ENUM_RANGE(LAST)
+**    };
+**  is essentially equivalent to
+**    enum {
+**      FIRST,
+**        FOO = FIRST,
+**        BAR,
+**      LAST = BAR
+**    };
+**  Note that if we add a value into the range after 'BAR', we must adjust
+**  the definition of 'LAST', which is easy to forget. Also, reordering enum
+**  values may require extra work. With the range macros, all of this is
+**  taken care of automatically.
+*/
+#define START_ENUM_RANGE(id) id, _##id##_post = id - 1
+#define END_ENUM_RANGE(id) _##id##_pre, id = _##id##_pre - 1
+
 /* An enumeration of things, that can be computed for a cone.
  * The namespace prevents interfering with other names.
  * Remember to change also the string conversion if you change this enum!
  */
 namespace ConeProperty {
-    enum Enum {
-        FIRST_MATRIX,
-        Generators = ConeProperty::FIRST_MATRIX,
-        ExtremeRays,
-        VerticesOfPolyhedron,
-        SupportHyperplanes,
-        HilbertBasis,
-        ModuleGenerators,
-        Deg1Elements,
-        LatticePoints,
-        ModuleGeneratorsOverOriginalMonoid,
-        ExcludedFaces,
-        OriginalMonoidGenerators,
-        MaximalSubspace,
-        Equations,
-        Congruences,
-        LAST_MATRIX = ConeProperty::Congruences,
-        FIRST_MATRIX_FLOAT,
-        SuppHypsFloat = ConeProperty::FIRST_MATRIX_FLOAT,
-        VerticesFloat,
-        LAST_MATRIX_FLOAT = ConeProperty::VerticesFloat,
-        // Vector values
-        FIRST_VECTOR,
-        Grading = ConeProperty::FIRST_VECTOR,
-        Dehomogenization,
-        WitnessNotIntegrallyClosed,
-        GeneratorOfInterior,
-        ClassGroup,
-        LAST_VECTOR = ConeProperty::ClassGroup,
-        // Integer valued,
-        FIRST_INTEGER,
-        TriangulationDetSum = ConeProperty::FIRST_INTEGER,
-        ReesPrimaryMultiplicity,
-        GradingDenom,
-        UnitGroupIndex,
-        InternalIndex,
-        LAST_INTEGER = ConeProperty::InternalIndex,
-        FIRST_GMP_INTEGER,
-        ExternalIndex = FIRST_GMP_INTEGER,
-        LAST_GMP_INTEGER = ConeProperty::ExternalIndex,
-        // rational valued
-        FIRST_RATIONAL,
-        Multiplicity = ConeProperty::FIRST_RATIONAL,
-        Volume,
-        Integral,
-        VirtualMultiplicity,
-        LAST_RATIONAL = ConeProperty::VirtualMultiplicity,
-        // floating point valued
-        FIRST_FLOAT,
-        EuclideanVolume = ConeProperty::FIRST_FLOAT,
-        EuclideanIntegral,
-        LAST_FLOAT = ConeProperty::EuclideanIntegral,
-        // dimensions
-        FIRST_MACHINE_INTEGER,
-        TriangulationSize = ConeProperty::FIRST_MACHINE_INTEGER,
-        RecessionRank,
-        AffineDim,
-        ModuleRank,
-        Rank,
-        EmbeddingDim,
-        LAST_MACHINE_INTEGER = ConeProperty::EmbeddingDim,
-        // boolean valued 
-        FIRST_BOOLEAN,
-        IsPointed = ConeProperty::FIRST_BOOLEAN,
-        IsDeg1ExtremeRays,
-        IsDeg1HilbertBasis,
-        IsIntegrallyClosed,
-        IsReesPrimary,
-        IsInhomogeneous,
-        IsGorenstein,
-        LAST_BOOLEAN = ConeProperty::IsGorenstein,
-        // complex structures
-        FIRST_COMPLEX_STRUCTURE,
-        Triangulation = ConeProperty::FIRST_COMPLEX_STRUCTURE,
-        StanleyDec,
-        InclusionExclusionData,
-        IntegerHull,
-        ProjectCone,
-        ConeDecomposition,
-        HilbertSeries,
-        HilbertQuasiPolynomial,
-        EhrhartSeries,
-        EhrhartQuasiPolynomial,
-        WeightedEhrhartSeries,
-        WeightedEhrhartQuasiPolynomial,
-        Sublattice,
-        LAST_COMPLEX_STRUCTURE = ConeProperty::Sublattice,
-        //
-        // integer type for computations
-        //
-        FIRST_PROPERTY,
-        BigInt = ConeProperty::FIRST_PROPERTY,
-        //
-        // algorithmic variants
-        //
-        DefaultMode,
-        Approximate,
-        BottomDecomposition,
-        NoBottomDec,       
-        DualMode,
-        PrimalMode,
-        Projection,
-        ProjectionFloat,
-        NoProjection,
-        Symmetrize,
-        NoSymmetrization,
-        NoSubdivision,
-        NoNestedTri, // synonym for NoSubdivision
-        KeepOrder,
-        HSOP,
-        NoPeriodBound,
-        SCIP,
-        NoLLL,
-        NoRelax,
-        Descent,
-        NoDescent,
-        NoGradingDenom,
-        GradingIsPositive,
-        //
-        // checking properties of already computed data
-        // (cannot be used as a computation goal)
-        //
-        IsTriangulationNested,
-        IsTriangulationPartial,
-        //
-        // ONLY FOR INTERNAL CONTROL
-        //
-        ExplicitHilbertSeries,
-        NakedDual,
-        EnumSize,
-        LAST_PROPERTY = ConeProperty::EnumSize // this has to be the last entry, to get the number of entries in the enum
-    }; // remember to change also the string conversion function if you change this enum
+enum Enum {
+    // matrix valued
+    START_ENUM_RANGE(FIRST_MATRIX),
+    Generators,
+    ExtremeRays,
+    VerticesOfPolyhedron,
+    SupportHyperplanes,
+    HilbertBasis,
+    ModuleGenerators,
+    Deg1Elements,
+    LatticePoints,
+    ModuleGeneratorsOverOriginalMonoid,
+    ExcludedFaces,
+    OriginalMonoidGenerators,
+    MaximalSubspace,
+    Equations,
+    Congruences,
+    END_ENUM_RANGE(LAST_MATRIX),
+
+    START_ENUM_RANGE(FIRST_MATRIX_FLOAT),
+    SuppHypsFloat,
+    VerticesFloat,
+    END_ENUM_RANGE(LAST_MATRIX_FLOAT),
+
+    // vector valued
+    START_ENUM_RANGE(FIRST_VECTOR),
+    Grading,
+    Dehomogenization,
+    WitnessNotIntegrallyClosed,
+    GeneratorOfInterior,
+    END_ENUM_RANGE(LAST_VECTOR),
+
+    // integer valued
+    START_ENUM_RANGE(FIRST_INTEGER),
+    TriangulationDetSum,
+    ReesPrimaryMultiplicity,
+    GradingDenom,
+    UnitGroupIndex,
+    InternalIndex,
+    END_ENUM_RANGE(LAST_INTEGER),
+
+    START_ENUM_RANGE(FIRST_GMP_INTEGER),
+    ExternalIndex = FIRST_GMP_INTEGER,
+    END_ENUM_RANGE(LAST_GMP_INTEGER),
+
+    // rational valued
+    START_ENUM_RANGE(FIRST_RATIONAL),
+    Multiplicity,
+    Volume,
+    Integral,
+    VirtualMultiplicity,
+    END_ENUM_RANGE(LAST_RATIONAL),
+
+    // field valued
+    START_ENUM_RANGE(FIRST_FIELD_ELEM),
+    RenfVolume = FIRST_FIELD_ELEM,
+    LAST_FIELD_ELEM = ConeProperty::RenfVolume,
+
+    // floating point valued
+    START_ENUM_RANGE(FIRST_FLOAT),
+    EuclideanVolume,
+    EuclideanIntegral,
+    END_ENUM_RANGE(LAST_FLOAT),
+
+    // dimensions
+    START_ENUM_RANGE(FIRST_MACHINE_INTEGER),
+    TriangulationSize,
+    NumberLatticePoints,
+    RecessionRank,
+    AffineDim,
+    ModuleRank,
+    Rank,
+    EmbeddingDim,
+    END_ENUM_RANGE(LAST_MACHINE_INTEGER),
+
+    // boolean valued
+    START_ENUM_RANGE(FIRST_BOOLEAN),
+    IsPointed,
+    IsDeg1ExtremeRays,
+    IsDeg1HilbertBasis,
+    IsIntegrallyClosed,
+    IsReesPrimary,
+    IsInhomogeneous,
+    IsGorenstein,
+    END_ENUM_RANGE(LAST_BOOLEAN),
+
+    // complex structures
+    START_ENUM_RANGE(FIRST_COMPLEX_STRUCTURE),
+    Triangulation,
+    StanleyDec,
+    InclusionExclusionData,
+    IntegerHull,
+    ProjectCone,
+    ConeDecomposition,
+    //
+    Automorphisms,
+    AmbientAutomorphisms,
+    CombinatorialAutomorphisms,
+    RationalAutomorphisms,
+    EuclideanAutomorphisms,
+    //
+    HilbertSeries,
+    HilbertQuasiPolynomial,
+    EhrhartSeries,
+    EhrhartQuasiPolynomial,
+    WeightedEhrhartSeries,
+    WeightedEhrhartQuasiPolynomial,
+    FaceLattice,
+    FVector,
+    Incidence,
+    Sublattice,
+    //
+    ClassGroup,
+    END_ENUM_RANGE(LAST_COMPLEX_STRUCTURE),
+
+    //
+    // integer type for computations
+    //
+    START_ENUM_RANGE(FIRST_PROPERTY),
+    BigInt,
+    //
+    // algorithmic variants
+    //
+    DefaultMode,
+    Approximate,
+    BottomDecomposition,
+    NoBottomDec,
+    DualMode,
+    PrimalMode,
+    Projection,
+    ProjectionFloat,
+    NoProjection,
+    Symmetrize,
+    NoSymmetrization,
+    NoSubdivision,
+    NoNestedTri,  // synonym for NoSubdivision
+    KeepOrder,
+    HSOP,
+    NoPeriodBound,
+    NoLLL,
+    NoRelax,
+    Descent,
+    NoDescent,
+    NoGradingDenom,
+    GradingIsPositive,
+    ExploitAutomsVectors,
+    ExploitAutomsMult,
+    //
+    Dynamic,
+    Static,
+    //
+    // checking properties of already computed data
+    // (cannot be used as a computation goal)
+    //
+    IsTriangulationNested,
+    IsTriangulationPartial,
+    //
+    // ONLY FOR INTERNAL CONTROL
+    //
+    // ExplicitHilbertSeries,
+    NakedDual,
+    END_ENUM_RANGE(LAST_PROPERTY),
+
+    EnumSize  // this has to be the last entry, to get the number of entries in the enum
+
+};  // remember to change also the string conversion function if you change this enum
 }
 
-namespace OutputType{
-    enum Enum {
-        Matrix,
-        MatrixFloat,
-        Vector,
-        Integer,
-        GMPInteger,
-        Rational,
-        Float,
-        MachineInteger,
-        Bool,
-        Complex,
-        Void
-    };
+namespace OutputType {
+enum Enum { Matrix, MatrixFloat, Vector, Integer, GMPInteger, Rational, FieldElem, Float, MachineInteger, Bool, Complex, Void };
 }
 
 class ConeProperties {
-public:
+   public:
     /* Constructors */
     ConeProperties();
     ConeProperties(ConeProperty::Enum);
@@ -194,8 +243,8 @@ public:
     ConeProperties(const std::bitset<ConeProperty::EnumSize>&);
 
     /* set properties */
-    ConeProperties& set(ConeProperty::Enum, bool value=true);
-    ConeProperties& set(const std::string s, bool value=true);
+    ConeProperties& set(ConeProperty::Enum, bool value = true);
+    ConeProperties& set(const std::string s, bool value = true);
     ConeProperties& set(ConeProperty::Enum, ConeProperty::Enum);
     ConeProperties& set(ConeProperty::Enum, ConeProperty::Enum, ConeProperty::Enum);
     ConeProperties& set(const ConeProperties&);
@@ -209,25 +258,26 @@ public:
     bool test(ConeProperty::Enum Property) const;
     bool any() const;
     bool none() const;
-    size_t count () const;
+    size_t count() const;
 
     /* return the restriction of this to the goals / options */
     ConeProperties goals();
     ConeProperties options();
 
     /* the following methods are used internally */
-    void set_preconditions(bool inhomogeneous);    // activate properties which are needed implicitly
-    void prepare_compute_options(bool inhomogeneous);
+    void set_preconditions(bool inhomogeneous, bool numberfield);  // activate properties which are needed implicitly
+    // void prepare_compute_options(bool inhomogeneous, bool numberfield);
     void check_sanity(bool inhomogeneous);
+
     void check_conflicting_variants();
+    void check_Q_permissible(bool after_implications);
+    // void set_default_goals(bool inhomogeneous, bool numberfield);
 
     /* print it in a nice way */
     friend std::ostream& operator<<(std::ostream&, const ConeProperties&);
 
-
-private:
+   private:
     std::bitset<ConeProperty::EnumSize> CPs;
-
 };
 
 // conversion to/from strings
@@ -237,6 +287,6 @@ const std::string& toString(ConeProperty::Enum);
 std::ostream& operator<<(std::ostream&, const ConeProperties&);
 OutputType::Enum output_type(ConeProperty::Enum);
 
-}
+}  // namespace libnormaliz
 
 #endif /* CONE_PROPERTY_H_ */

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,7 +21,7 @@ namespace polymake {
 namespace fan {
 
 template <typename Scalar>
-perl::Object project_full_fan_impl(perl::Object p_in, perl::OptionSet options)
+BigObject project_full_fan_impl(BigObject p_in, OptionSet options)
 {
    if ( !p_in.exists("RAYS | INPUT_RAYS") )
       throw std::runtime_error("projection is not defined for combinatorially given objects");
@@ -30,13 +30,13 @@ perl::Object project_full_fan_impl(perl::Object p_in, perl::OptionSet options)
    const Matrix<Scalar> lineality = p_in.give("LINEALITY_SPACE | INPUT_LINEALITY");
    const Matrix<Scalar> linear_span(null_space(rays/lineality));
 
-   const int codim = rank(linear_span);
-   if (codim==0) return p_in; // nothing to do
+   const Int codim = rank(linear_span);
+   if (codim == 0) return p_in; // nothing to do
 
-   Array<int> indices;
-   const Set<int> coords_to_eliminate = polytope::coordinates_to_eliminate(indices, 0, linear_span.cols(), codim, linear_span, options["revert"]);   // set of columns to project to
+   Array<Int> indices;
+   const Set<Int> coords_to_eliminate = polytope::coordinates_to_eliminate(indices, 0, linear_span.cols(), codim, linear_span, options["revert"]);   // set of columns to project to
 
-   perl::Object p_out(p_in.type());
+   BigObject p_out(p_in.type());
 
    polytope::process_rays(p_in, 0, indices, options, linear_span, coords_to_eliminate, p_out);
 

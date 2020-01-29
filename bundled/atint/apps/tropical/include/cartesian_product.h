@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -46,17 +46,17 @@ namespace polymake { namespace tropical {
    The [[LOCAL_RESTRICTION]] of the result will be the cartesian product of the [[LOCAL_RESTRICTION]]s of each complex.
    (If a complex does not have any restrictions, the new local restriction is the (pairwise) product of all
    local restriction cones with ALL cones (including faces) of the next complex)
-   @param Array<perl::Object> complexes A list of Cycle objects
+   @param Array<BigObject> complexes A list of Cycle objects
    @return Cycle The cartesian product of the complexes. Note that the representation is noncanonical, as it identifies
    the product of two projective tori of dimensions d and e with a projective torus of dimension d+e
    by dehomogenizing and then later rehomogenizing after the first coordinate.
 */
 template <typename Addition>
-perl::Object cartesian_product(const Array<perl::Object>& complexes) {
+BigObject cartesian_product(const Array<BigObject>& complexes) {
 
   //** EXTRACT FIRST COMPLEX ********************************************
 
-  perl::Object firstComplex = complexes[0];
+  BigObject firstComplex = complexes[0];
   // This will contain the sets describing the maximal cones
   IncidenceMatrix<> maximalCones = firstComplex.give("MAXIMAL_POLYTOPES");
   // Will contain the rays
@@ -84,20 +84,20 @@ perl::Object cartesian_product(const Array<perl::Object>& complexes) {
     product_has_lattice = true;
   }
 
-  int product_dim = rayMatrix.rows() > 0 ? rayMatrix.cols() : linMatrix.cols();
+  Int product_dim = rayMatrix.rows() > 0 ? rayMatrix.cols() : linMatrix.cols();
   // Sort rays by affine and directional
-  std::pair<Set<int>, Set<int>> product_vertex_pair = far_and_nonfar_vertices(rayMatrix);
-  Set<int> product_affine = product_vertex_pair.second;
-  Set<int> product_directional = product_vertex_pair.first;
+  std::pair<Set<Int>, Set<Int>> product_vertex_pair = far_and_nonfar_vertices(rayMatrix);
+  Set<Int> product_affine = product_vertex_pair.second;
+  Set<Int> product_directional = product_vertex_pair.first;
 
   //** ITERATE OTHER COMPLEXES ********************************************
 
-  for (int ci = 1; ci < complexes.size(); ++ci) {
+  for (Int ci = 1; ci < complexes.size(); ++ci) {
     // Extract properties
     if (call_function("is_empty", complexes[ci])) {
-      int projective_amb = std::max(rayMatrix.cols(), linMatrix.cols()) - 1;
-      for (int cj = ci; cj < complexes.size(); ++cj) {
-        const int jth_projective_amb = complexes[cj].give("PROJECTIVE_AMBIENT_DIM");
+      Int projective_amb = std::max(rayMatrix.cols(), linMatrix.cols()) - 1;
+      for (Int cj = ci; cj < complexes.size(); ++cj) {
+        const Int jth_projective_amb = complexes[cj].give("PROJECTIVE_AMBIENT_DIM");
         projective_amb += jth_projective_amb;
       }
       return empty_cycle<Addition>(projective_amb);
@@ -120,20 +120,20 @@ perl::Object cartesian_product(const Array<perl::Object>& complexes) {
     // ** RECOMPUTE RAY DATA ***********************************************
 
     // Sort rays
-    std::pair<Set<int>, Set<int>> complex_vertex_pair = far_and_nonfar_vertices(prerays);
-    Set<int> complex_affine = complex_vertex_pair.second;
-    Set<int> complex_directional = complex_vertex_pair.first;
+    std::pair<Set<Int>, Set<Int>> complex_vertex_pair = far_and_nonfar_vertices(prerays);
+    Set<Int> complex_affine = complex_vertex_pair.second;
+    Set<Int> complex_directional = complex_vertex_pair.first;
     // If this fan uses homog. coordinates, strip away the first column of rays and linear space
     if (prerays.rows() > 0) prerays = prerays.minor(All, range_from(1));
     if (prelin.rows() > 0) prelin = prelin.minor(All, range_from(1));
-    int dim = prerays.rows() > 0 ? prerays.cols() : prelin.cols();
+    const Int dim = prerays.rows() > 0 ? prerays.cols() : prelin.cols();
 
     // Create new ray matrix
-    Matrix<Rational> newRays(0,product_dim + dim);
+    ListMatrix<Vector<Rational>> newRays(0, product_dim + dim);
     // First create affine rays
-    Map<int, Map<int, int>> affineIndices;
+    Map<Int, Map<Int, Int>> affineIndices;
     for (auto prays = entire(product_affine); !prays.at_end(); ++prays) {
-      affineIndices[*prays] = Map<int,int>();
+      affineIndices[*prays] = Map<Int, Int>();
       Vector<Rational> pRay;
       if (*prays >= 0)
         pRay = rayMatrix.row(*prays);
@@ -145,26 +145,26 @@ perl::Object cartesian_product(const Array<perl::Object>& complexes) {
           cRay = prerays.row(*crays);
         else
           cRay = zero_vector<Rational>(dim);
-        newRays = newRays / (pRay | cRay);
+        newRays /= pRay | cRay;
         affineIndices[*prays][*crays] = newRays.rows()-1;
       }
     }
-    Set<int> newAffine = sequence(0, newRays.rows());
+    const auto newAffine = sequence(0, newRays.rows());
 
     // Now add the directional rays of both cones
-    Map<int,int> pdirIndices;
-    Map<int,int> cdirIndices; //For index conversion
+    Map<Int, Int> pdirIndices;
+    Map<Int, Int> cdirIndices; //For index conversion
     Vector<Rational> product_zero = zero_vector<Rational>(product_dim);
     Vector<Rational> complex_zero = zero_vector<Rational>(dim);
     for (auto prays = entire(product_directional); !prays.at_end(); ++prays)  {
-      newRays = newRays / (rayMatrix.row(*prays) | complex_zero);
+      newRays /= rayMatrix.row(*prays) | complex_zero;
       pdirIndices[*prays] = newRays.rows()-1;
     }
     for (auto crays = entire(complex_directional); !crays.at_end(); ++crays) {
-      newRays = newRays / (product_zero | prerays.row(*crays));
+      newRays /= product_zero | prerays.row(*crays);
       cdirIndices[*crays] = newRays.rows()-1;
     }
-    Set<int> newDirectional = sequence(newAffine.size(),product_directional.size() + complex_directional.size());
+    Set<Int> newDirectional = sequence(newAffine.size(), product_directional.size() + complex_directional.size());
 
     // Create new lineality matrix
     if (prelin.rows() > 0) {
@@ -177,9 +177,9 @@ perl::Object cartesian_product(const Array<perl::Object>& complexes) {
     // ** RECOMPUTE LATTICE DATA ***************************************
 
     // Compute lattice data
-    bool complex_has_lattice = complexes[ci].exists("LATTICE_BASES");
+    const bool complex_has_lattice = complexes[ci].exists("LATTICE_BASES");
     product_has_lattice = product_has_lattice && complex_has_lattice;
-    int lattice_index_translation = 0; //Number of row where new lattice gens. begin
+    Int lattice_index_translation = 0; //Number of row where new lattice gens. begin
 
     IncidenceMatrix<> new_lattice_bases;
 
@@ -195,7 +195,7 @@ perl::Object cartesian_product(const Array<perl::Object>& complexes) {
       // Adjust dimension, then concatenate
       if (complex_lg.rows() > 0)
         complex_lg = complex_lg.minor(All, range_from(1));
-      product_l_generators = product_l_generators | Matrix<Integer>(product_l_generators.rows(), dim);
+      cols(product_l_generators).resize(product_l_generators.cols() + dim);
       complex_lg = Matrix<Integer>(complex_lg.rows(), product_dim) | complex_lg;
       lattice_index_translation = product_l_generators.rows();
       product_l_generators /= complex_lg;
@@ -205,54 +205,59 @@ perl::Object cartesian_product(const Array<perl::Object>& complexes) {
 
     // Now create the new cones and weights:
     IncidenceMatrix<> newMaxCones(0, newRays.rows());
-    Vector<Integer> newWeights;
+
     // Make sure, we have at least one "cone" in each fan, even if it is empty
     if (premax.rows() == 0)
-      premax = premax / Set<int>();
-    for (int pmax = 0; pmax < maximalCones.rows(); ++pmax) {
-      Set<int> product_cone = maximalCones.row(pmax);
-      for (int cmax = 0; cmax < premax.rows(); ++cmax) {
-        Set<int> complex_cone = premax.row(cmax);
-        Set<int> newcone;
-        Set<int> pAffine = product_cone * product_affine;
-        Set<int> pDirectional = product_cone * product_directional;
-        Set<int> cAffine = complex_cone * complex_affine;
-        Set<int> cDirectional = complex_cone * complex_directional;
+      premax = premax / Set<Int>{};
+
+    std::vector<Integer> newWeights;
+    if (product_has_weights || uses_weights)
+      newWeights.reserve(maximalCones.rows() * premax.rows());
+
+    for (Int pmax = 0; pmax < maximalCones.rows(); ++pmax) {
+      Set<Int> product_cone = maximalCones.row(pmax);
+      for (Int cmax = 0; cmax < premax.rows(); ++cmax) {
+        Set<Int> complex_cone = premax.row(cmax);
+        Set<Int> newcone;
+        Set<Int> pAffine = product_cone * product_affine;
+        Set<Int> pDirectional = product_cone * product_directional;
+        Set<Int> cAffine = complex_cone * complex_affine;
+        Set<Int> cDirectional = complex_cone * complex_directional;
 
         // First add the affine rays: For each pair of affine rays add the corresponding index from
         // affineIndices
         for (auto pa = entire(pAffine); !pa.at_end(); ++pa) {
           for (auto ca = entire(cAffine); !ca.at_end(); ++ca) {
-            newcone = newcone + affineIndices[*pa][*ca];
+            newcone += affineIndices[*pa][*ca];
           }
         }
         // Now add the directional indices
         for (auto pd = entire(pDirectional); !pd.at_end(); ++pd) {
-          newcone = newcone + pdirIndices[*pd];
+          newcone += pdirIndices[*pd];
         }
         for (auto cd = entire(cDirectional); !cd.at_end(); ++cd) {
-          newcone = newcone + cdirIndices[*cd];
+          newcone += cdirIndices[*cd];
         }
         newMaxCones /= newcone;
         // Compute weight
         if (product_has_weights || uses_weights) {
-          newWeights = newWeights | (product_has_weights? weights[pmax] : Integer(1)) * (uses_weights? preweights[cmax] : Integer(1));
+          newWeights.push_back((product_has_weights ? weights[pmax] : Integer(1)) * (uses_weights ? preweights[cmax] : Integer(1)));
         }
         // Compute lattice data
         if (product_has_lattice) {
-          Set<int> cone_l_basis = product_l_bases.row(pmax) + Set<int>( translate(complex_lb.row(cmax),lattice_index_translation));
+          Set<Int> cone_l_basis = product_l_bases.row(pmax) + Set<Int>(translate(complex_lb.row(cmax), lattice_index_translation));
           new_lattice_bases /= cone_l_basis;
         }
       }
     }
 
     // Compute the cross product of the local_restrictions
-    IncidenceMatrix<> new_local_restriction(0,newRays.rows());
+    RestrictedIncidenceMatrix<only_cols> new_local_restriction(0, newRays.rows());
     if (local_restriction.rows() > 0 || pre_local_restriction.rows() > 0) {
       // If one variety is not local, we take all its cones for the product
       IncidenceMatrix<> product_locality(local_restriction);
       if (product_locality.rows() == 0) {
-        perl::Object current_product("fan::PolyhedralComplex");
+        BigObject current_product("fan::PolyhedralComplex");
         current_product.take("VERTICES") << rayMatrix;
         current_product.take("MAXIMAL_POLYTOPES") << maximalCones;
         product_locality = all_cones_as_incidence(current_product);
@@ -262,28 +267,28 @@ perl::Object cartesian_product(const Array<perl::Object>& complexes) {
         pre_locality = all_cones_as_incidence(complexes[ci]);
       }
 
-      for (int i = 0; i < product_locality.rows(); ++i) {
-        Set<int> pAffine = product_locality.row(i) * product_affine;
-        Set<int> pDirectional = product_locality.row(i) * product_directional;
-        for (int j = 0; j < pre_locality.rows(); ++j) {
-          Set<int> local_cone;
-          Set<int> cAffine = pre_locality.row(j) * complex_affine;
-          Set<int> cDirectional = pre_locality.row(j) * complex_directional;
+      for (Int i = 0; i < product_locality.rows(); ++i) {
+        Set<Int> pAffine = product_locality.row(i) * product_affine;
+        Set<Int> pDirectional = product_locality.row(i) * product_directional;
+        for (Int j = 0; j < pre_locality.rows(); ++j) {
+          Set<Int> local_cone;
+          Set<Int> cAffine = pre_locality.row(j) * complex_affine;
+          Set<Int> cDirectional = pre_locality.row(j) * complex_directional;
           // First add the affine rays: For each pair of affine rays add the corresponding index from
           // affineIndices
           for (auto pa = entire(pAffine); !pa.at_end(); ++pa) {
             for (auto ca = entire(cAffine); !ca.at_end(); ++ca) {
-              local_cone = local_cone + affineIndices[*pa][*ca];
+              local_cone += affineIndices[*pa][*ca];
             }
           }
           // Now add the directional indices
           for (auto pd = entire(pDirectional); !pd.at_end(); ++pd) {
-            local_cone = local_cone + pdirIndices[*pd];
+            local_cone += pdirIndices[*pd];
           }
           for (auto cd = entire(cDirectional); !cd.at_end(); ++cd) {
-            local_cone = local_cone + cdirIndices[*cd];
+            local_cone += cdirIndices[*cd];
           }
-          new_local_restriction /=  local_cone;
+          new_local_restriction /= local_cone;
         }
       }
     }
@@ -292,7 +297,7 @@ perl::Object cartesian_product(const Array<perl::Object>& complexes) {
 
     // Copy values
     rayMatrix = newRays;
-    if(linMatrix.rows() != 0 || prelin.rows() != 0){
+    if (linMatrix.rows() != 0 || prelin.rows() != 0) {
        linMatrix = linMatrix.rows() == 0 ? prelin : (prelin.rows() == 0 ? linMatrix : linMatrix / prelin);
     } else {
        linMatrix.resize(0, rayMatrix.cols());
@@ -301,14 +306,14 @@ perl::Object cartesian_product(const Array<perl::Object>& complexes) {
     product_affine = newAffine;
     product_directional = newDirectional;
     maximalCones = newMaxCones;
-    weights = newWeights;
+    weights = Vector<Integer>(newWeights);
     product_has_weights = product_has_weights ||  uses_weights;
-    local_restriction = new_local_restriction;
+    local_restriction = std::move(new_local_restriction);
     product_l_bases = new_lattice_bases;
   }
 
   // Fill fan with result
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << thomog(rayMatrix);
   result.take("LINEALITY_SPACE") << thomog(linMatrix);
   result.take("MAXIMAL_POLYTOPES") << maximalCones;

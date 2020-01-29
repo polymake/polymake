@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -303,11 +303,11 @@ std::enable_if_t<sizeof(SizeT)==sizeof(uint32_t)> hash_combine(SizeT& h, SizeT k
    const size_t c2 = 0x1b873593;
 
    k *= c1;
-   k = (k << 15) | (k >> (32 - 15));
+   k = (k << 15) | (k >> (32-15));
    k *= c2;
 
    h ^= k;
-   h = (h << 13) | (h >> (32 - 13));
+   h = (h << 13) | (h >> (32-13));
    h = h*5+0xe6546b64;
 }
 

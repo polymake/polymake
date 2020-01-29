@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -51,7 +51,7 @@ declare object PolyhedralFan<Scalar=Rational> [ is_ordered_field(Scalar) ];
 # [[CELL_DECOMPOSITION]].
 # @tparam Scalar numeric data type used for the coordinates, must be an ordered field.  Default is [[Rational]].
 # @example Take the 2-dimensional positive orthant and slice it along the ray through (1,1)
-# > $HA = new HyperplaneArrangement(INPUT_HYPERPLANES=>[[-1,1]], "SUPPORT.INPUT_RAYS"=>[[1,0],[0,1]]);
+# > $HA = new HyperplaneArrangement(HYPERPLANES=>[[-1,1]], "SUPPORT.INPUT_RAYS"=>[[1,0],[0,1]]);
 # > $CD = $HA->CELL_DECOMPOSITION;
 # > print $CD->RAYS;
 # | 0 1
@@ -60,6 +60,10 @@ declare object PolyhedralFan<Scalar=Rational> [ is_ordered_field(Scalar) ];
 # > print $CD->MAXIMAL_CONES;
 # | {0 2}
 # | {1 2}
+#
+# @example Coxeter hyperplane arrangement of type E8.
+# > $E8 = new HyperplaneArrangement(HYPERPLANES=>root_system("E8")->VECTORS->minor(All,~[0]));
+# Note that the roots lie "at infinity", which is why the leading zero column of the root vectors is eliminated.
 declare object HyperplaneArrangement<Scalar=Rational> [ is_ordered_field(Scalar) ];
 
 # @category Geometry

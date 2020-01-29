@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,12 +24,12 @@
 namespace polymake { namespace polytope {
 
 template <typename MatrixTop , typename Triangulation>
-void centroid_volume(perl::Object p, const GenericMatrix<MatrixTop>& Points, const Triangulation& tr)
+void centroid_volume(BigObject p, const GenericMatrix<MatrixTop>& Points, const Triangulation& tr)
 {
    typedef typename MatrixTop::element_type Coord;
    Coord volume(0);
    Vector<Coord> centroid(Points.cols());
-   int d=tr.front().size()-1;
+   Int d = tr.front().size()-1;
      
    for (auto s=entire(tr); !s.at_end(); ++s) {
       const typename MatrixTop::persistent_type sim=Points.minor(*s,All);

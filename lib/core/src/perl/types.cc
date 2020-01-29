@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,10 +22,10 @@ namespace pm { namespace perl {
 bool type_infos::set_descr(const std::type_info& ti)
 {
    dTHX;
-   const char* const type_name=ti.name();
-   if (SV** const descr_p=hv_fetch((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_typeids_index]),
-                                   type_name, strlen(type_name), false)) {
-      descr=*descr_p;
+   const char* const type_name = ti.name();
+   if (SV** const descr_p = hv_fetch((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_typeids_index]),
+                                     type_name, I32(strlen(type_name)), false)) {
+      descr = *descr_p;
       return true;
    }
    return false;
@@ -34,20 +34,20 @@ bool type_infos::set_descr(const std::type_info& ti)
 void type_infos::set_descr()
 {
    dTHX;
-   SV* const opts=PmArray(proto)[glue::PropertyType_cppoptions_index];
+   SV* const opts = PmArray(proto)[glue::PropertyType_cppoptions_index];
    if (SvROK(opts)) {
-      descr=PmArray(opts)[glue::CPPOptions_descr_index];
+      descr = PmArray(opts)[glue::CPPOptions_descr_index];
       if (!SvROK(descr)) {
-         descr=nullptr;
-      } else if (SvTYPE(SvRV(descr))==SVt_PVCV) {
+         descr = nullptr;
+      } else if (SvTYPE(SvRV(descr)) == SVt_PVCV) {
          PmStartFuncall(0);
-         const int ret=call_sv(descr, G_VOID | G_EVAL);
+         const int ret = call_sv(descr, G_VOID | G_EVAL);
          if (__builtin_expect(ret>0, 0)) {
-            descr=nullptr;
+            descr = nullptr;
             PmFuncallFailed;
          }
          FREETMPS; LEAVE;
-         descr=PmArray(opts)[glue::CPPOptions_descr_index];
+         descr = PmArray(opts)[glue::CPPOptions_descr_index];
       }
    }
 }
@@ -56,20 +56,20 @@ void type_infos::set_proto(SV* known_proto)
 {
    dTHX;
    if (known_proto) {
-      proto=newSVsv(known_proto);
+      proto = newSVsv(known_proto);
    } else {
-      SV** type_gvp=hv_fetch((HV*)SvRV(PmArray(descr)[glue::TypeDescr_pkg_index]), "type", 4, false);
+      SV** type_gvp = hv_fetch((HV*)SvRV(PmArray(descr)[glue::TypeDescr_pkg_index]), "type", 4, false);
       if (type_gvp) {
          PmStartFuncall(0);
-         proto=glue::call_func_scalar(aTHX_ *type_gvp, true);
+         proto = glue::call_func_scalar(aTHX_ *type_gvp, true);
       } else {
          return;
       }
    }
-   SV* opts=PmArray(proto)[glue::PropertyType_cppoptions_index];
+   SV* opts = PmArray(proto)[glue::PropertyType_cppoptions_index];
    if (SvROK(opts)) {
-      SV* builtin=PmArray(opts)[glue::CPPOptions_builtin_index];
-      magic_allowed=!SvTRUE(builtin);
+      SV* builtin = PmArray(opts)[glue::CPPOptions_builtin_index];
+      magic_allowed = !SvTRUE(builtin);
    }
 }
 
@@ -78,12 +78,12 @@ void type_infos::set_proto_with_prescribed_pkg(SV* prescribed_pkg, SV* app_stash
    dTHX;
    PmStartFuncall(3);
    PUSHs(prescribed_pkg);
-   const char* const type_name=ti.name();
+   const char* const type_name = ti.name();
    mPUSHp(type_name, strlen(type_name));
    if (super_proto) PUSHs(super_proto);
    PUTBACK;
-   proto=glue::call_func_scalar(aTHX_ glue::fetch_typeof_gv(aTHX_ (HV*)SvRV(app_stash_ref), SvPVX(prescribed_pkg), SvCUR(prescribed_pkg)), true);
-   magic_allowed=true;
+   proto = glue::call_func_scalar(aTHX_ glue::fetch_typeof_gv(aTHX_ (HV*)SvRV(app_stash_ref), SvPVX(prescribed_pkg), SvCUR(prescribed_pkg)), true);
+   magic_allowed = true;
 }
 
 namespace {

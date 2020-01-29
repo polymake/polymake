@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -56,9 +56,9 @@ struct ToRestore {
 
 AV *lexical_imports, *plugin_data;
 SV *plugin_code;
-int cur_lexical_import_ix=-1, cur_lexical_flags=0;
-int shadow_stash_cnt=0;
-ToRestore* active_begin=nullptr;
+int cur_lexical_import_ix = -1, cur_lexical_flags = 0;
+int shadow_stash_cnt = 0;
+ToRestore* active_begin = nullptr;
 SV *dot_lookup_key, *dot_import_key, *dot_subst_op_key, *dot_dummy_pkg_key;
 SV *lex_imp_key, *sub_type_params_key, *scope_type_params_key, *anon_lvalue_key;
 SV *iv_hint, *uv_hint;
@@ -103,7 +103,7 @@ ToRestore* newToRestore(pTHX_ bool old_state)
    ToRestore* to_restore;
    Newx(to_restore, 1, ToRestore);
    to_restore->begin = active_begin;
-   to_restore->beginav_fill = AvFILL(PL_beginav_save);
+   to_restore->beginav_fill = I32(AvFILL(PL_beginav_save));
    to_restore->old_state = old_state;
    to_restore->hints = PL_hints;
    to_restore->cur_lex_imp = cur_lexical_import_ix;
@@ -177,7 +177,7 @@ PERL_CONTEXT* find_undo_level(pTHX_ int skip_frames)
                   return prev_si->si_cxix >= 0 ? prev_si->si_cxstack + prev_si->si_cxix : nullptr;
                }
             }
-            return cx - 1;
+            return cx-1;
          }
          break;
       }
@@ -197,7 +197,7 @@ void insert_undo(pTHX_ int skip_frames)
       /* There is a useful ENTER at the beginning of yyparse() which marks the suitable position on the save stack.
        * In newer perls this seems to be the second ENTER executed within the context block,
        * while in the older versions one had to go deeper into the scope stack, for reasons long forgotten and obscure now */
-      saves = PL_savestack + PL_scopestack[cx->blk_oldscopesp + 1];
+      saves = PL_savestack + PL_scopestack[cx->blk_oldscopesp+1];
       to_restore->replaced = 3;
       memcpy(to_restore->saved, saves, 3 * sizeof(to_restore->saved[0]));
       (saves++)->any_dxptr = &reset_ptrs;
@@ -238,7 +238,7 @@ int extract_lex_imp_ix(pTHX_ COP *cop)
 int get_lex_flags(pTHX)
 {
    SV* sv = Perl_refcounted_he_fetch_sv(aTHX_ PL_curcop->cop_hints_hash, lex_imp_key, 0, 0);
-   return SvIOK(sv) ? SvIVX(sv) : 0;
+   return SvIOK(sv) ? int(SvIVX(sv)) : 0;
 }
 
 int get_lex_imp_ix(pTHX)
@@ -313,9 +313,9 @@ bool equal_arrays(AV* ar1, AV* ar2)
    return true;
 }
 
-int skip_spaces(pTHX_ int pos)
+SSize_t skip_spaces(pTHX_ SSize_t pos)
 {
-   for (; (STRLEN)pos < SvCUR(PL_parser->linestr) || lex_next_chunk(LEX_KEEP_PREVIOUS); ++pos) {
+   for (; pos < SSize_t(SvCUR(PL_parser->linestr)) || lex_next_chunk(LEX_KEEP_PREVIOUS); ++pos) {
       if (!isSPACE(PL_parser->linestart[pos]))
          return pos;
    }
@@ -333,13 +333,14 @@ bool find_stash_in_import_list(AV* import_av, HV* stash)
 
 int store_lex_lookup_stash(pTHX_ SV* stash_ref)
 {
-   SV* stash=SvRV(stash_ref);
-   for (SV **lookp=AvARRAY(lexical_imports), **endp=lookp+AvFILLp(lexical_imports);
-        ++lookp<=endp; ) {
-      if (SvRV(*lookp)==stash) return lookp-AvARRAY(lexical_imports);
+   SV* stash = SvRV(stash_ref);
+   for (SV **lookp = AvARRAY(lexical_imports), **const endp = lookp + AvFILLp(lexical_imports);
+        ++lookp <= endp; ) {
+      if (SvRV(*lookp) == stash)
+         return int(lookp - AvARRAY(lexical_imports));
    }
    av_push(lexical_imports, SvREFCNT_inc_simple_NN(stash_ref));
-   return AvFILLp(lexical_imports);
+   return int(AvFILLp(lexical_imports));
 }
 
 AV* get_dotARRAY(pTHX_ HV* stash, SV* arr_name_sv, bool create)
@@ -377,17 +378,20 @@ AV* get_cur_dotSUBST_OP(pTHX)
 AV* merge_dotSUBST_OP(pTHX_ HV* stash, AV* dotSUBST_OP, AV* imp_dotSUBST_OP)
 {
    if (!dotSUBST_OP) {
-      dotSUBST_OP=get_dotSUBST_OP(aTHX_ stash, true);
-      for (int i=0, e=AvFILLp(imp_dotSUBST_OP); i<=e; ++i)
+      dotSUBST_OP = get_dotSUBST_OP(aTHX_ stash, true);
+      const int e = int(AvFILLp(imp_dotSUBST_OP));
+      for (int i = 0; i <= e; ++i)
          av_push(dotSUBST_OP, SvREFCNT_inc_NN(AvARRAY(imp_dotSUBST_OP)[i]));
    } else {
-      for (int i=0, e=AvFILLp(imp_dotSUBST_OP); i<=e; ++i) {
-         AV* op_descr=(AV*)SvRV(AvARRAY(imp_dotSUBST_OP)[i]);
-         int j, k;
-         for (j=0, k=AvFILLp(dotSUBST_OP); j<=k; ++j)
-            if (SvIVX(AvARRAY(op_descr)[intercept_op_code])==SvIVX(AvARRAY((AV*)SvRV(AvARRAY(dotSUBST_OP)[j]))[intercept_op_code]))
+      const int e = int(AvFILLp(imp_dotSUBST_OP));
+      for (int i = 0; i <= e; ++i) {
+         AV* op_descr = (AV*)SvRV(AvARRAY(imp_dotSUBST_OP)[i]);
+         const int k = int(AvFILLp(dotSUBST_OP));
+         int j;
+         for (j = 0; j <= k; ++j)
+            if (SvIVX(AvARRAY(op_descr)[intercept_op_code]) == SvIVX(AvARRAY((AV*)SvRV(AvARRAY(dotSUBST_OP)[j]))[intercept_op_code]))
                break;
-         if (j>k) av_push(dotSUBST_OP, newRV((SV*)op_descr));
+         if (j > k) av_push(dotSUBST_OP, newRV((SV*)op_descr));
       }
    }
    return dotSUBST_OP;
@@ -395,11 +399,11 @@ AV* merge_dotSUBST_OP(pTHX_ HV* stash, AV* dotSUBST_OP, AV* imp_dotSUBST_OP)
 
 int store_shadow_lex_lookup_stash(pTHX_ AV* dotIMPORT)
 {
-   for (SV **lookp=AvARRAY(lexical_imports), **endp=lookp+AvFILLp(lexical_imports); ++lookp<=endp; ) {
-      HV* stash=(HV*)SvRV(*lookp);
+   for (SV **lookp = AvARRAY(lexical_imports), ** const endp = lookp + AvFILLp(lexical_imports); ++lookp <= endp; ) {
+      HV* stash = (HV*)SvRV(*lookp);
       if (HvNAME(stash)[0] == '-') {
          if (equal_arrays(dotIMPORT, get_dotIMPORT(aTHX_ stash)))
-            return lookp-AvARRAY(lexical_imports);
+            return int(lookp - AvARRAY(lexical_imports));
       }
    }
 
@@ -408,22 +412,22 @@ int store_shadow_lex_lookup_stash(pTHX_ AV* dotIMPORT)
    set_dotIMPORT(aTHX_ shadow_stash, dotIMPORT);
    av_push(lexical_imports, newRV_noinc((SV*)shadow_stash));
 
-   AV* dotSUBST_OP=nullptr;
-   for (SV **lookp=AvARRAY(dotIMPORT), **endp=lookp+AvFILLp(dotIMPORT); lookp<=endp; ++lookp) {
-      if (AV* imp_dotSUBST_OP=get_dotSUBST_OP(aTHX_ (HV*)SvRV(*lookp), false))
-         dotSUBST_OP=merge_dotSUBST_OP(aTHX_ shadow_stash, dotSUBST_OP, imp_dotSUBST_OP);
+   AV* dotSUBST_OP = nullptr;
+   for (SV **lookp = AvARRAY(dotIMPORT), ** const endp = lookp + AvFILLp(dotIMPORT); lookp <= endp; ++lookp) {
+      if (AV* imp_dotSUBST_OP = get_dotSUBST_OP(aTHX_ (HV*)SvRV(*lookp), false))
+         dotSUBST_OP = merge_dotSUBST_OP(aTHX_ shadow_stash, dotSUBST_OP, imp_dotSUBST_OP);
    }
-   return AvFILLp(lexical_imports);
+   return int(AvFILLp(lexical_imports));
 }
 
 OP* switch_off_namespaces(pTHX)
 {
    reset_ptrs(aTHX_ nullptr);
    if (PL_op->op_flags & OPf_SPECIAL) {
-      cur_lexical_import_ix=-1;
-      cur_lexical_flags=0;
+      cur_lexical_import_ix = -1;
+      cur_lexical_flags = 0;
    }
-   PL_op->op_ppaddr=&Perl_pp_null;
+   PL_op->op_ppaddr = &Perl_pp_null;
    return NORMAL;
 }
 
@@ -452,15 +456,15 @@ void remove_imp_stash(pTHX_ AV* dotLOOKUP, HV* imp_stash)
 
 int merge_lexical_import_scopes(pTHX_ int lex_ix1, int lex_ix2)
 {
-   if (lex_ix1==lex_ix2 || lex_ix2==0) return lex_ix1;
-   if (lex_ix1==0) return lex_ix2;
+   if (lex_ix1 == lex_ix2 || lex_ix2 == 0) return lex_ix1;
+   if (lex_ix1 == 0) return lex_ix2;
 
-   HV* imp_stash1=(HV*)SvRV(AvARRAY(lexical_imports)[lex_ix1]);
-   HV* imp_stash2=(HV*)SvRV(AvARRAY(lexical_imports)[lex_ix2]);
-   AV* dot_import1=get_dotIMPORT(aTHX_ imp_stash1);
-   AV* dot_import2=get_dotIMPORT(aTHX_ imp_stash2);
-   const bool is_shadow1=HvNAME(imp_stash1)[0] == '-';
-   const bool is_shadow2=HvNAME(imp_stash2)[0] == '-';
+   HV* imp_stash1 = (HV*)SvRV(AvARRAY(lexical_imports)[lex_ix1]);
+   HV* imp_stash2 = (HV*)SvRV(AvARRAY(lexical_imports)[lex_ix2]);
+   AV* dot_import1 = get_dotIMPORT(aTHX_ imp_stash1);
+   AV* dot_import2 = get_dotIMPORT(aTHX_ imp_stash2);
+   const bool is_shadow1 = HvNAME(imp_stash1)[0] == '-';
+   const bool is_shadow2 = HvNAME(imp_stash2)[0] == '-';
 
    // maybe one stash is already contained in another's import list?
    if (!is_shadow2 && dot_import1 && find_stash_in_import_list(dot_import1, imp_stash2))
@@ -471,26 +475,26 @@ int merge_lexical_import_scopes(pTHX_ int lex_ix1, int lex_ix2)
    // concatenate both import lists into a new one
    AV* new_imports;
    if (is_shadow1) {
-      new_imports=av_make(AvFILLp(dot_import1)+1, AvARRAY(dot_import1));
+      new_imports = av_make(AvFILLp(dot_import1)+1, AvARRAY(dot_import1));
    } else {
-      new_imports=newAV();
+      new_imports = newAV();
       av_push(new_imports, newRV((SV*)imp_stash1));
    }
    if (is_shadow2) {
-      SV **lookp2=AvARRAY(dot_import2), **endp2=lookp2+AvFILLp(dot_import2);
+      SV **lookp2 = AvARRAY(dot_import2), ** const endp2 = lookp2 + AvFILLp(dot_import2);
       if (is_shadow1) {
-         for (; lookp2<endp2; ++lookp2)
+         for (; lookp2 < endp2; ++lookp2)
             append_imp_stash(aTHX_ new_imports, (HV*)SvRV(*lookp2));
       } else {
          av_extend(new_imports, AvFILLp(dot_import2)+1);
-         for (; lookp2<endp2; ++lookp2)
+         for (; lookp2 < endp2; ++lookp2)
             av_push(new_imports, newSVsv(*lookp2));
       }
    } else {
       av_push(new_imports, newRV((SV*)imp_stash2));
    }
 
-   lex_ix1=store_shadow_lex_lookup_stash(aTHX_ new_imports);
+   lex_ix1 = store_shadow_lex_lookup_stash(aTHX_ new_imports);
    SvREFCNT_dec(new_imports);
    return lex_ix1;
 }
@@ -535,7 +539,7 @@ std::pair<AV*, HV*> get_dotLOOKUP(pTHX_ HV* stash)
          dotLOOKUP = newAV();
          append_lookup(aTHX_ stash, dotLOOKUP, dotIMPORT, true);
 
-         for (int i = st_name_len - 2; i > 0; --i) {
+         for (int i = st_name_len-2; i > 0; --i) {
             if (st_name[i] == ':' && st_name[i-1] == ':') {
                if (HV* encl_stash = gv_stashpvn(st_name, --i, GV_NOADD_NOINIT)) {
                   if (append_imp_stash(aTHX_ dotLOOKUP, encl_stash)) {
@@ -572,7 +576,7 @@ OP* pp_popmark_and_nextstate(pTHX)
 void pull_repaired_gv(pTHX_ OP* o)
 {
    SV* subst = cSVOPx_sv(o);
-   const int i = o->op_targ;
+   const PADOFFSET i = o->op_targ;
    if (PAD_SV(i) != subst) {
       SvREFCNT_dec(PAD_SV(i));
       PAD_SVl(i) = SvREFCNT_inc_simple_NN(subst);
@@ -784,24 +788,24 @@ GV* try_stored_lexical_gv(pTHX_ GV* var_gv, I32 type, I32 lex_imp_ix)
 
 void store_lexical_gv(pTHX_ GV* var_gv, GV* imp_gv, I32 lex_imp_ix)
 {
-   MAGIC* mg=mg_find((SV*)var_gv, PERL_MAGIC_ext);
-   GV **list_start;
-   if (mg && (list_start=(GV**)mg->mg_ptr)) {
-      lex_imp_ix-=mg->mg_private;
-      if (lex_imp_ix<0) {
-         Newxz(list_start, mg->mg_len-lex_imp_ix, GV*);
+   MAGIC* mg = mg_find((SV*)var_gv, PERL_MAGIC_ext);
+   GV** list_start;
+   if (mg && (list_start = (GV**)mg->mg_ptr)) {
+      lex_imp_ix -= mg->mg_private;
+      if (lex_imp_ix < 0) {
+         Newxz(list_start, mg->mg_len - lex_imp_ix, GV*);
          Copy(mg->mg_ptr, list_start, mg->mg_len, GV*);
          Safefree(mg->mg_ptr);
-         mg->mg_ptr=(char*)list_start;
-         mg->mg_len-=lex_imp_ix;
-         list_start[0]=imp_gv;
-         mg->mg_private+=lex_imp_ix;
-      } else if (lex_imp_ix>=mg->mg_len) {
+         mg->mg_ptr = (char*)list_start;
+         mg->mg_len -= lex_imp_ix;
+         list_start[0] = imp_gv;
+         mg->mg_private = U16(mg->mg_private + lex_imp_ix);
+      } else if (lex_imp_ix >= mg->mg_len) {
          Renewc(mg->mg_ptr, lex_imp_ix+1, GV*, char);
-         list_start=(GV**)mg->mg_ptr;
-         Zero(list_start+mg->mg_len, lex_imp_ix-mg->mg_len, GV*);
-         list_start[lex_imp_ix]=imp_gv;
-         mg->mg_len=lex_imp_ix+1;
+         list_start = (GV**)mg->mg_ptr;
+         Zero(list_start + mg->mg_len, lex_imp_ix - mg->mg_len, GV*);
+         list_start[lex_imp_ix] = imp_gv;
+         mg->mg_len = lex_imp_ix+1;
       } else if (list_start[lex_imp_ix]) {
          if (list_start[lex_imp_ix] != imp_gv)
             Perl_croak(aTHX_ "ambiguous name resolution in package %.*s, lexical scope %d: conflict between %.*s::%.*s and %.*s::%.*s",
@@ -809,14 +813,14 @@ void store_lexical_gv(pTHX_ GV* var_gv, GV* imp_gv, I32 lex_imp_ix)
                        PmPrintHvNAME(GvSTASH(imp_gv)), PmPrintGvNAME(imp_gv),
                        PmPrintHvNAME(GvSTASH(list_start[lex_imp_ix])), PmPrintGvNAME(imp_gv));
       } else {
-         list_start[lex_imp_ix]=imp_gv;
+         list_start[lex_imp_ix] = imp_gv;
       }
    } else {
-      if (!mg) mg=sv_magicext((SV*)var_gv, nullptr, PERL_MAGIC_ext, nullptr, nullptr, 1);
+      if (!mg) mg = sv_magicext((SV*)var_gv, nullptr, PERL_MAGIC_ext, nullptr, nullptr, 1);
       Newxz(list_start, 1, GV*);
-      mg->mg_ptr=(char*)list_start;
-      list_start[0]=imp_gv;
-      mg->mg_private=lex_imp_ix;
+      mg->mg_ptr = (char*)list_start;
+      list_start[0] = imp_gv;
+      mg->mg_private = U16(lex_imp_ix);
    }
 }
 
@@ -884,7 +888,7 @@ std::pair<GV*, GV*>
 lookup_name_in_stash(pTHX_ HV* stash, const char* name, STRLEN name_len, I32 type,
                      const int flags = ignore_undefined | ignore_methods)
 {
-   if (GV** gvp = (GV**)hv_fetch(stash, name, name_len, false)) {
+   if (GV** gvp = (GV**)hv_fetch(stash, name, I32(name_len), false)) {
       GV* gv = *gvp;
 #if PerlVersion >= 5275
       // TODO(later): this will spoil the constant inlining, should think about preserving some refs
@@ -925,7 +929,7 @@ GV* lookup_name_in_list(pTHX_ HV* stash, GV* var_gv, const char* name, STRLEN na
          if (GV* imp_gv = lookup_name_in_stash(aTHX_ (HV*)SvRV(*lookp), name, name_len, type, flags).first) {
             if (!(flags & dont_cache)) {
                if (!var_gv) {
-                  var_gv = *(GV**)hv_fetch(stash, name, name_len, true);
+                  var_gv = *(GV**)hv_fetch(stash, name, I32(name_len), true);
                   if (SvTYPE(var_gv) != SVt_PVGV)
                      gv_init_pvn(var_gv, stash, name, name_len, GV_ADDMULTI);
                }
@@ -944,7 +948,7 @@ GV* lookup_name_in_list(pTHX_ HV* stash, GV* var_gv, const char* name, STRLEN na
 // performs only package-based lookup, no lexical context taken into account
 std::pair<GV*, GV*>
 lookup_var(pTHX_ HV* stash, const char* name, STRLEN name_len, I32 type,
-           int flags=ignore_undefined | ignore_methods)
+           int flags = ignore_undefined | ignore_methods)
 {
    auto result = lookup_name_in_stash(aTHX_ stash, name, name_len, type, flags);
    if (!result.first && !result.second) {
@@ -974,7 +978,7 @@ lookup_sub_gv(pTHX_ HV* stash, const char* name, STRLEN name_len, int lex_imp_ix
    if (!result.first && !result.second && !colon && lex_imp_ix) {
       // unqualified and not found in the given package: look into the lexical scope
 
-      GV** local_gvp = (GV**)hv_fetch(stash, name, name_len, !(flags & dont_cache));
+      GV** local_gvp = (GV**)hv_fetch(stash, name, I32(name_len), !(flags & dont_cache));
       GV* local_gv = nullptr;
       if (local_gvp) {
          local_gv = *local_gvp;
@@ -1527,12 +1531,12 @@ OP* intercept_ck_const(pTHX_ OP* o)
          char* p=SvPVX(sv);
          if (p[0]=='_') {
             const STRLEN pl = SvCUR(sv);
-            if (pl>3 && p[1]==':' && p[2]==':') {
+            if (pl > 3 && p[1]==':' && p[2]==':') {
                // subpackage of the current package
-               const int cur_pkg_len = SvCUR(PL_curstname);
-               SvPV_set(sv, (char*)safemalloc(pl+cur_pkg_len));
+               const STRLEN cur_pkg_len = SvCUR(PL_curstname);
+               SvPV_set(sv, (char*)safemalloc(pl + cur_pkg_len));
                SvCUR_set(sv, 0);
-               SvLEN_set(sv, pl+cur_pkg_len);
+               SvLEN_set(sv, pl + cur_pkg_len);
                sv_setsv(sv, PL_curstname);
                sv_catpvn(sv, p+1, pl-1);
                safefree(p);
@@ -1544,7 +1548,7 @@ OP* intercept_ck_const(pTHX_ OP* o)
             SV* imp_sv = GvSV(imp_gv);
             if (imp_sv && SvIOKp(imp_sv)) {
                // the re-entered package already memorized its lexical import scope: must merge both together
-               const int new_lex_ix = merge_lexical_import_scopes(aTHX_ SvIV(GvSV(imp_gv)), cur_lexical_import_ix);
+               const int new_lex_ix = merge_lexical_import_scopes(aTHX_ int(SvIV(GvSV(imp_gv))), cur_lexical_import_ix);
                if (new_lex_ix != cur_lexical_import_ix) {
                   SAVEINT(cur_lexical_import_ix);
                   establish_lex_imp_ix(aTHX_ new_lex_ix, TRUE);
@@ -1584,7 +1588,7 @@ OP* intercept_ck_divide(pTHX_ OP* o)
       AV* op_descr = find_intercepted_op_descriptor(aTHX_ o->op_type);
       if (op_descr) {
          OP* new_op = construct_const_creation_optree(aTHX_ op_descr, op_prepend_elem(OP_LIST, a, b), true);
-         o->op_flags &= ~OPf_KIDS;
+         clear_bit_flags(o->op_flags, OPf_KIDS);
          FreeOp(o);
          return new_op;
       }
@@ -1597,7 +1601,7 @@ OP* intercept_ck_negate(pTHX_ OP* o)
    OP* a = cUNOPo->op_first;
    if (is_creating_constant(a)) {
       // minus sign is already included in the string constant
-      o->op_flags &= ~OPf_KIDS;
+      clear_bit_flags(o->op_flags, OPf_KIDS);
       FreeOp(o);
       return a;
    }
@@ -1606,14 +1610,14 @@ OP* intercept_ck_negate(pTHX_ OP* o)
 
 OP* intercept_ck_anonlist(pTHX_ OP* o)
 {
-   OP* a=cUNOPo->op_first;
+   OP* a = cUNOPo->op_first;
    if (a->op_type == OP_ANONLIST && (a->op_flags & OPf_SPECIAL)) {
       AV* op_descr = find_intercepted_op_descriptor(aTHX_ o->op_type);
       if (op_descr) {
          OP* new_op = construct_const_creation_optree(aTHX_ op_descr, a, false);
-         o->op_flags &= ~OPf_KIDS;
+         clear_bit_flags(o->op_flags, OPf_KIDS);
          FreeOp(o);
-         o=new_op;
+         o = new_op;
       }
    }
    return o;
@@ -1622,7 +1626,7 @@ OP* intercept_ck_anonlist(pTHX_ OP* o)
 OP* pp_print_bool(pTHX)
 {
    dSP;
-   SV** args=PL_stack_base+TOPMARK;
+   SV** args = PL_stack_base+TOPMARK;
    while (++args <= SP) {
       if (is_boolean_value(aTHX_ *args)) {
          *args=get_boolean_string(*args);
@@ -1713,7 +1717,7 @@ OP* pp_resolve_pkg(pTHX)
       const STRLEN full_len = HvNAMELEN(stash);
       if (SvCUR(pkg) != full_len) {
          SvREFCNT_dec(pkg);
-         pkg = newSVpvn_share(HvNAME(stash), full_len, 0);
+         pkg = newSVpvn_share(HvNAME(stash), I32(full_len), 0);
          *cSVOPx_svp(o) = pkg;
       }
    } else if (PL_op->op_private &&
@@ -1774,8 +1778,8 @@ OP* pp_instance_of(pTHX)
 
 int find_among_parameter_names(pTHX_ AV* param_names_av, const char* pkg_name, STRLEN pkg_name_len)
 {
-   int name_ix=0;
-   for (SV** param_names=AvARRAY(param_names_av), **param_names_last=param_names+AvFILLp(param_names_av);
+   int name_ix = 0;
+   for (SV** param_names = AvARRAY(param_names_av), ** const param_names_last = param_names+AvFILLp(param_names_av);
         param_names <= param_names_last;  ++param_names, ++name_ix)
       if (pkg_name_len == SvCUR(*param_names) && !strncmp(pkg_name, SvPVX(*param_names), pkg_name_len))
          return name_ix;
@@ -1785,14 +1789,14 @@ int find_among_parameter_names(pTHX_ AV* param_names_av, const char* pkg_name, S
 OP* fetch_type_param_proto_pvn(pTHX_ const char* pkg_name, STRLEN pkg_name_len)
 {
    SV* hint_sv;
-   GV* sub_type_params_gv=nullptr;
+   GV* sub_type_params_gv = nullptr;
    if ((hint_sv=Perl_refcounted_he_fetch_sv(aTHX_ PL_compiling.cop_hints_hash, sub_type_params_key, 0, 0)) &&
        SvIOK(hint_sv)) {
       sub_type_params_gv=(GV*)SvUVX(hint_sv);
       if (sub_type_params_gv != PL_defgv) {
          // it does not refer to @_
-         int name_ix=find_among_parameter_names(aTHX_ type_param_names, pkg_name, pkg_name_len);
-         if (name_ix>=0) {
+         const int name_ix = find_among_parameter_names(aTHX_ type_param_names, pkg_name, pkg_name_len);
+         if (name_ix >= 0) {
             OP* o;
             if (sub_type_params_gv) {
                if ((size_t)sub_type_params_gv <= 10) {
@@ -1809,25 +1813,25 @@ OP* fetch_type_param_proto_pvn(pTHX_ const char* pkg_name, STRLEN pkg_name_len)
             } else {
                // The package name found among the subroutine-local parameters.
                // At runtime, the prototypes will sit in an array magically attached to @_.
-               o=newOP(OP_CUSTOM, 0);
-               o->op_ppaddr=&fetch_sub_scope_type_param;
+               o = newOP(OP_CUSTOM, 0);
+               o->op_ppaddr = &fetch_sub_scope_type_param;
             }
-            o->op_private=name_ix;
+            o->op_private = U8(name_ix);
             return o;
          }
-         sub_type_params_gv=nullptr;
+         sub_type_params_gv = nullptr;
       }
    }
-   if ((hint_sv=Perl_refcounted_he_fetch_sv(aTHX_ PL_compiling.cop_hints_hash, scope_type_params_key, 0, 0)) &&
+   if ((hint_sv = Perl_refcounted_he_fetch_sv(aTHX_ PL_compiling.cop_hints_hash, scope_type_params_key, 0, 0)) &&
        SvIOK(hint_sv)) {
-      GV* scope_type_params_gv=(GV*)SvUVX(hint_sv);
-      int name_ix=find_among_parameter_names(aTHX_ GvAV(scope_type_params_gv), pkg_name, pkg_name_len);
-      if (name_ix>=0) {
+      GV* scope_type_params_gv = (GV*)SvUVX(hint_sv);
+      const int name_ix = find_among_parameter_names(aTHX_ GvAV(scope_type_params_gv), pkg_name, pkg_name_len);
+      if (name_ix >= 0) {
          // The package name found among the scope parameters.
          // At runtime, the prototypes will sit in the array attached to this glob, unless sub_type_params_gv == \*_.
          OP* o = newGVOP(OP_AELEMFAST, 0, sub_type_params_gv ? sub_type_params_gv : scope_type_params_gv);
          o->op_ppaddr = def_pp_AELEMFAST;
-         o->op_private = name_ix;
+         o->op_private = U8(name_ix);
          // mark for modification in intercept_ck_leavesub
          if (!CvUNIQUE(PL_compcv) && !sub_type_params_gv) CvDEPTH(PL_compcv)=1;
          return o;
@@ -1884,7 +1888,7 @@ OP* intercept_ck_leavesub(pTHX_ OP* op)
    CV* cv=PL_compcv;
    if (cv && SvTYPE(cv)==SVt_PVCV) {
       // it can be a BEGIN sub, prepare for capturing it befre execution
-      PL_savebegin=1;
+      PL_savebegin = 1;
       if (!CvSPECIAL(cv) && CvDEPTH(cv)) {
          // marked in fetch_type_param_proto_pvn :
          // construct a localizing assignment for the outer scope type array,
@@ -1903,7 +1907,7 @@ OP* intercept_ck_leavesub(pTHX_ OP* op)
          PL_check[OP_ENTERSUB] = intercept_ck_sub;
          OP* localize_op = newBINOP(OP_SASSIGN, OPf_STACKED, Perl_scalar(aTHX_ call_typelist_sub), Perl_scalar(aTHX_ gvop1));
          localize_op->op_ppaddr = ops::local_ref;
-         localize_op->op_flags = (localize_op->op_flags & ~OPf_WANT) | OPf_WANT_VOID;
+         localize_op->op_flags = U8((localize_op->op_flags & ~OPf_WANT) | OPf_WANT_VOID);
          PmOpCopySibling(localize_op, o);
          OpMORESIB_set(o, localize_op);
          CvDEPTH(cv) = 0;
@@ -1926,19 +1930,19 @@ OP* pp_bless_type_explicit_typelist(pTHX)
 
 OP* start_type_op_subtree(pTHX_ const char* name, const char* name_end, bool& can_be_cached)
 {
-   const STRLEN name_len=name_end-name;
-   if ((name_len > 2 && name[0]==':' && name[1]==':') ||
-       (name_len > 6 && name[4]==':' && !strncmp(name, "main::", 6))) {
+   const STRLEN name_len = name_end - name;
+   if ((name_len > 2 && name[0] == ':' && name[1] == ':') ||
+       (name_len > 6 && name[4] == ':' && !strncmp(name, "main::", 6))) {
       // absolute package name
-      OP* const_op=newSVOP(OP_CONST, OPf_WANT_SCALAR, newSVpvn_share(name, name_len, 0));
+      OP* const_op=newSVOP(OP_CONST, OPf_WANT_SCALAR, newSVpvn_share(name, I32(name_len), 0));
       const_op->op_ppaddr=&Perl_pp_const;
       return newLISTOP(OP_LIST, 0, const_op, nullptr);
    }
-   OP* result=fetch_type_param_proto_pvn(aTHX_ name, name_len);
+   OP* result = fetch_type_param_proto_pvn(aTHX_ name, name_len);
    if (result) {
-      can_be_cached=false;
+      can_be_cached = false;
    } else {
-      OP* resolve_op = PmNewCustomOP(SVOP, OPf_WANT_SCALAR, newSVpvn(name, name_len));
+      OP* resolve_op = PmNewCustomOP(SVOP, OPf_WANT_SCALAR, newSVpvn(name, I32(name_len)));
       resolve_op->op_ppaddr = pp_resolve_pkg;
       resolve_op->op_private = 0;
       result = newLISTOP(OP_LIST, 0, resolve_op, nullptr);
@@ -1949,7 +1953,7 @@ OP* start_type_op_subtree(pTHX_ const char* name, const char* name_end, bool& ca
 OP* finalize_type_op_subtree(pTHX_ OP* list_op, AnyString meth)
 {
    if (list_op->op_type == OP_LIST) {
-      OP* meth_op = NewMETHOD_NAMED_OP(meth.ptr, meth.len);
+      OP* meth_op = NewMETHOD_NAMED_OP(meth.ptr, I32(meth.len));
       PL_check[OP_ENTERSUB] = def_ck_ENTERSUB;
       list_op = Perl_op_convert_list(aTHX_ OP_ENTERSUB, OPf_STACKED, op_append_elem(OP_LIST, list_op, meth_op));
       PL_check[OP_ENTERSUB] = &intercept_ck_sub;
@@ -2023,7 +2027,7 @@ OP* parse_type_expression(pTHX_ OP* outer_list_op, bool& can_be_cached)
       char c = *PL_parser->bufptr;
       if (outer_list_op && (c == '$' || c == '@')) {
          // two adjacent closing angle brackets confuse the perl parser, it misinterprets them as a right shift operator
-         char* right_angle_bracket = strchr(PL_parser->bufptr + 1, '>');
+         char* right_angle_bracket = strchr(PL_parser->bufptr+1, '>');
          if (right_angle_bracket) {
             if (right_angle_bracket[1] == '>')
                *right_angle_bracket = ';';
@@ -2044,12 +2048,12 @@ OP* parse_type_expression(pTHX_ OP* outer_list_op, bool& can_be_cached)
             report_parse_error("variable types and placeholders can't be parameterized");
             break;
          }
-         lex_read_to(PL_parser->bufptr + 1);
+         lex_read_to(PL_parser->bufptr+1);
          if (!read_spaces(aTHX))
             break;
          if (*PL_parser->bufptr == '>') {
             // empty brackets
-            lex_read_to(PL_parser->bufptr + 1);
+            lex_read_to(PL_parser->bufptr+1);
          } else {
             // this will consume the trailing '>'
             if (!parse_type_expression(aTHX_ o, can_be_cached))
@@ -2065,7 +2069,7 @@ OP* parse_type_expression(pTHX_ OP* outer_list_op, bool& can_be_cached)
 
       c = *PL_parser->bufptr;
       if (c == ',' || c == '>') {
-         lex_read_to(PL_parser->bufptr + 1);
+         lex_read_to(PL_parser->bufptr+1);
          if (!read_spaces(aTHX))
             break;
          // end of parameter list
@@ -2103,10 +2107,10 @@ int parse_typeof_kw(pTHX_ OP** op_ptr, AnyString meth_name)
    if (type_op) {
       if (type_op->op_type == OP_LIST && read_spaces(aTHX) && *PL_parser->bufptr == '(') {
          // typeof GenericType(params)
-         lex_read_to(PL_parser->bufptr + 1);
+         lex_read_to(PL_parser->bufptr+1);
          op_keeper<OP> expr(aTHX_ parse_listexpr(0));
          if (read_spaces(aTHX) && *PL_parser->bufptr == ')') {
-            lex_read_to(PL_parser->bufptr + 1);
+            lex_read_to(PL_parser->bufptr+1);
             if (expr->op_type == OP_LIST)
                strip_off_pushmark(aTHX_ expr);
             type_op=op_append_list(OP_LIST, type_op, expr.release());
@@ -2134,10 +2138,10 @@ int parse_instanceof_kw(pTHX_ OP** op_ptr)
    op_keeper<OP> type_op(aTHX_ parse_type_expression(aTHX_ nullptr, can_be_cached));
    if (type_op) {
       if (read_spaces(aTHX) && *PL_parser->bufptr == '(') {
-         lex_read_to(PL_parser->bufptr + 1);
+         lex_read_to(PL_parser->bufptr+1);
          op_keeper<OP> expr(aTHX_ parse_termexpr(0));
          if (read_spaces(aTHX) && *PL_parser->bufptr == ')') {
-            lex_read_to(PL_parser->bufptr + 1);
+            lex_read_to(PL_parser->bufptr+1);
             if (type_op->op_type == OP_LIST) {
                // a single package or type name without parameters
                strip_off_pushmark(aTHX_ type_op);
@@ -2164,10 +2168,10 @@ int parse_instanceof_kw(pTHX_ OP** op_ptr)
 int parse_operation(pTHX_ Perl_ppaddr_t op_func, OP** op_ptr)
 {
    if (read_spaces(aTHX) && *PL_parser->bufptr == '(') {
-      lex_read_to(PL_parser->bufptr + 1);
+      lex_read_to(PL_parser->bufptr+1);
       op_keeper<OP> expr(aTHX_ parse_termexpr(0));
       if (read_spaces(aTHX) && *PL_parser->bufptr == ')') {
-         lex_read_to(PL_parser->bufptr + 1);
+         lex_read_to(PL_parser->bufptr+1);
          OP* o = PmNewCustomOP(UNOP, 0, Perl_scalar(aTHX_ expr.release()));
          o->op_ppaddr = op_func;
          *op_ptr = o;
@@ -2182,7 +2186,7 @@ int parse_static_method_call(pTHX_ char* kw, STRLEN kw_len, OP** op_ptr)
 {
    // scan the first word after the keyword; it should be a type expression or a package name
    const char* b = PL_parser->bufptr;
-   const int start_pos = b - PL_parser->linestart;
+   const SSize_t start_pos = b - PL_parser->linestart;
    while (++b < PL_parser->bufend) {
       if (!isALNUM(*b)) {
          if (b < PL_parser->bufend+2 && *b == ':' && b[1] == ':') {
@@ -2194,8 +2198,8 @@ int parse_static_method_call(pTHX_ char* kw, STRLEN kw_len, OP** op_ptr)
          }
       }
    }
-   const int end_pos = b - PL_parser->linestart;
-   const int next_char_pos = skip_spaces(aTHX_ end_pos);
+   const SSize_t end_pos = b - PL_parser->linestart;
+   const SSize_t next_char_pos = skip_spaces(aTHX_ end_pos);
    if (next_char_pos < 0)
       return KEYWORD_PLUGIN_DECLINE;
 
@@ -2217,7 +2221,7 @@ int parse_static_method_call(pTHX_ char* kw, STRLEN kw_len, OP** op_ptr)
       // If not, we assume it as a type.
       {
          const char* first_name = PL_parser->linestart + start_pos;
-         const STRLEN first_name_len = end_pos - start_pos;
+         const I32 first_name_len = I32(end_pos - start_pos);
          if (!Perl_keyword(aTHX_ first_name, first_name_len, false)) {
             const auto gvs = lookup_sub_gv(aTHX_ PL_curstash, first_name, first_name_len, cur_lexical_import_ix,
                                            bad_filehandle_gv | bad_constant_gv | dont_cache | dont_create_dummy_sub);
@@ -2233,20 +2237,20 @@ int parse_static_method_call(pTHX_ char* kw, STRLEN kw_len, OP** op_ptr)
    bool can_be_cached=!CvUNIQUE(PL_compcv);  // don't cache in one-off subs like BEGIN
 
    // this must be created before any further parsing, because that overwrites the keyword buffer
-   op_keeper<OP> meth_op(aTHX_ NewMETHOD_NAMED_OP(kw, kw_len));
+   op_keeper<OP> meth_op(aTHX_ NewMETHOD_NAMED_OP(kw, I32(kw_len)));
    op_keeper<OP> type_op(aTHX_ parse_type_expression(aTHX_ nullptr, can_be_cached));
    if (type_op) {
       op_keeper<OP> args(aTHX_ nullptr);
       if (read_spaces(aTHX) && *PL_parser->bufptr == '(') {
          // METHOD TYPE(args)
-         lex_read_to(PL_parser->bufptr + 1);
+         lex_read_to(PL_parser->bufptr+1);
          if (read_spaces(aTHX) && *PL_parser->bufptr == ')') {
             // ignore an empty argument list
-            lex_read_to(PL_parser->bufptr + 1);
+            lex_read_to(PL_parser->bufptr+1);
          } else {
             args = parse_listexpr(0);
             if (read_spaces(aTHX) && *PL_parser->bufptr == ')') {
-               lex_read_to(PL_parser->bufptr + 1);
+               lex_read_to(PL_parser->bufptr+1);
             } else {
                // parse error in the argument list
                return KEYWORD_PLUGIN_DECLINE;
@@ -2286,7 +2290,7 @@ int parse_function_template_call(pTHX_ GV* func_gv, OP** op_ptr)
    op_keeper<OP> types(aTHX_ nullptr);
    if (*PL_parser->bufptr == '>') {
       // ignore an empty type parameter list
-      lex_read_to(PL_parser->bufptr + 1);
+      lex_read_to(PL_parser->bufptr+1);
    } else {
       bool can_be_cached=!CvUNIQUE(PL_compcv);
       types=newLISTOP(OP_LIST, 0, nullptr, nullptr);
@@ -2305,7 +2309,7 @@ int parse_function_template_call(pTHX_ GV* func_gv, OP** op_ptr)
    op_keeper<OP> args(aTHX_ nullptr);
    if (*PL_parser->bufptr == '(') {
       // consume the arguments
-      lex_read_to(PL_parser->bufptr + 1);
+      lex_read_to(PL_parser->bufptr+1);
       if (!read_spaces(aTHX))
          return KEYWORD_PLUGIN_DECLINE;
       if (*PL_parser->bufptr != ')') {
@@ -2314,7 +2318,7 @@ int parse_function_template_call(pTHX_ GV* func_gv, OP** op_ptr)
             return KEYWORD_PLUGIN_DECLINE;
       }
       if (*PL_parser->bufptr == ')') {
-         lex_read_to(PL_parser->bufptr + 1);
+         lex_read_to(PL_parser->bufptr+1);
       } else {
          report_parse_error("expected an argument list enclosed in parentheses");
          return KEYWORD_PLUGIN_DECLINE;
@@ -2373,7 +2377,7 @@ OP* pp_declare_var(pTHX_ unsigned int imp_flag, unsigned int optype)
 
 OP* pp_declare_sv(pTHX)
 {
-   PL_op->op_private &= ~OPpDEREF;
+   clear_bit_flags(PL_op->op_private, OPpDEREF);
    return pp_declare_var(aTHX_ GVf_IMPORTED_SV, OP_RV2SV);
 }
 
@@ -2389,7 +2393,7 @@ OP* pp_declare_hv(pTHX)
 
 int clear_imported_flag(pTHX_ SV* sv, MAGIC* mg)
 {
-   GV* gv=(GV*)mg->mg_obj;
+   GV* gv = (GV*)mg->mg_obj;
    GvFLAGS(gv) &= ~mg->mg_len;
    return 0;
 }
@@ -2399,18 +2403,18 @@ const MGVTBL clear_imported_flag_vtab = { nullptr, nullptr, nullptr, nullptr, &c
 OP* pp_unimport_guard(pTHX)
 {
    dSP;
-   SV* gv=TOPs;
-   const unsigned int imp_flag=PL_op->op_private;
+   SV* gv = TOPs;
+   const unsigned int imp_flag = PL_op->op_private;
    if (!(GvFLAGS(gv) & imp_flag)) {
-      SV* guard=cSVOP_sv;
+      SV* guard = cSVOP_sv;
       sv_magicext(guard, gv, PERL_MAGIC_ext, &clear_imported_flag_vtab, nullptr, imp_flag);
    }
    return NORMAL;
 }
 
-void parse_declare_var(pTHX_ OP* o, unsigned int imp_flag, OP* (*pp_func)(pTHX), bool make_void)
+void parse_declare_var(pTHX_ OP* o, U8 imp_flag, OP* (*pp_func)(pTHX), bool make_void)
 {
-   OP* gvop=cUNOPo->op_first;
+   OP* gvop = cUNOPo->op_first;
    if (gvop->op_type != OP_GV) {
       report_parse_error("wrong use of declare; expecting plain package variable");
       return;
@@ -2420,9 +2424,9 @@ void parse_declare_var(pTHX_ OP* o, unsigned int imp_flag, OP* (*pp_func)(pTHX),
       // create a dummy scalar whose destruction will clear the IMPORTED flag
       // the destruction takes place when the entire OP tree is destroyed, that is,
       // together with the top-level (anonymous) sub constructed for a script
-      OP* guard_op=newSVOP(OP_CONST, 0, newSV_type(SVt_NULL));
-      guard_op->op_ppaddr=pp_unimport_guard;
-      guard_op->op_private=imp_flag;
+      OP* guard_op = newSVOP(OP_CONST, 0, newSV_type(SVt_NULL));
+      guard_op->op_ppaddr = pp_unimport_guard;
+      guard_op->op_private = imp_flag;
       PmOpCopySibling(guard_op, gvop);
       OpMORESIB_set(gvop, guard_op);
 #if PerlVersion < 5220
@@ -2436,12 +2440,12 @@ void parse_declare_var(pTHX_ OP* o, unsigned int imp_flag, OP* (*pp_func)(pTHX),
    // prevent collapsing to GVSV
    if (imp_flag == GVf_IMPORTED_SV)
       o->op_private |= OPpDEREF;
-   o->op_ppaddr=pp_func;
-   gvop->op_ppaddr=def_pp_GV;
+   o->op_ppaddr = pp_func;
+   gvop->op_ppaddr = def_pp_GV;
    if (make_void) {
-      o->op_flags &= ~OPf_WANT;
-      o->op_flags |= OPf_WANT_VOID;
-      o->op_type=OP_CUSTOM;
+      clear_bit_flags(o->op_flags, OPf_WANT);
+      set_bit_flags(o->op_flags, OPf_WANT_VOID);
+      o->op_type = OP_CUSTOM;
    }
 }
 
@@ -2545,12 +2549,12 @@ void parse_declare_list_assign(pTHX_ OP* o, bool make_void)
 void propagate_sub(pTHX_ HV* stash, GV* cgv)
 {
    const char* cv_name = GvNAME(cgv);
-   const STRLEN cv_namelen = GvNAMELEN(cgv);
+   const I32 cv_namelen = GvNAMELEN(cgv);
    const char* pkg_name = HvNAME(stash);
-   const char* colon = pkg_name + HvNAMELEN(stash) - 1;
+   const char* colon = pkg_name + HvNAMELEN(stash)-1;
    for (int tail_len = 0; colon > pkg_name; --colon, ++tail_len) {
       if (colon[0] == ':' && colon[-1] == ':') {
-         HV* dummy_stash = gv_stashpvn(colon + 1, tail_len, GV_ADD);
+         HV* dummy_stash = gv_stashpvn(colon+1, tail_len, GV_ADD);
          colon -= 2;  tail_len += 2;
 
          if (!is_dummy_pkg(aTHX_ dummy_stash, true)) continue;
@@ -2654,7 +2658,7 @@ void set_lexical_flag(pTHX_ int flag, bool new_value)
 
 bool parse_declare_flags(pTHX_ OP** op_ptr)
 {
-   const int pos = skip_spaces(aTHX_ PL_parser->bufptr - PL_parser->linestart);
+   const SSize_t pos = skip_spaces(aTHX_ PL_parser->bufptr - PL_parser->linestart);
    if (pos < 0)
       return false;
    char* b = PL_parser->linestart + pos;
@@ -2663,13 +2667,13 @@ bool parse_declare_flags(pTHX_ OP** op_ptr)
       return false;
    const bool value= sign=='+';
 
-   const int rest_len = PL_parser->bufend - b;
+   const SSize_t rest_len = PL_parser->bufend - b;
    if (rest_len > 4 && !strncmp(b, "auto", 4)) {
       set_lexical_flag(aTHX_ LexCtxAutodeclare, value);
-      lex_read_to(b + 4);
+      lex_read_to(b+4);
    } else if (rest_len > 2 && !strncmp(b, "re", 2)) {
       set_lexical_flag(aTHX_ LexCtxAllowReDeclare, value);
-      lex_read_to(b + 2);
+      lex_read_to(b+2);
    } else {
       const char* word_end=b;
       while (word_end < PL_parser->bufend && isALNUM(*word_end)) ++word_end;
@@ -2828,13 +2832,13 @@ int keyword_func(pTHX_ char* kw, STRLEN kw_len, OP** op_ptr)
       break;
    }
 
-   if (Perl_keyword(aTHX_ kw, kw_len, false))
+   if (Perl_keyword(aTHX_ kw, I32(kw_len), false))
       return KEYWORD_PLUGIN_DECLINE;
 
    // recognize static method calls: METHOD TYPE(...) or METHOD TYPE<EXPR>(...)
 
-   const int cur_pos = PL_parser->bufptr - PL_parser->linestart;
-   const int after_space = skip_spaces(aTHX_ cur_pos);
+   const SSize_t cur_pos = PL_parser->bufptr - PL_parser->linestart;
+   const SSize_t after_space = skip_spaces(aTHX_ cur_pos);
 
    if (after_space > cur_pos && isIDFIRST(PL_parser->linestart[after_space])) {
       // METHOD TYPE [ (args) ] ?
@@ -2844,11 +2848,11 @@ int keyword_func(pTHX_ char* kw, STRLEN kw_len, OP** op_ptr)
 
    // recognize FUNC<TYPE EXPR>() and calls to imported functions not predeclared yet in the current package
    if (PL_parser->linestart[after_space] == '<' &&
-       PL_parser->linestart[after_space + 1] != '<' &&
-       PL_parser->linestart[after_space + 1] != '=') {
+       PL_parser->linestart[after_space+1] != '<' &&
+       PL_parser->linestart[after_space+1] != '=') {
       if (GV* gv = lookup_sub_gv(aTHX_ PL_curstash, kw, kw_len, cur_lexical_import_ix,
                                  bad_filehandle_gv | bad_constant_gv | dont_create_dummy_sub).first) {
-         lex_read_to(PL_parser->linestart + after_space + 1);
+         lex_read_to(PL_parser->linestart + after_space+1);
          return parse_function_template_call(aTHX_ gv, op_ptr);
       }
    }
@@ -2927,7 +2931,7 @@ OP* intercept_pp_entereval(pTHX)
 
 OP* intercept_pp_regcomp(pTHX)
 {
-   int lex_imp_ix=get_lex_imp_ix(aTHX);
+   int lex_imp_ix = get_lex_imp_ix(aTHX);
    if (current_mode()) {
       if (SvPOK(ERRSV) && SvCUR(ERRSV) > 0)
          Perl_croak(aTHX_ "namespace mode internal error: compilation mode active during execution; pending exception is '%.*s'", (int)SvCUR(ERRSV), SvPVX(ERRSV));
@@ -3060,13 +3064,14 @@ OP* pp_leave_maybe_with_lvalue(pTHX)
 
 OP* intercept_pp_anoncode(pTHX)
 {
-   OP* next_op=def_pp_ANONCODE(aTHX);
+   OP* next_op = def_pp_ANONCODE(aTHX);
    if (next_op == PL_op->op_next) {   // not died
       dSP;
-      CV* sub=(CV*)TOPs;
-      OP* leave=CvROOT(sub);
-      OP* flag_op=leave->op_next;
-      SV* flag_sv=PAD_BASE_SV(CvPADLIST(sub), flag_op->op_targ);
+      CV* sub = (CV*)TOPs;
+      OP* leave = CvROOT(sub);
+      OP* flag_op = leave->op_next;
+      auto pad_list = CvPADLIST(sub);
+      SV* flag_sv = PAD_BASE_SV(pad_list, flag_op->op_targ);
       if (SvIOK(flag_sv) && SvIVX(flag_sv) != 0) {
          CvFLAGS(sub) |= CVf_LVALUE | CVf_NODEBUG;
       }
@@ -3136,17 +3141,17 @@ HV* lookup_class_in_pkg(pTHX_ HV* stash, const char* class_name, const char* fir
       const char* class_name_part = class_name;
       const char* next_colon = first_colon;
       do {
-         const char* next_name_part = next_colon + 2;
+         const char* next_name_part = next_colon+2;
          const size_t l = next_name_part - class_name_part;
-         imp_class_gvp = (GV**)hv_fetch(stash, class_name_part, l, false);
+         imp_class_gvp = (GV**)hv_fetch(stash, class_name_part, I32(l), false);
          if (!imp_class_gvp || SvTYPE(*imp_class_gvp) != SVt_PVGV || !(stash = GvHV(*imp_class_gvp)))
             return nullptr;
          buf += l;
          buflen -= l;
          class_name_part = next_name_part;
-      } while ((next_colon = (const char*)memchr(class_name_part, ':', buflen - 2)));
+      } while ((next_colon = (const char*)memchr(class_name_part, ':', buflen-2)));
    }
-   if ((imp_class_gvp = (GV**)hv_fetch(stash, buf, buflen, false)) && SvTYPE(*imp_class_gvp) == SVt_PVGV)
+   if ((imp_class_gvp = (GV**)hv_fetch(stash, buf, I32(buflen), false)) && SvTYPE(*imp_class_gvp) == SVt_PVGV)
        return GvHV(*imp_class_gvp);
    return nullptr;
 }
@@ -3154,12 +3159,12 @@ HV* lookup_class_in_pkg(pTHX_ HV* stash, const char* class_name, const char* fir
 void switch_op_interception(pTHX_ AV* dotSUBST_OP, bool enable)
 {
    if (dotSUBST_OP) {
-      const int method_index=intercept_op_reset+enable;
-      for (SV** descrp=AvARRAY(dotSUBST_OP), **endp=descrp+AvFILLp(dotSUBST_OP); descrp<=endp; ++descrp) {
-         AV* op_descr=(AV*)SvRV(*descrp);
-         SV* method_sv=AvARRAY(op_descr)[method_index];
+      const int method_index = intercept_op_reset+enable;
+      for (SV **descrp = AvARRAY(dotSUBST_OP), ** const endp = descrp + AvFILLp(dotSUBST_OP); descrp <= endp; ++descrp) {
+         AV* op_descr = (AV*)SvRV(*descrp);
+         SV* method_sv = AvARRAY(op_descr)[method_index];
          if (method_sv != PmEmptyArraySlot)
-            PL_check[SvIVX(AvARRAY(op_descr)[intercept_op_code])]=(Perl_check_t)SvUVX(method_sv);
+            PL_check[SvIVX(AvARRAY(op_descr)[intercept_op_code])] = (Perl_check_t)SvUVX(method_sv);
       }
    }
 }
@@ -3167,16 +3172,16 @@ void switch_op_interception(pTHX_ AV* dotSUBST_OP, bool enable)
 void establish_lex_imp_ix(pTHX_ int new_ix, bool new_mode)
 {
    if (!current_mode()) {
-      cur_lexical_import_ix=new_ix;
+      cur_lexical_import_ix = new_ix;
       catch_ptrs(aTHX_ nullptr);
    } else if (new_mode) {
-      AV* old_dotSUBST_OP=get_cur_dotSUBST_OP(aTHX);
+      AV* old_dotSUBST_OP = get_cur_dotSUBST_OP(aTHX);
       switch_op_interception(aTHX_ old_dotSUBST_OP, false);
-      cur_lexical_import_ix=new_ix;
+      cur_lexical_import_ix = new_ix;
       switch_op_interception(aTHX_ get_cur_dotSUBST_OP(aTHX), true);
    } else {
       reset_ptrs(aTHX_ nullptr);
-      cur_lexical_import_ix=new_ix;
+      cur_lexical_import_ix = new_ix;
    }
    set_lexical_scope_hint(aTHX);
 }
@@ -3190,24 +3195,24 @@ OP* mark_dbstate(pTHX)
 void store_cov_line(pTHX_ COP* cop, int cnt)
 {
    // skip "(eval NNN)" and anonymous filtered code
-   const char* filename=CopFILE(cop);
+   const char* filename = CopFILE(cop);
    if (filename[0] != '(' && strncmp(filename, "/loader/0x", 10)) {
-      const int srcline=CopLINE(cop);
-      if (srcline==0) {
+      const int srcline = CopLINE(cop);
+      if (srcline == 0) {
          report_parse_error("source line=0 in source file %s", CopFILE(cop));
          return;
       }
       AV* hits_av;
-      SV* file_entry=*hv_fetch(cov_stats, filename, strlen(filename), true);
+      SV* file_entry = *hv_fetch(cov_stats, filename, strlen(filename), true);
       if (SvROK(file_entry)) {
-         hits_av=(AV*)SvRV(file_entry);
+         hits_av = (AV*)SvRV(file_entry);
       } else {
-         hits_av=newAV();
+         hits_av = newAV();
          sv_upgrade(file_entry, SVt_RV);
          SvRV_set(file_entry, (SV*)hits_av);
          SvROK_on(file_entry);
       }
-      SV* hitcnt=*av_fetch(hits_av, srcline-1, TRUE);
+      SV* hitcnt = *av_fetch(hits_av, srcline-1, TRUE);
       if (SvIOK(hitcnt)) {
          SvIV_set(hitcnt, SvIVX(hitcnt)+cnt);
       } else {
@@ -3401,7 +3406,7 @@ SV* namespace_try_lookup(pTHX_ HV* stash, SV* name, I32 type)
    if (get_dotLOOKUP(aTHX_ stash).first) {
       STRLEN l;
       const char* n = SvPV(name, l);
-      GV* gv = *(GV**)hv_fetch(stash, n, l, true);
+      GV* gv = *(GV**)hv_fetch(stash, n, I32(l), true);
       if (SvTYPE(gv) != SVt_PVGV)
          gv_init_pvn(gv, stash, n, l, GV_ADDMULTI);
       lookup(aTHX_ nullMultiDerefItem_ gv, type, nullptr, nullptr);
@@ -3429,9 +3434,9 @@ HV* namespace_lookup_class(pTHX_ HV* stash, const char* class_name, STRLEN class
    HV* pkgLOOKUP;
    std::tie(dotLOOKUP, pkgLOOKUP) = get_dotLOOKUP(aTHX_ stash);
    if (!pkgLOOKUP)
-      return gv_stashpvn(class_name, class_namelen, GV_NOADD_NOINIT);
+      return gv_stashpvn(class_name, I32(class_namelen), GV_NOADD_NOINIT);
 
-   SV* cached_stash = *hv_fetch(pkgLOOKUP, class_name, class_namelen, true);
+   SV* cached_stash = *hv_fetch(pkgLOOKUP, class_name, I32(class_namelen), true);
    if (SvROK(cached_stash))
       return (HV*)SvRV(cached_stash);
    if (!override_negative_cache && SvIOK(cached_stash)) {
@@ -3440,7 +3445,7 @@ HV* namespace_lookup_class(pTHX_ HV* stash, const char* class_name, STRLEN class
    }
 
    const char* first_colon = (const char*)memchr(class_name, ':', class_namelen);
-   size_t l = class_namelen + 2;
+   size_t l = class_namelen+2;
    char smallbuf[64];
    char* buf;
    if (l < sizeof(smallbuf))
@@ -3461,7 +3466,7 @@ HV* namespace_lookup_class(pTHX_ HV* stash, const char* class_name, STRLEN class
    if (!imp_class && lex_imp_ix >= 0) {
       if (lex_imp_ix > 0)
          imp_class = namespace_lookup_class(aTHX_ (HV*)SvRV(AvARRAY(lexical_imports)[lex_imp_ix]), class_name, class_namelen, -1);
-      if ((glob_class = gv_stashpvn(class_name, class_namelen, GV_NOADD_NOINIT)) && is_dummy_pkg(aTHX_ glob_class, true))
+      if ((glob_class = gv_stashpvn(class_name, I32(class_namelen), GV_NOADD_NOINIT)) && is_dummy_pkg(aTHX_ glob_class, true))
          glob_class = nullptr;
       if (imp_class) {
          if (!glob_class || glob_class != imp_class) {
@@ -3547,8 +3552,7 @@ MODULE = namespaces             PACKAGE = namespaces
 
 PROTOTYPES: DISABLE
 
-void
-import(...)
+void import(...)
 PPCODE:
 {
    AV* new_imports = nullptr;
@@ -3561,7 +3565,7 @@ PPCODE:
 
    if (items >= 1 && (arg = ST(1), SvIOK(arg))) {
       // special call from another import routine: skip that many stack frames
-      skip_frames = SvIVX(arg);
+      skip_frames = int(SvIVX(arg));
       ++i;
    }
 
@@ -3599,7 +3603,7 @@ PPCODE:
                if (HvNAME(imp_stash)[0] == '-') {
                   // already one of our shadow stashes
                   AV* prev_import = get_dotIMPORT(aTHX_ imp_stash);
-                  new_imports = av_make(AvFILLp(prev_import) + 1, AvARRAY(prev_import));
+                  new_imports = av_make(AvFILLp(prev_import)+1, AvARRAY(prev_import));
                } else {
                   // a regular stash
                   new_imports = newAV();
@@ -3640,8 +3644,7 @@ PPCODE:
    establish_lex_imp_ix(aTHX_ new_ix, true);
 }
 
-void
-unimport(...)
+void unimport(...)
 PPCODE:
 {
    if (!current_mode()) XSRETURN_EMPTY;
@@ -3649,10 +3652,7 @@ PPCODE:
    establish_lex_imp_ix(aTHX_ 0, false);
 }
 
-void
-VERSION(self,ix)
-   SV* self;
-   I32 ix;
+void VERSION(SV* self, I32 ix)
 PPCODE:
 {
    PERL_UNUSED_ARG(self);
@@ -3661,8 +3661,7 @@ PPCODE:
    establish_lex_imp_ix(aTHX_ ix, true);
 }
 
-void
-memorize_lexical_scope()
+void memorize_lexical_scope()
 PPCODE:
 {
    HE* imp_gve=hv_fetch_ent(CopSTASH(PL_curcop), dot_import_key, false, SvSHARED_HASH(dot_import_key));
@@ -3673,17 +3672,14 @@ PPCODE:
    }
 }
 
-void
-tell_lexical_scope()
+void tell_lexical_scope()
 PPCODE:
 {
    dTARGET;
    XPUSHi(get_lex_imp_ix(aTHX));
 }
 
-void
-temp_disable(stay_off_when_error)
-   SV* stay_off_when_error;
+void temp_disable(SV* stay_off_when_error)
 CODE:
 {
    if (current_mode()) {
@@ -3701,17 +3697,14 @@ CODE:
    }
 }
 
-void
-is_active()
+void is_active()
 PPCODE:
 {
    dTARGET;
    PUSHi(current_mode());
 }
 
-void
-using(dst, ...)
-   SV* dst;
+void using(SV* dst, ...)
 CODE:
 {
    HV* caller_stash =
@@ -3746,10 +3739,7 @@ CODE:
       switch_op_interception(aTHX_ dotSUBST_OP, true);
 }
 
-void
-lookup(pkg, item_name)
-   SV* pkg;
-   SV* item_name;
+void lookup(SV* pkg, SV* item_name)
 PPCODE:
 {
    STRLEN namelen;
@@ -3810,10 +3800,7 @@ PPCODE:
    PUSHs(result);
 }
 
-void
-lookup_sub(pkg, name_sv)
-   SV* pkg;
-   SV* name_sv;
+void lookup_sub(SV* pkg, SV* name_sv)
 PPCODE:
 {
    HV* stash = nullptr;
@@ -3836,10 +3823,7 @@ PPCODE:
    PUSHs(result);
 }
 
-void
-lookup_class(pkg, class_sv, ...)
-   SV* pkg;
-   SV* class_sv;
+void lookup_class(SV* pkg, SV* class_sv, ...)
 PPCODE:
 {
    HV* class_stash;
@@ -3859,14 +3843,14 @@ PPCODE:
       GV* imp_gv;
       I32 lex_ix = 0;
       if (imp_gve && (imp_gv = (GV*)HeVAL(imp_gve), SvIOKp(GvSVn(imp_gv))))
-         lex_ix = SvIVX(GvSV(imp_gv));
+         lex_ix = int(SvIVX(GvSV(imp_gv)));
       if ((class_stash = namespace_lookup_class_autoload(aTHX_ stash, classn, classl, lex_ix))) {
          dTARGET;
          PUSHp(HvNAME(class_stash), HvNAMELEN(class_stash));
          XSRETURN(1);
       }
    }
-   class_stash = gv_stashpvn(classn, classl, GV_NOADD_NOINIT);
+   class_stash = gv_stashpvn(classn, I32(classl), GV_NOADD_NOINIT);
    if (class_stash && !is_dummy_pkg(aTHX_ class_stash)) {
       ST(0) = ST(items-1);
       XSRETURN(1);
@@ -3874,10 +3858,7 @@ PPCODE:
    XSRETURN_UNDEF;
 }
 
-void
-lookup_class_in_caller_scope(stash_ref, class_sv)
-   SV* stash_ref;
-   SV* class_sv;
+void lookup_class_in_caller_scope(SV* stash_ref, SV* class_sv)
 PPCODE:
 {
    STRLEN classl;
@@ -3889,7 +3870,7 @@ PPCODE:
       PUSHp(HvNAME(class_stash), HvNAMELEN(class_stash));
       XSRETURN(1);
    }
-   class_stash = gv_stashpvn(classn, classl, GV_NOADD_NOINIT);
+   class_stash = gv_stashpvn(classn, I32(classl), GV_NOADD_NOINIT);
    if (class_stash && !is_dummy_pkg(aTHX_ class_stash)) {
       ST(0) = ST(1);
       XSRETURN(1);
@@ -3897,10 +3878,7 @@ PPCODE:
    XSRETURN_UNDEF;
 }
 
-void
-declare_const_sub(pkg, name_sv)
-   SV* pkg;
-   SV* name_sv;
+void declare_const_sub(SV* pkg, SV* name_sv)
 PPCODE:
 {
    HV* stash;
@@ -3915,7 +3893,7 @@ PPCODE:
    }
    STRLEN namelen;
    const char* name = SvPV(name_sv, namelen);
-   GV* cgv = (GV*)*hv_fetch(stash, name, namelen, true);
+   GV* cgv = (GV*)*hv_fetch(stash, name, I32(namelen), true);
    if (SvOK(cgv)) {
       if (GvCV(cgv)) Perl_croak(aTHX_ "multiple definition of sub %.*s::%.*s", PmPrintHvNAME(stash), PmPrintGvNAME(cgv));
    } else {
@@ -3930,10 +3908,7 @@ PPCODE:
    propagate_sub(aTHX_ stash, cgv);
 }
 
-void
-declare_var(pkg, var)
-   SV* pkg;
-   SV* var;
+void declare_var(SV* pkg, SV* var)
 PPCODE:
 {
    STRLEN varnamelen;
@@ -3948,21 +3923,21 @@ PPCODE:
    } else {
       croak_xs_usage(cv, "\"pkg\", \"[$@%%]varname\"");
    }
-   GV* gv=*(GV**)hv_fetch(stash, varname+1, varnamelen-1, true);
+   GV* gv = *(GV**)hv_fetch(stash, varname+1, I32(varnamelen-1), true);
    if (SvTYPE(gv) != SVt_PVGV)
       gv_init_pvn(gv, stash, varname+1, varnamelen-1, GV_ADDMULTI);
    SV* sv=nullptr;
    switch (varname[0]) {
    case '$':
-      sv=GvSVn(gv);
+      sv = GvSVn(gv);
       GvIMPORTED_SV_on(gv);
       break;
    case '@':
-      sv=(SV*)GvAVn(gv);
+      sv = (SV*)GvAVn(gv);
       GvIMPORTED_AV_on(gv);
       break;
    case '%':
-      sv=(SV*)GvHVn(gv);
+      sv = (SV*)GvHVn(gv);
       GvIMPORTED_HV_on(gv);
       break;
    default:
@@ -3971,11 +3946,7 @@ PPCODE:
    if (GIMME_V != G_VOID) PUSHs(sv_2mortal(newRV(sv)));
 }
 
-void
-intercept_operation(pkg, opname_sv, subr, ...)
-   SV* pkg;
-   SV* opname_sv;
-   SV* subr;
+void intercept_operation(SV* pkg, SV* opname_sv, SV* subr, ...)
 PPCODE:
 {
    HV* stash = SvPOK(pkg) ? gv_stashsv(pkg, GV_NOADD_NOINIT) : SvROK(pkg) ? (HV*)SvRV(pkg) : CopSTASH(PL_curcop);
@@ -4091,8 +4062,7 @@ PPCODE:
 }
 
 
-void
-caller_scope()
+void caller_scope()
 PPCODE:
 {
    dTARGET;
@@ -4103,9 +4073,7 @@ PPCODE:
    XPUSHs(TARG);
 }
 
-void
-fall_off_to_nextstate(subr)
-   SV* subr;
+void fall_off_to_nextstate(SV* subr)
 PPCODE:
 {
    SV* sub;
@@ -4116,8 +4084,7 @@ PPCODE:
    }
 }
 
-void
-skip_return()
+void skip_return()
 PPCODE:
 {
    PERL_CONTEXT* cx;
@@ -4129,9 +4096,7 @@ PPCODE:
    }
 }
 
-void
-store_explicit_typelist(args_ref)
-   SV* args_ref;
+void store_explicit_typelist(SV* args_ref)
 PPCODE:
 {
    AV* args = (AV*)SvRV(args_ref);
@@ -4148,14 +4113,14 @@ PPCODE:
            SvTYPE(src_av) == SVt_PVAV && SvSTASH(src_av) == ExplicitTypelist_stash)) {
          list_ref = av_shift(args);
          if (AvREAL(args)) SvREFCNT_dec(list_ref);  // account for shift()
-         num_types = AvFILLp(src_av) + 1;
+         num_types = I32(AvFILLp(src_av)+1);
          assert(num_types != 0);
          if (SvREADONLY(list_ref)) {
             // the type list constructed once; make a temporary copy, because it can be changed during type deduction
             dst_av = newAV();
-            av_fill(dst_av, num_types - 1);
-            SV** dst=AvARRAY(dst_av);
-            for (SV **src = AvARRAY(src_av), **src_end = src + num_types; src < src_end; ++src, ++dst)
+            av_fill(dst_av, num_types-1);
+            SV** dst = AvARRAY(dst_av);
+            for (SV **src = AvARRAY(src_av), **const src_end = src + num_types; src < src_end; ++src, ++dst)
                *dst = SvREFCNT_inc_simple_NN(*src);
             list_ref = newRV_noinc((SV*)dst_av);
          }
@@ -4165,15 +4130,13 @@ PPCODE:
       }
       mg = sv_magicext((SV*)args, list_ref, PERL_MAGIC_ext, &explicit_typelist_vtbl, nullptr, 0);
       if (dst_av) SvREFCNT_dec(list_ref);  // list_ref is exclusively owned by MAGIC, but sv_magicext always bumps the refcounter
-      mg->mg_private = num_types;
+      mg->mg_private = U8(num_types);
    }
    PUSHi(mg->mg_private);
    if (GIMME_V == G_ARRAY) XPUSHs(mg->mg_obj);
 }
 
-void
-fetch_explicit_typelist(args_ref)
-   SV* args_ref;
+void fetch_explicit_typelist(SV* args_ref)
 PPCODE:
 {
    MAGIC* mg = fetch_explicit_typelist_magic(aTHX_ SvRV(args_ref));
@@ -4186,8 +4149,7 @@ PPCODE:
    }
 }
 
-void
-collecting_coverage()
+void collecting_coverage()
 PPCODE:
 {
 #if defined(POLYMAKE_GATHER_CODE_COVERAGE)
@@ -4197,8 +4159,7 @@ PPCODE:
    XSRETURN_NO;
 }
 
-void
-flush_coverage_stats()
+void flush_coverage_stats()
 PPCODE:
 {
 #if defined(POLYMAKE_GATHER_CODE_COVERAGE)
@@ -4229,9 +4190,7 @@ PPCODE:
 
 MODULE = namespaces             PACKAGE = namespaces::AnonLvalue
 
-void
-import(pkg, ...)
-   SV* pkg;
+void import(SV* pkg, ...)
 PPCODE:
 {
    if (items == 1) {
@@ -4250,8 +4209,7 @@ PPCODE:
 
 MODULE = namespaces             PACKAGE = namespaces::Params
 
-void
-import(...)
+void import(...)
 PPCODE:
 {
    AV* store_names_in = nullptr;
@@ -4300,16 +4258,17 @@ PPCODE:
             // prototype object array reference stored in a local variable
 #if PerlVersion >= 5180
             CV* compiled_cv =PL_compcv;
-            I32 my_var_padix = PL_comppad_name_fill;
+            PADOFFSET my_var_padix = PL_comppad_name_fill;
 #else
             // For BEGIN block a separate compcv was created
             CV* compiled_cv = PL_compcv->sv_any->xcv_outside;
-            I32 my_var_padix = AvFILLp(AvARRAY(compiled_cv->sv_any->xcv_padlist)[0]);
+            PADOFFSET my_var_padix = AvFILLp(AvARRAY(compiled_cv->sv_any->xcv_padlist)[0]);
 #endif
             for (; my_var_padix > 0; --my_var_padix) {
-               SV* my_var = PAD_BASE_SV(CvPADLIST(compiled_cv), my_var_padix);
+               auto pad_list = CvPADLIST(compiled_cv);
+               SV* my_var = PAD_BASE_SV(pad_list, my_var_padix);
                if (my_var == lead) {
-                  list_gv = (GV*)(size_t)my_var_padix;
+                  list_gv = reinterpret_cast<GV*>(my_var_padix);
                   break;
                }
             }
@@ -4327,7 +4286,7 @@ PPCODE:
       Perl_magic_sethint(aTHX_ uv_hint, &hint_mg);
    }
    if (store_names_in) {
-      av_fill(store_names_in, items - first_name - 1);
+      av_fill(store_names_in, items-first_name-1);
       for (SV** store_names_at = AvARRAY(store_names_in);  first_name < items;  ++store_names_at, ++first_name)
          *store_names_at = SvREFCNT_inc_simple_NN(ST(first_name));
    }
@@ -4335,18 +4294,15 @@ PPCODE:
 
 MODULE = namespaces             PACKAGE = namespaces::BeginAV
 
-void
-PUSH(avref, sv)
-   SV* avref;
-   SV* sv;
+void PUSH(SV* avref, SV* sv)
 PPCODE:
 {
    // This is called immediately before execution of the BEGIN subroutine.
    // Its task is to temporarily switch off the compilation mode unless this is the follow-up 'use namespaces'
    SV* beginav = SvRV(avref);
-   CV* cv = (CV*)sv;
+   CV* begin_cv = (CV*)sv;
    bool require_seen = false;
-   OP* rootop = CvROOT(cv);
+   OP* rootop = CvROOT(begin_cv);
    assert(beginav == (SV*)PL_beginav_save);
    assert(rootop->op_type == OP_LEAVESUB);
    OP* o = cUNOPx(rootop)->op_first;    // lineseq?
@@ -4356,7 +4312,7 @@ PPCODE:
          o = cUNOPo->op_first;
          SV* filename = cSVOPo->op_sv;
          if (!filename)
-            filename = PadARRAY((PadlistARRAY(CvPADLIST(cv)))[1])[o->op_targ];
+            filename = PadARRAY((PadlistARRAY(CvPADLIST(begin_cv)))[1])[o->op_targ];
          if (hv_exists_ent(special_imports, filename, 0)) {
             SvRMAGICAL_off(beginav);
             av_push((AV*)beginav, sv);
@@ -4372,7 +4328,7 @@ PPCODE:
    reset_ptrs(aTHX_ nullptr);
    rootop->op_ppaddr = &intercept_pp_leavesub;
    if (require_seen) {
-      to_restore->cv = cv;
+      to_restore->cv = begin_cv;
       cur_lexical_import_ix = -1;
       cur_lexical_flags = 0;
    }

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -78,8 +78,8 @@ Options are:
        ignore - report them briefly without showing the differing test results
        hide   - do not report then at all
        show   - report them fully like the normal failures
-   --validate-XML
-       perform additional sanity checks on data files: generate elaborated schemata,
+   --validate
+       perform additional sanity checks on data files: generate elaborated schemas,
        validate all input files, and check the idempotence of a save & load sequence
    --cpperl-root PATH
        write new or updated cpperl files beneath the given root directory
@@ -184,7 +184,7 @@ if (!@testgroups && !@examples && !@extensions && !-d "$InstallTop/testscenarios
 
 my $disable_examples = @examples == 1 && uc($examples[0]) eq "NONE"
   and pop @examples;
-$Core::InteractiveHelp::store_provenience = !$disable_examples;
+$Core::Help::Topic::store_provenience = !$disable_examples;
 
 local $Core::CPlusPlus::code_generation = $cpperl_root eq "/dev/null" ? "none" : "shared";
 $Core::CPlusPlus::cpperl_src_root = "$cpperl_root/$$" if defined($cpperl_root);
@@ -200,7 +200,7 @@ foreach my $app ($env->shuffle->(@apps)) {
    readonly($_);        # detect the abuse of $_ in the rules
 
    application($app);
-   $_->include_rules("*/test.rules") for $application, values %{$application->used};
+   $application->include_rules("*/test.rules");
    local unshift @INC, $application;
    local unshift @{$application->myINC}, $Test::Subgroup::preamble;
 
@@ -312,23 +312,6 @@ foreach my $app ($env->shuffle->(@apps)) {
    $env->close_testsuite;
 }
 
-
-if ($validate) {
-   if (keys %{$env->validation_groups}) {
-      my $schemata=$env->create_validation_schemata;
-   
-      while (my ($app, $groups)=each %{$env->validation_groups}) {
-         $env->start_testsuite($jenkins_report, $app, "validation");
-         foreach my $group (@$groups) {
-            my $OK=$group->run($schemata);
-            $exit ||= $OK<=0;
-         }
-         $env->close_testsuite;
-      }
-   }
-}
-
-
 if (!$jenkins_report) {
    if (@testgroups==keys %found_testgroups) {
       $env->print_summary;
@@ -373,7 +356,7 @@ if ($Main::standalone_script) {
             }
             if (defined $obj) {
                eval {
-                  $obj=Test::Environment::load_trusted_object_file($obj);
+                  $obj = Test::Environment::load_trusted_data_file($obj);
                   if (@remove) {
                      $obj->remove(@remove);
                   }

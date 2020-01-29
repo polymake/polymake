@@ -2,12 +2,11 @@
  "inst": [
   {"builtin": "DirectedMulti", "include": ["polymake/Graph.h"], "pkg": "Polymake::common::DirectedMulti"},
   {"builtin": "double", "pkg": "Polymake::common::Float"},
-  {"builtin": "long", "pkg": "Polymake::common::Long"},
   {"builtin": "Undirected", "include": ["polymake/Graph.h"], "pkg": "Polymake::common::Undirected"},
   {"builtin": "pm::all_selector", "include": ["polymake/Matrix.h"], "pkg": "Polymake::common::all_rows_or_cols"},
   {"builtin": "UndirectedMulti", "include": ["polymake/Graph.h"], "pkg": "Polymake::common::UndirectedMulti"},
   {"builtin": "Symmetric", "include": ["polymake/IncidenceMatrix.h"], "pkg": "Polymake::common::Symmetric"},
-  {"builtin": "int", "pkg": "Polymake::common::Int"},
+  {"builtin": "Int", "pkg": "Polymake::common::Int"},
   {"builtin": "Min", "include": ["polymake/TropicalNumber.h"], "pkg": "Polymake::common::Min"},
   {"builtin": "Directed", "include": ["polymake/Graph.h"], "pkg": "Polymake::common::Directed"},
   {"builtin": "bool", "pkg": "Polymake::common::Bool"},

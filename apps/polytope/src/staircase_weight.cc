@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,12 +21,12 @@
 
 namespace polymake { namespace polytope {
 
-Vector<Rational> staircase_weight(const int k, const int l)
+Vector<Rational> staircase_weight(const Int k, const Int l)
 {
    Vector<Rational> weight(k*l);
-   int index=0;
-   for (int i=1; i<=k; ++i)
-      for (int j=k+1; j<=k+l; ++j) {
+   Int index = 0;
+   for (Int i = 1; i <= k; ++i)
+      for (Int j = k+1; j <= k+l; ++j) {
          weight[index++]=(k-i)*(j-k-1)+(i-1)*(k+l-j);
       }
 

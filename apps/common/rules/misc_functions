@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -20,10 +20,10 @@
 # (aka ancestor in the inheritance hierarchy).
 # The object loses all properties that are unknown in the target type.
 # @tparam Target  the desired new type
-# @param Core::Object object to be modified
-# @return Core::Object  the same //object//, but with modified type
+# @param Core::BigObject object to be modified
+# @return Core::BigObject  the same //object//, but with modified type
 
-user_function cast<Target>(Core::Object) { $_[0]->cast_me(typeof Target); }
+user_function cast<Target>(Core::BigObject) { $_[0]->cast_me(typeof Target); }
 
 
 # @category Utilities
@@ -159,7 +159,7 @@ user_function is_nonnegative {
 # Returns the first //m// Fibonacci numbers.
 # @param Int m
 # @return ARRAY
-user_function fibonacci {
+user_function fibonacci_numbers {
    my ($m) = @_;
    my @numbers;
    if ($m>=1) {

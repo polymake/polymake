@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,11 +28,11 @@ namespace polymake { namespace topaz {
   
 namespace {
 
-bool regular(const Set<int>& s, const Set<int>& t)
+bool regular(const Set<Int>& s, const Set<Int>& t)
 {
    auto i = entire(s);
    assert(!i.at_end());
-   Set<int>::const_iterator j(t.begin());
+   Set<Int>::const_iterator j = t.begin();
    assert(!j.at_end());
 
    // check B_{-1}
@@ -63,49 +63,53 @@ bool regular(const Set<int>& s, const Set<int>& t)
 
 } // end unnamed namespace
 
-Array<PowerSet<int> > stiefel_whitney(const Array<Set<int> >& facets, perl::OptionSet options)
+Array<PowerSet<Int>> stiefel_whitney(const Array<Set<Int>>& facets, OptionSet options)
 {
-   const bool verbose=options["verbose"];
+   const bool verbose = options["verbose"];
 
    typedef SimplicialComplex_as_FaceMap<> sc_type;
    sc_type SC (facets);
    
-   const int d(SC.dim());
-   int high_d;
-   if(!(options["high_d"]>>high_d)) high_d=d;
-   int low_d;
-   if(!(options["low_d"]>>low_d)) low_d=0;
+   const Int d = SC.dim();
+   Int high_d;
+   if (!(options["high_d"]>>high_d))
+      high_d = d;
+   Int low_d;
+   if (!(options["low_d"]>>low_d))
+      low_d = 0;
    
-   if (low_d<0) low_d+=d+1;
-   if (high_d<0) high_d+=d+1;
+   if (low_d < 0)
+      low_d += d+1;
+   if (high_d < 0)
+      high_d += d+1;
    
    if (high_d < low_d || high_d > d)
       throw std::runtime_error("stiefel_whitney: dim_low(" + std::to_string(low_d) + "), dim_high(" + std::to_string(high_d) + ") out of bounds");
    
-   Array< PowerSet<int> > omega_cycle(high_d-low_d+1);
-   Array< PowerSet<int> >::iterator omega_cycle_k=omega_cycle.begin();
-   SC.complete_faces(d,low_d);
+   Array<PowerSet<Int>> omega_cycle(high_d-low_d+1);
+   auto omega_cycle_k = omega_cycle.begin();
+   SC.complete_faces(d, low_d);
    
-   for (int k=low_d; k<=high_d; ++k, ++omega_cycle_k) {
-      const int size_k(SC.size_of_dim(k));
-      Array< Set<int> > face(size_k);
+   for (Int k = low_d; k <= high_d; ++k, ++omega_cycle_k) {
+      const Int size_k = SC.size_of_dim(k);
+      Array<Set<Int>> face(size_k);
       if (verbose)
          cout << "f_" << k << "=" << size_k << ", regular pairs:" << std::endl;
-      SparseVector<GF2> omega(size_k);
-      for (int l=k; l<=d; ++l)
+      SparseVector<GF2_old> omega(size_k);
+      for (Int l = k; l <= d; ++l)
          for (auto t = entire(SC.faces_of_dim(l)); !t.at_end(); ++t) {
             for (auto s = entire(all_subsets_of_k(*t,k+1)); !s.at_end(); ++s) {
                if (regular(*s,*t)) {
                   if (verbose)
                      cout << " " << *s << *t << endl;
-                  const int s_idx(SC[*s]);
+                  const Int s_idx = SC[*s];
                   if (face[s_idx].empty()) face[s_idx]=*s;
-                  omega[s_idx]+=GF2(1);
+                  omega[s_idx]+=GF2_old(1);
                }
             }
          }
       if (k!=d) {
-         SparseMatrix<GF2> delta_kk(SC.boundary_matrix<GF2>(k+1));
+         SparseMatrix<GF2_old> delta_kk(SC.boundary_matrix<GF2_old>(k+1));
          omega = reduce(delta_kk,omega);
       }
       
@@ -118,7 +122,8 @@ Array<PowerSet<int> > stiefel_whitney(const Array<Set<int> >& facets, perl::Opti
 }
 
 UserFunction4perl("# @category Other"
-                  "# Computes __Stiefel-Whitney classes__ of mod 2 Euler space (in particular, closed manifold).\n"
+                  "# Computes __Stiefel-Whitney homology classes__ of mod 2 Euler space (in particular, closed manifold).\n"
+                  "# See Richard Z. Goldstein and Edward C. Turner, Proc. Amer. Math. Soc., 58:339-342 (1976)"
                   "# Use option //verbose// to show regular pairs and cycles.\n"
                   "# A narrower dimension range of interest can be specified.\n"
                   "# Negative values are treated as co-dimension - 1\n"
@@ -127,7 +132,7 @@ UserFunction4perl("# @category Other"
                   "# @option Int low_dim"
                   "# @option Bool verbose"
                   "# @return Array<PowerSet<Int>>",
-                  &stiefel_whitney,"stiefel_whitney(Array<Set<Int>> { high_dim => undef, low_dim => undef, verbose => 0})");
+                  &stiefel_whitney,"stiefel_whitney(Array<Set<Int>> { high_dim => undef, low_dim => undef, verbose => 0} )");
    
 } }
 

@@ -1,5 +1,5 @@
 {"app": "common",
  "inst": [
-  {"args": ["perl::Canned<const Array<int>&>"], "func": "permutation_cycles", "include": ["polymake/Array.h", "polymake/permutations.h"], "ret": "list", "sig": "permutation_cycles:L.X"},
+  {"args": ["perl::Canned<const Array<Int>&>"], "func": "permutation_cycles", "include": ["polymake/Array.h", "polymake/permutations.h"], "ret": "list", "sig": "permutation_cycles:L.X"},
  null ],
 "version": 3}

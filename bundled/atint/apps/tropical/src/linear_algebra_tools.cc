@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -47,16 +47,16 @@ Vector<Rational> linearRepresentation(Vector<Rational> w, Matrix<Rational> A)
     throw std::runtime_error("Dimension mismatch of generating set and vector");
   }
 
-  int usedRows = 0; //The number of times we actually used a row for reducing
+  Int usedRows = 0; //The number of times we actually used a row for reducing
   Rational coeff = 0;
   Vector<Rational> zv = zero_vector<Rational>(w.dim());
   if (w == zv) return solution;
 
   // Go through each column of w / A and try to reduce it using a row of A
-  for (int c = 0; c < w.dim(); ++c) {
+  for (Int c = 0; c < w.dim(); ++c) {
     // Find the first row of A such that A(row,c) != 0 and use this row to reduce the column c.
     // Then move it to the end (i.e. above the row we used the last time)
-    for (int r = 0; r < A.rows() - usedRows; ++r) {
+    for (Int r = 0; r < A.rows() - usedRows; ++r) {
       if (A(r,c) != 0) {
         // First reduce w, if necessary
         if (w[c] != 0) {
@@ -66,14 +66,14 @@ Vector<Rational> linearRepresentation(Vector<Rational> w, Matrix<Rational> A)
           if (w == zv) return solution;
         }
         // Actually we first move the row to the end
-        for (int sc = 0; sc < A.cols(); ++sc) {
+        for (Int sc = 0; sc < A.cols(); ++sc) {
           A(r,sc).swap(A(A.rows()-usedRows-1,sc));
         }
-        for (int uc = 0; uc < U.cols(); ++uc) {
+        for (Int uc = 0; uc < U.cols(); ++uc) {
           U(r,uc).swap(U(A.rows()-usedRows-1,uc));
         }
         // Now we reduce all rows below it (the ones above, we don't need anymore)
-        for (int s = 0; s < A.rows() - usedRows - 1; ++s) {
+        for (Int s = 0; s < A.rows() - usedRows - 1; ++s) {
           if (A(s,c) != 0) {
             coeff = A(s,c) / A(A.rows() - usedRows -1,c);
             A.row(s) -= coeff * A.row(A.rows() - usedRows - 1);
@@ -98,20 +98,20 @@ Vector<Rational> linearRepresentation(Vector<Rational> w, Matrix<Rational> A)
   return solution;
 } // END linearRepresentation
 
-Vector<Rational> functionRepresentationVector(const Set<int>& rayIndices,
+Vector<Rational> functionRepresentationVector(const Set<Int>& rayIndices,
                                               const Vector<Rational>& v,
                                               const Matrix<Rational>& rays,
                                               const Matrix<Rational>& linealitySpace)
 {
-  const int ambient_dim = std::max(rays.cols(), linealitySpace.cols());
-  const int lineality_dim = linealitySpace.rows();
+  const Int ambient_dim = std::max(rays.cols(), linealitySpace.cols());
+  const Int lineality_dim = linealitySpace.rows();
   // Put ray indices in fixed order
-  Array<int> fixedIndices(rayIndices);
+  Array<Int> fixedIndices(rayIndices);
   // Matrix of generators
   ListMatrix<Vector<Rational>> m(0,ambient_dim);
   // First affine ray 
   Vector<Rational> baseray;
-  int baseRayIndex = -1; //Index of baseray in fixedIndices
+  Int baseRayIndex = -1; //Index of baseray in fixedIndices
 
   // Compute matrix of generators:
   // We want to write v as a*first_vertex + sum b_i (vertex_i - first_vertex) + sum c_i ray_i 
@@ -148,10 +148,10 @@ Vector<Rational> functionRepresentationVector(const Set<int>& rayIndices,
   // Insert coefficients at correct places
   Vector<Rational> result(lineality_dim + rays.rows());
   for (auto r = entire<indexed>(fixedIndices); !r.at_end(); ++r) {
-    int r_index = r.index();
+    Int r_index = r.index();
     if (r_index != baseRayIndex) {
       // If a ray came after the baseray, its matrix row index is one lower then its array index.
-      int matrixindex = (baseRayIndex == -1) ? r_index : (r_index > baseRayIndex ? r_index-1 : r_index);
+      Int matrixindex = (baseRayIndex == -1) ? r_index : (r_index > baseRayIndex ? r_index-1 : r_index);
       result[*r] = repv[matrixindex];
       // if this is an affine ray, substract its coefficient at the baseray
       if (rays(*r,0) != 0) {
@@ -161,8 +161,8 @@ Vector<Rational> functionRepresentationVector(const Set<int>& rayIndices,
   }
 
   // Insert linspace coefficients at the end
-  int repvSize = repv.dim();
-  for (int lingen = 0; lingen < lineality_dim; ++lingen) {
+  Int repvSize = repv.dim();
+  for (Int lingen = 0; lingen < lineality_dim; ++lingen) {
     result[rays.rows() + lingen] = repv[repvSize - lineality_dim + lingen];
   }
   return result;    

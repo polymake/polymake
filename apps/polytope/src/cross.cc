@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,32 +25,32 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
-perl::Object cross(int d, const Scalar& s, perl::OptionSet options)
+BigObject cross(Int d, const Scalar& s, OptionSet options)
 {
    if (d < 1)
       throw std::runtime_error("cross : dimension d >= 1 required");
 
-   if (d > std::numeric_limits<int>::digits-1)
-      throw std::runtime_error("cross: in this dimension the number of facets exceeds the machine int size ");
+   if (size_t(d) >= sizeof(Int)*8-1)
+      throw std::runtime_error("cross: in this dimension the number of facets exceeds the machine Int size ");
 
    if (s <= zero_value<Scalar>())
       throw std::runtime_error("cross : scale >= 0 required");
 
-   const int n_vertices=2*d;
+   const Int n_vertices = 2*d;
 
-   perl::Object p("Polytope", mlist<Scalar>());
+   BigObject p("Polytope", mlist<Scalar>());
    p.set_description() << "cross-polytope of dimension " << d << endl;
 
-   SparseMatrix<Scalar> V(n_vertices,d+1);
+   SparseMatrix<Scalar> V(n_vertices, d+1);
    V.col(0).fill(1);
-   int c=1;
-   for (auto v=entire(rows(V)); !v.at_end(); ++v, ++c) {
-      (*v)[c]=s;
+   Int c = 1;
+   for (auto v = entire(rows(V)); !v.at_end(); ++v, ++c) {
+      (*v)[c] = s;
       ++v;
-      (*v)[c]=-s;
+      (*v)[c] = -s;
    }
-   IncidenceMatrix<> VIF(1<<d, n_vertices);
-   copy_range(CubeFacets<int>(d).begin(), cols(VIF).begin());
+   IncidenceMatrix<> VIF(1L << d, n_vertices);
+   copy_range(CubeFacets<Int>(d).begin(), cols(VIF).begin());
 
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("CONE_DIM") << d+1;
@@ -70,9 +70,9 @@ perl::Object cross(int d, const Scalar& s, perl::OptionSet options)
    return p;
 }
 
-perl::Object octahedron() 
+BigObject octahedron() 
 {
-   const perl::OptionSet no_options;
+   const OptionSet no_options;
    return cross(3,one_value<Rational>(),no_options);
 }
 

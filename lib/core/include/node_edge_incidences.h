@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,10 +28,10 @@ template <typename Coord, typename Graph> inline
 SparseMatrix<Coord> node_edge_incidences(const GenericGraph<Graph, graph::Directed>& G)
 {
    SparseMatrix<Coord> ne(G.top().nodes(), G.top().edges());
-   int k=0;
-   for (auto e=entire(edges(G)); !e.at_end(); ++e, ++k) {
-      ne(e.to_node(),  k)=1;
-      ne(e.from_node(),k)=-1;
+   Int k = 0;
+   for (auto e = entire(edges(G)); !e.at_end(); ++e, ++k) {
+      ne(e.to_node(),   k) = 1;
+      ne(e.from_node(), k) =-1;
    }
    return ne;
 }
@@ -42,10 +42,10 @@ template <typename Coord, typename Graph> inline
 SparseMatrix<Coord> node_edge_incidences(const GenericGraph<Graph, graph::Undirected>& G)
 {
    SparseMatrix<Coord> ne(G.top().nodes(), G.top().edges());
-   int k=0;
+   Int k = 0;
    for (auto e=entire(edges(G)); !e.at_end(); ++e, ++k) {
-      ne(e.to_node(),  k)=1;
-      ne(e.from_node(),k)=1;
+      ne(e.to_node(),   k) = 1;
+      ne(e.from_node(), k) = 1;
    }
    return ne;
 }

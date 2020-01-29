@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,32 +26,34 @@ namespace polymake { namespace polytope {
 
 namespace {
 
-perl::Object simplex_action(int d) {
-   const int n_gens= d==1 ? 1 : 2;
-   Array< Array< int > > gens(n_gens);
-   if ( d==1 ) {
-      gens[0]=Array<int>{1, 0};
+BigObject simplex_action(Int d)
+{
+   const Int n_gens= d == 1 ? 1 : 2;
+   Array<Array<Int>> gens(n_gens);
+   if (d == 1) {
+      gens[0] = Array<Int>{1, 0};
    } else {
-      Array<int> gen{sequence(0,d+1)};
+      Array<Int> gen{sequence(0,d+1)};
       gen[0]=1;
       gen[1]=0;
       gens[0]=gen;
       
       gen[0]=d;
-      for ( int j=1; j<=d; ++j ) {
+      for (Int j = 1; j <= d; ++j) {
          gen[j]=j-1; 
       }
       gens[1]=gen;
    }
 
-   perl::Object a("group::PermutationAction");
+   BigObject a("group::PermutationAction");
    a.take("GENERATORS") << gens;
 
    return a;
 }
 
 
-void add_simplex_data(perl::Object& p, const int d, const bool group_flag) {
+void add_simplex_data(BigObject& p, const Int d, const bool group_flag)
+{
    p.take("CONE_DIM") << d+1;   
    p.take("N_VERTICES") << d+1;
    p.take("SIMPLICIALITY") << d;
@@ -59,7 +61,7 @@ void add_simplex_data(perl::Object& p, const int d, const bool group_flag) {
    p.take("FEASIBLE") << true;
    p.take("POINTED") << true;
    if ( group_flag ) {
-      perl::Object g("group::Group");
+      BigObject g("group::Group");
       g.set_description() << "full combinatorial group on vertices of " << d << "-dim simplex" << endl;
       g.set_name("fullCombinatorialGroupOnRays");
       p.take("GROUP") << g;
@@ -70,14 +72,14 @@ void add_simplex_data(perl::Object& p, const int d, const bool group_flag) {
 } // end anonymous namespace
 
 template<typename Scalar>
-perl::Object simplex(int d, const Scalar& s, perl::OptionSet options)
+BigObject simplex(Int d, const Scalar& s, OptionSet options)
 {
    if (d < 0)
       throw std::runtime_error("dimension must be non-negative");
-   if (s==0)
+   if (s == 0)
       throw std::runtime_error("scale must be non-zero");
 
-   perl::Object p("Polytope", mlist<Scalar>());
+   BigObject p("Polytope", mlist<Scalar>());
    p.set_description() << "standard simplex of dimension " << d << endl;
 
    SparseMatrix<Scalar> V( ones_vector<Scalar>(d+1) | (zero_vector<Scalar>(d) / (s*unit_matrix<Scalar>(d))));
@@ -92,14 +94,14 @@ perl::Object simplex(int d, const Scalar& s, perl::OptionSet options)
 
 typedef QuadraticExtension<Rational> QE;
 
-perl::Object regular_simplex(const int d, perl::OptionSet options)
+BigObject regular_simplex(const Int d, OptionSet options)
 {
    if (d < 0)
       throw std::runtime_error("dimension must be non-negative");
    if (d==0)
       return simplex< QE >(0,QE(1,0,0),options);
 
-   perl::Object p("Polytope<QuadraticExtension>");
+   BigObject p("Polytope<QuadraticExtension>");
    p.set_description() << "regular simplex of dimension " << d << endl;
 
    QE c(Rational(1,d),Rational(-1,d),d+1);
@@ -114,12 +116,12 @@ perl::Object regular_simplex(const int d, perl::OptionSet options)
    
 }
 
-perl::Object fano_simplex(int d, perl::OptionSet options)
+BigObject fano_simplex(Int d, OptionSet options)
 {
    if (d <= 0)
       throw std::runtime_error("fano_simplex : dimension must be postive");
 
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.set_description() << "Fano simplex of dimension " << d << endl;
 
    SparseMatrix<Rational> V( ones_vector<Rational>(d+1) | (unit_matrix<Rational>(d) / same_element_vector<Rational>(-1,d)) );
@@ -133,18 +135,18 @@ perl::Object fano_simplex(int d, perl::OptionSet options)
    return p;
 }
 
-perl::Object lecture_hall_simplex(int d, perl::OptionSet options)
+BigObject lecture_hall_simplex(Int d, OptionSet options)
 {
    if (d <= 0)
       throw std::runtime_error("lecture_hall_simplex : dimension must be postive");
 
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.set_description() << "lecture hall simplex of dimension " << d << endl;
 
    Matrix<Rational> V(d+1,d+1);
-   for (int i=0; i<=d; ++i) {
-      V(i,0)=1;
-      for (int k=d; k>d-i; --k) V(i,k)=k;
+   for (Int i = 0; i <= d; ++i) {
+      V(i,0) = 1;
+      for (Int k = d; k > d-i; --k) V(i,k)=k;
    }
 
    p.take("VERTICES") << V;

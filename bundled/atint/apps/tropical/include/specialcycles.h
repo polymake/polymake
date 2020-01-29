@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -45,11 +45,11 @@
 namespace polymake { namespace tropical {
 
 template <typename Addition>
-perl::Object empty_cycle(int ambient_dim)
+BigObject empty_cycle(Int ambient_dim)
 {
-  perl::Object cycle("Cycle", mlist<Addition>());
+  BigObject cycle("Cycle", mlist<Addition>());
   cycle.take("VERTICES") << Matrix<Rational>(0,ambient_dim+2);
-  cycle.take("MAXIMAL_POLYTOPES") << Array<Set<int> >();
+  cycle.take("MAXIMAL_POLYTOPES") << Array<Set<Int>>();
   cycle.take("WEIGHTS") << Vector<Integer>();
   cycle.take("PROJECTIVE_AMBIENT_DIM") << ambient_dim;
   cycle.set_description() << "Empty cycle in dimension " << ambient_dim;
@@ -58,7 +58,7 @@ perl::Object empty_cycle(int ambient_dim)
 }
 
 template <typename Addition>
-perl::Object point_collection(Matrix<Rational> m, const Vector<Integer>& weights)
+BigObject point_collection(Matrix<Rational> m, const Vector<Integer>& weights)
 {
   // Sanity check
   if (m.rows() == 0)
@@ -70,11 +70,11 @@ perl::Object point_collection(Matrix<Rational> m, const Vector<Integer>& weights
   m = ones_vector<Rational>() | m;
 
   // Create polytopes
-  Array<Set<int> > polytopes(m.rows());
-  for (int i = 0; i < polytopes.size(); ++i)
+  Array<Set<Int>> polytopes(m.rows());
+  for (Int i = 0; i < polytopes.size(); ++i)
     polytopes[i] = scalar2set(i);
 
-  perl::Object cycle("Cycle", mlist<Addition>());
+  BigObject cycle("Cycle", mlist<Addition>());
   cycle.take("PROJECTIVE_VERTICES") << m;
   cycle.take("MAXIMAL_POLYTOPES") << polytopes;
   cycle.take("WEIGHTS") << weights;
@@ -83,7 +83,7 @@ perl::Object point_collection(Matrix<Rational> m, const Vector<Integer>& weights
 }
 
 template <typename Addition> 
-perl::Object uniform_linear_space(const int n, const int k, Integer weight = 1)
+BigObject uniform_linear_space(const Int n, const Int k, Integer weight = 1)
 {
   // Ensure that dimensions match
   if (k > n) 
@@ -101,15 +101,15 @@ perl::Object uniform_linear_space(const int n, const int k, Integer weight = 1)
   vertices = unit_vector<Rational>(n+2,0) / vertices;
 
   // Create cones
-  Array<Set<int>> polytopes{ all_subsets_of_k(sequence(1,n+1), k) };
-  for (int i = 0; i < polytopes.size(); ++i)
+  Array<Set<Int>> polytopes{ all_subsets_of_k(sequence(1,n+1), k) };
+  for (Int i = 0; i < polytopes.size(); ++i)
     polytopes[i] += 0;
 
   // Create weights
   Vector<Integer> weights = weight * ones_vector<Integer>(polytopes.size());
 
   // Create final object
-  perl::Object fan("Cycle", mlist<Addition>());
+  BigObject fan("Cycle", mlist<Addition>());
   fan.take("PROJECTIVE_VERTICES") << vertices;
   fan.take("MAXIMAL_POLYTOPES") << polytopes;
   fan.take("WEIGHTS") << weights;
@@ -118,7 +118,7 @@ perl::Object uniform_linear_space(const int n, const int k, Integer weight = 1)
 }
 
 template <typename Addition>
-perl::Object halfspace_subdivision(const Rational& a, const Vector<Rational>& g, const Integer& weight)
+BigObject halfspace_subdivision(const Rational& a, const Vector<Rational>& g, const Integer& weight)
 {
   // Sanity check
   if (is_zero(g))
@@ -139,11 +139,11 @@ perl::Object halfspace_subdivision(const Rational& a, const Vector<Rational>& g,
   const Vector<Rational> apex = Rational(1) | (a / sqr(g))*g;
   vertices = apex / vertices;
 
-  Array<Set<int> > polytopes(2);
+  Array<Set<Int>> polytopes(2);
   polytopes[0] = (sequence(0,3)-1);
   polytopes[1] = (sequence(0,3)-2);
 
-  perl::Object cycle("Cycle", mlist<Addition>());
+  BigObject cycle("Cycle", mlist<Addition>());
   cycle.take("PROJECTIVE_VERTICES") << vertices;
   cycle.take("MAXIMAL_POLYTOPES") << polytopes;
   if (lineality.rows() > 0)
@@ -154,7 +154,7 @@ perl::Object halfspace_subdivision(const Rational& a, const Vector<Rational>& g,
 }
 
 template <typename Addition>
-perl::Object projective_torus(int n, Integer weight)
+BigObject projective_torus(Int n, Integer weight)
 {
   // Sanity check
   if (n < 0) throw std::runtime_error("Negative ambient dimension is not allowed.");
@@ -164,10 +164,10 @@ perl::Object projective_torus(int n, Integer weight)
   Matrix<Rational> lineality = unit_matrix<Rational>(n);
   lineality = Matrix<Rational>(n,2) | lineality;
 
-  Array<Set<int> > polytopes(1);
+  Array<Set<Int>> polytopes(1);
   polytopes[0] = scalar2set(0);
 
-  perl::Object cycle("Cycle", mlist<Addition>());
+  BigObject cycle("Cycle", mlist<Addition>());
   cycle.take("PROJECTIVE_VERTICES") << vertex;
   cycle.take("MAXIMAL_POLYTOPES") << polytopes;
   cycle.take("LINEALITY_SPACE") << lineality;
@@ -176,7 +176,7 @@ perl::Object projective_torus(int n, Integer weight)
 }
 
 template <typename Addition>
-perl::Object orthant_subdivision(Vector<Rational> point, int chart = 0, Integer weight = 1)
+BigObject orthant_subdivision(Vector<Rational> point, Int chart = 0, Integer weight = 1)
 {
   if (point.dim() <= 2) {
     throw std::runtime_error("Cannot create orthant subdivision. Vector dimension too small");
@@ -184,7 +184,7 @@ perl::Object orthant_subdivision(Vector<Rational> point, int chart = 0, Integer 
 
   // Dehomogenize
   point = tdehomog_vec(point,chart);
-  int dim = point.dim() -1;
+  Int dim = point.dim() -1;
   // Create ray matrix - first positive rays, then negative rays
   Matrix<Rational> rays = unit_matrix<Rational>(dim);
   rays /= (-unit_matrix<Rational>(dim));
@@ -197,8 +197,8 @@ perl::Object orthant_subdivision(Vector<Rational> point, int chart = 0, Integer 
   // All possible sign choices
   RestrictedIncidenceMatrix<only_cols> cones_growing(0, rays.rows());
   for (auto s = entire(all_subsets(seq));  !s.at_end(); ++s) {
-    Set<int> complement = seq - *s;
-    Set<int> rayset = *s;
+    Set<Int> complement = seq - *s;
+    Set<Int> rayset = *s;
     // Add all rays from the current set with positive sign and all the others with negative sign
     for (auto c = entire(complement); !c.at_end(); ++c) {
       rayset += (*c + dim);
@@ -212,7 +212,7 @@ perl::Object orthant_subdivision(Vector<Rational> point, int chart = 0, Integer 
   Vector<Integer> weights(cones.rows(), weight);
 
   // Create result
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("PROJECTIVE_VERTICES") << thomog(rays,chart);
   result.take("MAXIMAL_POLYTOPES") << cones;
   result.take("WEIGHTS") << weights;
@@ -221,7 +221,7 @@ perl::Object orthant_subdivision(Vector<Rational> point, int chart = 0, Integer 
 }
 
 template <typename Addition>
-perl::Object affine_linear_space(const Matrix<Rational> &generators, Vector<Rational> translate = Vector<Rational>(), Integer weight = 1)
+BigObject affine_linear_space(const Matrix<Rational> &generators, Vector<Rational> translate = Vector<Rational>(), Integer weight = 1)
 {
   // Sanity check 
   if (translate.dim() > 0 && translate.dim() != generators.cols()) {
@@ -233,12 +233,12 @@ perl::Object affine_linear_space(const Matrix<Rational> &generators, Vector<Rati
   Matrix<Rational> vertices(1,generators.cols()+1);
   vertices(0,0) = 1;
   vertices.row(0).slice(range_from(1)) = translate;
-  Vector<Set<int> > polytopes;
+  Vector<Set<Int>> polytopes;
   polytopes |= scalar2set(0);
   Vector<Integer> weights(1);
   weights[0] = weight;
 
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("PROJECTIVE_VERTICES") << vertices;
   result.take("MAXIMAL_POLYTOPES") << polytopes;
   result.take("LINEALITY_SPACE") << (zero_vector<Rational>() | generators);
@@ -250,11 +250,11 @@ perl::Object affine_linear_space(const Matrix<Rational> &generators, Vector<Rati
 ///////////////////////////////////////////////////////////////////////////////////////
 	
 template <typename Addition>
-perl::Object cross_variety(int n, int k, Rational h = 1, Integer weight = 1)
+BigObject cross_variety(Int n, Int k, Rational h = 1, Integer weight = 1)
 {
   // Create the cube vertices
   Matrix<Rational> rays = binaryMatrix(n);
-  Vector<Set<int>> cones;
+  Vector<Set<Int>> cones;
 
   // Sanity check
   if (n < k || k < 0 || h < 0) {
@@ -263,15 +263,15 @@ perl::Object cross_variety(int n, int k, Rational h = 1, Integer weight = 1)
 
   // First we treat the special case of k = 0
   if (k == 0) {
-    perl::Object result("Cycle", mlist<Addition>());
+    BigObject result("Cycle", mlist<Addition>());
     if (h == 0) {
       rays = Matrix<Rational>(1,n+1);
       rays(0,0) = 1;
     } else {
       rays = ones_vector<Rational>(rays.rows()) | (weight *rays);
     }
-    Vector<Set<int> > polytopes;
-    for (int r = 0; r < rays.rows(); ++r) 
+    Vector<Set<Int>> polytopes;
+    for (Int r = 0; r < rays.rows(); ++r) 
       polytopes |= scalar2set(r);
     result.take("VERTICES") << thomog(rays);
     result.take("MAXIMAL_POLYTOPES") << polytopes;
@@ -282,17 +282,17 @@ perl::Object cross_variety(int n, int k, Rational h = 1, Integer weight = 1)
   // Now create the k-skeleton of the n-cube: For each n-k-set S of 0,..,n-1 and for each vertex
   // v of the n-k-dimensional cube: Insert the entries of v in S and then insert all possible 
   // vertices of the k-dimensional cube in S^c to obtain a k-dimensional face of the cube
-  Array<Set<int>> nmkSets{ all_subsets_of_k(sequence(0,n), n-k) };
+  Array<Set<Int>> nmkSets{ all_subsets_of_k(sequence(0,n), n-k) };
   Matrix<Rational> nmkVertices = binaryMatrix(n-k);
   Matrix<Rational> kVertices = binaryMatrix(k);
 
-  for (int s = 0; s < nmkSets.size(); ++s) {
-    for (int v = 0; v < nmkVertices.rows(); ++v) {
-      Set<int> S = nmkSets[s];
-      Set<int> newface;
+  for (Int s = 0; s < nmkSets.size(); ++s) {
+    for (Int v = 0; v < nmkVertices.rows(); ++v) {
+      Set<Int> S = nmkSets[s];
+      Set<Int> newface;
       Vector<Rational> vertex(n);
       vertex.slice(S) = nmkVertices.row(v);
-      for (int w = 0; w < kVertices.rows(); ++w) {
+      for (Int w = 0; w < kVertices.rows(); ++w) {
         vertex.slice(~S) = kVertices.row(w);
         newface += binaryIndex(vertex);
       }
@@ -300,21 +300,21 @@ perl::Object cross_variety(int n, int k, Rational h = 1, Integer weight = 1)
     }
   } //End create k-skeleton
 
-  int vertexnumber = rays.rows();
+  Int vertexnumber = rays.rows();
 
   // Now we also create the k-1-skeleton of the cube to compute the ray faces
-  Array<Set<int>> nmlSets{ all_subsets_of_k(sequence(0,n), n-k+1) };
+  Array<Set<Int>> nmlSets{ all_subsets_of_k(sequence(0,n), n-k+1) };
   Matrix<Rational> nmlVertices = binaryMatrix(n-k+1);
   Matrix<Rational> lVertices = binaryMatrix(k-1);
-  Vector<Set<int>> raycones;
+  Vector<Set<Int>> raycones;
 
-  for (int s = 0; s < nmlSets.size(); ++s) {
-    for (int v = 0; v < nmlVertices.rows(); ++v) {
-      Set<int> S = nmlSets[s];
-      Set<int> newface;
+  for (Int s = 0; s < nmlSets.size(); ++s) {
+    for (Int v = 0; v < nmlVertices.rows(); ++v) {
+      Set<Int> S = nmlSets[s];
+      Set<Int> newface;
       Vector<Rational> vertex(n);
       vertex.slice(S) = nmlVertices.row(v);
-      for (int w = 0; w < lVertices.rows(); ++w) {
+      for (Int w = 0; w < lVertices.rows(); ++w) {
         vertex.slice(~S) = lVertices.row(w);
         newface += binaryIndex(vertex);
       }
@@ -326,13 +326,13 @@ perl::Object cross_variety(int n, int k, Rational h = 1, Integer weight = 1)
   // Now, for each face S of the k-1-skeleton, we add a cone that contains for each i in S:
   // The vertex i and its corresponding ray
   if (k > 0) rays = rays / rays;
-  int iter = raycones.size();
-  for (int c = 0; c < iter; ++c) {
-    Set<int> newface; 
-    Set<int> cubeface = raycones[c];
+  Int iter = raycones.size();
+  for (Int c = 0; c < iter; ++c) {
+    Set<Int> newface; 
+    Set<Int> cubeface = raycones[c];
     for (auto v = entire(cubeface); !v.at_end(); ++v) {
       newface += *v;
-      int rayindex = *v + vertexnumber;
+      Int rayindex = *v + vertexnumber;
       newface += rayindex;
     }
     cones |= newface;
@@ -343,15 +343,15 @@ perl::Object cross_variety(int n, int k, Rational h = 1, Integer weight = 1)
     rays = zero_vector<Rational>(rays.cols()) / rays.minor(~sequence(0,vertexnumber),All);
     rays = unit_vector<Rational>(rays.rows(),0) | rays;
     // Re-index cones and remove bounded ones 
-    Set<int> bad_indices = sequence(0,vertexnumber);
-    Set<int> bounded_cones;
-    for (int c = 0; c <  cones.dim(); ++c) {
-      Set<int> bad_of_c = cones[c] * bad_indices;
+    Set<Int> bad_indices = sequence(0,vertexnumber);
+    Set<Int> bounded_cones;
+    for (Int c = 0; c < cones.dim(); ++c) {
+      Set<Int> bad_of_c = cones[c] * bad_indices;
       if (bad_of_c.size() == cones[c].size()) {
         bounded_cones += c;
       } else {
-        Set<int> rest_of_c = cones[c] - bad_indices;
-        cones[c] = Set<int>();
+        Set<Int> rest_of_c = cones[c] - bad_indices;
+        cones[c] = Set<Int>();
         for (auto shiftindex = entire(rest_of_c); !shiftindex.at_end(); ++shiftindex) {
           cones[c] += (*shiftindex - vertexnumber + 1);
         }
@@ -368,7 +368,7 @@ perl::Object cross_variety(int n, int k, Rational h = 1, Integer weight = 1)
   }
 
 
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << thomog(rays);
   result.take("MAXIMAL_POLYTOPES") << cones;
   result.take("WEIGHTS") << weight * ones_vector<Integer>(cones.dim());

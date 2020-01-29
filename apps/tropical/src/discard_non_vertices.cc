@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -35,19 +35,19 @@ namespace polymake { namespace tropical {
  * @return Set<Int>, subset of [0,... number of coordinates of u -1]
  */
 template <typename Addition, typename Scalar, typename VectorTop>
-Set<int> containing_sectors(const GenericVector<VectorTop, TropicalNumber<Addition, Scalar>>& u,
+Set<Int> containing_sectors(const GenericVector<VectorTop, TropicalNumber<Addition, Scalar>>& u,
                             const GenericVector<VectorTop, TropicalNumber<Addition, Scalar>>& z)
 {
-   Set<int> u_nonzero_entries = indices(attach_selector(u.top(), operations::non_zero()));
-   Set<int> z_nonzero_entries = indices(attach_selector(z.top(), operations::non_zero()));
-   Set<int> neither_zero = u_nonzero_entries * z_nonzero_entries;
+   Set<Int> u_nonzero_entries = indices(attach_selector(u.top(), operations::non_zero()));
+   Set<Int> z_nonzero_entries = indices(attach_selector(z.top(), operations::non_zero()));
+   Set<Int> neither_zero = u_nonzero_entries * z_nonzero_entries;
    // If an entry in z is tropically zero, but finite in u, z lies in the corresponding sector.
    // In that case these are all the sectors
-   Set<int> sectors = u_nonzero_entries - z_nonzero_entries;
+   Set<Int> sectors = u_nonzero_entries - z_nonzero_entries;
    if (!sectors.empty()) return sectors;
    // Compute the maximum of u_i - z_i over all pairwise nonzero entries.
    TropicalNumber<Addition, Scalar> achieved = TropicalNumber<Addition,Scalar>::zero();
-   Map<int, TropicalNumber<Addition, Scalar>> entry_diffs;
+   Map<Int, TropicalNumber<Addition, Scalar>> entry_diffs;
    for (auto zentry = entire(neither_zero); !zentry.at_end(); ++zentry) {
       TropicalNumber<Addition, Scalar> ediff = (u.top()[*zentry] / z.top()[*zentry]);
       entry_diffs[*zentry] = ediff;
@@ -66,19 +66,19 @@ Set<int> containing_sectors(const GenericVector<VectorTop, TropicalNumber<Additi
  * @return Set<Int> The subset of row indices corresponding to vertices.
  */
 template <typename Addition, typename Scalar>
-void discard_non_vertices(perl::Object cone)
+void discard_non_vertices(BigObject cone)
 {
    Matrix<TropicalNumber<Addition, Scalar>> V = cone.give("POINTS");
-   const int n = V.rows();
+   const Int n = V.rows();
    Set<Vector<TropicalNumber<Addition, Scalar>>> vertex_coords;
-   Set<int> vertex_indices;
+   Set<Int> vertex_indices;
 
-   for (int i=0; i<n; ++i) {
+   for (Int i = 0; i < n; ++i) {
       if (is_zero(V.row(i))) continue;
       if (vertex_coords.contains(V.row(i))) continue; // notice that it is possible that a point arises more than once
-      int no_of_nonzero = attach_selector(V.row(i), operations::non_zero()).size();
-      Set<int> sectors;
-      for (int j=0; sectors.size()<no_of_nonzero && j<n; ++j) {
+      Int no_of_nonzero = attach_selector(V.row(i), operations::non_zero()).size();
+      Set<Int> sectors;
+      for (Int j = 0; sectors.size()<no_of_nonzero && j<n; ++j) {
          if (V.row(j)==V.row(i)) continue;
          sectors += containing_sectors(V.row(j), V.row(i));
       }
@@ -88,7 +88,7 @@ void discard_non_vertices(perl::Object cone)
       }
    }
 
-   cone.take("VERTICES_IN_POINTS") << Array<int>(vertex_indices);
+   cone.take("VERTICES_IN_POINTS") << Array<Int>(vertex_indices);
    cone.take("VERTICES") << V.minor(vertex_indices,All);
 }
 

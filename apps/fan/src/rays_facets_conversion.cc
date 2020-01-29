@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,11 +32,11 @@ namespace polymake { namespace fan {
 namespace {
 
 template <typename Coord>
-int signCheck(const Vector<Coord>& v)
+Int signCheck(const Vector<Coord>& v)
 {
-   int sgn = 0;
+   Int sgn = 0;
    for (const Coord& d : v) {
-      int s = sign(d);
+      Int s = sign(d);
       if (s != 0) {
          if (s*sgn >= 0)
             sgn = s;
@@ -50,27 +50,27 @@ int signCheck(const Vector<Coord>& v)
 }
 
 template <typename Coord>
-void raysToFacetNormals(perl::Object f)
+void raysToFacetNormals(BigObject f)
 {
-   const int ambientDim = f.give("FAN_AMBIENT_DIM");
+   const Int ambientDim = f.give("FAN_AMBIENT_DIM");
    const Matrix<Coord> rays = f.give("RAYS");
    const IncidenceMatrix<> incidence = f.give("MAXIMAL_CONES");
    const Matrix<Coord> linealitySpace = f.give("LINEALITY_SPACE | INPUT_LINEALITY");
    const Matrix<Coord> linealitySpace_extended = zero_vector<Coord>() | linealitySpace;
 
-   int facetcounter = 0;
-   Map<Vector<Coord>, int> facetmap;
+   Int facetcounter = 0;
+   Map<Vector<Coord>, Int> facetmap;
    ListMatrix<Vector<Coord>> facets(0,ambientDim);
    ListMatrix<Vector<Coord>> linearSpan(0,ambientDim);
-   RestrictedSparseMatrix<int> facetIndices(incidence.rows());
+   RestrictedSparseMatrix<Int> facetIndices(incidence.rows());
    RestrictedIncidenceMatrix<only_rows> linearSpanIndices(incidence.rows());
 
-   int coneNum = 0;
-   int linealityDim = rank(linealitySpace);
-   int fanDim = rank(rays/linealitySpace);
+   Int coneNum = 0;
+   Int linealityDim = rank(linealitySpace);
+   Int fanDim = rank(rays/linealitySpace);
 
    Matrix<Coord> fanLinearSpan;
-   Set<int> fanLinearSpanIndices;
+   Set<Int> fanLinearSpanIndices;
 
    // find linear span of the whole fan
    if (fanDim < ambientDim) {
@@ -89,20 +89,20 @@ void raysToFacetNormals(perl::Object f)
 
    // iterate cones
    for (auto cone=entire(rows(incidence)); !cone.at_end(); ++cone) {
-      Set<int> coneSet(*cone);
+      Set<Int> coneSet(*cone);
       Matrix<Coord> coneRays = rays.minor(coneSet,All);
       if (linealityDim > 0)
          coneRays /= linealitySpace / (-linealitySpace);
 
-      int coneDim = rank(coneRays);
-      int diff = fanDim - coneDim;
+      Int coneDim = rank(coneRays);
+      Int diff = fanDim - coneDim;
 
       linearSpanIndices.row(coneNum) += fanLinearSpanIndices;
       coneRays /= fanLinearSpan;
 
       // add linear span of this cone if neccessary
       if (diff > 0) {
-         int linearSpanIndex = 0;
+         Int linearSpanIndex = 0;
          for (auto lsrow = entire(rows(linearSpan)); !lsrow.at_end(); ++lsrow, ++linearSpanIndex) {
             if (is_zero(coneRays * (*lsrow))) {
                linearSpanIndices.row(coneNum) +=linearSpanIndex;
@@ -141,7 +141,7 @@ void raysToFacetNormals(perl::Object f)
    }
 
    f.take("FACET_NORMALS") << facets;
-   f.take("MAXIMAL_CONES_FACETS") << SparseMatrix<int>(std::move(facetIndices));
+   f.take("MAXIMAL_CONES_FACETS") << SparseMatrix<Int>(std::move(facetIndices));
    f.take("LINEAR_SPAN_NORMALS") << linearSpan;
    f.take("MAXIMAL_CONES_LINEAR_SPAN_NORMALS") << IncidenceMatrix<NonSymmetric>(std::move(linearSpanIndices));
 }

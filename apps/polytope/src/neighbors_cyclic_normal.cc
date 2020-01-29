@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -36,16 +36,16 @@ namespace polymake { namespace polytope {
 
 namespace {
 
-typedef Array< std::list<int> > CycleList;
+typedef Array<std::list<Int>> CycleList;
 
 template <typename VMatrix>
-bool reverse_edge(const GenericMatrix<VMatrix>& V, const Array<int>& pts)
+bool reverse_edge(const GenericMatrix<VMatrix>& V, const Array<Int>& pts)
 {
    return det(V.minor(pts, All)) > 0;
 }
 
 template <typename VMatrix>
-bool reverse_edge(const GenericMatrix<VMatrix>& V, const GenericMatrix<VMatrix>& AH, const Array<int>& pts)
+bool reverse_edge(const GenericMatrix<VMatrix>& V, const GenericMatrix<VMatrix>& AH, const Array<Int>& pts)
 {
    VMatrix AHc=AH;
    AHc.col(0).fill(0);
@@ -54,7 +54,7 @@ bool reverse_edge(const GenericMatrix<VMatrix>& V, const GenericMatrix<VMatrix>&
 }
 
 template <typename VMatrix, typename IMatrix>
-void compute_cycles(int dim,
+void compute_cycles(Int dim,
                     const GenericMatrix<VMatrix>& V,
                     const GenericMatrix<VMatrix>& AH,
                     const GenericIncidenceMatrix<IMatrix>& VIF,
@@ -63,18 +63,18 @@ void compute_cycles(int dim,
 {
    if (dim==4) { // 3-d case
 
-      const int n_facets=VIF.rows();
+      const Int n_facets = VIF.rows();
       VIF_cyclic.resize(n_facets);
       DG_cyclic.resize(n_facets);
 
-      int nf=DG.adjacent_nodes(0).front();              // starting neighbor facet
+      Int nf = DG.adjacent_nodes(0).front();              // starting neighbor facet
       {
          // in the start facet, the right orientation must be chosen using vertex coordinates
-         const Set<int> ridge=VIF[0] * VIF[nf];
-         int v1=ridge.front(), v2=ridge.back();
-         const int p1=(VIF[0] - VIF[nf]).front();       // some vertex on the facet 0 but NOT on the ridge
-         const int p2=(~VIF)[0].front();                // some vertex NOT on the facet 0
-         Array<int> pts={ v1, v2, p1, p2 };
+         const Set<Int> ridge = VIF[0] * VIF[nf];
+         Int v1 = ridge.front(), v2 = ridge.back();
+         const Int p1 = (VIF[0] - VIF[nf]).front();       // some vertex on the facet 0 but NOT on the ridge
+         const Int p2 = (~VIF)[0].front();                // some vertex NOT on the facet 0
+         Array<Int> pts{ v1, v2, p1, p2 };
 
          if (AH.rows()) {
             if (reverse_edge(V, AH, pts)) std::swap(v1,v2);
@@ -85,19 +85,19 @@ void compute_cycles(int dim,
          VIF_cyclic[0].push_back(v2);
       }
       DG_cyclic[0].push_back(nf);
-      std::list<int> Q;
+      std::list<Int> Q;
       Q.push_back(0);
 
       while (!Q.empty()) {
-         const int cf=Q.front(); Q.pop_front();
-         const int v0=VIF_cyclic[cf].front();
-         int v=VIF_cyclic[cf].back();
-         nf=DG_cyclic[cf].front();
+         const Int cf = Q.front(); Q.pop_front();
+         const Int v0 = VIF_cyclic[cf].front();
+         Int v = VIF_cyclic[cf].back();
+         nf = DG_cyclic[cf].front();
 
          while (true) {
-            nf=(VIF.col(v) * DG.adjacent_nodes(cf) - nf).front();
+            nf = (VIF.col(v) * DG.adjacent_nodes(cf) - nf).front();
             DG_cyclic[cf].push_back(nf);
-            const int v2=(VIF[nf] * VIF[cf] - v).front();
+            const Int v2 = (VIF[nf] * VIF[cf] - v).front();
             if (DG_cyclic[nf].empty()) {
                // this ridge has the opposite direction in the neighbor facet border!
                VIF_cyclic[nf].push_back(v2); VIF_cyclic[nf].push_back(v);
@@ -113,19 +113,19 @@ void compute_cycles(int dim,
 
       VIF_cyclic.resize(1);
 
-      int v0=VIF[0].back(), v=VIF[0].front();
-      if (V.cols()==3) {
+      Int v0 = VIF[0].back(), v = VIF[0].front();
+      if (V.cols() == 3) {
          // if the n-gon is embedded in R^3, then it can be seen from both sides anyway
-         int v2=(~VIF)[0].front();      // some vertex not on the facet 0
+         Int v2 = (~VIF)[0].front();      // some vertex not on the facet 0
          if (det( V.minor(VIF[0],All) / V[v2] ) > 0)
             std::swap(v,v0);
       }
-      int f=0;
+      Int f = 0;
       while (true) {
          VIF_cyclic[0].push_back(v);
-         if (v==v0) break;
-         f=(VIF.col(v) - f).front();
-         v=(VIF[f] - v).front();
+         if (v == v0) break;
+         f = (VIF.col(v) - f).front();
+         v = (VIF[f] - v).front();
       }
 
    } else {
@@ -136,31 +136,31 @@ void compute_cycles(int dim,
 } // end unnamed namespace
 
 template <typename Scalar>
-void neighbors_cyclic_normal_primal(perl::Object p)
+void neighbors_cyclic_normal_primal(BigObject p)
 {
-   const Matrix<Scalar> V=p.give("RAYS"), AH=p.give("LINEAR_SPAN");
-   const IncidenceMatrix<> VIF=p.give("RAYS_IN_FACETS");
-   const Graph<> DG=p.give("DUAL_GRAPH.ADJACENCY");
-   const int dim=p.give("CONE_DIM");
+   const Matrix<Scalar> V = p.give("RAYS"), AH = p.give("LINEAR_SPAN");
+   const IncidenceMatrix<> VIF = p.give("RAYS_IN_FACETS");
+   const Graph<> DG = p.give("DUAL_GRAPH.ADJACENCY");
+   const Int dim = p.give("CONE_DIM");
 
    CycleList VIF_cyclic, DG_cyclic;
-   compute_cycles(dim,V,AH,VIF,DG,VIF_cyclic,DG_cyclic);
-   p.take("RIF_CYCLIC_NORMAL", perl::temporary) << VIF_cyclic;
-   p.take("NEIGHBOR_FACETS_CYCLIC_NORMAL", perl::temporary) << DG_cyclic;
+   compute_cycles(dim, V, AH, VIF, DG, VIF_cyclic, DG_cyclic);
+   p.take("RIF_CYCLIC_NORMAL", temporary) << VIF_cyclic;
+   p.take("NEIGHBOR_FACETS_CYCLIC_NORMAL", temporary) << DG_cyclic;
 }
 
 template <typename Scalar>
-void neighbors_cyclic_normal_dual(perl::Object p)
+void neighbors_cyclic_normal_dual(BigObject p)
 {
-   const Matrix<Scalar> F=p.give("FACETS"), AH;
-   const IncidenceMatrix<> VIF=p.give("RAYS_IN_FACETS");
-   const Graph<> G=p.give("GRAPH.ADJACENCY");
-   const int dim=p.give("CONE_DIM");
+   const Matrix<Scalar> F = p.give("FACETS"), AH;
+   const IncidenceMatrix<> VIF = p.give("RAYS_IN_FACETS");
+   const Graph<> G = p.give("GRAPH.ADJACENCY");
+   const int dim = p.give("CONE_DIM");
 
    CycleList VIF_cyclic, DG_cyclic;
    compute_cycles(dim,F,AH,T(VIF),G,VIF_cyclic,DG_cyclic);
-   p.take("FTR_CYCLIC_NORMAL", perl::temporary) << VIF_cyclic;
-   p.take("NEIGHBOR_RAYS_CYCLIC_NORMAL", perl::temporary) << DG_cyclic;
+   p.take("FTR_CYCLIC_NORMAL", temporary) << VIF_cyclic;
+   p.take("NEIGHBOR_RAYS_CYCLIC_NORMAL", temporary) << DG_cyclic;
 }
 
 FunctionTemplate4perl("neighbors_cyclic_normal_primal<Scalar> (Cone<Scalar>)");

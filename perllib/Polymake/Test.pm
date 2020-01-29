@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -24,12 +24,11 @@ use Time::HiRes qw(gettimeofday tv_interval);
 
 require Polymake::Test::Group;
 require Polymake::Test::Case;
-require Polymake::Test::Validation;
 require Polymake::Test::Environment;
 require Polymake::Test::Value;
 require Polymake::Test::Stream;
 require Polymake::Test::Output;
-require Polymake::Test::Object;
+require Polymake::Test::BigObject;
 require Polymake::Test::Schedule;
 require Polymake::Test::Rule;
 require Polymake::Test::Shell;
@@ -72,32 +71,35 @@ sub add_alternative_suffix(&$) {
 sub check_if_configured {
    foreach (@_) {
       if (/^bundled:${id_re}$/o) {
-         my $ext=$Core::Extension::registered_by_URI{$_}
+         my $ext = $Core::Extension::registered_by_URI{$_}
            or die "unknown extension $_\n";
          return 1 if $ext->is_active;
       } elsif (/^($id_re)::(.*)/o) {
-         my $app=$User::application->name eq $1 ? $User::application : $User::application->used->{$1}
+         my $app = $User::application->name eq $1 ? $User::application : $User::application->used->{$1}
            or die lookup Application($1) ? "referring to rules of application $1 is not allowed here\n" : "unknown application $1\n";
          return 1 unless disabled_rules($app, $2);
       } else {
          return 1 unless disabled_rules($User::application, $_);
       }
    }
-   $Subgroup::current->disabled=join(", ", @_)." disabled by configuration";
+   $Subgroup::current->disabled = join(", ", @_)." disabled by configuration";
    0
 }
 
 sub disabled_rules {
-   my ($app, $rulename)=@_;
+   my ($app, $rulename) = @_;
    my $rc;
-   if (defined ($rc=$app->rulefiles->{$rulename})) {
+   if (defined($rc = $app->rulefiles->{$rulename})) {
       !$rc;
-   } elsif (defined ($rc=$app->configured->{$rulename})) {
-      $rc<=0;
+   } elsif (defined($rc = $app->configured->{$rulename})) {
+      $rc <= 0;
    } else {
       my $answer;
       foreach my $used_app (values %{$app->used}) {
-	 defined($answer=disabled_rules($used_app, $rulename)) and last;
+	 if (defined($answer = disabled_rules($used_app, $rulename))) {
+            keys %{$app->used};
+            last;
+         }
       }
       $answer;
    }
@@ -191,7 +193,7 @@ sub compare_data {
 ##################################################################
 # Compare a computed value with an expected one stored as an attachment of a big object.
 #
-# @param Object object owner of the attachment; its name serves as test ID
+# @param BigObject object owner of the attachment; its name serves as test ID
 # @param String attachment_name
 # @param scalar computed value
 #
@@ -199,7 +201,7 @@ sub compare_data {
 #         maximal allowed execution time in seconds per object
 #
 sub compare_attachment {
-   unless (@_>=3 && instanceof Core::Object($_[0]) && is_string($_[1])) {
+   unless (@_>=3 && instanceof Core::BigObject($_[0]) && is_string($_[1])) {
       croak( "usage: compare_attachment(object, 'attachment_name', computed)" );
    }
    new Value::FromAttachment(@_);
@@ -209,7 +211,7 @@ sub compare_attachment {
 # Compare a `big' object computed by a (user) function with an expected one
 #
 # @param ID unique test name; the expected object file name is derived from this
-# @param Object computed result
+# @param BigObject computed result
 #
 # @option Bool after_cleanup
 #         Before comparing the objects,
@@ -231,9 +233,9 @@ sub compare_attachment {
 #
 sub compare_object {
    unless (@_>=2 && (is_string($_[0]) || is_integer($_[0]))) {
-      croak( "usage: compare_object('ID', computed Object, options)" );
+      croak( "usage: compare_object('ID', computed BigObject, options)" );
    }
-   new Object(@_);
+   new BigObject(@_);
 }
 
 ##################################################################
@@ -250,13 +252,13 @@ sub compare_transformed_object {
    unless (@_>=1 && (is_string($_[0]) || is_integer($_[0]))) {
       croak( "usage: compare_transformed_object('ID')" );
    }
-   new Object::Transform(@_);
+   new BigObject::Transform(@_);
 }
 
 ##################################################################
 # Compare the computed rule chain with the expected one
 #
-# @param Object object
+# @param BigObject object
 # @param String expected
 #        multi-line string containing all expected rule headers in arbitrary order.
 #        If several equivalent rule chains are accepted, they have to be separated with lines
@@ -271,7 +273,7 @@ sub compare_transformed_object {
 #         maximal allowed execution time in seconds per object
 #
 sub compare_schedule {
-   unless (@_>=3 && instanceof Core::Object($_[0]) &&
+   unless (@_>=3 && instanceof Core::BigObject($_[0]) &&
            (is_string($_[1]) || !defined($_[1]))) {
       croak( "usage: compare_schedule(object, 'expected headers', 'PROPERTY', ...)" );
    }
@@ -382,7 +384,7 @@ sub compare_output(&$@) {
 #
 # @option Float max_exec_time
 #         maximal allowed execution time in seconds
-#
+# @option CODE filters list of subroutines transforming the error message
 sub compare_expected_error(&$@) {
    new Output(@_, expected_error=>1);
 }
@@ -404,8 +406,8 @@ sub diff_with {
    unless (@_>0 && (is_string($_[0]) || is_integer($_[0]))) {
       croak( "usage: diff_with('ID', filters...)" );
    }
-   my $case=new Stream(@_);
-   $case->handle;
+   my $id = shift;
+   new Stream($id, @_ ? (filters => [ @_ ]) : ())->handle;
 }
 
 ##################################################################

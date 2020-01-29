@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,23 +25,23 @@
 namespace polymake { namespace graph {
 
 template <typename Decoration, typename SeqType>
-IncidenceMatrix<> maximal_chains_of_lattice(perl::Object face_lattice_obj, perl::OptionSet options)
+IncidenceMatrix<> maximal_chains_of_lattice(BigObject face_lattice_obj, OptionSet options)
 {
   Lattice<Decoration, SeqType> lattice(face_lattice_obj);
   bool ignore_bottom_node = options["ignore_bottom_node"];
   bool ignore_top_node = options["ignore_top_node"];
-  const Array<Set<int> > max_chains = maximal_chains( lattice, ignore_bottom_node, ignore_top_node);
+  const Array<Set<Int>> max_chains = maximal_chains( lattice, ignore_bottom_node, ignore_top_node);
   return IncidenceMatrix<>(max_chains);
 }
 
 template <typename Decoration, typename SeqType>
-perl::Object lattice_of_chains(perl::Object lattice_obj)
+BigObject lattice_of_chains(BigObject lattice_obj)
 {
   Lattice<Decoration, SeqType> lattice(lattice_obj);
-  Array<Set<int> > max_chains = maximal_chains(lattice,false, false);
-  perl::Object chains_complex("topaz::SimplicialComplex");
+  Array<Set<Int>> max_chains = maximal_chains(lattice,false, false);
+  BigObject chains_complex("topaz::SimplicialComplex");
   chains_complex.take("FACETS") << max_chains;
-  perl::Object chain_hasse = chains_complex.give("HASSE_DIAGRAM");
+  BigObject chain_hasse = chains_complex.give("HASSE_DIAGRAM");
   return chain_hasse;
 }
 

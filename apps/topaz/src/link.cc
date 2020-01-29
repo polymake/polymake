@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,15 +20,15 @@
 
 namespace polymake { namespace topaz {
   
-perl::Object link_complex(perl::Object p_in, const Set<int>& F, perl::OptionSet options)
+BigObject link_complex(BigObject p_in, const Set<Int>& F, OptionSet options)
 {
-   const Array< Set<int> > C = p_in.give("FACETS");
-   const int n_vert=p_in.give("N_VERTICES");
+   const Array<Set<Int>> C = p_in.give("FACETS");
+   const Int n_vert=p_in.give("N_VERTICES");
 
    if (F.front()<0 || F.back()>n_vert-1)
       throw std::runtime_error("t_link: Specified vertex indices out of range");
    
-   std::list< Set<int> > Link;
+   std::list<Set<Int>> Link;
    copy_range(entire(link(C,F)), std::back_inserter(Link));
    
    if (Link.empty()) {
@@ -37,10 +37,10 @@ perl::Object link_complex(perl::Object p_in, const Set<int>& F, perl::OptionSet 
       throw std::runtime_error(e.str());
    }
    
-   const Set<int> V = accumulate(Link, operations::add());
+   const Set<Int> V = accumulate(Link, operations::add());
    adj_numbering(Link,V);
    
-   perl::Object p_out("SimplicialComplex");
+   BigObject p_out("SimplicialComplex");
    p_out.set_description()<<"Link of "<<F<<" in " << p_in.name() << "."<<endl;
    p_out.take("FACETS") << as_array(Link);
    

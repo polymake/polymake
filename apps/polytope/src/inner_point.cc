@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,7 +24,7 @@ namespace polymake { namespace polytope {
 template <typename Matrix, typename Coord>
 Vector<Coord> inner_point(const GenericMatrix<Matrix, Coord>& V)
 {
-   const Set<int> b=basis_rows(V);
+   const Set<Int> b = basis_rows(V);
 
    // center of gravity of the basis vectors
    const Vector<Coord> rel_int_pt=average(rows(V.minor(b, All)));

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,29 +20,29 @@
 
 namespace polymake { namespace topaz {
    
-perl::Object disjoint_union(perl::Object p1, perl::Object p2,perl::OptionSet options)
+BigObject disjoint_union(BigObject p1, BigObject p2,OptionSet options)
 {
    const bool relabel=!options["no_labels"];
-   Array< Set<int> > UNION = p1.give("FACETS");
+   Array<Set<Int>> UNION = p1.give("FACETS");
    Array<std::string> Labels = p1.give("VERTEX_LABELS");
-   const int n1 = Labels.size();
+   const Int n1 = Labels.size();
 
-   const Array< Set<int> > C2 = p2.give("FACETS");
+   const Array<Set<Int>> C2 = p2.give("FACETS");
    const Array<std::string> L2 = p2.give("VERTEX_LABELS");
 
-   int count = UNION.size();
+   Int count = UNION.size();
    UNION.resize(count + C2.size());
    
    // add facets of C2
    for (auto f=entire(C2); !f.at_end(); ++f, ++count) {
-      Set<int> facet;
+      Set<Int> facet;
       for (auto v=entire(*f); !v.at_end(); ++v)
          facet += n1 + *v;
       
       UNION[count]=facet;
    }
    
-   perl::Object p_out("SimplicialComplex");
+   BigObject p_out("SimplicialComplex");
    p_out.set_description() << "Disjoint union of " << p1.name() << " and " << p2.name() << "."<<endl;
    p_out.take("FACETS") << UNION;
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2019
+/* Copyright (c) 2011-2020
    Thomas Opfer
 
    This program is free software; you can redistribute it and/or modify it
@@ -19,51 +19,6 @@
 #include "TORationalInf.h"
 #include "TOmath.h"
 
-#ifndef TO_WITHOUT_DOUBLE
-#include "TOFileReaderLP.h"
-#endif
-
-#ifdef TO_WITH_CPLEX
-
-	#include <ilcplex/cplexx.h>
-	#define CPLEX_EXEC( x )									\
-	{														\
-		int retcode;										\
-		if( ( retcode = (x) ) != 0 )						\
-		{													\
-			char cpxerror[CPXMESSAGEBUFSIZE];				\
-			sprintf( cpxerror, "Error %d.", retcode );		\
-			throw std::runtime_error( cpxerror );			\
-		}													\
-	}
-
-#endif
-
-#ifdef TO_WITH_GUROBI
-
-	extern "C"
-	{
-		#include "gurobi_c.h"
-	}
-	#define GUROBI_EXEC( env, x )								\
-	{															\
-		int retcode;											\
-		if( ( retcode = (x) ) != 0 )							\
-		{														\
-			throw std::runtime_error( GRBgeterrormsg( env ) );	\
-		}														\
-	}
-
-#endif
-
-#ifdef TO_WITH_CLP
-	#include "ClpSimplex.hpp"
-#endif
-
-#ifdef TO_WITH_SOPLEX
-	#include "soplex.h"
-#endif
-
 #include <iostream>
 #include <algorithm>
 #include <list>
@@ -74,36 +29,36 @@
 
 namespace TOSimplex {
 
-template <class T>
+template <class T, class TInt>
 class TOSolver
 {
 
 	public:
 		TOSolver();
-		TOSolver( const std::vector<T> &rows, const std::vector<int> &colinds, const std::vector<int> &rowbegininds, const std::vector<T> &obj, const std::vector<TORationalInf<T> > &rowlowerbounds, const std::vector<TORationalInf<T> > &rowupperbounds, const std::vector<TORationalInf<T> > &varlowerbounds, const std::vector<TORationalInf<T> > &varupperbounds );
+		TOSolver( const std::vector<T> &rows, const std::vector<TInt> &colinds, const std::vector<TInt> &rowbegininds, const std::vector<T> &obj, const std::vector<TORationalInf<T> > &rowlowerbounds, const std::vector<TORationalInf<T> > &rowupperbounds, const std::vector<TORationalInf<T> > &varlowerbounds, const std::vector<TORationalInf<T> > &varupperbounds );
 		~TOSolver();
 		void addConstraint( const std::vector<T> vec, const TORationalInf<T>& lbound, const TORationalInf<T>& ubound );
-		void removeConstraint( int index );
-		void setBound( int index, bool lower, TORationalInf<T> newBound );
-		void setRHS( int index, TORationalInf<T> newBound );
-		void setConstraintBothHandSides( int index, TORationalInf<T> newLBound, TORationalInf<T> newUBound );
-		void setVarLB( int index, TORationalInf<T> newLBound );
-		void setVarUB( int index, TORationalInf<T> newUBound );
-		void setVarBounds( int index, TORationalInf<T> newLBound, TORationalInf<T> newUBound );
-		void setObj( int index, T obj );
-		void getBase( std::vector<int>& varStati, std::vector<int>& conStati );
-		void setBase( const std::vector<int>& varStati, const std::vector<int>& conStati );
-		unsigned int getNumRows();
-		unsigned int getNumCols();
+		void removeConstraint( TInt index );
+		void setBound( TInt index, bool lower, TORationalInf<T> newBound );
+		void setRHS( TInt index, TORationalInf<T> newBound );
+		void setConstraintBothHandSides( TInt index, TORationalInf<T> newLBound, TORationalInf<T> newUBound );
+		void setVarLB( TInt index, TORationalInf<T> newLBound );
+		void setVarUB( TInt index, TORationalInf<T> newUBound );
+		void setVarBounds( TInt index, TORationalInf<T> newLBound, TORationalInf<T> newUBound );
+		void setObj( TInt index, T obj );
+		void getBase( std::vector<TInt>& varStati, std::vector<TInt>& conStati );
+		void setBase( const std::vector<TInt>& varStati, const std::vector<TInt>& conStati );
+		TInt getNumRows();
+		TInt getNumCols();
 		void setInexactFarkasInfeasibilityGuess( std::vector<double> ray );
 		std::vector<T> getFarkasInfeasibilityProof();
 		void setInfeasibilityBound( TORationalInf<T> bound );
-		int opt();
+		TInt opt();
 		std::vector<T> getX();
 		std::vector<T> getY();
 		std::vector<T> getD();
-		std::pair<TORationalInf<T>,TORationalInf<T> > getConstraintBounds( const unsigned int i );
-		std::pair<std::vector<T>, T> getGMI( int i, std::vector<bool> iV, T k = T( 1 ) );
+		std::pair<TORationalInf<T>,TORationalInf<T> > getConstraintBounds( const TInt i );
+		std::pair<std::vector<T>, T> getGMI( TInt i, std::vector<bool> iV, T k = T( 1 ) );
 		T getObj();
 		void read( const char* filename );
 
@@ -115,7 +70,7 @@ class TOSolver
 				const std::vector<T> &Q;
 			public:
 				ratsort( const std::vector<T> &_Q ) : Q(_Q){}
-				bool operator() ( int i, int j ) {
+				bool operator() ( TInt i, TInt j ) {
 					return ( Q[i] > Q[j] );
 				}
 		};
@@ -123,26 +78,26 @@ class TOSolver
 		struct bilist {
 				bilist *prev;
 				bilist *next;
-				int val;
+				TInt val;
 				bool used;
 			};
 
 		struct transposeHelper {
-			int valind;
-			int ind;
+			TInt valind;
+			TInt ind;
 		};
 
 		struct RationalWithInd {
 			T value;
-			int ind;
+			TInt ind;
 		};
 
 		std::vector<T> Acolwise;
-		std::vector<int> Acolwiseind;
-		std::vector<int> Acolpointer;
+		std::vector<TInt> Acolwiseind;
+		std::vector<TInt> Acolpointer;
 		std::vector<T> Arowwise;
-		std::vector<int> Arowwiseind;
-		std::vector<int> Arowpointer;
+		std::vector<TInt> Arowwiseind;
+		std::vector<TInt> Arowpointer;
 
 		std::vector<T> c;
 		std::vector<TORationalInf<T> > lvec;
@@ -151,41 +106,41 @@ class TOSolver
 		TORationalInf<T> *u;
 		std::vector<T> x;
 		std::vector<T> d;
-		int m, n;
+		TInt m, n;
 		bool hasBase;
 		bool hasBasisMatrix;
-		int baseIter;
-		std::vector<int> B;
-		std::vector<int> Binv;
-		std::vector<int> N;
-		std::vector<int> Ninv;
+		TInt baseIter;
+		std::vector<TInt> B;
+		std::vector<TInt> Binv;
+		std::vector<TInt> N;
+		std::vector<TInt> Ninv;
 
 
-		std::vector<int> Urlen;
-		std::vector<int> Urbeg;
+		std::vector<TInt> Urlen;
+		std::vector<TInt> Urbeg;
 		std::vector<T> Urval;
-		std::vector<int> Ucind;
-		std::vector<int> Ucptr;
+		std::vector<TInt> Ucind;
+		std::vector<TInt> Ucptr;
 
-		int Ucfreepos;
+		TInt Ucfreepos;
 
-		std::vector<int> Uclen;
-		std::vector<int> Ucbeg;
+		std::vector<TInt> Uclen;
+		std::vector<TInt> Ucbeg;
 		std::vector<T> Ucval;
-		std::vector<int> Urind;
-		std::vector<int> Urptr;
+		std::vector<TInt> Urind;
+		std::vector<TInt> Urptr;
 
 		std::vector<T> Letas;
-		std::vector<int> Lind;
-		std::vector<int> Llbeg;
-		int Lnetaf;
-		int Lneta;
-		std::vector<int> Letapos;
+		std::vector<TInt> Lind;
+		std::vector<TInt> Llbeg;
+		TInt Lnetaf;
+		TInt Lneta;
+		std::vector<TInt> Letapos;
 
-		int halfNumUpdateLetas;
+		TInt halfNumUpdateLetas;
 
-		std::vector<int> perm;
-		std::vector<int> permback;
+		std::vector<TInt> perm;
+		std::vector<TInt> permback;
 
 		std::vector<T> DSE;
 		std::vector<T> DSEtmp;
@@ -196,33 +151,36 @@ class TOSolver
 		std::vector<double> rayGuess;
 		std::vector<T> farkasProof;
 
-		int lastLeavingBaseVar;
+		TInt lastLeavingBaseVar;
 
 		TORationalInf<T> infeasibilityBound;
 
-		void copyTransposeA( int orgLen, const std::vector<T>& orgVal, const std::vector<int>& orgInd, const std::vector<int>& orgPointer, int newLen, std::vector<T>& newVal, std::vector<int>& newInd, std::vector<int>& newPointer );
+		void copyTransposeA( TInt orgLen, const std::vector<T>& orgVal, const std::vector<TInt>& orgInd, const std::vector<TInt>& orgPointer, TInt newLen, std::vector<T>& newVal, std::vector<TInt>& newInd, std::vector<TInt>& newPointer );
 		void mulANT( T* result, T* vector );
 
-		void FTran( T* work, T* permSpike = NULL, int* permSpikeInd = NULL, int* permSpikeLen = NULL );
+		void FTran( T* work, T* permSpike = nullptr, TInt* permSpikeInd = nullptr, TInt* permSpikeLen = nullptr );
 		void BTran( T* work );
-		void updateB( int leaving, T* permSpike, int* permSpikeInd, int* permSpikeLen );
+		void updateB( TInt leaving, T* permSpike, TInt* permSpikeInd, TInt* permSpikeLen );
 		bool refactor();
-		void findPiv( const std::vector<std::vector<int> >& Urowind, const std::vector<std::vector<int> >& Ucolind, bilist* const &R, bilist* const &C, const std::vector<bilist>& Ra,  const std::vector<bilist>& Ca,  const std::vector<int>& nnzCs, const std::vector<int>& nnzRs, int &i, int &j, bool &colsingleton );
+		void findPiv( const std::vector<std::vector<TInt> >& Urowind, const std::vector<std::vector<TInt> >& Ucolind, bilist* const &R, bilist* const &C, const std::vector<bilist>& Ra, const std::vector<bilist>& Ca, const std::vector<TInt>& nnzCs, const std::vector<TInt>& nnzRs, TInt &i, TInt &j, bool &colsingleton );
 		void clearBasis();
 		void removeBasisFactorization();
 
 		void init();
 
-		int phase1();
-		int opt( bool P1 );
+		TInt phase1();
+		clock_t optExternal();
+		TInt opt( bool P1 );
 
 		bool checkDualFarkas();
+
+		void showOptValDetails( T );
 
 };
 
 
-template <class T>
-TOSolver<T>::TOSolver(){
+template <class T, class TInt>
+TOSolver<T, TInt>::TOSolver(){
 	this->init();
 
 	this->m = 0;
@@ -235,8 +193,8 @@ TOSolver<T>::TOSolver(){
 }
 
 
-template <class T>
-TOSolver<T>::TOSolver( const std::vector<T> &rows, const std::vector<int> &colinds, const std::vector<int> &rowbegininds, const std::vector<T> &obj, const std::vector<TORationalInf<T> > &rowlowerbounds, const std::vector<TORationalInf<T> > &rowupperbounds, const std::vector<TORationalInf<T> > &varlowerbounds, const std::vector<TORationalInf<T> > &varupperbounds ){
+template <class T, class TInt>
+TOSolver<T, TInt>::TOSolver( const std::vector<T> &rows, const std::vector<TInt> &colinds, const std::vector<TInt> &rowbegininds, const std::vector<T> &obj, const std::vector<TORationalInf<T> > &rowlowerbounds, const std::vector<TORationalInf<T> > &rowupperbounds, const std::vector<TORationalInf<T> > &varlowerbounds, const std::vector<TORationalInf<T> > &varupperbounds ){
 	this->init();
 
 	this->m = rowlowerbounds.size();
@@ -246,7 +204,7 @@ TOSolver<T>::TOSolver( const std::vector<T> &rows, const std::vector<int> &colin
 	this->Arowwiseind = colinds;
 	this->Arowpointer = rowbegininds;
 
-	if( rows.size() != colinds.size() || rowbegininds.back() != (int) rows.size() || (int) rowupperbounds.size() != this->m || (int) obj.size() != this->n || (int) varupperbounds.size() != this->n ){
+	if( rows.size() != colinds.size() || rowbegininds.back() != static_cast<TInt>( rows.size() ) || static_cast<TInt>( rowupperbounds.size() ) != this->m || static_cast<TInt>( obj.size() ) != this->n || static_cast<TInt>( varupperbounds.size() ) != this->n ){
 		throw std::runtime_error( "Inconsistent data." );
 	}
 
@@ -258,14 +216,14 @@ TOSolver<T>::TOSolver( const std::vector<T> &rows, const std::vector<int> &colin
 	// untere Schranken
 	this->lvec.resize( n + m );
 	this->l = this->lvec.data();
-	for( int i = 0; i < n; ++i ){
+	for( TInt i = 0; i < n; ++i ){
 		if( varlowerbounds[i].isInf ){
 			this->l[i] = true;
 		} else {
 			this->l[i] = TORationalInf<T>( varlowerbounds[i].value );
 		}
 	}
-	for( int i = 0; i < m; ++i ){
+	for( TInt i = 0; i < m; ++i ){
 		if( rowupperbounds[i].isInf ){
 			this->l[n+i] = true;
 		} else {
@@ -276,14 +234,14 @@ TOSolver<T>::TOSolver( const std::vector<T> &rows, const std::vector<int> &colin
 	// obere Schranken
 	this->uvec.resize( n + m );
 	this->u = this->uvec.data();
-	for( int i = 0; i < n; ++i ){
+	for( TInt i = 0; i < n; ++i ){
 		if( varupperbounds[i].isInf ){
 			this->u[i] = true;
 		} else {
 			this->u[i] = TORationalInf<T>( varupperbounds[i].value );
 		}
 	}
-	for( int i = 0; i < m; ++i ){
+	for( TInt i = 0; i < m; ++i ){
 		if( rowlowerbounds[i].isInf ){
 			this->u[n+i] = true;
 		} else {
@@ -308,7 +266,7 @@ TOSolver<T>::TOSolver( const std::vector<T> &rows, const std::vector<int> &colin
 	this->Ucbeg.resize( m );
 
 
-	int maxnumetas = m+2*this->halfNumUpdateLetas;	// Mehr ETAs kann es nicht geben
+	TInt maxnumetas = m+2*this->halfNumUpdateLetas;	// Mehr ETAs kann es nicht geben
 	this->Llbeg.resize( maxnumetas + 1 );
 	this->Llbeg[0] = 0;	// Letzten Zeiger ans "Ende" zeigen
 	this->Letapos.resize( maxnumetas );
@@ -321,14 +279,14 @@ TOSolver<T>::TOSolver( const std::vector<T> &rows, const std::vector<int> &colin
 }
 
 
-template <class T>
-TOSolver<T>::~TOSolver(){
+template <class T, class TInt>
+TOSolver<T, TInt>::~TOSolver(){
 
 }
 
 
-template <class T>
-void TOSolver<T>::init(){
+template <class T, class TInt>
+void TOSolver<T, TInt>::init(){
 	#ifndef TO_DISABLE_OUTPUT
 		std::cout << "Simplex initialisiert." << std::endl;
 	#endif
@@ -347,21 +305,21 @@ void TOSolver<T>::init(){
 }
 
 
-template <class T>
-void TOSolver<T>::addConstraint( const std::vector<T> vec, const TORationalInf<T>& lbound, const TORationalInf<T>& ubound ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::addConstraint( const std::vector<T> vec, const TORationalInf<T>& lbound, const TORationalInf<T>& ubound ){
 
-	this->farkasProof.clear();
-
-	if( (int) vec.size() != n ){
+	if( static_cast<TInt>( vec.size() ) != n ){
 		throw std::runtime_error( "Constraint has wrong size." );
 	}
 
 	++this->m;
 
+	this->farkasProof.clear();
+
 	this->Arowwise.reserve( this->Arowwise.size() + n );
 	this->Arowwiseind.reserve( this->Arowwiseind.size() + n );
 
-	for( int i = 0; i < n; ++i ){
+	for( TInt i = 0; i < n; ++i ){
 		if( vec[i] != 0 ){
 			this->Arowwise.push_back( vec[i] );
 			this->Arowwiseind.push_back( i );
@@ -387,27 +345,27 @@ void TOSolver<T>::addConstraint( const std::vector<T> vec, const TORationalInf<T
 	}
 	this->u = this->uvec.data();	// Pointer nach obigem push_back aktualisieren
 
-	// TODO Alte Basis übernehmen? Oder neue doch lieber mit CPLEX bestimmen?
+	// TODO Alte Basis übernehmen? Oder neue doch lieber extern neu bestimmen?
 	this->clearBasis();
 }
 
 
-template <class T>
-void TOSolver<T>::removeConstraint( int index ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::removeConstraint( TInt index ){
 
 	this->farkasProof.clear();
 
-	int len = this->Arowpointer[index+1] - this->Arowpointer[index];
-	int nnz = this->Arowpointer[m] - len;
+	TInt len = this->Arowpointer[index+1] - this->Arowpointer[index];
+	TInt nnz = this->Arowpointer[m] - len;
 
-	for( int i = this->Arowpointer[index]; i < nnz; ++i ){
+	for( TInt i = this->Arowpointer[index]; i < nnz; ++i ){
 		this->Arowwise[i] = this->Arowwise[i+len];
 	}
-	for( int i = this->Arowpointer[index]; i < nnz; ++i ){
+	for( TInt i = this->Arowpointer[index]; i < nnz; ++i ){
 		this->Arowwiseind[i] = this->Arowwiseind[i+len];
 	}
 
-	for( int i = index; i < m; ++i ){
+	for( TInt i = index; i < m; ++i ){
 		this->Arowpointer[i] = this->Arowpointer[i+1] - len;
 	}
 
@@ -419,22 +377,22 @@ void TOSolver<T>::removeConstraint( int index ){
 
 	copyTransposeA( m, this->Arowwise, this->Arowwiseind, this->Arowpointer, n, this->Acolwise, this->Acolwiseind, this->Acolpointer );
 
-	for( int i = n+index; i < n+m; ++i ){
+	for( TInt i = n+index; i < n+m; ++i ){
 		this->l[i] = this->l[i+1];
 	}
 	this->lvec.pop_back();
-	for( int i = n+index; i < n+m; ++i ){
+	for( TInt i = n+index; i < n+m; ++i ){
 		this->u[i] = this->u[i+1];
 	}
 	this->uvec.pop_back();
 
-	// TODO Alte Basis übernehmen? Oder neue doch lieber mit CPLEX bestimmen?
+	// TODO Alte Basis übernehmen? Oder neue doch lieber extern neu bestimmen?
 	this->clearBasis();
 }
 
 
-template <class T>
-void TOSolver<T>::setBound( int index, bool lower, TORationalInf<T> newBound ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::setBound( TInt index, bool lower, TORationalInf<T> newBound ){
 
 	this->farkasProof.clear();
 
@@ -454,8 +412,8 @@ void TOSolver<T>::setBound( int index, bool lower, TORationalInf<T> newBound ){
 }
 
 
-template <class T>
-void TOSolver<T>::setRHS( int index, TORationalInf<T> newBound ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::setRHS( TInt index, TORationalInf<T> newBound ){
 
 	this->farkasProof.clear();
 
@@ -485,8 +443,8 @@ void TOSolver<T>::setRHS( int index, TORationalInf<T> newBound ){
 }
 
 
-template <class T>
-void TOSolver<T>::setConstraintBothHandSides( int index, TORationalInf<T> newLBound, TORationalInf<T> newUBound ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::setConstraintBothHandSides( TInt index, TORationalInf<T> newLBound, TORationalInf<T> newUBound ){
 
 	this->farkasProof.clear();
 
@@ -503,8 +461,8 @@ void TOSolver<T>::setConstraintBothHandSides( int index, TORationalInf<T> newLBo
     }
 }
 
-template <class T>
-void TOSolver<T>::setVarLB( int index, TORationalInf<T> newLBound ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::setVarLB( TInt index, TORationalInf<T> newLBound ){
 
 	this->farkasProof.clear();
 
@@ -516,8 +474,8 @@ void TOSolver<T>::setVarLB( int index, TORationalInf<T> newLBound ){
 }
 
 
-template <class T>
-void TOSolver<T>::setVarUB( int index, TORationalInf<T> newUBound ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::setVarUB( TInt index, TORationalInf<T> newUBound ){
 
 	this->farkasProof.clear();
 
@@ -529,8 +487,8 @@ void TOSolver<T>::setVarUB( int index, TORationalInf<T> newUBound ){
 }
 
 
-template <class T>
-void TOSolver<T>::setVarBounds( int index, TORationalInf<T> newLBound, TORationalInf<T> newUBound ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::setVarBounds( TInt index, TORationalInf<T> newLBound, TORationalInf<T> newUBound ){
 
 	this->farkasProof.clear();
 
@@ -548,50 +506,18 @@ void TOSolver<T>::setVarBounds( int index, TORationalInf<T> newLBound, TORationa
 }
 
 
-#ifndef TO_WITHOUT_DOUBLE
-template<>
-inline void TOSolver<mpq_class>::read( const char* filename ){
-
-	this->farkasProof.clear();
-
-	this->Acolwise.clear();
-	this->Acolwiseind.clear();
-	this->Acolpointer.clear();
-	this->Arowwise.clear();
-	this->Arowwiseind.clear();
-	this->Arowpointer.clear();
-
-	this->c.clear();
-	this->lvec.clear();
-	this->uvec.clear();
-
-	TOFileReaderLP reader;
-	reader.read( filename, this->Arowwise, this->Arowwiseind, this->Arowpointer, this->c, this->lvec, this->uvec, this->m, this->n );
-	this->l = this->lvec.data();
-	this->u = this->uvec.data();
-
-	// Matrix spaltenweise kopieren
-	copyTransposeA( m, this->Arowwise, this->Arowwiseind, this->Arowpointer, n, this->Acolwise, this->Acolwiseind, this->Acolpointer );
-
-	this->rayGuess.clear();
-
-	this->clearBasis();
-}
-#endif
-
-
-template <class T>
-void TOSolver<T>::setObj( int index, T obj ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::setObj( TInt index, T obj ){
 	this->c.at( index ) = obj;
 }
 
 
-template <class T>
-void TOSolver<T>::getBase( std::vector<int>& varStati, std::vector<int>& conStati ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::getBase( std::vector<TInt>& varStati, std::vector<TInt>& conStati ){
 	varStati.resize( n );
 	conStati.resize( m );
-	for( int i = 0; i < m; ++i ){
-		int j = B[i];
+	for( TInt i = 0; i < m; ++i ){
+		TInt j = B[i];
 		if( j < n ){
 			varStati[j] = 1;
 		} else {
@@ -599,10 +525,10 @@ void TOSolver<T>::getBase( std::vector<int>& varStati, std::vector<int>& conStat
 		}
 	}
 
-	for( int i = 0; i < n; ++i ){
-		int j = N[i];
+	for( TInt i = 0; i < n; ++i ){
+		TInt j = N[i];
 
-		int status;
+		TInt status;
 
 		if( !l[j].isInf && x[j] == l[j].value ){
 			status = 0;
@@ -621,28 +547,28 @@ void TOSolver<T>::getBase( std::vector<int>& varStati, std::vector<int>& conStat
 }
 
 
-template <class T>
-void TOSolver<T>::setBase( const std::vector<int>& varStati, const std::vector<int>& conStati ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::setBase( const std::vector<TInt>& varStati, const std::vector<TInt>& conStati ){
 
 	this->farkasProof.clear();
 
-	int basenum = 0;
-	int nbasenum = 0;
+	TInt basenum = 0;
+	TInt nbasenum = 0;
 
-	if( (int) varStati.size() != n ){
+	if( static_cast<TInt>( varStati.size() ) != n ){
 		throw std::runtime_error( "varStati has wrong size" );
-	} else if( (int) conStati.size() != m ){
+	} else if( static_cast<TInt>( conStati.size() ) != m ){
 		throw std::runtime_error( "conStati has wrong size" );
 	}
 	else {
-		for( int i = 0; i < n; ++i ){
+		for( TInt i = 0; i < n; ++i ){
 			if( varStati[i] == 1 ){
 				++basenum;
 			} else {
 				++nbasenum;
 			}
 		}
-		for( int i = 0; i < m; ++i ){
+		for( TInt i = 0; i < m; ++i ){
 			if( conStati[i] == 1 ){
 				++basenum;
 			} else {
@@ -658,7 +584,7 @@ void TOSolver<T>::setBase( const std::vector<int>& varStati, const std::vector<i
 	basenum = 0;
 	nbasenum = 0;
 
-	for( int i = 0; i < n; ++i ){
+	for( TInt i = 0; i < n; ++i ){
 		switch( varStati[i] ){
 			case 1:
 				this->B[basenum] = i;
@@ -692,7 +618,7 @@ void TOSolver<T>::setBase( const std::vector<int>& varStati, const std::vector<i
 		}
 	}
 
-	for( int i = n; i < n+m; ++i ){
+	for( TInt i = n; i < n+m; ++i ){
 		switch( conStati[i-n] ){
 			case 1:
 				this->B[basenum] = i;
@@ -737,35 +663,33 @@ void TOSolver<T>::setBase( const std::vector<int>& varStati, const std::vector<i
 }
 
 
-template <class T>
-unsigned int TOSolver<T>::getNumRows(){
+template <class T, class TInt>
+TInt TOSolver<T, TInt>::getNumRows(){
 	return this->m;
 }
 
 
-template <class T>
-unsigned int TOSolver<T>::getNumCols(){
+template <class T, class TInt>
+TInt TOSolver<T, TInt>::getNumCols(){
 	return this->n;
 }
 
 
-#ifndef TO_WITHOUT_DOUBLE
-template <class T>
-void TOSolver<T>::setInexactFarkasInfeasibilityGuess( std::vector<double> ray ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::setInexactFarkasInfeasibilityGuess( std::vector<double> ray ){
 
-	this->farkasProof.clear();
-
-	if( ray.size() != m ){
+	if( static_cast<TInt>( ray.size() ) != m ){
 		throw std::runtime_error( "Farkas guess has wrong size." );
 	}
 
+	this->farkasProof.clear();
+
 	this->rayGuess = ray;
 }
-#endif
 
 
-template <class T>
-std::vector<T> TOSolver<T>::getFarkasInfeasibilityProof(){
+template <class T, class TInt>
+std::vector<T> TOSolver<T, TInt>::getFarkasInfeasibilityProof(){
 
 	if( this->farkasProof.size() ){
 		return this->farkasProof;
@@ -789,15 +713,15 @@ std::vector<T> TOSolver<T>::getFarkasInfeasibilityProof(){
 }
 
 
-template <class T>
-void TOSolver<T>::copyTransposeA( int orgLen, const std::vector<T>& orgVal, const std::vector<int>& orgInd, const std::vector<int>& orgPointer, int newLen, std::vector<T>& newVal, std::vector<int>& newInd, std::vector<int>& newPointer ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::copyTransposeA( TInt orgLen, const std::vector<T>& orgVal, const std::vector<TInt>& orgInd, const std::vector<TInt>& orgPointer, TInt newLen, std::vector<T>& newVal, std::vector<TInt>& newInd, std::vector<TInt>& newPointer ){
 
 	newVal.clear();
 	newInd.clear();
 	newPointer.clear();
 
 	newPointer.resize( newLen + 1 );
-	const int& nnz = orgInd.size();
+	const TInt& nnz = orgInd.size();
 
 	newVal.resize( nnz );
 	newInd.resize( nnz );
@@ -806,9 +730,9 @@ void TOSolver<T>::copyTransposeA( int orgLen, const std::vector<T>& orgVal, cons
 
 	std::vector< std::list<transposeHelper> > rowstmp(newLen);
 
-	for( int i = 0; i < orgLen; ++i ){
-		const int kend = orgPointer[i+1];
-		for( int k = orgPointer[i]; k < kend; ++k ){
+	for( TInt i = 0; i < orgLen; ++i ){
+		const TInt kend = orgPointer[i+1];
+		for( TInt k = orgPointer[i]; k < kend; ++k ){
 			transposeHelper tmp;
 			tmp.valind = k;
 			tmp.ind = i;
@@ -817,8 +741,8 @@ void TOSolver<T>::copyTransposeA( int orgLen, const std::vector<T>& orgVal, cons
 	}
 
 	typename std::list<transposeHelper>::iterator it;
-	int k = 0;
-	for( int i = 0; i < newLen; ++i ){
+	TInt k = 0;
+	for( TInt i = 0; i < newLen; ++i ){
 		newPointer[i] = k;
 		for( it = rowstmp[i].begin(); it != rowstmp[i].end(); ++it ){
 			transposeHelper tmp = *it;
@@ -830,21 +754,21 @@ void TOSolver<T>::copyTransposeA( int orgLen, const std::vector<T>& orgVal, cons
 }
 
 
-template <class T>
-void TOSolver<T>::setInfeasibilityBound( TORationalInf<T> bound ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::setInfeasibilityBound( TORationalInf<T> bound ){
 	this->infeasibilityBound = bound;
 }
 
 
-template <class T>
-void TOSolver<T>::mulANT( T* result, T* vector ){
-	for( int i = 0; i < m; ++i ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::mulANT( T* result, T* vector ){
+	for( TInt i = 0; i < m; ++i ){
 		if( vector[i] == 0 ){
 			continue;
 		}
-		const int kend = this->Arowpointer[i+1];
-		for( int k = this->Arowpointer[i]; k < kend; ++k ){
-			int ind = this->Ninv[this->Arowwiseind[k]];
+		const TInt kend = this->Arowpointer[i+1];
+		for( TInt k = this->Arowpointer[i]; k < kend; ++k ){
+			TInt ind = this->Ninv[this->Arowwiseind[k]];
 			if( ind != -1 ){
 				result[ind] += Arowwise[k] * vector[i];
 			}
@@ -858,17 +782,17 @@ void TOSolver<T>::mulANT( T* result, T* vector ){
 }
 
 
-template <class T>
-void TOSolver<T>::FTran( T* work, T* permSpike, int* permSpikeInd, int* permSpikeLen ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::FTran( T* work, T* permSpike, TInt* permSpikeInd, TInt* permSpikeLen ){
 
 	// FTranL-F
 
-	for( int j = 0; j < this->Lnetaf; ++j ){
-		const int p = this->Letapos[j];
+	for( TInt j = 0; j < this->Lnetaf; ++j ){
+		const TInt p = this->Letapos[j];
 		if( work[p] != 0 ){
 			T ap = work[p];
-			const int kend = Llbeg[j+1];
-			for( int k = Llbeg[j]; k < kend; ++k ){
+			const TInt kend = Llbeg[j+1];
+			for( TInt k = Llbeg[j]; k < kend; ++k ){
 				work[Lind[k]] += this->Letas[k] * ap;
 			}
 		}
@@ -877,11 +801,11 @@ void TOSolver<T>::FTran( T* work, T* permSpike, int* permSpikeInd, int* permSpik
 
 	// FTranL-U
 
-	for( int li = this->Lnetaf; li < this->Lneta; ++li ){
-		const int p = Letapos[li];
-		const int kend = this->Llbeg[li+1];
-		for( int k = this->Llbeg[li]; k < kend; ++k ){
-			int j = Lind[k];
+	for( TInt li = this->Lnetaf; li < this->Lneta; ++li ){
+		const TInt p = Letapos[li];
+		const TInt kend = this->Llbeg[li+1];
+		for( TInt k = this->Llbeg[li]; k < kend; ++k ){
+			TInt j = Lind[k];
 			if( work[j] != 0 ){
 				work[p] += Letas[k] * work[j];
 			}
@@ -892,9 +816,9 @@ void TOSolver<T>::FTran( T* work, T* permSpike, int* permSpikeInd, int* permSpik
 	// Permutierten Spike speichern für LU-Update
 	// TODO, oben irgendwie umbauen, dass die Schleife nicht bis m laufen muss
 	if( permSpike ){
-		int &ind = *permSpikeLen;
+		TInt &ind = *permSpikeLen;
 		ind = 0;
-		for( int i = 0; i < m; ++i ){
+		for( TInt i = 0; i < m; ++i ){
 			if( work[i] != 0 ){
 				permSpike[ind] = work[i];
 				permSpikeInd[ind] = i;
@@ -906,14 +830,14 @@ void TOSolver<T>::FTran( T* work, T* permSpike, int* permSpikeInd, int* permSpik
 
 	// FTranU
 
-	for( int k = m-1; k >= 0; --k ){
-		const int j = this->perm[k];
+	for( TInt k = m-1; k >= 0; --k ){
+		const TInt j = this->perm[k];
 		if( work[j] != 0 ){
-			const int ks = this->Ucbeg[j];
-			const int ke = ks + this->Uclen[j];
+			const TInt ks = this->Ucbeg[j];
+			const TInt ke = ks + this->Uclen[j];
 			T aj = work[j] / this->Ucval[ks];
 			work[j] = aj;
-			for( int kk = ks + 1; kk < ke; ++kk  ){
+			for( TInt kk = ks + 1; kk < ke; ++kk  ){
 				work[this->Urind[kk]] -= this->Ucval[kk] * aj;
 			}
 		}
@@ -922,19 +846,19 @@ void TOSolver<T>::FTran( T* work, T* permSpike, int* permSpikeInd, int* permSpik
 }
 
 
-template <class T>
-void TOSolver<T>::BTran( T* work ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::BTran( T* work ){
 
 	// BTranU
 
-	for( int k = 0; k < m; ++k ){
-		const int j = this->perm[k];
+	for( TInt k = 0; k < m; ++k ){
+		const TInt j = this->perm[k];
 		if( work[j] != 0 ){
-			const int ks = this->Urbeg[j];
-			const int ke = ks + this->Urlen[j];
+			const TInt ks = this->Urbeg[j];
+			const TInt ke = ks + this->Urlen[j];
 			T aj = work[j] / this->Urval[ks];
 			work[j] = aj;
-			for( int kk = ks + 1; kk < ke; ++kk  ){
+			for( TInt kk = ks + 1; kk < ke; ++kk  ){
 				work[this->Ucind[kk]] -= this->Urval[kk] * aj;
 			}
 		}
@@ -943,12 +867,12 @@ void TOSolver<T>::BTran( T* work ){
 
 	// BTranL-U
 
-	for( int j = this->Lneta - 1; j >= this->Lnetaf; --j ){
-		const int p = this->Letapos[j];
+	for( TInt j = this->Lneta - 1; j >= this->Lnetaf; --j ){
+		const TInt p = this->Letapos[j];
 		if( work[p] != 0 ){
 			T ap = work[p];
-			const int kend = Llbeg[j+1];
-			for( int k = Llbeg[j]; k < kend; ++k ){
+			const TInt kend = Llbeg[j+1];
+			for( TInt k = Llbeg[j]; k < kend; ++k ){
 				work[Lind[k]] += this->Letas[k] * ap;
 			}
 		}
@@ -957,11 +881,11 @@ void TOSolver<T>::BTran( T* work ){
 
 	// BTranL-F
 
-	for( int j = this->Lnetaf - 1; j >= 0; --j ){
-		const int p = this->Letapos[j];
-		const int kend = Llbeg[j+1];
-		for( int k = Llbeg[j]; k < kend; ++k ){
-			const int i = Lind[k];
+	for( TInt j = this->Lnetaf - 1; j >= 0; --j ){
+		const TInt p = this->Letapos[j];
+		const TInt kend = Llbeg[j+1];
+		for( TInt k = Llbeg[j]; k < kend; ++k ){
+			const TInt i = Lind[k];
 			if( work[i] != 0 ){
 				work[p] += this->Letas[k] * work[i];
 			}
@@ -971,8 +895,8 @@ void TOSolver<T>::BTran( T* work ){
 }
 
 
-template <class T>
-void TOSolver<T>::clearBasis(){
+template <class T, class TInt>
+void TOSolver<T, TInt>::clearBasis(){
 
 	this->farkasProof.clear();
 
@@ -999,8 +923,8 @@ void TOSolver<T>::clearBasis(){
 }
 
 
-template <class T>
-void TOSolver<T>::removeBasisFactorization(){
+template <class T, class TInt>
+void TOSolver<T, TInt>::removeBasisFactorization(){
 	this->hasBasisMatrix = false;
 
 	this->Urlen.clear();
@@ -1021,7 +945,7 @@ void TOSolver<T>::removeBasisFactorization(){
 	this->Ucbeg.resize( m );
 
 	this->halfNumUpdateLetas = 20;
-	int maxnumetas = m+2*this->halfNumUpdateLetas;	// Mehr ETAs kann es nicht geben
+	TInt maxnumetas = m+2*this->halfNumUpdateLetas;	// Mehr ETAs kann es nicht geben
 	this->Letas.clear();
 	this->Lind.clear();
 	this->Llbeg.clear();
@@ -1039,30 +963,30 @@ void TOSolver<T>::removeBasisFactorization(){
 }
 
 
-template <class T>
-void TOSolver<T>::findPiv( const std::vector<std::vector<int> >& Urowind, const std::vector<std::vector<int> >& Ucolind, bilist* const &R, bilist* const &C, const std::vector<bilist>& Ra,  const std::vector<bilist>& Ca,  const std::vector<int>& nnzCs, const std::vector<int>& nnzRs, int &i, int &j, bool &colsingleton ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::findPiv( const std::vector<std::vector<TInt> >& Urowind, const std::vector<std::vector<TInt> >& Ucolind, bilist* const &R, bilist* const &C, const std::vector<bilist>& Ra, const std::vector<bilist>& Ca, const std::vector<TInt>& nnzCs, const std::vector<TInt>& nnzRs, TInt &i, TInt &j, bool &colsingleton ){
 
-	const int p = 25;	// TODO adaptiv anpassen, falls es sich lohnt?
+	const TInt p = 25;	// TODO adaptiv anpassen, falls es sich lohnt?
 
-	const long long llmm = (long long) m * (long long) m;
+	const T llmm = T( m ) * T( m );
 
-	long long MM = llmm;
-	int singletonsize = 0;
-	int nn = 0;
+	T MM = llmm;
+	TInt singletonsize = 0;
+	TInt nn = 0;
 
-	for( int k = 1; k <= m; ++k  ){
+	for( TInt k = 1; k <= m; ++k  ){
 		{
 			bilist* Cn = C;
 			do {
-				int jj = Cn->val;
+				TInt jj = Cn->val;
 				if( nnzCs[jj] == k ){
 					// MarkCount begin
 
-					long long M = llmm;
-					for( unsigned int li = 0; li < Urowind[jj].size(); ++li ){
-						int itmp = Urowind[jj][li];
+					T M = llmm;
+					for( TInt li = 0; li < static_cast<TInt>( Urowind[jj].size() ); ++li ){
+						TInt itmp = Urowind[jj][li];
 						if( Ra[itmp].used ){
-							long long tmp = (long long) ( nnzRs[itmp] - 1 ) * ( nnzCs[jj] - 1 );
+							T tmp = T( nnzRs[itmp] - 1 ) * T( nnzCs[jj] - 1 );
 							if( k == 1 ){
 								if( nnzRs[itmp] > singletonsize ){
 									singletonsize = nnzRs[itmp];
@@ -1085,7 +1009,7 @@ void TOSolver<T>::findPiv( const std::vector<std::vector<int> >& Urowind, const 
 
 					if( M < MM ){
 						MM = M;
-						if( k > 1 && MM <= (long long) ( k - 1 ) * ( k - 1 ) ){
+						if( k > 1 && MM <= T( k - 1 ) * T( k - 1 ) ){
 							return;
 						}
 					}
@@ -1107,15 +1031,15 @@ void TOSolver<T>::findPiv( const std::vector<std::vector<int> >& Urowind, const 
 		{
 			bilist* Rn = R;
 			do {
-				int ii = Rn->val;
+				TInt ii = Rn->val;
 				if( nnzRs[ii] == k ){
 					// MarkCount begin
 
-					long long M = llmm;
-					for( unsigned int li = 0; li < Ucolind[ii].size(); ++li ){
-						int jtmp = Ucolind[ii][li];
+					T M = llmm;
+					for( TInt li = 0; li < static_cast<TInt>( Ucolind[ii].size() ); ++li ){
+						TInt jtmp = Ucolind[ii][li];
 						if( Ca[jtmp].used ){
-							long long tmp = (long long) ( nnzCs[jtmp] - 1 ) * ( nnzRs[ii] - 1 );
+							T tmp = T( nnzCs[jtmp] - 1 ) * T( nnzRs[ii] - 1 );
 							if( tmp < M ){
 								M = tmp;
 								j = jtmp;
@@ -1131,7 +1055,7 @@ void TOSolver<T>::findPiv( const std::vector<std::vector<int> >& Urowind, const 
 
 					if( M < MM ){
 						MM = M;
-						if( MM <= (long long) k * ( k - 1 ) ){
+						if( MM <= T( k ) * T( k - 1 ) ){
 							return;
 						}
 					}
@@ -1149,38 +1073,38 @@ void TOSolver<T>::findPiv( const std::vector<std::vector<int> >& Urowind, const 
 }
 
 
-template <class T>
-bool TOSolver<T>::refactor(){
+template <class T, class TInt>
+bool TOSolver<T, TInt>::refactor(){
 
 	// std::cout << "Refaktorisiere Basismatrix (" << this->baseIter << " Iterationen vergangen)." << std::endl;
 
 	this->baseIter = 0;
 
-	int additionalTmpSpace = 50;	// TODO irgendwo als kontstante festlegen?
+	TInt additionalTmpSpace = 50;	// TODO irgendwo als kontstante festlegen?
 
 	// Temporärer Speicher für ETAs
 	std::list<RationalWithInd> Llist;
 
 	// Speicherort für temporäre Sparse-Matrix
 	std::vector<std::vector<T> > Ucol(m);
-	std::vector<std::vector<int> > Urowind(m);
-	std::vector<std::vector<int> > Urowptr(m);
+	std::vector<std::vector<TInt> > Urowind(m);
+	std::vector<std::vector<TInt> > Urowptr(m);
 	std::vector<std::vector<T> > Urow(m);
-	std::vector<std::vector<int> > Ucolind(m);
-	std::vector<std::vector<int> > Ucolptr(m);
+	std::vector<std::vector<TInt> > Ucolind(m);
+	std::vector<std::vector<TInt> > Ucolptr(m);
 
-	int avg = m;
+	TInt avg = m;
 	// Basismatrix spaltenweise kopieren
-	for( int i = 0; i < m; ++i ){
-		const int collen = ( B[i] < n ) ? Acolpointer[B[i]+1] - Acolpointer[B[i]] : 1;
-		const int clen = collen + additionalTmpSpace;
+	for( TInt i = 0; i < m; ++i ){
+		const TInt collen = ( B[i] < n ) ? Acolpointer[B[i]+1] - Acolpointer[B[i]] : 1;
+		const TInt clen = collen + additionalTmpSpace;
 		avg += clen;
 		Ucol[i].reserve( clen );
 		Urowind[i].reserve( clen );
 		Urowptr[i].reserve( clen );
 
 		if( B[i] < n ){
-			for( int j = this->Acolpointer[B[i]], k = 0; k < collen; ++j, ++k ){
+			for( TInt j = this->Acolpointer[B[i]], k = 0; k < collen; ++j, ++k ){
 				Ucol[i].push_back( this->Acolwise[j] );
 				Urowind[i].push_back( this->Acolwiseind[j] );
 			}
@@ -1193,16 +1117,16 @@ bool TOSolver<T>::refactor(){
 	}
 	avg /= ( m + 1 );	// Durchschnittliche maximale Spaltenlänge als temporäre Zeilenlänge nehmen
 
-	for( int i = 0; i < m; ++i ){
+	for( TInt i = 0; i < m; ++i ){
 		Urow[i].reserve( avg );
 		Ucolind[i].reserve( avg );
 		Ucolptr[i].reserve( avg );
 	}
 
 	// rowwise Kopie
-	for( int i = 0; i < m; ++i ){
-		for( unsigned int j = 0; j < Ucol[i].size(); ++j ){
-			const int row = Urowind[i][j];
+	for( TInt i = 0; i < m; ++i ){
+		for( TInt j = 0; j < static_cast<TInt>( Ucol[i].size() ); ++j ){
+			const TInt row = Urowind[i][j];
 			Urow[row].push_back( Ucol[i][j] );
 			Urowptr[i][j] = Ucolind[row].size();
 			Ucolind[row].push_back( i );
@@ -1216,9 +1140,9 @@ bool TOSolver<T>::refactor(){
 	// temporärer Speicher für die geupdatete Zeile
 	std::vector<T> Ui( m );
 	// benutzte Indizes
-	std::vector<int> Uiind( m );
+	std::vector<TInt> Uiind( m );
 	// zugehörige Länge
-	int Uilen = 0;
+	TInt Uilen = 0;
 	// zugehöriger erledigt-Vektor
 	std::vector<bool> Uidone( m, false );
 
@@ -1231,13 +1155,13 @@ bool TOSolver<T>::refactor(){
 	std::vector<bilist> PPa( m );
 	bilist *PP = PPa.data();
 
-	for( int i = 0; i < m; ++i ){
+	for( TInt i = 0; i < m; ++i ){
 		PPa[i].val = i;
 		PPa[i].used = true;
 	}
 
 	// Zeiger der inneren Elemente der Liste
-	for( int i = 1; i < m - 1; ++i ){
+	for( TInt i = 1; i < m - 1; ++i ){
 		PPa[i].prev = &(PPa[i-1]);
 		PPa[i].next = &(PPa[i+1]);
 	}
@@ -1258,13 +1182,13 @@ bool TOSolver<T>::refactor(){
 	std::vector<bilist> QQa( m );
 	bilist* QQ = QQa.data();
 
-	for( int i = 0; i < m; ++i ){
+	for( TInt i = 0; i < m; ++i ){
 		QQa[i].val = i;
 		QQa[i].used = true;
 	}
 
 	// Zeiger der inneren Elemente der Liste
-	for( int i = 1; i < m - 1; ++i ){
+	for( TInt i = 1; i < m - 1; ++i ){
 		QQa[i].prev = &(QQa[i-1]);
 		QQa[i].next = &(QQa[i+1]);
 	}
@@ -1283,10 +1207,10 @@ bool TOSolver<T>::refactor(){
 
 
 	// Number of nonzeros in Pivot-Submatrix
-	std::vector<int> nnzCs( m );
-	std::vector<int> nnzRs( m );
+	std::vector<TInt> nnzCs( m );
+	std::vector<TInt> nnzRs( m );
 
-	for( int i = 0; i < m; ++i ){
+	for( TInt i = 0; i < m; ++i ){
 		nnzCs[i] = Ucol[i].size();
 		nnzRs[i] = Urow[i].size();
 	}
@@ -1294,16 +1218,16 @@ bool TOSolver<T>::refactor(){
 
 	// Basis-Permutationen...
 
-	std::vector<int> Bneu( m );
-	std::vector<int> Bneu2( m );
+	std::vector<TInt> Bneu( m );
+	std::vector<TInt> Bneu2( m );
 
 
-	for( int k = 0; k < m; ++k ){
+	for( TInt k = 0; k < m; ++k ){
 
 		// Step 1: Pivotsuche
 
-		int p = -1;
-		int q = -1;
+		TInt p = -1;
+		TInt q = -1;
 		bool colsingleton = false;
 
 		this->findPiv( Urowind, Ucolind, PP, QQ, PPa, QQa, nnzCs, nnzRs, p, q, colsingleton );
@@ -1342,7 +1266,7 @@ bool TOSolver<T>::refactor(){
 		}
 
 		// Spalten-nnz aktualisieren, hier finden einige sinnlose Anpassungen statt, diese sparen aber die Überprüfung, ob nötig
-		for( unsigned int li = 0; li < Ucolind[p].size(); ++li ){
+		for( TInt li = 0; li < static_cast<TInt>( Ucolind[p].size() ); ++li ){
 			--nnzCs[Ucolind[p][li]];
 		}
 
@@ -1358,19 +1282,19 @@ bool TOSolver<T>::refactor(){
 
 		else {
 			// Neuen ETA-Vektor vorbereiten
-			int Lpos = this->Llbeg[Lnetaf];
+			TInt Lpos = this->Llbeg[Lnetaf];
 			this->Letapos[this->Lnetaf] = p;
 			++this->Lnetaf;
 
 			// Pivot-Zeile speichern
 			{
-				for( unsigned int li = 0; li < Urow[p].size(); ++li ){
+				for( TInt li = 0; li < static_cast<TInt>( Urow[p].size() ); ++li ){
 					Up[Ucolind[p][li]] = Urow[p][li];
 				}
 			}
 
-			for( unsigned int li = 0; li < Ucol[q].size(); ){
-				int i = Urowind[q][li];
+			for( TInt li = 0; li < static_cast<TInt>( Ucol[q].size() ); ){
+				TInt i = Urowind[q][li];
 				if( PPa[i].used ){
 
 					T L = - Ucol[q][li] / Up[q];
@@ -1385,7 +1309,7 @@ bool TOSolver<T>::refactor(){
 
 					// Zeile Ui speichern
 					{
-						for( unsigned int ll = 0; ll < Urow[i].size(); ++ll ){
+						for( TInt ll = 0; ll < static_cast<TInt>( Urow[i].size() ); ++ll ){
 							Ui[Ucolind[i][ll]] = Urow[i][ll];
 							Uidone[Ucolind[i][ll]] = true;	// Vorerst ist nichts zu tun
 						}
@@ -1400,7 +1324,7 @@ bool TOSolver<T>::refactor(){
 					{
 						bilist* QQn = QQ;
 						do {
-							int j = QQn->val;
+							TInt j = QQn->val;
 							if( Up[j] != 0 ){
 								Ui[j] += L * Up[j];
 								Uiind[Uilen++] = j;
@@ -1412,14 +1336,14 @@ bool TOSolver<T>::refactor(){
 
 					// Bestehende Elemente der Zeile updaten
 
-					for( unsigned int ll = 0; ll < Urow[i].size(); ++ll ){
-						int j = Ucolind[i][ll];
+					for( TInt ll = 0; ll < static_cast<TInt>( Urow[i].size() ); ++ll ){
+						TInt j = Ucolind[i][ll];
 						if( !Uidone[j] ){
 							if( Ui[j] == 0 ){
-								unsigned int cptr = Ucolptr[i][ll];
+								TInt cptr = Ucolptr[i][ll];
 
 								// Letztes Element der Zeile an diese Position holen, Zeile um 1 kürzen
-								unsigned int rowend = Urow[i].size() - 1;
+								TInt rowend = Urow[i].size() - 1;
 								if( ll < rowend ){
 									Urow[i][ll] = Urow[i][rowend];
 									Ucolind[i][ll] = Ucolind[i][rowend];
@@ -1431,7 +1355,7 @@ bool TOSolver<T>::refactor(){
 								Ucolptr[i].pop_back();
 
 								// Letztes Element der Spalte an diese Position holen, Spalte um 1 kürzen
-								unsigned int colend = Ucol[j].size() - 1;
+								TInt colend = Ucol[j].size() - 1;
 								if( cptr < colend ){
 									Ucol[j][cptr] = Ucol[j][colend];
 									Urowind[j][cptr] = Urowind[j][colend];
@@ -1458,13 +1382,13 @@ bool TOSolver<T>::refactor(){
 					}
 
 
-					for( int ll = 0; ll < Uilen; ++ll ){
-						int j = Uiind[ll];
+					for( TInt ll = 0; ll < Uilen; ++ll ){
+						TInt j = Uiind[ll];
 						if( !Uidone[j] && Ui[j] != 0 ){
 
 							// Zeilen- und Spaltenende ermitteln, Längen anpassen
-							const unsigned int rowend = Ucolind[i].size();
-							const unsigned int colend = Ucol[j].size();
+							const TInt rowend = Ucolind[i].size();
+							const TInt colend = Ucol[j].size();
 
 							// An letzte Stelle der Zeile schreiben
 							Urow[i].push_back( Ui[j] );
@@ -1493,7 +1417,7 @@ bool TOSolver<T>::refactor(){
 			}
 
 			// gespeicherte Pivot-Zeile löschen
-			for( unsigned int li = 0; li < Urow[p].size(); ++li ){
+			for( TInt li = 0; li < static_cast<TInt>( Urow[p].size() ); ++li ){
 				Up[Ucolind[p][li]] = 0;
 			}
 
@@ -1517,11 +1441,11 @@ bool TOSolver<T>::refactor(){
 
 	// ETAs speichern
 	{
-		int Lsize = Llist.size();
+		TInt Lsize = Llist.size();
 		this->Letas.resize( Lsize+2*this->halfNumUpdateLetas*m );
 		this->Lind.resize( Lsize+2*this->halfNumUpdateLetas*m );
 		typename std::list<RationalWithInd>::iterator it;
-		int pos = 0;
+		TInt pos = 0;
 		for( it = Llist.begin(); it != Llist.end(); ++it ){
 			RationalWithInd L = *it;
 			this->Letas[pos] = L.value;
@@ -1535,7 +1459,7 @@ bool TOSolver<T>::refactor(){
 	if( m ){
 		Ucbeg[0] = 0;
 		Urbeg[0] = 0;
-		for( int i = 1; i < m; ++i ){
+		for( TInt i = 1; i < m; ++i ){
 			Ucbeg[i] = Ucbeg[i-1] + Ucol[i-1].size();
 			Urbeg[i] = Urbeg[i-1] + Urow[i-1].size() + 2 * this->halfNumUpdateLetas;
 		}
@@ -1543,7 +1467,7 @@ bool TOSolver<T>::refactor(){
 	} else {
 		this->Ucfreepos = 0;
 	}
-	int arraysize = this->Ucfreepos + 2 * m * this->halfNumUpdateLetas + 1;
+	TInt arraysize = this->Ucfreepos + 2 * m * this->halfNumUpdateLetas + 1;
 	this->Urval.resize( arraysize );
 	this->Ucind.resize( arraysize );
 	this->Ucptr.resize( arraysize );
@@ -1553,14 +1477,14 @@ bool TOSolver<T>::refactor(){
 	this->Urptr.resize( arraysize );
 
 
-	for( int i = 0; i < m; ++i ){
+	for( TInt i = 0; i < m; ++i ){
 		// Spaltenweise
 		{
-			const int len = Ucol[i].size();
+			const TInt len = Ucol[i].size();
 			this->Uclen[i] = len;
-			const int cbeg = this->Ucbeg[i];
-			for( int ll = 0; ll < len; ++ll ){
-				int pos = cbeg + ll;
+			const TInt cbeg = this->Ucbeg[i];
+			for( TInt ll = 0; ll < len; ++ll ){
+				TInt pos = cbeg + ll;
 				this->Ucval[pos] = Ucol[i][ll];
 				this->Urind[pos] = Urowind[i][ll];
 				this->Urptr[pos] = Urowptr[i][ll] + this->Urbeg[Urowind[i][ll]];
@@ -1570,11 +1494,11 @@ bool TOSolver<T>::refactor(){
 
 		// Zeilenweise
 		{
-			const int len = Urow[i].size();
+			const TInt len = Urow[i].size();
 			this->Urlen[i] = len;
-			int rbeg = this->Urbeg[i];
-			for( int ll = 0; ll < len; ++ll ){
-				int pos = rbeg + ll;
+			TInt rbeg = this->Urbeg[i];
+			for( TInt ll = 0; ll < len; ++ll ){
+				TInt pos = rbeg + ll;
 				this->Urval[pos] = Urow[i][ll];
 				this->Ucind[pos] = Ucolind[i][ll];
 				this->Ucptr[pos] = Ucolptr[i][ll] + this->Ucbeg[Ucolind[i][ll]];
@@ -1587,20 +1511,20 @@ bool TOSolver<T>::refactor(){
 	{
 
 		// Basis anpassen
-		std::vector<int> tmpBase( m );
-		std::vector<int> Ucbegold( m );
-		std::vector<int> Uclenold( m );
-		for( int i = 0; i < m; ++i ){
+		std::vector<TInt> tmpBase( m );
+		std::vector<TInt> Ucbegold( m );
+		std::vector<TInt> Uclenold( m );
+		for( TInt i = 0; i < m; ++i ){
 			// Bneu[Bneu2[i]]
 			tmpBase[i] = this->B[Bneu[Bneu2[i]]];
 			Ucbegold[i] = this->Ucbeg[i];
 			Uclenold[i] = this->Uclen[i];
 		}
-		for( int i = 0; i < m; ++i ){
+		for( TInt i = 0; i < m; ++i ){
 			if( this->Ucbeg[i] != Ucbegold[Bneu[Bneu2[i]]] ){
 				this->Ucbeg[i] = Ucbegold[Bneu[Bneu2[i]]];
 				this->Uclen[i] = Uclenold[Bneu[Bneu2[i]]];
-				for( int j = 0; j < this->Uclen[i]; ++j ){
+				for( TInt j = 0; j < this->Uclen[i]; ++j ){
 					this->Ucind[this->Urptr[this->Ucbeg[i]+j]] = i;
 				}
 			}
@@ -1613,11 +1537,11 @@ bool TOSolver<T>::refactor(){
 
 
 	// Spalten-Diagonalelemente an erste Stellen holen
-	for( int j = 0; j < m; ++j ){
-		const int cbeg = this->Ucbeg[j];
-		const int cend = cbeg + this->Uclen[j];
+	for( TInt j = 0; j < m; ++j ){
+		const TInt cbeg = this->Ucbeg[j];
+		const TInt cend = cbeg + this->Uclen[j];
 
-		for( int k = cbeg; k < cend; ++k ){
+		for( TInt k = cbeg; k < cend; ++k ){
 			if( this->Urind[k] == j ){
 
 				{
@@ -1627,13 +1551,13 @@ bool TOSolver<T>::refactor(){
 				}
 
 				{
-					int tmprind = this->Urind[cbeg];
+					TInt tmprind = this->Urind[cbeg];
 					this->Urind[cbeg] = this->Urind[k];
 					this->Urind[k] = tmprind;
 				}
 
 				{
-					int tmprptr = this->Urptr[cbeg];
+					TInt tmprptr = this->Urptr[cbeg];
 					this->Urptr[cbeg] = this->Urptr[k];
 					this->Urptr[k] = tmprptr;
 				}
@@ -1647,10 +1571,10 @@ bool TOSolver<T>::refactor(){
 	}
 
 	// Zeilen-Diagonalelemente an erste Stellen holen
-	for( int i = 0; i < m; ++i ){
-		const int rbeg = this->Urbeg[i];
+	for( TInt i = 0; i < m; ++i ){
+		const TInt rbeg = this->Urbeg[i];
 
-		const int k = this->Urptr[this->Ucbeg[i]];	// Position aus Spalten-Diagonalelement auslesen
+		const TInt k = this->Urptr[this->Ucbeg[i]];	// Position aus Spalten-Diagonalelement auslesen
 
 		{
 			T tmpval = this->Urval[rbeg];
@@ -1659,13 +1583,13 @@ bool TOSolver<T>::refactor(){
 		}
 
 		{
-			int tmpcind = this->Ucind[rbeg];
+			TInt tmpcind = this->Ucind[rbeg];
 			this->Ucind[rbeg] = this->Ucind[k];
 			this->Ucind[k] = tmpcind;
 		}
 
 		{
-			int tmpcptr = this->Ucptr[rbeg];
+			TInt tmpcptr = this->Ucptr[rbeg];
 			this->Ucptr[rbeg] = this->Ucptr[k];
 			this->Ucptr[k] = tmpcptr;
 		}
@@ -1685,20 +1609,20 @@ bool TOSolver<T>::refactor(){
 }
 
 
-template <class T>
-void TOSolver<T>::updateB( int r, T* permSpike, int* permSpikeInd, int* permSpikeLen ){
+template <class T, class TInt>
+void TOSolver<T, TInt>::updateB( TInt r, T* permSpike, TInt* permSpikeInd, TInt* permSpikeLen ){
 
 	// zu ersetzende Spalte aus Basismatrix löschen (außer Diagonalelement, das wird sowieso ersetzt)
 	// Diagonalelement vorübergehend auf 0 setzen, statt zu löschen
 	this->Urval[this->Urbeg[r]] = 0;
 
-	int colend = this->Ucbeg[r] + this->Uclen[r];
-	for( int i = this->Ucbeg[r] + 1; i < colend; ++i ){
-		int rind = this->Urind[i];
-		int rptr = this->Urptr[i];
+	TInt colend = this->Ucbeg[r] + this->Uclen[r];
+	for( TInt i = this->Ucbeg[r] + 1; i < colend; ++i ){
+		TInt rind = this->Urind[i];
+		TInt rptr = this->Urptr[i];
 
 		// Letztes Element der Zeile an diese Position holen, Zeile um 1 kürzen
-		int rowend = this->Urbeg[rind] + --this->Urlen[rind];
+		TInt rowend = this->Urbeg[rind] + --this->Urlen[rind];
 		if( rptr < rowend ){
 			this->Urval[rptr] = this->Urval[rowend];
 			this->Ucind[rptr] = this->Ucind[rowend];
@@ -1710,8 +1634,8 @@ void TOSolver<T>::updateB( int r, T* permSpike, int* permSpikeInd, int* permSpik
 	// permuted Spike hinzufügen
 	colend = this->Ucfreepos;
 	this->Ucbeg[r] = colend;
-	for( int i = 0; i < *permSpikeLen; ++i ){
-		int rind = permSpikeInd[i];
+	for( TInt i = 0; i < *permSpikeLen; ++i ){
+		TInt rind = permSpikeInd[i];
 		if( rind == r ){
 			// Diagonalelement
 			this->Ucval[this->Ucbeg[r]] = permSpike[i];
@@ -1722,7 +1646,7 @@ void TOSolver<T>::updateB( int r, T* permSpike, int* permSpikeInd, int* permSpik
 		} else {
 			// Zeilen- und Spaltenende ermitteln, Längen anpassen
 			++colend;
-			int rowend = this->Urbeg[rind] + this->Urlen[rind]++;
+			TInt rowend = this->Urbeg[rind] + this->Urlen[rind]++;
 
 			// An letzte Stelle der Zeile schreiben
 			this->Urval[rowend] = permSpike[i];
@@ -1738,7 +1662,7 @@ void TOSolver<T>::updateB( int r, T* permSpike, int* permSpikeInd, int* permSpik
 	this->Uclen[r] = colend - this->Ucbeg[r] + 1;
 	this->Ucfreepos += this->Uclen[r];
 
-	int t = this->permback[r];
+	TInt t = this->permback[r];
 
 	// Zeile Ur kopieren und dabei aus Matrix löschen (bis auf Diagonalelement)
 	std::vector<T> Ur(m);	// TODO globale Arbeitsvariable machen und am Ende immer auf 0 setzen (ist automatisch 0), macht vermutlich wenig Sinn
@@ -1746,12 +1670,12 @@ void TOSolver<T>::updateB( int r, T* permSpike, int* permSpikeInd, int* permSpik
 	Ur[r] = Urval[this->Urbeg[r]];	// Diagonalelement kopieren um unten eine if-Abfrage zu vermeiden
 
 	{
-		int kend = this->Urbeg[r] + this->Urlen[r];
-		for( int i = this->Urbeg[r] + 1; i < kend; ++i ){
-			int cind = Ucind[i];
+		TInt kend = this->Urbeg[r] + this->Urlen[r];
+		for( TInt i = this->Urbeg[r] + 1; i < kend; ++i ){
+			TInt cind = Ucind[i];
 			Ur[cind] = Urval[i];
 
-			int cptr = Ucptr[i];
+			TInt cptr = Ucptr[i];
 
 			// Letztes Element der Spalte an diese Position holen, Zeile um 1 kürzen
 			colend = this->Ucbeg[cind] + --this->Uclen[cind];
@@ -1769,8 +1693,8 @@ void TOSolver<T>::updateB( int r, T* permSpike, int* permSpikeInd, int* permSpik
 	this->Llbeg[this->Lneta+1] = this->Llbeg[this->Lneta];	// Neuen ETA-Vektor hinzufügen
 	this->Letapos[this->Lneta++] = r;
 
-	for( int k = t+1; k < m; ++k ){
-		int i = this->perm[k];
+	for( TInt k = t+1; k < m; ++k ){
+		TInt i = this->perm[k];
 
 		if( Ur[i] != 0 ){
 			T L = - Ur[i] / this->Urval[Urbeg[i]];
@@ -1779,8 +1703,8 @@ void TOSolver<T>::updateB( int r, T* permSpike, int* permSpikeInd, int* permSpik
 
 			Ur[i] = 0;
 
-			const int llend = this->Urbeg[i] + this->Urlen[i];
-			for( int ll = this->Urbeg[i] + 1; ll < llend; ++ll ){	// +1, weil ohne Diagonalelement
+			const TInt llend = this->Urbeg[i] + this->Urlen[i];
+			for( TInt ll = this->Urbeg[i] + 1; ll < llend; ++ll ){	// +1, weil ohne Diagonalelement
 				Ur[Ucind[ll]] += L * this->Urval[ll];
 			}
 		}
@@ -1793,22 +1717,22 @@ void TOSolver<T>::updateB( int r, T* permSpike, int* permSpikeInd, int* permSpik
 
 
 	// TODO Das geht angeblich sogar in konstanter Zeit??
-	int tmp = this->perm[t];
-	for( int k = t; k < m - 1; ++k ){
+	TInt tmp = this->perm[t];
+	for( TInt k = t; k < m - 1; ++k ){
 		this->perm[k] = this->perm[k+1];
 	}
 	this->perm[m-1] = tmp;
 
 	// TODO update-formel hierfür verwenden
-	for( int i = 0; i < m; ++i ){
+	for( TInt i = 0; i < m; ++i ){
 		this->permback[this->perm[i]] = i;
 	}
 
 }
 
 
-template <class T>
-int TOSolver<T>::phase1(){
+template <class T, class TInt>
+TInt TOSolver<T, TInt>::phase1(){
 
 	#ifndef TO_DISABLE_OUTPUT
 		std::cout << "Duale Phase 1 gestartet." << std::endl;
@@ -1829,7 +1753,7 @@ int TOSolver<T>::phase1(){
 
 	// Schranken entsprechend Phase 1 anpassen
 
-	for( int i = 0; i < n+m; ++i ){
+	for( TInt i = 0; i < n+m; ++i ){
 		if( lvec[i].isInf && uvec[i].isInf ){
 			this->l[i] = m1;
 			this->u[i] = one;
@@ -1846,13 +1770,13 @@ int TOSolver<T>::phase1(){
 	}
 
 
-	int retval = -1;
+	TInt retval = -1;
 
 	// Phase 1 - Problem lösen
 	if( this->opt( true ) >= 0 ){
 		// Zielfunktionswert bestimmen	// TODO später auslesen, falls wir den Wert zwischenspeichern/zurückgeben?
 		T Z( 0 );
-		for( int i = 0; i < n; ++i ){
+		for( TInt i = 0; i < n; ++i ){
 			Z += c[i] * x[i];
 		}
 		retval = Z == 0 ? 0 : 1;
@@ -1866,754 +1790,20 @@ int TOSolver<T>::phase1(){
 }
 
 
-template <class T>
-int TOSolver<T>::opt(){
-
-	#ifdef TO_WITH_CPLEX
-
-	clock_t cplextime = clock();
-
-	if( !this->hasBase ){
-
-		#ifndef TO_DISABLE_OUTPUT
-			std::cout << "Starte CPLEX um möglicherweise Startbasis zu bestimmen..." << std::endl << std::endl;
-		#endif
-
-		int status;
-		CPXENVptr env = CPXXopenCPLEX( &status ); // TODO für Nachoptimierungen auslagern und behalten
-		if( status ){
-			std::vector<char> error( CPXMESSAGEBUFSIZE );
-			throw std::runtime_error( CPXXgeterrorstring( env, status, error.data() ) );
-		}
-
-		#ifndef TO_DISABLE_OUTPUT
-			CPLEX_EXEC( CPXXsetintparam( env, CPX_PARAM_SCRIND, CPX_ON ) );
-		#endif
-
-		// CPLEX-Parameter für Optimalität und Zulässigkeit
-		CPXXsetdblparam( env, CPX_PARAM_EPOPT, 1e-9 );
-		CPXXsetdblparam( env, CPX_PARAM_EPRHS, 1e-9 );
-
-
-		CPXLPptr lp = CPXXcreateprob( env, &status, "test" );
-		if( status ){
-			std::vector<char> error( CPXMESSAGEBUFSIZE );
-			throw std::runtime_error( CPXXgeterrorstring( env, status, error.data() ) );
-		}
-
-		CPLEX_EXEC( CPXXchgobjsen( env, lp, CPX_MIN ) );
-
-		try {
-
-			// Variablen + Zielfunktion übergeben
-			{
-				std::vector<double> cdbl( n );
-				std::vector<double> ldbl( n );
-				std::vector<double> udbl( n );
-				for( int i = 0; i < n; ++i ){
-					cdbl[i] = this->c[i].get_d();
-					if( this->l[i].isInf && this->u[i].isInf ){
-						ldbl[i] = -CPX_INFBOUND;
-						udbl[i] = CPX_INFBOUND;
-					} else if( this->l[i].isInf && !this->u[i].isInf ){
-						ldbl[i] = -CPX_INFBOUND;
-						udbl[i] = this->u[i].value.get_d();
-					} else if( !this->l[i].isInf && this->u[i].isInf ){
-						ldbl[i] = this->l[i].value.get_d();
-						udbl[i] = CPX_INFBOUND;
-					} else if( !this->l[i].isInf && !this->u[i].isInf ){
-						ldbl[i] = this->l[i].value.get_d();
-						udbl[i] = this->u[i].value.get_d();
-					}
-				}
-				CPLEX_EXEC( CPXXnewcols( env, lp, n, cdbl.data(), ldbl.data(), udbl.data(), NULL, NULL ) );
-			}
-
-			// Nebenbedingungen anlegen
-			{
-				const int numel = this->Arowpointer[m];
-				std::vector<double> coeffdbl( numel );
-				for( int i = 0; i < numel; ++i ){
-					coeffdbl[i] = Arowwise[i].get_d();
-				}
-				std::vector<CPXNNZ> rowpcpx( m + 1 );
-				for(int i = 0; i < m + 1; ++i ){
-					rowpcpx[i] = this->Arowpointer[i];
-				}
-				std::vector<char> sense(m);
-				std::vector<double> rhs(m);
-				std::vector<double> rngval;
-				rngval.reserve( m );
-				std::vector<int> rngind;
-				rngind.reserve( m );
-				for( int i = 0; i < m; ++i ){
-					const int s = n + i;
-					if( !this->l[s].isInf && !this->u[s].isInf ){
-						if( l[s].value.get_d() == u[s].value.get_d() ){
-							sense[i] = 'E';
-						} else {
-							sense[i] = 'R';
-							rngind.push_back( i );
-							rngval.push_back( u[s].value.get_d() - l[s].value.get_d() );
-						}
-						rhs[i] = -u[s].value.get_d();
-					} else if( this->l[s].isInf && !this->u[s].isInf ){
-						sense[i] = 'G';
-						rhs[i] = -u[s].value.get_d();
-					} else if( !this->l[s].isInf && this->u[s].isInf ){
-						sense[i] = 'L';
-						rhs[i] = -l[s].value.get_d();
-					}
-				}
-				CPLEX_EXEC( CPXXaddrows( env, lp, 0, m, numel, rhs.data(), sense.data(), rowpcpx.data(), this->Arowwiseind.data(), coeffdbl.data(), NULL, NULL ) );
-				if( rngval.size() ){
-					CPLEX_EXEC( CPXXchgrngval( env, lp, rngval.size(), rngind.data(), rngval.data() ) );
-				}
-			}
-
-
-			// Lösen (Ich hatte teilweise falsche Ergebnisse wenn nur 1x)
-			CPLEX_EXEC( CPXXlpopt( env, lp ) );
-			CPLEX_EXEC( CPXXsetdblparam( env, CPX_PARAM_EPMRK, 0.95 ) );
-			CPLEX_EXEC( CPXXlpopt( env, lp ) );
-
-			// Lösung verarbeiten
-			status = CPXXgetstat( env, lp );
-			if( status == CPX_STAT_OPTIMAL ){
-				#ifndef TO_DISABLE_OUTPUT
-					double objval;
-					CPLEX_EXEC( CPXXgetobjval( env, lp, &objval ) );
-					std::cout << std::endl << "CPLEX-Optimallösung gefunden: " << objval << "." << std::endl;
-				#endif
-			} else {
-				#ifndef TO_DISABLE_OUTPUT
-				{
-					char cpxstatus[CPXMESSAGEBUFSIZE];
-					char* statstring = CPXXgetstatstring( env, status, cpxstatus );
-					std::cout << std::endl << "Keine Optimallösung mit CPLEX gefunden." << std::endl;
-					if( statstring ){
-						std::cout << "CPLEX-Status = " << statstring << std::endl;
-					}
-					std::cout << "Deaktiviere Presolver, optimiere erneut." << std::endl << std::endl;
-				}
-				#endif
-
-
-				// Nochmal ohne Presolver und garantiert dual starten
-				CPLEX_EXEC( CPXXsetintparam( env, CPX_PARAM_PREIND, CPX_OFF ) );
-				CPLEX_EXEC( CPXXsetintparam( env, CPX_PARAM_LPMETHOD, CPX_ALG_DUAL ) );
-
-
-				// Lösen (Ich hatte teilweise falsche Ergebnisse wenn nur 1x)
-				CPLEX_EXEC( CPXXlpopt( env, lp ) );
-				CPLEX_EXEC( CPXXsetdblparam( env, CPX_PARAM_EPMRK, 0.95 ) );
-				CPLEX_EXEC( CPXXlpopt( env, lp ) );
-
-				status = CPXXgetstat( env, lp );
-
-				#ifndef TO_DISABLE_OUTPUT
-				{
-					char cpxstatus[CPXMESSAGEBUFSIZE];
-					char* statstring = CPXXgetstatstring( env, status, cpxstatus );
-					if( statstring ){
-						std::cout << std::endl << "CPLEX-Status nach weiterem Durchlauf = " << statstring << std::endl;
-					}
-				}
-				#endif
-			}
-
-			#ifndef TO_DISABLE_OUTPUT
-				std::cout << "Übertrage Basis." << std::endl;
-			#endif
-
-			// Basis übertragen
-			int kB = 0;
-			int kN = 0;
-
-			{
-				std::vector<int> cstat(n);
-				std::vector<int> rstat(m);
-				CPLEX_EXEC( CPXXgetbase( env, lp, cstat.data(), rstat.data() ) );
-				for( int i = 0; i < n; ++i ){
-					// 1 Basis, sonst nichtbasis
-					int &s = cstat[i];
-					if( s == 1 ){
-						// Basisvariabls
-						this->B[kB] = i;
-						this->Binv[i] = kB;
-						this->Ninv[i] = -1;
-						++kB;
-					} else {
-						// Nichtbasisvariable
-						if( s == 0 ){
-							this->x[i] = this->l[i].value;
-						} else if( s == 2 ){
-							this->x[i] = this->u[i].value;
-						}
-						this->N[kN] = i;
-						this->Ninv[i] = kN;
-						this->Binv[i] = -1;
-						++kN;
-					}
-				}
-
-				for( int i = 0; i < m; ++i ){
-					// 1 Basis, sonst nichtbasis
-					int &s = rstat[i];
-					const int sV = n + i;
-					if( s == 1 ){
-						// Basisvariabls
-						this->B[kB] = sV;
-						this->Binv[sV] = kB;
-						this->Ninv[sV] = -1;
-						++kB;
-					} else {
-						// Nichtbasisvariable
-						if( s == 0 && !this->l[sV].isInf ){
-							this->x[sV] = this->l[sV].value;
-						} else {
-							this->x[sV] = this->u[sV].value;
-						}
-						this->N[kN] = sV;
-						this->Ninv[sV] = kN;
-						this->Binv[sV] = -1;
-						++kN;
-					}
-				}
-			}
-
-			if( kB != m || kN != n ){
-				throw std::runtime_error( "CPLEX-Basis hat scheinbar nicht die korrekte Anzahl an Variablen/Nebenbedingungen." );
-			}
-
-			this->hasBase = true;
-
-			if( status == CPX_STAT_INFEASIBLE ){
-				#ifndef TO_DISABLE_OUTPUT
-					std::cout << "CPLEX infeasible." << std::endl;
-				#endif
-
-				this->rayGuess.resize( m );
-				CPLEX_EXEC( CPXXdualfarkas( env, lp,this->rayGuess.data(), NULL ) );
-			}
-
-		} catch( std::runtime_error& ex ){
-			#ifndef TO_DISABLE_OUTPUT
-				std::cerr << std::endl << "Unerwarteter Fehler bei Bestimmung der Basis mit CPLEX:" << std::endl << ex.what() << std::endl << std::endl;
-				std::cout << "Bestimme Basis selbst." << std::endl;
-			#endif
-		} catch( ... ){
-			#ifndef TO_DISABLE_OUTPUT
-				std::cerr << std::endl << "Völlig unerwarteter Fehler bei Bestimmung der Basis mit CPLEX." << std::endl << std::endl;
-				std::cout << "Bestimme Basis selbst." << std::endl;
-			#endif
-		}
-
-		CPLEX_EXEC( CPXXfreeprob( env, &lp ) );
-		CPLEX_EXEC( CPXXcloseCPLEX( &env ) );
-
-	}
-
-	cplextime = clock() - cplextime;
-
-	#endif
-
-
-	#ifdef TO_WITH_GUROBI
-
-	clock_t gurobitime = clock();
-
-	if( !this->hasBase ){
-
-		#ifndef TO_DISABLE_OUTPUT
-			std::cout << "Starte Gurobi um möglicherweise Startbasis zu bestimmen..." << std::endl << std::endl;
-		#endif
-
-		GRBenv *env = NULL; // TODO für Nachoptimierungen auslagern und behalten
-		GRBmodel *model = NULL;
-
-		if( GRBloadenv( &env, NULL ) || env == NULL ){
-			throw std::runtime_error( GRBgeterrormsg( env ) );
-		}
-
-		#ifndef TO_DISABLE_OUTPUT
-			GUROBI_EXEC( env, GRBsetintparam( env, GRB_INT_PAR_OUTPUTFLAG, 1 ) );
-		#endif
-
-		GUROBI_EXEC( env, GRBsetintparam( env, GRB_INT_PAR_INFUNBDINFO, 1 ) );
-		GUROBI_EXEC( env, GRBsetdblparam( env, GRB_DBL_PAR_OPTIMALITYTOL, 1e-9 ) );
-		GUROBI_EXEC( env, GRBsetdblparam( env, GRB_DBL_PAR_FEASIBILITYTOL, 1e-9 ) );
-
-		std::vector<double> cdbl( n );
-		std::vector<double> ldbl( n );
-		std::vector<double> udbl( n );
-		for( int i = 0; i < n; ++i ){
-			cdbl[i] = this->c[i].get_d();
-			if( this->l[i].isInf && this->u[i].isInf ){
-				ldbl[i] = -GRB_INFINITY;
-				udbl[i] = GRB_INFINITY;
-			} else if( this->l[i].isInf && !this->u[i].isInf ){
-				ldbl[i] = -GRB_INFINITY;
-				udbl[i] = this->u[i].value.get_d();
-			} else if( !this->l[i].isInf && this->u[i].isInf ){
-				ldbl[i] = this->l[i].value.get_d();
-				udbl[i] = GRB_INFINITY;
-			} else if( !this->l[i].isInf && !this->u[i].isInf ){
-				ldbl[i] = this->l[i].value.get_d();
-				udbl[i] = this->u[i].value.get_d();
-			}
-		}
-
-
-		GUROBI_EXEC( env, GRBnewmodel( env, &model, "test", n, cdbl.data(), ldbl.data(), udbl.data(), NULL, NULL ) );
-
-		try {
-			int status = 0;
-
-			// Nebenbedingungen anlegen
-			for( int i = 0; i < m; ++i ){
-				const int numel = this->Arowpointer[i+1] - this->Arowpointer[i];
-				std::vector<double> coeffdbl( numel );
-				for( int j = 0; j < numel; ++j ){
-					const int ind = this->Arowpointer[i] + j;
-					coeffdbl[j] = Arowwise[ind].get_d();
-				}
-
-				const int s = n + i;
-
-				char sense = 0;
-				double rhs = 0;
-				bool ranged = false;
-				if( !this->l[s].isInf && !this->u[s].isInf ){
-					if( l[s].value.get_d() == u[s].value.get_d() ){
-						sense = GRB_EQUAL;
-						rhs = -u[s].value.get_d();
-					} else {
-						ranged = true;
-					}
-				} else if( this->l[s].isInf && !this->u[s].isInf ){
-					sense = GRB_GREATER_EQUAL;
-					rhs = -u[s].value.get_d();
-				} else if( !this->l[s].isInf && this->u[s].isInf ){
-					sense = GRB_LESS_EQUAL;
-					rhs = -l[s].value.get_d();
-				}
-
-				if( ranged ){
-					GUROBI_EXEC( env, GRBaddrangeconstr( model, numel, &this->Arowwiseind[this->Arowpointer[i]], coeffdbl.data(), -u[s].value.get_d(), - l[s].value.get_d(), NULL ) );
-				} else {
-					GUROBI_EXEC( env, GRBaddconstr( model, numel, &this->Arowwiseind[this->Arowpointer[i]], coeffdbl.data(), sense, rhs, NULL ) );
-				}
-
-			}
-
-			GUROBI_EXEC( env, GRBupdatemodel( model ) );
-
-			GUROBI_EXEC( env, GRBoptimize( model ) );
-
-
-			#ifndef TO_DISABLE_OUTPUT
-				std::cout << "Übertrage Basis." << std::endl;
-			#endif
-
-			// Basis übertragen
-			int kB = 0;
-			int kN = 0;
-
-			{
-				std::vector<int> cstat(n);
-			 	GUROBI_EXEC( env, GRBgetintattrarray( model, GRB_INT_ATTR_VBASIS, 0, n, cstat.data() ) );
-				for( int i = 0; i < n; ++i ){
-					// 0 Basis, sonst nichtbasis
-					int &s = cstat[i];
-					if( s == 0 ){
-						// Basisvariabls
-						this->B[kB] = i;
-						this->Binv[i] = kB;
-						this->Ninv[i] = -1;
-						++kB;
-					} else {
-						// Nichtbasisvariable
-						if( s == -1 ){
-							this->x[i] = this->l[i].value;
-						} else if( s == -2 ){
-							this->x[i] = this->u[i].value;
-						}
-						this->N[kN] = i;
-						this->Ninv[i] = kN;
-						this->Binv[i] = -1;
-						++kN;
-					}
-				}
-			}
-
-			{
-				std::vector<int> rstat(m);
-				GUROBI_EXEC( env, GRBgetintattrarray( model, GRB_INT_ATTR_CBASIS, 0, m, rstat.data() ) );
-				for( int i = 0; i < m; ++i ){
-					// 0 Basis, sonst nichtbasis
-					int &s = rstat[i];
-					const int sV = n + i;
-					if( s == 0 ){
-						// Basisvariabls
-						this->B[kB] = sV;
-						this->Binv[sV] = kB;
-						this->Ninv[sV] = -1;
-						++kB;
-					} else {
-						// Nichtbasisvariable
-						if( s == -1 && !this->l[sV].isInf ){
-							this->x[sV] = this->l[sV].value;
-						} else {
-							this->x[sV] = this->u[sV].value;
-						}
-						this->N[kN] = sV;
-						this->Ninv[sV] = kN;
-						this->Binv[sV] = -1;
-						++kN;
-					}
-				}
-			}
-
-			if( kB != m || kN != n ){
-				throw std::runtime_error( "Gurobi-Basis hat scheinbar nicht die korrekte Anzahl an Variablen/Nebenbedingungen." );
-			}
-
-			this->hasBase = true;
-
-			GUROBI_EXEC( env, GRBgetintattr( model, GRB_INT_ATTR_STATUS, &status ) );
-
-			if( status == GRB_INFEASIBLE ){
-				#ifndef TO_DISABLE_OUTPUT
-					std::cout << "Gurobi infeasible." << std::endl;
-				#endif
-
-				this->rayGuess.resize( m );
-				GUROBI_EXEC( env, GRBgetdblattrarray( model, GRB_DBL_ATTR_FARKASDUAL, 0, m, this->rayGuess.data() ) );
-				for( unsigned int i = 0; i < m; ++i ){
-					this->rayGuess[i] *= -1;	// Gurobi liefert die Rays anders herum...
-				}
-			}
-
-		} catch( std::runtime_error& ex ){
-			#ifndef TO_DISABLE_OUTPUT
-				std::cerr << std::endl << "Unerwarteter Fehler bei Bestimmung der Basis mit Gurobi:" << std::endl << ex.what() << std::endl << std::endl;
-				std::cout << "Bestimme Basis selbst." << std::endl;
-			#endif
-		} catch( ... ){
-			#ifndef TO_DISABLE_OUTPUT
-				std::cerr << std::endl << "Völlig unerwarteter Fehler bei Bestimmung der Basis mit Gurobi." << std::endl << std::endl;
-				std::cout << "Bestimme Basis selbst." << std::endl;
-			#endif
-		}
-
-		GUROBI_EXEC( env, GRBfreemodel( model ) );
-		GRBfreeenv( env );
-
-	}
-
-	gurobitime = clock() - gurobitime;
-
-	#endif
-
-	#ifdef TO_WITH_CLP
-		clock_t clptime = clock();
-
-		try
-		{
-			ClpSimplex model;
-
-			model.setDblParam( ClpDualTolerance, 1e-10 );
-			model.setDblParam( ClpPrimalTolerance, 1e-9 );
-
-			std::vector<double> Actmp( this->Acolwise.size() );
-			for( unsigned int i = 0; i < this->Acolwise.size(); ++i ){
-				Actmp[i] = this->Acolwise[i].get_d();
-			}
-
-			std::vector<double> tmpl( n );
-			std::vector<double> tmpu( n );
-			std::vector<double> tmpc( n );
-			for( int i = 0; i < n; ++i ){
-				tmpl[i] = this->l[i].isInf ? -COIN_DBL_MAX : this->l[i].value.get_d();
-				tmpu[i] = this->u[i].isInf ? COIN_DBL_MAX : this->u[i].value.get_d();
-				tmpc[i] = this->c[i].get_d();
-			}
-
-			std::vector<double> tmprl( m );
-			std::vector<double> tmpru( m );
-			for( int i = 0; i < m; ++i ){
-				const int s = n + i;
-				tmprl[i] = this->u[s].isInf ? -COIN_DBL_MAX : - this->u[s].value.get_d();
-				tmpru[i] = this->l[s].isInf ? COIN_DBL_MAX : - this->l[s].value.get_d();
-			}
-
-			model.loadProblem( this->n, this->m, this->Acolpointer.data(), this->Acolwiseind.data(), Actmp.data(), tmpl.data(), tmpu.data(), tmpc.data(), tmprl.data(), tmpru.data() );
-
-			{
-				ClpSolve clpoptions;
-				clpoptions.setPresolveType( ClpSolve::presolveOff );
-				clpoptions.setSolveType( ClpSolve::useDual );
-				model.initialSolve( clpoptions );
-			}
-			unsigned char * clpbase = model.statusArray();
-			if( !clpbase ){
-				throw std::runtime_error( "No CLP basis." );
-			}
-
-
-			#ifndef TO_DISABLE_OUTPUT
-				std::cout << "Übertrage Basis." << std::endl;
-			#endif
-
-			// Basis übertragen
-			int kB = 0;
-			int kN = 0;
-
-			for( int i = 0; i < n + m; ++i ){
-				char clpbasestatus = clpbase[i];
-				switch( clpbasestatus ){
-					case ClpSimplex::basic:
-						this->B[kB] = i;
-						this->Binv[i] = kB;
-						this->Ninv[i] = -1;
-						++kB;
-						break;
-					case ClpSimplex::superBasic:
-					case ClpSimplex::isFree:
-						this->N[kN] = i;
-						this->Ninv[i] = kN;
-						this->Binv[i] = -1;
-						++kN;
-						break;
-					case ClpSimplex::isFixed:
-					case ClpSimplex::atLowerBound:
-						this->x[i] = this->l[i].value;
-						this->N[kN] = i;
-						this->Ninv[i] = kN;
-						this->Binv[i] = -1;
-						++kN;
-						break;
-					case ClpSimplex::atUpperBound:
-						this->x[i] = this->u[i].value;
-						this->N[kN] = i;
-						this->Ninv[i] = kN;
-						this->Binv[i] = -1;
-						++kN;
-						break;
-						break;
-					default:
-						throw std::runtime_error( "Unexpected CLP basis status." );
-						break;
-				}
-			}
-
-			if( kB != m || kN != n ){
-				throw std::runtime_error( "CLP-Basis hat scheinbar nicht die korrekte Anzahl an Variablen/Nebenbedingungen." );
-			}
-
-			if( model.isProvenPrimalInfeasible() && model.rayExists() ){
-				double * tmpray = model.infeasibilityRay();
-				if( tmpray ){
-					this->rayGuess.resize( m );
-					for( int i = 0; i < m; ++i ){
-						this->rayGuess[i] = -tmpray[i];	// CLP liefert die Rays anders herum...
-					}
-					delete [] tmpray;
-				}
-			}
-
-			this->hasBase = true;
-
-		} catch( std::runtime_error& ex ){
-			#ifndef TO_DISABLE_OUTPUT
-				std::cerr << std::endl << "Unerwarteter Fehler bei Bestimmung der Basis mit CLP:" << std::endl << ex.what() << std::endl << std::endl;
-				std::cout << "Bestimme Basis selbst." << std::endl;
-			#endif
-		} catch( ... ){
-			#ifndef TO_DISABLE_OUTPUT
-				std::cerr << std::endl << "Völlig unerwarteter Fehler bei Bestimmung der Basis mit CLP." << std::endl << std::endl;
-				std::cout << "Bestimme Basis selbst." << std::endl;
-			#endif
-		}
-
-		clptime = clock() - clptime;
-	#endif
-
-	#ifdef TO_WITH_SOPLEX
-
-		clock_t soplextime = clock();
-
-		try
-		{
-			soplex::SoPlex splex;
-
-			splex.changeSense( soplex::SPxSolver::MINIMIZE );
-
-			{
-				std::vector<double> tmprl( m );
-				std::vector<double> tmpru( m );
-				for( int i = 0; i < m; ++i ){
-					const int s = n + i;
-					tmprl[i] = this->u[s].isInf ? -soplex::infinity : - this->u[s].value.get_d();
-					tmpru[i] = this->l[s].isInf ? soplex::infinity : - this->l[s].value.get_d();
-				}
-
-				soplex::LPRowSet rowset( m, 0 );
-				soplex::DSVector rowvec;
-				rowvec.clear();
-
-				for( unsigned int i = 0; i < m; ++i ){
-					rowset.add( tmprl[i], rowvec, tmpru[i] );
-				}
-
-				splex.addRows( rowset );
-			}
-
-
-			{
-
-
-				std::vector<double> Actmp( this->Acolwise.size() );
-				for( unsigned int i = 0; i < this->Acolwise.size(); ++i ){
-					Actmp[i] = this->Acolwise[i].get_d();
-				}
-
-				std::vector<double> tmpl( n );
-				std::vector<double> tmpu( n );
-				std::vector<double> tmpc( n );
-				for( int i = 0; i < n; ++i ){
-					tmpl[i] = this->l[i].isInf ? -soplex::infinity : this->l[i].value.get_d();
-					tmpu[i] = this->u[i].isInf ? soplex::infinity : this->u[i].value.get_d();
-					tmpc[i] = this->c[i].get_d();
-				}
-
-				soplex::LPColSet colset( n, Acolwise.size() );
-				soplex::DSVector colvec;
-
-				for( unsigned int i = 0; i < n; ++i ){
-					colvec.clear();
-					colvec.add( Acolpointer[i+1] - Acolpointer[i], &Acolwiseind[Acolpointer[i]], &Actmp[Acolpointer[i]] );
-					colset.add( tmpc[i], tmpl[i], colvec, tmpu[i] );
-				}
-
-				splex.addCols( colset );
-
-			}
-
-			splex.solve();
-
-			#ifndef TO_DISABLE_OUTPUT
-				std::cout << "SoPlex:" << std::endl << splex.statistics() << std::endl;
-				std::cout << "Übertrage Basis." << std::endl;
-			#endif
-
-			// Basis übertragen
-			int kB = 0;
-			int kN = 0;
-
-			for( int i = 0; i < n; ++i ){
-				switch( splex.getBasisColStatus( i ) ){
-					case soplex::SPxSolver::BASIC:
-						this->B[kB] = i;
-						this->Binv[i] = kB;
-						this->Ninv[i] = -1;
-						++kB;
-						break;
-					case soplex::SPxSolver::ZERO:
-						this->N[kN] = i;
-						this->Ninv[i] = kN;
-						this->Binv[i] = -1;
-						++kN;
-						break;
-					case soplex::SPxSolver::FIXED:
-					case soplex::SPxSolver::ON_LOWER:
-						this->x[i] = this->l[i].value;
-						this->N[kN] = i;
-						this->Ninv[i] = kN;
-						this->Binv[i] = -1;
-						++kN;
-						break;
-					case soplex::SPxSolver::ON_UPPER:
-						this->x[i] = this->u[i].value;
-						this->N[kN] = i;
-						this->Ninv[i] = kN;
-						this->Binv[i] = -1;
-						++kN;
-						break;
-						break;
-					default:
-						throw std::runtime_error( "Unexpected SoPlex basis status." );
-						break;
-				}
-			}
-
-			for( int i = 0; i < m; ++i ){
-				const int sV = n + i;
-				switch( splex.getBasisRowStatus( i ) ){
-					case soplex::SPxSolver::BASIC:
-						this->B[kB] = sV;
-						this->Binv[sV] = kB;
-						this->Ninv[sV] = -1;
-						++kB;
-						break;
-					case soplex::SPxSolver::ZERO:
-						this->N[kN] = sV;
-						this->Ninv[sV] = kN;
-						this->Binv[sV] = -1;
-						++kN;
-						break;
-					case soplex::SPxSolver::FIXED:
-					case soplex::SPxSolver::ON_LOWER:
-						this->x[sV] = this->l[sV].value;
-						this->N[kN] = sV;
-						this->Ninv[sV] = kN;
-						this->Binv[sV] = -1;
-						++kN;
-						break;
-					case soplex::SPxSolver::ON_UPPER:
-						this->x[sV] = this->u[sV].value;
-						this->N[kN] = sV;
-						this->Ninv[sV] = kN;
-						this->Binv[sV] = -1;
-						++kN;
-						break;
-						break;
-					default:
-						throw std::runtime_error( "Unexpected SoPlex basis status." );
-						break;
-				}
-			}
-
-			if( kB != m || kN != n ){
-				throw std::runtime_error( "SoPlex-Basis hat scheinbar nicht die korrekte Anzahl an Variablen/Nebenbedingungen." );
-			}
-
-			if( splex.status() == soplex::SPxSolver::INFEASIBLE ){
-				this->rayGuess.resize( m );
-				soplex::Vector tmpray( m, this->rayGuess.data() );
-				if( splex.getDualfarkas( tmpray ) < 0 ){
-					this->rayGuess.clear();
-					#ifndef TO_DISABLE_OUTPUT
-						std::cout << "SoPlex lieferte kein Farkas-Zertifikat." << std::endl;
-					#endif
-				}
-			}
-			this->hasBase = true;
-		} catch( std::runtime_error& ex ){
-			#ifndef TO_DISABLE_OUTPUT
-				std::cerr << std::endl << "Unerwarteter Fehler bei Bestimmung der Basis mit SoPlex:" << std::endl << ex.what() << std::endl << std::endl;
-				std::cout << "Bestimme Basis selbst." << std::endl;
-			#endif
-		} catch( ... ){
-			#ifndef TO_DISABLE_OUTPUT
-				std::cerr << std::endl << "Völlig unerwarteter Fehler bei Bestimmung der Basis mit SoPlex." << std::endl << std::endl;
-				std::cout << "Bestimme Basis selbst." << std::endl;
-			#endif
-		}
-
-		soplextime = clock() - soplextime;
-
+template <class T, class TInt>
+inline clock_t TOSolver<T, TInt>::optExternal(){
+	// has to be implemented separately for specific classes
+	return 0;
+}
+
+
+template <class T, class TInt>
+TInt TOSolver<T, TInt>::opt(){
+
+	#ifndef TO_DISABLE_OUTPUT
+		clock_t externalTime = optExternal();
+	#else
+		optExternal();
 	#endif
 
 	if( this->checkDualFarkas() ){
@@ -2626,12 +1816,12 @@ int TOSolver<T>::opt(){
 		{
 			std::vector<T> btilde( m, T( 0 ) );
 
-			for( int i = 0; i < n; ++i ){
-				const int j = N[i];
+			for( TInt i = 0; i < n; ++i ){
+				const TInt j = N[i];
 				T xj = x[j];
 				if( j < n ){
-					const int cend = Acolpointer[j+1];
-					for( int k = Acolpointer[j]; k < cend; ++k ){
+					const TInt cend = Acolpointer[j+1];
+					for( TInt k = Acolpointer[j]; k < cend; ++k ){
 						btilde[Acolwiseind[k]] -= Acolwise[k] * xj;
 					}
 				} else {
@@ -2642,7 +1832,7 @@ int TOSolver<T>::opt(){
 			}
 
 			this->FTran( btilde.data() );
-			for( int i = 0; i < m; ++i ){
+			for( TInt i = 0; i < m; ++i ){
 				x[B[i]] = btilde[i];
 			}
 		}
@@ -2651,7 +1841,7 @@ int TOSolver<T>::opt(){
 
 			std::vector<T> y( m, T( 0 ) );
 
-			for( int i = 0; i < m; ++i ){
+			for( TInt i = 0; i < m; ++i ){
 				if( B[i] < n ){
 					y[i] = this->c[B[i]];
 				} else {
@@ -2665,7 +1855,7 @@ int TOSolver<T>::opt(){
 
 			this->mulANT( tmp.data(), y.data() );
 
-			for( int i = 0; i < n; ++i ){
+			for( TInt i = 0; i < n; ++i ){
 				if( N[i] < n ){
 					d[i] =  this->c[N[i]] - tmp[i];
 				} else {
@@ -2690,13 +1880,13 @@ int TOSolver<T>::opt(){
 		this->DSEtmp.resize( m + n );
 
 		// logische Basis setzen
-		for( int j = 0; j < m; ++j ){
+		for( TInt j = 0; j < m; ++j ){
 			this->B[j] = n+j;
 			this->Binv[n+j] = j;
 			this->Ninv[n+j] = -1;
 		}
 
-		for( int j = 0; j < n; ++j ){
+		for( TInt j = 0; j < n; ++j ){
 			this->N[j] = j;
 			this->Binv[j] = -1;
 			this->Ninv[j] = j;
@@ -2707,7 +1897,7 @@ int TOSolver<T>::opt(){
 		this->refactor();
 	}
 
-	int retval = -1;
+	TInt retval = -1;
 
 	do{
 		retval = this->opt( false );
@@ -2721,7 +1911,7 @@ int TOSolver<T>::opt(){
 
 			T cmin( 1 );
 
-			for( int i = 0; i < n; ++i ){
+			for( TInt i = 0; i < n; ++i ){
 				if( this->c[i] != 0 ){
 					if( c[i] < cmin && -c[i] < cmin ){
 						cmin = c[i] >= 0 ? c[i] : -c[i];
@@ -2733,8 +1923,8 @@ int TOSolver<T>::opt(){
 			this->c.clear();
 			this->c.reserve( n );
 
-			for( int i = 0; i < n; ++i ){
-				this->c.push_back( cold[i] + cmin / T( 10000 + n + i ) );
+			for( TInt i = 0; i < n; ++i ){
+				this->c.push_back( cold[i] + cmin / ( T( 10000 ) + T( n ) + T( i ) ) );
 			}
 
 			this->hasPerturbated = true;
@@ -2756,19 +1946,7 @@ int TOSolver<T>::opt(){
 
 
 	#ifndef TO_DISABLE_OUTPUT
-		#ifdef TO_WITH_CPLEX
-			std::cout << "CPLEX-Zeit: " << cplextime / (double) CLOCKS_PER_SEC << std::endl;
-		#endif
-		#ifdef TO_WITH_GUROBI
-			std::cout << "Gurobi-Zeit: " << gurobitime / (double) CLOCKS_PER_SEC << std::endl;
-		#endif
-		#ifdef TO_WITH_CLP
-			std::cout << "CLP-Zeit: " << clptime / (double) CLOCKS_PER_SEC << std::endl;
-		#endif
-		#ifdef TO_WITH_SOPLEX
-			std::cout << "SoPlex-Zeit: " << soplextime / (double) CLOCKS_PER_SEC << std::endl;
-		#endif
-
+		std::cout << "Zeit externer Löser (sofern eingebunden): " << externalTime / (double) CLOCKS_PER_SEC << std::endl;
 		std::cout << "Optimierungszeit: " << ( ( clock() - fulltime ) / (double) CLOCKS_PER_SEC ) << " Sekunden" << std::endl;
 	#endif
 
@@ -2781,13 +1959,23 @@ int TOSolver<T>::opt(){
 }
 
 
-template <class T>
-int TOSolver<T>::opt( bool P1 ){
+template <class T, class TInt>
+TInt TOSolver<T, TInt>::opt( bool P1 ){
 
 	#ifndef TO_DISABLE_OUTPUT
 		std::cout << "Optimiere..." << std::endl;
 		clock_t starttime = clock();
 	#endif
+
+	// Widersprüchliche Schranken rausfiltern
+	for( TInt i = 0; i < n + m; ++i ){
+		if( !l[i].isInf && !u[i].isInf && l[i].value > u[i].value ){
+			#ifndef TO_DISABLE_OUTPUT
+				std::cout << "Infeasible (widersprüchliche Schranken)." << std::endl;
+			#endif
+			return 1;
+		}
+	}
 
 	this->lastLeavingBaseVar = -1;
 
@@ -2800,15 +1988,9 @@ int TOSolver<T>::opt( bool P1 ){
 	do {
 
 		// Nichtbasisvariablen in ihre Schranken weißen!
-		for( int i = 0; i < n; ++i ){
-			const int j = this->N[i];
+		for( TInt i = 0; i < n; ++i ){
+			const TInt j = this->N[i];
 			if( !l[j].isInf && !u[j].isInf ){
-				if( l[j].value > u[j].value ){
-					#ifndef TO_DISABLE_OUTPUT
-						std::cout << "Infeasible (widersprüchliche Schranken)." << std::endl;
-					#endif
-					return 1;
-				}
 				if( x[j] != l[j].value && x[j] != u[j].value ){
 					x[j] = l[j].value;
 				}
@@ -2824,14 +2006,14 @@ int TOSolver<T>::opt( bool P1 ){
 		bool dfcdone = false;
 		do {
 			{
-				std::vector<T> btilde(m);
+				std::vector<T> btilde( m );
 
-				for( int i = 0; i < n; ++i ){
-					const int j = N[i];
+				for( TInt i = 0; i < n; ++i ){
+					const TInt j = N[i];
 					T xj = x[j];
 					if( j < n ){
-						const int cend = Acolpointer[j+1];
-						for( int k = Acolpointer[j]; k < cend; ++k ){
+						const TInt cend = Acolpointer[j+1];
+						for( TInt k = Acolpointer[j]; k < cend; ++k ){
 							btilde[Acolwiseind[k]] -= Acolwise[k] * xj;
 						}
 					} else {
@@ -2842,13 +2024,13 @@ int TOSolver<T>::opt( bool P1 ){
 				}
 
 				this->FTran( btilde.data() );
-				for( int i = 0; i < m; ++i ){
+				for( TInt i = 0; i < m; ++i ){
 					x[B[i]] = btilde[i];
 				}
 			}
 
 			{
-				for( int i = 0; i < m; ++i ){
+				for( TInt i = 0; i < m; ++i ){
 					if( B[i] < n ){
 						y[i] = this->c[B[i]];
 					} else {
@@ -2862,7 +2044,7 @@ int TOSolver<T>::opt( bool P1 ){
 
 				this->mulANT( tmp.data(), y.data() );
 
-				for( int i = 0; i < n; ++i ){
+				for( TInt i = 0; i < n; ++i ){
 					if( N[i] < n ){
 						d[i] =  this->c[N[i]] - tmp[i];
 					} else {
@@ -2872,8 +2054,8 @@ int TOSolver<T>::opt( bool P1 ){
 			}
 
 			dfcdone = false;
-			for( int i = 0; i < n; ++i ){
-				const int j = this->N[i];
+			for( TInt i = 0; i < n; ++i ){
+				const TInt j = this->N[i];
 				if( !l[j].isInf && !u[j].isInf && l[j].value != u[j].value ){
 					if( x[j] == l[j].value && d[i] < 0 ){
 						x[j] = u[j].value;
@@ -2894,8 +2076,8 @@ int TOSolver<T>::opt( bool P1 ){
 
 		{
 			feas = true;
-			for( int i = 0; i < n ; ++i ){
-				int j = N[i];
+			for( TInt i = 0; i < n ; ++i ){
+				TInt j = N[i];
 				if( !l[j].isInf && !u[j].isInf && l[j].value == u[j].value ){
 					continue;
 				}
@@ -2920,7 +2102,7 @@ int TOSolver<T>::opt( bool P1 ){
 					// Should not happen
 					throw std::runtime_error( "Phase 1 rekursiv aufgerufen!" );
 				}
-				int p1retval = this->phase1();
+				TInt p1retval = this->phase1();
 				if( p1retval > 0 ){
 					#ifndef TO_DISABLE_OUTPUT
 						std::cout << "Phase 1: LP dual infeasible!" << std::endl << std::endl;
@@ -2944,19 +2126,20 @@ int TOSolver<T>::opt( bool P1 ){
 
 	// Arbeitsvariablen für Ratio-Test
 	std::vector<T> Q(n);
-	std::vector<int> Qind(n);
-	std::vector<int> Qord(n);
+	std::vector<TInt> Qind(n);
+	std::vector<TInt> Qord(n);
 	std::vector<T> alphartilde(n);
 	T deltatilde( 0 );
 
-	int iter = 0;
+	TInt iter = 0;
+
 	#ifndef TO_DISABLE_OUTPUT
 		clock_t itertime = clock();
 	#endif
 
 	T Zold( 0 );
-	int cyclecounter = 0;
-	int nocyclecounter = 0;
+	TInt cyclecounter = 0;
+	TInt nocyclecounter = 0;
 	this->antiCycle = false;
 
 	bool dualUnbounded = false;
@@ -2965,13 +2148,13 @@ int TOSolver<T>::opt( bool P1 ){
 	clock_t time1;
 	clock_t time2 = clock();
 
-	unsigned long long time_pricing = 0;
-	unsigned long long time_btran = 0;
-	unsigned long long time_dse = 0;
-	unsigned long long time_pivot = 0;
-	unsigned long long time_ratio = 0;
-	unsigned long long time_ftran = 0;
-	unsigned long long time_update = 0;
+	clock_t time_pricing = 0;
+	clock_t time_btran = 0;
+	clock_t time_dse = 0;
+	clock_t time_pivot = 0;
+	clock_t time_ratio = 0;
+	clock_t time_ftran = 0;
+	clock_t time_update = 0;
 
 	T Z( 0 );
 
@@ -2984,7 +2167,7 @@ int TOSolver<T>::opt( bool P1 ){
 
 		// TODO weq, mit Updateformel updaten
 		Z = 0;
-		for( int i = 0; i < n; ++i ){
+		for( TInt i = 0; i < n; ++i ){
 			Z += c[i] * x[i];
 		}
 
@@ -3039,15 +2222,15 @@ int TOSolver<T>::opt( bool P1 ){
 		// Step 2: Pricing
 //		std::cout << "Pricing" << std::endl;
 
-		int r = 0;
-		int p = m+n;
+		TInt r = 0;
+		TInt p = m+n;
 		T delta;
 		bool ratioNeg;
 
 		if( this->DSE.size() && !this->antiCycle ){
 			T max( 0 );
-			for( int i = 0; i < m; ++i ){
-				const int b = this->B[i];
+			for( TInt i = 0; i < m; ++i ){
+				const TInt b = this->B[i];
 				T deltai( 0 );
 				if( !this->l[b].isInf && this->x[b] < this->l[b].value ){
 					deltai =  this->l[b].value - this->x[b];
@@ -3065,8 +2248,8 @@ int TOSolver<T>::opt( bool P1 ){
 			}
 		} else {
 			// Bland
-			for( int i = 0; i < m; ++i ){
-				const int b = this->B[i];
+			for( TInt i = 0; i < m; ++i ){
+				const TInt b = this->B[i];
 				if( b < p ){
 					if( !this->l[b].isInf && this->x[b] < this->l[b].value ){
 						r = i;
@@ -3117,11 +2300,11 @@ int TOSolver<T>::opt( bool P1 ){
 
 		time_btran += time2-time1;
 
-		int q = 0;
-		int s = 0;
+		TInt q = 0;
+		TInt s = 0;
 		std::vector<T> permSpike( m );	// TODO global, damit Konstruktor nicht immer aufgerufen wird
-		std::vector<int> permSpikeInd( m );
-		int permSpikeLen = 0;
+		std::vector<TInt> permSpikeInd( m );
+		TInt permSpikeLen = 0;
 
 		#pragma omp parallel
 		{
@@ -3130,7 +2313,7 @@ int TOSolver<T>::opt( bool P1 ){
 
 				// DSE-FTran-Thread starten
 				if( this->DSE.size() ){
-					for( int i = 0; i < m; ++i ){
+					for( TInt i = 0; i < m; ++i ){
 						tau[i] = rhor[i];
 					}
 
@@ -3164,12 +2347,12 @@ int TOSolver<T>::opt( bool P1 ){
 		//		std::cout << "Ratio Test" << std::endl;
 
 				if( ratioNeg ){
-					for( int i = 0; i < n; ++i ){
+					for( TInt i = 0; i < n; ++i ){
 						alphartilde[i] = - alphar[i];
 						deltatilde = - delta;
 					}
 				} else {
-					for( int i = 0; i < n; ++i ){
+					for( TInt i = 0; i < n; ++i ){
 						alphartilde[i] = alphar[i];
 						deltatilde = delta;
 					}
@@ -3179,9 +2362,9 @@ int TOSolver<T>::opt( bool P1 ){
 				std::vector<T> atilde(m);
 				bool flip = false;
 				{
-					int Qlen = 0;
-					for( int i = 0; i < n; ++i ){
-						int j = this->N[i];
+					TInt Qlen = 0;
+					for( TInt i = 0; i < n; ++i ){
+						TInt j = this->N[i];
 						if(
 								( this->l[j].isInf && this->u[j].isInf && alphartilde[i] != 0 )
 								|| ( ( this->u[j].isInf || this->u[j].value != this->x[j] ) && !this->l[j].isInf && this->x[j] == this->l[j].value && alphartilde[i] > 0 )
@@ -3207,7 +2390,7 @@ int TOSolver<T>::opt( bool P1 ){
 							T min = Q[0];
 							s = Qind[0];
 
-							for( int i = 1; i < Qlen; ++i ){
+							for( TInt i = 1; i < Qlen; ++i ){
 								if( Q[i] < min ){
 									min = Q[i];
 									s = Qind[i];
@@ -3247,8 +2430,8 @@ int TOSolver<T>::opt( bool P1 ){
 
 										T diff = u[q].value - l[q].value;
 										if( q < n ){
-											int kend = Acolpointer[q+1];
-											for( int k = Acolpointer[q]; k < kend; ++k ){
+											TInt kend = Acolpointer[q+1];
+											for( TInt k = Acolpointer[q]; k < kend; ++k ){
 												atilde[Acolwiseind[k]] += diff * Acolwise[k];
 											}
 										} else {
@@ -3262,8 +2445,8 @@ int TOSolver<T>::opt( bool P1 ){
 
 										T diff = l[q].value - u[q].value;
 										if( q < n ){
-											int kend = Acolpointer[q+1];
-											for( int k = Acolpointer[q]; k < kend; ++k ){
+											TInt kend = Acolpointer[q+1];
+											for( TInt k = Acolpointer[q]; k < kend; ++k ){
 												atilde[Acolwiseind[k]] += diff * Acolwise[k];
 											}
 										} else {
@@ -3302,8 +2485,8 @@ int TOSolver<T>::opt( bool P1 ){
 
 					std::vector<T> alphaq(m);
 					if( q < n ){
-						const int kend = this->Acolpointer[q+1];
-						for( int k = this->Acolpointer[q]; k < kend; ++k ){
+						const TInt kend = this->Acolpointer[q+1];
+						for( TInt k = this->Acolpointer[q]; k < kend; ++k ){
 							alphaq[Acolwiseind[k]] = Acolwise[k];
 						}
 					} else {
@@ -3325,7 +2508,7 @@ int TOSolver<T>::opt( bool P1 ){
 
 					T thetaD = d[s] / alphar[s];
 
-					for( int i = 0; i < n; ++i ){
+					for( TInt i = 0; i < n; ++i ){
 						d[i] -= thetaD * alphar[i];
 					}
 
@@ -3335,7 +2518,7 @@ int TOSolver<T>::opt( bool P1 ){
 					{
 			//			std::cout << "FLIP!!!" << std::endl;
 						FTran( atilde.data() );
-						for( int i = 0; i < m; ++i ){
+						for( TInt i = 0; i < m; ++i ){
 							x[B[i]] -= atilde[i];
 						}
 					}
@@ -3343,7 +2526,7 @@ int TOSolver<T>::opt( bool P1 ){
 
 					T thetaP = delta / alphaq[r];
 
-					for( int i = 0; i < m; ++i ){
+					for( TInt i = 0; i < m; ++i ){
 						x[this->B[i]] -= thetaP * alphaq[i];
 					}
 
@@ -3368,7 +2551,7 @@ int TOSolver<T>::opt( bool P1 ){
 
 
 						T mult;
-						for( int i = 0; i < m; ++i ){
+						for( TInt i = 0; i < m; ++i ){
 							if( i != r ) {
 								mult = alphaq[i] / alphaq[r];
 								this->DSE[i] += - 2 * mult * tau[i] + mult * mult * betar;
@@ -3398,7 +2581,7 @@ int TOSolver<T>::opt( bool P1 ){
 
 			// DSE zwischenspeichern
 			if( this->DSE.size() ){
-				for( int i = 0; i < m; ++i ){
+				for( TInt i = 0; i < m; ++i ){
 					this->DSEtmp[B[i]] = this->DSE[i];
 				}
 			}
@@ -3407,13 +2590,13 @@ int TOSolver<T>::opt( bool P1 ){
 
 			// DSE für permutierte Basis zurückholen
 			if( this->DSE.size() ){
-				for( int i = 0; i < m; ++i ){
+				for( TInt i = 0; i < m; ++i ){
 					this->DSE[i] = this->DSEtmp[B[i]];
 				}
 			}
 
 			#ifndef TO_DISABLE_OUTPUT
-				unsigned long long time_sum = time_pricing + time_btran + time_dse + time_pivot + time_ratio + time_ftran + time_update;
+				clock_t time_sum = time_pricing + time_btran + time_dse + time_pivot + time_ratio + time_ftran + time_update;
 
 				if( time_sum > 0) {
 					std::cout << "Pricing: " << 100 * time_pricing / time_sum << std::endl;
@@ -3438,12 +2621,12 @@ int TOSolver<T>::opt( bool P1 ){
 			this->DSEtmp.resize( m+n );
 
 			#pragma omp parallel for
-			for( int weight = 0; weight < m; ++weight )
+			for( TInt weight = 0; weight < m; ++weight )
 			{
 					std::vector<T> rhoi(m);
 					rhoi[weight] = 1;
 					BTran( rhoi.data() );
-					for( int j = 0; j < m; ++j ){
+					for( TInt j = 0; j < m; ++j ){
 						DSE[weight] += rhoi[j] * rhoi[j];
 					}
 			}
@@ -3466,42 +2649,12 @@ int TOSolver<T>::opt( bool P1 ){
 			std::cout << "Cutoff: " << TOmath<T>::toShortString( Z ) << " >= " << TOmath<T>::toShortString( this->infeasibilityBound.value ) << std::endl;
 		} else {
 			Z = 0;
-			for( int i = 0; i < n; ++i ){
+			for( TInt i = 0; i < n; ++i ){
 				Z += c[i] * x[i];
 			}
 			std::cout << "Zielfunktionswert: Exakt: " << Z << std::endl;
 			std::cout << "Zielfunktionswert: gekuerzt: " << TOmath<T>::toShortString( Z ) << std::endl;
-
-			#ifndef TO_WITHOUT_DOUBLE
-			{
-				std::cout << "Zielfunktionswert: GMP-Float: ";
-				mpf_class Zfl( 0, 256 );
-				Zfl = Z;
-
-				std::streamsize oldp = std::cout.precision(75);
-				std::cout << Zfl << std::endl;
-				std::cout.precision( oldp );
-
-				// simple Messung der Größe des Ergebnisses
-				std::string base2res = Z.get_str(2);
-//				std::cout << "Base 2: " << base2res << std::endl;
-				int base2size = base2res.size() + 1;	// 1 für Vorzeichen
-
-				// - und / nicht mitzählen
-				if( base2res.find( "-" ) != std::string::npos ){
-					// Ein Bit für ein Vorzeichen rechnen wir sowieso oben.
-					--base2size;
-				}
-				if( base2res.find( "/" ) != std::string::npos ){
-					// Den Bruchstrich nicht mitzählen
-					--base2size;
-				} else {
-					// Ein Bit für den Nenner 1 dazurechnen
-					++base2size;
-				}
-				std::cout << "Kodierungslänge: " << base2size << std::endl;
-			}
-			#endif
+			this->showOptValDetails( Z );
 		}
 
 		std::cout << iter << " Iterationen" << std::endl;
@@ -3522,18 +2675,18 @@ int TOSolver<T>::opt( bool P1 ){
 }
 
 
-template <class T>
-std::vector<T> TOSolver<T>::getX(){
+template <class T, class TInt>
+std::vector<T> TOSolver<T, TInt>::getX(){
 	std::vector<T> retx = this->x;
 	retx.resize( n );
 	return retx;
 }
 
 
-template <class T>
-std::vector<T> TOSolver<T>::getY(){
+template <class T, class TInt>
+std::vector<T> TOSolver<T, TInt>::getY(){
 	std::vector<T> y(m);
-	for( int i = 0; i < m; ++i ){
+	for( TInt i = 0; i < m; ++i ){
 		if( B[i] < n ){
 			y[i] = this->c[B[i]];
 		} else {
@@ -3546,10 +2699,10 @@ std::vector<T> TOSolver<T>::getY(){
 }
 
 
-template <class T>
-std::vector<T> TOSolver<T>::getD(){
+template <class T, class TInt>
+std::vector<T> TOSolver<T, TInt>::getD(){
 	std::vector<T> retd( n );
-	for( int i = 0; i < n; ++i ){
+	for( TInt i = 0; i < n; ++i ){
 		if( N[i] < n ){
 			retd[N[i]] = d[i];
 		}
@@ -3558,10 +2711,10 @@ std::vector<T> TOSolver<T>::getD(){
 }
 
 
-template <class T>
-std::pair<TORationalInf<T>,TORationalInf<T> > TOSolver<T>::getConstraintBounds( const unsigned int i ){
+template <class T, class TInt>
+std::pair<TORationalInf<T>,TORationalInf<T> > TOSolver<T, TInt>::getConstraintBounds( const TInt i ){
 	std::pair<TORationalInf<T>,TORationalInf<T> > retval;
-	const int s = n + i;
+	const TInt s = n + i;
 	if( this->u[s].isInf ){
 		retval.first = true;
 	} else {
@@ -3576,8 +2729,8 @@ std::pair<TORationalInf<T>,TORationalInf<T> > TOSolver<T>::getConstraintBounds( 
 }
 
 
-template <class T>
-inline std::pair<std::vector<T>, T> TOSolver<T>::getGMI( int ind, std::vector<bool> intVars, T kcut ){
+template <class T, class TInt>
+inline std::pair<std::vector<T>, T> TOSolver<T, TInt>::getGMI( TInt ind, std::vector<bool> intVars, T kcut ){
 
 	if( ind >= n+m ){
 		throw std::runtime_error( "Invalid index" );
@@ -3596,8 +2749,8 @@ inline std::pair<std::vector<T>, T> TOSolver<T>::getGMI( int ind, std::vector<bo
 
 	// Generate GMI
 	T ai0;
-	for( int k = 0; k < n; ++k ){
-		int nind = N[k];
+	for( TInt k = 0; k < n; ++k ){
+		TInt nind = N[k];
 		if( !l[nind].isInf && x[nind] == l[nind].value ){
 			// Lower Bound
 			ai0 -= gmicoeff[k] * l[nind].value;
@@ -3619,10 +2772,10 @@ inline std::pair<std::vector<T>, T> TOSolver<T>::getGMI( int ind, std::vector<bo
 	if( fi0 == 0 ){
 		throw std::runtime_error( "Separation impossible." );
 	}
-	for( int k = 0; k < n; ++k ){
-		int nind = N[k];
+	for( TInt k = 0; k < n; ++k ){
+		TInt nind = N[k];
 		T & aij = gmicoeff[k];
-		if( (unsigned int) nind < intVars.size() && intVars[nind] ){
+		if( nind < static_cast<TInt>( intVars.size() ) && intVars[nind] ){
 			// Integer nonbasic Variables
 			T fij = aij * kcut - TOmath<T>::floor( aij * kcut );
 			if( fij <= fi0 ){
@@ -3642,8 +2795,8 @@ inline std::pair<std::vector<T>, T> TOSolver<T>::getGMI( int ind, std::vector<bo
 
 	// Cut zurückrechnen
 	T beta = fi0;
-	for( int k = 0; k < n; ++k ){
-		int nind = N[k];
+	for( TInt k = 0; k < n; ++k ){
+		TInt nind = N[k];
 		if( !l[nind].isInf && x[nind] == l[nind].value ){
 			// Lower Bound
 			beta += cutcoeff[k] * l[nind].value;
@@ -3656,13 +2809,13 @@ inline std::pair<std::vector<T>, T> TOSolver<T>::getGMI( int ind, std::vector<bo
 	}
 
 	std::vector<T> cut(n);
-	for( int k = 0; k < n; ++k ){
-		int nind = N[k];
+	for( TInt k = 0; k < n; ++k ){
+		TInt nind = N[k];
 		if( nind < n ){
 			cut[nind] += cutcoeff[k];
 		} else {
 			if( cutcoeff[k] != 0 ){
-				for( int li = Arowpointer[nind - n]; li < Arowpointer[nind - n + 1]; ++li ){
+				for( TInt li = Arowpointer[nind - n]; li < Arowpointer[nind - n + 1]; ++li ){
 					cut[ Arowwiseind[li] ] -= cutcoeff[k] * Arowwise[li];
 				}
 			}
@@ -3673,153 +2826,28 @@ inline std::pair<std::vector<T>, T> TOSolver<T>::getGMI( int ind, std::vector<bo
 }
 
 
-#ifndef TO_WITHOUT_DOUBLE
-
-template <>
-inline bool TOSolver<mpq_class>::checkDualFarkas(){
-
-	if( this->rayGuess.size() && ( this->hasBasisMatrix || ( this->hasBase && this->refactor() ) ) ){
-
-		#ifndef TO_DISABLE_OUTPUT
-			std::cout << "Prüfe Farkas-Zertifikat." << std::endl;
-		#endif
-
-		unsigned int counter = 0;
-
-		std::vector<mpq_class> ytest( m, 0 );
-
-		{
-			std::vector<mpq_class> er( m, 0 );
-			std::vector<mpq_class> rayGuessEx( m );
-
-			for( int i = 0; i < m; ++i ){
-				if( this->rayGuess[i] != this->rayGuess[i] || this->rayGuess[i] > 1e30 || this->rayGuess[i] < -1e30 ){	// NaN
-					return false;
-				}
-				rayGuessEx[i] = this->rayGuess[i];
-			}
-
-			// B^T * ray
-			for( int i = 0; i < m; ++i ){
-				int bi = this->B[i];
-				if( bi < n ){
-					int clen = Acolpointer[bi+1] - Acolpointer[bi];
-					for( int j = 0, k = Acolpointer[bi]; j < clen; ++j, ++k ){
-						er[i] += Acolwise[k] * rayGuessEx[Acolwiseind[k]];
-					}
-				} else {
-					er[i] += rayGuessEx[bi-n];
-				}
-
-			}
-
-
-			for( int i = 0; i < m; ++i ){
-
-				mpq_class tmpval = er[i] + mpq_class( 1, 2 );
-
-				mpq_class tmpval2 = TOmath<mpq_class>::floor( tmpval );
-				mpq_class tmpval3 = er[i] - tmpval2;
-
-
-				// 1e-3 empirisch bestimmt
-
-				if( abs( tmpval3 ) < 1e-3 ){
-					ytest[i] = tmpval2;
-				} else {
-					ytest[i] = er[i];
-				}
-
-				if( abs( ytest[i] ) > 1e-3 ){
-					++counter;
-				}
-
-			}
-
-		}
-
-		if( !counter ){
-			return false;
-		}
-
-		this->BTran( ytest.data() );
-
-		std::vector<mpq_class> dtest( n, 0 );
-
-		// d-Ray aus y-Ray berechnen
-		for( int i = 0; i < m; ++i ){
-			if( ytest[i] != 0 ){
-				for( int j = Arowpointer[i]; j < Arowpointer[i+1]; ++j ){
-					dtest[Arowwiseind[j]] -= ytest[i] * Arowwise[j];
-				}
-			}
-		}
-
-		bool rayok = true;
-		// duale Zulässigkeit von d prüfen
-		for( int i = 0; i < n; ++i ){
-			if( l[i].isInf && u[i].isInf && dtest[i] != 0 ){
-				rayok = false;
-				break;
-			} else if( !l[i].isInf && u[i].isInf && dtest[i] < 0 ){
-				rayok = false;
-				break;
-			} else if( l[i].isInf && !u[i].isInf && dtest[i] > 0 ){
-				rayok = false;
-				break;
-			}
-		}
-
-		if( !rayok ){
-			return false;
-		}
-
-		// prüfen, ob b'y + ... > 0
-		mpq_class sum = 0;
-		for( int i = 0; i < m; ++i ){
-			sum += ytest[i] * ( ytest[i] < 0 ? -l[n+i].value : -u[n+i].value );
-		}
-		for( int i = 0; i < n; ++i ){
-			if( dtest[i] > 0 ){
-				sum += dtest[i] * l[i].value;
-			} else {
-				sum += dtest[i] * u[i].value;
-			}
-		}
-
-		if( sum <= 0 ){
-			rayok = false;
-		}
-
-		if( rayok ){
-			this->farkasProof = ytest;
-		}
-
-		return rayok;
-	}
-
-	return false;
-}
-
-#endif
-
-
-template <class T>
-inline bool TOSolver<T>::checkDualFarkas(){
-	// Only implemented for mpq_class
-	// TODO implement for other Types
+template <class T, class TInt>
+inline bool TOSolver<T, TInt>::checkDualFarkas(){
+	// has to be implemented separately for specific classes
 	return false;
 }
 
 
-template <class T>
-T TOSolver<T>::getObj(){
+template <class T, class TInt>
+T TOSolver<T, TInt>::getObj(){
 	T Z( 0 );
-	for( int i = 0; i < n; ++i ){
+	for( TInt i = 0; i < n; ++i ){
 		Z += c[i] * x[i];
 	}
 	return Z;
 }
+
+
+template <class T, class TInt>
+void TOSolver<T, TInt>::showOptValDetails( T optval ){
+	// not requiered, has to be implemented separately for specific classes
+}
+
 
 }
 

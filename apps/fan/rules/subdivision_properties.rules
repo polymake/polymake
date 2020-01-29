@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -121,7 +121,7 @@ rule ALTSHULER_DET : MAXIMAL_CELLS {
 property CONVEX : Bool;
 
 # @category Geometry
-# Minimal lattice vector in secondary cone of triangulation [[MAXIMAL_CELLS]].
+# Minimal nonnegative lattice vector in secondary cone of the subdivision given by [[MAXIMAL_CELLS]].
 property MIN_WEIGHTS : Vector<Int>; 
 
 # @category Geometry

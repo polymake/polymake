@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -256,11 +256,11 @@ sub _changed_value {
 
 sub FETCH { $_[0]->private_value->[$_[1]] }
 
-sub FETCHSIZE { $#{$_[0]->private_value} + 1 }
+sub FETCHSIZE { $#{$_[0]->private_value}+1 }
 
 sub EXTEND {
    my $n = pop @_;
-   $#{&_changed_value} = $n - 1;
+   $#{&_changed_value} = $n-1;
 }
 
 *STORESIZE=\&EXTEND;
@@ -506,7 +506,7 @@ sub DELETE {
             } else {
                delete $self->private_value->{$key};
             }
-            if ($changed && equal_string_hashes($self->global_value, $self->private_value)) {
+            if ($changed && equal_nested_hashes($self->global_value, $self->private_value)) {
                $self->private_value = $self->global_value;
                $self->state &= ~State::private;
             }
@@ -794,7 +794,7 @@ sub add {
    if (defined $pkg) {
       substr($name, 1, 0) .= "$pkg\::";
    } elsif ((my $pkg_end = rindex($name, "::")) > 0) {
-      $pkg = substr($name, 1, $pkg_end - 1);
+      $pkg = substr($name, 1, $pkg_end-1);
    } else {
       $pkg = caller;
       substr($name, 1, 0) .= "$pkg\::";
@@ -812,9 +812,9 @@ sub find {
    my $pkg_end=rindex($name, "::");
    my $dict;
    if ($pkg_end > 0) {
-      if (not $dict=$self->per_pkg->{substr($name, 1, $pkg_end - 1)} and
+      if (not $dict=$self->per_pkg->{substr($name, 1, $pkg_end-1)} and
           !$skip_default and
-          $dict = $self->per_pkg->{$self->default_pkg . "::" . substr($name, 1, $pkg_end - 1)}) {
+          $dict = $self->per_pkg->{$self->default_pkg . "::" . substr($name, 1, $pkg_end-1)}) {
          substr($name, 1, 0) = $self->default_pkg . "::";
       }
    } elsif (!$skip_default) {
@@ -856,7 +856,7 @@ sub list_completions {
       if ($remove_default_prefix ? substr($pkg,$l+2) =~ /^$prefix/ : $pkg ne $self->default_pkg && $pkg =~ /^$prefix/) {
          while ((undef, my $var) = each %$dict) {
             unless (($var->state & State::hidden) || ($var->state & (State::config | State::saved)) == State::config) {
-               push @answer, ($remove_default_prefix ? substr($pkg, $l + 2) : $pkg) . "::";
+               push @answer, ($remove_default_prefix ? substr($pkg, $l+2) : $pkg) . "::";
                keys %$dict;  # reset the iterator!
                last;
             }
@@ -892,7 +892,7 @@ sub unset {
       substr($name, 1, 0) .= "$pkg\::";
    } else {
       my $pkg_end = rindex($name, "::");
-      $pkg=substr($name, 1, $pkg_end - 1);
+      $pkg=substr($name, 1, $pkg_end-1);
    }
    if (defined (my $var = $self->per_pkg->{$pkg}->{$name})) {
       $var->unset;

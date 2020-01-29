@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,12 +32,12 @@ namespace {
 /** Exception: a face is not contained in the face lattice. */
 class MissingFace
 {
-   Set<int> face;
+   Set<Int> face;
 
 public:
-   MissingFace(const Set<int>& S) : face(S) {}
+   MissingFace(const Set<Int>& S) : face(S) {}
 
-   Set<int> get_face() const { return face; }
+   Set<Int> get_face() const { return face; }
 };
 
 /** Searches for a given $k$-face in the face lattice and
@@ -47,7 +47,7 @@ public:
  *
  * @throws MissingFace
  */
-void check_k_face(const Set<int>& face, const int k, const Lattice<BasicDecoration, Sequential>& HD)
+void check_k_face(const Set<Int>& face, const Int k, const Lattice<BasicDecoration, Sequential>& HD)
 {
    for (const auto f : HD.nodes_of_rank(k+1))
       if (HD.face(f) == face)
@@ -61,11 +61,10 @@ void check_k_face(const Set<int>& face, const int k, const Lattice<BasicDecorati
  *
  * @throws MissingFace
  */
-inline void check_edge(const int u, const int v, const Lattice<BasicDecoration, Sequential>& HD)
+void check_edge(const Int u, const Int v, const Lattice<BasicDecoration, Sequential>& HD)
 {
-   Set<int> S=scalar2set(u);
-   S+=v;
-   check_k_face(S,1,HD);
+   const Set<Int> S{ u, v };
+   check_k_face(S, 1, HD);
 }
 
 /** Searches for a given quadrangle (2-face) in the face lattice
@@ -73,14 +72,13 @@ inline void check_edge(const int u, const int v, const Lattice<BasicDecoration, 
  *
  * @throws MissingFace
  */
-void check_quad (const int u1, const int u2,
-                 const int u3, const int u4,
-                 const Lattice<BasicDecoration, Sequential>& HD )
+void check_quad(const Int u1, const Int u2,
+                const Int u3, const Int u4,
+                const Lattice<BasicDecoration, Sequential>& HD)
 {
-   Set<int> S=scalar2set(u1);
-   S+=u2; S+=u3; S+=u4;
-   assert(S.size()==4);
-   check_k_face(S,2,HD);
+   const Set<Int> S{ u1, u2, u3, u4 };
+   assert(S.size() == 4);
+   check_k_face(S, 2, HD);
 }
 
 
@@ -89,9 +87,9 @@ void check_quad (const int u1, const int u2,
  *
  * @throws MissingFace
  */
-void check_quad_edges ( const int u1, const int u2,
-                        const int u3, const int u4,
-                        const Lattice<BasicDecoration, Sequential>& HD )
+void check_quad_edges(const Int u1, const Int u2,
+                      const Int u3, const Int u4,
+                      const Lattice<BasicDecoration, Sequential>& HD)
 {
    check_edge(u1, u2, HD);
    check_edge(u2, u3, HD);
@@ -101,13 +99,13 @@ void check_quad_edges ( const int u1, const int u2,
 
 
 template <class OutIterator, class EdgeIterator>
-int add_strip_edge(OutIterator& mse_it, EdgeIterator& strip_eit, EdgeMap<Undirected,int> &edges)
+Int add_strip_edge(OutIterator& mse_it, EdgeIterator& strip_eit, EdgeMap<Undirected, Int>& edges)
 {
    edges[*strip_eit] = -2;
 
-   Vector<int> e(2);
+   Vector<Int> e(2);
 
-   const int head = strip_eit.from_node();
+   const Int head = strip_eit.from_node();
    e[0] = head;
    e[1] = strip_eit.to_node();
 
@@ -118,36 +116,36 @@ int add_strip_edge(OutIterator& mse_it, EdgeIterator& strip_eit, EdgeMap<Undirec
 } //end anonymous namespace
 
 
-Matrix<int>  validate_moebius_strip_quads (perl::Object p, bool verbose)
+Matrix<Int> validate_moebius_strip_quads(BigObject p, bool verbose)
 {
-   const Matrix<int> MS=p.give("MOEBIUS_STRIP_QUADS");
+   const Matrix<Int> MS=p.give("MOEBIUS_STRIP_QUADS");
    const Lattice<BasicDecoration, Sequential> HD=p.give("HASSE_DIAGRAM");
 
-   const int n = HD.nodes_of_rank(1).size();
-   const int K = MS.rows();
+   const Int n = HD.nodes_of_rank(1).size();
+   const Int K = MS.rows();
    // --------------------------------------------------------
    if (verbose)
       cout << "Checking whether" << endl
            << "\t all quadrangles are in the face lattice .....";
 
    try {
-      for (int i=0; i < K; ++i)
+      for (Int i = 0; i < K; ++i)
          check_quad(MS(i,0), MS(i,1), MS(i,2), MS(i,3), HD);
       if (verbose) cout << " yes"<< endl;
 
       // --------------------------------------------------------
 
       if (verbose) cout << "\t all edges are in the face lattice ...........";
-      for (int i=0; i < K; ++i)
+      for (Int i = 0; i < K; ++i)
          check_quad_edges(MS(i,0), MS(i,1), MS(i,2), MS(i,3), HD);
       if (verbose) cout << " yes"<< endl;
 
       // --------------------------------------------------------
 
       Graph<> G(n);
-      EdgeMap<Undirected,int> G_edges(G);
+      EdgeMap<Undirected, Int> G_edges(G);
 
-      for (int i=0; i < K; ++i) {
+      for (Int i = 0; i < K; ++i) {
          ++G_edges(MS(i, 0), MS(i, 1));
          ++G_edges(MS(i, 1), MS(i, 2));
          ++G_edges(MS(i, 2), MS(i, 3));
@@ -159,32 +157,28 @@ Matrix<int>  validate_moebius_strip_quads (perl::Object p, bool verbose)
          cout << "Checking whether" << endl
               << "\t vertex degrees are in {0, 3, 4} .....";
 
-      Set<int> valid_degrees;
-      valid_degrees += 0;
-      valid_degrees += 3;
-      valid_degrees += 4;
-
-      int seen_vertices = 0;
-      for (int i=0; i < n; ++i) {
-         const int deg = G.degree(i);
+      const Set<Int> valid_degrees{ 0, 3, 4 };
+      Int seen_vertices = 0;
+      for (Int i = 0; i < n; ++i) {
+         const Int deg = G.degree(i);
          if (deg > 0) ++seen_vertices;
 
          if (!valid_degrees.exists(deg)) {
             if (verbose)
                cout << "\n\t" << "vertex " << i << " has degree " << deg << endl;
-            return Matrix<int>();
+            return Matrix<Int>();
          }
       }
       if (verbose) cout << " yes"<< endl;
 
-      Matrix<int> moebius_strip_edges(MS.rows(),2);
+      Matrix<Int> moebius_strip_edges(MS.rows(), 2);
       auto mse_it = entire(rows(moebius_strip_edges));
 
       // Search first edge
       typedef Graph<>::out_edge_list::iterator edge_iterator;
 
-      int head = MS(0,0);
-      const int start = head;
+      Int head = MS(0, 0);
+      const Int start = head;
       for (;;) {
          edge_iterator strip_eit = G.out_edges(head).begin();
          for (; !strip_eit.at_end() && G_edges[*strip_eit] != 2; ++strip_eit);
@@ -211,25 +205,24 @@ Matrix<int>  validate_moebius_strip_quads (perl::Object p, bool verbose)
    catch (const MissingFace& e) {
       cerr << "\n\tAnswer: It is not a Moebius strip."
          "\n\tMissing face " << e.get_face() << endl;
-      return Matrix<int>();
+      return Matrix<Int>();
    }
 }
 
 
-
-bool validate_moebius_strip(perl::Object p)
+bool validate_moebius_strip(BigObject p)
 {
-   const Matrix<int> MS=p.give("MOEBIUS_STRIP_EDGES");
+   const Matrix<Int> MS = p.give("MOEBIUS_STRIP_EDGES");
    const Lattice<BasicDecoration, Sequential> HD=p.give("HASSE_DIAGRAM");
 
    // #quadrangles - 1
-   const int K = MS.rows()-1;
+   const Int K = MS.rows()-1;
 
    cout << "Checking whether" << endl
         << "\t all quadrangles are in the face lattice .....";
    // check all quadrangles but the last
    try {
-      for (int i=0; i < K; ++i)
+      for (Int i = 0; i < K; ++i)
          check_quad(MS(i,0), MS(i,1), MS(i+1,1), MS(i+1,0), HD);
 
       // check the last one
@@ -240,7 +233,7 @@ bool validate_moebius_strip(perl::Object p)
 
       cout << "\t all edges are in the face lattice ...........";
       // check all quadrangles but the last
-      for (int i=0; i < K; ++i)
+      for (Int i = 0; i < K; ++i)
          check_quad_edges(MS(i,0), MS(i,1), MS(i+1,1), MS(i+1,0), HD);
 
       // check the last one

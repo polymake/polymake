@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,37 +25,37 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar, typename SetType>
-ListMatrix<SparseVector<int>> 
-symmetrized_cocircuit_equations_0(int d,
+ListMatrix<SparseVector<Int>> 
+symmetrized_cocircuit_equations_0(Int d,
                                   const Matrix<Scalar>& V,
                                   const IncidenceMatrix<>& VIF,
-                                  const Array<Array<int> >& generators,
+                                  const Array<Array<Int>>& generators,
                                   const Array<SetType>& interior_ridge_reps,
                                   const Array<SetType>& facet_reps,
-                                  perl::OptionSet options) 
+                                  OptionSet options) 
 {
    return symmetrized_cocircuit_equations_0_impl(d, V, VIF, generators, interior_ridge_reps, facet_reps, options, false);
 }
 
 template<typename Scalar, typename SetType>
-ListMatrix<SparseVector<int>>
-symmetrized_foldable_cocircuit_equations_0(int d,
+ListMatrix<SparseVector<Int>>
+symmetrized_foldable_cocircuit_equations_0(Int d,
                                            const Matrix<Scalar>& V,
                                            const IncidenceMatrix<>& VIF,
-                                           const Array<Array<int> >& generators,
+                                           const Array<Array<Int>>& generators,
                                            const Array<SetType>& interior_ridge_reps,
                                            const Array<SetType>& facet_reps,
-                                           perl::OptionSet options) 
+                                           OptionSet options) 
 {
    return symmetrized_foldable_cocircuit_equations_0_impl(d, V, VIF, generators, interior_ridge_reps, facet_reps, options, false);
 }
 
 template<typename Scalar, typename SparseSet>
-perl::Object
-projected_symmetrized_cocircuit_equations_impl(perl::Object c,
+BigObject
+projected_symmetrized_cocircuit_equations_impl(BigObject c,
                                                const Array<SparseSet>& representative_interior_ridge_simplices,
                                                const Array<SparseSet>& representative_maximal_simplices,
-                                               const Set<int>& isotypic_components,
+                                               const Set<Int>& isotypic_components,
                                                bool reduce_rows)
 {
    const bool is_config = c.isa("PointConfiguration");
@@ -64,11 +64,11 @@ projected_symmetrized_cocircuit_equations_impl(perl::Object c,
       ? c.give("POINTS")
       : c.give("RAYS");
 
-   const Array<Array<int>> original_generators = is_config
+   const Array<Array<Int>> original_generators = is_config
       ? c.give("GROUP.POINTS_ACTION.GENERATORS")
       : c.give("GROUP.RAYS_ACTION.GENERATORS");
 
-   const int order = c.give("GROUP.ORDER");
+   const Int order = c.give("GROUP.ORDER");
    const Matrix<Rational> character_table = c.give("GROUP.CHARACTER_TABLE");
 
    const group::ConjugacyClasses<> conjugacy_classes = is_config
@@ -76,7 +76,7 @@ projected_symmetrized_cocircuit_equations_impl(perl::Object c,
       : c.give("GROUP.RAYS_ACTION.CONJUGACY_CLASSES");
 
    group::SparseIsotypicBasis<SparseSet> isotypic_basis(0);
-   for (int i: isotypic_components) {
+   for (Int i : isotypic_components) {
       const auto b_i = group::sparse_isotypic_basis_impl(order, original_generators, conjugacy_classes, character_table[i], representative_maximal_simplices);
       isotypic_basis.append(b_i.size(), entire(b_i));
    }
@@ -86,11 +86,11 @@ projected_symmetrized_cocircuit_equations_impl(perl::Object c,
 
 template<typename Scalar, typename SparseSet>
 auto
-combinatorial_symmetrized_cocircuit_equations(perl::Object c,
+combinatorial_symmetrized_cocircuit_equations(BigObject c,
                                               const Array<SparseSet>& representative_interior_ridge_simplices,
                                               const Array<SparseSet>& representative_maximal_simplices,
-                                              const Set<int>& isotypic_components,
-                                              perl::OptionSet options)
+                                              const Set<Int>& isotypic_components,
+                                              OptionSet options)
 {
    const bool is_config = c.isa("PointConfiguration");
 
@@ -110,20 +110,20 @@ combinatorial_symmetrized_cocircuit_equations(perl::Object c,
 }
 
 template<typename Scalar, typename SetType>
-Array<Set<int>>
+Array<Set<Int>>
 cocircuit_equations_support_reps(const Matrix<Scalar>& points,
-                                 const Array<Array<int>>& gens,
+                                 const Array<Array<Int>>& gens,
                                  const Array<SetType>& representative_interior_ridge_simplices,
                                  const Array<SetType>& representative_maximal_simplices,
-                                 perl::OptionSet options)
+                                 OptionSet options)
 {
-   int n_maximal = 0;
+   Int n_maximal = 0;
    IndexOfType<SetType> index_of_maximal;
    for (const auto& s: representative_maximal_simplices)
       index_of_maximal[s] = n_maximal++;
 
    const group::PermlibGroup Gamma(gens);
-   Array<Set<int>> supports(representative_interior_ridge_simplices.size());
+   Array<Set<Int>> supports(representative_interior_ridge_simplices.size());
 
    const std::string filename = options["filename"];
    std::ofstream outfile;
@@ -131,9 +131,9 @@ cocircuit_equations_support_reps(const Matrix<Scalar>& points,
       outfile = std::ofstream(filename.c_str(), std::ios_base::trunc);
    std::ostream& os = (filename == "-" ? perl::cout : outfile);
 
-   for (int i=0; i<representative_interior_ridge_simplices.size(); ++i) {
+   for (Int i = 0; i < representative_interior_ridge_simplices.size(); ++i) {
       const group::SparseSimplexVector<SetType> cocircuit_equation = cocircuit_equation_of_ridge_impl(points, representative_interior_ridge_simplices[i]);
-      Set<int> support;
+      Set<Int> support;
       for (const auto m: cocircuit_equation)
          if (!is_zero(m.second))
             support += index_of_maximal.at(Gamma.lex_min_representative(m.first));
@@ -161,7 +161,7 @@ UserFunctionTemplate4perl("# @category Symmetry"
                           "# @param Array<SetType> rmis representatives of maximal interior simplices"
                           "# @param Set<Int> comps the list of indices of the isotypic components to project to; default [0], which"
                           "# amounts to summing all cocircuit equations corresponding to the orbit of each ridge."
-                          "# @option String filename where large output should go to. 'filename=>\"-\"' writes to stdout."
+                          "# @option [complete file] String filename where large output should go to. 'filename=>\"-\"' writes to stdout."
                           "# @return Array<Pair<SetType, HashMap<SetType,Rational>>> indexed_cocircuit_equations a list of"
                           "# interior ridge simplices together with the corresponding sparsely represented cocircuit equation",
                           "combinatorial_symmetrized_cocircuit_equations<Scalar=Rational,SetType>($, Array<SetType>, Array<SetType>; Set<Int>=scalar2set(0), { filename=> '' })");
@@ -172,7 +172,7 @@ UserFunctionTemplate4perl("# @category Symmetry"
                           "# @param Array<Array<Int>> gens the generators of the action of the symmetry group"
                           "# @param Array<SetType> rirs representatives of interior ridge simplices"
                           "# @param Array<SetType> rmis representatives of maximal interior simplices"
-                          "# @option String filename where large output should go to. 'filename=>\"-\"' writes to stdout."
+                          "# @option [complete file] String filename where large output should go to. 'filename=>\"-\"' writes to stdout."
                           "# @return Int 1",
                           "cocircuit_equations_support_reps<Scalar,SetType>(Matrix<Scalar>, Array<Array<Int>>, Array<SetType>, Array<SetType>, { filename => '' })");
 

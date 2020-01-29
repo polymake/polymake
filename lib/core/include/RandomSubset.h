@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -41,7 +41,7 @@ public:
       , k(it.k) {}
 
    template <typename SourceIterator, typename=typename suitable_arg_for_iterator<SourceIterator, Iterator>::type>
-   RandomSubset_iterator(const SourceIterator& cur_arg, int n_arg, int k_arg, const SharedRandomState& random_arg)
+   RandomSubset_iterator(const SourceIterator& cur_arg, Int n_arg, Int k_arg, const SharedRandomState& random_arg)
       : base_t(prepare_iterator_arg<Iterator>(cur_arg))
       , rg(n_arg, random_arg)
       , k(k_arg)
@@ -67,16 +67,17 @@ public:
    bool at_end() const { return k==0; }
 
 protected:
-   void toss(input_iterator_tag, int incr)
+   void toss(input_iterator_tag, Int incr)
    {
-      if (incr) base_t::operator++();
+      if (incr != 0)
+         base_t::operator++();
       while (rg.upper_limit() > 0 && rg.get() >= k) {
          --(rg.upper_limit());
          base_t::operator++();
       }
    }
 
-   void toss(random_access_iterator_tag, int incr)
+   void toss(random_access_iterator_tag, Int incr)
    {
       while (rg.upper_limit() > 0 && rg.get() >= k) {
          --(rg.upper_limit()); ++incr;
@@ -91,11 +92,11 @@ protected:
 private:
    // shadow possible base_t:: operators
    void operator--() = delete;
-   void operator+=(int) = delete;
-   void operator-=(int) = delete;
-   void operator+(int) = delete;
-   void operator-(int) = delete;
-   void operator[](int) = delete;
+   void operator+=(Int) = delete;
+   void operator-=(Int) = delete;
+   void operator+(Int) = delete;
+   void operator-(Int) = delete;
+   void operator[](Int) = delete;
 };
 
 template <typename Iterator>
@@ -175,9 +176,9 @@ struct spec_object_traits< RandomSubset<ContainerRef> >
 class RandomPermutation_iterator {
 public:
    using iterator_category = forward_iterator_tag;
-   using value_type = int;
-   using reference = const int&;
-   using pointer = const int*;
+   using value_type = Int;
+   using reference = const Int&;
+   using pointer = const Int*;
    using difference_type = ptrdiff_t;
    using iterator = RandomPermutation_iterator;
    using const_iterator = RandomPermutation_iterator;
@@ -219,11 +220,11 @@ public:
 protected:
    void toss()
    {
-      const int i=rg.get();
+      const Int i = rg.get();
       std::swap(perm_index[i], perm_index.back());
    }
 
-   std::vector<int> perm_index;
+   std::vector<Int> perm_index;
    UniformlyRandomRanged<long> rg;
 };
 
@@ -234,8 +235,8 @@ template <typename ContainerRef=sequence,
           bool is_direct=same_pure_type<ContainerRef, sequence>::value>
 class RandomPermutation {
 public:
-   using value_type = int;
-   using reference = const int&;
+   using value_type = Int;
+   using reference = const Int&;
    using const_reference = reference;
 
    explicit RandomPermutation(const sequence& base_arg, const RandomSeed& seed=RandomSeed())
@@ -244,11 +245,11 @@ public:
    RandomPermutation(const sequence& base_arg, const SharedRandomState& s)
       : base(base_arg), random_source(s) {}
 
-   explicit RandomPermutation(int n, const RandomSeed& seed=RandomSeed())
-      : base(0,n), random_source(seed) {}
+   explicit RandomPermutation(Int n, const RandomSeed& seed=RandomSeed())
+      : base(0, n), random_source(seed) {}
 
-   RandomPermutation(int n, const SharedRandomState& random_arg)
-      : base(0,n), random_source(random_arg) {}
+   RandomPermutation(Int n, const SharedRandomState& random_arg)
+      : base(0, n), random_source(random_arg) {}
 
    using iterator = RandomPermutation_iterator;
    using const_iterator = iterator;
@@ -262,7 +263,7 @@ public:
       return iterator(random_source);
    }
 
-   int size() const { return base.size(); }
+   Int size() const { return base.size(); }
    bool empty() const { return base.empty(); }
 protected:
    sequence base;
@@ -282,7 +283,7 @@ protected:
 public:
    template <typename BaseArg, typename SeedArg,
              typename=std::enable_if_t<std::is_constructible<alias_t, BaseArg>::value &&
-                                       std::is_constructible<RandomPermutation<>, int, SeedArg>::value>>
+                                       std::is_constructible<RandomPermutation<>, Int, SeedArg>::value>>
    RandomPermutation(BaseArg&& base_arg, SeedArg&& seed)
       : base(std::forward<BaseArg>(base_arg))
       , perm(base->size(), std::forward<SeedArg>(seed)) {}
@@ -304,13 +305,13 @@ struct spec_object_traits< RandomPermutation<ContainerRef> >
 };
 
 template <typename Container>
-auto select_random_subset(Container&& c, int k, const RandomSeed& seed=RandomSeed())
+auto select_random_subset(Container&& c, Int k, const RandomSeed& seed=RandomSeed())
 {
    return RandomSubset<Container>(std::forward<Container>(c), k, seed);
 }
 
 template <typename Container>
-auto select_random_subset(Container&& c, int k, const SharedRandomState& s)
+auto select_random_subset(Container&& c, Int k, const SharedRandomState& s)
 {
    return RandomSubset<Container>(std::forward<Container>(c), k, s);
 }
@@ -329,14 +330,14 @@ auto random_permutation(Container&& c, const SharedRandomState& s)
 
 inline
 RandomPermutation<>
-random_permutation(int n, const RandomSeed& seed=RandomSeed())
+random_permutation(Int n, const RandomSeed& seed = RandomSeed())
 {
    return RandomPermutation<>(n, seed);
 }
 
 inline
 RandomPermutation<>
-random_permutation(int n, const SharedRandomState& s)
+random_permutation(Int n, const SharedRandomState& s)
 {
    return RandomPermutation<>(n, s);
 }

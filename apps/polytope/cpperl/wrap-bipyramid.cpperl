@@ -1,6 +1,6 @@
 {"app": "polytope", "embed": "bipyramid.cc",
  "inst": [
-  {"args": ["Rational", "void", "Rational(int)", "Rational(int)", "void"], "func": "bipyramid", "include": ["polymake/Rational.h"], "sig": "bipyramid:T1.B.C0.C0.o", "tp": "1"},
+  {"args": ["Rational", "void", "Rational(Int)", "Rational(Int)", "void"], "func": "bipyramid", "include": ["polymake/Rational.h"], "sig": "bipyramid:T1.B.C0.C0.o", "tp": "1"},
   {"args": ["QuadraticExtension<Rational>", "void", "QuadraticExtension<Rational>(perl::Canned<const QuadraticExtension<Rational>&>)", "QuadraticExtension<Rational>(perl::Canned<const QuadraticExtension<Rational>&>)", "void"], "func": "bipyramid", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "bipyramid:T1.B.C0.C0.o", "tp": "1"},
  null ],
 "version": 3}

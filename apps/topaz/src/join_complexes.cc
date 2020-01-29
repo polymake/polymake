@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,25 +20,25 @@
 
 namespace polymake { namespace topaz {
   
-perl::Object join_complexes(perl::Object p_in1,perl::Object p_in2,perl::OptionSet options)
+BigObject join_complexes(BigObject p_in1,BigObject p_in2,OptionSet options)
 {
    const bool relabel=!options["no_labels"];
-   const Array< Set<int> > C1 = p_in1.give("FACETS");
-   const int n1 = p_in1.give("N_VERTICES");
+   const Array<Set<Int>> C1 = p_in1.give("FACETS");
+   const Int n1 = p_in1.give("N_VERTICES");
 
-   const Array< Set<int> > C2 = p_in2.give("FACETS");
+   const Array<Set<Int>> C2 = p_in2.give("FACETS");
        
    // join facets of C1 with the facets of C2
-   Array< Set<int> > Join( C1.size()*C2.size() );
-   Array< Set<int> >::iterator f=Join.begin();
-   for (auto c_it1=entire(C1); !c_it1.at_end(); ++c_it1)
-      for (auto c_it2=entire(C2); !c_it2.at_end(); ++c_it2, ++f) {
+   Array<Set<Int>> Join( C1.size()*C2.size() );
+   auto f = Join.begin();
+   for (auto c_it1 = entire(C1); !c_it1.at_end(); ++c_it1)
+      for (auto c_it2 = entire(C2); !c_it2.at_end(); ++c_it2, ++f) {
          *f = *c_it1;
          for (auto v=entire(*c_it2); !v.at_end(); ++v)
             *f += *v+n1;
       }
    
-   perl::Object p_out("topaz::SimplicialComplex");
+   BigObject p_out("topaz::SimplicialComplex");
    p_out.set_description()<<"Join of " << p_in1.name() << " and " << p_in2.name() << "."<<endl;
    p_out.take("FACETS") << Join;
     

@@ -1,6 +1,6 @@
 {"app": "graph",
  "inst": [
-  {"pkg": "Polymake::graph::InverseRankMap"},
+  {"guard_name": "APP_WRAPPERS_graph_Decoration", "include": ["polymake/graph/Decoration.h"], "pkg": "Polymake::graph::InverseRankMap", "wrapper_file": "include/app-wrappers/polymake/graph/Decoration.h"},
   {"class": "graph::lattice::InverseRankMap<graph::lattice::Nonsequential>", "include": ["polymake/graph/Decoration.h"], "pkg": "Polymake::graph::InverseRankMap__Nonsequential"},
   {"class": "graph::lattice::InverseRankMap<graph::lattice::Sequential>", "include": ["polymake/graph/Decoration.h"], "pkg": "Polymake::graph::InverseRankMap__Sequential"},
   {"args": ["graph::lattice::InverseRankMap<graph::lattice::Sequential>"], "include": ["polymake/graph/Decoration.h"], "op": "new", "sig": "new"},

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,12 +31,13 @@
 namespace polymake { namespace polytope {
 
 namespace {
-typedef Map< Rational, int > AngleMap;
-typedef Array< AngleMap > CycleList;
+
+typedef Map<Rational, Int> AngleMap;
+typedef Array<AngleMap> CycleList;
   
-int getNext( const AngleMap& list, int node ) {
+Int getNext(const AngleMap& list, Int node)
+{
    // find the node
-    
    bool found = false; 
    auto list_i = entire(list);
    while (! list_i.at_end() && !found) {
@@ -57,31 +58,32 @@ Vector< Rational > crossProd(const Vector<Rational>& v1, const Vector<Rational>&
 }
 }
 
-perl::Object tutte_lifting(perl::Object g) {
+BigObject tutte_lifting(BigObject g)
+{
    const Graph<> G=g.give("ADJACENCY");
-   const int connectivity=g.give("CONNECTIVITY");
+   const Int connectivity=g.give("CONNECTIVITY");
    if (connectivity < 3) {
       throw std::runtime_error("tutte_lifting: graph must be 3-connected");
    }
     
-   const int n_nodes = G.nodes();
-   const int n_facets = 2 - n_nodes + edges(G).size(); //EULER
+   const Int n_nodes = G.nodes();
+   const Int n_facets = 2 - n_nodes + edges(G).size(); //EULER
   
    /*******************************
     * find a cycle of length 3
     ******************************/
    bool cycle_found = false;
    Bitset checked_verts(n_nodes); //remember them to not check them twice
-   Set<int> act_cycle; //the actual cycle
-   Set<int> inner_verts;
+   Set<Int> act_cycle; //the actual cycle
+   Set<Int> inner_verts;
     
-   for( int i=0; i < n_nodes && !cycle_found; ++i) {
+   for (Int i = 0; i < n_nodes && !cycle_found; ++i) {
       checked_verts += i;
-      const Set<int> neigh_i = G.adjacent_nodes(i) - checked_verts;
-      Set<int> checked_neighs;
+      const Set<Int> neigh_i = G.adjacent_nodes(i) - checked_verts;
+      Set<Int> checked_neighs;
     
       for (auto ni = entire(neigh_i); !ni.at_end() && !cycle_found; ++ni) {
-         const Set<int> cycles = neigh_i * G.adjacent_nodes(*ni) - checked_neighs; 
+         const Set<Int> cycles = neigh_i * G.adjacent_nodes(*ni) - checked_neighs; 
          checked_neighs += *ni;
          for (auto ci = entire(cycles); !ci.at_end() && !cycle_found; ++ci) {
             act_cycle.clear();
@@ -89,7 +91,7 @@ perl::Object tutte_lifting(perl::Object g) {
             // check if the rest is connected via BFS
         
             Bitset visited(n_nodes);
-            std::list<int> node_queue(n_nodes);
+            std::list<Int> node_queue(n_nodes);
         
             for (auto vi = entire(act_cycle); !vi.at_end(); ++vi)
                visited += *vi;
@@ -98,18 +100,18 @@ perl::Object tutte_lifting(perl::Object g) {
             inner_verts.clear();
         
             // find starting node
-            int start = 0;
-            while( visited.contains(start) && start < n_nodes ) ++start;
+            Int start = 0;
+            while (visited.contains(start) && start < n_nodes) ++start;
         
             node_queue.push_back(start);
             visited += start;
             inner_verts += start;
         
             while (!node_queue.empty()) {
-               const int n=node_queue.front();
+               const Int n = node_queue.front();
                node_queue.pop_front();
-               for (auto e=entire(G.out_edges(n)); !e.at_end(); ++e) {
-                  const int nn = e.to_node();
+               for (auto e = entire(G.out_edges(n)); !e.at_end(); ++e) {
+                  const Int nn = e.to_node();
                   if (!visited.contains(nn)) {         // nn not been visited yet -> add nn to the queue.
                      visited += nn;
                      node_queue.push_back(nn);
@@ -118,8 +120,8 @@ perl::Object tutte_lifting(perl::Object g) {
                }
             }
             //check if all were visited
-            int k = 0;
-            while( k < n_nodes && visited.contains(k)) ++k;
+            Int k = 0;
+            while (k < n_nodes && visited.contains(k)) ++k;
             cycle_found = (k == n_nodes);
          }
       }
@@ -133,7 +135,7 @@ perl::Object tutte_lifting(perl::Object g) {
     * create Stress Matrix and calculate 
     * Tutte-planar embedding
     *******************************/
-   const int n_inner_verts = inner_verts.size();
+   const Int n_inner_verts = inner_verts.size();
   
    Matrix<Rational> stress_matrix(n_nodes,n_nodes);
    Matrix<Rational> V(n_nodes,4); //the VERTICES in R^3
@@ -147,9 +149,9 @@ perl::Object tutte_lifting(perl::Object g) {
    Vector<Rational> rhs_x(n_inner_verts);
    Vector<Rational> rhs_y(n_inner_verts);
   
-   int m=0;
+   Int m = 0;
    for (auto vi = entire(inner_verts); !vi.at_end(); ++vi, ++m) {
-      const Set<int> neigh_i = G.adjacent_nodes(*vi);
+      const Set<Int> neigh_i = G.adjacent_nodes(*vi);
       stress_matrix[*vi][*vi] = - neigh_i.size();
       for (auto ni = entire(neigh_i); !ni.at_end(); ++ni) {
          if ( inner_verts.contains(*ni) ) {
@@ -173,8 +175,8 @@ perl::Object tutte_lifting(perl::Object g) {
    CycleList neigh_cyclic(n_nodes);
    sequence xy_coord=range(1,2);
   
-   for ( int i = 0; i < n_nodes; ++i ) {
-      const Set<int> neigh_i = G.adjacent_nodes(i);
+   for (Int i = 0; i < n_nodes; ++i) {
+      const Set<Int> neigh_i = G.adjacent_nodes(i);
       const Matrix<Rational> V_coords = V.minor(All,xy_coord);
     
       for (auto ni = entire(neigh_i); !ni.at_end(); ++ni) {
@@ -188,40 +190,40 @@ perl::Object tutte_lifting(perl::Object g) {
    // CREATE THE DUAL GRAPH
    Graph<> DG(n_facets);
    IncidenceMatrix<> VIF(DG.nodes(),n_nodes);
-   std::list< std::pair<int,int> > edge_queue(edges(G).size());
+   std::list< std::pair<Int, Int>> edge_queue(edges(G).size());
    edge_queue.clear();
   
    // push the outer triangle into the edge_queue
-   Array< int > outer_verts(3);
-   int l=0;
+   Array<Int> outer_verts(3);
+   Int l = 0;
    for (auto ei = entire(act_cycle);!ei.at_end(); ++ei, ++l) {
       outer_verts[l]=*ei;
    }
   
    for (l=0; l < outer_verts.size(); ++l) {
-      std::pair< int, int > edge(outer_verts[l%3],outer_verts[(l+1)%3]);    
+      std::pair<Int, Int> edge(outer_verts[l%3],outer_verts[(l+1)%3]);    
       edge_queue.push_front(edge);
    }
   
-   int facet_count = 0;
+   Int facet_count = 0;
    VIF[0] = act_cycle;
    ++facet_count;
   
    while (!edge_queue.empty()) {
     
-      std::pair< int, int > edge = edge_queue.front();
+      std::pair<Int, Int> edge = edge_queue.front();
       edge_queue.pop_front();
     
-      const Set< int > edge_in_facets = Set<int>(VIF.col(edge.first))*Set<int>(VIF.col(edge.second));
+      const Set<Int> edge_in_facets{ VIF.col(edge.first) * VIF.col(edge.second) };
       if (edge_in_facets.size() == 2) { // the edge is contained in 2 known facets
          DG.edge(edge_in_facets.front(),edge_in_facets.back());
       } else { //edge is contained in 1 known facet
-         Set< int > facet;
-         const int start = edge.first;
+         Set<Int> facet;
+         const Int start = edge.first;
          facet += start;
-         int from = edge.first;
-         int to = getNext(neigh_cyclic[start],edge.second);
-         int next = -1;
+         Int from = edge.first;
+         Int to = getNext(neigh_cyclic[start],edge.second);
+         Int next = -1;
          while (to != start) {
             edge.first = from;
             edge.second = to;
@@ -240,7 +242,7 @@ perl::Object tutte_lifting(perl::Object g) {
    //Calculate the cell centers
    Matrix<Rational> cell_centers(n_facets-1,2);
   
-   for (int i = 0; i < n_facets-1; ++i) {
+   for (Int i = 0; i < n_facets-1; ++i) {
       cell_centers[i] = average(rows(V.minor(VIF[i+1],xy_coord)));
    }
   
@@ -249,19 +251,17 @@ perl::Object tutte_lifting(perl::Object g) {
   
    Matrix< Rational > Facets(n_facets,4);
   
-   std::list< int > facet_queue(n_facets);
-   Set<int> facets_done;
-   facets_done += 0;
-   facets_done += 1;
+   std::list<Int> facet_queue(n_facets);
+   Set<Int> facets_done{ 0, 1 };
    facet_queue.clear();
    facet_queue.push_back(1);
    --facet_count;
 
    while (!facet_queue.empty() ) {
-      const int i = facet_queue.front();
+      const Int i = facet_queue.front();
       facet_queue.pop_front();
     
-      for (const int ni : DG.adjacent_nodes(i) - facets_done) {
+      for (const Int ni : DG.adjacent_nodes(i) - facets_done) {
          // pts in i and *ni
          const Matrix<Rational> pts = V.minor(VIF[ni] * VIF[i], All);
          // !!!!!!!!!! pay attention to the direction of the edge !!!!!!!!!!
@@ -279,12 +279,12 @@ perl::Object tutte_lifting(perl::Object g) {
   
    //CALCULATE THE HEIGHT
   
-   for (int i = 0; i < n_nodes; ++i) {
-      const Set< int > in_facets = VIF.col(i) - 0;
+   for (Int i = 0; i < n_nodes; ++i) {
+      const Set<Int> in_facets = VIF.col(i) - 0;
       V[i][3] = Facets[in_facets.front()]*V[i];
    }
 
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
   
    p.take("VERTICES") << V;
    p.take("VERTICES_IN_FACETS") << VIF;

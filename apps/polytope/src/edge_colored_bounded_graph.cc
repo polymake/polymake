@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,17 +25,16 @@ namespace polymake { namespace polytope {
 using namespace graph;
 using namespace graph::lattice;
 
-void edge_colored_bounded_graph(
-		const Array<int>& max_poly_comb_dims,
-		const IncidenceMatrix<>& max_polys,
-		perl::Object g)
+void edge_colored_bounded_graph(const Array<Int>& max_poly_comb_dims,
+                                const IncidenceMatrix<>& max_polys,
+                                BigObject g)
 {
    const Graph<> BG=g.give("ADJACENCY");
-   const Array<Set<int> > edges = g.call_method("EDGES");
-   EdgeMap<Undirected, int> edge_colors(BG);
+   const Array<Set<Int>> edges = g.call_method("EDGES");
+   EdgeMap<Undirected, Int> edge_colors(BG);
 
    for (auto e = entire<indexed>(edges); !e.at_end(); ++e) {
-      int rank = 1;
+      Int rank = 1;
       auto mc_dim_it = entire(max_poly_comb_dims);
       auto mc_it = entire(rows(max_polys));
       for (;!mc_it.at_end(); ++mc_it, ++mc_dim_it) {

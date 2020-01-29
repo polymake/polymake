@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,13 +28,13 @@ typedef Rational Scalar; // to prepare complete templatification
 
 namespace {
 
-template <typename PointsSubset, typename Hyperplane> inline
-void lift_to_hyperplane(PointsSubset P, const GenericVector<Hyperplane>& U) {
-   typedef typename PointsSubset::value_type point;
-   const int d=U.dim()-1;
-   for (auto p=entire(P); !p.at_end(); ++p) {
-      typename point::iterator p_i=p->begin();
-      typename Hyperplane::const_iterator u_i=U.top().begin();
+template <typename PointsSubset, typename Hyperplane>
+void lift_to_hyperplane(PointsSubset&& P, const GenericVector<Hyperplane>& U)
+{
+   const Int d = U.dim()-1;
+   for (auto p = entire(P); !p.at_end(); ++p) {
+      auto p_i = p->begin();
+      auto u_i = U.top().begin();
       typename Hyperplane::element_type x(0);
       /*
          Find the (d+1)st coordinate of the lifted point hat(P).
@@ -44,7 +44,7 @@ void lift_to_hyperplane(PointsSubset P, const GenericVector<Hyperplane>& U) {
          Therefore, 
                p_d = - < (u_0,...,u_{d-1}), (p_0,...,p_{d-1}) > / u_d
        */
-      for (int i=0; i<d; ++i, ++p_i, ++u_i)
+      for (Int i = 0; i < d; ++i, ++p_i, ++u_i)
          x -= (*p_i) * (*u_i);
       (*p_i) = x / (*u_i);
    }
@@ -55,14 +55,14 @@ Matrix<Scalar>
 wedge_coord(const Matrix<Scalar>& V,          // input vertices
             const Vector<Scalar>& z0,         // interior point
             const IncidenceMatrix<>& VIF,       // VERTICES_IN_FACETS
-            int wedge_facet,
+            Int wedge_facet,
             const Scalar& z,
             const Scalar& z_prime)
 {
-   const int d=V.cols(),
-      n_vertices=VIF.cols(),
-      n_vertices_edge=VIF[wedge_facet].size(),
-      n_vertices_out= 2*n_vertices-n_vertices_edge;
+   const Int d = V.cols(),
+      n_vertices = VIF.cols(),
+      n_vertices_edge = VIF[wedge_facet].size(),
+      n_vertices_out =  2*n_vertices-n_vertices_edge;
 
    Matrix<Scalar> V_out=(V / V.minor(~VIF[wedge_facet],All)) | zero_vector<Scalar>();
 
@@ -94,20 +94,20 @@ wedge_coord(const Matrix<Scalar>& V,          // input vertices
 } // end unnamed namespace
 
 //template<typename Scalar>
-perl::Object wedge(perl::Object p_in, const int wedge_facet, const Scalar& z, const Scalar& z_prime, perl::OptionSet options)
+BigObject wedge(BigObject p_in, const Int wedge_facet, const Scalar& z, const Scalar& z_prime, OptionSet options)
 {
    if (!options["no_coordinates"] && z==z_prime)
       throw std::runtime_error("wedge: z and z' must not be equal");
 
    const IncidenceMatrix<> VIF = p_in.give("VERTICES_IN_FACETS");
-   const int 
+   const Int 
       n_vertices = VIF.cols(), 
       n_facets   = VIF.rows();
   
    if (wedge_facet < 0 || wedge_facet >= n_facets)
       throw std::runtime_error("wedge: edge facet number out of range");
   
-   const int 
+   const Int 
       n_vertices_edge = VIF[wedge_facet].size(),
       n_vertices_out  = 2*n_vertices - n_vertices_edge;
 
@@ -118,12 +118,12 @@ perl::Object wedge(perl::Object p_in, const int wedge_facet, const Scalar& z, co
    // top facet = edge facet + all clones
    VIF_out[wedge_facet]+=range(n_vertices,n_vertices_out-1);
 
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "wedge over " << p_in.name() << "; edge facet " << wedge_facet << endl;
 
    if (options["no_coordinates"]) {
       if (p_in.exists("COMBINATORIAL_DIM")) {
-         const int dim=p_in.give("COMBINATORIAL_DIM");
+         const Int dim = p_in.give("COMBINATORIAL_DIM");
          p_out.take("COMBINATORIAL_DIM") << dim+1;
       }
    }

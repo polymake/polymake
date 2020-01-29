@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2014  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2019  Winfried Bruns, Bogdan Ichim, Christof Soeger
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -22,14 +22,15 @@
  */
 
 #ifdef NMZ_MIC_OFFLOAD
-#pragma offload_attribute (push, target(mic))
+#pragma offload_attribute(push, target(mic))
 #endif
 
 #include "libnormaliz/project_and_lift.cpp"
 #include "libnormaliz/reduction.cpp"
 #include "libnormaliz/cone_dual_mode.cpp"
 #include "libnormaliz/descent.cpp"
+#include "libnormaliz/automorph.cpp"
 
 #ifdef NMZ_MIC_OFFLOAD
-#pragma offload_attribute (pop)
+#pragma offload_attribute(pop)
 #endif

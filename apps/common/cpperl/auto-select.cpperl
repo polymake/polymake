@@ -1,5 +1,5 @@
 {"app": "common",
  "inst": [
-  {"args": ["perl::AnchorArg<perl::Canned<Wary<Set<int>>&>>", "perl::AnchorArg<perl::Canned<const Set<int>&>>"], "func": "select", "include": ["polymake/IndexedSubset.h", "polymake/Set.h"], "sig": "select_subset.X14.X11"},
+  {"args": ["perl::AnchorArg<perl::Canned<Wary<Set<Int>>&>>", "perl::AnchorArg<perl::Canned<const Set<Int>&>>"], "func": "select", "include": ["polymake/IndexedSubset.h", "polymake/Set.h"], "sig": "select_subset.X14.X11"},
  null ],
 "version": 3}

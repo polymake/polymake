@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,13 +23,13 @@
 namespace polymake { namespace polytope {
 
 template <typename Coord>
-void rel_int_point(perl::Object p)
+void rel_int_point(BigObject p)
 {
    std::string f;
    Matrix<Coord> F=p.give_with_property_name("FACETS | INEQUALITIES",f);
    Matrix<Coord>  E;
    const Vector<Coord> v0=p.give("ONE_VERTEX");      
-   int n = v0.dim()-1;
+   Int n = v0.dim()-1;
    bool unbounded = !p.give("BOUNDED");
 
    ListMatrix<Vector <Coord> > verts(0,n); //the linear space corresponding to the affine space spanned by the vertices
@@ -53,22 +53,22 @@ void rel_int_point(perl::Object p)
       F/=(VEC1|unit_matrix<Coord>(n))/(VEC2|-unit_matrix<Coord>(n));
    }
   
-   int n_verts,n_equats; 
-   while ((n_verts=verts.rows())+(n_equats=equats.rows())<n) {
-      Matrix<Coord> ort=null_space(verts);
+   Int n_verts, n_equats; 
+   while ((n_verts = verts.rows()) + (n_equats = equats.rows()) < n) {
+      Matrix<Coord> ort = null_space(verts);
 
       bool dep=true;      
       
       Matrix <Coord> A(0,n);
-      if (equats.cols()!=0) { A = dehomogenize(equats); };
+      if (equats.cols() != 0) A = dehomogenize(equats);
       //we try to find a vector orthogonal to the space of vertices and not yet contained in equats
-      int i=0;
-      for (; dep;++i) {
-         if (rank(A/ort.row(i))==n_equats+1) dep=false;
+      Int i=0;
+      for (; dep; ++i) {
+         if (rank(A/ort.row(i))==n_equats+1) dep = false;
       }
-      i--;
+      --i;
       //we solve the linear program for this direction
-      perl::Object p_new(p.type());
+      BigObject p_new(p.type());
 
       // this should be improved...
       if (unbounded) {

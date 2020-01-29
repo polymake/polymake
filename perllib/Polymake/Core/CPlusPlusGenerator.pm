@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -19,7 +19,6 @@ use namespaces;
 use warnings qw(FATAL void syntax misc);
 use feature 'state';
 
-require JSON;
 require Config;
 
 package Polymake::Core::CPlusPlus::CPPerlFile;
@@ -42,7 +41,7 @@ sub codec {
 sub new {
    my $self = &_new;
    if (@_ <= 2) {
-      open my $F, "<:utf8", $self->filename
+      open my $F, "<", $self->filename
         or die "can't read ", self->filename, ": $!\n";
       local $/;
       my $contents = codec()->decode(<$F>);
@@ -80,11 +79,9 @@ sub save {
    # place every instance on a separate line with a trailing comma, facilitating merge conflict resolution
    # append a `null' element to preserve well-formedness
    $text =~ s/\s* (?'pre' "inst":\s*\[) (?'inst' $balanced_re) (?'post' \],?) \s*/"\n $+{pre}\n" . indent_instances($+{inst}) . " null $+{post}\n"/xe;
-   # some old versions of JSON module do not insert spaces after commas
-   $text =~ s/,"/, "/g;
 
    my $filename = output_filename($self, $path_prefix);
-   open my $F, ">:utf8", $filename
+   open my $F, ">", $filename
      or die "can't write to $filename: $!\n";
    print $F $text, "\n";
    close $F;
@@ -103,19 +100,19 @@ sub indent_instances {
 package Polymake::Core::CPlusPlus::HeaderFile;
 
 use Polymake::Struct (
-   [ new => '$;$' ],
-   [ '$filename' => '#1' ],
+   [ new => '$' ],
+   [ '$filename' => '#1->{filename}' ],
    '$prologue',
    '$declarations',
    '$epilogue',
 );
 
 sub new {
-   my $self=&_new;
+   my $self = &_new;
    if (-f $self->filename) {
       load($self, $self->filename);
    } else {
-      create($self, $_[1]->());
+      create($self, $_[0]);
    }
    $self;
 }
@@ -182,22 +179,22 @@ use Polymake::Struct (
 );
 
 sub new {
-   my $self=&_new;
-   my ($auto_func, $args)=@_;
-   my @includes=@{$self->is_instance_of->include};
+   my $self = &_new;
+   my ($auto_func, $args) = @_;
+   my @includes = @{$self->is_instance_of->include};
    set_application($self, $auto_func->cpperl_define_with($args), $auto_func->application, $auto_func->cross_apps);
    set_extension($self->extension, $auto_func->extension // ($auto_func->application && $auto_func->application->origin_extension));
 
    if ($auto_func->explicit_template_params) {
       foreach ($auto_func->deduce_extra_params($args)) {
-         my ($arg_type, $includes, $define_with, $app, $cross_apps, $extension)=$_->get_cpp_representation;
+         my ($arg_type, $includes, $define_with, $app, $cross_apps, $extension) = $_->get_cpp_representation;
          push @{$self->arg_types}, $arg_type;
          push @includes, @$includes;
          set_application($self, $define_with, $app, $cross_apps);
          set_extension($self->extension, $extension);
       }
    }
-   my $arg_offset=$auto_func->explicit_template_params;
+   my $arg_offset = $auto_func->explicit_template_params;
    if (defined($auto_func->class)
        and !grep { $_->flags & FuncFlag::is_static } @{$auto_func->arg_descrs}) {
       push @{$self->arg_types}, $auto_func->class."()";
@@ -205,12 +202,17 @@ sub new {
    }
    push @{$self->arg_types}, ("void") x $auto_func->total_args;
 
+   my (@need_coerce, $first_obj_descr);
+
    foreach my $arg_descr (@{$auto_func->arg_descrs}) {
       my $arg_no = $arg_descr->arg_index;
       my ($arg_type, $includes, $define_with, $app, $cross_apps, $extension);
       my $lval_flag = $arg_descr->flags & FuncFlag::arg_is_const_or_rval_ref;
-      if (defined (my $typeid=get_magic_typeid($args->[$arg_no], $lval_flag))) {
-         ($arg_type, $includes, $define_with, $app, $cross_apps, $extension)=($root->typeids->{$typeid} || die "unregistered C++ typeid $typeid\n")->get_cpp_representation;
+      my $num_flag_seen = 0;
+      if (defined(my $typeid = get_magic_typeid($args->[$arg_no], $lval_flag))) {
+         my $descr = $root->typeids->{$typeid} || die "unregistered C++ typeid $typeid\n";
+         $first_obj_descr = $descr if $arg_no == ($arg_descr->flags & FuncFlag::args_are_swapped ? 1 : 0);
+         ($arg_type, $includes, $define_with, $app, $cross_apps, $extension) = $descr->get_cpp_representation;
          unless ($arg_descr->flags & FuncFlag::is_static) {
             $arg_type = "Wary<$arg_type>" if $arg_descr->flags & FuncFlag::arg_is_wary;
             if ($typeid == FuncFlag::arg_is_const_ref) {
@@ -224,7 +226,7 @@ sub new {
       } else {
          my $proto = $arg_descr->flags & FuncFlag::is_static
                      ? $args->[$arg_no]->type
-                     : guess_builtin_type($args->[$arg_no], $arg_descr->flags & FuncFlag::arg_is_integral);
+                     : guess_builtin_type($args->[$arg_no], my $num_flag = $arg_descr->flags & FuncFlag::arg_is_numeric);
          my $opts = $proto->cppoptions->finalize;
          if ($opts->builtin eq "enum") {
             $arg_type="perl::Enum<" . $opts->name . ">";
@@ -233,6 +235,7 @@ sub new {
             $arg_type = "Wary<$arg_type>" if $arg_descr->flags & FuncFlag::arg_is_wary;
             $arg_type = "perl::TryCanned<const $arg_type>" unless $arg_descr->flags & FuncFlag::is_static;
          } else {
+            push @need_coerce, $arg_no+$arg_offset if $num_flag;
             $arg_type = $opts->name;
          }
          $includes = $opts->include;
@@ -243,7 +246,7 @@ sub new {
       push @includes, @$includes;
       set_application($self, $define_with, $app, $cross_apps);
       set_extension($self->extension, $extension);
-      if (defined (my $pattern = $arg_descr->pattern)) {
+      if (defined(my $pattern = $arg_descr->pattern)) {
          $pattern =~ s/%1/$arg_type/g;
          $arg_type = "$pattern($arg_type)";
       } elsif ($arg_descr->flags & FuncFlag::is_static and defined($auto_func->class)) {
@@ -253,6 +256,18 @@ sub new {
          $arg_type = $self->arg_types->[$arg_descr->conv_to] . "($arg_type)";
       }
       $self->arg_types->[$arg_no+$arg_offset] = $arg_type;
+   }
+
+   if (@need_coerce) {
+      my ($elem_type, $elem_descr) = $first_obj_descr->is_container ? ($first_obj_descr->element_type, $first_obj_descr->element_descr)
+                                                                    : ($first_obj_descr->type, $first_obj_descr);
+      my $expects_double = $elem_type->cppoptions->name eq "double";
+      foreach my $arg_no (@need_coerce) {
+         if (($self->arg_types->[$arg_no] eq "double") != $expects_double) {
+            # floating-point numbers must be explicitly coerced to integral types and vice versa
+            $self->arg_types->[$arg_no] = $elem_descr->get_cpp_representation . "(" . $self->arg_types->[$arg_no] . ")";
+         }
+      }
    }
 
    remove_origin_extension($self);
@@ -265,7 +280,7 @@ sub complain_source_conflict {
 }
 
 sub cpperl_definition {
-   my ($self)=@_;
+   my ($self) = @_;
    my $func = $self->is_instance_of;
    my $def = $func->cpperl_instance_definition;
    $def->{sig} = $func->wrapper_name;
@@ -287,6 +302,7 @@ sub cpperl_definition {
 }
 
 sub override_extension { }
+sub needs_recognizer { false }
 
 #######################################################################################
 package Polymake::Core::CPlusPlus::FuncDescr;
@@ -327,24 +343,44 @@ sub complain_source_conflict {
    "Can't create C++ binding for ", $_[0]->is_instance_of->full_name;
 }
 
-sub recognizing_type {
-   my ($self)=@_;
-   my $proto=$self->is_instance_of;
-   my $opts=$proto->cppoptions;
-   return if $opts->builtin || $opts->special || defined($proto->generic) || defined($opts->cpperl_define_with);
+sub needs_recognizer {
+   my ($self) = @_;
+   my $proto = $self->is_instance_of;
+   my $opts = $proto->cppoptions;
+   not($opts->builtin || $opts->special || defined($proto->generic) || defined($opts->cpperl_define_with))
+}
 
-   my $typenames=join(", ", "typename T", map { "typename T$_" } 0..$opts->template_params-1);
-   my $Ts=join(",", map { "T$_" } 0..$opts->template_params-1);
-   my $declared=$opts->name;
+sub h_file_vars {
+   my ($self) = @_;
+   my $proto = $self->is_instance_of;
+   my $opts = $proto->cppoptions;
+   my $main_header = $opts->include->[-1];
+   my ($guard_name, $wrapper_dir) =
+      $DeveloperMode && $main_header =~ m{polymake/[^/]+$}
+      ? ("CORE_WRAPPERS_", "$InstallTop/include/core-wrappers")
+      : ("APP_WRAPPERS_",  ($opts->extension ? $opts->extension->dir : $opts->application->installTop)."/include/app-wrappers");
+   my $short_name = $main_header =~ s/\.h$//r;
+   $short_name =~ s{^polymake/}{};
+   $short_name =~ s{[./: ]}{_}g;
+   return { guard_name => $guard_name.$short_name, include_file => $main_header, filename => "$wrapper_dir/$main_header" };
+}
+
+sub recognizing_type {
+   my ($self) = @_;
+   my $proto = $self->is_instance_of;
+   my $opts = $proto->cppoptions;
+   my $typenames = join(", ", "typename T", map { "typename T$_" } 0 .. $opts->template_params-1);
+   my $Ts = join(",", map { "T$_" } 0 .. $opts->template_params-1);
+   my $declared = $opts->name;
    if ($declared =~ /%\d/) {
       $declared =~ s/%(\d+)/"T".($1-1)/ge;
    } elsif ($Ts) {
       $declared .= "<$Ts>";
    }
-   my $pkg=$proto->pkg;
-   my $app_name=$proto->application->name;
+   my $pkg = $proto->pkg;
+   my $app_name = $proto->application->name;
    if ($opts->name !~ /::/ && $opts->include->[-1] =~ m{^polymake/$app_name/}) {
-      $declared="polymake::$app_name\::$declared";
+      $declared = "polymake::$app_name\::$declared";
    }
    return <<".";
    template <$typenames>
@@ -354,44 +390,49 @@ sub recognizing_type {
 }
 
 sub cpperl_filename {
-   my ($self)=@_;
-   my $proto=$self->is_instance_of;
+   my ($self) = @_;
+   my $proto = $self->is_instance_of;
    $proto->cppoptions->builtin || $proto->cppoptions->special ? "builtins" : $proto->name
 }
 
 sub cpperl_define_with {
-   my ($self)=@_;
+   my ($self) = @_;
    $self->is_instance_of->cppoptions->cpperl_define_with // $self
 }
 
 sub in_cc_file {
-   my ($self)=@_;
-   my $define_with=$self->is_instance_of->cppoptions->cpperl_define_with;
+   my ($self) = @_;
+   my $define_with = $self->is_instance_of->cppoptions->cpperl_define_with;
    $define_with && $define_with->in_cc_file;
 }
 
 sub include {
-   my $proto=$_[0]->is_instance_of;
+   my $proto = $_[0]->is_instance_of;
    ($proto->generic // $proto)->cppoptions->include
 }
 
 sub cpperl_definition {
-   my ($self)=@_;
-   my $proto=$self->is_instance_of;
-   my $opts=$proto->cppoptions;
-   my %def=( pkg => $proto->pkg );
+   my ($self) = @_;
+   my $proto = $self->is_instance_of;
+   my $opts = $proto->cppoptions;
+   my %def = ( pkg => $proto->pkg );
    unless ($proto->abstract) {
-      $def{$opts->builtin || $opts->special ? "builtin" : "class"}=$opts->name;
-      if (@{$opts->include}) {
-         $def{include}=$opts->include;
-      }
+      $def{$opts->builtin || $opts->special ? "builtin" : "class"} = $opts->name;
+   }
+   if (@{$opts->include}) {
+      $def{include} = $opts->include;
+   }
+   if (&needs_recognizer) {
+      my $vars = &h_file_vars;
+      $def{guard_name} = $vars->{guard_name};
+      $def{wrapper_file} = $vars->{filename} =~ s{^\Q$InstallTop/\E}{}r;
    }
    \%def
 }
 
 sub override_extension {
-   my ($self)=@_;
-   $self->is_instance_of->cppoptions->extension=$self->extension;
+   my ($self) = @_;
+   $self->is_instance_of->cppoptions->extension = $self->extension;
 }
 
 #######################################################################################
@@ -425,7 +466,7 @@ sub get_cpp_representation {
                if (ref($gen->arg_types)) {
                   foreach my $arg_type (@{$gen->arg_types}) {
                      if (defined (my $arg_type_descr=$root->typeids->{$arg_type})) {
-                        (undef, my ($includes, $define_with, $app, $cross_apps, $extension))=$arg_type_descr->get_cpp_representation;
+                        (undef, my ($includes, $define_with, $app, $cross_apps, $extension)) = $arg_type_descr->get_cpp_representation;
                         push @includes, @$includes;
                         set_application($self, $define_with, $app, $cross_apps);
                         set_extension($self->extension, $extension);
@@ -462,11 +503,9 @@ sub complain_source_conflict {
 }
 
 sub match_cpperl_instance {
-   my ($self, $inst)=@_;
-   my $proto=&type;
-   my $opts=$proto->cppoptions->finalize;
-   $inst->{pkg} eq $proto->pkg  &&
-   $inst->{$opts->builtin || $opts->special ? "builtin" : "class"} eq $opts->name
+   my ($self, $inst) = @_;
+   my $pkg = $inst->{pkg};
+   exists($inst->{class}) || exists($inst->{builtin}) and defined($pkg) && get_symtab($pkg) == $self->pkg
 }
 
 *is_private=\&FuncDescr::is_private;
@@ -547,8 +586,8 @@ sub cpperl_define_with {
 package Polymake::Core::CPlusPlus::Options;
 
 sub finalize {
-   my ($self)=@_;
-   if (defined (my $proto=$self->finalize_with)) {
+   my ($self) = @_;
+   if (defined(my $proto = $self->finalize_with)) {
       undef $self->finalize_with;
       $self->extension //= $self->application->origin_extension;
       my (@includes, @t_params);
@@ -557,7 +596,7 @@ sub finalize {
          unless ($_->cppoptions) {
             die "Can't create C++ binding for ", $proto->full_name, ": non-C++ parameter ", $_->name, "\n";
          }
-         my $p_opts=$_->cppoptions->finalize;
+         my $p_opts = $_->cppoptions->finalize;
          push @t_params, $p_opts->name;
          push @includes, @{$p_opts->include};
          set_application($self, $p_opts->cpperl_define_with, $p_opts->application, $p_opts->cross_apps);
@@ -565,17 +604,17 @@ sub finalize {
       }
 
       if (is_code($self->name)) {
-         $self->name= is_method($self->name) ? $self->name->($proto, @t_params) : $self->name->(@t_params);
+         $self->name = is_method($self->name) ? $self->name->($proto, @t_params) : $self->name->(@t_params);
       } elsif ($self->template_params eq "*" || $self->name eq "typeid") {
          undef $self->name;
       } elsif ($self->name =~ /%\d/) {
          unshift @t_params, undef;      # shift the indexing
          $self->name =~ s/%(\d+)/$t_params[$1]/g;
       } else {
-         $self->name.="<" . join(", ", @t_params) . ">";
+         $self->name .= "<" . join(", ", @t_params) . ">";
       }
       if (@includes) {
-         $self->include=[ sorted_uniq(sort(@includes, @{$self->include})) ];
+         $self->include = [ sorted_uniq(sort(@includes, @{$self->include})) ];
       }
       remove_origin_extension($self);
    }
@@ -654,16 +693,16 @@ sub remove_origin_extension {
 
 #######################################################################################
 sub generate_lacking_type {
-   my ($proto)=@_;
+   my ($proto) = @_;
    $proto->cppoptions->finalize;
-   my $lacking=new LackingTypeInstance($proto);
-   my $generator=$proto->cppoptions->application->cpp->cpperl_generator;
-   if ($code_generation eq "shared" && defined (my $descr=delete $root->private_classes->{$proto->pkg})) {
+   my $lacking = new LackingTypeInstance($proto);
+   my $generator = $proto->cppoptions->application->cpp->cpperl_generator;
+   if ($code_generation eq "shared" && defined(my $descr = delete $root->private_classes->{$proto->pkg})) {
       $generator->move_type_from_private($descr, $proto, $lacking);
    } else {
       $generator->generate_lacking_type($lacking);
-      if (defined ($descr=$root->classes->{$proto->pkg})) {
-         $generator->lacking_types->{$proto->pkg}=$lacking;
+      if ($proto->abstract || defined($descr = $root->classes->{$proto->pkg})) {
+         $generator->lacking_types->{$proto->pkg} = $lacking;
          $descr
       } else {
          die " C++ binding of type ", $proto->full_name, " was not created as expected\n";
@@ -672,14 +711,14 @@ sub generate_lacking_type {
 }
 
 sub generate_lacking_function {
-   my $lacking=new LackingFunctionInstance(@_);
-   my $generator=$lacking->application->cpp->cpperl_generator;
+   my $lacking = new LackingFunctionInstance(@_);
+   my $generator = $lacking->application->cpp->cpperl_generator;
    $generator->generate_lacking_function($lacking);
-   if (defined (my $inst=&AutoFunction::find_instance)) {
+   if (defined(my $inst = &AutoFunction::find_instance)) {
       push @{$generator->lacking_functions}, $lacking;
       $inst
    } else {
-      my $auto_func=shift;
+      my $auto_func = shift;
       die "an instance of C++ ",
           defined($auto_func->caller_kind) ? ("function ", $auto_func->perl_name) : $auto_func->name,
           " with wrapper name ", $auto_func->wrapper_name, " was not created as expected\n";
@@ -703,9 +742,9 @@ sub new {
    my $self = &_new;
    if ($PrivateDir or $code_generation eq "shared" && $cpperl_src_root ne "") {
       state $finalize = $cpperl_src_root eq "" && add AtEnd("Finalize:C++", \&enforce_rebuild, after => "Private:C++");
-      add AtEnd($self->application->name.":C++", sub { generate_files($self) },
+      add AtEnd($self->application->name.":C++", sub { generate_cpperl_files($self) },
                 before => [ "Customize", "Private:C++", "Finalize:C++", map { "$_:C++" } keys(%{$self->application->used}) ],
-                after => "Object");
+                after => "BigObject");
    }
    $self;
 }
@@ -714,14 +753,14 @@ sub application { $_[0]->perApp->application }
 sub shared_modules { $_[0]->perApp->shared_modules }
 
 sub generate_lacking_type {
-   my ($self, $lacking)=@_;
+   my ($self, $lacking) = @_;
    load_shared_module(build_temp_shared_module($self, $lacking));
 }
 
 sub generate_lacking_function {
-   my ($self, $lacking)=@_;
-   my $so_name=build_temp_shared_module($self, $lacking);
-   my $embedded_items_key=$self->application->name;
+   my ($self, $lacking) = @_;
+   my $so_name = build_temp_shared_module($self, $lacking);
+   my $embedded_items_key = $self->application->name;
    if (is_object($lacking->extension) && $lacking->extension->is_bundled) {
       $embedded_items_key .= ":" . $lacking->extension->short_name;
    }
@@ -729,17 +768,12 @@ sub generate_lacking_function {
    load_shared_module($so_name);
    $self->perApp->bind_functions($lacking->extension, $root->functions->{$embedded_items_key}, 1);
 
-   if (defined (my $embedded_rules=$root->embedded_rules->{$embedded_items_key})) {
-      $#$embedded_rules=-1;
+   if (defined(my $embedded_rules = $root->embedded_rules->{$embedded_items_key})) {
+      $#$embedded_rules = -1;
    }
-   if (defined (my $duplicates=$root->duplicate_class_instances->{$embedded_items_key})) {
-      $#$duplicates=-1;
+   if (defined(my $duplicates = $root->duplicate_class_instances->{$embedded_items_key})) {
+      $#$duplicates = -1;
    }
-}
-
-sub add_lacking_type_template {
-   my ($self, $proto)=@_;
-   $self->lacking_types->{$proto->pkg}=new LackingTypeInstance($proto);
 }
 
 sub move_function_from_private {
@@ -817,13 +851,13 @@ sub decide_about_private_extension {
 ##############################################################################################
 sub used_in_extension {
    my $used_in_extension;
-   my $depth=4;
-   while (my ($file, $sub)=(caller(++$depth))[1,3]) {
+   my $depth = 4;
+   while (my ($file, $sub) = (caller(++$depth))[1, 3]) {
       if ($file =~ m{^(?'top' .*? (?: /bundled/ (?'bundled' $id_re))?) /apps/$id_re/ (?'where' rules|perllib|scripts|src|testsuite)}ox) {
-         my ($top, $bundled, $where)=@+{qw(top bundled where)};
+         my ($top, $bundled, $where) = @+{qw(top bundled where)};
          unless ($where eq "rules" && $sub =~ /^Polymake::Core::(?:PropertyParamedType|PropertyTypeInstance)::new$/
                  || $top eq $InstallTop || $bundled) {
-            $used_in_extension=$Extension::registered_by_dir{$top}
+            $used_in_extension = $Extension::registered_by_dir{$top}
               and last;
          }
       }
@@ -832,21 +866,21 @@ sub used_in_extension {
 }
 #######################################################################################
 sub build_temp_shared_module {
-   my ($self, $lacking)=@_;
+   my ($self, $lacking) = @_;
 
    if ($code_generation eq "none") {
       croak( "cpperl interface generation is forbidden!\nMissing interface is:\n",
              JSON->new->canonical->pretty->encode($lacking->cpperl_definition), "\n " );
    }
 
-   my $define_with=$lacking->cpperl_define_with;
-   my $src_name=$define_with->in_cc_file;
+   my $define_with = $lacking->cpperl_define_with;
+   my $src_name = $define_with->in_cc_file;
    my $def_src_dir;
-   if (defined $src_name) {
-      if (defined (my $ext=$define_with->extension)) {
-         $def_src_dir=$ext->app_dir($self->application)."/src";
+   if (defined($src_name)) {
+      if (defined(my $ext = $define_with->extension)) {
+         $def_src_dir = $ext->app_dir($self->application) . "/src";
       } else {
-         $def_src_dir=$self->application->top."/src";
+         $def_src_dir = $self->application->top."/src";
       }
       unless (-f "$def_src_dir/$src_name") {
          croak( "internal error: missing source file $def_src_dir/$src_name where the function ",
@@ -856,13 +890,23 @@ sub build_temp_shared_module {
 
    &decide_about_private_extension;
 
-   my $dir=new Tempdir();
-   my $so_file=new Tempfile();
-   my $so_name=$so_file->rename.".$DynaLoader::dl_dlext";
-   my $cpperl_filename=$define_with->cpperl_filename;
-   my $cpperl_file=new CPPerlFile("$dir/$cpperl_filename.cpperl", undef, $src_name);
+   my $dir = new Tempdir();
+   my $so_file = new Tempfile();
+   my $so_name = $so_file->rename.".$DynaLoader::dl_dlext";
+   my $cpperl_filename = $define_with->cpperl_filename;
+   my $cpperl_file = new CPPerlFile("$dir/$cpperl_filename.cpperl", undef, $src_name);
    push @{$cpperl_file->instances}, $lacking->cpperl_definition;
    $cpperl_file->save($self->application);
+
+   if ($lacking->needs_recognizer) {
+      my $h = $lacking->h_file_vars;
+      if ($Verbose::cpp) {
+         dbg_print( -e $h->{filename} ? "Updating" : "Creating", " header file $h->{filename}" );
+      }
+      my $h_file = new HeaderFile($h);
+      $h_file ->declarations .= $lacking->recognizing_type . "\n";
+      $h_file->save($cpperl_src_root);
+   }
 
    write_temp_build_ninja_file("$dir/build.ninja", $self->application, $lacking->extension,
                                $src_name, $def_src_dir, $cpperl_filename, $so_name);
@@ -886,7 +930,7 @@ Set the variable $Polymake::User::Verbose::cpp to a positive value and repeat fo
 }
 ##############################################################################################
 sub write_temp_build_ninja_file {
-   my ($file, $app, $extension, $src_name, $def_src_dir, $stem, $so_name)=@_;
+   my ($file, $app, $extension, $src_name, $def_src_dir, $stem, $so_name) = @_;
    open my $conf, ">", $file
      or die "can't create $file: $!\n";
    print $conf <<"---";
@@ -894,28 +938,28 @@ config.file=$InstallArch/config.ninja
 include \${config.file}
 PERL=$Config::Config{perlpath}
 ---
-   my $cxxflags="-DPOLYMAKE_APPNAME=".$app->name;
-   my $cxxincludes='${app.includes} ${core.includes}';
-   my $extra_ldflags="";
-   my $extra_libs="";
-   my $needs_bundled=false;
+   my $cxxflags = "-DPOLYMAKE_APPNAME=".$app->name;
+   my $cxxincludes = '${app.includes} ${core.includes}';
+   my $extra_ldflags = "";
+   my $extra_libs = "";
+   my $needs_bundled = false;
    if ($extension) {
       foreach my $ext (is_object($extension) ? ($extension, @{$extension->requires}) :
                        uniq(map { ($_, @{$_->requires}) } @{$extension})) {
          if (!$ext->is_bundled) {
             print $conf "include ", $ext->build_dir."/config.ninja\n";
          } else {
-            $needs_bundled=true;
-            my $bundled=$ext->short_name;
-            $cxxflags.=" \${bundled.$bundled.CXXFLAGS}";
-            $extra_ldflags.=" \${bundled.$bundled.LDFLAGS}";
-            $extra_libs.=" \${bundled.$bundled.LIBS}";
-            $cxxincludes="\${bundled.$bundled.includes} $cxxincludes";
+            $needs_bundled = true;
+            my $bundled = $ext->short_name;
+            $cxxflags .= " \${bundled.$bundled.CXXFLAGS}";
+            $extra_ldflags .= " \${bundled.$bundled.LDFLAGS}";
+            $extra_libs .= " \${bundled.$bundled.LIBS}";
+            $cxxincludes = "\${bundled.$bundled.includes} $cxxincludes";
          }
       }
    }
 
-   my $mode=$ENV{POLYMAKE_BUILD_MODE} || "Opt";
+   my $mode = $ENV{POLYMAKE_BUILD_MODE} || "Opt";
    print $conf <<"---";
 include \${root}/support/rules.ninja
 CmodeFLAGS=\${C${mode}FLAGS}
@@ -923,8 +967,8 @@ CexternModeFLAGS=\${Cextern${mode}FLAGS}
 LDmodeFLAGS=\${LD${mode}FLAGS}
 ---
    if (is_object($extension) && $extension->is_bundled) {
-      my $bundled=$extension->short_name;
-      $cxxflags.=" -DPOLYMAKE_BUNDLED_EXT=$bundled";
+      my $bundled = $extension->short_name;
+      $cxxflags .= " -DPOLYMAKE_BUNDLED_EXT=$bundled";
    }
    if ($needs_bundled and -f "$InstallArch/../bundled_flags.ninja") {
       print $conf <<"---";
@@ -932,13 +976,13 @@ include $InstallArch/../bundled_flags.ninja
 ---
    }
 
-   if (defined $src_name) {
+   if (defined($src_name)) {
       $cxxflags .= qq{ -DPOLYMAKE_DEFINITION_SOURCE_DIR="$def_src_dir" -DPOLYMAKE_NO_EMBEDDED_RULES};
-      my $build_flags_file="$def_src_dir/build_flags.pl";
+      my $build_flags_file = "$def_src_dir/build_flags.pl";
       if (-f $build_flags_file) {
-         my %flags=do $build_flags_file;
-         if (my @custom_flags=grep { defined } @flags{'CXXFLAGS', $src_name}) {
-            $cxxflags.=" @custom_flags";
+         my %flags = do $build_flags_file;
+         if (my @custom_flags = grep { defined } @flags{'CXXFLAGS', $src_name}) {
+            $cxxflags .= " @custom_flags";
          }
       }
    }
@@ -955,16 +999,12 @@ include $InstallArch/../bundled_flags.ninja
    close $conf;
 }
 #######################################################################################
-sub generate_files {
+sub generate_cpperl_files {
    my ($self) = @_;
-   my (%cpperl_files, %h_files);
+   my %cpperl_files;
 
    foreach my $inst (values %{$self->lacking_types}) {
       process_lacking_instance($self, \%cpperl_files, $inst);
-      if (defined (my $recognizing_type = $inst->recognizing_type)) {
-         my $h_file=load_h_file($self, \%h_files, $inst->is_instance_of->cppoptions);
-         $h_file->declarations .= $recognizing_type . "\n";
-      }
    }
 
    foreach my $inst (@{$self->lacking_functions}) {
@@ -978,13 +1018,6 @@ sub generate_files {
    %{$self->lacking_types} = ();
    @{$self->lacking_functions} = ();
    @{$self->instances_to_remove} = ();
-
-   while (my ($filename, $file) = each %h_files) {
-      if ($Verbose::cpp) {
-         dbg_print( -e $filename ? "Updating" : "Creating", " header file $filename" );
-      }
-      $file->save($cpperl_src_root);
-   }
 
    while (my ($filename, $file) = each %cpperl_files) {
       next unless defined($file);
@@ -1002,22 +1035,6 @@ sub generate_files {
 sub enforce_rebuild {
    # remove the build success markers in all modes, not only in the current one
    unlink(map { glob("$_/*/.apps.built") } keys %enforce_rebuild);
-}
-#######################################################################################
-sub load_h_file {
-   my ($self, $files, $opts)=@_;
-   my $main_header=$opts->include->[-1];
-   my ($guard_name, $wrapper_dir)=
-      $DeveloperMode && $main_header =~ m{polymake/[^/]+$}
-      ? ("CORE_WRAPPERS_", "$InstallTop/include/core-wrappers")
-      : ("APP_WRAPPERS_",  ($opts->extension ? $opts->extension->dir : $self->application->installTop)."/include/app-wrappers");
-   my $filename="$wrapper_dir/$main_header";
-   $files->{$filename} //= new HeaderFile($filename, sub {
-      my $short_name= $main_header =~ s/\.h$//r;
-      $short_name =~ s{^polymake/}{};
-      $short_name =~ s{[./: ]}{_}g;
-      { guard_name => $guard_name.$short_name, include_file => $main_header }
-   });
 }
 #######################################################################################
 sub process_lacking_instance {
@@ -1041,7 +1058,7 @@ sub remove_instance {
    my ($self, $files, $inst) = @_;
    my $cpperl_file = load_cpperl_file($self, $files, $inst->cpperl_file, $inst, 0)
      or return;
-   my $inst_num = $inst->cpperl_file + 0;
+   my $inst_num = $inst->cpperl_file+0;
    if ($inst_num < @{$cpperl_file->instances} &&
        $inst->match_cpperl_instance($cpperl_file->instances->[$inst_num])) {
       $cpperl_file->has_removed_instances = true;

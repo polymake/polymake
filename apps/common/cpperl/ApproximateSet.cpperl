@@ -1,6 +1,6 @@
 {"app": "common",
  "inst": [
-  {"pkg": "Polymake::common::ApproximateSet"},
+  {"guard_name": "CORE_WRAPPERS_ApproximateSet", "include": ["polymake/ApproximateSet.h"], "pkg": "Polymake::common::ApproximateSet", "wrapper_file": "include/core-wrappers/polymake/ApproximateSet.h"},
   {"class": "ApproximateSet<Matrix<double>>", "include": ["polymake/ApproximateSet.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "pkg": "Polymake::common::ApproximateSet__Matrix_A_Float_I_NonSymmetric_Z"},
   {"class": "ApproximateSet<double>", "include": ["polymake/ApproximateSet.h"], "pkg": "Polymake::common::ApproximateSet__Float"},
   {"args": ["ApproximateSet<double>"], "include": ["polymake/ApproximateSet.h"], "op": "new", "sig": "new"},

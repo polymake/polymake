@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -51,13 +51,13 @@ using ValuePair = std::pair<Vector<Rational>, Vector<Rational>>;
  * @brief Computes the property [[DOMAIN]] from [[NUMERATOR]] and [[DENOMINATOR]].
  */
 template <typename Addition>
-void computeDomain(perl::Object function)
+void computeDomain(BigObject function)
 {
   Polynomial<TropicalNumber<Addition>> num = function.give("NUMERATOR");
   Polynomial<TropicalNumber<Addition>> den = function.give("DENOMINATOR");
 
-  perl::Object domain_num = computePolynomialDomain(num);
-  perl::Object domain_den = computePolynomialDomain(den);
+  BigObject domain_num = computePolynomialDomain(num);
+  BigObject domain_den = computePolynomialDomain(den);
 
   RefinementResult r = refinement(domain_num, domain_den, false,false,false,true,false);
   r.complex.give("PURE");
@@ -69,21 +69,21 @@ void computeDomain(perl::Object function)
  * from [[[DOMAIN]], [NUMERATOR]] and [[DENOMINATOR]].
  */
 template <typename Addition>
-void computeGeometricFunctionData(perl::Object function)
+void computeGeometricFunctionData(BigObject function)
 {
   Polynomial<TropicalNumber<Addition>> num = function.give("NUMERATOR");
   Polynomial<TropicalNumber<Addition>> den = function.give("DENOMINATOR");
-  perl::Object domain = function.give("DOMAIN");
+  BigObject domain = function.give("DOMAIN");
 
   // This just computes the associated vertices
   RefinementResult r = refinement(domain, domain, false,false,true,false,false);
 
   Matrix<Rational> separated_vertices = domain.give("SEPARATED_VERTICES");
-  std::pair<Set<int>, Set<int>> vertex_list = far_and_nonfar_vertices(separated_vertices);
+  std::pair<Set<Int>, Set<Int>> vertex_list = far_and_nonfar_vertices(separated_vertices);
   separated_vertices = separated_vertices.minor(All, range_from(1));
   Matrix<Rational> lineality = domain.give("LINEALITY_SPACE");
   lineality = lineality.minor(All, range_from(1));
-  Vector<int> assocRep = r.associatedRep;
+  Vector<Int> assocRep = r.associatedRep;
 
   Vector<Rational> vertexValues(separated_vertices.rows());
   Vector<Rational> linealityValues(lineality.rows());
@@ -105,9 +105,9 @@ void computeGeometricFunctionData(perl::Object function)
   function.take("VERTEX_VALUES") << vertexValues;
 
   // Same for lineality space generators - we use a fixed vertex as base vertex
-  int base_vertex_index = *(vertex_list.second.begin());
+  Int base_vertex_index = *(vertex_list.second.begin());
   Vector<Rational> base_vertex = separated_vertices.row(base_vertex_index);
-  for (int l = 0; l < lineality.rows(); ++l) {
+  for (Int l = 0; l < lineality.rows(); ++l) {
     linealityValues[l] = ( evaluate_polynomial(num, base_vertex + lineality.row(l)) -
                            evaluate_polynomial(den, base_vertex + lineality.row(l)) ) -
       vertexValues[base_vertex_index];
@@ -121,18 +121,18 @@ void computeGeometricFunctionData(perl::Object function)
  * and homogenizes them to produce the (equivalent) rational function on homogeneous coordinates.
  * @param Polynomial num The numerator
  * @param Polynomial den The denominator
- * @param int chart The index of the homogenizing variable
+ * @param Int chart The index of the homogenizing variable
  * @tparam Addition Min or Max
  * @return RationalFunction
  */
 template <typename Addition>
-perl::Object homogenize_quotient(const Polynomial<TropicalNumber<Addition>>& num, 
+BigObject homogenize_quotient(const Polynomial<TropicalNumber<Addition>>& num, 
                                  const Polynomial<TropicalNumber<Addition>>& den,
-                                 int chart)
+                                 Int chart)
 {
-  Matrix<int> num_mons = num.monomials_as_matrix();
+  Matrix<Int> num_mons = num.monomials_as_matrix();
   Vector<TropicalNumber<Addition> > num_coefs = num.coefficients_as_vector();
-  Matrix<int> den_mons = den.monomials_as_matrix();
+  Matrix<Int> den_mons = den.monomials_as_matrix();
   Vector<TropicalNumber<Addition> > den_coefs = den.coefficients_as_vector();
 
   if (num_mons.cols() != den_mons.cols()) 
@@ -142,15 +142,15 @@ perl::Object homogenize_quotient(const Polynomial<TropicalNumber<Addition>>& num
     throw std::runtime_error("Illegal chart index.");
 
   // Compute missing degrees
-  int total_degree = std::max(polynomial_degree(num), polynomial_degree(den));
-  Vector<int> num_missing = total_degree*ones_vector<int>(num_mons.rows()) - degree_vector(num);
-  Vector<int> den_missing = total_degree*ones_vector<int>(den_mons.rows()) - degree_vector(den);
+  Int total_degree = std::max(polynomial_degree(num), polynomial_degree(den));
+  Vector<Int> num_missing = same_element_vector(total_degree, num_mons.rows()) - degree_vector(num);
+  Vector<Int> den_missing = same_element_vector(total_degree, den_mons.rows()) - degree_vector(den);
 
   // Insert at right position
-  Matrix<int> new_num_mons(num_mons.rows(),num_mons.cols()+1);
+  Matrix<Int> new_num_mons(num_mons.rows(),num_mons.cols()+1);
   new_num_mons.col(chart) = num_missing;
   new_num_mons.minor(All,~scalar2set(chart)) = num_mons;
-  Matrix<int> new_den_mons(den_mons.rows(), den_mons.cols()+1);
+  Matrix<Int> new_den_mons(den_mons.rows(), den_mons.cols()+1);
   new_den_mons.col(chart) = den_missing;
   new_den_mons.minor(All,~scalar2set(chart)) = den_mons;
 
@@ -158,7 +158,7 @@ perl::Object homogenize_quotient(const Polynomial<TropicalNumber<Addition>>& num
   Polynomial<TropicalNumber<Addition> > new_num(num_coefs, new_num_mons);
   Polynomial<TropicalNumber<Addition> > new_den(den_coefs, new_den_mons);
 
-  perl::Object result("RationalFunction", mlist<Addition>());
+  BigObject result("RationalFunction", mlist<Addition>());
   result.take("NUMERATOR") << new_num;
   result.take("DENOMINATOR") << new_den;
   return result;
@@ -173,14 +173,14 @@ perl::Object homogenize_quotient(const Polynomial<TropicalNumber<Addition>>& num
  * @return RationalFunction
  */
 template <typename Addition> 
-perl::Object add_rational_functions(perl::Object f, perl::Object g)
+BigObject add_rational_functions(BigObject f, BigObject g)
 {
-  perl::Object fDomain = f.give("DOMAIN");
-  perl::Object gDomain = g.give("DOMAIN");
+  BigObject fDomain = f.give("DOMAIN");
+  BigObject gDomain = g.give("DOMAIN");
 
   // Then compute the common refinement of the domains
   RefinementResult r = refinement(fDomain,gDomain,true,true,false,true);
-  perl::Object nDomain = r.complex;
+  BigObject nDomain = r.complex;
   Matrix<Rational> x_rayrep = r.rayRepFromX;
   Matrix<Rational> y_rayrep = r.rayRepFromY;
   Matrix<Rational> x_linrep = r.linRepFromX;
@@ -199,17 +199,17 @@ perl::Object add_rational_functions(perl::Object f, perl::Object g)
 
   // Now compute ray values
   Vector<Rational> rValues;
-  for (int v = 0; v < rays.rows(); ++v) {
+  for (Int v = 0; v < rays.rows(); ++v) {
     rValues |= (x_rayrep.row(v) * fval) + (y_rayrep.row(v) * gval);
   }
   // Now compute lin values
   Vector<Rational> lValues;
-  for (int l = 0; l < linspace.rows(); ++l) {
+  for (Int l = 0; l < linspace.rows(); ++l) {
     lValues |= (x_linrep.row(l) * f_linval) + (y_linrep.row(l) * g_linval);
   }
 
   // Return result
-  perl::Object func("RationalFunction", mlist<Addition>());
+  BigObject func("RationalFunction", mlist<Addition>());
   func.take("DOMAIN") << nDomain;
   func.take("VERTEX_VALUES") << rValues;
   func.take("LINEALITY_VALUES") << lValues;

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,7 +30,6 @@
 namespace pm {
 
 template <typename> class CopyOnWriteTag;
-template <typename> class AllocatorTag;
 template <typename> class PrefixDataTag;
 template <typename> class AliasHandlerTag;
 template <typename> class DivorceHandlerTag;
@@ -38,12 +37,12 @@ template <typename> class DivorceHandlerTag;
 class nop_shared_alias_handler {
 protected:
    template <typename Master> static
-   void CoW(Master *me, int)
+   void CoW(Master *me, Int)
    {
       me->divorce();
    }
 
-   static bool preCoW(int) { return false; }
+   static bool preCoW(Int) { return false; }
    static bool need_postCoW() { return false; }
 
    template <typename Master> static
@@ -66,41 +65,41 @@ class shared_alias_handler {
 protected:
    struct AliasSet {
       struct alias_array {
-         int n_alloc;
+         Int n_alloc;
          AliasSet* aliases[1];
       };
       union {
          alias_array* set;
          AliasSet* owner;
       };
-      long n_aliases;
+      Int n_aliases;
 
       static alias_array* allocate(size_t n)
       {
          allocator alloc;
-         alias_array* a=(alias_array*)alloc.allocate(sizeof(alias_array)+(n-1)*sizeof(AliasSet*));
-         a->n_alloc=n;
+         alias_array* a = (alias_array*)alloc.allocate(sizeof(alias_array) + (n-1)*sizeof(AliasSet*));
+         a->n_alloc = n;
          return a;
       }
       static alias_array* reallocate(alias_array* a)
       {
-         alias_array* n=allocate(a->n_alloc+3);
-         std::memcpy(n->aliases, a->aliases, a->n_alloc*sizeof(AliasSet*));
+         alias_array* n = allocate(a->n_alloc+3);
+         std::memcpy(n->aliases, a->aliases, a->n_alloc * sizeof(AliasSet*));
          deallocate(a);
          return n;
       }
       static void deallocate(alias_array* a)
       {
          allocator alloc;
-         alloc.deallocate(reinterpret_cast<allocator::value_type*>(a),sizeof(alias_array)+(a->n_alloc-1)*sizeof(AliasSet*));
+         alloc.deallocate(a, sizeof(alias_array) + (a->n_alloc-1)*sizeof(AliasSet*));
       }
 
       void remove(AliasSet* alias)
       {
          --n_aliases;
-         for (AliasSet **s=set->aliases, **end=s+n_aliases; s<end; ++s)
-            if (*s==alias) {
-               *s=set->aliases[n_aliases];
+         for (AliasSet **s = set->aliases, **end = s+n_aliases; s < end; ++s)
+            if (*s == alias) {
+               *s = set->aliases[n_aliases];
                break;
             }
       }
@@ -108,9 +107,9 @@ protected:
       void forget()
       {
          if (n_aliases > 0) {
-            for (AliasSet **s=set->aliases, **end=s+n_aliases; s<end; ++s)
-               (*s)->owner=nullptr;
-            n_aliases=0;
+            for (AliasSet **s = set->aliases, **end = s+n_aliases; s < end; ++s)
+               (*s)->owner = nullptr;
+            n_aliases = 0;
          }
       }
 
@@ -119,7 +118,7 @@ protected:
       ~AliasSet()
       {
          if (set) {
-            if (n_aliases>=0) {
+            if (n_aliases >= 0) {
                forget();
                deallocate(set);
             } else {
@@ -130,42 +129,44 @@ protected:
 
       AliasSet(const AliasSet& s2)
       {
-         if (__builtin_expect(s2.n_aliases<0, 0)) {
+         if (__builtin_expect(s2.n_aliases < 0, 0)) {
             if (s2.owner) {
                enter(*s2.owner);
             } else {
                // even if the original owner has gone, we can still copy the aliases
-               n_aliases=-1;  owner=nullptr;
+               n_aliases = -1;
+               owner = nullptr;
             }
          } else {
-            set=nullptr; n_aliases=0;
+            set = nullptr;
+            n_aliases = 0;
          }
       }
 
    private:
-      void operator=(const AliasSet&);
+      void operator=(const AliasSet&) = delete;
    public:
       void enter(AliasSet& ow)
       {
-         n_aliases=-1;
-         owner=&ow;
+         n_aliases = -1;
+         owner = &ow;
          if (!ow.set)
-            ow.set=allocate(3);
-         else if (ow.n_aliases==ow.set->n_alloc)
-            ow.set=reallocate(ow.set);
-         ow.set->aliases[ow.n_aliases++]=this;
+            ow.set = allocate(3);
+         else if (ow.n_aliases == ow.set->n_alloc)
+            ow.set = reallocate(ow.set);
+         ow.set->aliases[ow.n_aliases++] = this;
       }
 
-      bool is_owner() const { return n_aliases>=0; }
+      bool is_owner() const { return n_aliases >= 0; }
 
       typedef AliasSet** iterator;
       iterator begin() const { return set->aliases; }
-      iterator end() const { return set->aliases+n_aliases; }
+      iterator end() const { return set->aliases + n_aliases; }
 
       friend void relocate(AliasSet* from, AliasSet* to)
       {
-         to->set=from->set;
-         to->n_aliases=from->n_aliases;
+         to->set = from->set;
+         to->n_aliases = from->n_aliases;
          to->relocated(from);
       }
 
@@ -184,11 +185,11 @@ protected:
       {
          if (set) {
             if (is_owner()) {
-               for (auto alias_ptr : *this) alias_ptr->owner=this;
+               for (auto alias_ptr : *this) alias_ptr->owner = this;
             } else {
-               AliasSet** it=owner->set->aliases;
-               while (*it!=from) ++it;
-               *it=this;
+               AliasSet** it = owner->set->aliases;
+               while (*it != from) ++it;
+               *it = this;
             }
          }
       }
@@ -197,20 +198,20 @@ protected:
    AliasSet al_set;
 
    template <typename Master>
-   void CoW(Master* me, long refc);
+   void CoW(Master* me, Int refc);
 
-   bool preCoW(long refc) const
+   bool preCoW(Int refc) const
    {
       return is_owner() || al_set.owner && refc > al_set.owner->n_aliases+1;
    }
 
    bool need_postCoW() const
    {
-      return al_set.n_aliases>0;
+      return al_set.n_aliases > 0;
    }
 
    template <typename Master>
-   void postCoW(Master *me, bool owner_checked=false);
+   void postCoW(Master* me, bool owner_checked = false);
 
    template <typename Master>
    void divorce_aliases(Master* me)
@@ -225,7 +226,8 @@ protected:
 public:
    void make_mutable_alias(shared_alias_handler& owner)
    {
-      if (!al_set.n_aliases) al_set.enter(owner.al_set);
+      if (al_set.n_aliases == 0)
+         al_set.enter(owner.al_set);
    }
 
    friend void relocate(shared_alias_handler* from, shared_alias_handler* to)
@@ -237,8 +239,10 @@ public:
 
    void drop()
    {
-      assert(al_set.n_aliases<0);
-      al_set.owner->remove(&al_set); al_set.owner=nullptr; al_set.n_aliases=0;
+      assert(al_set.n_aliases < 0);
+      al_set.owner->remove(&al_set);
+      al_set.owner = nullptr;
+      al_set.n_aliases = 0;
    }
 };
 
@@ -247,14 +251,14 @@ protected:
    template <typename prefix_type=nothing>
    struct rep {
       // reference counter: number of hosts
-      long refc;
+      Int refc;
       // number of objects
       std::pair<size_t, prefix_type> size_and_prefix;
 
       // prevent from being ever destroyed
-      rep() : refc(1) { size_and_prefix.first=0; }
+      rep() : refc(1) { size_and_prefix.first = 0; }
 
-      rep(const prefix_type& p) : refc(1), size_and_prefix(0,p) {}
+      rep(const prefix_type& p) : refc(1), size_and_prefix(0, p) {}
    };
 
    static rep<> empty_rep;
@@ -287,43 +291,40 @@ protected:
    typedef typename mlist_wrap<TParams...>::type params;
    typedef typename mtagged_list_extract<params, AliasHandlerTag, nop_shared_alias_handler>::type alias_handler;
    typedef typename mtagged_list_extract<params, DivorceHandlerTag, nop_divorce_handler>::type divorce_handler;
-   typedef typename mtagged_list_extract<params, AllocatorTag, std::allocator<Object>>::type Alloc;
 
-   static const bool copy_on_write=tagged_list_extract_integral<params, CopyOnWriteTag>(true);
+   static constexpr bool copy_on_write = tagged_list_extract_integral<params, CopyOnWriteTag>(true);
 
    struct rep {
       /// the attached object itself
       Object obj;
       /// reference counter: number of hosts
-      long refc;
+      Int refc;
    private:
-      typedef typename Alloc::template rebind<rep>::other RepAlloc;
-
       static rep* allocate()
       {
-         RepAlloc alloc;
-         rep *r=(rep*)alloc.allocate(1);
-         r->refc=1;
+         allocator alloc;
+         rep* r = (rep*)alloc.allocate(sizeof(rep));
+         r->refc = 1;
          return r;
       }
 
-      static void deallocate(rep *r)
+      static void deallocate(rep* r)
       {
-         RepAlloc alloc;
-         alloc.deallocate(r,1);
+         allocator alloc;
+         alloc.deallocate(r, sizeof(rep));
       }
 
-      static void empty(shared_object *owner)
+      static void empty(shared_object* owner)
       {
          if (owner) {
-            rep* r=reverse_cast(&empty_rep.refc, &rep::refc);
+            rep* r = reverse_cast(&empty_rep.refc, &rep::refc);
             ++r->refc;
-            owner->body=r;
+            owner->body = r;
          }
       }
 
       template <typename PointedObject>
-      static void destroy(PointedObject *o)
+      static void destroy(PointedObject* o)
       {
          destroy_at(o);
       }
@@ -577,7 +578,7 @@ protected:
       static rep* allocate(size_t n, const nothing&)
       {
          allocator alloc;
-         rep* r=(rep*)alloc.allocate(total_size(n));
+         rep* r = (rep*)alloc.allocate(total_size(n));
          r->refc=1;
          r->size_and_prefix.first=n;
          return r;
@@ -597,15 +598,15 @@ protected:
 
       static rep* allocate(const shared_array_placement& place, size_t n, const nothing&)
       {
-         rep* r=reinterpret_cast<rep*>(place.get());
-         r->refc=-std::numeric_limits<long>::max();     // must always stay negative
-         r->size_and_prefix.first=n;
+         rep* r = reinterpret_cast<rep*>(place.get());
+         r->refc = -std::numeric_limits<Int>::max();     // must always stay negative
+         r->size_and_prefix.first = n;
          return r;
       }
 
       static rep* allocate(const shared_array_placement& place, size_t n, const prefix_init_arg& p)
       {
-         rep* r=allocate(place, n, nothing());
+         rep* r = allocate(place, n, nothing());
          construct_at(&r->size_and_prefix.second, p);
          return r;
       }
@@ -614,9 +615,9 @@ protected:
       {
          if (!std::is_trivially_destructible<prefix_type>::value)
             destroy_at(&r->size_and_prefix.second);
-         if (__builtin_expect(r->refc>=0, 1)) {
+         if (__builtin_expect(r->refc >= 0, 1)) {
             allocator alloc;
-            alloc.deallocate(reinterpret_cast<allocator::value_type*>(r), total_size(r->size_and_prefix.first));
+            alloc.deallocate(r, total_size(r->size_and_prefix.first));
          }
       }
 
@@ -853,7 +854,7 @@ protected:
                        mlist_and_nonempty<looks_like_iterator<Iterator>...>::value>
       init(shared_array* owner, rep* r, Object* dst, Object* end, CopyOrMove, Iterator&&... src)
       {
-         check_input_iterators(typename mlist_slice<mlist<Iterator...>, 0, sizeof...(Iterator)-1>::type());
+         check_input_iterators(typename mlist_slice<mlist<Iterator...>, 0, int(sizeof...(Iterator))-1>::type());
          (void)std::initializer_list<bool>{ (init_from_iterator(owner, r, dst, end, std::forward<Iterator>(src), CopyOrMove()), true)... };
 #if POLYMAKE_DEBUG
          if (dst && dst != end) throw std::runtime_error("shared_array construction error: input sequence ends prematurely");
@@ -920,7 +921,7 @@ protected:
       }
 
       template <typename Iterator, typename Operation>
-      void assign_with_binop(int n, Iterator&& src2, const Operation& op)
+      void assign_with_binop(Int n, Iterator&& src2, const Operation& op)
       {
          Object* dst=obj;
          assign_with_binop(dst, dst+n, std::forward<Iterator>(src2), op);
@@ -1013,7 +1014,7 @@ protected:
       std::enable_if_t<mlist_and_nonempty<looks_like_iterator<Iterator>...>::value>
       assign(Object* dst, Object* end, Iterator&&... src)
       {
-         check_input_iterators(typename mlist_slice<mlist<Iterator...>, 0, sizeof...(Iterator)-1>::type());
+         check_input_iterators(typename mlist_slice<mlist<Iterator...>, 0, int(sizeof...(Iterator))-1>::type());
          (void)std::initializer_list<bool>{ (assign_from_iterator(dst, end, std::forward<Iterator>(src)), true)... };
 #if POLYMAKE_DEBUG
          if (dst && dst != end) throw std::runtime_error("shared_array assign error: input sequence ends prematurely");
@@ -1096,7 +1097,7 @@ public:
    shared_array(const shared_array& s)
       : alias_handler(s) , body(s.body) { ++body->refc; }
 
-   static size_t alloc_size(int n) { return rep::total_size(n); }
+   static size_t alloc_size(Int n) { return rep::total_size(n); }
    
    /// the size of the object
    size_t size() const { return body->size_and_prefix.first; }
@@ -1247,18 +1248,18 @@ public:
    {
       return body->size_and_prefix.second;
    }
-   static prefix_type& get_prefix(Object* obj, int i=0)
+   static prefix_type& get_prefix(Object* obj, Int i = 0)
    {
       return reverse_cast(obj, i, &rep::obj)->size_and_prefix.second;
    }
-   static const prefix_type& get_prefix(const Object* obj, int i=0)
+   static const prefix_type& get_prefix(const Object* obj, Int i = 0)
    {
       return reverse_cast(obj, i, &rep::obj)->size_and_prefix.second;
    }
 };
 
 template <typename Master>
-void shared_alias_handler::CoW(Master *me, long refc)
+void shared_alias_handler::CoW(Master* me, Int refc)
 {
    if (is_owner()) {
       me->divorce();

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,40 +32,41 @@ Discrete Math. 217 (2000), no. 1-3, 101-113.
 
 namespace polymake { namespace topaz {
 
-bool is_generalized_shelling(const Array< Set<int> >& FaceList, perl::OptionSet options)
+bool is_generalized_shelling(const Array<Set<Int>>& FaceList, OptionSet options)
 {
-  const bool verbose=options["verbose"];
+  const bool verbose = options["verbose"];
  
-  std::vector<int> h; // h-vector
-  bool success(true); // let's be optimistic
+  std::vector<Int> h; // h-vector
+  bool success = true; // let's be optimistic
 
   for (auto i=entire(FaceList); !i.at_end(); ++i) {
-    const Set<int>& thisFace(*i);
-    const int thisSize(thisFace.size());
-    const int thisDim(thisSize-1);
+    const Set<Int>& thisFace(*i);
+    const Int thisSize = thisFace.size();
+    const Int thisDim = thisSize-1;
 	 
     // extend the h-vector if necessary
-    const int h_size=h.size();
+    const Int h_size = h.size();
     if (h_size != thisSize) {
       h.resize(thisSize);
-      for (int k=h_size; k<thisSize; ++k) h[k]=0;
+      for (Int k = h_size; k < thisSize; ++k)
+        h[k] = 0;
     }
 
     // collect maximal intersection with previous facets
-    PowerSet<int> maxIntersections;
-    for (auto j=entire(FaceList); j!=i; ++j)
+    PowerSet<Int> maxIntersections;
+    for (auto j = entire(FaceList); j != i; ++j)
       maxIntersections.insertMax(thisFace*(*j));
     
     // examine the intersections
     bool allIntersectionsAreRidges(true);
-    Set<int> missingVertices;
-    for (auto s=entire(maxIntersections);  allIntersectionsAreRidges && !s.at_end();  ++s) {
+    Set<Int> missingVertices;
+    for (auto s = entire(maxIntersections);  allIntersectionsAreRidges && !s.at_end();  ++s) {
       allIntersectionsAreRidges = (s->size() == thisDim);
       missingVertices += thisFace - (*s);
     }
 
     if (allIntersectionsAreRidges) { // good cases
-      const int missing_size=missingVertices.size();
+      const Int missing_size = missingVertices.size();
       ++h[missing_size];
       if (verbose) {
 	if (missing_size==thisSize)

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -108,12 +108,12 @@ void complete_configuration(Matrix<QE>& V)
 
 
    // We replace point 0 by the barycenter of the pentagon
-   for (int i=1; i<5; ++i)
+   for (Int i = 1; i < 5; ++i)
       V.row(0) += V.row(i);
    V.row(0).dehomogenize();
 
    // we translate along the kernel vector to get something of rank 3
-   for (int i=0; i<9; ++i)
+   for (Int i = 0; i < 9; ++i)
       V.row(i) += nv;
 
    // ... and negate the first point. 
@@ -136,13 +136,7 @@ void apply_transform(Matrix<QE>& V)
 
    // Since by construction {1,9}, {3,10} and {4,11} already sum to
    // zero, it suffices to balance the rest.
-   Set<int> rowset; 
-   rowset += 0;
-   rowset += 2;
-   rowset += 5;
-   rowset += 6;
-   rowset += 7;
-   rowset += 8;  // c++11 will spare us this
+   const Set<Int> rowset{ 0, 2, 5, 6, 7, 8};
 
    // a basis for the coefficients that make the scaled rows sum to zero:
    const Matrix<QE> M = null_space(T(V.minor(rowset, All))); 
@@ -164,7 +158,7 @@ void apply_transform(Matrix<QE>& V)
 
 } // end anonymous namespace
 
-perl::Object perles_irrational_8_polytope()
+BigObject perles_irrational_8_polytope()
 {
    Matrix<QE> V(12,4);  // The points of the Gale transform
 
@@ -187,7 +181,7 @@ perl::Object perles_irrational_8_polytope()
    W.col(0) = ones_vector<QE>(W.rows());
 
    // done.
-   perl::Object p("Polytope<QuadraticExtension<Rational>>");
+   BigObject p("Polytope<QuadraticExtension<Rational>>");
    p.set_description() << "An 8-dimensional polytope with 12 vertices due to Perles that has no rational realization" << endl;
    p.take("POINTS") << W;
    p.take("BOUNDED") << true;

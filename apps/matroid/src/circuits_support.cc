@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,33 +23,37 @@
 #include "polymake/Set.h"
 #include "polymake/TropicalNumber.h"
 
-
-
 namespace polymake { namespace matroid {
 
-  /**
-   * @brief Computes [[CIRCUITS]] and [[N_ELEMENTS]] from [[VALUATION_ON_CIRCUITS]].
-   */
-  template
-  <typename Addition, typename Scalar>
-  void circuits_supports(perl::Object vm) {
-      //Extract valuated circuits
-      Matrix<TropicalNumber<Addition,Scalar> > valuation = vm.give("VALUATION_ON_CIRCUITS");
+/**
+ * @brief Computes [[CIRCUITS]] and [[N_ELEMENTS]] from [[VALUATION_ON_CIRCUITS]].
+ */
+template <typename Addition, typename Scalar>
+void circuits_supports(BigObject vm)
+{
+  // Extract valuated circuits
+  Matrix<TropicalNumber<Addition,Scalar> > valuation = vm.give("VALUATION_ON_CIRCUITS");
 
-      Array<Set<int> > circuits(valuation.rows());
-      for(int r = 0; r < valuation.rows(); r++) {
-	   Set<int> c;
-	   for(int i = 0; i < valuation.cols(); i++) {
-	      if( TropicalNumber<Addition,Scalar>::zero() != valuation(r,i)) c+= i;
-	   }
-	   circuits[r] = c;
-      }
+  Array<Set<Int>> circuits(valuation.rows());
+  for (Int r = 0; r < valuation.rows(); ++r) {
+    Set<Int> c;
+    for (Int i = 0; i < valuation.cols(); ++i) {
+      if (TropicalNumber<Addition,Scalar>::zero() != valuation(r, i)) c += i;
+    }
+    circuits[r] = c;
+  }
 
-      vm.take("CIRCUITS") << circuits;
-      vm.take("N_ELEMENTS") << valuation.cols();
+  vm.take("CIRCUITS") << circuits;
+  vm.take("N_ELEMENTS") << valuation.cols();
 
-  }//END circuits_supports
+}
 
-  FunctionTemplate4perl("circuits_supports<Addition,Scalar>(ValuatedMatroid<Addition,Scalar>)");
+FunctionTemplate4perl("circuits_supports<Addition,Scalar>(ValuatedMatroid<Addition,Scalar>)");
 
 } }
+
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:

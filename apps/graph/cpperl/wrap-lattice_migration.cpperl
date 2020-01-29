@@ -3,6 +3,6 @@
   {"args": ["perl::Canned<const Graph<Directed>&>", "perl::Canned<const NodeMap<Directed, graph::lattice::BasicDecoration>&>"], "func": "faces_map_from_decoration", "include": ["polymake/Graph.h", "polymake/graph/Decoration.h"], "sig": "faces_map_from_decoration.X.X"},
   {"args": ["graph::lattice::Sequential", "void"], "func": "migrate_hasse_properties", "include": ["polymake/graph/Decoration.h"], "sig": "migrate_hasse_properties:T1.B", "tp": "1"},
   {"args": ["graph::lattice::Nonsequential", "void"], "func": "migrate_hasse_properties", "include": ["polymake/graph/Decoration.h"], "sig": "migrate_hasse_properties:T1.B", "tp": "1"},
-  {"apps": ["tropical"], "args": ["perl::Canned<const Graph<Directed>&>", "perl::Canned<const NodeMap<Directed, CovectorDecoration>&>"], "func": "faces_map_from_decoration", "include": ["polymake/Graph.h", "polymake/tropical/covectors.h"], "sig": "faces_map_from_decoration.X.X"},
+  {"apps": ["tropical"], "args": ["perl::Canned<const Graph<Directed>&>", "perl::Canned<const NodeMap<Directed, tropical::CovectorDecoration>&>"], "func": "faces_map_from_decoration", "include": ["polymake/Graph.h", "polymake/tropical/covectors.h"], "sig": "faces_map_from_decoration.X.X"},
  null ],
 "version": 3}

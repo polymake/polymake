@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,25 +28,27 @@
 
 namespace polymake { namespace polytope {
 
-typedef Set<Set<int>> FaceSet;
+typedef Set<Set<Int>> FaceSet;
 
 namespace {
-   // For some reason, this function has to be explicitly specified.
-   // Trying to use an instantiated template doesn't work in the line
-   // face_orbit.orbit(face, gen_list, pm_set_action);
-   // below.
-   Set<int> pm_set_action(const permlib::Permutation& p, const Set<int>& s)
-   {
-      Set<int> simg;
-      for (const auto& i : s)
-         simg += p / i;
-      return simg;
-   }
+
+// For some reason, this function has to be explicitly specified.
+// Trying to use an instantiated template doesn't work in the line
+// face_orbit.orbit(face, gen_list, pm_set_action);
+// below.
+Set<Int> pm_set_action(const permlib::Permutation& p, const Set<Int>& s)
+{
+   Set<Int> simg;
+   for (const auto& i : s)
+      simg += p/permlib::safe_to_dom_int(i);
+   return simg;
 }
 
-Array<Set<FaceSet>> orbits(int d,
+}
+
+Array<Set<FaceSet>> orbits(Int d,
                            const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential>& HD,
-                           const Array<Array<int>>& generators)
+                           const Array<Array<Int>>& generators)
 {
    using Perm = permlib::Permutation;
    std::list<Perm::ptr> gen_list;
@@ -56,10 +58,10 @@ Array<Set<FaceSet>> orbits(int d,
    }
 
    Array<Set<FaceSet>> face_orbits_of_dim(d+1);
-   for (int k=0; k<=d; ++k) {
+   for (Int k = 0; k <= d; ++k) {
       for (const auto f_index : HD.nodes_of_rank(k+1)) {
-         const Set<int> face(HD.face(f_index));
-         permlib::OrbitSet<Perm, Set<int>> face_orbit;
+         const Set<Int> face(HD.face(f_index));
+         permlib::OrbitSet<Perm, Set<Int>> face_orbit;
          face_orbit.orbit(face, gen_list, pm_set_action);
          face_orbits_of_dim[k] += FaceSet(face_orbit.begin(), face_orbit.end());
       }
@@ -67,20 +69,20 @@ Array<Set<FaceSet>> orbits(int d,
    return face_orbits_of_dim;
 }
 
-void quotient_space_faces(perl::Object p)
+void quotient_space_faces(BigObject p)
 {
-   const int
+   const Int
       d = p.give("COMBINATORIAL_DIM"),
       n_vert = p.give("N_VERTICES");
 
-   perl::Object HD_obj = p.give("HASSE_DIAGRAM");
+   BigObject HD_obj = p.give("HASSE_DIAGRAM");
    const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential> HD(HD_obj);
 
-   const Array<Array<int>> id_group_generators = p.give("QUOTIENT_SPACE.IDENTIFICATION_ACTION.GENERATORS");
+   const Array<Array<Int>> id_group_generators = p.give("QUOTIENT_SPACE.IDENTIFICATION_ACTION.GENERATORS");
    const group::PermlibGroup identification_group(id_group_generators);
 
    Array<FaceSet> cds(d+1);
-   for (int k = 0; k <= d; ++k)
+   for (Int k = 0; k <= d; ++k)
       for (const auto n : HD.nodes_of_rank(k+1))
          cds[k] += identification_group.lex_min_representative(HD.face(n));
 
@@ -88,16 +90,16 @@ void quotient_space_faces(perl::Object p)
    const auto face_orbits_of_dim = orbits(d, HD, id_group_generators);
    p.take("QUOTIENT_SPACE.FACE_ORBITS") << face_orbits_of_dim;
    Set<FaceSet> face_orbits;
-   for (int k = 0; k <= d; ++k)
+   for (Int k = 0; k <= d; ++k)
       face_orbits += face_orbits_of_dim[k];
 
    
-   Array<Array<int>> sym_group_generators;
+   Array<Array<Int>> sym_group_generators;
    if (p.lookup("GROUP.VERTICES_ACTION.GENERATORS") >> sym_group_generators) {
-      perl::Object sga("group::PermutationAction");
+      BigObject sga("group::PermutationAction");
       sga.take("GENERATORS") << induced_symmetry_group_generators(n_vert, sym_group_generators, face_orbits_of_dim);
 
-      perl::Object g("group::Group");
+      BigObject g("group::Group");
       g.take("PERMUTATION_ACTION") << sga;
 
       p.take("QUOTIENT_SPACE.SYMMETRY_GROUP") << g;

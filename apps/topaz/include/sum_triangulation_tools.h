@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,8 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef __POLYMAKE_TOPAZ_SUM_TRIANGULATION_TOOLS_H__
-#define __POLYMAKE_TOPAZ_SUM_TRIANGULATION_TOOLS_H__
+#ifndef POLYMAKE_TOPAZ_SUM_TRIANGULATION_TOOLS_H
+#define POLYMAKE_TOPAZ_SUM_TRIANGULATION_TOOLS_H
 
 #include "polymake/Matrix.h"
 #include "polymake/graph/Lattice.h"
@@ -32,47 +32,39 @@ namespace polymake { namespace topaz {
 
 // is 0 a vertex of the configuration? Return its index if found, else -1
 // the return value is shifted if necessary
-template<typename Scalar>
-int index_of_zero(const Matrix<Scalar>& vertices,
+template <typename Scalar>
+Int index_of_zero(const Matrix<Scalar>& vertices,
                   bool homogeneous = true,
-                  int index_shift = 0)
+                  Int index_shift = 0)
 {
-   bool found_zero = false;
-   int zero_index(0);
-   SparseVector<Scalar> the_zero;
+   SparseVector<Scalar> the_zero(vertices.cols());
    if (homogeneous)
-      the_zero = unit_vector<Scalar>(vertices.cols(), 0);
-   else 
-      the_zero = zero_vector<Scalar>(vertices.cols());
+      the_zero[0] = one_value<Scalar>();
 
-   for(; zero_index < vertices.rows(); ++zero_index) {
-      if (vertices.row(zero_index) == the_zero) {
-         found_zero = true;
-         break;
-      }
+   for (Int zero_index = 0; zero_index < vertices.rows(); ++zero_index) {
+      if (vertices.row(zero_index) == the_zero)
+         return zero_index + index_shift;
    }
-   return found_zero 
-      ? zero_index + index_shift 
-      : -1;
+   return -1;
 }
 
-template<typename Scalar>
-Set<Set<int>> star_of_zero_impl(const Matrix<Scalar>& vertices,
-                                const Array<Set<int>>& facets,
+template <typename Scalar>
+Set<Set<Int>> star_of_zero_impl(const Matrix<Scalar>& vertices,
+                                const Array<Set<Int>>& facets,
                                 bool homogeneous = true)
 {
-   const int ioz = index_of_zero(vertices, homogeneous);
-   Set<Set<int>> star_of_zero;
+   const Int ioz = index_of_zero(vertices, homogeneous);
+   Set<Set<Int>> star_of_zero;
    for (const auto& f : facets)
       if (f.contains(ioz))
          star_of_zero += f;
 
-   if (!star_of_zero.size()) { // find a simplex containing 0
+   if (star_of_zero.empty()) { // find a simplex containing 0
       for (const auto& f : facets) {
          // solve T(V) lambda = 0
          const Vector<Scalar> coeffs = homogeneous
             ? lin_solve(T(vertices.minor(f, All)), unit_vector<Scalar>(vertices.cols(), 0))
-            : lin_solve(ones_vector<Scalar>() / T(vertices.minor(f, All)), unit_vector<Scalar>(vertices.cols() + 1, 0));
+            : lin_solve(ones_vector<Scalar>() / T(vertices.minor(f, All)), unit_vector<Scalar>(vertices.cols()+1, 0));
          if (accumulate(coeffs, operations::min()) >= 0) { // the origin is a nonnegative linear combination of the vertices
             star_of_zero += f;
          }
@@ -82,9 +74,9 @@ Set<Set<int>> star_of_zero_impl(const Matrix<Scalar>& vertices,
 }
 
 template <typename HDType>
-Map<Set<int>, std::vector<int>> links_of_ridges(const HDType& HD)
+Map<Set<Int>, std::vector<Int>> links_of_ridges(const HDType& HD)
 {
-   Map<Set<int>, std::vector<int>> link_of;
+   Map<Set<Int>, std::vector<Int>> link_of;
    for (const auto r : HD.nodes_of_rank(HD.rank()-2)) {
       for (const auto f : HD.out_adjacent_nodes(r)) {
          link_of[HD.face(r)].push_back((HD.face(f)-HD.face(r)).front());
@@ -95,9 +87,9 @@ Map<Set<int>, std::vector<int>> links_of_ridges(const HDType& HD)
 
 // Quickly calculate the boundary of a simplicial ball
 template <typename Container>
-Set<Set<int>> boundary_of(const Container& ball)
+Set<Set<Int>> boundary_of(const Container& ball)
 {
-   Set<Set<int>> boundary;
+   Set<Set<Int>> boundary;
    for (const auto& b : ball) {
       for (auto rit = entire(all_subsets_less_1(b)); !rit.at_end(); ++rit) {
          if (boundary.contains(*rit)) // if we see a ridge for the second time, it's not in the boundary
@@ -113,38 +105,38 @@ Set<Set<int>> boundary_of(const Container& ball)
 // the ball defined by the WEB. It creates a new simplicial complex
 // which contains all the facets indicated by WEB.
 // implemented in sum_triangulation.cc
-void glue_facet(const Set<int>& _F,
-                const Array<int>& F_vertex_indices,
-                const Array<Set<int>>& facets,
-                const Array<int>& facets_vertex_indices,
-                const Set<int>& web,
-                int shift,
+void glue_facet(const Set<Int>& _F,
+                const Array<Int>& F_vertex_indices,
+                const Array<Set<Int>>& facets,
+                const Array<Int>& facets_vertex_indices,
+                const Set<Int>& web,
+                Int shift,
                 bool shift_facet,
-                std::vector<Set<int>>& result);
+                std::vector<Set<Int>>& result);
 
 
 template<typename Scalar>
-perl::Object sum_triangulation_impl(perl::Object p_in,
-                                    perl::Object q_in,
+BigObject sum_triangulation_impl(BigObject p_in,
+                                    BigObject q_in,
                                     const IncidenceMatrix<> webOfStars_in,
-                                    perl::OptionSet options)
+                                    OptionSet options)
 {
    const Matrix<Scalar>
       pVert = p_in.give("COORDINATES"),
       qVert = q_in.give("COORDINATES");
 
-   const Array<Set<int>>
+   const Array<Set<Int>>
       facetsP = p_in.give("FACETS"),
       facetsQ = q_in.give("FACETS");
 
-   Map<Set<int>, int> index_of;
-   int facet_index(0);
+   Map<Set<Int>, Int> index_of;
+   Int facet_index(0);
    for (const auto& r : facetsQ)
       index_of[r] = facet_index++;
 
    const bool origin_first = options["origin_first"];
 
-   Array<int> pVertexIndices, qVertexIndices;
+   Array<Int> pVertexIndices, qVertexIndices;
    if (!(p_in.lookup("VERTEX_INDICES") >> pVertexIndices)) {
       pVertexIndices = sequence(0, pVert.rows());
    }
@@ -153,8 +145,8 @@ perl::Object sum_triangulation_impl(perl::Object p_in,
    }
 
 
-   const Set<Set<int>> star_Q_0(star_of_zero_impl(qVert, facetsQ, false));
-   Set<int> indices_of_star_Q_0;
+   const Set<Set<Int>> star_Q_0 = star_of_zero_impl(qVert, facetsQ, false);
+   Set<Int> indices_of_star_Q_0;
    for (const auto& s : star_Q_0)
       indices_of_star_Q_0 += index_of[s];
 
@@ -169,14 +161,14 @@ perl::Object sum_triangulation_impl(perl::Object p_in,
          *rit = indices_of_star_Q_0;
    }
 
-   std::vector<Set<int>> output_list;
+   std::vector<Set<Int>> output_list;
 
    bool is_P_sum(true);
 
    // build simplices from p_in to q_in
    // according to WEB
-   for(int i=0; i<facetsP.size(); ++i) {
-      const Set<int>&
+   for (Int i = 0; i < facetsP.size(); ++i) {
+      const Set<Int>&
          F(facetsP[i]),
          web(webOfStars.row(i));
       if (web.empty()) {
@@ -193,9 +185,9 @@ perl::Object sum_triangulation_impl(perl::Object p_in,
 
    const IncidenceMatrix<> negatedWebOfStars(~webOfStars);
 
-   for(int i=0; i<facetsQ.size(); ++i) {
-      const Set<int>& F(facetsQ[i]);
-      const Set<int>& web (negatedWebOfStars.col(i));
+   for (Int i = 0; i < facetsQ.size(); ++i) {
+      const Set<Int>& F = facetsQ[i];
+      const Set<Int>& web = negatedWebOfStars.col(i);
       if (web.empty()) {
          // if it is a Q-sum-triangulation this wouldn't happen
          if (!is_P_sum) throw std::runtime_error("sum_triangulation: web of stars do not belong to a compatible pair");
@@ -207,7 +199,7 @@ perl::Object sum_triangulation_impl(perl::Object p_in,
 
 
    // OUTPUT
-   perl::Object pSumTri("topaz::GeometricSimplicialComplex", mlist<Scalar>());
+   BigObject pSumTri("topaz::GeometricSimplicialComplex", mlist<Scalar>());
    pSumTri.set_description() << "a P sum triangulation of " << p_in.name() << " and " << q_in.name() << "." << endl;
 
    Matrix<Scalar> sumVert = (pVert | zero_matrix<Scalar>(pVert.rows(), qVert.cols())) /
@@ -215,28 +207,28 @@ perl::Object sum_triangulation_impl(perl::Object p_in,
    IncidenceMatrix<> output_facets(output_list);
    output_facets.resize(output_facets.rows(), pVert.rows()+qVert.rows());
 
-   const int
+   const Int
       p_zero_index(index_of_zero(pVert, false)),
       q_zero_index(index_of_zero(qVert, false, pVert.rows()));
 
    // Take care of the origin
    if (!origin_first) {
-      int zero_index(is_P_sum ? q_zero_index : p_zero_index);
+      Int zero_index = is_P_sum ? q_zero_index : p_zero_index;
 
       if (zero_index != -1) {
          sumVert = sumVert.minor(~scalar2set(zero_index), All);
          output_facets = output_facets.minor(All, ~scalar2set(zero_index));
       }
    } else {
-      Set<int> ball_of_zero;
+      Set<Int> ball_of_zero;
       if (q_zero_index != -1) {
          sumVert = sumVert.minor(~scalar2set(q_zero_index), All);
-         if (!is_P_sum) ball_of_zero = Set<int>(output_facets.col(q_zero_index));
+         if (!is_P_sum) ball_of_zero = Set<Int>(output_facets.col(q_zero_index));
          output_facets = output_facets.minor(All, ~scalar2set(q_zero_index));
       }
       if (p_zero_index != -1) {
          sumVert = sumVert.minor(~scalar2set(p_zero_index), All);
-         if (is_P_sum) ball_of_zero = Set<int>(output_facets.col(p_zero_index));
+         if (is_P_sum) ball_of_zero = Set<Int>(output_facets.col(p_zero_index));
          output_facets = output_facets.minor(All, ~scalar2set(p_zero_index));
       }
 
@@ -253,13 +245,13 @@ perl::Object sum_triangulation_impl(perl::Object p_in,
 
 
 // implemented in web_of_stars.cc
-IncidenceMatrix<> web_of_stars(const Array<int>& poset_hom,
-                               const Array<Set<Set<int>>>& star_shaped_balls,
-                               const Array<Set<int>>& simplices);
+IncidenceMatrix<> web_of_stars(const Array<Int>& poset_hom,
+                               const Array<Set<Set<Int>>>& star_shaped_balls,
+                               const Array<Set<Int>>& simplices);
 
 } }
 
-#endif // __POLYMAKE_TOPAZ_SUM_TRIANGULATION_TOOLS_H__
+#endif // POLYMAKE_TOPAZ_SUM_TRIANGULATION_TOOLS_H
 
 // Local Variables:
 // mode:C++

@@ -1,8 +1,8 @@
 {"app": "common", "embed": "incidence_tools.cc",
  "inst": [
-  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Set<int>&>"], "func": "incident_rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Set.h"], "sig": "incident_rows.X.X"},
-  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Set<int>&>"], "func": "common_rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Set.h"], "sig": "common_rows.X.X"},
-  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Set<int>&>"], "func": "not_incident_rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Set.h"], "sig": "not_incident_rows.X.X"},
-  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Set<int>&>"], "func": "find_row", "include": ["polymake/IncidenceMatrix.h", "polymake/Set.h"], "sig": "find_row.X.X"},
+  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Set<Int>&>"], "func": "incident_rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Set.h"], "sig": "incident_rows.X.X"},
+  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Set<Int>&>"], "func": "common_rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Set.h"], "sig": "common_rows.X.X"},
+  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Set<Int>&>"], "func": "not_incident_rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Set.h"], "sig": "not_incident_rows.X.X"},
+  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Set<Int>&>"], "func": "find_row", "include": ["polymake/IncidenceMatrix.h", "polymake/Set.h"], "sig": "find_row.X.X"},
  null ],
 "version": 3}

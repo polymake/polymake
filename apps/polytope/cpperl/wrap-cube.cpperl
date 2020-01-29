@@ -1,9 +1,9 @@
 {"app": "polytope", "embed": "cube.cc",
  "inst": [
-  {"args": ["Rational", "int(int)", "Rational(int)", "Rational(int)", "void"], "func": "cube", "include": ["polymake/Rational.h"], "sig": "cube:T1.int.C0.C0.o", "tp": "1"},
-  {"args": ["QuadraticExtension<Rational>", "int(int)", "QuadraticExtension<Rational>(perl::Canned<const QuadraticExtension<Rational>&>)", "QuadraticExtension<Rational>(perl::Canned<const QuadraticExtension<Rational>&>)", "void"], "func": "cube", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "cube:T1.int.C0.C0.o", "tp": "1"},
-  {"args": ["Rational", "int(int)", "Rational(perl::Canned<const Rational&>)", "Rational(perl::Canned<const Rational&>)", "void"], "func": "cube", "include": ["polymake/Rational.h"], "sig": "cube:T1.int.C0.C0.o", "tp": "1"},
-  {"args": ["QuadraticExtension<Rational>", "int(int)", "QuadraticExtension<Rational>(int)", "QuadraticExtension<Rational>(int)", "void"], "func": "cube", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "cube:T1.int.C0.C0.o", "tp": "1"},
-  {"args": ["Rational", "int(int)", "Rational(perl::Canned<const Rational&>)", "Rational(int)", "void"], "func": "cube", "include": ["polymake/Rational.h"], "sig": "cube:T1.int.C0.C0.o", "tp": "1"},
+  {"args": ["Rational", "Int(Int)", "Rational(Int)", "Rational(Int)", "void"], "func": "cube", "include": ["polymake/Rational.h"], "sig": "cube:T1.Int.C0.C0.o", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "Int(Int)", "QuadraticExtension<Rational>(perl::Canned<const QuadraticExtension<Rational>&>)", "QuadraticExtension<Rational>(perl::Canned<const QuadraticExtension<Rational>&>)", "void"], "func": "cube", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "cube:T1.Int.C0.C0.o", "tp": "1"},
+  {"args": ["Rational", "Int(Int)", "Rational(perl::Canned<const Rational&>)", "Rational(perl::Canned<const Rational&>)", "void"], "func": "cube", "include": ["polymake/Rational.h"], "sig": "cube:T1.Int.C0.C0.o", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "Int(Int)", "QuadraticExtension<Rational>(Int)", "QuadraticExtension<Rational>(Int)", "void"], "func": "cube", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "cube:T1.Int.C0.C0.o", "tp": "1"},
+  {"args": ["Rational", "Int(Int)", "Rational(perl::Canned<const Rational&>)", "Rational(Int)", "void"], "func": "cube", "include": ["polymake/Rational.h"], "sig": "cube:T1.Int.C0.C0.o", "tp": "1"},
  null ],
 "version": 3}

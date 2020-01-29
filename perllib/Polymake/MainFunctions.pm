@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -14,16 +14,6 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-package Polymake::Ext;
-sub import {
-   my $module=caller;
-   &{"$module\::bootstrap"}();
-}
-BEGIN {
-   bootstrap();
-   $INC{"Polymake/Ext.pm"} = $INC{"Polymake/Main.pm"};
-}
-
 package Polymake;
 
 use strict;
@@ -34,16 +24,12 @@ use namespaces;
 use warnings qw(FATAL void syntax misc);
 use feature 'state';
 
+load_dummy Core::Application;
+
 package Polymake::Main;
 
-# private: only called from import()
-sub _init {
-   # this guarantees initialization of internal structures for signal handling
-   local $SIG{INT} = 'IGNORE';
-   &Main::init;
-   $Scope = new Scope();
-   add AtEnd "FinalCleanup", sub { undef $Scope }, after => "Object";
-}
+$Scope = new Scope();
+add AtEnd "FinalCleanup", sub { undef $Scope }, after => "BigObject";
 
 sub createNewScope {
    my $prevScope = $Scope;
@@ -89,7 +75,7 @@ sub local_custom {
 
 sub shell_enable {
    state $init_shell = do {
-      require Polymake::Core::ShellMock;
+      require Polymake::Core::Shell::Mock;
       $Shell = new Core::Shell::Mock;
       1
    };
@@ -117,7 +103,7 @@ sub shell_complete {
    }
    $_[0] =~ /\S/ or return (0, "");
    $Shell->complete($_[0]);
-   ($Shell->completion_offset, $Shell->term->Attribs->{completion_append_character} // "", @{$Shell->completion_proposals});
+   ($Shell->completion_offset, $Shell->completion_append_character // "", @{$Shell->completion_proposals});
 }
 
 sub shell_context_help {
@@ -126,12 +112,12 @@ sub shell_context_help {
       return;
    }
    my ($input, $pos, $full, $html) = @_;
-   require Polymake::Core::HelpAsHTML if $html;
+   require Polymake::Core::Help::HTML if $html;
 
    $input =~ /\S/ or return;
    $Shell->context_help($input, $pos);
    map {
-      my $writer = $html ? new Core::HelpAsHTML() : new Core::HelpAsPlainText(0);
+      my $writer = $html ? new Core::Help::HTML() : new Core::Help::PlainText(0);
       $_->write_text($writer, $full);
       $writer->text
    } @{$Shell->help_topics};

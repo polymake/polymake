@@ -1,5 +1,0 @@
-{"app": "polytope", "embed": "ppl_lp_client.cc",
- "inst": [
-  {"args": ["Rational"], "func": "ppl_interface::create_LP_solver", "include": ["polymake/Rational.h"], "sig": "create_LP_solver#ppl.simplex:T1", "tp": "1"},
- null ],
-"version": 3}

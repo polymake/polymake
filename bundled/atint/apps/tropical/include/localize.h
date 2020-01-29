@@ -18,7 +18,7 @@
    Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
    ---
-   Copyright (c) 2016-2019
+   Copyright (c) 2016-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -43,7 +43,7 @@ namespace polymake { namespace tropical {
 
 // Documentation see perl wrapper
 template <typename Addition>
-perl::Object local_restrict(perl::Object complex, const IncidenceMatrix<>& cones)
+BigObject local_restrict(BigObject complex, const IncidenceMatrix<>& cones)
 {
   // Extract values
   IncidenceMatrix<> maximalCones = complex.give("MAXIMAL_POLYTOPES");
@@ -52,8 +52,8 @@ perl::Object local_restrict(perl::Object complex, const IncidenceMatrix<>& cones
   Vector<Integer> weights = complex.give("WEIGHTS");
 
   // Find out which cones are no longe compatible
-  Set<int> remainingCones;
-  for (int c = 0; c < maximalCones.rows(); ++c) {
+  Set<Int> remainingCones;
+  for (Int c = 0; c < maximalCones.rows(); ++c) {
     if (is_coneset_compatible(maximalCones.row(c), cones)) {
       remainingCones += c;
     }
@@ -62,7 +62,7 @@ perl::Object local_restrict(perl::Object complex, const IncidenceMatrix<>& cones
   // Adapt cone description and ray indices
   maximalCones = maximalCones.minor(remainingCones,All);
   weights = weights.slice(remainingCones);
-  Set<int> usedRays = accumulate(rows(maximalCones),operations::add());
+  Set<Int> usedRays = accumulate(rows(maximalCones),operations::add());
 
   // We have to take care when adapting the local restriction:
   // If cones is input by hand, it may have less columns then there are rays left.
@@ -73,7 +73,7 @@ perl::Object local_restrict(perl::Object complex, const IncidenceMatrix<>& cones
   rays = rays.minor(usedRays,All);
   maximalCones = maximalCones.minor(All,usedRays);
 
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << rays;
   result.take("MAXIMAL_POLYTOPES") << maximalCones;
   result.take("LINEALITY_SPACE") << linspace;

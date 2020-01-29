@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,13 +31,13 @@ namespace polymake { namespace polytope {
  *  computes the either gomory-chvatal closure of a polyhedron
  *  or a totally dual integral system
  */
-perl::Object gc_and_tdi(perl::Object p_in, bool round)
+BigObject gc_and_tdi(BigObject p_in, bool round)
 {
-   perl::Object p_out("Polytope", mlist<Rational>()), C;
+   BigObject p_out("Polytope", mlist<Rational>()), C;
   Matrix<Rational> vertices;  // Hilbert Basis and Vertices
   Set<Vector<Rational> > hilbert_ineqs;  // the new inequalities
   Vector<Rational> obj, this_vector;  // one inequality
-  int n, i, k;  // counting variables
+  Int n, i, k;  // counting variables
   Rational val;  // right hand side of the inequality
 
   p_in.give("VERTICES") >> vertices;
@@ -73,7 +73,7 @@ perl::Object gc_and_tdi(perl::Object p_in, bool round)
 /*
  *  computes the gomory-chvatal closure of a polyhedron
  */
-perl::Object gc_closure(perl::Object p_in)
+BigObject gc_closure(BigObject p_in)
 {
   return gc_and_tdi(p_in, 1);
 }
@@ -82,7 +82,7 @@ perl::Object gc_closure(perl::Object p_in)
 /*
  *  computes a totally dual integral inequality system for a polyhedron
  */
-perl::Object make_totally_dual_integral(perl::Object p_in)
+BigObject make_totally_dual_integral(BigObject p_in)
 {
   return gc_and_tdi(p_in, 0);
 }
@@ -93,14 +93,14 @@ perl::Object make_totally_dual_integral(perl::Object p_in)
 bool totally_dual_integral(const Matrix<Rational>& inequalities)
 {
   // checks if is not empty or if dimensions match
-  const int dim = inequalities.cols();
+  const Int dim = inequalities.cols();
   if (dim == 0)
     throw std::runtime_error("totally_dual_integral: non-empty matrix required");
 
   // variables decleration and initialization
-  perl::Object p_in("Polytope<Rational>");
-  int n_lattice;
-  perl::Object C;
+  BigObject p_in("Polytope<Rational>");
+  Int n_lattice;
+  BigObject C;
 
   Matrix<Rational> ineq (inequalities / (unit_vector<Rational>(dim,0)));
 
@@ -109,12 +109,12 @@ bool totally_dual_integral(const Matrix<Rational>& inequalities)
   const IncidenceMatrix<> eq_sets = p_in.give("INEQUALITIES_THRU_VERTICES");
 
   //FIXME constraint, since polymake cannot compute hilbertbasis of non pointed cones
-  const int polytope_dim = p_in.give("CONE_DIM");
+  const Int polytope_dim = p_in.give("CONE_DIM");
   if (dim != polytope_dim)
     throw std::runtime_error("totally_dual_integral: the inequalities should descibe a full dimensional polyhedron");
 
   // for every vertex
-  for (int i=0; i<vertices.rows(); ++i) {
+  for (Int i = 0; i < vertices.rows(); ++i) {
     if (vertices(i,0) == 0)
       continue;
     // compute the normal_cone and its hilbert basis
@@ -124,10 +124,10 @@ bool totally_dual_integral(const Matrix<Rational>& inequalities)
     // for every hilbert basis element of the normal cone
     // check weather it can be written as a non negative
     // integral linear combination of the active constraints
-    for (int j=0; j < hb.rows(); ++j){
+    for (Int j = 0; j < hb.rows(); ++j){
       // solutions is a polyhedron of all possible linear combinations
       // which give the hilbert basis element
-      perl::Object solutions("Polytope<Rational>");
+      BigObject solutions("Polytope<Rational>");
 
       // building the equations and ineq
       Matrix<Rational> temp_matrix(-hb.row(j) | T(ineq.minor(eq_sets[i], range_from(1))));
@@ -179,7 +179,7 @@ UserFunction4perl("# @category Optimization"
                   "# The inequalities should describe a full dimensional polyhedron"
                   "# @param Matrix inequalities"
                   "# @return Bool"
-                  "# @example"
+                  "# @example [require bundled:libnormaliz]"
                   "# > print totally_dual_integral(cube(2)->FACETS);"
                   "# | true",
                   &totally_dual_integral, "totally_dual_integral");

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,42 +29,40 @@ namespace polymake { namespace polytope {
 namespace {
 
 template <typename Scalar, typename Cmp>
-Set<int> violated_rows(const Matrix<Scalar>& A, const Vector<Scalar>& q, Cmp cmp)
+Set<Int> violated_rows(const Matrix<Scalar>& A, const Vector<Scalar>& q, Cmp cmp)
 {
-   Set<int> vr;
+   Set<Int> vr;
    for (auto rit = entire<indexed>(rows(A)); !rit.at_end(); ++rit)
       if (cmp(*rit * q)) vr += rit.index();
    return vr;
 }
 
 template<typename Scalar>
-inline
-void fudge_min_face(Set<int>& min_face, const Matrix<Scalar>&, const Vector<Scalar>&, const Scalar&, const double&)
+void fudge_min_face(Set<Int>& min_face, const Matrix<Scalar>&, const Vector<Scalar>&, const Scalar&, const double&)
 {
 }
 
 template<>
-inline
-void fudge_min_face(Set<int>& min_face,
+void fudge_min_face(Set<Int>& min_face,
                     const Matrix<double>& V,
                     const Vector<double>& lin_obj,
                     const double& min_val,
                     const double& epsilon)
 {
-   for (int i=0; i<V.rows(); ++i)
+   for (Int i = 0; i < V.rows(); ++i)
       if (fabs(V[i] * lin_obj - min_val) < epsilon)
          min_face += i;
 }
 
 Lattice<BasicDecoration, Sequential>
 ridges_and_facets(const IncidenceMatrix<>& VIF,
-                  const int cone_dim)
+                  const Int cone_dim)
 {
    using graph::lattice::BasicDecorator;
    using graph::lattice::BasicClosureOperator;
    using graph::lattice::RankCut;
       
-   const int total(VIF.rows()), boundary_dim(cone_dim-2);
+   const Int total = VIF.rows(), boundary_dim = cone_dim-2;
    BasicClosureOperator<> cop(total,T(VIF));
    auto cut_above = RankCut<BasicDecoration,graph::lattice::RankCutType::GreaterEqual>(boundary_dim);
    BasicDecorator<> dec(VIF.cols(), cone_dim, scalar2set(-1));
@@ -77,10 +75,10 @@ ridges_and_facets(const IncidenceMatrix<>& VIF,
 
       
 template<typename Scalar>
-Set<int> violations(const perl::Object P, const Vector<Scalar>& q, perl::OptionSet options)
+Set<Int> violations(const BigObject P, const Vector<Scalar>& q, OptionSet options)
 {
    const std::string section = options["section"];
-   const int violating_criterion = options["violating_criterion"];
+   const Int violating_criterion = options["violating_criterion"];
    const Matrix<Scalar> A = P.give(section);
 
    return
@@ -99,28 +97,28 @@ Set<int> violations(const perl::Object P, const Vector<Scalar>& q, perl::OptionS
 }
 
 template<typename Scalar>
-Set<int>
-visible_facet_indices(const perl::Object P, const Vector<Scalar>& q)
+Set<Int>
+visible_facet_indices(const BigObject P, const Vector<Scalar>& q)
 {
    const Matrix<Scalar> F = P.give("FACETS");
    return violated_rows(F, q, pm::operations::negative<Scalar>());
 }
 
 template <typename Scalar>
-Set<int>
-visible_face_indices(const perl::Object P, const Vector<Scalar>& q)
+Set<Int>
+visible_face_indices(const BigObject P, const Vector<Scalar>& q)
 {
    const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential>& HD = P.give("HASSE_DIAGRAM");
    const IncidenceMatrix<> VIF = P.give("RAYS_IN_FACETS");
-   Set<int> facets_in_HD;
-   for (int i: visible_facet_indices(P,q))
+   Set<Int> facets_in_HD;
+   for (const Int i : visible_facet_indices(P,q))
       facets_in_HD += graph::find_facet_node(HD, VIF[i]);
    return graph::order_ideal<graph::Down>(facets_in_HD, HD);
 }
 
 template <typename Scalar>
-Set<int>
-containing_normal_cone(const perl::Object P, Vector<Scalar> q)
+Set<Int>
+containing_normal_cone(const BigObject P, Vector<Scalar> q)
 {
    Matrix<Scalar>          R   = P.give("RAYS");
    const Matrix<Scalar>    F   = P.give("FACETS");
@@ -142,10 +140,10 @@ containing_normal_cone(const perl::Object P, Vector<Scalar> q)
    const auto inv_tau (inv(tau));
 
    // then we polarize the centered P
-   perl::Object LP("LinearProgram", mlist<Scalar>());
+   BigObject LP("LinearProgram", mlist<Scalar>());
    const Vector<Scalar> lin_obj(q - barycenter);
    LP.take("LINEAR_OBJECTIVE") << lin_obj;
-   perl::Object Q("Polytope", mlist<Scalar>());
+   BigObject Q("Polytope", mlist<Scalar>());
    Q.take("FACETS") << R * tau;
 
    const Matrix<Scalar> Ftrans(F * T(inv_tau));
@@ -155,32 +153,32 @@ containing_normal_cone(const perl::Object P, Vector<Scalar> q)
 
    // then we optimize over the polar polytope.
    // We use minimization because the polar polytope is mirrored around the origin
-   Set<int> min_face = Q.give("LP.MINIMAL_FACE");
+   Set<Int> min_face = Q.give("LP.MINIMAL_FACE");
    const Scalar min_val = Q.give("LP.MINIMAL_VALUE");
 
    // for floating-point polytopes, also add vertices within epsilon of the minimum
    fudge_min_face(min_face, Ftrans, lin_obj, min_val, 1e-7);
 
    // finally, we intersect all facets of P that generate the normal cone containing q
-   Set<int> normal_cone_gen(sequence(0,R.rows()));
-   for (int i: min_face)
+   Set<Int> normal_cone_gen(sequence(0,R.rows()));
+   for (Int i : min_face)
       normal_cone_gen *= VIF[i];
 
    return normal_cone_gen;
 }
 
 template <typename Scalar>
-Set<int>
-containing_outer_cone(const perl::Object P, Vector<Scalar> q)
+Set<Int>
+containing_outer_cone(const BigObject P, Vector<Scalar> q)
 {
    const Matrix<Scalar>    V   = P.give("VERTICES");
    const Matrix<Scalar>    H   = P.give("AFFINE_HULL");
    const IncidenceMatrix<> VIF = P.give("VERTICES_IN_FACETS");
-   const int               d   = P.give("COMBINATORIAL_DIM");
+   const Int               d   = P.give("COMBINATORIAL_DIM");
    const Vector<Scalar>    b   = P.give("VERTEX_BARYCENTER");
    
    const auto raf(ridges_and_facets(VIF, d));
-   Set<int> containing_outer_face_cone(sequence(0, V.rows()));
+   Set<Int> containing_outer_face_cone(sequence(0, V.rows()));
    for (const auto f: raf.nodes_of_rank(d-1)) {
       bool good_facet(true);
       for (const auto r: raf.in_adjacent_nodes(f)) {

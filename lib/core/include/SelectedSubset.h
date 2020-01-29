@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -126,9 +126,9 @@ struct spec_object_traits< FoldedRanges<ContainerRef, FoldingOperation> > :
 
 class index_truncator {
 protected:
-   int last;
+   Int last;
 public:
-   index_truncator(int l=-1) : last(l) {}
+   index_truncator(Int l = -1) : last(l) {}
 
    typedef void argument_type;
    typedef bool result_type;
@@ -144,19 +144,20 @@ public:
 class equal_index_folder {
 public:
    typedef void argument_type;
-   typedef int value_type;
-   typedef const int& reference;
+   typedef Int value_type;
+   typedef const Int& reference;
 
    template <typename Iterator>
    void reset(const Iterator& it)
    {
-      cnt=1;  index=it.index();
+      cnt = 1;
+      index = it.index();
    }
 
    template <typename Iterator>
    bool operator() (const Iterator& it)
    {
-      if (it.index()==index) {
+      if (it.index() == index) {
          ++cnt;
          return true;
       } else {
@@ -164,12 +165,12 @@ public:
       }
    }
 
-   const int& get() const { return cnt; }
-   int get_index() const { return index; }
+   const Int& get() const { return cnt; }
+   Int get_index() const { return index; }
 
 private:
-   int index;
-   int cnt;
+   Int index;
+   Int cnt;
 };
 
 

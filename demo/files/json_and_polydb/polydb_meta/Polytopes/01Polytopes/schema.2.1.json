@@ -1,0 +1,298 @@
+{
+   "type": "object",
+   "$schema": "http://json-schema.org/draft-07/schema#",
+   "properties": {
+      "GORENSTEIN_INDEX": {
+         "$ref": "#/definitions/common-Int"
+      },
+      "N_FACETS": {
+         "$ref": "#/definitions/common-Int"
+      },
+      "_polyDB": {
+         "required": [
+            "collection",
+            "creation_date",
+            "section",
+            "uri",
+            "version"
+         ],
+         "type": "object",
+         "properties": {
+            "uri": {
+               "type": "string"
+            },
+            "collection": {
+               "type": "string"
+            },
+            "version": {
+               "type": "string",
+               "pattern": "^[0-9]{1,2}.[0-9]{1,2}$"
+            },
+            "creation_date": {
+               "pattern": "^[1-9][0-9]{3}-[0-9]{2}-[0-9]{2}$",
+               "type": "string"
+            },
+            "section": {
+               "type": "string"
+            }
+         }
+      },
+      "EHRHART_POLYNOMIAL": {
+         "$ref": "#/definitions/common-UniPolynomial-Rational-Int"
+      },
+      "_id": {
+         "$ref": "https://polymake.org/schemas/data.json#/definitions/obj_id"
+      },
+      "_load": {
+         "items": {
+            "type": "string"
+         },
+         "type": "array"
+      },
+      "NORMAL": {
+         "$ref": "#/definitions/common-Bool"
+      },
+      "LATTICE_DEGREE": {
+         "$ref": "#/definitions/common-Int"
+      },
+      "SELF_DUAL": {
+         "$ref": "#/definitions/common-Bool"
+      },
+      "N_HILBERT_BASIS": {
+         "$ref": "#/definitions/common-Int"
+      },
+      "VERTEX_SIZES": {
+         "$ref": "#/definitions/common-Array-Int"
+      },
+      "GORENSTEIN": {
+         "$ref": "#/definitions/common-Bool"
+      },
+      "_info": {
+         "$ref": "https://polymake.org/schemas/data.json#/definitions/obj_info"
+      },
+      "N_RIDGES": {
+         "$ref": "#/definitions/common-Int"
+      },
+      "DIM": {
+         "$ref": "#/definitions/common-Int"
+      },
+      "FACET_SIZES": {
+         "$ref": "#/definitions/common-Array-Int"
+      },
+      "COMBINATORIAL_ISOMORPHISM_CLASS": {
+         "type": "string"
+      },
+      "_type": {
+         "const": "polytope::Polytope<Rational>"
+      },
+      "N_BOUNDARY_LATTICE_POINTS": {
+         "$ref": "#/definitions/common-Integer"
+      },
+      "SMOOTH": {
+         "$ref": "#/definitions/common-Bool"
+      },
+      "VERTICES": {
+         "$ref": "#/definitions/common-Matrix-Rational-NonSymmetric"
+      },
+      "SIMPLE": {
+         "$ref": "#/definitions/common-Bool"
+      },
+      "F_VECTOR": {
+         "$ref": "#/definitions/common-Vector-Integer"
+      },
+      "ALTSHULER_DET": {
+         "$ref": "#/definitions/common-Integer"
+      },
+      "EULER_CHARACTERISTIC": {
+         "type": "string"
+      },
+      "_canonical": {
+         "type": "boolean"
+      },
+      "DIAMETER": {
+         "$ref": "#/definitions/common-Int"
+      },
+      "VERY_AMPLE": {
+         "$ref": "#/definitions/common-Bool"
+      },
+      "N_VERTICES": {
+         "$ref": "#/definitions/common-Int"
+      },
+      "SIMPLICIAL": {
+         "$ref": "#/definitions/common-Bool"
+      },
+      "H_STAR_VECTOR": {
+         "$ref": "#/definitions/common-Vector-Integer"
+      },
+      "N_EDGES": {
+         "$ref": "#/definitions/common-Int"
+      },
+      "TERMINAL": {
+         "$ref": "#/definitions/common-Bool"
+      },
+      "CONE_DIM": {
+         "$ref": "#/definitions/common-Int"
+      },
+      "FACETS": {
+         "$ref": "#/definitions/common-Matrix-Rational-NonSymmetric"
+      },
+      "FACET_WIDTHS": {
+         "$ref": "#/definitions/common-Vector-Integer"
+      },
+      "_attrs": {
+         "additionalProperties": false,
+         "properties": {
+            "_polyDB": {
+               "properties": {
+                  "attachment": {
+                     "const": true
+                  }
+               }
+            },
+            "COMBINATORIAL_ISOMOPRHISM_CLASS": {
+               "properties": {
+                  "attachment": {
+                     "const": true
+                  }
+               }
+            },
+            "LATTICE_ISOMORPHISM_CLASS": {
+               "properties": {
+                  "attachment": {
+                     "const": true
+                  }
+               }
+            }
+         },
+         "type": "object"
+      },
+      "LATTICE_ISOMORPHISM_CLASS": {
+         "type": "string"
+      },
+      "LATTICE_VOLUME": {
+         "$ref": "#/definitions/common-Integer"
+      },
+      "N_LATTICE_POINTS": {
+         "$ref": "#/definitions/common-Integer"
+      },
+      "_ns": {
+         "additionalProperties": false,
+         "properties": {
+            "polymake": {
+               "type": "array",
+               "additionalItems": false,
+               "items": [
+                  {
+                     "const": "https://polymake.org"
+                  },
+                  {
+                     "const": "3.4"
+                  }
+               ]
+            }
+         },
+         "type": "object"
+      }
+   },
+   "additionalProperties": false,
+   "required": [
+      "_ns",
+      "_polyDB",
+      "_type",
+      "CONE_DIM",
+      "DIM",
+      "F_VECTOR",
+      "FACETS",
+      "N_FACETS",
+      "SIMPLE",
+      "SIMPLICIAL",
+      "SMOOTH",
+      "VERTICES"
+   ],
+   "definitions": {
+      "common-Array-Int": {
+         "type": "array",
+         "items": {
+            "$ref": "#/definitions/common-Int"
+         }
+      },
+      "common-Rational": {
+         "pattern": "^-?(\\d+(/\\d+)?|inf)$",
+         "type": "string"
+      },
+      "common-Set-Int": {
+         "items": {
+            "$ref": "#/definitions/common-Int"
+         },
+         "type": "array",
+         "uniqueItems": true
+      },
+      "common-Matrix-Rational-NonSymmetric": {
+         "type": "array",
+         "items": {
+            "oneOf": [
+               {
+                  "$ref": "#/definitions/common-Vector-Rational"
+               },
+               {
+                  "type": "object",
+                  "properties": {
+                     "cols": {
+                        "type": "integer",
+                        "minimum": 0
+                     }
+                  },
+                  "required": [
+                     "cols"
+                  ],
+                  "additionalProperties": false
+               }
+            ]
+         }
+      },
+      "common-Bool": {
+         "type": "boolean"
+      },
+      "common-HashMap-Int-Rational": {
+         "type": "object",
+         "patternProperties": {
+            "^-?\\d+$": {
+               "$ref": "#/definitions/common-Rational"
+            }
+         },
+         "additionalProperties": false
+      },
+      "common-UniPolynomial-Rational-Int": {
+         "$ref": "#/definitions/common-Serialized-UniPolynomial-Rational-Int"
+      },
+      "common-Integer": {
+         "type": "string",
+         "pattern": "^-?(\\d+|inf)$"
+      },
+      "common-Vector-Integer": {
+         "items": {
+            "$ref": "#/definitions/common-Integer"
+         },
+         "type": "array"
+      },
+      "common-Int": {
+         "type": "integer"
+      },
+      "common-Serialized-UniPolynomial-Rational-Int": {
+         "minItems": 1,
+         "items": [
+            {
+               "$ref": "#/definitions/common-HashMap-Int-Rational"
+            }
+         ],
+         "additionalItems": false,
+         "type": "array"
+      },
+      "common-Vector-Rational": {
+         "items": {
+            "$ref": "#/definitions/common-Rational"
+         },
+         "type": "array"
+      }
+   }
+}

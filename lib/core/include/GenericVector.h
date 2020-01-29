@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -55,6 +55,9 @@ template <typename TVector, typename E>
 class GenericVector
    : public Generic<TVector> {
    template <typename, typename> friend class GenericVector;
+
+   // TODO: allow only numeric types (after refactoring in atint)
+   static_assert(!is_among<E, bool, int>::value, "invalid Vector element type");
 
 protected:
    GenericVector() {}
@@ -121,13 +124,13 @@ protected:
    {
       typedef binary_op_builder<Operation, typename ensure_features<TVector, end_sensitive>::const_iterator, typename ensure_features<TVector2, end_sensitive>::const_iterator> opb;
       const typename opb::operation& op=opb::create(op_arg);
-      int i_prev=0;
-      auto dst=this->top().begin();
-      for (auto src2=entire(v); !src2.at_end(); ++src2) {
-         int i=src2.index();
+      Int i_prev = 0;
+      auto dst = this->top().begin();
+      for (auto src2 = entire(v); !src2.at_end(); ++src2) {
+         Int i = src2.index();
          std::advance(dst, i-i_prev);
          op.assign(*dst, *src2);
-         i_prev=i;
+         i_prev = i;
       }
    }
 
@@ -155,7 +158,7 @@ protected:
    void fill_impl(const E2& x, pure_sparse)
    {
       if (!is_zero(x))
-         fill_sparse(this->top(), ensure(same_value(x), indexed()).begin());
+         fill_sparse(this->top(), ensure(same_value_in_context<E>(x), indexed()).begin());
       else
          this->top().clear();
    }
@@ -175,7 +178,7 @@ protected:
    }
 
 public:
-   int dim() const { return get_dim(this->top()); }
+   Int dim() const { return get_dim(this->top()); }
 
    bool prefer_sparse_representation() const
    {
@@ -534,7 +537,7 @@ public:
    operator*= (const Right& r)
    {
       if (!is_zero(r))
-         this->top().assign_op(same_value(r), BuildBinary<operations::mul>());
+         this->top().assign_op(same_value_in_context<E>(r), BuildBinary<operations::mul>());
       else
          fill(r);
       return this->top();
@@ -546,7 +549,7 @@ public:
    mul_from_left(const Left& l)
    {
       if (!is_zero(l))
-         this->top().assign_op(same_value(l), BuildBinary<operations::mul_from_left>());
+         this->top().assign_op(same_value_in_context<E>(l), BuildBinary<operations::mul_from_left>());
       else
          fill(l);
       return this->top();
@@ -591,7 +594,7 @@ public:
                     cleanOperations::can<cleanOperations::div, E, Right>::value, top_type&>
    operator/= (const Right& r)
    {
-      this->top().assign_op(same_value(r), BuildBinary<operations::div>());
+      this->top().assign_op(same_value_in_context<E>(r), BuildBinary<operations::div>());
       return this->top();
    }
 
@@ -617,7 +620,7 @@ public:
                     cleanOperations::can<cleanOperations::div, E, Right>::value, top_type&>
    div_exact(const Right& r)
    {
-      this->top().assign_op(same_value(r), BuildBinary<operations::divexact>());
+      this->top().assign_op(same_value_in_context<E>(r), BuildBinary<operations::divexact>());
       return this->top();
    }
 
@@ -671,7 +674,7 @@ public:
    // gcc 5 can't digest auto here
    IndexedSlice<const typename Unwary<TVector>::type&, typename final_index_set<IndexSetRef>::type>
    slice(IndexSetRef&& indices,
-         std::enable_if_t<isomorphic_to_container_of<pure_type_t<IndexSetRef>, int>::value, void**> =nullptr) const &
+         std::enable_if_t<isomorphic_to_container_of<pure_type_t<IndexSetRef>, Int>::value, std::nullptr_t> = nullptr) const &
    {
       return make_slice(unwary(*this), std::forward<IndexSetRef>(indices));
    }
@@ -680,7 +683,7 @@ public:
    // gcc 5 can't digest auto here
    IndexedSlice<typename Unwary<TVector>::type&, typename final_index_set<IndexSetRef>::type>
    slice(IndexSetRef&& indices,
-         std::enable_if_t<isomorphic_to_container_of<pure_type_t<IndexSetRef>, int>::value, void**> =nullptr) &
+         std::enable_if_t<isomorphic_to_container_of<pure_type_t<IndexSetRef>, Int>::value, std::nullptr_t> = nullptr) &
    {
       return make_slice(unwary(*this), std::forward<IndexSetRef>(indices));
    }
@@ -689,7 +692,7 @@ public:
    // gcc 5 can't digest auto here
    IndexedSlice<typename Unwary<TVector>::type, typename final_index_set<IndexSetRef>::type>
    slice(IndexSetRef&& indices,
-         std::enable_if_t<isomorphic_to_container_of<pure_type_t<IndexSetRef>, int>::value, void**> =nullptr) &&
+         std::enable_if_t<isomorphic_to_container_of<pure_type_t<IndexSetRef>, Int>::value, std::nullptr_t> = nullptr) &&
    {
       return make_slice(unwary(std::move(*this)), std::forward<IndexSetRef>(indices));
    }
@@ -701,13 +704,13 @@ public:
    };
 
    // stub for BlockMatrix
-   void stretch_dim(int d) const
+   void stretch_dim(Int d) const
    {
       throw std::runtime_error("dimension mismatch");
    }
 
 protected:
-   template <typename Left, typename Right, typename=void>
+   template <typename Left, typename Right, typename = void>
    struct concat {};
 
    template <typename Left, typename Right>
@@ -733,7 +736,7 @@ protected:
    template <typename Left, typename Right>
    struct concat<Left, Right, std::enable_if_t<is_this<Right>::value &&
                                                isomorphic_types<E, pure_type_t<Left>>::value>> {
-      static const bool homogeneous=std::is_same<E, pure_type_t<Left>>::value;
+      static constexpr bool homogeneous = std::is_same<E, pure_type_t<Left>>::value;
       using scalar_type = SameElementVector<std::conditional_t<homogeneous, unwary_t<Left>, E>>;
       using s_v_type = typename chain_compose<VectorChain, true>::template with<scalar_type, unwary_t<Right>>;
 
@@ -796,9 +799,9 @@ struct spec_object_traits< GenericVector<TVector, E> >
    typedef is_vector generic_tag;
    static const bool allow_sparse=true;
 
-   static bool is_zero(const TVector& v)
+   static bool is_zero(const GenericVector<TVector>& v)
    {
-      return entire(attach_selector(v, BuildUnary<operations::non_zero>())).at_end();
+      return entire(attach_selector(v.top(), BuildUnary<operations::non_zero>())).at_end();
    }
 };
 
@@ -816,7 +819,7 @@ class LazyVector1
 public:
    using TransformedContainer<VectorRef, Operation>::TransformedContainer;
 
-   int dim() const { return get_dim(this->get_container()); }
+   Int dim() const { return get_dim(this->get_container()); }
 };
 
 template <typename VectorRef, typename Operation>
@@ -841,12 +844,12 @@ class LazyVector2
                            typename object_traits<typename TransformedContainerPair<VectorRef1, VectorRef2, Operation>::value_type>::persistent_type > {
    using base_t = TransformedContainerPair<VectorRef1, VectorRef2, Operation>;
 protected:
-   int dim_impl(std::true_type) const { return get_dim(this->get_container2()); }
-   int dim_impl(std::false_type) const { return get_dim(this->get_container1()); }
+   Int dim_impl(std::true_type) const { return get_dim(this->get_container2()); }
+   Int dim_impl(std::false_type) const { return get_dim(this->get_container1()); }
 public:
    using TransformedContainerPair<VectorRef1, VectorRef2, Operation>::TransformedContainerPair;
 
-   int dim() const
+   Int dim() const
    {
       return dim_impl(bool_constant< check_container_ref_feature<VectorRef1,unlimited>::value >());
    }
@@ -1006,23 +1009,23 @@ struct spec_object_traits< SameElementVector<ElemRef> >
 
 /// Create a vector with all entries equal to the given element x.
 template <typename E>
-auto same_element_vector(E&& x, int dim=0)
+auto same_element_vector(E&& x, Int dim = 0)
 {
-   return SameElementVector<E>(std::forward<E>(x), dim);
+   return SameElementVector<prevent_int_element<E>>(std::forward<E>(x), dim);
 }
 
 /// Create a vector with all entries equal to 1.
 template <typename E>
-auto ones_vector(int dim=0)
+auto ones_vector(Int dim = 0)
 {
-   return same_element_vector(one_value<E>(), dim);
+   return same_element_vector(one_value<prevent_int_element<E>>(), dim);
 }
 
 /// Create a vector with all entries equal to 0.
 template <typename E>
-auto zero_vector(int dim=0)
+auto zero_vector(Int dim = 0)
 {
-   return same_element_vector(zero_value<E>(), dim);
+   return same_element_vector(zero_value<prevent_int_element<E>>(), dim);
 }
 
 template <typename E>
@@ -1043,7 +1046,7 @@ struct SameElementSparseVector_helper {
    using accept_arg = std::is_constructible<alias_type, Arg>;
 
    template <typename Arg, typename=std::enable_if_t<accept_arg<Arg>::value>>
-   static Arg&& create(Arg&& c, int)
+   static Arg&& create(Arg&& c, Int)
    {
       return std::forward<Arg>(c);
    }
@@ -1060,10 +1063,10 @@ struct SameElementSparseVector_helper<SetRef, false, true> {
    using alias_type = pure_type_t<SetRef>;
 
    template <typename Arg>
-   using accept_arg = std::is_constructible<alias_type, Arg, int>;
+   using accept_arg = std::is_constructible<alias_type, Arg, Int>;
 
    template <typename Arg, typename=std::enable_if_t<accept_arg<Arg>::value>>
-   static alias_type create(Arg&& c, int d)
+   static alias_type create(Arg&& c, Int d)
    {
       return alias_type(std::forward<Arg>(c), d);
    }
@@ -1099,7 +1102,7 @@ public:
    template <typename Arg1, typename Arg2,
              typename=std::enable_if_t<helper::template accept_arg<Arg1>::value &&
                                        std::is_constructible<alias<ElemRef>, Arg2>::value>>
-   SameElementSparseVector(Arg1&& set_arg, Arg2&& data_arg, int dim_arg=-1)
+   SameElementSparseVector(Arg1&& set_arg, Arg2&& data_arg, Int dim_arg = -1)
       : set(helper::create(std::forward<Arg1>(set_arg), dim_arg))
       , apparent_elem(std::forward<Arg2>(data_arg)) {}
 
@@ -1112,12 +1115,12 @@ public:
       return helper::get_container(set);
    }
 
-   auto find(int i) const
+   auto find(Int i) const
    {
       return typename base_t::const_iterator(get_container1().begin(), get_container2().find(i), base_t::get_operation());
    }
 
-   typename base_t::const_reference operator[] (int i) const
+   typename base_t::const_reference operator[] (Int i) const
    {
       if (i<0 || i>=base_t::dim())
          throw std::runtime_error("SameElementSparseVector - index out of range");
@@ -1139,18 +1142,18 @@ template <typename SetRef, typename ElemRef>
 struct check_container_feature<SameElementSparseVector<SetRef,ElemRef>, pure_sparse> : std::true_type {};
 
 template <typename E, typename TSet>
-auto same_element_sparse_vector(TSet&& s, E&& elem, std::enable_if_t<is_integer_set<TSet>::value, int> dim)
+auto same_element_sparse_vector(TSet&& s, E&& elem, std::enable_if_t<is_integer_set<TSet>::value, Int> dim)
 {
    if (POLYMAKE_DEBUG || is_wary<TSet>()) {
       if (!set_within_range(s.top(), dim))
          throw std::runtime_error("same_element_sparse_vector - dimension mismatch");
    }
-   using result_type = SameElementSparseVector<add_const_t<unwary_t<TSet>>, add_const_t<E>>;
+   using result_type = SameElementSparseVector<add_const_t<unwary_t<TSet>>, prevent_int_element<add_const_t<E>>>;
    return result_type(unwary(std::forward<TSet>(s)), std::forward<E>(elem), dim);
 }
 
 template <typename E, typename TSet>
-auto same_element_sparse_vector(TSet&& s, std::enable_if_t<is_integer_set<TSet>::value, int> dim)
+auto same_element_sparse_vector(TSet&& s, std::enable_if_t<is_integer_set<TSet>::value, Int> dim)
 {
    return same_element_sparse_vector(std::forward<TSet>(s), one_value<E>(), dim);
 }
@@ -1165,20 +1168,20 @@ auto same_element_sparse_vector(TSet&& s)
 
 
 /* kind = 1: constructs SameElementSparseVector<sequence> of full size or empty
- * kind = 2: always constructs SameElementSparseVector< SingleElementSet<int> > aka unit vector
+ * kind = 2: always constructs SameElementSparseVector< SingleElementSet<Int> > aka unit vector
  * kind = 3: constructs SameElementSparseVector<sequence> with one element or empty
  */
 template <int kind, typename ElemRef=void>
 class SameElementSparseVector_factory {
 protected:
-   int dim;
+   Int dim;
 public:
-   typedef int first_argument_type;
+   typedef Int first_argument_type;
    typedef ElemRef second_argument_type;
-   typedef SameElementSparseVector<typename std::conditional<kind==2, SingleElementSet<int>, sequence>::type, ElemRef>
+   typedef SameElementSparseVector<typename std::conditional<kind==2, SingleElementSet<Int>, sequence>::type, ElemRef>
       result_type;
 
-   SameElementSparseVector_factory(int dim_arg=0) : dim(dim_arg) {}
+   SameElementSparseVector_factory(Int dim_arg = 0) : dim(dim_arg) {}
 
    template <typename R>
    result_type operator() (first_argument_type pos, R&& elem) const
@@ -1187,7 +1190,7 @@ public:
    }
 
    template <typename Iterator2>
-   result_type operator() (operations::partial_left, int pos, const Iterator2&) const
+   result_type operator() (operations::partial_left, Int pos, const Iterator2&) const
    {
       return result_type(sequence(pos, 0), zero_value<typename deref<ElemRef>::type>(), dim);
    }
@@ -1200,15 +1203,15 @@ public:
    }
 
 protected:
-   sequence index_set(int, int_constant<1>) const
+   sequence index_set(Int, int_constant<1>) const
    {
       return sequence(0, dim);
    }
-   SingleElementSet<int> index_set(int pos, int_constant<2>) const
+   SingleElementSet<Int> index_set(Int pos, int_constant<2>) const
    {
-      return SingleElementSet<int>(pos);
+      return SingleElementSet<Int>(pos);
    }
-   sequence index_set(int pos, int_constant<3>) const
+   sequence index_set(Int pos, int_constant<3>) const
    {
       return sequence(pos, 1);
    }
@@ -1217,15 +1220,15 @@ protected:
 template <int kind>
 class SameElementSparseVector_factory<kind, void> : public operations::incomplete {
 protected:
-   int _dim;
+   Int dim_;
 public:
-   SameElementSparseVector_factory(int dim_arg=0) : _dim(dim_arg) {}
-   int dim() const { return _dim; }
+   SameElementSparseVector_factory(Int dim_arg = 0) : dim_(dim_arg) {}
+   Int dim() const { return dim_; }
 };
 
 template <int kind, typename Iterator1, typename Iterator2, typename Reference1, typename Reference2>
 struct binary_op_builder< SameElementSparseVector_factory<kind, void>, Iterator1, Iterator2, Reference1, Reference2 > {
-   typedef SameElementSparseVector_factory<kind, add_const_t<Reference2>> operation;
+   typedef SameElementSparseVector_factory<kind, prevent_int_element<add_const_t<Reference2>>> operation;
    static operation create(const SameElementSparseVector_factory<kind,void>& op) { return operation(op.dim()); }
 };
 
@@ -1234,23 +1237,23 @@ struct binary_op_builder< SameElementSparseVector_factory<kind, void>, Iterator1
  * ------------ */
 
 template <typename E>
-auto unit_vector(int dim, int i, E&& x)
+auto unit_vector(Int dim, Int i, E&& x)
 {
    if (POLYMAKE_DEBUG) {
-      if (i<0 || i>=dim)
+      if (i < 0 || i >= dim)
          throw std::runtime_error("unit_vector - index out of range");
    }
-   return same_element_sparse_vector(SingleElementSet<int>(i), std::forward<E>(x), dim);
+   return same_element_sparse_vector(SingleElementSet<Int>(i), std::forward<E>(x), dim);
 }
 
 template <typename E>
-auto unit_vector(int dim, int i)
+auto unit_vector(Int dim, Int i)
 {
    if (POLYMAKE_DEBUG) {
-      if (i<0 || i>=dim)
+      if (i < 0 || i >= dim)
          throw std::runtime_error("unit_vector - index out of range");
    }
-   return same_element_sparse_vector(SingleElementSet<int>(i), one_value<E>(), dim);
+   return same_element_sparse_vector(SingleElementSet<Int>(i), one_value<E>(), dim);
 }
 
 /* ----------------
@@ -1260,18 +1263,18 @@ auto unit_vector(int dim, int i)
 template <typename VectorRef>
 class ExpandedVector
    : public TransformedContainer<masquerade_add_features<VectorRef, sparse_compatible>,
-                                 pair<nothing, operations::fix2<int, operations::composed12< BuildUnaryIt<operations::index2element>, void, BuildBinary<operations::add> > > > >
+                                 pair<nothing, operations::fix2<Int, operations::composed12< BuildUnaryIt<operations::index2element>, void, BuildBinary<operations::add> > > > >
    , public GenericVector< ExpandedVector<VectorRef>, typename deref<VectorRef>::type::element_type > {
    using base_t = TransformedContainer<masquerade_add_features<VectorRef, sparse_compatible>,
-                                       pair<nothing, operations::fix2<int, operations::composed12< BuildUnaryIt<operations::index2element>, void, BuildBinary<operations::add> > > > >;
-   int dim_;
+                                       pair<nothing, operations::fix2<Int, operations::composed12< BuildUnaryIt<operations::index2element>, void, BuildBinary<operations::add> > > > >;
+   Int dim_;
 public:
    template <typename Arg, typename=std::enable_if_t<std::is_constructible<typename base_t::alias_t, Arg>::value>>
-   ExpandedVector(Arg&& src_arg, int offset, int dim_arg)
+   ExpandedVector(Arg&& src_arg, Int offset, Int dim_arg)
       : base_t(std::forward<Arg>(src_arg), offset)
       , dim_(dim_arg) {}
 
-   int dim() const { return dim_; }
+   Int dim() const { return dim_; }
 };
 
 template <typename VectorRef>
@@ -1290,13 +1293,13 @@ struct check_container_feature<ExpandedVector<VectorRef>, pure_sparse>
 template <typename VectorRef=void>
 class ExpandedVector_factory {
 protected:
-   int offset, dim;
+   Int offset, dim;
 public:
    typedef VectorRef argument_type;
    typedef ExpandedVector<VectorRef> vector_type;
    typedef vector_type result_type;
 
-   ExpandedVector_factory(int offset_arg=0, int dim_arg=0)
+   ExpandedVector_factory(Int offset_arg = 0, Int dim_arg = 0)
       : offset(offset_arg), dim(dim_arg) {}
 
    template <typename Ref2>
@@ -1315,9 +1318,9 @@ public:
 template <>
 class ExpandedVector_factory<void> : public operations::incomplete {
 protected:
-   int offset, dim;
+   Int offset, dim;
 public:
-   ExpandedVector_factory(int offset_arg=0, int dim_arg=0)
+   ExpandedVector_factory(Int offset_arg = 0, Int dim_arg = 0)
       : offset(offset_arg), dim(dim_arg) {}
    template <typename> friend class ExpandedVector_factory;
 };

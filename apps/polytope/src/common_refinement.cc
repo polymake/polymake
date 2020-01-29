@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,18 +25,18 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-IncidenceMatrix<> common_refinement(const Matrix<Scalar>& vertices, const IncidenceMatrix<>& sub1, const IncidenceMatrix<>& sub2,  const int dim)
+IncidenceMatrix<> common_refinement(const Matrix<Scalar>& vertices, const IncidenceMatrix<>& sub1, const IncidenceMatrix<>& sub2, const Int dim)
 {
-   perl::ObjectType polytope("Polytope", mlist<Scalar>());
+   BigObjectType polytope("Polytope", mlist<Scalar>());
 
    RestrictedIncidenceMatrix<> refinement;
    for (auto i=entire(rows(sub1)); !i.at_end(); ++i)
       for (auto j=entire(rows(sub2)); !j.at_end(); ++j) {
-         const Set<int> intersection = (*i)*(*j);
+         const Set<Int> intersection = (*i)*(*j);
          if (intersection.size() > dim) {
-            perl::Object p(polytope);
+            BigObject p(polytope);
             p.take("VERTICES") << vertices.minor(intersection, All);
-            const int int_dim = p.call_method("DIM");
+            const Int int_dim = p.call_method("DIM");
             if (int_dim == dim) {
                refinement /= intersection;
             }
@@ -47,14 +47,14 @@ IncidenceMatrix<> common_refinement(const Matrix<Scalar>& vertices, const Incide
 }
 
 template <typename Scalar>
-perl::Object common_refinement(perl::Object p1, perl::Object p2)
+BigObject common_refinement(BigObject p1, BigObject p2)
 {
-   const int dim = p1.call_method("DIM");
+   const Int dim = p1.call_method("DIM");
    const Matrix<Scalar> vert=p1.give("VERTICES");
    const IncidenceMatrix<> sub1=p1.give("POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS");
    const IncidenceMatrix<> sub2=p2.give("POLYTOPAL_SUBDIVISION.MAXIMAL_CELLS");
 
-   perl::Object p_out(p1.type()); //FIXME: p_out should become a copy of p1 if there exists a copy method
+   BigObject p_out(p1.type()); //FIXME: p_out should become a copy of p1 if there exists a copy method
    //  p_out.remove("WEIGHTS"); FIXME (If there is a remove method).
    if (p1.exists("POLYTOPAL_SUBDIVISION.WEIGHTS") && p2.exists("POLYTOPAL_SUBDIVISION.WEIGHTS")) {
       const Vector<Scalar> w1=p1.give("POLYTOPAL_SUBDIVISION.WEIGHTS");

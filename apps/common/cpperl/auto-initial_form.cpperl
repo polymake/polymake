@@ -1,6 +1,6 @@
 {"app": "common",
  "inst": [
-  {"args": ["perl::Canned<const Polynomial<Rational, int>&>", "perl::Canned<const Vector<int>&>"], "func": "initial_form", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/Vector.h"], "kind": "meth", "sig": "initial_form:M.X"},
-  {"args": ["perl::Canned<const Polynomial<Rational, int>&>", "perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<int> const&>, pm::Series<int, true> const, mlist<> >&>"], "func": "initial_form", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Polynomial.h", "polymake/Rational.h"], "kind": "meth", "sig": "initial_form:M.X"},
+  {"args": ["perl::Canned<const Polynomial<Rational, Int>&>", "perl::Canned<const Vector<Int>&>"], "func": "initial_form", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/Vector.h"], "kind": "meth", "sig": "initial_form:M.X"},
+  {"args": ["perl::Canned<const Polynomial<Rational, Int>&>", "perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<Int> const&>, pm::Series<Int, true> const, mlist<> >&>"], "func": "initial_form", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Polynomial.h", "polymake/Rational.h"], "kind": "meth", "sig": "initial_form:M.X"},
  null ],
 "version": 3}

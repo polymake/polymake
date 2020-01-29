@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -34,25 +34,25 @@ use Polymake::Struct (
 );
 
 sub new {
-   my $self=&_new;
+   my $self = &_new;
    my $single_script;
    if (-f $self->dir) {
-      $single_script=$self->dir;
+      $single_script = $self->dir;
       $self->dir =~ s/$directory_re/$1/o;
    }
-   my ($dir_name)=$self->dir =~ $filename_re;
+   my ($dir_name) = $self->dir =~ $filename_re;
    $dir_name =~ /\./ and die "Testgroups may not contain dots ('.') in the folder name: $dir_name\n";
 
    if ($self->extension && $self->extension->is_bundled) {
-      ($self->name=$self->extension->URI) =~ s/:/./g;
+      $self->name = $self->extension->URI =~ s/:/./gr;
       if ($self->env->report_writer) {
-         $self->name.=".".$self->application->name;
+         $self->name .= "." . $self->application->name;
       }
-      $self->name.=".$dir_name";
-   } elsif (index($self->dir, $self->application->installTop)==0) {
-      $self->name=($self->env->report_writer && $self->application->name.".").$dir_name;
+      $self->name .= ".$dir_name";
+   } elsif (index($self->dir, $self->application->installTop) == 0) {
+      $self->name = ($self->env->report_writer && $self->application->name.".") . $dir_name;
    } else {
-      $self->name=$self->dir;
+      $self->name = $self->dir;
    }
 
    if ($single_script) {
@@ -70,20 +70,20 @@ sub run_context {
 
 # => 1: success | 0: failure | -1: error, with message in $@
 sub run {
-   my ($self)=@_;
-   my $save_context=$self->run_context;
+   my ($self) = @_;
+   my $save_context = $self->run_context;
    local scalar $self->env->cur_group = $self;
-   my $report_writer=$self->env->report_writer;
+   my $report_writer = $self->env->report_writer;
    if ($report_writer) {
       $report_writer->startTag("testsuite", package => $self->package_name, name => $self->name);
    } else {
       print_title($self, "testing " . $self->name . ":");
    }
-   my $OK=1;
+   my $OK = 1;
    foreach my $subgroup ($self->env->shuffle->(@{$self->subgroups})) {
-      my $rc=$subgroup->run;
+      my $rc = $subgroup->run;
       $OK &&= $rc;
-      last if $rc<0;
+      last if $rc < 0;
    }
    if ($report_writer) {
       $report_writer->endTag("testsuite");
@@ -174,43 +174,43 @@ sub add_case {
 }
 
 sub add_subgroup {
-   my ($self, $subgroup)=@_;
-   weak($subgroup->group=$self->group);
+   my ($self, $subgroup) = @_;
+   weak($subgroup->group = $self->group);
 
    push @{$self->subgroups}, $subgroup;
 
-   $subgroup->source_file=$self->source_file;
-   $subgroup->is_random=$self->is_random;
+   $subgroup->source_file = $self->source_file;
+   $subgroup->is_random = $self->is_random;
    if (defined $self->name) {
-      $subgroup->name=$self->name." => ".$subgroup->name;
+      $subgroup->name = $self->name." => ".$subgroup->name;
    }
 }
 
 sub create_testcases {
-   my ($self)=@_;
-   my ($script_file)=$self->source_file =~ $filename_re;
+   my ($self) = @_;
+   my ($script_file) = $self->source_file =~ $filename_re;
    do $script_file;
 }
 
 sub run {
-   my ($self)=@_;
-   local $current=$self;
-   my $env=$self->group->env;
-   my $report_writer=$env->report_writer;
-   $self->case_names_length=0;
+   my ($self) = @_;
+   local $current = $self;
+   my $env = $self->group->env;
+   my $report_writer = $env->report_writer;
+   $self->case_names_length = 0;
 
-   local $Scope=new Scope();   # prevent the effects of prefer_now and such from spreading beyond the current test script
+   local $Scope = new Scope();   # prevent the effects of prefer_now and such from spreading beyond the current test script
    $self->create_testcases;
    if ($@ eq "") {
       if (@{$self->cases} || @{$self->subgroups}) {
-         my $OK=1;
+         my $OK = 1;
          if (@{$self->cases}) {
-            $self->assess_cases or $OK=0;
+            $self->assess_cases or $OK = 0;
          }
          foreach my $subgroup ($env->shuffle->(@{$self->subgroups})) {
-            $subgroup->run or return 0;
+            $subgroup->run or $OK = 0;
          }
-         if (defined $self->cleanup) {
+         if (defined($self->cleanup)) {
             eval { $self->cleanup->() };
             unless ($@) {
                return $OK;
@@ -228,17 +228,17 @@ sub run {
                $report_writer->endTag("testcase");
                $env->report_fh->flush;
             } else {
-               if ($self->group->loaded_subgroups==0 && $self==$self->group->subgroups->[-1]) {
+               if ($self->group->loaded_subgroups == 0 && $self == $self->group->subgroups->[-1]) {
                   print " SKIPPED\n";
                }
-               (my $script_file=$self->source_file) =~ s{^\Q$InstallTop/\E}{};
+               my $script_file = $self->source_file =~ s{^\Q$InstallTop/\E}{}r;
                push @{$env->skipped}, $script_file.": ".$self->disabled."\n";
             }
          }
          return 1;
 
       } else {
-         $@="no testcases defined";
+         $@ = "no testcases defined";
       }
    }
    report_error($self);

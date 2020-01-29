@@ -1,0 +1,47 @@
+#  Copyright (c) 1997-2020
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# Make BOUNDED_COMPLEX a subobject
+
+my %renamed_properties = qw(  BOUNDED_COMPLEX        MAXIMAL_POLYTOPES
+                              BOUNDED_GRAPH          GRAPH
+                              BOUNDED_DUAL_GRAPH     DUAL_GRAPH
+                              BOUNDED_F_VECTOR       F_VECTOR
+                              BOUNDED_DIM            COMBINATORIAL_DIM
+                              BOUNDED_HASSE_DIAGRAM  HASSE_DIAGRAM
+                          );
+
+upgrade 2.11.1 polytope::Polytope {
+   my ($obj) = @_;
+   my %complex;
+   while (my ($prop_name, $new_prop_name) = each %renamed_properties) {
+      if (exists $obj->{$prop_name}) {
+         move_property($obj, $prop_name, \%complex, $new_prop_name);
+      }
+   }
+   if (keys %complex) {
+      $obj->{BOUNDED_COMPLEX} = \%complex;
+      push @{$obj->{_load}}, "fan";
+      true
+   }
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,13 +29,13 @@ auto create_LP_solver()
 
 }
 
-void soplex_lp_client(perl::Object p, perl::Object lp, bool maximize, perl::OptionSet options)
+void soplex_lp_client(BigObject p, BigObject lp, bool maximize, OptionSet options)
 {
    const Matrix<Rational> H = p.give("FACETS | INEQUALITIES");
    const Matrix<Rational> E = p.lookup("AFFINE_HULL | EQUATIONS");
    const Vector<Rational> Obj = lp.give("LINEAR_OBJECTIVE");
 
-   const Set<int> initial_basis = options["initial_basis"];
+   const Set<Int> initial_basis = options["initial_basis"];
    const soplex_interface::Solver solver{};
    store_LP_Solution(p, lp, maximize, solver.solve(H, E, Obj, maximize, initial_basis));
 }

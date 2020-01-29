@@ -1,5 +1,5 @@
 {"app": "polytope", "embed": "subcone.cc",
  "inst": [
-  {"args": ["Rational", "void", "perl::Canned<const Set<int>&>", "void"], "func": "subcone", "include": ["polymake/Rational.h", "polymake/Set.h"], "sig": "subcone:T1.B.X.o", "tp": "1"},
+  {"args": ["Rational", "void", "perl::Canned<const Set<Int>&>", "void"], "func": "subcone", "include": ["polymake/Rational.h", "polymake/Set.h"], "sig": "subcone:T1.B.X.o", "tp": "1"},
  null ],
 "version": 3}

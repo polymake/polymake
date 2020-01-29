@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -33,40 +33,40 @@ bool obtuse_angle(const Vector<Scalar>& x, const Vector<Scalar>& y, const Vector
 }
 
 template<typename Scalar>
-void nn_crust(perl::Object p)
+void nn_crust(BigObject p)
 {
-   const Matrix<Scalar> S=p.give("SITES");
-   const int n=S.rows();
-   const Graph<> D=p.give("DELAUNAY_GRAPH.ADJACENCY");
+   const Matrix<Scalar> S = p.give("SITES");
+   const Int n = S.rows();
+   const Graph<> D = p.give("DELAUNAY_GRAPH.ADJACENCY");
    Graph<> G(n);
       
    // first step: find nearest neighbors; if there are more than one: take any of them
-   Array<int> near(n,-1);
-   for (auto e=entire(edges(D)); !e.at_end(); ++e) {
-      const int x=e.from_node(), y=e.to_node();
-      if (near[x]<0 || sqr(S.row(x)-S.row(y))<sqr(S.row(x)-S.row(near[x])))
-         near[x]=y;
-      if (near[y]<0 || sqr(S.row(x)-S.row(y))<sqr(S.row(y)-S.row(near[y])))
-         near[y]=x;
+   Array<Int> near(n, -1);
+   for (auto e = entire(edges(D)); !e.at_end(); ++e) {
+      const Int x = e.from_node(), y = e.to_node();
+      if (near[x] < 0 || sqr(S.row(x)-S.row(y)) < sqr(S.row(x)-S.row(near[x])))
+         near[x] = y;
+      if (near[y] < 0 || sqr(S.row(x)-S.row(y)) < sqr(S.row(y)-S.row(near[y])))
+         near[y] = x;
    }
-   for (int i=0; i<n; ++i)
+   for (Int i = 0; i < n; ++i)
       G.edge(i,near[i]);
       
    p.take("NN_GRAPH.ADJACENCY") << G;
       
    // second step: find nearest neighbor among those with obtuse angle
-   Array<int> obtuse_near(n,-1);
-   for (auto e=entire(edges(D)); !e.at_end(); ++e) {
-      const int x=e.from_node(), y=e.to_node();
-      if (G.degree(x)<2 && y!=near[x] && obtuse_angle<Scalar>(S.row(y),S.row(x),S.row(near[x]))
-          && (obtuse_near[x]<0 || sqr(S.row(x)-S.row(y))<sqr(S.row(x)-S.row(obtuse_near[x]))))
-         obtuse_near[x]=y;
-      if (G.degree(y)<2 && x!=near[y] && obtuse_angle<Scalar>(S.row(x),S.row(y),S.row(near[y]))
-          && (obtuse_near[y]<0 || sqr(S.row(x)-S.row(y))<sqr(S.row(y)-S.row(obtuse_near[y]))))
-         obtuse_near[y]=x;
+   Array<Int> obtuse_near(n, -1);
+   for (auto e = entire(edges(D)); !e.at_end(); ++e) {
+      const Int x = e.from_node(), y = e.to_node();
+      if (G.degree(x) < 2 && y != near[x] && obtuse_angle<Scalar>(S.row(y), S.row(x), S.row(near[x]))
+          && (obtuse_near[x] < 0 || sqr(S.row(x)-S.row(y)) < sqr(S.row(x)-S.row(obtuse_near[x]))))
+         obtuse_near[x] = y;
+      if (G.degree(y) < 2 && x != near[y] && obtuse_angle<Scalar>(S.row(x), S.row(y), S.row(near[y]))
+          && (obtuse_near[y] < 0 || sqr(S.row(x)-S.row(y))<sqr(S.row(y)-S.row(obtuse_near[y]))))
+         obtuse_near[y] = x;
    }
-   for (int i=0; i<n; ++i)
-      if (obtuse_near[i]>=0) G.edge(i,obtuse_near[i]);
+   for (Int i = 0; i < n; ++i)
+      if (obtuse_near[i] >= 0) G.edge(i, obtuse_near[i]);
    
    p.take("NN_CRUST_GRAPH.ADJACENCY") << G;
 }

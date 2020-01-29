@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -52,17 +52,17 @@ public:
    reference operator* () const { return cur; }
    pointer operator-> () const { return &cur; }
 
-   reference operator[] (int i) const { return is_forward ? cur+i : cur-i; }
+   reference operator[] (Int i) const { return is_forward ? cur + i : cur - i; }
 
    sequence_iterator& operator++ () { is_forward ? ++cur : --cur; return *this; }
    sequence_iterator& operator-- () { is_forward ? --cur : ++cur; return *this; }
    const sequence_iterator operator++ (int) { sequence_iterator copy=*this; operator++(); return copy; }
    const sequence_iterator operator-- (int) { sequence_iterator copy=*this; operator--(); return copy; }
-   sequence_iterator& operator+= (int i) { is_forward ? (cur+=i) : (cur-=i); return *this; }
-   sequence_iterator& operator-= (int i) { is_forward ? (cur-=i) : (cur+=i); return *this; }
-   sequence_iterator operator+ (int i) const { return is_forward ? cur+i : cur-i; }
-   sequence_iterator operator- (int i) const { return is_forward ? cur-i : cur+i; }
-   friend sequence_iterator operator+ (int i, const sequence_iterator& it) { return it+i; }
+   sequence_iterator& operator+= (Int i) { is_forward ? (cur += i) : (cur -= i); return *this; }
+   sequence_iterator& operator-= (Int i) { is_forward ? (cur -= i) : (cur += i); return *this; }
+   sequence_iterator operator+ (Int i) const { return is_forward ? cur+i : cur-i; }
+   sequence_iterator operator- (Int i) const { return is_forward ? cur-i : cur+i; }
+   friend sequence_iterator operator+ (Int i, const sequence_iterator& it) { return it+i; }
 
    template <bool is_forward2>
    bool operator== (const sequence_iterator<E, is_forward2>& it) const { return cur==it.cur; }
@@ -92,7 +92,7 @@ public:
 
    series_iterator& operator= (const iterator& it) { base_t::operator=(it); step_=it.step_; return *this; }
 
-   typename base_t::reference operator[] (int i) const { return is_forward ? this->cur+i*step_ : this->cur-i*step_; }
+   typename base_t::reference operator[] (Int i) const { return is_forward ? this->cur + i*step_ : this->cur - i*step_; }
 
    const E& step() const { return step_; }
 
@@ -100,11 +100,11 @@ public:
    series_iterator& operator-- () { is_forward ? (this->cur-=step_) : (this->cur+=step_); return *this; }
    const series_iterator operator++ (int) { series_iterator copy=*this; operator++(); return copy; }
    const series_iterator operator-- (int) { series_iterator copy=*this; operator--(); return copy; }
-   series_iterator& operator+= (int i) { is_forward ? (this->cur+=i*step_) : (this->cur-=i*step_); return *this; }
-   series_iterator& operator-= (int i) { is_forward ? (this->cur-=i*step_) : (this->cur+=i*step_); return *this; }
-   series_iterator operator+ (int i) const { return series_iterator(is_forward ? this->cur+i*step_ : this->cur-i*step_, step_); }
-   series_iterator operator- (int i) const { return series_iterator(is_forward ? this->cur-i*step_ : this->cur+i*step_, step_); }
-   friend series_iterator operator+ (int i, const series_iterator& it) { return it+i; }
+   series_iterator& operator+= (Int i) { is_forward ? (this->cur += i*step_) : (this->cur -= i*step_); return *this; }
+   series_iterator& operator-= (Int i) { is_forward ? (this->cur -= i*step_) : (this->cur += i*step_); return *this; }
+   series_iterator operator+ (Int i) const { return series_iterator(is_forward ? this->cur+i*step_ : this->cur-i*step_, step_); }
+   series_iterator operator- (Int i) const { return series_iterator(is_forward ? this->cur-i*step_ : this->cur+i*step_, step_); }
+   friend series_iterator operator+ (Int i, const series_iterator& it) { return it+i; }
    ptrdiff_t operator- (const base_t& it) const { return (is_forward ? this->cur-*it : *it-this->cur)/step_; }
    bool operator< (const series_iterator& it) const { return is_forward ^ (step_<0) ? this->cur<it.cur : it.cur<this->cur; }
    bool operator> (const series_iterator& it) const { return it < *this; }
@@ -132,7 +132,7 @@ template <typename E>
 class SeriesRaw<E, true> {
 protected:
    E start_;
-   int size_;
+   Int size_;
 public:
    using value_type = E;
    using reference = E;
@@ -140,14 +140,14 @@ public:
 
    SeriesRaw() : start_(), size_(0) {}
 
-   explicit SeriesRaw(const E& start_arg, int size_arg=1, E=E())
+   explicit SeriesRaw(const E& start_arg, Int size_arg = 1, E = E{})
       : start_(start_arg), size_(size_arg)
    {
-      if (POLYMAKE_DEBUG && size_arg<0)
+      if (POLYMAKE_DEBUG && size_arg < 0)
          throw std::runtime_error("Series - wrong size");
    }
 
-   int size() const { return size_; }
+   Int size() const { return size_; }
    bool empty() const { return size_==0; }
 
    const E& step() const { return one_value<E>(); }
@@ -165,10 +165,10 @@ public:
    reference front() const { return start_; }
    reference back() const { return start_+size_-1; }
 
-   reference operator[] (int i) const
+   reference operator[] (Int i) const
    {
       if (POLYMAKE_DEBUG) {
-         if (i<0 || i>=size_)
+         if (i < 0 || i >= size_)
             throw std::runtime_error("Series::operator[] - index out of range");
       }
       return start_+i;
@@ -180,7 +180,7 @@ public:
    }
 };
 
-using sequence_raw = SeriesRaw<int, true>;
+using sequence_raw = SeriesRaw<Int, true>;
 
 template <typename E, bool step_equal_1>
 class SeriesRaw {
@@ -191,19 +191,19 @@ public:
 protected:
    E start_;
    E step_;
-   int size_;
+   Int size_;
 public:
    SeriesRaw() : start_(), step_(), size_(0) {}
 
-   SeriesRaw(const E& start_arg, int size_arg, const E& step_arg)
+   SeriesRaw(const E& start_arg, Int size_arg, const E& step_arg)
       : start_(start_arg), step_(step_arg), size_(size_arg)
    {
       if (POLYMAKE_DEBUG && size_arg<0)
          throw std::runtime_error("Series - wrong size");
    }
 
-   int size() const { return size_; }
-   bool empty() const { return size_==0; }
+   Int size() const { return size_; }
+   bool empty() const { return size_ == 0; }
 
    const E& step() const { return step_; }
 
@@ -220,10 +220,10 @@ public:
    reference front() const { return start_; }
    reference back() const { return start_+(size_-1)*step_; }
 
-   reference operator[] (int i) const
+   reference operator[] (Int i) const
    {
       if (POLYMAKE_DEBUG) {
-         if (i<0 || i>=size_)
+         if (i < 0 || i >= size_)
             throw std::runtime_error("Series::operator[] - index out of range");
       }
       return start_+i*step_;
@@ -243,16 +243,16 @@ struct spec_object_traits< SeriesRaw<E, step_equal_1> > : spec_object_traits<is_
 template <typename E>
 class CountDown {
 protected:
-   int size_;
+   Int size_;
 public:
    using const_reference = const E;
    using reference = const_reference;
    using value_type = E;
 
-   explicit CountDown(int size_arg) : size_(size_arg) {}
+   explicit CountDown(Int size_arg) : size_(size_arg) {}
 
-   int size() const { return size_; }
-   bool empty() const { return size_==0; }
+   Int size() const { return size_; }
+   bool empty() const { return size_ == 0; }
 
    using iterator = count_down_iterator<E>;
    using const_iterator = iterator;
@@ -264,10 +264,10 @@ public:
    reverse_iterator rbegin() const { return 1; }
    reverse_iterator rend() const { return size_+1; }
 
-   E operator[] (int i) const
+   E operator[] (Int i) const
    {
       if (POLYMAKE_DEBUG) {
-         if (i<0 || i>=size_)
+         if (i < 0 || i >= size_)
             throw std::runtime_error("CountDown::operator[] - index out of range");
       }
       return size_-i;
@@ -277,7 +277,7 @@ public:
    E back() const { return 1; }
 };
 
-using  count_down = CountDown<int>;
+using count_down = CountDown<Int>;
 
 template <typename E>
 struct spec_object_traits< CountDown<E> >
@@ -327,15 +327,15 @@ public:
       return *this;
    }
 
-   indexed_random_iterator operator+ (int i) const
+   indexed_random_iterator operator+ (Int i) const
    {
-      return static_cast<const base_t&>(*this)+i;
+      return static_cast<const base_t&>(*this) + i;
    }
-   indexed_random_iterator operator- (int i) const
+   indexed_random_iterator operator- (Int i) const
    {
-      return static_cast<const base_t&>(*this)-i;
+      return static_cast<const base_t&>(*this) - i;
    }
-   friend indexed_random_iterator operator+ (int i, const indexed_random_iterator& me)
+   friend indexed_random_iterator operator+ (Int i, const indexed_random_iterator& me)
    {
       return me+i;
    }
@@ -347,22 +347,22 @@ public:
       return static_cast<const base_t&>(*this)-it;
    }
 
-   int index() const
+   Int index() const
    {
       return is_reverse ? begin-static_cast<const base_t&>(*this)-1 : static_cast<const base_t&>(*this)-begin;
    }
 
 private:
-   void contract1_impl(int distance_front, int, std::false_type)
+   void contract1_impl(Int distance_front, Int, std::false_type)
    {
-      static_cast<base_t&>(*this)+=distance_front;
+      static_cast<base_t&>(*this) += distance_front;
    }
-   void contract1_impl(int distance_front, int distance_back, std::true_type)
+   void contract1_impl(Int distance_front, Int distance_back, std::true_type)
    {
       base_t::contract(false, distance_front, distance_back);
    }
 public:
-   void contract(bool renumber, int distance_front, int distance_back=0)
+   void contract(bool renumber, Int distance_front, Int distance_back = 0)
    {
       contract1_impl(distance_front, distance_back, bool_constant<check_iterator_feature<base_t, contractable>::value>());
       if (renumber)

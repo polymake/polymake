@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -64,8 +64,7 @@ MODULE = Polymake::Core::Customize              PACKAGE = Polymake::Core::Custom
 
 PROTOTYPES: DISABLE
 
-void
-compile_start()
+void compile_start()
 PPCODE:
 {
    saved_op_sassign=PL_ppaddr[OP_SASSIGN];
@@ -74,8 +73,7 @@ PPCODE:
    PL_ppaddr[OP_AASSIGN]=&custom_op_aassign;
 }
 
-void
-compile_end()
+void compile_end()
 PPCODE:
 {
    PL_ppaddr[OP_SASSIGN]=saved_op_sassign;

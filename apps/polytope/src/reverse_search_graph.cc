@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,34 +27,35 @@
 
 namespace polymake { namespace polytope {
 
-inline const Vector<Rational> norm(const Vector<Rational> &v) {
-  int i=1;
+const Vector<Rational> norm(const Vector<Rational>& v)
+{
+  Int i = 1;
   while (v[i]==0) ++i;
   return Vector<Rational>(v/v[i]);
 }
 
-inline const bool operator== (const Array<int> &a,const Array<int> &b)
+const bool operator== (const Array<Int>& a,const Array<Int>& b)
 { 
-  const int s=a.size();
-  if (s!=b.size()) return false;
-  for (int i=0;i<s; ++i)
-    if (a[i]!=b[i]) return false;
+  const Int s = a.size();
+  if (s != b.size()) return false;
+  for (Int i = 0; i < s; ++i)
+    if (a[i] != b[i]) return false;
   return true;
 }
 
-inline const bool operator!= (const Array<int> &a,const Array<int> &b)
+const bool operator!= (const Array<Int>& a, const Array<Int>& b)
 {
   return !(a==b);
 }
 
 
-void reverse_search_graph(perl::Object p, const Vector<Rational>& min_vertex, perl::OptionSet options)
+void reverse_search_graph(BigObject p, const Vector<Rational>& min_vertex, OptionSet options)
 {
   const Matrix<Rational> facets=p.give("FACETS|INEQUALITIES");
-  const int dim=facets.cols()-1;
-  const int n_facets=facets.rows();
+  const Int dim = facets.cols()-1;
+  const Int n_facets = facets.rows();
   const Matrix<Rational> equations=p.lookup("AFFINE_HULL");
-  const int n=n_facets+equations.rows(); //size of matrix A
+  const Int n = n_facets+equations.rows(); //size of matrix A
 
   const Matrix<Rational> fe=facets/equations;
   
@@ -63,9 +64,9 @@ void reverse_search_graph(perl::Object p, const Vector<Rational>& min_vertex, pe
   const Vector<Rational> b= fe.col(0);
   
   //used to construct the graph at the end
-  hash_map<Vector<Rational>, int> v_map;  
-  int n_vertices=0;
-  int n_rays=0;
+  hash_map<Vector<Rational>, Int> v_map;  
+  Int n_vertices = 0;
+  Int n_rays = 0;
   
   //the output
   hash_set<Vector<Rational> > rays;
@@ -79,14 +80,14 @@ void reverse_search_graph(perl::Object p, const Vector<Rational>& min_vertex, pe
 
   //select initial basis !
 
-  Array<int> start_B(dim);
-  int number=0,index=0;
+  Array<Int> start_B(dim);
+  Int number = 0, index = 0;
   for (auto i=entire(rows(facets)); !i.at_end();++i,++number)
     if (min_vertex*(*i)==0)  {
       if (index==dim) throw std::runtime_error("Inequalities not in general position.");
       start_B[index++]=number;
     }
-  for (int i=n_facets;i<n;++i) start_B[index++]=i;
+  for (Int i = n_facets; i < n; ++i) start_B[index++]=i;
   //the last rows of A are equations, so they has to be in each basis
   
   
@@ -99,15 +100,15 @@ void reverse_search_graph(perl::Object p, const Vector<Rational>& min_vertex, pe
      objective = -T(A.minor(start_B, All)) * ones_vector<Rational>(dim);
   }
 
-  Array<int> B=start_B; //Basis has to be set to the initial basis
+  Array<Int> B=start_B; //Basis has to be set to the initial basis
   //reduced cost for the simplex (for maximizing objective)
   Vector<Rational> costs=lin_solve(T(A.minor(B, All)), objective);
   Vector<Rational> vertex=lin_solve(A.minor(B, All), b.slice(B));
   vertices/=(1|vertex);
   v_map[vertex]=n_vertices++;  
 
-  int j=0;
-  while (j<dim || B!=start_B) {
+  Int j = 0;
+  while (j < dim || B != start_B) {
     //test for all non-bases variables if we can add them
     while (j<dim) {
       if (costs[j]<0) {
@@ -117,8 +118,8 @@ void reverse_search_graph(perl::Object p, const Vector<Rational>& min_vertex, pe
         Vector<Rational> Av=A*vertex;
         bool ray=true;
         Rational lambda;
-        int in=0;
-        for (int k=0;k<n_facets;++k)
+        Int in = 0;
+        for (Int k = 0; k < n_facets; ++k)
            if (Ad[k]>0) {
               if (ray) {
                  ray=false;
@@ -136,14 +137,14 @@ void reverse_search_graph(perl::Object p, const Vector<Rational>& min_vertex, pe
         if (!ray) {    
           if (lambda==0) throw std::runtime_error("Inequalities not in general position.");
           //compute the vertex
-          const int old=B[j];
-          B[j]=in;
-          const Vector<Rational> new_costs=lin_solve(T(A.minor(B,All)),objective);
-          const Vector<Rational> new_vertex=vertex+lambda*dir;
+          const Int old = B[j];
+          B[j] = in;
+          const Vector<Rational> new_costs = lin_solve(T(A.minor(B,All)),objective);
+          const Vector<Rational> new_vertex = vertex+lambda*dir;
           edges.push_back(Edge(vertex,new_vertex));
 
-          int i=0;
-          while (new_costs[i]<=0) ++i;
+          Int i = 0;
+          while (new_costs[i] <= 0) ++i;
           
           //only if the minimizing simplex would come from the new vertex, we go to it.
           if (in==B[i]) {
@@ -168,7 +169,7 @@ void reverse_search_graph(perl::Object p, const Vector<Rational>& min_vertex, pe
       else ++j;
     }
     if (B==start_B) break; //only needed in the case where there is only one (real) vertex
-    int i=0;
+    Int i = 0;
     //to go back, we have to make a minimizing simplex step
     while (costs[i]<=0) ++i;
     Vector<Rational> dir=-lin_solve(A.minor(B,All),unit_vector<Rational>(dim,i));
@@ -176,28 +177,27 @@ void reverse_search_graph(perl::Object p, const Vector<Rational>& min_vertex, pe
     Vector<Rational> Av=A*vertex;
     Rational lambda;
     bool ray=true;
-    int in=0;
-    for (int k=0;k<n_facets;++k)
-       if (Ad[k]>0) {
+    Int in = 0;
+    for (Int k = 0; k < n_facets; ++k)
+       if (Ad[k] > 0) {
           if (ray) {
-             ray=false;
-             lambda=(b[k]-Av[k])/Ad[k];
-             in=k;
+             ray = false;
+             lambda = (b[k]-Av[k])/Ad[k];
+             in = k;
           } else {
-             const Rational lambda_neu=(b[k]-Av[k])/Ad[k];
+             const Rational lambda_neu = (b[k]-Av[k])/Ad[k];
              if (lambda_neu<lambda) {
-                in=k;
-                lambda=lambda_neu;
+                in = k;
+                lambda = lambda_neu;
              }
           }
        }
 
-    B[i]=in;
-    j=i;
+    B[i] = in;
+    j = i;
 
-
-    costs=lin_solve(T(A.minor(B,All)),objective);
-    vertex+=lambda*dir;
+    costs = lin_solve(T(A.minor(B,All)),objective);
+    vertex += lambda*dir;
 
     ++j;
   }
@@ -209,7 +209,7 @@ void reverse_search_graph(perl::Object p, const Vector<Rational>& min_vertex, pe
     graph.edge(v_map[i->first],v_map[i->second]);
 
   if (options.exists("objective")) {
-     perl::Object LP=p.add("LP"); 
+     BigObject LP=p.add("LP"); 
      LP.take("DIRECTED_BOUNDED_GRAPH.ADJACENCY") << graph;
      LP.take("MINIMAL_VERTEX") << min_vertex;
      LP.take("MINIMAL_FACE") << scalar2set(0);
@@ -221,7 +221,7 @@ void reverse_search_graph(perl::Object p, const Vector<Rational>& min_vertex, pe
   if (rays.empty()) {
     p.take("BOUNDED")<<true;
     p.take("VERTICES")<<vertices;
-    const Set<int> e;
+    const Set<Int> e;
     p.take("FAR_FACE")<<e;
   }
   else {
@@ -229,7 +229,7 @@ void reverse_search_graph(perl::Object p, const Vector<Rational>& min_vertex, pe
     // TODO: replace with variadic constructor similar to Array
     const ListMatrix<Vector<Rational>> v(rays.size()+vertices.rows(), dim+1, concatenate(rows(vertices),rays).begin());
     p.take("VERTICES")<<v;
-    const Set<int> ff=sequence(n_vertices,n_rays);
+    const Set<Int> ff = sequence(n_vertices,n_rays);
     p.take("FAR_FACE")<<ff;
   }
 Matrix<Rational> empty_lin_space(0,facets.cols());

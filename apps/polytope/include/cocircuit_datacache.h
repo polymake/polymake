@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -139,7 +139,6 @@ public:
    }
 
 protected:
-   
    Matrix<Scalar> V;
    IncidenceMatrix<> VIF;
    group::PermlibGroup group;
@@ -148,7 +147,7 @@ protected:
    SetMapType lex_min_cache;
    GroupMapType stab_cache;
    OrderMapType stab_order_cache;
-   int lc, stc, orderc;
+   Int lc, stc, orderc;
 };
 
 

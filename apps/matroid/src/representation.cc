@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,34 +27,34 @@ namespace polymake { namespace matroid {
 
 namespace {
 
-int get_index(int element, const Array<int>& index)
+Int get_index(Int element, const Array<Int>& index)
 {
-   Array<int>::const_iterator where=std::lower_bound(index.begin(), index.end(), element);
+   auto where = std::lower_bound(index.begin(), index.end(), element);
    return where != index.end() && *where==element ? where - index.begin() : -1;
 }
 
 // Produced a potential matrix for binary representation.
 // Also returns the basis for which the unit matrix was chosen.
-std::pair<Matrix<int>, Set<int>>
-produce_binary_matrix(const int n_elements, const int rank, const Array<Set<int>>& bases)
+std::pair<Matrix<Int>, Set<Int>>
+produce_binary_matrix(const Int n_elements, const Int rank, const Array<Set<Int>>& bases)
 {
-   const Set<int> basis = bases.front();
-   const Array<int> basis_index(basis);
+   const Set<Int> basis = bases.front();
+   const Array<Int> basis_index(basis);
 
-   Matrix<int> bpoints(n_elements, rank);
+   Matrix<Int> bpoints(n_elements, rank);
 
    // Write the unit matrix for the first basis
-   int i=0;
-   for (auto b=entire(basis); !b.at_end(); ++b, ++i) {
+   Int i = 0;
+   for (auto b = entire(basis); !b.at_end(); ++b, ++i) {
       bpoints(*b, i)=1;
    }
 
    // Insert 1's according to basis exchange axiom
-   for (auto it=entire(bases); !it.at_end(); ++it) {
-      const int intersection_size = (basis * (*it)).size();
+   for (auto it = entire(bases); !it.at_end(); ++it) {
+      const Int intersection_size = (basis * (*it)).size();
       if (intersection_size == rank-1) {
-         int temp=(*it-basis).front();
-         int basis_element_index=get_index((basis-*it).front(), basis_index);
+         Int temp = (*it-basis).front();
+         Int basis_element_index = get_index((basis-*it).front(), basis_index);
          bpoints(temp, basis_element_index)=1;
       }
    }
@@ -64,11 +64,11 @@ produce_binary_matrix(const int n_elements, const int rank, const Array<Set<int>
 
 // Computes the bases of a subset of points mod p
 // Minor is assumed to have full (column) rank.
-Set<Set<int>> bases_for_finite_field(const Matrix<int>& points, const Set<int>& minor, int p)
+Set<Set<Int>> bases_for_finite_field(const Matrix<Int>& points, const Set<Int>& minor, Int p)
 {
-   Set<Set<int>> result;
-   for (auto i=entire(all_subsets_of_k(minor, points.cols())); !i.at_end(); ++i) {
-      if (det( points.minor(*i,All)) % p != 0)
+   Set<Set<Int>> result;
+   for (auto i = entire(all_subsets_of_k(minor, points.cols())); !i.at_end(); ++i) {
+      if (det(points.minor(*i, All)) % p != 0)
          result.push_back(*i);  // all_subsets_of_k come in lexicographically ascending order
    }
    return result;
@@ -80,13 +80,13 @@ Set<Set<int>> bases_for_finite_field(const Matrix<int>& points, const Set<int>& 
 // supporting +-1-part is treated as encoding a binary number, which is incremented by 1.
 // However, the first nonzero entry has to remain 1 always and if the row cannot be increased anymore,
 // the row is resetted to contain only 1's in its support and returns false, otherwise true.
-bool increase_ternary_row( Matrix<int> &points, int row)
+bool increase_ternary_row(Matrix<Int>& points, Int row)
 {
-   const Set<int> supp = support(points.row(row));
+   const Set<Int> supp = support(points.row(row));
    if (supp.size() <= 1) return false;
-   int fr = supp.front();
+   Int fr = supp.front();
 
-   for (auto r_it = entire<reversed>(supp); *r_it != fr; r_it++) {
+   for (auto r_it = entire<reversed>(supp); *r_it != fr; ++r_it) {
       points(row, *r_it) *= -1;
       if (points(row, *r_it) < 0) return true;
    }
@@ -98,22 +98,22 @@ bool increase_ternary_row( Matrix<int> &points, int row)
 
 } //end namespace
 
-void binary_representation(perl::Object matroid)
+void binary_representation(BigObject matroid)
 {
-   const Array< Set<int> > bases=matroid.give("BASES");
-   const int r = matroid.give("RANK");
-   const int n = matroid.give("N_ELEMENTS");
+   const Array<Set<Int>> bases = matroid.give("BASES");
+   const Int r = matroid.give("RANK");
+   const Int n = matroid.give("N_ELEMENTS");
 
    if (r == 0) {
       matroid.take("BINARY") << 1;
-      matroid.take("BINARY_VECTORS") << Matrix<int>(n,1);
+      matroid.take("BINARY_VECTORS") << Matrix<Int>(n, 1);
       return;
    }
 
-   const Matrix<int> bpoints = produce_binary_matrix(n, r, bases).first;
+   const Matrix<Int> bpoints = produce_binary_matrix(n, r, bases).first;
 
-   const Set<Set<int>> bpoint_basis_set = bases_for_finite_field(bpoints, sequence(0, bpoints.rows()), 2);
-   if (bpoint_basis_set == Set<Set<int>>(bases)) {
+   const Set<Set<Int>> bpoint_basis_set = bases_for_finite_field(bpoints, sequence(0, bpoints.rows()), 2);
+   if (bpoint_basis_set == Set<Set<Int>>(bases)) {
       matroid.take("BINARY_VECTORS") << bpoints;
       matroid.take("BINARY") << true;
    } else {
@@ -121,36 +121,36 @@ void binary_representation(perl::Object matroid)
    }
 }
 
-void ternary_representation(perl::Object matroid)
+void ternary_representation(BigObject matroid)
 {
-   const Array< Set<int> > bases=matroid.give("BASES");
-   const int r = matroid.give("RANK");
-   const int n = matroid.give("N_ELEMENTS");
+   const Array<Set<Int>> bases = matroid.give("BASES");
+   const Int r = matroid.give("RANK");
+   const Int n = matroid.give("N_ELEMENTS");
 
    if (r == 0) {
       matroid.take("TERNARY") << true;
-      matroid.take("TERNARY_VECTORS") << Matrix<int>(n,1);
+      matroid.take("TERNARY_VECTORS") << Matrix<Int>(n, 1);
       return;
    }
 
    // First we compute the support of the matrix representation.
-   std::pair< Matrix<int>, Set<int> > tpoint_prototype = produce_binary_matrix( n, r, bases);
-   Matrix<int> tpoints = tpoint_prototype.first;
-   const Set<int> unit_basis = tpoint_prototype.second;
-   const Array<int> remaining_elements ( Set<int>(sequence(0,n) - unit_basis));
+   std::pair<Matrix<Int>, Set<Int>> tpoint_prototype = produce_binary_matrix(n, r, bases);
+   Matrix<Int> tpoints = tpoint_prototype.first;
+   const Set<Int>& unit_basis = tpoint_prototype.second;
+   const Array<Int> remaining_elements(sequence(0, n) - unit_basis);
 
-   Map<int,int> label_identity;
-   for (auto li = entire(sequence(0,n)); !li.at_end(); ++li) {
+   Map<Int, Int> label_identity;
+   for (auto li = entire(sequence(0, n)); !li.at_end(); ++li) {
       label_identity[*li] = *li;
    }
 
    // Compute bases of restrictions to unit_basis + remaining_elements[0],...,unit_basis + (all remaining_elements)
-   Map<int, Set< Set<int> > > restriction_bases;
-   Map<int, Set<int> > restricted_ground_sets;
-   restriction_bases[ remaining_elements.size()-1] = Set<Set<int>>{bases};
+   Map<Int, Set<Set<Int>>> restriction_bases;
+   Map<Int, Set<Int>> restricted_ground_sets;
+   restriction_bases[ remaining_elements.size()-1] = Set<Set<Int>>{bases};
    restricted_ground_sets[ remaining_elements.size()-1] = sequence(0,n);
-   Set<int> deletion_set = Set<int>(); 
-   for (int re_index = remaining_elements.size()-1; re_index >= 1; --re_index) {
+   Set<Int> deletion_set;
+   for (Int re_index = remaining_elements.size()-1; re_index >= 1; --re_index) {
       restriction_bases[ re_index-1 ] = minor_bases(Deletion(), restriction_bases[re_index], 
                                                     scalar2set(remaining_elements[re_index]), 
                                                     label_identity);
@@ -159,7 +159,7 @@ void ternary_representation(perl::Object matroid)
    }
 
    // Index of the "remaining_elements" element currently being added
-   int backtrack_index = 0;
+   Int backtrack_index = 0;
    bool need_to_increase = false;
 
    // Backtracking algorithm for iterating all potential presentations.

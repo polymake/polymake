@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,20 +23,20 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
-perl::Object create_delpezzo(const int d, const Scalar& s, const bool pseudo_flag)
+BigObject create_delpezzo(const Int d, const Scalar& s, const bool pseudo_flag)
 {
    if (d < 1)
       throw std::runtime_error("del_pezzo : dimension d >= 1 required");
 
-   if (d > std::numeric_limits<int>::digits-1)
-      throw std::runtime_error("del_pezzo: in this dimension the number of facets exceeds the machine int size ");
+   if (size_t(d) >= sizeof(Int)*8-1)
+      throw std::runtime_error("del_pezzo: in this dimension the number of facets exceeds the machine Int size");
 
    if (s <= zero_value<Scalar>())
       throw std::runtime_error("del_pezzo : scale > 0 required");
 
-   const int n_vertices= (pseudo_flag) ? 2*d+1 : 2*d+2;
+   const Int n_vertices = pseudo_flag ? 2*d+1 : 2*d+2;
 
-   perl::Object p("Polytope", mlist<Scalar>());
+   BigObject p("Polytope", mlist<Scalar>());
    p.set_description() << "del-pezzo-polytope of dimension " << d << endl;
 
    SparseMatrix<Scalar> V((s*unit_matrix<Scalar>(d)) / ((-s)*unit_matrix<Scalar>(d)) / (s*ones_vector<Scalar>(d)));
@@ -55,13 +55,13 @@ perl::Object create_delpezzo(const int d, const Scalar& s, const bool pseudo_fla
 }
 
 template<typename Scalar>
-perl::Object delpezzo(const int d, const Scalar& s)
+BigObject delpezzo(const Int d, const Scalar& s)
 {
    return create_delpezzo(d, s, false);
 }
 
 template<typename Scalar>
-perl::Object pseudo_delpezzo(const int d, const Scalar& s)
+BigObject pseudo_delpezzo(const Int d, const Scalar& s)
 {
    return create_delpezzo(d, s, true);
 }

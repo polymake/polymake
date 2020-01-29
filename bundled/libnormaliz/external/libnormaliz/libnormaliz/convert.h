@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2014  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2019  Winfried Bruns, Bogdan Ichim, Christof Soeger
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -23,43 +23,43 @@
 
 //---------------------------------------------------------------------------
 
-#ifndef CONVERT_H
-#define CONVERT_H
+#ifndef LIBNORMALIZ_CONVERT_H
+#define LIBNORMALIZ_CONVERT_H
 
 //---------------------------------------------------------------------------
 
 //#include <ostream>
-#include <libnormaliz/normaliz_exception.h>
+#include <libnormaliz/general.h>
 #include <libnormaliz/integer.h>
 
 namespace libnormaliz {
 
 // conversion for integers, throws ArithmeticException if conversion fails
-template<typename ToType, typename FromType>
-void convert(ToType& ret, const FromType& val) {
-    if (!try_convert(ret,val)) {
+template <typename ToType, typename FromType>
+inline void convert(ToType& ret, const FromType& val) {
+    if (!try_convert(ret, val)) {
         throw ArithmeticException(val);
     }
 }
 
 // conversion of vectors
-template<typename ToType, typename FromType>
-void convert(vector<ToType>& ret_vect, const vector<FromType>& from_vect){
+template <typename ToType, typename FromType>
+inline void convert(vector<ToType>& ret_vect, const vector<FromType>& from_vect) {
     size_t s = from_vect.size();
     ret_vect.resize(s);
-    for (size_t i=0; i<s; ++i)
+    for (size_t i = 0; i < s; ++i)
         convert(ret_vect[i], from_vect[i]);
 }
 
 // general conversion with return, throws ArithmeticException if conversion fails
-template<typename ToType, typename FromType>
+template <typename ToType, typename FromType>
 ToType convertTo(const FromType& val) {
     ToType copy;
-    convert(copy,val);
+    convert(copy, val);
     return copy;
 }
 
-}  //end namespace
+}  // namespace libnormaliz
 
 //---------------------------------------------------------------------------
 #endif

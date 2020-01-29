@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,13 +30,13 @@ using graph::lattice::BasicDecoration;
 class CompareByRank
 {
 private:
-   const Map<Set<int>,int>& RankMap;
+   const Map<Set<Int>, Int>& RankMap;
 
 public:
-   CompareByRank(const Map<Set<int>, int>& RankMap_arg)
+   CompareByRank(const Map<Set<Int>, Int>& RankMap_arg)
       : RankMap(RankMap_arg) {}
 
-   pm::cmp_value operator() (const Set<int>& a, const Set<int>& b) const
+   pm::cmp_value operator() (const Set<Int>& a, const Set<Int>& b) const
    {
       pm::cmp_value result = operations::cmp()(RankMap[a], RankMap[b]);
       if (result == pm::cmp_eq) result = operations::cmp()(a, b);
@@ -44,27 +44,27 @@ public:
    }
 };
 
-perl::Object matroid_from_cyclic_flats(const Array<Set<int>>& Faces, const Array<int>& Ranks, const int n_elements)
+BigObject matroid_from_cyclic_flats(const Array<Set<Int>>& Faces, const Array<Int>& Ranks, const Int n_elements)
 {
    Lattice<BasicDecoration, Sequential> LF;
 
    if (!Faces.empty()) {
       // sort the sets w.r.t. their ranks
-      Map<Set<int>, int> RankMap;
-      for (int i = 0, n = Faces.size(); i < n; ++i)
+      Map<Set<Int>, Int> RankMap;
+      for (Int i = 0, n = Faces.size(); i < n; ++i)
          RankMap[Faces[i]] = Ranks[i];
-      Set<Set<int>, CompareByRank> sorted_sets(CompareByRank{RankMap});
+      Set<Set<Int>, CompareByRank> sorted_sets(CompareByRank{RankMap});
       for (const auto s : Faces) {
          sorted_sets += s;
       }
 
-      for (auto it=entire(sorted_sets); !(it.at_end()); ++it) {
-         const int rank = RankMap[*it];
+      for (auto it = entire(sorted_sets); !(it.at_end()); ++it) {
+         const Int rank = RankMap[*it];
          LF.add_node(BasicDecoration(*it, rank));
 
          // check in the induced graph of included faces for transitivity relations
-         Set<int> incl_set_indices;
-         int index = 0;
+         Set<Int> incl_set_indices;
+         Int index = 0;
          for (auto sub_it=entire(sorted_sets); sub_it != it && RankMap[*sub_it] < rank ; ++sub_it, ++index)
             if (incl(*sub_it,*it) == -1)
                incl_set_indices += index;
@@ -75,7 +75,7 @@ perl::Object matroid_from_cyclic_flats(const Array<Set<int>>& Faces, const Array
       }
    }
 
-   perl::Object m("Matroid");
+   BigObject m("Matroid");
    m.take("N_ELEMENTS") << n_elements;
    m.take("LATTICE_OF_CYCLIC_FLATS") << LF;
 

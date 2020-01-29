@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,18 +26,20 @@ void PolynomialVarNames::set_names(const Array<std::string>& names)
 {
   if (names.empty()) throw std::runtime_error("PolynomialVarNames - empty name list");
   generated_names.clear();
-  explicit_names=names;
+  explicit_names = names;
 }
 
-const std::string& PolynomialVarNames::operator() (int index, int n_vars) const
+const std::string& PolynomialVarNames::operator() (Int index, Int n_vars) const
 {
-  if (index<0) throw std::runtime_error("PolynomialVarNames - invalid variable index");
+  if (index < 0)
+    throw std::runtime_error("PolynomialVarNames - invalid variable index");
   // if the list of explicit names exactly matches the number of variables, the last name is taken verbatim
-  if (index + (index+1 < n_vars) < explicit_names.size()) return explicit_names[index];
+  if (index + (index+1 < n_vars) < explicit_names.size())
+    return explicit_names[index];
   index -= explicit_names.size()-1;
   if (static_cast<size_t>(index) >= generated_names.size()) {
     generated_names.reserve(index+1);
-    for (int i=generated_names.size(); i<=index; ++i)
+    for (Int i = generated_names.size(); i <= index; ++i)
       generated_names.emplace_back(explicit_names.back()+"_"+std::to_string(i));
   }
   return generated_names[index];

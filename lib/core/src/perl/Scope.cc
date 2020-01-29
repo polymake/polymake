@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -89,7 +89,7 @@ OP* parse_expression_in_parens(pTHX)
    lex_read_space(0);
    if (PL_parser->bufptr == PL_parser->bufend || *PL_parser->bufptr != '(')
       return nullptr;
-   lex_read_to(PL_parser->bufptr + 1);
+   lex_read_to(PL_parser->bufptr+1);
    OP* o = parse_termexpr(0);
    if (!o) return nullptr;
    lex_read_space(0);
@@ -97,7 +97,7 @@ OP* parse_expression_in_parens(pTHX)
       op_free(o);
       return nullptr;
    }
-   lex_read_to(PL_parser->bufptr + 1);
+   lex_read_to(PL_parser->bufptr+1);
    return o;
 }
 
@@ -256,7 +256,7 @@ struct local_incr_handler {
       if (SvIOK(var))
          sv_setiv(var, SvIVX(var) - incr);
       else if (SvNOK(var))
-         sv_setnv(var, SvNVX(var) - incr);
+         sv_setnv(var, SvNVX(var) - NV(incr));
       else
          Perl_croak(aTHX_ "undoing local increment: variable is no more numerical");
    }
@@ -344,12 +344,12 @@ struct local_push_handler : local_push_unshift_handler {
       : local_push_unshift_handler(av_, n_)
    {
       av_extend(av, AvFILLp(av) + n);
-      insert_elems(aTHX_ src, AvARRAY(av) + AvFILLp(av) + 1);
+      insert_elems(aTHX_ src, AvARRAY(av)+AvFILLp(av)+1);
    }
 
    void undo(pTHX) const
    {
-      for (SV **e = AvARRAY(av) + AvFILLp(av), **stop = e - n; e > stop; --e) {
+      for (SV **e = AvARRAY(av) + AvFILLp(av), **stop = e-n; e > stop; --e) {
          SvREFCNT_dec(*e);
          *e = PmEmptyArraySlot;
       }
@@ -362,21 +362,21 @@ struct local_unshift_handler : local_push_unshift_handler {
    local_unshift_handler(pTHX_ AV* av_, SV* const * src, IV n_)
       : local_push_unshift_handler(av_, n_)
    {
-      av_extend(av, AvFILLp(av) + n);
+      av_extend(av, AvFILLp(av)+n);
       SV** dst = AvARRAY(av);
-      Move(dst, dst + n_, AvFILLp(av) + 1, SV*);
+      Move(dst, dst + n_, AvFILLp(av)+1, SV*);
       insert_elems(aTHX_ src, dst);
    }
 
    void undo(pTHX) const
    {
       SV **e, **stop;
-      for (stop = AvARRAY(av) - 1, e = stop + n; e > stop; --e)
+      for (stop = AvARRAY(av)-1, e = stop + n; e > stop; --e)
          SvREFCNT_dec(*e);
       AvFILLp(av) -= n;
       ++stop;
-      Move(stop + n, stop, AvFILLp(av) + 1, SV*);
-      for (e = stop + AvFILLp(av) + 1, stop = e + n; e < stop; ++e)
+      Move(stop + n, stop, AvFILLp(av)+1, SV*);
+      for (e = stop + AvFILLp(av)+1, stop = e+n; e < stop; ++e)
          *e = PmEmptyArraySlot;
    }
 };
@@ -388,7 +388,7 @@ OP* local_push_unshift_op(pTHX)
    AV* av = (AV*)*++MARK;
    IV n = SP - MARK;
    if (n > 0)
-      local_do<std::conditional_t<is_unshift, local_unshift_handler, local_push_handler>>(aTHX_ av, MARK + 1, n);
+      local_do<std::conditional_t<is_unshift, local_unshift_handler, local_push_handler>>(aTHX_ av, MARK+1, n);
    SP = ORIGMARK;
    RETURN;
 }
@@ -531,9 +531,9 @@ OP* local_splice_op(pTHX)
 {
    dSP;  dMARK;  dORIGMARK;
    AV* av = (AV*)*++MARK;
-   if (MARK + 2 < SP)
+   if (MARK+2 < SP)
       DIE(aTHX_ "unsupported local splice with insertion");
-   const IV len = AvFILLp(av) + 1;
+   const IV len = AvFILLp(av)+1;
    IV first, size;
    if (MARK < SP) {
       ++MARK;
@@ -569,7 +569,7 @@ OP* local_splice_op(pTHX)
    if (size != 0) {
       if (GIMME_V == G_ARRAY) {
          EXTEND(SP, size);
-         Copy(AvARRAY(av) + first, SP + 1, size, SV*);
+         Copy(AvARRAY(av) + first, SP+1, size, SV*);
          SP += size;
       }
       local_do<local_splice_handler>(aTHX_ av, first, size);
@@ -615,8 +615,8 @@ OP* local_swap_op(pTHX)
    IV ix2 = POPi;
    IV ix1 = POPi;
    AV* av = (AV*)POPs;
-   if (ix1 < 0) ix1 += AvFILL(av) + 1;
-   if (ix2 < 0) ix2 += AvFILL(av) + 1;
+   if (ix1 < 0) ix1 += AvFILL(av)+1;
+   if (ix2 < 0) ix2 += AvFILL(av)+1;
    if (ix1 > AvFILL(av) || ix2 > AvFILL(av)) DIE(aTHX_ "local swap: index out of range");
    local_do<local_swap_handler>(aTHX_ av, ix1, ix2);
    RETURN;
@@ -722,7 +722,7 @@ bool save_localizations(pTHX_ I32& start, I32& end)
    I32 tmp_save_end = -1;
 
    while (PL_savestack_ix > save_start) {
-      const UV save_code = PL_savestack[PL_savestack_ix - 1].any_uv & SAVE_MASK;
+      const UV save_code = PL_savestack[PL_savestack_ix-1].any_uv & SAVE_MASK;
       int num_words = 0;
       // all kinds of save operations generated for localizing values
       switch (save_code) {
@@ -745,10 +745,10 @@ bool save_localizations(pTHX_ I32& start, I32& end)
          break;
       case SAVEt_DESTRUCTOR_X:
          num_words = 3;
-         if (PL_savestack_ix - 4 > save_start) {
-            const UV next_item = PL_savestack[PL_savestack_ix - 4].any_uv;
+         if (PL_savestack_ix-4 > save_start) {
+            const UV next_item = PL_savestack[PL_savestack_ix-4].any_uv;
             if ((next_item & SAVE_MASK) == SAVEt_ALLOC)
-               num_words += 1 + (next_item >> SAVE_TIGHT_SHIFT);
+               num_words += 1 + int(next_item >> SAVE_TIGHT_SHIFT);
          }
          break;
       }
@@ -758,12 +758,12 @@ bool save_localizations(pTHX_ I32& start, I32& end)
          if (tmp_save_end < 0 && last_kept != save_end) {
             EXTEND_MORTAL(save_end - save_start);
             PL_tmps_ix += save_end - save_start;
-            tmp_save_end = PL_tmps_ix;
+            tmp_save_end = I32(PL_tmps_ix);
             const I32 tmp_save_start = tmp_save_end - (save_end - last_kept);
             Copy(&(PL_savestack[last_kept]), &(PL_tmps_stack[tmp_save_start]), save_end - last_kept, ANY);
             last_kept = tmp_save_start;
          }
-         leave_scope(PL_savestack_ix - 1);
+         leave_scope(PL_savestack_ix-1);
       } else {
          PL_savestack_ix -= num_words;
          last_kept -= num_words;
@@ -791,7 +791,7 @@ int undo_saved_locals(pTHX_ SV* sv, MAGIC* mg)
 {
    const local_magic_t* lmg = static_cast<local_magic_t*>(mg);
    const I32 save_start = PL_savestack_ix;
-   const I32 num_saved = lmg->mg_len;
+   const I32 num_saved = I32(lmg->mg_len);
    SSGROW(num_saved);
    Copy(&(lmg->locals[0]), &(PL_savestack[save_start]), num_saved, ANY);
    PL_savestack_ix += num_saved;
@@ -814,7 +814,7 @@ OP* leave_local_block_op(pTHX)
       } else if (SvOK(sv) || SvTYPE(sv) != SVt_PVMG) {
          DIE(aTHX_ "local with: wrong storage value");
       }
-      const size_t mgsz = sizeof(local_magic_t) + (num_saved - 1) * sizeof(ANY);
+      const size_t mgsz = sizeof(local_magic_t)+(num_saved-1)*sizeof(ANY);
       char* mg_raw;
       Newxz(mg_raw, mgsz, char);
       local_magic_t* lmg = reinterpret_cast<local_magic_t*>(mg_raw);
@@ -972,7 +972,7 @@ OP* local_close_op(pTHX)
 
 OP* local_open_op(pTHX)
 {
-   SV* sv = PL_stack_base[TOPMARK + 1];
+   SV* sv = PL_stack_base[TOPMARK+1];
    if (SvTYPE(sv) != SVt_PVGV)
       DIE(aTHX_ "not an IO handle in local open");
    local_do<local_saveio_handler>(aTHX_ (GV*)sv);

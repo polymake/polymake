@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,16 +22,16 @@
 
 namespace polymake { namespace topaz {
   
-perl::Object sphere(const int d)
+BigObject sphere(const Int d)
 {
-   perl::Object p("GeometricSimplicialComplex<Rational>");
+   BigObject p("GeometricSimplicialComplex<Rational>");
    p.set_description() << "The " << d << "-dimensional sphere.\nRealized as the boundary of a "
                        << d+1 << "-simplex.\n";
 
-   const Array< Set<int> > F(d+2, all_subsets_less_1(sequence(0,d+2)).begin());   
-   Matrix<int> Geom(d+2,d+1);
-   for (int i=0; i<d+1; ++i)
-      Geom(i+1,i) = 1;
+   const Array<Set<Int>> F(d+2, all_subsets_less_1(sequence(0,d+2)).begin());   
+   Matrix<Int> Geom(d+2, d+1);
+   for (Int i = 0; i < d+1; ++i)
+      Geom(i+1, i) = 1;
    
    p.take("FACETS") << F;
    p.take("DIM") << d;

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -24,10 +24,9 @@ package Polymake::Test::Stream;
 
 use Polymake::Struct (
    [ '@ISA' => 'Case' ],
-   [ new => '$@' ],
    '$buffer',
    '$handle',
-   [ '$filters' => '@' ],
+   [ '$filters' => '#%', default => 'undef' ],
 );
 
 sub new {
@@ -38,7 +37,7 @@ sub new {
 }
 
 sub execute {
-   my ($self)=@_;
+   my ($self) = @_;
    close $self->handle;
    my (@expected, @gotten);
    local $_;
@@ -47,30 +46,34 @@ sub execute {
      or die "can't read $expected_file: $!\n";
 
    while (<$expected>) {
-      foreach my $filter (@{$self->filters}) {
-         &$filter;
-         defined($_) or last;
+      if (defined(my $filters = $self->filters)) {
+         foreach my $filter (@$filters) {
+            &$filter;
+            defined($_) or last;
+         }
       }
-      if (defined $_) {
+      if (defined($_)) {
          push @expected, Scalar::Util::dualvar($., $_);
       }
    }
 
    foreach (split /(?<=\n)/, $self->buffer) {
-      foreach my $filter (@{$self->filters}) {
-         &$filter;
-         defined($_) or last;
+      if (defined(my $filters = $self->filters)) {
+         foreach my $filter (@$filters) {
+            &$filter;
+            defined($_) or last;
+         }
       }
-      if (defined $_) {
+      if (defined($_)) {
          push @gotten, $_;
       }
    }
 
    my $lineno;
-   my $gotten_lineno=-1;
-   $self->fail_log="";
+   my $gotten_lineno = -1;
+   $self->fail_log = "";
    foreach my $expected_line (@expected) {
-      $lineno=$expected_line+0;
+      $lineno = $expected_line+0;
       if (++$gotten_lineno > $#gotten) {
          $self->fail_log .= "line $lineno:\n".
                             "expected: $expected_line\n".

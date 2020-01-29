@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -79,7 +79,7 @@ LrsInstance::Initializer::~Initializer()
 
 class lrs_mp_vector_output {
 public:
-   explicit lrs_mp_vector_output(int n)
+   explicit lrs_mp_vector_output(Int n)
       : d(n-1)
       , ptr(lrs_alloc_mp_vector(d))
    {
@@ -111,11 +111,11 @@ public:
       {
          if (cur==leading) {
             // looking for the leading non-zero
-            if (int sgn=mpz_sgn(*leading)) {
+            if (int sgn = mpz_sgn(*leading)) {
                if (!oriented)
                   // all following elements will be divided through the leading non-zero
-                  sgn=1;
-               else if (sgn<0)
+                  sgn = 1;
+               else if (sgn < 0)
                   // all following elements will be divided through abs(leading non-zero)
                   mpz_neg(*leading, *leading);
                ++cur;
@@ -153,14 +153,14 @@ public:
    }
 
 private:
-   int d;
+   Int d;
    lrs_mp_vector ptr;
 };
 
 // lrs stores numerators and denominators in separate integer vectors
 class lrs_mp_vector_input {
 public:
-   explicit lrs_mp_vector_input(int n_arg)
+   explicit lrs_mp_vector_input(Int n_arg)
       : n(n_arg)
       , nums(new mpz_t[n])
       , dens(new mpz_t[n]) {}
@@ -177,21 +177,21 @@ public:
    template <typename Iterator>
    void consume(Iterator&& src)
    {
-      for (int i=0; i<n; ++i, ++src) {
+      for (Int i = 0; i < n; ++i, ++src) {
          *nums[i] = *mpq_numref(src->get_rep());
          *dens[i] = *mpq_denref(src->get_rep());
       }
    }
 
 private:
-   int n;
+   Int n;
    lrs_mp_vector nums;
    lrs_mp_vector dens;
 };
 
 class lrs_mp_matrix_output {
 public:
-   lrs_mp_matrix_output(lrs_mp_matrix A, int m_arg, int n_arg)
+   lrs_mp_matrix_output(lrs_mp_matrix A, Int m_arg, Int n_arg)
       : ptr(A)
       , m(m_arg)
       , n(n_arg) {}
@@ -231,8 +231,8 @@ public:
 
    private:
       lrs_mp_vector* vec;
-      int i;
-      const int n;
+      Int i;
+      const Int n;
    };
 
    Matrix<Rational> make_Matrix()
@@ -242,7 +242,7 @@ public:
 
 private:
    lrs_mp_matrix ptr;
-   int m, n;
+   Int m, n;
 };
 
 struct dictionary {
@@ -280,13 +280,13 @@ struct dictionary {
 
    // parameter ge: primal case: true for vertex, false for linearity
    //                 dual case: true for inequality, false for equation
-   void set_matrix(const Matrix<Rational>& A, int start_row=0, bool ge=true)
+   void set_matrix(const Matrix<Rational>& A, Int start_row = 0, bool ge = true)
    {
       lrs_mp_vector_input vec(A.cols());
       auto x=concat_rows(A).begin();
 
       // lrs enumerates rows starting with 1
-      for (int r=start_row+1, r_end=r+A.rows(); r != r_end; ++r) {
+      for (Int r = start_row+1, r_end = r+A.rows(); r != r_end; ++r) {
          vec.consume(x);
          lrs_set_row_mp(P, Q, r, vec.get_nums(), vec.get_dens(), ge);
       }
@@ -294,7 +294,7 @@ struct dictionary {
 
    void set_obj_vector(const Vector<Rational>& V, bool maximize)
    {
-      const int n=V.size();
+      const Int n = V.size();
       if (n != Q->n)
          throw std::runtime_error("lrs_interface - inequalities/objective dimension mismatch");
       lrs_mp_vector_input vec(n);
@@ -310,7 +310,7 @@ struct dictionary {
       if (dual && Inequalities.cols() == 0 && Equations.cols() == 0)
          throw std::runtime_error("lrs_interface - cannot handle ambient dimension 0 in dual mode");
       // initialize static lrs data
-      Lin=0;
+      Lin = nullptr;
 
       if (verbose) {
          save_lrs_ofp = lrs_ofp;
@@ -361,7 +361,7 @@ struct dictionary {
 
       lrs_mp_vector_output output(Q->n);
       do {
-         for (int col=0; col <= P->d; ++col)
+         for (Int col = 0; col <= P->d; ++col)
             if (lrs_getsolution(P, Q, output, col))
                facets /= output.make_Vector(true);
       } while (lrs_getnextbasis (&P, Q, 0));
@@ -375,7 +375,7 @@ struct dictionary {
 
       lrs_mp_vector_output output(Q->n);
       do {
-         for (int col=0; col <= P->d; ++col)
+         for (Int col = 0; col <= P->d; ++col)
             if (lrs_getsolution(P, Q, output, col))
                ++facets;
       } while (lrs_getnextbasis (&P, Q, 0));
@@ -391,7 +391,7 @@ struct dictionary {
 
       lrs_mp_vector_output output(Q->n);
       do {
-         for (int col=0; col <= P->d; ++col) {
+         for (Int col = 0; col <= P->d; ++col) {
             if (lrs_getsolution(P, Q, output, col)) {
                if (!mpz_sgn(output.front())) {   // a ray starts with 0
                   rays.insert(output.make_Vector(true));
@@ -412,7 +412,7 @@ struct dictionary {
 
    Matrix<Rational> get_linearities()
    {
-      const int m=Q->nredundcol, n=Q->n;
+      const Int m = Q->nredundcol, n = Q->n;
       lrs_mp_matrix_output output(Lin, m, n);
       Lin=nullptr;
       return output.make_Matrix();
@@ -425,7 +425,7 @@ struct dictionary {
 
       lrs_mp_vector_output output(Q->n);
       do {
-         for (int col=0; col <= P->d; ++col)
+         for (Int col = 0; col <= P->d; ++col)
             if (lrs_getsolution(P, Q, output, col)) {
                if (mpz_sgn(output.front()))
                   ++vertices.second;
@@ -445,7 +445,7 @@ struct dictionary {
 
       lrs_mp_vector_output output(Q->n);
       do {
-         for (int col=0; col <= P->d; ++col)
+         for (Int col = 0; col <= P->d; ++col)
             if (lrs_getsolution(P, Q, output, col)) {
                if (mpz_sgn(output.front()))
                   ++vertices;
@@ -461,7 +461,7 @@ struct dictionary {
 
       lrs_mp_vector_output output(Q->n);
       do {
-         for (int col=0; col <= P->d; ++col)
+         for (Int col = 0; col <= P->d; ++col)
             if (lrs_getsolution(P, Q, output, col))
                facets.insert(output.make_Vector(true));
       } while (lrs_getnextbasis (&P, Q, 0));
@@ -550,7 +550,7 @@ ConvexHullSolver::find_irredundant_representation(const Matrix<Rational>& Points
    const Matrix<Rational> AH=D.get_linearities();
 
    Bitset V(Points.rows());
-   for (int index=D.Q->lastdv+1, end=D.P->m_A+D.P->d; index<=end; ++index)
+   for (Int index = D.Q->lastdv+1, end = D.P->m_A+D.P->d; index <= end; ++index)
       if ( !checkindex(D.P,D.Q,index) )
          V += D.Q->inequality[index - D.Q->lastdv]-1;
 
@@ -569,7 +569,7 @@ bool LP_Solver::check_feasibility(const Matrix<Rational>& Inequalities, const Ma
 
    if (lrs_getfirstbasis(&D.P, D.Q, &D.Lin, 1)) {
       lrs_mp_vector_output output(D.Q->n);
-      for (int col=0; col <= D.P->d; ++col)
+      for (Int col = 0; col <= D.P->d; ++col)
          if (lrs_getsolution(D.P, D.Q, output, col)) break;
       ValidPoint = output.make_Vector(false, false);
       return true;
@@ -606,7 +606,7 @@ LP_Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& E
 
          if (result.status == LP_status::valid) {
             lrs_mp_vector_output output(D.Q->n);
-            for (int col=0; col <= D.P->d; ++col)
+            for (Int col = 0; col <= D.P->d; ++col)
                if (lrs_getsolution(D.P, D.Q, output, col)) break;
 
             result.objective_value.set(std::move(D.P->objnum), std::move(D.P->objden));

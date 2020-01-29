@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -96,20 +96,14 @@ sub find_program {
 
 ###############################################################################################
 sub program_completion : method {
-   my ($Shell)=@_;
-   my $line=substr($Shell->term->Attribs->{line_buffer}, 0, $Shell->term->Attribs->{point});
-   if ($line =~ m{^[/~]}) {
-      $Shell->try_filename_completion("", $line);
-      if ($#{$Shell->completion_proposals} < 0 && substr($line,0,1) eq "/") {
-         # no local matches, try the host file system
-         $Shell->completion_proposals=[ try_host_agent("complete $line") =~ /(\S+)/g ];
-      }
-   } elsif ($line =~ /\S/) {
-      $Shell->completion_proposals=[ sorted_uniq(sort( map { /$filename_re/ }
-        (grep { -x && -f _ } map { glob "$_/$line*" } split /:/, $ENV{PATH}),
-        (try_host_agent("complete $line") =~ /(\S+)/g) )) ];
+   my ($Shell) = @_;
+   my $line = substr($Shell->term->Attribs->{line_buffer}, 0, $Shell->term->Attribs->{point});
+   my @proposals = Core::Shell::Completion::try_command_completion($Shell, $line);
+   if ($line =~ m{^/} ? !@proposals : $line =~ m{^[^~\s]}) {
+      push @proposals, try_host_agent("complete $line") =~ /(\S+)/g;
    }
-   $Shell->completion_offset=length($line);
+   $Shell->completion_proposals = [ sorted_uniq(sort @proposals) ];
+   $Shell->completion_offset = length($line);
 }
 ###############################################################################################
 sub enter_program {
@@ -173,10 +167,10 @@ sub load_config_vars {
 # Read the configuration variables for the current extension and its prerequisites,
 # return them by reference in a hash map.
 sub load_extension_config_vars {
-   return unless defined $Core::Application::extension;
+   return unless defined $Core::Extension::loading;
 
    my %result;
-   foreach my $ext ($Core::Application::extension, @{$Core::Application::extension->requires}) {
+   foreach my $ext ($Core::Extension::loading, @{$Core::Extension::loading->requires}) {
       my ($prefix, $conf_file);
       if ($ext->is_bundled) {
          $prefix="bundled\\.".$ext->short_name."\\.";

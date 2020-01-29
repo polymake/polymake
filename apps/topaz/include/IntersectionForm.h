@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,9 +20,9 @@
 namespace polymake { namespace topaz {
 
 struct IntersectionForm : GenericStruct<IntersectionForm> {
-   DeclSTRUCT( DeclFIELD(parity,int)
-               DeclFIELD(positive,int)
-               DeclFIELD(negative,int) );
+   DeclSTRUCT( DeclFIELD(parity, Int)
+               DeclFIELD(positive, Int)
+               DeclFIELD(negative, Int) );
 };
 
 } }

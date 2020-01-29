@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -16,7 +16,7 @@
 */
 
 #ifndef POLYMAKE_CORE_WRAPPERS_QuadraticExtension_H
-#define POLYMAKE_CORE_WRAPPERS_QuadraticExtension_H 
+#define POLYMAKE_CORE_WRAPPERS_QuadraticExtension_H
 
 #include_next "polymake/QuadraticExtension.h"
 #include "polymake/client.h"

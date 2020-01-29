@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,7 +31,7 @@ struct MILP_Solution {
    LP_status status;
    Scalar objective_value;
    Vector<Scalar> solution;
-   int lineality_dim = -1;
+   Int lineality_dim = -1;
 };
 
 template <typename Scalar>
@@ -40,7 +40,7 @@ public:
    virtual ~MILP_Solver() {}
 
    virtual MILP_Solution<Scalar> solve(const Matrix<Scalar>& inequalities, const Matrix<Scalar>& equations,
-                                     const Vector<Scalar>& objective, const Set<int>& integerVariables, bool maximize) const = 0;
+                                     const Vector<Scalar>& objective, const Set<Int>& integerVariables, bool maximize) const = 0;
 
 };
 
@@ -57,7 +57,7 @@ const MILP_Solver<Scalar>& get_MILP_solver()
 // convenience wrappers
 template <typename Scalar, typename Matrix1, typename Matrix2, typename Vector3>
 MILP_Solution<Scalar> solve_MILP(const GenericMatrix<Matrix1, Scalar>& inequalities, const GenericMatrix<Matrix2, Scalar>& equations,
-                             const GenericVector<Vector3, Scalar>& objective, const Set<int>& integerVariables, bool maximize)
+                             const GenericVector<Vector3, Scalar>& objective, const Set<Int>& integerVariables, bool maximize)
 {
    const MILP_Solver<Scalar>& solver = get_MILP_solver<Scalar>();
    return solver.solve(convert_to_persistent_dense(inequalities.top()),
@@ -69,9 +69,9 @@ MILP_Solution<Scalar> solve_MILP(const GenericMatrix<Matrix1, Scalar>& inequalit
 
 template <typename Scalar, typename Matrix1, typename Vector3>
 MILP_Solution<Scalar> solve_MILP(const GenericMatrix<Matrix1, Scalar>& inequalities,
-                             const GenericVector<Vector3, Scalar>& objective, const Set<int>& integerVariables, bool maximize)
+                             const GenericVector<Vector3, Scalar>& objective, const Set<Int>& integerVariables, bool maximize)
 {
-   return solve_MILP(inequalities, Matrix<Scalar>(), objective, maximize);
+   return solve_MILP(inequalities, Matrix<Scalar>(), objective, integerVariables, maximize);
 }
 
 

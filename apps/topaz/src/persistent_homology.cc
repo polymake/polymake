@@ -21,9 +21,9 @@ class PersistentHomology {
 
 private:
   const Filtration<Matrix_type>& F;
-  int dim;
+  Int dim;
   std::vector<bool> marked;
-  Array<std::pair<int, Chain>> T;
+  Array<std::pair<Int, Chain>> T;
 
 public:
   PersistentHomology(const Filtration<Matrix_type>& F_in)
@@ -35,7 +35,7 @@ public:
     // zero as first pair value means empty. that's ok, as the zeroth filtration entry is always a point and thus has empty bd and does not get an entry in T.
   }
 
-  Chain remove_pivot_rows(int j)
+  Chain remove_pivot_rows(Int j)
   {
     Chain d = F.bd(j);
 
@@ -45,7 +45,7 @@ public:
     }
 
     while (!d.empty()) {
-      int i = indices(d).back(); //maximal index
+      Int i = indices(d).back(); //maximal index
       if (!T[i].first) break;
       Chain t = T[i].second;
       Coeff q = t[i];
@@ -56,31 +56,31 @@ public:
   }
 
 public:
-  Array<std::list<std::pair<int, int>>> compute_intervals()
+  Array<std::list<std::pair<Int, Int>>> compute_intervals()
   {
-    Array<std::list<std::pair<int,int>>> L(dim+1);
+    Array<std::list<std::pair<Int, Int>>> L(dim+1);
 
     for (auto c = F.get_iter(); !c.at_end(); ++c) {
-      int j = c.index();
+      Int j = c.index();
       Chain d = remove_pivot_rows(j);
       if (d.empty()) {
         marked[j] = true;
       } else {
-        int i = indices(d).back(); // maximal index
-        int k = F[i].dim;
+        Int i = indices(d).back(); // maximal index
+        Int k = F[i].dim;
         T[i].first = j;
         T[i].second = d;
-        int a = F[i].deg;
-        int b = (*c).deg;
-        if (a<b) //skip empty intervals
-          L[k].push_back(std::pair<int,int>(a,b));
+        Int a = F[i].deg;
+        Int b = (*c).deg;
+        if (a < b) //skip empty intervals
+          L[k].emplace_back(a, b);
       }
     }
 
     for (auto c = F.get_iter(); !c.at_end(); ++c) {
-      int j = c.index();
+      Int j = c.index();
       if (marked[j] && !T[j].first) {
-        L[(*c).dim].push_back(std::pair<int,int>((*c).deg,-1));
+        L[(*c).dim].emplace_back(c->deg, -1);
       }
     }
 
@@ -89,7 +89,7 @@ public:
 };
 
 template<typename MatrixType>
-std::enable_if_t<pm::is_field<typename MatrixType::value_type>::value, Array<std::list<std::pair<int, int>>> > //for field coefficients
+std::enable_if_t<pm::is_field<typename MatrixType::value_type>::value, Array<std::list<std::pair<Int, Int>>> > //for field coefficients
 persistent_homology(const Filtration<MatrixType>& F)
 {
   PersistentHomology<MatrixType> P(F);
@@ -116,13 +116,13 @@ std::enable_if_t< std::numeric_limits<typename MatrixType::value_type>::is_integ
                   std::pair<SparseMatrix<typename MatrixType::value_type>,
                             std::list< std::pair<typename MatrixType::value_type, SparseMatrix<typename MatrixType::value_type> > > > >
 //less verbose: pair< SparseMatrix<Coeff>, list<pair< Coeff, SparseMatrix<Coeff>>>>
-persistent_homology(Filtration<MatrixType> F, int i, int p, int k)
+persistent_homology(Filtration<MatrixType> F, Int i, Int p, Int k)
 {
   using Coeff = typename MatrixType::value_type;
   using Generators = SparseMatrix<Coeff>;    // the _rows_ of this matrix represent a generating set
   using Torsion = std::list<std::pair<Coeff, Generators>>;  //torsion coefficient and generating set of the corresponding torsion module
 
-  Set<int> M_frame, M_frame_bd;
+  Set<Int> M_frame, M_frame_bd;
   const MatrixType M = F.boundary_matrix_with_frame_sets(k, i, M_frame, M_frame_bd);
 
   if (!M.rows()) return std::pair<Generators, Torsion>(); //Z empty.
@@ -135,15 +135,15 @@ persistent_homology(Filtration<MatrixType> F, int i, int p, int k)
 
   if (!Z.rows()) return std::pair<Generators, Torsion>(); //Z empty
 
-  Set<int> M2_frame, simpl_p;
+  Set<Int> M2_frame, simpl_p;
   const MatrixType M2 = F.boundary_matrix_with_frame_sets(k+1, i+p, M2_frame, simpl_p);
 
-  Set<int> frame = simpl_p - M_frame; //indices of k-simplices present int frame i+p, but not yet in frame i
+  Set<Int> frame = simpl_p - M_frame; //indices of k-simplices present Int frame i+p, but not yet in frame i
 
   // embedding: insert zero cols for cells missing in Z, i.e. not yet there in frame i.
   ListMatrix<SparseVector<Coeff>> ZZlist(0, Z.cols());
-  int j=0;
-  int maxindex = simpl_p.back();
+  Int j = 0;
+  Int maxindex = simpl_p.back();
   for (auto c = entire(cols(Z)); maxindex>=j; ++j) {
     if (frame.contains(j)) {
       ZZlist /= zero_vector<Coeff>(Z.rows());  //cell only present in B
@@ -169,16 +169,16 @@ persistent_homology(Filtration<MatrixType> F, int i, int p, int k)
   // find a basis for torsional part: rows of left companion corresponding to non-zero non-one diagonal entries
   Generators R = SNF4.right_companion * ZZ;
   Torsion tor;
-  int r = SNF4.rank;
-  for (auto t=entire<reversed>(SNF4.torsion); !t.at_end(); ++t) {
-    const int mult = t->second;
+  Int r = SNF4.rank;
+  for (auto t = entire<reversed>(SNF4.torsion); !t.at_end(); ++t) {
+    const Int mult = t->second;
     tor.push_front(std::pair<Coeff, Generators>{ t->first, R.minor(sequence(r-mult, mult),All) });
     r -= mult;
   }
 
   // basis for the non-torsional part...
   Generators free;
-  int prank = Z.rows() - SNF4.rank;
+  Int prank = Z.rows() - SNF4.rank;
   if (prank>0) free = R.minor(sequence(SNF4.rank,prank),All);
 
   return std::pair<Generators, Torsion>(free, tor);

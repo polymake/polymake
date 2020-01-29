@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -72,6 +72,21 @@ property RELATIVE_VOLUME : Map<Rational, Rational>;
 rule RELATIVE_VOLUME : SQUARED_RELATIVE_VOLUMES {
     $this->RELATIVE_VOLUME = sum_of_square_roots_naive($this->SQUARED_RELATIVE_VOLUMES);
 }
+
+# @category Geometry
+# The (d-1)-dimensional Euclidean volumes of the facets of an d-dimensional rational polytope emedded in R^d.
+# Each entry in the returned Array is the volume of one facet of the polytope, 
+# where the facets are indexed as in [[FACETS|FACETS]].
+# @example The 2-dimensional cross-polytope is a rational polytope whose edges (facets) all have lengths sqrt(2).
+# > print cross(2)->FACET_VOLUMES;
+# | 0+1r2 0+1r2 0+1r2 0+1r2 
+property FACET_VOLUMES : Array<QuadraticExtension>;
+
+rule FACET_VOLUMES : VERTICES, VERTICES_IN_FACETS, FACETS {
+  $this->FACET_VOLUMES = facet_areas($this->VERTICES, $this->VERTICES_IN_FACETS, $this->FACETS) 
+}
+precondition : FULL_DIM;
+precondition : BOUNDED;
 
 }
 

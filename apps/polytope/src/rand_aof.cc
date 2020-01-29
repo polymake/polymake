@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,15 +26,15 @@
 
 namespace polymake { namespace polytope {
 
-Vector<Rational> rand_aof(perl::Object p, int start, perl::OptionSet options)
+Vector<Rational> rand_aof(BigObject p, Int start, OptionSet options)
 {
    const bool simple=p.give("SIMPLE");
    if (!simple)
       throw std::runtime_error("polytope is not simple");
 
    const IncidenceMatrix<> Boundary=p.give("VERTICES_IN_FACETS");
-   const int n=Boundary.cols(); // number of facets of the complex = number of vertices of the polytope
-   const int d=Boundary.col(0).size()-1; // dimension of the boundary complex
+   const Int n = Boundary.cols(); // number of facets of the complex = number of vertices of the polytope
+   const Int d = Boundary.col(0).size()-1; // dimension of the boundary complex
 
    const RandomSeed seed(options["seed"]);
    UniformlyRandomRanged<long> random(n, seed);
@@ -48,40 +48,40 @@ Vector<Rational> rand_aof(perl::Object p, int start, perl::OptionSet options)
    }
 
    // abstract objective function with minimum at start
-   typedef std::list<int> vertex_list;
+   typedef std::list<Int> vertex_list;
    vertex_list AOF;
    AOF.push_back(start);
 
    // facets of the complex/vertices of the polytope not considered yet
-   Set<int> available(sequence(0,start)+sequence(start+1,n-start-1));
+   Set<Int> available(sequence(0,start)+sequence(start+1,n-start-1));
 
    // union of all the facets shelled so far; i.e. a ball
-   Set<int> ball(Boundary.col(start));
+   Set<Int> ball(Boundary.col(start));
 
-   std::vector<int> candidates;
+   std::vector<Int> candidates;
    candidates.reserve(n);
    while (available.size()>1) {
       // determine which of the facets could continue the shelling
-      for (auto it=entire(available); !it.at_end(); ++it) {
-         const Set<int> intersection_with_previous(Boundary.col(*it) * ball);
+      for (auto it = entire(available); !it.at_end(); ++it) {
+         const Set<Int> intersection_with_previous(Boundary.col(*it) * ball);
          switch (intersection_with_previous.size()-d) {
          case 0: // must be contained in a unique facet
-            for (auto v=entire(AOF); !v.at_end(); ++v)
-               if (incl(intersection_with_previous, Boundary.col(*v))<=0) { // contained in this facet
+            for (auto v = entire(AOF); !v.at_end(); ++v)
+               if (incl(intersection_with_previous, Boundary.col(*v)) <= 0) { // contained in this facet
                   candidates.push_back(*it);
                   break;
                }
             break;
          case 1: {
             FacetList intersection_as_a_complex(n);
-            for (auto v=entire(AOF); !v.at_end(); ++v)
+            for (auto v = entire(AOF); !v.at_end(); ++v)
                intersection_as_a_complex.replaceMax(Boundary.col(*it) * Boundary.col(*v));
             if (intersection_as_a_complex.size()>d)
                break;
-            bool pure=true;
-            for (auto s=entire(intersection_as_a_complex); !s.at_end(); ++s)
-               if (s->size()!=d) {
-                  pure=false;
+            bool pure = true;
+            for (auto s = entire(intersection_as_a_complex); !s.at_end(); ++s)
+               if (s->size() != d) {
+                  pure = false;
                   break;
                }
             if (pure)
@@ -96,8 +96,8 @@ Vector<Rational> rand_aof(perl::Object p, int start, perl::OptionSet options)
          break;
 
       // choose one at random
-      random.upper_limit()=candidates.size();
-      const int this_one=candidates[random.get()];
+      random.upper_limit() = candidates.size();
+      const Int this_one = candidates[random.get()];
       candidates.clear();
       AOF.push_back(this_one);
       ball += Boundary.col(this_one);
@@ -112,9 +112,9 @@ Vector<Rational> rand_aof(perl::Object p, int start, perl::OptionSet options)
 
    AOF.push_back(available.front());
    Vector<Rational> AOF_Vec(n);
-   int cnt=0;
-   for (auto x=entire(AOF); !x.at_end(); ++x)
-      AOF_Vec[*x]=cnt++;
+   Int cnt = 0;
+   for (auto x = entire(AOF); !x.at_end(); ++x)
+      AOF_Vec[*x] = cnt++;
    return AOF_Vec;
 }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,14 +26,14 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
-perl::Object vertex_figure(perl::Object p_in, int v_cut_off, perl::OptionSet options)
+BigObject vertex_figure(BigObject p_in, Int v_cut_off, OptionSet options)
 {
    if (options.exists("cutoff") && options.exists("no_coordinates"))
        throw std::runtime_error("vertex_figure: cannot specify cutoff and no_coordinates options simultaneously");
 
    const IncidenceMatrix<> VIF=p_in.give("VERTICES_IN_FACETS");
    const Graph<> G=p_in.give("GRAPH.ADJACENCY");
-   const int n_vertices=VIF.cols();
+   const Int n_vertices = VIF.cols();
 
    if (v_cut_off < 0 || v_cut_off >= n_vertices) {
       throw std::runtime_error("vertex_figure: vertex number out of range");
@@ -41,14 +41,14 @@ perl::Object vertex_figure(perl::Object p_in, int v_cut_off, perl::OptionSet opt
 
    IncidenceMatrix<> VIF_out=VIF.minor(VIF.col(v_cut_off), G.adjacent_nodes(v_cut_off));
 
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "vertex figure of " << p_in.name() << " at vertex " << v_cut_off << endl;
 
    p_out.take("VERTICES_IN_FACETS") << VIF_out;
 
    if (options["no_coordinates"]) {
       if (p_in.exists("COMBINATORIAL_DIM")) {
-         const int dim=p_in.give("COMBINATORIAL_DIM");
+         const Int dim = p_in.give("COMBINATORIAL_DIM");
          p_out.take("COMBINATORIAL_DIM") << dim-1;
       }
    } else {

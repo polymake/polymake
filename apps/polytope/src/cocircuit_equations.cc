@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,13 +21,13 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar, typename SetType>
-ListMatrix<SparseVector<int> > 
-cocircuit_equations(int d, 
+ListMatrix<SparseVector<Int> > 
+cocircuit_equations(Int d, 
                     const Matrix<Scalar>& points, 
                     const IncidenceMatrix<>& VIF, 
                     const Array<SetType>& interior_ridge_simplices, 
                     const Array<SetType>& interior_simplices, 
-                    perl::OptionSet options)
+                    OptionSet options)
 {
    return cocircuit_equations_impl(d, points, VIF, interior_ridge_simplices, interior_simplices, options);
 }
@@ -36,13 +36,13 @@ FunctionTemplate4perl("cocircuit_equations<Scalar, SetType>($ Matrix<Scalar> Inc
 
 
 template<typename Scalar, typename SetType>
-SparseMatrix<int> 
-cocircuit_equations(perl::Object P,
+SparseMatrix<Int> 
+cocircuit_equations(BigObject P,
                     const Array<SetType>& interior_ridge_simplices, 
                     const Array<SetType>& interior_simplices, 
-                    perl::OptionSet options)
+                    OptionSet options)
 {
-   const int d = P.give("COMBINATORIAL_DIM");
+   const Int d = P.give("COMBINATORIAL_DIM");
    const Matrix<Scalar> points = P.give("RAYS");
    const IncidenceMatrix<> VIF = P.give("RAYS_IN_FACETS");
    return cocircuit_equations_impl(d, points, VIF, interior_ridge_simplices, interior_simplices, options);
@@ -55,7 +55,7 @@ UserFunctionTemplate4perl("# @category Combinatorics"
                           "# @param Cone C"
                           "# @param Array<Set> interior_ridge_simplices interior codimension 1 simplices"
                           "# @param Array<Set> interior_simplices interior simplices of maximal dimension"
-                          "# @option String filename where to write the output (default empty)"
+                          "# @option [complete file] String filename where to write the output (default empty)"
                           "# @option Bool reduce_rows whether to perform row reduction (default 1)"
                           "# @option Int log_frequency how often to print log messages"
                           "# @return SparseMatrix<Int>",
@@ -63,7 +63,7 @@ UserFunctionTemplate4perl("# @category Combinatorics"
 
 template<typename Scalar, typename SetType>
 auto
-cocircuit_equation_of_ridge(perl::Object P,
+cocircuit_equation_of_ridge(BigObject P,
                             const SetType& interior_ridge)
 {
    const Matrix<Scalar> points = P.give("RAYS");
@@ -80,13 +80,13 @@ UserFunctionTemplate4perl("# @category Combinatorics"
                           "cocircuit_equation_of_ridge<Scalar, SetType>(Polytope<Scalar> SetType)");
 
 template<typename Scalar, typename SetType>
-ListMatrix<SparseVector<int> >
-foldable_cocircuit_equations(int d,
+ListMatrix<SparseVector<Int>>
+foldable_cocircuit_equations(Int d,
                              const Matrix<Scalar>& points,
                              const IncidenceMatrix<>& VIF,
                              const Array<SetType>& interior_ridges, // FIXME: Map
                              const Array<SetType>& max_interior_simplices,
-                             perl::OptionSet options)
+                             OptionSet options)
 {
    return foldable_cocircuit_equations_impl(d, points, VIF, interior_ridges, max_interior_simplices, options, false);
 }

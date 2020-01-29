@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,31 +24,29 @@
 namespace polymake { namespace polytope {
 
 template <typename Faces>
-typename std::enable_if<pm::isomorphic_to_container_of<Faces, Set<int> >::value, Set<int>>::type
+std::enable_if_t<pm::isomorphic_to_container_of<Faces, Set<Int>>::value, Set<Int>>
 splits_in_subdivision(const Matrix<Rational>& verts, const Faces& subdivision, const Matrix<Rational>& splits)
 {
-   const int n=verts.rows();  
+   const Int n = verts.rows();  
+   const Int n_splits = splits.rows();
+   Set<Int> split_set;
 
-   int n_splits=splits.rows();
-   Set<int> split_set;
-
-   for (int j=0; j<n_splits; ++j) {
+   for (Int j = 0; j < n_splits; ++j) {
       const Vector<Rational> a=splits.row(j);
-      Set<int> left;
-      Set<int> right;
-      for (int k=0; k<n; ++k) {
-         const Rational val=a * verts.row(k);
-         if (val>0) {
+      Set<Int> left;
+      Set<Int> right;
+      for (Int k = 0; k < n; ++k) {
+         const Rational val = a*verts.row(k);
+         if (val > 0) {
             left.insert(k);
-         }
-         if (val<0) {
+         } else if (val < 0) {
             right.insert(k);
          }
       }
-      bool cut=false;
-      for (auto k=entire(subdivision); !k.at_end();  ++k) {
+      bool cut = false;
+      for (auto k = entire(subdivision); !k.at_end();  ++k) {
          if (!((*k)*left).empty() && !((*k)*right).empty()) {
-            cut=true;
+            cut = true;
             break;
          }
       }
@@ -57,7 +55,7 @@ splits_in_subdivision(const Matrix<Rational>& verts, const Faces& subdivision, c
    return split_set;
 }
 
-Set<int> splits_in_subdivision(const Matrix<Rational>& verts, const IncidenceMatrix<>& subdivision, const Matrix<Rational>& splits)
+Set<Int> splits_in_subdivision(const Matrix<Rational>& verts, const IncidenceMatrix<>& subdivision, const Matrix<Rational>& splits)
 {
    return splits_in_subdivision(verts, rows(subdivision), splits);
 }

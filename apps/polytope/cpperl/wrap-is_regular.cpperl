@@ -2,7 +2,7 @@
  "inst": [
   {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "void", "void"], "func": "regularity_lp", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "regularity_lp:T1.X.x.o", "tp": "1"},
   {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "void", "void"], "func": "is_regular", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "is_regular:T1.X.x.o", "tp": "1"},
-  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Array<Set<int>>&>", "void"], "func": "secondary_cone_ineq", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "secondary_cone_ineq:T1.X.X.o", "tp": "1"},
+  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Array<Set<Int>>&>", "void"], "func": "secondary_cone_ineq", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "secondary_cone_ineq:T1.X.X.o", "tp": "1"},
   {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>"], "func": "full_dim_projection", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "full_dim_projection:T1.X", "tp": "1"},
  null ],
 "version": 3}

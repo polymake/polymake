@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -40,9 +40,9 @@ struct sv;
 
 namespace pm { namespace perl {
 
-class undefined : public std::runtime_error {
+class Undefined : public std::runtime_error {
 public:
-   undefined();
+   Undefined();
 };
 
 class exception : public std::runtime_error {
@@ -109,12 +109,12 @@ public:
 
    static SV* const_int(int i);
 
-   static int convert_to_int(SV* sv);
-   static double convert_to_float(SV* sv);
+   static Int convert_to_Int(SV* sv);
+   static double convert_to_Float(SV* sv);
 };
 
 // forward declarations of mutual friends
-class Value; class Object; class ObjectType; class PropertyValue;
+class Value; class BigObject; class BigObjectType; class PropertyValue;
 class Hash;  class OptionSet;  class ListResult;
 class Stack;  class Main;
 
@@ -124,17 +124,17 @@ using Array = ArrayOwner<>;
 template <typename T> class type_cache;
 
 class ArrayHolder : public SVHolder {
-   static SV* init_me(int size);
+   static SV* init_me(Int size);
 protected:
    ArrayHolder(SV* sv_arg, std::true_type)
       : SVHolder(sv_arg, std::true_type()) {}
 public:
-   explicit ArrayHolder(int reserve = 0)
+   explicit ArrayHolder(Int reserve = 0)
       : SVHolder(init_me(reserve)) {}
 
    explicit ArrayHolder(const Value&);
 
-   ArrayHolder(const SVHolder& x, int reserve)
+   ArrayHolder(const SVHolder& x, Int reserve)
       : SVHolder(x)
    {
       upgrade(reserve);
@@ -149,13 +149,13 @@ public:
          upgrade(0);
    }
 
-   void upgrade(int size);
+   void upgrade(Int size);
    void verify() const;
    void set_contains_aliases();
 
-   int size() const;
-   void resize(int n);
-   SV* operator[] (int i) const;
+   Int size() const;
+   void resize(Int n);
+   SV* operator[] (Int i) const;
 
    SV* shift();
    SV* pop();
@@ -183,11 +183,11 @@ public:
    bool exists(const AnyString& key) const;
 };
 
-class istreambuf : public streambuf_with_input_width {
+class istreambuf : public streambuf_ext {
 public:
    istreambuf(SV* sv);
 
-   int lines()
+   size_type lines() override
    {
       return CharBuffer::count_lines(this);
    }
@@ -218,7 +218,7 @@ public:
 
    void finish()
    {
-      if (good() && CharBuffer::next_non_ws(&my_buf)>=0)
+      if (good() && CharBuffer::next_non_ws(&my_buf) >= 0)
          setstate(failbit);
    }
 protected:
@@ -248,22 +248,22 @@ class ListValueInputBase {
 protected:
    SV* arr_or_hash;
    SV* dim_sv;
-   int i;
-   int size_;
-   int cols_;
-   int dim_;
+   Int i;
+   Int size_;
+   Int cols_;
+   Int dim_;
    bool sparse_;
 
    explicit ListValueInputBase(SV* sv);
    ~ListValueInputBase() { finish(); }
 public:
-   int size() const { return size_; }
+   Int size() const { return size_; }
 
    void skip_item() { ++i; }
    void skip_rest() { i = size_; }
    bool at_end() const { return i >= size_; }
 
-   int get_dim(bool tell_size_if_dense) const
+   Int get_dim(bool tell_size_if_dense) const
    {
       return dim_ >= 0 ? dim_ : tell_size_if_dense ? size_ : -1;
    }
@@ -275,7 +275,7 @@ public:
 protected:
    SV* get_first() const;
    SV* get_next();
-   int get_index() const;
+   Int get_index() const;
    void retrieve_key(std::string& dst) const;
    void finish();
 };
@@ -301,11 +301,11 @@ public:
       return *this;
    }
 
-   int cols(bool tell_size_if_dense);
+   Int cols(bool tell_size_if_dense);
 
-   int index(const int index_bound) const
+   Int index(const Int index_bound) const
    {
-      const int ix = get_index();
+      const Int ix = get_index();
       if (!this->get_option(TrustedValue<std::true_type>()) && (ix < 0 || ix >= index_bound))
          throw std::runtime_error("sparse input - index out of range");
       return ix;
@@ -327,7 +327,7 @@ private:
    void retrieve(T&, bool_constant<anything>);
 
    template <typename T>
-   void retrieve(std::pair<int, T>& x, std::true_type)
+   void retrieve(std::pair<Int, T>& x, std::true_type)
    {
       if (!sparse_representation()) {
          retrieve(x, std::false_type());
@@ -411,7 +411,7 @@ public:
 
    ListValueOutput& non_existent()
    {
-      return *this << undefined();
+      return *this << Undefined();
    }
 
    void finish() const {}
@@ -474,11 +474,11 @@ public:
    template <typename ObjectRef>
    struct composite_cursor {
       using Object = typename deref<ObjectRef>::type;
-      static const int
-         total  = list_length<typename object_traits<Object>::elements>::value,
-         ignored= list_accumulate_unary<list_count, ignore_in_composite, typename object_traits<Object>::elements>::value;
-      static const bool
-         compress= ignored>0 && total-ignored<=1;
+      static constexpr int
+         total   = list_length<typename object_traits<Object>::elements>::value,
+         ignored = list_accumulate_unary<list_count, ignore_in_composite, typename object_traits<Object>::elements>::value;
+      static constexpr bool
+         compress = ignored > 0 && total - ignored <= 1;
       using type = std::conditional_t<compress, ValueOutput, ListValueOutput<Options>>&;
    };
 
@@ -513,7 +513,7 @@ public:
    typename composite_cursor<T>::type
    begin_composite(const T*)
    {
-      return begin_composite_impl((const T*)0, bool_constant<composite_cursor<T>::compress>());
+      return begin_composite_impl((const T*)nullptr, bool_constant<composite_cursor<T>::compress>());
    }
 
    template <typename T>
@@ -529,7 +529,7 @@ class Stack {
 protected:
    Stack();
    Stack(SV** start);
-   explicit Stack(int reserve);
+   explicit Stack(Int reserve);
 private:
    Stack(const Stack&) = delete;
    void operator= (const Stack&) = delete;
@@ -538,7 +538,7 @@ protected:
    void xpush(SV* x) const;
    void push(SV* x) const;
    void push(const AnyString& s) const;
-   void extend(int n);
+   void extend(Int n);
 
 public:
    Stack(Stack&&) = default;
@@ -582,7 +582,7 @@ public:
       return *this;
    }
 
-   void upgrade(int size);
+   void upgrade(Int size);
 
 private:
    template <typename T>
@@ -618,18 +618,18 @@ struct is_printable<perl::Value> : std::false_type {};
 template <>
 struct is_parseable<perl::Value> : std::false_type {};
 template <>
-struct is_printable<perl::Object> : std::false_type {};
+struct is_printable<perl::BigObject> : std::false_type {};
 template <>
-struct is_writeable<perl::Object> : std::true_type {};
+struct is_writeable<perl::BigObject> : std::true_type {};
 
 // forward declaration of a specialization
 template <>
-class Array<perl::Object>;
+class Array<perl::BigObject>;
 
 template <>
-struct is_printable< Array<perl::Object> > : std::false_type {};
+struct is_printable< Array<perl::BigObject> > : std::false_type {};
 template <>
-struct is_writeable< Array<perl::Object> > : std::true_type {};
+struct is_writeable< Array<perl::BigObject> > : std::true_type {};
 
 namespace perl {
 
@@ -645,7 +645,7 @@ struct generic_representative<T, true> {
 };
 
 // primitive perl types which need special handling if returned by reference in lvalue context
-using primitive_lvalues = mlist<bool, int, unsigned int, long, unsigned long, double, std::string>;
+using primitive_lvalues = mlist<bool, Int, double, std::string>;
 
 template <typename T>
 struct is_optional_value
@@ -654,11 +654,11 @@ struct is_optional_value
 template <typename T>
 struct numeric_traits : std::numeric_limits<type_behind_t<T>> {
    using real_type = type_behind_t<T>;
-   static const bool check_range = std::numeric_limits<real_type>::is_bounded && std::numeric_limits<real_type>::is_integer;
+   static constexpr bool check_range = std::numeric_limits<real_type>::is_bounded && std::numeric_limits<real_type>::is_integer;
 };
 
 template <typename Target> class access;
-template <typename Target> struct represents_big_Object : std::false_type {};
+template <typename Target> struct represents_BigObject : std::false_type {};
 
 class Value
    : public SVHolder {
@@ -686,7 +686,7 @@ public:
 
    template <bool is_readonly> class Array_element_factory;
    template <typename Target> struct check_for_magic_storage;
-   using nomagic_types = mlist<undefined, AnyString, std::string, Object, ObjectType, PropertyValue, Scalar, Array, Hash, ListReturn, pm::Array<Object>>;
+   using nomagic_types = mlist<Undefined, AnyString, std::string, BigObject, BigObjectType, PropertyValue, Scalar, Array, Hash, ListReturn, pm::Array<BigObject>>;
    using nomagic_lvalue_types = mlist<Scalar, Array, Hash>;
 
 protected:
@@ -696,9 +696,9 @@ protected:
 
    bool is_defined() const noexcept;
    bool is_TRUE() const;
-   long int_value() const;
-   long enum_value() const;
-   double float_value() const;
+   Int Int_value() const;
+   Int enum_value(size_t s, bool expect_ref) const;
+   double Float_value() const;
    bool is_plain_text(bool expect_numeric_scalar=false) const;
 
    struct canned_data_t {
@@ -713,7 +713,7 @@ protected:
    const std::type_info* get_canned_typeinfo() const noexcept { return get_canned_data(sv).ti; }
    char* get_canned_value() const noexcept { return get_canned_data(sv).value; }
 
-   int get_canned_dim(bool tell_size_if_dense) const;
+   Int get_canned_dim(bool tell_size_if_dense) const;
 
    template <typename... AnchorList>
    static void store_anchors(Anchor* place, AnchorList&&... anchors) noexcept
@@ -731,33 +731,33 @@ protected:
 
    template <typename Numtype>
    static
-   void assign_int(Numtype& x, long i, std::false_type) { x=i; }
+   void assign_Int(Numtype& x, Int i, std::false_type) { x = i; }
 
    static
-   void assign_int(long& x, long i, std::true_type) { x=i; }
+   void assign_Int(long& x, Int i, std::true_type) { x = i; }
 
    template <typename Numtype>
    static
-   void assign_int(Numtype& x, long i, std::true_type)
+   void assign_Int(Numtype& x, Int i, std::true_type)
    {
-      if (i < min_value_as<long>(mlist<Numtype>()) ||
-          i > max_value_as<long>(mlist<Numtype>()))
+      if (i < min_value_as<Int>(mlist<Numtype>()) ||
+          i > max_value_as<Int>(mlist<Numtype>()))
          throw std::runtime_error("input numeric property out of range");
-      x=typename numeric_traits<Numtype>::real_type(i);
+      x = static_cast<typename numeric_traits<Numtype>::real_type>(i);
    }
 
    template <typename Numtype>
    static
-   void assign_float(Numtype& x, double d, std::false_type) { x=d; }
+   void assign_Float(Numtype& x, double d, std::false_type) { x=d; }
 
    template <typename Numtype>
    static
-   void assign_float(Numtype& x, double d, std::true_type)
+   void assign_Float(Numtype& x, double d, std::true_type)
    {
       if (d < min_value_as<double>(mlist<Numtype>()) ||
           d > max_value_as<double>(mlist<Numtype>()))
          throw std::runtime_error("input numeric property out of range");
-      x=typename numeric_traits<Numtype>::real_type(lrint(d));
+      x = static_cast<typename numeric_traits<Numtype>::real_type>(lrint(d));
    }
 
    number_flags classify_number() const;
@@ -770,13 +770,13 @@ protected:
          x= 0;
          break;
       case number_is_int:
-         assign_int(x, int_value(), bool_constant<numeric_traits<Numtype>::check_range>());
+         assign_Int(x, Int_value(), bool_constant<numeric_traits<Numtype>::check_range>());
          break;
       case number_is_float:
-         assign_float(x, float_value(), bool_constant<numeric_traits<Numtype>::check_range>());
+         assign_Float(x, Float_value(), bool_constant<numeric_traits<Numtype>::check_range>());
          break;
       case number_is_object:
-         assign_int(x, Scalar::convert_to_int(sv), bool_constant<numeric_traits<Numtype>::check_range>());
+         assign_Int(x, Scalar::convert_to_Int(sv), bool_constant<numeric_traits<Numtype>::check_range>());
          break;
       case not_a_number:
          throw std::runtime_error("invalid value for an input numerical property");
@@ -789,18 +789,14 @@ protected:
    std::false_type* retrieve(double& x) const;
    std::false_type* retrieve(bool& x) const;
 
-   std::false_type* retrieve(int& x) const { num_input(x); return nullptr; }
-   std::false_type* retrieve(unsigned int& x) const { num_input(x); return nullptr; }
-   std::false_type* retrieve(long& x) const { num_input(x); return nullptr; }
-   std::false_type* retrieve(unsigned long& x) const { num_input(x); return nullptr; }
+   std::false_type* retrieve(Int& x) const { num_input(x); return nullptr; }
 
    template <typename T>
    std::enable_if_t<std::is_enum<T>::value, std::false_type*>
    retrieve(T& x) const
    {
-      std::make_signed_t<T> val{};
-      retrieve(val);
-      x=static_cast<T>(val);
+      const Int val = enum_value(sizeof(T), false);
+      x = static_cast<T>(val);
       return nullptr;
    }
 
@@ -813,12 +809,12 @@ protected:
    }
 
    std::false_type* retrieve(Array& x) const;
-   std::false_type* retrieve(Object& x) const;
-   std::false_type* retrieve(ObjectType& x) const;
-   std::false_type* retrieve(pm::Array<Object>& x) const;
+   std::false_type* retrieve(BigObject& x) const;
+   std::false_type* retrieve(BigObjectType& x) const;
+   std::false_type* retrieve(pm::Array<BigObject>& x) const;
 
    template <typename Target>
-   std::enable_if_t<represents_big_Object<Target>::value, std::false_type*>
+   std::enable_if_t<represents_BigObject<Target>::value, std::false_type*>
    retrieve(Target& x) const;
 
    template <typename Target, typename Options>
@@ -909,7 +905,7 @@ protected:
 
    template <typename Target>
    std::enable_if_t<std::is_copy_assignable<Target>::value &&
-                    !(represents_big_Object<Target>::value || std::is_enum<Target>::value), std::true_type*>
+                    !(represents_BigObject<Target>::value || std::is_enum<Target>::value), std::true_type*>
    retrieve(Target& x) const
    {
       if (!(options * ValueFlags::ignore_magic)) {
@@ -943,7 +939,7 @@ protected:
    {
       const canned_data_t canned = get_canned_data(sv);
       if (!(canned.ti && *canned.ti == typeid(Target) && !canned.read_only))
-         throw undefined();
+         throw Undefined();
       x = std::move(*reinterpret_cast<Target*>(canned.value));
    }
 
@@ -954,7 +950,7 @@ protected:
       if (__builtin_expect(sv && is_defined(), 1)) {
          retrieve_nomagic(x);
       } else if (!(options * ValueFlags::allow_undef)) {
-         throw undefined();
+         throw Undefined();
       }
       return x;
    }
@@ -967,7 +963,7 @@ protected:
    {
       if (__builtin_expect(!sv || !is_defined(), 0)) {
          if (!(options * ValueFlags::allow_undef))
-            throw undefined();
+            throw Undefined();
          return Target{};
       }
       if (!(options * ValueFlags::ignore_magic)) {
@@ -1098,31 +1094,28 @@ protected:
       return nullptr;
    }
 
-   Anchor* store_primitive_ref(const bool& x,          SV* type_descr, int n_anchors, bool take_ref);
-   Anchor* store_primitive_ref(const int& x,           SV* type_descr, int n_anchors, bool take_ref);
-   Anchor* store_primitive_ref(const unsigned int& x,  SV* type_descr, int n_anchors, bool take_ref);
-   Anchor* store_primitive_ref(const long& x,          SV* type_descr, int n_anchors, bool take_ref);
-   Anchor* store_primitive_ref(const unsigned long& x, SV* type_descr, int n_anchors, bool take_ref);
-   Anchor* store_primitive_ref(const double& x,        SV* type_descr, int n_anchors, bool take_ref);
-   Anchor* store_primitive_ref(const std::string& x,   SV* type_descr, int n_anchors, bool take_ref);
+   Anchor* store_primitive_ref(const bool& x,          SV* type_descr, int n_anchors);
+   Anchor* store_primitive_ref(const Int& x,           SV* type_descr, int n_anchors);
+   Anchor* store_primitive_ref(const double& x,        SV* type_descr, int n_anchors);
+   Anchor* store_primitive_ref(const std::string& x,   SV* type_descr, int n_anchors);
 
    void set_string_value(const char* x);
    void set_string_value(const char* x, size_t l);
    void set_copy(const SVHolder& x);
 
-   NoAnchors put_val(int x, int=0)          { return put_val(static_cast<long>(x)); }
-   NoAnchors put_val(unsigned int x, int=0) { return put_val(static_cast<unsigned long>(x)); }
-   NoAnchors put_val(long x, int=0);
-   NoAnchors put_val(unsigned long x, int=0);
+   NoAnchors put_val(Int x, int=0);
+   NoAnchors put_val(int x, int=0) { return put_val(Int(x)); }
+   NoAnchors put_val(size_t x, int=0) { return put_val(Int(x)); }
    NoAnchors put_val(bool x, int=0);
    NoAnchors put_val(double x, int=0);
-   NoAnchors put_val(const undefined&, int=0);
+   NoAnchors put_val(const Undefined&, int=0);
 
    template <typename T>
    std::enable_if_t<std::is_enum<T>::value, NoAnchors>
    put_val(const T& x, int=0)
    {
-      return put_val(static_cast<std::make_signed_t<T>>(x));
+      const Int val = static_cast<Int>(x);
+      return put_val(val);
    }
 
    NoAnchors put_val(const AnyString& x, int=0)
@@ -1130,7 +1123,7 @@ protected:
       if (x)
          set_string_value(x.ptr, x.len);
       else
-         put_val(undefined());
+         put_val(Undefined());
       return NoAnchors();
    }
 
@@ -1148,19 +1141,19 @@ protected:
       return NoAnchors();
    }
 
-   NoAnchors put_val(const Object& x,            int=0);
-   NoAnchors put_val(const ObjectType& x,        int=0);
+   NoAnchors put_val(const BigObject& x,            int=0);
+   NoAnchors put_val(const BigObjectType& x,        int=0);
    NoAnchors put_val(const PropertyValue& x,     int=0);
    NoAnchors put_val(const Scalar& x,            int=0);
    NoAnchors put_val(const Array& x,             int=0);
    NoAnchors put_val(const Hash& x,              int=0);
    NoAnchors put_val(const ListReturn& x,        int=0);
-   NoAnchors put_val(const pm::Array<Object>& x, int=0);
+   NoAnchors put_val(const pm::Array<BigObject>& x, int=0);
 
    template <typename SourceRef>
    std::enable_if_t<is_class_or_union<pure_type_t<SourceRef>>::value &&
                     !(is_derived_from_any<pure_type_t<SourceRef>, nomagic_types>::value ||
-                      represents_big_Object<pure_type_t<SourceRef>>::value ||
+                      represents_BigObject<pure_type_t<SourceRef>>::value ||
                       is_optional_value<pure_type_t<SourceRef>>::value ||
                       !std::is_same<typename object_traits<pure_type_t<SourceRef>>::proxy_for, void>::value),
                     Anchor*>
@@ -1183,7 +1176,7 @@ protected:
    }
 
    template <typename SourceRef>
-   std::enable_if_t<represents_big_Object<pure_type_t<SourceRef>>::value, NoAnchors>
+   std::enable_if_t<represents_BigObject<pure_type_t<SourceRef>>::value, NoAnchors>
    put_val(SourceRef&& x, int);
 
    template <typename Source, typename Deleter>
@@ -1207,7 +1200,7 @@ protected:
       if (x) {
          return put_val(std::forward<SourceRef>(x).value(), n_anchors);
       } else {
-         put_val(undefined());
+         put_val(Undefined());
          return nullptr;
       }
    }
@@ -1244,13 +1237,20 @@ public:
    }
 
    template <typename SourceRef, typename... AnchorList>
-   std::enable_if_t<mlist_contains<primitive_lvalues, pure_type_t<SourceRef>>::value>
+   std::enable_if_t<mlist_contains<primitive_lvalues, pure_type_t<SourceRef>>::value && std::is_lvalue_reference<SourceRef&&>::value>
    put_lvalue(SourceRef&& x, AnchorList&&... anchors)
    {
       using Source = pure_type_t<SourceRef>;
-      Anchor* anchor_place=store_primitive_ref(x, type_cache<Source>::get_descr(), sizeof...(AnchorList), std::is_lvalue_reference<SourceRef&&>::value);
+      Anchor* anchor_place = store_primitive_ref(x, type_cache<Source>::get_descr(), sizeof...(AnchorList));
       if (sizeof...(AnchorList) && anchor_place)
          store_anchors(anchor_place, std::forward<AnchorList>(anchors)...);
+   }
+
+   template <typename SourceRef, typename... AnchorList>
+   std::enable_if_t<mlist_contains<primitive_lvalues, pure_type_t<SourceRef>>::value && !std::is_lvalue_reference<SourceRef&&>::value>
+   put_lvalue(SourceRef&& x, AnchorList&&... anchors)
+   {
+      put_val(x);  // no anchors can ever be needed for a primitive scalar
    }
 
    template <typename Target>
@@ -1278,7 +1278,7 @@ public:
    {
       if (!me.sv || !me.is_defined()) {
          if (!(me.options * ValueFlags::allow_undef))
-            throw undefined();
+            throw Undefined();
          return false;
       }
       me.retrieve(x);
@@ -1308,15 +1308,15 @@ public:
    using SVHolder::get;
 
    template <typename T>
-   int get_dim(bool tell_size_if_dense) const
+   Int get_dim(bool tell_size_if_dense) const
    {
-      int d = -1;
+      Int d = -1;
       if (is_plain_text()) {
          istream my_stream(sv);
          if (options * ValueFlags::not_trusted)
-            d = PlainParser<mlist<TrustedValue<std::false_type>>>(my_stream).begin_list((T*)0).get_dim(tell_size_if_dense);
+            d = PlainParser<mlist<TrustedValue<std::false_type>>>(my_stream).begin_list((T*)nullptr).get_dim(tell_size_if_dense);
          else
-            d = PlainParser<>(my_stream).begin_list((T*)0).get_dim(tell_size_if_dense);
+            d = PlainParser<>(my_stream).begin_list((T*)nullptr).get_dim(tell_size_if_dense);
 
       } else if (get_canned_typeinfo()) {
          d = get_canned_dim(tell_size_if_dense);
@@ -1413,13 +1413,13 @@ public:
 template <bool is_readonly>
 class Value::Array_element_factory {
 public:
-   using argument_type = int;
+   using argument_type = Int;
    using result_type = Value;
 
-   explicit Array_element_factory(const ArrayHolder* array_arg=nullptr)
+   explicit Array_element_factory(const ArrayHolder* array_arg = nullptr)
       : array(array_arg) {}
 
-   result_type operator() (int i) const
+   result_type operator() (Int i) const
    {
       return result_type((*array)[i], (is_readonly ? ValueFlags::read_only : ValueFlags::is_mutable) | ValueFlags::not_trusted);
    }
@@ -1453,7 +1453,7 @@ void ListValueInput<ElementType, Options>::retrieve(T& x, bool_constant<anything
 }
 
 template <typename ElementType, typename Options>
-int ListValueInput<ElementType, Options>::cols(bool tell_size_if_dense)
+Int ListValueInput<ElementType, Options>::cols(bool tell_size_if_dense)
 {
    if (cols_ < 0) {
       if (SV* first_sv = get_first()) {
@@ -1512,7 +1512,7 @@ protected:
       : ArrayHolder(v) {}
 public:
    ArrayOwner() {}
-   explicit ArrayOwner(int n) { resize(n); }
+   explicit ArrayOwner(Int n) { resize(n); }
 
    ArrayOwner(const ArrayOwner& x)
       : ArrayHolder(x.get(), std::true_type()) {}
@@ -1812,7 +1812,7 @@ public:
 
    static Target get(const Value& v)
    {
-      return static_cast<Target>(v.enum_value());
+      return static_cast<Target>(v.enum_value(sizeof(Target), true));
    }
 };
 

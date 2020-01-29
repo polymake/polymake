@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,48 +25,48 @@
 namespace pm {
 
 enum {
-   zipper_lt=1, zipper_eq=2, zipper_gt=4,       // correspond to 1<<cmp_XX+1
-   zipper_cmp=zipper_lt+zipper_eq+zipper_gt,    // mask for all of them
-   zipper_first= (zipper_lt<<6),                // first iterator is in a dereferenceable position
-   zipper_second= (zipper_gt<<3),               // second iterator is ...
-   zipper_both= zipper_first+zipper_second      // both are ...
+   zipper_lt = 1, zipper_eq = 2, zipper_gt = 4,       // correspond to 1<<cmp_XX+1
+   zipper_cmp = zipper_lt + zipper_eq + zipper_gt,    // mask for all of them
+   zipper_first = (zipper_lt << 6),                   // first iterator is in a dereferenceable position
+   zipper_second = (zipper_gt << 3),                  // second iterator is ...
+   zipper_both = zipper_first + zipper_second         // both are ...
 };
 
 struct forward_zipper {
-   static int state(int cmp) { return 1 << 1+cmp; }
+   static constexpr int state(int cmp) { return 1 << 1+cmp; }
 };
 
 struct set_union_zipper : forward_zipper {
-   static int stable(int) { return true; }
-   static const bool end1=false, end2=false;
-   static bool contains(bool c1, bool c2) { return c1 || c2; }
+   static constexpr int stable(int) { return 1; }
+   static constexpr bool end1 = false, end2 = false;
+   static constexpr bool contains(bool c1, bool c2) { return c1 || c2; }
 };
 
 struct set_difference_zipper : forward_zipper {
-   static int stable(int state) { return state & zipper_lt; }
-   static const bool end1=true, end2=false;
-   static bool contains(bool c1, bool c2) { return c1 && !c2; }
+   static constexpr int stable(int state) { return state & zipper_lt; }
+   static constexpr bool end1 = true, end2 = false;
+   static constexpr bool contains(bool c1, bool c2) { return c1 && !c2; }
 };
 
 struct set_intersection_zipper : forward_zipper {
-   static int stable(int state) { return state & zipper_eq; }
-   static const bool end1=true, end2=true;
-   static bool contains(bool c1, bool c2) { return c1 && c2; }
+   static constexpr int stable(int state) { return state & zipper_eq; }
+   static constexpr bool end1 = true, end2 = true;
+   static constexpr bool contains(bool c1, bool c2) { return c1 && c2; }
 };
 
 struct set_symdifference_zipper : forward_zipper {
-   static int stable(int state) { return state & zipper_lt+zipper_gt; }
-   static const bool end1=false, end2=false;
-   static bool contains(bool c1, bool c2) { return c1 ^ c2; }
+   static constexpr int stable(int state) { return state & zipper_lt+zipper_gt; }
+   static constexpr bool end1 = false, end2 = false;
+   static constexpr bool contains(bool c1, bool c2) { return c1 ^ c2; }
 };
 
 template <typename Zipper>
 struct reverse_zipper : public Zipper {
-   static int state(int cmp) { return 1 << 1-cmp; }
+   static constexpr int state(int cmp) { return 1 << 1-cmp; }
 };
 
 template <typename Iterator1, typename Iterator2, typename Comparator, typename Controller,
-          bool use_index1=false, bool use_index2=false>
+          bool use_index1 = false, bool use_index2 = false>
 class iterator_zipper : public Iterator1 {
 public:
    using first_type = Iterator1;
@@ -99,24 +99,24 @@ protected:
 
    void incr()
    {
-      const int cur_state=state;
-      if (cur_state & int(zipper_lt)+int(zipper_eq)) {
+      const int cur_state = state;
+      if (cur_state & int(zipper_lt) + int(zipper_eq)) {
          first_type::operator++();
          if (first_type::at_end()) {
             if (ctl.end1) {
-               state=0; return;
+               state = 0; return;
             } else {
-               state>>=3;
+               state >>= 3;
             }
          }
       }
-      if (cur_state & int(zipper_gt)+int(zipper_eq)) {
+      if (cur_state & int(zipper_gt) + int(zipper_eq)) {
          ++second;
          if (second.at_end()) {
             if (ctl.end2) {
-               state=0;
+               state = 0;
             } else {
-               state>>=6;
+               state >>= 6;
             }
          }
       }
@@ -124,33 +124,33 @@ protected:
 
    void decr()
    {
-      const int cur_state=state;
-      state=zipper_both;
-      if (!(cur_state & int(zipper_lt)))
+      const int cur_state = state;
+      state = zipper_both;
+      if ((cur_state & int(zipper_lt)) == 0)
          first_type::operator--();
-      if (!(cur_state & int(zipper_gt)))
+      if ((cur_state & int(zipper_gt)) == 0)
          --second;
    }
 
    void init()
    {
-      state=zipper_both;
+      state = zipper_both;
       if (first_type::at_end()) {
          if (ctl.end1) {
-            state=0; return;
+            state = 0; return;
          } else {
-            state>>=3;
+            state >>= 3;
          }
       }
       if (second.at_end()) {
          if (ctl.end2) {
-            state=0;
+            state = 0;
          } else {
-            state>>=6;
+            state >>= 6;
          }
          return;
       }
-      while (state>=zipper_both) {
+      while (state >= zipper_both) {
          compare();
          if (ctl.stable(state)) break;
          incr();
@@ -207,8 +207,8 @@ public:
       using other_iterator = typename is_derived_from_any<Other, iterator, const_iterator>::match;
 
       return at_end() ? it.at_end() :
-             static_cast<const first_type&>(*this)==static_cast<const typename other_iterator::first_type&>(it)
-             && second==static_cast<const other_iterator&>(it).second;
+             static_cast<const first_type&>(*this) == static_cast<const typename other_iterator::first_type&>(it)
+             && second == static_cast<const other_iterator&>(it).second;
    }
 
    template <typename Other>
@@ -237,7 +237,7 @@ template <typename Iterator1, typename Iterator2, typename Comparator, typename 
           bool use_index1, bool use_index2>
 struct has_partial_state< iterator_zipper<Iterator1, Iterator2, Comparator, Controller, use_index1, use_index2> > : std::true_type {};
 
-template <typename Comparator, typename Controller, bool use_index1=false, bool use_index2=false>
+template <typename Comparator, typename Controller, bool use_index1 = false, bool use_index2 = false>
 struct zipping_coupler {
    template <typename Iterator1, typename Iterator2, typename... ExpectedFeatures>
    struct defs {
@@ -287,7 +287,7 @@ template <typename Iterator1Ref, typename Iterator2Ref>
 struct zipper_index {
    typedef Iterator1Ref first_argument_type;
    typedef Iterator2Ref second_argument_type;
-   typedef const int result_type;
+   typedef Int result_type;
 
    result_type operator() (first_argument_type l, second_argument_type) const { return l.index(); }
    result_type operator() (partial_left, first_argument_type l, second_argument_type) const { return l.index(); }
@@ -369,12 +369,12 @@ protected:
    template <typename, typename, bool> friend class binary_transform_eval;
 
 protected:
-   int index_impl(std::false_type) const
+   Int index_impl(std::false_type) const
    {
       return iop(*ihelper::get1(*this), *ihelper::get2(this->second));
    }
 
-   int index_impl(std::true_type) const
+   Int index_impl(std::true_type) const
    {
       if (this->state & zipper_lt)
          return iop(operations::partial_left(), *ihelper::get1(*this), this->second);
@@ -385,7 +385,7 @@ protected:
       return index_impl(std::false_type());
    }
 public:
-   int index() const
+   Int index() const
    {
       return index_impl(bool_constant<operations::is_partially_defined<typename ihelper::operation>::value>());
    }

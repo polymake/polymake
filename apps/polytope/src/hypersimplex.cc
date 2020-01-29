@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,14 +27,14 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object hypersimplex(int k, int d, perl::OptionSet options)
+BigObject hypersimplex(Int k, Int d, OptionSet options)
 {
    if (d < 2)
       throw std::runtime_error("hypersimplex: dimension >= 2 required");
    if (k <= 0 || k >= d)
       throw std::runtime_error("hypersimplex: 0 < k < d required");
 
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.set_description() << "(" << k << "," << d << ")-hypersimplex" << endl;
 
    p.take("CONE_AMBIENT_DIM") << d+1;
@@ -42,7 +42,7 @@ perl::Object hypersimplex(int k, int d, perl::OptionSet options)
    p.take("BOUNDED") << true;
 
    // we already know the number of vertices
-   const int n(Integer::binom(d,k));
+   const Int n(Integer::binom(d,k));
    p.take("N_VERTICES") << n;
 
    const bool group_flag = options["group"];
@@ -73,7 +73,7 @@ perl::Object hypersimplex(int k, int d, perl::OptionSet options)
 
       if (!novif_flag) {
          IncidenceMatrix<> VIF(2*d,n);
-         for (int i = 0; i < d; ++i) {
+         for (Int i = 0; i < d; ++i) {
             VIF.row(2*i)  = indices(attach_selector(Vertices.col(i+1), operations::non_zero()));
             VIF.row(2*i+1)= indices(attach_selector(Vertices.col(i+1), operations::is_zero()));
          }
@@ -83,10 +83,10 @@ perl::Object hypersimplex(int k, int d, perl::OptionSet options)
 
    if (nov_flag && !novif_flag) {
       IncidenceMatrix<> VIF(2*d,n);
-      int j(0);
-      for (auto s=entire(all_subsets_of_k(range(0,d-1), k)); !s.at_end(); ++s, ++j) {
-         for (int i=0; i<d; ++i) {
-            if (Set<int>(*s).contains(i)) {
+      Int j = 0;
+      for (auto s = entire(all_subsets_of_k(range(0,d-1), k)); !s.at_end(); ++s, ++j) {
+         for (Int i = 0; i < d; ++i) {
+            if (Set<Int>(*s).contains(i)) {
                VIF.row(2*i) += j;
             } else {
                VIF.row(2*i+1) += j;
@@ -101,7 +101,7 @@ perl::Object hypersimplex(int k, int d, perl::OptionSet options)
    if ( !nof_flag ) {
       SparseMatrix<Rational> F(2*d,d+1);
       Rows< SparseMatrix<Rational> >::iterator f=rows(F).begin();
-      for (int i=1; i<=d; ++i) { // Facet 2*i and Facet 2*i+1 are parallel
+      for (Int i = 1; i <= d; ++i) { // Facet 2*i and Facet 2*i+1 are parallel
          (*f)[0]=1;
          (*f)[i]=-1;
          ++f;
@@ -117,23 +117,23 @@ perl::Object hypersimplex(int k, int d, perl::OptionSet options)
    }
 
    // generate the combinatorial symmetry group on the vertices
-   if ( group_flag ) {
-      Array<Array<int>> gens(2);
-      Array<int> gen{sequence(0,d)};
-      gen[0]=1;
-      gen[1]=0;
-      gens[0]=gen;
+   if (group_flag) {
+      Array<Array<Int>> gens(2);
+      Array<Int> gen{sequence(0,d)};
+      gen[0] = 1;
+      gen[1] = 0;
+      gens[0] = gen;
 
-      gen[0]=d-1;
-      for (int j=1; j<=d-1; ++j) {
-         gen[j]=j-1;
+      gen[0] = d-1;
+      for (Int j = 1; j <= d-1; ++j) {
+         gen[j] = j-1;
       }
-      gens[1]=gen;
+      gens[1] = gen;
 
-      perl::Object a("group::PermutationAction");
+      BigObject a("group::PermutationAction");
       a.take("GENERATORS") << gens;
 
-      perl::Object g("group::Group");
+      BigObject g("group::Group");
       g.set_description() << "full combinatorial group on coordinates of " <<  "(" << k << "," << d << ")-hypersimplex" << endl;
       g.set_name("fullCombinatorialGroupOnCoords");
 
@@ -144,22 +144,22 @@ perl::Object hypersimplex(int k, int d, perl::OptionSet options)
    return p;
 }
 
-Set<int> matroid_indices_of_hypersimplex_vertices(perl::Object m)
+Set<Int> matroid_indices_of_hypersimplex_vertices(BigObject m)
 {
-   const Array< Set<int> > bases=m.give("BASES");
-   const int n=m.give("N_ELEMENTS");
-   const int d=m.give("RANK");
-   Set<int> set;
+   const Array<Set<Int>> bases=m.give("BASES");
+   const Int n = m.give("N_ELEMENTS");
+   const Int d = m.give("RANK");
+   Set<Int> set;
    for (const auto& b : bases) {
-      int sum(0);
-      int temp_d(d);
-      int temp(0);
+      Int sum = 0;
+      Int temp_d = d;
+      Int temp = 0;
       for (const auto& i : b) {
-         if (temp_d==d && i!=0)
-            sum += int(Integer::binom(n-1, d-1));
+         if (temp_d == d && i != 0)
+            sum += Int(Integer::binom(n-1, d-1));
          --temp_d;
-         for (int k=1; k <= i-temp-1; ++k)
-            sum += int(Integer::binom(n-temp-1-k, temp_d));
+         for (Int k = 1; k <= i-temp-1; ++k)
+            sum += Int(Integer::binom(n-temp-1-k, temp_d));
          temp=i;
       }
       set += sum;

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,23 +25,22 @@
 
 namespace polymake { namespace topaz {
 
-perl::Object rand_knot(const int n_edges, perl::OptionSet options)
+BigObject rand_knot(const Int n_edges, OptionSet options)
 {
    if (n_edges < 3)
       throw std::runtime_error("rand_knot: less than 3 edges.\n");
   
-   const int n_comp = options["n_comp"];
+   const Int n_comp = options["n_comp"];
 
-   perl::Object p("GeometricSimplicialComplex<Rational>");
+   BigObject p("GeometricSimplicialComplex<Rational>");
    p.set_description() << "A random knot/link with " << n_comp
                        << " components with " << n_edges << " edges each.\n";
 
-   std::list< Set<int> > C;
-   for (int i=0; i<n_comp; ++i) {
-      for (int j=i*n_edges; j<(i+1)*n_edges-1; ++j)
+   std::list<Set<Int>> C;
+   for (Int i = 0; i < n_comp; ++i) {
+      for (Int j = i*n_edges; j < (i+1)*n_edges-1; ++j)
          C.push_back(sequence(j,2));
-      Set<int> e;
-      e+=i*n_edges;  e+=(i+1)*n_edges-1;
+      Set<Int> e{ i*n_edges, (i+1)*n_edges-1 };
       C.push_back(e);
    }
 
@@ -53,7 +52,7 @@ perl::Object rand_knot(const int n_edges, perl::OptionSet options)
       copy_range(random_source.begin(), entire(rows(Points)));
     
       if (options["brownian"])
-         for (int i=1; i<Points.rows(); ++i)
+         for (Int i = 1; i < Points.rows(); ++i)
            Points[i] += Points[i-1];
 
    } else {

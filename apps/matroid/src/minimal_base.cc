@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,35 +25,29 @@
 namespace polymake { namespace matroid {
 
 template <typename Scalar> 
-struct Comp
+Set<Int> minimal_base(BigObject m, const Vector<Scalar>& weights)
 {
-   const Vector<Scalar> weights;
-   Comp(const Vector<Scalar>& v) : weights(v) {}
-   bool operator () (const int &k, const int &l) { return weights[k]<weights[l]; }
-};
-
-template <typename Scalar> 
-Set<int> minimal_base(perl::Object m, Vector<Scalar> weights)
-{
-   int n=m.give("N_ELEMENTS");
-   Array<int> order(n);
-   for (int i=0; i<n; ++i)
-      order[i]=i;
-   std::sort(order.begin(),order.end(),Comp<Scalar>(weights));
-   Set<int> min_base;
-   const Array<Set<int> >& circuits=m.give("CIRCUITS");
-   std::list<int> checks;
-   for (int i=0; i<circuits.size(); ++i)
+   Int n = m.give("N_ELEMENTS");
+   Array<Int> order(n);
+   for (Int i = 0; i < n; ++i)
+      order[i] = i;
+   std::sort(order.begin(), order.end(), [&](Int k, Int l) { return weights[k] < weights[l]; });
+   Set<Int> min_base;
+   const Array<Set<Int>>& circuits = m.give("CIRCUITS");
+   std::list<Int> checks;
+   for (Int i = 0; i < circuits.size(); ++i)
       checks.push_back(i);
-   for (auto eit=entire(order); !eit.at_end(); ++eit) {
-      min_base+=(*eit);
-      for (std::list<int>::iterator cit=checks.begin(); cit != checks.end(); ++cit) {
-         if (circuits[*cit].contains(*eit))
-            if (incl(circuits[*cit],min_base) <= 0) {
-               min_base-=(*eit);
-               for (std::list<int>::iterator it=checks.begin(); it != checks.end(); circuits[*it].contains(*eit) ? it=checks.erase(it) : ++it) {}
+   for (auto eit = entire(order); !eit.at_end(); ++eit) {
+      min_base += *eit;
+      for (auto cit = checks.begin(); cit != checks.end(); ++cit) {
+         const Int c = *cit;
+         if (circuits[c].contains(*eit)) {
+            if (incl(circuits[c], min_base) <= 0) {
+               min_base -= *eit;
+               for (auto it = checks.begin(); it != checks.end(); circuits[*it].contains(*eit) ? it = checks.erase(it) : ++it) {}
                break;
             }
+         }
       }
    }
    return min_base;

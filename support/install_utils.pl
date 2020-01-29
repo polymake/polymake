@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -23,6 +23,7 @@ sub extract_polymake_version {
   open my $pm, "$root/perllib/Polymake.pm"
     or die "can't read $root/perllib/Polymake.pm: $!\n";
   local $/="\n";
+  local $_;
   while (<$pm>) {
     if (/^\s*declare\s+\$Version\s*=\s*(['"])(\d+\.\d+)(\.\d+)*\1\s*;\s*$/) {
       return "$2";
@@ -36,7 +37,7 @@ sub load_config_file {
   my %values;
   open my $cf, $config_file
     or die "configuration file $config_file is missing: have you run configure?\n";
-
+  local $_;
   while (<$cf>) {
      if (m{^\s*(?!super.)([\w.]+)\s*=\s*(.*(?<!\s))\s*$}) {
         $values{$1}=$2;

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,18 +23,18 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object pile(const Vector<int>& sizes)
+BigObject pile(const Vector<Int>& sizes)
 {
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.set_description() << "Lifted pile of cubes" << endl;
 
-   const int d=sizes.size();
-   int n=1;
-   for (auto s=entire(sizes); !s.at_end(); ++s)
+   const Int d = sizes.size();
+   Int n = 1;
+   for (auto s = entire(sizes); !s.at_end(); ++s)
       n *= *s+1;
 
    Matrix<Rational> V(n,d+2);
-   const int factor(d*d);
+   const Int factor = d*d;
    Vector<Rational> limits(sizes);
    limits/=2;
    Rows< Matrix<Rational> >::iterator V_i=rows(V).begin();

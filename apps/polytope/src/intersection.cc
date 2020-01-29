@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,21 +24,21 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-perl::Object intersection(const Array<perl::Object>& pp_in)
+BigObject intersection(const Array<BigObject>& pp_in)
 {
-   auto p_in=entire(pp_in);
+   auto p_in = entire(pp_in);
 
    if (p_in.at_end()) throw std::runtime_error("empty input");
 
-   bool containsPolytope=false;
-   bool containsCone=false;
-   const int dim=p_in->give("CONE_AMBIENT_DIM");
+   bool containsPolytope = false;
+   bool containsCone = false;
+   const Int dim = p_in->give("CONE_AMBIENT_DIM");
    ListMatrix< Vector<Scalar> > Inequalities(0, dim), Equations(0, dim);
    std::string descr_names;
 
    while (! p_in.at_end()) {
       // check if dimensions match
-      const int d=p_in->give("CONE_AMBIENT_DIM");
+      const Int d = p_in->give("CONE_AMBIENT_DIM");
       if (d != dim) throw std::runtime_error("dimension mismatch");
 
       // check if Polytope or true Cone
@@ -60,7 +60,7 @@ perl::Object intersection(const Array<perl::Object>& pp_in)
             AH=p_in->lookup("LINEAR_SPAN | EQUATIONS");
          Inequalities /= F;
          Equations /= AH;
-      } catch(const perl::undefined&) {
+      } catch (const Undefined&) {
          const Matrix<Scalar> AH=p_in->give("LINEAR_SPAN | EQUATIONS");
          Equations /= AH;
       }
@@ -68,8 +68,8 @@ perl::Object intersection(const Array<perl::Object>& pp_in)
       ++p_in;
    }
 
-   perl::ObjectType t(containsPolytope ? Str("Polytope") : Str("Cone"), mlist<Scalar>());
-   perl::Object p_out(t);
+   BigObjectType t(containsPolytope ? Str("Polytope") : Str("Cone"), mlist<Scalar>());
+   BigObject p_out(t);
 
    p_out.take("INEQUALITIES") << Inequalities;
    p_out.take("EQUATIONS") << Equations;

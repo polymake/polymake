@@ -19,7 +19,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -32,7 +32,6 @@
 #include "polymake/Rational.h"
 #include "polymake/Vector.h"
 #include "polymake/FacetList.h"
-#include "polymake/polytope/canonicalize.h"
 #include "polymake/polytope/convex_hull.h"
 #include "polymake/tropical/convex_hull_tools.h"
 #include "polymake/tropical/thomog.h"
@@ -43,16 +42,16 @@ namespace polymake { namespace tropical {
 ///////////////////////////////////////////////////////////////////////////////////////
 
 //Documentation see header
-Vector<int> insert_rays(Matrix<Rational>& rays, Matrix<Rational> nrays, bool is_normalized)
+Vector<Int> insert_rays(Matrix<Rational>& rays, Matrix<Rational> nrays, bool is_normalized)
 {
   // Normalize new rays, if necessary
   if (!is_normalized)
     normalize_rays(nrays);
 
   // Insert rays
-  std::vector<int> new_ray_indices;
+  std::vector<Int> new_ray_indices;
   for (auto nr = entire(rows(nrays)); !nr.at_end(); ++nr) {
-    int new_rayindex = -1;
+    Int new_rayindex = -1;
     for (auto oray = entire<indexed>(rows(rays)); !oray.at_end(); ++oray) {
       if (*oray == *nr) {
         new_rayindex = oray.index(); break;
@@ -65,19 +64,8 @@ Vector<int> insert_rays(Matrix<Rational>& rays, Matrix<Rational> nrays, bool is_
     new_ray_indices.push_back(new_rayindex);
   }
 
-  return Vector<int>(new_ray_indices);
+  return Vector<Int>(new_ray_indices);
 } //END insert_rays
-
-///////////////////////////////////////////////////////////////////////////////////////
-
-//Documentation see header
-template <typename MType>
-void normalize_rays(GenericMatrix<MType>& rays)
-{
-  for (auto r = entire(rows(rays)); !r.at_end(); ++r) {
-    polytope::canonicalize_oriented(find_in_range_if(entire(r->top()), operations::non_zero()));
-  }
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
@@ -123,10 +111,10 @@ fan_intersection(const Matrix<Rational>& xrays, const Matrix<Rational>& xlin, co
   Matrix<Rational> interrays;
   Matrix<Rational> interlineality;
   bool lineality_computed = false;
-  std::vector<Set<int>> intercones;
+  std::vector<Set<Int>> intercones;
 
-  std::vector<Set<int>> xcontainers;
-  std::vector<Set<int>> ycontainers;
+  std::vector<Set<Int>> xcontainers;
+  std::vector<Set<Int>> ycontainers;
 
   for (auto xc = entire<indexed>(xequations); !xc.at_end(); ++xc) {
     for (auto yc = entire<indexed>(yequations); !yc.at_end(); ++yc) {
@@ -149,24 +137,27 @@ fan_intersection(const Matrix<Rational>& xrays, const Matrix<Rational>& xlin, co
       normalize_rays(inter.first);
 
       // Insert rays into ray list and create cone
-      Set<int> new_cone_set( insert_rays(interrays, inter.first, true) );
+      Set<Int> new_cone_set{ insert_rays(interrays, inter.first, true) };
 
       // Make sure we don't add a cone twice
       // Also: Remember intersections that are contained in this one or contain this one
-      Set<int> containedCones;
-      Set<int> containerCones;
-      int new_cone_index = -1;
+      Set<Int> containedCones;
+      Set<Int> containerCones;
+      Int new_cone_index = -1;
       for (auto ic = entire<indexed>(intercones); !ic.at_end(); ++ic) {
-        int cmp_set = incl(*ic , new_cone_set);
-        if (cmp_set == 0) new_cone_index = ic.index();
-        if (cmp_set == -1) containedCones += ic.index();
-        if (cmp_set == 1) containerCones += ic.index();
+        const Int cmp_set = incl(*ic, new_cone_set);
+        if (cmp_set == 0)
+          new_cone_index = ic.index();
+        else if (cmp_set == -1)
+          containedCones += ic.index();
+        else if (cmp_set == 1)
+          containerCones += ic.index();
       }
       if (new_cone_index == -1) {
         intercones.push_back(new_cone_set);
         new_cone_index = intercones.size()-1;
-        xcontainers.push_back(Set<int>());
-        ycontainers.push_back(Set<int>());
+        xcontainers.push_back(Set<Int>());
+        ycontainers.push_back(Set<Int>());
       }
 
       // First add all containers from the containing cones
@@ -204,7 +195,7 @@ fan_intersection(const Matrix<Rational>& xrays, const Matrix<Rational>& xlin, co
  * @param Cycle B
  * @return PolyhedralComplex in non-tropical-homogeneous coordinates
  */
-perl::Object set_theoretic_intersection(perl::Object A, perl::Object B)
+BigObject set_theoretic_intersection(BigObject A, BigObject B)
 {
   // Extract results
   const Matrix<Rational> &arays = A.give("VERTICES");
@@ -221,7 +212,7 @@ perl::Object set_theoretic_intersection(perl::Object A, perl::Object B)
   FacetList flist;
   for (auto c = entire(rows(result.cones)); !c.at_end(); ++c) flist.insertMax(*c);
 
-  perl::Object p("fan::PolyhedralComplex");
+  BigObject p("fan::PolyhedralComplex");
   p.take("VERTICES") << tdehomog(result.rays);
   p.take("MAXIMAL_POLYTOPES") << flist;
   p.take("LINEALITY_SPACE") << tdehomog(result.lineality_space);

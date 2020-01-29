@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -266,7 +266,7 @@ use Polymake::Struct (
 sub linesToString {
     my ($self)=@_;
     my $id=$self->id;
-
+      
     my $arrows=$self->source->ArrowStyle;
     my $style=$self->source->EdgeStyle;
     my $line_flag= $style !~ $Visual::hidden_re ? 1 : 0;
@@ -315,13 +315,15 @@ sub linesToString {
     my $labels=$self->source->EdgeLabels;
 
     $text .= "\n  % EDGES\n";
-    my $i = 0;
+    my $c = 0;
     for (my $e=$self->source->all_edges; $e; ++$e) {
         my @vertices_to_draw=();
         my $a=$e->[0]; my $b=$e->[1];
         my $option_string = $self->edgeStyleString($e);
+        my $labelstring = defined($labels) ? " node [".$TikZ::default::edgelabelstyle."] {".$labels->($c)."}" : "";
+        ++$c;
         if ($line_flag && (!is_code($style) || ($style->($i) !~ $Visual::hidden_re))){
-            $text .= "  \\draw[$option_string] (v$a\_$id) -- (v$b\_$id);\n";
+            $text .= "  \\draw[$option_string] (v$a\_$id) -- (v$b\_$id)$labelstring;\n";
         }
         if (!--$vertex_count->[$a]){
             push @vertices_to_draw, $a;

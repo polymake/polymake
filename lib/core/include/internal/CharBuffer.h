@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,103 +22,107 @@
 #include <cctype>
 #include <cstring>
 #include <cstddef>
-#include "polymake/socketstream.h"
+#include <limits>
+#include "polymake/internal/streambuf_ext.h"
 
 namespace pm {
 
-class CharBuffer : public streambuf_with_input_width {
+class CharBuffer : public streambuf_ext {
 private:
-   // never create
-   CharBuffer();
+   CharBuffer() = delete;
    ~CharBuffer();
 public:
-   typedef std::streambuf::traits_type traits_type;
-   typedef std::streambuf::int_type int_type;
+   using std::streambuf::traits_type;
+   using std::streambuf::int_type;
 
-   static void skip_all(std::streambuf *_buf)
+   void skip_all()
    {
-      CharBuffer *buf=static_cast<CharBuffer*>(_buf);
-      PM_SET_BUF_GET_CUR_END(buf);
+      setg(eback(), egptr(), egptr());
    }
 
-   static int seek_forward(std::streambuf *_buf, int offset)
+   static void skip_all(std::streambuf* buf_)
    {
-      CharBuffer *buf=static_cast<CharBuffer*>(_buf);
-      const int_type eof_char=traits_type::eof();
-      if (buf->gptr()+offset >= buf->egptr() && buf->underflow()==eof_char)
+      static_cast<CharBuffer*>(buf_)->skip_all();
+   }
+
+   static int_type seek_forward(std::streambuf* buf_, size_type offset)
+   {
+      CharBuffer* buf = static_cast<CharBuffer*>(buf_);
+      const int_type eof_char = traits_type::eof();
+      if (buf->gptr() + offset >= buf->egptr() && buf->underflow() == eof_char)
          return eof_char;
       return buf->gptr()[offset];
    }
 
-   static int next_ws(std::streambuf *_buf, int offset=0, bool report_eof=true)
+   static size_type next_ws(std::streambuf* buf_, size_type offset = 0, bool report_eof = true)
    {
-      CharBuffer *buf=static_cast<CharBuffer*>(_buf);
-      const int_type eof_char=traits_type::eof();
-      for (int_type c; (c=seek_forward(buf, offset))!=eof_char; ++offset)
+      CharBuffer* buf = static_cast<CharBuffer*>(buf_);
+      const int_type eof_char = traits_type::eof();
+      for (int_type c; (c = seek_forward(buf, offset)) != eof_char; ++offset)
          if (isspace(c)) return offset;
       return report_eof ? -1 : offset;
    }
 
-   static int next_non_ws(std::streambuf *_buf, int offset=0)
+   static size_type next_non_ws(std::streambuf *buf_, size_type offset = 0)
    {
-      CharBuffer *buf=static_cast<CharBuffer*>(_buf);
-      const int_type eof_char=traits_type::eof();
-      for (int_type c; (c=seek_forward(buf, offset))!=eof_char; ++offset)
+      CharBuffer* buf = static_cast<CharBuffer*>(buf_);
+      const int_type eof_char = traits_type::eof();
+      for (int_type c; (c = seek_forward(buf, offset)) != eof_char; ++offset)
          if (!isspace(c)) return offset;
       return -1;
    }
 
-   static int skip_ws(std::streambuf *_buf)
+   static bool skip_ws(std::streambuf* buf_)
    {
-      CharBuffer *buf=static_cast<CharBuffer*>(_buf);
-      int i=next_non_ws(buf);
-      if (i<0) {
-         skip_all(buf);
-         return -1;
+      CharBuffer* buf = static_cast<CharBuffer*>(buf_);
+      const size_type i = next_non_ws(buf);
+      if (i < 0) {
+         buf->skip_all();
+         return false;
       } else {
          buf->gbump(i);
-         return 0;
+         return true;
       }
    }
 
-   static int find_char_forward(std::streambuf *_buf, char c, int offset=0)
+   static size_type find_char_forward(std::streambuf* buf_, const char c, size_type offset = 0)
    {
-      CharBuffer *buf=static_cast<CharBuffer*>(_buf);
-      const int_type eof_char=traits_type::eof();
+      CharBuffer* buf = static_cast<CharBuffer*>(buf_);
+      const int_type eof_char = traits_type::eof();
       if (seek_forward(buf, offset) != eof_char) {
          do {
-            if (char *found=(char*)memchr(buf->gptr()+offset, c, buf->egptr()-(buf->gptr()+offset)))
-               return found-buf->gptr();
-            offset=buf->egptr()-buf->gptr();
+            if (char* found = (char*)memchr(buf->gptr()+offset, c, buf->egptr() - (buf->gptr() + offset)))
+               return found - buf->gptr();
+            offset = buf->egptr() - buf->gptr();
          } while (buf->underflow() != eof_char);
       }
       return -1;
    }
 
-   static int_type ignore(std::streambuf *_buf, char c)
+   static int_type ignore(std::streambuf* buf_, const char c)
    {
-      CharBuffer *buf=static_cast<CharBuffer*>(_buf);
-      const int_type eof_char=traits_type::eof();
+      CharBuffer* buf = static_cast<CharBuffer*>(buf_);
+      const int_type eof_char = traits_type::eof();
       int_type next_c;
-      while ((next_c=seek_forward(buf,0)) != eof_char) {
-         if (next_c==c) {
+      while ((next_c = seek_forward(buf, 0)) != eof_char) {
+         if (next_c == c) {
             buf->gbump(1);
             break;
          }
-         if (char *found=(char*)memchr(buf->gptr(), c, buf->egptr()-buf->gptr())) {
-            buf->gbump(found-buf->gptr()+1);
+         if (char* found = (char*)memchr(buf->gptr(), c, buf->egptr() - buf->gptr())) {
+            buf->gbump(found - buf->gptr()+1);
             return c;
          }
-         PM_SET_BUF_GET_CUR_END(buf);
+         buf->skip_all();
       }
       return next_c;
    }
 
-   static int find_string_forward(std::streambuf *_buf, const char *c, int len, int offset)
+   static size_type find_string_forward(std::streambuf* buf_, const char* c, size_type len, size_type offset)
    {
-      CharBuffer *buf=static_cast<CharBuffer*>(_buf);
-      const int_type eof_char=traits_type::eof();
-      while ((offset=find_char_forward(buf, c[0], offset)) >= 0  &&
+      CharBuffer* buf = static_cast<CharBuffer*>(buf_);
+      const int_type eof_char = traits_type::eof();
+      while ((offset = find_char_forward(buf, c[0], offset)) >= 0  &&
              seek_forward(buf, offset+len-1) != eof_char) {
          if (!memcmp(buf->gptr()+offset, c, len)) return offset;
          ++offset;
@@ -126,94 +130,104 @@ public:
       return -1;
    }
 
-   static int count_char(std::streambuf *_buf, char c)
+   static size_type count_char(std::streambuf *buf_, const char c)
    {
-      CharBuffer *buf=static_cast<CharBuffer*>(_buf);
-      char *start=buf->gptr(), *end=buf->egptr();
-      int cnt=0;
-      while ((start=(char*)memchr(start, c, end-start)) != 0) {
+      CharBuffer* buf = static_cast<CharBuffer*>(buf_);
+      char* start = buf->gptr(), *end = buf->egptr();
+      size_type cnt = 0;
+      while ((start = (char*)memchr(start, c, end - start)) != nullptr) {
          ++cnt; ++start;
       }
       return cnt;
    }
 
-   static int count_lines(std::streambuf *buf)
+   static size_type count_lines(std::streambuf *buf)
    {
-      if (skip_ws(buf)<0) return 0;
-      return count_char(buf,'\n');
+      if (!skip_ws(buf)) return 0;
+      return count_char(buf, '\n');
    }
 
-   static int matching_brace (std::streambuf *buf, char opening, char closing, int offset=0);
-   static int get_string(std::streambuf *buf, std::string&, char delim);
+   static size_type matching_brace(std::streambuf* buf, char opening, char closing, size_type offset = 0);
+   static size_type get_string(std::streambuf* buf, std::string&, char delim);
 
-   static char* get_buf_start(std::streambuf *_buf)
+   static char* get_buf_start(std::streambuf* buf_)
    {
-      CharBuffer *buf=static_cast<CharBuffer*>(_buf);
+      CharBuffer* buf = static_cast<CharBuffer*>(buf_);
       return buf->eback();
    }
-   static char* get_ptr(std::streambuf *_buf)
+   static char* get_ptr(std::streambuf* buf_)
    {
-      CharBuffer *buf=static_cast<CharBuffer*>(_buf);
+      CharBuffer* buf = static_cast<CharBuffer*>(buf_);
       return buf->gptr();
    }
-   static char* end_get_ptr(std::streambuf *_buf)
+   static char* end_get_ptr(std::streambuf* buf_)
    {
-      CharBuffer *buf=static_cast<CharBuffer*>(_buf);
+      CharBuffer* buf = static_cast<CharBuffer*>(buf_);
       return buf->egptr();
    }
-   static void get_bump(std::streambuf *_buf, int offset)
+   static void get_bump(std::streambuf *buf_, size_type offset)
    {
-      CharBuffer *buf=static_cast<CharBuffer*>(_buf);
+      CharBuffer* buf = static_cast<CharBuffer*>(buf_);
       buf->gbump(offset);
    }
-   static void set_end_get_ptr(std::streambuf *_buf, char *end)
+   static void set_end_get_ptr(std::streambuf* buf_, char* end)
    {
-      CharBuffer *buf=static_cast<CharBuffer*>(_buf);
-      PM_SET_BUF_GET_END(buf,end);
+      CharBuffer* buf = static_cast<CharBuffer*>(buf_);
+      buf->setg(buf->eback(), buf->gptr(), end);
    }
-   static void set_end_get_ptr(std::streambuf *_buf, int offset)
+   static void set_end_get_ptr(std::streambuf* buf_, size_type offset)
    {
-      CharBuffer *buf=static_cast<CharBuffer*>(_buf);
-      PM_SET_BUF_GET_END_OFF(buf,offset);
+      CharBuffer* buf = static_cast<CharBuffer*>(buf_);
+      buf->setg(buf->eback(), buf->gptr(), buf->gptr() + offset);
    }
-   static void set_get_and_end_ptr(std::streambuf *_buf, char *get, char *end)
+   static void set_get_and_end_ptr(std::streambuf* buf_, char* get, char* end)
    {
-      CharBuffer *buf=static_cast<CharBuffer*>(_buf);
-      PM_SET_BUF_GET_CUR(buf,get,end);
+      CharBuffer* buf = static_cast<CharBuffer*>(buf_);
+      buf->setg(buf->eback(), get, end);
    }
-   static const char* get_input_limit(std::streambuf *_buf)
+   static const char* get_input_limit(std::streambuf* buf_)
    {
-      return static_cast<CharBuffer*>(_buf)->input_limit;
+      return static_cast<CharBuffer*>(buf_)->input_limit;
    }
 };
 
 class OutCharBuffer : public std::streambuf {
 private:
-   // never create
-   OutCharBuffer();
+   OutCharBuffer() = delete;
    ~OutCharBuffer();
 public:
+   using size_type = std::streamsize;
+
    class Slot {
       friend class OutCharBuffer;
    protected:
-      std::streambuf *b;
-      char *emerg_buf;
-      char *out;
-      ptrdiff_t size;
-      int width;
+      std::streambuf* b;
+      char* emerg_buf;
+      char* out;
+      size_type size;
+      size_type width;
 
-      Slot(std::streambuf *b_arg, ptrdiff_t size_arg, ptrdiff_t width_arg);
+      Slot(std::streambuf* b_arg, size_type size_arg, size_type width_arg);
    public:
       operator char* () const { return out; }
       ~Slot();
    };
 
    template <typename Traits>
-   static Slot reserve(std::basic_ostream<char,Traits>& os, size_t size)
+   static Slot reserve(std::basic_ostream<char, Traits>& os, size_type size)
    {
-      ptrdiff_t w=os.width();
-      if (w>0) os.width(0);
-      return Slot(os.rdbuf(),size,w);
+      size_type w = os.width();
+      if (w > 0) os.width(0);
+      return Slot(os.rdbuf(), size, w);
+   }
+
+   void pbump(size_type n)
+   {
+      while (__builtin_expect(n > std::numeric_limits<int>::max(), 0)) {
+         std::streambuf::pbump(std::numeric_limits<int>::max());
+         n -= std::numeric_limits<int>::max();
+      }
+      std::streambuf::pbump(static_cast<int>(n));
    }
 };
 

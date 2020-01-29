@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -17,169 +17,308 @@
 #  This file is part of the polymake database interface polyDB.
 #
 #   @author Silke Horn, Andreas Paffenholz
-#   http://solros.de
 #   http://www.mathematik.tu-darmstadt.de/~paffenholz
 #
 
-package PolyDB::Client;
+package PolyDB;
 
-use Term::ReadKey;
+use MongoDB::Error;
+use Try::Tiny;
+use Safe::Isa;
 
-sub check_polydb_version {
-   my $version = shift;
-   my $min_version = shift;
-
-   my ($min_version_major,$min_version_minor) = $min_version =~ m/^([0-9]+)(?:\.([0-9]*)){0,1}$/;
-
-   my $vminor;
-   my $vmajor;
-   if ( $version !~ m/^([0-9]+)(?:\.([0-9]*)){0,1}$/ ) {
-      croak("not a valid version string\n");
+sub die_neatly {
+   my ($mongo_error, $collection) = @_;
+   my $parent = (caller(3))[3];
+   if (is_object($collection)) {
+      $collection = $collection->full_name;
+   }
+   my $err = "PolyDB: an error occured in $parent:\n";
+   if ( $mongo_error->$_isa("MongoDB::ConnectionError") ) {
+      die $err, "PolyDB: Connection to database failed:\n", $mongo_error->message, "\n";
+   } elsif ( $mongo_error->$_isa("MongoDB::NetworkError") ) {
+      die $err, "PolyDB: Network access failed:\n", $mongo_error->message, "\n";
+   } elsif ( $mongo_error->$_isa("MongoDB::AuthError") ) {
+      die $err, "PolyDB: ", $mongo_error->message, "\n";
+   } elsif ( $mongo_error->$_isa("MongoDB::DuplicateKeyError") ) {
+      die $err, "PolyDB: Cannot insert document with the same id:\n", $mongo_error->message, "\n";
+   } elsif ( $mongo_error->$_isa("MongoDB::DatabaseError") ) {
+      if ($mongo_error->message =~ /^not authorized/ && defined($collection)) {
+         die $err, "PolyDB: Missing access permission to collection $collection\n";
+      } else {
+         die $err, "PolyDB: Error in database operation:\n", $mongo_error->message, "\n";
+      }
+   } elsif ( $mongo_error->$_isa("MongoDB::SelectionError") ) {
+      die $err, "PolyDB: Cannot select writeable server, probably due to failed connection to database:\n", $mongo_error->message, "\n";
+   } elsif ( $mongo_error->$_can("message") ) {
+      die $err, "PolyDB: an unhandled error occured:\n", $mongo_error->message, "\n";
    } else {
-      $vmajor = $1;
-      $vminor = $2;
+      die $err, $mongo_error;
    }
-   if ( $min_version_major < $vmajor or $min_version_major == $vmajor && $min_version_minor <= $vminor ) {
-      return 1;
-   }
-   return 0;
+      
 }
 
-# @category Database
-# Takes local and (optionally) username and password and returns a mongo client.
-# @param Bool local
-# @param String username optional
-# @param String password optional
-# @return MongoClient
-sub get_client {
-   my @args = @_;
-   my ($local, $u, $p);
-   if (@args == 3) {
-      ($local, $u, $p) = @args;
-   } else {
-      my $h = $args[0];
-      $local = $h->{local};
-      $u = $h->{username};
-      $p = $h->{password};
+package PolyDB::Client;
+
+@ISA = qw( MongoDB::MongoClient );
+
+sub new {
+   my ($pkg, $host, $options) = @_;
+   if (defined($options->{user})) {
+      if ($Shell->interactive) {
+         $options->{password} //= $Shell->enter_string("", { prompt => 'password for Mongo DB at '.$options->{host}, secret => true });
+      }
+      if (!defined($options->{password})) {
+         croak( "password is required for Mongo DB user $options->{user}" );
+      }
+   } elsif (defined($options->{password})) {
+      croak( "option 'password' must be given together with option 'user'" );
+   } elsif (!defined($host)) {
+      $options->{user} = $default::db_user;
+      $options->{password} = $default::db_pwd;
    }
 
-   if ( ($p && !$u) || (!$p && $u) ) {
-      croak("if one of user/password is specified in the options then both must be specified\n");
+   try {
+      my $client = new MongoDB::MongoClient(host => $host // $default::db_host,
+                                            db_name => $options->{auth_db} // $default::db_auth_db,
+                                            username => $options->{user}, password => $options->{password},
+                                            ssl => $default::useSSL, socket_timeout_ms => $default::db_socket_timeout,
+                                            connect_timeout_ms => $default::db_socket_timeout)
+                   // die "Failed to open database connection\n";
+      bless($client, $pkg);
+   } catch {
+      die_neatly($_);
    }
-
-   my $client;
-   if ($local) {
-      $client = MongoDB::MongoClient->new;
-   } elsif (!$u || !$p) {
-      $client = MongoDB::MongoClient->new(ssl=>$PolyDB::default::useSSL, host=> $PolyDB::default::db_host.":".$PolyDB::default::db_port, db_name=> $PolyDB::default::db_auth_db, username=>$PolyDB::default::db_user, password=>$PolyDB::default::db_pwd, socket_timeout_ms=>$PolyDB::default::db_socket_timeout);
-   } else {
-      $client = MongoDB::MongoClient->new(ssl=>$PolyDB::default::useSSL, host=> $PolyDB::default::db_host.":".$PolyDB::default::db_port, db_name=> $PolyDB::default::db_auth_db, username=>$u, password=>$p, socket_timeout_ms=>$PolyDB::default::db_socket_timeout);
-   }
-
-   if( !defined($client) ) {
-      croak("Failed to open database connection\n");
-   }
-
-   return $client;
 }
 
 # returns a collection object
 sub get_collection {
-   my ($client, $db_name, $collection) = @_;
-   my $db = $client->get_database($db_name);
-   return $db->get_collection($collection);
-}
-
-# sets polymake application name for the objects in a collection from the typer information of the collection
-# need to consider version of the format of the type information
-# no entry "polyDB_version": type information is in the initial format, app is a top level property
-# "polyDB_version" is 2.0 or greater: type information is in the new format, app is an entry in the package informations for polymake
-sub get_app_from_type_information {
-   my ($type_information) = @_;
-
-   if ( !defined($type_information->{'polyDB_version'}) ) {   # initial version of type information, app is recorded on top level
-      return $type_information->{'app'};
-   } elsif (check_polydb_version($type_information->{'polyDB_version'},"2.0") ) {
-      return $type_information->{'package'}->{'polymake'}->{'app'};
-   } else {
-      croak("cannot determine version of type information");
+   my ($self, $col_name) = @_;
+   $col_name ||= $default::db_collection_name
+     or die "no collection name specified and PolyDB::default::db_collection_name not set\n";
+   if ($col_name !~ /\./) {
+      $col_name = disambiguate_collection_name($self, $col_name);
+   }
+   my $db = $self->SUPER::get_database($default::db_name);
+   try {
+      prime Collection($db->get_collection($col_name)
+                       // die "Failed to connect to collection $col_name\n");
+   } catch {
+       die_neatly($_);
    }
 }
 
-# sets polymake application name for the objects in a collection from the typer information of the collection
-# need to consider version of the format of the type information
-# no entry "polyDB_version": type information is in the initial format, app is a top level property
-# "polyDB_version" is 2.0 or greater: type information is in the new format, app is an entry in the package informations for polymake
-sub get_type_from_type_information {
-   my ($type_information) = @_;
+sub disambiguate_collection_name {
+   my ($self, $col_name) = @_;
+   my @candidates = get_collection_names($self, undef, { filter => "\\.$col_name\$", recursive => -1 })
+     or die "there is no accessible collection with name $col_name\n";
+   if (@candidates > 1) {
+      if (length($default::db_section_name)) {
+         @candidates = grep { /^\Q$default::db_section_name\E\./ } @candidates;
+      }
+      if (@candidates != 1) {
+         die "short collection name $col_name is ambiguous, possible candidates are:\n",
+             join(", ", @candidates), "\nPlease specify the full name of the desired collection\n";
+      }
+   }
+   $candidates[0]
+}
 
-   if ( !defined($type_information->{'polyDB_version'}) ) {   # initial version of type information, app is recorded on top level
-      return $type_information->{'type'};
-   } elsif (check_polydb_version($type_information->{'polyDB_version'},"2.0") ) {
-      return $type_information->{'package'}->{'polymake'}->{'type'};
-   } else {
-      croak("cannot determine version of type information");
+sub get_collection_names {
+   my ($self, $top_section, $options) = @_;
+   my $root = $options->{recursive} < 0 ? "_collectionInfo" : "_sectionInfo";
+   my $regex = "^$root\\.";
+   if (length($top_section)) {
+      $regex .= ($top_section =~ s/\./\\./gr) . '\\.';
+   }
+   if (defined(my $filter = $options->{filter})) {
+      $filter =~ s/^\^//
+        or
+      $filter =~ s/^/[.\\w]*/;
+      $regex .= $filter;
+   } elsif (!$options->{recursive}) {
+      $regex .= '\\w+$';
+   }
+   try {
+      my $db = $self->SUPER::get_database($default::db_name);
+      map { $_->{name} =~ s/^$root\.//r }
+          $db->list_collections({ name => { '$regex' => $regex } }, { authorizedCollections => true, nameOnly => true })->all;
+   } catch {
+      die_neatly($_);
    }
 }
 
-# returns a db handle and a collection handle
-# FIXME the client handle must be returned as we need to close it after using the collection handle
-# FIXME creation of the client handle should happen in the calling function!
-sub get_collection_for_query {
-   my ($options) = @_;
+sub collection_exists {
+   my ($self, $collection) = @_;
 
-   $options->{db} ne "" or croak("database name is missing");
-   $options->{collection} ne "" or croak("collection name is missing");
-
-   my $client = $options->{client} // get_client($options);
-
-   # get the actual collection
-   my $col  = get_collection($client, $options->{db}, $options->{collection});
-
-   return ($client, $col);
-}
-
-### broken/unused functions
-
-
-# checks if there is a template for the db and checks whether input data adheres to this template
-# FIXME we might have more than one template
-# FIXME broken function
-sub check_type {
-   my ($obj, $db, $col, $template) = @_;
-
-   my $col_type = $c->{type};
-
-   unless ($obj->type->isa($template->{app}."::".$col_type) || grep $col_type, {map {$_->name} keys %{$obj->type->auto_casts}}) {
-      croak("Type mismatch: Collection $db.$col only takes objects of type $col_type; given object is of type ".$obj->type->full_name."\n");
+   try {
+      my $db = $self->SUPER::get_database($default::db_name);
+      my @cols = $db->list_collections( { name => $collection} )->all;
+      scalar(@cols);
+   } catch {
+      die_neatly($_);
    }
-   return 1;
 }
 
-# FIXME currently this function is unused
-sub get_credentials {
-   # TODO: cache, key chain??
-   print "user name: ";
-   my $u= <STDIN>;
-   ReadMode 2;
-   print "password: ";
-   my $p= <STDIN>;
-   ReadMode 0;
-   print "\n";
-   chomp($u);
-   chomp($p);
-   print "Do you want to save these credentials in your custom settings? (This will overwrite any current user and password settings.) [yes/NO]: ";
-   my $answer = <STDIN>;
-   chomp($answer);
-   print "\n";
-   if ($answer == "yes") {
-      Polymake::User::set_custom $db_user = $u;
-      Polymake::User::set_custom $db_pwd = $p;
-      print "user settings will be saved at exit\n";
-   }
-   print "Successfully set user and password for $u.\n";
-   return ($u,$p);
+sub role_exists {
+   my ($self, $rolename) = @_;
+      
+   my $command = [
+      rolesInfo   => {
+         role => $rolename,
+         db => $PolyDB::default::db_auth_db
+      }
+   ];
+
+   my $db = $self->SUPER::get_database($default::db_name);
+   my $output = $db->run_command($command);
+
+   return scalar(@{$output->{roles}}) > 0;
 }
+
+sub add_role_to_role {
+   my ($self, $role, $subrole) = @_;
+
+   my $command = [ 
+      grantRolesToRole => $role,
+      roles => [ $subrole ]
+   ];
+
+   my $db = $self->SUPER::get_database($default::db_auth_db);
+   $db->run_command($command);
+
+   return $role;
+}
+
+sub add_role_for_user { 
+   my ($self, $user, $role) = @_;
+
+   my $command = [
+      grantRolesToUser   => $user,
+      roles => [ $role ]
+   ];
+
+   my $db = $self->SUPER::get_database($default::db_auth_db);
+   $db->run_command($command);
+
+   return $role;
+}
+
+# creates the two necessary roles for a new collection
+sub create_roles_for_collection {
+   my ($self, $collection) = @_;
+
+   die "user role $collection already exists" if $self->role_exists($collection);
+   die "admin role $rolename already exists" if $self->role_exists($collection.".admin");
+
+   my $actions = [ "find" ];
+   my $admin_actions = [ "find", "insert" , "update", "remove", "createIndex" ];
+   
+   my $section_privileges;
+   my ($sec,$sub) = $collection =~ /(.*)\.(.*)/;
+   while ( $sub ) {
+      push @$section_privileges, (
+         { 
+            resource => { db => $PolyDB::default::db_name, collection => "_sectionInfo".".".$sec }, 
+            actions => $actions
+         },
+      );
+      ($sec,$sub) = $sec =~ /(.*)\.(.*)/;
+   }
+
+   my $user_privileges;
+   push @$user_privileges, (
+      { 
+         resource => { db => $PolyDB::default::db_name, collection => $collection }, 
+         actions => $actions
+      },
+      { 
+         resource => { db => $PolyDB::default::db_name, collection => "_collectionInfo.".$collection }, 
+         actions => $actions
+      }
+   );
+
+   my $admin_privileges;
+   push @$admin_privileges, (
+      { 
+         resource => { db => $PolyDB::default::db_name, collection => $collection }, 
+         actions => $admin_actions
+      },
+      { 
+         resource => { db => $PolyDB::default::db_name, collection => "_collectionInfo.".$collection }, 
+         actions => $admin_actions
+      }
+   );
+
+   my $rolename = $collection;
+   my $rolename_admin = $collection.".admin";
+
+   my $user_command = [ createRole   => $collection, roles => [], privileges => [ @$section_privileges, @$user_privileges] ];
+   my $admin_command = [ createRole   => $collection.".admin", roles => [], privileges => [ @$section_privileges, @$admin_privileges ] ];
+
+   my $auth_db = $self->SUPER::get_database($default::db_auth_db);
+   $auth_db->run_command($user_command);
+   $auth_db->run_command($admin_command);
+
+   return $collection;
+}
+
+# creates the default polymake user and role
+# and the custom rule for changing user passwords and custom data
+# only needed once for a newly set up database (e.g. testing)
+sub create_default_user_and_role {
+   my ($self) = @_;
+
+   my $db = $self->SUPER::get_database($default::db_auth_db);
+   if ( !$self->role_exists("polymakeUser") ) {
+      my $command = [ 
+         createRole   => "polymakeUser", 
+         privileges => [],
+         roles => []
+      ];
+      $db->run_command($command) or die "Could not create default role\n";
+   }
+
+   if ( !$self->role_exists("changeOwnAccount") ) {
+      my $command = [
+         createRole =>  "changeOwnAccount",
+         privileges => [
+            {
+               resource => { db => "admin", collection => "" },
+               actions => [ "changeOwnPassword", "changeOwnCustomData" ]
+            }
+         ],
+         roles => []
+      ];
+      $db->run_command($command) or die "Could not create role for changing own password\n";
+   }
+
+   ## FIXME change once check_user is implemented
+   my $output = $db->run_command([ usersInfo => $PolyDB::default::db_user ] );
+   if ( scalar(@{$output->{users}}) == 0 ) {
+      my $command = [ 
+         createUser   => $PolyDB::default::db_user,
+         pwd => $PolyDB::default::db_pwd,
+         roles => [ "polymakeUser" ]
+      ];
+      $db->run_command($command) or die "Could not create default user\n";
+   }
+}
+
+# checks whether a user is already defined
+sub user_exists {
+   my ($self, $user) = @_;
+
+   my $command = [
+         usersInfo   => {
+            user => $user,
+            db => $PolyDB::default::db_auth_db
+         }
+   ];
+   my $db = $self->SUPER::get_database($default::db_name);
+   my $output = $db->run_command($command);
+   return scalar(@{$output->{users}}) > 0;
+}
+
 
 1;
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -48,7 +48,7 @@ Matrix<Scalar> translate_non_rays(const Matrix<Scalar>& M, const Vector<Scalar>&
 }
 
 template <typename Scalar>
-Vector<Scalar> separate_strong(perl::Object p1, perl::Object p2)
+Vector<Scalar> separate_strong(BigObject p1, BigObject p2)
 {
    const Matrix<Scalar>
       V = p1.give("VERTICES | POINTS"),
@@ -77,14 +77,14 @@ Vector<Scalar> separate_strong(perl::Object p1, perl::Object p2)
    Vector<Scalar> sol = S.solution.slice(sequence(0, V.cols()));
 
    // translate sol back to the original polytope position
-   for (int i = 1; i < sol.dim(); ++i) {
+   for (Int i = 1; i < sol.dim(); ++i) {
       if (!is_zero(sol[i])) {
          t[i] -= sol[0] / sol[i];
          break;
       }
    }
    t[0] = 1;
-   sol[0] = -(sol * t - sol[0]);
+   sol[0] = -(sol*t - sol[0]);
    return sol;
 }
 
@@ -92,7 +92,7 @@ Vector<Scalar> separate_strong(perl::Object p1, perl::Object p2)
 // t is an inner point of p1 that is not a vertex of p2
 // called from separate_weak
 template <typename Scalar>
-Vector<Scalar> separate_weak(perl::Object p1, perl::Object p2, Vector<Scalar> t)
+Vector<Scalar> separate_weak(BigObject p1, BigObject p2, Vector<Scalar> t)
 {
    const Matrix<Scalar>
       V = p1.give("VERTICES | POINTS"),
@@ -125,14 +125,14 @@ Vector<Scalar> separate_weak(perl::Object p1, perl::Object p2, Vector<Scalar> t)
    Vector<Scalar> sol = S.solution;
 
    // translate sol back to the original polytope position
-   for (int i = 1; i < sol.dim(); ++i) {
+   for (Int i = 1; i < sol.dim(); ++i) {
       if (!is_zero(sol[i])) {
          t[i] -= sol[0] / sol[i];
          break;
       }
    }
    t[0] = one_value<Scalar>();
-   sol[0] = -(sol * t - sol[0]);
+   sol[0] = -(sol*t - sol[0]);
    return sol;
 }
 
@@ -144,7 +144,7 @@ Vector<Scalar> separate_weak(perl::Object p1, perl::Object p2, Vector<Scalar> t)
 // of the polytope that is supposed to lie on the positive side of the plane.
 // in case both polytopes are low dimensional, we have to take extra care (see below)
 template <typename Scalar>
-Vector<Scalar> separate_weak(perl::Object p1, perl::Object p2)
+Vector<Scalar> separate_weak(BigObject p1, BigObject p2)
 {
    const Matrix<Scalar>
       V = p1.give("VERTICES | POINTS"),
@@ -179,7 +179,7 @@ Vector<Scalar> separate_weak(perl::Object p1, perl::Object p2)
          Vector<Scalar> inn = p1.give("REL_INT_POINT");
          for (auto r = entire(rows(W)); !r.at_end(); ) {
             if (*r == inn) {
-               inn = one_value<Scalar>() | (inn + (non_ray - inn) / 2).slice(range_from(1));
+               inn = one_value<Scalar>() | (inn+(non_ray - inn)/2).slice(range_from(1));
                r = entire(rows(W));
             }
             else
@@ -199,7 +199,7 @@ Vector<Scalar> separate_weak(perl::Object p1, perl::Object p2)
          Vector<Scalar> inn = p2.give("REL_INT_POINT");
          for (auto r = entire(rows(V)); !r.at_end(); ) {
             if (*r == inn) {
-               inn = one_value<Scalar>() | (inn + (non_ray - inn) / 2).slice(range_from(1));
+               inn = one_value<Scalar>() | (inn+(non_ray - inn)/2).slice(range_from(1));
                r = entire(rows(V));
             }
             else ++r;
@@ -219,7 +219,7 @@ Vector<Scalar> separate_weak(perl::Object p1, perl::Object p2)
 
 // separate two polytopes
 template< typename Scalar>
-Vector<Scalar> separating_hyperplane(perl::Object p1, perl::Object p2, perl::OptionSet options)
+Vector<Scalar> separating_hyperplane(BigObject p1, BigObject p2, OptionSet options)
 {
    bool strong = options["strong"];
    Vector<Scalar> sol;
@@ -236,7 +236,7 @@ Vector<Scalar> separating_hyperplane(perl::Object p1, perl::Object p2, perl::Opt
 }
 
 template <typename Scalar>
-bool cone_contains_point(perl::Object p, const Vector<Scalar> & q, perl::OptionSet options)
+bool cone_contains_point(BigObject p, const Vector<Scalar> & q, OptionSet options)
 {
    // the LP constructed here is supposed to find a conical/convex combination of the rays/vertices
    // of cone/polytope p that equals q. if the in_interior flag is set, all coefficients are
@@ -256,12 +256,12 @@ bool cone_contains_point(perl::Object p, const Vector<Scalar> & q, perl::OptionS
    }
    eqs = eqs | zero_vector<Scalar>();
 
-   int n = P.rows();
+   Int n = P.rows();
    Matrix<Scalar> ineqs = zero_vector<Scalar>(n) | unit_matrix<Scalar>(n) | zero_matrix<Scalar>(n, 2*E.rows()) | -ones_vector<Scalar>(n); //z_i >= eps for rays
 
-   int c = n + 2*E.rows() + 2;
-   ineqs = ineqs / unit_vector<Scalar>(c,c-1) //eps >= 0
-                 / (unit_vector<Scalar>(c,0) - unit_vector<Scalar>(c,c-1)); // eps <= 1
+   Int c = n+2+2*E.rows();
+   ineqs = ineqs / unit_vector<Scalar>(c, c-1) //eps >= 0
+                 / (unit_vector<Scalar>(c, 0) - unit_vector<Scalar>(c, c-1)); // eps <= 1
 
    const auto S = solve_LP(ineqs, eqs, unit_vector<Scalar>(c, c-1), true);  // maximize eps
    if (S.status != LP_status::valid)
@@ -273,11 +273,11 @@ bool cone_contains_point(perl::Object p, const Vector<Scalar> & q, perl::OptionS
 
 // check for separability of a point and a set of points
 template <typename Scalar>
-bool separable(perl::Object p, const Vector<Scalar>& q, perl::OptionSet options)
+bool separable(BigObject p, const Vector<Scalar>& q, OptionSet options)
 {
    bool strong = options["strong"];
 
-   return !cone_contains_point<Scalar>(p, q, perl::OptionSet("in_interior", !strong));
+   return !cone_contains_point<Scalar>(p, q, OptionSet("in_interior", !strong));
 }
 
 FunctionTemplate4perl("cone_contains_point<Scalar> [ is_ordered_field_with_unlimited_precision(type_upgrade<Scalar, Rational>) ](Cone<Scalar>, Vector<Scalar>, {in_interior=>0})");

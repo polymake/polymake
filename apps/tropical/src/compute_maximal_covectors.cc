@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,14 +27,14 @@
 namespace polymake { namespace tropical {
 
 template <typename Addition, typename Scalar>
-void compute_maximal_covectors(perl::Object cone)
+void compute_maximal_covectors(BigObject cone)
 {
   Matrix<Rational> pseudovertices = cone.give("PSEUDOVERTICES");
   IncidenceMatrix<> maximal_cells = cone.give("MAXIMAL_COVECTOR_CELLS");
   Matrix<TropicalNumber<Addition, Scalar>> points = cone.give("POINTS");
 
   Matrix<Rational> interior_points(maximal_cells.rows(), pseudovertices.cols());
-  int index=0;
+  Int index = 0;
   for (auto r = entire(rows(maximal_cells)); !r.at_end(); r++, index++) {
     interior_points.row(index) = accumulate(rows(pseudovertices.minor(*r,All)), operations::add())
                                  / support(pseudovertices.minor(*r,All).col(0)).size(); 

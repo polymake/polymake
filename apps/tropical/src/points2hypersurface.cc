@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,20 +22,20 @@
 namespace polymake { namespace tropical {
 
 template <typename Addition>
-perl::Object points2hypersurface(const Matrix<TropicalNumber<Addition>>& points)
+BigObject points2hypersurface(const Matrix<TropicalNumber<Addition>>& points)
 {
-   using TDualNumber = TropicalNumber<typename Addition::dual> ;
+   using TDualNumber = TropicalNumber<typename Addition::dual>;
 
-   const int d(points.cols());
+   const Int d = points.cols();
    const Matrix<TDualNumber> dual_points = dual_addition_version(points, 1);
                         
    Polynomial<TDualNumber> hyperpoly(TDualNumber::one(), d);
 
    for (auto pt = entire(rows(dual_points)); !pt.at_end(); pt++) {
-      hyperpoly *= Polynomial<TDualNumber>(*pt, unit_matrix<int>(d));
+      hyperpoly *= Polynomial<TDualNumber>(*pt, unit_matrix<Int>(d));
    }
 
-   perl::Object result("Hypersurface", mlist<typename Addition::dual>());
+   BigObject result("Hypersurface", mlist<typename Addition::dual>());
    result.take("POLYNOMIAL") << hyperpoly;
 
    return result;

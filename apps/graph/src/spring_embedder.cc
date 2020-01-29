@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,16 +21,16 @@
 
 namespace polymake { namespace graph {
 
-Matrix<double> spring_embedder(const Graph<>& G, perl::OptionSet options)
+Matrix<double> spring_embedder(const Graph<>& G, OptionSet options)
 { 
    Graph<> H(G);
-   int n=G.nodes()-1;
-   bool con=is_connected<>(G);
+   Int n = G.nodes()-1;
+   bool con = is_connected<>(G);
    if (!con) {
       H.squeeze();
       n=H.add_node();
-      for (int i=0;i<n;++i)
-         H.add_edge(i,n);
+      for (Int i = 0; i < n; ++i)
+         H.add_edge(i, n);
    }
    SpringEmbedder SE(H,options);
    const RandomSeed seed(options["seed"]);
@@ -41,7 +41,7 @@ Matrix<double> spring_embedder(const Graph<>& G, perl::OptionSet options)
    RandomSpherePoints<double> random_points(3, seed);
    Matrix<double> X(n+1,3);
    SE.start_points(X,random_points.begin());
-   int max_iter;
+   Int max_iter;
    if (!(options["max-iterations"] >> max_iter)) max_iter=10000;
    if (! SE.calculate(X,random_points,max_iter))
       cerr << "WARNING: spring_embedder not converged after " << max_iter << " iterations" << endl;

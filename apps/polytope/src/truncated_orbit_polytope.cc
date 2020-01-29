@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,7 +27,7 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
-perl::Object truncated_orbit_polytope(perl::Object p, Scalar eps)
+BigObject truncated_orbit_polytope(BigObject p, Scalar eps)
 {
    const Matrix<Scalar> 
       vertices = p.give("VERTICES"),
@@ -35,23 +35,23 @@ perl::Object truncated_orbit_polytope(perl::Object p, Scalar eps)
 
    ListMatrix<Vector<Scalar>> inequalities_reps = p.give("GROUP.REPRESENTATIVE_FACETS");
 
-   const Array<hash_set<int>> vertex_orbits = p.give("GROUP.VERTICES_ACTION.ORBITS");
-   const Array<Array<int>> action_gens = p.give("GROUP.COORDINATE_ACTION.GENERATORS | GROUP.COORDINATE_ACTION.STRONG_GENERATORS");
+   const Array<hash_set<Int>> vertex_orbits = p.give("GROUP.VERTICES_ACTION.ORBITS");
+   const Array<Array<Int>> action_gens = p.give("GROUP.COORDINATE_ACTION.GENERATORS | GROUP.COORDINATE_ACTION.STRONG_GENERATORS");
 
    for (const auto& orbit : vertex_orbits) {
       // find an integral primitive separating hyperplane
-      const int i0 (*(orbit.begin()));
+      const Int i0 = *(orbit.begin());
       Vector<Scalar> h(common::primitive(separating_hyperplane(vertices[i0], vertices.minor(~scalar2set(i0), All))));
       // move hyperplane so that v is separated by eps
-      h[0] -= vertices[i0] * h + eps;
+      h[0] -= vertices[i0]*h+eps;
       inequalities_reps /=  h;
    }
 
-   perl::Object a("group::PermutationAction");
+   BigObject a("group::PermutationAction");
    a.take("GENERATORS") << action_gens;
    a.take("INEQUALITIES_GENERATORS") << inequalities_reps;
 
-   perl::Object q("Polytope", mlist<Scalar>());
+   BigObject q("Polytope", mlist<Scalar>());
    q.take("AFFINE_HULL") << linear_span;
    q.take("GROUP.COORDINATE_ACTION") << a;
 

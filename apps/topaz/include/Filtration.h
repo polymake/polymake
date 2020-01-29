@@ -13,11 +13,11 @@ namespace polymake { namespace topaz {
 
 // dimension and index are needed to find the corresponding boundary via the given matrices.
 struct Cell {
-  int deg, dim, idx;
+  Int deg, dim, idx;
 
   Cell() : deg(0), dim(0), idx(0) {}
 
-  Cell(int deg_in, int dim_in, int idx_in) : deg(deg_in), dim(dim_in), idx(idx_in) {}
+  Cell(Int deg_in, Int dim_in, Int idx_in) : deg(deg_in), dim(dim_in), idx(idx_in) {}
 
   bool operator!= (const Cell & other) const
   {
@@ -25,7 +25,7 @@ struct Cell {
   }
 
   // for testing.
-  friend std::ostream & operator<<(std::ostream & os, const Cell& c)
+  friend std::ostream& operator<< (std::ostream & os, const Cell& c)
   {
     os << "(" << c.deg << "," << c.dim << "," << c.idx << ")";
     return os;
@@ -40,7 +40,7 @@ class Filtration {
 public:
   Array<Cell> C; //after object initialization, this array is always sorted as required by the persistent homology algorithm.
   Array<MatrixType> bd_matrix; //boundary matrices by dimension. idx of the cells corresponds to the row in the corresponding matrix
-  Array<Array<int>> ind; //keep track of indices to implement proper bd function
+  Array<Array<Int>> ind; //keep track of indices to implement proper bd function
 
   Filtration() {}
 
@@ -53,49 +53,49 @@ public:
     else sort();
   }
 
-  Filtration(const graph::Lattice<graph::lattice::BasicDecoration>& HD, Array<int> degs)
-    : C(HD.nodes()-2)  //-2 for empty set and dummy
+  Filtration(const graph::Lattice<graph::lattice::BasicDecoration>& HD, const Array<Int>& degs)
+    : C(HD.nodes()-2)   // -2 for empty set and dummy
     , bd_matrix(HD.rank())
   {
-    int dim = HD.rank()-1;
+    Int dim = HD.rank()-1;
 
     const auto vertex_set = HD.nodes_of_rank(1); // nodes of dim 0
-    int n_bd = vertex_set.size(); //number of vertices
-    bd_matrix[0] = ones_matrix<Coeff>(n_bd,1);
-    Map<int,int> reindex_map; // map index in hasse diagram to index in boundary matrix.
-    int count_index = 0;
-    for (int i : vertex_set) {
-      C[i-1] = Cell(degs[i-1],0,count_index);
+    Int n_bd = vertex_set.size(); // number of vertices
+    bd_matrix[0] = ones_matrix<Coeff>(n_bd, 1);
+    Map<Int, Int> reindex_map; // map index in hasse diagram to index in boundary matrix.
+    Int count_index = 0;
+    for (Int i : vertex_set) {
+      C[i-1] = Cell(degs[i-1], 0, count_index);
       reindex_map[i] = count_index;
       ++count_index;
     }
 
     // compute boundary matrices for d>0:
-    for (int d=1; d<dim; ++d) {
+    for (Int d = 1; d < dim; ++d) {
       const auto d_set = HD.nodes_of_rank(d+1);
-      int n = d_set.size();//number of d-simplices
-      MatrixType bd(n,n_bd);
+      Int n = d_set.size();//number of d-simplices
+      MatrixType bd(n, n_bd);
       n_bd = n;
-      Map<int,int> new_reindex_map;
+      Map<Int, Int> new_reindex_map;
 
       ///////////////////////
-        int r = 0; //row index
-        for (int f : d_set) { //iterate d-simplices
-          auto face = HD.face(f);
-          new_reindex_map[f] = r; //fill in index map for next iteration
-          C[f-1] = Cell(degs[f-1],d,r);//put indices into cell array
+      Int r = 0; //row index
+      for (Int f : d_set) { // iterate d-simplices
+        auto face = HD.face(f);
+        new_reindex_map[f] = r; // fill in index map for next iteration
+        C[f-1] = Cell(degs[f-1],d,r);//put indices into cell array
 
-          for (int sf : HD.in_adjacent_nodes(f)) { //iterate d-1-simplices
-            auto subface = HD.face(sf);
-            int i = 0;   //find index of the vertex missing in current subface
-            for (auto f_it = entire(face), sf_it = entire(subface);
-                 (*f_it)==(*sf_it) && !sf_it.at_end(); ++f_it, ++sf_it)
-              ++i;
+        for (Int sf : HD.in_adjacent_nodes(f)) { // iterate d-1-simplices
+          auto subface = HD.face(sf);
+          Int i = 0;   // find index of the vertex missing in current subface
+          for (auto f_it = entire(face), sf_it = entire(subface);
+               (*f_it) == (*sf_it) && !sf_it.at_end(); ++f_it, ++sf_it)
+            ++i;
 
-            bd(r,reindex_map[sf]) = i%2 ? Coeff(1) : -Coeff(1);
-          }
-          ++r;
+          bd(r, reindex_map[sf]) = i%2 ? Coeff(1) : Coeff(-1);
         }
+        ++r;
+      }
       ///////////////////////////
       bd_matrix[d] = bd;
       reindex_map = new_reindex_map;
@@ -103,7 +103,6 @@ public:
 
     sort();
   }
-
 
   // keeps track of ind matrix for easy access of boundaries
   void update_indices()
@@ -117,26 +116,26 @@ public:
   }
 
 public:
-  int n_cells() const
+  Int n_cells() const
   {
     return C.size();
   }
 
-  int n_frames() const
+  Int n_frames() const
   {
     return C[n_cells()-1].deg; //TODO this only works with sorted array...
   }
 
-  int dim() const
+  Int dim() const
   {
     return bd_matrix.size()-1;
   }
 
   using Chain = SparseVector<Coeff>;
-  Chain bd(int i) const
+  Chain bd(Int i) const
   {
     Cell cell = C[i];
-    int d = cell.dim;
+    Int d = cell.dim;
     Chain c(C.size());
     if (d==0) return c; //points have empty boundary
     Chain b = bd_matrix[d].row(cell.idx);
@@ -167,12 +166,12 @@ private:
   }
 
 public:
-  const Cell operator[](int i) const
+  const Cell& operator[](Int i) const
   {
     return C[i];
   }
 
-  const MatrixType& boundary_matrix(int d) const
+  const MatrixType& boundary_matrix(Int d) const
   {
     return bd_matrix[d];
   }
@@ -185,7 +184,7 @@ public:
   /// returns d-bd matrix of t-th frame TODO accept non-sorted filtrations?
   /// @param[out] frame indices of d-simplices present in this frame
   /// @param[out] frame_bd indices of d-1-simplices present
-  MatrixType boundary_matrix_with_frame_sets(int d, int t, Set<int>& frame, Set<int>& frame_bd) const
+  MatrixType boundary_matrix_with_frame_sets(Int d, Int t, Set<Int>& frame, Set<Int>& frame_bd) const
   {
     if (t>n_frames()) throw std::runtime_error("Filtration: input exceeds number of frames");
     if (d>dim()) throw std::runtime_error("Filtration: input exceeds filtration dimension");
@@ -205,9 +204,9 @@ public:
     return B.minor(frame, frame_bd);
   }
 
-  MatrixType boundary_matrix(int d, int t) const
+  MatrixType boundary_matrix(Int d, Int t) const
   {
-    Set<int> frame, frame_bd;
+    Set<Int> frame, frame_bd;
     return boundary_matrix_with_frame_sets(d, t, frame, frame_bd);
   }
 
@@ -217,13 +216,14 @@ public:
   }
 
   // for testing.
-  friend std::ostream & operator<<(std::ostream& os, const Filtration& c) {
-    for (int i=0; i<c.n_cells(); ++i) os << c[i] << ",";
+  friend std::ostream & operator<< (std::ostream& os, const Filtration& c)
+  {
+    for (Int i = 0; i < c.n_cells(); ++i) os << c[i] << ",";
     return os;
   }
 
   template <typename MatrixType2>
-  bool operator==(const Filtration<MatrixType2>& other) const
+  bool operator== (const Filtration<MatrixType2>& other) const
   {
     return bd_matrix == other.bd_matrix && C == other.C;
   }
@@ -239,9 +239,9 @@ template <>
 struct spec_object_traits< Serialized< polymake::topaz::Cell > >
   : spec_object_traits<is_composite> {
 
-  using  masquerade_for = polymake::topaz::Cell;
+  using masquerade_for = polymake::topaz::Cell;
 
-  typedef cons<int,cons<int,int> > elements;
+  typedef cons<Int, cons<Int, Int>> elements;
 
   template <typename Me, typename Visitor>
   static void visit_elements(Me& me, Visitor& v)

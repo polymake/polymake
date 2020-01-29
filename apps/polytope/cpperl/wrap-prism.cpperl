@@ -1,5 +1,5 @@
 {"app": "polytope", "embed": "prism.cc",
  "inst": [
-  {"args": ["Rational", "void", "Rational(int)", "Rational(int)", "void"], "func": "prism", "include": ["polymake/Rational.h"], "sig": "prism:T1.B.C0.C0.o", "tp": "1"},
+  {"args": ["Rational", "void", "Rational(Int)", "Rational(Int)", "void"], "func": "prism", "include": ["polymake/Rational.h"], "sig": "prism:T1.B.C0.C0.o", "tp": "1"},
  null ],
 "version": 3}

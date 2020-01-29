@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,8 +32,8 @@ ostreambuf_bridge::ostreambuf_bridge(pTHX_ GV* gv_arg)
 ostreambuf_bridge::int_type ostreambuf_bridge::overflow(int_type c)
 {
    if (handover(false)) {
-      if (!traits_type::eq(c, traits_type::eof())) {
-         *pptr() = c;
+      if (!traits_type::eq_int_type(c, traits_type::eof())) {
+         *pptr() = traits_type::to_char_type(c);
          pbump(1);
       }
       return traits_type::not_eof(c);
@@ -51,11 +51,11 @@ bool ostreambuf_bridge::handover(bool with_sync)
    PerlIO* fp=IoOFP(io);
    if (!fp)
       throw std::runtime_error("internal error: STDOUT IO handle not opened for writing");
-   const int out_size = pptr() - pbase();
+   const std::streamsize out_size = pptr() - pbase();
    if (out_size > 0) {
       if (PerlIO_write(fp, buf, out_size) != out_size)
          throw std::runtime_error("internal error: buffered STDOUT not consumed completely");
-      setp(buf, buf+sizeof(buf));
+      setp(buf, buf + sizeof(buf));
    }
    if (with_sync)
       return PerlIO_flush(fp) != EOF;

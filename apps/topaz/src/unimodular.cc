@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,10 +25,10 @@
 
 namespace polymake { namespace topaz {
 
-bool unimodular(perl::Object p)
+bool unimodular(BigObject p)
 {
    const Matrix<Rational> C = p.give("COORDINATES");
-   const Array< Set<int> > F = p.give("FACETS");
+   const Array<Set<Int>> F = p.give("FACETS");
    const Vector<Rational> leading_col(ones_vector<Rational>(C.cols()+1));
 
    bool unimodular(true);
@@ -43,15 +43,15 @@ bool unimodular(perl::Object p)
    return unimodular;
 }
 
-int n_unimodular(perl::Object p)
+Int n_unimodular(BigObject p)
 {
    const Matrix<Rational> C = p.give("COORDINATES");
-   const Array< Set<int> > F = p.give("FACETS");
+   const Array< Set<Int> > F = p.give("FACETS");
    const Vector<Rational> leading_col(ones_vector<Rational>(C.cols()+1));
 
-   int n_unimodular(0);
+   Int n_unimodular = 0;
 
-   for (auto fi=entire(F); !fi.at_end(); ++fi) {
+   for (auto fi = entire(F); !fi.at_end(); ++fi) {
       if (abs( det(leading_col|C.minor(*fi,All)) ) == 1) {
          ++n_unimodular;
       }

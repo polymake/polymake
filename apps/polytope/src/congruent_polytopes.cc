@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,10 +25,10 @@ namespace polymake { namespace polytope {
 namespace {
 
 template <typename Scalar>
-void fill_distances(int nv, const Matrix<Scalar>& M, Graph<>& G, Vector<Scalar>& dist)
+void fill_distances(Int nv, const Matrix<Scalar>& M, Graph<>& G, Vector<Scalar>& dist)
 {
-   for (int i=0, n=nv-1; i<n; ++i)
-      for (int j=i+1; j<=n; ++j, ++nv) {
+   for (Int i = 0, n = nv-1; i < n; ++i)
+      for (Int j = i+1; j <= n; ++j, ++nv) {
          dist[nv]=sqr(M[i]-M[j]);
          G.edge(nv,i);
          G.edge(nv,j);
@@ -37,14 +37,14 @@ void fill_distances(int nv, const Matrix<Scalar>& M, Graph<>& G, Vector<Scalar>&
 }
 
 template <typename Scalar>
-Scalar congruent(perl::Object p1, perl::Object p2)
+Scalar congruent(BigObject p1, BigObject p2)
 {
    const Matrix<Scalar> V1=p1.give("VERTICES"), V2=p2.give("VERTICES");
-   const int nv=V1.rows();
+   const Int nv = V1.rows();
    if (nv != V2.rows() || V1.cols() != V2.cols()) return 0;
 
    // original vertices + edge between each two vertices
-   const int n_nodes=nv*(nv+1)/2;
+   const Int n_nodes = nv*(nv+1)/2;
    Graph<> G1(n_nodes), G2(n_nodes);
    Vector<Scalar> dist1(n_nodes), dist2(n_nodes);
    fill_distances(nv, V1, G1, dist1);

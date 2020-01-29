@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,7 +25,7 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object lattice_pyramid(perl::Object p_in, const Rational& z, const Vector<Rational>& v, perl::OptionSet options)
+BigObject lattice_pyramid(BigObject p_in, const Rational& z, const Vector<Rational>& v, OptionSet options)
 {
    const bool pointed=p_in.give("POINTED");
    if (!pointed)
@@ -36,14 +36,14 @@ perl::Object lattice_pyramid(perl::Object p_in, const Rational& z, const Vector<
    if (z==0)
       throw std::runtime_error("lattice_pyramid: z must be non-zero");
   
-   int n_vertices=0;
-   perl::Object p_out("Polytope<Rational>");
+   Int n_vertices = 0;
+   BigObject p_out("Polytope<Rational>");
    p_out.set_description() << "lattice pyramid over " << p_in.name() << endl;
 
    if (p_in.exists("VERTICES_IN_FACETS")) {
-      const IncidenceMatrix<> VIF=p_in.give("VERTICES_IN_FACETS");
-      n_vertices=VIF.cols();
-      const int n_facets=VIF.rows();
+      const IncidenceMatrix<> VIF = p_in.give("VERTICES_IN_FACETS");
+      n_vertices = VIF.cols();
+      const Int n_facets = VIF.rows();
       const IncidenceMatrix<> VIF_out= (VIF | sequence(0,n_facets))    // original vertices + the new top vertex
                                      / sequence(0, n_vertices);        // original polytope becomes the bottom facet
 

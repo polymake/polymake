@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -44,48 +44,51 @@ class PuiseuxFraction_generic;
 template <typename MinMax>
 class PuiseuxFraction_subst;
 
-namespace {
+namespace pf_internal {
 
 template <typename MinMax, typename Coefficient, typename Exponent>
-struct pf_impl_chooser {
-   using type = PuiseuxFraction_generic<MinMax,Coefficient,Exponent>;
+struct impl_chooser {
+   using type = PuiseuxFraction_generic<MinMax, Coefficient, Exponent>;
 };
 
 template <typename MinMax>
-struct pf_impl_chooser<MinMax,Rational,Rational> {
+struct impl_chooser<MinMax, Rational, Rational> {
    using type = PuiseuxFraction_subst<MinMax>;
 };
 
-template <typename T, std::enable_if_t<is_unipolynomial_type<T,Rational,Rational>::value>* = nullptr>
-decltype(auto) exp_to_int(const T& t, int& exp_den)
+template <typename T>
+auto exp_to_int(const T& t, Int& exp_den,
+                std::enable_if_t<is_unipolynomial_type<T, Rational, Rational>::value, std::nullptr_t> = nullptr)
 {
    auto exps = t.monomials_as_vector();
-   exp_den = int(lcm(denominators(exps)|exp_den));
-   return UniPolynomial<Rational,int>(t.coefficients_as_vector(),convert_to<int>(exps*exp_den));
+   exp_den = static_cast<Int>(lcm(denominators(exps)|exp_den));
+   return UniPolynomial<Rational, Int>(t.coefficients_as_vector(), convert_to<Int>(exps * exp_den));
 }
 
-template <typename T, std::enable_if_t<is_unipolynomial_type<T,Rational,Rational>::value>* = nullptr>
-decltype(auto) exp_to_int(const T& t1, const T& t2, int& exp_den)
+template <typename T>
+auto exp_to_int(const T& t1, const T& t2, Int& exp_den,
+                std::enable_if_t<is_unipolynomial_type<T, Rational, Rational>::value, std::nullptr_t> = nullptr)
 {
    auto exps1 = t1.monomials_as_vector();
    auto exps2 = t2.monomials_as_vector();
-   exp_den = int(lcm(denominators(exps1)|denominators(exps2)|exp_den));
-   return RationalFunction<Rational,int>(
-            UniPolynomial<Rational,int>(t1.coefficients_as_vector(),convert_to<int>(exps1*exp_den)),
-            UniPolynomial<Rational,int>(t2.coefficients_as_vector(),convert_to<int>(exps2*exp_den))
+   exp_den = static_cast<Int>(lcm(denominators(exps1) | denominators(exps2) | exp_den));
+   return RationalFunction<Rational, Int>(
+            UniPolynomial<Rational, Int>(t1.coefficients_as_vector(), convert_to<Int>(exps1 * exp_den)),
+            UniPolynomial<Rational, Int>(t2.coefficients_as_vector(), convert_to<Int>(exps2 * exp_den))
           );
 }
 
-template <typename T, std::enable_if_t<UniPolynomial<Rational,Rational>::fits_as_coefficient<T>::value>* = nullptr>
-decltype(auto) exp_to_int(const T& t, int& exp_den)
+template <typename T>
+auto exp_to_int(const T& t, Int& exp_den,
+                std::enable_if_t<UniPolynomial<Rational,Rational>::fits_as_coefficient<T>::value, std::nullptr_t> = nullptr)
 {
-   return UniPolynomial<Rational,int>(t);
+   return UniPolynomial<Rational, Int>(t);
 }
 
-template <typename T, std::enable_if_t<std::is_same<T,RationalFunction<Rational,Rational>>::value>* = nullptr>
-decltype(auto) exp_to_int(const T& t, int& exp_den)
+inline
+auto exp_to_int(const RationalFunction<Rational, Rational>& t, Int& exp_den)
 {
-   return exp_to_int(numerator(t),denominator(t),exp_den);
+   return exp_to_int(numerator(t), denominator(t), exp_den);
 }
 
 }
@@ -334,364 +337,368 @@ public:
 
 template <typename MinMax>
 class PuiseuxFraction_subst : public PuiseuxFraction_base<MinMax,Rational,Rational> {
-   public:
-      using pf_type = PuiseuxFraction_generic<MinMax,Rational,Rational>;
-      using rf_type = typename pf_type::rf_type;
-      using polynomial_type = typename pf_type::polynomial_type;
-      using Coefficient = Rational;
-      using Exponent = Rational;
-   protected:
-      using base = PuiseuxFraction_base<MinMax,Rational,Rational>;
-      using subst_exponent = int;
-      using subst_pf_type = PuiseuxFraction<MinMax,Coefficient,subst_exponent>;
-      using subst_rf_type = typename subst_pf_type::rf_type;
-      using subst_poly_type = UniPolynomial<Coefficient,subst_exponent>;
+public:
+   using pf_type = PuiseuxFraction_generic<MinMax, Rational, Rational>;
+   using rf_type = typename pf_type::rf_type;
+   using polynomial_type = typename pf_type::polynomial_type;
+   using Coefficient = Rational;
+   using Exponent = Rational;
+protected:
+   using base = PuiseuxFraction_base<MinMax,Rational,Rational>;
+   using subst_exponent = Int;
+   using subst_pf_type = PuiseuxFraction<MinMax, Coefficient, subst_exponent>;
+   using subst_rf_type = typename subst_pf_type::rf_type;
+   using subst_poly_type = UniPolynomial<Coefficient, subst_exponent>;
 
-   public:
+public:
+   template <typename T>
+   using fits_as_coefficient = typename base::template fits_as_coefficient<T>;
+   template <typename T>
+   using fits_as_particle = typename base::template fits_as_particle<T>;
+   template <typename T>
+   using is_compatible = typename base::template is_compatible<T>;
+   template <typename T>
+   using is_comparable = typename base::template is_comparable<T>;
+   template <typename T>
+   using is_comparable_or_same = typename base::template is_comparable_or_same<T>;
+   template <typename T>
+   using is_subst_polynomial = is_unipolynomial_type<T,Coefficient,subst_exponent>;
+   template <typename T>
+   using is_base_polynomial = is_unipolynomial_type<T,Coefficient,Exponent>;
 
-      template <typename T>
-      using fits_as_coefficient = typename base::template fits_as_coefficient<T>;
-      template <typename T>
-      using fits_as_particle = typename base::template fits_as_particle<T>;
-      template <typename T>
-      using is_compatible = typename base::template is_compatible<T>;
-      template <typename T>
-      using is_comparable = typename base::template is_comparable<T>;
-      template <typename T>
-      using is_comparable_or_same = typename base::template is_comparable_or_same<T>;
-      template <typename T>
-      using is_subst_polynomial = is_unipolynomial_type<T,Coefficient,subst_exponent>;
-      template <typename T>
-      using is_base_polynomial = is_unipolynomial_type<T,Coefficient,Exponent>;
+protected:
+
+   // the exp_den must be the first member
+   Int exp_den = 1;
+   subst_pf_type subst_pf;
+
+   mutable std::unique_ptr<rf_type> rf_cache;
+
+   template <typename T, std::enable_if_t<is_subst_polynomial<T>::value, std::nullptr_t> = nullptr>
+   explicit PuiseuxFraction_subst(const T& t)
+      : exp_den(1)
+      , subst_pf(t)
+   { }
+
+   template <typename T, std::enable_if_t<is_subst_polynomial<T>::value, std::nullptr_t> = nullptr>
+   PuiseuxFraction_subst(const T& num, const T& den)
+      : exp_den(1)
+      , subst_pf(num,den)
+   { }
+
+   template <typename T, std::enable_if_t<is_among<T, subst_rf_type, subst_pf_type>::value, std::nullptr_t> = nullptr>
+   explicit PuiseuxFraction_subst(const T& rf)
+      : exp_den(1)
+      , subst_pf(rf)
+   { }
+
+   void normalize_den()
+   {
+      if (exp_den == 1)
+         return;
+      auto exps1 = numerator(subst_pf).monomials_as_vector();
+      auto exps2 = denominator(subst_pf).monomials_as_vector();
+      Int expgcd = gcd(exps1 | exps2 | exp_den);
+      if (expgcd == 1)
+         return;
+      subst_pf = subst_pf.template substitute_monomial<Int>(Rational(1, expgcd));
+      exp_den /= expgcd;
+   }
+
+public:
+
+   /// Construct a zero value.
+   PuiseuxFraction_subst()
+      : exp_den(1)
+      , subst_pf() {}
+
+   /// copy
+   PuiseuxFraction_subst(const PuiseuxFraction_subst& pf)
+      : exp_den(pf.exp_den)
+      , subst_pf(pf.subst_pf) {}
+
+   PuiseuxFraction_subst(const subst_pf_type& pf, Int expden)
+      : exp_den(expden)
+      , subst_pf(pf) {}
+
+   /// construct from coefficient or unipolynomial
+   template <typename T,
+             std::enable_if_t<fits_as_particle<T>::value, std::nullptr_t> = nullptr>
+   explicit PuiseuxFraction_subst(const T& t)
+      : exp_den(1)
+      , subst_pf(pf_internal::exp_to_int(t, exp_den)) {}
+
+   /// construct from two coefficient or unipolynomial
+   template <typename T1, typename T2,
+             std::enable_if_t<fits_as_particle<T1>::value && fits_as_particle<T2>::value, std::nullptr_t> = nullptr>
+   PuiseuxFraction_subst(const T1& t1, const T2& t2)
+      : exp_den(1)
+      , subst_pf(pf_internal::exp_to_int(polynomial_type(t1), polynomial_type(t2), exp_den)) {}
+
+   /// construct from rational function
+   explicit PuiseuxFraction_subst(const rf_type& t)
+      : exp_den(1)
+      , subst_pf(pf_internal::exp_to_int(t, exp_den)) {}
+
+   template <typename T,
+             std::enable_if_t<fits_as_particle<T>::value || std::is_same<T,rf_type>::value, std::nullptr_t> = nullptr>
+   PuiseuxFraction_subst& operator= (const T& t)
+   {
+      exp_den = 1;
+      subst_pf = subst_pf_type(pf_internal::exp_to_int(t, exp_den));
+      rf_cache.reset(nullptr);
+      return *this;
+   }
+
+   PuiseuxFraction_subst& operator= (const PuiseuxFraction_subst& pf)
+   {
+      exp_den = pf.exp_den;
+      subst_pf = pf.subst_pf;
+      rf_cache.reset(nullptr);
+      return *this;
+   }
+
+   friend
+   const polynomial_type& numerator(const PuiseuxFraction_subst& me)
+   {
+      return numerator(me.to_rationalfunction());
+   }
+
+   friend
+   const polynomial_type& denominator(const PuiseuxFraction_subst& me)
+   {
+      return denominator(me.to_rationalfunction());
+   }
+
+   bool is_zero() const
+   {
+      return pm::is_zero(subst_pf);
+   }
+
+   bool is_one() const
+   {
+      return pm::is_one(subst_pf);
+   }
+
+   const rf_type& to_rationalfunction() const
+   {
+      if (!rf_cache)
+         rf_cache.reset(new rf_type(numerator(subst_pf).template substitute_monomial<Rational>(Rational(1,exp_den)),
+                                    denominator(subst_pf).template substitute_monomial<Rational>(Rational(1,exp_den))));
+      return *rf_cache;
+   }
+
+   void swap(PuiseuxFraction_subst& other)
+   {
+      std::swap(exp_den,other.exp_den);
+      subst_pf.swap(other);
+      std::swap(rf_cache,other.rf_cache);
+   }
+
+   PuiseuxFraction_subst& negate()
+   {
+      subst_pf.negate();
+      rf_cache.reset(nullptr);
+      return *this;
+   }
+
+   friend
+   PuiseuxFraction_subst operator- (const PuiseuxFraction_subst& me)
+   {
+      return PuiseuxFraction_subst(-me.subst_pf,me.exp_den);
+   }
 
 
-   protected:
+   /// PLUS
+   template <typename T>
+   std::enable_if_t<fits_as_coefficient<T>::value, PuiseuxFraction_subst&>
+   operator+= (const T& r)
+   {
+      subst_pf += r;
+      normalize_den();
+      rf_cache.reset(nullptr);
+      return *this;
+   }
 
-      // the exp_den must be the first member
-      int exp_den=1;
-      subst_pf_type subst_pf;
+   template <typename T>
+   std::enable_if_t<is_base_polynomial<T>::value, PuiseuxFraction_subst&>
+   operator+= (const T& r)
+   {
+      const Int old_den = exp_den;
+      auto poly_int = pf_internal::exp_to_int(r, exp_den);
+      if (old_den != exp_den)
+         subst_pf = subst_pf.template substitute_monomial<Int>(exp_den/old_den);
+      subst_pf += poly_int;
+      normalize_den();
+      rf_cache.reset(nullptr);
+      return *this;
+   }
 
-      mutable std::unique_ptr<rf_type> rf_cache;
-
-      template <typename T, std::enable_if_t<is_subst_polynomial<T>::value, std::nullptr_t > = nullptr >
-      explicit PuiseuxFraction_subst(const T& t)
-         : exp_den(1), subst_pf(t)
-      { }
-
-      template <typename T, std::enable_if_t<is_subst_polynomial<T>::value, std::nullptr_t > = nullptr >
-      explicit PuiseuxFraction_subst(const T& num, const T& den)
-         : exp_den(1), subst_pf(num,den)
-      { }
-
-      template <typename T, std::enable_if_t<std::is_same<T,subst_rf_type>::value || std::is_same<T,subst_pf_type>::value, std::nullptr_t > = nullptr >
-      explicit PuiseuxFraction_subst(const T& rf)
-         : exp_den(1), subst_pf(rf)
-      { }
-
-      void normalize_den()
-      {
-         if (exp_den == 1)
-            return;
-         auto exps1 = numerator(subst_pf).monomials_as_vector();
-         auto exps2 = denominator(subst_pf).monomials_as_vector();
-         int expgcd = gcd(exps1|exps2|exp_den);
-         if (expgcd == 1)
-            return;
-         subst_pf = subst_pf.template substitute_monomial<int>(Rational(1,expgcd));
-         exp_den /= expgcd;
+   PuiseuxFraction_subst& operator+= (const PuiseuxFraction_subst& r)
+   {
+      const Int new_den = lcm(exp_den, r.exp_den);
+      if (new_den != exp_den)
+         subst_pf = subst_pf.template substitute_monomial<Int>(new_den/exp_den);
+      if (new_den != r.exp_den) {
+         subst_pf += r.subst_pf.template substitute_monomial<Int>(new_den/r.exp_den);
+      } else {
+         subst_pf += r.subst_pf;
       }
+      exp_den = new_den;
+      normalize_den();
+      rf_cache.reset(nullptr);
+      return *this;
+   }
 
-   public:
+   /// MINUS
+   template <typename T,
+             typename = std::enable_if_t<fits_as_particle<T>::value || std::is_same<T, PuiseuxFraction_subst>::value>>
+   PuiseuxFraction_subst& operator-= (const T& r)
+   {
+      subst_pf += -r;
+      normalize_den();
+      rf_cache.reset(nullptr);
+      return *this;
+   }
 
-      /// Construct a zero value.
-      PuiseuxFraction_subst() : exp_den(1), subst_pf() {}
-
-      /// copy
-      PuiseuxFraction_subst(const PuiseuxFraction_subst& pf) : exp_den(pf.exp_den), subst_pf(pf.subst_pf) {}
-
-
-      PuiseuxFraction_subst(const subst_pf_type& pf, int expden) : exp_den(expden), subst_pf(pf) {}
-
-      /// construct from coefficient or unipolynomial
-      template <typename T, std::enable_if_t<fits_as_particle<T>::value, std::nullptr_t> = nullptr>
-      explicit PuiseuxFraction_subst(const T& t)
-         : exp_den(1), subst_pf(exp_to_int(t,exp_den))
-      { }
-
-      /// construct from two coefficient or unipolynomial
-      template <typename T1, typename T2, std::enable_if_t<fits_as_particle<T1>::value && fits_as_particle<T2>::value, std::nullptr_t> = nullptr>
-      PuiseuxFraction_subst(const T1& t1, const T2& t2)
-         : exp_den(1), subst_pf(exp_to_int(polynomial_type(t1),polynomial_type(t2),exp_den))
-      { }
-
-      /// construct from rational function
-      explicit PuiseuxFraction_subst(const rf_type& t)
-      : exp_den(1), subst_pf(exp_to_int(numerator(t),denominator(t),exp_den)) {}
-
-      template <typename T,
-               typename=std::enable_if_t<fits_as_particle<T>::value || std::is_same<T,rf_type>::value>>
-      PuiseuxFraction_subst& operator= (const T& t)
-      {
+   /// MULTIPLICATION
+   template <typename T>
+   std::enable_if_t<fits_as_coefficient<T>::value, PuiseuxFraction_subst&>
+   operator*= (const T& r)
+   {
+      subst_pf *= r;
+      if (pm::is_zero(r))
          exp_den = 1;
-         subst_pf = subst_pf_type(exp_to_int(t,exp_den));
-         rf_cache.reset(nullptr);
-         return *this;
+      rf_cache.reset(nullptr);
+      return *this;
+   }
+
+   template <typename T>
+   std::enable_if_t<is_base_polynomial<T>::value, PuiseuxFraction_subst&>
+   operator*= (const T& r)
+   {
+      const Int old_den = exp_den;
+      auto poly_int = pf_internal::exp_to_int(r, exp_den);
+      if (old_den != exp_den)
+         subst_pf = subst_pf.template substitute_monomial<Int>(exp_den/old_den);
+      subst_pf *= poly_int;
+      normalize_den();
+      rf_cache.reset(nullptr);
+      return *this;
+   }
+
+   PuiseuxFraction_subst& operator*= (const PuiseuxFraction_subst& r)
+   {
+      const Int new_den = lcm(exp_den, r.exp_den);
+      if (new_den != exp_den)
+         subst_pf = subst_pf.template substitute_monomial<Int>(new_den / exp_den);
+      if (new_den != r.exp_den) {
+         subst_pf *= r.subst_pf.template substitute_monomial<Int>(new_den / r.exp_den);
+      } else {
+         subst_pf *= r.subst_pf;
       }
+      exp_den = new_den;
+      normalize_den();
+      rf_cache.reset(nullptr);
+      return *this;
+   }
 
-      PuiseuxFraction_subst& operator= (const PuiseuxFraction_subst& pf)
-      {
-         exp_den = pf.exp_den;
-         subst_pf = pf.subst_pf;
-         rf_cache.reset(nullptr);
-         return *this;
+   /// DIVISION
+   template <typename T>
+   std::enable_if_t<fits_as_coefficient<T>::value, PuiseuxFraction_subst&>
+   operator/= (const T& r)
+   {
+      subst_pf /= r;
+      rf_cache.reset(nullptr);
+      return *this;
+   }
+
+   template <typename T>
+   std::enable_if_t<is_base_polynomial<T>::value, PuiseuxFraction_subst&>
+   operator/= (const T& r)
+   {
+      const Int old_den = exp_den;
+      auto poly_int = pf_internal::exp_to_int(r, exp_den);
+      if (old_den != exp_den)
+         subst_pf = subst_pf.template substitute_monomial<Int>(exp_den / old_den);
+      subst_pf /= poly_int;
+      normalize_den();
+      rf_cache.reset(nullptr);
+      return *this;
+   }
+
+   PuiseuxFraction_subst& operator/= (const PuiseuxFraction_subst& r)
+   {
+      const Int new_den = lcm(exp_den, r.exp_den);
+      if (new_den != exp_den)
+         subst_pf = subst_pf.template substitute_monomial<Int>(new_den / exp_den);
+      if (new_den != r.exp_den) {
+         subst_pf /= r.subst_pf.template substitute_monomial<Int>(new_den / r.exp_den);
+      } else {
+         subst_pf /= r.subst_pf;
       }
+      exp_den = new_den;
+      normalize_den();
+      rf_cache.reset(nullptr);
+      return *this;
+   }
 
-      friend
-      const polynomial_type& numerator(const PuiseuxFraction_subst& me) {
-         return numerator(me.to_rationalfunction());
-      }
+   /// EQUALITY
+   bool operator== (const PuiseuxFraction_subst& r) const
+   {
+      return exp_den == r.exp_den && subst_pf == r.subst_pf;
+   }
 
-      friend
-      const polynomial_type& denominator(const PuiseuxFraction_subst& me) {
-         return denominator(me.to_rationalfunction());
-      }
+   template <typename T>
+   std::enable_if_t<fits_as_coefficient<T>::value, bool>
+   operator== (const T& r) const
+   {
+      return subst_pf == r;
+   }
 
-      bool is_zero() const
-      {
-         return pm::is_zero(subst_pf);
-      }
+   template <typename T>
+   std::enable_if_t<is_base_polynomial<T>::value, bool>
+   operator== (const T& r) const
+   {
+      const Int den = exp_den;
+      return subst_pf == pf_internal::exp_to_int(r, den) && exp_den == den;
+   }
 
-      bool is_one() const
-      {
-         return pm::is_one(subst_pf);
-      }
+   template <typename Exp = Exponent, typename T>
+   auto substitute_monomial(const T& t, std::enable_if_t<!std::is_same<Exp,Rational>::value, std::nullptr_t> = nullptr) const
+   {
+      return PuiseuxFraction_generic<MinMax,Coefficient,Exp>(subst_pf.template substitute_monomial<Exp>(t/exp_den));
+   }
 
-
-      const rf_type& to_rationalfunction() const
-      {
-         if (!rf_cache)
-            rf_cache.reset(new rf_type(
-                     numerator(subst_pf).template substitute_monomial<Rational>(Rational(1,exp_den)),
-                     denominator(subst_pf).template substitute_monomial<Rational>(Rational(1,exp_den))));
-         return *rf_cache;
-      }
-
-
-      void swap(PuiseuxFraction_subst& other)
-      {
-         std::swap(exp_den,other.exp_den);
-         subst_pf.swap(other);
-         std::swap(rf_cache,other.rf_cache);
-      }
-
-      PuiseuxFraction_subst& negate()
-      {
-         subst_pf.negate();
-         rf_cache.reset(nullptr);
-         return *this;
-      }
-
-      friend
-      PuiseuxFraction_subst operator- (const PuiseuxFraction_subst& me)
-      {
-         return PuiseuxFraction_subst(-me.subst_pf,me.exp_den);
-      }
+   template <typename Exp = Exponent,typename T>
+   auto substitute_monomial(const T& t, std::enable_if_t<std::is_same<Exp,Rational>::value, std::nullptr_t> = nullptr) const
+   {
+      Rational exp(t);
+      exp /= exp_den;
+      return PuiseuxFraction_subst(subst_pf.template substitute_monomial<Int>(numerator(exp)),denominator(exp));
+   }
 
 
-      /// PLUS
-      template <typename T>
-      std::enable_if_t<fits_as_coefficient<T>::value, PuiseuxFraction_subst&>
-      operator+= (const T& r)
-      {
-         subst_pf += r;
-         normalize_den();
-         rf_cache.reset(nullptr);
-         return *this;
-      }
-
-      template <typename T>
-      std::enable_if_t<is_base_polynomial<T>::value, PuiseuxFraction_subst&>
-      operator+= (const T& r)
-      {
-         int old_den = exp_den;
-         auto poly_int = exp_to_int(r,exp_den);
-         if (old_den != exp_den)
-            subst_pf = subst_pf.template substitute_monomial<int>(exp_den/old_den);
-         subst_pf += poly_int;
-         normalize_den();
-         rf_cache.reset(nullptr);
-         return *this;
-      }
-
-      PuiseuxFraction_subst& operator+= (const PuiseuxFraction_subst& r)
-      {
-         int new_den = lcm(exp_den,r.exp_den);
-         if (new_den != exp_den)
-            subst_pf = subst_pf.template substitute_monomial<int>(new_den/exp_den);
-         if (new_den != r.exp_den) {
-            subst_pf += r.subst_pf.template substitute_monomial<int>(new_den/r.exp_den);
-         } else {
-            subst_pf += r.subst_pf;
-         }
-         exp_den = new_den;
-         normalize_den();
-         rf_cache.reset(nullptr);
-         return *this;
-      }
-
-      /// MINUS
-      template <typename T,
-                typename=std::enable_if_t<
-                                          fits_as_particle<T>::value ||
-                                          std::is_same<T,PuiseuxFraction_subst>::value
-                                         >>
-      PuiseuxFraction_subst& operator-= (const T& r)
-      {
-         subst_pf += -r;
-         normalize_den();
-         rf_cache.reset(nullptr);
-         return *this;
-      }
-
-      /// MULTIPLICATION
-      template <typename T>
-      std::enable_if_t<fits_as_coefficient<T>::value, PuiseuxFraction_subst&>
-      operator*= (const T& r)
-      {
-         subst_pf *= r;
-         if (pm::is_zero(r))
-            exp_den = 1;
-         rf_cache.reset(nullptr);
-         return *this;
-      }
-
-      template <typename T>
-      std::enable_if_t<is_base_polynomial<T>::value, PuiseuxFraction_subst&>
-      operator*= (const T& r)
-      {
-         int old_den = exp_den;
-         auto poly_int = exp_to_int(r,exp_den);
-         if (old_den != exp_den)
-            subst_pf = subst_pf.template substitute_monomial<int>(exp_den/old_den);
-         subst_pf *= poly_int;
-         normalize_den();
-         rf_cache.reset(nullptr);
-         return *this;
-      }
-
-      PuiseuxFraction_subst& operator*= (const PuiseuxFraction_subst& r)
-      {
-         int new_den = lcm(exp_den,r.exp_den);
-         if (new_den != exp_den)
-            subst_pf = subst_pf.template substitute_monomial<int>(new_den/exp_den);
-         if (new_den != r.exp_den) {
-            subst_pf *= r.subst_pf.template substitute_monomial<int>(new_den/r.exp_den);
-         } else {
-            subst_pf *= r.subst_pf;
-         }
-         exp_den = new_den;
-         normalize_den();
-         rf_cache.reset(nullptr);
-         return *this;
-      }
-
-      /// DIVISION
-      template <typename T>
-      std::enable_if_t<fits_as_coefficient<T>::value, PuiseuxFraction_subst&>
-      operator/= (const T& r)
-      {
-         subst_pf /= r;
-         rf_cache.reset(nullptr);
-         return *this;
-      }
-
-      template <typename T>
-      std::enable_if_t<is_base_polynomial<T>::value, PuiseuxFraction_subst&>
-      operator/= (const T& r)
-      {
-         int old_den = exp_den;
-         auto poly_int = exp_to_int(r,exp_den);
-         if (old_den != exp_den)
-            subst_pf = subst_pf.template substitute_monomial<int>(exp_den/old_den);
-         subst_pf /= poly_int;
-         normalize_den();
-         rf_cache.reset(nullptr);
-         return *this;
-      }
-
-      PuiseuxFraction_subst& operator/= (const PuiseuxFraction_subst& r)
-      {
-         int new_den = lcm(exp_den,r.exp_den);
-         if (new_den != exp_den)
-            subst_pf = subst_pf.template substitute_monomial<int>(new_den/exp_den);
-         if (new_den != r.exp_den) {
-            subst_pf /= r.subst_pf.template substitute_monomial<int>(new_den/r.exp_den);
-         } else {
-            subst_pf /= r.subst_pf;
-         }
-         exp_den = new_den;
-         normalize_den();
-         rf_cache.reset(nullptr);
-         return *this;
-      }
-
-      /// EQUALITY
-      bool operator== (const PuiseuxFraction_subst& r) const
-      {
-         return exp_den == r.exp_den && subst_pf == r.subst_pf;
-      }
-
-      template <typename T>
-      std::enable_if_t<fits_as_coefficient<T>::value, bool>
-      operator== (const T& r) const
-      {
-         return subst_pf == r;
-      }
-
-      template <typename T>
-      std::enable_if_t<is_base_polynomial<T>::value, bool>
-      operator== (const T& r) const
-      {
-         int den = exp_den;
-         return subst_pf == exp_to_int(r,den) && exp_den == den;
-      }
-
-      template <typename Exp=Exponent, typename T>
-      auto substitute_monomial(const T& t, std::enable_if_t<!std::is_same<Exp,Rational>::value,std::nullptr_t> = nullptr) const
-      {
-         return PuiseuxFraction_generic<MinMax,Coefficient,Exp>(subst_pf.template substitute_monomial<Exp>(t/exp_den));
-      }
-
-      template <typename Exp=Exponent,typename T>
-      auto substitute_monomial(const T& t, std::enable_if_t<std::is_same<Exp,Rational>::value,std::nullptr_t> = nullptr) const
-      {
-         Rational exp(t);
-         exp /= exp_den;
-         return PuiseuxFraction_subst(subst_pf.template substitute_monomial<int>(numerator(exp)),denominator(exp));
-      }
-
-
-      size_t get_hash() const noexcept { size_t h = exp_den; hash_combine(h,subst_pf.get_hash()); return h; }
+   size_t get_hash() const noexcept { size_t h = exp_den; hash_combine(h,subst_pf.get_hash()); return h; }
 
 #if POLYMAKE_DEBUG
-      void dump() const __attribute__((used))
-      {
-         std::cerr << "exp_den: " << exp_den << std::endl;
-         subst_pf.dump();
-      }
+   void dump() const __attribute__((used))
+   {
+      std::cerr << "exp_den: " << exp_den << std::endl;
+      subst_pf.dump();
+   }
 #endif
 
-      template <typename,typename,typename>
-      friend class PuiseuxFraction;
-
+   template <typename,typename,typename>
+   friend class PuiseuxFraction;
 };
 
 
 template <typename MinMax, typename Coefficient=Rational, typename Exponent=Rational>
-class PuiseuxFraction : public pf_impl_chooser<MinMax,Coefficient,Exponent>::type {
+class PuiseuxFraction : public pf_internal::impl_chooser<MinMax, Coefficient, Exponent>::type {
 protected:
-   using impl_type = typename pf_impl_chooser<MinMax,Coefficient,Exponent>::type;
-   using base = PuiseuxFraction_base<MinMax,Coefficient,Exponent>;
+   using impl_type = typename pf_internal::impl_chooser<MinMax, Coefficient, Exponent>::type;
+   using base = PuiseuxFraction_base<MinMax, Coefficient, Exponent>;
 
 public:
    using rf_type = typename base::rf_type;
@@ -864,35 +871,46 @@ public:
       return impl_type(l) /= r;
    }
 
+   // this evaluates at t^exp_lcm and exp_lcm must be large enough such that this makes all needed
+   // exponents integral
+   template <typename T>
+   friend
+   typename algebraic_traits<T>::field_type
+   evaluate_exp(const PuiseuxFraction& me, const T& t, const Int exp_lcm = 1,
+                std::enable_if_t<fits_as_coefficient<T>::value, std::nullptr_t> = nullptr)
+   {
+      using field = typename algebraic_traits<T>::field_type;
+      field val = numerator(me).evaluate(t, exp_lcm);
+      val /= denominator(me).evaluate(t, exp_lcm);
+      return val;
+   }
 
    template <typename VectorType, typename T>
    friend
-   std::enable_if_t<(fits_as_coefficient<T>::value &&
-                     is_field_of_fractions<Exponent>::value &&
-                     is_generic_vector<VectorType, PuiseuxFraction>::value),
-                    LazyVector1<add_const_t<unwary_t<VectorType>>,
-                                operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type>>>
-   evaluate(VectorType&& vec, const T& t, const long exp = 1)
+   auto evaluate(VectorType&& vec, const T& t, const Int exp = 1,
+                 std::enable_if_t<(fits_as_coefficient<T>::value &&
+                                   is_field_of_fractions<Exponent>::value &&
+                                   is_generic_vector<VectorType, PuiseuxFraction>::value), std::nullptr_t> = nullptr)
    {
       Integer exp_lcm(exp);
       for (auto v = entire(vec.top()); !v.at_end(); ++v)
          exp_lcm = lcm(denominators(numerator(*v).monomials_as_vector() | denominator(*v).monomials_as_vector()) | exp_lcm);
 
-      const double t_approx = std::pow(convert_to<double>(t),1.0/convert_to<double>(exp_lcm));
-      const typename algebraic_traits<T>::field_type baseval = exp_lcm == exp ? t : t_approx;
+      const double t_approx = std::pow(double(t), 1.0/double(exp_lcm));
+      using base_t = typename algebraic_traits<T>::field_type;
+      const base_t baseval = exp_lcm == exp ? base_t{t} : base_t{t_approx};
 
       return LazyVector1<add_const_t<unwary_t<VectorType>>,
-                         operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type>>
-                        (unwary(std::forward<VectorType>(vec)), operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type>(baseval, long(exp_lcm)));
+                         operations::evaluate<PuiseuxFraction, base_t>>
+                        (unwary(std::forward<VectorType>(vec)), operations::evaluate<PuiseuxFraction, base_t>(baseval, Int(exp_lcm)));
    }
 
    template <typename VectorType, typename T>
    friend
-   std::enable_if_t<(fits_as_coefficient<T>::value &&
-                     std::numeric_limits<Exponent>::is_integer &&
-                     is_generic_vector<VectorType, PuiseuxFraction>::value),
-                    LazyVector1<add_const_t<unwary_t<VectorType>>, operations::evaluate<PuiseuxFraction, T>>>
-   evaluate(VectorType&& vec, const T& t, const long exp = 1)
+   auto evaluate(VectorType&& vec, const T& t, const Int exp = 1,
+                 std::enable_if_t<(fits_as_coefficient<T>::value &&
+                                   std::numeric_limits<Exponent>::is_integer &&
+                                   is_generic_vector<VectorType, PuiseuxFraction>::value), std::nullptr_t> = nullptr)
    {
       return LazyVector1<add_const_t<unwary_t<VectorType>>, operations::evaluate<PuiseuxFraction, T>>
                         (unwary(std::forward<VectorType>(vec)), operations::evaluate<PuiseuxFraction, T>(t, exp));
@@ -900,42 +918,59 @@ public:
 
    template <typename MatrixType, typename T>
    friend
-   std::enable_if_t<(fits_as_coefficient<T>::value &&
-                     is_field_of_fractions<Exponent>::value &&
-                     is_generic_matrix<MatrixType, PuiseuxFraction>::value),
-                    LazyMatrix1<add_const_t<unwary_t<MatrixType>>, operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type>>>
-   evaluate(MatrixType&& m, const T& t, const long exp = 1)
+   auto evaluate(MatrixType&& m, const T& t, const Int exp = 1,
+                 std::enable_if_t<(fits_as_coefficient<T>::value &&
+                                   is_field_of_fractions<Exponent>::value &&
+                                   is_generic_matrix<MatrixType, PuiseuxFraction>::value), std::nullptr_t> = nullptr)
    {
       Integer exp_lcm(exp);
       for (auto e = entire(concat_rows(m.top())); !e.at_end(); ++e)
          exp_lcm = lcm(denominators(numerator(*e).monomials_as_vector() | denominator(*e).monomials_as_vector()) | exp_lcm);
 
       const double t_approx = std::pow(convert_to<double>(t),1.0/convert_to<double>(exp_lcm));
-      const typename algebraic_traits<T>::field_type baseval = exp_lcm == exp ? t : t_approx;
+      using base_t = typename algebraic_traits<T>::field_type;
+      const base_t baseval = exp_lcm == exp ? base_t{t} : base_t{t_approx};
 
       return LazyMatrix1<add_const_t<unwary_t<MatrixType>>,
-                         operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type>>
-                        (unwary(std::forward<MatrixType>(m)), operations::evaluate<PuiseuxFraction, typename algebraic_traits<T>::field_type>(baseval, long(exp_lcm)));
+                         operations::evaluate<PuiseuxFraction, base_t>>
+                        (unwary(std::forward<MatrixType>(m)), operations::evaluate<PuiseuxFraction, base_t>(baseval, Int(exp_lcm)));
    }
 
    template <typename MatrixType, typename T>
-   friend
-   std::enable_if_t<(fits_as_coefficient<T>::value &&
-                     std::numeric_limits<Exponent>::is_integer &&
-                     is_generic_matrix<MatrixType, PuiseuxFraction>::value),
-                    LazyMatrix1<add_const_t<unwary_t<MatrixType>>, operations::evaluate<PuiseuxFraction, T>>>
-   evaluate(MatrixType&& m, const T& t, const long exp = 1)
+   friend   
+   auto evaluate(MatrixType&& m, const T& t, const Int exp = 1,
+                 std::enable_if_t<(fits_as_coefficient<T>::value &&
+                                   std::numeric_limits<Exponent>::is_integer &&
+                                   is_generic_matrix<MatrixType, PuiseuxFraction>::value), std::nullptr_t> = nullptr)
    {
       return LazyMatrix1<add_const_t<unwary_t<MatrixType>>, operations::evaluate<PuiseuxFraction, T>>
                         (unwary(std::forward<MatrixType>(m)), operations::evaluate<PuiseuxFraction, T>(t, exp));
    }
 
+   template <typename T>
+   friend
+   auto evaluate(const PuiseuxFraction& me, const T& t, const Int exp = 1,
+                 std::enable_if_t<is_field_of_fractions<Exponent>::value && fits_as_coefficient<T>::value, std::nullptr_t> = nullptr)
+   {
+      Integer exp_lcm(exp);
+      exp_lcm = lcm(denominators(numerator(me).monomials_as_vector() | denominator(me).monomials_as_vector()) | exp_lcm);
+      const double t_approx = std::pow(convert_to<double>(t), 1.0 / convert_to<double>(exp_lcm));
+      const Coefficient base_coeff = exp_lcm == exp ? Coefficient{t} : Coefficient{t_approx};
+      return evaluate_exp(me, base_coeff, Int(exp_lcm));
+   }
+
+   template <typename T>
+   friend
+   auto evaluate(const PuiseuxFraction& me, const T& t, const Int exp = 1,
+                 std::enable_if_t<std::numeric_limits<Exponent>::is_integer && fits_as_coefficient<T>::value, std::nullptr_t> = nullptr)
+   {
+      return evaluate_exp(me, t, exp);
+   }
 
    template <typename VectorType>
    friend
-   std::enable_if_t<is_generic_vector<VectorType, PuiseuxFraction>::value,
-                    LazyVector1<add_const_t<unwary_t<VectorType>>, operations::evaluate<PuiseuxFraction, double>>>
-   evaluate_float(VectorType&& vec, const double t)
+   auto evaluate_float(VectorType&& vec, const double t,
+                       std::enable_if_t<is_generic_vector<VectorType, PuiseuxFraction>::value, std::nullptr_t> = nullptr)
    {
       return LazyVector1<add_const_t<unwary_t<VectorType>>, operations::evaluate<PuiseuxFraction, double>>
                         (unwary(std::forward<VectorType>(vec)), operations::evaluate<PuiseuxFraction, double>(t));
@@ -943,14 +978,26 @@ public:
 
    template <typename MatrixType>
    friend
-   std::enable_if_t<is_generic_matrix<MatrixType, PuiseuxFraction>::value,
-                    LazyMatrix1<add_const_t<unwary_t<MatrixType>>, operations::evaluate<PuiseuxFraction, double>>>
-   evaluate_float(MatrixType&& m, const double t)
+   auto evaluate_float(MatrixType&& m, const double t,
+                       std::enable_if_t<is_generic_matrix<MatrixType, PuiseuxFraction>::value, std::nullptr_t> = nullptr)
    {
       return LazyMatrix1<add_const_t<unwary_t<MatrixType>>, operations::evaluate<PuiseuxFraction, double>>
                         (unwary(std::forward<MatrixType>(m)), operations::evaluate<PuiseuxFraction, double>(t));
    }
 
+   friend
+   double evaluate_float(const PuiseuxFraction& me, const double arg)
+   {
+      double val = numerator(me).evaluate_float(arg);
+      val /= denominator(me).evaluate_float(arg);
+      return val;
+   }
+
+   template <typename Exp = Exponent, typename T>
+   PuiseuxFraction<MinMax, Coefficient, Exp> substitute_monomial(const T& t) const
+   {
+      return impl_type::template substitute_monomial<Exp>(t);
+   }
 
    template <typename T,
              typename=std::enable_if_t<is_comparable_or_same<T>::value>>
@@ -1037,17 +1084,17 @@ public:
    /// COMPARISON depending on Min / Max
    // Max::orientation = -1 and we need the highest term
    // Min::orientation =  1 and we need the lowest term
-   int compare(const PuiseuxFraction& pf) const
+   Int compare(const PuiseuxFraction& pf) const
    {
       if (std::is_same<Max, MinMax>::value)
-         return  sign((numerator(*this)*denominator(pf) - numerator(pf)*denominator(*this)).lc());
+         return sign((numerator(*this)*denominator(pf) - numerator(pf)*denominator(*this)).lc());
       else
          return sign(denominator(*this).lc(-1)) * sign(denominator(pf).lc(-1)) *
                 sign((numerator(*this)*denominator(pf) - numerator(pf)*denominator(*this)).lc(-1));
    }
 
    template <typename T>
-   std::enable_if_t<fits_as_coefficient<T>::value, int>
+   std::enable_if_t<fits_as_coefficient<T>::value, Int>
    compare(const T& c) const
    {
       if (std::is_same<Max, MinMax>::value) {
@@ -1070,44 +1117,44 @@ public:
 
 
    template <typename T>
-   std::enable_if_t<is_unipolynomial_type<T, Coefficient, Exponent>::value, int>
+   std::enable_if_t<is_unipolynomial_type<T, Coefficient, Exponent>::value, Int>
    compare(const T& c) const
    {
       return compare(PuiseuxFraction(c));
    }
 
-   int compare(const TropicalNumber<MinMax, Exponent>& c) const
+   Int compare(const TropicalNumber<MinMax, Exponent>& c) const
    {
       return val().compare(c);
    }
 
-   template <typename T,
-             typename=std::enable_if_t<is_comparable_or_same<T>::value>>
-   bool operator== (const T& r) const
+   template <typename T>
+   std::enable_if_t<is_comparable_or_same<T>::value, bool>
+   operator== (const T& r) const
    {
       return impl_type::operator==(r);
    }
 
-   template <typename T,
-             typename=std::enable_if_t<is_comparable<T>::value>>
+   template <typename T>
    friend
-   bool operator== (const T& l, const PuiseuxFraction& r)
+   std::enable_if_t<is_comparable<T>::value, bool>
+   operator== (const T& l, const PuiseuxFraction& r)
    {
       return r.operator==(l);
    }
 
-   template <typename T,
-             typename=std::enable_if_t<is_comparable_or_same<T>::value>>
+   template <typename T>
    friend
-   bool operator!= (const PuiseuxFraction& l, const T& r)
+   std::enable_if_t<is_comparable_or_same<T>::value, bool>
+   operator!= (const PuiseuxFraction& l, const T& r)
    {
       return !(l == r);
    }
 
-   template <typename T,
-             typename=std::enable_if_t<is_comparable<T>::value>>
+   template <typename T>
    friend
-   bool operator!= (const T& l, const PuiseuxFraction& r)
+   std::enable_if_t<is_comparable<T>::value, bool>
+   operator!= (const T& l, const PuiseuxFraction& r)
    {
       return !(r == l);
    }
@@ -1167,61 +1214,12 @@ public:
       return out.top();
    }
 
-   // this evaluates at t^exp_lcm and exp_lcm must be large enough such that this makes all needed
-   // exponents integral
-   template <typename T,
-             typename=std::enable_if_t<fits_as_coefficient<T>::value>>
-   typename algebraic_traits<T>::field_type
-   evaluate_exp(const T& t, const long exp_lcm=1) const
-   {
-      typedef typename algebraic_traits<T>::field_type field;
-      field val = numerator(*this).evaluate(t,exp_lcm);
-      val /= denominator(*this).evaluate(t,exp_lcm);
-      return val;
-   }
-
-   friend
-   double evaluate_float(const PuiseuxFraction& me, const double arg)
-   {
-      double val = numerator(me).evaluate_float(arg);
-      val /= denominator(me).evaluate_float(arg);
-      return val;
-   }
-
-
-   template <typename T>
-   friend
-   std::enable_if_t<is_field_of_fractions<Exponent>::value && fits_as_coefficient<T>::value,
-                    typename algebraic_traits<T>::field_type>
-   evaluate(const PuiseuxFraction& me, const T& t, const long exp = 1)
-   {
-      Integer exp_lcm(exp);
-      exp_lcm = lcm(denominators(numerator(me).monomials_as_vector() | denominator(me).monomials_as_vector()) | exp_lcm);
-      const double t_approx = std::pow(convert_to<double>(t), 1.0 / convert_to<double>(exp_lcm));
-      Coefficient base_coeff = exp_lcm == exp ? t : t_approx;
-      return me.evaluate_exp(base_coeff, long(exp_lcm));
-   }
-
-   template <typename T>
-   friend
-   std::enable_if_t<std::numeric_limits<Exponent>::is_integer && fits_as_coefficient<T>::value,
-                    typename algebraic_traits<T>::field_type>
-   evaluate(const PuiseuxFraction& me, const T& t, const long exp = 1)
-   {
-      return me.evaluate_exp(t, exp);
-   }
-
-   template <typename Exp = Exponent, typename T>
-   PuiseuxFraction<MinMax, Coefficient, Exp> substitute_monomial(const T& t) const
-   {
-      return impl_type::template substitute_monomial<Exp>(t);
-   }
 };
 
 
 
 template <typename MinMax, typename Coefficient, typename Exponent>
-int sign(const PuiseuxFraction<MinMax, Coefficient, Exponent>& x)
+Int sign(const PuiseuxFraction<MinMax, Coefficient, Exponent>& x)
 {
    return x.compare(zero_value<Coefficient>());
 }
@@ -1233,11 +1231,11 @@ struct evaluate {
    typedef OpRef argument_type;
    typedef typename algebraic_traits<T>::field_type result_type;
 
-   evaluate(const T& t, const long e=1) : val(t), exp(e) { }
+   evaluate(const T& t, const long e = 1) : val(t), exp(e) { }
 
    result_type operator() (typename function_argument<OpRef>::const_type x) const
    {
-      return x.evaluate_exp(val,exp);
+      return evaluate_exp(x, val,exp);
    }
 
 private:
@@ -1250,7 +1248,7 @@ struct evaluate<OpRef, double> {
    typedef OpRef argument_type;
    typedef double result_type;
 
-   evaluate(const double& t, const int e=1) : val(t), exp(e) { }
+   evaluate(const double& t, const Int e = 1) : val(t), exp(e) { }
 
    result_type operator() (typename function_argument<OpRef>::const_type x) const
    {
@@ -1259,7 +1257,7 @@ struct evaluate<OpRef, double> {
 
 private:
    const double val;
-   const int exp;
+   const Int exp;
 };
 
 }

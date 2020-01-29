@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,69 +23,72 @@
 
 namespace pm {
 
-int PlainParserCommon::count_words()
+Int PlainParserCommon::count_words()
 {
-   std::streambuf* mybuf=is->rdbuf();
-   if (CharBuffer::skip_ws(mybuf)<0) return 0;
-   int cnt=0, offset=0;
+   std::streambuf* mybuf = is->rdbuf();
+   if (!CharBuffer::skip_ws(mybuf)) return 0;
+   Int cnt = 0;
+   CharBuffer::size_type offset = 0;
    do {
-      offset=CharBuffer::next_ws(mybuf,offset+1);
+      offset = CharBuffer::next_ws(mybuf, offset+1);
       ++cnt;
-   } while (offset>0  &&
-            CharBuffer::seek_forward(mybuf,offset) != '\n'  && 
-            (offset=CharBuffer::next_non_ws(mybuf,offset+1)) > 0);
+   } while (offset > 0  &&
+            CharBuffer::seek_forward(mybuf, offset) != '\n'  && 
+            (offset = CharBuffer::next_non_ws(mybuf, offset+1)) > 0);
    return cnt;
 }
 
-int PlainParserCommon::count_lines()
+Int PlainParserCommon::count_lines()
 {
    return CharBuffer::count_lines(is->rdbuf());
 }
 
-int PlainParserCommon::count_all_lines()
+Int PlainParserCommon::count_all_lines()
 {
-   return dynamic_cast<streambuf_with_input_width*>(is->rdbuf())->lines();
+   return dynamic_cast<streambuf_ext&>(*is->rdbuf()).lines();
 }
 
-int PlainParserCommon::count_braced(char opening, char closing)
+Int PlainParserCommon::count_braced(const char opening, const char closing)
 {
-   std::streambuf* mybuf=is->rdbuf();
-   if (CharBuffer::skip_ws(mybuf)<0) return 0;
-   int cnt=0, offset=0;
+   std::streambuf* mybuf = is->rdbuf();
+   if (!CharBuffer::skip_ws(mybuf)) return 0;
+   Int cnt = 0;
+   CharBuffer::size_type offset = 0;
    do {
       if (CharBuffer::get_ptr(mybuf)[offset] != opening) {
          is->setstate(is->failbit);
          return 0;
       }
-      offset=CharBuffer::matching_brace(mybuf, opening, closing, offset+1);
-      if (offset<0) {
+      offset = CharBuffer::matching_brace(mybuf, opening, closing, offset+1);
+      if (offset < 0) {
          is->setstate(is->failbit);
          return 0;
       }
       ++cnt;
-   } while ((offset=CharBuffer::next_non_ws(mybuf,offset+1)) > 0);
+   } while ((offset = CharBuffer::next_non_ws(mybuf, offset+1)) > 0);
    return cnt;
 }
 
-bool PlainParserCommon::lone_clause_on_line(char opening, char closing)
+bool PlainParserCommon::lone_clause_on_line(const char opening, const char closing)
 {
-   std::streambuf* mybuf=is->rdbuf();
-   int offset=CharBuffer::next_non_ws(mybuf, 0);
-   if (offset<0 || CharBuffer::get_ptr(mybuf)[offset] != opening) return false;
-   offset=CharBuffer::matching_brace(mybuf, opening, closing, offset+1);
-   if (offset<0) {
+   std::streambuf* mybuf = is->rdbuf();
+   CharBuffer::size_type offset = CharBuffer::next_non_ws(mybuf, 0);
+   if (offset < 0 || CharBuffer::get_ptr(mybuf)[offset] != opening) return false;
+   offset = CharBuffer::matching_brace(mybuf, opening, closing, offset+1);
+   if (offset < 0) {
       is->setstate(is->failbit);
       return false;
    }
    return CharBuffer::seek_forward(mybuf, offset+1) == '\n';
 }
 
-int PlainParserCommon::count_leading(char c)
+Int PlainParserCommon::count_leading(char c)
 {
-   std::streambuf* mybuf=is->rdbuf();
-   int cnt=0, offset=-1;
+   std::streambuf* mybuf = is->rdbuf();
+   Int cnt = 0;
+   CharBuffer::size_type offset = -1;
    for (;;) {
-      if ((offset=CharBuffer::next_non_ws(mybuf, offset+1)) < 0)
+      if ((offset = CharBuffer::next_non_ws(mybuf, offset+1)) < 0)
          return -1;
       if (CharBuffer::get_ptr(mybuf)[offset] != c) break;
       ++cnt;
@@ -95,108 +98,108 @@ int PlainParserCommon::count_leading(char c)
 
 bool PlainParserCommon::at_end()
 {
-   return CharBuffer::skip_ws(is->rdbuf())<0;
+   return !CharBuffer::skip_ws(is->rdbuf());
 }
 
 void PlainParserCommon::skip_item()
 {
-   std::streambuf* mybuf=is->rdbuf();
-   if (CharBuffer::skip_ws(mybuf)<0) return;
+   std::streambuf* mybuf = is->rdbuf();
+   if (!CharBuffer::skip_ws(mybuf)) return;
 
-   int offset=0;
+   CharBuffer::size_type offset = 0;
    switch (mybuf->sbumpc()) {
    case '<':
-      offset=CharBuffer::matching_brace(mybuf, '<', '>');  break;
+      offset = CharBuffer::matching_brace(mybuf, '<', '>');  break;
    case '(':
-      offset=CharBuffer::matching_brace(mybuf, '(', ')');  break;
+      offset = CharBuffer::matching_brace(mybuf, '(', ')');  break;
    case '{':
-      offset=CharBuffer::matching_brace(mybuf, '{', '}');  break;
+      offset = CharBuffer::matching_brace(mybuf, '{', '}');  break;
    default:
-      offset=CharBuffer::next_ws(mybuf,0,false);
+      offset = CharBuffer::next_ws(mybuf, 0, false);
    }
-   if (offset<0)
+   if (offset < 0)
       CharBuffer::skip_all(mybuf);
    else
-      CharBuffer::get_bump(mybuf,offset+1);
+      CharBuffer::get_bump(mybuf, offset+1);
 }
 
 void PlainParserCommon::skip_rest()
 {
-   std::streambuf *mybuf=is->rdbuf();
+   std::streambuf* mybuf = is->rdbuf();
    CharBuffer::skip_all(mybuf);
 }
 
-char* PlainParserCommon::set_temp_range(char opening, char closing)
+char* PlainParserCommon::set_temp_range(const char opening, const char closing)
 {
    std::streambuf* mybuf=is->rdbuf();
 
-   if (CharBuffer::skip_ws(mybuf)<0) {
+   if (!CharBuffer::skip_ws(mybuf)) {
       is->setstate(closing == '\n' ? is->eofbit : is->failbit | is->eofbit);
-      return 0;
+      return nullptr;
    }
 
-   int offset;
+   std::streamsize offset;
    if (closing == '\n') {
-      offset=CharBuffer::find_char_forward(mybuf,'\n');
-      if (offset<0) return 0;
+      offset = CharBuffer::find_char_forward(mybuf, '\n');
+      if (offset < 0) return nullptr;
       ++offset;
    } else {
       if (*CharBuffer::get_ptr(mybuf) != opening) {
          is->setstate(is->failbit);
-         return 0;
+         return nullptr;
       }
-      CharBuffer::get_bump(mybuf,1);
-      offset=CharBuffer::matching_brace(mybuf, opening, closing);
-      if (offset<0) {
+      CharBuffer::get_bump(mybuf, 1);
+      offset = CharBuffer::matching_brace(mybuf, opening, closing);
+      if (offset < 0) {
          is->setstate(is->failbit);
-         return 0;
+         return nullptr;
       }
    }
 
    return set_input_range(offset);
 }
 
-char* PlainParserCommon::set_input_range(int offset)
+char* PlainParserCommon::set_input_range(std::streamsize offset)
 {
-   streambuf_with_input_width *mybuf=static_cast<streambuf_with_input_width*>(is->rdbuf());
-   char *egptr=CharBuffer::end_get_ptr(mybuf);
+   streambuf_ext* mybuf = static_cast<streambuf_ext*>(is->rdbuf());
+   char* egptr = CharBuffer::end_get_ptr(mybuf);
    if (CharBuffer::get_input_limit(mybuf)) {
-      CharBuffer::set_end_get_ptr(mybuf, CharBuffer::get_ptr(mybuf)+offset);
+      CharBuffer::set_end_get_ptr(mybuf, CharBuffer::get_ptr(mybuf) + offset);
    } else {
       mybuf->set_input_width(offset);
    }
    return egptr;
 }
 
-void PlainParserCommon::restore_input_range(char *egptr)
+void PlainParserCommon::restore_input_range(char* egptr)
 {
-   streambuf_with_input_width *mybuf=static_cast<streambuf_with_input_width*>(is->rdbuf());
-   if (egptr==CharBuffer::get_input_limit(mybuf)) {
+   streambuf_ext* mybuf = static_cast<streambuf_ext*>(is->rdbuf());
+   if (egptr == CharBuffer::get_input_limit(mybuf)) {
       mybuf->reset_input_width(false);
    } else {
       CharBuffer::set_end_get_ptr(mybuf, egptr);
    }
 }
 
-void PlainParserCommon::discard_range(char closing)
+void PlainParserCommon::discard_range(const char closing)
 {
-   std::streambuf* mybuf=is->rdbuf();
+   std::streambuf* mybuf = is->rdbuf();
    if (is->eof())
       is->clear();
-   else if (CharBuffer::skip_ws(mybuf) >= 0 ||
+   else if (CharBuffer::skip_ws(mybuf) ||
             CharBuffer::get_ptr(mybuf) != CharBuffer::end_get_ptr(mybuf))
       is->setstate(is->failbit);
    if (is->good() && closing != '\n')
-      CharBuffer::get_bump(mybuf,1);
+      CharBuffer::get_bump(mybuf, 1);
 }
 
-void PlainParserCommon::skip_temp_range(char *egptr)
+void PlainParserCommon::skip_temp_range(char* egptr)
 {
-   streambuf_with_input_width *mybuf=static_cast<streambuf_with_input_width*>(is->rdbuf());
-   char *next=CharBuffer::end_get_ptr(mybuf)+1;
-   if (egptr==CharBuffer::get_input_limit(mybuf)) {
+   streambuf_ext* mybuf = static_cast<streambuf_ext*>(is->rdbuf());
+   char* next = CharBuffer::end_get_ptr(mybuf)+1;
+   if (egptr == CharBuffer::get_input_limit(mybuf)) {
       mybuf->reset_input_width(false);
-      CharBuffer::get_bump(mybuf, next-CharBuffer::get_ptr(mybuf));
+      CharBuffer::get_bump(mybuf, next - CharBuffer::get_ptr(mybuf));
    } else {
       CharBuffer::set_get_and_end_ptr(mybuf, next, egptr);
    }
@@ -209,8 +212,8 @@ char* PlainParserCommon::save_read_pos()
 
 void PlainParserCommon::restore_read_pos(char *pos)
 {
-   streambuf_with_input_width *mybuf=static_cast<streambuf_with_input_width*>(is->rdbuf());
-   mybuf->rewind(CharBuffer::get_ptr(mybuf)-pos);
+   streambuf_ext* mybuf = static_cast<streambuf_ext*>(is->rdbuf());
+   mybuf->rewind(CharBuffer::get_ptr(mybuf) - pos);
 }
 
 void PlainParserCommon::get_scalar(Rational& x)
@@ -218,8 +221,8 @@ void PlainParserCommon::get_scalar(Rational& x)
    static std::string text;
    if (*is >> text) {
       if (text.find_first_of("eE") != std::string::npos) {
-         char *end;
-         x=strtod(text.c_str(),&end);
+         char* end;
+         x = strtod(text.c_str(), &end);
          if (*end) is->setstate(is->failbit);
       } else {
          x.set(text.c_str());
@@ -232,10 +235,10 @@ void PlainParserCommon::get_scalar(double& x)
    static std::string text;
    if (*is >> text) {
       if (text.find('/') != std::string::npos) {
-         x=double(Rational(text.c_str()));
+         x = double(Rational(text.c_str()));
       } else {
-         char *end;
-         x=strtod(text.c_str(),&end);
+         char* end;
+         x = strtod(text.c_str(), &end);
          if (*end) is->setstate(is->failbit);
       }
    }
@@ -243,19 +246,19 @@ void PlainParserCommon::get_scalar(double& x)
 
 void PlainParserCommon::get_string(std::string& s, char delim)
 {
-   if (CharBuffer::get_string(is->rdbuf(),s,delim) < 0)
+   if (CharBuffer::get_string(is->rdbuf(), s, delim) < 0)
       is->setstate(is->eofbit | is->failbit);
 }
 
 int PlainParserCommon::probe_inf()
 {
-   std::streambuf* mybuf=is->rdbuf();
-   if (CharBuffer::skip_ws(mybuf)<0) return 0;
-   int offset=0;
-   int sgn=1;
+   std::streambuf* mybuf = is->rdbuf();
+   if (!CharBuffer::skip_ws(mybuf)) return 0;
+   CharBuffer::size_type offset = 0;
+   int sgn = 1;
    switch (CharBuffer::seek_forward(mybuf, 0)) {
    case '-':
-      sgn=-1;
+      sgn = -1;
       // FALLTHRU
    case '+':
       ++offset;
@@ -265,9 +268,9 @@ int PlainParserCommon::probe_inf()
    default:
       return 0;
    }
-   if ((offset==0 || CharBuffer::seek_forward(mybuf, offset)=='i') &&
-       CharBuffer::seek_forward(mybuf, offset+1)=='n' &&
-       CharBuffer::seek_forward(mybuf, offset+2)=='f') {
+   if ((offset == 0 || CharBuffer::seek_forward(mybuf, offset) == 'i') &&
+       CharBuffer::seek_forward(mybuf, offset+1) == 'n' &&
+       CharBuffer::seek_forward(mybuf, offset+2) == 'f') {
       CharBuffer::get_bump(mybuf, offset+3);
       return sgn;
    }

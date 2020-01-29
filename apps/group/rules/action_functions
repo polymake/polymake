@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -27,14 +27,13 @@
 # | type: PermutationActionOnSets
 # | description: induced from ray_action on MAX_INTERIOR_SIMPLICES
 # |
+# | DOMAIN_NAME
+# | MAX_INTERIOR_SIMPLICES
+# |
 # | GENERATORS
 # | 5 4 7 6 1 0 3 2 11 10 9 8 30 29 32 31 38 40 39 41 33 36 35 34 37 43 42 45 44 13 12 15 14 20 23 22 21 24 16 18 17 19 26 25 28 27 49 48 47 46 55 54 57 56 51 50 53 52
 # | 0 2 1 3 12 14 13 15 16 17 18 19 4 6 5 7 8 9 10 11 21 20 22 24 23 25 27 26 28 29 31 30 32 34 33 35 37 36 46 47 48 49 50 52 51 53 38 39 40 41 42 44 43 45 54 56 55 57
 # | 0 4 8 9 1 5 10 11 2 3 6 7 16 20 25 26 12 17 21 27 13 18 22 23 28 14 15 19 24 33 38 42 43 29 34 35 39 44 30 36 40 45 31 32 37 41 50 51 54 55 46 47 52 56 48 49 53 57
-# |
-# |
-# | DOMAIN_NAME
-# | MAX_INTERIOR_SIMPLICES
 
 user_function induce_set_action($, $, String; { store_index_of => 0 } ) {
     my ($c, $action, $domain_name, $options) = @_;
@@ -143,12 +142,6 @@ function induce_matrix_action<Scalar>($$$ Matrix<Scalar>) {
 # | type: ImplicitActionOnSets
 # | description: induced from ray_action on MAX_INTERIOR_SIMPLICES
 # |
-# | GENERATORS
-# | 1 0 3 2 5 4 7 6
-# | 0 2 1 3 4 6 5 7
-# | 0 1 4 5 2 3 6 7
-# |
-# |
 # | DOMAIN_NAME
 # | MAX_INTERIOR_SIMPLICES
 # |
@@ -157,6 +150,13 @@ function induce_matrix_action<Scalar>($$$ Matrix<Scalar>) {
 # | {0 1 2 5}
 # | {0 1 2 7}
 # | {0 3 5 6}
+# |
+# |
+# | GENERATORS
+# | 1 0 3 2 5 4 7 6
+# | 0 2 1 3 4 6 5 7
+# | 0 1 4 5 2 3 6 7
+
 user_function induce_implicit_action<SetType>($,$, Array<SetType>, $) {
     my ($c, $original_action, $induced_dom_reps, $induced_dom_name) = @_;
     my $orig_name = $original_action->name;

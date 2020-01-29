@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -49,6 +49,9 @@ sub proceed {
       } elsif (-f "$cdd_inc/cdd/cdd.h") {
          # This is for debian where the includes are moved to a subdirectory
          $CFLAGS = "-I$cdd_inc/cdd";
+      } elsif (-f "$cdd_inc/cddlib/cdd.h") {
+         # This is for fedora where the includes are moved to a subdirectory
+         $CFLAGS = "-I$cdd_inc/cddlib";
       }
       my $cdd_lib=Polymake::Configure::get_libdir($cdd_path, "cddgmp");
       if (-f "$cdd_lib/libcddgmp.$Config::Config{so}" ) {
@@ -96,13 +99,17 @@ int main() {
       my $error=Polymake::Configure::build_test_program($testcode, LIBS => "-lcddgmp -lgmp", CXXFLAGS => "$CFLAGS", LDFLAGS => "$LDFLAGS");
       if ($? != 0) {
          # if this failed then we try to determine whether the includes from cdd are in a subfolder
-         # (like on debian)
-         (my $newcode = $testcode) =~ s{setoper\.h|cdd\.h}{cdd/$&}g;
-         $error = Polymake::Configure::build_test_program($newcode, CXXFLAGS => "$CFLAGS", LIBS => "-lcddgmp -lgmp", LDFLAGS => "$LDFLAGS");
+         # (like on debian or fedora)
+         my $newcode;
+         foreach my $subdir (qw(cdd cddlib)) {
+            ($newcode = $testcode) =~ s{setoper\.h|cdd\.h}{$subdir/$&}g;
+            $error = Polymake::Configure::build_test_program($newcode, CXXFLAGS => "$CFLAGS", LIBS => "-lcddgmp -lgmp", LDFLAGS => "$LDFLAGS");
+            last if $? == 0;
+         }
          if ($? == 0) {
             # run just the preprocessor and parse the output to find the path of cdd.h
             open my $source, "echo '$newcode' | $Polymake::Configure::CXX $CFLAGS -xc++ -E - 2>/dev/null |"
-               or die "This looks like debian with cdd.h in a cdd subfolder but we could not\n",
+               or die "This looks like debian or fedora with cdd.h in a subfolder but we could not\n",
                       "run the preprocessor to find the cdd include path '$Polymake::Configure::CXX $CFLAGS -xc++ -E -': $!\n",
                       "You can try specifying --with-cdd-include and --with-cdd-lib";
             while (<$source>) {

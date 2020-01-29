@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,13 +27,13 @@ namespace polymake { namespace topaz {
 // Delete face from the list of facets C
 // Returns 0 if face was not a subset of any of the facets of C (C remains unchanged),
 // returns 1 otherwise
-bool delete_face(FacetList &C, const Set<int>& face)
+bool delete_face(FacetList &C, const Set<Int>& face)
 {
-   std::list< Set<int> > deletedFaces;
+   std::list<Set<Int>> deletedFaces;
    if (C.eraseSupersets(face, back_inserter(deletedFaces))) {
       do {
          // insert the parts of the boundary not containing the face
-         const Set<int> deleted = deletedFaces.front();  deletedFaces.pop_front();
+         const Set<Int> deleted = deletedFaces.front();  deletedFaces.pop_front();
          const bool exact_match = deleted.size() == face.size();
          for (auto boundaryIt=entire(all_subsets_less_1(deleted));  !boundaryIt.at_end(); ++boundaryIt) {
             if (!exact_match && (face - *boundaryIt).empty()) {
@@ -49,10 +49,10 @@ bool delete_face(FacetList &C, const Set<int>& face)
    return false;
 }
 
-perl::Object deletion_complex(perl::Object p_in, const Set<int>& face, perl::OptionSet options)      
+BigObject deletion_complex(BigObject p_in, const Set<Int>& face, OptionSet options)      
 {       
    FacetList facets = p_in.give("FACETS");      
-   const int n_vert = p_in.give("N_VERTICES");
+   const Int n_vert = p_in.give("N_VERTICES");
    if (face.empty())
       throw std::runtime_error("deletion: empty face specified");
    if (face.front()<0 || face.back()>n_vert-1)
@@ -64,14 +64,14 @@ perl::Object deletion_complex(perl::Object p_in, const Set<int>& face, perl::Opt
       throw std::runtime_error(e.str());
    }
 
-   perl::Object p_out("SimplicialComplex");
+   BigObject p_out("SimplicialComplex");
    p_out.set_description() << "Deletion of " << face << " in " << p_in.name() << ".\n";
 
-   Set<int> V;
+   Set<Int> V;
    if (facets.empty()) {
-      p_out.take("FACETS") << Array< Set<int> >(1);
+      p_out.take("FACETS") << Array<Set<Int>>(1);
    } else {
-      Array<Set<int>> array_facets{ lex_ordered(facets) };
+      Array<Set<Int>> array_facets{ lex_ordered(facets) };
       V = accumulate(array_facets, operations::add());
       adj_numbering(array_facets,V);
       p_out.take("FACETS") << array_facets;

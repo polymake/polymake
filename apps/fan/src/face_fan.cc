@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,10 +24,10 @@
 namespace polymake { namespace fan {
 
 template <typename Coord>
-perl::Object face_fan(perl::Object p, Vector<Coord> v)
+BigObject face_fan(BigObject p, Vector<Coord> v)
 {
-   perl::ObjectType t("PolyhedralFan", mlist<Coord>());
-   perl::Object ff(t); 
+   BigObjectType t("PolyhedralFan", mlist<Coord>());
+   BigObject ff(t); 
 
    const Matrix<Coord> rays = p.give("VERTICES");
    ff.take("RAYS") << dehomogenize(rays-repeat_row(v,rays.rows()));
@@ -47,19 +47,19 @@ perl::Object face_fan(perl::Object p, Vector<Coord> v)
       ff.take("LINEALITY_SPACE") << empty;
    }
 
-   int cdim = p.give("CONE_DIM");
+   Int cdim = p.give("CONE_DIM");
    ff.take("FAN_DIM") << cdim-1;
 
    return ff;
 }
 
 template <typename Coord>
-perl::Object face_fan(perl::Object p)
+BigObject face_fan(BigObject p)
 {
    bool cent = p.give("CENTERED");
-   if ( !cent )
+   if (!cent)
       throw std::runtime_error("face_fan: polytope is not centered. Please provide a relative interior point as a second argument");
-   int cone_ambient_dim = p.give("CONE_AMBIENT_DIM");
+   Int cone_ambient_dim = p.give("CONE_AMBIENT_DIM");
    Vector<Coord> v = unit_vector<Coord>(cone_ambient_dim,0);
    return face_fan(p,v);
 }

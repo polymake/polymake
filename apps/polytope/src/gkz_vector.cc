@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -33,7 +33,7 @@ Vector<Scalar> gkz_vector(const GenericMatrix<MatrixTop,Scalar>& vert, const Con
    // go through all simplices
    for (const auto& simplex: triang) {
       const Scalar v=abs(det(vert.top().minor(simplex,All)));
-      for (const int j: simplex)
+      for (const Int j : simplex)
          gkz[j]+=v;
    }
 
@@ -46,9 +46,9 @@ template <typename E>
 char
 sign2char(const E& x)
 {
-   return (is_zero(x))
+   return is_zero(x)
       ? '0'
-      : (x>0)
+      : x > 0
       ? '+'
       : '-';
 }
@@ -63,7 +63,7 @@ chirotope_impl_native(const Matrix<QuadraticExtension<E>>& V)
    if (rank(V) != V.cols())
       throw std::runtime_error("chirotope_impl_native: Input polytope or point configuration must be full-dimensional");
 #endif
-   const int n(V.rows()), d(V.cols());
+   const Int n = V.rows(), d = V.cols();
    std::ostringstream os;
    os << n << "," << d << ":\n";
    for (auto sit = entire(all_subsets_of_k(sequence(0,n), d)); !sit.at_end(); ++sit)

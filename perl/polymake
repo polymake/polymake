@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 #
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -47,7 +47,7 @@ use lib "$InstallTop/perllib", "$InstallArch/perlx", @addlibs;
 #
 use Getopt::Long qw( GetOptions :config require_order bundling no_ignore_case );
 
-my ($verbose, $script, $iscript, $connect, $touch, $touch_data, $help, $tell_version, $start_application, $ignore_start_applications, $reconfigure);
+my ($verbose, $script, $iscript, $connect, $touch, $help, $tell_version, $start_application, $ignore_start_applications, $reconfigure);
 my @config_path;
 
 if ( ! GetOptions( 'v+' => \$verbose, 'd+' => \$DebugLevel,
@@ -57,23 +57,25 @@ if ( ! GetOptions( 'v+' => \$verbose, 'd+' => \$DebugLevel,
                    'script=s' => sub { $script=$_[1]; die "!FINISH\n" },
                    'iscript=s' => sub { $iscript=$_[1]; die "!FINISH\n" },
                    'connect=s' => \$connect,
-                   'touch' => \$touch, 'touch_data' => \$touch_data, 'help' => \$help, 'version' => \$tell_version,
+                   'touch' => \$touch, 'help' => \$help, 'version' => \$tell_version,
                    'config-path=s' => \@config_path,
                    'no-config' => sub { @config_path=("none") },
                    'ignore-config' => sub { @config_path=("ignore") },
                    'reconfigure' => \$reconfigure,
                  )
-     #  --*script --connect --touch --touch-data --help --version are mutually exclusive
-     or defined($script)+defined($iscript)+defined($connect)+(@ARGV==1 && $ARGV[0] eq "-")+$touch+$touch_data+$help+$tell_version > 1
-     #  --help --version do not consume any additional args
-     or $help+$tell_version && @ARGV) {
+     #  --*script --connect --touch --help --version are mutually exclusive
+     or defined($script)+defined($iscript)+defined($connect)+(@ARGV==1 && $ARGV[0] eq "-")+$touch+$help+$tell_version > 1
+     #  --help --version --connect do not consume any additional args
+     or $help+$tell_version+defined($connect) && @ARGV
+     # there can be maximal one free argument
+     or defined($script)+defined($iscript)+$touch == 0 && @ARGV > 1) {
    $!=1;
    die <<'.';
 usage: polymake [-dv] [-A|-a <application>]
                 [--reconfigure] [--config-path PATH ... | --no-config | --ignore-config]
-                [ --script | --iscript <script_file> arg ... ] | '<code>' | --connect SOCKETFILE || HOST:PORT | -
-                <file> <property|method> ... |
-                --touch <file> ... | --touch-data <file> ... | --help | --version
+                [ --script | --iscript <script_file> arg ... ] | script_file | 'one-liner' |
+                - | [ --connect SOCKETFILE | HOST:PORT ] |
+                --touch <file> ... | --help | --version
 .
 }
 
@@ -88,7 +90,7 @@ usage: polymake [options] [arguments]
          Print this text and exit.
       --version
          Print the version number, copyright notice, and exit.
-      [--script] [application::]script_file
+      [application::]script_file
          Execute the script stored in a file.
          If application prefix is specified, this application is loaded
          and the script file is looked up in its script directory.
@@ -96,30 +98,20 @@ usage: polymake [options] [arguments]
          Execute the script, passing the arguments in @ARGV .
       --iscript [application::]script_file arguments ...
          Execute the script which may contain interactive commands.
-      'code'
-         Interpret the string as a perl expression.
+      'one-liner'
+         Interpret the string as an inline polymake/perl script.
       -
-         Read and execute the commands from the standard input.
+         Read and execute commands from the standard input.
          Standard output and error streams are not redirected.
       --connect SOCKETFILE
-         Read and execute the commands from a named socket.
+         Read and execute commands from a named socket.
          Print commands send the data back into the socket.
       --connect HOST:PORT
          Connect to the remote host, read and execute commands.
          Standard output and error streams are sent back to the host.
-
-      file PROPERTY | METHOD [ ... ]
-         Legacy mode (resembling polymake <= 2.3):
-         Read the object from the data file, print the properties or
-         run the user methods.
-
       --touch file [ file ... ]
-         Read the files and write them out; useful for converting from
+         Read data files and write them out; useful for converting from
          older polymake versions.
-      
-      --touch-data file [ file ... ]
-         Read the data files and write them out; useful for converting 
-         from older polymake versions.
 
    Options are:
       -A application_name
@@ -208,30 +200,23 @@ if ($verbose) {
 }
 
 if ($touch) {
+   require Polymake::Core::Shell;
    if (Main::load_apps()) {
-      require Polymake::Core::Shell;
       Core::Shell::start();
       Main::touch_files();
    }
 
-} elsif ($touch_data) {
-   if (Main::load_apps()) {
-      require Polymake::Core::Shell;
-      Core::Shell::start();
-      Main::touch_data_files();
-   }
-
-} elsif (defined $script) {
+} elsif (defined($script)) {
    Main::run_script($script);
 
-} elsif (defined $iscript) {
+} elsif (defined($iscript)) {
    require Polymake::Core::Shell;
    if (-t STDIN) {
       Core::Shell::start();
    }
    Main::run_script($iscript);
 
-} elsif (defined $connect) {
+} elsif (defined($connect)) {
    ### named socket or host connection
    require Polymake::Sockets;
    my ($socket, $redirects);
@@ -249,45 +234,39 @@ if ($touch) {
       Core::Shell::run_pipe($socket, $redirects);
    }
 
-} elsif (@ARGV<=1) {
-   if (@ARGV==0) {
-      if (-t STDIN) {
-         ### interactive shell
-         print "Welcome to ", Main::greeting(), "\nLoading applications now...";
-         STDOUT->flush();
-         require Polymake::Core::Shell;
-         if (Main::load_apps()) {
-            Core::Shell::start();
-            Core::Shell::run();
-         }
-      } else {
-         die "can't start the interactive shell without terminal input\n";
+} elsif (@ARGV == 0) {
+   if (-t STDIN) {
+      ### interactive shell
+      print "Welcome to ", Main::greeting(), "\nLoading applications now...";
+      STDOUT->flush();
+      require Polymake::Core::Shell;
+      if (Main::load_apps()) {
+         Core::Shell::start();
+         Core::Shell::run();
       }
-
    } else {
-      my $arg=shift;
-      if ($arg eq "-") {
-         ### anonymous pipe
-         require Polymake::Core::Shell;
-         if (Main::load_apps()) {
-            Core::Shell::run_pipe(\*STDIN, 0);
-         }
-      } elsif ($arg !~ /[\s'"(){}\[\]\$]/) {
-         ### script file
-         Main::run_script($arg);
-      } elsif (Main::load_apps()) {
-         local unshift @INC, $User::application;
-         local $Scope=new Scope();
-         $User::application->eval_expr->("package Polymake::User; $arg");
-         beautify_error() if $@;
-      }
+       die "can't start the interactive shell without terminal input\n";
    }
-} elsif (Main::load_apps()) {
-   require Polymake::Core::Compat;
-   eval {
-      Polymake::User::Compat::execute(@ARGV);
+} else {
+   my $arg = shift;
+   if ($arg eq "-") {
+      ### anonymous pipe
+      require Polymake::Core::Shell;
+      if (Main::load_apps()) {
+         Core::Shell::run_pipe(\*STDIN, 0);
+      }
+   } elsif ($arg !~ /[\s'"(){}\[\]\$]/) {
+      ### script file
+      Main::run_script($arg);
+   } elsif (Main::load_apps()) {
+      ### one-liner
+      local unshift @INC, $User::application;
+      local $Scope = new Scope();
+      $User::application->eval_expr->("package Polymake::User; $arg");
+      beautify_error() if $@;
    }
 }
+
 if ($@) {
    err_print($@);
    exit 1;
@@ -315,22 +294,14 @@ sub load_apps {
 sub run_script {
    local $Scope = new Scope();
    local $standalone_script = true;
+   load_dummy Core::Application;
    eval { User::script(@_, @ARGV) };
    beautify_error() if $@;
 }
 
 sub touch_files {
-   local $Scope=new Scope();
-   local $Core::XMLreader::force_verification=1;
-   foreach (@ARGV) {
-      eval { User::load($_) };
-      err_print($@) if $@;
-   }
-}
-
-sub touch_data_files {
-   local $Scope=new Scope();
-   local $Core::XMLreader::force_verification=1;
+   local $Scope = new Scope();
+   load_dummy Core::Application;
    foreach (@ARGV) {
       eval { User::load_data($_) };
       err_print($@) if $@;

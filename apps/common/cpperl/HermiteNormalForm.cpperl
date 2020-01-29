@@ -1,6 +1,6 @@
 {"app": "common",
  "inst": [
-  {"pkg": "Polymake::common::HermiteNormalForm"},
+  {"guard_name": "CORE_WRAPPERS_integer_linalg", "include": ["polymake/integer_linalg.h"], "pkg": "Polymake::common::HermiteNormalForm", "wrapper_file": "include/core-wrappers/polymake/integer_linalg.h"},
   {"class": "HermiteNormalForm<Integer>", "include": ["polymake/Integer.h", "polymake/integer_linalg.h"], "pkg": "Polymake::common::HermiteNormalForm__Integer"},
  null ],
 "version": 3}

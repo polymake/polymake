@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2014  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2019  Winfried Bruns, Bogdan Ichim, Christof Soeger
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -29,7 +29,7 @@
  * h vector repr.: sum of h[i]*t^i
  * and the denominator is represented as a map d of the exponents of (1-t^i)
  * d vector repr.: product of (1-t^i)^d[i] over i in d
- * Input of the denominator is also possible as a vector of degrees of the 
+ * Input of the denominator is also possible as a vector of degrees of the
  * generators.
  *
  * The class offers basic operations on the series, a simplification and
@@ -40,8 +40,8 @@
 
 //---------------------------------------------------------------------------
 
-#ifndef HILBERT_SERIES_H
-#define HILBERT_SERIES_H
+#ifndef LIBNORMALIZ_HILBERT_SERIES_H
+#define LIBNORMALIZ_HILBERT_SERIES_H
 
 //---------------------------------------------------------------------------
 
@@ -50,28 +50,27 @@
 #include <ostream>
 #include <string>
 
-#include <libnormaliz/general.h> 
+#include <libnormaliz/general.h>
 
 //---------------------------------------------------------------------------
 
 namespace libnormaliz {
-using std::vector;
 using std::map;
 using std::ostream;
-using std::string;
 using std::pair;
+using std::string;
+using std::vector;
 
 class HilbertSeries;
 
 // write a readable representation to the stream
-ostream& operator<< (ostream& out, const HilbertSeries& HS);
+ostream& operator<<(ostream& out, const HilbertSeries& HS);
 
-typedef long long num_t;    //integer type for numerator
-typedef long denom_t;       //integer type for denominator
+typedef long long num_t;  // integer type for numerator
+typedef long denom_t;     // integer type for denominator
 
 class HilbertSeries {
-
-public:
+   public:
     // Constructor, creates 0/1
     HilbertSeries();
     // Constructor, creates num/denom, see class description for format
@@ -83,7 +82,7 @@ public:
 
     // resets to 0/1
     void reset();
- 
+
     // add another HilbertSeries to this
     HilbertSeries& operator+=(const HilbertSeries& other);
 
@@ -106,10 +105,10 @@ public:
     const vector<mpz_class>& getCyclotomicNum() const;
     // returns the denominator, repr. as a map of the exponents of the cyclotomic polynomials
     const map<long, denom_t>& getCyclotomicDenom() const;
-    
+
     void setHSOPDenom(vector<denom_t> new_denom);
-    void setHSOPDenom(map<long,denom_t> new_denom);
-    
+    void setHSOPDenom(map<long, denom_t> new_denom);
+
     // returns the numerator, repr. as vector of coefficients
     const vector<mpz_class>& getHSOPNum() const;
     // returns the denominator, repr. as a map of the exponents of (1-t^i)^e
@@ -121,7 +120,7 @@ public:
 
     void computeHilbertQuasiPolynomial() const;
     bool isHilbertQuasiPolynomialComputed() const;
-    vector< vector<mpz_class> > getHilbertQuasiPolynomial() const;
+    const vector<vector<mpz_class> >& getHilbertQuasiPolynomial() const;
     mpz_class getHilbertQuasiPolynomialDenom() const;
     void resetHilbertQuasiPolynomial();
 
@@ -138,29 +137,29 @@ public:
     string to_string_rep() const;
     void from_string_rep(const string&);
 
-    void setVerbose(bool v) { verbose = v; }
-    
+    void setVerbose(bool v) {
+        verbose = v;
+    }
+
     // compute the new numerator by multiplying the HS with a denominator
     // of the form (1-t^i)
     void compute_hsop_num() const;
-    
+
     void set_nr_coeff_quasipol(long nr_coeff);
     long get_nr_coeff_quasipol() const;
-    
+
     void set_period_bounded(bool on_off) const;
     bool get_period_bounded() const;
-    
+
     vector<mpz_class> getExpansion() const;
     long get_expansion_degree() const;
     void set_expansion_degree(long degree);
 
-
-private:
-    
+   private:
     void initialize();
-    
+
     // collected data in denominator classes
-    mutable map< vector<denom_t>, vector<num_t> > denom_classes;
+    mutable map<vector<denom_t>, vector<num_t> > denom_classes;
     // add the classes if they get too many
     static const size_t DENOM_CLASSES_BOUND = 50000;
     static const long PERIOD_BOUND = 1000000;
@@ -175,7 +174,7 @@ private:
     mutable vector<mpz_class> cyclo_num;
     // the denominator, repr. as a map of the exponents of the cyclotomic polynomials
     mutable map<long, denom_t> cyclo_denom;
-    
+
     // the numerator, repr. as vector of coefficients
     mutable vector<mpz_class> hsop_num;
     // the denominator, repr. as a map of the exponents of the cyclotomic polynomials
@@ -188,15 +187,15 @@ private:
     mutable bool is_simplified;
     mutable long dim;
     mutable long period;
-    mutable long degree; // as rational function
+    mutable long degree;  // as rational function
     long shift;
-    
+
     // the quasi polynomial, can have big coefficients
-    mutable vector< vector<mpz_class> > quasi_poly;
+    mutable vector<vector<mpz_class> > quasi_poly;
     mutable mpz_class quasi_denom;
-    mutable long nr_coeff_quasipol; // limits the computation of coefficients of the computeHilbertQuasiPolynomial
-                            // <0: all coeff, =0: no coeff
-    
+    mutable long nr_coeff_quasipol;  // limits the computation of coefficients of the computeHilbertQuasiPolynomial
+                                     // <0: all coeff, =0: no coeff
+
     bool verbose;
 
     // these are only const when used properly!!
@@ -204,73 +203,66 @@ private:
     void performAdd(vector<mpz_class>& num, const map<long, denom_t>& denom) const;
 
     void computeDegreeAsRationalFunction() const;
-    
+
     void compute_expansion() const;
     vector<mpz_class> expand_denom() const;
 
-
-    friend ostream& operator<< (ostream& out, const HilbertSeries& HS);
-
+    friend ostream& operator<<(ostream& out, const HilbertSeries& HS);
 };
-//class end *****************************************************************
-
+// class end *****************************************************************
 
 //---------------------------------------------------------------------------
 // polynomial operations, for polynomials repr. as vector of coefficients
 //---------------------------------------------------------------------------
 
 // a += b
-template<typename Integer>
-void poly_add_to (vector<Integer>& a, const vector<Integer>& b);
+template <typename Integer>
+void poly_add_to(vector<Integer>& a, const vector<Integer>& b);
 
 // a += b*t^m
-template<typename Integer>
-void poly_add_to_tm (vector<Integer>& a, const vector<Integer>& b,long m);
+template <typename Integer>
+void poly_add_to_tm(vector<Integer>& a, const vector<Integer>& b, long m);
 
 // a -= b
-template<typename Integer>
-void poly_sub_to (vector<Integer>& a, const vector<Integer>& b);
-
+template <typename Integer>
+void poly_sub_to(vector<Integer>& a, const vector<Integer>& b);
 
 // a * b
-template<typename Integer>
+template <typename Integer>
 vector<Integer> poly_mult(const vector<Integer>& a, const vector<Integer>& b);
 
 // a*b via Karatsuba
-template<typename Integer>
+template <typename Integer>
 vector<Integer> karatsubamult(const vector<Integer>& a, const vector<Integer>& b);
 
 // a *= (1-t^d)^e
-template<typename Integer>
+template <typename Integer>
 void poly_mult_to(vector<Integer>& a, long d, long e = 1);
 
 // a *= t^m
-template<typename Integer>
+template <typename Integer>
 void poly_mult_by_tm(vector<Integer>& a, long m);
 
-
 // division with remainder, a = q * b + r
-template<typename Integer>
-void poly_div(vector<Integer>& q, vector<Integer>& r, const vector<Integer>& a, const vector<Integer>&b);
-
+template <typename Integer>
+void poly_div(vector<Integer>& q, vector<Integer>& r, const vector<Integer>& a, const vector<Integer>& b);
 
 // remove leading zero coefficients, 0 polynomial leads to empty list
-template<typename Integer>
+template <typename Integer>
 void remove_zeros(vector<Integer>& a);
 
-
 // Returns the n-th cyclotomic polynomial, all smaller are computed and stored.
-// The n-th cyclotomic polynomial is the product of (X-w) over all 
+// The n-th cyclotomic polynomial is the product of (X-w) over all
 // n-th primitive roots of unity w.
-template<typename Integer>
+template <typename Integer>
 vector<Integer> cyclotomicPoly(long n);
 
 // returns the coefficient vector of 1-t^i
-template<typename Integer>
+template <typename Integer>
 vector<Integer> coeff_vector(size_t i);
 
 // substitutes t by (t-a), overwrites the polynomial!
-template<typename Integer>
+template <typename Integer>
 void linear_substitution(vector<Integer>& poly, const Integer& a);
 
 //---------------------------------------------------------------------------
@@ -284,27 +276,25 @@ vector<mpz_class> expand_inverse(size_t exponent, long to_degree);
 // computing the Hilbert polynomial from h-vector
 //---------------------------------------------------------------------------
 
-template<typename Integer>
+template <typename Integer>
 vector<Integer> compute_e_vector(vector<Integer> h_vector, int dim);
 
-template<typename Integer>
+template <typename Integer>
 vector<Integer> compute_polynomial(vector<Integer> h_vector, int dim);
 
 //---------------------------------------------------------------------------
 // A class collecting integrals and weighted Ehrhart series
 //---------------------------------------------------------------------------
 
-class IntegrationData{
-
+class IntegrationData {
     string polynomial;
     long degree_of_polynomial;
     bool polynomial_is_homogeneous;
     mpq_class integral, virtual_multiplicity;
     nmz_float euclidean_integral;
-    mutable pair<HilbertSeries, mpz_class> weighted_Ehrhart_series; // the second component holds the common
-                                                            // denominator of the coefficients in the numerator    
-public:
-    
+    mutable pair<HilbertSeries, mpz_class> weighted_Ehrhart_series;  // the second component holds the common
+                                                                     // denominator of the coefficients in the numerator
+   public:
     void setIntegral(const mpq_class I);
     void setEuclideanIntegral(const nmz_float I);
     void setVirtualMultiplicity(const mpq_class I);
@@ -314,7 +304,7 @@ public:
     void setDegreeOfPolynomial(const long d);
     void set_nr_coeff_quasipol(long nr_coeff);
     void set_expansion_degree(long degree);
-    
+
     string getPolynomial() const;
     long getDegreeOfPolynomial() const;
     mpq_class getIntegral() const;
@@ -323,7 +313,7 @@ public:
     const pair<HilbertSeries, mpz_class>& getWeightedEhrhartSeries() const;
     bool isPolynomialHomogeneous() const;
     mpz_class getNumeratorCommonDenom() const;
-    
+
     const vector<mpz_class>& getNum_ZZ() const;
     // returns the denominator, repr. as a map of the exponents of (1-t^i)^e
     const map<long, denom_t>& getDenom() const;
@@ -331,22 +321,21 @@ public:
     const vector<mpz_class>& getCyclotomicNum_ZZ() const;
     // returns the denominator, repr. as a map of the exponents of the cyclotomic polynomials
     const map<long, denom_t>& getCyclotomicDenom() const;
-    
+
     void computeWeightedEhrhartQuasiPolynomial() const;
     bool isWeightedEhrhartQuasiPolynomialComputed() const;
-    vector< vector<mpz_class> > getWeightedEhrhartQuasiPolynomial() const;
+    const vector<vector<mpz_class> >& getWeightedEhrhartQuasiPolynomial() const;
     void computeWeightedEhrhartQuasiPolynomial();
     mpz_class getWeightedEhrhartQuasiPolynomialDenom() const;
     void resetHilbertQuasiPolynomial();
     vector<mpz_class> getExpansion() const;
-    
+
     IntegrationData(const string& poly);
     IntegrationData();
-}; // class end
+};  // class end
 
-} //end namespace libnormaliz
+}  // end namespace libnormaliz
 
 //---------------------------------------------------------------------------
 #endif
 //---------------------------------------------------------------------------
-

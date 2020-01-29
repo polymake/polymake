@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -57,30 +57,30 @@ struct matrix_symmetry_type
 
 
 template <typename TMatrix>
-int empty_rows(const TMatrix& m)
+Int empty_rows(const TMatrix& m)
 {
-   int cnt=0;
-   for (auto r=entire(rows(m)); !r.at_end(); ++r)
+   Int cnt = 0;
+   for (auto r = entire(rows(m)); !r.at_end(); ++r)
       if (!r->size()) ++cnt;
    return cnt;
 }
 
 template <typename TMatrix>
-int empty_cols(const TMatrix& m)
+Int empty_cols(const TMatrix& m)
 {
-   int cnt=0;
-   for (auto c=entire(cols(m)); !c.at_end(); ++c)
+   Int cnt = 0;
+   for (auto c = entire(cols(m)); !c.at_end(); ++c)
       if (!c->size()) ++cnt;
    return cnt;
 }
 
 template <typename E>
-int count_columns(const std::initializer_list<std::initializer_list<E>>& l)
+Int count_columns(const std::initializer_list<std::initializer_list<E>>& l)
 {
-   if (l.size()==0) return 0;
+   if (l.size() == 0) return 0;
 #if POLYMAKE_DEBUG
-   auto r=l.begin(), e=l.end();
-   const size_t c=r->size();
+   auto r = l.begin(), e = l.end();
+   const size_t c = r->size();
    while (++r != e) {
       if (r->size() != c)
          throw std::runtime_error("Matrix initializer list does not have a rectangular shape");
@@ -109,16 +109,16 @@ public:
    const TMatrix& hidden() const { return reinterpret_cast<const TMatrix&>(*this); }
 
    void clear() { hidden().clear(); }
-   void clear(int r, int c) { hidden().clear(c,r); }
+   void clear(Int r, Int c) { hidden().clear(c,r); }
 };
 
 template <typename TMatrix>
 struct spec_object_traits< Transposed<TMatrix> >
    : spec_object_traits<is_container> {
    typedef TMatrix masquerade_for;
-   static const bool is_lazy         = object_traits<TMatrix>::is_lazy,
-                     is_always_const = object_traits<TMatrix>::is_always_const;
-   static const int is_resizeable= object_traits<TMatrix>::is_resizeable;
+   static constexpr bool is_lazy         = object_traits<TMatrix>::is_lazy,
+                         is_always_const = object_traits<TMatrix>::is_always_const;
+   static constexpr int is_resizeable = object_traits<TMatrix>::is_resizeable;
 };
 
 template <typename TMatrix>
@@ -153,13 +153,13 @@ public:
    typedef typename deref<typename container_traits< Rows<TMatrix> >::reference>::type row_type;
    typedef typename deref<typename container_traits< Rows<TMatrix> >::const_reference>::minus_ref const_row_type;
 
-   int rows() const
+   Int rows() const
    {
       return pm::rows(static_cast<const TMatrix&>(*this)).size();
    }
 
    // stub for BlockMatrix
-   void stretch_rows(int) const
+   void stretch_rows(Int) const
    {
       throw std::runtime_error("row dimension mismatch");
    }
@@ -172,37 +172,37 @@ template <typename TMatrix>
 class matrix_row_methods<TMatrix, random_access_iterator_tag>
    : public matrix_row_methods<TMatrix, forward_iterator_tag> {
 public:
-   decltype(auto) row(int i)
+   decltype(auto) row(Int i)
    {
       if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
-         if (i<0 || i>=this->rows())
+         if (i < 0 || i >= this->rows())
             throw std::runtime_error("matrix row index out of range");
       }
       return pm::rows(*static_cast<TMatrix*>(this))[i];
    }
 
-   decltype(auto) operator[] (int i)
+   decltype(auto) operator[] (Int i)
    {
       if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
-         if (i<0 || i>=this->rows())
+         if (i < 0 || i >= this->rows())
             throw std::runtime_error("matrix row index out of range");
       }
       return pm::rows(*static_cast<TMatrix*>(this))[i];
    }
 
-   decltype(auto) row(int i) const
+   decltype(auto) row(Int i) const
    {
       if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
-         if (i<0 || i>=this->rows())
+         if (i < 0 || i >= this->rows())
             throw std::runtime_error("matrix row index out of range");
       }
       return pm::rows(*static_cast<const TMatrix*>(this))[i];
    }
 
-   decltype(auto) operator[] (int i) const
+   decltype(auto) operator[] (Int i) const
    {
       if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
-         if (i<0 || i>=this->rows())
+         if (i < 0 || i >= this->rows())
             throw std::runtime_error("matrix row index out of range");
       }
       return pm::rows(*static_cast<const TMatrix*>(this))[i];
@@ -215,13 +215,13 @@ public:
    typedef typename deref<typename container_traits< Cols<TMatrix> >::reference>::type col_type;
    typedef typename deref<typename container_traits< Cols<TMatrix> >::const_reference>::minus_ref const_col_type;
 
-   int cols() const
+   Int cols() const
    {
       return pm::cols(*static_cast<const TMatrix*>(this)).size();
    }
 
    // stub for BlockMatrix
-   void stretch_cols(int) const
+   void stretch_cols(Int) const
    {
       throw std::runtime_error("col dimension mismatch");
    }
@@ -234,19 +234,19 @@ template <typename TMatrix>
 class matrix_col_methods<TMatrix, random_access_iterator_tag>
    : public matrix_col_methods<TMatrix, forward_iterator_tag> {
 public:
-   decltype(auto) col(int i)
+   decltype(auto) col(Int i)
    {
       if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
-         if (i<0 || i>=this->cols())
+         if (i < 0 || i >= this->cols())
             throw std::runtime_error("matrix column index out of range");
       }
       return pm::cols(*static_cast<TMatrix*>(this))[i];
    }
 
-   decltype(auto) col(int i) const
+   decltype(auto) col(Int i) const
    {
       if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
-         if (i<0 || i>=this->cols())
+         if (i < 0 || i >= this->cols())
             throw std::runtime_error("matrix column index out of range");
       }
       return pm::cols(*static_cast<const TMatrix*>(this))[i];
@@ -331,28 +331,28 @@ class matrix_methods<Wary<TMatrix>, E, random_access_iterator_tag, random_access
    : public matrix_methods<Wary<TMatrix>, E, forward_iterator_tag, forward_iterator_tag>
 {
 public:
-   decltype(auto) operator() (int i, int j)
+   decltype(auto) operator() (Int i, Int j)
    {
-      if (i<0 || i>=this->rows() || j<0 || j>=this->cols())
+      if (i < 0 || i >= this->rows() || j < 0 || j >= this->cols())
          throw std::runtime_error("matrix element access - index out of range");
-      return unwary(static_cast<Wary<TMatrix>&>(*this))(i,j);
+      return unwary(static_cast<Wary<TMatrix>&>(*this))(i, j);
    }
-   decltype(auto) operator() (int i, int j) const
+   decltype(auto) operator() (Int i, Int j) const
    {
-      if (i<0 || i>=this->rows() || j<0 || j>=this->cols())
+      if (i < 0 || i >= this->rows() || j < 0 || j >= this->cols())
          throw std::runtime_error("matrix element access - index out of range");
-      return unwary(static_cast<const Wary<TMatrix>&>(*this))(i,j);
+      return unwary(static_cast<const Wary<TMatrix>&>(*this))(i, j);
    }
 };
 
 template <typename TMatrix>
 class matrix_random_access_methods< Transposed<TMatrix> > {
 public:
-   decltype(auto) operator() (int i, int j)
+   decltype(auto) operator() (Int i, Int j)
    {
       return static_cast<Transposed<TMatrix>*>(this)->hidden()(j, i);
    }
-   decltype(auto) operator() (int i, int j) const
+   decltype(auto) operator() (Int i, Int j) const
    {
       return static_cast<const Transposed<TMatrix>*>(this)->hidden()(j, i);
    }
@@ -379,10 +379,10 @@ public:
    alias(arg_type) {}
 
    reference operator* () const { return *this; }
-   int operator[] (int i) const { return i; }
+   Int operator[] (Int i) const { return i; }
 };
 
-constexpr bool set_within_range(const all_selector&, int) { return true; }
+constexpr bool set_within_range(const all_selector&, Int) { return true; }
 
 template <typename GetDim>
 const all_selector& prepare_index_set(all_selector&& s, const GetDim&)
@@ -423,13 +423,13 @@ public:
    decltype(auto) get_subset(int_constant<1>) const { return *rset; }
    decltype(auto) get_subset(int_constant<2>) const { return *cset; }
 
-   int random_row(int i, std::false_type) const { return get_subset(int_constant<1>())[i]; }
-   int random_col(int i, std::false_type) const { return get_subset(int_constant<2>())[i]; }
-   int random_row(int i, std::true_type) const { return i; }
-   int random_col(int i, std::true_type) const { return i; }
+   Int row_by_index(Int i, std::false_type) const { return get_subset(int_constant<1>())[i]; }
+   Int col_by_index(Int i, std::false_type) const { return get_subset(int_constant<2>())[i]; }
+   Int row_by_index(Int i, std::true_type) const { return i; }
+   Int col_by_index(Int i, std::true_type) const { return i; }
 
-   int random_row(int i) const { return random_row(i, std::is_same<pure_type_t<RowIndexSetRef>, all_selector>()); }
-   int random_col(int i) const { return random_col(i, std::is_same<pure_type_t<ColIndexSetRef>, all_selector>()); }
+   Int row_by_index(Int i) const { return row_by_index(i, std::is_same<pure_type_t<RowIndexSetRef>, all_selector>()); }
+   Int col_by_index(Int i) const { return col_by_index(i, std::is_same<pure_type_t<ColIndexSetRef>, all_selector>()); }
 };
 
 template <typename MatrixRef, typename RowIndexSetRef, typename ColIndexSetRef>
@@ -495,21 +495,21 @@ class matrix_random_access_methods< MatrixMinor<MatrixRef, RowIndexSetRef, ColIn
    typedef MatrixMinor<MatrixRef,RowIndexSetRef,ColIndexSetRef> master;
 public:
    typename inherit_const<typename deref<MatrixRef>::type::reference, MatrixRef>::type
-   operator() (int i, int j)
+   operator() (Int i, Int j)
    {
-      master& me=static_cast<master&>(*this);
-      return me.get_matrix()(me.random_row(i), me.random_col(j));
+      master& me = static_cast<master&>(*this);
+      return me.get_matrix()(me.row_by_index(i), me.col_by_index(j));
    }
 
    typename deref<MatrixRef>::type::const_reference
-   operator() (int i, int j) const
+   operator() (Int i, Int j) const
    {
       const master& me=static_cast<const master&>(*this);
-      return me.get_matrix()(me.random_row(i), me.random_col(j));
+      return me.get_matrix()(me.row_by_index(i), me.col_by_index(j));
    }
 };
 
-template <typename TMinor, int dir>
+template <typename TMinor, int TDir>
 struct RowCol_helper;
 
 template <typename TMinor>
@@ -518,7 +518,7 @@ struct RowCol_helper<TMinor, 1> : masquerade<Rows, typename mget_template_parame
 template <typename TMinor>
 struct RowCol_helper<TMinor, 2> : masquerade<Cols, typename mget_template_parameter<TMinor, 0>::type> {};
 
-template <typename TMinor, typename TRenumber, int TDir, typename TSelector=typename mget_template_parameter<TMinor, TDir>::type>
+template <typename TMinor, typename TRenumber, int TDir, typename TSelector = typename mget_template_parameter<TMinor, int(TDir)>::type>
 class RowColSubset
    : public indexed_subset_impl< RowColSubset<TMinor, TRenumber, TDir, TSelector>,
                                  mlist< Container1RefTag< typename RowCol_helper<TMinor, TDir>::type >,
@@ -559,7 +559,7 @@ public:
 };
 
 template <typename TMinor, typename TRenumber, int TDir, typename TSliceConstructor,
-          typename TCrossSelector=typename mget_template_parameter<TMinor, 3-TDir>::type>
+          typename TCrossSelector = typename mget_template_parameter<TMinor, 3 - TDir>::type>
 class RowsCols
    : public modified_container_pair_impl< RowsCols<TMinor, TRenumber, TDir, TSliceConstructor, TCrossSelector>,
                                           mlist< Container1Tag< RowColSubset<TMinor, TRenumber, TDir> >,
@@ -572,7 +572,7 @@ protected:
 public:
    decltype(auto) get_container2() const
    {
-      return as_same_value_container(this->hidden().get_subset_alias(int_constant<3-TDir>()));
+      return as_same_value_container(this->hidden().get_subset_alias(int_constant<3 - TDir>()));
    }
 };
 
@@ -630,23 +630,23 @@ public:
    explicit BlockMatrix(Args&&... args)
       : alias_tuple<MatrixList>(arg_helper(), std::forward<Args>(args)...)
    {
-      int d=0;
-      bool saw_zero_dim=false;
+      Int d = 0;
+      bool saw_zero_dim = false;
       foreach_in_tuple(this->aliases, [&d, &saw_zero_dim](auto&& a) -> void {
-         const int d_cur= rowwise::value ? a->cols() : a->rows();
-         if (d_cur) {
-            if (d) {
+         const Int d_cur = rowwise::value ? a->cols() : a->rows();
+         if (d_cur != 0) {
+            if (d != 0) {
                if (d_cur != d) throw std::runtime_error(rowwise::value ? "block matrix - col dimension mismatch"
                                                                        : "block matrix - row dimension mismatch");
             } else {
-               d=d_cur;
+               d = d_cur;
             }
          } else {
-            saw_zero_dim=true;
+            saw_zero_dim = true;
          }
       });
 
-      if (saw_zero_dim && d) {
+      if (saw_zero_dim && d != 0) {
          foreach_in_tuple(this->aliases, [d](auto&& a) -> void {
             if (rowwise::value) {
                if (a->cols() == 0) a.get_object().stretch_cols(d);
@@ -724,15 +724,15 @@ class Rows< BlockMatrix<MatrixList, std::true_type> >
 protected:
    ~Rows();
 public:
-   template <int i>
-   decltype(auto) get_container(int_constant<i>)
+   template <size_t i>
+   decltype(auto) get_container(size_constant<i>)
    {
-      return rows(this->hidden().get_container(int_constant<i>()));
+      return rows(this->hidden().get_container(size_constant<i>()));
    }
-   template <int i>
-   decltype(auto) get_container(int_constant<i>) const
+   template <size_t i>
+   decltype(auto) get_container(size_constant<i>) const
    {
-      return rows(this->hidden().get_container(int_constant<i>()));
+      return rows(this->hidden().get_container(size_constant<i>()));
    }
 };
 
@@ -745,15 +745,15 @@ class Cols< BlockMatrix<MatrixList, std::true_type> >
 protected:
    ~Cols();
 public:
-   template <int i>
-   decltype(auto) get_container(int_constant<i>)
+   template <size_t i>
+   decltype(auto) get_container(size_constant<i>)
    {
-      return cols(this->hidden().get_container(int_constant<i>()));
+      return cols(this->hidden().get_container(size_constant<i>()));
    }
-   template <int i>
-   decltype(auto) get_container(int_constant<i>) const
+   template <size_t i>
+   decltype(auto) get_container(size_constant<i>) const
    {
-      return cols(this->hidden().get_container(int_constant<i>()));
+      return cols(this->hidden().get_container(size_constant<i>()));
    }
    static constexpr auto get_operation()
    {
@@ -770,15 +770,15 @@ class Rows< BlockMatrix<MatrixList, std::false_type> >
 protected:
    ~Rows();
 public:
-   template <int i>
-   decltype(auto) get_container(int_constant<i>)
+   template <size_t i>
+   decltype(auto) get_container(size_constant<i>)
    {
-      return rows(this->hidden().get_container(int_constant<i>()));
+      return rows(this->hidden().get_container(size_constant<i>()));
    }
-   template <int i>
-   decltype(auto) get_container(int_constant<i>) const
+   template <size_t i>
+   decltype(auto) get_container(size_constant<i>) const
    {
-      return rows(this->hidden().get_container(int_constant<i>()));
+      return rows(this->hidden().get_container(size_constant<i>()));
    }
    static constexpr auto get_operation()
    {
@@ -794,15 +794,15 @@ class Cols< BlockMatrix<MatrixList, std::false_type> >
 protected:
    ~Cols();
 public:
-   template <int i>
-   decltype(auto) get_container(int_constant<i>)
+   template <size_t i>
+   decltype(auto) get_container(size_constant<i>)
    {
-      return cols(this->hidden().get_container(int_constant<i>()));
+      return cols(this->hidden().get_container(size_constant<i>()));
    }
-   template <int i>
-   decltype(auto) get_container(int_constant<i>) const
+   template <size_t i>
+   decltype(auto) get_container(size_constant<i>) const
    {
-      return cols(this->hidden().get_container(int_constant<i>()));
+      return cols(this->hidden().get_container(size_constant<i>()));
    }
 };
 
@@ -834,8 +834,8 @@ public:
    using reference = std::conditional_t<is_const<LineRef>::value, typename line_t::const_reference, typename line_t::reference>;
    using const_reference = typename line_t::const_reference;
 
-   template <typename Arg, typename=std::enable_if_t<std::is_constructible<line_container_t, Arg, int>::value>>
-   repeated_line_matrix(Arg&& line_arg, int cnt_arg)
+   template <typename Arg, typename=std::enable_if_t<std::is_constructible<line_container_t, Arg, Int>::value>>
+   repeated_line_matrix(Arg&& line_arg, Int cnt_arg)
       : line_container(std::forward<Arg>(line_arg), cnt_arg) {}
 
    const line_container_t& get_line_container() const { return line_container; }
@@ -843,7 +843,7 @@ public:
    decltype(auto) get_line() { return line_container.front(); }
    decltype(auto) get_line() const { return line_container.front(); }
 
-   int get_count() const { return line_container.size(); }
+   Int get_count() const { return line_container.size(); }
 };
 
 } // end namespace pm

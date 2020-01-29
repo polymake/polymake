@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -34,8 +34,8 @@ namespace polymake { namespace group {
  */
 template <typename SparseSet, typename NumericalType=Rational>
 SparseIsotypicBasis<SparseSet>
-sparse_isotypic_basis_impl(int order,
-                           const Array<Array<int>>& original_generators,
+sparse_isotypic_basis_impl(Int order,
+                           const Array<Array<Int>>& original_generators,
                            const ConjugacyClasses<>& conjugacy_classes,
                            const Vector<Rational>& character,
                            const Array<SparseSet>& induced_orbit_representatives,
@@ -62,13 +62,13 @@ sparse_isotypic_basis_impl(int order,
    for (const auto& orep: induced_orbit_representatives) {
       // The rows and columns of B are indexed by the orbit of orep.
       // One could make the orbit unordered and save the time spent ordering it, but then one would lose knowledge of what simplices rows and columns correspond to.
-      const auto face_orbit(orbit<on_container, Array<int>, SparseSet>(original_generators, orep));
+      const auto face_orbit(orbit<on_container, Array<Int>, SparseSet>(original_generators, orep));
       
       // index the orbit, and create constant-time access to indexed elements
-      hash_map<SparseSet, int> index_of;
+      hash_map<SparseSet, Int> index_of;
       std::vector<SparseSet> face_orbit_indexed;
       face_orbit_indexed.reserve(face_orbit.size());
-      int index(-1);
+      Int index = -1;
       for (const auto& f: face_orbit) {
          index_of[f] = ++index;
          face_orbit_indexed.push_back(f);
@@ -92,7 +92,7 @@ sparse_isotypic_basis_impl(int order,
             Therefore, the row corresponding to f gets a contribution chi_i(g) in the column g(f), for all g in Gamma.
          */
          SparseVector<NumericalType> new_sparse_eq(face_orbit.size());
-         for (int i=0; i<conjugacy_classes.size(); ++i) {
+         for (Int i = 0; i<conjugacy_classes.size(); ++i) {
             if (is_zero(character[i])) 
                continue;
             for (const auto& g: conjugacy_classes[i]) {
@@ -120,8 +120,8 @@ sparse_isotypic_basis_impl(int order,
 
 template <typename SparseSet>
 auto
-sparse_isotypic_spanning_set_and_support_impl(int order,
-                                              const Array<Array<int>>& original_generators,
+sparse_isotypic_spanning_set_and_support_impl(Int order,
+                                              const Array<Array<Int>>& original_generators,
                                               const ConjugacyClasses<>& conjugacy_classes,
                                               const Vector<Rational>& character,
                                               const Array<SparseSet>& induced_orbit_representatives,
@@ -142,9 +142,9 @@ sparse_isotypic_spanning_set_and_support_impl(int order,
 
    SparseSimplexVector<SparseSet> old_hash_eq;
    for (const auto& orep: induced_orbit_representatives) {
-      for (const auto& f: orbit<on_container, Array<int>, SparseSet>(original_generators, orep)) {
+      for (const auto& f: orbit<on_container, Array<Int>, SparseSet>(original_generators, orep)) {
          SparseSimplexVector<SparseSet> new_hash_eq;
-         for (int i=0; i<conjugacy_classes.size(); ++i) {
+         for (Int i = 0; i < conjugacy_classes.size(); ++i) {
             if (is_zero(character[i])) 
                continue;
             for (const auto& g: conjugacy_classes[i]) {
@@ -175,10 +175,10 @@ sparse_isotypic_spanning_set_and_support_impl(int order,
 
 template<typename SparseSet>
 void
-augment_index_of(hash_map<SparseSet, int>& index_of,
+augment_index_of(hash_map<SparseSet, Int>& index_of,
                  const SparseIsotypicBasis<SparseSet>& subspace_generators)
 {
-   int index(index_of.size());
+   Int index = index_of.size();
    for (const auto& sgen: subspace_generators)
       for (const auto m: sgen)
          if (!index_of.exists(m.first))
@@ -187,7 +187,7 @@ augment_index_of(hash_map<SparseSet, int>& index_of,
 
 template<typename SparseSet>
 ListMatrix<SparseVector<Rational>>
-list_matrix_representation(const hash_map<SparseSet, int>& index_of,
+list_matrix_representation(const hash_map<SparseSet, Int>& index_of,
                            const SparseIsotypicBasis<SparseSet>& subspace_generators)
 {
   ListMatrix<SparseVector<Rational>> sgen_matrix(0, index_of.size());
@@ -202,11 +202,11 @@ list_matrix_representation(const hash_map<SparseSet, int>& index_of,
 
 template<typename SparseSet>
 bool
-spans_invariant_subspace_impl(const Array<Array<int>>& group_generators,
+spans_invariant_subspace_impl(const Array<Array<Int>>& group_generators,
                               const SparseIsotypicBasis<SparseSet>& subspace_generators,
                               bool verbose)
 {
-   hash_map<SparseSet,int> index_of;
+   hash_map<SparseSet, Int> index_of;
    augment_index_of(index_of, subspace_generators);
    const SparseMatrix<Rational> ker = null_space(list_matrix_representation(index_of, subspace_generators));
 

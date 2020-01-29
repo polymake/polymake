@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,11 +28,11 @@ namespace pm {
 
 /// data from third parties can't have infinite values
 constexpr bool isfinite(const __mpq_struct&) { return true; }
-constexpr int isinf(const __mpq_struct&) { return 0; }
+constexpr Int isinf(const __mpq_struct&) { return 0; }
 
 bool isfinite(const Rational& a) noexcept;
-int isinf(const Rational& a) noexcept;
-int sign(const Rational& a) noexcept;
+Int isinf(const Rational& a) noexcept;
+Int sign(const Rational& a) noexcept;
 
 template <> struct spec_object_traits<Rational>;
 
@@ -252,7 +252,7 @@ public:
       set_data(b[0], 1, initialized::no);
    }
 
-   Rational(long b=0)
+   Rational(long b = 0)
       : Rational(b, 1) {}
 
    Rational(int b)
@@ -260,9 +260,9 @@ public:
 
    /// Construct an infinite value
    static
-   Rational infinity(int sgn)
+   Rational infinity(Int sgn)
    {
-      assert(sgn==1 || sgn==-1);
+      assert(sgn == 1 || sgn == -1);
       Rational result(nullptr);
       set_inf(&result, sgn, initialized::no);
       return result;
@@ -549,7 +549,7 @@ public:
       if (__builtin_expect(isfinite(*this), 1))
          return mpq_get_d(this);
       else
-         return isinf(*this) * std::numeric_limits<double>::infinity();
+         return double(isinf(*this)) * std::numeric_limits<double>::infinity();
    }
 
    explicit operator long() const
@@ -557,13 +557,6 @@ public:
       if (!is_integral())
          throw GMP::BadCast("non-integral number");
       return static_cast<long>(numerator(*this));
-   }
-
-   explicit operator int() const
-   {
-      if (!is_integral())
-         throw GMP::BadCast("non-integral number");
-      return static_cast<int>(numerator(*this));
    }
 
    mpq_srcptr get_rep() const noexcept { return this; }
@@ -635,7 +628,7 @@ public:
          else
             set_inf(this, 1, b);
       } else {
-         if (isinf(*this)+isinf(b)==0)
+         if (isinf(*this)+isinf(b) == 0)
             throw GMP::NaN();
       }
       return *this;
@@ -651,7 +644,7 @@ public:
          else
             set_inf(&result, 1, b);
       } else {
-         if (isinf(a)+isinf(b)==0)
+         if (isinf(a)+isinf(b) == 0)
             throw GMP::NaN();
          set_inf(&result, a);
       }
@@ -682,7 +675,7 @@ public:
          else
             set_inf(this, 1, b);
       } else {
-         if (isinf(*this)+isinf(b)==0)
+         if (isinf(*this)+isinf(b) == 0)
             throw GMP::NaN();
       }
       return *this;
@@ -700,7 +693,7 @@ public:
             set_inf(&result, 1, b);
          }
       } else {
-         if (isinf(a)+isinf(b)==0)
+         if (isinf(a)+isinf(b) == 0)
             throw GMP::NaN();
          set_inf(&result, a);
       }
@@ -792,7 +785,7 @@ public:
          else
             set_inf(this, -1, b);
       } else {
-         if (isinf(*this)==isinf(b))
+         if (isinf(*this) == isinf(b))
             throw GMP::NaN();
       }
       return *this;
@@ -808,7 +801,7 @@ public:
          else
             set_inf(&result, -1, b);
       } else {
-         if (isinf(a)==isinf(b))
+         if (isinf(a) == isinf(b))
             throw GMP::NaN();
          set_inf(&result, a);
       }
@@ -839,7 +832,7 @@ public:
          else
             set_inf(this, -1, b);
       } else {
-         if (isinf(*this)==isinf(b))
+         if (isinf(*this) == isinf(b))
             throw GMP::NaN();
       }
       return *this;
@@ -857,7 +850,7 @@ public:
             set_inf(&result, -1, b);
          }
       } else {
-         if (isinf(a)==isinf(b))
+         if (isinf(a) == isinf(b))
             throw GMP::NaN();
          set_inf(&result, a);
       }
@@ -1417,7 +1410,7 @@ public:
    /// Comparison. 
    /// The magnitude of the return value is arbitrary, only its sign is relevant.
 
-   int compare(const Rational& b) const
+   Int compare(const Rational& b) const
    {
       if (__builtin_expect(isfinite(*this) && isfinite(b), 1))
          return mpq_cmp(this, &b);
@@ -1425,7 +1418,7 @@ public:
          return isinf(*this)-isinf(b);
    }
 
-   int compare(const Integer& b) const
+   Int compare(const Integer& b) const
    {
       if (__builtin_expect(isfinite(*this) && isfinite(b), 1)) {
          if (__builtin_expect(b.is_zero(), 0))
@@ -1438,7 +1431,7 @@ public:
       }
    }
 
-   int compare(long b) const
+   Int compare(long b) const
    {
       if (__builtin_expect(isfinite(*this), 1)) {
          if (__builtin_expect(!b, 0))
@@ -1451,10 +1444,10 @@ public:
       }
    }
 
-   int compare(int b) const { return compare(long(b)); }
+   Int compare(int b) const { return compare(long(b)); }
 
    /// Comparison. 
-   int compare(double b) const
+   Int compare(double b) const
    {
       if (__builtin_expect(isfinite(*this) && isfinite(b), 1)) {
          return is_integral()
@@ -1473,7 +1466,7 @@ public:
    {
       if (__builtin_expect(isfinite(a) && isfinite(b), 1))
          return mpq_equal(&a, &b);
-      return isinf(a)==isinf(b);
+      return isinf(a) == isinf(b);
    }
 
    friend
@@ -1481,7 +1474,7 @@ public:
    {
       if (__builtin_expect(isfinite(a) && isfinite(b), 1))
          return a.is_integral() && numerator(a)==b;
-      return isinf(a)==isinf(b);
+      return isinf(a) == isinf(b);
    }
 
    friend
@@ -1671,7 +1664,7 @@ public:
       } else {
          throw GMP::ZeroDivide();
       }
-      if (a<0 && k % 2)
+      if (a<0 && k%2)
          result.negate();
       return result;
    }
@@ -1734,7 +1727,7 @@ protected:
    void div_thru_Integer(const Rational& a, const Integer& b);
 
    static
-   void set_inf(mpq_ptr me, int sign, initialized st=initialized::yes)
+   void set_inf(mpq_ptr me, Int sign, initialized st=initialized::yes)
    {
       Integer::set_inf(mpq_numref(me), sign, st);
       Integer::set_finite(mpq_denref(me), 1, st);
@@ -1752,23 +1745,23 @@ protected:
       Integer::set_finite(mpq_denref(me), 1, st);
    }
    static
-   void set_inf(mpq_ptr me, int sign, long inv, initialized st=initialized::yes)
+   void set_inf(mpq_ptr me, Int sign, long inv, initialized st=initialized::yes)
    {
       Integer::set_inf(mpq_numref(me), sign, inv, st);
       Integer::set_finite(mpq_denref(me), 1, st);
    }
    static
-   void set_inf(mpq_ptr me, int sign, const __mpq_struct& inv, initialized st=initialized::yes)
+   void set_inf(mpq_ptr me, Int sign, const __mpq_struct& inv, initialized st=initialized::yes)
    {
       set_inf(me, sign, mpq_sgn(&inv), st);
    }
    static
-   void set_inf(mpq_ptr me, int sign, const __mpz_struct& inv, initialized st=initialized::yes)
+   void set_inf(mpq_ptr me, Int sign, const __mpz_struct& inv, initialized st=initialized::yes)
    {
       set_inf(me, sign, mpz_sgn(&inv), st);
    }
    static
-   void set_inf(mpq_ptr me, int sign, const Integer& inv, initialized st=initialized::yes)
+   void set_inf(mpq_ptr me, Int sign, const Integer& inv, initialized st=initialized::yes)
    {
       set_inf(me, sign, mpz_sgn(&inv), st);
    }
@@ -1935,13 +1928,13 @@ bool isfinite(const Rational& a) noexcept
 }
 
 inline
-int isinf(const Rational& a) noexcept
+Int isinf(const Rational& a) noexcept
 {
    return isfinite(a) ? 0 : mpq_numref(a.get_rep())->_mp_size;
 }
 
 inline
-int sign(const Rational& a) noexcept
+Int sign(const Rational& a) noexcept
 {
    return mpq_sgn(a.get_rep());
 }
@@ -2040,11 +2033,6 @@ public:
 };
 
 template <>
-struct algebraic_traits<int> {
-   typedef Rational field_type;
-};
-
-template <>
 struct algebraic_traits<long> {
    typedef Rational field_type;
 };
@@ -2088,9 +2076,7 @@ Integer& Integer::operator= (Rational&& b)
    return *this;
 }
 
-template <>
-Rational
-pow(const Rational& base, long exp);
+Rational pow(const Rational& base, long exp);
 
 }
 namespace polymake {

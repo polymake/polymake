@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,21 +22,22 @@
 
 namespace polymake { namespace group {
 
-perl::Object symmetric_group(int n) {
+BigObject symmetric_group(Int n)
+{
    return symmetric_group_impl(n);
 }
 
-perl::Object alternating_group(int n) {
+BigObject alternating_group(Int n)
+{
    if (n < 1) 
       throw std::runtime_error("alternating_group: the degree must be greater or equal than 1");
 
-   perl::Object pa("PermutationAction");
+   BigObject pa("PermutationAction");
 
    if (n <= 3) {
-
-      Array< Array<int> > gens(1);
-      Array<int> gen(n);     
-      for (int j = 0; j < n-1; ++j) {
+      Array<Array<Int>> gens(1);
+      Array<Int> gen(n);     
+      for (Int j = 0; j < n-1; ++j) {
          gen[j] = j+1;
       }
       gen[n-1] = 0;
@@ -45,45 +46,46 @@ perl::Object alternating_group(int n) {
 
    } else {
 
-      Array< Array<int> > gens(2);
-      Array<int> gen0(n);
-      for (int j = 0; j < n; ++j)
+      Array<Array<Int>> gens(2);
+      Array<Int> gen0(n);
+      for (Int j = 0; j < n; ++j)
          gen0[j] = j;
       gen0[0] = 1;
       gen0[1] = 2;
       gen0[2] = 0;
       gens[0] = gen0;
 
-      Array<int> gen1(n);
-      int mod = n % 2;
-      for (int j = 1-mod; j < n-1; ++j)
+      Array<Int> gen1(n);
+      Int mod = n%2;
+      for (Int j = 1 - mod; j < n-1; ++j)
          gen1[j] = j+1;
       gen1[n-1] = 1-mod;
       gens[1] = gen1;
       pa.take("GENERATORS") << gens;
    }
-   perl::Object g("Group");
+   BigObject g("Group");
    g.take("PERMUTATION_ACTION") << pa;
    g.set_description() << "Alternating group of degree " << n << endl;
    return g;
 }
 
-perl::Object cyclic_group(int n){
-   Array< Array<int> > sgs(1);
-   Array<int> gen(n);
-   for (int j = 0; j < n; ++j)
-      gen[j] = (j + 1) % n;
+BigObject cyclic_group(Int n)
+{
+   Array<Array<Int>> sgs(1);
+   Array<Int> gen(n);
+   for (Int j = 0; j < n; ++j)
+      gen[j] = (j+1)%n;
    sgs[0] = gen;
-   perl::Object pa("PermutationAction");
+   BigObject pa("PermutationAction");
    pa.take("GENERATORS") << sgs;
 
-   perl::Object g("Group");
+   BigObject g("Group");
    g.take("PERMUTATION_ACTION") << pa;
    g.set_description() << "Cyclic group of order " << n << endl;
    return g;
 }
 
-perl::Object dihedral_group(int n2)
+BigObject dihedral_group(Int n2)
 {   
    return dihedral_group_impl(n2);
 }

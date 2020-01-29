@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2014  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2019  Winfried Bruns, Bogdan Ichim, Christof Soeger
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -22,12 +22,23 @@
  */
 
 #ifdef NMZ_MIC_OFFLOAD
-#pragma offload_attribute (push, target(mic))
+#pragma offload_attribute(push, target(mic))
 #endif
 
 #include "libnormaliz/HilbertSeries.cpp"
-#include "libnormaliz/nmz_integrate.cpp"
+
+#ifdef NMZ_COCOA
+#include "libnormaliz/nmz_integrate.h"
+
+namespace libnormaliz {
+bool verbose_INT;
+}
+
+#include "libnormaliz/nmz_polynomial.cpp"
+#include "libnormaliz/nmz_integral.cpp"
+
+#endif  // NMZ_COCOA
 
 #ifdef NMZ_MIC_OFFLOAD
-#pragma offload_attribute (pop)
+#pragma offload_attribute(pop)
 #endif

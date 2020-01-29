@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,11 +28,11 @@
 namespace polymake { namespace topaz {
 namespace {
 
-bool improved(const Array<int>& min, const Array<int>& cand, const int obj)
+bool improved(const Array<Int>& min, const Array<Int>& cand, const Int obj)
 {
    switch (obj) {
    case 0: // lex order
-      for (int i=0; i<min.size(); ++i) {
+      for (Int i = 0; i < min.size(); ++i) {
          if (cand[i] < min[i]) return true;
          if (cand[i] > min[i]) return false;
       }
@@ -41,32 +41,33 @@ bool improved(const Array<int>& min, const Array<int>& cand, const int obj)
       /* The following seems to give undesirable results.
          Left here for future experiments.
    case 1:  // rev lex order
-      for (int i=min.size()-1; i>=0; ++i) {
+      for (Int i = min.size()-1; i >= 0; ++i) {
          if (cand[i] < min[i]) return true;
          if (cand[i] > min[i]) return false;
       }
       return false;
       */
 
-   default: return accumulate(cand, operations::add()) < accumulate(min, operations::add());
+   default:
+      return accumulate(cand, operations::add()) < accumulate(min, operations::add());
    }
 }
 
 } // end empty namespace
 
-bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, const bool compare=true)
+bool bistellar(BigObject p1, BigObject p_in, OptionSet options, const bool compare=true)
 {
-   Array<int> distribution_src;
+   Vector<Int> distribution_src;
    bool dist = options["distribution"]>>distribution_src;
 
-   const int verbose=options["verbose"];
+   const Int verbose = options["verbose"];
 
    if (verbose)
       cout << "initialising ...\n";
 
    const Lattice<BasicDecoration>& HD = p_in.give("HASSE_DIAGRAM");
-   const int dim = HD.rank()-2;
-   const int size = HD.nodes_of_rank(dim+1).size();
+   const Int dim = HD.rank()-2;
+   const Int size = HD.nodes_of_rank(dim+1).size();
 
    const bool is_closed = p_in.give("CLOSED_PSEUDO_MANIFOLD");
    const bool is_pmf = p_in.give("PSEUDO_MANIFOLD");
@@ -74,7 +75,7 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
       throw std::runtime_error("bistellar: Complex is not a PSEUDO_MANIFOLD.");
 
    // read complex to compare to
-   int n_facets_comp=0;
+   Int n_facets_comp = 0;
    IncidenceMatrix<> facets_comp;
    if (compare) {
       n_facets_comp = p1.give("N_FACETS");
@@ -83,32 +84,36 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
    }
 
    // determin min_n_facets
-   int min_n_facets;
-   if (!(options["min_n_facets"] >> min_n_facets)) min_n_facets = is_closed ? dim+2 : 1;
+   Int min_n_facets;
+   if (!(options["min_n_facets"] >> min_n_facets))
+      min_n_facets = is_closed ? dim+2 : 1;
 
    const RandomSeed seed(options["seed"]);
 
-   int n_rounds;
-   if (!(options["rounds"] >> n_rounds)) n_rounds = 100*size;
-   const bool abs= options["abs"];
+   Int n_rounds;
+   if (!(options["rounds"] >> n_rounds))
+      n_rounds = 100 * size;
+   const bool abs = options["abs"];
 
-   int obj;
-   if (!( options["obj"] >> obj)) obj=1;
-   if (obj<0 || obj>2)
+   Int obj = 1;
+   options["obj"] >> obj;
+   if (obj < 0 || obj > 2)
       throw std::runtime_error("bistellar: no objective function {0|1|2} specified.");
 
-   int max_relax;
-   if (!(options["max_relax"]>>max_relax)) max_relax=std::max(dim,size/10);
-   const int init_max_relax = max_relax;
+   Int max_relax;
+   if (!(options["max_relax"]>>max_relax))
+      max_relax = std::max(dim, size/10);
+   const Int init_max_relax = max_relax;
    const bool my_constant = options["constant"];
-   int heat;
-   if (!( options["heat"]>>heat))heat = std::max(dim,size/10);
-   const int init_heat = heat;
-   int min_heat_dim = dist? dim-distribution_src.size()+1 : (dim+1)/2;
+   Int heat;
+   if (!( options["heat"]>>heat))
+      heat = std::max(dim, size/10);
+   const Int init_heat = heat;
+   Int min_heat_dim = dist ? dim - distribution_src.size()+1 : (dim+1)/2;
 
    // compute distribution
    if (!dist) {  // no distribution specified
-      distribution_src = Array<int>(dim-min_heat_dim+1,10);
+      distribution_src = Vector<Int>(dim-min_heat_dim+1, 10);
       distribution_src[dim-min_heat_dim] = 1;
    }
    else {
@@ -123,8 +128,7 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
 
    BistellarComplex BC(HD, random_source, verbose==1, is_closed, options["allow_rev_move"]);
 
-
-   Array<int> min_f_vector, min_flip_vector;
+   Array<Int> min_f_vector, min_flip_vector;
    FacetList F = BC.facets();
    min_flip_vector = BC.flip_vector();
 
@@ -179,9 +183,9 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
       }
    }
 
-   int rounds=0;
+   Int rounds = 0;
    if (!bos && !mnf && !is_pl) {
-      int stable_rounds=0, relax=0, heating=0;
+      Int stable_rounds = 0, relax = 0, heating = 0;
       for ( ; (!abs && stable_rounds<n_rounds) || (abs && rounds<n_rounds); ++stable_rounds, ++rounds) {
          if (verbose && rounds%verbose==0) {
             cout << "\n" << rounds << ": current best " << "flip_vector: " << min_flip_vector
@@ -203,9 +207,9 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
 
          if (heating>0) {
             --heating;
-            const int rnd_d = min_heat_dim + distribution.get();
-            const int move_dim = BC.find_move(rnd_d);
-            if ( rnd_d!=move_dim)
+            const Int rnd_d = min_heat_dim + distribution.get();
+            const Int move_dim = BC.find_move(rnd_d);
+            if (rnd_d != move_dim)
                BC.min_rev_move(min_heat_dim);
             else
                BC.execute_move();
@@ -214,9 +218,9 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
          }
 
          // make smallest reversed move
-         const int move_dim= BC.min_rev_move();
+         const Int move_dim = BC.min_rev_move();
 
-         if ( move_dim >= (dim+1)/2 )   // up or eaven move
+         if (move_dim >= (dim+1)/2)   // up or eaven move
             ++relax;
 
          else // down move
@@ -326,14 +330,14 @@ bool bistellar(perl::Object p1, perl::Object p_in, perl::OptionSet options, cons
 }
 
 
-perl::Object bistellar_simplification(perl::Object p_in, perl::OptionSet options)
+BigObject bistellar_simplification(BigObject p_in, OptionSet options)
 {
-   perl::Object p_out("SimplicialComplex");
+   BigObject p_out("SimplicialComplex");
    bistellar(p_out,p_in,options,0);
    return p_out;
 }
 
-bool pl_homeomorphic(perl::Object p_in1, perl::Object p_in2, perl::OptionSet options)
+bool pl_homeomorphic(BigObject p_in1, BigObject p_in2, OptionSet options)
 {
    return bistellar(p_in1,p_in2,options,1);
 }

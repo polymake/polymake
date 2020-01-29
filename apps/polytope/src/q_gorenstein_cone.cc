@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,21 +28,19 @@
 
 namespace polymake { namespace polytope {
 
-    // first entry: cone is gorenstein_cone
-    // second entry: Gorenstein index if cone is Gorenstein
-    std::pair<bool,int> q_gorenstein_cone(Matrix<Rational> rational_rays, int dim) {
-
-    std::pair<bool,int> gorenstein;
-    gorenstein.first = false;
-    gorenstein.second = -1;
+// first entry: cone is gorenstein_cone
+// second entry: Gorenstein index if cone is Gorenstein
+std::pair<bool, Int> q_gorenstein_cone(Matrix<Rational> rational_rays, Int dim)
+{
+  std::pair<bool, Int> gorenstein{ false, -1 };
     
-    const Matrix<Integer> rays = common::primitive(rational_rays);    
-    if ( rank(rays - repeat_row(rays.row(0),rays.rows())) == dim ) 
-      return gorenstein;
+  const Matrix<Integer> rays = common::primitive(rational_rays);    
+  if (rank(rays - repeat_row(rays.row(0),rays.rows())) == dim)
+    return gorenstein;
     
-    SmithNormalForm<Integer> SNF = smith_normal_form(rays);
+  SmithNormalForm<Integer> SNF = smith_normal_form(rays);
     
-    for (int i = 0; i < SNF.rank; ++i) { // adjust orientation of the transformation
+  for (Int i = 0; i < SNF.rank; ++i) { // adjust orientation of the transformation
       if (SNF.form(i,i) < 0) {           // all entries of M >= 0
         SNF.form(i,i).negate();
         SNF.left_companion.col(i).negate();
@@ -55,7 +53,7 @@ namespace polymake { namespace polytope {
     const Vector<Integer> normal = common::primitive(ns.row(0));
 
     gorenstein.first = true;
-    gorenstein.second = int(abs(NV.row(0)*normal));
+    gorenstein.second = Int(abs(NV.row(0)*normal));
     return gorenstein;
   }
 

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -176,8 +176,8 @@ user_method DIRECTED_GRAPH(; LinearProgram) {
 # Illustrate the behavior of a linear objective function on the polytope.
 # Color the vertices according to the values of the objective function.
 # @param LinearProgram lp a LinearProgram object attached to the polytope.
-# @option Color min minimal vertex color (default: yellow)
-# @option Color max maximal vertex color (default: red)
+# @option [complete color] Color min minimal vertex color (default: yellow)
+# @option [complete color] Color max maximal vertex color (default: red)
 # @return Visual::SchlegelDiagram
 
 user_method VERTEX_COLORS(; LinearProgram { min => $Visual::Color::min, max => $Visual::Color::max }) {
@@ -197,8 +197,8 @@ user_method VERTEX_COLORS(; LinearProgram { min => $Visual::Color::min, max => $
 # Illustrate the behavior of a linear objective function on the polytope.
 # The vertices belonging to [[MINIMAL_FACE]] and [[MAXIMAL_FACE]] are drawn in distinct colors
 # @param LinearProgram lp a LinearProgram object attached to the polytope.
-# @option Color min minimal face decoration (default: yellow vertices and/or facets)
-# @option Color max maximal face decoration (default: red vertices and/or facets)
+# @option [complete color] Color min minimal face decoration (default: yellow vertices and/or facets)
+# @option [complete color] Color max maximal face decoration (default: red vertices and/or facets)
 # @return Visual::SchlegelDiagram
 
 user_method MIN_MAX_FACE(; LinearProgram { min => $Visual::Color::min, max => $Visual::Color::max }) {

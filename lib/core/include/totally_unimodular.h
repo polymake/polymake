@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -33,15 +33,15 @@ namespace pm {
 template <typename Matrix, typename E>
 bool totally_unimodular(const GenericMatrix<Matrix, E>& M)
 {
-   const int m=M.rows();
-   const int n=M.cols();
-   const int r=std::min(m,n);
+   const Int m = M.rows();
+   const Int n = M.cols();
+   const Int r = std::min(m, n);
 
-   for (int k=1; k<=r; ++k)
+   for (Int k = 1; k <= r; ++k)
       for (auto ri = entire(all_subsets_of_k(sequence(0,m),k)); !ri.at_end(); ++ri)
          for (auto ci = entire(all_subsets_of_k(sequence(0,n),k)); !ci.at_end(); ++ci) {
-            const E d=det(M.minor(*ri,*ci));
-            if (!is_zero(d) && !abs_equal(d,one_value<E>())) return false;
+            const E d = det(M.minor(*ri, *ci));
+            if (!is_zero(d) && !abs_equal(d, one_value<E>())) return false;
          }
 
    return true;

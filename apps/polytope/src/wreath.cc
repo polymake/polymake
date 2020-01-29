@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -41,15 +41,17 @@ template <typename Coord>
 Matrix<Coord>
 wreath_coord(const Matrix<Coord>& V1, const Matrix<Coord>& V2)
 {
-   const int n_vertices1(V1.rows()), n_vertices2(V2.rows()), dim1(V1.cols()-1), dim2(V2.cols()-1), d(n_vertices2*dim1+dim2+1);
-   Matrix<Coord> V(n_vertices1*n_vertices2,d);
+   const Int n_vertices1 = V1.rows(), n_vertices2 = V2.rows(),
+      dim1 = V1.cols()-1, dim2 = V2.cols()-1,
+      d = n_vertices2*dim1+dim2+1;
+   Matrix<Coord> V(n_vertices1*n_vertices2, d);
     
-   for (int i=0; i<n_vertices2; ++i) {
-      for (int k=0; k<n_vertices1; ++k) {
-         const int ik(i*n_vertices1+k);
-         V(ik,0)=Coord(1);
-         const int id1(i*dim1); 
-         int j(1);
+   for (Int i = 0; i < n_vertices2; ++i) {
+      for (Int k = 0; k < n_vertices1; ++k) {
+         const Int ik = i*n_vertices1+k;
+         V(ik,0) = Coord(1);
+         const Int id1 = i*dim1; 
+         Int j = 1;
 
          //v_{ik,j} = 0 for 0 <= j <= k*dim1
          for ( ; j<=id1; ++j) V(ik,j)=0;
@@ -70,7 +72,7 @@ wreath_coord(const Matrix<Coord>& V1, const Matrix<Coord>& V2)
 } // end unnamed namespace
 
 template <typename Coord>
-perl::Object wreath(perl::Object p_in1, perl::Object p_in2, perl::OptionSet options)
+BigObject wreath(BigObject p_in1, BigObject p_in2, OptionSet options)
 {
    const bool dual=options["dual"];
    const bool relabel=!options["no_labels"];
@@ -90,13 +92,13 @@ perl::Object wreath(perl::Object p_in1, perl::Object p_in2, perl::OptionSet opti
 
    const Matrix<Coord> M1=p_in1.give(coord_section),
                        M2=p_in2.give(coord_section);
-   const int n_rows1 = M1.rows(),
+   const Int n_rows1 = M1.rows(),
              n_rows2 = M2.rows(),
              n_rows_out = n_rows1*n_rows2;
 
    const Matrix<Coord> M_out = wreath_coord<Coord>(M1, M2);
 
-   perl::Object p_out("Polytope");
+   BigObject p_out("Polytope");
    p_out.take(coord_section) << M_out;
 
    if (relabel) {

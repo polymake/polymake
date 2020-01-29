@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2014  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2019  Winfried Bruns, Bogdan Ichim, Christof Soeger
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -24,125 +24,22 @@
 #ifndef LIBNORMALIZ_H_
 #define LIBNORMALIZ_H_
 
-#include <iostream>
-#include <string>
-#include <signal.h>
-
+#include "libnormaliz/general.h"
+#include "libnormaliz/integer.h"
+#include "libnormaliz/input_type.h"
+#include "libnormaliz/automorph.h"
+#include "libnormaliz/cone.h"
+#include "libnormaliz/cone_property.h"
+#include "libnormaliz/convert.h"
+#include "libnormaliz/HilbertSeries.h"
+#include "libnormaliz/map_operations.h"
+#include "libnormaliz/matrix.h"
+#include "libnormaliz/my_omp.h"
+// #include "libnormaliz/nmz_integrate.h"
+#include "libnormaliz/normaliz_exception.h"
+#include "libnormaliz/output.h"
+#include "libnormaliz/sublattice_representation.h"
+#include "libnormaliz/vector_operations.h"
 #include "libnormaliz/version.h"
 
-namespace libnormaliz {
-
-namespace Type {
-enum InputType {
-    //
-    // homogeneous generators
-    //
-    polytope,
-    rees_algebra,
-    subspace,
-    cone,
-    cone_and_lattice,
-    lattice,
-    saturation,
-    //
-    // inhomogeneous generators
-    //
-    vertices,
-    offset,
-    //
-    // homogeneous constraints
-    //
-    inequalities,
-    signs,
-    equations,
-    congruences,
-    //
-    // inhomogeneous constraints
-    //
-    inhom_equations,
-    inhom_inequalities,
-    strict_inequalities,
-    strict_signs,
-    inhom_congruences,
-    //
-    // linearforms
-    //
-    grading,
-    dehomogenization,
-    //
-    // special
-    open_facets,
-    projection_coordinates,
-    excluded_faces,
-    lattice_ideal, 
-    //
-    // prwecomputed data
-    //
-    support_hyperplanes,
-    extreme_rays,
-    hilbert_basis_rec_cone,
-    //
-    // deprecated
-    //
-    integral_closure,
-    normalization,
-    polyhedron
-};
-} //end namespace Type
-
-using Type::InputType;
-
-/* converts a string to an InputType
- * throws an BadInputException if the string cannot be converted */
-InputType to_type(const std::string& type_string);
-
-/* gives the difference of the number of columns to the dimension */
-long type_nr_columns_correction(InputType type);
-
-/* returns true if the input of this type is a vector */
-bool type_is_vector(InputType type);
-
-/* this type is used in the entries of keys
- * it has to be able to hold number of generators */
-typedef unsigned int key_t;
-
-extern bool verbose;
-extern size_t GMP_mat, GMP_hyp, GMP_scal_prod;
-extern size_t TotDet;
-/*
- * If this variable is set to true, the current computation is interrupted and
- * an InterruptException is raised.
- */
-extern volatile sig_atomic_t nmz_interrupted;
-
-extern bool nmz_scip; // controls the use of Scip
-
-#define INTERRUPT_COMPUTATION_BY_EXCEPTION \
-if(nmz_interrupted){ \
-    throw InterruptException( "external interrupt" ); \
-}
-
-/* if test_arithmetic_overflow is true, many operations are also done
- * modulo overflow_test_modulus to ensure the correctness of the calculations */
-// extern bool test_arithmetic_overflow;
-// extern long overflow_test_modulus;
-
-extern long default_thread_limit;
-extern long thread_limit;
-extern bool parallelization_set;
-long set_thread_limit(long t);
-
-/* set the verbose default value */
-bool setVerboseDefault(bool v);
-/* methods to set and use the output streams */
-void setVerboseOutput(std::ostream&);
-void setErrorOutput(std::ostream&);
-
-std::ostream& verboseOutput();
-std::ostream& errorOutput();
-
-void interrupt_signal_handler( int signal );
-
-} /* end namespace libnormaliz */
-
-#endif /* LIBNORMALIZ_H_ */
+#endif

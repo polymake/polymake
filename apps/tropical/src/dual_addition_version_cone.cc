@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,11 +26,11 @@ namespace polymake { namespace tropical {
 // with all the overloaded functions when dealing with big objects.
 
 template <typename Addition, typename Scalar>
-perl::Object dual_addition_version_cone(perl::Object cone, bool strong = true)
+BigObject dual_addition_version_cone(BigObject cone, bool strong = true)
 {
   Matrix<TropicalNumber<Addition,Scalar> > points = cone.give("POINTS");
 
-  perl::Object result("Polytope", mlist<typename Addition::dual, Scalar>());
+  BigObject result("Polytope", mlist<typename Addition::dual, Scalar>());
   result.take("POINTS") << dual_addition_version(points,strong);
 
   return result;

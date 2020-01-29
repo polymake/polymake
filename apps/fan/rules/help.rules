@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -20,6 +20,9 @@
 
 # @topic category functions/Producing a polyhedral complex
 # These clients provide constructions for [[PolyhedralComplex]] objects.
+
+# @topic category functions/Producing a hyperplane arrangement
+# These clients provide constructions for [[HyperplaneArrangement]] objects.
 
 # @topic category functions/Consistency check
 # These clients provide consistency checks, e.g. whether a given list of rays and cones defines a polyhedral fan.

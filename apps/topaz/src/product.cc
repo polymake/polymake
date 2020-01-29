@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,72 +30,74 @@ namespace polymake { namespace topaz {
 namespace {
 
 // m_set is an m-element set of {0,...,m+n-1}
-Array<bool> shuffle_from_m_set(const int m, const int n, const Set<int>& m_set) {
-   Array<bool> shuffle(m+n-2,false);
-   for (auto it=entire(m_set); !it.at_end(); ++it)
-      shuffle[*it]=true;
+std::vector<bool> shuffle_from_m_set(const Int m, const Int n, const Set<Int>& m_set)
+{
+   std::vector<bool> shuffle(m+n-2, false);
+   for (const Int i : m_set)
+      shuffle[i] = true;
    return shuffle;
 }
 
 // m_set is an m-element set of {0,...,m+n-1}
-Set<int> facet_from_m_set(const std::list<int>& s1, const std::list<int>& s2,
-                          const Matrix<int>& vert_map, const Set<int>& m_set) {
-   //      cout << m_set << " -- " << shuffle_from_m_set(s1.size(),s2.size(),m_set) << endl;
-   std::list<int>::const_iterator v1=s1.begin();
-   std::list<int>::const_iterator v2=s2.begin();
-   Set<int> facet;
-   facet += vert_map(*v1,*v2);
+Set<Int> facet_from_m_set(const std::list<Int>& s1, const std::list<Int>& s2,
+                          const Matrix<Int>& vert_map, const Set<Int>& m_set)
+{
+   auto v1 = s1.begin();
+   auto v2 = s2.begin();
+   Set<Int> facet;
+   facet += vert_map(*v1, *v2);
    //      cout << *v1 << "," << *v2 << " -- " << vert_map(*v1,*v2) << endl;
-   const Array<bool> shuffle = shuffle_from_m_set(s1.size(),s2.size(),m_set);
-   for (auto it=entire(shuffle); !it.at_end(); ++it) {
-      if (*it)  ++v1;
-      else      ++v2;
-      facet += vert_map(*v1,*v2);
+   const std::vector<bool> shuffle = shuffle_from_m_set(s1.size(), s2.size(), m_set);
+   for (bool s : shuffle) {
+      if (s)  ++v1;
+      else    ++v2;
+      facet += vert_map(*v1, *v2);
    }
-      
+
    return facet;
 }
    
 
-Array<int> collor_cons_ordering(const Array<int>& C) {
-   Array<int> ordering(C.size());
+Array<Int> color_cons_ordering(const Array<Int>& C)
+{
+   Array<Int> ordering(C.size());
 
-   Set<int> colors;
-   Map< int,std::list<int> > vert_of_color;
-   for (int i=0; i<C.size(); ++i) {
+   Set<Int> colors;
+   Map<Int, std::list<Int>> vert_of_color;
+   for (Int i = 0; i < C.size(); ++i) {
       colors += C[i];
       vert_of_color[ C[i] ].push_back(i);
    }
-    
-   int i=0;
-   for (auto c=entire(colors); !c.at_end(); ++c)
-      for (auto v=entire(vert_of_color[*c]); !v.at_end(); ++v, ++i)
+
+   Int i = 0;
+   for (auto c = entire(colors); !c.at_end(); ++c)
+      for (auto v = entire(vert_of_color[*c]); !v.at_end(); ++v, ++i)
          ordering[i] = *v;
 
    return ordering;
 }
    
-void combinatorial_simplicial_product_impl (perl::Object p_in1, perl::Object p_in2, perl::Object& p_out, Array<int>& order1, Array<int>& order2, perl::OptionSet options)
+void combinatorial_simplicial_product_impl (BigObject p_in1, BigObject p_in2, BigObject& p_out, Array<Int>& order1, Array<Int>& order2, OptionSet options)
 {
-   const bool no_labels=options["no_labels"];
-   const Array< Set<int> > C1 = p_in1.give("FACETS");
-   const Array< Set<int> > C2 = p_in2.give("FACETS");
-   const int n_vert1 = p_in1.give("N_VERTICES");
-   const int n_vert2 = p_in2.give("N_VERTICES");
+   const bool no_labels = options["no_labels"];
+   const Array<Set<Int>> C1 = p_in1.give("FACETS");
+   const Array<Set<Int>> C2 = p_in2.give("FACETS");
+   const Int n_vert1 = p_in1.give("N_VERTICES");
+   const Int n_vert2 = p_in2.give("N_VERTICES");
 
    // read orderings or set default
-   order1 = Array<int>(n_vert1);
-   order2 = Array<int>(n_vert2);
+   order1 = Array<Int>(n_vert1);
+   order2 = Array<Int>(n_vert2);
    
    if (!(options["vertex_order1"] >> order1)) {
       if (options["color_cons"]) {
          const bool is_foldable = p_in1.give("FOLDABLE");
          if (!is_foldable)
             throw std::runtime_error("simplicial_product: Complex 1 is not FOLDABLE");
-         const Array<int> coloring = p_in1.give("COLORING");
-         order1 = collor_cons_ordering(coloring);
+         const Array<Int> coloring = p_in1.give("COLORING");
+         order1 = color_cons_ordering(coloring);
       } else {
-         for (int i=0; i<n_vert1; ++i)
+         for (Int i = 0; i < n_vert1; ++i)
             order1[i] = i;
       }
    }
@@ -105,32 +107,32 @@ void combinatorial_simplicial_product_impl (perl::Object p_in1, perl::Object p_i
          const bool is_foldable = p_in2.give("FOLDABLE");
          if (!is_foldable)
             throw std::runtime_error("simplicial_product: Complex 2 is not FOLDABLE");
-         const Array<int> coloring = p_in2.give("COLORING");
-         order2 = collor_cons_ordering(coloring);
+         const Array<Int> coloring = p_in2.give("COLORING");
+         order2 = color_cons_ordering(coloring);
       } else {
-         for (int i=0; i<n_vert2; ++i)
+         for (Int i = 0; i < n_vert2; ++i)
             order2[i] = i;
       }
    }
 
    // compute vertex map
-   Matrix<int> vert_map(n_vert1,n_vert2);
-   int c=0;
-   for (auto v2=entire(order2); !v2.at_end(); ++v2)
+   Matrix<Int> vert_map(n_vert1, n_vert2);
+   Int c = 0;
+   for (auto v2 = entire(order2); !v2.at_end(); ++v2)
       for (auto v1=entire(order1); !v1.at_end(); ++v1, ++c)
          vert_map(*v1,*v2) = c;
    
-   std::list<Set<int>> F;
-   for (auto f1=entire(C1); !f1.at_end(); ++f1)
-      for (auto f2=entire(C2); !f2.at_end(); ++f2) {
-         const int m=f1->size()-1;
-         const int n=f2->size()-1;
+   std::list<Set<Int>> F;
+   for (auto f1 = entire(C1); !f1.at_end(); ++f1)
+      for (auto f2 = entire(C2); !f2.at_end(); ++f2) {
+         const Int m = f1->size()-1;
+         const Int n = f2->size()-1;
 
-         std::list<int> s1,s2;
-         for (int i=0; i<n_vert1; ++i)
+         std::list<Int> s1, s2;
+         for (Int i = 0; i < n_vert1; ++i)
             if (f1->contains(order1[i]))
                s1.push_back(order1[i]);
-         for (int i=0; i<n_vert2; ++i)
+         for (Int i = 0; i < n_vert2; ++i)
             if (f2->contains(order2[i]))
                s2.push_back(order2[i]);
 
@@ -156,30 +158,30 @@ void combinatorial_simplicial_product_impl (perl::Object p_in1, perl::Object p_i
    }
 }
 
-perl::Object combinatorial_simplicial_product (perl::Object p_in1, perl::Object p_in2, perl::OptionSet options)
+BigObject combinatorial_simplicial_product (BigObject p_in1, BigObject p_in2, OptionSet options)
 {
-   perl::Object p_out("SimplicialComplex");
-   Array<int> order1, order2;
+   BigObject p_out("SimplicialComplex");
+   Array<Int> order1, order2;
    combinatorial_simplicial_product_impl(p_in1, p_in2, p_out, order1, order2, options);
    return p_out;
 }
 
 template <typename Scalar>
-perl::Object simplicial_product (perl::Object p_in1, perl::Object p_in2, perl::OptionSet options)
+BigObject simplicial_product (BigObject p_in1, BigObject p_in2, OptionSet options)
 {
    const bool realize = options["geometric_realization"];
-   perl::ObjectType result_type = realize
-      ? perl::ObjectType("GeometricSimplicialComplex", mlist<Scalar>())
-      : perl::ObjectType("SimplicialComplex");
-   perl::Object p_out(result_type);
-   Array<int> order1, order2;
+   BigObjectType result_type = realize
+      ? BigObjectType("GeometricSimplicialComplex", mlist<Scalar>())
+      : BigObjectType("SimplicialComplex");
+   BigObject p_out(result_type);
+   Array<Int> order1, order2;
    combinatorial_simplicial_product_impl(p_in1, p_in2, p_out, order1, order2, options);
    
    if (realize) {
       const Matrix<Scalar> GR1 = p_in1.give("COORDINATES");
       const Matrix<Scalar> GR2 = p_in2.give("COORDINATES");
       Matrix<Scalar> GR(GR1.rows()*GR2.rows(),GR1.cols()+GR2.cols());
-      int c=0;
+      Int c = 0;
       for (auto v2=entire(order2); !v2.at_end(); ++v2)
          for (auto v1=entire(order1); !v1.at_end(); ++v1, ++c)
             GR[c] = GR1[*v1] | GR2[*v2];

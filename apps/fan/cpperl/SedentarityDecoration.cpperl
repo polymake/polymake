@@ -1,6 +1,6 @@
 {"app": "fan",
  "inst": [
-  {"class": "fan::compactification::SedentarityDecoration", "include": ["polymake/fan/compactification.h"], "pkg": "Polymake::fan::SedentarityDecoration"},
+  {"class": "fan::compactification::SedentarityDecoration", "guard_name": "APP_WRAPPERS_fan_compactification", "include": ["polymake/fan/compactification.h"], "pkg": "Polymake::fan::SedentarityDecoration", "wrapper_file": "include/app-wrappers/polymake/fan/compactification.h"},
   {"args": ["perl::Canned<const fan::compactification::SedentarityDecoration&>", "perl::Canned<const fan::compactification::SedentarityDecoration&>"], "include": ["polymake/fan/compactification.h"], "op": "_eq", "sig": "_eq:O.X.X"},
  null ],
 "version": 3}

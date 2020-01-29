@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,13 +24,13 @@
 namespace polymake { namespace group {
 
 auto
-sparse_isotypic_basis(const perl::Object& group,
-                      const perl::Object& implicit_action,
-                      int irrep,
-                      perl::OptionSet options)
+sparse_isotypic_basis(const BigObject& group,
+                      const BigObject& implicit_action,
+                      Int irrep,
+                      OptionSet options)
 {
-   const int order = group.give("ORDER");
-   const Array<Array<int>> generators = implicit_action.give("STRONG_GENERATORS | GENERATORS");
+   const Int order = group.give("ORDER");
+   const Array<Array<Int>> generators = implicit_action.give("STRONG_GENERATORS | GENERATORS");
    const ConjugacyClasses<> conjugacy_classes = implicit_action.give("CONJUGACY_CLASSES");
    const Matrix<Rational> character_table = group.give("CHARACTER_TABLE");
    const Array<Bitset> orbit_representatives = implicit_action.give("EXPLICIT_ORBIT_REPRESENTATIVES");
@@ -43,13 +43,13 @@ sparse_isotypic_basis(const perl::Object& group,
 }
 
 Array<SparseSimplexVector<Bitset>>
-sparse_isotypic_spanning_set(const perl::Object& group,
-                             const perl::Object& implicit_action,
-                             int irrep,
-                             perl::OptionSet options)
+sparse_isotypic_spanning_set(const BigObject& group,
+                             const BigObject& implicit_action,
+                             Int irrep,
+                             OptionSet options)
 {
-   const int order = group.give("ORDER");
-   const Array<Array<int>> generators = implicit_action.give("STRONG_GENERATORS | GENERATORS");
+   const Int order = group.give("ORDER");
+   const Array<Array<Int>> generators = implicit_action.give("STRONG_GENERATORS | GENERATORS");
    const ConjugacyClasses<> conjugacy_classes = implicit_action.give("CONJUGACY_CLASSES");
    const Matrix<Rational> character_table = group.give("CHARACTER_TABLE");
    const Array<Bitset> orbit_representatives = implicit_action.give("EXPLICIT_ORBIT_REPRESENTATIVES");
@@ -59,13 +59,13 @@ sparse_isotypic_spanning_set(const perl::Object& group,
 }
 
 auto
-sparse_isotypic_support(const perl::Object& group,
-                        const perl::Object& implicit_action,
-                        int irrep,
-                        perl::OptionSet options)
+sparse_isotypic_support(const BigObject& group,
+                        const BigObject& implicit_action,
+                        Int irrep,
+                        OptionSet options)
 {
-   const int order = group.give("ORDER");
-   const Array<Array<int>> generators = implicit_action.give("STRONG_GENERATORS | GENERATORS");
+   const Int order = group.give("ORDER");
+   const Array<Array<Int>> generators = implicit_action.give("STRONG_GENERATORS | GENERATORS");
    const ConjugacyClasses<> conjugacy_classes = implicit_action.give("CONJUGACY_CLASSES");
    const Matrix<Rational> character_table = group.give("CHARACTER_TABLE");
    const Array<Bitset> orbit_representatives = implicit_action.give("EXPLICIT_ORBIT_REPRESENTATIVES");
@@ -74,23 +74,23 @@ sparse_isotypic_support(const perl::Object& group,
    return sparse_isotypic_spanning_set_and_support_impl(order, generators, conjugacy_classes, character_table[irrep], orbit_representatives, filename, true).second;
 }                        
 
-bool spans_invariant_subspace(perl::Object implict_action,
+bool spans_invariant_subspace(BigObject implict_action,
                               const SparseIsotypicBasis<Bitset>& subspace_generators,
-                              perl::OptionSet options)
+                              OptionSet options)
 {
    const bool verbose = options["verbose"];
-   const Array<Array<int>> group_generators = implict_action.give("STRONG_GENERATORS | GENERATORS");
+   const Array<Array<Int>> group_generators = implict_action.give("STRONG_GENERATORS | GENERATORS");
    return spans_invariant_subspace_impl(group_generators, subspace_generators, verbose);
 }
 
 template<typename SetType>
 bool span_same_subspace(const SparseIsotypicBasis<SetType>& b1, const SparseIsotypicBasis<SetType>& b2)
 {
-   hash_map<SetType, int> index_of;
+   hash_map<SetType, Int> index_of;
    augment_index_of(index_of, b1);
    augment_index_of(index_of, b2);
-   int rank1 = rank(list_matrix_representation(index_of, b1));
-   int rank2 = rank(list_matrix_representation(index_of, b2));
+   const Int rank1 = rank(list_matrix_representation(index_of, b1));
+   const Int rank2 = rank(list_matrix_representation(index_of, b2));
    return rank1 == rank2 && rank1 == rank(list_matrix_representation(index_of, b1)/list_matrix_representation(index_of, b2));
 }
 
@@ -101,7 +101,7 @@ UserFunction4perl("# @category Symmetry"
                   "# @param PermutationActionOnSets rep the given representation"
                   "# @param Int i the index of the irrep that defines the isotypic component"
                   "# @option Bool use_double use inexact arithmetic for reducing the basis; default 0"
-                  "# @option String filename if defined, the basis will be written to a file with this name, but not returned."
+                  "# @option [complete file] String filename if defined, the basis will be written to a file with this name, but not returned."
                   "# Use this option if you expect very large output."
                   "# @return Array<HashMap<Bitset,Rational>> Basis. Each entry tells the coefficient for each orbit representative.",
                   &sparse_isotypic_basis,
@@ -113,7 +113,7 @@ UserFunction4perl("# @category Symmetry"
                   "# the projection matrix to the isotypic component decomposes into blocks, one for each orbit."
                   "# @param PermutationActionOnSets rep the given representation"
                   "# @param Int i the index of the irrep that defines the isotypic component"
-                  "# @option String filename if defined, the basis will be written to a file with this name, but not returned."
+                  "# @option [complete file] String filename if defined, the basis will be written to a file with this name, but not returned."
                   "# Use this option if you expect very large output."
                    "# @return Array<HashMap<Bitset,Rational>> SpanningSet. Each entry tells the coefficient for each orbit representative.",
                   &sparse_isotypic_spanning_set,
@@ -123,7 +123,7 @@ UserFunction4perl("# @category Symmetry"
                   "# Calculate the support of a sparse representation of a spanning set for an isotypic component."
                   "# @param PermutationActionOnSets rep the given representation"
                   "# @param Int i the index of the irrep that defines the isotypic component"
-                  "# @option String filename if defined, the basis will be written to a file with this name, but not returned."
+                  "# @option [complete file] String filename if defined, the basis will be written to a file with this name, but not returned."
                   "# Use this option if you expect very large output."
                   "# @options Bool equivalence_class_only only report representatives of simplices, default true"
                   "# @options Bool index_only only output the indices of the representatives to filename, default true"

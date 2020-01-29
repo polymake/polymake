@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -91,7 +91,7 @@ class vector_output {
 public:
    typedef traits<Scalar> traits_t;
 
-   vector_output(mytype* start_arg, int sz_arg)
+   vector_output(mytype* start_arg, Int sz_arg)
       : start(start_arg)
       , sz(sz_arg) {}
 
@@ -107,7 +107,7 @@ public:
 
 private:
    mytype* start;
-   int sz;
+   Int sz;
 };
 
 template <typename Scalar>
@@ -121,7 +121,7 @@ public:
 
    typedef ListMatrix<Vector<Scalar>> lin_matrix_t;
 
-   matrix_output_rows_iterator(mytype** start, int n_rows, int n_cols_arg,
+   matrix_output_rows_iterator(mytype** start, Int n_rows, Int n_cols_arg,
                                dd_rowset lin_set_arg, lin_matrix_t& lin_out_arg)
       : cur(start)
       , end(start+n_rows)
@@ -159,8 +159,8 @@ private:
 
    mytype** cur;
    mytype** end;
-   int n_cols;
-   int row_index;
+   Int n_cols;
+   Int row_index;
    dd_rowset lin_set;
    lin_matrix_t& lin_out;
 };
@@ -177,14 +177,14 @@ class cdd_vector : public traits<Scalar> {
 
    friend class cdd_matrix<Scalar>;
 public:
-   explicit cdd_vector(int dim_arg) : dim(dim_arg)
+   explicit cdd_vector(Int dim_arg) : dim(dim_arg)
    {
       CDDRESOLVE(InitializeArow)(dim, &ptr);
    }
 
    ~cdd_vector() { CDDRESOLVE(FreeArow)(dim, ptr); }
 
-   Vector<Scalar> get(int start_at=0) const
+   Vector<Scalar> get(Int start_at = 0) const
    {
       Vector<Scalar> result(dim-start_at, typename vector_output<Scalar>::iterator(ptr+start_at));
       for (mytype *cur=ptr+start_at, *end=ptr+dim; cur != end; ++cur)
@@ -193,7 +193,7 @@ public:
    }
 
 private:
-   int dim;
+   Int dim;
    CDDRESOLVE(Arow) ptr;
 };
 
@@ -223,13 +223,13 @@ public:
 
    ListMatrix< Vector<Scalar> > vertex_normals(Bitset& Vertices);
 
-   std::pair<Bitset, Set<int>> canonicalize();
+   std::pair<Bitset, Set<Int>> canonicalize();
 
    void canonicalize_lineality(Bitset& Lin);
 
 private:
    CDDRESOLVE(MatrixPtr) ptr;
-   const int num_rays_ineqs;
+   const Int num_rays_ineqs;
 };
 
 template <typename Scalar>
@@ -280,9 +280,9 @@ class cdd_bitset_iterator {
    friend class cdd_bitset;
 public:
    typedef std::forward_iterator_tag iterator_category;
-   typedef int value_type;
-   typedef const int& reference;
-   typedef const int* pointer;
+   typedef Int value_type;
+   typedef const Int& reference;
+   typedef const Int* pointer;
    typedef ptrdiff_t difference_type;
 
    typedef cdd_bitset_iterator iterator;
@@ -333,24 +333,24 @@ protected:
    }
 
    set_type s;
-   int cur, end;
+   Int cur, end;
    unsigned long bit;
 };
 
-class cdd_bitset : public GenericSet<cdd_bitset, int, pm::operations::cmp> {
+class cdd_bitset : public GenericSet<cdd_bitset, Int, pm::operations::cmp> {
    template <typename> friend class cdd_matrix;
 public:
    // CAUTION: sets are initialized within cddlib functions.
-   cdd_bitset() : ptr(0) {}
+   cdd_bitset() : ptr(nullptr) {}
    ~cdd_bitset() { set_free(ptr); }
 
-   int size() const { return set_card(ptr); }
+   Int size() const { return set_card(ptr); }
    bool empty() const { return size()==0; }
-   int dim() const { return set_groundsize(ptr); }
+   Int dim() const { return set_groundsize(ptr); }
 
-   typedef int value_type;
-   typedef int reference;
-   typedef int const_reference;
+   typedef Int value_type;
+   typedef Int reference;
+   typedef Int const_reference;
    typedef cdd_bitset_iterator iterator;
    typedef iterator const_iterator;
 
@@ -389,8 +389,8 @@ cdd_matrix<Scalar>::cdd_matrix(const Matrix<Scalar>& P)
    , num_rays_ineqs(P.rows())
 {
    // get size of the input matrix
-   int m = P.rows();
-   int n = P.cols();
+   Int m = P.rows();
+   Int n = P.cols();
 
    ptr->representation = CDDRESOLVE(Generator);    // Input type: points
    ptr->numbtype = traits_t::number_type;
@@ -411,9 +411,9 @@ cdd_matrix<Scalar>::cdd_matrix(const Matrix<Scalar>& I, const Matrix<Scalar>& E,
    , num_rays_ineqs(I.rows())
 {
    // get size of the input matrix
-   int mi = I.rows();
-   int me = E.rows();
-   int n  = I.cols() ? I.cols() : E.cols();
+   Int mi = I.rows();
+   Int me = E.rows();
+   Int n  = I.cols() ? I.cols() : E.cols();
 
    // avoid segfault in some cdd versions for degenerate cases
    if (n == 0) {
@@ -528,7 +528,7 @@ cdd_matrix<Scalar>::vertex_normals(Bitset& Vertices)
    auto vn_front=rows(VN).begin();
    cdd_vector<Scalar> cert(ptr->colsize+1);
    CDDRESOLVE(ErrorType) err;
-   for (int i=ptr->rowsize; i>=1; --i) {
+   for (Int i = ptr->rowsize; i >= 1; --i) {
       const bool is_redundant=CDDRESOLVE(Redundant)(ptr, i, cert.ptr, &err);
       if (err != CDDRESOLVE(NoError)) {
          std::ostringstream err_msg;
@@ -553,7 +553,7 @@ cdd_matrix<Scalar>::vertex_normals(Bitset& Vertices)
 
 
 template <typename Scalar>
-std::pair<Bitset, Set<int>> cdd_matrix<Scalar>::canonicalize()
+std::pair<Bitset, Set<Int>> cdd_matrix<Scalar>::canonicalize()
 {
    cdd_bitset impl_linset, redset;
    CDDRESOLVE(rowindex) newpos;
@@ -568,9 +568,9 @@ std::pair<Bitset, Set<int>> cdd_matrix<Scalar>::canonicalize()
       throw std::runtime_error(err_msg.str());
    }
 
-   std::pair<Bitset, Set<int>> result{ Bitset(num_rays_ineqs), Set<int>() };
+   std::pair<Bitset, Set<Int>> result{ Bitset(num_rays_ineqs), Set<Int>() };
    const long linsize = set_card(ptr->linset);
-   for (int i = 1; i <= m; ++i) {
+   for (Int i = 1; i <= m; ++i) {
       if (newpos[i] > 0) {
          if (newpos[i] <= linsize)
             result.second += i-1;
@@ -603,7 +603,7 @@ cdd_matrix<Scalar>::canonicalize_lineality(Bitset& Lin)
 
    const long linsize = set_card(ptr->linset);
 
-   for (int i = 1; i <= m; ++i )
+   for (Int i = 1; i <= m; ++i )
       if ( newpos[i] > 0 && newpos[i] <= linsize )
          Lin += i-1;
 
@@ -672,7 +672,7 @@ ConvexHullSolver<Scalar>::enumerate_vertices(const Matrix<Scalar>& Inequalities,
 }
 
 template <typename Scalar>
-std::pair<Bitset, Set<int>>
+std::pair<Bitset, Set<Int>>
 ConvexHullSolver<Scalar>::get_non_redundant_points(const Matrix<Scalar>& Pt, const Matrix<Scalar>& Lin, bool /* isCone */) const
 {
    cdd_matrix<Scalar> IN(Pt, Lin, representation::V);
@@ -683,7 +683,7 @@ ConvexHullSolver<Scalar>::get_non_redundant_points(const Matrix<Scalar>& Pt, con
 }
 
 template <typename Scalar>
-std::pair<Bitset, Set<int>>
+std::pair<Bitset, Set<Int>>
 ConvexHullSolver<Scalar>::get_non_redundant_inequalities(const Matrix<Scalar>& Ineq, const Matrix<Scalar>& Eq, bool /* isCone */) const
 {
    cdd_matrix<Scalar> IN(Ineq, Eq, representation::H);

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,17 +23,17 @@
 namespace polymake { namespace matroid {
 
 // bases must not be empty
-Array<Set <int> >invert_bases(const Array<Set<int>>& bases, int n_elements)
+Array<Set<Int>> invert_bases(const Array<Set<Int>>& bases, Int n_elements)
 {
-  const int rank=bases[0].size();
-  Set<Set<int>> bases_set;
+  const Int rank = bases[0].size();
+  Set<Set<Int>> bases_set;
   for (auto i = entire(bases); !i.at_end(); ++i)
      bases_set.insert(*i);
 
-  Array<Set<int>> inverted(int(Integer::binom(n_elements,rank))-bases.size());
-  int j=0;
+  Array<Set<Int>> inverted(Int(Integer::binom(n_elements,rank)) - bases.size());
+  Int j = 0;
   for (auto i=entire(all_subsets_of_k(sequence(0,n_elements), rank)); !i.at_end(); ++i) {
-     const Set<int> base = *i;
+     const Set<Int> base = *i;
      if (!bases_set.contains(base)) inverted[j++]=base;
   }
 

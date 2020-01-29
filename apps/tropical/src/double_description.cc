@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,15 +23,15 @@
 namespace polymake { namespace tropical {
 
     template<typename Scalar>
-    perl::Object monomial_cone_lattice(const Matrix<Scalar>& m)
+    BigObject monomial_cone_lattice(const Matrix<Scalar>& m)
     {
-      perl::Object H("Lattice<BasicDecoration, Nonsequential>");
+      BigObject H("Lattice<BasicDecoration, Nonsequential>");
       H = polytope::hasse_diagram(tropical::monomial_dual_description(m).second,m.cols());
       return H;
     }
 
     template <typename Addition, typename Scalar>
-    Matrix<TropicalNumber<Addition, Scalar> > V_trop_input(perl::Object p) {
+    Matrix<TropicalNumber<Addition, Scalar> > V_trop_input(BigObject p) {
          const std::pair<Matrix<TropicalNumber<Addition,Scalar>>,Matrix<TropicalNumber<Addition,Scalar>>> Ineq = p.lookup("INEQUALITIES");
 	 Matrix<TropicalNumber<Addition, Scalar> > extremals(extremals_from_halfspaces(Ineq.first,Ineq.second));
 	 if (extremals.rows() == 0)

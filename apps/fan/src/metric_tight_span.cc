@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,45 +25,45 @@
 
 namespace polymake { namespace fan {
 
-perl::Object metric_tight_span(const Matrix<Rational> dist, perl::OptionSet options)
+BigObject metric_tight_span(const Matrix<Rational> dist, OptionSet options)
 {
    const bool extend = options["extended"];
-   const int d = dist.rows();
+   const Int d = dist.rows();
    //opt["no_facets"] = true;
-   perl::Object hy = polytope::hypersimplex(2, d, perl::OptionSet());
-   perl::Object sd("PointConfiguration");
+   BigObject hy = polytope::hypersimplex(2, d, OptionSet());
+   BigObject sd("PointConfiguration");
    Matrix<Rational> points = hy.give("VERTICES");
    if (extend) points/=(ones_vector<Rational>(d)|2*unit_matrix<Rational>(d));
    sd.take("POINTS") << points;
    
    Vector<Rational> w( d*(d-1)/2 );
    if (extend) w = Vector<Rational>( d+d*(d-1)/2 );
-   int k = 0;
-   for (int i=0; i<d; ++i)
-      for (int j=i+1; j<d; ++j) {
+   Int k = 0;
+   for (Int i = 0; i < d; ++i)
+      for (Int j = i+1; j < d; ++j) {
       w[k]=-dist(i,j);
       ++k;
     }
    
-   perl::Object sp("SubdivisionOfPoints");
+   BigObject sp("SubdivisionOfPoints");
    sp.take("WEIGHTS") << w;
    sp.attach("METRIC") << dist;
    sd.take("POLYTOPAL_SUBDIVISION") << sp;
    return sd;
 }
 
-perl::Object metric_extended_tight_span(const Matrix<Rational> dist)
+BigObject metric_extended_tight_span(const Matrix<Rational> dist)
 {
-   perl::OptionSet opts("extended",true);
-   perl::Object sd = metric_tight_span(dist,opts);
-   perl::Object ts("PolyhedralComplex");
+   OptionSet opts("extended",true);
+   BigObject sd = metric_tight_span(dist,opts);
+   BigObject ts("PolyhedralComplex");
    Matrix<Rational> vert = sd.give("POLYTOPAL_SUBDIVISION.TIGHT_SPAN.VERTICES");
    ts.take("VERTICES") << vert;
    Array<std::string> label(vert.rows() );
-   int k(0);
-   for (auto row=entire(rows(vert)); !row.at_end(); ++row, ++k){
+   Int k = 0;
+   for (auto row = entire(rows(vert)); !row.at_end(); ++row, ++k){
          std::string vlabel("");
-         for(int j=0; j<vert.cols(); ++j) 
+         for (Int j = 0; j < vert.cols(); ++j) 
             if ((*row)[j]==0) vlabel += std::to_string(j) ;
           label[k] = vlabel;
    }
@@ -75,52 +75,52 @@ perl::Object metric_extended_tight_span(const Matrix<Rational> dist)
    return ts;
 }
 
-Matrix<Rational> thrackle_metric(const int n)
+Matrix<Rational> thrackle_metric(const Int n)
 {
    Matrix<Rational> d(n,n);
 
    if (n<2) throw std::runtime_error("n >= 2 required");
   
-   for (int i=1; i<=n; ++i)
-      for (int j=i+1; j<=n; ++j)
+   for (Int i = 1; i <= n; ++i)
+      for (Int j = i+1; j <= n; ++j)
          d(i-1,j-1) = d(j-1,i-1) = (j-i)*(n-(j-i));
 
    return d;
 }
 
-perl::Object ts_thrackle_metric(const int n)
+BigObject ts_thrackle_metric(const Int n)
 {
-   return metric_tight_span( thrackle_metric(n), perl::OptionSet() );
+   return metric_tight_span( thrackle_metric(n), OptionSet() );
 }
 
-Matrix<Rational> max_metric(const int n)
+Matrix<Rational> max_metric(const Int n)
 {
    if (n<2)
       throw std::runtime_error("max_metric: n >= 2 required");
 
    Matrix<Rational> d(n,n);
 
-   for (int i=1; i<=n; ++i)
-      for (int j=i+1; j<=n; ++j)
+   for (Int i = 1; i <= n; ++i)
+      for (Int j = i+1; j <= n; ++j)
          d(i-1,j-1) = d(j-1,i-1) = 1 + Rational(1,n*n+i*n+j);
 
   return d;
 }
 
-perl::Object ts_max_metric(const int n)
+BigObject ts_max_metric(const Int n)
 {
-   return metric_tight_span( max_metric(n), perl::OptionSet());
+   return metric_tight_span( max_metric(n), OptionSet());
 }
 
-Matrix<Rational> min_metric(const int n)
+Matrix<Rational> min_metric(const Int n)
 {
    if (n<2)
       throw std::runtime_error("min_metric: n >= 2 required");
 
    Matrix<Rational> d(n,n);
 
-   for (int i=1; i<=n; ++i)
-      for (int j=i+1; j<=n; ++j)
+   for (Int i = 1; i <= n; ++i)
+      for (Int j = i+1; j <= n; ++j)
          switch (n%3) {
          case 0:
          case 1:
@@ -133,9 +133,9 @@ Matrix<Rational> min_metric(const int n)
    return d;
 }
 
-perl::Object ts_min_metric(const int n)
+BigObject ts_min_metric(const Int n)
 {
-   return metric_tight_span( min_metric(n), perl::OptionSet() );
+   return metric_tight_span( min_metric(n), OptionSet() );
 }
 
 UserFunction4perl("# @category Finite metric spaces"

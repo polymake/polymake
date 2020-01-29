@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -44,7 +44,7 @@ public:
    //! Only the first invocation in the program evaluates its arguments,
    //! all subsequent invocations are only needed to register already initialized polymake system with other threads.
    //! The calling application is responsible to prevent simultaneous execution of any polymake functions in several threads,
-   //! which includes all methods of this class, Scope, Object, ObjectType, as well as call_function, prepare_call_function and
+   //! which includes all methods of this class, Scope, BigObject, BigObjectType, as well as call_function, prepare_call_function and
    //! any other functions requiring interaction with polymake perl interpreter.
    //!
    //! @param user_opts configuration path, corresponds to --config-path option of the standalone main script
@@ -63,7 +63,7 @@ public:
    void set_application(const AnyString& appname);
 
    //! Select the current application by a big object belonging to it
-   void set_application_of(const Object& x);
+   void set_application_of(const BigObject& x);
 
    //! Load an extension installed at the given path
    //! shell_enable() must be called prior to this
@@ -230,12 +230,9 @@ private:
 namespace polymake {
 
 using pm::perl::Main;
-
-namespace perl {
-
 using pm::perl::Scope;
 
-} }
+}
 
 #endif // POLYMAKE_MAIN_H
 

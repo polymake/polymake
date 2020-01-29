@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -19,7 +19,7 @@
 
 namespace pm { namespace perl { namespace glue {
 
-bool skip_debug_cx=false;
+bool skip_debug_cx = false;
 
 SV** get_cx_curpad(pTHX_ PERL_CONTEXT* cx, PERL_CONTEXT* cx_bottom)
 {
@@ -30,38 +30,38 @@ SV** get_cx_curpad(pTHX_ PERL_CONTEXT* cx, PERL_CONTEXT* cx_bottom)
       case CXt_SUB:
          cv=cx->blk_sub.cv;
          if (!skip_debug_sub(aTHX_ cv)) {
-            d=cx->blk_sub.olddepth;
+            d = cx->blk_sub.olddepth;
             goto FOUND;
          }
          break;
       case CXt_EVAL:
          if (!CxTRYBLOCK(cx)) {
             cv=cx->blk_eval.cv;
-            d=0;
+            d = 0;
             goto FOUND;
          }
          break;
       }
    }
-   cv=PL_main_cv;
-   d=0;
+   cv = PL_main_cv;
+   d = 0;
  FOUND:
    return PadARRAY((PadlistARRAY(CvPADLIST(cv)))[d+1]);
 }
 
 CV* get_cur_cv(pTHX)
 {
-   PERL_CONTEXT* cx_bottom=cxstack;
-   PERL_CONTEXT* cx=cx_bottom+cxstack_ix;
+   PERL_CONTEXT* cx_bottom = cxstack;
+   PERL_CONTEXT* cx = cx_bottom + cxstack_ix;
    while (cx >= cx_bottom) {
       switch (CxTYPE(cx)) {
       case CXt_SUB: {
-         CV* cv=cx->blk_sub.cv;
+         CV* cv = cx->blk_sub.cv;
          if (!skip_debug_sub(aTHX_ cv)) return cv;
          break;
       }
       case CXt_EVAL: {
-         CV* cv=cx->blk_eval.cv;
+         CV* cv = cx->blk_eval.cv;
          if (cv && !CxTRYBLOCK(cx)) return cv;
          break;
       }

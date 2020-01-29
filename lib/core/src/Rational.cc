@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -33,51 +33,75 @@ Rational::Rational(const char* s)
 
 void Rational::parse(const char* s)
 {
-   if (const char* den=strchr(s,'/')) {
-      const int numerator_digits=den-s;
-      if (!numerator_digits)
+   constexpr ssize_t small_size = 65;
+   char small_buf[small_size];
+
+   if (const char* den = strchr(s, '/')) {
+      const ssize_t numerator_digits = den - s;
+      if (numerator_digits == 0)
          throw GMP::error("Rational: empty numerator");
       ++den;
       if (!isdigit(*den))
          throw GMP::error("Rational: syntax error in denominator");
 
+      char* num;
+      if (numerator_digits < small_size) {
+         num = small_buf;
+         std::copy(s, s+numerator_digits, num);
+         num[numerator_digits] = 0;
+      } else {
 #ifdef __gnu_linux__
-      char *num=strndup(s, numerator_digits);
-      if (!num) throw std::bad_alloc();
+         num = strndup(s, numerator_digits);
+         if (!num) throw std::bad_alloc();
 #else
-      char *num=(char*)malloc(numerator_digits+1);
-      if (!num) throw std::bad_alloc();
-      std::memcpy(num, s, numerator_digits);
-      num[numerator_digits]=0;
+         num = new char[numerator_digits+1];
+         if (!num) throw std::bad_alloc();
+         std::memcpy(num, s, numerator_digits);
+         num[numerator_digits] = 0;
 #endif
-      if (mpz_set_str(mpq_numref(this), num, 0) < 0) {
-         free(num);
-         throw GMP::error("Rational: syntax error in numerator");
       }
-      free(num);
+      const bool bad_num = mpz_set_str(mpq_numref(this), num, 0) < 0;
+      if (numerator_digits >= small_size) {
+#ifdef __gnu_linux__
+         free(num);
+#else
+         delete[] num;
+#endif
+      }
+      if (bad_num)
+         throw GMP::error("Rational: syntax error in numerator");
       if (mpz_set_str(mpq_denref(this), den, 0) < 0)
          throw GMP::error("Rational: syntax error in denominator");
       canonicalize();
 
-   } else if (const char* point=strchr(s, '.')) {
-      const int before_pt=point-s;
-      int after_pt=0;
+   } else if (const char* point = strchr(s, '.')) {
+      const ssize_t before_pt = point - s;
+      ssize_t after_pt = 0;
       ++point;
-      int trailing=0;
+      ssize_t trailing = 0;
       while (isdigit(point[after_pt])) {
-         if (point[after_pt]!='0') trailing=after_pt+1;
+         if (point[after_pt] != '0')
+            trailing = after_pt+1;
          ++after_pt;
       }
-      char *num=(char*)malloc(before_pt+trailing+1);
-      if (!num) throw std::bad_alloc();
-      if (before_pt) std::memcpy(num, s, before_pt);
-      if (trailing) std::memcpy(num+before_pt, point, trailing);
-      num[before_pt+trailing]=0;
-      if (mpz_set_str(mpq_numref(this), num, 10) < 0) {
-         free(num);
-         throw GMP::error("Rational: syntax error");
+      char* num;
+      if (before_pt+trailing < small_size) {
+         num = small_buf;
+      } else {
+         num = new char[before_pt+trailing+1];
+         if (!num) throw std::bad_alloc();
       }
-      free(num);
+      if (before_pt)
+         std::memcpy(num, s, before_pt);
+      if (trailing)
+         std::memcpy(num+before_pt, point, trailing);
+      num[before_pt+trailing] = 0;
+      const bool bad_num = mpz_set_str(mpq_numref(this), num, 10) < 0;
+      if (before_pt+trailing >= small_size) {
+         delete[] num;
+      }
+      if (bad_num)
+         throw GMP::error("Rational: syntax error");
       if (trailing) {
          mpz_ui_pow_ui(mpq_denref(this), 10, trailing);
          canonicalize();
@@ -88,9 +112,9 @@ void Rational::parse(const char* s)
    } else if (mpz_set_str(mpq_numref(this), s, 0) >= 0) {
       mpz_set_ui(mpq_denref(this), 1);
    } else {
-      if (s[0]=='+' ? !strcmp(s+1,"inf") : !strcmp(s,"inf"))
+      if (s[0] == '+' ? !strcmp(s+1,"inf") : !strcmp(s,"inf"))
          set_inf(this, 1, initialized::yes);
-      else if (s[0]=='-' && !strcmp(s+1,"inf"))
+      else if (s[0] == '-' && !strcmp(s+1, "inf"))
          set_inf(this, -1, initialized::yes);
       else
          throw GMP::error("Rational: syntax error");
@@ -112,12 +136,12 @@ void Rational::read(std::istream& is)
 
 void Rational::write(std::ostream& os) const
 {
-   const std::ios::fmtflags flags=os.flags();
-   bool show_den=false;
-   int s=numerator(*this).strsize(flags);
+   const std::ios::fmtflags flags = os.flags();
+   bool show_den = false;
+   ssize_t s = numerator(*this).strsize(flags);
    if (!is_integral()) {
-      show_den=true;
-      s+=denominator(*this).strsize(flags);  // '/' occupies the place of the numerator's terminating NULL
+      show_den = true;
+      s += denominator(*this).strsize(flags);  // '/' occupies the place of the numerator's terminating NULL
    }
    putstr(flags, OutCharBuffer::reserve(os, s), show_den);
 }
@@ -126,7 +150,7 @@ void Rational::putstr(std::ios::fmtflags flags, char* buf, bool show_den) const
 {
    numerator(*this).putstr(flags, buf);
    if (show_den) {
-      buf+=strlen(buf);
+      buf += strlen(buf);
       *buf++ = '/';
       denominator(*this).putstr(flags & ~std::ios::showpos, buf);
    }
@@ -219,7 +243,7 @@ Rational& Rational::operator/= (long b)
 
 namespace {
 
-mp_limb_t limb0=0, limb1=1;
+mp_limb_t limb0 = 0, limb1 = 1;
 const __mpq_struct mpq_zero_c{ {1, 0, &limb0}, {1, 1, &limb1} };
 const __mpq_struct mpq_one_c { {1, 1, &limb1}, {1, 1, &limb1} };
 
@@ -235,11 +259,9 @@ const Rational& spec_object_traits<Rational>::one()
    return static_cast<const Rational&>(mpq_one_c);
 }
 
-template <>
-Rational
-pow(const Rational& base, long exp)
+Rational pow(const Rational& base, long exp)
 {
-   return Rational::pow(base,exp);
+   return Rational::pow(base, exp);
 }
 
 }

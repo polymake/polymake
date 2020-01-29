@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,26 +28,24 @@ namespace polymake { namespace tropical {
 /*
  * @brief Checks balancing for a Cycle
  * @param Cycle c The cycle
- * @param bool find_non_balanced_faces Optional. If true, the algorithm will not abort when encountering
- * a non-balanced face. Instead, it will check all faces and return a full set of indices 
+ * @param bool find_all_non_balanced_faces Do not stop at the first non-balanced face. Instead, it will check all faces and return a full set of indices 
  * referring to [[CODIMENSION_ONE_POLYTOPES]], indicating all non-balanced faces. False by default.
- * @return A pair (bool, Set<int>). The first just tells whether the cycle is balanced. The second is
- * either a singleton (if find_non_balanced_faces = false), containing the index of the first non-balanced
- * face - or the full set of indices of non-balanced faces (if find_non_balanced_faces = true).
+ * @return Set<Int> empty if the cycle is balanced, or the index of the first non-balanced face if @a find_all_non_balanced_faces == false,
+ * or the full set of indices of non-balanced faces referring to [[CODIMENSION_ONE_POLYTOPES]]
  */
-std::pair<bool,Set<int> > check_balancing(perl::Object C, bool find_non_balanced_faces=false)
+Set<Int> check_balancing(BigObject C, bool find_non_balanced_faces = false)
 {
   // Extract values
   Matrix<Rational> vertices = C.give("VERTICES");
   Matrix<Rational> linealitySpace = C.give("LINEALITY_SPACE");
   IncidenceMatrix<> codimensionOnePolytopes = C.give("CODIMENSION_ONE_POLYTOPES");
-  Map<std::pair<int,int>, Vector<Integer> > latticeNormals = C.give("LATTICE_NORMALS");
+  Map<std::pair<Int, Int>, Vector<Integer>> latticeNormals = C.give("LATTICE_NORMALS");
   Vector<Integer> weights = C.give("WEIGHTS");
-  Set<int> farVertices = C.give("FAR_VERTICES");
-  int fanAmbientDim = C.give("FAN_AMBIENT_DIM");
+  Set<Int> farVertices = C.give("FAR_VERTICES");
+  Int fanAmbientDim = C.give("FAN_AMBIENT_DIM");
 
   Matrix<Integer> lattice_normal_sums(codimensionOnePolytopes.rows(), fanAmbientDim);
-  Set<int> non_balanced;
+  Set<Int> non_balanced;
   // Iterate through all lattice normals and compute weighted sums
   for (auto lnormal = entire(latticeNormals); !lnormal.at_end(); ++lnormal) {
     lattice_normal_sums.row(lnormal->first.first) += 
@@ -59,12 +57,12 @@ std::pair<bool,Set<int> > check_balancing(perl::Object C, bool find_non_balanced
   Vector<Rational> proj_vector = fanAmbientDim > 0
     ? ones_vector<Rational>(fanAmbientDim) - unit_vector<Rational>(fanAmbientDim,0)
     : Vector<Rational>();
-  for (int codim = 0; codim < codimensionOnePolytopes.rows(); ++codim) {
+  for (Int codim = 0; codim < codimensionOnePolytopes.rows(); ++codim) {
     Matrix<Rational> span_matrix = linealitySpace;
     // To create the span, add all far vertices and take differences of vertices with a basepoint.
     span_matrix /= vertices.minor( codimensionOnePolytopes.row(codim) * farVertices,All);
-    Set<int> codimOneRays = codimensionOnePolytopes.row(codim) - farVertices;
-    int basepoint = *(codimOneRays.begin());
+    Set<Int> codimOneRays = codimensionOnePolytopes.row(codim) - farVertices;
+    Int basepoint = *(codimOneRays.begin());
     codimOneRays -= basepoint;
     for (auto nf = entire(codimOneRays); !nf.at_end(); ++nf) {
       span_matrix /= (vertices.row(*nf) - vertices.row(basepoint));
@@ -78,26 +76,25 @@ std::pair<bool,Set<int> > check_balancing(perl::Object C, bool find_non_balanced
     Matrix<Rational> kernel = null_space(T(span_matrix));
     if (kernel.cols() == 0 || is_zero(kernel.col(kernel.cols()-1))) {
       non_balanced += codim;  
-      if (!find_non_balanced_faces)
-        return std::pair<bool, Set<int> >(false, non_balanced);
+      if (!find_non_balanced_faces) break;
     }
   } //END iterate codim one polytopes
 
-  return std::pair<bool, Set<int> >( non_balanced.size() == 0, non_balanced);
+  return non_balanced;
 } //END check_balancing
 
-bool is_balanced(perl::Object C)
+bool is_balanced(BigObject C)
 {
-  return check_balancing(C,false).first;
+  return check_balancing(C, false).empty();
 }
 
 /*
  * @brief Wrapper for check_balancing that returns the set of indices of unbalanced
  * codimensionOnePolytopes.
  */
-Set<int> unbalanced_faces(perl::Object C)
+Set<Int> unbalanced_faces(BigObject C)
 {
-  return check_balancing(C,true).second;
+  return check_balancing(C, true);
 }
 
 UserFunction4perl("# @category Weights and lattices"
@@ -110,9 +107,9 @@ UserFunction4perl("# @category Weights and lattices"
                   "# > $x = new Cycle<Max>(PROJECTIVE_VERTICES=>[[1,0,0,0],[0,-1,0,0],[0,0,-1,0],[0,0,0,-1]],MAXIMAL_POLYTOPES=>[[0,1],[0,2],[0,3]],WEIGHTS=>[1,1,1]);"
                   "# > print is_balanced($x);"
                   "# | true",
-                  &is_balanced,"is_balanced(Cycle)");
+                  &is_balanced, "is_balanced(Cycle)");
 
-Function4perl(&unbalanced_faces,"unbalanced_faces(Cycle)");
-Function4perl(&check_balancing, "check_balancing(Cycle;$=0)");
+Function4perl(&unbalanced_faces, "unbalanced_faces(Cycle)");
+Function4perl(&check_balancing, "check_balancing(Cycle; $=false)");
 
 } }

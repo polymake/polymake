@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,9 +26,9 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object binary_markov_graph(const Array<bool>& observation)
+BigObject binary_markov_graph(const Array<bool>& observation)
 {
-   perl::Object p("PropagatedPolytope");
+   BigObject p("PropagatedPolytope");
    p.set_description() << "Propagated polytope defined by the (maybe) simplest possible (non-trivial) Hidden Markov Model; "
                        << "see Joswig: Polytope Propagation on Graphs, Example 6.9." << endl;
 
@@ -37,20 +37,20 @@ perl::Object binary_markov_graph(const Array<bool>& observation)
    const Vector<Rational> y1=unit_vector<Rational>(2,1);
    Vector<Rational> x2(2), y2(2); x2[0]=y2[1]=2;
 
-   const int n=observation.size();
+   const Int n = observation.size();
    Graph<Directed> G(2*n+2); // unique source=0, sink=2*n+1
    EdgeMap<Directed, Vector<Rational> > Trans(G);
 
-   Array<bool>::const_iterator ob=observation.begin();
+   Array<bool>::const_iterator ob = observation.begin();
    if (*ob) {
-      Trans(0,1)=zero;
-      Trans(0,2)=y1;
+      Trans(0,1) = zero;
+      Trans(0,2) = y1;
    } else {
-      Trans(0,1)=x1;
-      Trans(0,2)=zero;
+      Trans(0,1) = x1;
+      Trans(0,2) = zero;
    }
       
-   for (int i=1; i<n; ++i)
+   for (Int i = 1; i < n; ++i)
       if (*(++ob)) {
          Trans(2*i-1,2*i+1)=x1;
          Trans(2*i-1,2*i+2)=y1;

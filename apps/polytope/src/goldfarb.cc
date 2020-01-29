@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,10 +23,10 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-perl::Object goldfarb(int d, const Scalar& e, const Scalar& g)
+BigObject goldfarb(Int d, const Scalar& e, const Scalar& g)
 {
    // restriction on d, e, and g
-   const int m=8 * sizeof(int) - 2; // maximal dimension that can be handled
+   const Int m = 8 * sizeof(Int)-2; // maximal dimension that can be handled
    if (d < 1 || d > m)
       throw std::runtime_error("goldfarb: dimension ot of range (1.." + std::to_string(m) + ")");
 
@@ -35,22 +35,22 @@ perl::Object goldfarb(int d, const Scalar& e, const Scalar& g)
    if (g>e/4)
       throw std::runtime_error("goldfarb: g <= e/4");
 
-   perl::Object p("Polytope", mlist<Scalar>());
+   BigObject p("Polytope", mlist<Scalar>());
    p.set_description() << "Goldfarb " << d << "-cube with parameters e=" << e << " and g=" << g << endl;
 
    Matrix<Scalar> IE(4+2*(d-2),d+1);
 
    // the first 4 inequalities
-   IE(0,1)=1;
-   IE(1,0)=1; IE(1,1)=-1;
-   if(d > 1){
-      IE(2,1)=-e; IE(2,2)=1;
-      IE(3,0)=1; IE(3,1)=-e; IE(3,2)=-1;
+   IE(0,1) = 1;
+   IE(1,0) = 1; IE(1,1) = -1;
+   if (d > 1) {
+      IE(2,1) = -e; IE(2,2) = 1;
+      IE(3,0) = 1; IE(3,1) = -e; IE(3,2) = -1;
    }
-   for (int k=2; k<d; ++k) {
-      int i=k*2;                  // row index
-      IE(i,k-1)=e*g; IE(i,k)=-e; IE(i,k+1)=1;
-      IE(i+1,0)=1; IE(i+1,k-1)=e*g; IE(i+1,k)=-e; IE(i+1,k+1)=-1;
+   for (Int k = 2; k < d; ++k) {
+      Int i = k*2;                  // row index
+      IE(i, k-1) = e*g; IE(i, k) = -e; IE(i, k+1) = 1;
+      IE(i+1, 0 ) = 1; IE(i+1, k-1) = e*g; IE(i+1, k) = -e; IE(i+1, k+1) = -1;
    }
   
    p.take("INEQUALITIES") << IE;
@@ -61,10 +61,10 @@ perl::Object goldfarb(int d, const Scalar& e, const Scalar& g)
 }
 
 template <typename Scalar>
-perl::Object goldfarb_sit(int d, const Scalar& eps, const Scalar& delta)
+BigObject goldfarb_sit(Int d, const Scalar& eps, const Scalar& delta)
 {
    // restriction on d, e, and g
-   const int m=8 * sizeof(int) - 2; // maximal dimension that can be handled
+   const Int m = 8*sizeof(Int)-2; // maximal dimension that can be handled
    if (d < 2 || d > m)
       throw std::runtime_error("goldfarb_sit: dimension out of range (2.." + std::to_string(m) + ")");
 
@@ -73,26 +73,26 @@ perl::Object goldfarb_sit(int d, const Scalar& eps, const Scalar& delta)
    if (delta>Rational(1,2)) // 1/beta
       throw std::runtime_error("goldfarb_sit: delta <= 1/2");
 
-   perl::Object p("Polytope", mlist<Scalar>());
-   Matrix<Scalar> IE(4+2*(d-2),d+1);
+   BigObject p("Polytope", mlist<Scalar>());
+   Matrix<Scalar> IE(4+2*(d-2), d+1);
 
    // the last 2 inequalities
-   IE(2*d-1,0)=delta; IE(2*d-1,d)=-delta; IE(2*d-1,d-1)=-1;
-   IE(2*d-2,d)=delta; IE(2*d-2,d-1)=-1;
+   IE(2*d-1, 0) = delta;  IE(2*d-1, d) = -delta;  IE(2*d-1, d-1) = -1;
+   IE(2*d-2, d) = delta;  IE(2*d-2, d-1) = -1;
 
-   for (int k=d-1; k>1; --k) {
-      int i(2*k-1);
-      IE(i,0)=eps*delta*IE(i+2,0); IE(i,k)=-delta; IE(i,k-1)=-1;
-      IE(i-1,k)=delta; IE(i-1,k-1)=-1;
+   for (Int k = d-1; k > 1; --k) {
+      Int i = 2*k-1;
+      IE(i, 0) = eps*delta * IE(i+2, 0);  IE(i, k) = -delta;  IE(i, k-1) = -1;
+      IE(i-1, k) = delta;  IE(i-1, k-1) = -1;
    }
    // the first 2 inequalities
-   IE(1,0)=eps*IE(3,0); IE(1,1)=-1;
-   IE(0,1)=1;
+   IE(1,0) = eps*IE(3,0);  IE(1,1) = -1;
+   IE(0,1) = 1;
 
    Vector<Scalar> vec(d+1);
    vec[d]=1;
-   for(int k=d-1;k>0;--k){
-      vec[k]=delta*vec[k+1];
+   for(Int k = d-1; k > 0; --k) {
+      vec[k] = delta*vec[k+1];
    }
 
    p.take("INEQUALITIES") << IE;

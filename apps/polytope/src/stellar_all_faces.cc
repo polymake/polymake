@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,7 +32,7 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
-perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
+BigObject stellar_all_faces(BigObject p_in, Int end_dim)
 {
    const bool bounded=p_in.give("BOUNDED");
    if (!bounded)
@@ -43,11 +43,11 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
    const Matrix<Scalar> lineality_space=p_in.give("LINEALITY_SPACE");
    const Vector<Scalar> rel_int_point=p_in.give("REL_INT_POINT");
    FacetList VIF=p_in.give("VERTICES_IN_FACETS");
-   perl::Object HD_obj =p_in.give("HASSE_DIAGRAM");
+   BigObject HD_obj =p_in.give("HASSE_DIAGRAM");
    const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential>& HD = p_in.give("HASSE_DIAGRAM");
    Graph<Undirected> DG=p_in.give("DUAL_GRAPH.ADJACENCY");
 
-   const int dim = HD.rank()-1;
+   const Int dim = HD.rank()-1;
    if (end_dim < 0)
       end_dim += dim;
    if (end_dim >= dim || end_dim <= 0)
@@ -55,9 +55,9 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
 
    NodeMap<Undirected, Vector<Scalar> > facet_normals(DG, rows(F).begin());
 
-   int v_count = V.rows();
-   int new_size = HD.nodes_of_rank(1).size();
-   for (int d=dim-1; d>=end_dim; --d)
+   Int v_count = V.rows();
+   Int new_size = HD.nodes_of_rank(1).size();
+   for (Int d = dim-1; d >= end_dim; --d)
       new_size += HD.nodes_of_rank(d+1).size();
    V.resize(new_size, V.cols());
 
@@ -69,7 +69,7 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
 
    // iterate over dimensions dim-1..end_dim and over all faces of each dimension
    // a new vertex is added for each face
-   for (int d=dim-1; d>=end_dim; --d) {
+   for (Int d = dim-1; d >= end_dim; --d) {
       FacetList new_VIF;
       std::vector< FacetList::iterator > facets_of_new_VIF;
       facets_of_new_VIF.reserve(VIF.size() * (d+1));  // lower bound for #facets after stell-sd of faces dim-1, .., d
@@ -77,28 +77,28 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
       Graph<Undirected> new_DG;
       NodeMap<Undirected, Vector<Scalar> > new_facet_normals(new_DG);
 
-      std::vector<int> corr_old_facet;
+      std::vector<Int> corr_old_facet;
       corr_old_facet.reserve((d+1) * DG.nodes());
-      Array< Set<int> > corr_new_facets(DG.nodes());
+      Array<Set<Int>> corr_new_facets(DG.nodes());
 
-      int f_count = 0;
+      Int f_count = 0;
       for (const auto face_index : HD.nodes_of_rank(d+1)) {
-         const Set<int>& face = HD.face(face_index);
+         const Set<Int>& face = HD.face(face_index);
 
          // produce all relevant inequalities = each neighbour (in the dual graph) of the nodes
          // corresponding to the facets of star(face) produces one inequality
          const Vector<Scalar> m = average( rows(V.minor(face, All)) ) - rel_int_point;
          Scalar t_max = Scalar(3);
 
-         Set<int> star_facets;
-         for (FacetList::superset_iterator incid_facets=VIF.findSupersets(face); !incid_facets.at_end(); ++incid_facets)
+         Set<Int> star_facets;
+         for (auto incid_facets = VIF.findSupersets(face); !incid_facets.at_end(); ++incid_facets)
             star_facets += incid_facets.index();
 
-         for (auto st_it=entire(star_facets); !st_it.at_end(); ++st_it) {
-            const Set<int> neighbors = DG.adjacent_nodes(*st_it)-star_facets;
+         for (auto st_it = entire(star_facets); !st_it.at_end(); ++st_it) {
+            const Set<Int> neighbors = DG.adjacent_nodes(*st_it)-star_facets;
 
-            for (auto n_it=entire(neighbors); !n_it.at_end(); ++n_it) {
-               const int v= (*facets_of_VIF[*st_it] * *facets_of_VIF[*n_it]).front();
+            for (auto n_it = entire(neighbors); !n_it.at_end(); ++n_it) {
+               const Int v = (*facets_of_VIF[*st_it] * *facets_of_VIF[*n_it]).front();
                const Vector<Scalar> inequ = bisector(facet_normals[*st_it], facet_normals[*n_it], V[v]);
 
                const Scalar denominator = inequ * m;
@@ -107,17 +107,17 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
          }
 
          // add new vertex
-         const Scalar scale = (t_max + 1) / 2;
-         V[v_count] = rel_int_point + m * scale;
+         const Scalar scale = (t_max+1)/2;
+         V[v_count] = rel_int_point + m*scale;
 
          // add new facets
          // iterate over all neighbours (in the dual graph) of the nodes
          // corresponding to the facets of star(face) and add a facet for each one
-         for (auto st_it=entire(star_facets); !st_it.at_end(); ++st_it) {
-            const Set<int> neighbors = DG.adjacent_nodes(*st_it)-star_facets;
+         for (auto st_it = entire(star_facets); !st_it.at_end(); ++st_it) {
+            const Set<Int> neighbors = DG.adjacent_nodes(*st_it)-star_facets;
 
-            for (auto n_it=entire(neighbors); !n_it.at_end(); ++n_it) {
-               Set<int> new_facet = (*facets_of_VIF[*st_it]) * (*facets_of_VIF[*n_it]);
+            for (auto n_it = entire(neighbors); !n_it.at_end(); ++n_it) {
+               Set<Int> new_facet = (*facets_of_VIF[*st_it]) * (*facets_of_VIF[*n_it]);
                new_facet += v_count;
 
                new_VIF.insert(new_facet);
@@ -149,22 +149,22 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
 
       // add adjacency information to new_DG and update DG
       FacetList ridges;
-      std::vector< std::pair<int,int> > corresp_edge;
+      std::vector<std::pair<Int, Int>> corresp_edge;
       corresp_edge.reserve(VIF.size()*(d+1)/2);  // lower bound for #ridges
 
       // iterate over new faces to determine adjacency
-      for (auto f_it=entire(VIF); !f_it.at_end(); ++f_it) {
-         Set<int> old_neighbors = DG.adjacent_nodes(corr_old_facet[ f_it.index() ]);
+      for (auto f_it = entire(VIF); !f_it.at_end(); ++f_it) {
+         Set<Int> old_neighbors = DG.adjacent_nodes(corr_old_facet[ f_it.index() ]);
          old_neighbors += corr_old_facet[ f_it.index() ];
 
          for (auto n_it=entire(old_neighbors); !n_it.at_end(); ++n_it)
             for (auto cand=entire(corr_new_facets[*n_it]); !cand.at_end(); ++cand)
                if (f_it.index() < *cand) {
-                  const Set<int> ridge = *f_it * *facets_of_VIF[*cand];
+                  const Set<Int> ridge = *f_it * *facets_of_VIF[*cand];
 
                   if (ridge.size() >= dim-1) {  // potential ridge
                      if (ridges.insertMax(ridge)) {  // new potential ridge has been inserted -> remember corresponding edge
-                        const int index = (--ridges.end()).index();
+                        const Int index = (--ridges.end()).index();
 
                         if (size_t(index) >= corresp_edge.size())
                            corresp_edge.resize(index+1);
@@ -184,7 +184,7 @@ perl::Object stellar_all_faces(perl::Object p_in, int end_dim)
 
    }  // end of d = dim-1..end_dim
 
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Stellar subdivision of " << p_in.name() << " over all proper faces of dimension >= " << end_dim << endl;
    p_out.take("VERTICES") << V;
    p_out.take("VERTICES_IN_FACETS") << VIF;

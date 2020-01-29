@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -54,16 +54,16 @@ DirectionIntersection cleanUpIntersection(const fan_intersection_result& fir)
   result.rays = fir.rays;
   IncidenceMatrix<> fir_cones = fir.cones;
   // First we sort all cells according to their dimension
-  Set<int> cell_set;
-  Set<int> edge_set;
-  Set<int> point_set;
-  for (int fc = 0; fc < fir_cones.rows(); ++fc) {
+  Set<Int> cell_set;
+  Set<Int> edge_set;
+  Set<Int> point_set;
+  for (Int fc = 0; fc < fir_cones.rows(); ++fc) {
     if (fir_cones.row(fc).size() > 2) cell_set += fc;
     if (fir_cones.row(fc).size() == 2) edge_set += fc;
     if (fir_cones.row(fc).size() == 1) point_set += fc;
   }
   // Go through all edges, compare to cells, remove redundant ones
-  Set<int> redundant_edges;
+  Set<Int> redundant_edges;
   for (auto e = entire(edge_set); !e.at_end(); ++e) {
     bool found_container = false;
     for (auto c = entire(cell_set); !c.at_end(); ++c) {
@@ -77,10 +77,10 @@ DirectionIntersection cleanUpIntersection(const fan_intersection_result& fir)
   edge_set -= redundant_edges;
 
   // Same for points
-  Set<int> redundant_points;
+  Set<Int> redundant_points;
   for (auto p = entire(point_set); !p.at_end(); ++p) {
     bool found_container = false;
-    Set<int> containers = cell_set + edge_set;
+    Set<Int> containers = cell_set + edge_set;
     for (auto c = entire(containers); !c.at_end(); ++c) {
       if ( (fir_cones.row(*c) * fir_cones.row(*p)).size() == fir_cones.row(*p).size()) {
         found_container = true;
@@ -102,7 +102,7 @@ DirectionIntersection cleanUpIntersection(const fan_intersection_result& fir)
    @brief This takes a (two-dimensional) cone in R^3 in terms of a subset of rays and computes all codimension one faces.
    @return A FacetData object (see above)
 */
-FacetData computeFacets(const Matrix<Rational>& rays, const Set<int>& cone)
+FacetData computeFacets(const Matrix<Rational>& rays, const Set<Int>& cone)
 {
   // Compute facet equations and store them
   const auto ceq = polytope::enumerate_facets(rays.minor(cone, All), false);
@@ -110,10 +110,10 @@ FacetData computeFacets(const Matrix<Rational>& rays, const Set<int>& cone)
   result.eq = ceq.second.row(0);
   result.ineqs = ceq.first;
   // Now go through all inequalities and find the corresponding vertices
-  Set<int> exclude_ineqs;
+  Set<Int> exclude_ineqs;
   RestrictedIncidenceMatrix<> facets;
   for (auto ineq=entire<indexed>(rows(result.ineqs)); !ineq.at_end(); ++ineq) {
-    Set<int> facet;
+    Set<Int> facet;
     bool vertex_seen=false;
     for (auto c=entire(cone); !c.at_end(); ++c) {
       if (is_zero((*ineq) * rays.row(*c))) {
@@ -156,8 +156,8 @@ Vector<Rational> maximalDistanceVector(const Vector<Rational>& vertex,
   DirectionIntersection ref_line =
     cleanUpIntersection(fan_intersection(hl_rays, lin, hl_cones, frays,lin,fcones));
   // Find vertex
-  int v_index = -1;
-  for (int r = 0; r < ref_line.rays.rows(); ++r) {
+  Int v_index = -1;
+  for (Int r = 0; r < ref_line.rays.rows(); ++r) {
     if (ref_line.rays.row(r) == vertex) {
       v_index = r;
       break;
@@ -165,8 +165,8 @@ Vector<Rational> maximalDistanceVector(const Vector<Rational>& vertex,
   }
   IncidenceMatrix<> rays_in_cones = T(ref_line.edges);
   // Go through edges, starting at vertex and check if it is contained in X
-  int current_edge = *(rays_in_cones.row(v_index).begin());
-  int current_vertex = v_index;
+  Int current_edge = *(rays_in_cones.row(v_index).begin());
+  Int current_vertex = v_index;
   // When the current edge has only one vertex, we're done
   do {
     // Check if the edge lies in X
@@ -198,7 +198,7 @@ Rational vertexDistance(const Vector<Rational>& v1, const Vector<Rational>& v2, 
   if (v2.dim() == 0) return 0;
   Vector<Rational> diff = v2 - v1;
   Rational div = 0;
-  for (int i = 1; i <= 3; ++i) {
+  for (Int i = 1; i <= 3; ++i) {
     if ((diff[i] == 0 && direction[i] != 0) || (diff[i] != 0 && direction[i] == 0))
       return 0;
     if (diff[i] != 0) {
@@ -218,7 +218,7 @@ Rational vertexDistance(const Vector<Rational>& v1, const Vector<Rational>& v2, 
 /**
    @brief Takes a vertex family and computes the index of the standard direction in 0,..,3 corresponding to its edge
 */
-int vertexFamilyDirection(const VertexFamily& f)
+Int vertexFamilyDirection(const VertexFamily& f)
 {
   Vector<Rational> dir;
   if (f.edge(0,0) == 0) dir = f.edge.row(0);
@@ -237,14 +237,14 @@ int vertexFamilyDirection(const VertexFamily& f)
    @param DirectionIntersection cone A cone, refined along f
    @param Matrix<Rational> z_border The intersection of the cone with a cone in the 0-i-rechable locus
    @param Matrix<Rational> c_border The intersection of the cone with a cone in the j-k-reachable locus
-   @param int leafAtZero The index of the leaf together with 0
+   @param Int leafAtZero The index of the leaf together with 0
    @param Matrix<Rational> funmat The function matrix of f, made compatible for vector multiplication
    @return LinesInCellResult A list of all edge families and edge lines lying in the cone
 */
 LinesInCellResult computeEdgeFamilies(const DirectionIntersection& cone,
                                       const Matrix<Rational>& z_border,
                                       const Matrix<Rational>& c_border,
-                                      int leafAtZero,
+                                      Int leafAtZero,
                                       const Matrix<Rational>& funmat)
 {
   Matrix<Rational> degree = -unit_matrix<Rational>(3);
@@ -255,9 +255,9 @@ LinesInCellResult computeEdgeFamilies(const DirectionIntersection& cone,
   Matrix<Rational> z_edge_rays = z_border;
   RestrictedIncidenceMatrix<> z_edges_grow={ {0, 1} };
   Vector<Rational> direction = degree.row(0) + degree.row(leafAtZero);
-  Vector<int> rem(sequence(1,3) - leafAtZero);
+  Vector<Int> rem(sequence(1,3) - leafAtZero);
 
-  for (int dr = 0; dr < cone.rays.rows(); ++dr) {
+  for (Int dr = 0; dr < cone.rays.rows(); ++dr) {
     if (cone.rays(dr,0) == 1) {
       // We go through all edges of z_edges until we find one that intersects (vertex + R_>=0 *direction)
       // This is computed as follows: Assume p is a vertex of an edge of z_edges and that w is the direction
@@ -266,7 +266,7 @@ LinesInCellResult computeEdgeFamilies(const DirectionIntersection& cone,
       // that the coefficient of w = p2-p1 is in between 0 and 1, otherwise it has to be > 0
       //
       // If we find an intersecting edge, we refine it (in z_edges) such that it contains the intersection point.
-      for (int ze = 0; ze < z_edges_grow.rows(); ++ze) {
+      for (Int ze = 0; ze < z_edges_grow.rows(); ++ze) {
         Matrix<Rational> edge_generators = z_border.minor(z_edges_grow.row(ze), All);
         Vector<Rational> p1 = edge_generators(0,0) == 0? edge_generators.row(1) : edge_generators.row(0);
         bool bounded = edge_generators(0,0) == edge_generators(1,0);
@@ -286,8 +286,8 @@ LinesInCellResult computeEdgeFamilies(const DirectionIntersection& cone,
             Vector<Rational> new_vertex = p1 + lin_rep[0]*w;
             z_edge_rays /= new_vertex;
             auto edge_index_list=z_edges_grow.row(ze).begin();
-            const Set<int> one_cone={ *edge_index_list, z_edge_rays.rows()-1 };
-            const Set<int> other_cone={ *++edge_index_list, z_edge_rays.rows()-1 };
+            const Set<Int> one_cone={ *edge_index_list, z_edge_rays.rows()-1 };
+            const Set<Int> other_cone={ *++edge_index_list, z_edge_rays.rows()-1 };
             z_edges_grow.row(ze)=one_cone;
             z_edges_grow /= other_cone;
             break;
@@ -312,8 +312,8 @@ LinesInCellResult computeEdgeFamilies(const DirectionIntersection& cone,
   IncidenceMatrix<> maxInCo = T(coInMax);
 
   // Find all edges that span direction
-  Set<int> direction_edges;
-  for (int cc = 0; cc < codim.rows(); ++cc) {
+  Set<Int> direction_edges;
+  for (Int cc = 0; cc < codim.rows(); ++cc) {
     Matrix<Rational> cc_rays = refined_cone.rays.minor(codim.row(cc),All);
     Vector<Rational> cc_span;
     if (cc_rays(0,0) == cc_rays(1,0)) {
@@ -324,7 +324,7 @@ LinesInCellResult computeEdgeFamilies(const DirectionIntersection& cone,
     if (cc_span[leafAtZero] == 0 && cc_span[rem[0]] == cc_span[rem[1]])
       direction_edges += cc;
   }
-  Set<int> remaining_codim = sequence(0,codim.rows()) - direction_edges;
+  Set<Int> remaining_codim = sequence(0,codim.rows()) - direction_edges;
 
   // Now we go through all z_edges, find the corresponding codim cone in the refined cone
   // and check if the complete "path" to the other side lies in X. In addition we keep track of all
@@ -334,15 +334,15 @@ LinesInCellResult computeEdgeFamilies(const DirectionIntersection& cone,
   Vector<EdgeLine> line_list(0);
   Vector<VertexLine> vertex_list(0);
 
-  Set<int> all_vertices_this_side;
-  Set<int> covered_vertices;
+  Set<Int> all_vertices_this_side;
+  Set<Int> covered_vertices;
 
-  for (int ze = 0; ze < z_edges.rows(); ++ze) {
+  for (Int ze = 0; ze < z_edges.rows(); ++ze) {
     Matrix<Rational> ze_rays = z_edge_rays.minor(z_edges.row(ze), All);
     // Find rays in refined cone
-    int index_1 = -1;
-    int index_2 = -1;
-    for (int rc = 0; rc < refined_cone.rays.rows(); ++rc) {
+    Int index_1 = -1;
+    Int index_2 = -1;
+    for (Int rc = 0; rc < refined_cone.rays.rows(); ++rc) {
       if (refined_cone.rays.row(rc) == ze_rays.row(0)) index_1 = rc;
       if (refined_cone.rays.row(rc) == ze_rays.row(1)) index_2 = rc;
       if (index_1 >= 0 && index_2 >= 0) break;
@@ -351,7 +351,7 @@ LinesInCellResult computeEdgeFamilies(const DirectionIntersection& cone,
     if (refined_cone.rays(index_2,0) == 1) all_vertices_this_side += index_2;
 
     // Now find the codimension one cone containing these two rays
-    int co_index = -1;
+    Int co_index = -1;
     for (auto cc = entire(remaining_codim); !cc.at_end(); ++cc) {
       if (codim.row(*cc).contains(index_1) && codim.row(*cc).contains(index_2)) {
         co_index = *cc;
@@ -361,9 +361,9 @@ LinesInCellResult computeEdgeFamilies(const DirectionIntersection& cone,
     remaining_codim -= co_index;
 
     // Find all maximal cones on the "path" to the other side and check if they are in X
-    int current_cone = *(coInMax.row(co_index).begin());
+    Int current_cone = *(coInMax.row(co_index).begin());
     bool found_bad = false;
-    int cone_index_other_side = -1;
+    Int cone_index_other_side = -1;
     while (current_cone >= 0) {
       // Compute interior point and check if it is in X
       Vector<Rational> interior_point =
@@ -376,10 +376,10 @@ LinesInCellResult computeEdgeFamilies(const DirectionIntersection& cone,
 
       // If all is fine, find the next maximal cone, i.e. find an unused codimension one face
       // in that cone and take the other maximal cone adjacent to it.
-      int next_codim = *( (maxInCo.row(current_cone) * remaining_codim).begin() );
+      Int next_codim = *( (maxInCo.row(current_cone) * remaining_codim).begin() );
       remaining_codim -= next_codim;
 
-      Set<int> next_max = coInMax.row(next_codim) - current_cone;
+      Set<Int> next_max = coInMax.row(next_codim) - current_cone;
       // If there is no other maximal cone, we have arrived at the other end
       if (next_max.size() == 0) {
         cone_index_other_side = next_codim;
@@ -408,28 +408,28 @@ LinesInCellResult computeEdgeFamilies(const DirectionIntersection& cone,
 
   // Finally we consider all vertices not in a 2-dim family and check if the line to the other
   // side is contained in X
-  Set<int> vertices_to_check = all_vertices_this_side - covered_vertices;
-  Set<int> used_up_edges;
-  Set<int> used_up_vertices;
+  Set<Int> vertices_to_check = all_vertices_this_side - covered_vertices;
+  Set<Int> used_up_edges;
+  Set<Int> used_up_vertices;
   for (auto vtc = entire(vertices_to_check); !vtc.at_end(); ++vtc) {
     used_up_vertices += *vtc;
 
     // Find first edge containing it
-    Set<int> current_edge_set = rayInCo.row(*vtc) * direction_edges;
+    Set<Int> current_edge_set = rayInCo.row(*vtc) * direction_edges;
 
     // If there is no edge, we have a vertex line
     if (current_edge_set.empty()) {
       VertexLine vl;
       vl.vertex = refined_cone.rays.row(*vtc);
-      vl.cells = Set<int>();
+      vl.cells = Set<Int>();
       vertex_list |= vl;
       continue;
     }
 
-    int current_edge = *(current_edge_set.begin());
+    Int current_edge = *(current_edge_set.begin());
 
     used_up_edges += current_edge;
-    int  vertex_index_other_side;
+    Int  vertex_index_other_side;
     bool found_bad = true;
     while (current_edge >= 0) {
       // Compute interior point and check if it is in X
@@ -442,9 +442,9 @@ LinesInCellResult computeEdgeFamilies(const DirectionIntersection& cone,
       }
 
       // Find next edge. If there is none, we have arrived at the other side
-      int next_vertex = *( (codim.row(current_edge) - used_up_vertices).begin());
+      Int next_vertex = *( (codim.row(current_edge) - used_up_vertices).begin());
       used_up_vertices += next_vertex;
-      Set<int> next_edge_set = (rayInCo.row(next_vertex)*direction_edges) - used_up_edges;
+      Set<Int> next_edge_set = (rayInCo.row(next_vertex)*direction_edges) - used_up_edges;
       if (next_edge_set.empty()) {
         vertex_index_other_side = next_vertex;
         current_edge = -1;

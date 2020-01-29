@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,28 +24,28 @@
 
 namespace polymake { namespace topaz {
   
-perl::ListReturn projectivities(perl::Object p)
+ListReturn projectivities(BigObject p)
 {
    typedef Graph<> graph;
    const graph DG = p.give("DUAL_GRAPH.ADJACENCY");
-   const Array< Set<int> > F = p.give("FACETS");
-   const int n_vert = p.give("N_VERTICES");
-   const int n_facets = F.size();
+   const Array<Set<Int>> F = p.give("FACETS");
+   const Int n_vert = p.give("N_VERTICES");
+   const Int n_facets = F.size();
      
    EquivalenceRelation color_classes(n_vert,F[0]);  // vertices of first facets as representatives
    
    // BFS to determin color classes
    Bitset visited(n_facets);
-   std::list<int> node_queue;
+   std::list<Int> node_queue;
    node_queue.push_back(0);
    visited+=0;
    
    while (!node_queue.empty()) {
-      const int n=node_queue.front();
+      const Int n = node_queue.front();
       node_queue.pop_front(); 
       
       for (auto e=entire(DG.out_edges(n)); !e.at_end(); ++e) {
-         const int nn = e.to_node();
+         const Int nn = e.to_node();
          
          if ( !visited.contains(nn) ) {
             visited+=nn;
@@ -58,14 +58,14 @@ perl::ListReturn projectivities(perl::Object p)
    }
    
    // compute orbit spaces
-   PowerSet<int> orbit_spaces;
-   for (auto v=entire(F[0]); !v.at_end(); ++v) {
-      const int rep = color_classes.representative(*v);
+   PowerSet<Int> orbit_spaces;
+   for (auto v = entire(F[0]); !v.at_end(); ++v) {
+      const Int rep = color_classes.representative(*v);
 
-      if (*v == rep)
+      if (*v == rep) {
          orbit_spaces += scalar2set(*v);
-      else {
-         Set<int> add;
+      } else {
+         Set<Int> add;
          for (auto c=entire(orbit_spaces); !c.at_end(); ++c) 
             if (c->front()==rep) {
                add = *c;
@@ -77,7 +77,7 @@ perl::ListReturn projectivities(perl::Object p)
       }
    }
 
-   perl::ListReturn result;
+   ListReturn result;
    result << orbit_spaces << color_classes.representatives();
    return result;
 }

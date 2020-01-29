@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -39,14 +39,14 @@ minkowski_sum_client(const Scalar& lambda1, const Matrix<Scalar>& V1, const Scal
   if (V1.cols() != V2.cols())
       throw std::runtime_error("dimension mismatch");
 
-   const Set<int> rays1=far_points(V1),
-                  rays2=far_points(V2);
+   const Set<Int> rays1 = far_points(V1),
+                  rays2 = far_points(V2);
 
-   const Matrix<Scalar> P= rays1.empty() && rays2.empty()
-                           ? minkowski_sum(lambda1*V1,lambda2*V2)
-                           : minkowski_sum(lambda1*V1.minor(~rays1,All), lambda2*V2.minor(~rays2,All)) /
-                             (sign(lambda1)*V1.minor(rays1,All)) /
-                             (sign(lambda2)*V2.minor(rays2,All)) ;
+   const Matrix<Scalar> P = rays1.empty() && rays2.empty()
+                            ? minkowski_sum(lambda1*V1,lambda2*V2)
+                            : minkowski_sum(lambda1*V1.minor(~rays1,All), lambda2*V2.minor(~rays2,All)) /
+                              (sign(lambda1)*V1.minor(rays1,All)) /
+                              (sign(lambda2)*V2.minor(rays2,All)) ;
 
    return P;
 }

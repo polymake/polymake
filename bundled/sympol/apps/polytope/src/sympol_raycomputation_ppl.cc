@@ -22,6 +22,14 @@
 
 #ifdef POLYMAKE_WITH_PPL
 
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wconversion"
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
+
 #include "polymake/polytope/sympol_config.h"
 #include "polymake/polytope/sympol_raycomputation_ppl.h"
 #include "polymake/polytope/sympol_interface.h"

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -23,10 +23,10 @@
 #  When called in void context or as a standalone script from command line,
 #  stores the JSON string in the given file or prints to STDOUT.
 
-require JSON;
-require Polymake::Core::InteractiveHelp;
+require Polymake::Core::Help::Topic;
+require Polymake::Core::Shell::Completion;
 
-$Polymake::Core::InteractiveHelp::store_provenience=true;
+$Polymake::Core::Help::Topic::store_provenience = true;
 
 my $errors = 0;
 my @apps;
@@ -76,7 +76,7 @@ sub resolve_ref {
       } elsif ($1 eq "props") {
          @topics = $top_help->find(@how, "property_types", $2);
       } else {
-         # (ObjectType::)SUBOBJECT.PROPERTY
+         # (BigObjectType::)SUBOBJECT.PROPERTY
          @topics = defined($1) ? $top_help->find(@how, "objects", $1) : defined($app) ? uniq( grep { defined } map { $_->help_topic } @{$app->object_types} ) : ();
          foreach my $prop_name (split /\./, $2) {
             @topics = uniq( grep { defined } map { $_->find("?rel", "properties", $prop_name) } @topics );
@@ -96,6 +96,10 @@ sub resolve_ref {
    }
    if (!@topics) {
       # try as a single term
+      if ((my @parts = split m{/}, $ref, 2) == 2){
+         $ref = pop @parts;
+         push @how, @parts;
+      }
       @topics = @how ? $top_help->find(@how, $ref) : select_closest($help, find_in_tree($help, $ref));
    }
 
@@ -147,8 +151,8 @@ sub related_objects {
    my ($help, $func_topic)=@_;
    my ($params, $return) = @{$func_topic->annex}{qw(param return)};
    uniq( map { $_, @{$_->related} }
-         ( defined($params) ? $help->find("objects", $params->[0]->[0]) : (),
-           defined($return) ? $help->find("objects", $return->[0]) : () ) )
+         ( defined($params) ? $help->find("objects", $params->[0]->type) : (),
+           defined($return) ? $help->find("objects", $return->type) : () ) )
 }
 ####################################################################
 # can be target of a cross-reference
@@ -246,9 +250,9 @@ sub find_simple_type {
       }
       for (my $topic = $help; defined($topic); $topic = $topic->parent) {
          foreach my $obj_topic ($topic, @{$topic->related}) {
-            if (defined (my $tparams = $obj_topic->annex->{tparam})) {
-               if (my ($tparam_descr) = grep { $_->[0] eq $type } @$tparams) {
-                  return defined($tparam_descr->[1]) ? $obj_topic->full_path . "/tparams/$type" : $type;
+            if (defined(my $tparams = $obj_topic->annex->{tparam})) {
+               if (my ($tparam_descr) = grep { $_->name eq $type } @$tparams) {
+                  return defined($tparam_descr->text) ? $obj_topic->full_path . "/tparams/$type" : $type;
                }
             }
          }
@@ -294,8 +298,8 @@ sub ref_to_simple_type {
    } else {
       unless ($type->abstract) {
          err_print( "Help topic ", $referrer->full_path, " defined at ", $referrer->defined_at, " refers to a ",
-                    (instanceof Core::ObjectType::Specialization($type) ? ("specialization ", $type->full_name) :
-                     instanceof Core::ObjectType($type) ? ("big object type ", $type->full_name) :
+                    (instanceof Core::BigObjectType::Specialization($type) ? ("specialization ", $type->full_name) :
+                     instanceof Core::BigObjectType($type) ? ("big object type ", $type->full_name) :
                      instanceof Core::PropertyType($type) ? ("property type ", $type->full_name) :
                      ("perl class ", ref($type))), " not represented in the help topic tree\n" );
          ++$errors;
@@ -320,8 +324,8 @@ sub add_type_params {
    if (defined(my $tparam_docs = $help->annex->{tparam})) {
       if (defined($proto) && defined($proto->params)) {
          my %described;
-         $tree->{tparams} = [ map { $described{$_->[0]} = true;
-                                    { name => $_->[0], '$text' => process_text($help, $_->[1]) }
+         $tree->{tparams} = [ map { $described{$_->name} = true;
+                                    { name => $_->name, '$text' => process_text($help, $_->text) }
                               } @$tparam_docs ];
          if (my @undescribed = grep { not $described{$_->name} } @{$proto->params}) {
             err_print( "Type parameter", @undescribed > 1 && "s", " ", join(", ", @undescribed),
@@ -334,9 +338,8 @@ sub add_type_params {
                        " not match type parameters in help topic ", $help->full_path, " defined at ", $help->defined_at );
             ++$errors;
          }
-      } elsif (my @tparams = map { { name => $_->[0],
-                                     '$text' => process_text($help, $_->[1]) } }
-                             grep { @$_>1 } @$tparam_docs) {
+      } elsif (my @tparams = map { defined($_->text) ? { name => $_->name, '$text' => process_text($help, $_->text) } : () }
+                                 @$tparam_docs) {
          $tree->{tparams} = \@tparams;
       }
    } elsif (defined($proto) && defined($proto->params) && @{$proto->params} > 0) {
@@ -410,9 +413,9 @@ sub process_option_list {
    if (@{$help->related}) {
       $tree->{derived_from} = [ map { $_->full_path } @{$help->related} ];
    }
-   $tree->{keys} = [ map { { name => $_->[1],
-                             type => find_type($help, $_->[0], qw(property_types objects options)),
-                             '$text' => process_text($help, $_->[2]) } }
+   $tree->{keys} = [ map { { name => $_->name,
+                             type => find_type($help, $_->type, qw(property_types objects options)),
+                             '$text' => process_text($help, $_->text) } }
                          @{$help->annex->{keys}} ];
    $tree
 }
@@ -437,7 +440,7 @@ sub process_property {
    my $prop = $help->annex->{property};
    my $tree = { };
    if ($prop->flags & Core::Property::Flags::is_augmented) {
-      if (my @super = grep { instanceof Core::ObjectType::Augmented($_) && !instanceof Core::InteractiveHelp::Specialization($_->help_topic) } @{$prop->type->super}) {
+      if (my @super = grep { instanceof Core::BigObjectType::Augmented($_) && !instanceof Core::Help::Topic::Specialization($_->help_topic) } @{$prop->type->super}) {
          $tree->{derived_from} = [ map { $_->help_topic->full_path } @super ];
       }
       $tree->{type} = ref_to_type($help, $prop->type->pure_type);
@@ -477,7 +480,7 @@ sub process_object {
       my %shown_super_types;
       if (my @derived_from =
              map { $_->help_topic->full_path }
-             grep { defined($_->help_topic) && !instanceof Core::ObjectType::Specialization($_) && !$shown_super_types{$_->name}++ && $_ != $proto->generic }
+             grep { defined($_->help_topic) && !instanceof Core::BigObjectType::Specialization($_) && !$shown_super_types{$_->name}++ && $_ != $proto->generic }
           @{$proto->super}) {
          $tree->{derived_from} = \@derived_from;
       }
@@ -521,10 +524,10 @@ sub process_function {
 
       if (defined(my $params = $help->annex->{param})) {
          $tree->{params} = [ map {
-            { name => $_->[1],
-              type => find_type($help, $_->[0]),
-              '$text' => process_text($help, $_->[2]),
-              defined($_->[3]) ? ( values => { map { ($_->[0] => process_text($help, $_->[1])) } @{$_->[3]} } ) : ()
+            { name => $_->name,
+              type => find_type($help, $_->type),
+              '$text' => process_text($help, $_->text),
+              defined($_->values) ? ( values => { map { ($_->value => process_text($help, $_->text)) } @{$_->values} } ) : ()
             } } @$params ];
       }
       if (defined(my $options = $help->annex->{options})) {
@@ -533,8 +536,8 @@ sub process_function {
          } @$options ];
       }
       if (defined(my $return = $help->annex->{return})) {
-         $tree->{return} = { '$text' => process_text($help, $return->[1]),
-                             type => find_type($help, $return->[0]) };
+         $tree->{return} = { '$text' => process_text($help, $return->text),
+                             type => find_type($help, $return->type) };
       }
       if (defined(my $spez_topic = $help->annex->{spez})) {
          $tree->{specialization} = $spez_topic->full_path;
@@ -577,17 +580,16 @@ sub process_categories {
 ####################################################################
 sub process_app {
    application(@_);
-   local push @{$application->help->related}, $Core::Help::core;
 
    my $tree = { '$text' => process_text($application->help) };
 
    if (my $ext = $Core::Extension::registered_by_dir{$application->top =~ s{/apps/$id_re$}{}or}) {
       $tree->{ext} = $ext->URI;
    }
-   if (@{$application->import_sorted}) {
-      $tree->{imports} = $application->import_sorted;
+   if (@{$application->linear_imported}) {
+      $tree->{imports} = [ map { $_->name } @{$application->linear_imported} ];
    }
-   if (my @uses = grep { ! exists $application->imported->{$_} } keys %{$application->used}) {
+   if (my @uses = grep { !$application->imported->{$_} } keys %{$application->used}) {
       $tree->{uses} = \@uses;
    }
    if (defined(my $types = $application->help->topics->{property_types})) {
@@ -637,10 +639,8 @@ my $tree = { (map { ($_ => process_app($_)) } @apps ),
 if ($errors > 0) {
    die "Encountered $errors error", ($errors>1 && "s"), ", generation aborted\n";
 }
-my $JSON = new JSON;
-my $result = $JSON->encode($tree);
 if (!$Main::standalone_script && !@ARGV && defined(wantarray)) {
-   return $result;
+   return encode_json($tree);
 }
 my $out;
 if (!@ARGV || $ARGV[0] eq "-") {
@@ -648,7 +648,7 @@ if (!@ARGV || $ARGV[0] eq "-") {
 } else {
    open $out, ">", $ARGV[0] or die "can't create result file $ARGV[0]; $!\n";
 }
-print $out $result;
+write_json($out, $tree);
 
 
 # Local Variables:

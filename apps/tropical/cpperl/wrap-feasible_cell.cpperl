@@ -1,6 +1,6 @@
 {"app": "tropical", "embed": "feasible_cell.cc",
  "inst": [
-  {"args": ["Min", "Rational", "perl::Canned<const Matrix<TropicalNumber<Min, Rational>>&>", "perl::Canned<const Array<int>&>"], "func": "trop_witness", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "trop_witness:T2.X.X", "tp": "2"},
+  {"args": ["Min", "Rational", "perl::Canned<const Matrix<TropicalNumber<Min, Rational>>&>", "perl::Canned<const Array<Int>&>"], "func": "trop_witness", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "trop_witness:T2.X.X", "tp": "2"},
   {"args": ["Min", "Rational", "void"], "func": "H_trop_input_feasible", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "H_trop_input_feasible:T2.B", "tp": "2"},
   {"args": ["Max", "Rational", "void"], "func": "H_trop_input_feasible", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "H_trop_input_feasible:T2.B", "tp": "2"},
  null ],

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -20,15 +20,28 @@ package Polymake::Main;
 
 # this is called from the callable library starter module lib/callable/src/perl/Main.cc
 sub import {
-   (undef, my ($user_opts, $must_reset_SIGCHLD))=@_;
+   (undef, my ($user_opts, $must_reset_SIGCHLD)) = @_;
+
+   # this guarantees initialization of internal structures for signal handling
+   local $SIG{INT} = 'IGNORE';
 
    # these redefinitions must happen before the whole slew of polymake perl code is loaded!
    if ($must_reset_SIGCHLD) {
       *CORE::GLOBAL::readpipe=sub { local $SIG{CHLD}='DEFAULT'; CORE::readpipe(@_) };
    }
 
+   require DynaLoader;
+   Polymake::Ext::bootstrap();
+   $INC{"Polymake/Ext.pm"} = $INC{"Polymake/Main.pm"};
+
    require Polymake::MainFunctions;
-   _init($user_opts);
+   init($user_opts);
+}
+
+sub Polymake::Ext::import {
+   no strict 'refs';
+   my $module = caller;
+   &{"$module\::bootstrap"}();
 }
 
 1;

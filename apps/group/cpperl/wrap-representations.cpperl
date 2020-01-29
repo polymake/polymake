@@ -1,11 +1,11 @@
 {"app": "group", "embed": "representations.cc",
  "inst": [
-  {"args": ["perl::Canned<const Array<Array<int>>&>", "perl::Canned<const Array<int>&>"], "func": "to_orbit_order", "include": ["polymake/Array.h"], "sig": "to_orbit_order.X.X"},
-  {"args": ["Rational", "void", "void", "int(int)", "void"], "func": "isotypic_projector", "include": ["polymake/Rational.h"], "sig": "isotypic_projector:T1.B.B.int.o", "tp": "1"},
-  {"args": ["Rational", "void", "void", "int(int)", "void"], "func": "isotypic_basis", "include": ["polymake/Rational.h"], "sig": "isotypic_basis:T1.B.B.int.o", "tp": "1"},
+  {"args": ["perl::Canned<const Array<Array<Int>>&>", "perl::Canned<const Array<Int>&>"], "func": "to_orbit_order", "include": ["polymake/Array.h"], "sig": "to_orbit_order.X.X"},
+  {"args": ["Rational", "void", "void", "Int(Int)", "void"], "func": "isotypic_projector", "include": ["polymake/Rational.h"], "sig": "isotypic_projector:T1.B.B.Int.o", "tp": "1"},
+  {"args": ["Rational", "void", "void", "Int(Int)", "void"], "func": "isotypic_basis", "include": ["polymake/Rational.h"], "sig": "isotypic_basis:T1.B.B.Int.o", "tp": "1"},
   {"args": ["QuadraticExtension<Rational>", "perl::Canned<const Vector<QuadraticExtension<Rational>>&>", "void"], "func": "irreducible_decomposition", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/Vector.h"], "sig": "irreducible_decomposition:T1.X.B", "tp": "1"},
-  {"args": ["QuadraticExtension<Rational>", "perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::QuadraticExtension<pm::Rational> > const&>, pm::Series<int, true> const, mlist<> >&>", "void"], "func": "irreducible_decomposition", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "irreducible_decomposition:T1.X.B", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::QuadraticExtension<pm::Rational> > const&>, pm::Series<Int, true> const, mlist<> >&>", "void"], "func": "irreducible_decomposition", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "irreducible_decomposition:T1.X.B", "tp": "1"},
   {"args": ["double", "perl::Canned<const Vector<double>&>", "void"], "func": "irreducible_decomposition", "include": ["polymake/Vector.h"], "sig": "irreducible_decomposition:T1.X.B", "tp": "1"},
-  {"args": ["double", "void", "void", "int(int)", "void"], "func": "isotypic_projector", "sig": "isotypic_projector:T1.B.B.int.o", "tp": "1"},
+  {"args": ["double", "void", "void", "Int(Int)", "void"], "func": "isotypic_projector", "sig": "isotypic_projector:T1.B.B.Int.o", "tp": "1"},
  null ],
 "version": 3}

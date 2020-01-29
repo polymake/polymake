@@ -1,6 +1,6 @@
 This is an exact LP solver. It was initially written for the usage with mpq_class from GMP to solve rational linear programs using the revised dual simplex algorithm. Later, a template parameter was added to be able to solve non-rational linear programs. Only use exact data types! This solver will almost surely fail using inexact data types like float, double, mpf_class, ...
 
-If you are not using mpq_class, you will have to define TO_WITHOUT_DOUBLE and TO_DISABLE_OUTPUT. If you are using mpq_class, you can also define TO_DISABLE_OUTPUT to disable output. If you want to use interfaces to CPLEX or Gurobi, you must not define TO_WITHOUT_DOUBLE and you have to define TO_WITH_CPLEX or TO_WITH_GUROBI. Then CPLEX or Gurobi is used to obtain a starting basis.
+You can define TO_DISABLE_OUTPUT to disable output.
 
 Actually, there is no primal simplex method. So if the solver returns "dual infeasible", you have to create the dual problem if you want to find out whether the problem is infeasible or unbounded. You can avoid this by providing upper and lower bounds to all variables which implies dual feasibility.
 
@@ -11,4 +11,3 @@ If you find any improvements, please let me know.
 
 
 TODO: Write tutorial for the API.
-TODO: Standardized method to convert T to double in order to be able to use CPLEX and Gurobi for other data types.

@@ -1,5 +1,5 @@
 {"app": "common",
  "inst": [
-  {"args": ["int(int)"], "func": "range_from", "include": ["polymake/Set.h"], "sig": "range_from.int"},
+  {"args": ["Int(Int)"], "func": "range_from", "include": ["polymake/Set.h"], "sig": "range_from.Int"},
  null ],
 "version": 3}

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,63 +31,63 @@ using graph::Lattice;
 using graph::lattice::Sequential;
 using graph::lattice::BasicDecoration;
 
-void all_cones_symmetry(perl::Object f, int dim)
+void all_cones_symmetry(BigObject f, Int dim)
 {
-   const Array<Set<int>> cones=f.give("MAXIMAL_CONES_REPS");
-   const Matrix<Rational> rays=f.give("RAYS");
-   const Array<Array<int>> symmetry=f.give("RAYS_IMAGES");
-   const Matrix<Rational> lin_space=f.give("LINEALITY_SPACE");
-   const int lin_dim=lin_space.rows();
-   const int amb_dim=rays.rows();
+   const Array<Set<Int>> cones = f.give("MAXIMAL_CONES_REPS");
+   const Matrix<Rational> rays = f.give("RAYS");
+   const Array<Array<Int>> symmetry = f.give("RAYS_IMAGES");
+   const Matrix<Rational> lin_space = f.give("LINEALITY_SPACE");
+   const Int lin_dim = lin_space.rows();
+   const Int amb_dim = rays.rows();
 
 
    //if the dimension of the fan is unknown it will be computed in res_dim and amb_dim
    //is an upper bound
-   bool dim_given(true);
-   int res_dim(dim);
-   Array<int> max_cones_dims;
-   if (dim<0) {
-      dim_given=false;
-      dim=amb_dim;
-      max_cones_dims=Array<int>(cones.size());
+   bool dim_given = true;
+   Int res_dim = dim;
+   Array<Int> max_cones_dims;
+   if (dim < 0) {
+      dim_given = false;
+      dim = amb_dim;
+      max_cones_dims = Array<Int>(cones.size());
    }
 
-   Array<int> dims(dim,0);
-   Array<int> orbit_dims(dim,0);
+   Array<Int> dims(dim, 0);
+   Array<Int> orbit_dims(dim, 0);
 
-   typedef hash_set<Set<int>> Hashset;
+   typedef hash_set<Set<Int>> Hashset;
    Array<Hashset> all_cones(dim);
-   const int n_syms=symmetry[0].size();
-   Array<std::vector<Set<int>>> cone_orbits(dim); // all cones up to symmetry
-   Array<std::vector<int>> cone_orbit_sizes(dim); // the sizes of all arbits of cones
+   const Int n_syms = symmetry[0].size();
+   Array<std::vector<Set<Int>>> cone_orbits(dim); // all cones up to symmetry
+   Array<std::vector<Int>> cone_orbit_sizes(dim); // the sizes of all arbits of cones
 
-   int c_i = 0;
+   Int c_i = 0;
    for (const auto& cone : cones) {
-      const int n_rays=cone.size();
-      const Array<int> cone_A(n_rays, entire(cone));
-      perl::Object c("Cone");
+      const Int n_rays = cone.size();
+      const Array<Int> cone_A(n_rays, entire(cone));
+      BigObject c("Cone");
       c.take("RAYS") << rays.minor(cone, All);
       c.take("LINEALITY_SPACE") << lin_space;
       const Lattice<BasicDecoration, Sequential> hd = c.give("HASSE_DIAGRAM");
-      const int c_dim(hd.rank());
+      const Int c_dim = hd.rank();
       if (!dim_given) {
          res_dim = std::max(res_dim, c_dim);
          max_cones_dims[c_i++] = c_dim + lin_dim;
       }
-      for (int l = 0; l < c_dim; ++l) {
+      for (Int l = 0; l < c_dim; ++l) {
          for (const auto fn : hd.nodes_of_rank(l+1)) {
-            const Set<int>& face_old = hd.face(fn);
+            const Set<Int>& face_old = hd.face(fn);
 
-            Set<int> face;
+            Set<Int> face;
             for (const auto& k : face_old) {
                face.insert(cone_A[k]);
             }
 
             if (all_cones[l].find(face) == all_cones[l].end()) {
                // if the face does not exist so far, we create its whole orbit
-               int orbit_size = 0;
-               for (int j = 0; j < n_syms; ++j) {
-                  Set<int> new_cone;
+               Int orbit_size = 0;
+               for (Int j = 0; j < n_syms; ++j) {
+                  Set<Int> new_cone;
                   for (const auto& k : face) {
                      new_cone.insert(symmetry[k][j]);
                   }

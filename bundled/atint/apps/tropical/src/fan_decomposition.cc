@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -37,7 +37,7 @@ namespace polymake { namespace tropical {
 
 // Documentation see perl wrapper
 template <typename Addition>
-perl::ListReturn fan_decomposition(perl::Object cycle)
+ListReturn fan_decomposition(BigObject cycle)
 {
   // Extract values
   Matrix<Rational> rays = cycle.give("VERTICES");
@@ -51,28 +51,28 @@ perl::ListReturn fan_decomposition(perl::Object cycle)
     cycle.give("LOCAL_RESTRICTION") >> local_restriction;
   }
 
-  Set<int> nonfar = far_and_nonfar_vertices(rays).second;
+  Set<Int> nonfar = far_and_nonfar_vertices(rays).second;
 
-  perl::ListReturn result;
+  ListReturn result;
   for (auto nf = entire(nonfar); !nf.at_end(); ++nf) {
     if (local_restriction.rows() > 0) {
       if (!is_coneset_compatible(scalar2set(*nf), local_restriction))
         continue;
     }
 
-    Set<int> conesAtVertex = verticesInCones.row(*nf);
-    Set<int> usedRays = accumulate(rows( cones.minor(conesAtVertex,All)), operations::add());
+    Set<Int> conesAtVertex = verticesInCones.row(*nf);
+    Set<Int> usedRays = accumulate(rows( cones.minor(conesAtVertex,All)), operations::add());
 
     Matrix<Rational> fanRays(rays);
     // Replace other nonfar vertices by difference
-    Set<int> othernonfar = (nonfar * usedRays) - *nf;
+    Set<Int> othernonfar = (nonfar * usedRays) - *nf;
     for (auto onf = entire(othernonfar); !onf.at_end(); ++onf) {
       fanRays.row(*onf) = fanRays.row(*onf) - fanRays.row(*nf);
     }
     fanRays.row(*nf) = unit_vector<Rational>(fanRays.cols(),0);
     fanRays = fanRays.minor(usedRays,All);
 
-    perl::Object fanCycle("Cycle", mlist<Addition>());
+    BigObject fanCycle("Cycle", mlist<Addition>());
     fanCycle.take("PROJECTIVE_VERTICES") << fanRays; 
     fanCycle.take("MAXIMAL_POLYTOPES") << cones.minor(conesAtVertex,usedRays);
     fanCycle.take("WEIGHTS") << weights.slice(conesAtVertex);

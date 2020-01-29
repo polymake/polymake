@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -51,9 +51,9 @@ public:
 template <typename Decoration>
 class SetAvoidingCut {
 protected:
-  const Set<int> avoid;
+  const Set<Int> avoid;
 public:
-  SetAvoidingCut(const Set<int>& set_arg) : avoid(set_arg) {}
+  SetAvoidingCut(const Set<Int>& set_arg) : avoid(set_arg) {}
 
   bool operator()(const Decoration &data) const
   {
@@ -67,9 +67,9 @@ public:
 template <typename Decoration>
 class NotFullSetCut {
 protected:
-  const int full_set_size;
+  const Int full_set_size;
 public:
-  NotFullSetCut(const int full_set_size_)
+  NotFullSetCut(const Int full_set_size_)
     : full_set_size(full_set_size_) {}
 
   bool operator()(const Decoration& data) const
@@ -91,9 +91,9 @@ const bool LesserEqual = true;
 template <typename Decoration, bool lesser_equal>
 class RankCut {
 protected:
-  const int compare;
+  const Int compare;
 public:
-  RankCut(int comp_arg)
+  RankCut(Int comp_arg)
     : compare(comp_arg) {}
 
   bool operator()(const Decoration& data) const
@@ -106,7 +106,7 @@ public:
  * This encapsulates various parameters for restricting the rank of a lattice.
  */
 struct RankRestriction {
-  int boundary_rank;            // up to which dimension (included!)
+  Int boundary_rank;            // up to which dimension (included!)
   bool rank_restricted;         // Do we want to restrict the rank?
   bool rank_restriction_type;   // RankCutType::LesserEqual or ::GreaterEqual
 
@@ -115,7 +115,7 @@ struct RankRestriction {
     , rank_restricted(false)
     , rank_restriction_type(false) {}
 
-  RankRestriction(bool res_arg, bool res_type, int dim_arg)
+  RankRestriction(bool res_arg, bool res_type, Int dim_arg)
     : boundary_rank(dim_arg)
     , rank_restricted(res_arg)
     , rank_restriction_type(res_type) {}
@@ -153,7 +153,7 @@ public:
  *   Given the closure data of a node and the decoration of *one of* its predecessors, this computes
  *   the decoration of this node.
  * - const Decoration compute_artificial_decoration(const NodeMap<Directed, BasicDecoration>& decor,
- *                                                  const std::list<int>& max_nodes) const
+ *                                                  const std::list<Int>& max_nodes) const
  *   In some cases, an artificial top node is added to the lattice at the end of the algorithm. This
  *   computes its decor from a node map containing all previous decorations and a list of indices of all
  *   nodes which are maximal.
@@ -167,21 +167,21 @@ public:
 template <typename FaceData = BasicClosureOperator<BasicDecoration>::ClosureData>
 class BasicDecorator {
 protected:
-  const int total_size;
-  const int initial_rank;
+  const Int total_size;
+  const Int initial_rank;
   const bool built_dually;
-  const Set<int> artificial_set;
+  const Set<Int> artificial_set;
 
 public:
   // dual type
-  BasicDecorator(int n_vertices, int top_rank, const Set<int> artificial)
+  BasicDecorator(Int n_vertices, Int top_rank, const Set<Int> artificial)
     : total_size(n_vertices)
-    , initial_rank(top_rank),
-      built_dually(true)
+    , initial_rank(top_rank)
+    , built_dually(true)
     , artificial_set(artificial) {}
 
   //primal type
-  BasicDecorator(int bottom_rank, const Set<int> artificial)
+  BasicDecorator(Int bottom_rank, const Set<Int> artificial)
     : total_size(0)
     , initial_rank(bottom_rank)
     , built_dually(false)
@@ -205,15 +205,15 @@ public:
   }
 
   BasicDecoration compute_artificial_decoration(const NodeMap<Directed, BasicDecoration>& decor,
-						const std::list<int>& max_nodes) const
+                                                const std::list<Int>& max_nodes) const
   {
     BasicDecoration data;
     auto max_list = attach_member_accessor( select(decor, max_nodes),
-                                            ptr2type<BasicDecoration, int, &BasicDecoration::rank>()
+                                            ptr2type<BasicDecoration, Int, &BasicDecoration::rank>()
                                             );
     data.rank = built_dually ?
-      accumulate(max_list, operations::min()) -1 :
-      accumulate(max_list, operations::max()) +1 ;
+      accumulate(max_list, operations::min())-1 :
+      accumulate(max_list, operations::max())+1 ;
     data.face = artificial_set;
     return data;
   }
@@ -222,3 +222,9 @@ public:
 } } }
 
 #endif
+
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:

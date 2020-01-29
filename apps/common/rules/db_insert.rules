@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -17,7 +17,6 @@
 #  This file is part of the polymake database interface polyDB.
 #
 #   @author Silke Horn, Andreas Paffenholz
-#   http://solros.de
 #   http://www.mathematik.tu-darmstadt.de/~paffenholz
 #
 
@@ -25,139 +24,97 @@ use namespaces qw(+ PolyDB);
 
 CREDIT polyDB
 
-# @category Database Write Access
-# Adds an object //obj// to the collection //col// in the database //db//.
-#
-# Note that you need write access to the database for this.
-#
-# @param Core::Object obj
-# @option String db                   name of the database
-# @option String collection           name of the collection
-# @option String id                   unique identifier, this is set to the name of the object, a different name should only be used in exceptional cases. This option is only valid if a single object is added.
-# @option String contributor          set the contributor
-# @option Bool local                  set to 1 if you want to use a local database (on localhost), default 0
-# @option String username
-# @option String password
-# @option Bool use_type_information   set to 1 to match properties with a template object
-# @option HASH type_information       object template specifying the properties to store
-# @option String type_information_key template name to load from the database
-# @option Bool nonew                  set to 1 if you don't want to compute missing properties but only delete surplus ones (only takes effect if use_type_info is also set to 1)
-# @option Bool keep_all_props         keep all properties present in the polymake object in the stored xml. Does not effect representation in the db. For this, provide a type information without a property mask
-# @option Bool noinsert               dont insert anything, just try evaluate the template
-# @option MongoClient client
-# @return String
-user_function db_insert ($, {db => $PolyDB::default::db_database_name, \
-                             collection => $PolyDB::default::db_collection_name, \
-                             local => 0, \
-                             id => undef, \
-                             contributor => undef, \
-                             username => $PolyDB::default::db_user, \
-                             password => $PolyDB::default::db_pwd, \
-                             client => undef, \
-                             use_type_information => 0, \
-                             type_information => undef, \
-                             type_information_key=> undef, \
-                             nonew => 0, \
-                             keep_all_props=> 0, \
-                             noxml=> 0, \
-                             noinsert => 0}) \
-{
-   my $obj;
-   my $is_array = 0;
-   if ( is_object($_[0]) ) {
-      if ( $_[0]->type->name eq "Array" ) {
-         $is_array = 1;
-      }
-      $obj = shift;
-   } else {
-      $obj = User::load(shift);
+package PolyDB::Collection;
+
+# @category Database Collection Administration
+# Common options for database insertions
+options %insert_options = (
+   # String id provide an id for the object to be written. 
+   # Can only be used if a single object is written into the database. 
+   # If not given, or for arrays of objects the name of the object is used as id
+   id => undef, 
+   # Bool use_schema use the schema for to collection stored in the database 
+   # to project the object so that it contains 
+   # precisely the required properties
+   use_schema => true,
+   # HASH schema provide a schema for the object
+   schema => undef, 
+   # HASH info provide all meta infmation for the object
+   info => undef, 
+   # String creation_date specify a creation date, can also be set in info, object, or current date will be used
+   # precedence options > info > object > current date
+   creation_date => undef, 
+   # String uri A uri with a description of the object and the collection it belongs to, can also be set in object or collection info
+   # precedence options > info > object
+   uri => undef,
+   # String polymake_version The minimal version needed to read the object from the database, can also be set in collection info
+   # precedence: options > info > current version
+   polymake_version => undef,
+   # Bool replace if true, an object with the same id in the database will be overwritten if it exists, otherwise it will be inserted
+   replace => false, 
+   # Bool verbose if true provides some status output for the insert
+   verbose => false, 
+   # Bool noinsert if true the object is only prepared according to the schema, 
+   # but not written into the database
+   # useful for testing
+   noinsert => false
+);
+
+# @category Database Collection Administration
+# Insert one or more objects into a given collection
+# @param Core::BigObject one or more objects to be inserted 
+# to be inserted into the database, or a filename containing an object or an array of objects
+# @options %insert_options
+# @return Int the number of objects written
+user_method insert(Core::BigObject+, %insert_options) {
+   my ($self, $obj, $options) = @_;
+
+   croak "no object given\n" if scalar(@$obj) == 0;
+   $options->{use_schema} = false if defined($options->{schema});
+
+   if ($options->{use_schema} ) {
+      croak "options use_schema and info cannot be used together\n"   if defined($options->{info});
+      croak "options use_schema and schema cannot be used together\n" if defined($options->{schema});
+
+      $options->{info}   = $self->get_own_info();
+      $options->{schema} = $self->get_own_schema();
+
+      $options->{creation_date} //= $options->{info}->{creation_date};
+      $options->{uri} //= $options->{info}->{uri};
+      $options->{polymake_version} //= $options->{info}->{polymake_version};
    }
-   my ($options) = @_;
-   my ($db, $collection) = ($options->{db}, $options->{collection});
-
-   # get client if not given by the options
-   my $client = $options->{client} // Client::get_client($options);
-
-   my $collection_handler = Client::get_collection($client, $db, $collection);
-
-   # get type information if not given by the options
-   my $type_information;
-   my $output;
-   # check if use of type information is wanted
-   # check if type information is given in the options, otherwise try to load one
-   if ($options->{use_type_information} or defined($type_information = $options->{type_information}) or (defined($options->{'type_information_key'}) )) {
-      unless (defined($type_information)) {
-         # set key to default if type information should be used but no key is given
-         if ( !defined($options->{'type_information_key'}) ) {
-            $options->{'type_information_key'} = 'default.'.$collection;
-         }
-         my $ti_query = {db => $db, collection => $collection, local => $options->{local}, client => $client, type_information_key => $options->{type_information_key}};
-         $type_information = db_get_type_information($ti_query) or
-            die "Type information requested but not loaded\n";
-         $options->{type_information} = $type_information;
-      }
-   }
-
-   if ( $is_array ) {
-      my $count = 0;
-
-      die "option id cannot be used for addition of arrays\n" if defined($options->{"id"});
-
+   
+   my $count = 0;
+   if ( scalar(@$obj) > 1  ) {
+      croak "option id cannot be used for addition of arrays\n" if defined($options->{id});
       foreach my $object (@$obj) {
-         my $id = $object->name;
-
-         if ($collection_handler->find_one({'_id' => $id}) && !$options->{noinsert}) {
-            if ($options->{verbose}) { print "id $id already exists\n"; }
-            next;
-         }
-
-         my $output = DBInsert::insert_into_col($object, $collection_handler, $id, $options);
-
-         if (!$options->{noinsert} && !$output->acknowledged ) {
-            die "Error while inserting into database\n";
-         }
-         $count++;
+         $count += $self->insert_or_replace($object, $options);
       }
-      print "Inserted $count objects.\n\n" if ($options->{verbose});
    } else {
-      my $id = $options->{"id"} // $obj->name;
-      $output = DBInsert::insert_into_col($obj, $collection_handler, $id, $options);
-      if (!$options->{noinsert} && !$output->acknowledged ) {
-         die "Error while inserting into database\n";
-      }
+      $count += $self->insert_or_replace($obj->[0], $options);
    }
+
+   print "Inserted $count objects.\n\n" if ($options->{verbose});
+   return $count;
 }
 
-# @category Database Write Access
-# Removes the object with a given //id// from the collection //col// in the database //db//.
-#
-# Note that you need write access to the database for this.
-#
-# @param String id
-# @option String db             name of the database
-# @option String collection     name of the collection
-# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
-# @option String username
-# @option String password
-# @option MongoClient client
-# @return String
-user_function db_remove ($, {db => $PolyDB::default::db_database_name, \
-                             collection => $PolyDB::default::db_collection_name, \
-                             local => 0, \
-                             username => $PolyDB::default::db_user, \
-                             password => $PolyDB::default::db_pwd, \
-                             client => undef}) \
-{
-   my ($id, $options) = @_;
-   my ($db, $collection) = ($options->{db}, $options->{collection});
-
-   # get client if not given by the options
-   my $client = $options->{client} // Client::get_client($options);
-
-   my $col_obj = Client::get_collection($client, $db, $collection);
-
-   return $col_obj->delete_one({'_id' => $id});
+# @category Database Collection Administration
+# Remove one object from a collection identified by its id
+# @param String id the id of the object to remove
+user_method remove($) {
+   my ($collection, $id) = @_;
+   my $output = $collection->delete_one({'_id' => $id});
+   return $output->deleted_count;
 }
+
+# @category Database Collection Administration
+# Remove all objects from a collection
+user_method remove_all() {
+   my ($collection) = @_;
+   my $output = $collection->delete_many({});
+   return $output->deleted_count;
+}
+
 
 
 # Local Variables:

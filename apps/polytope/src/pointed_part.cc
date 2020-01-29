@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -33,8 +33,8 @@ void orthogonalize(Matrix<E>& Points, Matrix<E>& LS)
 {
     // needed since project_to_orthogonal_complement wants a orthogonal basis.
     orthogonalize(entire(rows(LS)));
-    Set<int> noRays;
-    for (int i=0; i< Points.rows(); ++i){
+    Set<Int> noRays;
+    for (Int i = 0; i < Points.rows(); ++i) {
        if (Points(i,0) != 0)
           noRays += i;
     }
@@ -53,12 +53,12 @@ void orthogonalize(Matrix<E>& Points, Matrix<E>& LS)
  *  computes the pointed part of a polyhedron
  */
 template <typename Scalar>
-perl::Object pointed_part(perl::Object p_in)
+BigObject pointed_part(BigObject p_in)
 {
   Matrix<Scalar> Points, Inequalities, LinealitySpace;
 
-  perl::ObjectType t=p_in.type();
-  perl::Object p_out(t);
+  BigObjectType t=p_in.type();
+  BigObject p_out(t);
 
   // Check if VERTICES are given, because it forms the pointed part
   if (p_in.lookup("VERTICES") >> Points)
@@ -84,13 +84,12 @@ perl::Object pointed_part(perl::Object p_in)
      
     if(LinealitySpace.rows() != 0){
        Matrix<Scalar> M = Points * T(null_space(LinealitySpace));
-       Set<int> PointsInLinSpace;
+       Set<Int> PointsInLinSpace;
        Vector<Scalar> zeros = zero_vector<Scalar>(M.cols());
        
-       for (int i=0; i < M.rows(); ++i)
-          {
-             if (M.row(i) == zeros) PointsInLinSpace += i;
-          }
+       for (Int i=0; i < M.rows(); ++i) {
+          if (M.row(i) == zeros) PointsInLinSpace += i;
+       }
        
        Points = Points.minor(~PointsInLinSpace,All);
     }

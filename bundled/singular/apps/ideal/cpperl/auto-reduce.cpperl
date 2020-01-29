@@ -1,5 +1,6 @@
 {"app": "ideal",
  "inst": [
-  {"args": ["perl::Canned<const SingularIdeal&>", "perl::Canned<const Polynomial<Rational, int>&>"], "func": "reduce", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/ideal/singularIdeal.h"], "kind": "meth", "sig": "reduce:M.X"},
+  {"args": ["perl::Canned<const SingularIdeal&>", "perl::Canned<const Polynomial<Rational, Int>&>"], "func": "reduce", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/ideal/singularIdeal.h"], "kind": "meth", "sig": "reduce:M.X"},
+  {"args": ["perl::Canned<const SingularIdeal&>", "perl::Canned<const Array<Polynomial<Rational, Int>>&>"], "func": "reduce", "include": ["polymake/Array.h", "polymake/Polynomial.h", "polymake/Rational.h", "polymake/ideal/singularIdeal.h"], "kind": "meth", "sig": "reduce:M.X"},
  null ],
 "version": 3}

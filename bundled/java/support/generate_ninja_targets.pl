@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -22,7 +22,7 @@ sub add_jar_target {
    if (my @prereq_exts=$ConfigFlags{"bundled.${name}.RequireExtensions"} =~ /(\S+)/g) {
      $prereqs=join(" ", grep { defined } @all_jar_targets{@prereq_exts});
    }
-   my $jar_name="\${builddir}/jars/polymake_${name}.jar";
+   my $jar_name="\${buildtop}/jars/polymake_${name}.jar";
    $all_jar_targets{$name}=$jar_name;
    my $build_cmd="build $jar_name: jcompile \${root}/bundled/${name}/java/build.xml | \${root}/bundled/${name}/java/src";
    if ($prereqs) {
@@ -45,7 +45,7 @@ sub add_nativelib_target {
    foreach my $src_file (glob "$src_dir/*.c") {
       my ($src_name, $obj_name)=basename($src_file, "c");
       $src_file =~ s/^\Q$root\E/\${root}/;
-      my $obj_file="\${builddir}/bundled/$name/jni/$obj_name.o";
+      my $obj_file="\${buildtop}/bundled/$name/jni/$obj_name.o";
       $build_cmd .= <<"---";
 build $obj_file: ccompile $src_file || $all_jar_targets{$name}
   CextraFLAGS=\${bundled.java.NativeCFLAGS}
@@ -53,7 +53,7 @@ build $obj_file: ccompile $src_file || $all_jar_targets{$name}
 ---
       push @obj_files, $obj_file;
    }
-   my $libname="\${builddir}/lib/jni/libpolymake_${name}.\${bundled.java.NativeSO}";
+   my $libname="\${buildtop}/lib/jni/libpolymake_${name}.\${bundled.java.NativeSO}";
    $build_cmd .= "build $libname: nativemod @obj_files";
    foreach my $flag (sort keys %options) {
      $build_cmd .= "\n  $flag=$options{$flag}";

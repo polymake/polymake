@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,12 +26,12 @@ namespace polymake { namespace polytope {
 // Compute the (dual) h-vector of a simplicial or simple polytope from the f-vector.
 Vector<Integer> h_from_f_vec(const Vector<Integer>& f, const bool simplicial)
 {
-   const int d=f.size();
+   const Int d = f.size();
    Vector<Integer> h(d+1);
    Vector<Integer>::iterator h_k=h.begin();
-   for (int k=0, startsign=1;  k<=d;  ++k, ++h_k, startsign=-startsign) {
+   for (Int k = 0, startsign = 1;  k <= d;  ++k, ++h_k, startsign = -startsign) {
       *h_k = startsign * Integer::binom(d,d-k);
-      for (int i=1, sign=-startsign;  i<=k;  ++i, sign=-sign)
+      for (Int i = 1, sign = -startsign;  i <= k;  ++i, sign = -sign)
          *h_k += sign * Integer::binom(d-i,d-k) * (simplicial ? f[i-1] : f[d-i]);
    }
 
@@ -41,28 +41,28 @@ Vector<Integer> h_from_f_vec(const Vector<Integer>& f, const bool simplicial)
 // Inverse of the above
 Vector<Integer> f_from_h_vec(const Vector<Integer>& h, const bool simplicial)
 {
-   const int d=h.size()-1;
+   const Int d = h.size()-1;
    Vector<Integer> f(d);
 
-   for (int k=0; k<d; ++k) {
-      Integer f_k=0;
-      for (int i=k; i<=d; ++i)
-         f_k+=Integer::binom(i,k)*h[i];
+   for (Int k = 0; k < d; ++k) {
+      Integer f_k = 0;
+      for (Int i = k; i <= d; ++i)
+         f_k += Integer::binom(i,k)*h[i];
       if (simplicial)
-         f[d-1-k]=f_k;
+         f[d-1-k] = f_k;
       else
-         f[k]=f_k;
+         f[k] = f_k;
    }
 
    return f;
 }
 
 // Compute the h-vector from the g-vector of simplicial polytope
-Vector<Integer> h_from_g_vec(const Vector<Integer>& g, const int d)
+Vector<Integer> h_from_g_vec(const Vector<Integer>& g, const Int d)
 {
    Vector<Integer> h(d+1);
    Integer s(0);
-   for (int k=0; k<=d/2; ++k) {
+   for (Int k = 0; k <= d/2; ++k) {
       s += g[k];
       h[d-k] = h[k] = s;
    }
@@ -73,56 +73,59 @@ Vector<Integer> h_from_g_vec(const Vector<Integer>& g, const int d)
 // Inverse of the above
 Vector<Integer> g_from_h_vec(const Vector<Integer>& h)
 {
-   const int d=h.dim()-1;
+   const Int d = h.dim()-1;
    Vector<Integer> g((d+2)/2);
 
    g[0]=1;
-   for (int k=1; k<(d+2)/2; ++k) {
+   for (Int k = 1; k < (d+2)/2; ++k) {
       g[k] = h[k]-h[k-1];
    }
 
    return g;
 }
 
-Vector<int> binomial_representation(Integer l, int i){
-   if(l<1 or i<1)
+Vector<Int> binomial_representation(Integer l, Int i)
+{
+   if (l < 1 or i < 1)
       throw std::runtime_error("input must be positive");
-   std::list<int> rep;
-   while(l>0){
-      int n(0);
-      while(Integer::binom(n,i) <= l)
+   std::list<Int> rep;
+   while (l > 0) {
+      Int n = 0;
+      while (Integer::binom(n,i) <= l)
          ++n;
       rep.push_back(n-1);
-      l -= int(Integer::binom(n-1,i));
+      l -= Int(Integer::binom(n-1,i));
       --i;
    }
-   return Vector<int>(rep.size(), rep.begin());
+   return Vector<Int>(rep.size(), rep.begin());
 }
 
 // compute the thing that is commonly denoted l^<i> and sometimes
 // referred to as pseudopower.
-Integer pseudopower(Integer l, int i){
-   if(l==0)
+Integer pseudopower(Integer l, Int i)
+{
+   if (l==0)
       return 0;
    Integer pp = 0;
-   int k = i+1;
-   for(auto n : binomial_representation(l,i))
+   Int k = i+1;
+   for (auto n : binomial_representation(l,i))
       pp += Integer::binom(n+1,k--);
    return pp;
 }
 
-bool m_sequence(Vector<Integer> h){
-   if(h[0] != 1)
+bool m_sequence(Vector<Integer> h)
+{
+   if (h[0] != 1)
       return false;
-   for(int i = 1; i < h.size()-1; ++i){
-      if(pseudopower(h[i],i) < h[i+1])
+   for (Int i = 1; i < h.size()-1; ++i) {
+      if (pseudopower(h[i],i) < h[i+1])
          return false;
    }
    return true;
 }
 
 // Compute the (dual) h-vector of a simplicial or simple polytope from the f-vector.
-void h_from_f_vector(perl::Object p, bool simplicial)
+void h_from_f_vector(BigObject p, bool simplicial)
 {
    Vector<Integer> f=p.give("F_VECTOR");
    Vector<Integer> h=h_from_f_vec(f,simplicial);
@@ -134,7 +137,7 @@ void h_from_f_vector(perl::Object p, bool simplicial)
 }
 
 // Inverse of the above
-void f_from_h_vector(perl::Object p, bool simplicial)
+void f_from_h_vector(BigObject p, bool simplicial)
 {
    Vector<Integer> h;
    if (simplicial) {
@@ -149,15 +152,15 @@ void f_from_h_vector(perl::Object p, bool simplicial)
 }
 
 // Compute the h-vector from the g-vector of simplicial polytope
-void h_from_g_vector(perl::Object p)
+void h_from_g_vector(BigObject p)
 {
    const Vector<Integer> g=p.give("G_VECTOR");
-   const int d=p.give("COMBINATORIAL_DIM");
+   const Int d = p.give("COMBINATORIAL_DIM");
    p.take("H_VECTOR") << h_from_g_vec(g,d);
 }
 
 // Inverse of the above
-void g_from_h_vector(perl::Object p)
+void g_from_h_vector(BigObject p)
 {
    const Vector<Integer> h=p.give("H_VECTOR");
    p.take("G_VECTOR") << g_from_h_vec(h);

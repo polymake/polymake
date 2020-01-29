@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,8 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_TOPAZ_IS_SPHERE_H_H
-#define POLYMAKE_TOPAZ_IS_SPHERE_H_H
+#ifndef POLYMAKE_TOPAZ_IS_SPHERE_H
+#define POLYMAKE_TOPAZ_IS_SPHERE_H
 
 #include "polymake/IndexedSubset.h"
 #include "polymake/Integer.h"
@@ -29,25 +29,25 @@ namespace polymake { namespace topaz {
 
 // return values: 1=true, 0=false, -1=undef
 
-int is_sphere_h(const Lattice<BasicDecoration>& HD, const pm::SharedRandomState& random_source, const int strategy, const int n_stable_rounds);
+Int is_sphere_h(const Lattice<BasicDecoration>& HD, const pm::SharedRandomState& random_source, const Int strategy, const Int n_stable_rounds);
 
 template <typename Complex>
-int is_sphere_h(const Complex& C, const pm::SharedRandomState& random_source, const int strategy, const int n_stable_rounds)
+Int is_sphere_h(const Complex& C, const pm::SharedRandomState& random_source, const Int strategy, const Int n_stable_rounds)
 {
-   return is_sphere_h(hasse_diagram_from_facets(Array<Set<int> >(C)), random_source, strategy, n_stable_rounds);
+   return is_sphere_h(hasse_diagram_from_facets(Array<Set<Int>>(C)), random_source, strategy, n_stable_rounds);
 }
 
-int is_ball_or_sphere_h(const Lattice<BasicDecoration>& HD, const pm::SharedRandomState& random_source, const int strategy, const int n_stable_rounds);
+Int is_ball_or_sphere_h(const Lattice<BasicDecoration>& HD, const pm::SharedRandomState& random_source, const Int strategy, const Int n_stable_rounds);
 
 template <typename Complex>
-int is_ball_or_sphere_h(const Complex& C, const pm::SharedRandomState& random_source, const int strategy, const int n_stable_rounds)
+Int is_ball_or_sphere_h(const Complex& C, const pm::SharedRandomState& random_source, const Int strategy, const Int n_stable_rounds)
 {
-   return is_ball_or_sphere_h(hasse_diagram_from_facets(Array<Set<int> >(C)), random_source, strategy, n_stable_rounds);
+   return is_ball_or_sphere_h(hasse_diagram_from_facets(Array<Set<Int>>(C)), random_source, strategy, n_stable_rounds);
 }
 
 } }
 
-#endif // POLYMAKE_TOPAZ_IS_SPHERE_H_H
+#endif // POLYMAKE_TOPAZ_IS_SPHERE_H
 
 // Local Variables:
 // mode:C++

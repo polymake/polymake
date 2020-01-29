@@ -2,5 +2,6 @@
  "inst": [
   {"args": ["std::numeric_limits<Integer>(Integer)"], "func": "min", "include": ["polymake/Integer.h"], "kind": "stat", "sig": "Integer::minus_inf:M64"},
   {"args": ["std::numeric_limits<Rational>(Rational)"], "func": "min", "include": ["polymake/Rational.h"], "kind": "stat", "sig": "Rational::minus_inf:M64"},
+  {"args": ["std::numeric_limits<Int>(Int)"], "func": "min", "kind": "stat", "sig": "Int::min:M64"},
  null ],
 "version": 3}

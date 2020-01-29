@@ -1,6 +1,6 @@
 {"app": "common",
  "inst": [
-  {"pkg": "Polymake::common::SmithNormalForm"},
+  {"guard_name": "CORE_WRAPPERS_Smith_normal_form", "include": ["polymake/Smith_normal_form.h"], "pkg": "Polymake::common::SmithNormalForm", "wrapper_file": "include/core-wrappers/polymake/Smith_normal_form.h"},
   {"class": "SmithNormalForm<Integer>", "include": ["polymake/Integer.h", "polymake/Smith_normal_form.h"], "pkg": "Polymake::common::SmithNormalForm__Integer"},
  null ],
 "version": 3}

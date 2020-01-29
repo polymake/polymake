@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -17,247 +17,161 @@
 #  This file is part of the polymake database interface polyDB.
 #
 #   @author Silke Horn, Andreas Paffenholz
-#   http://solros.de
 #   http://www.mathematik.tu-darmstadt.de/~paffenholz
 #
 
-use namespaces qw(+ PolyDB);
+package PolyDB::Collection;
 
-CREDIT polyDB
+# @category Database Collection Administration
+# Common options for writing collection info and schema
+options %common_options = (
+   # String section collection name
+   collection => $PolyDB::default::db_collection_name,
+   # Bool update default false
+   update => false,
+   # Bool verbose default false
+   verbose => false,
+   # Bool replace default false
+   replace => false
+);
 
-# @category Database
-# Return the list of property names that can be searched in the database for a given database //db//,
-# collection //col// and optional template key.
-# @param String db name of the database, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available databases
-# @param String collection name of the collection, see [[http://www.polymake.org/doku.php/data|here]] or [[db_info]] for available collections
-# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
-# @return Array<String>
-user_function db_searchable_fields ( {db=>$PolyDB::default::db_database_name, collection=>$PolyDB::default::db_collection_name, local => 0, client => undef, type_information_key => undef }) {
-   my ($options) = @_;
+# @category Database Collection Administration
+# Options for writing collection info
+options %info_options = (
+   %common_options,
+   # String schema_id id of the associated schema doc
+   schema_id => undef, 
+);
 
-   if ( defined($options->{'type_information_key'})) {
-      my $t = db_get_type_information ( {db=>$options->{'db'}, collection=>$options->{'collection'}, local => $options->{'local'}, client => $options->{'client'}, type_information_key => $options->{'type_information_key'}});
+# @category Database Collection Administration
+# Options for writing collection schema
+options %schema_options = (
+   %common_options,
+   # String schema_id id 
+   schema_id => undef, 
+);
 
-      my $property_mask_name = defined($t->{'property_mask'}) ? 'property_mask' : 'template';
-      my $flat_properties = [];
-      DatabaseHelpers::add_properties($flat_properties,"",$t->{$property_mask_name});
-      foreach (@$flat_properties) {
-         s/^\.(.*)/$1/;
-         s/^attachments\.(.*)/$1/;
-      }
+# @category Database Collection Administration
+# set the info for a new collection
+# @param HASH info the info document
+# @options %info_options
+user_method set_info ($;%info_options) {
+   my ($self, $info, $options) = @_;
 
-      return new Array<String>(@{$flat_properties});
-   } else {
-      my $keylist = DatabaseHelpers::get_keys_for_collection($options->{'db'}, $options->{'collection'});
-      my $property_list = {};
-      foreach (@$keylist) {
-         my $t = db_get_type_information ( {db=>$options->{'db'}, collection=>$options->{'collection'}, local => $options->{'local'}, client => $options->{'client'}, type_information_key => $_ });
+   my $version = $PolyDB::default::db_polydb_version;
+   $info->{_id} = "info.".$version;
 
-         my $property_mask_name = defined($t->{'property_mask'}) ? 'property_mask' : 'template';
-         my $flat_properties = [];
-         DatabaseHelpers::add_properties($flat_properties,"",$t->{$property_mask_name});
-         foreach (@$flat_properties) {
-            s/^\.(.*)/$1/;
-            s/^attachments\.(.*)/$1/;
-         }
-         $property_list->{$_}->{'description'} = defined($t->{'description'}) ? $t->{'description'} : $_;
-         $property_list->{$_}->{'properties'} = $flat_properties;
-      }
-      return $property_list;
+   my $info_col = $self->get_own_info_collection();
+
+   if ( defined($options->{schema_id}) ) {
+      $info->{schema} = $options->{schema_id};
    }
-}
+   die "schema_id must be given in info file or as an option\n" if !defined($info->{schema});
+   
+   my $res=$info_col->find_one({'_id' => $info->{schema} });
+   die "no schema with id ".$info->{schema}." found. Please insert schema first\n" if !defined($res);
 
-user_function db_print_searchable_fields ( {db=>$PolyDB::default::db_database_name, collection=>$PolyDB::default::db_collection_name} ) {
-   my ($options) = @_;
-   my $sf = db_searchable_fields($options);
-   foreach my $key (sort keys %$sf) {
-      print $sf->{$key}->{'description'}, "\n----------------------------\n";
-      print join "\n", @{$sf->{$key}->{'properties'}};
-      print "\n\n";
-   }
-}
+   if ( $options->{replace} ) { $options->{update} = true; }
+   $res = $info_col->find_one({'_id' => $info->{_id} });
+   die "info already exists but none of the options update or replace is given\n" if (defined($res) && !$options->{update});
+   if ( !defined($res) ) { $options->{update} = false; }
 
-# 20171204: Made type_information_key undef by default to allow users to pass the key "default" explicitly, otherwise default keys have the form "default.<collection>" as there may be more than one collection in the db with a default type information entry
-user_function db_get_type_information({db => $PolyDB::default::db_database_name, \
-                                       collection => $PolyDB::default::db_collection_name, \
-                                       local => 0, \
-                                       client => undef, \
-                                       type_information_key => undef})\
-{
-   my ($options) = @_;
-   my $local = $options->{local};
+   my $collection_name = $self->{name};
+   (my $section_name, $info->{collection}) = $collection_name =~ /(.*)\.([\w-]+)/;
+   @{$info->{section}} = split /\./, $section_name;   
 
-   if ( !defined($options->{"type_information_key"}) ) {
-      $options->{"type_information_key"} = "default.".$options->{"collection"};
-   }
-
-   my $client = $options->{client} // Client::get_client($local, "", "");
-
-   my $tcol = $client->get_database($options->{"db"})->get_collection("$PolyDB::default::db_type_information")
-      // die "No connection to database $PolyDB::default::db_type_information\n";
-   my %db_query = ('$or' => [{"_id"=>$options->{'type_information_key'}}, {"_id"=>$options->{'type_information_key'}.".polymake"}] );
-   $db_query{'db'} = $options->{"db"};
-   $db_query{'col'} = $options->{"collection"};
-   $db_query{'key'} = $options->{'type_information_key'};
-   my $template = $tcol->find(\%db_query)->next
-      // die "no template data for collection $options->{'collection'} in database $options->{'db'} with key $options->{'type_information_key'}";
-
-   return $template;
-}
-
-# @category Database Admin
-# Set or update type (and template) information for collection //col// in the database //db//.
-#
-# Note that you need write access to the type database for this.
-#
-# @option String db database name
-# @option String col collection name
-# @option String key the key of the type information
-# @option Bool replace type information for this database, collection and key already exists and should be replaced
-# @option String file a filename containing the type information as json document (only one of file and type_information allowed)
-# @option HASH type_information the type information as per hash (only one of file and type_information allowed)
-# @option String username
-# @option String password
-# @option String polyDB_version the version of polyDB this type information applies to
-# @option Bool verbose
-user_function db_set_type_information ({db=> undef, collection => undef, local => 0, \
-                                        key => undef, \
-                                        replace => false, \
-                                        file => undef, type_information => undef, \
-                                        username => undef, password => undef, \
-                                        polydb_version => undef, \
-                                        verbose => false \
-                                       } ) \
-{
-   my ($options) = @_;
-
-   my $min_version = "2.0"; # this function is for the new format
-
-   my $type_information;
-   if ( defined($options->{'file'}) ) {
-      if ( defined($options->{'type_information'}) ) {
-         die "options file and type_information are mutually exclusive\n";
-      }
-      $type_information = DatabaseHelpers::read_json($options->{'file'});
-   } elsif ( $options->{'type_information'}) {
-      $type_information = $options->{'type_information'};
-   } else {
-      die "one of the options file or type_information must be given\n";
-   }
-
-   my $version = $options->{'polydb_version'} // $type_information->{'polydb_version'};
-   if ( !defined($version) ) {
-      die "version not defined or different version in options and file\n";
-   }
-   if ( !Client::check_polydb_version($version,$min_version) ) {
-      die "this function is for polydb files of version $min_version and higher\n";
-   }
-
-   # database/collection/type_information key can be given in two places: either it is contained in the type_information or set via options
-   # missing name in the type_information is, however, only allowed when we do (partial) updates of already given type_informations
-   my $db = $options->{'db'} // $type_information->{'db'};
-   if ( !defined($db) ) {
-      if ( $PolyDB::default::db_database_name ne "" ) {
-         $db = $PolyDB::default::db_database_name;
-      } else {
-         die "missing database in options and type_information\n";
-      }
-   }
-   my $collection = $options->{'collection'} // $type_information->{'col'};
-   if ( !defined($collection) ) {
-      if ( $PolyDB::default::db_collection_name ne "" ) {
-         $collection = $PolyDB::default::db_collection_name;
-      } else {
-         die "missing collection in options and type_information\n";
-      }
-   }
-   my $key = $options->{'key'} // $type_information->{'key'}
-      // die "missing type_information key in options and type_information\n";
-   my $id = $key.".polymake";
-
-   # now we can connect to the database
-   # username/password are either taken from options or from the custom variables
-   my $client = Client::get_client($options);
-   my $tdb = $client->get_database($db);
-   my $tcol = $tdb->get_collection("$PolyDB::default::db_type_information");
-
-   my $update = 0;
-   if ( my $res=$tcol->find_one({'db'=>$db, 'col'=>$collection, 'key' => $key, 'polydb_version' => $version, '_id' => $id })) {
-      $update = 1;
-   } else {
-      if ( $options->{'replace'} ) {
-         die "option replace given but no existing type information found\n";
-      }
-      if (my $res2 = $tcol->find_one({'_id' => $id})) {
-         die "given id/key already exists in database\n";
-      }
-      $type_information->{'_id'} = $id;
-      $type_information->{'key'} = $key;
-      $type_information->{'db'} = $db;
-      $type_information->{'col'} = $collection;
-   }
-
-   # FIXME do some sanity checks for new type_informations
-   if ( !$update or $options->{'replace'} ) {
-      if ( !defined($type_information->{'type'})
-           or !defined($type_information->{'contributor'})
-           or !defined($type_information->{'app'})
-           or !defined($type_information->{'version'}) ) {
-         die "new or replacement type_informations must define type, contributor, app, and version\n";
-      }
-   }
-
-   if ($update) {
+   if ($options->{update}) {
       my $output;
-      if ( $options->{'replace'} ) {
-         $output = $tcol->replace_one({'_id' => $id, 'db'=>$db, 'col'=>$collection, 'key'=>$key}, $type_information);
+      if ( $options->{replace} ) {
+         $output = $info_col->replace_one({_id => $info->{_id}}, $info);
       } else {
-         $output = $tcol->update_one({'_id' => $id, 'db'=>$db, 'col'=>$collection, 'key'=>$key}, {'$set' => $type_information});
+         $output = $info_col->update_one({_id => $info->{_id}}, {'$set' => $info});
       }
       if ($options->{verbose}) {
          if ($output->acknowledged) {
-            print "successfully updated type information for $db.$collection\n"
+            print "successfully updated type information for $section.$collection\n"
          } else {
-            print "an error occurred when trying to update the type_information for $db.$collection:\n$output\n";
+            print "an error occurred when trying to update the type_information for $section.$collection:\n$output\n";
          }
       }
 
    } else {
-      my $output = $tcol->insert_one($type_information);
+      my $output = $info_col->insert_one($info);
       if ($options->{verbose}) {
          if ($output->acknowledged) {
-            print "successfully saved type information for $db.$collection\n";
+            print "successfully saved type information for $section.$collection\n";
          } else {
-            print "an error occurred when trying to save the type_information for $db.$collection:\n$output\n";
+            print "an error occurred when trying to save the type_information for $section.$collection:\n$output\n";
          }
       }
    }
 
-   undef $client;
 }
 
-function convert_type_information {
+# @category Database Collection Administration
+# set the schema for a new collection
+# @param HASH schema the schema document
+# @options %schema_options
+user_method set_schema ($; %schema_options) {
+   my ($self, $schema, $options) = @_;
 
-   my ($old_type_info) = @_;
-   my $type_info = {};
+   my $version = $PolyDB::default::db_polydb_version;
 
-   $type_info->{"_id"} = $old_type_info->{'_id'}.".polymake";
-   $type_info->{"key"} = $old_type_info->{'key'};
-   $type_info->{"description"} = $old_type_info->{"key"};
-   $type_info->{'polydb_version'} = "2.0";
-   $type_info->{"db"} = $old_type_info->{'db'};
-   $type_info->{"col"} = $old_type_info->{'col'};
-   $type_info->{"type"} = $old_type_info->{'basic_type'};
-   $type_info->{'type'} =~ s/\w+::(\w+)<\w+>/$1/;
-   $type_info->{"contributor"} = $old_type_info->{'contributor'};
-   $type_info->{"property_mask"} = $old_type_info->{'template'};
-   $type_info->{'app'} = $old_type_info->{'app'};
-   $type_info->{'version'} = $old_type_info->{'version'};
-   $type_info->{'json_modifier'} = $old_type_info->{'modifier'};
-   $type_info->{'type'} = $old_type_info->{'basic_type'};
-   return $type_info;
+   if ( ref($schema) eq "Polymake::Schema" ) {
+      $schema = $schema->source;
+   }
+
+   my $info_col = $self->get_own_info_collection();
+   my $schema_id = $options->{schema_id} // "schema.".$version;
+   
+   if ( $options->{replace} ) { $options->{update} = true; }
+   my $res=$info_col->find_one({'_id' => $schema_id});
+   die "schema already exists but none of the options update or replace is given\n" if (defined($res) && !$options->{update});
+   if ( !defined($res) ) { $options->{update} = false; }
+
+   my $collection_name = $self->{name};
+   my ($section_name, $collection) = $collection_name =~ /(.*)\.([\w-]+)/;
+   my $section_array =[];
+   @$section_array = split /\./, $section_name;
+
+   $schema = Schema::schema2document($schema);
+   
+   if ($options->{update}) {
+      my $output = $info_col->update_one({_id => $schema_id}, {'$set' => { schema => $schema, section=>$section_array, collection=>$collection}});
+      if ($options->{verbose}) {
+         if ($output->acknowledged) {
+            print "successfully updated schema for $self->{collection} with schema_id $schema_id\n"
+         } else {
+            print "an error occurred when trying to update the schema for $self->{collection} with schema_id $schema_id:\n$output\n";
+         }
+      }
+   } else {
+      my $output = $info_col->insert_one({ '_id' => $schema_id, schema => $schema, section=>$section_array, collection=>$collection });
+      if ($options->{verbose}) {
+         if ($output->acknowledged) {
+            print "successfully saved schema for $self->{collection} with schema_id $schema_id\n";
+         } else {
+            print "an error occurred when trying to save the schema for $self->{collection} with schema_id $schema_id:\n$output\n";
+         }
+      }
+   }
 }
 
+# @category Database Collection Administration
+# list all indices defined for a collection
+user_method indices () {
+   my ($self) = @_;
+
+   my $indexes = $self->indexes->list;
+   while ( my $index = $indexes->next ) {
+      print $index->{name}, "\n";
+      foreach (keys %{$index->{key}} ) {
+         print "   ", $_, ": ";
+         print $index->{key}->{$_} == 1 ? "ascending" : "descending";
+         print "\n";
+      }
+   }
+}
 
 # Local Variables:
 # mode: perl

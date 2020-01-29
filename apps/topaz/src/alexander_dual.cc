@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,18 +22,18 @@
 
 namespace polymake { namespace topaz {
 
-perl::Object alexander_dual(perl::Object p_in, perl::OptionSet options)
+BigObject alexander_dual(BigObject p_in, OptionSet options)
 {
-   Array< Set<int> > MNF = p_in.give("MINIMAL_NON_FACES");
-   const int n_vert = p_in.give("N_VERTICES");
+   Array<Set<Int>> MNF = p_in.give("MINIMAL_NON_FACES");
+   const Int n_vert = p_in.give("N_VERTICES");
 
    for (auto nf=entire(MNF); !nf.at_end(); ++nf)
       *nf = range(0,n_vert-1) - *nf;
 
-   Set<int> V = accumulate(MNF, operations::add());
+   Set<Int> V = accumulate(MNF, operations::add());
    adj_numbering(MNF,V);
 
-   perl::Object p_out("SimplicialComplex");
+   BigObject p_out("SimplicialComplex");
    p_out.set_description() << "Alexander dual of " << p_in.name() << endl;
 
    if (MNF.empty()) MNF.resize(1);      // add a single empty face

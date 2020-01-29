@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -41,9 +41,9 @@ class HSV;
 */
 class RGB : public GenericStruct<RGB> {
 public:
-   DeclSTRUCT( DeclFIELD(red,double)
-               DeclFIELD(green,double)
-               DeclFIELD(blue,double) );
+   DeclSTRUCT( DeclFIELD(red, double)
+               DeclFIELD(green, double)
+               DeclFIELD(blue, double) );
 protected:
    void verify() const;
    void scale_and_verify();
@@ -55,8 +55,8 @@ public:
    /// constructor from individual color channels
    RGB(double r, double g, double b) : red(r), green(g), blue(b) { verify(); }
 
-   /// ... variant for int parameters
-   RGB(int r, int g, int b) : red(r), green(g), blue(b) { scale_and_verify(); }
+   /// ... variant for integer parameters
+   RGB(Int r, Int g, Int b) : red(double(r)), green(double(g)), blue(double(b)) { scale_and_verify(); }
 
    /// converts from HSV representation
    RGB(const HSV&);
@@ -86,9 +86,9 @@ struct redirect_object_traits<RGB>
 */
 class HSV : public GenericStruct<HSV> {
 public:
-   DeclSTRUCT( DeclFIELD(hue,double)
-               DeclFIELD(saturation,double)
-               DeclFIELD(value,double) );
+   DeclSTRUCT( DeclFIELD(hue, double)
+               DeclFIELD(saturation, double)
+               DeclFIELD(value, double) );
 protected:
    void verify() const;
 public:

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -37,11 +37,11 @@ typedef Array<BBitset> SimplexArray;
 typedef Array<SimplexArray> RepArray;
 
 template<typename Scalar>
-RepArray representative_simplices(int d, const Matrix<Scalar>& V, const Array<Array<int>>& generators)
+RepArray representative_simplices(Int d, const Matrix<Scalar>& V, const Array<Array<Int>>& generators)
 {
    const group::PermlibGroup sym_group(generators);
    RepArray cds(d+1);
-   for (int k=0; k<=d; ++k) {
+   for (Int k = 0; k <= d; ++k) {
       Set<BBitset> reps;
       for (simplex_rep_iterator<Scalar, BBitset> sit(V, k, sym_group); !sit.at_end(); ++sit) {
          reps += *sit; // the iterator may produce isomorphic simplices more than once
@@ -53,7 +53,7 @@ RepArray representative_simplices(int d, const Matrix<Scalar>& V, const Array<Ar
 
 template <typename Scalar>
 Array<BBitset>
-representative_max_interior_simplices(int d, const Matrix<Scalar>& V, const Array<Array<int>>& generators)
+representative_max_interior_simplices(Int d, const Matrix<Scalar>& V, const Array<Array<Int>>& generators)
 {
    const group::PermlibGroup sym_group(generators);
    Set<BBitset> reps;
@@ -66,11 +66,11 @@ representative_max_interior_simplices(int d, const Matrix<Scalar>& V, const Arra
 
 template <typename Scalar>
 std::pair<Array<BBitset>, Array<BBitset>>
-representative_interior_and_boundary_ridges(perl::Object p, perl::OptionSet options)
+representative_interior_and_boundary_ridges(BigObject p, OptionSet options)
 {
    const bool is_config = p.isa("PointConfiguration");
 
-   const int d = is_config 
+   const Int d = is_config 
       ? p.give("CONVEX_HULL.COMBINATORIAL_DIM")
       : p.give("COMBINATORIAL_DIM");
 
@@ -85,7 +85,7 @@ representative_interior_and_boundary_ridges(perl::Object p, perl::OptionSet opti
       ? p.give("POINTS")
       : p.give("RAYS");
 
-   const Array<Array<int>> generators = is_config
+   const Array<Array<Int>> generators = is_config
       ? p.give("GROUP.POINTS_ACTION.GENERATORS")
       : p.give("GROUP.RAYS_ACTION.GENERATORS");
    const group::PermlibGroup sym_group(generators);

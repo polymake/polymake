@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,12 +28,12 @@ namespace polytope {
 
 
 template <typename Scalar>
-Matrix<Integer> integer_points_bbox(perl::Object p_in)
+Matrix<Integer> integer_points_bbox(BigObject p_in)
 {
    // get specification of polytope
    const Matrix<Scalar> H = p_in.give("FACETS | INEQUALITIES");
    const Matrix<Scalar> E = p_in.lookup("AFFINE_HULL | EQUATIONS");
-   const int d = H.cols() - 1;
+   const Int d = H.cols()-1;
 
    // First find lower and upper bounds on each component by solving LPs in each +/- unit
    // direction. The order does not matter, since the LP solver (currently) does not allow for a
@@ -49,9 +49,9 @@ Matrix<Integer> integer_points_bbox(perl::Object p_in)
    obj[0] = 0;
 
    // pass through dimensions
-   for (int i = 1; i <= d; ++i) {
+   for (Int i = 1; i <= d; ++i) {
       // set up unit vector
-      for (int j = 1; j <= d; ++j) {
+      for (Int j = 1; j <= d; ++j) {
          if (i != j)
             obj[j] = 0;
          else
@@ -85,7 +85,7 @@ Matrix<Integer> integer_points_bbox(perl::Object p_in)
       bool valid = true;
 
       // check whether current point satisfies all equations
-      for (int i = 0; i < E.rows(); ++i) {
+      for (Int i = 0; i < E.rows(); ++i) {
          if (convert_to<Scalar>(cur) * E.row(i) != 0) {
             valid = false;
             break;
@@ -94,7 +94,7 @@ Matrix<Integer> integer_points_bbox(perl::Object p_in)
 
       // check whether current point satisfies all inequalities
       if (valid) {
-         for (int i = 0; i < H.rows(); ++i) {
+         for (Int i = 0; i < H.rows(); ++i) {
             if (convert_to<Scalar>(cur) * H.row(i) < 0) {
                valid = false;
                break;
@@ -107,7 +107,7 @@ Matrix<Integer> integer_points_bbox(perl::Object p_in)
          P /= cur;
 
       // propagate carry if necessary
-      int curd = 1;
+      Int curd = 1;
       while (curd <= d && cur[curd] >= U[curd]) {
          cur[curd] = L[curd];
          ++curd;

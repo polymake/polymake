@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,12 +31,12 @@ namespace polymake { namespace group {
 
 namespace {      
 
-template<typename Element>
+template <typename Element>
 struct set_chooser {
    typedef hash_set<Element> type;
 };
 
-template<>
+template <>
 struct set_chooser<Matrix<double>> {
    typedef ApproximateSet<Matrix<double>> type;
 };
@@ -59,27 +59,27 @@ conjugacy_class_impl(const Array<Element>& generators,
 
 } // end anonymous namespace
       
-template<typename Scalar>
+template <typename Scalar>
 auto
-all_group_elements(perl::Object MatrixAction)
+all_group_elements(BigObject MatrixAction)
 {
    const Array<Matrix<Scalar>> generators = MatrixAction.give("GENERATORS");
    return Set<Matrix<Scalar>>(entire(all_group_elements_impl(generators)));
 }
 
-template<typename Element>
+template <typename Element>
 auto conjugacy_classes(const Array<Element>& generators, 
                        const Array<Element>& conjugacy_classes_representatives)
 {
    Array<Set<Element>> conjugacy_classes(conjugacy_classes_representatives.size());
-   for (int i=0; i<conjugacy_classes_representatives.size(); ++i)
+   for (Int i = 0; i<conjugacy_classes_representatives.size(); ++i)
       conjugacy_classes[i] = conjugacy_class_impl(generators, conjugacy_classes_representatives[i]);
 
    return conjugacy_classes;
 }
 
 template<typename Element>
-auto conjugacy_class(perl::Object A, const Element& element)
+auto conjugacy_class(BigObject A, const Element& element)
 {
    const Array<Element> generators = A.give("GENERATORS");
    return conjugacy_class_impl(generators, element);

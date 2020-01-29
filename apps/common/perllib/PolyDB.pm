@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -17,20 +17,24 @@
 #  This file is part of the polymake database interface polyDB.
 #
 #   @author Silke Horn, Andreas Paffenholz
-#   http://solros.de
 #   http://www.mathematik.tu-darmstadt.de/~paffenholz
 #
 
 use MongoDB;
 use MongoDB::OID;
+require Polymake::BSONbooleanAdapter;
 
-use PolyDB::Client;
-use PolyDB::DatabaseHelpers;
-use PolyDB::DBInsert;
-use PolyDB::PolymakeJsonConversion;
-use PolyDB::DatabaseCursor;
-if ($INC{"Polymake/Core/Shell.pm"}) {
-   require PolyDB::Shell;
-}
+require PolyDB::Cursor;
+require PolyDB::Collection;
+require PolyDB::Client;
+require PolyDB::Schema;
+require PolyDB::JsonIO;
 
 1;
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

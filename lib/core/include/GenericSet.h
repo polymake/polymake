@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -33,8 +33,8 @@
 
 namespace pm {
 
-template <typename E, typename Comparator=operations::cmp> class Set;
-template <typename E, typename Comparator=operations::cmp> class PowerSet;
+template <typename E, typename Comparator = operations::cmp> class Set;
+template <typename E, typename Comparator = operations::cmp> class PowerSet;
 
 template <typename SetRef1, typename SetRef2, typename Controller> class LazySet2;
 template <typename Eref, typename Comparator> class SingleElementSetCmp;
@@ -57,7 +57,7 @@ template <typename T, typename... E>
 using is_generic_set = is_derived_from_instance_of<pure_type_t<T>, GenericSet, E...>;
 
 template <typename T>
-using is_integer_set = is_generic_set<T, int, operations::cmp>;
+using is_integer_set = is_generic_set<T, Int, operations::cmp>;
 
 /** @class GenericSet
     @brief @ref generic "Generic type" for \ref set_sec "ordered sets"
@@ -79,6 +79,7 @@ public:
 
    static_assert(!std::is_same<Comparator, operations::cmp_unordered>::value, "comparator must define a total ordering");
    static_assert(!std::is_same<Comparator, operations::cmp>::value || is_ordered<E>::value, "elements must have a total ordering");
+   static_assert(!is_among<E, bool, int>::value, "invalid Set element type");
 
    using persistent_type = typename persistent_set<E, Comparator>::type;
    /// @ref generic "generic type"
@@ -146,10 +147,10 @@ protected:
    struct lazy_op<Left, Right, Controller,
                   std::enable_if_t<(is_derived_from<pure_type_t<Left>, GenericSet>::value &&
                                     !pure_unwary_t<Left>::template propagate_rvalue<Left>::value &&
-                                    std::is_same<E, pure_type_t<Right>>::value &&
-                                    !pure_unwary_t<Left>::template custom_op<Left, Right, Controller>::value)>> {
+                                    std::is_same<E, prevent_int_element<pure_type_t<Right>>>::value &&
+                                    !pure_unwary_t<Left>::template custom_op<Left, prevent_int_element<Right>, Controller>::value)>> {
 
-      using e_set = SingleElementSetCmp<add_const_t<Right>, Comparator>;
+      using e_set = SingleElementSetCmp<prevent_int_element<add_const_t<Right>>, Comparator>;
       using type = LazySet2<add_const_t<unwary_t<Left>>, e_set, Controller>;
 
       static type make(Left&& l, Right&& r)
@@ -162,25 +163,25 @@ protected:
    struct lazy_op<Left, Right, Controller,
                   std::enable_if_t<(is_derived_from<pure_type_t<Left>, GenericSet>::value &&
                                     !pure_unwary_t<Left>::template propagate_rvalue<Left>::value &&
-                                    std::is_same<E, pure_type_t<Right>>::value &&
-                                    pure_unwary_t<Left>::template custom_op<Left, Right, Controller>::value)>>
-      : pure_unwary_t<Left>::template custom_op<Left, Right, Controller> {};
+                                    std::is_same<E, prevent_int_element<pure_type_t<Right>>>::value &&
+                                    pure_unwary_t<Left>::template custom_op<Left, prevent_int_element<Right>, Controller>::value)>>
+      : pure_unwary_t<Left>::template custom_op<Left, prevent_int_element<Right>, Controller> {};
 
    template <typename Left, typename Right, typename Controller>
    struct lazy_op<Left, Right, Controller,
                   std::enable_if_t<(is_derived_from<pure_type_t<Left>, GenericSet>::value &&
                                     pure_unwary_t<Left>::template propagate_rvalue<Left>::value &&
-                                    std::is_same<E, pure_type_t<Right>>::value)>> {
+                                    std::is_same<E, prevent_int_element<pure_type_t<Right>>>::value)>> {
       using r_x_type = Left&&;
    };
 
    template <typename Left, typename Right, typename Controller>
    struct lazy_op<Left, Right, Controller,
-                  std::enable_if_t<(std::is_same<E, pure_type_t<Left>>::value &&
+                  std::enable_if_t<(std::is_same<E, prevent_int_element<pure_type_t<Left>>>::value &&
                                     is_derived_from<pure_type_t<Right>, GenericSet>::value &&
                                     (!pure_unwary_t<Right>::template propagate_rvalue<Right>::value || std::is_same<Controller, set_difference_zipper>::value) &&
-                                    !pure_unwary_t<Right>::template custom_op<Left, Right, Controller>::value)>> {
-      using e_set = SingleElementSetCmp<add_const_t<Left>, Comparator>;
+                                    !pure_unwary_t<Right>::template custom_op<prevent_int_element<Left>, Right, Controller>::value)>> {
+      using e_set = SingleElementSetCmp<prevent_int_element<add_const_t<Left>>, Comparator>;
       using type = LazySet2<e_set, add_const_t<unwary_t<Right>>, Controller>;
 
       static type make(Left&& l, Right&& r)
@@ -191,15 +192,15 @@ protected:
 
    template <typename Left, typename Right, typename Controller>
    struct lazy_op<Left, Right, Controller,
-                  std::enable_if_t<(std::is_same<E, pure_type_t<Left>>::value &&
+                  std::enable_if_t<(std::is_same<E, prevent_int_element<pure_type_t<Left>>>::value &&
                                     is_derived_from<pure_type_t<Right>, GenericSet>::value &&
                                     (!pure_unwary_t<Right>::template propagate_rvalue<Right>::value || std::is_same<Controller, set_difference_zipper>::value) &&
-                                    pure_unwary_t<Right>::template custom_op<Left, Right, Controller>::value)>>
-      : pure_unwary_t<Right>::template custom_op<Left, Right, Controller> {};
+                                    pure_unwary_t<Right>::template custom_op<prevent_int_element<Left>, Right, Controller>::value)>>
+      : pure_unwary_t<Right>::template custom_op<prevent_int_element<Left>, Right, Controller> {};
 
    template <typename Left, typename Right, typename Controller>
    struct lazy_op<Left, Right, Controller,
-                  std::enable_if_t<(std::is_same<E, pure_type_t<Left>>::value &&
+                  std::enable_if_t<(std::is_same<E, prevent_int_element<pure_type_t<Left>>>::value &&
                                     is_derived_from<pure_type_t<Right>, GenericSet>::value &&
                                     !std::is_same<Controller, set_difference_zipper>::value &&
                                     pure_unwary_t<Right>::template propagate_rvalue<Right>::value)>> {
@@ -386,17 +387,15 @@ struct spec_object_traits< Series<E, step_equal_1> >
 };
 
 // alias for an integer series
-using series = Series<int, false>;
+using series = Series<Int, false>;
 
 // alias for an integer sequence
-using sequence = Series<int, true>;
+using sequence = Series<Int, true>;
 
 // Create a sequence of all integral numbers between and including $start$ and $end$
-template <typename E>
-Series<E, true>
-range(const E& start, const E& end)
+inline sequence range(Int start, Int end)
 {
-   return Series<E, true>(start, int(end-start)+1);
+   return sequence(start, end - start+1);
 }
 
 template <typename Subset, typename Source, typename = void>
@@ -444,7 +443,7 @@ public:
 
    SingleElementSetCmp() = default;
 
-   template <typename Arg, typename=std::enable_if_t<std::is_constructible<base_t, Arg, int>::value>>
+   template <typename Arg, typename = std::enable_if_t<std::is_constructible<base_t, Arg, Int>::value>>
    explicit SingleElementSetCmp(Arg&& arg)
       : base_t(std::forward<Arg>(arg), 1) {}
 
@@ -475,14 +474,14 @@ struct spec_object_traits< SingleElementSetCmp<ElemRef, Comparator> >
 template <typename Comparator, typename E>
 auto scalar2set(E&& x)
 {
-   return SingleElementSetCmp<E, Comparator>(std::forward<E>(x));
+   return SingleElementSetCmp<prevent_int_element<E>, Comparator>(std::forward<E>(x));
 }
 
 /// construct an one-element set with standard (lexicographical) comparator type
 template <typename E>
 auto scalar2set(E&& x)
 {
-   return SingleElementSet<E>(std::forward<E>(x));
+   return SingleElementSet<prevent_int_element<E>>(std::forward<E>(x));
 }
 
 /* ----------
@@ -551,7 +550,7 @@ template <typename SetRef>
 class Complement
    : public redirected_container< Complement<SetRef>,
                                   mlist< ContainerRefTag< LazySet2<sequence, SetRef, set_difference_zipper> > > >
-   , public GenericSet< Complement<SetRef>, int, operations::cmp> {
+   , public GenericSet< Complement<SetRef>, Int, operations::cmp> {
 
    using diff_t = LazySet2<sequence, SetRef, set_difference_zipper>;
    diff_t diff;
@@ -566,14 +565,14 @@ public:
       : diff(sequence(0, check_container_ref_feature<SetRef, sparse_compatible>::value ? get_dim(arg) : 0),
              std::forward<Arg>(arg)) {}
 
-   Complement(const Complement& c, int dim)
+   Complement(const Complement& c, Int dim)
       : diff(sequence(0, dim), c.base())
    {
       if (POLYMAKE_DEBUG && c.dim() != 0 && c.dim() != dim)
          throw std::runtime_error("Complement - dimension mismatch");
    }
 
-   Complement(Complement&& c, int dim)
+   Complement(Complement&& c, Int dim)
       : diff(sequence(0, dim), *c.diff.get_alias2())
    {
       if (POLYMAKE_DEBUG && c.dim() != 0 && c.dim() != dim)
@@ -591,11 +590,11 @@ public:
       return diff.get_container2();
    }
 
-   bool contains(int k) const
+   bool contains(Int k) const
    {
       return diff.contains(k);
    }
-   int size() const
+   Int size() const
    {
       return dim()==0 ? 0 : dim() - diff.get_container2().size();
    }
@@ -603,7 +602,7 @@ public:
    {
       return size()==0;
    }
-   int dim() const
+   Int dim() const
    {
       return diff.get_container1().size();
    }
@@ -622,7 +621,7 @@ struct spec_object_traits< Complement<SetRef> >
 };
 
 template <typename SetRef>
-int get_dim(const Complement<SetRef>& c)
+Int get_dim(const Complement<SetRef>& c)
 {
    return c.dim();
 }
@@ -638,21 +637,21 @@ template <typename SetRef>
 class Set_with_dim
    : public modified_container_impl< Set_with_dim<SetRef>,
                                      mlist< ContainerRefTag< SetRef >,
-                                            OperationTag< pair<nothing, operations::identity<int> > >,
+                                            OperationTag< pair<nothing, operations::identity<Int> > >,
                                             ExpectedFeaturesTag<end_sensitive> > >
    , public GenericSet< Set_with_dim<SetRef>, typename deref<SetRef>::type::element_type,
                         typename deref<SetRef>::type::element_comparator> {
    using base_t = modified_container_impl<Set_with_dim>;
 protected:
    alias<SetRef> set;
-   int dim_ = 0;
+   Int dim_ = 0;
 public:
    using typename GenericSet<Set_with_dim>::element_type;
 
    Set_with_dim() = default;
 
    template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias<SetRef>, Arg>::value>>
-   Set_with_dim(Arg&& set_arg, int dim_arg)
+   Set_with_dim(Arg&& set_arg, Int dim_arg)
       : set(std::forward<Arg>(set_arg))
       , dim_(dim_arg) {}
 
@@ -661,11 +660,11 @@ public:
       return *set;
    }
 
-   int max_size() const
+   Int max_size() const
    {
       return dim_;
    }
-   int dim() const
+   Int dim() const
    {
       return dim_;
    }
@@ -787,7 +786,7 @@ struct includes {
    result_type operator() (typename function_argument<LeftRef>::const_type s1,
                            typename function_argument<RightRef>::const_type s2) const
    {
-      return incl(s2, s1)<1;
+      return incl(s2, s1) < 1;
    }
 };
 
@@ -819,20 +818,21 @@ struct size_estimator {
    */
    static bool seek_cheaper_than_sequential(const Set1& set1, const Set2& set2)
    {
-      const int n1=set1.size(), n2=set2.size();
-      return n2==0 || set1.tree_form() && ( n1/n2>=31 || (1<<(n1/n2))>n1 );
+      const Int n1 = set1.size();
+      const Int n2 = set2.size();
+      return n2 == 0 || set1.tree_form() && (n1/n2 >= 31 || (1L << (n1/n2)) > n1);
    }
 
-   static int compare(const Set1& set1, const Set2& set2)
+   static Int compare(const Set1& set1, const Set2& set2)
    {
-      return sign(set1.size()-set2.size());
+      return sign(set1.size() - set2.size());
    }
 };
 
 template <typename Set1, typename Set2>
 struct size_estimator<Set1, Set2, false> {
    static bool seek_cheaper_than_sequential(const Set1&, const Set2&) { return true; }
-   static int compare(const Set1&, const Set2&) { return 0; }
+   static Int compare(const Set1&, const Set2&) { return 0; }
 };
 
 /** Analyze the inclusion relation of two sets.
@@ -842,27 +842,27 @@ struct size_estimator<Set1, Set2, false> {
     @returnval  2 $s1$ and $s2$ are independent
 */
 template <typename Set1, typename Set2, typename E1, typename E2, class Comparator>
-int incl(const GenericSet<Set1, E1, Comparator>& s1, const GenericSet<Set2, E2, Comparator>& s2)
+Int incl(const GenericSet<Set1, E1, Comparator>& s1, const GenericSet<Set2, E2, Comparator>& s2)
 {
-   auto e1=entire(s1.top());
-   auto e2=entire(s2.top());
-   int result = size_estimator<Set1, Set2>::compare(s1.top(),s2.top());
+   auto e1 = entire(s1.top());
+   auto e2 = entire(s2.top());
+   Int result = size_estimator<Set1, Set2>::compare(s1.top(), s2.top());
    while (!e1.at_end() && !e2.at_end()) {
       switch (s1.top().get_comparator()(*e2,*e1)) {
       case cmp_eq: ++e1; ++e2; break;
       case cmp_lt:
-         if (result>0) return 2;
-         result=-1;
+         if (result > 0) return 2;
+         result = -1;
          ++e2;
          break;
       case cmp_gt:
-         if (result<0) return 2;
-         result=1;
+         if (result < 0) return 2;
+         result = 1;
          ++e1;
          break;
       }
    }
-   if ((!e1.at_end() && result<0) || (!e2.at_end() && result>0)) return 2;
+   if ((!e1.at_end() && result < 0) || (!e2.at_end() && result > 0)) return 2;
    return result;
 }
 
@@ -900,7 +900,7 @@ class Indices
                                      mlist< ContainerRefTag< ContainerRef >,
                                             OperationTag< BuildUnaryIt<operations::index2element> >,
                                             ExpectedFeaturesTag< indexed > > >,
-     public GenericSet< Indices<ContainerRef>, int, operations::cmp> {
+     public GenericSet< Indices<ContainerRef>, Int, operations::cmp> {
    using base_t = modified_container_impl<Indices>;
 protected:
    using alias_t = alias<ContainerRef>;
@@ -914,9 +914,9 @@ public:
 
    decltype(auto) get_container() const { return *c; }
 
-   bool contains(int i) const { return !get_container().find(i).at_end(); }
+   bool contains(Int i) const { return !get_container().find(i).at_end(); }
 
-   typename base_t::const_iterator find(int i) const { return get_container().find(i); }
+   typename base_t::const_iterator find(Int i) const { return get_container().find(i); }
 };
 
 template <typename ContainerRef>

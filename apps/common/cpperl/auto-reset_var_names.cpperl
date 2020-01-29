@@ -1,8 +1,8 @@
 {"app": "common",
  "inst": [
-  {"args": ["UniPolynomial<UniPolynomial<Rational, int>, Rational>"], "func": "reset_var_names", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "stat", "sig": "UniPolynomial::reset_var_names:M64"},
-  {"args": ["Polynomial<Rational, int>"], "func": "reset_var_names", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "kind": "stat", "sig": "Polynomial::reset_var_names:M64"},
+  {"args": ["UniPolynomial<UniPolynomial<Rational, Int>, Rational>"], "func": "reset_var_names", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "stat", "sig": "UniPolynomial::reset_var_names:M64"},
+  {"args": ["Polynomial<Rational, Int>"], "func": "reset_var_names", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "kind": "stat", "sig": "Polynomial::reset_var_names:M64"},
   {"args": ["UniPolynomial<Rational, Rational>"], "func": "reset_var_names", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "stat", "sig": "UniPolynomial::reset_var_names:M64"},
-  {"args": ["UniPolynomial<Rational, int>"], "func": "reset_var_names", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "stat", "sig": "UniPolynomial::reset_var_names:M64"},
+  {"args": ["UniPolynomial<Rational, Int>"], "func": "reset_var_names", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "stat", "sig": "UniPolynomial::reset_var_names:M64"},
  null ],
 "version": 3}

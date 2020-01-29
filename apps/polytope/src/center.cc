@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,11 +23,11 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-perl::Object center(perl::Object p_in)
+BigObject center(BigObject p_in)
 {
    // read some point in the relative interior
    const Vector<Scalar> point=p_in.give("REL_INT_POINT");
-   const int d = point.dim();
+   const Int d = point.dim();
 
    // check if point is affine
    if (is_zero(point[0]))
@@ -36,7 +36,7 @@ perl::Object center(perl::Object p_in)
    SparseMatrix<Scalar> tau=unit_matrix<Scalar>(d);
    tau[0].slice(range_from(1)) = -point.slice(range_from(1));
 
-   perl::Object p_out=transform<Scalar>(p_in, tau);
+   BigObject p_out=transform<Scalar>(p_in, tau);
    p_out.set_description() << "Centered polytope transformed from " << p_in.name() << endl;
 
    p_out.take("CENTERED") << true;

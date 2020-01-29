@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,29 +22,28 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-Matrix<Scalar> rand_metric(int n, perl::OptionSet options)
+Matrix<Scalar> rand_metric(Int n, OptionSet options)
 {
    RandomSeed seed(options["seed"]);
    UniformlyRandom<Scalar> random_source(seed);
    Matrix<Scalar> metric(n,n);
-   for (int i=0; i<n;++i)
-      for (int j=i+1;j<n;++j)
-         metric(i,j)=metric(j,i)=1+random_source.get();
+   for (Int i = 0; i < n; ++i)
+      for (Int j = i+1; j < n; ++j)
+         metric(i,j) = metric(j,i) = 1+random_source.get();
 
    return metric;
 }
 
-Matrix<Integer> rand_metric_int(int n,int digits, perl::OptionSet options)
+Matrix<Integer> rand_metric_int(Int n, Int digits, OptionSet options)
 {
-
    const RandomSeed seed(options["seed"]);
    UniformlyRandom<Integer> random(seed);
 
    const Integer d=Integer::pow(10,digits);
    Matrix<Integer> metric(n,n);
-   for (int i=0; i<n;++i)
-      for (int j=i+1;j<n;++j)
-         metric(i,j)=metric(j,i)=d+random.get()%d;
+   for (Int i = 0; i < n; ++i)
+      for (Int j = i+1; j < n; ++j)
+         metric(i,j) = metric(j,i) = d+random.get()%d;
 
    return metric;
 }

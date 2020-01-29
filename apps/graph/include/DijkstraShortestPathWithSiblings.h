@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -59,7 +59,7 @@ public:
 
       using base_layer::template Data<Top>::Data;
 
-      label_t* rotate_siblings(int node)
+      label_t* rotate_siblings(Int node)
       {
          label_t* old_first_label = this->labels_on_node[node];
          label_t* first_sibling = old_first_label->sibling;
@@ -80,7 +80,7 @@ public:
       using typename base_t::label_t;
       using typename base_t::data_t;
 
-      void propagate(label_t* const pred_label, const int cur_node, const int edge_id) const
+      void propagate(label_t* const pred_label, const Int cur_node, const Int edge_id) const
       {
          label_t* cur_label = this->data.labels_on_node[cur_node];
          label_t* new_label = this->top().construct_label(pred_label, cur_node, edge_id);
@@ -177,7 +177,7 @@ public:
    protected:
       using base_layer::template Algo<Top>::Algo;
 
-      void propagate_update(label_t* const pred_label, const int cur_node, const int edge_id) const
+      void propagate_update(label_t* const pred_label, const Int cur_node, const Int edge_id) const
       {
          label_t* cur_label = this->data.labels_on_node[cur_node];
 

@@ -3,5 +3,6 @@
   {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "void"], "func": "hasse_diagram", "include": ["polymake/IncidenceMatrix.h"], "sig": "hasse_diagram.X.x"},
   {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "void", "void"], "func": "upper_hasse_diagram", "include": ["polymake/IncidenceMatrix.h"], "sig": "upper_hasse_diagram.X.x.x"},
   {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "void"], "func": "lower_hasse_diagram", "include": ["polymake/IncidenceMatrix.h"], "sig": "lower_hasse_diagram.X.x"},
+  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Set<Int>&>", "void"], "func": "bounded_hasse_diagram", "include": ["polymake/IncidenceMatrix.h", "polymake/Set.h"], "sig": "bounded_hasse_diagram.X.X.x"},
  null ],
 "version": 3}

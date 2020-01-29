@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -191,7 +191,7 @@ public:
    {
       return this->manip_top().get_container().tree_form();
    }
-   int max_size() const
+   Int max_size() const
    {
       return this->manip_top().get_container().max_size();
    }

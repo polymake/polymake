@@ -11,7 +11,8 @@
      and all values satisfying polymake's is_boolean() are encoded as JSON booleans.
      Artificial boolean reference values are still supported.
    - Perl interpreter context explicitly passed into internal functions.
-   - Special handling of serialized sparse containers
+   - Special handling of serialized sparse containers.
+   - Function for directly encoding into an IO stream.
    - Cosmetic changes fixing C++ warnings treated as errors.
 */
 
@@ -30,10 +31,14 @@
 #pragma clang diagnostic ignored "-Wunused-result"
 #pragma clang diagnostic ignored "-Wunused-variable"
 #pragma clang diagnostic ignored "-Wunused-label"
+#pragma clang diagnostic ignored "-Wshadow"
+#pragma clang diagnostic ignored "-Wconversion"
 #elif defined(__GNUC__)
 #pragma GCC diagnostic ignored "-Wunused-result"
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wunused-label"
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wconversion"
 #endif
 
 #if defined(__BORLANDC__) || defined(_MSC_VER)
@@ -79,7 +84,8 @@
 #define F_PRETTY    F_INDENT | F_SPACE_BEFORE | F_SPACE_AFTER
 
 #define INIT_SIZE   32 // initial scalar size to be allocated
-#define INDENT_STEP 3  // spaces per indentation level
+#define FILE_BUF_SIZE 4096
+#define INDENT_STEP 2  // spaces per indentation level
 
 #define SHORT_STRING_LEN 16384 // special-case strings of up to this size
 
@@ -406,12 +412,41 @@ json_nonref (pTHX_ SV *scalar)
 typedef struct
 {
   char *cur;  // SvPVX (sv) + current output position
-  char *end;  // SvEND (sv)
+  char *end;  // end of string buffer in sv
   SV *sv;     // result scalar
+  PerlIO* fp; // direct output stream
   JSON json;
   I32 indent; // indentation level
   UV limit;   // escape character values >= this value when encoding
 } enc_t;
+
+static const MGVTBL format_flags_vtbl = { 0, 0, 0, 0, 0 };
+
+INLINE U32
+get_format_flags(pTHX_ enc_t *enc, SV *sv)
+{
+  U32 flags = enc->json.flags;
+  if (flags & (F_INDENT | F_SPACE_AFTER | F_CANONICAL)) {
+    if (MAGIC* mg = mg_findext(sv, PERL_MAGIC_ext, &format_flags_vtbl))
+      flags &= mg->mg_len;
+  }
+  return flags;
+}
+
+INLINE PerlIO*
+check_outfile(pTHX_ SV* file_ref)
+{
+   IO* io;
+   PerlIO* ofp;
+   if (SvROK(file_ref)) file_ref = SvRV(file_ref);
+   if (SvTYPE(file_ref) != SVt_PVGV || !(io = GvIO(file_ref)))
+      croak( "write_json - not a valid stream" );
+   if (!(ofp = IoOFP(io)))
+      croak( "write_json - stream not opened for writing" );
+   if (PerlIO_isutf8(ofp))
+      croak( "write_json - stream has utf8 layer, must be raw" );
+   return ofp;
+}
 
 INLINE void
 need (enc_t *enc, STRLEN len)
@@ -419,10 +454,19 @@ need (enc_t *enc, STRLEN len)
   if (expect_false ((uintptr_t)(enc->end - enc->cur) < len))
     {
       dTHX;
-      STRLEN cur = enc->cur - (char *)SvPVX (enc->sv);
+      char* beg = (char *)SvPVX(enc->sv);
+      STRLEN cur = enc->cur - beg;
+      if (enc->fp) {
+         PerlIO_write(enc->fp, beg, cur);
+         if (len < SvLEN(enc->sv)) {
+            enc->cur = beg;
+            return;
+         }
+         cur = 0;
+      }
       char *buf = json_sv_grow (aTHX_ enc->sv, cur, len);
       enc->cur = buf + cur;
-      enc->end = buf + SvLEN (enc->sv) - 1;
+      enc->end = buf + SvLEN (enc->sv) - !(enc->fp);  // reserve for trailing 0 if this is going to become the result value
     }
 }
 
@@ -546,9 +590,9 @@ encode_str (enc_t *enc, const char *str, STRLEN len, int is_utf8)
 }
 
 INLINE void
-encode_indent (enc_t *enc)
+encode_indent (enc_t *enc, U32 format_flags)
 {
-  if (enc->json.flags & F_INDENT)
+  if (format_flags & F_INDENT)
     {
       int spaces = enc->indent * INDENT_STEP;
 
@@ -566,9 +610,9 @@ encode_space (enc_t *enc)
 }
 
 INLINE void
-encode_nl (enc_t *enc)
+encode_nl (enc_t *enc, U32 format_flags)
 {
-  if (enc->json.flags & F_INDENT)
+  if (format_flags & F_INDENT)
     {
       need (enc, 1);
       encode_ch (enc, '\n');
@@ -576,23 +620,38 @@ encode_nl (enc_t *enc)
 }
 
 INLINE void
-encode_comma (enc_t *enc)
+encode_comma (enc_t *enc, U32 format_flags)
 {
   encode_ch (enc, ',');
 
-  if (enc->json.flags & F_INDENT)
-    encode_nl (enc);
-  else if (enc->json.flags & F_SPACE_AFTER)
+  if (format_flags & F_INDENT) {
+    need (enc, 1);
+    encode_ch (enc, '\n');
+  } else if (format_flags & F_SPACE_AFTER) {
     encode_space (enc);
+  }
 }
 
 static void encode_sv (enc_t *enc, SV *sv);
+
+INLINE void
+encode_av_element(pTHX_ enc_t *enc, AV *av, const SSize_t i, const U32 format_flags)
+{
+  SV **svp = av_fetch (av, i, 0);
+
+  encode_indent(enc, format_flags);
+
+  if (svp)
+    encode_sv (enc, *svp);
+  else
+    encode_str (enc, "null", 4, 0);
+}
 
 static void
 encode_av (enc_t *enc, AV *av)
 {
   dTHX;
-  int i, len = av_len (av);
+  SSize_t i = 0, len = av_len (av);
 
   if (enc->indent >= enc->json.max_depth)
     croak (ERR_NESTING_EXCEEDED);
@@ -601,40 +660,36 @@ encode_av (enc_t *enc, AV *av)
 
   if (len >= 0)
     {
-      encode_nl (enc); ++enc->indent;
+      const U32 format_flags = get_format_flags(aTHX_ enc, (SV*)av);
 
-      for (i = 0; i <= len; ++i)
-        {
-          SV **svp = av_fetch (av, i, 0);
+      encode_nl(enc, format_flags);
+      ++enc->indent;
+      encode_av_element(aTHX_ enc, av, i, format_flags);
+      while (++i <= len) {
+        encode_comma(enc, format_flags);
+        encode_av_element(aTHX_ enc, av, i, format_flags);
+      }
 
-          encode_indent (enc);
-
-          if (svp)
-            encode_sv (enc, *svp);
-          else
-            encode_str (enc, "null", 4, 0);
-
-          if (i < len)
-            encode_comma (enc);
-        }
-
-      encode_nl (enc); --enc->indent; encode_indent (enc);
+      encode_nl(enc, format_flags);
+      --enc->indent;
+      encode_indent(enc, format_flags);
     }
 
   encode_ch (enc, ']');
 }
 
-static void encode_colon(enc_t* enc)
+INLINE void
+encode_colon (enc_t* enc, U32 format_flags)
 {
-  if (enc->json.flags & F_SPACE_BEFORE) encode_space (enc);
+  if (format_flags & F_SPACE_BEFORE) encode_space (enc);
   encode_ch (enc, ':');
-  if (enc->json.flags & F_SPACE_AFTER ) encode_space (enc);
+  if (format_flags & F_SPACE_AFTER ) encode_space (enc);
 }
 
 static void
-encode_hk (enc_t *enc, HE *he)
+encode_hv_element (pTHX_ enc_t *enc, HV* hv, HE *he, const U32 format_flags)
 {
-  dTHX;
+  encode_indent(enc, format_flags);
   encode_ch (enc, '"');
 
   if (HeKLEN (he) == HEf_SVKEY)
@@ -652,7 +707,8 @@ encode_hk (enc_t *enc, HE *he)
     encode_str (enc, HeKEY (he), HeKLEN (he), HeKUTF8 (he));
 
   encode_ch (enc, '"');
-  encode_colon(enc);
+  encode_colon(enc, format_flags);
+  encode_sv (enc, expect_false (SvMAGICAL (hv)) ? hv_iterval (hv, he) : HeVAL (he));
 }
 
 // compare hash entries, used when all keys are bytestrings
@@ -708,14 +764,15 @@ encode_hv (enc_t *enc, HV *hv)
     croak (ERR_NESTING_EXCEEDED);
 
   encode_ch (enc, '{');
+  const U32 format_flags = get_format_flags(aTHX_ enc, (SV*)hv);
 
   // for canonical output we have to sort by keys first
   // actually, this is mostly due to the stupid so-called
   // security workaround added somewhere in 5.8.x
   // that randomises hash orderings
-  if (enc->json.flags & F_CANONICAL && !SvRMAGICAL (hv))
+  if ((format_flags & F_CANONICAL) && !SvRMAGICAL (hv))
     {
-      int count = hv_iterinit (hv);
+      SSize_t count = hv_iterinit (hv);
 
       if (SvMAGICAL (hv))
         {
@@ -733,7 +790,7 @@ encode_hv (enc_t *enc, HV *hv)
 
       if (count)
         {
-          int i, fast = 1;
+          SSize_t i, fast = 1;
           HE *hes_stack [STACK_HES];
           HE **hes = hes_stack;
 
@@ -780,20 +837,17 @@ encode_hv (enc_t *enc, HV *hv)
               LEAVE;
             }
 
-          encode_nl (enc); ++enc->indent;
+          encode_nl(enc, format_flags);
+          ++enc->indent;
+          encode_hv_element(aTHX_ enc, hv, hes[--count], format_flags);
+          while (count) {
+            encode_comma(enc, format_flags);
+            encode_hv_element(aTHX_ enc, hv, hes[--count], format_flags);
+          }
 
-          while (count--)
-            {
-              encode_indent (enc);
-              he = hes [count];
-              encode_hk (enc, he);
-              encode_sv (enc, expect_false (SvMAGICAL (hv)) ? hv_iterval (hv, he) : HeVAL (he));
-
-              if (count)
-                encode_comma (enc);
-            }
-
-          encode_nl (enc); --enc->indent; encode_indent (enc);
+          encode_nl(enc, format_flags);
+          --enc->indent;
+          encode_indent(enc, format_flags);
         }
     }
   else
@@ -801,21 +855,17 @@ encode_hv (enc_t *enc, HV *hv)
       if (hv_iterinit (hv) || SvMAGICAL (hv))
         if ((he = hv_iternext (hv)))
           {
-            encode_nl (enc); ++enc->indent;
+            encode_nl(enc, format_flags);
+            ++enc->indent;
+            encode_hv_element(aTHX_ enc, hv, he, format_flags);
+            while ((he = hv_iternext (hv))) {
+              encode_comma(enc, format_flags);
+              encode_hv_element(aTHX_ enc, hv, he, format_flags);
+            }
 
-            for (;;)
-              {
-                encode_indent (enc);
-                encode_hk (enc, he);
-                encode_sv (enc, expect_false (SvMAGICAL (hv)) ? hv_iterval (hv, he) : HeVAL (he));
-
-                if (!(he = hv_iternext (hv)))
-                  break;
-
-                encode_comma (enc);
-              }
-
-            encode_nl (enc); --enc->indent; encode_indent (enc);
+            encode_nl(enc, format_flags);
+            --enc->indent;
+            encode_indent(enc, format_flags);
           }
     }
 
@@ -844,38 +894,9 @@ encode_rv (enc_t *enc, SV *sv)
           else
             encode_str (enc, "false", 5, 0);
         }
-      else if (svt == SVt_PVAV && stash == pm::perl::glue::Serializer_Sparse_stash) {
-        encode_ch(enc, '{');
-        const auto last_index = AvFILLp(sv);
-        if (last_index >= 0) {
-          encode_nl(enc); ++enc->indent;
-
-          SV** arr = AvARRAY(sv);
-          SV** const last = arr + last_index;
-          for (;;) {
-            encode_indent(enc);
-            if (arr < last) {
-              encode_ch(enc, '"');
-              encode_sv(enc, *arr++);
-              encode_ch(enc, '"');
-            } else {
-              encode_sv(enc, pm::perl::glue::Serializer_Sparse_dim_key);
-            }
-            encode_colon(enc);
-            encode_sv(enc, *arr++);
-            if (arr <= last)
-              encode_comma(enc);
-            else
-              break;
-          }
-
-          encode_nl(enc); --enc->indent; encode_indent(enc);
-        }
-        encode_ch(enc, '}');
-      }
       else if ((enc->json.flags & F_ALLOW_TAGS) && (method = gv_fetchmethod_autoload (stash, "FREEZE", 0)))
         {
-          int count;
+          SSize_t count;
           dSP;
 
           ENTER; SAVETMPS;
@@ -975,7 +996,7 @@ encode_sv (enc_t *enc, SV *sv)
   dTHX;
   SvGETMAGIC (sv);
 
-  if (SvPOKp (sv))
+  if (SvIOKp (sv))
   {
     if (pm::perl::glue::is_boolean_value(aTHX_ sv))
     {
@@ -983,22 +1004,6 @@ encode_sv (enc_t *enc, SV *sv)
        else           encode_str (enc, "false", 5, 0);
     }
     else
-    {
-      STRLEN len;
-      char *str = SvPV (sv, len);
-      encode_ch (enc, '"');
-      encode_str (enc, str, len, SvUTF8 (sv));
-      encode_ch (enc, '"');
-    }
-  }
-  else if (SvNOKp (sv))
-    {
-      // trust that perl will do the right thing w.r.t. JSON syntax.
-      need (enc, NV_DIG + 32);
-      Gconvert (SvNVX (sv), NV_DIG, 0, enc->cur);
-      enc->cur += strlen (enc->cur);
-    }
-  else if (SvIOKp (sv))
     {
       // we assume we can always read an IV as a UV and vice versa
       // we assume two's complement
@@ -1042,6 +1047,33 @@ encode_sv (enc_t *enc, SV *sv)
                 : snprintf (enc->cur, IVUV_MAXCHARS, "%" IVdf, (IV)SvIVX (sv));
         }
     }
+  }
+  else if (SvNOKp (sv))
+    {
+      // trust that perl will do the right thing w.r.t. JSON syntax.
+      need (enc, NV_DIG + 32);
+      Gconvert (SvNVX (sv), NV_DIG, 0, enc->cur);
+      // quote [-]inf
+      int s = strlen(enc->cur);
+      if (enc->cur[0] == 'i' ||
+          enc->cur[0] == '-' && enc->cur[1] == 'i' ||
+          enc->cur[0] == 'I' && (enc->cur[0] = 'i', true) ||
+          enc->cur[0] == '-' && enc->cur[1] == 'I' && (enc->cur[1] = 'I', true)) {
+        Move(enc->cur, enc->cur + 1, s, char);
+        enc->cur[0] = '"';
+        enc->cur[++s] = '"';
+        enc->cur[++s] = 0;
+      }
+      enc->cur += s;
+    }
+  else if (SvPOKp (sv))
+    {
+      STRLEN len;
+      char *str = SvPV (sv, len);
+      encode_ch (enc, '"');
+      encode_str (enc, str, len, SvUTF8 (sv));
+      encode_ch (enc, '"');
+    }
   else if (SvROK (sv))
     encode_rv (enc, SvRV (sv));
   else if (!SvOK (sv) || enc->json.flags & F_ALLOW_UNKNOWN)
@@ -1052,7 +1084,7 @@ encode_sv (enc_t *enc, SV *sv)
 }
 
 static SV *
-encode_json (pTHX_ SV *scalar, JSON *json)
+encode_json (pTHX_ SV *scalar, JSON *json, PerlIO* ofp = nullptr)
 {
   enc_t enc;
 
@@ -1060,17 +1092,25 @@ encode_json (pTHX_ SV *scalar, JSON *json)
     croak ("hash- or arrayref expected (not a simple scalar, use allow_nonref to allow this)");
 
   enc.json      = *json;
-  enc.sv        = sv_2mortal (NEWSV (0, INIT_SIZE));
+  enc.sv        = sv_2mortal (NEWSV (0, ofp ? FILE_BUF_SIZE : INIT_SIZE));
   enc.cur       = SvPVX (enc.sv);
-  enc.end       = SvEND (enc.sv);
+  enc.end       = enc.cur + SvLEN(enc.sv) - !ofp;
   enc.indent    = 0;
   enc.limit     = enc.json.flags & F_ASCII  ? 0x000080UL
                 : enc.json.flags & F_LATIN1 ? 0x000100UL
                                             : 0x110000UL;
+  enc.fp = ofp;
 
   SvPOK_only (enc.sv);
   encode_sv (&enc, scalar);
-  encode_nl (&enc);
+  encode_nl (&enc, enc.json.flags);
+
+  if (ofp) {
+     const STRLEN tail_len = enc.cur - SvPVX(enc.sv);
+     if (tail_len != 0)
+        PerlIO_write(ofp, SvPVX(enc.sv), tail_len);
+     return nullptr;
+  }
 
   SvCUR_set (enc.sv, enc.cur - SvPVX (enc.sv));
   *SvEND (enc.sv) = 0; // many xs functions expect a trailing 0 for text strings
@@ -1499,29 +1539,31 @@ fail:
   return 0;
 }
 
-static void drop_sparse_data(pTHX_ AV*& sparse_data_av, HV* hv)
-{
-  SV** arr = AvARRAY(sparse_data_av);
-  SV** const end = arr + AvFILLp(sparse_data_av) + 1;
-  for (; arr != end; arr += 2) {
-    hv_store_ent(hv, arr[0], SvREFCNT_inc_simple_NN(arr[1]), 0);
-  }
-  SvREFCNT_dec(sparse_data_av);
-  sparse_data_av = nullptr;
-}
-
-static bool add_sparse_item(pTHX_ AV*& sparse_data_av, const char* key, STRLEN len, SV* value)
+static void add_sparse_item(pTHX_ AV*& sparse_dict, const char* key, STRLEN len, SV* value)
 {
   UV index;
-  if (grok_number(key, len, &index) == IS_NUMBER_IN_UV &&
-      (sparse_data_av ? SvUVX(AvARRAY(sparse_data_av)[AvFILLp(sparse_data_av)-1]) < index
-                      : (sparse_data_av = newAV(), true))) {
-    av_push(sparse_data_av, newSVuv(index));
-    av_push(sparse_data_av, value);
-    return true;
+  if ((len == SvCUR(pm::perl::glue::Serializer_Sparse_dim_key) &&
+       !strncmp(key, SvPVX(pm::perl::glue::Serializer_Sparse_dim_key), len) &&
+       SvIOK(value) && SvIVX(value) >= 0
+       ? (index = SvIVX(value), value = pm::perl::glue::Serializer_Sparse_dim_key, true)
+       : (grok_number(key, len, &index) == IS_NUMBER_IN_UV))
+      &&
+      (sparse_dict ? ((UV)SvIVX(AvARRAY(sparse_dict)[AvFILLp(sparse_dict) - 1]) < index &&
+                      AvARRAY(sparse_dict)[AvFILLp(sparse_dict)] != pm::perl::glue::Serializer_Sparse_dim_key)
+       : (sparse_dict = newAV(), true))) {
+    av_push(sparse_dict, newSViv(index));
+    av_push(sparse_dict, SvREFCNT_inc_simple_NN(value));
+  } else if (sparse_dict) {
+    SvREFCNT_dec((SV*)sparse_dict);
+    sparse_dict = nullptr;
   }
-  return false;
 }
+
+namespace pm { namespace perl { namespace glue {
+
+MGVTBL sparse_input_vtbl = { 0, 0, 0, 0, 0 };
+
+} } }
 
 static SV *
 decode_hv (dec_t *dec)
@@ -1529,8 +1571,7 @@ decode_hv (dec_t *dec)
   dTHX;
   SV *sv;
   HV *hv = newHV ();
-  AV* sparse_data_av = nullptr;
-  SV* sparse_dim = nullptr;
+  AV* sparse_dict = nullptr;
 
   DEC_INC_DEPTH;
   decode_ws (dec);
@@ -1572,10 +1613,9 @@ decode_hv (dec_t *dec)
                       SvREFCNT_dec (key);
                       goto fail;
                     }
-                  if (sparse_data_av) {
-                    drop_sparse_data(aTHX_ sparse_data_av, hv);
-                    SvREFCNT_dec(sparse_dim);
-                    sparse_dim = nullptr;
+                  if (sparse_dict) {
+                    SvREFCNT_dec((SV*)sparse_dict);
+                    sparse_dict = nullptr;
                   }
                   hv_store_ent (hv, key, value, 0);
                   SvREFCNT_dec (key);
@@ -1586,7 +1626,7 @@ decode_hv (dec_t *dec)
                 {
                   // fast path, got a simple key
                   char *key = dec->cur;
-                  int len = p - key;
+                  SSize_t len = p - key;
                   dec->cur = p + 1;
 
                   decode_ws (dec); EXPECT_CH (':');
@@ -1596,23 +1636,9 @@ decode_hv (dec_t *dec)
                   if (!value)
                     goto fail;
 
-                  if (!(dec->json.flags & F_HOOK) && HvUSEDKEYS(hv) == 0) {
-                    if (sparse_dim) {
-                      // dim key, if any, must be the last one, otherwise the order is not guaranteed
-                      drop_sparse_data(aTHX_ sparse_data_av, hv);
-                      SvREFCNT_dec(sparse_dim);
-                      sparse_dim = nullptr;
-                    } else if (len == (int)SvCUR(pm::perl::glue::Serializer_Sparse_dim_key) &&
-                               !strncmp(key, SvPVX(pm::perl::glue::Serializer_Sparse_dim_key), len) &&
-                               SvIOK(value) && SvIVX(value) >= 0) {
-                      if (!sparse_data_av)
-                        sparse_data_av = newAV();
-                      sparse_dim = value;
-                      break;
-                    } else if (add_sparse_item(aTHX_ sparse_data_av, key, len, value)) {
-                      break;
-                    } else if (sparse_data_av) {
-                      drop_sparse_data(aTHX_ sparse_data_av, hv);
+                  if (!(dec->json.flags & F_HOOK)) {
+                    if (HvUSEDKEYS(hv) == 0 || sparse_dict) {
+                      add_sparse_item(aTHX_ sparse_dict, key, len, value);
                     }
                   }
 
@@ -1648,15 +1674,6 @@ decode_hv (dec_t *dec)
       }
 
   DEC_DEC_DEPTH;
-
-  if (sparse_data_av) {
-    if (sparse_dim)
-      av_push(sparse_data_av, sparse_dim);
-    sv = newRV_noinc ((SV *)sparse_data_av);
-    sv_bless(sv, pm::perl::glue::Serializer_Sparse_stash);
-    SvREFCNT_dec(hv);
-    return sv;
-  }
 
   sv = newRV_noinc ((SV *)hv);
 
@@ -1723,12 +1740,15 @@ decode_hv (dec_t *dec)
           FREETMPS; LEAVE;
         }
     }
+  else if (sparse_dict) {
+    sv_magicext((SV*)hv, (SV*)sparse_dict, PERL_MAGIC_ext, &pm::perl::glue::sparse_input_vtbl, nullptr, 0);
+    SvREFCNT_dec((SV*)sparse_dict);  // compensate for inc above
+  }
 
   return sv;
 
 fail:
   SvREFCNT_dec (hv);
-  SvREFCNT_dec(sparse_data_av);
   DEC_DEC_DEPTH;
   return 0;
 }
@@ -1772,7 +1792,7 @@ decode_tag (dec_t *dec)
 
   {
     AV *av = (AV *)SvRV (val);
-    int i, len = av_len (av) + 1;
+    SSize_t i, len = av_len (av) + 1;
     HV *stash = gv_stashsv (tag, 0);
     SV *sv;
 
@@ -2297,6 +2317,13 @@ void encode (JSON *self, SV *scalar)
         PUTBACK; scalar = encode_json (aTHX_ scalar, self); SPAGAIN;
         XPUSHs (scalar);
 
+void write (JSON *self, SV *scalar, SV* file_ref)
+PPCODE:
+{
+  PerlIO* ofp = check_outfile(aTHX_ file_ref);
+  PUTBACK; scalar = encode_json (aTHX_ scalar, self, ofp); SPAGAIN;
+}
+
 void decode (JSON *self, SV *jsonstr)
 	PPCODE:
         PUTBACK; jsonstr = decode_json (aTHX_ jsonstr, self, 0); SPAGAIN;
@@ -2454,6 +2481,16 @@ void encode_json (SV *scalar)
         XPUSHs (scalar);
 }
 
+void write_json(SV* file_ref, SV* scalar)
+PPCODE:
+{
+   PerlIO* ofp = check_outfile(aTHX_ file_ref);
+   JSON json;
+   json_init (&json);
+   json.flags |= F_UTF8;
+   PUTBACK; encode_json (aTHX_ scalar, &json, ofp); SPAGAIN;
+}
+
 void decode_json (SV *jsonstr)
 	PPCODE:
 {
@@ -2462,6 +2499,21 @@ void decode_json (SV *jsonstr)
         json.flags |= F_UTF8;
         PUTBACK; jsonstr = decode_json (aTHX_ jsonstr, &json, 0); SPAGAIN;
         XPUSHs (jsonstr);
+}
+
+void set_multiline_flag(SV* ref, I32 multiline)
+PPCODE:
+{
+  SV* sv;
+  if (SvROK(ref) && (sv = SvRV(ref), SvTYPE(sv) == SVt_PVAV || SvTYPE(sv) == SVt_PVHV)) {
+    MAGIC* mg = mg_findext(sv, PERL_MAGIC_ext, &format_flags_vtbl);
+    if (!mg)
+      mg = sv_magicext(sv, nullptr, PERL_MAGIC_ext, &format_flags_vtbl, nullptr, 0);
+    mg->mg_len = multiline ? F_INDENT | F_SPACE_AFTER : F_SPACE_AFTER;
+
+  } else {
+    croak_xs_usage(cv, "\\@array || \\%hash, boolean");
+  }
 }
 
 =pod

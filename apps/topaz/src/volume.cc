@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,11 +25,11 @@
 
 namespace polymake { namespace topaz {
 
-Rational volume(perl::Object p)
+Rational volume(BigObject p)
 {
-  const int dim=p.give("DIM");
-  const Array< Set<int> > F=p.give("FACETS");
-  Matrix<Rational> GR=p.give("COORDINATES");
+  const Int dim = p.give("DIM");
+  const Array<Set<Int>> F = p.give("FACETS");
+  Matrix<Rational> GR = p.give("COORDINATES");
   Vector<Rational> homogenization(GR.rows(),Rational(1));
   GR = homogenization | GR;
   

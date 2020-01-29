@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,9 +25,9 @@
 namespace polymake { namespace fan {
 
 template <typename Scalar, typename TVector>
-perl::Object mixed_subdivision(int m,
-                               const perl::Object cayley_embedding,
-                               const Array<Set<int> >& vertices_in_cells,
+BigObject mixed_subdivision(Int m,
+                               const BigObject cayley_embedding,
+                               const Array<Set<Int>>& vertices_in_cells,
                                const GenericVector<TVector>& t)
 {
    // input sanity checks
@@ -35,31 +35,31 @@ perl::Object mixed_subdivision(int m,
       throw std::runtime_error("mixed_subdivision: empty array given.");
 
    const Matrix<Scalar> V = cayley_embedding.give("VERTICES|POINTS");
-   const int d = V.cols() - m - 1; // common dimension of the input polytopes
+   const Int d = V.cols()-m-1; // common dimension of the input polytopes
 
    const Matrix<Scalar> slice_eqs = (-t) / accumulate(t.top(), operations::add())
                                   | zero_matrix<Scalar>(m,d)
                                   | unit_matrix<Scalar>(m);
 
-   hash_map<Vector<Scalar>, int> index_of_point;
-   int n_points(0);
+   hash_map<Vector<Scalar>, Int> index_of_point;
+   Int n_points = 0;
 
-   perl::ObjectType poly_type("Polytope", mlist<Scalar>());
-   std::vector<Set<int>> vif_vector;
+   BigObjectType poly_type("Polytope", mlist<Scalar>());
+   std::vector<Set<Int>> vif_vector;
    for (auto vicit = entire(vertices_in_cells); !vicit.at_end(); ++vicit) {
 
-      perl::Object cayley_cell(poly_type);
+      BigObject cayley_cell(poly_type);
       cayley_cell.take("POINTS") << V.minor(*vicit, All);
       const Matrix<Scalar> F = cayley_cell.give("FACETS");
 
-      perl::Object cayley_slice(poly_type);
+      BigObject cayley_slice(poly_type);
       cayley_slice.take("INEQUALITIES") << F;
       cayley_slice.take("EQUATIONS") << slice_eqs;
       const Matrix<Scalar> P = cayley_slice.give("VERTICES");
       if (!P.rows())
          throw std::runtime_error("mixed_subdivision: unexpectedly empty slice polytope");
 
-      Set<int> vif;
+      Set<Int> vif;
       for (auto rit = entire(rows(P)); !rit.at_end(); ++rit) {
          const Vector<Scalar> pt(*rit);
          if (!index_of_point.exists(pt))
@@ -73,17 +73,17 @@ perl::Object mixed_subdivision(int m,
    for (auto hit = entire(index_of_point); !hit.at_end(); ++hit)
       V_out[hit->second] = hit->first.slice(sequence(0, d+1));
 
-   perl::Object p_out("PolyhedralComplex", mlist<Scalar>());
+   BigObject p_out("PolyhedralComplex", mlist<Scalar>());
    p_out.take("VERTICES") << V_out;
    p_out.take("MAXIMAL_POLYTOPES") << IncidenceMatrix<>(vif_vector);
    return p_out;
 }
 
 template <typename Scalar, typename TVector>
-perl::Object mixed_subdivision(const Array<perl::Object>& p_array,
-                               const Array<Set<int>>& vertices_in_cells,
+BigObject mixed_subdivision(const Array<BigObject>& p_array,
+                               const Array<Set<Int>>& vertices_in_cells,
                                const GenericVector<TVector>& t,
-                               perl::OptionSet options)
+                               OptionSet options)
 {
    return mixed_subdivision<Scalar>(p_array.size(),
                                     polytope::cayley_embedding(p_array, Vector<Scalar>(), options),
@@ -92,12 +92,12 @@ perl::Object mixed_subdivision(const Array<perl::Object>& p_array,
 }
 
 template <typename Scalar>
-perl::Object mixed_subdivision(const perl::Object& p_in1, const perl::Object& p_in2,
-                               const Array<Set<int>>& vertices_in_cells,
+BigObject mixed_subdivision(const BigObject& p_in1, const BigObject& p_in2,
+                               const Array<Set<Int>>& vertices_in_cells,
                                const Scalar& t, const Scalar& t_prime,
-                               perl::OptionSet options)
+                               OptionSet options)
 {
-   const Array<perl::Object> p_array{ p_in1, p_in2 };
+   const Array<BigObject> p_array{ p_in1, p_in2 };
    const Vector<Scalar> t_vec{ t, t_prime };
 
    return mixed_subdivision<Scalar>(p_array, vertices_in_cells, t_vec, options);

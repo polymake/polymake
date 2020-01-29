@@ -10,8 +10,8 @@ namespace polymake { namespace polytope {
 
 namespace {
                 
-void add_action(perl::Object& p,
-                perl::Object& g,
+void add_action(BigObject& p,
+                BigObject& g,
                 const Matrix<Rational>& rays_or_facets,
                 const Matrix<Rational>& lin,
                 const AnyString& rf_prop,
@@ -20,13 +20,13 @@ void add_action(perl::Object& p,
 {
    // sympol permutes the generators of rays_and_facets as well as those of lin.
    // Since in polymake we are of the opinion that permuting the generators of a linear subspace doesn't make sense, we strip that part off
-   const Array<Array<int>>
+   const Array<Array<Int>>
       gens(generators_from_permlib_group(sympol_interface::sympol_wrapper::compute_linear_symmetries(rays_or_facets, lin))),
       subgens(lin.rows()
               ? permutation_subgroup_generators(gens, sequence(0, rays_or_facets.rows()))
               : gens);
 
-   perl::Object a("group::PermutationAction");
+   BigObject a("group::PermutationAction");
    a.set_description() << action_desc;
    a.set_name(action_name);
    a.take("GENERATORS") << subgens;
@@ -40,19 +40,19 @@ void add_action(perl::Object& p,
 // beware: sympol / permlib only work with Rational coordinates
      
 //symmetry group computation vie edge colored graph automorphisms works for non-convex point sets, too. For the proof, see prop. 3.1 in "Polyhedral representation conversion up to symmetries" by Bremner, Sikiric and Schuermann, arxiv 0702239v2.
-perl::Object linear_symmetries_matrix(const Matrix<Rational>& M)
+BigObject linear_symmetries_matrix(const Matrix<Rational>& M)
 {
    Matrix<Rational> Mpty(0, M.cols());
-   perl::Object g(perl_group_from_group(sympol_interface::sympol_wrapper::compute_linear_symmetries(M, Mpty)));
+   BigObject g(perl_group_from_group(sympol_interface::sympol_wrapper::compute_linear_symmetries(M, Mpty)));
    g.set_name("LinAut");
    g.set_description() << "linear symmetry group";
    return g;
 } 
 
-perl::Object linear_symmetries_impl(perl::Object p)
+BigObject linear_symmetries_impl(BigObject p)
 {
    Matrix<Rational> rays, facets;
-   perl::Object g("group::Group");
+   BigObject g("group::Group");
    g.set_name("LinAut");
    g.set_description() << "linear symmetry group";
    
@@ -75,11 +75,11 @@ perl::Object linear_symmetries_impl(perl::Object p)
 }
    
 Matrix<Rational>
-representation_conversion_up_to_symmetry(perl::Object p, perl::OptionSet options)
+representation_conversion_up_to_symmetry(BigObject p, OptionSet options)
 {
    Matrix<Rational> inequalities, equations;
    const bool v_to_h = options["v_to_h"];
-   Array<Array<int>> gens = p.give(v_to_h
+   Array<Array<Int>> gens = p.give(v_to_h
                                    ? Str("GROUP.RAYS_ACTION.STRONG_GENERATORS | GROUP.RAYS_ACTION.GENERATORS")
                                    : Str("GROUP.FACETS_ACTION.STRONG_GENERATORS | GROUP.FACETS_ACTION.GENERATORS"));
    const std::string rayCompMethod = options["method"];
@@ -100,7 +100,7 @@ representation_conversion_up_to_symmetry(perl::Object p, perl::OptionSet options
    const Matrix<Rational> lin_sp = p.give(v_to_h ? Str("LINEALITY_SPACE") : Str("LINEAR_SPAN"));
 
    // appease sympol, which wants the automorphism group to act on both rays and lineality space
-   const int n(rays_or_facets.rows()), m(lin_sp.rows());
+   const Int n = rays_or_facets.rows(), m = lin_sp.rows();
    if (m)
       for (auto& g: gens)
          g.append(m, entire(sequence(n, m)));

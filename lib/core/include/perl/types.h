@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,13 +28,14 @@ using destructor_type = void (*)(char*);
 using copy_constructor_type = void (*)(void*, const char*);
 using assignment_type = void (*)(char*, SV*, ValueFlags);
 using conv_to_string_type = SV* (*)(const char*);
-using conv_to_int_type = int (*)(const char*);
-using conv_to_float_type = double (*)(const char*);
+using conv_to_bool_type = bool (*)(const char*);
+using conv_to_Int_type = Int (*)(const char*);
+using conv_to_Float_type = double (*)(const char*);
 using conv_to_serialized_type = SV* (*)(const char*, SV*);
-using container_resize_type = void (*)(char*, int);
+using container_resize_type = void (*)(char*, Int);
 using container_begin_type = void (*)(void*, char*);
-using container_access_type = void (*)(char*, char*, int, SV*, SV*);
-using container_store_type = void (*)(char*, char*, int, SV*);
+using container_access_type = void (*)(char*, char*, Int, SV*, SV*);
+using container_store_type = void (*)(char*, char*, Int, SV*);
 using composite_access_type = void (*)(char*, SV*, SV*);
 using composite_store_type = void (*)(char*, SV*);
 using iterator_deref_type = SV* (*)(const char*);
@@ -60,9 +61,9 @@ inline SV* member_names(bait, ...) { return pm::perl::Scalar::undef(); }
 template <typename T> class Class;
 
 // don't try to create any magic glue for these guys
-inline unrecognized recognize(pm::perl::type_infos&, bait, pm::perl::Object*, pm::perl::Object*) { return unrecognized{}; }
-inline unrecognized recognize(pm::perl::type_infos&, bait, pm::perl::ObjectType*, pm::perl::ObjectType*) { return unrecognized{}; }
-inline unrecognized recognize(pm::perl::type_infos&, bait, pm::Array<pm::perl::Object>*, pm::Array<pm::perl::Object>*) { return unrecognized{}; }
+inline unrecognized recognize(pm::perl::type_infos&, bait, pm::perl::BigObject*, pm::perl::BigObject*) { return unrecognized{}; }
+inline unrecognized recognize(pm::perl::type_infos&, bait, pm::perl::BigObjectType*, pm::perl::BigObjectType*) { return unrecognized{}; }
+inline unrecognized recognize(pm::perl::type_infos&, bait, pm::Array<pm::perl::BigObject>*, pm::Array<pm::perl::BigObject>*) { return unrecognized{}; }
 
 } }
 namespace pm { namespace perl {
@@ -78,7 +79,7 @@ struct type_infos {
    SV* proto = nullptr;
    bool magic_allowed = false;
 
-   void set_proto_with_prescribed_pkg(SV* prescribed_pkg, SV* app_stash_ref, const std::type_info&, SV* super_proto=nullptr);
+   void set_proto_with_prescribed_pkg(SV* prescribed_pkg, SV* app_stash_ref, const std::type_info&, SV* super_proto = nullptr);
    void set_proto(SV* known_proto=nullptr);
    void set_descr();
    bool set_descr(const std::type_info&);
@@ -89,14 +90,14 @@ struct known_type {
    using data_t = type_behind_t<T>;
    static const bool is_proxy=!std::is_same<T, data_t>::value;
 
-   using recognize_result = decltype(recognize(std::declval<type_infos&>(), recognizer_bait(), (data_t*)0, (data_t*)0));
+   using recognize_result = decltype(recognize(std::declval<type_infos&>(), recognizer_bait(), (data_t*)nullptr, (data_t*)nullptr));
 
    static constexpr bool value = !std::is_same<recognize_result, unrecognized>::value
                                  || (is_proxy && mlist_contains<primitive_lvalues, data_t>::value);
    static constexpr bool exact_match = recognize_result::value && !is_proxy;
 };
 
-using suppress_registration_for = mlist<Object, ObjectType, pm::Array<Object>, OptionSet>;
+using suppress_registration_for = mlist<BigObject, BigObjectType, pm::Array<BigObject>, OptionSet>;
 
 template <typename T, typename=void>
 class type_cache_helper {
@@ -267,7 +268,7 @@ protected:
    {
       type_infos infos;
       assert(!known_proto);
-      recognize(infos, recognizer_bait(), (T*)0, (T*)0);
+      recognize(infos, recognizer_bait(), (T*)nullptr, (T*)nullptr);
       infos.descr = polymake::perl_bindings::Class<T>::register_it(relative_of_known_class, infos.proto, generated_by);
       return infos;
    }
@@ -292,7 +293,7 @@ protected:
       if (known_proto)
          infos.set_proto(known_proto);
       else
-         recognize(infos, recognizer_bait(), (T*)0, (T*)0);
+         recognize(infos, recognizer_bait(), (T*)nullptr, (T*)nullptr);
       if (infos.magic_allowed)
          infos.set_descr();
       return infos;
@@ -306,33 +307,34 @@ protected:
 
 template <typename type_list, int i>
 struct TypeList_helper {
-   static const int next= i+1 < list_length<type_list>::value ? i+1 : i;
-   using recurse_down = TypeList_helper<type_list,next>;
-   using T = typename n_th<type_list,i>::type;
+   static constexpr int next = i+1 < list_length<type_list>::value ? i+1 : i;
+   using recurse_down = TypeList_helper<type_list, next>;
+   using T = typename n_th<type_list, i>::type;
 
    static void gather_type_protos(ArrayHolder& arr)
    {
-      SV* proto=type_cache<pure_type_t<T>>::get_proto();
+      SV* proto = type_cache<pure_type_t<T>>::get_proto();
       arr.push(proto ? proto : Scalar::undef());
-      if (next>i) recurse_down::gather_type_protos(arr);
+      if (next > i) recurse_down::gather_type_protos(arr);
    }
 
    static void gather_type_descrs(ArrayHolder& arr)
    {
-      SV* descr=type_cache<pure_type_t<T>>::get_descr();
+      SV* descr = type_cache<pure_type_t<T>>::get_descr();
       arr.push(descr ? descr : Scalar::undef());
-      if (next>i) recurse_down::gather_type_descrs(arr);
+      if (next > i) recurse_down::gather_type_descrs(arr);
    }
 };
 
 template <int i>
-struct TypeList_helper<void,i> {
+struct TypeList_helper<void, i> {
    static void gather_type_protos(ArrayHolder&) {}
    static void gather_type_descrs(ArrayHolder&) {}
 };
 
 template <typename Fptr>
 class TypeListUtils {
+   // TODO: use func_args_t and variadic pack instead of recursion, cf. store_cross_apps in wrappers.h
    using type_list = typename list2cons<Fptr>::type;
 
    static SV* gather_type_protos()
@@ -352,18 +354,18 @@ class TypeListUtils {
    }
 
 public:
-   static const int type_cnt=list_length<type_list>::value;
+   static constexpr int type_cnt = list_length<type_list>::value;
 
    // instantiate the perl-side descriptors of all types in type_list
    static SV* provide_types()
    {
-      static SV* types=gather_type_protos();
+      static SV* types = gather_type_protos();
       return types;
    }
 
    static SV* provide_descrs()
    {
-      static SV* descrs=gather_type_descrs();
+      static SV* descrs = gather_type_descrs();
       return descrs;
    }
 };

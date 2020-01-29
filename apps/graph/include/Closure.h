@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,16 +31,16 @@ namespace polymake { namespace graph { namespace lattice {
  * It also includes methods to set the index or mark a node as unwanted.
  */
 struct FaceIndexingData {
-  int& index;
+  Int& index;
   bool is_unknown;
   bool is_marked_unwanted;
 
-  FaceIndexingData(int& i, bool iu, bool im)
+  FaceIndexingData(Int& i, bool iu, bool im)
     : index(i)
     , is_unknown(iu)
     , is_marked_unwanted(im) {}
 
-  void set_index(int j)
+  void set_index(Int j)
   {
     index = j;
     is_unknown = false;
@@ -70,7 +70,7 @@ public:
 
   closures_above_iterator(const ClosureOperator& cop,
                           const ClosureData& H_arg,
-                          const Set<int>& relevant_candidates)
+                          const Set<Int>& relevant_candidates)
     : H(&H_arg)
     , CO(&cop)
     , total_size(cop.total_set_size())
@@ -95,11 +95,11 @@ protected:
   void find_next()
   {
     while (!candidates.empty()) {
-      const int v = candidates.front();  candidates.pop_front();
+      const Int v = candidates.front();  candidates.pop_front();
       result = ClosureData(*CO, H->get_dual_face() * CO->get_facets().col(v));
       // The full set is rarely the minimal set - and if so, it is so for the last candidate
       // This saves a lot of checks in the next step.
-      const Set<int>& rface = result.get_face();
+      const Set<Int>& rface = result.get_face();
       if (rface.size() == total_size && !candidates.empty()) continue;
       if ((rface * candidates).empty() && (rface * minimal).empty()) {
         minimal.push_back(v);
@@ -111,8 +111,8 @@ protected:
 
   const ClosureData* H;
   const ClosureOperator* CO;
-  const int total_size;
-  Set<int> candidates, minimal;
+  const Int total_size;
+  Set<Int> candidates, minimal;
   value_type result;
   bool done;
 };
@@ -145,8 +145,8 @@ public:
   // Since computing the dual face is much cheaper, the primal face is computed lazily.
   class ClosureData {
   protected:
-    mutable Set<int> face;
-    Set<int> dual_face;
+    mutable Set<Int> face;
+    Set<Int> dual_face;
     mutable bool primal_computed;
     const BasicClosureOperator<Decoration>* parent;
 
@@ -154,14 +154,14 @@ public:
     ClosureData() = default;
     ClosureData(const ClosureData& other) = default;
 
-    ClosureData(const BasicClosureOperator<Decoration>& parent_, const Set<int>& df)
+    ClosureData(const BasicClosureOperator<Decoration>& parent_, const Set<Int>& df)
       : dual_face(df)
       , primal_computed(false)
       , parent(&parent_)
     {}
 
     template <typename TSet1, typename TSet2>
-    ClosureData(const GenericSet<TSet1, int>& f, const GenericSet<TSet2, int>& df)
+    ClosureData(const GenericSet<TSet1, Int>& f, const GenericSet<TSet2, Int>& df)
       : face(f)
       , dual_face(df)
       , primal_computed(true)
@@ -169,9 +169,9 @@ public:
     {}
 
     bool has_face() const { return primal_computed; }
-    const Set<int>& get_dual_face() const { return dual_face; }
+    const Set<Int>& get_dual_face() const { return dual_face; }
 
-    const Set<int>& get_face() const
+    const Set<Int>& get_face() const
     {
       if (!primal_computed) {
         if (dual_face.empty())
@@ -188,11 +188,11 @@ public:
 
   BasicClosureOperator() = default;
 
-  BasicClosureOperator(const int total, const IncidenceMatrix<>& fct)
+  BasicClosureOperator(const Int total, const IncidenceMatrix<>& fct)
     : facets(fct)
     , total_size(total)
     , total_set(sequence(0, total_size))
-    , total_data(total_set, Set<int>())
+    , total_data(total_set, Set<Int>())
   {}
 
   // Closure operator interface
@@ -214,20 +214,20 @@ public:
 
   FaceIndexingData get_indexing_data(const ClosureData& data)
   {
-    int& fi = face_index_map[data.get_dual_face()];
+    Int& fi = face_index_map[data.get_dual_face()];
     return FaceIndexingData(fi, fi == -1, fi == -2);
   }
-				
+
   // Auxiliary methods
 
-  int total_set_size() const { return total_size; }
+  Int total_set_size() const { return total_size; }
   const IncidenceMatrix<>& get_facets() const { return facets; }
-  const Set<int>& get_total_set() const { return total_set; }
+  const Set<Int>& get_total_set() const { return total_set; }
 
 protected:
   IncidenceMatrix<> facets;
-  int total_size;
-  Set<int> total_set;
+  Int total_size;
+  Set<Int> total_set;
   ClosureData total_data;
   FaceMap<> face_index_map;
 };
@@ -235,3 +235,9 @@ protected:
 } } }
 
 #endif
+
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:

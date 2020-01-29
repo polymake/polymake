@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,23 +24,23 @@ using namespace graph;
 using namespace graph::lattice;
 
 template <typename IMatrix>
-perl::Object lattice_of_flats(const GenericIncidenceMatrix<IMatrix>& mat_hyperplanes, int total_rank)
+BigObject lattice_of_flats(const GenericIncidenceMatrix<IMatrix>& mat_hyperplanes, Int total_rank)
 {
    const bool is_dual = mat_hyperplanes.rows() < mat_hyperplanes.cols();
    if (is_dual) {
-      const int total = mat_hyperplanes.rows();
+      const Int total = mat_hyperplanes.rows();
       BasicClosureOperator<> cop = BasicClosureOperator<>(total, T(mat_hyperplanes));
       TrivialCut<BasicDecoration> cut;
-      BasicDecorator<> dec = BasicDecorator<>(mat_hyperplanes.cols(), total_rank, Set<int>());
+      BasicDecorator<> dec = BasicDecorator<>(mat_hyperplanes.cols(), total_rank, Set<Int>());
       Lattice<BasicDecoration, Sequential> init_lattice;
-      return static_cast<perl::Object>(lattice_builder::compute_lattice_from_closure<BasicDecoration>(cop, cut, dec,0, lattice_builder::Dual(), init_lattice));
+      return static_cast<BigObject>(lattice_builder::compute_lattice_from_closure<BasicDecoration>(cop, cut, dec,0, lattice_builder::Dual(), init_lattice));
    } else {
-      const int total = mat_hyperplanes.cols();
+      const Int total = mat_hyperplanes.cols();
       BasicClosureOperator<> cop = BasicClosureOperator<>(total, mat_hyperplanes);
       TrivialCut<BasicDecoration> cut;
-      BasicDecorator<> dec = BasicDecorator<>(0, Set<int>());
+      BasicDecorator<> dec = BasicDecorator<>(0, Set<Int>());
       Lattice<BasicDecoration, Sequential> init_lattice;
-      return static_cast<perl::Object>(lattice_builder::compute_lattice_from_closure<BasicDecoration>(cop, cut, dec,0, lattice_builder::Primal(), init_lattice));
+      return static_cast<BigObject>(lattice_builder::compute_lattice_from_closure<BasicDecoration>(cop, cut, dec,0, lattice_builder::Primal(), init_lattice));
    }
 }
 

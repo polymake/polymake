@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -43,7 +43,7 @@ namespace polymake { namespace tropical {
 
 // Documentation see perl wrapper
 template <typename Addition>
-perl::Object simplicial_with_diagonal(perl::Object fan)
+BigObject simplicial_with_diagonal(BigObject fan)
 {
   // Extract values
   Matrix<Rational> rays = fan.give("VERTICES");
@@ -51,45 +51,45 @@ perl::Object simplicial_with_diagonal(perl::Object fan)
   Vector<Integer> weights = fan.give("WEIGHTS");
 
   // Dehomogenize rays and remove leading coordinate
-  Set<int> nonfar = far_and_nonfar_vertices(rays).second;
+  Set<Int> nonfar = far_and_nonfar_vertices(rays).second;
   rays = rays.minor(~nonfar, range_from(1));
   rays = tdehomog(rays,0,false);
   cones = cones.minor(All,~nonfar);
 
   // Compute translation maps for ray indices
-  Map<int,int> second_comp;
-  Map<int,int> diagon_comp;
-  for (int r = 0; r < rays.rows(); ++r) {
+  Map<Int, Int> second_comp;
+  Map<Int, Int> diagon_comp;
+  for (Int r = 0; r < rays.rows(); ++r) {
     second_comp[r] = r+rays.rows();
     diagon_comp[r] = r+ 2* rays.rows();
   }
 
-  Vector<Set<int>> p_cones;
+  Vector<Set<Int>> p_cones;
   Vector<Integer> p_weights;
   // Go through pairs of cones
-  for (int c1 = 0; c1 < cones.rows(); ++c1) {
-    Set<int> cone1 = cones.row(c1);
-    for (int c2 = 0; c2 < cones.rows(); ++c2) {
-      Set<int> cone2 = cones.row(c2);
-      Set<int> inter = cone1 * cone2;
+  for (Int c1 = 0; c1 < cones.rows(); ++c1) {
+    Set<Int> cone1 = cones.row(c1);
+    for (Int c2 = 0; c2 < cones.rows(); ++c2) {
+      Set<Int> cone2 = cones.row(c2);
+      Set<Int> inter = cone1 * cone2;
       // If the cones share no ray, their product is not subdivided
       if (inter.size() == 0) {
-        Set<int> cone2_translate{ second_comp.map(cone2) };
+        Set<Int> cone2_translate{ second_comp.map(cone2) };
         p_cones |= (cone1 + cone2_translate);
         p_weights |= weights[c1] * weights[c2];
       } else {
         // Otherwise we get a subdivision cone for each subset of the intersection
         for (auto sd = entire(all_subsets(inter)); !sd.at_end(); ++sd) {
-          Set<int> complement = inter - *sd;
+          Set<Int> complement = inter - *sd;
           // We replace the elements from the subset of the intersection in the FIRST cone
           // by the corresponding diagonal rays and replace the elements of the rest of the
           // intersection in the SECOND cone by the corresponding diagonal rays
-          Set<int> first_cone_remaining = cone1 - *sd;
-          Set<int> second_cone_remaining{ second_comp.map(cone2 - complement) };
-          Set<int> first_cone_diagonal{ diagon_comp.map(*sd) };
-          Set<int> second_cone_diagonal{ diagon_comp.map(complement) };
+          Set<Int> first_cone_remaining = cone1 - *sd;
+          Set<Int> second_cone_remaining{ second_comp.map(cone2 - complement) };
+          Set<Int> first_cone_diagonal{ diagon_comp.map(*sd) };
+          Set<Int> second_cone_diagonal{ diagon_comp.map(complement) };
 
-          Set<int> final_cone = first_cone_remaining + second_cone_remaining + 
+          Set<Int> final_cone = first_cone_remaining + second_cone_remaining + 
             first_cone_diagonal + second_cone_diagonal;
 
           p_cones |= final_cone;
@@ -106,11 +106,11 @@ perl::Object simplicial_with_diagonal(perl::Object fan)
   const Matrix<Rational> p_rays = (zero_vector<Rational>() | p_rays_blocks)
     / unit_vector<Rational>(p_rays_blocks.cols()+1, 0);
 
-  for (int c = 0; c < p_cones.dim(); ++c) 
+  for (Int c = 0; c < p_cones.dim(); ++c) 
     p_cones[c] += (p_rays.rows()-1);
 
   // Return result
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << thomog(p_rays);
   result.take("MAXIMAL_POLYTOPES") << p_cones;
   result.take("WEIGHTS") << p_weights;
@@ -119,35 +119,35 @@ perl::Object simplicial_with_diagonal(perl::Object fan)
 
 // Documentation see perl wrapper
 template <typename Addition>
-Matrix<Rational> simplicial_piecewise_system(perl::Object fan)
+Matrix<Rational> simplicial_piecewise_system(BigObject fan)
 {
   // Extract values
-  int fan_dim = fan.give("PROJECTIVE_DIM");
+  Int fan_dim = fan.give("PROJECTIVE_DIM");
 
   // Compute diagonal subdivision and skeleton
-  perl::Object diag_fan = simplicial_with_diagonal<Addition>(fan);
-  perl::Object skeleton = skeleton_complex<Addition>(diag_fan,fan_dim,true);
+  BigObject diag_fan = simplicial_with_diagonal<Addition>(fan);
+  BigObject skeleton = skeleton_complex<Addition>(diag_fan,fan_dim,true);
 
   // Extract values
   Matrix<Rational> old_rays = diag_fan.give("SEPARATED_VERTICES");
   old_rays = tdehomog(old_rays);
-  Set<int> nonfar = far_and_nonfar_vertices(old_rays).second;
+  Set<Int> nonfar = far_and_nonfar_vertices(old_rays).second;
   IncidenceMatrix<> skeleton_cones = skeleton.give("SEPARATED_MAXIMAL_POLYTOPES");
 
   // Prepare solution matrix
   Matrix<Rational> result(skeleton_cones.rows(),0);
 
   // Iterate through all cones of the skeleton
-  for (int tc = 0; tc < skeleton_cones.rows(); ++tc) {
+  for (Int tc = 0; tc < skeleton_cones.rows(); ++tc) {
     // Create the function(s) Psi_tau
-    Vector<int> tc_rays(skeleton_cones.row(tc) - nonfar);
+    Vector<Int> tc_rays(skeleton_cones.row(tc) - nonfar);
     Matrix<Rational> psi_tau(0, old_rays.rows());
-    for (int r = 0; r < tc_rays.dim(); ++r) {
+    for (Int r = 0; r < tc_rays.dim(); ++r) {
       psi_tau /= (unit_vector<Rational>(old_rays.rows(), tc_rays[r]));
     }
 
     // Compute the divisor
-    perl::Object divisor = divisorByValueMatrix<Addition>(diag_fan, psi_tau);
+    BigObject divisor = divisorByValueMatrix<Addition>(diag_fan, psi_tau);
 
     // Extract cones, rays and weights
     Matrix<Rational> div_rays = divisor.give("VERTICES");
@@ -156,9 +156,9 @@ Matrix<Rational> simplicial_piecewise_system(perl::Object fan)
     Vector<Integer> div_weights = divisor.give("WEIGHTS");
 
     // Associate to each ray its original index 
-    Map<int,int> div_ray_to_old;
-    for (int dr = 0; dr < div_rays.rows(); ++dr) {
-      for (int oray = 0; oray < old_rays.rows(); ++oray) {
+    Map<Int, Int> div_ray_to_old;
+    for (Int dr = 0; dr < div_rays.rows(); ++dr) {
+      for (Int oray = 0; oray < old_rays.rows(); ++oray) {
         if (old_rays.row(oray) == div_rays.row(dr)) {
           div_ray_to_old[dr] = oray; break;
         }
@@ -167,11 +167,11 @@ Matrix<Rational> simplicial_piecewise_system(perl::Object fan)
 
     // Now go through all d-dimensional cones in the divisor and insert their weight at the appropriate point
     Vector<Integer> tau_column(skeleton_cones.rows());
-    for (int rho = 0; rho < div_cones.rows(); ++rho) {
+    for (Int rho = 0; rho < div_cones.rows(); ++rho) {
       // Map rho rays to old rays
-      Set<int> rho_old{ div_ray_to_old.map(div_cones.row(rho)) };
+      Set<Int> rho_old{ div_ray_to_old.map(div_cones.row(rho)) };
       // Find the original cone equal to that
-      for (int oc = 0; oc < skeleton_cones.rows(); ++oc) {
+      for (Int oc = 0; oc < skeleton_cones.rows(); ++oc) {
         if ((skeleton_cones.row(oc) * rho_old).size() == fan_dim+1) {
           tau_column[oc] = div_weights[rho]; break;
         }
@@ -185,16 +185,16 @@ Matrix<Rational> simplicial_piecewise_system(perl::Object fan)
 
 // Documentation see perl wrapper
 template <typename Addition>
-Matrix<Rational> simplicial_diagonal_system(perl::Object fan)
+Matrix<Rational> simplicial_diagonal_system(BigObject fan)
 {
   // Extract values
-  int fan_dim = fan.give("PROJECTIVE_DIM");
-  int fan_ambient_dim = fan.give("PROJECTIVE_AMBIENT_DIM");
+  Int fan_dim = fan.give("PROJECTIVE_DIM");
+  Int fan_ambient_dim = fan.give("PROJECTIVE_AMBIENT_DIM");
   Matrix<Rational> fan_rays = fan.give("VERTICES");
 
   // Compute diagonal subdivision and skeleton
-  perl::Object diag_fan = simplicial_with_diagonal<Addition>(fan);
-  perl::Object skeleton = skeleton_complex<Addition>(diag_fan,fan_dim,true);
+  BigObject diag_fan = simplicial_with_diagonal<Addition>(fan);
+  BigObject skeleton = skeleton_complex<Addition>(diag_fan,fan_dim,true);
 
   Matrix<Rational> nspace = simplicial_piecewise_system<Addition>(fan);
 
@@ -202,8 +202,8 @@ Matrix<Rational> simplicial_diagonal_system(perl::Object fan)
   Matrix<Rational> sk_rays = skeleton.give("SEPARATED_VERTICES");
   sk_rays = tdehomog(sk_rays);
   IncidenceMatrix<> sk_cones = skeleton.give("SEPARATED_MAXIMAL_POLYTOPES");
-  Set<int> diag_rays; 
-  for (int r = 0; r < sk_rays.rows(); ++r) {
+  Set<Int> diag_rays; 
+  for (Int r = 0; r < sk_rays.rows(); ++r) {
     if (sk_rays.row(r).slice(sequence(1,fan_ambient_dim)) ==
         sk_rays.row(r).slice(sequence(fan_ambient_dim+1, fan_ambient_dim))
         && sk_rays(r,0) == 0) 
@@ -211,8 +211,8 @@ Matrix<Rational> simplicial_diagonal_system(perl::Object fan)
     if (is_zero(sk_rays.row(r).slice(range_from(1))))
       diag_rays += r; // Add the origin as well.
   }
-  Set<int> diag_cones;
-  for (int c = 0; c < sk_cones.rows(); ++c) {
+  Set<Int> diag_cones;
+  for (Int c = 0; c < sk_cones.rows(); ++c) {
     if ((diag_rays * sk_cones.row(c)).size() == sk_cones.row(c).size()) {
       diag_cones += c;
     }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -18,11 +18,11 @@
 namespace polymake { namespace topaz {
 
 template <typename Complex>
-PowerSet<int> k_skeleton(const Complex& C, const int k)
+PowerSet<Int> k_skeleton(const Complex& C, const Int k)
 {
-   PowerSet<int> SK;
+   PowerSet<Int> SK;
   
-   for (auto f_it=entire(C); !f_it.at_end(); ++f_it) {
+   for (auto f_it = entire(C); !f_it.at_end(); ++f_it) {
       // the k skeleton are all faces of dimension <= k.
       if (f_it->size()<=k) {
          // facets are either equal or none contains the other.
@@ -37,7 +37,7 @@ PowerSet<int> k_skeleton(const Complex& C, const int k)
       }
    }
    if (SK.empty())  // the empty complex is represented as a single empty set
-      SK += Set<int>();
+      SK += Set<Int>();
    
    return SK;
 }

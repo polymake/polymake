@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,16 +24,16 @@ namespace polymake { namespace topaz {
 using namespace graph;
 using namespace graph::lattice;
 
-Lattice<BasicDecoration> hasse_diagram_from_facets( const Array<Set<int>>&facets, const RankRestriction& rr)
+Lattice<BasicDecoration> hasse_diagram_from_facets( const Array<Set<Int>>& facets, const RankRestriction& rr)
 {
-   const Set<int> all_vertices = accumulate(facets, operations::add());
-   const int n_vertices = accumulate(all_vertices, operations::max())+1;
+   const Set<Int> all_vertices = accumulate(facets, operations::add());
+   const Int n_vertices = accumulate(all_vertices, operations::max())+1;
    const IncidenceMatrix<> maximal_cells(facets.size(), n_vertices, entire(facets));
       
    if (rr.rank_restricted && rr.rank_restriction_type == RankCutType::LesserEqual)
       throw std::runtime_error("Hasse diagram of SimplicialComplex is always built dually.");
-   const Set<int> artificial_set = scalar2set(-1);
-   int top_rank = 0;
+   const Set<Int> artificial_set = scalar2set(-1);
+   Int top_rank = 0;
    if (!facets.empty()) {
       for (auto f : facets) top_rank = std::max(top_rank, f.size());
       ++top_rank;
@@ -50,18 +50,18 @@ Lattice<BasicDecoration> hasse_diagram_from_facets( const Array<Set<int>>&facets
    }
 }
 
-perl::Object hasse_diagram_caller(perl::Object complex, const RankRestriction& rr)
+BigObject hasse_diagram_caller(BigObject complex, const RankRestriction& rr)
 {
-   const Array<Set<int>>& facets = complex.give("FACETS");
-   return static_cast<perl::Object>(hasse_diagram_from_facets(facets, rr));
+   const Array<Set<Int>>& facets = complex.give("FACETS");
+   return static_cast<BigObject>(hasse_diagram_from_facets(facets, rr));
 }
 
-perl::Object hasse_diagram(perl::Object complex)
+BigObject hasse_diagram(BigObject complex)
 {
    return hasse_diagram_caller(complex, RankRestriction());
 }
 
-perl::Object upper_hasse_diagram(perl::Object complex, int boundary_rank)
+BigObject upper_hasse_diagram(BigObject complex, Int boundary_rank)
 {
    return hasse_diagram_caller(complex, RankRestriction(true, RankCutType::GreaterEqual, boundary_rank));
 }

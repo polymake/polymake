@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,7 +25,7 @@ namespace polymake { namespace graph {
 
 class NodeDistances {
 protected:
-   std::vector<int> dist;
+   std::vector<Int> dist;
 public:
    static const bool visit_all_edges=false;
 
@@ -41,31 +41,31 @@ public:
       std::fill(dist.begin(), dist.end(), -1);
    }
 
-   bool operator()(int n)
+   bool operator()(Int n)
    {
-      dist[n]=0;
+      dist[n] = 0;
       return true;
    }
 
-   bool operator()(int n_from, int n_to)
+   bool operator()(Int n_from, Int n_to)
    {
-      if (dist[n_to]<0) {
-         dist[n_to]=dist[n_from]+1;
+      if (dist[n_to] < 0) {
+         dist[n_to] = dist[n_from]+1;
          return true;
       }
       return false;
    }
 
-   int operator[] (int n) const { return dist[n]; }
+   Int operator[] (Int n) const { return dist[n]; }
 };
 
 /// Determine the diameter of a graph.
 template <typename TGraph>
-int diameter(const GenericGraph<TGraph>& G)
+Int diameter(const GenericGraph<TGraph>& G)
 {
    BFSiterator<TGraph, VisitorTag<NodeDistances>> it(G);
-   int diam=0;
-   for (auto n=entire(nodes(G)); !n.at_end(); ++n) {
+   Int diam = 0;
+   for (auto n = entire(nodes(G)); !n.at_end(); ++n) {
       for (it.reset(*n); it.undiscovered_nodes()>0; ++it) ;
       assign_max(diam, it.node_visitor()[it.get_queue().back()]);
    }

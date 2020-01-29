@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -68,8 +68,8 @@ method add_faces {
 # Illustrate the behavior of a linear objective function on the polytope.
 # Draw the facets contained in [[MAXIMAL_FACE]] and [[MINIMAL_FACE]] in distinct colors.
 # @param LinearProgram lp a LinearProgram object attached to the polytope.
-# @option Color min minimal face decoration (default: yellow vertices and/or facets)
-# @option Color max maximal face decoration (default: red vertices and/or facets)
+# @option [complete color] Color min minimal face decoration (default: yellow vertices and/or facets)
+# @option [complete color] Color max maximal face decoration (default: red vertices and/or facets)
 # @return Visual::Polytope
 # @example Attaches a linear program to the threedimensional cube and displays the minimal/maximal faces in a different color, choosing purple instead of the default red for the maximal face
 # > $p = cube(3);
@@ -100,8 +100,8 @@ user_method MIN_MAX_FACE(; LinearProgram { min => $Visual::Color::min, max => $V
 # Illustrate the behavior of a linear objective function on the polytope.
 # Color the vertices according to the values of the objective function.
 # @param LinearProgram lp a LinearProgram object attached to the polytope
-# @option Color min minimal vertex color (default: yellow)
-# @option Color max maximal vertex color (default: red)
+# @option [complete color] Color min minimal vertex color (default: yellow)
+# @option [complete color] Color max maximal vertex color (default: red)
 # @return Visual::Polytope
 # @example Attaches a linear program to the threedimensional cube and displays the minimal/maximal vertices in a different color, choosing purple instead of the default red for the maximal vertices
 # > $p = cube(3);
@@ -295,7 +295,7 @@ sub apply_bounding_facets($;$) {
 # @options %geometric_options
 # @return Visual::Polytope
 
-user_method VISUAL(%Visual::PointSet::decorations, %geometric_options) : CONE_DIM {
+user_method VISUAL(%Visual::Polygons::decorations, %geometric_options) : CONE_DIM {
    my ($this, $decor, $geom)=@_;
    my $P=new Visual::PointSet( Name => $this->name,
                                Points => Visual::transform_float(dehomogenize(convert_to<Float>($this->VERTICES)),$geom->{Transformation},$geom->{Offset}),
@@ -309,7 +309,7 @@ precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM<=4 }
 
 
 # @hide
-user_method VISUAL(%Visual::Wire::decorations, %geometric_options) : CONE_DIM {
+user_method VISUAL(%Visual::Polygons::decorations, %geometric_options) : CONE_DIM {
    my ($this, $decor, $geom)=@_;
    my $G=$this->GRAPH->VISUAL(Name=>$this->name, Coord=>Visual::transform_float(dehomogenize(convert_to<Float>($this->VERTICES)),$geom->{Transformation},$geom->{Offset}), $decor);
    visualize( new Visual::Polytope(Name => $this->name, Polytope => $this, $G) );
@@ -361,7 +361,7 @@ precondition : BOUNDED;
 
 
 # @hide @notest
-user_method VISUAL(%Visual::Wire::decorations) : CONE_AMBIENT_DIM {
+user_method VISUAL(%Visual::Polygons::decorations) : CONE_AMBIENT_DIM {
    my ($this, $decor)=@_;
    $this->SCHLEGEL({},{},$decor);
 }

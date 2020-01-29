@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,13 +25,12 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-void print_constraints(perl::Object P, perl::OptionSet options){
+void print_constraints(BigObject P, OptionSet options)
+{
    const bool ispoly = P.isa("Polytope");
    Matrix<Scalar> Ineqs = P.give("FACETS|INEQUALITIES");
    Array<std::string> coord_labels;
-   if ( P.exists("COORDINATE_LABELS") ) {
-      coord_labels=P.give("COORDINATE_LABELS");
-   }
+   P.lookup("COORDINATE_LABELS") >> coord_labels;
    if (Ineqs.rows() > 0){
       cout << (P.exists("FACETS") ? "Facets:" : "Inequalities:") << endl;
       common::print_constraints_sub(Ineqs, coord_labels, options["ineq_labels"], 0, !ispoly);

@@ -18,7 +18,7 @@
    Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
    ---
-   Copyright (c) 2016-2019
+   Copyright (c) 2016-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -39,10 +39,10 @@
 
 namespace polymake { namespace tropical {
 
-using StarResult = std::pair< Matrix<Rational>, std::vector<Set<int>> >;
+using StarResult = std::pair< Matrix<Rational>, std::vector<Set<Int>>>;
 
 template <typename Addition>
-perl::Object normalized_star_data(perl::Object local_cycle, const Vector<Rational>& point)
+BigObject normalized_star_data(BigObject local_cycle, const Vector<Rational>& point)
 {
   const Matrix<Rational>& local_vertices = local_cycle.give("VERTICES");
   const IncidenceMatrix<>& local_cones = local_cycle.give("MAXIMAL_POLYTOPES");
@@ -51,11 +51,11 @@ perl::Object normalized_star_data(perl::Object local_cycle, const Vector<Rationa
   StarResult r = computeStar(point, local_vertices, local_cones);
 
   // Find all zero rays and make the first coordinate a one
-  Set<int> apices = indices( attach_selector( rows(r.first), operations::is_zero()));
+  Set<Int> apices = indices( attach_selector( rows(r.first), operations::is_zero()));
   r.first.col(0).slice(apices).fill(1);
   Matrix<Rational> vertices(0, r.first.cols());
-  Vector<int> vertex_map_vector = insert_rays( vertices, r.first, true);
-  Map<int,int> vertex_map;
+  Vector<Int> vertex_map_vector = insert_rays(vertices, r.first, true);
+  Map<Int, Int> vertex_map;
   for (auto vm = entire<indexed>(vertex_map_vector); !vm.at_end(); ++vm) {
     vertex_map[ vm.index() ] = *vm;
   }
@@ -63,21 +63,21 @@ perl::Object normalized_star_data(perl::Object local_cycle, const Vector<Rationa
   // Map cones to new ray indices
   RestrictedIncidenceMatrix<> polytopes;
   for (auto cone : r.second) {
-    Set<int> new_cone ( attach_operation( cone, pm::operations::associative_access<Map<int,int>,int>(&vertex_map)));
+    Set<Int> new_cone ( attach_operation( cone, pm::operations::associative_access<Map<Int, Int>, Int>(&vertex_map)));
     polytopes /= new_cone;
   }
   IncidenceMatrix<> final_polytopes(std::move(polytopes));
 
   // Now find redundant rays
-  Set<int> used_rays;
+  Set<Int> used_rays;
 
   Matrix<Rational> lineality_dehom = tdehomog(lineality);
   for (auto p = entire(rows(final_polytopes)); !p.at_end(); ++p) {
-    const Set<int> can_rays = polytope::get_non_redundant_points(vertices.minor(*p, All), lineality_dehom, true).first;
+    const Set<Int> can_rays = polytope::get_non_redundant_points(vertices.minor(*p, All), lineality_dehom, true).first;
     used_rays += select(*p, can_rays);
   }
 
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << thomog(vertices.minor(used_rays,All));
   result.take("MAXIMAL_POLYTOPES") << final_polytopes.minor(All,used_rays);
   result.take("LINEALITY_SPACE") << lineality;
@@ -86,17 +86,17 @@ perl::Object normalized_star_data(perl::Object local_cycle, const Vector<Rationa
 }
 
 template <typename Addition>
-perl::Object star_at_vertex(perl::Object cycle, int vertex_index)
+BigObject star_at_vertex(BigObject cycle, Int vertex_index)
 {
-  perl::Object local_cycle = call_function("local_vertex", cycle, vertex_index);
+  BigObject local_cycle = call_function("local_vertex", cycle, vertex_index);
   const Matrix<Rational>& vertices = cycle.give("VERTICES");
   return normalized_star_data<Addition>(local_cycle, vertices.row(vertex_index));
 }
 
 template <typename Addition>
-perl::Object star_at_point(perl::Object cycle, const Vector<Rational>& point)
+BigObject star_at_point(BigObject cycle, const Vector<Rational>& point)
 {
-  perl::Object local_cycle = call_function("local_point",cycle, point);
+  BigObject local_cycle = call_function("local_point",cycle, point);
   return normalized_star_data<Addition>(local_cycle, point);
 }
 

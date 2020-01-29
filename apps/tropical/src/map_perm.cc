@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,31 +26,31 @@ namespace polymake { namespace tropical {
 /*
  * @brief Takes a map (i,j)->... and a permutation on one of the factors of the domain and
  * returns the permutated map
- * @param Map< std::pair<int,int>, E> orig The original map
+ * @param Map< std::pair<Int, Int>, E> orig The original map
  * @param Permutation A permutation on the first or second factor of the domain {(i,j)}.
  * @param bool first Whether the first (true) or the second factor (false) is being permuted
  * @return The permuted map
  */
 template <typename E, typename Permutation>
-Map<std::pair<int, int>, E> permute_map(const Map<std::pair<int,int>, E>& orig, const Permutation &perm, bool first)
+Map<std::pair<Int, Int>, E> permute_map(const Map<std::pair<Int, Int>, E>& orig, const Permutation& perm, bool first)
 {
-  Map<std::pair<int, int>, E> result;
+  Map<std::pair<Int, Int>, E> result;
   for (auto map = entire(orig); !map.at_end(); ++map) {
-    int arg1 = first ? perm[map->first.first] : map->first.first;
-    int arg2 = first ? map->first.second : perm[map->first.second];
-    result[std::pair<int,int>(arg1,arg2)] = map->second;
+    Int arg1 = first ? perm[map->first.first] : map->first.first;
+    Int arg2 = first ? map->first.second : perm[map->first.second];
+    result[std::pair<Int, Int>(arg1,arg2)] = map->second;
   }
   return result;
 } //END permute_map
 
 template <typename E, typename Permutation>
-Map<std::pair<int,int>, E> permute_map_first_factor(const Map<std::pair<int,int>, E> &orig, const Permutation &perm)
+Map<std::pair<Int, Int>, E> permute_map_first_factor(const Map<std::pair<Int, Int>, E>& orig, const Permutation& perm)
 {
   return permute_map(orig,perm,true);
 }
 
 template <typename E, typename Permutation>
-Map<std::pair<int,int>, E> permute_map_second_factor(const Map<std::pair<int,int>, E>& orig, const Permutation& perm)
+Map<std::pair<Int, Int>, E> permute_map_second_factor(const Map<std::pair<Int, Int>, E>& orig, const Permutation& perm)
 {
   return permute_map(orig,perm,false);
 }

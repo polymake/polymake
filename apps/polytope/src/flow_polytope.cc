@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -43,12 +43,12 @@ namespace polymake { namespace polytope {
  *     x_e <= given bound on edge e
  */
 template <typename Scalar>
-perl::Object flow_polytope(const Graph<Directed> G, const EdgeMap<Directed,Scalar> arc_bounds, int source, int sink)
+BigObject flow_polytope(const Graph<Directed> G, const EdgeMap<Directed,Scalar> arc_bounds, Int source, Int sink)
 {
    SparseMatrix<Scalar> ineqs(G.edges()+3, G.edges()+1);   // inequalities of the new polytope   
    SparseMatrix<Scalar> eqs(G.nodes()-2, G.edges()+1);     // equations of the new polytope
 
-   int i(0); // Keeping track of the number of the current edge.
+   Int i = 0; // Keeping track of the number of the current edge.
    for (auto e=entire(edges(G));  !e.at_end();  ++e, ++i) {
 
       // Inequality: x_e <= given bound on edge e 
@@ -73,7 +73,7 @@ perl::Object flow_polytope(const Graph<Directed> G, const EdgeMap<Directed,Scala
       else {
          // make sure to stay in the matrix range since source and sink
          // do not have any equations
-         int offset( (sign(source - e.from_node()) + sign(sink - e.from_node()))/2 -1 );
+         Int offset = (sign(source - e.from_node()) + sign(sink - e.from_node()))/2-1;
          eqs(e.from_node()+offset, i+1) = -1;
       }
       
@@ -87,14 +87,14 @@ perl::Object flow_polytope(const Graph<Directed> G, const EdgeMap<Directed,Scala
       } else {
          // make sure to stay in the matrix range since source and sink
          // do not have any equations
-         int offset( (sign(source - e.to_node()) + sign(sink - e.to_node()))/2 -1 );
+         Int offset = (sign(source - e.to_node()) + sign(sink - e.to_node()))/2-1;
          eqs(e.to_node()+offset, i+1) = 1;         
       }
    }
    ineqs(G.edges()+2,0) = 1; // far face
 
    // output
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "flow polytope of a Graph" << endl;   
    p_out.take("INEQUALITIES") << ineqs;
    p_out.take("EQUATIONS") << remove_zero_rows(eqs);
@@ -104,12 +104,12 @@ perl::Object flow_polytope(const Graph<Directed> G, const EdgeMap<Directed,Scala
 }
 
 template <typename Scalar>
-perl::Object flow_polytope(const perl::Object G_in, const Array<Scalar> &arc_bounds, int source, int sink)
+BigObject flow_polytope(const BigObject G_in, const Array<Scalar> &arc_bounds, Int source, Int sink)
 {
    Graph<Directed> G = G_in.give("ADJACENCY");
    EdgeMap<Directed,Scalar> EM(G);
-   int i(0);
-   for (auto e=entire(edges(G));  !e.at_end();  ++e, ++i) {
+   Int i = 0;
+   for (auto e = entire(edges(G));  !e.at_end();  ++e, ++i) {
       EM[i] = arc_bounds[i];
    }
    

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -47,7 +47,7 @@ void Main::set_application(const AnyString& appname)
    glue::call_func_void(aTHX_ application_cv);
 }
 
-void Main::set_application_of(const Object& x)
+void Main::set_application_of(const BigObject& x)
 {
    dTHX;
    PmStartFuncall(1);
@@ -194,9 +194,9 @@ Main::shell_complete_t Main::shell_complete(const std::string& input)
    int n = glue::call_func_list(aTHX_ shell_complete_cv);
    int offset = 0;
    char append = 0;
-   std::vector<std::string> proposals(n>2 ? n-2 : 0);
+   std::vector<std::string> proposals(n > 2 ? n-2 : 0);
    if (n >= 2) {
-      dSP;
+      SPAGAIN;
       while (--n >= 2) {
          Value(POPs) >> proposals[n-2];
       }
@@ -222,8 +222,8 @@ std::vector<std::string> Main::shell_context_help(const std::string& input, size
    PUTBACK;
    int n = glue::call_func_list(aTHX_ shell_context_help_cv);
    std::vector<std::string> results(n);
-   if (n) {
-      dSP;
+   if (n > 0) {
+      SPAGAIN;
       while (--n >= 0) {
          Value(POPs) >> results[n];
       }

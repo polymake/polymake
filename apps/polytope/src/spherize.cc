@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,14 +24,14 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-perl::Object spherize(perl::Object p_in)
+BigObject spherize(BigObject p_in)
 {
    const bool bounded=p_in.give("BOUNDED"),
               centered=p_in.give("CENTERED");
    if (!bounded || !centered)
       throw std::runtime_error("spherize: input polytope must be bounded and centered\n");
 
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Spherized polytope " << p_in.name() << endl;
 
    const Matrix<double> V=p_in.give("VERTICES | POINTS");

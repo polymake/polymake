@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,10 +25,11 @@
 
 namespace polymake { namespace polytope {
 
-Array<Array<int>> induced_symmetry_group_generators(int n, 
-                                                    const Array<Array<int>>& sym_group_generators, 
-                                                    const Array<Set<Set<Set<int>>>>& face_orbits)
+Array<Array<Int>> induced_symmetry_group_generators(Int n_, 
+                                                    const Array<Array<Int>>& sym_group_generators, 
+                                                    const Array<Set<Set<Set<Int>>>>& face_orbits)
 {
+   const permlib::dom_int n = permlib::safe_to_dom_int(n_);
    typedef permlib::Permutation PERM;
    typedef permlib::SchreierTreeTransversal<PERM> TRANSVERSAL;
    typedef permlib::BSGS<PERM, TRANSVERSAL> BSGSType;
@@ -45,7 +46,7 @@ Array<Array<int>> induced_symmetry_group_generators(int n,
 
 
    // prepare search without DCM pruning
-   typedef Set<Set<int>> Container;
+   typedef Set<Set<Int>> Container;
    typedef Array<Set<Container>> ArrayType;
 
    typedef permlib::LayeredSetSystemStabilizerPredicate<PERM, Container, ArrayType> PredType;
@@ -57,7 +58,7 @@ Array<Array<int>> induced_symmetry_group_generators(int n,
    backtrackSearch.search(stabilizer);
 
    // extract a strong generating set
-   Array<Array<int>> new_bsgs(stabilizer.S.size());
+   Array<Array<Int>> new_bsgs(stabilizer.S.size());
    auto pit = entire(new_bsgs);
    for (const auto& perm : stabilizer.S)
       *pit++ = group::PermlibGroup::perm2Array(perm);

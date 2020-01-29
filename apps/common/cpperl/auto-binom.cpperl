@@ -1,6 +1,6 @@
 {"app": "common",
  "inst": [
   {"args": ["Integer()", "perl::Canned<const Integer&>", "void"], "func": "binom", "include": ["polymake/Integer.h"], "kind": "stat", "sig": "binomial.X.x"},
-  {"args": ["Integer()", "int", "void"], "func": "binom", "include": ["polymake/Integer.h"], "kind": "stat", "sig": "binomial.X.x"},
+  {"args": ["Integer()", "Int", "void"], "func": "binom", "include": ["polymake/Integer.h"], "kind": "stat", "sig": "binomial.X.x"},
  null ],
 "version": 3}

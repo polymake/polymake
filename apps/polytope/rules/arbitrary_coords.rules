@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -190,7 +190,6 @@ user_function zonotope<Scalar> (Matrix<Scalar>, { rows_are_points => 1, centered
 
 user_function projection<Scalar>(Cone<Scalar>; $=[ ], { revert=>0, nofm=>0 }) {
    my ($P, $indices, $options) = @_;
-   my $first_coord = $P->isa("Polytope") ? 1 : 0;
    projection_cone_impl($P, $indices, $options);
 }
 

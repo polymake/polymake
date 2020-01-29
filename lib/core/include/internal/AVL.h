@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -43,14 +43,14 @@ struct last_of_equal {};
 /// traits classes and such related to balanced trees
 namespace AVL {
 
-enum link_index { L=-1, P=0, R=1 };
+enum link_index : Int { L=-1, P=0, R=1 };
 
 /** Bit fields in \\ptr\\
     The nodes are assumed to be allocated at addresses aligned to the word boundary.
     Thus the lowest two bits of the address are always zero and so can be used for storing
     of various flags.
 */
-enum Ptr_flags {
+enum Ptr_flags : size_t {
    NONE=0,
    SKEW=1,              // the subtree under this link is taller than the opposite one
    LEAF=2,              // the node pointed to is not the child of this node; it is a thread pointer
@@ -62,16 +62,16 @@ enum Ptr_flags {
 template <typename Node>
 class Ptr {
 private:
-   unsigned long ptr;
+   size_t ptr;
 
 public:
-   explicit Ptr(Node* n=NULL) : ptr(reinterpret_cast<unsigned long>(n)) {}
+   explicit Ptr(Node* n = nullptr) : ptr(size_t(n)) {}
 
-   Ptr(Node *n, Ptr_flags flags) : ptr(reinterpret_cast<unsigned long>(n) | flags) {}
+   Ptr(Node *n, Ptr_flags flags) : ptr(size_t(n) | flags) {}
 
    Ptr& set(Node *n, Ptr_flags flags)
    {
-      ptr = reinterpret_cast<unsigned long>(n) | flags;
+      ptr = size_t(n) | flags;
       return *this;
    }
 
@@ -89,7 +89,7 @@ public:
 
    Ptr& set(Node *n)
    {
-      ptr = reinterpret_cast<unsigned long>(n) | (ptr & END);
+      ptr = size_t(n) | (ptr & END);
       return *this;
    }
 
@@ -101,7 +101,7 @@ public:
 
    Ptr& operator= (Node *n)
    {
-      ptr = reinterpret_cast<unsigned long>(n);
+      ptr = size_t(n);
       return *this;
    }
 
@@ -112,12 +112,12 @@ public:
 
    link_index direction() const
    {
-      return link_index((signed long)(ptr << sizeof(ptr)*8-2) >> sizeof(ptr)*8-2);
+      return link_index(Int(ptr << sizeof(ptr)*8-2) >> sizeof(ptr)*8-2);
    }
 
    Ptr& set_direction(Node *n, link_index X)
    {
-      ptr = reinterpret_cast<unsigned long>(n) | (X & (SKEW|LEAF));
+      ptr = size_t(n) | (Int(X) & END);
       return *this;
    }
 
@@ -296,7 +296,6 @@ public:
    typedef typename Traits::Node Node;
    typedef typename Traits::key_type key_type;
    typedef typename Traits::key_comparator_type key_comparator_type;
-   typedef typename Traits::node_allocator_type node_allocator_type;
 protected:
    typedef AVL::Ptr<Node> Ptr;
 
@@ -310,7 +309,7 @@ private:
        @param rthread  next node in the new tree
        @return         the root node of the subtree copy.
    */
-   Node* clone_tree(Node *n, Ptr lthread, Ptr rthread)
+   Node* clone_tree(Node* n, Ptr lthread, Ptr rthread)
    {
       Node *copy=this->clone_node(n);
       if (this->link(n,L).leaf()) {
@@ -342,26 +341,26 @@ private:
        @param left left neighbour of the leftmost leaf of the subtree to be built
        @return pair(root, rightmost leaf) of the subtree
    */
-   pair<Node*,Node*> treeify(Node *left, int n) const
+   pair<Node*, Node*> treeify(Node* left, Int n) const
    {
-      if (n<=2) {
-         Node *cur=this->link(left,R);
-         if (n==2) {
-            left=cur;
-            cur=this->link(left,R);
-            this->link(cur,L).set(left,SKEW);
-            this->link(left,P).set_direction(cur,L);
+      if (n <= 2) {
+         Node* cur = this->link(left,R);
+         if (n == 2) {
+            left = cur;
+            cur = this->link(left,R);
+            this->link(cur, L).set(left, SKEW);
+            this->link(left, P).set_direction(cur, L);
          }
-         return pair<Node*,Node*>(cur,cur);
+         return pair<Node*, Node*>(cur, cur);
       }
-      pair<Node*, Node*> subtree=treeify(left, (n-1)/2);
-      Node *root=this->link(subtree.second,R);
-      this->link(root,L)=subtree.first;
-      this->link(subtree.first,P).set_direction(root,L);
-      subtree=treeify(root, n/2);
-      this->link(root,R).set(subtree.first, Ptr_flags(!(n&(n-1))) /* SKEW if n is a power of 2 */);
-      this->link(subtree.first,P).set_direction(root,R);
-      return pair<Node*, Node*>(root,subtree.second);
+      pair<Node*, Node*> subtree = treeify(left, (n-1)/2);
+      Node* root = this->link(subtree.second, R);
+      this->link(root, L) = subtree.first;
+      this->link(subtree.first, P).set_direction(root, L);
+      subtree = treeify(root, n/2);
+      this->link(root, R).set(subtree.first, Ptr_flags(!(n&(n-1)))); // SKEW if n is a power of 2
+      this->link(subtree.first, P).set_direction(root, R);
+      return pair<Node*, Node*>(root, subtree.second);
    }
 
    /** Converts the list structure to the AVL tree.
@@ -370,9 +369,9 @@ private:
    */
    void treeify() const
    {
-      Node *root=treeify(this->head_node(),n_elem).first;
-      this->link(this->head_node(),P)=root;
-      this->link(root,P).set_direction(this->head_node(),P);
+      Node* root = treeify(this->head_node(), n_elem).first;
+      this->link(this->head_node(), P) = root;
+      this->link(root, P).set_direction(this->head_node(), P);
    }
 
    Ptr root_node() const { return this->link(this->head_node(),P); }
@@ -386,8 +385,6 @@ private:
    friend class AVL::tree_iterator<const typename Traits::traits_for_iterator, L>;
 
 public:
-   void* allocate_node() { return this->node_allocator.allocate(1); }
-
    /// true if object is really a tree (and not a list)
    bool tree_form() const { return root_node(); }
 
@@ -671,7 +668,7 @@ public:
       static const bool is_reverse_iterator=is_derived_from<Arg, reverse_iterator>::value || is_derived_from<Arg, const_reverse_iterator>::value;
       static const bool is_iterator=is_derived_from<Arg, iterator>::value || is_derived_from<Arg, const_iterator>::value || is_reverse_iterator;
       static const bool is_pair=isomorphic_to_first<key_type, Arg>::value;
-      static const int d=is_iterator*2+is_pair;
+      static const int d = is_iterator*2+is_pair;
       using discr = int_constant<d>;
       using return_type = std::conditional_t<is_reverse_iterator, reverse_iterator, iterator>;
    };
@@ -988,8 +985,8 @@ public:
    }
 
    /// Return the current number of nodes.
-   int size() const { return n_elem; }
-   bool empty() const { return n_elem==0; }
+   Int size() const { return n_elem; }
+   bool empty() const { return n_elem == 0; }
 
    template <typename Key>
    void push_front(const Key& k)
@@ -1045,8 +1042,8 @@ public:
    */
    void init()
    {
-      this->link(this->head_node(),L)=this->link(this->head_node(),R)=end_node();
-      this->link(this->head_node(),P)=NULL;
+      this->link(this->head_node(),L) = this->link(this->head_node(),R) = end_node();
+      this->link(this->head_node(),P) = nullptr;
       n_elem=0;
    }
 
@@ -1171,7 +1168,7 @@ public:
 private:
    struct check_ret {
       /// height and weight of the visited subtree
-      int h, w;
+      Int h, w;
    };
 
    check_ret
@@ -1223,7 +1220,7 @@ private:
    }
 
    /// Dump the subtree.
-   void dump_tree(Ptr n, int depth) const
+   void dump_tree(Ptr n, Int depth) const
    {
       if (! this->link(n,R).leaf())
          dump_tree(this->link(n,R), depth+3);
@@ -1237,7 +1234,7 @@ public:
    */
    void check(const char *prefix) const
    {
-      int n=0;
+      Int n=0;
       if (this->link(this->head_node(),P).direction() != P)
          cerr << prefix << "root pointer - wrong direction" << endl;
       if (Ptr root=root_node()) {
@@ -1279,7 +1276,7 @@ public:
 
 private:
    /// current number of nodes
-   int n_elem;
+   Int n_elem;
 };
 
 
@@ -1364,9 +1361,9 @@ void tree<Traits>::insert_rebalance(Node *n, Node *parent, link_index Tonew)
 template <typename Traits>
 void tree<Traits>::remove_rebalance(Node *n)
 {
-   if (!n_elem) {               // the last element removed - tree got empty
-      this->link(this->head_node(),L)=this->link(this->head_node(),R)=end_node();
-      this->link(this->head_node(),P)=NULL;
+   if (!n_elem) {               // the last element removed - tree became empty
+      this->link(this->head_node(),L) = this->link(this->head_node(),R) = end_node();
+      this->link(this->head_node(),P) = nullptr;
       return;
    }
 
@@ -1599,12 +1596,11 @@ public:
    using params = typename mlist_wrap<Params...>::type;
    using key_comparator_type = typename mtagged_list_extract<params, ComparatorTag, operations::cmp>::type;
    static const bool allow_multiple = tagged_list_extract_integral<params, MultiTag>(false);
-   using node_allocator_type = std::allocator<Node>;
 
 protected:
    mutable Ptr<Node> root_links[3];
    key_comparator_type key_comparator;
-   node_allocator_type node_allocator;
+   allocator node_allocator;
 
    Node* head_node() const { return reinterpret_cast<Node*>(&root_links[0]); }
 
@@ -1615,13 +1611,13 @@ protected:
    template <typename Key, typename Data>
    Node* create_from_pair(const pair<Key, Data>& arg, std::false_type)
    {
-      return new(node_allocator.allocate(1)) Node(arg.first, arg.second);
+      return node_allocator.construct<Node>(arg.first, arg.second);
    }
 
    template <typename Key1, typename Key2>
    Node* create_from_pair(const pair<Key1, Key2>& arg, std::true_type)
    {
-      return new(node_allocator.allocate(1)) Node(arg, nothing());
+      return node_allocator.construct<Node>(arg, nothing());
    }
 
    template <typename Key1, typename Key2>
@@ -1633,24 +1629,23 @@ protected:
    template <typename Key>
    Node* create_node(const Key& key_arg)
    {
-      return new(node_allocator.allocate(1)) Node(key_arg);
+      return node_allocator.construct<Node>(key_arg);
    }
 
    template <typename Key, typename Data>
    Node* create_node(const Key& key_arg, const Data& data_arg)
    {
-      return new(node_allocator.allocate(1)) Node(key_arg, data_arg);
+      return node_allocator.construct<Node>(key_arg, data_arg);
    }
 
    Node* clone_node(Node *n)
    {
-      return new(node_allocator.allocate(1)) Node(*n);
+      return node_allocator.construct<Node>(*n);
    }
 
    void destroy_node(Node *n)
    {
       node_allocator.destroy(n);
-      node_allocator.deallocate(n,1);
    }
 
    static bool own_node(Node*) { return true; }
@@ -1661,9 +1656,9 @@ public:
    traits() {}
    explicit traits(arg_type cmp_arg) : key_comparator(cmp_arg) {}
 
-   static int max_size()
+   static Int max_size()
    {
-      return (unsigned int)-1/sizeof(Node);
+      return std::numeric_limits<Int>::max() / sizeof(Node);
    }
 
    const key_comparator_type& get_comparator() const { return key_comparator; }

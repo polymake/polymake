@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -58,6 +58,12 @@ const MGVTBL reset_state_vtbl = { nullptr, nullptr, nullptr, nullptr, &reset_sta
 
 const MGVTBL handle_deferred_vtbl = { nullptr, nullptr, nullptr, nullptr, &handle_deferred };
 
+#if (PerlVersion < 5310 ? defined(HAS_SIGACTION) && defined(SA_SIGINFO) : defined(PERL_USE_3ARG_SIGHANDLER))
+#  define PmCallPerl_sighandler(sig) Perl_sighandler(sig, nullptr, nullptr)
+#else
+#  define PmCallPerl_sighandler(sig) Perl_sighandler(sig)
+#endif
+
 void interrupt_handler(int)
 {
    dTHX;
@@ -70,7 +76,7 @@ void interrupt_handler(int)
             // execute the handler immediately
             SvREFCNT_dec(PL_psig_ptr[SIGINT]);
             PL_psig_ptr[SIGINT] = SvREFCNT_inc_simple_NN(handler);
-            Perl_sighandler(SIGINT, nullptr, nullptr);
+            PmCallPerl_sighandler(SIGINT);
          } else {
             // set the interrupt flag, do nothing else
             sv_setiv(SvRV(handler), 1);
@@ -89,8 +95,8 @@ void interrupt_handler(int)
          if (PL_fdpid && AvFILLp(PL_fdpid) >= 0) {
             for (SV **pidp = AvARRAY(PL_fdpid), **last = pidp + AvFILLp(PL_fdpid);  pidp <= last;  ++pidp) {
                SV* pidsv = *pidp;
-               int child_pid;
-               if (pidsv && SvTYPE(pidsv) == SVt_IV && (child_pid = SvIVX(pidsv)) > 0)
+               pid_t child_pid;
+               if (pidsv && SvTYPE(pidsv) == SVt_IV && (child_pid = pid_t(SvIVX(pidsv))) > 0)
                   kill(child_pid, SIGINT);
             }
          }
@@ -202,8 +208,7 @@ MODULE = Polymake::Interrupts          PACKAGE = Polymake::Interrupts
 
 PROTOTYPES: DISABLE
 
-void
-safe_interrupt(...)
+void safe_interrupt(...)
 PPCODE:
 {
    sv_setiv(state, 1);
@@ -220,8 +225,7 @@ PPCODE:
    Perl_croak(aTHX_ "Interrupted\n");
 }
 
-void
-install_handler()
+void install_handler()
 PPCODE:
 {
    set_interrupt_signal(aTHX_ SIGINT, false);

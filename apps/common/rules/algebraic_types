@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -32,9 +32,11 @@ declare property_type Vector<Element=Rational> : c++ (include => ["polymake/Vect
 
    method construct(Int) : c++;
 
-   operator @arith @eq (*:wary, *) : c++;
-
    operator neg : c++;
+
+   operator @arith (*:wary, *:num) : c++;
+
+   operator @eq (*:wary, *) : c++;
 
    operator | |= (*&& const, *&& const) : c++;
 
@@ -121,9 +123,11 @@ declare property_type Matrix<Element=Rational, Sym=NonSymmetric> : c++ (name => 
       $M;
    }
 
-   operator @arith @eq (*:wary, *) : c++;
-
    operator neg : c++;
+
+   operator @arith (*:wary, *:num) : c++;
+
+   operator @eq (*:wary, *) : c++;
 
    operator / | /= |= (*:wary&& const, Matrix&& const) : c++;
 
@@ -936,8 +940,8 @@ user_function qr_decomp(Matrix<Float>) : c++ (include => "polymake/linalg.h");
 declare property_type SingularValueDecomposition : c++ (include => "polymake/linalg.h");
 
 # @category Linear Algebra
-# SVD decomposition of a Matrix. Computes the SVD of a matrix into a  diagonal Marix (S), orthogonal square Matrix (U), orthogonal square Matrix (V), such that U*S*V^T=M
-# The first element of the output array is S, the second U and the thrid V.
+# SVD decomposition of a Matrix. Computes the SVD of a matrix into a diagonal Marix (S), orthogonal square Matrix (U), orthogonal square Matrix (V), such that U*S*V^T=M
+# The first element of the output array is S, the second U and the third V.
 # @param Matrix<Float> M
 # @return SingularValueDecomposition
 # @example
@@ -1007,7 +1011,7 @@ property_type Vector {
    # accept a SparseVector of a different type as a value of Vector property but substitute the desired element type
    type_method coherent_type {
       my ($self, $value)=@_;
-      instanceof SparseVector($value) ? typeof SparseVector($self->params->[0]) : undef;
+      instanceof SparseVector($value) || instanceof Core::PropertyType($value) && $value->name eq "SparseVector" ? typeof SparseVector($self->params->[0]) : undef;
    }
 }
 
@@ -1066,7 +1070,7 @@ property_type Matrix {
    # accept a SparseMatrix of a different type as a value of Matrix property but substitute the desired element type
    type_method coherent_type {
       my ($self, $value)=@_;
-      instanceof SparseMatrix($value) ? typeof SparseMatrix(@{$self->params}) : undef;
+      instanceof SparseMatrix($value) || instanceof Core::PropertyType($value) && $value->name eq "SparseMatrix" ? typeof SparseMatrix(@{$self->params}) : undef;
    }
 }
 
@@ -1196,7 +1200,7 @@ declare property_type TropicalNumber<Addition, Scalar=Rational> : upgrades( Scal
     # @return Scalar
     user_method zero(:static)  : c++ (include => "polymake/TropicalNumber.h");
 
-    type_method XMLdatatype { typeof Scalar }
+    type_method JSONschema { shift; (typeof Scalar)->JSONschema->(@_) }
 };
 
 # function is_tropical_addition(Min) {1}

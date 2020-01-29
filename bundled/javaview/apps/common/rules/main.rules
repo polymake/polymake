@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -119,7 +119,7 @@ For example:
 sub instance : lvalue { state $active }
 
 {  # capture the own extension
-   my $ext=$Polymake::Core::Application::extension;
+   my $ext = $Polymake::Core::Extension::loading;
 
    sub java_extensions { @{$ext->requires}, $ext }
 }
@@ -223,7 +223,7 @@ package application;
 #
 # @param Visual::Object vis_obj ... objects to display
 #
-# @option String File "filename" or "AUTO"
+# @option [complete file] String File "filename" or "AUTO"
 #  Store the object description in a JVX file without starting the interactive GUI.
 #  The ''.jvx'' suffix is automatically added to the file name.
 #

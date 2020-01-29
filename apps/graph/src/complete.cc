@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,16 +20,16 @@
 
 namespace polymake { namespace graph {
 
-perl::Object complete(const int n)
+BigObject complete(const Int n)
 {
    if (n < 1)
       throw std::runtime_error("number of nodes must be positive");
 
    Graph<> g(n);
-   for (int i=0; i<n-1; ++i)
-     for (int j=i+1; j<n; ++j)
-       g.edge(i,j);
-   perl::Object G("Graph<>");
+   for (Int i = 0; i < n-1; ++i)
+     for (Int j = i+1; j < n; ++j)
+       g.edge(i, j);
+   BigObject G("Graph<>");
    G.take("N_NODES")   << n;
    G.take("N_EDGES")   << (n*(n-1)/2);
    G.take("DIAMETER")  << 1;
@@ -40,7 +40,7 @@ perl::Object complete(const int n)
    return G;
 
 }
-UserFunction4perl("# @category Producing a graph\n"
+UserFunction4perl("# @category Producing a graph"
                   "# Constructs a __complete graph__ on //n// nodes."
                   "# @param Int n"
                   "# @return Graph"

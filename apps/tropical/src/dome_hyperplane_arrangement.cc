@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -37,7 +37,7 @@ cone_polynomial(const Matrix<TropicalNumber<Addition,Scalar> > &points)
   // Construct the linear polynomials
   Polynomial<TNumber> h (TNumber::one(), points.cols());
   for (auto vec=entire(rows(dual_points)); !vec.at_end(); ++vec) {
-    h *= Polynomial<TNumber>(*vec, unit_matrix<int>(points.cols()));
+    h *= Polynomial<TNumber>(*vec, unit_matrix<Int>(points.cols()));
   }
 			
   return h;
@@ -45,42 +45,42 @@ cone_polynomial(const Matrix<TropicalNumber<Addition,Scalar> > &points)
 
 // Constructs the dome of the above Polynomial. 
 template <typename Addition, typename Scalar>
-perl::Object dome_hyperplane_arrangement(const Matrix<TropicalNumber<Addition,Scalar>>& points)
+BigObject dome_hyperplane_arrangement(const Matrix<TropicalNumber<Addition,Scalar>>& points)
 {
   using TNumber = TropicalNumber<typename Addition::dual, Scalar>;
 
   Polynomial<TNumber> h = cone_polynomial(points);	
 
-  const Matrix<int> monoms_int = h.monomials_as_matrix();
+  const Matrix<Int> monoms_int = h.monomials_as_matrix();
   Matrix<Rational> monoms(monoms_int); // cast coefficients Integer -> Rational
   const Vector< TNumber > coefs=h.coefficients_as_vector();
-  const int d=monoms.cols();
-  const int n=monoms.rows();
+  const Int d = monoms.cols();
+  const Int n = monoms.rows();
 
   // We have to make all exponents positive, otherwise the below equations produce
   // a wrong result. We multiply the polynomial with a single monomial, which 
   // does not change the hypersurface.
   Vector<Rational> min_degrees(monoms.cols());
-  for (int v = 0; v < monoms.cols(); ++v) {
+  for (Int v = 0; v < monoms.cols(); ++v) {
     min_degrees[v] = accumulate(monoms.col(v),operations::min());
     // If the minimal degree is positive, we're good
     min_degrees[v] = std::min(min_degrees[v],Rational(0));
   }
-  for (int m = 0; m < monoms.rows(); ++m) {
+  for (Int m = 0; m < monoms.rows(); ++m) {
     monoms.row(m) -= min_degrees; 
   }
 
   // dual to extended Newton polyhedron
   ListMatrix< Vector<Rational> > ineq;
   const TNumber zero=TNumber::zero();
-  for (int i=0; i<n; ++i) {
+  for (Int i = 0; i < n; ++i) {
     if (coefs[i]==zero)
       ineq /= unit_vector<Rational>(d+1,0);
     else
       ineq /= (-1)*Addition::orientation()*(Rational(coefs[i])|monoms[i]);
   }
 
-  perl::Object dome("polytope::Polytope", mlist<Scalar>());
+  BigObject dome("polytope::Polytope", mlist<Scalar>());
   dome.take("INEQUALITIES") << ineq;
   dome.take("FEASIBLE") << true;
   dome.take("BOUNDED") << false;

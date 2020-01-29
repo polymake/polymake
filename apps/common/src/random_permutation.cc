@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,10 +21,10 @@
 
 namespace polymake { namespace common {
 
-Array<int> rand_perm(const int n, perl::OptionSet options)
+Array<Int> rand_perm(const Int n, OptionSet options)
 {
    const RandomSeed seed(options["seed"]);
-   Array<int> perm(n, random_permutation(n, seed).begin());
+   Array<Int> perm(n, random_permutation(n, seed).begin());
    return perm;
 }
 

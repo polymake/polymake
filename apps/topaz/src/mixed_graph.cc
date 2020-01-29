@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,18 +20,18 @@
 
 namespace polymake { namespace topaz {
 
-void mixed_graph(perl::Object p, perl::OptionSet options)
+void mixed_graph(BigObject p, OptionSet options)
 {
-   const Array< Set<int> > C = p.give("FACETS");
+   const Array<Set<Int>> C = p.give("FACETS");
    const Graph<> PG = p.give("GRAPH.ADJACENCY");
    const Graph<> DG = p.give("DUAL_GRAPH.ADJACENCY");
-   const int dim = p.give("DIM");
+   const Int dim = p.give("DIM");
 
    // default for weight = sqrt((dim+1)/(12*Pi))
    // approximation for the radius of the embedding-sphere of a springembedded d-simplex
    double weight=1;
    options["edge_weight"] >> weight;
-   weight*= sqrt(dim+1) / 6.14;
+   weight*= sqrt(dim+1)/6.14;
 
    Graph<Undirected> MG(PG.nodes() + DG.nodes());
    EdgeMap<Undirected, double> WT(MG);
@@ -41,19 +41,19 @@ void mixed_graph(perl::Object p, perl::OptionSet options)
       WT(e.from_node(), e.to_node())=1.0;
 
    // add dual edges
-   const int diff = PG.nodes();
+   const Int diff = PG.nodes();
    for (auto e=entire(edges(DG)); !e.at_end(); ++e)
       WT(e.from_node()+diff, e.to_node()+diff)=1.0;
 
    // add mixed edges
-   int c=diff;
+   Int c = diff;
    for (const auto& f : C) {
-      for (int v : f) WT(c,v)=weight;
+      for (Int v : f) WT(c,v)=weight;
       ++c;
    }
 
-   p.take("MIXED_GRAPH.ADJACENCY", perl::temporary) << MG;
-   p.take("MIXED_GRAPH.EDGE_WEIGHTS", perl::temporary) << WT;
+   p.take("MIXED_GRAPH.ADJACENCY", temporary) << MG;
+   p.take("MIXED_GRAPH.EDGE_WEIGHTS", temporary) << WT;
 }
 
 UserFunction4perl("# @category Other"

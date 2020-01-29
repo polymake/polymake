@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,11 +26,11 @@
 namespace polymake { namespace fan {
 namespace {
 
-bool is_face (const Set<int>& F, const IncidenceMatrix<>& I)
+bool is_face (const Set<Int>& F, const IncidenceMatrix<>& I)
 {
-   Set<int> face;
+   Set<Int> face;
 
-   int i = 0;
+   Int i = 0;
    while ( i < I.rows() && face.size() == 0 && incl(F,I[i]) > 0 ) ++i;
 
    if ( i == I.rows() ) {
@@ -52,30 +52,30 @@ bool is_face (const Set<int>& F, const IncidenceMatrix<>& I)
 
 
 template <typename Coord>
-perl::Object check_fan_objects(const Array<perl::Object>& all_cones, perl::OptionSet options)
+BigObject check_fan_objects(const Array<BigObject>& all_cones, OptionSet options)
 {
-   const int n_i_cones = all_cones.size();
+   const Int n_i_cones = all_cones.size();
    const bool verbose = options["verbose"];
    FacetList max_cones;
 
-   const perl::ObjectType t = all_cones.element_type();
-   const int lineality_dim = all_cones[0].give("LINEALITY_DIM");
-   const int ambientDim = all_cones[0].give("CONE_AMBIENT_DIM");
+   const BigObjectType t = all_cones.element_type();
+   const Int lineality_dim = all_cones[0].give("LINEALITY_DIM");
+   const Int ambientDim = all_cones[0].give("CONE_AMBIENT_DIM");
 
-   for (int c_i = 0; c_i < n_i_cones; ++c_i) {
-      perl::Object cone = all_cones[c_i];
+   for (Int c_i = 0; c_i < n_i_cones; ++c_i) {
+      BigObject cone = all_cones[c_i];
       const Matrix<Coord> c_rays = cone.give("RAYS");
       const Matrix<Coord> facets = cone.give("FACETS");
       const Matrix<Coord> eqs = cone.give("LINEAR_SPAN");
       const IncidenceMatrix<> inc = cone.give("RAYS_IN_FACETS");
-      const int cone_lin_dim = cone.give("LINEALITY_DIM");
+      const Int cone_lin_dim = cone.give("LINEALITY_DIM");
       if (cone_lin_dim != lineality_dim) {
          if (verbose) cout << "Cones do not have the same lineality space." << endl;
          throw std::runtime_error("not a fan");
       }
       // test intersection property
-      for (int c_j = c_i + 1; c_j < n_i_cones; ++c_j) {
-         perl::Object inters(t);
+      for (Int c_j = c_i+1; c_j < n_i_cones; ++c_j) {
+         BigObject inters(t);
          const Matrix<Coord> facets2 = all_cones[c_j].give("FACETS");
          const Matrix<Coord> eqs2 = all_cones[c_j].give("LINEAR_SPAN");
          const Matrix<Coord> c_rays2=all_cones[c_j].give("RAYS");
@@ -84,13 +84,13 @@ perl::Object check_fan_objects(const Array<perl::Object>& all_cones, perl::Optio
          inters.take("EQUATIONS") << (eqs / eqs2);
          const Matrix<Coord> int_rays = inters.give("RAYS");
 
-         const int n_int_rays = int_rays.rows();
+         const Int n_int_rays = int_rays.rows();
          if (n_int_rays > 0) {
             // the rays of the intersection must be rays of the two cones
-            Set<int> rays_in_cone, rays_in_cone2;
-            for (int i=0; i < n_int_rays; ++i) {
+            Set<Int> rays_in_cone, rays_in_cone2;
+            for (Int i = 0; i < n_int_rays; ++i) {
                bool found = false;
-               for (int j = 0; !found && j < c_rays.rows(); ++j) {
+               for (Int j = 0; !found && j < c_rays.rows(); ++j) {
                   if (c_rays[j] == int_rays[i]) {
                      rays_in_cone.insert(j);
                      found = true;
@@ -101,7 +101,7 @@ perl::Object check_fan_objects(const Array<perl::Object>& all_cones, perl::Optio
                   throw std::runtime_error("not a fan");
                }
                found = false;
-               for (int j = 0; !found && j < c_rays2.rows(); ++j) {
+               for (Int j = 0; !found && j < c_rays2.rows(); ++j) {
                   if (c_rays2[j] == int_rays[i]) {
                      rays_in_cone2.insert(j);
                      found = true;
@@ -129,13 +129,13 @@ perl::Object check_fan_objects(const Array<perl::Object>& all_cones, perl::Optio
       }
    }
 
-   hash_map<Vector<Coord>, int> rays;
+   hash_map<Vector<Coord>, Int> rays;
 
-   int n_rays=0;
+   Int n_rays = 0;
 
-   for (perl::Object cone : all_cones) {
+   for (BigObject cone : all_cones) {
       const Matrix<Coord> c_rays = cone.give("RAYS");
-      Set<int> ray_indices;
+      Set<Int> ray_indices;
       for (auto r = entire(rows(c_rays)); !r.at_end(); ++r) {
          auto r_iti = rays.find(*r);
          if (r_iti == rays.end()) {
@@ -154,7 +154,7 @@ perl::Object check_fan_objects(const Array<perl::Object>& all_cones, perl::Optio
    for (auto r = entire(rays); !r.at_end(); ++r)
       R.row(r->second) = r->first;
 
-   perl::Object f("PolyhedralFan", mlist<Coord>());
+   BigObject f("PolyhedralFan", mlist<Coord>());
 
    const Matrix<Coord> lineality=all_cones[0].give("LINEALITY_SPACE");
    f.take("LINEALITY_SPACE") << lineality;
@@ -166,20 +166,20 @@ perl::Object check_fan_objects(const Array<perl::Object>& all_cones, perl::Optio
 
 //template<typename Coord>
 typedef Rational Coord;
-perl::Object check_fan(const Matrix<Coord>& i_rays, const IncidenceMatrix<>& i_cones, perl::OptionSet options)
+BigObject check_fan(const Matrix<Coord>& i_rays, const IncidenceMatrix<>& i_cones, OptionSet options)
 {
-   const int n_i_cones=i_cones.rows();
+   const Int n_i_cones = i_cones.rows();
    Matrix<Coord> linealitySpace;
-   const int ambientDim=i_rays.cols();
+   const Int ambientDim = i_rays.cols();
    if (!(options["lineality_space"] >> linealitySpace))
-      linealitySpace=Matrix<Coord>(0, ambientDim);
-   perl::ObjectType t("Cone", mlist<Coord>());
-   Array<perl::Object> all_cones(t, n_i_cones);
-   for (int i=0; i<n_i_cones; ++i) {
+      linealitySpace = Matrix<Coord>(0, ambientDim);
+   BigObjectType t("Cone", mlist<Coord>());
+   Array<BigObject> all_cones(t, n_i_cones);
+   for (Int i = 0; i < n_i_cones; ++i) {
       all_cones[i].take("INPUT_RAYS") << i_rays.minor(i_cones[i], All);
       all_cones[i].take("INPUT_LINEALITY") << linealitySpace;
    }
-   perl::Object f=check_fan_objects<Coord>(all_cones, options);
+   BigObject f=check_fan_objects<Coord>(all_cones, options);
    f.take("INPUT_RAYS") << i_rays;
    f.take("INPUT_CONES") << i_cones;
    return f;

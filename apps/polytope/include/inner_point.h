@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -47,8 +47,8 @@ Vector<Coord> inner_point_from_facets(const GenericMatrix<MatrixType, Coord>& F)
       we catch the eps=0 case below.
    */
 
-   int c = F.cols();
-   int r = F.rows();
+   Int c = F.cols();
+   Int r = F.rows();
 
    const Matrix<Coord> ineqs = (zero_vector<Coord>(r) | (-ones_vector<Coord>(r) | F))
                              / unit_vector<Coord>(c+2,1)                                // eps >= 0

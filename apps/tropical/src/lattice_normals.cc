@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,20 +30,20 @@ namespace polymake { namespace tropical {
 /**
  * @brief Computes the property [[LATTICE_NORMALS]]
  */
-void compute_lattice_normals(perl::Object C)
+void compute_lattice_normals(BigObject C)
 {
   // Extract necessary values
   IncidenceMatrix<> maximalPolytopes = C.give("MAXIMAL_POLYTOPES");
   IncidenceMatrix<> codimensionOnePolytopes = C.give("CODIMENSION_ONE_POLYTOPES");
   IncidenceMatrix<> maximalAtCodim = C.give("MAXIMAL_AT_CODIM_ONE");
   IncidenceMatrix<> maximalConeNormals = C.give("MAXIMAL_POLYTOPES_AFFINE_HULL_NORMALS");
-  Map<std::pair<int,int>,int> facetNormalsByPairs = C.give("FACET_NORMALS_BY_PAIRS");
-  Matrix<Rational>  facetNormals = C.give("FACET_NORMALS");
-  Matrix<int> maximalPolytopesFacets = C.give("MAXIMAL_POLYTOPES_FACETS");
-  Matrix<Rational> 	affineHull = C.give("AFFINE_HULL");
-  int fanDim = C.give("FAN_DIM");
+  Map<std::pair<Int, Int>, Int> facetNormalsByPairs = C.give("FACET_NORMALS_BY_PAIRS");
+  Matrix<Rational> facetNormals = C.give("FACET_NORMALS");
+  Matrix<Int> maximalPolytopesFacets = C.give("MAXIMAL_POLYTOPES_FACETS");
+  Matrix<Rational> affineHull = C.give("AFFINE_HULL");
+  Int fanDim = C.give("FAN_DIM");
 		
-  Map<std::pair<int,int>, Vector<Integer>> lattice_normals;
+  Map<std::pair<Int, Int>, Vector<Integer>> lattice_normals;
 
   // We forget the constant coefficient of all normals, since we only care about
   // the (non-affine) space spanned by a cone
@@ -102,8 +102,8 @@ void compute_lattice_normals(perl::Object C)
 bool compare_lattice_normals(const Matrix<Rational>& vertices_in,
                              const Matrix<Rational>& lineality_in,
                              const IncidenceMatrix<>& codim,
-                             const Map<std::pair<int, int>, Vector<Integer>>& lnormals1,
-                             const Map<std::pair<int,int>, Vector<Integer>>& lnormals2)
+                             const Map<std::pair<Int, Int>, Vector<Integer>>& lnormals1,
+                             const Map<std::pair<Int, Int>, Vector<Integer>>& lnormals2)
 {
   // First we check if the maps are defined on the same key set
   if (lnormals1.size() != lnormals2.size()) return false;
@@ -114,7 +114,7 @@ bool compare_lattice_normals(const Matrix<Rational>& vertices_in,
     return lnormals1.empty();
 
   // We only need far rays and affine coordinates without leading coordinate for span computation
-  Set<int> far_rays = far_points(vertices_in);
+  Set<Int> far_rays = far_points(vertices_in);
   Matrix<Rational> vertices = tdehomog(vertices_in).minor(All, range_from(1));
   Matrix<Rational> lineality = tdehomog(lineality_in).minor(All, range_from(1));
 
@@ -127,7 +127,7 @@ bool compare_lattice_normals(const Matrix<Rational>& vertices_in,
     Vector<Rational> v2( lnormals2[ l1pair.first ] );
     v2 = tdehomog_vec(v2).slice(range_from(1));
 
-    int cone_index = l1pair.first.first;
+    const Int cone_index = l1pair.first.first;
 
     const Matrix<Rational> span_matrix = vertices.minor(codim.row(cone_index) * far_rays,All) / lineality / v1;
     if (rank(span_matrix) != rank(span_matrix / v2)) return false;

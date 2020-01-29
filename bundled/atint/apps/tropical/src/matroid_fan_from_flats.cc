@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -44,34 +44,34 @@ using graph::lattice::Sequential;
 using graph::lattice::BasicDecoration;
 
 template <typename Addition>
-perl::Object matroid_fan_from_flats(perl::Object matroid)
+BigObject matroid_fan_from_flats(BigObject matroid)
 {
   // Extract properties
-  const int n = matroid.give("N_ELEMENTS");
-  const Set<int> loops = matroid.give("LOOPS");
+  const Int n = matroid.give("N_ELEMENTS");
+  const Set<Int> loops = matroid.give("LOOPS");
   if (loops.size() != 0) {
     return empty_cycle<Addition>(n-1);
   }
-  perl::Object flats_obj = matroid.give("LATTICE_OF_FLATS");
+  BigObject flats_obj = matroid.give("LATTICE_OF_FLATS");
   Lattice<BasicDecoration, Sequential> flats(flats_obj);
   IncidenceMatrix<> chains_incidence( maximal_chains( flats, false,false));
   const IncidenceMatrix<> faces = flats_obj.give("FACES");
 
-  const int empty_index = flats_obj.give("BOTTOM_NODE");
-  const int top_index = flats_obj.give("TOP_NODE");
+  const Int empty_index = flats_obj.give("BOTTOM_NODE");
+  const Int top_index = flats_obj.give("TOP_NODE");
 
   // Create rays
   const Matrix<Rational> unitm = zero_vector<Rational>() | unit_matrix<Rational>(n);
   Matrix<Rational> rays(faces.rows(), n+1);
   rays(empty_index,0) = 1;
-  for (int f = 1; f < faces.rows()-1; ++f) {
+  for (Int f = 1; f < faces.rows()-1; ++f) {
     rays.row(f) = Addition::orientation() * accumulate(rows(unitm.minor(faces.row(f),All)), operations::add());
   }
   const auto extreme_nodes = scalar2set(top_index);
   chains_incidence = chains_incidence.minor(All, ~extreme_nodes);
   rays = rays.minor(~extreme_nodes, All);
 
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("PROJECTIVE_VERTICES") << rays;
   result.take("MAXIMAL_POLYTOPES") << chains_incidence;
   result.take("WEIGHTS") << ones_vector<Integer>(chains_incidence.rows());

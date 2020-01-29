@@ -1,6 +1,6 @@
 {"app": "tropical", "embed": "hurwitz_marked.cc",
  "inst": [
-  {"args": ["Max", "void", "perl::Canned<const Vector<int>&>", "perl::Canned<const Vector<Rational>&>"], "func": "hurwitz_marked_cycle", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "hurwitz_marked_cycle:T1.x.X.X", "tp": "1"},
-  {"args": ["Min", "void", "perl::Canned<const Vector<int>&>", "perl::Canned<const Vector<Rational>&>"], "func": "hurwitz_marked_cycle", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "hurwitz_marked_cycle:T1.x.X.X", "tp": "1"},
+  {"args": ["Max", "void", "perl::Canned<const Vector<Int>&>", "perl::Canned<const Vector<Rational>&>"], "func": "hurwitz_marked_cycle", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "hurwitz_marked_cycle:T1.x.X.X", "tp": "1"},
+  {"args": ["Min", "void", "perl::Canned<const Vector<Int>&>", "perl::Canned<const Vector<Rational>&>"], "func": "hurwitz_marked_cycle", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "hurwitz_marked_cycle:T1.x.X.X", "tp": "1"},
  null ],
 "version": 3}

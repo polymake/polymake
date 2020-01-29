@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,9 +30,9 @@ namespace polymake { namespace topaz {
 namespace {
 
 template <typename Scalar>
-Matrix<Scalar> facets_of_cone_over(Set<int> facet,
+Matrix<Scalar> facets_of_cone_over(const Set<Int>& facet,
                                    const Matrix<Scalar>& vertices,
-                                   const int ioz)
+                                   const Int ioz)
 {
    const Matrix<Scalar> cone(vertices.minor(facet - ioz, range_from(1)));
    return zero_vector<Scalar>() | polytope::enumerate_facets(cone, true).first;
@@ -40,14 +40,14 @@ Matrix<Scalar> facets_of_cone_over(Set<int> facet,
 
 
 template <typename Scalar>
-Matrix<Scalar> inner_facet_normals(const Set<int>& facet,
+Matrix<Scalar> inner_facet_normals(const Set<Int>& facet,
                                    const Matrix<Scalar>& vertices)
 {
    Matrix<Scalar> inner_facet_normals(facet.size(), vertices.cols());
    auto rit = entire(rows(inner_facet_normals));
    for (auto fit = entire(facet); !fit.at_end(); ++fit, ++rit) {
       const Vector<Scalar> normal = null_space(vertices.minor(facet - scalar2set(*fit), All))[0];
-      if (sign(normal * vertices[*fit]) > 0)
+      if (normal * vertices[*fit] > 0)
          *rit = normal;
       else
          *rit = -normal;
@@ -56,11 +56,11 @@ Matrix<Scalar> inner_facet_normals(const Set<int>& facet,
 }
 
 template <typename Scalar>
-std::vector<int> indices_of_normals_towards_0(const Set<int>& facet,
+std::vector<Int> indices_of_normals_towards_0(const Set<Int>& facet,
                                               const Matrix<Scalar>& inner_facet_normals)
 {
-   std::vector<int> indices_of_normals_towards_0;
-   int i(0);
+   std::vector<Int> indices_of_normals_towards_0;
+   Int i = 0;
    for (auto nit = entire(rows(inner_facet_normals)); !nit.at_end(); ++nit, ++i) {
       if ((*nit)[0] > 0)
          indices_of_normals_towards_0.push_back(i);
@@ -71,14 +71,14 @@ std::vector<int> indices_of_normals_towards_0(const Set<int>& facet,
 
 // return the list of indices of simplices that are greater than the one indexed by sigma
 template <typename Scalar>
-Set<int> ideal_of(int sigma,
+Set<Int> ideal_of(Int sigma,
                   const Matrix<Scalar>& vertices,
-                  const Array<Set<int>>& simplices,
+                  const Array<Set<Int>>& simplices,
                   const Array<Matrix<Scalar>>& inner_facet_normals_of,
-                  const Array<std::vector<int>>& indices_of_normals_towards_0_of,
-                  const int ioz)
+                  const Array<std::vector<Int>>& indices_of_normals_towards_0_of,
+                  const Int ioz)
 {
-   Set<int> ideal_of_sigma;
+   Set<Int> ideal_of_sigma;
    const Matrix<Scalar> cone_facets = facets_of_cone_over(simplices[sigma], vertices, ioz);
 
    // check if zero is in sigma;
@@ -91,8 +91,8 @@ Set<int> ideal_of(int sigma,
    }
    
 
-   for (int tau=0; tau<simplices.size(); ++tau) {
-      if (tau==sigma) continue;
+   for (Int tau = 0; tau < simplices.size(); ++tau) {
+      if (tau == sigma) continue;
       /*
         First check if one of the two contains 0
         Then everything is easy as simplices containing 0 are the smallest ones
@@ -118,13 +118,13 @@ Set<int> ideal_of(int sigma,
 
       // Check if the affine hull of the intersection of sigma and tau contain
       // the origin. If this is the case sigma is not preceeding tau
-      perl::Object p_sigma("polytope::Polytope", mlist<Scalar>());
+      BigObject p_sigma("polytope::Polytope", mlist<Scalar>());
       p_sigma.take("FACETS") << inner_facet_normals_of[sigma];
 
-      perl::Object p_tau("polytope::Polytope", mlist<Scalar>());
+      BigObject p_tau("polytope::Polytope", mlist<Scalar>());
       p_tau.take("FACETS") << inner_facet_normals_of[tau];
 
-      perl::Object intersection = call_function("polytope::intersection", p_sigma, p_tau);
+      BigObject intersection = call_function("polytope::intersection", p_sigma, p_tau);
       Matrix<Scalar> affine_hull = intersection.give("AFFINE_HULL");
       bool sigma_tau_intersect = intersection.give("FEASIBLE");
       bool zero_in_affine_hull = true;
@@ -149,7 +149,7 @@ Set<int> ideal_of(int sigma,
             sigma preceeds tau iff that point is not equal to x
        */
       Matrix<Scalar> intersection_ineqs = cone_facets / inner_facet_normals_of[tau];
-      intersection = perl::Object("polytope::Polytope", mlist<Scalar>());
+      intersection = BigObject("polytope::Polytope", mlist<Scalar>());
       intersection.take("INEQUALITIES") << intersection_ineqs;
       bool feasible = intersection.give("FEASIBLE");
       if(!feasible) continue;
@@ -157,14 +157,14 @@ Set<int> ideal_of(int sigma,
       Vector<Scalar> rel_int_p = intersection.give("REL_INT_POINT");
 
       Matrix<Scalar> segment_verts = vector2row(unit_vector<Scalar>(rel_int_p.dim(), 0)) / rel_int_p;
-      perl::Object segment("polytope::Polytope", mlist<Scalar>());
+      BigObject segment("polytope::Polytope", mlist<Scalar>());
       segment.take("VERTICES") << segment_verts;
 
       intersection = call_function("polytope::intersection", p_sigma, segment);
 
       // check dimension of intersection. It is either -1, 0 or 1
       // hence CONE_DIM is either 0, 1 or 2
-      const int dim_inter = intersection.give("CONE_DIM");
+      const Int dim_inter = intersection.give("CONE_DIM");
 
       if (dim_inter == 0) continue;
 
@@ -187,32 +187,32 @@ Set<int> ideal_of(int sigma,
 } // end anonymous namespace
 
 
-template<typename Scalar>
-Graph<Directed> stabbing_order(perl::Object triangulation)
+template <typename Scalar>
+Graph<Directed> stabbing_order(BigObject triangulation)
 {
-   const Array<Set<int>> simplices = triangulation.give("FACETS");
-   const Matrix<Scalar> _vertices = triangulation.give("COORDINATES");
-   Array<int> vertex_indices;
+   const Array<Set<Int>> simplices = triangulation.give("FACETS");
+   const Matrix<Scalar> coords = triangulation.give("COORDINATES");
+   Array<Int> vertex_indices;
    Matrix<Scalar> vertices;
    const bool must_rename = (triangulation.lookup("VERTEX_INDICES") >> vertex_indices);
    if (must_rename)
-      vertices = ones_vector<Scalar>(vertex_indices.size()) | _vertices.minor(vertex_indices, All);
+      vertices = ones_vector<Scalar>(vertex_indices.size()) | coords.minor(vertex_indices, All);
    else
-      vertices = ones_vector<Scalar>(_vertices.rows()) | _vertices; // we work with homogeneous coordinates
+      vertices = ones_vector<Scalar>(vertices.rows()) | coords; // we work with homogeneous coordinates
 
-   const int ioz = topaz::index_of_zero(vertices);
+   const Int ioz = topaz::index_of_zero(vertices);
 
-   Array<std::vector<int>> indices_of_normals_towards_0_of(simplices.size());
+   Array<std::vector<Int>> indices_of_normals_towards_0_of(simplices.size());
    Array<Matrix<Scalar>> inner_facet_normals_of(simplices.size());
 
-   for (int i=0; i<simplices.size(); ++i) {
+   for (Int i = 0; i < simplices.size(); ++i) {
       inner_facet_normals_of[i] = inner_facet_normals(simplices[i], vertices);
       indices_of_normals_towards_0_of[i] = indices_of_normals_towards_0(simplices[i], inner_facet_normals_of[i]);
    }
 
    Graph<Directed> stabbing_order(simplices.size());
-   for (int sigma=0; sigma<simplices.size(); ++sigma) {
-      const Set<int> ideal_of_sigma = ideal_of(sigma, vertices, simplices, inner_facet_normals_of, indices_of_normals_towards_0_of, ioz);
+   for (Int sigma = 0; sigma < simplices.size(); ++sigma) {
+      const Set<Int> ideal_of_sigma = ideal_of(sigma, vertices, simplices, inner_facet_normals_of, indices_of_normals_towards_0_of, ioz);
       for (const auto& i : ideal_of_sigma)
          stabbing_order.edge(sigma, i);
    }
@@ -220,9 +220,9 @@ Graph<Directed> stabbing_order(perl::Object triangulation)
    if (ioz < 0) return stabbing_order;
 
    // We remove all edges between simplices in the star of 0
-   Map<Set<int>, int> index_of;
-   std::vector<int> st_0_indices;
-   int index(-1);
+   Map<Set<Int>, Int> index_of;
+   std::vector<Int> st_0_indices;
+   Int index = -1;
    for (const auto& a : simplices) {
       index_of[a] = ++index;
       if (a.contains(ioz))
@@ -233,7 +233,7 @@ Graph<Directed> stabbing_order(perl::Object triangulation)
    if (!st_0_indices.size()) return stabbing_order;
 
    for (auto i=entire(all_subsets_of_k(sequence(0, st_0_indices.size()),2)); !i.at_end(); ++i) {
-      const Set<int> pair(*i);
+      const Set<Int> pair(*i);
       stabbing_order.delete_edge(st_0_indices[pair.front()],
                                  st_0_indices[pair.back() ]);
    }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,23 +26,22 @@ namespace polymake { namespace graph {
 // the family of Graphs J(n,k,i) from [Godsil & Royle - algebraic graph theory]
 // with nodes [n] choose k and an edge between two nodes if there intersection has size i.  
 // i=0 gives the Kneser Graph and i=k-1 the Johnson Graph.
-perl::Object generalized_johnson_graph (const int n,const int k,const int i) {
-
+BigObject generalized_johnson_graph (const Int n, const Int k, const Int i)
+{
    if (n < 1)
       throw std::runtime_error("generalized_johnson_graph: n should be positiv");
    if (k < 1 || k > n)
       throw std::runtime_error("generalized_johnson_graph: 1 <= k <= n required");
 
+   BigObject JGraph("Graph<Undirected>");
+   Map<Set<Int>, Int> index_of;
+   Array<std::string> labels(Int(Integer::binom(n, k)));
 
-   perl::Object JGraph("Graph<Undirected>");
-   Map<Set<int>, int> index_of;
-   Array<std::string> labels(int(Integer::binom(n,k)));
-
-   int ct(0);
+   Int ct = 0;
    auto lit = entire(labels);
    std::ostringstream os;
    for (auto sit = entire(all_subsets_of_k(sequence(0,n), k)); !sit.at_end(); ++sit, ++lit) {
-      const Set<int> the_set(*sit);
+      const Set<Int> the_set(*sit);
       index_of[the_set] = ct++;
       wrap(os) << the_set;
       *lit = os.str();
@@ -63,12 +62,14 @@ perl::Object generalized_johnson_graph (const int n,const int k,const int i) {
    return JGraph;
 }
 
-perl::Object kneser_graph(const int n, const int k){
-   return generalized_johnson_graph(n,k,0);
+BigObject kneser_graph(const Int n, const Int k)
+{
+   return generalized_johnson_graph(n, k, 0);
 }
 
-perl::Object johnson_graph(const int n, const int k){
-   return generalized_johnson_graph(n,k,k-1);
+BigObject johnson_graph(const Int n, const Int k)
+{
+   return generalized_johnson_graph(n, k, k-1);
 }
 
 UserFunction4perl("# @category Producing a graph"

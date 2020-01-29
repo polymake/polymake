@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,18 +23,17 @@
 
 namespace polymake { namespace matroid {
 
-
-std::string bases_to_revlex_encoding(const Array<Set<int> >& bases,
-                                     int rank,
-                                     int n_elements)
+std::string bases_to_revlex_encoding(const Array<Set<Int>>& bases,
+                                     Int rank,
+                                     Int n_elements)
 {
    return bases_to_revlex_encoding_impl(bases, rank, n_elements);
 }
 
-Array<Set<int> > bases_from_revlex_encoding(const std::string& revlex_encoding,
-                                            int rank,
-                                            int n_elements,
-                                            perl::OptionSet options)
+Array<Set<Int>> bases_from_revlex_encoding(const std::string& revlex_encoding,
+                                           Int rank,
+                                           Int n_elements,
+                                           OptionSet options)
 {
    const bool 
       check_basis_exchange_axiom = options["check_basis_exchange_axiom"],

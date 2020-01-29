@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,9 +24,9 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object cayley_polytope(const Array<perl::Object>& pp, perl::OptionSet options)
+BigObject cayley_polytope(const Array<BigObject>& pp, OptionSet options)
 {
-   int d = pp.size();
+   Int d = pp.size();
 
    auto pp_it = entire(pp);
 
@@ -37,23 +37,23 @@ perl::Object cayley_polytope(const Array<perl::Object>& pp, perl::OptionSet opti
    bool is_lattice=pp_it->give("LATTICE");
    if (!is_lattice)
       throw std::runtime_error("cayley polytope construction only defined for lattice polytopes");
-   const int adim = pp_it->give("CONE_AMBIENT_DIM");
+   const Int adim = pp_it->give("CONE_AMBIENT_DIM");
 
-   perl::Object p_out(pp_it->type());
+   BigObject p_out(pp_it->type());
    std::string names = pp_it->name();
    ListMatrix< Vector<Integer> > U = pp_it->give("VERTICES | POINTS");
    U |= repeat_row(unit_vector<Integer>(d,0), U.rows());
 
-   int i = 1;
+   Int i = 1;
    while ( !(++pp_it).at_end() ) {
-      pointed=pp_it->give("POINTED");
+      pointed = pp_it->give("POINTED");
       if (!pointed)
          throw std::runtime_error("cayley_polytope: input polyhedra not pointed");
       is_lattice=pp_it->give("LATTICE");
       if (!is_lattice)
          throw std::runtime_error("cayley polytope construction only defined for lattice polytopes");
 
-      int adim2 = pp_it->give("CONE_AMBIENT_DIM");
+      Int adim2 = pp_it->give("CONE_AMBIENT_DIM");
       if (adim != adim2)
          throw std::runtime_error("cayley polytope construction only defined for polytopes with equal ambient dimension");
 

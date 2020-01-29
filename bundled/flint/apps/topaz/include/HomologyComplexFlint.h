@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -52,13 +52,13 @@ public:
    FlintComplex_iterator() {}
 
    //for cohomology start at the other end
-   FlintComplex_iterator(const BaseComplex& complex_arg, int d_start_arg, int d_end_arg)
+   FlintComplex_iterator(const BaseComplex& complex_arg, Int d_start_arg, Int d_end_arg)
       : complex(&complex_arg),
         d_cur(dual ? d_end_arg : d_start_arg+1),
         d_end(dual ? d_start_arg+1 : d_end_arg)
    {
 #if POLYMAKE_DEBUG
-      debug_print = perl::get_debug_level();
+      debug_print = get_debug_level();
 #endif
       if (!at_end()) {
          first_step(); operator++();
@@ -86,29 +86,27 @@ public:
       return dual ? d_cur>d_end : d_cur<d_end;
    }
 
-   int dim() const { return d_cur-dual; }
+   Int dim() const { return d_cur-dual; }
 
 
 protected:
    const BaseComplex* complex;
-   int d_cur, d_end;
+   Int d_cur, d_end;
    HomologyGroup<E> hom_cur, hom_next;
-   int rank_cur = 0;
+   Int rank_cur = 0;
    Bitset elim_rows, elim_cols;
    typename MatrixType::persistent_type delta;
 
-   static const int R_inv_prev=0, L=1, LxR_prev=2, R_inv=3, companion_set=4;
-   
-
+   enum { R_inv_prev=0, L=1, LxR_prev=2, R_inv=3 };
 
    void first_step();
    void step(bool first=false);
 
 #if POLYMAKE_DEBUG
-   int debug_print;
+   Int debug_print;
 
 
-   void debug1(int d, const GenericMatrix<MatrixType,E>& _delta, const SparseMatrix<Rational>& _r_delta, const nothing*) const
+   void debug1(Int d, const GenericMatrix<MatrixType,E>& _delta, const SparseMatrix<Rational>& _r_delta, const nothing*) const
    {
       cout << "elim[" << d << "]:\n" << std::setw(3) << _delta << endl;
    }
@@ -165,12 +163,12 @@ void FlintComplex_iterator<E,MatrixType,BaseComplex,with_cycles,dual>::step(bool
    typename MatrixType::persistent_type delta_next;
    
 
-   int rank_next=0;
-   if (d_cur!=d_end) {
+   Int rank_next = 0;
+   if (d_cur != d_end) {
       if (dual) {
-         delta_next=T(complex->template boundary_matrix<E>(d_cur+1));
+         delta_next = T(complex->template boundary_matrix<E>(d_cur+1));
       } else {
-         delta_next=complex->template boundary_matrix<E>(d_cur-1);
+         delta_next = complex->template boundary_matrix<E>(d_cur-1);
       }
 #if POLYMAKE_DEBUG
       if (debug_print) {
@@ -213,12 +211,10 @@ void FlintComplex_iterator<E,MatrixType,BaseComplex,with_cycles,dual>::step(bool
    for (const auto& t : snf.diagonal()) {
       if (abs(t) == 0){
          break;
-      }
-      else
-      {
-         rank_cur = rank_cur + 1;
+      } else {
+         ++rank_cur;
          if (abs(t) > 1) {
-            hom_next.torsion.push_back(std::pair<Integer,int>(t,1));
+            hom_next.torsion.push_back(std::pair<Integer, Int>(t, 1));
          }
       }	
    }
@@ -249,21 +245,21 @@ template <typename R, typename MatrixType, typename BaseComplex>
 class HomologyComplexFlint {
 protected:
    const BaseComplex& complex;
-   int dim_high, dim_low;
+   Int dim_high, dim_low;
 public:
    explicit HomologyComplexFlint(const BaseComplex& complex_arg,
-                         int dim_high_arg=-1, int dim_low_arg=0)
+                                 Int dim_high_arg = -1, Int dim_low_arg = 0)
       : complex(complex_arg), dim_high(dim_high_arg), dim_low(dim_low_arg)
    {
-      int d=dim();
+      Int d = dim();
       if (dim_high<0) dim_high+=d+1;
       if (dim_low<0) dim_low+=d+1;
       if (dim_high<dim_low || dim_high>d || dim_low<0)
          throw std::runtime_error("HomologyComplexFlint - dimensions out of range");
    }
 
-   int dim() const { return complex.dim(); }
-   int size() const { return dim_high-dim_low+1; }
+   Int dim() const { return complex.dim(); }
+   Int size() const { return dim_high-dim_low+1; }
    const BaseComplex& get_complex() const { return complex; }
 
    typedef HomologyGroup<R> homology_type;

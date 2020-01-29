@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,20 +28,20 @@ namespace polymake { namespace group {
 namespace {
 
 template <typename Iterator>
-std::pair<Array<Set<int>>, Array<int>>
-orbit_reps_and_sizes_impl(const Array<Array<int>>& generators,
+std::pair<Array<Set<Int>>, Array<Int>>
+orbit_reps_and_sizes_impl(const Array<Array<Int>>& generators,
                           Iterator& domain_it)
 {
    const PermlibGroup group(generators);
 
-   Map<Set<int>, int> orbit_size;
+   Map<Set<Int>, Int> orbit_size;
    while (!domain_it.at_end()) {
-      ++orbit_size[group.lex_min_representative(Set<int>(*domain_it))];
+      ++orbit_size[group.lex_min_representative(Set<Int>(*domain_it))];
       ++domain_it;
    }
 
-   Array<Set<int>> reps(orbit_size.size());
-   Array<int> size(orbit_size.size());
+   Array<Set<Int>> reps(orbit_size.size());
+   Array<Int> size(orbit_size.size());
    auto rit = entire(reps);
    auto sit = entire(size);
 
@@ -56,14 +56,14 @@ orbit_reps_and_sizes_impl(const Array<Array<int>>& generators,
 } // end anonymous namespace
 
 template <typename SetType>
-SetType lex_min_representative(perl::Object G, const SetType& S)
+SetType lex_min_representative(BigObject G, const SetType& S)
 {
    return group_from_perl_action(G).lex_min_representative(S);
 }
 
 template <typename Container>
-std::pair<Array<Set<int>>, Array<int>>
-orbit_reps_and_sizes(const Array<Array<int>>& generators,
+std::pair<Array<Set<Int>>, Array<Int>>
+orbit_reps_and_sizes(const Array<Array<Int>>& generators,
                      const Container& domain)
 {
    auto row_it = entire(domain);
@@ -71,8 +71,8 @@ orbit_reps_and_sizes(const Array<Array<int>>& generators,
 }
 
 template <>
-std::pair<Array<Set<int>>, Array<int>>
-orbit_reps_and_sizes(const Array<Array<int>>& generators,
+std::pair<Array<Set<Int>>, Array<Int>>
+orbit_reps_and_sizes(const Array<Array<Int>>& generators,
                      const IncidenceMatrix<>& domain)
 {
    auto row_it = entire(rows(domain));

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,10 +25,10 @@ namespace polymake { namespace polytope {
 
 Vector<Integer> h_from_f_vec(const Vector<Integer>& f, bool simplicial);
 Vector<Integer> f_from_h_vec(const Vector<Integer>& h, const bool simplicial);
-Vector<Integer> h_from_g_vec(const Vector<Integer>& g, const int d);
+Vector<Integer> h_from_g_vec(const Vector<Integer>& g, const Int d);
 Vector<Integer> g_from_h_vec(const Vector<Integer>& h);
-Vector<int> binomial_representation(Integer l, int i);
-Integer pseudopower(Integer l, int i);
+Vector<Int> binomial_representation(Integer l, Int i);
+Integer pseudopower(Integer l, Int i);
 bool m_sequence(Vector<Integer> h);
 
 

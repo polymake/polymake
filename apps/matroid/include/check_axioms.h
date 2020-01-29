@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,8 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef __POLYMAKE_MATROID_CHECK_AXIOMS_H__
-#define __POLYMAKE_MATROID_CHECK_AXIOMS_H__
+#ifndef POLYMAKE_MATROID_CHECK_AXIOMS_H
+#define POLYMAKE_MATROID_CHECK_AXIOMS_H
 
 #include "polymake/Set.h"
 #include "polymake/PowerSet.h"
@@ -25,18 +25,18 @@
 namespace polymake { namespace matroid {
 
 template<typename Container>
-bool check_basis_exchange_axiom_impl(const Container& bases, bool verbose=false)
+bool check_basis_exchange_axiom_impl(const Container& bases, bool verbose = false)
 {
-   Set<Set<int> > basis_set;
+   Set<Set<Int>> basis_set;
    for (auto bit = entire(bases); !bit.at_end(); ++bit)
       basis_set += *bit; // have to do it like this so that the comparison tree gets built properly
    
    for (auto bit1 = entire(bases); !bit1.at_end(); ++bit1) {
       for (auto bit2 = entire(bases); !bit2.at_end(); ++bit2) {
-         const Set<int> AmB = *bit1 - *bit2;
-         const Set<int> BmA = *bit2 - *bit1;
+         const Set<Int> AmB = *bit1 - *bit2;
+         const Set<Int> BmA = *bit2 - *bit1;
          for (auto ambit = entire(AmB); !ambit.at_end(); ++ambit) {
-            bool verified (false);
+            bool verified = false;
             for (auto bmait = entire(BmA); !verified && !bmait.at_end(); ++bmait) {
                verified = basis_set.contains(*bit1 - *ambit + *bmait);
             }
@@ -54,8 +54,8 @@ bool check_basis_exchange_axiom_impl(const Container& bases, bool verbose=false)
    return true;
 }
 
-template<typename SetType>
-bool check_hyperplane_axiom_impl(const Array<SetType>& H, bool verbose=false)
+template <typename SetType>
+bool check_hyperplane_axiom_impl(const Array<SetType>& H, bool verbose = false)
 {
    /*
      The hyperplane axioms are:
@@ -82,9 +82,9 @@ bool check_hyperplane_axiom_impl(const Array<SetType>& H, bool verbose=false)
                            << h1 << " and " << h2 << " are not independent." << endl;
          return false;
       }
-      const SetType C(E - h1 - h2);
+      const SetType C(E-h1-h2);
       for (auto sit = entire(C); !sit.at_end(); ++sit) {
-         const SetType U((h1 * h2) + scalar2set(*sit));
+         const SetType U(h1 * h2 + *sit);
          bool found_container(false);
          for (auto hit = entire(H); !hit.at_end() && !found_container; ++hit) {
             found_container = incl(U, *hit) <= 0;
@@ -101,8 +101,8 @@ bool check_hyperplane_axiom_impl(const Array<SetType>& H, bool verbose=false)
    return true;
 }
 
-template<typename SetType>
-bool check_flat_axiom_impl(const Array<SetType>& F, bool verbose=false)
+template <typename SetType>
+bool check_flat_axiom_impl(const Array<SetType>& F, bool verbose = false)
 {
    // Extract the hyperplanes from the flats, then check the hyperplane axioms.
    SetType E; // ground set
@@ -114,14 +114,14 @@ bool check_flat_axiom_impl(const Array<SetType>& F, bool verbose=false)
       if (fit->size() != E.size())
          HL.insertMax(*fit);
 
-   Array<Set<int> > H(HL.size(), entire(HL));
+   Array<Set<Int>> H(HL.size(), entire(HL));
 
    return check_hyperplane_axiom_impl(H, verbose);
 }
 
 } }
 
-#endif // __POLYMAKE_MATROID_CHECK_AXIOMS_H__
+#endif // POLYMAKE_MATROID_CHECK_AXIOMS_H
 
 // Local Variables:
 // mode:C++

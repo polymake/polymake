@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,7 +32,7 @@ namespace polynomial_impl {
 using FlintImplQ = FlintPolynomial;
 
 template <>
-struct impl_chooser<polynomial_impl::UnivariateMonomial<int>, Rational> {
+struct impl_chooser<polynomial_impl::UnivariateMonomial<Int>, Rational> {
   typedef FlintImplQ type;
 };
 
@@ -42,9 +42,9 @@ struct impl_chooser<polynomial_impl::UnivariateMonomial<int>, Rational> {
 
 namespace pm {
 
-template <typename Coefficient = Rational, typename Exponent = int>
+template <typename Coefficient = Rational, typename Exponent = Int>
 class UniPolynomial {
-
+  static_assert(!std::is_same<Exponent, int>::value, "use Int instead");
   friend class RationalFunction<Coefficient, Exponent>;
   template <typename> friend struct spec_object_traits;
 public:
@@ -79,22 +79,22 @@ public:
     : impl_ptr{std::make_unique<impl_type>(1)} {}
 
   /// construct a polynomial of degree 0
-  template <typename T, typename enabled=typename std::enable_if<fits_as_coefficient<T>::value>::type>
+  template <typename T, typename = std::enable_if_t<fits_as_coefficient<T>::value>>
   explicit UniPolynomial(const T& c)
     : impl_ptr{std::make_unique<impl_type>(c,1)} {}
 
   /// construct a polynomial with a single term
-  template <typename T, typename enabled=typename std::enable_if<fits_as_coefficient<T>::value>::type>
+  template <typename T, typename = std::enable_if_t<fits_as_coefficient<T>::value>>
   UniPolynomial(const T& c, const Exponent& exp)
     : UniPolynomial(same_element_vector(static_cast<Coefficient>(c), 1), same_element_vector(exp, 1)) {}
 
   template <typename Container1, typename Container2,
-            typename enabled=typename std::enable_if<isomorphic_to_container_of<Container1, Coefficient>::value &&
-                                                     isomorphic_to_container_of<Container2, Exponent>::value>::type>
+            typename = std::enable_if_t<(isomorphic_to_container_of<Container1, Coefficient>::value &&
+                                         isomorphic_to_container_of<Container2, Exponent>::value)>>
   UniPolynomial(const Container1& coefficients, const Container2& monomials)
     : impl_ptr{std::make_unique<impl_type>(coefficients, monomials, 1)} {}
 
-  explicit UniPolynomial(const term_hash& terms, int nvars=1)
+  explicit UniPolynomial(const term_hash& terms, Int nvars = 1)
     : impl_ptr{std::make_unique<impl_type>(terms,1)} {}
 
   /// construct a monomial of degree 1
@@ -110,8 +110,8 @@ public:
     impl_ptr->croak_if_incompatible(other);
   }
 
-  int n_vars() const { return 1; }
-  const int& n_terms() const { return impl_ptr->n_terms(); }
+  Int n_vars() const { return 1; }
+  Int n_terms() const { return impl_ptr->n_terms(); }
   const term_hash& get_terms() const { return impl_ptr->get_terms(); }
   bool trivial() const { return impl_ptr->trivial(); }
   bool is_one() const { return impl_ptr->is_one(); }
@@ -121,19 +121,19 @@ public:
   bool operator!= (const UniPolynomial& p2) const { return !operator==(p2); }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, bool>
   operator== (const T& c) const { return impl_ptr->operator==(c); }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, bool>
   operator!= (const T& c) const { return !operator==(c); }
 
   template <typename T> friend
-  typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, bool>
   operator==(const T&c, const UniPolynomial& p) { return p == c; }
 
   template <typename T> friend
-  typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, bool>
   operator!=(const T&c, const UniPolynomial& p) { return p != c; }
 
   Coefficient get_coefficient(const monomial_type& m) const { return impl_ptr->get_coefficient(m); }
@@ -166,20 +166,16 @@ public:
      return zero_value<UniPolynomial>();
   }
 
-  template <typename T,
-             typename std::enable_if<
-               std::is_same<Exponent,int>::value &&
-               std::is_same<typename object_traits<T>::generic_tag,is_scalar>::value
-             >::type* = nullptr
-           >
-  auto
-  substitute(const T& t) const
+  template <typename T>
+  auto substitute(const T& t, std::enable_if_t<(std::is_same<Exponent, Int>::value &&
+                                                std::is_same<typename object_traits<T>::generic_tag, is_scalar>::value),
+                              std::nullptr_t> = nullptr) const
   {
     typename impl_type::sorted_terms_type temp = impl_ptr->get_sorted_terms();
     // using the return type of a product allows upgrades in both directions:
-    // e.g. T=int upgraded to coefficient type,
+    // e.g. T=Int upgraded to coefficient type,
     //      or Coeff=Rational to T=QuadraticExtension
-    typedef typename std::remove_reference<decltype(std::declval<T>() * std::declval<Coefficient>())>::type ret_type;
+    using ret_type = pure_type_t<decltype(std::declval<T>() * std::declval<Coefficient>())>;
     ret_type result;
     Exponent previous_exp = this->deg();
     for (const auto& exp : temp) {
@@ -189,76 +185,70 @@ public:
       }
       result += this->get_coefficient(exp);
     }
-    result *= pm::pow(convert_to<ret_type>(t),previous_exp);
+    result *= pm::pow(convert_to<ret_type>(t), previous_exp);
     return result;
   }
 
-  template <typename T,
-             typename std::enable_if<
-               std::is_same<Exponent,int>::value &&
-               std::is_same<typename object_traits<T>::generic_tag,is_matrix>::value
-             >::type* = nullptr
-           >
-  auto
-  substitute(const T& t) const
+  template <typename T>
+  auto substitute(const T& t, std::enable_if_t<(std::is_same<Exponent, Int>::value &&
+                                                std::is_same<typename object_traits<T>::generic_tag, is_matrix>::value),
+                              std::nullptr_t> = nullptr) const
   {
     if (POLYMAKE_DEBUG || is_wary<T>()) {
       if (t.rows() != t.cols())
         throw std::runtime_error("polynomial substitute: matrix must be square");
     }
-    typename impl_type::sorted_terms_type temp = impl_ptr->get_sorted_terms();
+    const auto& temp = impl_ptr->get_sorted_terms();
     Exponent previous_exp = this->deg();
-    typedef typename T::persistent_nonsymmetric_type ret_type;
-    ret_type result(t.rows(),t.rows());
+    using ret_type = typename T::persistent_nonsymmetric_type;
+    ret_type result(t.rows(), t.rows());
     for (const auto& exp : temp) {
       while (previous_exp > exp) {
         result = result * t;
-        previous_exp--;
+        --previous_exp;
       }
       result += this->get_coefficient(exp) * unit_matrix<typename T::value_type>(t.rows());
     }
-    result = result * pm::pow<ret_type>(t,previous_exp);
+    result = result * pm::pow<ret_type>(t, previous_exp);
     return result;
   }
 
   template <template <typename, typename> class T, typename TCoeff, typename TExp,
-             typename std::enable_if<
-               std::is_same<Exponent,int>::value &&
-               std::is_same<typename object_traits<T<TCoeff,TExp>>::generic_tag,is_polynomial>::value
-             >::type* = nullptr
-           >
+            typename = std::enable_if_t<
+               std::is_same<Exponent, Int>::value &&
+               std::is_same<typename object_traits<T<TCoeff, TExp>>::generic_tag, is_polynomial>::value>>
   auto
-  substitute(const T<TCoeff,TExp>& t) const
+  substitute(const T<TCoeff, TExp>& t) const
   {
-    typedef typename std::remove_reference<decltype(std::declval<TCoeff>() * std::declval<Coefficient>())>::type ret_coeff;
-    typedef T<ret_coeff,TExp> ret_type;
-    typename impl_type::sorted_terms_type temp = impl_ptr->get_sorted_terms();
+    using ret_coeff = pure_type_t<decltype(std::declval<TCoeff>() * std::declval<Coefficient>())>;
+    using ret_type = T<ret_coeff, TExp>;
+    const auto& temp = impl_ptr->get_sorted_terms();
     Exponent previous_exp = this->deg();
     ret_type result = convert_to<ret_coeff>(t.zero());
     for (const auto& exp : temp) {
       while (previous_exp > exp) {
         result *= convert_to<ret_coeff>(t);
-        previous_exp--;
+        --previous_exp;
       }
       result += ret_coeff(this->get_coefficient(exp));
     }
-    result *= pm::pow<ret_type>(convert_to<ret_coeff>(t),previous_exp);
+    result *= convert_to<ret_coeff>(t).pow(previous_exp);
     return result;
   }
 
   // more efficient variant of the above for substituting x^exp
   template <typename Exp, typename T>
-  UniPolynomial<Coefficient,Exp> substitute_monomial(const T& exponent) const
+  UniPolynomial<Coefficient, Exp> substitute_monomial(const T& exponent) const
   {
-    return UniPolynomial<Coefficient,Exp>(impl_ptr->template substitute_monomial<Exp,T>(exponent));
+    return UniPolynomial<Coefficient, Exp>(impl_ptr->template substitute_monomial<Exp, T>(exponent));
   }
 
   template <typename T>
-  typename std::enable_if<is_field_of_fractions<Exponent>::value && fits_as_coefficient<T>::value,
-                          typename algebraic_traits<T>::field_type>::type
-  evaluate(const T& t, const long exp_lcm=1) const
+  std::enable_if_t<is_field_of_fractions<Exponent>::value && fits_as_coefficient<T>::value,
+                   typename algebraic_traits<T>::field_type>
+  evaluate(const T& t, const Int exp_lcm = 1) const
   {
-    typedef typename algebraic_traits<T>::field_type field;
+    using field = typename algebraic_traits<T>::field_type;
     field res;
     for (const auto& term : get_terms())
     {
@@ -271,13 +261,13 @@ public:
   }
 
   template <typename T>
-  typename std::enable_if<std::numeric_limits<Exponent>::is_integer && fits_as_coefficient<T>::value,
-                          typename algebraic_traits<T>::field_type>::type
-  evaluate(const T& t, const long exp_lcm=1) const
+  std::enable_if_t<std::numeric_limits<Exponent>::is_integer && fits_as_coefficient<T>::value,
+                   typename algebraic_traits<T>::field_type>
+  evaluate(const T& t, const Int exp_lcm = 1) const
   {
-    typedef typename algebraic_traits<T>::field_type field;
+    using field = typename algebraic_traits<T>::field_type;
     if (exp_lcm == 1)
-       return substitute<field>(field::pow(t,exp_lcm));
+       return substitute<field>(field::pow(t, exp_lcm));
     else
        return substitute<field>(t);
   }
@@ -323,21 +313,21 @@ public:
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, UniPolynomial>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, UniPolynomial>
   operator*(const T& c) const
   {
     return UniPolynomial(impl_ptr->operator*(c));
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, UniPolynomial>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, UniPolynomial>
   mult_from_right(const T& c) const
   {
     return UniPolynomial(impl_ptr->mult_from_right(c));
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, UniPolynomial>::type&
+  std::enable_if_t<fits_as_coefficient<T>::value, UniPolynomial&>
   operator*= (const T& c)
   {
     impl_ptr->operator*=(c);
@@ -345,21 +335,21 @@ public:
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, UniPolynomial>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, UniPolynomial>
   operator/ (const T& c) const
   {
     return UniPolynomial(impl_ptr->operator/(c));
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, UniPolynomial>::type&
+  std::enable_if_t<fits_as_coefficient<T>::value, UniPolynomial&>
   operator/= (const T& c)
   {
     impl_ptr->operator/=(c);
     return *this;
   }
 
-  Polynomial<Coefficient, Exponent> homogenize(int new_variable_index = 0) const
+  Polynomial<Coefficient, Exponent> homogenize(Int new_variable_index = 0) const
   {
     return Polynomial<Coefficient, Exponent>(impl_ptr->homogenize(new_variable_index));
   }
@@ -411,14 +401,14 @@ public:
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, UniPolynomial>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, UniPolynomial>
   operator+ (const T& c) const
   {
     return UniPolynomial(impl_ptr->operator+(c));
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, UniPolynomial>::type&
+  std::enable_if_t<fits_as_coefficient<T>::value, UniPolynomial&>
   operator+= (const T& c)
   {
     impl_ptr->operator+=(c);
@@ -426,14 +416,14 @@ public:
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, UniPolynomial>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, UniPolynomial>
   operator- (const T& c) const
   {
     return UniPolynomial(impl_ptr->operator-(c));
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, UniPolynomial>::type&
+  std::enable_if_t<fits_as_coefficient<T>::value, UniPolynomial&>
   operator-= (const T& c)
   {
     impl_ptr->operator-=(c);
@@ -570,7 +560,7 @@ protected:
 
 };
 
-template <typename Coefficient, typename Exponent> inline
+template <typename Coefficient, typename Exponent>
 Div< UniPolynomial<Coefficient, Exponent> >
 div(const UniPolynomial<Coefficient, Exponent>& num, const UniPolynomial<Coefficient, Exponent>& den)
 {
@@ -639,8 +629,8 @@ ext_gcd(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coeff
       k.clear();
       p1.impl_ptr->remainder(*p2.impl_ptr, *k.impl_ptr);
       // multiply U from left with { {1, -k}, {0, 1} }
-      U[0][0] -= k * U[1][0];
-      U[0][1] -= k * U[1][1];
+      U[0][0] -= k*U[1][0];
+      U[0][1] -= k*U[1][1];
       if (p1.trivial()) {
         res.g.swap(p2);
         res.p.swap(U[1][sw]);  res.q.swap(U[1][1-sw]);
@@ -652,8 +642,8 @@ ext_gcd(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coeff
       k.clear();
       p2.impl_ptr->remainder(*p1.impl_ptr, *k.impl_ptr);
       // multiply U from left with { {1, 0}, {-k, 1} }
-      U[1][0] -= k * U[0][0];
-      U[1][1] -= k * U[0][1];
+      U[1][0] -= k*U[0][0];
+      U[1][1] -= k*U[0][1];
       if (p2.trivial()) {
         res.g.swap(p1);
         res.p.swap(U[0][sw]);  res.q.swap(U[0][1-sw]);
@@ -679,12 +669,12 @@ ext_gcd(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coeff
 }
 
 
-template <typename Coefficient, typename Exponent> inline
+template <typename Coefficient, typename Exponent>
 UniPolynomial<Coefficient, Exponent>
 lcm(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficient, Exponent>& b)
 {
   const ExtGCD< UniPolynomial<Coefficient, Exponent> > x = ext_gcd(a, b);
-  return a * x.k2;
+  return a*x.k2;
 }
 
 /*! Perform the polynomial division, discarding the remainder.
@@ -692,7 +682,7 @@ lcm(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficie
  *  you can put arbitrary polynomials here.
  *  The name is rather chosen for compatibility with the Integer class.
  */
-template <typename Coefficient, typename Exponent> inline
+template <typename Coefficient, typename Exponent>
 UniPolynomial<Coefficient, Exponent> div_exact(const UniPolynomial<Coefficient, Exponent>& a, const UniPolynomial<Coefficient, Exponent>& b)
 {
   UniPolynomial<Coefficient, Exponent> tmp(a);
@@ -700,9 +690,9 @@ UniPolynomial<Coefficient, Exponent> div_exact(const UniPolynomial<Coefficient, 
 }
 
 
-template <typename Coefficient = Rational, typename Exponent = int>
+template <typename Coefficient = Rational, typename Exponent = Int>
 class Polynomial {
-
+  static_assert(!std::is_same<Exponent, int>::value, "use Int instead");
   template <typename> friend struct spec_object_traits;
 public:
   typedef typename polynomial_impl::impl_chooser< polynomial_impl::MultivariateMonomial<Exponent>, Coefficient>::type impl_type;
@@ -736,28 +726,28 @@ public:
     : impl_ptr{std::make_unique<impl_type>(impl)} {}
 
   /// construct a zero polynomial with the given number of variables
-  explicit Polynomial(const int n_vars)
+  explicit Polynomial(const Int n_vars)
     : impl_ptr{std::make_unique<impl_type>(n_vars)} {}
 
   /// construct a polynomial of degree 0 with the given number of variables
-  template <typename T, typename enabled=typename std::enable_if<fits_as_coefficient<T>::value>::type>
-  Polynomial(const T& c, const int n_vars)
+  template <typename T, typename = std::enable_if_t<fits_as_coefficient<T>::value>>
+  Polynomial(const T& c, const Int n_vars)
     : impl_ptr{std::make_unique<impl_type>(c, n_vars)} {}
 
   /// construct a polynomial with a single term
-  template <typename T, typename TVector, typename enabled=typename std::enable_if<fits_as_coefficient<T>::value>::type>
+  template <typename T, typename TVector, typename = std::enable_if_t<fits_as_coefficient<T>::value>>
   Polynomial(const T& c, const GenericVector<TVector>& monomial)
     : Polynomial(same_element_vector(c, 1), vector2row(monomial)) {}
 
-  template <typename Container, typename TMatrix, typename enabled=typename std::enable_if<isomorphic_to_container_of<Container, Coefficient>::value>::type>
+  template <typename Container, typename TMatrix, typename = std::enable_if_t<isomorphic_to_container_of<Container, Coefficient>::value>>
   Polynomial(const Container& coefficients, const GenericMatrix<TMatrix, Exponent>& monomials)
     : impl_ptr{std::make_unique<impl_type>(coefficients, rows(monomials), monomials.cols())} {}
 
-  Polynomial(const term_hash& terms, int nvars)
+  Polynomial(const term_hash& terms, const Int nvars)
     : impl_ptr{std::make_unique<impl_type>(terms,nvars)} {}
 
   /// construct a monomial of the given variable
-  static Polynomial monomial(int var_index, int n_vars)
+  static Polynomial monomial(Int var_index, Int n_vars)
   {
     return Polynomial(one_value<Coefficient>(), unit_vector<Exponent>(n_vars, var_index));
   }
@@ -778,8 +768,8 @@ public:
     impl_ptr->croak_if_incompatible(other);
   }
 
-  const int& n_vars() const { return impl_ptr->n_vars(); }
-  int n_terms() const { return impl_ptr->n_terms(); }
+  const Int& n_vars() const { return impl_ptr->n_vars(); }
+  Int n_terms() const { return impl_ptr->n_terms(); }
   const term_hash& get_terms() const { return impl_ptr->get_terms(); }
   bool trivial() const { return impl_ptr->trivial(); }
   bool is_one() const { return impl_ptr->is_one(); }
@@ -790,19 +780,19 @@ public:
   bool operator!= (const Polynomial& p2) const { return !operator==(p2); }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, bool>
   operator== (const T& c) const { return impl_ptr->operator==(c); }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, bool>
   operator!= (const T& c) const { return !operator==(c); }
 
   template <typename T> friend
-  typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, bool>
   operator==(const T&c, const Polynomial& p) { return p == c; }
 
   template <typename T> friend
-  typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, bool>
   operator!=(const T&c, const Polynomial& p) { return p != c; }
 
   Coefficient get_coefficient(const monomial_type& m) const { return impl_ptr->get_coefficient(m); }
@@ -844,41 +834,41 @@ public:
   Coefficient constant_coefficient() const { return get_coefficient(monomial_type(n_vars())); }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, Polynomial>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, Polynomial>
   operator*(const T& c) const
   {
     return Polynomial(impl_ptr->operator*(c));
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, Polynomial>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, Polynomial>
   mult_from_right(const T& c) const
   {
     return Polynomial(impl_ptr->mult_from_right(c));
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, Polynomial>::type&
+  std::enable_if_t<fits_as_coefficient<T>::value, Polynomial&>
   operator*=(const T& c)
   {
     impl_ptr->operator*=(c); return *this;
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, Polynomial>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, Polynomial>
   operator/(const T& c) const
   {
     return Polynomial(impl_ptr->operator/(c));
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, Polynomial>::type&
+  std::enable_if_t<fits_as_coefficient<T>::value, Polynomial&>
   operator/=(const T& c)
   {
     impl_ptr->operator/=(c); return *this;
   }
 
-  Polynomial<Coefficient, Exponent> homogenize(int new_variable_index = 0) const
+  Polynomial<Coefficient, Exponent> homogenize(Int new_variable_index = 0) const
   {
     return Polynomial<Coefficient, Exponent>(impl_ptr->homogenize(new_variable_index));
   }
@@ -926,28 +916,28 @@ public:
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, Polynomial>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, Polynomial>
   operator+(const T& c) const
   {
     return Polynomial(impl_ptr->operator+(c));
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, Polynomial>::type&
+  std::enable_if_t<fits_as_coefficient<T>::value, Polynomial&>
   operator+= (const T& c)
   {
     impl_ptr->operator+=(c); return *this;
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, Polynomial>::type
+  std::enable_if_t<fits_as_coefficient<T>::value, Polynomial>
   operator- (const T& c) const
   {
     return Polynomial(impl_ptr->operator-(c));
   }
 
   template <typename T>
-  typename std::enable_if<fits_as_coefficient<T>::value, Polynomial>::type&
+  std::enable_if_t<fits_as_coefficient<T>::value, Polynomial&>
   operator-= (const T& c)
   {
     impl_ptr->operator-=(c); return *this;
@@ -1007,133 +997,119 @@ public:
     return p1.impl_ptr->compare(*p2.impl_ptr) != cmp_lt;
   }
 
-  template <typename Container,
-             typename std::enable_if<
-               std::is_same<Exponent,int>::value &&
-               std::is_same<typename object_traits<typename Container::value_type>::generic_tag,is_scalar>::value
-             >::type* = nullptr
-           >
-  auto
-  substitute(const Container& values) const
+  template <typename Container>
+  auto substitute(const Container& values,
+                  std::enable_if_t<(std::is_same<Exponent, Int>::value &&
+                                    std::is_same<typename object_traits<typename Container::value_type>::generic_tag,is_scalar>::value),
+                                   std::nullptr_t> = nullptr) const
   {
     if (values.size() != n_vars())
        throw std::runtime_error("substitute polynomial: number of values does not match variables");
-    typedef typename Container::value_type T;
+    using T = typename Container::value_type;
     // using the return type of a product allows upgrades in both directions:
-    // e.g. T=int upgraded to coefficient type,
+    // e.g. T=Int upgraded to coefficient type,
     //      or Coeff=Rational to T=QuadraticExtension
-    typedef typename std::remove_reference<decltype(std::declval<T>() * std::declval<Coefficient>())>::type ret_type;
+    using ret_type = pure_type_t<decltype(std::declval<T>() * std::declval<Coefficient>())>;
     ret_type result;
     for (auto t = entire(this->get_terms()); !t.at_end(); ++t)
     {
       ret_type term(t->second);
-      accumulate_in(entire(attach_operation(values,t->first,operations::pow<T,long>())),BuildBinary<operations::mul>(),term);
+      accumulate_in(entire(attach_operation(values,t->first, operations::pow<T, long>())), BuildBinary<operations::mul>(),term);
       result += term;
     }
     return result;
   }
 
-  template <
-     template <typename, typename...> class Container,
-     template <typename, typename> class Poly ,
-     typename Coeff,
-     typename Exp,
-     typename... Args,
-             typename std::enable_if<
-               std::is_same<Exponent,int>::value &&
-               std::is_same<typename object_traits<Poly<Coeff,Exp>>::generic_tag,is_polynomial>::value
-             >::type* = nullptr
-           >
+  template <template <typename, typename...> class Container,
+            template <typename, typename> class Poly,
+            typename Coeff,
+            typename Exp,
+            typename... Args>
   auto
-  substitute(const Container<Poly<Coeff,Exp>,Args...>& values) const
+  substitute(const Container<Poly<Coeff, Exp>, Args...>& values,
+             std::enable_if_t<(std::is_same<Exponent, Int>::value &&
+                               std::is_same<typename object_traits<Poly<Coeff, Exp>>::generic_tag, is_polynomial>::value),
+                              std::nullptr_t> = nullptr) const
   {
     if (values.size() != n_vars())
        throw std::runtime_error("substitute polynomial: number of values does not match variables");
-    typedef typename std::remove_reference<decltype(std::declval<Coeff>() * std::declval<Coefficient>())>::type ret_coeff;
-    typedef Poly<ret_coeff,Exp> ret_type;
+    using ret_coeff = pure_type_t<decltype(std::declval<Coeff>() * std::declval<Coefficient>())>;
+    using ret_type = Poly<ret_coeff, Exp>;
     ret_type result = convert_to<ret_coeff>(values.begin()->zero());
     for (auto t = entire(this->get_terms()); !t.at_end(); ++t)
     {
       ret_type term(t->second);
-      accumulate_in(entire(attach_operation(values,t->first,operations::pow<ret_type,long>())),BuildBinary<operations::mul>(),term);
+      accumulate_in(entire(attach_operation(values,t->first,operations::pow<ret_type, long>())), BuildBinary<operations::mul>(),term);
       result += term;
     }
     return result;
   }
 
   // more efficient variant of the above for substituting x^exp
-  template <typename Exp=Exponent, typename T>
-  Polynomial<Coefficient,Exp> substitute_monomial(const T& exponent) const
+  template <typename Exp = Exponent, typename T>
+  Polynomial<Coefficient, Exp> substitute_monomial(const T& exponent) const
   {
-    return Polynomial<Coefficient,Exp>(impl_ptr->template substitute_monomial<Exp,T>(exponent));
+    return Polynomial<Coefficient, Exp>(impl_ptr->template substitute_monomial<Exp, T>(exponent));
   }
 
 
-  template < typename MapType,
-             typename std::enable_if<
-               std::is_same<Exponent,int>::value &&
-               std::is_same<typename object_traits<MapType>::generic_tag,is_map>::value &&
-               std::is_same<typename MapType::key_type,int>::value &&
-               std::is_same<typename object_traits<typename MapType::mapped_type>::generic_tag,is_scalar>::value
-             >::type* = nullptr
-           >
-  auto
-  substitute(const MapType& values) const
+  template <typename MapType>
+  auto substitute(const MapType& values,
+                  std::enable_if_t<(std::is_same<Exponent, Int>::value &&
+                                    std::is_same<typename object_traits<MapType>::generic_tag, is_map>::value &&
+                                    std::is_same<typename MapType::key_type, Int>::value &&
+                                    std::is_same<typename object_traits<typename MapType::mapped_type>::generic_tag, is_scalar>::value),
+                                   std::nullptr_t> = nullptr) const
   {
-    typedef typename std::remove_reference<decltype(std::declval<typename MapType::mapped_type>() * std::declval<Coefficient>())>::type ret_coeff;
-    Polynomial<ret_coeff,int> result(this->n_vars());
-    Set<int> indices(keys(values));
+    using ret_coeff = pure_type_t<decltype(std::declval<typename MapType::mapped_type>() * std::declval<Coefficient>())>;
+    Polynomial<ret_coeff, Int> result(this->n_vars());
+    Set<Int> indices(keys(values));
     for (auto t = entire(this->get_terms()); !t.at_end(); ++t)
     {
       ret_coeff coeff(t->second);
       for (auto v = entire(values); !v.at_end(); ++v) {
-         coeff *= pm::pow<ret_coeff>(v->second,t->first[v->first]);
+         coeff *= pm::pow<ret_coeff>(v->second, t->first[v->first]);
       }
-      SparseVector<int> exps(t->first);
-      exps.slice(indices) = zero_vector<int>(indices.size());
-      result += Polynomial<ret_coeff,int>(coeff,exps);
+      SparseVector<Int> exps(t->first);
+      exps.slice(indices) = zero_vector<Int>(indices.size());
+      result += Polynomial<ret_coeff, Int>(coeff,exps);
     }
     return result;
   }
 
   template <typename Container,
-             typename std::enable_if<
-               isomorphic_to_container_of<Container, int>::value
-             >::type* = nullptr
-           >
+            typename = std::enable_if_t<isomorphic_to_container_of<Container, Int>::value>>
   auto
   project(const Container& indices) const
   {
-    return Polynomial<Coefficient,Exponent>(
+    return Polynomial<Coefficient, Exponent>(
         this->coefficients_as_vector(),
-        this->monomials_as_matrix().minor(All,indices)
+        this->monomials_as_matrix().minor(All, indices)
       );
   }
 
   template <typename Container,
-             typename std::enable_if<
-               isomorphic_to_container_of<Container, int>::value
-             >::type* = nullptr
-           >
+            typename = std::enable_if_t<isomorphic_to_container_of<Container, Int>::value>>
   auto
-  mapvars(const Container& indices, int vars=-1) const
+  mapvars(const Container& indices, Int vars = -1) const
   {
     if (indices.size() != this->n_vars())
        throw std::runtime_error("polynomial mapvars: number of indices does not match variables");
-    int maxind = 0;
+    Int maxind = 0;
     for (auto i : indices)
-       assign_max(maxind,i);
+       assign_max(maxind, i);
     if (vars != -1) {
        if (maxind+1 > vars)
           throw std::runtime_error("polynomial mapvars: indices exceed given number of variables");
-    } else
-          vars = maxind+1;
+    } else {
+      vars = maxind+1;
+    }
     SparseMatrix<Exponent> oldexps = this->monomials_as_matrix();
     SparseMatrix<Exponent> exps(this->n_terms(),vars);
-    int j = 0;
-    for (auto i = entire(indices); !i.at_end(); ++i,++j)
+    Int j = 0;
+    for (auto i = entire(indices); !i.at_end(); ++i, ++j)
        exps.col(*i) += oldexps.col(j);
-    return Polynomial<Coefficient,Exponent>(this->coefficients_as_vector(),exps);
+    return Polynomial<Coefficient, Exponent>(this->coefficients_as_vector(), exps);
   }
 
 #if POLYMAKE_DEBUG
@@ -1210,27 +1186,28 @@ template <typename Coefficient, typename Exponent>
 struct is_gcd_domain< UniPolynomial<Coefficient, Exponent> >
   : is_field<Coefficient> {};
 
+template <typename Coefficient, typename Exponent, bool has_gcd = is_gcd_domain<UniPolynomial<Coefficient, Exponent>>::value>
+struct algebraic_traits_for_UniPolynomial {};
+
 template <typename Coefficient, typename Exponent>
-struct algebraic_traits< UniPolynomial<Coefficient, Exponent> > {
-  typedef RationalFunction<typename algebraic_traits<Coefficient>::field_type, Exponent> field_type;
+struct algebraic_traits_for_UniPolynomial<Coefficient, Exponent, true> {
+  using field_type = RationalFunction<typename algebraic_traits<Coefficient>::field_type, Exponent>;
 };
 
-
-template <typename Coefficient, typename Exponent, typename T>
-struct compatible_with_polynomial {
-  static const bool value= isomorphic_types<Coefficient, T>::value ||
-                           Polynomial<Coefficient, Exponent>::template is_deeper_coefficient<T>::value;
-};
+template <typename Coefficient, typename Exponent>
+struct algebraic_traits<UniPolynomial<Coefficient, Exponent>> : algebraic_traits_for_UniPolynomial<Coefficient, Exponent> {};
 
 template <typename Coefficient, typename Exponent, typename T>
-struct compatible_with_unipolynomial {
-  static const bool value= isomorphic_types<Coefficient, T>::value ||
-                           UniPolynomial<Coefficient, Exponent>::template is_deeper_coefficient<T>::value;
-};
+using compatible_with_polynomial = bool_constant<(isomorphic_types<Coefficient, T>::value ||
+                                                  Polynomial<Coefficient, Exponent>::template is_deeper_coefficient<T>::value)>;
+
+template <typename Coefficient, typename Exponent, typename T>
+using compatible_with_unipolynomial = bool_constant<(isomorphic_types<Coefficient, T>::value ||
+                                                     UniPolynomial<Coefficient, Exponent>::template is_deeper_coefficient<T>::value)>;
 
 template <typename Coefficient, typename Exponent, typename T, typename TModel>
 struct isomorphic_types_impl<Polynomial<Coefficient, Exponent>, T,
-                             typename std::enable_if<compatible_with_polynomial<Coefficient, Exponent, T>::value, is_polynomial>::type,
+                             std::enable_if_t<compatible_with_polynomial<Coefficient, Exponent, T>::value, is_polynomial>,
                              TModel>
 : std::false_type {
   typedef cons<is_polynomial, is_scalar> discriminant;
@@ -1238,7 +1215,7 @@ struct isomorphic_types_impl<Polynomial<Coefficient, Exponent>, T,
 
 template <typename Coefficient, typename Exponent, typename T, typename TModel>
 struct isomorphic_types_impl<T, Polynomial<Coefficient, Exponent>, TModel,
-                             typename std::enable_if<compatible_with_polynomial<Coefficient, Exponent, T>::value, is_polynomial>::type>
+                             std::enable_if_t<compatible_with_polynomial<Coefficient, Exponent, T>::value, is_polynomial>>
 : std::false_type {
   typedef cons<is_scalar, is_polynomial> discriminant;
 };
@@ -1251,7 +1228,7 @@ struct isomorphic_types_impl<Polynomial<Coefficient,Exponent>, Polynomial<Coeffi
 
 template <typename Coefficient, typename Exponent, typename T, typename TModel>
 struct isomorphic_types_impl<UniPolynomial<Coefficient, Exponent>, T,
-                             typename std::enable_if<compatible_with_unipolynomial<Coefficient, Exponent, T>::value, is_polynomial>::type,
+                             std::enable_if_t<compatible_with_unipolynomial<Coefficient, Exponent, T>::value, is_polynomial>,
                              TModel>
 : std::false_type {
   typedef cons<is_polynomial, is_scalar> discriminant;
@@ -1259,7 +1236,7 @@ struct isomorphic_types_impl<UniPolynomial<Coefficient, Exponent>, T,
 
 template <typename Coefficient, typename Exponent, typename T, typename TModel>
 struct isomorphic_types_impl<T, UniPolynomial<Coefficient, Exponent>, TModel,
-                             typename std::enable_if<compatible_with_unipolynomial<Coefficient, Exponent, T>::value, is_polynomial>::type>
+                             std::enable_if_t<compatible_with_unipolynomial<Coefficient, Exponent, T>::value, is_polynomial>>
 : std::false_type {
   typedef cons<is_scalar, is_polynomial> discriminant;
 };
@@ -1331,7 +1308,7 @@ struct choose_generic_object_traits< UniPolynomial<Coefficient, Exponent>, false
   static
   const persistent_type& zero()
   {
-    static const persistent_type x=persistent_type();
+    static const persistent_type x = persistent_type();
     return x;
   }
 
@@ -1349,14 +1326,20 @@ struct choose_generic_object_traits< UniPolynomial<Coefficient, Exponent>, false
   }
 };
 
+template <typename Coefficient, typename Exponent>
+struct has_zero_value<Polynomial<Coefficient, Exponent>> : std::true_type {};
+
+template <typename Coefficient, typename Exponent>
+struct has_zero_value<UniPolynomial<Coefficient, Exponent>> : std::true_type {};
+
 namespace polynomial_impl {
 
 template <typename Coefficient, typename Exponent>
-struct nesting_level< UniPolynomial<Coefficient, Exponent> >
+struct nesting_level<UniPolynomial<Coefficient, Exponent>>
   : int_constant<nesting_level<Coefficient>::value+1> {};
 
 template <typename Coefficient, typename Exponent>
-struct nesting_level< Polynomial<Coefficient, Exponent> >
+struct nesting_level<Polynomial<Coefficient, Exponent>>
   : int_constant<nesting_level<Coefficient>::value+1> {};
 
 }
@@ -1544,15 +1527,15 @@ struct spec_object_traits< Serialized< Polynomial<Coefficient,Exponent> > >
 
   using terms_type = typename polynomial_impl::GenericImpl<polynomial_impl::MultivariateMonomial<Exponent>,Coefficient>::term_hash;
 
-  using elements = cons<terms_type, int>;
+  using elements = cons<terms_type, Int>;
 
   template <typename Visitor>
-  static void visit_elements(Serialized<masquerade_for> & me, Visitor& v)
+  static void visit_elements(Serialized<masquerade_for>& me, Visitor& v)
   {
      terms_type terms;
-     int nvars = 0;
+     Int nvars = 0;
      v << terms << nvars;
-     me.impl_ptr = std::make_unique<impl_type>(terms,nvars);
+     me.impl_ptr = std::make_unique<impl_type>(terms, nvars);
   }
 
   template <typename Visitor>
@@ -1571,63 +1554,70 @@ struct hash_func<PolynomialType, is_polynomial> {
   }
 };
 
-template <typename C, typename E, typename T> inline
-typename std::enable_if<UniPolynomial<C,E>:: template fits_as_coefficient<T>::value, UniPolynomial<C,E>>::type
-operator+ (const T& c, const UniPolynomial<C,E>& p)
+template <typename C, typename E, typename T>
+std::enable_if_t<UniPolynomial<C,E>::template fits_as_coefficient<T>::value, UniPolynomial<C, E>>
+operator+ (const T& c, const UniPolynomial<C, E>& p)
 {
   return p+c;
 }
 
-template <typename C, typename E, typename T> inline
-typename std::enable_if<Polynomial<C,E>:: template fits_as_coefficient<T>::value, Polynomial<C,E>>::type
-operator+ (const T& c, const Polynomial<C,E>& p)
+template <typename C, typename E, typename T>
+std::enable_if_t<Polynomial<C,E>::template fits_as_coefficient<T>::value, Polynomial<C, E>>
+operator+ (const T& c, const Polynomial<C, E>& p)
 {
   return p+c;
 }
 
-template <typename C, typename E, typename T> inline
-typename std::enable_if<UniPolynomial<C,E>:: template fits_as_coefficient<T>::value, UniPolynomial<C,E>>::type
-operator- (const T& c, const UniPolynomial<C,E>& p)
+template <typename C, typename E, typename T>
+std::enable_if_t<UniPolynomial<C, E>::template fits_as_coefficient<T>::value, UniPolynomial<C, E>>
+operator- (const T& c, const UniPolynomial<C, E>& p)
 {
   return (-p)+=c;
 }
 
-template <typename C, typename E, typename T> inline
-typename std::enable_if<Polynomial<C,E>:: template fits_as_coefficient<T>::value, Polynomial<C,E>>::type
-operator- (const T& c, const Polynomial<C,E>& p)
+template <typename C, typename E, typename T>
+std::enable_if_t<Polynomial<C, E>::template fits_as_coefficient<T>::value, Polynomial<C, E>>
+operator- (const T& c, const Polynomial<C, E>& p)
 {
   return (-p)+=c;
 }
 
-template <typename C, typename E, typename T> inline
-typename std::enable_if<UniPolynomial<C,E>:: template fits_as_coefficient<T>::value, UniPolynomial<C,E>>::type
-operator* (const T& c, const UniPolynomial<C,E>& p)
+template <typename C, typename E, typename T>
+std::enable_if_t<UniPolynomial<C, E>::template fits_as_coefficient<T>::value, UniPolynomial<C, E>>
+operator* (const T& c, const UniPolynomial<C, E>& p)
 {
   return p.mult_from_right(c);
 }
 
-template <typename C, typename E, typename T> inline
-typename std::enable_if<Polynomial<C,E>:: template fits_as_coefficient<T>::value, Polynomial<C,E>>::type
-operator* (const T& c, const Polynomial<C,E>& p)
+template <typename C, typename E, typename T>
+std::enable_if_t<Polynomial<C, E>::template fits_as_coefficient<T>::value, Polynomial<C, E>>
+operator* (const T& c, const Polynomial<C, E>& p)
 {
   return p.mult_from_right(c);
 }
 
-template <typename T, typename std::enable_if<std::is_same<typename object_traits<T>::generic_tag,is_polynomial>::value, int>::type>
-T pow(const T& base, long exp) {
-   return base.pow(exp);
+template <typename C, typename E>
+UniPolynomial<C, E> pow(const UniPolynomial<C, E> & base, long exp)
+{
+  return base.pow(exp);
+}
+
+template <typename C, typename E>
+Polynomial<C, E> pow(const Polynomial<C, E> & base, long exp)
+{
+  return base.pow(exp);
 }
 
 
 /// explicit conversion of polynomial coefficients to another type
-template <typename TargetType, typename Exponent> inline
-const Polynomial<TargetType,Exponent>&
+template <typename TargetType, typename Exponent>
+const Polynomial<TargetType, Exponent>&
 convert_to(const Polynomial<TargetType, Exponent>& p)
 {
    return p;
 }
 
-template <typename TargetType, typename Exponent> inline
+template <typename TargetType, typename Exponent>
 const UniPolynomial<TargetType,Exponent>&
 convert_to(const UniPolynomial<TargetType, Exponent>& p)
 {
@@ -1635,18 +1625,16 @@ convert_to(const UniPolynomial<TargetType, Exponent>& p)
 }
 
 template <typename TargetType, typename Coefficient, typename Exponent,
-          typename enabled=typename std::enable_if<can_initialize<Coefficient, TargetType>::value && !std::is_same<Coefficient, TargetType>::value>::type>
-inline
-Polynomial<TargetType,Exponent>
+          typename = std::enable_if_t<can_initialize<Coefficient, TargetType>::value && !std::is_same<Coefficient, TargetType>::value>>
+Polynomial<TargetType, Exponent>
 convert_to(const Polynomial<Coefficient, Exponent>& p)
 {
    return Polynomial<TargetType,Exponent>(convert_to<TargetType>(p.coefficients_as_vector()),p.monomials_as_matrix());
 }
 
 template <typename TargetType, typename Coefficient, typename Exponent,
-          typename enabled=typename std::enable_if<can_initialize<Coefficient, TargetType>::value && !std::is_same<Coefficient, TargetType>::value>::type>
-inline
-UniPolynomial<TargetType,Exponent>
+          typename = std::enable_if_t<can_initialize<Coefficient, TargetType>::value && !std::is_same<Coefficient, TargetType>::value>>
+UniPolynomial<TargetType, Exponent>
 convert_to(const UniPolynomial<Coefficient, Exponent>& p)
 {
    return UniPolynomial<TargetType,Exponent>(convert_to<TargetType>(p.coefficients_as_vector()),p.monomials_as_vector());
@@ -1656,16 +1644,14 @@ convert_to(const UniPolynomial<Coefficient, Exponent>& p)
 #ifdef POLYMAKE_WITH_FLINT
 
 template <>
-UniPolynomial<Rational, int>
-gcd(const UniPolynomial<Rational, int>& a, const UniPolynomial<Rational, int>& b);
+UniPolynomial<Rational, Int>
+gcd(const UniPolynomial<Rational, Int>& a, const UniPolynomial<Rational, Int>& b);
 
 template <>
-ExtGCD< UniPolynomial<Rational, int> >
-ext_gcd(const UniPolynomial<Rational, int>& a, const UniPolynomial<Rational, int>& b, bool normalize_gcd);
+ExtGCD< UniPolynomial<Rational, Int> >
+ext_gcd(const UniPolynomial<Rational, Int>& a, const UniPolynomial<Rational, Int>& b, bool normalize_gcd);
 
 #endif
-
-
 
 } // end namespace pm
 

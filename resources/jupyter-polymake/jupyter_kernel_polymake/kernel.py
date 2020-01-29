@@ -152,7 +152,7 @@ class polymakeKernel(Kernel):
                         html_position = output_stdout.find( '.@@HTML@@' )
                         html_end_position = output_stdout.find( '.@@ENDHTML@@' )
                         if html_position > 0:
-                            before_html = output_stdout[:html_position-1].rstrip()
+                            before_html = output_stdout[:html_position].rstrip()
                         else:
                             before_html = ''
                         output_html = output_stdout[html_position+9:html_end_position-1].strip().rstrip()

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,14 +28,14 @@ namespace polymake { namespace fan {
 namespace {
 
 template <typename Coord>
-Array<perl::Object> construct_cones(const IncidenceMatrix<>& max_cones, const Matrix<Coord>& rays, const Matrix<Coord>& lin_space, const int ambient_dim)
+Array<BigObject> construct_cones(const IncidenceMatrix<>& max_cones, const Matrix<Coord>& rays, const Matrix<Coord>& lin_space, const Int ambient_dim)
 {
-   perl::ObjectType cone_type("Cone", mlist<Coord>());
+   BigObjectType cone_type("Cone", mlist<Coord>());
 
-   const int size = max_cones.rows();
+   const Int size = max_cones.rows();
 
-   Array<perl::Object> all_cones(cone_type, size);
-   for (int i=0; i<size; ++i) {
+   Array<BigObject> all_cones(cone_type, size);
+   for (Int i = 0; i < size; ++i) {
       all_cones[i].take("RAYS") << rays.minor(max_cones[i], All);
       all_cones[i].take("LINEALITY_SPACE") << lin_space;
       all_cones[i].take("CONE_AMBIENT_DIM") << ambient_dim;
@@ -47,13 +47,13 @@ Array<perl::Object> construct_cones(const IncidenceMatrix<>& max_cones, const Ma
 }
 
 template <typename Coord>
-perl::Object common_refinement(perl::Object f1, perl::Object f2)
+BigObject common_refinement(BigObject f1, BigObject f2)
 {
-   const int ambient_dim = f1.give("FAN_AMBIENT_DIM");
-   if (ambient_dim != (int)f2.give("FAN_AMBIENT_DIM"))
+   const Int ambient_dim = f1.give("FAN_AMBIENT_DIM");
+   if (ambient_dim != Int(f2.give("FAN_AMBIENT_DIM")))
       throw std::runtime_error("common_refinement: dimension mismatch.");
 
-   const int d=f1.give("FAN_DIM");
+   const Int d = f1.give("FAN_DIM");
    const IncidenceMatrix<> max_cones1=f1.give("MAXIMAL_CONES");
    Matrix<Coord> rays1=f1.give("RAYS");
    Matrix<Coord> lineality_space1=f1.give("LINEALITY_SPACE");
@@ -78,35 +78,35 @@ perl::Object common_refinement(perl::Object f1, perl::Object f2)
 
 
    ListMatrix<Vector<Coord> > rays(0,ambient_dim);
-   hash_map<Vector<Coord>, int> ray_map;
+   hash_map<Vector<Coord>, Int> ray_map;
    bool empty_not_yet_there = true;
 
-   std::list<Set<int> > new_max_cones;
-   Array<perl::Object> all_cones1 = construct_cones(max_cones1, rays1, lineality_space1, ambient_dim);
-   Array<perl::Object> all_cones2 = construct_cones(max_cones2, rays2, lineality_space2, ambient_dim);
+   std::list<Set<Int>> new_max_cones;
+   Array<BigObject> all_cones1 = construct_cones(max_cones1, rays1, lineality_space1, ambient_dim);
+   Array<BigObject> all_cones2 = construct_cones(max_cones2, rays2, lineality_space2, ambient_dim);
 
    for (auto i1=entire(all_cones1); !i1.at_end(); ++i1) {
       for (auto i2=entire(all_cones2); !i2.at_end(); ++i2) {
-         perl::Object inters=call_function("intersection", *i1, *i2);
-         const int inters_dim=inters.give("CONE_DIM");
-         if (inters_dim==d || !complete) {
-            Matrix<Coord> inters_rays=inters.give("RAYS");
+         BigObject inters = call_function("intersection", *i1, *i2);
+         const Int inters_dim = inters.give("CONE_DIM");
+         if (inters_dim == d || !complete) {
+            Matrix<Coord> inters_rays = inters.give("RAYS");
             project_to_orthogonal_complement(inters_rays, lineality_space);
-            Array<int> ray_indices(inters_rays.rows());
-            int index=0;
-            for (auto i=entire(rows(inters_rays)); !i.at_end(); ++i, ++index) {
+            Array<Int> ray_indices(inters_rays.rows());
+            Int index = 0;
+            for (auto i = entire(rows(inters_rays)); !i.at_end(); ++i, ++index) {
 
                const Vector<Coord> ray=*i;
-               const auto rep=ray_map.find(ray);
+               const auto rep = ray_map.find(ray);
                if (rep != ray_map.end()) {
                   ray_indices[index]=rep->second;
                } else {
                   ray_indices[index]=rays.rows();
                   ray_map[ray]=rays.rows();
-                  rays/=ray;
+                  rays /= ray;
                }
             }
-            Set<int> new_cone;
+            Set<Int> new_cone;
             for (auto j=entire(sequence(0,index)); !j.at_end(); ++j)
                if (ray_indices[*j]>=0) new_cone.insert(ray_indices[*j]);
             if (inters_dim > 0 || empty_not_yet_there){
@@ -117,7 +117,7 @@ perl::Object common_refinement(perl::Object f1, perl::Object f2)
       }
    }
 
-   perl::Object f_out("PolyhedralFan");
+   BigObject f_out("PolyhedralFan");
 
    f_out.take("COMPLETE") << complete;
    f_out.take("FAN_AMBIENT_DIM") << ambient_dim;

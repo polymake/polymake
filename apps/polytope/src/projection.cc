@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,7 +23,7 @@ namespace {
 
 
 template<typename Scalar>
-void process_facets(perl::Object& p_in, const Array<int>& indices, perl::OptionSet& options, const Matrix<Scalar>& linear_span, const Set<int>& coords_to_eliminate, perl::Object& p_out)
+void process_facets(BigObject& p_in, const Array<Int>& indices, OptionSet& options, const Matrix<Scalar>& linear_span, const Set<Int>& coords_to_eliminate, BigObject& p_out)
 {
    Matrix<Scalar> Inequalities;
    bool inequalities_read = false;
@@ -37,21 +37,22 @@ void process_facets(perl::Object& p_in, const Array<int>& indices, perl::OptionS
       if (inequalities_read) {
          // perform Fourier-Motzkin elimination on coords
          for (auto c=entire<reversed>(coords_to_eliminate); !c.at_end(); ++c) {
-            Set<int> negative, zero, positive;
+            Set<Int> negative, zero, positive;
             // normalize Inequalities such that there is a -1,0, or 1 in the next column to be eliminated
-            for (int i=0; i<Inequalities.rows(); ++i) {
-               const Scalar x=Inequalities(i,*c);
-               const int s=sign(x);
-               if (s) {
-                  if (s<0)
+            for (Int i = 0; i < Inequalities.rows(); ++i) {
+               const Scalar x = Inequalities(i, *c);
+               const Int s = sign(x);
+               if (s == 0) {
+                  zero += i;
+               } else {
+                  if (s < 0)
                      negative += i;
                   else
                      positive += i;
                   Inequalities[i] /= abs(x);
-               } else
-                  zero += i;
+               }
             }
-            const Set<int> remaining_coords=range(0,Inequalities.cols()-1)-(*c);
+            const Set<Int> remaining_coords = range(0, Inequalities.cols()-1)-(*c);
             Inequalities = Inequalities.minor(All,remaining_coords);
             ListMatrix< Vector<Scalar> > Combined_Ineqs=Inequalities.minor(zero,All);
             for (auto i=entire(negative); !i.at_end(); ++i)
@@ -72,25 +73,25 @@ void process_facets(perl::Object& p_in, const Array<int>& indices, perl::OptionS
 }  // end anonymous namespace
 
 template <typename Scalar>
-perl::Object projection_cone_impl(perl::Object p_in, const Array<int> indices, perl::OptionSet options)
+BigObject projection_cone_impl(BigObject p_in, const Array<Int> indices, OptionSet options)
 {
    if ( !p_in.exists("RAYS | INPUT_RAYS") &&
         !p_in.exists("FACETS | INEQUALITIES") )
       throw std::runtime_error("projection is not defined for combinatorially given cones");
    
-   int first_coord = p_in.isa("Polytope") ? 1 : 0;
-   const int ambient_dim = p_in.give("CONE_AMBIENT_DIM");
-   const int dim = p_in.give("CONE_DIM");
-   const int codim = ambient_dim-dim;
+   Int first_coord = p_in.isa("Polytope") ? 1 : 0;
+   const Int ambient_dim = p_in.give("CONE_AMBIENT_DIM");
+   const Int dim = p_in.give("CONE_DIM");
+   const Int codim = ambient_dim-dim;
    if (indices.empty() && codim==0) return p_in; // nothing to do
 
    const Matrix<Scalar> linear_span = p_in.give("LINEAR_SPAN");
    if (codim != linear_span.rows())
       throw std::runtime_error("projection: LINEAR_SPAN has wrong number of rows");
-   const int last_coord=ambient_dim-1;
-   const Set<int> coords_to_eliminate = coordinates_to_eliminate(indices, first_coord, last_coord, codim, linear_span, options["revert"]);   // set of columns to project to
+   const Int last_coord = ambient_dim-1;
+   const Set<Int> coords_to_eliminate = coordinates_to_eliminate(indices, first_coord, last_coord, codim, linear_span, options["revert"]);   // set of columns to project to
 
-   perl::Object p_out(p_in.type());
+   BigObject p_out(p_in.type());
 
    if (p_in.exists("RAYS | INPUT_RAYS"))
       process_rays(p_in, first_coord, indices, options, linear_span, coords_to_eliminate, p_out);
@@ -102,21 +103,21 @@ perl::Object projection_cone_impl(perl::Object p_in, const Array<int> indices, p
 }
 
 template <typename Scalar>
-perl::Object projection_vectorconfiguration_impl(perl::Object p_in, const Array<int> indices, perl::OptionSet options)
+BigObject projection_vectorconfiguration_impl(BigObject p_in, const Array<Int>& indices, OptionSet options)
 {
-   int first_coord = p_in.isa("PointConfiguration") ? 1 : 0;
-   const int ambient_dim = p_in.give("VECTOR_AMBIENT_DIM");
-   const int dim = p_in.give("VECTOR_DIM");
-   const int codim = ambient_dim-dim;
+   Int first_coord = p_in.isa("PointConfiguration") ? 1 : 0;
+   const Int ambient_dim = p_in.give("VECTOR_AMBIENT_DIM");
+   const Int dim = p_in.give("VECTOR_DIM");
+   const Int codim = ambient_dim-dim;
    if (indices.empty() && codim==0) return p_in; // nothing to do
 
    const Matrix<Scalar> linear_span = p_in.give("LINEAR_SPAN");
    if (codim != linear_span.rows())
       throw std::runtime_error("projection: LINEAR_SPAN has wrong number of rows");
-   const int last_coord=ambient_dim-1;
-   const Set<int> coords_to_eliminate = coordinates_to_eliminate(indices, first_coord, last_coord, codim, linear_span, options["revert"]);   // set of columns to project to
+   const Int last_coord = ambient_dim-1;
+   const Set<Int> coords_to_eliminate = coordinates_to_eliminate(indices, first_coord, last_coord, codim, linear_span, options["revert"]);   // set of columns to project to
 
-   perl::Object p_out(p_in.type());
+   BigObject p_out(p_in.type());
 
    if (p_in.exists("VECTORS")){
       const Matrix<Scalar> vec = p_in.give("VECTORS") ;
@@ -126,7 +127,7 @@ perl::Object projection_vectorconfiguration_impl(perl::Object p_in, const Array<
 }
 
 template <typename Scalar>
-perl::Object projection_preimage_impl(const Array<perl::Object>& pp_in)
+BigObject projection_preimage_impl(const Array<BigObject>& pp_in)
 {
    auto p_in = entire(pp_in);
 
@@ -155,7 +156,7 @@ perl::Object projection_preimage_impl(const Array<perl::Object>& pp_in)
    Matrix<Scalar> LinSpace = p_in->give(lin_space_section);
 
    const auto type_name = p_in->type().name();
-   perl::Object p_out(p_in->type());
+   BigObject p_out(p_in->type());
    std::string descr_names = p_in->name();
 
    while (! (++p_in).at_end()) {

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,70 +23,70 @@ namespace polymake { namespace polytope {
 
 namespace {
 
-   Matrix<Rational> cyclic_vertices(const int d, const int n, const int x_start)
-   {
-      Matrix<Rational> vertices(n,d+1);
-      auto v=concat_rows(vertices).begin();
+Matrix<Rational> cyclic_vertices(const Int d, const Int n, const Int x_start)
+{
+   Matrix<Rational> vertices(n, d+1);
+   auto v = concat_rows(vertices).begin();
 
-      // and now we compute n points (x_i^1,..,x_i^d) on the momentum curve in R^d
-      for (int i=0, x=x_start;  i<n;  ++i, ++x) {
-         *v++ = 1;
-         Integer power_of_x(1);
-         for (int j = 1; j <= d; ++j) {
-            power_of_x *= x;
-            *v++ = power_of_x;
-         }
+   // and now we compute n points (x_i^1,..,x_i^d) on the momentum curve in R^d
+   for (Int i = 0, x = x_start;  i < n;  ++i, ++x) {
+      *v++ = 1;
+      Integer power_of_x(1);
+      for (Int j = 1; j <= d; ++j) {
+         power_of_x *= x;
+         *v++ = power_of_x;
       }
-
-      return vertices;
    }
 
-   /* For the following see:
+   return vertices;
+}
 
-      R. Seidel: Exact upper bounds for the number of faces in d-dimensional Voronoi diagrams, in
-      Applied Geometry and Discrete Mathematics: The Victor Klee Festschrift, vol. 4 of DIMACS
-      Ser. Discrete Math. Theoret. Comput. Sci., Amer. Math. Soc., Providence, RI, 1991, p. 517-529
+/* For the following see:
 
-   */
-   Matrix<Rational> spherical_cyclic_vertices(const int d, const int n, const int x_start)
-   {
-      Matrix<Rational> vertices(n,d+1);
-      auto v=concat_rows(vertices).begin();
+R. Seidel: Exact upper bounds for the number of faces in d-dimensional Voronoi diagrams, in
+Applied Geometry and Discrete Mathematics: The Victor Klee Festschrift, vol. 4 of DIMACS
+Ser. Discrete Math. Theoret. Comput. Sci., Amer. Math. Soc., Providence, RI, 1991, p. 517-529
 
-      // and now we compute n points on the spherical momentum curve in R^d
-      for (int i=0, x=x_start;  i<n;  ++i, ++x) {
+*/
+Matrix<Rational> spherical_cyclic_vertices(const Int d, const Int n, const Int x_start)
+{
+   Matrix<Rational> vertices(n, d+1);
+   auto v = concat_rows(vertices).begin();
 
-         // compute 1 + x^2 + x^4 + ... x^{2(d-1)}
-         Integer even_power_of_x(1);
-         Integer sum_of_even_powers_of_x(1);
-         for (int j=1; j<d; ++j) {
-            even_power_of_x *= x*x;
-            sum_of_even_powers_of_x += even_power_of_x;
-         }
+   // and now we compute n points on the spherical momentum curve in R^d
+   for (Int i=0, x = x_start;  i < n;  ++i, ++x) {
+
+      // compute 1 + x^2 + x^4 + ... x^{2(d-1)}
+      Integer even_power_of_x(1);
+      Integer sum_of_even_powers_of_x(1);
+      for (Int j = 1; j < d; ++j) {
+         even_power_of_x *= x*x;
+         sum_of_even_powers_of_x += even_power_of_x;
+      }
  
-         *v++ = 1;
-         Integer power_of_x(1);
-         for (int j = 1; j <= d; ++j) {
-            *v++ = Rational(power_of_x,sum_of_even_powers_of_x);
-            power_of_x *= x;
-         }
+      *v++ = 1;
+      Integer power_of_x(1);
+      for (Int j = 1; j <= d; ++j) {
+         *v++ = Rational(power_of_x,sum_of_even_powers_of_x);
+         power_of_x *= x;
       }
-
-      return vertices;
    }
+
+   return vertices;
+}
 
 }
 
-perl::Object cyclic(const int d, const int n, perl::OptionSet options)
+BigObject cyclic(const Int d, const Int n, OptionSet options)
 {
    if ((d < 2) || (d >= n)) {
       throw std::runtime_error("cyclic: d >= 2 and n > d required\n");
    }
 
-   int x_start(options["start"]);
+   Int x_start(options["start"]);
    const bool spherical = options["spherical"];
 
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
 
    Matrix<Rational> vertices;
    if (spherical) {

@@ -18,7 +18,7 @@
    Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
    ---
-   Copyright (c) 2016-2019
+   Copyright (c) 2016-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -40,21 +40,21 @@ namespace polymake { namespace tropical {
  * 
  */
 template <typename Addition>
-perl::Object matroid_ring_sum(perl::Object c1, perl::Object c2)
+BigObject matroid_ring_sum(BigObject c1, BigObject c2)
 {
   Array<IncidenceMatrix<> > np1 = c1.give("NESTED_PRESENTATIONS");
   Array<IncidenceMatrix<> > np2 = c2.give("NESTED_PRESENTATIONS");
-  Array<int> nc1 = c1.give("NESTED_COEFFICIENTS");
-  Array<int> nc2 = c2.give("NESTED_COEFFICIENTS");
-  int n_elements = c1.give("N_ELEMENTS");
+  Array<Int> nc1 = c1.give("NESTED_COEFFICIENTS");
+  Array<Int> nc2 = c2.give("NESTED_COEFFICIENTS");
+  Int n_elements = c1.give("N_ELEMENTS");
 
   Vector<IncidenceMatrix<> > result_presentation(np1);
-  Vector<int> result_coefficients(nc1);
+  Vector<Int> result_coefficients(nc1);
 
-  int index = 0;
+  Int index = 0;
   for (auto p = entire(np2); !p.at_end(); ++p, ++index) {
     bool found_it = false;
-    int other_index =0;
+    Int other_index =0;
     for (auto other_p = entire(np1); !other_p.at_end(); ++other_p, ++other_index) {
       if (*p == *other_p) {
         // If no exception is thrown, they're equal
@@ -71,9 +71,9 @@ perl::Object matroid_ring_sum(perl::Object c1, perl::Object c2)
   }
 
   // Check for zero entries
-  Set<int> supp = support(result_coefficients);
+  Set<Int> supp = support(result_coefficients);
 
-  perl::Object result("MatroidRingCycle", mlist<Addition>());
+  BigObject result("MatroidRingCycle", mlist<Addition>());
   result.take("N_ELEMENTS") << n_elements;
   result.take("NESTED_PRESENTATIONS") << result_presentation.slice(supp);
   result.take("NESTED_COEFFICIENTS") << result_coefficients.slice(supp);
@@ -82,19 +82,19 @@ perl::Object matroid_ring_sum(perl::Object c1, perl::Object c2)
 }
 
 template <typename Addition>
-Matrix<Rational> matroid_ring_linear_space(const Array<perl::Object>& cycles)
+Matrix<Rational> matroid_ring_linear_space(const Array<BigObject>& cycles)
 {
   Matrix<Rational> result;
   // FIXME: misuse of vector concatenation
   Vector<IncidenceMatrix<>> existing_nested;
-  for (const perl::Object& c : cycles) {
+  for (const BigObject& c : cycles) {
     result /= zero_vector<Rational>(result.cols());
     Array<IncidenceMatrix<> > rep = c.give("NESTED_PRESENTATIONS");
-    Array<int> coeff = c.give("NESTED_COEFFICIENTS");
-    int repindex =0;
+    Array<Int> coeff = c.give("NESTED_COEFFICIENTS");
+    Int repindex =0;
     for (auto r_it = entire(rep); !r_it.at_end(); ++r_it, ++repindex) {
-      int index = 0;
-      int max_index = existing_nested.dim();
+      Int index = 0;
+      Int max_index = existing_nested.dim();
       // Check if it already exists
       bool found_it = false;
       for (auto en = entire(existing_nested); index < max_index; ++index, ++en) {

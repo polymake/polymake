@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -39,7 +39,7 @@ namespace polymake { namespace polytope {
      Fx\ge 0
 */
 template <typename Scalar>
-bool H_input_bounded(perl::Object p)
+bool H_input_bounded(BigObject p)
 {
    const Matrix<Scalar> L = p.give("LINEALITY_SPACE");
    if (L.rows() > 0) return false;

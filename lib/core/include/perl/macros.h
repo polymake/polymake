@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -59,6 +59,12 @@ FunctionCallerBodyClass4perl<FunctionCallerTagsClass4perl::name, pm::perl::Funct
 template <>                                 \
 struct FunctionCallerName4perl(name, kind)
 
+// Certain amount of code duplication in the following call adapters is caused by two circumstances:
+// - a void function can't be placed within another function call, even if that does not take any arguments,
+//   therefore every adapter has a variant without consumer
+// - consumer must be called before any temporary object created during argument retrieval is destroyed,
+//   therefore the variants with consumers can't reuse variants without
+
 // free function
 #define FunctionCallerBody_free_4perl(name)                             \
 FunctionCallerBody4perl(name, free)                                     \
@@ -68,6 +74,13 @@ FunctionCallerBody4perl(name, free)                                     \
                              mlist<>, mlist<T_...>, std::index_sequence<I_...>) const \
    {                                                                    \
       return name(args_.template get<I_, T_>()...);                     \
+   }                                                                    \
+   template <typename Consumer_, size_t... I_, typename... T_>          \
+   decltype(auto) operator()(const Consumer_ consumer_,                 \
+                             const pm::perl::ArgValues<sizeof...(T_)>& args_, \
+                             mlist<>, mlist<T_...>, std::index_sequence<I_...>) const \
+   {                                                                    \
+      return consumer_(name(args_.template get<I_, T_>()...), args_);   \
    }                                                                    \
 }
 
@@ -81,6 +94,13 @@ FunctionCallerBody4perl(name, free_t)                                   \
    {                                                                    \
       return name<E_...>(args_.template get<I_, T_>()...);              \
    }                                                                    \
+   template <typename Consumer_, size_t... I_, typename... E_, typename... T_> \
+   decltype(auto) operator()(const Consumer_ consumer_,                 \
+                             const pm::perl::ArgValues<sizeof...(T_)>& args_, \
+                             mlist<E_...>, mlist<T_...>, std::index_sequence<I_...>) const \
+   {                                                                    \
+      return consumer_(name<E_...>(args_.template get<I_, T_>()...), args_); \
+   }                                                                    \
 }
 
 // class instance method
@@ -93,6 +113,13 @@ FunctionCallerBody4perl(name, meth)                                     \
    {                                                                    \
       return args_.template get<0, T0_>().name(args_.template get<I_, T_>()...); \
    }                                                                    \
+   template <typename Consumer_, size_t... I_, typename T0_, typename... T_> \
+   decltype(auto) operator()(const Consumer_ consumer_,                 \
+                             const pm::perl::ArgValues<sizeof...(T_)+1>& args_, \
+                             mlist<>, mlist<T0_, T_...>, std::index_sequence<0, I_...>) const \
+   {                                                                    \
+      return consumer_(args_.template get<0, T0_>().name(args_.template get<I_, T_>()...), args_); \
+   }                                                                    \
 }
 
 // class instance method template requiring explicit type parameters
@@ -104,6 +131,13 @@ FunctionCallerBody4perl(name, meth_t)                                   \
                              mlist<E_...>, mlist<T0_, T_...>, std::index_sequence<0, I_...>) const \
    {                                                                    \
       return args_.template get<0, T0_>().template name<E_...>(args_.template get<I_, T_>()...); \
+   }                                                                    \
+   template <typename Consumer_, size_t... I_, typename... E_, typename T0_, typename... T_> \
+   decltype(auto) operator()(const Consumer_ consumer_,                 \
+                             const pm::perl::ArgValues<sizeof...(T_)+1>& args_, \
+                             mlist<E_...>, mlist<T0_, T_...>, std::index_sequence<0, I_...>) const \
+   {                                                                    \
+      return consumer_(args_.template get<0, T0_>().template name<E_...>(args_.template get<I_, T_>()...), args_); \
    }                                                                    \
 }
 
@@ -118,6 +152,14 @@ FunctionCallerBody4perl(name, stat)                                     \
       using class_t_ = pm::perl::static_class_t<T0_>;                   \
       return class_t_::name(args_.template get<I_, T_>()...);           \
    }                                                                    \
+   template <typename Consumer_, size_t... I_, typename T0_, typename... T_> \
+   decltype(auto) operator()(const Consumer_ consumer_,                 \
+                             const pm::perl::ArgValues<sizeof...(T_)>& args_, \
+                             mlist<>, mlist<T0_, T_...>, std::index_sequence<I_...>) const \
+   {                                                                    \
+      using class_t_ = pm::perl::static_class_t<T0_>;                   \
+      return consumer_(class_t_::name(args_.template get<I_, T_>()...), args_); \
+   }                                                                    \
 }
 
 // class static method template requiring explicit type parameters
@@ -130,6 +172,14 @@ FunctionCallerBody4perl(name, stat_t)                                   \
    {                                                                    \
       using class_t_ = pm::perl::static_class_t<T0_>;                   \
       return class_t_::template name<E_...>(args_.template get<I_, T_>()...); \
+   }                                                                    \
+   template <typename Consumer_, size_t... I_, typename... E_, typename T0_, typename... T_> \
+   decltype(auto) operator()(const Consumer_ consumer_,                 \
+                             const pm::perl::ArgValues<sizeof...(T_)>& args_, \
+                             mlist<E_...>, mlist<T0_, T_...>, std::index_sequence<I_...>) const \
+   {                                                                    \
+      using class_t_ = pm::perl::static_class_t<T0_>;                   \
+      return consumer_(class_t_::template name<E_...>(args_.template get<I_, T_>()...), args_); \
    }                                                                    \
 }
 
@@ -147,6 +197,13 @@ struct OperatorCallerName4perl(name)                                    \
    {                                                                    \
       return sign(args_.template get<0, T_>());                         \
    }                                                                    \
+   template <typename Consumer_, typename T_>                           \
+   decltype(auto) operator()(const Consumer_ consumer_,                 \
+                             const pm::perl::ArgValues<1>& args_,       \
+                             mlist<>, mlist<T_>, std::index_sequence<0>) const \
+   {                                                                    \
+      return consumer_(sign(args_.template get<0, T_>()), args_);       \
+   }                                                                    \
 }
 
 #define BinaryOperatorCallerBody4perl(sign, name)                       \
@@ -156,6 +213,13 @@ struct OperatorCallerName4perl(name) : pm::perl::FunctionCaller {       \
                              mlist<>, mlist<T0_, T1_>, std::index_sequence<0, 1>) const \
    {                                                                    \
       return args_.template get<0, T0_>() sign args_.template get<1, T1_>(); \
+   }                                                                    \
+   template <typename Consumer_, typename T0_, typename T1_>            \
+   decltype(auto) operator()(const Consumer_ consumer_,                 \
+                             const pm::perl::ArgValues<2>& args_,       \
+                             mlist<>, mlist<T0_, T1_>, std::index_sequence<0, 1>) const \
+   {                                                                    \
+      return consumer_(args_.template get<0, T0_>() sign args_.template get<1, T1_>(), args_); \
    }                                                                    \
 }
 

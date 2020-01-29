@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -18,7 +18,7 @@
 # This application concentrates on [[Hypersurface|tropical hypersurfaces]] and [[Polytope|tropical polytopes]].
 # It provides the functionality for the computation of basic properties. Visualization and various constructions are possible.
 
-IMPORT common graph
+IMPORT graph
 
 USE polytope fan graph matroid
 
@@ -30,7 +30,7 @@ HELP help.rules
 
 ##################################################################################
 
-declare property_type CovectorDecoration : c++ (include=>"polymake/tropical/covectors.h");
+declare property_type CovectorDecoration : c++ (name => "tropical::CovectorDecoration", include => "polymake/tropical/covectors.h");
 
 # A tropical polytope is the tropical convex hull of finitely many points or the finite intersection of tropical halfspaces in a tropical projective space.
 # Many combinatorial properties depend on [[POINTS]].

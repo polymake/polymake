@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,20 +31,20 @@ namespace pm {
 enum cmp_value { cmp_lt=-1, cmp_eq=0, cmp_gt=1, cmp_ne=cmp_gt };
 
 template <typename T>
-constexpr int sign_impl(T x, std::true_type)
+constexpr Int sign_impl(T x, std::true_type)
 {
-   return x<0 ? -1 : x>0;
+   return x < 0 ? -1 : x > 0;
 }
 
 template <typename T>
-constexpr int sign_impl(T x, std::false_type)
+constexpr Int sign_impl(T x, std::false_type)
 {
-   return x!=0;
+   return x != 0;
 }
 
 template <typename T>
 constexpr
-typename std::enable_if<std::is_arithmetic<T>::value, int>::type
+std::enable_if_t<std::is_arithmetic<T>::value, Int>
 sign(T x)
 {
    return sign_impl(x, bool_constant<std::numeric_limits<T>::is_signed>());
@@ -52,7 +52,7 @@ sign(T x)
 
 template <typename TPrimitive, typename T>
 constexpr
-typename std::enable_if<std::is_arithmetic<T>::value, TPrimitive>::type
+std::enable_if_t<std::is_arithmetic<T>::value, TPrimitive>
 max_value_as(mlist<T>)
 {
    return static_cast<TPrimitive>(std::numeric_limits<T>::max());
@@ -60,7 +60,7 @@ max_value_as(mlist<T>)
 
 template <typename TPrimitive, typename T>
 constexpr
-typename std::enable_if<std::is_arithmetic<T>::value, TPrimitive>::type
+std::enable_if_t<std::is_arithmetic<T>::value, TPrimitive>
 min_value_as(mlist<T>)
 {
    return static_cast<TPrimitive>(std::numeric_limits<T>::min());
@@ -105,7 +105,7 @@ struct cmp_extremal {
    }
 };
 
-template <typename T, bool use_zero_test=has_zero_value<T>::value>
+template <typename T, bool use_zero_test = has_zero_value<T>::value>
 struct cmp_partial_opaque {
    template <typename Left, typename Iterator2>
    cmp_value operator() (partial_left, const Left&, const Iterator2&) const
@@ -211,7 +211,7 @@ struct cmp_unordered_impl<T1, T2, typename std::enable_if<are_comparable<T1, T2>
    typedef T2 second_argument_type;
    typedef cmp_value result_type;
 
-   static const bool partially_defined=has_zero_value<T1>::value && has_zero_value<T2>::value;
+   static const bool partially_defined = has_zero_value<T1>::value && has_zero_value<T2>::value;
 
    template <typename Left, typename Right>
    cmp_value operator()(const Left& l, const Right& r) const
@@ -220,14 +220,14 @@ struct cmp_unordered_impl<T1, T2, typename std::enable_if<are_comparable<T1, T2>
    }
 
    template <typename Left, typename Iterator>
-   typename std::enable_if<has_zero_value<Left>::value, cmp_value>::type
+   std::enable_if_t<has_zero_value<Left>::value, cmp_value>
    operator() (partial_left, const Left& a, const Iterator&) const
    {
       return is_zero(a) ? cmp_eq : cmp_ne;
    }
 
    template <typename Iterator, typename Right>
-   typename std::enable_if<has_zero_value<Right>::value, cmp_value>::type
+   std::enable_if_t<has_zero_value<Right>::value, cmp_value>
    operator() (partial_right, const Iterator&, const Right& b) const
    {
       return is_zero(b) ? cmp_eq : cmp_ne;
@@ -304,13 +304,13 @@ struct cmp_pointer {
 
 } // end namespace operations
 
-template <typename T1, typename T2> inline
+template <typename T1, typename T2>
 T1& assign_max(T1& max, const T2& x) { if (max<x) max=x; return max; }
 
-template <typename T1, typename T2> inline
+template <typename T1, typename T2>
 T1& assign_min(T1& min, const T2& x) { if (min>x) min=x; return min; }
 
-template <typename T1, typename T2, typename T3> inline
+template <typename T1, typename T2, typename T3>
 void assign_min_max(T1& min, T2& max, const T3& x)
 {
    if (min>x) min=x; else if (max<x) max=x;
@@ -336,16 +336,15 @@ using std::isfinite;
 /// return the sign of the inifinite value, or 0 if the value is finite
 /// std::isinf returns bool nowadays which is insufficient for efficient operations
 inline
-int isinf(double x) noexcept
+Int isinf(double x) noexcept
 {
    return std::isinf(x) ? (x>0)*2-1 : 0;
 }
 
-constexpr int isinf(long) { return 0; }
-constexpr int isinf(int) { return 0; }
+constexpr Int isinf(long) { return 0; }
 
-template <typename T, bool _is_max>
-struct spec_object_traits< extremal<T,_is_max> > : spec_object_traits<T> {};
+template <typename T, bool is_max>
+struct spec_object_traits< extremal<T, is_max> > : spec_object_traits<T> {};
 
 template <typename T>
 struct spec_object_traits< maximal<T> > : spec_object_traits<T> {};

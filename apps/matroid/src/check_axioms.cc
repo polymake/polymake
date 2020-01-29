@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,19 +21,19 @@
 
 namespace polymake { namespace matroid {
 
-bool check_basis_exchange_axiom(const Array<Set<int> >& bases, perl::OptionSet options)
+bool check_basis_exchange_axiom(const Array<Set<Int>>& bases, OptionSet options)
 {
    const bool verbose = options["verbose"];
    return check_basis_exchange_axiom_impl(bases, verbose);
 }
 
-bool check_hyperplane_axiom(const Array<Set<int> >& matroid_hyperplanes, perl::OptionSet options)
+bool check_hyperplane_axiom(const Array<Set<Int>>& matroid_hyperplanes, OptionSet options)
 {
    const bool verbose = options["verbose"];
    return check_hyperplane_axiom_impl(matroid_hyperplanes, verbose);
 }
 
-bool check_flat_axiom(const Array<Set<int> >& matroid_flats, perl::OptionSet options)
+bool check_flat_axiom(const Array<Set<Int>>& matroid_flats, OptionSet options)
 {
    const bool verbose = options["verbose"];
    return check_flat_axiom_impl(matroid_flats, verbose);

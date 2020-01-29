@@ -1,7 +1,7 @@
 {"app": "common",
  "inst": [
-  {"pkg": "Polymake::common::ExtGCD"},
-  {"class": "ExtGCD<UniPolynomial<Rational, int>>", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/numerical_functions.h"], "pkg": "Polymake::common::ExtGCD__UniPolynomial_A_Rational_I_Int_Z"},
-  {"class": "ExtGCD<long>", "include": ["polymake/numerical_functions.h"], "pkg": "Polymake::common::ExtGCD__Long"},
+  {"guard_name": "CORE_WRAPPERS_numerical_functions", "include": ["polymake/numerical_functions.h"], "pkg": "Polymake::common::ExtGCD", "wrapper_file": "include/core-wrappers/polymake/numerical_functions.h"},
+  {"class": "ExtGCD<UniPolynomial<Rational, Int>>", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/numerical_functions.h"], "pkg": "Polymake::common::ExtGCD__UniPolynomial_A_Rational_I_Int_Z"},
+  {"class": "ExtGCD<Int>", "include": ["polymake/numerical_functions.h"], "pkg": "Polymake::common::ExtGCD__Int"},
  null ],
 "version": 3}

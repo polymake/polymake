@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -35,7 +35,7 @@ class construct_sparse_compatible
                                          ExpectedFeaturesTag< mlist<end_sensitive, indexed> > > > {
    typedef redirected_container<construct_sparse_compatible> base_t;
 public:
-   int dim() const { return this->size(); }
+   Int dim() const { return this->size(); }
 
    void erase(const typename base_t::iterator& where)
    {
@@ -44,7 +44,7 @@ public:
    }
 
    // Must be defined, although never called
-   void insert(const typename base_t::iterator&, int, const typename base_t::value_type&) {}
+   void insert(const typename base_t::iterator&, Int, const typename base_t::value_type&) {}
 };
 
 template <typename Container>
@@ -78,7 +78,7 @@ class construct_pure_sparse
                                             OperationTag< BuildUnary<operations::non_zero> >,
                                             IteratorConstructorTag< pure_sparse_constructor > > > {
 public:
-   int dim() const { return this->hidden().size(); }
+   Int dim() const { return this->hidden().size(); }
 };
 
 template <typename Container>
@@ -90,7 +90,7 @@ public:
    {
       return this->hidden().front() ? _super::begin() : _super::end();
    }
-   int size() const
+   Int size() const
    {
       return this->hidden().front() ? this->dim() : 0;
    }
@@ -128,19 +128,19 @@ struct construct_sparse_iterator<Iterator, Target,
    static const bool enabled=true;
    typedef Iterator iterator;
 
-   Iterator&& operator() (Iterator&& src, int) const { return std::forward<Iterator>(src); }
+   Iterator&& operator() (Iterator&& src, Int) const { return std::forward<Iterator>(src); }
 };
 
 template <typename Iterator, typename Target>
 struct construct_sparse_iterator<Iterator, Target,
                                  typename std::enable_if<(check_iterator_feature<Iterator, end_sensitive>::value &&
-                                                          isomorphic_types<typename iterator_traits<Iterator>::value_type, pair<int, Target> >::value &&
+                                                          isomorphic_types<typename iterator_traits<Iterator>::value_type, pair<Int, Target> >::value &&
                                                           std::is_convertible<typename iterator_traits<Iterator>::value_type::second_type, Target>::value)>::type>
 {
    static const bool enabled=true;
    typedef Iterator iterator;
 
-   Iterator&& operator() (Iterator&& src, int) const { return std::forward<Iterator>(src); }
+   Iterator&& operator() (Iterator&& src, Int) const { return std::forward<Iterator>(src); }
 };
 
 template <typename Iterator, typename Target>
@@ -155,20 +155,20 @@ struct construct_sparse_iterator<Iterator, Target,
    typedef conv<typename object_traits<typename iterator_traits<Iterator>::value_type>::persistent_type, Target> converter;
    typedef unary_transform_iterator<src_iterator, converter> iterator;
 
-   iterator operator() (const Iterator& src, int) const { return iterator(src); }
+   iterator operator() (const Iterator& src, Int) const { return iterator(src); }
 };
 
 template <typename Iterator, typename Target>
 struct construct_sparse_iterator<Iterator, Target,
                                  typename std::enable_if<(check_iterator_feature<Iterator, end_sensitive>::value &&
-                                                          isomorphic_types<typename iterator_traits<Iterator>::value_type, pair<int, Target> >::value &&
+                                                          isomorphic_types<typename iterator_traits<Iterator>::value_type, pair<Int, Target> >::value &&
                                                           is_only_explicitly_convertible_to<typename iterator_traits<Iterator>::value_type::second_type, Target>::value)>::type>
 {
    static const bool enabled=true;
    typedef pure_type_t<Iterator> src_iterator;
-   typedef unary_transform_iterator<src_iterator, conv<typename iterator_traits<Iterator>::value_type, pair<int, Target> > > iterator;
+   typedef unary_transform_iterator<src_iterator, conv<typename iterator_traits<Iterator>::value_type, pair<Int, Target> > > iterator;
 
-   iterator operator() (const Iterator& src, int) const { return iterator(src); }
+   iterator operator() (const Iterator& src, Int) const { return iterator(src); }
 };
 
 template <typename Iterator, typename Target>
@@ -183,7 +183,7 @@ struct construct_sparse_iterator<Iterator, Target,
    using it_pair = iterator_pair<src_iterator, indexer, mlist<FeaturesViaSecondTag<indexed>>>;
    using iterator = unary_predicate_selector<it_pair, BuildUnary<operations::non_zero>>;
 
-   iterator operator() (const Iterator& src, int dim) const
+   iterator operator() (const Iterator& src, Int dim) const
    {
       return it_pair(src, ensure(sequence_raw(0, dim), sparse_compatible()).begin());
    }
@@ -203,7 +203,7 @@ struct construct_sparse_iterator<Iterator, Target,
    using converter = conv<typename object_traits<typename iterator_traits<Iterator>::value_type>::persistent_type, Target>;
    using iterator = unary_transform_iterator<filter, converter>;
 
-   iterator operator() (const Iterator& src, int dim) const
+   iterator operator() (const Iterator& src, Int dim) const
    {
       return filter(it_pair(src, ensure(sequence_raw(0,dim), sparse_compatible()).begin()));
    }
@@ -212,7 +212,7 @@ struct construct_sparse_iterator<Iterator, Target,
 template <typename LeftRef, typename RightRef>
 struct implicit_zero {
    typedef LeftRef first_argument_type;
-   typedef int second_argument_type;
+   typedef Int second_argument_type;
    typedef LeftRef result_type;
 
    result_type operator() (LeftRef l, second_argument_type) const { return l; }
@@ -225,7 +225,7 @@ struct implicit_zero {
    }
 };
 
-template <typename Iterator> inline
+template <typename Iterator>
 typename attrib<typename iterator_traits<Iterator>::reference>::plus_const
 deref_sparse_iterator(const Iterator& it)
 {
@@ -246,7 +246,7 @@ class construct_dense_pair
 public:
    const Container& get_container1() const { return this->hidden(); }
    sequence_raw get_container2() const { return sequence_raw(0, this->size()); }
-   int size() const { return this->hidden().dim(); }
+   Int size() const { return this->hidden().dim(); }
 };
 
 template <typename Container>
@@ -258,7 +258,7 @@ class construct_dense
 public:
    const Container& get_container1() const { return this->hidden(); }
    sequence_raw get_container2() const { return sequence_raw(0, this->size()); }
-   int size() const { return this->hidden().dim(); }
+   Int size() const { return this->hidden().dim(); }
 };
 
 template <typename Container>
@@ -1200,7 +1200,7 @@ public:
    using value_type = typename iterator_traits<iterator_type>::value_type;
 protected:
    Vector* vec;
-   int i;
+   Int i;
 
    const value_type& get() const
    {
@@ -1217,7 +1217,7 @@ protected:
 
    void erase(const iterator_type& it) { vec->erase(it); }
 public:
-   sparse_proxy_base(Vector& vec_arg, int i_arg)
+   sparse_proxy_base(Vector& vec_arg, Int i_arg)
       : vec(&vec_arg), i(i_arg) {}
 };
 
@@ -1263,7 +1263,7 @@ protected:
       base_t::erase(it);
    }
 public:
-   sparse_proxy_it_base(Vector& vec_arg, const iterator_type& it_arg, int i_arg)
+   sparse_proxy_it_base(Vector& vec_arg, const iterator_type& it_arg, Int i_arg)
       : base_t(vec_arg,i_arg)
       , where(it_arg) {}
 };
@@ -1272,7 +1272,7 @@ template <typename Base, typename E, typename... Params>
 struct object_traits< sparse_elem_proxy<Base, E, Params...> >
    : object_traits<E> {
    typedef E proxy_for;
-   static const bool is_temporary=true, is_persistent=false;
+   static constexpr bool is_temporary = true, is_persistent = false;
 };
 
 template <typename Base, typename E, typename... Params>
@@ -1291,14 +1291,14 @@ namespace operations {
    template <typename ContainerRef>
    struct front_index {
       typedef ContainerRef argument_type;
-      typedef int result_type;
+      typedef Int result_type;
       result_type operator() (typename function_argument<ContainerRef>::const_type l) const { return l.begin().index(); }
    };
 
    template <typename ContainerRef>
    struct back_index {
       typedef ContainerRef argument_type;
-      typedef int result_type;
+      typedef Int result_type;
       result_type operator() (typename function_argument<ContainerRef>::const_type l) const { return l.rbegin().index(); }
    };
 }
@@ -1306,23 +1306,27 @@ namespace operations {
 template <typename Container, typename Iterator>
 Iterator assign_sparse(Container& c, Iterator src)
 {
-   typename Container::iterator dst=c.begin();
-   int state=(dst.at_end() ? 0 : zipper_first) + (src.at_end() ? 0 : zipper_second);
+   auto dst = c.begin();
+   int state = (dst.at_end() ? 0 : zipper_first) + (src.at_end() ? 0 : zipper_second);
    while (state >= zipper_both) {
-      const int idiff=dst.index()-src.index();
-      if (idiff<0) {
+      const Int idiff = dst.index() - src.index();
+      if (idiff < 0) {
          c.erase(dst++);
-         if (dst.at_end()) state -= zipper_first;
-      } else if (idiff>0) {
+         if (dst.at_end())
+            state -= zipper_first;
+      } else if (idiff > 0) {
          c.insert(dst, src.index(), *src);
          ++src;
-         if (src.at_end()) state -= zipper_second;
+         if (src.at_end())
+            state -= zipper_second;
       } else {
-         *dst=*src;
+         *dst = *src;
          ++dst;
-         if (dst.at_end()) state -= zipper_first;
+         if (dst.at_end())
+            state -= zipper_first;
          ++src;
-         if (src.at_end()) state -= zipper_second;
+         if (src.at_end())
+            state -= zipper_second;
       }
    }
    if (state & zipper_first) {
@@ -1340,20 +1344,20 @@ Iterator assign_sparse(Container& c, Iterator src)
 template <typename Container, typename Iterator>
 void fill_sparse(Container& c, Iterator src)
 {
-   typename Container::iterator dst=c.begin();
-   const int d=c.dim();
-   int i;
+   auto dst = c.begin();
+   const Int d = c.dim();
+   Int i;
    if (!dst.at_end()) {
-      for (; (i=src.index())<d; ++src)
-         if (i<dst.index()) {
-            c.insert(dst,i,*src);
+      for (; (i = src.index()) < d; ++src)
+         if (i < dst.index()) {
+            c.insert(dst, i, *src);
          } else {
-            *dst=*src;  ++dst;
+            *dst = *src;  ++dst;
             if (dst.at_end()) { ++src; break; }
          }
    }
-   for (; (i=src.index())<d; ++src)
-      c.insert(dst,i,*src);
+   for (; (i = src.index()) < d; ++src)
+      c.insert(dst, i, *src);
 }
 
 template <typename Container, typename Iterator2, typename Operation>
@@ -1361,17 +1365,19 @@ void perform_assign_sparse(Container& c, Iterator2 src2, const Operation& op_arg
 {
    typedef binary_op_builder<Operation, typename Container::const_iterator, Iterator2> opb;
    const typename opb::operation& op=opb::create(op_arg);
-   typename Container::iterator dst=c.begin();
-   int state=(dst.at_end() ? 0 : zipper_first) + (src2.at_end() ? 0 : zipper_second);
+   auto dst = c.begin();
+   int state = (dst.at_end() ? 0 : zipper_first) + (src2.at_end() ? 0 : zipper_second);
    while (state >= zipper_both) {
-      const int idiff=dst.index()-src2.index();
-      if (idiff<0) {
+      const Int idiff = dst.index() - src2.index();
+      if (idiff < 0) {
          ++dst;
-         if (dst.at_end()) state -= zipper_first;
-      } else if (idiff>0) {
+         if (dst.at_end())
+            state -= zipper_first;
+      } else if (idiff > 0) {
          c.insert(dst, src2.index(), op(operations::partial_right(), dst, *src2));
          ++src2;
-         if (src2.at_end()) state -= zipper_second;
+         if (src2.at_end())
+            state -= zipper_second;
       } else {
          op.assign(*dst, *src2);
          if (!is_zero(*dst))
@@ -1379,9 +1385,11 @@ void perform_assign_sparse(Container& c, Iterator2 src2, const Operation& op_arg
          else
             c.erase(dst++);
 
-         if (dst.at_end()) state -= zipper_first;
+         if (dst.at_end())
+            state -= zipper_first;
          ++src2;
-         if (src2.at_end()) state -= zipper_second;
+         if (src2.at_end())
+            state -= zipper_second;
       }
    }
    if (state & zipper_second) {
@@ -1394,25 +1402,29 @@ void perform_assign_sparse(Container& c, Iterator2 src2, const Operation& op_arg
 template <typename Container1, typename Container2>
 void swap_sparse(Container1& c1, Container2& c2)
 {
-   typename Container1::iterator e1=c1.begin();
-   typename Container2::iterator e2=c2.begin();
-   int state=(e1.at_end() ? 0 : zipper_first) + (e2.at_end() ? 0 : zipper_second);
+   auto e1 = c1.begin();
+   auto e2 = c2.begin();
+   int state = (e1.at_end() ? 0 : zipper_first) + (e2.at_end() ? 0 : zipper_second);
    while (state >= zipper_both) {
-      const int idiff=e1.index()-e2.index();
-      if (idiff<0) {
+      const Int idiff = e1.index() - e2.index();
+      if (idiff < 0) {
          c2.insert(e2, e1.index(), *e1);
          c1.erase(e1++);
-         if (e1.at_end()) state -= zipper_first;
-      } else if (idiff>0) {
+         if (e1.at_end())
+            state -= zipper_first;
+      } else if (idiff > 0) {
          c1.insert(e1, e2.index(), *e2);
          c2.erase(e2++);
-         if (e2.at_end()) state -= zipper_second;
+         if (e2.at_end())
+            state -= zipper_second;
       } else {
          std::swap(*e1,*e2);
          ++e1;
-         if (e1.at_end()) state -= zipper_first;
+         if (e1.at_end())
+            state -= zipper_first;
          ++e2;
-         if (e2.at_end()) state -= zipper_second;
+         if (e2.at_end())
+            state -= zipper_second;
       }
    }
    if (state & zipper_first) {

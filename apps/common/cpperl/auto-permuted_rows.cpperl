@@ -1,10 +1,11 @@
 {"app": "common",
  "inst": [
-  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::TryCanned<const Array<int>>"], "func": "permuted_rows", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h"], "sig": "permuted_rows.X.X"},
-  {"args": ["perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>", "perl::Canned<const Array<int>&>"], "func": "permuted_rows", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "permuted_rows.X.X"},
-  {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Array<int>&>"], "func": "permuted_rows", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "permuted_rows.X.X"},
-  {"args": ["perl::Canned<const SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>&>", "perl::Canned<const Array<int>&>"], "func": "permuted_rows", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "permuted_rows.X.X"},
-  {"args": ["perl::Canned<const Matrix<QuadraticExtension<Rational>>&>", "perl::Canned<const Array<int>&>"], "func": "permuted_rows", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "permuted_rows.X.X"},
-  {"args": ["perl::Canned<const Matrix<double>&>", "perl::Canned<const Array<int>&>"], "func": "permuted_rows", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "permuted_rows.X.X"},
+  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::TryCanned<const Array<Int>>"], "func": "permuted_rows", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h"], "sig": "permuted_rows.X.X"},
+  {"args": ["perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>", "perl::Canned<const Array<Int>&>"], "func": "permuted_rows", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "permuted_rows.X.X"},
+  {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Array<Int>&>"], "func": "permuted_rows", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "permuted_rows.X.X"},
+  {"args": ["perl::Canned<const SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>&>", "perl::Canned<const Array<Int>&>"], "func": "permuted_rows", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "permuted_rows.X.X"},
+  {"args": ["perl::Canned<const Matrix<QuadraticExtension<Rational>>&>", "perl::Canned<const Array<Int>&>"], "func": "permuted_rows", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "permuted_rows.X.X"},
+  {"args": ["perl::Canned<const Matrix<double>&>", "perl::Canned<const Array<Int>&>"], "func": "permuted_rows", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "permuted_rows.X.X"},
+  {"args": ["perl::Canned<const SparseMatrix<Int, NonSymmetric>&>", "perl::Canned<const Array<Int>&>"], "func": "permuted_rows", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "sig": "permuted_rows.X.X"},
  null ],
 "version": 3}

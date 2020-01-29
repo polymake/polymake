@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -48,23 +48,23 @@ class SharedMemoryVector
    , public Vector<E> {
    typedef Vector<E> base_t;
 
-   static size_t alloc_size(int n) { return base_t::shared_array_type::alloc_size(n); }
+   static size_t alloc_size(Int n) { return base_t::shared_array_type::alloc_size(n); }
 public:
    SharedMemoryVector() {}
 
-   explicit SharedMemoryVector(int n)
+   explicit SharedMemoryVector(Int n)
       : SharedMemorySegment(alloc_size(n))
       , base_t(shmaddr, n) {}
 
    template <typename E2>
-   SharedMemoryVector(int n, const E2& init,
-                      typename std::enable_if<pm::can_initialize<E2, E>::value, void**>::type=nullptr)
+   SharedMemoryVector(Int n, const E2& init,
+                      std::enable_if_t<pm::can_initialize<E2, E>::value, std::nullptr_t> = nullptr)
       : SharedMemorySegment(alloc_size(n))
       , base_t(shmaddr, n, init) {}
 
    template <typename Iterator>
-   SharedMemoryVector(int n, Iterator&& src,
-                      typename std::enable_if<pm::assess_iterator_value<Iterator, pm::can_initialize, E>::value, void**>::type=nullptr)
+   SharedMemoryVector(Int n, Iterator&& src,
+                      std::enable_if_t<pm::assess_iterator_value<Iterator, pm::can_initialize, E>::value, std::nullptr_t> = nullptr)
       : SharedMemorySegment(alloc_size(n))
       , base_t(shmaddr, n, std::forward<Iterator>(src)) {}
 
@@ -75,12 +75,12 @@ public:
    
    template <typename Vector2, typename E2>
    explicit SharedMemoryVector(const GenericVector<Vector2, E2>& v,
-                               typename std::enable_if<pm::can_initialize<E2, E>::value, void**>::type=nullptr)
+                               std::enable_if_t<pm::can_initialize<E2, E>::value, std::nullptr_t> = nullptr)
       : SharedMemorySegment(alloc_size(v.dim()))
       , base_t(shmaddr, v.dim(), ensure(v.top(), pm::dense()).begin()) {}
 
    template <typename E2,
-             typename=typename std::enable_if<pm::can_initialize<E2, E>::value>::type>
+             typename = std::enable_if_t<pm::can_initialize<E2, E>::value>>
    SharedMemoryVector(std::initializer_list<E2> l)
       : SharedMemorySegment(alloc_size(l.size()))
       , base_t(shmaddr, l.size(), l.begin()) {}
@@ -111,13 +111,13 @@ public:
 
    void clear() { this->fill(zero_value<E>()); }
 
-   void resize(int n)
+   void resize(Int n)
    {
       if (!shmaddr.get()) {
          SharedMemorySegment::resize(alloc_size(n));
          base_t::resize(shmaddr, n);
       } else {
-         assert(n==this->size());
+         assert(n == this->size());
       }
    }
 
@@ -134,32 +134,35 @@ class SharedMemoryMatrix
    template <typename Iterator>
    using fits_as_input_iterator = typename base_t::template fits_as_input_iterator<Iterator>;
 
-   static size_t alloc_size(int r, int c) { return base_t::shared_array_type::alloc_size(r*c); }
+   static size_t alloc_size(Int r, Int c)
+   {
+      return base_t::shared_array_type::alloc_size(r * c);
+   }
 public:
    SharedMemoryMatrix() {}
 
-   SharedMemoryMatrix(int r, int c)
-      : SharedMemorySegment(alloc_size(r,c))
+   SharedMemoryMatrix(Int r, Int c)
+      : SharedMemorySegment(alloc_size(r, c))
       , base_t(shmaddr, r, c) {}
 
-   SharedMemoryMatrix(int r, int c, const E& init)
-      : SharedMemorySegment(alloc_size(r,c))
+   SharedMemoryMatrix(Int r, Int c, const E& init)
+      : SharedMemorySegment(alloc_size(r, c))
       , base_t(shmaddr, r, c, init) {}
 
-   template <typename Iterator, typename=typename std::enable_if<fits_as_input_iterator<Iterator>::value>::type>
-   SharedMemoryMatrix(int r, int c, Iterator&& src)
-      : SharedMemorySegment(alloc_size(r,c))
+   template <typename Iterator, typename = std::enable_if_t<fits_as_input_iterator<Iterator>::value>>
+   SharedMemoryMatrix(Int r, Int c, Iterator&& src)
+      : SharedMemorySegment(alloc_size(r, c))
       , base_t(shmaddr, r, c, std::forward<Iterator>(src)) {}
 
    template <typename Matrix2, typename E2>
    SharedMemoryMatrix(const GenericMatrix<Matrix2, E2>& m,
-                      typename std::enable_if<pm::can_initialize<E2, E>::value>::type** = nullptr)
+                      std::enable_if_t<pm::can_initialize<E2, E>::value, std::nullptr_t> = nullptr)
       : SharedMemorySegment(alloc_size(m.rows(), m.cols()))
       , base_t(shmaddr, m.rows(), m.cols(), ensure(concat_rows(m), pm::dense()).begin()) {}
 
    template <typename Container>
    SharedMemoryMatrix(const Container& src,
-                      typename std::enable_if<pm::isomorphic_to_container_of<Container, Vector<E>>::value>::type** = nullptr)
+                      std::enable_if_t<pm::isomorphic_to_container_of<Container, Vector<E>>::value, std::nullptr_t> = nullptr)
       : SharedMemorySegment(alloc_size(src.size(), src.empty() ? 0 : get_dim(src.front())))
       , base_t(shmaddr, src.size(), src.empty() ? 0 : get_dim(src.front()), src.begin()) {}
 
@@ -181,13 +184,13 @@ protected:
    using base_t::generic_type::fill_impl;
 public:
 
-   void resize(int r, int c)
+   void resize(Int r, Int c)
    {
       if (!shmaddr.get()) {
          SharedMemorySegment::resize(alloc_size(r, c));
          base_t::resize(shmaddr, r, c);
       } else {
-         assert(r==this->rows() && c==this->cols());
+         assert(r == this->rows() && c == this->cols());
       }
    }
 

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -28,20 +28,21 @@ CONFIGURE {
 
 require PortaParser;
 
-object Polytope<Rational> {
+INCLUDE
+   # porta_convexhull.rules
 
-# @category Convex hull computation
-# Run the [[wiki:external_software#porta]] program, implementing the Fourier-Motzkin elimination method.
-# The essential drawback of this tool is that it employs a limited-precision arithmetic,
-# and therefore can fail on numerically difficult problems.
-label porta
-
-
-rule porta.convex_hull.primal: FACETS, AFFINE_HULL : CONE_AMBIENT_DIM, CONE_DIM, VERTICES | POINTS {
+# @category Transformations
+# Primal transformation via porta. Computes facets and affine hull from
+# vertices or points.
+user_function porta_primal {
+   my($p) = @_;
+   my $dim = $p->CONE_AMBIENT_DIM;
+   my $pts = $p->give("VERTICES | POINTS");
+   my $has_far_facet = $p->has_far_facet;
    my $tempname=new Tempfile;
    my $converter=new PortaConverter("$tempname.poi");
-   $converter->print_dim($this->CONE_AMBIENT_DIM-1);
-   $converter->print_points($this->give("VERTICES | POINTS"));
+   $converter->print_dim($dim-1);
+   $converter->print_points($pts);
    $converter->finish;
 
    my $command="$xporta -l -T $tempname.poi";
@@ -49,29 +50,33 @@ rule porta.convex_hull.primal: FACETS, AFFINE_HULL : CONE_AMBIENT_DIM, CONE_DIM,
    system($command) and die "porta exited with error code\n";
 
    my $parser=new PortaParser("$tempname.poi.ieq");
-   if ($this->has_far_facet) {
-      push @{$parser->Ineq}, [ 1, (0) x ($this->CONE_AMBIENT_DIM-1) ];
+   if ($has_far_facet) {
+      push @{$parser->Ineq}, [ 1, (0) x ($dim-1) ];
    }
-   $this->FACETS = @{$parser->Ineq} > 0 ? 
+   my $facets = @{$parser->Ineq} > 0 ? 
                    $parser->Ineq : 
-                   new Matrix(0,$this->CONE_AMBIENT_DIM);
-   $this->AFFINE_HULL = @{$parser->Eq} > 0 ? 
+                   new Matrix(0,$dim);
+   my $affine_hull = @{$parser->Eq} > 0 ? 
                         $parser->Eq : 
-                        new Matrix(0,$this->CONE_AMBIENT_DIM);
+                        new Matrix(0,$dim);
    unlink "porta.log";
+   return ($facets, $affine_hull);
 }
-weight 4.20;
-precondition : CONE_DIM { $this->CONE_DIM > 1 }
-precondition : POINTED;
-incurs FacetPerm;
 
-
-rule porta.convex_hull.dual: VERTICES, LINEALITY_SPACE : CONE_AMBIENT_DIM, FACETS | INEQUALITIES, VALID_POINT {
+# @category Transformations
+# Dual transformation via porta. Computes vertices and lineality space from
+# inequalities and equations.
+user_function porta_dual {
+   my($p) = @_;
+   my $dim = $p->CONE_AMBIENT_DIM;
+   my $validpt = $p->VALID_POINT;
+   my $ineq = $p->give("FACETS | INEQUALITIES");
+   my $eq = $p->lookup("AFFINE_HULL | EQUATIONS");
    my $tempname=new Tempfile;
    my $converter=new PortaConverter("$tempname.ieq");
-   $converter->print_dim($this->CONE_AMBIENT_DIM-1);
-   $converter->print_valid_point($this->VALID_POINT);
-   $converter->print_inequalities($this->give("FACETS | INEQUALITIES"), $this->lookup("AFFINE_HULL | EQUATIONS"));
+   $converter->print_dim($dim-1);
+   $converter->print_valid_point($validpt);
+   $converter->print_inequalities($ineq, $eq);
    $converter->finish;
 
    my $command="$xporta -l -T $tempname.ieq";
@@ -79,17 +84,12 @@ rule porta.convex_hull.dual: VERTICES, LINEALITY_SPACE : CONE_AMBIENT_DIM, FACET
    system($command) and die "xporta exited with error code\n";
 
    my $parser=new PortaParser("$tempname.ieq.poi");
-   $this->VERTICES = @{$parser->Points} > 0 ? 
+   my $vertices = @{$parser->Points} > 0 ? 
                      $parser->Points : 
-                     new Matrix(0,$this->CONE_AMBIENT_DIM);
-   $this->LINEALITY_SPACE=new Matrix<Rational>(0,$this->CONE_AMBIENT_DIM);
+                     new Matrix(0,$dim);
+   my $lineality =new Matrix<Rational>(0,$dim);
    unlink "porta.log";
-}
-weight 4.10;
-precondition : POINTED;
-incurs VertexPerm;
-
-
+   return ($vertices, $lineality);
 }
 
 # @category Optimization

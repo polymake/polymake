@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -40,6 +40,8 @@ class hash_map
    default_value_supplier dflt;
 
 public:
+   static_assert(!std::is_same<Key, int>::value && !std::is_same<Value, int>::value, "use Int instead");
+
    using key_type = Key;
    using mapped_type = Value;
    using key_comparator_type = operations::cmp;

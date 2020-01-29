@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -50,28 +50,28 @@ sub find {
 }
 
 sub locate_file {
-   my ($filename)=@_;
-   my ($in_app, $allow_neutral)= $filename =~ s{^($id_re)::(?=[^/])}{}o
+   my ($filename) = @_;
+   my ($in_app, $allow_neutral) = $filename =~ s{^($id_re)::(?=[^/])}{}o
       ? (User::application($1), 0)
       : ($User::application, 1);
    my $full_path;
    if (defined $in_app) {
-      foreach my $app ($in_app, values %{$in_app->imported}) {
-         if (defined ($full_path=find_file_in_path($filename, $app->scriptpath))) {
+      foreach my $app ($in_app, @{$in_app->linear_imported}) {
+         if (defined ($full_path = find_file_in_path($filename, $app->scriptpath))) {
             return ($full_path, (stat _)[9], $app);
          }
       }
    }
    if ($allow_neutral) {
-      if (-f ($full_path="$InstallTop/scripts/$filename")) {
+      if (-f ($full_path = "$InstallTop/scripts/$filename")) {
          return ($full_path, (stat _)[9]);
       }
       foreach my $ext (@Extension::active[$Extension::num_bundled..$#Extension::active]) {
-         if (-f ($full_path=$ext->dir."/scripts/$filename")) {
+         if (-f ($full_path = $ext->dir."/scripts/$filename")) {
             return ($full_path, (stat _)[9]);
          }
       }
-      if (defined ($full_path=find_file_in_path($filename, \@User::lookup_scripts))) {
+      if (defined ($full_path = find_file_in_path($filename, \@User::lookup_scripts))) {
          return ($full_path, (stat _)[9]);
       }
       if (-f $filename) {

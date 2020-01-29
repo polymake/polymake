@@ -1,6 +1,6 @@
 {"app": "common",
  "inst": [
-  {"args": ["perl::Canned<const Matrix<int>&>"], "func": "totally_unimodular", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/totally_unimodular.h"], "sig": "totally_unimodular.X"},
+  {"args": ["perl::Canned<const Matrix<Int>&>"], "func": "totally_unimodular", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/totally_unimodular.h"], "sig": "totally_unimodular.X"},
   {"args": ["perl::Canned<const Matrix<Integer>&>"], "func": "totally_unimodular", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h", "polymake/totally_unimodular.h"], "sig": "totally_unimodular.X"},
  null ],
 "version": 3}

@@ -1,5 +1,5 @@
 {"app": "common",
  "inst": [
-  {"class": "SingularValueDecomposition", "include": ["polymake/linalg.h"], "pkg": "Polymake::common::SingularValueDecomposition"},
+  {"class": "SingularValueDecomposition", "guard_name": "CORE_WRAPPERS_linalg", "include": ["polymake/linalg.h"], "pkg": "Polymake::common::SingularValueDecomposition", "wrapper_file": "include/core-wrappers/polymake/linalg.h"},
  null ],
 "version": 3}

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -37,20 +37,20 @@ require Visual::Lattice;
 # @category Visualization
 # Attributes modifying the appearance of graphs
 
-options %Visual::Graph::decorations=(
+options %Visual::Graph::decorations = (
    %Visual::Wire::decorations,
 
    # Matrix<Float>  2-d or 3-d coordinates of the nodes.
    #                If not specified, a random embedding is generated using a pseudo-physical spring model
    Coord => undef,
 
-   # Flexible<RGB>  alias for PointColor
+   # [complete color] Flexible<RGB>  alias for PointColor
    NodeColor => undef,
 
    # Flexible<Float>  alias for PointThickness
    NodeThickness => undef,
 
-   # Flexible<RGB>  alias for PointBorderColor
+   # [complete color] Flexible<RGB>  alias for PointBorderColor
    NodeBorderColor => undef,
 
    # Flexible<Float>  alias for PointBorderThickness
@@ -71,7 +71,7 @@ options %Visual::Graph::decorations=(
 # @category Visualization
 # Attributes modifying the appearance of face lattices
 
-options %Visual::Lattice::decorations=(
+options %Visual::Lattice::decorations = (
    %Visual::Graph::decorations,
 
    # Array<String>  Labels of atoms, to use as building blocks for node labels.  By default the ordinal numbers are taken.

@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -45,19 +45,19 @@ namespace polymake { namespace tropical {
  * @brief Takes a collection of weighted polyhedra of the same dimension and refines them in such a way that
  * they form a weighted polyhedral complex. Weights of cells lying one over the other add up.
  * @param Matrix<Rational> rays A matrix of rays in tropical projective coordinates and with leading coordinate.
- * @param Vector<Set<int> > cones A list of cells in terms of the rays.
+ * @param Vector<Set<Int>> max_cones A list of cells in terms of the rays.
  * @oaram Vector<Integer> weights The i-th element is the weight of the i-th cone.
  * @return Cycle A weighted complex, whose support is the union of the given cones.
  *
  */
 template <typename Addition>
-perl::Object make_complex(Matrix<Rational> rays, Vector<Set<int>> max_cones, Vector<Integer> weights)
+BigObject make_complex(Matrix<Rational> rays, Vector<Set<Int>> max_cones, Vector<Integer> weights)
 {
   rays = tdehomog(rays);
   // First we compute all the H-representations of the cones
   Vector<Matrix<Rational>> inequalities(max_cones.dim());
   Vector<Matrix<Rational>> equalities(max_cones.dim());
-  for (int c = 0; c < max_cones.dim(); ++c) {
+  for (Int c = 0; c < max_cones.dim(); ++c) {
     // To make computations come out right, we always have to add a zero in front
     const std::pair<Matrix<Rational>, Matrix<Rational>> fanEqs =
       polytope::enumerate_facets(rays.minor(max_cones[c],All), true);
@@ -65,12 +65,11 @@ perl::Object make_complex(Matrix<Rational> rays, Vector<Set<int>> max_cones, Vec
     equalities[c] = fanEqs.second;
   }
   // Compute the dimension
-  const int dimension = rays.cols() - equalities[0].rows() - 1;
+  const Int dimension = rays.cols() - equalities[0].rows() - 1;
 
   // The following matrix marks pairs of cones (i,j) that don't need to be made compatible since they already are
-  // More precisely: a value of true at position (i,j), i < j means that cone i and cone j are compatible. A value of false or
-  // any value on or below the diagonal carries no information
-  Matrix<bool> markedPairs(max_cones.dim(), max_cones.dim());
+  // More precisely: a value of true at position (i,j) means that cone i and cone j are compatible.
+  IncidenceMatrix<Symmetric> markedPairs(max_cones.dim(), max_cones.dim());
 
   // The following value indicates that new cones have been created through refinement 
   bool created;
@@ -83,11 +82,11 @@ perl::Object make_complex(Matrix<Rational> rays, Vector<Set<int>> max_cones, Vec
   // We go through all cone pairs i < j and check if we need to refine anything. As soon as we actually made some changes, we start all over
   do {
     created = false;
-    for (int i = 0; i < max_cones.dim() -1 && !created; ++i) {
-      for (int j = i+1; j < max_cones.dim() && !created; ++j) {
+    for (Int i = 0; i < max_cones.dim() -1 && !created; ++i) {
+      for (Int j = i+1; j < max_cones.dim() && !created; ++j) {
         // replacedI = false; replacedJ = false;
         // We only intersect non-marked pairs
-        if (!markedPairs[i][j]) {
+        if (!markedPairs(i, j)) {
           // Compute an irredundant H-rep of the intersection of cones i and j
           Matrix<Rational> isIneq = inequalities[i]/inequalities[j];
           Matrix<Rational> isEq = equalities[i] / equalities[j];
@@ -95,14 +94,14 @@ perl::Object make_complex(Matrix<Rational> rays, Vector<Set<int>> max_cones, Vec
 
           const auto isection = polytope::get_non_redundant_inequalities(isIneq, isEq, true);
 
-          const int isDimension = isMatrix.cols() - isection.second.size() - 1; 
+          const Int isDimension = isMatrix.cols() - isection.second.size() - 1; 
 
           // If the dimension is < 0 (this can only occur in the homog. case), then the two
           // cells don't intersect at all and we don't need to refine
           if (isDimension < 0) continue;
 
           // This set contains the indices in isMatrix of equations coming from i
-          Set<int> IIndices = sequence(0, inequalities[i].rows()) + sequence(isIneq.rows(), equalities[i].rows());
+          Set<Int> IIndices = sequence(0, inequalities[i].rows()) + sequence(isIneq.rows(), equalities[i].rows());
 
           // We now put together the equations for the intersection, such that the equations from i
           // come first
@@ -110,15 +109,15 @@ perl::Object make_complex(Matrix<Rational> rays, Vector<Set<int>> max_cones, Vec
           Matrix<Rational> hsEquations = isMatrix.minor(isection.first * IIndices, All);
           if (isDimension < dimension)
             hsEquations /= isMatrix.minor(isection.second * IIndices, All);
-          int equationsFromI = hsEquations.rows();
+          Int equationsFromI = hsEquations.rows();
           hsEquations /= isMatrix.minor(isection.first - IIndices, All);
           if (isDimension < dimension)
             hsEquations /= isMatrix.minor(isection.second - IIndices, All);
 
           // These variables remember the refinements of i and j (as indices in max_cones)
-          Set<int> newconesI, newconesJ;	
+          Set<Int> newconesI, newconesJ;	
 
-          for (int coneindex = i; coneindex <= j; coneindex += (j-i)) {
+          for (Int coneindex = i; coneindex <= j; coneindex += (j-i)) {
             // First we have to determine the relevant sign choices. We only want to change
             // the signs of equations NOT coming from the cone we currently refine
             // A sign choice's semantics is that x is in signChoices[s], iff the equation at index
@@ -129,9 +128,9 @@ perl::Object make_complex(Matrix<Rational> rays, Vector<Set<int>> max_cones, Vec
             } else {
               relevantEquations = hsEquations.minor(range_from(equationsFromI), All);
             }
-            Array<Set<int>> signChoices{ all_subsets(sequence(0, relevantEquations.rows())) };
+            Array<Set<Int>> signChoices{ all_subsets(sequence(0, relevantEquations.rows())) };
 
-            for (int s = 0; s < signChoices.size(); ++s) {
+            for (Int s = 0; s < signChoices.size(); ++s) {
               // If the intersection is full-dimensional and the signs are all +1's, then we
               // only compute this intersection for coneindex == i
               if (isDimension == dimension && signChoices[s].size() == relevantEquations.rows() && coneindex == j) {
@@ -150,9 +149,9 @@ perl::Object make_complex(Matrix<Rational> rays, Vector<Set<int>> max_cones, Vec
                 // If the refinement is full-dimensional, we get a new cone 
                 if (rank(ref) - 1 == dimension) {
                   // First we canonicalize the directional rays
-                  for (int rw = 0; rw < ref.rows(); ++rw) {
+                  for (Int rw = 0; rw < ref.rows(); ++rw) {
                     if (ref(rw,0) == 0) {
-                      for (int cl = 0; cl < ref.cols(); ++cl) {
+                      for (Int cl = 0; cl < ref.cols(); ++cl) {
                         if (ref(rw,cl) != 0) {
                           ref.row(rw) /= abs(ref(rw,cl));
                           break;
@@ -164,17 +163,17 @@ perl::Object make_complex(Matrix<Rational> rays, Vector<Set<int>> max_cones, Vec
                   // Add as new cone
                   // Go through all rays and check if they already exist
                   // Assign appropriate indices
-                  Set<int> coneRays;
-                  int noOfRays = rays.rows();
-                  for (int nr = 0; nr < ref.rows(); ++nr) {
-                    for (int r = 0; r < noOfRays; ++r) {
+                  Set<Int> coneRays;
+                  Int noOfRays = rays.rows();
+                  for (Int nr = 0; nr < ref.rows(); ++nr) {
+                    for (Int r = 0; r < noOfRays; ++r) {
                       if (rays.row(r) == ref.row(nr)) {
                         coneRays += r;
                         break;
                       }
                       if (r == noOfRays-1) {
                         rays /= ref.row(nr);
-                        int newrayindex = rays.rows()-1;
+                        Int newrayindex = rays.rows()-1;
                         coneRays += newrayindex;
                       }
                     }
@@ -192,7 +191,7 @@ perl::Object make_complex(Matrix<Rational> rays, Vector<Set<int>> max_cones, Vec
 
                   // Add the cone
                   max_cones |= coneRays;
-                  int newconeindex = max_cones.dim()-1;
+                  Int newconeindex = max_cones.dim()-1;
                   if (coneindex == i)
                     newconesI += newconeindex;
                   else
@@ -205,8 +204,7 @@ perl::Object make_complex(Matrix<Rational> rays, Vector<Set<int>> max_cones, Vec
 
                   inequalities |= (inequalities[coneindex] / refIneqs);
                   equalities |= equalities[coneindex];
-                  markedPairs |= Vector<bool>(markedPairs.rows());
-                  markedPairs /= Vector<bool>(markedPairs.cols());		
+                  markedPairs.resize(markedPairs.rows() + 1, markedPairs.rows() + 1);
                 } //END if refDimension = dimension
               }
               catch(...) {}
@@ -224,9 +222,9 @@ perl::Object make_complex(Matrix<Rational> rays, Vector<Set<int>> max_cones, Vec
           if (newconesI.size() + newconesJ.size() > 0) {
             created = true; //newconesI.size() >= 2 || newconesJ.size() >= 2;
             // Will contain the indices of cones to be marked compatible
-            Vector<int> markIndices;
+            Vector<Int> markIndices;
             // Will contain the indices of cones to be removed
-            Set<int> removedIndices;
+            Set<Int> removedIndices;
 
             // Find out indices to be marked and removed:
 
@@ -234,13 +232,13 @@ perl::Object make_complex(Matrix<Rational> rays, Vector<Set<int>> max_cones, Vec
             // and discard the old ones
             if (isDimension == dimension) {
               removedIndices += i; removedIndices += j;
-              markIndices |= Vector<int>(newconesI);
-              markIndices |= Vector<int>(newconesJ);
+              markIndices |= Vector<Int>(newconesI);
+              markIndices |= Vector<Int>(newconesJ);
               // replacedI = replacedJ = true;
             } else {
               // Otherwise we discard the old cones iff they have been refined by at least 2 cones
               if (newconesI.size() >= 2) {
-                markIndices |= Vector<int>(newconesI);
+                markIndices |= Vector<Int>(newconesI);
                 removedIndices += i;
                 //replacedI = true;
               } else {
@@ -249,7 +247,7 @@ perl::Object make_complex(Matrix<Rational> rays, Vector<Set<int>> max_cones, Vec
               }		  
 
               if (newconesJ.size() >= 2) {
-                markIndices |= Vector<int>(newconesJ);
+                markIndices |= Vector<Int>(newconesJ);
                 removedIndices += j;
                 //replacedJ = true;
               } else {
@@ -258,9 +256,9 @@ perl::Object make_complex(Matrix<Rational> rays, Vector<Set<int>> max_cones, Vec
               }
             }
 
-            for (int v = 0; v < markIndices.dim()-1; ++v) {
-              for (int w = v+1; w < markIndices.dim(); ++w) {
-                markedPairs(markIndices[v],markIndices[w]) = true;
+            for (Int v = 0; v < markIndices.dim()-1; ++v) {
+              for (Int w = v+1; w < markIndices.dim(); ++w) {
+                markedPairs(markIndices[v], markIndices[w]) = true;
               }
             }
 
@@ -269,14 +267,14 @@ perl::Object make_complex(Matrix<Rational> rays, Vector<Set<int>> max_cones, Vec
             weights = weights.slice(~removedIndices);
             inequalities = inequalities.slice(~removedIndices);
             equalities = equalities.slice(~removedIndices);
-            markedPairs = markedPairs.minor(~removedIndices,~removedIndices);
+            markedPairs = markedPairs.minor(~removedIndices, ~removedIndices);
           }
         } //END refine i and j
       } //END iterate j
     } //END iterate i
   } while(created);
 
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << thomog(rays);
   result.take("MAXIMAL_POLYTOPES") << max_cones;
   result.take("WEIGHTS") << weights;

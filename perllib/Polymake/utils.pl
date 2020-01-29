@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -27,32 +27,32 @@ sub assign_max($$) { !defined($_[0]) || $_[0] < $_[1] and $_[0]=$_[1] }
 sub assign_min_max($$$) { !defined($_[0]) ? ($_[0]=$_[1]=$_[2]) : $_[0] > $_[2] ? ($_[0]=$_[2]) : $_[1] < $_[2] && ($_[1]=$_[2]) }
 
 sub list_min {
-   my $list=shift;
+   my $list = shift;
    my $ret;
-   assign_min($ret,$_) for @$list;
+   assign_min($ret, $_) for @$list;
    $ret;
 }
 
 sub list_max {
-   my $list=shift;
+   my $list = shift;
    my $ret;
    assign_max($ret,$_) for @$list;
    $ret;
 }
 ####################################################################################
 sub list_index {     # \@list, numeric scalar or ref => position or -1
-   my ($list, $item)=@_;
-   my $i=0;
+   my ($list, $item) = @_;
+   my $i = 0;
    foreach my $elem (@$list) {
-      return $i if $item==$elem;
+      return $i if $item == $elem;
       ++$i;
    }
    -1
 }
 ####################################################################################
 sub string_list_index {     # \@list, string => position or -1
-   my ($list, $item)=@_;
-   my $i=0;
+   my ($list, $item) = @_;
+   my $i = 0;
    foreach my $elem (@$list) {
       return $i if $item eq $elem;
       ++$i;
@@ -61,9 +61,9 @@ sub string_list_index {     # \@list, string => position or -1
 }
 ####################################################################################
 sub delete_from_list {  # \@list, numeric scalar or ref => true if deleted
-   my ($list, $item)=@_;
-   for (my $i=$#$list; $i>=0; --$i) {
-      if ($list->[$i]==$item) {
+   my ($list, $item) = @_;
+   for (my $i = $#$list; $i >= 0; --$i) {
+      if ($list->[$i] == $item) {
          splice @$list, $i, 1;
          return true;
       }
@@ -72,8 +72,8 @@ sub delete_from_list {  # \@list, numeric scalar or ref => true if deleted
 }
 ####################################################################################
 sub delete_string_from_list {   # \@list, string scalar => true if deleted
-   my ($list, $item)=@_;
-   for (my $i=$#$list; $i>=0; --$i) {
+   my ($list, $item) = @_;
+   for (my $i = $#$list; $i >= 0; --$i) {
       if ($list->[$i] eq $item) {
          splice @$list, $i, 1;
          return true;
@@ -83,15 +83,15 @@ sub delete_string_from_list {   # \@list, string scalar => true if deleted
 }
 ####################################################################################
 sub contains {          # \@list, numeric scalar or ref => bool
-   my ($list, $item)=@_;
+   my ($list, $item) = @_;
    foreach my $elem (@$list) {
-      $elem==$item and return true;
+      $elem == $item and return true;
    }
    return false;
 }
 ####################################################################################
 sub contains_string {           # \@list, scalar => bool
-   my ($list, $item)=@_;
+   my ($list, $item) = @_;
    foreach my $elem (@$list) {
       $elem eq $item and return true;
    }
@@ -131,42 +131,32 @@ sub num_sorted_uniq {
 ####################################################################################
 # \list1, \list2 => boolean
 sub equal_lists {
-   my ($l1, $l2)=@_;
-   my $end=@$l1;
-   return 0 if $end!=@$l2;
-   for (my $i=0; $i<$end; ++$i) {
-       $l1->[$i] == $l2->[$i] or return false;
-   }
-   true
-}
-
-sub equal_string_lists {
-   my ($l1, $l2)=@_;
-   my $end=@$l1;
-   return 0 if $end!=@$l2;
-   for (my $i=0; $i<$end; ++$i) {
-       $l1->[$i] eq $l2->[$i] or return false;
+   my ($l1, $l2) = @_;
+   my $end = @$l1;
+   return false if $end != @$l2;
+   for (my $i = 0; $i < $end; ++$i) {
+       return false if $l1->[$i] != $l2->[$i];
    }
    true
 }
 
 # \list1, start_index1, \list2, start_index2 => length of the equal sequence starting at given positions
 sub equal_sublists {
-   my ($l1, $i1, $l2, $i2)=@_;
-   my $end=min(@$l1-$i1, @$l2-$i2)+$i1;
-   for (; $i1<$end; ++$i1, ++$i2) {
-      $l1->[$i1] == $l2->[$i2] or last;
+   my ($l1, $i1, $l2, $i2) = @_;
+   my $end = min(@$l1 - $i1, @$l2 - $i2) + $i1;
+   for (; $i1 < $end; ++$i1, ++$i2) {
+      last if $l1->[$i1] != $l2->[$i2];
    }
-   $i1-$_[1]
+   $i1 - $_[1]
 }
 
 sub equal_string_sublists {
-   my ($l1, $i1, $l2, $i2)=@_;
-   my $end=min(@$l1-$i1, @$l2-$i2)+$i1;
-   for (; $i1<$end; ++$i1, ++$i2) {
-      $l1->[$i1] eq $l2->[$i2] or last;
+   my ($l1, $i1, $l2, $i2) = @_;
+   my $end = min(@$l1 - $i1, @$l2 - $i2) + $i1;
+   for (; $i1 < $end; ++$i1, ++$i2) {
+      last if $l1->[$i1] ne $l2->[$i2];
    }
-   $i1-$_[1]
+   $i1 - $_[1]
 }
 
 # \list1, \list2 => length of the common prefix
@@ -180,21 +170,21 @@ sub equal_string_list_prefixes {
 
 # \list1, \list2, ... => length of the common prefix of list1 and concatenated other lists
 sub equal_list_prefixes2 {
-   my $l1=shift;
-   my $ret=0;
+   my $l1 = shift;
+   my $ret = 0;
    foreach my $l2 (@_) {
-      my $match=equal_sublists($l1, $ret, $l2, 0);
-      $ret+=$match;
-      last if $ret==@$l1 || $match<@$l2;
+      my $match = equal_sublists($l1, $ret, $l2, 0);
+      $ret += $match;
+      last if $ret == @$l1 || $match < @$l2;
    }
    $ret
 }
 ####################################################################################
-sub equal_hashes {
-   my ($h1, $h2)=@_;
+sub equal_nested_hashes {
+   my ($h1, $h2) = @_;
    if (keys(%$h1) == keys(%$h2)) {
-      while (my ($k, $v)=each %$h1) {
-         unless (exists $h2->{$k} and defined($v) ? $h2->{$k}==$v : !defined($h2->{$k})) {
+      while (my ($k, $v) = each %$h1) {
+         unless (exists $h2->{$k} and equal_nested_elements($v, $h2->{$k})) {
             keys %$h1;
             return false;
          }
@@ -203,21 +193,69 @@ sub equal_hashes {
    }
 }
 
-sub equal_string_hashes {
-   my ($h1, $h2)=@_;
-   if (keys(%$h1) == keys(%$h2)) {
-      while (my ($k, $v)=each %$h1) {
-         unless (exists $h2->{$k} and defined($v) ? $h2->{$k} eq $v : !defined($h2->{$k})) {
-            keys %$h1;
-            return false;
-         }
-      }
-      true;
+sub equal_nested_lists {
+   my ($l1, $l2) = @_;
+   my $end = @$l1;
+   return false if $end != @$l2;
+   for (my $i = 0; $i < $end; ++$i) {
+       return false unless equal_nested_elements($l1->[$i], $l2->[$i]);
+   }
+   true
+}
+
+sub equal_nested_elements {
+   my ($e1, $e2) = @_;
+   if (is_array($e1)) {
+      is_array($e2) && equal_nested_lists($e1, $e2)
+   } elsif (is_hash($e1)) {
+      is_hash($e2) && equal_nested_hashes($e1, $e2)
+   } elsif (is_boolean($e1)) {
+      is_boolean($e2) && $e1 == $e2
+   } elsif (is_numeric($e1)) {
+      is_numeric($e2) && $e1 == $e2
+   } elsif (defined($e1)) {
+      defined($e1) && $e1 eq $e2
+   } else {
+      !defined($e2)
    }
 }
 ####################################################################################
+sub deep_copy_hash {
+   my ($src) = @_;
+   my %result;
+   while (my ($k, $v) = each %$src) {
+      $result{$k} = deep_copy_element($v);
+   }
+   \%result
+}
+
+sub deep_copy_list {
+   my ($src) = @_;
+   [ map { deep_copy_element($_) } @$src ]
+}
+
+sub deep_copy_element {
+   my ($src) = @_;
+   if (is_hash($src)) {
+      deep_copy_hash($src)
+   } elsif (is_array($src)) {
+      deep_copy_list($src)
+   } else {
+      $src
+   }
+}
+####################################################################################
+# HASH, "KEY", ... => value or undef; avoid creating intermediate empty hashes
+sub descend_nested_hash {
+   my $h = shift;
+   foreach my $k (@_) {
+      defined($h = $h->{$k}) or last;
+   }
+   $h
+}
+####################################################################################
 sub enforce_nl($) {
-   $_[0].="\n" if substr($_[0],-1) ne "\n";
+   $_[0] .= "\n" if substr($_[0], -1) ne "\n";
    $_[0]
 }
 ####################################################################################
@@ -248,7 +286,7 @@ sub croak {
    if (is_object($INC[0]) && ref($INC[0]) eq "Polymake::Core::Application" && defined($INC[0]->compile_scope)) {
       do {
          ($pkg, $file, $line, $sub)=caller(++$i);
-      } while ($pkg =~ /^Polymake(?:$|::Core::|::Overload\b|::Struct\b)/ || $sub =~ /::check_object_pkg$/ );
+      } while ($pkg =~ /^Polymake(?:$|::Core::|::Overload\b|::Struct\b)/ || $sub =~ /::self$/ );
 
    } else {
       my ($app_file, $app_line);
@@ -304,7 +342,7 @@ sub sanitize_help {
 }
 ####################################################################################
 # this is a reduced version of Symbol::delete_package which does not delete the package itself
-# used by Configure and ShellHelpers
+# used by Configure and Shell::Completion
 sub wipe_package {
    my ($stash)=@_;
    foreach my $name (keys %$stash) {

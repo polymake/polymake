@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,16 +21,16 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object upper_bound_theorem(const int d, const int n)
+BigObject upper_bound_theorem(const Int d, const Int n)
 {
    if ((d < 0) || (d >= n)) {
       throw std::runtime_error("upper_bound_theorem: d >= 0 and n > d required\n");
    }
 
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
 
    Array<Integer> h(d+1);
-   for (int k=0; k<=d/2; ++k) {
+   for (Int k = 0; k <= d/2; ++k) {
       h[d-k] = h[k] = Integer::binom(n-d-1+k,k);
    }
    p.take("COMBINATORIAL_DIM") << d;

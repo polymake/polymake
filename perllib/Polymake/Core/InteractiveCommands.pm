@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -105,7 +105,7 @@ sub do_reconfigure {
       }
       while (($filename, $ext, $rule_key) = splice @$list, 0, 3) {
          my $rc;
-         local $extension = $ext if $ext != $extension;
+         local $Extension::loading = $ext;
          if (defined (my $code = $self->rule_code->{$rule_key})) {
             my $reconf = new Reconf($self, false);
             no strict 'refs';
@@ -129,7 +129,7 @@ sub do_reconfigure {
       @{$self->rules_to_finalize} = ();
 
       for (; $new_to_wake < $#woken; $new_to_wake += 2) {
-         ($self, $list) = @woken[$new_to_wake, $new_to_wake + 1];
+         ($self, $list) = @woken[$new_to_wake, $new_to_wake+1];
          for (my $i = 0; $i < @$list; $i += 3) {
             ($filename, $ext, $rule_key) = @$list[$i..$i+2];
             delete $self->configured->{$rule_key};
@@ -142,8 +142,7 @@ sub lookup_rulefile_or_key {
    my ($self, $rulefile) = @_;
    if ($rulefile =~ s/\@(.*)$//) {
       # specified by the key including extension URI
-      local $extension = $Extension::registered_by_URI{$1};
-      if (defined $extension) {
+      if (local $Extension::loading = $Extension::registered_by_URI{$1}) {
          lookup_rulefile($self, $rulefile, 1);
       } else {
          die "unknown extension URI $1\n";
@@ -196,7 +195,7 @@ sub unconfigure {
             my $unconf = new Unconf($self);
             no strict 'refs';
             local ref *{$self->pkg."::self"} = sub { $unconf };
-            local $extension = $ext;
+            local $Extension::loading = $ext;
             &$code;
          } else {
             $self->configured->{$rule_key} = -$load_time;
@@ -360,7 +359,7 @@ sub include_rule {
    } else {
       local bless $self;
       my ($rulefile, $ext_URI) = split /\@/, $rule_key;
-      local $extension = $Extension::registered_by_URI{$ext_URI} if $ext_URI;
+      local $Extension::loading = $Extension::registered_by_URI{$ext_URI} if $ext_URI;
       my $conf = $self->configured->{$rule_key};
       if ($conf > 0 || !defined($conf)) {
          local $Shell = new NoShell();
@@ -408,7 +407,7 @@ sub add_credit {
 sub add_custom {
    my $self = shift;
    if (!$self->simulate_failure  and  defined(my $var = $self->application->custom->re_tie(@_))) {
-      $var->extension = $extension;
+      $var->extension = $Extension::loading;
    }
 }
 
@@ -519,11 +518,12 @@ data file, consider storing the outdated URI in the REPLACE section of that
 extension.
 
 If you know that this URI belongs to an obsolete extension which has been
-integrated into the core system, please enter $ignore.
+integrated into the core system, please enter $ignore.  Then the data will be
+processed as if there were no extension attributes in the file.
 
 Finally, if you don't know where to get the extension or don't want to bother
 importing it, please enter $stop to stop loading the data file
-or $skip to load the data without components defined in this extension.
+or $skip to temporarily move the data items into "undecoded" attachments.
 .
    my $dir=$Shell->enter_filename("",
      { prompt => "extension dir",

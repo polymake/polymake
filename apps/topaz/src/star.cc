@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,12 +20,12 @@
 
 namespace polymake { namespace topaz {
   
-perl::Object stars(perl::Object p_in, const Set<int> &F,perl::OptionSet options)
+BigObject stars(BigObject p_in, const Set<Int> &F,OptionSet options)
 {
    const bool relabel=!options["no_labels"];
-   const Array< Set<int> > C = p_in.give("FACETS");
+   const Array<Set<Int>> C = p_in.give("FACETS");
    //   const Array<std::string> L = p_in.give("VERTEX_LABELS");
-   const int n_vert = p_in.give("N_VERTICES");
+   const Int n_vert = p_in.give("N_VERTICES");
    
    //   if (F.empty())  // face spefified by labels
    //  F = transform_label_args(L, labeled_F);
@@ -33,7 +33,7 @@ perl::Object stars(perl::Object p_in, const Set<int> &F,perl::OptionSet options)
    if (F.front()<0 || F.back()>n_vert-1)
       throw std::runtime_error("t_star: Specified vertex indices out of range");
 
-   std::list< Set<int> > Star;
+   std::list<Set<Int>> Star;
    copy_range(entire(star(C,F)), std::back_inserter(Star));
 
    if (Star.empty()) {
@@ -42,10 +42,10 @@ perl::Object stars(perl::Object p_in, const Set<int> &F,perl::OptionSet options)
       throw std::runtime_error(e.str());
    }
    
-   const Set<int> V = accumulate(Star, operations::add());
+   const Set<Int> V = accumulate(Star, operations::add());
    adj_numbering(Star,V);
    
-   perl::Object p_out("topaz::SimplicialComplex");
+   BigObject p_out("topaz::SimplicialComplex");
    p_out.set_description()<<"Star of " << F << " in " << p_in.name()<< "."<<endl;
 
    p_out.take("FACETS") << as_array(Star);

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,7 +28,7 @@ namespace polymake { namespace topaz {
 
 /** Merges two vertex sets according to their labels.
  *  Afterwards the first set of labels contains all new
- *  labels and the client returns a Map<int,int> mapping 
+ *  labels and the client returns a Map<Int, Int> mapping 
  *  the vertices of the old complex to their new indices.
  *
  *  The corresponding vertices of L1 and L2 are expected
@@ -36,7 +36,7 @@ namespace polymake { namespace topaz {
  *  consecutively starting with 0.
  */
 
-hash_map<int,int> merge_vertices (Array<std::string>& L1, const Array<std::string>& L2);
+hash_map<Int, Int> merge_vertices(Array<std::string>& L1, const Array<std::string>& L2);
 
 void merge_disjoint_vertices (Array<std::string>& L1, const Array<std::string>& L2);
 

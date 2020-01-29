@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -56,12 +56,12 @@ rule N_FACET_NORMALS : FACET_NORMALS {
 weight 0.1;
 
 rule COMBINATORIAL_DIM : FAN_DIM, LINEALITY_DIM {
-   $this->COMBINATORIAL_DIM = $this->FAN_DIM - $this->LINEALITY_DIM - 1;
+   $this->COMBINATORIAL_DIM = $this->FAN_DIM - $this->LINEALITY_DIM-1;
 }
 weight 0.1;
 
 rule FAN_DIM : COMBINATORIAL_DIM, LINEALITY_DIM {
-   $this->FAN_DIM = $this->COMBINATORIAL_DIM + $this->LINEALITY_DIM + 1;
+   $this->FAN_DIM = $this->COMBINATORIAL_DIM + $this->LINEALITY_DIM+1;
 }
 weight 0.1;
 
@@ -78,7 +78,7 @@ precondition : PURE;
 weight 2.10;
 
 rule LINEALITY_DIM : COMBINATORIAL_DIM, FAN_DIM {
-   $this->LINEALITY_DIM = $this->FAN_DIM - $this->COMBINATORIAL_DIM - 1;
+   $this->LINEALITY_DIM = $this->FAN_DIM - $this->COMBINATORIAL_DIM-1;
 }
 weight 0.1;
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,33 +24,37 @@
 #include "polymake/perl/macros.h"
 #include "polymake/perl/wrappers.h"
 #include "polymake/perl/calls.h"
-#include "polymake/perl/Object.h"
+#include "polymake/perl/BigObject.h"
 
 namespace polymake { namespace perl {
 
 using pm::perl::Value;
-using pm::perl::OptionSet;
 using pm::perl::Scalar;
 using pm::perl::Array;
 using pm::perl::Hash;
-using pm::perl::ListReturn;
-using pm::perl::undefined;
-using pm::perl::temporary;
 using pm::perl::Canned;
 using pm::perl::TryCanned;
 using pm::perl::Enum;
 using pm::perl::Returns;
 using pm::perl::CrossApp;
 using pm::perl::AnchorArg;
-using pm::perl::Object;
-using pm::perl::ObjectType;
 using pm::perl::load_data;
 using pm::perl::save_data;
 using pm::perl::get_custom;
-using pm::perl::get_debug_level;
 using pm::perl::cout;
 
-} }
+}
+
+using pm::perl::BigObject;
+using pm::perl::BigObjectType;
+using pm::perl::ListReturn;
+using pm::perl::OptionSet;
+using pm::perl::Undefined;
+using pm::perl::get_debug_level;
+   
+constexpr auto temporary = pm::perl::property_kind::temporary;
+
+}
 
 #ifdef POLYMAKE_APPNAME
 

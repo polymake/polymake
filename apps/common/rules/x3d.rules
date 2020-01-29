@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -20,7 +20,16 @@ package X3d;
 custom $x3dviewer;
 
 CONFIGURE_OPT {
-   find_program($x3dviewer, qw( view3dscene blender titania freewrl open ), { prompt => "an X3d viewer. When choosing blender without arguments. It will be executed together with a python script that handles the x3d import. blender -P $Polymake::Resources/blender/pm_to_blender.py -- --info   for more infos. That" });
+   find_program($x3dviewer, qw( view3dscene blender freewrl xdg-open open), { prompt => "an X3d viewer. When choosing blender without arguments. It will be executed together with a python script that handles the x3d import. blender -P $Polymake::Resources/blender/pm_to_blender.py -- --info   for more infos. That" },);
+   my ($blender) = $x3dviewer =~ /(^.*blender)/;
+   if ($blender) { 
+      my $ver = `$blender --version | grep -o \"[0-9]*\\.[0-9\\.]*\"`;
+      if ($ver < 2.80) {
+         die <<'.';
+Please install version 2.80 or newer from blender.org.
+.
+      }
+   }
 }
 
 CONFIGURE {
@@ -94,7 +103,7 @@ use BackgroundViewer;
 
 use Polymake::Struct [ '@ISA' => 'SimpleViewer' ];
 
-sub file_suffix { ".x3d" } # world
+sub file_suffix { ".x3d" }
 
 sub new {
    unless (defined $x3dviewer) {
@@ -112,7 +121,7 @@ or call reconfigure("common::x3d.rules");
 sub command {
    my ($self, $filename)=@_;
    if ($x3dviewer=~'blender$') {
-      "$x3dviewer -P $Polymake::Resources/blender/pm_to_blender.py -- -vc --file $filename";
+      "$x3dviewer -P $Polymake::Resources/blender/pm_to_blender.py -- -t --file $filename";
    } else {
       "$x3dviewer $filename";
    }
@@ -181,7 +190,7 @@ package application;
 #
 # @param Visual::Object vis_obj ... objects to draw
 #
-# @option String File "filename" or "AUTO"
+# @option [complete file] String File "filename" or "AUTO"
 #  Store the drawing in a file without starting the viewer.
 #  The ''.x3d'' suffix is automatically added to the file name.
 #

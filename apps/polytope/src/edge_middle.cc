@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,13 +23,13 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-perl::Object edge_middle(perl::Object p_in)
+BigObject edge_middle(BigObject p_in)
 {
    const bool bounded=p_in.give("BOUNDED");
    if (!bounded)
       throw std::runtime_error("edge_middle: unbounded polyhedron");
 
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Convex hull of all edge middle points of " << p_in.name() << endl;
 
    const Matrix<Scalar> V=p_in.give("VERTICES");
@@ -38,7 +38,7 @@ perl::Object edge_middle(perl::Object p_in)
    Matrix<Scalar> V_out(G.edges(), V.cols());
    typename Rows< Matrix<Scalar> >::iterator v_out=rows(V_out).begin();
    for (auto e=entire(edges(G));  !e.at_end();  ++e, ++v_out)
-      *v_out = (V[e.from_node()] + V[e.to_node()]) / 2;
+      *v_out = (V[e.from_node()] + V[e.to_node()])/2;
             
    p_out.take("VERTICES") << V_out;
    p_out.take("BOUNDED") << true;

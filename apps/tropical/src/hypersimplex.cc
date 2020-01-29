@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,18 +24,18 @@ GNU General Public License for more details.
 namespace polymake { namespace tropical {
 
 template<typename Addition>
-perl::Object hypersimplex(int d, int k)
+BigObject hypersimplex(Int d, Int k)
 {
    if (d < 1)
       throw std::runtime_error("hypersimplex: dimension >= 2 required");
    if (k < 1 || k > d)
       throw std::runtime_error("hypersimplex: 1 <= k <= d required");
 
-   perl::Object p("Polytope", mlist<Addition>());
+   BigObject p("Polytope", mlist<Addition>());
    p.set_description() << "tropical (" << k << "," << d << ")-hypersimplex" << endl;
 
    // number of vertices
-   const int n(Integer::binom(d+1,k));
+   const Int n(Integer::binom(d+1, k));
 
    Matrix<TropicalNumber<Addition>> Vertices(n, d+1, same_value(TropicalNumber<Addition>::one()).begin());
    auto v=rows(Vertices).begin();

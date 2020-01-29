@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,87 +25,87 @@
 
 namespace polymake { namespace matroid {
 
-Array<Set<int>> dual_bases_from_bases(int n_elements, const Array<Set<int>>& bases)
+Array<Set<Int>> dual_bases_from_bases(Int n_elements, const Array<Set<Int>>& bases)
 {
-   Array<Set<int>> result(bases.size());
-   Set<int> total_set = sequence(0,n_elements);
+   Array<Set<Int>> result(bases.size());
+   Set<Int> total_set = sequence(0, n_elements);
    for (auto b = entire<indexed>(bases); !b.at_end(); ++b) {
       result[b.index()] = total_set - *b;
    }
    return result;
 }
 
-Array<Set<int>> dual_circuits_from_bases(const int n, const Array<Set<int>>& bases)
+Array<Set<Int>> dual_circuits_from_bases(const Int n, const Array<Set<Int>>& bases)
 {
    if (bases.empty()) {
-      return Array<Set<int>>();
+      return Array<Set<Int>>();
    }
-   const int r=bases[0].size();
-   if (r==0) return Array<Set<int>>(0);
-   if (r==n) {
-      Array<Set<int>> c(n);
-      for (int i=0; i<n;++i)
-         c[i]=scalar2set(i);
+   const Int r = bases[0].size();
+   if (r == 0) return Array<Set<Int>>(0);
+   if (r == n) {
+      Array<Set<Int>> c(n);
+      for (Int i = 0; i < n; ++i)
+         c[i] = scalar2set(i);
       return c;
    } 
-   int n_cocircuits=0;
-   std::vector<Set<int>> cocircuits;
-   for (int k=1; k<=n-r+1; ++k) {
-      for (auto j=entire(all_subsets_of_k(sequence(0,n),k)); !j.at_end(); ++j) {
-         bool is_cocircuit=true;
-         for (auto i=entire(cocircuits); is_cocircuit && !i.at_end(); ++i)
-            if (incl(*i,*j)<=0) is_cocircuit=false;
+   Int n_cocircuits = 0;
+   std::vector<Set<Int>> cocircuits;
+   for (Int k = 1; k <= n-r+1; ++k) {
+      for (auto j = entire(all_subsets_of_k(sequence(0, n), k)); !j.at_end(); ++j) {
+         bool is_cocircuit = true;
+         for (auto i = entire(cocircuits); is_cocircuit && !i.at_end(); ++i)
+            if (incl(*i,*j) <= 0) is_cocircuit = false;
          for (auto i = entire(bases); is_cocircuit && !i.at_end(); ++i) {
-            if (((*i)*(*j)).empty()) is_cocircuit=false;
+            if (((*i)*(*j)).empty()) is_cocircuit = false;
          }
          if (is_cocircuit) {
-            cocircuits.push_back(Set<int>(*j));
+            cocircuits.push_back(Set<Int>(*j));
             ++n_cocircuits;
          }
       }
    }
-   return Array<Set<int>>(n_cocircuits, entire(cocircuits));
+   return Array<Set<Int>>(n_cocircuits, entire(cocircuits));
 }
 
-Array<Set<int>> bases_from_dual_circuits(const int n, const Array<Set<int>>& cocircuits)
+Array<Set<Int>> bases_from_dual_circuits(const Int n, const Array<Set<Int>>& cocircuits)
 {
-   if (cocircuits.empty()) return Array<Set<int>>(1);
-   int n_bases=0;
-   std::vector<Set<int>> bases;
-   int r=n;
-   for (int k=1; k<=r; ++k) {
-      for (auto j=entire(all_subsets_of_k(sequence(0,n),k)); !j.at_end(); ++j) {
-         bool is_basis=true;
+   if (cocircuits.empty()) return Array<Set<Int>>(1);
+   Int n_bases = 0;
+   std::vector<Set<Int>> bases;
+   Int r = n;
+   for (Int k = 1; k <= r; ++k) {
+      for (auto j = entire(all_subsets_of_k(sequence(0, n), k)); !j.at_end(); ++j) {
+         bool is_basis = true;
          for (auto i = entire(cocircuits); is_basis && !i.at_end(); ++i) {
-            if (((*i)*(*j)).empty()) is_basis=false;
+            if (((*i)*(*j)).empty()) is_basis = false;
          }
          if (is_basis) {
-            bases.push_back(Set<int>(*j));
+            bases.push_back(Set<Int>(*j));
             ++n_bases;
-            r=k;
+            r = k;
          }
       }
    }
-   return Array<Set<int>>(n_bases,entire(bases));
+   return Array<Set<Int>>(n_bases, entire(bases));
 }
 
 
-Array<Set<int>> bases_from_dual_circuits_and_rank(const int n, const int rank, const Array<Set<int> >& cocircuits)
+Array<Set<Int>> bases_from_dual_circuits_and_rank(const Int n, const Int rank, const Array<Set<Int> >& cocircuits)
 {
-   if (cocircuits.empty()) return Array<Set<int>>(1);
-   int n_bases=0;
-   std::vector<Set<int>> bases;
+   if (cocircuits.empty()) return Array<Set<Int>>(1);
+   Int n_bases = 0;
+   std::vector<Set<Int>> bases;
    for (auto j=entire(all_subsets_of_k(sequence(0,n),rank)); !j.at_end(); ++j) {
       bool is_basis=true;
       for (auto i = entire(cocircuits); is_basis && !i.at_end(); ++i) {
          if (((*i)*(*j)).empty()) is_basis=false;
       }
       if (is_basis) {
-         bases.push_back(Set<int>(*j));
+         bases.push_back(Set<Int>(*j));
          ++n_bases;
       }
    }
-   return Array<Set<int>>(n_bases, entire(bases));
+   return Array<Set<Int>>(n_bases, entire(bases));
 }
 
 

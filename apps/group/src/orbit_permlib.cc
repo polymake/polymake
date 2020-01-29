@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,9 +21,9 @@
 namespace polymake { namespace group { 
 
 template <typename Container>
-Set<Container> orbit_permlib (perl::Object G, const Container& c)
+Set<Container> orbit_permlib (BigObject G, const Container& c)
 {
-   const Array<Array<int> > generators = G.give("STRONG_GENERATORS | GENERATORS");
+   const Array<Array<Int>> generators = G.give("STRONG_GENERATORS | GENERATORS");
    const PermlibGroup sym_group(generators);
    return sym_group.orbit(c);
 }
@@ -33,14 +33,14 @@ UserFunction4perl("# @category Orbits\n"
                   "# @param Group G"
                   "# @param Set S"
                   "# @return Set",
-                  &orbit_permlib<Set<int> >, "orbit_permlib(PermutationAction, Set)");
+                  &orbit_permlib<Set<Int>>, "orbit_permlib(PermutationAction, Set)");
 
 UserFunction4perl("# @category Orbits\n"
                   "# The orbit of a set //S// of sets under a group //G//."
                   "# @param Group G"
                   "# @param Set<Set> S"
                   "# @return Set",
-                  &orbit_permlib<Set<Set<int> > >, "orbit_permlib(PermutationAction, Set<Set>)");
+                  &orbit_permlib<Set<Set<Int>>>, "orbit_permlib(PermutationAction, Set<Set>)");
 
 } } // end namespaces
 

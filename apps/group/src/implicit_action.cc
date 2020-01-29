@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -33,18 +33,19 @@ namespace {
    Bitset pm_set_action(const permlib::Permutation& p, const Bitset& s)
    {
       Bitset simg;
-      for (auto i : s)
-         simg += p / i;
+      for (auto i : s) {
+         simg += p / permlib::safe_to_dom_int(i);
+      }
       return simg;
    }
 }
 
 
 template<typename SetType>
-Array<int> implicit_character(perl::Object ia)
+Array<Int> implicit_character(BigObject ia)
 {
-   const Array<Array<int>> generators = ia.give("STRONG_GENERATORS | GENERATORS");
-   const ConjugacyClassReps<Array<int>> ccr = ia.give("CONJUGACY_CLASS_REPRESENTATIVES");
+   const Array<Array<Int>> generators = ia.give("STRONG_GENERATORS | GENERATORS");
+   const ConjugacyClassReps<Array<Int>> ccr = ia.give("CONJUGACY_CLASS_REPRESENTATIVES");
    const Array<SetType> orbit_reps = ia.give("EXPLICIT_ORBIT_REPRESENTATIVES");
 
    typedef permlib::Permutation PERM;
@@ -60,12 +61,12 @@ Array<int> implicit_character(perl::Object ia)
       permlib_cc_reps.push_back(g_ptr);
    }
 
-   Array<int> character(ccr.size());
+   Array<Int> character(ccr.size());
    for (const auto& rep : orbit_reps) {
       permlib::OrbitSet<PERM, SetType> face_orbit;
       face_orbit.orbit(rep, permlib_gens, pm_set_action);
       for (const auto& o_elem : face_orbit) {
-         int i(0);
+         Int i = 0;
          for (const auto& g_ptr : permlib_cc_reps) {
             const SetType image(pm_set_action(*g_ptr, o_elem));
             if (image == o_elem) {

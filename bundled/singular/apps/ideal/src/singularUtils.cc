@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,15 +28,15 @@ namespace polymake {
 namespace ideal {
 namespace singular {
 
-perl::ListReturn singular_get_var(const std::string varname){
+ListReturn singular_get_var(const std::string varname){
    init_singular();
    int nest = myynest;
    myynest = 1;
    idhdl var = ggetid(omStrDup(varname.c_str()));
    myynest = nest;
-   if (var == NULL)
-      throw std::runtime_error("singular_get_int: could not find variable '"+varname+"'");
-   perl::ListReturn res;
+   if (var == nullptr)
+      throw std::runtime_error("singular_get_var: could not find variable '"+varname+"'");
+   ListReturn res;
    
    switch(var->typ){
       case INT_CMD:
@@ -70,7 +70,7 @@ perl::ListReturn singular_get_var(const std::string varname){
       case POLY_CMD:
          {
             const poly q = (poly) IDDATA(var);
-            std::pair<std::vector<Rational>, ListMatrix<Vector<int>>> decomposed = convert_poly_to_vector_and_matrix(q);
+            std::pair<std::vector<Rational>, ListMatrix<Vector<Int>>> decomposed = convert_poly_to_vector_and_matrix(q);
             Polynomial<Rational> result(decomposed.first, decomposed.second);
             res << result;
             break;
@@ -88,11 +88,11 @@ perl::ListReturn singular_get_var(const std::string varname){
 void singular_eval(const std::string cmd){
    init_singular();
    int nest = myynest;
-   if (currentVoice == NULL)
-      currentVoice=feInitStdin(NULL);
+   if (currentVoice == nullptr)
+      currentVoice=feInitStdin(nullptr);
    myynest = 1;
    // the return is needed to stop the interpreter
-   int err=iiAllStart(NULL,omStrDup((cmd+";return();").c_str()),BT_proc,0);
+   int err=iiAllStart(nullptr, omStrDup((cmd+";return();").c_str()),BT_proc,0);
    myynest = nest;
    if (err) {
       errorreported = 0; // reset error handling
@@ -103,30 +103,12 @@ void singular_eval(const std::string cmd){
 }
 
 
-long singular_get_int(const std::string varname){
-   init_singular();
-   int nest = myynest;
-   myynest = 1;
-   idhdl var = ggetid(omStrDup(varname.c_str()));
-   myynest = nest;
-   if (var == NULL)
-      throw std::runtime_error("singular_get_int: could not find variable '"+varname+"'");
-   if (var->typ != INT_CMD)
-      throw std::runtime_error("singular_get_int: variable '"+varname+"' not an int");
-   return (long) IDDATA(var);
-}
-
 } // end namespace singular
 
 UserFunction4perl("# @category Singular interface"
                   "# Executes given string with Singular"
                   "# @param String s",
                   &singular::singular_eval, "singular_eval($)");
-
-UserFunction4perl("# @category Singular interface"
-                  "# Retrieves an int variable from 'Singular'"
-                  "# @param String s",
-                  &singular::singular_get_int, "singular_get_int($)");
 
 UserFunction4perl("# @category Singular interface"
                   "# Retrieves a variable from 'Singular'"

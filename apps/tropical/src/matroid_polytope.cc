@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,21 +26,21 @@
 namespace polymake { namespace tropical {
 
 template <typename Addition, typename Scalar>
-perl::Object matroid_polytope(perl::Object m, const Scalar& value)
+BigObject matroid_polytope(BigObject m, const Scalar& value)
 {
-   const Array< Set<int> > bases=m.give("BASES");
-   const int n_bases=bases.size();
-   const int n_elements=m.give("N_ELEMENTS");
-   const TropicalNumber<Addition,Scalar> tvalue(value);
+   const Array<Set<Int>> bases = m.give("BASES");
+   const Int n_bases = bases.size();
+   const Int n_elements = m.give("N_ELEMENTS");
+   const TropicalNumber<Addition, Scalar> tvalue(value);
 
-   perl::Object t("Polytope", mlist<Addition, Scalar>());
+   BigObject t("Polytope", mlist<Addition, Scalar>());
 
    Matrix<TropicalNumber<Addition,Scalar> > V(n_bases,n_elements);
    V.fill( TropicalNumber<Addition,Scalar>::one());
 
-   for (int b=0; b<n_bases; ++b) {
-      for (auto i=entire(bases[b]); !i.at_end(); ++i)
-         V(b,(*i))=tvalue;
+   for (Int b = 0; b < n_bases; ++b) {
+      for (auto i = entire(bases[b]); !i.at_end(); ++i)
+         V(b,(*i)) = tvalue;
    }
 
    t.take("POINTS") << V;

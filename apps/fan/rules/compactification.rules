@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -41,7 +41,7 @@ object PolyhedralComplex {
    # 4. The sedentarity of the face. This is the intersection of the
    #    sedentarities of the vertices.
    #
-   # @example The compactification of the positive orthant in three dimensions
+   # @example [prefer cdd] The compactification of the positive orthant in three dimensions
    # has the same Hasse diagram as the three dimensional cube.
    # > $pc1 = new PolyhedralComplex(POINTS=>[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]], INPUT_POLYTOPES=>[[0,1,2,3]]);
    # > print $pc1->COMPACTIFICATION->DECORATION;

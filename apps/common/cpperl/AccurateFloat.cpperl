@@ -1,5 +1,5 @@
 {"app": "common",
  "inst": [
-  {"class": "AccurateFloat", "include": ["polymake/AccurateFloat.h"], "pkg": "Polymake::common::AccurateFloat"},
+  {"class": "AccurateFloat", "guard_name": "CORE_WRAPPERS_AccurateFloat", "include": ["polymake/AccurateFloat.h"], "pkg": "Polymake::common::AccurateFloat", "wrapper_file": "include/core-wrappers/polymake/AccurateFloat.h"},
  null ],
 "version": 3}

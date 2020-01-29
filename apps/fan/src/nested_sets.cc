@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,23 +23,23 @@
 
 namespace polymake { namespace fan {
 
-PowerSet<int> building_set(const Set<Set<int> >& B, int n)
+PowerSet<Int> building_set(const Set<Set<Int>>& B, Int n)
 {
-   PowerSet<int> building_set;
-   for (int i=0; i<n; ++i)
+   PowerSet<Int> building_set;
+   for (Int i = 0; i < n; ++i)
       building_set += scalar2set(i);
 
-   std::list<Set<int> > queue;
+   std::list<Set<Int>> queue;
    for (auto ait = entire(B); !ait.at_end(); ++ait)
       queue.push_back(*ait);
 
    while (queue.size()) {
-      const Set<int> b = queue.front(); queue.pop_front();
+      const Set<Int> b = queue.front(); queue.pop_front();
       building_set += b;
       for (auto pit = entire(building_set); !pit.at_end(); ++pit) {
-         const Set<int> p(*pit);
+         const Set<Int> p(*pit);
          if ((p * b).size() > 0) {
-            const Set<int> u (p + b);
+            const Set<Int> u(p + b);
             if (!building_set.contains(u)) {
                queue.push_back(u);
             }
@@ -50,17 +50,17 @@ PowerSet<int> building_set(const Set<Set<int> >& B, int n)
    return building_set;
 }
 
-bool is_building_set(const PowerSet<int>& building_set, int n)
+bool is_building_set(const PowerSet<Int>& building_set, Int n)
 {
-   for (int i=0; i<n; ++i)
+   for (Int i = 0; i < n; ++i)
       if (!building_set.contains(scalar2set(i))) {
          cout << "The set does not contain the singleton " << i << endl;
          return false;
       }
-   for (auto p=entire(all_subsets_of_k(building_set,2)); !p.at_end(); ++p) {
-      const Set<Set<int> > pair(*p);
-      const Set<int> a(pair.front()), b(pair.back());
-      if ((a*b).size() == 0) continue;
+   for (auto p = entire(all_subsets_of_k(building_set,2)); !p.at_end(); ++p) {
+      const Set<Set<Int>> pair(*p);
+      const Set<Int> a(pair.front()), b(pair.back());
+      if ((a*b).empty()) continue;
       if (!building_set.contains(a+b)) {
          cout << "The set does not contain the union of " << a << " and " << b << endl;
          return false;
@@ -69,7 +69,7 @@ bool is_building_set(const PowerSet<int>& building_set, int n)
    return true;
 }
 
-bool is_B_nested(const Set<Set<int> >& nested, const PowerSet<int>& building)
+bool is_B_nested(const Set<Set<Int>>& nested, const PowerSet<Int>& building)
 {
    for (auto nit = entire(nested); !nit.at_end(); ++nit) {
       if (!building.contains(*nit)) {
@@ -78,25 +78,24 @@ bool is_B_nested(const Set<Set<int> >& nested, const PowerSet<int>& building)
       }
    }
    for (auto p=entire(all_subsets_of_k(nested,2)); !p.at_end(); ++p) {
-      const Set<Set<int> > pair(*p);
-      const Set<int> a(pair.front()), b(pair.back());
-      if (! ( (a*b).size() == 0 ||
-              incl(a,b) ==  1 ||
-              incl(a,b) == -1) ) {
+      const Set<Set<Int>> pair(*p);
+      const Set<Int> a(pair.front()), b(pair.back());
+      Int incl_rel;
+      if (!((a*b).empty() || (incl_rel = incl(a,b)) ==  1 || incl_rel == -1)) {
          cout << "The sets " << a << " and " << b << " are not nested." << endl;
          return false;
       }
    }
-   for (int k=2; k <= nested.size(); ++k) {
-      for (auto p=entire(all_subsets_of_k(nested,k)); !p.at_end(); ++p) {
-         const Set<Set<int> > family(*p);
+   for (Int k = 2; k <= nested.size(); ++k) {
+      for (auto p = entire(all_subsets_of_k(nested,k)); !p.at_end(); ++p) {
+         const Set<Set<Int>> family(*p);
          bool pairwise_intersections_empty(true);
          for (auto f=entire(all_subsets_of_k(family,2)); !f.at_end() && pairwise_intersections_empty; ++f) {
-            const Set<Set<int> > pair(*f);
+            const Set<Set<Int>> pair(*f);
             pairwise_intersections_empty = ((pair.front() * pair.back()).size() == 0);
          }
          if (!pairwise_intersections_empty) continue;
-         const Set<int> the_union = accumulate(family, operations::add());
+         const Set<Int> the_union = accumulate(family, operations::add());
          if (building.contains(the_union)) {
             cout << "The building set contains the union " << the_union << " of the sets " << family << endl;
             return false;

@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -39,7 +39,7 @@
 namespace polymake { namespace tropical {
 
 template <typename Addition>
-perl::Object affine_transform(perl::Object cycle, Matrix<Rational> matrix, Vector<Rational> translate)
+BigObject affine_transform(BigObject cycle, Matrix<Rational> matrix, Vector<Rational> translate)
 {
   // Extract values
   Matrix<Rational> vertices = cycle.give("VERTICES");
@@ -64,8 +64,8 @@ perl::Object affine_transform(perl::Object cycle, Matrix<Rational> matrix, Vecto
   translate = Rational(0) | translate;
 
   // Transform
-  Set<int> nonfar = far_and_nonfar_vertices(vertices).second;
-  vertices= vertices * T(matrix);
+  Set<Int> nonfar = far_and_nonfar_vertices(vertices).second;
+  vertices = vertices * T(matrix);
   for (auto nf = entire(nonfar); !nf.at_end(); ++nf) {
     vertices.row(*nf) += translate;
   }
@@ -76,7 +76,7 @@ perl::Object affine_transform(perl::Object cycle, Matrix<Rational> matrix, Vecto
   // that the normalization polymake applies to vertices is not compatible with
   // tropical projective equivalence relation. By dehomogenizing, the homogenizing,
   // we pick a unique representative on an affine chart.
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << thomog(tdehomog(vertices));
   result.take("MAXIMAL_POLYTOPES") << cycle.give("MAXIMAL_POLYTOPES");
   result.take("LINEALITY_SPACE") << thomog(tdehomog(lineality));
@@ -89,13 +89,13 @@ perl::Object affine_transform(perl::Object cycle, Matrix<Rational> matrix, Vecto
 }
 
 template <typename Addition>
-perl::Object shift_cycle(perl::Object cycle, Vector<Rational> translate)
+BigObject shift_cycle(BigObject cycle, Vector<Rational> translate)
 {
   return affine_transform<Addition>(cycle, unit_matrix<Rational>(translate.dim()), translate);
 }
 
 template <typename Addition>
-perl::Object affine_transform(perl::Object cycle, perl::Object morphism)
+BigObject affine_transform(BigObject cycle, BigObject morphism)
 {
   if (!morphism.exists("MATRIX") && !morphism.exists("TRANSLATE"))
     throw std::runtime_error("affine_transform: Morphism has no matrix or translate");

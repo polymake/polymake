@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,8 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef __GROUP_ACTION_H
-#define __GROUP_ACTION_H
+#ifndef POLYMAKE_GROUP_ACTION_H
+#define POLYMAKE_GROUP_ACTION_H
 
 #include "polymake/hash_map"
 #include "polymake/Array.h"
@@ -26,41 +26,40 @@
 
 namespace polymake { namespace group {
 
-
 inline      
-int degree(const Array<int>& a)
+Int degree(const Array<Int>& a)
 {
-      return a.size();
+   return a.size();
 }
 
 template<typename Scalar>
-int degree(const Matrix<Scalar>& a)
+Int degree(const Matrix<Scalar>& a)
 {
    assert(a.rows() == a.cols());
    return a.rows();
 }
 
 inline      
-auto identity(int degree, const Array<int>&)
+auto identity(Int degree, const Array<Int>&)
 {
-   return Array<int>(degree, entire(sequence(0, degree)));
+   return Array<Int>(degree, entire(sequence(0, degree)));
 }
 
 template<typename Scalar>
-auto identity(int degree, const Matrix<Scalar>&)
+auto identity(Int degree, const Matrix<Scalar>&)
 {
    return unit_matrix<Scalar>(degree);
 }
 
-inline      
-auto inverse(const Array<int>& g)
+inline
+auto inverse(const Array<Int>& g)
 {
-   Array<int> inverse;
+   Array<Int> inverse;
    inverse_permutation(g, inverse);
    return inverse;
 }
 
-template<typename Scalar>
+template <typename Scalar>
 auto inverse(const Matrix<Scalar>& g)
 {
    return inv(g);
@@ -99,7 +98,7 @@ template <typename OpRef, typename action_type, typename Perm,
           typename stores_ref=std::true_type>
 struct conjugation_action;
    
-// generic action on container with Array<int>
+// generic action on container with Array<Int>
 template <typename OpRef, typename Perm, typename op_tag, typename stores_ref>
 struct action<OpRef, on_container, Perm, op_tag, is_container, stores_ref> {
    typedef OpRef argument_type;
@@ -134,7 +133,7 @@ struct conjugation_action {
    }      
 }; 
    
-// generic non-homogeneous action on container with Array<int>
+// generic non-homogeneous action on container with Array<Int>
 template <typename OpRef, typename Perm, typename op_tag>
 struct action<OpRef, on_nonhomog_container, Perm, op_tag, is_container> {
   typedef OpRef argument_type;
@@ -153,8 +152,8 @@ struct action<OpRef, on_nonhomog_container, Perm, op_tag, is_container> {
 
 // action on integers (anchor of the on_elements recursion)
 template <typename Perm, typename stores_ref>
-struct action<int&, on_elements, Perm, is_scalar, is_container, stores_ref> {
-   typedef int& argument_type;
+struct action<Int&, on_elements, Perm, is_scalar, is_container, stores_ref> {
+   typedef Int& argument_type;
    typedef typename deref<argument_type>::type result_type;
   
    typename std::conditional<stores_ref::value, const Perm&, const Perm>::type perm;
@@ -168,7 +167,7 @@ struct action<int&, on_elements, Perm, is_scalar, is_container, stores_ref> {
    }      
 }; 
 
-// generic action on elements in a container with Array<int>
+// generic action on elements in a container with Array<Int>
 template <typename OpRef, typename Perm, typename op_tag, typename stores_ref>
 struct action<OpRef, on_elements, Perm, op_tag, is_container, stores_ref,
               typename std::enable_if<std::is_same<typename object_traits<typename deref<OpRef>::type>::model, is_container>::value
@@ -188,7 +187,7 @@ struct action<OpRef, on_elements, Perm, op_tag, is_container, stores_ref,
    }      
 }; 
 
-// generic action on elements in a matrix with Array<int>
+// generic action on elements in a matrix with Array<Int>
 template <typename OpRef, typename Perm, typename stores_ref>
 struct action<OpRef, on_elements, Perm, is_matrix, is_container, stores_ref> {
    typedef OpRef argument_type;
@@ -205,7 +204,7 @@ struct action<OpRef, on_elements, Perm, is_matrix, is_container, stores_ref> {
    }      
 }; 
 
-// action on rows of a matrix with Array<int>
+// action on rows of a matrix with Array<Int>
 template <typename OpRef, typename Perm, typename stores_ref>
 struct action<OpRef, on_rows, Perm, is_matrix, is_container, stores_ref> {
    typedef OpRef argument_type;
@@ -222,7 +221,7 @@ struct action<OpRef, on_rows, Perm, is_matrix, is_container, stores_ref> {
    }
 };
 
-// action on cols of a matrix with Array<int>
+// action on cols of a matrix with Array<Int>
 template <typename OpRef, typename Perm, typename stores_ref>
 struct action<OpRef, on_cols, Perm, is_matrix, is_container, stores_ref> {
    typedef OpRef argument_type;
@@ -239,7 +238,7 @@ struct action<OpRef, on_cols, Perm, is_matrix, is_container, stores_ref> {
    }      
 }; 
 
-// non-homogeneous action on the cols of a matrix with Array<int>
+// non-homogeneous action on the cols of a matrix with Array<Int>
 template <typename OpRef, typename Perm>
 struct action<OpRef, on_nonhomog_cols, Perm, is_matrix, is_container> {
    typedef OpRef argument_type;
@@ -256,7 +255,7 @@ struct action<OpRef, on_nonhomog_cols, Perm, is_matrix, is_container> {
    }      
 }; 
 
-// action on cols of an IncidenceMatrix with Array<int>
+// action on cols of an IncidenceMatrix with Array<Int>
 template <typename Perm, typename stores_ref>
 struct action<IncidenceMatrix<>, on_container, Perm, is_incidence_matrix, is_container, stores_ref> {
    typedef IncidenceMatrix<> argument_type;
@@ -341,7 +340,7 @@ struct action<OpRef, on_elements, Perm, is_matrix, is_matrix, stores_ref> {
    }
 };
    
-// action on the variables of a polyomial with Array<int>
+// action on the variables of a polyomial with Array<Int>
 template <typename Perm, typename Coefficient, typename Exponent, typename stores_ref>
 struct action<Polynomial<Coefficient,Exponent>&, on_container, Perm, is_polynomial, is_container, stores_ref> {
    typedef Polynomial<Coefficient, Exponent>& argument_type;
@@ -433,26 +432,23 @@ void permute_to(Iterator in_it,          // deliberately no reference, so we can
 }
 
 /*
- * computes the action on something under the inverse of a Array<int>
+ * computes the action on something under the inverse of a Array<Int>
  */
 template <typename action_type, typename Element>
 typename pm::object_traits<Element>::persistent_type
-action_inv(const Array<int>& perm, const Element& element) 
+action_inv(const Array<Int>& perm, const Element& element) 
 {
-  Array<int> inv(perm.size());
+  Array<Int> inv(perm.size());
   inverse_permutation(perm, inv);
-  return pm::operations::group::action<Element&,action_type,Array<int> >(inv)(element);
+  return pm::operations::group::action<Element&, action_type, Array<Int>>(inv)(element);
 }
 
 } }
 
-#endif // __GROUP_ACTION_H
-
+#endif // POLYMAKE_GROUP_ACTION_H
 
 // Local Variables:
 // mode:C++
 // c-basic-offset:3
 // indent-tabs-mode:nil
 // End:
-
-

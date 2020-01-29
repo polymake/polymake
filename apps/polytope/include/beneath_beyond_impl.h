@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -49,22 +49,6 @@ public:
    {
       dual_graph.attach(facets);
       dual_graph.attach(ridges);
-#if POLYMAKE_DEBUG
-      switch (perl::get_debug_level()) {
-      case 0:
-         debug=do_nothing;
-         break;
-      case 1:
-         debug=do_check;
-         break;
-      case 2:
-         debug=do_dump;
-         break;
-      default:
-         debug=do_full_dump;
-         break;
-      }
-#endif
    }
 
    /// flag==true: input points may contain redundancies (INPUT_RAYS, INEQUALITIES)
@@ -101,6 +85,9 @@ public:
 
    void compute(const Matrix<E>& rays, const Matrix<E>& lins)
    {
+#if POLYMAKE_DEBUG
+      enable_debug_output();
+#endif
       compute(rays, lins, entire(sequence(0, rays.rows())));
    }
 
@@ -120,11 +107,11 @@ public:
       return result;
    }
 
-   Set<int> getNonRedundantLinealities() const
+   Set<Int> getNonRedundantLinealities() const
    {
-      const int n_points = source_points->rows();
-      Set<int> result = points_in_lineality_basis;
-      for (const int p : source_lineality_basis)
+      const Int n_points = source_points->rows();
+      Set<Int> result = points_in_lineality_basis;
+      for (const Int p : source_lineality_basis)
          result += p + n_points;
       return result;
    }
@@ -139,9 +126,9 @@ public:
       return dual_graph;
    }
 
-   Array<Set<int>> getTriangulation() const
+   Array<Set<Int>> getTriangulation() const
    {
-      return Array<Set<int>>(triang_size, triangulation.rbegin());
+      return Array<Set<Int>>(triang_size, triangulation.rbegin());
    }
 
 
@@ -153,10 +140,10 @@ public:
 protected:
    // connects a facet with a triangulation simplex
    struct incident_simplex {
-      const Set<int>* simplex;  // an element of triangulation
-      int opposite_vertex;      // the only vertex NOT belonging to the facet
+      const Set<Int>* simplex;  // an element of triangulation
+      Int opposite_vertex;      // the only vertex NOT belonging to the facet
 
-      incident_simplex(const Set<int>& simplex_arg, int vertex_arg)
+      incident_simplex(const Set<Int>& simplex_arg, Int vertex_arg)
          : simplex(&simplex_arg), opposite_vertex(vertex_arg) { }
    };
 
@@ -164,9 +151,9 @@ protected:
    struct facet_info {
       Vector<E> normal;         // normal vector, directed inside the polyhedron
       E sqr_normal;             // sqr(normal)
-      int orientation;          // sign(normal * current-point-to-be-added) during one algo step
+      Int orientation;          // sign(normal * current-point-to-be-added) during one algo step
                                 // =0 : facet is incident, <0 : facet is violated (and will die)
-      Set<int> vertices;        // ... incident to the facet
+      Set<Int> vertices;        // ... incident to the facet
 
       // simplices from the polytope triangulation contributing to the triangulation of this facet
       using simplex_list = std::list<incident_simplex>;
@@ -188,7 +175,7 @@ protected:
       {
          relocate(&from->normal, &to->normal);
          relocate(&from->sqr_normal, &to->sqr_normal);
-         to->orientation=from->orientation;
+         to->orientation = from->orientation;
          relocate(&from->vertices, &to->vertices);
          pm::relocate(&from->simplices, &to->simplices);
       }
@@ -218,7 +205,7 @@ protected:
 
    Graph<> dual_graph;
    using facets_t = NodeMap<Undirected,facet_info>;
-   using ridges_t = EdgeMap<Undirected, Set<int>>;
+   using ridges_t = EdgeMap<Undirected, Set<Int>>;
    facets_t facets;
    ridges_t ridges;
 
@@ -227,9 +214,9 @@ protected:
                                                  //  the consumed input vertices comprise a simplex
    Bitset interior_points;  // indices of points which are not vertices
 
-   Set<int> source_lineality_basis, points_in_lineality_basis;
+   Set<Int> source_lineality_basis, points_in_lineality_basis;
 
-   using Triangulation = std::list<Set<int>>;
+   using Triangulation = std::list<Set<Int>>;
    Triangulation triangulation;
 
    // These are working variables valid within one algo step.
@@ -238,40 +225,40 @@ protected:
           interior_points_this_step,    // points that could be redundant
           visited_facets;               // facets seen
 
-   std::deque<int> facet_queue;   // BFS queue for update_facets()
+   std::deque<Int> facet_queue;   // BFS queue for update_facets()
 
    // accumulates the non-redundant points; is filled until the polytope turns out to be full-dimensional
-   Set<int> vertices_so_far;
-   int triang_size;     // = triangulation.size();
+   Set<Int> vertices_so_far;
+   Int triang_size;     // = triangulation.size();
 
-   int valid_facet;     // a facet where to start the visibility border search
+   Int valid_facet;     // a facet where to start the visibility border search
 
    bool generic_position;
    bool facet_normals_valid;
 
-   void process_point(int p);
+   void process_point(Int p);
 
-   void add_second_point(int p);
+   void add_second_point(Int p);
 
    // add the next point, given by the row index.
    // Recalculates the affine hull. If its dimension did not decrease, delegates the rest work to add_point_full_dim()
-   void add_point_low_dim(int p);
+   void add_point_low_dim(Int p);
 
    // The first phase of the step: looking for a facet violated by point p. If found, calls update_facets()
-   void add_point_full_dim(int p);
+   void add_point_full_dim(Int p);
 
    // helper function for add_point_full_dim
-   int descend_to_violated_facet(int f, int p);
+   Int descend_to_violated_facet(Int f, Int p);
 
    // helper functions
    void facet_normals_low_dim();
-   bool reduce_nullspace(ListMatrix<SparseVector<E>>& M, int p) const;
+   bool reduce_nullspace(ListMatrix<SparseVector<E>>& M, Int p) const;
 
    // The main phase of the step: detect all facets to be deleted, create new facets and simplices
    // @param f the index of the first facet violated by or incident with point p
-   void update_facets(int f, int p);
+   void update_facets(Int f, Int p);
 
-   void process_new_lineality(int p, const std::list<int>& incident_facets);
+   void process_new_lineality(Int p, const std::list<Int>& incident_facets);
 
    void transform_points();
 
@@ -280,16 +267,34 @@ protected:
 
    class stop_calculation {};
 
-   void complain_redundant(int p);
+   void complain_redundant(Int p);
 
 #if POLYMAKE_DEBUG
    void dump() const;
-   void dump_p(int p) const;
-   void check_f(int f, int last_p) const;
-   void check_p(int p) const;
-   void check_fp(int f_index, const facet_info& f, int p, std::ostringstream& errors) const;
+   void dump_p(Int p) const;
+   void check_f(Int f, Int last_p) const;
+   void check_p(Int p) const;
+   void check_fp(Int f_index, const facet_info& f, Int p, std::ostringstream& errors) const;
    enum debug_kind { do_nothing, do_check, do_dump, do_full_dump };
    debug_kind debug;
+
+   void enable_debug_output()
+   {
+      switch (get_debug_level()) {
+      case 0:
+         debug = do_nothing;
+         break;
+      case 1:
+         debug = do_check;
+         break;
+      case 2:
+         debug = do_dump;
+         break;
+      default:
+         debug = do_full_dump;
+         break;
+      }
+   }
 #endif
 };
 
@@ -341,7 +346,7 @@ template <typename E>
 IncidenceMatrix<> beneath_beyond_algo<E>::getVertexFacetIncidence() const
 {
    IncidenceMatrix<> VIF(dual_graph.nodes(), points->rows(),
-                         attach_member_accessor(facets, ptr2type<facet_info, Set<int>, &facet_info::vertices>()).begin());
+                         attach_member_accessor(facets, ptr2type<facet_info, Set<Int>, &facet_info::vertices>()).begin());
    if (!expect_redundant) return VIF;
    return VIF.minor(All, ~interior_points);
 }
@@ -359,19 +364,15 @@ void beneath_beyond_algo<E>::transform_points()
 }
 
 template <typename E>
-bool beneath_beyond_algo<E>::reduce_nullspace(ListMatrix<SparseVector<E>>& M, int p) const
+bool beneath_beyond_algo<E>::reduce_nullspace(ListMatrix<SparseVector<E>>& M, Int p) const
 {
-   return basis_of_rowspan_intersect_orthogonal_complement(M, points->row(p), black_hole<int>(), black_hole<int>());
+   return basis_of_rowspan_intersect_orthogonal_complement(M, points->row(p), black_hole<Int>(), black_hole<Int>());
 }
 
 template <typename E>
 template <typename Iterator>
 void beneath_beyond_algo<E>::compute(const Matrix<E>& rays, const Matrix<E>& lins, Iterator perm)
 {
-#if POLYMAKE_DEBUG
-   if (!std::is_same<Iterator, sequence::const_iterator>::value) debug = do_nothing;
-#endif
-
    source_points = &rays;
    source_linealities = &lins;
 
@@ -452,7 +453,7 @@ void beneath_beyond_algo<E>::compute(const Matrix<E>& rays, const Matrix<E>& lin
 }
 
 template <typename E>
-void beneath_beyond_algo<E>::process_point(const int p)
+void beneath_beyond_algo<E>::process_point(const Int p)
 {
    if (expect_redundant && is_zero(points->row(p))) {
       interior_points += p;
@@ -487,14 +488,14 @@ void beneath_beyond_algo<E>::process_point(const int p)
 }
 
 template <typename E>
-void beneath_beyond_algo<E>::add_second_point(int p)
+void beneath_beyond_algo<E>::add_second_point(Int p)
 {
-   const int p0 = vertices_so_far.front();
+   const Int p0 = vertices_so_far.front();
    if (reduce_nullspace(AH, p)) {
       // two different points found: initialize the polytope
-      const int f0 = dual_graph.add_node();
+      const Int f0 = dual_graph.add_node();
       facets[f0].vertices = vertices_so_far;
-      const int f1 = dual_graph.add_node();
+      const Int f1 = dual_graph.add_node();
       facets[f1].vertices = scalar2set(p);
       dual_graph.edge(f0, f1);
       vertices_so_far += p;
@@ -507,7 +508,7 @@ void beneath_beyond_algo<E>::add_second_point(int p)
       valid_facet = 0;
 #if POLYMAKE_DEBUG
       if (debug >= do_dump)
-         cout << "starting points: " << vertices_so_far << "\nAH:\n" << AH << endl;
+         cout << "starting points: " << vertices_so_far << "\n" << points->minor(vertices_so_far, All) << "\nAH:\n" << AH << endl;
 #endif
       if ((facet_normals_valid = (AH.rows() == 0))) {
          // dimension==1, will need the facet normals immediately
@@ -520,7 +521,7 @@ void beneath_beyond_algo<E>::add_second_point(int p)
    } else if (expect_redundant) {
       // p and p0 must be collinear; if the signs are different, they build a linearity
       const auto sign_of = [](const auto& v) {
-         int s = 0;
+         Int s = 0;
          for (const auto& x : v) {
             if ((s = sign(x)) != 0) break;
          }
@@ -546,14 +547,14 @@ template <typename E>
 template <typename ISet>
 void beneath_beyond_algo<E>::add_linealities(const ISet& point_set)
 {
-   const int lin_rows = linealities_so_far.rows();
+   const Int lin_rows = linealities_so_far.rows();
    linealities_so_far /= source_points->minor(point_set, All);
-   const Set<int> lin_basis = basis_rows(linealities_so_far);
+   const Set<Int> lin_basis = basis_rows(linealities_so_far);
    linealities_so_far = linealities_so_far.minor(lin_basis, All);
    // if new rays have been added to the lineality matrix, their indexes must be greater than those of already known linealities
    if (lin_basis.size() > lin_rows) {
       // TODO: introduce shifted_set or something similar
-      const Set<int> new_points_in_basis(attach_operation(lin_basis - sequence(0, lin_rows), operations::fix2<int, operations::sub>(lin_rows)));
+      const Set<Int> new_points_in_basis(attach_operation(lin_basis - sequence(0, lin_rows), operations::fix2<Int, operations::sub>(lin_rows)));
       points_in_lineality_basis += select(point_set, new_points_in_basis);
    }
    transform_points();
@@ -561,7 +562,7 @@ void beneath_beyond_algo<E>::add_linealities(const ISet& point_set)
 }
 
 template <typename E>
-void beneath_beyond_algo<E>::complain_redundant(int p)
+void beneath_beyond_algo<E>::complain_redundant(Int p)
 {
    throw std::runtime_error("beneath_beyond_algo: found redundant point " + std::to_string(p) + " while none was expected");
 }
@@ -571,7 +572,7 @@ void beneath_beyond_algo<E>::complain_redundant(int p)
     @retval index of the violated/incident facet or -1 if nothing found
 */
 template <typename E>
-int beneath_beyond_algo<E>::descend_to_violated_facet(int f, int p)
+Int beneath_beyond_algo<E>::descend_to_violated_facet(Int f, Int p)
 {
    visited_facets += f;
    E fxp = facets[f].normal * points->row(p);
@@ -584,7 +585,7 @@ int beneath_beyond_algo<E>::descend_to_violated_facet(int f, int p)
    if (expect_redundant) vertices_this_step += facets[f].vertices;
    fxp = fxp * fxp / facets[f].sqr_normal;    // square of the distance from p to the facet
 
-   int nextf;
+   Int nextf;
    do {
 #if POLYMAKE_DEBUG
       if (debug >= do_full_dump)
@@ -592,7 +593,7 @@ int beneath_beyond_algo<E>::descend_to_violated_facet(int f, int p)
 #endif
       nextf = -1;
       for (auto neighbor = entire(dual_graph.adjacent_nodes(f)); !neighbor.at_end(); ++neighbor) {
-         const int f2 = *neighbor;
+         const Int f2 = *neighbor;
          if (visited_facets.contains(f2)) continue;
 
          visited_facets += f2;
@@ -618,16 +619,16 @@ int beneath_beyond_algo<E>::descend_to_violated_facet(int f, int p)
 namespace {
 
 template <typename TSet>
-int first_or_none(const TSet& set)
+Int first_or_none(const TSet& set)
 {
-   auto s=entire(set);
+   auto s = entire(set);
    return s.at_end() ? -1 : *s;
 }
 
 }
 
 template <typename E>
-void beneath_beyond_algo<E>::add_point_full_dim(int p)
+void beneath_beyond_algo<E>::add_point_full_dim(Int p)
 {
 #if POLYMAKE_DEBUG
    if (debug >= do_dump)
@@ -638,7 +639,7 @@ void beneath_beyond_algo<E>::add_point_full_dim(int p)
    if (expect_redundant) vertices_this_step.clear();
 
    // first try the facet added last in the previous step
-   int try_facet = valid_facet;
+   Int try_facet = valid_facet;
    do {
       if ((try_facet = descend_to_violated_facet(try_facet, p)) >= 0) {
          update_facets(try_facet, p);
@@ -670,10 +671,10 @@ template <typename E>
 void beneath_beyond_algo<E>::facet_normals_low_dim()
 {
    // facets must be orthogonal to the affine hull
-   const int d = points->cols();
+   const Int d = points->cols();
    facet_nullspace = unit_matrix<E>(d);
    if (is_cone) {
-      null_space(entire(rows(AH)), black_hole<int>(), black_hole<int>(), facet_nullspace);
+      null_space(entire(rows(AH)), black_hole<Int>(), black_hole<Int>(), facet_nullspace);
    } else {
       SparseMatrix<E> AHaff=AH;
       // make all hyperplanes going thru the origin, but leave the far hyperplane untouched
@@ -681,7 +682,7 @@ void beneath_beyond_algo<E>::facet_normals_low_dim()
       for (auto r=entire(rows(AHaff));  !r.at_end();  ++r)
          if (*r != far_hyperplane)
             r->erase(0);
-      null_space(entire(rows(AHaff)), black_hole<int>(), black_hole<int>(), facet_nullspace);
+      null_space(entire(rows(AHaff)), black_hole<Int>(), black_hole<Int>(), facet_nullspace);
    }
 
    for (auto f=entire(facets);  !f.at_end();  ++f) {
@@ -693,7 +694,7 @@ void beneath_beyond_algo<E>::facet_normals_low_dim()
 }
 
 template <typename E>
-void beneath_beyond_algo<E>::add_point_low_dim(int p)
+void beneath_beyond_algo<E>::add_point_low_dim(Int p)
 {
    // update the affine hull
    if (reduce_nullspace(AH, p)) {
@@ -704,7 +705,7 @@ void beneath_beyond_algo<E>::add_point_low_dim(int p)
       }
 
       // build a pyramid with the former polytope as a base and the point as an apex
-      const int nf_index = dual_graph.add_node();
+      const Int nf_index = dual_graph.add_node();
       facet_info& nf = facets[nf_index];
       nf.vertices = vertices_so_far;
       if (expect_redundant) nf.vertices -= interior_points;
@@ -729,12 +730,16 @@ void beneath_beyond_algo<E>::add_point_low_dim(int p)
             ridges(f.index(), nf_index) = facets[*f].vertices;
             facets[*f].vertices += p;
          }
-         if (facet_normals_valid)
+         if (facet_normals_valid) {
             // the polytope became full-dimensional: will need the facet coordinates the whole rest of the time
             facets[*f].coord_full_dim(*this);
+#if POLYMAKE_DEBUG
+            if (debug >= do_dump) cout << f.index() << ": " << facets[*f].vertices << "=[ " << facets[*f].normal << " ]\n";
+#endif
+         }
       }
 #if POLYMAKE_DEBUG
-      if (debug >= do_dump) cout << "point " << p << ": dim increased\nAH:\n" << AH << endl;
+      if (debug >= do_dump) cout << "point " << p << "=[" << (*points)[p] << "] : dim increased\nAH:\n" << AH << endl;
 #endif
 
    } else {
@@ -750,7 +755,7 @@ void beneath_beyond_algo<E>::add_point_low_dim(int p)
 }
 
 template <typename E>
-void beneath_beyond_algo<E>::update_facets(int f, const int p)
+void beneath_beyond_algo<E>::update_facets(Int f, const Int p)
 {
 #if POLYMAKE_DEBUG
    if (debug >= do_dump) cout << "\nupdating:";
@@ -760,7 +765,7 @@ void beneath_beyond_algo<E>::update_facets(int f, const int p)
 
    if (expect_redundant) interior_points_this_step.clear();
 
-   std::list<int> incident_facets;
+   std::list<Int> incident_facets;
    if (facets[f].orientation == 0) {
       facets[f].vertices += p;
       generic_position = false;
@@ -773,7 +778,7 @@ void beneath_beyond_algo<E>::update_facets(int f, const int p)
    */
    while (!facet_queue.empty()) {
       f = facet_queue.front();  facet_queue.pop_front();
-      const int f_orientation = facets[f].orientation;
+      const Int f_orientation = facets[f].orientation;
       // remember the position where the new simplices will end
       auto new_simplex_end = triangulation.begin();
 
@@ -801,7 +806,7 @@ void beneath_beyond_algo<E>::update_facets(int f, const int p)
 
       // check the neighbor facets
       for (auto e=entire(dual_graph.out_edges(f)); !e.at_end(); ++e) {
-         const int f2 = e.to_node();
+         const Int f2 = e.to_node();
          facet_info& nbf = facets[f2];
          if (!visited_facets.contains(f2)) {
             visited_facets += f2;
@@ -821,7 +826,7 @@ void beneath_beyond_algo<E>::update_facets(int f, const int p)
          if (f_orientation < 0) {
             if (nbf.orientation > 0) {
                // found a ridge on the visibility border: create a new facet
-               const int nf_index = dual_graph.add_node();
+               const Int nf_index = dual_graph.add_node();
                facet_info& nf = facets[nf_index];
                nf.vertices = ridges[*e] + p;
                if (AH.rows())
@@ -869,7 +874,7 @@ void beneath_beyond_algo<E>::update_facets(int f, const int p)
    }
 
    /// The final phase of the step: create new edges in the dual graph
-   int min_ridge = points->cols() - AH.rows() - 2;
+   Int min_ridge = points->cols() - AH.rows()-2;
 
    for (auto f_it = entire(incident_facets); !f_it.at_end(); ++f_it) {
       f = *f_it;
@@ -877,16 +882,16 @@ void beneath_beyond_algo<E>::update_facets(int f, const int p)
 
       auto f2_it = f_it;
       for (++f2_it; !f2_it.at_end(); ++f2_it) {
-         const int f2 = *f2_it;
+         const Int f2 = *f2_it;
          // if both facets are incident to p, they could already have a connecting edge
          if (vis && visited_facets.contains(f2) && dual_graph.edge_exists(f, f2)) continue;
 
-         const Set<int> ridge = facets[f].vertices * facets[f2].vertices;
+         const Set<Int> ridge = facets[f].vertices * facets[f2].vertices;
          if (ridge.size() >= min_ridge) {
             bool add = true;
             auto e = entire(dual_graph.out_edges(f));
             while (!e.at_end()) {
-               const int inc = incl(ridges[*e], ridge);
+               const Int inc = incl(ridges[*e], ridge);
                if (inc == 2) {
                   ++e;
                } else {
@@ -903,7 +908,10 @@ void beneath_beyond_algo<E>::update_facets(int f, const int p)
       }
    }
 
-   if (AH.rows() != 0) vertices_so_far += p;
+   if (AH.rows() != 0) {
+      vertices_so_far += p;
+      if (expect_redundant) vertices_so_far -= interior_points_this_step;
+   }
 #if POLYMAKE_DEBUG
    if (debug >= do_dump) {
       cout << "\n";
@@ -916,9 +924,9 @@ void beneath_beyond_algo<E>::update_facets(int f, const int p)
 }
 
 template <typename E>
-void beneath_beyond_algo<E>::process_new_lineality(const int p, const std::list<int>& incident_facets)
+void beneath_beyond_algo<E>::process_new_lineality(const Int p, const std::list<Int>& incident_facets)
 {
-   Set<int> rays_in_lineality, candidate_points;
+   Set<Int> rays_in_lineality, candidate_points;
 
    if (incident_facets.empty()) {
       // all rays visited so far belong to the new lineality
@@ -961,7 +969,7 @@ void beneath_beyond_algo<E>::process_new_lineality(const int p, const std::list<
    if (debug >= do_dump)
       cout << "restart\nlinealities:\n" << linealities_so_far << endl;
 #endif
-   for (const int cp : candidate_points) {
+   for (const Int cp : candidate_points) {
       process_point(cp);
    }
 #if POLYMAKE_DEBUG
@@ -983,7 +991,7 @@ template <typename E>
 void beneath_beyond_algo<E>::facet_info::coord_low_dim(const beneath_beyond_algo<E>& A)
 {
    ListMatrix<SparseVector<E>> Fn = A.facet_nullspace;
-   for (const int v : vertices)
+   for (const Int v : vertices)
       A.reduce_nullspace(Fn, v);
    normal = rows(Fn).front();
    if (normal * A.points->row((A.vertices_so_far - vertices).front()) < 0)
@@ -992,13 +1000,13 @@ void beneath_beyond_algo<E>::facet_info::coord_low_dim(const beneath_beyond_algo
 }
 
 template <typename TSet>
-int single_or_nothing(const GenericSet<TSet, int>& s)
+Int single_or_nothing(const GenericSet<TSet, Int>& s)
 {
-   int x=-1;
-   auto e=entire(s.top());
+   Int x = -1;
+   auto e = entire(s.top());
    if (!e.at_end()) {
-      x=*e; ++e;
-      if (!e.at_end()) x=-1;
+      x = *e; ++e;
+      if (!e.at_end()) x = -1;
    }
    return x;
 }
@@ -1007,8 +1015,9 @@ template <typename E> template <typename Iterator>
 void beneath_beyond_algo<E>::facet_info::add_incident_simplices(Iterator s, Iterator s_end)
 {
    for (; s != s_end; ++s) {
-      int opv=single_or_nothing(*s-vertices);
-      if (opv>=0) simplices.push_back(incident_simplex(*s,opv));
+      Int opv = single_or_nothing(*s - vertices);
+      if (opv >= 0)
+         simplices.push_back(incident_simplex(*s, opv));
    }
 }
 
@@ -1038,7 +1047,7 @@ void beneath_beyond_algo<E>::dump() const
 }
 
 template <typename E>
-void beneath_beyond_algo<E>::check_fp(int f_index, const facet_info& f, int p, std::ostringstream& errors) const
+void beneath_beyond_algo<E>::check_fp(Int f_index, const facet_info& f, Int p, std::ostringstream& errors) const
 {
    const E prod = points->row(p) * f.normal;
    if (f.vertices.contains(p)) {
@@ -1052,7 +1061,7 @@ void beneath_beyond_algo<E>::check_fp(int f_index, const facet_info& f, int p, s
 
 // various consistency checks
 template <typename E>
-void beneath_beyond_algo<E>::check_p(int p) const
+void beneath_beyond_algo<E>::check_p(Int p) const
 {
    if (AH.rows() == 0 || facet_nullspace.rows() != 0) {
       std::ostringstream errors;
@@ -1066,7 +1075,7 @@ void beneath_beyond_algo<E>::check_p(int p) const
 }
 
 template <typename E>
-void beneath_beyond_algo<E>::check_f(int f, int last_p) const
+void beneath_beyond_algo<E>::check_f(Int f, Int last_p) const
 {
    std::ostringstream errors;
    const facet_info& fi=facets[f];
@@ -1079,7 +1088,7 @@ void beneath_beyond_algo<E>::check_f(int f, int last_p) const
 }
 
 template <typename E>
-void beneath_beyond_algo<E>::dump_p(int p) const
+void beneath_beyond_algo<E>::dump_p(Int p) const
 {
    if (!AH.rows() || facet_nullspace.rows()) {
       for (auto f=entire(nodes(dual_graph)); !f.at_end(); ++f)

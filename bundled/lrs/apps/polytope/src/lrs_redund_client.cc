@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -19,10 +19,11 @@
 #include "polymake/Rational.h"
 #include "polymake/polytope/lrs_interface.h"
 #include "polymake/polytope/generic_convex_hull_client.h"
+#include "polymake/linalg.h"
 
 namespace polymake { namespace polytope {
 
-void lrs_get_non_redundant_points(perl::Object p, const bool isCone)
+void lrs_get_non_redundant_points(BigObject p, const bool isCone)
 {
    lrs_interface::ConvexHullSolver solver;
    Matrix<Rational> P = p.give("INPUT_RAYS"),
@@ -42,7 +43,7 @@ void lrs_get_non_redundant_points(perl::Object p, const bool isCone)
    p.take("POINTED") << (L.rows() == 0);
 }
 
-void lrs_get_non_redundant_inequalities(perl::Object p, const bool isCone)
+void lrs_get_non_redundant_inequalities(BigObject p, const bool isCone)
 {
    lrs_interface::ConvexHullSolver solver;
    Matrix<Rational> P = p.give("INEQUALITIES"),
@@ -56,7 +57,16 @@ void lrs_get_non_redundant_inequalities(perl::Object p, const bool isCone)
      p.take("FACETS") << P.minor(V.first, range_from(1));
      p.take("LINEALITY_SPACE") << V.second.minor(All, range_from(1));
    } else {
-     p.take("FACETS") << P.minor(V.first,All);
+      // For some reason, lrs will not give the trivial inequality for
+      // polytopes. Nevertheless, this may be implied by the other facets. We
+      // check whether it is implied, and add it if not.
+     Matrix<Rational> F(P.minor(V.first,All));
+     Matrix<Rational> tmp(F / unit_vector<Rational>(F.cols(), 0));
+     if(rank(tmp) > rank(F)){
+       p.take("FACETS") << tmp;
+     } else {
+       p.take("FACETS") << F;
+     }
      p.take("LINEALITY_SPACE") << V.second;
    }
 }

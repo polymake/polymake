@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,12 +28,12 @@
 namespace polymake { namespace polytope {
 
 template<typename E>
-perl::Object
+BigObject
 root_system_impl(const SparseMatrix<E>& simple_roots)
 {
    hash_set<SparseVector<E>> R_old, R_new;
-   hash_map<SparseVector<E>,int> index_of;
-   int index(0);
+   hash_map<SparseVector<E>, Int> index_of;
+   Int index = 0;
    for (; index < simple_roots.rows(); ++index) {
       index_of[simple_roots.row(index)] = index;
       R_new += simple_roots.row(index);
@@ -45,7 +45,7 @@ root_system_impl(const SparseMatrix<E>& simple_roots)
          for (const auto& s: R_old)
             R_new += reflect(s, r);
    }
-   const int n = R_new.size();
+   const Int n = R_new.size();
 
    SparseMatrix<E> V(n, simple_roots.cols());
    for (const auto& r: Set<SparseVector<E>>(entire(R_new))) { // ensure canonical ordering of roots
@@ -54,29 +54,29 @@ root_system_impl(const SparseMatrix<E>& simple_roots)
       V.row(index_of[r]) = r;
    }
    
-   Array<Array<int>> gens(simple_roots.rows());
-   for (int i=0; i<gens.size(); ++i) {
-      Array<int> gen(n);
+   Array<Array<Int>> gens(simple_roots.rows());
+   for (Int i = 0; i < gens.size(); ++i) {
+      Array<Int> gen(n);
       const SparseVector<E> h(simple_roots.row(i));
-      for (int j=0; j<n; ++j)
+      for (Int j = 0; j < n; ++j)
          gen[j] = index_of[reflect(V.row(j), h)];
       gens[i] = gen;
    }
 
-   perl::Object a("group::PermutationAction");
+   BigObject a("group::PermutationAction");
    a.take("GENERATORS") << gens;
-   perl::Object g("group::Group");
+   BigObject g("group::Group");
    g.take("VECTOR_ACTION") << a;
-   perl::Object R("VectorConfiguration", mlist<E>());
+   BigObject R("VectorConfiguration", mlist<E>());
    R.take("VECTORS") << V;
    R.take("GROUP") << g;
    return R;
 }
       
-SparseMatrix<Rational> simple_roots_type_A (const int n);
-SparseMatrix<Rational> simple_roots_type_B (const int n);
-SparseMatrix<Rational> simple_roots_type_C (const int n);
-SparseMatrix<Rational> simple_roots_type_D (const int n);
+SparseMatrix<Rational> simple_roots_type_A (Int n);
+SparseMatrix<Rational> simple_roots_type_B (Int n);
+SparseMatrix<Rational> simple_roots_type_C (Int n);
+SparseMatrix<Rational> simple_roots_type_D (Int n);
 SparseMatrix< QuadraticExtension<Rational> > simple_roots_type_E6 ();
 SparseMatrix< QuadraticExtension<Rational> > simple_roots_type_E7 ();
 SparseMatrix<Rational> simple_roots_type_E8 ();

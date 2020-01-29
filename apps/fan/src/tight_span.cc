@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,16 +26,16 @@ using namespace graph;
 using namespace graph::lattice;
 using namespace fan::lattice;
 
-perl::Object tight_span_lattice_for_subdivision(const IncidenceMatrix<>& maximal_cones,
+BigObject tight_span_lattice_for_subdivision(const IncidenceMatrix<>& maximal_cones,
                                                 const Array<IncidenceMatrix<> >& maximal_vifs,
-                                                const int dim)
+                                                const Int dim)
 {
   // Compute boundary facets
-  const Array<int> max_dim_dummy;
+  const Array<Int> max_dim_dummy;
   Lattice<BasicDecoration> top_lattice = hasse_diagram_general(maximal_cones, maximal_vifs,
       dim, max_dim_dummy, RankRestriction(true, RankCutType::GreaterEqual, dim),
-      TopologicalType(1, 0), Set<int>());
-  std::list< Set<int> > max_boundary_faces;
+      TopologicalType(1, 0), Set<Int>{});
+  std::list<Set<Int>> max_boundary_faces;
   for (const auto mf : top_lattice.nodes_of_rank(dim)) {
     if (top_lattice.out_adjacent_nodes(mf).size() < 2)
       max_boundary_faces.push_back(top_lattice.face(mf));
@@ -43,7 +43,7 @@ perl::Object tight_span_lattice_for_subdivision(const IncidenceMatrix<>& maximal
   NoBoundaryCut cut(max_boundary_faces, maximal_cones);
   BasicClosureOperator<> cop(maximal_cones.rows(), T(maximal_cones));
   BasicDecorator<> dec(0, scalar2set(-1));
-  return static_cast<perl::Object>(
+  return static_cast<BigObject>(
            lattice_builder::compute_lattice_from_closure<BasicDecoration>(cop, cut, dec, 1, lattice_builder::Primal()));
 }
 

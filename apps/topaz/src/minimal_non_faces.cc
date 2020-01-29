@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,35 +29,37 @@ namespace polymake { namespace topaz {
 using graph::Lattice;
 
 template <typename Decoration, typename SeqType>
-Array<Set<int>> minimal_non_faces(const perl::Object HD_obj)
+Array<Set<Int>> minimal_non_faces(const BigObject HD_obj)
 {
 #if POLYMAKE_DEBUG
-   const bool debug_print = perl::get_debug_level() > 1;
+   const bool debug_print = get_debug_level() > 1;
 #endif
    Lattice<Decoration, SeqType> HD(HD_obj);
 
-   const int dim = HD.rank()-2; // dimension of the complex = HD.dim()-1
-   std::list<Set<int>> min_non_faces;
+   const Int dim = HD.rank()-2; // dimension of the complex = HD.dim()-1
+   std::list<Set<Int>> min_non_faces;
 
    // determine the start level (the highest complete level)
-   int start_dim = 1;
-   while ( HD.nodes_of_rank(start_dim+1).size() == Integer::binom(dim,start_dim) )  ++start_dim;
+   Int start_dim = 1;
+   while (Int(HD.nodes_of_rank(start_dim+1).size()) == Integer::binom(dim,start_dim))
+      ++start_dim;
    --start_dim;
 
-   const int n_vertices=HD.nodes_of_rank(1).size(), top_node=HD.top_node();
+   const Int n_vertices = HD.nodes_of_rank(1).size(),
+               top_node = HD.top_node();
 
    // iterate over all levels of HD and determine the minimal non-faces one above
-   for (int d=start_dim; d<=dim; ++d) {
+   for (Int d = start_dim; d <= dim; ++d) {
 
       // create hash set containing all faces of this dimension
-      hash_set< Set<int> > faces(HD.nodes_of_rank(d+1).size());
+      hash_set<Set<Int>> faces(HD.nodes_of_rank(d+1).size());
       for (const auto n : HD.nodes_of_rank(d+1))
          faces.insert(HD.face(n));
       const auto faces_end = faces.end();
 
       // iterate over all faces of this dimension
       for (const auto n : HD.nodes_of_rank(d+1)) {
-         const Set<int>& f= HD.face(n);
+         const Set<Int>& f= HD.face(n);
 
          Bitset non_candidates(n_vertices);
          for (auto e=entire(HD.out_edges(n)); !e.at_end(); ++e)
@@ -69,11 +71,11 @@ Array<Set<int>> minimal_non_faces(const perl::Object HD_obj)
          // generate non-faces
          for (auto in_e=entire(HD.in_edges(n)); !in_e.at_end(); ++in_e) {
             for (auto out_e=entire(HD.out_edges(in_e.from_node())); !out_e.at_end(); ++out_e) {
-               const int nn = out_e.to_node();
-               if (n==nn)
+               const Int nn = out_e.to_node();
+               if (n == nn)
                   continue;
 
-               const int candidate = (HD.face(nn)-f).front();
+               const Int candidate = (HD.face(nn)-f).front();
                if ( non_candidates.contains(candidate) || candidate<f.back() )
                   continue;
 #if POLYMAKE_DEBUG
@@ -97,7 +99,7 @@ Array<Set<int>> minimal_non_faces(const perl::Object HD_obj)
       }  // end iterate over all faces of this dimension
    }
 
-   return Array<Set<int>>(min_non_faces);
+   return Array<Set<Int>>(min_non_faces);
 }
 
 FunctionTemplate4perl("minimal_non_faces<Decoration, SeqType>(Lattice<Decoration, SeqType>)");

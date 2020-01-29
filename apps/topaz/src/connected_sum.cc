@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,16 +20,16 @@
 
 namespace polymake { namespace topaz {
 
-perl::Object connected_sum_complex(perl::Object p_in1, perl::Object p_in2, const int f1, const int f2,perl::OptionSet options)
+BigObject connected_sum_complex(BigObject p_in1, BigObject p_in2, const Int f1, const Int f2, OptionSet options)
 {
    const bool no_labels=options["no_labels"];
-   const Array< Set<int> > C1 = p_in1.give("FACETS");
+   const Array<Set<Int>> C1 = p_in1.give("FACETS");
    Array<std::string> L1;  // connected_sum interprets empty labels as no labels
-   if (!no_labels) L1 = p_in1.give("VERTEX_LABELS");
+   if (!no_labels) p_in1.give("VERTEX_LABELS") >> L1;
 
-   const Array< Set<int> > C2 = p_in2.give("FACETS");
+   const Array<Set<Int>> C2 = p_in2.give("FACETS");
    Array<std::string> L2;
-   if (!no_labels) L2 = p_in2.give("VERTEX_LABELS");
+   if (!no_labels) p_in2.give("VERTEX_LABELS") >> L2;
    
    if (f1 >= C1.size()) {
       std::ostringstream e;
@@ -52,35 +52,33 @@ perl::Object connected_sum_complex(perl::Object p_in1, perl::Object p_in2, const
 
 
    // set permutation: connected_sum interprets empty permutation as trivial
-   hash_map<int, int> Perm;
+   hash_map<Int, Int> Perm;
 
-   perl::Object p_out("SimplicialComplex");
+   BigObject p_out("SimplicialComplex");
 
    // testing P
-   Array<int> P;
+   Array<Int> P;
    if (options["permutation"]>>P) {
 
-      Set<int> V;
+      Set<Int> V;
       accumulate_in(entire(P), operations::add(), V);
       
-      if ( incl(V,C1[f1])!=0 ) {
+      if (incl(V, C1[f1]) != 0) {
          std::ostringstream e;
          e << "connected_sum: Specified permutation does not match facets " << f1 << ".";
          throw std::runtime_error(e.str());
       }
       
-      //      Perm.resize((C1[f1].size()));
-      Set<int>::const_iterator v= C1[f1].begin();
-      for (auto p=entire(P); !p.at_end(); ++p, ++v)
+      auto v = C1[f1].begin();
+      for (auto p = entire(P); !p.at_end(); ++p, ++v)
          Perm[*v] = *p;
       p_out.set_description() << "Connected sum of " << p_in1.name() << ", using facet " << f1
                               << ",\nand " << p_in2.name() << ", using facet " << f2 << "." << endl
                               << "The vertices of facet " << f2 << " of " << p_in2.name() << " are permuted " << P << "."<<endl;
-   }   
-   else
+   } else {
       p_out.set_description() << "Connected sum of " << p_in1.name() << ", using facet " << f1
                               << ",\nand " << p_in2.name() << ", using facet " << f2 << "." << endl;
-   
+   }
    p_out.take("FACETS") << as_array(connected_sum(C1, C2, f1, f2, L1, L2, Perm));
 
    if (!no_labels)

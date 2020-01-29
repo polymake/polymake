@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -21,34 +21,40 @@ use warnings qw(FATAL void syntax misc);
 package Polymake;
 
 # an identifier (alphanumeric, first character not a digit)
-declare $id_re=qr{(?> (?!\d)\w+ )}x;
+declare $id_re = qr{(?> (?!\d)\w+ )}x;
+
+# a property name (alphanumeric, first character is a letter)
+declare $prop_name_re = qr{(?> [a-zA-Z]\w* )}x;
 
 # a list of identifiers (separated by commas)
-declare $ids_re=qr{(?> $id_re (?: \s*,\s* $id_re)* )}xo;
+declare $ids_re = qr{(?> $id_re (?: \s*,\s* $id_re)* )}xo;
 
-# an identifier with optional attributes
-declare $id_attrs_re=qr{(?> $id_re (?: \( \s* $ids_re \s* \) )? )}xo;
+# a property name with optional attributes
+declare $prop_name_attrs_re = qr{(?> $prop_name_re (?: \( \s* $ids_re \s* \) )? )}xo;
 
 # a hierarchical identifier (identifiers connected with dots)
-declare $hier_id_re=qr{(?> $id_re (?: \. $id_re)* )}xo;
+declare $hier_id_re = qr{(?> $id_re (?: \. $id_re)* )}xo;
+
+# property path, property names connected with dots
+declare $prop_path_re = qr{(?> $prop_name_re (?: \. $prop_name_re)* )}xo;
 
 # a list of hierarchical identifiers (separated by commas)
-declare $hier_ids_re=qr{(?> $hier_id_re (?: \s*,\s* $hier_id_re)* )}xo;
+declare $hier_ids_re = qr{(?> $hier_id_re (?: \s*,\s* $hier_id_re)* )}xo;
 
-# a hierarchical identifier with trailing alternatives (separated by bars)
-declare $hier_id_alt_re=qr{(?> $hier_id_re (?: \s*\|\s* $id_re)* )}xo;
+# list of alternative property paths
+declare $prop_path_alt_re = qr{(?> $prop_path_re (?: \s*\|\s* $prop_path_re)* )}xo;
 
-# an element of a rule header: hierarchical identifier with optional attributes
-declare $hier_id_attrs_re=qr{(?> $id_attrs_re (?: \. $id_attrs_re)* )}xo;
+# property path with optional attributes
+declare $prop_path_attrs_re = qr{(?> $prop_name_attrs_re (?: \. $prop_name_attrs_re)* )}xo;
 
 # a lone identifier
-declare $id_only_re=qr{ ($id_re) \s*$ }xo;
+declare $id_only_re = qr{ ($id_re) \s*$ }xo;
 
 # fully qualified name
-declare $qual_id_re=qr{(?> $id_re (?: :: $id_re)* )}xo;
+declare $qual_id_re = qr{(?> $id_re (?: :: $id_re)* )}xo;
 
 # a list of fully qualified names
-declare $qual_ids_re=qr{(?> $qual_id_re (?: \s*,\s* $qual_id_re)* )}xo;
+declare $qual_ids_re = qr{(?> $qual_id_re (?: \s*,\s* $qual_id_re)* )}xo;
 
 # unqualified name
 declare $unqual_id_re=qr{(?<!::) (?<!\w) $id_re (?! :: )}xo;
@@ -104,10 +110,6 @@ declare $open_balanced_re=qr{ (?: $non_delims (?: \( (?: $balanced_re \) )?+ |
 
 # a piece of code with all quoted strings properly closed
 declare $quote_balanced_re=qr{ $non_quote_re* (?: $anon_quoted_re $non_quote_re* )* }xo;
-
-# an expression in a list; < > are treated as comparison ops, therefore not trying to match them pairwise
-# 1 capturing group
-declare $expression_re=qr{ (?: (?! <) $confined_re | [^,'"()\[\]{}]*+ )+ }xo;
 
 # parameter list in angle brackets, recursively referring to the outer group
 # this is a fragment of a regex, referring to a group outside this string, therefore not defined as qr{}
@@ -195,8 +197,10 @@ declare $statement_start_re=qr{(?: ^ | [;\}] )\s*}x;
 # beginning of a function argument list
 declare $args_start_re=qr{(?'args_start' \s+ | \s*\(\s* )}x;
 
-# beginning of a method argument list
-declare $method_args_start_re=qr{(?'args_start' \s*\(\s* )}x;
+# an expression in a list, like an argument in a function call
+# This pattern tries hard to recognize commas within type expressions,
+# while all other < and > signs being interpreted as comparsion operators
+declare $expression_re=qr{ (?: (?! <) $confined_re | (?> \$$qual_id_re | $type_re ) | [^,'"()\[\]{}]*+ )+ }xo;
 
 # end of a source file
 declare $end_of_source_file="__END__";

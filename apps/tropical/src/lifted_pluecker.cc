@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,25 +30,25 @@ namespace polymake { namespace tropical {
 template <typename Addition>
 Vector<TropicalNumber<Addition> > lifted_pluecker(const Matrix<TropicalNumber<Addition> > &V)
 {
-   const int n(V.rows()), d(V.cols());
-   const int nd_d(Integer::binom(d+n,d));
+   const Int n(V.rows()), d(V.cols());
+   const Int nd_d(Integer::binom(d+n,d));
    Vector<TropicalNumber<Addition> > pi(nd_d);
 
    const sequence all_rows = sequence(0,d+n); // d extra rows plus n given ones
-   int i=0;
+   Int i = 0;
 
    // first merging given and extra rows and then taking them apart again
    // yields the desired ordering of the coefficients of the tropical Pluecker vector
-   for (auto rho = entire(all_subsets_of_k(all_rows,d)); !rho.at_end(); ++rho) {
-      const Set<int> ri(*rho);
-      Set<int> sigma, tau;
-      for (auto rii=entire(ri); !rii.at_end(); ++rii)
+   for (auto rho = entire(all_subsets_of_k(all_rows, d)); !rho.at_end(); ++rho) {
+      Set<Int> sigma, tau;
+      for (auto rii=entire(*rho); !rii.at_end(); ++rii) {
          // take given and extra rows apart
          if (*rii < d)
             tau.push_back(*rii);
          else
             sigma.push_back(*rii-d);
-      pi[i]=tdet(Matrix<TropicalNumber<Addition> >(V.minor(sigma,~tau)));
+      }
+      pi[i] = tdet(Matrix<TropicalNumber<Addition>>(V.minor(sigma, ~tau)));
       ++i;
    }
    return pi;

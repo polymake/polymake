@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -196,7 +196,7 @@ sub execute {
          if (defined (my $i = $object->dictionary->{$prop->key})) {
             $object = $object->contents->[$i];
             if ($prop->flags & Property::Flags::is_multiple) {
-               $object = $object->select_now($prop->index)
+               $object = $object->select_now($prop->index, $scope)
                  or return Rule::Exec::infeasible;
             } elsif ($prop->flags & Property::Flags::is_twin) {
                $object = $object->value;
@@ -226,10 +226,10 @@ sub execute {
 ####################################################################################
 package Polymake::Core::Scheduler::DeputyObject;
 
-# Constructor: (real Object, up, Parent, Property, perm_trigger)
+# Constructor: (real BigObject, up, Parent, Property, perm_trigger)
 use Polymake::Struct (
    [ new => '$;$$$$' ],
-   [ '$real_object' => '#1' ],          # Object  undef if not yet created
+   [ '$real_object' => '#1' ],          # BigObject  undef if not yet created
    [ '$path' => '#2 // new Property::Path(0)' ],
    [ '$parent' => 'weak(#3)' ],
    [ '$property' => '#4 // #1->parent && #1->property' ],
@@ -259,7 +259,7 @@ use Polymake::Struct (
                                 # but get_schedule must produce the chain according to the initial state of the object.
 );
 
-# Sibling constructor for multiple subobject instances: (real Object, 0-th instance DeputyObject, Property::SelectMultiInstance)
+# Sibling constructor for multiple subobject instances: (real BigObject, 0-th instance DeputyObject, Property::SelectMultiInstance)
 use Polymake::Struct (
    [ 'alt.constructor' => 'new_sibling' ],
    [ new => '$$$' ],
@@ -584,12 +584,12 @@ sub weave_preconditions {
 }
 ####################################################################################
 sub execute {           # => number of the failed rule
-   my ($self, $object)=@_;
+   my ($self, $object) = @_;
    my $i=0;
 
    foreach my $rule (@{$self->rules}) {
-      my $rc=$rule->execute($object, 1);
-      $self->run->{$rule}=$rc;
+      my $rc = $rule->execute($object, true);
+      $self->run->{$rule} = $rc;
       if ($rc != Rule::Exec::OK) {
          if ($@ && $rule->flags != Rule::Flags::is_initial) {
             if ($Verbose::rules) {
@@ -847,7 +847,7 @@ sub gather_permutation_rules {
    my $prod_rule=$perm_trigger->rule;
    my $permutation_possible;
 
-   # The fake rule created for Object::copy_permuted does not have body;
+   # The fake rule created for BigObject::copy_permuted does not have body;
    # for it we should keep at least one action, otherwise the permutation will be dropped completely.
    my $remaining_actions=@{$perm_deputy->actions}+defined($perm_trigger->rule->code);
 
@@ -928,7 +928,7 @@ sub gather_initial_rules {
          }
       }
       if ((my $depth = Property::find_first_in_path($input, Property::Flags::in_restricted_spez)) >= 0) {
-         local splice @$input, $depth + 1;
+         local splice @$input, $depth+1;
          my $multi_deputy=$self->deputy_root->navigate_down($self, $self->final, 2, @$input);
          unless ($protected_multi{$multi_deputy}++) {
             my $checker_header = $Verbose::scheduler >= 2 && "specialization checker for " . Property::print_path($input);
@@ -1268,7 +1268,7 @@ sub replay_rules {
       for (($i, $last)=(0, $#{$self->ready}); $i<=$last; ) {
          $rule=$self->ready->[$i];
          if ($rule->flags & Rule::Flags::is_precondition && exists $self->run->{$rule}) {
-            if ($Application::plausibility_checks && $self->run->{$rule} != Rule::Exec::OK) {
+            if ($enable_plausibility_checks && $self->run->{$rule} != Rule::Exec::OK) {
                die "internal error: rule ", $rule->header, " occurs in the 'ready' list although known to have failed";
             }
             push @satisfied, $rule;
@@ -1312,7 +1312,7 @@ sub replay_rules {
    }
 
    # replaying of the previous run finished: forget the already run rules, start producing variants
-   if ($Application::plausibility_checks) {
+   if ($enable_plausibility_checks) {
       if (my @wrong=grep { !exists $self->run->{$_} || $self->run->{$_} != Rule::Exec::OK } @{$self->rules}) {
          die "internal error: unexecuted or failed rules included during replaying phase:",
              (map { "\n  ".$_->header." => ".($self->run->{$_} // "NOT RUN") } @wrong);
@@ -1343,7 +1343,7 @@ sub build_cheapest_chain {
          $rule=$top->ready->[$i];
          if ($rule->flags & Rule::Flags::is_precondition) {
             if (exists $self->run->{$rule}) {
-               if ($Application::plausibility_checks && $self->run->{$rule} != Rule::Exec::OK) {
+               if ($enable_plausibility_checks && $self->run->{$rule} != Rule::Exec::OK) {
                   die "internal error: rule ", $rule->header, " occurs in the 'ready' list although known to have failed";
                }
                push @satisfied, $rule;
@@ -1676,7 +1676,7 @@ sub shorten_input {
 
          if ($input_path->[$i]->flags & Property::Flags::is_produced_as_whole) {
             local with (($_[2] //= new Scope())->locals) {
-               local splice @$input_path, $i + 1;
+               local splice @$input_path, $i+1;
             }
             last;
          }
@@ -1716,16 +1716,17 @@ use Polymake::Struct (
 sub list { map { $_->header } @{$_[0]->rules} }
 
 sub apply {
-   my ($self, $object)=@_;
+   my ($self, $object) = @_;
+   $object->close_pending_transaction;
    if ($object == $self->genesis) {
       foreach my $rule (@{$self->rules}) {
          unless ($rule->flags & (Rule::Flags::is_function | Rule::Flags::is_precondition)) {
-            $rule->execute($object, 0) == Rule::Exec::OK or return;
+            $rule->execute($object, false) == Rule::Exec::OK or return;
          }
       }
    } else {
       foreach my $rule (@{$self->rules}) {
-         $rule->execute($object, 1) == Rule::Exec::OK or return;
+         $rule->execute($object, 2) == Rule::Exec::OK or return;
       }
    }
    1

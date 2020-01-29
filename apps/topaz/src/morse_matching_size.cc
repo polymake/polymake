@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,10 +20,12 @@
 
 namespace polymake { namespace topaz {
 
-int morse_matching_size(perl::Object p)
+using namespace morse_matching_tools;
+
+Int morse_matching_size(BigObject p)
 {
-   const HasseEdgeMap EM = p.give("MATCHING");
-   return EdgeMapSize(EM);
+   const MorseEdgeMap EM = p.give("MATCHING");
+   return count_marked_edges(EM);
 }
 
 Function4perl(&morse_matching_size, "morse_matching_size($)");

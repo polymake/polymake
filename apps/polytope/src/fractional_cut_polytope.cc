@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,13 +29,13 @@ typedef Graph<Undirected> graph_type;
 
 namespace {
 
-Vector<int> cut_vector(const graph_type& G, const Set<int>& cut)
+Vector<Int> cut_vector(const graph_type& G, const Set<Int>& cut)
 {
-   Vector<int> cv(G.edges()+1);
-   cv[0]=1; // homogenizing coordinate
-   int i=1;
-   for (auto e=entire(edges(G));  !e.at_end();  ++e) {
-      const int u(e.from_node()), v(e.to_node());
+   Vector<Int> cv(G.edges()+1);
+   cv[0] = 1; // homogenizing coordinate
+   Int i = 1;
+   for (auto e = entire(edges(G));  !e.at_end();  ++e) {
+      const Int u = e.from_node(), v = e.to_node();
       if ((cut.contains(u) && !cut.contains(v)) || (cut.contains(v) && !cut.contains(u)))
          cv[i] = 1;
       ++i;
@@ -45,21 +45,21 @@ Vector<int> cut_vector(const graph_type& G, const Set<int>& cut)
 
 }
 
-perl::Object fractional_cut_polytope(const graph_type& G)
+BigObject fractional_cut_polytope(const graph_type& G)
 {
    if (!graph::is_connected(G) )
       throw std::runtime_error("cut_polytope: input graph must be connected");
 
-   const int n_nodes=G.nodes();
-   const int n_edges=G.edges();
-   const int n_cuts=(1<<(n_nodes-1)); // one cut/vertex per split of [0..n_nodes-1], including empty set; see Schrijver, Combinatorial Optimization, §75.7.
-   Matrix<int> V(n_cuts,n_edges+1);
+   const Int n_nodes = G.nodes();
+   const Int n_edges = G.edges();
+   const Int n_cuts = 1L << (n_nodes-1); // one cut/vertex per split of [0..n_nodes-1], including empty set; see Schrijver, Combinatorial Optimization, §75.7.
+   Matrix<Int> V(n_cuts, n_edges+1);
 
-   Rows< Matrix<int> >::iterator r=rows(V).begin();
-   bool n_nodes_is_even=!bool(n_nodes%2);
-   const int max_k=n_nodes_is_even? n_nodes/2-1 : n_nodes/2;
+   auto r = rows(V).begin();
+   bool n_nodes_is_even = n_nodes%2 == 0;
+   const Int max_k = n_nodes_is_even ? n_nodes/2-1 : n_nodes/2;
 
-   for (int k=0; k<=max_k; ++k) {
+   for (Int k = 0; k <= max_k; ++k) {
       // each cut considered here has a complement which contains more than half of the nodes
       for (auto ei = entire(all_subsets_of_k(sequence(0,n_nodes),k)); !ei.at_end(); ++ei) {
          *r=cut_vector(G,*ei);
@@ -68,17 +68,17 @@ perl::Object fractional_cut_polytope(const graph_type& G)
    }
    if (n_nodes_is_even) {
       // special treatment for cuts whose size is half of the total size
-      PowerSet<int> half_size_cuts(entire(all_subsets_of_k(sequence(0,n_nodes),n_nodes/2)));
+      PowerSet<Int> half_size_cuts(entire(all_subsets_of_k(sequence(0, n_nodes), n_nodes/2)));
       while (!half_size_cuts.empty()) {
-         Set<int> this_cut=half_size_cuts.front();
-         half_size_cuts-=sequence(0,n_nodes)-this_cut;
-         half_size_cuts-=this_cut;
-         *r=cut_vector(G,this_cut);
+         Set<Int> this_cut = half_size_cuts.front();
+         half_size_cuts -= sequence(0, n_nodes)-this_cut;
+         half_size_cuts -= this_cut;
+         *r = cut_vector(G, this_cut);
          ++r;
       }
    }
 
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.take("VERTICES") << V;
    p.take("N_VERTICES") << n_cuts;
    p.take("CONE_AMBIENT_DIM") << n_edges+1;

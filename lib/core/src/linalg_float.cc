@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,41 +24,41 @@ namespace pm {
 
 Matrix<double> inv(Matrix<double> m)
 {
-   const int dim=m.rows();
-   std::vector<int> row_index(dim);
+   const Int dim = m.rows();
+   std::vector<Int> row_index(dim);
    copy_range(entire(sequence(0, dim)), row_index.begin());
-   Matrix<double> u=unit_matrix<double>(dim);
-   const double epsilon=1e-8;
+   Matrix<double> u = unit_matrix<double>(dim);
+   const double epsilon = 1e-8;
 
-   for (int c=0; c<dim; ++c) {
-      int r=0;
-      double max_pivot=0;
-      for (int rr=c; rr<dim; ++rr) {
-         const double p=abs(m(row_index[rr],c));
+   for (Int c = 0; c < dim; ++c) {
+      Int r = 0;
+      double max_pivot = 0;
+      for (Int rr = c; rr < dim; ++rr) {
+         const double p = abs(m(row_index[rr], c));
          if (p > max_pivot) {
-            r=rr;
-            max_pivot=p;
+            r = rr;
+            max_pivot = p;
          }
       }
       if (max_pivot > epsilon) {
-         double *ppivot=&m(row_index[r],c);
-         const double pivot=*ppivot;
-         double *urow=&u(row_index[r],0);
-         if (r!=c) std::swap(row_index[r],row_index[c]);
+         double* ppivot = &m(row_index[r], c);
+         const double pivot = *ppivot;
+         double* urow = &u(row_index[r], 0);
+         if (r != c) std::swap(row_index[r], row_index[c]);
          if (pivot != 1) {
-            double *e=ppivot;
-            for (int i=c+1; i<dim; ++i) (*++e)/=pivot;
-            for (int i=0; i<=c; ++i) urow[row_index[i]]/=pivot;
+            double* e = ppivot;
+            for (Int i = c+1; i < dim; ++i) (*++e)/=pivot;
+            for (Int i = 0; i <= c; ++i) urow[row_index[i]] /= pivot;
          }
-         for (r=0; r<dim; ++r) {
-            if (r==c) continue;
-            double *e2=&m(row_index[r],c);
-            const double factor=*e2;
+         for (r = 0; r < dim; ++r) {
+            if (r == c) continue;
+            double* e2 = &m(row_index[r], c);
+            const double factor = *e2;
             if (abs(factor) > epsilon) {
-               double *e=ppivot;
-               for (int i=c+1; i<dim; ++i) (*++e2)-=(*++e)*factor;
-               double *urow2=&u(row_index[r],0);
-               for (int i=0; i<=c; ++i) urow2[row_index[i]]-=urow[row_index[i]]*factor;
+               double* e = ppivot;
+               for (Int i = c+1; i < dim; ++i) (*++e2) -= (*++e) * factor;
+               double* urow2 = &u(row_index[r], 0);
+               for (Int i = 0; i <= c; ++i) urow2[row_index[i]] -= urow[row_index[i]] * factor;
             }
          }
       } else {

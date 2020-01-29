@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -34,14 +34,9 @@
 #include <deque>
 
 namespace polymake { namespace topaz {
+namespace morse_matching_tools {
 
-typedef EdgeMap<Directed, int> HasseEdgeMap;
-
-
-//-------------------------------------------------------------------------------------------------------------
-//------------------------------------- Check Morse properties ------------------------------------------------
-//-------------------------------------------------------------------------------------------------------------
-
+using MorseEdgeMap = EdgeMap<Directed, Int>;
 
 /**@brief Recursive function to detect cycles arising from reversing the arcs in @a M.
  * @param M         collection of arcs in Hasse diagram
@@ -67,231 +62,7 @@ typedef EdgeMap<Directed, int> HasseEdgeMap;
  *
  * This function is called, e.g. from @p checkAcyclic.
  */
-//bool checkAcyclicDFS(const HasseDiagram<Set<int>,bool>& M, Array<int>& marked, int v, bool lower, int base)
-template <class EdgeMap>
-bool checkAcyclicDFS(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, const EdgeMap& EM, Array<int>& marked, int v, bool lower, int base)
-{
-   // mark node v as touched
-   marked[v] = base;
-
-   // if @v is on the lower side of a level
-   if (lower)
-   {
-      // check all out-edges (pointing up in the Hasse diagram)
-      for (auto e = M.out_edges(v).begin(); !e.at_end(); ++e)
-      {
-         // if the arc is in the arc set, i.e. reversed (pointing down)
-         if (EM(e.from_node(), e.to_node()))
-         {
-            int source = e.to_node();
-            // if the source-node is in the active tree we found a cycle
-            if (marked[source] == base)
-               return false;
-            else
-            {
-               // if source-node is unmarked recurse
-               if (marked[source] < base)
-               {
-                  if (! checkAcyclicDFS(M, EM, marked, source, false, base) )
-                     return false;
-               }
-            }
-         }
-      }
-   }
-   else // otherwise we are on the upper size of a level
-   {
-      // check all in-edges (pointing down in the Hasse diagram)
-      for (auto e = M.in_edges(v).begin(); !e.at_end(); ++e)
-      {
-         if (! EM(e.from_node(), e.to_node()) )
-         {
-            int target = e.from_node();
-            // if the target-node is in the active tree we found a cycle
-            if (marked[target] == base)
-               return false;
-            else
-            {
-               // if target-node is unmarked recurse
-               if (marked[target] < base)
-               {
-                  if (! checkAcyclicDFS(M, EM, marked, target, true, base) )
-                     return false;
-               }
-            }
-         }
-      }
-   }
-   marked[v] = base + 1;
-   return true;
-}
-
-
-
-
-
-/**@brief Check whether a given solution is acyclic
- * @param M         collection of arcs in Hasse diagram
- * @param marked    marker for DFS-search (node has been visited)
- * @param base      base value for marker (see @c checkAcyclicDFS())
- * @returns @c true if the solution is acyclic
- *
- * We assume that @c marked has been initialized some time ago.
- * @warning @a base is changed!
- */
-template <class EdgeMap>
-bool checkAcyclic(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, const EdgeMap& EM,  Array<int>& marked, int& base)
-{
-   int d = M.rank() - 2;      // do not count empty face and top face
-
-   // check each level in turn
-   for (int k = 0; k < d; ++k) {
-      // increase base
-      base += 2;
-
-      // check each face of dim k
-      for (const auto v : M.nodes_of_rank(k+1)) {
-         assert( v > 0 && v <= (M.nodes()-2) );
-
-         // for each unmarked face
-         if (marked[v] < base) {
-            const bool acyclic = checkAcyclicDFS(M, EM, marked, v, true, base);
-            if (! acyclic)
-               return false;
-         }
-      }
-   }
-   return true;
-}
-
-
-
-
-/**@brief Check whether a given solution is acyclic
- * @param M         collection of arcs in Hasse diagram
- * @param k         dimension of the level to be checked
- * @param marked    marker for DFS-search (node has been visited)
- * @param base      base value for marker (see @c checkAcyclicDFS())
- * @returns @c true if the solution is acyclic
- *
- * We assume that @c marked has been initialized some time ago.
- */
-template <class EdgeMap>
-bool checkAcyclic(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, const EdgeMap& EM, int k, Array<int>& marked, int base)
-{
-   // check each face of dim k
-   for (const auto v : M.nodes_of_rank(k+1)) {
-      assert( v > 0 && v <= (M.nodes()-2) );
-
-      // for each unmarked face
-      if (marked[v] < base) {
-         const bool acyclic = checkAcyclicDFS(M, EM, marked, v, true, base);
-         if (! acyclic)
-            return false;
-      }
-   }
-   return true;
-}
-
-
-
-/**@brief Check whether a given solution is acyclic
- * @param M  collection of arcs in Hasse diagram
- * @returns @c true if the solution is acyclic
- */
-template <class EdgeMap>
-bool checkAcyclic(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, const EdgeMap& EM)
-{
-   int d = M.rank() - 2;      // do not count empty face
-   int n = M.nodes() - 2;    // and top face
-
-   Array<int> marked(n+1);
-   // initialize markers
-   for (int i = 0; i <= n; ++i)
-      marked[i] = 0;
-
-   // for each level in turn
-   int base = -1;
-   for (int k = 0; k < d; ++k) {
-      // increase base
-      base += 2;
-
-      // check each face of dim k
-      for (const auto v : M.nodes_of_rank(k+1)) {
-         assert( (v > 0) && (v <= n) );
-
-         // for each unmarked face
-         if (marked[v] < base) {
-            if (!checkAcyclicDFS(M, EM, marked, v, true, base))
-               return false;
-         }
-      }
-   }
-   return true;
-}
-
-
-
-/**@brief Check whether the given collection of arcs satisfies the matching constraints
- * @param M  collection of arcs in Hasse diagram
- * @returns @c true if the given arc set is a matching
- */
-template <class EdgeMap>
-bool checkMatching(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, const EdgeMap& EM)
-{
-#if POLYMAKE_DEBUG
-   const bool debug_print = perl::get_debug_level() > 1;
-#endif
-
-   const int d = M.rank() - 2;
-
-   // for each level in turn
-   for (int k = 0; k <= d; ++k) {
-      // check each face of dim k
-      for (const auto f : M.nodes_of_rank(k+1)) {
-         int inc = 0;  // count incident arcs
-         if (k > 0) {
-            for (auto e = M.in_edges(f).begin(); !e.at_end(); ++e) {
-               // if arc is in collection, i.e. reverse we have an incident arc
-               if ( EM(e.from_node(), e.to_node()) )
-                  ++inc;
-               // if a node has more than two incident arcs the matching property is violated
-               if (inc >= 2) {
-#if POLYMAKE_DEBUG
-                  if (debug_print) cout << "Matching propery violated for node " << f << "=" << M.face(f) << endl;
-#endif
-                  return false;
-               }
-            }
-         }
-         if (k < d) {
-            for (auto e = M.out_edges(f).begin(); !e.at_end(); ++e) {
-               // if arc is in collection, i.e. reverse we have an incident arc
-               if (EM(e.from_node(), e.to_node()))
-                  ++inc;
-               // if a node has more than two incident arcs the matching property is violated
-               if (inc >= 2) {
-#if POLYMAKE_DEBUG
-                  if (debug_print) cout << "Matching propery violated for node " << f << "=" << M.face(f) << endl;
-#endif
-                  return false;
-               }
-            }
-         }
-      }
-   }
-   return true;
-}
-
-
-
-
-
-
-
-//-------------------------------------------------------------------------------------------------------------
-//------------------------------------- Other functions -------------------------------------------------------
-//-------------------------------------------------------------------------------------------------------------
+bool checkAcyclicDFS(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, const MorseEdgeMap& EM, Array<Int>& marked, Int v, bool lower, Int base);
 
 
 /**@brief Find the critical faces w.r.t the Morse matching in @a M
@@ -300,112 +71,21 @@ bool checkMatching(const graph::ShrinkingLattice<graph::lattice::BasicDecoration
  *
  * On output an element (node) is set to true in the bitset if and only if the face is critical.
  */
-template<class EdgeMap>
-Bitset collectCriticalFaces(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, const EdgeMap& EM)
-{
-   const int d = M.rank() - 2;      // do not count empty face
-   const int n = M.nodes() - 2;    // and top face
-
-   // ensure space
-   Bitset critical(n+1);
-
-   // loop over all levels
-   for (int k = 0; k <= d; ++k) {
-      // pass through all faces of dimension k
-      for (const auto f : M.nodes_of_rank(k+1)) {
-         bool isCritical = true;
-         // if the dimension is larger than 0, we can look at in-arcs
-         if (k > 0) // pass through all in-arcs
-            for (auto e = M.in_edges(f).begin(); !e.at_end() && isCritical; ++e) 
-               // if the arc is in the matching (i.e., reversed), f is not critical
-               if (EM(e.from_node(), e.to_node())) 
-                  isCritical = false;
-         // if the dimension is smaller than d, we can look at out-arcs
-         if (isCritical && k < d)  // pass through all out-arcs
-            for (auto e = M.out_edges(f).begin(); !e.at_end() && isCritical; ++e) 
-               // if the arc is in the matching (i.e., reversed), f is not critical
-               if (EM(e.from_node(), e.to_node()))  
-                  isCritical = false;
-         if (isCritical)
-            critical += f;
-      }
-   }
-   return critical;
-}
-
-
-
-
-
-
-
-/**@brief Find the critical faces w.r.t the Morse matching in @a M
- * @param M         Morse matching in Hasse diagram
- * @returns set containing critical faces
- */
-template <class EdgeMap>
-PowerSet<int> findCriticalFaces(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, const EdgeMap& EM)
-{
-   int d = M.rank() - 2;      // do not count empty face
-
-   // ensure space
-   PowerSet<int> critical;
-
-   // loop over all levels
-   for (int k = 0; k <= d; ++k)
-   {
-      // pass through all faces of dimension k
-      for (const auto f : M.nodes_of_rank(k+1)) {
-         bool isCritical = true;
-         // if the dimension is larger than 0, we can look at in-arcs
-         if (k > 0)
-         {
-            // pass through all in-arcs
-            for (auto e = M.in_edges(f).begin(); !e.at_end(); ++e)
-            {
-               // if the arc is in the matching (i.e., reversed), f is not critical
-               if (EM(e.from_node(), e.to_node()))
-               {
-                  isCritical = false;
-                  break;
-               }
-            }
-         }
-         // if the dimension is smaller than d, we can look at out-arcs
-         if (isCritical && k < d) {
-            // pass through all out-arcs
-            for (auto e = M.out_edges(f).begin(); !e.at_end(); ++e) {
-               // if the arc is in the matching (i.e., reversed), f is not critical
-               if (EM(e.from_node(), e.to_node())) {
-                  isCritical = false;
-                  break;
-               }
-            }
-         }
-         if (isCritical)
-            critical += M.face(f);
-      }
-   }
-   return critical;
-}
-
-
-
+Bitset collectCriticalFaces(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, const MorseEdgeMap& EM);
 
 
 /**@brief Compute the size of an EdgeMap
  * @param EM the EdgeMap
  * @returns the number of the arcs marked with @c true
  */
-template <class EdgeMap>
-int EdgeMapSize(const EdgeMap& EM)
+inline
+Int count_marked_edges(const MorseEdgeMap& EM)
 {
-   int size = 0;
+   Int size = 0;
    for (auto e = entire(EM); !e.at_end(); ++e)
       if (*e) ++size;
    return size;
 }
-
 
 
 /**@class CompareByProperty
@@ -430,99 +110,9 @@ private:
 };
 
 
-
-
-
-/**@brief Compute lexicographic ordering of the edges
- * @param M            subset of the arcs
- * @param order        output: order of arcs
- * @param bottomLevel  lowest level
- * @param topLevel     hightest level
- *
- * - We loop through each level, beginning at the top
- * - We sort the faces in a level lexicographically.
- * - For each face @a F in the lexicographic order,
- *   we sort its facets lexicographically and insert
- *   the corresponding arc numbers into the order.
- *
- * @a order is a std::vector, because we want to change its size dynamically.
- * Might be replaced by @c Array and precomputation of the size.
- */
-template <class vect>
-void orderEdgesLex(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, vect& order, int bottomLevel, int topLevel)
-{
-   int d = M.rank() - 2;      // do not count empty face
-
-   order.clear();
-
-   // create edge-number map
-   Map<std::pair<int,int>, int> E;   // map to store numbers for edges
-
-   int m = 0;
-   for (int k = 0; k < d; ++k)
-      for (const auto f : M.nodes_of_rank(k+1))
-         for (auto e = M.out_edges(f).begin(); !e.at_end(); ++e)
-            E[std::make_pair(e.from_node(), e.to_node())] = m++;
-
-   // loop over levels, starting from the top most
-   for (int k = topLevel; k >= bottomLevel; --k) {
-      // collect all nodes of dimension k
-      std::vector<Set<int> > FS;    // vertex sets of faces
-      std::vector<int> FN;          // face numbers
-      std::vector<int> index;       // indices to sort
-      const int n_nodes = M.nodes_of_rank(k+1).size();
-      FS.reserve(n_nodes); FN.reserve(n_nodes); index.reserve(n_nodes);
-      int i = 0;
-      for (const auto f : M.nodes_of_rank(k+1)) {
-         const Set<int>& F = M.face(f);  // get vertex set corresponding to face
-         FS.push_back(F);          // store set and
-         FN.push_back(f);         // face number
-         index.push_back(i++);
-      }
-
-      // sort
-      CompareByProperty<int,std::vector<Set<int> > > cmp(FS);
-      std::sort(index.begin(), index.end(), cmp);
-
-      // pass through faces of dim k in lexicographic order
-      std::vector<int>::const_iterator fit, fend = index.end();
-      for (fit = index.begin(); fit != fend; ++fit)
-      {
-         const Set<int> F = FS[*fit];   // get current face
-
-         // collect neighbors of F
-         std::vector<Set<int> > N;
-         std::vector<int> EN;
-         std::vector<int> index2;
-         const int n_edges = M.in_edges(FN[*fit]).size();
-         N.reserve(n_edges); EN.reserve(n_edges); index2.reserve(n_edges);
-         int l = 0;
-         for (auto e = M.in_edges(FN[*fit]).begin(); !e.at_end(); ++e)
-         {
-            const Set<int> S = M.face(e.from_node());   // get vertex set corr. to neighbor
-            N.push_back(S);                       // store it
-            EN.push_back(E[std::make_pair(e.from_node(), e.to_node())]);  // store edge number
-            index2.push_back(l++);
-         }
-         
-         // sort
-         CompareByProperty<int,std::vector<Set<int> > > Cmp(N);
-         std::sort(index2.begin(), index2.end(), Cmp);
-
-         /// pass through neighbors in lexicographic order
-         std::vector<int>::const_iterator it, iend = index2.end();
-         for (it = index2.begin(); it != iend; ++it)
-            order.push_back(EN[*it]);
-      }
-   }
-}
-
-
-
 //-------------------------------------------------------------------------------------------------------------
 //------------------------------------- Greedy Algorithm ------------------------------------------------------
 //-------------------------------------------------------------------------------------------------------------
-
 
 
 /**@brief Compute a Morse matching by a simple greedy heuristic
@@ -533,25 +123,25 @@ void orderEdgesLex(const graph::ShrinkingLattice<graph::lattice::BasicDecoration
  * @note @a varOrder can contain a subset of the arc indices, but
  * @a varLevel stores the level of @b all arcs.
  */
-template <class LevelMap, class Iterator>
-int greedyHeuristic(graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, HasseEdgeMap& EM, const LevelMap& varLevel, Iterator orderIt, Iterator orderEnd)
+template <typename LevelMap, typename Iterator>
+Int greedyHeuristic(graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, EdgeMap<Directed, Int>& EM, const LevelMap& varLevel, Iterator orderIt, Iterator orderEnd)
 {
-   using HasseDiagramOutConstIterator = Graph<Directed>::out_edge_list::const_iterator ;
+   using HasseDiagramOutConstIterator = Graph<Directed>::out_edge_list::const_iterator;
 
-   int d = M.rank() - 2;
-   int n = M.nodes() - 2;
-   int size = 0;
-   int m = varLevel.size();
+   const Int d = M.rank()-2;
+   const Int n = M.nodes()-2;
+   Int size = 0;
+   Int m = varLevel.size();
 
-   Array<bool> matched(n+1);
-   Array<int> marked(n+1);
+   std::vector<bool> matched(n+1);
+   Array<Int> marked(n+1);
    Array<HasseDiagramOutConstIterator> V(m);
 
    // init solution to the empty set and collect edge iterators
-   for (int i = 0, k = 0; k < d; ++k) {
+   for (Int i = 0, k = 0; k < d; ++k) {
       for (const auto f : M.nodes_of_rank(k+1)) {
          for (auto e = M.out_edges(f).begin(); !e.at_end(); ++e) {
-            EM(e.from_node(), e.to_node()) = false;
+            EM[*e] = false;
             V[i] = e;
             ++i;
             assert(i <= m);
@@ -560,19 +150,19 @@ int greedyHeuristic(graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M,
    }
 
    // init to no matched or marked faces
-   for (int i = 0; i <= n; ++i)
+   for (Int i = 0; i <= n; ++i)
    {
       matched[i] = false;
       marked[i] = 0;
    }
 
-   int base = 1;
+   Int base = 1;
    for (; orderIt != orderEnd; ++orderIt)
    {
-      int var = *orderIt;
+      Int var = *orderIt;
       HasseDiagramOutConstIterator e = V[var];
-      int source = e.from_node();
-      int target = e.to_node();
+      Int source = e.from_node();
+      Int target = e.to_node();
 
       if ((! matched[source]) && (! matched[target]) )
       {
@@ -596,16 +186,9 @@ int greedyHeuristic(graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M,
    return size;
 }
 
-
-
-
-
-
-
 //-------------------------------------------------------------------------------------------------------------
 //------------------------------------- Find alternating paths ------------------------------------------------
 //-------------------------------------------------------------------------------------------------------------
-
 
 
 /**@brief  Depth first search to find alternating paths
@@ -617,90 +200,7 @@ int greedyHeuristic(graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M,
  *
  * This is a modified DFS, see processAlternatingPaths for a description.
  */
-template <class EdgeMap>
-void findAlternatingPathDFS(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, const EdgeMap& EM, Array<int>& marked, Array<int>& p, int v, bool lower)
-{
-   marked[v] = 1;
-   if (lower)  // if we are one the lower side of a level
-   {
-      for (auto e = M.out_edges(v).begin(); !e.at_end(); ++e)
-      {
-         if (EM(e.from_node(), e.to_node()))
-         {
-            int u = e.to_node();
-            if (marked[u] == 0)
-            {
-               p[u] = v;
-               findAlternatingPathDFS(M, EM, marked, p, u, false);
-            }
-            else
-               ++(marked[u]);
-         }
-      }
-   }
-   else
-   {
-      for (auto e = M.in_edges(v).begin(); ! e.at_end(); ++e)
-      {
-         if (! EM(e.from_node(), e.to_node()) )
-         {
-            int u = e.from_node();
-            if (marked[u] == 0)
-            {
-               p[u] = v;
-               findAlternatingPathDFS(M, EM, marked, p, u, true);
-            }
-            else
-               ++(marked[u]);
-         }
-      }
-   }
-}
-
-
-
-
-/**@brief Exchange matching arcs on alternating paths
- * @param M     Morse matching in Hasse diagram
- * @param p     stores the DFS-tree edges
- * @param v     start node
- * @param v     end node
- * @param size  size of the matching
- */
-template <class EdgeMap>
-void exchangePath(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, EdgeMap& EM, const Array<int>& p, int u, int v, int& size)
-{
-   int w = v;   // start node
-   do
-   {
-      int ww = p[w];
-      if ( M.edge_exists(w, ww) )
-      {
-         const bool r = EM(w,ww);
-         EM(w,ww) = !r;
-         if ( r )
-            --size;
-         else
-            ++size;
-      }
-      else
-      {
-         const bool r = EM(ww,w);
-         EM(ww,w) = !r;
-         if ( r )
-            --size;
-         else
-            ++size;
-      }
-      w = ww;
-   }
-   while (w != u);
-}
-
-
-
-
-
+void findAlternatingPathDFS(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, const MorseEdgeMap& EM, Array<Int>& marked, Array<Int>& p, Int v, bool lower);
 
 
 /**@brief Improve a Morse matching by canceling critical faces along alternating paths.
@@ -745,296 +245,15 @@ void exchangePath(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>
  *
  * Note that the result may depend on the order of the paths flipped.
  */
-template <class EdgeMap>
-void processAlternatingPaths(graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, EdgeMap& EM, int& size, int bottomLevel, int topLevel)
-{
-#if POLYMAKE_DEBUG
-   const bool debug_print = perl::get_debug_level() > 1;
-#endif
-   int n = M.nodes() - 2;
-   int cnt = 0; // number of alternating paths
 
-   // compute critical faces
-   Bitset critical = collectCriticalFaces(M, EM);
-
-   // find alternating paths
-   Array<int> marked(n+1);
-   Array<int> dfsTree(n+1);
-   for (int k = bottomLevel; k < topLevel; ++k) {
-      // check only nodes at the upper level
-      for (const auto u : M.nodes_of_rank(k+2)) {
-         if (critical.contains(u)) {
-            for (int i = 0; i <= n; ++i) {
-               dfsTree[i] = -1;
-               marked[i] = 0;
-            }
-
-            findAlternatingPathDFS(M, EM, marked, dfsTree, u, false);
-
-            // check whether we found a path: lower part
-            for (const auto v : M.nodes_of_rank(k+1)) {
-               // if ( (v != u) && critical.contains(v) && (marked[v] == 1) )
-               if (critical.contains(v) && (marked[v] == 1)) {
-                  // check whether path contains only nodes visited once
-                  int w = v;
-                  do {
-                     w = dfsTree[w];
-                     assert( w >= 0 );
-                     if ( marked[w] != 1 )
-                        break;
-                  }
-                  while (w != u);
-
-                  if (w == u) {
-                     // exchange path
-                     exchangePath(M, EM, dfsTree, u, v, size);
-                     ++cnt;
-
-                     critical -= u;  // remove u and v
-                     critical -= v;
-                     break;
-                  }
-               }
-            }
-         }
-      }
-   }
-#if POLYMAKE_DEBUG
-   if (debug_print) cout << "Changed alternating paths: " << cnt << endl;
-#endif
-}
-
-
-//-------------------------------------------------------------------------------------------------------------
-//------------------------------------- Compute Maximum Forests -----------------------------------------------
-//-------------------------------------------------------------------------------------------------------------
-
-
-
-/**@brief Modified Prim algorithm to find a maximum forest in a graph
- * @param G        graph
- * @param p        map to store edge to predecessor
- * @param visited  visted map
- *
- * We do not care about weights, we just want to produce an arbitrary spanning forest.
- *
- * - visited = -1 :  node deleted
- * - visited = 0  :  node not visited
- * - visited = 1  :  node visited and not root in the forest
- * - visited = 2  :  node visited and root in the forest
- *
- * The map @a p stores the predecessor of a node. Its type must be
- * equal to the type stored on each edge. The map should provide
- * operator[].
- *
- * @todo Use concept checks to guarantee that the type stored on each edge is
- *       the same as the one store in the predecessor map.
- *
- * @see completeToBottomLevel(), completeToTopLevel()
- */
-template <class Graph, class EdgeMap, class PMap>
-void findMaximumForest(const Graph& G, const EdgeMap& EM, PMap& p, Array<int>& visited)
-{
-   typedef typename Graph::out_edge_list::const_iterator GraphOutConstIterator;
-
-   // initialize visited:
-   for (int i = 0; i < G.nodes(); ++i)
-      visited[i] = 0;
-
-   // search for start vertex and then start BFS iteration
-   for (int start = 0; start < G.nodes(); ++start)
-   {
-      if ( visited[start] == 0 )   // if vertex has not be seen so far
-      {
-         visited[start] = 2;   // mark vertex as root
-         std::deque<int> Q;
-
-         // initialize edges from start vertex
-         for (GraphOutConstIterator e = G.out_edges(start).begin(); !e.at_end(); ++e)
-         {
-            const int w = e.to_node();
-            if ( visited[w] == 0 )
-            {
-               p[w] = EM(e.from_node(), e.to_node());
-               Q.push_back(w);
-            }
-         }
-
-         // start BFS iterations
-         while (! Q.empty() )
-         {
-            const int v = Q.front();
-            Q.pop_front();
-            visited[v] = 1;
-
-            for (GraphOutConstIterator e = G.out_edges(v).begin(); !e.at_end(); ++e)
-            {
-               const int w = e.to_node();
-               if ( visited[w] == 0 )
-               {
-                  p[w] = EM(e.from_node(), e.to_node());
-                  Q.push_back(w);
-               }
-            }
-         }
-      }
-   }
-}
-
-
-
-
-
-/**@brief Modified Prim algorithm to find a maximum forest in a graph, first trying to included marked nodes
- * @param G        graph
- * @param marked   map to mark vertices
- * @param p        map to store edge to predecessor
- * @param visited  visted map
- *
- * This function is similar to findMaximumForest(), but first tries to include nodes that are
- * marked by @a marked.
- *
- * We do not care about weights, we just want to produce an arbitrary spanning forest.
- *
- * - visited = -1 :  node deleted
- * - visited = 0  :  node not visited
- * - visited = 1  :  node visited and not root in the forest
- * - visited = 2  :  node visited and root in the forest
- *
- * The map @a p stores the predecessor of a node. Its type must be
- * equal to the type stored on each edge. The map should provide
- * operator[].
- *
- * @todo Use concept checks to guarantee that the type stored on each edge is
- *       the same as the one store in the predecessor map.
- *
- * @see completeToBottomLevel(), completToTopLevel()
- */
-template <class Graph, class EdgeMap, class PMap, class MarkedMap>
-void findMaximumForestMarked(const Graph& G, const EdgeMap& EM, MarkedMap& marked, PMap& p, Array<int>& visited)
-{
-   typedef typename Graph::out_edge_list::const_iterator GraphOutConstIterator;
-
-   // initialize visited:
-   for (int i = 0; i < G.nodes(); ++i)
-      visited[i] = 0;
-
-   // first check for marked nodes
-   for (int start = 0; start < G.nodes(); ++start)
-   {
-      if ( visited[start] == 0 && marked[start] )   // if loop is not visited
-      {
-         visited[start] = 2;
-         std::deque<int> Q;
-
-         // initialize edges from start vertex
-         for (GraphOutConstIterator e = G.out_edges(start).begin(); !e.at_end(); ++e)
-         {
-            const int w = e.to_node();
-            if ( visited[w] == 0 )
-            {
-               p[w] = EM(e.from_node(), e.to_node());
-               Q.push_back(w);
-            }
-         }
-
-         // start BFS iterations
-         while (! Q.empty() )
-         {
-            const int v = Q.front();
-            Q.pop_front();
-            visited[v] = 1;
-
-            for (GraphOutConstIterator e = G.out_edges(v).begin(); !e.at_end(); ++e)
-            {
-               const int w = e.to_node();
-               if ( visited[w] == 0 )
-               {
-                  p[w] = EM(e.from_node(), e.to_node());
-                  Q.push_back(w);
-               }
-            }
-         }
-      }
-   }
-
-   // search for start vertex and then start BFS iteration
-   for (int start = 0; start < G.nodes(); ++start)
-   {
-      if ( visited[start] == 0 )   // if vertex has not be seen so far
-      {
-         visited[start] = 2;   // mark vertex as root
-         std::deque<int> Q;
-
-         // initialize edges from start vertex
-         for (GraphOutConstIterator e = G.out_edges(start).begin(); !e.at_end(); ++e)
-         {
-            const int w = e.to_node();
-            if ( visited[w] == 0 )
-            {
-               p[w] = EM(e.from_node(), e.to_node());
-               Q.push_back(w);
-            }
-         }
-
-         // start BFS iterations
-         while (! Q.empty() )
-         {
-            const int v = Q.front();
-            Q.pop_front();
-            visited[v] = 1;
-
-            for (GraphOutConstIterator e = G.out_edges(v).begin(); !e.at_end(); ++e)
-            {
-               const int w = e.to_node();
-               if ( visited[w] == 0 )
-               {
-                  p[w] = EM(e.from_node(), e.to_node());
-                  Q.push_back(w);
-               }
-            }
-         }
-      }
-   }
-}
-
-
-
-
+void processAlternatingPaths(graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, MorseEdgeMap& EM, Int& size, Int bottomLevel, Int topLevel);
 
 //-------------------------------------------------------------------------------------------------------------
 //------------------------------------- Complete Solution -----------------------------------------------------
 //-------------------------------------------------------------------------------------------------------------
 
-template <class Graph, class EdgeMap>
-void make_edges_in_Gamma(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, const HasseEdgeMap& EM, const Map<int,int>& FTON, Graph& Gamma, EdgeMap& edge_map_Gamma)
-{
-   for (const auto f : M.nodes_of_rank(2)) { // iterate over all 1-faces of the complex
-      bool is_unmatched_edge (true);
-      for (auto e = M.out_edges(f).begin(); !e.at_end() && is_unmatched_edge; ++e) { 
-         assert(M.rank(e.to_node()) == 3); // Assuming that out_edges go to the 2-skeleton
-         if (EM(e.from_node(), e.to_node())) 
-            is_unmatched_edge = false; // if a 1-face is matched to a 2-face, it doesn't count
-      }
-      if (is_unmatched_edge) {
-         const auto& e = M.in_adjacent_nodes(f);
-         assert(e.size()==2);
-         const int v1 = e.front(), v2 = e.back();
-
-         Gamma.edge(FTON[v1], FTON[v2]);
-         edge_map_Gamma(FTON[v1], FTON[v2]) = f;
-      }
-   }
-}
-
-template <class EdgeMap>
-void remove_matching_from_1_skeleton(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, EdgeMap& EM)
-{
-   for (const auto n : M.nodes_of_rank(1))
-      for (auto e = M.out_edges(n).begin(); !e.at_end(); ++e)
-         EM(e.from_node(), e.to_node()) = false;
-}
-
+void make_edges_in_Gamma(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, const MorseEdgeMap& EM,
+                         const Map<Int, Int>& FTON, Graph<Undirected>& Gamma, EdgeMap<Undirected, Int>& edge_map_Gamma);
 
 /**@brief Complete the Morse matching to the bottom level by a maximum forest computation
  * @param M   Morse matching
@@ -1053,88 +272,7 @@ void remove_matching_from_1_skeleton(const graph::ShrinkingLattice<graph::lattic
  * Currently we assume that the complex is connected. It follows that the graph
  * is connected as well (see Joswig & Pfetsch [2005]).
  */
-template <class _EdgeMap>
-void completeToBottomLevel(graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, _EdgeMap& EM)
-{
-   // find critical faces of best_solution_
-   Bitset critical = collectCriticalFaces(M, EM);
-#if POLYMAKE_DEBUG
-   const bool debug_print = perl::get_debug_level() > 1;
-
-   if (debug_print) {
-      cout << "critical faces: " << critical << endl;
-      for (auto c = entire(critical); !c.at_end(); ++c)
-         cout << M.face(*c) << " ";
-      cout << endl;
-   }
-#endif
-
-   // build helper graph
-   Graph<Undirected> Gamma;
-   NodeMap<Undirected, int> node_map_Gamma(Gamma);
-   EdgeMap<Undirected, int> edge_map_Gamma(Gamma);
-
-   // to translate between face indices and nodes of the graph:
-   Map<int, int> FTON;
-
-   // create nodes of the graph ( = vertices (0-faces) of complex )
-   for (const auto f : M.nodes_of_rank(1)) {
-      const int v = Gamma.add_node();  // add 1-face
-      node_map_Gamma[v] = f;
-      FTON[f] = v;
-   }
-
-   // create edges (arising from 1-faces in the complex)
-   make_edges_in_Gamma(M, EM, FTON, Gamma, edge_map_Gamma);
-
-#if POLYMAKE_DEBUG
-   if (debug_print) {
-      cout << "Gamma: " << Gamma << endl
-           << "edge_map_Gamma: " << edge_map_Gamma << endl;
-   }
-#endif
-
-   // check whether graph is really connected (not strictly necessary!)
-#if POLYMAKE_DEBUG
-   if (debug_print) cout << "is graph connected: " << graph::is_connected(Gamma) << endl;
-#endif
-   assert( graph::is_connected(Gamma) );
-
-   // prepare computation of spanning forest
-   int numNodes = Gamma.nodes();
-   Array<int> visited(numNodes);
-   Array<int> p(numNodes);
-
-   findMaximumForest(Gamma, edge_map_Gamma, p, visited);
-
-#if POLYMAKE_DEBUG
-   if (debug_print) {
-      cout << "visited: " << visited << endl
-           << "p: " << p << endl
-           << "faces of p: ";
-      for (int i=0; i<numNodes; ++i)
-         cout << M.face(p[i]) << " ";
-      cout << endl;
-   }
-#endif
-
-   remove_matching_from_1_skeleton(M, EM);
-
-   // now add corresponding arcs to the matching
-   for (int i = 0; i < numNodes; ++i) {
-      assert( visited[i] != 0);
-      // if vertex is in the forest, but not the root
-      if (visited[i] == 1) {
-         const int fnum = p[i];       // index of 1-face in complex
-         const int vnum = node_map_Gamma[i];  // index of 0-face in complex
-         EM(vnum, fnum) = true;
-      }
-   }
-}
-
-
-
-
+void completeToBottomLevel(graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, MorseEdgeMap& EM);
 
 
 /**@brief Complete the Morse matching to the top level by a maximum forest computation
@@ -1152,90 +290,9 @@ void completeToBottomLevel(graph::ShrinkingLattice<graph::lattice::BasicDecorati
  * - When completing the matching, the arcs corresponding to loops are added.
  *
  */
-template <class _EdgeMap>
-void completeToTopLevel(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, _EdgeMap& EM)
-{
-   int d = M.rank() - 2;
+void completeToTopLevel(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, MorseEdgeMap& EM);
 
-   // find critical faces of best_solution_
-   Bitset critical = collectCriticalFaces(M, EM);
-   
-   // build helper graph
-   Graph<Directed> G;
-   NodeMap<Directed, int> node_map_G(G);
-   EdgeMap<Directed, int> edge_map_G(G);
-
-   // to translate between face indices and nodes of the graph:
-   Map<int, int> FTON;
-
-   // to store loops
-   std::vector<bool> loop;
-
-   // create nodes of the graph ( = vertices (d-faces) of complex )
-   for (const auto f : M.nodes_of_rank(d+1)) {
-      int v = G.add_node();  // add d-face
-      node_map_G[v] = f;
-      FTON[f] = v;
-      loop.push_back(false);   // assume that node numbers a consecutive
-   }
-
-   // create edges (arising from 1-faces in the complex)
-   for (const auto f : M.nodes_of_rank(d)) {
-      if (critical.contains(f)) {
-         // find the two nodes incident to the edge
-         int v1 = -1;
-         int v2 = -1;
-         for (auto e = M.out_edges(f).begin(); !e.at_end(); ++e) {
-            if (v1 == -1) {
-               v1 = e.to_node();
-            } else {
-               assert( v2 == -1);
-               v2 = e.to_node();
-            }
-         }
-         assert(v1 != -1);
-
-         // either produce an edge or a loop:
-         if (v2 != -1) {
-            G.edge(FTON[v1], FTON[v2]);
-            edge_map_G(FTON[v1], FTON[v2]) = f;
-         } else
-            loop[FTON[v1]] = true;   // store that the d-face corr. to a loop
-      }
-   }
-
-   // prepare computation of spanning forest
-   const int numNodes = G.nodes();
-   Array<int> visited(numNodes);
-   Array<int> p(numNodes);
-
-   findMaximumForestMarked(G, edge_map_G, loop, p, visited);
-
-   // now add corresponding arcs to the matching
-   for (int i = 0; i < numNodes; ++i)
-   {
-      assert( visited[i] != 0);
-      // if vertex is in the forest or the root and a loop
-      if ( visited[i] == 1 || (visited[i] == 2 && loop[i]) )
-      {
-         int rnum = p[i];       // index of (d-1)-face in complex
-         int fnum = node_map_G[i];  // index of d-face in complex
-         EM(rnum, fnum) = true;
-      }
-   }
-}
-
-template <class EdgeMap>
-void print_reversed_edges(const graph::ShrinkingLattice<graph::lattice::BasicDecoration>& M, const EdgeMap& EM)
-{
-   cout << "critical Morse edges:\n";
-   for (auto e = entire(edges(M.graph())); !e.at_end(); ++e)
-      if (EM(e.from_node(), e.to_node()))
-         cout << "(" << M.face(e.from_node()) << "," << M.face(e.to_node()) << ")";
-   cout << endl;
-}
-
-} }
+} } }
 
 #endif // POLYMAKE_TOPAZ_MORSE_MATCHING_TOOLS_H
     

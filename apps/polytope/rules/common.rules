@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -39,9 +39,9 @@ method construct(Cone) {
       }
   }
   if ( $already_homogeneous ) {
-      Polymake::Core::Object::new_copy($proto, $cone);
+      Polymake::Core::BigObject::new_copy($proto, $cone);
   } else {
-      Polymake::Core::Object::new_filled($proto, $cone->name, CONE_AMBIENT_DIM=>$cone->CONE_AMBIENT_DIM, INEQUALITIES=>$cone->FACETS, EQUATIONS=>$cone->LINEAR_SPAN);
+      Polymake::Core::BigObject::new_filled($proto, $cone->name, CONE_AMBIENT_DIM=>$cone->CONE_AMBIENT_DIM, INEQUALITIES=>$cone->FACETS, EQUATIONS=>$cone->LINEAR_SPAN);
   }
 }
 

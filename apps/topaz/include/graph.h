@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,11 +28,11 @@ namespace polymake { namespace topaz {
 template <typename Complex>
 Graph<> vertex_graph(const Complex& C)
 {
-   const PowerSet<int> OSK=k_skeleton(C,1);
-   const Set<int> V = accumulate(OSK, operations::add());
+   const PowerSet<Int> OSK = k_skeleton(C, 1);
+   const Set<Int> V = accumulate(OSK, operations::add());
 
    Graph<> G(V.back()+1);
-   for (auto c_it=entire(OSK); !c_it.at_end(); ++c_it)
+   for (auto c_it = entire(OSK); !c_it.at_end(); ++c_it)
       if (c_it->size() == 2)  // is edge
          G.edge(c_it->front(), c_it->back());
 

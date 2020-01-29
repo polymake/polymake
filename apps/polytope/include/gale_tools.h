@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,11 +28,11 @@ Matrix<E> balance(const GenericMatrix<TMatrix, E>& G_arg)
    // of vectors has the origin as barycenter. To do this, we
    // exhaustively check all d-tuples of vectors for feasibility.
    Matrix<E> G (G_arg);
-   const int n = G.rows(), d = G.cols();
+   const Int n = G.rows(), d = G.cols();
    Vector<E> coeffs;
    bool success (false);
    for (auto r = entire(all_subsets_of_k(sequence(0,n), d)); !r.at_end() && !success; ++r) {
-      Set<int> comp (sequence(0,n)), rset(*r);
+      Set<Int> comp (sequence(0,n)), rset(*r);
       comp -= rset;
       const Vector<E> mbarycenter = - ones_vector<E>(comp.size()) * G.minor(comp,All);
       try {

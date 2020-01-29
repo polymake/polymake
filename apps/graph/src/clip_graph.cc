@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -47,24 +47,24 @@ Vector<Rational> intersect(const Vector<Rational>& u, const Vector<Rational>& v,
 }
 }
 
-perl::Object clip_graph(const Graph<>& G, const Matrix<Rational>& V, const Matrix<Rational>& BB)
+BigObject clip_graph(const Graph<>& G, const Matrix<Rational>& V, const Matrix<Rational>& BB)
 {
-   const int n=V.rows();
+   const Int n = V.rows();
    Graph<> truncG(G);  // copy the graph information in order to change it later
    NodeMap< Undirected,Vector<Rational> > coords(truncG);
 
    // check which vertices satisfy all the inequalities of the bounding box; note that the rays must be sorted out, too
    Bitset valid(n);
-   for (int i=0; i<n; ++i) {
-      coords[i]=V[i];
-      if (V(i,0) != 0 && find_in_range_if(entire(BB*V[i]), polymake::operations::negative()).at_end())
+   for (Int i = 0; i < n; ++i) {
+      coords[i] = V[i];
+      if (V(i, 0) != 0 && find_in_range_if(entire(BB*V[i]), polymake::operations::negative()).at_end())
          valid+=i;
    }
 
-   for (int i=0; i<n; ++i)
+   for (Int i = 0; i < n; ++i)
       if (!valid.contains(i)) {
          for (auto e=G.out_edges(i).begin(); !e.at_end(); ++e) {
-            const int j=e.to_node();
+            const Int j = e.to_node();
             if (valid.contains(j)) {
                auto ineq_it=entire(rows(BB));
                while (!ineq_it.at_end() && (*ineq_it)*V[i]>=0) ++ineq_it;
@@ -73,7 +73,7 @@ perl::Object clip_graph(const Graph<>& G, const Matrix<Rational>& V, const Matri
                for (++ineq_it; !ineq_it.at_end(); ++ineq_it)
                   if ((*ineq_it)*V[i]<0)
                      assign_min(mu, mu_intersect(V[i],V[j],*ineq_it));
-               const int new_node=truncG.add_node();
+               const Int new_node = truncG.add_node();
                coords[new_node] = intersect(V[i],V[j],mu);
                truncG.edge(j,new_node);
             }
@@ -83,7 +83,7 @@ perl::Object clip_graph(const Graph<>& G, const Matrix<Rational>& V, const Matri
 
    truncG.squeeze();
    
-   perl::Object GG("GeometricGraph");
+   BigObject GG("GeometricGraph");
    GG.take("ADJACENCY") << truncG;
    GG.take("COORDINATES") << coords;
    return GG;

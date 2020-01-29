@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -37,7 +37,7 @@ Map<Rational, Rational> sum_of_square_roots_naive(const Array<Rational>& a)
    auto a1 = entire(sorted_a);
    auto a2 = a1;
    while (!a2.at_end()) {
-      int multiplicity(1); 
+      Int multiplicity = 1; 
       ++a2;
       while (!a2.at_end() && *a2 == *a1) { // how many times does the entry *a1 repeat?
          ++multiplicity;

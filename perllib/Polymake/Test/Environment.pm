@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -40,23 +40,13 @@ use Polymake::Struct (
    '@skipped',
    '@random_failed',
    '@failed',
-   '%big_types',
-   '%validation_groups',
    [ '$save_autoflush' => 'undef' ],
-   [ '$json_codec' => 'undef' ],
+   '%schemas',
 );
 
 sub new {
    my $self=&_new;
    my ($scope)=@_;
-
-   if ($self->validate) {
-      Core::XMLfile::enforce_validation($scope);
-      $self->json_codec = new JSON;
-   } else {
-      Core::XMLfile::suppress_validation($scope);
-   }
-   Core::XMLfile::reject_unknown_properties($scope);
 
    if (defined $self->shuffle_seed) {
       require List::Util;
@@ -69,6 +59,8 @@ sub new {
    }
 
    local with($scope->locals) {
+      local $Core::Serializer::reject_unknown_properties = true;
+
       # suppress printing credit notes
       local $Polymake::User::Verbose::credits=0;
 
@@ -108,18 +100,16 @@ sub DESTROY {
 }
 
 sub start_testsuite {
-   my ($self, $jenkins_report, $app_name, $validation)=@_;
+   my ($self, $jenkins_report, $app_name)=@_;
    if (length($jenkins_report)) {
-      my $report_file="${jenkins_report}_${app_name}".($validation ? "_validation" : "").".xml";
+      require XML::Writer;
+      my $report_file = "${jenkins_report}_${app_name}.xml";
       open my $report_fh, ">", $report_file or die "can't create $report_file: $!\n";
       binmode $report_fh, ":utf8";
-      $self->report_writer=new XML::Writer(OUTPUT => $report_fh, NAMESPACES => 0, DATA_MODE => 1, DATA_INDENT => 2, ENCODING => 'utf-8', UNSAFE => 0);
+      $self->report_writer = new XML::Writer(OUTPUT => $report_fh, NAMESPACES => 0, DATA_MODE => 1, DATA_INDENT => 2, ENCODING => 'utf-8', UNSAFE => 0);
       $self->report_writer->xmlDecl;
       $self->report_writer->startTag("testsuites");
       $self->report_fh=$report_fh;
-
-   } elsif ($validation) {
-      print "\n*** Validating data files in application $app_name ***\n\n";
    } elsif ($app_name eq "tutorials") {
       print "\n*** Testing $app_name ***\n\n";
    } else {
@@ -194,22 +184,10 @@ sub read_timers {
 }
 
 ##################################################################
-sub load_trusted_object_file { load Core::Object(@_) }
-sub load_trusted_data_file { scalar((new Core::XMLfile($_[0]))->load_data) }
-
-##################################################################
-
-sub full_path_and_copy {
-   my ($filename)=@_;
-   state $copies_dir=new Tempdir("till_exit");
-   (my $full_path=Cwd::abs_path($filename)) =~ s{^\Q$InstallTop\E}{};
-   $full_path =~ $directory_re;
-   File::Path::mkpath($copies_dir.$1);
-   (substr($full_path, 1), $copies_dir.$full_path)
-}
+sub load_trusted_data_file { load Core::Datafile(@_) }
 
 sub find_file_with_alternatives {
-   my ($filename)=@_;
+   my ($filename) = @_;
    foreach my $alt (@alternative_suffixes) {
       -f "$filename.$alt" and return "$filename.$alt";
    }
@@ -217,57 +195,54 @@ sub find_file_with_alternatives {
 }
 
 sub find_object_file {
-   my ($self, $stem, $app)=@_;
+   my ($self, $stem, $app) = @_;
    my $result;
    foreach my $filename ($stem =~ /\.[a-z]+$/ ? $stem : map { "$stem.$_" } map { @{$_->file_suffixes} } $app, values %{$app->used}) {
-      defined ($result=find_file_with_alternatives($filename)) and return $result;
+      defined($result = find_file_with_alternatives($filename)) and return $result;
    }
    die "no matching object file for $stem\n";
 }
 
 sub find_data_file {
-   my ($self, $filename)=@_;
+   my ($self, $filename) = @_;
    find_file_with_alternatives($filename) // die "no matching data file for $filename\n";
 }
 
 sub load_object_file {
-   my ($self, $filename, $app)=@_;
+   my ($self, $filename, $app) = @_;
    $self->cur_group->file_cache->{$filename} //= do {
       $filename = &find_object_file;
       my $obj;
       if ($self->validate) {
+         my $full_path = Cwd::abs_path($filename) =~ s{^\Q$InstallTop\E/}{}r;
          local $Verbose::files = 0;
-         $obj = load_trusted_object_file($filename);
-         my $obj_file = $obj->persistent->filename;
-         my ($full_path, $copy) = full_path_and_copy($filename);
-         User::save($obj, $copy);
-         if (my $diff = Object::compare_and_report($obj, load_trusted_object_file($copy), ignore_shortcuts => true)) {
-            die "save & load validation of object file $full_path failed:\n", $diff;
-         }
-         unlink $copy;
-
-         my $str = $self->json_codec->encode(Core::Serializer::serialize($obj));
-         local $Core::PropertyType::trusted_value = 0;
-         my $restored = Core::Serializer::deserialize($self->json_codec->decode($str));
-         if (my $diff = Object::compare_and_report($obj, $restored, ignore_shortcuts => true)) {
-            die "serialize & deserialize loop for object from file $full_path failed:\n", $diff;
-         }
-
-         if ($filename !~ /\.gz$/ && !is_a Tempfile($filename) && $Core::XMLreader::reject_unknown_properties) {
-            my $app_name=$obj->type->application->name;
-            $self->big_types->{$app_name}->{$obj->type}=1;
-            my $validation_groups=($self->validation_groups->{$self->cur_group->application->name} //= [ ]);
-            if (!@$validation_groups || $validation_groups->[-1]->dir ne $self->cur_group->dir) {
-               push @$validation_groups, new ValidationGroup($self->cur_group);
+         $obj = load_trusted_data_file($filename);
+         open my $f, "<", $filename;
+         my $raw_input = do { local $/; <$f> };
+         close $f;
+         if ($raw_input =~ /^\s*\{/) {
+            my $serialized = Core::Serializer::serialize($obj);
+            my $str = encode_json($serialized);
+            local $Core::PropertyType::trusted_value = 0;
+            my $serialized2 = decode_json($str);
+            my $restored = Core::Serializer::deserialize($serialized2);
+            if (my $diff = BigObject::compare_and_report($obj, $restored, ignore_shortcuts => true)) {
+               die "serialize & deserialize loop for object from file $full_path failed:\n", $diff;
             }
-            push @{$validation_groups->[-1]->files_to_validate}, [ $filename, $app_name, $obj_file ];
+
+            if ($filename !~ /\.gz$/ && !is_a Tempfile($filename) && $Core::Serializer::reject_unknown_properties) {
+               my $schema = ($self->schemas->{$obj->type} //=
+                             Core::Serializer::create_permissive_schema($obj->type)->validate_self());
+               $schema->validate(decode_json($raw_input), "validation of data file $full_path failed");
+               $schema->validate($serialized2, "validation of re-serialized object loaded from $full_path failed");
+            }
          }
       } else {
-         $obj=load_trusted_object_file($filename);
+         $obj = load_trusted_data_file($filename);
       }
       if ($obj->changed) {
          # may be upgraded after a version bump
-         User::save($obj);
+         $obj->persistent->save($obj);
       }
       # prevent storing any further changes
       undef $obj->persistent;
@@ -280,18 +255,12 @@ sub load_data_file {
    $self->cur_group->file_cache->{$filename} //= do {
       $filename = &find_data_file;
       if ($self->validate) {
+         my $full_path = Cwd::abs_path($filename) =~ s{^\Q$InstallTop\E/}{}r;
          local $Verbose::files = 0;
          my $data = load_trusted_data_file($filename);
-         my ($full_path, $copy) = full_path_and_copy($filename);
-         User::save_data($data, $copy);
-         if (my $diff = Value::compare_and_report($data, load_trusted_data_file($copy))) {
-            die "save & load validation of data file $full_path failed:\n", $diff;
-         }
-         unlink $copy;
-
-         my $str = $self->json_codec->encode(Core::Serializer::serialize($data));
+         my $str = encode_json(Core::Serializer::serialize($data));
          local $Core::PropertyType::trusted_value = 0;
-         my $restored = Core::Serializer::deserialize($self->json_codec->decode($str));
+         my $restored = Core::Serializer::deserialize(decode_json($str));
          if (my $diff = Value::compare_and_report($data, $restored)) {
             die "serialize & deserialize loop for data from file $full_path failed:\n", $diff;
          }
@@ -302,22 +271,6 @@ sub load_data_file {
       }
    }
 }
-
-##################################################################
-sub create_validation_schemata {
-   my ($self)=@_;
-   my %schemata;
-   my $tmp_dir=new Tempdir();
-   while (my ($app_name, $types)=each %{$self->big_types}) {
-      my $schema_file="$tmp_dir/$app_name.rng";
-      open my $schema_of, ">", $schema_file or die "can't create temporary schema file $schema_file: $!\n";
-      Core::XMLwriter::save_schema($schema_of, keys %$types);
-      close $schema_of;
-      $schemata{$app_name}=new XML::LibXML::RelaxNG(location => $schema_file);
-   }
-   \%schemata;
-}
-
 ##################################################################
 sub print_summary {
    my ($self)=@_;

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -78,11 +78,11 @@ property LABELS : Array<String> : mutable;
 property CHIROTOPE : Text;
 
 # @category Matroid properties
-# Circuits in [[VECTORS]]
+# Oriented circuits of [[VECTORS]], oriented matroid version of [[matroid::Matroid::CIRCUITS]].
 property CIRCUITS : Set<Pair<Set<Int>,Set<Int>>>;
 
 # @category Matroid properties
-# Cocircuits in [[VECTORS]]
+# Oriented cocircuits of [[VECTORS]], oriented matroid version of [[matroid::Matroid::COCIRCUITS]].
 property COCIRCUITS : Set<Pair<Set<Int>,Set<Int>>>;
 
 # @category Geometry

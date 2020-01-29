@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -55,7 +55,7 @@ void emergency_cleanup()
 #ifdef PERL_IMPLICIT_CONTEXT
       // global destruction usually happens in the main thread;
       // when polymake and perl have been created in other thread, the context must be populated
-      // for some nasty modules like LibXML
+      // for some nasty CPAN modules
       if (!PERL_GET_CONTEXT)
          PERL_SET_CONTEXT(PL_curinterp);
 #endif
@@ -85,7 +85,7 @@ std::string read_rel_link(std::string link, bool mandatory=true)
    }
 
    std::string result(link_stat.st_size+1, '\0');
-   if (readlink(link.c_str(), const_cast<char*>(result.c_str()), link_stat.st_size + 1) != link_stat.st_size)
+   if (readlink(link.c_str(), const_cast<char*>(result.c_str()), link_stat.st_size+1) != link_stat.st_size)
       throw std::runtime_error("polymake::Main - readlink(" + link + ") failed");
    result.erase(link_stat.st_size);
 
@@ -156,7 +156,7 @@ Main::Main(const std::string& user_opts, std::string install_top, std::string in
 {
    if (PL_curinterp) {
 #ifdef PERL_IMPLICIT_CONTEXT
-      // copy the global address into this thread, some nasty modules like LibXML use implicit context
+      // copy the global address into this thread, some nasty CPAN modules use implicit context
       if (!PERL_GET_CONTEXT)
          PERL_SET_CONTEXT(PL_curinterp);
 #endif
@@ -206,10 +206,10 @@ Main::Main(const std::string& user_opts, std::string install_top, std::string in
    script_arg += must_reset_SIGCHLD();
    script_arg += scr8reset_SIGCHLD;
 
-   const char* perl_start_args[]={ "perl", "-e", script_arg.c_str(), 0 };
-   int argc=sizeof(perl_start_args)/sizeof(perl_start_args[0])-1;
-   const char **argv=perl_start_args;
-   char *** const env=PmGetEnvironPtr;
+   const char* perl_start_args[] = { "perl", "-e", script_arg.c_str(), 0 };
+   int argc = sizeof(perl_start_args) / sizeof(perl_start_args[0])-1;
+   const char** argv = perl_start_args;
+   char *** const env = PmGetEnvironPtr;
    // the casts looking evil here, but fortunately, nothing harmful happens within this macro
    PERL_SYS_INIT3(&argc, (char***)&argv, env);
    pTHXx = perl_alloc();
@@ -234,7 +234,7 @@ Scope::~Scope()
       dTHX;
       if (depth-- != id) {
          // can't throw an exception from a destructor
-         std::cerr << "polymake::perl::Scope nesting violation" << std::endl;
+         std::cerr << "polymake::Scope nesting violation" << std::endl;
          std::terminate();
       }
       sv_unref_flags(GvSV(globalScope_gv), SV_IMMEDIATE_UNREF);

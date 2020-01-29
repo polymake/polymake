@@ -1,7 +1,7 @@
 {"app": "polytope", "embed": "triang_sign.cc",
  "inst": [
-  {"args": ["perl::Canned<const Array<Set<int>>&>", "perl::Canned<const Array<Set<int>>&>", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Vector<Rational>&>"], "func": "triang_sign", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h", "polymake/Vector.h"], "sig": "triang_sign.X.X.X.X"},
-  {"args": ["perl::Canned<const Array<Set<int>>&>", "perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>"], "func": "triang_sign", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/Set.h", "polymake/SparseMatrix.h"], "sig": "triang_sign.X.X"},
-  {"args": ["perl::Canned<const Array<Set<int>>&>", "perl::Canned<const Matrix<Rational>&>"], "func": "triang_sign", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "triang_sign.X.X"},
+  {"args": ["perl::Canned<const Array<Set<Int>>&>", "perl::Canned<const Array<Set<Int>>&>", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Vector<Rational>&>"], "func": "triang_sign", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h", "polymake/Vector.h"], "sig": "triang_sign.X.X.X.X"},
+  {"args": ["perl::Canned<const Array<Set<Int>>&>", "perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>"], "func": "triang_sign", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/Set.h", "polymake/SparseMatrix.h"], "sig": "triang_sign.X.X"},
+  {"args": ["perl::Canned<const Array<Set<Int>>&>", "perl::Canned<const Matrix<Rational>&>"], "func": "triang_sign", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "triang_sign.X.X"},
  null ],
 "version": 3}

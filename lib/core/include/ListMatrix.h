@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -53,27 +53,27 @@ protected:
 
    // elementwise
    template <typename Iterator>
-   void copy_impl(int r, int c, Iterator&& src, std::false_type)
+   void copy_impl(Int r, Int c, Iterator&& src, std::false_type)
    {
-      data->dimr=r;
-      data->dimc=c;
-      row_list& R=data->R;
-      while (--r>=0) {
-         Iterator src_next=src;
+      data->dimr = r;
+      data->dimc = c;
+      row_list& R = data->R;
+      while (--r >= 0) {
+         Iterator src_next = src;
          std::advance(src_next, c);
          R.push_back(TVector(c, make_iterator_range(src, src_next)));
-         src=src_next;
+         src = src_next;
       }
    }
 
    // rowwise
    template <typename Iterator>
-   void copy_impl(int r, int c, Iterator&& src, std::true_type)
+   void copy_impl(Int r, Int c, Iterator&& src, std::true_type)
    {
-      data->dimr=r;
-      data->dimc=c;
-      row_list& R=data->R;
-      while (--r>=0) {
+      data->dimr = r;
+      data->dimc = c;
+      row_list& R = data->R;
+      while (--r >= 0) {
          R.push_back(TVector(*src)); ++src;
       }
    }
@@ -88,17 +88,17 @@ public:
    ListMatrix() {}
 
    /// create matrix with r rows and c columns, initialize all elements to 0
-   ListMatrix(int r, int c)
+   ListMatrix(Int r, Int c)
    {
-      data->dimr=r;
-      data->dimc=c;
+      data->dimr = r;
+      data->dimc = c;
       data->R.assign(r, TVector(c));
    }
 
-   ListMatrix(int r, int c, const element_type& init)
+   ListMatrix(Int r, Int c, const element_type& init)
    {
-      data->dimr=r;
-      data->dimc=c;
+      data->dimr = r;
+      data->dimc = c;
       data->R.assign(r, same_element_vector(init, c));
    }
 
@@ -106,7 +106,7 @@ public:
        Elements are assumed to come in the row order.
    */
    template <typename Iterator, typename=std::enable_if_t<fits_as_input_iterator<Iterator>::value>>
-   ListMatrix(int r, int c, Iterator&& src)
+   ListMatrix(Int r, Int c, Iterator&& src)
    {
       copy_impl(r, c, ensure_private_mutable(std::forward<Iterator>(src)),
                 bool_constant<isomorphic_types<TVector, typename iterator_traits<Iterator>::value_type>::value>());
@@ -163,30 +163,32 @@ public:
    }
 
    /// Resize to new dimensions, added elements initialized with default constructor.
-   void resize(int r, int c)
+   void resize(Int r, Int c)
    {
-      row_list& R=data->R;
-      int old_r=data->dimr;
-      data->dimr=r;
-      for (; old_r>r; --old_r) R.pop_back();
+      row_list& R = data->R;
+      Int old_r = data->dimr;
+      data->dimr = r;
+      for (; old_r > r; --old_r)
+         R.pop_back();
 
       if (data->dimc != c) {
-         for (auto row=entire(R); !row.at_end(); ++row)
+         for (auto row = entire(R); !row.at_end(); ++row)
             row->resize(c);
-         data->dimc=c;
+         data->dimc = c;
       }
 
-      for (; old_r<r; ++old_r) R.push_back(TVector(c));
+      for (; old_r < r; ++old_r)
+         R.push_back(TVector(c));
    }
 
    /// Truncate to 0x0 matrix.
    void clear() { data.apply(shared_clear()); }
 
    /// the number of rows of the matrix
-   int rows() const { return data->dimr; }
+   Int rows() const { return data->dimr; }
 
    /// the number of columns of the matrix
-   int cols() const { return data->dimc; }
+   Int cols() const { return data->dimc; }
 
    /// Insert a new row at the given position: before the row pointed to by where.
    template <typename TVector2>
@@ -219,24 +221,26 @@ protected:
    template <typename Matrix2>
    void assign(const GenericMatrix<Matrix2>& M)
    {
-      int old_r=data->dimr, r=M.rows();
-      data->dimr=r;
-      data->dimc=M.cols();
-      row_list& R=data->R;
-      for (; old_r>r; --old_r) R.pop_back();
+      Int old_r = data->dimr, r = M.rows();
+      data->dimr = r;
+      data->dimc = M.cols();
+      row_list& R = data->R;
+      for (; old_r > r; --old_r)
+         R.pop_back();
 
-      auto row2=pm::rows(M).begin();
-      for (auto row=entire(R); !row.at_end(); ++row, ++row2)
-         *row=*row2;
+      auto row2 = pm::rows(M).begin();
+      for (auto row = entire(R); !row.at_end(); ++row, ++row2)
+         *row = *row2;
 
-      for (; old_r<r; ++old_r, ++row2) R.push_back(*row2);
+      for (; old_r < r; ++old_r, ++row2)
+         R.push_back(*row2);
    }
 
    template <typename Matrix2>
    void append_rows(const Matrix2& m)
    {
       copy_range(entire(pm::rows(m)), std::back_inserter(data->R));
-      data->dimr+=m.rows();
+      data->dimr += m.rows();
    }
 
    template <typename TVector2>
@@ -249,17 +253,17 @@ protected:
    template <typename Matrix2>
    void append_cols(const Matrix2& m)
    {
-      auto row2=pm::rows(m).begin();
-      for (auto row=entire(data->R); !row.at_end(); ++row, ++row2)
+      auto row2 = pm::rows(m).begin();
+      for (auto row = entire(data->R); !row.at_end(); ++row, ++row2)
          *row |= *row2;
-      data->dimc+=m.cols();
+      data->dimc += m.cols();
    }
 
    template <typename TVector2>
    void append_col(const TVector2& v)
    {
-      auto e=ensure(v.top(), dense()).begin();
-      for (auto row=entire(data->R); !row.at_end(); ++row, ++e)
+      auto e = ensure(v.top(), dense()).begin();
+      for (auto row = entire(data->R); !row.at_end(); ++row, ++e)
          *row |= *e;
       ++data->dimc;
    }
@@ -286,8 +290,8 @@ public:
    typename base_t::container& get_container() { return this->hidden().data->R; }
    const typename base_t::container& get_container() const { return this->hidden().data->R; }
 
-   int size() const { return this->hidden().rows(); }
-   void resize(int n) { this->hidden().resize(n, this->hidden().cols()); }
+   Int size() const { return this->hidden().rows(); }
+   void resize(Int n) { this->hidden().resize(n, this->hidden().cols()); }
    void clear() { this->hidden().clear(); }
 
    template <typename TVector2>

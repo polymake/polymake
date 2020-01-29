@@ -1,5 +1,5 @@
 {"app": "common",
  "inst": [
-  {"args": ["int", "perl::AnchorArg<perl::Canned<const Wary<Set<int>>&>>", "void"], "func": "same_element_sparse_vector", "include": ["polymake/Set.h", "polymake/SparseVector.h"], "sig": "toVector:T1.X12.x", "tp": "1"},
+  {"args": ["Int", "perl::AnchorArg<perl::Canned<const Wary<Set<Int>>&>>", "void"], "func": "same_element_sparse_vector", "include": ["polymake/Set.h", "polymake/SparseVector.h"], "sig": "toVector:T1.X12.x", "tp": "1"},
  null ],
 "version": 3}

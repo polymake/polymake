@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,109 +23,108 @@
 #include "polymake/linalg.h"
 #include "polymake/Set.h"
 #include <algorithm>
+#include <sstream>
 
 namespace polymake { namespace group {
 
 namespace {      
 
-template<typename E>
+template <typename E>
 struct character_computation_type {
    typedef QuadraticExtension<Rational> type;
 };
 
-template<>
+template <>
 struct character_computation_type<double> {
    typedef double type;
 };
-   
-template<typename E>
-inline
-Vector<int>
-check_and_round(const Vector<E>& irr_dec)
+
+template <typename E>
+void bad_decomposition(const Vector<E>& irr_dec)
 {
-   Vector<int> irr_dec_i (irr_dec.size());
-   for (int i=0; i<irr_dec.size(); ++i) {
-
-      if (denominator(irr_dec[i].a()) != 1 ||
-          irr_dec[i].b() != 0 ||
-          irr_dec[i] < 0) {
-         cerr << "The irreducible decomposition was calculated to be\n" << irr_dec << endl;
-         throw std::runtime_error("It should be a nonnegative integer vector. Please check if the CONJUGACY_CLASS_REPRESENTATIVES, the CHARACTER, and the columns of the CHARACTER_TABLE all correspond to each other, in the same order.");
-      }
-
-      irr_dec_i[i] = convert_to<int>(irr_dec[i]);
-   }
-   return irr_dec_i;
+   std::ostringstream err;
+   wrap(err) << "The irreducible decomposition was calculated to be\n" << irr_dec << "\n"
+                "It should be a nonnegative integer vector. Please check if the CONJUGACY_CLASS_REPRESENTATIVES, the CHARACTER, and the columns of the CHARACTER_TABLE all correspond to each other, in the same order.";
+   throw std::runtime_error(err.str());
 }
 
-template<>
-inline
-Vector<int>
+Vector<Int>
+check_and_round(const Vector<QuadraticExtension<Rational>>& irr_dec)
+{
+   Vector<Int> result(irr_dec.size());
+   auto result_it = result.begin();
+   for (const auto& x : irr_dec) {
+      if (denominator(x.a()) != 1 || x.b() != 0 || x < 0)
+         bad_decomposition(irr_dec);
+
+      *result_it = convert_to<Int>(x);
+      ++result_it;
+   }
+   return result;
+}
+
+Vector<Int>
 check_and_round(const Vector<double>& irr_dec)
 {
-   const Vector<AccurateFloat> irr_dec_af(irr_dec.size(), entire(irr_dec));
-   Vector<AccurateFloat> irr_dec_rounded(irr_dec.size());
-   std::transform(irr_dec_af.begin(), irr_dec_af.end(), irr_dec_rounded.begin(),
-                  [](const AccurateFloat& f) -> AccurateFloat { return rounded_if_integer(f); });
+   Vector<Int> result(irr_dec.size());
+   auto result_it = result.begin();
+   for (double x : irr_dec) {
+      bool is_rounded;
+      AccurateFloat rounded = round_if_integer(AccurateFloat{x}, is_rounded, 1e-8);
+      if (!is_rounded || rounded < 0)
+         bad_decomposition(irr_dec);
 
-   if (accumulate(attach_operation(irr_dec_af - irr_dec_rounded, operations::abs_value()), operations::max()) > 1e-8 ||
-       accumulate(irr_dec_rounded, operations::min()) < 0) {
-      cerr << "The irreducible decomposition was calculated to be\n" << irr_dec << endl;
-      throw std::runtime_error("It should be a nonnegative integer vector. Please check if the CONJUGACY_CLASS_REPRESENTATIVES, the CHARACTER, and the columns of the CHARACTER_TABLE all correspond to each other, in the same order.");
+      *result_it = static_cast<Int>(rounded);
+      ++result_it;
    }
-
-   Vector<int> irr_dec_i(irr_dec.size());
-   bool was_integer;
-   std::transform(irr_dec_rounded.begin(), irr_dec_rounded.end(), irr_dec_i.begin(),
-                  [&](const AccurateFloat& f) -> int { return round(f, was_integer); });
-   return irr_dec_i;
+   return result;
 }
 
 } // end anonymous namespace
       
-template<typename E>
-Vector<int>
-irreducible_decomposition(const Vector<E>& character, perl::Object G)
+template <typename E>
+Vector<Int>
+irreducible_decomposition(const Vector<E>& character, BigObject G)
 {
    const Matrix<E>   character_table = G.give("CHARACTER_TABLE");
-   const Array<int>  cc_sizes        = G.give("CONJUGACY_CLASS_SIZES");
-   const int         order           = G.give("ORDER");
+   const Array<Int>  cc_sizes        = G.give("CONJUGACY_CLASS_SIZES");
+   const Int         order           = G.give("ORDER");
 
    if (character.size() != character_table.cols())
       throw std::runtime_error("The given array is not of the right size to be a character of the group.");
 
    Vector<E> weighted_character(character);
-   for (int i=0; i<weighted_character.size(); ++i)
-      weighted_character[i] *= cc_sizes[i];
+   for (Int i = 0; i < weighted_character.size(); ++i)
+      weighted_character[i] *= static_cast<E>(cc_sizes[i]);
 
-   return check_and_round(Vector<E>(character_table * weighted_character / order));
+   return check_and_round(Vector<E>(character_table * weighted_character / static_cast<E>(order)));
 }
 
 
 SparseMatrix<Rational>
-induced_rep(perl::Object cone,
-            perl::Object action,
-            const Array<int>& perm)
+induced_rep(BigObject cone,
+            BigObject action,
+            const Array<Int>& perm)
 {
-   const int                     degree      = action.give("DEGREE");
+   const Int                     degree      = action.give("DEGREE");
    const std::string             domain_name = action.give("DOMAIN_NAME");
-   const hash_map<Set<int>, int> index_of    = action.give("INDEX_OF");
+   const hash_map<Set<Int>, Int> index_of    = action.give("INDEX_OF");
 
-   const Array<Set<int>>         domain      = cone.give(domain_name);
+   const Array<Set<Int>>         domain      = cone.give(domain_name);
 
-   return InducedAction<Set<int>>(degree, domain, index_of).induced_rep(perm);
+   return InducedAction<Set<Int>>(degree, domain, index_of).induced_rep(perm);
 }
 
 
 template<typename Element>
-Array<int>
+Array<Int>
 to_orbit_order(const Array<Element>& generators,
-               const Array<int>& orbit_representatives)
+               const Array<Int>& orbit_representatives)
 {
-   Array<int> orbit_order(generators[0].size());
-   int i(0);
-   for (const auto& orep: orbit_representatives)
-      for (const auto& o: Set<int>(entire(orbit<on_elements>(generators, orep))))
+   Array<Int> orbit_order(generators[0].size());
+   Int i = 0;
+   for (const auto& orep : orbit_representatives)
+      for (const auto& o : Set<Int>(entire(orbit<on_elements>(generators, orep))))
          orbit_order[o] = i++;
    return orbit_order;
 }
@@ -134,22 +133,22 @@ FunctionTemplate4perl("to_orbit_order(Array<Array<Int>> Array<Int>)");
 
 
 SparseMatrix<CharacterNumberType>
-isotypic_projector_permutations(perl::Object G,
-                                perl::Object A,
-                                int irred_index,
-                                perl::OptionSet options)
+isotypic_projector_permutations(BigObject G,
+                                BigObject A,
+                                Int irred_index,
+                                OptionSet options)
 {
    const Matrix<CharacterNumberType> character_table = G.give("CHARACTER_TABLE");
    if (irred_index<0 || irred_index >= character_table.rows())
       throw std::runtime_error("The given index does not refer to an irreducible representation.");
 
-   const int                order             = G.give("ORDER");
+   const Int                order             = G.give("ORDER");
    const ConjugacyClasses<> conjugacy_classes = A.give("CONJUGACY_CLASSES");
 
    const bool permute_to_orbit_order = options["permute_to_orbit_order"];
-   Array<int> permutation_to_orbit_order;
+   Array<Int> permutation_to_orbit_order;
    if (permute_to_orbit_order) {
-      permutation_to_orbit_order = A.give("PERMUTATION_TO_ORBIT_ORDER");
+      A.give("PERMUTATION_TO_ORBIT_ORDER") >> permutation_to_orbit_order;
    } else {
       permutation_to_orbit_order = sequence(0, degree(conjugacy_classes[0][0]));
    }
@@ -159,23 +158,23 @@ isotypic_projector_permutations(perl::Object G,
 
 template<typename Scalar>
 auto
-isotypic_projector(perl::Object G,
-                   perl::Object A,
-                   int irred_index,
-                   perl::OptionSet options)
+isotypic_projector(BigObject G,
+                   BigObject A,
+                   Int irred_index,
+                   OptionSet options)
 {
    typedef typename character_computation_type<Scalar>::type CCT;
    const Matrix<CCT> character_table = G.give("CHARACTER_TABLE");
    if (irred_index<0 || irred_index >= character_table.rows())
       throw std::runtime_error("The given index does not refer to an irreducible representation.");
 
-   const int                                order             = G.give("ORDER");
+   const Int                                order             = G.give("ORDER");
    const ConjugacyClasses<Matrix<Scalar>>   conjugacy_classes = A.give("CONJUGACY_CLASSES");
    
    const bool permute_to_orbit_order = options["permute_to_orbit_order"];
-   Array<int> permutation_to_orbit_order;
+   Array<Int> permutation_to_orbit_order;
    if (permute_to_orbit_order) {
-      permutation_to_orbit_order = A.give("PERMUTATION_TO_ORBIT_ORDER");
+      A.give("PERMUTATION_TO_ORBIT_ORDER") >> permutation_to_orbit_order;
    } else {
       permutation_to_orbit_order = sequence(0, degree(conjugacy_classes[0][0]));
    }
@@ -185,21 +184,21 @@ isotypic_projector(perl::Object G,
 
 
 SparseMatrix<CharacterNumberType>
-isotypic_basis_on_sets(perl::Object G,
-                       perl::Object R,
-                       int irred_index,
-                       perl::OptionSet options) {
+isotypic_basis_on_sets(BigObject G,
+                       BigObject R,
+                       Int irred_index,
+                       OptionSet options) {
    const Matrix<CharacterNumberType> character_table = G.give("CHARACTER_TABLE");
    if (irred_index<0 || irred_index >= character_table.rows())
       throw std::runtime_error("The given index does not refer to an irreducible representation.");
 
-   const int                order                = G.give("ORDER");
+   const Int                order                = G.give("ORDER");
    const ConjugacyClasses<> conjugacy_classes    = R.give("CONJUGACY_CLASSES");
 
    const bool permute_to_orbit_order = options["permute_to_orbit_order"];
-   Array<int> permutation_to_orbit_order;
+   Array<Int> permutation_to_orbit_order;
    if (permute_to_orbit_order) {
-      permutation_to_orbit_order = R.give("PERMUTATION_TO_ORBIT_ORDER");
+      R.give("PERMUTATION_TO_ORBIT_ORDER") >> permutation_to_orbit_order;
    } else {
       permutation_to_orbit_order = sequence(0, degree(conjugacy_classes[0][0]));
    }
@@ -208,11 +207,11 @@ isotypic_basis_on_sets(perl::Object G,
 }
 
 SparseMatrix<CharacterNumberType>
-isotypic_basis_permutations(perl::Object G,
-                            perl::Object A,
-                            int irred_index,
-                            perl::OptionSet options) {
-   const int                         order           = G.give("ORDER");
+isotypic_basis_permutations(BigObject G,
+                            BigObject A,
+                            Int irred_index,
+                            OptionSet options) {
+   const Int                         order           = G.give("ORDER");
    const Matrix<CharacterNumberType> character_table = G.give("CHARACTER_TABLE");
 
    if (irred_index<0 || irred_index >= character_table.rows())
@@ -221,9 +220,9 @@ isotypic_basis_permutations(perl::Object G,
    const ConjugacyClasses<> conjugacy_classes = A.give("CONJUGACY_CLASSES");
 
    const bool permute_to_orbit_order = options["permute_to_orbit_order"];
-   Array<int> permutation_to_orbit_order;
+   Array<Int> permutation_to_orbit_order;
    if (permute_to_orbit_order) {
-      permutation_to_orbit_order = A.give("PERMUTATION_TO_ORBIT_ORDER");
+      A.give("PERMUTATION_TO_ORBIT_ORDER") >> permutation_to_orbit_order;
    } else {
       permutation_to_orbit_order = sequence(0, degree(conjugacy_classes[0][0]));
    }
@@ -233,38 +232,38 @@ isotypic_basis_permutations(perl::Object G,
 
 template<typename Scalar>
 SparseMatrix<CharacterNumberType>
-isotypic_basis(perl::Object G,
-               perl::Object A,
-               int irred_index,
-               perl::OptionSet options) {
+isotypic_basis(BigObject G,
+               BigObject A,
+               Int irred_index,
+               OptionSet options) {
    const auto B = isotypic_projector<Scalar>(G, A, irred_index, options);
    return B.minor(basis_rows(B), All);
 }
 
 IncidenceMatrix<> 
-isotypic_supports_array(perl::Object P,
-                        perl::Object R,
-                        const Array<Set<int>>& candidates,
-                        perl::OptionSet options)
+isotypic_supports_array(BigObject P,
+                        BigObject R,
+                        const Array<Set<Int>>& candidates,
+                        OptionSet options)
 {
-   const int                         order                      = P.give("GROUP.ORDER");
+   const Int                         order                      = P.give("GROUP.ORDER");
    const Matrix<CharacterNumberType> character_table            = P.give("GROUP.CHARACTER_TABLE");
-   const ConjugacyClasses<>        conjugacy_classes          = R.give("CONJUGACY_CLASSES");
-   const hash_map<Set<int>,int>      index_of                   = R.give("INDEX_OF");
+   const ConjugacyClasses<>          conjugacy_classes          = R.give("CONJUGACY_CLASSES");
+   const hash_map<Set<Int>, Int>     index_of                   = R.give("INDEX_OF");
 
-   const int deg(degree(conjugacy_classes[0][0]));
+   const Int deg = degree(conjugacy_classes[0][0]);
 
    const bool permute_to_orbit_order = options["permute_to_orbit_order"];
-   Array<int> permutation_to_orbit_order;
+   Array<Int> permutation_to_orbit_order;
    if (permute_to_orbit_order) {
-      permutation_to_orbit_order = R.give("PERMUTATION_TO_ORBIT_ORDER");
+      R.give("PERMUTATION_TO_ORBIT_ORDER") >> permutation_to_orbit_order;
    } else {
       permutation_to_orbit_order = sequence(0, deg);
    }
 
 
    SparseMatrix<Rational> S(candidates.size(), deg);
-   for (int i=0; i<candidates.size(); ++i)
+   for (Int i = 0; i < candidates.size(); ++i)
       S(i, permutation_to_orbit_order[index_of.at(candidates[i])]) = 1;
       
    return isotypic_supports_impl(S, character_table, conjugacy_classes, permutation_to_orbit_order, order);
@@ -272,20 +271,20 @@ isotypic_supports_array(perl::Object P,
 
 
 IncidenceMatrix<> 
-isotypic_supports_matrix(perl::Object P,
-                         perl::Object R,
+isotypic_supports_matrix(BigObject P,
+                         BigObject R,
                          const SparseMatrix<Rational>& S,
-                         perl::OptionSet options)
+                         OptionSet options)
 {
    const Matrix<CharacterNumberType> character_table            = P.give("GROUP.CHARACTER_TABLE");
-   const int                         order                      = P.give("GROUP.ORDER");
-   const ConjugacyClasses<>        conjugacy_classes       = R.give("CONJUGACY_CLASSES");
-   const hash_map<Set<int>,int>      index_of                   = R.give("INDEX_OF");
+   const Int                         order                      = P.give("GROUP.ORDER");
+   const ConjugacyClasses<>          conjugacy_classes          = R.give("CONJUGACY_CLASSES");
+   const hash_map<Set<Int>, Int>     index_of                   = R.give("INDEX_OF");
 
    const bool permute_to_orbit_order = options["permute_to_orbit_order"];
-   Array<int> permutation_to_orbit_order;
+   Array<Int> permutation_to_orbit_order;
    if (permute_to_orbit_order) {
-      permutation_to_orbit_order = R.give("PERMUTATION_TO_ORBIT_ORDER");
+      R.give("PERMUTATION_TO_ORBIT_ORDER") >> permutation_to_orbit_order;
    } else {
       permutation_to_orbit_order = sequence(0, degree(conjugacy_classes[0][0]));
    }
@@ -295,34 +294,34 @@ isotypic_supports_matrix(perl::Object P,
 }
 
 
-Array<int>
+Array<Int>
 row_support_sizes(const SparseMatrix<Rational>& S)
 {
-   Array<int> support_sizes(S.rows());
-   for (int i=0; i<S.rows(); ++i)
+   Array<Int> support_sizes(S.rows());
+   for (Int i = 0; i < S.rows(); ++i)
       support_sizes[i] = S.row(i).size();
    return support_sizes;
 }
 
-perl::Object      
-regular_representation(perl::Object a)
+BigObject      
+regular_representation(BigObject a)
 {
-   const Array<Array<int>> gens = a.give("GENERATORS");
-   const int degree = gens[0].size();
-   const Array<int> id(sequence(0, degree));
+   const Array<Array<Int>> gens = a.give("GENERATORS");
+   const Int degree = gens[0].size();
+   const Array<Int> id(sequence(0, degree));
 
    Array<Matrix<Rational>> rgens(gens.size());
-   for (int i=0; i<gens.size(); ++i)
+   for (Int i = 0; i < gens.size(); ++i)
       rgens[i] = permutation_matrix(gens[i], id);
 
-   perl::Object r("MatrixActionOnVectors<Rational>");
+   BigObject r("MatrixActionOnVectors<Rational>");
    r.take("GENERATORS") << rgens;
 
    Array<Matrix<Rational>> rccs;
-   Array<Array<int>> ccs;
+   Array<Array<Int>> ccs;
    if (a.lookup("CONJUGACY_CLASS_REPRESENTATIVES") >> ccs) {
       rccs.resize(ccs.size());
-      for (int i=0; i<ccs.size(); ++i)
+      for (Int i = 0; i < ccs.size(); ++i)
          rccs[i] = permutation_matrix(ccs[i], id);
       r.take("CONJUGACY_CLASS_REPRESENTATIVES") << rccs;
    }
@@ -413,17 +412,6 @@ UserFunction4perl("# @category Symmetry"
                   "# > print $s->REGULAR_REPRESENTATION->properties();"
                   "# | type: MatrixActionOnVectors<Rational>"
                   "# | "
-                  "# | GENERATORS"
-                  "# | <0 1 0"
-                  "# | 1 0 0"
-                  "# | 0 0 1"
-                  "# | >"
-                  "# | <1 0 0"
-                  "# | 0 0 1"
-                  "# | 0 1 0"
-                  "# | >"
-                  "# | "
-                  "# | "
                   "# | CONJUGACY_CLASS_REPRESENTATIVES"
                   "# | <1 0 0"
                   "# | 0 1 0"
@@ -435,6 +423,17 @@ UserFunction4perl("# @category Symmetry"
                   "# | >"
                   "# | <0 0 1"
                   "# | 1 0 0"
+                  "# | 0 1 0"
+                  "# | >"
+                  "# | "
+                  "# | "
+                  "# | GENERATORS"
+                  "# | <0 1 0"
+                  "# | 1 0 0"
+                  "# | 0 0 1"
+                  "# | >"
+                  "# | <1 0 0"
+                  "# | 0 0 1"
                   "# | 0 1 0"
                   "# | >",
                   &regular_representation, "regular_representation(PermutationAction)");

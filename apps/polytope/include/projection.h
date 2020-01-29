@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -34,23 +34,23 @@ namespace polymake { namespace polytope {
 namespace {
 
 template<typename Scalar>
-Set<int> coordinates_to_eliminate(const Array<int>& indices, int first_coord, int last_coord, int codim, const Matrix<Scalar>& linear_span, bool revert)
+Set<Int> coordinates_to_eliminate(const Array<Int>& indices, Int first_coord, Int last_coord, Int codim, const Matrix<Scalar>& linear_span, bool revert)
 {
-   Set<int> coords_to_eliminate;
+   Set<Int> coords_to_eliminate;
    if (indices.empty()) {
-      bool found=false;
-      for (auto i=entire(all_subsets_of_k(range(first_coord, last_coord), codim)); !found && !i.at_end(); ++i) {
-         if (det(linear_span.minor(All,*i))!=0) {
-            coords_to_eliminate=*i;
+      bool found = false;
+      for (auto i = entire(all_subsets_of_k(range(first_coord, last_coord), codim)); !found && !i.at_end(); ++i) {
+         if (det(linear_span.minor(All,*i)) != 0) {
+            coords_to_eliminate = *i;
             found=true;
          }
       }
       if (!found) throw std::runtime_error("projection: no non-singular minor in LINEAR_SPAN!");
    } else {
-      for (auto i=entire(indices); !i.at_end(); ++i) {
-         if (*i<first_coord || *i>last_coord)
+      for (auto i = entire(indices); !i.at_end(); ++i) {
+         if (*i < first_coord || *i > last_coord)
             throw std::runtime_error("projection: index out of range");
-         coords_to_eliminate+=*i;
+         coords_to_eliminate += *i;
       }
       if (!revert)
          coords_to_eliminate=range(first_coord,last_coord)-coords_to_eliminate;
@@ -59,7 +59,7 @@ Set<int> coordinates_to_eliminate(const Array<int>& indices, int first_coord, in
 }
 
 template<typename Scalar>
-void process_rays(perl::Object& p_in, int first_coord, const Array<int>& indices, perl::OptionSet& options, const Matrix<Scalar>& linear_span, const Set<int>& coords_to_eliminate, perl::Object& p_out)
+void process_rays(BigObject& p_in, Int first_coord, const Array<Int>& indices, OptionSet& options, const Matrix<Scalar>& linear_span, const Set<Int>& coords_to_eliminate, BigObject& p_out)
 {
    Matrix<Scalar> Rays, lineality;
    bool points_read=false;
@@ -91,7 +91,7 @@ void process_rays(perl::Object& p_in, int first_coord, const Array<int>& indices
    if ( indices.empty() && !options["no_labels"]) {
       // here we assume that, if VERTEX_LABELS are present in the object, then also VERTICES are known
       // otherwise this will trigger a convex hull computation
-      int n_vertices = p_in.give("N_RAYS");
+      Int n_vertices = p_in.give("N_RAYS");
       const std::vector<std::string> labels = common::read_labels(p_in, "RAY_LABELS", n_vertices);
       p_out.take("RAY_LABELS") << labels;
    }

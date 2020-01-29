@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,13 +23,13 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object k_cyclic(int n, Vector<Rational> s)
+BigObject k_cyclic(Int n, Vector<Rational> s)
 {
-   const int k=s.size();
+   const Int k = s.size();
    if (k < 1 || k >= n)
       throw std::runtime_error("k_cyclic: 1 <= k < n required");
 
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.set_description() << k << "-cyclic polytope" << endl;
 
    p.take("CONE_AMBIENT_DIM") << 2*k+1;
@@ -41,9 +41,9 @@ perl::Object k_cyclic(int n, Vector<Rational> s)
    s*=2; s/=n;
 
    AccurateFloat sinK, cosK;
-   for (int i = 0; i < n; ++i) {
+   for (Int i = 0; i < n; ++i) {
       *v++ = 1;
-      for (int j = 0; j < k; ++j) {
+      for (Int j = 0; j < k; ++j) {
          const Rational S=s[j]*i;
          // prevent silly values for multiples of pi/2
          if (denominator(S)==1) {

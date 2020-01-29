@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,41 +25,51 @@
 
 namespace polymake { namespace tropical {
 
-	template <typename Addition, typename Scalar>
-		TropicalNumber<typename Addition::dual, Scalar > dual_addition_version(const TropicalNumber<Addition, Scalar> &t, bool strong = true) {
-			return TropicalNumber<typename Addition::dual, Scalar>(
-					(strong? -1 : 1) * Scalar(t));
-		}
+template <typename Addition, typename Scalar>
+TropicalNumber<typename Addition::dual, Scalar>
+dual_addition_version(const TropicalNumber<Addition, Scalar>& t, bool strong = true)
+{
+  return TropicalNumber<typename Addition::dual, Scalar>(strong ? -Scalar(t) : Scalar(t));
+}
 
-	template <typename Addition, typename Scalar>
-		Vector<TropicalNumber<typename Addition::dual, Scalar> > dual_addition_version(const Vector<TropicalNumber<Addition, Scalar> > &v, bool strong = true) {
-			Vector<TropicalNumber<typename Addition::dual, Scalar> > r(v.dim());
-			for(int i = 0; i < v.dim(); i++) {
-				r[i] = dual_addition_version(v[i],strong);
-			}
-			return r;
-		}
+template <typename Addition, typename Scalar>
+Vector<TropicalNumber<typename Addition::dual, Scalar>>
+dual_addition_version(const Vector<TropicalNumber<Addition, Scalar>> &v, bool strong = true)
+{
+  Vector<TropicalNumber<typename Addition::dual, Scalar>> r(v.dim());
+  for (Int i = 0; i < v.dim(); ++i) {
+    r[i] = dual_addition_version(v[i], strong);
+  }
+  return r;
+}
 
-	
-	template <typename Addition, typename Scalar>
-		Matrix<TropicalNumber<typename Addition::dual, Scalar> > dual_addition_version(const Matrix<TropicalNumber<Addition, Scalar> > &v, bool strong = true) {
-			Matrix<TropicalNumber<typename Addition::dual, Scalar> > r(v.rows(), v.cols());
-			for(int i = 0; i < v.rows(); i++) {
-				r.row(i) = dual_addition_version(Vector<TropicalNumber<Addition, Scalar> >(v.row(i)),strong);
-			}
-			return r;
-		}
+template <typename Addition, typename Scalar>
+Matrix<TropicalNumber<typename Addition::dual, Scalar>>
+dual_addition_version(const Matrix<TropicalNumber<Addition, Scalar>>& m, bool strong = true)
+{
+  Matrix<TropicalNumber<typename Addition::dual, Scalar>> r(m.rows(), m.cols());
+  auto r_it = concat_rows(r).begin();
+  for (auto m_it = entire(concat_rows(m)); !m_it.at_end(); ++m_it, ++r_it)
+    *r_it = dual_addition_version(*m_it,strong);
 
-	template <typename Addition, typename Scalar>
-		Polynomial<TropicalNumber<typename Addition::dual, Scalar> > dual_addition_version(const Polynomial<TropicalNumber<Addition, Scalar> > &p, bool strong = true) {
-			Polynomial<TropicalNumber<typename Addition::dual, Scalar> > dualp(
+  return r;
+}
+
+template <typename Addition, typename Scalar>
+Polynomial<TropicalNumber<typename Addition::dual, Scalar>>
+dual_addition_version(const Polynomial<TropicalNumber<Addition, Scalar>>& p, bool strong = true)
+{
+  return Polynomial<TropicalNumber<typename Addition::dual, Scalar>>(
                                         dual_addition_version(p.coefficients_as_vector(), strong),
 					p.monomials_as_matrix());
-			return dualp;
-		}
-
-	
+}
 
 } }
 
 #endif
+
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:

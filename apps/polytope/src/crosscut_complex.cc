@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,16 +24,16 @@ namespace polymake { namespace polytope {
 
 
 template <typename Scalar>
-perl::Object crosscut_complex(perl::Object p_in, perl::OptionSet options)
+BigObject crosscut_complex(BigObject p_in, OptionSet options)
 {
    const IncidenceMatrix<> C = p_in.give("VERTICES_IN_FACETS");
    const bool 
       realize = options["geometric_realization"],
       bounded = p_in.give("BOUNDED");
-   perl::ObjectType result_type =
-      (realize && bounded) ? perl::ObjectType("topaz::GeometricSimplicialComplex", mlist<Scalar>())
-                           : perl::ObjectType("topaz::SimplicialComplex");
-   perl::Object p_out(result_type);
+   BigObjectType result_type =
+      (realize && bounded) ? BigObjectType("topaz::GeometricSimplicialComplex", mlist<Scalar>())
+                           : BigObjectType("topaz::SimplicialComplex");
+   BigObject p_out(result_type);
    p_out.set_description() << "Crosscut complex of " << p_in.name() << endl;
    p_out.take("FACETS") << rows(C);
 

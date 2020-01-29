@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,7 +24,7 @@ namespace polymake { namespace polytope { namespace cdd_interface {
 template <typename Scalar>
 auto create_convex_hull_solver(CanEliminateRedundancies needsEliminate = CanEliminateRedundancies::yes)
 {
-   perl::ListReturn ret;
+   ListReturn ret;
    if (needsEliminate == CanEliminateRedundancies::yes)
       ret << cached_convex_hull_solver<Scalar, CanEliminateRedundancies::yes>(new ConvexHullSolver<Scalar>(), true);
    else
@@ -35,13 +35,13 @@ auto create_convex_hull_solver(CanEliminateRedundancies needsEliminate = CanElim
 }
 
 template <typename Scalar>
-void cdd_ch_primal(perl::Object p, const bool verbose, const bool isCone)
+void cdd_ch_primal(BigObject p, const bool verbose, const bool isCone)
 {
    generic_convex_hull_primal<Scalar>(p, isCone, cdd_interface::ConvexHullSolver<Scalar>(verbose));
 }
 
 template <typename Scalar>
-void cdd_ch_dual(perl::Object p, const bool verbose, const bool isCone)
+void cdd_ch_dual(BigObject p, const bool verbose, const bool isCone)
 {
    generic_convex_hull_dual<Scalar>(p, isCone, cdd_interface::ConvexHullSolver<Scalar>(verbose));
 }

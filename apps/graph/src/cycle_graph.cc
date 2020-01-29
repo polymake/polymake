@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,16 +20,16 @@
 
 namespace polymake { namespace graph {
 
-perl::Object cycle_graph(const int n)
+BigObject cycle_graph(const Int n)
 {
    if (n < 3)
       throw std::runtime_error("need at least 3 nodes");
 
    Graph<> g(n);
-   for (int i=0; i<n-1; ++i)
-      g.edge(i,i+1);
-   g.edge(0,n-1);
-   perl::Object G("Graph<>");
+   for (Int i = 0; i < n-1; ++i)
+      g.edge(i, i+1);
+   g.edge(0, n-1);
+   BigObject G("Graph<>");
    G.take("N_NODES") << n;
    G.take("N_EDGES") << n;
    G.take("DIAMETER") << (n%2 ? (n-1)/2 : n/2);
@@ -40,19 +40,19 @@ perl::Object cycle_graph(const int n)
    return G;
 }
 
-perl::Object wheel_graph(const int n)
+BigObject wheel_graph(const Int n)
 {
    if (n < 3)
       throw std::runtime_error("need at least 3 nodes");
 
    Graph<> g(n+1);
-   for (int i=0; i<n-1; ++i) {
-      g.edge(i,i+1);
-      g.edge(i,n);
+   for (Int i = 0; i < n-1; ++i) {
+      g.edge(i, i+1);
+      g.edge(i, n);
    }
-   g.edge(0,n-1);
-   g.edge(n-1,n);
-   perl::Object G("Graph<>");
+   g.edge(0, n-1);
+   g.edge(n-1, n);
+   BigObject G("Graph<>");
    G.take("N_NODES") << n+1;
    G.take("N_EDGES") << 2*n;
    G.take("DIAMETER") << (n==3 ? 1 : 2);
@@ -63,15 +63,15 @@ perl::Object wheel_graph(const int n)
    return G;
 }
 
-perl::Object path_graph(const int n)
+BigObject path_graph(const Int n)
 {
    if (n < 2)
       throw std::runtime_error("need at least 2 nodes");
 
    Graph<> g(n);
-   for (int i=0; i<n-1; ++i)
-      g.edge(i,i+1);
-   perl::Object G("Graph<>");
+   for (Int i = 0; i < n-1; ++i)
+      g.edge(i, i+1);
+   BigObject G("Graph<>");
    G.take("N_NODES") << n;
    G.take("N_EDGES") << n-1;
    G.take("DIAMETER") << n-1;
@@ -83,7 +83,7 @@ perl::Object path_graph(const int n)
 }
 
 
-UserFunction4perl("# @category Producing a graph\n"
+UserFunction4perl("# @category Producing a graph"
                   "# Constructs a __cycle graph__ on //n// nodes."
                   "# @param Int n"
                   "# @return Graph"
@@ -96,7 +96,7 @@ UserFunction4perl("# @category Producing a graph\n"
                   "# | {0 2}",
                   &cycle_graph, "cycle_graph");
 
-UserFunction4perl("# @category Producing a graph\n"
+UserFunction4perl("# @category Producing a graph"
                   "# Constructs a __wheel graph__ with //n// spokes."
                   "# @param Int n"
                   "# @return Graph"
@@ -111,7 +111,7 @@ UserFunction4perl("# @category Producing a graph\n"
                   "# | {0 1 2 3 4}",
                   &wheel_graph, "wheel_graph");
 
-UserFunction4perl("# @category Producing a graph\n"
+UserFunction4perl("# @category Producing a graph"
                   "# Constructs a __path graph__ on //n// nodes."
                   "# @param Int n"
                   "# @return Graph",

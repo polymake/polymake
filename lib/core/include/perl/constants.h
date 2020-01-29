@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,18 +23,19 @@
 namespace pm { namespace perl {
 
 enum class ValueFlags {
-   is_mutable=0, read_only=1, alloc_magic=2, expect_lval=4,
-   allow_undef=8, allow_non_persistent=16, ignore_magic=32,
-   is_trusted=0, not_trusted=64, allow_conversion=128,
-   allow_store_ref=256, allow_store_temp_ref=512,
-   allow_store_any_ref=allow_store_ref|allow_store_temp_ref
+   is_mutable = 0, read_only = 1, alloc_magic = 2, expect_lval = 4,
+   allow_undef = 8, allow_non_persistent = 0x10, ignore_magic = 0x20,
+   is_trusted = 0, not_trusted = 0x40, allow_conversion = 0x80,
+   allow_store_ref = 0x100, allow_store_temp_ref = 0x200,
+   allow_store_any_ref = allow_store_ref | allow_store_temp_ref
 };
 
 enum class ClassFlags {
-   none=0,
-   is_scalar=0, is_container, is_composite, is_opaque, kind_mask=0xf,
-   is_assoc_container=0x100, is_sparse_container=0x200, is_set=0x400,
-   is_serializable=0x800, is_sparse_serialized=0x1000, is_declared=0x2000
+   none = 0,
+   is_scalar = 0, is_container, is_composite, is_opaque, kind_mask=0xf,
+   is_assoc_container = 0x100, is_sparse_container = 0x200, is_set = 0x400,
+   is_serializable = 0x800, is_sparse_serialized = 0x1000, is_declared = 0x2000,
+   is_ordered = 0x4000
 };
 
 enum class Returns {
@@ -94,6 +95,32 @@ ClassFlags& operator|= (ClassFlags& a, ClassFlags b)
 {
    a = a | b;
    return a;
+}
+
+template <typename L>
+void set_bit_flags(L& l, unsigned int r)
+{
+   l = static_cast<L>(static_cast<unsigned int>(l) | r);
+}
+
+template <typename L, typename R>
+std::enable_if_t<std::is_enum<R>::value>
+set_bit_flags(L& l, R r)
+{
+   set_bit_flags(l, static_cast<unsigned int>(r));
+}
+
+template <typename L>
+void clear_bit_flags(L& l, unsigned int r)
+{
+   l = static_cast<L>(static_cast<unsigned int>(l) & ~r);
+}
+
+template <typename L, typename R>
+std::enable_if_t<std::is_enum<R>::value>
+clear_bit_flags(L& l, R r)
+{
+   clear_bit_flags(l, static_cast<unsigned int>(r));
 }
 
 } }

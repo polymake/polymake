@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -40,36 +40,41 @@
 
 namespace polymake { namespace tropical {
 
-	template <typename Addition>
-		Rational evaluate_polynomial(const Polynomial<TropicalNumber<Addition>> &p, const Vector<Rational> &v){
-			Matrix<Rational> monoms(p.monomials_as_matrix());
-			Vector<TropicalNumber<Addition>> coefs(p.coefficients_as_vector());
+template <typename Addition>
+Rational evaluate_polynomial(const Polynomial<TropicalNumber<Addition>> &p, const Vector<Rational> &v)
+{
+  Matrix<Rational> monoms(p.monomials_as_matrix());
+  Vector<TropicalNumber<Addition>> coefs(p.coefficients_as_vector());
 
-			TropicalNumber<Addition> result = TropicalNumber<Addition>::zero();
-			for(int m = 0; m < monoms.rows(); m++) {
-				result += (coefs[m] * TropicalNumber<Addition>(monoms.row(m)*v));
-			}
+  TropicalNumber<Addition> result = TropicalNumber<Addition>::zero();
+  for (Int m = 0; m < monoms.rows(); ++m) {
+    result += (coefs[m] * TropicalNumber<Addition>(monoms.row(m)*v));
+  }
 
-			return Rational(result);
-		}//END evaluate_polynomial
+  return Rational(result);
+}
 
-	template <typename Coefficient>
-		Vector<int> degree_vector(const Polynomial<Coefficient> &p){
-			return accumulate( cols(p.monomials_as_matrix()), operations::add());
-		}
+template <typename Coefficient>
+Vector<Int> degree_vector(const Polynomial<Coefficient> &p)
+{
+  return accumulate(cols(p.monomials_as_matrix()), operations::add());
+}
 
-	template <typename Coefficient>
-		int polynomial_degree(const Polynomial<Coefficient> &p) {
-			if(p.monomials_as_matrix().rows() == 0) return -1;
-			return accumulate( degree_vector(p), operations::max());	
-		}
+template <typename Coefficient>
+Int polynomial_degree(const Polynomial<Coefficient>& p)
+{
+  if (p.monomials_as_matrix().rows() == 0) return -1;
+  return accumulate(degree_vector(p), operations::max());
+}
 
-	template <typename Coefficient>
-		bool is_homogeneous(const Polynomial<Coefficient> &p) {
-			if(p.monomials_as_matrix().rows() == 0) return true;
-			Vector<int> dv = degree_vector(p);
-			return dv == dv[0] * ones_vector<int>(dv.dim());
-		}
+template <typename Coefficient>
+bool is_homogeneous(const Polynomial<Coefficient>& p)
+{
+  if (p.monomials_as_matrix().rows() == 0) return true;
+  const Vector<Int> dv = degree_vector(p);
+  return dv == same_element_vector(dv[0], dv.dim());
+}
+
 } }
 
 #endif

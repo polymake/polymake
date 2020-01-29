@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,7 +30,7 @@ namespace polymake { namespace polytope {
 
 namespace {
 
-Matrix<Rational> rand_cyclic_gale(int d, int n, const RandomSeed& seed)
+Matrix<Rational> rand_cyclic_gale(Int d, Int n, const RandomSeed& seed)
 {
    /*
      This function produces a random instance of a Gale diagram of a
@@ -51,26 +51,26 @@ Matrix<Rational> rand_cyclic_gale(int d, int n, const RandomSeed& seed)
     */
 
    UniformlyRandom<Rational> random(seed);
-   const int gdim = n-d-1;
+   const Int gdim = n-d-1;
 
    // first, trivial cases
    assert(gdim>0);
    if (gdim==1) {
       Matrix<Rational> G(n,gdim);
-      for (int i=0; i<n; ++i)
+      for (Int i = 0; i < n; ++i)
          G(i,0) = (i%2) ? -random.get() : random.get();
       return G;
    }
    // now gdim >= 2
 
    Matrix<Rational> 
-      normal_vectors(int(Integer::binom(n, gdim-1)), gdim),
+      normal_vectors(Int(Integer::binom(n, gdim-1)), gdim),
       G(n, gdim); // the rows will be the Gale vectors
    auto
       nrit = entire(rows(normal_vectors)),
       grit = entire(rows(G));
-   int i=0; // how many vertices of G have been found already
-   int rws = 0; // number of non-zero rows of normal_vectors matrix
+   Int i = 0; // how many vertices of G have been found already
+   Int rws = 0; // number of non-zero rows of normal_vectors matrix
 
    // initialize the first entries of the Gale diagram with unit vectors; 
    // this is ok because we may transform the Gale diagram by a linear transform
@@ -82,13 +82,13 @@ Matrix<Rational> rand_cyclic_gale(int d, int n, const RandomSeed& seed)
 
    while (i<n) { // add a new vector to the Gale diagram
       // find the generators of the cone of allowed positions for the new vector
-      perl::Object c("Cone<Rational>");
+      BigObject c("Cone<Rational>");
       c.take("INEQUALITIES") << (parity_flag ? Matrix<Rational>(-normal_vectors.minor(sequence(0,rws),All))
                                                                : normal_vectors.minor(sequence(0,rws),All));
       const Matrix<Rational> gens = c.give("RAYS");
     /*  cout<<"without zeros: "<<gens<<endl;
 
-      perl::Object c2("Cone<Rational>");
+      BigObject c2("Cone<Rational>");
       c2.take("INEQUALITIES") << (parity_flag ? Matrix<Rational>(-normal_vectors)
                                                                : normal_vectors);
       const Matrix<Rational> gens2 = c2.give("RAYS");
@@ -106,10 +106,10 @@ Matrix<Rational> rand_cyclic_gale(int d, int n, const RandomSeed& seed)
       // add the normal vectors of the new hyperplanes generated using this vector
       if (i < n-1) { // but don't waste time on the last point
          for (auto r = entire(all_subsets_of_k(sequence(0,i), gdim-2)); !r.at_end(); ++r) {
-            Set<int> ridge(*r);
+            Set<Int> ridge(*r);
             ridge += i;
             const Vector<Rational> v = null_space(G.minor(ridge, All))[0];
-            const int j = (sequence(0,i) - ridge).front(); 
+            const Int j = (sequence(0,i) - ridge).front(); 
             // the inner product with first vector not in ridge is chosen positive
             *nrit = (v*G.row(j) < 0) ? Vector<Rational>(-v) : v;  
             ++nrit;
@@ -125,7 +125,7 @@ Matrix<Rational> rand_cyclic_gale(int d, int n, const RandomSeed& seed)
 
 } // end anonymous namespace
 
-perl::Object rand_cyclic(int d, int n, perl::OptionSet options)
+BigObject rand_cyclic(Int d, Int n, OptionSet options)
 {
    if (d<2 || n<d+2) throw std::runtime_error("rand_cyclic: need d >= 2 and n >= d+2");
 
@@ -146,7 +146,7 @@ perl::Object rand_cyclic(int d, int n, perl::OptionSet options)
    V.col(0).fill(1);
 
    // done.
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.set_description() << "Random instance of the cyclic polytope C(" 
                        << d << "," 
                        << n << "). Produced by rand_cyclic for seed=" << seed.get() << endl;

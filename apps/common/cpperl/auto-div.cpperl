@@ -1,6 +1,6 @@
 {"app": "common",
  "inst": [
-  {"args": ["perl::Canned<const UniPolynomial<Rational, int>&>", "perl::Canned<const UniPolynomial<Rational, int>&>"], "func": "div", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/numerical_functions.h"], "sig": "div.X.X"},
-  {"args": ["int", "int"], "func": "div", "include": ["polymake/numerical_functions.h"], "sig": "div.X.X"},
+  {"args": ["perl::Canned<const UniPolynomial<Rational, Int>&>", "perl::Canned<const UniPolynomial<Rational, Int>&>"], "func": "div", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/numerical_functions.h"], "sig": "div.X.X"},
+  {"args": ["Int", "Int"], "func": "div", "include": ["polymake/numerical_functions.h"], "sig": "div.X.X"},
  null ],
 "version": 3}

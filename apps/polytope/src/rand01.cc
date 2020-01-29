@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,17 +23,17 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object rand01(int d, int n, perl::OptionSet options)
+BigObject rand01(Int d, Int n, OptionSet options)
 {
    // The behaviour of the shift operator is undefined if the second argument is larger (or equal) than the bitsize of the first,
    // in that case the test is not necessary.
-   if (d<2 || n<=d || (d <= std::numeric_limits<int>::digits && (n-1>>d)>=1))
+   if (d < 2 || n <= d || (d <= std::numeric_limits<Int>::digits && (n-1>>d)>=1))
       throw std::runtime_error("rand01 : 2 <= dim < #vertices <= 2^dim required");
 
    const RandomSeed seed(options["seed"]);
    UniformlyRandom<Bitset> random(d,seed);
 
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.set_description() << "Random 0-1 polytope; seed=" << seed.get() << endl;
 
    p.take("CONE_AMBIENT_DIM") << d+1;
@@ -47,7 +47,7 @@ perl::Object rand01(int d, int n, perl::OptionSet options)
    Matrix<Rational> V(n,d+1);
    hash_set<Bitset>::iterator bv=bitvectors.begin();
    for (auto v=entire(rows(V)); !v.at_end(); ++v, ++bv)
-      *v = 1 | same_element_sparse_vector<int>(*bv,d);
+      *v = 1 | same_element_sparse_vector<Int>(*bv,d);
       
    p.take("VERTICES") << V;
    Matrix<Rational> empty_lin_space(0,V.cols());	

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -36,18 +36,18 @@ namespace pm {
 template <typename Permutation>
 int permutation_sign(const Permutation& v)
 {
-   const int l=v.size();
-   if (l<=1) return 1;
+   const Int l = v.size();
+   if (l <= 1) return 1;
 
-   std::vector<int> w(v.size());
+   std::vector<Int> w(v.size());
    copy_range(v.begin(), entire(w));
 
-   int sign=1;
-   for (int i=0; i<l; ) {
-      if (w[i]!=i) {
-         int k=w[i];
-         w[i]=w[k];
-         w[k]=k;
+   int sign = 1;
+   for (Int i = 0; i < l; ) {
+      if (w[i] != i) {
+         Int k = w[i];
+         w[i] = w[k];
+         w[k] = k;
          sign = -sign;
       } else {
          ++i;
@@ -57,29 +57,29 @@ int permutation_sign(const Permutation& v)
 }
 
 template <typename Permutation>
-int n_fixed_points(const Permutation& p)
+Int n_fixed_points(const Permutation& p)
 {
-   int i(0), n(0);
+   Int i(0), n(0);
    for (auto pit = entire(p); !pit.at_end(); ++pit, ++i)
       if (*pit == i)
          ++n;
    return n;
 }
 
-template <typename Permutation, typename InvPermutation> inline
+template <typename Permutation, typename InvPermutation>
 void inverse_permutation(const Permutation& perm, InvPermutation& inv_perm)
 {
    inv_perm.resize(perm.size());
-   int pos=0;
-   for (auto i=entire(perm);  !i.at_end();  ++i, ++pos)
-      inv_perm[*i]=pos;
+   Int pos = 0;
+   for (auto i = entire(perm);  !i.at_end();  ++i, ++pos)
+      inv_perm[*i] = pos;
 }
 
 template <typename Permutation>
 class permutation_cycles_iterator {
 public:
    typedef forward_iterator_tag iterator_category;
-   typedef std::list<int> value_type;
+   typedef std::list<Int> value_type;
    typedef const value_type& reference;
    typedef const value_type* pointer;
    typedef ptrdiff_t difference_type;
@@ -88,23 +88,23 @@ public:
 
 protected:
    typedef typename Permutation::const_iterator perm_iterator;
-   int first, limit;
+   Int first, limit;
    Bitset visited;
    value_type value;
    perm_iterator cur;
 
    void valid_position()
    {
-      for ( ;first<limit ;++first, ++cur)
-         if (first!=*cur && !visited.contains(first)) {
-            int v=first;
+      for (; first < limit; ++first, ++cur)
+         if (first != *cur && !visited.contains(first)) {
+            Int v = first;
             do {
-               visited+=v;
+               visited += v;
                value.push_back(v);
-               const int prev=v;
-               v=*cur;
+               const Int prev = v;
+               v = *cur;
                std::advance(cur, v-prev);
-            } while (v!=first);
+            } while (v != first);
             break;
          }
    }
@@ -153,7 +153,7 @@ public:
    value_type front() const { return value_type(hidden().begin(), 0, hidden().size()); }
 
    bool empty() const { return begin().at_end(); }
-   int size() const { return count_it(begin()); }
+   Int size() const { return count_it(begin()); }
 };
 
 template <typename Permutation>
@@ -173,29 +173,29 @@ struct spec_object_traits< PermutationCycles<Permutation> >
    static const IO_separator_kind IO_separator=IO_sep_inherit;
 };
 
-template <typename Value, typename Comparator, typename ExpectDuplicates, typename enabled=void>
+template <typename Value, typename Comparator, typename ExpectDuplicates, typename = void>
 struct permutation_map {
-   using type = Map<Value, int, ComparatorTag<Comparator>, MultiTag<ExpectDuplicates>>;
+   using type = Map<Value, Int, ComparatorTag<Comparator>, MultiTag<ExpectDuplicates>>;
 };
 
 template <typename Value>
-struct permutation_map<Value, operations::cmp, std::false_type, typename std::enable_if<!std::numeric_limits<Value>::is_specialized && is_ordered<Value>::value>::type> {
-   using type = Map<Value, int>;
+struct permutation_map<Value, operations::cmp, std::false_type, std::enable_if_t<!std::numeric_limits<Value>::is_specialized && is_ordered<Value>::value>> {
+   using type = Map<Value, Int>;
 };
 
 template <typename Value>
-struct permutation_map<Value, operations::cmp, std::false_type, typename std::enable_if<std::numeric_limits<Value>::is_specialized>::type> {
-   using type = hash_map<Value, int>;
+struct permutation_map<Value, operations::cmp, std::false_type, std::enable_if_t<std::numeric_limits<Value>::is_specialized>> {
+   using type = hash_map<Value, Int>;
 };
 
 template <typename Value>
-struct permutation_map<Value, operations::cmp, std::true_type, typename std::enable_if<!std::numeric_limits<Value>::is_specialized && is_ordered<Value>::value>::type> {
-   using type = Map<Value, int, MultiTag<std::true_type>>;
+struct permutation_map<Value, operations::cmp, std::true_type, std::enable_if_t<!std::numeric_limits<Value>::is_specialized && is_ordered<Value>::value>> {
+   using type = Map<Value, Int, MultiTag<std::true_type>>;
 };
 
 template <typename Value>
-struct permutation_map<Value, operations::cmp, std::true_type, typename std::enable_if<std::numeric_limits<Value>::is_specialized>::type> {
-   using type = hash_map<Value, int, MultiTag<std::true_type>>;
+struct permutation_map<Value, operations::cmp, std::true_type, std::enable_if_t<std::numeric_limits<Value>::is_specialized>> {
+   using type = hash_map<Value, Int, MultiTag<std::true_type>>;
 };
 
 template <typename Input1, typename Input2, typename Output, typename Comparator, typename ExpectDuplicates>
@@ -203,7 +203,7 @@ bool find_permutation_impl(Input1&& src1, Input2&& src2, Output&& dst, const Com
 {
    typename permutation_map<typename iterator_traits<Input1>::value_type, Comparator, ExpectDuplicates>::type index_map;
 
-   for (int i = 0; !src1.at_end(); ++src1, ++i)
+   for (Int i = 0; !src1.at_end(); ++src1, ++i)
       index_map.emplace(*src1, i);
 
    for (; !src2.at_end(); ++src2, ++dst) {
@@ -218,10 +218,10 @@ bool find_permutation_impl(Input1&& src1, Input2&& src2, Output&& dst, const Com
 }
 
 template <typename Container1, typename Container2, typename Comparator = polymake::operations::cmp>
-optional<Array<int>>
+optional<Array<Int>>
 find_permutation(const Container1& c1, const Container2& c2, const Comparator& comparator = Comparator())
 {
-   Array<int> perm(c1.size());
+   Array<Int> perm(c1.size());
    if (find_permutation_impl(entire(c1), entire(c2), perm.begin(), comparator, std::false_type()))
       return make_optional(std::move(perm));
    else
@@ -229,10 +229,10 @@ find_permutation(const Container1& c1, const Container2& c2, const Comparator& c
 }
 
 template <typename Container1, typename Container2, typename Comparator = polymake::operations::cmp>
-optional<Array<int>>
+optional<Array<Int>>
 find_permutation_with_duplicates(const Container1& c1, const Container2& c2, const Comparator& comparator = Comparator())
 {
-   Array<int> perm(c1.size());
+   Array<Int> perm(c1.size());
    if (find_permutation_impl(entire(c1), entire(c2), perm.begin(), comparator, std::true_type()))
       return make_optional(std::move(perm));
    else
@@ -295,7 +295,7 @@ class permutation_iterator;
 class permutation_iterator_base {
 public:
    using iterator_category = forward_iterator_tag;
-   using value_type = Array<int>;
+   using value_type = Array<Int>;
    using reference = value_type;
    using pointer = const value_type*;
    using difference_type = ptrdiff_t;
@@ -303,8 +303,8 @@ protected:
    value_type perm;
 
    permutation_iterator_base() {}
-   permutation_iterator_base(int n) : perm(n) { reset(n); }
-   void reset(int n) { copy_range(entire(sequence(0, n)), perm.begin()); }
+   permutation_iterator_base(Int n) : perm(n) { reset(n); }
+   void reset(Int n) { copy_range(entire(sequence(0, n)), perm.begin()); }
 
 public:
    reference operator* () const { return perm; }
@@ -321,10 +321,10 @@ public:
    using const_iterator = iterator;
 
 protected:
-   std::vector<int> cnt;
-   int n, pos;
+   std::vector<Int> cnt;
+   Int n, pos;
 
-   permutation_iterator(int n_arg, bool)
+   permutation_iterator(Int n_arg, bool)
       : permutation_iterator_base(n_arg)
       , cnt(n_arg, 0)
       , n(n_arg)
@@ -335,7 +335,7 @@ public:
       : n(0)
       , pos(0) {}
 
-   explicit permutation_iterator(int n_arg)
+   explicit permutation_iterator(Int n_arg)
       : permutation_iterator_base(n_arg)
       , cnt(size_t(n_arg), 0)
       , n(n_arg)
@@ -384,27 +384,27 @@ public:
    typedef iterator const_iterator;
 
 protected:
-   std::vector<int> move;
-   int n, next;
+   std::vector<Int> move;
+   Int n, next;
 
    void incr()
    {
-      if (next==0) {
+      if (next == 0) {
          next = -1; return;
       }
-      int lim = n, offset = 0;
+      Int lim = n, offset = 0;
       auto pos = move.begin();
       for (;;) {
-         const int m = *pos;
+         const Int m = *pos;
          if (m > 0) {
             if (m < lim) {
-               next = m + offset;
+               next = m+offset;
                ++*pos;
                break;
             }
          } else {
             if (m < -1) {
-               next = offset - m - 1;
+               next = offset-m-1;
                ++*pos;
                break;
             }
@@ -423,7 +423,7 @@ protected:
 public:
    permutation_iterator() : n(0) {}
 
-   explicit permutation_iterator(int n_arg)
+   explicit permutation_iterator(Int n_arg)
       : permutation_iterator_base(n_arg)
       , move(size_t(n_arg), 1)
       , n(n_arg)
@@ -442,9 +442,9 @@ public:
    }
    const iterator operator++ (int) { iterator copy(*this); operator++(); return copy; }
 
-   int next_swap() const { return next; }
+   Int next_swap() const { return next; }
 
-   bool at_end() const { return next<0; }
+   bool at_end() const { return next < 0; }
 
    bool operator== (const iterator& it) const
    {
@@ -459,7 +459,7 @@ public:
    {
       reset(n);
       fill_range(entire(move), 1);
-      next = n - 1;
+      next = n-1;
       if (next > 1) {
          next = 1; move[0] = 2;
       }
@@ -476,26 +476,26 @@ public:
    typedef iterator const_iterator;
 
 protected:
-   bool _at_end;
+   bool at_end_;
 
 public:
    permutation_iterator() {}
 
-   explicit permutation_iterator(int n, bool end_arg=false)
-      : permutation_iterator_base(n), _at_end(end_arg || n==0) {}
+   explicit permutation_iterator(Int n, bool end_arg = false)
+      : permutation_iterator_base(n), at_end_(end_arg || n == 0) {}
 
    iterator& operator++ ()
    {
-      _at_end=!std::next_permutation(perm.begin(), perm.end());
+      at_end_ = !std::next_permutation(perm.begin(), perm.end());
       return *this;
    }
    const iterator operator++ (int) { iterator copy(*this); operator++(); return copy; }
 
-   bool at_end() const { return _at_end; }
+   bool at_end() const { return at_end_; }
 
    bool operator== (const iterator& it) const
    {
-      return _at_end ? it._at_end : !it._at_end && perm==it.perm;
+      return at_end_ ? it.at_end_ : !it.at_end_ && perm == it.perm;
    }
    bool operator!= (const iterator& it) const
    {
@@ -505,7 +505,7 @@ public:
    void rewind()
    {
       reset(perm.size());
-      _at_end=perm.empty();
+      at_end_ = perm.empty();
    }
 };
 
@@ -517,9 +517,9 @@ struct check_iterator_feature<permutation_iterator<kind>, rewindable> : std::tru
 template <permutation_sequence kind>
 class AllPermutations {
 protected:
-   int n;
+   Int n;
 public:
-   explicit AllPermutations(int n_arg=0) : n(n_arg) {}
+   explicit AllPermutations(Int n_arg = 0) : n(n_arg) {}
 
    typedef permutation_iterator<kind> iterator;
    typedef iterator const_iterator;
@@ -534,9 +534,9 @@ public:
    {
       return value_type(sequence(0,n).begin(), sequence(0,n).end());
    }
-   //FIXME: ticket 727 changed from Integer to int to get perl acces 
-   long size() const { return n ? long(Integer::fac(n)) : 0; } 
-   bool empty() const { return n==0; }
+
+   Int size() const { return n != 0 ? static_cast<Int>(Integer::fac(n)) : 0; } 
+   bool empty() const { return n == 0; }
 };
 
 template <permutation_sequence kind>
@@ -546,25 +546,25 @@ struct spec_object_traits< AllPermutations<kind> >
 };
 
 inline
-AllPermutations<> all_permutations(int n)
+AllPermutations<> all_permutations(Int n)
 {
    return AllPermutations<>(n);
 }
 
 template <permutation_sequence kind>
-AllPermutations<kind> all_permutations(int n)
+AllPermutations<kind> all_permutations(Int n)
 {
    return AllPermutations<kind>(n);
 }
 
 
-template <typename PermutationRef, typename Element=int>
+template <typename PermutationRef, typename Element = Int>
 class PermutationMatrix
    : public GenericMatrix< PermutationMatrix<PermutationRef, Element>, Element > {
 protected:
    using alias_t = alias<PermutationRef>;
    alias_t perm;
-   mutable std::vector<int> inv_perm;
+   mutable std::vector<Int> inv_perm;
 public:
    using value_type = Element;
    using reference = const Element&;
@@ -576,7 +576,7 @@ public:
 
    decltype(auto) get_perm() const { return *perm; }
 
-   const std::vector<int>& get_inv_perm() const
+   const std::vector<Int>& get_inv_perm() const
    {
       if (inv_perm.empty() && !get_perm().empty())
          inverse_permutation(get_perm(), inv_perm);
@@ -597,7 +597,7 @@ template <typename PermutationRef, typename Element>
 class matrix_random_access_methods< PermutationMatrix<PermutationRef,Element> > {
    typedef PermutationMatrix<PermutationRef,Element> master;
 public:
-   const Element& operator() (int i, int j) const
+   const Element& operator() (Int i, Int j) const
    {
       const master& me=*static_cast<const master*>(this);
       return me.get_perm()[i]==j ? one_value<Element>() : zero_value<Element>();
@@ -632,7 +632,7 @@ public:
 template <typename PermutationRef, typename Element>
 class Cols< PermutationMatrix<PermutationRef, Element> >
    : public modified_container_pair_impl< Cols< PermutationMatrix<PermutationRef, Element> >,
-                                          mlist< Container1Tag< std::vector<int> >,
+                                          mlist< Container1Tag< std::vector<Int> >,
                                                  Container2RefTag< same_value_container<const Element&> >,
                                                  OperationTag< SameElementSparseVector_factory<2> >,
                                                  MasqueradedTop > > {
@@ -675,14 +675,14 @@ bool is_permutation(const Permutation& perm)
 }
 
 template <typename Scalar>
-Array<Array<int>> rows_induced_from_cols(const Matrix<Scalar>& M, const Array<Array<int>> G)
+Array<Array<Int>> rows_induced_from_cols(const Matrix<Scalar>& M, const Array<Array<Int>> G)
 {
-   Map<Vector<Scalar>,int> RevPerm;
-   int index = 0;
+   Map<Vector<Scalar>, Int> RevPerm;
+   Int index = 0;
    for (auto v = entire(rows(M)); !v.at_end(); ++v, ++index){
       RevPerm[*v] = index;
    }
-   Array<Array<int>> RowPerm(G.size());
+   Array<Array<Int>> RowPerm(G.size());
    auto old_perm = entire(G);
        
    for (auto new_perm = entire(RowPerm); !new_perm.at_end(); ++new_perm, ++old_perm){
@@ -700,16 +700,16 @@ Array<Permutation>
 permutation_subgroup_generators(const Array<Permutation>& gens,
                                 const SubdomainType& subdomain)
 {
-   Map<int, int> index_of;
-   int index(0);
+   Map<Int, Int> index_of;
+   Int index = 0;
    for (const auto& s: subdomain)
       index_of[s] = index++;
    
-   Set<Array<int>> subgens;
-   const Array<int> id(sequence(0, subdomain.size()));
+   Set<Array<Int>> subgens;
+   const Array<Int> id(sequence(0, subdomain.size()));
    
    for (const auto& g: gens) {
-      Array<int> candidate_gen(subdomain.size());
+      Array<Int> candidate_gen(subdomain.size());
       bool candidate_ok(true);
       for (const auto& i: subdomain) {
          if (!index_of.exists(g[i])) {

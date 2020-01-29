@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["Integer()", "Int(Int)"], "func": "fibonacci2", "include": ["polymake/Integer.h"], "kind": "stat", "ret": "list", "sig": "fibonacci2:L.Int"},
+ null ],
+"version": 3}

@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -46,7 +46,7 @@
 
 namespace polymake { namespace tropical { 
 
-using StarResult = std::pair<Matrix<Rational>, std::vector<Set<int>>>;
+using StarResult = std::pair<Matrix<Rational>, std::vector<Set<Int>>>;
 
 // Documentation see perl wrapper
 Integer lattice_index(const Matrix<Integer>& lattice_rays)
@@ -67,19 +67,19 @@ Integer lattice_index(const Matrix<Integer>& lattice_rays)
    times the lattice index of the sum of the lattices.
 */
 Integer computeFanMultiplicity(const Matrix<Rational>& xrays, const Matrix<Rational>& xlin,
-                               const std::vector<Set<int>>& xcones, const Vector<Integer>& xweights,
-                               const int xdim,
+                               const std::vector<Set<Int>>& xcones, const Vector<Integer>& xweights,
+                               const Int xdim,
                                const Matrix<Rational>& yrays, const Matrix<Rational>& ylin,
-                               const std::vector<Set<int>>& ycones, const Vector<Integer>& yweights,
-                               const int ydim)
+                               const std::vector<Set<Int>>& ycones, const Vector<Integer>& yweights,
+                               const Int ydim)
 {
   Integer weight(0);
 
   // First, we compute all H-representations of xcone - ycone, keeping
   // only full-dimensional ones
   std::vector<Matrix<Rational>> full_dimensional_cones;
-  std::vector<int> full_dimensional_xindex; //Keep track of associated x- and ycones
-  std::vector<int> full_dimensional_yindex;
+  std::vector<Int> full_dimensional_xindex; //Keep track of associated x- and ycones
+  std::vector<Int> full_dimensional_yindex;
   for (auto xc = entire<indexed>(xcones); !xc.at_end(); ++xc) {
     for (auto yc = entire<indexed>(ycones); !yc.at_end(); ++yc) {
       const auto x_sub_rays = remove_zero_rows(xrays.minor(*xc, All));
@@ -146,18 +146,18 @@ Integer computeFanMultiplicity(const Matrix<Rational>& xrays, const Matrix<Ratio
 
 // Documentation see perl wrapper
 template <typename Addition>
-perl::ListReturn intersect_check_transversality(perl::Object X, perl::Object Y, bool ensure_transversality = false)
+ListReturn intersect_check_transversality(BigObject X, BigObject Y, bool ensure_transversality = false)
 {
   // Extract values
-  const int Xcodim = X.give("PROJECTIVE_CODIMENSION");
-  const int Xdim   = X.give("PROJECTIVE_DIM");
-  const int Ycodim = Y.give("PROJECTIVE_CODIMENSION");
-  const int Ydim   = Y.give("PROJECTIVE_DIM");
-  const int Xambi  = X.give("PROJECTIVE_AMBIENT_DIM");
+  const Int Xcodim = X.give("PROJECTIVE_CODIMENSION");
+  const Int Xdim   = X.give("PROJECTIVE_DIM");
+  const Int Ycodim = Y.give("PROJECTIVE_CODIMENSION");
+  const Int Ydim   = Y.give("PROJECTIVE_DIM");
+  const Int Xambi  = X.give("PROJECTIVE_AMBIENT_DIM");
 
   // If the codimensions of the varieties add up to something larger then CMPLX_AMBIENT_DIM, return the 0-cycle 
   if (Xcodim + Ycodim > Xambi) {
-    perl::ListReturn zeroResult;
+    ListReturn zeroResult;
     zeroResult << empty_cycle<Addition>(Xambi);
     zeroResult << false;
     return zeroResult;
@@ -170,7 +170,7 @@ perl::ListReturn intersect_check_transversality(perl::Object X, perl::Object Y, 
   const Matrix<Rational> xlin = tdehomog(xlin_ref);
   const IncidenceMatrix<> xcones = X.give("MAXIMAL_POLYTOPES");
   const Vector<Integer> xweights = X.give("WEIGHTS");
-  const int xambdim = X.give("PROJECTIVE_AMBIENT_DIM");
+  const Int xambdim = X.give("PROJECTIVE_AMBIENT_DIM");
 
   const Matrix<Rational> &yrays_ref = Y.give("VERTICES");
   const Matrix<Rational> yrays = tdehomog(yrays_ref);
@@ -178,14 +178,14 @@ perl::ListReturn intersect_check_transversality(perl::Object X, perl::Object Y, 
   const	Matrix<Rational> ylin = tdehomog(ylin_ref);
   const IncidenceMatrix<> ycones = Y.give("MAXIMAL_POLYTOPES");
   const Vector<Integer> yweights = Y.give("WEIGHTS");
-  const int yambdim = Y.give("PROJECTIVE_AMBIENT_DIM");
+  const Int yambdim = Y.give("PROJECTIVE_AMBIENT_DIM");
 
   if (xambdim != yambdim) {
     throw std::runtime_error("Cannot compute intersection product: Cycles live in different spaces.");
   }
 
   // Compute the expected dimension of the intersection product 
-  int k = Xambi - (Xcodim + Ycodim);
+  Int k = Xambi - (Xcodim + Ycodim);
 
   // Compute the intersection complex
   fan_intersection_result f = fan_intersection(xrays,xlin,xcones,yrays,ylin,ycones);
@@ -194,21 +194,21 @@ perl::ListReturn intersect_check_transversality(perl::Object X, perl::Object Y, 
   // cones containing these cones
   const Matrix<Rational> &interrays = f.rays;
   const Matrix<Rational> &interlin = f.lineality_space;
-  int i_lineality_dim = rank(f.lineality_space);
-  std::vector<Set<int> > intercones;
-  std::vector<Set<int> > xcontainers;
-  std::vector<Set<int> > ycontainers;
+  Int i_lineality_dim = rank(f.lineality_space);
+  std::vector<Set<Int>> intercones;
+  std::vector<Set<Int>> xcontainers;
+  std::vector<Set<Int>> ycontainers;
 
   bool is_transversal = true;
 
   for (auto ic = entire<indexed>(rows(f.cones)); !ic.at_end(); ++ic) {
     // Check that the cone dimension is at least the expected dimension
-    int cone_dim = rank(interrays.minor(*ic,All)) + i_lineality_dim -1;
+    Int cone_dim = rank(interrays.minor(*ic,All)) + i_lineality_dim -1;
     if (cone_dim >= k) {
       if (cone_dim > k) {
         is_transversal = false;
         if (ensure_transversality) { 
-          perl::ListReturn zeroResult;
+          ListReturn zeroResult;
           zeroResult << empty_cycle<Addition>(Xambi);
           zeroResult << false;
           return zeroResult;
@@ -216,16 +216,16 @@ perl::ListReturn intersect_check_transversality(perl::Object X, perl::Object Y, 
       }
 
       // Now we compute the k-skeleton of the intersection cone
-      Vector<Set<int>> singlecone(1); singlecone[0] = *ic;
+      Vector<Set<Int>> singlecone(1); singlecone[0] = *ic;
       IncidenceMatrix<> k_skeleton_matrix(singlecone);
-      for (int i = cone_dim; i > k; --i) {
+      for (Int i = cone_dim; i > k; --i) {
         k_skeleton_matrix = 
           calculateCodimOneData(interrays, k_skeleton_matrix, interlin, IncidenceMatrix<>()).codimOneCones;
       }
 
       // Go through all cones and add them (if they haven't already been added)
       for (auto kc = entire(rows(k_skeleton_matrix)); !kc.at_end(); ++kc) {
-        int cone_index = -1;
+        Int cone_index = -1;
         for (auto oc = entire<indexed>(intercones); !oc.at_end(); ++oc) {
           // Since both cones have the same dimension, it suffices to check, whether the old cone
           // is contained in the new cone
@@ -237,8 +237,8 @@ perl::ListReturn intersect_check_transversality(perl::Object X, perl::Object Y, 
         // If it doesn't exist yet, add it
         if (cone_index == -1) {
           intercones.push_back(*kc);
-          xcontainers.push_back(Set<int>());
-          ycontainers.push_back(Set<int>());
+          xcontainers.push_back(Set<Int>());
+          ycontainers.push_back(Set<Int>());
           cone_index = intercones.size()-1;
         }
 
@@ -253,7 +253,7 @@ perl::ListReturn intersect_check_transversality(perl::Object X, perl::Object Y, 
 
   // If no cones remain, return the zero cycle
   if (intercones.empty()) {
-    perl::ListReturn zeroResult;
+    ListReturn zeroResult;
     zeroResult << empty_cycle<Addition>(Xambi);
     zeroResult << false;
     return zeroResult;
@@ -261,7 +261,7 @@ perl::ListReturn intersect_check_transversality(perl::Object X, perl::Object Y, 
 
   // Now we compute weights
   Vector<Integer> weights(intercones.size());
-  Set<int> weight_zero_cones;
+  Set<Int> weight_zero_cones;
 
   Matrix<Rational> xlin_dehom = xlin.minor(All, range_from(1));
   Matrix<Rational> ylin_dehom = ylin.minor(All, range_from(1));
@@ -274,7 +274,7 @@ perl::ListReturn intersect_check_transversality(perl::Object X, perl::Object Y, 
 
     // Compute stars
     Matrix<Rational> xstar_rays, ystar_rays;
-    std::vector<Set<int>> xstar_cones, ystar_cones;
+    std::vector<Set<Int>> xstar_cones, ystar_cones;
 
     StarResult starx = computeStar(interior_point, xrays, xcones.minor(xcontainers[c.index()],All));
     StarResult stary = computeStar(interior_point, yrays, ycones.minor(ycontainers[c.index()],All));
@@ -289,8 +289,8 @@ perl::ListReturn intersect_check_transversality(perl::Object X, perl::Object Y, 
   }
 
   // Check if any cones remain
-  if (weight_zero_cones.size() == int(intercones.size())) {
-    perl::ListReturn zeroResult;
+  if (weight_zero_cones.size() == Int(intercones.size())) {
+    ListReturn zeroResult;
     zeroResult << empty_cycle<Addition>(Xambi);
     zeroResult << false;
     return zeroResult;
@@ -300,18 +300,18 @@ perl::ListReturn intersect_check_transversality(perl::Object X, perl::Object Y, 
 
   IncidenceMatrix<> intercones_matrix(intercones);
   intercones_matrix = intercones_matrix.minor(~weight_zero_cones,All);
-  Set<int> used_rays = accumulate(rows(intercones_matrix), operations::add());
+  Set<Int> used_rays = accumulate(rows(intercones_matrix), operations::add());
   intercones_matrix = intercones_matrix.minor(All,used_rays);
   weights = weights.slice(~weight_zero_cones);
 
   // Finally create the result  
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << thomog(interrays.minor(used_rays,All));
   result.take("MAXIMAL_POLYTOPES") << intercones_matrix;
   result.take("LINEALITY_SPACE") << thomog(interlin);
   result.take("WEIGHTS") << weights;
 
-  perl::ListReturn positiveResult;
+  ListReturn positiveResult;
   positiveResult << result;
   positiveResult << is_transversal;
   return positiveResult;

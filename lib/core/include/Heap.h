@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -33,9 +33,9 @@ namespace pm {
        value_type
          elements stored in the queue
 
-       int position(value_type) const
+       Int position(value_type) const
          current position (index) of the element in the heap
-       void update_position(value_type, int old, int new)
+       void update_position(value_type, Int old, Int new)
          change the current position of stored in/with the element;  -1 on any side means "none"
        <any_type> key(value_type)
          retrieve the key of the element
@@ -105,11 +105,11 @@ public:
    }
 
    /// Remove element at the given queue position
-   value_type erase_at(int pos);
+   value_type erase_at(Int pos);
 
 private:
    /// @param new_pos where to start looking for the new position
-   void sift_down(int old_pos, int pos, int shrinking);
+   void sift_down(Int old_pos, Int pos, Int shrinking);
 
    queue_t queue;
 
@@ -122,29 +122,29 @@ public:
 template <typename Policy>
 void Heap<Policy>::push(const value_type& elem)
 {
-   const int old_pos=this->position(elem);
-   bool moved=false;
-   int pos=old_pos;
+   const Int old_pos = this->position(elem);
+   bool moved = false;
+   Int pos = old_pos;
    if (old_pos < 0) {
-      pos=queue.size();
+      pos = queue.size();
       queue.push_back(elem);
    } else {
       assert(size_t(old_pos)<queue.size() && queue[old_pos]==elem);
    }
 
-   const auto& k=this->key(elem);
-   auto&& cmp=this->key_comparator();
-   while (pos>0) {
-      const int p_pos=(pos-1)/2;  // parent node in the heap tree
+   const auto& k = this->key(elem);
+   auto&& cmp = this->key_comparator();
+   while (pos > 0) {
+      const Int p_pos = (pos-1)/2;  // parent node in the heap tree
       if (cmp(this->key(queue[p_pos]), k) <= 0) break;
-      this->update_position(queue[pos]=queue[p_pos], p_pos, pos);
-      pos=p_pos;
-      moved=true;
+      this->update_position(queue[pos] = queue[p_pos], p_pos, pos);
+      pos = p_pos;
+      moved = true;
    }
    if (moved) {
-      queue[pos]=elem;
+      queue[pos] = elem;
       this->update_position(elem, old_pos, pos);
-   } else if (old_pos>=0) {
+   } else if (old_pos >= 0) {
       sift_down(old_pos, old_pos, 0);
    } else {
       this->update_position(elem, old_pos, pos);
@@ -152,18 +152,18 @@ void Heap<Policy>::push(const value_type& elem)
 }
 
 template <typename Policy>
-void Heap<Policy>::sift_down(int old_pos, int pos, int shrinking)
+void Heap<Policy>::sift_down(Int old_pos, Int pos, Int shrinking)
 {
-   const int end=queue.size()-shrinking;
-   const auto& k=this->key(queue[old_pos]);
-   auto&& cmp=this->key_comparator();
-   int c_pos;
-   while ((c_pos=2*pos+1) < end) {
+   const Int end = queue.size() - shrinking;
+   const auto& k = this->key(queue[old_pos]);
+   auto&& cmp = this->key_comparator();
+   Int c_pos;
+   while ((c_pos = 2*pos+1) < end) {
       if (c_pos+1 < end &&
           cmp(this->key(queue[c_pos+1]), this->key(queue[c_pos])) < 0) ++c_pos;
       if (cmp(k, this->key(queue[c_pos])) <= 0) break;
       this->update_position(queue[pos]=queue[c_pos], c_pos, pos);
-      pos=c_pos;
+      pos = c_pos;
    }
    if (pos != old_pos) {
       this->update_position(queue[pos]=queue[old_pos], old_pos, pos);
@@ -171,24 +171,24 @@ void Heap<Policy>::sift_down(int old_pos, int pos, int shrinking)
 }
 
 template <typename Policy>
-typename Heap<Policy>::value_type Heap<Policy>::erase_at(int pos)
+typename Heap<Policy>::value_type Heap<Policy>::erase_at(Int pos)
 {
-   const value_type v=queue[pos];
+   const value_type v = queue[pos];
    this->update_position(v, pos, -1);
-   const int last_q=queue.size()-1;
+   const Int last_q = queue.size()-1;
    if (pos < last_q) {
-      const auto& k=this->key(queue.back());
-      auto&& cmp=this->key_comparator();
-      bool bubble_up=false;
-      int p_pos;
-      while ((p_pos=(pos-1)/2) > 0) {
+      const auto& k = this->key(queue.back());
+      auto&& cmp = this->key_comparator();
+      bool bubble_up = false;
+      Int p_pos;
+      while ((p_pos = (pos-1)/2) > 0) {
          if (cmp(k, this->key(queue[p_pos])) >= 0) break;
-         this->update_position(queue[pos]=queue[p_pos], p_pos, pos);
-         bubble_up=true;
-         pos=p_pos;
+         this->update_position(queue[pos] = queue[p_pos], p_pos, pos);
+         bubble_up = true;
+         pos = p_pos;
       }
       if (bubble_up)
-         this->update_position(queue[pos]=queue.back(), last_q, pos);
+         this->update_position(queue[pos] = queue.back(), last_q, pos);
       else
          sift_down(last_q, pos, 1);
    }
@@ -200,16 +200,16 @@ typename Heap<Policy>::value_type Heap<Policy>::erase_at(int pos)
 template <typename Policy>
 bool Heap<Policy>::sanity_check() const
 {
-   bool OK=true;
-   for (int i=0, iend=queue.size(); i<iend; ++i) {
-      const value_type& el=queue[i];
-      const int pos=this->position(el);
+   bool OK = true;
+   for (Int i = 0, iend = queue.size(); i < iend; ++i) {
+      const value_type& el = queue[i];
+      const Int pos = this->position(el);
       if (pos != i) {
          std::cerr << "check(Heap): elem " << el << " has wrong index " << pos << " instead of " << i << std::endl;
          OK=false;
       }
-      if (i>0) {
-         int p=(i-1)/2;
+      if (i > 0) {
+         Int p = (i-1)/2;
          if (this->key_comparator()(this->key(el), this->key(queue[p]))<0) {
             std::cerr << "check(Heap): parent(" << el << ")=" << p << std::endl;
             OK=false;

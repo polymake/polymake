@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -19,21 +19,21 @@
 
 namespace polymake { namespace topaz {
 
-hash_map<int,int> merge_vertices(Array<std::string>& L1, const Array<std::string>& L2)
+hash_map<Int, Int> merge_vertices(Array<std::string>& L1, const Array<std::string>& L2)
 {
-   const int n_vert1 = L1.size();
-   const int n_vert2 = L2.size();
-   hash_map<int,int> M(n_vert2);
+   const Int n_vert1 = L1.size();
+   const Int n_vert2 = L2.size();
+   hash_map<Int, Int> M(n_vert2);
 
    // compute vertex maps
-   hash_map<std::string,int> map(n_vert1);
-   int count = 0;
+   hash_map<std::string, Int> map(n_vert1);
+   Int count = 0;
     
    for (auto l=entire(L1); !l.at_end(); ++l, ++count)
       map[*l] = count;
     
    L1.resize(n_vert1 + n_vert2);
-   int diff = n_vert1;
+   Int diff = n_vert1;
    count = 0;
    for (auto l=entire(L2); !l.at_end(); ++l, ++count)
       if (map.find(*l) != map.end()) {         // label equal to *l found in L1
@@ -48,18 +48,18 @@ hash_map<int,int> merge_vertices(Array<std::string>& L1, const Array<std::string
    return M;
 }
   
-void merge_disjoint_vertices (Array<std::string>& L1, const Array<std::string>& L2)
+void merge_disjoint_vertices(Array<std::string>& L1, const Array<std::string>& L2)
 {
-   const int n_vert1 = L1.size(); 
-   const int n_vert2 = L2.size(); 
+   const Int n_vert1 = L1.size(); 
+   const Int n_vert2 = L2.size(); 
     
    // adjust labels
    L1.resize(n_vert1 + n_vert2);
     
-   for (int v=0; v<n_vert1; ++v)
+   for (Int v = 0; v < n_vert1; ++v)
       L1[v] = L1[v] + "_1";
     
-   for (int v=0; v<n_vert2; ++v)
+   for (Int v = 0; v < n_vert2; ++v)
       L1[n_vert1 + v] = L2[v]+"_2";
 }
 

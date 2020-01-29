@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,12 +25,12 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-Array<int> triang_sign(const Array< Set<int> >& Triangulation, const GenericMatrix<Scalar>& Points)
+Array<Int> triang_sign(const Array<Set<Int>>& Triangulation, const GenericMatrix<Scalar>& Points)
 {
-   Array<int> signs(Triangulation.size());
-   Array<int>::iterator s=signs.begin();
-   for (auto t=entire(Triangulation);  !t.at_end();  ++t, ++s)
-      *s=sign(det(Points.minor(*t,All)));
+   Array<Int> signs(Triangulation.size());
+   auto s = signs.begin();
+   for (auto t = entire(Triangulation);  !t.at_end();  ++t, ++s)
+      *s = sign(det(Points.minor(*t,All)));
    return signs;
 }
 
@@ -39,15 +39,15 @@ Array<int> triang_sign(const Array< Set<int> >& Triangulation, const GenericMatr
 // Since we are interested in simplices visible "from the outside", we invert the signs here.
 
 template <typename Scalar>
-Array< Array<int> > triang_sign(const Array< Set<int> >& TriangBoundary, const Array<Set<int> >& facet_triangs, const Matrix<Scalar>& Points, const Vector<Scalar>& C)
+Array<Array<Int>> triang_sign(const Array<Set<Int>>& TriangBoundary, const Array<Set<Int>>& facet_triangs, const Matrix<Scalar>& Points, const Vector<Scalar>& C)
 {
-   Array< Array<int> > signs(TriangBoundary.size());
-   Array< Array<int> >::iterator sf=signs.begin();
-   for (auto facet_t=entire(facet_triangs);  !facet_t.at_end();  ++facet_t, ++sf) {
+   Array<Array<Int>> signs(TriangBoundary.size());
+   auto sf = signs.begin();
+   for (auto facet_t = entire(facet_triangs);  !facet_t.at_end();  ++facet_t, ++sf) {
       sf->resize(facet_t->size());
-      Array<int>::iterator s=sf->begin();
-      for (auto t=entire(*facet_t);  !t.at_end();  ++t, ++s)
-         *s=-sign(det(Points.minor(TriangBoundary[*t],All) / C));
+      auto s = sf->begin();
+      for (auto t = entire(*facet_t);  !t.at_end();  ++t, ++s)
+         *s = -sign(det(Points.minor(TriangBoundary[*t],All) / C));
    }
    return signs;
 }

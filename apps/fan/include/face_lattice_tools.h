@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,54 +26,55 @@ namespace polymake { namespace fan { namespace face_lattice {
 /// the excluded faces are in primal form
 template <typename TMatrix, typename DiagrammFiller>
 void compute_tight_span(const GenericIncidenceMatrix<TMatrix>& VIF,
-                     const Set<Set<int> >& excluded_faces,
-                     DiagrammFiller HD, int dim_upper_bound=-1)
+                        const Set<Set<Int>>& excluded_faces,
+                        DiagrammFiller HD, Int dim_upper_bound=-1)
 {
-   std::list< Set<int> > Q;    // queue of faces, which have been seen but who's faces above have not been computed yet.
+   std::list<Set<Int>> Q;    // queue of faces, which have been seen but who's faces above have not been computed yet.
    FaceMap<> Faces;
    
    // The bottom node: empty set
-   const int C=VIF.cols();
-   HD.add_node(Set<int>());
+   const Int C = VIF.cols();
+   HD.add_node(Set<Int>{});
    HD.increase_dim();
-   int end_this_dim=0, end_next_dim=0, d=0, max_faces_cnt=0;
+   Int end_this_dim = 0, end_next_dim = 0, d = 0, max_faces_cnt = 0;
 
    // The first level: vertices.
-   const Set<int> vertices=sequence(0,C);
+   const auto vertices = sequence(0, C);
 
-   if (__builtin_expect(C>1, 1)) {
+   if (C > 1) {
       copy_range(entire(all_subsets_of_1(vertices)), std::back_inserter(Q));
-      int n=HD.add_nodes(C, all_subsets_of_1(vertices).begin());
-      end_next_dim=end_this_dim=n+C;
+      Int n = HD.add_nodes(C, all_subsets_of_1(vertices).begin());
+      end_next_dim = end_this_dim = n+C;
       HD.increase_dim(); ++d;
-      for (int i=n; i<end_this_dim; ++i)
-         HD.add_edge(0,i);
+      for (Int i = n; i < end_this_dim; ++i)
+         HD.add_edge(0, i);
 
-      if (__builtin_expect(dim_upper_bound, 1)) {
+      if (dim_upper_bound != 0) {
          for (;;) {
-            Set<int> H = Q.front(); Q.pop_front();
-            bool is_max_face=true;
-            for (polytope::face_lattice::faces_one_above_iterator<Set<int>, TMatrix> faces(H, VIF);  !faces.at_end();  ++faces) {
-               int &node_ref = Faces[polytope::face_lattice::c(faces->second, VIF)];
-               if (node_ref==-1) {
+            Set<Int> H = Q.front(); Q.pop_front();
+            bool is_max_face = true;
+            for (polytope::face_lattice::faces_one_above_iterator<Set<Int>, TMatrix> faces(H, VIF);  !faces.at_end();  ++faces) {
+               Int& node_ref = Faces[polytope::face_lattice::c(faces->second, VIF)];
+               if (node_ref == -1) {
                   bool excluded = false;
-                  for( auto f = entire(excluded_faces); !f.at_end() ;++f )
-                     if( incl(faces->first, *f) < 1 ){
-                        excluded=true;
+                  for (auto f = entire(excluded_faces); !f.at_end() ; ++f)
+                     if (incl(faces->first, *f) < 1) {
+                        excluded = true;
                         break;
                      }
                   if (!excluded) {
-                     node_ref=HD.add_node(faces->second);
+                     node_ref = HD.add_node(faces->second);
                      Q.push_back(faces->second);
                      ++end_next_dim;
                   } else {
-                     node_ref=-2;
+                     node_ref = -2;
                      continue;
                   }
-               } else if (node_ref==-2)
+               } else if (node_ref == -2) {
                   continue;
-               HD.add_edge(n,node_ref);
-               is_max_face=false;
+               }
+               HD.add_edge(n, node_ref);
+               is_max_face = false;
             }
             if (is_max_face) ++max_faces_cnt;
             if (++n == end_this_dim) {
@@ -87,18 +88,14 @@ void compute_tight_span(const GenericIncidenceMatrix<TMatrix>& VIF,
 
    if (max_faces_cnt + end_next_dim-end_this_dim > 1) {
       // The top node is connected to all inclusion-independent faces regardless of the dimension
-      int n=HD.add_node(vertices);
-      for (int i=0; i<n; ++i)
-         if (HD.graph().out_degree(i)==0)
-            HD.add_edge(i,n);
+      const Int n = HD.add_node(vertices);
+      for (Int i = 0; i < n; ++i)
+         if (HD.graph().out_degree(i) == 0)
+            HD.add_edge(i, n);
    }
-
 }
 
-
-} } // end namespace face_lattice
-
-} // end namespace pm
+} } }
 
 #endif // POLYMAKE_FAN_FACE_LATTICE_TOOLS_H
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,7 +21,7 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-bool H_input_feasible(perl::Object p)
+bool H_input_feasible(BigObject p)
 {
    const Matrix<Scalar> I = p.lookup("FACETS | INEQUALITIES"),
                         E = p.lookup("LINEAR_SPAN | EQUATIONS");

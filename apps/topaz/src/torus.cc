@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,7 +22,7 @@
 
 namespace polymake { namespace topaz {
   
-Array<Set<int>> torus_facets()
+Array<Set<Int>> torus_facets()
 {
    return { {0, 1, 2},
             {0, 1, 3},
@@ -40,9 +40,9 @@ Array<Set<int>> torus_facets()
             {0, 2, 6} };
 }
 
-perl::Object torus()
+BigObject torus()
 {
-   perl::Object p("GeometricSimplicialComplex<Rational>");
+   BigObject p("GeometricSimplicialComplex<Rational>");
    p.set_description() << "The Császár torus. Geometric realization by Frank Lutz, Electronic Geometry Model No. 2001.02.069\n";
 
    Matrix<Rational> Coordinates={ {3, -3, 0},

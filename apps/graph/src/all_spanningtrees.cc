@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,10 +22,9 @@
 
 namespace polymake { namespace graph {
 
-Array<Set<int> > calc_all_spanningtrees(const Graph<>& G)
+Array<Set<Int>> calc_all_spanningtrees(const Graph<>& G)
 {
-   Array< Set<int> > st = all_spanningtrees(G);
-   return st;
+   return all_spanningtrees(G);
 }
 
 UserFunction4perl("# @category Combinatorics"

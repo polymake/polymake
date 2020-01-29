@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,12 +30,17 @@ namespace ideal {
 namespace singular {
    
 
-   // Storing the handles for the Singular functions globally.
-   extern Map<std::string, idhdl> singular_function_map;
+// Storing the handles for the Singular functions globally.
+extern Map<std::string, idhdl> singular_function_map;
 
-   idhdl get_singular_function(std::string s);
+idhdl get_singular_function(std::string s);
 
-
+inline int safe_cast(Int x)
+{
+  if (x < std::numeric_limits<int>::min() || x > std::numeric_limits<int>::max())
+    throw std::runtime_error("input too big for Singular");
+  return static_cast<int>(x);
+}
 
 } // end namespace singular
 } // end namespace ideal

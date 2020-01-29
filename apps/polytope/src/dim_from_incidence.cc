@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,7 +24,7 @@ namespace {
 
 template <typename Iterator>
 FacetList
-ridges_of_first(int n_vertices, Iterator set)
+ridges_of_first(Int n_vertices, Iterator set)
 {
    FacetList R(n_vertices);
    Iterator set2=set;
@@ -36,13 +36,14 @@ ridges_of_first(int n_vertices, Iterator set)
 }
 }
 
-int dim_from_incidence(const IncidenceMatrix<>& VIF)
+Int dim_from_incidence(const IncidenceMatrix<>& VIF)
 {
-   const int n_vertices=VIF.cols();
-   if (n_vertices<=3) return n_vertices-1; // return COMBINATORIAL_DIM !
+   const Int n_vertices = VIF.cols();
+   if (n_vertices <= 3)
+      return n_vertices-1; // return COMBINATORIAL_DIM !
 
    FacetList F=ridges_of_first(n_vertices, entire(rows(VIF)));
-   int d=1;
+   Int d = 1;
    // for each n=F.size() <= 3 there is a unique combinatorial class
    // of cones with n facets
    while (F.size() > 3) {
@@ -50,7 +51,7 @@ int dim_from_incidence(const IncidenceMatrix<>& VIF)
       ++d;
    }
    // return COMBINATORIAL_DIM
-   return d + F.size() - 1;
+   return d-1 + F.size();
 }
 
 Function4perl(&dim_from_incidence, "dim_from_incidence");

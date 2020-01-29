@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,19 +28,19 @@ power_to_binomial_basis(const GenericVector<VectorTop,E>& PB)
 {
   typedef typename pm::algebraic_traits<E>::field_type Ef;
   typedef typename GenericVector<VectorTop, Ef>::persistent_type Vec;
-  int d = PB.top().dim()-1;
-  if ( d <= -1 ) {  // trivial case
-   return Vec();
+  const Int d = PB.top().dim()-1;
+  if (d <= -1) {  // trivial case
+     return Vec();
   }
 
   Vec BB(1);
   BB[0] = 1;
 
-  for ( int k = 1; k <= d; ++k ) {
+  for (Int k = 1; k <= d; ++k) {
     Ef l = 0;
-    for ( int i = 0; i <=d; ++i )
+    for (Int i = 0; i <= d; ++i)
       l += PB.top()[i] * Integer::pow(k,i);
-    for ( int j = 0; j < BB.dim(); ++j ) 
+    for (Int j = 0; j < BB.dim(); ++j) 
       l -= Integer::binom(d+k-j,d) * BB[j];
     BB |= l;
   }
@@ -55,18 +55,18 @@ binomial_to_power_basis(const GenericVector<VectorTop,E>& BB)
   typedef typename pm::algebraic_traits<E>::field_type Ef;
   typedef typename GenericVector<VectorTop, Ef>::persistent_type Vec;
 
-  int d = BB.top().dim()-1;
+  const Int d = BB.top().dim()-1;
   Vec PB(d+1);
-  if ( d <= 0 ) {  // trivial case
-     if ( d == 0 ) 
+  if (d <= 0) {  // trivial case
+     if (d == 0) 
         PB[0] = 1;
      return PB;
   }
 
-  for ( int k = 0; k <= d; ++k ) {
+  for (Int k = 0; k <= d; ++k) {
     Vec a(2);
     a[0] = d-k; a[1] = 1;
-    for (int j = 1; j < d; j++ )
+    for (Int j = 1; j < d; j++ )
       a = (0|a) + (d-k-j) * (a|0); 
     PB += BB.top()[k] * a;
   }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,7 +25,7 @@
 namespace polymake { namespace common {
 
 template <typename Scalar>
-void print_constraints(const Matrix<Scalar>& M, perl::OptionSet options)
+void print_constraints(const Matrix<Scalar>& M, OptionSet options)
 {
    print_constraints_sub(M, options["coord_labels"],options["row_labels"],options["equations"],options["homogeneous"]);
 }

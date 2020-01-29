@@ -1,6 +1,6 @@
 {"app": "common",
  "inst": [
-  {"args": ["perl::Canned<const Graph<Undirected>&>", "perl::Canned<const Array<int>&>"], "func": "permuted_inv_nodes", "include": ["polymake/Array.h", "polymake/Graph.h"], "sig": "permuted_inv_nodes.X.X"},
-  {"args": ["perl::Canned<const Graph<Directed>&>", "perl::TryCanned<const Array<int>>"], "func": "permuted_inv_nodes", "include": ["polymake/Array.h", "polymake/Graph.h"], "sig": "permuted_inv_nodes.X.X"},
+  {"args": ["perl::Canned<const Graph<Undirected>&>", "perl::Canned<const Array<Int>&>"], "func": "permuted_inv_nodes", "include": ["polymake/Array.h", "polymake/Graph.h"], "sig": "permuted_inv_nodes.X.X"},
+  {"args": ["perl::Canned<const Graph<Directed>&>", "perl::TryCanned<const Array<Int>>"], "func": "permuted_inv_nodes", "include": ["polymake/Array.h", "polymake/Graph.h"], "sig": "permuted_inv_nodes.X.X"},
  null ],
 "version": 3}

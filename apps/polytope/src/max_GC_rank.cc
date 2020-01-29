@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,27 +24,29 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object max_GC_rank(int d)
+BigObject max_GC_rank(Int d)
 {
    if (d < 2)
       throw std::runtime_error("max_GC_rank: dimension d >= 2 required");
+   if (size_t(d) >= sizeof(Int)*8-1)
+      throw std::runtime_error("max_GC_rank: dimension too high, number of inequalities would not fit into Int");
 
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.set_description() << "polytope with maximal GC rank of dim " << d << endl;
 
-   const int n_ineqs=(1<<d)+2*d;
-   Matrix<int> Inequalities(n_ineqs,d+1);
-   Rows< Matrix<int> >::iterator i=rows(Inequalities).begin();
+   const Int n_ineqs = (1L<<d)+2*d;
+   Matrix<Int> Inequalities(n_ineqs, d+1);
+   auto i = rows(Inequalities).begin();
    // 2d facets of 0/1-cube
-   for (int j=1; j<=d; ++j, ++i)
+   for (Int j = 1; j <= d; ++j, ++i)
      (*i)[j]=1;
-   for (int j=1; j<=d; ++j, ++i) {
+   for (Int j = 1; j <= d; ++j, ++i) {
      (*i)[0]=1;
      (*i)[j]=-1;
    }
    // one more inequality per subset of [1..d]
    for (auto si = entire(all_subsets(range(1,d))); !si.at_end(); ++si, ++i) {
-     (*i)[0] = d - (si->size()) - 1;
+     (*i)[0] = d-1 - si->size();
      i->slice(range(1,d)).fill(-1);
      i->slice(*si).fill(1);
    }
@@ -56,7 +58,7 @@ perl::Object max_GC_rank(int d)
    p.take("FEASIBLE") << true;
 
    // symmetric linear objective function
-   perl::Object LP("LinearProgram<Rational>");
+   BigObject LP("LinearProgram<Rational>");
    LP.take("LINEAR_OBJECTIVE") << Vector<Rational>(0|ones_vector<Rational>(d));
    LP.attach("INTEGER_VARIABLES") << Array<bool>(d,true);
    p.take("LP") << LP;

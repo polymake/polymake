@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,27 +22,27 @@ namespace polymake { namespace common {
 
 /// Collect the indexes of rows containing a 'true' element in any of the given columns
 template <typename IMatrix, typename ISet>
-Set<int> incident_rows(const GenericIncidenceMatrix<IMatrix>& IM, const ISet& column_set)
+Set<Int> incident_rows(const GenericIncidenceMatrix<IMatrix>& IM, const ISet& column_set)
 {
-   Set<int> row_set;
+   Set<Int> row_set;
    accumulate_in(entire(select(cols(IM), column_set)), operations::add(), row_set);
    return row_set;
 }
 
 /// Collect the indexes of rows containing 'false' elements in all given columns
 template <typename IMatrix, typename ISet>
-Set<int> not_incident_rows(const GenericIncidenceMatrix<IMatrix>& IM, const ISet& column_set)
+Set<Int> not_incident_rows(const GenericIncidenceMatrix<IMatrix>& IM, const ISet& column_set)
 {
-   Set<int> row_set(sequence(0, IM.rows()));
+   Set<Int> row_set(sequence(0, IM.rows()));
    accumulate_in(entire(select(cols(IM), column_set)), operations::sub(), row_set);
    return row_set;
 }
 
 /// Collect the indexes of rows containing 'true' elements in all given columns
 template <typename IMatrix, typename ISet>
-Set<int> common_rows(const GenericIncidenceMatrix<IMatrix>& IM, const ISet& column_set)
+Set<Int> common_rows(const GenericIncidenceMatrix<IMatrix>& IM, const ISet& column_set)
 {
-   Set<int> row_set;
+   Set<Int> row_set;
    auto c = entire(column_set);
    if (!c.at_end()) {
       row_set = IM.col(*c);
@@ -53,11 +53,11 @@ Set<int> common_rows(const GenericIncidenceMatrix<IMatrix>& IM, const ISet& colu
 
 /// Return the index of the first row equal to the given column set, -1 if none found
 template <typename IMatrix, typename ISet>
-int find_row(const GenericIncidenceMatrix<IMatrix>& IM, const ISet& column_set)
+Int find_row(const GenericIncidenceMatrix<IMatrix>& IM, const ISet& column_set)
 {
   auto c = entire(column_set);
   if (!c.at_end()) {
-    for (const int r : IM.col(*c)) {
+    for (const Int r : IM.col(*c)) {
       if (IM.row(r) == column_set) return r;
     }
   } else {

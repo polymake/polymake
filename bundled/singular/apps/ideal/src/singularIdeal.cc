@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -17,10 +17,26 @@
 
 #include "polymake/ideal/internal/singularInclude.h"
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconversion"
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
+
 #include <kernel/combinatorics/stairc.h>
 #include <singular/polys/matpol.h>
 #include <coeffs/mpr_complex.h>
 #include <kernel/linear_algebra/MinorInterface.h>
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 #include "polymake/ideal/singularIdeal.h"
 #include "polymake/ideal/internal/singularTermOrderData.h"
@@ -31,14 +47,14 @@ namespace polymake {
 namespace ideal {
 namespace singular {
 
-
 class SingularIdeal_impl : public SingularIdeal_wrap {
 private:
    ::ideal singIdeal;
    idhdl singRing;
 
-   void create_singIdeal(const Array<Polynomial<>>& gens) {
-      int npoly = gens.size();
+   void create_singIdeal(const Array<Polynomial<>>& gens)
+   {
+      int npoly = safe_cast(gens.size());
       singIdeal = idInit(npoly,1);
       int j = 0;
       // Converting monomials as described in libsing-test2.cc.
@@ -54,23 +70,24 @@ public:
    template<typename OrderType>
    SingularIdeal_impl(const Array<Polynomial<>>& gens, const OrderType& order)
    {
-      int n_vars = gens[0].n_vars();
-      SingularTermOrderData<OrderType > TO = SingularTermOrderData<OrderType >(n_vars, order);
+      int n_vars = safe_cast(gens[0].n_vars());
+      SingularTermOrderData<OrderType> TO = SingularTermOrderData<OrderType>(n_vars, order);
       singRing = check_ring(n_vars, TO);
-      if (!gens.size())
+      if (gens.empty())
          throw std::runtime_error("Ideal has no generators.");
       create_singIdeal(gens);
    }
    
-   SingularIdeal_impl(const Array<Polynomial<>>& gens, idhdl r){
+   SingularIdeal_impl(const Array<Polynomial<>>& gens, idhdl r)
+   {
       singRing = check_ring(r);
       create_singIdeal(gens);
    }
 
    SingularIdeal_impl(const ::ideal i, const idhdl r)
    {
-      singIdeal=idCopy(i);
-      singRing=r;
+      singIdeal = idCopy(i);
+      singRing = r;
    }
 
    SingularIdeal_impl(const SingularIdeal_impl* sI)
@@ -86,9 +103,9 @@ public:
 
    ~SingularIdeal_impl()
    {
-      if(singRing!=NULL) {
+      if (singRing) {
          check_ring(singRing);
-         if(singIdeal!=NULL)
+         if (singIdeal)
             id_Delete(&singIdeal,IDRING(singRing));
       }
    }
@@ -97,15 +114,16 @@ public:
    void groebner() 
    {
       check_ring(singRing); 
-      ::ideal res = kStd(singIdeal,NULL,testHomog,NULL);
+      ::ideal res = kStd(singIdeal, nullptr, testHomog, nullptr);
       id_Delete(&singIdeal,IDRING(singRing));
       singIdeal = res;
    }
 
    // Compute the dimension of an ideal.
-   int dim() {
+   int dim()
+   {
       check_ring(singRing); 
-      return scDimInt(singIdeal, NULL);
+      return scDimInt(singIdeal, nullptr);
    }
    
    // Computes a monomial in the initial ideal via saturation (returns 0 if no monnomial is contained)
@@ -125,11 +143,11 @@ public:
 
       do
       {
-         ::ideal Jstd = kStd(J,NULL,testHomog,NULL);
+         ::ideal Jstd = kStd(J, nullptr, testHomog, nullptr);
          for (int i=0; i<IDELEMS(Jstd); i++)
          {
             poly g = Jstd->m[i];
-            if (g != NULL && pNext(g) == NULL)
+            if (g != nullptr && pNext(g) == nullptr)
             {
                for (int j=1; j<=rVar(r); j++)
                   p_AddExp(g,j,k,r);
@@ -142,7 +160,7 @@ public:
             }
          }
          ::ideal JquotM = idQuot(Jstd,M,true,true);
-         ::ideal JquotMredJ = kNF(Jstd,NULL,JquotM);
+         ::ideal JquotMredJ = kNF(Jstd, nullptr, JquotM);
          b = idIs0(JquotMredJ);
          id_Delete(&Jstd,r);
          id_Delete(&J,r);
@@ -157,7 +175,8 @@ public:
    }
 
 
-   SingularIdeal_wrap* initial_ideal() const {
+   SingularIdeal_wrap* initial_ideal() const
+   {
       check_ring(singRing); 
       ::ideal res = id_Head(singIdeal,IDRING(singRing));
       SingularIdeal_wrap* initial = new SingularIdeal_impl(res,singRing);
@@ -166,7 +185,8 @@ public:
    }
 
    // Compute the radical of an ideal using primdec.lib from Singular
-   SingularIdeal_wrap* radical() const {
+   SingularIdeal_wrap* radical() const
+   {
       check_ring(singRing); 
       sleftv arg;
       memset(&arg,0,sizeof(arg));
@@ -176,7 +196,7 @@ public:
       arg.rtyp=IDEAL_CMD;
       arg.data=(void *)idCopy(singIdeal);
       // call radical
-      BOOLEAN res=iiMake_proc(radical,NULL,&arg);
+      BOOLEAN res=iiMake_proc(radical, nullptr, &arg);
       if (res) {
          errorreported = 0;
          iiRETURNEXPR.Init();
@@ -188,12 +208,13 @@ public:
       return radical_wrap;
    }
 
-   SingularIdeal_wrap* saturation(const Array<Polynomial<>>& rhs) const {
+   SingularIdeal_wrap* saturation(const Array<Polynomial<>>& rhs) const
+   {
       check_ring(singRing);
       load_library("elim.lib");
       idhdl sathdl = get_singular_function("sat");
       
-      ::ideal J = idInit(rhs.size(),1);
+      ::ideal J = idInit(safe_cast(rhs.size()), 1);
       // Converting monomials as described in libsing-test2.cc.
       for (int j = 0; j<rhs.size(); ++j) {
          J->m[j] = convert_Polynomial_to_poly(rhs[j], IDRING(singRing));
@@ -208,7 +229,7 @@ public:
       arg.next->rtyp=IDEAL_CMD;
       arg.next->data=(void *)idCopy(J);
       // call primdecSY
-      BOOLEAN res=iiMake_proc(sathdl,NULL,&arg);
+      BOOLEAN res=iiMake_proc(sathdl, nullptr ,&arg);
       if(!res && (iiRETURNEXPR.Typ() == LIST_CMD)){
          lists L = (lists)iiRETURNEXPR.Data();
          SingularIdeal_wrap* result;
@@ -227,7 +248,8 @@ public:
 
    }
 
-   Array<SingularIdeal_wrap*> primary_decomposition() const {
+   Array<SingularIdeal_wrap*> primary_decomposition() const
+   {
       check_ring(singRing);
       load_library("primdec.lib");
       idhdl primdecSY = get_singular_function("primdecSY");
@@ -236,7 +258,7 @@ public:
       arg.rtyp=IDEAL_CMD;
       arg.data=(void *)idCopy(singIdeal);
       // call primdecSY
-      BOOLEAN res=iiMake_proc(primdecSY,NULL,&arg);
+      BOOLEAN res=iiMake_proc(primdecSY, nullptr, &arg);
       if(!res && (iiRETURNEXPR.Typ() == LIST_CMD)){
          lists L = (lists)iiRETURNEXPR.Data();
          Array<SingularIdeal_wrap*> result(L->nr+1);
@@ -258,7 +280,8 @@ public:
    }
 
    //Array< Array< std::pair<double,double> > > solve() const {
-   Matrix< std::pair<double,double> > solve() const {
+   Matrix< std::pair<double,double> > solve() const
+   {
       check_ring(singRing);
       load_library("solve.lib");
       idhdl solve = get_singular_function("solve");
@@ -274,9 +297,9 @@ public:
       int plevel = printlevel;
       printlevel=-1;
       // call solve
-      BOOLEAN res=iiMake_proc(solve,NULL,&arg);
+      BOOLEAN res=iiMake_proc(solve, nullptr, &arg);
       printlevel=plevel;
-      if(!res && (iiRETURNEXPR.Typ() == RING_CMD)){
+      if (!res && (iiRETURNEXPR.Typ() == RING_CMD)) {
          // retrieve returned ring
          ring solring = (ring)iiRETURNEXPR.Data();
          // avoid redefinition message
@@ -320,19 +343,21 @@ public:
       }
    }
 
-   Array<Polynomial<>> reduce(const Array<Polynomial<>>& ideal) const {
+   Array<Polynomial<>> reduce(const Array<Polynomial<>>& ideal) const
+   {
       check_ring(singRing);
       SingularIdeal_impl toBeReduced(ideal, singRing);
-      ::ideal q = kNF(singIdeal, NULL, toBeReduced.singIdeal);
+      ::ideal q = kNF(singIdeal, nullptr, toBeReduced.singIdeal);
       SingularIdeal_impl reduced(q, singRing);
       id_Delete(&q,IDRING(singRing));
       return reduced.polynomials();
    }
 
-   Polynomial<> reduce(const Polynomial<>& p) const {
+   Polynomial<> reduce(const Polynomial<>& p) const
+   {
       check_ring(singRing);
       poly p_s = convert_Polynomial_to_poly(p,IDRING(singRing));
-      poly q_s = kNF(singIdeal, NULL, p_s);
+      poly q_s = kNF(singIdeal, nullptr, p_s);
       Polynomial<> q_p(convert_poly_to_Polynomial(q_s));
       p_Delete(&q_s,IDRING(singRing));
       p_Delete(&p_s,IDRING(singRing));
@@ -342,7 +367,8 @@ public:
    /*
     * Returns n+1 Polynomials, where the n+1 Polynomial is equal to the result of reduce and the previous are the coeffients of the division.
     */
-   Array<Polynomial<>> division(const Polynomial<>& p, const bool is_std = 0) const {
+   Array<Polynomial<>> division(const Polynomial<>& p, const bool is_std = false) const
+   {
       check_ring(singRing);
       ::ideal m = idInit(1,1);
       m->m[0] = convert_Polynomial_to_poly(p,IDRING(singRing));
@@ -373,70 +399,37 @@ public:
       int numgen = IDELEMS(singIdeal);
       std::vector<Polynomial<>> polys;
       for(int j = 0; j<numgen; ++j) {
-         if (singIdeal->m[j] != NULL) {
+         if (singIdeal->m[j]) {
             polys.push_back(convert_poly_to_Polynomial(singIdeal->m[j]));
          }
       }
       return Array<Polynomial<>>(polys);
    }
    
-   static SingularIdeal_impl* quotient(const SingularIdeal_impl* I, const SingularIdeal_impl* J);
 };
 
 
-SingularIdeal_impl* SingularIdeal_impl::quotient(const SingularIdeal_impl* I, const SingularIdeal_impl* J){
-   // The first true indicates, that we receive a standard basis of I,
-   // the second one that we want the output to be an ideal.
-   ::ideal quot = idQuot(idCopy(I->singIdeal), idCopy(J->singIdeal), true, true);
-   SingularIdeal_impl* quotient_impl = new SingularIdeal_impl(quot,I->singRing);
-   id_Delete(&quot,IDRING(I->singRing));
-   return quotient_impl;
-}
 
-
-
-perl::Object quotient(perl::Object I, perl::Object J)
+std::pair<SingularIdeal_wrap*, int> build_slack_ideal_minors(const Matrix<Rational>& slackMatrix, Int dim)
 {
-   int ni = I.give("N_VARIABLES");
-   int nj = J.give("N_VARIABLES");
-   if (ni != nj)
-      throw std::runtime_error("Ideals of different rings");
+   const int r = safe_cast(slackMatrix.rows());
+   const int c = safe_cast(slackMatrix.cols());
+   const int minorrk = safe_cast(dim)+2;
 
-   check_ring(ni);
-   
-   const Array<Polynomial<>> gensI = I.give("GROEBNER.BASIS");
-   const Matrix<int> order = I.give("GROEBNER.ORDER_MATRIX");
-   SingularTermOrderData<Matrix<int> > TO = SingularTermOrderData<Matrix<int> >(ni, order);
-   const idhdl sri = check_ring(ni, TO);
-   const Array<Polynomial<>> gensJ = J.give("GENERATORS");
-   
-   SingularIdeal_impl implI(gensI,sri);
-   SingularIdeal_impl implJ(gensJ,sri);
-
-   SingularIdeal_impl* quotimpl = SingularIdeal_impl::quotient(&implI,&implJ);
-
-   perl::Object res("Ideal");
-   res.take("N_VARIABLES") << ni;
-   res.take("GENERATORS") << quotimpl->polynomials();
-   delete quotimpl;
-   return res;
-}
-
-std::pair<SingularIdeal_wrap*, int> build_slack_ideal_minors(const Matrix<Rational>& slackMatrix, int dim) {
    init_singular();
    int nvars = 0;
-   for(const auto& row : rows(slackMatrix)){
+   for (const auto& row : rows(slackMatrix)){
       for(const auto& e : row){
          nvars += e != 0;
       }
    }
    idhdl singRingHdl = check_ring(nvars);
    ring singRing = IDRING(singRingHdl);
-   matrix variableSlackMatrix = mp_InitI(slackMatrix.rows(), slackMatrix.cols(), 0, singRing);
+   matrix variableSlackMatrix = mp_InitI(r, c, 0, singRing);
    int varcount = 0;
-   for(int i=0; i<slackMatrix.rows(); i++){
-      for(int j=0; j<slackMatrix.cols(); j++){
-         if(slackMatrix(i,j) != 0){
+   for (int i = 0; i < r; ++i) {
+      for (int j = 0; j < c; ++j) {
+         if (slackMatrix(i,j) != 0) {
             poly m = rGetVar(varcount+1, singRing);
             MATELEM(variableSlackMatrix,i+1,j+1) = p_Copy(m, singRing);
             varcount++;
@@ -444,18 +437,18 @@ std::pair<SingularIdeal_wrap*, int> build_slack_ideal_minors(const Matrix<Ration
       }
    }
 
-   int minorrk = dim+2;
    // The parameters may still be changed.
-   ::ideal singMinor = getMinorIdeal(variableSlackMatrix, minorrk, 0, "Bareiss", NULL, true);
+   ::ideal singMinor = getMinorIdeal(variableSlackMatrix, minorrk, 0, "Bareiss", nullptr, true);
    return std::pair<SingularIdeal_wrap*, int>(new SingularIdeal_impl(singMinor, singRingHdl), nvars);
 }
 
-perl::Object slack_ideal_non_saturated(perl::Object P) {
+BigObject slack_ideal_non_saturated(BigObject P)
+{
    const Matrix<Rational> slackMatrix = P.give("SLACK_MATRIX");
-   int dim = P.give("CONE_DIM");
+   Int dim = P.give("CONE_DIM");
    dim--;
    std::pair<SingularIdeal_wrap*, int> minor_wrap = build_slack_ideal_minors(slackMatrix, dim);
-   perl::Object result("Ideal");
+   BigObject result("Ideal");
    result.take("N_VARIABLES") << minor_wrap.second;
    result.take("GENERATORS") << minor_wrap.first->polynomials();
    delete minor_wrap.first;
@@ -464,29 +457,21 @@ perl::Object slack_ideal_non_saturated(perl::Object P) {
 
 } // end namespace singular
 
-SingularIdeal_wrap* SingularIdeal_wrap::create(const Array<Polynomial<>>& gens, const Vector<int>& ord) 
+SingularIdeal_wrap* SingularIdeal_wrap::create(const Array<Polynomial<>>& gens, const Vector<Int>& ord) 
 {
-   return new singular::SingularIdeal_impl(gens,ord);
+   return new singular::SingularIdeal_impl(gens, ord);
 }
 
-SingularIdeal_wrap* SingularIdeal_wrap::create(const Array<Polynomial<>>& gens, const Matrix<int>& ord) 
+SingularIdeal_wrap* SingularIdeal_wrap::create(const Array<Polynomial<>>& gens, const Matrix<Int>& ord) 
 {
-   return new singular::SingularIdeal_impl(gens,ord);
+   return new singular::SingularIdeal_impl(gens, ord);
 }
 
 SingularIdeal_wrap* SingularIdeal_wrap::create(const Array<Polynomial<>>& gens, const std::string& ord) 
 {
-   return new singular::SingularIdeal_impl(gens,ord);
+   return new singular::SingularIdeal_impl(gens, ord);
 }
 
-
-
-UserFunction4perl("# @category Singular interface"
-                  "# Computes an ideal quotient via SINGULAR"
-                  "# @param Ideal I"
-                  "# @param Ideal J"
-                  "# @return Ideal",
-                  &singular::quotient, "quotient(Ideal, Ideal)");
 
 UserFunction4perl("# @category Singular interface"
                   "# Computes the non-saturated slack ideal of a polytope, as described in"

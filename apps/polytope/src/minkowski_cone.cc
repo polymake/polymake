@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,18 +32,18 @@ using Lattice = graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::
 // computes the cone defined in R^d, where d is the number of edges of the graph G
 // defined by the intersection of the positive orthant with all equations given by
 // the condition that the edge lengths around any 2-face should add to 0
-perl::Object minkowski_cone(const Lattice& H, // we only need the 2-faces
+BigObject minkowski_cone(const Lattice& H, // we only need the 2-faces
                             const Graph<>& G,      // the graph of the polytope
                             const EdgeMap<Undirected, Vector<Rational>>& edge_directions, // the edge directions of the polytope
-                            const Set<int>& far_face)
+                            const Set<Int>& far_face)
 {
-  perl::Object c("Cone<Rational>");  // the minkowski cone
+  BigObject c("Cone<Rational>");  // the minkowski cone
       
   // label the edges consecutively
   // they should come in the same order as given by $polytope->GRAPH->EDGES;
-  EdgeMap<Undirected,int> edge_labels(G);
-  int i = 0;
-  int far_edges = 0;
+  EdgeMap<Undirected, Int> edge_labels(G);
+  Int i = 0;
+  Int far_edges = 0;
   for (auto e = entire(edges(G)); !e.at_end(); ++e) {
     if (!far_face.contains(e.from_node()) && !far_face.contains(e.to_node())) {
        edge_labels[*e] = i;
@@ -59,18 +59,18 @@ perl::Object minkowski_cone(const Lattice& H, // we only need the 2-faces
   for (const auto node : H.nodes_of_rank(3)) {
     Matrix<Rational> M(edge_directions[0].dim(),G.edges()-far_edges);
 
-    Set<int> TwoFace = H.face(node);  // the 2-face we are currently working on
+    Set<Int> TwoFace = H.face(node);  // the 2-face we are currently working on
     if (!(TwoFace*far_face).empty()) continue;
 
-    int v = *(TwoFace.begin());        // the node with smallest index
+    Int v = *(TwoFace.begin());        // the node with smallest index
     TwoFace -= v;                     
-    int w = *((TwoFace * G.adjacent_nodes(v)).begin());  // the neighbor of v with smaller index
+    Int w = *((TwoFace * G.adjacent_nodes(v)).begin());  // the neighbor of v with smaller index
     TwoFace -= w;
     // add edge  direction to matrix, note that  edge direction is
     // from larger to smaller node index
     M.col(edge_labels(v,w)) = -edge_directions[edge_labels(v,w)];
         
-    int u(-1); // need the node index outside loop; initialize to nonsensical value
+    Int u = -1; // need the node index outside loop; initialize to nonsensical value
     // add edges
     while (!TwoFace.empty()) {
       u = *((TwoFace * G.adjacent_nodes(w)).begin());
@@ -95,17 +95,16 @@ perl::Object minkowski_cone(const Lattice& H, // we only need the 2-faces
 }    
 
 // return the polytope defined by a point in the minkowski summand cone
-perl::Object minkowski_cone_point(const Vector<Rational>& cone_point, // the point in the minkowski cone
+BigObject minkowski_cone_point(const Vector<Rational>& cone_point, // the point in the minkowski cone
                                   const Matrix<Rational>& rays, // the rays of the recession cone of the original polytope
-                                  const perl::Object g, // graph of the original polytope
-                                  const Set<int>& far_face
-                                  )
+                                  const BigObject g, // graph of the original polytope
+                                  const Set<Int>& far_face)
 {
   const Graph<> G = g.give("ADJACENCY");
   EdgeMap<Undirected,Vector<Rational>> edge_directions = g.give("EDGE_DIRECTIONS");
 
   // scale the edge directions
-  int i = 0;
+  Int i = 0;
   for (auto e = entire(edges(G)); !e.at_end();  ++e) {
     if (!far_face.contains(e.from_node()) && !far_face.contains(e.to_node())) {
       edge_directions[*e] *= cone_point[i];
@@ -118,7 +117,7 @@ perl::Object minkowski_cone_point(const Vector<Rational>& cone_point, // the poi
   NodeMap<Undirected,Vector<Rational> > new_vertices(G);  // the vertices of the Minkowski summand
 
   // compute a spanning tree rooted at vertex 0
-  std::list<int> unprocessed_leaves;
+  std::list<Int> unprocessed_leaves;
   Bitset marked(G.nodes());  // nodes already included in the tree
 
   unprocessed_leaves.push_back(0); // we start the tree at the node 0
@@ -126,9 +125,9 @@ perl::Object minkowski_cone_point(const Vector<Rational>& cone_point, // the poi
   new_vertices[0] = unit_vector<Rational>(edge_directions[0].dim(),0);  // base vertex of the summand will be the origin
 
   while ( !unprocessed_leaves.empty() ) {      
-    const int current = unprocessed_leaves.front();
+    const Int current = unprocessed_leaves.front();
     unprocessed_leaves.pop_front();
-    Set<int> neighbours = G.adjacent_nodes(current);  
+    Set<Int> neighbours = G.adjacent_nodes(current);  
     for (auto v = entire(neighbours); !v.at_end(); ++v) {
       if (!marked.contains(*v)) {
         unprocessed_leaves.push_back(*v);
@@ -142,7 +141,7 @@ perl::Object minkowski_cone_point(const Vector<Rational>& cone_point, // the poi
   }
 
   // points for the polytope (not vertices: edges of length zero lead to duplicates in the list)
-  perl::Object p("Polytope<Rational>");
+  BigObject p("Polytope<Rational>");
   p.take("POINTS") <<  (Matrix<Rational>(new_vertices)/ rays);
 
   return p;
@@ -150,7 +149,7 @@ perl::Object minkowski_cone_point(const Vector<Rational>& cone_point, // the poi
     
     
 // return the polytope defined by coefficients to the rays of the minkowski summand cone
-perl::Object minkowski_cone_coeff(const Vector<Rational>& coefficients, perl::Object c, const perl::Object g, const Set<int>& far_face, const Matrix<Rational>& tailcone)
+BigObject minkowski_cone_coeff(const Vector<Rational>& coefficients, BigObject c, const BigObject g, const Set<Int>& far_face, const Matrix<Rational>& tailcone)
 {
   Matrix<Rational> rays = c.give("RAYS");      
   if (coefficients.dim() != rays.rows()) 

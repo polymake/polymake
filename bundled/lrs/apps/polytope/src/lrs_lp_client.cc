@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,21 +31,21 @@ auto create_LP_solver()
 
 }
 
-void lrs_lp_client(perl::Object p, perl::Object lp, bool maximize)
+void lrs_lp_client(BigObject p, BigObject lp, bool maximize)
 {
    generic_lp_client<Rational>(p, lp, maximize, lrs_interface::LP_Solver());
 }
 
-void lrs_valid_point(perl::Object p)
+void lrs_valid_point(BigObject p)
 {
    const lrs_interface::LP_Solver solver{};
    const Matrix<Rational> H=p.give("FACETS | INEQUALITIES"),
       E=p.lookup("LINEAR_SPAN | EQUATIONS");
    Vector<Rational> P;
    if (H.rows() && solver.check_feasibility(H,E,P)) {  // if H has no rows then the polytope is empty by definition
-      p.take("VALID_POINT", perl::temporary) << P;
+      p.take("VALID_POINT", temporary) << P;
    } else {
-      p.take("VALID_POINT") << perl::undefined();
+      p.take("VALID_POINT") << Undefined();
    }
 }
 

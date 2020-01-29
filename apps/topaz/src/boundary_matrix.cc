@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,34 +21,34 @@
 
 namespace polymake { namespace topaz {
 
-SparseMatrix<Integer> boundary_matrix(perl::Object sc, int d){
-
+SparseMatrix<Integer> boundary_matrix(BigObject sc, Int d)
+{
    const Lattice<BasicDecoration>& HD = sc.give("HASSE_DIAGRAM");
    const auto faces = HD.nodes_of_rank(d+1);
-   int n_faces = faces.size();
-   if(d==0) return ones_matrix<Integer>(n_faces,1);
+   const Int n_faces = faces.size();
+   if (d==0) return ones_matrix<Integer>(n_faces, 1);
 
    const auto subfaces = HD.nodes_of_rank(d);
-   int n_subfaces = subfaces.size();
-   int dim = HD.rank()-2;
-   if(d > dim) return zero_matrix<Integer>(1,n_subfaces);
+   const Int n_subfaces = subfaces.size();
+   const Int dim = HD.rank()-2;
+   if (d > dim) return zero_matrix<Integer>(1, n_subfaces);
 
-   hash_map<int,int> face_index; //maps the index af a face to its number of occurence in the HD
+   hash_map<Int, Int> face_index; //maps the index af a face to its number of occurence in the HD
    {
-     int i = 0;
-     for (int f : faces)
+     Int i = 0;
+     for (Int f : faces)
        face_index[f] = i++;
    }
    SparseMatrix<Integer> delta(n_faces,n_subfaces);
 
-   int c = 0;
-   for (int sf : subfaces) {
+   Int c = 0;
+   for (Int sf : subfaces) {
       auto subface = HD.face(sf);
-      for(int f : HD.out_adjacent_nodes(sf)){
+      for (Int f : HD.out_adjacent_nodes(sf)) {
          auto face = HD.face(f);
 
-         int i = 0;   //find index of the vertex missing in current subface
-         for(auto f_it = entire(face), sf_it = entire(subface); (*f_it)==(*sf_it) && !sf_it.at_end(); ++f_it, ++sf_it)
+         Int i = 0;   //find index of the vertex missing in current subface
+         for (auto f_it = entire(face), sf_it = entire(subface); (*f_it)==(*sf_it) && !sf_it.at_end(); ++f_it, ++sf_it)
             ++i;
 
          delta(face_index[f],c) = pow(-1,i);

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,46 +26,46 @@ using namespace fan::lattice;
 graph::Lattice<BasicDecoration> empty_fan_hasse_diagram()
 {
    graph::Lattice<BasicDecoration> HD;
-   const int bottom_node = HD.add_node(BasicDecoration{ Set<int>{}, 0 });
-   const int top_node = HD.add_node(BasicDecoration{Set<int>{-1}, 1 });
+   const Int bottom_node = HD.add_node(BasicDecoration{ Set<Int>{}, 0 });
+   const Int top_node = HD.add_node(BasicDecoration{Set<Int>{-1}, 1 });
    HD.add_edge(bottom_node, top_node);
    return HD;
 }
 
-perl::Object hasse_diagram_caller(perl::Object fan, const RankRestriction& rr, const TopologicalType& tt, 
-                                  const Set<int>& far_vertices = Set<int>())
+BigObject hasse_diagram_caller(BigObject fan, const RankRestriction& rr, const TopologicalType& tt, 
+                                  const Set<Int>& far_vertices = Set<Int>{})
 {
    const IncidenceMatrix<>& maximal_cones = fan.give("MAXIMAL_CONES");
    Array<IncidenceMatrix<> > maximal_vifs;
    if (!tt.is_complete)
       fan.give("MAXIMAL_CONES_INCIDENCES") >> maximal_vifs;
-   const int dim = fan.give("COMBINATORIAL_DIM");
-   Array<int> maximal_dims;
+   const Int dim = fan.give("COMBINATORIAL_DIM");
+   Array<Int> maximal_dims;
    if (!tt.is_pure)
       fan.give("MAXIMAL_CONES_COMBINATORIAL_DIMS") >> maximal_dims;
-   return static_cast<perl::Object>(hasse_diagram_general(maximal_cones, maximal_vifs, dim, maximal_dims, rr, tt, far_vertices));
+   return static_cast<BigObject>(hasse_diagram_general(maximal_cones, maximal_vifs, dim, maximal_dims, rr, tt, far_vertices));
 }
 
-perl::Object hasse_diagram(perl::Object fan, bool is_pure, bool is_complete)
+BigObject hasse_diagram(BigObject fan, bool is_pure, bool is_complete)
 {
    return hasse_diagram_caller(fan, RankRestriction(), TopologicalType(is_pure, is_complete));
 }
 
-perl::Object lower_hasse_diagram(perl::Object fan, int boundary_rank, bool is_pure, bool is_complete)
+BigObject lower_hasse_diagram(BigObject fan, Int boundary_rank, bool is_pure, bool is_complete)
 {
    return hasse_diagram_caller(fan, RankRestriction(true, RankCutType::LesserEqual, boundary_rank),
                                TopologicalType(is_pure, is_complete));
 }
 
-perl::Object upper_hasse_diagram(perl::Object fan, int boundary_rank, bool is_pure, bool is_complete)
+BigObject upper_hasse_diagram(BigObject fan, Int boundary_rank, bool is_pure, bool is_complete)
 {
    return hasse_diagram_caller(fan, RankRestriction(true, RankCutType::GreaterEqual, boundary_rank),
                                TopologicalType(is_pure, is_complete));
 }
 
-perl::Object bounded_hasse_diagram(perl::Object complex, int boundary_rank, bool is_pure)
+BigObject bounded_hasse_diagram(BigObject complex, Int boundary_rank, bool is_pure)
 {
-   const Set<int>& far_vertices = complex.give("FAR_VERTICES");
+   const Set<Int>& far_vertices = complex.give("FAR_VERTICES");
    return hasse_diagram_caller( complex, 
                                 RankRestriction(boundary_rank >= 0, RankCutType::LesserEqual, boundary_rank),
                                 TopologicalType(is_pure, false), far_vertices);

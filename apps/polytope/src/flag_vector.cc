@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -34,15 +34,15 @@ namespace {
 typedef Graph<Directed> PartialLattice;
 typedef NodeMap<Directed,Integer> IncidenceMap;
 
-Vector<Integer>::iterator calcEntry(const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential>& F, PartialLattice& G, IncidenceMap& Inc, int k, Vector<Integer>::iterator fl)
+Vector<Integer>::iterator calcEntry(const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential>& F, PartialLattice& G, IncidenceMap& Inc, Int k, Vector<Integer>::iterator fl)
 {
    // INVARIANT for G here: layer k is connected to some upper layer, all layers below k have no edges at all
-   Integer Entry=0;
+   Integer Entry = 0;
    for (const auto k_node : F.nodes_of_rank(k+1))
       Entry += (Inc[k_node] = accumulate(select(Inc, G.out_adjacent_nodes(k_node)), operations::add()));
 
-   int i=k-2;
-   if (i>=0) {
+   Int i = k-2;
+   if (i >= 0) {
       // connect layer k-2 with layer k
       for (const auto i_node : F.nodes_of_rank(i+1))
          // iterate over the adjacent nodes in the layer between (==k-1)
@@ -50,8 +50,8 @@ Vector<Integer>::iterator calcEntry(const graph::Lattice<graph::lattice::BasicDe
             G.out_adjacent_nodes(i_node) += F.out_adjacent_nodes(btw_node);
 
       for (;;) {
-         fl=calcEntry(F, G, Inc, i, fl);
-         if (i==0) break;
+         fl = calcEntry(F, G, Inc, i, fl);
+         if (i == 0) break;
          // move the edges from layer i to layer i-1
          for (const auto i_node : F.nodes_of_rank(i+1)) {
             for (const auto down_node : F.in_adjacent_nodes(i_node))
@@ -64,21 +64,23 @@ Vector<Integer>::iterator calcEntry(const graph::Lattice<graph::lattice::BasicDe
       for (const auto k_node : F.nodes_of_rank(k+1))
          G.in_edges(k_node).clear();
    }
-   *--fl=Entry;
+   *--fl = Entry;
    return fl;
 }
+
 } // end anonymous namespace
 
-Vector<Integer> flag_vector(perl::Object HD_obj)
+Vector<Integer> flag_vector(BigObject HD_obj)
 {
    const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential> F(HD_obj);
-   const int d = F.rank()-1;
+   const Int d = F.rank();
    PartialLattice G(F.nodes());
    IncidenceMap Inc(G);
    // provide for Inc[TOP]==1 avoiding extra conditionals in the recursive part
-   G.edge(F.top_node(), F.bottom_node()); Inc[F.bottom_node()]=1;
-   Vector<Integer> fl(fibonacci_number(d));
-   calcEntry(F,G,Inc,d,fl.end());
+   G.edge(F.top_node(), F.bottom_node());
+   Inc[F.bottom_node()] = 1;
+   Vector<Integer> fl(static_cast<Int>(Integer::fibonacci(d)));
+   calcEntry(F, G, Inc, d-1, fl.end());
    return fl;
 }
 

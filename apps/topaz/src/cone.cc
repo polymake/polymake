@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,10 +23,10 @@
 
 namespace polymake { namespace topaz {
   
-perl::Object cone(perl::Object p_in, int k, perl::OptionSet options)
+BigObject cone(BigObject p_in, Int k, OptionSet options)
 {
-   Array< Set<int> > C = p_in.give("FACETS");
-   const int n_v = p_in.give("N_VERTICES");
+   Array<Set<Int>> C = p_in.give("FACETS");
+   const Int n_v = p_in.give("N_VERTICES");
    Array<std::string> apex_labels;
 
    if (options["apex_labels"] >> apex_labels) {
@@ -42,7 +42,7 @@ perl::Object cone(perl::Object p_in, int k, perl::OptionSet options)
    for (auto it=entire(C); !it.at_end(); ++it)
       *it += sequence(n_v,k);
 
-   perl::Object p_out("SimplicialComplex");
+   BigObject p_out("SimplicialComplex");
    p_out.set_description() << k << "-cone of " << p_in.name() << endl;
    p_out.take("FACETS") << C;
 
@@ -59,13 +59,13 @@ perl::Object cone(perl::Object p_in, int k, perl::OptionSet options)
 
       } else {
 
-         int gen=0;
+         Int gen = 0;
          std::string gen_suffix="";
          bool unique;
          L.resize(n_v+k);
          do {
-            unique=true;
-            for (int count=0; count<k; ++count) {
+            unique = true;
+            for (Int count = 0; count < k; ++count) {
                std::ostringstream label;
                label << "apex" << gen_suffix;
                if (k>1) label << '_' << count;

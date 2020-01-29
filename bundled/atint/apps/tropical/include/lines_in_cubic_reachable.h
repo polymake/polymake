@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -61,11 +61,11 @@ bool maximumAttainedTwice(const Vector<Rational>& values);
    @brief This takes a cubic surface defined by a tropical polynomial f and a direction index in 0,1,2,3 and computes the set of all points p such that the line from p in the direction of e_0,-e1,..,-e3 lies in X.
    @param Polynomial<TropicalNumber<Max> > f A tropical polynomial of degree 3
    @param Cycle<Addition> X The divisor of f (in R^3)
-   @param int direction Lies in 0,1,2,3 and means we consider the direction e_0 = (1,1,1) or -e_i for i > 0
+   @param Int direction Lies in 0,1,2,3 and means we consider the direction e_0 = (1,1,1) or -e_i for i > 0
    (respectively the inverse for min).
    @return ReachableResult
 */
-ReachableResult reachablePoints(const Polynomial<TropicalNumber<Max>>& f, perl::Object X, int direction); 
+ReachableResult reachablePoints(const Polynomial<TropicalNumber<Max>>& f, BigObject X, Int direction); 
 
 } }
 

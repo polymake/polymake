@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,12 +21,12 @@ namespace polymake { namespace topaz {
 
 // return values: 1=true, 0=false, -1=undef (does not occur here)
 template <typename Complex, typename VertexSet>
-int is_ball_or_sphere(const Complex& C, const GenericSet<VertexSet>& V, int_constant<2>)
+Int is_ball_or_sphere(const Complex& C, const GenericSet<VertexSet>& V, int_constant<2>)
 {
-   graph::Lattice<graph::lattice::BasicDecoration> HD= hasse_diagram_from_facets(Array<Set<int> >(C));
+   graph::Lattice<graph::lattice::BasicDecoration> HD = hasse_diagram_from_facets(Array<Set<Int>>(C));
 
    // check whether C is a pseudo_manifold and compute the boundary B
-   std::list< Set<int> > B;
+   std::list<Set<Int>> B;
    bool is_PM = is_pseudo_manifold(HD, true, std::back_inserter(B));
    if (!is_PM) return 0;
 
@@ -39,7 +39,7 @@ int is_ball_or_sphere(const Complex& C, const GenericSet<VertexSet>& V, int_cons
    // check euler char of S
    // if (B.empty())  S = -1 + #vert - #edges_of_C + #C
    // else            S = -1 + (#vert + 1) - (#edges_of_C + #B) + (#C + #B)
-   int euler_char= V.top().size() - HD.nodes_of_rank(HD.rank()-2).size() + C.size();
+   Int euler_char = V.top().size() - HD.nodes_of_rank(HD.rank()-2).size()+C.size();
    if (B_is_empty) --euler_char;
 
    if (euler_char!=1) return 0;

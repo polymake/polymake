@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -50,13 +50,13 @@ public:
     : CO(&cop)
   {
     bool empty_set_occured = false;
-    const Set<int>& dual_face = H.get_dual_face();
-    const int df_size = dual_face.size();
-    if (df_size) {
+    const Set<Int>& dual_face = H.get_dual_face();
+    const Int df_size = dual_face.size();
+    if (df_size > 0) {
       FacetList flist(CO->total_set_size());
       for (; !inter_it.at_end(); ++inter_it) {
-        const Set<int> hc = dual_face * (*inter_it);
-        const int hc_size = hc.size();
+        const Set<Int> hc = dual_face * (*inter_it);
+        const Int hc_size = hc.size();
         if (hc_size == 0)
           empty_set_occured = true;
         else if (hc_size != df_size)
@@ -66,7 +66,7 @@ public:
         data.push_back(ClosureData(*CO, *mf));
       }
       if (flist.size() == 0 && empty_set_occured)
-        data.push_back(ClosureData(*CO,Set<int>()));
+        data.push_back(ClosureData(*CO, Set<Int>{}));
     }
     it = entire(data);
   }
@@ -74,7 +74,7 @@ public:
   // The following are only for dual mode:
 
   // Iterator for 1- and 2-dimensional cones: We don't need to intersect
-  complex_closures_above_iterator(const ClosureOperator& cop, const Set<int>& dual_face)
+  complex_closures_above_iterator(const ClosureOperator& cop, const Set<Int>& dual_face)
     : CO(&cop)
   {
     for (auto subface = entire(all_subsets_less_1(dual_face)); !subface.at_end(); ++subface) {
@@ -128,26 +128,26 @@ public:
     bool is_maximal;
   public:
     template <typename TSet2>
-    ClosureData(const ComplexClosure<Decoration>& parent_, const GenericSet<TSet2, int>& df)
+    ClosureData(const ComplexClosure<Decoration>& parent_, const GenericSet<TSet2, Int>& df)
       : ParentClosureData(parent_, df)
       , is_artificial(false)
       , is_maximal(false) {}
 
     template <typename TSet1, typename TSet2>
-    ClosureData(const GenericSet<TSet1, int>& f, const GenericSet<TSet2, int>& df)
+    ClosureData(const GenericSet<TSet1, Int>& f, const GenericSet<TSet2, Int>& df)
       : ParentClosureData(f, df)
       , is_artificial(false)
       , is_maximal(false) {}
 
     template <typename TSet>
-    ClosureData(const GenericSet<TSet, int>& df, const int index)
+    ClosureData(const GenericSet<TSet, Int>& df, const Int index)
       : ParentClosureData(scalar2set(index), df)
       , is_artificial(false)
       , is_maximal(true) {}
 
     template <typename TSet>
-    ClosureData(const GenericSet<TSet, int>& df)
-      : ParentClosureData(Set<int>(), df)
+    ClosureData(const GenericSet<TSet, Int>& df)
+      : ParentClosureData(Set<Int>(), df)
       , is_artificial(true)
       , is_maximal(false) {}
 
@@ -186,7 +186,7 @@ public:
     BasicClosureOperator<Decoration>::total_set =
       sequence(0,BasicClosureOperator<Decoration>::total_size);
     BasicClosureOperator<Decoration>::total_data =
-      ClosureData(BasicClosureOperator<Decoration>::total_set, Set<int>());
+      ClosureData(BasicClosureOperator<Decoration>::total_set, Set<Int>{});
   }
 
   ClosureData closure_of_empty_set() const
@@ -204,7 +204,7 @@ public:
 
   complex_closures_above_iterator<ComplexDualClosure> get_closure_iterator(const ClosureData& face) const
   {
-    const int df_size = face.get_dual_face().size();
+    const Int df_size = face.get_dual_face().size();
     // Default iterator
     if (__builtin_expect(!face.is_artificial_node() && (!face.is_maximal_face() || is_complete) && !(df_size <= 2),1))
       return complex_closures_above_iterator<ComplexDualClosure>(*this,face, entire(default_intersector));
@@ -242,12 +242,12 @@ public:
     this->facets = complete_incidence;
     this->total_size = complete_incidence.rows();
     this->total_set = sequence(0, this->total_size);
-    this->total_data = ClosureData(this->total_set, Set<int>());
+    this->total_data = ClosureData(this->total_set, Set<Int>{});
   }
 
   ClosureData closure_of_empty_set() const
   {
-    return ClosureData(Set<int>(), sequence(0, this->facets.rows() + 1));
+    return ClosureData(Set<Int>{}, sequence(0, this->facets.rows()+1));
   }
 
   ClosureData compute_closure_data(const Decoration& face) const
@@ -269,10 +269,10 @@ public:
 class BasicComplexDecorator
   : public BasicDecorator<ComplexClosure<>::ClosureData> {
 protected:
-  const int artificial_rank;
-  Map<Set<int>, int> max_combinatorial_dims;
+  const Int artificial_rank;
+  Map<Set<Int>, Int> max_combinatorial_dims;
   const bool full_set_is_artificial;
-  const int n_vertices;
+  const Int n_vertices;
   const bool is_pure;
 public:
   using FaceData = ComplexClosure<>::ClosureData;
@@ -283,18 +283,18 @@ public:
   using ParentType::artificial_set;
 
   // Primal version
-  BasicComplexDecorator(int comb_dim, const Set<int> artificial, bool full_set_is_artificial_arg, int n_vertices_arg)
+  BasicComplexDecorator(Int comb_dim, const Set<Int>& artificial, bool full_set_is_artificial_arg, Int n_vertices_arg)
     : ParentType(0, artificial)
-    , artificial_rank(comb_dim + 2)
+    , artificial_rank(comb_dim+2)
     , full_set_is_artificial(full_set_is_artificial_arg)
     , n_vertices(n_vertices_arg)
     , is_pure(false) {}
 
   // Dual version
   BasicComplexDecorator(IncidenceMatrix<> maximal_cones,
-                        int comb_dim,
-                        const Array<int>& max_comb_dims,
-                        const Set<int> artificial, bool is_pure_arg)
+                        Int comb_dim,
+                        const Array<Int>& max_comb_dims,
+                        const Set<Int>& artificial, bool is_pure_arg)
     : ParentType(maximal_cones.cols(), comb_dim+2, artificial)
     , artificial_rank(0)
     , full_set_is_artificial(false)
@@ -328,17 +328,17 @@ public:
       return data;
     }
     if (predecessor_data.rank == initial_rank && built_dually && !is_pure)
-      data.rank = max_combinatorial_dims[data.face] + 1;
+      data.rank = max_combinatorial_dims[data.face]+1;
     else
       data.rank = predecessor_data.rank + (built_dually ? -1 : 1);
     return data;
   }
 
   BasicDecoration compute_artificial_decoration(const NodeMap<Directed, BasicDecoration>& decor,
-                                                const std::list<int>& max_nodes) const
+                                                const std::list<Int>& max_nodes) const
   {
     if (built_dually)
-      return BasicDecoration(Set<int>(), 0);
+      return BasicDecoration(Set<Int>{}, 0);
     else
       return ParentType::compute_artificial_decoration(decor,max_nodes);
   }
@@ -361,28 +361,28 @@ struct TopologicalType {
 
 graph::Lattice<graph::lattice::BasicDecoration> empty_fan_hasse_diagram();
 
-perl::Object lower_hasse_diagram(perl::Object fan, int boundary_rank, bool is_pure, bool is_complete);
+BigObject lower_hasse_diagram(BigObject fan, Int boundary_rank, bool is_pure, bool is_complete);
 
 /*
  * @brief Computes the Hasse diagram of a fan, polyhedral complex or simplicial complex
  * @param IncidenceMatrix maximal_cones The maximal cells
  * @param Array<InicidenceMatrix> maximal_vifs The facets of each maximal cell. Can be empty, if tt.is_complete is true
- * @param int top_combinatorial_dim The combinatorial dim of the (artificial) top face. Needed if built dually.
- * @param Array<int> maximal_dims The ranks of the maximal cells. Can be empty if tt.pure = true
+ * @param Int top_combinatorial_dim The combinatorial dim of the (artificial) top face. Needed if built dually.
+ * @param Array<Int> maximal_dims The ranks of the maximal cells. Can be empty if tt.pure = true
  * @param RankRestriction rr. Whether the hasse diagram should only partially be computed (upwards or downwards) up to a certain dimension.
  * @param TopologicalType tt. Indicates whether the complex is pure and/or complete (the latter meaning, that the intersections of the maximal cells generate the full Hasse diagram).
- * @param Set<int> far_vertices. If not trivial, only the faces not intersecting this set are computed.
+ * @param Set<Int> far_vertices. If not trivial, only the faces not intersecting this set are computed.
  */
 template <typename IMatrix>
 graph::Lattice<graph::lattice::BasicDecoration>
 hasse_diagram_general(
                       const GenericIncidenceMatrix<IMatrix>& maximal_cones,
-                      const Array<IncidenceMatrix<> >& maximal_vifs,
-                      const int top_combinatorial_dim,
-                      const Array<int>& maximal_dims,
+                      const Array<IncidenceMatrix<>>& maximal_vifs,
+                      const Int top_combinatorial_dim,
+                      const Array<Int>& maximal_dims,
                       lattice::RankRestriction rr,
                       lattice::TopologicalType tt,
-                      const Set<int>& far_vertices)
+                      const Set<Int>& far_vertices)
 {
   using namespace graph::lattice_builder;
   using namespace fan::lattice;
@@ -390,10 +390,10 @@ hasse_diagram_general(
   // Detect trivial rank restriction
   if (rr.rank_restricted)
     if ((rr.rank_restriction_type == lattice::RankCutType::GreaterEqual && rr.boundary_rank <= 0) ||
-        (rr.rank_restriction_type == lattice::RankCutType::LesserEqual && rr.boundary_rank >= top_combinatorial_dim + 2))
+        (rr.rank_restriction_type == lattice::RankCutType::LesserEqual && rr.boundary_rank >= top_combinatorial_dim+2))
       rr.rank_restricted = false;
 
-  const int n_vertices = maximal_cones.cols();
+  const Int n_vertices = maximal_cones.cols();
 
   if (n_vertices == 0)
     return empty_fan_hasse_diagram();
@@ -419,9 +419,9 @@ hasse_diagram_general(
   const ComplexPrimalClosure<> primal_cop(IncidenceMatrix<>(std::move(building_matrix)));
   const ComplexDualClosure<> dual_cop(maximal_cones, maximal_vifs, non_redundant_facets);
 
-  const Set<int> artificial_set = scalar2set(-1);
+  const auto artificial_set = scalar2set(-1);
   const lattice::BasicComplexDecorator dec = is_dual
-    ? lattice::BasicComplexDecorator(maximal_cones, top_combinatorial_dim, maximal_dims, scalar2set(-1), tt.is_pure)
+    ? lattice::BasicComplexDecorator(maximal_cones, top_combinatorial_dim, maximal_dims, artificial_set, tt.is_pure)
     : lattice::BasicComplexDecorator(top_combinatorial_dim, artificial_set, maximal_cones.rows() > 1 && far_vertices.empty(), n_vertices);
 
   // Plain version

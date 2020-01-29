@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -34,13 +34,11 @@
 
 namespace polymake { namespace polytope {
 
-typedef Set<int> SetType;
-      //typedef Bitset SetType;
-
+typedef Set<Int> SetType;
       
 namespace  {
 
-const AccurateFloat pi_2 = AccurateFloat::pi() / 2;      
+const AccurateFloat pi_2 = AccurateFloat::pi()/2;      
    
 template<typename Scalar>
 AccurateFloat
@@ -62,8 +60,8 @@ total_angle_over_pi(const SetType& codim_2_rep,
                     const Matrix<Scalar>& F, 
                     const IncidenceMatrix<>& VIF)
 {
-   std::vector<int> containing_facets;
-   for (int i=0; i<F.rows(); ++i) {
+   std::vector<Int> containing_facets;
+   for (Int i = 0; i < F.rows(); ++i) {
       if (1 == incl(VIF.row(i), codim_2_rep)) 
          containing_facets.push_back(i);
    }
@@ -98,40 +96,40 @@ angle_over_pi_at_e(const Matrix<Scalar>& V, const SetType& simplex, const SetTyp
 
 template<typename Scalar>
 SparseMatrix<AccurateFloat> 
-symmetrized_codim_2_angle_sums(int d,
+symmetrized_codim_2_angle_sums(Int d,
                                const Matrix<Scalar>& V,
                                const Matrix<Scalar>& F,
                                const IncidenceMatrix<>& VIF,
-                               const Array<Array<int>>& generators,
+                               const Array<Array<Int>>& generators,
                                const IncidenceMatrix<>& codim_2_reps,
                                const Array<SetType>& facet_reps) 
 {
    group::PermlibGroup sym_group;
-   int group_order;
+   Int group_order;
    if (generators.size()) {
       sym_group = group::PermlibGroup(generators);
       group_order = sym_group.order();
    } else {
       group_order = 1;
    }
-   hash_map<SetType, int> index_of_facet_rep;
-   int facet_index(-1);
+   hash_map<SetType, Int> index_of_facet_rep;
+   Int facet_index = -1;
    for (const auto& frep: facet_reps)
       index_of_facet_rep[frep] = ++facet_index;
    
-   int n_codim_2_reps(0);
-   hash_map<SetType, int> index_of_codim_2_rep;
+   Int n_codim_2_reps = 0;
+   hash_map<SetType, Int> index_of_codim_2_rep;
    std::vector<SetType> cd2_faces_on_hull;
    for (const auto& cd2rep: rows(codim_2_reps)) {
       index_of_codim_2_rep[cd2rep] = n_codim_2_reps++;
 
-      int ct(0), i(0);
+      Int ct = 0, i = 0;
       while (ct<2 && i<VIF.rows())
          if (1 == incl(VIF.row(i++), cd2rep)) ++ct;
       if (ct>=2) cd2_faces_on_hull.push_back(cd2rep);
    }
 
-   const int
+   const Int
       n_facet_reps(index_of_facet_rep.size()),
       n_hull_reps (cd2_faces_on_hull.size());
 
@@ -160,9 +158,9 @@ symmetrized_codim_2_angle_sums(int d,
       codim_2_angle_sums(kv.second, 1 + n_facet_reps + kv.second) = - total_angle_over_pi(kv.first, F, VIF);
 
    // each boundary ridge, i.e., one that is intersection of two facets of the polytope, must appear
-   int i=0;
-   for (const auto& foh: cd2_faces_on_hull) {
-      codim_2_angle_sums(n_codim_2_reps + i, n_facet_reps + index_of_codim_2_rep[foh] + 1) = AccurateFloat(1);
+   Int i = 0;
+   for (const auto& foh : cd2_faces_on_hull) {
+      codim_2_angle_sums(n_codim_2_reps + i, n_facet_reps + index_of_codim_2_rep[foh]+1) = AccurateFloat(1);
       codim_2_angle_sums(n_codim_2_reps + i, 0) = AccurateFloat( 1 == group_order ? -1 : -group_order/sym_group.setwise_stabilizer(foh).order() );
       ++i;
    }
@@ -172,23 +170,23 @@ symmetrized_codim_2_angle_sums(int d,
 
 
 template <typename Scalar>
-perl::Object
-simplexity_ilp_with_angles(int d, 
+BigObject
+simplexity_ilp_with_angles(Int d, 
                            const Matrix<Scalar>& V, 
                            const Matrix<Scalar>& F,
                            const IncidenceMatrix<>& VIF,
                            const IncidenceMatrix<>& VIR,
-                           const Array<Array<int>>& generators,
+                           const Array<Array<Int>>& generators,
                            const Array<SetType>& facet_reps,
                            Scalar vol, 
                            const SparseMatrix<Rational>& cocircuit_equations)
 {
    const auto angle_equations = symmetrized_codim_2_angle_sums(d, V, F, VIF, generators, VIR, facet_reps);
 
-   const int 
+   const Int 
       cce_cols = cocircuit_equations.cols(),
       cce_rows = cocircuit_equations.rows(),
-      ae_cols = angle_equations.cols() - 1, // these equations are non-homogeneous
+      ae_cols = angle_equations.cols()-1, // these equations are non-homogeneous
       delta_cols = ae_cols - cce_cols;
    Vector<Scalar> volume_vect(cce_cols);
    auto vit = volume_vect.begin();
@@ -201,11 +199,11 @@ simplexity_ilp_with_angles(int d,
                      SparseMatrix<Scalar>(angle_equations)  /
                      ((-Integer::fac(d) * vol) | volume_vect | zero_vector<Scalar>(delta_cols));
 
-   perl::Object lp("LinearProgram", mlist<Scalar>());
+   BigObject lp("LinearProgram", mlist<Scalar>());
    lp.attach("INTEGER_VARIABLES") << Array<bool>(ae_cols, true);
    lp.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0 | ones_vector<Scalar>(facet_reps.size()));
 
-   perl::Object q("Polytope", mlist<Scalar>());
+   BigObject q("Polytope", mlist<Scalar>());
    q.take("FEASIBLE") << true;
    q.take("EQUATIONS") << Equations;
    q.take("INEQUALITIES") << Inequalities;

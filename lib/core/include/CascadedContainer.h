@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -158,7 +158,7 @@ public:
    template <typename Container>
    void store_dim(const Container&) {}
    void adjust_offset() {}
-   int adjust_index(int i) const { return i; }
+   Int adjust_index(Int i) const { return i; }
 };
 
 template <>
@@ -169,9 +169,9 @@ public:
    template <typename Container>
    void store_dim(const Container& c) { dim=get_dim(c); }
    void adjust_offset() { offset+=dim; }
-   int adjust_index(int i) const { return i+offset; }
+   Int adjust_index(Int i) const { return i+offset; }
 private:
-   int offset, dim;
+   Int offset, dim;
 };
 
 template <typename Iterator, typename ExpectedFeatures>
@@ -197,7 +197,7 @@ public:
       return *this;
    }
 
-   int index() const { return index_store.adjust_index(base_t::index()); }
+   Int index() const { return index_store.adjust_index(base_t::index()); }
 protected:
    cascaded_iterator_index_store<provide_index> index_store;
 };
@@ -234,7 +234,7 @@ public:
    using container_ref = typename extract_container_ref<Params, ContainerRefTag, ContainerTag, typename base_t::hidden_type>::type;
    using container = typename deref<container_ref>::minus_ref;
 
-   static constexpr int depth=tagged_list_extract_integral<Params, CascadeDepth>(1);
+   static constexpr int depth = tagged_list_extract_integral<Params, CascadeDepth>(1);
    using can_enforce_features = dense;
    using needed_features = typename mix_features<typename base_t::expected_features, end_sensitive>::type;
    using needed_features_next_level = typename mlist_match_all<rewindable, needed_features, absorbing_feature>::complement2;
@@ -283,7 +283,7 @@ public:
       return const_iterator(ensure(this->manip_top().get_container(), typename base_t::needed_features()).end());
    }
 
-   int size() const
+   Int size() const
    {
       return cascade_size(this->manip_top().get_container(), int_constant<base_t::depth>());
    }
@@ -291,7 +291,7 @@ public:
    {
       return cascade_empty(this->manip_top().get_container(), int_constant<base_t::depth>());
    }
-   int dim() const
+   Int dim() const
    {
       return cascade_dim(this->manip_top().get_container(), int_constant<base_t::depth>());
    }
@@ -341,32 +341,32 @@ public:
 };
 
 template <typename Container>
-int cascade_size(const Container& c, int_constant<1>)
+Int cascade_size(const Container& c, int_constant<1>)
 {
    return c.size();
 }
 
 template <typename Container, int depth>
-int cascade_size(const Container& c, int_constant<depth>)
+Int cascade_size(const Container& c, int_constant<depth>)
 {
-   int size=0;
-   for (auto i=entire(c); !i.at_end(); ++i)
+   Int size = 0;
+   for (auto i = entire(c); !i.at_end(); ++i)
       size += cascade_size(*i, int_constant<depth-1>());
    return size;
 }
 
 template <typename Container>
-int cascade_dim(const Container& c, int_constant<1>)
+Int cascade_dim(const Container& c, int_constant<1>)
 {
    return get_dim(c);
 }
 
 template <typename Container, int depth>
-int cascade_dim(const Container& c, int_constant<depth>)
+Int cascade_dim(const Container& c, int_constant<depth>)
 {
-   int d=0;
-   for (auto i=entire(c); !i.at_end(); ++i)
-      d+=cascade_dim(*i, int_constant<depth-1>());
+   Int d = 0;
+   for (auto i = entire(c); !i.at_end(); ++i)
+      d += cascade_dim(*i, int_constant<depth-1>());
    return d;
 }
 

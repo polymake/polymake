@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -19,6 +19,7 @@
 #define POLYMAKE_META_FUNCTION_H
 
 #include <type_traits>
+#include <cstddef>
 
 namespace polymake {
 
@@ -30,6 +31,9 @@ using int_constant = std::integral_constant<int, Value>;
 
 template <char Value>
 using char_constant = std::integral_constant<char, Value>;
+
+template <size_t Value>
+using size_constant = std::integral_constant<size_t, Value>;
 
 template <typename T>
 using bool_not

@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -46,15 +46,15 @@
 
 namespace polymake { namespace tropical {
 
-using LatticeMap = Map< std::pair<int,int>, Vector<Integer> >;
+using LatticeMap = Map< std::pair<Int, Int>, Vector<Integer>>;
 
 /*
  * @brief Computes [[LATTICE_NORMAL_SUM]]
  */
-void computeLatticeNormalSum(perl::Object cycle)
+void computeLatticeNormalSum(BigObject cycle)
 {
   const LatticeMap& latticeNormals = cycle.give("LATTICE_NORMALS");
-  const int ambient_dim = cycle.give("FAN_AMBIENT_DIM");
+  const Int ambient_dim = cycle.give("FAN_AMBIENT_DIM");
   const Vector<Integer> &weights = cycle.give("WEIGHTS");
   const IncidenceMatrix<> &codimInc = cycle.give("MAXIMAL_AT_CODIM_ONE");
 
@@ -79,35 +79,35 @@ void computeLatticeNormalSum(perl::Object cycle)
 /*
  * @brief Computes properties [[LATTICE_NORMAL_FCT_VECTOR]], [[LATTICE_NORMAL_SUM_FCT_VECTOR]]
  */
-void computeLatticeFunctionData(perl::Object cycle)
+void computeLatticeFunctionData(BigObject cycle)
 {
   // Extract properties from the cycle
   const Matrix<Rational> &linealitySpace_ref = cycle.give("LINEALITY_SPACE");
   const Matrix<Rational> linealitySpace = tdehomog(linealitySpace_ref);	
-  const int lineality_dim = linealitySpace.rows();
+  const Int lineality_dim = linealitySpace.rows();
 
-  const Matrix<Rational> &rays_ref = cycle.give("SEPARATED_VERTICES");
+  const Matrix<Rational>& rays_ref = cycle.give("SEPARATED_VERTICES");
   const Matrix<Rational> rays = tdehomog(rays_ref);
   const LatticeMap &latticeNormals = cycle.give("LATTICE_NORMALS");
-  const Matrix<Rational> &normalsums_ref = cycle.give("LATTICE_NORMAL_SUM");
+  const Matrix<Rational>& normalsums_ref = cycle.give("LATTICE_NORMAL_SUM");
   const Matrix<Rational> normalsums = tdehomog(normalsums_ref);
-  const IncidenceMatrix<> &codimOneCones = cycle.give("SEPARATED_CODIMENSION_ONE_POLYTOPES");
-  const IncidenceMatrix<> &maximalCones = cycle.give("SEPARATED_MAXIMAL_POLYTOPES");
-  const IncidenceMatrix<> &coneIncidences = cycle.give("MAXIMAL_AT_CODIM_ONE");
+  const IncidenceMatrix<>& codimOneCones = cycle.give("SEPARATED_CODIMENSION_ONE_POLYTOPES");
+  const IncidenceMatrix<>& maximalCones = cycle.give("SEPARATED_MAXIMAL_POLYTOPES");
+  const IncidenceMatrix<>& coneIncidences = cycle.give("MAXIMAL_AT_CODIM_ONE");
 
   // Result variables
-  Map<std::pair<int,int>, Vector<Rational> > summap;
-  ListMatrix<Vector<Rational> > summatrix;
-  Vector<bool> balancedFaces(codimOneCones.rows());
+  Map<std::pair<Int, Int>, Vector<Rational>> summap;
+  ListMatrix<Vector<Rational>> summatrix;
 
   // Iterate over all codim 1 faces
   auto coInc = entire(rows(coneIncidences));
   for (auto fct = entire<indexed>(rows(codimOneCones)); !fct.at_end(); ++fct, ++coInc) {
-    for (const auto &mc : coInc->top()) {
-      Vector<Rational> normalvector(latticeNormals[std::make_pair(fct.index(),mc)]);
+    for (auto mc_it = entire(*coInc); !mc_it.at_end(); ++mc_it) {
+      const Int mc = *mc_it;
+      Vector<Rational> normalvector(latticeNormals[std::make_pair(fct.index(), mc)]);
       normalvector = tdehomog_vec(normalvector);
       // Compute the representation of the normal vector
-      summap[std::make_pair(fct.index(),mc)] =
+      summap[std::make_pair(fct.index(), mc)] =
         functionRepresentationVector(maximalCones.row(mc),
                                      normalvector,
                                      rays, linealitySpace);
@@ -119,7 +119,7 @@ void computeLatticeFunctionData(perl::Object cycle)
 						normalsums.row(fct.index()),
 						rays, linealitySpace);
     }
-    catch (std::runtime_error &e) {
+    catch (const std::runtime_error& e) {
       // This goes wrong, if X is not balanced at a given codim 1 face
       summatrix /= zero_vector<Rational>(rays.rows() + lineality_dim);
     }
@@ -133,20 +133,20 @@ void computeLatticeFunctionData(perl::Object cycle)
 
 Matrix<Integer> lattice_basis_of_cone(const Matrix<Rational>& rays,
                                       const Matrix<Rational> &lineality, 
-                                      int dim, bool has_leading_coordinate)
+                                      Int dim, bool has_leading_coordinate)
 {
   // Special case: If the cone is full-dimensional, return the standard basis
-  int ambient_dim = std::max(rays.cols(), lineality.cols()) - (has_leading_coordinate ? 1 : 0);
+  Int ambient_dim = std::max(rays.cols(), lineality.cols()) - (has_leading_coordinate ? 1 : 0);
   if (dim == ambient_dim)
     return unit_matrix<Integer>(ambient_dim);
 
   // Compute span matrix if there is a leading coordinate 
   Matrix<Rational> span_matrix(0, ambient_dim);
   if (has_leading_coordinate) {
-    std::pair<Set<int>, Set<int>> sortedVertices = far_and_nonfar_vertices(rays);
+    std::pair<Set<Int>, Set<Int>> sortedVertices = far_and_nonfar_vertices(rays);
     span_matrix = rays.minor(sortedVertices.first, range_from(1)); 
     if(lineality.rows() > 0) span_matrix /= lineality.minor(All, range_from(1));
-    int first = *(sortedVertices.second.begin());
+    Int first = *(sortedVertices.second.begin());
     sortedVertices.second -= first;
     for (auto vtx = entire(rows(rays.minor(sortedVertices.second,All))); !vtx.at_end(); ++vtx) {
       span_matrix /= (*vtx - rays.row(first)).slice(range_from(1));
@@ -167,7 +167,7 @@ Matrix<Integer> lattice_basis_of_cone(const Matrix<Rational>& rays,
 /*
  * @brief Computes properties [[LATTICE_BASES]] and [[LATTICE_GENERATORS]]
  */
-void computeLatticeBases(perl::Object cycle)
+void computeLatticeBases(BigObject cycle)
 {
   // Extract properties
   const Matrix<Rational> &rays_ref = cycle.give("VERTICES");
@@ -176,12 +176,12 @@ void computeLatticeBases(perl::Object cycle)
   const Matrix<Rational> linspace = tdehomog(linspace_ref).minor(All, range_from(1));
   const IncidenceMatrix<> &cones = cycle.give("MAXIMAL_POLYTOPES");
   // FIXME Use unimodularity?
-  const Set<int> &directional = cycle.give("FAR_VERTICES");
-  const Set<int> vertices = sequence(0,rays.rows()) - directional; 
-  const int dim = cycle.give("PROJECTIVE_DIM");
+  const Set<Int> &directional = cycle.give("FAR_VERTICES");
+  const Set<Int> vertices = sequence(0,rays.rows()) - directional; 
+  const Int dim = cycle.give("PROJECTIVE_DIM");
 
   Matrix<Integer> generators;
-  std::vector<Set<int>> bases;
+  std::vector<Set<Int>> bases;
 
   // Iterate over all cones
   for (auto mc = entire(rows(cones)); !mc.at_end(); ++mc) {
@@ -189,7 +189,7 @@ void computeLatticeBases(perl::Object cycle)
     // Construct ray matrix of cone:
     Matrix<Rational> mc_rays = rays.minor((*mc) * directional, All);      
     Matrix<Rational> mc_vert = rays.minor((*mc) * vertices,All);
-    for (int v = 1; v < mc_vert.rows(); v++) {
+    for (Int v = 1; v < mc_vert.rows(); v++) {
       mc_rays /= (mc_vert.row(v) - mc_vert.row(0));
     }
 
@@ -198,13 +198,13 @@ void computeLatticeBases(perl::Object cycle)
     basis = lattice_basis_of_cone(mc_rays, linspace,dim,false);
     basis = zero_vector<Integer>(basis.rows()) | basis;
 
-    Set<int> basis_set;
+    Set<Int> basis_set;
     // Add rays, looking for doubles
     for (auto b = entire(rows(basis)); !b.at_end(); ++b) {
       // We normalize s.t. the first non-zero entry is > 0
       auto first_non_zero = find_in_range_if(entire(b->top()), operations::non_zero());
       if (*first_non_zero < 0) b->negate();
-      int ray_index = -1;
+      Int ray_index = -1;
       for (auto gr = entire<indexed>(rows(generators)); !gr.at_end(); ++gr) {
         if (*gr == *b) {
           ray_index = gr.index(); break;

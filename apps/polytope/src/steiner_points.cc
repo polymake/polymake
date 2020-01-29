@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,23 +30,23 @@ namespace polymake { namespace polytope {
 namespace {
 
 template <typename Coord>
-Coord weight(int a, int b) { return Coord(a)/Coord(b); }
+Coord weight(Int a, Int b) { return Coord(a)/Coord(b); }
 
 template <>
-Rational weight<Rational>(int a, int b) { return Rational(a,b); }
+Rational weight<Rational>(Int a, Int b) { return Rational(a,b); }
 
 template <typename Coord, typename AdjVert>
 Coord calc_weight(const Matrix<Coord>& Vd, const GenericMatrix<AdjVert>& adjVert_in,
-                  const int vertex_index, const int dim, const int nop,
+                  const Int vertex_index, const Int dim, const Int nop,
                   RandomSpherePoints<>& random_source,
                   const double eps)
 {
    // get the perpendicular vectors for actual vertex
    const Matrix<Coord> adjVert=repeat_row(Vd[vertex_index], adjVert_in.rows())-adjVert_in;
 
-   int countwhile = 0;
-   int old_out = 0;
-   int out = 0;
+   Int countwhile = 0;
+   Int old_out = 0;
+   Int out = 0;
    double step_dist;
 
    // check more points on the sphere until weights "converge"
@@ -59,7 +59,7 @@ Coord calc_weight(const Matrix<Coord>& Vd, const GenericMatrix<AdjVert>& adjVert
       old_out = out;
 
       RandomSpherePoints<>::const_iterator rand_point_it(random_source.begin());
-      for (int i = 0; i < ((countwhile == 1)?50*nop:nop); ++i) {
+      for (Int i = 0; i < ((countwhile == 1)?50*nop:nop); ++i) {
          const Vector<Coord> point(Coord(1) | *rand_point_it);
          for (auto ri2= entire(rows(adjVert)); !ri2.at_end(); ++ri2)
             if (point*(*ri2) < 0) {
@@ -68,7 +68,7 @@ Coord calc_weight(const Matrix<Coord>& Vd, const GenericMatrix<AdjVert>& adjVert
             }
       }
 
-      step_dist = (countwhile!=1)?(double(out)/countwhile)/(double(old_out)/(countwhile-1)):2;
+      step_dist = countwhile != 1 ? (double(out)/double(countwhile))/(double(old_out)/double(countwhile-1)) : 2;
 
    } while (abs(step_dist-1) >= eps);
 
@@ -78,29 +78,29 @@ Coord calc_weight(const Matrix<Coord>& Vd, const GenericMatrix<AdjVert>& adjVert
 }
 
 template <typename Coord>
-Matrix<Coord> all_steiner_points(perl::Object p, perl::OptionSet options)
+Matrix<Coord> all_steiner_points(BigObject p, OptionSet options)
 {
    //FIXME: check dim-type!
-   const int dim=p.call_method("DIM");
+   const Int dim = p.call_method("DIM");
    const Matrix<Coord> V=p.give("VERTICES");
    const Graph<> G=p.give("GRAPH.ADJACENCY");
-   perl::Object HD_obj = p.give("HASSE_DIAGRAM");
+   BigObject HD_obj = p.give("HASSE_DIAGRAM");
    const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential> HDiagram(HD_obj);
 
    RandomSpherePoints<> random_source(dim, RandomSeed(options["seed"]));
 
-   const double eps=options["eps"];
+   const double eps = options["eps"];
 
-   const int n_stp = HDiagram.nodes() - HDiagram.nodes_of_rank(2).size() - HDiagram.nodes_of_rank(1).size() - 1;
+   const Int n_stp = HDiagram.nodes() - HDiagram.nodes_of_rank(2).size() - HDiagram.nodes_of_rank(1).size()-1;
    Matrix<Coord> steiner_points(n_stp,dim+1);
    auto si=rows(steiner_points).begin();
 
-   for (int d = dim; d >= 2; --d) {
-      const int nop = 10*(1<<d);
+   for (Int d = dim; d >= 2; --d) {
+      const Int nop = 10*(1L<<d);
 
       // iterate over the faces of current dimension d
       for (const auto f : HDiagram.nodes_of_rank(d+1)) {
-         const Set<int>& face = HDiagram.face(f);
+         const Set<Int>& face = HDiagram.face(f);
          Vector<Coord> weights(face.size());
          Coord sw(0);
          auto wi=weights.begin();
@@ -124,17 +124,17 @@ Matrix<Coord> all_steiner_points(perl::Object p, perl::OptionSet options)
 }
 
 template <typename Coord>
-Vector<Coord> steiner_point(perl::Object p, perl::OptionSet options)
+Vector<Coord> steiner_point(BigObject p, OptionSet options)
 {
    //FIXME: check dim-type!
-   const int dim=p.call_method("DIM");
+   const Int dim = p.call_method("DIM");
    const Matrix<Coord> V=p.give("VERTICES");
    const Graph<> G=p.give("GRAPH.ADJACENCY");
 
    RandomSpherePoints<> random_source(dim, RandomSeed(options["seed"]));
 
    const double eps=options["eps"];
-   const int nop = 10*(1<<dim);
+   const Int nop = 10*(1L<<dim);
 
    Vector<Coord> weights(V.rows());
    Coord sw(0);

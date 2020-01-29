@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,13 +29,13 @@
 namespace polymake { namespace fan { 
 
 template <typename Coord>
-perl::Object k_skeleton(perl::Object fan, const int k)
+BigObject k_skeleton(BigObject fan, const Int k)
 {
-  perl::Object result("PolyhedralFan", mlist<Coord>());
+  BigObject result("PolyhedralFan", mlist<Coord>());
   bool is_pure = fan.give("PURE");
   bool is_complete = fan.give("COMPLETE");
   Matrix<Coord> rays = fan.give("RAYS");
-  perl::Object hasseDiagram = lower_hasse_diagram(fan, k, is_pure, is_complete);
+  BigObject hasseDiagram = lower_hasse_diagram(fan, k, is_pure, is_complete);
   result.take("RAYS") << rays;
   result.take("HASSE_DIAGRAM") << hasseDiagram;
   return result;

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,21 +23,21 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object birkhoff(int n, bool even, perl::OptionSet options)
+BigObject birkhoff(Int n, bool even, OptionSet options)
 {
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.set_name("B" + std::to_string(n));
    if (even)
       p.set_description() << "Even Birkhoff polytope for n=" << n << endl;
    else
       p.set_description() << "Birkhoff polytope for n=" << n << endl;
 
-   Matrix<int> V(int(even ? Integer::fac(n)/2 : Integer::fac(n)), n*n+1);
+   Matrix<Int> V(Int(even ? Integer::fac(n)/2 : Integer::fac(n)), n*n+1);
    auto v_i=rows(V).begin();
   //automorphism group of the symmetric group.
    AllPermutations<> perms(n);
    for (AllPermutations<>::const_iterator perm=entire(perms);  !perm.at_end();  ++perm, ++v_i) {
-      *v_i = 1 | concat_rows( permutation_matrix<int>(*perm) );
+      *v_i = 1 | concat_rows( permutation_matrix<Int>(*perm) );
 
       // only every second permutation is even
       if (even)
@@ -48,27 +48,27 @@ perl::Object birkhoff(int n, bool even, perl::OptionSet options)
    // generate the combinatorial symmetry group on the coordinates
    const bool group = options["group"];
    if ( group ) {
-      Array<Array<int>> gens(2);
-      Array<int> gen{sequence(0,n*n)};
+      Array<Array<Int>> gens(2);
+      Array<Int> gen{sequence(0,n*n)};
       //swap rows 0 and 1
-      for(int i=0; i<n; ++i){
+      for (Int i=0; i<n; ++i) {
          gen[i] = i+n;
          gen[i+n] = i;
       }
       gens[0]=gen;
 
       //front-shift all rows by one (cyclic)
-      for (int j=0; j<n; ++j) {
+      for (Int j = 0; j < n; ++j) {
          gen[j] = n*n-n+j;
       }
-      for (int j=n; j<n*n; ++j) {
+      for (Int j = n; j < n*n; ++j) {
          gen[j] = j-n;
       }
       gens[1]=gen;
 
-      perl::Object a("group::PermutationAction");
+      BigObject a("group::PermutationAction");
       a.take("GENERATORS") << gens;
-      perl::Object g("group::Group");
+      BigObject g("group::Group");
       g.set_description() << "action of the symmetric group as combinatorial symmetry group on coordinates of " << n
                           << (n==1 ? "st"
                               : (n==2 ? "nd"

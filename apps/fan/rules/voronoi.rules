@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -70,10 +70,10 @@ rule DELAUNAY_DIAGRAM : VERTICES_IN_FACETS, SITES, FAR_FACE{
 # @return Visual::Container
 user_method VISUAL_VORONOI(%Visual::Polygons::decorations) : SITES, VORONOI_DIAGRAM, POINTED, VERTICES{
    my ($this, $decor)=@_;
-   my $points = convert_to<Float>($this->SITES);
-   my $p = new Visual::PointSet(Points=>dehomogenize($points));
-   if($this->POINTED){
-      $points /= convert_to<Float>($this->VERTICES->minor($this->BOUNDED_VERTICES, range(0, $this->VERTICES->cols-2)));
+   my $points = new Matrix<Scalar>($this->SITES);
+   my $p = new Visual::PointSet(Points=>dehomogenize(convert_to<Float>($points)));
+   if ($this->POINTED) {
+      $points /= $this->VERTICES->minor($this->BOUNDED_VERTICES, range(0, $this->VERTICES->cols-2));
    }
    my $bbox = bounding_box_facets($points,surplus_k=>1);
    return compose($p, $this->VORONOI_DIAGRAM->VISUAL(FacetTransparency=>0.5,BoundingFacets=>$bbox,$decor));

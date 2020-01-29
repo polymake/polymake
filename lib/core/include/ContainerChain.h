@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -90,9 +90,9 @@ public:
       }
    };
    struct index {
-      using fpointer = int (*)(const it_tuple&);
+      using fpointer = Int (*)(const it_tuple&);
       template <size_t i>
-      static int execute(const it_tuple& its)
+      static Int execute(const it_tuple& its)
       {
          return std::get<i>(its).index();
       }
@@ -151,7 +151,7 @@ public:
       return its[i].operator->();
    }
 
-   int index(int i) const
+   Int index(int i) const
    {
       return its[i].index();
    }
@@ -227,7 +227,7 @@ public:
       return functions<typename ops::arrow>::get(i)(its);
    }
 
-   int index(int i) const
+   Int index(int i) const
    {
       return functions<typename ops::index>::get(i)(its);
    }
@@ -273,7 +273,7 @@ protected:
    int leg;
 
    static constexpr size_t n_off = is_indexed ? mlist_length<IteratorList>::value : 0;
-   using offsets_t = std::array<int, n_off>;
+   using offsets_t = std::array<Int, n_off>;
    offsets_t index_offsets;
 
    void valid_position()
@@ -366,7 +366,7 @@ public:
       valid_position();
    }
 
-   int index() const
+   Int index() const
    {
       static_assert(is_indexed, "iterator is not indexed");
       return base_t::index(leg) + index_offsets[leg];
@@ -439,7 +439,7 @@ public:
    using container_category = typename least_derived_class<typename mlist_concat<bidirectional_iterator_tag,
                                  typename mlist_transform_unary<container_list, extract_category>::type>::type>::type;
 
-   static constexpr int chain_length = mlist_length<container_list>::value;
+   static constexpr size_t chain_length = mlist_length<container_list>::value;
 
    static constexpr auto tuple_indexes()
    {
@@ -458,14 +458,14 @@ public:
    {
       using me_t = std::conditional_t<is_const, const manip_top_type&, manip_top_type&>;
       me_t& me = this->manip_top();
-      return Iterator(leg_arg, std::forward<OffsetsArg>(offsets_arg), cr(me.get_container(int_constant<Index>()))...);
+      return Iterator(leg_arg, std::forward<OffsetsArg>(offsets_arg), cr(me.get_container(size_constant<Index>()))...);
    }
 
    template <typename Iterator, typename Creator, size_t... Index, typename OffsetsArg>
    Iterator make_iterator(int leg_arg, const Creator& cr, std::index_sequence<Index...>, OffsetsArg&& offsets_arg) const
    {
       const auto& me = this->manip_top();
-      return Iterator(leg_arg, std::forward<OffsetsArg>(offsets_arg), cr(me.get_container(int_constant<Index>()))...);
+      return Iterator(leg_arg, std::forward<OffsetsArg>(offsets_arg), cr(me.get_container(size_constant<Index>()))...);
    }
 
    static constexpr auto make_begin()
@@ -486,12 +486,12 @@ public:
    }
 
    template <size_t... Index>
-   std::array<int, chain_length> make_index_offsets(std::true_type, bool is_reverse, std::index_sequence<Index...>) const
+   std::array<Int, chain_length> make_index_offsets(std::true_type, bool is_reverse, std::index_sequence<Index...>) const
    {
-      int off=0;
-      const auto summator=[&off](int i) ->int { int sum=off; off+=i; return sum; };
+      Int off = 0;
+      const auto summator = [&off](Int i) ->Int { Int sum = off; off += i; return sum; };
 
-      std::array<int, chain_length> offsets{ { summator(get_dim(this->manip_top().get_container(int_constant<Index>())))... } };
+      std::array<Int, chain_length> offsets{ { summator(get_dim(this->manip_top().get_container(size_constant<Index>())))... } };
       if (is_reverse) std::reverse(offsets.begin(), offsets.end());
       return offsets;
    }
@@ -509,37 +509,37 @@ public:
 };
 
 template <typename Top, typename Params=typename Top::manipulator_params,
-          typename Category=typename container_chain_typebase<Top, Params>::container_category>
+          typename Category = typename container_chain_typebase<Top, Params>::container_category>
 class container_chain_impl
    : public container_chain_typebase<Top, Params> {
    using base_t = container_chain_typebase<Top, Params>;
 private:
-   static constexpr int size_(int_constant<0>)
+   static constexpr Int size_(size_constant<0>)
    {
       return 0;
    }
-   static constexpr int dim_(int_constant<0>)
+   static constexpr Int dim_(size_constant<0>)
    {
       return 0;
    }
-   static constexpr bool empty_(int_constant<0>)
+   static constexpr bool empty_(size_constant<0>)
    {
       return true;
    }
-   template <int i>
-   int size_(int_constant<i>) const
+   template <size_t i>
+   Int size_(size_constant<i>) const
    {
-      return this->manip_top().get_container(int_constant<i-1>()).size() + size_(int_constant<i-1>());
+      return this->manip_top().get_container(size_constant<i-1>()).size() + size_(size_constant<i-1>());
    }
-   template <int i>
-   int dim_(int_constant<i>) const
+   template <size_t i>
+   Int dim_(size_constant<i>) const
    {
-      return get_dim(this->manip_top().get_container(int_constant<i-1>())) + dim_(int_constant<i-1>());
+      return get_dim(this->manip_top().get_container(size_constant<i-1>())) + dim_(size_constant<i-1>());
    }
-   template <int i>
-   bool empty_(int_constant<i>) const
+   template <size_t i>
+   bool empty_(size_constant<i>) const
    {
-      return this->manip_top().get_container(int_constant<i-1>()).empty() && empty_(int_constant<i-1>());
+      return this->manip_top().get_container(size_constant<i-1>()).empty() && empty_(size_constant<i-1>());
    }
 
 public:
@@ -570,17 +570,17 @@ public:
       return base_t::template make_iterator<const_iterator>(base_t::chain_length, base_t::make_end(), base_t::tuple_indexes(), nullptr);
    }
 
-   int size() const
+   Int size() const
    {
-      return size_(int_constant<base_t::chain_length>());
+      return size_(size_constant<base_t::chain_length>());
    }
-   int dim() const
+   Int dim() const
    {
-      return dim_(int_constant<base_t::chain_length>());
+      return dim_(size_constant<base_t::chain_length>());
    }
    bool empty() const
    {
-      return empty_(int_constant<base_t::chain_length>());
+      return empty_(size_constant<base_t::chain_length>());
    }
 };
 
@@ -592,36 +592,36 @@ public:
    using typename base_t::reference;
    using typename base_t::const_reference;
 private:
-   reference front_(int_constant<base_t::chain_length-1>)
+   reference front_(size_constant<base_t::chain_length-1>)
    {
-      return this->manip_top().get_container(int_constant<base_t::chain_length-1>()).front();
+      return this->manip_top().get_container(size_constant<base_t::chain_length-1>()).front();
    }
-   const_reference front_(int_constant<base_t::chain_length-1>) const
+   const_reference front_(size_constant<base_t::chain_length-1>) const
    {
-      return this->manip_top().get_container(int_constant<base_t::chain_length-1>()).front();
+      return this->manip_top().get_container(size_constant<base_t::chain_length-1>()).front();
    }
-   template <int i>
-   reference front_(int_constant<i>)
+   template <size_t i>
+   reference front_(size_constant<i>)
    {
-      auto& c = this->manip_top().get_container(int_constant<i>());
+      auto& c = this->manip_top().get_container(size_constant<i>());
       if (!c.empty()) return c.front();
-      return front_(int_constant<i+1>());
+      return front_(size_constant<i+1>());
    }
-   template <int i>
-   const_reference front_(int_constant<i>) const
+   template <size_t i>
+   const_reference front_(size_constant<i>) const
    {
-      const auto& c = this->manip_top().get_container(int_constant<i>());
+      const auto& c = this->manip_top().get_container(size_constant<i>());
       if (!c.empty()) return c.front();
-      return front_(int_constant<i+1>());
+      return front_(size_constant<i+1>());
    }
 public:
    reference front()
    {
-      return front_(int_constant<0>());
+      return front_(size_constant<0>());
    }
    const_reference front() const
    {
-      return front_(int_constant<0>());
+      return front_(size_constant<0>());
    }
 };
 
@@ -640,27 +640,27 @@ public:
    using typename base_t::reference;
    using typename base_t::const_reference;
 private:
-   reference back_(int_constant<0>)
+   reference back_(size_constant<0>)
    {
-      return this->manip_top().get_container(int_constant<0>()).back();
+      return this->manip_top().get_container(size_constant<0>()).back();
    }
-   const_reference back_(int_constant<0>) const
+   const_reference back_(size_constant<0>) const
    {
-      return this->manip_top().get_container(int_constant<0>()).back();
+      return this->manip_top().get_container(size_constant<0>()).back();
    }
-   template <int i>
-   reference back_(int_constant<i>)
+   template <size_t i>
+   reference back_(size_constant<i>)
    {
-      auto& c = this->manip_top().get_container(int_constant<i>());
+      auto& c = this->manip_top().get_container(size_constant<i>());
       if (!c.empty()) return c.back();
-      return back_(int_constant<i-1>());
+      return back_(size_constant<i-1>());
    }
-   template <int i>
-   const_reference back_(int_constant<i>) const
+   template <size_t i>
+   const_reference back_(size_constant<i>) const
    {
-      const auto& c = this->manip_top().get_container(int_constant<i>());
+      const auto& c = this->manip_top().get_container(size_constant<i>());
       if (!c.empty()) return c.back();
-      return back_(int_constant<i-1>());
+      return back_(size_constant<i-1>());
    }
 public:
    reverse_iterator rbegin()
@@ -682,11 +682,11 @@ public:
 
    reference back()
    {
-      return back_(int_constant<base_t::chain_length-1>());
+      return back_(size_constant<base_t::chain_length-1>());
    }
    const_reference back() const
    {
-      return back_(int_constant<base_t::chain_length-1>());
+      return back_(size_constant<base_t::chain_length-1>());
    }
 };
 
@@ -805,34 +805,34 @@ private:
    template <typename Arg, int i>
    static constexpr decltype(auto) pick_arg(Arg&& arg, int_constant<i>)
    {
-      return std::forward<Arg>(arg).get_alias(int_constant<i>());
+      return std::forward<Arg>(arg).get_alias(size_constant<i>());
    }
 
 public:
-   template <int i>
-   decltype(auto) get_alias(int_constant<i>) &
+   template <size_t i>
+   decltype(auto) get_alias(size_constant<i>) &
    {
       return std::get<i>(aliases);
    }
-   template <int i>
-   decltype(auto) get_alias(int_constant<i>) const &
+   template <size_t i>
+   decltype(auto) get_alias(size_constant<i>) const &
    {
       return std::get<i>(aliases);
    }
-   template <int i>
-   decltype(auto) get_alias(int_constant<i>) &&
+   template <size_t i>
+   decltype(auto) get_alias(size_constant<i>) &&
    {
       return std::move(std::get<i>(aliases));
    }
-   template <int i>
-   decltype(auto) get_container(int_constant<i>)
+   template <size_t i>
+   decltype(auto) get_container(size_constant<i>)
    {
-      return *get_alias(int_constant<i>());
+      return *get_alias(size_constant<i>());
    }
-   template <int i>
-   decltype(auto) get_container(int_constant<i>) const
+   template <size_t i>
+   decltype(auto) get_container(size_constant<i>) const
    {
-      return *get_alias(int_constant<i>());
+      return *get_alias(size_constant<i>());
    }
 
    template <typename T>
@@ -1017,7 +1017,7 @@ public:
       return std::get<i>(base_t::get_it_tuple()).at_end();
    }
 
-   int index() const
+   Int index() const
    {
       constexpr int i = mlist_find_if<IteratorList, check_iterator_feature, indexed>::pos;
       return std::get<i>(base_t::get_it_tuple()).index();
@@ -1063,7 +1063,7 @@ public:
    using and_features = typename mlist_match_all<expected_features, usual_or_features, equivalent_features>::complement;
    using missing_or_features = typename mlist_match_all<raw_iterator_list, or_features, check_iterator_feature>::complement2;
 
-   static constexpr int normal_it_pos = mlist_find_if<raw_iterator_list, mnegate_binary<check_iterator_feature>::template func, unlimited>::pos;
+   static constexpr size_t normal_it_pos = mlist_find_if<raw_iterator_list, mnegate_binary<check_iterator_feature>::template func, unlimited>::pos;
    using needed_feature_list = typename mlist_concat< typename mreplicate< ExpectedFeaturesTag<and_features>, normal_it_pos>::type,
                                                       ExpectedFeaturesTag< typename mix_features<and_features, missing_or_features>::type >,
                                                       typename mreplicate< ExpectedFeaturesTag<and_features>, tuple_size-normal_it_pos-1>::type >::type;
@@ -1127,17 +1127,17 @@ public:
       return make_end(base_t::tuple_indexes(), typename base_t::needed_feature_list());
    }
 
-   int size() const
+   Int size() const
    {
-      return this->manip_top().template get_container(int_constant<base_t::normal_it_pos>()).size();
+      return this->manip_top().template get_container(size_constant<base_t::normal_it_pos>()).size();
    }
-   int dim() const
+   Int dim() const
    {
-      return get_dim(this->manip_top().template get_container(int_constant<base_t::normal_it_pos>()));
+      return get_dim(this->manip_top().template get_container(size_constant<base_t::normal_it_pos>()));
    }
    bool empty() const
    {
-      return this->manip_top().template get_container(int_constant<base_t::normal_it_pos>()).empty();
+      return this->manip_top().template get_container(size_constant<base_t::normal_it_pos>()).empty();
    }
 
    decltype(auto) front()
@@ -1154,40 +1154,40 @@ private:
    iterator make_begin(std::index_sequence<Index...>, mlist<Features...>)
    {
       return iterator(this->manip_top().get_operation(),
-                      ensure(this->manip_top().template get_container(int_constant<Index>()), muntag_t<Features>()).begin()...);
+                      ensure(this->manip_top().template get_container(size_constant<Index>()), muntag_t<Features>()).begin()...);
    }
 
    template <size_t... Index, typename... Features>
    iterator make_end(std::index_sequence<Index...>, mlist<Features...>)
    {
       return iterator(this->manip_top().get_operation(),
-                      ensure(this->manip_top().template get_container(int_constant<Index>()), muntag_t<Features>()).end()...);
+                      ensure(this->manip_top().template get_container(size_constant<Index>()), muntag_t<Features>()).end()...);
    }
 
    template <size_t... Index, typename... Features>
    const_iterator make_begin(std::index_sequence<Index...>, mlist<Features...>) const
    {
       return const_iterator(this->manip_top().get_operation(),
-                            ensure(this->manip_top().template get_container(int_constant<Index>()), muntag_t<Features>()).begin()...);
+                            ensure(this->manip_top().template get_container(size_constant<Index>()), muntag_t<Features>()).begin()...);
    }
 
    template <size_t... Index, typename... Features>
    const_iterator make_end(std::index_sequence<Index...>, mlist<Features...>) const
    {
       return const_iterator(this->manip_top().get_operation(),
-                            ensure(this->manip_top().template get_container(int_constant<Index>()), muntag_t<Features>()).end()...);
+                            ensure(this->manip_top().template get_container(size_constant<Index>()), muntag_t<Features>()).end()...);
    }
 
    template <size_t... Index>
    decltype(auto) make_front(std::index_sequence<Index...>)
    {
-      return this->manip_top().get_operation()( this->manip_top().template get_container(int_constant<Index>()).front()... );
+      return this->manip_top().get_operation()( this->manip_top().template get_container(size_constant<Index>()).front()... );
    }
 
    template <size_t... Index>
    decltype(auto) make_front(std::index_sequence<Index...>) const
    {
-      return this->manip_top().get_operation()( this->manip_top().template get_container(int_constant<Index>()).front()... );
+      return this->manip_top().get_operation()( this->manip_top().template get_container(size_constant<Index>()).front()... );
    }
 };
 
@@ -1231,40 +1231,40 @@ private:
    reverse_iterator make_rbegin(std::index_sequence<Index...>, mlist<Features...>)
    {
       return reverse_iterator(this->manip_top().get_operation(),
-                              ensure(this->manip_top().template get_container(int_constant<Index>()), muntag_t<Features>()).rbegin()...);
+                              ensure(this->manip_top().template get_container(size_constant<Index>()), muntag_t<Features>()).rbegin()...);
    }
 
    template <size_t... Index, typename... Features>
    reverse_iterator make_rend(std::index_sequence<Index...>, mlist<Features...>)
    {
       return reverse_iterator(this->manip_top().get_operation(),
-                              ensure(this->manip_top().template get_container(int_constant<Index>()), muntag_t<Features>()).rend()...);
+                              ensure(this->manip_top().template get_container(size_constant<Index>()), muntag_t<Features>()).rend()...);
    }
 
    template <size_t... Index, typename... Features>
    const_reverse_iterator make_rbegin(std::index_sequence<Index...>, mlist<Features...>) const
    {
       return const_reverse_iterator(this->manip_top().get_operation(),
-                                    ensure(this->manip_top().template get_container(int_constant<Index>()), muntag_t<Features>()).rbegin()...);
+                                    ensure(this->manip_top().template get_container(size_constant<Index>()), muntag_t<Features>()).rbegin()...);
    }
 
    template <size_t... Index, typename... Features>
    const_reverse_iterator make_rend(std::index_sequence<Index...>, mlist<Features...>) const
    {
       return const_reverse_iterator(this->manip_top().get_operation(),
-                                    ensure(this->manip_top().template get_container(int_constant<Index>()), muntag_t<Features>()).rend()...);
+                                    ensure(this->manip_top().template get_container(size_constant<Index>()), muntag_t<Features>()).rend()...);
    }
 
    template <size_t... Index>
    decltype(auto) make_back(std::index_sequence<Index...>)
    {
-      return this->manip_top().get_operation()( this->manip_top().template get_container(int_constant<Index>()).back()... );
+      return this->manip_top().get_operation()( this->manip_top().template get_container(size_constant<Index>()).back()... );
    }
 
    template <size_t... Index>
    decltype(auto) make_back(std::index_sequence<Index...>) const
    {
-      return this->manip_top().get_operation()( this->manip_top().template get_container(int_constant<Index>()).back()... );
+      return this->manip_top().get_operation()( this->manip_top().template get_container(size_constant<Index>()).back()... );
    }
 };
 
@@ -1273,26 +1273,26 @@ class modified_container_tuple_impl<Top, Params, std::random_access_iterator_tag
    : public modified_container_tuple_impl<Top, Params, std::bidirectional_iterator_tag> {
    using base_t = modified_container_tuple_impl<Top, Params, std::bidirectional_iterator_tag>;
 public:
-   decltype(auto) operator[] (int i)
+   decltype(auto) operator[] (Int i)
    {
       return make_random(i, base_t::tuple_indexes());
    }
-   decltype(auto) operator[] (int i) const
+   decltype(auto) operator[] (Int i) const
    {
       return make_random(i, base_t::tuple_indexes());
    }
 
 private:
    template <size_t... Index>
-   decltype(auto) make_random(int i, std::index_sequence<Index...>)
+   decltype(auto) make_random(Int i, std::index_sequence<Index...>)
    {
-      return this->manip_top().get_operation()( this->manip_top().template get_container(int_constant<Index>())[i]... );
+      return this->manip_top().get_operation()( this->manip_top().template get_container(size_constant<Index>())[i]... );
    }
 
    template <size_t... Index>
-   decltype(auto) make_random(int i, std::index_sequence<Index...>) const
+   decltype(auto) make_random(Int i, std::index_sequence<Index...>) const
    {
-      return this->manip_top().get_operation()( this->manip_top().template get_container(int_constant<Index>())[i]... );
+      return this->manip_top().get_operation()( this->manip_top().template get_container(size_constant<Index>())[i]... );
    }
 };
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,46 +32,46 @@ namespace {
 
 typedef Rational coeff_type;
 typedef Matrix<coeff_type> cup_type;
-typedef Array<int> reordering_type;
+typedef Array<Int> reordering_type;
 
-bool pivot(int& k, const int i, const cup_type& M, const reordering_type& ind)
+bool pivot(Int& k, const Int i, const cup_type& M, const reordering_type& ind)
 {
-   const int n(M.rows());
-   k=i;
+   const Int n = M.rows();
+   k = i;
    while (k<n && is_zero(M(ind[k],ind[k])))
       ++k;
    return (k<n);
 }
 
-bool non_zero(int& k, const int i, const cup_type& M, const reordering_type& ind)
+bool non_zero(Int& k, const Int i, const cup_type& M, const reordering_type& ind)
 {
-   const int n(M.rows());
-   k=i;
+   const Int n = M.rows();
+   k = i;
    while (k<n && is_zero(M(ind[k],ind[i])))
       ++k;
    return (k<n);
 }
 
-void signature(cup_type& M, int& positive, int& negative)
+void signature(cup_type& M, Int& positive, Int& negative)
 {
-   const int n=M.rows();
+   const Int n = M.rows();
    reordering_type ind(n,entire(sequence(0,n)));
 
-   int i(0), k;
-   positive=negative=0;
+   Int i = 0, k;
+   positive = negative = 0;
 
-   while (i<n) {
-      if(pivot(k,i,M,ind)) {
+   while (i < n) {
+      if (pivot(k, i, M, ind)) {
          // eliminate with pivot element on the diagonal
          if (k!=i) std::swap(ind[i],ind[k]);
          coeff_type p(M(ind[i],ind[i]));
          
-         for (int j=i+1; j<n; ++j) {
+         for (Int j = i+1; j < n; ++j) {
             coeff_type c(M(ind[j],ind[i])/p);
-            M[ind[j]]-=c*M[ind[i]];
+            M[ind[j]] -= c * M[ind[i]];
          }
-         for (int j=i+1; j<n; ++j)
-            M(ind[i],ind[j])=0;
+         for (Int j = i+1; j < n; ++j)
+            M(ind[i], ind[j]) = 0;
 
          if (p>0)
             ++positive;
@@ -96,12 +96,12 @@ void signature(cup_type& M, int& positive, int& negative)
 
 } // end unnamed namespace
 
-void intersection_form(perl::Object p)
+void intersection_form(BigObject p)
 {
    typedef CycleGroup<Integer> cycle_type;
    const Array<cycle_type> Cycles = p.give("CYCLES");
 
-   const int d(Cycles.size()-1);
+   const Int d = Cycles.size()-1;
    if (d%4 != 0)
       throw std::runtime_error("intersection_form: Dimension " + std::to_string(d) + " not divisible by 4");
 
@@ -120,20 +120,20 @@ void intersection_form(perl::Object p)
    const Array<cycle_type> CoCycles = p.give("COCYCLES");
    const cycle_type::face_list small_faces(CoCycles[d/2].faces);
    const cycle_type::coeff_matrix small_cocycles(CoCycles[d/2].coeffs);
-   const int n(small_cocycles.rows());
+   const Int n = small_cocycles.rows();
 
    cup_type Cup(n,n);
 
-   int parity=0; // until we are not convinced of the converse we assume that the intersection form is even
+   Int parity = 0; // until we are not convinced of the converse we assume that the intersection form is even
 
    for (auto c1 = entire<indexed>(rows(small_cocycles)); !c1.at_end(); ++c1) {
       for (auto c2 = entire<indexed>(rows(small_cocycles)); !c2.at_end(); ++c2) {
          Integer cup_product(0);
          for (auto x = entire(*c1); !x.at_end(); ++x) {
-            const Set<int> face_x(small_faces[x.index()]);
+            const Set<Int> face_x = small_faces[x.index()];
             const Bitset bit_face_x(face_x);
             for (auto y = entire(*c2); !y.at_end(); ++y) {
-               const Set<int> face_y(small_faces[y.index()]);
+               const Set<Int> face_y = small_faces[y.index()];
                Bitset this_union(bit_face_x+Bitset(face_y));
                if (face_x.back()==face_y.front() && SignedFacets.find(this_union)!=SignedFacets.end())
                   cup_product+=SignedFacets[this_union]*(*x)*(*y);
@@ -146,8 +146,8 @@ void intersection_form(perl::Object p)
    }
    
 #if POLYMAKE_DEBUG
-   for (int i=0; i<n; ++i)
-      for (int j=0; j<i; ++j)
+   for (Int i = 0; i < n; ++i)
+      for (Int j = 0; j < i; ++j)
          if (Cup(i,j) != Cup(j,i)) {
             std::ostringstream err;
             err << "resulting cup product matrix not symmetric: [" << i << "," << j << "]\n";

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,7 +25,7 @@ namespace polymake { namespace polytope {
 
 
 template <typename Scalar, typename Solver>
-void generic_convex_hull_primal(perl::Object& p, bool isCone, const Solver& solver)
+void generic_convex_hull_primal(BigObject& p, bool isCone, const Solver& solver)
 {
    Matrix<Scalar> Points = p.give("RAYS | INPUT_RAYS"),
                Lineality = p.lookup("LINEALITY_SPACE | INPUT_LINEALITY");
@@ -40,7 +40,7 @@ void generic_convex_hull_primal(perl::Object& p, bool isCone, const Solver& solv
 }
 
 template <typename Scalar, typename Solver>
-void generic_convex_hull_dual(perl::Object& p, bool isCone, const Solver& solver)
+void generic_convex_hull_dual(BigObject& p, bool isCone, const Solver& solver)
 {
    Matrix<Scalar> H = p.give("FACETS | INEQUALITIES"),
                  EQ = p.lookup("LINEAR_SPAN | EQUATIONS");
@@ -68,7 +68,7 @@ void generic_convex_hull_dual(perl::Object& p, bool isCone, const Solver& solver
       }
       catch (const infeasible&) { }
    }
-   const int d = H.cols();
+   const Int d = H.cols();
    p.take("RAYS") << Matrix<Scalar>(0, d);
    p.take("LINEALITY_SPACE") << Matrix<Scalar>(0, d);
    p.take("LINEALITY_DIM") << 0;

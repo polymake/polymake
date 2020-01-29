@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -82,20 +82,17 @@ package application;
 # Visualize the splits of a finite metric space (that is, a planar image of a tight span).  Calls SplitsTree.
 # @param Matrix<Rational> M Matrix defining a metric
 # @option Array<String> taxa Labels for the taxa
-# @option String name Name of the file
+# @option String name Name of the drawing
 # @return Visual::Object
 user_function visual_splitstree ($;{taxa=>undef, name=>undef}) {
-    my $mat = new Matrix(shift);
-    my $opt = shift;
-    my $label = $opt->{taxa}; 
-    my $name = $opt->{name};
-    if(!defined($label)){ $label = [0..$mat->rows-1];}
-    if(!defined($name)){ $name = 'polymake_splitstree'}
+   my ($m, $options) = @_;
+   my $mat = new Matrix($m);
+   my $label = $options->{taxa} // [0..$mat->rows-1];
+   my $name = $options->{name} // 'polymake_splitstree';
    
-   my $M= new Visual::FiniteMetricSpace(Name => $name,
-					metric => convert_to<Float>($mat),
-					taxa => $label);
-   visualize($M);
+   visualize(new Visual::FiniteMetricSpace(Name => $name,
+                                           metric => convert_to<Float>($mat),
+                                           taxa => $label));
 }
 
 # @category Visualization
@@ -103,7 +100,7 @@ user_function visual_splitstree ($;{taxa=>undef, name=>undef}) {
 #
 # @param Visual::Object vis_obj ... objects to display
 #
-# @option String File "filename" or "AUTO"
+# @option [complete file] String File "filename" or "AUTO"
 #  Only create a NEXUS format file, don't start the GUI.
 #
 #  The ''.nex'' suffix is automatically added to the file name.

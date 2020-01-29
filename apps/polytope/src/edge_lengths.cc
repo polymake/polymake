@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,14 +22,12 @@
 
 namespace polymake { namespace polytope {
 
-
-
 template <typename Scalar>
-Array<Scalar> edge_lengths(const Array<Vector<Scalar> > &V)
+Array<Scalar> edge_lengths(const Array<Vector<Scalar>>& V)
 {
-  const int n=V.size();
+  const Int n = V.size();
   Array<Scalar> length(n);
-  for (int i=0; i<n; ++i)
+  for (Int i = 0; i < n; ++i)
       length[i]=accumulate(attach_operation(V[i], operations::abs_value()), operations::max());
   return length;
 }

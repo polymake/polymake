@@ -1,5 +1,5 @@
 {"app": "tropical",
  "inst": [
-  {"args": ["perl::AnchorArg<perl::Canned<const NodeMap<Directed, CovectorDecoration>&>>"], "func": "entire", "include": ["polymake/Graph.h", "polymake/tropical/covectors.h"], "sig": "entire:R_Iterator.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const NodeMap<Directed, tropical::CovectorDecoration>&>>"], "func": "entire", "include": ["polymake/Graph.h", "polymake/tropical/covectors.h"], "sig": "entire:R_Iterator.X8"},
  null ],
 "version": 3}

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,9 +29,8 @@ namespace polymake { namespace polytope {
    If there is some implicit linearity,     the function returns  0.
 */
 template <typename Scalar, typename TMatrix1, typename TMatrix2>
-int
-implicit_linearity_decision(const GenericMatrix<TMatrix1, Scalar>& inequalities,  // or input_rays
-                            const GenericMatrix<TMatrix2, Scalar>& equations)     // or input_lineality
+Int implicit_linearity_decision(const GenericMatrix<TMatrix1, Scalar>& inequalities,  // or input_rays
+                                const GenericMatrix<TMatrix2, Scalar>& equations)     // or input_lineality
 {
    /*
      We copy the following lp from bundled/cdd/external/cdd/lib-src/cddlp.c , lines 3124 ff:
@@ -60,11 +59,11 @@ implicit_linearity_decision(const GenericMatrix<TMatrix1, Scalar>& inequalities,
 
       maximize [ 0 0 1 ]
     */
-   const int n_ineqs = inequalities.rows();
-   const int n_eqs   =   equations.rows();
-   const int d       = inequalities.cols();
+   const Int n_ineqs = inequalities.rows();
+   const Int n_eqs   =   equations.rows();
+   const Int d       = inequalities.cols();
 
-   const Matrix<Scalar> ineqs( unit_vector<Scalar>(n_ineqs + 1, n_ineqs) | ( inequalities / zero_vector<Scalar>(d) ) | -ones_vector<Scalar>(n_ineqs + 1) );
+   const Matrix<Scalar> ineqs( unit_vector<Scalar>(n_ineqs+1, n_ineqs) | ( inequalities / zero_vector<Scalar>(d) ) | -ones_vector<Scalar>(n_ineqs+1) );
 
    const Matrix<Scalar> eqs = n_eqs
       ? Matrix<Scalar>( zero_vector<Scalar>(n_eqs) | equations | zero_vector<Scalar>(n_eqs) )
@@ -78,7 +77,7 @@ implicit_linearity_decision(const GenericMatrix<TMatrix1, Scalar>& inequalities,
 
 // determine the indices of generators of lineality among the given inequalities
 template <typename Scalar, typename TMatrix1, typename TMatrix2>
-Set<int>
+Set<Int>
 lineality_indices_among_inequalities(const GenericMatrix<TMatrix1, Scalar>& inequalities,  // or input_rays
                                      const GenericMatrix<TMatrix2, Scalar>& equations)     // or input_lineality
 {
@@ -93,15 +92,15 @@ lineality_indices_among_inequalities(const GenericMatrix<TMatrix1, Scalar>& ineq
      The inequality ineq_i is an implicit linearity if and only if the optimal value f* is nonpositive.
     */
 
-   Set<int> lineality_indices;
-   if ( 1 == implicit_linearity_decision(inequalities, equations) )
+   Set<Int> lineality_indices;
+   if (1 == implicit_linearity_decision(inequalities, equations))
       return lineality_indices;
 
    const Matrix<Scalar> eqs = equations.rows()
       ? Matrix<Scalar>(zero_vector<Scalar>(equations.rows()) | equations)
       : Matrix<Scalar>(); // to_simplex likes its zero matrices to have zero columns
 
-   for (int i=0; i<inequalities.rows(); ++i) {
+   for (Int i = 0; i < inequalities.rows(); ++i) {
       const Matrix<Scalar> ineqs(zero_vector<Scalar>(inequalities.rows()-1) | inequalities.minor(~scalar2set(i), All));
       const Vector<Scalar> obj(Scalar(0) | inequalities[i]);
 

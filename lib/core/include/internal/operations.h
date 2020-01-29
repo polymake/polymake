@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -179,13 +179,13 @@ struct mul_from_left : mul_impl<RightRef, LeftRef> {
    template <typename L, typename R>
    decltype(auto) operator() (L&& l, R&& r) const
    {
-      return r * l;
+      return r*l;
    }
 
    template <typename L, typename R>
    void assign(L&& l, R&& r) const
    {
-      l = r * l;
+      l = r*l;
    }
 };
 
@@ -1106,22 +1106,20 @@ void accumulate_in(Iterator&& src, const Operation& op_arg, Object&& x)
 }
 
 template <typename Container, typename Operation>
-typename object_traits<typename Container::value_type>::persistent_type
-accumulate(const Container& c, const Operation& op_arg)
+auto accumulate(const Container& c, const Operation& op_arg)
 {
-   typedef typename object_traits<typename Container::value_type>::persistent_type Object;
-   if (c.empty()) return Object();
-   auto src=entire_range(c);
-   Object x=*src;
+   using elem_t = typename object_traits<typename Container::value_type>::persistent_type;
+   if (c.empty()) return elem_t{};
+   auto src = entire_range(c);
+   elem_t x{*src};
    accumulate_in(++src, op_arg, x);
    return x;
 }
 
 template <typename Container>
-typename object_traits<typename Container::value_type>::persistent_type
-average(const Container& c)
+auto average(const Container& c)
 {
-   return accumulate(c, BuildBinary<operations::add>()) / c.size();
+   return accumulate(c, BuildBinary<operations::add>()) / static_cast<matching_primitive_number_t<Container>>(c.size());
 }
 
 namespace operations {
@@ -1324,7 +1322,7 @@ public:
 template <typename IteratorRef>
 struct index2element {
    typedef IteratorRef argument_type;
-   typedef const int result_type;
+   typedef Int result_type;
    result_type operator() (argument_type it) const { return it.index(); }
 };
 

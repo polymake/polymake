@@ -1,8 +1,8 @@
 {"app": "common",
  "inst": [
-  {"args": ["perl::Canned<const Polynomial<Rational, int>&>"], "func": "coefficients_as_vector", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "kind": "meth", "sig": "coefficients_as_vector:M"},
-  {"args": ["perl::Canned<const Polynomial<TropicalNumber<Max, Rational>, int>&>"], "func": "coefficients_as_vector", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "kind": "meth", "sig": "coefficients_as_vector:M"},
-  {"args": ["perl::Canned<const Polynomial<TropicalNumber<Min, Rational>, int>&>"], "func": "coefficients_as_vector", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "kind": "meth", "sig": "coefficients_as_vector:M"},
-  {"args": ["perl::Canned<const UniPolynomial<Rational, int>&>"], "func": "coefficients_as_vector", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "meth", "sig": "coefficients_as_vector:M"},
+  {"args": ["perl::Canned<const Polynomial<Rational, Int>&>"], "func": "coefficients_as_vector", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "kind": "meth", "sig": "coefficients_as_vector:M"},
+  {"args": ["perl::Canned<const Polynomial<TropicalNumber<Max, Rational>, Int>&>"], "func": "coefficients_as_vector", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "kind": "meth", "sig": "coefficients_as_vector:M"},
+  {"args": ["perl::Canned<const Polynomial<TropicalNumber<Min, Rational>, Int>&>"], "func": "coefficients_as_vector", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "kind": "meth", "sig": "coefficients_as_vector:M"},
+  {"args": ["perl::Canned<const UniPolynomial<Rational, Int>&>"], "func": "coefficients_as_vector", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "kind": "meth", "sig": "coefficients_as_vector:M"},
  null ],
 "version": 3}

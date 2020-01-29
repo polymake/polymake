@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -338,7 +338,7 @@ struct accompanying_iterator {
 
    static void assign(type& it, const type& other) { it=other;}
 
-   static void advance(type& it, const type&, int n) { std::advance(it, n); }
+   static void advance(type& it, const type&, Int n) { std::advance(it, n); }
 };
 
 template <typename Iterator>
@@ -383,16 +383,16 @@ public:
    }
 
 private:
-   void contract1(bool, int distance_front, int, std::false_type)
+   void contract1(bool, Int distance_front, Int, std::false_type)
    {
       std::advance(static_cast<base_t&>(*this), distance_front);
    }
-   void contract1(bool renumber, int distance_front, int distance_back, std::true_type)
+   void contract1(bool renumber, Int distance_front, Int distance_back, std::true_type)
    {
       base_t::contract(renumber, distance_front, distance_back);
    }
 public:
-   void contract(bool renumber, int distance_front, int distance_back=0)
+   void contract(bool renumber, Int distance_front, Int distance_back=0)
    {
       contract1(renumber, distance_front, distance_back, bool_constant<check_iterator_feature<base_t, contractable>::value>());
       begin=static_cast<const base_t&>(*this);
@@ -478,30 +478,30 @@ public:
       iterator_range copy=*this; operator--(); return copy;
    }
 
-   iterator_range& operator+= (int i)
+   iterator_range& operator+= (Int i)
    {
       static_assert(iterator_traits<base_t>::is_random, "iterator is not random-access");
       base_t::operator+=(i);
       return *this;
    }
-   iterator_range& operator-= (int i)
+   iterator_range& operator-= (Int i)
    {
       static_assert(iterator_traits<base_t>::is_random, "iterator is not random-access");
       base_t::operator-=(i);
       return *this;
    }
 
-   iterator_range operator+ (int i) const
+   iterator_range operator+ (Int i) const
    {
       static_assert(iterator_traits<base_t>::is_random, "iterator is not random-access");
       return iterator_range(static_cast<const base_t&>(*this)+i, end);
    }
-   iterator_range operator- (int i) const
+   iterator_range operator- (Int i) const
    {
       static_assert(iterator_traits<base_t>::is_random, "iterator is not random-access");
       return iterator_range(static_cast<const base_t&>(*this)-i, end);
    }
-   friend iterator_range operator+ (int i, const iterator_range& me)
+   friend iterator_range operator+ (Int i, const iterator_range& me)
    {
       static_assert(iterator_traits<base_t>::is_random, "iterator is not random-access");
       return iterator_range(static_cast<const base_t&>(me)+i, me.end);
@@ -516,16 +516,16 @@ public:
       return static_cast<const base_t&>(*this) - static_cast<const other_base_t&>(other);
    }
 private:
-   void contract1_impl(bool, int distance_front, int, std::false_type)
+   void contract1_impl(bool, Int distance_front, Int, std::false_type)
    {
       std::advance(static_cast<base_t&>(*this), distance_front);
    }
-   void contract1_impl(bool renumber, int distance_front, int distance_back, std::true_type)
+   void contract1_impl(bool renumber, Int distance_front, Int distance_back, std::true_type)
    {
       base_t::contract(renumber, distance_front, distance_back);
    }
 public:
-   void contract(bool renumber, int distance_front, int distance_back=0)
+   void contract(bool renumber, Int distance_front, Int distance_back = 0)
    {
       contract1_impl(renumber, distance_front, distance_back, bool_constant<check_iterator_feature<base_t, contractable>::value>());
       accompanying_iterator<Iterator>::advance(end, static_cast<const base_t&>(*this), -distance_back);
@@ -585,7 +585,7 @@ namespace object_classifier {
              bool iterator_preserved=std::is_same<typename Container::const_iterator,
                                                   typename Container::manipulator_impl::const_iterator>::value>
    struct check_begin_end {
-      static const int value= iterator_preserved ? int(is_manip) : int(is_opaque);
+      static constexpr int value = iterator_preserved ? int(is_manip) : int(is_opaque);
    };
 
    template <typename Container>
@@ -733,9 +733,9 @@ template <typename Container>
 struct is_assoc_container : bool_constant<has_key_type<Container>::value && has_mapped_type<Container>::value> {};
 
 template <typename Iterator>
-int count_it(Iterator src)
+Int count_it(Iterator src)
 {
-   typename iterator_traits<Iterator>::difference_type cnt=0;
+   Int cnt = 0;
    while (!src.at_end()) {
       ++cnt, ++src;
    }
@@ -760,7 +760,7 @@ public:
 
    template <typename, bool> friend class ptr_wrapper;
 
-   ptr_wrapper(pointer cur_arg=nullptr) : cur(cur_arg) {}
+   ptr_wrapper(pointer cur_arg = nullptr) : cur(cur_arg) {}
    ptr_wrapper(const iterator& it) : cur(it.cur) {}
 
    ptr_wrapper& operator= (pointer cur_arg) { cur=cur_arg; return *this; }
@@ -768,24 +768,24 @@ public:
 
    reference operator* () const { return *cur; }
    pointer operator-> () const { return cur; }
-   reference operator[] (int i) const { return cur[is_reversed ? -i : i]; }
+   reference operator[] (Int i) const { return cur[is_reversed ? -i : i]; }
 
    ptr_wrapper& operator++ () { is_reversed ? --cur : ++cur; return *this; }
    ptr_wrapper& operator-- () { is_reversed ? ++cur : --cur; return *this; }
    const ptr_wrapper operator++ (int) { ptr_wrapper copy=*this; operator++(); return copy; }
    const ptr_wrapper operator-- (int) { ptr_wrapper copy=*this; operator--(); return copy; }
-   ptr_wrapper& operator+= (int i) { is_reversed ? cur-=i : cur+=i; return *this; }
-   ptr_wrapper& operator-= (int i) { is_reversed ? cur+=i : cur-=i; return *this; }
-   ptr_wrapper operator+ (int i) const { return ptr_wrapper(is_reversed ? cur-i : cur+i); }
-   ptr_wrapper operator- (int i) const { return ptr_wrapper(is_reversed ? cur+i : cur-i); }
-   friend ptr_wrapper operator+ (int i, const ptr_wrapper& p) { return p+i; }
+   ptr_wrapper& operator+= (Int i) { is_reversed ? cur-=i : cur+=i; return *this; }
+   ptr_wrapper& operator-= (Int i) { is_reversed ? cur+=i : cur-=i; return *this; }
+   ptr_wrapper operator+ (Int i) const { return ptr_wrapper(is_reversed ? cur-i : cur+i); }
+   ptr_wrapper operator- (Int i) const { return ptr_wrapper(is_reversed ? cur+i : cur-i); }
+   friend ptr_wrapper operator+ (Int i, const ptr_wrapper& p) { return p+i; }
 
    template <typename Other>
    std::enable_if_t<is_derived_from_any<Other, iterator, const_iterator>::value, ptrdiff_t>
    operator- (const Other& other) const
    {
       const typename is_derived_from_any<Other, iterator, const_iterator>::match& other_it = other;
-      return is_reversed ? other_it.cur-cur : cur-other_it.cur;
+      return is_reversed ? other_it.cur - cur : cur - other_it.cur;
    }
 
    template <typename Other>
@@ -793,7 +793,7 @@ public:
    operator== (const Other& other) const
    {
       const typename is_derived_from_any<Other, iterator, const_iterator>::match& other_it = other;
-      return cur==other_it.cur;
+      return cur == other_it.cur;
    }
 
    template <typename Other>
@@ -831,6 +831,22 @@ public:
       return !(*this < other);
    }
 
+   bool operator== (const T* other) const { return cur == other; }
+   bool operator!= (const T* other) const { return cur != other; }
+   bool operator< (const T* other) const { return cur < other; }
+   bool operator> (const T* other) const { return cur > other; }
+   bool operator<= (const T* other) const { return cur <= other; }
+   bool operator>= (const T* other) const { return cur >= other; }
+
+   friend bool operator== (const T* other, const ptr_wrapper& me) { return me == other; }
+   friend bool operator!= (const T* other, const ptr_wrapper& me) { return me != other; }
+   friend bool operator< (const T* other, const ptr_wrapper& me) { return me > other; }
+   friend bool operator> (const T* other, const ptr_wrapper& me) { return me < other; }
+   friend bool operator<= (const T* other, const ptr_wrapper& me) { return me >= other; }
+   friend bool operator>= (const T* other, const ptr_wrapper& me) { return me <= other; }
+
+   ptrdiff_t operator- (const T* other) const { return cur - other; }
+   friend ptrdiff_t operator- (const T* other, const ptr_wrapper& me) { return other - me.cur; }
 protected:
    pointer cur;
 };
@@ -884,7 +900,7 @@ public:
    }
    typename base_t::iterator end()
    {
-      return static_cast<Top*>(this)->get_data() + static_cast<const Top*>(this)->size();
+      return static_cast<Top*>(this)->get_data()+static_cast<const Top*>(this)->size();
    }
    typename base_t::const_iterator begin() const
    {
@@ -892,12 +908,12 @@ public:
    }
    typename base_t::const_iterator end() const
    {
-      return static_cast<const Top*>(this)->get_data() + static_cast<const Top*>(this)->size();
+      return static_cast<const Top*>(this)->get_data()+static_cast<const Top*>(this)->size();
    }
 
    typename base_t::reverse_iterator rbegin()
    {
-      return static_cast<Top*>(this)->get_data() + static_cast<const Top*>(this)->size() - 1;
+      return static_cast<Top*>(this)->get_data()+static_cast<const Top*>(this)->size()-1;
    }
    typename base_t::reverse_iterator rend()
    {
@@ -905,11 +921,11 @@ public:
    }
    typename base_t::const_reverse_iterator rbegin() const
    {
-      return static_cast<const Top*>(this)->get_data() + static_cast<const Top*>(this)->size() - 1;
+      return static_cast<const Top*>(this)->get_data()+static_cast<const Top*>(this)->size()-1;
    }
    typename base_t::const_reverse_iterator rend() const
    {
-      return static_cast<const Top*>(this)->get_data() - 1;
+      return static_cast<const Top*>(this)->get_data()-1;
    }
 
    typename base_t::reference front()
@@ -928,7 +944,7 @@ public:
       }
       return *rbegin();
    }
-   typename base_t::reference operator[] (int i)
+   typename base_t::reference operator[] (Int i)
    {
       if (POLYMAKE_DEBUG) {
          if (i < 0 || i >= static_cast<const Top*>(this)->size())
@@ -952,7 +968,7 @@ public:
       }
       return *rbegin();
    }
-   typename base_t::const_reference operator[] (int i) const
+   typename base_t::const_reference operator[] (Int i) const
    {
       if (POLYMAKE_DEBUG) {
          if (i < 0 || i >= static_cast<const Top*>(this)->size())
@@ -975,7 +991,7 @@ public:
       : data(arg) {}
 
    const E* get_data() const { return data.begin(); }
-   int size() const { return data.size(); }
+   Int size() const { return data.size(); }
 protected:
    const std::initializer_list<E> data;
 };
@@ -1718,8 +1734,8 @@ public:
    const_reference front() const { return hidden().back(); }
    const_reference back() const { return hidden().front(); }
 
-   int size() const { return hidden().size(); }
-   int dim() const { return get_dim(hidden()); }
+   Int size() const { return hidden().size(); }
+   Int dim() const { return get_dim(hidden()); }
    bool empty() const { return hidden().empty(); }
 };
 
@@ -1728,12 +1744,12 @@ class construct_reversed<Container, true>
    : public construct_reversed<Container,false> {
    using base_t = construct_reversed<Container,false>;
 public:
-   typename base_t::reference operator[] (int i)
+   typename base_t::reference operator[] (Int i)
    {
       return (base_t::hidden())[this->size()-1-i];
    }
 
-   typename base_t::const_reference operator[] (int i) const
+   typename base_t::const_reference operator[] (Int i) const
    {
       return (base_t::hidden())[this->size()-1-i];
    }
@@ -1789,36 +1805,31 @@ reversed_view(const Container& c)
 template <typename Value, bool is_simple=std::is_pod<Value>::value>
 class op_value_cache {
    Value* value;
-   std::allocator<Value> alloc;
+   allocator val_alloc;
 
+   void operator= (const op_value_cache&) = delete;
 public:
-   op_value_cache() : value(0) {}
+   op_value_cache() : value(nullptr) {}
 
-   op_value_cache(const op_value_cache& op) : value(0) {}
+   op_value_cache(const op_value_cache& op) : value(nullptr) {}
 
-   op_value_cache(typename function_argument<Value>::type arg)
+   template <typename... Args>
+   op_value_cache(Args&&... args)
    {
-      value=alloc.allocate(1);
-      new(value) Value(arg);
+      value = val_alloc.construct<Value>(std::forward<Args>(args)...);
    }
 
    ~op_value_cache()
    {
-      if (value) {
-         alloc.destroy(value);
-         alloc.deallocate(value,1);
-      }
+      if (value) val_alloc.destroy(value);
    }
 
-   op_value_cache& operator= (const op_value_cache&) { return *this; }
-
-   Value& operator= (Value arg)
+   Value& operator= (Value&& arg)
    {
       if (value)
-         alloc.destroy(value);
+         destroy_at(value);
       else
-         value=alloc.allocate(1);
-      new(value) Value(arg);
+         value = val_alloc.construct<Value>(std::move(value));
       return *value;
    }
 
@@ -1829,20 +1840,21 @@ public:
 template <typename Value>
 class op_value_cache<Value, true> {
    Value value;
+
+   void operator= (const op_value_cache&) = delete;
 public:
    op_value_cache() {}
    op_value_cache(const op_value_cache&) {}
 
-   op_value_cache(typename function_argument<Value>::type arg)
-      : value(arg) {}
+   template <typename... Args>
+   op_value_cache(Args&&... args)
+      : value(std::forward<Args>(args)...) {}
 
-   Value& operator= (Value arg)
+   Value& operator= (Value&& arg)
    {
-      value=arg;
+      value = std::move(arg);
       return value;
    }
-
-   op_value_cache& operator= (const op_value_cache&) { return *this; }
 
    Value& get() { return value; }
    const Value& get() const { return value; }
@@ -1957,7 +1969,7 @@ protected:
 
    template <typename, typename> friend class unary_transform_eval;
 public:
-   int index() const
+   Int index() const
    {
       return iop(*ihelper::get(*this));
    }
@@ -1991,7 +2003,7 @@ protected:
 
    template <typename, typename> friend class unary_transform_eval;
 public:
-   int index() const
+   Int index() const
    {
       return iop(*ihelper::get(*this));
    }
@@ -2117,16 +2129,16 @@ public:
    }
 
 protected:
-   typename base_t::reference random_impl(int i, std::true_type) const
+   typename base_t::reference random_impl(Int i, std::true_type) const
    {
       return this->op(raw_it::operator[](i));
    }
-   typename base_t::reference random_impl(int i, std::false_type) const
+   typename base_t::reference random_impl(Int i, std::false_type) const
    {
       return this->op(static_cast<const raw_it&>(*this) + i);
    }
 public:
-   typename base_t::reference operator[] (int i) const
+   typename base_t::reference operator[] (Int i) const
    {
       static_assert(iterator_traits<raw_it>::is_random, "iterator is not random-access");
       return random_impl(i, bool_constant<base_t::helper::data_arg>());
@@ -2178,37 +2190,37 @@ struct default_check_container_feature<Container, dense>
    : bool_not<check_container_feature<Container, sparse>> {};
 
 template <typename Container>
-std::enable_if_t<check_container_feature<Container, sparse_compatible>::value, int>
+std::enable_if_t<check_container_feature<Container, sparse_compatible>::value, Int>
 get_dim(const Container& c)
 {
    return c.dim();
 }
 
 template <typename Container>
-std::enable_if_t<!check_container_feature<Container, sparse_compatible>::value, int>
+std::enable_if_t<!check_container_feature<Container, sparse_compatible>::value, Int>
 get_dim(const Container& c)
 {
    return c.size();
 }
 
 template <typename Container>
-int total_size(const Container& c)
+Int total_size(const Container& c)
 {
    return c.size();
 }
 
 template <typename First, typename Second, typename... Other>
-int total_size(const First& c1, const Second& c2, const Other&... other)
+Int total_size(const First& c1, const Second& c2, const Other&... other)
 {
    return c1.size() + total_size(c2, other...);
 }
 
 template <typename Container>
-int index_within_range(const Container& c, int i)
+Int index_within_range(const Container& c, Int i)
 {
-   const int d=get_dim(c);
-   if (i<0) i+=d;
-   if (i<0 || i>=d) throw std::runtime_error("index out of range");
+   const Int d = get_dim(c);
+   if (i < 0) i += d;
+   if (i < 0 || i >= d) throw std::runtime_error("index out of range");
    return i;
 }
 
@@ -2324,27 +2336,27 @@ public:
       iterator_pair copy=*this;  operator--();  return copy;
    }
 
-   iterator_pair& operator+= (int i)
+   iterator_pair& operator+= (Int i)
    {
       static_assert(iterator_pair_traits<Iterator1, Iterator2>::is_random, "iterator is not random-access");
       first_type::operator+=(i);  this->second+=i;
       return *this;
    }
-   iterator_pair& operator-= (int i)
+   iterator_pair& operator-= (Int i)
    {
       static_assert(iterator_pair_traits<Iterator1, Iterator2>::is_random, "iterator is not random-access");
       first_type::operator-=(i);  this->second-=i;
       return *this;
    }
-   iterator_pair operator+ (int i) const
+   iterator_pair operator+ (Int i) const
    {
       iterator_pair copy=*this; return copy+=i;
    }
-   iterator_pair operator- (int i) const
+   iterator_pair operator- (Int i) const
    {
       iterator_pair copy=*this; return copy-=i;
    }
-   friend iterator_pair operator+ (int i, const iterator_pair& it)
+   friend iterator_pair operator+ (Int i, const iterator_pair& it)
    {
       return it+i;
    }
@@ -2417,11 +2429,11 @@ public:
       return at_end_impl(at_end_via_second());
    }
 private:
-   int index_impl(std::false_type) const
+   Int index_impl(std::false_type) const
    {
       return first_type::index();
    }
-   int index_impl(std::true_type) const
+   Int index_impl(std::true_type) const
    {
       return second.index();
    }
@@ -2430,7 +2442,7 @@ private:
    static constexpr bool index_defined=
       check_iterator_feature<std::conditional_t<index_via_second::value, Iterator2, Iterator1>, indexed>::value;
 public:
-   int index() const
+   Int index() const
    {
       static_assert(index_defined, "iterator not indexed");
       return index_impl(index_via_second());
@@ -2450,24 +2462,24 @@ public:
       second.rewind();
    }
 protected:
-   void contract1(bool, int distance_front, int, std::false_type)
+   void contract1(bool, Int distance_front, Int, std::false_type)
    {
       std::advance(static_cast<first_type&>(*this), distance_front);
    }
-   void contract1(bool renumber, int distance_front, int distance_back, std::true_type)
+   void contract1(bool renumber, Int distance_front, Int distance_back, std::true_type)
    {
       first_type::contract(renumber, distance_front, distance_back);
    }
-   void contract2(bool, int distance_front, int, std::false_type)
+   void contract2(bool, Int distance_front, Int, std::false_type)
    {
       std::advance(second, distance_front);
    }
-   void contract2(bool renumber, int distance_front, int distance_back, std::true_type)
+   void contract2(bool renumber, Int distance_front, Int distance_back, std::true_type)
    {
       second.contract(renumber, distance_front, distance_back);
    }
 public:
-   void contract(bool renumber, int distance_front, int distance_back=0)
+   void contract(bool renumber, Int distance_front, Int distance_back = 0)
    {
       if (!mlist_contains<features_via_second, contractable, equivalent_features>::value)
          contract1(renumber, distance_front, distance_back, bool_constant<check_iterator_feature<Iterator1, contractable>::value>());
@@ -2585,7 +2597,7 @@ protected:
 
    template <typename, typename, bool> friend class binary_transform_eval;
 public:
-   int index() const
+   Int index() const
    {
       return iop(*ihelper::get1(*this), *ihelper::get2(this->second));
    }
@@ -2619,7 +2631,7 @@ protected:
 
    template <typename, typename, bool> friend class binary_transform_eval;
 public:
-   int index() const
+   Int index() const
    {
       return iop(*ihelper::get1(*this), *ihelper::get2(this->second));
    }
@@ -2697,27 +2709,27 @@ public:
       binary_transform_iterator copy=*this;  operator--();  return copy;
    }
 
-   binary_transform_iterator& operator+= (int i)
+   binary_transform_iterator& operator+= (Int i)
    {
       static_assert(iterator_traits<raw_it>::is_random, "iterator is not random-access");
       raw_it::operator+=(i);
       return *this;
    }
-   binary_transform_iterator& operator-= (int i)
+   binary_transform_iterator& operator-= (Int i)
    {
       static_assert(iterator_traits<raw_it>::is_random, "iterator is not random-access");
       raw_it::operator-=(i);
       return *this;
    }
-   binary_transform_iterator operator+ (int i) const
+   binary_transform_iterator operator+ (Int i) const
    {
       binary_transform_iterator copy=*this;  return copy+=i;
    }
-   binary_transform_iterator operator- (int i) const
+   binary_transform_iterator operator- (Int i) const
    {
       binary_transform_iterator copy=*this;  return copy-=i;
    }
-   friend binary_transform_iterator operator+ (int i, const binary_transform_iterator& it)
+   friend binary_transform_iterator operator+ (Int i, const binary_transform_iterator& it)
    {
       return it+i;
    }
@@ -2733,24 +2745,24 @@ public:
    }
 
 protected:
-   typename base_t::reference random_impl(int i, std::true_type, std::true_type) const
+   typename base_t::reference random_impl(Int i, std::true_type, std::true_type) const
    {
       return this->op(raw_it::operator[](i), this->second[i]);
    }
-   typename base_t::reference random_impl(int i, std::true_type, std::false_type) const
+   typename base_t::reference random_impl(Int i, std::true_type, std::false_type) const
    {
       return this->op(raw_it::operator[](i), this->second+i);
    }
-   typename base_t::reference random_impl(int i, std::false_type, std::true_type) const
+   typename base_t::reference random_impl(Int i, std::false_type, std::true_type) const
    {
       return this->op(static_cast<const typename raw_it::first_type&>(*this)+i, this->second[i]);
    }
-   typename base_t::reference random_impl(int i, std::false_type, std::false_type) const
+   typename base_t::reference random_impl(Int i, std::false_type, std::false_type) const
    {
       return this->op(static_cast<const typename raw_it::first_type&>(*this)+i, this->second+i);
    }
 public:
-   typename raw_it::reference operator[] (int i) const
+   typename raw_it::reference operator[] (Int i) const
    {
       static_assert(iterator_traits<raw_it>::is_random, "iterator is not random-access");
       return random_impl(i, bool_constant<base_t::helper::first_data_arg>(), bool_constant<base_t::helper::second_data_arg>());

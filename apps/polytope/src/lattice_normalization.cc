@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,7 +29,7 @@
 namespace polymake { namespace polytope {
 namespace {
 
-perl::Object apply_lattice_normalization(perl::Object p, bool ambient, bool store_transform)
+BigObject apply_lattice_normalization(BigObject p, bool ambient, bool store_transform)
 {
   if (!p.give("LATTICE") || !p.give("BOUNDED"))     // only for lattice polytopes
     throw std::runtime_error("not a lattice polytope");
@@ -37,7 +37,7 @@ perl::Object apply_lattice_normalization(perl::Object p, bool ambient, bool stor
   const Matrix<Integer> V=p.give("VERTICES");
   SmithNormalForm<Integer> SNF = smith_normal_form(V);
         
-  for (int i = 0; i < SNF.rank; ++i) { // adjust orientation of the transformation
+  for (Int i = 0; i < SNF.rank; ++i) { // adjust orientation of the transformation
     if (SNF.form(i,i) < 0) {           // all entries of M >= 0
       SNF.form(i,i).negate();
       SNF.left_companion.col(i).negate();
@@ -48,7 +48,7 @@ perl::Object apply_lattice_normalization(perl::Object p, bool ambient, bool stor
     SNF.right_companion.row(SNF.rank-1).negate();
   }
         
-  perl::Object q("Polytope<Rational>");
+  BigObject q("Polytope<Rational>");
   Matrix<Rational> F;
   if (ambient) {
     q.set_description() << "transformation of "
@@ -97,19 +97,19 @@ perl::Object apply_lattice_normalization(perl::Object p, bool ambient, bool stor
 }
 }
     
-perl::Object ambient_lattice_normalization(perl::Object p , perl::OptionSet options)
+BigObject ambient_lattice_normalization(BigObject p , OptionSet options)
 {
   const bool store_transform=options["store_transform"];
   return apply_lattice_normalization(p, true, store_transform);
 }
     
-perl::Object vertex_lattice_normalization(perl::Object p, perl::OptionSet options)
+BigObject vertex_lattice_normalization(BigObject p, OptionSet options)
 {
   const bool store_transform=options["store_transform"];
   return apply_lattice_normalization(p, false, store_transform);
 }
     
-Matrix<Integer> induced_lattice_basis(perl::Object p)
+Matrix<Integer> induced_lattice_basis(BigObject p)
 {
   if (!p.give("LATTICE") || !p.give("BOUNDED"))     // only for lattice polytopes
     throw std::runtime_error("not a lattice polytope");

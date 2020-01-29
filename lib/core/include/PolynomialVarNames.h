@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,7 +31,7 @@ public:
   /// x, y, z, u, v, w for nesting levels 0..6 and t for anything above
   static constexpr char default_varname(int nesting_level)
   {
-    return nesting_level < 3 ? 'x'+nesting_level : nesting_level < 6 ? 'v'+nesting_level-3 : 't';
+    return static_cast<char>(nesting_level < 3 ? 'x' + nesting_level : nesting_level < 6 ? 'v' + nesting_level-3 : 't');
   }
 
   /// set the default naming scheme
@@ -53,7 +53,7 @@ public:
   /// according to the pattern "{LastExplicitName}_{IndexExcess}"
   /// if the index refers to the last explicit name and \a n_vars exceeds the number of explicit names,
   /// the variable name is "{LastExplicitName}_0"
-  const std::string& operator() (int index, int n_vars) const;
+  const std::string& operator() (Int index, Int n_vars) const;
 
   /// set the explicit variable names
   void set_names(const Array<std::string>& names);

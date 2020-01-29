@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,10 +24,10 @@ namespace polymake { namespace topaz {
   
 namespace {
 
-void combinatorial_k_skeleton_impl(perl::Object p_in, perl::Object& p_out, const int k, perl::OptionSet options)
+void combinatorial_k_skeleton_impl(BigObject p_in, BigObject& p_out, const Int k, OptionSet options)
 {
-   const Array< Set<int> > C = p_in.give("FACETS");
-   const PowerSet<int> Skeleton = k_skeleton(C,k);
+   const Array<Set<Int>> C = p_in.give("FACETS");
+   const PowerSet<Int> Skeleton = k_skeleton(C,k);
    
    p_out.set_description() << k << "-skeleton of " << p_in.name() << endl;
    p_out.take("FACETS") << Skeleton;
@@ -39,17 +39,17 @@ void combinatorial_k_skeleton_impl(perl::Object p_in, perl::Object& p_out, const
 }
 
 
-perl::Object combinatorial_k_skeleton(perl::Object p_in, const int k, perl::OptionSet options)
+BigObject combinatorial_k_skeleton(BigObject p_in, const Int k, OptionSet options)
 {
-   perl::Object p_out("SimplicialComplex");
+   BigObject p_out("SimplicialComplex");
    combinatorial_k_skeleton_impl(p_in, p_out, k, options);
    return p_out;
 }
 
 template <typename Scalar>
-perl::Object k_skeleton(perl::Object p_in, const int k, perl::OptionSet options)
+BigObject k_skeleton(BigObject p_in, const Int k, OptionSet options)
 {
-   perl::Object p_out("GeometricSimplicialComplex", mlist<Scalar>());
+   BigObject p_out("GeometricSimplicialComplex", mlist<Scalar>());
    combinatorial_k_skeleton_impl(p_in, p_out, k, options);
    
    Matrix<Scalar> GR;

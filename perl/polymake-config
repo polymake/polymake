@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -161,16 +161,16 @@ while (defined ($_=shift)) {
       }
       close CC;
       if ($^O eq "darwin") {
-         $ldflags="$ConfigFlags{ARCHFLAGS} $ldflags -flat_namespace";
+         $ldflags = "$ConfigFlags{ARCHFLAGS} $ldflags -flat_namespace";
       } else {
          $ldflags .= " -Wl,-E";
          if ($add_rpath) {
             $ldflags .= " -Wl,-rpath,$ConfigFlags{InstallLib}";
          }
       }
-      $ldflags=~s/^\s+//; $ldflags=~s/\s+$//; $ldflags=~s/\s{2,}/ /g;
+      $ldflags =~ s/^\s+//; $ldflags =~ s/\s+$//; $ldflags =~ s/\s{2,}/ /g;
 
-      $mode_asked=1;
+      $mode_asked = 1;
       if ($mode eq "Debug") {
          print "$ldflags $ConfigFlags{CXXDEBUG}\n";
       } elsif ($mode eq "San") {
@@ -180,9 +180,7 @@ while (defined ($_=shift)) {
       }
 
    } elsif ($_ eq "--libs") {
-      my $libs="$ConfigFlags{LIBS} $ConfigFlags{LIBXML2_LIBS}";
-      $libs=~s/\s+$//;
-      print "-lpolymake -lpolymake-apps $libs\n";
+      print "-lpolymake -lpolymake-apps $ConfigFlags{LIBS}\n";
 
    } else {
       usage;

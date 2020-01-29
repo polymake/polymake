@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -141,10 +141,10 @@ public:
    /** @param dim_arg dimension of the cube
        @param start_arg index of the first vertex
    */
-   explicit CubeFacets(int dim_arg, const E& start_arg=E(0))
+   explicit CubeFacets(Int dim_arg, const E& start_arg = zero_value<E>())
       : start(start_arg), dim(dim_arg) { }
 
-   int size() const { return 2*dim; }
+   Int size() const { return 2*dim; }
    bool empty() const { return dim==0; }
 
    iterator begin() const { return iterator(start, E(1), E(1)<<dim); }
@@ -153,7 +153,7 @@ public:
    const value_type front() const { return value_type(start, E(1), E(1)<<dim); }
 protected:
    E start;
-   int dim;
+   Int dim;
 };
 
 } }

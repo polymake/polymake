@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -35,9 +35,9 @@ namespace polymake { namespace topaz {
 template <typename E>
 class HomologyGroup : public GenericStruct< HomologyGroup<E> > {
 public:
-   typedef std::list< std::pair<E,int> > torsion_list;
+   typedef std::list< std::pair<E, Int>> torsion_list;
    DeclSTRUCT( DeclTemplFIELD(torsion, torsion_list)
-               DeclTemplFIELD(betti_number, int) );
+               DeclTemplFIELD(betti_number, Int) );
 };
 
 //saves bases and corresponding coefficients (of type E) for a complex
@@ -45,7 +45,7 @@ template <typename E>
 class CycleGroup : public GenericStruct< CycleGroup<E> > {
 public:
    typedef SparseMatrix<E> coeff_matrix;
-   typedef Array< Set<int> > face_list;
+   typedef Array<Set<Int>> face_list;
    DeclSTRUCT( DeclTemplFIELD(coeffs, coeff_matrix)
                DeclTemplFIELD(faces, face_list) );
 };
@@ -53,7 +53,8 @@ public:
 //dummy logger
 class nothing_logger : public pm::dummy_companion_logger {
 public:
-   explicit nothing_logger(const nothing*, const nothing*, const nothing* =0, const nothing* =0) {}
+   template <typename... Args>
+   explicit nothing_logger(Args&&...) {}
 };
 
 //log operations that do not require gcd calculation??
@@ -102,13 +103,13 @@ public:
    Complex_iterator() {}
 
    //for cohomology start at the other end
-   Complex_iterator(const BaseComplex& complex_arg, int d_start_arg, int d_end_arg)
+   Complex_iterator(const BaseComplex& complex_arg, Int d_start_arg, Int d_end_arg)
       : complex(&complex_arg),
         d_cur(dual ? d_end_arg : d_start_arg+1),
         d_end(dual ? d_start_arg+1 : d_end_arg)
    {
 #if POLYMAKE_DEBUG
-      debug_print = perl::get_debug_level() > 1;
+      debug_print = get_debug_level() > 1;
 #endif
       if (!at_end()) {
          first_step(); operator++();
@@ -136,27 +137,26 @@ public:
       return dual ? d_cur>d_end : d_cur<d_end;
    }
 
-   int dim() const { return d_cur-dual; }
+   Int dim() const { return d_cur - dual; }
    const companion_type& cycle_coeffs() const { return Cycles; }
 
 protected:
    const BaseComplex* complex;
-   int d_cur, d_end;
+   Int d_cur, d_end;
    HomologyGroup<E> hom_cur, hom_next;
-   int rank_cur = 0;
+   Int rank_cur = 0;
    Bitset elim_rows, elim_cols;
    typename MatrixType::persistent_type delta;
 
-   static const int R_inv_prev=0, L=1, LxR_prev=2, R_inv=3, companion_set=4;
-   //array of SparseMatrices to hold the companion matrices
-   typedef typename MatrixType::persistent_type matrix_array[companion_set]; //matrix_array is an array of 4 matrices
-   struct nothing_array : nothing {
-      const nothing& operator[] (int) const { return *this; }
-      nothing* operator+ (int) { return this; }
-   };
+   enum { R_inv_prev, L, LxR_prev, R_inv, n_companions };
+
+   // array of SparseMatrices to hold the companion matrices
+   using matrix_array = std::array<typename MatrixType::persistent_type, n_companions>;
+   using nothing_array = std::array<nothing, n_companions>;
+
    using companion_array = std::conditional_t<with_cycles, matrix_array, nothing_array>;
    companion_array companions;
-   //SparseMatrix supposed to hold the generators of the homology group
+   // SparseMatrix supposed to hold the generators of the homology group
    companion_type Cycles;
 
    using snf_logger_type = std::conditional_t<with_cycles, Smith_normal_form_logger<E>, nothing_logger>;
@@ -165,55 +165,55 @@ protected:
    void first_step();
    void step(bool first=false);
 
-   void init_companion(const nothing*, int) {}
-   void init_companion(GenericMatrix<MatrixType,E>* M, int n) { *M=unit_matrix<E>(n); }
+   void init_companion(const nothing&, Int) {}
+   void init_companion(GenericMatrix<MatrixType, E>& M, Int n) { M = unit_matrix<E>(n); }
    void calculate_cycles(const nothing&) {}
-   void calculate_cycles(GenericMatrix<MatrixType,E>&);
+   void calculate_cycles(GenericMatrix<MatrixType, E>&);
    void prepare_LxR_prev(const nothing*) {}
-   void prepare_LxR_prev(GenericMatrix<MatrixType,E>*);
+   void prepare_LxR_prev(GenericMatrix<MatrixType, E>*);
 
 #if POLYMAKE_DEBUG
    SparseMatrix<Rational> r_delta, r_delta_next;
    bool debug_print;
 
-   void debug1(int d, const GenericMatrix<MatrixType,E>& _delta, const SparseMatrix<Rational>& _r_delta, const GenericMatrix<MatrixType,E>* _companions) const
+   void debug1(Int d, const GenericMatrix<MatrixType, E>& delta_here, const SparseMatrix<Rational>& r_delta_here, const matrix_array& comp) const
    {
-      const SparseMatrix<Rational> r_L(_companions[L]), r_R_inv(_companions[R_inv]);
-      cout << "elim[" << d << "]:\n" << std::setw(3) << _delta;
-      if (r_L * _r_delta * inv(r_R_inv) != _delta) cout << "WRONG!\n";
-      cout << "L:\n" << std::setw(3) << _companions[L];
+      const SparseMatrix<Rational> r_L(comp[L]), r_R_inv(comp[R_inv]);
+      cout << "elim[" << d << "]:\n" << std::setw(3) << delta_here;
+      if (r_L * r_delta_here * inv(r_R_inv) != delta_here) cout << "WRONG!\n";
+      cout << "L:\n" << std::setw(3) << comp[L];
       if (! abs_equal(det(r_L), 1)) cout << "NOT UNIMODULAR!\n";
-      cout << "R_inv:\n" << std::setw(3) << _companions[R_inv];
+      cout << "R_inv:\n" << std::setw(3) << comp[R_inv];
       if (! abs_equal(det(r_R_inv), 1)) cout << "NOT UNIMODULAR!\n";
       cout << endl;
    }
-   void debug2(const GenericMatrix<MatrixType,E>*) const
+   void debug2(const matrix_array& comp) const
    {
       cout << "cancel cols[" << d_cur << "]: " << elim_rows << endl;
-      const SparseMatrix<Rational> r_L(companions[L]), r_R_inv(companions[R_inv]);
+      const SparseMatrix<Rational> r_L(comp[L]), r_R_inv(comp[R_inv]);
       if (r_L * r_delta * inv(r_R_inv) != delta) cout << "WRONG!\n";
-      cout << "R_inv:\n" << std::setw(3) << companions[R_inv];
+      cout << "R_inv:\n" << std::setw(3) << comp[R_inv];
       if (! abs_equal(det(r_R_inv), 1)) cout << "NOT UNIMODULAR!\n";
    }
-   void debug3(const GenericMatrix<MatrixType,E>*) const
+   void debug3(const matrix_array& comp) const
    {
-      const SparseMatrix<Rational> r_L(companions[L]), r_R_inv(companions[R_inv]);
+      const SparseMatrix<Rational> r_L(comp[L]), r_R_inv(comp[R_inv]);
       if (r_L * r_delta * inv(r_R_inv) != delta) cout << "WRONG!\n";
-      cout << "L:\n" << std::setw(3) << companions[L];
+      cout << "L:\n" << std::setw(3) << comp[L];
       if (! abs_equal(det(r_L), 1)) cout << "NOT UNIMODULAR!\n";
-      cout << "R_inv:\n" << std::setw(3) << companions[R_inv];
+      cout << "R_inv:\n" << std::setw(3) << comp[R_inv];
       if (! abs_equal(det(r_R_inv), 1)) cout << "NOT UNIMODULAR!\n";
-      cout << "LxR_prev:\n" << std::setw(3) << companions[LxR_prev];
+      cout << "LxR_prev:\n" << std::setw(3) << comp[LxR_prev];
    }
-   void debug1(int d, const GenericMatrix<MatrixType,E>& _delta, const SparseMatrix<Rational>& _r_delta, const nothing*) const
+   void debug1(Int d, const GenericMatrix<MatrixType, E>& delta_here, const SparseMatrix<Rational>&, const nothing_array&) const
    {
-      cout << "elim[" << d << "]:\n" << std::setw(3) << _delta << endl;
+      cout << "elim[" << d << "]:\n" << std::setw(3) << delta_here << endl;
    }
-   void debug2(const nothing*) const
+   void debug2(const nothing_array&) const
    {
       cout << "cancel cols[" << d_cur << "]: " << elim_rows << endl;
    }
-   void debug3(const nothing*) const {}
+   void debug3(const nothing_array&) const {}
 #endif
 };
 } }
@@ -226,10 +226,10 @@ struct check_iterator_feature<polymake::topaz::Complex_iterator<E, MatrixType, B
 namespace polymake { namespace topaz {
 
 template <typename E, typename MatrixType, typename BaseComplex, bool with_cycles, bool dual>
-void Complex_iterator<E,MatrixType,BaseComplex,with_cycles,dual>::first_step()
+void Complex_iterator<E, MatrixType, BaseComplex, with_cycles, dual>::first_step()
 { 
    //get bd matrices for first step
-      delta=dual ? T(complex->template boundary_matrix<E>(d_cur)) : complex->template boundary_matrix<E>(d_cur);
+   delta = dual ? T(complex->template boundary_matrix<E>(d_cur)) : complex->template boundary_matrix<E>(d_cur);
 #if POLYMAKE_DEBUG
    if (debug_print) {
       cout << (dual ? "dual delta[" : "delta[") << d_cur << "]:\n" << std::setw(3) << delta << endl;
@@ -237,16 +237,16 @@ void Complex_iterator<E,MatrixType,BaseComplex,with_cycles,dual>::first_step()
    }
 #endif
    //initialize with unit matrices
-   init_companion(companions+L, delta.rows());
-   init_companion(companions+R_inv, delta.cols());
+   init_companion(companions[L], delta.rows());
+   init_companion(companions[R_inv], delta.cols());
 
    //elim_ones optimization only works for matrices with entries from {0,+1,-1}
    if(pm::is_derived_from_instance_of<BaseComplex,SimplicialComplex_as_FaceMap>::value)
-      rank_cur=eliminate_ones(delta, elim_rows, elim_cols, elim_logger_type(companions+L, companions+R_inv));
+      rank_cur=eliminate_ones(delta, elim_rows, elim_cols, elim_logger_type(&companions[L], &companions[R_inv]));
 
-   companions[LxR_prev]=companions[L];
+   companions[LxR_prev] = companions[L];
 #if POLYMAKE_DEBUG
-   if (debug_print) debug1(d_cur, delta, r_delta, companions+0); 
+   if (debug_print) debug1(d_cur, delta, r_delta, companions); 
 #endif
    step(true);
 }
@@ -258,11 +258,11 @@ void Complex_iterator<E,MatrixType,BaseComplex,with_cycles,dual>::step(bool firs
    companion_array companions_next;
    typename MatrixType::persistent_type delta_next;
 
-   companion_type *cLxR_prev=0, *cR_inv=0;
-   int rank_next=0;
-   if (d_cur!=d_end) {
+   companion_type *cLxR_prev = nullptr, *cR_inv = nullptr;
+   Int rank_next = 0;
+   if (d_cur != d_end) {
       if (dual) {
-         delta_next=T(complex->template boundary_matrix<E>(d_cur+1));
+         delta_next = T(complex->template boundary_matrix<E>(d_cur+1));
       } else {
          delta_next=complex->template boundary_matrix<E>(d_cur-1);
       }
@@ -275,33 +275,33 @@ void Complex_iterator<E,MatrixType,BaseComplex,with_cycles,dual>::step(bool firs
 #endif
       delta_next.minor(elim_cols,All).clear();
       //initialize with unit matrices
-      init_companion(companions_next+LxR_prev, delta_next.rows());
-      init_companion(companions_next+R_inv, delta_next.cols());
+      init_companion(companions_next[LxR_prev], delta_next.rows());
+      init_companion(companions_next[R_inv], delta_next.cols());
 
 //elim_ones optimization only works for matrices with entries from {0,+1,-1}
-      if(pm::is_derived_from_instance_of<BaseComplex,SimplicialComplex_as_FaceMap>::value)
-         rank_next=eliminate_ones(delta_next, elim_rows, elim_cols, elim_logger_type(companions+R_inv, companions_next+R_inv));
+      if (pm::is_derived_from_instance_of<BaseComplex,SimplicialComplex_as_FaceMap>::value)
+         rank_next = eliminate_ones(delta_next, elim_rows, elim_cols, elim_logger_type(&companions[R_inv], &companions_next[R_inv]));
 
       //represent next bd matrix wrt. to previously computed basis for Z by left-multiplying with inverse transformation
-      companions_next[L]=companions[R_inv];
+      companions_next[L] = companions[R_inv];
 #if POLYMAKE_DEBUG
-      if (debug_print) debug1((dual ? d_cur+1 : d_cur-1), delta_next, r_delta_next, companions_next+0);
+      if (debug_print) debug1((dual ? d_cur+1 : d_cur-1), delta_next, r_delta_next, companions_next);
 #endif
 
-      delta.minor(All,elim_rows).clear();
+      delta.minor(All, elim_rows).clear();
 #if POLYMAKE_DEBUG
-      if (debug_print) debug2(companions+0); 
+      if (debug_print) debug2(companions); 
 #endif
-      cLxR_prev=companions_next+LxR_prev;
-      cR_inv=companions+R_inv;
+      cLxR_prev = &companions_next[LxR_prev];
+      cR_inv = &companions[R_inv];
    }
    rank_cur += smith_normal_form(delta, hom_next.torsion,
-                                 snf_logger_type(companions+L, companions+LxR_prev, cLxR_prev, cR_inv), std::false_type());
+                                 snf_logger_type(&companions[L], &companions[LxR_prev], cLxR_prev, cR_inv), std::false_type());
 
 #if POLYMAKE_DEBUG
    if (debug_print) {
       cout << "snf[" << d_cur << "]:\n" << std::setw(3) << delta;
-      if (cR_inv) debug3(companions+0);
+      if (cR_inv) debug3(companions);
    }
 #endif
    hom_next.betti_number=-rank_cur;
@@ -363,21 +363,23 @@ template <typename R, typename MatrixType, typename BaseComplex>
 class HomologyComplex {
 protected:
    const BaseComplex& complex;
-   int dim_high, dim_low;
+   Int dim_high, dim_low;
 public:
    explicit HomologyComplex(const BaseComplex& complex_arg,
-                         int dim_high_arg=-1, int dim_low_arg=0)
-      : complex(complex_arg), dim_high(dim_high_arg), dim_low(dim_low_arg)
+                            Int dim_high_arg = -1, Int dim_low_arg = 0)
+      : complex(complex_arg)
+      , dim_high(dim_high_arg)
+      , dim_low(dim_low_arg)
    {
-      int d=dim();
-      if (dim_high<0) dim_high+=d+1;
-      if (dim_low<0) dim_low+=d+1;
-      if (dim_high<dim_low || dim_high>d || dim_low<0)
+      Int d = dim();
+      if (dim_high < 0) dim_high += d+1;
+      if (dim_low < 0) dim_low += d+1;
+      if (dim_high < dim_low || dim_high > d || dim_low < 0)
          throw std::runtime_error("HomologyComplex - dimensions out of range");
    }
 
-   int dim() const { return complex.dim(); }
-   int size() const { return dim_high-dim_low+1; }
+   Int dim() const { return complex.dim(); }
+   Int size() const { return dim_high-dim_low+1; }
    const BaseComplex& get_complex() const { return complex; }
 
    typedef HomologyGroup<R> homology_type;
@@ -431,7 +433,7 @@ public:
 
 template <typename R, typename MatrixType, typename BaseComplex> inline
 HomologyComplex<R, MatrixType, BaseComplex>
-make_homology_complex(const BaseComplex& complex, int dim_high=-1, int dim_low=1)
+make_homology_complex(const BaseComplex& complex, Int dim_high = -1, Int dim_low = 1)
 {
    return HomologyComplex<R, MatrixType, BaseComplex>(complex,dim_high,dim_low);
 }

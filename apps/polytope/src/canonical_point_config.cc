@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -56,9 +56,9 @@ canonicalize_point_configuration(GenericVector<TVector>& V)
 template <typename TMatrix> inline
 void canonicalize_point_configuration(GenericMatrix<TMatrix>& M)
 {
-   Set<int> neg;
-   int i = 0;
-   for (auto r=entire(rows(M)); !r.at_end();  ++r, ++i) {
+   Set<Int> neg;
+   Int i = 0;
+   for (auto r = entire(rows(M)); !r.at_end();  ++r, ++i) {
       if ( r->top()[0] < 0 )
          neg.push_back(i);
       else

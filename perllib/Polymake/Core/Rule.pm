@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -50,8 +50,8 @@ use Polymake::Struct (
    '@output',                           # ( prop_ref )
    [ '$flags' => '0' ],                 # is_*
    [ '$code' => '#2' ],                 # sub { ... }  compiled perl code of the rule body
-   [ '$defined_for' => '#3' ],          # ObjectType
-   [ '$overridden_in' => 'undef' ],     # [ ObjectType ... ]
+   [ '$defined_for' => '#3' ],          # BigObjectType
+   [ '$overridden_in' => 'undef' ],     # [ BigObjectType ... ]
    '@labels',                           # rule labels
    '$weight',                           # [ weight_category, weight_value ]
    '@preconditions',                    # ( Rule )
@@ -114,7 +114,7 @@ sub parse_input {
    my ($self, $sources, $seen)=@_;
    @{$self->input}=map {
       my $input=$self->defined_for->encode_read_request($_);
-      if ($Application::plausibility_checks) {
+      if ($enable_plausibility_checks) {
          check_repeated_properties($_, $seen, 1) for @$input;
       }
       $input
@@ -135,13 +135,13 @@ sub parse_output {
       my $any_mult_depth=0;
 
       foreach (split /\./, $target) {
-         if (my ($prop_name, $attrib)= /^($id_re) (?: \(\s* ($id_re) \s*\) )? $/xo) {
+         if (my ($prop_name, $attrib)= /^($prop_name_re) (?: \(\s* ($prop_name_re) \s*\) )? $/xo) {
             $prop=$proto->property($prop_name);
             $proto=$prop->type;
             push @out, $prop;
             if ($prop->flags & Property::Flags::is_multiple) {
                if (defined $attrib) {
-                  if ($Application::plausibility_checks) {
+                  if ($enable_plausibility_checks) {
                      foreach my $output (@{$self->output}) {
                         my $l=Property::equal_path_prefixes(\@out, $output);
                         if ($l==@out) {
@@ -176,13 +176,13 @@ sub parse_output {
                   $array_flag |= Property::Flags::is_multiple;
                }
             } else {
-               if ($Application::plausibility_checks && defined($attrib)) {
+               if ($enable_plausibility_checks && defined($attrib)) {
                   $attrib eq "new" || $attrib eq "any"
                   ? croak( "Attribute '$attrib' is only applicable to multiple subobject properties" )
                   : croak( "Unknown property attribute '$attrib'" );
                }
                if ($prop->flags & Property::Flags::is_permutation) {
-                  if ($Application::plausibility_checks && $array_flag == Property::Flags::is_multiple_new) {
+                  if ($enable_plausibility_checks && $array_flag == Property::Flags::is_multiple_new) {
                      croak( "Rule dealing with a permutation may not create new instances of multiple subobjects" );
                   }
                   $array_flag |= Property::Flags::is_permutation;
@@ -193,7 +193,7 @@ sub parse_output {
          }
       }
 
-      if ($Application::plausibility_checks) {
+      if ($enable_plausibility_checks) {
          if ($prop->flags & Property::Flags::is_multiple) {
             croak( "A rule may not create a multiple subobject as a whole but only its single properties" );
          }
@@ -228,7 +228,7 @@ sub source_location {
 #
 #  Constructor - compile the rule
 #
-#  new Rule(header, \&body, ObjectType);
+#  new Rule(header, \&body, BigObjectType);
 #
 sub new {
    my $self=&_new;
@@ -236,7 +236,7 @@ sub new {
    my ($is_nonexistent);
    if (defined $self->code) {
       @parts=split /\s*:\s*/, $self->header, 3;
-      if ($Application::plausibility_checks and @parts < 2 || $parts[-1] =~ /:/) {
+      if ($enable_plausibility_checks and @parts < 2 || $parts[-1] =~ /:/) {
          croak( "ill-formed rule header" );
       }
 
@@ -282,7 +282,7 @@ sub new {
    parse_input($self, $parts[1], \%seen);
    parse_output($self, $parts[0], \%seen);
 
-   if ($Application::plausibility_checks && !defined($self->code)) {
+   if ($enable_plausibility_checks && !defined($self->code)) {
       if (@{$self->input}>1 || @{$self->output}>1) {
          croak( "A shortcut rule must have exactly one source and one target" );
       }
@@ -303,7 +303,7 @@ sub analyze_spez_preconditions {
 #
 #  Constructor for special rules
 #
-#  special Rule 'Header', \&body, ObjectType
+#  special Rule 'Header', \&body, BigObjectType
 #
 sub special {
    my $self=&_new;
@@ -324,7 +324,7 @@ sub append_precondition {
    $precond->header="precondition " . $precond->header . " ( " . $self->header . " )";
    push @{$self->preconditions}, $precond;
    if ($override) {
-      if ($Application::plausibility_checks) {
+      if ($enable_plausibility_checks) {
          $self->flags & Flags::in_restricted_spez
            or croak( "useless or repeated `override precondition'" );
       }
@@ -350,7 +350,7 @@ sub append_weight {
    my ($self, $major, $minor, $spec) = @_;
    if (defined $major) {
       $self->weight = [ $major, $minor ];
-      assign_max($max_major, $major + 1); # reserve the highest category for preference violation penalties
+      assign_max($max_major, $major+1); # reserve the highest category for preference violation penalties
    } else {
       $self->weight = $zero_weight;
    }
@@ -363,9 +363,9 @@ sub append_weight {
 }
 
 sub append_permutation {
-   my ($self, $perm_name)=@_;
-   my @perm_path=$self->defined_for->encode_descending_path($perm_name);
-   if ($Application::plausibility_checks) {
+   my ($self, $perm_name) = @_;
+   my @perm_path = $self->defined_for->encode_descending_path($perm_name);
+   if ($enable_plausibility_checks) {
       if (Property::find_first_in_path(\@perm_path, Property::Flags::is_permutation) != $#perm_path) {
          croak( "$perm_name is not a permutation" );
       }
@@ -435,12 +435,12 @@ sub flip_rule_for_twin {
 }
 ####################################################################################
 sub needs_finalization {
-   my ($self)=@_;
+   my ($self) = @_;
 
    my @path_to_perm;
    foreach my $input (@{$self->input}) {
       if (get_array_flags($input) & Property::Flags::is_permutation) {
-         if ($Application::plausibility_checks) {
+         if ($enable_plausibility_checks) {
             if ($self->flags & Flags::is_initial) {
                croak( "initial rules may not trigger permutations" );
             }
@@ -488,12 +488,12 @@ sub finalize {
       if (defined $perm_deputy) {
          die "rule ", $self->header, " can't trigger permutations at ", $self->source_location, "\n";
       }
-      $proto->add_producers_of(ObjectType::init_pseudo_prop()->key, $self);
+      $proto->add_producers_of(BigObjectType::init_pseudo_prop()->key, $self);
 
       foreach my $input (@{$self->input}) {
          foreach my $input_path (grep { @$_ > 1 } @$input) {
             (undef, my @ancestors)=reverse(@$input_path);
-            my $prod_key=ObjectType::init_pseudo_prop()->get_prod_key(@ancestors);
+            my $prod_key=BigObjectType::init_pseudo_prop()->get_prod_key(@ancestors);
             $proto->add_producers_of($prod_key, $self);
          }
       }
@@ -579,15 +579,15 @@ sub finalize {
                $twin_targets{$ancestors[-1]}=1;
                $bad_twin=1;
             }
-            if ($any_mult_depth==0 || $Application::plausibility_checks) {
-               $common_prefix=0;
+            if ($any_mult_depth==0 || $enable_plausibility_checks) {
+               $common_prefix = 0;
                foreach my $rule ($self, @{$self->preconditions}) {
                   foreach my $input (@{$rule->input}) {
                      foreach my $input_path (@$input) {
                         my $l=Property::equal_path_prefixes($output, $input_path);
                         assign_max($common_prefix, $l);
-                        if ($Application::plausibility_checks) {
-                           $bad_twin &&= $l>0 if $rule==$self;
+                        if ($enable_plausibility_checks) {
+                           $bad_twin &&= $l>0 if $rule == $self;
 
                            if ($flags & Property::Flags::is_multiple_new &&
                                $l < $#$output &&
@@ -606,7 +606,7 @@ sub finalize {
                      }
                   }
                }
-               if ($Application::plausibility_checks && $bad_twin) {
+               if ($enable_plausibility_checks && $bad_twin) {
                   die "Twin property ", $ancestors[-1]->name, " occurs in all sources and in at least one target - rule should be flipped at ",
                       $self->source_location, "\n";
                }
@@ -619,7 +619,7 @@ sub finalize {
                splice @ancestors, 0, @ancestors-$pos;
             }
             if ($flags & Property::Flags::is_multiple) {
-               if ($Application::plausibility_checks) {
+               if ($enable_plausibility_checks) {
                   foreach ($common_prefix..($any_mult_depth || @$output)-2) {
                      if (($output->[$_]->flags & (Property::Flags::is_multiple | Property::Flags::is_multiple_new)) == Property::Flags::is_multiple) {
                         die "Multiple subobject ", $output->[$_]->name, " in path ", Property::print_path($output),
@@ -655,7 +655,7 @@ sub finalize {
       }
    } continue { ++$i }
 
-   if ($Application::plausibility_checks) {
+   if ($enable_plausibility_checks) {
       if (defined($perm_deputy) && !@{$perm_deputy->actions}) {
          die "None of the target properties is sensitive to the permutation ",
              Property::print_path($perm_deputy->perm_path), " which pretends to be triggered at ", $self->source_location, "\n";
@@ -717,7 +717,7 @@ sub header_search_pattern {
 }
 ####################################################################################
 # private:
-# create a closure working as a filter in Object::copy
+# create a closure working as a filter in BigObject::copy
 sub create_splitting_filter {
    my ($rule, $permutation, $descend_path, $prop_hash, $sub_perm_hash, $depth)=@_;
    sub {
@@ -793,18 +793,18 @@ sub execute {
    local interrupts(block);
    my ($self, $object, $force) = @_;
    unless ($self->flags & Flags::is_precondition) {
-      my $trans = new RuleTransaction($object, $self);
+      my $trans = new RuleTransaction($object, $self, $force==2);
       unless ($force || defined($trans->changed)) {
          $trans->rollback($object);
          return Exec::OK;
       }
    }
    dbg_print("applying rule ", $self->header) if $Verbose::rules>2;
-   &_execute;
+   &execute_me;
 }
 
 # private:
-sub _execute {
+sub execute_me {
    my ($self, $object) = @_;
    my ($rc, $retval) = (Exec::failed);
    eval {
@@ -839,9 +839,15 @@ sub _execute {
       if ($@ eq "Interrupted\n") {
          die $@;
       }
-      $rc = Exec::failed;
-      $object->failed_rules->{$self} = 1;
-      $object->failed_rules->{$self->with_permutation} = 1 if defined $self->with_permutation;
+      if ($@ eq "Infeasible\n") {
+         $rc = Exec::infeasible;
+      } else {
+         $rc = Exec::failed;
+         $object->failed_rules->{$self} = 1;
+         if (defined(my $with_perm = $self->with_permutation)) {
+            $object->failed_rules->{$_} = 1 for $with_perm, @{$with_perm->actions};
+         }
+      }
    }
    wantarray ? ($rc, $retval) : $rc;
 }
@@ -905,15 +911,16 @@ sub descend_to_source {
 
 sub execute {
    local interrupts(block);
-   my ($self, $object)=@_;
-   dbg_print("applying rule ", $self->header) if $Verbose::rules>2;
-   if (defined (my $pv=&descend_to_source)) {
-      my $trans=$object->begin_transaction;
-      my ($subobj, $prop)=$object->descend_and_create($self->output->[0]);
-      my $ref_pv=new PropertyValue($prop, ($pv!=$object) ? ($pv->value, defined($pv->value) && PropertyValue::Flags::is_strong_ref)
-                                                         : ($object, PropertyValue::Flags::is_weak_ref));
+   my ($self, $object) = @_;
+   dbg_print("applying rule ", $self->header) if $Verbose::rules > 2;
+   if (defined(my $pv = &descend_to_source)) {
+      my $trans = $object->begin_transaction;
+      my ($subobj, $prop) = $object->descend_and_create($self->output->[0]);
+      my $ref_pv = new PropertyValue($prop,
+         $pv != $object ? ($pv->value, defined($pv->value) && PropertyValue::Flags::is_shortcut)
+                        : ($object, PropertyValue::Flags::is_weak_ref));
       push @{$subobj->contents}, $ref_pv;
-      $subobj->dictionary->{$prop->key}=$#{$subobj->contents};
+      $subobj->dictionary->{$prop->key} = $#{$subobj->contents};
       $trans->commit($object);
       wantarray ? (Exec::OK, $ref_pv) : Exec::OK;
    } else {
@@ -984,10 +991,10 @@ sub without_permutation { $_[0]->rule }
 
 sub execute {
    local interrupts(block);
-   my ($self, $object)=@_;
-   new RuleTransactionWithPerm($object, $self);
+   my ($self, $object, $force) = @_;
+   new RuleTransactionWithPerm($object, $self, $force==2);
    dbg_print("applying rule ", $self->header) if $Verbose::rules>2;
-   _execute($self->rule, $object);
+   execute_me($self->rule, $object);
 }
 
 sub record_sensitivity {
@@ -997,7 +1004,7 @@ sub record_sensitivity {
    foreach my $action (@{$self->actions}) {
       if ($action->depth) {
          my $out=$self->rule->output->[$action->output];
-         local splice @$out, $action->depth + 1;
+         local splice @$out, $action->depth+1;
          my ($sub_obj)=$object->descend($out);
          $sub_obj->sensitive_to->{$action->sub_permutation->key}=1;
       }
@@ -1009,7 +1016,7 @@ package Polymake::Core::Rule::FakeCreatingPermutation;
 use Polymake::Struct [ '@ISA' => 'CreatingPermutation' ];
 
 sub execute {
-   my $object=$_[1];
+   my $object = $_[1];
    $object->commit;
    &record_sensitivity;
    Exec::OK
@@ -1027,7 +1034,7 @@ use Polymake::Struct (
 );
 
 sub header {
-   my $self=shift;
+   my ($self) = @_;
    Property::print_path($self->perm_trigger->output->[$self->output])
    . " extracted from " . Property::print_path($self->perm_path) . " after " . $self->perm_trigger->header;
 }

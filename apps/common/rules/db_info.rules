@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -17,569 +17,313 @@
 #  This file is part of the polymake database interface polyDB.
 #
 #   @author Silke Horn, Andreas Paffenholz
-#   http://solros.de
 #   http://www.mathematik.tu-darmstadt.de/~paffenholz
 #
 
-use Term::ANSIColor;
-use namespaces qw(+ PolyDB);
-
 CREDIT polyDB
 
-sub db_print_name_with_info {
+package PolyDB::Client;
+use Term::ANSIColor;
+use Term::ReadKey;
+use Text::Wrap;
+
+# @category Database Access
+# Get a list of all collection names
+# @param String section only return names of collections from the given section
+# @option String filter regular expression for more complex filtering of collection names
+#  Think of correct escaping of special characters: \\. for a literal dot, \\w for a name character.
+user_method list_collections(;$ { filter => undef }) {
+   $_[2]->{recursive} = -1;
+   &get_collection_names;
+}
+
+# @category Database Access
+# Get a list of section names
+# @param String section return names of sub-sections of the given section;
+#   by default, names of top-level sections are returned
+# @option Bool recursive return names of sub-sections  on all levels
+# @option String filter regular expression for more complex filtering of section names
+#  Think of correct escaping of special characters: \\. for a literal dot, \\w for a name character.
+user_method list_sections(;$ { filter => undef, recursive => false }) {
+   &get_collection_names;
+}
+
+# @category Database Administration
+# Common options for writing section doc
+options %doc_options = (
+   # String section section name
+   section => $PolyDB::default::db_section_name,
+   # Bool update default false
+   update => false,
+   # Bool verbose default false
+   verbose => false,
+   # Bool replace default false
+   replace => false
+);
+
+# @category Database Administration
+# Set documentation for a section
+# @param HASH doc the documentation
+# @options %doc_options
+user_method set_section_doc($; %doc_options) {
+   my ($self, $doc, $options) = @_;
+
+   my $version = $doc->{polydb_version} // $PolyDB::default::db_polydb_version;
+   $doc->{"_id"} = $options->{section}.".$version";
+   $doc->{section} = split /\./, $options->{section};
+   $doc->{sectionDepth} = scalar($doc->{section});
+
+   my $db = $self->SUPER::get_database($default::db_name);
+   my $col = $db->get_collection("_sectionInfo.".$options->{section});
+
+   if ( $options->{replace} ) { $options->{update} = true; }
+   my $output = $col->find_one({'_id' => $doc->{id}});
+   die "documentation already set but neither option update nor replace given\n" if ( $output && !$options->{update} );
+   if ( !$output ) { $options->{update} = false; }   
+
+   if ( !$options->{update} ) {
+      $output = $col->insert_one($doc);
+   } else {
+      if ( $options->{replace} ) {
+         $output = $col->replace_one({'_id' => $doc->{id}}, $doc);
+      } else {
+         $output = $col->update_one({'_id' => $doc->{id}}, {'$set' => $doc});
+      }
+   }
+   if ($options->{verbose}) {
+      if ($output->acknowledged) {
+         print "successfully set documentation for $options->{section}\n"
+      } else {
+         print "an error occurred when trying to set the documentation for $options->{section}:\n$output\n";
+      }
+   }
+}
+
+# @category Database Access
+# Print information about available databases and collections.
+# @option String section name of the database, default: all available databases
+# @option String collection name of the collection, default: all available collections
+# @option Int info_level 0: only names, 
+#                        1: short description (default if no collection is given),
+#                        2: description, 
+#                        3: description, authors, maintainers, 
+#                        4: full info
+# @option Bool colored
+user_method info(; {section => undef, collection => undef, info_level => undef, colored => true}) {
+   my ($self, $options) = @_;
+   $options->{info_level} = defined($options->{collection}) ? 5 : 1;
+   if ( !defined($options->{section}) && defined($options->{collection}) ) {
+      ($options->{section}, $options->{collection}) = $options->{collection} =~ /([\w.]+)\.([\w]+)/;
+   }
+
+   print "===============\navailable polydb collections\n===============\n";
+
+   $self->print_sections_at_level($options->{section}, $options->{collection}, $self, $options->{info_level}, 0, $options->{colored});
+}
+
+sub print_formatted {
+   my ($indent, $text, $colored) = @_;
+   state $in_terminal = ( -t STDIN &&  $PolyDB::default::pretty_print_doc ) ? true : false;
+
+   if ( $in_terminal ) {   
+      my $initial_tab = "\t"x$indent;
+      my $subsequent_tab = "\t"x$indent;
+      $subsequent_tab .= "  ";
+      my ($w) = GetTerminalSize();
+      local($Text::Wrap::columns) = $w;
+
+      if ( $colored ) {
+         if ( $text =~ /SECTION/ ) { 
+            print color($PolyDB::default::db_section_color);
+         } elsif ($text =~ /COLLECTION/) {
+            print color($PolyDB::default::db_collection_color);
+         } else {
+            print color('reset');
+         }
+      }
+      print wrap($initial_tab, $subsequent_tab, $text);
+      print color('reset');
+   } else {
+      print $text;
+   }
+   print "\n";
+}
+
+sub print_name_with_info {
    my ($name) = @_;
    my $ret = "  ".$name->{name};
-   if ( defined($name->{affiliation}) ) {
-      $ret .= ", ".$name->{affiliation};
+   for my $tag (("affiliation", "email")) {
+      $ret .= ", ".$name->{$tag} if defined($name->{$tag});
    }
-   if ( defined($name->{email}) ) {
-      $ret .= ", ".$name->{email};
-   }
-   if ( defined($name->{remark}) ) {
-      $ret .= " (".$name->{remark}.")";
-   }
+   $ret .= " (".$name->{remark}.")" if defined($name->{remark});
    return $ret;
 }
 
-sub db_print_list_of_names {
-   my $names = shift;
-   my $title = shift;
+sub print_list_of_names {
+   my ($names, $title, $indent) = @_;
    if ( ref($names) eq "ARRAY" ) {
-      print $title.":\n";
+      print_formatted($indent, $title.": ");
       foreach my $name (@{$names}) {
-         print db_print_name_with_info($name);
-         print "\n";
+         print_formatted($indent, print_name_with_info($name));
       }
    } else {
-      print $title.": ".$names."\n";
+      print_formatted($indent, $title.": ".$names);
    }
 }
 
-# @category Database
-# Print information about available databases and collections.
-# @option String db name of the database, default: all available databases
-# @option String collection name of the collection, default: all available collections
-# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
-# @option String username necessary if reading a database with access control
-user_function db_info ({db => undef, collection => undef, local => 0, username => $PolyDB::default::db_user}) {
-
-   my $options = shift;
-
-   my $client = Client::get_client($options->{local},"","");
-
-   my $idb = $client->get_database($PolyDB::default::db_info_db);
-   my $icol = $idb->get_collection($PolyDB::default::db_info_collection);
-
-   my %query;
-   my %db_query = ('$or' => [{"users"=>$options->{username}}, {"users"=>"polymake"}] );
-   $db_query{"col"} = "db_info";
-   if (defined($options->{db})) {
-      $db_query{"db"} = $options->{db};
-   }
-   if (defined($options->{collection})) {
-      $query{"col"} = $options->{collection};
-   }
-
-   my $dbs = $icol->find(\%db_query)->sort({"db"=>1});
-
-   while (my $db_cursor = $dbs->next) {
-      my $current_db = $db_cursor->{db};
-      $query{"db"} = $current_db;
-      my $search = $icol->find(\%query)->sort({"col"=>1});
-
-      if (!$search->has_next) {next;}
-
-      print colored ['red'], "DATABASE: ".$current_db."\n";
-      print $db_cursor->{description}."\n\n";
-
-      while (my $col_cursor = $search->next) {
-         if ($col_cursor->{col} eq "db_info") {next;}
-         print colored ['blue'], "Collection: ".$col_cursor->{col}."\n";
-         print $col_cursor->{description}."\n\n";
-         if ( defined ($col_cursor->{author} ) ) {
-            db_print_list_of_names($col_cursor->{author},"Author(s)");
-         }
-         if ( defined ($col_cursor->{contributor} ) ) {
-            db_print_list_of_names($col_cursor->{contributor},"Contributor(s)");
-         }
-         if ( defined ($col_cursor->{maintainer} ) ) {
-            db_print_list_of_names($col_cursor->{maintainer},"Maintainer(s)");
-         }
-         if ( defined($col_cursor->{references}) ) {
-            foreach my $ref (@{$col_cursor->{references}} ) {
-               print "Cite: \n";
-               if ( ref($ref) eq "HASH" ) {
-                  print "  ".$ref->{authors}.", ".$ref->{title}.", ".$ref->{bib}."\n";
-                  if ( defined($ref->{links}) ) {
-                     print "  obtain at: \n";
-                     foreach my $link (@{$ref->{links}}) {
-                        print "    ".$link->{type}.": ".$link->{link}."\n";
-                     }
-                  }
-               } else {
-                  print "  ",$ref."\n";
-               }
+sub print_references {
+   my ($res,$indent) = @_;
+   foreach my $ref (@$res) {
+      print_formatted($indent, "Cite:" );
+      if ( ref($ref) eq "HASH" ) {
+         print_formatted($indent+1, $ref->{authors}.", ".$ref->{title}.", ".$ref->{bib});
+         if ( defined($ref->{links}) ) {
+            print_formatted($indent+1, "  obtain at:");
+            foreach my $link (@{$ref->{links}}) {
+               print_formatted($indent+2,$link->{type}.": ".$link->{link});
             }
          }
-         if ( defined($col_cursor->{webpage}) ) {
-            foreach my $ref (@{$col_cursor->{webpage}} ) {
-               print "Online Resources: \n";
-               if ( ref($ref) eq "HASH" ) {
-                  print "  ".$ref->{description}.": ".$ref->{address}."\n";
-               } else {
-                  print "  ",$ref."\n";
-               }
-            }
-         }
-         print "\n";
-      }
-      print "__________________\n\n";
-   }
-
-   undef $client;
-}
-
-# @category Database
-# Returns a list of available databases and collections (in the form db.collection).
-# @option String db name of the database, default: all available databases
-# @option String collection name of the collection, default: all available collections
-# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
-# @option String username necessary if reading a database with access control
-# @return Array
-user_function db_get_list_db_col ({db => undef, collection => undef, local => 0, username => $PolyDB::default::db_user}) {
-   my $options = shift;
-
-   my $client = Client::get_client($options->{local},"","");
-
-   my @ret;
-
-   my $idb = $client->get_database($PolyDB::default::db_info_db);
-   my $icol = $idb->get_collection($PolyDB::default::db_info_collection);
-
-   my %query;
-   my %db_query = ('$or' => [{"users"=>$options->{username}}, {"users"=>"polymake"}] );
-   $db_query{"col"} = "db_info";
-   if (defined($options->{db})) {
-      $db_query{"db"} = $options->{db};
-   }
-   if (defined($options->{collection})) {
-      $query{"col"} = $options->{collection};
-   }
-
-   my $dbs = $icol->find(\%db_query)->sort({"db"=>1});
-
-   while (my $db_cursor = $dbs->next) {
-      my $current_db = $db_cursor->{db};
-      $query{"db"} = $current_db;
-      my $search = $icol->find(\%query)->sort({"col"=>1});
-
-      if (!$search->has_next) { print "nothing found\n"; next;}
-
-      while (my $col_cursor = $search->next) {
-         if ($col_cursor->{col} eq "db_info") {next;}
-         push @ret, $current_db.".".$col_cursor->{col};
-      }
-   }
-
-   undef $client;
-
-   return new Array<String>(@ret);
-}
-
-# @category Database
-# Returns a list of available collections in a database.
-# @option String db name of the database
-# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
-# @option String username necessary if reading a database with access control
-# @return Array
-user_function db_get_list_col_for_db ({db=> undef, local => 0, username => $PolyDB::default::db_user}) {
-   my ($options) = @_;
-
-   if ( !defined($options->{"db"}) ) {
-      die "db must be given\n";
-   }
-
-   my $client = Client::get_client($options->{local},"","");
-   my @ret;
-
-   my $idb = $client->get_database($PolyDB::default::db_info_db);
-   my $icol = $idb->get_collection($PolyDB::default::db_info_collection);
-
-   my %query;
-   $query{"db"} = $options->{db};
-   my $search = $icol->find(\%query)->sort({"col"=>1});
-
-   while (my $col_cursor = $search->next) {
-      if ($col_cursor->{col} eq "db_info") {next;}
-      push @ret, $col_cursor->{col};
-   }
-
-   undef $client;
-   return new Array<String>(@ret);
-}
-
-# @category Database
-# Returns a list of available databases.
-# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
-# @option String username necessary if reading a database with access control
-# @return Array
-user_function db_get_list_db ({local => 0, username => $PolyDB::default::db_user}) {
-   my $options = shift;
-
-   my $client = Client::get_client($options->{local},"","");
-
-   my @ret;
-
-   my $idb = $client->get_database($PolyDB::default::db_info_db);
-   my $icol = $idb->get_collection($PolyDB::default::db_info_collection);
-
-   my %query;
-   my %db_query = ('$or' => [{"users"=>$options->{username}}, {"users"=>"polymake"}] );
-   $db_query{"col"} = "db_info";
-
-   my $dbs = $icol->find(\%db_query)->sort({"db"=>1});
-
-   while (my $db_cursor = $dbs->next) {
-      push @ret, $db_cursor->{db};
-   }
-   undef $client;
-
-   return new Array<String>(\@ret);
-}
-
-# @category Database Admin
-# Add a user to database //db//. Note that this only affects the user's output for [[db_info]], [[db_list]] etc and the tab completion. It does not create the user.
-# You need write access for this.
-# @param String db name of the database
-# @param String user
-# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
-# @option String username
-# @option String password
-function add_user_to_db ($, $, {local => 0, username => $PolyDB::default::db_user, password => $PolyDB::default::db_pwd}){
-   my ($db, $user, $options) = @_;
-
-   my $client = Client::get_client($options);
-   my $updated_one = 0;
-
-   my $idb = $client->get_database($PolyDB::default::db_info_db);
-   my $icol = $idb->get_collection($PolyDB::default::db_info_collection);
-
-   my $search = $icol->find_one({'db'=>$db, 'col'=>"db_info"});
-
-   if ($search) {
-      my $users = $search->{users};
-      push @$users, $user;
-      my $output = $icol->update({'db'=>$db, 'col'=>"db_info"}, { '$set' => {'users'=>$users} });
-
-      if ($output->{ok}) {
-         print "Successfully added user $user to database $db.\n";
-         print "Users with read access: ".join(", ", @{$users})."\n\n";
       } else {
-         print "an error occurred when trying to user $user to database $db\n";
+         print_formatted($indent,$ref);
       }
-      $updated_one = 1;
-   }
-
-   if ( !$updated_one ) {
-      die "There is no type information for database $db\n";
    }
 }
 
-# @category Database
-# Add a db documentation.
-# You need write access for this.
-# @param String db name of the database the description applies to
-# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
-# @option Bool replace whether an existing documentation should be updated or replaced
-# @option String file a file with the documentation in json format, only one of file and documentation is allowed
-# @option HASH documentation a perl hash with the documentation, only one of documentation and file is allowed
-# @option String username
-# @option String password
-# @option String polydb_version version number
-# @option Bool verbose verbose mode
-user_function db_write_db_info ({db=> undef, \
-                                 local => 0, \
-                                 id => undef, \
-                                 replace => undef, \
-                                 file => undef, \
-                                 documentation => undef, \
-                                 username => undef, \
-                                 password => undef, \
-                                 polydb_version => undef, \
-                                 verbose => 0 } ) \
-{
-   my ($options) = @_;
-   my $min_version = "2.0"; # this function is for the new format
+sub print_webpage {
+   my ($res,$indent) = @_;
 
-   # read the documentation either from a file or from a perl hash
-   # exactly one must be given, otherwise we exit
-   my $documentation;
-   if ( defined($options->{'file'}) ) {
-      if ( defined($options->{'documentation'}) ) {
-         die "only one of the options file and documentation are allowed\n";
+   foreach my $ref (@$res) {
+      print_formatted($indent,"Online Resources:");
+      if ( ref($ref) eq "HASH" ) {
+         print_formatted($indent+1,$ref->{description}.": ".$ref->{address});
+      } else {
+         print_formatted($indent+1,$ref);
       }
-      $documentation = DatabaseHelpers::read_json($options->{'file'});
-   } elsif ( $options->{'documentation'}) {
-      $documentation = $options->{'documentation'};
+   }
+}
+
+sub print_collections_at_level {
+   my ($self,$sectionname, $collectionname, $idb, $info_level, $indent, $colored) = @_;
+
+   my $filter = "_collectionInfo.".$sectionname;
+   if ( $collectionname eq "" ) {
+      $filter .= '\.[\w]+$';
    } else {
-      die "at least one of the options file or documentation must be given\n";
+      $filter .= "\\.".$collectionname;
    }
+   my $db = $self->SUPER::get_database($default::db_name);
+   my @collections = map { $_->{name} } 
+         $db->list_collections({ name => { '$regex' => $filter } }, { authorizedCollections => true, nameOnly => true })->all;
+   my $polydb_version = $PolyDB::default::db_polydb_version;
 
-   # get the version of polyDB the documentation applies to
-   my $version = $options->{'polydb_version'} // $documentation->{'polydb_version'};
-   if ( !defined($version) ) {
-      die "version not defined or different version in options and file\n";
-   }
-   if ( !Client::check_polydb_version($version,$min_version) ) {
-      die "this function is for polydb files of version $min_version and higher\n";
-   }
+   return if !scalar(@collections);
 
-   # database can be given in two places: either it is contained in the documentation or set via options
-   # missing database in the documentation is, however, only allowed when we do (partial) updates of already given documentation
-   my $db = $options->{'db'} // $documentation->{'db'};
-   if ( !defined($db) ) {
-      if ( $PolyDB::default::db_database_name ne "" ) {
-         $db = $PolyDB::default::db_database_name;
-      } else {
-         die "missing database in options and documentation\n";
-      }
-   }
+   foreach my $colname (sort { lc($a) cmp lc($b) } @collections) {
+      my $id = $colname.".".$polydb_version;
+      $id =~ s/_collectionInfo.//;
+      my $icol = $db->get_collection($colname);
+      my $res  = $icol->find_one({ "_id" => $id });
 
-   # now we can connect to the database
-   # username/password are either taken from options or from the custom variables
-   my $client = Client::get_client($options);
-   my $tdb = $client->get_database("$PolyDB::default::db_info_db");
-   my $tcol = $tdb->get_collection($PolyDB::default::db_info_collection);
+      next if !defined($res);
+      print "\n";
+      print_formatted($indent,"COLLECTION: ".$res->{collection}, $colored);
 
-   # determine whether we update an already existing documentation
-   # for this we check whether the given db/version combination already exists in the Info db, if so, we extract the id for further use
-   my $update = 0;
-   my $id = "";
-   if ( my $res=$tcol->find_one({'db' => $db, 'version' => $version})) {
-      $update = 1;
-      $id = $res->{"_id"};
-   } else {
-      if ( $options->{'replace'} ) {
-         die "option replace given but no existing documentation found\n";
-      }
-      if ( defined($documentation->{'_id}'}) ) {
-         $id = $documentation->{'_id}'};
-      } else {
-         $id = $db.".".$version;
-      }
-      if (my $res2 = $tcol->find_one({'_id' => $id})) {
-         die "given doc already exists in database\n";
-      }
-      $documentation->{'_id'} = $id;
-      $documentation->{'db'} = $db;
-   }
+      next if $info_level < 1;
+      print_formatted($indent, $info_level == 1 ? $res->{short_description} : $res->{description}, $colored);
 
-   # FIXME do some sanity checks for new documentation
-   if ( !$update or $options->{'replace'} ) {
-      if ( !defined($documentation->{'maintainer'})
-           or !defined($documentation->{'polydb_version'})
-           or !defined($documentation->{'users'})
-           or !defined($documentation->{'description'}) ) {
-         die "new or replacement documentation must define maintainer, description, and version\n";
-      }
-   }
+      next if $info_level < 3;
+      print_list_of_names($res->{author},     "Author(s)",     $indent) if defined($res->{author});
+      print_list_of_names($res->{contributor},"Contributor(s)",$indent) if defined($res->{contributor});
+      print_list_of_names($res->{maintainer}, "Maintainer(s)", $indent) if defined($res->{maintainer});
 
-   # if update then update, otherwise insert
-   if ($update) {
-      my $output;
-      if ( $options->{'replace'} ) {
-         $output = $tcol->replace_one({'_id' => $id, 'db' => $db, 'version' => $version}, $documentation);
-      } else {
-         $output = $tcol->update_one({'_id' => $id, 'db' => $db, 'version' => $version}, {'$set' => $documentation});
-      }
-      if ($options->{verbose}) {
-         if ($output->acknowledged) {
-            print "successfully updated documentation for $db\n"
-         } else {
-            print "an error occurred when trying to update the documentation for $db:\n$output\n";
-         }
-      }
-
-   } else {
-      my $output = $tcol->insert_one($documentation);
-      if ($options->{verbose}) {
-         if ($output->acknowledged) {
-            print "successfully saved documentation for $db\n";
-         } else {
-            print "an error occurred when trying to save the documentation for $db:\n$output\n";
-         }
-      }
-   }
-
-   undef $client;
-
-}
-
-# @category Database
-# Add documentation for a collection
-# You need write access for this.
-# @option String db name of the database the description applies to
-# @option String collection name of the collection the description applies to
-# @option Bool local set to 1 if you want to use a local database (on localhost), default 0
-# @option Bool replace whether an existing documentation should be updated or replaced
-# @option String file a file with the documentation in json format, only one of file and documentation is allowed
-# @option HASH documentation a perl hash with the documentation, only one of documentation and file is allowed
-# @option String username
-# @option String password
-# @option String polydb_version version number
-# @option Bool verbose verbose mode
-user_function db_write_collection_info ({db=> undef, \
-                                         collection => undef, \
-                                         local => 0, \
-                                         replace => undef, \
-                                         file => undef, \
-                                         documentation => undef, \
-                                         username => undef, \
-                                         password => undef, \
-                                         polydb_version => undef, \
-                                         verbose => 0 } ) \
-{
-   my ($options) = @_;
-
-   my $min_version = "2.0"; # this function is for the new format
-
-   # read the documentation either from a file or from a perl hash
-   # exactly one must be given, otherwise we exit
-   my $documentation;
-   if ( defined($options->{'file'}) ) {
-      if ( defined($options->{'documentation'}) ) {
-         die "only one of the options file and documentation are allowed\n";
-      }
-      $documentation = DatabaseHelpers::read_json($options->{'file'});
-   } elsif ( $options->{'documentation'}) {
-      $documentation = $options->{'documentation'};
-   } else {
-      die "at least one of the options file or documentation must be given\n";
-   }
-
-   # get the version of polyDB the documentation applies to
-   my $version = $options->{'polydb_version'} // $documentation->{'polydb_version'};
-   if ( !defined($version) ) {
-      die "version not defined or different versions in options and file\n";
-   }
-   if ( !Client::check_polydb_version($version,$min_version) ) {
-      die "this function is for polydb files of version $min_version and higher";
-   }
-
-   # database/collection can be given in two places: either it is contained in the type_information or set via options
-   # missing databse/collection in the documentation is, however, only allowed when we do (partial) updates of already given documentation
-   my $db = $options->{'db'} // $documentation->{'db'};
-   if ( !defined($db) ) {
-      if ( $PolyDB::default::db_database_name ne "" ) {
-         $db = $PolyDB::default::db_database_name;
-      } else {
-         die "missing database in options and documentation\n";
-      }
-   }
-   my $collection = $options->{'col'} // $documentation->{'col'};
-   if ( !defined($collection) ) {
-      if ( $PolyDB::default::db_collection_name ne "" ) {
-         $collection = $PolyDB::default::db_collection_name;
-      } else {
-         die "missing collection in options and documentation\n";
-      }
-   }
-
-   # now we can connect to the database
-   # username/password are either taken from options or from the custom variables
-   my $client = Client::get_client($options);
-   my $tdb = $client->get_database("$PolyDB::default::db_info_db");
-   my $tcol = $tdb->get_collection($PolyDB::default::db_info_collection);
-
-   # determine whether we update an already existing documentation
-   # for this we check whether the given db/collection/version combination already exists in the Info db, if so, we extract the id for further use
-   my $update = 0;
-   my $id = "";
-   if ( my $res=$tcol->find_one({'db' => $db, 'col' => $collection, 'version' => $version})) {
-      $update = 1;
-      $id = $res->{"_id"};
-   } else {
-      if ( $options->{'replace'} ) {
-         die "option replace given but no existing documentation found\n";
-      }
-      if ( defined($documentation->{'_id}'}) ) {
-         $id = $documentation->{'_id}'};
-      } else {
-         $id = $db.".".$collection.".".$version;
-      }
-      if (my $res2 = $tcol->find_one({'_id' => $id})) {
-         die "given doc already exists in database\n";
-      }
-      $documentation->{'_id'} = $id;
-      $documentation->{'db'} = $db;
-      $documentation->{'col'} = $collection;
-   }
-
-   # FIXME do some sanity checks for new documentation
-   if ( !$update or $options->{'replace'} ) {
-      if ( !defined($documentation->{'author'})
-           or !defined($documentation->{'contributor'})
-           or !defined($documentation->{'maintainer'})
-           or !defined($documentation->{'db'})
-           or !defined($documentation->{'col'})
-           or !defined($documentation->{'polydb_version'})
-           or !defined($documentation->{'description'}) ) {
-         die"new or replacement documentation must define author, maintainer, contributor, db, collection, description, and version\n";
-      }
-   }
-
-   # if update then update, otherwise insert
-   if ($update) {
-      my $output;
-      if ( $options->{'replace'} ) {
-         $output = $tcol->replace_one({'_id' => $id, 'db' => $db, 'col' => $collection, 'version' => $version}, $documentation);
-      } else {
-         $output = $tcol->update_one({'_id' => $id, 'db' => $db, 'col' => $collection, 'version' => $version}, {'$set' => $documentation});
-      }
-      if ($options->{verbose}) {
-         if ($output->acknowledged) {
-            print "successfully updated documentation for $db.$collection\n"
-         } else {
-            print "an error occurred when trying to update the documentation for $db.$collection:\n$output\n";
-         }
-      }
-
-   } else {
-      my $output = $tcol->insert_one($documentation);
-      if ($options->{verbose}) {
-         if ($output->acknowledged) {
-            print "successfully saved documentation for $db.$collection\n";
-         } else {
-            print "an error occurred when trying to save the documentation for $db.$collection:\n$output\n";
-         }
-      }
-   }
-
-   undef $client;
-}
-
-# @category Database
-# Retrieve the metadata of an object
-# @param Core::Object p the polyDB object
-# @return HASH metadata the metadata of the database object
-user_function db_metadata ($ ) {
-   my ($p) = @_;
-   return $p->get_attachment("polyDB") // die "object contains no polyDB metadata\n";
-}
-
-# @category Database
-# print the metadata of an object
-# @param Core::Object p the polyDB object
-user_function db_print_metadata ($ ) {
-   my ($p) = @_;
-   my $metadata = db_metadata($p);
-
-   foreach (keys %$metadata) {
-      print colored['red'], $_;
-      print ": ", $metadata->{$_}, "\n";
+      next if $info_level < 4;
+      print_references($res->{references}) if defined($res->{references});
+      print_webpage($res->{webpage}, $indent) if defined($res->{webpage});
    }
 }
 
+sub print_sections_at_level {
+   my ($self, $sectionname, $collectionname, $idb, $info_level, $indent, $colored) = @_;
+
+   my $polydb_version = $PolyDB::default::db_polydb_version;
+   
+   foreach my $sectionname (sort { lc($a) cmp lc($b) } $self->list_sections(filter=>$sectionname) ) {
+      my $id = "$sectionname.$polydb_version";
+      my $db = $self->SUPER::get_database($default::db_name);
+      my $icol = $db->get_collection("_sectionInfo.$sectionname");
+      my $res  = $icol->find_one({ "_id" => $id });
+
+      print "\n";
+      print_formatted($indent, "SECTION: ".$sectionname, $colored);
+      if ( $info_level > 0 ) {
+         print_formatted($indent, $info_level == 1 ? $res->{short_description} : $res->{description}, $colored);
+      }
+
+      $self->print_sections_at_level($sectionname.".", $collectionname, $idb, $info_level,$indent+1, $colored);
+      $self->print_collections_at_level($sectionname,  $collectionname, $idb, $info_level,$indent+1, $colored);
+   }
+}
+
+
+
+
+
+
+
+
+package PolyDB::Collection;
+
+# @category Database Access
+# Get a JSON validation schema for objects stored in the collection
+# @return Schema
+user_method get_schema() { &get_own_schema }
+
+# @category Database Collection Administration
+# Common options for writing collection doc
+options %doc_options = (
+   # Bool update default false
+   update => false,
+   # Bool verbose default false
+   verbose => false,
+   # Bool replace default false
+   replace => false
+);
+
+# @category Database Collection Administration
+# Set documentation for a collection
+# @param HASH doc the documentation
+# @options %doc_options
+user_method set_collection_doc ($; \%doc_options) {
+   my ($self, $doc, $options) = @_;
+   my $collection = $self->{name};
+   my $version = $doc->{version} // $PolyDB::default::db_polydb_version;
+   my $id = "$collection.$version";
+   $doc->{"_id"} = $id;
+
+   my $col = $self->get_own_info_collection();
+
+   if ( $options->{replace} ) { $options->{update} = true; }
+   my $output = $col->find_one({'_id' => $id});
+   die "documentation already set but neither option update nor replace given\n" if ( $output && !$options->{update} );
+   if ( !$output ) { $options->{update} = false; }   
+   
+   if ( !$options->{update} ) {
+      $output = $col->insert_one($doc);
+   } else {
+      if ( $options->{replace} ) {
+         $output = $col->replace_one({'_id' => $id}, $doc);
+      } else {
+         $output = $col->update_one({'_id' => $id}, {'$set' => $doc});
+      }
+   }
+   if ($options->{verbose}) {
+      if ($output->acknowledged) {
+         print "successfully updated documentation for $collection in section $section\n"
+      } else {
+         print "an error occurred when trying to update the documentation for $collection in section $section:\n$output\n";
+      }
+   }
+}
 
 # Local Variables:
 # mode: perl

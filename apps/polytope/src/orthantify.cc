@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,8 +30,8 @@ Matrix<E>
 orth_transform(const GenericMatrix<Matrix1,E>& F,   // facets thru origin vertex
                const GenericMatrix<Matrix2,E>& EQ)  // equations
 {
-   const int d = F.cols();
-   const Set<int> b=basis_rows(F);
+   const Int d = F.cols();
+   const Set<Int> b = basis_rows(F);
 
    assert(b.size() + EQ.rows() == d-1);
 
@@ -46,15 +46,15 @@ orth_transform(const GenericMatrix<Matrix1,E>& F,   // facets thru origin vertex
 }
 
 template <typename Scalar>
-perl::Object orthantify(perl::Object p_in, int origin)
+BigObject orthantify(BigObject p_in, Int origin)
 {
-   const Matrix<Scalar> F=p_in.give("FACETS"),
-                       AH=p_in.give("AFFINE_HULL");
-   const IncidenceMatrix<> VIF=p_in.give("VERTICES_IN_FACETS");
-   const Set<int> far_face=p_in.give("FAR_FACE");
+   const Matrix<Scalar> F = p_in.give("FACETS"),
+                       AH = p_in.give("AFFINE_HULL");
+   const IncidenceMatrix<> VIF = p_in.give("VERTICES_IN_FACETS");
+   const Set<Int> far_face = p_in.give("FAR_FACE");
 
    if (origin < 0) {            // origin vertex number not specified - take the first affine vertex
-      origin= (sequence(0,VIF.cols())-far_face).front();
+      origin = (sequence(0, VIF.cols())-far_face).front();
    } else {
       if (origin >= VIF.cols())
          throw std::runtime_error("origin vertex number out of range");
@@ -63,7 +63,7 @@ perl::Object orthantify(perl::Object p_in, int origin)
          throw std::runtime_error("specified origin vertex must be affine");
    }
 
-   perl::Object p_out=transform<Scalar>(p_in, orth_transform(F.minor(VIF.col(origin),All), AH));
+   BigObject p_out=transform<Scalar>(p_in, orth_transform(F.minor(VIF.col(origin),All), AH));
    p_out.set_description() << "Positive polytope transformed from " << p_in.name() << endl;
 
    p_out.take("POSITIVE") << true;

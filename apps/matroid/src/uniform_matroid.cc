@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,25 +24,22 @@
 
 namespace polymake { namespace matroid {
 
-perl::Object uniform_matroid(const int r, const int n)
+BigObject uniform_matroid(const Int r, const Int n)
 {
    if (n < 1)
       throw std::runtime_error("uniform_matroid: at least 1 element requiered");
    if (r < 0 || r > n)
       throw std::runtime_error("uniform_matroid: 0 <= r <= n required");
 
-   perl::Object m("Matroid");
+   BigObject m("Matroid");
    m.set_description()<<"Uniform matroid of rank "<<r<<" on "<<n<<" elements."<<endl;
    m.take("N_ELEMENTS")<< n;
    m.take("RANK")<<r;
    // we already know the number of bases
-   const int n_bases(Integer::binom(n,r));
+   const Int n_bases = Int(Integer::binom(n,r));
    m.take("N_BASES") << n_bases;
 
-   Array<Set<int>> bases(n_bases);
-   int l=0;
-   for (auto i=entire(all_subsets_of_k(sequence(0,n), r)); !i.at_end(); ++i)
-      bases[l++]=*i;
+   const Array<Set<Int>> bases(n_bases, entire(all_subsets_of_k(sequence(0, n), r)));
 
    m.take("BASES") << bases;
    return m; 

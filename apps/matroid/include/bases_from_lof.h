@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,8 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef __POLYMAKE_MATROID_BASES_FROM_LOF_H__
-#define __POLYMAKE_MATROID_BASES_FROM_LOF_H__
+#ifndef POLYMAKE_MATROID_BASES_FROM_LOF_H
+#define POLYMAKE_MATROID_BASES_FROM_LOF_H
 
 #include "polymake/Array.h"
 #include "polymake/Set.h"
@@ -26,36 +26,30 @@
 
 namespace polymake { namespace matroid {
 
-using graph::Lattice;
-using graph::lattice::Sequential;
-using graph::lattice::BasicDecoration;
-
-Array<Set<int>> bases_from_lof_impl(const Lattice<BasicDecoration, Sequential>& LF, int n)
+Array<Set<Int>> bases_from_lof_impl(const graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::Sequential>& LF, Int n)
 {
-   int LF_dim = LF.rank();
-   if (LF_dim == 0) {
-      // this means the rank is 0
-      return Array<Set<int>>(1);
+   const Int rank = LF.rank();
+   if (rank == 0) {
+      return Array<Set<Int>>(1);
    }
-   const int rank(LF_dim);
-   std::vector<Set<int>> bases;
-   for (auto bit=entire(all_subsets_of_k(sequence(0,n), rank)); !bit.at_end(); ++bit) {
-      const Set<int> basis(*bit);
-      bool dependent(false);
-      for (int k=rank-1; k>=0; --k) {
-         for (auto fi=entire(LF.nodes_of_rank(k)); !dependent && !fi.at_end(); ++fi) {
+   std::vector<Set<Int>> bases;
+   for (auto bit = entire(all_subsets_of_k(sequence(0, n), rank)); !bit.at_end(); ++bit) {
+      const Set<Int> basis(*bit);
+      bool dependent = false;
+      for (Int k = rank-1; k >= 0; --k) {
+         for (auto fi = entire(LF.nodes_of_rank(k)); !dependent && !fi.at_end(); ++fi) {
             if (incl(basis, LF.face(*fi)) <= 0)
                dependent = true;
          }
       }
       if (!dependent) bases.push_back(basis);
    }
-   return Array<Set<int>>(bases.size(), entire(bases));
+   return Array<Set<Int>>(bases.size(), entire(bases));
 }
 
 } }
 
-#endif // __POLYMAKE_MATROID_BASES_FROM_LOF_H__
+#endif // POLYMAKE_MATROID_BASES_FROM_LOF_H
 
 // Local Variables:
 // mode:C++

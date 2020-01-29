@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,21 +26,21 @@ namespace polymake { namespace group {
 // Single permutations
 
 template<typename DomainType>
-Array<int>
-induced_permutation(const Array<int>& perm,
+Array<Int>
+induced_permutation(const Array<Int>& perm,
                     const Array<DomainType>& domain_to_induce,
-                    const hash_map<DomainType, int>& index_of)
+                    const hash_map<DomainType, Int>& index_of)
 {
    return induced_permutation_impl<on_container>(perm, domain_to_induce.size(), entire(domain_to_induce), index_of);
 }
 
 
 template<typename Scalar>
-Array<Array<int>>
-induced_permutations(const Array<Array<int>>& original_gens, 
+Array<Array<Int>>
+induced_permutations(const Array<Array<Int>>& original_gens, 
                      const Matrix<Scalar>& M,
-                     const hash_map<Vector<Scalar>, int>& index_of,
-                     perl::OptionSet options)
+                     const hash_map<Vector<Scalar>, Int>& index_of,
+                     OptionSet options)
 {
    const bool homogeneous_action = options["homogeneous_action"];
    return homogeneous_action
@@ -49,53 +49,53 @@ induced_permutations(const Array<Array<int>>& original_gens,
 }
 
 template<typename Scalar>
-Array<Array<int>>
+Array<Array<Int>>
 induced_permutations(const Array<Matrix<Scalar>>& original_gens, 
                      const Matrix<Scalar>& M,
-                     const hash_map<Vector<Scalar>, int>& index_of,
-                     perl::OptionSet)
+                     const hash_map<Vector<Scalar>, Int>& index_of,
+                     OptionSet)
 {
    return induced_permutations_impl<on_elements>(original_gens, M.rows(), entire(rows(M)), index_of);
 }
 
-Array<Array<int>>
-induced_permutations_incidence(const Array<Array<int>>& original_gens,
+Array<Array<Int>>
+induced_permutations_incidence(const Array<Array<Int>>& original_gens,
                                const IncidenceMatrix<>& M,
-                               const hash_map<Set<int>, int>& index_of,
-                               perl::OptionSet)
+                               const hash_map<Set<Int>, Int>& index_of,
+                               OptionSet)
 {
    return induced_permutations_impl<on_container>(original_gens, M.rows(), entire(rows(M)), index_of);
 }      
 
 template<typename SetType>
-typename std::enable_if< ! pm::isomorphic_to_container_of<SetType, Set<int> >::value, Array<Array<int>>>::type
-induced_permutations(const Array<Array<int>>& original_gens,
+std::enable_if_t< !pm::isomorphic_to_container_of<SetType, Set<Int>>::value, Array<Array<Int>>>
+induced_permutations(const Array<Array<Int>>& original_gens,
                      const Array<SetType>& domain_to_induce,
-                     const hash_map<SetType, int>& index_of,
-                     perl::OptionSet)
+                     const hash_map<SetType, Int>& index_of,
+                     OptionSet)
 {
    return induced_permutations_impl<on_container>(original_gens, domain_to_induce.size(), entire(domain_to_induce), index_of);
 }
 
 // for once nested containers, ie, Array<Set<Set>>, where the generators permute the interior set
-Array<Array<int>>
-induced_permutations_set_set(const Array<Array<int>>& original_gens,
-                             const Array<Set<Set<int>>>& domain_to_induce,
-                             const hash_map<Set<Set<int>>, int>& _index_of)
+Array<Array<Int>>
+induced_permutations_set_set(const Array<Array<Int>>& original_gens,
+                             const Array<Set<Set<Int>>>& domain_to_induce,
+                             const hash_map<Set<Set<Int>>, Int>& index_of_)
 {
-   typedef hash_map<Set<Set<int>>, int> MapType;
-   MapType _new_index_of;
-   const MapType& index_of(valid_index_of(entire(domain_to_induce), _index_of, _new_index_of));
+   typedef hash_map<Set<Set<Int>>, Int> MapType;
+   MapType new_index_of;
+   const MapType& index_of = valid_index_of(entire(domain_to_induce), index_of_, new_index_of);
 
-   Array<Array<int>> induced_gens(original_gens.size());
+   Array<Array<Int>> induced_gens(original_gens.size());
    auto iit = entire(induced_gens);
 
-   for (const auto& g: original_gens) {
-      Array<int> induced_perm(index_of.size());
-      const pm::operations::group::action<Set<int>, on_container, Array<int>> a(g);
+   for (const auto& g : original_gens) {
+      Array<Int> induced_perm(index_of.size());
+      const pm::operations::group::action<Set<Int>, on_container, Array<Int>> a(g);
       auto domain_it = domain_to_induce.begin();
       for (auto& ip: induced_perm) {
-         Set<Set<int>> image;
+         Set<Set<Int>> image;
          for (const auto& ss: *domain_it) {
             image += a(ss);
          }

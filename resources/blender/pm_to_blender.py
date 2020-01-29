@@ -33,14 +33,10 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument('-i', '--info', action='help', default=argparse.SUPPRESS,
                     help='Show this info message and exit.')
-parser.add_argument("-v", "--viewer", action='store_true', 
-                    help="Use blender as viewer. This changes the screen to 3D View Full, deselects imported objects and enables transparency.")
-parser.add_argument("-q", "--quadview", action='store_true', 
-                    help="Splits 3D view region into 4 parts. Toggle with ctrl+alt+q. Only with -v flag") 
-parser.add_argument("-m", "--maximize", action='store_true', 
-                    help="Maximize the 3D view window region. Toggle with alt+f10. Only with -v flag") 
-parser.add_argument("-c", "--cameraview", action='store_true', 
-                    help="Change view to scene camera (the x3d Viewpoint). Only with -v flag") 
+parser.add_argument("-t", "--transparency", action='store_true', 
+                    help="Enables transparency for all imported objects.")
+parser.add_argument("-d", "--deselect", action='store_true', 
+                    help="Deselect everything") 
 parser.add_argument("-f", "--file", dest="filepath", required=True,
                     help="X3D file to import")
 
@@ -53,31 +49,15 @@ ct.scene.name = 'polymake'
 bpy.ops.import_scene.x3d(filepath=args.filepath)
 
 # if you use blender as a viewer only, the following might be helpful
-def as_viewer():
+def enable_transparency():
     for obj in ct.scene.objects[:]:
-        if obj.select == True:
+        if obj.select_get() == True:
             obj.show_transparent = True                 # this enables transparency in a 3D VIEW (without "rendering")
-            bpy.data.objects[obj.name].select = False
             if obj.name == "Viewpoint":
                 ct.scene.camera = obj
-    
-    # almost white 3D view background 
-    bpy.context.user_preferences.themes[0].view_3d.space.gradients.high_gradient = (0.9,0.9,0.9)
-    
-    set_screen_to("3D View Full")
 
-    # viewnumpad and quadview need a context override
-    viewer_ct = bpy.context.copy()
-    for area in ct.screen.areas:
-        if area.type == 'VIEW_3D':
-            viewer_ct['area'] = area
-            viewer_ct['space_data'] = area.spaces[0]
-            for region in area.regions:
-                if region.type == 'WINDOW':
-                    viewer_ct['region'] = region
-    
-    if args.cameraview: bpy.ops.view3d.viewnumpad(viewer_ct, 'EXEC_DEFAULT', type='CAMERA')
-    if args.quadview: bpy.ops.screen.region_quadview(viewer_ct)  
-    if args.maximize: bpy.ops.screen.screen_full_area(viewer_ct, use_hide_panels=True)
-
-if args.viewer: as_viewer()
+def deselect():
+    for obj in ct.scene.objects[:]:
+        obj.select_set(False)
+if args.transparency: enable_transparency()
+if args.deselect: deselect()

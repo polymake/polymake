@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -33,6 +33,8 @@
 #include <climits>
 #include <stdexcept>
 #include <cassert>
+
+#define POLYMAKE_NEED_LONG_LONG_GMP_WRAPPERS (ULONG_MAX == UINT_MAX)
 
 namespace pm {
 
@@ -118,11 +120,11 @@ Integer div_exact(const Integer& a, long b);
 
 /// data from third parties can't have infinite values
 constexpr bool isfinite(const __mpz_struct&) { return true; }
-constexpr int isinf(const __mpz_struct&) { return 0; }
+constexpr Int isinf(const __mpz_struct&) { return 0; }
 
 bool isfinite(const Integer& a) noexcept;
-int isinf(const Integer& a) noexcept;
-int sign(const Integer& a) noexcept;
+Int isinf(const Integer& a) noexcept;
+Int sign(const Integer& a) noexcept;
 
 /** @class Integer
     @brief Integral number of unlimited precision
@@ -135,6 +137,7 @@ class Integer
 
    // flags for set_inf() and similar internal routines
    enum class initialized : bool { no, yes };
+
 public:
    ~Integer() noexcept
    {
@@ -166,7 +169,7 @@ public:
       set_data(b[0], initialized::no);
    }
 
-   Integer(long b=0)
+   Integer(long b = 0)
    {
       mpz_init_set_si(this, b);
    }
@@ -174,25 +177,21 @@ public:
    Integer(int b)
       : Integer(long(b)) {}
 
-
-   /// these three are solely for libnormaliz
+   // these three are solely for libnormaliz
    Integer(unsigned long b)
    {
       mpz_init_set_ui(this, b);
    }
 
-   Integer(unsigned int b)
-      : Integer((unsigned long)b) {}
+   explicit Integer(unsigned int b)
+      : Integer(static_cast<unsigned long>(b)) {}
 
-   Integer(long long b)
-   {
-      if (sizeof(long long)==sizeof(long) || (b >= std::numeric_limits<long>::min() && b <= std::numeric_limits<long>::max())) {
-         mpz_init_set_si(this, long(b));
-      } else {
-         mpz_init2(this, sizeof(long long)*8);
-         *this=b;
-      }
-   }
+   explicit Integer(long long b)
+#if POLYMAKE_NEED_LONG_LONG_GMP_WRAPPERS
+      ;
+#else
+      : Integer(static_cast<long>(b)) {}
+#endif
 
    /// conversion
    explicit Integer(double b)
@@ -239,9 +238,9 @@ public:
 
    /// Construct an infinite value with a given sign
    static
-   Integer infinity(int sgn) noexcept
+   Integer infinity(Int sgn) noexcept
    {
-      assert(sgn==-1 || sgn==1);
+      assert(sgn == -1 || sgn == 1);
       Integer result(nullptr);
       set_inf(&result, sgn, initialized::no);
       return result;
@@ -301,7 +300,14 @@ public:
       return operator=(static_cast<unsigned long>(b));
    }
 
-   Integer& operator= (long long b);
+   Integer& operator= (long long b)
+#if POLYMAKE_NEED_LONG_LONG_GMP_WRAPPERS
+      ;
+#else
+   {
+      return operator=(static_cast<long>(b));
+   }
+#endif
 
    /// Assignment with conversion.
    Integer& operator= (double b)
@@ -347,22 +353,36 @@ public:
    /// TODO: kill this
    friend void relocate(Integer* from, Integer* to)
    {
-      static_cast<__mpz_struct&>(*to)=*from;
+      static_cast<__mpz_struct&>(*to) = *from;
    }
 
    /// Cast to simpler types
 
    explicit operator double() const
    {
-      const int is_inf=isinf(*this);
+      const Int is_inf = isinf(*this);
       if (__builtin_expect(is_inf, 0))
-         return is_inf * std::numeric_limits<double>::infinity();
+         return double(is_inf) * std::numeric_limits<double>::infinity();
       return mpz_get_d(this);
    }
 
+   bool fits_into_Int() const
+   {
+      return isfinite(*this) && mpz_fits_slong_p(this);
+   }
+
+   bool fits_into_long_long() const
+#if POLYMAKE_NEED_LONG_LONG_GMP_WRAPPERS
+      ;
+#else
+   {
+      return fits_into_Int();
+   }
+#endif
+
    explicit operator long() const
    {
-      if (isfinite(*this) && mpz_fits_slong_p(this))
+      if (fits_into_Int())
          return mpz_get_si(this);
       throw GMP::BadCast();
    }
@@ -370,11 +390,18 @@ public:
    explicit operator int() const
    {
       if (isfinite(*this) && mpz_fits_sint_p(this))
-         return mpz_get_si(this);
+         return static_cast<int>(mpz_get_si(this));
       throw GMP::BadCast();
    }
 
-   explicit operator long long() const;
+   explicit operator long long() const
+#if POLYMAKE_NEED_LONG_LONG_GMP_WRAPPERS
+      ;
+#else
+   {
+      return static_cast<long>(*this);
+   }
+#endif
 
    /// Unary operators
 
@@ -440,7 +467,7 @@ public:
          else
             set_inf(this, b);
       } else {
-         if (isinf(*this)+isinf(b)==0)
+         if (isinf(*this) + isinf(b) == 0)
             throw GMP::NaN();
       }
       return *this;
@@ -456,7 +483,7 @@ public:
          else
             set_inf(&result, b);
       } else {
-         if (isinf(a)+isinf(b)==0)
+         if (isinf(a) + isinf(b) == 0)
             throw GMP::NaN();
          set_inf(&result, a);
       }
@@ -466,23 +493,23 @@ public:
    friend
    Integer&& operator+ (Integer&& a, const Integer& b)
    {
-      return std::move(a+=b);
+      return std::move(a += b);
    }
    friend
    Integer&& operator+ (const Integer& a, Integer&& b)
    {
-      return std::move(b+=a);
+      return std::move(b += a);
    }
    friend
    Integer&& operator+ (Integer&& a, Integer&& b)
    {
-      return a._mp_alloc >= b._mp_alloc ? std::move(a+=b) : std::move(b+=a);
+      return a._mp_alloc >= b._mp_alloc ? std::move(a += b) : std::move(b += a);
    }
 
    Integer& operator+= (long b)
    {
       if (__builtin_expect(isfinite(*this), 1)) {
-         if (b>=0) {
+         if (b >= 0) {
             mpz_add_ui(this, this, b);
          } else {
             mpz_sub_ui(this, this, -b);
@@ -505,7 +532,7 @@ public:
    friend
    Integer&& operator+ (Integer&& a, long b)
    {
-      return std::move(a+=b);
+      return std::move(a += b);
    }
    friend
    Integer operator+ (const Integer& a, int b)
@@ -515,8 +542,9 @@ public:
    friend
    Integer&& operator+ (Integer&& a, int b)
    {
-      return std::move(a+=long(b));
+      return std::move(a += long(b));
    }
+
    friend
    Integer operator+ (long a, const Integer& b)
    {
@@ -530,12 +558,12 @@ public:
    friend
    Integer&& operator+ (long a, Integer&& b)
    {
-      return std::move(b+=a);
+      return std::move(b += a);
    }
    friend
    Integer&& operator+ (int a, Integer&& b)
    {
-      return std::move(b+=long(a));
+      return std::move(b += long(a));
    }
 
    /// Subtraction
@@ -548,7 +576,7 @@ public:
          else
             set_inf(this, -1, b);
       } else {
-         if (isinf(*this)==isinf(b))
+         if (isinf(*this) == isinf(b))
             throw GMP::NaN();
       }
       return *this;
@@ -564,7 +592,7 @@ public:
          else
             set_inf(&result, -1, b);
       } else {
-         if (isinf(a)==isinf(b))
+         if (isinf(a) == isinf(b))
             throw GMP::NaN();
          set_inf(&result, a);
       }
@@ -607,7 +635,7 @@ public:
    Integer operator- (const Integer& a, long b)
    {
       Integer result(a);
-      result-=b;
+      result -= b;
       return result;
    }
    friend
@@ -618,12 +646,12 @@ public:
    friend
    Integer&& operator- (Integer&& a, long b)
    {
-      return std::move(a-=b);
+      return std::move(a -= b);
    }
    friend
    Integer&& operator- (Integer&& a, int b)
    {
-      return std::move(a-=long(b));
+      return std::move(a -= long(b));
    }
 
    friend
@@ -712,7 +740,7 @@ public:
    Integer operator* (const Integer& a, long b)
    {
       Integer result(a);
-      result*=b;
+      result *= b;
       return result;
    }
    friend
@@ -723,13 +751,14 @@ public:
    friend
    Integer&& operator* (Integer&& a, long b)
    {
-      return std::move(a*=b);
+      return std::move(a *= b);
    }
    friend
    Integer&& operator* (Integer&& a, int b)
    {
-      return std::move(a*=long(b));
+      return std::move(a *= long(b));
    }
+
    friend
    Integer operator* (long a, const Integer& b)
    {
@@ -743,12 +772,12 @@ public:
    friend
    Integer&& operator* (long a, Integer&& b)
    {
-      return std::move(b*=a);
+      return std::move(b *= a);
    }
    friend
    Integer&& operator* (int a, Integer&& b)
    {
-      return std::move(b*=long(a));
+      return std::move(b *= long(a));
    }
 
    /// Division with rounding via truncation
@@ -782,7 +811,7 @@ public:
    friend
    Integer&& operator/ (Integer&& a, const Integer& b)
    {
-      return std::move(a/=b);
+      return std::move(a /= b);
    }
 
    Integer& operator/= (long b)
@@ -813,7 +842,7 @@ public:
    Integer operator/ (const Integer& a, long b)
    {
       Integer result(a);
-      result/=b;
+      result /= b;
       return result;
    }
    friend
@@ -824,12 +853,12 @@ public:
    friend
    Integer&& operator/ (Integer&& a, long b)
    {
-      return std::move(a/=b);
+      return std::move(a /= b);
    }
    friend
    Integer&& operator/ (Integer&& a, int b)
    {
-      return std::move(a/=long(b));
+      return std::move(a /= long(b));
    }
 
    friend
@@ -838,7 +867,7 @@ public:
       if (__builtin_expect(isfinite(b), 1)) {
          if (__builtin_expect(!b.is_zero(), 1)) {
             if (mpz_fits_slong_p(&b))
-               return a/mpz_get_si(&b);
+               return a / mpz_get_si(&b);
          } else {
             throw GMP::ZeroDivide();
          }
@@ -849,7 +878,7 @@ public:
    friend
    long operator/ (int a, const Integer& b)
    {
-      return long(a)/b;
+      return long(a) / b;
    }
 
    /// Remainder of division.
@@ -877,7 +906,7 @@ public:
    friend
    Integer&& operator% (Integer&& a, const Integer& b)
    {
-      return std::move(a%=b);
+      return std::move(a %= b);
    }
 
    Integer& operator%= (long b)
@@ -912,10 +941,10 @@ public:
    friend
    int operator% (const Integer& a, int b)
    {
-      return a % long(b);
+      return static_cast<int>(a%long(b));
    }
 
-   // these two just suppress a warning about "ambiguous candidates"
+   // these three just suppress a warning about "ambiguous candidates"
    friend
    long operator% (Integer&& a, long b)
    {
@@ -924,7 +953,7 @@ public:
    friend
    int operator% (Integer&& a, int b)
    {
-      return const_cast<const Integer&>(a) % long(b);
+      return static_cast<int>(const_cast<const Integer&>(a) % long(b));
    }
 
    friend
@@ -947,7 +976,7 @@ public:
    friend
    int operator% (int a, const Integer& b)
    {
-      return long(a) % b;
+      return static_cast<int>(long(a) % b);
    }
 
    /// b != infinity; but 0/0 allowed
@@ -991,14 +1020,12 @@ public:
    friend
    Integer div_exact(const Integer& a, long b);
 
-
    /// Obtain both the quotient and remainder of a division
    friend
    Div<Integer> div(const Integer& a, const Integer& b);
 
    friend
    Div<Integer> div(const Integer& a, long b);
-
 
    /// Multiply by or divide through 2**k, truncate to zero.
    Integer& operator<<= (long k)
@@ -1072,7 +1099,6 @@ public:
       return std::move(a >>= long(k));
    }
 
-
    /// Test for bits.
    bool bit(unsigned long i) const
    {
@@ -1095,11 +1121,11 @@ public:
    /// fast comparison with 0
    bool is_zero() const noexcept
    {
-      return mpz_sgn(this)==0;
+      return mpz_sgn(this) == 0;
    }
 
    /// Comparison. The magnitude of the return value is arbitrary, only its sign is relevant.
-   int compare(const Integer& b) const
+   Int compare(const Integer& b) const
    {
       if (__builtin_expect(isfinite(*this) && isfinite(b), 1))
          return mpz_cmp(this, &b);
@@ -1107,7 +1133,7 @@ public:
          return isinf(*this)-isinf(b);
    }
 
-   int compare(long b) const
+   Int compare(long b) const
    {
       if (__builtin_expect(isfinite(*this), 1))
          return mpz_cmp_si(this, b);
@@ -1115,12 +1141,12 @@ public:
          return isinf(*this);
    }
 
-   int compare(int b) const
+   Int compare(int b) const
    {
       return compare(long(b));
    }
 
-   int compare(double b) const
+   Int compare(double b) const
    {
       if (__builtin_expect(isfinite(*this) && isfinite(b), 1))
          return mpz_cmp_d(this, b);
@@ -1128,76 +1154,76 @@ public:
          return isinf(*this)-isinf(b);
    }
 
-   typedef mlist<int, long, double> is_comparable_with;
-   typedef mlist_concat<Integer, is_comparable_with>::type self_and_comparable_with;
+   using is_comparable_with = mlist<int, long, double>;
+   using self_and_comparable_with = typename mlist_concat<Integer, is_comparable_with>::type;
 
-   template <typename T, typename=typename std::enable_if<mlist_contains<self_and_comparable_with, T>::value>::type>
+   template <typename T, typename = std::enable_if_t<mlist_contains<self_and_comparable_with, T>::value>>
    friend
    bool operator== (const Integer& a, const T& b)
    {
       return !a.compare(b);
    }
-   template <typename T, typename=typename std::enable_if<mlist_contains<self_and_comparable_with, T>::value>::type>
+   template <typename T, typename = std::enable_if_t<mlist_contains<self_and_comparable_with, T>::value>>
    friend
    bool operator!= (const Integer& a, const T& b)
    {
       return !(a==b);
    }
-   template <typename T, typename=typename std::enable_if<mlist_contains<self_and_comparable_with, T>::value>::type>
+   template <typename T, typename = std::enable_if_t<mlist_contains<self_and_comparable_with, T>::value>>
    friend
    bool operator< (const Integer& a, const T& b)
    {
       return a.compare(b)<0;
    }
-   template <typename T, typename=typename std::enable_if<mlist_contains<self_and_comparable_with, T>::value>::type>
+   template <typename T, typename = std::enable_if_t<mlist_contains<self_and_comparable_with, T>::value>>
    friend
    bool operator> (const Integer& a, const T& b)
    {
       return a.compare(b)>0;
    }
-   template <typename T, typename=typename std::enable_if<mlist_contains<self_and_comparable_with, T>::value>::type>
+   template <typename T, typename = std::enable_if_t<mlist_contains<self_and_comparable_with, T>::value>>
    friend
    bool operator<= (const Integer& a, const T& b)
    {
       return a.compare(b)<=0;
    }
-   template <typename T, typename=typename std::enable_if<mlist_contains<self_and_comparable_with, T>::value>::type>
+   template <typename T, typename = std::enable_if_t<mlist_contains<self_and_comparable_with, T>::value>>
    friend
    bool operator>= (const Integer& a, const T& b)
    {
       return a.compare(b)>=0;
    }
-   template <typename T, typename=typename std::enable_if<mlist_contains<is_comparable_with, T>::value>::type>
+   template <typename T, typename = std::enable_if_t<mlist_contains<is_comparable_with, T>::value>>
    friend
    bool operator== (const T& a, const Integer& b)
    {
       return b==a;
    }
-   template <typename T, typename=typename std::enable_if<mlist_contains<is_comparable_with, T>::value>::type>
+   template <typename T, typename = std::enable_if_t<mlist_contains<is_comparable_with, T>::value>>
    friend
    bool operator!= (const T& a, const Integer& b)
    {
       return !(b==a);
    }
-   template <typename T, typename=typename std::enable_if<mlist_contains<is_comparable_with, T>::value>::type>
+   template <typename T, typename = std::enable_if_t<mlist_contains<is_comparable_with, T>::value>>
    friend
    bool operator< (const T& a, const Integer& b)
    {
       return b>a;
    }
-   template <typename T, typename=typename std::enable_if<mlist_contains<is_comparable_with, T>::value>::type>
+   template <typename T, typename = std::enable_if_t<mlist_contains<is_comparable_with, T>::value>>
    friend
    bool operator> (const T& a, const Integer& b)
    {
       return b<a;
    }
-   template <typename T, typename=typename std::enable_if<mlist_contains<is_comparable_with, T>::value>::type>
+   template <typename T, typename = std::enable_if_t<mlist_contains<is_comparable_with, T>::value>>
    friend
    bool operator<= (const T& a, const Integer& b)
    {
       return b>=a;
    }
-   template <typename T, typename=typename std::enable_if<mlist_contains<is_comparable_with, T>::value>::type>
+   template <typename T, typename = std::enable_if_t<mlist_contains<is_comparable_with, T>::value>>
    friend
    bool operator>= (const T& a, const Integer& b)
    {
@@ -1227,7 +1253,7 @@ public:
       return abs_equal(a, long(b));
    }
 
-   /// Equality of absolute values.
+   /// Equality of absolute values
    friend
    bool abs_equal(const Integer& a, double b)
    {
@@ -1236,54 +1262,47 @@ public:
       return isinf(b);
    }
 
-   template <typename T, typename=typename std::enable_if<mlist_contains<is_comparable_with, T>::value>::type>
+   template <typename T, typename = std::enable_if_t<mlist_contains<is_comparable_with, T>::value>>
    friend
    bool abs_equal(const T& a, const Integer& b)
    {
       return abs_equal(b, a);
    }
 
-
-   /// Factorial.
+   /// Factorial
    static
    Integer fac(long k)
    {
-      if (k<0) throw GMP::NaN();
+      if (__builtin_expect(k < 0, 0)) throw GMP::NaN();
       Integer result;
       mpz_fac_ui(&result, k);
       return result;
    }
 
-   /// Power.
+   /// Fibonacci numbers
    static
-   Integer pow(const Integer& a, long k)
+   Integer fibonacci(unsigned long k)
    {
-      if (__builtin_expect(k < 0, 0))
-         throw GMP::NaN();
       Integer result;
-      if (__builtin_expect(isfinite(a), 1))
-         mpz_pow_ui(&result, &a, k);
-      else if (k)
-         set_inf(&result, k%2 ? mpz_sgn(&a) : 1);
-      else
-         throw GMP::NaN();
+      mpz_fib_ui(&result, k);
       return result;
    }
 
+   /// k-th and (k-1)-th Fibonacci numbers
    static
-   Integer pow(long a, long k)
+   pair<Integer, Integer> fibonacci2(unsigned long k)
    {
-      if (__builtin_expect(k < 0, 0))
-         throw GMP::NaN();
-      Integer result;
-      if (a>=0) {
-         mpz_ui_pow_ui(&result, a, k);
-      } else {
-         mpz_ui_pow_ui(&result, -a, k);
-         result.negate();
-      }
+      pair<Integer, Integer> result;
+      mpz_fib2_ui(&result.first, &result.second, k);
       return result;
    }
+
+   /// Power
+   static
+   Integer pow(const Integer& a, long k);
+
+   static
+   Integer pow(long a, long k);
 
    static
    Integer pow(int a, long k)
@@ -1376,6 +1395,26 @@ public:
       return binom(long(n), k);
    }
 
+   /// Logarithm (rounded down).
+   friend
+   int log2_floor(const Integer& a)
+   {
+      if (__builtin_expect(!isfinite(a), 0) || a._mp_size <= 0)
+         throw GMP::NaN();
+      const int n = a._mp_size-1;
+      return n*mp_bits_per_limb + pm::log2_floor(mpz_getlimbn(&a, n));
+   }
+
+   /// Logarithm (rounded up). 
+   friend
+   int log2_ceil(const Integer& a)
+   {
+      if (__builtin_expect(!isfinite(a), 0) || a._mp_size <= 0)
+         throw GMP::NaN();
+      const int n = a._mp_size-1;
+      return n*mp_bits_per_limb + log2_ceil(mpz_getlimbn(&a, n));
+   }
+
    /// @param allow_sign whether leading whitespaces and sign are expected
    void read(std::istream& is, bool allow_sign=true);
 
@@ -1424,7 +1463,7 @@ protected:
          mpz_swap(me, &src);
       } else {
          // move during construction
-         *me=src;
+         *me = src;
          set_inf(&src, 0, st);
       }
    }
@@ -1463,12 +1502,12 @@ protected:
    }
 
    static
-   void set_inf(mpz_ptr me, int sign, initialized st=initialized::yes) noexcept
+   void set_inf(mpz_ptr me, Int sign, initialized st = initialized::yes) noexcept
    {
       if (bool(st) && me->_mp_d) mpz_clear(me);
-      me->_mp_alloc=0;
-      me->_mp_size=sign;
-      me->_mp_d=nullptr;
+      me->_mp_alloc = 0;
+      me->_mp_size = int(sign);
+      me->_mp_d = nullptr;
    }
    static
    void set_inf(mpz_ptr me, const Integer& from, initialized st=initialized::yes) noexcept
@@ -1476,21 +1515,21 @@ protected:
       set_inf(me, from._mp_size, st);
    }
    static
-   void set_inf(mpz_ptr me, int sign, long inv, initialized st=initialized::yes)
+   void set_inf(mpz_ptr me, Int sign, long inv, initialized st=initialized::yes)
    {
-      if (sign==0 || inv==0)
+      if (sign == 0 || inv == 0)
          throw GMP::NaN();
-      set_inf(me, inv<0 ? -sign : sign, st);
+      set_inf(me, inv < 0 ? -sign : sign, st);
    }
    static
-   void set_inf(mpz_ptr me, int sign, const Integer& from, initialized st=initialized::yes)
+   void set_inf(mpz_ptr me, Int sign, const Integer& from, initialized st=initialized::yes)
    {
       set_inf(me, sign, from._mp_size, st);
    }
    static
    void inf_inv_sign(mpz_ptr me, long s)
    {
-      if (s==0 || me->_mp_size==0)
+      if (s == 0 || me->_mp_size == 0)
          throw GMP::NaN();
       if (s<0)
          me->_mp_size = -me->_mp_size;
@@ -1540,13 +1579,13 @@ bool isfinite(const Integer& a) noexcept
 }
 
 inline
-int isinf(const Integer& a) noexcept
+Int isinf(const Integer& a) noexcept
 {
    return isfinite(a) ? 0 : a.get_rep()->_mp_size;
 }
 
 inline
-int sign(const Integer& a) noexcept
+Int sign(const Integer& a) noexcept
 {
    return mpz_sgn(a.get_rep());
 }
@@ -1811,24 +1850,6 @@ Integer&& div_exact(Integer&& a, int b)
    return div_exact(std::move(a), long(b));
 }
 
-/// Logarithm (rounded down).
-inline
-int log2_floor(const Integer& a)
-{
-   if (__builtin_expect(!isfinite(a), 0)) throw GMP::NaN();
-   int n=mpz_size(a.get_rep())-1;
-   return n>=0 ? n*mp_bits_per_limb + log2_floor(mpz_getlimbn(a.get_rep(), n)) : 0;
-}
-
-/// Logarithm (rounded up). 
-inline
-int log2_ceil(const Integer& a)
-{
-   if (__builtin_expect(!isfinite(a),0)) throw GMP::NaN();
-   int n=mpz_size(a.get_rep())-1;
-   return n>=0 ? n*mp_bits_per_limb + log2_ceil(mpz_getlimbn(a.get_rep(), n)) : 0;
-}
-
 namespace operations {
 
 template <>
@@ -1935,7 +1956,7 @@ protected:
    size_t impl(mpz_srcptr a) const
    {
       size_t result=0;
-      for (int i=0, n=mpz_size(a); i<n; ++i)
+      for (int i = 0, n = std::abs(a->_mp_size); i < n; ++i)
          (result <<= 1) ^= mpz_getlimbn(a, i);
       return result;
    }
@@ -1952,9 +1973,7 @@ struct hash_func<Integer, is_scalar> : hash_func<MP_INT>
    }
 };
 
-template <>
-Integer
-pow(const Integer& base, long exp);
+Integer pow(const Integer& base, long exp);
 
 }
 

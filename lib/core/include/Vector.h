@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -54,27 +54,27 @@ public:
    Vector() {}
 
    /// create vector of length n
-   explicit Vector(int n)
+   explicit Vector(Int n)
       : data(n) {}
 
    template <typename E2>
-   Vector(int n, const E2& init,
-          typename std::enable_if<can_initialize<E2, E>::value, void**>::type=nullptr)
+   Vector(Int n, const E2& init,
+          std::enable_if_t<can_initialize<E2, E>::value, std::nullptr_t> = nullptr)
       : data(n, init) {}
 
    template <typename Iterator>
-   Vector(int n, Iterator&& src,
-          typename std::enable_if<assess_iterator_value<Iterator, can_initialize, E>::value, void**>::type=nullptr)
+   Vector(Int n, Iterator&& src,
+          std::enable_if_t<assess_iterator_value<Iterator, can_initialize, E>::value, std::nullptr_t> = nullptr)
       : data(n, ensure_private_mutable(std::forward<Iterator>(src))) {}
 
    template <typename Iterator>
    Vector(Iterator&& src, Iterator&& src_end,
-          typename std::enable_if<assess_iterator_value<Iterator, can_initialize, E>::value, void**>::type=nullptr)
+          std::enable_if_t<assess_iterator_value<Iterator, can_initialize, E>::value, std::nullptr_t> = nullptr)
       : data(std::distance(src, src_end), ensure_private_mutable(std::forward<Iterator>(src))) {}
 
    template <typename Container>
    explicit Vector(const Container& src,
-                   typename std::enable_if<isomorphic_to_container_of<Container, E, is_vector>::value, void**>::type=nullptr)
+                   std::enable_if_t<isomorphic_to_container_of<Container, E, is_vector>::value, std::nullptr_t> = nullptr)
       : data(src.size(), ensure(src, dense()).begin()) {}
 
    Vector(const GenericVector<Vector>& v) : data(v.top().data) {}
@@ -85,34 +85,34 @@ public:
 
    template <typename Vector2, typename E2>
    explicit Vector(const GenericVector<Vector2, E2>& v,
-                   std::enable_if_t<can_initialize<E2, E>::value, void**> =nullptr)
+                   std::enable_if_t<can_initialize<E2, E>::value, std::nullptr_t> = nullptr)
       : data(v.dim(), ensure(v.top(), dense()).begin()) {}
 
    template <typename E2,
-             typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
+             typename = std::enable_if_t<can_initialize<E2, E>::value>>
    Vector(std::initializer_list<E2> l)
       : data(l.size(), l.begin()) {}
 
 protected:
    template <typename... TArgs>
-   Vector(const shared_array_placement& place, int n, TArgs&&... args)
+   Vector(const shared_array_placement& place, Int n, TArgs&&... args)
       : data(place, n, std::forward<TArgs>(args)...) {}
 
-   void resize(const shared_array_placement& place, int n) { data.resize(place, n); }
+   void resize(const shared_array_placement& place, Int n) { data.resize(place, n); }
 
 public:
    /// number of elements
-   int size() const { return data.size(); }
+   Int size() const { return data.size(); }
 
    /// truncate to zero size
    void clear() { data.clear(); }
 
    /// change the size, initialize appended elements with default constructor
-   void resize(int n) { data.resize(n); }
+   void resize(Int n) { data.resize(n); }
 
    template <typename E2,
-             typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
-   void assign(int n, const E2& x)
+             typename = std::enable_if_t<can_initialize<E2, E>::value>>
+   void assign(Int n, const E2& x)
    {
       data.assign(n, x);
    }
@@ -129,7 +129,7 @@ public:
 
    /// append a GenericVector
    template <typename Vector2, typename E2,
-             typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
+             typename = std::enable_if_t<can_initialize<E2, E>::value>>
    Vector& operator|= (const GenericVector<Vector2, E2>& v)
    {
       data.append(v.dim(), ensure(v.top(), dense()).begin());
@@ -138,7 +138,7 @@ public:
 
    /// append an element
    template <typename E2,
-             typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
+             typename = std::enable_if_t<can_initialize<E2, E>::value>>
    Vector& operator|= (E2&& r)
    {
       data.append(1, std::forward<E2>(r));
@@ -146,7 +146,7 @@ public:
    }
 
    template <typename E2,
-             typename=typename std::enable_if<can_initialize<E2, E>::value>::type>
+             typename = std::enable_if_t<can_initialize<E2, E>::value>>
    Vector& operator|= (std::initializer_list<E2> l)
    {
       data.append(l.size(), l.begin());
@@ -182,23 +182,23 @@ protected:
    }
 };
 
-template <typename TVector, typename E, typename Permutation> inline
-typename std::enable_if<!TVector::is_sparse, Vector<E>>::type
+template <typename TVector, typename E, typename Permutation>
+std::enable_if_t<!TVector::is_sparse, Vector<E>>
 permuted(const GenericVector<TVector, E>& v, const Permutation& perm)
 {
    if (POLYMAKE_DEBUG || is_wary<TVector>()) {
-      if (v.dim() != int(perm.size()))
+      if (v.dim() != static_cast<Int>(perm.size()))
          throw std::runtime_error("permuted - dimension mismatch");
    }
    return Vector<E>(v.dim(), select(v.top(), perm).begin());
 }
 
-template <typename TVector, typename E, typename Permutation> inline
-typename std::enable_if<!TVector::is_sparse, Vector<E>>::type
+template <typename TVector, typename E, typename Permutation>
+std::enable_if_t<!TVector::is_sparse, Vector<E>>
 permuted_inv(const GenericVector<TVector, E>& v, const Permutation& perm)
 {
    if (POLYMAKE_DEBUG || is_wary<TVector>()) {
-      if (v.dim() != int(perm.size()))
+      if (v.dim() != static_cast<Int>(perm.size()))
          throw std::runtime_error("permuted_inv - dimension mismatch");
    }
    Vector<E> result(v.dim());
@@ -213,7 +213,7 @@ namespace polymake {
 }
 
 namespace std {
-   template <typename E> inline
+   template <typename E>
    void swap(pm::Vector<E>& v1, pm::Vector<E>& v2) { v1.swap(v2); }
 }
 

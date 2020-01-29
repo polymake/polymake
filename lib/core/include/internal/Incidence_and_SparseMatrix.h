@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -63,7 +63,7 @@ template <typename IncMatrixRef, typename ElemRef>
 class matrix_random_access_methods< SameElementSparseMatrix<IncMatrixRef, ElemRef> > {
    typedef SameElementSparseMatrix<IncMatrixRef, ElemRef> master;
 public:
-   const typename deref<ElemRef>::type& operator() (int i, int j) const
+   const typename deref<ElemRef>::type& operator() (Int i, Int j) const
    {
       const master& me=static_cast<const master&>(*this);
       if (me.get_matrix()(i,j)) return *me.get_apparent_element();
@@ -112,7 +112,7 @@ public:
 template <typename E, typename TMatrix>
 auto same_element_sparse_matrix(TMatrix&& m, E&& x, std::enable_if_t<is_generic_incidence_matrix<TMatrix>::value, void**> =nullptr)
 {
-   return SameElementSparseMatrix<add_const_t<unwary_t<TMatrix&&>>, E&&>(unwary(std::forward<TMatrix>(m)), std::forward<E>(x));
+   return SameElementSparseMatrix<add_const_t<unwary_t<TMatrix&&>>, prevent_int_element<E&&>>(unwary(std::forward<TMatrix>(m)), std::forward<E>(x));
 }
 
 template <typename E, typename TMatrix>
@@ -153,9 +153,9 @@ template <typename MatrixRef>
 class matrix_random_access_methods< IndexMatrix<MatrixRef> > {
    typedef IndexMatrix<MatrixRef> master;
 public:
-   bool operator() (int i, int j) const
+   bool operator() (Int i, Int j) const
    {
-      const master& me=static_cast<const master&>(*this);
+      const master& me = static_cast<const master&>(*this);
       return !me.row(i).find(j).at_end();
    }
 };

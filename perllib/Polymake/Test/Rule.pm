@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -53,7 +53,7 @@ sub run {
    my %tested_rules;
    foreach my $file (@{$self->object_files}) {
       if (defined (my $object=eval { $env->load_object_file($file) })) {
-         $self->add_case(_new Object::WithRule($object, $self->rules, \%tested_rules, @{$self->options}));
+         $self->add_case(_new BigObject::WithRule($object, $self->rules, \%tested_rules, @{$self->options}));
       } else {
          return $self->report_error;
       }
@@ -159,7 +159,7 @@ sub describe_rule {
 }
 
 ####################################################################################
-package Polymake::Test::Object::WithRule;
+package Polymake::Test::BigObject::WithRule;
 
 use Polymake::Enum Verify => qw( OK missing_input missing_output unsatisfied_precond missing_permutation wrong_permutation wrong_result died );
 
@@ -250,7 +250,7 @@ sub execute {
 	 } elsif ($status == Verify::wrong_result) {
 	    $self->tested_rules->{$rule}=1;
 	    $self->fail_log.="testing rule ".Rule::describe_rule($rule)." on object ".$self->name." failed:\n".
-	                     join("", Object::print_diff($self->object, @data));
+	                     join("", BigObject::print_diff($self->object, @data));
 	    return 0;
 	 } elsif ($status == Verify::missing_output) {
 	    $self->tested_rules->{$rule}=1;
@@ -351,7 +351,7 @@ sub verify_rule {
       }
    }
 
-   local *Polymake::Core::Object::lookup_descending_path=\&lookup_in_source;
+   local *Polymake::Core::BigObject::lookup_descending_path=\&lookup_in_source;
 
    foreach my $rule (@{$prod_rule->preconditions}, $prod_rule) {
       my $rc=$rule->execute($test_object, 1);
@@ -417,7 +417,7 @@ sub verify_rule {
 ####################################################################################
 sub clone {
    my ($object, $rec)=@_;
-   my $test_object=Core::Object::new($object, $object->name);
+   my $test_object=Core::BigObject::new($object, $object->name);
    $test_object->attachments->{".source"}=$object;
 
    if (defined $object->parent) {
@@ -456,7 +456,7 @@ sub descend_in_test_object {
 ####################################################################################
 # intercept lookup() requests coming from rule bodies
 # and from the scheduler when it plans the permutation
-my $lookup_descending_path=\&Polymake::Core::Object::lookup_descending_path;
+my $lookup_descending_path=\&Polymake::Core::BigObject::lookup_descending_path;
 
 sub lookup_in_source {
    my ($self, $path, $for_planning)=@_;

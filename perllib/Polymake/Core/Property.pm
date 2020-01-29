@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -22,20 +22,20 @@ package Polymake::Core::Property;
 
 #  Constructor
 #
-#  new Property('Name', $type, ObjectType, options);
+#  new Property('name', $type, BigObjectType, options);
 
 use Polymake::Struct (
    [ 'new' => '$$$%' ],
    [ '$name | property_name' => '#1' ],   # 'property name'
-   [ '$defined_for' => '#3' ],    # ObjectType where the property definition appeared, common for all clones and aliases
-   [ '$belongs_to' => '#3' ],     # ObjectType owning this instance
+   [ '$defined_for' => '#3' ],    # BigObjectType where the property definition appeared, common for all clones and aliases
+   [ '$belongs_to' => '#3' ],     # BigObjectType owning this instance
    [ '$application' => 'undef' ], # Application where it's defined (if != defined_for->application)
-   [ '$extension' => '$Application::extension' ],
-   [ '$type' => '#2' ],           # PropertyType | ObjectType
+   [ '$extension' => '$Extension::loading' ],
+   [ '$type' => '#2' ],           # PropertyType | BigObjectType
    [ '$flags' => '#%', default => '0' ],
 
                                   # the following fields contain \&sub or "method name",
-                                  #   methods are called via the Object
+                                  #   methods are called via the BigObject
    [ '$canonical' => '#%', default => 'undef' ],
    [ '$equal' => '#%', default => 'undef' ],
 
@@ -47,7 +47,7 @@ use Polymake::Struct (
 
                                     # for aliases defined in derived objects:
    [ '$overrides' => 'undef' ],     # "PropName" original property overridden by this one
-   [ '$overrides_for' => 'undef' ], # ObjectType where the overriding alias is defined
+   [ '$overrides_for' => 'undef' ], # BigObjectType where the overriding alias is defined
 
    '%key | property_key',         # The address of the hash itself serves as a search key in the objects' dictionaries,
                                   # production rule lists, permutation sensitivity lists, etc. - all kinds of lists where
@@ -79,10 +79,10 @@ use Polymake::Enum Flags => {
 
 sub new {
    my $self=&_new;
-   if (instanceof ObjectType($self->type)) {
+   if (instanceof BigObjectType($self->type)) {
       $self->flags |= Flags::is_subobject;
    }
-   if ($Application::plausibility_checks) {
+   if ($enable_plausibility_checks) {
       if ($self->flags & Flags::is_subobject) {
          if ($self->flags & Flags::is_non_storable) {
             croak( "only atomic properties can be declared non-storable" );
@@ -156,7 +156,7 @@ sub override_by {
 ####################################################################################
 # find the property instance suitable for the given object type,
 # taking into account overrides and augmentations
-# Property, ObjectType, downcast_flag => Property
+# Property, BigObjectType, downcast_flag => Property
 sub instance_for_owner {
    my ($self, $proto, $down)=@_;
    if ($self->belongs_to==$proto) {
@@ -289,7 +289,7 @@ sub accept_subobject : method {
    }
 
    unless ($trusted) {
-      is_object($value) or croak( "property ", $self->name, " needs an Object\n" );
+      is_object($value) or croak( "property ", $self->name, " needs a BigObject\n" );
       unless (UNIVERSAL::isa($value, $subobj_type->pure_type->pkg)) {
          # if the source object can't be converted to our type, it will croak():
          $value=$subobj_type->pure_type->construct->($value);
@@ -300,7 +300,7 @@ sub accept_subobject : method {
       $value=$value->copy($parent_obj, $self);
    } else {
       $value->property=$self;
-      guarded_weak($value->parent=$parent_obj, $value, \&Object::forget_parent_property);
+      guarded_weak($value->parent=$parent_obj, $value, \&BigObject::forget_parent_property);
       if ($self->flags & Flags::is_augmented && (my $given_type=$value->type) != $subobj_type) {
          $value->perform_cast($subobj_type->final_type($given_type), 1);
       }
@@ -337,10 +337,10 @@ sub accept_subobject : method {
    $value
 }
 
-# parent Object, temporary flag => empty Object
+# parent BigObject, temporary flag => empty Object
 sub create_subobject : method {
    my $self=instance_for_owner($_[0], $_[1]->type, 1);
-   accept_subobject($self, Object::new($self->subobject_type->pkg), $_[1], 1, $_[2]);
+   accept_subobject($self, BigObject::new($self->subobject_type->pkg), $_[1], 1, $_[2]);
 }
 
 sub subobject_type {
@@ -439,8 +439,8 @@ sub copy_builtin : method {
 }
 ####################################################################################
 sub qualified_name {
-   my ($self)=@_;
-   defined($self->application) ? $self->application->name . "::" . $self->name : $self->name
+   my ($self) = @_;
+   $self->defined_for->qualified_name . "." . $self->name
 }
 
 *required_extensions = \&PropertyType::required_extensions;

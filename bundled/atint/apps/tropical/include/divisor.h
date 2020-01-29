@@ -18,7 +18,7 @@
    Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
    ---
-   Copyright (c) 2016-2019
+   Copyright (c) 2016-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -45,8 +45,8 @@
 
 namespace polymake { namespace tropical {
 
-using LatticeMap = Map<std::pair<int,int>, Vector<Integer>>;
-using LatticeFunctionMap = Map<std::pair<int,int>, Vector<Rational>>;
+using LatticeMap = Map<std::pair<Int, Int>, Vector<Integer>>;
+using LatticeFunctionMap = Map<std::pair<Int, Int>, Vector<Rational>>;
 
 
 /**
@@ -64,10 +64,10 @@ using LatticeFunctionMap = Map<std::pair<int,int>, Vector<Rational>>;
    @return The divisor r_k * ... * r_1 * fan, where r_i is the function described by the i-th row.
 */
 template <typename Addition>
-perl::Object divisorByValueMatrix(perl::Object complex, const Matrix<Rational>& values)
+BigObject divisorByValueMatrix(BigObject complex, const Matrix<Rational>& values)
 {
   // This value carries all the intermediate results.
-  perl::Object result = complex;
+  BigObject result = complex;
 
   // Now we extract the values that we will later recompute by hand or that don't change at all
 
@@ -75,7 +75,7 @@ perl::Object divisorByValueMatrix(perl::Object complex, const Matrix<Rational>& 
   Matrix<Rational> crays = complex.give("SEPARATED_VERTICES");
   Vector<Integer> weights = complex.give("WEIGHTS");
   Matrix<Rational> lineality_space = complex.give("LINEALITY_SPACE");
-  const int lineality_dim = complex.give("LINEALITY_DIM");
+  const Int lineality_dim = complex.give("LINEALITY_DIM");
   IncidenceMatrix<> local_restriction;
   if (complex.exists("LOCAL_RESTRICTION")) {
     complex.give("LOCAL_RESTRICTION") >> local_restriction;
@@ -98,7 +98,7 @@ perl::Object divisorByValueMatrix(perl::Object complex, const Matrix<Rational>& 
   // the values vector
 
   // Contains at position i the row index of ray i in the ray matrix of the iteration before
-  Vector<int> newRaysToOldRays;
+  Vector<Int> newRaysToOldRays;
 
   // Contains the SEPARATED_MAXIMAL_POLYTOPES of the iteration before
   IncidenceMatrix<> cmplx_oldcones;
@@ -109,15 +109,15 @@ perl::Object divisorByValueMatrix(perl::Object complex, const Matrix<Rational>& 
 
   // For each cmplx_ray in the LAST iteration, this tells which should be the appropriate
   // column index in values for function value computation
-  Vector<int> cmplx_origins(sequence(0,values.cols() - lineality_dim));
+  Vector<Int> cmplx_origins(sequence(0,values.cols() - lineality_dim));
 
   // Contains the conversion vector for the last iteration (this one we recompute during
   // value recomputation)
-  Vector<int> old_conversion;
+  Vector<Int> old_conversion;
 
   // Only uses in the fan case: For all iterations but the first it contains the set of rays of
   // the last iteration that remained after computing the divisor
-  Set<int> remainingFanRays;
+  Set<Int> remainingFanRays;
 
   // When computing the codim-one-weights, this contains the correct function value vector for the current iteration
   // When computing the new function vector for the current iteration, this means it contains the function
@@ -125,7 +125,7 @@ perl::Object divisorByValueMatrix(perl::Object complex, const Matrix<Rational>& 
   Vector<Rational> currentValues;
 
   // Now we iterate through the matrix rows
-  for (int r = 0; r < values.rows(); ++r) {
+  for (Int r = 0; r < values.rows(); ++r) {
     // First we recompute values that we can't/won't compute by hand
 
     const IncidenceMatrix<>& codimOneCones = result.give("CODIMENSION_ONE_POLYTOPES");
@@ -135,11 +135,11 @@ perl::Object divisorByValueMatrix(perl::Object complex, const Matrix<Rational>& 
 
     const LatticeFunctionMap& lnFunctionVector = result.give("LATTICE_NORMAL_FCT_VECTOR");
     const Matrix<Rational>& lsumFunctionVector = result.give("LATTICE_NORMAL_SUM_FCT_VECTOR");
-    const Vector<bool>& balancedFaces = result.give("BALANCED_FACES");
+    const Set<Int>& unbalancedFaces = result.give("UNBALANCED_FACES");
 
     // Recompute the lattice bases
     RestrictedIncidenceMatrix<> new_lattice_bases(codimOneCones.rows());
-    for (int co = 0; co < codimOneCones.rows(); ++co) {
+    for (Int co = 0; co < codimOneCones.rows(); ++co) {
       new_lattice_bases.row(co) = lattice_bases.row(coneIncidences.row(co).front());
     }
     lattice_bases = std::move(new_lattice_bases);
@@ -150,20 +150,20 @@ perl::Object divisorByValueMatrix(perl::Object complex, const Matrix<Rational>& 
       currentValues = values.row(r);
     } else {
       const Matrix<Rational>& cmplx_rays = result.give("SEPARATED_VERTICES");
-      const Vector<int>& conversion_vector = result.give("SEPARATED_CONVERSION_VECTOR");
+      const Vector<Int>& conversion_vector = result.give("SEPARATED_CONVERSION_VECTOR");
       // Compute the maximal cones containing each cmplx_ray
       IncidenceMatrix<> cmplx_cones_t = result.give("SEPARATED_MAXIMAL_POLYTOPES");
       cmplx_cones_t = T(cmplx_cones_t);
 
       std::vector<Rational> cval_list;
-      std::vector<int> newcmplx_origins;
-      for (int cr = 0; cr < cmplx_rays.rows(); ++cr) {
+      std::vector<Int> newcmplx_origins;
+      for (Int cr = 0; cr < cmplx_rays.rows(); ++cr) {
         // Find the corresponding cmplx_ray in the last iteration
-        int mc = *(cmplx_cones_t.row(cr).begin()); // A cone containing the ray
-        int oc = *(newConesInOld.row(mc).begin()); // An old cone containing mc
+        const Int mc = *(cmplx_cones_t.row(cr).begin()); // A cone containing the ray
+        const Int oc = *(newConesInOld.row(mc).begin()); // An old cone containing mc
         // Now find the cmplx_ray of the old cone, such that
         // its corresponding ray is equal to the corresponding ray of the new ray
-        for (const int ocr : cmplx_oldcones.row(oc)) {
+        for (const Int ocr : cmplx_oldcones.row(oc)) {
           // If the old ray (in non-complex counting in the old iteration) is the same as
           // the new ray (in non-complex counting) in the new iteration, we can
           // copy its function column index
@@ -175,7 +175,7 @@ perl::Object divisorByValueMatrix(perl::Object complex, const Matrix<Rational>& 
         }
       }
       currentValues = Vector<Rational>(cval_list);
-      cmplx_origins = Vector<int>(newcmplx_origins);
+      cmplx_origins = Vector<Int>(newcmplx_origins);
       // Finally append lineality values
       if (lineality_dim > 0)
         currentValues |= lineality_values.row(r);
@@ -183,11 +183,11 @@ perl::Object divisorByValueMatrix(perl::Object complex, const Matrix<Rational>& 
 
     // Then we compute the divisor
     std::vector<Integer> newweights; // Contains the new weights
-    Set<int> usedCones; // Contains the codim 1 cones with weight != 0
-    Set<int> usedRays; //Contains the rays in used cones
+    Set<Int> usedCones; // Contains the codim 1 cones with weight != 0
+    Set<Int> usedRays; //Contains the rays in used cones
     // Go through each facet and compute its weight.
-    for (int co = 0; co < codimOneCones.rows(); ++co) {
-      if (balancedFaces[co]) { // Only compute values at balanced codim-1-cones
+    for (Int co = 0; co < codimOneCones.rows(); ++co) {
+      if (!unbalancedFaces.contains(co)) { // Only compute values at balanced codim-1-cones
         Rational coweight(0); // Have to take rational since intermediate values may be rational
         for (const auto& mc : coneIncidences.row(co)) {
           coweight += weights[mc] * lnFunctionVector[std::make_pair(co,mc)] * currentValues;
@@ -210,11 +210,11 @@ perl::Object divisorByValueMatrix(perl::Object complex, const Matrix<Rational>& 
       newConesInOld = coneIncidences.minor(usedCones, All);
       result.give("SEPARATED_MAXIMAL_POLYTOPES") >> cmplx_oldcones;
       result.give("SEPARATED_CONVERSION_VECTOR") >> old_conversion;
-      std::vector<int> nrtor;
-      for (const int orays : usedRays) {
+      std::vector<Int> nrtor;
+      for (const Int orays : usedRays) {
         nrtor.push_back(orays);
       }
-      newRaysToOldRays = Vector<int>(nrtor);
+      newRaysToOldRays = Vector<Int>(nrtor);
     }
 
     // Now recompute the rays and maximal cones for re-initialization of the result
@@ -227,10 +227,10 @@ perl::Object divisorByValueMatrix(perl::Object complex, const Matrix<Rational>& 
       // and codimension one cones that have weight 0
       // Also we remove all local cones that lose rays
       const IncidenceMatrix<>& maxCones = result.give("MAXIMAL_CONES");
-      Set<int> removableCones;
-      Set<int> weightzerocones = sequence(0,codimOneCones.rows()) - usedCones;
-      Set<int> codimToReplace; // Indices of used codim one cones that are local
-      for (int lc = 0; lc < local_restriction.rows(); ++lc) {
+      Set<Int> removableCones;
+      Set<Int> weightzerocones = sequence(0,codimOneCones.rows()) - usedCones;
+      Set<Int> codimToReplace; // Indices of used codim one cones that are local
+      for (Int lc = 0; lc < local_restriction.rows(); ++lc) {
         const auto& lrrow = local_restriction.row(lc);
         // If the local cone loses any rays, remove it
         if ((lrrow * usedRays).size() < lrrow.size()) {
@@ -238,7 +238,7 @@ perl::Object divisorByValueMatrix(perl::Object complex, const Matrix<Rational>& 
           continue;
         }
         bool found_cone = false;
-        for (int mc = 0; mc < maxCones.rows(); ++mc) {
+        for (Int mc = 0; mc < maxCones.rows(); ++mc) {
           if (incl(maxCones.row(mc), lrrow) <= 0) {
             removableCones += lc;
             found_cone = true;
@@ -258,7 +258,7 @@ perl::Object divisorByValueMatrix(perl::Object complex, const Matrix<Rational>& 
 
     } //END adapt local restriction	
 
-    result = perl::Object("Cycle", mlist<Addition>());
+    result = BigObject("Cycle", mlist<Addition>());
     result.take("PROJECTIVE_VERTICES") << rays;
     result.take("MAXIMAL_CONES") << newMaximal;
     result.take("WEIGHTS") << weights;
@@ -282,16 +282,16 @@ perl::Object divisorByValueMatrix(perl::Object complex, const Matrix<Rational>& 
  *	@return Cycle The divisor.
  */
 template <typename Addition>
-perl::Object divisor_with_refinement(perl::Object cycle, perl::Object function)
+BigObject divisor_with_refinement(BigObject cycle, BigObject function)
 {
   // Restrict the function to the cycle
-  const int power = function.give("POWER");
-  perl::Object restricted_function = function.call_method("restrict", cycle);
+  const Int power = function.give("POWER");
+  BigObject restricted_function = function.call_method("restrict", cycle);
 
   Vector<Rational> vertex_values = restricted_function.give("VERTEX_VALUES");
   const Vector<Rational>& lineality_values = restricted_function.give("LINEALITY_VALUES");
 
-  perl::Object domain = restricted_function.give("DOMAIN");
+  BigObject domain = restricted_function.give("DOMAIN");
   // If the cycle had local restriction, we have to refine it as well
   if (cycle.exists("LOCAL_RESTRICTION")) {
     IncidenceMatrix<> ref_local = refined_local_cones(cycle, domain);
@@ -300,7 +300,7 @@ perl::Object divisor_with_refinement(perl::Object cycle, perl::Object function)
     const Matrix<Rational> &loc_vertices = domain.give("VERTICES");
     const Set<Vector<Rational> > loc_vertices_as_set (rows(loc_vertices));
     // We have to check which of the original SEPARATED_VERTICES still remain
-    Set<int> usedRays;
+    Set<Int> usedRays;
     for (auto sp = entire<indexed>(rows(nonloc_separated_vertices)); !sp.at_end(); ++sp) {
       if (loc_vertices_as_set.contains(*sp)) usedRays += sp.index();
     }
@@ -310,7 +310,7 @@ perl::Object divisor_with_refinement(perl::Object cycle, perl::Object function)
   const Vector<Rational>& full_values = vertex_values | lineality_values;
 
   Matrix<Rational> value_matrix(power, full_values.dim());
-  for (int it = 0; it < power; ++it) {
+  for (Int it = 0; it < power; ++it) {
     value_matrix.row(it) = full_values;
   }
 
@@ -323,15 +323,15 @@ perl::Object divisor_with_refinement(perl::Object cycle, perl::Object function)
  * (Note that [[DOMAIN]] needn't have weights, so we can't just take this as cycle).
  */
 template <typename Addition>
-perl::Object divisor_no_refinement(perl::Object cycle, perl::Object function)
+BigObject divisor_no_refinement(BigObject cycle, BigObject function)
 {
-  const int power = function.give("POWER");
+  const Int power = function.give("POWER");
   const Vector<Rational>& vertex_values = function.give("VERTEX_VALUES");
   const Vector<Rational>& lineality_values = function.give("LINEALITY_VALUES");
   const Vector<Rational>& full_values = vertex_values | lineality_values;
 
   Matrix<Rational> value_matrix(power, full_values.dim());
-  for (int it = 0; it < power; ++it) {
+  for (Int it = 0; it < power; ++it) {
     value_matrix.row(it) = full_values;
   }
 

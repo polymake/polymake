@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,22 +23,23 @@ GNU General Public License for more details.
 
 namespace polymake { namespace tropical {
 
-	template <typename Addition, typename Scalar>
-		void extract_pseudovertices(perl::Object cone) {
-			perl::Object dome = cone.give("DOME");
-			Matrix<Scalar> vertices = dome.give("VERTICES");
-			IncidenceMatrix<> VIF = dome.give("VERTICES_IN_FACETS");
-			Set<int> far_face = dome.give("FAR_FACE");
+template <typename Addition, typename Scalar>
+void extract_pseudovertices(BigObject cone)
+{
+   BigObject dome = cone.give("DOME");
+   Matrix<Scalar> vertices = dome.give("VERTICES");
+   IncidenceMatrix<> VIF = dome.give("VERTICES_IN_FACETS");
+   Set<Int> far_face = dome.give("FAR_FACE");
 
-			Set<Set<int> > facets_as_set (rows(VIF));
-			facets_as_set -= far_face;
+   Set<Set<Int>> facets_as_set (rows(VIF));
+   facets_as_set -= far_face;
 
-			cone.take("PSEUDOVERTICES") << vertices;
-                        cone.take("FAR_PSEUDOVERTICES") << far_face;
-			cone.take("MAXIMAL_COVECTOR_CELLS") << IncidenceMatrix<>(facets_as_set);
-		}
+   cone.take("PSEUDOVERTICES") << vertices;
+   cone.take("FAR_PSEUDOVERTICES") << far_face;
+   cone.take("MAXIMAL_COVECTOR_CELLS") << IncidenceMatrix<>(facets_as_set);
+}
 
-	FunctionTemplate4perl("extract_pseudovertices<Addition,Scalar>(Polytope<Addition,Scalar>)");
+FunctionTemplate4perl("extract_pseudovertices<Addition,Scalar>(Polytope<Addition,Scalar>)");
 
 } }
 

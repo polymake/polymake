@@ -1,0 +1,5 @@
+{"app": "graph", "embed": "poset_tools.cc",
+ "inst": [
+  {"args": ["Set<Set<Int>>", "perl::Canned<const Array<Set<Set<Int>>>&>"], "func": "poset_by_inclusion", "include": ["polymake/Array.h", "polymake/Set.h"], "sig": "poset_by_inclusion:T1.X", "tp": 1},
+ null ],
+"version": 3}

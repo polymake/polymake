@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,15 +15,19 @@
 --------------------------------------------------------------------------------
 */
 
-#include <gmpxx.h>
-
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#pragma clang diagnostic ignored "-Wconversion"
 #elif defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#pragma GCC diagnostic ignored "-Wconversion"
 #endif
+
+#include <gmpxx.h>
 
 #include "libnormaliz/libnormaliz.h"
 #include "libnormaliz/cone.h"
@@ -71,19 +75,19 @@ std::vector<Scalar> pmVector_to_stdvector(const GenericVector<TVector>& v)
 template <typename Scalar, typename FromScalar>
 Array<UniPolynomial<Scalar>> stdvectorvector_to_pmArrayPolynomial(const std::vector<std::vector<FromScalar>>& vec, const Rational denom)
 {
-	Array<UniPolynomial<Scalar>> result(vec.size());
-	for(int i = 0; i < (int)vec.size(); i++){
-		result[i] = UniPolynomial<Scalar>(vec[i], sequence(0,vec[i].size()));
-		result[i]*=1/denom;
-	}
-	return result;
+  Array<UniPolynomial<Scalar>> result(vec.size());
+  for (Int i = 0; i < (Int)vec.size(); ++i) {
+    result[i] = UniPolynomial<Scalar>(vec[i], sequence(0,vec[i].size()));
+    result[i]*=1/denom;
+  }
+  return result;
 }
 
 
 template <typename Scalar, typename FromScalar>
-Matrix<Scalar> stdvectorvector_to_pmMatrix(const std::vector<std::vector<FromScalar>>& vec)
+Matrix<Scalar> stdvectorvector_to_pmMatrix(const std::vector<std::vector<FromScalar>>& vec, Int ambientDim)
 {
-  return Matrix<Scalar>(vec.size(), vec.empty() ? 0 : vec.front().size(), vec.begin());
+  return Matrix<Scalar>(vec.size(), ambientDim, vec.begin());
 }
 
 template <typename Scalar, typename FromScalar>
@@ -100,7 +104,7 @@ std::vector<std::vector<Scalar>> pmMatrix_to_stdvectorvector(const Matrix<FromSc
 // create libnormaliz cone object based on given type
 //  from rays or inequalities
 template <typename Scalar>
-libnormaliz::Cone<Scalar> libnormaliz_create_cone(perl::Object c, bool from_ineq, bool compute_facets, bool with_grading)
+libnormaliz::Cone<Scalar> libnormaliz_create_cone(BigObject c, bool from_ineq, bool compute_facets, bool with_grading)
 {
   std::map<libnormaliz::InputType, std::vector<std::vector<Scalar>>> inputmap;
   Matrix<Rational> data;
@@ -136,7 +140,7 @@ libnormaliz::Cone<Scalar> libnormaliz_create_cone(perl::Object c, bool from_ineq
 RationalFunction<> nmz_convert_HS(const libnormaliz::HilbertSeries& nmzHilb)
 {
   UniPolynomial<> HSnum(convert_to<Integer>(Vector<mpz_class>(nmzHilb.getNum())),
-                        Vector<int>(sequence(0, nmzHilb.getNum().size())));
+                        Vector<Int>(sequence(0, nmzHilb.getNum().size())));
   const std::map<long,long>& HSdenomMap = nmzHilb.getDenom();
   UniPolynomial<> HSdenom(1);
   for (const auto& mapElem : HSdenomMap)
@@ -147,10 +151,10 @@ RationalFunction<> nmz_convert_HS(const libnormaliz::HilbertSeries& nmzHilb)
 }
 
 template <typename Scalar>
-perl::ListReturn normaliz_compute_with(perl::Object c, perl::OptionSet options,
+ListReturn normaliz_compute_with(BigObject c, OptionSet options,
                                        const libnormaliz::ConeProperties& todo, bool with_grading)
 {
-  perl::ListReturn result;
+  ListReturn result;
   libnormaliz::Cone<Scalar> nmzCone = libnormaliz_create_cone<Scalar>(c, options["from_facets"], options["facets"], with_grading);
   // in the first case we have done computation with long already or disabled it explicitly
   // the second case is for non-bundled libnormaliz where the long variant is handled
@@ -162,15 +166,15 @@ perl::ListReturn normaliz_compute_with(perl::Object c, perl::OptionSet options,
   if (options["degree_one_generators"]){
        Integer d(nmzCone.getGradingDenom());
        if(d == 1){
-          result << stdvectorvector_to_pmMatrix<Integer>(nmzCone.getDeg1Elements());
+          result << stdvectorvector_to_pmMatrix<Integer>(nmzCone.getDeg1Elements(), c.give("CONE_AMBIENT_DIM"));
        } else {
-          Matrix<Integer> empty(0, c.give("CONE_DIM"));
+          Matrix<Integer> empty(0, c.give("CONE_AMBIENT_DIM"));
           result << empty;
        }
     }
   if (options["hilbert_basis"]){
-     result << Matrix<Integer>(stdvectorvector_to_pmMatrix<Integer>(nmzCone.getHilbertBasis()));
-     result << Matrix<Integer>(stdvectorvector_to_pmMatrix<Integer>(nmzCone.getMaximalSubspace()));
+     result << Matrix<Integer>(stdvectorvector_to_pmMatrix<Integer>(nmzCone.getHilbertBasis(), c.give("CONE_AMBIENT_DIM")));
+     result << Matrix<Integer>(stdvectorvector_to_pmMatrix<Integer>(nmzCone.getMaximalSubspace(), c.give("CONE_AMBIENT_DIM")));
   }
   if (options["h_star_vector"])
     // adjust to correct length, especially for non-full-dimensional polytopes
@@ -178,11 +182,11 @@ perl::ListReturn normaliz_compute_with(perl::Object c, perl::OptionSet options,
   if (options["hilbert_series"])
     result << nmz_convert_HS(nmzCone.getHilbertSeries());
   if (options["facets"]) {
-    result << stdvectorvector_to_pmMatrix<Rational>(nmzCone.getSupportHyperplanes());
-    result << stdvectorvector_to_pmMatrix<Rational>(nmzCone.getSublattice().getEquations());
+    result << stdvectorvector_to_pmMatrix<Rational>(nmzCone.getSupportHyperplanes(), c.give("CONE_AMBIENT_DIM"));
+    result << stdvectorvector_to_pmMatrix<Rational>(nmzCone.getSublattice().getEquations(), c.give("CONE_AMBIENT_DIM"));
   }
   if (options["rays"])
-    result << stdvectorvector_to_pmMatrix<Rational>(nmzCone.getExtremeRays());
+    result << stdvectorvector_to_pmMatrix<Rational>(nmzCone.getExtremeRays(), c.give("CONE_AMBIENT_DIM"));
 
   if (options["ehrhart_quasi_polynomial"]){
 	// See the libnormaliz manual. The Ehrhart quasi polynomial is a
@@ -214,12 +218,12 @@ Matrix<Integer> normaliz_compute_lattice_with(const Matrix<Integer> & V)
 
    nmzCone.compute(todo);
 
-   return stdvectorvector_to_pmMatrix<Integer>(nmzCone.getDeg1Elements());
+   return stdvectorvector_to_pmMatrix<Integer>(nmzCone.getDeg1Elements(), V.cols());
 }
 
 
 
-perl::ListReturn normaliz_compute(perl::Object c, perl::OptionSet options)
+ListReturn normaliz_compute(BigObject c, OptionSet options)
 {
   libnormaliz::verbose=options["verbose"];
 
@@ -273,8 +277,7 @@ perl::ListReturn normaliz_compute(perl::Object c, perl::OptionSet options)
 // using at most the number of threads specified
 Matrix<Integer> normaliz_compute_lattice(const Matrix<Integer> & V, int threads = 0)
 {
-
-   if(threads)
+   if (threads)
       libnormaliz::set_thread_limit(threads);
 
 #ifdef BUNDLED_LIBNORMALIZ

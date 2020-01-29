@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,30 +27,30 @@
 
 namespace polymake { namespace topaz {
 
-perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd_faces, perl::OptionSet options)
+BigObject stellar_subdivision(BigObject p_in, const Array<Set<Int>>& subd_faces, OptionSet options)
 {
    const bool is_PC= !p_in.isa("topaz::SimplicialComplex");
   
-   Array< Set<int> > C_in = p_in.give(is_PC ? Str("TRIANGULATION.FACETS") : Str("FACETS"));
-   int n_vert             = p_in.give(is_PC ? Str("N_POINTS")             : Str("N_VERTICES"));
+   Array<Set<Int>> C_in = p_in.give(is_PC ? Str("TRIANGULATION.FACETS") : Str("FACETS"));
+   Int n_vert           = p_in.give(is_PC ? Str("N_POINTS")             : Str("N_VERTICES"));
   
    // compute new complex
-   std::list< Set<int> > C;
+   std::list<Set<Int>> C;
   
-   for (int i=0; i<subd_faces.size(); ++i) {
-      const Set<int> F = subd_faces[i];
+   for (Int i = 0; i < subd_faces.size(); ++i) {
+      const Set<Int> F = subd_faces[i];
       bool facet_found = false;
       for (auto f=entire(C_in);!f.at_end(); ++f) {
-         Set<int> facet = *f;
+         Set<Int> facet = *f;
 
-         if (incl(F,facet)<1) {  // F contained in the facet
+         if (incl(F,facet) < 1) {  // F contained in the facet
             facet_found = true;
-            const int size = facet.size();
+            const Int size = facet.size();
             facet -= F;
             facet += n_vert+i;
          
             // add new facets
-            for (auto s_it=entire(all_subsets_of_k(F, size-facet.size())); !s_it.at_end(); ++s_it)
+            for (auto s_it = entire(all_subsets_of_k(F, size-facet.size())); !s_it.at_end(); ++s_it)
                C.push_back(facet + *s_it);
          
          } else {
@@ -61,11 +61,11 @@ perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd
       if (!facet_found) {
          throw std::runtime_error("stellar_subdivision: Input does not specify a face (of the complex generated so far).");
       }
-      C_in = Array< Set<int> >(C.size(),C.begin());
+      C_in = Array<Set<Int>>(C.size(),C.begin());
       C.clear();
    }
 
-   perl::Object p_out(p_in.type());
+   BigObject p_out(p_in.type());
    p_out.set_description()<<"Obtained from " << p_in.name() << " by barycentric subdivision of the faces\n" << subd_faces << ".\n";
    p_out.take(is_PC ? Str("TRIANGULATION.FACETS") : Str("FACETS")) << as_array(C_in);
   
@@ -73,7 +73,7 @@ perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd
    if (is_PC) {
       Matrix<Rational> Coord = p_in.give("POINTS");
       Coord.resize(n_vert+subd_faces.size(),Coord.cols());
-      for (int i=0; i<subd_faces.size(); ++i)
+      for (Int i = 0; i < subd_faces.size(); ++i)
          Coord[i+n_vert] = average( rows(Coord.minor(subd_faces[i], All)) );
     
       p_out.take("POINTS") << Coord;
@@ -82,7 +82,7 @@ perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd
       if (options["geometric_realization"]) {
          Matrix<Rational> Coord = p_in.give("COORDINATES");
          Coord.resize(n_vert+subd_faces.size(),Coord.cols());
-         for (int i=0; i<subd_faces.size(); ++i)
+         for (Int i = 0; i < subd_faces.size(); ++i)
             Coord[i+n_vert] = average( rows(Coord.minor(subd_faces[i], All)) );
     
          p_out.take("COORDINATES") << Coord;
@@ -96,7 +96,7 @@ perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd
          old_L.insert(*l);
     
       L.resize(n_vert+subd_faces.size());
-      for (int i=0; i<subd_faces.size(); ++i) {
+      for (Int i = 0; i < subd_faces.size(); ++i) {
          std::ostringstream label;
          auto v=entire(subd_faces[i]);
          label << "{" << L[*v];  ++v;
@@ -106,7 +106,7 @@ perl::Object stellar_subdivision(perl::Object p_in, const Array<Set<int> >& subd
          std::string l=label.str(), ll=l;
       
          // test if ll is unique
-         int j=0;
+         Int j = 0;
          while (old_L.find(ll) != old_L.end()) {
             ++j;
             label.str("");

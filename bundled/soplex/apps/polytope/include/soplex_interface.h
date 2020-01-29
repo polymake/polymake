@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,19 +30,19 @@ class Solver : public LP_Solver<Rational> {
 public:
    Solver()
 #if POLYMAKE_DEBUG
-      : debug_print(perl::get_debug_level() > 1)
+      : debug_print(get_debug_level() > 1)
 #endif
    {}
 
    LP_Solution<Rational>
    solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations,
-         const Vector<Rational>& Objective, bool maximize, const Set<int>& initial_basis) const;
+         const Vector<Rational>& Objective, bool maximize, const Set<Int>& initial_basis) const;
 
    LP_Solution<Rational>
    solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations,
          const Vector<Rational>& Objective, bool maximize, bool=false) const override
    {
-      return Solver::solve(Inequalities, Equations, Objective, maximize, Set<int>());
+      return Solver::solve(Inequalities, Equations, Objective, maximize, Set<Int>());
    }
 
 private:

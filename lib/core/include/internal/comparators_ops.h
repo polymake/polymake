@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -77,7 +77,7 @@ struct positive {
    typedef bool result_type;
    result_type operator() (typename function_argument<OpRef>::const_type x) const
    {
-      return sign(x)>0;
+      return sign(x) > 0;
    }
 };
 
@@ -87,7 +87,7 @@ struct negative {
    typedef bool result_type;
    result_type operator() (typename function_argument<OpRef>::const_type x) const
    {
-      return sign(x)<0;
+      return sign(x) < 0;
    }
 };
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,7 +26,7 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
-perl::Object pyramid(perl::Object p_in, const Scalar& z, perl::OptionSet options)
+BigObject pyramid(BigObject p_in, const Scalar& z, OptionSet options)
 {
    const bool noc = options["no_coordinates"],
       relabel = !options["no_labels"],
@@ -37,14 +37,14 @@ perl::Object pyramid(perl::Object p_in, const Scalar& z, perl::OptionSet options
    if (group && !p_in.exists("GROUP"))
       throw std::runtime_error("pyramid: group of the base polytope needs to be provided in order to compute group of the pyramid.");
 
-   int n_vertices=0;
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   Int n_vertices = 0;
+   BigObject p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "pyramid over " << p_in.name() << endl;
 
    if (noc || p_in.exists("VERTICES_IN_FACETS")) {
-      const IncidenceMatrix<> VIF=p_in.give("VERTICES_IN_FACETS");
-      n_vertices=VIF.cols();
-      const int n_facets=VIF.rows();
+      const IncidenceMatrix<> VIF = p_in.give("VERTICES_IN_FACETS");
+      n_vertices = VIF.cols();
+      const Int n_facets = VIF.rows();
       const IncidenceMatrix<> VIF_out= (VIF | sequence(0,n_facets))     // original vertices + the new top vertex
          / sequence(0, n_vertices);     // original polytope becomes the bottom facet
 
@@ -53,7 +53,7 @@ perl::Object pyramid(perl::Object p_in, const Scalar& z, perl::OptionSet options
    }
    if (noc) {
       if (p_in.exists("COMBINATORIAL_DIM")) {
-         const int dim=p_in.give("COMBINATORIAL_DIM");
+         const Int dim = p_in.give("COMBINATORIAL_DIM");
          p_out.take("COMBINATORIAL_DIM") << dim+1;
       }
    } else {
@@ -69,15 +69,15 @@ perl::Object pyramid(perl::Object p_in, const Scalar& z, perl::OptionSet options
    }
 
    if(group){
-      Array<Array<int>> gens = p_in.give("GROUP.VERTICES_ACTION.GENERATORS");
+      Array<Array<Int>> gens = p_in.give("GROUP.VERTICES_ACTION.GENERATORS");
 
       for(auto i = entire(gens); !i.at_end(); ++i)
          (*i).resize(n_vertices+1,n_vertices);
 
-      perl::Object a("group::PermutationAction");
+      BigObject a("group::PermutationAction");
       a.take("GENERATORS") << gens;
 
-      perl::Object g("group::Group");
+      BigObject g("group::Group");
       g.set_description() << "canonical group induced by the group of the base polytope" << endl;
       g.set_name("canonicalGroup");
       p_out.take("GROUP") << g;

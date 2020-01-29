@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -41,7 +41,7 @@ namespace polymake { namespace tropical {
    @return true, if and only if cone contains one of the sets of local_restriction 
 */
 template <typename TSet, typename TMatrix>
-bool is_coneset_compatible(const GenericSet<TSet, int>& cone, const GenericIncidenceMatrix<TMatrix>& local_restriction)
+bool is_coneset_compatible(const GenericSet<TSet, Int>& cone, const GenericIncidenceMatrix<TMatrix>& local_restriction)
 {
   for (auto r=entire(rows(local_restriction)); !r.at_end(); ++r) {
      if (incl(*r, cone)<=0) return true;

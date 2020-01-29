@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,33 +24,33 @@
 namespace polymake { namespace polytope {
  
 template<typename Scalar, typename MatrixType, typename VectorType>
-Array<Set<int>>
+Array<Set<Int>>
 regular_subdivision(const GenericMatrix<MatrixType> &vertices_in, const GenericVector<VectorType>& weight_in)
 {
    auto vertices = convert_to<Scalar>(vertices_in);
    auto weight = convert_to<Scalar>(weight_in);
    //construct the lifted polytope + a ray
    const Matrix<Scalar> lifted_vertices=(vertices|weight)/unit_vector<Scalar>(vertices.cols()+1,vertices.cols());
-   perl::Object p("Polytope", mlist<Scalar>());
+   BigObject p("Polytope", mlist<Scalar>());
    p.take("POINTS") << lifted_vertices;
 
    //we have to check for the case in which the subdivision is trivial
    const Matrix<Scalar> aff_hull = p.give("AFFINE_HULL");
    if (aff_hull.rows() && !is_zero(cols(aff_hull).back())) {
-      const Set<int> all=sequence(0,vertices.rows());
-      return Array<Set <int> >(1,all);
+      const Set<Int> all = sequence(0,vertices.rows());
+      return Array<Set<Int>>(1, all);
    }
     
    const Matrix<Scalar> facets=p.give("FACETS");
    const IncidenceMatrix<> vif=p.give("POINTS_IN_FACETS");
     
-   Set<int> simplices;
-   int i=0;
-   for (auto last_col=entire(cols(facets).back()); !last_col.at_end(); ++last_col, ++i)
+   Set<Int> simplices;
+   Int i = 0;
+   for (auto last_col = entire(cols(facets).back()); !last_col.at_end(); ++last_col, ++i)
       if (*last_col>0)
          simplices.push_back(i); //the lower facets are those with last coordinate>0
 
-   return Array<Set<int>>(select(rows(vif), simplices));
+   return Array<Set<Int>>(select(rows(vif), simplices));
 }
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"

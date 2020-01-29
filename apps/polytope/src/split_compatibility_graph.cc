@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,18 +22,18 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
-Graph<> split_compatibility_graph(const Matrix<Scalar>& SplitEquations, perl::Object p)
+Graph<> split_compatibility_graph(const Matrix<Scalar>& SplitEquations, BigObject p)
 {
    const Matrix<Scalar> Facets=p.give("FACETS");
    const Matrix<Scalar> AffineHull=p.give("AFFINE_HULL");
-   const int n_splits=SplitEquations.rows();
+   const Int n_splits = SplitEquations.rows();
 
    Graph<> S(n_splits);
-   perl::ObjectType Polytope("Polytope", mlist<Scalar>());
+   BigObjectType Polytope("Polytope", mlist<Scalar>());
 
-   for (int s1=0; s1<n_splits; ++s1) {
-      for (int s2=s1+1; s2<n_splits; ++s2) {
-         perl::Object Intersection(Polytope);
+   for (Int s1 = 0; s1 < n_splits; ++s1) {
+      for (Int s2 = s1+1; s2 < n_splits; ++s2) {
+         BigObject Intersection(Polytope);
          Matrix<Scalar> SplitIntersection(0,Facets.cols());
          SplitIntersection = SplitIntersection / SplitEquations.row(s1) / SplitEquations.row(s2)/ AffineHull;
          Intersection.take("INEQUALITIES") << Facets;

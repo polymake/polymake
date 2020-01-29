@@ -1,0 +1,134 @@
+#  Copyright (c) 1997-2020
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @topic category core/functions/Schemas
+# Functions for creating and manipulating JSON schemas describing serialized polymake objects.
+
+package Polymake::User;
+
+# @category Schemas
+# Load a JSON schema from a file.
+# @param [complete file] String filename
+# @return Schema
+
+user_function load_schema($) {
+   my ($filename) = @_;
+   replace_special_paths($filename);
+   load Schema($filename);
+}
+
+
+# @category Schemas
+# Save a JSON schema in a file.
+# @param Schema schema, e.g. created by [[create_permissive_schema]] or [[create_restrictive_schema]]
+# @param [complete file] String filename file to store the JSON representation of the schema
+# @option Bool canonical store JSON with pretty indentation and all properties ordered alphabetically.
+#   This is particularly useful if you are going to modify the schema in a text editor.
+
+user_function save_schema(Schema,$; { canonical => false}) {
+   my ($schema, $filename, @options) = @_;
+   length($filename) > 0 or croak( "filename missing" );
+   replace_special_paths($filename);
+   $schema->save($filename, @options);
+}
+
+
+# @category Schemas
+# Generate a JSON schema for one or more `big' object types
+#
+# The resulting schema will prescribe the representation of all known properties
+# of the given big object types and allow arbitrary additional properties.
+#
+# @param Any object ... a big object or a type expression
+# @return Schema
+#
+# @example [notest] create a schema for Polytope<Rational> and use it for validation of JSON input
+# > $schema = create_permissive_schema(typeof Polytope<Rational>);
+# > $schema->validate(decode_json($json_input_string));
+# @example [application graph] create a schema for a representative big data object
+# > $g = graph::complete(4);
+# > $schema = create_permissive_schema($g);
+
+user_function create_permissive_schema($@) {
+   Core::Serializer::create_permissive_schema(map {
+      my $type = instanceof Core::BigObject($_) ? $_->type : $_;
+      if (ref($type) ne "Polymake::Core::BigObjectType" || $type->abstract) {
+         croak( "Schemas::create_permissive - wrong argument ", ref($_) || "'$_'", ": only standalone big object types or instances allowed" );
+      }
+      $type
+   } @_);
+}
+
+
+# @category Schemas
+# Generate a JSON schema from a given `big' object instance
+#
+# The resulting schema will exactly match the given object: it will declare all present properties
+# as mandatory and not allow any other properties even if they are defined for the object type in general.
+#
+# Such a schema can be used for manipulating properties of other objects when they are serialized
+# before storing in a file or a database.
+#
+# @param Any object
+# @return Schema
+#
+# @example [application polytope] create a schema exactly describing a cross polytope
+# > $c = polytope::cross(3);
+# > $schema = create_restrictive_schema($c);
+
+user_function create_restrictive_schema(Core::BigObject) {
+   &Core::Serializer::create_restrictive_schema;
+}
+
+
+package Polymake::Schema;
+
+
+# Change the stored data type for properties in a restrictive schema
+#
+# Selected properties will be coerced to a different type when the object is stored in a data file
+# or in PolyDB using this schema.
+#
+# Note: This function does not try to verify that the properties can be serialized as the given type
+# or will be successfully deserialized when reading the object from a file or retrieving it from a database.
+# It's solely in the users responsibility to choose a compatible and convertible data type.
+#
+# @param [complete Core::Property::InSchema] Any properties list of pairs ''PROPERTY_NAME => type''
+#   A property in a subobject is written in dotted path notation: ''"NAME1.NAME2.NAME3..."''
+#   Types can be specified by name in a string or as a ''typeof'' expression or as a type of an exsiting data object.
+#   Specifying ''undef'' or ''"default"'' will enforce storing the properties in their original form, as declared in the rulebase.
+#   This operation might be useful e.g. to update the schema after a data mode change.
+# @example [notest] Require FACETS to be stored as a sparse matrix
+# > $schema->prescribe_property_types(FACETS => typeof SparseMatrix<Rational>);
+# @example [notest] Require F_VECTOR and F2_VECTOR to be stored with simple integer entries
+# > $schema->prescribe_property_types(F_VECTOR => "Vector<Int>", F2_VECTOR => "Matrix<Int>");
+# @example [notest] Require VERTICES to be stored as declared in the rules, that is, as a dense matrix
+# > $schema->prescribe_property_types(VERTICES => "default");
+
+user_method prescribe_property_types($@) {
+   if (@_ > 2 && @_ % 2) {
+      &Core::Serializer::prescribe_property_types;
+   } else {
+      croak( 'expecting pairs PROPERTY_NAME => TYPE' );
+   }
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -43,12 +43,12 @@ template <typename Field>
 class QuadraticExtension;
 
 template <typename Field>
-int sign(const QuadraticExtension<Field>&);
+Int sign(const QuadraticExtension<Field>&);
 
 /** @class QuadraticExtension
     @brief Realizes quadratic extensions of fields
  */
-template <typename Field=Rational>
+template <typename Field = Rational>
 class QuadraticExtension {
 public:
    static_assert(is_field<Field>::value, "base number type is not a field");
@@ -72,27 +72,27 @@ public:
       : bool_constant<can_upgrade<pure_type_t<T>, Field>::value || std::is_same<pure_type_t<T>, QuadraticExtension>::value> {};
 
    QuadraticExtension()
-      : _a()
-      , _b()
-      , _r() {}
+      : a_()
+      , b_()
+      , r_() {}
 
    template <typename T1, typename T2, typename T3,
-             typename=typename std::enable_if<can_initialize_particle<T1>::value &&
-                                              can_initialize_particle<T2>::value &&
-                                              can_initialize_particle<T3>::value>::type>
+             typename = std::enable_if_t<can_initialize_particle<T1>::value &&
+                                         can_initialize_particle<T2>::value &&
+                                         can_initialize_particle<T3>::value>>
       QuadraticExtension(T1&& a, T2&& b, T3&& r)
-      : _a(std::forward<T1>(a))
-      , _b(std::forward<T2>(b))
-      , _r(std::forward<T3>(r))
+      : a_(std::forward<T1>(a))
+      , b_(std::forward<T2>(b))
+      , r_(std::forward<T3>(r))
    {
       normalize();
    }
 
-   template <typename T, typename=typename std::enable_if<can_initialize_particle<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<can_initialize_particle<T>::value>>
    explicit QuadraticExtension(T&& a)
-      : _a(std::forward<T>(a))
-      , _b()
-      , _r() {}
+      : a_(std::forward<T>(a))
+      , b_()
+      , r_() {}
 
    QuadraticExtension(const QuadraticExtension&) = default;
    QuadraticExtension(QuadraticExtension&&) = default;
@@ -100,37 +100,37 @@ public:
    QuadraticExtension& operator= (QuadraticExtension&&) = default;
 
    template <typename T,
-             typename=typename std::enable_if<can_assign_particle<T>::value>::type>
+             typename = std::enable_if_t<can_assign_particle<T>::value>>
    QuadraticExtension& operator= (T&& a)
    {
-      _a = std::forward<T>(a);
-      _b = zero_value<Field>();
-      _r = zero_value<Field>();
+      a_ = std::forward<T>(a);
+      b_ = zero_value<Field>();
+      r_ = zero_value<Field>();
       return *this;
    }
 
    template <typename T,
-             typename=typename std::enable_if<can_assign_particle<T>::value>::type>
+             typename = std::enable_if_t<can_assign_particle<T>::value>>
    QuadraticExtension& operator= (std::initializer_list<T> l)
    {
       if (l.size() != 3) throw std::runtime_error("initializer list must have 3 elements");
       const T* val=l.begin();
-      _a = val[0];
-      _b = val[1];
-      _r = val[2];
+      a_ = val[0];
+      b_ = val[1];
+      r_ = val[2];
       normalize();
       return *this;
    }
 
-   const Field& a() const { return _a; }
-   const Field& b() const { return _b; }
-   const Field& r() const { return _r; }
+   const Field& a() const { return a_; }
+   const Field& b() const { return b_; }
+   const Field& r() const { return r_; }
 
    void swap (QuadraticExtension& op)
    {
-      std::swap(_a, op._a);
-      std::swap(_b, op._b);
-      std::swap(_r, op._r);
+      std::swap(a_, op.a_);
+      std::swap(b_, op.b_);
+      std::swap(r_, op.r_);
    }
 
    friend
@@ -147,8 +147,8 @@ public:
 
    QuadraticExtension& negate()
    {
-      _a.negate();
-      _b.negate();
+      a_.negate();
+      b_.negate();
       return *this;
    }
 
@@ -168,7 +168,7 @@ public:
 
    QuadraticExtension& conjugate()
    {
-      _b.negate();
+      b_.negate();
       return *this;
    }
 
@@ -188,42 +188,42 @@ public:
 
    field_type norm() const
    {
-      return _a*_a - _b*_b*_r;
+      return a_*a_ - b_*b_*r_;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_particle<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_particle<T>::value>>
    QuadraticExtension&
    operator+= (const T& x)
    {
-      _a += x;
+      a_ += x;
       if (__builtin_expect(!isfinite(x), 0)) {
-         _b = zero_value<Field>();
-         _r = zero_value<Field>();
+         b_ = zero_value<Field>();
+         r_ = zero_value<Field>();
       }
       return *this;
    }
 
    QuadraticExtension& operator+= (const QuadraticExtension& x)
    {
-      if (is_zero(x._r)) {
-         *this += x._a;
+      if (is_zero(x.r_)) {
+         *this += x.a_;
       } else {
-         if (is_zero(_r)) {
-            if (__builtin_expect(isfinite(_a), 1)) {
-               _b = x._b;
-               _r = x._r;
+         if (is_zero(r_)) {
+            if (__builtin_expect(isfinite(a_), 1)) {
+               b_ = x.b_;
+               r_ = x.r_;
             }
          } else {
-            if (x._r != _r) throw RootError();
-            _b += x._b;
-            if (is_zero(_b)) _r=zero_value<Field>();
+            if (x.r_ != r_) throw RootError();
+            b_ += x.b_;
+            if (is_zero(b_)) r_=zero_value<Field>();
          }
-         _a += x._a; 
+         a_ += x.a_; 
       }
       return *this;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_operand<T>::value>>
    friend
    QuadraticExtension operator+ (const QuadraticExtension& x, const T& y)
    {
@@ -232,21 +232,21 @@ public:
       return result;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_operand<T>::value>>
    friend
    QuadraticExtension&& operator+ (QuadraticExtension&& x, const T& y)
    {
       return std::move(x += y);
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_particle<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_particle<T>::value>>
    friend
    QuadraticExtension operator+ (const T& x, const QuadraticExtension& y)
    {
-      return y + x;
+      return y+x;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_operand<T>::value>>
    friend
    QuadraticExtension&& operator+ (const T& x, QuadraticExtension&& y)
    {
@@ -260,39 +260,39 @@ public:
    }
 
 
-   template <typename T, typename=typename std::enable_if<fits_as_particle<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_particle<T>::value>>
    QuadraticExtension&
    operator-= (const T& x)
    {
-      _a -= x;
+      a_ -= x;
       if (__builtin_expect(!isfinite(x), 0)) {
-         _b = zero_value<Field>();
-         _r = zero_value<Field>();
+         b_ = zero_value<Field>();
+         r_ = zero_value<Field>();
       }
       return *this;
    }
 
    QuadraticExtension& operator-= (const QuadraticExtension& x)
    {
-      if (is_zero(x._r)) {
-         *this -= x._a;
+      if (is_zero(x.r_)) {
+         *this -= x.a_;
       } else {
-         if (is_zero(_r)) {
-            if (__builtin_expect(isfinite(_a), 1)) {
-               _b -= x._b;
-               _r = x._r;
+         if (is_zero(r_)) {
+            if (__builtin_expect(isfinite(a_), 1)) {
+               b_ -= x.b_;
+               r_ = x.r_;
             }
          } else {
-            if (x._r != _r) throw RootError();
-            _b -= x._b;
-            if (is_zero(_b)) _r=zero_value<Field>();
+            if (x.r_ != r_) throw RootError();
+            b_ -= x.b_;
+            if (is_zero(b_)) r_=zero_value<Field>();
          }
-         _a -= x._a;
+         a_ -= x.a_;
       }
       return *this;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_operand<T>::value>>
    friend
    QuadraticExtension operator- (const QuadraticExtension& x, const T& y)
    {
@@ -301,14 +301,14 @@ public:
       return result;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_operand<T>::value>>
    friend
    QuadraticExtension&& operator- (QuadraticExtension&& x, const T& y)
    {
       return std::move(x -= y);
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_particle<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_particle<T>::value>>
    friend
    QuadraticExtension operator- (const T& x, const QuadraticExtension& y)
    {
@@ -316,7 +316,7 @@ public:
       return (result -= x).negate();
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_operand<T>::value>>
    friend
    QuadraticExtension&& operator- (const T& x, QuadraticExtension&& y)
    {
@@ -330,50 +330,50 @@ public:
    }
 
 
-   template <typename T, typename=typename std::enable_if<fits_as_particle<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_particle<T>::value>>
    QuadraticExtension&
    operator*= (const T& x)
    {
-      if (is_zero(_r)) {
-         _a *= x;
+      if (is_zero(r_)) {
+         a_ *= x;
       } else if (__builtin_expect(isfinite(x), 1)) {
          if (is_zero(x)) {
-            *this=x;
+            *this = x;
          } else {
-            _a *= x;
-            _b *= x;
+            a_ *= x;
+            b_ *= x;
          }
       } else {
-         *this= sign(*this)<0 ? -x : x;
+         *this = sign(*this) < 0 ? -x : x;
       }
       return *this;
    }
 
    QuadraticExtension& operator*= (const QuadraticExtension& x)
    {
-      if (is_zero(x._r)) {
-         *this *= x._a;
-      } else if (is_zero(_r)) {
-         if (__builtin_expect(isfinite(_a), 1)) {
-            if (!is_zero(_a)) {
-               _b = _a * x._b;
-               _a *= x._a;
-               _r = x._r;
+      if (is_zero(x.r_)) {
+         *this *= x.a_;
+      } else if (is_zero(r_)) {
+         if (__builtin_expect(isfinite(a_), 1)) {
+            if (!is_zero(a_)) {
+               b_ = a_ * x.b_;
+               a_ *= x.a_;
+               r_ = x.r_;
             }
-         } else if (sign(x)<0) {
-            _a.negate();
+         } else if (sign(x) < 0) {
+            a_.negate();
          }
       } else {
-         if (x._r != _r) throw RootError();
-         const Field tmp = _a * x._b;
-         _a *= x._a;  _a += _b * x._b * _r;
-         _b *= x._a;  _b += tmp;
-         if (is_zero(_b)) _r=zero_value<Field>();
+         if (x.r_ != r_) throw RootError();
+         const Field tmp = a_ * x.b_;
+         a_ *= x.a_;  a_ += b_ * x.b_ * r_;
+         b_ *= x.a_;  b_ += tmp;
+         if (is_zero(b_)) r_=zero_value<Field>();
       }
       return *this;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_operand<T>::value>>
    friend
    QuadraticExtension operator* (const QuadraticExtension& x, const T& y)
    {
@@ -382,21 +382,21 @@ public:
       return result;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_particle<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_particle<T>::value>>
    friend
    QuadraticExtension operator* (const T& x, const QuadraticExtension& y)
    {
-      return y * x;
+      return y*x;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_operand<T>::value>>
    friend
    QuadraticExtension&& operator* (QuadraticExtension&& x, const T& y)
    {
       return std::move(x *= y);
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_operand<T>::value>>
    friend
    QuadraticExtension&& operator* (const T& x, QuadraticExtension&& y)
    {
@@ -410,50 +410,50 @@ public:
    }
 
 
-   template <typename T, typename=typename std::enable_if<fits_as_particle<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_particle<T>::value>>
    QuadraticExtension& operator/= (const T& x)
    {
       if (std::is_arithmetic<Field>::value && is_zero(x))  // complex numeric types check for zero division themselves
          throw GMP::ZeroDivide();
-      _a /= x;
+      a_ /= x;
       if (__builtin_expect(isfinite(x), 1)) {
-         _b /= x;
-      } else if (!is_zero(_r)) {
-         _b = zero_value<Field>();
-         _r = zero_value<Field>();
+         b_ /= x;
+      } else if (!is_zero(r_)) {
+         b_ = zero_value<Field>();
+         r_ = zero_value<Field>();
       }
       return *this;
    }
 
    QuadraticExtension& operator/= (const QuadraticExtension& x)
    {
-      if (is_zero(x._r)) {
-         *this /= x._a;
-      } else if (is_zero(_r)) {
-         if (__builtin_expect(isfinite(_a), 1)) {
-            if (__builtin_expect(!is_zero(_a), 1)) {
-               _a /= x.norm();
-               _b = -(_a * x._b);
-               _a *= x._a;
-               _r = x._r;
+      if (is_zero(x.r_)) {
+         *this /= x.a_;
+      } else if (is_zero(r_)) {
+         if (__builtin_expect(isfinite(a_), 1)) {
+            if (__builtin_expect(!is_zero(a_), 1)) {
+               a_ /= x.norm();
+               b_ = -(a_ * x.b_);
+               a_ *= x.a_;
+               r_ = x.r_;
             }
-         } else if (sign(x)<0) {
-            _a.negate();
+         } else if (sign(x) < 0) {
+            a_.negate();
          }
       } else {
-         if (x._r != _r) throw RootError();
+         if (x.r_ != r_) throw RootError();
          // *this = *this * conjugate(x) / x.norm();
          const Field n = x.norm();
-         _a /= n;  _b /= n;
-         const Field tmp= _a * x._b;
-         _a *= x._a;  _a -= _b * x._b * _r;
-         _b *= x._a;  _b -= tmp;
-         if (is_zero(_b)) _r = zero_value<Field>();
+         a_ /= n;  b_ /= n;
+         const Field tmp= a_ * x.b_;
+         a_ *= x.a_;  a_ -= b_ * x.b_ * r_;
+         b_ *= x.a_;  b_ -= tmp;
+         if (is_zero(b_)) r_ = zero_value<Field>();
       }
       return *this;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_operand<T>::value>>
    friend
    QuadraticExtension operator/ (const QuadraticExtension& x, const T& y)
    {
@@ -462,7 +462,7 @@ public:
       return result;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_particle<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_particle<T>::value>>
    friend
    QuadraticExtension operator/ (const T& x, const QuadraticExtension& y)
    {
@@ -472,20 +472,20 @@ public:
    }
 
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_operand<T>::value>>
    friend
    QuadraticExtension&& operator/ (QuadraticExtension&& x, const T& y)
    {
       return std::move(x /= y);
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_operand<T>::value>>
    friend
    QuadraticExtension&& operator/ (const T& x, QuadraticExtension&& y)
    {
       if (is_zero(y))
          throw GMP::ZeroDivide();
-      if (__builtin_expect(isfinite(y._a), 1)) {
+      if (__builtin_expect(isfinite(y.a_), 1)) {
          if (is_zero(x)) {
             y=x;
          } else {
@@ -494,7 +494,7 @@ public:
             y *= x;
          }
       } else {
-         y._a=zero_value<Field>();
+         y.a_=zero_value<Field>();
       }
       return std::move(y);
    }
@@ -505,127 +505,140 @@ public:
       return std::move(x /= y);
    }
 
-   int compare(const QuadraticExtension& x) const
+   Int compare(const QuadraticExtension& x) const
    {
-      if (is_zero(_r)) {
-         if (is_zero(x._r)) {
-            return operations::cmp()(_a, x._a);
+      if (is_zero(r_)) {
+         if (is_zero(x.r_)) {
+            return operations::cmp()(a_, x.a_);
          } else {
-            return compare(_a, _b, x._a, x._b, x._r);
+            return compare(a_, b_, x.a_, x.b_, x.r_);
          }
       } else {
-         if (!is_zero(x._r) && x._r != _r)
+         if (!is_zero(x.r_) && x.r_ != r_)
             throw RootError();
-         return compare(_a, _b, x._a, x._b, _r);
+         return compare(a_, b_, x.a_, x.b_, r_);
       }
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   int compare(const T& x) const
+   template <typename T>
+   std::enable_if_t<fits_as_particle<T>::value, Int>
+   compare(const T& x) const
    {
-      if (is_zero(_r))
-         return operations::cmp()(_a, x);
+      if (is_zero(r_))
+         return operations::cmp()(a_, x);
       else
-         return compare(_a, _b, x, 0, _r);
+         return compare(a_, b_, x, 0, r_);
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_particle<T>::value>::type>
+   template <typename T>
    friend
-   bool operator== (const QuadraticExtension& x, const T& y)
+   std::enable_if_t<fits_as_particle<T>::value, bool>
+   operator== (const QuadraticExtension& x, const T& y)
    {
-      return is_zero(x._r) && x._a==y;
+      return is_zero(x.r_) && x.a_ == y;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_particle<T>::value>::type>
+   template <typename T>
    friend
-   bool operator== (const T& x, const QuadraticExtension& y)
+   std::enable_if_t<fits_as_particle<T>::value, bool>
+   operator== (const T& x, const QuadraticExtension& y)
    {
-      return y==x;
+      return y == x;
    }
 
    friend
    bool operator== (const QuadraticExtension& x, const QuadraticExtension& y)
    {
-      return x._a==y._a && x._b==y._b && x._r==y._r;
+      return x.a_ == y.a_ && x.b_ == y.b_ && x.r_ == y.r_;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T>
    friend
-   bool operator!= (const QuadraticExtension& x, const T& y)
+   std::enable_if_t<fits_as_operand<T>::value, bool>
+   operator!= (const QuadraticExtension& x, const T& y)
    {
-      return !(x==y);
+      return !(x == y);
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_particle<T>::value>::type>
+   template <typename T>
    friend
-   bool operator!= (const T& x, const QuadraticExtension& y)
+   std::enable_if_t<fits_as_particle<T>::value, bool>
+   operator!= (const T& x, const QuadraticExtension& y)
    {
-      return !(y==x);
+      return !(y == x);
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T>
    friend
-   bool operator< (const QuadraticExtension& x, const T& y)
+   std::enable_if_t<fits_as_operand<T>::value, bool>
+   operator< (const QuadraticExtension& x, const T& y)
    {
-      return x.compare(y)<0;
+      return x.compare(y) < 0;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_particle<T>::value>::type>
+   template <typename T>
    friend
-   bool operator< (const T& x, const QuadraticExtension& y)
+   std::enable_if_t<fits_as_particle<T>::value, bool>
+   operator< (const T& x, const QuadraticExtension& y)
    {
-      return y.compare(x)>0;
+      return y.compare(x) > 0;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T>
    friend
-   bool operator> (const QuadraticExtension& x, const T& y)
-   {
-      return y < x;
-   }
-
-   template <typename T, typename=typename std::enable_if<fits_as_particle<T>::value>::type>
-   friend
-   bool operator> (const T& x, const QuadraticExtension& y)
+   std::enable_if_t<fits_as_operand<T>::value, bool>
+   operator> (const QuadraticExtension& x, const T& y)
    {
       return y < x;
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T>
    friend
-   bool operator<= (const QuadraticExtension& x, const T& y)
+   std::enable_if_t<fits_as_particle<T>::value, bool>
+   operator> (const T& x, const QuadraticExtension& y)
+   {
+      return y < x;
+   }
+
+   template <typename T>
+   friend
+   std::enable_if_t<fits_as_operand<T>::value, bool>
+   operator<= (const QuadraticExtension& x, const T& y)
    {
       return !(y < x);
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_particle<T>::value>::type>
+   template <typename T>
    friend
-   bool operator<= (const T& x, const QuadraticExtension& y)
+   std::enable_if_t<fits_as_particle<T>::value, bool>
+   operator<= (const T& x, const QuadraticExtension& y)
    {
       return !(y < x);
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_operand<T>::value>::type>
+   template <typename T>
    friend
-   bool operator>= (const QuadraticExtension& x, const T& y)
+   std::enable_if_t<fits_as_operand<T>::value, bool>
+   operator>= (const QuadraticExtension& x, const T& y)
    {
       return !(x < y);
    }
 
-   template <typename T, typename=typename std::enable_if<fits_as_particle<T>::value>::type>
+   template <typename T>
    friend
-   bool operator>= (const T& x, const QuadraticExtension& y)
+   std::enable_if_t<fits_as_particle<T>::value, bool>
+   operator>= (const T& x, const QuadraticExtension& y)
    {
       return !(x < y);
    }
 
    field_type to_field_type() const  // FIXME #569
    {
-      return _a + field_type(_b * sqrt(AccurateFloat(_r)));
+      return a_ + field_type(b_ * sqrt(AccurateFloat(r_)));
    }
 
    template <typename T,
-             typename=typename std::enable_if<isomorphic_types<T, Field>::value && std::is_constructible<T, Field>::value>::type>
+             typename = std::enable_if_t<isomorphic_types<T, Field>::value && std::is_constructible<T, Field>::value>>
    explicit operator T() const
    {
       return static_cast<T>(to_field_type());
@@ -633,24 +646,25 @@ public:
 
    explicit operator AccurateFloat() const
    {
-      return AccurateFloat(_a) + sqrt(AccurateFloat(_r)) * AccurateFloat(_b);
+      return AccurateFloat(a_) + sqrt(AccurateFloat(r_)) * AccurateFloat(b_);
    }
 
-   template <typename Output> friend
+   template <typename Output>
+   friend
    Output& operator<< (GenericOutput<Output>& outs, const QuadraticExtension& x)
    {
       Output& os=outs.top();
-      if (!is_zero(x._b)) {
+      if (!is_zero(x.b_)) {
          const bool need_parens = has_serialized<Field>::value;
          if (need_parens) os << '(';
-         os << x._a;
+         os << x.a_;
          if (need_parens) os << ")+(";
-         else if (x._b > 0) os << '+';
-         os << x._b;
+         else if (x.b_ > 0) os << '+';
+         os << x.b_;
          if (need_parens) os << ')';
-         os << 'r' << x._r;
+         os << 'r' << x.r_;
       } else {
-         os << x._a;
+         os << x.a_;
       }
       return os;
    }
@@ -676,29 +690,26 @@ public:
 protected:
    void normalize()
    {
-      const int i1=isinf(_a);
-      const int i2=isinf(_b);
+      const Int i1 = isinf(a_);
+      const Int i2 = isinf(b_);
       if (__builtin_expect(i1 || i2, 0)) {
          if (i1+i2 == 0) throw GMP::NaN();
-         if (!i1) _a=_b;
-         _b=zero_value<Field>();
-         _r=zero_value<Field>();
+         if (!i1) a_ = b_;
+         b_ = zero_value<Field>();
+         r_ = zero_value<Field>();
       } else {
-         switch (sign(_r)) {
-         case -1:
+         const Int s = sign(r_);
+         if (s < 0)
             throw NonOrderableError();
-         case 0:
-            _b=zero_value<field_type>();
-            break;
-         default:
-            if (is_zero(_b)) _r=zero_value<field_type>();
-            break;
-         }
+         if (s == 0)
+            b_ = zero_value<field_type>();
+         else if (is_zero(b_))
+            r_ = zero_value<field_type>();
       }
    }
 
    static
-   int compare(const Field& a, const Field& b, const Field& c, const Field& d, const Field& r)
+   Int compare(const Field& a, const Field& b, const Field& c, const Field& d, const Field& r)
    {
       const int cmp_a = operations::cmp()(a, c),
                 cmp_b = operations::cmp()(b, d);
@@ -708,23 +719,23 @@ protected:
       // Else, we transform
       // cmp(a + b sqrt{r}, c + d sqrt{r})   to
       // cmp(a - c, (d - b) sqrt{r}) where sides have sign cmp_a == -cmp_b.
-      field_type lhs(a - c), rhs(d - b);
+      field_type lhs(a-c), rhs(d-b);
       lhs *= lhs; rhs *= rhs; rhs *= r;
       return operations::cmp()(lhs, rhs) * cmp_a;
    }
 
 protected:
-   field_type _a, _b, _r;
+   field_type a_, b_, r_;
 
    template <typename>
    friend struct spec_object_traits;
 };
 
 template <typename Field>
-int sign(const QuadraticExtension<Field>& x)
+Int sign(const QuadraticExtension<Field>& x)
 {
-   const int sa=sign(x.a()),
-             sb=sign(x.b());
+   const Int sa = sign(x.a()),
+             sb = sign(x.b());
    if (sa == sb || sb == 0)
       return sa;
    if (sa == 0)
@@ -752,38 +763,33 @@ Integer ceil(const QuadraticExtension<Field>& x)
 }
    
 template <typename Field, typename T,
-          typename=typename std::enable_if<QuadraticExtension<Field>::template fits_as_particle<T>::value>::type>
-inline
+          typename = std::enable_if_t<QuadraticExtension<Field>::template fits_as_particle<T>::value>>
 bool abs_equal(const QuadraticExtension<Field>& x, const T& y)
 {
    return is_zero(x.r()) && abs_equal(x.a(), y);
 }
 
 template <typename Field, typename T,
-          typename=typename std::enable_if<QuadraticExtension<Field>::template fits_as_particle<T>::value>::type>
-inline
+          typename = std::enable_if_t<QuadraticExtension<Field>::template fits_as_particle<T>::value>>
 bool abs_equal(const T& x, const QuadraticExtension<Field>& y)
 {
    return abs_equal(y, x);
 }
 
 template <typename Field>
-inline
 bool abs_equal(const QuadraticExtension<Field>& x, const QuadraticExtension<Field>& y)
 {
    return x.r()==y.r() && (x.a()==y.a() && x.b()==y.b()) || (x.a()==-y.a() && x.b()==-y.b());
 }
 
 template <typename Field>
-inline
 bool isfinite(const QuadraticExtension<Field>& x) noexcept
 {
    return isfinite(x.a());
 }
 
 template <typename Field>
-inline
-int isinf(const QuadraticExtension<Field>& x) noexcept
+Int isinf(const QuadraticExtension<Field>& x) noexcept
 {
    return isinf(x.a());
 }
@@ -828,7 +834,7 @@ struct spec_object_traits< Serialized< QuadraticExtension<Field> > > :
    template <typename Me, typename Visitor>
    static void visit_elements(Me& me, Visitor& v)
    {
-      v << me._a << me._b << me._r;
+      v << me.a_ << me.b_ << me.r_;
       normalize(me);
    }
 private:

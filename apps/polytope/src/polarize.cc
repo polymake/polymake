@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,7 +24,7 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-perl::Object polarize(perl::Object p_in, perl::OptionSet options)
+BigObject polarize(BigObject p_in, OptionSet options)
 {
    bool
       RIF_property_read = false,
@@ -33,8 +33,8 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
    const bool no_coordinates = options["no_coordinates"];
    const bool isCone = !p_in.isa("Polytope");
 
-   perl::ObjectType t = p_in.type();
-   perl::Object p_out(t);
+   BigObjectType t = p_in.type();
+   BigObject p_out(t);
    if ( isCone )
       p_out.set_description() << "Cone dualized from " << p_in.name() << endl;
    else
@@ -47,7 +47,7 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
    }
 
    if (!no_coordinates) {
-      const int ambient_dim = p_in.give("CONE_AMBIENT_DIM");
+      const Int ambient_dim = p_in.give("CONE_AMBIENT_DIM");
 
       if ( !isCone ) {
          const bool is_centered = p_in.give("WEAKLY_CENTERED");
@@ -111,7 +111,7 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
 
       p_out.take("CONE_AMBIENT_DIM") << ambient_dim;
 
-      int ldim, cdim;
+      Int ldim, cdim;
       if (p_in.lookup("LINEALITY_DIM") >> ldim)
          p_out.take("CONE_DIM") << ambient_dim-ldim;
 
@@ -120,12 +120,12 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
    }
 
    // generate the combinatorial symmetry group on the facets
-   Array<Array<int>> gens;
+   Array<Array<Int>> gens;
    if (p_in.lookup("GROUP.FACETS_ACTION.GENERATORS")>>gens){
-       perl::Object a("group::PermutationAction");
+       BigObject a("group::PermutationAction");
        a.take("GENERATORS") << gens;
 
-       perl::Object g("group::Group");
+       BigObject g("group::Group");
        g.set_description() << "symmetry group on vertices of polar of" << p_in.name() << endl;
        g.set_name("fullCombinatorialGroupOnRays");
 
@@ -137,10 +137,10 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
        }
    }
    else if(p_in.lookup("GROUP.RAYS_ACTION.GENERATORS")>>gens){
-       perl::Object a("group::PermutationAction");
+       BigObject a("group::PermutationAction");
        a.take("GENERATORS") << gens;
 
-       perl::Object g("group::Group");
+       BigObject g("group::Group");
        g.set_description() << "symmetry group on facets of polar of" << p_in.name() << endl;
        g.set_name("fullCombinatorialGroupOnFacets");
        g.take("FACETS_ACTION") << a;
@@ -159,7 +159,7 @@ perl::Object polarize(perl::Object p_in, perl::OptionSet options)
 }
 
 template <typename Scalar>
-perl::Object dual_cone(perl::Object p_in, perl::OptionSet options){
+BigObject dual_cone(BigObject p_in, OptionSet options){
    return polarize<Scalar>(p_in, options);
 }
 

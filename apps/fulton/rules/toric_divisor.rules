@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -29,6 +29,24 @@ object TDivisor {
       $this->Q_CARTIER = 1;
    }
    precondition : CARTIER;
+
+   rule VERY_AMPLE = SECTION_POLYTOPE.VERY_AMPLE;
+   precondition : AMPLE;
+
+   rule VERY_AMPLE : {
+      $this->VERY_AMPLE = false;
+   }
+   precondition : !AMPLE;
+
+   rule VERY_AMPLE : {
+      $this->VERY_AMPLE = false;
+   }
+   precondition : !CARTIER;
+   
+   rule VERY_AMPLE : {
+      $this->VERY_AMPLE = false;
+   }
+   precondition : !NEF;
 
 }
 
@@ -71,13 +89,6 @@ object NormalToricVariety {
    precondition : DIVISOR.CARTIER, COMPLETE {
       !$this->DIVISOR->CARTIER || !$this->COMPLETE;
    }
-
-   # [[AMPLE]] implies [[CARTIER]]
-   rule DIVISOR.CARTIER : {
-      $this->DIVISOR->CARTIER = 1;
-   }
-   weight 0.1;
-   precondition : DIVISOR.AMPLE;
 
    # [[CARTIER]] implies [[Q_CARTIER]]
    rule DIVISOR.CARTIER : {

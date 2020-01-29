@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -116,8 +116,8 @@ SV* find_method(pTHX_ I32 index, method_info* info)
       if (CvMETHOD((CV*)method_cv)) {
          SV **stack, **bottom, *orig=TOPs;
          const bool push_orig = sv!=orig && SvSTASH(method_cv) != secret_pkg;
-         EXTEND(SP, push_orig + 1);
-         for (stack = SP, bottom = PL_stack_base + TOPMARK + 1; stack > bottom; --stack)
+         EXTEND(SP, push_orig+1);
+         for (stack = SP, bottom = PL_stack_base+TOPMARK+1; stack > bottom; --stack)
             stack[push_orig] = stack[-1];
          *stack = orig;
          if (push_orig) {
@@ -300,9 +300,7 @@ MODULE = Polymake::Struct               PACKAGE = Polymake::Struct
 
 PROTOTYPES: DISABLE
 
-void
-access_field(obj_ref, ...)
-   SV* obj_ref;
+void access_field(SV* obj_ref, ...)
 PPCODE:
 {
    I32 index=CvDEPTH(cv);
@@ -349,8 +347,8 @@ PPCODE:
                   NewOp(0, sub_op, 1, OP);
                   sub_op->op_type = OP_CUSTOM;
                   sub_op->op_ppaddr = PL_ppaddr[OP_ENTERSUB];
-                  sub_op->op_flags = PL_op->op_flags & ~(OPf_KIDS);
-                  sub_op->op_private = PL_op->op_private & ~(OPpLVAL_INTRO);
+                  sub_op->op_flags = U8(PL_op->op_flags & ~(OPf_KIDS));
+                  sub_op->op_private = U8(PL_op->op_private & ~(OPpLVAL_INTRO));
                   NewOp(0, swap_op, 1, OP);
                   swap_op->op_type = OP_CUSTOM;
                   swap_op->op_ppaddr = &pp_swap;
@@ -408,11 +406,10 @@ PPCODE:
 }
 
 
-void
-method_call(obj)
-   SV* obj = SvRV(ST(0));
+void method_call(SV* obj_ref)
 PPCODE:
 {
+   SV* obj = SvRV(obj_ref);
    method_info info, *infop = &info;
    I32 index = CvDEPTH(cv);
    OP* o = method_named_op(PL_op);
@@ -521,18 +518,17 @@ PPCODE:
 }
 
 
-I32
-get_field_index(sub)
-   SV* sub;
+I32 get_field_index(SV* sub_ref)
 CODE:
-   RETVAL = SvROK(sub) && (sub = SvRV(sub), CvSTASH((CV*)sub) == secret_pkg) ? CvDEPTH(sub) : -1;
+{
+   CV* sub;
+   RETVAL = SvROK(sub_ref) && (sub = (CV*)SvRV(sub_ref), CvSTASH(sub) == secret_pkg) ? CvDEPTH(sub) : -1;
+}
 OUTPUT:
    RETVAL
 
 
-void
-get_field_filter(sub)
-   SV* sub;
+void get_field_filter(SV* sub)
 PPCODE:
 {
    SV *filter = &PL_sv_undef;
@@ -555,10 +551,7 @@ PPCODE:
 }
 
 
-void
-create_accessor(index, xsubr)
-   I32 index;
-   SV* xsubr;
+void create_accessor(I32 index, SV* xsubr)
 PPCODE:
 {
    SV* sub = newSV_type(SVt_PVCV);
@@ -571,17 +564,16 @@ PPCODE:
 }
 
 
-void
-make_body(...)
+void make_body(...)
 PPCODE:
 {
    AV* av = newAV();
-   SV **ary, **src = SP + 1, **src_end = SP + items, *pkg_from = *src_end, *rv;
+   SV **ary, **src = SP+1, **src_end = SP+items, *pkg_from = *src_end, *rv;
    Newx(ary, items-1, SV*);
    AvALLOC(av) = ary;
    AvARRAY(av) = ary;
-   AvFILLp(av) = items - 2;
-   AvMAX(av) = items - 2;
+   AvFILLp(av) = items-2;
+   AvMAX(av) = items-2;
    for (; src < src_end; ++src, ++ary) {
       SV* sv = *src;
       if ((SvFLAGS(sv) & (SVs_TEMP|PmDenyStealingScalar)) == SVs_TEMP) {
@@ -608,10 +600,7 @@ PPCODE:
    PUSHs(sv_2mortal(rv));
 }
 
-void
-make_alias(body, index)
-  SV* body;
-  I32 index;
+void make_alias(SV* body, I32 index)
 PROTOTYPE: $$
 PPCODE:
 {
@@ -621,16 +610,13 @@ PPCODE:
    *dst = SvREFCNT_inc(GvSV(gv));
 }
 
-void
-original_object()
+void original_object()
 PPCODE:
 {
    XPUSHs(AvALLOC(GvAV(PL_defgv))[0]);
 }
 
-void
-pass_original_object(subr)
-   SV* subr;
+void pass_original_object(SV* subr)
 PPCODE:
 {
    if (!SvROK(subr) || (subr=SvRV(subr), SvTYPE(subr)!=SVt_PVCV))
@@ -640,9 +626,7 @@ PPCODE:
    ++SP;
 }
 
-void
-mark_as_default(sv)
-   SV* sv;
+void mark_as_default(SV* sv)
 PPCODE:
 {
    if (!SvTEMP(sv))
@@ -651,9 +635,7 @@ PPCODE:
    sv_magicext(sv, Nullsv, PERL_MAGIC_ext, 0, (const char*)&secret_pkg, 0);
 }
 
-void
-is_default(sv)
-   SV* sv;
+void is_default(SV* sv)
 PPCODE:
 {
    if (SvTYPE(sv) == SVt_PVMG) {
@@ -664,14 +646,11 @@ PPCODE:
    XSRETURN_NO;
 }
 
-void
-learn_package_retrieval(objref, cvref)
-   SV* objref;
-   SV* cvref;
+void learn_package_retrieval(SV* objref, SV* cvref)
 CODE:
 {
-   MAGIC* mg=sv_magicext(SvRV(objref), Nullsv, PERL_MAGIC_ext, &pkg_retrieval_index_vtbl, Nullch, 0);
-   mg->mg_private=CvDEPTH(SvRV(cvref));
+   MAGIC* mg = sv_magicext(SvRV(objref), Nullsv, PERL_MAGIC_ext, &pkg_retrieval_index_vtbl, Nullch, 0);
+   mg->mg_private = U8(CvDEPTH(SvRV(cvref)));
 }
 
 BOOT:

@@ -1,5 +1,5 @@
 {"app": "common",
  "inst": [
-  {"args": ["perl::Canned<const Polynomial<Rational, int>&>", "perl::TryCanned<const Array<int>>"], "func": "project", "include": ["polymake/Array.h", "polymake/Polynomial.h", "polymake/Rational.h"], "kind": "meth", "sig": "project:M.X"},
+  {"args": ["perl::Canned<const Polynomial<Rational, Int>&>", "perl::TryCanned<const Array<Int>>"], "func": "project", "include": ["polymake/Array.h", "polymake/Polynomial.h", "polymake/Rational.h"], "kind": "meth", "sig": "project:M.X"},
  null ],
 "version": 3}

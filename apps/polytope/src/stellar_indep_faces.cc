@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,7 +30,7 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
-perl::Object stellar_indep_faces(perl::Object p_in, const Array< Set<int> >& in_faces)
+BigObject stellar_indep_faces(BigObject p_in, const Array<Set<Int>>& in_faces)
 {
    const bool bounded=p_in.give("BOUNDED");
    if (!bounded)
@@ -45,20 +45,20 @@ perl::Object stellar_indep_faces(perl::Object p_in, const Array< Set<int> >& in_
 
    const Graph<> DG=p_in.give("DUAL_GRAPH.ADJACENCY");
 
-   PowerSet<int> spec_faces;
-   for (auto it=entire(in_faces); !it.at_end(); ++it)
+   PowerSet<Int> spec_faces;
+   for (auto it = entire(in_faces); !it.at_end(); ++it)
       spec_faces += *it;
 
-   const int dim = HD.rank()-1;
+   const Int dim = HD.rank()-1;
 
-   int v_count = V.rows();
-   int indep_vert = 0;
+   Int v_count = V.rows();
+   Int indep_vert = 0;
    V.resize(V.rows()+spec_faces.size(), V.cols());
 
    // iterate over dimensions dim-1..0 and over all faces of each dimension
-   for (int d=dim-1; d>=0; --d) {
+   for (Int d = dim-1; d >= 0; --d) {
       for (const auto face_index : HD.nodes_of_rank(d+1)) {
-         const Set<int>& face = HD.face(face_index);
+         const Set<Int>& face = HD.face(face_index);
          if (spec_faces.contains(face)) {
 
             // produce all relevant inequalities = each neighbour (in the dual graph) of the nodes
@@ -67,16 +67,16 @@ perl::Object stellar_indep_faces(perl::Object p_in, const Array< Set<int> >& in_
             Scalar t_max(2);
             
             // compute star(face)
-            auto s_it=entire(face);
-            Set<int> star_facets = VIF.col(*s_it);  ++s_it;
+            auto s_it = entire(face);
+            Set<Int> star_facets = VIF.col(*s_it);  ++s_it;
             for ( ; !s_it.at_end(); ++s_it)
                star_facets *= VIF.col(*s_it);
 
-            for (auto st_it=entire(star_facets); !st_it.at_end(); ++st_it) {
-               const Set<int> neighbors = DG.adjacent_nodes(*st_it) - star_facets;
+            for (auto st_it = entire(star_facets); !st_it.at_end(); ++st_it) {
+               const Set<Int> neighbors = DG.adjacent_nodes(*st_it) - star_facets;
 
-               for (auto n_it=entire(neighbors); !n_it.at_end(); ++n_it) {
-                  const int v= (VIF[*st_it] * VIF[*n_it]).front();
+               for (auto n_it = entire(neighbors); !n_it.at_end(); ++n_it) {
+                  const Int v = (VIF[*st_it] * VIF[*n_it]).front();
                   const Vector<Scalar> inequ = bisector(F[*st_it], F[*n_it], V[v]);
 
                   const Scalar denominator = inequ * m;
@@ -92,13 +92,13 @@ perl::Object stellar_indep_faces(perl::Object p_in, const Array< Set<int> >& in_
             }
 
             // add vertex
-            const Scalar scale = (t_max + 1) / 2;
+            const Scalar scale = (t_max+1)/2;
             if (d==0) {  // replace subdevided vertex
-               V[face.front()] = rel_int_point + m * scale;
+               V[face.front()] = rel_int_point + m*scale;
                ++indep_vert;
 
             } else {
-               V[v_count] = rel_int_point + m * scale;
+               V[v_count] = rel_int_point + m*scale;
                ++v_count;
             }
          }
@@ -110,7 +110,7 @@ perl::Object stellar_indep_faces(perl::Object p_in, const Array< Set<int> >& in_
 
    V.resize( v_count,V.cols() );
 
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Stellar subdivision of " << p_in.name() << endl;
    p_out.take("VERTICES") << V;
    p_out.take("LINEALITY_SPACE") << lineality_space;

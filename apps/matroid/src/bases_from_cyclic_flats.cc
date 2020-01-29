@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,33 +25,40 @@
 
 namespace polymake { namespace matroid {
 
-   using graph::Lattice;
-   using graph::lattice::Sequential;
-   using graph::lattice::BasicDecoration;
+using graph::Lattice;
+using graph::lattice::Sequential;
+using graph::lattice::BasicDecoration;
 
-   /*
-    * Computes all bases from the lattice of cyclic flats. A basis is a set of cardinality rank in
-    * (0 .. n_elements-1) such that for all non-empty cyclic flats Z we have |B \cap Z| <= rank(Z)
-    */
-   Array<Set<int> > bases_from_cyclic_flats(int n_elements, int rank, perl::Object H_obj) {
-      Lattice<BasicDecoration, Sequential> H(H_obj);
-      const auto nelem = sequence(0,n_elements);
-      const auto all_r_sets = all_subsets_of_k( nelem, rank);
-      std::list<Set<int> > result;
+/*
+ * Computes all bases from the lattice of cyclic flats. A basis is a set of cardinality rank in
+ * (0 .. n_elements-1) such that for all non-empty cyclic flats Z we have |B \cap Z| <= rank(Z)
+ */
+Array<Set<Int>> bases_from_cyclic_flats(Int n_elements, Int rank, BigObject H_obj)
+{
+  Lattice<BasicDecoration, Sequential> H(H_obj);
+  const auto nelem = sequence(0,n_elements);
+  const auto all_r_sets = all_subsets_of_k( nelem, rank);
+  std::list<Set<Int> > result;
 
-      const NodeMap< Directed, BasicDecoration >& decor = H.decoration();
-      for(const auto& B : all_r_sets) {
-         bool found_witness = false;
-         for(auto d_it = entire(decor); !d_it.at_end(); ++d_it) {
-            if( (B * d_it->face).size() > d_it->rank) {
-               found_witness = true; break;
-            };
-         }
-         if(!found_witness) result.push_back(B);
+  const NodeMap<Directed, BasicDecoration>& decor = H.decoration();
+  for (const auto& B : all_r_sets) {
+    bool found_witness = false;
+    for (auto d_it = entire(decor); !d_it.at_end(); ++d_it) {
+      if ((B * d_it->face).size() > d_it->rank) {
+        found_witness = true; break;
       }
-      return Array<Set<int> >(result);
-   }
+    }
+    if (!found_witness) result.push_back(B);
+  }
+  return Array<Set<Int>>(result);
+}
 
-   Function4perl(&bases_from_cyclic_flats, "bases_from_cyclic_flats($,$, Lattice<BasicDecoration, Sequential>)");
+Function4perl(&bases_from_cyclic_flats, "bases_from_cyclic_flats($,$, Lattice<BasicDecoration, Sequential>)");
 
-}}
+} }
+
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:

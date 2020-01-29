@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,14 +25,14 @@ namespace polymake {
 namespace graph {
 
 template <typename Dir>
-Matrix<Rational> laplacian(perl::Object p)
+Matrix<Rational> laplacian(BigObject p)
 {
    SparseMatrix<Rational> IncidenceM= convert_to<Rational>(signed_incidence_matrix<Dir>(p));
    return (IncidenceM*T(IncidenceM));
 }
 
 template <typename Dir>
-Vector<double> eigenvalues_laplacian(perl::Object p)
+Vector<double> eigenvalues_laplacian(BigObject p)
 {
    SparseMatrix<double> laplacianM=convert_to<double>(laplacian<Dir>(p));
    return eigenvalues(laplacianM);

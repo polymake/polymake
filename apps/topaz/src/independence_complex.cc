@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,17 +24,17 @@
 
 namespace polymake { namespace topaz {
 
-perl::Object independence_complex(perl::Object matroid, perl::OptionSet options)
+BigObject independence_complex(BigObject matroid, OptionSet options)
 {
-   const Array< Set<int> > bases = matroid.give("BASES");
+   const Array<Set<Int>> bases = matroid.give("BASES");
    const bool no_labels = options["no_labels"];
    
-   perl::Object complex("topaz::SimplicialComplex");
+   BigObject complex("topaz::SimplicialComplex");
    complex.set_description() << "Independence complex of matroid " << matroid.name() << "." << endl;
    complex.take("FACETS") << bases;
    
    if (!no_labels) {
-     const int n_elements=matroid.give("N_ELEMENTS");
+     const Int n_elements=matroid.give("N_ELEMENTS");
      const std::vector<std::string> labels = common::read_labels(matroid, "LABELS", n_elements);
      complex.take("VERTEX_LABELS") << labels;
    }

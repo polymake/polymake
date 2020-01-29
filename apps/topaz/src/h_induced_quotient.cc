@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,15 +24,15 @@
 
 namespace polymake { namespace topaz {
 
-perl::Object h_induced_quotient(perl::Object p_in,const Set<int>& V_in,perl::OptionSet options)
+BigObject h_induced_quotient(BigObject p_in, const Set<Int>& V_in,OptionSet options)
 {
-   perl::Object p_out("SimplicialComplex");
+   BigObject p_out("SimplicialComplex");
 
-   const Array< Set<int> > C = p_in.give("FACETS");
+   const Array<Set<Int>> C = p_in.give("FACETS");
    const bool no_labels=options["no_labels"];
-   const int n_vert = p_in.give("N_VERTICES");
+   const Int n_vert = p_in.give("N_VERTICES");
 
-   int apex=n_vert;
+   Int apex = n_vert;
 
    if (!no_labels) {
       Array<std::string> L = p_in.give("VERTEX_LABELS");
@@ -44,12 +44,12 @@ perl::Object h_induced_quotient(perl::Object p_in,const Set<int>& V_in,perl::Opt
          label << "apex";
          std::string l=label.str(), ll=l;
          // creating vertex map
-         hash_map<std::string,int> map(L.size());
-         int count = 0;
+         hash_map<std::string, Int> map(L.size());
+         Int count = 0;
          for (const auto& label_in : L)
             map[label_in] = count++;
          // test if ll is unique
-         int i=0;
+         Int i = 0;
          while (map.find(ll) != map.end()) {
             ++i;
             label.str("");
@@ -68,8 +68,8 @@ perl::Object h_induced_quotient(perl::Object p_in,const Set<int>& V_in,perl::Opt
 
    // computing the subcomplex
    FacetList Quotient(C.begin(), C.end());
-   for (auto it=entire(C); !it.at_end(); ++it) {
-      Set<int> S=V_in*(*it);
+   for (auto it = entire(C); !it.at_end(); ++it) {
+      Set<Int> S = V_in * (*it);
       if (!S.empty()) {
          S+=apex;
          Quotient.insertMax(S);

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -73,7 +73,7 @@ public:
 
 #if GMP_LIMB_BITS==32
    void fix_for_mpfr();
-   static void intercept_get_fn(gmp_randstate_t, mp_ptr, unsigned long int);
+   static void intercept_get_fn(gmp_randstate_t, mp_ptr, unsigned long);
 #endif
 };
 
@@ -279,10 +279,10 @@ class UniformlyRandom<Bitset>
    : public SharedRandomState
    , public GenericRandomGenerator<UniformlyRandom<Bitset>, Bitset> {
 public:
-   explicit UniformlyRandom(int max_arg, const RandomSeed& seed=RandomSeed())
+   explicit UniformlyRandom(Int max_arg, const RandomSeed& seed = RandomSeed())
       : SharedRandomState(seed), max_elem(max_arg) {}
 
-   UniformlyRandom(int max_arg, const SharedRandomState& s)
+   UniformlyRandom(Int max_arg, const SharedRandomState& s)
       : SharedRandomState(s), max_elem(max_arg) {}
 
    Bitset get()
@@ -290,7 +290,7 @@ public:
       return Bitset(state(), max_elem);
    }
 protected:
-   int max_elem;
+   Int max_elem;
 };
 
 /// Generator of random AccurateFloat numbers from [0, 1)
@@ -376,23 +376,23 @@ protected:
 };
 
 class DiscreteRandom
-   : public GenericRandomGenerator<DiscreteRandom, int> {
+   : public GenericRandomGenerator<DiscreteRandom, Int> {
 public:
-   template <typename Container, typename=std::enable_if_t<isomorphic_to_container_of<Container,double>::value>>
-   DiscreteRandom(const Container& distrib_src, const RandomSeed& seed=RandomSeed())
-      : rg(seed), distribution(distrib_src)
+   template <typename TVector>
+   DiscreteRandom(const GenericVector<TVector>& distrib_src, const RandomSeed& seed = RandomSeed())
+      : rg(seed), distribution(convert_to<double>(distrib_src))
    {
       normalize();
    }
 
-   template <typename Container, typename=std::enable_if_t<isomorphic_to_container_of<Container,double>::value>>
-   DiscreteRandom(const Container& distrib_src, const SharedRandomState& s)
-      : rg(s), distribution(distrib_src)
+   template <typename TVector>
+   DiscreteRandom(const GenericVector<TVector>& distrib_src, const SharedRandomState& s)
+      : rg(s), distribution(convert_to<double>(distrib_src))
    {
       normalize();
    }
 
-   int get();
+   Int get();
 protected:
    void normalize();
 

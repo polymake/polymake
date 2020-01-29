@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,7 +20,7 @@
 
 namespace polymake { namespace topaz {
   
-void is_pseudo_manifold_client(perl::Object p)
+void is_pseudo_manifold_client(BigObject p)
 {
    const Lattice<BasicDecoration>& HD = p.give("HASSE_DIAGRAM");
    p.take("PSEUDO_MANIFOLD") << is_pseudo_manifold(HD,true);

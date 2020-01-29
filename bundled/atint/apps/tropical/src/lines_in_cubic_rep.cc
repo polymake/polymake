@@ -18,7 +18,7 @@
    Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
    ---
-   Copyright (c) 2016-2019
+   Copyright (c) 2016-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -38,27 +38,27 @@
 namespace polymake { namespace tropical {
 
 template <typename Addition>
-perl::Object rep_family_fixed_vertex(perl::Object family)
+BigObject rep_family_fixed_vertex(BigObject family)
 {
   Matrix<Rational> vertices = family.give("VERTICES");
   const IncidenceMatrix<>& polytopes = family.give("MAXIMAL_POLYTOPES");
-  const Set<int>& far_vertices = family.give("FAR_VERTICES");
-  const int apex = *(sequence(0,vertices.rows()) - far_vertices).begin();
+  const Set<Int>& far_vertices = family.give("FAR_VERTICES");
+  const Int apex = *(sequence(0,vertices.rows()) - far_vertices).begin();
 
   vertices /= (unit_vector<Rational>(vertices.cols(),0));
-  const int vert_index1 = apex;
-  const int vert_index2 = vertices.rows()-1;
+  const Int vert_index1 = apex;
+  const Int vert_index2 = vertices.rows()-1;
 
-  Array<Set<int> > rep_polytopes(5);
+  Array<Set<Int>> rep_polytopes(5);
   auto rep_pol_it = rep_polytopes.begin();
-  int no_of_vertices_added = 0;
+  Int no_of_vertices_added = 0;
   for (auto cone = entire(rows(polytopes)); !cone.at_end(); ++cone) {
     if (cone->size() == 3) {
-      const Set<int> dirs = (*cone) - apex;
-      int v_index = no_of_vertices_added ? vert_index1 : vert_index2;
+      const Set<Int> dirs = (*cone) - apex;
+      Int v_index = no_of_vertices_added ? vert_index1 : vert_index2;
       vertices.row(v_index).slice(range_from(1)) =
         accumulate( rows(vertices.minor( *cone, range_from(1))), operations::add());
-      for (const int d : dirs) {
+      for (const Int d : dirs) {
         *rep_pol_it = scalar2set(v_index) + d;
         ++rep_pol_it;
       }
@@ -69,7 +69,7 @@ perl::Object rep_family_fixed_vertex(perl::Object family)
     }
   }
   *rep_pol_it = scalar2set(vert_index1) + vert_index2;
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << vertices;
   result.take("MAXIMAL_POLYTOPES") << rep_polytopes;
   result.take("WEIGHTS") << ones_vector<Integer>(5);
@@ -77,25 +77,25 @@ perl::Object rep_family_fixed_vertex(perl::Object family)
 }
 
 template <typename Addition>
-perl::Object rep_family_moving_vertex(perl::Object family)
+BigObject rep_family_moving_vertex(BigObject family)
 {
   Matrix<Rational> vertices = family.give("VERTICES");
   const IncidenceMatrix<>& polytopes = family.give("MAXIMAL_POLYTOPES");
-  const Set<int>& far_vertices = family.give("FAR_VERTICES");
-  const int apex = *(sequence(0,vertices.rows()) - far_vertices).begin();
+  const Set<Int>& far_vertices = family.give("FAR_VERTICES");
+  const Int apex = *(sequence(0,vertices.rows()) - far_vertices).begin();
 
-  const int moving_dir = *(accumulate( rows(polytopes), operations::mul()) - apex).begin();
+  const Int moving_dir = *(accumulate( rows(polytopes), operations::mul()) - apex).begin();
   vertices.row(apex) += vertices.row(moving_dir);
 
-  Array<Set<int> > rep_polytopes(4);
+  Array<Set<Int>> rep_polytopes(4);
   auto rep_pol_it = rep_polytopes.begin();
-  Set<int> apex_set = scalar2set(apex);
-  for (const int d : far_vertices) {
+  Set<Int> apex_set = scalar2set(apex);
+  for (const Int d : far_vertices) {
     *rep_pol_it = apex_set + d;
     ++rep_pol_it;
   }
 
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << vertices;
   result.take("MAXIMAL_POLYTOPES") << rep_polytopes;
   result.take("WEIGHTS") << ones_vector<Integer>(4);
@@ -103,28 +103,28 @@ perl::Object rep_family_moving_vertex(perl::Object family)
 }
 
 template <typename Addition>
-perl::Object rep_family_fixed_edge(perl::Object family)
+BigObject rep_family_fixed_edge(BigObject family)
 {
   Matrix<Rational> vertices = family.give("VERTICES");
   const IncidenceMatrix<>& polytopes = family.give("MAXIMAL_POLYTOPES");
-  const Set<int>& far_vertices = family.give("FAR_VERTICES");
+  const Set<Int>& far_vertices = family.give("FAR_VERTICES");
 
-  Array<Set<int>> rep_polytopes(5);
+  Array<Set<Int>> rep_polytopes(5);
   auto rep_pol_it = rep_polytopes.begin();
   for (auto cone = entire(rows(polytopes)); !cone.at_end(); ++cone) {
     if ((*cone).size() == 2) {
       *rep_pol_it = *cone; ++rep_pol_it;
     } else {
-      Set<int> dirs = (*cone) * far_vertices;
-      Set<int> apex = (*cone) - dirs;
-      for (const int d : dirs) {
+      Set<Int> dirs = (*cone) * far_vertices;
+      Set<Int> apex = (*cone) - dirs;
+      for (const Int d : dirs) {
         *rep_pol_it = apex + d;
         ++rep_pol_it;
       }
     }
   }
        
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << vertices;
   result.take("MAXIMAL_POLYTOPES") << rep_polytopes;
   result.take("WEIGHTS") << ones_vector<Integer>(5);
@@ -132,28 +132,28 @@ perl::Object rep_family_fixed_edge(perl::Object family)
 }
 
 template <typename Addition>
-perl::Object rep_family_moving_edge(perl::Object family)
+BigObject rep_family_moving_edge(BigObject family)
 {
   Matrix<Rational> vertices = family.give("VERTICES");
   const IncidenceMatrix<>& polytopes = family.give("MAXIMAL_POLYTOPES");
-  const Set<int>& far_vertices = family.give("FAR_VERTICES");
-  Vector<int> sorted_apices ( sequence(0,vertices.rows()) - far_vertices);
-  const int vert_index1 = sorted_apices[0];
-  const int vert_index2 = sorted_apices[1];
+  const Set<Int>& far_vertices = family.give("FAR_VERTICES");
+  Vector<Int> sorted_apices ( sequence(0,vertices.rows()) - far_vertices);
+  const Int vert_index1 = sorted_apices[0];
+  const Int vert_index2 = sorted_apices[1];
 
-  Array<Set<int>> rep_polytopes(5);
+  Array<Set<Int>> rep_polytopes(5);
   auto rep_pol_it = rep_polytopes.begin();
-  Map<int, Set<int> > edge_sides;
-  edge_sides[0] = Set<int>();
-  edge_sides[1] = Set<int>();
+  Map<Int, Set<Int>> edge_sides;
+  edge_sides[0] = Set<Int>();
+  edge_sides[1] = Set<Int>();
 
   for (auto cone = entire(rows(polytopes)); !cone.at_end(); ++cone, ++rep_pol_it) {
     if ((*cone).size() == 4) { // = moving edge
       *rep_pol_it = scalar2set(vert_index1) + vert_index2;
     } else {
-      Set<int> bounded_part = (*cone) - far_vertices;
-      Set<int> unbounded_part = (*cone) - bounded_part;
-      for (int mp = 0; mp <= 1; ++mp) {
+      Set<Int> bounded_part = (*cone) - far_vertices;
+      Set<Int> unbounded_part = (*cone) - bounded_part;
+      for (Int mp = 0; mp <= 1; ++mp) {
         if (edge_sides[mp].size() == 0) {
           edge_sides[mp] = bounded_part; 
         }
@@ -169,8 +169,8 @@ perl::Object rep_family_moving_edge(perl::Object family)
   vertices.row(vert_index1) = v1;
   vertices.row(vert_index2) = v2;
 
-  perl::Object result("Cycle", mlist<Addition>());
-  Set<int> used_vertices = far_vertices + vert_index1 + vert_index2;
+  BigObject result("Cycle", mlist<Addition>());
+  Set<Int> used_vertices = far_vertices + vert_index1 + vert_index2;
   result.take("VERTICES") << vertices.minor( used_vertices,All);
   result.take("MAXIMAL_POLYTOPES") << (IncidenceMatrix<>(rep_polytopes)).minor(All, used_vertices);
   result.take("WEIGHTS") << ones_vector<Integer>(5);

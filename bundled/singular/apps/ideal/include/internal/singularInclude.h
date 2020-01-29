@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -18,14 +18,24 @@
 #ifndef POLYMAKE_IDEAL_INTERNAL_SINGULAR_INCLUDE_H
 #define POLYMAKE_IDEAL_INTERNAL_SINGULAR_INCLUDE_H
 
-#if !defined(__clang__) && defined(__GNUC__) && __GNUC__ >= 8
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconversion"
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#elif defined(__GNUC__)
 #pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#if __GNUC__ >= 8
 #pragma GCC diagnostic ignored "-Wclass-memaccess"
+#endif
 #endif
 
 #include <Singular/libsingular.h>
 
-#if !defined(__clang__) && defined(__GNUC__) && __GNUC__ >= 8
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
 

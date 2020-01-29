@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,7 +20,7 @@
 
 namespace polymake { namespace topaz {
 
-bool is_vertex_decomposition(perl::Object p, const Array<int>& ShedVert, perl::OptionSet options)
+bool is_vertex_decomposition(BigObject p, const Array<Int>& ShedVert, OptionSet options)
 {
    if (ShedVert.empty())
       throw std::runtime_error("no shedding vertices specified");
@@ -32,15 +32,15 @@ bool is_vertex_decomposition(perl::Object p, const Array<int>& ShedVert, perl::O
       if (verbose) cout << "The complex is not pure." << endl;
       return false;
    }
-   const int d=p.give("DIM");
+   const Int d = p.give("DIM");
 
-   if (d==0) {
-      const int n_vertices=p.give("N_VERTICES");
+   if (d == 0) {
+      const Int n_vertices = p.give("N_VERTICES");
       if (ShedVert.size() > n_vertices) {
          if (verbose) cout << "Too many shedding vertices specified." << endl;
          return false;
       }
-      Set<int> V(sequence(0,n_vertices));
+      Set<Int> V(sequence(0,n_vertices));
       accumulate_in(entire(ShedVert), operations::sub(), V);
       if (!V.empty()) {
          if (verbose) cout << "The complex is not completely decomposed." << endl;
@@ -60,8 +60,8 @@ bool is_vertex_decomposition(perl::Object p, const Array<int>& ShedVert, perl::O
    Lattice<BasicDecoration> HD_obj = p.give("HASSE_DIAGRAM");
    ShrinkingLattice<BasicDecoration> HD(HD_obj);
    // for all v in ShedVert
-   for (auto v_it=entire(ShedVert); !v_it.at_end(); ++v_it) {
-      const int v=*v_it;
+   for (auto v_it = entire(ShedVert); !v_it.at_end(); ++v_it) {
+      const Int v = *v_it;
       // if the remaining complex consists of v only -> complex is decomposed
       const auto rest_vertex_nodes=HD.nodes_of_rank(1);
       if (rest_vertex_nodes.size()==1) {
@@ -73,20 +73,19 @@ bool is_vertex_decomposition(perl::Object p, const Array<int>& ShedVert, perl::O
       }
 
       // compute the vertices of link(v) and remove star(v) from HD
-      const Set<int> V_of_link = vertices_of_vertex_link(HD,v);
+      const Set<Int> V_of_link = vertices_of_vertex_link(HD,v);
       remove_vertex_star(HD,v);
       // check the invariant:
       // dim == 0 -> true
       // dim > 0  -> HD is a manifold.
-      const int dim = HD.rank()-2;
-      if (dim==0) continue;
+      const Int dim = HD.rank()-2;
+      if (dim == 0) continue;
       // it suffices to check the link for all vertices of link(v)
-      for (Set<int>::const_iterator l_it=V_of_link.begin(); !l_it.at_end(); ++l_it) {
-         const int w=*l_it;
-         const std::list< Set<int> > link=as_iterator_range(vertex_link_in_HD(HD,w));
-         if (dim==1 && !link.empty() && link.size()<3) continue;
-         if (dim==2 && !link.empty() && is_ball_or_sphere(link, int_constant<1>())>0) continue;
-         if (dim==3 && !link.empty() && is_ball_or_sphere(link, int_constant<2>())>0) continue;
+      for (const Int w : V_of_link) {
+         const std::list<Set<Int>> link = as_iterator_range(vertex_link_in_HD(HD,w));
+         if (dim==1 && !link.empty() && link.size() < 3) continue;
+         if (dim==2 && !link.empty() && is_ball_or_sphere(link, int_constant<1>()) > 0) continue;
+         if (dim==3 && !link.empty() && is_ball_or_sphere(link, int_constant<2>()) > 0) continue;
          if (verbose) cout << "The remaining complex after removing vertex star(" << v << ") is not a manifold." << endl;
          return false;
       }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,11 +21,11 @@
 
 namespace polymake { namespace graph {
 
-void bipartite_signature(perl::Object p)
+void bipartite_signature(BigObject p)
 {
    const Graph<> G=p.give("ADJACENCY");
-   const int sign=bipartite_sign(G);
-   p.take("BIPARTITE") << (sign>=0);
+   const Int sign = bipartite_sign(G);
+   p.take("BIPARTITE") << (sign >= 0);
    p.take("SIGNATURE") << sign;
 }
 

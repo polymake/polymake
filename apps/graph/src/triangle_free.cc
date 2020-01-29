@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,13 +24,13 @@ namespace polymake { namespace graph {
 template <typename Graph>
 bool triangle_free(const GenericGraph<Graph,Undirected>& G)
 {
-   const int n=G.nodes();
+   const Int n = G.nodes();
    const IncidenceMatrix<> Adj=convolute(convolute(adjacency_matrix(G), T(adjacency_matrix(G))),
                                          T(adjacency_matrix(G)));
 
    // true iff there is no (directed) circle of length 3
-   for (int i=0; i<n; ++i)
-      if (Adj(i,i)) return false;
+   for (Int i = 0; i < n; ++i)
+      if (Adj(i, i)) return false;
 
    return true;
 }

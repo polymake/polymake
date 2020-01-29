@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,17 +27,17 @@
 
 namespace polymake { namespace matroid {
 
-perl::Object direct_sum(perl::Object m1, perl::Object m2)
+BigObject direct_sum(BigObject m1, BigObject m2)
 {
-   const int n1=m1.give("N_ELEMENTS");
-   const int n2=m2.give("N_ELEMENTS");
+   const Int n1 = m1.give("N_ELEMENTS");
+   const Int n2 = m2.give("N_ELEMENTS");
 
-   perl::Object m_new("Matroid");
+   BigObject m_new("Matroid");
    m_new.set_description()<<"The direct-sum of "<<m1.name()<<" and "<<m2.name()<<"."<<endl;
    m_new.take("N_ELEMENTS")<<(n1+n2);
 
-   const int rank1=m1.give("RANK");
-   const int rank2=m2.give("RANK");
+   const Int rank1 = m1.give("RANK");
+   const Int rank2 = m2.give("RANK");
    m_new.take("RANK") << rank1+rank2;
 
    Matrix<Rational> points1,points2;
@@ -53,27 +53,27 @@ perl::Object direct_sum(perl::Object m1, perl::Object m2)
       }
    }
 
-   bool def=0;
-   Array<Set<int>> sets1, sets2; //caution: these  variables  will be overwritten
+   bool def = false;
+   Array<Set<Int>> sets1, sets2; //caution: these variables will be overwritten
    if (m1.lookup("BASES")>>sets1 && m2.lookup("BASES")>>sets2) {
       m_new.take("BASES") << product(sets1, shift_elements(sets2, n1),operations::add());
-      def=1;
+      def = true;
    }
    if (m1.lookup("CIRCUITS")>>sets1 && m2.lookup("CIRCUITS")>>sets2) {
       sets1.append(shift_elements(sets2, n1));
       m_new.take("CIRCUITS") << sets1;
-      def=1;
+      def = true;
    }
    if (m1.lookup("DUAL.CIRCUITS")>>sets1 && m2.lookup("DUAL.CIRCUITS")>>sets2) {
       sets1.append(shift_elements(sets2, n1));
       m_new.take("DUAL.CIRCUITS") << sets1;
-      def=1;
+      def = true;
    }
    if (m1.lookup("MATROID_HYPERPLANES")>>sets1 && m2.lookup("MATROID_HYPERPLANES")>>sets2) {
       for (auto& s1 : sets1) {
          s1 += range(n1, n1+n2-1);
       }
-      sets2=shift_elements(sets2, n1);
+      sets2 = shift_elements(sets2, n1);
       for (auto& s2 : sets2) {
          s2 += range(0, n1-1);
       }
@@ -85,9 +85,9 @@ perl::Object direct_sum(perl::Object m1, perl::Object m2)
       m_new.take("CONNECTED_COMPONENTS") << sets1;
    }
 
-   if(def==0){
-      sets1=m1.give("BASES");
-      sets2=m2.give("BASES");
+   if (!def) {
+      m1.give("BASES") >> sets1;
+      m2.give("BASES") >> sets2;
       m_new.take("BASES") << product(sets1,shift_elements(sets2, n1),operations::add());
    }
 
@@ -97,28 +97,28 @@ perl::Object direct_sum(perl::Object m1, perl::Object m2)
 }
 
 
-perl::Object series_extension(perl::Object m1, const int e1, perl::Object m2, const int e2)
+BigObject series_extension(BigObject m1, const Int e1, BigObject m2, const Int e2)
 {
-   const int n1=m1.give("N_ELEMENTS");
-   const int n2=m2.give("N_ELEMENTS");
-   if (e1<0||e1>=n1 || e2<0||e2>=n2) throw std::runtime_error("series-extansion: element out of bounds");
+   const Int n1 = m1.give("N_ELEMENTS");
+   const Int n2 = m2.give("N_ELEMENTS");
+   if (e1 < 0 || e1 >= n1 || e2 < 0 || e2 >= n2) throw std::runtime_error("series-extansion: element out of bounds");
 
    //coloop check:
-   const Set<int>& temp1 = m1.give("DUAL.LOOPS");
-   const Set<int>& temp2 = m2.give("DUAL.LOOPS");
-   if(temp1.size()>0 && temp2.size()>0) throw std::runtime_error("series-extansion: both basepoints are coloops");
+   const Set<Int>& temp1 = m1.give("DUAL.LOOPS");
+   const Set<Int>& temp2 = m2.give("DUAL.LOOPS");
+   if (temp1.size()>0 && temp2.size()>0) throw std::runtime_error("series-extansion: both basepoints are coloops");
 
-   perl::Object m_new("Matroid");
+   BigObject m_new("Matroid");
    m_new.set_description()<<"The series extansion of "<<m1.name()<<" and "<<m2.name()<<", with basepoints "<< e1 <<" and "<< e2 <<"."<<endl;
    m_new.take("N_ELEMENTS")<<(n1+n2-1);
 
-   const Array<Set<int>> sets1=m1.give("BASES");
-   const Array<Set<int>> sets2=m2.give("BASES");
-   Array<Set<int>> result( product(select_k(sets1, e1),
+   const Array<Set<Int>> sets1 = m1.give("BASES");
+   const Array<Set<Int>> sets2 = m2.give("BASES");
+   Array<Set<Int>> result( product(select_k(sets1, e1),
                                    shift_elements(drop_shift(select_not_k(sets2, e2), e2), n1),
                                    operations::add()),
                            product(select_not_k(sets1, e1),
-                                   attach_operation(shift_elements(drop_shift(select_k(sets2, e2), e2), n1), operations::fix2<int,operations::add>(operations::fix2<int,operations::add>(e1))),
+                                   attach_operation(shift_elements(drop_shift(select_k(sets2, e2), e2), n1), operations::fix2<Int, operations::add>(operations::fix2<Int, operations::add>(e1))),
                                    operations::add()),
                            product(select_not_k(sets1, e1),
                                    shift_elements(drop_shift(select_not_k(sets2,e2), e2), n1),
@@ -129,18 +129,18 @@ perl::Object series_extension(perl::Object m1, const int e1, perl::Object m2, co
 }
 
 
-perl::Object single_element_series_extension(perl::Object m, const int e) //with Uniform(1,2)
+BigObject single_element_series_extension(BigObject m, const Int e) //with Uniform(1,2)
 {
-   const int n=m.give("N_ELEMENTS");
-   if (e<0||e>=n) throw std::runtime_error("series-extension: element out of bounds");
+   const Int n = m.give("N_ELEMENTS");
+   if (e < 0 || e >= n) throw std::runtime_error("series-extension: element out of bounds");
 
-   perl::Object m_new("Matroid");
+   BigObject m_new("Matroid");
    m_new.set_description()<<"The series extension of "<<m.name()<<" and U(1,2), with basepoints "<< e <<"."<<endl;
    m_new.take("N_ELEMENTS")<<(n+1);
 
-   Array<Set<int>> bases=m.give("BASES");
-   std::list<Set<int>> new_bases;
-   for (auto i=entire(bases); !i.at_end(); ++i) {
+   Array<Set<Int>> bases = m.give("BASES");
+   std::list<Set<Int>> new_bases;
+   for (auto i = entire(bases); !i.at_end(); ++i) {
       new_bases.push_back(*i+n);
       if (!(i->contains(e))) {
          new_bases.push_back(*i+e);
@@ -150,27 +150,27 @@ perl::Object single_element_series_extension(perl::Object m, const int e) //with
    return m_new;
 }
 
-perl::Object parallel_extension(perl::Object m1, const int e1, perl::Object m2, const int e2)
+BigObject parallel_extension(BigObject m1, const Int e1, BigObject m2, const Int e2)
 {
-   const int n1=m1.give("N_ELEMENTS");
-   const int n2=m2.give("N_ELEMENTS");
-   if (e1<0||e1>=n1 || e2<0||e2>=n2) throw std::runtime_error("series-extansion: element out of bounds");
+   const Int n1 = m1.give("N_ELEMENTS");
+   const Int n2 = m2.give("N_ELEMENTS");
+   if (e1 < 0 || e1 >= n1 || e2 < 0 || e2 >= n2) throw std::runtime_error("series-extansion: element out of bounds");
 
    //loop check:
-   const Set<int>& temp1 = m1.give("LOOPS");
-   const Set<int>& temp2 = m2.give("LOOPS");
-   if(temp1.size()>0 && temp2.size()>0) throw std::runtime_error("series-extansion: both basepoints are loops");
+   const Set<Int>& temp1 = m1.give("LOOPS");
+   const Set<Int>& temp2 = m2.give("LOOPS");
+   if (temp1.size()>0 && temp2.size()>0) throw std::runtime_error("series-extansion: both basepoints are loops");
 
-   perl::Object m_new("Matroid");
+   BigObject m_new("Matroid");
    m_new.set_description()<<"The parallel extansion of "<<m1.name()<<" and "<<m2.name()<<", with basepoints "<< e1 <<" and "<< e2 <<"."<<endl;
    m_new.take("N_ELEMENTS")<<(n1+n2-1);
 
-   const Array<Set<int>> sets1=m1.give("BASES");
-   const Array<Set<int>> sets2=m2.give("BASES");
+   const Array<Set<Int>> sets1 = m1.give("BASES");
+   const Array<Set<Int>> sets2 = m2.give("BASES");
    // a set where the elements are those elements of sets1 that contain e1 in the former set and e1 is removed. 
-   const Array<Set<int>> sets3(attach_operation(select_k(sets1,e1), pm::operations::construct_unary2_with_arg<pm::SelectedSubset, operations::fix2<int,operations::ne> >(operations::fix2<int,operations::ne>(e1))));
+   const Array<Set<Int>> sets3(attach_operation(select_k(sets1,e1), pm::operations::construct_unary2_with_arg<pm::SelectedSubset, operations::fix2<Int, operations::ne> >(operations::fix2<Int, operations::ne>(e1))));
 
-   Array<Set<int>> result( product(select_k(sets1, e1),
+   Array<Set<Int>> result( product(select_k(sets1, e1),
                                    shift_elements(drop_shift(select_k(sets2, e2), e2), n1),
                                    operations::add()),
                            product(select_not_k(sets1, e1),
@@ -186,19 +186,19 @@ perl::Object parallel_extension(perl::Object m1, const int e1, perl::Object m2, 
 }
 
 
-perl::Object single_element_parallel_extension(perl::Object m, const int e) //with Uniform(1,2)
+BigObject single_element_parallel_extension(BigObject m, const Int e) //with Uniform(1,2)
 {
-   const int n=m.give("N_ELEMENTS");
-   if (e<0||e>=n) throw std::runtime_error("parallel-extension: element out of bounds");
+   const Int n = m.give("N_ELEMENTS");
+   if (e < 0 || e >= n) throw std::runtime_error("parallel-extension: element out of bounds");
 
-   perl::Object m_new("Matroid");
+   BigObject m_new("Matroid");
    m_new.set_description()<<"The parallel extension of "<<m.name()<<" and U(1,2), with basepoint "<< e <<"."<<endl;
    m_new.take("N_ELEMENTS")<<(n+1);
 
-   Array<Set<int>> bases=m.give("BASES");
-   std::list<Set<int>> new_bases;
-   int count=0;   
-   for (auto i=entire(bases); !i.at_end(); ++i) {
+   Array<Set<Int>> bases = m.give("BASES");
+   std::list<Set<Int>> new_bases;
+   Int count = 0;
+   for (auto i = entire(bases); !i.at_end(); ++i) {
       if (i->contains(e)) {
          new_bases.push_back(*i-e+n);
          ++count;
@@ -209,32 +209,32 @@ perl::Object single_element_parallel_extension(perl::Object m, const int e) //wi
    return m_new;
 }
 
-perl::Object two_sum(perl::Object m1, const int e1, perl::Object m2, const int e2)
+BigObject two_sum(BigObject m1, const Int e1, BigObject m2, const Int e2)
 {
-   const int n1=m1.give("N_ELEMENTS");
-   const int n2=m2.give("N_ELEMENTS");
-   if (e1<0||e1>=n1 || e2<0||e2>=n2) throw std::runtime_error("2-sum: element out of bounds");
+   const Int n1 = m1.give("N_ELEMENTS");
+   const Int n2 = m2.give("N_ELEMENTS");
+   if (e1 < 0 || e1 >= n1 || e2 < 0 || e2 >= n2) throw std::runtime_error("2-sum: element out of bounds");
 
    //loop check:
-   const Set<int>& temp1 = m1.give("DUAL.LOOPS");
-   const Set<int>& temp2 = m2.give("DUAL.LOOPS");
-   if(temp1.size()>0 && temp2.size()>0) throw std::runtime_error("2-sum: both basepoints are coloops");
+   const Set<Int>& temp1 = m1.give("DUAL.LOOPS");
+   const Set<Int>& temp2 = m2.give("DUAL.LOOPS");
+   if (temp1.size()>0 && temp2.size()>0) throw std::runtime_error("2-sum: both basepoints are coloops");
 
-   perl::Object m_new("Matroid");
+   BigObject m_new("Matroid");
    m_new.set_description()<<"The 2-sum of "<<m1.name()<<" and "<<m2.name()<<", with basepoints "<< e1 <<" and "<< e2 <<"."<<endl;
    m_new.take("N_ELEMENTS")<<(n1+n2-2);
 
-   const int rank1=m1.give("RANK");
-   const int rank2=m2.give("RANK");
+   const Int rank1 = m1.give("RANK");
+   const Int rank2 = m2.give("RANK");
    m_new.take("RANK") << rank1+rank2-1;
 
-   const Array<Set<int>> sets1=m1.give("BASES");
-   const Array<Set<int>> sets2=m2.give("BASES");
+   const Array<Set<Int>> sets1 = m1.give("BASES");
+   const Array<Set<Int>> sets2 = m2.give("BASES");
 
-   Array<Set<int>> result( product(Array<Set<int>>(drop_shift(select_k(sets1, e1), e1)),
+   Array<Set<Int>> result( product(Array<Set<Int>>(drop_shift(select_k(sets1, e1), e1)),
                                    shift_elements(drop_shift(select_not_k(sets2, e2), e2), n1-1),
                                    operations::add()),
-                           product(Array<Set<int>>(drop_shift(select_not_k(sets1, e1), e1)),
+                           product(Array<Set<Int>>(drop_shift(select_not_k(sets1, e1), e1)),
                                    shift_elements(drop_shift(select_k(sets2, e2), e2), n1-1),
                                    operations::add()));
    m_new.take("BASES") << result;

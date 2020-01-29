@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,17 +28,17 @@ namespace polymake { namespace topaz {
 // this function takes a facet F and glues it around the boundary of
 // the ball defined by the WEB. It creates a new simplicial complex
 // which contains all the facets indicated by WEB.
-void glue_facet(const Set<int>& F_in,
-                const Array<int>& F_vertex_indices,
-                const Array<Set<int>>& facets,
-                const Array<int>& facets_vertex_indices,
-                const Set<int>& web,
-                const int shift,
+void glue_facet(const Set<Int>& F_in,
+                const Array<Int>& F_vertex_indices,
+                const Array<Set<Int>>& facets,
+                const Array<Int>& facets_vertex_indices,
+                const Set<Int>& web,
+                const Int shift,
                 bool shift_facet,
-                std::vector<Set<int>>& result)
+                std::vector<Set<Int>>& result)
 {
    // compute the boundary ridges
-   hash_set<Set<int>> boundary;
+   hash_set<Set<Int>> boundary;
 
    for (const auto& sf : web) {
       for (auto rit = entire(all_subsets_less_1(facets[sf])); !rit.at_end(); ++rit) {
@@ -51,20 +51,20 @@ void glue_facet(const Set<int>& F_in,
    }
 
    // take care of index shifting for unused points
-   Array<int> vertex_indices = facets_vertex_indices;
+   Array<Int> vertex_indices = facets_vertex_indices;
 
    // take into account the vertex indices of F
-   Set<int> F(permuted_inv(F_in, F_vertex_indices));
+   Set<Int> F(permuted_inv(F_in, F_vertex_indices));
 
    // shift the indices of F or boundary facet
    if (shift_facet) {
       // TODO: introduce Set::transpose instead of this madness
-      Set<int> F_shifted(entire(attach_operation(F, same_value(shift), operations::add())));
-      F=F_shifted;
+      Set<Int> F_shifted(entire(attach_operation(F, same_value(shift), operations::add())));
+      F = F_shifted;
    } else {
       // we shift the vertex indices of the boundary facet via the
       // vertex permutation so that we don't have to do it later
-      for (int& v : vertex_indices) v+=shift;
+      for (Int& v : vertex_indices) v+=shift;
    }
 
    // glue everything together
@@ -75,10 +75,10 @@ void glue_facet(const Set<int>& F_in,
 
 
 template<typename Scalar>
-perl::Object sum_triangulation(perl::Object p_in,
-                               perl::Object q_in,
+BigObject sum_triangulation(BigObject p_in,
+                               BigObject q_in,
                                const IncidenceMatrix<> webOfStars_in,
-                               perl::OptionSet options)
+                               OptionSet options)
 {
    return sum_triangulation_impl<Scalar>(p_in, q_in, webOfStars_in, options);
 }

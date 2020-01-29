@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,7 +23,7 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-Graph<Directed> dgraph(perl::Object p, perl::Object lp, perl::OptionSet options)
+Graph<Directed> dgraph(BigObject p, BigObject lp, OptionSet options)
 {
    Graph<Directed> DG=p.give("GRAPH.ADJACENCY");
    const Matrix<Scalar> V=p.give("VERTICES");
@@ -31,7 +31,7 @@ Graph<Directed> dgraph(perl::Object p, perl::Object lp, perl::OptionSet options)
    const bool inverse=options["inverse"], generic=options["generic"];
    bool upper_bound=true, lower_bound=true, check_for_rays=false;
    Vector<Scalar> obj;
-   Set<int> rays;
+   Set<Int> rays;
 
    if (lp.lookup("LINEAR_OBJECTIVE") >> obj) {
       obj=V*obj;
@@ -45,11 +45,11 @@ Graph<Directed> dgraph(perl::Object p, perl::Object lp, perl::OptionSet options)
    auto obj_value=obj.begin();
    for (auto n=entire(nodes(DG));  !n.at_end();  ++n, ++obj_value) {
       if (check_for_rays && rays.contains(*n)) {
-         const int ray_orientation=sign(*obj_value);
-         if (ray_orientation>0) upper_bound=false;
-         if (ray_orientation<0) lower_bound=false;
-         if (ray_orientation>=0) n.out_edges().clear();
-         if (ray_orientation<=0) n.in_edges().clear();
+         const Int ray_orientation = sign(*obj_value);
+         if (ray_orientation > 0) upper_bound = false;
+         if (ray_orientation < 0) lower_bound = false;
+         if (ray_orientation >= 0) n.out_edges().clear();
+         if (ray_orientation <= 0) n.in_edges().clear();
       } else {
          // affine vertex
          for (auto e=n.out_edges().find_nearest(*n, operations::gt()); !e.at_end(); ) {
@@ -57,13 +57,13 @@ Graph<Directed> dgraph(perl::Object p, perl::Object lp, perl::OptionSet options)
                ++e;
                continue;
             }
-            int idiff=sign(*obj_value - obj[e.to_node()]);
-            if (idiff==0 && generic)
-               idiff= lex_compare(V.row(*n), V.row(e.to_node())) == (inverse ? pm::cmp_lt : pm::cmp_gt) ? 1 : -1;
+            Int idiff = sign(*obj_value - obj[e.to_node()]);
+            if (idiff == 0 && generic)
+               idiff = lex_compare(V.row(*n), V.row(e.to_node())) == (inverse ? pm::cmp_lt : pm::cmp_gt) ? 1 : -1;
 
-            if (idiff<=0)
+            if (idiff <= 0)
                n.in_edges().erase(e.to_node());
-            if (idiff>=0)
+            if (idiff >= 0)
                n.out_edges().erase(e++);
             else
                ++e;
@@ -72,7 +72,7 @@ Graph<Directed> dgraph(perl::Object p, perl::Object lp, perl::OptionSet options)
    }
 
    if (!inverse && !generic) {
-      Set<int> minface, maxface;
+      Set<Int> minface, maxface;
       for (auto n=entire(nodes(DG));  !n.at_end();  ++n) {
          if (!n.in_degree()) minface.push_back(n.index());
          if (!n.out_degree()) maxface.push_back(n.index());
@@ -92,12 +92,12 @@ Graph<Directed> dgraph(perl::Object p, perl::Object lp, perl::OptionSet options)
 }
 
 template <typename Scalar>
-Vector<Scalar> objective_values_for_embedding(perl::Object p, perl::Object lp)
+Vector<Scalar> objective_values_for_embedding(BigObject p, BigObject lp)
 {
-   const Matrix<Scalar> V=p.give("VERTICES");
-   const Vector<Scalar> Obj=lp.give("LINEAR_OBJECTIVE");
-   Vector<Scalar> val=V*Obj;
-   const Set<int> rays=p.give("FAR_FACE");
+   const Matrix<Scalar> V = p.give("VERTICES");
+   const Vector<Scalar> Obj = lp.give("LINEAR_OBJECTIVE");
+   Vector<Scalar> val = V*Obj;
+   const Set<Int> rays = p.give("FAR_FACE");
    if (!rays.empty()) {
       const Scalar max_obj=accumulate(val.slice(~rays), operations::max()),
          min_obj=accumulate(val.slice(~rays), operations::min());

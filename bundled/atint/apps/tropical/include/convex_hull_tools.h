@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -33,6 +33,7 @@
 #include "polymake/Rational.h"
 #include "polymake/Vector.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/polytope/canonicalize.h"
 
 namespace polymake { namespace tropical {
 
@@ -50,16 +51,21 @@ struct fan_intersection_result {
    @param Matrix<Rational> rays A reference to a matrix of (normalized) rays or vertices. This matrix will potentially be changed
    @param Matrix<Rational> nrays A list of new rays or vertices (not necessarily normalized), that will be added
    @param bool is_normalized Whether the new rays are also already normalized
-   @return Vector<int> At position i contains the row index of the new ray nrays[i] in the modified matrix rays
+   @return Vector<Int> At position i contains the row index of the new ray nrays[i] in the modified matrix rays
 */
-Vector<int> insert_rays(Matrix<Rational> &rays, Matrix<Rational> nrays, bool is_normalized );
+Vector<Int> insert_rays(Matrix<Rational>& rays, Matrix<Rational> nrays, bool is_normalized);
 
 /**
    @brief Normalizes a ray matrix: Vertices begin with a 1 and the first non-zero coordinate of a ray is +-1
    @param Matrix The row vectors to be normalized. This method modifies this matrix!
 */
 template <typename MType>
-void normalize_rays(GenericMatrix<MType>& rays);
+void normalize_rays(GenericMatrix<MType>& rays)
+{
+  for (auto r = entire(rows(rays)); !r.at_end(); ++r) {
+    polytope::canonicalize_oriented(find_in_range_if(entire(r->top()), operations::non_zero()));
+  }
+}
 
 /**
    @brief Computes the intersection of two rational polyhedra, x and y, given in terms of rays and lineality space

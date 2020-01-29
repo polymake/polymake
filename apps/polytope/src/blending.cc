@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,17 +24,17 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object blending(perl::Object p_in1, const int vertex1, perl::Object p_in2, const int vertex2, perl::OptionSet options)
+BigObject blending(BigObject p_in1, const Int vertex1, BigObject p_in2, const Int vertex2, OptionSet options)
 {
-   const int dim=p_in1.give("COMBINATORIAL_DIM"),
-      dim2=p_in2.give("COMBINATORIAL_DIM");
+   const Int dim = p_in1.give("COMBINATORIAL_DIM"),
+             dim2 = p_in2.give("COMBINATORIAL_DIM");
    if (dim != dim2)
       throw std::runtime_error("dimension mismatch");
 
-   const IncidenceMatrix<> VIF1=p_in1.give("VERTICES_IN_FACETS"),
-      VIF2=p_in2.give("VERTICES_IN_FACETS");
-   const int n_vertices1=VIF1.cols(), n_facets1=VIF1.rows(),
-      n_vertices2=VIF2.cols();
+   const IncidenceMatrix<> VIF1 = p_in1.give("VERTICES_IN_FACETS"),
+                           VIF2 = p_in2.give("VERTICES_IN_FACETS");
+   const Int n_vertices1 = VIF1.cols(), n_facets1 = VIF1.rows(),
+      n_vertices2 = VIF2.cols();
 
    if (vertex1 < 0 || vertex1 >= n_vertices1)
       throw std::runtime_error("first vertex number out of range");
@@ -49,16 +49,16 @@ perl::Object blending(perl::Object p_in1, const int vertex1, perl::Object p_in2,
    if (G2.degree(vertex2) != dim)
       throw std::runtime_error("second vertex not simple");
 
-   Array<int> neighbors2(dim,-1);
+   Array<Int> neighbors2(dim, -1);
 
    // reorder the neighbor vertices in P2 if required
    auto nb=entire(G2.adjacent_nodes(vertex2));
-   Array<int> permutation;
+   Array<Int> permutation;
    if (options["permutation"] >> permutation) {
       if (permutation.size() != dim)
          throw std::runtime_error("wrong permutation size");
 
-      for (Array<int>::const_iterator p_i=permutation.begin(); !nb.at_end(); ++p_i, ++nb) {
+      for (auto p_i = permutation.begin(); !nb.at_end(); ++p_i, ++nb) {
          if (*p_i < 0 || *p_i >= dim)
             throw std::runtime_error("permutation element out of range");
 
@@ -71,7 +71,7 @@ perl::Object blending(perl::Object p_in1, const int vertex1, perl::Object p_in2,
       copy_range(nb, neighbors2.begin());
    }
 
-   perl::Object p_out("Polytope<Rational>");
+   BigObject p_out("Polytope<Rational>");
    p_out.set_description() << "Blending of " << p_in1.name() << " at vertex " << vertex1 << " and " << p_in2.name() << " at vertex " << vertex2;
    if (permutation.empty())
       p_out.append_description() << '\n';
@@ -79,15 +79,15 @@ perl::Object blending(perl::Object p_in1, const int vertex1, perl::Object p_in2,
       p_out.append_description() << " permuted with [" << permutation << "]\n";
 
    // initialize as a block-diagonal matrix
-   IncidenceMatrix<> VIF_out=diag(VIF1,VIF2);
+   IncidenceMatrix<> VIF_out = diag(VIF1, VIF2);
 
    // Facets to be glued are identified via opposite neighbors of vertex{1,2}
    // (that is, not belonging to them).
    // Since both vertices are simple, this mapping is unambigiuos
-   Array<int>::const_iterator nb2=neighbors2.begin();
-   for (nb=entire(G1.adjacent_nodes(vertex1)); !nb.at_end(); ++nb, ++nb2) {
-      int f1=(VIF1.col(vertex1) - VIF1.col(*nb)).front(),
-         f2=(VIF2.col(vertex2) - VIF2.col(*nb2)).front() + n_facets1;
+   auto nb2 = neighbors2.begin();
+   for (nb = entire(G1.adjacent_nodes(vertex1)); !nb.at_end(); ++nb, ++nb2) {
+      Int f1 = (VIF1.col(vertex1) - VIF1.col(*nb)).front(),
+          f2 = (VIF2.col(vertex2) - VIF2.col(*nb2)).front() + n_facets1;
       VIF_out.row(f1) += VIF_out.row(f2);
       VIF_out.row(f2).clear();
    }

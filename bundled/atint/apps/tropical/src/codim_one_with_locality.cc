@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -40,7 +40,7 @@ CodimensionOneResult calculateCodimOneData(const Matrix<Rational>& rays, const I
   // Array<IncidenceMatrix<> > maximal_cone_incidence = fan.give("MAXIMAL_CONES_INCIDENCES");
   // Compute the rays-in-facets for each cone directly
   std::vector<RestrictedIncidenceMatrix<>> maximal_cone_incidence(maximalCones.rows());
-  for (int mc = 0; mc < maximalCones.rows(); ++mc) {
+  for (Int mc = 0; mc < maximalCones.rows(); ++mc) {
     // Extract inequalities
     const Matrix<Rational> facets = polytope::enumerate_facets(rays.minor(maximalCones.row(mc), All),
                                                                linspace, false).first;
@@ -92,7 +92,7 @@ CodimensionOneResult calculateCodimOneData(const Matrix<Rational>& rays, const I
  * and [[FACET_NORMALS_BY_PAIRS]] for cycles with [[LOCAL_RESTRICTION]]
  */
 template <typename Addition>
-void codim_one_with_locality(perl::Object cycle)
+void codim_one_with_locality(BigObject cycle)
 {
   Matrix<Rational> rays = cycle.give("VERTICES");
   IncidenceMatrix<> cones = cycle.give("MAXIMAL_POLYTOPES");
@@ -100,7 +100,7 @@ void codim_one_with_locality(perl::Object cycle)
   Matrix<Rational> lineality = cycle.give("LINEALITY_SPACE");
 
   // Create a proxy object without the local restriction
-  perl::Object proxy("Cycle", mlist<Addition>());
+  BigObject proxy("Cycle", mlist<Addition>());
   proxy.take("PROJECTIVE_VERTICES") << rays;
   proxy.take("MAXIMAL_POLYTOPES") << cones;
   proxy.take("LINEALITY_SPACE") << lineality;
@@ -108,13 +108,13 @@ void codim_one_with_locality(perl::Object cycle)
   // Extract non-local data
   IncidenceMatrix<> codim_one = proxy.give("CODIMENSION_ONE_POLYTOPES");
   IncidenceMatrix<> maximal_at_codim = proxy.give("MAXIMAL_AT_CODIM_ONE");
-  Map<std::pair<int,int>, int> facets_by_pairs = proxy.give("FACET_NORMALS_BY_PAIRS");
+  Map<std::pair<Int, Int>, Int> facets_by_pairs = proxy.give("FACET_NORMALS_BY_PAIRS");
 
   // Find non-local codim one cones
-  Set<int> nonlocal;
-  Map<int,int> new_codim_index; //Maps old codim indices to new ones
-  int next_index = 0;
-  for (int cc = 0; cc < codim_one.rows(); ++cc) {
+  Set<Int> nonlocal;
+  Map<Int, Int> new_codim_index; //Maps old codim indices to new ones
+  Int next_index = 0;
+  for (Int cc = 0; cc < codim_one.rows(); ++cc) {
     if (!is_coneset_compatible(codim_one.row(cc),local_restriction)) {
       nonlocal += cc;
     } else {
@@ -124,7 +124,7 @@ void codim_one_with_locality(perl::Object cycle)
   }
 
   // Clean map
-  Map<std::pair<int,int>, int> local_map;
+  Map<std::pair<Int, Int>, Int> local_map;
   for (const auto& fct : facets_by_pairs) {
     if (!nonlocal.contains(fct.first.first))
       local_map[std::make_pair(new_codim_index[fct.first.first], fct.first.second)] = fct.second;

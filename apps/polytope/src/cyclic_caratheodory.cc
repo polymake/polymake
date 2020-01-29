@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,26 +23,26 @@
 
 namespace polymake { namespace polytope {
 
-      perl::Object cyclic_caratheodory(const int d, const int n, perl::OptionSet options)
+BigObject cyclic_caratheodory(const Int d, const Int n, OptionSet options)
 {
    if ((d < 2) || (d >= n)) {
       throw std::runtime_error("cyclic_caratheodory: (d >= 2) && (n > d)\n");
    }
-   if (d % 2) {
+   if (d%2) {
       throw std::runtime_error("cyclic_caratheodory: even dimension required.\n");
    }
 
    const bool group = options["group"];
-   perl::Object p(std::string(group ? "Polytope<Float>" : "Polytope<Rational>"));
+   BigObject p(std::string(group ? "Polytope<Float>" : "Polytope<Rational>"));
    p.set_description() << "Cyclic " << d << "-polytope on " << n << " vertices on the trigonometric moment curve" << endl;
 
    Matrix<Rational> Vertices(n,d+1);
    auto v=concat_rows(Vertices).begin();
 
    AccurateFloat x(0), s, c;
-   for (int r=0; r<n; ++r, ++x) {
+   for (Int r = 0; r < n; ++r, ++x) {
       *v++ = 1;
-      for (int i = 1; i <= d/2; ++i) {
+      for (Int i = 1; i <= d/2; ++i) {
          sin_cos(s, c, x*i*2*M_PI/n);
          *v++ = c;
          *v++ = s;
@@ -56,8 +56,8 @@ namespace polymake { namespace polytope {
    p.take("BOUNDED") << true;
 
    if (group) {
-      perl::Object g("group::Group");
-      const perl::Object D(group::dihedral_group_impl(2*n));
+      BigObject g("group::Group");
+      const BigObject D(group::dihedral_group_impl(2*n));
       g.take("CHARACTER_TABLE") << D.give("CHARACTER_TABLE");
       g.set_description() << "full combinatorial group" << endl;
       g.set_name("fullCombinatorialGroup");

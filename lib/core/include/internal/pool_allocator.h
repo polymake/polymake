@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -18,30 +18,48 @@
 #ifndef POLYMAKE_INTERNAL_POOL_ALLOCATOR_H
 #define POLYMAKE_INTERNAL_POOL_ALLOCATOR_H
 
-// make sure macros for version library tests are loaded
 #include <cstddef>
-
-#if defined(__GLIBCXX__)
-
-#include <ext/pool_allocator.h>
-
-namespace std {
-template <typename T> class allocator;
-}
-
-#elif defined(_LIBCPP_VERSION)
-
 #include <memory>
 
+#if defined(__GLIBCXX__)
+# include <ext/pool_allocator.h>
+# define PM_ALLOCATOR_BASE __gnu_cxx::__pool_alloc
+#else 
+# define PM_ALLOCATOR_BASE std::allocator
 #endif
 
 namespace pm {
-typedef std::allocator<char[1]> allocator;
+
+class allocator : public PM_ALLOCATOR_BASE<char> {
+   using base_t = PM_ALLOCATOR_BASE<char>;
+public:
+   void* allocate(size_t n)
+   {
+      return base_t::allocate(n, nullptr);
+   }
+   void deallocate(void* p, size_t n)
+   {
+      base_t::deallocate(reinterpret_cast<char*>(p), n);
+   }
+   void* reallocate(void* p, size_t old_sz, size_t new_sz);
+
+   template <typename Data, typename... Args>
+   Data* construct(Args&&... args)
+   {
+      return new(allocate(sizeof(Data))) Data(std::forward<Args>(args)...);
+   }
+
+   template <typename Data>
+   void destroy(Data* p)
+   {
+      p->~Data();
+      deallocate(p, sizeof(p));
+   }
+};
+
 }
 
-#ifdef __GLIBCXX__
-#define __glibcxx_base_allocator __gnu_cxx::__pool_alloc
-#endif
+#undef PM_ALLOCATOR_BASE
 
 #endif // POLYMAKE_INTERNAL_POOL_ALLOCATOR_H
 

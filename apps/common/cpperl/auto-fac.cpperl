@@ -1,5 +1,5 @@
 {"app": "common",
  "inst": [
-  {"args": ["Integer()", "long"], "func": "fac", "include": ["polymake/Integer.h"], "kind": "stat", "sig": "fac.X16"},
+  {"args": ["Integer()", "Int"], "func": "fac", "include": ["polymake/Integer.h"], "kind": "stat", "sig": "fac.X16"},
  null ],
 "version": 3}

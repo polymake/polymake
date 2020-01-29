@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,21 +27,21 @@
 namespace polymake { namespace topaz {
 
 template <typename Scalar>
-perl::Object foldable_prism (perl::Object p_in, perl::OptionSet options)
+BigObject foldable_prism (BigObject p_in, OptionSet options)
 {
    const IncidenceMatrix<> C_in = p_in.give("FACETS");
-   const int n_vert = C_in.cols();
+   const Int n_vert = C_in.cols();
    const bool is_foldable = p_in.give("FOLDABLE");
    if (!is_foldable)
       throw std::runtime_error("foldable_prism: Complex not foldable.");
 
-   const Array<int> Coloring = p_in.give("COLORING");
-   std::list< Set<int> > C_out;
+   const Array<Int> Coloring = p_in.give("COLORING");
+   std::list<Set<Int>> C_out;
 
-   int v=0;
-   for (auto star=entire(cols(C_in)); !star.at_end(); ++star, ++v)
-      for (auto f=entire(*star); !f.at_end(); ++f) {
-         Set<int> new_f;
+   Int v = 0;
+   for (auto star = entire(cols(C_in)); !star.at_end(); ++star, ++v)
+      for (auto f = entire(*star); !f.at_end(); ++f) {
+         Set<Int> new_f;
          for (auto w=entire(C_in[f.index()]); !w.at_end(); ++w) {
             if (Coloring[v] <= Coloring[*w])
                new_f += *w + n_vert;
@@ -52,9 +52,9 @@ perl::Object foldable_prism (perl::Object p_in, perl::OptionSet options)
       }
 
    const bool realize = options["geometric_realization"];
-   perl::Object p_out = realize
-      ? perl::Object("GeometricSimplicialComplex", mlist<Scalar>())
-      : perl::Object("SimplicialComplex");
+   BigObject p_out = realize
+      ? BigObject("GeometricSimplicialComplex", mlist<Scalar>())
+      : BigObject("SimplicialComplex");
    p_out.set_description()  << "foldable prism of " << p_in.name() << "."<<endl;
    p_out.take("FACETS") << as_array(C_out);
    

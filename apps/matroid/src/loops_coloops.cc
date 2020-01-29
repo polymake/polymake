@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,12 +21,12 @@
 
 namespace polymake { namespace matroid {
 
-void loops(perl::Object m)
+void loops(BigObject m)
 {
-  const int n=m.give("N_ELEMENTS");
-  Array< Set<int> > bases=m.give("BASES");
+  const Int n = m.give("N_ELEMENTS");
+  Array<Set<Int>> bases = m.give("BASES");
 
-  Set<int> loops=sequence(0,n)-accumulate(bases,operations::add());
+  Set<Int> loops = sequence(0, n) - accumulate(bases, operations::add());
 
   m.take("LOOPS") << loops;
 }

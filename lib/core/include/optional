@@ -4,9 +4,10 @@
 // Until we have migrated to C++17, we have to use std::experimental::optional.
 // While GCC comes with a fully functional implementation,
 // clang libc++ has a broken one in versions up to 6 and completely lacks it from version 7 upwards.
+// Moreover, older clangs produce strange errors even in combination with libstdc++.
 // For this configuration, we include a minimal implementation just covering our needs.
 
-#if defined(__clang__) && defined(_LIBCPP_STD_VER)
+#if defined(__clang__) && (defined(_LIBCPP_STD_VER) || __clang_major__ < 4)
 
 #include "polymake/internal/type_union.h"
 
@@ -73,7 +74,7 @@ using pm::nullopt;
 using pm::make_optional;
 }
 
-#else
+#else // GCC or clang >= 4
 
 #if __cplusplus < 201703L
 

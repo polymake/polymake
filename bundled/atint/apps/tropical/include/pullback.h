@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -66,17 +66,17 @@ polynomialPullback(const Matrix<Rational>& matrix, const Vector<Rational>& trans
   Vector<TropicalNumber<Addition>> newnum_coeffs( newnum_coeffs_rational.dim(), newnum_coeffs_rational.begin());
   Vector<TropicalNumber<Addition>> newden_coeffs( newden_coeffs_rational.dim(), newden_coeffs_rational.begin());
 						
-  Polynomial<TropicalNumber<Addition>> newnum(newnum_coeffs, Matrix<int>(newnum_monoms));
-  Polynomial<TropicalNumber<Addition>> newden(newden_coeffs, Matrix<int>(newden_monoms));
+  Polynomial<TropicalNumber<Addition>> newnum(newnum_coeffs, Matrix<Int>(newnum_monoms));
+  Polynomial<TropicalNumber<Addition>> newden(newden_coeffs, Matrix<Int>(newden_monoms));
   return std::make_pair(newnum, newden);
 }
 
 template <typename Addition>
-perl::Object pullback(perl::Object morphism, perl::Object function)
+BigObject pullback(BigObject morphism, BigObject function)
 {
   // Convert the rational function to a morphism object
-  perl::Object fmorphism("Morphism", mlist<Addition>());
-  perl::Object function_domain = function.give("DOMAIN");
+  BigObject fmorphism("Morphism", mlist<Addition>());
+  BigObject function_domain = function.give("DOMAIN");
 
   const bool is_function_global = function.give("IS_GLOBALLY_DEFINED");
   const bool is_morphism_global = morphism.give("IS_GLOBALLY_AFFINE_LINEAR");
@@ -86,7 +86,7 @@ perl::Object pullback(perl::Object morphism, perl::Object function)
     const Vector<Rational>& translate = morphism.give("TRANSLATE");
     const Polynomial<TropicalNumber<Addition>>& numerator = function.give("NUMERATOR");
     const Polynomial<TropicalNumber<Addition>>& denominator = function.give("DENOMINATOR");
-    perl::Object newfunction("RationalFunction", mlist<Addition>());
+    BigObject newfunction("RationalFunction", mlist<Addition>());
     std::pair<Polynomial<TropicalNumber<Addition>>, Polynomial<TropicalNumber<Addition>>> newpair =
       polynomialPullback(matrix, translate, numerator, denominator);
     newfunction.take("NUMERATOR") << newpair.first;
@@ -105,14 +105,14 @@ perl::Object pullback(perl::Object morphism, perl::Object function)
   fmorphism.take("LINEALITY_VALUES") << thomog(fmorph_lvalues,0,false);
 
   // Compute the composition
-  perl::Object comp = morphism_composition<Addition>(morphism,fmorphism);
+  BigObject comp = morphism_composition<Addition>(morphism,fmorphism);
 
   // Now convert back to rational function
-  perl::Object resultDomain = comp.give("DOMAIN");
+  BigObject resultDomain = comp.give("DOMAIN");
   const Matrix<Rational>& result_vvalues = comp.give("VERTEX_VALUES");
   const Matrix<Rational>& result_lvalues = comp.give("LINEALITY_VALUES");
 
-  perl::Object result("RationalFunction", mlist<Addition>());
+  BigObject result("RationalFunction", mlist<Addition>());
   result.take("DOMAIN") << resultDomain;
   result.take("VERTEX_VALUES") << tdehomog(result_vvalues,0,false).col(0);
   result.take("LINEALITY_VALUES") << (result_lvalues.rows() > 0 ? tdehomog(result_lvalues,0,false).col(0) : Vector<Rational>());
@@ -122,7 +122,7 @@ perl::Object pullback(perl::Object morphism, perl::Object function)
     const Vector<Rational>& translate = morphism.give("TRANSLATE");
     const Polynomial<TropicalNumber<Addition>>& numerator = function.give("NUMERATOR");
     const Polynomial<TropicalNumber<Addition>>& denominator= function.give("DENOMINATOR");
-    perl::Object newfunction("RationalFunction", mlist<Addition>());
+    BigObject newfunction("RationalFunction", mlist<Addition>());
     std::pair<Polynomial<TropicalNumber<Addition> >, Polynomial<TropicalNumber<Addition>>> newpair =
       polynomialPullback(matrix, translate, numerator, denominator);
     result.take("NUMERATOR") << newpair.first;

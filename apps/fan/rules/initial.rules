@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -26,9 +26,9 @@ object PolyhedralFan {
                               (defined($in_lin) && $in_lin->cols) ||
                               $this->lookup("FAN_AMBIENT_DIM") // 0;
             my $empty = new Matrix<Scalar>(0, $ambient_dim);
-            my $repl = new Core::Object::Replacement(RAYS => $empty, LINEALITY_SPACE => $empty, MAXIMAL_CONES => $emptySet, FAN_DIM => -1, FAN_AMBIENT_DIM => $ambient_dim,
-                                                     defined($in_rays) ? (INPUT_RAYS => $in_rays) : (),
-                                                     defined($in_lin) ? (INPUT_LINEALITY => $in_lin) : ());
+            my $repl = new Core::BigObject::Replacement(RAYS => $empty, LINEALITY_SPACE => $empty, MAXIMAL_CONES => $emptySet, FAN_DIM => -1, FAN_AMBIENT_DIM => $ambient_dim,
+                                                        defined($in_rays) ? (INPUT_RAYS => $in_rays) : (),
+                                                        defined($in_lin) ? (INPUT_LINEALITY => $in_lin) : ());
             die $repl;
          }
       }

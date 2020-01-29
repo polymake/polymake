@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -892,14 +892,20 @@ sub newEdge {
    my $length = 1;
 	my $arrowheadlength = $ThreeJS::default::arrowheadlength;
 	my $arrowheadwidth = $ThreeJS::default::arrowheadwidth;
-	if ($arrow==1) {
-		return $self->newArrowHelper($var, $f, $t, $length, $color, $arrowheadlength, $arrowheadwidth);
-   } elsif ($arrow==-1) {
-		
+	my $code = "";
+   if ($arrow) {
+		$code.=$self->newArrowHelper($var, $f, $t, $length, $color, $arrowheadlength, $arrowheadwidth);
 	} else {
-		return $self->newGeometry($var) . $self->newVertex($var, $f) . $self->newVertex($var, $t) . $self->newLine($var);
+		$code.=$self->newGeometry($var) . $self->newVertex($var, $f) . $self->newVertex($var, $t) . $self->newLine($var);
 	}
+   if (defined($label)) {
+        $code.="var edgelabel = textSprite(\"$label\");\n";  
+        $code.="edgelabel.position.copy(new THREE.Vector3().addVectors(allpoints[$f].vector,new THREE.Vector3().subVectors(allpoints[$t].vector,allpoints[$f].vector).multiplyScalar(0.5)));\n";
+        $code.="obj.add(edgelabel);\n";
+   }
+   return $code;
 }
+
 
 sub linesToString {
    my ($self, $var)=@_;

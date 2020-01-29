@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2019
+/* Copyright (c) 2015-2020
    Thomas Opfer
 
    This program is free software; you can redistribute it and/or modify it
@@ -27,22 +27,22 @@
 
 namespace TOExMipSol {
 
-template <class T>
+template <class T, class TInt>
 struct rowElement {
 	T mult;
-	int index;
+	TInt index;
 };
 
-template <class T>
+template <class T, class TInt>
 struct constraint {
-	std::vector<rowElement<T> > constraintElements;
-	int type;
+	std::vector<rowElement<T, TInt> > constraintElements;
+	TInt type;
 	T rhs;
 };
 
-template <class T>
+template <class T, class TInt>
 struct MIP {
-	std::map<std::string, int> varNumbers;
+	std::map<std::string, TInt> varNumbers;
 	std::vector<std::string> vars;
 	std::vector<T> lbounds;
 	std::vector<T> ubounds;
@@ -51,32 +51,32 @@ struct MIP {
 	std::vector<char> numbersystems;
 
 	bool maximize = false;
-	std::vector<constraint<T> > matrix;
-	std::vector<rowElement<T> > objfunc;
+	std::vector<constraint<T, TInt> > matrix;
+	std::vector<rowElement<T, TInt> > objfunc;
 	std::vector<std::string> varNames;
 };
 
 
-template <class T>
+template <class T, class TInt>
 class BnBNode
 {
 	private:
-		BnBNode* leftChild;
-		BnBNode* rightChild;
+		BnBNode<T, TInt>* leftChild;
+		BnBNode<T, TInt>* rightChild;
 
 	public:
-		std::vector<unsigned int> vars;
-		const unsigned int depth;
+		std::vector<TInt> vars;
+		const TInt depth;
 		std::vector<bool> whichBounds;
 		std::vector<T> Bounds;
 		const T priority;
 		T bound;
-		BnBNode* parent;
+		BnBNode<T, TInt>* parent;
 		bool deleted;
 
-		BnBNode( BnBNode* parent_, const int pos, const unsigned int var, const bool whichBound, const T& Bound, const T& priority_, const T& bound_, const unsigned int depth_ ):
-			leftChild( NULL ),
-			rightChild( NULL ),
+		BnBNode( BnBNode<T, TInt>* parent_, const TInt pos, const TInt var, const bool whichBound, const T& Bound, const T& priority_, const T& bound_, const TInt depth_ ):
+			leftChild( nullptr ),
+			rightChild( nullptr ),
 			vars( 1, var ),
 			depth( depth_ ),
 			whichBounds( 1, whichBound ),
@@ -86,11 +86,11 @@ class BnBNode
 			parent( parent_ ),
 			deleted( false )
 		{
-			if( pos == 1 && parent != NULL ){
+			if( pos == 1 && parent != nullptr ){
 				parent->leftChild = this;
-			} else if( pos == 2 && parent != NULL ){
+			} else if( pos == 2 && parent != nullptr ){
 				parent->rightChild = this;
-			} else if( pos == -1 && parent == NULL ){
+			} else if( pos == -1 && parent == nullptr ){
 				// ok, root node
 			} else {
 				throw std::runtime_error( "Wrong node position." );
@@ -98,15 +98,15 @@ class BnBNode
 		}
 
 		BnBNode( const T& bound_ ):
-			leftChild( NULL ),
-			rightChild( NULL ),
+			leftChild( nullptr ),
+			rightChild( nullptr ),
 			vars( 0 ),
 			depth( 0 ),
 			whichBounds( 0 ),
 			Bounds( 0 ),
 			priority( 0 ),
 			bound( bound_ ),
-			parent( NULL ),
+			parent( nullptr ),
 			deleted( false ){}
 
 		~BnBNode() noexcept( false ){
@@ -131,10 +131,10 @@ class BnBNode
 			{
 				if( parent ){
 					if( parent->leftChild == this ){
-						parent->leftChild = NULL;
+						parent->leftChild = nullptr;
 					}
 					if( parent->rightChild == this ){
-						parent->rightChild = NULL;
+						parent->rightChild = nullptr;
 					}
 					if( !( parent->leftChild || parent->rightChild ) ){
 						delete parent;
@@ -148,12 +148,12 @@ class BnBNode
 		void setDeleted(){
 
 			if( this->parent && this->parent->rightChild == this ){
-				this->parent->rightChild = NULL;
+				this->parent->rightChild = nullptr;
 			} else if( this->parent && this->parent->leftChild == this ){
-				this->parent->leftChild = NULL;
+				this->parent->leftChild = nullptr;
 			}
 
-			this->parent = NULL;
+			this->parent = nullptr;
 
 
 
@@ -192,7 +192,7 @@ class ComparePointerPriorities {
 
 
 
-template <class T>
+template <class T, class TInt>
 class TOMipSolver
 {
 
@@ -207,7 +207,7 @@ class TOMipSolver
 			INForUNB = 3
 		};
 
-		solstatus solve( MIP<T> mip, bool allSolutions, T& optimalValue, std::vector<T>& optimalAssignment, std::vector<std::vector<T> >* allAssignments );
+		solstatus solve( MIP<T, TInt> mip, bool allSolutions, T& optimalValue, std::vector<T>& optimalAssignment, std::vector<std::vector<T> >* allAssignments );
 		std::string solstatusToString( solstatus solStatus ){
 			switch( solStatus ){
 				case UNSOLVED:
@@ -231,31 +231,31 @@ class TOMipSolver
 
 	private:
 
-		solstatus BnB( const MIP<T>& mip, TOSimplex::TOSolver<T>& plex, bool allSolutions, T& objval, std::vector<T>& optimalAssignment, std::vector<std::vector<T> >* allAssignments );
+		solstatus BnB( const MIP<T, TInt>& mip, TOSimplex::TOSolver<T, TInt>& plex, bool allSolutions, T& objval, std::vector<T>& optimalAssignment, std::vector<std::vector<T> >* allAssignments );
 
 
 };
 
 
-template <class T>
-TOMipSolver<T>::TOMipSolver(){
+template <class T, class TInt>
+TOMipSolver<T, TInt>::TOMipSolver(){
 
 }
 
 
 
-template <class T>
-typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSimplex::TOSolver<T>& plex, bool allSolutions, T& optimalValue, std::vector<T>& optimalAssignment, std::vector<std::vector<T> >* allAssignments ){
+template <class T, class TInt>
+typename TOMipSolver<T, TInt>::solstatus TOMipSolver<T, TInt>::BnB( const MIP<T, TInt>& mip, TOSimplex::TOSolver<T, TInt>& plex, bool allSolutions, T& optimalValue, std::vector<T>& optimalAssignment, std::vector<std::vector<T> >* allAssignments ){
 
 	unsigned int numsol = 0;
 
 	#ifndef TO_DISABLE_OUTPUT
 		std::cout << "Starte BnB" << std::endl;
 	#endif
-	std::priority_queue<BnBNode<T>*,std::vector<BnBNode<T>*>,ComparePointerPriorities<BnBNode<T>*>> queue;
-	queue.push( new BnBNode<T>( plex.getObj() ) );
+	std::priority_queue<BnBNode<T, TInt>*,std::vector<BnBNode<T, TInt>*>,ComparePointerPriorities<BnBNode<T, TInt>*>> queue;
+	queue.push( new BnBNode<T, TInt>( plex.getObj() ) );
 
-	const unsigned int n = mip.lbounds.size();
+	const TInt n = mip.lbounds.size();
 	std::vector<long long> branchPriorities( n, 0 );
 
 	optimalAssignment.resize( 0 );
@@ -266,7 +266,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 
 	while( !queue.empty() ){
 
-		BnBNode<T>* bs = queue.top();
+		BnBNode<T, TInt>* bs = queue.top();
 		queue.pop();
 
 		if( bs->deleted ){
@@ -286,9 +286,9 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 		std::vector<T> tmpubounds = mip.ubounds;
 
 		{
-			BnBNode<T>* tmpnode = bs;
+			BnBNode<T, TInt>* tmpnode = bs;
 			do{
-				for( unsigned int i = 0; i < tmpnode->vars.size(); ++i ){
+				for( TInt i = 0; i < static_cast<TInt>( tmpnode->vars.size() ); ++i ){
 					if( !tmpnode->whichBounds[i] ){
 						tmplbounds[ tmpnode->vars[i] ] = std::max( tmplbounds.at( tmpnode->vars[i] ), tmpnode->Bounds[i] );
 					} else {
@@ -311,7 +311,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 			continue;
 		}
 
-		for( unsigned int i = 0; i < n; ++i ){
+		for( TInt i = 0; i < n; ++i ){
 			if( mip.numbersystems[i] != 'R' ){
 				plex.setVarBounds( i, TOSimplex::TORationalInf<T>( tmplbounds[i] ), TOSimplex::TORationalInf<T>( tmpubounds[i] ) );
 			}
@@ -331,7 +331,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 					std::cout << "Backtracking" << std::endl;
 				#endif
 
-				BnBNode<T>* backTrackStart = bs->parent;
+				BnBNode<T, TInt>* backTrackStart = bs->parent;
 				do{
 					std::vector<T> tmplbounds2 = mip.lbounds;
 					std::vector<T> tmpubounds2 = mip.ubounds;
@@ -343,9 +343,9 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 							tmpubounds2[ bs->vars[0] ] = std::min( tmpubounds2.at( bs->vars[0] ), bs->Bounds[0] );
 						}
 
-						BnBNode<T>* tmpnode = backTrackStart->parent;
+						BnBNode<T, TInt>* tmpnode = backTrackStart->parent;
 						do{
-							for( unsigned int i = 0; i < tmpnode->vars.size(); ++i ){
+							for( TInt i = 0; i < static_cast<TInt>( tmpnode->vars.size() ); ++i ){
 								if( !tmpnode->whichBounds[i] ){
 									tmplbounds2[ tmpnode->vars[i] ] = std::max( tmplbounds2.at( tmpnode->vars[i] ), tmpnode->Bounds[i] );
 								} else {
@@ -357,7 +357,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 						break;
 					}
 
-					for( unsigned int i = 0; i < n; ++i ){
+					for( TInt i = 0; i < n; ++i ){
 						if( mip.numbersystems[i] != 'R' ){
 							plex.setVarBounds( i, TOSimplex::TORationalInf<T>( tmplbounds2[i] ), TOSimplex::TORationalInf<T>( tmpubounds2[i] ) );
 						}
@@ -413,9 +413,9 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 			continue;
 		}
 
-		int branchVar = -1;
+		TInt branchVar = -1;
 		std::vector<T> x = plex.getX();
-		for( unsigned int i = 0; i < n; ++i ){
+		for( TInt i = 0; i < n; ++i ){
 			if( mip.numbersystems[i] != 'R' && !TOmath<T>::isInt( x[i] ) ){
 //				cout << "x" << i << " = " << TOmath<T>::toShortString( x[i] ) << " fractional. Branching." << endl;
 				if( branchVar == -1 || branchPriorities[i] > branchPriorities[branchVar] ){
@@ -425,7 +425,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 		}
 
 		if( allSolutions && branchVar == -1 ){
-			for( unsigned int i = 0; i < n; ++i ){
+			for( TInt i = 0; i < n; ++i ){
 				if( mip.numbersystems[i] != 'R' && tmplbounds[i] != tmpubounds[i] ){
 					x[i] = tmplbounds[i] + ( T(1) / T(2) );
 //					cout << "x" << i << " = " << TOmath<T>::toShortString( x[i] ) << " forced fractional. Branching." << endl;
@@ -464,8 +464,8 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 			++numsol;
 			delete bs;
 		} else {
-			queue.push( new BnBNode<T>( bs, 1, branchVar, 1, TOmath<T>::floor( x[branchVar] ), objval, objval, bs->depth + 1 ) );
-			queue.push( new BnBNode<T>( bs, 2, branchVar, 0, TOmath<T>::ceil( x[branchVar] ), objval, objval, bs->depth + 1 ) );
+			queue.push( new BnBNode<T, TInt>( bs, 1, branchVar, 1, TOmath<T>::floor( x[branchVar] ), objval, objval, bs->depth + 1 ) );
+			queue.push( new BnBNode<T, TInt>( bs, 2, branchVar, 0, TOmath<T>::ceil( x[branchVar] ), objval, objval, bs->depth + 1 ) );
 		}
 
 	}
@@ -488,23 +488,23 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::BnB( const MIP<T>& mip, TOSim
 
 
 
-template <class T>
-typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSolutions, T& optimalValue, std::vector<T>& optimalAssignment, std::vector<std::vector<T> >* allAssignments ){
+template <class T, class TInt>
+typename TOMipSolver<T, TInt>::solstatus TOMipSolver<T, TInt>::solve( MIP<T, TInt> mip, bool allSolutions, T& optimalValue, std::vector<T>& optimalAssignment, std::vector<std::vector<T> >* allAssignments ){
 
 	#ifndef TO_DISABLE_OUTPUT
 		std::cout << "Initialisiere LP-Solver." << std::endl;
 	#endif
 
 	{
-		std::vector<constraint<T> > matrix2;
+		std::vector<constraint<T, TInt> > matrix2;
 		bool modified = false;
-		for( unsigned int i = 0; i < mip.matrix.size(); ++i ){
+		for( TInt i = 0; i < static_cast<TInt>( mip.matrix.size() ); ++i ){
 			if( mip.matrix[i].constraintElements.size() == 1 && mip.matrix[i].constraintElements[0].mult != T( 0 ) ){
 				modified = true;
-				int var = mip.matrix[i].constraintElements[0].index;
+				TInt var = mip.matrix[i].constraintElements[0].index;
 				T rhs = mip.matrix[i].rhs / mip.matrix[i].constraintElements[0].mult;
 
-				int type = mip.matrix[i].constraintElements[0].mult >= T( 0 ) ? mip.matrix[i].type : - mip.matrix[i].type;
+				TInt type = mip.matrix[i].constraintElements[0].mult >= T( 0 ) ? mip.matrix[i].type : - mip.matrix[i].type;
 
 				if( type < 1 ) {	// <= oder ==
 					if( mip.uinf[var] || rhs < mip.ubounds[var] ){
@@ -535,18 +535,18 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 		}
 	}
 
-	const unsigned int m = mip.matrix.size();
-	const unsigned int n = mip.lbounds.size();
+	const TInt m = mip.matrix.size();
+	const TInt n = mip.lbounds.size();
 
-	unsigned int nnz = 0;
-	for( unsigned int i = 0; i < m; ++i ){
+	TInt nnz = 0;
+	for( TInt i = 0; i < m; ++i ){
 		nnz += mip.matrix.at( i ).constraintElements.size();
 	}
 
 	const T& hugenegint = TOmath<T>::hugenegint();
 	const T& hugeposint = TOmath<T>::hugeposint();
 
-	for( unsigned int i = 0; i < n; ++i ){
+	for( TInt i = 0; i < n; ++i ){
 		if( mip.numbersystems.at( i ) == 'G' ){
 //			if( mip.linf.at( i ) || mip.lbounds.at( i ) < hugenegint ){
 //				std::cout << "Warning: unbounded / huge integer variable. Setting " << mip.varNames.at( i ) << " >= " << TOmath<T>::toShortString( hugenegint ) << std::endl;
@@ -593,9 +593,9 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 
 	std::vector<T> rows;
 	rows.reserve( nnz );
-	std::vector<int> colinds;
+	std::vector<TInt> colinds;
 	colinds.reserve( nnz );
-	std::vector<int> rowbegininds;
+	std::vector<TInt> rowbegininds;
 	rowbegininds.reserve( m + 1 );
 	std::vector<T> obj( n, T( 0 ) );
 	std::vector<TOSimplex::TORationalInf<T> > rowlowerbounds( m );
@@ -606,7 +606,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 	std::vector<bool> integerVariables( n, false );
 
 
-	for( unsigned int i = 0; i < n; ++i ){
+	for( TInt i = 0; i < n; ++i ){
 		if( mip.linf.at( i ) ){
 			varlowerbounds.at( i ) = true;
 		} else {
@@ -625,9 +625,9 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 	}
 
 
-	for( unsigned int i = 0; i < m; ++i ){
+	for( TInt i = 0; i < m; ++i ){
 		rowbegininds.push_back( rows.size() );
-		for( unsigned int j = 0; j < mip.matrix.at( i ).constraintElements.size(); ++j ){
+		for( TInt j = 0; j < static_cast<TInt>( mip.matrix.at( i ).constraintElements.size() ); ++j ){
 			rows.push_back( mip.matrix.at( i ).constraintElements.at( j ).mult );
 			colinds.push_back( mip.matrix.at( i ).constraintElements.at( j ).index );
 		}
@@ -652,13 +652,13 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 	}
 	rowbegininds.push_back( rows.size() );
 
-	TOSimplex::TOSolver<T> plex( rows, colinds, rowbegininds, obj, rowlowerbounds, rowupperbounds, varlowerbounds, varupperbounds );
+	TOSimplex::TOSolver<T, TInt> plex( rows, colinds, rowbegininds, obj, rowlowerbounds, rowupperbounds, varlowerbounds, varupperbounds );
 	#ifndef TO_DISABLE_OUTPUT
 		std::cout << "LP-Solver initialisiert." << std::endl;
 	#endif
 
 	{
-		int tmpstat = plex.opt();
+		TInt tmpstat = plex.opt();
 		if( tmpstat == 1 ){
 			return INFEASIBLE;
 		} else if( tmpstat == 2 ){
@@ -671,7 +671,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 	std::vector<bool> newlinf = mip.linf;
 	std::vector<bool> newuinf = mip.uinf;
 
-	for( unsigned int i = 0; i < n; ++i ){
+	for( TInt i = 0; i < n; ++i ){
 		if( mip.numbersystems.at( i ) == 'G' ){
 			if( mip.linf.at( i ) ){
 				plex.setObj( i, T( 1 ) );
@@ -709,7 +709,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 	mip.linf = newlinf;
 	mip.uinf = newuinf;
 
-	for( unsigned int i = 0; i < n; ++i ){
+	for( TInt i = 0; i < n; ++i ){
 		if( mip.linf.at( i ) ){
 			plex.setVarLB( i, true );
 		} else {
@@ -723,7 +723,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 		}
 	}
 
-	for( unsigned int i = 0; i < mip.objfunc.size(); ++i ){
+	for( TInt i = 0; i < static_cast<TInt>( mip.objfunc.size() ); ++i ){
 		plex.setObj( mip.objfunc.at( i ).index, mip.maximize ? - mip.objfunc.at( i ).mult : mip.objfunc.at( i ).mult );
 	}
 
@@ -742,11 +742,11 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 		kCuts.push_back( T( 6 ) );
 		kCuts.push_back( T( 8 ) );
 		kCuts.push_back( T( 10 ) );
-		unsigned int addedCuts;
-		unsigned int rounds = 0;
+		TInt addedCuts;
+		TInt rounds = 0;
 		do{
 
-			int rootstat = plex.opt();
+			TInt rootstat = plex.opt();
 			if( rootstat == 1 ){
 				return INFEASIBLE;
 			} else if( rootstat == 2 ){
@@ -755,9 +755,9 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 
 			std::vector<T> rootSol = plex.getX();
 			std::vector<std::pair<std::vector<T>, T>> cuts2add;
-			unsigned int numFrac = 0;
-			for( unsigned int i = 0; i < n; ++i ){
-				for( unsigned int k = 0; k < kCuts.size(); ++k ){
+			TInt numFrac = 0;
+			for( TInt i = 0; i < n; ++i ){
+				for( TInt k = 0; k < static_cast<TInt>( kCuts.size() ); ++k ){
 					if( integerVariables.at( i ) && !TOmath<T>::isInt( rootSol.at( i ) ) ){
 						++numFrac;	// TODO das muss eigentlich nur einmal über alle k gemacht werden??
 
@@ -765,8 +765,8 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 						try{
 							std::pair<std::vector<T>, T> gmiCut = plex.getGMI( i, integerVariables, kCuts.at( k ) );
 
-							unsigned int cutsize = 0;
-							for( unsigned int j = 0; j < n; ++j ){
+							TInt cutsize = 0;
+							for( TInt j = 0; j < n; ++j ){
 								if( gmiCut.first.at( j ) != T( 0 ) ){
 									++cutsize;
 								}
@@ -778,7 +778,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 
 							if( cutsize <= 5 ){	// TODO
 
-								for( unsigned int j = 0; j < n; ++j ){
+								for( TInt j = 0; j < n; ++j ){
 									if( gmiCut.first.at( j ) == T( 0 ) ){
 										continue;
 									}
@@ -801,7 +801,7 @@ typename TOMipSolver<T>::solstatus TOMipSolver<T>::solve( MIP<T> mip, bool allSo
 			}
 
 			addedCuts = cuts2add.size();
-			for( unsigned int i = 0; i < addedCuts; ++i ){
+			for( TInt i = 0; i < addedCuts; ++i ){
 				plex.addConstraint( cuts2add[i].first, cuts2add[i].second, true );
 			}
 		} while( addedCuts != 0 && ++rounds < 3 );

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,18 +31,18 @@ namespace polymake { namespace polytope {
 /*
  *  computes the mixed integer hull of a polyhedron
  */
-perl::Object mixed_integer_hull(perl::Object p_in, const Array<int>& int_coords)
+BigObject mixed_integer_hull(BigObject p_in, const Array<Int>& int_coords)
 {
   // declaration of variables
   const Matrix<Rational> facets = p_in.give("FACETS");
-  const int d = facets.cols();
-  if (d==0)
+  const Int d = facets.cols();
+  if (d == 0)
     throw std::runtime_error("mixed_integer_hull: non-empty facet matrix required");
   if (d==1 || int_coords.empty())
     return p_in;
 
   // project to the integral coordinates and  take the convex hull
-  perl::Object p_project = call_function("projection", p_in, int_coords);
+  BigObject p_project = call_function("projection", p_in, int_coords);
   Matrix<Rational> proj_lattice_points = p_project.call_method("LATTICE_POINTS");
 
   ListMatrix<Vector<Rational>> out_points, temp_points;
@@ -50,19 +50,19 @@ perl::Object mixed_integer_hull(perl::Object p_in, const Array<int>& int_coords)
 
   // for every lattice point in the projected polyhedron compute the intersection
   // between P and a proper affine linear space which goes through the lattice point
-  for (int i=0; i<proj_lattice_points.rows(); ++i)
+  for (Int i = 0; i < proj_lattice_points.rows(); ++i)
   {
     // computing the equation-set of the affine space
     Vector<Rational> right_side;
     right_side = proj_lattice_points.row(i).slice(range_from(1));
     Matrix<Rational> temp_eq(-right_side | unit_matrix<Rational>(d).minor(int_coords, range_from(1)));
 
-    perl::Object p_fiber("Polytope<Rational>");
+    BigObject p_fiber("Polytope<Rational>");
     p_fiber.take("INEQUALITIES") << temp_ineq;
     p_fiber.take("EQUATIONS") << temp_eq;
 
     // intersecting it with P
-    perl::Object p_intersection = call_function("intersection", p_in, p_fiber);
+    BigObject p_intersection = call_function("intersection", p_in, p_fiber);
 
     // remembering the vertices
     p_intersection.give("VERTICES") >> temp_points;
@@ -70,7 +70,7 @@ perl::Object mixed_integer_hull(perl::Object p_in, const Array<int>& int_coords)
   }
 
   // convex hull of all vertices computed before
-  perl::Object p_out("Polytope<Rational>");
+  BigObject p_out("Polytope<Rational>");
   p_out.take("POINTS") << out_points;
 
   return p_out;	

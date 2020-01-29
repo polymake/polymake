@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,8 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef __POLYMAKE_MATROID_UTIL
-#define __POLYMAKE_MATROID_UTIL
+#ifndef POLYMAKE_MATROID_UTIL_H
+#define POLYMAKE_MATROID_UTIL_H
 
 namespace polymake { namespace matroid {
 
@@ -60,41 +60,41 @@ public:
 }
 
 template <typename Container>
-typename std::enable_if<pm::isomorphic_to_container_of<Container, Set<int>>::value,
-                        pm::SelectedSubset<const Container&, operations::contains<Set<int>>> >::type
-select_k(const Container& sets, const int k)
+auto
+select_k(const Container& sets, const Int k,
+         std::enable_if_t<pm::isomorphic_to_container_of<Container, Set<Int>>::value, std::nullptr_t> = nullptr)
 {
-   return pm::SelectedSubset<const Container&, operations::contains<Set<int>>>(sets,operations::contains<Set<int>>(k));
+   return pm::SelectedSubset<const Container&, operations::contains<Set<Int>>>(sets, operations::contains<Set<Int>>(k));
 }
 
 template <typename Container>
-typename std::enable_if<pm::isomorphic_to_container_of<Container, Set<int>>::value,
-                        pm::SelectedSubset<const Container&, operations::composed11<operations::contains<Set<int>>, std::logical_not<bool>>> >::type
-select_not_k(const Container& sets, const int k)
+auto
+select_not_k(const Container& sets, const Int k,
+             std::enable_if_t<pm::isomorphic_to_container_of<Container, Set<Int>>::value, std::nullptr_t> = nullptr)
 {
-   return pm::SelectedSubset<const Container&, operations::composed11<operations::contains<Set<int>>, std::logical_not<bool>>>(sets, operations::composed11<operations::contains<Set<int>>, std::logical_not<bool>>(operations::contains<Set<int>>(k), std::logical_not<bool>()));
+   return pm::SelectedSubset<const Container&, operations::composed11<operations::contains<Set<Int>>, std::logical_not<bool>>>(sets, operations::composed11<operations::contains<Set<Int>>, std::logical_not<bool>>(operations::contains<Set<Int>>(k), std::logical_not<bool>()));
 }
 
 template <typename Container>
-auto drop_shift(const Container& sets, const int k)
+auto drop_shift(const Container& sets, const Int k)
 {
    return attach_operation(
-            attach_operation(sets, pm::operations::construct_unary2_with_arg< pm::SelectedSubset, operations::fix2<int,operations::ne> >(operations::fix2<int,operations::ne>(k))),
-              pm::operations::construct_unary2_with_arg<pm::TransformedContainer, operations::dropshift<int> >(operations::dropshift<int>(k)));
+            attach_operation(sets, pm::operations::construct_unary2_with_arg< pm::SelectedSubset, operations::fix2<Int, operations::ne> >(operations::fix2<Int, operations::ne>(k))),
+              pm::operations::construct_unary2_with_arg<pm::TransformedContainer, operations::dropshift<Int>>(operations::dropshift<Int>(k)));
 }
 
 template <typename Container>
-Array<Set<int>>
-shift_elements(const Container& sets, const int n)
+Array<Set<Int>>
+shift_elements(const Container& sets, const Int n)
 {
-   return Array<Set<int>>{ attach_operation(sets, 
+   return Array<Set<Int>>{ attach_operation(sets, 
                                             pm::operations::construct_unary2_with_arg<pm::TransformedContainer, 
-                                            operations::fix2<int,operations::add> >(operations::fix2<int,operations::add>(n))) };
+                                            operations::fix2<Int, operations::add> >(operations::fix2<Int, operations::add>(n))) };
 }
 
 }}
 
-#endif // __POLYMAKE_MATROID_UTIL
+#endif // POLYMAKE_MATROID_UTIL_H
 
 // Local Variables:
 // mode:C++

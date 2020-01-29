@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,10 +32,10 @@ namespace polymake { namespace polytope {
 typedef Graph<Directed> graph;
 
 // Gathers next generation of graph nodes which can be defined now, since all predecessors known.
-void add_next_generation(std::list<int>& next_nodes, const int v, const graph& G, const NodeMap<Directed,perl::Object>& pa)
+void add_next_generation(std::list<Int>& next_nodes, const Int v, const graph& G, const NodeMap<Directed,BigObject>& pa)
 {
-   for (auto e=entire(G.out_edges(v)); !e.at_end(); ++e) {
-      const int x=e.to_node();
+   for (auto e = entire(G.out_edges(v)); !e.at_end(); ++e) {
+      const Int x = e.to_node();
       auto f=entire(G.in_edges(x));
       for( ; !f.at_end() && pa[f.from_node()].valid(); ++f);
       if (f.at_end())
@@ -47,7 +47,7 @@ void add_next_generation(std::list<int>& next_nodes, const int v, const graph& G
 template<typename Scalar>
 Matrix<Scalar> translation_by(const Vector<Scalar>& vec)
 {
-   const int d=vec.dim();
+   const Int d = vec.dim();
    return unit_vector<Scalar>(d+1,0) | (vec / unit_matrix<Scalar>(d));
 }
 
@@ -56,17 +56,17 @@ Matrix<Scalar> translation_by(const Vector<Scalar>& vec)
 // Writes the VERTICES and VERTEX_NORMALS of the polytope corresponding to
 // the unique sink in the graph.
 template<typename Scalar>
-void sum_product(perl::Object p)
+void sum_product(BigObject p)
 {
    // Read the graph.
    const graph G=p.give("SUM_PRODUCT_GRAPH.ADJACENCY");
    const EdgeMap<Directed, Vector<Scalar>> Trans=p.give("SUM_PRODUCT_GRAPH.TRANSLATIONS");
-   const int n(G.nodes());
-   if (n==0)
+   const Int n = G.nodes();
+   if (n == 0)
       throw std::runtime_error("SUM_PRODUCT_GRAPH must be non-empty");
 
    // The dimension of the ambient space.
-   const int d=p.call_method("AMBIENT_DIM");
+   const Int d = p.call_method("AMBIENT_DIM");
 
    // This is the description of the origin as a 0-dimensional polytope (living in d-space).
    // Used to initialize the computation at the sources of the graph.
@@ -77,15 +77,15 @@ void sum_product(perl::Object p)
    // The nodes in the graph are consecutively numbered, starting at 0.
    // The corresponding polytope can be accessed by indexing with the node number.
    // In the beginning the polytopes are undefined.
-   NodeMap<Directed, perl::Object> pa(G);
-   std::list<int> next_nodes;
+   NodeMap<Directed, BigObject> pa(G);
+   std::list<Int> next_nodes;
    // will need this now and again
-   perl::ObjectType Polytope("Polytope", mlist<Scalar>());
+   BigObjectType Polytope("Polytope", mlist<Scalar>());
 
    // Initialize by assigning a single point (origin) to each source in the graph.
-   for (int v=0; v<n; ++v) {
-      if (G.in_degree(v)==0) {
-         pa[v]=perl::Object(Polytope);
+   for (Int v = 0; v < n; ++v) {
+      if (G.in_degree(v) == 0) {
+         pa[v]=BigObject(Polytope);
          pa[v].take("VERTICES") << single_point_vertices;
          pa[v].take("VERTICES_IN_FACETS") << single_point_vif;
          add_next_generation(next_nodes,v,G,pa);
@@ -95,13 +95,13 @@ void sum_product(perl::Object p)
    // At each node of the graph recursively define a polytope as the convex hull of
    // the translated predecessors.
    // We also try to find the sink on the way.
-   int sink=-1;  // no valid node number; indicates sink not found yet
+   Int sink = -1;  // no valid node number; indicates sink not found yet
    while (!next_nodes.empty()) {
       // Get some node w for which we know all the predecessors.
-      const int w=next_nodes.front(); next_nodes.pop_front();
+      const Int w = next_nodes.front(); next_nodes.pop_front();
       if (pa[w].valid())
          throw std::runtime_error("unvisited node already initialized");
-      pa[w]=perl::Object(Polytope);
+      pa[w]=BigObject(Polytope);
 
       // The polytope will be specified as the convex hull of points, which will be collected
       // from other polytopes.
@@ -110,23 +110,23 @@ void sum_product(perl::Object p)
       // (although all operations are defined), but this is ok, since we do not compute
       // anything in this step.
       ListMatrix< Vector<Scalar> > points(0,d+1);
-      for (auto e=entire(G.in_edges(w)); !e.at_end(); ++e) {
+      for (auto e = entire(G.in_edges(w)); !e.at_end(); ++e) {
          // Node v is the current predecessor to process.
-         const int v=e.from_node();
+         const Int v = e.from_node();
          // Translation vector in the edge from v to w.
-         const Vector<Scalar> vec=Trans[*e];
+         const Vector<Scalar> vec = Trans[*e];
          // We read the vertices of the predecessor polytope.  polymake's rule basis by
          // default uses cdd' implementation to check for redundant (= non-vertex) points
          // among the input by solving linear programs.
          // No convex hull computation necessary.
-         const Matrix<Scalar> these_vertices=pa[v].give("VERTICES");
+         const Matrix<Scalar> these_vertices = pa[v].give("VERTICES");
          // Concatenates the translated matrix (where the rows correspond to the vertices
          // of the predecessor) to what we already have.
          points /= these_vertices*translation_by(vec);
       }
       // Define the polytope as the convex hull of all those points.
       pa[w].take("POINTS") << points;
-      if (G.out_degree(w)==0)
+      if (G.out_degree(w) == 0)
          sink=w; // We did find a sink.
       else
          add_next_generation(next_nodes,w,G,pa);

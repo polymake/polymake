@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,54 +28,54 @@ namespace polymake { namespace polytope {
 
 // Maps indices of vertices of bounded complex to parent polytope vertex indices
 template <typename Scalar>
-Array<int> find_bounded_mapping(const Matrix<Scalar>& bounded_matrix,
+Array<Int> find_bounded_mapping(const Matrix<Scalar>& bounded_matrix,
                                 const Matrix<Scalar>& parent_matrix,
-                                const Set<int>& unbounded_rows)
+                                const Set<Int>& unbounded_rows)
 {
    // this will throw an exception in the case of mismatch
-   Array<int> total_perm = find_permutation(rows(bounded_matrix), rows(parent_matrix.minor(~unbounded_rows, All))).value();
-   Array<int> bounded_order(sequence(0, parent_matrix.rows()) - unbounded_rows);
+   Array<Int> total_perm = find_permutation(rows(bounded_matrix), rows(parent_matrix.minor(~unbounded_rows, All))).value();
+   Array<Int> bounded_order(sequence(0, parent_matrix.rows()) - unbounded_rows);
    return permuted(bounded_order, total_perm);
 }
 
 // Maps indices of parent polytope vertices to bounded complex vertex indices.
-Array<int> map_vertices_down(const Array<int>& vertex_mapping, const int n_parent_vertices)
+Array<Int> map_vertices_down(const Array<Int>& vertex_mapping, const Int n_parent_vertices)
 {
-   Array<int> result(n_parent_vertices);
-   const Set<int> bounded_indices(vertex_mapping);
+   Array<Int> result(n_parent_vertices);
+   const Set<Int> bounded_indices(vertex_mapping);
    copy_range(entire(sequence(0,vertex_mapping.size())), select(result, vertex_mapping).begin());
    copy_range(entire(sequence(vertex_mapping.size(), result.size() - vertex_mapping.size())),
               select(result, ~bounded_indices).begin());
    return result;
 }
 
-perl::Object relabeled_bounded_hasse_diagram(const IncidenceMatrix<>& VIF, const Set<int>& far_face, const Array<int>& vertex_mapping)
+BigObject relabeled_bounded_hasse_diagram(const IncidenceMatrix<>& VIF, const Set<Int>& far_face, const Array<Int>& vertex_mapping)
 {
    Lattice<BasicDecoration, Nonsequential> hd = bounded_hasse_diagram_computation(VIF, far_face);
-   Array<int> down_map = map_vertices_down(vertex_mapping, VIF.cols());
-   Array<int> inv_down_map(down_map.size());
+   Array<Int> down_map = map_vertices_down(vertex_mapping, VIF.cols());
+   Array<Int> inv_down_map(down_map.size());
    inverse_permutation(down_map, inv_down_map);
    hd.permute_faces(inv_down_map);
-   return static_cast<perl::Object>(hd);
+   return static_cast<BigObject>(hd);
 }
 
 FacetList
-bounded_complex_from_face_lattice(perl::Object HD_obj, const Set<int>& far_face, const Array<int>& vertex_mapping, const int n_parent_vertices)
+bounded_complex_from_face_lattice(BigObject HD_obj, const Set<Int>& far_face, const Array<Int>& vertex_mapping, const Int n_parent_vertices)
 {
    Lattice<BasicDecoration, Sequential> HD(HD_obj);
-   const Array<int> down_map = map_vertices_down(vertex_mapping, n_parent_vertices);
-   Array<int> inv_down_map(down_map.size());
+   const Array<Int> down_map = map_vertices_down(vertex_mapping, n_parent_vertices);
+   Array<Int> inv_down_map(down_map.size());
    inverse_permutation(down_map, inv_down_map);
    HD.permute_faces(inv_down_map);
 
    FacetList F(HD.nodes_of_rank(1).size());
 
-   Set<int> faces_to_visit;
-   std::list<int> Q;
+   Set<Int> faces_to_visit;
+   std::list<Int> Q;
    copy_range(entire(HD.nodes_of_rank(HD.rank()-1)), std::back_inserter(Q));
 
    while (!Q.empty()) {
-      const int f=Q.front(); Q.pop_front();
+      const Int f = Q.front(); Q.pop_front();
       if ((HD.face(f) * far_face).empty()) {
          F.insertMax(HD.face(f));
       } else {

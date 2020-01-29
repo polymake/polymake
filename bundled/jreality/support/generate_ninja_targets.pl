@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -21,15 +21,15 @@ if ($ConfigFlags{"bundled.java.ANT"} ne ".none.") {
    @targets=add_jar_target("jreality");
 
    print <<'---';
-build ${builddir}/jars/jreality: symlink ${root}/bundled/jreality/external/jreality/lib
+build ${buildtop}/jars/jreality: symlink ${root}/bundled/jreality/external/jreality/lib
 ---
-   push @targets, all => '${builddir}/jars/jreality';
+   push @targets, all => '${buildtop}/jars/jreality';
 
    if ($ConfigFlags{"bundled.jreality.JoglNative"} eq "bundled") {
       print <<'---';
-build ${builddir}/lib/jni/jreality: symlink ${root}/bundled/jreality/external/jreality/jni/${bundled.jreality.JNIarch}
+build ${buildtop}/lib/jni/jreality: symlink ${root}/bundled/jreality/external/jreality/jni/${bundled.jreality.JNIarch}
 ---
-      push @targets, all => '${builddir}/lib/jni/jreality';
+      push @targets, all => '${buildtop}/lib/jni/jreality';
    }
 }
 

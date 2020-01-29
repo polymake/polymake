@@ -1,0 +1,450 @@
+#  Copyright (c) 1997-2020
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @topic category core/functions/Basic
+# These functions are part of the core user interface.
+# They are available in both scripting and interactive modes.
+
+# @topic category core/functions/Interactive
+# These functions are available in the interactive shell only.
+
+# @topic core/functions/application
+# @category Basic
+#
+# Called in void context sets the current application to the one given by //name//
+# loading its rules if necessary.
+#
+# Called in non-void context loads the application if necessary and returns the ''Application''
+# object representing it, but does not make it the current application.
+#
+# Finally, if called without arguments, just returns the current ''Application'' object,
+# which is also always available in the variable ''$application''.
+# Type ''print $application->name;'' to see its name.
+#
+# To obtain the introductory help topic on an application,
+# type ''help "APPLICATION_NAME";''
+#
+# @param [complete Core::Application] String name
+# @example [notest] To set the graph application as the current one, type this:
+# > application "graph";
+
+
+# @topic core/functions/include ($@)
+# @category Basic
+# Read additional rule files, interpret them in the context of the current application.
+# The rule files may reside in the application's standard subdirectory ''rules'' or in any
+# of the known extensions.
+# @param [complete Core::Rulefile(filename)] String rulefile name of a rule file
+
+
+# @topic core/functions/load
+# @category Basic
+# Read a //big object// from a file created earlier by [[save]].
+# The object will be associated with the data file, so that any changes made to the object later
+# will be saved in the same file automatically.
+#
+# If the data file has been created by an earlier polymake release, all necessary transformations
+# making the object match the current data model will be applied immediately.
+# Backward transformations to older versions are not supported.
+#
+# For old plain ASCII data files lacking type declaration, the default type of the current
+# application is assumed.
+# @param [complete file] String filename
+# @return Core::BigObject
+
+
+# @topic core/functions/save ($;$%)
+# @category Basic
+#
+# Store the given //big object// in a data file.
+#
+# If //filename// is specified, create the file with this name (or overwrite an existing one)
+# and store the object there.  The filename may have the suffix ".gz" in which case
+# the contents are compressed with gzip.
+#
+# If //filename// is omitted, write the object back to the file it was loaded from, but only if has been
+# changed since then and not saved before (this fact is reflected in the boolean attribute ''object->changed'').
+# If the object is not yet associated with a file (e.g. it was created with a ''new'' constructor)
+# a new file is created, with the name consisting of the object name and the application-specific suffix.
+# If the object name is empty, you will be asked for it.  In non-interactive mode an artificial name
+# of the form ''ObjectType_NNN'' will be generated, where ''NNN'' is an ordinal number.
+#
+# @param Core::BigObject object
+# @param [complete file] String filename
+# @option Bool canonical store JSON with pretty indentation and all properties ordered alphabetically
+#  (automatically enforced for all data files stored in the testsuite)
+# @option Schema schema JSON schema which the saved object should validate against.
+#  A schema can be used for filtering out uninteresting properties and attachments,
+#  for enforcing certain properties or user methods to be computed before storing,
+#  and/or for coercion of certain properties to desired data types, e.g. choosing between dense and
+#  sparse representations of matrices.
+#  When this option is specified, the object will not be associated with this datafile,
+#  so that later changes made to the object will be saved in the original datafile the object comes from, if any.
+
+
+# @topic core/functions/load_data
+# @category Basic
+#
+# Read data from a file created earlier by [[save_data]].
+# @param [complete file] String filename
+# @return Any data object or an anonymous array or hash of objects
+
+
+# @topic core/functions/save_data ($$;%)
+# @category Basic
+#
+# Store given data in a JSON file.
+# The filename may have the suffix ".gz" in which case the contents are compressed with gzip.
+# 
+# @param Any data big object, anonymous array or hash map of big objects, or a single property value
+# @param [complete file] String filename
+# @option Bool canonical store JSON with pretty indentation and all properties ordered alphabetically
+#  (automatically enforced for all data files stored in the testsuite)
+
+
+# @topic core/functions/prefer
+# @category Basic
+#
+# Make the production rules, user functions, or methods (further called //items//)
+# matching the given //label_expression// be preferred over competing rules (functions, methods).
+#
+# The new preference list is also saved in your personal file ''~/.polymake/prefer.pl''
+# It remains active in all forthcoming sessions until you revoke it with another
+# //prefer// or [[reset_preference]] command.
+#
+# For the sake of symmetry you can call this function by its alias name //set_preference//.
+#
+# @param [complete Core::Preference] String label_expression may have one of the following forms:
+#
+#   "top_label" or "top_label.sublevels"
+#      selects all items whose labels start with the given path,
+#      e.g. "javaview" or "cdd.convex_hull".
+#
+#   "*.sublevels top_label_1, top_label_2 ... "
+#      selects all items with matching labels and establishes a ranking between them.
+#      For example, "*.convex_hull cdd,lrs" makes rules labeled with cdd.convex_hull
+#      and lrs.convex_hull preferred over all other convex hull rules,
+#      with cdd rules having the topmost rank.
+
+# @topic core/functions/set_preference
+# @category Basic
+# Alternative name of command [[prefer]].
+# @param [complete Core::Preference] String label_expression
+
+
+# @topic core/functions/prefer_now
+# @category Basic
+#
+# Same as [[prefer]], but does not store the changes persistently.  The lifespan of the
+# new preference order lasts up to the end of the current user cycle
+# (that is, end of user script or interpretation of the current input line in interactive mode).
+# @param [complete Core::Preference] String label_expression
+
+
+# @topic core/functions/reset_preference
+# @category Basic
+#
+# Reset the matching preference lists to the default state.
+# If there are matching preference lists declared in the rule files, they come back into effect;
+# otherwise the preferences are neutralized, i.e. all competing items (rules/methods/etc.) get equal ranks.
+#
+# This change is permanent, the former settings are wiped out from your preference file
+# ''~/.polymake/prefer.pl''
+#
+# @param [complete Core::Preference(reset)] String label_expression "label" or "label.sublevels" or "*.sublevels" or "*" or "all"
+#  Two last forms match all preference lists visible from the current application.
+
+
+# @topic core/functions/show_preferences
+# @category Interactive
+# Prints the currently active preference lists.
+# Please be aware that the output only reflects the persistent preferences;
+# temporary changes made by [[prefer_now]] are not displayed even if they might be in effect
+# when this command is executed.
+
+
+# @topic core/functions/set_custom
+# @category Basic
+#
+# Set the custom variable, array, hash, or hash element to a new value and store it perpetually
+# in your personal settings file ''~/.polymake/customize.pl''
+#
+# @param Any assignment following expressions are allowed:
+#  ''$var=value;''
+#  ''@array=(values);''
+#  ''%hash=( key => value, ... );''
+#  ''$hash{key}=value;''
+
+
+# @topic core/functions/reset_custom
+# @category Basic
+#
+# Reset the custom variable, array, hash, or hash element to the default value(s) as defined in the rule base
+# and store it perpetually in your personal settings file ''~/.polymake/customize.pl''
+# @param Any variable following expressions are allowed:
+#  ''$var;''
+#  ''@array;''
+#  ''%hash;''
+#  ''$hash{key};''
+
+
+# @topic core/functions/disable_rules
+# @category Basic
+#
+# Temporarily disable production rules matching given pattern.
+# Rules are re-enabled after the complete execution of the current script
+# or input expression in interactive mode.
+#
+# This ban applies to all production rules defined in the current application.
+# For a more fine-granular control on object type level or even for individual
+# objects, there are methods of the same name:
+#  ''$obj->type->disable_rules(...)''
+#  ''$obj->disable_rules(...)''
+#
+# @param [complete Core::Rule] String pattern either a label (see [[prefer]]) or a rule header.
+#  The rule header must exactly match the definition in the rulefile,
+#  up to white spaces around property names.
+#  If the given pattern matches headers of several rules, or the given label
+#  is associated with several rules, they all will be disabled regardless
+#  their precoditions, weights, or other attributes.
+
+
+# @topic core/functions/help
+# @category Interactive
+#
+# Display the help information or comments associated with a given item.
+#
+# If a single word without path separators ''/'' is given, it is looked for
+# in the entire help hierarchy.
+# If there are more than 5 matches, the corresponding help commands with full paths
+# are generated and placed into the shell history buffer, so you can choose the themes
+# of interest using the standard history navigation (arrow up/down keys).
+#
+# You may use TAB completion to navigate through the category tree.
+# Start with '/' to see the description of the current application.
+# Descend via 'functions', 'objects', 'types', or 'preferences' to the topics
+# of interest.  If you stop in an intermediate category level, both the comment
+# specific to this category and the list of subtopics will be displayed.
+# @param [complete Core::Help] String item "word" | "category/subcategory/.../item"
+
+
+# @topic core/functions/apropos
+# @category Interactive
+#
+# List all help topics matching the given pattern.
+# @param String pattern (part of) an item name to be looked for, may contain regular expression elements.
+# @example [application topaz][nocompare] To get all help topics that include the word "simplicial", type this:
+# > apropos("simplicial");
+# | /objects/Visual::SimplicialComplexLattice
+# | /objects/Visual::SimplicialComplex
+# | /objects/GeometricSimplicialComplex
+# | /objects/SimplicialComplex
+# | /functions/Producing a new simplicial complex from others/simplicial_product
+# Then display the desired help topic:
+# > help("/functions/Producing a new simplicial complex from others/simplicial_product");
+
+
+# @topic core/functions/history
+# @category Interactive
+#
+# Let you choose and edit the commands typed earlier in the interactive shell.
+# The complete history list is written in a temporary file, which is opened with a text editor.
+# Until you store your favorite editor in the custom variable ''$history_editor'',
+# the values of environment variables ''VISUAL'' and ''EDITOR'' are consulted.
+
+
+# @topic core/functions/replay_history
+# @category Interactive
+#
+# Bring the interactive shell in the replay mode.  In this mode you can revisit, edit and execute the commands stored in the history.
+# Simply press RETURN if you want to execute the command as is; alternatively you can edit it or jump over it using the
+# usual history navigation keystrokes.  The replay mode is switched off when the last history line has been executed or navigated over.
+# You can leave it prematurely by entering Control-C as well.
+# The replay mode is visually signaled by the history line number in square brackets displayed in the shell prompt.
+
+
+# @topic core/functions/load_commands
+# @category Interactive
+#
+# Read the lines from the given file, filter out comments and empty lines, append them to the
+# history list of the interactive shell, and enter the replay mode (see [[replay_history]]) starting
+# at the first inserted line.
+# @param [complete file] String filename
+
+
+# @topic core/functions/script ($@)
+# @category Basic
+#
+# Run the polymake script, passing the arguments in localized ''@ARGV''.
+# The scripts specified without path are first looked for in the current application's ''scripts'' subdirectory,
+# then in the user's script directories (custom array ''@lookup_scripts''), and finally in the
+# top-level ''scripts'' subdirectory.
+# @param [complete scriptfile] String filename script file
+# @param [complete file] Any Arguments arbitrary many arguments passed to the script
+# @return Any the result of the last statement executed in the script
+
+
+# @topic core/functions/found_extension
+# @category Interactive
+#
+# Found a new extension in the directory //dirname//.  The specified directory may be absent, then it will be created;
+# if it already exists, it should be empty or at least not contain any files and subdirectories with
+# names having special meaning for polymake, like polymake.ext or apps.
+#
+# A new bundled extension can be created by entering a name of the form ''"bundled:NAME"'' intead of //dirname//.
+# This action is only allowed in developer's mode, i.e. when polymake is invoked from the git worktree.
+#
+# Please note that this command only creates an empty skeleton of top-level directories.  In order to be able to populate the
+# extension with new rules, scripts, clients, etc. you must execute the command [[extend_application]] for every application
+# you want to to extend.
+#
+# @param [complete dir] String dirname top-level directory of the extension, or ''"bundled:NAME"'' for a bundled extension.
+
+
+# @topic core/functions/extend_application ($;$)
+# @category Interactive
+#
+# Create a directory tree for rules, scripts, clients, etc. in the given //extension// pertaining to the given application.
+# @param [complete Core::Extension(bundled)] String extension URI or top-level directory of a registered extension.
+# @param [complete Core::Application] String app_name name of the application to be extended; by default, the current application is assumed.
+
+
+# @topic core/functions/found_application
+# @category Interactive
+#
+# Create a directory tree for a new application, rooted at the given extension.
+#
+# The new application is neither loaded at this moment (just because it's quite empty at its birth),
+# nor it is inserted in the ''@start_applications'' list.
+# Both must be done manually at the appropriate time.
+#
+# A new core application can be created by entering the string "core" instead of the //extension// argument.
+# This action is only allowed in developer's mode, i.e. when polymake is invoked from the git copy of the source tree.
+#
+# @param [complete Core::Extension(core)] String extension URI or top-level directory of a registered extension, or literal ''"core"''.
+# @param String app_name name of the new application
+
+
+# @topic core/functions/import_extension ($;@)
+# @category Interactive
+#
+# Load the extension installed in the directory //dirname//.
+# The directory will be included in the custom list ''@extensions'' in order to load the extension automatically in future sessions.
+#
+# If the extension requires some third-party libraries, which can't automatically be found by its configuration script,
+# you can pass options to it as trailing arguments of this command.  Usually, the error message displayed after the failed
+# attempt to configure the extension will tell you which options you should specify.
+# To obtain the complete list of configuration options supported by the extension, you can pass a single option ''"--help"'',
+# examine its script configure.pl, or just make use of the TAB completion when typing this command.
+#
+# @param [complete dir] String dirname top-level directory of the extension
+# @param [complete Core::Extension::Config(dir)] String options options passed to the extension script configure.pl
+
+
+# @topic core/functions/reconfigure_extension ($@)
+# @category Interactive
+#
+# Re-run the configuration script of the extension, passing some options to it.  The extension must already have been imported;
+# if not, please use the command [[import_extension]], which supports passing configuration options too.
+#
+# @param [complete Core::Extension] String extension URI or top-level directory of the extension.
+# @param [complete Core::Extension::Config] String options options passed to the extension script configure.pl
+
+
+# @topic core/functions/obliterate_extension
+# @category Interactive
+# Removes all references to the specified extension from your settings, so that the //following// polymake session won't load anything from it.
+# Beware that in the //current// session all the rules and functions defined in the extension remain active!
+# Therefore it's strongly recommended to quit the current session right after executing this command.
+# The files comprising the extension itself are not deleted, however, so that you can re-import the extension later once you need it again.
+# @param [complete Core::Extension] String extension URI or top-level directory of the extension.
+
+
+# @topic core/functions/reconfigure ($@)
+# @category Interactive
+# Repeats the auto-configuration routines stored in the given rulefiles, possibly asking for program paths, options, etc.
+# If the configuration succeeds, and the rulefiles haven't been configured until now, they will be loaded,
+# as well as all other known rulefiles depending on them.
+# @param [complete Core::Rulefile] String rulename name of the rulefile with optional prefix and suffix: "[APPNAME::]rulefile[@URI]".
+#  APPNAME should be specified when the rulefile does not belong to the current application;
+#  URI specifies an extension the rulefile comes from.
+
+
+# @topic core/functions/unconfigure ($@)
+# @category Interactive
+# Forgets the configuration made for the given rulefiles and disables them for the //following// polymake sessions.
+# @param [complete Core::Rulefile(configured)] String rulename name of the rulefile with optional prefix and suffix: "[APPNAME::]rulefile[@URI]".
+#  APPNAME should be specified when the rulefile does not belong to the current application;
+#  URI specifies an extension the rulefile comes from.
+
+
+# @topic core/functions/show_unconfigured
+# @category Interactive
+# Prints the names of all rulefiles visible from the current application,
+# which could not be loaded because of configuration failures
+# (in most cases, due to some lacking external software).
+# You may use the command [[reconfigure]] to load some of them if you have installed
+# the required software and/or cleared out other configuration troubles.
+
+
+# @topic core/functions/export_configured ($;%)
+# @category Interactive
+# Saves all custom variables having non-defalt values in a file.
+# This includes all results of automatic or manual rule configuration.
+# The obtained file can be edited manually, if needed, and used as a global configuration
+# source (see also [[wiki:howto/configure|How to configure polymake for a group of users]]).
+# @param [complete file] String filename where to store the settings
+# @option Bool merge_with_global include the settings inherited from *your* global
+#  configuration in the resulting file
+# @option Bool only_configured do not export the status of unconfigured
+#  or only partially configured rulefiles
+# @option String suppress regular expression matching fully qualified names of custom variables
+#  that should not be exported
+
+
+# @topic core/functions/show_credits
+# @category Interactive
+# Prints the short descriptions of third-party software packages available from within polymake,
+# including the copyright holders and project site URLs.
+# Please note that here you will see only packages for which the polymake interface has been
+# successfully configured; try [[show_unconfigured]] command to see what's you currently missing.
+
+
+# @topic core/functions/show_extensions
+# @category Interactive
+# Prints the list of active extensions including their URIs and credit notes.
+
+
+# @topic core/functions/save_history (;$)
+# @category Interactive
+# Saves the commands entered in the current and recent sessions in the file.
+# Polymake does it automatically at the end of each interactive session; this command is provided
+# for the case that you might want to store the commands in an alternative file and/or don't want to
+# exit the session.
+# Commands can be loaded using [[load_commands]].
+# @param [complete file] String filename defaults to ~/.polymake/history
+
+
+# @topic core/functions/exit
+# @category Interactive
+# Use this command only if you want to restart polymake.
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

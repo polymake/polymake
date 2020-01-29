@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -149,7 +149,7 @@ property_type RGB {
 # Please be aware that no one visualization program interfaced to polymake supports all of them.
 # Unsupported options are normally ignored.
 
-options %Visual::PointSet::decorations=(
+options %Visual::PointSet::decorations = (
    # String  the name of the drawing
    Title => undef,
 
@@ -166,10 +166,10 @@ options %Visual::PointSet::decorations=(
    # String  alias for PointLabels
    VertexLabels => undef,
 
-   # Flexible<Color>  color of the spheres or rectangles representing the points
+   # [complete color] Flexible<Color>  color of the spheres or rectangles representing the points
    PointColor => undef,
 
-   # Flexible<Color>  alias for PointColor
+   # [complete color] Flexible<Color>  alias for PointColor
    VertexColor => undef,
 
    # Flexible<Float>  scaling factor for the size of the spheres or rectangles representing the points
@@ -178,10 +178,10 @@ options %Visual::PointSet::decorations=(
    # Flexible<Float>  alias for PointThickness
    VertexThickness => undef,
 
-   # Flexible<Color>  color of the border line of rectangles representing the points
+   # [complete color] Flexible<Color>  color of the border line of rectangles representing the points
    PointBorderColor => undef,
 
-   # Flexible<Float>  alias for PointBorderColor
+   # [complete color] Flexible<Float>  alias for PointBorderColor
    VertexBorderColor => undef,
 
    # Flexible<Float>  scaling factor for the thickness of the border line of rectangles representing the points
@@ -216,10 +216,10 @@ options %Visual::PointSet::decorations=(
 # Attributes modifying the appearance of "wire frameworks".
 # Unlike the rest, the flexible edge attributes are retrieved using the //edge iterator// as an index/key/argument.
 
-options %Visual::Wire::decorations=(
+options %Visual::Wire::decorations = (
    %Visual::PointSet::decorations,
 
-   # Flexible<Color>  color of the lines representing the edges
+   # [complete color] Flexible<Color>  color of the lines representing the edges
    EdgeColor => undef,
 
    # Flexible<Float>  scaling factor for the thickness of the lines representing the edges
@@ -236,10 +236,10 @@ options %Visual::Wire::decorations=(
 # @category Visualization
 # Attributes modifying the appearance of filled polygons.
 
-options %Visual::Polygon::decorations=(
+options %Visual::Polygon::decorations = (
    %Visual::PointSet::decorations,
 
-   # Color  filling color of the polygon
+   # [complete color] Color  filling color of the polygon
    FacetColor => undef,
 
    # Float  transparency factor of the polygon between 0 (opaque) and 1 (completely translucent)
@@ -248,7 +248,7 @@ options %Visual::Polygon::decorations=(
    # String  if set to "hidden", the inner area of the polygon is not rendered
    FacetStyle => enum("hidden"),
 
-   # Color  color of the boundary lines
+   # [complete color] Color  color of the boundary lines
    EdgeColor => undef,
 
    # Float  scaling factor for the thickness of the boundary lines
@@ -262,10 +262,10 @@ options %Visual::Polygon::decorations=(
 # @category Visualization
 # Attributes modifying the appearance of a set of polygons (like a polygonal surface).
 
-options %Visual::Polygons::decorations=(
+options %Visual::Polygons::decorations = (
    %Visual::PointSet::decorations,
 
-   # Flexible<Color>  filling color of the polygons
+   # [complete color] Flexible<Color>  filling color of the polygons
    FacetColor => undef,
 
    # Flexible<Float>  transparency factor of the polygons between 0 (opaque) and 1 (completely translucent)
@@ -277,7 +277,7 @@ options %Visual::Polygons::decorations=(
    # String  if set to "hidden", the facet labels are not displayed (in the most cases this is the default behavior)
    FacetLabels => enum("hidden"),
 
-   # Color  color of the boundary lines
+   # [complete color] Color  color of the boundary lines
    EdgeColor => undef,
 
    # Float  scaling factor for the thickness of the boundary lines
@@ -291,7 +291,7 @@ options %Visual::Polygons::decorations=(
 # @category Visualization
 # Options for visualizing objects with homogeneous coordinates like Polytope, PolyhedralComplex, SubdivisionOfPoints and PointConfiguration.
 
-options %geometric_options=(
+options %geometric_options = (
 
   # Matrix useful for unbounded polyhedra
   BoundingFacets => undef,
@@ -306,7 +306,7 @@ options %geometric_options=(
 # @category Visualization
 # Options for visualizing objects with nonhomogeneous coordinates like Cone, PolyhedralFan and VectorConfiguration.
 
-options %geometric_options_linear=(
+options %geometric_options_linear = (
   
   # Matrix<Float> linear transformation, to be applied on rays/vectors
   Transformation => undef, 

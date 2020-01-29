@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,13 +23,13 @@
 namespace polymake { namespace polytope {
 
 template <typename Coord>
-Matrix<Coord> rand_vert(const Matrix<Coord> &V, int n_vertices_out, perl::OptionSet options)
+Matrix<Coord> rand_vert(const Matrix<Coord> &V, Int n_vertices_out, OptionSet options)
 {
-   const int n_vertices_in=V.rows();
+   const Int n_vertices_in = V.rows();
    if (n_vertices_out > n_vertices_in)
       throw std::runtime_error("number of output vertices too high\n");
 
-   Set<int> random_vertices=select_random_subset(sequence(0,n_vertices_in), n_vertices_out, RandomSeed(options["seed"]));
+   Set<Int> random_vertices = select_random_subset(sequence(0,n_vertices_in), n_vertices_out, RandomSeed(options["seed"]));
    return V.minor(random_vertices, All);
 }
 

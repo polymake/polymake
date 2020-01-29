@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -37,18 +37,18 @@
 namespace polymake { namespace graph {
    
 template <typename TGraph>
-Set<int> initial_spanningtree(const TGraph& G)
+Set<Int> initial_spanningtree(const TGraph& G)
 {
-   Set<int> st;
+   Set<Int> st;
    BFSiterator<TGraph> BFS_spanningtree(G, 0);
    Bitset visited; 
    do {
       visited =  BFS_spanningtree.node_visitor().get_visited_nodes();
-      int current = *BFS_spanningtree;
+      Int current = *BFS_spanningtree;
       ++BFS_spanningtree;
       visited ^=  BFS_spanningtree.node_visitor().get_visited_nodes();
       for (auto it = visited.begin(); !it.at_end(); ++it) {
-         int i = 0;
+         Int i = 0;
          for (auto eit = entire(edges(G)); !eit.at_end(); ++eit) {
             if (eit.to_node() == std::min(current,*it) && eit.from_node() == std::max(current,*it) )
                break;
@@ -60,35 +60,35 @@ Set<int> initial_spanningtree(const TGraph& G)
    return st;
 }
 
-Array<Set<int>> all_spanningtrees(const Graph<>& G)
+Array<Set<Int>> all_spanningtrees(const Graph<>& G)
 {  
    typedef ArcLinking IM;
    typedef ArcLinking::IncidenceCell IC;
    typedef ArcLinking::ColumnObject CO;
    
-   std::list<Set<int>> st;
+   std::list<Set<Int>> st;
    Array<IC*> arcs_by_id(G.edges());
    IM ArcGraph(G, arcs_by_id);
 
    //initialize variables for the algorithm
-   int n = G.nodes();
+   Int n = G.nodes();
    Array<IC*> a(n-1), s(n-2);   
-   if (n-2 > 0)
+   if (n > 2)
       s[0] = nullptr;
-   Array<int> b(n,-1);
-   Set<int> init_st = initial_spanningtree<>(G);
-   int st_index = 0;
+   Array<Int> b(n,-1);
+   Set<Int> init_st = initial_spanningtree<>(G);
+   Int st_index = 0;
    for (auto it = entire(init_st); !it.at_end(); ++it, ++st_index) {
       a[st_index] = arcs_by_id[*it];
    }
-   int l = 0;                                 
+   Int l = 0;                                 
    bool terminate = false, advancing = false, revert = false;
-   CO *u = 0, *v = 0;
-   IC *e = 0;
+   CO *u = nullptr, *v = nullptr;
+   IC *e = nullptr;
 
    //execute the steps of the algorithm
    while (!terminate) {
-      if (n>2) {
+      if (n > 2) {
          e = a[l+1]; 
          u = ArcGraph.get_column_object(e->tip);
          v = ArcGraph.get_column_object(ArcGraph.reverse(e)->tip);
@@ -113,11 +113,11 @@ Array<Set<int>> all_spanningtrees(const Graph<>& G)
          e = static_cast<IC*>(ArcGraph.get_column_object(0)->down);
       }
       if (!advancing) {
-         Set<int> fixed_edges;
-         for (int j = 0; j < n-2; ++j) {
+         Set<Int> fixed_edges;
+         for (Int j = 0; j < n-2; ++j) {
                fixed_edges += a[j]->id;
          }
-         Set<int> completing_edges = ArcGraph.ids_of_column(ArcGraph.get_column_object(ArcGraph.reverse(e)->tip));
+         Set<Int> completing_edges = ArcGraph.ids_of_column(ArcGraph.get_column_object(ArcGraph.reverse(e)->tip));
          for (auto it = entire(completing_edges); !it.at_end(); ++it) {
             fixed_edges += *it;
             st.push_back(fixed_edges);
@@ -138,13 +138,13 @@ Array<Set<int>> all_spanningtrees(const Graph<>& G)
          if (!terminate) {
             ArcGraph.expand_edge(u,v,e->link);
             bool bridge = true, exhausted = false;
-            int w = u->id;
+            Int w = u->id;
             b[w] = v->id;
             while (bridge && !exhausted) {
                auto cit = u->begin();
                while (cit != u->end() && bridge) {
                   bool marked = false;
-                  int z = (*cit)->tip;
+                  Int z = (*cit)->tip;
                   if (b[z] != -1) 
                      marked = true;
                   if (!marked && z != v->id) {
@@ -190,8 +190,7 @@ Array<Set<int>> all_spanningtrees(const Graph<>& G)
          }
       }
    }
-   Array< Set<int> > st_array(st);
-   return st_array;
+   return Array<Set<Int>>(st);
 }
 
 } }

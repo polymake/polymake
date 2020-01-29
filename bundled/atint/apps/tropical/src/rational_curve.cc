@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -45,13 +45,10 @@
 
 namespace polymake { namespace tropical {
 
-
-///////////////////////////////////////////////////////////////////////////////////////
-
-int moduliDimensionFromLength(int length)
+Int moduliDimensionFromLength(Int length)
 {
-  int s = sqrt(1 + 8*length);
-  int r = ((1+s) / 2);
+  Int s = Int(sqrt(1 + 8*length));
+  Int r = (1+s)/2;
   // Test for validity
   if ((r*(r-1)/2) != length) {
     throw std::runtime_error("Length is not of the form (n over 2)");
@@ -73,16 +70,16 @@ bool fpcCheck(const Rational& a, const Rational& b, const Rational& c)
 ///////////////////////////////////////////////////////////////////////////////////////
 
 // Documentation see perl wrapper of wrapTestFourPointCondition (does the same except that it returns
-// a vector of int)
-Vector<int> testFourPointCondition(Vector<Rational> v)
+// a vector of Int)
+Vector<Int> testFourPointCondition(const Vector<Rational>& v)
 {
   // Convert metric into map
-  int n = moduliDimensionFromLength(v.dim());
+  Int n = moduliDimensionFromLength(v.dim());
   Matrix<Rational> d(n+1,n+1);
 
-  int mindex = 0;
-  for (int i = 1; i < n; ++i) {
-    for (int j = i+1; j <= n; ++j) {
+  Int mindex = 0;
+  for (Int i = 1; i < n; ++i) {
+    for (Int j = i+1; j <= n; ++j) {
       d(i,j) = d(j,i) = v[mindex];
       ++mindex;
     }
@@ -98,7 +95,7 @@ Vector<int> testFourPointCondition(Vector<Rational> v)
       Rational c = d(l[0],l[3]) + d(l[1],l[2]);
       // Check that two of a,b,c are equal and not less than the third
       if (!fpcCheck(a,b,c)) {
-        Vector<int> fault(l);
+        Vector<Int> fault(l);
         return fault;
       }
     }
@@ -108,13 +105,13 @@ Vector<int> testFourPointCondition(Vector<Rational> v)
   for (auto threes = entire(all_subsets_of_k(complete,3));  !threes.at_end();  ++threes) {
     const auto& l = *threes;
     // Now check the three possibilities, where the fourth element is equal to any of the three
-    for (int t = 0; t < 3; ++t) {
+    for (Int t = 0; t < 3; ++t) {
       Rational a = d(l[0],l[1]) + d(l[2],l[t]);
       Rational b = d(l[0],l[2]) + d(l[1],l[t]);
       Rational c = d(l[0],l[t]) + d(l[1],l[2]);
       // Check that two of a,b,c are equal and not less than the third
       if (!fpcCheck(a,b,c)) {
-        Vector<int> fault(4);
+        Vector<Int> fault(4);
         fault[0] = l[0];
         fault[1] = l[1];
         fault[2] = l[2];
@@ -128,15 +125,15 @@ Vector<int> testFourPointCondition(Vector<Rational> v)
   for (auto twos = entire(all_subsets_of_k(complete,2)); !twos.at_end(); ++twos) {
     const auto& l = *twos;
     // We have three possibilites for the other two z,t: t=x,z=y or t=z=x or t=z=y
-    for (int p = 1; p <= 3; ++p) {
-      int t = p < 3 ? l[0] : l[1];
-      int z = p != 2 ? l[1] : l[0];
+    for (Int p = 1; p <= 3; ++p) {
+      Int t = p < 3 ? l[0] : l[1];
+      Int z = p != 2 ? l[1] : l[0];
       Rational a = d(l[0],l[1]) + d(z,t);
       Rational b = d(l[0],z) + d(l[1],t);
       Rational c = d(l[0],t) + d(l[1],z);
       // Check that two of a,b,c are equal and not less than the third
       if (!fpcCheck(a,b,c)) {
-        Vector<int> fault(4);
+        Vector<Int> fault(4);
         fault[0] = l[0];
         fault[1] = l[1];
         fault[2] = z;
@@ -145,16 +142,16 @@ Vector<int> testFourPointCondition(Vector<Rational> v)
       }
     }
   }
-  return Vector<int>{};
+  return Vector<Int>{};
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
 // Documentation see perl wrapper
-perl::ListReturn wrapTestFourPointCondition(Vector<Rational> v)
+ListReturn wrapTestFourPointCondition(const Vector<Rational>& v)
 {
-  Vector<int> fault = testFourPointCondition(v);
-  perl::ListReturn result;
+  Vector<Int> fault = testFourPointCondition(v);
+  ListReturn result;
   // TODO: implement unroll for ListReturn
   for (int i = 0; i < fault.dim(); ++i) {
     result << fault[i];
@@ -167,10 +164,10 @@ perl::ListReturn wrapTestFourPointCondition(Vector<Rational> v)
 /**
    @brief Computes a rational curve (in the v_I-representation) and its graph from a given metric (or more precisely a vector equivalent to a metric). It is wrapped by curveFromMetric and graphFromMetric, which should be called instead and whose documentation can be found in the corr. perl wrappers rational_curve_from_metric and curve_graph_from_metric. Note that the order of the [[EDGES]] of the graph object that do not contain leaf vertices is the same as the order of the corresponding [[SETS]] of the curve. Furthermore, the first n vertices of the graph are the end vertices of the leave edges (in order 1 .. n)
 */
-perl::Object curveAndGraphFromMetric(Vector<Rational> metric)
+BigObject curveAndGraphFromMetric(Vector<Rational> metric)
 {
   // We prepare the metric by making sure, all entries are > 0
-  const int n = moduliDimensionFromLength(metric.dim());
+  const Int n = moduliDimensionFromLength(metric.dim());
 
   // We now add Phi(sum of unit vectors) to the metric until it fulfills the four-point-condition
   // and is positive
@@ -178,7 +175,7 @@ perl::Object curveAndGraphFromMetric(Vector<Rational> metric)
   // Note that adding Phi(..) is the same as adding 2 to every entry in the matrix
   bool hasBeenfpced = false;
   bool hasBeenStretched = false;
-  int tryCount = 0;
+  Int tryCount = 0;
   while (!(hasBeenfpced && hasBeenStretched)) {
     // Since we cannot predict, how many tries we need to ensure 4-point-condition,
     // we insert a maximum bound to avoid endless looping on metrics that don't lie in M_n
@@ -201,9 +198,9 @@ perl::Object curveAndGraphFromMetric(Vector<Rational> metric)
 
   // For simplicity we ignore the first row and column and start counting at 1
   Matrix<Rational> d(n+1, n+1);
-  int mindex = 0;
-  for (int i = 1; i < n; ++i) {
-    for (int j = i+1; j <= n; ++j) {
+  Int mindex = 0;
+  for (Int i = 1; i < n; ++i) {
+    for (Int j = i+1; j <= n; ++j) {
       d(i,j) = metric[mindex];
       d(j,i) = metric[mindex];
       ++mindex;
@@ -215,33 +212,34 @@ perl::Object curveAndGraphFromMetric(Vector<Rational> metric)
 
   // To make the order of SETS/COEFFS agree with the order of the edges in graph,
   // we keep track of the original graph edge order.
-  Vector<std::pair<int,int>> edge_order;
+  Vector<std::pair<Int, Int>> edge_order;
 
   // The algorithm possibly produces "double" vertices when creating a new vertex t
   // that has distance 0 to p or q. In this case we have to remember the original index p (or q)
   // to be able to create the graph correctly
   // So, at position i, it gives the number of the vertex (starting at 1), the virtual vertex i
   // actually represents. When creating a new vertex, this should be the maximum over the list + 1
-  Vector<int> orig(n+1);
-  for (int i = 1; i <= n; ++i) { orig[i] = i; }
+  Vector<Int> orig(n+1);
+  for (Int i = 1; i <= n; ++i)
+    orig[i] = i;
 
   // Result variable
   Vector<Rational> coeffs;
-  Vector<Set<int>> sets;
+  Vector<Set<Int>> sets;
   // Prepare vertex set, leaf map
-  Set<int> V = sequence(1, n);
-  Map<int,Set<int>> leaves;
-  for (int i = 1; i <= n; ++i) {
-    Set<int> singleset; singleset += i;
+  Set<Int> V = sequence(1, n);
+  Map<Int, Set<Int>> leaves;
+  for (Int i = 1; i <= n; ++i) {
+    Set<Int> singleset; singleset += i;
     leaves[i] = singleset;
   }
   // These variables will contain the node data
-  Vector<Set<int>> nodes_by_leaves(n), nodes_by_sets(n);
+  Vector<Set<Int>> nodes_by_leaves(n), nodes_by_sets(n);
 
   // Now inductively remove pairs of vertices until only 3 are left
   while (V.size() > 3) {
     // Find the triple (p,q,r) that maximizes the Buneman term
-    int p = 0, q = 0, r = 0;
+    Int p = 0, q = 0, r = 0;
     bool init = false;
     Rational max = 0;
     for (auto a = entire(V); !a.at_end(); ++a) {
@@ -264,7 +262,7 @@ perl::Object curveAndGraphFromMetric(Vector<Rational> metric)
     // Compute distances to the new virtual element t
     Rational dtp = (d(p,q) + d(p,r) - d(q,r)) / 2;
     Vector<Rational> dtx(d.cols()); // Again, start counting from 1
-    int x = 0;
+    Int x = 0;
     for (auto i = entire(V); !i.at_end(); ++i) {
       if (*i != p) {
         dtx[*i] = d(*i,p) - dtp;
@@ -297,8 +295,8 @@ perl::Object curveAndGraphFromMetric(Vector<Rational> metric)
       // Graph case
       G.edge(orig[p]-1,orig[x]-1);
       G.edge(orig[q]-1,orig[x]-1);
-      edge_order |= std::pair<int,int>(orig[p]-1,orig[x]-1);
-      edge_order |= std::pair<int,int>(orig[q]-1,orig[x]-1);
+      edge_order |= std::pair<Int, Int>(orig[p]-1,orig[x]-1);
+      edge_order |= std::pair<Int, Int>(orig[q]-1,orig[x]-1);
     }
     else {
       // Note: It can not be possible that t=q and q is a leaf, since the removal
@@ -307,10 +305,10 @@ perl::Object curveAndGraphFromMetric(Vector<Rational> metric)
       // If d(t,p) or d(t,q) = 0, identify t with p (or q)
       // Otherwise give t the next available node index
       if (dtp != 0 && dtx[q] != 0) {
-        int node_number = G.add_node();
+        Int node_number = G.add_node();
         orig |= (node_number+1);
-        nodes_by_leaves |= Set<int>();
-        nodes_by_sets |= Set<int>();
+        nodes_by_leaves |= Set<Int>();
+        nodes_by_sets |= Set<Int>();
       }
       if (dtp == 0) {
         orig |= orig[p];
@@ -321,7 +319,7 @@ perl::Object curveAndGraphFromMetric(Vector<Rational> metric)
       // We update the distance matrix, since we add a new element
       d = d | zero_vector<Rational>();
       d = d / zero_vector<Rational>();
-      int t = d.cols() -1;
+      Int t = d.cols() -1;
       for (auto i = entire(V); !i.at_end(); i++) {
         d(*i,t) = d(t,*i) = dtx[*i];
       }
@@ -353,17 +351,17 @@ perl::Object curveAndGraphFromMetric(Vector<Rational> metric)
 
       if (dtp != 0) {
         G.edge(orig[t]-1,orig[p]-1);
-        edge_order |= std::pair<int,int>(orig[t]-1,orig[p]-1);
+        edge_order |= std::pair<Int, Int>(orig[t]-1,orig[p]-1);
       }
       if (dtx[q] != 0) {
         G.edge(orig[t]-1,orig[q]-1);
-        edge_order |= std::pair<int,int>(orig[t]-1,orig[q]-1);
+        edge_order |= std::pair<Int, Int>(orig[t]-1,orig[q]-1);
       }
     }
   } // End while(>3)
 
   // Now treat the basic cases of size 2 and 3
-  Vector<int> vAsList(V);
+  Vector<Int> vAsList(V);
   if (V.size() == 3) {
     // Solve the linear system given by the pairwise distances
     Matrix<Rational> A(3,3);
@@ -375,9 +373,9 @@ perl::Object curveAndGraphFromMetric(Vector<Rational> metric)
     B[1] = d(vAsList[0],vAsList[2]);
     B[2] = d(vAsList[1],vAsList[2]);
     Vector<Rational> a = A * B;
-    int zeroa = -1;
-    Array<int> setsindices(3); //Indices of partitions in variable sets
-    for (int i = 0; i < 3; ++i) {
+    Int zeroa = -1;
+    Array<Int> setsindices(3); //Indices of partitions in variable sets
+    for (Int i = 0; i < 3; ++i) {
       setsindices[i] = -1;
       if (a[i] != 0) {
         if (leaves[vAsList[i]].size() > 1 && leaves[vAsList[i]].size() < n-1) {
@@ -392,12 +390,12 @@ perl::Object curveAndGraphFromMetric(Vector<Rational> metric)
     // Graph case
     // If all distances are nonzero, we add a vertex
     if (zeroa == -1) {
-      int t = G.add_node();
-      nodes_by_leaves |= Set<int>();
-      nodes_by_sets |= Set<int>();
-      for (int j=0; j<3; ++j) {
+      Int t = G.add_node();
+      nodes_by_leaves |= Set<Int>();
+      nodes_by_sets |= Set<Int>();
+      for (Int j = 0; j < 3; ++j) {
         G.edge(t,orig[vAsList[j]]-1);
-        edge_order |= std::pair<int,int>(t,orig[vAsList[j]]-1);
+        edge_order |= std::pair<Int, Int>(t,orig[vAsList[j]]-1);
         if (leaves[vAsList[j]].size() == 1) {
           nodes_by_leaves[t] += leaves[vAsList[j]];
         } else {
@@ -408,10 +406,10 @@ perl::Object curveAndGraphFromMetric(Vector<Rational> metric)
     }
     // Otherwise we add the adjacencies of the two egdes
     else {
-      for (int j=0; j<3; ++j) {
+      for (Int j = 0; j < 3; ++j) {
         if (j != zeroa) {
           G.edge(orig[vAsList[j]]-1,orig[vAsList[zeroa]]-1);
-          edge_order |= std::pair<int,int>(orig[vAsList[j]]-1,orig[vAsList[zeroa]]-1);
+          edge_order |= std::pair<Int, Int>(orig[vAsList[j]]-1,orig[vAsList[zeroa]]-1);
           if (leaves[vAsList[j]].size() == 1) {
             nodes_by_leaves[orig[vAsList[zeroa]]-1] += leaves[vAsList[j]];
           } else {
@@ -442,26 +440,26 @@ perl::Object curveAndGraphFromMetric(Vector<Rational> metric)
     }
     // Graph case
     G.edge(orig[vAsList[0]]-1,orig[vAsList[1]]-1);
-    edge_order |= std::pair<int,int>(orig[vAsList[0]]-1,orig[vAsList[1]]-1);
+    edge_order |= std::pair<Int, Int>(orig[vAsList[0]]-1,orig[vAsList[1]]-1);
   }
 
   // Now we're done, so we create the result
 
   // Create node labels
   Array<std::string> labels(G.nodes());
-  for (int i = 0; i < n; ++i) {
+  for (Int i = 0; i < n; ++i) {
     labels[i] = std::to_string(i+1);
   }
 
   // Compute node degrees
   nodes_by_leaves = nodes_by_leaves.slice(~sequence(0,n));
   nodes_by_sets = nodes_by_sets.slice(~sequence(0,n));
-  Vector<int> node_degrees(nodes_by_leaves.dim());
-  for (int nn = 0; nn < node_degrees.dim(); ++nn) {
+  Vector<Int> node_degrees(nodes_by_leaves.dim());
+  for (Int nn = 0; nn < node_degrees.dim(); ++nn) {
     node_degrees[nn] = nodes_by_leaves[nn].size() + nodes_by_sets[nn].size();
   }
 
-  perl::Object graph("graph::Graph");
+  BigObject graph("graph::Graph");
   graph.take("N_NODES") << G.nodes();
   graph.take("ADJACENCY") << G;
   graph.take("NODE_LABELS") << labels;
@@ -469,24 +467,24 @@ perl::Object curveAndGraphFromMetric(Vector<Rational> metric)
   // The edges in G might now have a different order than the one in which we put it in
   // Hence we have to make sure, the order of SETS and COEFFS is compatible with the EDGES order
   // For this we have kept edge_order as a record of the original order of edges.
-  const Array<Set<int>> edge_list = graph.call_method("EDGES");
+  const Array<Set<Int>> edge_list = graph.call_method("EDGES");
   // First we throw out all the edges in the original ordering that are actually leaves
-  Set<int> leaf_edges;
-  for (int oe = 0; oe < edge_order.dim(); ++oe) {
+  Set<Int> leaf_edges;
+  for (Int oe = 0; oe < edge_order.dim(); ++oe) {
     if (edge_order[oe].first < n || edge_order[oe].second < n)
       leaf_edges += oe;
   }
   edge_order = edge_order.slice(~leaf_edges);
 
   // FIXME: misuse of Vector concatenation
-  Vector<Set<int>> ordered_sets;
+  Vector<Set<Int>> ordered_sets;
   Vector<Rational> ordered_coeffs;
   for (const auto& edge : edge_list) {
     // First, see if it has an entry < n. Then its actually a leaf, not a bounded edge
     if (edge.front() >= n) {
       // Check which edge (in the original ordering) agrees with this one
-      int oeindex = -1;
-      for (int oe = 0; oe < edge_order.dim(); ++oe) {
+      Int oeindex = -1;
+      for (Int oe = 0; oe < edge_order.dim(); ++oe) {
         if (edge.contains(edge_order[oe].first) && edge.contains(edge_order[oe].second)) {
           oeindex = oe;
           break;
@@ -498,11 +496,11 @@ perl::Object curveAndGraphFromMetric(Vector<Rational> metric)
   } // END re-order sets and coeffs
 
   if (sets.dim() == 0) {
-    sets |= Set<int>();
+    sets |= Set<Int>();
     coeffs |= 0;
   }
 
-  perl::Object curve("RationalCurve");
+  BigObject curve("RationalCurve");
   curve.take("SETS") << ordered_sets;
   curve.take("COEFFS") << ordered_coeffs;
   curve.take("N_LEAVES") << n;
@@ -516,7 +514,7 @@ perl::Object curveAndGraphFromMetric(Vector<Rational> metric)
 }
 
 // Documentation see perl wrapper
-perl::Object curveFromMetric(const Vector<Rational>& metric)
+BigObject curveFromMetric(const Vector<Rational>& metric)
 {
   return curveAndGraphFromMetric(metric);
 }
@@ -532,12 +530,12 @@ perl::Object curveFromMetric(const Vector<Rational>& metric)
  * @return An array containing first the graph::Graph and then a Vector<Rational>, containing
  * the lengths of the bounded edges (in the order they appear in EDGES)
  */
-perl::ListReturn graphFromMetric(const Vector<Rational>& metric)
+ListReturn graphFromMetric(const Vector<Rational>& metric)
 {
-  perl::Object curve = curveAndGraphFromMetric(metric);
-  perl::Object graph = curve.give("GRAPH");
+  BigObject curve = curveAndGraphFromMetric(metric);
+  BigObject graph = curve.give("GRAPH");
   Vector<Rational> lengths = curve.give("COEFFS");
-  perl::ListReturn result;
+  ListReturn result;
   result << graph.copy();
   result << lengths;
   return result;
@@ -547,25 +545,25 @@ perl::ListReturn graphFromMetric(const Vector<Rational>& metric)
 /**
    @brief Takes a linear combination of abstract n-marked curves with 1 bounded edge, described by their partitions and the corresponding edge length and computes the resulting metric
    @param IncidenceMatrix<> sets A list of partitions of {1,..,n}. May be redundant.
-   @param Vector<Set<int> > coeffs A list of arbitrary rational coefficients. Superfluous coefficients are ignored, missing ones replaced by 0.
-   @param int n The size of the leaf set
+   @param Vector<Set<Int>> coeffs A list of arbitrary rational coefficients. Superfluous coefficients are ignored, missing ones replaced by 0.
+   @param Int n The size of the leaf set
    @return Vector<Rational> A curve metric of length (n over 2)
 */
-Vector<Rational> metricFromCurve(const IncidenceMatrix<>& sets, const Vector<Rational>& coeffs, int n)
+Vector<Rational> metricFromCurve(const IncidenceMatrix<>& sets, const Vector<Rational>& coeffs, Int n)
 {
   // Create distance matrix (we count from 1 for simplicity)
   Matrix<Rational> d(n+1, n+1);
   const auto completeSet = sequence(1,n);
   // Go through all sets
-  for (int s = 0; s < sets.rows(); ++s) {
+  for (Int s = 0; s < sets.rows(); ++s) {
     // If we have no more coefficients, stop calculating
     if (s >= coeffs.dim()) break;
     // Otherwise add the coefficients to the appropriate distances
     Rational c = coeffs[s];
     const auto& sset = sets.row(s);
-    Set<int> complement = completeSet - sset;
-    for (const int selt : sset) {
-      for (const int celt : complement) {
+    Set<Int> complement = completeSet - sset;
+    for (const Int selt : sset) {
+      for (const Int celt : complement) {
         d(selt, celt) += c;
         d(celt, selt) += c;
       }
@@ -574,8 +572,8 @@ Vector<Rational> metricFromCurve(const IncidenceMatrix<>& sets, const Vector<Rat
 
   // Now convert to a vector
   Vector<Rational> result;
-  for (int i = 1; i < n; ++i) {
-    for (int j = i+1; j <= n; j++) {
+  for (Int i = 1; i < n; ++i) {
+    for (Int j = i+1; j <= n; j++) {
       result |= d(i,j);
     }
   }
@@ -586,16 +584,16 @@ Vector<Rational> metricFromCurve(const IncidenceMatrix<>& sets, const Vector<Rat
 
 // Documentation see perl wrapper
 template <typename Addition>
-perl::Object rational_curve_from_matroid_coordinates(Vector<Rational> matroidVector)
+BigObject rational_curve_from_matroid_coordinates(Vector<Rational> matroidVector)
 {
   matroidVector = matroidVector.slice(range_from(1));
 
   // Convert vector to a map
-  int n = moduliDimensionFromLength(matroidVector.dim())+1;
+  Int n = moduliDimensionFromLength(matroidVector.dim())+1;
   Matrix<Rational> d(n, n);
-  int index = 0;
-  for (int i = 1; i < n-1; ++i) {
-    for (int j = i+1; j <= n-1; ++j) {
+  Int index = 0;
+  for (Int i = 1; i < n-1; ++i) {
+    for (Int j = i+1; j <= n-1; ++j) {
       // The isomorphism is rigged for max, so we need to insert a sign here
       d(i,j) = (-Addition::orientation())*matroidVector[index];
       ++index;
@@ -604,8 +602,8 @@ perl::Object rational_curve_from_matroid_coordinates(Vector<Rational> matroidVec
 
   // Now apply mapping
   Vector<Rational> metric;
-  for (int i = 1; i < n; ++i) {
-    for (int j = i+1; j <= n; ++j) {
+  for (Int i = 1; i < n; ++i) {
+    for (Int j = i+1; j <= n; ++j) {
       if (j == n) {
         metric |= 0;
       } else {
@@ -619,11 +617,11 @@ perl::Object rational_curve_from_matroid_coordinates(Vector<Rational> matroidVec
 
 // Documentation see perl wrapper
 template <typename Addition>
-perl::ListReturn rational_curve_list_from_matroid_coordinates(const Matrix<Rational>& m)
+ListReturn rational_curve_list_from_matroid_coordinates(const Matrix<Rational>& m)
 {
-  perl::ListReturn result;
+  ListReturn result;
 
-  for (int i = 0; i < m.rows(); ++i) {
+  for (Int i = 0; i < m.rows(); ++i) {
     result << rational_curve_from_matroid_coordinates<Addition>(m.row(i));
   }
 
@@ -633,42 +631,42 @@ perl::ListReturn rational_curve_list_from_matroid_coordinates(const Matrix<Ratio
 
 /**
    @brief Takes a rational n-marked abstract curve and computes its representation in the matroid coordinates of the moduli space
-   @param perl::Object The rational curve
+   @param BigObject The rational curve
    @return Vector<Rational>
 */
 template <typename Addition>
-Vector<Rational> matroid_coordinates_from_curve(perl::Object curve)
+Vector<Rational> matroid_coordinates_from_curve(BigObject curve)
 {
   // Extract values
   IncidenceMatrix<> sets = curve.give("SETS");
   Vector<Rational> coeffs = curve.give("COEFFS");
-  const int n = curve.give("N_LEAVES");
+  const Int n = curve.give("N_LEAVES");
 
   // Create edge index map (i,j) -> vector index
-  Matrix<int> E(n, n);
-  int index = 0;
-  for (int i = 1; i < n-1; ++i) {
-    for (int j = i+1; j <= n-1; ++j) {
+  Matrix<Int> E(n, n);
+  Int index = 0;
+  for (Int i = 1; i < n-1; ++i) {
+    for (Int j = i+1; j <= n-1; ++j) {
       E(i,j) = E(j,i) = index;
       ++index;
     }
   }
 
   // Compute ambient dimension of moduli space
-  const int raydim = (n*(n-3))/2 +1;
+  const Int raydim = (n*(n-3))/2 +1;
   const auto completeSet = sequence(1,n);
 
   Vector<Rational> result(raydim);
 
   // Map each set to matroid coordinates with appropriate coefficient
-  for (int s = 0; s < sets.rows(); ++s) {
-    Set<int> sset = sets.row(s);
+  for (Int s = 0; s < sets.rows(); ++s) {
+    Set<Int> sset = sets.row(s);
     // Make sure the set does not contain n
     if (sset.contains(n)) sset = completeSet - sset;
     // Now create the flat vector for the complete graph on vertices in sset
-    Vector<int> slist(sset);
-    for (int i = 0; i < slist.dim(); ++i) {
-      for (int j = i+1; j < slist.dim(); ++j) {
+    Vector<Int> slist(sset);
+    for (Int i = 0; i < slist.dim(); ++i) {
+      for (Int j = i+1; j < slist.dim(); ++j) {
         result[E(slist[i],slist[j])] += Addition::orientation() * coeffs[s];
       }
     }
@@ -680,11 +678,11 @@ Vector<Rational> matroid_coordinates_from_curve(perl::Object curve)
 
 
 // Documentation see perl wrapper
-perl::ListReturn curveFromMetricMatrix(const Matrix<Rational>& m)
+ListReturn curveFromMetricMatrix(const Matrix<Rational>& m)
 {
-  perl::ListReturn result;
+  ListReturn result;
 
-  for (int i = 0; i < m.rows(); ++i) {
+  for (Int i = 0; i < m.rows(); ++i) {
     result << curveFromMetric(m.row(i));
   }
 
@@ -695,35 +693,35 @@ perl::ListReturn curveFromMetricMatrix(const Matrix<Rational>& m)
 /**
    @brief This computes the properties [[NODES_BY_SETS]] and [[NODES_BY_LEAVES]] of a RationalCurve object
 */
-void computeNodeData(perl::Object curve)
+void computeNodeData(BigObject curve)
 {
   Vector<Rational> metric = curve.call_method("metric_vector");
   // We recompute the curve to make sure the graph edges have the same order
   // as the curve sets
-  perl::Object newcurve = curveAndGraphFromMetric(metric);
+  BigObject newcurve = curveAndGraphFromMetric(metric);
 
   // We might have to permute the column indices in the node matrices, since the sets might
   // be in a different order in the actual curve
   // For this we have to normalize both set descriptions to contain the element 1
 
-  const int n = newcurve.give("N_LEAVES");
+  const Int n = newcurve.give("N_LEAVES");
   const auto all_leaves = sequence(1, n);
   IncidenceMatrix<> newsetsInc = newcurve.give("SETS");
-  Vector<Set<int>> newsets = incMatrixToVector(newsetsInc);
-  for (int ns = 0; ns < newsets.dim(); ++ns) {
+  Vector<Set<Int>> newsets = incMatrixToVector(newsetsInc);
+  for (Int ns = 0; ns < newsets.dim(); ++ns) {
     if (*(newsets[ns].begin()) != 1)
       newsets[ns] = all_leaves - newsets[ns];
   }
   IncidenceMatrix<> oldsetsInc = curve.give("SETS");
-  Vector<Set<int>> oldsets = incMatrixToVector(oldsetsInc);
-  for (int os = 0; os < oldsets.dim(); ++os) {
+  Vector<Set<Int>> oldsets = incMatrixToVector(oldsetsInc);
+  for (Int os = 0; os < oldsets.dim(); ++os) {
     if(*(oldsets[os].begin()) != 1)
       oldsets[os] = all_leaves - oldsets[os];
   }
-  Array<int> perm(newsets.dim());
-  for (int i = 0; i < perm.size(); ++i) {
+  Array<Int> perm(newsets.dim());
+  for (Int i = 0; i < perm.size(); ++i) {
     // Find equal set
-    for (int j = 0; j < perm.size(); ++j) {
+    for (Int j = 0; j < perm.size(); ++j) {
       if (newsets[i] == oldsets[j]) {
         perm[i] = j; break;
       }
@@ -732,13 +730,13 @@ void computeNodeData(perl::Object curve)
 
   IncidenceMatrix<> new_node_sets = newcurve.give("NODES_BY_SETS");
   IncidenceMatrix<> node_leaves = newcurve.give("NODES_BY_LEAVES");
-  Vector<int> node_degrees = newcurve.give("NODE_DEGREES");
+  Vector<Int> node_degrees = newcurve.give("NODE_DEGREES");
 
   // Convert the node set matrix
-  Vector<Set<int>> old_node_sets;
-  for (int nns = 0; nns < new_node_sets.rows(); ++nns) {
-    Set<int> new_edge = new_node_sets.row(nns);
-    Set<int> old_edge;
+  Vector<Set<Int>> old_node_sets;
+  for (Int nns = 0; nns < new_node_sets.rows(); ++nns) {
+    Set<Int> new_edge = new_node_sets.row(nns);
+    Set<Int> old_edge;
     for (auto ne = entire(new_edge); !ne.at_end(); ++ne) {
       old_edge += perm[*ne];
     }

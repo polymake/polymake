@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,23 +23,24 @@
 namespace polymake { namespace topaz {
 
 namespace{
-Set<int> apply_vertex_map(Set<int> in, Array<int> map){
-   Set<int> out;
-   for(auto i = entire(in); !i.at_end(); ++i)
-      out += map[*i];
+Set<Int> apply_vertex_map(const Set<Int>& in, const Array<Int>& map)
+{
+   Set<Int> out;
+   for (const Int i : in)
+      out += map[i];
    return out;
 }
 }
 
-void odd_complex_of_manifold(perl::Object p)
+void odd_complex_of_manifold(BigObject p)
 {
-   const Array< Set<int> > C = p.give("FACETS");
+   const Array<Set<Int>> C = p.give("FACETS");
    const bool is_mf = p.give("MANIFOLD");
    if (!is_mf)
       throw std::runtime_error("odd_complex_of_manifold: Complex is not a MANIFOLD");
 
    Lattice<BasicDecoration> HD;
-   perl::Object hd("Lattice<BasicDecoration>");
+   BigObject hd("Lattice<BasicDecoration>");
    if ((p.lookup("HASSE_DIAGRAM") >> hd)) HD=Lattice<BasicDecoration>(hd);
    else  HD = hasse_diagram_from_facets(C);
 
@@ -47,19 +48,19 @@ void odd_complex_of_manifold(perl::Object p)
       throw std::runtime_error("odd_complex_of_manifold: DIM of complex must be greater 2.");
 
    // create hash set for the facets of the Boundary
-   const Array< Set<int> > Bound = p.give("BOUNDARY.FACETS");
-   const PowerSet<int> Bound_sk = Bound[0].empty() ? PowerSet<int>() :
+   const Array<Set<Int>> Bound = p.give("BOUNDARY.FACETS");
+   const PowerSet<Int> Bound_sk = Bound[0].empty() ? PowerSet<Int>() :
       k_skeleton(Bound, Bound[0].size()-2);
 
-   const Array<int> map = p.give("BOUNDARY.VERTEX_MAP");
-   hash_set< Set<int> > Boundary(Bound_sk.size());
+   const Array<Int> map = p.give("BOUNDARY.VERTEX_MAP");
+   hash_set<Set<Int>> Boundary(Bound_sk.size());
    for (auto c_it=entire(Bound_sk); !c_it.at_end(); ++c_it)
       Boundary.insert(apply_vertex_map(*c_it,map));
 
    bool output = false;
-   std::list< Set<int> > odd_complex;
+   std::list<Set<Int>> odd_complex;
    for (const auto f : HD.nodes_of_rank(HD.rank()-3))
-      if (HD.out_edges(f).size() % 2 && Boundary.find(HD.face(f)) == Boundary.end()) {
+      if (HD.out_edges(f).size()%2 != 0 && Boundary.find(HD.face(f)) == Boundary.end()) {
          output = true;
          odd_complex.push_back(HD.face(f));
       }
@@ -67,7 +68,7 @@ void odd_complex_of_manifold(perl::Object p)
    if (output)
       p.take("ODD_SUBCOMPLEX.INPUT_FACES") << as_array(odd_complex);
    else
-      p.take("ODD_SUBCOMPLEX.INPUT_FACES") << perl::undefined();
+      p.take("ODD_SUBCOMPLEX.INPUT_FACES") << Undefined();
 }
 
 Function4perl(&odd_complex_of_manifold,"odd_complex_of_manifold");

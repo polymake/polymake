@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -69,7 +69,7 @@ PropertyValue get_custom(const AnyString& name, const AnyString& key)
    return PropertyValue(glue::call_func_scalar(aTHX_ get_custom_cv), ValueFlags::allow_undef);
 }
 
-FunCall::FunCall(bool is_method, ValueFlags val_flags_, const AnyString& name, int reserve)
+FunCall::FunCall(bool is_method, ValueFlags val_flags_, const AnyString& name, Int reserve)
    : FunCall(nullptr, val_flags_, reserve)
 {
    dTHX;
@@ -84,7 +84,7 @@ FunCall::FunCall(bool is_method, ValueFlags val_flags_, const AnyString& name, i
    }
 }
 
-FunCall::FunCall(std::nullptr_t, ValueFlags val_flags_,  int reserve)
+FunCall::FunCall(std::nullptr_t, ValueFlags val_flags_,  Int reserve)
    : Stack(reserve)
    , func(nullptr)
    , method_name(nullptr)
@@ -125,11 +125,11 @@ void FunCall::push_current_application_pkg()
    push(PmArray(app)[glue::Application_pkg_index]);
 }
 
-void FunCall::create_explicit_typelist(int size)
+void FunCall::create_explicit_typelist(size_t size)
 {
    dTHX;
    // TODO: consider caching lists created once
-   SV* list_ref = glue::namespace_create_explicit_typelist(aTHX_ size);
+   SV* list_ref = glue::namespace_create_explicit_typelist(aTHX_ int(size));
    push(sv_2mortal(list_ref));
 }
 
@@ -174,10 +174,10 @@ void VarFunCall::check_push() const
       throw std::runtime_error("attempt to append arguments after a call");
 }
 
-void VarFunCall::begin_type_params(int n)
+void VarFunCall::begin_type_params(size_t n)
 {
    dTHX;
-   PmStartFuncall(n + 1);
+   PmStartFuncall(int(n+1));
    push_current_application();
 }
 
@@ -208,10 +208,10 @@ void PropertyTypeBuilder::nonexact_match()
 ListResult::ListResult(int items, FunCall& fc)
    : Array(items)
 {
-   if (items) {
+   if (items != 0) {
       dTHX;
       dSP;
-      SV** dst = PmArray(sv) + items - 1;
+      SV** dst = PmArray(sv)+items-1;
       do {
          if (SvTEMP(*SP))
             SvREFCNT_inc_simple_void_NN(*SP);
@@ -222,7 +222,7 @@ ListResult::ListResult(int items, FunCall& fc)
    }
 }
 
-int get_debug_level()
+Int get_debug_level()
 {
    SV* dbg = GvSV(glue::Debug_level);
    return SvIOK(dbg) ? SvIVX(dbg) : 0;
@@ -240,7 +240,7 @@ SV* fetch_typeof_gv(pTHX_ HV* app_stash, const char* class_name, size_t class_na
    }
    SV** const gvp = hv_fetch(stash, "typeof", 6, false);
    if (__builtin_expect(!gvp, 0)) {
-      sv_setpvf(ERRSV, "%.*s is not an Object or Property type", PmPrintHvNAME(stash));
+      sv_setpvf(ERRSV, "%.*s is not a BigObject or Property type", PmPrintHvNAME(stash));
       PmCancelFuncall;
       throw exception();
    }
@@ -306,7 +306,7 @@ std::string call_func_string(pTHX_ SV* cv, bool protect_with_eval)
    return ret;
 }
 
-bool call_func_bool(pTHX_ SV* cv, int boolean_check)
+bool call_func_bool(pTHX_ SV* cv)
 {
    call_sv(cv, G_SCALAR | G_EVAL);
    dSP;
@@ -314,7 +314,7 @@ bool call_func_bool(pTHX_ SV* cv, int boolean_check)
       PmFuncallFailed;
    }
    SV* retval = POPs;
-   const bool ret = boolean_check ? SvTRUE(retval) : SvOK(retval);
+   const bool ret = SvTRUE(retval);
    PmFinishFuncall;
    return ret;
 }

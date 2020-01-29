@@ -1,12 +1,12 @@
 {"app": "common",
  "inst": [
-  {"args": ["int", "void"], "func": "ones_vector", "include": ["polymake/linalg.h"], "sig": "ones_vector:T1.x", "tp": "1"},
+  {"args": ["Int", "void"], "func": "ones_vector", "include": ["polymake/linalg.h"], "sig": "ones_vector:T1.x", "tp": "1"},
   {"args": ["Rational", "void"], "func": "ones_vector", "include": ["polymake/Rational.h", "polymake/linalg.h"], "sig": "ones_vector:T1.x", "tp": "1"},
   {"args": ["QuadraticExtension<Rational>", "void"], "func": "ones_vector", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "ones_vector:T1.x", "tp": "1"},
   {"args": ["Integer", "void"], "func": "ones_vector", "include": ["polymake/Integer.h", "polymake/linalg.h"], "sig": "ones_vector:T1.x", "tp": "1"},
   {"args": ["double", "void"], "func": "ones_vector", "include": ["polymake/linalg.h"], "sig": "ones_vector:T1.x", "tp": "1"},
   {"args": ["TropicalNumber<Min, Rational>", "void"], "func": "ones_vector", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/linalg.h"], "sig": "ones_vector:T1.x", "tp": "1"},
-  {"args": ["bool", "void"], "func": "ones_vector", "include": ["polymake/linalg.h"], "sig": "ones_vector:T1.x", "tp": "1"},
   {"args": ["TropicalNumber<Max, Rational>", "void"], "func": "ones_vector", "include": ["polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/linalg.h"], "sig": "ones_vector:T1.x", "tp": "1"},
+  {"args": ["GF2", "void"], "func": "ones_vector", "include": ["polymake/GF2.h", "polymake/linalg.h"], "sig": "ones_vector:T1.x", "tp": 1},
  null ],
 "version": 3}

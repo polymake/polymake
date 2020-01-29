@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,16 +20,16 @@
 
 namespace polymake { namespace graph {
 
-perl::Object complete_bipartite(const int k, const int l)
+BigObject complete_bipartite(const Int k, const Int l)
 {
    if (k < 1 || l < 1)
       throw std::runtime_error("number of nodes on both parts must be positive");
 
    Graph<> g(k+l);
-   for (int i=0; i<k; ++i)
-     for (int j=k; j<k+l; ++j)
+   for (Int i = 0; i < k; ++i)
+     for (Int j = k; j < k+l; ++j)
        g.edge(i,j);
-   perl::Object G("Graph<>");
+   BigObject G("Graph<>");
    G.take("N_NODES")<<(k+l);
    G.take("N_EDGES")<<(k*l);
    G.take("DIAMETER")<<2;
@@ -41,7 +41,7 @@ perl::Object complete_bipartite(const int k, const int l)
    return G;
 
 }
-UserFunction4perl("# @category Producing a graph\n"
+UserFunction4perl("# @category Producing a graph"
                   "# Constructs a __complete bipartite graph__ on //k// + //l// nodes."
                   "# @param Int k"
                   "# @param Int l"

@@ -2,7 +2,7 @@
 # Attempt to guess a canonical system name.
 #   Copyright 1992-2016 Free Software Foundation, Inc.
 
-timestamp='2016-05-15'
+timestamp='2019-12-26'
 
 # This file is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -193,7 +193,7 @@ case "${UNAME_MACHINE}:${UNAME_SYSTEM}:${UNAME_RELEASE}:${UNAME_VERSION}" in
 		;;
 	    arm*|i386|m68k|ns32k|sh3*|sparc|vax)
 		eval $set_cc_for_build
-		if echo __ELF__ | $CC_FOR_BUILD -E - 2>/dev/null \
+		if echo __ELF__ | $CesC_FOR_BUILD -E - 2>/dev/null \
 			| grep -q __ELF__
 		then
 		    # Once all utilities can be ECOFF (netbsdecoff) or a.out (netbsdaout).

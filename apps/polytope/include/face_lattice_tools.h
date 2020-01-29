@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,7 +27,7 @@ namespace polymake { namespace polytope { namespace face_lattice {
 
 // first - all facets containing the given face
 // second - intersection of these facets = the enclosing face
-typedef std::pair< Set<int>, Set<int> > face_closure;
+typedef std::pair<Set<Int>, Set<Int>> face_closure;
 
 /** Compute the closure of a face S
     @retval first all facets containing S
@@ -35,10 +35,10 @@ typedef std::pair< Set<int>, Set<int> > face_closure;
 */
 template <typename TSet, typename TMatrix>
 face_closure
-closure(const GenericSet<TSet, int>& S, const GenericIncidenceMatrix<TMatrix>& M)
+closure(const GenericSet<TSet, Int>& S, const GenericIncidenceMatrix<TMatrix>& M)
 {
    // intersection of all facets incident to vertices from S
-   const Set<int> facets=accumulate(cols(M.minor(All,S)), operations::mul());
+   const Set<Int> facets = accumulate(cols(M.minor(All,S)), operations::mul());
 
    // intersection of all these facets
    return face_closure(facets, accumulate(rows(M.minor(facets,All)), operations::mul()));
@@ -47,17 +47,17 @@ closure(const GenericSet<TSet, int>& S, const GenericIncidenceMatrix<TMatrix>& M
 
 // Compute a base for a given face H
 template <typename TSet, typename TMatrix>
-Set<int> c(const GenericSet<TSet, int>& H, const GenericIncidenceMatrix<TMatrix>& M)
+Set<Int> c(const GenericSet<TSet, Int>& H, const GenericIncidenceMatrix<TMatrix>& M)
 {
    if (H.top().empty())
-      return Set<int>();
+      return Set<Int>();
 
    auto H_i=entire(H.top());
-   Set<int> C=scalar2set(*H_i);     // c(H) to be returned at the end
-   Set<int> facets=M.col(*H_i);
+   Set<Int> C = scalar2set(*H_i);     // c(H) to be returned at the end
+   Set<Int> facets = M.col(*H_i);
    ++H_i;
    while (!H_i.at_end()) {
-      int size = facets.size();
+      Int size = facets.size();
       facets *= M.col(*H_i);
       if (size > facets.size())
          C.push_back(*H_i);
@@ -79,7 +79,7 @@ public:
 
    faces_one_above_iterator() {}
 
-   faces_one_above_iterator(const GenericSet<TSet, int>& H_arg, const GenericIncidenceMatrix<TMatrix>& M_arg)
+   faces_one_above_iterator(const GenericSet<TSet, Int>& H_arg, const GenericIncidenceMatrix<TMatrix>& M_arg)
       : H(&H_arg)
       , M(&M_arg)
       , candidates(sequence(0,M->cols()) - *H)
@@ -110,8 +110,8 @@ protected:
    void find_next()
    {
       while (!candidates.empty()) {
-         int v=candidates.front();  candidates.pop_front();
-         result=closure(*H+v, *M);
+         Int v = candidates.front();  candidates.pop_front();
+         result = closure(*H+v, *M);
          if (result.first.empty()) continue;    // the closure would be the whole polytope - absolutely dull
          if ((result.second * candidates).empty() && (result.second * minimal).empty()) {
             minimal.push_back(v);
@@ -123,43 +123,43 @@ protected:
 
    const GenericSet<TSet>* H;
    const GenericIncidenceMatrix<TMatrix>* M;
-   Set<int> candidates, minimal;
+   Set<Int> candidates, minimal;
    face_closure result;
    bool done;
 };
 
-template <typename TSet, typename TMatrix> inline
+template <typename TSet, typename TMatrix>
 faces_one_above_iterator<TSet, TMatrix>
-all_faces_one_above(const GenericSet<TSet, int>& H, const GenericIncidenceMatrix<TMatrix>& M)
+all_faces_one_above(const GenericSet<TSet, Int>& H, const GenericIncidenceMatrix<TMatrix>& M)
 {
    return faces_one_above_iterator<TSet, TMatrix>(H,M);
 }
 
-template <typename DiagrammFiller, bool dual> inline
-void add_edge(DiagrammFiller& HD, int from, int to, bool_constant<dual>)
+template <typename DiagrammFiller, bool dual>
+void add_edge(DiagrammFiller& HD, Int from, Int to, bool_constant<dual>)
 {
    if (dual) HD.add_edge(to,from); else HD.add_edge(from,to);
 }
 
 /// Compute the face lattice
 template <typename TMatrix, typename DiagrammFiller, bool dual>
-void compute(const GenericIncidenceMatrix<TMatrix>& VIF, DiagrammFiller HD, bool_constant<dual> Dual, int dim_upper_bound=-1)
+void compute(const GenericIncidenceMatrix<TMatrix>& VIF, DiagrammFiller HD, bool_constant<dual> Dual, Int dim_upper_bound = -1)
 {
-   std::list< Set<int> > Q;    // queue of faces, which have been seen but who's faces above have not been computed yet.
+   std::list<Set<Int>> Q;    // queue of faces, which have been seen but who's faces above have not been computed yet.
    FaceMap<> Faces;
 
    // The bottom node: empty set (or dual: whole polytope)
-   const int R=VIF.rows(), C=VIF.cols();
+   const Int R = VIF.rows(), C = VIF.cols();
    if (dual)
       HD.add_node(sequence(0,R));
    else
-      HD.add_node(Set<int>());
+      HD.add_node(Set<Int>());
 
-   if ( C == 0 )  // the empty polytope
+   if (C == 0)  // the empty polytope
       return; 
 
    HD.increase_dim();
-   int n, end_this_dim=0, d=0;
+   Int n, end_this_dim = 0, d = 0;
 
    if (__builtin_expect(C>1, 1)) {
       // The first level: vertices.
@@ -167,16 +167,16 @@ void compute(const GenericIncidenceMatrix<TMatrix>& VIF, DiagrammFiller HD, bool
       n= dual ? HD.add_nodes(C, cols(VIF).begin())
               : HD.add_nodes(C, all_subsets_of_1(sequence(0,C)).begin());
       end_this_dim=n+C;
-      int end_next_dim=end_this_dim;
+      Int end_next_dim = end_this_dim;
       HD.increase_dim(); ++d;
-      for (int i=n; i<end_this_dim; ++i)
-         add_edge(HD,0,i,Dual);
+      for (Int i = n; i < end_this_dim; ++i)
+         add_edge(HD, 0, i, Dual);
 
       if (__builtin_expect(C>2 && dim_upper_bound, 1)) {
          bool facets_reached=false;
          for (;;) {
-            Set<int> H = Q.front(); Q.pop_front();
-            for (faces_one_above_iterator<Set<int>, TMatrix> faces(H, VIF);  !faces.at_end();  ++faces) {
+            Set<Int> H = Q.front(); Q.pop_front();
+            for (faces_one_above_iterator<Set<Int>, TMatrix> faces(H, VIF);  !faces.at_end();  ++faces) {
                if (faces->first.size() == 1) {  // we have reached the facet level
                   if (!facets_reached) {
                      if (dual)
@@ -187,7 +187,7 @@ void compute(const GenericIncidenceMatrix<TMatrix>& VIF, DiagrammFiller HD, bool
                   }
                   add_edge(HD, n, end_this_dim+faces->first.front(), Dual);
                } else {
-                  int &node_ref = Faces[c(faces->second, VIF)];
+                  Int &node_ref = Faces[c(faces->second, VIF)];
                   if (node_ref==-1) {
                      node_ref=HD.add_node(dual ? faces->first : faces->second);
                      Q.push_back(faces->second);
@@ -208,9 +208,9 @@ void compute(const GenericIncidenceMatrix<TMatrix>& VIF, DiagrammFiller HD, bool
    }
 
    // The top node: whole polytope (or dual: empty set)
-   n= dual ? HD.add_node(Set<int>()) : HD.add_node(sequence(0,C));
-   for (int i=end_this_dim; i<n; ++i)
-      add_edge(HD,i,n,Dual);
+   n = dual ? HD.add_node(Set<Int>()) : HD.add_node(sequence(0, C));
+   for (Int i = end_this_dim; i < n; ++i)
+      add_edge(HD, i, n, Dual);
 }
 
 typedef std::false_type Primal;
@@ -219,37 +219,37 @@ typedef std::true_type Dual;
 /// Compute the bounded face lattice, starting always from the vertices (Primal mode)
 template <typename TMatrix, typename TSet, typename DiagrammFiller>
 void compute_bounded(const GenericIncidenceMatrix<TMatrix>& VIF,
-                     const GenericSet<TSet, int>& far_face,
-                     DiagrammFiller HD, int dim_upper_bound=-1)
+                     const GenericSet<TSet, Int>& far_face,
+                     DiagrammFiller HD, Int dim_upper_bound = -1)
 {
-   std::list< Set<int> > Q;    // queue of faces, which have been seen but who's faces above have not been computed yet.
+   std::list<Set<Int>> Q;    // queue of faces, which have been seen but who's faces above have not been computed yet.
    FaceMap<> Faces;
 
    // The bottom node: empty set
-   const int C=VIF.cols();
-   HD.add_node(Set<int>());
+   const Int C = VIF.cols();
+   HD.add_node(Set<Int>());
    HD.increase_dim();
-   int end_this_dim=0, end_next_dim=0, d=0, max_faces_cnt=0;
+   Int end_this_dim = 0, end_next_dim = 0, d = 0, max_faces_cnt = 0;
 
    // The first level: vertices.
-   const Set<int> bounded_vertices=sequence(0,C)-far_face;
-   const int n_bounded_vertices=bounded_vertices.size();
+   const Set<Int> bounded_vertices = sequence(0, C) - far_face;
+   const Int n_bounded_vertices = bounded_vertices.size();
 
    if (__builtin_expect(C>1, 1)) {
       // fill first level and add the arcs from the empty set to the bounded vertices.
       copy_range(entire(all_subsets_of_1(bounded_vertices)), std::back_inserter(Q));
-      int n=HD.add_nodes(n_bounded_vertices, all_subsets_of_1(bounded_vertices).begin());
+      Int n = HD.add_nodes(n_bounded_vertices, all_subsets_of_1(bounded_vertices).begin());
       end_next_dim=end_this_dim=n+n_bounded_vertices;
       HD.increase_dim(); ++d;
-      for (int i=n; i<end_this_dim; ++i)
-         HD.add_edge(0,i);
+      for (Int i = n; i < end_this_dim; ++i)
+         HD.add_edge(0, i);
 
       if (__builtin_expect(C>2 && dim_upper_bound, 1)) {
          for (;;) {
-            Set<int> H = Q.front(); Q.pop_front();
-            bool is_max_face=true;
-            for (faces_one_above_iterator<Set<int>, TMatrix> faces(H, VIF);  !faces.at_end();  ++faces) {
-               int &node_ref = Faces[c(faces->second, VIF)];
+            Set<Int> H = Q.front(); Q.pop_front();
+            bool is_max_face = true;
+            for (faces_one_above_iterator<Set<Int>, TMatrix> faces(H, VIF);  !faces.at_end();  ++faces) {
+               Int& node_ref = Faces[c(faces->second, VIF)];
                if (node_ref==-1) {
                   if ((faces->second * far_face).empty()) {
                      node_ref=HD.add_node(faces->second);
@@ -276,10 +276,10 @@ void compute_bounded(const GenericIncidenceMatrix<TMatrix>& VIF,
 
    if (max_faces_cnt + end_next_dim-end_this_dim > 1) {
       // The top node is connected to all inclusion-independent faces regardless of the dimension
-      int n=HD.add_node(bounded_vertices);
-      for (int i=0; i<n; ++i)
-         if (HD.graph().out_degree(i)==0)
-            HD.add_edge(i,n);
+      Int n = HD.add_node(bounded_vertices);
+      for (Int i = 0; i < n; ++i)
+         if (HD.graph().out_degree(i) == 0)
+            HD.add_edge(i, n);
    }
 }
 

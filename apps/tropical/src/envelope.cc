@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,15 +24,15 @@
 namespace polymake { namespace tropical {
 
 template <typename Addition, typename Scalar>
-perl::Object envelope(const Matrix<TropicalNumber<Addition,Scalar>>& m)
+BigObject envelope(const Matrix<TropicalNumber<Addition,Scalar>>& m)
 {
-   const int n(m.rows()), d(m.cols());
+   const Int n = m.rows(), d = m.cols();
 
    // The coordinates are in the (1+d+n)-dimensional space W = Z x Y:
    // 0: homogenizing coordinate; 1..d+1: Z; d+2..d+1+n: Y
    Matrix<Scalar> I(n*d,n+d+1); // initialized as zero matrix
-   for (int i=0; i < n; ++i)
-      for (int j=0; j < d; ++j) {
+   for (Int i = 0; i < n; ++i)
+      for (Int j = 0; j < d; ++j) {
          if (!is_zero(m(i,j))) {
             I(i*d+j,0)=Scalar(m(i,j));
             I(i*d+j,1+j)=  -1; //Addition::orientation();
@@ -42,7 +42,7 @@ perl::Object envelope(const Matrix<TropicalNumber<Addition,Scalar>>& m)
 
    Vector<Scalar> normalizing_equation(unit_vector<Scalar>(n+d+1,1));
 
-   perl::Object p_out("polytope::Polytope", mlist<Scalar>());
+   BigObject p_out("polytope::Polytope", mlist<Scalar>());
 
    p_out.take("INEQUALITIES") << remove_zero_rows(I);
    p_out.take("EQUATIONS") << normalizing_equation;

@@ -1,6 +1,6 @@
 {"app": "common",
  "inst": [
-  {"args": ["perl::Canned<const Polynomial<QuadraticExtension<Rational>, int>&>"], "func": "constant_coefficient", "include": ["polymake/Polynomial.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "kind": "meth", "sig": "constant_coefficient:M"},
-  {"args": ["perl::Canned<const Polynomial<Rational, int>&>"], "func": "constant_coefficient", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "kind": "meth", "sig": "constant_coefficient:M"},
+  {"args": ["perl::Canned<const Polynomial<QuadraticExtension<Rational>, Int>&>"], "func": "constant_coefficient", "include": ["polymake/Polynomial.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "kind": "meth", "sig": "constant_coefficient:M"},
+  {"args": ["perl::Canned<const Polynomial<Rational, Int>&>"], "func": "constant_coefficient", "include": ["polymake/Polynomial.h", "polymake/Rational.h"], "kind": "meth", "sig": "constant_coefficient:M"},
  null ],
 "version": 3}

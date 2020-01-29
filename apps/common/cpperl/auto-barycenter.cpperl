@@ -1,7 +1,7 @@
 {"app": "common",
  "inst": [
   {"args": ["perl::Canned<const Matrix<Rational>&>"], "func": "barycenter", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "barycenter.X"},
-  {"args": ["perl::Canned<const pm::MatrixMinor<pm::Matrix<double>&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&>&>"], "func": "barycenter", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Set.h", "polymake/linalg.h"], "sig": "barycenter.X"},
+  {"args": ["perl::Canned<const pm::MatrixMinor<pm::Matrix<double>&, pm::Set<Int, pm::operations::cmp> const&, pm::all_selector const&>&>"], "func": "barycenter", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Set.h", "polymake/linalg.h"], "sig": "barycenter.X"},
   {"args": ["perl::Canned<const Matrix<QuadraticExtension<Rational>>&>"], "func": "barycenter", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "barycenter.X"},
   {"args": ["perl::Canned<const Matrix<double>&>"], "func": "barycenter", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/linalg.h"], "sig": "barycenter.X"},
   {"args": ["perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>"], "func": "barycenter", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/linalg.h"], "sig": "barycenter.X"},

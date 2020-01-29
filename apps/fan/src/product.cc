@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,11 +24,11 @@
 
 namespace polymake { namespace fan {
 
-    perl::Object product(perl::Object f_in1, perl::Object f_in2, perl::OptionSet options)
+    BigObject product(BigObject f_in1, BigObject f_in2, OptionSet options)
     {
       const bool noc=options["no_coordinates"];
 
-      perl::Object f_out("PolyhedralFan<Rational>");
+      BigObject f_out("PolyhedralFan<Rational>");
       f_out.set_description() << "Product of " << f_in1.name() << " and " << f_in2.name() << endl;
 
       const IncidenceMatrix<> MaxCones1=f_in1.give("MAXIMAL_CONES"),
@@ -42,8 +42,8 @@ namespace polymake { namespace fan {
 
 
       if (noc && f_in1.exists("COMBINATORIAL_DIM") && f_in2.exists("COMBINATORIAL_DIM")) {
-	const int dim1=f_in1.give("COMBINATORIAL_DIM"),
-	  dim2=f_in2.give("COMBINATORIAL_DIM");
+	const Int dim1 = f_in1.give("COMBINATORIAL_DIM"),
+	          dim2 = f_in2.give("COMBINATORIAL_DIM");
 	f_out.take("COMBINATORIAL_DIM") << dim1+dim2;
       }
 

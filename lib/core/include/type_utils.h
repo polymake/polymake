@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,6 +28,9 @@
 #include <functional>
 
 namespace polymake {
+
+// type for quantities of items of all kinds (collections sizes, indexes, offsets...)
+using Int = long;
 
 template <typename T>
 struct mpure : std::remove_cv<typename std::remove_reference<T>::type> {};
@@ -83,7 +86,7 @@ private_mutable_t<T> ensure_private_mutable(T&& x)
    return static_cast<private_mutable_t<T>>(x);
 }
 
-template <typename T, bool applicable=std::is_unsigned<T>::value>
+template <typename T, bool applicable = std::is_unsigned<T>::value>
 struct remove_unsigned {
    using type = T;
 };
@@ -96,6 +99,14 @@ struct remove_unsigned<bool, true> : remove_unsigned<bool, false> {};
 
 template <typename T>
 using remove_unsigned_t = typename remove_unsigned<T>::type;
+
+template <typename Target, typename Source>
+using inherit_signed = mselect< std::enable_if< std::is_signed<Source>::value, std::make_signed_t<Target> >,
+                                std::enable_if< std::is_unsigned<Source>::value, std::make_unsigned_t<Target> >,
+                                Target >;
+
+template <typename Target, typename Source>
+using inherit_signed_t = typename inherit_signed<Target, Source>::type;
 
 
 /// Calculate a pointer to an enclosing class object from a given pointer to a data member
@@ -114,7 +125,7 @@ auto reverse_cast(Source* data_member, Member Owner::* member_ptr)
 
 /// Calculate a pointer to an enclosing class object from a given pointer to an element in a data member array
 template <typename Member, typename Source, typename Owner, size_t size>
-auto reverse_cast(Source* data_member, int i, Member (Owner::* member_ptr)[size])
+auto reverse_cast(Source* data_member, Int i, Member (Owner::* member_ptr)[size])
 {
    constexpr bool const_access = std::is_const<Source>::value || std::is_const<Member>::value;
    using owner_t = std::conditional_t<const_access, std::add_const_t<Owner>, Owner>*;
@@ -128,7 +139,7 @@ auto reverse_cast(Source* data_member, int i, Member (Owner::* member_ptr)[size]
 
 /******************************************************************************
  *
- *  Analisys and manipulation of parametrized types
+ *  Analysis and manipulation of parametrized types
  */
 
 /// Extract the template parameter with the given ordinal number.
@@ -181,7 +192,7 @@ struct mreplace_template_parameter<Template<OldParams...>, Pos, NewParam>
 
 /******************************************************************************
  *
- *  Analisys of relations between groups of types
+ *  Analysis of relations between groups of types
  */
 
 template <typename T, template <typename...> class... Template>
@@ -608,6 +619,68 @@ forward_all_args_satisfying(Tuple&& args)
 {
    return forward_all_matching_args<Func>::extract(std::forward<Tuple>(args));
 }
+
+/******************************************************************************
+ *
+ *  Arguments and return types of functions and members
+ */
+
+template <typename Func>
+struct mget_func_signature;
+
+template <typename Ret, typename... Args>
+struct mget_func_signature<Ret(Args...)> {
+   using arg_list = mlist<Args...>;
+   using return_type = Ret;
+};
+
+template <typename Ret, typename... Args>
+struct mget_func_signature<Ret(*)(Args...)> {
+   using arg_list = mlist<Args...>;
+   using return_type = Ret;
+};
+
+template <typename Owner, typename Ret, typename... Args>
+struct mget_func_signature<Ret(Owner::*)(Args...)> {
+   using arg_list = mlist<Args...>;
+   using return_type = Ret;
+};
+
+template <typename Owner, typename Ret, typename... Args>
+struct mget_func_signature<Ret(Owner::*)(Args...) const> {
+   using arg_list = mlist<Args...>;
+   using return_type = Ret;
+};
+
+template <typename Owner, typename Ret, typename... Args>
+struct mget_func_signature<Ret(Owner::*)(Args...) &> {
+   using arg_list = mlist<Args...>;
+   using return_type = Ret;
+};
+
+template <typename Owner, typename Ret, typename... Args>
+struct mget_func_signature<Ret(Owner::*)(Args...) const &> {
+   using arg_list = mlist<Args...>;
+   using return_type = Ret;
+};
+
+template <typename Owner, typename Ret, typename... Args>
+struct mget_func_signature<Ret(Owner::*)(Args...) &&> {
+   using arg_list = mlist<Args...>;
+   using return_type = Ret;
+};
+
+template <typename Owner, typename Ret, typename... Args>
+struct mget_func_signature<Ret(Owner::*)(Args...) const &&> {
+   using arg_list = mlist<Args...>;
+   using return_type = Ret;
+};
+
+template <typename Func>
+using func_return_t = typename mget_func_signature<Func>::return_type;
+
+template <typename Func>
+using func_args_t = typename mget_func_signature<Func>::arg_list;
 
 /******************************************************************************
  *

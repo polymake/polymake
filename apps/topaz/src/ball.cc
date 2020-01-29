@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,14 +24,14 @@
 
 namespace polymake { namespace topaz {
   
-perl::Object ball(const int d)
+BigObject ball(const Int d)
 {
-   perl::Object p("GeometricSimplicialComplex<Rational>");
+   BigObject p("GeometricSimplicialComplex<Rational>");
    p.set_description() << "The " << d << "-dimensional ball.\n"
                           "Realized as the " << d << "-simplex.\n";
 
-   Array< Set<int> > F(1);
-   F[0]=range(0,d);
+   Array<Set<Int>> F(1);
+   F[0] = range(0, d);
 
    p.take("FACETS") << F;
    p.take("DIM") << d;

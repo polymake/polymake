@@ -1,9 +1,10 @@
 {"app": "common",
  "inst": [
-  {"args": ["int", "void", "void"], "func": "unit_vector", "include": ["polymake/linalg.h"], "sig": "unit_vector:T1.x.x", "tp": "1"},
+  {"args": ["Int", "void", "void"], "func": "unit_vector", "include": ["polymake/linalg.h"], "sig": "unit_vector:T1.x.x", "tp": "1"},
   {"args": ["Rational", "void", "void"], "func": "unit_vector", "include": ["polymake/Rational.h", "polymake/linalg.h"], "sig": "unit_vector:T1.x.x", "tp": "1"},
   {"args": ["Integer", "void", "void"], "func": "unit_vector", "include": ["polymake/Integer.h", "polymake/linalg.h"], "sig": "unit_vector:T1.x.x", "tp": "1"},
   {"args": ["QuadraticExtension<Rational>", "void", "void"], "func": "unit_vector", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "unit_vector:T1.x.x", "tp": "1"},
   {"args": ["double", "void", "void"], "func": "unit_vector", "include": ["polymake/linalg.h"], "sig": "unit_vector:T1.x.x", "tp": "1"},
+  {"args": ["GF2", "void", "void"], "func": "unit_vector", "include": ["polymake/GF2.h", "polymake/linalg.h"], "sig": "unit_vector:T1.x.x", "tp": 1},
  null ],
 "version": 3}

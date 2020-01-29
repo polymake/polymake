@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -180,7 +180,7 @@ package application;
 #
 # @param Visual::Object vis_obj ... objects to display
 #
-# @option String File "filename" or "AUTO"
+# @option [complete file] String File "filename" or "AUTO"
 #  Store the objects in a ''gcl'' (geomview control language) file instead of starting the interactive GUI.
 #  The geometric data in ''OFF'' format is embedded in the Lisp-style commands, but can be easily extracted
 #  using any text editor, if needed.

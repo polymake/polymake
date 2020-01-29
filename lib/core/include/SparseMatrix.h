@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,10 +32,10 @@ namespace pm {
 template <typename Iterator=void>
 class skew_negator {
 protected:
-   int diag;
+   Int diag;
    operations::neg<typename iterator_traits<Iterator>::reference> op;
 public:
-   skew_negator(int diag_arg=-1) : diag(diag_arg) {}
+   skew_negator(Int diag_arg = -1) : diag(diag_arg) {}
 
    typedef Iterator argument_type;
    typedef typename iterator_traits<Iterator>::value_type result_type;
@@ -50,16 +50,16 @@ public:
 template <>
 class skew_negator<void> : operations::incomplete {
 protected:
-   int diag;
+   Int diag;
 public:
-   skew_negator(int diag_arg=-1) : diag(diag_arg) {}
-   operator int () const { return diag; }
+   skew_negator(Int diag_arg = -1) : diag(diag_arg) {}
+   operator Int () const { return diag; }
 };
 
 template <typename Iterator, typename Reference>
 struct unary_op_builder< skew_negator<void>, Iterator, Reference > {
    typedef skew_negator<Iterator> operation;
-   static operation create(int diag_arg) { return operation(diag_arg); }
+   static operation create(Int diag_arg) { return operation(diag_arg); }
 };
 
 template <typename TreeRef, typename symmetric> class sparse_matrix_line;
@@ -75,9 +75,9 @@ struct sparse_matrix_line_params<TreeRef, SkewSymmetric>
    : mlist_concat< typename sparse2d::line_params<TreeRef>::type,
                    OperationTag< skew_negator<> > > {
 public:
-   operations::identity<int> get_operation() const
+   operations::identity<Int> get_operation() const
    {
-      return operations::identity<int>();
+      return operations::identity<Int>();
    }
 };
 
@@ -119,14 +119,14 @@ protected:
    }
 
    template <typename TVector, typename Operation>
-   typename std::enable_if<!operations::is_partially_defined_for<Operation, sparse_matrix_line_ops, TVector>::value, void>::type
+   std::enable_if_t<!operations::is_partially_defined_for<Operation, sparse_matrix_line_ops, TVector>::value>
    assign_op(const TVector& v, const Operation& op)
    {
       perform_assign(entire(this->top().get_container()), v.begin(), op);
    }
 
    template <typename TVector, typename Operation>
-   typename std::enable_if<operations::is_partially_defined_for<Operation, sparse_matrix_line_ops, TVector>::value, void>::type
+   std::enable_if_t<operations::is_partially_defined_for<Operation, sparse_matrix_line_ops, TVector>::value>
    assign_op(const TVector& v, const Operation& op)
    {
       perform_assign_sparse(this->top().get_container(), attach_operation(ensure(v, pure_sparse()), get_operation()).begin(), op);
@@ -135,24 +135,24 @@ protected:
    void fill_impl(const value_type& x, pure_sparse)
    {
       if (x)
-         fill_sparse(this->top().get_container(), attach_operation(ensure(same_value(x), indexed()), get_operation()).begin());
+         fill_sparse(this->top().get_container(), attach_operation(ensure(same_value_in_context<value_type>(x), indexed()), get_operation()).begin());
       else
          this->clear();
    }
 
 public:
-   typename base_t::iterator insert(int i, const value_type& x)
+   typename base_t::iterator insert(Int i, const value_type& x)
    {
       operations::neg<const value_type&> op;
       return base_t::insert(i, i > this->top().index() ? op(x) : x);
    }
 
-   typename base_t::iterator insert(const typename base_t::iterator& pos, int i)
+   typename base_t::iterator insert(const typename base_t::iterator& pos, Int i)
    {
       return base_t::insert(pos, i);
    }
 
-   typename base_t::iterator insert(const typename base_t::iterator& pos, int i, const value_type& x)
+   typename base_t::iterator insert(const typename base_t::iterator& pos, Int i, const value_type& x)
    {
       operations::neg<const value_type&> op;
       return base_t::insert(pos, i, i > this->top().index() ? op(x) : x);
@@ -168,7 +168,7 @@ protected:
    sparse_matrix_line_base() = delete;
    ~sparse_matrix_line_base() = delete;
 public:
-   int index() const { return this->get_container().get_line_index(); }
+   Int index() const { return this->get_container().get_line_index(); }
 };
 
 template <typename Tree, typename symmetric>
@@ -180,24 +180,24 @@ protected:
    using alias_t = alias<matrix_ref>;
 
    alias_t matrix;
-   int line_index;
+   Int line_index;
 
 public:
-   template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
-   sparse_matrix_line_base(Arg&& matrix_arg, int index_arg)
+   template <typename Arg, typename = std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
+   sparse_matrix_line_base(Arg&& matrix_arg, Int index_arg)
       : matrix(std::forward<Arg>(matrix_arg))
       , line_index(index_arg) {}
 
    decltype(auto) get_container()
    {
-      return matrix->get_table().get_line(line_index, (tree_type*)0);
+      return matrix->get_table().get_line(line_index, (tree_type*)nullptr);
    }
    decltype(auto) get_container() const
    {
-      return matrix->get_table().get_line(line_index, (tree_type*)0);
+      return matrix->get_table().get_line(line_index, (tree_type*)nullptr);
    }
 
-   int index() const { return line_index; }
+   Int index() const { return line_index; }
 };
 
 template <typename TreeRef, typename symmetric>
@@ -218,14 +218,14 @@ protected:
    using base_t::assign_op;
 
    template <typename TVector, typename Operation>
-   typename std::enable_if<!operations::is_partially_defined_for<Operation, sparse_matrix_line, TVector>::value, void>::type
+   std::enable_if_t<!operations::is_partially_defined_for<Operation, sparse_matrix_line, TVector>::value>
    assign_op(const TVector& v, const Operation& op, operate_on_lower)
    {
       perform_assign(entire(sparse2d::select_lower_triangle(this->get_container())), v.begin(), op);
    }
 
    template <typename TVector, typename Operation>
-   typename std::enable_if<operations::is_partially_defined_for<Operation, sparse_matrix_line, TVector>::value, void>::type
+   std::enable_if_t<operations::is_partially_defined_for<Operation, sparse_matrix_line, TVector>::value>
    assign_op(const TVector& v, const Operation& op, operate_on_lower)
    {
       perform_assign_sparse(sparse2d::select_lower_triangle(this->get_container()),
@@ -250,33 +250,33 @@ public:
                                         typename mset_template_parameter<sparse_elem_proxy, sparse_proxy_parameter>::type>;
    using container_category = random_access_iterator_tag;
 
-   const_reference operator[] (int i) const
+   const_reference operator[] (Int i) const
    {
       return deref_sparse_iterator(this->find(i));
    }
 
 protected:
-   reference random_impl(int i, std::false_type) { return proxy_base(this->get_container(),i); }
-   reference random_impl(int i, std::true_type) const { return operator[](i); }
+   reference random_impl(Int i, std::false_type) { return proxy_base(this->get_container(),i); }
+   reference random_impl(Int i, std::true_type) const { return operator[](i); }
 public:
-   reference operator[] (int i)
+   reference operator[] (Int i)
    {
       return random_impl(i, bool_constant<attrib<TreeRef>::is_const>());
    }
 
-   int dim() const { return this->get_container().dim(); }
+   Int dim() const { return this->get_container().dim(); }
 
 protected:
-   using input_limit_type = std::conditional_t<std::is_same<symmetric, NonSymmetric>::value, maximal<int>, int>;
+   using input_limit_type = std::conditional_t<std::is_same<symmetric, NonSymmetric>::value, maximal<Int>, Int>;
 
-   maximal<int> _get_input_limit(type2type< maximal<int> >) const { return maximal<int>(); }
+   maximal<Int> get_input_limit(mlist<maximal<Int>>) const { return maximal<Int>(); }
 
-   int _get_input_limit(type2type<int>) const { return this->index(); }
+   Int get_input_limit(mlist<Int>) const { return this->index(); }
 
    friend
    input_limit_type get_input_limit(sparse_matrix_line& me)
    {
-      return me._get_input_limit(type2type<input_limit_type>());
+      return me.get_input_limit(mlist<input_limit_type>());
    }
 };
 
@@ -311,12 +311,12 @@ protected:
    template <typename Iterator, typename TLines>
    void copy_linewise(Iterator&& src, TLines& lines, std::false_type)
    {
-      for (int i=0; !src.at_end(); ++src, ++i)
+      for (Int i = 0; !src.at_end(); ++src, ++i)
          append(lines, *src, i);
    }
 
    template <typename TLines, typename TVector>
-   void append(TLines& lines, const TVector& vec, int i)
+   void append(TLines& lines, const TVector& vec, Int i)
    {
       for (auto v=ensure(vec, sparse_compatible()).begin(); !v.at_end(); ++v)
          lines[v.index()].push_back(i, *v);
@@ -328,15 +328,15 @@ public:
    using reference = typename line_t::reference;
    using const_reference = const E&;
 
-   explicit RestrictedSparseMatrix(int n=0) : data(n) {}
+   explicit RestrictedSparseMatrix(Int n=0) : data(n) {}
 
-   RestrictedSparseMatrix(int r, int c) : data(r,c) {}
+   RestrictedSparseMatrix(Int r, Int c) : data(r, c) {}
 
    template <typename Iterator, typename Dir,
-             typename=std::enable_if_t<is_among<Dir, sparse2d::rowwise, sparse2d::columnwise>::value &&
-                                       assess_iterator_value<Iterator, can_initialize, Vector<E>>::value &&
-                                      (Dir::value==restriction || assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value)>>
-   RestrictedSparseMatrix(int n, Dir, Iterator&& src)
+             typename = std::enable_if_t<is_among<Dir, sparse2d::rowwise, sparse2d::columnwise>::value &&
+                                         assess_iterator_value<Iterator, can_initialize, Vector<E>>::value &&
+                                        (Dir::value==restriction || assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value)>>
+   RestrictedSparseMatrix(Int n, Dir, Iterator&& src)
       : data(n)
    {
       copy_linewise(ensure_private_mutable(std::forward<Iterator>(src)), lines(*this, sparse2d::restriction_const<restriction>()),
@@ -344,10 +344,10 @@ public:
    }
 
    template <typename Iterator, typename Dir,
-             typename=std::enable_if_t<is_among<Dir, sparse2d::rowwise, sparse2d::columnwise>::value &&
-                                       assess_iterator_value<Iterator, can_initialize, Vector<E>>::value &&
-                                       (Dir::value==restriction || assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value)>>
-   RestrictedSparseMatrix(int r, int c, Dir, Iterator&& src)
+             typename = std::enable_if_t<is_among<Dir, sparse2d::rowwise, sparse2d::columnwise>::value &&
+                                         assess_iterator_value<Iterator, can_initialize, Vector<E>>::value &&
+                                         (Dir::value==restriction || assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value)>>
+   RestrictedSparseMatrix(Int r, Int c, Dir, Iterator&& src)
       : data(r, c)
    {
       copy_linewise(ensure_private_mutable(std::forward<Iterator>(src)), lines(*this, sparse2d::restriction_const<restriction>()),
@@ -357,8 +357,8 @@ public:
    RestrictedSparseMatrix(RestrictedSparseMatrix&& M)
       : data(std::move(M.data)) {}
 
-   template <typename Container, typename=std::enable_if_t<isomorphic_to_container_of<Container, Vector<E>, allow_conversion>::value &&
-                                                           restriction==sparse2d::only_rows>>
+   template <typename Container, typename = std::enable_if_t<isomorphic_to_container_of<Container, Vector<E>, allow_conversion>::value &&
+                                                             restriction==sparse2d::only_rows>>
    RestrictedSparseMatrix(const Container& src)
       : data(src.size())
    {
@@ -373,62 +373,62 @@ public:
    void clear() { data.clear(); }
 
 protected:
-   reference random_impl(int i, int j, std::false_type)
+   reference random_impl(Int i, Int j, std::false_type)
    {
       return this->row(i)[j];
    }
-   reference random_impl(int i, int j, std::true_type)
+   reference random_impl(Int i, Int j, std::true_type)
    {
       return this->col(j)[i];
    }
-   const_reference random_impl(int i, int j, std::false_type) const
+   const_reference random_impl(Int i, Int j, std::false_type) const
    {
       return this->row(i)[j];
    }
-   const_reference random_impl(int i, int j, std::true_type) const
+   const_reference random_impl(Int i, Int j, std::true_type) const
    {
       return this->col(j)[i];
    }
 public:
-   reference operator() (int i, int j)
+   reference operator() (Int i, Int j)
    {
       return random_impl(i, j, bool_constant<restriction==sparse2d::only_cols>());
    }
-   const_reference operator() (int i, int j) const
+   const_reference operator() (Int i, Int j) const
    {
       return random_impl(i, j, bool_constant<restriction==sparse2d::only_cols>());
    }
 
 private:
    template <typename Iterator>
-   void append_rows_impl(int n, Iterator src, std::true_type)
+   void append_rows_impl(Int n, Iterator src, std::true_type)
    {
-      int oldrows=data.rows();
+      Int oldrows = data.rows();
       data.resize_rows(oldrows+n);
       for (auto dst=pm::rows(*this).begin()+oldrows;  n>0;  ++src, ++dst, --n)
          *dst=*src;
    }
 
    template <typename Iterator>
-   void append_rows_impl(int n, Iterator src, std::false_type)
+   void append_rows_impl(Int n, Iterator src, std::false_type)
    {
-      for (int r=data.rows(); n>0; ++src, ++r, --n)
+      for (Int r = data.rows(); n > 0; ++src, ++r, --n)
          append(pm::cols(*this), *src, r);
    }
 
    template <typename Iterator>
-   void append_cols_impl(int n, Iterator src, std::true_type)
+   void append_cols_impl(Int n, Iterator src, std::true_type)
    {
-      int oldcols=data.cols();
+      Int oldcols = data.cols();
       data.resize_cols(oldcols+n);
-      for (auto dst=pm::cols(*this).begin()+oldcols;  n>0;  ++src, ++dst, --n)
+      for (auto dst = pm::cols(*this).begin() + oldcols;  n > 0;  ++src, ++dst, --n)
          *dst=*src;
    }
 
    template <typename Iterator>
-   void append_cols_impl(int n, Iterator src, std::false_type)
+   void append_cols_impl(Int n, Iterator src, std::false_type)
    {
-      for (int c=data.cols();  n>0;  ++src, ++c, --n)
+      for (Int c = data.cols();  n > 0;  ++src, ++c, --n)
          append(pm::rows(*this), *src, c);
    }
 
@@ -464,28 +464,28 @@ public:
    void squeeze() { data.squeeze(); }
 
    template <typename TPerm>
-   typename std::enable_if<isomorphic_to_container_of<TPerm, int>::value>::type
+   std::enable_if_t<isomorphic_to_container_of<TPerm, Int>::value>
    permute_rows(const TPerm& perm)
    {
       data.permute_rows(perm, std::false_type());
    }
 
    template <typename TPerm>
-   typename std::enable_if<isomorphic_to_container_of<TPerm, int>::value>::type
+   std::enable_if_t<isomorphic_to_container_of<TPerm, Int>::value>
    permute_cols(const TPerm& perm)
    {
       data.permute_cols(perm, std::false_type());
    }
 
    template <typename TInvPerm>
-   typename std::enable_if<isomorphic_to_container_of<TInvPerm, int>::value>::type
+   std::enable_if_t<isomorphic_to_container_of<TInvPerm, Int>::value>
    permute_inv_rows(const TInvPerm& inv_perm)
    {
       data.permute_rows(inv_perm, std::true_type());
    }
 
    template <typename TInvPerm>
-   typename std::enable_if<isomorphic_to_container_of<TInvPerm, int>::value>::type
+   std::enable_if_t<isomorphic_to_container_of<TInvPerm, Int>::value>
    permute_inv_cols(const TInvPerm& inv_perm)
    {
       data.permute_cols(inv_perm, std::true_type());
@@ -504,7 +504,7 @@ public:
 template <typename E, sparse2d::restriction_kind restriction>
 struct spec_object_traits< RestrictedSparseMatrix<E, restriction> >
    : spec_object_traits<is_container> {
-   static const int dimension=2;
+   static constexpr int dimension=2;
 
    using serialized = std::conditional_t<restriction==sparse2d::only_rows,
                                          Rows< RestrictedSparseMatrix<E, restriction> >,
@@ -557,7 +557,7 @@ protected:
 
    SparseMatrix_base() = default;
 
-   SparseMatrix_base(int r, int c)
+   SparseMatrix_base(Int r, Int c)
       : data(r, c) {}
 
    template <sparse2d::restriction_kind restriction>
@@ -611,10 +611,10 @@ protected:
    template <typename Iterator>
    void init_impl(Iterator&& src_elem, std::true_type, std::false_type)
    {
-      auto&& src=make_converting_iterator<E>(std::forward<Iterator>(src_elem));
-      const int n=this->cols();
-      for (auto r_i=entire(pm::rows(static_cast<base_t&>(*this))); !r_i.at_end(); ++r_i)
-         for (int i=0; i<n; ++i, ++src)
+      auto&& src = make_converting_iterator<E>(std::forward<Iterator>(src_elem));
+      const Int n = this->cols();
+      for (auto r_i = entire(pm::rows(static_cast<base_t&>(*this))); !r_i.at_end(); ++r_i)
+         for (Int i = 0; i < n; ++i, ++src)
             if (!is_zero(*src))
                r_i->push_back(i, *src);
    }
@@ -623,11 +623,11 @@ protected:
    template <typename Iterator>
    void init_impl(Iterator&& src_elem, std::true_type, std::true_type)
    {
-      auto&& src=make_converting_iterator<E>(std::forward<Iterator>(src_elem));
-      const int n=this->cols();
-      int d=0;
-      for (auto r_i=entire(pm::rows(static_cast<base_t&>(*this))); !r_i.at_end(); ++r_i) {
-         for (int i=0; i<=d; ++i, ++src)
+      auto&& src = make_converting_iterator<E>(std::forward<Iterator>(src_elem));
+      const Int n = this->cols();
+      Int d = 0;
+      for (auto r_i = entire(pm::rows(static_cast<base_t&>(*this))); !r_i.at_end(); ++r_i) {
+         for (Int i = 0; i <= d; ++i, ++src)
             if (!is_zero(*src))
                r_i->push_back(i, *src);
          ++d; std::advance(src, n-d);
@@ -646,10 +646,10 @@ protected:
    template <typename Iterator>
    void init_impl(Iterator&& src_rows, std::false_type, std::true_type)
    {
-      int d=0;
-      for (auto r_i=entire(pm::rows(static_cast<base_t&>(*this))); !r_i.at_end(); ++r_i, ++d, ++src_rows) {
-         int i;
-         for (auto src=make_converting_iterator<E>(ensure(*src_rows, pure_sparse()).begin()); !src.at_end() && (i=src.index())<=d; ++src)
+      Int d = 0;
+      for (auto r_i = entire(pm::rows(static_cast<base_t&>(*this))); !r_i.at_end(); ++r_i, ++d, ++src_rows) {
+         Int i;
+         for (auto src = make_converting_iterator<E>(ensure(*src_rows, pure_sparse()).begin()); !src.at_end() && (i=src.index())<=d; ++src)
             r_i->push_back(i, *src);
       }
    }
@@ -665,7 +665,7 @@ public:
    SparseMatrix() {}
 
    /// Create a matrix with r rows and c columns, (implicitly) initialize all elements to 0. 
-   SparseMatrix(int r, int c)
+   SparseMatrix(Int r, Int c)
       : base_t(r, c) {}
 
    /**
@@ -675,7 +675,7 @@ public:
      Zero input elements are filtered out. 
    */
    template <typename Iterator>
-   SparseMatrix(int r, int c, Iterator&& src)
+   SparseMatrix(Int r, Int c, Iterator&& src)
       : base_t(r, c)
    {
       init_impl(ensure_private_mutable(std::forward<Iterator>(src)),
@@ -690,7 +690,7 @@ public:
    /// Copy of an abstract matrix of the same element type. 
    template <typename TMatrix2>
    SparseMatrix(const GenericMatrix<TMatrix2, E>& M,
-                typename std::enable_if<SparseMatrix::template compatible_symmetry_types<TMatrix2>(), void**>::type=nullptr)
+                std::enable_if_t<SparseMatrix::template compatible_symmetry_types<TMatrix2>(), std::nullptr_t> = nullptr)
       : base_t(M.rows(), M.cols())
    {
       init_impl(pm::rows(M).begin(), std::false_type(), symmetric());
@@ -699,21 +699,21 @@ public:
    /// Copy of an abstract matrix with element conversion. 
    template <typename TMatrix2, typename E2>
    explicit SparseMatrix(const GenericMatrix<TMatrix2, E2>& M,
-                         typename std::enable_if<(SparseMatrix::template compatible_symmetry_types<TMatrix2>() &&
-                                                  can_initialize<E2, E>::value), void**>::type=nullptr)
+                         std::enable_if_t<(SparseMatrix::template compatible_symmetry_types<TMatrix2>() &&
+                                           can_initialize<E2, E>::value), std::nullptr_t> = nullptr)
       : base_t(M.rows(), M.cols())
    {
       init_impl(pm::rows(M).begin(), std::false_type(), symmetric());
    }
 
-   template <sparse2d::restriction_kind restriction, typename enabled=typename std::enable_if<!symmetric::value && restriction!=sparse2d::full>::type>
+   template <sparse2d::restriction_kind restriction, typename = std::enable_if_t<!symmetric::value && restriction != sparse2d::full>>
    explicit SparseMatrix(RestrictedSparseMatrix<E, restriction>&& M)
       : base_t(std::move(M.data)) {}
 
    template <typename Container>
    SparseMatrix(const Container& src,
-                typename std::enable_if<(isomorphic_to_container_of<Container, Vector<E>, allow_conversion>::value &&
-                                         !symmetric::value), void**>::type=nullptr)
+                std::enable_if_t<(isomorphic_to_container_of<Container, Vector<E>, allow_conversion>::value &&
+                                  !symmetric::value), std::nullptr_t> = nullptr)
       : base_t(src.size(), src.empty() ? 0 : get_dim(src.front()))
    {
       init_impl(src.begin(), std::false_type(), symmetric());
@@ -724,7 +724,7 @@ public:
    SparseMatrix& operator= (const SparseMatrix& other) { assign(other); return *this; }
    using SparseMatrix::generic_type::operator=;
 
-   template <sparse2d::restriction_kind restriction, typename enabled=typename std::enable_if<!symmetric::value && restriction!=sparse2d::full>::type>
+   template <sparse2d::restriction_kind restriction, typename = std::enable_if_t<!symmetric::value && restriction != sparse2d::full>>
    SparseMatrix& operator= (RestrictedSparseMatrix<E, restriction>&& M)
    {
       this->data.replace(std::move(M.data));
@@ -741,23 +741,23 @@ public:
    }
 
    /// Resize to new dimensions, added elements initialized with default constructor.
-   void resize(int r, int c) { this->data->resize(r,c); }
+   void resize(Int r, Int c) { this->data->resize(r,c); }
 
    /// Truncate to 0x0 matrix. 
    void clear() { this->data.apply(shared_clear()); }
 
-   void clear(int r, int c) { this->data.apply(typename base_t::table_type::shared_clear(r,c)); }
+   void clear(Int r, Int c) { this->data.apply(typename base_t::table_type::shared_clear(r,c)); }
 
-   reference operator() (int i, int j)
+   reference operator() (Int i, Int j)
    {
       if (POLYMAKE_DEBUG) {
-         if (i<0 || i>this->rows() || j<0 || j>= this->cols())
+         if (i < 0 || i > this->rows() || j < 0 || j >= this->cols())
             throw std::runtime_error("SparseMatrix::operator() - index out of range");
       }
       return pm::rows(static_cast<base_t&>(*this))[i][j];
    }
 
-   const_reference operator() (int i, int j) const
+   const_reference operator() (Int i, Int j) const
    {
       if (POLYMAKE_DEBUG) {
          if (i<0 || i>this->rows() || j<0 || j>= this->cols())
@@ -796,7 +796,7 @@ public:
    /// Permute the rows of the matrix without copying the elements.
    /// These operations are nevertheless expensive, as they need to visit each element and adjust its indices.
    template <typename TPerm>
-   typename std::enable_if<isomorphic_to_container_of<TPerm, int>::value>::type
+   std::enable_if_t<isomorphic_to_container_of<TPerm, Int>::value>
    permute_rows(const TPerm& perm)
    {
       this->data->permute_rows(perm, std::false_type());
@@ -805,21 +805,21 @@ public:
    /// Permute the columns of the matrix without copying the elements.
    /// These operations are nevetherless expensive, as they need to visit each element and adjust its indices.
    template <typename TPerm>
-   typename std::enable_if<isomorphic_to_container_of<TPerm, int>::value>::type
+   std::enable_if_t<isomorphic_to_container_of<TPerm, Int>::value>
    permute_cols(const TPerm& perm)
    {
       this->data->permute_cols(perm, std::false_type());
    }
 
    template <typename TInvPerm>
-   typename std::enable_if<isomorphic_to_container_of<TInvPerm, int>::value>::type
+   std::enable_if_t<isomorphic_to_container_of<TInvPerm, Int>::value>
    permute_inv_rows(const TInvPerm& inv_perm)
    {
       this->data->permute_rows(inv_perm, std::true_type());
    }
 
    template <typename TInvPerm>
-   typename std::enable_if<isomorphic_to_container_of<TInvPerm, int>::value>::type
+   std::enable_if_t<isomorphic_to_container_of<TInvPerm, Int>::value>
    permute_inv_cols(const TInvPerm& inv_perm)
    {
       this->data->permute_cols(inv_perm, std::true_type());
@@ -827,10 +827,10 @@ public:
 
    template <typename Perm, typename InvPerm>
    SparseMatrix copy_permuted(const Perm& perm, const InvPerm& inv_perm,
-                              typename std::enable_if<symmetric::value, mlist<Perm>*>::type=nullptr) const
+                              std::enable_if_t<symmetric::value, mlist<Perm>*> = nullptr) const
    {
-      const int n=this->rows();
-      SparseMatrix result(n,n);
+      const Int n=this->rows();
+      SparseMatrix result(n, n);
       result.data.get()->copy_permuted(*this->data, perm, inv_perm);
       return result;
    }
@@ -872,7 +872,7 @@ protected:
    template <typename Matrix2>
    void append_rows(const Matrix2& m)
    {
-      const int old_rows=this->rows();
+      const Int old_rows = this->rows();
       this->data.apply(typename base_t::table_type::shared_add_rows(m.rows()));
       copy_range(entire(pm::rows(m)), pm::rows(static_cast<base_t&>(*this)).begin()+old_rows);
    }
@@ -880,7 +880,7 @@ protected:
    template <typename Vector2>
    void append_row(const Vector2& v)
    {
-      const int old_rows=this->rows();
+      const Int old_rows = this->rows();
       this->data.apply(typename base_t::table_type::shared_add_rows(1));
       this->row(old_rows)=v;
    }
@@ -888,7 +888,7 @@ protected:
    template <typename Matrix2>
    void append_cols(const Matrix2& m)
    {
-      const int old_cols=this->cols();
+      const Int old_cols = this->cols();
       this->data.apply(typename base_t::table_type::shared_add_cols(m.cols()));
       copy_range(entire(pm::cols(m)), pm::cols(static_cast<base_t&>(*this)).begin()+old_cols);
    }
@@ -896,7 +896,7 @@ protected:
    template <typename Vector2>
    void append_col(const Vector2& v)
    {
-      const int old_cols=this->cols();
+      const Int old_cols = this->cols();
       this->data.apply(typename base_t::table_type::shared_add_cols(1));
       this->col(old_cols)=v;
    }
@@ -931,14 +931,14 @@ template <bool rowwise, typename symmetric, typename BaseRef>
 class sparse_matrix_line_factory {
 public:
    typedef BaseRef first_argument_type;
-   typedef int second_argument_type;
+   typedef Int second_argument_type;
    using tree_type = std::conditional_t<rowwise, typename pure_type_t<BaseRef>::table_type::row_tree_type,
                                                  typename pure_type_t<BaseRef>::table_type::col_tree_type>;
    typedef sparse_matrix_line<typename inherit_ref<tree_type, BaseRef>::type, symmetric> result_type;
 
-   result_type operator() (BaseRef matrix, int index) const
+   result_type operator() (BaseRef matrix, Int index) const
    {
-      return result_type(matrix,index);
+      return result_type(matrix, index);
    }
 };
 
@@ -978,7 +978,7 @@ public:
    {
       return sequence(0, this->hidden().get_table().rows());
    }
-   void resize(int n)
+   void resize(Int n)
    {
       this->hidden().get_table().resize_rows(n);
    }
@@ -1007,14 +1007,14 @@ public:
    {
       return sequence(0, this->hidden().get_table().cols());
    }
-   void resize(int n)
+   void resize(Int n)
    {
       this->hidden().get_table().resize_cols(n);
    }
 };
 
 template <typename TMatrix, typename E, typename Permutation>
-typename std::enable_if<TMatrix::is_nonsymmetric && TMatrix::is_sparse, SparseMatrix<E>>::type
+std::enable_if_t<TMatrix::is_nonsymmetric && TMatrix::is_sparse, SparseMatrix<E>>
 permuted_rows(const GenericMatrix<TMatrix, E>& m, const Permutation& perm)
 {
    if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
@@ -1025,7 +1025,7 @@ permuted_rows(const GenericMatrix<TMatrix, E>& m, const Permutation& perm)
 }
 
 template <typename TMatrix, typename E, typename Permutation>
-typename std::enable_if<TMatrix::is_nonsymmetric && TMatrix::is_sparse, SparseMatrix<E>>::type
+std::enable_if_t<TMatrix::is_nonsymmetric && TMatrix::is_sparse, SparseMatrix<E>>
 permuted_cols(const GenericMatrix<TMatrix, E>& m, const Permutation& perm)
 {
    if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
@@ -1036,7 +1036,7 @@ permuted_cols(const GenericMatrix<TMatrix, E>& m, const Permutation& perm)
 }
 
 template <typename TMatrix, typename E, typename Permutation>
-typename std::enable_if<TMatrix::is_nonsymmetric && TMatrix::is_sparse, SparseMatrix<E>>::type
+std::enable_if_t<TMatrix::is_nonsymmetric && TMatrix::is_sparse, SparseMatrix<E>>
 permuted_inv_rows(const GenericMatrix<TMatrix, E>& m, const Permutation& perm)
 {
    if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
@@ -1049,7 +1049,7 @@ permuted_inv_rows(const GenericMatrix<TMatrix, E>& m, const Permutation& perm)
 }
 
 template <typename TMatrix, typename E, typename Permutation>
-typename std::enable_if<TMatrix::is_nonsymmetric && TMatrix::is_sparse, SparseMatrix<E>>::type
+std::enable_if_t<TMatrix::is_nonsymmetric && TMatrix::is_sparse, SparseMatrix<E>>
 permuted_inv_cols(const GenericMatrix<TMatrix, E>& m, const Permutation& perm)
 {
    if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
@@ -1062,57 +1062,57 @@ permuted_inv_cols(const GenericMatrix<TMatrix, E>& m, const Permutation& perm)
 }
 
 template <typename TMatrix, typename Permutation>
-typename std::enable_if<!TMatrix::is_nonsymmetric && TMatrix::is_sparse, typename TMatrix::persistent_type>::type
+std::enable_if_t<!TMatrix::is_nonsymmetric && TMatrix::is_sparse, typename TMatrix::persistent_type>
 permuted_rows(const GenericMatrix<TMatrix>& m, const Permutation& perm)
 {
    if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
       if (m.rows() != perm.size())
          throw std::runtime_error("permuted_rows - dimension mismatch");
    }
-   std::vector<int> inv_perm(m.rows());
-   inverse_permutation(perm,inv_perm);
-   return m.top().copy_permuted(perm,inv_perm);
+   std::vector<Int> inv_perm(m.rows());
+   inverse_permutation(perm, inv_perm);
+   return m.top().copy_permuted(perm, inv_perm);
 }
 
 template <typename TMatrix, typename Permutation>
-typename std::enable_if<!TMatrix::is_nonsymmetric && TMatrix::is_sparse && container_traits<Permutation>::is_random,
-                        typename TMatrix::persistent_type>::type
+std::enable_if_t<!TMatrix::is_nonsymmetric && TMatrix::is_sparse && container_traits<Permutation>::is_random,
+                 typename TMatrix::persistent_type>
 permuted_inv_rows(const GenericMatrix<TMatrix>& m, const Permutation& inv_perm)
 {
    if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
       if (m.rows() != inv_perm.size())
          throw std::runtime_error("permuted_inv_rows - dimension mismatch");
    }
-   std::vector<int> perm(m.rows());
-   inverse_permutation(inv_perm,perm);
-   return m.top().copy_permuted(perm,inv_perm);
+   std::vector<Int> perm(m.rows());
+   inverse_permutation(inv_perm, perm);
+   return m.top().copy_permuted(perm, inv_perm);
 }
 
 template <typename TMatrix, typename Permutation>
-typename std::enable_if<!TMatrix::is_nonsymmetric && TMatrix::is_sparse && !container_traits<Permutation>::is_random,
-                        typename TMatrix::persistent_type>::type
+std::enable_if_t<!TMatrix::is_nonsymmetric && TMatrix::is_sparse && !container_traits<Permutation>::is_random,
+                 typename TMatrix::persistent_type>
 permuted_inv_rows(const GenericMatrix<TMatrix>& m, const Permutation& inv_perm)
 {
    if (POLYMAKE_DEBUG || is_wary<TMatrix>()) {
       if (m.rows() != inv_perm.size())
          throw std::runtime_error("permuted_inv_rows - dimension mismatch");
    }
-   std::vector<int> inv_perm_copy(inv_perm.size());
+   std::vector<Int> inv_perm_copy(inv_perm.size());
    copy_range(entire(inv_perm), inv_perm_copy.begin());
-   return permuted_inv_rows(m,inv_perm_copy);
+   return permuted_inv_rows(m, inv_perm_copy);
 }
 
 template <typename TMatrix, typename Permutation>
-typename std::enable_if<!TMatrix::is_nonsymmetric && TMatrix::is_sparse,
-                        typename TMatrix::persistent_type>::type
+std::enable_if_t<!TMatrix::is_nonsymmetric && TMatrix::is_sparse,
+                 typename TMatrix::persistent_type>
 permuted_cols(const GenericMatrix<TMatrix>& m, const Permutation& perm)
 {
    return permuted_rows(m,perm);
 }
 
 template <typename TMatrix, typename Permutation>
-typename std::enable_if<!TMatrix::is_nonsymmetric && TMatrix::is_sparse,
-                        typename TMatrix::persistent_type>::type
+std::enable_if_t<!TMatrix::is_nonsymmetric && TMatrix::is_sparse,
+                 typename TMatrix::persistent_type>
 permuted_inv_cols(const GenericMatrix<TMatrix>& m, const Permutation& inv_perm)
 {
    return permuted_inv_rows(m,inv_perm);
@@ -1122,34 +1122,34 @@ permuted_inv_cols(const GenericMatrix<TMatrix>& m, const Permutation& inv_perm)
 template <typename E>
 class SparseMatrixStatistics {
 public:
-   unsigned int maxnon0s, maxrowsize, maxcolsize;
+   Int maxnon0s, maxrowsize, maxcolsize;
    E maxabs;
-   Array<unsigned int> row_support_sizes;
+   Array<Int> row_support_sizes;
 
    SparseMatrixStatistics()
       : maxnon0s(0), maxrowsize(0), maxcolsize(0), maxabs(0) {}
 
    void gather(const SparseMatrix<E>& m)
    {
-      unsigned int non0s=0;
+      Int non0s = 0;
 
-      int row_ct(0);
-      row_support_sizes = Array<unsigned int>(m.rows());
-      for (auto r=entire(rows(m)); !r.at_end(); ++r, ++row_ct) {
-         if (unsigned int s=r->size()) {
-            for (auto e=entire(*r); !e.at_end(); ++e) {
-               maxabs=std::max(maxabs, abs(*e));
+      Int row_ct = 0;
+      row_support_sizes = Array<Int>(m.rows());
+      for (auto r = entire(rows(m)); !r.at_end(); ++r, ++row_ct) {
+         if (Int s = r->size()) {
+            for (auto e = entire(*r); !e.at_end(); ++e) {
+               maxabs = std::max(maxabs, abs(*e));
             }
-            maxrowsize=std::max(maxrowsize, s);
-            non0s+=s;
+            maxrowsize = std::max(maxrowsize, s);
+            non0s += s;
             row_support_sizes[row_ct] = s;
          }
       }
 
-      maxnon0s=std::max(maxnon0s, non0s);
-      for (auto c=entire(cols(m)); !c.at_end(); ++c) {
-         if (unsigned int s=c->size()) {
-            maxcolsize=std::max(maxcolsize, s);
+      maxnon0s = std::max(maxnon0s, non0s);
+      for (auto c = entire(cols(m)); !c.at_end(); ++c) {
+         if (Int s = c->size()) {
+            maxcolsize = std::max(maxcolsize, s);
          }
       }
    }

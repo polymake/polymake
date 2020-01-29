@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -36,7 +36,7 @@ private:
   const NodeMap<Directed, Decoration>& node_map;
 public:
   CompareByFace(const NodeMap<Directed, Decoration>& nmap) : node_map(nmap) {}
-  pm::cmp_value operator() (const int a, const int b) const
+  pm::cmp_value operator() (Int a, Int b) const
   {
     return operations::cmp()( node_map[a].face, node_map[b].face);
   }
@@ -50,20 +50,20 @@ public:
 template <typename Decoration, typename SeqType>
 void sort_vertices_and_facets(Lattice<Decoration, SeqType> &l, const IncidenceMatrix<>& VIF)
 {
-  Array<int> perm(sequence(0, l.nodes()));
+  Array<Int> perm(sequence(0, l.nodes()));
          
   // First sort the vertices
-  Set<int> unsorted_nodes( l.nodes_of_rank(1));
-  Set<int, CompareByFace<Decoration> > vertex_nodes(CompareByFace<Decoration>(l.decoration()));
+  Set<Int> unsorted_nodes( l.nodes_of_rank(1));
+  Set<Int, CompareByFace<Decoration> > vertex_nodes(CompareByFace<Decoration>(l.decoration()));
   for (auto nd : unsorted_nodes) { vertex_nodes += nd; }
   copy_range( entire(vertex_nodes), select(perm, unsorted_nodes).begin());
 
   // Then facets
   if (l.rank() > 2 && VIF.rows() > 0) {
-    Array<int> facet_nodes(l.nodes_of_rank(l.rank()-1));
+    Array<Int> facet_nodes(l.nodes_of_rank(l.rank()-1));
     const IncidenceMatrix<> lfacets(VIF.rows(), VIF.cols(), 
       entire(attach_member_accessor( select(l.decoration(), facet_nodes), 
-                                     ptr2type< Decoration, Set<int>, &Decoration::face>())));
+                                     ptr2type< Decoration, Set<Int>, &Decoration::face>())));
     const auto fperm = find_permutation(rows(lfacets), rows(VIF));
     if (fperm)
       copy_range(entire(permuted(facet_nodes, fperm.value())), select(perm, facet_nodes).begin());
@@ -77,15 +77,15 @@ void sort_vertices_and_facets(Lattice<Decoration, SeqType> &l, const IncidenceMa
 // This can be used to make a Lattice sequential. 
 // Careful! This is fairly expensive for large lattices, since all data needs to be copied.
 template <typename Decoration>
-perl::Object make_lattice_sequential(const Lattice<Decoration, lattice::Nonsequential> &lattice)
+BigObject make_lattice_sequential(const Lattice<Decoration, lattice::Nonsequential> &lattice)
 {
-  Array<int> node_perm(lattice.nodes());
+  Array<Int> node_perm(lattice.nodes());
   InverseRankMap<lattice::Sequential> new_rank_map;
-  int current_index = 0;
+  Int current_index = 0;
   for (auto rk_it = entire(lattice.inverse_rank_map().get_map()); !rk_it.at_end(); ++rk_it) {
-    int list_length = rk_it->second.size();
+    Int list_length = rk_it->second.size();
     copy_range(entire(sequence(current_index, list_length)), select(node_perm, rk_it->second).begin());
-    std::pair<int,int> new_map_value(current_index, current_index + list_length - 1);
+    std::pair<Int, Int> new_map_value(current_index, current_index+list_length-1);
     new_rank_map.set_rank_list( rk_it->first, new_map_value);
     current_index += list_length;
   }
@@ -94,7 +94,7 @@ perl::Object make_lattice_sequential(const Lattice<Decoration, lattice::Nonseque
   NodeMap<Directed, Decoration> new_decoration(new_graph);
   copy_range(entire(lattice.decoration()), select(new_decoration, node_perm).begin());
 
-  perl::Object result("Lattice", mlist<Decoration, lattice::Sequential>());
+  BigObject result("Lattice", mlist<Decoration, lattice::Sequential>());
   result.take("ADJACENCY") << new_graph;
   result.take("DECORATION") << new_decoration;
   result.take("INVERSE_RANK_MAP") << new_rank_map;

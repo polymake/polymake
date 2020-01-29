@@ -1,0 +1,60 @@
+#  Copyright (c) 1997-2020
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# == SUMMARY ==
+# - Convert a SimplicialComplex containing one of GEOMETRIC_REALIZATION, G_DIM, VOLUME, SIGNATURE
+#   to GeometricSimplicialComplex, rename the property GEOMETRIC_REALIZATION into COORDINATES.
+# - Rename MINKOWSKI_SUMMAND_CONE to MINKOWSKI_CONE
+# - Upgrade LATTICE_POINTS to LATTICE_POINTS_GENERATORS
+# - Rename TropicalHypersurface<Rational> to Hypersurface<Min>,
+#   replace the property AMBIENT_DIM with N_VARS
+
+
+upgrade 2.12.1 topaz::SimplicialComplex {
+   my ($obj) = @_;
+   if (exists($obj->{GEOMETRIC_REALIZATION}) && rename_property($obj, "GEOMETRIC_REALIZATION", "COORDINATES")
+       or (grep { exists $obj->{$_} } qw(G_DIM VOLUME SIGNATURE)) > 0) {
+      $obj->{_type} = "topaz::GeometricSimplicialComplex<Rational>";
+      true
+   }
+}
+
+upgrade 2.12.2 polytope::Polytope.MINKOWSKI_SUMMAND_CONE = rename MINKOWSKI_CONE;
+
+upgrade 2.12.3 polytope::Polytope.LATTICE_POINTS {
+   my ($obj, $prop) = @_;
+   if (defined(my $points = delete $obj->{LATTICE_POINTS})) {
+      $obj->{LATTICE_POINTS_GENERATORS} = [ $points, [], [] ];
+   } else {
+      $obj->{LATTICE_POINTS_GENERATORS} = undef;
+   }
+   true
+}
+
+upgrade 2.12.4 tropical::TropicalHypersurface {
+   my ($obj) = @_;
+   $obj->{_type} = "tropical::Hypersurface<Min>";
+   if (defined(my $dim = delete $obj->{AMBIENT_DIM})) {
+      $obj->{N_VARS} = $dim+1;
+   }
+   true
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -48,7 +48,7 @@ protected:
 
    decltype(auto) get_set() const { return *set; }
 public:
-   template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
+   template <typename Arg, typename = std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
    TruncatedSet(Arg&& set_arg, const value_type& lim_arg)
       : set(std::forward<Arg>(set_arg))
       , limit(lim_arg) {}
@@ -137,7 +137,7 @@ public:
    reference back() const { return *rbegin(); }
 
    /// the size of the set
-   int size() const { return count_it(begin()); }
+   Int size() const { return count_it(begin()); }
    /// true if the set is empty
    bool empty() const { return begin().at_end(); }
 };
@@ -160,7 +160,7 @@ struct element_seen_op {
 };
 
 /// @ref generic "Generic type" for ordered mutable sets
-template <typename TSet, typename E=typename TSet::element_type, typename Comparator=typename TSet::element_comparator>
+template <typename TSet, typename E = typename TSet::element_type, typename Comparator = typename TSet::element_comparator>
 class GenericMutableSet
    : public GenericSet<TSet, E, Comparator> {
    template <typename, typename, typename> friend class GenericMutableSet;
@@ -174,7 +174,7 @@ public:
    template <typename Right>
    using is_compatible_element = typename mlist_and<is_lossless_convertible<Right, E>, are_comparable_via<E, Right, Comparator>>::type;
 
-   template <typename Right, bool is_set=is_generic_set<Right>::value>
+   template <typename Right, bool is_set = is_generic_set<Right>::value>
    struct is_compatible_set : std::false_type {};
 
    template <typename Right>
@@ -184,7 +184,7 @@ protected:
    template <typename TSet2>
    void plus_seek(const TSet2& s)
    {
-      for (auto e2=entire(s); !e2.at_end(); ++e2)
+      for (auto e2 = entire(s); !e2.at_end(); ++e2)
          this->top().insert(*e2);
    }
 
@@ -339,9 +339,9 @@ protected:
    void assign(const GenericSet<TSet2, E2, Comparator>& s, DiffConsumer diff)
    {
       const Comparator& cmp_op=this->top().get_comparator();
-      auto dst=entire(this->top());
-      auto src=entire(s.top());
-      int state=(dst.at_end() ? 0 : zipper_first) + (src.at_end() ? 0 : zipper_second);
+      auto dst = entire(this->top());
+      auto src = entire(s.top());
+      int state = (dst.at_end() ? 0 : zipper_first) + (src.at_end() ? 0 : zipper_second);
       while (state >= zipper_both) {
          switch (cmp_op(*dst, *src)) {
          case cmp_lt:
@@ -389,7 +389,7 @@ public:
    }
 
    template <typename TSet2, typename E2,
-             typename=std::enable_if_t<can_initialize<E2, E>::value>>
+             typename = std::enable_if_t<can_initialize<E2, E>::value>>
    top_type& operator= (const GenericSet<TSet2, E2, Comparator>& other)
    {
       this->top().assign(other);
@@ -397,7 +397,7 @@ public:
    }
 
    template <typename E2,
-             typename=std::enable_if_t<can_initialize<E2, E>::value>>
+             typename = std::enable_if_t<can_initialize<E2, E>::value>>
    top_type& operator= (std::initializer_list<E2> l)
    {
       this->top().clear();
@@ -409,10 +409,10 @@ public:
    void swap(GenericMutableSet<TSet2, E, Comparator>& s)
    {
       if (trivial_assignment(s)) return;
-      const Comparator& cmp_op=this->top().get_comparator();
-      auto e1=entire(this->top());
-      auto e2=entire(s.top());
-      int state=(e1.at_end() ? 0 : zipper_first) + (e2.at_end() ? 0 : zipper_second);
+      const Comparator& cmp_op = this->top().get_comparator();
+      auto e1 = entire(this->top());
+      auto e2 = entire(s.top());
+      int state = (e1.at_end() ? 0 : zipper_first) + (e2.at_end() ? 0 : zipper_second);
       while (state >= zipper_both) {
          switch (cmp_op(*e1,*e2)) {
          case cmp_lt:
@@ -645,7 +645,7 @@ public:
    explicit Set(Iterator&& src,
                 std::enable_if_t<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value &&
                                  assess_iterator_value<Iterator, can_initialize, E>::value,
-                                 std::nullptr_t> =nullptr)
+                                 std::nullptr_t> = nullptr)
    {
       insert_from(ensure_private_mutable(std::forward<Iterator>(src)));
    }
@@ -660,11 +660,11 @@ public:
       : tree(entire(s.top())) {}
 
    /// Copy of an abstract set with element conversion.
-   template <typename Set2, typename E2, typename Comparator2, typename=std::enable_if_t<can_initialize<E2, E>::value>>
+   template <typename Set2, typename E2, typename Comparator2, typename = std::enable_if_t<can_initialize<E2, E>::value>>
    explicit Set(const GenericSet<Set2, E2, Comparator2>& s)
       : tree(entire(attach_converter<E>(s.top()))) {}
 
-   template <typename E2, typename=std::enable_if_t<can_initialize<E2, E>::value>>
+   template <typename E2, typename = std::enable_if_t<can_initialize<E2, E>::value>>
    Set(std::initializer_list<E2> l)
    {
       insert_from(entire(l));
@@ -672,7 +672,7 @@ public:
 
    template <typename Container>
    explicit Set(const Container& src,
-                std::enable_if_t<isomorphic_to_container_of<Container, E, is_set>::value, std::nullptr_t> =nullptr)
+                std::enable_if_t<isomorphic_to_container_of<Container, E, is_set>::value, std::nullptr_t> = nullptr)
    {
       insert_from(entire(src));
    }
@@ -683,11 +683,8 @@ public:
    /// Make the set empty.
    void clear() { tree.apply(shared_clear()); }
 
-   /// For compatibility with common::boost_dynamic_bitset, add a trivial method
-   void resize(int) {}
-
-   /// For compatibility with common::boost_dynamic_bitset, add a trivial method
-   void reset(void) {}
+   /// for compatibility with Bitset
+   void resize(Int) {}
 
    /** @brief Swap the content with another Set.
        @param s the other Set

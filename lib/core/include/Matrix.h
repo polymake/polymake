@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -33,13 +33,13 @@ template <typename E>
 class Matrix_base {
 protected:
    struct dim_t {
-      int dimr, dimc;
+      Int dimr, dimc;
 
       dim_t() : dimr(0), dimc(0) {}
 
-      dim_t(int r, int c) : dimr(r), dimc(c) {
+      dim_t(Int r, Int c) : dimr(r), dimc(c) {
          if (POLYMAKE_DEBUG) {
-            if (dimr<0 || dimc<0)
+            if (dimr < 0 || dimc < 0)
                throw std::runtime_error("Matrix_base::dim_t out of range");
          }
       }
@@ -57,19 +57,19 @@ protected:
 
    Matrix_base() {}
 
-   Matrix_base(int r, int c)
-      : data(dim_t(r,c), r*c) {}
+   Matrix_base(Int r, Int c)
+      : data(dim_t(r, c), r*c) {}
 
    template <typename... TArgs>
-   Matrix_base(int r, int c, TArgs&&... args)
-      : data(dim_t(r,c), r*c, std::forward<TArgs>(args)...) {}
+   Matrix_base(Int r, Int c, TArgs&&... args)
+      : data(dim_t(r, c), r*c, std::forward<TArgs>(args)...) {}
 
-   Matrix_base(const shared_array_placement& place, int r, int c)
-      : data(place, dim_t(r,c), r*c) {}
+   Matrix_base(const shared_array_placement& place, Int r, Int c)
+      : data(place, dim_t(r, c), r*c) {}
 
    template <typename... TArgs>
-   Matrix_base(const shared_array_placement& place, int r, int c, TArgs&&... args)
-      : data(place, dim_t(r,c), r*c, std::forward<TArgs>(args)...) {}
+   Matrix_base(const shared_array_placement& place, Int r, Int c, TArgs&&... args)
+      : data(place, dim_t(r, c), r*c, std::forward<TArgs>(args)...) {}
 
    friend class ConcatRows<Matrix_base>;
    template <typename, alias_kind> friend class alias;
@@ -122,7 +122,7 @@ public:
    Matrix() {}
 
    /// create matrix with r rows and c columns, initialize all elements to 0
-   Matrix(int r, int c)
+   Matrix(Int r, Int c)
       : base_t(r, c) {}
 
    template <typename E2,
@@ -133,12 +133,12 @@ public:
    /// Create a matrix with given dimensions.  Elements are initialized from one or more input sequences.
    /// Elements are assumed to come in the row order.
    template <typename... Iterator, typename=std::enable_if_t<mlist_and_nonempty<fits_as_input_iterator<Iterator>...>::value>>
-   Matrix(int r, int c, Iterator&&... src)
+   Matrix(Int r, Int c, Iterator&&... src)
       : base_t(r, c, ensure_private_mutable(std::forward<Iterator>(src))...) {}
 
    /// Create a matrix with given dimensions.  Elements are moved from one or more input sequences.
    template <typename... Iterator, typename=std::enable_if_t<mlist_and_nonempty<fits_as_input_iterator<Iterator>...>::value>>
-   Matrix(int r, int c, polymake::operations::move, Iterator&&... src)
+   Matrix(Int r, Int c, polymake::operations::move, Iterator&&... src)
       : base_t(r, c, polymake::operations::move(), std::forward<Iterator>(src)...) {}
 
    /// Copy of a disguised Matrix object.
@@ -162,18 +162,18 @@ public:
       : base_t(src.size(), src.empty() ? 0 : get_dim(src.front()), src.begin()) {}
 
 protected:
-   Matrix(const shared_array_placement& place, int r, int c)
-      : base_t(place,r,c) {}
+   Matrix(const shared_array_placement& place, Int r, Int c)
+      : base_t(place, r, c) {}
 
    template <typename Iterator>
-   Matrix(const shared_array_placement& place, int r, int c, Iterator&& src)
+   Matrix(const shared_array_placement& place, Int r, Int c, Iterator&& src)
       : base_t(place, r, c, std::forward<Iterator>(src)) {}
 
-   void resize(const shared_array_placement& place, int r, int c)
+   void resize(const shared_array_placement& place, Int r, Int c)
    {
       this->data.resize(place, r*c);
-      this->data.get_prefix().dimr=r;
-      this->data.get_prefix().dimc=c;
+      this->data.get_prefix().dimr = r;
+      this->data.get_prefix().dimc = c;
    }
 public:
 
@@ -189,59 +189,59 @@ public:
    }
 
    /// Resize to new dimensions, added elements initialized with default constructor.
-   void resize(int r, int c)
+   void resize(Int r, Int c)
    {
-      const int dimc=cols(), dimr=rows();
-      if (c==dimc) {
+      const Int dimc = cols(), dimr = rows();
+      if (c == dimc) {
          this->data.resize(r*c);
-         this->data.get_prefix().dimr=r;
-      } else if (c<dimc && r<=dimr) {
-         *this=this->minor(sequence(0,r),sequence(0,c));
+         this->data.get_prefix().dimr = r;
+      } else if (c < dimc && r <= dimr) {
+         *this = this->minor(sequence(0, r), sequence(0, c));
       } else {
-         Matrix M(r,c);
-         if (c<dimc)
-            M.minor(sequence(0,dimr),All)=this->minor(All,sequence(0,c));
+         Matrix M(r, c);
+         if (c < dimc)
+            M.minor(sequence(0, dimr), All) = this->minor(All, sequence(0, c));
          else
-            M.minor(sequence(0,std::min(dimr,r)), sequence(0,dimc))=this->minor(sequence(0,std::min(dimr,r)),All);
-         *this=M;
+            M.minor(sequence(0, std::min(dimr, r)), sequence(0, dimc)) = this->minor(sequence(0, std::min(dimr, r)), All);
+         *this = M;
       }
    }
 
    template <typename E2>
    std::enable_if_t<can_initialize<E2, E>::value>
-   assign(int r, int c, const E2& x)
+   assign(Int r, Int c, const E2& x)
    {
       this->data.assign(r*c, x);
-      this->data.get_prefix()=dim_t(r,c);
+      this->data.get_prefix() = dim_t(r, c);
    }
 
    /// Truncate to 0x0 matrix.
    void clear() { this->data.clear(); }
 
-   void clear(int r, int c)
+   void clear(Int r, Int c)
    {
       this->data.resize(r*c);
-      this->data.enforce_unshared().get_prefix()=dim_t(r,c);
+      this->data.enforce_unshared().get_prefix() = dim_t(r, c);
    }
 
    /// the number of rows of the matrix
-   int rows() const { return this->data.get_prefix().dimr; }
+   Int rows() const { return this->data.get_prefix().dimr; }
 
    /// the number of columns of the matrix
-   int cols() const { return this->data.get_prefix().dimc; }
+   Int cols() const { return this->data.get_prefix().dimc; }
 
-   reference operator() (int i, int j)
+   reference operator() (Int i, Int j)
    {
       if (POLYMAKE_DEBUG) {
-         if (i<0 || i>=rows() || j<0 || j>=cols())
+         if (i < 0 || i >= rows() || j < 0 || j >= cols())
             throw std::runtime_error("Matrix::operator() - index out of range");
       }
       return (*this->data)[i*cols()+j];
    }
-   const_reference operator() (int i, int j) const
+   const_reference operator() (Int i, Int j) const
    {
       if (POLYMAKE_DEBUG) {
-         if (i<0 || i>=rows() || j<0 || j>=cols())
+         if (i < 0 || i >= rows() || j < 0 || j >= cols())
             throw std::runtime_error("Matrix::operator() - index out of range");
       }
       return (*this->data)[i*cols()+j];
@@ -253,10 +253,10 @@ protected:
    template <typename Matrix2>
    void assign(const GenericMatrix<Matrix2>& m)
    {
-      const int r=m.rows(), c=m.cols();
+      const Int r = m.rows(), c = m.cols();
       this->data.assign(r*c, make_src_iterator(m.top()));
-      this->data.get_prefix().dimr=r;
-      this->data.get_prefix().dimc=c;
+      this->data.get_prefix().dimr = r;
+      this->data.get_prefix().dimc = c;
    }
 
    template <typename Operation>
@@ -329,7 +329,7 @@ protected:
    E* get_data() { return *hidden().data; }
    const E* get_data() const { return *hidden().data; }
 public:
-   int size() const { return hidden().data.size(); }
+   Int size() const { return hidden().data.size(); }
 
    ConcatRows& operator= (const ConcatRows& other) { return ConcatRows::generic_type::operator=(other); }
    using ConcatRows::generic_type::operator=;
@@ -346,13 +346,13 @@ template <bool rowwise, typename BaseRef>
 class matrix_line_factory {
 public:
    typedef BaseRef first_argument_type;
-   typedef int second_argument_type;
-   typedef IndexedSlice<masquerade<ConcatRows, BaseRef>, const Series<int, rowwise>> result_type;
+   typedef Int second_argument_type;
+   typedef IndexedSlice<masquerade<ConcatRows, BaseRef>, const Series<Int, rowwise>> result_type;
 
-   result_type operator() (BaseRef matrix, int start) const
+   result_type operator() (BaseRef matrix, Int start) const
    {
-      const auto& dims=matrix.data.get_prefix();
-      return result_type(matrix, Series<int,rowwise>(start, rowwise ? dims.dimc : dims.dimr, rowwise ? 1 : dims.dimc));
+      const auto& dims = matrix.data.get_prefix();
+      return result_type(matrix, Series<Int, rowwise>(start, rowwise ? dims.dimc : dims.dimr, rowwise ? 1 : dims.dimc));
    }
 };
 
@@ -390,11 +390,11 @@ public:
    series get_container2() const
    {
       const Matrix<E>& me=this->hidden();
-      return series(0, me.rows(), std::max(me.cols(), 1));  // Matrix (R x 0) which can occur in a block matrix should not look like an empty container
+      return series(0, me.rows(), std::max(me.cols(), 1L));  // Matrix (R x 0) which can occur in a block matrix should not look like an empty container
    }
-   void resize(int n)
+   void resize(Int n)
    {
-      Matrix<E>& me=this->hidden();
+      Matrix<E>& me = this->hidden();
       me.resize(n, me.cols());
    }
 };
@@ -421,9 +421,9 @@ public:
    {
       return sequence(0, this->hidden().cols());
    }
-   void resize(int n)
+   void resize(Int n)
    {
-      Matrix<E>& me=this->hidden();
+      Matrix<E>& me = this->hidden();
       me.resize(me.rows(), n);
    }
 };

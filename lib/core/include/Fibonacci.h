@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -19,14 +19,13 @@
 #define POLYMAKE_FIBONACCI_H
 
 #include "polymake/internal/iterators.h"
-#include <limits>
+#include "polymake/Integer.h"
 
-namespace pm
-{
-   template <typename Number=int> class FibonacciNumbers;
+namespace pm {
+   template <typename Number = Int> class FibonacciNumbers;
 
    // An infinite source of Fibonacci numbers - as iterator
-   template <typename Number=int>
+   template <typename Number = Int>
    class Fibonacci_iterator {
    public:
       typedef forward_iterator_tag iterator_category;
@@ -39,16 +38,27 @@ namespace pm
 
       Fibonacci_iterator() : prev(0), cur(1) { }
 
+      explicit Fibonacci_iterator(unsigned long start_index)
+      {
+         if (start_index == 0) {
+            rewind();
+         } else {
+            const auto start = Integer::fibonacci2(start_index);
+            cur = static_cast<Number>(start.first);
+            prev = static_cast<Number>(start.second);
+         }
+      }
+
       reference operator* () const { return cur; }
       pointer operator-> () const { return &cur; }
 
-      iterator& operator++ () { const Number p=prev; prev=cur; cur+=p; return *this; }
+      iterator& operator++ () { const Number p = prev; prev = cur; cur += p; return *this; }
       const iterator operator++ (int) { iterator copy(*this); operator++(); return copy; }
 
-      bool operator== (const iterator& it) const { return prev==it.prev && cur==it.cur; }
+      bool operator== (const iterator& it) const { return cur == it.cur; }
       bool operator!= (const iterator& it) const { return !operator==(it); }
 
-      void rewind() { prev=0; cur=1; }
+      void rewind() { prev = 0; cur = 1; }
    protected:
       Number prev, cur;
 
@@ -69,8 +79,8 @@ namespace pm
 
       iterator begin() const { return iterator(); }
       iterator end() const { return iterator(true); }
-      reference front() const { static Number one(1); return one; }
-      size_t size() const { return std::numeric_limits<size_t>::max(); }
+      reference front() const { return one_value<Number>(); }
+      Int size() const { return std::numeric_limits<Int>::max(); }
       bool empty() const { return false; }
    };
 
@@ -83,28 +93,14 @@ namespace pm
    template <typename Number>
    struct spec_object_traits< FibonacciNumbers<Number> > : spec_object_traits<is_container> { };
 
-   template <typename Number> inline
+   template <typename Number = Int>
    Fibonacci_iterator<Number> fibonacci_numbers() { return Fibonacci_iterator<Number>(); }
-
-   inline
-   Fibonacci_iterator<> fibonacci_numbers() { return Fibonacci_iterator<>(); }
-
-   template <typename Number> inline
-   Number fibonacci_number(int i)
-   {
-      Fibonacci_iterator<Number> it;
-      while (--i>=0) ++it;
-      return *it;
-   }
-
-   inline int fibonacci_number(int i) { return fibonacci_number<int>(i); }
 }
 
 namespace polymake {
    using pm::Fibonacci_iterator;
    using pm::FibonacciNumbers;
    using pm::fibonacci_numbers;
-   using pm::fibonacci_number;
 }
 
 #endif // POLYMAKE_FIBONACCI_H

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -36,7 +36,7 @@ void assign_facet_through_points(const GenericMatrix<Matrix1,double>& V, Generic
       f=F[0];
    } else {
       // least squares
-      const int n=V.cols();
+      const Int n = V.cols();
       f=inv(( 2*T(V)*V               | ones_vector<double>(n)) /
             ( ones_vector<double>(n) | 0.0                   ) )[n].slice(sequence(0, n));
    }
@@ -51,7 +51,7 @@ Matrix<Scalar> compute(const Matrix<Scalar>& V, const Matrix<Scalar>& L, const M
 
    for (auto vertex_list=entire(rows(VIF)); !vertex_list.at_end();  ++vertex_list, ++Fi) {
       assign_facet_through_points(V.minor(*vertex_list,All) / L/ AH, Fi->top());
-      int outer_vertex=(sequence(0,V.rows()) - *vertex_list).front();
+      Int outer_vertex = (sequence(0,V.rows()) - *vertex_list).front();
       if (*Fi * V[outer_vertex] < 0) Fi->negate();
    }
 
@@ -61,7 +61,7 @@ Matrix<Scalar> compute(const Matrix<Scalar>& V, const Matrix<Scalar>& L, const M
 } // end anonymous namespace
 
 template <typename Scalar>
-void facets_from_incidence(perl::Object p)
+void facets_from_incidence(BigObject p)
 {
    const Matrix<Scalar> V=p.give("RAYS"),
                         L=p.give("LINEALITY_SPACE");
@@ -75,7 +75,7 @@ void facets_from_incidence(perl::Object p)
 }
 
 template <typename Scalar>
-void vertices_from_incidence(perl::Object p)
+void vertices_from_incidence(BigObject p)
 {
    const Matrix<Scalar> F=p.give("FACETS"), AH=p.give("LINEAR_SPAN");
    const IncidenceMatrix<> VIF=p.give("RAYS_IN_FACETS");

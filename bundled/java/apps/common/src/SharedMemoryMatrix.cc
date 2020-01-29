@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,14 +25,14 @@ namespace polymake { namespace common {
 
 void SharedMemorySegment::resize(size_t size)
 {
-   shmid=shmget(IPC_PRIVATE, size, 0600);
-   if (shmid<0)
+   shmid = shmget(IPC_PRIVATE, size, 0600);
+   if (shmid < 0)
       throw std::runtime_error("shmget error " + std::to_string(errno));
 
-   void* p=shmat(shmid, NULL, 0);
-   if (p==(void*)-1L) {
-      std::string err="shmat error " + std::to_string(errno);
-      shmctl(shmid, IPC_RMID, 0);
+   void* p = shmat(shmid, nullptr, 0);
+   if (p == (void*)-1UL) {
+      std::string err = "shmat error " + std::to_string(errno);
+      shmctl(shmid, IPC_RMID, nullptr);
       throw std::runtime_error(err);
    }
    shmaddr.set(p);
@@ -42,7 +42,7 @@ SharedMemorySegment::~SharedMemorySegment()
 {
    if (void* p=shmaddr.get()) {
       shmdt(p);
-      shmctl(shmid, IPC_RMID, 0);
+      shmctl(shmid, IPC_RMID, nullptr);
    }
 }
 

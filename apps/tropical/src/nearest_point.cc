@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,7 +27,7 @@ namespace polymake { namespace tropical {
 	//FIXME Adapt to tropical numbers. -- only finite coordinates
       
       template <typename Addition, typename Scalar>
-      Vector<TropicalNumber<Addition, Scalar> > nearest_point(perl::Object t_in, const Vector<TropicalNumber<Addition, Scalar> >& point)
+      Vector<TropicalNumber<Addition, Scalar> > nearest_point(BigObject t_in, const Vector<TropicalNumber<Addition, Scalar> >& point)
    {
       typedef TropicalNumber<Addition, Scalar> TNumber;
       Matrix<TNumber> V = t_in.give("POINTS");

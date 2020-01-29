@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,11 +24,11 @@ namespace polymake { namespace topaz {
 using graph::Lattice;
 using graph::lattice::BasicDecoration;
 
-Array< Set<int> > facets_from_hasse_diagram(perl::Object p)
+Array<Set<Int>> facets_from_hasse_diagram(BigObject p)
 {
    const Lattice<BasicDecoration> HD(p);
-   Array< Set<int> > F( attach_member_accessor( select(HD.decoration(), HD.in_adjacent_nodes(HD.top_node())),
-               ptr2type<BasicDecoration, Set<int>,&BasicDecoration::face>()
+   Array<Set<Int>> F( attach_member_accessor( select(HD.decoration(), HD.in_adjacent_nodes(HD.top_node())),
+               ptr2type<BasicDecoration, Set<Int>, &BasicDecoration::face>()
                ));
    return F;
 }

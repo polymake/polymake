@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -40,12 +40,12 @@
 #define PmStartFuncall(n) \
    dSP; \
    ENTER; SAVETMPS; \
-   if (n) EXTEND(SP,n); \
+   if (n) EXTEND(SP, n); \
    PUSHMARK(SP)
 
 #define PmCancelFuncall \
    dMARK; \
-   PL_stack_sp=MARK; \
+   PL_stack_sp = MARK; \
    FREETMPS; LEAVE
 
 #define PmFinishFuncall \
@@ -57,7 +57,7 @@
    throw exception()
 
 #define PmPopLastResult(sv) \
-   SV *sv=POPs; \
+   SV *sv = POPs; \
    if (SvTEMP(sv)) SvREFCNT_inc_simple_void_NN(sv); \
    PmFinishFuncall
 
@@ -82,7 +82,7 @@ SV* get_current_application(pTHX);
 void fill_cached_cv(pTHX_ cached_cv& cv);
 SV*  call_func_scalar(pTHX_ SV* cv, bool undef_to_null=false);
 std::string call_func_string(pTHX_ SV* cv, bool protect_with_eval=true);
-bool call_func_bool(pTHX_ SV* cv, int boolean_check);
+bool call_func_bool(pTHX_ SV* cv);
 int  call_func_list(pTHX_ SV* cv);
 void call_func_void(pTHX_ SV* cv);
 SV*  call_method_scalar(pTHX_ const char* method, bool undef_to_null=false);
@@ -93,24 +93,24 @@ void call_method_void(pTHX_ const char* method);
 SV* fetch_typeof_gv(pTHX_ HV* app_stash, const char* class_name, size_t class_namelen);
 
 inline
-SV* call_func_scalar(pTHX_ cached_cv& cv, bool undef_to_null=false)
+SV* call_func_scalar(pTHX_ cached_cv& cv, bool undef_to_null = false)
 {
    if (__builtin_expect(!cv.addr, 0)) fill_cached_cv(aTHX_ cv);
    return call_func_scalar(aTHX_ cv.addr, undef_to_null);
 }
 
 inline
-std::string call_func_string(pTHX_ cached_cv& cv, bool protect_with_eval=true)
+std::string call_func_string(pTHX_ cached_cv& cv, bool protect_with_eval = true)
 {
    if (__builtin_expect(!cv.addr, 0)) fill_cached_cv(aTHX_ cv);
    return call_func_string(aTHX_ cv.addr, protect_with_eval);
 }
 
 inline
-bool call_func_bool(pTHX_ cached_cv& cv, int boolean_check)
+bool call_func_bool(pTHX_ cached_cv& cv)
 {
    if (__builtin_expect(!cv.addr, 0)) fill_cached_cv(aTHX_ cv);
-   return call_func_bool(aTHX_ cv.addr, boolean_check);
+   return call_func_bool(aTHX_ cv.addr);
 }
 
 inline
@@ -149,8 +149,8 @@ struct common_vtbl : public base_vtbl {
 };
 
 struct scalar_vtbl : public common_vtbl {
-   conv_to_int_type to_int;
-   conv_to_float_type to_float;
+   conv_to_Int_type to_Int;
+   conv_to_Float_type to_Float;
 };
 
 struct container_access_vtbl {
@@ -163,8 +163,7 @@ struct container_access_vtbl {
 
 struct container_vtbl : public common_vtbl {
    int own_dimension;
-   conv_to_int_type size;
-   conv_to_int_type empty;
+   conv_to_Int_type size;
    container_resize_type resize;
    container_store_type store_at_ref;
    type_reg_fn_type provide_key_type;
@@ -176,8 +175,8 @@ struct container_vtbl : public common_vtbl {
 struct iterator_vtbl : public base_vtbl {
    iterator_deref_type deref;
    iterator_incr_type incr;
-   conv_to_int_type at_end;
-   conv_to_int_type index;
+   conv_to_bool_type at_end;
+   conv_to_Int_type index;
 };
 
 struct composite_vtbl : public common_vtbl {
@@ -206,6 +205,9 @@ struct MagicAnchors {
    }
 };
 
+using mg_size_ret_t = func_return_t<decltype(std::declval<MGVTBL*>()->svt_len)>;
+using mg_copy_index_t = typename mlist_at_rev<func_args_t<decltype(std::declval<MGVTBL*>()->svt_copy)>, 0>::type;
+
 MAGIC* allocate_canned_magic(pTHX_ SV* sv, SV* descr, ValueFlags flags, unsigned int n_anchors);
 int destroy_canned(pTHX_ SV* sv, MAGIC* mg);
 int destroy_canned_container(pTHX_ SV* sv, MAGIC* mg);
@@ -213,11 +215,11 @@ int destroy_canned_assoc_container(pTHX_ SV* sv, MAGIC* mg);
 int clear_canned_container(pTHX_ SV* sv, MAGIC* mg);
 int clear_canned_assoc_container(pTHX_ SV* sv, MAGIC* mg);
 int assigned_to_primitive_lvalue(pTHX_ SV* sv, MAGIC* mg);
-U32 canned_container_size(pTHX_ SV* sv, MAGIC* mg);
-int canned_container_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char* dummy, I32 index);
-int canned_assoc_container_access(pTHX_ SV* sv, MAGIC* mg, SV* val_sv, const char* key, I32 klen);
-U32 canned_composite_size(pTHX_ SV* sv, MAGIC* mg);
-int canned_composite_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char *dummy, I32 index);
+mg_size_ret_t canned_container_size(pTHX_ SV* sv, MAGIC* mg);
+int canned_container_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char* dummy, mg_copy_index_t index);
+int canned_assoc_container_access(pTHX_ SV* sv, MAGIC* mg, SV* val_sv, const char* key, mg_copy_index_t klen);
+mg_size_ret_t canned_composite_size(pTHX_ SV* sv, MAGIC* mg);
+int canned_composite_access(pTHX_ SV* sv, MAGIC* mg, SV* nsv, const char *dummy, mg_copy_index_t index);
 MAGIC* upgrade_to_builtin_magic_sv(pTHX_ SV* sv, SV* descr_ref, unsigned int n_anchors);
 SV* create_builtin_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, ValueFlags flags, unsigned int n_anchors);
 SV* create_scalar_magic_sv(pTHX_ SV* dst_ref, SV* descr_ref, ValueFlags flags, unsigned int n_anchors);
@@ -238,8 +240,9 @@ extern SV *negative_indices_key,
 extern HV *FuncDescr_stash,
           *TypeDescr_stash,
           *User_stash,
-          *Object_InitTransaction_stash,
-          *Serializer_Sparse_stash;
+          *Object_InitTransaction_stash;
+
+extern MGVTBL sparse_input_vtbl;
 
 extern GV *CPP_root,
           *PropertyType_nested_instantiation,

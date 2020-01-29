@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -48,17 +48,17 @@ namespace polymake { namespace tropical {
    @return The k-skeleton of the cycle 
 */
 template <typename Addition>
-perl::Object skeleton_complex(perl::Object complex, int k, bool preserve = false)
+BigObject skeleton_complex(BigObject complex, Int k, bool preserve = false)
 {
   // Extract properties
-  int cmplx_dim = complex.give("PROJECTIVE_DIM");
-  int ambient_dim = complex.give("PROJECTIVE_AMBIENT_DIM");
+  Int cmplx_dim = complex.give("PROJECTIVE_DIM");
+  Int ambient_dim = complex.give("PROJECTIVE_AMBIENT_DIM");
   Matrix<Rational> rays = complex.give("VERTICES");
   rays = tdehomog(rays);
   IncidenceMatrix<> maximalCones = complex.give("MAXIMAL_POLYTOPES");
   Matrix<Rational> lineality = complex.give("LINEALITY_SPACE");
   lineality = tdehomog(lineality);
-  int lineality_dim = complex.give("LINEALITY_DIM");
+  Int lineality_dim = complex.give("LINEALITY_DIM");
   IncidenceMatrix<> local_restriction;
   complex.lookup("LOCAL_RESTRICTION") >> local_restriction;
 
@@ -72,11 +72,11 @@ perl::Object skeleton_complex(perl::Object complex, int k, bool preserve = false
     return complex;
   }
 
-  Vector<Set<int>> new_local_restriction;
+  Vector<Set<Int>> new_local_restriction;
 
   // Now we compute the codimension one skeleton of the fan (cmplx_dim - k) times 
   IncidenceMatrix<> newMaximalCones = maximalCones;
-  for (int i = 1; i <= (cmplx_dim - k); i++) {
+  for (Int i = 1; i <= (cmplx_dim - k); i++) {
     newMaximalCones = calculateCodimOneData(rays, newMaximalCones, lineality, local_restriction).codimOneCones;
   }
 
@@ -84,20 +84,20 @@ perl::Object skeleton_complex(perl::Object complex, int k, bool preserve = false
   Matrix<Rational> newrays = rays;
   if (!preserve) {
     // Take the union of all cones to see what rays are used
-    Set<int> usedRays;
-    for (int c = 0; c < newMaximalCones.rows(); ++c) {
+    Set<Int> usedRays;
+    for (Int c = 0; c < newMaximalCones.rows(); ++c) {
       usedRays += newMaximalCones.row(c);
     }
 
     if (local_restriction.rows() > 0) {
-      Map<int,int> index_map; //Maps indices of old rays to indices of new rays
-      int newIndex = 0;
+      Map<Int, Int> index_map; //Maps indices of old rays to indices of new rays
+      Int newIndex = 0;
       for (auto uR = entire(usedRays); !uR.at_end(); ++uR) {
         index_map[*uR] = newIndex;
         ++newIndex;
       }
-      for (int i = 0; i < local_restriction.rows(); ++i) {
-        new_local_restriction |= attach_operation(local_restriction.row(i) * usedRays, pm::operations::associative_access<Map<int,int>,int>(&index_map));
+      for (Int i = 0; i < local_restriction.rows(); ++i) {
+        new_local_restriction |= attach_operation(local_restriction.row(i) * usedRays, pm::operations::associative_access<Map<Int, Int>, Int>(&index_map));
       }
     }
 
@@ -105,7 +105,7 @@ perl::Object skeleton_complex(perl::Object complex, int k, bool preserve = false
     newMaximalCones = newMaximalCones.minor(All,usedRays);
   }
 
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << thomog(newrays);
   result.take("MAXIMAL_POLYTOPES") << newMaximalCones;
   result.take("LINEALITY_SPACE") << thomog(lineality);

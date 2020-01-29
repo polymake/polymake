@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,15 +21,15 @@
 namespace polymake { namespace graph {
 
 template <typename Decoration, typename SeqType>
-Array<Set<int>> lattice_dual_faces(perl::Object lattice_obj)
+Array<Set<Int>> lattice_dual_faces(BigObject lattice_obj)
 {
   return Lattice<Decoration, SeqType>(lattice_obj).dual_faces();
 }
 
 template <typename Decoration, typename SeqType, typename Permutation>
-perl::Object lattice_permuted_faces(perl::Object lattice_obj, const Permutation& perm)
+BigObject lattice_permuted_faces(BigObject lattice_obj, const Permutation& perm)
 {
-  return static_cast<perl::Object>((Lattice<Decoration, SeqType>(lattice_obj)).permuted_faces(perm));
+  return static_cast<BigObject>((Lattice<Decoration, SeqType>(lattice_obj)).permuted_faces(perm));
 }
 
 FunctionTemplate4perl("lattice_dual_faces<Decoration, SeqType>(Lattice<Decoration, SeqType>)");

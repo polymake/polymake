@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -36,16 +36,16 @@ namespace polymake { namespace polytope {
 
 Graph<> graph_from_vertices(const Matrix<Rational>& Vertices)
 {
-   const int n_vertices = Vertices.rows();
+   const Int n_vertices = Vertices.rows();
    Graph<> graph(n_vertices);
 
    Matrix<Rational> Ineq(n_vertices,Vertices.cols());
    Matrix<Rational> Eq;
    const lrs_interface::LP_Solver LRS{};
 
-   for (int i = 0; i < n_vertices-1; i++) {
-      for (int j = i+1; j < n_vertices; j++) {
-         for (int k = 0; k < n_vertices; k++) {
+   for (Int i = 0; i < n_vertices-1; i++) {
+      for (Int j = i+1; j < n_vertices; j++) {
+         for (Int k = 0; k < n_vertices; k++) {
             if (k == i) {
                Ineq[k] = Vertices[j] - Vertices[i];
             } else {

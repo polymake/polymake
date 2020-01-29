@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,33 +20,33 @@
 
 namespace polymake { namespace topaz {
   
-perl::Object star_deletion_complex(perl::Object p_in, const Set<int>& face, perl::OptionSet options)      
+BigObject star_deletion_complex(BigObject p_in, const Set<Int>& face, OptionSet options)      
 {
-   const Array< Set<int> > C = p_in.give("FACETS");
-   const int n_vert = p_in.give("N_VERTICES");
+   const Array<Set<Int>> C = p_in.give("FACETS");
+   const Int n_vert = p_in.give("N_VERTICES");
    if (face.empty())
       throw std::runtime_error("star_deletion: empty face specified");
    if (face.front()<0 || face.back()>n_vert-1)
       throw std::runtime_error("star_deletion: specified vertex indices out of range");
    
-   std::list< Set<int> > Deletion;
+   std::list<Set<Int>> Deletion;
    copy_range(entire(deletion(C,face)), std::back_inserter(Deletion));
    
-   if (int(Deletion.size())==int(C.size())) {
+   if (Int(Deletion.size()) == C.size()) {
       std::ostringstream e;
       wrap(e) << "star_deletion: " << face << " does not specify a face.";
       throw std::runtime_error(e.str());
    }
 
-   const Set<int> V = accumulate(Deletion, operations::add());
+   const Set<Int> V = accumulate(Deletion, operations::add());
 
    adj_numbering(Deletion,V);
    
-   perl::Object p_out("SimplicialComplex");
+   BigObject p_out("SimplicialComplex");
    p_out.set_description() << "Deletion of the star of " << face << " in " << p_in.name() << ".\n";
 
    if (Deletion.empty())
-      p_out.take("FACETS") << Array< Set<int> >(1);
+      p_out.take("FACETS") << Array<Set<Int>>(1);
    else
       p_out.take("FACETS") << as_array(Deletion);
 

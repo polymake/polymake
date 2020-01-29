@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -40,14 +40,14 @@ template <typename Graph>
 class max_cliques_iterator {
 protected:
    const Graph *G;
-   Map< Set<int>, int > Q;
+   Map<Set<Int>, Int> Q;
 
-   void complete_clique(Set<int>& set, Set<int> neighbors);
-   Set<int>& lex_min_clique(Set<int>& set);
-   Set<int> lex_min_clique(int v);
+   void complete_clique(Set<Int>& set, Set<Int> neighbors);
+   Set<Int>& lex_min_clique(Set<Int>& set);
+   Set<Int> lex_min_clique(Int v);
    void init();
 public:
-   typedef Set<int> value_type;
+   typedef Set<Int> value_type;
    typedef const value_type& reference;
    typedef const value_type* pointer;
    typedef std::forward_iterator_tag iterator_category;
@@ -81,7 +81,7 @@ namespace pm {
 
 template <typename GraphRef>
 class generic_of_GraphComponents<GraphRef, polymake::graph::max_cliques_iterator>
-   : public GenericSet< GraphComponents<GraphRef,polymake::graph::max_cliques_iterator>, Set<int>, operations::cmp > {};
+   : public GenericSet< GraphComponents<GraphRef,polymake::graph::max_cliques_iterator>, Set<Int>, operations::cmp > {};
 
 }
 

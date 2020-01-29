@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -64,7 +64,7 @@ DirectionIntersection cleanUpIntersection(const fan_intersection_result& fir);
    @brief This takes a (two-dimensional) cone in R^3 in terms of a subset of rays and computes all codimension one faces. 
    @return A FacetData object (see above)
 */
-FacetData computeFacets(const Matrix<Rational>& rays, const Set<int>& cone);
+FacetData computeFacets(const Matrix<Rational>& rays, const Set<Int>& cone);
 
 /**
    @brief This takes a vertex in the cubic (whose function's domain is describes by frays and fcones) and a direction and computes the vertex w farthest away from vertex in this direction, such that the convex hull of vertex and w still lies in X. It returns the empty vertex, if the complete half-line lies in X.
@@ -81,21 +81,21 @@ Rational vertexDistance(const Vector<Rational>& v1, const Vector<Rational>& v2, 
 /**
    @brief Takes a vertex family and computes the index of the standard direction in 0,..,3 corresponding to its edge
 */
-int vertexFamilyDirection(const VertexFamily& f);
+Int vertexFamilyDirection(const VertexFamily& f);
 
 /**
    @brief Computes all edge families lying in a 2-dimensional cone for a given direction
    @param DirectionIntersection cone A cone, refined along f
    @param Matrix<Rational> z_border The intersection of the cone with a cone in the 0-i-rechable locus
    @param Matrix<Rational> c_border The intersection of the cone with a cone in the j-k-reachable locus
-   @param int leafAtZero The index of the leaf together with 0
+   @param Int leafAtZero The index of the leaf together with 0
    @param Matrix<Rational> funmat The function matrix of f, made compatible for vector multiplication
    @return LinesInCellResult A list of all (families of) lines lying in the cone	    
 */
 LinesInCellResult computeEdgeFamilies(const DirectionIntersection& cone, 
                                       const Matrix<Rational>& z_border,
                                       const Matrix<Rational>& c_border,
-                                      int leafAtZero,
+                                      Int leafAtZero,
                                       const Matrix<Rational>& funmat);
 } }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,10 +21,10 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-perl::Object revert(perl::Object p_in)
+BigObject revert(BigObject p_in)
 {
    const Matrix<Scalar> RT_v=p_in.get_attachment("REVERSE_TRANSFORMATION");
-   perl::Object p_out=transform<Scalar>(p_in, RT_v, false);
+   BigObject p_out=transform<Scalar>(p_in, RT_v, false);
    p_out.set_description() << "Polytope reversely transformed from " << p_in.name() << endl;
    return p_out;
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,12 +24,12 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
-Matrix<Scalar> splits(const Matrix<Scalar>& vert, const Graph<>& graph, const Matrix<Scalar>& facets, const int d, perl::OptionSet options)
+Matrix<Scalar> splits(const Matrix<Scalar>& vert, const Graph<>& graph, const Matrix<Scalar>& facets, const Int d, OptionSet options)
 {
-   Set<int> coords;
+   Set<Int> coords;
    options["Coordinates"]>>coords;
-   const int n=vert.rows();
-   const int a_dim=vert.cols()-1;
+   const Int n = vert.rows();
+   const Int a_dim = vert.cols()-1;
 
    ListMatrix<Vector<Scalar>> splits;
    // test for each d vertices if they lie in a splitting hyperplane
@@ -47,7 +47,7 @@ Matrix<Scalar> splits(const Matrix<Scalar>& vert, const Graph<>& graph, const Ma
             if (is_zero(h*(*j))) is_new=false;
 
          if (is_new) {
-            int pos=0;
+            Int pos = 0;
             Matrix<Scalar> o(a_dim-d,a_dim+1);
             for (auto k=entire(coords); !k.at_end(); ++k)
                o(pos++,*k)=1;
@@ -63,9 +63,9 @@ Matrix<Scalar> splits(const Matrix<Scalar>& vert, const Graph<>& graph, const Ma
             if (is_split) {
                //normalizes the split, i.e. divides by the first non-zero entry
                Scalar fac;
-               for (int k=0; is_zero(fac=a[k]); ++k);
-               a/=fac;
-               splits/=a;
+               for (Int k = 0; is_zero(fac = a[k]); ++k);
+               a /= fac;
+               splits /= a;
             }
          }
       }

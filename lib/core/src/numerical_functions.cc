@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,7 +27,7 @@ long gcd(long a, long b) noexcept
    if (b==0) return a;
    if (a==1 || b==1) return 1;
 
-   int k=0;
+   int k = 0;
    while (!((a|b)&1)) {
       a>>=1;  b>>=1;  k++;
    }
@@ -77,8 +77,8 @@ ExtGCD<long> ext_gcd(long a, long b) noexcept
       for (;;) {
          k = a/b;
          // multiply U from left with { {1, -k}, {0, 1} }
-         U[0][0] -= k * U[1][0];
-         U[0][1] -= k * U[1][1];
+         U[0][0] -= k*U[1][0];
+         U[0][1] -= k*U[1][1];
          if ((a -= k*b) == 0) {
             res.g=b;
             res.p=U[1][sw];   res.q=U[1][1-sw];
@@ -89,8 +89,8 @@ ExtGCD<long> ext_gcd(long a, long b) noexcept
 
          k = b/a;
          // multiply U from left with { {1, 0}, {-k, 1} }
-         U[1][0] -= k * U[0][0];
-         U[1][1] -= k * U[0][1];
+         U[1][0] -= k*U[0][0];
+         U[1][1] -= k*U[0][1];
          if ((b -= k*a) == 0) {
             res.g=a;
             res.p=U[0][sw];   res.q=U[0][1-sw];
@@ -108,18 +108,18 @@ ExtGCD<long> ext_gcd(long a, long b) noexcept
 
 int log2_round(unsigned long x, int round)
 {
-   if (x<=1UL) return 0;
+   if (x <= 1UL) return 0;
 
-   int step=(sizeof(unsigned long)*8)/2, log2=step;
-   unsigned long pow2=1UL<<step;
+   int step = (sizeof(unsigned long)*8)/2, log2 = step;
+   unsigned long pow2 = 1UL << step;
 
    while (x != pow2) {
       if (x < pow2) {
-         if (!(step >>= 1)) return log2-1+round;
+         if ((step >>= 1) == 0) return log2-1+round;
          pow2 >>= step;
          log2 -= step;
       } else {
-         if (!(step >>= 1)) return log2+round;
+         if ((step >>= 1) == 0) return log2+round;
          pow2 <<= step;
          log2 += step;
       }

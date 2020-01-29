@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,7 +29,7 @@ namespace polymake { namespace polytope {
 
 
 template <typename Scalar>
-perl::Object regularity_lp(const Matrix<Scalar> &verts, const Array<Set<int>>& subdiv, perl::OptionSet options) {
+BigObject regularity_lp(const Matrix<Scalar> &verts, const Array<Set<Int>>& subdiv, OptionSet options) {
    
    if (subdiv.size()<2)
       throw std::runtime_error("Subdivision is trivial.");   
@@ -38,10 +38,10 @@ perl::Object regularity_lp(const Matrix<Scalar> &verts, const Array<Set<int>>& s
    const auto& inequs = mats.first;
    const auto& equats = mats.second;
    
-   const int n_vertices=verts.rows();
+   const Int n_vertices = verts.rows();
 
    Scalar epsilon = options["epsilon"];
-   perl::Object q("Polytope", mlist<Scalar>());
+   BigObject q("Polytope", mlist<Scalar>());
    q.take("FEASIBLE") << true;
    if (equats.rows() > 0)
      q.take("EQUATIONS") << (zero_vector<Scalar>() | equats);
@@ -49,7 +49,7 @@ perl::Object regularity_lp(const Matrix<Scalar> &verts, const Array<Set<int>>& s
       (zero_vector<Scalar>(n_vertices) | unit_matrix<Scalar>(n_vertices)) /
       ((-epsilon * ones_vector<Scalar>(inequs.rows())) | inequs);
 
-   perl::Object lp("LinearProgram", mlist<Scalar>());
+   BigObject lp("LinearProgram", mlist<Scalar>());
    lp.attach("INTEGER_VARIABLES") << Array<bool>(n_vertices, true);
    lp.take("LINEAR_OBJECTIVE") << (Scalar(0) | ones_vector<Scalar>(n_vertices));
    q.take("LP") << lp;
@@ -61,11 +61,11 @@ perl::Object regularity_lp(const Matrix<Scalar> &verts, const Array<Set<int>>& s
 
 template <typename Scalar>
 std::pair<bool,Vector<Scalar>>
-is_regular(const Matrix<Scalar> &verts, const Array<Set<int>>& subdiv, perl::OptionSet options)
+is_regular(const Matrix<Scalar> &verts, const Array<Set<Int>>& subdiv, OptionSet options)
 {
    const auto mats = secondary_cone_ineq(full_dim_projection(verts), subdiv, options);
 
-   perl::Object res("Cone", mlist<Scalar>());
+   BigObject res("Cone", mlist<Scalar>());
    res.take("INEQUALITIES") << mats.first;
    res.take("EQUATIONS") << mats.second;
 
@@ -73,7 +73,7 @@ is_regular(const Matrix<Scalar> &verts, const Array<Set<int>>& subdiv, perl::Opt
    try {
       const Vector<Scalar> wt = res.give("REL_INT_POINT");
       w = wt;
-   } catch (const pm::perl::undefined& e) {
+   } catch (const Undefined& e) {
       // there is no relative internal point. If the trivial subdivision is asked for, we are ok; else the subdivision is not regular
       if (subdiv.size() == 1 &&
           subdiv[0] == sequence(0, verts.rows())) {

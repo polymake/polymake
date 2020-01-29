@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,7 +24,7 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar>
-perl::Object conv(const Array<perl::Object>& pp_in)
+BigObject conv(const Array<BigObject>& pp_in)
 {
    auto p_in=entire(pp_in);
 
@@ -33,7 +33,7 @@ perl::Object conv(const Array<perl::Object>& pp_in)
    ListMatrix< Vector<Scalar> > Points=p_in->give("VERTICES | POINTS");
    ListMatrix< Vector<Scalar> > LinSpace=p_in->give("LINEALITY_SPACE");
 
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    std::string descr_names=p_in->name();
 
    while (! (++p_in).at_end()) {

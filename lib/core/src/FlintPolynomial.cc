@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,22 +21,30 @@
 #include "polymake/Polynomial.h"
 #include "polymake/FlintPolynomial.h"
 
-
 namespace pm {
 
+struct flint_cleaner {
+   flint_cleaner() {}
+   ~flint_cleaner() {
+#pragma omp parallel
+      flint_cleanup();
+   }
+};
+
+flint_cleaner flint_cleanup_helper;
 
 template <>
-UniPolynomial<Rational, int>
-gcd(const UniPolynomial<Rational, int>& a, const UniPolynomial<Rational, int>& b)
+UniPolynomial<Rational, Int>
+gcd(const UniPolynomial<Rational, Int>& a, const UniPolynomial<Rational, Int>& b)
 {
-   return UniPolynomial<Rational,int>(FlintPolynomial::gcd(*a.impl_ptr,*b.impl_ptr));
+   return UniPolynomial<Rational, Int>(FlintPolynomial::gcd(*a.impl_ptr, *b.impl_ptr));
 }
 
 template <>
-ExtGCD< UniPolynomial<Rational, int> >
-ext_gcd(const UniPolynomial<Rational, int>& a, const UniPolynomial<Rational, int>& b, bool normalize_gcd)
+ExtGCD< UniPolynomial<Rational, Int> >
+ext_gcd(const UniPolynomial<Rational, Int>& a, const UniPolynomial<Rational, Int>& b, bool normalize_gcd)
 {
-   ExtGCD<UniPolynomial<Rational,int>> res;
+   ExtGCD<UniPolynomial<Rational, Int>> res;
    FlintPolynomial::xgcd(*res.g.impl_ptr, *res.p.impl_ptr, *res.q.impl_ptr, *a.impl_ptr, *b.impl_ptr);
    res.k1 = div_exact(a,res.g);
    res.k2 = div_exact(b,res.g);

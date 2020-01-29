@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,20 +27,20 @@ namespace polymake { namespace polytope {
 
 namespace {
 
-inline Integer calc_p(int n, int j)
+Integer calc_p(Int n, Int j)
 {
    return Integer::binom(n,j) - Integer::binom(n,j-1);
 }
       
-Integer calc_b(int deg, int v, int n, const Array<int>& Fib)
+Integer calc_b(Int deg, Int v, Int n, const Array<Int>& Fib)
 {
-   std::list<int> l;
-   int curl = 0;
-   int rd = deg;
-   int rv = v;
+   std::list<Int> l;
+   Int curl = 0;
+   Int rd = deg;
+   Int rv = v;
    while (rd > 1)
       if (rv >= Fib[rd-1]) {    // we have a 'd'
-         if ((curl % 2) != 0) // the previous exponent of the previous 'c' was not even...
+         if (curl%2 != 0) // the previous exponent of the previous 'c' was not even...
             return 0;   // ...so b(v,n) is 0
          rv -= Fib[rd-1];
          rd -= 2;
@@ -53,11 +53,11 @@ Integer calc_b(int deg, int v, int n, const Array<int>& Fib)
 
    if (rd == 1) ++curl;
 
-   if (curl % 2) return 0;
+   if (curl%2 != 0) return 0;
    curl /= 2;
 
-   int r = 0;
-   int i = deg/2;
+   Int r = 0;
+   Int i = deg/2;
    Integer res = calc_p(n-2*i+2*curl, curl);
    while (!l.empty()) {
       curl = l.front();
@@ -69,11 +69,11 @@ Integer calc_b(int deg, int v, int n, const Array<int>& Fib)
    return (i-r)%2==0 ? res : -res;
 }
 
-bool ends_with_c(int deg, int v, const Array<int>& Fib) // ...is there a faster way to tell?
+bool ends_with_c(Int deg, Int v, const Array<Int>& Fib) // ...is there a faster way to tell?
 {
    bool endc = true;
-   int rd = deg;
-   int rv = v;
+   Int rd = deg;
+   Int rv = v;
    while (rd > 1)
       if (rv >= Fib[rd-1]) {    // we have a 'd'
          rv -= Fib[rd-1];
@@ -98,25 +98,25 @@ bool ends_with_c(int deg, int v, const Array<int>& Fib) // ...is there a faster 
  *  @author Axel Werner
  */
 
-void toric_g_vector(perl::Object p)
+void toric_g_vector(BigObject p)
 {
-   int d = p.give ("COMBINATORIAL_DIM");
+   Int d = p.give ("COMBINATORIAL_DIM");
    Vector<Integer> cd = p.give("CD_INDEX_COEFFICIENTS");
 
-   // precalculate the fibonacci-numbers
-   const Array<int> Fib(d+1, fibonacci_numbers());
+   // precalculate the fibonacci numbers
+   const Array<Int> Fib(d+1, fibonacci_numbers());
 
    // holds the g-vector
    Vector<Integer> gvec(d/2+1);
    gvec[0] = 1;
 
-   for (int i = 1; i <= d/2; ++i) {
+   for (Int i = 1; i <= d/2; ++i) {
       // calculate g_i in this loop
-      int deg = 2*i;
-      int max_cdmon = Fib[deg];
-      int bigv = 0;     // count the full monomial seperately
-      int degfill = d-deg;
-      for (int v = 0; v < max_cdmon; ++v) {
+      Int deg = 2*i;
+      Int max_cdmon = Fib[deg];
+      Int bigv = 0;     // count the full monomial seperately
+      Int degfill = d-deg;
+      for (Int v = 0; v < max_cdmon; ++v) {
          Integer moncoeff = calc_b(deg,v,d,Fib);
          gvec[i] += (moncoeff*cd[bigv]);
          if (ends_with_c(deg,v,Fib)) // increase the full-monomial-counter
@@ -128,7 +128,7 @@ void toric_g_vector(perl::Object p)
 
    Vector<Integer> hvec (d+1);
    hvec[0] = hvec[d] = 1;
-   for (int i = 1; i <= d/2; ++i)
+   for (Int i = 1; i <= d/2; ++i)
       hvec[d-i] = hvec[i] = gvec[i] + hvec[i-1];
 
    p.take("G_VECTOR") << gvec;

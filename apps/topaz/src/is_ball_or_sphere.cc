@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,11 +22,11 @@
 namespace polymake { namespace topaz {
 
 // return values: 1=true, 0=false, -1=undef
-int is_ball_or_sphere_client(perl::Object p, bool check_for_sphere, perl::OptionSet options)
+Int is_ball_or_sphere_client(BigObject p, bool check_for_sphere, OptionSet options)
 {
-   const Array< Set<int> > C = p.give("FACETS");
-   const int d=p.give("DIM");
-   const int n_vertices=p.give("N_VERTICES");
+   const Array<Set<Int>> C = p.give("FACETS");
+   const Int d = p.give("DIM");
+   const Int n_vertices = p.give("N_VERTICES");
 
    // deterministic checks for low dimensions
    switch (d) {
@@ -46,27 +46,27 @@ int is_ball_or_sphere_client(perl::Object p, bool check_for_sphere, perl::Option
    // heuristics begin
    const Lattice<BasicDecoration>& HD = p.give("HASSE_DIAGRAM");
 
-   int strategy=options["strategy"];
-   int n_stable_rounds=0; // meaningless initialization to avoid a compiler warning
+   Int strategy = options["strategy"];
+   Int n_stable_rounds = 0; // meaningless initialization to avoid a compiler warning
    if (!(options["stable_rounds"] >> n_stable_rounds))
-      n_stable_rounds=(HD.rank()-2) * 1000; // default
+      n_stable_rounds=(HD.rank()-2)*1000; // default
 
-   const bool verbose=options["verbose"];
+   const bool verbose = options["verbose"];
    const RandomSeed seed(options["seed"]);
    UniformlyRandom<Integer> random_source(seed);
 
-   int is_ball_or_sphere= check_for_sphere ? is_sphere_h(HD,random_source,strategy,n_stable_rounds)
-                                           : is_ball_or_sphere_h(HD,random_source,strategy,n_stable_rounds);
-   while (is_ball_or_sphere<0 && ++strategy <= 1) {
+   Int is_ball_or_sphere = check_for_sphere ? is_sphere_h(HD, random_source, strategy, n_stable_rounds)
+                                            : is_ball_or_sphere_h(HD, random_source, strategy, n_stable_rounds);
+   while (is_ball_or_sphere < 0 && ++strategy <= 1) {
       if (verbose)
          cout << "is_ball_or_sphere_h: after " << n_stable_rounds
               << " iterations without improvement:\nUnable to determine, whether the complex is a ball or a sphere.\n"
               << "Trying strategy " << strategy << "." << endl;
-      is_ball_or_sphere = check_for_sphere ? is_sphere_h(HD,random_source,strategy,n_stable_rounds)
-                                           : is_ball_or_sphere_h(HD,random_source,strategy,n_stable_rounds);
+      is_ball_or_sphere = check_for_sphere ? is_sphere_h(HD, random_source, strategy, n_stable_rounds)
+                                           : is_ball_or_sphere_h(HD,random_source, strategy, n_stable_rounds);
    }
 
-   if (verbose && is_ball_or_sphere<0) {
+   if (verbose && is_ball_or_sphere < 0) {
       cout << "is_ball_or_sphere_h: after " << n_stable_rounds
            << " iterations without improvement:\nUnable to determine, whether the complex is a ball or a sphere.\n";
    }

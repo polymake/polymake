@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,31 +22,30 @@
 namespace polymake { namespace polytope {
 
 template <typename Matrix1, typename Matrix2, typename Scalar>
-Set<int> non_vertices(const GenericMatrix<Matrix1,Scalar>& points, const GenericMatrix<Matrix2,Scalar>& verts)
+Set<Int> non_vertices(const GenericMatrix<Matrix1, Scalar>& points, const GenericMatrix<Matrix2, Scalar>& verts)
 {
-  const int n_verts=verts.rows();
-  const int n_points=points.rows();
+  const Int n_verts = verts.rows();
+  const Int n_points = points.rows();
 
-  Set<int> non_vertices;
+  Set<Int> non_vertices;
 
   if (3*n_verts<n_points) {
-    non_vertices=sequence(0,n_points);
-    for (int i=0; i<n_verts; ++i) {
-      for (int j=0; j<n_points; ++j) 
-        if (verts.row(i)==points.row(j)) {
+    non_vertices = sequence(0, n_points);
+    for (Int i = 0; i < n_verts; ++i) {
+      for (Int j = 0; j < n_points; ++j) 
+        if (verts.row(i) == points.row(j)) {
           non_vertices.erase(j);
           break;
         }
     }
-  }
-  else {
-    for (int i=0; i<n_points; ++i) {
-      bool found=false;
-      for (int j=0; j<n_verts; ++j) 
-        if (verts.row(j)==points.row(i)) {
-          found=true;
-          break;
-        }
+  } else {
+    for (Int i = 0; i < n_points; ++i) {
+      bool found = false;
+      for (Int j = 0; j < n_verts; ++j) 
+         if (verts.row(j) == points.row(i)) {
+            found = true;
+            break;
+         }
       if (!found) non_vertices.push_back(i); 
     }
   }

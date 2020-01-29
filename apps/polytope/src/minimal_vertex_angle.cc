@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,30 +23,30 @@
 
 namespace polymake { namespace polytope {
 
-double minimal_vertex_angle(perl::Object p)
+double minimal_vertex_angle(BigObject p)
 {
    const Matrix<double> V=p.give("VERTICES");
    const Vector<double> origin=p.give("VERTEX_BARYCENTER");   // must be affine
-   const int d = origin.dim();
-  
+   const Int d = origin.dim();
+
    SparseMatrix<double> tau=unit_matrix<double>(d);
    tau[0].slice(range_from(1)) = -origin.slice(range_from(1));
-   perl::Object spherical_p=transform<double>(p, tau, false);
+   BigObject spherical_p=transform<double>(p, tau, false);
    Matrix<double> spherical_V=spherical_p.give("VERTICES");
    spherical_V=spherical_V.minor(All,range(1,d-1));
-  
-   const int n=spherical_V.rows();
-   for (int i=0; i<n; ++i)
-      spherical_V[i]/=sqrt(sqr(spherical_V[i]));
-  
-   double min_angle=2.0*acos(0.0); // pi
-  
-   for (int i=0; i<n; ++i)
-      for (int j=i+1; j<n; ++j) {
-         double phi=acos(V[i]*V[j]); // phi==0 means opposite
-         if (0<phi && phi<min_angle) min_angle=phi; 
+
+   const Int n = spherical_V.rows();
+   for (Int i = 0; i < n; ++i)
+      spherical_V[i] /= sqrt(sqr(spherical_V[i]));
+
+   double min_angle = M_PI;
+
+   for (Int i = 0; i < n; ++i)
+      for (Int j = i+1; j < n; ++j) {
+         double phi = acos(V[i]*V[j]); // phi==0 means opposite
+         if (0 < phi && phi < min_angle) min_angle = phi; 
       }
-  
+
    return min_angle;
 }
 

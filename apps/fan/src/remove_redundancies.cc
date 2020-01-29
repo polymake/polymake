@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,42 +26,42 @@
 namespace polymake { namespace fan {
 
 template <typename Coord>
-void remove_redundancies(perl::Object f)
+void remove_redundancies(BigObject f)
 {
-   const int ambientDim = f.give("FAN_AMBIENT_DIM");
+   const Int ambientDim = f.give("FAN_AMBIENT_DIM");
    const Matrix<Coord> i_rays = f.give("INPUT_RAYS");
    const IncidenceMatrix<> i_cones = f.give("INPUT_CONES");
-   const int n_i_cones=i_cones.rows();
-   perl::ObjectType t("Cone", mlist<Coord>());
+   const Int n_i_cones=i_cones.rows();
+   BigObjectType t("Cone", mlist<Coord>());
 
    Matrix<Coord> lineality_space;
    const Matrix<Coord> lin = f.lookup("INPUT_LINEALITY");
    {
-      perl::Object cone(t);
+      BigObject cone(t);
       cone.take("INPUT_RAYS") << i_rays.minor(i_cones.row(0), All);
       cone.take("INPUT_LINEALITY") << lin;
       cone.give("LINEALITY_SPACE") >> lineality_space;
    }
-   hash_map<Vector<Coord>, int> rays;
+   hash_map<Vector<Coord>, Int> rays;
    FacetList max_cones;
-   int n_rays=0;
-   for (int i=0; i<n_i_cones; ++i) {
-      perl::Object cone(t);
+   Int n_rays = 0;
+   for (Int i = 0; i < n_i_cones; ++i) {
+      BigObject cone(t);
       cone.take("INPUT_RAYS")<<i_rays.minor(i_cones.row(i),All);
       cone.take("INPUT_LINEALITY")<<lineality_space;
       const Matrix<Coord> c_rays=cone.give("RAYS");
-      Set<int> ray_indices;
-      for (auto r=entire(rows(c_rays)); !r.at_end(); ++r) {
+      Set<Int> ray_indices;
+      for (auto r = entire(rows(c_rays)); !r.at_end(); ++r) {
          const Vector<Rational> the_ray(*r);
-         typename hash_map<Vector<Coord>,int >::iterator r_iti=rays.find(the_ray);
-         if (r_iti==rays.end()) {
-            bool found=false;
-            for (auto rr=entire(rays); !found && !rr.at_end(); ++rr) {
+         auto r_iti = rays.find(the_ray);
+         if (r_iti == rays.end()) {
+            bool found = false;
+            for (auto rr = entire(rays); !found && !rr.at_end(); ++rr) {
               try {
-                const Vector<Coord> v=lin_solve(T((rr->first)/lineality_space),the_ray);
-                if (v[0]>0) {
+                const Vector<Coord> v = lin_solve(T((rr->first)/lineality_space),the_ray);
+                if (v[0] > 0) {
                   ray_indices.insert(rr->second);
-                  found=true;
+                  found = true;
                 }
               }catch(const infeasible&){}
             }

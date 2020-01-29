@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,20 +27,20 @@ namespace polymake { namespace topaz {
 
 namespace {
 
-void convert_labels(const Array<std::string>& string_labels, Array<Set<Set<int>>>& labels_as_set)
+void convert_labels(const Array<std::string>& string_labels, Array<Set<Set<Int>>>& labels_as_set)
 {
    auto lsit = entire(labels_as_set);
    for (auto lit = entire(string_labels); !lit.at_end(); ++lit) {
       std::istringstream is(*lit);
       is.ignore(1); // "{"
-      Set<Set<int>> labels;
+      Set<Set<Int>> labels;
       while (is.good() && is.peek() != '}') {
          is.ignore(1); // '{'
          while (is.good() && is.peek() != '}') {
-            Set<int> new_set;
+            Set<Int> new_set;
             while (is.good() && is.peek() != '}') {
                if (is.peek() == '{') is.ignore(1); 
-               int i;
+               Int i;
                is >> i;
                new_set += i;
                if (is.peek() == ',' || is.peek() == ' ') is.ignore(1); 
@@ -54,9 +54,9 @@ void convert_labels(const Array<std::string>& string_labels, Array<Set<Set<int>>
    }
 }
 
-bool on_boundary (const Set<Set<int>>& label, int d, const IncidenceMatrix<>& VIF)
+bool on_boundary(const Set<Set<Int>>& label, Int d, const IncidenceMatrix<>& VIF)
 {
-   Set<int> face;
+   Set<Int> face;
    for (auto lit = entire(label); !lit.at_end(); ++lit)
       face += *lit;
    for (auto rit = entire(rows(VIF)); !rit.at_end(); ++rit) 
@@ -64,7 +64,7 @@ bool on_boundary (const Set<Set<int>>& label, int d, const IncidenceMatrix<>& VI
    return false;
 }
 
-void identify_labels(int d, const group::PermlibGroup& identification_group, const IncidenceMatrix<>& VIF, Array<Set<Set<int>>>& labels_as_set)
+void identify_labels(Int d, const group::PermlibGroup& identification_group, const IncidenceMatrix<>& VIF, Array<Set<Set<Int>>>& labels_as_set)
 {
    for (auto lit = entire(labels_as_set); !lit.at_end(); ++lit)
       if (on_boundary(*lit, d, VIF)) 
@@ -73,24 +73,24 @@ void identify_labels(int d, const group::PermlibGroup& identification_group, con
 
 } // end anonymous namespace
 
-perl::Object bs2quotient(perl::Object p, perl::Object bs)
+BigObject bs2quotient(BigObject p, BigObject bs)
 {
-   const Array<Array<int>> generators = p.give("QUOTIENT_SPACE.IDENTIFICATION_ACTION.GENERATORS");
+   const Array<Array<Int>> generators = p.give("QUOTIENT_SPACE.IDENTIFICATION_ACTION.GENERATORS");
    const group::PermlibGroup identification_group(generators);
    const IncidenceMatrix<> VIF = p.give("VERTICES_IN_FACETS");
    const Array<std::string> labels = bs.give("VERTEX_LABELS");
-   const int n = labels.size();
-   const Array<Set<int>> facets = bs.give("FACETS");
+   const Int n = labels.size();
+   const Array<Set<Int>> facets = bs.give("FACETS");
    if (!facets.size() || !facets[0].size()) throw std::runtime_error("Got no facets");
-   const int d = facets[0].size() - 1;
+   const Int d = facets[0].size()-1;
    
-   Array<Set<Set<int>>> labels_as_set(n);
+   Array<Set<Set<Int>>> labels_as_set(n);
    convert_labels(labels, labels_as_set);
    identify_labels(d, identification_group, VIF, labels_as_set);
 
    std::vector<std::string> identified_labels;
-   Map<Set<Set<int>>,int> index_of;
-   int index(0);
+   Map<Set<Set<Int>>, Int> index_of;
+   Int index = 0;
    std::ostringstream os;
    for (const auto& lset : labels_as_set) {
       if (!index_of.contains(lset)) {
@@ -101,15 +101,15 @@ perl::Object bs2quotient(perl::Object p, perl::Object bs)
       }
    }
 
-   Set<Set<int>> identified_facets;
+   Set<Set<Int>> identified_facets;
    for (const auto& f : facets) {
-      Set<int> new_facet;
+      Set<Int> new_facet;
       for (const auto& s : f)
          new_facet += index_of[labels_as_set[s]];
       identified_facets += new_facet;
    }
 
-   perl::Object q("topaz::SimplicialComplex");
+   BigObject q("topaz::SimplicialComplex");
    q.take("FACETS") << identified_facets;
    q.take("VERTEX_LABELS") << identified_labels;
    q.take("PURE") << true;

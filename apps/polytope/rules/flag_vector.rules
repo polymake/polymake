@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -55,12 +55,12 @@ sub alternating_sum_and_sign {
 }
 
 rule F_VECTOR, F2_VECTOR : FLAG_VECTOR, COMBINATORIAL_DIM {
-   my $d=$this->COMBINATORIAL_DIM;
-   if ( $d == 0 ) {
+   my $d = $this->COMBINATORIAL_DIM;
+   if ($d == 0) {
      $this->F_VECTOR = new Vector<Integer>();
      $this->F2_VECTOR = new Matrix<Integer>();
    } else {
-     my @Fib=fibonacci($d+1);
+     my @Fib = fibonacci_numbers($d+1);
      my $flag_vector=$this->FLAG_VECTOR;
      my @f_vector= map { $flag_vector->[$Fib[$_+1]] } (0..$d-2);
      my ($as,$sgn)=alternating_sum_and_sign(@f_vector); # last f-vector entry determined by Euler's equation
@@ -129,14 +129,14 @@ sub recursive_n_flags {
 # @param Int type ... flag type
 # @return Int
 user_method N_FLAGS {
-   my $self=shift;
-   my @set=num_sorted_uniq(sort {$b <=> $a} @_);        # in descending order
+   my $self = shift;
+   my @set = num_sorted_uniq(sort {$b <=> $a} @_);        # in descending order
    if (@set) {
       if ($set[0] >= $self->COMBINATORIAL_DIM  ||  $set[-1] < 0) {
          die "N_FLAGS: set elements out of range (0..", $self->COMBINATORIAL_DIM-1, ")\n";
       }
-      my @Fib=fibonacci($self->COMBINATORIAL_DIM+1);
-      return recursive_n_flags($self->COMBINATORIAL_DIM,\@Fib,$self->FLAG_VECTOR,@set);
+      my @Fib = fibonacci_numbers($self->COMBINATORIAL_DIM+1);
+      return recursive_n_flags($self->COMBINATORIAL_DIM, \@Fib, $self->FLAG_VECTOR, @set);
    }
    return 1;                    # f_(emptyset) == 1
 }
@@ -319,8 +319,8 @@ sub monomial_string {
 # Prettily print the cd-index given in [[CD_INDEX_COEFFICIENTS]]
 # @return String
 user_method CD_INDEX() {
-   my ($self)=@_;
-   my @Fib=fibonacci($self->COMBINATORIAL_DIM+1);
+   my ($self) = @_;
+   my @Fib = fibonacci_numbers($self->COMBINATORIAL_DIM+1);
    my $cdindex="";
    my $k=0;
    foreach (@{$self->CD_INDEX_COEFFICIENTS}) {

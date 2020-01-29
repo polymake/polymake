@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,22 +26,22 @@
 
 namespace polymake { namespace polytope {
 
-void facet_vertex_distance_graph(Graph<>& G, Vector<int>& C, const SparseMatrix<int>& D)
+void facet_vertex_distance_graph(Graph<>& G, Vector<Int>& C, const SparseMatrix<Int>& D)
 {
-   int m = D.cols();
+   Int m = D.cols();
    G.resize(m+D.rows());
-   C = ones_vector<int>(m)|zero_vector<int>(D.rows());
+   C = ones_vector<Int>(m) | zero_vector<Int>(D.rows());
       
    for (auto r = entire(rows(D)); !r.at_end(); ++r)
       for (auto c = entire(*r); !c.at_end(); ++c) {
-         int n = G.add_node();
+         const Int n = G.add_node();
          G.edge(m+r.index(),n);
          G.edge(c.index(),n);
          C |= D[r.index()][c.index()];
       }
 }
     
-bool lattice_isomorphic_smooth_polytopes(perl::Object p1, perl::Object p2)
+bool lattice_isomorphic_smooth_polytopes(BigObject p1, BigObject p2)
 {
    if ( !p1.give("LATTICE") || !p2.give("LATTICE") ) 
       throw std::runtime_error("lattice isomorphism test: polytopes must be lattice polytopes");
@@ -49,21 +49,21 @@ bool lattice_isomorphic_smooth_polytopes(perl::Object p1, perl::Object p2)
    if ( !p1.give("SMOOTH") || !p2.give("SMOOTH") ) 
       throw std::runtime_error("lattice isomorphism test: polytopes must be smooth");
       
-   Matrix<int> D1 = p1.give("FACET_VERTEX_LATTICE_DISTANCES");
-   Matrix<int> D2 = p2.give("FACET_VERTEX_LATTICE_DISTANCES");
+   Matrix<Int> D1 = p1.give("FACET_VERTEX_LATTICE_DISTANCES");
+   Matrix<Int> D2 = p2.give("FACET_VERTEX_LATTICE_DISTANCES");
 
    if ( D1.rows() != D2.rows() || D1.cols() != D2.cols() ) 
       return false;
 
    Graph<> G1, G2;
-   Vector<int> C1, C2;
+   Vector<Int> C1, C2;
    facet_vertex_distance_graph(G1,C1,D1);
    facet_vertex_distance_graph(G2,C2,D2);
       
    return graph::isomorphic(G1,C1,G2,C2);
 }
 
-Array< Array<int> > lattice_automorphisms_smooth_polytope(perl::Object p)
+Array<Array<Int>> lattice_automorphisms_smooth_polytope(BigObject p)
 {
    if ( !p.give("LATTICE") ) 
       throw std::runtime_error("lattice isomorphism test: polytopes must be lattice polytopes");
@@ -71,14 +71,14 @@ Array< Array<int> > lattice_automorphisms_smooth_polytope(perl::Object p)
    if ( !p.give("SMOOTH") ) 
       throw std::runtime_error("lattice isomorphism test: polytopes must be smooth");
       
-   Matrix<int> D = p.give("FACET_VERTEX_LATTICE_DISTANCES");
-   int n = p.give("N_VERTICES");
+   Matrix<Int> D = p.give("FACET_VERTEX_LATTICE_DISTANCES");
+   const Int n = p.give("N_VERTICES");
 
    Graph<> G;
-   Vector<int> C;
+   Vector<Int> C;
    facet_vertex_distance_graph(G,C,D);
 
-   Array<Array<int> > A = graph::automorphisms(G,C);
+   Array<Array<Int>> A = graph::automorphisms(G,C);
    for (auto a = entire(A); !a.at_end(); ++a)
       a->resize(n);
 

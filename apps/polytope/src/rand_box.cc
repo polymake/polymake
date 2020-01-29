@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,23 +21,23 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object rand_box(int d, int n, int b, perl::OptionSet options)
+BigObject rand_box(Int d, Int n, Int b, OptionSet options)
 {
    if (d<1 || n<1 || b<1) throw std::runtime_error("rand_box: 1 <= dim, #POINTS, b");
 
    const RandomSeed seed(options["seed"]);
    UniformlyRandom<Integer> random(seed);
 
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.set_description() << "Produced by rand_box for b=" << b << ", seed=" << seed.get() << endl;
 
    p.take("CONE_AMBIENT_DIM") << d+1;
    Matrix<Rational> V(n,d+1);
    V.col(0).fill(1);
    ++b;
-   for (int i=0; i<n; ++i)
-      for (int k=1; k<=d; ++k)
-         V(i,k)=random.get()%b;
+   for (Int i = 0; i < n; ++i)
+      for (Int k = 1; k <= d; ++k)
+         V(i,k) = random.get()%b;
 
    p.take("POINTS") << V;
    return p;

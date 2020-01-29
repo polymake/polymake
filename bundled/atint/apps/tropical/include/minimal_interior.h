@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -52,7 +52,7 @@ IncidenceMatrix<> minimal_interior(const Matrix<Rational> &vertices,
  * @param Cycle<Addition> refining_cycle
  * @return IncidenceMatrix<>
  */
-IncidenceMatrix<> refined_local_cones(perl::Object localized_cycle, perl::Object refining_cycle);
+IncidenceMatrix<> refined_local_cones(BigObject localized_cycle, BigObject refining_cycle);
 
 } }
 

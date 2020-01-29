@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,10 +21,12 @@
 
 namespace polymake { namespace topaz {
 
-perl::Object
-multi_associahedron_sphere(int n, int k, perl::OptionSet options)
+using namespace multi_associahedron_sphere_utils;
+
+BigObject
+multi_associahedron_sphere(Int n, Int k, OptionSet options)
 {
-   const int 
+   const Int 
       m  (n*(n-1)/2-n*k), // the number of vertices = relevant diagonals
       nu (n-2*k-1),       // the complexity measure
       dim(k*nu-1);        // the dimension of the sphere
@@ -42,13 +44,13 @@ multi_associahedron_sphere(int n, int k, perl::OptionSet options)
    prepare_diagonal_data(n, k, index_of, diagonals, labels);
    assert(index_of.size() == size_t(m));
    
-   perl::Object ind_Aut("group::Group");
-   perl::Object induced_action("group::PermutationAction");
-   Array<Array<int>> igens;
+   BigObject ind_Aut("group::Group");
+   BigObject induced_action("group::PermutationAction");
+   Array<Array<Int>> igens;
    
    if (nu>1) {
-      perl::Object Aut = group::dihedral_group_impl(2*n);
-      const Array<Array<int>> gens = Aut.give("PERMUTATION_ACTION.GENERATORS");
+      BigObject Aut = group::dihedral_group_impl(2*n);
+      const Array<Array<Int>> gens = Aut.give("PERMUTATION_ACTION.GENERATORS");
       igens = induced_action_gens_impl(gens, diagonals, index_of);
    
       induced_action.set_description("action of D_" + std::to_string(2*n)
@@ -80,7 +82,7 @@ multi_associahedron_sphere(int n, int k, perl::OptionSet options)
    induced_action.take("GENERATORS") << igens;
    ind_Aut.take("PERMUTATION_ACTION") << induced_action;
       
-   hash_set<Set<int>> lower_rep_level, k_plus_1_crossings;
+   hash_set<Set<Int>> lower_rep_level, k_plus_1_crossings;
 
    if (!no_crossings || !no_facets) {
       // accumulate all k-cliques, to prepare for calculating the (k+1)-crossings and the f-vector
@@ -91,34 +93,34 @@ multi_associahedron_sphere(int n, int k, perl::OptionSet options)
    if (!no_crossings) {
       // now calculate the (k+1)-crossings
       for (const auto& c : lower_rep_level)
-         for (int d_index=0; d_index < m; ++d_index)
+         for (Int d_index = 0; d_index < m; ++d_index)
             if (!c.contains(d_index) && contains_new_k_plus_1_crossing(d_index, k, c, diagonals))
-               k_plus_1_crossings += group::unordered_orbit<group::on_container>(igens, Set<int>(c+d_index));
+               k_plus_1_crossings += group::unordered_orbit<group::on_container>(igens, Set<Int>(c+d_index));
    }
    
-   Array<int> f_vector(dim+1);
+   Array<Int> f_vector(dim+1);
 
    if (!no_facets) {
       // the complex is k-neighborly, so we know part of the f-vector
-      Array<int>::iterator fvec_it = f_vector.begin();
+      auto fvec_it = f_vector.begin();
       *fvec_it++ = m;
-      for (int kk=2; kk<=k; ++kk)
-         *fvec_it++ = convert_to<int>(Integer::binom(m,kk));
+      for (Int kk = 2; kk <= k; ++kk)
+         *fvec_it++ = Int(Integer::binom(m,kk));
 
       // build up the face lattice in layers, starting from representatives of the k-cliques
-      for (int n_vertices = k+1; n_vertices <= dim+1; ++n_vertices) {
-         hash_set<Set<int>> upper_rep_level;
+      for (Int n_vertices = k+1; n_vertices <= dim+1; ++n_vertices) {
+         hash_set<Set<Int>> upper_rep_level;
          for (const auto& c : lower_rep_level)
-            for (int d_index=0; d_index < m; ++d_index)
+            for (Int d_index = 0; d_index < m; ++d_index)
                if (!c.contains(d_index) && !contains_new_k_plus_1_crossing(d_index, k, c, diagonals))
-                  upper_rep_level += group::unordered_orbit<group::on_container>(igens, Set<int>(c+d_index));
+                  upper_rep_level += group::unordered_orbit<group::on_container>(igens, Set<Int>(c+d_index));
 
          *fvec_it++ = upper_rep_level.size();
          lower_rep_level = upper_rep_level;
       }
    }
    
-   perl::Object s("SimplicialComplex");
+   BigObject s("SimplicialComplex");
    s.set_description() << "Simplicial complex of " << k << "-triangulations of a convex " << n << "-gon" << endl;
    s.take("N_VERTICES") << m;
    s.take("VERTEX_LABELS") << labels;
@@ -128,11 +130,11 @@ multi_associahedron_sphere(int n, int k, perl::OptionSet options)
    s.take("GROUP") << ind_Aut;
 
    if (!no_crossings) {
-      s.attach("K_PLUS_1_CROSSINGS") << Set<Set<int>>(entire(k_plus_1_crossings));
+      s.attach("K_PLUS_1_CROSSINGS") << Set<Set<Int>>(entire(k_plus_1_crossings));
    }
    
    if (!no_facets) {
-      s.take("FACETS") << Set<Set<int>>(entire(lower_rep_level));
+      s.take("FACETS") << Set<Set<Int>>(entire(lower_rep_level));
       s.take("F_VECTOR") << f_vector;
    }
    

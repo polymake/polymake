@@ -1,9 +1,9 @@
 {"app": "common",
  "inst": [
-  {"pkg": "Polymake::common::EdgeHashMap"},
+  {"guard_name": "CORE_WRAPPERS_Graph", "include": ["polymake/Graph.h"], "pkg": "Polymake::common::EdgeHashMap", "wrapper_file": "include/core-wrappers/polymake/Graph.h"},
   {"class": "EdgeHashMap<Directed, bool>", "include": ["polymake/Graph.h"], "pkg": "Polymake::common::EdgeHashMap_A_Directed_I_Bool_Z"},
   {"args": ["EdgeHashMap<Directed, bool>", "perl::Canned<const Graph<Directed>&>"], "include": ["polymake/Graph.h"], "op": "new", "sig": "new.X"},
-  {"args": ["perl::Canned<EdgeHashMap<Directed, bool>&>", "int"], "include": ["polymake/Graph.h"], "op": "brk", "ret": "lvalue", "sig": "brk:O.X2.X"},
-  {"args": ["perl::AnchorArg<perl::Canned<const EdgeHashMap<Directed, bool>&>>", "int"], "func": "pm::perl::find_element", "include": ["polymake/Graph.h", "polymake/perl/assoc.h"], "sig": "assoc_find.X8.X"},
+  {"args": ["perl::Canned<EdgeHashMap<Directed, bool>&>", "Int"], "include": ["polymake/Graph.h"], "op": "brk", "ret": "lvalue", "sig": "brk:O.X2.X"},
+  {"args": ["perl::AnchorArg<perl::Canned<const EdgeHashMap<Directed, bool>&>>", "Int"], "func": "pm::perl::find_element", "include": ["polymake/Graph.h", "polymake/perl/assoc.h"], "sig": "assoc_find.X8.X"},
  null ],
 "version": 3}

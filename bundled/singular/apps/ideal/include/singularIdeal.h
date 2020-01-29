@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -62,8 +62,8 @@ public:
 
    virtual Array<Polynomial<>> polynomials() const = 0;
    
-   static SingularIdeal_wrap* create(const Array<Polynomial<>>& gens, const Vector<int>& order);
-   static SingularIdeal_wrap* create(const Array<Polynomial<>>& gens, const Matrix<int>& order);
+   static SingularIdeal_wrap* create(const Array<Polynomial<>>& gens, const Vector<Int>& order);
+   static SingularIdeal_wrap* create(const Array<Polynomial<>>& gens, const Matrix<Int>& order);
    static SingularIdeal_wrap* create(const Array<Polynomial<>>& gens, const std::string& order);
 
 //   static SingularIdeal_wrap* quotient(const SingularIdeal_wrap* I, const SingularIdeal_wrap* J);
@@ -131,9 +131,9 @@ public:
       return SingularIdeal(singIdeal->saturation(rhs));
    }
 
-   perl::ListReturn primary_decomposition() const {
+   ListReturn primary_decomposition() const {
       Array<SingularIdeal_wrap*> pd = singIdeal->primary_decomposition();
-      perl::ListReturn result;
+      ListReturn result;
       for (auto id = entire(pd); !id.at_end(); ++id) {
          result << SingularIdeal(*id);
       }
@@ -144,7 +144,7 @@ public:
       return singIdeal->polynomials();
    }
    
-   friend perl::Object quotient(perl::Object I, perl::Object J);
+   friend BigObject quotient(BigObject I, BigObject J);
 };
 /*template<>
 class TermOrder<Matrix<Integer> >{

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -87,8 +87,7 @@ orbit(const Array<Perm>& generators,
 namespace {
 
 inline
-int next_not_in_set(const Set<int>& the_set,
-		    int initial_value)
+Int next_not_in_set(const Set<Int>& the_set, Int initial_value)
 {
    if (!the_set.size() || initial_value >= *(the_set.rbegin())) return initial_value+1;
    while(the_set.contains(++initial_value));
@@ -99,19 +98,19 @@ int next_not_in_set(const Set<int>& the_set,
 
 /// Calculates a set of orbit representatives for a permutation action
 template <typename GeneratorType>
-Array<int>
+Array<Int>
 orbit_representatives(const Array<GeneratorType>& generators)
 {
-   const int degree = generators[0].size();
-   Set<int> seen_elements;
-   std::vector<int> reps;
-   int rep(0);
-   while (rep<degree) {
+   const Int degree = generators[0].size();
+   Set<Int> seen_elements;
+   std::vector<Int> reps;
+   Int rep = 0;
+   while (rep < degree) {
       reps.push_back(rep);
-      seen_elements += orbit<on_elements, GeneratorType, int, Set<int>>(generators, rep);
+      seen_elements += orbit<on_elements, GeneratorType, Int, Set<Int>>(generators, rep);
       rep = next_not_in_set(seen_elements, rep);
    }
-   return Array<int>{reps};
+   return Array<Int>{reps};
 }
 
 }

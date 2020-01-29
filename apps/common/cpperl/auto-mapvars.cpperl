@@ -1,6 +1,6 @@
 {"app": "common",
  "inst": [
-  {"args": ["perl::Canned<const Polynomial<Rational, int>&>", "perl::TryCanned<const Array<int>>", "void"], "func": "mapvars", "include": ["polymake/Array.h", "polymake/Polynomial.h", "polymake/Rational.h"], "kind": "meth", "sig": "mapvars:M.X.x"},
-  {"args": ["perl::Canned<const Polynomial<Rational, int>&>", "perl::Canned<const pm::Series<int, true>&>", "void"], "func": "mapvars", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/Set.h"], "kind": "meth", "sig": "mapvars:M.X.x"},
+  {"args": ["perl::Canned<const Polynomial<Rational, Int>&>", "perl::TryCanned<const Array<Int>>", "void"], "func": "mapvars", "include": ["polymake/Array.h", "polymake/Polynomial.h", "polymake/Rational.h"], "kind": "meth", "sig": "mapvars:M.X.x"},
+  {"args": ["perl::Canned<const Polynomial<Rational, Int>&>", "perl::Canned<const pm::Series<Int, true>&>", "void"], "func": "mapvars", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/Set.h"], "kind": "meth", "sig": "mapvars:M.X.x"},
  null ],
 "version": 3}

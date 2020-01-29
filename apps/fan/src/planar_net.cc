@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -47,8 +47,8 @@ namespace polymake { namespace fan {
 namespace {
    constexpr double epsilon = 1e-10;
 
-   typedef std::pair<int,int> directed_edge;
-   typedef std::pair<int,int> vertex_facet_pair;
+   typedef std::pair<Int, Int> directed_edge;
+   typedef std::pair<Int, Int> vertex_facet_pair;
 
    // a tree is stored as a sequence of directed edges; works primally and dually
    typedef std::list<directed_edge> tree_type;
@@ -56,7 +56,8 @@ namespace {
    // EXACT COMPUTATIONS (if Coord is an exact type)
 
    template <typename Coord>
-   Vector<Coord> barycentric(const Vector<Coord>& x, const Matrix<Coord>& W) {
+   Vector<Coord> barycentric(const Vector<Coord>& x, const Matrix<Coord>& W)
+   {
       /* x: point in d+1 homogeneous coordinates
          W: dx(d+1)-matrix of d points in homogeneous coordinates (linearly independent)
          leading 1 used for homogenization in both cases
@@ -66,14 +67,15 @@ namespace {
       // FIXME #867 copy operation because lin_solve<double> needs Matrix and not GenericMatrix
       return lin_solve(Matrix<Coord>(T(W)),x);
    }
-   
+
    // find the orientation of the pair (a,b) induced by the cycle
    // a and b must be adjacent nodes in the cycle;
    // in the end the index points to a
-   void determine_directed_edge(int& a, int& b, const Array<int>& cycle, int& index) {
+   void determine_directed_edge(Int& a, Int& b, const Array<Int>& cycle, Int& index)
+   {
       index=0;
       for ( ; cycle[index] != a; ++index); // now: cycle[index] == a
-      int j=index+1;
+      Int j = index+1;
       if ((j < cycle.size() && cycle[j] != b) || (j == cycle.size() && cycle[0] != b)) {
          std::swap(a,b);
          if (index > 0) {
@@ -100,7 +102,7 @@ namespace {
    }
 
    // counter clock-wise orientation of three affine points
-   int ccw(const Vector<double>& a, const Vector<double>& b, const Vector<double>& c)
+   Int ccw(const Vector<double>& a, const Vector<double>& b, const Vector<double>& c)
    {
       const double det_by_laplace=(b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
       if (fabs(det_by_laplace) < epsilon) {
@@ -116,16 +118,16 @@ namespace {
    }
 
 #if 0  // unused now
-   bool point_in_facet(const Vector<double>& point, const int facet,
-                       const Array<Array<int>>& vif,
+   bool point_in_facet(const Vector<double>& point, const Int facet,
+                       const Array<Array<Int>>& vif,
                        const Matrix<double>& net_vertices,
-                       const Map<vertex_facet_pair,int>& vf_map)
+                       const Map<vertex_facet_pair,Int>& vf_map)
    {
 #if PLANAR_NET_DEBUG > 2
       cerr << " [point=" << point << " in facet " << facet<< ":";
 #endif
       auto iv=entire(vif[facet]);
-      const int first_vertex = vf_map[vertex_facet_pair(*iv,facet)];
+      const Int first_vertex = vf_map[vertex_facet_pair(*iv,facet)];
       Vector<double> pvh = net_vertices[first_vertex];
       Vector<double> nvh;
       // check each edge in facet
@@ -159,8 +161,8 @@ namespace {
    }
 #endif
 
-   bool point_versus_edges_of_facet(const Vector<double>& point, const Vector<double>& previous_point, const int facet,
-                                    const Array< Array<int> >& vif, const Matrix<double>& net_vertices, const Map<vertex_facet_pair,int>& vf_map)
+   bool point_versus_edges_of_facet(const Vector<double>& point, const Vector<double>& previous_point, const Int facet,
+                                    const Array< Array<Int>>& vif, const Matrix<double>& net_vertices, const Map<vertex_facet_pair, Int>& vf_map)
    {
   
 #if PLANAR_NET_DEBUG > 2
@@ -188,8 +190,8 @@ namespace {
    }
    
    template <typename Coord>
-   int overlap(const Vector<double>& point, const Vector<double>& previous_point,
-               const Array< Array<int> >& vif, const Set<int>& marked, const Matrix<double>& net_vertices, const Map<vertex_facet_pair,int>& vf_map)
+   Int overlap(const Vector<double>& point, const Vector<double>& previous_point,
+               const Array< Array<Int>>& vif, const Set<Int>& marked, const Matrix<double>& net_vertices, const Map<vertex_facet_pair, Int>& vf_map)
    {
       /* Check each facet h in the layout so far. */
       for (auto h=entire(marked); !h.at_end(); ++h) {
@@ -206,24 +208,24 @@ namespace {
    }
 
    template <typename Coord>
-   bool layout_one_facet(const int f, // index of facet to be processed
-                         const int ja, const int jb, // (indices of) points in the plane where layout starts
-                         const std::list<int>& vertex_cycle, // indices of vertices on the facet in cyclic order starting at a and b
+   bool layout_one_facet(const Int f, // index of facet to be processed
+                         const Int ja, const Int jb, // (indices of) points in the plane where layout starts
+                         const std::list<Int>& vertex_cycle, // indices of vertices on the facet in cyclic order starting at a and b
                          const Matrix<Coord>& V, // vertices of the 3-polytope
-                         const Array< Array<int> >& vif, // vertices in facets, cyclically ordered
-                         Set<int>& marked, // facets already layed out; f will be added if successful
-                         int& cv, // number of vertices of the net already computed
+                         const Array< Array<Int> >& vif, // vertices in facets, cyclically ordered
+                         Set<Int>& marked, // facets already layed out; f will be added if successful
+                         Int& cv, // number of vertices of the net already computed
                          Matrix<double>& net_vertices, // vertices of the net
-                         Array< Set<int> >& net_facets, // facets of the net
-                         Map<vertex_facet_pair,int>& vf_map, // which vertex on which facet ends up where
-                         Array<int>& vf_map_inv // inverse of the previous
+                         Array<Set<Int>>& net_facets, // facets of the net
+                         Map<vertex_facet_pair, Int>& vf_map, // which vertex on which facet ends up where
+                         Array<Int>& vf_map_inv // inverse of the previous
                          ) {
-      std::list<int>::const_iterator vc_it=vertex_cycle.begin();
+      std::list<Int>::const_iterator vc_it = vertex_cycle.begin();
 
-      const int ix=*vc_it; ++vc_it;
-      const int iy=*vc_it; ++vc_it;
-      const int iz=*vc_it;
-      std::list<int> FirstThreeOnFacet;
+      const Int ix = *vc_it; ++vc_it;
+      const Int iy = *vc_it; ++vc_it;
+      const Int iz = *vc_it;
+      std::list<Int> FirstThreeOnFacet;
       FirstThreeOnFacet.push_back(ix); FirstThreeOnFacet.push_back(iy); FirstThreeOnFacet.push_back(iz);
 
       Vector<double> // dehomogenize and subtract
@@ -258,13 +260,13 @@ namespace {
            << " alpha=" << alpha << " c=" << c << endl;
 #endif
 
-      const int initial_cv=cv; // remember this for possible rollback later
+      const Int initial_cv = cv; // remember this for possible rollback later
 
-      Set<int> this_net_facet; this_net_facet += ja; this_net_facet += jb;
+      Set<Int> this_net_facet{ja, jb};
       Vector<double> previous_vertex(net_vertices[jb]); // right vertex on the connecting edge
 
-      while (1) {
-         int idx;
+      while (true) {
+         Int idx;
          Vector<double> next_vertex;
 
          if (vc_it != vertex_cycle.end()) {
@@ -283,11 +285,11 @@ namespace {
 
          /* If some facet contains the point next_vertex in its interior or in its boundary we need a rollback.
             Negative return value signals no overlap, otherwise index of overlapping facet. */
-         const int h=overlap<Coord>(next_vertex,previous_vertex,vif,marked,net_vertices,vf_map);
-         if (h>=0) {
+         const Int h = overlap<Coord>(next_vertex, previous_vertex, vif, marked, net_vertices, vf_map);
+         if (h >= 0) {
 #if PLANAR_NET_DEBUG > 1
             cerr << " next_vertex=" << next_vertex << " interferes with facet " << h << endl;
-            const Array<int>& vif_h=vif[h];
+            const Array<Int>& vif_h = vif[h];
             for (auto v=entire(vif_h); !v.at_end(); ++v)
                cerr << " " << *v << "/" << vf_map[vertex_facet_pair(*v,h)] << ": " << net_vertices[vf_map[vertex_facet_pair(*v,h)]] << endl;
 #endif
@@ -312,22 +314,24 @@ namespace {
    }
 
    template <typename Coord>
-   void initialize_root_facet(const int f, // this will be the root facet
-                              const int ia, const int ib,
-                              const int ja, const int jb, // (indices of) points in the plane where layout starts
-                              std::list<int>& vertex_cycle, // indices of vertices on the facet in cyclic order starting at a and b
+   void initialize_root_facet(const Int f, // this will be the root facet
+                              const Int ia, const Int ib,
+                              const Int ja, const Int jb, // (indices of) points in the plane where layout starts
+                              std::list<Int>& vertex_cycle, // indices of vertices on the facet in cyclic order starting at a and b
                               const Matrix<Coord>& V, // vertices of the 3-polytope
-                              const Array< Array<int> >& vif, // vertices in facets, cyclically ordered
-                              Set<int>& marked, // facets already layed out; f will be added if successful
-                              int& cv, // number of vertices of the net already computed
+                              const Array<Array<Int>>& vif, // vertices in facets, cyclically ordered
+                              Set<Int>& marked, // facets already layed out; f will be added if successful
+                              Int& cv, // number of vertices of the net already computed
                               Matrix<double>& net_vertices, // vertices of the net
-                              Array< Set<int> >& net_facets, // facets of the net
-                              Map<vertex_facet_pair,int>& vf_map, // which vertex on which facet ends up where
-                              Array<int>& vf_map_inv, // inverse of the previous
+                              Array<Set<Int>>& net_facets, // facets of the net
+                              Map<vertex_facet_pair, Int>& vf_map, // which vertex on which facet ends up where
+                              Array<Int>& vf_map_inv, // inverse of the previous
                               tree_type& dual_tree
                               ) {
       // initialize data
-      vertex_cycle.clear(); for (int i=0; i<vif[f].size(); ++i) vertex_cycle.push_back(vif[f][i]);
+      vertex_cycle.clear();
+      for (Int i=0; i < vif[f].size(); ++i)
+         vertex_cycle.push_back(vif[f][i]);
       marked.clear();
       vf_map.clear(); vf_map[vertex_facet_pair(ia,f)] = ja; vf_map[vertex_facet_pair(ib,f)] = jb; vf_map_inv[ja] = ia; vf_map_inv[jb] = ib;
       dual_tree.clear();
@@ -346,8 +350,8 @@ namespace {
 
    // COMBINATORIAL
 
-   void queue_neighbors(const int f, const Graph<>& DG, const Set<int>& marked, std::list<directed_edge>& unprocessed_edges) {
-      const Set<int> neighbors = DG.adjacent_nodes(f);
+   void queue_neighbors(const Int f, const Graph<>& DG, const Set<Int>& marked, std::list<directed_edge>& unprocessed_edges) {
+      const Set<Int> neighbors = DG.adjacent_nodes(f);
 #if PLANAR_NET_DEBUG > 2
       cerr << "queue_neighbors: f=" << f;
 #endif
@@ -366,30 +370,30 @@ namespace {
 }
 
 template <typename Coord>
-perl::Object planar_net(perl::Object p)
+BigObject planar_net(BigObject p)
 {
    const Matrix<Coord> V=p.give("VERTICES");
-   const int d=p.give("CONE_DIM");
+   const Int d = p.give("CONE_DIM");
    
    if (V.cols() != 4 || d!=4)
       throw std::runtime_error("planar_net: requires full-dimensional 3-polytope");
 
-   const Array< Array<int> > vif=p.give("VIF_CYCLIC_NORMAL");
+   const Array<Array<Int>> vif=p.give("VIF_CYCLIC_NORMAL");
    /* The following is also the number of maximal cells of the planar net.
       Throughout we keep the labeling of the facets the same. */
-   const int n_facets = vif.size(); 
-   Array< Set<int> > net_facets(n_facets);
+   const Int n_facets = vif.size(); 
+   Array<Set<Int>> net_facets(n_facets);
 
    /* Total number of vertices in the planar net = 2 * (f_1 - f_2 + 1);
       since each edge is drawn twice, except for those in a spanning tree
       of the dual graph.  Euler yields f_1 - f_2 + 1 = f_0 - 1. */
-   const int n_net_vertices = 2*(V.rows()-1);
+   const Int n_net_vertices = 2*(V.rows()-1);
    Matrix<double> net_vertices(n_net_vertices,2); // Euclidean
-   int cv=0; // no vertices in the planar net so far
+   Int cv = 0; // no vertices in the planar net so far
 
    // Recalls which vertex in which facet of the 3-polytope has which row index in the matrix above.
-   Map<vertex_facet_pair,int> vf_map;
-   Array<int> vf_map_inv(n_net_vertices);
+   Map<vertex_facet_pair, Int> vf_map;
+   Array<Int> vf_map_inv(n_net_vertices);
 
    const Graph<> DG=p.give("DUAL_GRAPH.ADJACENCY");
    tree_type dual_tree;
@@ -400,12 +404,12 @@ perl::Object planar_net(perl::Object p)
 #endif
          
    // Try each facet as the root of the spanning tree in the dual graph.
-   for (int root_facet=0; root_facet < n_facets && cv < n_net_vertices ; ++root_facet) {
-      int
-         ia=vif[root_facet][0], // indices of first ...
-         ib=vif[root_facet][1], // ... and second polytope vertex for the layout
-         ja=0, jb=1; // corresponding indices of the vertices in the planar net
-      cv=2; // number of vertices in the planar net so far
+   for (Int root_facet = 0; root_facet < n_facets && cv < n_net_vertices ; ++root_facet) {
+      Int
+         ia = vif[root_facet][0], // indices of first ...
+         ib = vif[root_facet][1], // ... and second polytope vertex for the layout
+         ja = 0, jb = 1; // corresponding indices of the vertices in the planar net
+         cv = 2; // number of vertices in the planar net so far
 
 #if PLANAR_NET_DEBUG
       cerr << "*** root_facet=" << root_facet << " {" << vif[root_facet] << "}"
@@ -413,18 +417,18 @@ perl::Object planar_net(perl::Object p)
            << " ja=" << ja << " jb=" << jb << endl;
 #endif
       
-      std::list<int> f_vertex_cycle;
-      Set<int> marked;  // no facets processed yet; start with the root facet
+      std::list<Int> f_vertex_cycle;
+      Set<Int> marked;  // no facets processed yet; start with the root facet
       initialize_root_facet(root_facet, ia, ib, ja, jb, f_vertex_cycle, V, vif, marked, cv, net_vertices, net_facets, vf_map, vf_map_inv, dual_tree);
 
       std::list<directed_edge> unprocessed_edges;
-      queue_neighbors(root_facet,DG,marked,unprocessed_edges);
+      queue_neighbors(root_facet, DG, marked, unprocessed_edges);
 
-      int f=root_facet;
+      Int f = root_facet;
       do {
          // pick next edge, but beware that in the mean time both facets could have been processed
-         int g;
-         bool found=false; // no suitable g found yet
+         Int g;
+         bool found = false; // no suitable g found yet
 #if PLANAR_NET_DEBUG > 1
          cerr << "searching facet pair";
 #endif
@@ -452,9 +456,9 @@ perl::Object planar_net(perl::Object p)
          }
          // now f has been processed, and its neighbor g is next
 
-         const Array<int>& vif_g(vif[g]);
+         const Array<Int>& vif_g(vif[g]);
 
-         const Set<int>
+         const Set<Int>
             f_vertex_set(vif[f]),
             g_vertex_set(vif_g),
             common_vertices(f_vertex_set * g_vertex_set);
@@ -466,13 +470,13 @@ perl::Object planar_net(perl::Object p)
          ia=common_vertices.front();
          ib=common_vertices.back();
          
-         int i;
+         Int i;
          determine_directed_edge(ia,ib,vif_g,i);
          
          // vertex_cycle starts with first ia, then ib
-         std::list<int> g_vertex_cycle;
-         for (int k=i; k<vif_g.size(); ++k) g_vertex_cycle.push_back(vif_g[k]);
-         for (int k=0; k<i; ++k) g_vertex_cycle.push_back(vif_g[k]);
+         std::list<Int> g_vertex_cycle;
+         for (Int k = i; k < vif_g.size(); ++k) g_vertex_cycle.push_back(vif_g[k]);
+         for (Int k = 0; k < i; ++k) g_vertex_cycle.push_back(vif_g[k]);
          
          vf_map[vertex_facet_pair(ia,g)] = ja = vf_map[vertex_facet_pair(ia,f)];
          vf_map[vertex_facet_pair(ib,g)] = jb = vf_map[vertex_facet_pair(ib,f)];
@@ -502,38 +506,36 @@ perl::Object planar_net(perl::Object p)
 #if PLANAR_NET_DEBUG
    cerr << "COMPUTING FLAPS" << endl;
 #endif
-   hash_set< Set<int> > dual_tree_set;
+   hash_set<Set<Int>> dual_tree_set;
    for (tree_type::iterator it=dual_tree.begin(); it!=dual_tree.end(); ++it) {
-      dual_tree_set.insert(Set<int>{it->first, it->second});
+      dual_tree_set.insert(Set<Int>{it->first, it->second});
    }
 
    tree_type flaps;
    for (auto e=entire(edges(DG));  !e.at_end();  ++e) {
       // flaps are directed from facet f to facet g, where f has the smaller index
-      int f,g;
-      if (e.from_node() < e.to_node()) {
-         f=e.from_node(); g=e.to_node();
-      } else {
-         f=e.to_node(); g=e.from_node();
-      }
+      Int f = e.from_node(), g = e.to_node();
+      if (e.from_node() > e.to_node())
+         std::swap(f, g);
+
 #if PLANAR_NET_DEBUG
       cerr << "considering f=" << f << " g=" << g;
 #endif
-      if (dual_tree_set.exists(Set<int>{f, g})) {
+      if (dual_tree_set.exists(Set<Int>{f, g})) {
 #if PLANAR_NET_DEBUG
          cerr << endl;
 #endif
          continue;
       }
 
-      const Array<int>& vif_f=vif[f];
-      const Set<int>
+      const Array<Int>& vif_f = vif[f];
+      const Set<Int>
          f_vertex_set(vif_f),
          g_vertex_set(vif[g]),
          common_vertices(f_vertex_set * g_vertex_set);
-      int
-         ia=common_vertices.front(),
-         ib=common_vertices.back(),
+      Int
+         ia = common_vertices.front(),
+         ib = common_vertices.back(),
          i; // not used here
 #if PLANAR_NET_DEBUG
       cerr << " vif_f=" << vif_f << " ia=" << ia << " ib=" << ib << endl;
@@ -543,7 +545,7 @@ perl::Object planar_net(perl::Object p)
       flaps.push_back(directed_edge(vf_map[vertex_facet_pair(ia,f)],vf_map[vertex_facet_pair(ib,f)]));
    }
 
-   perl::Object net("PlanarNet", mlist<Coord>());
+   BigObject net("PlanarNet", mlist<Coord>());
    net.set_description() << "planar net of " << p.name() << endl;
 
    net.take("VERTICES") << (ones_vector<double>(n_net_vertices) | net_vertices);

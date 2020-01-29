@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -43,6 +43,7 @@ namespace pm {
 
 // For the time of transition to a proper C++14 implementation
 using polymake::int_constant;
+using polymake::size_constant;
 using polymake::bool_constant;
 using polymake::char_constant;
 using polymake::mselect;
@@ -76,6 +77,7 @@ using polymake::mlist_is_empty;
 using polymake::mlist_wrap;
 using polymake::mlist_unwrap;
 using polymake::mlist_at;
+using polymake::mlist_at_rev;
 using polymake::mlist_concat;
 using polymake::mlist_contains;
 using polymake::mlist_slice;
@@ -129,6 +131,9 @@ using polymake::is_lossless_convertible;
 using polymake::mget_template_parameter;
 using polymake::mset_template_parameter;
 using polymake::mreplace_template_parameter;
+using polymake::mget_func_signature;
+using polymake::func_args_t;
+using polymake::func_return_t;
 using polymake::msafely_eval;
 using polymake::mbind_const;
 using polymake::mbind1st;
@@ -141,6 +146,8 @@ using polymake::pure_type_t;
 using polymake::same_pure_type;
 using polymake::is_class_or_union;
 using polymake::remove_unsigned_t;
+using polymake::inherit_signed;
+using polymake::inherit_signed_t;
 using polymake::is_const;
 // not yet! using polymake::add_const;
 using polymake::add_const_t;
@@ -163,6 +170,8 @@ using polymake::index_sequence_for;
 using polymake::make_index_sequence_for;
 using polymake::make_reverse_index_sequence;
 using polymake::foreach_in_tuple;
+
+using polymake::Int;
 
 template <typename Class, typename Member, Member Class::*Ptr>
 struct ptr2type {
@@ -795,12 +804,12 @@ namespace object_classifier {
    }
    typedef _impl::bait *bait;
 
-   template <typename T, typename enabled=void> struct kind_of;
+   template <typename T, typename = void> struct kind_of;
 
    template <typename T>
    struct kind_of<T, typename std::enable_if<!(std::is_enum<T>::value || std::is_pointer<T>::value)>::type>
    {
-      static const int value=sizeof(analyzer_f((const T*)0, bait(0)));
+      static constexpr int value = sizeof(analyzer_f((const T*)nullptr, (bait)nullptr));
    };
 
    template <typename T>
@@ -812,19 +821,19 @@ namespace object_classifier {
    template <typename T>
    struct kind_of<T, typename std::enable_if<std::is_enum<T>::value>::type>
    {
-      static const int check_numeric=sizeof(analyzer_f((const T*)0, bait(0)));
-      static const int value= check_numeric==is_scalar ? is_scalar : is_not_object;
+      static constexpr int check_numeric = sizeof(analyzer_f((const T*)nullptr, (bait)nullptr));
+      static constexpr int value = check_numeric == is_scalar ? is_scalar : is_not_object;
    };
 
    template <>
    struct kind_of<void, void>
    {
-      static const int value=is_not_object;
+      static constexpr int value = is_not_object;
    };
 
-   template <typename T, int kind=kind_of<T>::value>
+   template <typename T, int kind = kind_of<T>::value>
    struct what_is {
-      static const int value=kind;
+      static const int value = kind;
    };
 } // end namespace object_classifier
 
@@ -1039,7 +1048,7 @@ struct object_traits<T, is_container>
    typedef typename container_element_type<T>::type element_type;
    static const int
       total_dimension = object_traits<element_type>::total_dimension + object_traits<T>::dimension,
-      nesting_level = object_traits<element_type>::nesting_level + 1;
+      nesting_level = object_traits<element_type>::nesting_level+1;
    static const int is_resizeable= object_traits<T>::is_temporary || object_traits<T>::is_always_const ? 0 : redirect_object_traits<T>::is_resizeable;
    static const bool
       IO_separate_elements_with_eol=
@@ -1064,6 +1073,27 @@ struct spec_object_traits<is_container> {
    typedef void masquerade_for;
    typedef void proxy_for;
 };
+
+template <typename T, typename Model = typename object_traits<T>::model>
+struct get_scalar_type {
+   using type = void;
+};
+
+template <typename T>
+struct get_scalar_type<T, is_scalar> {
+   using type = typename object_traits<T>::persistent_type;
+};
+
+template <typename T>
+struct get_scalar_type<T, is_container>
+   : get_scalar_type<typename object_traits<T>::element_type> {};
+
+template <typename T>
+using matching_primitive_number_t = std::conditional_t<std::is_same<typename get_scalar_type<pure_type_t<T>>::type, double>::value, double, Int>;
+
+template <typename Eref, typename Match = Int>
+using prevent_int_element = std::conditional_t<std::is_same<pure_type_t<Eref>, int>::value,
+                                               inherit_const_t<matching_primitive_number_t<Match>, Eref>, Eref>;
 
 template <typename T>
 struct max_dimension {
@@ -1123,7 +1153,7 @@ struct visitor_n_th<ObjectRef, n, l, l> {
    typedef typename inherit_const<typename attrib<element>::minus_const_ref, ObjectRef>::type& value_ref;
    value_ptr value;
 
-   visitor_n_th() : value(NULL) {}
+   visitor_n_th() : value(nullptr) {}
 };
 
 template <typename T, int n> inline
@@ -1278,12 +1308,12 @@ struct is_field_impl<T, typename algebraic_traits<T>::field_type> : std::true_ty
 template <typename T>
 struct is_field : is_field_impl<T> {};
 
-template <typename T, typename T2=T>
+template <typename T, typename T2 = void>
 struct has_zero_value_impl : std::false_type {};
 
 // we assume that every class for which algebraic_traits is specialized has also a zero value
 template <typename T>
-struct has_zero_value_impl<T, typename cons<T, typename algebraic_traits<T>::field_type>::head> : std::true_type {};
+struct has_zero_value_impl<T, accept_valid_type<typename algebraic_traits<T>::field_type>> : std::true_type {};
 
 template <typename T>
 struct has_zero_value : has_zero_value_impl<T> {};
@@ -1489,23 +1519,23 @@ void relocate(T* from, T* to)
    relocate(from, to, std::is_pod<T>());
 }
 
-template <typename T> inline
+template <typename T>
 bool is_zero(const T& x) { return object_traits<T>::is_zero(x); }
 
-template <typename T> inline
+template <typename T>
 bool is_one(const T& x) { return object_traits<T>::is_one(x); }
 
-template <typename T> inline
+template <typename T>
 const T& zero_value() { return object_traits<T>::zero(); }
 
-template <typename T> inline
+template <typename T>
 const T& one_value() { return object_traits<T>::one(); }
 
 template <typename T>
 struct is_gcd_domain
-   : bool_constant< std::numeric_limits<T>::is_integer && std::numeric_limits<T>::is_exact > {};
+   : bool_constant<!is_among<T, bool, int>::value && std::numeric_limits<T>::is_integer && std::numeric_limits<T>::is_exact> {};
 
-enum all_selector { All };
+enum all_selector : bool { All };
 
 } // end namespace pm
 

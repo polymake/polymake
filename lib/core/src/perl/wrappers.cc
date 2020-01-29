@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -50,7 +50,7 @@ void FunctionWrapperBase::register_it(bool is_template,
    } else {
       AV* const regular_functions = (AV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_regular_functions_index]);
       av_push(regular_functions, descr_ref);
-      const int index=AvFILLp(regular_functions);
+      const int index = int(AvFILLp(regular_functions));
 
       AV* const embedded_rules = (AV*)queue;
       av_push(embedded_rules, newSVpv(cpperl_file.ptr, cpperl_file.len));   // source line
@@ -61,7 +61,7 @@ void FunctionWrapperBase::register_it(bool is_template,
 void EmbeddedRule::add__me(const AnyString& text, const AnyString& source_line) const
 {
    dTHX;
-   AV* embedded_rules=(AV*)queue;
+   AV* embedded_rules = (AV*)queue;
    av_push(embedded_rules, newSVpv(source_line.ptr, source_line.len));
    av_push(embedded_rules, newSVpv(text.ptr, text.len));
 }
@@ -82,7 +82,7 @@ SV* ClassRegistratorBase::register_class(const AnyString& name, const AnyString&
 
    const size_t typeid_len=strlen(typeid_name);
 
-   SV* const descr_ref=*hv_fetch((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_typeids_index]), typeid_name, typeid_len, true);
+   SV* const descr_ref = *hv_fetch((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_typeids_index]), typeid_name, I32(typeid_len), true);
    if (SvOK(descr_ref)) {
       // already exists; someref -> list of duplicate classes
       if (!name.ptr)
@@ -115,8 +115,8 @@ SV* ClassRegistratorBase::register_class(const AnyString& name, const AnyString&
 
    if (name) {
       // a known persistent class declared in the rules or an instance of a declared class template used in the rules
-      stash = gv_stashpvn(name.ptr, name.len, GV_ADD);
-      (void)hv_store((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_type_descr_index]), name.ptr, name.len, newRV((SV*)descr), 0);
+      stash = gv_stashpvn(name.ptr, I32(name.len), GV_ADD);
+      (void)hv_store((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_type_descr_index]), name.ptr, I32(name.len), newRV((SV*)descr), 0);
       vtbl->flags |= ClassFlags::is_declared;
       if (generated_by)
          Perl_croak(aTHX_ "internal error: wrong call of register_class");
@@ -192,7 +192,7 @@ SV* ClassRegistratorBase::register_class(const AnyString& name, const AnyString&
 void ClassTemplate::add__me(const AnyString& name)
 {
    dTHX;
-   (void)hv_store((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_templates_index]), name.ptr, name.len, &PL_sv_yes, 0);
+   (void)hv_store((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[glue::CPP_templates_index]), name.ptr, I32(name.len), &PL_sv_yes, 0);
 }
 
 namespace {
@@ -250,26 +250,26 @@ SV* ClassRegistratorBase::create_scalar_vtbl(
    conv_to_string_type to_string,
    conv_to_serialized_type to_serialized,
    type_reg_fn_type provide_serialized_type,
-   conv_to_int_type to_int,
-   conv_to_float_type to_float)
+   conv_to_Int_type to_Int,
+   conv_to_Float_type to_Float)
 {
    glue::scalar_vtbl* t;
-   SV* vtbl=allocate_vtbl(t);
-   t->svt_free                =&glue::destroy_canned;
-   t->svt_dup                 =&glue::canned_dup;
-   t->type                    =&type;
-   t->obj_size                =obj_size;
-   t->obj_dimension           =0;
-   t->copy_constructor        =copy_constructor;
-   t->assignment              =assignment;
-   t->destructor              =destructor;
-   t->sv_maker                =&glue::create_scalar_magic_sv;
-   t->sv_cloner               =&glue::clone_scalar_magic_sv;
-   t->to_string               =to_string;
-   t->to_serialized           =to_serialized;
-   t->provide_serialized_type =provide_serialized_type;
-   t->to_int                  =to_int;
-   t->to_float                =to_float;
+   SV* vtbl = allocate_vtbl(t);
+   t->svt_free                = &glue::destroy_canned;
+   t->svt_dup                 = &glue::canned_dup;
+   t->type                    = &type;
+   t->obj_size                = obj_size;
+   t->obj_dimension           = 0;
+   t->copy_constructor        = copy_constructor;
+   t->assignment              = assignment;
+   t->destructor              = destructor;
+   t->sv_maker                = &glue::create_scalar_magic_sv;
+   t->sv_cloner               = &glue::clone_scalar_magic_sv;
+   t->to_string               = to_string;
+   t->to_serialized           = to_serialized;
+   t->provide_serialized_type = provide_serialized_type;
+   t->to_Int                  = to_Int;
+   t->to_Float                = to_Float;
    return vtbl;
 }
 
@@ -309,24 +309,24 @@ SV* ClassRegistratorBase::create_iterator_vtbl(
    destructor_type destructor,
    iterator_deref_type deref,
    iterator_incr_type incr,
-   conv_to_int_type at_end,
-   conv_to_int_type index)
+   conv_to_bool_type at_end,
+   conv_to_Int_type index)
 {
    glue::iterator_vtbl* t;
    SV* vtbl=allocate_vtbl(t);
-   t->svt_free         =&glue::destroy_canned;
-   t->svt_dup          =&glue::canned_dup;
-   t->type             =&type;
-   t->obj_size         =obj_size;
-   t->obj_dimension    =0;
-   t->copy_constructor =copy_constructor;
-   t->destructor       =destructor;
-   t->sv_maker         =&glue::create_scalar_magic_sv;
-   t->sv_cloner        =&glue::clone_scalar_magic_sv;
-   t->deref            =deref;
-   t->incr             =incr;
-   t->at_end           =at_end;
-   t->index            =index;
+   t->svt_free         = &glue::destroy_canned;
+   t->svt_dup          = &glue::canned_dup;
+   t->type             = &type;
+   t->obj_size         = obj_size;
+   t->obj_dimension    = 0;
+   t->copy_constructor = copy_constructor;
+   t->destructor       = destructor;
+   t->sv_maker         = &glue::create_scalar_magic_sv;
+   t->sv_cloner        = &glue::clone_scalar_magic_sv;
+   t->deref            = deref;
+   t->incr             = incr;
+   t->at_end           = at_end;
+   t->index            = index;
    return vtbl;
 }
 
@@ -339,7 +339,7 @@ SV* ClassRegistratorBase::create_container_vtbl(
    conv_to_string_type to_string,
    conv_to_serialized_type to_serialized,
    type_reg_fn_type provide_serialized_type,
-   conv_to_int_type size,
+   conv_to_Int_type size,
    container_resize_type resize,
    container_store_type store_at_ref,
    type_reg_fn_type provide_key_type,
@@ -347,29 +347,29 @@ SV* ClassRegistratorBase::create_container_vtbl(
 {
    glue::container_vtbl* t;
    SV* vtbl=allocate_vtbl(t);
-   t->svt_len                 =&glue::canned_container_size;
-   t->svt_free                =&glue::destroy_canned_container;
-   t->svt_dup                 =&glue::canned_dup;
-   t->type                    =&type;
-   t->obj_size                =obj_size;
-   t->obj_dimension           =total_dimension;
-   t->copy_constructor        =copy_constructor;
-   t->assignment              =assignment;
-   t->destructor              =destructor;
-   t->to_string               =to_string;
-   t->to_serialized           =to_serialized;
-   t->provide_serialized_type =provide_serialized_type;
-   t->own_dimension           =own_dimension;
-   t->size                    =size;
-   t->resize                  =resize;
-   t->store_at_ref            =store_at_ref;
-   t->provide_key_type        =provide_key_type;
-   t->provide_value_type      =provide_value_type;
+   t->svt_len                 = &glue::canned_container_size;
+   t->svt_free                = &glue::destroy_canned_container;
+   t->svt_dup                 = &glue::canned_dup;
+   t->type                    = &type;
+   t->obj_size                = obj_size;
+   t->obj_dimension           = total_dimension;
+   t->copy_constructor        = copy_constructor;
+   t->assignment              = assignment;
+   t->destructor              = destructor;
+   t->to_string               = to_string;
+   t->to_serialized           = to_serialized;
+   t->provide_serialized_type = provide_serialized_type;
+   t->own_dimension           = own_dimension;
+   t->size                    = size;
+   t->resize                  = resize;
+   t->store_at_ref            = store_at_ref;
+   t->provide_key_type        = provide_key_type;
+   t->provide_value_type      = provide_value_type;
    return vtbl;
 }
 
 void ClassRegistratorBase::fill_iterator_access_vtbl(
-   SV *vtbl, int i,
+   SV* vtbl, int i,
    size_t it_size, size_t cit_size,
    destructor_type it_destructor,
    destructor_type cit_destructor,
@@ -380,15 +380,15 @@ void ClassRegistratorBase::fill_iterator_access_vtbl(
 {
    glue::container_vtbl* t=reinterpret_cast<glue::container_vtbl*>(SvPVX(vtbl));
    glue::container_access_vtbl* acct=t->acc+i;
-   acct->obj_size     =it_size;
-   acct->destructor   =it_destructor;
-   acct->begin        =begin;
-   acct->deref        =deref;
+   acct->obj_size     = it_size;
+   acct->destructor   = it_destructor;
+   acct->begin        = begin;
+   acct->deref        = deref;
    ++acct;
-   acct->obj_size     =cit_size;
-   acct->destructor   =cit_destructor;
-   acct->begin        =cbegin;
-   acct->deref        =cderef;
+   acct->obj_size     = cit_size;
+   acct->destructor   = cit_destructor;
+   acct->begin        = cbegin;
+   acct->deref        = cderef;
 }
 
 void
@@ -398,8 +398,8 @@ ClassRegistratorBase::fill_random_access_vtbl(
    container_access_type crandom)
 {
    glue::container_vtbl* t=reinterpret_cast<glue::container_vtbl*>(SvPVX(vtbl));
-   t->acc[0].random=random;
-   t->acc[1].random=crandom;
+   t->acc[0].random = random;
+   t->acc[1].random = crandom;
 }
 
 SV* ClassRegistratorBase::create_composite_vtbl(
@@ -419,26 +419,26 @@ SV* ClassRegistratorBase::create_composite_vtbl(
    void (*fill)(composite_access_vtbl*))
 {
    glue::composite_vtbl* t;
-   SV* vtbl=allocate_vtbl(t, (n_members-1)*sizeof(t->acc));
-   t->svt_len                 =&glue::canned_composite_size;
-   t->svt_copy                =&glue::canned_composite_access;
-   t->svt_free                =&glue::destroy_canned;
-   t->svt_dup                 =&glue::canned_dup;
-   t->type                    =&type;
-   t->obj_size                =obj_size;
-   t->obj_dimension           =obj_dimension;
-   t->copy_constructor        =copy_constructor;
-   t->assignment              =assignment;
-   t->destructor              =destructor;
-   t->sv_maker                =&glue::create_composite_magic_sv;
-   t->sv_cloner               =&glue::clone_composite_magic_sv;
-   t->to_string               =to_string;
-   t->to_serialized           =to_serialized;
-   t->provide_serialized_type =provide_serialized_type;
-   t->n_members               =n_members;
-   t->provide_member_types    =provide_member_types;
-   t->provide_member_descrs   =provide_member_descrs;
-   t->provide_member_names    =provide_member_names;
+   SV* vtbl = allocate_vtbl(t, (n_members-1) * sizeof(t->acc));
+   t->svt_len                 = &glue::canned_composite_size;
+   t->svt_copy                = &glue::canned_composite_access;
+   t->svt_free                = &glue::destroy_canned;
+   t->svt_dup                 = &glue::canned_dup;
+   t->type                    = &type;
+   t->obj_size                = obj_size;
+   t->obj_dimension           = obj_dimension;
+   t->copy_constructor        = copy_constructor;
+   t->assignment              = assignment;
+   t->destructor              = destructor;
+   t->sv_maker                = &glue::create_composite_magic_sv;
+   t->sv_cloner               = &glue::clone_composite_magic_sv;
+   t->to_string               = to_string;
+   t->to_serialized           = to_serialized;
+   t->provide_serialized_type = provide_serialized_type;
+   t->n_members               = n_members;
+   t->provide_member_types    = provide_member_types;
+   t->provide_member_descrs   = provide_member_descrs;
+   t->provide_member_names    = provide_member_names;
    fill(t->acc);
    return vtbl;
 }
@@ -454,7 +454,7 @@ RegistratorQueue::RegistratorQueue(const AnyString& name, Kind kind)
 {
    dTHX;
    queue=(SV*)newAV();
-   (void)hv_store((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[static_cast<int>(kind)]), name.ptr, name.len, newRV_noinc(queue), 0);
+   (void)hv_store((HV*)SvRV(PmArray(GvSV(glue::CPP_root))[static_cast<int>(kind)]), name.ptr, I32(name.len), newRV_noinc(queue), 0);
 }
 
 } }

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -92,6 +92,11 @@ unless (@tutorials = @ARGV) {
 
 local $Core::CPlusPlus::code_generation = $cpperl_root eq "/dev/null" ? "none" : "shared";
 $Core::CPlusPlus::cpperl_src_root = "$cpperl_root/$$" if defined($cpperl_root);
+
+# include test.rules from application common for polydb
+application("common")->include_rules("*/test.rules");
+application("common")->configured->{"db_test.rules"} > 0 && PolyDB::Test::prepare();
+
 
 $env->start_testsuite($jenkins_report, "tutorials");
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -343,11 +343,11 @@ public:
    template <typename Source, typename=std::enable_if_t<mlist_find_if<TypeList, unions::fits_as_init, Source>::value>>
    Source* init()
    {
-      constexpr int discr=mlist_find_if<TypeList, unions::fits_as_init, Source>::pos;
-      if (discriminant>=0) {
+      constexpr int discr = mlist_find_if<TypeList, unions::fits_as_init, Source>::pos;
+      if (discriminant >= 0) {
          if (discriminant != discr) return nullptr;
       } else {
-         discriminant=discr;
+         discriminant = discr;
          basics<discr>::construct_default(this->area);
       }
       return &basics<discr>::get(this->area);
@@ -383,7 +383,7 @@ public:
    template <typename T, typename=std::enable_if_t<mlist_find_if<TypeList, same_pure_type, T>::value>>
    T* as()
    {
-      constexpr int discr=mlist_find_if<TypeList, same_pure_type, T>::pos;
+      constexpr int discr = mlist_find_if<TypeList, same_pure_type, T>::pos;
       if (discriminant != discr) return nullptr;
       return &basics<discr>::get(this->area);
    }
@@ -391,13 +391,13 @@ public:
    template <typename T, typename=std::enable_if_t<mlist_find_if<TypeList, same_pure_type, T>::value>>
    std::add_const_t<T>* as() const
    {
-      constexpr int discr=mlist_find_if<TypeList, same_pure_type, T>::pos;
+      constexpr int discr = mlist_find_if<TypeList, same_pure_type, T>::pos;
       if (discriminant != discr) return nullptr;
       return &basics<discr>::get(this->area);
    }
 
    int get_discriminant() const { return discriminant; }
-   bool valid() const { return discriminant>=0; }
+   bool valid() const { return discriminant >= 0; }
 
    template <typename, typename> friend class type_union;
 };

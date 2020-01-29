@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,16 +20,16 @@
 
 namespace polymake { namespace topaz {
 
-Array<int> h_vector(const Array<int> &F)
+Array<Int> h_vector(const Array<Int> &F)
 {
-   const int dim = F.size()-1;
-   Array<int> h_vector(dim+2);
-   h_vector[0]=1;
-   for (int k=1; k<=dim+1; ++k) { 
+   const Int dim = F.size()-1;
+   Array<Int> h_vector(dim+2);
+   h_vector[0] = 1;
+   for (Int k = 1; k <= dim+1; ++k) { 
       Integer h_k(Integer::pow(Integer(-1),k) * Integer::binom(dim+1,k));
-      for (int j=1; j<=k; ++j) 
-         h_k = h_k + Integer::pow(Integer(-1),k-j) * Integer::binom(dim+1-j, k-j) * F[j-1];
-      h_vector[k]=int(h_k);
+      for (Int j = 1; j <= k; ++j) 
+         h_k += Integer::pow(Integer(-1),k-j) * Integer::binom(dim+1-j, k-j) * F[j-1];
+      h_vector[k] = Int(h_k);
    }
    return h_vector;
 }

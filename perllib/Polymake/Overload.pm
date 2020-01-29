@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -939,20 +939,13 @@ sub process_kw_args {
       my $processed_args = $processed_args[$t++];
       while (my ($key, $descr) = each %$table) {
          if (exists $processed_args->{$key}) {
-            $descr = $descr->[0] if is_array($descr);
-            $descr->($processed_args, $key) if is_code($descr);
-
-         } elsif (is_array($descr)) {
-            my $default=$descr->[1];
-            if (is_code($default)) {
-               $default->($processed_args, $key);
-            } elsif (defined($default)) {
-               $processed_args->{$key}=$default;
-               $descr=$descr->[0];
-               $descr->($processed_args, $key) if is_code($descr);
+            $descr->($processed_args, $key, $processed_args->{$key}) if is_code($descr);
+         } elsif (defined($descr)) {
+            if (is_code($descr)) {
+               $descr->($processed_args, $key);
+            } else {
+               $processed_args->{$key} = $descr;
             }
-         } elsif (defined($descr) && !is_code($descr)) {
-            $processed_args->{$key}=$descr;
          }
       }
    }
@@ -964,18 +957,20 @@ sub Polymake::enum {
    my ($default, %enum);
    foreach my $name (@_) {
       if ($name =~ /=default$/) {
-         $default=$`;
-         $enum{$`}=1;
+         $default = $`;
+         $enum{$`} = 1;
       } else {
-         $enum{$name}=1;
+         $enum{$name} = 1;
       }
    }
-   my $accept=sub {
-      my ($self, $key)=@_;
-      $enum{$self->{$key}}
-         or croak( "unknown option value: $key => $self->{$key}" );
-   };
-   defined($default) ? [ $accept, $default ] : $accept;
+   sub {
+      if ((my ($args, $key, $value) = @_) == 3) {
+         $enum{$value}
+           or croak( "unknown option value: $key => $value" );
+      } elsif (defined($default)) {
+         $args->{$key} = $default;
+      }
+   }
 }
 
 ####################################################################################

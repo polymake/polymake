@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -35,6 +35,7 @@
 #include "polymake/linalg.h"
 #include "polymake/tropical/thomog.h"
 #include "polymake/polytope/convex_hull.h"
+#include "polymake/vector"
 
 namespace polymake { namespace tropical {
 
@@ -50,7 +51,7 @@ bool coneInHalfspace(const Matrix<Rational>& rays, const Matrix<Rational>& linsp
 {
   Matrix<Rational> allgenerators = rays / linspace;
   Vector<Rational> product = allgenerators * facet;
-  for (int i = 0; i < product.dim(); ++i) {
+  for (Int i = 0; i < product.dim(); ++i) {
     if (product[i] < 0) return false;
   }
   return true;
@@ -58,15 +59,15 @@ bool coneInHalfspace(const Matrix<Rational>& rays, const Matrix<Rational>& linsp
 
 // Documentation see perl wrapper
 template <typename Addition>
-perl::Object coarsen(perl::Object complex, bool testFan = false)
+BigObject coarsen(BigObject complex, bool testFan = false)
 {
   // Extract values
   Matrix<Rational> rays = complex.give("VERTICES");
   rays = tdehomog(rays);
   Matrix<Rational> linspace = complex.give("LINEALITY_SPACE");
   linspace = tdehomog(linspace);
-  int cmplx_dim = complex.give("PROJECTIVE_DIM");
-  int cmplx_ambient_dim = complex.give("PROJECTIVE_AMBIENT_DIM");
+  Int cmplx_dim = complex.give("PROJECTIVE_DIM");
+  Int cmplx_ambient_dim = complex.give("PROJECTIVE_AMBIENT_DIM");
   bool weights_exist = false;
   Vector<Integer> weights;
   if (complex.lookup("WEIGHTS") >> weights) {
@@ -76,12 +77,12 @@ perl::Object coarsen(perl::Object complex, bool testFan = false)
   IncidenceMatrix<> codimOneCones = complex.give("CODIMENSION_ONE_POLYTOPES");
   IncidenceMatrix<> codimInMaximal = complex.give("MAXIMAL_AT_CODIM_ONE");
   IncidenceMatrix<> maximalOverCodim = T(codimInMaximal);
-  int noOfCones = maximalCones.rows();
+  Int noOfCones = maximalCones.rows();
 
   // For fan testing, we need the equations of all non-twovalent codimension one faces
   Vector<Matrix<Rational>> codimOneEquations(codimOneCones.rows());
-  Set<int> highervalentCodim;
-  for (int cd = 0; cd < codimOneCones.rows(); ++cd) {
+  Set<Int> highervalentCodim;
+  for (Int cd = 0; cd < codimOneCones.rows(); ++cd) {
     if (codimInMaximal.row(cd).size() > 2) {
       codimOneEquations[cd] = null_space( rays.minor(codimOneCones.row(cd),All) / linspace);
       highervalentCodim += cd;
@@ -96,37 +97,36 @@ perl::Object coarsen(perl::Object complex, bool testFan = false)
   if (codimOneCones.rows() == 0) return complex;
 
   // Compute equivalence classes of maximal cones
-  Vector<Set<int>> equivalenceClasses;
-  Vector<bool> hasBeenAdded(noOfCones); //contains whether a cone has been added to an equivalence class
+  std::vector<Set<Int>> equivalenceClasses;
+  std::vector<bool> hasBeenAdded(noOfCones); //contains whether a cone has been added to an equivalence class
 
-  for (int mc = 0; mc < noOfCones; ++mc) {
+  for (Int mc = 0; mc < noOfCones; ++mc) {
     if (!hasBeenAdded[mc]) {
-      Set<int> newset{ mc };
+      equivalenceClasses.push_back(Set<Int>{ mc });
       // Do a breadth-first search for all other cones in the component
-      std::list<int> queue;
+      std::list<Int> queue;
       queue.push_back(mc);
       // Semantics: Elements in that queue have been added but their neighbours might not
       while (!queue.empty()) {
         // Take the first element and find its neighbours
-        int node = queue.front();
+        Int node = queue.front();
         queue.pop_front();
-        Set<int> cdset = maximalOverCodim.row(node);
+        Set<Int> cdset = maximalOverCodim.row(node);
         for (auto cd = entire(cdset); !cd.at_end(); ++cd) {
-          Set<int> otherMaximals = codimInMaximal.row(*cd) - node;
+          Set<Int> otherMaximals = codimInMaximal.row(*cd) - node;
           // We are only interested in codim-one-faces that have exactly two adjacent maximal cones
           if (otherMaximals.size() == 1) {
-            int othermc = *(otherMaximals.begin());
+            Int othermc = *(otherMaximals.begin());
             if (!hasBeenAdded[othermc]) {
               // Now add the cone to the equivalence class of mc
-              newset += othermc;
+              equivalenceClasses.back() += othermc;
               queue.push_back(othermc);
               hasBeenAdded[othermc] = true;
             }
           }
-        }		
+        }
       } //End iterate queue
-      equivalenceClasses |= newset;
-    }	
+    }
   } //END iterate maximal cones
 
   /* Test equivalence classes for convexit:
@@ -134,22 +134,22 @@ perl::Object coarsen(perl::Object complex, bool testFan = false)
   */
   if (testFan) {
     // Check each equivalence class
-    for (int cl = 0; cl < equivalenceClasses.dim(); ++cl) {
+    for (const auto& conesInClass : equivalenceClasses) {
       // First, we compute the equation of the subdivision class
       Matrix<Rational> classEquation =
-        null_space(rays.minor(maximalCones.row(*(equivalenceClasses[cl].begin())),All) / linspace);
+        null_space(rays.minor(maximalCones.row(*(conesInClass.begin())), All) / linspace);
       // Compute all outer codim one faces and their facet inequality;
-      Set<int> outerFacets;
-      Map<int, Vector<Rational>> facetInequality;
-      for (auto mc = entire(equivalenceClasses[cl]); !mc.at_end(); ++mc) {
-        Set<int> outerCodimInMc = maximalOverCodim.row(*mc) * highervalentCodim;
+      Set<Int> outerFacets;
+      Map<Int, Vector<Rational>> facetInequality;
+      for (auto mc = entire(conesInClass); !mc.at_end(); ++mc) {
+        Set<Int> outerCodimInMc = maximalOverCodim.row(*mc) * highervalentCodim;
         outerFacets += outerCodimInMc;
         for (auto fct = entire(outerCodimInMc); !fct.at_end(); ++fct) {
           // Find the one equation of fct that is not an equation of the class
-          for (int r = 0; r < codimOneEquations[*fct].rows(); ++r) {
+          for (Int r = 0; r < codimOneEquations[*fct].rows(); ++r) {
             if (rank(classEquation / codimOneEquations[*fct].row(r)) > cmplx_ambient_dim - cmplx_dim) {
               // Find the right sign and save the inequality
-              int additionalRay = *( (maximalCones.row(*mc) - codimOneCones.row(*fct)).begin());
+              Int additionalRay = *( (maximalCones.row(*mc) - codimOneCones.row(*fct)).begin());
               facetInequality[*fct] = codimOneEquations[*fct].row(r);
               if (facetInequality[*fct] * rays.row(additionalRay) < 0) {
                 facetInequality[*fct] = - facetInequality[*fct];
@@ -161,8 +161,8 @@ perl::Object coarsen(perl::Object complex, bool testFan = false)
       } //END iterate all maximal cones in the class
 
       // Now go through all pairs of outer facets
-      for (const int out1 : outerFacets) {
-        for (const int out2 : outerFacets - out1) {
+      for (const Int out1 : outerFacets) {
+        for (const Int out2 : outerFacets - out1) {
           // Check if out2 fulfills the facet inequality of out1
           if (!coneInHalfspace(rays.minor(codimOneCones.row(out2),All), linspace, facetInequality[out1])) {
             throw std::runtime_error("The equivalence classes are not convex. There is no coarsest structure.");
@@ -174,20 +174,19 @@ perl::Object coarsen(perl::Object complex, bool testFan = false)
 
   // Now compute the new cones as unions of the cones in each equivalence class
   Matrix<Rational> newlin;
-  int newlindim = 0;
+  Int newlindim = 0;
   bool newlin_computed = false;
-  Vector<Set<int>> newcones;
+  Vector<Set<Int>> newcones;
   Vector<Integer> newweights;
   Matrix<Rational> complete_matrix = rays / linspace;
-  Set<int> used_rays;
+  Set<Int> used_rays;
 
-  for (int cl = 0; cl < equivalenceClasses.dim(); ++cl) {
-    Matrix<Rational> union_rays(0,rays.cols());
-    Set<int> conesInClass = equivalenceClasses[cl];
-    Vector<int> union_ray_list;
+  for (const auto& conesInClass : equivalenceClasses) {
+    Matrix<Rational> union_rays(0, rays.cols());
+    Vector<Int> union_ray_list;
     for (auto mc = entire(conesInClass); !mc.at_end(); ++mc) {
       union_rays /= rays.minor(maximalCones.row(*mc),All);
-      union_ray_list |= Vector<int>(maximalCones.row(*mc));
+      union_ray_list |= Vector<Int>(maximalCones.row(*mc));
     }
 
     const auto union_cone = polytope::get_non_redundant_points(union_rays, linspace, true);
@@ -209,7 +208,7 @@ perl::Object coarsen(perl::Object complex, bool testFan = false)
     }
 
     // Convert indices of rays in union_rays to indices in rays
-    Set<int> ray_set(union_ray_list.slice(union_cone.first));
+    Set<Int> ray_set(union_ray_list.slice(union_cone.first));
 
     newcones |= ray_set;
     used_rays += ray_set;
@@ -217,17 +216,17 @@ perl::Object coarsen(perl::Object complex, bool testFan = false)
   }
 
   // Some rays might become equal (modulo lineality space) when coarsening, so we have to clean up
-  Map<int,int> ray_index_conversion;
-  int next_index = 0;
-  Matrix<Rational> final_rays(0,complete_matrix.cols());
-  int linrank = rank(newlin);
+  Map<Int, Int> ray_index_conversion;
+  Int next_index = 0;
+  Matrix<Rational> final_rays(0, complete_matrix.cols());
+  Int linrank = rank(newlin);
 
-  for (const int r1 : used_rays) {
+  for (const Int r1 : used_rays) {
     if (!keys(ray_index_conversion).contains(r1)) {
       ray_index_conversion[r1] = next_index;
       final_rays /= complete_matrix.row(r1);
 
-      for (const int r2 : used_rays) {
+      for (const Int r2 : used_rays) {
         if (!keys(ray_index_conversion).contains(r2)) {
           // Check if both rays are equal mod lineality space
           Vector<Rational> diff_vector = complete_matrix.row(r1) - complete_matrix.row(r2);
@@ -241,12 +240,12 @@ perl::Object coarsen(perl::Object complex, bool testFan = false)
   } //END iterate first ray index
 
   // Now convert the cones
-  for (int nc = 0; nc < newcones.dim(); ++nc) {
-    newcones[nc] = Set<int>{ ray_index_conversion.map(newcones[nc]) };
+  for (Int nc = 0; nc < newcones.dim(); ++nc) {
+    newcones[nc] = Set<Int>{ ray_index_conversion.map(newcones[nc]) };
   }
 
   // Produce final result
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << thomog(final_rays);
   result.take("MAXIMAL_POLYTOPES") << newcones;
   result.take("LINEALITY_SPACE") << thomog(newlin);

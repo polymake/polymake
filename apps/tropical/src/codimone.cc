@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -30,10 +30,10 @@ namespace polymake { namespace tropical {
  * @param Vector v The vector
  * @param bool search_zeros: If true, find all zero entries, if false all non-zero
  * entries
- * @return Set<int>
+ * @return Set<Int>
  */
 template <typename T>
-Set<int> binaryFinder(const GenericVector<T>& v, bool search_zeros)
+Set<Int> binaryFinder(const GenericVector<T>& v, bool search_zeros)
 {
   if (search_zeros)
     return indices(attach_selector(v.top(), operations::is_zero()));
@@ -47,51 +47,51 @@ Set<int> binaryFinder(const GenericVector<T>& v, bool search_zeros)
  * FIXME: When fan's hasse_diagram has been specialized to pure fans, 
  * we should use that!
  */
-void compute_codimension_one_polytopes(perl::Object X)
+void compute_codimension_one_polytopes(BigObject X)
 {
   // Extract properties
   IncidenceMatrix<> maximalCones = X.give("MAXIMAL_POLYTOPES");
   Matrix<Rational> vertices = X.give("VERTICES");
-  Matrix<int> maximalFacets = X.give("MAXIMAL_POLYTOPES_FACETS");
+  Matrix<Int> maximalFacets = X.give("MAXIMAL_POLYTOPES_FACETS");
   Matrix<Rational> facets = X.give("FACET_NORMALS");
-  Set<int> far_vertices = X.give("FAR_VERTICES");
+  Set<Int> far_vertices = X.give("FAR_VERTICES");
 
   // For each facet, compute the vertices in it
-  Vector<Set<int>> vertices_in_facets(facets.rows());
-  for (int f = 0; f  < facets.rows(); ++f) {
+  Vector<Set<Int>> vertices_in_facets(facets.rows());
+  for (Int f = 0; f  < facets.rows(); ++f) {
     Vector<Rational> vertTimesFacet = vertices * facets.row(f);
     vertices_in_facets[f] = binaryFinder(vertTimesFacet, true);
   }
 
   // For each maximal cone, find its facets and intersect the vertex sets		
-  Vector<Set<int>> codim_one_cones;
-  Vector<Set<int>> maximal_at_codim;
-  Map<std::pair<int,int>,int> pair_mapper;
+  Vector<Set<Int>> codim_one_cones;
+  Vector<Set<Int>> maximal_at_codim;
+  Map<std::pair<Int, Int>, Int> pair_mapper;
 
   // If MAXIMAL_POLYTOPES only contains the empty cone, it is a 1x0 matrix
   // MAXIMAL_POLYTOPES_FACETS will then also be a 1x0 matrix, but c++-side will 
   // see it as a 0x0 matrix
 
-  for (int m = 0; m < std::min(maximalCones.rows(),maximalFacets.rows()); ++m) {
-    Set<int> facetsOfM = binaryFinder(maximalFacets.row(m), false);
+  for (Int m = 0; m < std::min(maximalCones.rows(),maximalFacets.rows()); ++m) {
+    Set<Int> facetsOfM = binaryFinder(maximalFacets.row(m), false);
     for (auto mfacet = entire(facetsOfM); !mfacet.at_end(); mfacet++) {
-      Set<int> newFacet = maximalCones.row(m) * vertices_in_facets[*mfacet];
+      Set<Int> newFacet = maximalCones.row(m) * vertices_in_facets[*mfacet];
       // Make sure the facet has at least one non-far vertex
       if ((newFacet - far_vertices).empty()) continue;
       // Check if this codim one one already exists
-      int index = -1;
-      for (int ex = 0; ex < codim_one_cones.dim(); ++ex) {
+      Int index = -1;
+      for (Int ex = 0; ex < codim_one_cones.dim(); ++ex) {
         if (codim_one_cones[ex] == newFacet) {
           index = ex; break;
         }
       }
       if (index >= 0) {
         maximal_at_codim[index] += scalar2set(m);
-        pair_mapper[std::pair<int,int>(index,m)] = *mfacet;
+        pair_mapper[std::pair<Int, Int>(index,m)] = *mfacet;
       } else {
         codim_one_cones |= newFacet;
         maximal_at_codim |= scalar2set(m);
-        pair_mapper[std::pair<int,int>(codim_one_cones.dim()-1,m)] = *mfacet;
+        pair_mapper[std::pair<Int, Int>(codim_one_cones.dim()-1,m)] = *mfacet;
       }
     }
   }

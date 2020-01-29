@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,24 +28,24 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object facet(perl::Object p_in, int facet_number, perl::OptionSet options)
+BigObject facet(BigObject p_in, Int facet_number, OptionSet options)
 {
-   const IncidenceMatrix<> RIF=p_in.give("RAYS_IN_FACETS");
-   const Graph<> DG=p_in.give("DUAL_GRAPH.ADJACENCY");
-   const int n_rays=RIF.cols(), n_facets=RIF.rows();
+   const IncidenceMatrix<> RIF = p_in.give("RAYS_IN_FACETS");
+   const Graph<> DG = p_in.give("DUAL_GRAPH.ADJACENCY");
+   const Int n_rays = RIF.cols(), n_facets=RIF.rows();
 
    if (facet_number < 0 || facet_number >= n_facets)
       throw std::runtime_error("facet number out of range");
 
    IncidenceMatrix<> RIF_out=RIF.minor(DG.adjacent_nodes(facet_number), RIF[facet_number]);
 
-   perl::Object p_out(p_in.type());
+   BigObject p_out(p_in.type());
    p_out.take("RAYS_IN_FACETS") << RIF_out;
    p_out.set_description() << "facet " << facet_number << " of " << p_in.name() << endl;
 
    if (options["no_coordinates"]) {
       if (p_in.exists("CONE_DIM")) {
-         const int dim=p_in.give("CONE_DIM");
+         const Int dim = p_in.give("CONE_DIM");
          p_out.take("CONE_DIM") << dim-1;
       }
    } else {
@@ -65,11 +65,12 @@ perl::Object facet(perl::Object p_in, int facet_number, perl::OptionSet options)
    return p_out;
 }
 
-std::pair< Set<int>,Set<int> >
-face_pair(perl::Object p_in, const Set<int>& some_rays) {
-   const IncidenceMatrix<> RIF=p_in.give("RAYS_IN_FACETS");
-   const int n_facets=RIF.rows(), n_rays=RIF.cols();
-   Set<int> facets_containing_given_rays, rays_in_facets_found;
+std::pair<Set<Int>, Set<Int>>
+face_pair(BigObject p_in, const Set<Int>& some_rays)
+{
+   const IncidenceMatrix<> RIF = p_in.give("RAYS_IN_FACETS");
+   const Int n_facets = RIF.rows(), n_rays = RIF.cols();
+   Set<Int> facets_containing_given_rays, rays_in_facets_found;
    if (some_rays.empty()) {
       facets_containing_given_rays=sequence(0,n_facets);
    } else {
@@ -82,39 +83,41 @@ face_pair(perl::Object p_in, const Set<int>& some_rays) {
    if (facets_containing_given_rays.empty()) {
       rays_in_facets_found=sequence(0,n_rays);
    } else {
-      auto i=entire(facets_containing_given_rays);
-      rays_in_facets_found=RIF.row(*i);
+      auto i = entire(facets_containing_given_rays);
+      rays_in_facets_found = RIF.row(*i);
       for (++i; !i.at_end(); ++i) {
          rays_in_facets_found*=RIF.row(*i);
       }
    }
-   return std::pair< Set<int>,Set<int> >(rays_in_facets_found,facets_containing_given_rays);
+   return { rays_in_facets_found, facets_containing_given_rays };
 }
 
-perl::Object face(perl::Object p_in, const Set<int>& some_rays, perl::OptionSet options) {
-   const IncidenceMatrix<> RIF=p_in.give("RAYS_IN_FACETS");
-   const int n_facets=RIF.rows(), n_rays=RIF.cols();
-   std::pair< Set<int>,Set<int> > fp=face_pair(p_in,some_rays);
+BigObject face(BigObject p_in, const Set<Int>& some_rays, OptionSet options)
+{
+   const IncidenceMatrix<> RIF = p_in.give("RAYS_IN_FACETS");
+   const Int n_facets = RIF.rows(), n_rays = RIF.cols();
+   std::pair<Set<Int>, Set<Int>> fp = face_pair(p_in, some_rays);
    
-   const Set<int>& rays_of_face=fp.first, facets_containing_face=fp.second;
-   Set<int> facet_candidates=sequence(0,n_facets)-facets_containing_face; // facet indices
-   PowerSet<int> facets_of_face;
-   for (auto f=entire(facet_candidates); !f.at_end(); ++f)
+   const Set<Int>& rays_of_face = fp.first;
+   const Set<Int>& facets_containing_face = fp.second;
+   Set<Int> facet_candidates = sequence(0, n_facets) - facets_containing_face; // facet indices
+   PowerSet<Int> facets_of_face;
+   for (auto f = entire(facet_candidates); !f.at_end(); ++f)
       facets_of_face.insertMax(rays_of_face * RIF.row(*f)); // sets of ray indices
-   const int n_rays_of_face=rays_of_face.size(), n_facets_of_face=facets_of_face.size();
+   const Int n_rays_of_face = rays_of_face.size(), n_facets_of_face = facets_of_face.size();
 
-   int idx=0;
-   hash_map<int,int> relabel(n_rays_of_face);
-   for (auto v=entire(rays_of_face); !v.at_end(); ++v)
+   Int idx = 0;
+   hash_map<Int, Int> relabel(n_rays_of_face);
+   for (auto v = entire(rays_of_face); !v.at_end(); ++v)
       relabel[*v]=idx++;
 
    IncidenceMatrix<> rif_face(n_facets_of_face,n_rays_of_face);
-   idx=0;
-   for (auto f=entire(facets_of_face); !f.at_end(); ++f, ++idx)
-      for (auto v=entire(*f); !v.at_end(); ++v)
+   idx = 0;
+   for (auto f = entire(facets_of_face); !f.at_end(); ++f, ++idx)
+      for (auto v = entire(*f); !v.at_end(); ++v)
          rif_face(idx,relabel[*v])=1;
    
-   perl::Object p_out(p_in.type());
+   BigObject p_out(p_in.type());
    p_out.take("RAYS_IN_FACETS") << rif_face;
 
    if (!options["no_coordinates"]) {

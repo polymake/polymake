@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -18,17 +18,39 @@
 #include "polymake/polytope/soplex_interface.h"
 #include "polymake/Rational.h"
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconversion"
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
+
 #define SOPLEX_WITH_GMP
 #include "soplex.h"
 
-namespace polymake { namespace polytope { namespace soplex_interface {
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
+namespace polymake { namespace polytope { namespace soplex_interface {
 
 /** This method uses the exact version of Soplex to solve the given LP. */
 LP_Solution<Rational>
 Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equations,
-              const Vector<Rational>& Objective, bool maximize, const Set<int>& initial_basis) const
+              const Vector<Rational>& Objective, bool maximize, const Set<Int>& initial_basis) const
 {
+   const Int dim = Inequalities.cols(), num_constr = Inequalities.rows() + Equations.rows();
+   if (dim > std::numeric_limits<int>::max() || num_constr > std::numeric_limits<int>::max())
+      throw std::runtime_error("Problem is too big for soplex");
+
+   const int n = int(dim-1); // beware of leading constant term
+   const int m = int(num_constr);
+
    // create soplex instance
    soplex::SoPlex soplex;
 
@@ -59,9 +81,7 @@ Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equa
    const Rational plusinfinity(realinfty);
    const Rational minusinfinity(-realinfty);
 
-   const int n(Inequalities.cols() - 1); // beware of leading constant term
-
-   if (Equations.rows() > 0 && n != Equations.cols() - 1) {
+   if (Equations.rows() > 0 && n != Equations.cols()-1) {
       throw std::runtime_error("Dimensions do not fit.\n");
    }
 
@@ -81,7 +101,7 @@ Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equa
    }
 
    // add columns
-   soplex.addColsRational(obj, lower, 0, 0, 0, 0, n, 0, upper);
+   soplex.addColsRational(obj, lower, nullptr, nullptr, nullptr, nullptr, n, 0, upper);
 
    // free space
    for (int j = 0; j < n; ++j) {
@@ -110,14 +130,14 @@ Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equa
    for (int i = 0; i < Inequalities.rows(); ++i) {
       int cnt = 0;
       for (int j = 0; j < n; ++j) {
-         Rational val = Inequalities(i,j+1);
+         Rational val = Inequalities(i, j+1);
          if (!is_zero(val)) {
             mpq_set(rowValues[cnt], val.get_rep());
             rowIndices[cnt++] = j;
          }
       }
 
-      Rational val = -Inequalities(i,0);
+      Rational val = -Inequalities(i, 0);
       mpq_set(rhs, plusinfinity.get_rep());
       mpq_set(lhs, val.get_rep());
 
@@ -128,15 +148,14 @@ Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equa
    for (int i = 0; i < Equations.rows(); ++i) {
       int cnt = 0;
       for (int j = 0; j < n; ++j) {
-         Rational val = Equations(i,j+1);
+         Rational val = Equations(i, j+1);
          if (!is_zero(val)) {
-            // mpq_clear(obj[j]);
             mpq_set(rowValues[cnt], val.get_rep());
             rowIndices[cnt++] = j;
          }
       }
 
-      Rational val = -Equations(i,0);
+      Rational val = -Equations(i, 0);
       mpq_set(lhs, val.get_rep());
       mpq_set(rhs, val.get_rep());
 
@@ -152,7 +171,7 @@ Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equa
    delete [] rowIndices;
 
 #if POLYMAKE_DEBUG
-   if ( debug_print ) {
+   if (debug_print) {
       std::cout << "Number of columns: " << soplex.numColsRational() << std::endl;
       std::cout << "Number of rows: " << soplex.numRowsRational() << std::endl;
    }
@@ -160,8 +179,6 @@ Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equa
 
    // add start basis
    if (!initial_basis.empty()) {
-      int m(Inequalities.rows() + Equations.rows());
-
       soplex::SPxSolver::VarStatus* rows = new soplex::SPxSolver::VarStatus [m];
       soplex::SPxSolver::VarStatus* cols = new soplex::SPxSolver::VarStatus [n];
 
@@ -173,7 +190,7 @@ Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equa
          rows[i] = soplex::SPxSolver::VarStatus::BASIC;
 
       int count = 0;
-      for (const int i : initial_basis) {
+      for (const Int i : initial_basis) {
          rows[i] = soplex::SPxSolver::VarStatus::ON_LOWER;
          if (++count >= n)
             break;
@@ -186,7 +203,7 @@ Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equa
 
 #if POLYMAKE_DEBUG
    if (debug_print) {
-      soplex.writeFileRational("debug.lp", 0, 0, 0);
+      soplex.writeFileRational("debug.lp", nullptr, nullptr, nullptr);
       std::cout << "Wrote debug output of LP to 'debug.lp'." << std::endl;
    }
 #endif
@@ -221,7 +238,7 @@ Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equa
    {
       result.status = LP_status::valid;
       // get solution
-      auto soplexsol=std::make_unique<mpq_t[]>(n+1);
+      auto soplexsol = std::make_unique<mpq_t[]>(n+1);
       for (int j = 0; j <= n; ++j)
          mpq_init(soplexsol[j]);
       mpq_set_si(soplexsol[0], 1, 1);

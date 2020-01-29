@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,11 +26,11 @@ namespace polymake { namespace polytope {
 
 typedef Graph<Undirected> graph_type;
 
-perl::Object fractional_matching_polytope(const graph_type& G)
+BigObject fractional_matching_polytope(const graph_type& G)
 {
    const SparseMatrix<Rational> M((unit_matrix<Rational>(G.edges()+1)) /
                                   (ones_vector<Rational>() | -node_edge_incidences<Rational>(G)));
-   perl::Object p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>");
    p.take("INEQUALITIES") << M;
    p.take("BOUNDED") << true;
    p.take("FEASIBLE") << true;

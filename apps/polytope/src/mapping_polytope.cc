@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -39,35 +39,35 @@ struct product_label {
 }
 
 template <typename Scalar>
-perl::Object mapping_polytope(perl::Object p_in1, perl::Object p_in2, perl::OptionSet options)
+BigObject mapping_polytope(BigObject p_in1, BigObject p_in2, OptionSet options)
 {
    const bool bounded=p_in1.give("BOUNDED") && p_in2.give("BOUNDED");
    if (!bounded)
       throw std::runtime_error("mapping_polytope: input polyhedra must be bounded");
-   const int p=p_in1.give("CONE_DIM"),
-      q=p_in2.give("CONE_DIM"),
-      p2=p_in1.give("CONE_AMBIENT_DIM"),
-      q2=p_in2.give("CONE_AMBIENT_DIM");
+   const Int p = p_in1.give("CONE_DIM"),
+             q = p_in2.give("CONE_DIM"),
+            p2 = p_in1.give("CONE_AMBIENT_DIM"),
+            q2 = p_in2.give("CONE_AMBIENT_DIM");
    if (p != p2 || q != q2)
       throw std::runtime_error("mapping_polytope: input polytopes must be full-dimensional");
 
-   const Matrix<Scalar> V=p_in1.give("VERTICES"),
-      H=p_in2.give("FACETS");
-   const int n=V.rows(), m=H.rows();
+   const Matrix<Scalar> V = p_in1.give("VERTICES"),
+                        H = p_in2.give("FACETS");
+   const Int n = V.rows(), m = H.rows();
 
-   perl::ObjectType t=p_in1.type();
+   BigObjectType t=p_in1.type();
    // type check versus other polytope implicitly done by server
-   perl::Object p_out(t);
+   BigObject p_out(t);
    p_out.set_description() << "Mapping polytope of " << p_in1.name() << " and " << p_in2.name() << endl;
 
    Matrix<Scalar> H_out(m*n,(q-1)*p+1);
 
-   int i = 0, j = 0, l = 0;
+   Int i = 0, j = 0, l = 0;
    for (auto vi = entire(rows(V)); !vi.at_end(); ++vi, ++i) {
       j = 0;
       for (auto fi = entire(rows(H)); !fi.at_end(); ++fi, ++j) {
          H_out(l,0) = (*fi)[0];
-         for (int k = 0; k < q-1; ++k) {
+         for (Int k = 0; k < q-1; ++k) {
             H_out[l].slice(sequence(k*p+1,p)) = (*fi)[k+1]*(*vi);
          }
          ++l;

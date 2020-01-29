@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -161,9 +161,9 @@ class TransformedContainerPair
    using base_t = typename helper::base;
    static const bool simple_operation=std::is_same<Operation, typename helper::operation>::value;
 protected:
-   int size_impl(std::false_type, std::false_type) const { return impl_t::size(); }
-   int size_impl(std::true_type, std::false_type) const { return this->get_container1().size(); }
-   int size_impl(std::false_type, std::true_type) const { return this->get_container2().size(); }
+   Int size_impl(std::false_type, std::false_type) const { return impl_t::size(); }
+   Int size_impl(std::true_type, std::false_type) const { return this->get_container1().size(); }
+   Int size_impl(std::false_type, std::true_type) const { return this->get_container2().size(); }
 public:
    TransformedContainerPair() = default;
 
@@ -177,7 +177,7 @@ public:
 
    using base_t::get_operation;
 
-   int size() const
+   Int size() const
    {
       return size_impl(bool_constant<helper::use_sparse_coupler && (helper::partially_defined ? !helper::sparse1 : !helper::sparse2)>(),
                        bool_constant<helper::use_sparse_coupler && (helper::partially_defined ? !helper::sparse2 : !helper::sparse1)>());
@@ -291,11 +291,11 @@ public:
 
 private:
    void operator--() = delete;
-   void operator+=(int) = delete;
-   void operator-=(int) = delete;
-   void operator+(int) = delete;
-   void operator-(int) = delete;
-   void operator[](int) = delete;
+   void operator+=(Int) = delete;
+   void operator-=(Int) = delete;
+   void operator+(Int) = delete;
+   void operator-(Int) = delete;
+   void operator[](Int) = delete;
 
    template <typename,typename,bool,bool> friend class iterator_product;
 };
@@ -401,7 +401,7 @@ struct has_partial_state< iterator_product<Iterator1, Iterator2, has_state1, has
 struct product_index_accessor {
    typedef void first_argument_type;
    typedef void second_argument_type;
-   typedef int result_type;
+   typedef Int result_type;
 
    template <typename Iterator1, typename Iterator2>
    result_type operator() (const Iterator1& it1, const Iterator2& it2) const
@@ -419,9 +419,9 @@ struct product_index_accessor {
       return *it1.second*dim2 + it2.index();
    }
 
-   product_index_accessor(int dim2_arg=0) : dim2(dim2_arg) { }
+   product_index_accessor(Int dim2_arg = 0) : dim2(dim2_arg) { }
 protected:
-   int dim2;
+   Int dim2;
 };
 
 
@@ -588,26 +588,26 @@ public:
    }
 private:
    template <typename discr2>
-   int size_impl(std::false_type, discr2) const
+   Int size_impl(std::false_type, discr2) const
    {
       return this->manip_top().get_container1().size() * this->manip_top().get_container2().size();
    }
-   int size_impl(std::true_type, std::false_type) const
+   Int size_impl(std::true_type, std::false_type) const
    {
       return dim();
    }
-   int size_impl(std::true_type, std::true_type) const
+   Int size_impl(std::true_type, std::true_type) const
    {
-      const int d1=get_dim(this->manip_top().get_container1()), d2=get_dim(this->manip_top().get_container2());
+      const Int d1 = get_dim(this->manip_top().get_container1()), d2=get_dim(this->manip_top().get_container2());
       return d1*d2 - (d1-this->manip_top().get_container1().size())*(d2-this->manip_top().get_container2().size());
    }
 
 public:
-   int size() const
+   Int size() const
    {
       return size_impl(bool_constant<base_t::partially_defined>(), bool_constant<base_t::sparse1 && base_t::sparse2>());
    }
-   int dim() const
+   Int dim() const
    {
       return get_dim(this->manip_top().get_container1()) * get_dim(this->manip_top().get_container2());
    }
@@ -721,7 +721,7 @@ struct repeated_container {
 };
 
 template <typename Container>
-auto repeat(Container&& c, int n)
+auto repeat(Container&& c, Int n)
 {
    return typename repeated_container<Container>::type(count_down(n), std::forward<Container>(c));
 }

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -34,36 +34,36 @@ using namespace graph::lattice;
 using namespace fan;
 
 template <typename Addition>
-perl::Object linear_space(perl::Object valuated_matroid)
+BigObject linear_space(BigObject valuated_matroid)
 {
-  const perl::Object polytope = valuated_matroid.give("POLYTOPE");
+  const BigObject polytope = valuated_matroid.give("POLYTOPE");
   const Matrix<Rational> &vertices = polytope.give("VERTICES");
   const auto no_front_set = sequence(1,vertices.cols()-1);
   const auto vertices_no_front = vertices.minor(All,no_front_set);
-  const int n = valuated_matroid.give("N_ELEMENTS");
-  int n_facets = valuated_matroid.give("N_BASES");
+  const Int n = valuated_matroid.give("N_ELEMENTS");
+  Int n_facets = valuated_matroid.give("N_BASES");
   const Vector<TropicalNumber<Addition> > &valuation = valuated_matroid.give("VALUATION_ON_BASES");
   const Vector<Rational> rational_valuation(valuation);
-  const Array<Set<int> >& subdivision = valuated_matroid.give("SUBDIVISION");
-  const Array< Array< Set<int> > >& split_flacets = valuated_matroid.give("SPLIT_FLACETS");
-  const int polytope_dim = polytope.call_method("DIM");
+  const Array<Set<Int>>& subdivision = valuated_matroid.give("SUBDIVISION");
+  const Array<Array<Set<Int>>>& split_flacets = valuated_matroid.give("SPLIT_FLACETS");
+  const Int polytope_dim = polytope.call_method("DIM");
   ListMatrix<Vector<Rational> > new_vertices;
 
   // Check absence of loops
-  const int n_matroid_loops = valuated_matroid.give("N_LOOPS");
+  const Int n_matroid_loops = valuated_matroid.give("N_LOOPS");
   if (n_matroid_loops > 0) {
-    perl::Object empty_cycle("Cycle", mlist<Addition>());
+    BigObject empty_cycle("Cycle", mlist<Addition>());
     empty_cycle.take("PROJECTIVE_VERTICES") << Matrix<Rational>(0,n+1);
-    empty_cycle.take("MAXIMAL_POLYTOPES") << Array<Set<int> >();
+    empty_cycle.take("MAXIMAL_POLYTOPES") << Array<Set<Int>>();
     empty_cycle.take("PROJECTIVE_AMBIENT_DIM") << n-1;
     empty_cycle.take("WEIGHTS") << Vector<Integer>();
     return empty_cycle;
   }
 
   // excluded faces (those with loops):
-  Array<Set<int> > including_bases(n);
-  std::list<Set<int> > non_including_bases(n);
-  const Set<int> total_list = sequence(0,n_facets);
+  Array<Set<Int>> including_bases(n);
+  std::list<Set<Int>> non_including_bases(n);
+  const auto total_list = sequence(0,n_facets);
   auto non_bases_it = entire(non_including_bases);
   auto bases_it = entire(including_bases);
   for (auto vcol = entire(cols(vertices_no_front)); !vcol.at_end();
@@ -87,9 +87,9 @@ perl::Object linear_space(perl::Object valuated_matroid)
 
   // stack the 'loop-free' facets and add a ray for each such facet
   RestrictedIncidenceMatrix<> flacets(subdivision.size(), rowwise(), entire(subdivision));
-  int i = 1;
+  Int i = 1;
   for (auto incl_base  = entire(including_bases); !incl_base.at_end(); ++incl_base, ++i) {
-    const int n_loops = attach_selector( cols(vertices_no_front.minor(*incl_base,All)), operations::is_zero()).size();
+    const Int n_loops = attach_selector( cols(vertices_no_front.minor(*incl_base,All)), operations::is_zero()).size();
     if (n_loops > 0 || rank( vertices.minor(*incl_base,All)) != polytope_dim) continue;
 
     new_vertices /= (Addition::orientation() * unit_vector<Rational>(n+1,i));
@@ -118,10 +118,10 @@ perl::Object linear_space(perl::Object valuated_matroid)
   BasicDecorator<> dec(0, scalar2set(-1));
   Lattice<BasicDecoration> hasse_diagram = lattice_builder::compute_lattice_from_closure<BasicDecoration>(
      cop, cut, dec, 1, lattice_builder::Primal());
-  const int n_max_polys = hasse_diagram.in_adjacent_nodes(hasse_diagram.top_node()).size();
+  const Int n_max_polys = hasse_diagram.in_adjacent_nodes(hasse_diagram.top_node()).size();
 
   // Build lineality space
-  const Array<Set<int>>& ccomp = valuated_matroid.give("CONNECTED_COMPONENTS");
+  const Array<Set<Int>>& ccomp = valuated_matroid.give("CONNECTED_COMPONENTS");
   Matrix<Rational> lin_space(ccomp.size()-1, n+1);
 
   auto lin_no_front = sequence(1, lin_space.cols()-1);
@@ -136,7 +136,7 @@ perl::Object linear_space(perl::Object valuated_matroid)
     }
   }
 
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("PROJECTIVE_VERTICES") << new_vertices;
   result.take("HASSE_DIAGRAM") << hasse_diagram;
   result.take("LINEALITY_SPACE") << lin_space;

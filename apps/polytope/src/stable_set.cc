@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,11 +29,11 @@ namespace polymake { namespace polytope {
  *             x_i >= 0  forall i in V
  *             x_i <= 1  forall i in V with deg(i)=0
  */
-perl::Object stable_set(const perl::Object& G_in)
+BigObject stable_set(const BigObject& G_in)
 {
     const Graph<> G = G_in.give("ADJACENCY");          // getting the Graph
     SparseMatrix<Rational> ineqs(G.edges(), G.nodes()+1);   // inequalities of the new polytope
-    int row(0);                                        // keeping track of the rows
+    Int row = 0;                                        // keeping track of the rows
  
     // For every edge {i,j} create the inequality x_i + x_j <= 1
     for (auto eit = entire(edges(G)); !eit.at_end(); ++eit, ++row) {
@@ -47,7 +47,7 @@ perl::Object stable_set(const perl::Object& G_in)
 
     // adding constraints x_i <= 1 for nodes with degree 0
     // so it does not happen to be unbounded
-    int i = 0;
+    Int i = 0;
     for (auto vit = entire(nodes(G)); !vit.at_end(); ++vit, ++i) {
        if (vit.degree() == 0) {
          ineqs /= (1 | -unit_vector<Rational>(G.nodes(), i));
@@ -55,7 +55,7 @@ perl::Object stable_set(const perl::Object& G_in)
     }
 
     // output
-    perl::Object p_out("Polytope<Rational>");
+    BigObject p_out("Polytope<Rational>");
     p_out.set_description() << "stable set polytope of a Graph" << endl;   
     p_out.take("INEQUALITIES") << ineqs;
     p_out.take("BOUNDED") << true;

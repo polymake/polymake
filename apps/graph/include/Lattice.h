@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -50,8 +50,8 @@ protected:
   NodeMap<Directed, Decoration> D;
   InverseRankMap<SeqType> rank_map;
 
-  int top_node_index;
-  int bottom_node_index;
+  Int top_node_index;
+  Int bottom_node_index;
 
 public:
 
@@ -83,21 +83,21 @@ public:
   const Graph<Directed>& graph() const { return G; }
   const NodeMap<Directed,Decoration>& decoration() const { return D; }
   const InverseRankMap<SeqType>& inverse_rank_map() const { return rank_map; }
-  const Decoration& decoration(int n) const { return D[n]; }
-  const Set<int>& face(int n) const { return D[n].face;}
+  const Decoration& decoration(Int n) const { return D[n]; }
+  const Set<Int>& face(Int n) const { return D[n].face;}
 
-  int top_node() const { return top_node_index;}
-  int bottom_node() const { return bottom_node_index;}
+  Int top_node() const { return top_node_index; }
+  Int bottom_node() const { return bottom_node_index; }
 
-  Array<Set<int>> dual_faces() const
+  Array<Set<Int>> dual_faces() const
   {
-    Array<Set<int>> df(nodes());
-    int i = 0;
-    int top_rank = rank();
-    int bottom_rank = lowest_rank();
+    Array<Set<Int>> df(nodes());
+    Int i = 0;
+    Int top_rank = rank();
+    Int bottom_rank = lowest_rank();
     for (auto f = entire(nodes_of_rank(top_rank-1)); !f.at_end(); ++f, ++i)
       df[*f] = scalar2set(i);
-    for (int d = top_rank -2; d >= bottom_rank; --d)
+    for (Int d = top_rank-2; d >= bottom_rank; --d)
       for (auto f = entire(nodes_of_rank(d)); !f.at_end(); ++f)
         for (auto nb = entire(out_adjacent_nodes(*f)); !nb.at_end(); ++nb)
           df[*f] += df[*nb];
@@ -121,62 +121,62 @@ public:
     G.permute_nodes(node_perm);
   }
 
-  int nodes() const { return G.nodes();}
-  int edges() const { return G.edges();}
+  Int nodes() const { return G.nodes(); }
+  Int edges() const { return G.edges(); }
 
   friend const Nodes<Graph<Directed>>& nodes(const Lattice<Decoration, SeqType>& me) { return pm::nodes(me.G); }
   friend const Edges<Graph<Directed>>& edges(const Lattice<Decoration, SeqType>& me) { return pm::edges(me.G); }
   friend const AdjacencyMatrix<Graph<Directed>>& adjacency_matrix(const Lattice<Decoration, SeqType>& me) { return pm::adjacency_matrix(me.G); }
 
-  bool node_exists(int n) const { return G.node_exists(n); }
-  bool edge_exists(int n1, int n2) const { return G.edge_exists(n1,n2); }
+  bool node_exists(Int n) const { return G.node_exists(n); }
+  bool edge_exists(Int n1, Int n2) const { return G.edge_exists(n1,n2); }
 
-  decltype(auto) out_edges(int n) const { return G.out_edges(n); }
-  decltype(auto) in_edges(int n) const { return G.in_edges(n); }
+  decltype(auto) out_edges(Int n) const { return G.out_edges(n); }
+  decltype(auto) in_edges(Int n) const { return G.in_edges(n); }
 
-  decltype(auto) out_adjacent_nodes(int n) const { return G.out_adjacent_nodes(n); }
-  decltype(auto) in_adjacent_nodes(int n) const { return G.in_adjacent_nodes(n); }
+  decltype(auto) out_adjacent_nodes(Int n) const { return G.out_adjacent_nodes(n); }
+  decltype(auto) in_adjacent_nodes(Int n) const { return G.in_adjacent_nodes(n); }
 
-  int out_degree(int n) const { return G.out_degree(n); }
-  int in_degree(int n) const { return G.in_degree(n); }
-  int degree(int n) const { return G.degree(n); }
+  Int out_degree(Int n) const { return G.out_degree(n); }
+  Int in_degree(Int n) const { return G.in_degree(n); }
+  Int degree(Int n) const { return G.degree(n); }
 
-  int rank(int n) const
+  Int rank(Int n) const
   {
     return D[n].rank;
   }
 
-  int rank() const
+  Int rank() const
   {
     return rank(top_node());
   }
 
-  int lowest_rank() const
+  Int lowest_rank() const
   {
     return rank(bottom_node());
   }
 
-  decltype(auto) nodes_of_rank(int d) const
+  decltype(auto) nodes_of_rank(Int d) const
   {
     return rank_map.nodes_of_rank(d);
   }
 
-  decltype(auto) nodes_of_rank_range(int d1, int d2) const
+  decltype(auto) nodes_of_rank_range(Int d1, Int d2) const
   {
     return rank_map.nodes_of_rank_range(d1,d2);
   }
 
   // Building methods
 
-  void set_decoration(int n, const Decoration& data)
+  void set_decoration(Int n, const Decoration& data)
   {
     D[n] = data;
     rank_map.set_rank(n, data.rank);
   }
 
-  int add_node(const Decoration& data)
+  Int add_node(const Decoration& data)
   {
-    int n = G.nodes();
+    const Int n = G.nodes();
     G.resize(n+1);
     set_decoration(n,data);
     if (n == 0) {
@@ -186,9 +186,9 @@ public:
   }
 
   template <typename Iterator>
-  int add_nodes(int n, Iterator data_list)
+  Int add_nodes(Int n, Iterator data_list)
   {
-    int n_old = G.nodes();
+    const Int n_old = G.nodes();
     G.resize(n_old + n);
     for (auto nd = entire(sequence(n_old, n)); !nd.at_end(); ++nd, ++data_list) {
       set_decoration(*nd, *data_list);
@@ -199,7 +199,7 @@ public:
     return n_old;
   }
 
-  void add_edge(int n_from, int n_to)
+  void add_edge(Int n_from, Int n_to)
   {
     G.edge(n_from, n_to);
     if (n_from == top_node_index) top_node_index = n_to;
@@ -207,9 +207,9 @@ public:
   }
 
   // TODO: introduce operator ... && moving all members
-  explicit operator perl::Object () const
+  explicit operator BigObject () const
   {
-    perl::Object result("Lattice", mlist<Decoration, SeqType>());
+    BigObject result("Lattice", mlist<Decoration, SeqType>());
     result.take("ADJACENCY") << graph();
     result.take("DECORATION") << decoration();
     result.take("INVERSE_RANK_MAP") << rank_map;
@@ -218,15 +218,15 @@ public:
     return result;
   }
 
-  explicit Lattice(const perl::Object& obj)
+  explicit Lattice(const BigObject& obj)
     : D(G)
   {
     *this = obj;
   }
 
-  Lattice& operator= (const perl::Object& obj)
+  Lattice& operator= (const BigObject& obj)
   {
-    // TODO: include is_trusted flag in Object?
+    // TODO: include is_trusted flag in BigObject?
     // if (obj.get_flags() * pm::perl::ValueFlags::not_trusted && !obj.isa("Lattice"))
     //   throw std::runtime_error("wrong object type for Lattice");
     obj.give("ADJACENCY") >> G;
@@ -243,7 +243,7 @@ public:
 namespace pm { namespace perl {
 
 template <typename Decoration, typename SeqType>
-struct represents_big_Object<polymake::graph::Lattice<Decoration, SeqType>> : std::true_type {};
+struct represents_BigObject<polymake::graph::Lattice<Decoration, SeqType>> : std::true_type {};
 
 } }
 

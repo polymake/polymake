@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -49,7 +49,7 @@ public:
          return reinterpret_cast<const fl_internal::Facet&>(static_cast<const fl_internal::facet&>(*this));
       }
 
-      int heap_index;
+      Int heap_index;
       int weight[1];
    };
 
@@ -61,9 +61,9 @@ public:
 
       int operator() (const ChainAgent& c1, const ChainAgent& c2) const
       {
-         int diff=0;
-         for (int i=0; i<=max_weight; ++i) {
-            diff=c1.weight[i] - c2.weight[i];
+         int diff = 0;
+         for (int i = 0; i <= max_weight; ++i) {
+            diff = c1.weight[i] - c2.weight[i];
             if (diff != 0) break;
          }
          return diff;
@@ -89,16 +89,16 @@ public:
 
       const weight_comparator& key_comparator() const { return wt_cmp; }
 
-      static int position(value_type sv)
+      static Int position(value_type sv)
       {
          return extract_agent(sv)->heap_index;
       }
 
-      static void update_position(value_type sv, int old_pos, int new_pos)
+      static void update_position(value_type sv, Int old_pos, Int new_pos)
       {
-         ChainAgent* agent=extract_agent(sv);
-         assert(agent->heap_index==old_pos);
-         agent->heap_index=new_pos;
+         ChainAgent* agent = extract_agent(sv);
+         assert(agent->heap_index == old_pos);
+         agent->heap_index = new_pos;
       }
 
    private:
@@ -130,7 +130,7 @@ public:
    int get_max_weight() const { return heap.key_comparator().get_max_weight(); }
    size_t get_popcount() const { return popcount; }
    size_t get_maxsize() const { return maxsize; }
-   size_t get_totalsize() const { return _size; }
+   size_t get_totalsize() const { return size_; }
 
    void new_tentative_agent(SV* chain);
 
@@ -138,7 +138,7 @@ public:
 
    void clear_vertex_filter() { vertex_filter.clear(); }
 
-   void set_tell_dropped(SV* sub) { tell_dropped=sub; }
+   void set_tell_dropped(SV* sub) { tell_dropped = sub; }
 
    static int RuleChain_agent_index;
    static SV* class_descr;
@@ -171,8 +171,8 @@ private:
    void kill_chains();
 
    heap_t heap;
-   Set<int> vertex_filter;
-   Set<int> tentative_vertex_set;
+   Set<Int> vertex_filter;
+   Set<Int> tentative_vertex_set;
 
    SV* tell_dropped;
    SV* chain_in_progress;
@@ -206,9 +206,8 @@ bool SchedulerHeap::push(SV* chain)
    sv_setuv(agent_sv, PTR2UV(tentative_agent));
    SvIsUV_on(agent_sv);
 
-   for (fl_internal::subset_iterator<Set<int>, false> subs_it=findSubsets(tentative_vertex_set, std::false_type());
-        !subs_it.at_end();  ++subs_it) {
-      const ChainAgent* smaller_chain_agent=static_cast<const ChainAgent*>(subs_it.operator->());
+   for (auto subs_it = findSubsets(tentative_vertex_set, std::false_type());  !subs_it.at_end();  ++subs_it) {
+      const ChainAgent* smaller_chain_agent = static_cast<const ChainAgent*>(subs_it.operator->());
       if (smaller_chain_agent != ancestor_agent &&
           heap.key_comparator()(*smaller_chain_agent, *tentative_agent) >= 0) {
          // found an inferior chain with the same or less new properties and equal or higher weight
@@ -261,22 +260,22 @@ void SchedulerHeap::clear()
 
 void SchedulerHeap::add_to_vertex_filter(AV* set_list)
 {
-   for (SV **setref_p=AvARRAY(set_list), **setref_last=setref_p+AvFILLp(set_list);  setref_p<=setref_last;  ++setref_p) {
-      AV* vertex_list=(AV*)SvRV(*setref_p);
-      for (SV **vertex_p=AvARRAY(vertex_list), **vertex_last=vertex_p+AvFILLp(vertex_list);  vertex_p<=vertex_last;  ++vertex_p) {
-         vertex_filter += static_cast<int>(SvIVX(*vertex_p));
+   for (SV **setref_p = AvARRAY(set_list), ** const setref_last = setref_p + AvFILLp(set_list);  setref_p <= setref_last;  ++setref_p) {
+      AV* vertex_list = (AV*)SvRV(*setref_p);
+      for (SV **vertex_p = AvARRAY(vertex_list), ** const vertex_last = vertex_p + AvFILLp(vertex_list);  vertex_p<=vertex_last;  ++vertex_p) {
+         vertex_filter += static_cast<Int>(SvIVX(*vertex_p));
       }
    }
 }
 
 bool SchedulerHeap::is_promising(AV* set_list)
 {
-   const int ancestor_vertices=tentative_vertex_set.size();
+   const Int ancestor_vertices = tentative_vertex_set.size();
 
-   for (SV **setref_p=AvARRAY(set_list), **setref_last=setref_p+AvFILLp(set_list);  setref_p<=setref_last;  ++setref_p) {
-      AV* vertex_list=(AV*)SvRV(*setref_p);
-      for (SV **vertex_p=AvARRAY(vertex_list), **vertex_last=vertex_p+AvFILLp(vertex_list);  vertex_p<=vertex_last;  ++vertex_p) {
-         const int v=SvIVX(*vertex_p);
+   for (SV **setref_p = AvARRAY(set_list), ** const setref_last = setref_p + AvFILLp(set_list);  setref_p <= setref_last;  ++setref_p) {
+      AV* vertex_list = (AV*)SvRV(*setref_p);
+      for (SV **vertex_p = AvARRAY(vertex_list), ** const vertex_last = vertex_p + AvFILLp(vertex_list);  vertex_p <= vertex_last;  ++vertex_p) {
+         const Int v = SvIVX(*vertex_p);
          if (!vertex_filter.contains(v))
             tentative_vertex_set += v;
       }
@@ -300,8 +299,8 @@ void SchedulerHeap::sanity_check() const
 {
    dTHX;
    int pos=0;
-   for (auto q_it=entire(heap.get_queue());  !q_it.at_end();  ++q_it, ++pos) {
-      const ChainAgent* agent=extract_agent_wary(*q_it);
+   for (auto q_it = entire(heap.get_queue());  !q_it.at_end();  ++q_it, ++pos) {
+      const ChainAgent* agent = extract_agent_wary(*q_it);
       if (!agent || agent->heap_index != pos) {
          Perl_croak(aTHX_ "corruption in element %d", pos);
       }
@@ -312,8 +311,8 @@ void SchedulerHeap::sanity_check() const
 }
 #endif
 
-int SchedulerHeap::RuleChain_agent_index=0;
-SV* SchedulerHeap::class_descr=nullptr;
+int SchedulerHeap::RuleChain_agent_index = 0;
+SV* SchedulerHeap::class_descr = nullptr;
 
 } }
 
@@ -328,28 +327,22 @@ MODULE = Polymake::Core::Scheduler::Heap           PACKAGE = Polymake::Core::Sch
 
 PROTOTYPES: DISABLE
 
-void
-new(pkg, max_weight, n_props)
-   SV* pkg;
-   I32 max_weight;
-   I32 n_props;
+void new(SV* pkg, I32 max_weight, I32 n_props)
 PPCODE:
 {
    if (!SchedulerHeap::class_descr) {
       // this initialization can't be done in the BOOT block because CPlusPlus is not yet initialized that early
-      SchedulerHeap::class_descr=OpaqueClassRegistrator<SchedulerHeap>::register_it("Polymake::Core::Scheduler::Heap", nullptr, nullptr);
-      SchedulerHeap::RuleChain_agent_index=CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::heap_agent", false));
+      SchedulerHeap::class_descr = OpaqueClassRegistrator<SchedulerHeap>::register_it("Polymake::Core::Scheduler::Heap", nullptr, nullptr);
+      SchedulerHeap::RuleChain_agent_index = CvDEPTH(get_cv("Polymake::Core::Scheduler::TentativeRuleChain::heap_agent", false));
    }
-   SV* ref=newSV_type(SVt_NULL);
-   MAGIC* mg=glue::allocate_canned_magic(aTHX_ ref, SchedulerHeap::class_descr, ValueFlags::alloc_magic, 0);
+   SV* ref = newSV_type(SVt_NULL);
+   MAGIC* mg = glue::allocate_canned_magic(aTHX_ ref, SchedulerHeap::class_descr, ValueFlags::alloc_magic, 0);
    new(mg->mg_ptr) SchedulerHeap(aTHX_ max_weight, n_props);
    PUSHs(sv_2mortal(ref));
    PERL_UNUSED_ARG(pkg);
 }
 
-void
-size(self)
-   SV* self;
+void size(SV* self)
 PPCODE:
 {
    dTARGET;
@@ -357,9 +350,7 @@ PPCODE:
    PUSHi(heap->get_queue().size());
 }
 
-void
-maxsize(self)
-   SV* self;
+void maxsize(SV* self)
 PPCODE:
 {
    dTARGET;
@@ -367,9 +358,7 @@ PPCODE:
    PUSHi(heap->get_maxsize());
 }
 
-void
-totalsize(self)
-   SV* self;
+void totalsize(SV* self)
 PPCODE:
 {
    dTARGET;
@@ -377,9 +366,7 @@ PPCODE:
    PUSHi(heap->get_totalsize());
 }
 
-void
-popcount(self)
-   SV* self;
+void popcount(SV* self)
 PPCODE:
 {
    dTARGET;
@@ -387,56 +374,43 @@ PPCODE:
    PUSHi(heap->get_popcount());
 }
 
-void
-reset(self)
-   SV* self;
+void reset(SV* self)
 PPCODE:
 {
    RetrieveHeapArg();
    heap->clear();
 }
 
-void
-pop(self)
-   SV* self;
+void pop(SV* self)
 PPCODE:
 {
    RetrieveHeapArg();
    if (!heap->get_queue().empty()) {
-      SV* chain_ref=heap->pop();
+      SV* chain_ref = heap->pop();
       PUSHs(sv_2mortal(chain_ref));
    } else {
       PUSHs(&PL_sv_undef);
    }
 }
 
-void
-new_tentative_chain(self, chain)
-   SV* self;
-   SV* chain;
+void new_tentative_chain(SV* self, SV* chain)
 PPCODE:
 {
    RetrieveHeapArg();
    heap->new_tentative_agent(chain);
 }
 
-void
-add_weight(self, wt_ref)
-   SV* self;
-   SV* wt_ref;
+void add_weight(SV* self, SV* wt_ref)
 PPCODE:
 {
    RetrieveHeapArg();
-   SchedulerHeap::ChainAgent* agent=heap->get_tentative_agent();
-   const int major=SvIVX(PmArray(wt_ref)[0]);
-   const int minor=SvIVX(PmArray(wt_ref)[1]);
-   agent->weight[heap->get_max_weight()-major] += minor;
+   SchedulerHeap::ChainAgent* agent = heap->get_tentative_agent();
+   const int major = int(SvIVX(PmArray(wt_ref)[0]));
+   const int minor = int(SvIVX(PmArray(wt_ref)[1]));
+   agent->weight[heap->get_max_weight() - major] += minor;
 }
 
-void
-push(self, chain)
-   SV* self;
-   SV* chain;
+void push(SV* self, SV* chain)
 PPCODE:
 {
    RetrieveHeapArg();
@@ -444,9 +418,7 @@ PPCODE:
       Perl_croak(aTHX_ "Scheduler::Heap - wrong usage: push() without preceding new_tentative_chain()");
 }
 
-void
-clear_vertex_filter(self)
-   SV* self;
+void clear_vertex_filter(SV* self)
 PPCODE:
 {
    RetrieveHeapArg();
@@ -454,80 +426,69 @@ PPCODE:
 }
 
 void
-add_to_vertex_filter(self, set_list_ref)
-   SV* self;
-   SV* set_list_ref;
+add_to_vertex_filter(SV* self, SV* set_list_ref)
 PPCODE:
 {
+   AV* set_list;
    if (!SvROK(set_list_ref) ||
-       (set_list_ref=SvRV(set_list_ref), SvTYPE(set_list_ref) != SVt_PVAV) ||
-       (AvFILLp((AV*)set_list_ref)<0))
+       (set_list = (AV*)SvRV(set_list_ref), SvTYPE(set_list) != SVt_PVAV) ||
+       (AvFILLp(set_list) < 0))
       croak_xs_usage(cv, "[ non-empty list ]");
 
    RetrieveHeapArg();
-   heap->add_to_vertex_filter((AV*)set_list_ref);
+   heap->add_to_vertex_filter(set_list);
 }
 
-void
-is_promising(self, set_list_ref)
-   SV* self;
-   SV* set_list_ref;
+void is_promising(SV* self, SV* set_list_ref)
 PPCODE:
 {
+   AV* set_list;
    if (!SvROK(set_list_ref) ||
-       (set_list_ref=SvRV(set_list_ref), SvTYPE(set_list_ref) != SVt_PVAV) ||
-       (AvFILLp((AV*)set_list_ref)<0))
+       (set_list = (AV*)SvRV(set_list_ref), SvTYPE(set_list) != SVt_PVAV) ||
+       (AvFILLp(set_list) < 0))
       croak_xs_usage(cv, "[ non-empty list ]");
 
    RetrieveHeapArg();
-   if (heap->is_promising((AV*)set_list_ref))
+   if (heap->is_promising(set_list))
       PUSHs(&PL_sv_yes);
    else
       PUSHs(&PL_sv_no);
 }
 
-void
-unpack_weight(self, chain)
-   SV* self;
-   SV* chain;
+void unpack_weight(SV* self, SV* chain)
 PPCODE:
 {
    RetrieveHeapArg(const);
-   const SchedulerHeap::ChainAgent* agent=SchedulerHeap::extract_agent_wary(chain);
+   const SchedulerHeap::ChainAgent* agent = SchedulerHeap::extract_agent_wary(chain);
    if (agent) {
-      const int limbs=heap->get_max_weight()+1;
+      const int limbs = heap->get_max_weight()+1;
       EXTEND(SP, limbs);
-      for (const int *l=agent->weight+0, *end=l+limbs; l<end; ++l)
+      for (const int* l = agent->weight+0, * const end = l+limbs; l < end; ++l)
          PUSHs(sv_2mortal(newSViv(*l)));
    }
 }
 
-void
-describe_facet(self, chain)
-   SV* self;
-   SV* chain;
+void describe_facet(SV* self, SV* chain)
 PPCODE:
 {
    PERL_UNUSED_ARG(self);
-   const SchedulerHeap::ChainAgent* agent=SchedulerHeap::extract_agent_wary(chain);
+   const SchedulerHeap::ChainAgent* agent = SchedulerHeap::extract_agent_wary(chain);
    if (agent) {
-      EXTEND(SP, agent->size() + 1);
+      EXTEND(SP, agent->size()+1);
       mPUSHi(agent->get_id());
-      for (auto cell_it=agent->begin();  !cell_it.at_end();  ++cell_it)
+      for (auto cell_it = agent->begin();  !cell_it.at_end();  ++cell_it)
          mPUSHi(cell_it.index());
    }
 }
 
-void
-tell_dropped(self, subref)
-   SV* self;
-   SV* subref;
+void tell_dropped(SV* self, SV* subref)
 PPCODE:
 {
-   if (!SvROK(subref) || (subref=SvRV(subref), SvTYPE(subref) != SVt_PVCV))
+   SV* sub;
+   if (!SvROK(subref) || (sub = SvRV(subref), SvTYPE(sub) != SVt_PVCV))
       croak_xs_usage(cv, "\\&sub");
    RetrieveHeapArg();
-   heap->set_tell_dropped(subref);
+   heap->set_tell_dropped(sub);
 }
 
 =pod

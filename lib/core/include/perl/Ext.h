@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -18,9 +18,17 @@
 #ifndef POLYMAKE_PERL_EXT_H
 #define POLYMAKE_PERL_EXT_H
 
+#if POLYMAKE_DEBUG && defined(_FORTIFY_SOURCE)
+// required for weird Manjaro system library
+#undef _FORTIFY_SOURCE
+#define _FORTIFY_SOURCE 0
+#endif
+
 #if defined(__clang__)
-#pragma clang diagnostic ignored "-Wshadow"
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
 #pragma clang diagnostic ignored "-Wduplicate-decl-specifier"
+#pragma clang diagnostic ignored "-Wshadow"
+#pragma clang diagnostic ignored "-Wconversion"
 #if PerlVersion < 5220 && \
     ( !defined(__APPLE__) && !(__clang_major__ == 3 && __clang_minor__ == 4) || \
        defined(__APPLE__) && __clang_major__ != 5 )
@@ -33,7 +41,9 @@
 #pragma clang diagnostic ignored "-Wdeprecated-register"
 #endif
 #elif defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wconversion"
 #if PerlVersion < 5220
 #pragma GCC diagnostic ignored "-Wunused-function"
 #endif
@@ -147,7 +157,6 @@ SV** get_cx_curpad(pTHX_ PERL_CONTEXT* cx, PERL_CONTEXT* cx_bottom);
 
 // public export from Poly
 OP* select_method_helper_op(pTHX);
-MAGIC* array_flags_magic(pTHX_ SV*);
 SV* name_of_ret_var(pTHX);
 int canned_dup(pTHX_ MAGIC* mg, CLONE_PARAMS* param);
 
@@ -173,7 +182,7 @@ OP* cpp_exists(pTHX_ HV* hv, const MAGIC* mg);
 OP* cpp_delete_hslice(pTHX_ HV* hv, const MAGIC* mg);
 OP* cpp_delete_helem(pTHX_ HV* hv, const MAGIC* mg);
 OP* cpp_keycnt(pTHX_ HV* hv, const MAGIC* mg);
-int cpp_hassign(pTHX_ HV* hv, MAGIC* mg, I32* firstRp, I32 lastR, int return_size);
+SSize_t cpp_hassign(pTHX_ HV* hv, MAGIC* mg, I32* firstRp, I32 lastR, bool return_size);
 bool cpp_has_assoc_methods(const MAGIC* mg);
 
 // public export from Struct
@@ -187,7 +196,7 @@ void reset_interrupt_signal();
 // CvROOT and CvXSUB are in the same union
 inline bool is_well_defined_sub(CV* x)
 {
-   return CvROOT(x) != Nullop;
+   return CvROOT(x) != nullptr;
 }
 
 inline
@@ -206,14 +215,20 @@ void write_protect_off(pTHX_ SV* x)
 inline
 OP* method_named_op(OP* o)
 {
-   return ((o->op_flags & OPf_KIDS) && (o=cLISTOPo->op_last) && o->op_type == OP_METHOD_NAMED) ? o : 0;
+   if (o->op_flags & OPf_KIDS) {
+      OP* k = cUNOPo->op_first;
+      if (k->op_type == OP_NULL && k->op_targ == OP_LIST) o = k;
+      o = cLISTOPo->op_last;
+      if (o->op_type == OP_METHOD_NAMED) return o;
+   }
+   return nullptr;
 }
 
 inline
 MAGIC* get_cpp_magic(SV* sv)
 {
    MAGIC* mg;
-   for (mg=SvMAGIC(sv); mg && mg->mg_virtual->svt_dup != &canned_dup; mg=mg->mg_moremagic) ;
+   for (mg = SvMAGIC(sv); mg && mg->mg_virtual->svt_dup != &canned_dup; mg=mg->mg_moremagic) ;
    return mg;
 }
 
@@ -248,17 +263,17 @@ HV* get_cached_stash(pTHX_ SV* pkg)
 inline
 int get_named_constant(pTHX_ HV* stash, const AnyString& name)
 {
-   SV** gvp = hv_fetch(stash, name.ptr, name.len, false);
+   SV** gvp = hv_fetch(stash, name.ptr, I32(name.len), false);
    CV* cv;
    if (!gvp || (cv = GvCV(*gvp), !cv || !CvISXSUB(cv)))
       Perl_croak(aTHX_ "unknown constant %.*s::%.*s", PmPrintHvNAME(stash), (int)name.len, name.ptr);
-   return SvIV((SV*)XSANY.any_ptr);
+   return int(SvIV((SV*)XSANY.any_ptr));
 }
 
 inline
 HV* get_named_stash(pTHX_ const AnyString& name, int flags = 0)
 {
-   HV* stash = gv_stashpvn(name.ptr, name.len, flags);
+   HV* stash = gv_stashpvn(name.ptr, I32(name.len), flags);
    if (!stash)
       Perl_croak(aTHX_ "unknown package %.*s", (int)name.len, name.ptr);
    return stash;
@@ -267,7 +282,7 @@ HV* get_named_stash(pTHX_ const AnyString& name, int flags = 0)
 inline
 GV* get_named_variable(pTHX_ const AnyString& name, svtype type, int flags = 0)
 {
-   GV* gv = gv_fetchpvn_flags(name.ptr, name.len, flags, type);
+   GV* gv = gv_fetchpvn_flags(name.ptr, I32(name.len), flags, type);
    if (!gv)
       Perl_croak(aTHX_ "unknown variable %.*s", (int)name.len, name.ptr);
    return gv;

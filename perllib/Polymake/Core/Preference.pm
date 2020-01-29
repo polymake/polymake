@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -805,7 +805,7 @@ sub matching_default_prefs {
          }
          if ($cmp == 1) {
             # re-activating at a sublevel
-            my @sublevels = split /\./, substr($expr, length($pref->labels->[0]->wildcard_name) + 1);
+            my @sublevels = split /\./, substr($expr, length($pref->labels->[0]->wildcard_name)+1);
             if (my @sublabels = map { $_->descend(@sublevels) } @{$pref->labels}) {
                return new List(++$clock, @sublabels);
             }
@@ -950,7 +950,7 @@ sub activate {
       if (my %old_clocks = map { $_ => 1 } $pref->activate) {
          # some older preference lists need modification or even must be discarded
          my $new_wildcard = $pref->labels->[0]->wildcard_name;
-         for (my $i = $#{$self->active_prefs} - 1; $i >= 0; --$i) {
+         for (my $i = $#{$self->active_prefs}-1; $i >= 0; --$i) {
             my $old_pref = $self->active_prefs->[$i];
             if ($old_clocks{$old_pref->clock}) {
                splice @{$self->active_prefs}, $i, 1, $old_pref->subtract($new_wildcard);

@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -40,7 +40,7 @@ namespace polymake { namespace tropical {
 
 // Documentation see perl wrapper
 template <typename Addition>
-perl::Object triangulate_cycle(perl::Object fan)
+BigObject triangulate_cycle(BigObject fan)
 {
   Matrix<Rational> rays = fan.give("VERTICES");
   // Dehomogenize 
@@ -48,27 +48,27 @@ perl::Object triangulate_cycle(perl::Object fan)
   IncidenceMatrix<> cones = fan.give("MAXIMAL_POLYTOPES");
   Matrix<Rational> lin_space = fan.give("LINEALITY_SPACE");
 
-  const int fan_dim = fan.give("PROJECTIVE_DIM");
+  const Int fan_dim = fan.give("PROJECTIVE_DIM");
 
   Vector<Integer> weights;
   const bool weights_exist = fan.lookup("WEIGHTS") >> weights;
 
   // Number of rays of a simplicial cone.
-  const int no_of_rays = fan_dim - lin_space.rows() + 1;
+  const Int no_of_rays = fan_dim - lin_space.rows() + 1;
 
   // Will contain the triangulating cones and their weights
-  Vector<Set<int>> triangleCones;
+  Vector<Set<Int>> triangleCones;
   Vector<Integer> triangleWeights;
 
   const polytope::BeneathBeyondConvexHullSolver<Rational> bb_solver{};
 
   // Go through all cones
-  for (int sigma = 0; sigma < cones.rows(); ++sigma) {
+  for (Int sigma = 0; sigma < cones.rows(); ++sigma) {
     if (cones.row(sigma).size() > no_of_rays) {
-      const Array<Set<int>> triang_seq = bb_solver.placing_triangulation(rays.minor(cones.row(sigma), All));
-      Vector<int> rays_as_list(cones.row(sigma));
+      const Array<Set<Int>> triang_seq = bb_solver.placing_triangulation(rays.minor(cones.row(sigma), All));
+      Vector<Int> rays_as_list(cones.row(sigma));
       for (const auto& tr : triang_seq) {
-        triangleCones |= Set<int>(rays_as_list.slice(tr));
+        triangleCones |= Set<Int>(rays_as_list.slice(tr));
         if (weights_exist) triangleWeights |= weights[sigma];
       }
     } else {
@@ -79,7 +79,7 @@ perl::Object triangulate_cycle(perl::Object fan)
     }
   } // END iterate all cones
 
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << thomog(rays);
   result.take("MAXIMAL_POLYTOPES") << triangleCones;
   result.take("LINEALITY_SPACE") << lin_space;
@@ -91,7 +91,7 @@ perl::Object triangulate_cycle(perl::Object fan)
 
 // Documentation see perl wrapper
 template <typename Addition>
-perl::Object insert_rays(perl::Object fan, Matrix<Rational> add_rays)
+BigObject insert_rays(BigObject fan, Matrix<Rational> add_rays)
 {
   // Triangulate fan first
   fan = triangulate_cycle<Addition>(fan);
@@ -110,13 +110,13 @@ perl::Object insert_rays(perl::Object fan, Matrix<Rational> add_rays)
 
   // First we check if any of the additional rays is already a ray of the fan
 
-  Set<int> rays_to_check;
-  for (int r = 0; r < add_rays.rows(); ++r) {
+  Set<Int> rays_to_check;
+  for (Int r = 0; r < add_rays.rows(); ++r) {
     bool is_contained = false;
     Matrix<Rational> linplusray = lineality / add_rays.row(r);
-    const int linrk = rank(linplusray);
+    const Int linrk = rank(linplusray);
     if (linrk == lineality.rows()) break; // Zero mod lineality 
-    for (int oray = 0; oray < rays.rows(); ++oray) {
+    for (Int oray = 0; oray < rays.rows(); ++oray) {
       if (rank(linplusray / rays.row(r)) == linrk) {
         is_contained = true; break;
       }
@@ -127,15 +127,15 @@ perl::Object insert_rays(perl::Object fan, Matrix<Rational> add_rays)
   add_rays = add_rays.minor(rays_to_check,All);
 
   // Now iterate over the remaining rays
-  for (int nr = 0; nr < add_rays.rows(); ++nr) {
-    Vector<Set<int>> nr_cones;
+  for (Int nr = 0; nr < add_rays.rows(); ++nr) {
+    Vector<Set<Int>> nr_cones;
     Vector<Integer> nr_weights;
 
     rays /= add_rays.row(nr);
-    int nr_ray_index = rays.rows()-1;
+    Int nr_ray_index = rays.rows()-1;
 
     // Go through all cones and check if they contain this ray
-    for (int mc = 0; mc < cones.rows(); ++mc) {
+    for (Int mc = 0; mc < cones.rows(); ++mc) {
       bool contains_ray = false;
       Matrix<Rational> relations = null_space( T(rays.minor(cones.row(mc),All) / lineality / add_rays.row(nr)));
       // Since fan is simplicial, this matrix can have at most one relation
@@ -144,8 +144,8 @@ perl::Object insert_rays(perl::Object fan, Matrix<Rational> add_rays)
         // Remember those ray coefficients that are > 0
         if (relations(0,relations.cols()-1) > 0) relations.negate();
         contains_ray = true;
-        Set<int> greater_zero;
-        for (int c = 0; c < cones.row(mc).size(); ++c) {
+        Set<Int> greater_zero;
+        for (Int c = 0; c < cones.row(mc).size(); ++c) {
           if (relations(0,c) < 0) {
             contains_ray = false;
           }
@@ -158,9 +158,9 @@ perl::Object insert_rays(perl::Object fan, Matrix<Rational> add_rays)
         // For each non-zero-coefficient: take the codimension one face obtained
         // by removing the corresponding ray and add the new ray
         if (contains_ray) {
-          Vector<int> rays_as_list(cones.row(mc));
+          Vector<Int> rays_as_list(cones.row(mc));
           for (auto gzrays = entire(greater_zero); !gzrays.at_end(); ++gzrays) {
-            Set<int> nr_cone(rays_as_list.slice(~scalar2set(*gzrays)));
+            Set<Int> nr_cone(rays_as_list.slice(~scalar2set(*gzrays)));
             nr_cone += nr_ray_index;
             nr_cones |= nr_cone;
             if (weights_exist) nr_weights |= weights[mc];
@@ -182,7 +182,7 @@ perl::Object insert_rays(perl::Object fan, Matrix<Rational> add_rays)
   } // END iterate new rays
 
   // Create result
-  perl::Object result("Cycle", mlist<Addition>());
+  BigObject result("Cycle", mlist<Addition>());
   result.take("VERTICES") << thomog(rays);
   result.take("MAXIMAL_POLYTOPES") << cones;
   result.take("LINEALITY_SPACE") << thomog(lineality);

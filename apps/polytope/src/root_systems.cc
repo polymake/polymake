@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,7 +26,7 @@ namespace polymake { namespace polytope {
 
 typedef QuadraticExtension<Rational> QE;
 
-SparseMatrix<Rational> simple_roots_type_A (const int n)
+SparseMatrix<Rational> simple_roots_type_A (const Int n)
 {
    /*
      Read rowwise, these simple root vectors are
@@ -38,7 +38,7 @@ SparseMatrix<Rational> simple_roots_type_A (const int n)
     */
    SparseMatrix<Rational> R(n, n+2);
    auto rit = rows(R).begin();
-   for (int i=0; i<n; ++i, ++rit) {
+   for (Int i=0; i < n; ++i, ++rit) {
       SparseVector<Rational> v(n+2);
       v[i+1] = 1; 
       v[i+2] = -1;
@@ -47,7 +47,7 @@ SparseMatrix<Rational> simple_roots_type_A (const int n)
    return R;
 }
 
-SparseMatrix<Rational> simple_roots_type_B (const int n)
+SparseMatrix<Rational> simple_roots_type_B (const Int n)
 {
    /*
      Read rowwise, these simple root vectors are
@@ -68,7 +68,7 @@ SparseMatrix<Rational> simple_roots_type_B (const int n)
    return simple_roots_type_A(n-1) / v;
 }
 
-SparseMatrix<Rational> simple_roots_type_C (const int n)
+SparseMatrix<Rational> simple_roots_type_C (const Int n)
 {
    /*
      Read rowwise, these simple root vectors are
@@ -89,7 +89,7 @@ SparseMatrix<Rational> simple_roots_type_C (const int n)
    return simple_roots_type_A(n-1) / v;
 }
 
-SparseMatrix<Rational> simple_roots_type_D (const int n)
+SparseMatrix<Rational> simple_roots_type_D (const Int n)
 {
    /*
      Read rowwise, these simple root vectors are
@@ -255,7 +255,7 @@ SparseMatrix<QE> simple_roots_type_H3()
 
    SparseMatrix<QE> R(3,4);
    R(0,1) = R(2,3) = QE(2, 0, 5); 
-   R(1,1) = -tau; R(1,2) = tau - 1; R(1,3) = QE(-1, 0, 5); 
+   R(1,1) = -tau;  R(1,2) = tau-1;  R(1,3) = QE(-1, 0, 5); 
    return R;
 }
 
@@ -290,7 +290,7 @@ SparseMatrix<QE> simple_roots_type_H4()
       *rit = v;
       ++rit;
    }
-   for (int i=0; i<3; ++i, ++rit) {
+   for (Int i = 0; i < 3; ++i, ++rit) {
       SparseVector<QE> v(5);
       v[i+1] = QE(-1, 0, 5);
       v[i+2] = QE(1, 0, 5);
@@ -304,11 +304,11 @@ namespace {
 
 } // end anonymous namespace
 
-perl::Object
+BigObject
 root_system(const std::string type)
 {
    const char t(type[0]);
-   int n;
+   Int n;
    std::istringstream is (type.substr(1));
    is >> n;
 

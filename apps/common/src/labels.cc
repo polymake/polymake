@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -19,16 +19,16 @@
 
 namespace polymake { namespace common {
 
-std::vector<std::string> read_labels(const perl::Object& p, AnyString label_prop, int n_labels)
+std::vector<std::string> read_labels(const BigObject& p, AnyString label_prop, Int n_labels)
 {
    std::vector<std::string> labels;
    if (p.lookup(label_prop) >> labels) {
-      if (labels.size() != size_t(n_labels))
+      if (Int(labels.size()) != n_labels)
          throw std::runtime_error("read_labels(): unexpected number of labels: " + std::to_string(labels.size()) +
                                   " instead of " + std::to_string(n_labels));
    } else {
       labels.reserve(n_labels);
-      for (int i=0; i<n_labels; ++i)
+      for (Int i = 0; i < n_labels; ++i)
          labels.emplace_back(std::to_string(i));
    }
    return labels;

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,20 +21,20 @@
 
 namespace polymake { namespace polytope {
 
-bool isomorphic(perl::Object p1, perl::Object p2)
+bool isomorphic(BigObject p1, BigObject p2)
 {
    const IncidenceMatrix<> M1=p1.give("RAYS_IN_FACETS"), M2=p2.give("RAYS_IN_FACETS");
    return graph::isomorphic(M1, M2);
 }
 
-bool is_self_dual(perl::Object p)
+bool is_self_dual(BigObject p)
 {
    const IncidenceMatrix<> M=p.give("RAYS_IN_FACETS");
    return graph::isomorphic(M, T(M));
 }
 
-optional<std::pair<Array<int>, Array<int>>>
-find_facet_vertex_permutations(perl::Object p1, perl::Object p2)
+optional<std::pair<Array<Int>, Array<Int>>>
+find_facet_vertex_permutations(BigObject p1, BigObject p2)
 {
    const IncidenceMatrix<> M1 = p1.give("RAYS_IN_FACETS"), M2 = p2.give("RAYS_IN_FACETS");
    return graph::find_row_col_permutation(M1, M2);

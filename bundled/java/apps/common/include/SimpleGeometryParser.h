@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -76,9 +76,9 @@ protected:
    }
 
    template <typename Params> static
-   typename pm::object_traits<Params>::model* param_model(const Params&) { return 0; }
+   typename pm::object_traits<Params>::model* param_model(const Params&) { return nullptr; }
 
-   static pm::is_scalar* param_model(const std::string&) { return 0; }
+   static pm::is_scalar* param_model(const std::string&) { return nullptr; }
 
    template <typename Window, typename Params>
    void print_params(std::ostream& os, const Window& W, const Params& params) const
@@ -142,7 +142,7 @@ public:
    template <typename Window>
    void loop(pm::socketstream& js, Window& W);
 
-   std::pair<int, Vector<double> > get_point();
+   std::pair<Int, Vector<double>> get_point();
 };
 
 template <typename Window>
@@ -195,7 +195,7 @@ void SimpleGeometryParser::loop(pm::socketstream& js, Window& W)
          js.skip('\n');
          break;
       case 'p': {
-         int p_index;
+         Int p_index;
          if (!(js >> p_index)) return;
          W.set_point(p_index);
          break;
@@ -206,7 +206,7 @@ void SimpleGeometryParser::loop(pm::socketstream& js, Window& W)
       }
       case 's':
          if (!(js >> param)) return;
-         while (isspace(c=js.peek())) js.get();
+         while (isspace(c = char(js.peek()))) js.get();
          if (c=='n') {
             js >> param;
             if (param=="null") break;
@@ -219,9 +219,9 @@ void SimpleGeometryParser::loop(pm::socketstream& js, Window& W)
          W.set_param(param,value);
          break;
       case 'f': {
-         pm::PlainParserListCursor<int, mlist<pm::TrustedValue<std::false_type>>> reader(js);
-         Set<int> f;
-         int i;
+         pm::PlainParserListCursor<Int, mlist<pm::TrustedValue<std::false_type>>> reader(js);
+         Set<Int> f;
+         Int i;
          while (js >> i) {
             f+=i;
          }

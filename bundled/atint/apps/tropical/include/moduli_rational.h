@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2019
+	Copyright (c) 2016-2020
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -36,20 +36,20 @@
 namespace polymake { namespace tropical {
 
 // Documentation see perl wrapper
-Integer count_mn_cones(int n, int k);
+Integer count_mn_cones(Int n, Int k);
 
 /**
    @brief Takes a Pruefer sequence encoding a combinatorial type of n-marked rational curve and
    decodes it into the edge partitions of the corresponding graph
-   @param Vector<int> seq The Pruefer sequence. Should be of length
+   @param Vector<Int> seq The Pruefer sequence. Should be of length
    n + (no of bounded edges -1) and should contain only entries in (n,..) and each entry
    should occur at least twice.
-   @param int  The number of leafs. If not given (or set to something negative), the function assumes
+   @param Int  The number of leafs. If not given (or set to something negative), the function assumes
    that the Pruefer sequence is ordered and that the first entry is hence equal to the number of leaves.
-   @return Vector<Set<int> > A list of the partitions each edge induces.
+   @return Vector<Set<Int>> A list of the partitions each edge induces.
    The leaves are given with indices (0,..,n-1) and each set is given such that it doesn't contain (n-1).
 */
-Vector<Set<int> > decodePrueferSequence(const Vector<int> &pseq, int n=-1);
+Vector<Set<Int>> decodePrueferSequence(const Vector<Int>& pseq, Int n=-1);
 
 } }
 

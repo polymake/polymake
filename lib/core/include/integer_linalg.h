@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,19 +15,13 @@
 --------------------------------------------------------------------------------
 */
 
+#ifndef POLYMAKE_INTEGER_LINALG_H
+#define POLYMAKE_INTEGER_LINALG_H
 
-#ifndef POLYMAKE_HERMITE_NORMAL_FORM_H
-#define POLYMAKE_HERMITE_NORMAL_FORM_H
-
-#include <iostream>
 #include "polymake/client.h"
-#include "polymake/pair.h"
 #include "polymake/SparseMatrix.h"
-#include "polymake/Bitset.h"
-#include "polymake/Array.h"
 #include "polymake/linalg.h"
 #include "polymake/numerical_functions.h"
-#include "polymake/list"
 #include "polymake/GenericStruct.h"
 
 namespace pm {
@@ -39,33 +33,32 @@ class HermiteNormalForm
 public:
    DeclSTRUCT( DeclTemplFIELD(hnf, Matrix<E>)
                DeclTemplFIELD(companion, SparseMatrix<E>)
-               DeclTemplFIELD(rank, int) );
+               DeclTemplFIELD(rank, Int) );
    
 };
 
-
 template <typename TMatrix, typename E>
-int ranked_hermite_normal_form(const GenericMatrix<TMatrix, E>& M, Matrix<E>& hnf, SparseMatrix<E>& companion, bool reduced = true)
+Int ranked_hermite_normal_form(const GenericMatrix<TMatrix, E>& M, Matrix<E>& hnf, SparseMatrix<E>& companion, bool reduced = true)
 {
    SparseMatrix2x2<E> U;
    SparseMatrix<E> R, S;
    Matrix<E> N(M);
 
-   const int rows = M.rows();
-   const int cols = M.cols();
+   const Int rows = M.rows();
+   const Int cols = M.cols();
 
    R = unit_matrix<E>(cols);
 
-   int current_row = 0, current_col = 0;
-   int rank = -1;
+   Int current_row = 0, current_col = 0;
+   Int rank = -1;
 
-   for (int i = 0; i<rows; ++i) {
+   for (Int i = 0; i < rows; ++i) {
       bool nonzero = true;
 
       // Find a non-zero entry and move it to here.
       if (N(i,current_col) == 0) {
          nonzero = false;
-         for (int j = current_col; j<cols; ++j) {
+         for (Int j = current_col; j < cols; ++j) {
            if (!is_zero(N(i,j))) {
              nonzero = true;
              U.i = current_col;
@@ -88,7 +81,7 @@ int ranked_hermite_normal_form(const GenericMatrix<TMatrix, E>& M, Matrix<E>& hn
       }
 
       // GCD part of algorithm.
-      for (int j = current_col+1; j<cols; ++j) {
+      for (Int j = current_col+1; j < cols; ++j) {
         if (!is_zero(N(i,j))) {
           U.i = current_col;
           U.j = j;
@@ -108,7 +101,7 @@ int ranked_hermite_normal_form(const GenericMatrix<TMatrix, E>& M, Matrix<E>& hn
          N = N*S;
       }
       if (reduced) {
-         for (int j=0; j<current_col; ++j) {
+         for (Int j = 0; j < current_col; ++j) {
             U.i = j;
             U.j = current_col;
             E factor = N(i,j) % N(i,current_col);
@@ -151,7 +144,7 @@ SparseMatrix<E> null_space_integer(const GenericMatrix<TMatrix, E>& M)
 {
    Matrix<E> H;
    SparseMatrix<E> R;
-   int r = ranked_hermite_normal_form(M, H, R);
+   Int r = ranked_hermite_normal_form(M, H, R);
    return T(R.minor(All, range(r, R.cols()-1)));
 }
 
@@ -164,4 +157,10 @@ using pm::null_space_integer;
 
 }
 
-#endif
+#endif // POLYMAKE_INTEGER_LINALG_H
+
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:

@@ -1,7 +1,7 @@
 {"app": "common",
  "inst": [
   {"args": ["perl::Canned<const Matrix<Rational>&>"], "func": "basis_rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "basis_rows.X"},
-  {"args": ["perl::Canned<const pm::MatrixMinor<pm::Matrix<pm::PuiseuxFraction<pm::Min, pm::Rational, pm::Rational> > const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&>&>"], "func": "basis_rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/Set.h", "polymake/TropicalNumber.h", "polymake/linalg.h"], "sig": "basis_rows.X"},
-  {"args": ["perl::Canned<const pm::MatrixMinor<pm::BlockMatrix<mlist<pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&>, std::integral_constant<bool, true> > const&, pm::Set<int, pm::operations::cmp> const&, pm::all_selector const&>&>"], "func": "basis_rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h", "polymake/linalg.h"], "sig": "basis_rows.X"},
+  {"args": ["perl::Canned<const pm::MatrixMinor<pm::Matrix<pm::PuiseuxFraction<pm::Min, pm::Rational, pm::Rational> > const&, pm::Set<Int, pm::operations::cmp> const&, pm::all_selector const&>&>"], "func": "basis_rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/Set.h", "polymake/TropicalNumber.h", "polymake/linalg.h"], "sig": "basis_rows.X"},
+  {"args": ["perl::Canned<const pm::MatrixMinor<pm::BlockMatrix<mlist<pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&>, std::integral_constant<bool, true> > const&, pm::Set<Int, pm::operations::cmp> const&, pm::all_selector const&>&>"], "func": "basis_rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h", "polymake/linalg.h"], "sig": "basis_rows.X"},
  null ],
 "version": 3}

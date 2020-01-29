@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,15 +25,15 @@
 namespace polymake { namespace polytope {
 
 template <typename Scalar, typename MatrixType>
-perl::Object weighted_digraph_polyhedron(const GenericMatrix<MatrixType, Scalar>& W)
+BigObject weighted_digraph_polyhedron(const GenericMatrix<MatrixType, Scalar>& W)
 {
-   const int k(W.rows());
+   const Int k = W.rows();
    if (W.cols() != k)
          throw std::runtime_error("weighted_digraph_polyhedron: non-square matrix");
 
-   ListMatrix< SparseVector<Scalar> > Ineq;
-   for (int i=0; i<k; ++i)
-      for (int j=0; j<k; ++j) {
+   ListMatrix<SparseVector<Scalar>> Ineq;
+   for (Int i = 0; i < k; ++i)
+      for (Int j = 0; j < k; ++j) {
          if (isfinite(W.top()(i,j)) && (i!=j || W.top()(i,j) != 0)) {
             SparseVector<Scalar> this_ineq(k+1); // initialized as zero vector
             this_ineq[0]=W.top()(i,j);
@@ -42,7 +42,7 @@ perl::Object weighted_digraph_polyhedron(const GenericMatrix<MatrixType, Scalar>
          }
       }
   
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Weighted digraph polyhedron" <<endl;
    p_out.take("INEQUALITIES") << Ineq;
    Matrix<Scalar> wd(W);

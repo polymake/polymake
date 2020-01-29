@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,30 +26,30 @@
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
-perl::Object bipyramid(perl::Object p_in, const Scalar& z, const Scalar& z_prime, perl::OptionSet options)
+BigObject bipyramid(BigObject p_in, const Scalar& z, const Scalar& z_prime, OptionSet options)
 {
    if (z*z_prime >= 0) 
       throw std::runtime_error("bipyramid: z and z' must have opposite signs and be non-zero");
 
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Bipyramid over " << p_in.name() << endl;
 
    const bool noc = options["no_coordinates"],
           relabel = !options["no_labels"];
 
-   int n_vertices=0;
+   Int n_vertices = 0;
    if (noc || p_in.exists("VERTICES_IN_FACETS")) {
       const IncidenceMatrix<> VIF=p_in.give("VERTICES_IN_FACETS");
-      n_vertices=VIF.cols();
-      const int n_facets=VIF.rows();
-      const IncidenceMatrix<> VIF_out= (VIF / VIF) | sequence(0,n_facets) | sequence(n_facets,n_facets);
+      n_vertices = VIF.cols();
+      const Int n_facets = VIF.rows();
+      const IncidenceMatrix<> VIF_out = (VIF / VIF) | sequence(0,n_facets) | sequence(n_facets,n_facets);
 
       p_out.take("N_VERTICES") << n_vertices+2;
       p_out.take("VERTICES_IN_FACETS") << VIF_out;
    }
    if (noc) {
       if (p_in.exists("COMBINATORIAL_DIM")) {
-         const int dim=p_in.give("COMBINATORIAL_DIM");
+         const Int dim = p_in.give("COMBINATORIAL_DIM");
          p_out.take("COMBINATORIAL_DIM") << dim+1;
       }
    } else {

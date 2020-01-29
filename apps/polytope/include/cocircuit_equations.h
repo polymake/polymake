@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -36,18 +36,18 @@ namespace polymake { namespace polytope {
 namespace {
 
 template<typename SparseSetType>
-using IndexOfType = hash_map<SparseSetType, int>;
+using IndexOfType = hash_map<SparseSetType, Int>;
 
 /*
   We make cocircuit equations available as two data types:
-  hash_map<SetType, int> and SparseVector<int>.
+  hash_map<SetType, Int> and SparseVector<Int>.
 
-  Since the SparseVector<int> needs the additional data structure
+  Since the SparseVector<Int> needs the additional data structure
   index_of that maps (facet) sets to indices, we abstract the data
   type to a class that we specialize as needed.
 */
 
-// The generic instance is for CocircuitEquationType = hash_map<SetType, int>
+// The generic instance is for CocircuitEquationType = hash_map<SetType, Int>
 template<typename CocircuitEquationType, typename SetType>
 class CocircuitEquation {
    CocircuitEquationType cce;
@@ -55,7 +55,7 @@ class CocircuitEquation {
 public:
    CocircuitEquation() = default;
 
-   void set(const SetType& facet, int sigma)
+   void set(const SetType& facet, Int sigma)
    {
       cce[facet] = sigma;
    }
@@ -66,10 +66,10 @@ public:
    }
 };
 
-// The specialized one is for SparseVector<int>
+// The specialized one is for SparseVector<Int>
 template<typename SetType>
-class CocircuitEquation<SparseVector<int>, SetType> {
-   SparseVector<int> cce;
+class CocircuitEquation<SparseVector<Int>, SetType> {
+   SparseVector<Int> cce;
    const IndexOfType<SetType>& index_of;
 
  public:
@@ -78,12 +78,12 @@ class CocircuitEquation<SparseVector<int>, SetType> {
       , index_of(index_of_)
    {}
 
-   void set(const SetType& facet, int sigma)
+   void set(const SetType& facet, Int sigma)
    {
       cce[index_of.at(facet)] = sigma;
    }
 
-   const SparseVector<int>& equation() const
+   const SparseVector<Int>& equation() const
    {
       return cce;
    }
@@ -98,9 +98,9 @@ cocircuit_equation_of_ridge_impl_impl(const Matrix<Scalar>& points,
                                       const SetType& ridge,
                                       CocircuitEquationType& eq) {
    const SparseVector<Scalar> nv = null_space(points.minor(ridge, All)).row(0);
-   int row_index(0);
+   Int row_index = 0;
    for (auto vit = entire(rows(points)); !vit.at_end(); ++vit, ++row_index) {
-      const int sigma = sign(nv * (*vit));
+      const Int sigma = sign(nv * (*vit));
       if (sigma != 0) {
          SetType facet(ridge);
          facet += row_index;
@@ -116,7 +116,7 @@ cocircuit_equation_of_ridge_impl(const Matrix<Scalar>& points,
                                  const SetType& ridge,
                                  const IndexOfType<SetType>& index_of)
 {
-   CocircuitEquation<SparseVector<int>, SetType> eq(index_of);
+   CocircuitEquation<SparseVector<Int>, SetType> eq(index_of);
    cocircuit_equation_of_ridge_impl_impl(points, ridge, eq);
    return eq.equation();
 }
@@ -134,27 +134,27 @@ cocircuit_equation_of_ridge_impl(const Matrix<Scalar>& points,
 } // end anonymous namespace
 
 template<typename Scalar, typename SetType>
-ListMatrix<SparseVector<int>>
-cocircuit_equations_impl(int d,
+ListMatrix<SparseVector<Int>>
+cocircuit_equations_impl(Int d,
                          const Matrix<Scalar>& points,
                          const IncidenceMatrix<>& VIF,
                          const Array<SetType>& interior_ridge_simplices,
                          const Array<SetType>& interior_simplices,
-                         perl::OptionSet options)
+                         OptionSet options)
 {
    const bool reduce_rows = options["reduce_rows"];
-   const int log_frequency = options["log_frequency"];
+   const Int log_frequency = options["log_frequency"];
    const std::string filename = options["filename"];
    std::ofstream outfile(filename.c_str(), std::ios_base::trunc);
 
-   int n_facets = 0;
+   Int n_facets = 0;
    IndexOfType<SetType> index_of;
    for (const auto& s : interior_simplices)
       index_of[s] = n_facets++;
 
-   ListMatrix<SparseVector<int>> cocircuit_eqs(0, n_facets);
+   ListMatrix<SparseVector<Int>> cocircuit_eqs(0, n_facets);
 
-   int ct(0);
+   Int ct = 0;
    time_t start_time, current_time;
    time(&start_time);
    for (const auto& ir : interior_ridge_simplices) {
@@ -162,7 +162,7 @@ cocircuit_equations_impl(int d,
          time(&current_time);
          cerr << ct << " " << difftime(current_time, start_time) << endl;
       }
-      SparseVector<int> eq(cocircuit_equation_of_ridge_impl(points, ir, index_of));
+      SparseVector<Int> eq(cocircuit_equation_of_ridge_impl(points, ir, index_of));
       if (eq.size()) {
          if (reduce_rows) eq = common::divide_by_gcd(eq);
          cocircuit_eqs /= eq;
@@ -173,31 +173,31 @@ cocircuit_equations_impl(int d,
 }
 
 template<typename Scalar, typename SetType>
-ListMatrix<SparseVector<int> >
-foldable_cocircuit_equations_impl(int d,
+ListMatrix<SparseVector<Int>>
+foldable_cocircuit_equations_impl(Int d,
                                   const Matrix<Scalar>& points,
                                   const IncidenceMatrix<>& VIF,
                                   const Array<SetType>& interior_ridge_simplices, // FIXME: Map
                                   const Array<SetType>& max_interior_simplices,
-                                  perl::OptionSet options,
+                                  OptionSet options,
                                   bool partial_equations)
 {
    const bool reduce_rows = options["reduce_rows"];
-   const int log_frequency = options["log_frequency"];
+   const Int log_frequency = options["log_frequency"];
    const std::string filename = options["filename"];
    std::ofstream outfile(filename.c_str(), std::ios_base::trunc);
 
    IndexOfType<SetType> index_of;
-   int n_facets = 0; // number of full-dimensional simplices
+   Int n_facets = 0; // number of full-dimensional simplices
    for (const auto& s: max_interior_simplices)
       index_of[s] = n_facets++;
 
-   ListMatrix<SparseVector<int>> cocircuit_eqs(0, 2*n_facets);
+   ListMatrix<SparseVector<Int>> cocircuit_eqs(0, 2*n_facets);
 
-   // use int instead of Rational to save time;
-   SparseVector<int> eq_0_first, eq_1_first;
+   // use Int instead of Rational to save time;
+   SparseVector<Int> eq_0_first, eq_1_first;
 
-   int ct(0);
+   Int ct = 0;
    time_t start_time, current_time;
    time(&start_time);
    // for each interior ridge rho and c in {0,1}:
@@ -207,16 +207,16 @@ foldable_cocircuit_equations_impl(int d,
          time(&current_time);
          cerr << ct << " " << difftime(current_time, start_time) << endl;
       }
-      eq_0_first = SparseVector<int>(2*n_facets);
-      eq_1_first = SparseVector<int>(2*n_facets);
+      eq_0_first = SparseVector<Int>(2*n_facets);
+      eq_1_first = SparseVector<Int>(2*n_facets);
       const SparseVector<Scalar> nv = null_space(points.minor(ir, All)).row(0);
-      int row_index(0);
+      Int row_index = 0;
       for (auto vit = entire(rows(points)); !vit.at_end(); ++vit, ++row_index) {
-         const int orientation = sign(nv * (*vit));
+         const Int orientation = sign(nv * (*vit));
          if (orientation != 0) {
             const SetType this_facet(ir + scalar2set(row_index));
             if (partial_equations && !index_of.exists(this_facet)) continue;
-            const int iof(index_of.at(this_facet));
+            const Int iof = index_of.at(this_facet);
             if (orientation>0) {
                eq_0_first[2*iof] =  1;
                eq_1_first[2*iof+1] =  -1;

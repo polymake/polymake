@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,10 +24,10 @@ namespace pm {
 
 template <typename T, typename Coefficient, typename Exponent>
 struct is_unipolynomial_type {
-   static const bool value=is_derived_from<T, UniPolynomial<Coefficient, Exponent> >::value;
+   static constexpr bool value = is_derived_from<T, UniPolynomial<Coefficient, Exponent> >::value;
 };
 
-template <typename Coefficient=Rational, typename Exponent=int>
+template <typename Coefficient = Rational, typename Exponent = Int>
 class RationalFunction {
 public:
    typedef UniPolynomial<Coefficient, Exponent> polynomial_type;
@@ -48,7 +48,7 @@ public:
       , den(one_value<coefficient_type>()) {}
 
    /// Construct a value with denominator equal to 1.
-   template <typename T, typename enabled=typename std::enable_if<fits_as_particle<T>::value>::type>
+   template <typename T, typename = std::enable_if_t<fits_as_particle<T>::value>>
    explicit RationalFunction(const T& c)
       : num(c)
       , den(one_value<coefficient_type>()) {}
@@ -56,7 +56,7 @@ public:
    /// Construct a value with denominator equal to a constant scalar.
    template <typename T1, typename T2>
    RationalFunction(const T1& c1, const T2& c2,
-                    typename std::enable_if<fits_as_particle<T1>::value && fits_as_coefficient<T2>::value, void**>::type=nullptr)
+                    std::enable_if_t<fits_as_particle<T1>::value && fits_as_coefficient<T2>::value, std::nullptr_t> = nullptr)
       : num(c1)
       , den(one_value<coefficient_type>())
    {
@@ -66,8 +66,8 @@ public:
    /// Construct a value with numerator equal to a constant scalar.
    template <typename T1, typename T2>
    RationalFunction(const T1& c1, const T2& p2,
-                    typename std::enable_if<fits_as_coefficient<T1>::value &&
-                                            is_unipolynomial_type<T2, Coefficient, Exponent>::value, void**>::type=nullptr)
+                    std::enable_if_t<fits_as_coefficient<T1>::value &&
+                                     is_unipolynomial_type<T2, Coefficient, Exponent>::value, std::nullptr_t> = nullptr)
       : num(c1)
       , den(p2)
    {
@@ -78,8 +78,8 @@ public:
    /// Construct a value with given numerator and denominator.
    template <typename T1, typename T2>
    RationalFunction(const T1& p1, const T2& p2,
-                    typename std::enable_if<is_unipolynomial_type<T1, Coefficient, Exponent>::value &&
-                                            is_unipolynomial_type<T2, Coefficient, Exponent>::value, void**>::type=nullptr)
+                    std::enable_if_t<is_unipolynomial_type<T1, Coefficient, Exponent>::value &&
+                                     is_unipolynomial_type<T2, Coefficient, Exponent>::value, std::nullptr_t> = nullptr)
    {
       if (is_zero(p2)) throw GMP::ZeroDivide();
       simplify(p1, p2);
@@ -114,7 +114,7 @@ public:
    }
 
    template <typename T>
-   typename std::enable_if<fits_as_particle<T>::value, RationalFunction&>::type
+   std::enable_if_t<fits_as_particle<T>::value, RationalFunction&>
    operator+= (const T& c)
    {
       if (__builtin_expect(!is_zero(c), 1))
@@ -126,7 +126,7 @@ public:
    {
       if (__builtin_expect(!r.num.trivial(), 1)) {
          ExtGCD<polynomial_type> x = ext_gcd(den, r.den, false);
-         x.p = x.k1 * x.k2; // x.p is used as dummy variable
+         x.p = x.k1*x.k2; // x.p is used as dummy variable
          den.swap(x.p);
          x.k1 *= r.num;  x.k1 += num * x.k2;
          if( !is_one(x.g) ){
@@ -141,7 +141,7 @@ public:
    }
 
    template <typename T>
-   typename std::enable_if<fits_as_particle<T>::value, RationalFunction&>::type
+   std::enable_if_t<fits_as_particle<T>::value, RationalFunction&>
    operator-= (const T& r)
    {
       if (__builtin_expect(!is_zero(r), 1))
@@ -153,7 +153,7 @@ public:
    {
       if (__builtin_expect(!r.num.trivial(), 1)) {
          ExtGCD<polynomial_type> x = ext_gcd(den, r.den, false);
-         x.p = x.k1 * x.k2; // x.p is used as dummy variable
+         x.p = x.k1*x.k2; // x.p is used as dummy variable
          den.swap(x.p);
          x.k1 *= r.num;  x.k1.negate();  x.k1 += num * x.k2;
          if( !is_one(x.g) ){
@@ -168,7 +168,7 @@ public:
    }
 
    template <typename T> friend
-   typename std::enable_if<fits_as_particle<T>::value, RationalFunction>::type
+   std::enable_if_t<fits_as_particle<T>::value, RationalFunction>
    operator+ (const RationalFunction& l, const T& r)
    {
       if (__builtin_expect(!is_zero(r), 1))
@@ -178,14 +178,14 @@ public:
    }
 
    template <typename T> friend
-   typename std::enable_if<fits_as_particle<T>::value, RationalFunction>::type
+   std::enable_if_t<fits_as_particle<T>::value, RationalFunction>
    operator+ (const T& l, const RationalFunction& r)
    {
       return r+l;
    }
 
    template <typename T> friend
-   typename std::enable_if<fits_as_particle<T>::value, RationalFunction>::type
+   std::enable_if_t<fits_as_particle<T>::value, RationalFunction>
    operator- (const RationalFunction& l, const T& r)
    {
       if (__builtin_expect(!is_zero(r), 1))
@@ -195,11 +195,11 @@ public:
    }
 
    template <typename T> friend
-   typename std::enable_if<fits_as_particle<T>::value, RationalFunction>::type
+   std::enable_if_t<fits_as_particle<T>::value, RationalFunction>
    operator- (const T& l, const RationalFunction& r)
    {
       if (__builtin_expect(!is_zero(l), 1))
-         return RationalFunction(r.den * l - r.num, r.den, std::true_type());
+         return RationalFunction(r.den*l-r.num, r.den, std::true_type());
       else
          return -r;
    }
@@ -227,7 +227,7 @@ public:
          return l;
       } else {
          ExtGCD<polynomial_type> x = ext_gcd(l.den, r.den, false);
-         return RationalFunction(l.num * x.k2 + r.num * x.k1, x.k1 * x.k2, std::true_type()).normalize_after_addition(x);
+         return RationalFunction(l.num*x.k2+r.num*x.k1, x.k1*x.k2, std::true_type()).normalize_after_addition(x);
       }
    }
 
@@ -240,12 +240,12 @@ public:
          return l;
       } else {
          ExtGCD<polynomial_type> x = ext_gcd(l.den, r.den, false);
-         return RationalFunction(l.num * x.k2 - r.num * x.k1, x.k1 * x.k2, std::true_type()).normalize_after_addition(x);
+         return RationalFunction(l.num*x.k2-r.num*x.k1, x.k1*x.k2, std::true_type()).normalize_after_addition(x);
       }
    }
 
    template <typename T>
-   typename std::enable_if<fits_as_coefficient<T>::value, RationalFunction>::type&
+   std::enable_if_t<fits_as_coefficient<T>::value, RationalFunction&>
    operator*= (const T& r)
    {
       num *= r;
@@ -253,7 +253,7 @@ public:
    }
 
    template <typename T>
-   typename std::enable_if<fits_as_coefficient<T>::value, RationalFunction>::type&
+   std::enable_if_t<fits_as_coefficient<T>::value, RationalFunction&>
    operator/= (const T& r)
    {
       num /= r;
@@ -261,7 +261,7 @@ public:
    }
 
    template <typename T> friend
-   typename std::enable_if<fits_as_coefficient<T>::value, RationalFunction>::type
+   std::enable_if_t<fits_as_coefficient<T>::value, RationalFunction>
    operator* (const RationalFunction& l, const T& r)
    {
       if (__builtin_expect(!is_zero(r), 1))
@@ -271,24 +271,24 @@ public:
    }
 
    template <typename T> friend
-   typename std::enable_if<fits_as_coefficient<T>::value, RationalFunction>::type
+   std::enable_if_t<fits_as_coefficient<T>::value, RationalFunction>
    operator* (const T& l, const RationalFunction& r)
    {
       if (__builtin_expect(!is_zero(l), 1))
-         return RationalFunction(l * r.num, r.den, std::true_type());
+         return RationalFunction(l*r.num, r.den, std::true_type());
       else
          return RationalFunction();
    }
 
    template <typename T> friend
-   typename std::enable_if<fits_as_coefficient<T>::value, RationalFunction>::type
+   std::enable_if_t<fits_as_coefficient<T>::value, RationalFunction>
    operator/ (const RationalFunction& l, const T& r)
    {
       return RationalFunction(l.num / r, l.den, std::true_type());
    }
 
    template <typename T> friend
-   typename std::enable_if<fits_as_coefficient<T>::value, RationalFunction>::type
+   std::enable_if_t<fits_as_coefficient<T>::value, RationalFunction>
    operator/ (const T& l, const RationalFunction& r)
    {
       if (__builtin_expect(r.num.trivial(), 0)) {
@@ -296,12 +296,12 @@ public:
       } else if (__builtin_expect(is_zero(l), 0)) {
          return RationalFunction();
       } else {
-         return RationalFunction(l * r.den, r.num, std::false_type());
+         return RationalFunction(l*r.den, r.num, std::false_type());
       }
    }
 
    template <typename T> friend
-   typename std::enable_if<is_unipolynomial_type<T, Coefficient, Exponent>::value, RationalFunction>::type
+   std::enable_if_t<is_unipolynomial_type<T, Coefficient, Exponent>::value, RationalFunction>
    operator* (const RationalFunction& l, const T& r)
    {
       if (__builtin_expect(is_zero(r), 1)) {
@@ -315,10 +315,10 @@ public:
    }
 
    template <typename T> friend
-   typename std::enable_if<is_unipolynomial_type<T, Coefficient, Exponent>::value, RationalFunction>::type
+   std::enable_if_t<is_unipolynomial_type<T, Coefficient, Exponent>::value, RationalFunction>
    operator* (const T& l, const RationalFunction& r)
    {
-      return r * l;
+      return r*l;
    }
 
    friend
@@ -333,12 +333,12 @@ public:
       } else {
          const ExtGCD<polynomial_type> x = ext_gcd(l.num, r.den, false),
                                        y = ext_gcd(l.den, r.num, false);
-         return RationalFunction(x.k1 * y.k2, y.k1 * x.k2, std::false_type());
+         return RationalFunction(x.k1*y.k2, y.k1*x.k2, std::false_type());
       }
    }
 
    template <typename T> friend
-   typename std::enable_if<is_unipolynomial_type<T, Coefficient, Exponent>::value, RationalFunction>::type
+   std::enable_if_t<is_unipolynomial_type<T, Coefficient, Exponent>::value, RationalFunction>
    operator/ (const RationalFunction& l, const T& r)
    {
       if (__builtin_expect(is_zero(r), 1)) {
@@ -352,7 +352,7 @@ public:
    }
 
    template <typename T> friend
-   typename std::enable_if<is_unipolynomial_type<T, Coefficient, Exponent>::value, RationalFunction>::type
+   std::enable_if_t<is_unipolynomial_type<T, Coefficient, Exponent>::value, RationalFunction>
    operator/ (const T& l, const RationalFunction& r)
    {
       if (__builtin_expect(r.num.trivial(), 1)) {
@@ -377,12 +377,12 @@ public:
       } else {
          const ExtGCD<polynomial_type> x = ext_gcd(l.num, r.num, false),
                                        y = ext_gcd(l.den, r.den, false);
-         return RationalFunction(x.k1 * y.k2, y.k1 * x.k2, std::false_type());
+         return RationalFunction(x.k1*y.k2, y.k1*x.k2, std::false_type());
       }
    }
 
    template <typename T>
-   typename std::enable_if<is_unipolynomial_type<T, Coefficient, Exponent>::value, RationalFunction>::type&
+   std::enable_if_t<is_unipolynomial_type<T, Coefficient, Exponent>::value, RationalFunction&>
    operator*= (const T& r)
    {
       *this = (*this) * r;
@@ -390,7 +390,7 @@ public:
    }
 
    template <typename T>
-   typename std::enable_if<is_unipolynomial_type<T, Coefficient, Exponent>::value, RationalFunction>::type&
+   std::enable_if_t<is_unipolynomial_type<T, Coefficient, Exponent>::value, RationalFunction&>
    operator/= (const T& r)
    {
       *this = (*this) / r;
@@ -422,14 +422,14 @@ public:
    }
 
    template <typename T> friend
-   typename std::enable_if<fits_as_particle<T>::value, bool>::type
+   std::enable_if_t<fits_as_particle<T>::value, bool>
    operator== (const RationalFunction& l, const T& r)
    {
       return l.den.is_one() && l.num == r;
    }
 
    template <typename T> friend
-   typename std::enable_if<fits_as_particle<T>::value, bool>::type
+   std::enable_if_t<fits_as_particle<T>::value, bool>
    operator== (const T& l, const RationalFunction& r)
    {
       return r == l;
@@ -442,14 +442,14 @@ public:
    }
 
    template <typename T> friend
-   typename std::enable_if<fits_as_particle<T>::type, bool>::type
+   std::enable_if_t<fits_as_particle<T>::type, bool>
    operator!= (const RationalFunction& l, const T& r)
    {
       return !(l == r);
    }
 
    template <typename T> friend
-   typename std::enable_if<fits_as_particle<T>::value, bool>::type
+   std::enable_if_t<fits_as_particle<T>::value, bool>
    operator!= (const T& l, const RationalFunction& r)
    {
       return !(r == l);
@@ -530,17 +530,14 @@ protected:
    void simplify(const Coefficient& c1, const Exponent& e1,
                  const Coefficient& c2, const Exponent& e2)
    {
-      if (e1 < e2)
-      {
+      if (e1 < e2) {
          // x^e1 / x^e2  ==  1 / x^(e2-e1)
-         num=polynomial_type(c1);
-         den=polynomial_type(e2-e1, c2);
-      }
-      else
-      {
+         num = polynomial_type(c1);
+         den = polynomial_type(e2-e1, c2);
+      } else {
          // x^e1 / x^e2  ==  x^(e1-e2)
-         num=polynomial_type(e1-e2, c1);
-         den=polynomial_type(c2);
+         num = polynomial_type(e1-e2, c1);
+         den = polynomial_type(c2);
       }
    }
 
@@ -548,27 +545,24 @@ protected:
                  const Coefficient& c2, const Exponent& e2)
    {
       const Exponent e1=p1.lower_deg();
-      if (e1 < e2)
-      {
+      if (e1 < e2) {
          // r(x)*x^e1 / x^e2  ==  r(x) / x^(e2-e1)
          if ( !is_zero(e1) ) {
             div_exact(p1, polynomial_type(e1, one_value<coefficient_type>())).swap(num);
          } else {
-            num=p1;
+            num = p1;
          }
-         den=polynomial_type(polynomial_type(e2-e1, one_value<coefficient_type>()), c2);
-      }
-      else
-      {
+         den = polynomial_type(polynomial_type(e2-e1, one_value<coefficient_type>()), c2);
+      } else {
          // r(x)*x^e1 / x^e2  ==  r(x)*x^(e1-e2)
          div_exact(p1, polynomial_type(e2, one_value<coefficient_type>())).swap(num);
-         den=polynomial_type(c2);
+         den = polynomial_type(c2);
       }
    }
 
    void simplify(const polynomial_type& p1, const polynomial_type& p2)
    {
-      ExtGCD<polynomial_type> x=ext_gcd(p1, p2, false);
+      ExtGCD<polynomial_type> x = ext_gcd(p1, p2, false);
       num.swap(x.k1);
       den.swap(x.k2);
    }
@@ -657,7 +651,7 @@ struct nesting_level< RationalFunction<Coefficient, Exponent> >
 
 template <typename Coefficient, typename Exponent, typename T, typename TModel>
 struct isomorphic_types_impl<RationalFunction<Coefficient, Exponent>, T,
-                             typename std::enable_if<RationalFunction<Coefficient, Exponent>::template fits_as_particle<T>::value, is_polynomial>::type,
+                             std::enable_if_t<RationalFunction<Coefficient, Exponent>::template fits_as_particle<T>::value, is_polynomial>,
                              TModel>
    : std::false_type {
    typedef cons<is_polynomial, is_scalar> discriminant;
@@ -665,7 +659,7 @@ struct isomorphic_types_impl<RationalFunction<Coefficient, Exponent>, T,
 
 template <typename Coefficient, typename Exponent, typename T, typename TModel>
 struct isomorphic_types_impl<T, RationalFunction<Coefficient, Exponent>, TModel,
-                             typename std::enable_if<RationalFunction<Coefficient, Exponent>::template fits_as_particle<T>::value, is_polynomial>::type>
+                             std::enable_if_t<RationalFunction<Coefficient, Exponent>::template fits_as_particle<T>::value, is_polynomial>>
    : std::false_type {
    typedef cons<is_scalar, is_polynomial> discriminant;
 };
@@ -677,16 +671,17 @@ struct isomorphic_types_impl<RationalFunction<Coefficient, Exponent>, RationalFu
 };
 
 
-template <typename Coefficient, typename Exponent, typename T> inline
-typename std::enable_if<is_unipolynomial_type<T, Coefficient, Exponent>::value, RationalFunction<Coefficient, Exponent>>::type
+template <typename Coefficient, typename Exponent, typename T>
+std::enable_if_t<is_unipolynomial_type<T, Coefficient, Exponent>::value,
+                 RationalFunction<Coefficient, Exponent>>
 operator/ (const UniPolynomial<Coefficient, Exponent>& p1, const T& p2)
 {
    return RationalFunction<Coefficient, Exponent>(p1, p2);
 }
 
-template <typename Coefficient, typename Exponent, typename T> inline
-typename std::enable_if<RationalFunction<Coefficient, Exponent>::template fits_as_coefficient<T>::value,
-                        RationalFunction<Coefficient, Exponent>>::type
+template <typename Coefficient, typename Exponent, typename T>
+std::enable_if_t<RationalFunction<Coefficient, Exponent>::template fits_as_coefficient<T>::value,
+                 RationalFunction<Coefficient, Exponent>>
 operator/ (const T& p1, const UniPolynomial<Coefficient, Exponent>& p2)
 {
    return RationalFunction<Coefficient, Exponent>(p1, p2);
@@ -696,9 +691,9 @@ namespace operations {
 
 // operations neg, add, sub, mul defined in Polynomial.h will instantiate correctly for RationalFunction too.
 
-template <typename LeftRef, class RightRef>
+template <typename LeftRef, typename RightRef>
 struct div_impl<LeftRef, RightRef,
-                typename std::enable_if<is_instance_of<typename deref<LeftRef>::type, RationalFunction>::value, cons<is_polynomial, is_polynomial>>::type> {
+                std::enable_if_t<is_instance_of<typename deref<LeftRef>::type, RationalFunction>::value, cons<is_polynomial, is_polynomial>>> {
    typedef LeftRef first_argument_type;
    typedef RightRef second_argument_type;
    typedef typename deref<LeftRef>::type result_type;
@@ -715,9 +710,9 @@ struct div_impl<LeftRef, RightRef,
    }
 };
 
-template <typename LeftRef, class RightRef>
+template <typename LeftRef, typename RightRef>
 struct div_impl<LeftRef, RightRef,
-                typename std::enable_if<is_instance_of<typename deref<RightRef>::type, RationalFunction>::value, cons<is_scalar, is_polynomial>>::type> {
+                std::enable_if_t<is_instance_of<typename deref<RightRef>::type, RationalFunction>::value, cons<is_scalar, is_polynomial>>> {
    typedef LeftRef first_argument_type;
    typedef RightRef second_argument_type;
    typedef typename deref<RightRef>::type result_type;
@@ -729,9 +724,9 @@ struct div_impl<LeftRef, RightRef,
    }
 };
 
-template <typename LeftRef, class RightRef>
+template <typename LeftRef, typename RightRef>
 struct div_impl<LeftRef, RightRef,
-                typename std::enable_if<is_instance_of<typename deref<LeftRef>::type, RationalFunction>::value, cons<is_polynomial, is_scalar>>::type> {
+                std::enable_if_t<is_instance_of<typename deref<LeftRef>::type, RationalFunction>::value, cons<is_polynomial, is_scalar>>> {
    typedef LeftRef first_argument_type;
    typedef RightRef second_argument_type;
    typedef typename deref<LeftRef>::type result_type;

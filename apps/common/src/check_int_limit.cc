@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,17 +22,17 @@
 
 namespace polymake { namespace common {
 
-template <typename Vector> inline
-bool check_int_limit(const GenericVector<Vector,Integer>& V)
+template <typename TVector>
+bool check_int_limit(const GenericVector<TVector, Integer>& V)
 {
-   for (auto x=entire(V.top()); !x.at_end(); ++x)
-      if ( *x > std::numeric_limits<int>::max() || *x < std::numeric_limits<int>::min() ) 
+   for (auto x = entire(V.top()); !x.at_end(); ++x)
+      if (!x->fits_into_Int())
          return false;
    return true;
 }
 
-template <typename Matrix> inline
-bool check_int_limit(const GenericMatrix<Matrix,Integer>& M)
+template <typename TMatrix>
+bool check_int_limit(const GenericMatrix<TMatrix, Integer>& M)
 {
    return check_int_limit(concat_rows(M));
 }

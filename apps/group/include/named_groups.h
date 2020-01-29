@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,28 +26,27 @@ namespace polymake { namespace group {
 namespace {
 
 inline
-int
-dn_n_class_reps(int n2)
+Int dn_n_class_reps(Int n2)
 {
-   const int n(n2/2);
-   const bool odd(n%2);
+   const Int n = n2/2;
+   const bool odd = n%2;
    return odd
-      ? (n-1)/2 + 2
-      : n/2 + 3;
+      ? (n-1)/2+2
+      : n/2+3;
 }
 
 }
 
 inline
-ConjugacyClassReps<Array<int>>
-dn_reps(int n2)
+ConjugacyClassReps<Array<Int>>
+dn_reps(Int n2)
 {
    if (n2%2)
       throw std::runtime_error("The order must be even.");
 
-   const int n(n2/2);
-   const bool odd(n%2);
-   ConjugacyClassReps<Array<int>> class_reps(dn_n_class_reps(n2));
+   const Int n = n2/2;
+   const bool odd = n%2;
+   ConjugacyClassReps<Array<Int>> class_reps(dn_n_class_reps(n2));
    auto crit = entire(class_reps);
 
    /*
@@ -56,24 +55,24 @@ dn_reps(int n2)
     */
 
    // conjugacy classes of type g^j, g = (0 1 2 ... n-1), j = 0..floor(n/2)
-   for (int j=0; j <= n/2; ++j) {
-      Array<int> c(n);
-      int ct(-1);
-      for (int i=j; i<n; ++i)
+   for (Int j = 0; j <= n/2; ++j) {
+      Array<Int> c(n);
+      Int ct = -1;
+      for (Int i = j; i < n; ++i)
          c[i] = ++ct;
-      for (int i=0; i<j; ++i)
+      for (Int i = 0; i < j; ++i)
          c[i] = ++ct;
       *crit = c; ++crit;
    }
 
-   Array<int> h(n);
+   Array<Int> h(n);
    if (odd) {
-      for (int i=1; i <= (n-1)/2; ++i) {
+      for (Int i = 1; i <= (n-1)/2; ++i) {
          h[i] = n-i;
          h[n-i] = i;
       }
    } else {
-      for (int i=0; i <= n/2; ++i) {
+      for (Int i = 0; i <= n/2; ++i) {
          h[i] = n-1-i;
          h[n-1-i] = i;
       }
@@ -81,8 +80,8 @@ dn_reps(int n2)
    *crit = h; ++crit;
    
    if (!odd) {
-      Array<int> gh(n);
-      for (int i=0; i<n; ++i)
+      Array<Int> gh(n);
+      for (Int i = 0; i < n; ++i)
          gh[i] = class_reps[1][h[i]];
       *crit = gh;
    }
@@ -90,30 +89,31 @@ dn_reps(int n2)
 }
 
 inline
-Matrix<CharacterNumberType> dn_character_table(int n2)
+Matrix<CharacterNumberType> dn_character_table(Int n2)
 {
    if (n2%2)
       throw std::runtime_error("The order must be even.");
 
-   const int n(n2/2);
-   const bool odd(n%2);
+   const Int n = n2/2;
+   const bool odd = n%2;
    Array<CharacterNumberType> cyclotomics(n);
-   for (int i=0; i<n; ++i) {
-      cyclotomics[i] = rounded_if_integer(2 * cos(2 * AccurateFloat::pi() * i / n));
+   for (Int i = 0; i < n; ++i) {
+      bool is_rounded;
+      cyclotomics[i] = round_if_integer(2 * cos(2*AccurateFloat::pi()*i/n), is_rounded);
    }
    
-   const int n_reps(dn_n_class_reps(n2));
+   const Int n_reps = dn_n_class_reps(n2);
    Matrix<CharacterNumberType> character_table(n_reps, n_reps);
-   int row_ct=0, col_ct=0;
+   Int row_ct = 0, col_ct = 0;
 
    // 1d reps
    // the trivial rep
-   for (int j=0; j<n_reps; ++j)
+   for (Int j = 0; j < n_reps; ++j)
       character_table(0,j) = 1;
    ++row_ct;
 
    // g^i -> 1, h->-1, [gh->-1]
-   for (int j=0; j <= n/2; ++j)
+   for (Int j = 0; j <= n/2; ++j)
       character_table(row_ct, col_ct++) = 1;
    character_table(row_ct, col_ct++) = -1;
    if (!odd)
@@ -124,7 +124,7 @@ Matrix<CharacterNumberType> dn_character_table(int n2)
       // two more: 
       // g^k -> (-1)^k, h -> 1, gh -> -1
       col_ct = 0;
-      for (int j=0; j <= n/2; ++j)
+      for (Int j = 0; j <= n/2; ++j)
          character_table(row_ct, col_ct++) = (j%2) ? -1 : 1;
       character_table(row_ct, col_ct++) = 1;
       character_table(row_ct, col_ct) = -1;
@@ -132,7 +132,7 @@ Matrix<CharacterNumberType> dn_character_table(int n2)
 
       // g^k -> (-1)^k, h -> -1, gh -> 1
       col_ct = 0;
-      for (int j=0; j <= n/2; ++j)
+      for (Int j = 0; j <= n/2; ++j)
          character_table(row_ct, col_ct++) = (j%2) ? -1 : 1;
       character_table(row_ct, col_ct++) = -1;
       character_table(row_ct, col_ct) = 1;
@@ -140,11 +140,11 @@ Matrix<CharacterNumberType> dn_character_table(int n2)
    }
 
    // 2d reps
-   const int n_2d (odd ? (n-1)/2 : (n-2)/2);
-   for (int i=1; i<=n_2d; ++i, ++row_ct) {
+   const Int n_2d = odd ? (n-1)/2 : (n-2)/2;
+   for (Int i = 1; i <= n_2d; ++i, ++row_ct) {
       col_ct=0;
       character_table(row_ct, col_ct++) = 2; // trace of identity
-      for (int j=1; j<=n/2; ++j) {
+      for (Int j = 1; j <= n/2; ++j) {
          if (n2 != 10 && n2 != 16 && n2 != 20 && n2 != 24) 
             character_table(row_ct, col_ct++) = cyclotomics[ (i*j) % n ]; // trace of [[ zeta_n^i, 0], [0, zeta_n^{-i}]]
 
@@ -217,20 +217,20 @@ Matrix<CharacterNumberType> dn_character_table(int n2)
 }
 
 inline
-perl::Object dihedral_group_impl(int n2)
+BigObject dihedral_group_impl(Int n2)
 {   
    if (n2%2)
       throw std::runtime_error("The order must be even.");
 
-   const int n(n2/2);
-   const bool odd(n%2);
+   const Int n = n2/2;
+   const bool odd = n%2;
 
-   perl::Object a("group::PermutationAction");
+   BigObject a("group::PermutationAction");
    const auto class_reps(dn_reps(n2));
-   a.take("GENERATORS") << Array<Array<int>> { class_reps[1], odd ? class_reps.back() : class_reps[class_reps.size()-2] };
+   a.take("GENERATORS") << Array<Array<Int>> { class_reps[1], odd ? class_reps.back() : class_reps[class_reps.size()-2] };
    a.take("CONJUGACY_CLASS_REPRESENTATIVES") << class_reps;
 
-   perl::Object Dn("group::Group");
+   BigObject Dn("group::Group");
    
    Dn.take("ORDER") << 2*n;
    Dn.take("CHARACTER_TABLE") << dn_character_table(n2);
@@ -240,12 +240,12 @@ perl::Object dihedral_group_impl(int n2)
 }
 
 inline
-ConjugacyClassReps<Array<int>>
-sn_reps(int n) {
+ConjugacyClassReps<Array<Int>>
+sn_reps(Int n) {
    switch(n) {
 
    case 1:
-      return { Array<int>(1,0) };
+      return { Array<Int>(1,0) };
 
    case 2:
       return { {0, 1}, {1, 0} };
@@ -277,7 +277,7 @@ sn_reps(int n) {
 }   
 
 inline
-Matrix<CharacterNumberType> sn_character_table(int n) {
+Matrix<CharacterNumberType> sn_character_table(Int n) {
    switch (n) {
    case 1:
       return {
@@ -357,12 +357,13 @@ Matrix<CharacterNumberType> sn_character_table(int n) {
 }
 
 inline
-Array<Array<int>>
-symmetric_group_gens(int n) {
-   Array<Array<int>> sgs(n-1);
-   for (int i = 0; i < n-1; ++i) {
-      Array<int> gen(n);
-      for (int j = 0; j < n; ++j)
+Array<Array<Int>>
+symmetric_group_gens(Int n)
+{
+   Array<Array<Int>> sgs(n-1);
+   for (Int i = 0; i < n-1; ++i) {
+      Array<Int> gen(n);
+      for (Int j = 0; j < n; ++j)
          gen[j] = j;
       std::swap(gen[i], gen[i+1]);
       sgs[i] = gen;
@@ -371,17 +372,18 @@ symmetric_group_gens(int n) {
 }
 
 inline
-perl::Object symmetric_group_impl(int n) {
+BigObject symmetric_group_impl(Int n)
+{
    if (n < 1) 
       throw std::runtime_error("symmetric_group: the degree must be greater or equal than 1");
    
-   perl::Object pa("group::PermutationAction");
+   BigObject pa("group::PermutationAction");
    pa.take("GENERATORS") << symmetric_group_gens(n);
    if (n <= 7) {
       pa.take("CONJUGACY_CLASS_REPRESENTATIVES") << sn_reps(n);
    }      
    
-   perl::Object g("group::Group");
+   BigObject g("group::Group");
    g.take("PERMUTATION_ACTION") << pa;
    g.set_description() << "Symmetric group of degree " << n << endl;
 

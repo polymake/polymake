@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -37,13 +37,13 @@ namespace {
 // of the vector (0^a0, 1, 0^(a1-1),1,..,1,0^(ar-1)),
 // where i^j means concatenate i j times.
 // This is of course just (a0, a0+a1,...a0+...+a(r-1)).
-Vector<int> set_from_composition(const Vector<int>& comp)
+Vector<Int> set_from_composition(const Vector<Int>& comp)
 {
-  const int d = comp.dim() - 1;
-  Vector<int> result(d);
-  if (d) {
+  const Int d = comp.dim()-1;
+  Vector<Int> result(d);
+  if (d > 0) {
     result[0] = comp[0];
-    for (int i=1; i<d; ++i)
+    for (Int i = 1; i < d; ++i)
       result[i] = comp[i] + result[i-1];
   }
   return result;
@@ -52,15 +52,15 @@ Vector<int> set_from_composition(const Vector<int>& comp)
 // The inverse function of set_from_composition
 // I.e. given (ordered) set s = (s1,..,sr) returns the vector
 // (s1,s2-s1,s3-s2-s1,...,n-s(r-1)-...-s1)
-Vector<int> composition_from_set(const int n, const Vector<int>& s)
+Vector<Int> composition_from_set(const Int n, const Vector<Int>& s)
 {
-  const int d = s.size();
-  Vector<int> result(d+1);
-  if (d>0) {
+  const Int d = s.size();
+  Vector<Int> result(d+1);
+  if (d > 0) {
     result[0] = s[0];
-    for (int i=1; i<d; ++i)
-      result[i] = s[i] - s[i-1];
-    result[d] = n - s[d-1];
+    for (Int i = 1; i < d; ++i)
+      result[i] = s[i]-s[i-1];
+    result[d] = n-s[d-1];
   } else {
     result[d] = n;
   }
@@ -72,7 +72,7 @@ Integer falling_factorial(const Integer& t, const Integer& k)
 {
   if (t == 0 || k == 0) return 1;
   Integer result = t;
-  for (int i = 1; i < k; ++i)
+  for (Int i = 1; i < k; ++i)
     result *= (t-i);
   return result;
 }
@@ -82,14 +82,14 @@ Integer falling_factorial(const Integer& t, const Integer& k)
 // we have |S \cap (0,..,j)| <= |T \cap (0,..,j)|
 // This computes, for a given set S, the list of all T >= S.
 // (Note that instead of sets we use ordered lists)
-Matrix<int> upper_interval(const Vector<int>& ordered_list)
+Matrix<Int> upper_interval(const Vector<Int>& ordered_list)
 {
   // Convert the set to an ordered list
-  Vector<int> current_vector = ordered_list;
-  int r = ordered_list.dim();
-  ListMatrix<Vector<int>> result;
+  Vector<Int> current_vector = ordered_list;
+  Int r = ordered_list.dim();
+  ListMatrix<Vector<Int>> result;
   result /= current_vector;
-  const Vector<int> max_elt(sequence(0,r));
+  const Vector<Int> max_elt(sequence(0,r));
   while (current_vector != max_elt) {
     for (auto ol = entire<indexed>(current_vector); !ol.at_end(); ++ol) {
       // Find the first entry that can be shifted to the left
@@ -109,13 +109,13 @@ Matrix<int> upper_interval(const Vector<int>& ordered_list)
 }
 
 template <typename FlatsIterator>
-Vector<int> calc_composition(int rank, FlatsIterator&& flats)
+Vector<Int> calc_composition(Int rank, FlatsIterator&& flats)
 {
-  Vector<int> composition(rank+1);
+  Vector<Int> composition(rank+1);
   auto comp_it = composition.begin();
 
-  for (int last_size = 0;  !flats.at_end();  ++flats, ++comp_it) {
-    const int new_size = flats->size();
+  for (Int last_size = 0;  !flats.at_end();  ++flats, ++comp_it) {
+    const Int new_size = flats->size();
     *comp_it = new_size - last_size;
     last_size = new_size;
   }
@@ -125,17 +125,17 @@ Vector<int> calc_composition(int rank, FlatsIterator&& flats)
 }
 
 // Computes [[CATENARY_G_INVARIANT]]
-Map<Vector<int>, Integer> catenary_g_invariant(perl::Object matroid)
+Map<Vector<Int>, Integer> catenary_g_invariant(BigObject matroid)
 {
-  perl::Object lattice_of_flats_obj = matroid.give("LATTICE_OF_FLATS");
+  BigObject lattice_of_flats_obj = matroid.give("LATTICE_OF_FLATS");
   Lattice<BasicDecoration, Sequential> lattice_of_flats(lattice_of_flats_obj);
-  const int rank = matroid.give("RANK");
-  const Array<Set<int>> maximal_chains_list  = maximal_chains(lattice_of_flats,false,false );
+  const Int rank = matroid.give("RANK");
+  const Array<Set<Int>> maximal_chains_list  = maximal_chains(lattice_of_flats,false,false );
   const IncidenceMatrix<> flats = lattice_of_flats_obj.give("FACES");
   // Check whether flats are sorted bottom to top (-1) or the other way around (1)
   const bool forward_numbered = flats.row(0).size() < flats.row(flats.rows()-1).size();
 
-  Map<Vector<int>, Integer> result;
+  Map<Vector<Int>, Integer> result;
 
   for (auto mc = entire(maximal_chains_list); !mc.at_end(); ++mc) {
     auto face_chain = flats.minor(*mc, All);
@@ -147,25 +147,25 @@ Map<Vector<int>, Integer> catenary_g_invariant(perl::Object matroid)
 
 // Computes [[G_INVARIANT]] from [[CATENARY_G_INVARIANT]]
 // Based on the formula in [Bonin, Kung: G-invariant and catenary data..., p.3]
-Map<Set<int>, Integer> g_invariant_from_catenary(int n, const Map<Vector<int>, Integer>& catenary_map)
+Map<Set<Int>, Integer> g_invariant_from_catenary(Int n, const Map<Vector<Int>, Integer>& catenary_map)
 {
-  Map<Set<int>, Integer> result;
+  Map<Set<Int>, Integer> result;
   for (auto&& kv_pair : catenary_map) {
     auto&& key = kv_pair.first;
     auto&& value = kv_pair.second;
-    const Matrix<int> uintv = upper_interval( set_from_composition(key) );
+    const Matrix<Int> uintv = upper_interval( set_from_composition(key) );
     for (auto bset = entire(rows(uintv)); !bset.at_end(); ++bset) {
-      const Vector<int> bcomp = composition_from_set(n, *bset);
+      const Vector<Int> bcomp = composition_from_set(n, *bset);
       auto a_it = entire(key);
       auto b_it = entire(bcomp);
       Integer coeff = falling_factorial(*a_it, *b_it);
       Integer diff_sum = *a_it - *b_it;
       ++a_it; ++b_it;
       for (;!a_it.at_end(); ++a_it, ++b_it) {
-        coeff *= *a_it * falling_factorial( *a_it - 1 + diff_sum, *b_it - 1);
+        coeff *= *a_it * falling_factorial(*a_it-1+diff_sum, *b_it-1);
         diff_sum += *a_it - *b_it;
       }
-      const Set<int> dummy(entire(*bset));
+      const Set<Int> dummy(entire(*bset));
       result[dummy] += value*coeff;
     }
   }

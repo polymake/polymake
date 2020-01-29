@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -38,6 +38,18 @@ if (get_detected_version("MPFR") ge v4.0) {
    # MPFR 4.0 changed implementation of random number generator, mpfr_urandom
    # Test results dependent on random AccurateFloat numbers must be provided in two flavors
    Test::add_alternative_suffix("mpfr4");
+}
+
+sub load_mock_extension {
+   my ($dir) = @_;
+   $dir = Cwd::abs_path($dir);
+   my $ext = new Core::Extension($dir);
+   local with($_[1]) {
+      local push @Core::Extension::active, $ext;
+      local $Core::Extension::registered_by_dir{$dir} = $ext;
+      local $Core::Extension::registered_by_URI{$ext->URI} = $ext;
+   }
+   $ext
 }
 
 

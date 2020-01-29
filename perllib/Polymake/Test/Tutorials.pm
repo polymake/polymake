@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -70,24 +70,21 @@ sub new {
 }
 
 sub create_testcases {
-   my ($self)=@_;
-   state $testpkg="TutorialTestPkg000000";
+   my ($self) = @_;
+   state $testpkg = "TutorialTestPkg000000";
    ++$testpkg;
 
-   my $file_name = $self->source_file;
-   my $json = '';
-   open my $in, "<:encoding(utf8)", $file_name
-      or die("Error opening $file_name: $!");
-   while (my $line = <$in>) {
-      $json .= $line;
-   }
-   close $in or die $!;
+   my $json = do {
+     local $/;
+     open my $in, "<", $self->source_file
+       or die("Can't read ", $self->source_file, ": $!\n");
+     <$in>
+   };
 
-   my $p = JSON->new->decode($json);
+   my $p = decode_json($json);
    my $name = $self->name;
    my $app = $User::default_application;
-   my $body= <<"---";
-$Polymake::Core::warn_options; 
+   my $body = Core::RuleFilter::warn_options() . <<"---";
 package Polymake::$testpkg;
 use application '$app';  declare +auto;
 include "common::jupyter.rules";
@@ -95,7 +92,7 @@ include "common::jupyter.rules";
 ---
 
    $self->group->env->start_timers;
-   my $cnt=0;
+   my $cnt = 0;
    foreach (@{${$p}{"cells"}}) {
       if (${$_}{"cell_type"} eq "code") { # iterate all code cells
 	 # each cell might introduce independent local effects

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -28,8 +28,8 @@
 namespace pm {
 
 template <typename From1, typename From2, typename To1, typename To2,
-          int cc1=(std::is_convertible<From1, To1>::value * 2 + is_explicitly_convertible_to<From1, To1>::value),
-          int cc2=(std::is_convertible<From2, To2>::value * 2 + is_explicitly_convertible_to<From2, To2>::value)>
+          int cc1=(std::is_convertible<From1, To1>::value*2+is_explicitly_convertible_to<From1, To1>::value),
+          int cc2=(std::is_convertible<From2, To2>::value*2+is_explicitly_convertible_to<From2, To2>::value)>
 class pair_conv : public nothing {};
 
 template <typename From1, typename From2, typename To1, typename To2>

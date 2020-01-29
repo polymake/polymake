@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,7 +22,7 @@
 
 namespace pm {
 
-template <bool left_to_right=true, typename number_type=int>
+template <bool left_to_right = true, typename number_type = Int>
 class MultiDimCounter {
 public:
    typedef bidirectional_iterator_tag iterator_category;
@@ -42,12 +42,13 @@ public:
 
    template <typename Container>
    explicit MultiDimCounter(const Container& limits)
-      : my_start(limits.size()), my_counter(my_start.size()),
-        my_limits(my_start.size(), limits.begin()),
-        my_at_end(my_start.empty())
+      : my_start(limits.size())
+      , my_counter(my_start.size())
+      , my_limits(my_start.size(), limits.begin())
+      , my_at_end(my_start.empty())
    {
       if (POLYMAKE_DEBUG) {
-         for (int i=0, n=my_start.size(); i<n; ++i)
+         for (Int i = 0, n = my_start.size(); i < n; ++i)
             if (my_limits[i] <= 0)
                throw std::runtime_error("MultiDimCounter: wrong limit value");
       }
@@ -55,12 +56,13 @@ public:
 
    template <typename Container1, typename Container2>
    MultiDimCounter(const Container1& start, const Container2& limits)
-      : my_start(start.size(), start.begin()), my_counter(my_start),
-        my_limits(my_start.size(), limits.begin()),
-        my_at_end(my_start.empty())
+      : my_start(start.size(), start.begin())
+      , my_counter(my_start)
+      , my_limits(my_start.size(), limits.begin())
+      , my_at_end(my_start.empty())
    {
       if (POLYMAKE_DEBUG) {
-         for (int i=0, n=my_start.size(); i<n; ++i)
+         for (Int i = 0, n = my_start.size(); i < n; ++i)
             if (my_limits[i] <= my_start[i])
                throw std::runtime_error("MultiDimCounter: wrong limit/start values");
       }
@@ -104,7 +106,7 @@ public:
       copy_range(values.begin(), entire(my_counter));
    }
 
-   void set_digit(int digit, const number_type& value)
+   void set_digit(Int digit, const number_type& value)
    {
       if (POLYMAKE_DEBUG) {
          if (digit >= my_limits.size())
@@ -130,24 +132,25 @@ template <bool left_to_right, typename number_type>
 MultiDimCounter<left_to_right, number_type>&
 MultiDimCounter<left_to_right, number_type>::operator++ ()
 {
-   const int last = my_limits.size()-1;
+   const Int last = my_limits.size()-1;
 
-   if (left_to_right)
-      for (int digit = 0; (++my_counter[digit]) >= my_limits[digit]; ++digit)
+   if (left_to_right) {
+      for (Int digit = 0; ++my_counter[digit] >= my_limits[digit]; ++digit)
          if (digit < last) {
             my_counter[digit] = my_start[digit];
          } else {
-            my_at_end = true;  break;
+            my_at_end = true;
+            break;
          }
-
-   else
-      for (int digit = last; (++my_counter[digit]) >= my_limits[digit]; --digit)
+   } else {
+      for (Int digit = last; ++my_counter[digit] >= my_limits[digit]; --digit)
          if (digit > 0) {
             my_counter[digit] = my_start[digit];
          } else {
-            my_at_end = true;  break;
+            my_at_end = true;
+            break;
          }
-
+   }
    return *this;
 }
    
@@ -155,24 +158,25 @@ template <bool left_to_right, typename number_type>
 MultiDimCounter<left_to_right, number_type>&
 MultiDimCounter<left_to_right, number_type>::operator-- ()
 {
-   const int last = my_limits.size()-1;
+   const Int last = my_limits.size()-1;
 
-   if (left_to_right)
-      for (int digit = 0; (--my_counter[digit]) < my_start[digit]; ++digit)
+   if (left_to_right) {
+      for (Int digit = 0; --my_counter[digit] < my_start[digit]; ++digit)
          if (digit < last) {
             my_counter[digit] = my_limits[digit]-1;
          } else {
-            my_at_end = true;  break;
+            my_at_end = true;
+            break;
          }
-
-   else
-      for (int digit = last; (--my_counter[digit]) < my_start[digit]; --digit)
+   } else {
+      for (Int digit = last; --my_counter[digit] < my_start[digit]; --digit)
          if (digit > 0) {
             my_counter[digit] = my_limits[digit]-1;
          } else {
-            my_at_end = true;  break;
+            my_at_end = true;
+            break;
          }
-
+   }
    return *this;
 }
    

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,13 +24,29 @@
 #include "polymake/Set.h"
 #include "polymake/hash_map"
 #include "polymake/hash_set"
+#include <list>
 
 #include "polymake/group/permlib_tools.h"
+
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconversion"
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
 
 #include "permlib/permlib_api.h"
 #include "permlib/generator/bsgs_generator.h"
 #include "permlib/export/bsgs_schreier_export.h"
-#include <list>
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 // TEMPORARY FIX:
 // permlib uses std::set in OrbitSet where Vector can sneak in as a key
@@ -52,7 +68,7 @@ public:
    PermlibGroup(){};
    PermlibGroup(boost::shared_ptr<permlib::PermutationGroup> perm_group) : permlib_group(perm_group){};
 
-   PermlibGroup(const Array<Array <int>>& generators)
+   PermlibGroup(const Array<Array<Int>>& generators)
    {
       std::list<boost::shared_ptr<permlib::Permutation>> permutations;
       for (const auto& perm : generators) {
@@ -62,12 +78,12 @@ public:
       permlib_group = construct(generators[0].size(), permutations.begin(), permutations.end());
    }
 
-   int degree() const
+   Int degree() const
    {
       return permlib_group->n;
    }
 
-   int order() const
+   Int order() const
    {
       return permlib_group->order();
    }
@@ -78,10 +94,10 @@ public:
       return permlib_group;
    }
 
-   Array<Array<int>> strong_gens() const
+   Array<Array<Int>> strong_gens() const
    {
-      Array<Array<int>> permutations(permlib_group->S.size());
-      int count=0;
+      Array<Array<Int>> permutations(permlib_group->S.size());
+      Int count = 0;
       for (const auto& perm : permlib_group->S) {
          permutations[count]=perm2Array(perm);
          ++count;
@@ -89,54 +105,54 @@ public:
       return permutations;
    }
 
-   Array<int> base() const
+   Array<Int> base() const
    {
-      return Array<int>(permlib_group->B.size(), entire(permlib_group->B));
+      return Array<Int>(permlib_group->B.size(), entire(permlib_group->B));
    }
 
-   Array<Array<Array<int>>> transversals() const
+   Array<Array<Array<Int>>> transversals() const
    {
-      int base_length=permlib_group->B.size();
-      Array<Array<Array<int>>> trans(base_length);
-      for (int i=0; i<base_length; ++i) {
-         Array<Array<int>> single_trans(permlib_group->n);
-         for (unsigned int j=0; j<permlib_group->n; ++j) {
+      const Int base_length = permlib_group->B.size();
+      Array<Array<Array<Int>>> trans(base_length);
+      for (Int i = 0; i < base_length; ++i) {
+         Array<Array<Int>> single_trans(permlib_group->n);
+         for (Int j = 0; j < Int(permlib_group->n); ++j) {
             boost::shared_ptr<permlib::Permutation> perm(permlib_group->U[i].at(j));
-            single_trans[j]=perm2Array(perm);
+            single_trans[j] = perm2Array(perm);
          }
-         trans[i]=single_trans;
+         trans[i] = single_trans;
       }
       return trans;
    }
 
-   static Array<int> perm2Array(const boost::shared_ptr<permlib::Permutation>& perm)
+   static Array<Int> perm2Array(const boost::shared_ptr<permlib::Permutation>& perm)
    {
       return (!perm)
-         ? Array<int>()
+         ? Array<Int>()
          : perm2Array(*perm.get());
    }
 
-   static Array<int> perm2Array(const permlib::Permutation& perm)
+   static Array<Int> perm2Array(const permlib::Permutation& perm)
    {
-      Array<int> gen(perm.size());
-      for (unsigned int i=0; i<perm.size(); i++) {
-         gen[i]=perm.at(i);
+      Array<Int> gen(perm.size());
+      for (permlib::dom_int i = 0; i < perm.size(); ++i) {
+         gen[i] = perm.at(i);
       }
       return gen;
    } 
 
 
-   Array<hash_set<int>> orbits() const
+   Array<hash_set<Int>> orbits() const
    {
       const auto orbit_ptr_list = permlib::orbits(*permlib_group);
 
-      Array<hash_set<int>> orbit_decomp(orbit_ptr_list.size());
+      Array<hash_set<Int>> orbit_decomp(orbit_ptr_list.size());
       auto odec_it = orbit_decomp.begin();
       for (const auto& orbit_ptr : orbit_ptr_list) {
-         hash_set<int> orbit_set;
+         hash_set<Int> orbit_set;
          for (const auto& orb_it : *orbit_ptr) {
             const unsigned long elem(orb_it);
-            orbit_set += static_cast<int>(elem);
+            orbit_set += static_cast<Int>(elem);
          }
          *odec_it = orbit_set;
          ++odec_it;
@@ -157,46 +173,49 @@ public:
    }
    
 
-   template<typename SetType>
+   template <typename SetType>
    PermlibGroup setwise_stabilizer(const SetType& set) const
    {
      return PermlibGroup(permlib::setStabilizer(*(permlib_group), set.begin(), set.end()));
    }
 
 
-   template<typename Scalar >
+   template <typename Scalar >
    PermlibGroup vector_stabilizer(const Vector<Scalar>& vec) const
    {
       boost::shared_ptr<permlib::PermutationGroup> stab;
 
-      std::list<int> list;
-      hash_map<Scalar,int> hash;
-      int value=0;
-      for (int i=1; i<vec.size(); ++i) { //skip homogenizing entry
+      std::list<permlib::dom_int> list;
+      hash_map<Scalar, permlib::dom_int> hash;
+      permlib::dom_int value = 0;
+      for (Int i = 1; i < vec.size(); ++i) { //skip homogenizing entry
          if (hash.find(vec[i]) == hash.end()) {
-            hash[vec[i]]=value;
+            if (value == std::numeric_limits<permlib::dom_int>::max())
+               throw std::runtime_error("input vector is too big for permlib");
+            hash[vec[i]] = value;
             ++value;
          }
          list.push_back(hash[vec[i]]);
       }
  
-      stab=permlib::vectorStabilizer(*(permlib_group),list.begin(),list.end(),value-1);
+      stab = permlib::vectorStabilizer(*permlib_group, list.begin(), list.end(), value-1);
 
       return PermlibGroup(stab);
    }
   
 
-   static PermlibGroup permgroup_from_cyclic_notation(const Array<std::string>& cyc_not, int degree, Array<Array<int>>& parsed_generators)
+   static PermlibGroup permgroup_from_cyclic_notation(const Array<std::string>& cyc_not, Int degree_, Array<Array<Int>>& parsed_generators)
    {
+      const permlib::dom_int degree = permlib::safe_to_dom_int(degree_);
       std::list<permlib::Permutation::ptr> gens;
-      parsed_generators = Array<Array<int>>(cyc_not.size());    
-      for (int i=0; i<cyc_not.size(); ++i) {
+      parsed_generators = Array<Array<Int>>(cyc_not.size());    
+      for (Int i = 0; i < cyc_not.size(); ++i) {
          permlib::Permutation::ptr gen(new permlib::Permutation(degree, cyc_not[i]));
          gens.push_back(gen);
          //fill Array with parsed generators
-         parsed_generators[i]=perm2Array(gen);
+         parsed_generators[i] = perm2Array(gen);
       }
-      return PermlibGroup(permlib::construct(degree,gens.begin(),gens.end()));
+      return PermlibGroup(permlib::construct(degree, gens.begin(), gens.end()));
    }
 
 
@@ -221,57 +240,59 @@ public:
       return res;
    }
 
-   Set<int> lex_min_representative(const Set<int>& input_rep) const
+   Set<Int> lex_min_representative(const Set<Int>& input_rep) const
    {
       permlib::dset dGamma(permlib_group->n);
       for (const auto& s : input_rep)
          dGamma.set(s);
-      Set<int> rep;
+      Set<Int> rep;
       const permlib::dset dGammaLeast = smallestSetImage(*permlib_group, dGamma);
-      for (unsigned int i=0; i < permlib_group->n; ++i)
+      for (Int i = 0; i < Int(permlib_group->n); ++i)
          if (dGammaLeast[i])
-            rep += int(i);
+            rep += i;
       return rep;      
    }
 };
 
 
-Array<Array<int>> generators_from_permlib_group(const PermlibGroup& permlib_group);
+Array<Array<Int>> generators_from_permlib_group(const PermlibGroup& permlib_group);
 
-perl::Object perl_action_from_group(const PermlibGroup& permlib_group,
+BigObject perl_action_from_group(const PermlibGroup& permlib_group,
                                     const std::string& name = "",
                                     const std::string& description = "action defined from permlib group");
 
-PermlibGroup group_from_perl_action(perl::Object action);
+PermlibGroup group_from_perl_action(BigObject action);
 
-perl::Object perl_group_from_group(const PermlibGroup& permlib_group,
+BigObject perl_group_from_group(const PermlibGroup& permlib_group,
                                    const std::string& name = "",
                                    const std::string& description = "group defined from permlib group");
 
-void perl_action_from_generators(const Array<Array<int>>& generators,
-                                 perl::Object action,
-                                 perl::OptionSet options);
+void perl_action_from_generators(const Array<Array<Int>>& generators,
+                                 BigObject action,
+                                 OptionSet options);
 
 /*  
     Actions
 */
 template<class PERM, typename Scalar>
 struct CoordinateAction {
-   Vector<Scalar> operator()(const PERM& p, const Vector<Scalar>& vec) {
+   Vector<Scalar> operator()(const PERM& p, const Vector<Scalar>& vec)
+   {
       Vector<Scalar> ret(vec);
-      for (int i=1;i<vec.size();++i){
-         ret[i]=vec[p.at(i-1)+1];
+      for (Int i = 1; i < vec.size(); ++i) {
+         ret[i] = vec[p.at(permlib::safe_to_dom_int(i-1))+1];
       }
       return ret;
    }
 };
 
-template<class PERM>
+template <typename PERM>
 struct SetOfIndicesAction {
-   Set<int> operator()(const PERM& p, const Set<int>& s) {
-      Set<int> ret;
+   Set<Int> operator()(const PERM& p, const Set<Int>& s)
+   {
+      Set<Int> ret;
       for (const auto& index : s)
-         ret += p.at(index);
+         ret += p.at(permlib::safe_to_dom_int(index));
       return ret;
    }
 };
@@ -292,10 +313,10 @@ hash_set<Container> orbit_impl (const PermlibGroup& sym_group, const Container& 
   @output Pair<ListMatrix<Vector>, Array<Set>> the orbits of generating_vectors, in orbit order, and the indices of the orbits
  */
 template<typename _Matrix, typename Scalar>
-std::pair<ListMatrix<Vector<Scalar>> , Array<hash_set<int>> >
-orbits_in_orbit_order_impl(perl::Object coordinate_action, const GenericMatrix<_Matrix, Scalar>& generating_vectors)
+std::pair<ListMatrix<Vector<Scalar>> , Array<hash_set<Int>> >
+orbits_in_orbit_order_impl(BigObject coordinate_action, const GenericMatrix<_Matrix, Scalar>& generating_vectors)
 {
-   typedef typename std::pair<ListMatrix<Vector<Scalar>>, Array<hash_set<int>>> ListMatrixOrbitPair;
+   typedef typename std::pair<ListMatrix<Vector<Scalar>>, Array<hash_set<Int>>> ListMatrixOrbitPair;
 
    const PermlibGroup group_of_cone = group_from_perl_action(coordinate_action);
  
@@ -315,12 +336,12 @@ orbits_in_orbit_order_impl(perl::Object coordinate_action, const GenericMatrix<_
    // call permlib to get the list of orbits generated by the rows of the input matrix
    const auto orbit_ptr_list = permlib::orbits<Vector<Scalar>, CoordinateAction<permlib::Permutation,Scalar>>(*(group_of_cone.get_permlib_group()), permlib_generating_vectors.begin(), permlib_generating_vectors.end());
 
-   Array<hash_set<int>> orbit_indices(orbit_ptr_list.size()); 
+   Array<hash_set<Int>> orbit_indices(orbit_ptr_list.size()); 
    ListMatrix<Vector<Scalar>> vectors_in_orbit_order;
-   int orbit_count=0;
-   int vec_count=0;
+   Int orbit_count = 0;
+   Int vec_count = 0;
    for (const auto& orbit_ptr : orbit_ptr_list) {
-      hash_set<int> indices_in_one_orbit;
+      hash_set<Int> indices_in_one_orbit;
       for (const auto& orb_it : *orbit_ptr) {
          vectors_in_orbit_order /= orb_it; //vectors of one orbit form one block of the matrix all_orbit_vectors	  
          indices_in_one_orbit += vec_count++;
@@ -331,10 +352,10 @@ orbits_in_orbit_order_impl(perl::Object coordinate_action, const GenericMatrix<_
 }
 
 inline
-std::vector<Array<int>> 
+std::vector<Array<Int>> 
 all_group_elements_impl(const PermlibGroup& perm_group)
 {
-   std::vector<Array<int>> all_elements;
+   std::vector<Array<Int>> all_elements;
    permlib::BSGSGenerator<permlib::TRANSVERSAL> bsgsGen(perm_group.get_permlib_group()->U);
    while (bsgsGen.hasNext()) {
       all_elements.push_back(PermlibGroup::perm2Array(bsgsGen.next()));

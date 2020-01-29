@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -36,9 +36,9 @@ void canonicalize_polytope_generators(GenericMatrix<TMatrix, E>& M)
       throw std::runtime_error("canonicalize_polytope_generators - ambient dimension is 0");
 
    // collect the rays with non-zero first entry
-   Set<int> pos, neg;
+   Set<Int> pos, neg;
    Set< Vector<E> > zvecs;
-   for (int i = 0; i < M.rows(); ++i) {
+   for (Int i = 0; i < M.rows(); ++i) {
       if (M.top()(i,0) > 0) {
          pos.push_back(i);
       } else if (M.top()(i,0) < 0) {

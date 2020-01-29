@@ -1,14 +1,14 @@
 # input for generate_ninja_targets.pl
 
-my $foreign_src=$ConfigFlags{'bundled.nauty.NautySrc'};
-my $nauty_src= $foreign_src ? '${bundled.nauty.NautySrc}' : '${root}/bundled/nauty/external/nauty';
-my $generated_dir='${buildroot}/staticlib/nauty';
-my @generated_headers=qw( nauty.h naututil.h gtools.h );
-my @generated_in=map { /\.h$/; "$nauty_src/$`-h.in" } @generated_headers;
-my @generated_out=map { "$generated_dir/$_" } @generated_headers;
-my $include_generated= ($foreign_src && grep { -f "$foreign_src/$_" } @generated_headers)
-                       ? join(" ", map { "-include $_" } @generated_out)
-                       : "-I$generated_dir";
+my $foreign_src = $ConfigFlags{'bundled.nauty.NautySrc'};
+my $nauty_src = $foreign_src ? '${bundled.nauty.NautySrc}' : '${root}/bundled/nauty/external/nauty';
+my $generated_dir = '${builddir}/staticlib/nauty';
+my @generated_headers = qw( nauty.h naututil.h gtools.h );
+my @generated_in = map { /\.h$/; "$nauty_src/$`-h.in" } @generated_headers;
+my @generated_out = map { "$generated_dir/$_" } @generated_headers;
+my $include_generated = ($foreign_src && grep { -f "$foreign_src/$_" } @generated_headers)
+                        ? join(" ", map { "-include $_" } @generated_out)
+                        : "-I$generated_dir";
 
 ( CXXFLAGS => "-DBIGNAUTY -I$generated_dir -I$nauty_src",
 

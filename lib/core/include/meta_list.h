@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -121,7 +121,7 @@ struct mlist_length
 
 template <typename... Elements>
 struct mlist_length<mlist<Elements...>>
-   : int_constant<sizeof...(Elements)> {};
+   : int_constant<int(sizeof...(Elements))> {};
 
 template <typename T>
 using mlist_is_empty
@@ -146,6 +146,10 @@ struct mlist_at<mlist<T, Tail...>, 0> {
 template <typename T, typename... Tail, int Pos>
 struct mlist_at<mlist<T, Tail...>, Pos>
    : mlist_at<mlist<Tail...>, Pos-1> {};
+
+/// counting position backwards
+template <typename T, int Pos>
+using mlist_at_rev = mlist_at<T, mlist_length<T>::value-Pos-1>;
 
 
 template <typename T1, typename T2>
@@ -204,7 +208,7 @@ struct mlist_prepend_if<false, Prefix, List>
  *              If omitted, the selected subset stretches up to the end of the source meta-list.
  *  Positions are counted starting with 0.
  */
-template <typename List, int Start, int End=mlist_length<List>::value, int TotalSize=mlist_length<List>::value>
+template <typename List, int Start, int End = mlist_length<List>::value, int TotalSize = mlist_length<List>::value>
 struct mlist_slice
    : mlist_slice<typename mlist_wrap<List>::type, Start, End, TotalSize> {};
 
@@ -280,9 +284,8 @@ using mlist_remove_at
 
 
 /// Construct a meta-list consisting of N copies of the same element
-template <typename T, int N>
+template <typename T, size_t N>
 struct mreplicate {
-   static_assert(N>0, "invalid size");
    using type = typename mlist_concat2< typename mreplicate<T, N/2>::type,
                                         typename mreplicate<T, N-N/2>::type >::type;
 };

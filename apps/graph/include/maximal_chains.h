@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -33,23 +33,23 @@ namespace polymake { namespace graph {
 // @param HD A Lattice
 // @param ignore_bottom_node If true, the bottom node is not included in the facet comptutation
 // @param ignore_top_node If true, the top node is not included in the facet computation
-// @return Array<Set<int> > Facets of the barycentric subdivision.
+// @return Array<Set<Int>> Facets of the barycentric subdivision.
 // Indices are node indices in the Hasse diagram, in particular they need not start
 // with 0.
 template <typename Decoration, typename SeqType>
-Array<Set<int>> maximal_chains(const Lattice<Decoration, SeqType>& HD, bool ignore_bottom_node, bool ignore_top_node)
+Array<Set<Int>> maximal_chains(const Lattice<Decoration, SeqType>& HD, bool ignore_bottom_node, bool ignore_top_node)
 {
-   const int total_rank = HD.rank();
-   const int dim = total_rank - 1 - ignore_top_node;
-   const int top_index = HD.top_node();
-   const int bottom_index = HD.bottom_node();
+   const Int total_rank = HD.rank();
+   const Int dim = total_rank-1-ignore_top_node;
+   const Int top_index = HD.top_node();
+   const Int bottom_index = HD.bottom_node();
 
    // each old facet is divided into at least (dim+1)! cells, with equality iff the object is simplicial.
    // since we don't know the size beforehand, we use a std::vector instead of an Array.
    // each facet of the barycentric subdivision is a flag in the input face lattice HD,
    // stored as the set of node indices of the constituent faces in HD
-   std::vector<Set<int>> facets;
-   facets.reserve(HD.nodes_of_rank(total_rank-1).size() * int(Integer::fac(dim+1)));
+   std::vector<Set<Int>> facets;
+   facets.reserve(HD.nodes_of_rank(total_rank-1).size() * Int(Integer::fac(dim+1)));
 
    using out_edge = Graph<Directed>::out_edge_list::const_iterator;
    using stack_type = std::vector<out_edge>;  // vector is more efficient than list
@@ -58,7 +58,7 @@ Array<Set<int>> maximal_chains(const Lattice<Decoration, SeqType>& HD, bool igno
 
    // If it has only the bottom node, return the empty list
    if (HD.graph().nodes() == 1) {
-      Array<Set<int>> trivial_result(ignore_top_node || ignore_bottom_node ? 0 : 1);
+      Array<Set<Int>> trivial_result(ignore_top_node || ignore_bottom_node ? 0 : 1);
       if (!(ignore_top_node || ignore_bottom_node)) {
          trivial_result[0] = scalar2set(bottom_index);
       }
@@ -71,13 +71,13 @@ Array<Set<int>> maximal_chains(const Lattice<Decoration, SeqType>& HD, bool igno
    do {
       // complete the facet
       while (true) {
-         int n = flag.back().to_node();
+         Int n = flag.back().to_node();
          if (n == top_index) break;
          flag.push_back(HD.out_edges(n).begin()); // the index of the next face in the flag
       }
 
       // copy the facet
-      Set<int> facet;
+      Set<Int> facet;
       if (!ignore_bottom_node) facet += bottom_index;
       for (auto s=entire(flag);  !s.at_end();  ++s) {
          if (!ignore_top_node || s->to_node() != top_index)
@@ -92,7 +92,7 @@ Array<Set<int>> maximal_chains(const Lattice<Decoration, SeqType>& HD, bool igno
       } while (!flag.empty());
    } while (!flag.empty());
 
-   return Array<Set<int>>(facets);
+   return Array<Set<Int>>(facets);
 }
 
 // Computes the VERTEX_LABELS
@@ -105,7 +105,7 @@ Array<std::string> bs_labels(const Lattice<Decoration, SeqType>& HD, const Array
    auto f = entire<indexed>(HD.decoration());
    std::ostringstream label;
    const bool convert_old_labels = !old_labels.empty();
-   const int top_index = HD.top_node();
+   const Int top_index = HD.top_node();
    for (auto l=entire(L); !l.at_end(); ++l, ++f) {
       if (ignore_top_node && f.index() == top_index) {
          *l = label.str();
@@ -133,14 +133,14 @@ Array<std::string> bs_labels(const Lattice<Decoration, SeqType>& HD, const Array
 // If ignore_top_node = true, the top node will get a zero vector (i.e. the length of the list
 // is always the number of nodes
 template <typename Scalar, typename Decoration, typename SeqType>
-Matrix<Scalar> bs_geom_real(const Matrix<Scalar>& old_coord, const Lattice<Decoration, SeqType> HD, bool ignore_top_node)
+Matrix<Scalar> bs_geom_real(const Matrix<Scalar>& old_coord, const Lattice<Decoration, SeqType>& HD, bool ignore_top_node)
 {
-   const int ambient_dim = old_coord.cols();
-   const int top_index = HD.top_node();
+   const Int ambient_dim = old_coord.cols();
+   const Int top_index = HD.top_node();
    Matrix<Scalar> new_coord(HD.nodes(), ambient_dim);
 
    auto f = entire<indexed>(HD.decoration());
-   for (auto r=entire(rows(new_coord));  !r.at_end();  ++r, ++f) {
+   for (auto r = entire(rows(new_coord));  !r.at_end();  ++r, ++f) {
       if (ignore_top_node && f.index() == top_index) continue;
       accumulate_in(entire(select(rows(old_coord), f->face)), operations::add(), *r);
       if (f->face.size()) {

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -33,16 +33,16 @@ namespace polymake { namespace polytope {
  *  we have to take care of some signs if we maximize the primal problem.
  */
 template <typename Scalar>
-perl::Object dual_linear_program(perl::Object p_in, bool maximize)
+BigObject dual_linear_program(BigObject p_in, bool maximize)
 {
    // variable declaration. Names are self explaining.
-   perl::Object old_lp, new_lp("LinearProgram", mlist<Scalar>());
-   perl::Object p_out("Polytope", mlist<Scalar>());
+   BigObject old_lp, new_lp("LinearProgram", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>());
    Vector<Scalar> new_objective;
    Matrix<Scalar> old_ineq, new_ineq;
    Matrix<Scalar> old_eq, new_eq;
    Vector<Scalar> new_right;
-   int dim_dual_positive, dim_dual_free;
+   Int dim_dual_positive, dim_dual_free;
   
    // reading the old problem.
    // we get the problem as: min <c,x> s.t. Ax >= b, Bx = d
@@ -79,7 +79,7 @@ perl::Object dual_linear_program(perl::Object p_in, bool maximize)
 
    // building the new inequalities which are just the sign constrains for "u"
    // and the inequality for the far-face
-   new_ineq = (unit_matrix<Scalar>(dim_dual_positive + 1));
+   new_ineq = (unit_matrix<Scalar>(dim_dual_positive+1));
    if (dim_dual_free > 0) {
       new_ineq |= (zero_matrix<Scalar>(dim_dual_positive+1, dim_dual_free));
    }

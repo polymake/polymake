@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -37,32 +37,32 @@ namespace polymake { namespace polytope {
   This amounts to summing all cocircuit equations corresponding to the orbit of each ridge.
  */
 template<typename Scalar, typename SetType>
-ListMatrix<SparseVector<int>>
-symmetrized_cocircuit_equations_0_impl(int d,
+ListMatrix<SparseVector<Int>>
+symmetrized_cocircuit_equations_0_impl(Int d,
                                        const Matrix<Scalar>& V,
                                        const IncidenceMatrix<>& VIF,
-                                       const Array<Array<int>>& generators,
+                                       const Array<Array<Int>>& generators,
                                        const Array<SetType>& interior_ridge_reps,
                                        const Array<SetType>& facet_reps,
-                                       perl::OptionSet options,
+                                       OptionSet options,
                                        bool partial_equations)
 {
    const std::string filename = options["filename"];
    std::ofstream outfile(filename.c_str(), std::ios_base::trunc);
    const bool reduce_rows = options["reduce_rows"];
-   const int log_frequency = options["log_frequency"];
+   const Int log_frequency = options["log_frequency"];
 
    const group::PermlibGroup sym_group(generators);
 
-   hash_map<SetType, int> index_of_facet;
-   int ct(-1);
+   hash_map<SetType, Int> index_of_facet;
+   int ct = -1;
    for (const auto& rep : facet_reps)
       index_of_facet[rep] = ++ct;
 
-   const int
+   const Int
       n_facets(index_of_facet.size()),
       n(V.rows());
-   ListMatrix<SparseVector<int>> cocircuit_eqs(0, n_facets);
+   ListMatrix<SparseVector<Int>> cocircuit_eqs(0, n_facets);
 
    ct = 0;
    time_t start_time, current_time;
@@ -72,11 +72,11 @@ symmetrized_cocircuit_equations_0_impl(int d,
          time(&current_time);
          cerr << ct << " " << difftime(current_time, start_time) << endl;
       }
-      SparseVector<int> eq(n_facets);
+      SparseVector<Int> eq(n_facets);
       const Vector<Scalar> vals = V * (null_space(V.minor(ridge_rep, All))[0]);
-      for (int i=0; i<vals.size(); ++i) {
-         const int s = sign(vals[i]);
-         if (s!=0) {
+      for (Int i = 0; i < vals.size(); ++i) {
+         const Int s = sign(vals[i]);
+         if (s != 0) {
             SetType facet(ridge_rep);
             facet.resize(n);
             facet += i;
@@ -100,14 +100,14 @@ symmetrized_cocircuit_equations_0_impl(int d,
   cocircuit equations to the trivial isotypical component.
  */
 template<typename Scalar, typename SetType>
-ListMatrix<SparseVector<int>>
-symmetrized_foldable_cocircuit_equations_0_impl(int d,
+ListMatrix<SparseVector<Int>>
+symmetrized_foldable_cocircuit_equations_0_impl(Int d,
                                                 const Matrix<Scalar>& V,
                                                 const IncidenceMatrix<>& VIF,
-                                                const Array<Array<int>>& generators,
+                                                const Array<Array<Int>>& generators,
                                                 const Array<SetType>& interior_ridge_reps,
                                                 const Array<SetType>& facet_reps,
-                                                perl::OptionSet options,
+                                                OptionSet options,
                                                 bool partial_equations)
 {
    const group::PermlibGroup sym_group(generators);
@@ -115,18 +115,18 @@ symmetrized_foldable_cocircuit_equations_0_impl(int d,
    const std::string filename = options["filename"];
    std::ofstream outfile(filename.c_str(), std::ios_base::trunc);
    const bool reduce_rows = options["reduce_rows"];
-   const int log_frequency = options["log_frequency"];
+   const Int log_frequency = options["log_frequency"];
 
-   hash_map<SetType, int> index_of_facet;
-   int n_facet_reps(0);
+   hash_map<SetType, Int> index_of_facet;
+   Int n_facet_reps = 0;
    for (const auto& rep : facet_reps)
       index_of_facet[rep] = n_facet_reps++;
 
-   ListMatrix<SparseVector<int>> cocircuit_eqs(0, 2*n_facet_reps);
+   ListMatrix<SparseVector<Int>> cocircuit_eqs(0, 2*n_facet_reps);
 
    // for each interior ridge rho and c in {0,1}:
    //   sum_{sigma > rho, orientation=+} x_{c,sigma} = sum_{sigma > rho, orientation=-} x_{1-c,sigma}
-   int ct(0);
+   Int ct = 0;
    time_t start_time, current_time;
    time(&start_time);
    for (const auto& rho : interior_ridge_reps) {
@@ -135,23 +135,23 @@ symmetrized_foldable_cocircuit_equations_0_impl(int d,
          cerr << ct << " " << difftime(current_time, start_time) << endl;
       }
 
-      // use int instead of Rational to save time;
+      // use Int instead of Rational to save time;
       //   we don't use row reductions (experimentally bad)
-      SparseVector<int> eq_0_first(2*n_facet_reps);
-      SparseVector<int> eq_1_first(2*n_facet_reps);
+      SparseVector<Int> eq_0_first(2*n_facet_reps);
+      SparseVector<Int> eq_1_first(2*n_facet_reps);
       const SparseVector<Scalar> nv = null_space(V.minor(rho, All)).row(0);
-      int row_index = 0;
+      Int row_index = 0;
       for (auto vit = entire(rows(V)); !vit.at_end(); ++vit, ++row_index) {
-         const int orientation = sign(nv * (*vit));
+         const Int orientation = sign(nv * (*vit));
          if (orientation != 0) {
             SetType facet(rho);
             facet.resize(V.rows());
             facet += row_index;
             const SetType this_facet(sym_group.lex_min_representative(facet));
             if (partial_equations && !index_of_facet.exists(this_facet)) continue;
-            const int
-               iof (index_of_facet[this_facet]),
-               mult(sym_group.setwise_stabilizer(this_facet).order());
+            const Int
+               iof = index_of_facet[this_facet],
+               mult = sym_group.setwise_stabilizer(this_facet).order();
             if (orientation>0) {
                eq_0_first[2*iof]   += mult;
                eq_1_first[2*iof+1] += mult;

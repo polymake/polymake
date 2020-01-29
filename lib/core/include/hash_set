@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -29,7 +29,9 @@ class hash_set
    : public std::unordered_set<Key, hash_func<Key>, typename hash_table_cmp_adapter<Key, TParams...>::type> {
    typedef std::unordered_set<Key, hash_func<Key>, typename hash_table_cmp_adapter<Key, TParams...>::type> base_t;
 public:
-   hash_set() {}
+   static_assert(!std::is_same<Key, int>::value, "use Int instead");
+
+   hash_set() = default;
    explicit hash_set(size_t start_cap) : base_t(start_cap) {}
 
    template <typename Iterator>

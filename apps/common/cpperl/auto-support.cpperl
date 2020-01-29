@@ -1,6 +1,6 @@
 {"app": "common",
  "inst": [
   {"args": ["perl::AnchorArg<perl::Canned<const Vector<Rational>&>>"], "func": "support", "include": ["polymake/Rational.h", "polymake/Vector.h", "polymake/linalg.h"], "sig": "support.X8"},
-  {"args": ["perl::AnchorArg<perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<int, true> const, mlist<> >&>>"], "func": "support", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "support.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<Int, true> const, mlist<> >&>>"], "func": "support", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "support.X8"},
  null ],
 "version": 3}

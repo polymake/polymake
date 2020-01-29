@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,15 +20,15 @@
 
 namespace polymake { namespace graph {
 
-perl::Object petersen()
+BigObject petersen()
 {
    Graph<> g(10);
-   for (int i=0; i<5; ++i) {
-      g.edge(i,i+5);
-      g.edge(i,(i+1)%5);
-      g.edge(i+5,(i+2)%5+5);
+   for (Int i = 0; i < 5; ++i) {
+      g.edge(i, i+5);
+      g.edge(i, (i+1)%5);
+      g.edge(i+5, (i+2)%5+5);
    }
-   perl::Object G("Graph<>");
+   BigObject G("Graph<>");
    G.take("N_NODES")<<10;
    G.take("N_EDGES")<<15;
    G.take("CONNECTED")<<true;
@@ -38,7 +38,7 @@ perl::Object petersen()
    return G;
 
 }
-UserFunction4perl("# @category Producing a graph\n"
+UserFunction4perl("# @category Producing a graph"
                   "# Constructs the __Petersen graph__."
                   "# @return Graph"
                   "# @example The following prints the adjacency matrix of the petersen graph:"

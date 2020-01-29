@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -46,7 +46,7 @@ protected:
       void clear(const TGraph&) = delete;
 
       // for start nodes
-      bool operator() (int n)
+      bool operator() (Int n)
       {
          start_time=max_time;
          cur_time=max_time-1;
@@ -54,10 +54,10 @@ protected:
          return true;
       }
 
-      bool operator() (int n_from, int n_to)
+      bool operator() (Int n_from, Int n_to)
       {
-         const int d=discovery[n_to];
-         if (d>=0) {
+         const Int d = discovery[n_to];
+         if (d >= 0) {
             if (d >= start_time) {
                // item is on the stack
                assign_min(low[n_from], d);
@@ -69,43 +69,43 @@ protected:
       }
 
    private:
-      bool is_discovered(int n) const
+      bool is_discovered(Int n) const
       {
          return discovery[n] >= 0;
       }
 
-      using component_type = IndexedSubset<const std::vector<int>&, const sequence>;
+      using component_type = IndexedSubset<const std::vector<Int>&, const sequence>;
 
-      component_type get_cur_component(int n) const
+      component_type get_cur_component(Int n) const
       {
-         return component_type(node_stack, range(discovery[n]-start_time, int(node_stack.size()-1)));
+         return component_type(node_stack, range(discovery[n] - start_time, Int(node_stack.size()-1)));
       }
 
-      bool is_new_component(int n) const
+      bool is_new_component(Int n) const
       {
          return discovery[n] == low[n];
       }
 
-      void set_same_component(int n_from, int n_to)
+      void set_same_component(Int n_from, Int n_to)
       {
          assign_min(low[n_from], low[n_to]);
       }
 
-      void next_component(int n)
+      void next_component(Int n)
       {
          assign_max(max_time, cur_time+1);
          cur_time = discovery[n];
          node_stack.resize((cur_time--) - start_time);
       }
 
-      void discover(int n)
+      void discover(Int n)
       {
-         discovery[n]=low[n]= ++cur_time;
+         discovery[n] = low[n] = ++cur_time;
          node_stack.push_back(n);
       }
 
-      std::vector<int> node_stack, discovery, low;
-      int cur_time, start_time, max_time;
+      std::vector<Int> node_stack, discovery, low;
+      Int cur_time, start_time, max_time;
    };
 
    typedef DFSiterator<TGraph, VisitorTag<NodeVisitor>> search_iterator;
@@ -141,7 +141,7 @@ public:
          if (search_it.undiscovered_nodes()==0)
             return *this;
          // find a new root
-         int root;
+         Int root;
          do {
             ++nodes_it;
             assert(!nodes_it.at_end());

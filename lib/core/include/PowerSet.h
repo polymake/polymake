@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,9 +21,7 @@
 #include "polymake/vector"
 #include "polymake/Set.h"
 #include "polymake/SelectedSubset.h"
-#if POLYMAKE_DEBUG
-# include <sstream>
-#endif
+#include "polymake/Integer.h"
 
 namespace pm {
 
@@ -141,8 +139,8 @@ public:
       return *b;
    }
 
-   int size() const { return base->size()-1; }
-   bool empty() const { return base->empty() || base->size()<=1; }
+   Int size() const { return base->size()-1; }
+   bool empty() const { return base->empty() || base->size() <= 1; }
 
    decltype(auto) skipped_element() const { return *skip; }
 };
@@ -216,7 +214,7 @@ public:
    explicit Subsets_less_1(Arg&& base_arg)
       : base(std::forward<Arg>(base_arg)) {}
 
-   int size() const { return base->size(); }
+   Int size() const { return base->size(); }
    bool empty() const { return base->empty(); }
 
    iterator begin() const
@@ -266,16 +264,16 @@ public:
 
    PointedSubset() = default;
 
-   explicit PointedSubset(int k)
+   explicit PointedSubset(Int k)
    {
       itsp->reserve(k);
    }
 
-   PointedSubset(const BaseContainer& base, int k)
+   PointedSubset(const BaseContainer& base, Int k)
    {
       it_vector& its = *itsp;
       its.reserve(k);
-      for (elem_iterator e = base.begin();  k>0;  --k, ++e)
+      for (elem_iterator e = base.begin();  k > 0;  --k, ++e)
          its.push_back(e);
    }
 
@@ -297,7 +295,7 @@ public:
    Subsets_of_k_iterator()
       : at_end_(true) {}
 
-   Subsets_of_k_iterator(const Container& base, int k)
+   Subsets_of_k_iterator(const Container& base, Int k)
       : value(base, k)
       , e_end(base.end())
       , at_end_(false) {}
@@ -353,24 +351,19 @@ public:
    using alias_t = alias<add_const_t<ContainerRef>>;
 
    template <typename Arg, typename=std::enable_if_t<std::is_constructible<alias_t, Arg>::value>>
-   Subsets_of_k(Arg&& base_arg, int k_arg)
+   Subsets_of_k(Arg&& base_arg, Int k_arg)
       : base(std::forward<Arg>(base_arg))
       , k(k_arg)
    {
       if (POLYMAKE_DEBUG) {
-         if (k<0 || k>base->size())
+         if (k < 0 || k > base->size())
             throw std::runtime_error("Subsets_of_k - invalid size");
       }
    }
 
-   int size() const
+   Int size() const
    {
-      // n over k
-      int n=base->size(), s=1;
-      for (int i=0, i_end= k*2<n ? k : n-k; i<i_end; ) {
-         s*=n-i; s/=++i;
-      }
-      return s;
+      return static_cast<Int>(Integer::binom(base->size(), k));
    }
 
    bool empty() const { return false; }
@@ -380,7 +373,7 @@ public:
    value_type front() const { return value_type(*base, k); }
 protected:
    alias_t base;
-   int k;
+   Int k;
 };
 
 template <typename Container>
@@ -459,7 +452,7 @@ public:
    explicit AllSubsets(Arg&& base_arg)
       : base(std::forward<Arg>(base_arg)) {}
 
-   int size() const { return 1 << base->size(); }
+   Int size() const { return Int(1) << base->size(); }
    bool empty() const { return false; }
 
    iterator begin() const { return iterator(*base); }
@@ -495,7 +488,7 @@ struct spec_object_traits< PointedSubset<ContainerRef> >
 
 
 template <typename Container>
-auto all_subsets_of_k(Container&& c, int k)
+auto all_subsets_of_k(Container&& c, Int k)
 {
    return Subsets_of_k<add_const_t<Container>>(std::forward<Container>(c), k);
 }
@@ -507,34 +500,42 @@ auto all_subsets(Container&& c)
 }
 
 template <typename PowerSet, typename ElementSet>
-int insertMax(PowerSet& power_set, const GenericSet<ElementSet>& element_set_arg)
+Int insertMax(PowerSet& power_set, const GenericSet<ElementSet>& element_set_arg)
 {
-   const auto& element_set=diligent(element_set_arg);
-   if (element_set.empty()) return -1;
-   for (auto e=entire(power_set); !e.at_end(); ) {
-      int inc=incl(element_set,*e);
+   const auto& element_set = diligent(element_set_arg);
+   if (element_set.empty())
+      return -1;
+   for (auto e = entire(power_set); !e.at_end(); ) {
+      const Int inc = incl(element_set, *e);
       // found a subset containing or equal to set
-      if (inc<=0) return inc;
+      if (inc <= 0)
+         return inc;
       // found a subset being contained in set
-      if (inc==1) power_set.erase(e++);
-      else ++e;
+      if (inc == 1)
+         power_set.erase(e++);
+      else
+         ++e;
    }
    power_set.insert(element_set);
    return 1;
 }
 
 template <typename PowerSet, typename ElementSet>
-int insertMin(PowerSet& power_set, const GenericSet<ElementSet>& element_set_arg)
+Int insertMin(PowerSet& power_set, const GenericSet<ElementSet>& element_set_arg)
 {
-   const auto& element_set=diligent(element_set_arg);
-   if (element_set.empty()) return -1;
-   for (auto e=entire(power_set); !e.at_end(); ) {
-      int inc=incl(*e,element_set);
+   const auto& element_set = diligent(element_set_arg);
+   if (element_set.empty())
+      return -1;
+   for (auto e = entire(power_set); !e.at_end(); ) {
+      const Int inc = incl(*e, element_set);
       // found a subset containing or equal to set
-      if (inc<=0) return inc;
+      if (inc <= 0)
+         return inc;
       // found a subset being contained in set
-      if (inc==1) power_set.erase(e++);
-      else ++e;
+      if (inc == 1)
+         power_set.erase(e++);
+      else
+         ++e;
    }
    power_set.insert(element_set);
    return 1;
@@ -591,7 +592,7 @@ public:
        @return -1 new subset not inserted, because there already is a bigger one
    */
    template <typename TSet2>
-   int insertMax(const GenericSet<TSet2, E, Comparator>& s)
+   Int insertMax(const GenericSet<TSet2, E, Comparator>& s)
    {
       return pm::insertMax(*this, s);
    }
@@ -605,21 +606,10 @@ public:
        @return -1 new subset not inserted, because there already is a smaller one
    */
    template <typename TSet2>
-   int insertMin(const GenericSet<TSet2, E, Comparator>& s)
+   Int insertMin(const GenericSet<TSet2, E, Comparator>& s)
    {
       return pm::insertMin(*this, s);
    }
-#if POLYMAKE_DEBUG
-   void check(const char* label) const
-   {
-      base_t::check(label);
-      for (typename base_t::const_iterator e=this->begin(); !e.at_end(); ++e) {
-         std::ostringstream elabel;
-         wrap(elabel) << label << '[' << *e << ']';
-         e->check(elabel.str().c_str());
-      }
-   }
-#endif
 };
 
 /// Gather all independent intersections of subsets from the given PowerSet.
@@ -634,27 +624,27 @@ ridges(Iterator set)
    for (; !set.at_end(); ++set) {
       Iterator set2=set;
       for (++set2; !set2.at_end(); ++set2) {
-         Set<int> ridge=(*set) * (*set2);
+         Set<element_type> ridge = (*set) * (*set2);
          R.insertMax(ridge);
       }
    }
    return R;
 }
 
-template <typename E, typename Comparator, typename Permutation> inline
+template <typename E, typename Comparator, typename Permutation>
 PowerSet<E,Comparator> permuted(const PowerSet<E,Comparator>& s, const Permutation& perm)
 {
-   PowerSet<E,Comparator> result;
-   for (auto it=entire(s);  !it.at_end();  ++it)
+   PowerSet<E, Comparator> result;
+   for (auto it = entire(s);  !it.at_end();  ++it)
       result += permuted(*it,perm);
    return result;
 }
 
-template <typename E, typename Comparator, typename Permutation> inline
+template <typename E, typename Comparator, typename Permutation>
 PowerSet<E,Comparator> permuted_inv(const PowerSet<E,Comparator>& s, const Permutation& perm)
 {
-   PowerSet<E,Comparator> result;
-   for (auto it=entire(s);  !it.at_end();  ++it)
+   PowerSet<E, Comparator> result;
+   for (auto it = entire(s);  !it.at_end();  ++it)
       result += permuted_inv(*it,perm);
    return result;
 }

@@ -1,9 +1,9 @@
 {"app": "common",
  "inst": [
-  {"pkg": "Polymake::common::Plucker"},
+  {"guard_name": "CORE_WRAPPERS_Plucker", "include": ["polymake/Plucker.h"], "pkg": "Polymake::common::Plucker", "wrapper_file": "include/core-wrappers/polymake/Plucker.h"},
   {"class": "Plucker<Rational>", "include": ["polymake/Plucker.h", "polymake/Rational.h"], "pkg": "Polymake::common::Plucker__Rational"},
   {"args": ["Plucker<Rational>", "perl::Canned<const Vector<Rational>&>"], "include": ["polymake/Plucker.h", "polymake/Rational.h", "polymake/Vector.h"], "op": "new", "sig": "new.X"},
-  {"args": ["Plucker<Rational>", "int(int)", "int(int)", "perl::Canned<const Vector<Rational>&>"], "include": ["polymake/Plucker.h", "polymake/Rational.h", "polymake/Vector.h"], "op": "new", "sig": "new.int.int.X"},
+  {"args": ["Plucker<Rational>", "Int(Int)", "Int(Int)", "perl::Canned<const Vector<Rational>&>"], "include": ["polymake/Plucker.h", "polymake/Rational.h", "polymake/Vector.h"], "op": "new", "sig": "new.Int.Int.X"},
   {"args": ["perl::Canned<const Plucker<Rational>&>", "perl::Canned<const Plucker<Rational>&>"], "include": ["polymake/Plucker.h", "polymake/Rational.h"], "op": "add", "sig": "add:O.X.X"},
   {"args": ["perl::Canned<const Plucker<Rational>&>", "perl::Canned<const Plucker<Rational>&>"], "include": ["polymake/Plucker.h", "polymake/Rational.h"], "op": "mul", "sig": "mul:O.X.X"},
  null ],

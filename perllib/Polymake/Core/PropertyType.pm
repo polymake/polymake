@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -43,10 +43,10 @@ sub generic { undef }
 
 use Polymake::Struct (
    [ new => '$$$;$' ],
-   [ '$name | full_name | mangled_name | xml_name' => '#1' ],
+   [ '$name | full_name | mangled_name' => '#1' ],
    [ '$pkg' => '#2' ],
    [ '$application' => '#3' ],
-   [ '$extension' => '$Application::extension' ],
+   [ '$extension' => '$Extension::loading' ],
    [ '$super' => '#4' ],
    [ '$params' => 'undef' ],
    [ '$dimension' => '0' ],
@@ -56,12 +56,9 @@ use Polymake::Struct (
    [ '$upgrades' => 'undef' ],                                     # optional hash PropertyType => 1/0/-1
    [ '&coherent_type' => '->super || \&coherent_type_fallback' ],  # object of a different type => PropertyType of this or a derived type or undef
    [ '&toString' => '->super || \&toString_fallback' ],            # object => "string"
-   [ '&toXML' => '->super' ],                                      # object, XMLwriter, opt. attributes =>
-   [ '&toXMLschema' => 'undef || \&Polymake::Core::XMLwriter::type_toXMLschema' ],          # XMLwriter, opt. attributes =>
-   [ '&XMLdatatype' => '->super' ],                                # => "string" referring to a XML Schema datatype or a pattern
-   [ '&serialize' => '->super || \&serialize_fallback' ],          # object, { options } => ( value, { attrs } ) or nothing
-   [ '&deserialize' => '->super || \&deserialize_meth' ],
-   [ '&JSONschema' => 'undef' ],                                   # TODO
+   [ '&serialize' => '->super || \&serialize_fallback' ],          # object, { options } => value or ()
+   [ '&deserialize' => '->super || \&deserialize_meth' ],          # JSON => object
+   [ '&JSONschema' => '->super' ],                                 #
    [ '$construct_node' => 'undef' ],                               # Overload::Node
    [ '&construct' => '\&construct_object' ],                       # args ... => object
    [ '&parse' => '->super || \&parse_fallback' ],                  # "string" => object
@@ -71,10 +68,10 @@ use Polymake::Struct (
    [ '$context_pkg' => 'undef' ],
    [ '$cppoptions' => 'undef' ],
    [ '$operators' => 'undef' ],
-   [ '$help' => 'undef' ],              # InteractiveHelp (in interactive mode, when comments are supplied for user methods)
+   [ '$help' => 'undef' ],              # Help::Topic if loaded
 );
 
-declare @override_methods=qw( canonical equal isa coherent_type serialize parse toString XMLdatatype init );
+declare @override_methods=qw( canonical equal isa coherent_type serialize JSONschema parse toString init );
 
 ####################################################################################
 #
@@ -233,8 +230,8 @@ sub qualified_name {
 }
 
 sub required_extensions {
-   my ($self, $include_bundled) = @_;
-   defined($self->extension) && ($include_bundled >= $self->extension->is_bundled) ? ($self->extension) : ()
+   my ($self, $exclude_bundled) = @_;
+   defined($self->extension) && !($exclude_bundled && $self->extension->is_bundled) ? ($self->extension) : ()
 }
 #################################################################################
 sub help_topic {
@@ -263,7 +260,7 @@ use Polymake::Struct (
    [ '$name' => '#1' ],
    [ '$pkg' => '#2' ],
    [ '$application' => '#3' ],
-   [ '$extension' => '$Application::extension' ],
+   [ '$extension' => '$Extension::loading' ],
    [ '$super' => '#4' ],
    [ '$generic' => 'undef' ],
    [ '$params' => '#5' ],
@@ -440,12 +437,6 @@ sub mangled_name {
    $1
 }
 
-# produce a name adhering to the XML name syntax rule, e.g. as a schema element identifier
-sub xml_name {
-   my ($self)=@_;
-   join(".", $self->name, map { $_->xml_name } @{$self->params})
-}
-
 # produce a name sufficient for reconstruction from a data file
 sub qualified_name {
    my ($self, $in_app) = @_;
@@ -515,7 +506,7 @@ use Polymake::Struct (
    [ '$name' => '#1' ],
    [ '$pkg' => '#2' ],
    [ '$application' => '#3' ],
-   [ '$extension' => '$Application::extension' ],
+   [ '$extension' => '$Extension::loading' ],
    [ '$super' => '#4' ],
    [ '$generic' => 'undef' ],
    [ '$param' => 'undef' ],

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,38 +21,42 @@
 namespace polymake { namespace group {
 
 // 1-dim array
-template<typename ArrayType>
-Array<int> array2PolymakeArray(ArrayType array, int dim) {
-   Array<int> pmArray(dim);
-   for (int j = 0; j < dim; ++j) {
-      pmArray[j] = static_cast<int>(array[j]);
+template <typename ArrayType>
+Array<Int> array2PolymakeArray(ArrayType array, Int dim)
+{
+   Array<Int> pmArray(dim);
+   for (Int j = 0; j < dim; ++j) {
+      pmArray[j] = static_cast<Int>(array[j]);
    }
    return pmArray;
 }
 
 // 2-dim array
-template<typename ArrayType>
-Array<Array<int> > arrays2PolymakeArray(ArrayType array, int dim1, int dim2) {
-   Array< Array<int> > pmArray(dim1);
-   for (int i = 0; i < dim1; ++i) {
+template <typename ArrayType>
+Array<Array<Int>> arrays2PolymakeArray(ArrayType array, Int dim1, Int dim2)
+{
+   Array<Array<Int>> pmArray(dim1);
+   for (Int i = 0; i < dim1; ++i) {
       pmArray[i] = array2PolymakeArray(array[i], dim2);
    }
    return pmArray;
 }
 
 
-template<typename IntType>
-IntType* polymakeArray2Array(const Array<int>& array) {
+template <typename IntType>
+IntType* polymakeArray2Array(const Array<Int>& array)
+{
    IntType* ret = new IntType[array.size()];
-   for (int i = 0; i < array.size(); ++i)
+   for (Int i = 0; i < array.size(); ++i)
       ret[i] = static_cast<IntType>(array[i]);
    return ret;
 }
 
-template<typename IntType>
-IntType** polymakeArray2Arrays(const Array<Array<int> >& array) {
+template <typename IntType>
+IntType** polymakeArray2Arrays(const Array<Array<Int>>& array)
+{
    IntType** ret = new IntType*[array.size()];
-   for (int i = 0; i < array.size(); ++i)
+   for (Int i = 0; i < array.size(); ++i)
       ret[i] = polymakeArray2Array<IntType>(array[i]);
    return ret;
 }

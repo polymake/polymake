@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,32 +23,32 @@
 
 namespace polymake { namespace topaz {
   
-perl::Object t_union(perl::Object p1, perl::Object p2,perl::OptionSet options)
+BigObject t_union(BigObject p1, BigObject p2,OptionSet options)
 {
    const bool relabel=!options["no_labels"];
-   const Array< Set<int> > C1 = p1.give("FACETS");
+   const Array<Set<Int>> C1 = p1.give("FACETS");
    Array<std::string> Labels = p1.give("VERTEX_LABELS");
    
-   const Array< Set<int> > C2 = p2.give("FACETS");
+   const Array<Set<Int>> C2 = p2.give("FACETS");
    const Array<std::string> L2 = p2.give("VERTEX_LABELS");
    
    // compute vertex map
-   hash_map<int,int> map = merge_vertices(Labels,L2);
+   hash_map<Int, Int> map = merge_vertices(Labels,L2);
    
    // add facets of C1
    FacetList Union;      
-   for (auto c_it=entire(C1); !c_it.at_end(); ++c_it)
+   for (auto c_it = entire(C1); !c_it.at_end(); ++c_it)
       Union.insert(*c_it);
    
    // add facets of C2
-   for (auto c_it=entire(C2); !c_it.at_end(); ++c_it) {
-      Set<int> f;
+   for (auto c_it = entire(C2); !c_it.at_end(); ++c_it) {
+      Set<Int> f;
       for (auto v=entire(*c_it); !v.at_end(); ++v)
          f += map[*v];
       
       Union.insertMax(f);
    }
-   perl::Object p_out("SimplicialComplex");
+   BigObject p_out("SimplicialComplex");
    p_out.set_description() << "Union of " << p1.name() << " and " << p2.name() << "."<<endl;
    p_out.take("FACETS") << Union;
    

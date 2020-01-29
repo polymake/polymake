@@ -1,9 +1,26 @@
+/* Copyright (c) 1997-2020
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
+
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+--------------------------------------------------------------------------------
+*/
+
 #include "polymake/internal/chunk_allocator.h"
 
 namespace pm {
 
 chunk_allocator::chunk_allocator(size_t obj_size_arg, size_t n_objects_in_chunk_arg)
-   : obj_size((obj_size_arg + 7UL) & ~7UL)  // round up to a multiple of sizeof(double)
+   : obj_size((obj_size_arg+7UL) & ~7UL)  // round up to a multiple of sizeof(double)
    , n_objects_in_chunk(n_objects_in_chunk_arg
                         ? n_objects_in_chunk_arg
                         : (default_chunk_size-sizeof(char*)) / obj_size)

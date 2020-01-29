@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,7 +15,21 @@
 --------------------------------------------------------------------------------
 */
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
+
 #include <gmpxx.h>
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 #include "polymake/Integer.h"
 
@@ -23,26 +37,26 @@ namespace libnormaliz {
 
 bool try_convert(double& a, const pm::Integer& b)
 {
-   a = double(b);
+   a = static_cast<double>(b);
    return true;
 }
 
 bool try_convert(long& a, const pm::Integer& b)
 {
-  if (!isfinite(b) || !mpz_fits_slong_p(b.get_rep()))
-    return false;
-  a = long(b);
-  return true;
+  if (b.fits_into_Int()) {
+    a = static_cast<long>(b);
+    return true;
+  }
+  return false;
 }
 
 bool try_convert(long long& a, const pm::Integer& b)
 {
-  if (!isfinite(b) ||
-      (sizeof(long)==sizeof(long long)
-       ? !mpz_fits_slong_p(b.get_rep())
-       : std::abs(b.get_rep()->_mp_size) > int(sizeof(long long) / sizeof(mp_limb_t))))
-    return false;
-  return static_cast<long long>(b);
+  if (b.fits_into_long_long()) {
+    a = static_cast<long long>(b);
+    return true;
+  }
+  return false;
 }
 
 bool try_convert(mpz_class& a, const pm::Integer& b)
@@ -114,37 +128,46 @@ inline bool int_quotient(long long& Quot, const pm::Integer& Num, const pm::Inte
 
 }
 
-#if defined(__GNUC__)
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-variable"
 #pragma clang diagnostic ignored "-Wshadow"
+#pragma clang diagnostic ignored "-Wconversion"
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#pragma clang diagnostic ignored "-Wreturn-type"
 #if __clang_major__ >= (defined(__APPLE__) ? 9 : 4)
 #pragma clang diagnostic ignored "-Winstantiation-after-specialization"
 #endif
-#else // gcc
+#elif defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wreturn-type"
 #if __GNUC__ >= 6
 #pragma GCC diagnostic ignored "-Wmisleading-indentation"
 #if __GNUC__ >= 8
 #pragma GCC diagnostic ignored "-Wcatch-value=0"
 #endif // gcc8
 #endif // gcc6
-#endif
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
 
-#include "libnormaliz/libnormaliz-all.cpp"
+#include "libnormaliz/linear_algebra.cpp"
+#include "libnormaliz/cone_and_control.cpp"
+#include "libnormaliz/enumeration.cpp"
+#include "libnormaliz/other_algorithms.cpp"
+#include "libnormaliz/nmz_nauty.cpp"
+#include "libnormaliz/primal.cpp"
+#include "libnormaliz/output.cpp"
 
-#if defined(__GNUC__)
+
 #if defined(__clang__)
 #pragma clang diagnostic pop
-#else // gcc
+#elif defined(__GNUC__)
 #pragma GCC diagnostic pop
-#endif
 #endif
 
 namespace libnormaliz {
@@ -175,7 +198,18 @@ bool check_range<pm::Integer>(const pm::Integer& m)
   return true;
 }
 
-template class Cone<pm::Integer>;
-template class Sublattice_Representation<pm::Integer>;
+// avoid issue with libc++ and libgmpxx
+template<>
+ArithmeticException::ArithmeticException(const mpz_class& convert_number) {
+   std::stringstream stream;
+   stream << "Could not convert " << pm::Integer(convert_number) << ".\n";
+   stream << "Overflow detected. A fatal size excess or  a computation overflow.\n If Normaliz has terminated and you are "
+      "using LongLong, rerun without it.";
+   msg = stream.str();
+}
 
+template class Cone<pm::Integer>;
+template class Matrix<pm::Integer>;
+template class Sublattice_Representation<pm::Integer>;
+template class AutomorphismGroup<pm::Integer>;
 }

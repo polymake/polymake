@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -35,7 +35,7 @@ bool is_closed_pseudo_manifold(const Lattice<BasicDecoration>& HD, bool known_pu
    return true;
 }
 
-void is_closed_pseudo_manifold_client(perl::Object p)
+void is_closed_pseudo_manifold_client(BigObject p)
 {
    const Lattice<BasicDecoration> &HD = p.give("HASSE_DIAGRAM");
    p.take("CLOSED_PSEUDO_MANIFOLD") << is_closed_pseudo_manifold(HD,true);

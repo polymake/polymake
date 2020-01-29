@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -75,10 +75,10 @@ template <typename T>
 struct ExtGCD : GenericStruct< ExtGCD<T> > {
 
    DeclSTRUCT( DeclTemplFIELD(g, T)  // g = gcd(a, b)
-               DeclTemplFIELD(p, T)  // g == p * a + q * b
+               DeclTemplFIELD(p, T)  // g == p*a + q*b
                DeclTemplFIELD(q, T)
-               DeclTemplFIELD(k1, T) // a == k1 * g
-               DeclTemplFIELD(k2, T) // b == k2 * g
+               DeclTemplFIELD(k1, T) // a == k1*g
+               DeclTemplFIELD(k2, T) // b == k2*g
              );
 };
 
@@ -112,33 +112,33 @@ long div_exact(long a, long b) noexcept
 inline
 int log2_floor(unsigned int x) noexcept
 {
-   return sizeof(x) * 8 - 1 - __builtin_clz(x);
+   return int(sizeof(x))*8-1-__builtin_clz(x);
 }
 
 inline
 int log2_floor(unsigned long x) noexcept
 {
-   return sizeof(x) * 8 - 1 - __builtin_clzl(x);
+   return int(sizeof(x))*8-1-__builtin_clzl(x);
 }
 
 inline
 int log2_ceil(unsigned int x) noexcept
 {
-   return x > 1 ? log2_floor(x - 1) + 1 : 0;
+   return x > 1 ? log2_floor(x-1)+1 : 0;
 }
 
 inline
 int log2_ceil(unsigned long x) noexcept
 {
-   return x > 1 ? log2_floor(x - 1) + 1 : 0;
+   return x > 1 ? log2_floor(x-1)+1 : 0;
 }
 
 #else // neither GCC nor clang
 
 int log2_round(unsigned long x, int round) noexcept;
 
-inline int log2_floor(unsigned long x) { return log2_round(x,0); }
-inline int log2_ceil(unsigned long x) { return log2_round(x,1); }
+inline int log2_floor(unsigned long x) { return log2_round(x, 0); }
+inline int log2_ceil(unsigned long x) { return log2_round(x, 1); }
 
 #endif
 
@@ -151,20 +151,21 @@ template <typename T>
 T pow_impl(T base, T odd, long exp)
 {
    while (exp > 1) {
-      if (exp % 2 == 0) {
+      if (exp%2 == 0) {
          base = base * base;
-         exp = exp / 2;
+         exp = exp/2;
       } else {
          odd = base * odd;
          base = base * base;
-         exp = (exp - 1) / 2;
+         exp = (exp-1)/2;
       }
    }
    return base * odd;
 }
 
-template <typename T, typename=std::enable_if_t<std::is_same<typename object_traits<T>::generic_tag, is_scalar>::value>>
-T pow(const T& base, long exp)
+template <typename T>
+T pow(const T& base, long exp,
+      std::enable_if_t<std::is_same<typename object_traits<T>::generic_tag, is_scalar>::value, std::nullptr_t> = nullptr)
 {
    auto one = one_value<T>();
    if (exp < 0) {

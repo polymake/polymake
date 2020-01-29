@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -67,7 +67,7 @@
    template <typename Me> static                                        \
    void _rElOcFiElDs_(Me*, Me*, int_constant<pm::list_length<_sTrUcTFiElDs_>::value>) {} \
    template <int n>                                                     \
-   static const char* _fIeLdNaMe_(size_t&, int_constant<n>) { return 0; } \
+   static const char* _fIeLdNaMe_(size_t&, int_constant<n>) { return nullptr; } \
 public:                                                                 \
    typedef _sTrUcTFiElDs_ field_types;                                  \
    template <typename> friend class pm::GenericStruct

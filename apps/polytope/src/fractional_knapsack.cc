@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -22,13 +22,13 @@
 
 namespace polymake { namespace polytope {
 
-perl::Object fractional_knapsack(const Vector<Rational> b)
+BigObject fractional_knapsack(const Vector<Rational> b)
 {
-  const int d = b.dim()-1;
+  const Int d = b.dim()-1;
   if (d < 1)
     throw std::runtime_error("knapsack: dimension d >= 1 required");
 
-  perl::Object p("Polytope<Rational>");
+  BigObject p("Polytope<Rational>");
   p.set_description() << "knapsack " << b << endl;
 
   Matrix<Rational> F = b / (zero_vector<Rational>(d) | unit_matrix<Rational>(d));

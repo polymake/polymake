@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,13 +21,13 @@
 
 namespace polymake { namespace graph {
 
-void degree_sequence(perl::Object G)
+void degree_sequence(BigObject G)
 {
-   Map<int,int> ds;
-   int sum_degree(0);
+   Map<Int, Int> ds;
+   Int sum_degree = 0;
    const Graph<> g = G.give("ADJACENCY");
-   for (int i=0; i<g.nodes(); ++i) {
-      const int deg = g.out_degree(i);
+   for (Int i = 0; i < g.nodes(); ++i) {
+      const Int deg = g.out_degree(i);
       ds[deg]++;
       sum_degree += deg;
    }

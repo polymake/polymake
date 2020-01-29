@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,9 +24,9 @@
 
 namespace polymake { namespace topaz {
 
-void orientation(perl::Object p)
+void orientation(BigObject p)
 {
-   const Array< Set<int> > F = p.give("FACETS");
+   const Array<Set<Int>> F = p.give("FACETS");
    const Graph<> DG = p.give("DUAL_GRAPH.ADJACENCY");
    const bool is_pmf = p.give("PSEUDO_MANIFOLD");
    if (!is_pmf)
@@ -35,16 +35,16 @@ void orientation(perl::Object p)
    Array<bool> orientation(F.size()); 
    Array<bool> visited(F.size());
    orientation[0] = true; visited[0] = true;
-   std::list<int> node_queue;
+   std::list<Int> node_queue;
    node_queue.push_back(0);
    bool orientable = true;
    
    while (!node_queue.empty() && orientable) {
-      const int n=node_queue.front();
+      const Int n = node_queue.front();
       node_queue.pop_front();
 
       for (auto e=entire(DG.out_edges(n)); !e.at_end(); ++e) {
-         const int nn=e.to_node();
+         const Int nn = e.to_node();
          
          if (!visited[nn]) {  // nn has not been visited yet, compute orientation
             orientation[nn]= !orientation[n];
@@ -60,7 +60,8 @@ void orientation(perl::Object p)
    p.take("ORIENTED_PSEUDO_MANIFOLD") << orientable;
    if (orientable)
       p.take("ORIENTATION") << orientation;
-   else p.take("ORIENTATION") << perl::undefined();
+   else
+      p.take("ORIENTATION") << Undefined();
 }
 
 Function4perl(&orientation,"orientation");

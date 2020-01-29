@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,8 +24,8 @@ namespace polymake { namespace graph {
 
 class BipartiteColoring {
 protected:
-   std::vector<int> color;
-   int sign;
+   std::vector<Int> color;
+   Int sign;
 public:
    static const bool visit_all_edges=true;
 
@@ -44,14 +44,14 @@ public:
       sign=0;
    }
 
-   bool operator()(int n)
+   bool operator()(Int n)
    {
       color[n]=1;
       sign=1;
       return true;
    }
 
-   bool operator()(int n_from, int n_to)
+   bool operator()(Int n_from, Int n_to)
    {
       if (color[n_to]==0) {
          sign += color[n_to]=-color[n_from];
@@ -63,20 +63,20 @@ public:
       }
    }
 
-   int get_sign() const { return std::abs(sign); }
-   int get_color(int n) const { return color[n]; }
+   Int get_sign() const { return std::abs(sign); }
+   Int get_color(Int n) const { return color[n]; }
 };
 
 template <typename TGraph>
-int bipartite_sign(const GenericGraph<TGraph,Undirected>& G)
+Int bipartite_sign(const GenericGraph<TGraph,Undirected>& G)
 {
-   int signature=0;
+   Int signature = 0;
    for (connected_components_iterator<TGraph> C(G);  !C.at_end();  ++C) {
-      int this_node=C->front();
+      Int this_node=C->front();
       BFSiterator<TGraph, VisitorTag<BipartiteColoring> > it(G, this_node);
       try {
          while (!it.at_end()) ++it;
-      } catch (int) {
+      } catch (Int) {
          return -1;
       }
       signature += it.node_visitor().get_sign();

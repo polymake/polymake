@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,19 +26,19 @@ namespace polymake { namespace polytope {
  * M. Adin in 1995.
  */
 
-void cubical_h_vector(perl::Object p, bool cubical)
+void cubical_h_vector(BigObject p, bool cubical)
 {
    Vector<Integer> f = p.give("F_VECTOR");
    if (!cubical) std::reverse(f.begin(),f.end());
 
-   const int d=f.size();
+   const Int d = f.size();
    Vector<Integer> h(d+1);
    Vector<Integer>::iterator h_k=h.begin();
     
    *h_k = Integer::pow(2,d-1);
    ++h_k;
-   for (int k=0, startsign=1;  k<=d-1;  ++k, ++h_k, startsign=-startsign) {
-      for (int i=0, sign=startsign;  i<=k;  ++i, sign=-sign)
+   for (Int k = 0, startsign = 1;  k <= d-1;  ++k, ++h_k, startsign = -startsign) {
+      for (Int i = 0, sign = startsign;  i <= k;  ++i, sign = -sign)
          *h_k += sign * Integer::binom(d-1-i,d-1-k) * (Integer::pow(2,i)) * f[i];
       *h_k -= h_k[-1];
    }

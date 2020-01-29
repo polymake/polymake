@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -19,43 +19,39 @@
 use Archive::Tar;
 
 
-# usage: pack_tarball fpack_archive("tarfilename", Object, ...);
+# usage: pack_tarball("tarfilename", Object, ...);
 
 sub pack_tarball {
-   my $filename=shift;
+   my $filename = shift;
    replace_special_paths($filename);
-   my $compressed=1;
+   my $compressed = true;
    if ($filename =~ /\.tar$/) {
-      $compressed=0;
+      $compressed = false;
    } elsif ($filename !~ /\.(?:tar\.gz|tgz)$/) {
       $filename .= ".tar.gz";
    }
 
-   my $ar=new Archive::Tar();
-   my $unnamed="unnamed_0";
-
+   my $ar = new Archive::Tar();
+   my $unnamed = "unnamed_0";
    foreach my $object (@_) {
-      $ar->add_data(($object->name // ++$unnamed).".".$object->default_file_suffix, $object->toXMLstring);
+      $ar->add_data(($object->name // ++$unnamed) . "." . $object->default_file_suffix,
+                    encode_json(Core::Serializer::serialize($object)));
    }
    $ar->write($filename, $compressed);
 }
 
 
-# usage: @object_list=unpack_tarball("tarfilename", "name", ...);
+# usage: @object_list = unpack_tarball("tarfilename", "name", ...);
 # "name" arguments are optional; they constrain the output to archive members matching the given names.
 
 sub unpack_tarball {
-   my $filename=shift;
+   my $filename = shift;
    replace_special_paths($filename);
-   my $compressed= $filename =~ /\.(?:tar\.gz|tgz)$/;
-   my $ar=new Archive::Tar($filename, $compressed);
+   my $compressed = $filename =~ /\.(?:tar\.gz|tgz)$/;
+   my $ar = new Archive::Tar($filename, $compressed);
 
-   if (my @files=$ar->get_files(@_)) {
-      map {
-         my $obj=Core::Object->fromXMLstring($_->get_content);
-         $obj->name //= $_->name ;
-         $obj
-      } @files;
+   if (my @files = $ar->get_files(@_)) {
+      map { Core::Datafile::from_string($_->get_content) } @files;
    } else {
       die "no matching archive members found\n";
    }

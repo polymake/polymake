@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,15 +20,15 @@
 
 namespace polymake { namespace topaz {
   
-Array<int> f_vector(const Array< Set<int> > &C,const int dim,const bool is_pure)
+Array<Int> f_vector(const Array<Set<Int>>& C, const Int dim, const bool is_pure)
 {
-   Array<int> f_vector(dim+1);
-   for (int k=0; k<=dim; ++k) {
-      const PowerSet<int>& skeleton = k_skeleton(C,k);
+   Array<Int> f_vector(dim+1);
+   for (Int k = 0; k <= dim; ++k) {
+      const PowerSet<Int>& skeleton = k_skeleton(C,k);
       if (is_pure) {
          f_vector[k] = skeleton.size();
       } else {
-         int f_k=0;
+         Int f_k = 0;
          for (auto f=entire(skeleton); !f.at_end(); ++f)
             if (f->size()==k+1)
                ++f_k;

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2019
+#  Copyright (c) 1997-2020
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -37,22 +37,31 @@ use Polymake::Ext;
 
 ########################################################################
 #
+# Import fast JSON conversion functions directly
+#
+require JSON;
+*encode_json = \&JSON::XS::encode_json;
+*write_json  = \&JSON::XS::write_json;
+*decode_json = \&JSON::XS::decode_json;
+
+########################################################################
+#
 # Global variables
 #
 
-declare $Version="3.6";
-declare $VersionNumber=eval "v$Version";        # for string comparisons with vM.N literals
+declare $Version = "4.0";
+declare $VersionNumber = eval "v$Version";    # for string comparisons with vM.N literals
 
 declare ($Scope,                # Scope object for the current cycle
          $PrivateDir,           # where the user's private settings, wrappers, etc. dwell
         );
 
-declare $Shell=new NoShell;     # alternatively: Shell object listening to the console or some pipe
+declare $Shell = new NoShell;   # alternatively: Shell object listening to the console or some pipe
 
 # resources for third-party programs launched by polymake
-declare $Resources=$ENV{POLYMAKE_RESOURCE_DIR} // "$InstallTop/resources";
+declare $Resources = $ENV{POLYMAKE_RESOURCE_DIR} // "$InstallTop/resources";
 
-declare $mainURL="https://polymake.org";
+declare $mainURL = "https://polymake.org";
 
 ########################################################################
 #
@@ -69,19 +78,21 @@ require Polymake::Tempdir;
 require Polymake::TempChangeDir;
 require Polymake::OverwriteFile;
 require Polymake::Overload;
+require Polymake::Schema;
 require Polymake::Core::Customize;
 require Polymake::Core::Preference;
 require Polymake::User;
+require Polymake::Core::Help;
 require Polymake::Core::PropertyType;
 require Polymake::Core::Property;
 require Polymake::Core::Permutation;
 require Polymake::Core::PropertyValue;
 require Polymake::Core::Rule;
-require Polymake::Core::ObjectType;
+require Polymake::Core::BigObjectType;
 require Polymake::Core::Scheduler;
 require Polymake::Core::Serializer;
-require Polymake::Core::XMLfile;
-require Polymake::Core::Object;
+require Polymake::Core::BigObject;
+require Polymake::Core::Datafile;
 require Polymake::Core::Application;
 require Polymake::Core::Extension;
 require Polymake::Core::CPlusPlus;
@@ -93,6 +104,7 @@ package Polymake::Core;
 
 declare $Custom = new Customize;
 declare $Prefs = new Preference;
+declare $enable_plausibility_checks = true;
 
 my @custom_blocks;
 sub add_custom_vars {
@@ -131,7 +143,7 @@ sub greeting {
 
    my @messages = ("polymake version $full_version", <<'.' . $mainURL . "\n", <<'.');
 
-Copyright (c) 1997-2019
+Copyright (c) 1997-2020
 Ewgenij Gawrilow, Michael Joswig, and the polymake team
 Technische Universität Berlin, Germany
 .

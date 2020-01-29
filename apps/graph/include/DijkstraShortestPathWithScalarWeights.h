@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -37,7 +37,7 @@ public:
       using base_t = base_layer::Label<typename mprefer1st<FullLabel, Label<FullLabel>>::type>;
 
       template <typename... CostArgs>
-      explicit Label(const int node_, CostArgs&&... cost_args)
+      explicit Label(const Int node_, CostArgs&&... cost_args)
          : base_t(node_)
          , cost(std::forward<CostArgs>(cost_args)...) {}
 
@@ -71,12 +71,12 @@ public:
 
       using base_layer::template Algo<Top>::Algo;
 
-      label_t* construct_label(const int node) const
+      label_t* construct_label(const Int node) const
       {
          return base_t::construct_label(node, zero_value<Weight>());
       }
 
-      label_t* construct_label(const label_t* pred_label, int cur_node, int edge_id) const
+      label_t* construct_label(const label_t* pred_label, Int cur_node, Int edge_id) const
       {
          return base_t::construct_label(cur_node, pred_label->cost + this->data.edge_weights[edge_id]);
       }

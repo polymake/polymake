@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2020
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,13 +21,13 @@
 
 namespace polymake { namespace topaz {
   
-perl::Object klein_bottle()
+BigObject klein_bottle()
 {
-   perl::Object p("SimplicialComplex");
+   BigObject p("SimplicialComplex");
    p.set_description() << "The Klein bottle.\n";
 
-   const Array< Set<int> > PJP = real_projective_plane_facets();
-   const std::list< Set<int> > C = connected_sum(PJP,PJP);
+   const Array<Set<Int>> PJP = real_projective_plane_facets();
+   const std::list<Set<Int>> C = connected_sum(PJP,PJP);
    
    p.take("FACETS") << C;
    p.take("DIM") << 2;
