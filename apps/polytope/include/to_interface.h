@@ -28,6 +28,7 @@
 #endif
 
 #define TO_DISABLE_OUTPUT
+#include "polymake/common/TOmath_decl.h"
 #include "TOSimplex/TOSimplex.h"
 
 namespace polymake { namespace polytope { namespace to_interface {

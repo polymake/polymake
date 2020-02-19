@@ -1924,7 +1924,7 @@ namespace pm {
 inline
 bool isfinite(const Rational& a) noexcept
 {
-   return mpq_numref(a.get_rep())->_mp_alloc;
+   return Integer::isfinite_rep(mpq_numref(a.get_rep()));
 }
 
 inline

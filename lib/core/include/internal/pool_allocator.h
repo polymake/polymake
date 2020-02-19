@@ -53,7 +53,7 @@ public:
    void destroy(Data* p)
    {
       p->~Data();
-      deallocate(p, sizeof(p));
+      deallocate(p, sizeof(Data));
    }
 };
 

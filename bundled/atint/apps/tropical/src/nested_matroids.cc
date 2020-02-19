@@ -88,7 +88,7 @@ IncidenceMatrix<> presentation_from_chain(Int n, const IncidenceMatrix<>& flats,
  * transversal presentation, into a list of cyclic flats and their ranks.
  * The presentation is assumed to be ordered from smallest to largest set.
  * @param IncidenceMatrix<> presentation The maximal transversal presentation.
- * @return Map<Set<int>, Int> Maps cyclic flats to their ranks.
+ * @return Map<Set<Int>, Int> Maps cyclic flats to their ranks.
  */
 Map<Set<Int>, Int> cyclic_flats_from_presentation(const IncidenceMatrix<>& presentation)
 {

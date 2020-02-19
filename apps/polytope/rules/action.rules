@@ -429,7 +429,7 @@ object Polytope {
 
 
    # Generates an array with a specified number of different colors.
-   # @param int number      the number of colors
+   # @param Int number      the number of colors
    # @return array          the colors as strings
    sub generateColors {
        my $number=$_[0];

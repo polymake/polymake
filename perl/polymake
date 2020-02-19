@@ -200,11 +200,7 @@ if ($verbose) {
 }
 
 if ($touch) {
-   require Polymake::Core::Shell;
-   if (Main::load_apps()) {
-      Core::Shell::start();
-      Main::touch_files();
-   }
+   Main::touch_files();
 
 } elsif (defined($script)) {
    Main::run_script($script);

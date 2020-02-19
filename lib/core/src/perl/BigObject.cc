@@ -38,10 +38,10 @@ glue::cached_cv give_cv{ "Polymake::Core::BigObject::give" },
      object_type_isa_cv{ "Polymake::Core::BigObjectType::isa" },
               commit_cv{ "Polymake::Core::BigObject::commit" },
                  new_cv{ "Polymake::Core::BigObject::new_named" },
-           construct_cv{ "Polymake::Core::BigObject::construct" },
+           construct_cv{ "Polymake::Core::BigObject::new_copy" },
  construct_with_size_cv{ "Polymake::Core::BigObjectArray::construct_with_size" },
                 copy_cv{ "Polymake::Core::BigObject::copy" },
-                cast_cv{ "Polymake::Core::BigObject::cast" },
+                cast_cv{ "Polymake::Core::BigObject::cast_me" },
                 load_cv{ "Polymake::User::load" },
                 save_cv{ "Polymake::User::save" };
 

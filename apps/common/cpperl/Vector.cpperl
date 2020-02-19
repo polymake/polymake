@@ -240,5 +240,6 @@
   {"args": ["perl::Canned<const Wary<pm::SameElementVector<pm::GF2 const&>>&>", "perl::Canned<const pm::SameElementVector<pm::GF2 const&>&>"], "include": ["polymake/GF2.h", "polymake/linalg.h"], "op": "add", "sig": "add:O.X4.X16"},
   {"args": ["Vector<GF2>", "perl::Canned<const Vector<GF2>&>"], "include": ["polymake/GF2.h", "polymake/Vector.h"], "op": "new", "sig": "new.X"},
   {"args": ["perl::Canned<const Wary<pm::SameElementVector<pm::GF2 const&>>&>", "perl::Canned<const pm::SameElementSparseVector<pm::SingleElementSetCmp<long, pm::operations::cmp> const, pm::GF2 const&>&>"], "include": ["polymake/GF2.h", "polymake/linalg.h"], "op": "add", "sig": "add:O.X4.X16"},
+  {"args": ["Vector<GF2>"], "include": ["polymake/GF2.h", "polymake/Vector.h"], "op": "new", "sig": "new"},
  null ],
 "version": 3}

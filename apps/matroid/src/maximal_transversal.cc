@@ -48,7 +48,7 @@ Set<Int> find_coloops_of_deletion(const Array<Set<Int>>&bases, const Set<Int>& d
 
 /*
  * @brief Constructs the unique maximal presentation of a transversal matroid
- * @param int n The size of the ground set (0,..,n-1)
+ * @param Int n The size of the ground set (0,..,n-1)
  * @param Array<Set<Int>> bases The bases of the matroid 
  * @param Array<Set<Int>> transversal_presentation One possible transversal presentation
  * @param Set<Int> A set of indices in transversal_presentation of size rank(matroid), which corresponds

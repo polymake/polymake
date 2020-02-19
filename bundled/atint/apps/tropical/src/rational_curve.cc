@@ -153,7 +153,7 @@ ListReturn wrapTestFourPointCondition(const Vector<Rational>& v)
   Vector<Int> fault = testFourPointCondition(v);
   ListReturn result;
   // TODO: implement unroll for ListReturn
-  for (int i = 0; i < fault.dim(); ++i) {
+  for (Int i = 0; i < fault.dim(); ++i) {
     result << fault[i];
   }
   return result;

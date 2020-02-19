@@ -17,6 +17,7 @@
 #ifndef POLYMAKE_GF2_H
 #define POLYMAKE_GF2_H
 
+#include "polymake/Integer.h"
 #include "polymake/internal/converters_basic_defs.h"
 #include <iostream>
 #include <polymake/GenericIO.h>
@@ -34,7 +35,9 @@ namespace pm {
 
          GF2() : boolrep(false) {}
 
-         explicit GF2(const Int& n) : boolrep(n % 2 == 1) {}
+         explicit GF2(const Int& n) : boolrep(n % 2) {}
+         
+         explicit GF2(const Integer& n) : boolrep(n % 2) {}
 
          GF2(const GF2& gf2) : boolrep(gf2.to_bool()) {}
 
@@ -44,6 +47,11 @@ namespace pm {
 
          // arithmetic operations:
 
+         GF2& negate()
+         {
+            return *this;
+         }
+         
          friend GF2 operator+ (const GF2& a, const GF2& b) { return GF2(a.to_bool() != b.to_bool()); }
          friend GF2 operator- (const GF2& a, const GF2& b) { return a+b; }
          friend GF2 operator* (const GF2& a, const GF2& b) { return GF2(a.to_bool() && b.to_bool()); }
@@ -136,7 +144,15 @@ namespace pm {
          typedef pm::GF2 field_type;
       };
 
+   template <>
+   struct hash_func<GF2, is_scalar> {
+      size_t operator() (const GF2& a) const
+      {
+         return a.to_bool();
+      }
+   };
 }
+
 
 namespace polymake {
    using pm::GF2;

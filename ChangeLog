@@ -1,3 +1,17 @@
+=== polymake 4.0r1 ===
+
+-- distribution --
+  * compatibility with gmp 6.2
+
+-- core --
+  * fix memory leak with pool allocator
+  * fix BigObject construct and cast from callable library
+  * fix --touch
+  * invalid TERMs will warn instead of die
+
+-- common --
+  * improve type compatibility for GF2
+
 === polymake 4.0 ===
 
 -- general --

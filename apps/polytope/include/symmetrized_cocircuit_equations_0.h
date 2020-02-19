@@ -55,7 +55,7 @@ symmetrized_cocircuit_equations_0_impl(Int d,
    const group::PermlibGroup sym_group(generators);
 
    hash_map<SetType, Int> index_of_facet;
-   int ct = -1;
+   Int ct = -1;
    for (const auto& rep : facet_reps)
       index_of_facet[rep] = ++ct;
 

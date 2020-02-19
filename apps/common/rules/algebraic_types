@@ -231,7 +231,7 @@ user_function project_to_orthogonal_complement(Matrix&, Matrix) : c++ (include =
 # @param Matrix m1 first matrix
 # @param Matrix m2 second matrix
 # @param Bool expect_duplicate_rows if true, matrices may contain duplicate rows
-# @return Array<int> row indexes, or undef if there are unmatched rows
+# @return Array<Int> row indexes, or undef if there are unmatched rows
 function find_matrix_row_permutation(Matrix, Matrix; $=false) : c++ (include => ["polymake/common/find_matrix_row_permutation.h"]);
 
 # @category Algebraic Types

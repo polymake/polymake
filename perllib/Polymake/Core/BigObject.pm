@@ -1267,9 +1267,11 @@ sub forget_parent_property {
 sub remove {
    local interrupts(block);
    my ($need_commit, @adjust_subobjects);
-   if (@_ == 1) {
-      my ($sub_obj) = @_;
-      my $self = $sub_obj->parent;
+   @_== 1 && is_object($_[0]) && unshift @_,$_[0]->parent;
+   if (@_ == 2 && is_object($_[1])) {
+      my ($self, $sub_obj) = @_;
+      $self == $sub_obj->parent
+        or croak( "remove subobject: wrong parent object passed" );
       # some sanity checks up front
       defined($self) && $sub_obj->property->flags & Property::Flags::is_multiple
         or croak( "only multiple sub-objects can be removed by reference" );

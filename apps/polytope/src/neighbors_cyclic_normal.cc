@@ -155,10 +155,10 @@ void neighbors_cyclic_normal_dual(BigObject p)
    const Matrix<Scalar> F = p.give("FACETS"), AH;
    const IncidenceMatrix<> VIF = p.give("RAYS_IN_FACETS");
    const Graph<> G = p.give("GRAPH.ADJACENCY");
-   const int dim = p.give("CONE_DIM");
+   const Int dim = p.give("CONE_DIM");
 
    CycleList VIF_cyclic, DG_cyclic;
-   compute_cycles(dim,F,AH,T(VIF),G,VIF_cyclic,DG_cyclic);
+   compute_cycles(dim, F, AH, T(VIF), G, VIF_cyclic, DG_cyclic);
    p.take("FTR_CYCLIC_NORMAL", temporary) << VIF_cyclic;
    p.take("NEIGHBOR_RAYS_CYCLIC_NORMAL", temporary) << DG_cyclic;
 }

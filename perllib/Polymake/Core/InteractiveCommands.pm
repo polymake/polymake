@@ -28,15 +28,15 @@ use Term::Cap;
 my ($bold, $boldoff, $under, $underoff);
 
 sub init_termcap {
-   state $termcap= $ENV{TERM} && do {
-      my $tc=Term::Cap->Tgetent;
-      $bold=$tc->Tputs('md');
-      $boldoff=$tc->Tputs('me');
-      $under=$tc->Tputs('us');
-      $underoff=$tc->Tputs('ue');
+   state $termcap = defined($ENV{TERM}) && eval {
+      my $tc = Term::Cap->Tgetent;
+      $bold = $tc->Tputs('md');
+      $boldoff = $tc->Tputs('me');
+      $under = $tc->Tputs('us');
+      $underoff = $tc->Tputs('ue');
       close Term::Cap::DATA;
       1
-   };
+   } // (warn("Term::Cap->Tgetent failed for TERM $ENV{TERM}: $@"), 0);
 }
 
 sub Tgetent {

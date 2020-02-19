@@ -1,7 +1,6 @@
 {"app": "common",
  "inst": [
   {"class": "GF2", "include": ["polymake/GF2.h"], "pkg": "Polymake::common::GF2"},
-  {"args": ["GF2", "int"], "include": ["polymake/GF2.h"], "op": "new", "sig": "new.X"},
   {"args": ["perl::Canned<const GF2&>", "perl::Canned<const GF2&>"], "include": ["polymake/GF2.h"], "op": "add", "sig": "add:O.X.X"},
   {"args": ["perl::Canned<const GF2&>", "perl::Canned<const GF2&>"], "include": ["polymake/GF2.h"], "op": "sub", "sig": "sub:O.X.X"},
   {"args": ["perl::Canned<const GF2&>", "perl::Canned<const GF2&>"], "include": ["polymake/GF2.h"], "op": "mul", "sig": "mul:O.X.X"},
@@ -15,5 +14,6 @@
   {"args": ["perl::Canned<const GF2&>", "perl::Canned<const GF2&>"], "include": ["polymake/GF2.h"], "op": "_eq", "sig": "_eq:O.X.X"},
   {"args": ["perl::Canned<const GF2&>"], "include": ["polymake/GF2.h"], "op": "neg", "sig": "neg:O.X"},
   {"args": ["GF2", "Int"], "include": ["polymake/GF2.h"], "op": "new", "sig": "new.X"},
+  {"args": ["GF2", "perl::Canned<const Integer&>"], "include": ["polymake/GF2.h", "polymake/Integer.h"], "op": "new", "sig": "new.X"},
  null ],
 "version": 3}

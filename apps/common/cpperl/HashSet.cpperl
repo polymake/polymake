@@ -19,5 +19,8 @@
   {"args": ["perl::Canned<const hash_set<Vector<Rational>>&>", "perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational>&>, pm::Series<Int, true> const, mlist<> >&>"], "func": "exists", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Vector.h", "polymake/hash_set"], "kind": "meth", "sig": "exists:CORE.M.X"},
   {"args": ["perl::Canned<const hash_set<Vector<Rational>>&>", "perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<Int, true> const, mlist<> >&>"], "func": "exists", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Vector.h", "polymake/hash_set"], "kind": "meth", "sig": "exists:CORE.M.X"},
   {"args": ["hash_set<Vector<Rational>>", "perl::Canned<const pm::Rows<pm::BlockMatrix<mlist<pm::RepeatedCol<pm::SameElementVector<pm::Rational const&> > const, pm::Matrix<pm::Rational> const>, std::integral_constant<bool, false> > >&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Vector.h", "polymake/hash_set", "polymake/linalg.h"], "op": "new", "sig": "new.X"},
+  {"class": "hash_set<Vector<GF2>>", "include": ["polymake/GF2.h", "polymake/Vector.h", "polymake/hash_set"], "pkg": "Polymake::common::HashSet__Vector__GF2"},
+  {"args": ["hash_set<Vector<GF2>>"], "include": ["polymake/GF2.h", "polymake/Vector.h", "polymake/hash_set"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<hash_set<Vector<GF2>>&>", "perl::Canned<const Vector<GF2>&>"], "include": ["polymake/GF2.h", "polymake/Vector.h", "polymake/hash_set"], "op": "Add", "ret": "lvalue", "sig": "Add:O.X1.X"},
  null ],
 "version": 3}

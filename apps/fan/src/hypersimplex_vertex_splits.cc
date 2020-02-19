@@ -27,7 +27,7 @@
 
 namespace polymake { namespace fan {
 
-BigObject hypersimplex_vertex_splits(int k, int d, OptionSet options)
+BigObject hypersimplex_vertex_splits(Int k, Int d, OptionSet options)
 {
    if (d < 2)
       throw std::runtime_error("hypersimplex_vertex_splits: dimension >= 2 required");
@@ -40,7 +40,7 @@ BigObject hypersimplex_vertex_splits(int k, int d, OptionSet options)
    HA.take("AMBIENT_DIM") << d;
 
    // we already know the number of vertices
-   const int n(Integer::binom(d,k));
+   const Int n(Integer::binom(d,k));
    HA.take("N_HYPERPLANES") << n;
 
    // const bool group_flag = options["group"];

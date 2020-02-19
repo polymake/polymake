@@ -65,7 +65,7 @@ cap_product(const GenericVector<VectorType,E>& co_coeffs, const Array<Set<Int>>&
 
    const Int dim = faces[0].size()-1;
    const Int codim = co_faces[0].size()-1;
-   const int dim_sign = ((dim-codim)*codim)%2 == 0 ? 1 : -1;
+   const Int dim_sign = ((dim-codim)*codim)%2 == 0 ? 1 : -1;
 
    auto sigma = entire(coeffs.top());
    auto sigma_faces = entire(faces);

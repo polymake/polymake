@@ -27,8 +27,8 @@
 #include "polymake/polytope/generic_milp_client.h"
 
 #define TO_DISABLE_OUTPUT
-#include "TOSimplex/TOExMipSol.h"
 #include "polymake/common/TOmath_decl.h"
+#include "TOSimplex/TOExMipSol.h"
 
 namespace polymake { namespace polytope {
 

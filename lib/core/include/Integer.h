@@ -1544,6 +1544,14 @@ protected:
          set_inf(this, isinf(src), st);
    }
 
+public:
+   static bool isfinite_rep(mpz_srcptr a)
+   {
+      // gmp 6.2.0 allows lazy mpz types with alloc == 0 but non-zero data pointer
+      // initialized via mpz_roinit_n
+      return a->_mp_d != nullptr;
+   }
+
    friend class Rational;
    friend class AccurateFloat;
    friend class Bitset;
@@ -1575,7 +1583,7 @@ namespace pm {
 inline
 bool isfinite(const Integer& a) noexcept
 {
-   return a.get_rep()->_mp_alloc;
+   return Integer::isfinite_rep(a.get_rep());
 }
 
 inline

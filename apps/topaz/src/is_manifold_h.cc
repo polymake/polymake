@@ -21,7 +21,7 @@
 
 namespace polymake { namespace topaz {
 
-int is_manifold_client(BigObject p, OptionSet options)
+Int is_manifold_client(BigObject p, OptionSet options)
 {
    const Lattice<BasicDecoration>& HD = p.give("HASSE_DIAGRAM");
    const bool is_closed = p.give("CLOSED_PSEUDO_MANIFOLD");

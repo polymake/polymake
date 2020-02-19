@@ -84,7 +84,7 @@ const pm::perl::RegistratorQueue& get_registrator_queue(mlist<Tag>, std::integra
 {
    static pm::perl::RegistratorQueue queue(EmbeddedItemsKey4perl(POLYMAKE_APPNAME, POLYMAKE_BUNDLED_EXT), kind);
    return queue;
-};
+}
 
 namespace {
 

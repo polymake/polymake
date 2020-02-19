@@ -156,7 +156,7 @@ BigObject product(BigObject p_in1, BigObject p_in2, OptionSet options)
    }
 
    if (noc && p_in1.exists("COMBINATORIAL_DIM") && p_in2.exists("COMBINATORIAL_DIM")) {
-      const int dim1 = p_in1.give("COMBINATORIAL_DIM"),
+      const Int dim1 = p_in1.give("COMBINATORIAL_DIM"),
                 dim2 = p_in2.give("COMBINATORIAL_DIM");
       p_out.take("COMBINATORIAL_DIM") << dim1+dim2;
    }
