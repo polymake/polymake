@@ -53,7 +53,7 @@ property BOUNDED_COMPLEX : PolyhedralComplex<Scalar> {
 rule BOUNDED_COMPLEX.GRAPH.NodePerm.PERMUTATION = VertexPerm.PERMUTATION;
 
 rule BOUNDED_COMPLEX.GRAPH.ADJACENCY : GRAPH.ADJACENCY, FAR_FACE, BOUNDED_COMPLEX.VERTEX_MAP, N_VERTICES {
-   my $g = permuted_inv_nodes( new props::Graph(induced_subgraph($this->GRAPH->ADJACENCY, ~ $this->FAR_FACE)), map_vertices_down($this->BOUNDED_COMPLEX->VERTEX_MAP, $this->N_VERTICES) );
+   my $g = permuted_inv_nodes(new GraphAdjacency(induced_subgraph($this->GRAPH->ADJACENCY, ~ $this->FAR_FACE)), map_vertices_down($this->BOUNDED_COMPLEX->VERTEX_MAP, $this->N_VERTICES) );
    $g->squeeze;
    $this->BOUNDED_COMPLEX->GRAPH->ADJACENCY = $g;
 }

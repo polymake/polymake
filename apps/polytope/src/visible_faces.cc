@@ -140,16 +140,15 @@ containing_normal_cone(const BigObject P, Vector<Scalar> q)
    const auto inv_tau (inv(tau));
 
    // then we polarize the centered P
-   BigObject LP("LinearProgram", mlist<Scalar>());
    const Vector<Scalar> lin_obj(q - barycenter);
-   LP.take("LINEAR_OBJECTIVE") << lin_obj;
-   BigObject Q("Polytope", mlist<Scalar>());
-   Q.take("FACETS") << R * tau;
-
    const Matrix<Scalar> Ftrans(F * T(inv_tau));
-   Q.take("VERTICES") << Ftrans; // also transform the facets so we get the correct numbering and don't have to compute a convex hull again
-   Q.take("AFFINE_HULL") << H * T(inv_tau);
-   Q.take("LP") << LP;
+
+   BigObject Q("Polytope", mlist<Scalar>(),
+               "FACETS", R * tau,
+               // also transform the facets so we get the correct numbering and don't have to compute a convex hull again
+               "VERTICES", Ftrans,
+               "AFFINE_HULL", H * T(inv_tau),
+               "LP.LINEAR_OBJECTIVE", lin_obj);
 
    // then we optimize over the polar polytope.
    // We use minimization because the polar polytope is mirrored around the origin

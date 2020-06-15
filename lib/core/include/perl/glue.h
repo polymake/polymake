@@ -236,7 +236,9 @@ void connect_cout(pTHX);
 
 extern const CV* cur_wrapper_cv;
 extern SV *negative_indices_key,
-          *Serializer_Sparse_dim_key;
+          *Serializer_Sparse_dim_key,
+          *temporary_value_flag;
+
 extern HV *FuncDescr_stash,
           *TypeDescr_stash,
           *User_stash,

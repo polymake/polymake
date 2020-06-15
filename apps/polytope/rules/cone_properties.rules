@@ -462,13 +462,13 @@ property EXCESS_FACET_DEGREE : Int;
 
 # @category Combinatorics
 # Vertex-edge graph obtained by intersecting the cone with a transversal hyperplane.
-property GRAPH : objects::Graph;
+property GRAPH : Graph;
 
 rule GRAPH.NodePerm.PERMUTATION = VertexPerm.PERMUTATION;
 
 # @category Combinatorics
 # Facet-ridge graph. Dual to [[GRAPH]].
-property DUAL_GRAPH : objects::Graph;
+property DUAL_GRAPH : Graph;
 
 rule DUAL_GRAPH.NodePerm.PERMUTATION = FacetPerm.PERMUTATION;
 

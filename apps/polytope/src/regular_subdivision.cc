@@ -30,9 +30,8 @@ regular_subdivision(const GenericMatrix<MatrixType> &vertices_in, const GenericV
    auto vertices = convert_to<Scalar>(vertices_in);
    auto weight = convert_to<Scalar>(weight_in);
    //construct the lifted polytope + a ray
-   const Matrix<Scalar> lifted_vertices=(vertices|weight)/unit_vector<Scalar>(vertices.cols()+1,vertices.cols());
-   BigObject p("Polytope", mlist<Scalar>());
-   p.take("POINTS") << lifted_vertices;
+   const Matrix<Scalar> lifted_vertices = (vertices | weight) / unit_vector<Scalar>(vertices.cols()+1, vertices.cols());
+   BigObject p("Polytope", mlist<Scalar>(), "POINTS", lifted_vertices);
 
    //we have to check for the case in which the subdivision is trivial
    const Matrix<Scalar> aff_hull = p.give("AFFINE_HULL");
@@ -41,8 +40,8 @@ regular_subdivision(const GenericMatrix<MatrixType> &vertices_in, const GenericV
       return Array<Set<Int>>(1, all);
    }
     
-   const Matrix<Scalar> facets=p.give("FACETS");
-   const IncidenceMatrix<> vif=p.give("POINTS_IN_FACETS");
+   const Matrix<Scalar> facets = p.give("FACETS");
+   const IncidenceMatrix<> vif = p.give("POINTS_IN_FACETS");
     
    Set<Int> simplices;
    Int i = 0;
@@ -61,7 +60,7 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# @param Matrix points"
                           "# @param Vector weights"
                           "# @return Array<Set<Int>>"
-                          "# @example [prefer cdd] The following generates a regular subdivision of the square."
+                          "# @example [prefer cdd] [require bundled:cdd] The following generates a regular subdivision of the square."
                           "# > $w = new Vector(2,23,2,2);"
                           "# > $r = regular_subdivision(cube(2)->VERTICES,$w);"
                           "# > print $r;"

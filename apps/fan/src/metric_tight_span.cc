@@ -25,16 +25,15 @@
 
 namespace polymake { namespace fan {
 
-BigObject metric_tight_span(const Matrix<Rational> dist, OptionSet options)
+BigObject metric_tight_span(const Matrix<Rational>& dist, OptionSet options)
 {
    const bool extend = options["extended"];
    const Int d = dist.rows();
    //opt["no_facets"] = true;
    BigObject hy = polytope::hypersimplex(2, d, OptionSet());
-   BigObject sd("PointConfiguration");
    Matrix<Rational> points = hy.give("VERTICES");
-   if (extend) points/=(ones_vector<Rational>(d)|2*unit_matrix<Rational>(d));
-   sd.take("POINTS") << points;
+   if (extend)
+      points /= ones_vector<Rational>(d) | 2*unit_matrix<Rational>(d);
    
    Vector<Rational> w( d*(d-1)/2 );
    if (extend) w = Vector<Rational>( d+d*(d-1)/2 );
@@ -45,34 +44,34 @@ BigObject metric_tight_span(const Matrix<Rational> dist, OptionSet options)
       ++k;
     }
    
-   BigObject sp("SubdivisionOfPoints");
-   sp.take("WEIGHTS") << w;
+   BigObject sp("SubdivisionOfPoints", "WEIGHTS", w);
    sp.attach("METRIC") << dist;
-   sd.take("POLYTOPAL_SUBDIVISION") << sp;
-   return sd;
+
+   return BigObject("PointConfiguration",
+                    "POINTS", points,
+                    "POLYTOPAL_SUBDIVISION", sp);
 }
 
-BigObject metric_extended_tight_span(const Matrix<Rational> dist)
+BigObject metric_extended_tight_span(const Matrix<Rational>& dist)
 {
    OptionSet opts("extended",true);
    BigObject sd = metric_tight_span(dist,opts);
-   BigObject ts("PolyhedralComplex");
    Matrix<Rational> vert = sd.give("POLYTOPAL_SUBDIVISION.TIGHT_SPAN.VERTICES");
-   ts.take("VERTICES") << vert;
-   Array<std::string> label(vert.rows() );
+   Array<std::string> labels(vert.rows());
    Int k = 0;
    for (auto row = entire(rows(vert)); !row.at_end(); ++row, ++k){
-         std::string vlabel("");
-         for (Int j = 0; j < vert.cols(); ++j) 
-            if ((*row)[j]==0) vlabel += std::to_string(j) ;
-          label[k] = vlabel;
+      std::string vlabel("");
+      for (Int j = 0; j < vert.cols(); ++j) 
+         if ((*row)[j]==0)
+            vlabel += std::to_string(j);
+      labels[k] = vlabel;
    }
 
-   ts.take("VERTEX_LABELS") << label;
-   ts.take("GRAPH.NODE_LABELS") << label;
-   ts.take("MAXIMAL_POLYTOPES") << sd.give("POLYTOPAL_SUBDIVISION.TIGHT_SPAN.MAXIMAL_POLYTOPES");
-
-   return ts;
+   return BigObject("PolyhedralComplex",
+                    "VERTICES", vert,
+                    "VERTEX_LABELS", labels,
+                    "GRAPH.NODE_LABELS", labels,
+                    "MAXIMAL_POLYTOPES", sd.give("POLYTOPAL_SUBDIVISION.TIGHT_SPAN.MAXIMAL_POLYTOPES"));
 }
 
 Matrix<Rational> thrackle_metric(const Int n)

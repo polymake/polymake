@@ -52,8 +52,8 @@ BigObject associahedron(Int d, OptionSet options)
    p.take("CONE_AMBIENT_DIM") << n+1;
    p.take("CONE_DIM") << d+1;
 
-   bool group_flag = options["group"];
-   if ( group_flag ) {
+   const bool group_flag = options["group"];
+   if (group_flag) {
        //given (i,j), this returns the row index of the corresponding facet in the facet matrix
        auto ind = [d](Int i, Int j) {
           i %= d+3;
@@ -81,13 +81,9 @@ BigObject associahedron(Int d, OptionSet options)
 
       gens[0]=gen0;
       gens[1]=gen1;
-      BigObject a("group::PermutationAction");
-      a.take("GENERATORS") << gens;
-
-      BigObject g("group::Group");
+      BigObject a("group::PermutationAction", "GENERATORS", gens);
+      BigObject g("group::Group", "fullCombinatorialGroupOnFacets", "FACETS_ACTION", a);
       g.set_description() << "full combinatorial group on facets" << endl;
-      g.set_name("fullCombinatorialGroupOnFacets");
-      g.take("FACETS_ACTION") << a;
       p.take("GROUP") << g;
    }
 

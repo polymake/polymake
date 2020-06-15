@@ -224,7 +224,7 @@ user_function graph_from_edges($) {
       assign_max($max, $_->[1]);
    }
 
-   my $g = new props::Graph($max+1);
+   my $g = new GraphAdjacency($max+1);
    for ( @$edges ) {
       $g->edge(@$_);
    }
@@ -243,7 +243,7 @@ user_function graph_from_cycles($) {
       }
    }
 
-   my $g = new props::Graph($max+1);
+   my $g = new GraphAdjacency($max+1);
    foreach my $cycle (@$cycles) {
       foreach my $i (0..scalar(@$cycle)-1) {
          $g->edge($cycle->[$i-1],$cycle->[$i]);
@@ -264,7 +264,7 @@ user_function graph_from_cycles($) {
 # | {1 2}
 # | {0 2}
 # | {0 1}
-user_function line_graph(props::Graph) : c++ (include=>["polymake/graph/line_graph.h"]);
+user_function line_graph(GraphAdjacency) : c++ (include=>["polymake/graph/line_graph.h"]);
 
 # @category Combinatorics
 # Creates the __complement graph__ of a graph.
@@ -316,7 +316,7 @@ user_function signed_incidence_matrix<Dir>(Graph<Dir>): c++ (include=>["polymake
       
 # @category Combinatorics
 # Compute the unsigned vertex-edge incidence matrix of the graph.
-# @param common::Graph G
+# @param GraphAdjacency G
 # @return SparseMatrix<Int>
 # @example
 # > $I = incidence_matrix(cycle_graph(4)->ADJACENCY);
@@ -325,12 +325,12 @@ user_function signed_incidence_matrix<Dir>(Graph<Dir>): c++ (include=>["polymake
 # | 1 1 0 0
 # | 0 1 0 1
 # | 0 0 1 1
-user_function incidence_matrix(props::Graph) : c++ (include=>["polymake/graph/incidence_matrix.h"]);
+user_function incidence_matrix(GraphAdjacency) : c++ (include=>["polymake/graph/incidence_matrix.h"]);
       
 # @category Combinatorics
 # Compute the signed vertex-edge incidence matrix of the graph.
 # In case of undirected graphs, the orientation of the edges is induced by the order of the nodes.
-# @param common::Graph G
+# @param GraphAdjacency G
 # @return SparseMatrix<Int>
 # @example
 # > $I = signed_incidence_matrix(cycle_graph(4)->ADJACENCY);
@@ -339,31 +339,31 @@ user_function incidence_matrix(props::Graph) : c++ (include=>["polymake/graph/in
 # | -1 1 0 0
 # | 0 -1 0 1
 # | 0 0 -1 -1
-user_function signed_incidence_matrix(props::Graph) : c++ (include=>["polymake/graph/incidence_matrix.h"]);
+user_function signed_incidence_matrix(GraphAdjacency) : c++ (include=>["polymake/graph/incidence_matrix.h"]);
                                
 ############################################################################
 
-function is_connected(props::Graph<Undirected>) : c++ (include=>["polymake/graph/connected.h"]);
+function is_connected(GraphAdjacency<Undirected>) : c++ (include=>["polymake/graph/connected.h"]);
 
-function connected_components(props::Graph<Undirected>) : c++ (include=>["polymake/graph/connected.h"]);
+function connected_components(GraphAdjacency<Undirected>) : c++ (include=>["polymake/graph/connected.h"]);
 
-function is_weakly_connected(props::Graph<Directed>) : c++ (include=>["polymake/graph/connected.h"]);
+function is_weakly_connected(GraphAdjacency<Directed>) : c++ (include=>["polymake/graph/connected.h"]);
 
-function weakly_connected_components(props::Graph<Directed>) : c++ (include=>["polymake/graph/connected.h"]);
+function weakly_connected_components(GraphAdjacency<Directed>) : c++ (include=>["polymake/graph/connected.h"]);
 
-function is_strongly_connected(props::Graph<Directed>) : c++ (include=>["polymake/graph/strong_connected.h"]);
+function is_strongly_connected(GraphAdjacency<Directed>) : c++ (include=>["polymake/graph/strong_connected.h"]);
 
-function strong_components(props::Graph<Directed>) : c++ (include=>["polymake/graph/strong_connected.h"]);
+function strong_components(GraphAdjacency<Directed>) : c++ (include=>["polymake/graph/strong_connected.h"]);
 
-function is_totally_ordered(props::Graph<Directed>) : c++ (include=>["polymake/graph/connected.h"]);
+function is_totally_ordered(GraphAdjacency<Directed>) : c++ (include=>["polymake/graph/connected.h"]);
 
-function component_connectivity(props::Graph, IncidenceMatrix) : c++ (include=>["polymake/graph/connected.h"]);
+function component_connectivity(GraphAdjacency, IncidenceMatrix) : c++ (include=>["polymake/graph/connected.h"]);
 
-function biconnected_components(props::Graph<Undirected>) : c++ (include=>["polymake/graph/biconnected.h"]);
+function biconnected_components(GraphAdjacency<Undirected>) : c++ (include=>["polymake/graph/biconnected.h"]);
 
-function max_cliques(props::Graph<Undirected>) : c++ (include=>["polymake/graph/max_cliques.h"]);
+function max_cliques(GraphAdjacency<Undirected>) : c++ (include=>["polymake/graph/max_cliques.h"]);
 
-function diameter(props::Graph) : c++ (include=>["polymake/graph/diameter.h"]);
+function diameter(GraphAdjacency) : c++ (include=>["polymake/graph/diameter.h"]);
 
 # Local Variables:
 # mode: perl

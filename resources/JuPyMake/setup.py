@@ -33,14 +33,15 @@ if platform.system() == "Darwin" :
 
 setup(
     name = 'JuPyMake',
-    version = '0.8',
+    version = '0.9',
     description = 'A simple interface to Polymake',
     author = 'Sebastian Gutsche',
     author_email = 'sebastian.gutsche@gmail.com',
     url = 'https://github.com/sebasguts/JuPyMake',
+    license = 'GPLv2 or any later version',
     ext_modules= [ Extension( "JuPyMake",
                               [ "JuPyMake.cpp" ],
-                              extra_compile_args=polymake_cflags,
+                              extra_compile_args=polymake_cflags + [ '-pthread' ],
                               extra_link_args=polymake_ldflags,
                               define_macros = macro_list ) ],
     package_data = { '': [ "COPYING", "GPLv2" ] },

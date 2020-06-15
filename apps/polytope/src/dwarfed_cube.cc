@@ -26,9 +26,6 @@ BigObject dwarfed_cube(Int d)
    if (d < 2) {
       throw std::runtime_error("dwarfed_cube: d >= 2 required");
    }
-   BigObject p("Polytope<Rational>");
-   p.set_description() << "dwarfed cube of dimension " << d << endl;
-
    Matrix<Rational> F(2*d+1,d+1);
    Rows<Matrix <Rational> >::iterator f=rows(F).begin();
    for (Int i = 1; i <= d; ++i) {
@@ -43,11 +40,13 @@ BigObject dwarfed_cube(Int d)
    (*f).fill(-1);
    (*f)[0]=Rational(3,2);
 
-   p.take("CONE_AMBIENT_DIM") << d+1;
-   p.take("CONE_DIM") << d+1;
-   p.take("FACETS") << F;
-   p.take("BOUNDED") << true;
-   p.take("POSITIVE") << true;
+   BigObject p("Polytope<Rational>",
+               "CONE_AMBIENT_DIM", d+1,
+               "CONE_DIM", d+1,
+               "FACETS", F,
+               "BOUNDED", true,
+               "POSITIVE", true);
+   p.set_description() << "dwarfed cube of dimension " << d << endl;
    return p;
 }
 

@@ -2,13 +2,12 @@
 /* Version 4.1, April 3, 2001                                        */
 /* Copyright: David Avis 2001, avis@cs.mcgill.ca                     */
 
+/* Version 4.2, January 20, 2018                                    */
+/* modified to use generic wrappers for everything in lrsgmp.c      */
+
+
 /* For gmp package                                                   */
 /* derived from lrslong.c and lrsmp.c                                */
-
-#ifdef PLRS
-#include <sstream>
-#include <iostream>
-#endif
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -25,7 +24,16 @@ long lrs_record_digits;		/* this is the biggest acheived so far.     */
 void 
 lcm (lrs_mp a, lrs_mp b)			/* a = least common multiple of a, b; b is preserved */
 {
-  mpz_lcm(a,a,b);
+	lrs_mp temp1,temp2;
+	lrs_alloc_mp(temp1); lrs_alloc_mp(temp2);
+  copy (temp1, a);
+  copy (temp2, b);
+  gcd (temp1,temp2);
+  exactdivint (a, temp1, temp2);		/* temp2=a/temp1   there is no remainder */
+  mulint (temp2, b, a);
+	lrs_clear_mp(temp1);
+	lrs_clear_mp(temp2);
+	
 }				/* end of lcm */
 
 
@@ -39,21 +47,30 @@ lcm (lrs_mp a, lrs_mp b)			/* a = least common multiple of a, b; b is preserved 
 void 
 reduce (lrs_mp Na, lrs_mp Da)	/* reduces Na/Da by gcd(Na,Da) */
 {
-  lrs_mp Gcd;
-  lrs_alloc_mp(Gcd);
-  mpz_gcd(Gcd, Na, Da);
-  if (mpz_cmp_ui(Gcd,1))
-    {
-      mpz_divexact(Na, Na, Gcd);
-      mpz_divexact(Da, Da, Gcd);
-    }
-  lrs_clear_mp(Gcd);
+  lrs_mp Nb, Db, Nc, Dc;
+  lrs_alloc_mp(Nb); lrs_alloc_mp(Db);
+  lrs_alloc_mp(Nc); lrs_alloc_mp(Dc);
+  copy (Nb, Na);
+  copy (Db, Da);
+  storesign (Nb, POS);
+  storesign (Db, POS);
+  copy (Nc, Na);
+  copy (Dc, Da);
+  gcd (Nb, Db);			/* Nb is the gcd(Na,Da) */
+  exactdivint (Nc, Nb, Na);
+  exactdivint (Dc, Nb, Da);
+  lrs_clear_mp(Nb); lrs_clear_mp(Db);
+  lrs_clear_mp(Nc); lrs_clear_mp(Dc);
 }
 
 void 
 reduceint (lrs_mp Na, lrs_mp Da)	/* divide Na by Da and return */
 {
-  mpz_divexact(Na, Na, Da);
+	lrs_mp temp1;
+	lrs_alloc_mp(temp1);
+  copy (temp1, Na);
+  exactdivint (temp1, Da, Na);
+	lrs_clear_mp(temp1);
 }
 
 
@@ -69,7 +86,8 @@ comprod (lrs_mp Na, lrs_mp Nb, lrs_mp Nc, lrs_mp Nd)
 	lrs_alloc_mp(temp1); lrs_alloc_mp(temp2);
   mulint (Na, Nb, temp1);
   mulint (Nc, Nd, temp2);
-  i=mpz_cmp(temp1,temp2);
+//i=mpz_cmp(temp1,temp2);
+  i=mpcmp(temp1,temp2);
 	lrs_clear_mp(temp1);
 	lrs_clear_mp(temp2);
   if (i > 0)
@@ -178,11 +196,12 @@ rattodouble (lrs_mp a, lrs_mp b, double *x)	/* convert lrs_mp rati
 
 {
   double y;
-  y=mpz_get_d (a);
-  (*x)=mpz_get_d (b);
+//y=mpz_get_d (a);
+  y=mptodouble (a);
+//(*x)=mpz_get_d (b);
+  (*x)=mptodouble (b);
   (*x) = y / (*x);
 }
-#ifdef PLRS
 
 /* read a rational or integer and convert to lrs_mp with base BASE */
 /* returns true if denominator is not one                      */
@@ -202,7 +221,6 @@ long plrs_readrat (lrs_mp Na, lrs_mp Da, const char* rat)
 	return (TRUE);
 }
 
-#endif
 
 long 
 readrat (lrs_mp Na, lrs_mp Da)	/* read a rational or integer and convert to lrs_mp */
@@ -231,75 +249,72 @@ readrat (lrs_mp Na, lrs_mp Da)	/* read a rational or integer and convert to lrs_
   return (TRUE);
 }
 
-#ifdef PLRS
-string prat (char name[], lrs_mp Nin, lrs_mp Din)	/*reduce and print Nin/Din  */
+char *cprat (const char *name, lrs_mp Nin, lrs_mp Din)
 {
+  char *num, *den, *ret;
+  unsigned long len;
+  lrs_mp Nt, Dt;
+  lrs_alloc_mp (Nt); lrs_alloc_mp (Dt);
 
-	//create stream to collect output
-	stringstream ss;
-	string str;
-	char * buff;
-	lrs_mp temp1, temp2;
-	lrs_alloc_mp(temp1);
-	lrs_alloc_mp(temp2);
-	
+  copy (Nt, Nin);
+  copy (Dt, Din);
+  reduce (Nt, Dt);
 
-	copy (temp1, Nin);
-  	copy (temp2, Din);
-  	reduce (temp1, temp2);
-  	ss<<name;
-	if (sign (temp1) != NEG)
-		ss<<" ";
-	buff = mpz_get_str(NULL, 10, temp1);
-  	ss<<buff;
-	free(buff);
-  	if (!one(temp2)){
-		buff = mpz_get_str(NULL, 10, temp2);
-		ss<<"/"<<buff;
-		free(buff);
-	}
-	ss<<" ";
-	lrs_clear_mp(temp1);
-	lrs_clear_mp(temp2);
-	//pipe stream to single string
-	str = ss.str();
-	return str;
+  num = mpgetstr10(NULL, Nt);
+  den = mpgetstr10(NULL, Dt);
+  len = snprintf(NULL, 0, " %s %s/%s", name, num, den);
+  ret = (char*)malloc(sizeof(char)*(len+1));
+
+  if(one(Dt))
+    {
+     if (sign (Nt) != NEG)
+       sprintf(ret, "%s %s", name, num);
+     else
+       sprintf(ret, "%s%s", name, num);
+    }
+  else
+    {
+     if (sign (Nt) != NEG)
+       sprintf(ret, " %s %s/%s", name, num, den);
+     else
+       sprintf(ret, "%s%s/%s", name, num, den);
+    }
+
+  free(num); free(den);
+  lrs_clear_mp(Nt); lrs_clear_mp(Dt);
+  return ret;
+}
+char *cpmp (const char *name, lrs_mp Nin)
+{
+  char *num, *ret;
+  unsigned long len;
+
+  num = mpgetstr10(NULL, Nin);
+  len = snprintf(NULL, 0, "%s %s", name, num);
+  ret = (char*)malloc(sizeof(char)*(len+1));
+
+  if (sign (Nin) != NEG)
+       sprintf(ret, "%s %s", name, num);
+  else
+       sprintf(ret, "%s%s", name, num);
+  free(num);
+  return ret;
 }
 
-
-string pmp (char name[], lrs_mp Nt)	/*print the long precision integer a */
-{
-	
-	//create stream to collect output
-	stringstream ss;
-	string str;
-	char * buff;
-	ss<<name;
-
-  	if (sign (Nt) != NEG)
-		ss<<" ";
-	buff = mpz_get_str(NULL,10,Nt);
-  	ss<<buff<<" ";
-	free(buff);
-	
-	//pipe stream to single string
-	str = ss.str();
-	return str;
-}
-#else
 
 void
-pmp (char name[], lrs_mp Nt)
+pmp (const char *name, lrs_mp Nt)
 {
   fprintf (lrs_ofp, "%s", name);
   if (sign (Nt) != NEG)
     fprintf (lrs_ofp, " ");
-  mpz_out_str (lrs_ofp,10,Nt);
+//mpz_out_str (lrs_ofp,10,Nt);
+  mpoutstr (lrs_ofp,10,Nt);
   fprintf (lrs_ofp, " ");
 }
 
 void 
-prat (char name[], lrs_mp Nin, lrs_mp Din)
+prat (const char *name, lrs_mp Nin, lrs_mp Din)
      /*print the long precision rational Nt/Dt  */
 {
 	lrs_mp temp1, temp2;
@@ -311,17 +326,16 @@ prat (char name[], lrs_mp Nin, lrs_mp Din)
   fprintf (lrs_ofp, "%s", name);
   if (sign (temp1) != NEG)
     fprintf (lrs_ofp, " ");
-  mpz_out_str (lrs_ofp,10,temp1);
+  mpoutstr (lrs_ofp,10,temp1);
   if ( !one(temp2))
     {
     fprintf (lrs_ofp, "/");
-    mpz_out_str (lrs_ofp,10,temp2);
+    mpoutstr (lrs_ofp,10,temp2);
     }
   fprintf (lrs_ofp, " ");
 	lrs_clear_mp(temp1);
 	lrs_clear_mp(temp2);
 }				/* prat */
-#endif
 
 
 void
@@ -414,7 +428,7 @@ lrs_getdigits (long *a, long *b)
 }
 
 void *
-xcalloc (long n, long s, long l, char *f)
+xcalloc (long n, long s, long l, const char *f)
 {
   void *tmp;
 
@@ -440,17 +454,12 @@ lrs_mp_init (long dec_digits, FILE * fpin, FILE * fpout)
   lrs_record_digits = 0;        /* not used for gmp arithmetic  */
   lrs_digits = 0;		/* not used for gmp arithmetic  */
 
-#ifndef PLRS
-	#ifndef LRS_QUIET
-  		printf(" gmp v.%d.%d",__GNU_MP_VERSION,__GNU_MP_VERSION_MINOR);
-	#endif
-#endif
   return TRUE;
 }
 
 
 void 
-notimpl (char s[])
+notimpl (const char *s)
 {
   fflush (stdout);
   fprintf (stderr, "\nAbnormal Termination  %s\n", s);
@@ -522,11 +531,21 @@ void
 linint(lrs_mp a, long ka, lrs_mp b, long kb)
 /* a=a*ka+b*kb,  b unchanged */
 {
-   if (ka < 0) mpz_neg(a,a);
-   mpz_mul_ui(a,a,labs(ka));
-   if (kb < 0) mpz_neg(b,b);
-   mpz_addmul_ui(a,b,labs(kb));
-   if (kb < 0) mpz_neg(b,b);
+  lrs_mp temp1;
+  lrs_alloc_mp (temp1);
+//mpz_mul_ui (a,a,labs(ka));
+  mului (a,a,labs(ka));
+  if (ka < 0)
+//   mpz_neg(a,a);
+  changesign(a);
+  mului (temp1,b,labs(kb));
+  if (kb < 0)
+//   mpz_neg(temp1,temp1);
+ changesign(temp1);
+//mpz_add(a,a,temp1);
+ addint(a,temp1,a);
+ lrs_clear_mp (temp1);
+
 }
 
 
@@ -534,6 +553,7 @@ void
 storesign(lrs_mp a, long sa)
 {
   if ( (sa)*sign(a) < 0 )
-      mpz_neg(a,a);
+//    mpz_neg(a,a);
+    changesign(a);
 }
 

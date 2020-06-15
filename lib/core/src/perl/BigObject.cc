@@ -37,8 +37,9 @@ glue::cached_cv give_cv{ "Polymake::Core::BigObject::give" },
           object_isa_cv{ "Polymake::Core::BigObject::isa" },
      object_type_isa_cv{ "Polymake::Core::BigObjectType::isa" },
               commit_cv{ "Polymake::Core::BigObject::commit" },
-                 new_cv{ "Polymake::Core::BigObject::new_named" },
-           construct_cv{ "Polymake::Core::BigObject::new_copy" },
+           new_named_cv{ "Polymake::Core::BigObject::new_named" },
+          new_filled_cv{ "Polymake::Core::BigObject::new_filled" },
+            new_copy_cv{ "Polymake::Core::BigObject::new_copy" },
  construct_with_size_cv{ "Polymake::Core::BigObjectArray::construct_with_size" },
                 copy_cv{ "Polymake::Core::BigObject::copy" },
                 cast_cv{ "Polymake::Core::BigObject::cast_me" },
@@ -353,16 +354,25 @@ bool BigObject::exists(const AnyString& name) const
    return glue::call_func_bool(aTHX_ lookup_cv);
 }
 
-SV* BigObject::add_impl(const AnyString& name, SV* sub_obj, property_kind t) const
+void BigObject::start_add(const AnyString& prop_name, property_kind t, const AnyString& sub_name, SV* sub_obj, size_t add_args) const
 {
    check_ref(obj_ref);
    dTHX;
-   PmStartFuncall(4);
+   PmStartFuncall(ssize_t(add_args)+4);
    PUSHs(obj_ref);
-   mPUSHp(name.ptr, name.len);
-   if (sub_obj) PUSHs(sub_obj);
-   if (t == property_kind::temporary) PUSHs(&PL_sv_yes);
+   mPUSHp(prop_name.ptr, prop_name.len);
+   if (t == property_kind::temporary)
+      PUSHs(glue::temporary_value_flag);
+   if (sub_obj)
+      PUSHs(sub_obj);
+   else if (sub_name)
+      mPUSHp(sub_name.ptr, sub_name.len);
    PUTBACK;
+}
+
+SV* BigObject::finish_add()
+{
+   dTHX;
    return glue::call_func_scalar(aTHX_ add_cv, true);
 }
 
@@ -503,27 +513,40 @@ void PropertyOut::cancel()
    PmCancelFuncall;
 }
 
-BigObject::BigObject(const BigObjectType& type, const AnyString& name)
+void BigObject::start_construction(const BigObjectType& type, const AnyString& name, size_t add_args)
 {
    check_ref(type.obj_ref);
    dTHX;
-   PmStartFuncall(2);
+   PmStartFuncall(ssize_t(add_args)+2);
    PUSHs(type.obj_ref);
    if (name) mPUSHp(name.ptr, name.len);
    PUTBACK;
-   obj_ref=glue::call_func_scalar(aTHX_ new_cv, true);
+}
+
+SV* BigObject::finish_construction(bool with_props)
+{
+   dTHX;
+   return glue::call_func_scalar(aTHX_ with_props ? new_filled_cv : new_named_cv, true);
+}
+
+void BigObject::pass_property(const AnyString& prop_name, Value& val)
+{
+   dTHX;
+   dSP;
+   mPUSHp(prop_name.ptr, prop_name.len);
+   PUSHs(val.get_temp());
+   PUTBACK;
 }
 
 BigObject::BigObject(const BigObjectType& type, const BigObject& src)
 {
-   check_ref(type.obj_ref);
    check_ref(src.obj_ref);
+   start_construction(type, AnyString());
    dTHX;
-   PmStartFuncall(2);
-   PUSHs(type.obj_ref);
+   dSP;
    PUSHs(src.obj_ref);
    PUTBACK;
-   obj_ref=glue::call_func_scalar(aTHX_ construct_cv, true);
+   obj_ref = glue::call_func_scalar(aTHX_ new_copy_cv, true);
 }
 
 BigObject BigObject::copy() const
@@ -603,6 +626,7 @@ Value::NoAnchors Value::put_val(const BigObject& x, int)
 
    // If the read_only flag is set, then this call is part of the preparation for parent_object.take();
    // in this case the child's transaction will be hung into the parent's one.
+   // TODO: this is going to be changed: init transaction is going to be closed prior to adding the subobject!
    if ((options & (ValueFlags::read_only | ValueFlags::expect_lval)) != ValueFlags::read_only &&
        has_init_transaction(x.obj_ref)) {
       PmStartFuncall(1);

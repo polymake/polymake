@@ -26,8 +26,7 @@ namespace polymake { namespace fan {
 template <typename Coord>
 BigObject face_fan(BigObject p, Vector<Coord> v)
 {
-   BigObjectType t("PolyhedralFan", mlist<Coord>());
-   BigObject ff(t); 
+   BigObject ff("PolyhedralFan", mlist<Coord>()); 
 
    const Matrix<Coord> rays = p.give("VERTICES");
    ff.take("RAYS") << dehomogenize(rays-repeat_row(v,rays.rows()));
@@ -36,14 +35,14 @@ BigObject face_fan(BigObject p, Vector<Coord> v)
    ff.take("MAXIMAL_CONES") << vif;
 
    ff.take("REGULAR") << true;
-   bool fd = p.give("FULL_DIM");
-   ff.take("COMPLETE") << (fd ? true : false);
+   const bool fd = p.give("FULL_DIM");
+   ff.take("COMPLETE") << fd;
    
    const Matrix<Coord> ls = p.give("LINEALITY_SPACE");
    if (ls.rows()) {
       ff.take("LINEALITY_SPACE") << dehomogenize(ls);
    } else {
-      Matrix<Coord> empty(0,rays.cols()-1);
+      Matrix<Coord> empty(0, rays.cols()-1);
       ff.take("LINEALITY_SPACE") << empty;
    }
 
@@ -56,12 +55,12 @@ BigObject face_fan(BigObject p, Vector<Coord> v)
 template <typename Coord>
 BigObject face_fan(BigObject p)
 {
-   bool cent = p.give("CENTERED");
+   const bool cent = p.give("CENTERED");
    if (!cent)
       throw std::runtime_error("face_fan: polytope is not centered. Please provide a relative interior point as a second argument");
    Int cone_ambient_dim = p.give("CONE_AMBIENT_DIM");
    Vector<Coord> v = unit_vector<Coord>(cone_ambient_dim,0);
-   return face_fan(p,v);
+   return face_fan(p, v);
 }
 
 UserFunctionTemplate4perl("# @category Producing a fan"

@@ -50,20 +50,6 @@ bool bottom_points_inner(Matrix<Integer>& gens,
                          vector<Matrix<Integer> >& local_q_gens,
                          size_t& stellar_det_sum);
 
-// kept here for simplicity:
-
-double convert_to_double(mpz_class a) {
-    return a.get_d();
-}
-
-double convert_to_double(long a) {
-    return a;
-}
-
-double convert_to_double(long long a) {
-    return a;
-}
-
 template <typename Integer>
 void bottom_points(list<vector<Integer> >& new_points, const Matrix<Integer>& given_gens, Integer VolumeBound) {
     /* gens.pretty_print(cout);

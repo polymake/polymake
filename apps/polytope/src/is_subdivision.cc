@@ -74,8 +74,7 @@ is_subdivision(const Matrix<Rational>& verts, const Faces& subdiv, OptionSet opt
       return false;
    }
 
-   BigObject p("Polytope<Rational>");
-   p.take("POINTS") << verts.minor(all_verts,All);
+   BigObject p("Polytope<Rational>", "POINTS", verts.minor(all_verts, All));
 
    const Matrix<Rational> eq=p.give("AFFINE_HULL");
 

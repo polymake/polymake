@@ -459,8 +459,11 @@ user_function convert_to<Target>($) {
 
 # @category Basic Types
 # Realizes quadratic extensions of fields.
-# 
+#
 # You can construct the value a+b\(\sqrt r\) via QuadraticExtension(a, b, r) (where a, b, r are of type //Field//).
+# Caution: QuadraticExtension requires [[wiki:external_software#flint]] for normalization.
+# For example, the input (1,1,4) will not be reduced to 3 without flint.
+#
 # @tparam Field default: [[Rational]]
 declare property_type QuadraticExtension<Field=Rational> : upgrades(Field) : c++ (include => "polymake/QuadraticExtension.h") {
 
@@ -621,6 +624,7 @@ declare property_type GF2 : upgrades(Bool) : c++ (include => "polymake/GF2.h") {
 
    operator ++ -- neg : c++;
 
+   type_method JSONschema { return { type => "string", pattern => '^([01])$' }; }
 }
 
 INCLUDE

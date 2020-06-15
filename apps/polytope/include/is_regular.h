@@ -138,7 +138,7 @@ secondary_cone_ineq(const GenericMatrix<Matrix, Scalar>& full_dim_verts, const A
          inequs /= new_row(l, full_dim_verts, basis, basis_sign, basis_det);
 
    }
-   return std::pair<const SparseMatrix<Scalar>,const SparseMatrix<Scalar>>(inequs, equats);
+   return std::pair<const SparseMatrix<Scalar>,const SparseMatrix<Scalar>>(remove_zero_rows(inequs), remove_zero_rows(equats));
 }
 
 } }

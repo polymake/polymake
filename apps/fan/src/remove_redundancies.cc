@@ -36,20 +36,15 @@ void remove_redundancies(BigObject f)
 
    Matrix<Coord> lineality_space;
    const Matrix<Coord> lin = f.lookup("INPUT_LINEALITY");
-   {
-      BigObject cone(t);
-      cone.take("INPUT_RAYS") << i_rays.minor(i_cones.row(0), All);
-      cone.take("INPUT_LINEALITY") << lin;
-      cone.give("LINEALITY_SPACE") >> lineality_space;
-   }
+   BigObject(t, "INPUT_RAYS", i_rays.minor(i_cones.row(0), All), "INPUT_LINEALITY", lin)
+      .give("LINEALITY_SPACE") >> lineality_space;
+
    hash_map<Vector<Coord>, Int> rays;
    FacetList max_cones;
    Int n_rays = 0;
    for (Int i = 0; i < n_i_cones; ++i) {
-      BigObject cone(t);
-      cone.take("INPUT_RAYS")<<i_rays.minor(i_cones.row(i),All);
-      cone.take("INPUT_LINEALITY")<<lineality_space;
-      const Matrix<Coord> c_rays=cone.give("RAYS");
+      BigObject cone(t, "INPUT_RAYS", i_rays.minor(i_cones.row(i),All), "INPUT_LINEALITY", lineality_space);
+      const Matrix<Coord> c_rays = cone.give("RAYS");
       Set<Int> ray_indices;
       for (auto r = entire(rows(c_rays)); !r.at_end(); ++r) {
          const Vector<Rational> the_ray(*r);

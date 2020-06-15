@@ -110,12 +110,10 @@ BigObject lex_extension(const BigObject N, const Array<Set<Int>>& modular_cut, O
       }
    }
 
-   BigObject E("Matroid");
-   E.take("N_ELEMENTS") << n+1;
-   E.take("RANK") << r;
-   E.take("MATROID_HYPERPLANES") << Array<Set<Int>>(matroid_hyperplanes_N.size(), entire(matroid_hyperplanes_N));
-
-   return E;
+   return BigObject("Matroid",
+                    "N_ELEMENTS", n+1,
+                    "RANK", r,
+                    "MATROID_HYPERPLANES", Array<Set<Int>>(matroid_hyperplanes_N.size(), entire(matroid_hyperplanes_N)));
 }
 
 UserFunction4perl("# @category Other"

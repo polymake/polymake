@@ -35,16 +35,13 @@ BigObject integer_hull(BigObject p_in)
   Matrix<Rational> Lattice_Points = p_in.call_method("LATTICE_POINTS");
   const Int dim = p_in.give("CONE_AMBIENT_DIM");
 
-  BigObject p_out("Polytope<Rational>");
-
   // define a new polyhedron as a convex hull of all the lattice points
-  p_out.take("POINTS") << Lattice_Points;
-  p_out.take("FEASIBLE") << (Lattice_Points.rows() > 0);
-  p_out.take("BOUNDED") << true;
-  p_out.take("POINTED") << true;
-  p_out.take("CONE_AMBIENT_DIM") << dim;
-
-  return p_out;	
+  return BigObject("Polytope<Rational>",
+                   "POINTS", Lattice_Points,
+                   "FEASIBLE", Lattice_Points.rows() > 0,
+                   "BOUNDED", true,
+                   "POINTED", true,
+                   "CONE_AMBIENT_DIM", dim);	
 }
 
 UserFunction4perl("# @category Producing a polytope from polytopes"

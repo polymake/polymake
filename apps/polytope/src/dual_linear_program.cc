@@ -36,8 +36,6 @@ template <typename Scalar>
 BigObject dual_linear_program(BigObject p_in, bool maximize)
 {
    // variable declaration. Names are self explaining.
-   BigObject old_lp, new_lp("LinearProgram", mlist<Scalar>());
-   BigObject p_out("Polytope", mlist<Scalar>());
    Vector<Scalar> new_objective;
    Matrix<Scalar> old_ineq, new_ineq;
    Matrix<Scalar> old_eq, new_eq;
@@ -46,7 +44,7 @@ BigObject dual_linear_program(BigObject p_in, bool maximize)
   
    // reading the old problem.
    // we get the problem as: min <c,x> s.t. Ax >= b, Bx = d
-   p_in.give("LP") >> old_lp;
+   BigObject old_lp = p_in.give("LP");
    old_lp.give("LINEAR_OBJECTIVE") >> new_right;
    p_in.lookup("FACETS | INEQUALITIES") >> old_ineq;
    p_in.lookup("AFFINE_HULL | EQUATIONS") >> old_eq;
@@ -85,14 +83,11 @@ BigObject dual_linear_program(BigObject p_in, bool maximize)
    }
 
    // writing the new problem  
-   new_lp.take("LINEAR_OBJECTIVE") << new_objective;
-   p_out.take("INEQUALITIES") << new_ineq;
-   p_out.take("EQUATIONS") << new_eq;
-   p_out.take("LP") << new_lp;
-
-   return p_out;
+   return BigObject("Polytope", mlist<Scalar>(),
+                    "INEQUALITIES", new_ineq,
+                    "EQUATIONS", new_eq,
+                    "LP.LINEAR_OBJECTIVE", new_objective);
 }
-
 
 UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# Produces the dual linear program for a given linear program of the form min {cx | Ax >= b, Bx = d}."

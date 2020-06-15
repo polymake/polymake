@@ -95,7 +95,8 @@ sub vis_facets($$$$$$) {
 
       } elsif ($#$face == 1) {
          #it's only an edge
-          my $adj = new props::Graph("{1}\n{0}\n");
+         my $adj = new GraphAdjacency(2);
+         $adj->edge(0, 1);
          new Visual::Graph( Name=> (join " ", @labels), Graph => new Graph(ADJACENCY => $adj), Coord => $verts, NodeLabels => \@labels, $edge_decor );
 
       } else {
@@ -309,7 +310,7 @@ user_method MORSE_MATCHING(%Visual::Graph::decorations) {
    my $vertices = $this->elements->[0]->Coord;
    my $faces = $complex->FACETS;
       
-   my $adj = new props::Graph($hd->N_NODES-2);
+   my $adj = new GraphAdjacency($hd->N_NODES-2);
    my @barycenters;
    my @arrow_colors;
 

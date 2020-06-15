@@ -29,13 +29,14 @@ BigObject cycle_graph(const Int n)
    for (Int i = 0; i < n-1; ++i)
       g.edge(i, i+1);
    g.edge(0, n-1);
-   BigObject G("Graph<>");
-   G.take("N_NODES") << n;
-   G.take("N_EDGES") << n;
-   G.take("DIAMETER") << (n%2 ? (n-1)/2 : n/2);
-   G.take("CONNECTED") << true;
-   G.take("BIPARTITE") << (n%2 == 0);
-   G.take("ADJACENCY") << g;
+
+   BigObject G("Graph<>",
+               "N_NODES", n,
+               "N_EDGES", n,
+               "DIAMETER", n/2,
+               "CONNECTED", true,
+               "BIPARTITE", n%2 == 0,
+               "ADJACENCY", g);
    G.set_description() << "Cycle graph on " << n << " nodes." << endl;
    return G;
 }
@@ -52,13 +53,14 @@ BigObject wheel_graph(const Int n)
    }
    g.edge(0, n-1);
    g.edge(n-1, n);
-   BigObject G("Graph<>");
-   G.take("N_NODES") << n+1;
-   G.take("N_EDGES") << 2*n;
-   G.take("DIAMETER") << (n==3 ? 1 : 2);
-   G.take("CONNECTED") << true;
-   G.take("BIPARTITE") << false;
-   G.take("ADJACENCY") << g;
+
+   BigObject G("Graph<>",
+               "N_NODES", n+1,
+               "N_EDGES", 2*n,
+               "DIAMETER", n==3 ? 1 : 2,
+               "CONNECTED", true,
+               "BIPARTITE", false,
+               "ADJACENCY", g);
    G.set_description() << "Wheel graph with " << n << " spokes." << endl;
    return G;
 }
@@ -71,13 +73,14 @@ BigObject path_graph(const Int n)
    Graph<> g(n);
    for (Int i = 0; i < n-1; ++i)
       g.edge(i, i+1);
-   BigObject G("Graph<>");
-   G.take("N_NODES") << n;
-   G.take("N_EDGES") << n-1;
-   G.take("DIAMETER") << n-1;
-   G.take("CONNECTED") << true;
-   G.take("BIPARTITE") << (n%2 == 0);
-   G.take("ADJACENCY") << g;
+
+   BigObject G("Graph<>",
+               "N_NODES", n,
+               "N_EDGES", n-1,
+               "DIAMETER", n-1,
+               "CONNECTED", true,
+               "BIPARTITE", n%2 == 0,
+               "ADJACENCY", g);
    G.set_description() << "Path graph on " << n << " nodes." << endl;
    return G;
 }

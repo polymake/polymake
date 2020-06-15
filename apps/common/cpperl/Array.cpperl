@@ -181,5 +181,8 @@
   {"args": ["perl::Canned<const Array<std::pair<Matrix<Rational>, Matrix<Int>>>&>", "perl::Canned<const Array<std::pair<Matrix<Rational>, Matrix<Int>>>&>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/client.h"], "op": "_eq", "sig": "_eq:O.X.X"},
   {"args": ["Array<PowerSet<Int>>"], "include": ["polymake/Array.h", "polymake/PowerSet.h"], "op": "new", "sig": "new"},
   {"args": ["perl::Canned<const Array<PowerSet<Int>>&>", "perl::Canned<const Array<PowerSet<Int>>&>"], "include": ["polymake/Array.h", "polymake/PowerSet.h"], "op": "_eq", "sig": "_eq:O.X.X"},
+  {"class": "Array<SparseMatrix<GF2, NonSymmetric>>", "include": ["polymake/Array.h", "polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "pkg": "Polymake::common::Array__SparseMatrix_A_GF2_I_NonSymmetric_Z"},
+  {"args": ["Array<SparseMatrix<GF2, NonSymmetric>>"], "include": ["polymake/Array.h", "polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<const Array<SparseMatrix<GF2, NonSymmetric>>&>", "perl::Canned<const Array<SparseMatrix<GF2, NonSymmetric>>&>"], "include": ["polymake/Array.h", "polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "op": "_eq", "sig": "_eq:O.X.X"},
  null ],
 "version": 3}

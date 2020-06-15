@@ -91,7 +91,7 @@ property AFFINE_HULL : Matrix<Scalar>;
 # @category Combinatorics
 # Graph of the point configuration.
 # Two points are adjacent if they are neigbours in a edge of the [[CONVEX_HULL]].
-property GRAPH : objects::Graph;
+property GRAPH : Graph;
 
 
 # @category Geometry
@@ -162,7 +162,7 @@ property SPLITS : Matrix<Scalar>;
 # @category Combinatorics
 # Two [[SPLITS]] are compatible if the defining hyperplanes do not intersect in the
 # interior of the point configuration.  This defines a graph.
-property SPLIT_COMPATIBILITY_GRAPH : objects::Graph;
+property SPLIT_COMPATIBILITY_GRAPH : Graph;
 
 
 # @category Visualization

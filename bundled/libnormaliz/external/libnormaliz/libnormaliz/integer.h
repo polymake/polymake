@@ -425,13 +425,15 @@ inline mpq_class mpq_read(istream& in) {
             return dec_fraction_to_mpq(s);
     } catch (const std::exception& e) {
         cerr << e.what() << endl;
-        cerr << "Illegal number string " + s + " in input, Exiting." << endl;
-        exit(1);
+        throw BadInputException("Illegal number string " + s + " in input, Exiting.");
     }
 }
 
 inline void string2coeff(mpq_class& coeff, istream& in, const string& s) {  // in here superfluous parameter
-    coeff = mpq_class(s);
+    
+    stringstream sin(s);
+    coeff = mpq_read(sin);
+    // coeff=mpq_class(s);
 }
 
 inline void read_number(istream& in, mpq_class& number) {
@@ -463,8 +465,7 @@ inline void string2coeff(renf_elem_class& coeff, istream& in, const string& s) {
         coeff = renf_elem_class(*K, s);
     } catch (const std::exception& e) {
         cerr << e.what() << endl;
-        cerr << "Illegal number string " + s + " in input, Exiting." << endl;
-        exit(1);
+        throw BadInputException("Illegal number string " + s + " in input, Exiting.");
     }
 }
 
@@ -481,7 +482,7 @@ inline void read_number(istream& in, renf_elem_class& number) {
         return;
     }
 
-    // now we have a proper field exists_element
+    // now we have a proper field contains
 
     in >> c;  // read (
 

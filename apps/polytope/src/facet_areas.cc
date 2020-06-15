@@ -35,20 +35,19 @@ Array<QuadraticExtension<typename MatrixTop::value_type>> facet_areas(const Gene
    interior_point /= Vertices.rows();
    Int dim = Vertices.cols()-1; 
    for (Int i = 0; i < Vertices_In_Facets.rows(); ++i) {
-   	BigObject facet_cone("Polytope", mlist<Field>());
-	facet_cone.take("VERTICES") << (Vertices.minor(Vertices_In_Facets.row(i), All) / interior_point);
-	
-	auto normal_vector = Facets.row(i);
-	QuadraticExtension<Field> quad_ext(0,1, sqr(normal_vector.slice(range_from(1))));
-	Field scaled_height(normal_vector * interior_point);
-	QuadraticExtension<Field> inv_height(quad_ext / scaled_height);
-	facet_cone.give("VOLUME") >> areas[i];
-	areas[i] *= inv_height * dim;
+      BigObject facet_cone("Polytope", mlist<Field>(), "VERTICES", Vertices.minor(Vertices_In_Facets.row(i), All) / interior_point);
+      auto normal_vector = Facets.row(i);
+      QuadraticExtension<Field> quad_ext(0,1, sqr(normal_vector.slice(range_from(1))));
+      Field scaled_height(normal_vector * interior_point);
+      QuadraticExtension<Field> inv_height(quad_ext / scaled_height);
+      facet_cone.give("VOLUME") >> areas[i];
+      areas[i] *= inv_height * dim;
    }
    return areas;
 }
   
 FunctionTemplate4perl("facet_areas(Matrix, IncidenceMatrix, Matrix)");
+
 } }
 
 // Local Variables:

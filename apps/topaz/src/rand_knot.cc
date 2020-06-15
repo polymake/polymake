@@ -18,7 +18,7 @@
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
-#include "polymake/RandomSpherePoints.h"
+#include "polymake/RandomPoints.h"
 #include "polymake/Set.h"
 #include "polymake/Array.h"
 #include "polymake/list"
@@ -32,10 +32,6 @@ BigObject rand_knot(const Int n_edges, OptionSet options)
   
    const Int n_comp = options["n_comp"];
 
-   BigObject p("GeometricSimplicialComplex<Rational>");
-   p.set_description() << "A random knot/link with " << n_comp
-                       << " components with " << n_edges << " edges each.\n";
-
    std::list<Set<Int>> C;
    for (Int i = 0; i < n_comp; ++i) {
       for (Int j = i*n_edges; j < (i+1)*n_edges-1; ++j)
@@ -45,12 +41,13 @@ BigObject rand_knot(const Int n_edges, OptionSet options)
    }
 
    const RandomSeed seed(options["seed"]);
-  
+   const auto start_seed = seed.get();
+
    Matrix<Rational> Points(n_edges*n_comp, 3);
    if (options["on_sphere"] || options["brownian"]) {
       RandomSpherePoints<> random_source(3, seed);
       copy_range(random_source.begin(), entire(rows(Points)));
-    
+
       if (options["brownian"])
          for (Int i = 1; i < Points.rows(); ++i)
            Points[i] += Points[i-1];
@@ -60,8 +57,11 @@ BigObject rand_knot(const Int n_edges, OptionSet options)
       copy_range(rg.begin(), entire(concat_rows(Points)));
    }
 
-   p.take("FACETS") << C;
-   p.take("COORDINATES") << Points;
+   BigObject p("GeometricSimplicialComplex<Rational>",
+               "FACETS", C,
+               "COORDINATES", Points);
+   p.set_description() << "A random knot/link with " << n_comp
+                       << " components with " << n_edges << " edges each; seed=" << start_seed << ".\n";
    return p;
 }
 

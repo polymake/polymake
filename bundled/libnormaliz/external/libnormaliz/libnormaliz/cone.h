@@ -47,6 +47,9 @@ template <typename Integer>
 class Full_Cone;
 
 template <typename Integer>
+class ConeCollection;
+
+template <typename Integer>
 struct FACETDATA {
     vector<Integer> Hyp;      // linear form of the hyperplane
     dynamic_bitset GenInHyp;  // incidence hyperplane/generators
@@ -54,8 +57,8 @@ struct FACETDATA {
     size_t BornAt;            // number of generator (in order of insertion) at which this hyperplane was added,, counting from 0
     size_t Ident;             // unique number identifying the hyperplane (derived from HypCounter)
     size_t Mother;            // Ident of positive mother if known, 0 if unknown
-    bool is_positive_on_all_original_gens;
-    bool is_negative_on_some_original_gen;
+    // bool is_positive_on_all_original_gens;
+    // bool is_negative_on_some_original_gen;
     bool simplicial;  // indicates whether facet is simplicial
     bool neutral;
     bool positive;
@@ -117,6 +120,8 @@ struct STANLEYDATA {
 
 template <typename Integer>
 class Cone {
+    
+    // friend class ConeCollection<Integer>;
     //---------------------------------------------------------------------------
     //                               public methods
     //---------------------------------------------------------------------------
@@ -328,7 +333,8 @@ class Cone {
     // returns true, when ALL properties in CheckComputed are computed
     bool isComputed(ConeProperties CheckComputed) const;
 
-    void resetComputed(ConeProperty::Enum prop);
+    void setComputed(ConeProperty::Enum prop);
+    void setComputed(ConeProperty::Enum prop, bool value);
 
     //---------------------------------------------------------------------------
     //   get the results, these methods will start a computation if necessary
@@ -340,8 +346,7 @@ class Cone {
         return dim;
     };                            // is always known
     size_t getRank();             // depends on ExtremeRays
-    Integer getIndex();           // depends on OriginalMonoidGenerators
-    Integer getInternalIndex();   // = getIndex()
+    Integer getInternalIndex();   // depends on OriginalMonoidGenerators
     Integer getUnitGroupIndex();  // ditto
     // only for inhomogeneous case:
     size_t getRecessionRank();
@@ -379,6 +384,14 @@ class Cone {
     const Matrix<Integer>& getMaximalSubspaceMatrix();
     const vector<vector<Integer> >& getMaximalSubspace();
     size_t getDimMaximalSubspace();
+    
+    const Matrix<Integer>& getEquationsMatrix();
+    const vector<vector<Integer> >& getEquations();
+    size_t getNrEquations();
+    
+    const Matrix<Integer>& getCongruencesMatrix();
+    const vector<vector<Integer> >& getCongruences();
+    size_t getNrCongruences();
 
     // depends on the ConeProperty::s SupportHyperplanes and Sublattice
     map<InputType, vector<vector<Integer> > > getConstraints();
@@ -453,6 +466,7 @@ class Cone {
     bool isIntegrallyClosed();
     bool isGorenstein();
     bool isReesPrimary();
+    bool isIntHullCone();
     Integer getReesPrimaryMultiplicity();
     const Matrix<Integer>& getOriginalMonoidGeneratorsMatrix();
     const vector<vector<Integer> >& getOriginalMonoidGenerators();
@@ -467,6 +481,7 @@ class Cone {
     bool isTriangulationNested();
     bool isTriangulationPartial();
     const vector<pair<vector<key_t>, Integer> >& getTriangulation();
+ const vector<pair<vector<key_t>, Integer> >& getTriangulation(ConeProperty::Enum quality);
     const vector<vector<bool> >& getOpenFacets();
     const vector<pair<vector<key_t>, long> >& getInclusionExclusionData();
     const list<STANLEYDATA<Integer> >& getStanleyDec();
@@ -500,7 +515,7 @@ class Cone {
     renf_elem_class getFieldElemConeProperty(ConeProperty::Enum property);
 #endif
 
-    size_t getMachineIntegerConeProperty(ConeProperty::Enum property);
+    long getMachineIntegerConeProperty(ConeProperty::Enum property);
 
     bool getBooleanConeProperty(ConeProperty::Enum property);
 
@@ -521,7 +536,7 @@ class Cone {
     // the following matrices store the constraints of the input
     Matrix<Integer> Inequalities;
     Matrix<Integer> AddInequalities;  // for inequalities added later on
-    Matrix<Integer> AddGenerators;    // for inequalities added later on
+    Matrix<Integer> AddGenerators;    // for generators added later on
     Matrix<Integer> Equations;
     Matrix<Integer> Congruences;
     // we must register some information about thew input
@@ -545,7 +560,6 @@ class Cone {
     Matrix<Integer> SupportHyperplanes;
     Matrix<nmz_float> SuppHypsFloat;
     Matrix<Integer> ExcludedFaces;
-    Matrix<Integer> PreComputedSupportHyperplanes;
     size_t TriangulationSize;
     Integer TriangulationDetSum;
     bool triangulation_is_nested;
@@ -577,9 +591,10 @@ class Cone {
     IntegrationData IntData;
     vector<Integer> Grading;
     vector<Integer> Dehomogenization;
+    vector<Integer> IntHullNorm; // used in computation of integer hulls for guessing extreme rays
     vector<Integer> Norm;  // used by v_standardize in the numberfield case
     Integer GradingDenom;
-    Integer index;  // the internal index
+    Integer internal_index;
     Integer unit_group_index;
     size_t number_lattice_points;
     vector<size_t> f_vector;
@@ -594,6 +609,9 @@ class Cone {
 
     bool pointed;
     bool inhomogeneous;
+    bool precomputed_extreme_rays;
+    bool precomputed_support_hyperplanes;
+
 
     bool input_automorphisms;
 
@@ -615,6 +633,8 @@ class Cone {
 
     bool is_approximation;
     Cone* ApproximatedCone;
+    
+    bool is_inthull_cone;
 
     Matrix<Integer> WeightsGrad;
     vector<bool> GradAbs;
@@ -658,15 +678,19 @@ class Cone {
     template <typename InputNumber>
     void homogenize_input(map<InputType, vector<vector<InputNumber> > >& multi_input_data);
     void check_precomputed_support_hyperplanes();
-    void check_excluded_faces();
     bool check_lattice_restrictions_on_generators(bool& cone_sat_cong);
+    void remove_superfluous_inequalities();
+    void remove_superfluous_equations();
+    void remove_superfluous_congruences();
+    void convert_lattice_generators_to_constraints(Matrix<Integer>& LatticeGenerators);
+    void convert_equations_to_inequalties();
 
     void check_gens_vs_reference();  // to make sure that newly computed generators agrre with the previously computed
 
     void setGrading(const vector<Integer>& lf);
     void setWeights();
     void setDehomogenization(const vector<Integer>& lf);
-    void checkGrading();
+    void checkGrading(bool compute_grading_denom);
     void checkDehomogenization();
     void check_vanishing_of_grading_and_dehom();
     void process_lattice_data(const Matrix<Integer>& LatticeGenerators, Matrix<Integer>& Congruences, Matrix<Integer>& Equations);
@@ -686,12 +710,32 @@ class Cone {
     Matrix<Integer> prepare_input_type_2(const vector<vector<Integer> >& Input);
     Matrix<Integer> prepare_input_type_3(const vector<vector<Integer> >& Input);
     void insert_default_inequalities(Matrix<Integer>& Inequalities);
+    
+    void compute_refined_triangulation(ConeProperties& ToCompute);
+
+    template <typename IntegerColl>    
+    void compute_unimodular_triangulation(ConeProperties& ToCompute);
+    template <typename IntegerColl>
+    void compute_lattice_point_triangulation(ConeProperties& ToCompute);
+    template <typename IntegerColl>
+    void compute_all_generators_triangulation(ConeProperties& ToCompute);
+    template <typename IntegerColl>
+    void prepare_collection(ConeCollection<IntegerColl>& Coll);
+    template <typename IntegerColl>
+    void extract_data(ConeCollection<IntegerColl>& Coll);
+    void extract_data(ConeCollection<Integer>& Coll);
 
     /* only used by the constructors */
     void initialize();
+    
+#ifdef NMZ_EXTENDED_TESTS
+    void set_extended_tests(ConeProperties& ToCompute);
+#endif
 
     template <typename IntegerFC>
     void compute_full_cone(ConeProperties& ToCompute);
+    
+    void pass_to_pointed_quotient();
 
     /* compute the generators using the support hyperplanes */
     void compute_generators(ConeProperties& ToCompute);
@@ -713,6 +757,8 @@ class Cone {
     void extract_convex_hull_data(Full_Cone<IntegerFC>& FC, bool primal);
     template <typename IntegerFC>
     void push_convex_hull_data(Full_Cone<IntegerFC>& FC, bool primal);
+    
+    void create_convex_hull_data();
 
     template <typename IntegerFC>
     void extract_supphyps(Full_Cone<IntegerFC>& FC, Matrix<Integer>& ret, bool dual = true);
@@ -728,10 +774,10 @@ class Cone {
 
     /* If the Hilbert basis and the original monoid generators are computed,
      * use them to check whether the original monoid is integrally closed. */
-    void check_integrally_closed();
+    void check_integrally_closed(const ConeProperties& ToCompute);
     void compute_unit_group_index();
     /* try to find a witness for not integrally closed in the Hilbert basis */
-    void find_witness();
+    void find_witness(const ConeProperties& ToCompute);
 
     void check_Gorenstein(ConeProperties& ToCompute);
 
@@ -785,8 +831,9 @@ class Cone {
 
     void compute_lattice_points_in_polytope(ConeProperties& ToCompute);
     void prepare_volume_computation(ConeProperties& ToCompute);
-
-    bool set_quality_of_automorphisms(ConeProperties& ToCompute, AutomParam::Quality& quality_of_automorphisms);
+    
+    void compute_affine_dim_and_recession_rank();
+    void compute_recession_rank();
 
     template <typename IntegerFC>
     vector<vector<key_t> > extract_permutations(const vector<vector<key_t> >& FC_Permutations,
@@ -908,6 +955,11 @@ void Cone<Integer>::modifyCone(InputType input_type, const Matrix<T>& Input) {
     multi_add_input[input_type] = Input.get_elements();
     modifyCone(multi_add_input);
 }
+
+
+#ifdef NMZ_EXTENDED_TESTS
+    void run_additional_tests_libnormaliz();
+#endif
 
 }  // end namespace libnormaliz
 

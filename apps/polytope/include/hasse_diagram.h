@@ -42,11 +42,11 @@ Lattice<BasicDecoration, Nonsequential> bounded_hasse_diagram_computation(
   const Int boundary_dim = -1);
 
 BigObject bounded_hasse_diagram(const IncidenceMatrix<>& VIF,
-                                   const Set<Int>& far_face,
-                                   const Int boundary_dim = -1);
+                                const Set<Int>& far_face,
+                                const Int boundary_dim = -1);
 
 BigObject rank_bounded_hasse_diagram(const IncidenceMatrix<>& VIF,
-                                        Int cone_dim, Int boundary_dim, bool from_above);
+                                     Int cone_dim, Int boundary_dim, bool from_above);
 
 inline
 BigObject lower_hasse_diagram(const IncidenceMatrix<>& VIF, Int boundary_dim)

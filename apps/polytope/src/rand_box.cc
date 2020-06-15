@@ -21,27 +21,26 @@
 
 namespace polymake { namespace polytope {
 
-BigObject rand_box(Int d, Int n, Int b, OptionSet options)
+BigObject rand_box(const Int d, const Int n, const Int b, OptionSet options)
 {
-   if (d<1 || n<1 || b<1) throw std::runtime_error("rand_box: 1 <= dim, #POINTS, b");
+   if (d<1 || n<1 || b<1)
+      throw std::runtime_error("rand_box: 1 <= dim, #POINTS, b");
 
    const RandomSeed seed(options["seed"]);
    UniformlyRandom<Integer> random(seed);
+   const auto start_seed = seed.get();
 
-   BigObject p("Polytope<Rational>");
-   p.set_description() << "Produced by rand_box for b=" << b << ", seed=" << seed.get() << endl;
-
-   p.take("CONE_AMBIENT_DIM") << d+1;
-   Matrix<Rational> V(n,d+1);
+   Matrix<Rational> V(n, d+1);
    V.col(0).fill(1);
-   ++b;
    for (Int i = 0; i < n; ++i)
       for (Int k = 1; k <= d; ++k)
-         V(i,k) = random.get()%b;
+         V(i,k) = random.get() % (b+1);
 
-   p.take("POINTS") << V;
+   BigObject p("Polytope<Rational>",
+               "CONE_AMBIENT_DIM", d+1,
+               "POINTS", V);
+   p.set_description() << "Produced by rand_box for b=" << b << ", seed=" << start_seed << endl;
    return p;
-
 }
 
 UserFunction4perl("# @category Producing a polytope from scratch"

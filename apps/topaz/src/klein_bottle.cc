@@ -23,17 +23,15 @@ namespace polymake { namespace topaz {
   
 BigObject klein_bottle()
 {
-   BigObject p("SimplicialComplex");
-   p.set_description() << "The Klein bottle.\n";
-
    const Array<Set<Int>> PJP = real_projective_plane_facets();
    const std::list<Set<Int>> C = connected_sum(PJP,PJP);
-   
-   p.take("FACETS") << C;
-   p.take("DIM") << 2;
-   p.take("MANIFOLD") << 1;
-   p.take("CLOSED_PSEUDO_MANIFOLD") << 1;
-   p.take("ORIENTED_PSEUDO_MANIFOLD") << 0;
+   BigObject p("SimplicialComplex",
+               "FACETS", C,
+               "DIM", 2,
+               "MANIFOLD", true,
+               "CLOSED_PSEUDO_MANIFOLD", true,
+               "ORIENTED_PSEUDO_MANIFOLD", false);
+   p.set_description() << "The Klein bottle.\n";
    return p;
 }
 

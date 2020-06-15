@@ -4,7 +4,234 @@ Documentation is currently being maintained at the URL:
 
 http://cgm.cs.mcgill.ca/~avis/C/lrs.html
 -----------------------------------------------------------------------------
-Current version is lrslib-060 contains changes listed below.
+
+Version 7.1 
+manual: http://cgm.cs.mcgill.ca/~avis/C/lrslib/USERGUIDE71.html
+
+2020.5.25
+Version 7.1 is a major revision completing the move to an all C library begun
+in 7.0 which was work in progress and has been removed from distribution.
+
+Major changes to lrs:
+1. redund function is now performed by lrs via options, but legacy redund maintained
+2. extract option to extract columns from the input especially with linearities
+3. hvref makes a cross reference list between H and V representations
+
+Major changes to mplrs:
+1. Temporary files no longer used for communicating with workers.
+2. Parallel version of redund is now available
+
+Thanks to David Bremner and Jerry James for advice, patches and other help!
+
+Details below
+
+2020.5.19
+
+redund binaries are no longer produced and lrs does redund
+functioning via the redund option. For a standard redund run (ie all lines checked)
+set up a link:
+%ln -s lrs redund    and if needed %ln -s lrs1 redund1 etc. for single arithmetic
+Now no options are needed and
+
+% redund filename
+
+will remove all redundant inequalities
+
+In mplrs this can be achieved by:
+
+% mpirun -np <procs> mplrs -redund filename
+
+2020.4.27
+
+Changes in mplrs relative to 7.0:
+ 1. All C++ code removed or rewritten in C; C++ compiler no longer required.
+ 2. mplrs uses the new lrslib API (2019.11.8) instead of temporary files for
+    parallel jobs.
+ 3. Support for parallel redund runs using the redund option in input files.
+ 4. Compiler warnings removed.
+ 5. Additional warning and informational messages printed when relevant.
+ 6. New option -redund, for redund runs without adding option to file.
+ 7. Avoid duplicate output lines that were possible on an overflow in
+    hybrid mode.
+ 8. Fix a rare bug that could omit output lines at the start of a run.
+
+2020.2.5
+The extract option is a preprocessing step to remove linearities (if any) and resize
+the A matrix using standard lrs processing, which is output as a valid lrs input file. 
+The resulting file will not contain any equations but may not be full dimensional.
+Options in the input file are stripped.
+User can specify the cols to retain (where this possible by linear independence).
+If there are no linearities in the input file the columns in the option are retained
+and the other ones are deleted. This is useful for projecting a V-representation.
+
+extract 0
+
+retains columns in order 1,2,...,n
+
+extract k   i1 .. ik
+
+retains columns in order i1,...,ik then the missing 1..n as necessary
+Column 0 is always retained.
+
+Use redund to remove redundancies from the output as necessary.
+A full lrs run is not performed, however output can be piped:
+
+% lrs file | redund | lrs
+
+2019.12.30
+
+hvref makes a cross reference list between H and V reps
+Usage  (same for ext file):
+
+Add  printcobasis and incidence options to cube.ine
+
+% lrs cube.ine cube.ext
+% xref cube.ext
+
+Edit the output file  cube.ext.x so that the second line contains two integers
+
+rows maxindex
+
+where rows >= # output lines in cube.ext.x
+      maxindex >= # input lines in cube.ine
+
+or just use 0 0 and the program will tell you which values to use
+
+% hvref cube.ext.x
+
+
+2019.11.8
+
+New redund option causes lrs to perform redund function:
+
+redund start end
+
+limits redundancy checking to input rows numbered start,...,end.
+Defaults  start=1 and end=m  is legacy redund and can be obtained by
+
+redund 0 0
+
+lrs_main has been rewritten as lrsv2_main to avoid temporary files in mplrs.
+It now passes pointers to P and Q back to mplrs and is called 3 times 
+according to the stage flag.
+
+stage=0  performs problem setup and reads the input file
+stage=1  performs reverse search or redund function
+stage=2  performs clean up and closes files
+
+2019.6.13
+
+If lrs is compiled with -DLRS_QUIET lrs produces an ouput file with only the data
+between the begin and end lines, ie. a matrix of the V or H representation.
+The only exception is if the input is a V-rep and output has linearities
+in which case line one has the linearity information
+
+--------------------------------------------------------------------------------------
+2019.1.5
+Various pivot rules are implemented for solving LPs using variations of the lponly option.
+To get pivot counts correct it is best to use lrsgmp at least for now
+
+lponly    default, currently Dantzig's rule
+lponly_b  Bland's rule, which is used for vertex enumeration
+lponly_d  Dantzig's rule, the only rule used up to Version 7.1           
+lponly_r  random edge rule
+lponly_rd alernates random edege and Dantzig
+
+-----------------------------------------------------------------------------
+
+2018.7.1  
+Version 7.0   (lrslib-070)
+
+User's guide: http://cgm.cs.mcgill.ca/~avis/C/lrslib/USERGUIDE70.html
+
+Recommended makes:
+%make            # lrs,redund(hybrid arithmetic), lrsgmp, redundgmp
+%make mplrs      # mplrs(hybrid arithmetic), mplrsgmp
+
+1. hybrid (64bit/128bit/GMP) arithmetic implemented:
+   speedups of roughly 3-5 times (64bit) and 2 times(128bit) over GMP for problems using small integers. 
+2. overflow checking for 64/128 bit arithmetic
+3. __int128 (gcc v.4.6.0 or later) and FLINT arithmetic now supported
+4. lrsgmp, mplrsgmp uses only GMP arithmetic, same as lrslib-062
+5. lrs/redund/mplrs start in 64 bit moving to 128 bit and then to gmp arithmetic as necessary
+6. single arithmetic versions of lrs/mplrs available for comparison purposes
+7. single arithmetic versions of lrsnash are available with overflow checking
+8. plrs is no longer supported
+9. removing the -DSAFE option disables overflow checking in 64/128 bit mode and results are unpredicable if overflow occurs
+10. mplrs now prints maximum tree depth at end and supports printcobasis option in input files
+
+Shared library:
+
+To make just the shared library, and appropriate symlinks,
+
+% make liblrs.o
+
+This is a *multiarithmatic* library that contains the lrslib API
+suffixed with _1, _2, and _gmp. To use as a replacement for the old liblrsgmp.so, use
+
+CFLAGS+= "-DGMP -DMA"
+
+The -DMA is new, and enables rewriting of your existing function call
+lrs_foo(...) to lrs_foo_gmp(...). This is C preprocessor macros, and
+is optional, you can also call the _1, _2, and _gmp versions
+directly.
+
+-----------------------------------------------------------------------------
+2016.5.27
+
+Several changes to mplrs:
+ 1. New command-line options -countonly, -stopafter <n>, -maxbuf <n>.  
+ 2. Volume output.
+ 3. Counting statistics on number of jobs, size of L, number of times
+    empty changed to longs.
+ 4. Performance improvements for problems with large outputs.
+ 
+-----------------------------------------------------------------------------
+2016.3.28
+
+Changed default to 64-bit arithmetic when using lrslong and lrsmp arithmetic. 
+For 32bit machines a -DB32 compile flag is now required for make allmp and
+for compiles of lrs1/mplrs1/plrs1.
+
+-----------------------------------------------------------------------------
+2016.1.18
+
+countonly     option follows the end line and suppresses output of vertices/rays/facets
+
+2015.11.20    Current version is lrslib-061      Version 6.1
+
+1. Contains lrsnash.c and lrsnashlib.c replacing nash.c with a library version and simpler interface
+that does not require setupnash. Big thanks to Terje Lensberg for this.
+nashdemo.c is a very basic template for setting up games and calling the library function lrs_solve_nash(game *g).
+
+To compile:
+
+% make lrsnash
+
+you get binaries lrsnash and nashdemo.
+
+% nashdemo                     just runs the demo, no parameters
+
+% lrsnash game                 finds the equlibrium for game, which is in setupnash format (recommended!)
+
+% lrsnash game1 game2          finds the equilibrium for the same game in legacy nash format
+
+The usersguide will be updated in due course
+
+2. mplrs, plrs, lrs had some memory leaks and a few other issues that are fixed in this release (hopefully and thankfully)
+
+--------------------------------------------------------------------------------
+
+
+2015.10.10
+memory leak in nash fixed
+2015.10.3
+OpenMPI has memory leaks in version 1.8.6. We tested mplrs with version 1.10.0
+and found no leaks.
+2015.9.16
+Bug in nash caused by duplicated rows and columns fixed
+2015.9.14
+Fixed some lrs memory leaks caused by nonnegative and linearity output  
 
 2015.7.13
 This a major revision of lrslib which contains mplrs.c, the MPI parallel version of lrs written by Skip Jordan and derived from plrs which was written by Gary Roumanis.
@@ -23,7 +250,12 @@ Defalut usage:
 
 where p>3 is the number of core to be used.
 
+If you use openmpi the hosts available and slots on each host may be in
+/usr/local/etc/openmpi-default-hostfile
+
 Other options available are described in http://cgm.cs.mcgill.ca/~avis/C/lrslib/USERGUIDE.html#mplrs
+
+
 In particular plots can be made during the mplrs run of the job queue length, number of processors active etc.
 
 The makefile was modified by David Bremner. Please direct any complaints to bremner@unb.ca

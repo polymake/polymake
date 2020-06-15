@@ -71,11 +71,10 @@ BigObject matroid_fan_from_flats(BigObject matroid)
   chains_incidence = chains_incidence.minor(All, ~extreme_nodes);
   rays = rays.minor(~extreme_nodes, All);
 
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("PROJECTIVE_VERTICES") << rays;
-  result.take("MAXIMAL_POLYTOPES") << chains_incidence;
-  result.take("WEIGHTS") << ones_vector<Integer>(chains_incidence.rows());
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "PROJECTIVE_VERTICES", rays,
+                   "MAXIMAL_POLYTOPES", chains_incidence,
+                   "WEIGHTS", ones_vector<Integer>(chains_incidence.rows()));
 }
 
 UserFunctionTemplate4perl("# @category Matroids"

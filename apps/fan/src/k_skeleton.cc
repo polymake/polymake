@@ -31,14 +31,13 @@ namespace polymake { namespace fan {
 template <typename Coord>
 BigObject k_skeleton(BigObject fan, const Int k)
 {
-  BigObject result("PolyhedralFan", mlist<Coord>());
-  bool is_pure = fan.give("PURE");
-  bool is_complete = fan.give("COMPLETE");
+  const bool is_pure = fan.give("PURE");
+  const bool is_complete = fan.give("COMPLETE");
   Matrix<Coord> rays = fan.give("RAYS");
   BigObject hasseDiagram = lower_hasse_diagram(fan, k, is_pure, is_complete);
-  result.take("RAYS") << rays;
-  result.take("HASSE_DIAGRAM") << hasseDiagram;
-  return result;
+  return BigObject("PolyhedralFan", mlist<Coord>(),
+                   "RAYS", rays,
+                   "HASSE_DIAGRAM", hasseDiagram);
 }
 
 UserFunctionTemplate4perl("# @category Producing a fan"

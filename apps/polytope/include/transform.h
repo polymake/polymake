@@ -53,9 +53,9 @@ void transform_section(BigObject& p_out, BigObject& p_in,
 */
 template <typename Scalar, typename TransMatrix>
 BigObject transform(BigObject p_in, const GenericMatrix<TransMatrix>& tau,
-                       bool store_reverse_transformation=true)
+                    bool store_reverse_transformation = true)
 {
-   const auto tau_inv=inv(tau);
+   const auto tau_inv = inv(tau);
 
    BigObject p_out("Polytope", mlist<Scalar>());
 

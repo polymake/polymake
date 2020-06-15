@@ -77,7 +77,7 @@ Array<Int> color_cons_ordering(const Array<Int>& C)
    return ordering;
 }
    
-void combinatorial_simplicial_product_impl (BigObject p_in1, BigObject p_in2, BigObject& p_out, Array<Int>& order1, Array<Int>& order2, OptionSet options)
+void combinatorial_simplicial_product_impl(BigObject p_in1, BigObject p_in2, BigObject& p_out, Array<Int>& order1, Array<Int>& order2, OptionSet options)
 {
    const bool no_labels = options["no_labels"];
    const Array<Set<Int>> C1 = p_in1.give("FACETS");
@@ -167,7 +167,7 @@ BigObject combinatorial_simplicial_product (BigObject p_in1, BigObject p_in2, Op
 }
 
 template <typename Scalar>
-BigObject simplicial_product (BigObject p_in1, BigObject p_in2, OptionSet options)
+BigObject simplicial_product(BigObject p_in1, BigObject p_in2, OptionSet options)
 {
    const bool realize = options["geometric_realization"];
    BigObjectType result_type = realize

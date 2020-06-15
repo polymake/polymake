@@ -176,7 +176,7 @@ find_node_permutation(const GenericGraph<TGraph1>& G1, const GenericGraph<TGraph
    if (G1.nodes() != G2.nodes())
       return nullopt;
    if (G1.nodes() <= 1)
-      return make_optional(Array<Int>(G1.nodes(), 0));
+      return polymake::make_optional(Array<Int>(G1.nodes(), 0));
    GraphIso GI1(G1), GI2(G2);
    return GI1.find_permutation(GI2);
 }
@@ -193,7 +193,7 @@ find_node_permutation(const GenericGraph<TGraph1>& G1, const Colors1& colors1,
    if (G1.nodes() <= 1) {
       if (G1.nodes() == 1 && colors1.front() != colors2.front())
          return nullopt;
-      return make_optional(Array<Int>(G1.nodes(), 0));
+      return polymake::make_optional(Array<Int>(G1.nodes(), 0));
    }
    GraphIso GI1, GI2;
    if (GraphIso::prepare_colored(GI1, G1, colors1, GI2, G2, colors2))
@@ -252,7 +252,7 @@ find_row_permutation(const GenericIncidenceMatrix<TMatrix1>& M1, const GenericIn
    if (M1.rows() != M2.rows())
       return nullopt;
    if (M1.rows() == 0)
-      return make_optional(Array<Int>());
+      return polymake::make_optional(Array<Int>());
    GraphIso GI1(M1), GI2(M2);
    return GI1.find_permutation(GI2);
 }
@@ -265,7 +265,7 @@ find_row_col_permutation(const GenericIncidenceMatrix<TMatrix1>& M1, const Gener
    if (M1.rows() != M2.rows() || M1.cols() != M2.cols())
       return nullopt;
    if (M1.rows() == 0 && M1.cols() == 0)
-      return make_optional(std::pair<Array<Int>, Array<Int>>());
+      return polymake::make_optional(std::pair<Array<Int>, Array<Int>>());
    GraphIso GI1(M1), GI2(M2);
    return GI1.find_permutations(GI2, M1.cols());
 }

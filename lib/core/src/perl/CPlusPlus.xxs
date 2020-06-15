@@ -46,7 +46,8 @@ GV *CPP_root = nullptr,
    *User_application = nullptr,
    *Debug_level = nullptr;
 SV *negative_indices_key = nullptr,
-   *Serializer_Sparse_dim_key = nullptr;
+   *Serializer_Sparse_dim_key = nullptr,
+   *temporary_value_flag = nullptr;
 
 int Object_name_index, Object_description_index,
     Object_parent_index, Object_transaction_index, Object_attachments_index,
@@ -1657,6 +1658,9 @@ BOOT:
        arg_is_const_or_rval_ref != get_named_constant(aTHX_ FuncFlag_stash, "arg_is_const_or_rval_ref"))
       Perl_croak(aTHX_ "internal error: mismatch between C++ and perl enum values for FuncFlags");
    returns_lvalue_flag = get_named_constant(aTHX_ FuncFlag_stash, "returns_lvalue");
+
+   HV* PropertyValueFlags_stash = get_named_stash(aTHX_ "Polymake::Core::PropertyValue::Flags");
+   temporary_value_flag = get_named_constant_sv(aTHX_ PropertyValueFlags_stash, "is_temporary");
 
    negative_indices_key = newSVpvn_share(NEGATIVE_INDICES_VAR, 16, 0);
    connect_cout(aTHX);

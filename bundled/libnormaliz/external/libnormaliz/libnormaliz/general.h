@@ -51,13 +51,14 @@
 
 #include "libnormaliz/my_omp.h"
 
+
 #ifdef _WIN32     // for 32 and 64 bit windows
 #define NMZ_MPIR  // always use MPIR
 #endif
 
 #ifdef NMZ_MPIR  // use MPIR
 #include <mpirxx.h>
-#else  // otherwise use GMP
+#else  // otherwise use GMP 
 #include <gmpxx.h>
 #endif
 
@@ -86,6 +87,14 @@ typedef unsigned int key_t;
 NORMALIZ_DLL_EXPORT extern bool verbose;
 NORMALIZ_DLL_EXPORT extern size_t GMP_mat, GMP_hyp, GMP_scal_prod;
 NORMALIZ_DLL_EXPORT extern size_t TotDet;
+
+#ifdef NMZ_EXTENDED_TESTS
+NORMALIZ_DLL_EXPORT extern bool test_arith_overflow_full_cone, test_arith_overflow_dual_mode;
+NORMALIZ_DLL_EXPORT extern bool test_arith_overflow_descent, test_arith_overflow_proj_and_lift;
+NORMALIZ_DLL_EXPORT extern bool test_small_pyramids, test_large_pyramids;
+NORMALIZ_DLL_EXPORT extern bool test_linear_algebra_GMP, test_simplex_parallel;
+#endif
+
 /*
  * If this variable is set to true, the current computation is interrupted and
  * an InterruptException is raised.

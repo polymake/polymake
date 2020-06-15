@@ -25,7 +25,7 @@ namespace polymake { namespace fan {
       
 template <typename Scalar>
 BigObject intersection(BigObject fan,
-                          const Matrix<Scalar>& H)
+                       const Matrix<Scalar>& H)
 {
    const Matrix<Scalar>    R   = fan.give("RAYS");
    const Matrix<Scalar>    OL  = fan.give("ORTH_LINEALITY_SPACE");
@@ -52,16 +52,14 @@ BigObject intersection(BigObject fan,
                                               index_of, next_index ));
    }
    
-   BigObject F("PolyhedralFan", mlist<Scalar>());
-
    Matrix<Scalar> ordered_rays(index_of.size(), R.cols());
    for (const auto& index_pair : index_of)
       ordered_rays[index_pair.second] = index_pair.first;
 
-   F.take("RAYS") << ordered_rays;   
-   F.take("MAXIMAL_CONES") << IncidenceMatrix<>(rays_in_max_cones.size(), index_of.size(), entire(rays_in_max_cones));
-   F.take("LINEALITY_SPACE") << intersection_lineality;
-   return F;
+   return BigObject("PolyhedralFan", mlist<Scalar>(),
+                    "RAYS", ordered_rays,
+                    "MAXIMAL_CONES", IncidenceMatrix<>(rays_in_max_cones.size(), index_of.size(), entire(rays_in_max_cones)),
+                    "LINEALITY_SPACE", intersection_lineality);
 }
       
       

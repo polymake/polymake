@@ -276,7 +276,7 @@ BigObject divisorByValueMatrix(BigObject complex, const Matrix<Rational>& values
 /**
  *	@brief Computes the (k-fold) divisor of a RationalFunction on a given cycle
  *	@param Cycle complex A tropical cycle
- *	@param RationalFunction function A rational function, the cycle should be contained in
+ *	@param TropicalRationalFunction function A rational function, the cycle should be contained in
  *	its domain (as a set, not as a polyhedral complex)
  *	@tparam Addition Min or Max.
  *	@return Cycle The divisor.

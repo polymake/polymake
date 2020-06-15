@@ -113,12 +113,10 @@ BigObject insert_leaves(BigObject curve, const Vector<Int>& nodes)
     nodes_by_leaves[n] += max_leaf;
   } //END iterate nodes
 
-  // Create result
-  BigObject result("RationalCurve");
-  result.take("SETS") << sets;
-  result.take("COEFFS") << coeffs;
-  result.take("N_LEAVES") << max_leaf;
-  return result;
+  return BigObject("RationalCurve",
+                   "SETS", sets,
+                   "COEFFS", coeffs,
+                   "N_LEAVES", max_leaf);
 }
 
 /**
@@ -133,10 +131,10 @@ Matrix<Rational> edge_rays(BigObject curve)
   Int n = curve.give("N_LEAVES");
   Matrix<Rational> result(0, n*(n-3)/2 + 2);
   for (Int s = 0; s < sets.rows(); ++s) {
-    BigObject rcurve("RationalCurve");
-    rcurve.take("SETS") << sets.minor(scalar2set(s),All);
-    rcurve.take("N_LEAVES") << n;
-    rcurve.take("COEFFS") << ones_vector<Rational>(1);
+    BigObject rcurve("RationalCurve",
+                     "SETS", sets.minor(scalar2set(s), All),
+                     "N_LEAVES", n,
+                     "COEFFS", ones_vector<Rational>(1));
     Vector<Rational> rray = call_function("matroid_coordinates_from_curve", mlist<Addition>(), rcurve);
     result /= rray;
   }
@@ -477,21 +475,19 @@ HurwitzResult hurwitz_computation(Int k, const Vector<Int>& degree, Vector<Ratio
     }
   } //END restrict
 
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("VERTICES") << thomog(subdiv_rays);
-  result.take("MAXIMAL_POLYTOPES") << subdiv_cones;
-  result.take("WEIGHTS") << subdiv_weights;
-  if (restrict_local) {
-    result=call_function("local_restrict", result, IncidenceMatrix<>(1, subdiv_local.back()+1, &subdiv_local));
-  }
+  BigObject result("Cycle", mlist<Addition>(),
+                   "VERTICES", thomog(subdiv_rays),
+                   "MAXIMAL_POLYTOPES", subdiv_cones,
+                   "WEIGHTS", subdiv_weights);
+  if (restrict_local)
+    result = call_function("local_restrict", result, IncidenceMatrix<>(1, subdiv_local.back()+1, &subdiv_local));
 
-  BigObject cycle("Cycle", mlist<Addition>());
-  cycle.take("VERTICES") << thomog(cycle_rays);
-  cycle.take("MAXIMAL_POLYTOPES") << cycle_cones;
-  cycle.take("WEIGHTS") << cycle_weights;
-  if (restrict_local) {
-    cycle=call_function("local_restrict", cycle, IncidenceMatrix<>(1, cycle_local.back()+1, &cycle_local));
-  }
+  BigObject cycle("Cycle", mlist<Addition>(),
+                  "VERTICES", thomog(cycle_rays),
+                  "MAXIMAL_POLYTOPES", cycle_cones,
+                  "WEIGHTS", cycle_weights);
+  if (restrict_local)
+    cycle = call_function("local_restrict", cycle, IncidenceMatrix<>(1, cycle_local.back()+1, &cycle_local));
 
   return { result, cycle };
 }

@@ -27,14 +27,11 @@
    is useful if arrays or matrices will be used.
  */
 
-#ifdef PLRS
-#include <string>
-using namespace std;
-#endif
 
 /***********/
 /* defines */
 /***********/
+#define suf(func) func
 /*
    this is number of longwords. Increasing this won't cost you that much
    since only variables other than the A matrix are allocated this size.
@@ -49,34 +46,23 @@ using namespace std;
    digits n
    before the begin line of your file.
  */
-#define DEFAULT_DIGITS 100L
+#define DEFAULT_DIGITS 1000L
 
 
 
 /**********MACHINE DEPENDENT CONSTANTS***********/
-/* MAXD is 2^(k-1)-1 where k=16,32,64 word size */
+/* MAXD is 2^(k-1)-1 where k is word size       */
 /* MAXD must be at least 2*BASE^2               */
 /* If BASE is 10^k, use "%k.ku" for FORMAT      */
 /* INTSIZE is number of bytes for integer       */
-/* 32/64 bit machines                           */
 /***********************************************/
-#ifndef B64
-/*32 bit machines */
-#define FORMAT "%4.4lu"
-#define MAXD 2147483647L
-#define BASE 10000L
-#define BASE_DIG 4
-#define INTSIZE 8L
-#define BIT "32bit"
-#else
 /* 64 bit machines */
-#define MAXD 9223372036854775807L
-#define BASE 1000000000L
-#define FORMAT "%9.9lu"
+#define MAXD 9223372036854775807LL
+#define BASE 1000000000LL
+#define FORMAT "%9.9llu"
 #define BASE_DIG 9
 #define INTSIZE 16L
 #define BIT "64bit"
-#endif
 
 #define MAXINPUT 1000		/*max length of any input rational */
 
@@ -139,10 +125,10 @@ extern FILE* lrs_ofp;			/* output file pointer      */
 /* typedefs  */
 /*************/
 
-typedef long lrs_mp[MAX_DIGITS + 1];	/* type lrs_mp holds one multi-precision integer */
-typedef long *lrs_mp_t;
-typedef long **lrs_mp_vector;
-typedef long ***lrs_mp_matrix;
+typedef long long lrs_mp[MAX_DIGITS + 1];	/* type lrs_mp holds one multi-precision integer */
+typedef long long *lrs_mp_t;
+typedef long long **lrs_mp_vector;
+typedef long long ***lrs_mp_matrix;
 
 /*********************************************************/
 /* Initialization and allocation procedures - must use!  */
@@ -172,18 +158,19 @@ void gcd (lrs_mp u, lrs_mp v);	/* returns u=gcd(u,v) destroying v               
 long mp_greater (lrs_mp a, lrs_mp b);	/* tests if a > b and returns (TRUE=POS)          */
 void itomp (long in, lrs_mp a);	/* convert integer i to lrs_mp                    */
 void linint (lrs_mp a, long ka, lrs_mp b, long kb);	/* compute a*ka+b*kb --> a                        */
+#ifdef PLRS
+long plrs_readrat (lrs_mp Na, lrs_mp Da, const char * rat);     /* take a rational number and convert to lrs_mp   */
+#endif
+
 void mptodouble (lrs_mp a, double *x);	/* convert lrs_mp to double                       */
 long mptoi (lrs_mp a);		/* convert lrs_mp to long integer */
+char *mpgetstr10 (char *, lrs_mp); /* convert lrs_mp to char array */
 void mulint (lrs_mp a, lrs_mp b, lrs_mp c);	/* multiply two integers a*b --> c                */
 void normalize (lrs_mp a);	/* normalize lrs_mp after computation             */
-#ifdef PLRS
-string pmp (char name[], lrs_mp a);	/* print the long precision integer a             */
-string prat (char name[], lrs_mp Nt, lrs_mp Dt);	/* reduce and print  Nt/Dt                        */
-long plrs_readrat (lrs_mp Na, lrs_mp Da, const char * rat);	/* take a rational number and convert to lrs_mp   */
-#else
-void pmp (char name[], lrs_mp a);	/* print the long precision integer a             */
-void prat (char name[], lrs_mp Nt, lrs_mp Dt);	/* reduce and print  Nt/Dt                        */
-#endif
+void pmp (const char *name, lrs_mp a);	/* print the long precision integer a             */
+void prat (const char *name, lrs_mp Nt, lrs_mp Dt);	/* reduce and print  Nt/Dt                        */
+char *cpmp(const char *name, lrs_mp Nt);             /* mp int to char  */
+char *cprat(const char *name, lrs_mp Nt, lrs_mp Dt); /* C version of prat */
 long readrat (lrs_mp Na, lrs_mp Da);	/* read a rational or int and convert to lrs_mp   */
 void reduce (lrs_mp Na, lrs_mp Da);	/* reduces Na Da by gcd(Na,Da)                    */
 
@@ -206,7 +193,7 @@ void lcm (lrs_mp a, lrs_mp b);	/* a = least common multiple of a, b; b is saved 
 void mulrat (lrs_mp Na, lrs_mp Da, lrs_mp Nb, lrs_mp Db, lrs_mp Nc, lrs_mp Dc);
 						       /* computes Nc/Dc=(Na/Da)*(Nb/Db) and reduce      */
 long myrandom (long num, long nrange);	/* return a random number in range 0..nrange-1    */
-void notimpl (char s[]);	/* bail out - help!                               */
+void notimpl (const char *s);	/* bail out - help!                               */
 void rattodouble (lrs_mp a, lrs_mp b, double *x);	/* convert lrs_mp rational to double              */
 void reduceint (lrs_mp Na, lrs_mp Da);	/* divide Na by Da and return it                  */
 void reducearray (lrs_mp_vector p, long n);	/* find gcd of p[0]..p[n-1] and divide through by */
@@ -223,9 +210,10 @@ void lrs_getdigits (long *a, long *b);	/* send digit information to user        
 
 void stringcpy (char *s, char *t);	/* copy t to s pointer version                            */
 
-void *xcalloc (long n, long s, long l, char *f);
+void *xcalloc (long n, long s, long l, const char *f);
 
 void lrs_default_digits_overflow ();
 void digits_overflow ();
+void lrs_exit(int i); 
 
 /* end of  lrsmp.h (vertex enumeration using lexicographic reverse search) */

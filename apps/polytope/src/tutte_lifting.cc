@@ -284,14 +284,12 @@ BigObject tutte_lifting(BigObject g)
       V[i][3] = Facets[in_facets.front()]*V[i];
    }
 
-   BigObject p("Polytope<Rational>");
-  
-   p.take("VERTICES") << V;
-   p.take("VERTICES_IN_FACETS") << VIF;
-   p.take("DUAL_GRAPH.ADJACENCY") << DG;
-   p.take("GRAPH.ADJACENCY") << G;
-   p.take("GRAPH.CONNECTIVITY") << connectivity; 
-   return p;
+   return BigObject("Polytope<Rational>",
+                    "VERTICES", V,
+                    "VERTICES_IN_FACETS", VIF,
+                    "DUAL_GRAPH.ADJACENCY", DG,
+                    "GRAPH.ADJACENCY", G,
+                    "GRAPH.CONNECTIVITY", connectivity);
 }
 
 UserFunction4perl("# @category Producing a polytope from graphs"

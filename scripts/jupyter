@@ -43,6 +43,7 @@ Are you sure you want to continue with the installation? [y/N]
       my $cmd = <<".";
 ( cp -RLp $Polymake::Resources/jupyter-polymake $dir && \\
  cp -RLp $Polymake::Resources/JuPyMake $dir && \\
+ $^X -pi -e 's/"display_name":"polymake"/"display_name":"polymake-$Version"/g' $dir/jupyter-polymake/setup.py && \\
  cd $dir/JuPyMake/ && python3 setup.py install --user $extraflags && \\
  cd $dir/jupyter-polymake/ && python3 setup.py install --user $extraflags ) 2>&1
 .

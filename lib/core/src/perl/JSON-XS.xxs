@@ -231,7 +231,7 @@ decode_utf8 (pTHX_ unsigned char *s, STRLEN len, STRLEN *clen)
       return ((s[0] & 0x1f) << 6) | (s[1] & 0x3f);
     }
   else
-    return utf8n_to_uvuni (s, len, clen, UTF8_CHECK_ONLY);
+    return utf8n_to_uvchr (s, len, clen, UTF8_CHECK_ONLY);
 }
 
 // likewise for encoding, also never called for ascii codepoints

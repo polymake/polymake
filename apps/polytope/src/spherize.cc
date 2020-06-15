@@ -31,15 +31,14 @@ BigObject spherize(BigObject p_in)
    if (!bounded || !centered)
       throw std::runtime_error("spherize: input polytope must be bounded and centered\n");
 
-   BigObject p_out("Polytope", mlist<Scalar>());
-   p_out.set_description() << "Spherized polytope " << p_in.name() << endl;
-
    const Matrix<double> V=p_in.give("VERTICES | POINTS");
    const Matrix<double> points= ones_vector<double>(V.rows()) | normalized(V.minor(All,range(1,V.cols()-1)));
 
-   p_out.take("POINTS") << points;
-   p_out.take("BOUNDED") << true;
-   p_out.take("CENTERED") << true;
+   BigObject p_out("Polytope", mlist<Scalar>(),
+                   "POINTS", points,
+                   "BOUNDED", true,
+                   "CENTERED", true);
+   p_out.set_description() << "Spherized polytope " << p_in.name() << endl;
    return p_out;
 }
 

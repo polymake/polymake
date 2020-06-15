@@ -42,6 +42,11 @@ HELP
   help.rules
 
 # Object encoding a finite group.
+# @example Often the group is given by a [[PERMUTATION_ACTION]].  A permutation of degree //d// is a vector which lists the //d// images of the numbers 0,1,...,//d//-1.  
+# > $action = new PermutationAction(GENERATORS => [[1,0,2],[0,2,1]]);
+# > $G = new Group(PERMUTATION_ACTION => $action);
+# > print $G->ORDER;
+# | 6
 declare object Group;
 
 # parametrized object used for encoding group actions (representations).

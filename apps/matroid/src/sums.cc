@@ -47,9 +47,9 @@ BigObject direct_sum(BigObject m1, BigObject m2)
    if (m1.lookup("BINARY_VECTORS")>>points1 && m2.lookup("BINARY_VECTORS")>>points2){
       if(m1.give("BINARY") && m2.give("BINARY")){
          m_new.take("BINARY_VECTORS") << ( points1|Matrix<Rational>(n1,rank2) ) / ( (Matrix<Rational>(n2,rank1))|points2 );
-         m_new.take("BINARY") << 1;
+         m_new.take("BINARY") << true;
       }else{
-         m_new.take("BINARY") << 0;
+         m_new.take("BINARY") << false;
       }
    }
 
@@ -91,7 +91,7 @@ BigObject direct_sum(BigObject m1, BigObject m2)
       m_new.take("BASES") << product(sets1,shift_elements(sets2, n1),operations::add());
    }
 
-   m_new.take("CONNECTED") << 0;
+   m_new.take("CONNECTED") << false;
 
    return m_new;
 }
@@ -108,22 +108,23 @@ BigObject series_extension(BigObject m1, const Int e1, BigObject m2, const Int e
    const Set<Int>& temp2 = m2.give("DUAL.LOOPS");
    if (temp1.size()>0 && temp2.size()>0) throw std::runtime_error("series-extansion: both basepoints are coloops");
 
-   BigObject m_new("Matroid");
-   m_new.set_description()<<"The series extansion of "<<m1.name()<<" and "<<m2.name()<<", with basepoints "<< e1 <<" and "<< e2 <<"."<<endl;
-   m_new.take("N_ELEMENTS")<<(n1+n2-1);
 
    const Array<Set<Int>> sets1 = m1.give("BASES");
    const Array<Set<Int>> sets2 = m2.give("BASES");
-   Array<Set<Int>> result( product(select_k(sets1, e1),
-                                   shift_elements(drop_shift(select_not_k(sets2, e2), e2), n1),
-                                   operations::add()),
-                           product(select_not_k(sets1, e1),
-                                   attach_operation(shift_elements(drop_shift(select_k(sets2, e2), e2), n1), operations::fix2<Int, operations::add>(operations::fix2<Int, operations::add>(e1))),
-                                   operations::add()),
-                           product(select_not_k(sets1, e1),
-                                   shift_elements(drop_shift(select_not_k(sets2,e2), e2), n1),
-                                   operations::add()));
-   m_new.take("BASES") << result;
+   Array<Set<Int>> bases( product(select_k(sets1, e1),
+                                  shift_elements(drop_shift(select_not_k(sets2, e2), e2), n1),
+                                  operations::add()),
+                          product(select_not_k(sets1, e1),
+                                  attach_operation(shift_elements(drop_shift(select_k(sets2, e2), e2), n1), operations::fix2<Int, operations::add>(operations::fix2<Int, operations::add>(e1))),
+                                  operations::add()),
+                          product(select_not_k(sets1, e1),
+                                  shift_elements(drop_shift(select_not_k(sets2,e2), e2), n1),
+                                  operations::add()));
+
+   BigObject m_new("Matroid",
+                   "N_ELEMENTS", n1+n2-1,
+                   "BASES", bases);
+   m_new.set_description()<<"The series extansion of "<<m1.name()<<" and "<<m2.name()<<", with basepoints "<< e1 <<" and "<< e2 <<"."<<endl;
 
    return m_new;
 }
@@ -134,10 +135,6 @@ BigObject single_element_series_extension(BigObject m, const Int e) //with Unifo
    const Int n = m.give("N_ELEMENTS");
    if (e < 0 || e >= n) throw std::runtime_error("series-extension: element out of bounds");
 
-   BigObject m_new("Matroid");
-   m_new.set_description()<<"The series extension of "<<m.name()<<" and U(1,2), with basepoints "<< e <<"."<<endl;
-   m_new.take("N_ELEMENTS")<<(n+1);
-
    Array<Set<Int>> bases = m.give("BASES");
    std::list<Set<Int>> new_bases;
    for (auto i = entire(bases); !i.at_end(); ++i) {
@@ -146,7 +143,11 @@ BigObject single_element_series_extension(BigObject m, const Int e) //with Unifo
          new_bases.push_back(*i+e);
       }
    }
-   m_new.take("BASES") <<new_bases;
+
+   BigObject m_new("Matroid",
+                   "N_ELEMENTS", n+1,
+                   "BASES", new_bases);
+   m_new.set_description()<<"The series extension of "<<m.name()<<" and U(1,2), with basepoints "<< e <<"."<<endl;
    return m_new;
 }
 
@@ -161,27 +162,25 @@ BigObject parallel_extension(BigObject m1, const Int e1, BigObject m2, const Int
    const Set<Int>& temp2 = m2.give("LOOPS");
    if (temp1.size()>0 && temp2.size()>0) throw std::runtime_error("series-extansion: both basepoints are loops");
 
-   BigObject m_new("Matroid");
-   m_new.set_description()<<"The parallel extansion of "<<m1.name()<<" and "<<m2.name()<<", with basepoints "<< e1 <<" and "<< e2 <<"."<<endl;
-   m_new.take("N_ELEMENTS")<<(n1+n2-1);
-
    const Array<Set<Int>> sets1 = m1.give("BASES");
    const Array<Set<Int>> sets2 = m2.give("BASES");
    // a set where the elements are those elements of sets1 that contain e1 in the former set and e1 is removed. 
    const Array<Set<Int>> sets3(attach_operation(select_k(sets1,e1), pm::operations::construct_unary2_with_arg<pm::SelectedSubset, operations::fix2<Int, operations::ne> >(operations::fix2<Int, operations::ne>(e1))));
 
-   Array<Set<Int>> result( product(select_k(sets1, e1),
-                                   shift_elements(drop_shift(select_k(sets2, e2), e2), n1),
-                                   operations::add()),
-                           product(select_not_k(sets1, e1),
-                                   shift_elements(drop_shift(select_k(sets2, e2), e2), n1),
-                                   operations::add()),
-                           product(sets3,
-                                   shift_elements(drop_shift(select_not_k(sets2, e2), e2), n1),
-                                   operations::add()));
+   Array<Set<Int>> bases( product(select_k(sets1, e1),
+                                  shift_elements(drop_shift(select_k(sets2, e2), e2), n1),
+                                  operations::add()),
+                          product(select_not_k(sets1, e1),
+                                  shift_elements(drop_shift(select_k(sets2, e2), e2), n1),
+                                  operations::add()),
+                          product(sets3,
+                                  shift_elements(drop_shift(select_not_k(sets2, e2), e2), n1),
+                                  operations::add()));
 
-   m_new.take("BASES") << result;
-
+   BigObject m_new("Matroid",
+                   "N_ELEMENTS", n1+n2-1,
+                   "BASES", bases);
+   m_new.set_description()<<"The parallel extansion of "<<m1.name()<<" and "<<m2.name()<<", with basepoints "<< e1 <<" and "<< e2 <<"."<<endl;
    return m_new;
 }
 
@@ -190,10 +189,6 @@ BigObject single_element_parallel_extension(BigObject m, const Int e) //with Uni
 {
    const Int n = m.give("N_ELEMENTS");
    if (e < 0 || e >= n) throw std::runtime_error("parallel-extension: element out of bounds");
-
-   BigObject m_new("Matroid");
-   m_new.set_description()<<"The parallel extension of "<<m.name()<<" and U(1,2), with basepoint "<< e <<"."<<endl;
-   m_new.take("N_ELEMENTS")<<(n+1);
 
    Array<Set<Int>> bases = m.give("BASES");
    std::list<Set<Int>> new_bases;
@@ -205,7 +200,11 @@ BigObject single_element_parallel_extension(BigObject m, const Int e) //with Uni
       }
    }
    bases.append(count, new_bases.begin());
-   m_new.take("BASES") << bases;
+
+   BigObject m_new("Matroid",
+                   "N_ELEMENTS", n+1,
+                   "BASES", bases);
+   m_new.set_description()<<"The parallel extension of "<<m.name()<<" and U(1,2), with basepoint "<< e <<"."<<endl;
    return m_new;
 }
 
@@ -220,25 +219,24 @@ BigObject two_sum(BigObject m1, const Int e1, BigObject m2, const Int e2)
    const Set<Int>& temp2 = m2.give("DUAL.LOOPS");
    if (temp1.size()>0 && temp2.size()>0) throw std::runtime_error("2-sum: both basepoints are coloops");
 
-   BigObject m_new("Matroid");
-   m_new.set_description()<<"The 2-sum of "<<m1.name()<<" and "<<m2.name()<<", with basepoints "<< e1 <<" and "<< e2 <<"."<<endl;
-   m_new.take("N_ELEMENTS")<<(n1+n2-2);
-
    const Int rank1 = m1.give("RANK");
    const Int rank2 = m2.give("RANK");
-   m_new.take("RANK") << rank1+rank2-1;
 
    const Array<Set<Int>> sets1 = m1.give("BASES");
    const Array<Set<Int>> sets2 = m2.give("BASES");
 
-   Array<Set<Int>> result( product(Array<Set<Int>>(drop_shift(select_k(sets1, e1), e1)),
-                                   shift_elements(drop_shift(select_not_k(sets2, e2), e2), n1-1),
-                                   operations::add()),
-                           product(Array<Set<Int>>(drop_shift(select_not_k(sets1, e1), e1)),
-                                   shift_elements(drop_shift(select_k(sets2, e2), e2), n1-1),
-                                   operations::add()));
-   m_new.take("BASES") << result;
+   Array<Set<Int>> bases( product(Array<Set<Int>>(drop_shift(select_k(sets1, e1), e1)),
+                                  shift_elements(drop_shift(select_not_k(sets2, e2), e2), n1-1),
+                                  operations::add()),
+                          product(Array<Set<Int>>(drop_shift(select_not_k(sets1, e1), e1)),
+                                  shift_elements(drop_shift(select_k(sets2, e2), e2), n1-1),
+                                  operations::add()));
 
+   BigObject m_new("Matroid",
+                   "N_ELEMENTS", n1+n2-2,
+                   "RANK", rank1+rank2-1,
+                   "BASES", bases);
+   m_new.set_description()<<"The 2-sum of "<<m1.name()<<" and "<<m2.name()<<", with basepoints "<< e1 <<" and "<< e2 <<"."<<endl;
    return m_new;
 }
 

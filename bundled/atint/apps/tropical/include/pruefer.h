@@ -132,11 +132,9 @@ BigObject complex_from_prueferSequences(Int n, const Matrix<Int>& pseq)
     cones[mc] += bergman_rays.rows()-1;
   }
 
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("PROJECTIVE_VERTICES") << bergman_rays; 
-  result.take("MAXIMAL_POLYTOPES") << cones;
-
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "PROJECTIVE_VERTICES", bergman_rays,
+                   "MAXIMAL_POLYTOPES", cones);
 }
 
 } }

@@ -1,5 +1,6 @@
 {"app": "common",
  "inst": [
   {"args": ["perl::Canned<const Set<Vector<Rational>>&>"], "func": "front", "include": ["polymake/Rational.h", "polymake/Set.h", "polymake/Vector.h"], "kind": "meth", "sig": "front:M"},
+  {"args": ["perl::Canned<const Set<Int>&>"], "func": "front", "include": ["polymake/Set.h"], "kind": "meth", "sig": "front:M"},
  null ],
 "version": 3}

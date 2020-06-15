@@ -32,9 +32,6 @@ namespace polymake { namespace topaz {
 Vector<Rational> thirdHorocycle(const Vector<Rational>& horo_u, const Vector<Rational>& horo_v, const Rational& lambda_uv, const Rational& lambda_vw, const Rational& lambda_wu);
 
 class DomeVolumeVisitor : public graph::NodeVisitor<> {
-
-   friend class DoublyConnectedEdgeList;
-
 public:
    // A decorated edge consists of the half edge index and a matrix for the two decorating horocycles.
    using DecoratedEdge = std::pair<Int, Matrix<Rational>>;
@@ -42,14 +39,16 @@ public:
    // Each DecoratedEdge that appears in the BFS will get an unique index via this map.
    using EdgeMap = Map<Int, DecoratedEdge>;
 
-private:
+   using DoublyConnectedEdgeList = graph::DoublyConnectedEdgeList;
+   using HalfEdge = DoublyConnectedEdgeList::HalfEdge;
 
+private:
    // The graph we want to iterate through, built during iteration.
    // Part of the dual spanning tree of the triangulation of the universal covering H^2.
    Graph<Directed>& dome_graph;
 
    // The triangulation of the surface.
-   graph::DoublyConnectedEdgeList& dcel;
+   DoublyConnectedEdgeList& dcel;
 
    // A map from the node-indices from the dome_graph to a pair of a half edge and its two horocycles.
    EdgeMap edge_map;
@@ -83,7 +82,7 @@ public:
      the triangulation dcel (containing the lambda lengths of the edges),
      the position of the first half edge via two horocycles [p_1,q_1] and [p_2,q_2]
    */
-   DomeVolumeVisitor(Graph<Directed>& G, graph::DoublyConnectedEdgeList& dcel_, const Matrix<Rational>& first_halfedge_horo)
+   DomeVolumeVisitor(Graph<Directed>& G, DoublyConnectedEdgeList& dcel_, const Matrix<Rational>& first_halfedge_horo)
       : dome_graph(G)
       , dcel(dcel_)
       , gkz_vector(dcel.getNumVertices())
@@ -114,9 +113,9 @@ public:
       const DecoratedEdge& edge_pair = edge_map[n_to];
       Vector<Rational> horo_u = edge_pair.second[0];
       Vector<Rational> horo_v = edge_pair.second[1];
-      const graph::HalfEdge* uv = dcel.getHalfEdge(edge_pair.first);
-      const graph::HalfEdge* vw = uv->getNext();
-      const graph::HalfEdge* wu = vw->getNext();
+      const HalfEdge* uv = dcel.getHalfEdge(edge_pair.first);
+      const HalfEdge* vw = uv->getNext();
+      const HalfEdge* wu = vw->getNext();
       Int u_id = dcel.getVertexId( wu->getHead() );
       Int v_id = dcel.getVertexId( uv->getHead() );
       Int w_id = dcel.getVertexId( vw->getHead() );
@@ -217,7 +216,7 @@ public:
 class DomeBuilder {
    Graph<Directed> dual_tree; // part of the dual tree of the triangulation
    Int cur_depth;
-   graph::BFSiterator< Graph<Directed>, graph::VisitorTag<topaz::DomeVolumeVisitor> > bfs_it;
+   graph::BFSiterator< Graph<Directed>, graph::VisitorTag<DomeVolumeVisitor> > bfs_it;
 
 public:
 

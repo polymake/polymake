@@ -73,12 +73,10 @@ BigObject matroid_ring_sum(BigObject c1, BigObject c2)
   // Check for zero entries
   Set<Int> supp = support(result_coefficients);
 
-  BigObject result("MatroidRingCycle", mlist<Addition>());
-  result.take("N_ELEMENTS") << n_elements;
-  result.take("NESTED_PRESENTATIONS") << result_presentation.slice(supp);
-  result.take("NESTED_COEFFICIENTS") << result_coefficients.slice(supp);
-
-  return result;
+  return BigObject("MatroidRingCycle", mlist<Addition>(),
+                   "N_ELEMENTS", n_elements,
+                   "NESTED_PRESENTATIONS", result_presentation.slice(supp),
+                   "NESTED_COEFFICIENTS", result_coefficients.slice(supp));
 }
 
 template <typename Addition>

@@ -102,6 +102,16 @@ UserFunction4perl("# @category Producing a simplicial complex from other objects
                   "# @param Matrix D the \"distance matrix\" of the point set (can be upper triangular)"
                   "# @param Rational delta"
                   "# @return SimplicialComplex"
+                  "# @example The VR-complex from 3 points (vertices of a triangle with side lengths 3, 3, and 5) for different delta:"
+                  "# > print vietoris_rips_complex(new Matrix([[0,3,3],[0,0,5],[0,0,0]]), 2)->FACETS;"
+                  "# | {0}"
+                  "# | {1}"
+                  "# | {2}"
+                  "# > print vietoris_rips_complex(new Matrix([[0,3,3],[0,0,5],[0,0,0]]), 4)->FACETS;"
+                  "# | {0 1}"
+                  "# | {0 2}"
+                  "# > print vietoris_rips_complex(new Matrix([[0,3,3],[0,0,5],[0,0,0]]), 6)->FACETS;"
+                  "# | {0 1 2}"
                   ,&vietoris_rips_complex, "vietoris_rips_complex($$)");
 
 

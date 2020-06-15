@@ -22,8 +22,8 @@ namespace polymake { namespace polytope {
 
 template<typename Scalar>
 BigObject cayley_embedding(const BigObject& p_in1, const BigObject& p_in2,
-                              const Scalar& t, const Scalar& t_prime, 
-                              OptionSet options)
+                           const Scalar& t, const Scalar& t_prime, 
+                           OptionSet options)
 {
    const Array<BigObject> p_array{ p_in1, p_in2 };
    const Vector<Scalar> t_vec{ t, t_prime };
@@ -33,7 +33,7 @@ BigObject cayley_embedding(const BigObject& p_in1, const BigObject& p_in2,
 
 template<typename Scalar>
 BigObject cayley_embedding(const Array<BigObject>& p_array,
-                              OptionSet options)
+                           OptionSet options)
 {
    Vector<Scalar> t_vec;
    options["factors"] >> t_vec;

@@ -30,10 +30,8 @@ BigObject dual_addition_version_cone(BigObject cone, bool strong = true)
 {
   Matrix<TropicalNumber<Addition,Scalar> > points = cone.give("POINTS");
 
-  BigObject result("Polytope", mlist<typename Addition::dual, Scalar>());
-  result.take("POINTS") << dual_addition_version(points,strong);
-
-  return result;
+  return BigObject("Polytope", mlist<typename Addition::dual, Scalar>(),
+                   "POINTS", dual_addition_version(points,strong));
 }
 
 // FIXME This should be a direct UserFunctionTemplate4perl as the others, but it seems to confuse
@@ -43,6 +41,3 @@ BigObject dual_addition_version_cone(BigObject cone, bool strong = true)
 FunctionTemplate4perl("dual_addition_version_cone<Addition, Scalar>(Polytope<Addition, Scalar>;$=1)");
 
 } }
-
-
-

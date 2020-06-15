@@ -23,7 +23,7 @@
 #include "polymake/Vector.h"
 #include "polymake/Graph.h"
 #include "polymake/Set.h"
-#include "polymake/RandomSpherePoints.h"
+#include "polymake/RandomPoints.h"
 #include "polymake/vector"
 #include <cmath>
 

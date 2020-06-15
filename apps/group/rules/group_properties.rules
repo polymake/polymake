@@ -17,16 +17,37 @@
 object Group {
 
    # @category Symmetry
-   # The number of elements in the group
+   # The number of elements in the group.
+   # @example The symmetric group on four elements has 4! = 24 elements.
+   # > print symmetric_group(4)->ORDER;
+   # | 24
    property ORDER : Integer;
 
    # @category Symmetry
-   # The character table.
-   # NOTE: We do not support complex characters, but for the moment only real ones.
+   # The character table. The columns are ordered the same way as [[Action::CONJUGACY_CLASS_REPRESENTATIVES|CONJUGACY_CLASS_REPRESENTATIVES]]. The rows are ordered the same way as [[Action::IRREDUCIBLE_DECOMPOSITION|IRREDUCIBLE_DECOMPOSITION]].
+   # NOTE: The current version of polymake only supports real characters, meaning polymake does not support complex characters.
+   # @example The symmetric group on three elements has three conjugacy classes, and three irreduicble representations (trivial, alternating, standard).
+   # > print symmetric_group(3)->CHARACTER_TABLE;
+   # | 1 -1 1
+   # | 2 0 -1
+   # | 1 1 1
+   # > print symmetric_group(3)->PERMUTATION_ACTION->CONJUGACY_CLASS_REPRESENTATIVES;
+   # | 0 1 2
+   # | 1 0 2
+   # | 1 2 0
+   # > print symmetric_group(3)->PERMUTATION_ACTION->IRREDUCIBLE_DECOMPOSITION;
+   # | 0 1 1
    property CHARACTER_TABLE : Matrix<QuadraticExtension<Rational>>;
    
    # @category Symmetry
    # The sizes of the conjugacy classes
+   # @example The symmetric group on three elements has three conjugacy classes, one of size 1, one of size 2, and the last of size 3.
+   # > print symmetric_group(3)->CONJUGACY_CLASS_SIZES;
+   # | 1 3 2
+   # > print symmetric_group(3)->PERMUTATION_ACTION->CONJUGACY_CLASSES;
+   # | {<0 1 2>}
+   # | {<0 2 1> <1 0 2> <2 1 0>}
+   # | {<1 2 0> <2 0 1>}
    property CONJUGACY_CLASS_SIZES : Array<Int>;
 
    #
@@ -35,54 +56,156 @@ object Group {
    #
    
    # @category Symmetry
-   # a permutation action on integers
+   # A permutation action on integers. Depending on how the group was constructed, this may or may not be availabe.
+   # @example Symmetric groups on n elements have a natural interpretation as a permutation action on the integers 0, 1, ... , n-1.
+   # > print symmetric_group(3)->PERMUTATION_ACTION->GENERATORS;
+   # | 1 0 2
+   # | 0 2 1
    property PERMUTATION_ACTION : PermutationAction : multiple;
 
    # @category Symmetry
-   # a permutation action on a collection of sets of integers
-   property SET_ACTION : PermutationAction<Set<Int>> : multiple;
+   # A permutation action on a collection of sets of integers. Depending on how the group was constructed, this may or may not be availabe.
+   # @example The symmetry group of the cube induces a group action on its facets. Each facet itself can be described by the set of vertices it contains. The outputs of this group refer to indices of sets.
+   # > $f = new Array<Set>([[0,2,4,6],[1,3,5,7],[0,1,4,5],[2,3,6,7],[0,1,2,3],[4,5,6,7]]);
+   # > print induced_action(cube_group(3)->PERMUTATION_ACTION, $f)->GENERATORS;
+   # | 1 0 2 3 4 5
+   # | 2 3 0 1 4 5
+   # | 0 1 4 5 2 3
+    property SET_ACTION : PermutationAction<Set<Int>> : multiple;
 
    # @category Symmetry
-   # an action on sets where only one representative for each orbit is stored
+   # An action on sets where only one representative for each orbit is stored. Depending on how the group the group was constructed, this may or may not be available.
+   # @example [application polytope] The symmetry group of the cube induces a group action on its maximal simplices.
+   # > $c=cube(3, group=>true, character_table=>0);
+   # > print group::induce_implicit_action($c, $c->GROUP->VERTICES_ACTION, $c->GROUP->REPRESENTATIVE_MAX_INTERIOR_SIMPLICES, "MAX_INTERIOR_SIMPLICES")->GENERATORS;
+   # | 1 0 3 2 5 4 7 6
+   # | 0 2 1 3 4 6 5 7
+   # | 0 1 4 5 2 3 6 7
    property IMPLICIT_SET_ACTION : ImplicitActionOnSets : multiple;
 
    # @category Symmetry
-   # operates on indices
+   # A group action which operates on input rays (via their indices). These input rays are commonly found in [[fan::PolyhedralFan::INPUT_RAYS]] or [[polytope::Cone::INPUT_RAYS]]. Depending on how the group was constructed, this may or may not be available.
+   # This group action could, for example, correspond to the symmetry group on the input rays.
+   # @example [application fan] The symmetry group of the fan induced by the three standard vectors in three dimensional space corresponds to the full symmetric group on 3 elements acting on the coordinates.
+   # > $g = new group::Group(HOMOGENEOUS_COORDINATE_ACTION=>group::symmetric_group(3)->PERMUTATION_ACTION);
+   # > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0,0],[0,1,0], [0,0,1]], GROUP=>$g);
+   # > print $f->GROUP->INPUT_RAYS_ACTION->GENERATORS;
+   # | 1 0 2
+   # | 0 2 1
    property INPUT_RAYS_ACTION : PermutationAction;
 
    # @category Symmetry
-   # operates on indices
+   # A group action which operates on rays (via their indices). These rays are commonly found in [[fan::PolyhedralFan::RAYS]] or [[polytope::Cone::INPUT_RAYS]]. Depending on how the group was constructed, this may or may not be available.
+   # @example [application fan] The following computes the combinatorial symmetry group of a fan, and then gives the corresponding action on its rays.
+   # > $f = new PolyhedralFan(INPUT_RAYS=>[[1,1],[1,0],[-1,-1]], INPUT_CONES=>[[0,1],[1,2]]);
+   # > combinatorial_symmetries($f);
+   # > print $f->GROUP->RAYS_ACTION->GENERATORS;
+   # | 2 1 0
    property RAYS_ACTION : PermutationAction;
 
    # @category Symmetry
-   # operates on indices
+   # A group action which operates on inequalities (via their indices). These inequalities are found in [[polytope::Polytope::INEQUALITIES]]. Depending on how the group was constructed, this may or may not be available.
+   # @example [application polytope] The full symmetry group on a right triangle with inequalties defined by x1 + x2 <= 1, x1 >= -1, x2 >=-1 is given by any permuaton of cooordinates x1, x2.
+   # > $a = new group::PermutationAction(GENERATORS=>[[1,0]]);
+   # > $g = new group::Group(HOMOGENEOUS_COORDINATE_ACTION=>$a);
+   # > $p = new Polytope(INEQUALITIES=>[[1,-1,-1],[1,0,1],[1,1,0]], GROUP=>$g);
+   # > print_constraints($p);
+   # | Inequalities:
+   # | 0: -x1 - x2 >= -1
+   # | 1: x2 >= -1
+   # | 2: x1 >= -1
+   # | 3: 0 >= -1
+   # > print $p->GROUP->INEQUALITIES_ACTION->ORBITS;
+   # | {0}
+   # | {1 2}
+   # | {3}
    property INEQUALITIES_ACTION : PermutationAction;
 
    # @category Symmetry
-   # operates on indices
+   # A group action which operates on facets (via their indices). These facets are found in [[polytope::Polytope::FACETS]]. Depending on how the group was constructed, this may or may not be available.
+   # To generate the combinatorial FACETS_ACTIONS of a general polytope, call [[polytope::combinatorial_symmetries]].
+   # @example [application polytope] The facets of a regular cube are affinely identical, i.e. the action of the symmetry group of a regular cube is transitive on the cube's facets.
+   # > $c = cube(4, group=>true);
+   # > print $c->GROUP->FACETS_ACTION->ORBITS;
+   # | {0 1 2 3 4 5 6 7}
    property FACETS_ACTION : PermutationAction;
 
    # @category Symmetry
-   # operates on indices
+   # A group action which operates on maximal cones (via their indices). These maximal cones are found in [[PolyhedralFan::MAXIMAL_CONES]]. Depending on how the group was constructed, this may or may not be available.
+   # @example [application fan] [nocompare] The following fan consists of four rays, and one can generate from one ray all four by 90-degree rotations. The combinatorial symmetry group acts transitively on the maximal cones.
+   # > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0],[0,1],[-1,0],[0,-1],[2,0]], INPUT_CONES=>[[0,1,4],[1,2],[2,3],[3,0],[0]]);
+   # > combinatorial_symmetries($f);
+   # > print $f->MAXIMAL_CONES;
+   # | {0 1}
+   # | {1 2}
+   # | {2 3}
+   # | {0 3}
+   # > print $f->GROUP->MAXIMAL_CONES_ACTION->ORBITS;
+   # | {0 1 2 3}
    property MAXIMAL_CONES_ACTION : PermutationAction;
 
    # @category Symmetry
-   # operates on indices
-   property INPUT_CONES_ACTION : group::PermutationAction;
+   # A group action which operates on input cones (via their indices). The input cones are found in [[fan::PolyhedralFan::INPUT_CONES]]. Depending on how the group was constructed, this may or may not be available.
+   # @example [application fan] The following constructs an explicit group with which the input cones may be permuted.
+   # > $a = new group::PermutationAction(GENERATORS=>[[1,0]]);
+   # > $g = new group::Group(INPUT_CONES_ACTION=>$a);
+   # > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0],[-1,0],[0,1]],INPUT_CONES=>[[0,1],[0,2],[1,2]],GROUP=>$g);
+   # > print $f->GROUP->INPUT_CONES_ACTION->ORBITS;
+   # | {0 1}
+   property INPUT_CONES_ACTION : PermutationAction;
 
    # @category Symmetry
-   # operates on indices
+   # A group action which operates on facet normals (via their indices). The facet normals are found in [[fan::PolyhedralFan::FACET_NORMALS]]. Depending on how the group was constructed, this may or may not be available.
+   # @example [application fan] [nocompare]  In the following, a fan is constructed whose facet normals are the three standard basis vectors in three dimensional space. The corresponding group can be described as any permutation of the coordinates.
+   # > $a = new group::PermutationAction(GENERATORS=>[[1,2,0]]);
+   # > $g = new group::Group(HOMOGENEOUS_COORDINATE_ACTION=>$a);
+   # > $f = new PolyhedralFan(RAYS=>[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]], MAXIMAL_CONES=>[[0,2,4],[1,2,4],[0,3,4],[1,3,4],[0,2,5],[1,2,5],[0,3,5],[1,3,5]], GROUP=>$g);
+   # > print $f->FACET_NORMALS;
+   # | 1 0 0
+   # | 0 1 0
+   # | 0 0 1
+   # > print $f->GROUP->FACET_NORMALS_ACTION->ORBITS;
+   # | {0 1 2}
    property FACET_NORMALS_ACTION : PermutationAction;
    
    # @category Symmetry
-   # operates on indices, including the '0'-th homogeneous coordinate
+   # A group action which operates on coordinates, including the '0'-th homogeneous coordinate. This can be used to generate the actions
+   # [[INPUT_RAYS_ACTION]], [[INEQUALITIES_ACTION]], [[FACET_NORMALS_ACTION]] when the corresponding actions can be interpeted as permutations
+   # of coordinates.
+   # @example [application fan] The following induces an action on input rays using a coordinates action.
+   # > $g = new group::Group(HOMOGENEOUS_COORDINATE_ACTION=>group::symmetric_group(3)->PERMUTATION_ACTION);
+   # > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0,0],[0,1,0], [0,0,1]], GROUP=>$g);
+   # > print $f->GROUP->INPUT_RAYS_ACTION->GENERATORS;
+   # | 1 0 2
+   # | 0 2 1
    property HOMOGENEOUS_COORDINATE_ACTION : PermutationAction;
 
    # @category Symmetry
-   # operates on indices
+   # A group action which operates on vectors (via their indices). These vectors can be found in [[polytope::VectorConfiguration::VECTORS]].
+   # @example [application polytope] [require bundled:sympol] The following constructs the linear symmetries on the three standard basis vectors in three dimensional space.
+   # > $v = new VectorConfiguration(VECTORS=>[[1,0,0],[0,1,0],[0,0,1]]);
+   # > linear_symmetries($v);
+   # > print $v->GROUP->VECTOR_ACTION->GENERATORS;
+   # | 1 0 2
+   # | 0 2 1
    property VECTOR_ACTION : PermutationAction;
 
    # @category Symmetry
+   # The regular representation of this group. This represents the group using permutation matrices of size [[ORDER]].
+   # @example The following constructs the regular represenation of the alternating group on five elements.
+   # > print alternating_group(5)->REGULAR_REPRESENTATION->GENERATORS;
+   # | <0 0 1 0 0
+   # | 1 0 0 0 0
+   # | 0 1 0 0 0
+   # | 0 0 0 1 0
+   # | 0 0 0 0 1
+   # | >
+   # | <0 0 0 0 1
+   # | 1 0 0 0 0
+   # | 0 1 0 0 0
+   # | 0 0 1 0 0
+   # | 0 0 0 1 0
+   # | >
    property REGULAR_REPRESENTATION : MatrixActionOnVectors<Rational>;
 }
 

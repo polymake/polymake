@@ -35,7 +35,7 @@ bool triangle_free(const GenericGraph<Graph,Undirected>& G)
    return true;
 }
 
-FunctionTemplate4perl("triangle_free(props::Graph<Undirected>)");
+FunctionTemplate4perl("triangle_free(GraphAdjacency<Undirected>)");
 
 } }
 

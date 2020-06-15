@@ -94,13 +94,9 @@ BigObject normal_fan(BigObject p)
    f.take("FAN_AMBIENT_DIM") << dim;
 
    if (has_group && gens.size()) {
-      BigObject a("group::PermutationAction");
-      a.take("GENERATORS") << gens;
-
-      BigObject g("group::Group");
+      BigObject a("group::PermutationAction", "GENERATORS", gens);
+      BigObject g("group::Group", "Aut", "RAYS_ACTION", a);
       g.set_description() << "symmetry group induced by the group of the original polytope" << endl;
-      g.set_name("Aut");
-      g.take("RAYS_ACTION") << a;
       f.take("GROUP") << g;
    }
    

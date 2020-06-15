@@ -42,9 +42,6 @@ Array<Set<Int>> torus_facets()
 
 BigObject torus()
 {
-   BigObject p("GeometricSimplicialComplex<Rational>");
-   p.set_description() << "The Császár torus. Geometric realization by Frank Lutz, Electronic Geometry Model No. 2001.02.069\n";
-
    Matrix<Rational> Coordinates={ {3, -3, 0},
                                   {-3, 3, 0},
                                   {-3, -3, 1},
@@ -53,12 +50,14 @@ BigObject torus()
                                   {1, 2, 3},
                                   {0, 0, 15} };
 
-   p.take("FACETS") << torus_facets();
-   p.take("DIM") << 2;
-   p.take("COORDINATES") << Coordinates;
-   p.take("MANIFOLD") << true;
-   p.take("CLOSED_PSEUDO_MANIFOLD") << true;
-   p.take("ORIENTED_PSEUDO_MANIFOLD") << true;
+   BigObject p("GeometricSimplicialComplex<Rational>",
+               "FACETS", torus_facets(),
+               "DIM", 2,
+               "COORDINATES", Coordinates,
+               "MANIFOLD", true,
+               "CLOSED_PSEUDO_MANIFOLD", true,
+               "ORIENTED_PSEUDO_MANIFOLD", true);
+   p.set_description() << "The Császár torus. Geometric realization by Frank Lutz, Electronic Geometry Model No. 2001.02.069\n";
    return p;
 }
 

@@ -579,10 +579,9 @@ BigObject linesInCubic(const Polynomial<TropicalNumber<Max>>& f)
   vertex_line = vertex_line.slice(~redundant_vl);
 
   // Create corresponding line objects ...............................................................
-  BigObject result("LinesInCubic", mlist<Max>());
-
-  result.take("CUBIC") << X;
-  result.take("POLYNOMIAL") << ratfct.give("NUMERATOR");
+  BigObject result("LinesInCubic", mlist<Max>(),
+                   "CUBIC", X,
+                   "POLYNOMIAL", ratfct.give("NUMERATOR"));
 
   // Create vertex_line objects:
   // If two rays in such an object span a 2-dim-cell, this is computed as follows:
@@ -590,7 +589,6 @@ BigObject linesInCubic(const Polynomial<TropicalNumber<Max>>& f)
   // If all of it lies in X, the 2-dim cell is just the vertex + the two rays. If not, let
   // w be the end vertex of the line. Then we have two 2-dim. cells: conv(vertex,w) + each of the rays
   for (Int ivert = 0; ivert < vertex_line.dim(); ++ivert) {
-    BigObject var("Cycle<Max>");
     Matrix<Rational> var_rays = degree / vertex_line[ivert].vertex ;
     RestrictedIncidenceMatrix<> var_cones;
     // Find all rays that are NOT involved in a 2-dim cell
@@ -617,6 +615,7 @@ BigObject linesInCubic(const Polynomial<TropicalNumber<Max>>& f)
         var_cones /= scalar2set(4) + scalar2set(var_rays.rows()-1) + dirs[1];
       }
     }
+    BigObject var("Cycle<Max>");
     var.take("VERTICES") << thomog(var_rays);
     const IncidenceMatrix<> var_cones_final(std::move(var_cones));
     var.take("MAXIMAL_POLYTOPES") << var_cones_final;
@@ -635,17 +634,16 @@ BigObject linesInCubic(const Polynomial<TropicalNumber<Max>>& f)
     Int missing_dir = vertexFamilyDirection(vertex_family[fvert]);
     Matrix<Rational> var_rays = vertex_family[fvert].edge / degree.minor(~scalar2set(missing_dir),All);
     const IncidenceMatrix<> var_cones{ {0,1,2}, {0,1,3}, {0,1,4} };
-    BigObject var("Cycle<Max>");
-    var.take("VERTICES") << thomog(var_rays);
-    var.take("MAXIMAL_POLYTOPES") << var_cones;
-    var.take("PURE") << false;
+    BigObject var("Cycle<Max>",
+                  "VERTICES", thomog(var_rays),
+                  "MAXIMAL_POLYTOPES", var_cones,
+                  "PURE", false);
     result.add("LIST_FAMILY_MOVING_VERTEX", var);
   }
 
   // Create edge_lines
   // Two-dimensional cells at each end are computed as for vertex_line
   for (Int el = 0; el < edge_line.dim(); ++el) {
-    BigObject var("Cycle<Max>");
     Matrix<Rational> var_rays = edge_line[el].vertexAtZero / (edge_line[el].vertexAwayZero / degree);
     RestrictedIncidenceMatrix<> var_cones;
     var_cones /= sequence(0,2);
@@ -678,6 +676,7 @@ BigObject linesInCubic(const Polynomial<TropicalNumber<Max>>& f)
       var_cones /= (scalar2set(1) + (rem[1]+2));
     }
 
+    BigObject var("Cycle<Max>");
     var.take("VERTICES") << thomog(var_rays);
     const IncidenceMatrix<> var_cones_final(std::move(var_cones));
     var.take("MAXIMAL_POLYTOPES") << var_cones_final;
@@ -692,7 +691,6 @@ BigObject linesInCubic(const Polynomial<TropicalNumber<Max>>& f)
 
   // Create edge families
   for (Int ef = 0; ef < edge_family.dim(); ++ef) {
-    BigObject var("Cycle<Max>");
     Matrix<Rational> var_rays = degree;
     RestrictedIncidenceMatrix<> var_cones;
     for (Int eg = 0; eg < edge_family[ef].edgesAtZero.dim(); ++eg) {
@@ -720,10 +718,11 @@ BigObject linesInCubic(const Polynomial<TropicalNumber<Max>>& f)
       var_cones /= Set<Int>(k_cone.slice(polytope::get_non_redundant_points(var_rays.minor(Set<Int>(k_cone), All), dummy_lineality, true).first));
     }
 
-    var.take("VERTICES") << thomog(var_rays);
     const IncidenceMatrix<> var_cones_final(std::move(var_cones));
-    var.take("MAXIMAL_POLYTOPES") << var_cones_final;
-    var.take("PURE") << false;
+    BigObject var("Cycle<Max>",
+                  "VERTICES", thomog(var_rays),
+                  "MAXIMAL_POLYTOPES", var_cones_final,
+                  "PURE", false);
     result.add("LIST_FAMILY_MOVING_EDGE", var);
   }
 

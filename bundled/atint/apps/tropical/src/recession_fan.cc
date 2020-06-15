@@ -61,11 +61,10 @@ BigObject recession_fan(BigObject complex)
   if (directional.size() == rays.rows()-1) {
     Int vertex = sorted_vertices.second.front();
     rays.row(vertex) = unit_vector<Rational>(rays.cols(), 0);
-    BigObject result("Cycle", mlist<Addition>());
-    result.take("PROJECTIVE_VERTICES") << rays;
-    result.take("MAXIMAL_POLYTOPES") << cones;
-    result.take("WEIGHTS") << weights;
-    return result;
+    return BigObject("Cycle", mlist<Addition>(),
+                     "PROJECTIVE_VERTICES", rays,
+                     "MAXIMAL_POLYTOPES", cones,
+                     "WEIGHTS", weights);
   }
 
   Matrix<Rational> newrays = rays.minor(directional,All);
@@ -101,11 +100,11 @@ BigObject recession_fan(BigObject complex)
   // Compute the complexification of the recession cones
   BigObject cplxify = make_complex<Addition>(newrays,rec_cones,newweights);
   // Extract its values and put them into the result
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("VERTICES") << cplxify.give("VERTICES");
-  result.take("MAXIMAL_POLYTOPES") << cplxify.give("MAXIMAL_POLYTOPES");
-  result.take("WEIGHTS") << cplxify.give("WEIGHTS");
-  result.take("LINEALITY_SPACE") << newlineality;
+  BigObject result("Cycle", mlist<Addition>(),
+                   "VERTICES", cplxify.give("VERTICES"),
+                   "MAXIMAL_POLYTOPES", cplxify.give("MAXIMAL_POLYTOPES"),
+                   "WEIGHTS", cplxify.give("WEIGHTS"),
+                   "LINEALITY_SPACE", newlineality);
   result.set_description() << "Recession fan of \"" << complex.description() << "\"";
   return result;
 }

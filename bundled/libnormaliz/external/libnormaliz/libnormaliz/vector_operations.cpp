@@ -297,7 +297,13 @@ renf_elem_class v_scalar_product(const vector<renf_elem_class>& av, const vector
 template <>
 mpq_class v_scalar_product(const vector<mpq_class>& av, const vector<mpq_class>& bv) {
     // loop stretching ; brings some small speed improvement
+    
+    assert(false);
+    return 0;
+    
+} 
 
+/* body removed for the time being
     mpq_class ans = 0;
     size_t i, n = av.size();
 
@@ -374,6 +380,8 @@ mpq_class v_scalar_product(const vector<mpq_class>& av, const vector<mpq_class>&
     return ans;
 }
 
+*/
+
 //---------------------------------------------------------------------------
 
 template <typename Integer>
@@ -397,6 +405,7 @@ vector<Integer> v_insert_coordinates(const vector<Integer>& v, const vector<key_
 }
 //---------------------------------------------------------------------------
 
+
 nmz_float l1norm(vector<nmz_float>& v) {
     size_t i, size = v.size();
     nmz_float g = 0;
@@ -409,6 +418,7 @@ nmz_float l1norm(vector<nmz_float>& v) {
     return g;
 }
 
+/*
 mpq_class l1norm(vector<mpq_class>& v) {
     size_t i, size = v.size();
     mpq_class g = 0;
@@ -420,6 +430,7 @@ mpq_class l1norm(vector<mpq_class>& v) {
     }
     return g;
 }
+*/
 
 /* for nmz_float is norms the vector to l_1 norm 1.
  *
@@ -451,6 +462,7 @@ Integer v_make_prime(vector<Integer>& v) {
     return g;
 }
 
+
 template <>
 nmz_float v_make_prime(vector<nmz_float>& v) {
     size_t i, size = v.size();
@@ -462,6 +474,7 @@ nmz_float v_make_prime(vector<nmz_float>& v) {
     }
     return g;
 }
+
 
 //---------------------------------------------------------------
 
@@ -486,6 +499,13 @@ vector<key_t> reverse_key(size_t n) {
     vector<key_t> key(n);
     for (size_t k = 0; k < n; ++k)
         key[k] = (n - 1) - k;
+    return key;
+}
+
+vector<key_t> random_key(size_t n) {
+    vector<key_t> key = identity_key(n);
+    for (size_t k = 0; k < 3*n; ++k)
+        swap(key[rand() % n], key[rand() % n]);
     return key;
 }
 
@@ -525,6 +545,8 @@ void v_scalar_division(vector<nmz_float>& v, const nmz_float scalar) {
     }
 }
 
+
+
 template <>
 void v_scalar_division(vector<mpq_class>& v, const mpq_class scalar) {
     size_t i, size = v.size();
@@ -533,6 +555,7 @@ void v_scalar_division(vector<mpq_class>& v, const mpq_class scalar) {
         v[i] /= scalar;
     }
 }
+
 
 #ifdef ENFNORMALIZ
 template <>
@@ -592,6 +615,7 @@ nmz_float v_standardize(vector<nmz_float>& v, const vector<nmz_float>& LF) {
     return denom;
 }
 
+/*
 template <>
 mpq_class v_standardize(vector<mpq_class>& v, const vector<mpq_class>& LF) {
     mpq_class denom = 0;
@@ -616,6 +640,7 @@ mpq_class v_standardize(vector<mpq_class>& v, const vector<mpq_class>& LF) {
 
     return denom;
 }
+*/
 
 #ifdef ENFNORMALIZ
 
@@ -681,6 +706,24 @@ mpq_class v_standardize(vector<mpq_class>& v, const vector<mpq_class>& LF){
 }
 */
 
+template <typename Integer>
+vector<Integer> v_scalar_mult_mod(const vector<Integer>& v, const Integer& scalar, const Integer& modulus) {
+    vector<Integer> w(v.size());
+    if (v_scalar_mult_mod_inner(w, v, scalar, modulus))
+        return w;
+
+#pragma omp atomic
+    GMP_scal_prod++;
+    vector<mpz_class> x, y(v.size());
+    convert(x, v);
+    v_scalar_mult_mod_inner(y, x, convertTo<mpz_class>(scalar), convertTo<mpz_class>(modulus));
+    return convertTo<vector<Integer> >(y);
+}
+
+template vector<long long> v_scalar_mult_mod<long long>(const vector<long long>&, const long long&, const long long&);
+template vector<long> v_scalar_mult_mod<long>(const vector<long>&, const long&, const long&);
+template vector<mpz_class> v_scalar_mult_mod<mpz_class>(const vector<mpz_class>&, const mpz_class&, const mpz_class&);
+
 template void v_scalar_division(vector<long>& v, const long scalar);
 template void v_scalar_division(vector<long long>& v, const long long scalar);
 template void v_scalar_division(vector<mpz_class>& v, const mpz_class scalar);
@@ -703,11 +746,29 @@ vector<bool> bitset_to_bool(const dynamic_bitset& val) {
     return ret;
 }
 
+dynamic_bitset bool_to_bitset(const vector<bool>& val) {
+    dynamic_bitset ret(val.size());
+    for (size_t i = 0; i < val.size(); ++i)
+        ret[i] = val[i];
+    return ret;
+}
+
 vector<key_t> bitset_to_key(const dynamic_bitset& val) {
     vector<key_t> ret;
     for (size_t i = 0; i < val.size(); ++i)
-        ret.push_back(i);
+        if(val[i])
+            ret.push_back(i);
     return ret;
+}
+
+dynamic_bitset key_to_bitset(const vector<key_t>& key, long size){
+    
+    dynamic_bitset bs(size);
+    for(size_t i=0; i< key.size(); ++i){
+        assert(key[i] < size);
+        bs[key[i]] = 1;        
+    }
+    return bs;    
 }
 
 }  // end namespace libnormaliz

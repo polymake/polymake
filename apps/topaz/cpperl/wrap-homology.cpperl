@@ -2,5 +2,6 @@
  "inst": [
   {"args": ["Rational", "perl::Canned<const ChainComplex<SparseMatrix<Integer, NonSymmetric>>&>"], "func": "betti_numbers", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/topaz/ChainComplex.h"], "sig": "betti_numbers:T1.X", "tp": "1"},
   {"args": ["Rational", "void"], "func": "betti_numbers", "include": ["polymake/Rational.h"], "sig": "betti_numbers:T1.B", "tp": "1"},
+  {"args": ["GF2", "perl::Canned<const ChainComplex<SparseMatrix<GF2, NonSymmetric>>&>"], "func": "betti_numbers", "include": ["polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h", "polymake/topaz/ChainComplex.h"], "sig": "betti_numbers:T1.X", "tp": 1},
  null ],
 "version": 3}

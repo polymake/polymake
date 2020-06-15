@@ -47,7 +47,7 @@ star_of(const Simplex& F, const Subdivision& S)
 }
 
 auto
-boundary_of(const std::vector<Simplex>& S)
+boundary_of(const std::vector<Simplex>& S, const Simplex& ignore)
 {
    hash_map<Simplex, Int> multiplicity_of;
    for (const auto& sigma: S)
@@ -56,7 +56,7 @@ boundary_of(const std::vector<Simplex>& S)
    
    std::vector<Simplex> boundary;
    for (const auto& m: multiplicity_of)
-      if (m.second == 1)
+      if (m.second == 1 && incl(ignore,m.first) > 0)
          boundary.push_back(m.first);
    return boundary;
 }
@@ -90,8 +90,7 @@ find_initial_subdivision(const Matrix<Scalar>& V_full,
       heights = coeffs * basis;
    }
 
-   BigObject Q("Polytope", mlist<Scalar>());
-   Q.take("POINTS") << (V_full | heights);
+   BigObject Q("Polytope", mlist<Scalar>(), "POINTS", V_full | heights);
 
    const IncidenceMatrix<> pif = Q.give("POINTS_IN_FACETS");
    const Matrix<Scalar> F = Q.give("FACETS");
@@ -108,9 +107,7 @@ std::pair<SparseMatrix<Scalar>, SparseMatrix<Scalar>>
 vertices_from_ineqs(const GenericMatrix<Matrix1, Scalar>& inequalities,
                     const GenericMatrix<Matrix2, Scalar>& equations)
 {
-   BigObject C("Cone", mlist<Scalar>());
-   C.take("INEQUALITIES") << Matrix<Scalar>(inequalities);
-   C.take("EQUATIONS") << Matrix<Scalar>(equations);
+   BigObject C("Cone", mlist<Scalar>(), "INEQUALITIES", inequalities.top(), "EQUATIONS", equations.top());
 
    SparseMatrix<Scalar> rays = C.give("RAYS");
    SparseMatrix<Scalar> lineality = C.give("LINEALITY_SPACE");
@@ -201,13 +198,13 @@ Set<Int>
 facet_indices_among_ineqs(const SparseMatrix<Scalar>& inequalities,
                           const SparseMatrix<Scalar>& rays)
 {
-   hash_map<Set<Int>, Int> index_of_zeros;
+   hash_map<Set<Int>, Set<Int>> index_of_zeros;
    Int i = 0;
    FacetList facets;
    for (auto rit = entire(rows(inequalities)); !rit.at_end(); ++rit, ++i) {
       const Set<Int> zeros = orthogonal_rows(rays, *rit);
       facets.insertMax(zeros);
-      index_of_zeros[zeros] = i; // for facets, this won't be duplicated; and we don't care about duplication for inequalities
+      index_of_zeros[zeros] += i; // for facets, this won't be duplicated; and we don't care about duplication for inequalities
    }
    Set<Int> facet_indices;
    for (auto fit = entire(facets); !fit.at_end(); ++fit)
@@ -253,7 +250,9 @@ flip_from_subdivision(const Subdivision& subdivision,
       }
       // Calculate the two unique triangulations of the circuit corresponding to the facet
       const auto T_Z_minus = star_of(neg_part, subdivision);
-      const auto T_Z_plus = join_of(pos_part, boundary_of(T_Z_minus));
+      // we need to ignore the neg_part points to avoid wrong flips
+      // on the boundary of the point configuration
+      const auto T_Z_plus = join_of(pos_part, boundary_of(T_Z_minus, neg_part));
 
 #if POLYMAKE_DEBUG         
       check_flip(T_Z_plus, T_Z_minus, subdivision);
@@ -284,7 +283,7 @@ secondary_fan_impl(const Matrix<Scalar>& V_embed,
    
    const Array<Set<Int>> initial_subdivision_array = options["initial_subdivision"];
    Subdivision initial_subdivision;
-   for (const auto s: initial_subdivision_array)
+   for (const auto& s: initial_subdivision_array)
       initial_subdivision += Simplex(s);
    
    if (!initial_subdivision.size()) {
@@ -310,14 +309,11 @@ secondary_fan_impl(const Matrix<Scalar>& V_embed,
    for (const auto& index_pair : index_of)
       ordered_rays[index_pair.second] = index_pair.first;
 
-   BigObject F("PolyhedralFan", mlist<Scalar>());
-   F.take("RAYS") << ordered_rays;   
-   F.take("MAXIMAL_CONES") << IncidenceMatrix<>(rays_in_max_cones.size(), index_of.size(), entire(rays_in_max_cones));
-   F.take("LINEALITY_SPACE") << null_space(ordered_rays / restrict_to);
-   
-   return F;
+   return BigObject("PolyhedralFan", mlist<Scalar>(),
+                    "RAYS", ordered_rays,
+                    "MAXIMAL_CONES", IncidenceMatrix<>(rays_in_max_cones.size(), index_of.size(), entire(rays_in_max_cones)),
+                    "LINEALITY_SPACE", null_space(ordered_rays / restrict_to));
 }
-
 
 FunctionTemplate4perl("secondary_fan_impl<Scalar>(Matrix<Scalar> { initial_subdivision=>undef, restrict_to=>undef, seed=>undef })");
 

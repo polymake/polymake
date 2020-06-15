@@ -1,0 +1,7 @@
+{"app": "polytope", "embed": "rand_points.cc",
+ "inst": [
+  {"args": ["AccurateFloat", "void", "void", "void"], "func": "rand_sphere", "include": ["polymake/AccurateFloat.h"], "sig": "rand_sphere:T1.x.x.o", "tp": 1},
+  {"args": ["Rational", "void", "void", "void"], "func": "rand_sphere", "include": ["polymake/Rational.h"], "sig": "rand_sphere:T1.x.x.o", "tp": 1},
+  {"args": ["AccurateFloat", "void", "void", "void"], "func": "rand_normal", "include": ["polymake/AccurateFloat.h"], "sig": "rand_normal:T1.x.x.o", "tp": 1},
+ null ],
+"version": 3}

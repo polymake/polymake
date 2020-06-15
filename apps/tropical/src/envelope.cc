@@ -42,11 +42,9 @@ BigObject envelope(const Matrix<TropicalNumber<Addition,Scalar>>& m)
 
    Vector<Scalar> normalizing_equation(unit_vector<Scalar>(n+d+1,1));
 
-   BigObject p_out("polytope::Polytope", mlist<Scalar>());
-
-   p_out.take("INEQUALITIES") << remove_zero_rows(I);
-   p_out.take("EQUATIONS") << normalizing_equation;
-   return p_out;
+   return BigObject("polytope::Polytope", mlist<Scalar>(),
+                    "INEQUALITIES", remove_zero_rows(I),
+                    "EQUATIONS", normalizing_equation);
 }
 
 FunctionTemplate4perl("envelope<Addition,Scalar>(Matrix<TropicalNumber<Addition,Scalar> >)");

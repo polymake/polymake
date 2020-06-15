@@ -88,9 +88,9 @@ Integer count_mn_cones(Int n, Int k)
   Matrix<Rational> ineq = unit_matrix<Rational>(vertex_count);
   ineq = ( -2 * ones_vector<Rational>(vertex_count)) | ineq;
 
-  BigObject p("polytope::Polytope");
-  p.take("INEQUALITIES") << ineq;
-  p.take("EQUATIONS") << eq;
+  BigObject p("polytope::Polytope",
+              "INEQUALITIES", ineq,
+              "EQUATIONS", eq);
   Matrix<Integer> latt = p.call_method("LATTICE_POINTS");
   latt = latt.minor(All, range_from(1));
 
@@ -384,9 +384,6 @@ BigObject m0n(Int n)
     }
   } //END iterate cones
 
-  std::ostringstream dsc;
-  dsc << "Moduli space M_0," << n;
-
   // Add the vertex at the origin
   rays = zero_vector<Rational>(rays.rows()) | rays;
 
@@ -398,11 +395,13 @@ BigObject m0n(Int n)
     *mc += vertex;
   }
 
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("WEIGHTS") << ones_vector<Int>(cones.rows());
-  result.take("PROJECTIVE_VERTICES") << rays;
-  result.take("MAXIMAL_POLYTOPES") << IncidenceMatrix<>{std::move(cones)};
-  result.set_description() << dsc.str();
+  const IncidenceMatrix<> result_cones{std::move(cones)};
+
+  BigObject result("Cycle", mlist<Addition>(),
+                   "WEIGHTS", ones_vector<Int>(result_cones.rows()),
+                   "PROJECTIVE_VERTICES", rays,
+                   "MAXIMAL_POLYTOPES", result_cones);
+  result.set_description() << "Moduli space M_0," << n;
   return result;
 }
 

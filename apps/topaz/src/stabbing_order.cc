@@ -118,11 +118,8 @@ Set<Int> ideal_of(Int sigma,
 
       // Check if the affine hull of the intersection of sigma and tau contain
       // the origin. If this is the case sigma is not preceeding tau
-      BigObject p_sigma("polytope::Polytope", mlist<Scalar>());
-      p_sigma.take("FACETS") << inner_facet_normals_of[sigma];
-
-      BigObject p_tau("polytope::Polytope", mlist<Scalar>());
-      p_tau.take("FACETS") << inner_facet_normals_of[tau];
+      BigObject p_sigma("polytope::Polytope", mlist<Scalar>(), "FACETS", inner_facet_normals_of[sigma]);
+      BigObject p_tau("polytope::Polytope", mlist<Scalar>(), "FACETS", inner_facet_normals_of[tau]);
 
       BigObject intersection = call_function("polytope::intersection", p_sigma, p_tau);
       Matrix<Scalar> affine_hull = intersection.give("AFFINE_HULL");
@@ -157,9 +154,7 @@ Set<Int> ideal_of(Int sigma,
       Vector<Scalar> rel_int_p = intersection.give("REL_INT_POINT");
 
       Matrix<Scalar> segment_verts = vector2row(unit_vector<Scalar>(rel_int_p.dim(), 0)) / rel_int_p;
-      BigObject segment("polytope::Polytope", mlist<Scalar>());
-      segment.take("VERTICES") << segment_verts;
-
+      BigObject segment("polytope::Polytope", mlist<Scalar>(), "VERTICES", segment_verts);
       intersection = call_function("polytope::intersection", p_sigma, segment);
 
       // check dimension of intersection. It is either -1, 0 or 1

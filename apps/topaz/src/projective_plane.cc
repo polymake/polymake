@@ -36,14 +36,13 @@ Array<Set<Int>> real_projective_plane_facets()
 
 BigObject real_projective_plane()
 {
-   BigObject p("SimplicialComplex");
+   BigObject p("SimplicialComplex",
+               "FACETS", real_projective_plane_facets(),
+               "DIM", 2,
+               "MANIFOLD", true,
+               "CLOSED_PSEUDO_MANIFOLD", true,
+               "ORIENTED_PSEUDO_MANIFOLD", false);
    p.set_description() << "Real projective plane on six vertices.\n";
-
-   p.take("FACETS") << real_projective_plane_facets();
-   p.take("DIM") << 2;
-   p.take("MANIFOLD") << 1;
-   p.take("CLOSED_PSEUDO_MANIFOLD") << 1;
-   p.take("ORIENTED_PSEUDO_MANIFOLD") << 0;
    return p;
 }
 
@@ -89,14 +88,13 @@ Array<Set<Int>> complex_projective_plane_facets()
 
 BigObject complex_projective_plane()
 {
-   BigObject p("SimplicialComplex");
+   BigObject p("SimplicialComplex",
+               "FACETS", complex_projective_plane_facets(),
+               "DIM", 4,
+               "MANIFOLD", true,
+               "CLOSED_PSEUDO_MANIFOLD", true,
+               "ORIENTED_PSEUDO_MANIFOLD", true);
    p.set_description() << "Complex projective plane on nine vertices.\n";
-
-   p.take("FACETS") << complex_projective_plane_facets();
-   p.take("DIM") << 4;
-   p.take("MANIFOLD") << 1;
-   p.take("CLOSED_PSEUDO_MANIFOLD") << 1;
-   p.take("ORIENTED_PSEUDO_MANIFOLD") << 1;
    return p;
 }
 

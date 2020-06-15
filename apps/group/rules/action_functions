@@ -59,12 +59,18 @@ user_function induce_set_action($, $, String; { store_index_of => 0 } ) {
     return $ia;
 }
 
-function induce_permutation_action($$$$$; $=0) {
-    my ($this, $from_action, $on_section, $name, $desc, $homogeneous_action) = @_;
+function induce_permutation_action($$$$$; $=0, $=0) {
+    my ($this, $from_action, $on_section, $name, $desc, $homogeneous_action, $canon) = @_;
     my $a = new PermutationAction($name);
-    $a->GENERATORS = induced_permutations($this->GROUP->$from_action->GENERATORS, $this->$on_section, homogeneous_action=>$homogeneous_action);
+    my $on = $this->$on_section;
+    if (ref($canon) eq 'CODE') {
+        # need a copy
+        $on = $on->type->construct->($on);
+        $canon->($on);
+    }
+    $a->GENERATORS = induced_permutations($this->GROUP->$from_action->GENERATORS, $on, homogeneous_action=>$homogeneous_action);
     if (defined(my $cc = $this->lookup("GROUP." . $from_action . ".CONJUGACY_CLASS_REPRESENTATIVES"))) {
-        $a->CONJUGACY_CLASS_REPRESENTATIVES = induced_permutations($cc, $this->$on_section, homogeneous_action=>$homogeneous_action);
+        $a->CONJUGACY_CLASS_REPRESENTATIVES = induced_permutations($cc, $on, homogeneous_action=>$homogeneous_action);
     }
     $a->description = $desc;
     return $a;
@@ -177,9 +183,9 @@ user_function induce_implicit_action<SetType>($,$, Array<SetType>, $) {
 
 # @category Symmetry
 # Find the automorphism group of the graph.
-# @param props::Graph graph
+# @param GraphAdjacency graph
 # @return Group
-user_function automorphism_group(props::Graph) {
+user_function automorphism_group(GraphAdjacency) {
     my ($g) = @_;
     my $action = new PermutationAction(GENERATORS=>graph::automorphisms($g));
     return new Group(PERMUTATION_ACTION=>$action);

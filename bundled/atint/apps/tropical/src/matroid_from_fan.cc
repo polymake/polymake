@@ -65,10 +65,9 @@ BigObject matroid_from_fan(BigObject cycle)
     bool empty = call_function("is_empty", inter);
     if (!empty) bases.push_back(rset);
   }
-  BigObject result("matroid::Matroid");
-  result.take("N_ELEMENTS") << n;
-  result.take("BASES") << Array<Set<Int>>(bases);
-  return result;
+  return BigObject("matroid::Matroid",
+                   "N_ELEMENTS", n,
+                   "BASES", Array<Set<Int>>(bases));
 }
 
 UserFunctionTemplate4perl("# @category Matroids"

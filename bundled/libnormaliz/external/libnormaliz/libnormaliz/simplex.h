@@ -52,6 +52,11 @@ class Full_Cone;
 template <typename Integer>
 class Collector;
 
+/* The SimplexEvaluator provides preallocated space for the comutations in simplex.cpp,
+ * especially matrices and vectors. It also collects elements for thge local Hilbert basis.
+ * The Full_Cone provides one evaluator per thread.
+ */
+
 template <typename Integer>
 class SimplexEvaluator {
     Full_Cone<Integer>* C_ptr;
@@ -175,6 +180,11 @@ class SimplexEvaluator {
     void print_all();
 };
 // class SimplexEvaluator end
+
+/* The collector collects the results of the computations in simplex.cpp. 
+ * The Full_Cpne provides one collector per thread.
+ * 
+ */
 
 template <typename Integer>
 class Collector {

@@ -92,7 +92,7 @@ sub enum_graph {
 	$node_count++;
     }
 
-    my $g=new props::Graph<Directed>($node_count);
+    my $g=new GraphAdjacency<Directed>($node_count);
     foreach ( values %passive ) {
 	my $node=$_->first;
 	my @neighbors=@{$_->second};

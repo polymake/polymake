@@ -2844,7 +2844,7 @@ T TOSolver<T, TInt>::getObj(){
 
 
 template <class T, class TInt>
-void TOSolver<T, TInt>::showOptValDetails( T optval ){
+inline void TOSolver<T, TInt>::showOptValDetails( T optval ){
 	// not requiered, has to be implemented separately for specific classes
 }
 

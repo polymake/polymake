@@ -21,42 +21,40 @@ GNU General Public License for more details.
 
 namespace polymake { namespace tropical {
 
-        template <typename Addition, typename Scalar>
-                BigObject minkowski_sum(const TropicalNumber<Addition,Scalar>& lambda, BigObject P, 
-                                const TropicalNumber<Addition,Scalar>& mu, BigObject Q)
-                {
-                        typedef TropicalNumber<Addition,Scalar> TNumber;
-                        const Matrix<TNumber> pointsP=P.give("VERTICES | POINTS"),
-                                              pointsQ=Q.give("VERTICES | POINTS");
+template <typename Addition, typename Scalar>
+BigObject minkowski_sum(const TropicalNumber<Addition,Scalar>& lambda, BigObject P, 
+                        const TropicalNumber<Addition,Scalar>& mu, BigObject Q)
+{
+   using TNumber = TropicalNumber<Addition, Scalar>;
+   const Matrix<TNumber> pointsP = P.give("VERTICES | POINTS"),
+                         pointsQ = Q.give("VERTICES | POINTS");
 
-                        if (pointsP.cols() != pointsQ.cols())
-                                throw std::runtime_error("dimension mismatch");
+   if (pointsP.cols() != pointsQ.cols())
+      throw std::runtime_error("dimension mismatch");
 
-                        Matrix<TNumber> result(pointsP.rows()*pointsQ.rows(), pointsP.cols(),
-                                        entire(product(rows(lambda * pointsP),
-                                        rows(mu *pointsQ),
-                                        operations::add())));
-                        BigObject PQ(P.type());
-                        PQ.set_description() << "Tropical Minkowski sum of " << P.name() << " and " << Q.name() << endl;
+   Matrix<TNumber> result(pointsP.rows()*pointsQ.rows(), pointsP.cols(),
+                          entire(product(rows(lambda * pointsP),
+                                         rows(mu *pointsQ),
+                                         operations::add())));
+   BigObject PQ(P.type(), "POINTS", result);
+   PQ.set_description() << "Tropical Minkowski sum of " << P.name() << " and " << Q.name() << endl;
+   return PQ;
+}
 
-                        PQ.take("POINTS") << result;
-                        return PQ;
-                }
-
-                UserFunctionTemplate4perl("# @category Producing a tropical polytope"
-                                          "# Produces the tropical polytope (//lambda// \\( \\otimes \\) //P//) \\( \\oplus \\) (//mu// \\( \\otimes \\) //Q//), where \\( \\otimes \\) and \\( \\oplus \\) are tropical scalar multiplication"
-                                          "# and tropical addition, respectively."
-                                          "# @param TropicalNumber<Addition,Scalar> lambda"
-                                          "# @param Polytope<Addition,Scalar> P"
-                                          "# @param TropicalNumber<Addition,Scalar> mu"
-                                          "# @param Polytope<Addition,Scalar> Q"
-                                          "# @return Polytope<Addition,Scalar>"
-                                          "# @example Create two tropical polytopes as tropical convex hulls of the given POINTS,"
-                                          "# and assign their tropical minkowsky sum to the variable $s."
-                                          "# > $p1 = new Polytope<Min>(POINTS=>[[0,2,0],[0,1,1],[0,0,2]]);"
-                                          "# > $p2 = new Polytope<Min>(POINTS=>[[0,-1,-1],[0,1,1],[0,0,-2]]);"
-                                          "# > $s = minkowski_sum(0, $p1, 0, $p2);",
-                                          "minkowski_sum<Addition,Scalar>($ Polytope<Addition,Scalar> $ Polytope<Addition,Scalar>)");
+UserFunctionTemplate4perl("# @category Producing a tropical polytope"
+                          "# Produces the tropical polytope (//lambda// \\( \\otimes \\) //P//) \\( \\oplus \\) (//mu// \\( \\otimes \\) //Q//), where \\( \\otimes \\) and \\( \\oplus \\) are tropical scalar multiplication"
+                          "# and tropical addition, respectively."
+                          "# @param TropicalNumber<Addition,Scalar> lambda"
+                          "# @param Polytope<Addition,Scalar> P"
+                          "# @param TropicalNumber<Addition,Scalar> mu"
+                          "# @param Polytope<Addition,Scalar> Q"
+                          "# @return Polytope<Addition,Scalar>"
+                          "# @example Create two tropical polytopes as tropical convex hulls of the given POINTS,"
+                          "# and assign their tropical minkowsky sum to the variable $s."
+                          "# > $p1 = new Polytope<Min>(POINTS=>[[0,2,0],[0,1,1],[0,0,2]]);"
+                          "# > $p2 = new Polytope<Min>(POINTS=>[[0,-1,-1],[0,1,1],[0,0,-2]]);"
+                          "# > $s = minkowski_sum(0, $p1, 0, $p2);",
+                          "minkowski_sum<Addition,Scalar>($ Polytope<Addition,Scalar> $ Polytope<Addition,Scalar>)");
 
 } }
 

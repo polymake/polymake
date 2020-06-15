@@ -24,7 +24,7 @@ namespace polymake { namespace topaz {
 
 BigObject surface(Int g)
 {
-   const bool oriented= g<0 ? false : true;
+   const bool oriented = g >= 0;
    g = abs(g);
 
    BigObject p("SimplicialComplex");

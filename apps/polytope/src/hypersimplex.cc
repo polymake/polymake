@@ -51,7 +51,7 @@ BigObject hypersimplex(Int k, Int d, OptionSet options)
    bool novif_flag = options["no_vif"];
 
    // if the hypersimplex degenerates to a simplex the formula for the facets below don't work
-   if ( k==1 || k==d-1 ) {
+   if (k == 1 || k == d-1) {
       nof_flag = novif_flag = true;
    }
 
@@ -130,13 +130,9 @@ BigObject hypersimplex(Int k, Int d, OptionSet options)
       }
       gens[1] = gen;
 
-      BigObject a("group::PermutationAction");
-      a.take("GENERATORS") << gens;
-
-      BigObject g("group::Group");
+      BigObject a("group::PermutationAction", "GENERATORS", gens);
+      BigObject g("group::Group", "fullCombinatorialGroupOnCoords");
       g.set_description() << "full combinatorial group on coordinates of " <<  "(" << k << "," << d << ")-hypersimplex" << endl;
-      g.set_name("fullCombinatorialGroupOnCoords");
-
       p.take("GROUP") << g;
       p.take("GROUP.COORDINATE_ACTION") << a;
    }

@@ -22,16 +22,12 @@
 
 namespace polymake { namespace polytope {
 
-
 BigObject reduced(Rational t, Rational x, Rational s, Rational h, Rational r)
 {
    if ((s<0.09) || (s>0.2) || (h<0.09) || (h>0.2)
        || (r<0.3) || (r>0.4) || (x<0.6) || (x>0.7)|| (t<0.5) || (t>0.6))
       throw std::runtime_error("reduced: s,h in [0.09,0.2], r in [0.3,0.4], x in [0.6,0.7], t in [0.5,0.6]");
    
-   BigObject p("Polytope<Rational>");
-   p.set_description() << "reduced 3-polytope with t=" << t << " x=" << x << " s=" << s << " h=" << h << " r=" << r << endl;
-
    Matrix<Rational> V(12,4);
    V.col(0) = ones_vector<Rational>(12);
 
@@ -56,13 +52,14 @@ BigObject reduced(Rational t, Rational x, Rational s, Rational h, Rational r)
       {0,8,9}, {1,10,11}, {2,4,5}, {3,6,7}
    };
 
-   p.take("CONE_AMBIENT_DIM") << 4;
-   p.take("CONE_DIM") << 4;
-   p.take("VERTICES") << V;
-   p.take("LINEALITY_SPACE") << Matrix<Rational>(0, 4);
-   p.take("VERTICES_IN_FACETS") << VIF;
-   p.take("BOUNDED") << true;
-
+   BigObject p("Polytope<Rational>",
+               "CONE_AMBIENT_DIM", 4,
+               "CONE_DIM", 4,
+               "VERTICES", V,
+               "LINEALITY_SPACE", Matrix<Rational>(0, 4),
+               "VERTICES_IN_FACETS", VIF,
+               "BOUNDED", true);
+   p.set_description() << "reduced 3-polytope with t=" << t << " x=" << x << " s=" << s << " h=" << h << " r=" << r << endl;
    return p;
 }
 

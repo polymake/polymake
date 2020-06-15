@@ -27,7 +27,8 @@ namespace compactification {
 
 using SD=SedentarityDecoration;
 
-BigObject compactify(BigObject pc) {
+BigObject compactify(BigObject pc)
+{
    CellularClosureOperator<SD, Rational> cco(pc);
    SedentarityDecorator sd(cco.get_int2vertices(), cco.get_farVertices());
    Lattice<SD, lattice::Nonsequential> hasseDiagram = graph::lattice_builder::compute_lattice_from_closure<SD>(cco, TrivialCut<SD>(), sd, true, std::false_type());

@@ -39,7 +39,14 @@ UserFunction4perl("# @category Comparing\n"
                   "# The problem is reduced to graph isomorphism of the vertex-facet incidence graphs.\n"
                   "# @param SimplicialComplex complex1"
                   "# @param SimplicialComplex complex2"
-                  "# @return Bool",
+                  "# @return Bool"
+                  "# @example A minimal example of two complexes with the same f-vector, which are not isomorphic:"
+                  "# > $s1 = new SimplicialComplex(FACETS=>[[0,1],[0,2],[0,3]]);"
+                  "# > $s2 = new SimplicialComplex(FACETS=>[[0,1],[1,2],[2,3]]);"
+                  "# > print isomorphic($s1,$s2);"
+                  "# | false"
+                  "# > print isomorphic($s1,$s1);"
+                  "# | true",
                   &isomorphic, "isomorphic(SimplicialComplex,SimplicialComplex)");
 
 UserFunction4perl("# @category Comparing\n"

@@ -29,14 +29,14 @@ BigObject complete(const Int n)
    for (Int i = 0; i < n-1; ++i)
      for (Int j = i+1; j < n; ++j)
        g.edge(i, j);
-   BigObject G("Graph<>");
-   G.take("N_NODES")   << n;
-   G.take("N_EDGES")   << (n*(n-1)/2);
-   G.take("DIAMETER")  << 1;
-   G.take("CONNECTED") << true;
-   G.take("BIPARTITE") << (n<=2);
-   G.take("ADJACENCY") << g;
-   G.set_description() << "Complete graph on "<<n<< " nodes."<<endl;
+   BigObject G("Graph<>",
+               "N_NODES", n,
+               "N_EDGES", (n*(n-1)/2),
+               "DIAMETER", 1,
+               "CONNECTED", true,
+               "BIPARTITE", n <= 2,
+               "ADJACENCY", g);
+   G.set_description() << "Complete graph on " << n << " nodes." << endl;
    return G;
 
 }

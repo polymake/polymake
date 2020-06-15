@@ -7,5 +7,9 @@
   {"args": ["perl::Canned<const ChainComplex<SparseMatrix<Integer, NonSymmetric>>&>", "perl::Canned<const ChainComplex<SparseMatrix<Integer, NonSymmetric>>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h", "polymake/topaz/ChainComplex.h"], "op": "_eq", "sig": "_eq:O.X.X"},
   {"class": "ChainComplex<Matrix<Rational>>", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/topaz/ChainComplex.h"], "pkg": "Polymake::topaz::ChainComplex__Matrix_A_Rational_I_NonSymmetric_Z"},
   {"args": ["ChainComplex<Matrix<Rational>>", "perl::Canned<const Array<Matrix<Rational>>&>", "void"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/topaz/ChainComplex.h"], "op": "new", "sig": "new.X.x"},
+  {"class": "ChainComplex<SparseMatrix<GF2, NonSymmetric>>", "include": ["polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h", "polymake/topaz/ChainComplex.h"], "pkg": "Polymake::topaz::ChainComplex__SparseMatrix_A_GF2_I_NonSymmetric_Z"},
+  {"args": ["ChainComplex<SparseMatrix<GF2, NonSymmetric>>"], "include": ["polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h", "polymake/topaz/ChainComplex.h"], "op": "new", "sig": "new"},
+  {"args": ["ChainComplex<SparseMatrix<GF2, NonSymmetric>>", "perl::Canned<const Array<SparseMatrix<GF2, NonSymmetric>>&>", "void"], "include": ["polymake/Array.h", "polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h", "polymake/topaz/ChainComplex.h"], "op": "new", "sig": "new.X.x"},
+  {"args": ["perl::Canned<const ChainComplex<SparseMatrix<GF2, NonSymmetric>>&>", "perl::Canned<const ChainComplex<SparseMatrix<GF2, NonSymmetric>>&>"], "include": ["polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h", "polymake/topaz/ChainComplex.h"], "op": "_eq", "sig": "_eq:O.X.X"},
  null ],
 "version": 3}

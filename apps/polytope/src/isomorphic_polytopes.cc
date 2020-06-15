@@ -62,7 +62,7 @@ UserFunction4perl("# @category Comparing"
                   "# @param Cone P1 the first cone/polytope"
                   "# @param Cone P2 the second cone/polytope"
                   "# @return Pair<Array<Int>, Array<Int>> the facet and the vertex permutations, or undef if polytopes are not isomorphic"
-                  "# @example [prefer cdd] To print the vertex permutation that maps the 3-simplex to its mirror image, type this:"
+                  "# @example [prefer cdd] [require bundled:cdd] To print the vertex permutation that maps the 3-simplex to its mirror image, type this:"
                   "# > $p = find_facet_vertex_permutations(simplex(3),scale(simplex(3),-1));"
                   "# > print $p->first;"
                   "# | 1 2 3 0",

@@ -65,9 +65,12 @@ list<vector<Integer> > l_list_x_matrix(const list<vector<Integer> >& l, const Ma
 template <typename Integer>
 void l_cut(list<vector<Integer> >& l, int size);
 // cuts all the vectors in l to a given size.
+
+/*
 template <typename Integer>
 void l_cut_front(list<vector<Integer> >& l, int size);
 // cuts all the vectors in l to a given size, maintaining the back
+*/
 
 //---------------------------------------------------------------------------
 

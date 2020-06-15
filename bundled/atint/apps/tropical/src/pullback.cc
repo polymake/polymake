@@ -36,8 +36,8 @@ namespace polymake { namespace tropical {
 			"# rational function need not be contained in the image of the morphism"
 			"# The pullback will be defined in the preimage of the domain."
 			"# @param Morphism m A morphism."
-			"# @param RationalFunction r A rational function."
-			"# @return RationalFunction The pullback m*r.",
-			"pullback<Addition>(Morphism<Addition>, RationalFunction<Addition>)");
+			"# @param TropicalRationalFunction r A rational function."
+			"# @return TropicalRationalFunction The pullback m*r.",
+			"pullback<Addition>(Morphism<Addition>, TropicalRationalFunction<Addition>)");
 
 }}

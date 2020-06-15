@@ -60,12 +60,10 @@ BigObject cross(Int d, const Scalar& s, OptionSet options)
    p.take("BOUNDED") << true;
    p.take("CENTERED") << true;
 
-   const bool
-      group_flag = options["group"],
-      character_table_flag = options["character_table"];
+   const bool group_flag = options["group"];
 
    if (group_flag)
-      add_group(p, d, "FACETS_ACTION", "VERTICES_ACTION", character_table_flag);
+      add_cube_group(p, d, "FACETS_ACTION", "VERTICES_ACTION", options["character_table"]);
 
    return p;
 }

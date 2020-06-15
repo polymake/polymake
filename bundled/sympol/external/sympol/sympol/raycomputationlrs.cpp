@@ -25,6 +25,9 @@
 #include "polyhedron.h"
 
 extern "C" {
+#ifdef HAVE_LRSDRIVER
+  #include <lrsdriver.h>
+#endif
   #include <lrslib.h>
 }
 

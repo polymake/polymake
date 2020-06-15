@@ -27,6 +27,7 @@
 #include <list>
 #include <vector>
 #include <deque>
+#include <time.h>
 //#include <set>
 
 #include "libnormaliz/general.h"
@@ -113,6 +114,8 @@ class Full_Cone {
     bool do_module_gens_intcl;
     bool do_module_rank;
     bool do_cone_dec;
+    bool do_supphyps_dynamic; // for integer hull computations where we want to insert extreme rays only
+                              // more or less ...
 
     bool exploit_automs_mult;
     bool exploit_automs_vectors;
@@ -168,6 +171,7 @@ class Full_Cone {
     // data of the cone (input or output)
     vector<Integer> Truncation;  // used in the inhomogeneous case to suppress vectors of level > 1
     vector<Integer> Norm;        // is Truncation or Grading, used to "simplify" renf_elem_vectors
+    vector<Integer> IntHullNorm;        // used in computation of integer hulls for guessing extreme rays
     Integer TruncLevel;          // used for approximation of simplicial cones
     vector<Integer> Grading;
     vector<Integer> Sorting;
@@ -246,7 +250,7 @@ class Full_Cone {
     Matrix<Integer> Embedding;  // temporary solution
 
     // the absolute top cone in recursive algorithms where faces are evalutated themselves
-    Full_Cone<Integer>* God_Father;
+    // Full_Cone<Integer>* God_Father; // not used at present
 
     // data relating a pyramid to its ancestores
     Full_Cone<Integer>* Top_Cone;  // reference to cone on top level relative to pyramid formation
@@ -391,6 +395,7 @@ class Full_Cone {
     //    void select_Hilbert_Basis(const Full_Cone& C); //experimental, unused
 
     void build_top_cone();
+    void build_cone_dynamic();
     void build_cone();
     void get_supphyps_from_copy(
         bool from_scratch,
@@ -495,7 +500,7 @@ class Full_Cone {
                                      list<vector<Integer>>& facet_vectors);
     Matrix<Integer> push_supphyps_to_cone_over_facet(const vector<Integer>& fixed_point, const key_t facet_nr);
     void import_HB_from(const IsoType<Integer>& copy);
-    bool check_extension_to_god_father();
+    // bool check_extension_to_god_father();
     void compute_multiplicity_via_recession_cone();
     void copy_autom_params(const Full_Cone<Integer>& C);
 
@@ -555,6 +560,8 @@ class Full_Cone {
     Matrix<Integer> getExcludedFaces() const;
 
     bool isComputed(ConeProperty::Enum prop) const;
+    void setComputed(ConeProperty::Enum prop);
+    void setComputed(ConeProperty::Enum prop, bool value);
 
     /*---------------------------------------------------------------------------
      *              Computation Methods
@@ -614,8 +621,8 @@ void Full_Cone<Integer>::dualize_and_restore(CONVEXHULLDATA<IntegerCone>& ConvHu
         new_facet.simplicial = (nr_gens_in_fac == dim - 1);
         new_facet.BornAt = 0;
         new_facet.Mother = 0;
-        new_facet.is_positive_on_all_original_gens = false;
-        new_facet.is_negative_on_some_original_gen = false;
+        // new_facet.is_positive_on_all_original_gens = false;
+        // new_facet.is_negative_on_some_original_gen = false;
         new_facet.Ident = HypCounter[0];
         HypCounter[0] += HypCounter.size();
 
@@ -661,8 +668,8 @@ void Full_Cone<Integer>::restore_previous_vcomputation(CONVEXHULLDATA<IntegerCon
     /* for(size_t i=0;i<start_from;++i)
         in_triang[i]=ConvHullData.in_triang[i];*/
     swap(ConvHullData.in_triang, in_triang);
-    in_triang.resize(nr_gen);
     swap(ConvHullData.GensInCone, GensInCone);
+    in_triang.resize(nr_gen);
     nrGensInCone = ConvHullData.nrGensInCone;
     swap(ConvHullData.Comparisons, Comparisons);
     Comparisons.resize(start_from);
@@ -681,8 +688,8 @@ void Full_Cone<Integer>::restore_previous_vcomputation(CONVEXHULLDATA<IntegerCon
         Ret.BornAt = Fac.BornAt;
         Ret.Ident = Fac.Ident;
         Ret.Mother = Fac.Mother;
-        Ret.is_positive_on_all_original_gens = Fac.is_positive_on_all_original_gens;
-        Ret.is_negative_on_some_original_gen = Fac.is_negative_on_some_original_gen;
+        // Ret.is_positive_on_all_original_gens = Fac.is_positive_on_all_original_gens;
+        // Ret.is_negative_on_some_original_gen = Fac.is_negative_on_some_original_gen;
         Ret.simplicial = Fac.simplicial;
 
         Facets.push_back(Ret);

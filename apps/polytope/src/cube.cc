@@ -65,12 +65,10 @@ BigObject cube(Int d, Scalar x_up, Scalar x_low, OptionSet options)
    p.take("VERTICES_IN_FACETS") << VIF;
    p.take("BOUNDED") << true;
 
-   const bool
-      group_flag = options["group"],
-      character_table_flag = options["character_table"];
+   const bool group_flag = options["group"];
 
    if (group_flag)
-      add_group(p, d, "VERTICES_ACTION", "FACETS_ACTION", character_table_flag);
+      add_cube_group(p, d, "VERTICES_ACTION", "FACETS_ACTION", options["character_table"]);
 
    return p;
 }

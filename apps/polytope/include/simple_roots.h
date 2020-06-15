@@ -63,14 +63,11 @@ root_system_impl(const SparseMatrix<E>& simple_roots)
       gens[i] = gen;
    }
 
-   BigObject a("group::PermutationAction");
-   a.take("GENERATORS") << gens;
-   BigObject g("group::Group");
-   g.take("VECTOR_ACTION") << a;
-   BigObject R("VectorConfiguration", mlist<E>());
-   R.take("VECTORS") << V;
-   R.take("GROUP") << g;
-   return R;
+   BigObject a("group::PermutationAction", "GENERATORS", gens);
+   BigObject g("group::Group", "VECTOR_ACTION", a);
+   return BigObject("VectorConfiguration", mlist<E>(),
+                    "VECTORS", V,
+                    "GROUP", g);
 }
       
 SparseMatrix<Rational> simple_roots_type_A (Int n);

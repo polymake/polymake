@@ -55,7 +55,7 @@ bool contains(const set<key>& m, const key& k) {
 //---------------------------------------------------------------------------
 
 template <typename key, typename T>
-bool exists_element(const map<key, T>& m, const key& k) {
+bool contains(const map<key, T>& m, const key& k) {
     return (m.find(k) != m.end());
 }
 

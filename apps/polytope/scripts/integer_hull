@@ -50,7 +50,7 @@ use application 'polytope';
 die "usage: polymake --script integer_hull <lp file>\n" unless @ARGV;
 
 # read file
-my $f = lp2poly("$ARGV[0]");
+my $f = lp2poly("$ARGV[0]", create_lp=>true);
 
 printf("Read file <%s>.\n", $ARGV[0]);
 

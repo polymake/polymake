@@ -338,7 +338,7 @@ property PSEUDO_REGULAR : Bool;
 # the vertices are the rays which are connected if they are
 # contained in a common two-dimensional cone.
 
-property GRAPH : objects::Graph;
+property GRAPH : Graph;
 
 rule GRAPH.NodePerm.PERMUTATION = RaysPerm.PERMUTATION;
 
@@ -347,7 +347,7 @@ rule GRAPH.NodePerm.PERMUTATION = RaysPerm.PERMUTATION;
 # are connected if they share a common facet.
 # Only defined if [[PURE]]
 
-property DUAL_GRAPH : objects::Graph;
+property DUAL_GRAPH : Graph;
 
 rule DUAL_GRAPH.NodePerm.PERMUTATION = ConesPerm.PERMUTATION;
 

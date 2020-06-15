@@ -18,7 +18,7 @@
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
-#include "polymake/RandomSpherePoints.h"
+#include "polymake/RandomPoints.h"
 
 namespace polymake { namespace common {
 

@@ -81,6 +81,8 @@ using polymake::mlist_at_rev;
 using polymake::mlist_concat;
 using polymake::mlist_contains;
 using polymake::mlist_slice;
+using polymake::mlist_even_subset;
+using polymake::mlist_odd_subset;
 using polymake::mlist_prepend_if;
 using polymake::mlist_append_if;
 using polymake::mlist_find_if;
@@ -1472,7 +1474,7 @@ T* construct_at(T* place, Args&&... args)
    return ::new((void*)place) T(std::forward<Args>(args)...);
 }
 
-#if __cplusplus < 201703L
+#if __cplusplus <= 201402L
 
 template <typename T>
 void destroy_at(T* obj)

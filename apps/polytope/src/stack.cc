@@ -211,7 +211,7 @@ BigObject stack(BigObject p_in, const pm::all_selector&, OptionSet options)
 
 BigObject stack(BigObject p_in, Int facet, OptionSet options)
 {
-   BigObject p_out=stack(p_in, scalar2set(facet), options);
+   BigObject p_out = stack(p_in, scalar2set(facet), options);
    p_out.set_description() << p_in.name() << " with facet " << facet << " stacked" << endl;
    return p_out;
 }

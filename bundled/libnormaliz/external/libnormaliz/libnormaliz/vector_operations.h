@@ -122,6 +122,7 @@ void v_bool_entry_swap(vector<bool>& v, size_t i, size_t j);
 
 vector<key_t> identity_key(size_t n);
 vector<key_t> reverse_key(size_t n);
+vector<key_t> random_key(size_t n);
 
 template <typename T>
 void order_by_perm(vector<T>& v, const vector<key_t>& permfix) {
@@ -183,21 +184,11 @@ bool v_scalar_mult_mod_inner(vector<Integer>& w, const vector<Integer>& v, const
 }
 
 template <typename Integer>
-vector<Integer> v_scalar_mult_mod(const vector<Integer>& v, const Integer& scalar, const Integer& modulus) {
-    vector<Integer> w(v.size());
-    if (v_scalar_mult_mod_inner(w, v, scalar, modulus))
-        return w;
-
-#pragma omp atomic
-    GMP_scal_prod++;
-    vector<mpz_class> x, y(v.size());
-    convert(x, v);
-    v_scalar_mult_mod_inner(y, x, convertTo<mpz_class>(scalar), convertTo<mpz_class>(modulus));
-    return convertTo<vector<Integer> >(y);
-}
+vector<Integer> v_scalar_mult_mod(const vector<Integer>& v, const Integer& scalar, const Integer& modulus);
 
 //---------------------------------------------------------------------------
 
+/*
 template <typename Integer>
 size_t v_nr_negative(const vector<Integer>& v) {
     size_t tmp = 0;
@@ -207,7 +198,7 @@ size_t v_nr_negative(const vector<Integer>& v) {
     }
     return tmp;
 }
-
+*/
 //---------------------------------------------------------------------------
 
 template <typename Integer>
@@ -220,6 +211,7 @@ bool v_non_negative(const vector<Integer>& v) {
 }
 
 //---------------------------------------------------------------------------
+/*
 // returns a key vector containing the positions of non-zero entrys of v
 template <typename Integer>
 vector<key_t> v_non_zero_pos(const vector<Integer>& v) {
@@ -233,6 +225,7 @@ vector<key_t> v_non_zero_pos(const vector<Integer>& v) {
     }
     return key;
 }
+*/
 
 //---------------------------------------------------------------------------
 // returns the vector of absolute values, does not change the argument
@@ -314,6 +307,7 @@ Integer v_lcm(const vector<Integer>& v) {
     return g;
 }
 
+
 // returns lcm of the elements of v from index k up to index j
 template <typename Integer>
 Integer v_lcm_to(const vector<Integer>& v, const size_t k, const size_t j) {
@@ -328,6 +322,7 @@ Integer v_lcm_to(const vector<Integer>& v, const size_t k, const size_t j) {
     }
     return g;
 }
+
 
 //---------------------------------------------------------------------------
 
@@ -435,6 +430,7 @@ void v_add_result(vector<Integer>& result, const size_t s, const vector<Integer>
 }
 
 //---------------------------------------------------------------------------
+/*
 // returns a new vector with the last size entries of v
 template <typename T>
 vector<T> v_cut_front(const vector<T>& v, size_t size) {
@@ -446,6 +442,7 @@ vector<T> v_cut_front(const vector<T>& v, size_t size) {
     }
     return tmp;
 }
+*/
 
 //---------------------------------------------------------------------------
 
@@ -513,6 +510,7 @@ void v_el_trans(const vector<Integer>& av, vector<Integer>& bv, const Integer& F
             throw ArithmeticException("Vector entry out of range. Imminent danger of arithmetic overflow.");
 }
 
+/*
 template <typename Integer>
 Integer v_max_abs(const vector<Integer>& v) {
     Integer tmp = 0;
@@ -522,6 +520,7 @@ Integer v_max_abs(const vector<Integer>& v) {
     }
     return tmp;
 }
+*/
 
 template <typename Integer>
 Integer v_standardize(vector<Integer>& v, const vector<Integer>& LF);
@@ -531,6 +530,8 @@ Integer v_standardize(vector<Integer>& v);
 
 vector<bool> bitset_to_bool(const dynamic_bitset& BS);
 vector<key_t> bitset_to_key(const dynamic_bitset& BS);
+dynamic_bitset bool_to_bitset(const vector<bool>& val);
+dynamic_bitset key_to_bitset(const vector<key_t>& key, long size);
 
 template <typename Integer>
 inline void make_integral(vector<Integer>& vec) {

@@ -19,7 +19,6 @@
 #include "polymake/Rational.h"
 #include "polymake/SparseMatrix.h"
 
-
 namespace polymake { namespace polytope {
 
 template<typename Scalar>
@@ -36,21 +35,19 @@ BigObject create_delpezzo(const Int d, const Scalar& s, const bool pseudo_flag)
 
    const Int n_vertices = pseudo_flag ? 2*d+1 : 2*d+2;
 
-   BigObject p("Polytope", mlist<Scalar>());
-   p.set_description() << "del-pezzo-polytope of dimension " << d << endl;
-
    SparseMatrix<Scalar> V((s*unit_matrix<Scalar>(d)) / ((-s)*unit_matrix<Scalar>(d)) / (s*ones_vector<Scalar>(d)));
-   if (!pseudo_flag) V /= ((-s)*ones_vector<Scalar>(d));
+   if (!pseudo_flag) V /= -s*ones_vector<Scalar>(d);
    V = ones_vector<Scalar>() | V;
 
-   p.take("CONE_AMBIENT_DIM") << d+1;
-   p.take("CONE_DIM") << d+1;
-   p.take("N_VERTICES") << n_vertices;
-   p.take("VERTICES") << V;
-   p.take("BOUNDED") << true;
-   p.take("CENTERED") << true;
-   p.take("FEASIBLE") << true;
-
+   BigObject p("Polytope", mlist<Scalar>(),
+               "CONE_AMBIENT_DIM", d+1,
+               "CONE_DIM", d+1,
+               "N_VERTICES", n_vertices,
+               "VERTICES", V,
+               "BOUNDED", true,
+               "CENTERED", true,
+               "FEASIBLE", true);
+   p.set_description() << "del-pezzo-polytope of dimension " << d << endl;
    return p;
 }
 

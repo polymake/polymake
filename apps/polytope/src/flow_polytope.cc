@@ -93,18 +93,17 @@ BigObject flow_polytope(const Graph<Directed> G, const EdgeMap<Directed,Scalar> 
    }
    ineqs(G.edges()+2,0) = 1; // far face
 
-   // output
-   BigObject p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>(),
+                   "INEQUALITIES", ineqs,
+                   "EQUATIONS", remove_zero_rows(eqs),
+                   "FEASIBLE", true,
+                   "VALID_POINT", unit_vector<Scalar>(G.edges()+1, 0));
    p_out.set_description() << "flow polytope of a Graph" << endl;   
-   p_out.take("INEQUALITIES") << ineqs;
-   p_out.take("EQUATIONS") << remove_zero_rows(eqs);
-   p_out.take("FEASIBLE") << 1;
-   p_out.take("VALID_POINT") << unit_vector<Scalar>(G.edges()+1,0);
    return p_out;
 }
 
 template <typename Scalar>
-BigObject flow_polytope(const BigObject G_in, const Array<Scalar> &arc_bounds, Int source, Int sink)
+BigObject flow_polytope(const BigObject G_in, const Array<Scalar>& arc_bounds, Int source, Int sink)
 {
    Graph<Directed> G = G_in.give("ADJACENCY");
    EdgeMap<Directed,Scalar> EM(G);
@@ -131,13 +130,13 @@ UserFunctionTemplate4perl("# @category Producing a polytope from graphs"
                   "# "
                   "#   forall e in E:"
                   "#     x_e <= given bound on edge e "
-                  "# @param Graph<Directed> G"
+                  "# @param GraphAdjacency<Directed> G"
                   "# @param EdgeMap<Directed, Scalar> Arc_Bounds"
                   "# @param Int source"
                   "# @param Int sink"
                   "# @tparam Scalar"
                   "# @return Polytope",
-                  "flow_polytope<Scalar>(props::Graph EdgeMap<Directed,Scalar> $ $)");
+                  "flow_polytope<Scalar>(GraphAdjacency EdgeMap<Directed,Scalar> $ $)");
 
 UserFunctionTemplate4perl("# @category Producing a polytope from graphs"
                   "# Produces the flow polytope of a directed Graph //G//=(V,E)"

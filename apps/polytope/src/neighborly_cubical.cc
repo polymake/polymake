@@ -132,9 +132,6 @@ BigObject neighborly_cubical(Int d, Int n)
   if (d < 2 || d > n || n > m)
     throw std::runtime_error("neighborly_cubical: 2 <= d <= n <= " + std::to_string(m));
 
-  BigObject p_out("Polytope<Rational>"); //FIXME: Polytope<Combinatorial>
-  p_out.set_description() << "Neighborly cubical " << d << "-polytope" << endl;
-
   const Int n_vertices = 1L << n;
 
   // produce a combinatorial description of the n-cube
@@ -187,9 +184,11 @@ BigObject neighborly_cubical(Int d, Int n)
    add_facet(VIF, labels, circuit+(2*pm1), CubeFacets);
    add_facet(VIF, labels, circuit+(2*pm1+1), CubeFacets);
 
-   p_out.take("VERTICES_IN_FACETS") << IncidenceMatrix<>(std::move(VIF));
-   p_out.take("N_VERTICES") << n_vertices;
-   p_out.take("FACET_LABELS") << labels;
+   BigObject p_out("Polytope<Rational>",
+                   "VERTICES_IN_FACETS", IncidenceMatrix<>(std::move(VIF)),
+                   "N_VERTICES", n_vertices,
+                   "FACET_LABELS", labels);
+   p_out.set_description() << "Neighborly cubical " << d << "-polytope" << endl;
    return p_out;
 }
 

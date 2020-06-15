@@ -1,0 +1,5 @@
+{"app": "fan", "embed": "reverse_search_cell_decomposition.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "cell_decomposition_rs", "include": ["polymake/Rational.h"], "sig": "cell_decomposition_rs:T1.B", "tp": 1},
+ null ],
+"version": 3}

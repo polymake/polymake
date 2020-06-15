@@ -24,12 +24,12 @@
 #  https://polymake.org
 #
 #
-#  Defines properties and rules for RationalFunction 
+#  Defines properties and rules for TropicalRationalFunction
 ########################################################################
 
 
 # @Category Combinatorics
-object RationalFunction {
+object TropicalRationalFunction {
 
    # Operator overload
    # Fallback=> TRUE is needed to that perl can implement missing operators such as == in the usual manner.
@@ -66,7 +66,7 @@ object RationalFunction {
    # rational function with the ^-operator, this property is set to the exponent. 
    # The semantics is that when computing a divisor, this function should be applied so many times
    # The usual application of this is a call to divisor($X, $f^4) or something similar.
-   # Warning: This property is not stored if the RationalFunction object is saved. Nor should be assumed
+   # Warning: This property is not stored if the TropicalRationalFunction object is saved. Nor should be assumed
    # to be preserved during any kind of arithmetic or restricting operation.
    property POWER : Int : non_storable;
 
@@ -121,11 +121,11 @@ object RationalFunction {
    }
 
    # @category Defining morphisms and functions
-   # Computes the restriction of this RationalFunction on a given Cycle.
+   # Computes the restriction of this TropicalRationalFunction on a given Cycle.
    # The cycle need not be contained in the [[DOMAIN]] of the function, the restriction
    # will be computed on the intersection of the cycle and the [[DOMAIN]].
    # @param Cycle<Addition> C The new domain.
-   # @return RationalFunction<Addition>
+   # @return TropicalRationalFunction<Addition>
    user_method restrict(Cycle<Addition>) {
       my ($f,$X) = @_;
 
@@ -153,14 +153,14 @@ object RationalFunction {
       }
       if (defined($this->lookup("NUMERATOR"))) {
          if (defined($this->lookup("DOMAIN"))) {
-            return new RationalFunction<Addition>(NUMERATOR=>$this->NUMERATOR, DENOMINATOR=>$this->DENOMINATOR,
+            return new TropicalRationalFunction<Addition>(NUMERATOR=>$this->NUMERATOR, DENOMINATOR=>$this->DENOMINATOR,
                                                   DOMAIN=>$this->DOMAIN, POWER=>$k);
          } else {
-            return new RationalFunction<Addition>(NUMERATOR=>$this->NUMERATOR, DENOMINATOR=>$this->DENOMINATOR,
+            return new TropicalRationalFunction<Addition>(NUMERATOR=>$this->NUMERATOR, DENOMINATOR=>$this->DENOMINATOR,
                                                   POWER=>$k);
          }
       }
-      return new RationalFunction<Addition>(DOMAIN=>$this->DOMAIN, VERTEX_VALUES=>$this->VERTEX_VALUES,
+      return new TropicalRationalFunction<Addition>(DOMAIN=>$this->DOMAIN, VERTEX_VALUES=>$this->VERTEX_VALUES,
                                             LINEALITY_VALUES=>$this->LINEALITY_VALUES,POWER=>$k);
    }
 
@@ -191,7 +191,7 @@ object RationalFunction {
          die "Rational functions use different tropical additions.";
       }
       if (defined($f->lookup("NUMERATOR")) && defined($g->lookup("NUMERATOR"))) {
-         return new RationalFunction<Addition>(NUMERATOR=>($f->NUMERATOR * $g->NUMERATOR),
+         return new TropicalRationalFunction<Addition>(NUMERATOR=>($f->NUMERATOR * $g->NUMERATOR),
                                                DENOMINATOR=>($f->DENOMINATOR * $g->DENOMINATOR));
       } else {
          return add_rational_functions($f,$g);
@@ -218,7 +218,7 @@ object RationalFunction {
             $nvars = $ambient_dim;
          }
          $zero = new Polynomial<TropicalNumber<Addition>>(new TropicalNumber<Addition>(0), $nvars);
-         return new RationalFunction<Addition>(NUMERATOR=>$zero, DENOMINATOR=>$zero);
+         return new TropicalRationalFunction<Addition>(NUMERATOR=>$zero, DENOMINATOR=>$zero);
       }
       if (defined($this->lookup("NUMERATOR"))) {
          my $num = new Polynomial<TropicalNumber<Addition>>($this->NUMERATOR);
@@ -228,9 +228,9 @@ object RationalFunction {
             $num *= $num;
             $den *= $den;
          }
-         return new RationalFunction<Addition>(NUMERATOR=>($r > 0? $num : $den), DENOMINATOR=>($r > 0? $den : $num));
+         return new TropicalRationalFunction<Addition>(NUMERATOR=>($r > 0? $num : $den), DENOMINATOR=>($r > 0? $den : $num));
       } else {
-         return new RationalFunction<Addition>(DOMAIN=>$this->DOMAIN,VERTEX_VALUES=>$r*($this->VERTEX_VALUES),
+         return new TropicalRationalFunction<Addition>(DOMAIN=>$this->DOMAIN,VERTEX_VALUES=>$r*($this->VERTEX_VALUES),
                                                LINEALITY_VALUES=>$r*($this->LINEALITY_VALUES));
       }
    }
@@ -246,7 +246,7 @@ object RationalFunction {
 # a rational function on tropical homogeneous coordinates
 # @param Polynomial<TropicalNumber<Addition>> p A polynomial on affine coordinates.
 # @param Int chart The index of the homogenizing coordinate. 0 by default.
-# @return RationalFunction A rational function, which on the given chart is described by p.
+# @return TropicalRationalFunction A rational function, which on the given chart is described by p.
 user_function rational_fct_from_affine_numerator<Addition>(Polynomial<TropicalNumber<Addition>>; $=0) {
    my ($p, $chart) = @_;
    return homogenize_quotient($p,
@@ -259,7 +259,7 @@ user_function rational_fct_from_affine_numerator<Addition>(Polynomial<TropicalNu
 # a string which it converts to a tropical polynomial using [[toTropicalPolynomial]].
 # @param String p A string that will be converted to a tropical polynomial
 # @param Int chart The index of the homogenizing coordinate. 0 by default.
-# @return RationalFunction 
+# @return TropicalRationalFunction 
 user_function rational_fct_from_affine_numerator(String; $=0) {
    my ($s, $chart) = @_;
    return rational_fct_from_affine_numerator(toTropicalPolynomial($s), $chart);
@@ -270,7 +270,7 @@ user_function rational_fct_from_affine_numerator(String; $=0) {
 # the rational function (1/p) on tropical homogeneous coordinates
 # @param Polynomial<TropicalNumber<Addition>> p A polynomial on affine coordinates.
 # @param Int chart The index of the homogenizing coordinate. 0 by default.
-# @return RationalFunction A rational function, which on the given chart is described by (1/p).
+# @return TropicalRationalFunction A rational function, which on the given chart is described by (1/p).
 user_function rational_fct_from_affine_denominator<Addition>(Polynomial<TropicalNumber<Addition>>; $=0) {
    my ($p, $chart) = @_;
    return homogenize_quotient(new Polynomial<TropicalNumber<Addition>>(new TropicalNumber<Addition>(0), $p->n_vars()),
@@ -283,7 +283,7 @@ user_function rational_fct_from_affine_denominator<Addition>(Polynomial<Tropical
 # a string which it converts to a tropical polynomial using [[toTropicalPolynomial]].
 # @param String p A string that will be converted to a tropical polynomial
 # @param Int chart The index of the homogenizing coordinate. 0 by default.
-# @return RationalFunction 
+# @return TropicalRationalFunction 
 user_function rational_fct_from_affine_denominator(String; $=0) {
    my ($s, $chart) = @_;
    return rational_fct_from_affine_denominator(toTropicalPolynomial($s),$chart);
@@ -294,14 +294,14 @@ user_function rational_fct_from_affine_denominator(String; $=0) {
 # @param Vector<Rational> A point in the projective torus, given in tropical homogeneous coordinates, but without
 # leading coordinate.
 # @tparam Addition Min or Max. Determines the type of the rational functions.
-# @return RationalFunction. A perl array of rational functions of the form (v_i*x_0 + x_i)/(x_0), i = 1,..,n
+# @return TropicalRationalFunction. A perl array of rational functions of the form (v_i*x_0 + x_i)/(x_0), i = 1,..,n
 user_function point_functions<Addition>($) {
    my $v = new Vector<Rational>(shift);
    my @vars = monomials<TropicalNumber<Addition> >($v->dim());
    my $denom = $vars[0];
    map {
       my $num = $vars[$_] + new TropicalNumber<Addition>($v->[$_] - $v->[0]) * $vars[0];
-      new RationalFunction<Addition>(NUMERATOR=>$num, DENOMINATOR=>$denom);
+      new TropicalRationalFunction<Addition>(NUMERATOR=>$num, DENOMINATOR=>$denom);
    } 1 .. $v->dim()-1;
 }
 

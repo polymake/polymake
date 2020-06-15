@@ -28,14 +28,10 @@ namespace polymake { namespace polytope {
 
 BigObject binary_markov_graph(const Array<bool>& observation)
 {
-   BigObject p("PropagatedPolytope");
-   p.set_description() << "Propagated polytope defined by the (maybe) simplest possible (non-trivial) Hidden Markov Model; "
-                       << "see Joswig: Polytope Propagation on Graphs, Example 6.9." << endl;
-
    const Vector<Rational> zero(2);
-   const Vector<Rational> x1=unit_vector<Rational>(2,0);
-   const Vector<Rational> y1=unit_vector<Rational>(2,1);
-   Vector<Rational> x2(2), y2(2); x2[0]=y2[1]=2;
+   const Vector<Rational> x1 = unit_vector<Rational>(2,0);
+   const Vector<Rational> y1 = unit_vector<Rational>(2,1);
+   Vector<Rational> x2(2), y2(2); x2[0] = y2[1] = 2;
 
    const Int n = observation.size();
    Graph<Directed> G(2*n+2); // unique source=0, sink=2*n+1
@@ -52,23 +48,26 @@ BigObject binary_markov_graph(const Array<bool>& observation)
       
    for (Int i = 1; i < n; ++i)
       if (*(++ob)) {
-         Trans(2*i-1,2*i+1)=x1;
-         Trans(2*i-1,2*i+2)=y1;
-         Trans(2*i,2*i+1)=zero;
-         Trans(2*i,2*i+2)=y2;
+         Trans(2*i-1, 2*i+1) = x1;
+         Trans(2*i-1, 2*i+2) = y1;
+         Trans(2*i, 2*i+1) = zero;
+         Trans(2*i, 2*i+2) = y2;
       } else {
-         Trans(2*i-1,2*i+1)=x2;
-         Trans(2*i-1,2*i+2)=zero;
-         Trans(2*i,2*i+1)=x1;
-         Trans(2*i,2*i+2)=y1;
+         Trans(2*i-1, 2*i+1) = x2;
+         Trans(2*i-1, 2*i+2) = zero;
+         Trans(2*i, 2*i+1) = x1;
+         Trans(2*i, 2*i+2) = y1;
       }
 
-   Trans(2*n-1,2*n+1)=zero;
-   Trans(2*n,2*n+1)=zero;
+   Trans(2*n-1,2*n+1) = zero;
+   Trans(2*n,2*n+1) = zero;
 
-   p.take("SUM_PRODUCT_GRAPH.ADJACENCY") << G;
-   p.take("SUM_PRODUCT_GRAPH.TRANSLATIONS") << Trans;
-   p.take("CONE_AMBIENT_DIM") << 3;
+   BigObject p("PropagatedPolytope",
+               "SUM_PRODUCT_GRAPH.ADJACENCY", G,
+               "SUM_PRODUCT_GRAPH.TRANSLATIONS", Trans,
+               "CONE_AMBIENT_DIM", 3);
+   p.set_description() << "Propagated polytope defined by the (maybe) simplest possible (non-trivial) Hidden Markov Model; "
+                       << "see Joswig: Polytope Propagation on Graphs, Example 6.9." << endl;
    return p;
 }
 

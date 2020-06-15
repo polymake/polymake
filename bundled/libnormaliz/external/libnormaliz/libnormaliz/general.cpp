@@ -43,6 +43,17 @@ size_t GMP_hyp = 0;
 size_t GMP_scal_prod = 0;
 size_t TotDet = 0;
 
+#ifdef NMZ_EXTENDED_TESTS
+bool test_arith_overflow_full_cone = false;
+bool test_arith_overflow_dual_mode = false;
+bool test_arith_overflow_descent = false;
+bool test_arith_overflow_proj_and_lift = false;
+bool test_simplex_parallel = false;
+bool test_small_pyramids = false;
+bool test_large_pyramids = false;
+bool test_linear_algebra_GMP = false;
+#endif
+
 #ifdef NMZ_NAUTY
 void kill_nauty();
 #endif

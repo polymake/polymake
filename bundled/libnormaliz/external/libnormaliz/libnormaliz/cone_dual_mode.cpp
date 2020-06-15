@@ -899,8 +899,9 @@ void Cone_Dual_Mode<Integer>::relevant_support_hyperplanes() {
 
     // size_t realdim = Generators.rank();
 
-    vector<vector<bool> > ind(nr_sh, vector<bool>(ExtremeRayList.size(), false));
-    vector<bool> relevant(nr_sh, true);
+    vector<dynamic_bitset> ind(nr_sh, dynamic_bitset(ExtremeRayList.size()));
+    dynamic_bitset relevant(nr_sh);
+    relevant.set();
 
     for (i = 0; i < nr_sh; ++i) {
         INTERRUPT_COMPUTATION_BY_EXCEPTION
@@ -919,7 +920,7 @@ void Cone_Dual_Mode<Integer>::relevant_support_hyperplanes() {
         }
     }
     maximal_subsets(ind, relevant);
-    SupportHyperplanes = SupportHyperplanes.submatrix(relevant);
+    SupportHyperplanes = SupportHyperplanes.submatrix(bitset_to_bool(relevant));
 }
 
 //---------------------------------------------------------------------------

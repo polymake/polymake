@@ -83,5 +83,6 @@
   {"args": ["Int", "perl::Canned<const Rational&>"], "include": ["polymake/Rational.h"], "op": "div", "sig": "div:O.X.X16"},
   {"args": ["perl::Canned<Rational&>", "Int"], "include": ["polymake/Rational.h"], "op": "Div", "ret": "lvalue", "sig": "Div:O.X1.X16"},
   {"args": ["perl::Canned<Rational&>", "Int"], "include": ["polymake/Rational.h"], "op": "Add", "ret": "lvalue", "sig": "Add:O.X1.X16"},
+  {"args": ["perl::Canned<const Rational&>", "Rational(double)"], "include": ["polymake/Rational.h"], "op": "div", "sig": "div:O.X.X16"},
  null ],
 "version": 3}

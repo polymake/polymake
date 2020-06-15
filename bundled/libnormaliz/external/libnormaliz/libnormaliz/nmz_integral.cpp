@@ -131,6 +131,7 @@ BigRat substituteAndIntegrate(const ourFactorization& FF,
     // verboseOutput() << "Evaluating integral over unit simplex" << endl;
     // dynamic_bitset dummyInd;
     // vector<long> dummyDeg(degrees.size(),1);
+ 
     return (IntegralUnitSimpl(G, R, Factorial, factQuot, rank));  // orderExpos(G,dummyDeg,dummyInd,false)
 }
 
@@ -161,6 +162,7 @@ void readGens(Cone<Integer>& C, vector<vector<long> >& gens, const vector<long>&
     }
 }
 
+/*
 bool exists_file(string name_in) {
     // n check whether file name_in exists
 
@@ -182,6 +184,7 @@ void testPolynomial(const string& poly_as_string, long dim) {
     // verboseOutput() << "PPPPPPPPPPPPP " << the_only_factor << endl;
     vector<RingElem> V = homogComps(the_only_factor);
 }
+*/
 
 template <typename Integer>
 void integrate(Cone<Integer>& C, const bool do_virt_mult) {
@@ -206,16 +209,18 @@ void integrate(Cone<Integer>& C, const bool do_virt_mult) {
         convert(grading, C.getGrading());
         long gradingDenom;
         convert(gradingDenom, C.getGradingDenom());
+        
         long rank = C.getRank();
 
         vector<vector<long> > gens;
         readGens(C, gens, grading, false);
         if (verbose_INT)
             verboseOutput() << "Generators read" << endl;
-
+    
         BigInt lcmDegs(1);
         for (size_t i = 0; i < gens.size(); ++i) {
             long deg = v_scalar_product(gens[i], grading);
+            deg /= gradingDenom;
             lcmDegs = lcm(lcmDegs, deg);
         }
 
@@ -253,12 +258,12 @@ void integrate(Cone<Integer>& C, const bool do_virt_mult) {
             verboseOutput() << "Remaining factor " << FF.myRemainingFactor << endl << endl;
         }
 
-        size_t tri_size = C.getTriangulation().size();
+        size_t tri_size = C.getTriangulation().size(); //also computes triangulation
         size_t k_start = 0, k_end = tri_size;
 
-        bool pseudo_par = false;
-        size_t block_nr = 0;
-        if (false) {  // exists_file("block.nr")
+        // bool pseudo_par = false;
+        // size_t block_nr = 0;
+        /* if (false) {  // exists_file("block.nr")
             size_t block_size = 2000000;
             pseudo_par = true;
             string name_in = "block.nr";
@@ -275,7 +280,7 @@ void integrate(Cone<Integer>& C, const bool do_virt_mult) {
             for (size_t k = 1; k < tri_size; ++k)
                 if (!(C.getTriangulation()[k - 1].first < C.getTriangulation()[k].first))
                     throw FatalException("Triangulation not ordered");
-        }
+        }*/
 
         for (size_t k = 0; k < tri_size; ++k)
             for (size_t j = 1; j < C.getTriangulation()[k].first.size(); ++j)
@@ -292,10 +297,10 @@ void integrate(Cone<Integer>& C, const bool do_virt_mult) {
             eval_size = k_end - k_start;
 
         if (verbose_INT) {
-            if (pseudo_par) {
+            /* if (pseudo_par) {
                 verboseOutput() << "********************************************" << endl;
                 verboseOutput() << "Parallel block " << block_nr << endl;
-            }
+            }*/
             verboseOutput() << "********************************************" << endl;
             verboseOutput() << eval_size << " simplicial cones to be evaluated" << endl;
             verboseOutput() << "********************************************" << endl;
@@ -341,7 +346,8 @@ void integrate(Cone<Integer>& C, const bool do_virt_mult) {
                         prodDeg *= degrees[i];
                     }
 
-                    // h=homogeneousLinearSubstitutionFL(FF,A,degrees,F);
+                    // We apply the transformation formula for integrals -- but se ebelow for the correctin if the lattice
+                    // height of 0 over the simplex is different from 1
                     ISimpl = (det * substituteAndIntegrate(FF, A, degrees, RZZ, Factorial, factQuot, lcmDegs)) / prodDeg;
                     I_thread[omp_get_thread_num()] += ISimpl;
 
@@ -373,8 +379,8 @@ void integrate(Cone<Integer>& C, const bool do_virt_mult) {
         I *= RFrat;
 
         // We integrate over the polytope P which is the intersection of the cone
-        // with the hyperplane at degree 1. Our transformation formula applied
-        // is only correct ifassumes that P hathe same lattice volume as
+        // with the hyperplane at degree 1. Our transformation formula
+        // is only correct if assumes that P hathe same lattice volume as
         // the convex hull of P and 0. Lattice volume comes from the effective lattice.
         // Therefore we need a correction factor if the restriction of the absolute
         // grading to the effective lattice is (grading on eff latt)/g with g>1.
@@ -382,9 +388,11 @@ void integrate(Cone<Integer>& C, const bool do_virt_mult) {
 
         vector<Integer> test_grading = C.getSublattice().to_sublattice_dual_no_div(C.getGrading());
         Integer corr_factor = v_gcd(test_grading);
-        mpz_class corr_mpz = convertTo<mpz_class>(corr_factor);
-        // I*=BigInt(corr_mpz.get_mpz_t());
-        I *= BigIntFromMPZ(corr_mpz.get_mpz_t());
+        if(corr_factor != gradingDenom){
+            mpz_class corr_mpz = convertTo<mpz_class>(corr_factor);
+            // I*=BigInt(corr_mpz.get_mpz_t());
+            I *= BigIntFromMPZ(corr_mpz.get_mpz_t());
+        }
 
         string result = "Integral";
         if (do_virt_mult)
@@ -411,7 +419,7 @@ void integrate(Cone<Integer>& C, const bool do_virt_mult) {
             verboseOutput() << "********************************************" << endl;
         }
 
-        if (pseudo_par) {
+        /* if (pseudo_par) {
             string name_out = "block.nr";
             const char* file = name_out.c_str();
             ofstream out(file);
@@ -422,7 +430,7 @@ void integrate(Cone<Integer>& C, const bool do_virt_mult) {
             file = name_out.c_str();
             ofstream out_1(file);
             out_1 << block_nr << ", " << VM << "," << endl;
-            out_1.close();
+            out_1.close();*/
 
             /* string chmod="chmod a+w "+name_out;
             const char* exec=chmod.c_str();
@@ -435,7 +443,7 @@ void integrate(Cone<Integer>& C, const bool do_virt_mult) {
             /*mail_str="mail bogdan_ichim@yahoo.com < "+name_out;
             exec=name_out.c_str();
             system(exec);*/
-        }
+        // }
 
         verbose_INT = verbose_INTsave;
     }  // try

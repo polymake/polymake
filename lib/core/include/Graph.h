@@ -43,7 +43,6 @@ namespace graph {
 using pm::sparse2d::restriction_kind;
 using pm::sparse2d::full;
 using pm::sparse2d::dying;
-using pm::sparse2d::relocate;
 using pm::relocate;
 
 template <typename TDir> class Table;
@@ -295,6 +294,12 @@ struct node_entry_trees {
 
    explicit node_entry_trees(Int index_arg) : out_(index_arg) {}
 
+   node_entry_trees(const node_entry_trees&) = default;
+   node_entry_trees(node_entry_trees&&) = default;
+
+   node_entry_trees(const node_entry_trees& from, AVL::copy_without_nodes)
+      : out_(from.out_, AVL::copy_without_nodes()) {}
+
    out_tree_type& out() { return out_; }
    const out_tree_type& out() const { return out_; }
    out_tree_type& in() { return out_; }
@@ -325,6 +330,13 @@ struct node_entry_trees<TDir, restriction, false> {
    out_tree_type out_;
 
    explicit node_entry_trees(Int index_arg) : in_(index_arg) {}
+
+   node_entry_trees(const node_entry_trees&) = default;
+   node_entry_trees(node_entry_trees&&) = default;
+
+   node_entry_trees(const node_entry_trees& from, AVL::copy_without_nodes)
+      : in_(from.in_, AVL::copy_without_nodes())
+      , out_(from.out_, AVL::copy_without_nodes()) {}
 
    out_tree_type& out() { return out_; }
    const out_tree_type& out() const { return out_; }
@@ -363,7 +375,14 @@ struct node_entry
    typedef TDir dir;
    typedef sparse2d::ruler<node_entry, edge_agent<TDir> > ruler;
 
-   explicit node_entry(Int index_arg) : node_entry_trees<TDir, restriction>(index_arg) {}
+   explicit node_entry(Int index_arg)
+      : node_entry_trees<TDir, restriction>(index_arg) {}
+
+   node_entry(const node_entry& from, AVL::copy_without_nodes)
+      : node_entry_trees<TDir, restriction>(from, AVL::copy_without_nodes()) {}
+
+   node_entry(const node_entry&) = default;
+   node_entry(node_entry&&) = default;
 
    Int get_line_index() const { return this->in().get_line_index(); }
 
@@ -374,12 +393,6 @@ struct node_entry
    ruler& get_ruler()
    {
       return ruler::reverse_cast(this, get_line_index());
-   }
-
-   friend void relocate(node_entry* from, node_entry* to)
-   {
-      relocate(&(from->out()), &(to->out()));
-      if (TDir::value==Directed::value) relocate(&(from->in()), &(to->in()));
    }
 };
 
@@ -396,8 +409,7 @@ struct dir_permute_entries {
 
    static void relocate(entry_t* from, entry_t* to)
    {
-      relocate_tree(&from->out_, &to->out_, std::false_type());
-      relocate_tree(&from->in_, &to->in_, std::false_type());
+      new(to) entry_t(*from, AVL::copy_without_nodes());
    }
 
    static void complete_in_trees(ruler* R)
@@ -432,8 +444,9 @@ struct dir_permute_entries {
                Node* node = e.operator->();
                const Int old_nfrom = node->key - old_nto, nfrom = inv_perm_store[old_nfrom];
                node->key = nfrom + nto;
-               (*R)[nfrom].out_.push_back_node(node);
+               (*R)[nfrom].out_.insert_node(node);
             }
+            entry.in_.init();
          } else {
             *free_node_id_ptr = ~nto;
             free_node_id_ptr = &entry.in_.line_index;
@@ -459,7 +472,7 @@ struct dir_permute_entries {
                const Int src_nfrom = node->key - src_nto;
                const Int dst_nfrom = inv_perm[src_nfrom];
                out_tree_t& t = (*R_dst)[dst_nfrom].out_;
-               t.push_back_node(t.create_free_node(dst_nfrom+dst_nto));
+               t.insert_node(t.create_free_node(dst_nfrom+dst_nto));
             }
          } else {
             *free_node_id_ptr = ~dst_nto;
@@ -486,7 +499,7 @@ struct undir_permute_entries
 
    static void relocate(entry_t* from, entry_t* to)
    {
-      relocate_tree(&from->out_, &to->out_, std::false_type());
+      new(to) entry_t(*from, AVL::copy_without_nodes());
    }
 
    void deleted_node(entry_t& entry, Int n)
@@ -901,13 +914,14 @@ protected:
    {
       Int n = 0, nnew = 0;
       for (auto t = R->begin(), end = R->end(); t != end; ++t, ++n) {
+         using entry_t = pure_type_t<decltype(*t)>;
          const int what = to_delete(*t);
          if (what == 0) {
             if (Int diff = n-nnew) {
                if (is_directed) t->in().line_index = nnew;
                renumber_nodes_in_edges(t->out(), nnew, diff, dir());
                if (is_directed) renumber_nodes_in_edges(t->in(), nnew, diff, dir());
-               relocate(t.operator->(), &t[-diff]);
+               new(&t[-diff]) entry_t(std::move(*t));
                for (auto& map : node_maps) map.move_entry(n, nnew);
             }
             nc(n, nnew);  ++nnew;

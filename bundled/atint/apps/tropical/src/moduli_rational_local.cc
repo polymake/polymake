@@ -266,12 +266,11 @@ BigObject local_m0n(const Array<BigObject>& curves)
 
   Vector<Integer> weights = ones_vector<Integer>(cones.dim());
 
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("PROJECTIVE_VERTICES") << bergman_rays;
-  result.take("MAXIMAL_POLYTOPES") << cones;
-  result.take("WEIGHTS") << weights;
-  result.take("LOCAL_RESTRICTION") << local_cones;
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "PROJECTIVE_VERTICES", bergman_rays,
+                   "MAXIMAL_POLYTOPES", cones,
+                   "WEIGHTS", weights,
+                   "LOCAL_RESTRICTION", local_cones);
 }
 
 UserFunctionTemplate4perl("# @category Moduli of rational curves" 

@@ -189,7 +189,7 @@ object PolyhedralFan {
    #
 
    rule GROUP.FACET_NORMALS_ACTION : GROUP.HOMOGENEOUS_COORDINATE_ACTION, FACET_NORMALS {
-      $this->GROUP->FACET_NORMALS_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "FACET_NORMALS", "facet_normals_action", "induced from homogeneous_coordinate_action", 1);
+      $this->GROUP->FACET_NORMALS_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "FACET_NORMALS", "facet_normals_action", "induced from homogeneous_coordinate_action", 1, \&canonicalize_facets);
    }
    weight 1.10;
    

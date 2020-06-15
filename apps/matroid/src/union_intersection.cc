@@ -62,10 +62,9 @@ BigObject matroid_union(const Array<BigObject>& matroid_list)
       result_bases = basis_union(result_bases, m_bases);
   }
 
-  BigObject result("Matroid");
-  result.take("N_ELEMENTS") << n;
-  result.take("BASES") << result_bases;
-  return result;
+  return BigObject("Matroid",
+                   "N_ELEMENTS", n,
+                   "BASES", result_bases);
 }
 
 UserFunction4perl("# @category Producing a matroid from matroids"

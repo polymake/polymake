@@ -411,13 +411,11 @@ BigObject modify_fan(Int n, Matrix<Rational> bergman_rays, const IncidenceMatrix
     cones /= (pre_cones.row(mc) + (bergman_rays.rows()-1));
   }
 
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("PROJECTIVE_VERTICES") << bergman_rays;
-  if (bergman_lineality.rows() > 0)
-    result.take("LINEALITY_SPACE") << bergman_lineality;
-  result.take("MAXIMAL_POLYTOPES") << cones;
-  result.take("WEIGHTS") << weights;
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "PROJECTIVE_VERTICES", bergman_rays,
+                   "LINEALITY_SPACE", bergman_lineality,
+                   "MAXIMAL_POLYTOPES", cones,
+                   "WEIGHTS", weights);
 }
 
 /**

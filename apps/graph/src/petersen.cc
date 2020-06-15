@@ -28,12 +28,12 @@ BigObject petersen()
       g.edge(i, (i+1)%5);
       g.edge(i+5, (i+2)%5+5);
    }
-   BigObject G("Graph<>");
-   G.take("N_NODES")<<10;
-   G.take("N_EDGES")<<15;
-   G.take("CONNECTED")<<true;
-   G.take("BIPARTITE")<<false;
-   G.take("ADJACENCY")<<g;
+   BigObject G("Graph<>",
+               "N_NODES", 10,
+               "N_EDGES", 15,
+               "CONNECTED", true,
+               "BIPARTITE", false,
+               "ADJACENCY", g);
    G.set_description()<<"Petersen graph"<<endl;
    return G;
 

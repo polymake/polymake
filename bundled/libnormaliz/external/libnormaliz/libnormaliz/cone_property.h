@@ -116,8 +116,8 @@ enum Enum {
 
     // field valued
     START_ENUM_RANGE(FIRST_FIELD_ELEM),
-    RenfVolume = FIRST_FIELD_ELEM,
-    LAST_FIELD_ELEM = ConeProperty::RenfVolume,
+    RenfVolume,
+    END_ENUM_RANGE(LAST_FIELD_ELEM),
 
     // floating point valued
     START_ENUM_RANGE(FIRST_FLOAT),
@@ -125,7 +125,7 @@ enum Enum {
     EuclideanIntegral,
     END_ENUM_RANGE(LAST_FLOAT),
 
-    // dimensions
+    // dimensions and cardinalities
     START_ENUM_RANGE(FIRST_MACHINE_INTEGER),
     TriangulationSize,
     NumberLatticePoints,
@@ -145,11 +145,20 @@ enum Enum {
     IsReesPrimary,
     IsInhomogeneous,
     IsGorenstein,
+    //
+    // checking properties of already computed data
+    // (cannot be used as a computation goal)
+    //
+    IsTriangulationNested,
+    IsTriangulationPartial,
     END_ENUM_RANGE(LAST_BOOLEAN),
 
     // complex structures
     START_ENUM_RANGE(FIRST_COMPLEX_STRUCTURE),
     Triangulation,
+    UnimodularTriangulation,
+    LatticePointTriangulation,
+    AllGeneratorsTriangulation,
     StanleyDec,
     InclusionExclusionData,
     IntegerHull,
@@ -212,16 +221,23 @@ enum Enum {
     Dynamic,
     Static,
     //
-    // checking properties of already computed data
-    // (cannot be used as a computation goal)
-    //
-    IsTriangulationNested,
-    IsTriangulationPartial,
-    //
     // ONLY FOR INTERNAL CONTROL
     //
     // ExplicitHilbertSeries,
     NakedDual,
+    FullConeDynamic,
+    //
+    // ONLY FOR E§XTENDED TESTS
+    //
+    TestArithOverflowFullCone,
+    TestArithOverflowDualMode,
+    TestArithOverflowDescent,
+    TestArithOverflowProjAndLift,
+    TestSmallPyramids,
+    TestLargePyramids,
+    TestLinearAlgebraGMP,
+    TestSimplexParallel,
+    TestLibNormaliz,
     END_ENUM_RANGE(LAST_PROPERTY),
 
     EnumSize  // this has to be the last entry, to get the number of entries in the enum
@@ -243,6 +259,7 @@ class ConeProperties {
     ConeProperties(const std::bitset<ConeProperty::EnumSize>&);
 
     /* set properties */
+    ConeProperties& set(bool value = true); // set ALL to value;
     ConeProperties& set(ConeProperty::Enum, bool value = true);
     ConeProperties& set(const std::string s, bool value = true);
     ConeProperties& set(ConeProperty::Enum, ConeProperty::Enum);
@@ -250,10 +267,14 @@ class ConeProperties {
     ConeProperties& set(const ConeProperties&);
 
     /* reset (=unset) properties */
+    ConeProperties& reset(); //reset ALL
     ConeProperties& reset(ConeProperty::Enum Property);
     ConeProperties& reset(const ConeProperties&);
     ConeProperties& reset_compute_options();
 
+    // does not change *this
+    ConeProperties intersection_with(const ConeProperties& ConeProps) const;
+    
     /* test which/how many properties are set */
     bool test(ConeProperty::Enum Property) const;
     bool any() const;
@@ -261,8 +282,10 @@ class ConeProperties {
     size_t count() const;
 
     /* return the restriction of this to the goals / options */
-    ConeProperties goals();
-    ConeProperties options();
+    ConeProperties goals() const;
+    ConeProperties options() const;
+    ConeProperties full_cone_goals() const;
+    ConeProperties goals_using_grading(bool inhomogeneous) const;
 
     /* the following methods are used internally */
     void set_preconditions(bool inhomogeneous, bool numberfield);  // activate properties which are needed implicitly
@@ -286,6 +309,13 @@ ConeProperty::Enum toConeProperty(const std::string&);
 const std::string& toString(ConeProperty::Enum);
 std::ostream& operator<<(std::ostream&, const ConeProperties&);
 OutputType::Enum output_type(ConeProperty::Enum);
+
+ConeProperties all_options(); // returns cps with the options set
+ConeProperties all_goals(); // returns cps with the options set
+ConeProperties all_full_cone_goals(); // returns the goals controlling compute_full_cone()
+ConeProperties all_goals_using_grading(bool inhomogeneous); // returns the goals which depend on grading
+ConeProperties only_homogeneous_props();
+ConeProperties only_inhomogeneous_props();
 
 }  // namespace libnormaliz
 

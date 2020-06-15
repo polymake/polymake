@@ -23,13 +23,13 @@ namespace polymake { namespace topaz {
 
 BigObject simplex(const Int n)
 {
-   BigObject p("SimplicialComplex");
    Array<Set<Int>> facet(1);
    facet[0] = sequence(0, n+1);
-   p.take("FACETS")<<facet;
-   p.take("N_VERTICES")<<n+1;
-   p.take("BALL")<<true;
-   p.set_description()<<"Simplex of dimension "<<n<<"."<<endl;
+   BigObject p("SimplicialComplex",
+               "FACETS", facet,
+               "N_VERTICES", n+1,
+               "BALL", true);
+   p.set_description() << "Simplex of dimension " << n << "." << endl;
    return p;
 }
 

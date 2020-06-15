@@ -58,7 +58,7 @@ UserFunctionTemplate4perl("# Find the shortest path in a graph"
                           "# @param Int source the source node"
                           "# @param Int target the target node"
                           "# @param Bool if true, perform backward search",
-                          "shortest_path_dijkstra(props::Graph, EdgeMap, $, $; $=0)");
+                          "shortest_path_dijkstra(GraphAdjacency, EdgeMap, $, $; $=0)");
 
 } }
 

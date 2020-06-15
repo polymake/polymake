@@ -34,6 +34,6 @@
 
 function is_compatible($$) { return false; }
 
-function is_compatible<Addition>(Cycle<Addition>, RationalFunction<Addition>) { return true; }
+function is_compatible<Addition>(Cycle<Addition>, TropicalRationalFunction<Addition>) { return true; }
 
-function is_compatible<Addition>(RationalFunction<Addition>, RationalFunction<Addition>) { return true; }
+function is_compatible<Addition>(TropicalRationalFunction<Addition>, TropicalRationalFunction<Addition>) { return true; }

@@ -23,14 +23,14 @@
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
 #
-#  Contains functions to visualize the domain of a RationalFunction or
+#  Contains functions to visualize the domain of a TropicalRationalFunction or
 #  a Morphism.
 #
 ########################################################################
 
 package Visual::Cycle;
 
-#Visualization options for RationalFunction/Morphism->VISUAL
+#Visualization options for TropicalRationalFunction/Morphism->VISUAL
 options %Visual::Cycle::FunctionDecorations=(
 	%Visual::Cycle::BoundingDecorations,
 
@@ -39,7 +39,7 @@ options %Visual::Cycle::FunctionDecorations=(
 	FunctionLabels => enum("hidden", "show"),
 );
 
-object RationalFunction {
+object TropicalRationalFunction {
 
 # @category Visualization 
 # Visualizes the domain of the function. Works exactly as VISUAL of WeightedComplex, but has additional option
@@ -87,7 +87,7 @@ object RationalFunction {
 
 		$domain->VISUAL($decor,$cutoff_decor);
 	}
-}; #END object RationalFunction
+}
 
 
 object Morphism {

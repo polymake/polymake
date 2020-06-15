@@ -31,19 +31,17 @@ BigObject hypersimplex(Int d, Int k)
    if (k < 1 || k > d)
       throw std::runtime_error("hypersimplex: 1 <= k <= d required");
 
-   BigObject p("Polytope", mlist<Addition>());
-   p.set_description() << "tropical (" << k << "," << d << ")-hypersimplex" << endl;
-
    // number of vertices
    const Int n(Integer::binom(d+1, k));
 
    Matrix<TropicalNumber<Addition>> Vertices(n, d+1, same_value(TropicalNumber<Addition>::one()).begin());
-   auto v=rows(Vertices).begin();
+   auto v = rows(Vertices).begin();
    for (auto s=entire(all_subsets_of_k(range(0,d), k));  !s.at_end();  ++s, ++v) {
       v->slice(*s).fill(TropicalNumber<Addition>(-Addition::orientation()));
    }
-   p.take("POINTS") << Vertices;
 
+   BigObject p("Polytope", mlist<Addition>(), "POINTS", Vertices);
+   p.set_description() << "tropical (" << k << "," << d << ")-hypersimplex" << endl;
    return p;
 }
 

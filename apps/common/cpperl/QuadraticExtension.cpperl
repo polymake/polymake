@@ -55,5 +55,7 @@
   {"args": ["Int", "perl::Canned<const QuadraticExtension<Rational>&>"], "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "op": "mul", "sig": "mul:O.X.X16"},
   {"args": ["perl::Canned<const QuadraticExtension<Rational>&>", "Int"], "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "op": "div", "sig": "div:O.X.X16"},
   {"args": ["Int", "perl::Canned<const QuadraticExtension<Rational>&>"], "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "op": "div", "sig": "div:O.X.X16"},
+  {"args": ["QuadraticExtension<Rational>", "Int", "perl::Canned<const Rational&>", "perl::Canned<const Rational&>"], "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "op": "new", "sig": "new.X.X.X"},
+  {"args": ["QuadraticExtension<Rational>", "Int", "Int", "perl::Canned<const Rational&>"], "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "op": "new", "sig": "new.X.X.X"},
  null ],
 "version": 3}

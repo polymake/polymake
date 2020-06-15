@@ -33,12 +33,10 @@ using Lattice = graph::Lattice<graph::lattice::BasicDecoration, graph::lattice::
 // defined by the intersection of the positive orthant with all equations given by
 // the condition that the edge lengths around any 2-face should add to 0
 BigObject minkowski_cone(const Lattice& H, // we only need the 2-faces
-                            const Graph<>& G,      // the graph of the polytope
-                            const EdgeMap<Undirected, Vector<Rational>>& edge_directions, // the edge directions of the polytope
-                            const Set<Int>& far_face)
+                         const Graph<>& G,      // the graph of the polytope
+                         const EdgeMap<Undirected, Vector<Rational>>& edge_directions, // the edge directions of the polytope
+                         const Set<Int>& far_face)
 {
-  BigObject c("Cone<Rational>");  // the minkowski cone
-      
   // label the edges consecutively
   // they should come in the same order as given by $polytope->GRAPH->EDGES;
   EdgeMap<Undirected, Int> edge_labels(G);
@@ -85,14 +83,12 @@ BigObject minkowski_cone(const Lattice& H, // we only need the 2-faces
     // the rank of M should always be 2
     equations /= M.minor(basis_rows(M),All);
   }
-      
-  c.take("EQUATIONS") << equations;
 
-  //inequalities are x_i>=0
-  c.take("INEQUALITIES") << unit_matrix<Rational>(G.edges()-far_edges);
-      
-  return c;
-}    
+  return BigObject("Cone<Rational>",
+                   "EQUATIONS", equations,
+                   // inequalities are x_i>=0
+                   "INEQUALITIES", unit_matrix<Rational>(G.edges()-far_edges));
+}
 
 // return the polytope defined by a point in the minkowski summand cone
 BigObject minkowski_cone_point(const Vector<Rational>& cone_point, // the point in the minkowski cone
@@ -141,13 +137,10 @@ BigObject minkowski_cone_point(const Vector<Rational>& cone_point, // the point 
   }
 
   // points for the polytope (not vertices: edges of length zero lead to duplicates in the list)
-  BigObject p("Polytope<Rational>");
-  p.take("POINTS") <<  (Matrix<Rational>(new_vertices)/ rays);
-
-  return p;
+  return BigObject("Polytope<Rational>",
+                   "POINTS", Matrix<Rational>(new_vertices) / rays);
 }
-    
-    
+
 // return the polytope defined by coefficients to the rays of the minkowski summand cone
 BigObject minkowski_cone_coeff(const Vector<Rational>& coefficients, BigObject c, const BigObject g, const Set<Int>& far_face, const Matrix<Rational>& tailcone)
 {

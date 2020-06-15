@@ -97,17 +97,19 @@ rule RANDOM_EDGE_EPL : DIRECTED_GRAPH.ADJACENCY {
 
 
 # @category Optimization
-# Read a linear programming problem given in LP-Format (as used by cplex & Co.)
-# and convert it to a [[Polytope<Scalar>]] object.
+# Read a linear programming problem given in LP-Format or MILP-Format (as used by cplex & Co.)
+# and convert it to a [[Polytope<Scalar>]] object with an added LP property or MILP property
 #
 # @tparam Scalar coordinate type of the resulting polytope; default is [[Rational]].
 # @param [complete file] String file filename of a linear programming problem in LP-Format
 # @param Vector testvec If present, after reading in each line of the LP it is checked whether testvec fulfills it
 # @param String prefix If testvec is present, all variables in the LP file are assumed to have the form $prefix$i
 # @option Bool nocheck Do not automatically compute [[FEASIBLE]] for the polytope (recommended for very large LPs)
+# @option Bool create_lp Create an LP property regardless of the format of the given file. If the file has 
+#                        MILP-Format, the created LP property will have an attachment INTEGER_VARIABLES
 # @return Polytope<Scalar>
 
-user_function lp2poly<Scalar=Rational>(String; Vector, String, {nocheck => false}) {
+user_function lp2poly<Scalar=Rational>(String; Vector, String, {nocheck => false, create_lp => false}) {
    require LPparser;
    my ($filename, $testvec, $prefix, $options) = @_;
 
@@ -130,17 +132,35 @@ user_function lp2poly<Scalar=Rational>(String; Vector, String, {nocheck => false
 
    $P->INEQUALITIES = new SparseMatrix<Scalar>($parser->Ineq);
    $P->EQUATIONS = new SparseMatrix<Scalar>($parser->Eq);
-
+   
    my $lp = new LinearProgram<Scalar>($parser->lp_name // ());
+   if (@{$parser->Int} && !$options->{create_lp}){
+      $lp = new MixedIntegerLinearProgram<Scalar>($parser->lp_name // ());
+      # Convert boolean Array of integer variables to a set for MILP
+      my $integer_variables = new Array<Bool>($parser->Int);
+      my $integer_set = new Set<Int>();
+      for(my $ind = 0; $ind < $integer_variables->size(); $ind++){
+         if($integer_variables->[$ind]){
+            $integer_set->collect($ind + 1);
+         }
+      }
+      $lp->INTEGER_VARIABLES = $integer_set;
+   }
+   
    $lp->description = "Objective sense was ".($parser->objsense eq "+" ? "MAXIMIZE" : "MINIMIZE")."\n";
 
    $lp->LINEAR_OBJECTIVE = new SparseVector<Scalar>($parser->Obj);
 
-   if (@{$parser->Int}) {
+   if (@{$parser->Int} && $options->{create_lp}) {
       $lp->attach("INTEGER_VARIABLES", new Array<Bool>($parser->Int));
    }
    $P->commit unless($options->{nocheck});
-   $P->add("LP", $lp);
+   if (@{$parser->Int} && !$options->{create_lp}){
+      $P->add("MILP", $lp);
+   }
+   else{
+      $P->add("LP", $lp);
+   }
    $P;
 }
 

@@ -33,19 +33,16 @@ BigObject matroid_polytope(BigObject m, const Scalar& value)
    const Int n_elements = m.give("N_ELEMENTS");
    const TropicalNumber<Addition, Scalar> tvalue(value);
 
-   BigObject t("Polytope", mlist<Addition, Scalar>());
-
-   Matrix<TropicalNumber<Addition,Scalar> > V(n_bases,n_elements);
-   V.fill( TropicalNumber<Addition,Scalar>::one());
+   Matrix<TropicalNumber<Addition, Scalar>> V(n_bases,n_elements);
+   V.fill(TropicalNumber<Addition, Scalar>::one());
 
    for (Int b = 0; b < n_bases; ++b) {
       for (auto i = entire(bases[b]); !i.at_end(); ++i)
          V(b,(*i)) = tvalue;
    }
 
-   t.take("POINTS") << V;
-
-   return t;
+   return BigObject("Polytope", mlist<Addition, Scalar>(),
+                    "POINTS", V);
 }
 
 

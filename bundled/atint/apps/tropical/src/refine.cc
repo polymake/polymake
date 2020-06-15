@@ -117,7 +117,6 @@ RefinementResult refinement(BigObject X, BigObject Y,
 
 
   // Prepare result variables
-  BigObject complex(X.type());
   Matrix<Rational> c_rays(0,ambient_dim);
   Matrix<Rational> c_lineality(0,ambient_dim);
   Int c_lineality_dim = 0;
@@ -365,7 +364,9 @@ RefinementResult refinement(BigObject X, BigObject Y,
   } //END finish up locality computation
 
   // Copy return values into the fan
+  BigObject complex;
   if (refine) {
+    complex = BigObject(X.type());
     complex.take("VERTICES") << thomog(c_rays);
     complex.take("MAXIMAL_POLYTOPES") << c_cones_result;
     complex.take("LINEALITY_SPACE") << thomog(c_lineality);

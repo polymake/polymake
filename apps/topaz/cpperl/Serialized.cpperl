@@ -4,5 +4,6 @@
   {"class": "pm::Serialized<Cell>", "include": ["polymake/client.h", "polymake/topaz/Filtration.h"], "pkg": "Polymake::common::Serialized__Cell"},
   {"class": "pm::Serialized<ChainComplex<SparseMatrix<Integer, NonSymmetric>>>", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h", "polymake/client.h", "polymake/topaz/ChainComplex.h"], "pkg": "Polymake::common::Serialized__ChainComplex__SparseMatrix_A_Integer_I_NonSymmetric_Z"},
   {"class": "pm::Serialized<Filtration<SparseMatrix<Rational, NonSymmetric>>>", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/client.h", "polymake/topaz/Filtration.h"], "pkg": "Polymake::common::Serialized__Filtration__SparseMatrix_A_Rational_I_NonSymmetric_Z"},
+  {"class": "pm::Serialized<ChainComplex<SparseMatrix<GF2, NonSymmetric>>>", "include": ["polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h", "polymake/client.h", "polymake/topaz/ChainComplex.h"], "pkg": "Polymake::common::Serialized__ChainComplex__SparseMatrix_A_GF2_I_NonSymmetric_Z"},
  null ],
 "version": 3}

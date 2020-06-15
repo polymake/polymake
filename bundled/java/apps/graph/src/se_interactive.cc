@@ -190,7 +190,7 @@ interactive_spring_embedder(const Graph<>& G, OptionSet options)
 Function4perl(&interactive_spring_embedder,
 
               // the next string is *one* long line
-              "interactive_spring_embedder(props::Graph<Undirected>, "
+              "interactive_spring_embedder(GraphAdjacency<Undirected>, "
               "   { scale => 1, balance => 1, viscosity => 1, inertion => 1, eps => undef,"
               "     'z-ordering' => undef, 'z-factor' => undef, 'edge-weights' => undef,"
               "      seed => undef, 'max-iterations' => 10000 }) ");

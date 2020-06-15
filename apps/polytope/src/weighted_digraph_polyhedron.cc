@@ -41,12 +41,10 @@ BigObject weighted_digraph_polyhedron(const GenericMatrix<MatrixType, Scalar>& W
             Ineq /= this_ineq;
          }
       }
-  
-   BigObject p_out("Polytope", mlist<Scalar>());
-   p_out.set_description() << "Weighted digraph polyhedron" <<endl;
-   p_out.take("INEQUALITIES") << Ineq;
-   Matrix<Scalar> wd(W);
-   p_out.attach("WEIGHTED_DIGRAPH") << wd;
+
+   BigObject p_out("Polytope", mlist<Scalar>(), "INEQUALITIES", Ineq);
+   p_out.attach("WEIGHTED_DIGRAPH") << Matrix<Scalar>(W);
+   p_out.set_description() << "Weighted digraph polyhedron" << endl;
    return p_out;
 }
 

@@ -48,7 +48,7 @@ user_function rows_labeled($;$$) {
 
 # @category Formatting
 # Like above, but specialized for Graphs (defined for convenience: a PTL Graph is not a container)
-# @param Graph graph to be printed
+# @param GraphAdjacency graph to be printed
 # @param Array<String> elem_labels labels for the elements
 # @return Array<String> each string ending with end-of-line
 # @example
@@ -58,7 +58,7 @@ user_function rows_labeled($;$$) {
 # | c:b d
 # | d:a c
 
-user_function rows_labeled(Graph;$) {
+user_function rows_labeled(GraphAdjacency;$) {
    my ($graph, $labels)=@_;
    rows_labeled(adjacency_matrix($graph), $labels, $labels);
 }

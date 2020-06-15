@@ -2,5 +2,6 @@
  "inst": [
   {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "void"], "func": "print_constraints", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "print_constraints:T1.X.o", "tp": "1"},
   {"args": ["double", "perl::Canned<const Matrix<double>&>", "void"], "func": "print_constraints", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "print_constraints:T1.X.o", "tp": "1"},
+  {"args": ["Rational", "perl::Canned<const pm::BlockMatrix<mlist<pm::Matrix<pm::Rational> const&, pm::BlockMatrix<mlist<pm::RepeatedCol<pm::SameElementVector<pm::Rational const&> > const, pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true> const>, std::integral_constant<bool, false> > const&>, std::integral_constant<bool, true> >&>", "void"], "func": "print_constraints", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "print_constraints:T1.X.o", "tp": 1},
  null ],
 "version": 3}

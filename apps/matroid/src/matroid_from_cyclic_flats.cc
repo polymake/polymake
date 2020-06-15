@@ -54,7 +54,7 @@ BigObject matroid_from_cyclic_flats(const Array<Set<Int>>& Faces, const Array<In
       for (Int i = 0, n = Faces.size(); i < n; ++i)
          RankMap[Faces[i]] = Ranks[i];
       Set<Set<Int>, CompareByRank> sorted_sets(CompareByRank{RankMap});
-      for (const auto s : Faces) {
+      for (const auto& s : Faces) {
          sorted_sets += s;
       }
 
@@ -75,11 +75,9 @@ BigObject matroid_from_cyclic_flats(const Array<Set<Int>>& Faces, const Array<In
       }
    }
 
-   BigObject m("Matroid");
-   m.take("N_ELEMENTS") << n_elements;
-   m.take("LATTICE_OF_CYCLIC_FLATS") << LF;
-
-   return m;
+   return BigObject("Matroid",
+                    "N_ELEMENTS", n_elements,
+                    "LATTICE_OF_CYCLIC_FLATS", LF);
 }
 
 UserFunction4perl("# @category Producing a matroid from other objects"

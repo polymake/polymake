@@ -44,8 +44,8 @@ Matrix<Scalar> embedding_matrix(const Matrix<Scalar>& V, Int i, Int m, const Sca
 
 template<typename Scalar>
 BigObject cayley_embedding(const Array<BigObject>& p_array,
-                              const Vector<Scalar>& t_vec,
-                              OptionSet options)
+                           const Vector<Scalar>& t_vec,
+                           OptionSet options)
 {
    const Int m = p_array.size();
 

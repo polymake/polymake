@@ -35,10 +35,8 @@ BigObject points2hypersurface(const Matrix<TropicalNumber<Addition>>& points)
       hyperpoly *= Polynomial<TDualNumber>(*pt, unit_matrix<Int>(d));
    }
 
-   BigObject result("Hypersurface", mlist<typename Addition::dual>());
-   result.take("POLYNOMIAL") << hyperpoly;
-
-   return result;
+   return BigObject("Hypersurface", mlist<typename Addition::dual>(),
+                    "POLYNOMIAL", hyperpoly);
 }
 
 UserFunctionTemplate4perl("# @category Producing a tropical hypersurface"

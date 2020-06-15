@@ -209,32 +209,31 @@ public:
   // TODO: introduce operator ... && moving all members
   explicit operator BigObject () const
   {
-    BigObject result("Lattice", mlist<Decoration, SeqType>());
-    result.take("ADJACENCY") << graph();
-    result.take("DECORATION") << decoration();
-    result.take("INVERSE_RANK_MAP") << rank_map;
-    result.take("TOP_NODE") << top_node();
-    result.take("BOTTOM_NODE") << bottom_node();
-    return result;
+     return BigObject("Lattice", mlist<Decoration, SeqType>(),
+                      "ADJACENCY", graph(),
+                      "DECORATION", decoration(),
+                      "INVERSE_RANK_MAP", rank_map,
+                      "TOP_NODE", top_node(),
+                      "BOTTOM_NODE", bottom_node());
   }
 
   explicit Lattice(const BigObject& obj)
     : D(G)
   {
-    *this = obj;
+     *this = obj;
   }
 
   Lattice& operator= (const BigObject& obj)
   {
-    // TODO: include is_trusted flag in BigObject?
-    // if (obj.get_flags() * pm::perl::ValueFlags::not_trusted && !obj.isa("Lattice"))
-    //   throw std::runtime_error("wrong object type for Lattice");
-    obj.give("ADJACENCY") >> G;
-    obj.give("DECORATION") >> D;
-    obj.give("INVERSE_RANK_MAP") >> rank_map;
-    obj.give("TOP_NODE") >> top_node_index;
-    obj.give("BOTTOM_NODE") >> bottom_node_index;
-    return *this;
+     // TODO: include is_trusted flag in BigObject?
+     // if (obj.get_flags() * pm::perl::ValueFlags::not_trusted && !obj.isa("Lattice"))
+     //   throw std::runtime_error("wrong object type for Lattice");
+     obj.give("ADJACENCY") >> G;
+     obj.give("DECORATION") >> D;
+     obj.give("INVERSE_RANK_MAP") >> rank_map;
+     obj.give("TOP_NODE") >> top_node_index;
+     obj.give("BOTTOM_NODE") >> bottom_node_index;
+     return *this;
   }
 };
 

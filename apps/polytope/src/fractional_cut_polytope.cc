@@ -78,19 +78,18 @@ BigObject fractional_cut_polytope(const graph_type& G)
       }
    }
 
-   BigObject p("Polytope<Rational>");
-   p.take("VERTICES") << V;
-   p.take("N_VERTICES") << n_cuts;
-   p.take("CONE_AMBIENT_DIM") << n_edges+1;
-   p.take("BOUNDED") << true;
-   return p;
+   return BigObject("Polytope<Rational>",
+                    "VERTICES", V,
+                    "N_VERTICES", n_cuts,
+                    "CONE_AMBIENT_DIM", n_edges+1,
+                    "BOUNDED", true);
 }
       
 UserFunction4perl("#@category Producing a polytope from graphs"
                   "# Cut polytope of an undirected graph."
                   "# @param Graph G"
                   "# @return Polytope",
-                  &fractional_cut_polytope,"fractional_cut_polytope(props::Graph)");
+                  &fractional_cut_polytope, "fractional_cut_polytope(GraphAdjacency)");
       
 } }
 

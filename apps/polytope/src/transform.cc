@@ -22,7 +22,7 @@ namespace polymake { namespace polytope {
 
 template <typename Scalar>
 BigObject scale(BigObject p_in, const Scalar& factor,
-                   bool store_reverse_transformation)
+                bool store_reverse_transformation)
 {
    Int amb_dim = p_in.call_method("AMBIENT_DIM");
    Matrix<Scalar> T(diag(1,(factor*unit_matrix<Scalar>(amb_dim))));
@@ -32,7 +32,7 @@ BigObject scale(BigObject p_in, const Scalar& factor,
 
 template <typename Scalar>
 BigObject translate(BigObject p_in, const Vector<Scalar>& trans,
-                       bool store_reverse_transformation)
+                    bool store_reverse_transformation)
 {
    Int amb_dim = p_in.call_method("AMBIENT_DIM");
    Matrix<Scalar> T((unit_vector<Scalar>(amb_dim+1, 0) | (trans/unit_matrix<Scalar>(amb_dim))));

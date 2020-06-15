@@ -39,8 +39,7 @@ BigObject lattice_of_chains(BigObject lattice_obj)
 {
   Lattice<Decoration, SeqType> lattice(lattice_obj);
   Array<Set<Int>> max_chains = maximal_chains(lattice,false, false);
-  BigObject chains_complex("topaz::SimplicialComplex");
-  chains_complex.take("FACETS") << max_chains;
+  BigObject chains_complex("topaz::SimplicialComplex", "FACETS", max_chains);
   BigObject chain_hasse = chains_complex.give("HASSE_DIAGRAM");
   return chain_hasse;
 }

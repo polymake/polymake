@@ -48,8 +48,8 @@ multi_associahedron_sphere(Int n, Int k, OptionSet options)
    BigObject induced_action("group::PermutationAction");
    Array<Array<Int>> igens;
    
-   if (nu>1) {
-      BigObject Aut = group::dihedral_group_impl(2*n);
+   if (nu > 1) {
+      BigObject Aut = group::dihedral_group(2*n);
       const Array<Array<Int>> gens = Aut.give("PERMUTATION_ACTION.GENERATORS");
       igens = induced_action_gens_impl(gens, diagonals, index_of);
    
@@ -60,7 +60,7 @@ multi_associahedron_sphere(Int n, Int k, OptionSet options)
       const group::ConjugacyClassReps<> class_reps = Aut.give("PERMUTATION_ACTION.CONJUGACY_CLASS_REPRESENTATIVES");
       group::ConjugacyClassReps<> induced_ccr(class_reps.size());
       auto iicr_it = entire(induced_ccr);
-      for (const auto r: class_reps) {
+      for (const auto& r: class_reps) {
          *iicr_it = induced_gen(r, diagonals, index_of);
          ++iicr_it;
       }

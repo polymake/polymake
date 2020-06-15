@@ -61,6 +61,10 @@ inline int omp_set_nested(int on_off) {
     return 0;
 }
 
+inline int omp_set_max_active_levels(int n) {
+    return 0;
+}
+
 inline int omp_set_num_threads(int max_threads) {
     return 0;
 }

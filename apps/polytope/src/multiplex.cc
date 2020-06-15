@@ -33,18 +33,16 @@ BigObject multiplex(Int d, Int n)
    if (d < 2 || d > n)
       throw std::runtime_error("multiplex: 2 <= d <= n required");
 
-   // FIXME: CombinatorialPolytope
-   BigObject p("Polytope<Rational>");
    IncidenceMatrix<> VIF(n+1,n+1);
    for (Int j = 0; j < n+1; ++j) 
       for (Int k = 1; k < d; ++k) 
          VIF(j,index(j+k,n)) = VIF(j,index(j-k,n)) = true;
 
-   p.take("VERTICES_IN_FACETS") << VIF;
-   p.take("COMBINATORIAL_DIM") << d;
-   p.take("N_VERTICES") << n+1;
-   p.take("N_FACETS") << n+1;
-   return p;
+   return BigObject("Polytope<Rational>",
+                    "VERTICES_IN_FACETS", VIF,
+                    "COMBINATORIAL_DIM", d,
+                    "N_VERTICES", n+1,
+                    "N_FACETS", n+1);
 }
 
 UserFunction4perl("# @category Producing a polytope from scratch"

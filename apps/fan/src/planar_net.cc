@@ -545,18 +545,16 @@ BigObject planar_net(BigObject p)
       flaps.push_back(directed_edge(vf_map[vertex_facet_pair(ia,f)],vf_map[vertex_facet_pair(ib,f)]));
    }
 
-   BigObject net("PlanarNet", mlist<Coord>());
+   BigObject net("PlanarNet", mlist<Coord>(),
+                 "VERTICES", ones_vector<double>(n_net_vertices) | net_vertices,
+                 "MAXIMAL_POLYTOPES", net_facets,
+                 "VF_MAP", vf_map,
+                 "VF_MAP_INV", vf_map_inv,
+                 "DUAL_TREE", Array<directed_edge>(dual_tree),
+                 "FLAPS", Array<directed_edge>(flaps),
+                 "POLYTOPE", p);
+
    net.set_description() << "planar net of " << p.name() << endl;
-
-   net.take("VERTICES") << (ones_vector<double>(n_net_vertices) | net_vertices);
-   net.take("MAXIMAL_POLYTOPES") << net_facets;
-
-   net.take("VF_MAP") << vf_map;
-   net.take("VF_MAP_INV") << vf_map_inv;
-   net.take("DUAL_TREE") << Array<directed_edge>(dual_tree);
-   net.take("FLAPS") << Array<directed_edge>(flaps);
-
-   net.take("POLYTOPE") << p;
 
    return net;
 }

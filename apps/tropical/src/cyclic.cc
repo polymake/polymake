@@ -33,9 +33,8 @@ BigObject cyclic(const Int d, const Int n)
    for (Int i = 0; i < n; ++i)
       for (Int j = 0; j <= d; ++j)
          V(i,j)= TropicalNumber<Addition>(Addition::orientation() * i*j);
-   BigObject p("Polytope", mlist<Addition>());
-   p.set_description()<<"Tropical cyclic "<<d<<"-polytope with "<<n<< " vertices"<<endl;
-   p.take("POINTS") << V;
+   BigObject p("Polytope", mlist<Addition>(), "POINTS", V);
+   p.set_description() << "Tropical cyclic "<<d<<"-polytope with " << n << " vertices"<<endl;
    return p;
 }
 

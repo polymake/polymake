@@ -69,8 +69,7 @@ BigObject n_gon(Int n, const Rational& r, const Rational& alpha_0, OptionSet opt
       }
    }
 
-
-   bool group_flag = options["group"];
+   const bool group_flag = options["group"];
    if (group_flag) {
       Array<Array<Int>> gens(2);
       Array<Int> gen1(n);
@@ -83,16 +82,12 @@ BigObject n_gon(Int n, const Rational& r, const Rational& alpha_0, OptionSet opt
       gens[0]=gen1;
       gens[1]=gen2;
 
-      BigObject a("group::PermutationAction");
-      a.take("GENERATORS") << gens;
-
-      BigObject g("group::Group");
+      BigObject a("group::PermutationAction", "GENERATORS", gens);
+      BigObject g("group::Group", "fullCombinatorialGroupOnRays");
       g.set_description() << "full combinatorial group on vertices" << endl;
-      g.set_name("fullCombinatorialGroupOnRays");
       p.take("GROUP") << g;
       p.take("GROUP.VERTICES_ACTION") << a;
    }
-
 
    p.take("CONE_AMBIENT_DIM") << 3;
    p.take("CONE_DIM") << 3;

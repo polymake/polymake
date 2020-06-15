@@ -55,7 +55,7 @@ UserFunction4perl("# @category Visualization"
                   "#\t Graph Drawing by Force-directed Placement."
                   "#\t Software Practice and Experience Vol. 21, 1129-1164 (1992), no. 11."
 
-                  "# @param props::Graph<Undirected> graph to be embedded."
+                  "# @param GraphAdjacency<Undirected> graph to be embedded."
 
                   "# @options affecting the desired picture"
 
@@ -83,7 +83,7 @@ UserFunction4perl("# @category Visualization"
                   &spring_embedder,
 
                   // the next string is *one* long line
-                  "spring_embedder(props::Graph<Undirected>, "
+                  "spring_embedder(GraphAdjacency<Undirected>, "
                   "   { scale => 1, balance => 1, viscosity => 1, inertion => 1, eps => undef,"
                   "     'z-ordering' => undef, 'z-factor' => undef, 'edge-weights' => undef,"
                   "      seed => undef, 'max-iterations' => 10000 }) ");

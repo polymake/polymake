@@ -94,13 +94,12 @@ BigObject make_lattice_sequential(const Lattice<Decoration, lattice::Nonsequenti
   NodeMap<Directed, Decoration> new_decoration(new_graph);
   copy_range(entire(lattice.decoration()), select(new_decoration, node_perm).begin());
 
-  BigObject result("Lattice", mlist<Decoration, lattice::Sequential>());
-  result.take("ADJACENCY") << new_graph;
-  result.take("DECORATION") << new_decoration;
-  result.take("INVERSE_RANK_MAP") << new_rank_map;
-  result.take("TOP_NODE") << node_perm[ lattice.top_node()];
-  result.take("BOTTOM_NODE") << node_perm[ lattice.bottom_node()];
-  return result;
+  return BigObject("Lattice", mlist<Decoration, lattice::Sequential>(),
+                   "ADJACENCY", new_graph,
+                   "DECORATION", new_decoration,
+                   "INVERSE_RANK_MAP", new_rank_map,
+                   "TOP_NODE", node_perm[lattice.top_node()],
+                   "BOTTOM_NODE", node_perm[lattice.bottom_node()]);
 }
 
 } } }

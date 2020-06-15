@@ -132,20 +132,16 @@ bounding_facets(const GenericMatrix<T1>& F, const GenericMatrix<T2>& V, OptionSe
    }
 
    if (transform) {	
-      BigObject lpp("Polytope", mlist<Scalar>());
-
       const Vector<Scalar> obj(unit_vector<Scalar>(d+1, d));
       const Matrix<Scalar> ineqs = Fs|total_offsets;
-      const Matrix<Scalar> eqs(0,d+1);
+      const Matrix<Scalar> eqs(0, d+1);
 
-      lpp.take("INEQUALITIES") << ineqs;
-      lpp.take("EQUATIONS") << eqs;
-      BigObject lp = lpp.add("LP");
-      lp.take("LINEAR_OBJECTIVE") << obj;
+      BigObject lpp("Polytope", mlist<Scalar>(), "INEQUALITIES", ineqs, "EQUATIONS", eqs);
+      BigObject lp = lpp.add("LP", "LINEAR_OBJECTIVE", obj);
       const Matrix<Scalar> LPV = lpp.give("VERTICES");
 
       Set<Int> max_face = lp.give("MAXIMAL_FACE");
-      Vector<Scalar> bc = barycenter(LPV.minor(max_face,All));
+      Vector<Scalar> bc = barycenter(LPV.minor(max_face, All));
       const Matrix<Scalar> trafo = bc.slice(range(0,d-1))|(zero_vector<Scalar>()/unit_matrix<Scalar>(d-1)*bc[d]);
       Matrix<Scalar> BF = Fs*trafo;
       return BF;

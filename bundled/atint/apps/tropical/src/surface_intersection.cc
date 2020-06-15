@@ -244,12 +244,11 @@ BigObject compute_surface_star(const Vector<Rational>& point,
   // Make the reference vertex the origin
   star_rays.row( intersect_nonfar[0]) = unit_vector<Rational>(star_rays.cols(), 0);
 
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("VERTICES") << star_rays.minor(~rays_to_remove,All);
-  result.take("MAXIMAL_POLYTOPES") << star_cones.minor(containing_cones, ~rays_to_remove);
-  result.take("LINEALITY_SPACE") << star_lineality;
-  result.take("WEIGHTS") << ones_vector<Integer>(containing_cones.size());
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "VERTICES", star_rays.minor(~rays_to_remove, All),
+                   "MAXIMAL_POLYTOPES", star_cones.minor(containing_cones, ~rays_to_remove),
+                   "LINEALITY_SPACE", star_lineality,
+                   "WEIGHTS", ones_vector<Integer>(containing_cones.size()));
 
 } // END findSurfaceStarCones
 

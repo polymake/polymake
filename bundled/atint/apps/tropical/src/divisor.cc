@@ -32,6 +32,6 @@
 namespace polymake { namespace tropical {
 
 	FunctionTemplate4perl("divisorByValueMatrix<Addition>(Cycle<Addition>,Matrix)");
-	FunctionTemplate4perl("divisor_with_refinement<Addition>(Cycle<Addition>, RationalFunction<Addition>)");	
-	FunctionTemplate4perl("divisor_no_refinement<Addition>(Cycle<Addition>, RationalFunction<Addition>)");
+	FunctionTemplate4perl("divisor_with_refinement<Addition>(Cycle<Addition>, TropicalRationalFunction<Addition>)");	
+	FunctionTemplate4perl("divisor_no_refinement<Addition>(Cycle<Addition>, TropicalRationalFunction<Addition>)");
 }}

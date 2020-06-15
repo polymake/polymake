@@ -64,7 +64,7 @@ struct EdgeData {
 
 //calculates the following informations for all edges: possible advances, upper visible points to the right of the left endpoint, monotony
 template <typename Scalar>
-Array<Array<EdgeData > > edge_precalc(const Array< Vector<Scalar> > points)
+Array<Array<EdgeData>> edge_precalc(const Array<Vector<Scalar>>& points)
 {
    typedef typename pm::algebraic_traits<Scalar>::field_type field;
    const Int n = points.size();
@@ -73,7 +73,7 @@ Array<Array<EdgeData > > edge_precalc(const Array< Vector<Scalar> > points)
       Array<EdgeData > tmp(n-i-1);
       edges[i] = tmp;
    }
-   Matrix<field> V(3,3);
+   Matrix<field> V(3, 3);
    bool candidate = true;
    BigObject::Schedule s;
    const IncidenceMatrix<>& illegal_edges = calc_illegal_edges<Scalar>(points);
@@ -85,11 +85,10 @@ Array<Array<EdgeData > > edge_precalc(const Array< Vector<Scalar> > points)
             Bitset vis_from_above(n-i-2);
             for (Int k = i+1; k < n; ++k) {
                if (k!=j && (0==illegal_edges(i,k)) && (0==illegal_edges(j,k))) {
-                  BigObject p = BigObject("Polytope", mlist<field>());
                   V.row(0) = points[i];
                   V.row(1) = points[k];
                   V.row(2) = points[j];
-                  p.take("VERTICES") << V;
+                  BigObject p("Polytope", mlist<field>(), "VERTICES", V);
                   if (!s.valid())
                      s = p.call_method("get_schedule", "FACETS", "VERTICES_IN_FACETS");
                   s.apply(p);
@@ -151,7 +150,7 @@ Int lower_upper_boundary(Bitset& lower, Bitset& upper, BigObject p)
    const IncidenceMatrix<> PIF = p.give("POINTS_IN_FACETS");
    const Matrix<field> F = p.give("FACETS");
 
-   upper+= n;
+   upper += n;
    for (auto rit = entire(rows(PIF)); !rit.at_end(); ++rit) {
       const Set<Int>& ps((*rit));	
       for (auto sit = entire(ps); !sit.at_end(); ++sit) {
@@ -184,19 +183,19 @@ Integer n_fine_triangulations(const Matrix<Scalar>& points, OptionSet options)
 
    //precalculations for the edges
    Array<Array<EdgeData>> advance_triangles = edge_precalc<Scalar>(ordered_points);
-   BigObject p("Polytope", mlist<Scalar>());
    Matrix<Scalar> ordered_points_matrix(n,points.cols(),entire(ordered_points));
 
-   p.take("FEASIBLE") << true;
-   p.take("BOUNDED") << true;
-   p.take("POINTS") << ordered_points_matrix;
+   BigObject p("Polytope", mlist<Scalar>(),
+               "FEASIBLE", true,
+               "BOUNDED", true,
+               "POINTS", ordered_points_matrix);
 
    //calculate the upper boundary and the source for an DAG
    const Int size = n+log2_ceil(n);
    Bitset upper_boundary(n);
    Bitset source(size);
    source+= size-1;
-   const Int n_boundary_points = lower_upper_boundary<Scalar>(source,upper_boundary,p);
+   const Int n_boundary_points = lower_upper_boundary<Scalar>(source, upper_boundary, p);
 
    hash_map<Bitset, Integer> unmap1;
    hash_map<Bitset, Integer> unmap2;

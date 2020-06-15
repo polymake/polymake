@@ -144,7 +144,11 @@ void DescentFace<Integer>::compute(DescentSystem<Integer>& FF,
         if (GensInd[i])
             mother_key.push_back(i);
 
-    Matrix<Integer> Gens_this;
+    Matrix<Integer> Gens_this; // this matrix will contain a row echelon basis
+                               // of the subspace spanned by the extreme rays of *this
+                               // In general it is not a basis of the saturation!
+                               // If it is not, we must alternatively take the embedding
+                               // of Sublatt_this.
 
     if (mother_key.size() > 3 * dim) {
         try {
@@ -191,46 +195,11 @@ void DescentFace<Integer>::compute(DescentSystem<Integer>& FF,
             break;
     }
 
-    /* if(must_saturate)
-        nr_sat++;
-    else
-        nr_not_sat++; */
-
     Sublattice_Representation<Integer> Sublatt_this;
     if (must_saturate)
         Sublatt_this = Sublattice_Representation<Integer>(Gens_this, true, false);  //  take saturation, no LLL
 
-    if (mother_key.size() == dim) {  // *this is simplicial
-        simplicial = true;
-        Integer det;
-        if (!must_saturate) {
-            det = 1;
-        }
-        else {
-            Matrix<Integer> Embedded_Gens = Sublatt_this.to_sublattice(Gens_this);
-            det = Embedded_Gens.vol();
-        }
-        mpz_class mpz_det = convertTo<mpz_class>(det);
-        // cout << "Vol " << mpz_det << endl;
-        mpq_class multiplicity = mpz_det;
-        multiplicity *= coeff;
-        mpz_class GradDen = 1;
-        for (size_t i = 0; i < Gens_this.nr_of_rows(); ++i)
-            // GradDen*=convertTo<mpz_class>(FF.GradGens[mother_key[i]]);
-            GradDen *= FF.GradGens_mpz[mother_key[i]];
-        multiplicity /= GradDen;
-
-#pragma omp critical(ADD_MULT)
-        FF.multiplicity += multiplicity;
-#pragma omp atomic
-        FF.nr_simplicial++;
-#pragma omp atomic
-        FF.tree_size += tree_size;
-        return;
-    }
-
     // Now we find the potential facets of *this.
-
     dynamic_bitset facet_ind(mother_key.size());    // lists Gens
     map<dynamic_bitset, dynamic_bitset> FacetInds;  // potential facets
     map<dynamic_bitset, key_t> CutOutBy;            // the facet citting it out
@@ -463,6 +432,12 @@ void DescentFace<Integer>::compute(DescentSystem<Integer>& FF,
 
 template <typename Integer>
 void DescentSystem<Integer>::compute() {
+    
+#ifdef NMZ_EXTENDED_TESTS
+    if(!using_GMP<Integer>() && !using_renf<Integer>() && test_arith_overflow_descent)
+        throw ArithmeticException(0);    
+#endif
+    
     if (verbose) {
         if (SimplePolytope)
             verboseOutput() << "Polytope is simple" << endl;
@@ -614,7 +589,7 @@ void DescentSystem<Integer>::compute() {
     }  // while
 
     if (verbose) {
-        verboseOutput() << "Mult " << multiplicity << endl;
+        verboseOutput() << "Mult (before NoGradingDenom correction) " << multiplicity << endl;
         verboseOutput() << "Mult (float) " << std::setprecision(12) << mpq_to_nmz_float(multiplicity) << endl;
         verboseOutput() << "Full tree size (modulo 2^64)" << tree_size << endl;
         verboseOutput() << "Number of descent steps " << descent_steps << endl;

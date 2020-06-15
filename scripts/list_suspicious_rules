@@ -52,22 +52,22 @@ foreach my $rule (@{$application->rules}) {
 
 
 sub possible_permutations {
-   my ($path, $seen)=@_;
-   if (@$path==1) {
-      my $prop=$path->[0];
+   my ($path, $seen) = @_;
+   if (@$path == 1) {
+      my $prop = $path->[0];
       foreach my $permutation (@perms) {
-         if (defined $permutation->sensitive_props->{$prop->key}) {
+         if (defined($permutation->sensitive_props->{$prop->key})) {
             push @{$seen->{$permutation}}, $prop;
          }
       }
    } else {
       foreach my $permutation (@perms) {
-         if (defined $permutation->find_sensitive_sub_property(@$path)) {
+         if (defined($permutation->find_sensitive_sub_property(@$path))) {
             push @{$seen->{$permutation}}, $path;
          } else {
-            for (my $depth=0; $depth<$#$path; ++$depth) {
-               if (defined (my $sub_permutation=$permutation->find_sub_permutation(@$path[0..$depth]))) {
-                  if (defined $sub_permutation->find_sensitive_sub_property(@$path[$depth+1..$#$path])) {
+            for (my $depth=0; $depth < $#$path; ++$depth) {
+               if (defined(my $sub_permutation = $permutation->find_sub_permutation(@$path[0..$depth]))) {
+                  if (defined($sub_permutation->find_sensitive_sub_property(@$path[$depth+1..$#$path]))) {
                      push @{$seen->{$permutation}}, $path;
                   }
                }

@@ -213,9 +213,6 @@ ListReturn visualizable_cells(const Matrix<Rational>& sites, Int d, const Array<
                       ineq /= row;
                     }
 
-                BigObject P("polytope::Polytope<Rational>");
-                P.take("INEQUALITIES") << Matrix<Rational>(ineq.minor(All, sequence(0,d+1)));
-
                 Matrix<Rational> eq(1, d+2); // dist(x,s1)=dist(x,s2)
                 // x_j2-x_i2-s2_j2+s2_i2 = x_j1-x_i1-s1_j1+s1_i1
                 eq(0, 0) = -s1[i1]+s1[j1]+s2[i2]-s2[j2];
@@ -223,10 +220,12 @@ ListReturn visualizable_cells(const Matrix<Rational>& sites, Int d, const Array<
                 eq(0, j1+1) -= 1;
                 eq(0, i2+1) -= 1;
                 eq(0, j2+1) += 1;
-                eq = eq.minor(All, sequence(0,d+1));
-                P.take("EQUATIONS") << eq;
 
-                bool feasible = P.give("FEASIBLE");
+                BigObject P("polytope::Polytope<Rational>",
+                            "INEQUALITIES", ineq.minor(All, range(0, d)),
+                            "EQUATIONS", eq.minor(All, range(0, d)));
+
+                const bool feasible = P.give("FEASIBLE");
                 if (feasible) results << P;
               }
         }
@@ -237,9 +236,7 @@ ListReturn visualizable_cells(const Matrix<Rational>& sites, Int d, const Array<
     for (Int j = 0; j < d; ++j)
       thepoint[j+1] -= sites(i, d); // Projecting to the x[d]=0 hyperplane.
 
-    BigObject P("polytope::Polytope<Rational>");
-    P.take("POINTS") << vector2row(thepoint);
-    results << P;
+    results << BigObject("polytope::Polytope<Rational>", "POINTS", vector2row(thepoint));
   }
 
   return results;

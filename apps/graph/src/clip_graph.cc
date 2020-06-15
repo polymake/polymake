@@ -51,7 +51,7 @@ BigObject clip_graph(const Graph<>& G, const Matrix<Rational>& V, const Matrix<R
 {
    const Int n = V.rows();
    Graph<> truncG(G);  // copy the graph information in order to change it later
-   NodeMap< Undirected,Vector<Rational> > coords(truncG);
+   NodeMap<Undirected, Vector<Rational>> coords(truncG);
 
    // check which vertices satisfy all the inequalities of the bounding box; note that the rays must be sorted out, too
    Bitset valid(n);
@@ -83,10 +83,7 @@ BigObject clip_graph(const Graph<>& G, const Matrix<Rational>& V, const Matrix<R
 
    truncG.squeeze();
    
-   BigObject GG("GeometricGraph");
-   GG.take("ADJACENCY") << truncG;
-   GG.take("COORDINATES") << coords;
-   return GG;
+   return BigObject("GeometricGraph", "ADJACENCY", truncG, "COORDINATES", coords);
 }
 
 UserFunction4perl("# @category Visualization"

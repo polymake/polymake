@@ -34,8 +34,8 @@ user_function isomorphic(IncidenceMatrix, IncidenceMatrix) : c++ (include => "po
 
 # @category Comparing
 # true if //graph1// and //graph2// are isomorphic.
-# @param props::Graph graph1
-# @param props::Graph graph2
+# @param GraphAdjacency graph1
+# @param GraphAdjacency graph2
 # @return Bool
 # @depends bliss or nauty
 # @example [application polytope]
@@ -44,15 +44,15 @@ user_function isomorphic(IncidenceMatrix, IncidenceMatrix) : c++ (include => "po
 # > $g2 = cycle_graph(4)->ADJACENCY;
 # > print isomorphic($g1,$g2);
 # | true
-user_function isomorphic(props::Graph, props::Graph) : c++ (include => "polymake/graph/compare.h");
+user_function isomorphic(GraphAdjacency, GraphAdjacency) : c++ (include => "polymake/graph/compare.h");
 
 # @category Comparing
 # Find the node permutation mapping //graph1// to //graph2//.
-# @param props::Graph graph1
-# @param props::Graph graph2
+# @param GraphAdjacency graph1
+# @param GraphAdjacency graph2
 # @return Array<Int> permutation of node indexes, or undef if graphs are not isomorphic
 # @depends bliss or nauty
-user_function find_node_permutation(props::Graph, props::Graph) : c++ (include => "polymake/graph/compare.h");
+user_function find_node_permutation(GraphAdjacency, GraphAdjacency) : c++ (include => "polymake/graph/compare.h");
 
 
 # @category Comparing
@@ -73,29 +73,29 @@ user_function find_row_col_permutation(IncidenceMatrix<NonSymmetric>, IncidenceM
 
 # @category Comparing
 # Find the automorphism group of the graph.
-# @param props::Graph graph
+# @param GraphAdjacency graph
 # @return Array<Array<Int>> each element encodes a node permutation.
 # @depends bliss or nauty
 # @example [application polytope]
 # We first create the vertex-edge graph of the square and then print its automorphism group:
-# > $g=new props::Graph(cube(2)->GRAPH->ADJACENCY);
+# > $g=new GraphAdjacency(cube(2)->GRAPH->ADJACENCY);
 # > print automorphisms($g);
 # | 0 2 1 3
 # | 1 0 3 2
 # These two permutations generate the group of all node permutations
 # that preserve vertex-edge connectivity.
-user_function automorphisms(props::Graph) : c++ (include => "polymake/graph/compare.h");
+user_function automorphisms(GraphAdjacency) : c++ (include => "polymake/graph/compare.h");
 
 
 # @category Comparing
 # Find the order of the automorphism group of the graph.
-# @param props::Graph graph
+# @param GraphAdjacency graph
 # @return Int the order of the automorphism group
 # @depends bliss or nauty
 # @example
 # > print n_automorphisms(cycle_graph(5)->ADJACENCY);
 # | 2
-user_function n_automorphisms(props::Graph) : c++ (include => "polymake/graph/GraphIso.h");
+user_function n_automorphisms(GraphAdjacency) : c++ (include => "polymake/graph/GraphIso.h");
 
 
 # @category Comparing
@@ -128,20 +128,20 @@ user_function automorphisms(IncidenceMatrix<Symmetric>) : c++ (include => "polym
 # @category Comparing
 # Find a canonical representation of a graph //g//.
 # Warning: This representation can depend on the extension (bliss/nauty) used, its version and configuration, as well as the hardware!
-# @param props::Graph g
-# @return props::Graph
+# @param GraphAdjacency g
+# @return GraphAdjacency
 # @depends bliss or nauty
-user_function canonical_form(props::Graph) : c++ (include => "polymake/graph/compare.h");
+user_function canonical_form(GraphAdjacency) : c++ (include => "polymake/graph/compare.h");
 
 # @category Comparing
 # Compute a hash for a graph //g// independent of the node ordering.
 # Warning: This hash can depend on the extension (bliss/nauty) used, its version and configuration, as well as the hardware!
 # Nauty requires an integer key //k// as input, bliss will ignore the key.
-# @param props::Graph g
+# @param GraphAdjacency g
 # @param Int k a key for the hash computation, default value 2922320
 # @return Int
 # @depends bliss or nauty
-user_function canonical_hash(props::Graph; $=2922320) : c++ (include => "polymake/graph/compare.h");
+user_function canonical_hash(GraphAdjacency; $=2922320) : c++ (include => "polymake/graph/compare.h");
 
 # @category Comparing
 # Compute a hash for an incidence matrix //I// independent of the row ordering.

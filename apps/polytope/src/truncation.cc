@@ -237,7 +237,7 @@ template<typename Scalar>
 BigObject truncation(BigObject p_in, const pm::all_selector&, OptionSet options)
 {
    const Int n_verts = p_in.give("N_VERTICES");
-   BigObject p_out=truncation<Scalar>(p_in,sequence(0,n_verts),options);
+   BigObject p_out = truncation<Scalar>(p_in, sequence(0, n_verts), options);
    p_out.set_description() << p_in.name() << " with all vertices truncated" << endl;
    return p_out;
 }
@@ -245,7 +245,7 @@ BigObject truncation(BigObject p_in, const pm::all_selector&, OptionSet options)
 template<typename Scalar>
 BigObject truncation(BigObject p_in, Int vertex, OptionSet options)
 {
-   BigObject p_out=truncation<Scalar>(p_in, scalar2set(vertex), options);
+   BigObject p_out = truncation<Scalar>(p_in, scalar2set(vertex), options);
    p_out.set_description() << p_in.name() << " with vertex " << vertex << " truncated" << endl;
    return p_out;
 }

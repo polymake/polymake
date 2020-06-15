@@ -85,7 +85,7 @@ precondition : VECTOR_DIM { $this->VECTOR_DIM>2 }
 weight 3.10;
 
 rule GRAPH.ADJACENCY : N_POINTS, VERTEX_POINT_MAP {
-   my $g = new common::Graph($this->N_POINTS);
+   my $g = new GraphAdjacency($this->N_POINTS);
    $g->edge($this->VERTEX_POINT_MAP->[0],$this->VERTEX_POINT_MAP->[1]);
    $this->GRAPH->ADJACENCY = $g;
 }
@@ -93,7 +93,7 @@ precondition : VECTOR_DIM { $this->VECTOR_DIM==2 }
 weight 1.10;
 
 rule GRAPH.ADJACENCY : N_POINTS {
-   my $g = new common::Graph($this->N_POINTS);
+   my $g = new GraphAdjacency($this->N_POINTS);
    $this->GRAPH->ADJACENCY = $g;
 }
 precondition : VECTOR_DIM { $this->VECTOR_DIM==1 }
@@ -378,7 +378,7 @@ user_function minkowski_sum<Scalar> (type_upgrade<Scalar>, PointConfiguration<ty
 # @option Bool outer Calculate outer normal cone?  Default value is 0 (= inner)
 # @option Bool attach Attach the cone to //F//? Default 0 (ie, return the cone inside the hyperplane at infinity)
 # @return Cone
-# @example [prefer cdd] To compute the outer normal cone of a doubled 2-cube, do this:
+# @example [prefer cdd] [require bundled:cdd] To compute the outer normal cone of a doubled 2-cube, do this:
 # > $v = cube(2)->VERTICES;
 # > $p = new PointConfiguration(POINTS=>($v/$v));
 # > print normal_cone($p, 4, outer=>1)->RAYS;
@@ -397,7 +397,7 @@ user_function normal_cone<Scalar>(PointConfiguration<Scalar> $; { outer => 0, at
 # Symmetries of the configuration are NOT taken into account.
 # @param PointConfiguration P the input point configuration
 # @return Array<Set>
-# @example [prefer cdd] To calculate the maximal interior simplices of a point configuration, type
+# @example [prefer cdd] [require bundled:cdd] To calculate the maximal interior simplices of a point configuration, type
 # > $p=new PointConfiguration(POINTS=>[[1,0,0],[1,1,0],[1,0,1],[1,1,1],[1,1/2,1/2]]);
 # > print max_interior_simplices($p);
 # | {0 1 2}
@@ -419,7 +419,7 @@ user_function max_interior_simplices<Scalar>(PointConfiguration<Scalar>) {
 # @tparam Scalar the underlying number type
 # @param PointConfiguration<Scalar> PC the point configuration
 # @return Polytope
-# @example [prefer cdd] To calculate the universal polytope of a point configuration, type
+# @example [prefer cdd] [require bundled:cdd] To calculate the universal polytope of a point configuration, type
 # > $p=new PointConfiguration(POINTS=>[[1,0,0],[1,1,0],[1,0,1],[1,1,1],[1,1/2,1/2]]);
 # > print universal_polytope($p)->VERTICES;
 # | 1 0 1 0 1 0 0 0 0

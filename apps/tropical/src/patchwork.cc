@@ -20,6 +20,10 @@
 #include "polymake/TropicalNumber.h"
 #include "polymake/Vector.h"
 #include "polymake/Matrix.h"
+/* #include "polymake/GF2.h" */
+#include "polymake/Graph.h"
+#include "polymake/graph/Lattice.h"
+#include "polymake/graph/Decoration.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/tropical/patchwork.h"
 
@@ -27,7 +31,11 @@ namespace polymake { namespace tropical {
 
 FunctionTemplate4perl("real_facets<Addition>(Array<Bool>, Matrix<Int>, Vector<TropicalNumber<Addition>>, Matrix<Rational>, IncidenceMatrix<NonSymmetric>)");
 
+FunctionTemplate4perl("real_phase<Addition>(Array<Bool>, Matrix<Int>, Vector<TropicalNumber<Addition>>, Matrix<Rational>, IncidenceMatrix<NonSymmetric>)");
+
 FunctionTemplate4perl("real_part_realize<Addition>(Matrix<Int>, Vector<TropicalNumber<Addition>>, Matrix<Rational>, IncidenceMatrix<NonSymmetric>, Set<Int>, IncidenceMatrix<NonSymmetric>, String)");
+
+FunctionTemplate4perl("chain_complex_from_dualsub(Array<Bool>, Lattice<BasicDecoration>, Matrix<Rational>)");
 
 } }
 

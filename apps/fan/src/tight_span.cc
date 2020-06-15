@@ -27,8 +27,8 @@ using namespace graph::lattice;
 using namespace fan::lattice;
 
 BigObject tight_span_lattice_for_subdivision(const IncidenceMatrix<>& maximal_cones,
-                                                const Array<IncidenceMatrix<> >& maximal_vifs,
-                                                const Int dim)
+                                             const Array<IncidenceMatrix<>>& maximal_vifs,
+                                             const Int dim)
 {
   // Compute boundary facets
   const Array<Int> max_dim_dummy;

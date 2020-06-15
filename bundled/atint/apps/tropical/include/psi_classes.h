@@ -71,11 +71,10 @@ BigObject psi_product(Int n, Vector<Int> exponents)
     norays(0,0) = 1;
     Vector<Set<Int>> vertexcone; vertexcone |= scalar2set(0);
     Vector<Integer> singleweight; singleweight |= (Integer::fac(k_sum) / divisor);
-    BigObject origin("Cycle", mlist<Addition>());
-    origin.take("PROJECTIVE_VERTICES") << norays;
-    origin.take("MAXIMAL_POLYTOPES") << vertexcone;
-    origin.take("WEIGHTS") << singleweight;
-    return origin;
+    return BigObject("Cycle", mlist<Addition>(),
+                     "PROJECTIVE_VERTICES", norays,
+                     "MAXIMAL_POLYTOPES", vertexcone,
+                     "WEIGHTS", singleweight);
   }
 
   // ORDER EXPONENT VECTOR ------------------------------------------------------
@@ -291,11 +290,10 @@ BigObject psi_product(Int n, Vector<Int> exponents)
     cones[mc] += scalar2set(rays.rows()-1);
   }
 
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("PROJECTIVE_VERTICES") << rays;
-  result.take("MAXIMAL_POLYTOPES") << cones;
-  result.take("WEIGHTS") << tropical_weights;
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "PROJECTIVE_VERTICES", rays,
+                   "MAXIMAL_POLYTOPES", cones,
+                   "WEIGHTS", tropical_weights);
 
 } // END function psi_product
 

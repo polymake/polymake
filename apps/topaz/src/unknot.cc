@@ -35,9 +35,6 @@ BigObject unknot(const Int m, const Int n, OptionSet options)
    if (!(options["eps"] >> eps))
       eps = Rational(1, 200*(n+m+2));
 
-   BigObject p("GeometricSimplicialComplex<Rational>");
-   p.set_description() << "Vicious embedding of the unknot in the 1-skeleton of the 3-sphere.\n";
-
    std::list<Set<Int>> C;
    const Int k1 = 2*(m+1)-1;
    const Int k2 = 2*(n+m+2)-1;
@@ -232,9 +229,8 @@ BigObject unknot(const Int m, const Int n, OptionSet options)
    e+=k3-1; e+=k4;
    K.push_back(e);
 
-  // embedded as a subcomplex
-  BigObject KSC("SimplicialComplex");
-  KSC.take("INPUT_FACES") << K;
+   // embedded as a subcomplex
+   BigObject KSC("SimplicialComplex", "INPUT_FACES", K);
 
   // geometric realization
   Matrix<Rational> Coordinates(a+2,3);
@@ -269,9 +265,11 @@ BigObject unknot(const Int m, const Int n, OptionSet options)
   Coordinates(a+1, 1) = Rational((k1+k2)/4);
   Coordinates(a+1, 2) = Rational(2);
 
-  p.take("FACETS") << C;
-  p.take("COORDINATES") << Coordinates;
-  p.take("KNOT") << KSC;
+  BigObject p("GeometricSimplicialComplex<Rational>",
+              "FACETS", C,
+              "COORDINATES", Coordinates,
+              "KNOT", KSC);
+  p.set_description() << "Vicious embedding of the unknot in the 1-skeleton of the 3-sphere.\n";
   return p;
 }
 

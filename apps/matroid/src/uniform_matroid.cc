@@ -31,17 +31,15 @@ BigObject uniform_matroid(const Int r, const Int n)
    if (r < 0 || r > n)
       throw std::runtime_error("uniform_matroid: 0 <= r <= n required");
 
-   BigObject m("Matroid");
-   m.set_description()<<"Uniform matroid of rank "<<r<<" on "<<n<<" elements."<<endl;
-   m.take("N_ELEMENTS")<< n;
-   m.take("RANK")<<r;
-   // we already know the number of bases
-   const Int n_bases = Int(Integer::binom(n,r));
-   m.take("N_BASES") << n_bases;
-
+   const Int n_bases = Int(Integer::binom(n, r));
    const Array<Set<Int>> bases(n_bases, entire(all_subsets_of_k(sequence(0, n), r)));
 
-   m.take("BASES") << bases;
+   BigObject m("Matroid",
+               "N_ELEMENTS", n,
+               "RANK", r,
+               "N_BASES", n_bases,
+               "BASES", bases);
+   m.set_description()<<"Uniform matroid of rank "<<r<<" on "<<n<<" elements."<<endl;
    return m; 
 }
 

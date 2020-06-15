@@ -110,7 +110,7 @@ Int connectivity(const GenericGraph<AnyGraph, Undirected>& G_in)
 
 UserFunctionTemplate4perl("# @category Combinatorics"
                           "# Compute the [[CONNECTIVITY]] of a given //graph// using the Ford-Fulkerson flow algorithm."
-                          "# @param props::Graph<Undirected> graph"
+                          "# @param GraphAdjacency<Undirected> graph"
                           "# @return Int"
                           "# @example [application polytope]"
                           "# Compute the connectivity of the vertex-edge graph of the square:"
@@ -119,7 +119,7 @@ UserFunctionTemplate4perl("# @category Combinatorics"
                           "# This means that at least two nodes or edges need to be removed in order"
                           "# for the resulting graph not to be connected anymore."
                           "# @author Nikolaus Witte",
-                          "connectivity(props::Graph<Undirected>)");
+                          "connectivity(GraphAdjacency<Undirected>)");
 } }
 
 // Local Variables:

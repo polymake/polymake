@@ -110,10 +110,10 @@ BigObject stellar_indep_faces(BigObject p_in, const Array<Set<Int>>& in_faces)
 
    V.resize( v_count,V.cols() );
 
-   BigObject p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>(),
+                   "VERTICES", V,
+                   "LINEALITY_SPACE", lineality_space);
    p_out.set_description() << "Stellar subdivision of " << p_in.name() << endl;
-   p_out.take("VERTICES") << V;
-   p_out.take("LINEALITY_SPACE") << lineality_space;
    return p_out;
 }
 

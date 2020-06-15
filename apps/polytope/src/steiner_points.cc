@@ -21,7 +21,7 @@
 #include "polymake/Vector.h"
 #include "polymake/Graph.h"
 #include "polymake/Rational.h"
-#include "polymake/RandomSpherePoints.h"
+#include "polymake/RandomPoints.h"
 #include "polymake/graph/Lattice.h"
 #include "polymake/graph/Decoration.h"
 #include <cmath>

@@ -8,8 +8,9 @@ CREDIT
  (C) 2011 - 2015 Simon Hampe, simon.hampe@googlemail.com
  See also: https://github.com/simonhampe/atint 
 
-# REQUIRE
-# URIs of other bundled extensions which are prerequisite for this one
+REQUIRE
+  bundled:cdd
+  # see #1105
 
 # REQUIRE_OPT
 # URIs of other bundled extensions being optional prerequisites for this one

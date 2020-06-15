@@ -117,23 +117,13 @@ BigObject common_refinement(BigObject f1, BigObject f2)
       }
    }
 
-   BigObject f_out("PolyhedralFan");
-
-   f_out.take("COMPLETE") << complete;
-   f_out.take("FAN_AMBIENT_DIM") << ambient_dim;
-   f_out.take("LINEALITY_DIM") << lineality_space.rows();
    if (complete) {
-      f_out.take("FAN_DIM") << d;
-      f_out.take("RAYS") << rays;
-      f_out.take("MAXIMAL_CONES") << new_max_cones;
-      f_out.take("LINEALITY_SPACE") << lineality_space;
+      return BigObject("PolyhedralFan", "COMPLETE", complete, "FAN_AMBIENT_DIM", ambient_dim, "LINEALITY_DIM", lineality_space.rows(),
+                       "FAN_DIM", d, "RAYS", rays, "MAXIMAL_CONES", new_max_cones, "LINEALITY_SPACE", lineality_space);
    } else {
-      f_out.take("INPUT_RAYS") << rays;
-      f_out.take("INPUT_CONES") << new_max_cones;
-      f_out.take("INPUT_LINEALITY") << lineality_space;
+      return BigObject("PolyhedralFan", "COMPLETE", complete, "FAN_AMBIENT_DIM", ambient_dim, "LINEALITY_DIM", lineality_space.rows(),
+                       "INPUT_RAYS", rays, "INPUT_CONES", new_max_cones, "INPUT_LINEALITY", lineality_space);
    }
-
-   return f_out;
 }
 
 UserFunctionTemplate4perl("# @category Producing a fan"

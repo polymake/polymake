@@ -52,12 +52,12 @@ BigObject linear_space(BigObject valuated_matroid)
   // Check absence of loops
   const Int n_matroid_loops = valuated_matroid.give("N_LOOPS");
   if (n_matroid_loops > 0) {
-    BigObject empty_cycle("Cycle", mlist<Addition>());
-    empty_cycle.take("PROJECTIVE_VERTICES") << Matrix<Rational>(0,n+1);
-    empty_cycle.take("MAXIMAL_POLYTOPES") << Array<Set<Int>>();
-    empty_cycle.take("PROJECTIVE_AMBIENT_DIM") << n-1;
-    empty_cycle.take("WEIGHTS") << Vector<Integer>();
-    return empty_cycle;
+    // an empty cycle
+    return BigObject("Cycle", mlist<Addition>(),
+                     "PROJECTIVE_VERTICES", Matrix<Rational>(0, n+1),
+                     "MAXIMAL_POLYTOPES", Array<Set<Int>>(),
+                     "PROJECTIVE_AMBIENT_DIM", n-1,
+                     "WEIGHTS", Vector<Integer>());
   }
 
   // excluded faces (those with loops):
@@ -97,7 +97,7 @@ BigObject linear_space(BigObject valuated_matroid)
     n_facets++;
   }
   for (auto rk = entire<indexed>(split_flacets); !rk.at_end(); ++rk) {
-    for (const auto flacet : *rk) {
+    for (const auto& flacet : *rk) {
       Vector<Rational> v(n);
       v.slice(flacet).fill(1);
       v = -rk.index() | v;
@@ -136,13 +136,11 @@ BigObject linear_space(BigObject valuated_matroid)
     }
   }
 
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("PROJECTIVE_VERTICES") << new_vertices;
-  result.take("HASSE_DIAGRAM") << hasse_diagram;
-  result.take("LINEALITY_SPACE") << lin_space;
-  result.take("WEIGHTS") << ones_vector<Integer>(n_max_polys);
-
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "PROJECTIVE_VERTICES", new_vertices,
+                   "HASSE_DIAGRAM", hasse_diagram,
+                   "LINEALITY_SPACE", lin_space,
+                   "WEIGHTS", ones_vector<Integer>(n_max_polys));
 }
 
 UserFunctionTemplate4perl("# @category Tropical linear spaces"

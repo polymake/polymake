@@ -29,14 +29,15 @@ BigObject complete_bipartite(const Int k, const Int l)
    for (Int i = 0; i < k; ++i)
      for (Int j = k; j < k+l; ++j)
        g.edge(i,j);
-   BigObject G("Graph<>");
-   G.take("N_NODES")<<(k+l);
-   G.take("N_EDGES")<<(k*l);
-   G.take("DIAMETER")<<2;
-   G.take("CONNECTED")<<true;
-   G.take("BIPARTITE")<<true;
-   G.take("SIGNATURE")<<(k<l?l-k:k-l);
-   G.take("ADJACENCY")<<g;
+
+   BigObject G("Graph<>",
+               "N_NODES", k+l,
+               "N_EDGES", k*l,
+               "DIAMETER", 2,
+               "CONNECTED", true,
+               "BIPARTITE", true,
+               "SIGNATURE", std::abs(l-k),
+               "ADJACENCY", g);
    G.set_description()<<"Complete bipartite graph on "<<k<<" + "<<l<< " nodes."<<endl;
    return G;
 

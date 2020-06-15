@@ -57,7 +57,7 @@ BigObject pointed_part(BigObject p_in)
 {
   Matrix<Scalar> Points, Inequalities, LinealitySpace;
 
-  BigObjectType t=p_in.type();
+  BigObjectType t = p_in.type();
   BigObject p_out(t);
 
   // Check if VERTICES are given, because it forms the pointed part

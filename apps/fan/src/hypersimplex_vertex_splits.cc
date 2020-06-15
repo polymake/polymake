@@ -37,7 +37,7 @@ BigObject hypersimplex_vertex_splits(Int k, Int d, OptionSet options)
    BigObject HA("HyperplaneArrangement<Rational>");
    HA.set_description() << "Arrangement of vertex split hyperplanes of (" << k << "," << d << ")-hypersimplex" << endl;
 
-   HA.take("AMBIENT_DIM") << d;
+   HA.take("HYPERPLANE_AMBIENT_DIM") << d;
 
    // we already know the number of vertices
    const Int n(Integer::binom(d,k));

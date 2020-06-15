@@ -109,12 +109,10 @@ BigObject simplicial_with_diagonal(BigObject fan)
   for (Int c = 0; c < p_cones.dim(); ++c) 
     p_cones[c] += (p_rays.rows()-1);
 
-  // Return result
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("VERTICES") << thomog(p_rays);
-  result.take("MAXIMAL_POLYTOPES") << p_cones;
-  result.take("WEIGHTS") << p_weights;
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "VERTICES", thomog(p_rays),
+                   "MAXIMAL_POLYTOPES", p_cones,
+                   "WEIGHTS", p_weights);
 }
 
 // Documentation see perl wrapper

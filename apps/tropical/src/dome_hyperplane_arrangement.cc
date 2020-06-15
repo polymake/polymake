@@ -80,17 +80,13 @@ BigObject dome_hyperplane_arrangement(const Matrix<TropicalNumber<Addition,Scala
       ineq /= (-1)*Addition::orientation()*(Rational(coefs[i])|monoms[i]);
   }
 
-  BigObject dome("polytope::Polytope", mlist<Scalar>());
-  dome.take("INEQUALITIES") << ineq;
-  dome.take("FEASIBLE") << true;
-  dome.take("BOUNDED") << false;
-
-  return dome;
+  return BigObject("polytope::Polytope", mlist<Scalar>(),
+                   "INEQUALITIES", ineq,
+                   "FEASIBLE", true,
+                   "BOUNDED", false);
 }
 
 FunctionTemplate4perl("cone_polynomial<Addition,Scalar>(Matrix<TropicalNumber<Addition, Scalar>>)");
 FunctionTemplate4perl("dome_hyperplane_arrangement<Addition,Scalar>(Matrix<TropicalNumber<Addition, Scalar>>)");
 
-}}
-
-
+} }

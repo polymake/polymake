@@ -47,7 +47,7 @@ BigObject facet_to_infinity(BigObject p_in, const Int inf_facet)
                             "# @param Int i the facet index"
                             "# @return Polytope"
                             "# @author Sven Herrmann"
-                            "# @example [prefer cdd] This generates the polytope that is the positive quadrant in 2-space:"
+                            "# @example [prefer cdd] [require bundled:cdd] This generates the polytope that is the positive quadrant in 2-space:"
                             "# > $q = new Polytope(VERTICES=>[[1,-1,-1],[1,0,1],[1,1,0]]);"
                             "# > $pf = facet_to_infinity($q,2);"
                             "# > print $pf->VERTICES;"

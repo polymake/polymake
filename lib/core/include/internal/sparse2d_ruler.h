@@ -147,7 +147,7 @@ public:
 
       ruler* r = allocate(n_alloc);
       for (auto src = old->begin(), src_end = old->end(), dst = r->begin();  src != src_end;  ++src, ++dst)
-         relocate(src.operator->(), dst.operator->());
+         new(dst.operator->()) Container(std::move(*src));
       r->size_and_prefix = old->size_and_prefix;
 
       deallocate(old);

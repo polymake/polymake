@@ -445,8 +445,8 @@ sub needs_finalization {
                croak( "initial rules may not trigger permutations" );
             }
             foreach my $path (@$input) {
-               my $perm_index=Property::find_first_in_path($path, Property::Flags::is_permutation);
-               if ($perm_index<0) {
+               my $perm_index = Property::find_first_in_path($path, Property::Flags::is_permutation);
+               if ($perm_index < 0) {
                   croak( "A permuted subobject mixed with non-permuted properties in one source group" );
                }
                if (@path_to_perm) {
@@ -454,7 +454,7 @@ sub needs_finalization {
                      croak( "Different permuted subobjects occur as sources in the same rule" );
                   }
                }
-               @path_to_perm=@$path[0..$perm_index];
+               @path_to_perm = @$path[0..$perm_index];
                if (grep { $_->flags & Property::Flags::is_permutation } @$path[$perm_index+1..$#$path]) {
                   croak( "Nested permuted subobjects are not supported" );
                }
@@ -472,28 +472,28 @@ sub needs_finalization {
          return;
       }
    } else {
-      croak( "Only permutation rules may be labeled as nonexistent") if $self->code==\&nonexistent;
+      croak( "Only permutation rules may be labeled as nonexistent") if $self->code == \&nonexistent;
       push @{$self->defined_for->production_rules}, $self;
    }
    $self
 }
 ####################################################################################
 sub finalize {
-   my ($self, $for_twin_rule)=@_;
-   my $proto=$self->defined_for;
-   my $perm_deputy=$self->with_permutation;
-   my $perm_path=$perm_deputy && $perm_deputy->perm_path;
+   my ($self, $for_twin_rule) = @_;
+   my $proto = $self->defined_for;
+   my $perm_deputy = $self->with_permutation;
+   my $perm_path = $perm_deputy && $perm_deputy->perm_path;
 
    if ($self->flags & Flags::is_initial) {
-      if (defined $perm_deputy) {
+      if (defined($perm_deputy)) {
          die "rule ", $self->header, " can't trigger permutations at ", $self->source_location, "\n";
       }
       $proto->add_producers_of(BigObjectType::init_pseudo_prop()->key, $self);
 
       foreach my $input (@{$self->input}) {
          foreach my $input_path (grep { @$_ > 1 } @$input) {
-            (undef, my @ancestors)=reverse(@$input_path);
-            my $prod_key=BigObjectType::init_pseudo_prop()->get_prod_key(@ancestors);
+            (undef, my @ancestors) = reverse(@$input_path);
+            my $prod_key = BigObjectType::init_pseudo_prop()->get_prod_key(@ancestors);
             $proto->add_producers_of($prod_key, $self);
          }
       }
@@ -516,13 +516,13 @@ sub finalize {
    my $i=0;
    foreach my $output (@{$self->output}) {
       my ($created_prop, @prod);
-      if (@$output==1) {
-         $created_prop=$output->[0];
-         if ($perm_path && @$perm_path==1) {
-            if (defined (my $prod_list=$perm_path->[0]->sensitive_props->{$created_prop->key})) {
-               my $action=new PermAction($self, $i, $prod_list, 0);
+      if (@$output == 1) {
+         $created_prop = $output->[0];
+         if ($perm_path && @$perm_path == 1) {
+            if (defined(my $recovery = $perm_path->[0]->sensitive_props->{$created_prop->key})) {
+               my $action = new PermAction($self, $i, $recovery, 0);
                push @{$perm_deputy->actions}, $action;
-               push @prod, $action if @$prod_list;
+               push @prod, $action if $recovery != $Permutation::is_non_recoverable;
             } else {
                push @prod, $perm_deputy;
             }
@@ -530,54 +530,54 @@ sub finalize {
          $proto->add_producers_of($created_prop->key, $self, @prod);
 
       } else {
-         my ($prop, @ancestors)=reverse(@$output);
-         $created_prop=$prop;
+         my ($prop, @ancestors) = reverse(@$output);
+         $created_prop = $prop;
 
-         if ($perm_path && Property::equal_path_prefixes($perm_path, $output)==(my $perm_depth=$#$perm_path)) {
-            my $permutation=$perm_path->[-1];
-            my $sub_perm_hash=$permutation->sub_permutations;
+         if ($perm_path && Property::equal_path_prefixes($perm_path, $output) == (my $perm_depth = $#$perm_path)) {
+            my $permutation = $perm_path->[-1];
+            my $sub_perm_hash = $permutation->sub_permutations;
             local splice @$output, 0, $perm_depth;
-            my $last=@$output-1;
+            my $last = @$output-1;
             my $sub_perm_exists;
-            for (my $depth=1; $depth<=$last; ++$depth) {
-               if (defined (my $sub_permutation=$sub_perm_hash->{$output->[$depth-1]->key})) {
-                  if (defined (my $prod_list=
-                               $depth==$last ? $sub_permutation->sensitive_props->{$output->[$depth]->key}
-                                             : $sub_permutation->find_sensitive_sub_property(@$output[$depth..$last]))) {
-                     my $action=new PermAction($self, $i, $prod_list, $depth+$perm_depth, $sub_permutation);
+            for (my $depth=1; $depth <= $last; ++$depth) {
+               if (defined(my $sub_permutation = $sub_perm_hash->{$output->[$depth-1]->key})) {
+                  if (defined(my $recovery =
+                              $depth == $last ? $sub_permutation->sensitive_props->{$output->[$depth]->key}
+                                              : $sub_permutation->find_sensitive_sub_property(@$output[$depth..$last]))) {
+                     my $action = new PermAction($self, $i, $recovery, $depth+$perm_depth, $sub_permutation);
                      push @{$perm_deputy->actions}, $action;
-                     push @prod, $action;
-                     $sub_perm_exists=1;
+                     push @prod, $action if $recovery != $Permutation::is_non_recoverable;
+                     $sub_perm_exists = true;
                      last;
                   }
                }
-               defined( $sub_perm_hash=$sub_perm_hash->{$Permutation::sub_key} ) &&
-               defined( $sub_perm_hash=$sub_perm_hash->{$output->[$depth-1]->key} )
+               defined($sub_perm_hash = $sub_perm_hash->{$Permutation::sub_key}) &&
+               defined($sub_perm_hash = $sub_perm_hash->{$output->[$depth-1]->key})
                or last;
             }
             unless ($sub_perm_exists) {
-               if (defined (my $prod_list=$permutation->find_sensitive_sub_property(@$output))) {
-                  my $action=new PermAction($self, $i, $prod_list, $perm_depth, $perm_depth && $permutation);
+               if (defined(my $recovery = $permutation->find_sensitive_sub_property(@$output))) {
+                  my $action = new PermAction($self, $i, $recovery, $perm_depth, $perm_depth && $permutation);
                   push @{$perm_deputy->actions}, $action;
-                  push @prod, $action;
+                  push @prod, $action if $recovery != $Permutation::is_non_recoverable;
                } else {
                   push @prod, $perm_deputy;
                }
             }
          }
 
-         my $flags=get_array_flags($output);
-         my $any_mult_depth=$flags >> $any_mult_depth_shift;
+         my $flags = get_array_flags($output);
+         my $any_mult_depth = $flags >> $any_mult_depth_shift;
          my $common_prefix;  # the longest initial subpath of output occurring among inputs
          my $bad_twin;
 
          if ($flags & Property::Flags::is_permutation) {
             # rules dealing with permutations may not create new subobjects: pretend a full match
-            $common_prefix=$#$output;
+            $common_prefix = $#$output;
          } else {
             if (!$for_twin_rule && $ancestors[-1]->flags & Property::Flags::is_twin) {
-               $twin_targets{$ancestors[-1]}=1;
-               $bad_twin=1;
+               $twin_targets{$ancestors[-1]} = true;
+               $bad_twin = true;
             }
             if ($any_mult_depth==0 || $enable_plausibility_checks) {
                $common_prefix = 0;
@@ -679,16 +679,16 @@ sub finalize {
       $proto->add_rule_labels($perm_deputy, $self->labels) if defined $perm_deputy;
    }
 
-   if (defined $self->overridden_in) {
+   if (defined($self->overridden_in)) {
       $proto->override_rule(@$_) for @{$self->overridden_in};
       undef $self->overridden_in;
    }
 
    if (!$for_twin_rule && keys %twin_targets) {
       foreach my $twin_prop (keys %twin_targets) {
-         if (defined (my $flipped_rule=flip_rule_for_twin($self, $twin_prop))) {
+         if (defined(my $flipped_rule = flip_rule_for_twin($self, $twin_prop))) {
             push @{$proto->production_rules}, $flipped_rule;
-            finalize($flipped_rule, 1);
+            finalize($flipped_rule, true);
          }
       }
    }
@@ -719,32 +719,34 @@ sub header_search_pattern {
 # private:
 # create a closure working as a filter in BigObject::copy
 sub create_splitting_filter {
-   my ($rule, $permutation, $descend_path, $prop_hash, $sub_perm_hash, $depth)=@_;
+   my ($rule, $permutation, $descend_path, $prop_hash, $sub_perm_hash, $depth) = @_;
    sub {
-      my ($dst, $pv, $prop)=@_;
+      my ($dst, $pv, $prop) = @_;
       $prop //= $pv->property;
-      if (defined ($prop_hash) &&
-          defined (my $prod_list=$prop_hash->{$prop->key})) {
-         my $out=[ @$descend_path, $prop ];
+      my $recovery;
+      if (defined($prop_hash) &&
+          defined($recovery = $prop_hash->{$prop->key}) &&
+          $recovery != $Permutation::is_non_recoverable) {
+         my $out = [ @$descend_path, $prop ];
          push @{$rule->output}, $out;
-         my $action=new PermAction($rule, $#{$rule->output}, $prod_list, $depth, $depth && $permutation);
+         my $action = new PermAction($rule, $#{$rule->output}, $recovery, $depth, $depth && $permutation);
          push @{$rule->with_permutation->actions}, $action;
-         my $perm_dst=$dst->add_perm_in_parent($#$descend_path-$depth+1, $permutation, $rule);
+         my $perm_dst = $dst->add_perm_in_parent($#$descend_path-$depth+1, $permutation, $rule);
          local splice @$out, 0, $depth;
-         my ($perm_obj)=$perm_dst->descend_and_create($out);
+         my ($perm_obj) = $perm_dst->descend_and_create($out);
          return ($perm_obj, $pv->copy($perm_obj, $prop));
       }
 
-      if (defined ($sub_perm_hash) &&
-          defined (my $sub_permutation=$sub_perm_hash->{$prop->key})) {
+      if (defined($sub_perm_hash) &&
+          defined(my $sub_permutation = $sub_perm_hash->{$prop->key})) {
          return ($dst, $pv->copy($dst, $prop, create_splitting_filter($rule, $sub_permutation, [ @$descend_path, $prop ],
                                                                       $sub_permutation->sensitive_props, $sub_permutation->sub_permutations,
                                                                       $#$descend_path+2)));
       }
 
-      my $down_prop=$prop_hash->{$Permutation::sub_key};
+      my $down_prop = $prop_hash->{$Permutation::sub_key};
       $down_prop &&= $down_prop->{$prop->key};
-      my $down_sub=$sub_perm_hash->{$Permutation::sub_key};
+      my $down_sub = $sub_perm_hash->{$Permutation::sub_key};
       $down_sub &&= $down_sub->{$prop->key};
       if (defined($down_prop) || defined($down_sub)) {
          return ($dst, $pv->copy($dst, $prop, create_splitting_filter($rule, $permutation, [ @$descend_path, $prop ],
@@ -757,7 +759,7 @@ sub create_splitting_filter {
 
 sub permuting {
    my ($pkg, $proto, $perm_path) = @_;
-   my $self=_new($pkg, 'copying', undef, $proto);
+   my $self = _new($pkg, 'copying', undef, $proto);
    $self->weight = $zero_weight;
    $self->with_permutation = new FakeCreatingPermutation($self, $perm_path);
    my $permutation = local pop @$perm_path;
@@ -1026,9 +1028,9 @@ package Polymake::Core::Rule::PermAction;
 
 use Polymake::Struct (
    [ new => '$$$$;$' ],
-   [ '$perm_trigger' => 'weak(#1)' ], # production rule triggering the permutation
+   [ '$perm_trigger' => 'weak(#1)' ],   # production rule triggering the permutation
    [ '$output' => '#2' ],               # index into its output where the sensitive property lies
-   [ '$producers' => '#3' ],            # ( Rule ) moving the output property back to the basis
+   [ '$recovery' => '#3' ],             # Permutation::Recovery to obtain Rules moving the output property back to the basis
    [ '$depth' => '#4' ],                # how deep to descend in the base object
    [ '$sub_permutation' => '#5' ],      # Permutation for the subobject
 );
@@ -1042,7 +1044,7 @@ sub list_results { () }
 sub perm_path { $_[0]->perm_trigger->with_permutation->perm_path }
 sub flags { Flags::is_perm_action }
 sub weight { $zero_weight }
-sub enabled { @{$_[0]->producers}!=0 }
+sub enabled { $_[0]->recovery != $Permutation::is_non_recoverable }
 
 sub preconditions { [ ] }
 sub with_permutation { undef }
@@ -1067,8 +1069,8 @@ sub execute {
 }
 
 sub find_sensitive_sub_property {
-   my ($self, @path)=@_;
-   if (Property::equal_path_prefixes($self, \@path)==$#$self) {
+   my ($self, @path) = @_;
+   if (Property::equal_path_prefixes($self, \@path) == $#$self) {
       $self->[-1]->find_sensitive_sub_property(splice @path, $#$self)
    } else {
       undef

@@ -27,17 +27,16 @@ BigObject upper_bound_theorem(const Int d, const Int n)
       throw std::runtime_error("upper_bound_theorem: d >= 0 and n > d required\n");
    }
 
-   BigObject p("Polytope<Rational>");
-
    Array<Integer> h(d+1);
    for (Int k = 0; k <= d/2; ++k) {
       h[d-k] = h[k] = Integer::binom(n-d-1+k,k);
    }
-   p.take("COMBINATORIAL_DIM") << d;
-   p.take("N_VERTICES") << n;
-   p.take("H_VECTOR") << h;
-   p.take("SIMPLICIAL") << true;
-   return p;
+
+   return BigObject("Polytope<Rational>",
+                    "COMBINATORIAL_DIM", d,
+                    "N_VERTICES", n,
+                    "H_VECTOR", h,
+                    "SIMPLICIAL", true);
 }
    
 UserFunction4perl("# @category Producing a polytope from scratch"

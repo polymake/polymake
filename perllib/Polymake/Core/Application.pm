@@ -513,13 +513,8 @@ sub use_apps {
       foreach my $app (@{$self->linear_imported}) {
          push @{$self->myINC}, @{$app->myINC};
          push %{$self->credits}, %{$app->credits};
-
          namespaces::using($self->pkg, $app->pkg);
-         namespaces::using($self->pkg."::objects", $app->pkg."::objects");
-         namespaces::using($self->pkg."::props", $app->pkg."::props");
-
          $self->imported->{$app->name} = true;
-
          push @{$self->prefs->imported}, $app->prefs;
          push @{$self->help->related}, $app->help if $Help::gather;
       }

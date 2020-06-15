@@ -181,6 +181,17 @@ weight 1.10;
 # Whether the subdivision is regular, i.e. induced by a weight vector.
 property REGULAR : Bool;
 
+# @category Geometry
+# A subdivision is unimodular if it is a triangulation such that each maximal simplex has unit normalized volume.
+# @example Unit square, triangulated.
+# > $S = new SubdivisionOfPoints(POINTS=>cube(2,0)->VERTICES, WEIGHTS=>[0,0,0,1]);
+# > print $S->UNIMODULAR
+# | true
+# @example Unit 3-cube, triangulation induced by four compatible vertex splits.
+# > $S = new SubdivisionOfPoints(POINTS=>cube(3,0)->VERTICES, WEIGHTS=>[0,1,1,0,1,0,1,0]);
+# > print $S->UNIMODULAR
+# | false
+property UNIMODULAR : Bool;
 
 # @category Geometry
 # The polyhedral complex induced by the cells of the subdivision.

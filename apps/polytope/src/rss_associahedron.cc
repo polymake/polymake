@@ -48,12 +48,10 @@ BigObject rss_associahedron(const Int n)
    normalizing_equations(0,1)=1;
    normalizing_equations(1,0)=-(n-1)*(n-1); normalizing_equations(1,1)=-1; normalizing_equations(1,n)=1;
 
-   BigObject p("Polytope<Rational>");
-   p.take("FACETS") << I;
-   p.take("AFFINE_HULL") << normalizing_equations;
-   p.take("FACET_LABELS") << facet_labels;
-
-   return p;
+   return BigObject("Polytope<Rational>",
+                    "FACETS", I,
+                    "AFFINE_HULL", normalizing_equations,
+                    "FACET_LABELS", facet_labels);
 }
 
 UserFunction4perl("# @category Producing a polytope from scratch"

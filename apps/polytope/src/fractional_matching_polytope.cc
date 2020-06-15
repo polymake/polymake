@@ -30,19 +30,18 @@ BigObject fractional_matching_polytope(const graph_type& G)
 {
    const SparseMatrix<Rational> M((unit_matrix<Rational>(G.edges()+1)) /
                                   (ones_vector<Rational>() | -node_edge_incidences<Rational>(G)));
-   BigObject p("Polytope<Rational>");
-   p.take("INEQUALITIES") << M;
-   p.take("BOUNDED") << true;
-   p.take("FEASIBLE") << true;
-   p.take("ONE_VERTEX") << unit_vector<Rational>(G.edges()+1,0);
-   return p;
+   return BigObject("Polytope<Rational>",
+                    "INEQUALITIES", M,
+                    "BOUNDED", true,
+                    "FEASIBLE", true,
+                    "ONE_VERTEX", unit_vector<Rational>(G.edges()+1, 0));
 }
       
 UserFunction4perl("#@category Producing a polytope from graphs"
                   "# Matching polytope of an undirected graph."
                   "# @param Graph G"
                   "# @return Polytope",
-                  &fractional_matching_polytope,"fractional_matching_polytope(props::Graph)");
+                  &fractional_matching_polytope, "fractional_matching_polytope(GraphAdjacency)");
       
 } }
 

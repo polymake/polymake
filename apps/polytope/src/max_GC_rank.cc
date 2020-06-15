@@ -58,10 +58,8 @@ BigObject max_GC_rank(Int d)
    p.take("FEASIBLE") << true;
 
    // symmetric linear objective function
-   BigObject LP("LinearProgram<Rational>");
-   LP.take("LINEAR_OBJECTIVE") << Vector<Rational>(0|ones_vector<Rational>(d));
-   LP.attach("INTEGER_VARIABLES") << Array<bool>(d,true);
-   p.take("LP") << LP;
+   BigObject LP = p.add("LP", "LINEAR_OBJECTIVE", 0 | ones_vector<Rational>(d));
+   LP.attach("INTEGER_VARIABLES") << Array<bool>(d, true);
 
    return p;
 }

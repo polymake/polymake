@@ -100,10 +100,10 @@ void codim_one_with_locality(BigObject cycle)
   Matrix<Rational> lineality = cycle.give("LINEALITY_SPACE");
 
   // Create a proxy object without the local restriction
-  BigObject proxy("Cycle", mlist<Addition>());
-  proxy.take("PROJECTIVE_VERTICES") << rays;
-  proxy.take("MAXIMAL_POLYTOPES") << cones;
-  proxy.take("LINEALITY_SPACE") << lineality;
+  BigObject proxy("Cycle", mlist<Addition>(),
+                  "PROJECTIVE_VERTICES", rays,
+                  "MAXIMAL_POLYTOPES", cones,
+                  "LINEALITY_SPACE", lineality);
 
   // Extract non-local data
   IncidenceMatrix<> codim_one = proxy.give("CODIMENSION_ONE_POLYTOPES");

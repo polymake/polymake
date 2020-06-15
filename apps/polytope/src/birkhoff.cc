@@ -34,7 +34,7 @@ BigObject birkhoff(Int n, bool even, OptionSet options)
 
    Matrix<Int> V(Int(even ? Integer::fac(n)/2 : Integer::fac(n)), n*n+1);
    auto v_i=rows(V).begin();
-  //automorphism group of the symmetric group.
+   // automorphism group of the symmetric group.
    AllPermutations<> perms(n);
    for (AllPermutations<>::const_iterator perm=entire(perms);  !perm.at_end();  ++perm, ++v_i) {
       *v_i = 1 | concat_rows( permutation_matrix<Int>(*perm) );
@@ -47,7 +47,7 @@ BigObject birkhoff(Int n, bool even, OptionSet options)
 
    // generate the combinatorial symmetry group on the coordinates
    const bool group = options["group"];
-   if ( group ) {
+   if (group) {
       Array<Array<Int>> gens(2);
       Array<Int> gen{sequence(0,n*n)};
       //swap rows 0 and 1
@@ -57,7 +57,7 @@ BigObject birkhoff(Int n, bool even, OptionSet options)
       }
       gens[0]=gen;
 
-      //front-shift all rows by one (cyclic)
+      // front-shift all rows by one (cyclic)
       for (Int j = 0; j < n; ++j) {
          gen[j] = n*n-n+j;
       }
@@ -66,19 +66,15 @@ BigObject birkhoff(Int n, bool even, OptionSet options)
       }
       gens[1]=gen;
 
-      BigObject a("group::PermutationAction");
-      a.take("GENERATORS") << gens;
-      BigObject g("group::Group");
+      BigObject a("group::PermutationAction", "GENERATORS", gens);
+      BigObject g("group::Group", "combinatorialGroupOnCoords");
       g.set_description() << "action of the symmetric group as combinatorial symmetry group on coordinates of " << n
                           << (n==1 ? "st"
                               : (n==2 ? "nd"
                                  : (n==3 ? "rd"
                                     : "th" ))) << " Birkhoff polytope" << endl;
-      g.set_name("combinatorialGroupOnCoords");
-
       p.take("GROUP") << g;
       p.take("GROUP.COORDINATE_ACTION") << a;
-
    }
    return p;
 }

@@ -35,7 +35,7 @@ BigObject polarize(BigObject p_in, OptionSet options)
 
    BigObjectType t = p_in.type();
    BigObject p_out(t);
-   if ( isCone )
+   if (isCone)
       p_out.set_description() << "Cone dualized from " << p_in.name() << endl;
    else
       p_out.set_description() << "Polytope polarized from " << p_in.name() << endl;
@@ -121,31 +121,23 @@ BigObject polarize(BigObject p_in, OptionSet options)
 
    // generate the combinatorial symmetry group on the facets
    Array<Array<Int>> gens;
-   if (p_in.lookup("GROUP.FACETS_ACTION.GENERATORS")>>gens){
-       BigObject a("group::PermutationAction");
-       a.take("GENERATORS") << gens;
-
-       BigObject g("group::Group");
-       g.set_description() << "symmetry group on vertices of polar of" << p_in.name() << endl;
-       g.set_name("fullCombinatorialGroupOnRays");
-
-       p_out.take("GROUP") << g;
-       if (isCone) {
-          p_out.take("GROUP.RAYS_ACTION") << a;
-       } else {
-          p_out.take("GROUP.VERTICES_ACTION") << a;
-       }
+   if (p_in.lookup("GROUP.FACETS_ACTION.GENERATORS") >> gens) {
+      BigObject a("group::PermutationAction", "GENERATORS", gens);
+      BigObject g("group::Group", "fullCombinatorialGroupOnRays");
+      g.set_description() << "symmetry group on vertices of polar of" << p_in.name() << endl;
+      p_out.take("GROUP") << g;
+      if (isCone) {
+         p_out.take("GROUP.RAYS_ACTION") << a;
+      } else {
+         p_out.take("GROUP.VERTICES_ACTION") << a;
+      }
    }
-   else if(p_in.lookup("GROUP.RAYS_ACTION.GENERATORS")>>gens){
-       BigObject a("group::PermutationAction");
-       a.take("GENERATORS") << gens;
-
-       BigObject g("group::Group");
-       g.set_description() << "symmetry group on facets of polar of" << p_in.name() << endl;
-       g.set_name("fullCombinatorialGroupOnFacets");
-       g.take("FACETS_ACTION") << a;
-
-       p_out.take("GROUP") << g;
+   else if (p_in.lookup("GROUP.RAYS_ACTION.GENERATORS") >> gens) {
+      BigObject a("group::PermutationAction", "GENERATORS", gens);
+      BigObject g("group::Group", "fullCombinatorialGroupOnFacets");
+      g.set_description() << "symmetry group on facets of polar of" << p_in.name() << endl;
+      g.take("FACETS_ACTION") << a;
+      p_out.take("GROUP") << g;
    }
 
    Array<std::string> labels;
@@ -159,7 +151,8 @@ BigObject polarize(BigObject p_in, OptionSet options)
 }
 
 template <typename Scalar>
-BigObject dual_cone(BigObject p_in, OptionSet options){
+BigObject dual_cone(BigObject p_in, OptionSet options)
+{
    return polarize<Scalar>(p_in, options);
 }
 
@@ -189,7 +182,7 @@ UserFunctionTemplate4perl("# @category Transformations"
                           "# | 1 -1 0"
                           "# | 1 0 1"
                           "# | 1 0 -1"
-                          "# @example [prefer cdd]"
+                          "# @example [prefer cdd] [require bundled:cdd]"
                           "# To dualize the cone over a hexagon and print its rays, do this:"
                           "# > $c = new Cone(INPUT_RAYS=>[[1,0,0],[1,1,0],[1,2,1],[1,2,2],[1,1,2],[1,0,1]]);"
                           "# > $cd = polarize($c);"

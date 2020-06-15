@@ -73,7 +73,7 @@ BigObject computePolynomialDomain(const Polynomial<TropicalNumber<Addition>>& p)
     monoms.row(m) -= min_degrees; 
   }
 
-  ListMatrix< Vector<Rational> > ineq;
+  ListMatrix<Vector<Rational>> ineq;
   const TropicalNumber<Addition> zero=TropicalNumber<Addition>::zero();
   for (Int i=0; i< monoms.rows(); ++i) {
     if (coefs[i]==zero)
@@ -82,13 +82,13 @@ BigObject computePolynomialDomain(const Polynomial<TropicalNumber<Addition>>& p)
       ineq /= Addition::orientation()*(Rational(coefs[i])|monoms[i]);
   }
 
-  BigObject dome("polytope::Polytope<Rational>");
-  dome.take("INEQUALITIES") << ineq;
-  dome.take("FEASIBLE") << true;
-  dome.take("BOUNDED") << false;
+  BigObject dome("polytope::Polytope<Rational>",
+                 "INEQUALITIES", ineq,
+                 "FEASIBLE", true,
+                 "BOUNDED", false);
 
-  Matrix<Rational> vertices = dome.give("VERTICES");
-  Matrix<Rational> lineality = dome.give("LINEALITY_SPACE");
+  const Matrix<Rational> vertices = dome.give("VERTICES");
+  const Matrix<Rational> lineality = dome.give("LINEALITY_SPACE");
   IncidenceMatrix<> polytopes = dome.give("VERTICES_IN_FACETS");
 
   // Find and eliminate the far face
@@ -97,11 +97,10 @@ BigObject computePolynomialDomain(const Polynomial<TropicalNumber<Addition>>& p)
   if (r >= 0)
     polytopes = polytopes.minor(~scalar2set(r), All);
 
-  BigObject domain("Cycle", mlist<Addition>());
-  domain.take("PROJECTIVE_VERTICES") << vertices;
-  domain.take("MAXIMAL_POLYTOPES") << polytopes;
-  domain.take("LINEALITY_SPACE") << lineality;
-  return domain;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "PROJECTIVE_VERTICES", vertices,
+                   "MAXIMAL_POLYTOPES", polytopes,
+                   "LINEALITY_SPACE", lineality);
 }
 
 } }

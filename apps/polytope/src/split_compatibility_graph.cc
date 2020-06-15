@@ -24,8 +24,8 @@ namespace polymake { namespace polytope {
 template<typename Scalar>
 Graph<> split_compatibility_graph(const Matrix<Scalar>& SplitEquations, BigObject p)
 {
-   const Matrix<Scalar> Facets=p.give("FACETS");
-   const Matrix<Scalar> AffineHull=p.give("AFFINE_HULL");
+   const Matrix<Scalar> Facets = p.give("FACETS");
+   const Matrix<Scalar> AffineHull = p.give("AFFINE_HULL");
    const Int n_splits = SplitEquations.rows();
 
    Graph<> S(n_splits);
@@ -33,15 +33,14 @@ Graph<> split_compatibility_graph(const Matrix<Scalar>& SplitEquations, BigObjec
 
    for (Int s1 = 0; s1 < n_splits; ++s1) {
       for (Int s2 = s1+1; s2 < n_splits; ++s2) {
-         BigObject Intersection(Polytope);
-         Matrix<Scalar> SplitIntersection(0,Facets.cols());
-         SplitIntersection = SplitIntersection / SplitEquations.row(s1) / SplitEquations.row(s2)/ AffineHull;
-         Intersection.take("INEQUALITIES") << Facets;
-         Intersection.take("EQUATIONS") << SplitIntersection;
-         bool InterSectionNonEmpty = Intersection.give("FEASIBLE");
+         Matrix<Scalar> SplitIntersection = vector2row(SplitEquations.row(s1)) / SplitEquations.row(s2) / AffineHull;
+         BigObject Intersection(Polytope,
+                                "INEQUALITIES", Facets,
+                                "EQUATIONS", SplitIntersection);
+         const bool InterSectionNonEmpty = Intersection.give("FEASIBLE");
          if (InterSectionNonEmpty) {
             Vector<Scalar> IntersectionPoint = Intersection.give("REL_INT_POINT");
-            for (auto f=entire(rows(Facets)); !f.at_end();  ++f)
+            for (auto f = entire(rows(Facets)); !f.at_end();  ++f)
                if ((*f) * IntersectionPoint == 0) {
                   S.edge(s1, s2);
                   break;

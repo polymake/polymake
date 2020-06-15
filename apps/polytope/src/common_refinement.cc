@@ -34,8 +34,7 @@ IncidenceMatrix<> common_refinement(const Matrix<Scalar>& vertices, const Incide
       for (auto j=entire(rows(sub2)); !j.at_end(); ++j) {
          const Set<Int> intersection = (*i)*(*j);
          if (intersection.size() > dim) {
-            BigObject p(polytope);
-            p.take("VERTICES") << vertices.minor(intersection, All);
+            BigObject p(polytope, "VERTICES", vertices.minor(intersection, All));
             const Int int_dim = p.call_method("DIM");
             if (int_dim == dim) {
                refinement /= intersection;

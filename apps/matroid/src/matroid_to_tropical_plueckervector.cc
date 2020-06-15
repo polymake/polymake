@@ -68,7 +68,6 @@ BigObject matroid_from_characteristic_vector(const Vector<Integer>& vec, const I
    if (vec.dim() != Integer::binom(n,r)) {
       throw std::runtime_error("matroid_from_characteristic_vector: dimension of the vector does not fit with the given rank and the number of elments");
    }
-   BigObject m("Matroid");
    std::list<Set<Int>> bases;
    Int n_bases = 0;
    Int j = 0;
@@ -81,11 +80,11 @@ BigObject matroid_from_characteristic_vector(const Vector<Integer>& vec, const I
       }
    }
 
-   m.take("BASES") << bases;
-   m.take("N_BASES") << n_bases;
-   m.take("RANK") << r;
-   m.take("N_ELEMENTS") << n;
-   return m;
+   return BigObject("Matroid",
+                    "BASES", bases,
+                    "N_BASES", n_bases,
+                    "RANK", r,
+                    "N_ELEMENTS", n);
 }
 
 UserFunction4perl("# @category Producing a matroid from other objects\n"

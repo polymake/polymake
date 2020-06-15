@@ -29,10 +29,13 @@ void odd_complex(BigObject p)
    const bool is_pure = p.give("PURE");
    if (!is_pure)
       throw std::runtime_error("odd_complex: Complex is not PURE.");
+
    Lattice<BasicDecoration> HD;
-   BigObject hd("Lattice<BasicDecoration>");
-   if ((p.lookup("HASSE_DIAGRAM") >> hd)) HD=Lattice<BasicDecoration>(hd);
-   else  HD = hasse_diagram_from_facets(C);
+   BigObject hd;
+   if (p.lookup("HASSE_DIAGRAM") >> hd)
+      HD = Lattice<BasicDecoration>(hd);
+   else
+      HD = hasse_diagram_from_facets(C);
 
    if (C[0].size()-1 < 2)
       throw std::runtime_error("odd_complex: DIM of complex must be greater 2.");
@@ -40,9 +43,8 @@ void odd_complex(BigObject p)
    bool output = false;
    std::list<Set<Int>> odd_complex;
    for (const auto f : HD.nodes_of_rank(HD.rank()-3)) {
-
       Set<Int> star_facets;
-      const Graph<Directed> HDgraph=HD.graph();
+      const Graph<Directed> HDgraph = HD.graph();
       for (const auto n : HD.out_adjacent_nodes(f)) {
          for (const auto nn : HD.out_adjacent_nodes(n))
             star_facets += nn;

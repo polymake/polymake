@@ -28,7 +28,7 @@ namespace {
 
 BigObject simplex_action(Int d)
 {
-   const Int n_gens= d == 1 ? 1 : 2;
+   const Int n_gens = d == 1 ? 1 : 2;
    Array<Array<Int>> gens(n_gens);
    if (d == 1) {
       gens[0] = Array<Int>{1, 0};
@@ -45,10 +45,7 @@ BigObject simplex_action(Int d)
       gens[1]=gen;
    }
 
-   BigObject a("group::PermutationAction");
-   a.take("GENERATORS") << gens;
-
-   return a;
+   return BigObject("group::PermutationAction", "GENERATORS", gens);
 }
 
 
@@ -60,10 +57,9 @@ void add_simplex_data(BigObject& p, const Int d, const bool group_flag)
    p.take("BOUNDED") << true;
    p.take("FEASIBLE") << true;
    p.take("POINTED") << true;
-   if ( group_flag ) {
-      BigObject g("group::Group");
+   if (group_flag) {
+      BigObject g("group::Group", "fullCombinatorialGroupOnRays");
       g.set_description() << "full combinatorial group on vertices of " << d << "-dim simplex" << endl;
-      g.set_name("fullCombinatorialGroupOnRays");
       p.take("GROUP") << g;
       p.take("GROUP.VERTICES_ACTION") << simplex_action(d);
    }
@@ -87,7 +83,7 @@ BigObject simplex(Int d, const Scalar& s, OptionSet options)
    p.take("VERTICES") << V;
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("CENTERED") << (d == 0);
-   add_simplex_data(p,d,options["group"]);
+   add_simplex_data(p, d, options["group"]);
 
    return p;
 }
@@ -104,13 +100,13 @@ BigObject regular_simplex(const Int d, OptionSet options)
    BigObject p("Polytope<QuadraticExtension>");
    p.set_description() << "regular simplex of dimension " << d << endl;
 
-   QE c(Rational(1,d),Rational(-1,d),d+1);
+   QE c(Rational(1,d), Rational(-1,d), d+1);
    SparseMatrix<QE> V( ones_vector<QE>(d+1) | (unit_matrix<QE>(d) / same_element_vector(c,d)));
 
    p.take("VERTICES") << V;
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("CENTERED") << true;
-   add_simplex_data(p,d,options["group"]);
+   add_simplex_data(p, d, options["group"]);
 
    return p;
    
@@ -130,7 +126,7 @@ BigObject fano_simplex(Int d, OptionSet options)
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("CENTERED") << true;
    p.take("REFLEXIVE") << true;
-   add_simplex_data(p,d,options["group"]);
+   add_simplex_data(p, d, options["group"]);
 
    return p;
 }
@@ -152,7 +148,7 @@ BigObject lecture_hall_simplex(Int d, OptionSet options)
    p.take("VERTICES") << V;
    p.take("CONE_AMBIENT_DIM") << d+1;
    p.take("CENTERED") << false;
-   add_simplex_data(p,d,options["group"]);
+   add_simplex_data(p, d, options["group"]);
 
    return p;
 }

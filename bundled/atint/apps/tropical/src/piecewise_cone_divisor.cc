@@ -125,13 +125,10 @@ BigObject piecewise_divisor(BigObject fan, const IncidenceMatrix<>& cones, const
   sk_cones = sk_cones.minor(used_cones,used_rays);
   result_weights = result_weights.slice(used_cones);
 
-  // Return result
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("VERTICES") << thomog(sk_rays);
-  result.take("MAXIMAL_POLYTOPES") << sk_cones;
-  result.take("WEIGHTS") << result_weights;
-
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "VERTICES", thomog(sk_rays),
+                   "MAXIMAL_POLYTOPES", sk_cones,
+                   "WEIGHTS", result_weights);
 }
 
 UserFunctionTemplate4perl("# @category Divisor computation"

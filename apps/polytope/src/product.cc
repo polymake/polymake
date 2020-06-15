@@ -101,10 +101,10 @@ BigObject product(BigObject p_in1, BigObject p_in2, OptionSet options)
 {
    Int n_vertices1 = 0, n_vertices2 = 0, n_vertices_out = 0, n_rays = 0;
 
-   const bool noc=options["no_coordinates"],
-      nov=options["no_vertices"],
-      nof=options["no_facets"],
-      relabel=!options["no_labels"];
+   const bool noc = options["no_coordinates"],
+              nov = options["no_vertices"],
+              nof = options["no_facets"],
+          relabel = !options["no_labels"];
 
    bool f_present = p_in1.exists("FACETS | INEQUALITIES") && p_in2.exists("FACETS | INEQUALITIES");
    bool v_present = ( p_in1.exists("VERTICES | POINTS") && p_in2.exists("VERTICES | POINTS") ) ||
@@ -196,43 +196,40 @@ BigObject product(BigObject p_in1, BigObject p_in2, OptionSet options)
       }
    }
 
-   if(options["group"]){
-      BigObject g("group::Group");
+   if (options["group"]) {
+      BigObject g("group::Group", "canonicalGroup");
       g.set_description() << "canonical group induced by the group of the base polytopes" << endl;
-      g.set_name("canonicalGroup");
 
       Array<Array<Int>> gens1, gens2;
 
-      if(p_in1.lookup("GROUP.VERTICES_ACTION.GENERATORS") >> gens1 &&
-         p_in2.lookup("GROUP.VERTICES_ACTION.GENERATORS") >> gens2 ){
-
-         if(!n_vertices1)
+      if (p_in1.lookup("GROUP.VERTICES_ACTION.GENERATORS") >> gens1 &&
+          p_in2.lookup("GROUP.VERTICES_ACTION.GENERATORS") >> gens2) {
+         if (n_vertices1 == 0)
             n_vertices1 = gens1[0].size();
-         if(!n_vertices2)
+         if (n_vertices2 == 0)
             n_vertices2 = gens2[0].size();
-         if(!n_vertices_out)
+         if (n_vertices_out == 0)
             n_vertices_out = n_vertices1 + n_vertices2;
 
          Int g1 = gens1.size();
 
          Array<Array<Int>> gens_out(g1 + gens2.size());
 
-         //each "block" of vertices of p_out corresponds to one vertex of p1
+         // each "block" of vertices of p_out corresponds to one vertex of p1
          for (Int i = 0; i < g1; ++i) {
             gens_out[i] = permute_blocks(n_vertices_out, gens1[i], n_vertices2);
          }
-         //the vertices inside a "block" correspond to the vertices of p2
+         // the vertices inside a "block" correspond to the vertices of p2
          for (Int i = g1; i < gens_out.size(); ++i) {
             gens_out[i] = permute_inside_blocks(n_vertices_out, gens2[i-g1], n_vertices1);
          }
 
-         BigObject a("group::PermutationAction");
-         a.take("GENERATORS") << gens_out;
+         BigObject a("group::PermutationAction", "GENERATORS", gens_out);
          p_out.take("GROUP") << g;
          p_out.take("GROUP.VERTICES_ACTION") << a;
       }
-      else if(p_in1.lookup("GROUP.FACETS_ACTION.GENERATORS") >> gens1 &&
-              p_in2.lookup("GROUP.FACETS_ACTION.GENERATORS") >> gens2 ){
+      else if (p_in1.lookup("GROUP.FACETS_ACTION.GENERATORS") >> gens1 &&
+               p_in2.lookup("GROUP.FACETS_ACTION.GENERATORS") >> gens2) {
 
          Int n_facets1 = gens1[0].size();
          Int n_facets_out = n_facets1 + gens2[0].size();
@@ -249,10 +246,9 @@ BigObject product(BigObject p_in1, BigObject p_in2, OptionSet options)
                gens_out[i][j]+=n_facets1;
          }
 
-         BigObject a("group::PermutationAction");
-         a.take("GENERATORS") << gens_out;
-         g.take("FACETS_ACTION") << a;
+         BigObject a("group::PermutationAction", "GENERATORS", gens_out);
          p_out.take("GROUP") << g;
+         p_out.take("GROUP.FACETS_ACTION") << a;
       }
       else
          throw std::runtime_error("GROUP action of both input polytopes must be provided.");

@@ -184,11 +184,11 @@ BigObject stellar_all_faces(BigObject p_in, Int end_dim)
 
    }  // end of d = dim-1..end_dim
 
-   BigObject p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>(),
+                   "VERTICES", V,
+                   "VERTICES_IN_FACETS", VIF,
+                   "LINEALITY_SPACE", lineality_space);
    p_out.set_description() << "Stellar subdivision of " << p_in.name() << " over all proper faces of dimension >= " << end_dim << endl;
-   p_out.take("VERTICES") << V;
-   p_out.take("VERTICES_IN_FACETS") << VIF;
-   p_out.take("LINEALITY_SPACE") << lineality_space;
    return p_out;
 }
 

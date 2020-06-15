@@ -33,15 +33,15 @@ namespace pm {
 class allocator : public PM_ALLOCATOR_BASE<char> {
    using base_t = PM_ALLOCATOR_BASE<char>;
 public:
-   void* allocate(size_t n)
+   void* allocate(std::size_t n)
    {
       return base_t::allocate(n, nullptr);
    }
-   void deallocate(void* p, size_t n)
+   void deallocate(void* p, std::size_t n)
    {
       base_t::deallocate(reinterpret_cast<char*>(p), n);
    }
-   void* reallocate(void* p, size_t old_sz, size_t new_sz);
+   void* reallocate(void* p, std::size_t old_sz, std::size_t new_sz);
 
    template <typename Data, typename... Args>
    Data* construct(Args&&... args)

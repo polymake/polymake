@@ -333,7 +333,7 @@ bool bistellar(BigObject p1, BigObject p_in, OptionSet options, const bool compa
 BigObject bistellar_simplification(BigObject p_in, OptionSet options)
 {
    BigObject p_out("SimplicialComplex");
-   bistellar(p_out,p_in,options,0);
+   bistellar(p_out, p_in, options, 0);
    return p_out;
 }
 

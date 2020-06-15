@@ -40,12 +40,11 @@ BigObject dual_addition_version(BigObject ring_cycle)
   Array<IncidenceMatrix<>> pres = ring_cycle.give("NESTED_PRESENTATIONS");
   Array<Int> coef = ring_cycle.give("NESTED_COEFFICIENTS");
 
-  BigObject result("MatroidRingCycle", mlist<typename Addition::dual>());
-  result.take("N_ELEMENTS") << n;
-  result.take("RANK") << r;
-  result.take("NESTED_PRESENTATIONS") << pres;
-  result.take("NESTED_COEFFICIENTS") << coef;
-  return result;
+  return BigObject("MatroidRingCycle", mlist<typename Addition::dual>(),
+                   "N_ELEMENTS", n,
+                   "RANK", r,
+                   "NESTED_PRESENTATIONS", pres,
+                   "NESTED_COEFFICIENTS", coef);
 }
   
 UserFunctionTemplate4perl("# @category Conversion of tropical addition"

@@ -15,8 +15,8 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef __POLYTOPE_SYMMETRIZED_COCIRCUIT_EQUATIONS_H
-#define __POLYTOPE_SYMMETRIZED_COCIRCUIT_EQUATIONS_H
+#ifndef POLYMAKE_POLYTOPE_SYMMETRIZED_COCIRCUIT_EQUATIONS_H
+#define POLYMAKE_POLYTOPE_SYMMETRIZED_COCIRCUIT_EQUATIONS_H
 
 #include "polymake/SparseVector.h"
 #include "polymake/ListMatrix.h"
@@ -179,21 +179,18 @@ projected_symmetrized_cocircuit_equations_impl_impl(const Matrix<Scalar>& points
             ridges.emplace_back(i_and_e.first);
       }
    }
-   BigObject pce_out("SymmetrizedCocircuitEquations");
-   pce_out.take("ISOTYPIC_COMPONENTS") << isotypic_components;
-   pce_out.take("RIDGES") << ridges;
-   pce_out.take("PROJECTED_EQUATIONS") << eqs;
-   return pce_out;
+   return BigObject("SymmetrizedCocircuitEquations",
+                    "ISOTYPIC_COMPONENTS", isotypic_components,
+                    "RIDGES", ridges,
+                    "PROJECTED_EQUATIONS", eqs);
 }
 
 } }
 
-#endif // __POLYTOPE_SYMMETRIZED_COCIRCUIT_EQUATIONS_H
+#endif // POLYMAKE_POLYTOPE_SYMMETRIZED_COCIRCUIT_EQUATIONS_H
 
 // Local Variables:
 // mode:C++
 // c-basic-offset:3
 // indent-tabs-mode:nil
 // End:
-
- 

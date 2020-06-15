@@ -48,10 +48,10 @@ void write_output(const BigObject& q, const BigObject& lp, const std::string& fi
 
 template <typename Scalar, typename SetType>
 BigObject universal_polytope_impl(Int d, 
-                                     const Matrix<Scalar>& points, 
-                                     const Array<SetType>& facet_reps, 
-                                     const Scalar& vol, 
-                                     const SparseMatrix<Rational>& cocircuit_equations)
+                                  const Matrix<Scalar>& points, 
+                                  const Array<SetType>& facet_reps, 
+                                  const Scalar& vol, 
+                                  const SparseMatrix<Rational>& cocircuit_equations)
 {
    const Int 
       n_reps = facet_reps.size(), 
@@ -68,19 +68,18 @@ BigObject universal_polytope_impl(Int d,
    const SparseMatrix<Scalar> Equations(((-Integer::fac(d) * vol) | volume_vect | zero_vector<Scalar>(n_cols - n_reps))
                                        / (zero_vector<Scalar>(cocircuit_equations.rows()) | Matrix<Scalar>(cocircuit_equations)));
 
-   BigObject q("Polytope", mlist<Scalar>());
-   q.take("FEASIBLE") << true;
-   q.take("INEQUALITIES") << Inequalities;
-   q.take("EQUATIONS") << Equations;
-   return q;
+   return BigObject("Polytope", mlist<Scalar>(),
+                    "FEASIBLE", true,
+                    "INEQUALITIES", Inequalities,
+                    "EQUATIONS", Equations);
 }
 
 template <typename Scalar, typename SetType>
 BigObject simplexity_ilp(Int d, 
-                            const Matrix<Scalar>& points, 
-                            const Array<SetType>& facet_reps, 
-                            Scalar vol, 
-                            const SparseMatrix<Rational>& cocircuit_equations)
+                         const Matrix<Scalar>& points, 
+                         const Array<SetType>& facet_reps, 
+                         Scalar vol, 
+                         const SparseMatrix<Rational>& cocircuit_equations)
 {
    const Int 
       n_reps = facet_reps.size(), 
@@ -88,21 +87,18 @@ BigObject simplexity_ilp(Int d,
    if (n_reps > n_cols)
       throw std::runtime_error("Need at least #{simplex reps} many columns in the cocircuit equation matrix");
 
-   BigObject lp("LinearProgram", mlist<Scalar>());
-   lp.attach("INTEGER_VARIABLES") << Array<bool>(n_reps, true);
-   lp.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0 | ones_vector<Scalar>(n_reps) | zero_vector<Scalar>(n_cols-n_reps));
-
    BigObject q = universal_polytope_impl(d, points, facet_reps, vol, cocircuit_equations);
-   q.take("LP") << lp;
+   BigObject lp = q.add("LP", "LINEAR_OBJECTIVE", 0 | ones_vector<Scalar>(n_reps) | zero_vector<Scalar>(n_cols-n_reps));
+   lp.attach("INTEGER_VARIABLES") << Array<bool>(n_reps, true);
    return q;
 }
 
 template <typename SetType, typename EquationsType>
 BigObject foldable_max_signature_ilp(Int d,
-                                        const Matrix<Rational>& points,
-                                        const Array<SetType>& max_simplices,
-                                        const Rational& vol,
-                                        const EquationsType& foldable_cocircuit_equations)
+                                     const Matrix<Rational>& points,
+                                     const Array<SetType>& max_simplices,
+                                     const Rational& vol,
+                                     const EquationsType& foldable_cocircuit_equations)
 {
    const Int n = max_simplices.size();
    Vector<Integer> volume_vect(2*n);
@@ -131,16 +127,13 @@ BigObject foldable_max_signature_ilp(Int d,
          volume_vect[2*i] = volume_vect[2*i+1] = 0;
       else 
          volume_vect[2*i+1].negate();
-   
-   BigObject lp("LinearProgram<Rational>");
-   lp.attach("INTEGER_VARIABLES") << Array<bool>(2*n,true);
-   lp.take("LINEAR_OBJECTIVE") << Vector<Rational>(0|volume_vect);
 
-   BigObject q("Polytope<Rational>");
-   q.take("FEASIBLE") << true;
-   q.take("INEQUALITIES") << Inequalities;
-   q.take("EQUATIONS") << Equations;
-   q.take("LP") << lp;
+   BigObject q("Polytope<Rational>",
+               "FEASIBLE", true,
+               "INEQUALITIES", Inequalities,
+               "EQUATIONS", Equations);
+   BigObject lp = q.add("LP", "LINEAR_OBJECTIVE", 0 | volume_vect);
+   lp.attach("INTEGER_VARIABLES") << Array<bool>(2*n, true);
    return q;
 }
 

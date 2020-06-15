@@ -57,14 +57,10 @@ rays_of_intersection(const GenericMatrix<TMatrix,Scalar>& V,
                      const Matrix<Scalar>& intersection_lineality,
                      const Matrix<Scalar>& H)
 {
-   BigObject C("Cone", mlist<Scalar>());
-   C.take("INPUT_RAYS") << Matrix<Scalar>(V);
-   C.take("INPUT_LINEALITY") << intersection_lineality;
+   BigObject C("Cone", mlist<Scalar>(), "INPUT_RAYS", Matrix<Scalar>(V), "INPUT_LINEALITY", intersection_lineality);
    const Matrix<Scalar> facets = C.give("FACETS");
 
-   BigObject D("Cone", mlist<Scalar>());
-   D.take("INEQUALITIES") << facets;
-   D.take("EQUATIONS") << H;
+   BigObject D("Cone", mlist<Scalar>(), "INEQUALITIES", facets, "EQUATIONS", H);
    Matrix<Scalar> rays = D.give("RAYS");
 
    project_to_orthogonal_complement(rays, intersection_lineality);

@@ -24,23 +24,22 @@ namespace polymake { namespace topaz {
   
 BigObject sphere(const Int d)
 {
-   BigObject p("GeometricSimplicialComplex<Rational>");
-   p.set_description() << "The " << d << "-dimensional sphere.\nRealized as the boundary of a "
-                       << d+1 << "-simplex.\n";
-
    const Array<Set<Int>> F(d+2, all_subsets_less_1(sequence(0,d+2)).begin());   
    Matrix<Int> Geom(d+2, d+1);
    for (Int i = 0; i < d+1; ++i)
       Geom(i+1, i) = 1;
    
-   p.take("FACETS") << F;
-   p.take("DIM") << d;
-   p.take("PURE") << 1;
-   p.take("MANIFOLD") << 1;
-   p.take("CLOSED_PSEUDO_MANIFOLD") << 1;
-   p.take("ORIENTED_PSEUDO_MANIFOLD") << 1;
-   p.take("SPHERE") << 1;
-   p.take("COORDINATES") << Geom;
+   BigObject p("GeometricSimplicialComplex<Rational>",
+               "FACETS", F,
+               "DIM", d,
+               "PURE", true,
+               "MANIFOLD", true,
+               "CLOSED_PSEUDO_MANIFOLD", true,
+               "ORIENTED_PSEUDO_MANIFOLD", true,
+               "SPHERE", true,
+               "COORDINATES", Geom);
+   p.set_description() << "The " << d << "-dimensional sphere.\nRealized as the boundary of a "
+                       << d+1 << "-simplex.\n";
    return p;
 }
 

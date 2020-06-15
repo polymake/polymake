@@ -82,18 +82,11 @@ Matrix<Rational> rand_cyclic_gale(Int d, Int n, const RandomSeed& seed)
 
    while (i<n) { // add a new vector to the Gale diagram
       // find the generators of the cone of allowed positions for the new vector
-      BigObject c("Cone<Rational>");
-      c.take("INEQUALITIES") << (parity_flag ? Matrix<Rational>(-normal_vectors.minor(sequence(0,rws),All))
-                                                               : normal_vectors.minor(sequence(0,rws),All));
+      BigObject c("Cone<Rational>",
+                  "INEQUALITIES",
+                  parity_flag ? Matrix<Rational>(-normal_vectors.minor(sequence(0, rws), All))
+                              : normal_vectors.minor(sequence(0, rws), All));
       const Matrix<Rational> gens = c.give("RAYS");
-    /*  cout<<"without zeros: "<<gens<<endl;
-
-      BigObject c2("Cone<Rational>");
-      c2.take("INEQUALITIES") << (parity_flag ? Matrix<Rational>(-normal_vectors)
-                                                               : normal_vectors);
-      const Matrix<Rational> gens2 = c2.give("RAYS");
-      cout<<"with zeros: "<<gens2<<endl;*/
-
 
       // pick a random vector inside this allowed cone
       {
@@ -130,6 +123,7 @@ BigObject rand_cyclic(Int d, Int n, OptionSet options)
    if (d<2 || n<d+2) throw std::runtime_error("rand_cyclic: need d >= 2 and n >= d+2");
 
    const RandomSeed seed(options["seed"]);
+   const auto start_seed = seed.get();
 
    // Calculate a random Gale transform, 
    // and balance it, so that (1,...,1) is in its kernel
@@ -145,14 +139,13 @@ BigObject rand_cyclic(Int d, Int n, OptionSet options)
    // not change the combinatorics by the balancedness of G,
    V.col(0).fill(1);
 
-   // done.
-   BigObject p("Polytope<Rational>");
+   BigObject p("Polytope<Rational>",
+               "CONE_AMBIENT_DIM", d+1,
+               "VERTICES", V,
+               "GALE_TRANSFORM", G);
    p.set_description() << "Random instance of the cyclic polytope C(" 
                        << d << "," 
-                       << n << "). Produced by rand_cyclic for seed=" << seed.get() << endl;
-   p.take("CONE_AMBIENT_DIM") << d+1;
-   p.take("VERTICES") << V;
-   p.take("GALE_TRANSFORM") << G;
+                       << n << "). Produced by rand_cyclic for seed=" << start_seed << endl;
    return p;
 }
 

@@ -45,12 +45,10 @@ prism_coord(const Matrix<Scalar>& V,
 template<typename Scalar>
 BigObject prism(BigObject p_in, const Scalar& z, const Scalar& z_prime, OptionSet options)
 {
-
-   if(z==z_prime)
-        throw std::runtime_error("prism: z and z' must be different");
-   if(options["group"] && !p_in.exists("GROUP"))
-         throw std::runtime_error("prism: group of the base polytope needs to be provided in order to compute group of the pyramid.");
-
+   if (z == z_prime)
+      throw std::runtime_error("prism: z and z' must be different");
+   if (options["group"] && !p_in.exists("GROUP"))
+      throw std::runtime_error("prism: group of the base polytope needs to be provided in order to compute group of the pyramid.");
 
    Int n_vertices = 0, n_vertices_out = 0;
    Set<Int> rays;
@@ -98,7 +96,7 @@ BigObject prism(BigObject p_in, const Scalar& z, const Scalar& z_prime, OptionSe
       p_out.take("VERTICES") << V_out;
    }
 
-   if(options["group"]){
+   if (options["group"]) {
       Array<Array<Int>> gens = p_in.give("GROUP.VERTICES_ACTION.GENERATORS");
 
       for (auto i = entire(gens); !i.at_end(); ++i) {
@@ -111,17 +109,12 @@ BigObject prism(BigObject p_in, const Scalar& z, const Scalar& z_prime, OptionSe
       swap.append(n_vertices,entire(sequence(0,n_vertices)));
       gens.resize(gens.size()+1,swap);
 
-      BigObject a("group::PermutationAction");
-      a.take("GENERATORS") << gens;
-
-      BigObject g("group::Group");
+      BigObject a("group::PermutationAction", "GENERATORS", gens);
+      BigObject g("group::Group", "canonicalGroup");
       g.set_description() << "canonical group induced by the group of the base polytope" << endl;
-      g.set_name("canonicalGroup");
       p_out.take("GROUP") << g;
       p_out.take("GROUP.VERTICES_ACTION") << a;
    }
-
-
 
    if (!options["no_labels"]) {
       std::vector<std::string> labels(n_vertices_out);

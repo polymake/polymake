@@ -75,13 +75,11 @@ BigObject check_fan_objects(const Array<BigObject>& all_cones, OptionSet options
       }
       // test intersection property
       for (Int c_j = c_i+1; c_j < n_i_cones; ++c_j) {
-         BigObject inters(t);
          const Matrix<Coord> facets2 = all_cones[c_j].give("FACETS");
          const Matrix<Coord> eqs2 = all_cones[c_j].give("LINEAR_SPAN");
          const Matrix<Coord> c_rays2=all_cones[c_j].give("RAYS");
 
-         inters.take("INEQUALITIES") << (facets / facets2);
-         inters.take("EQUATIONS") << (eqs / eqs2);
+         BigObject inters(t, "INEQUALITIES", facets / facets2, "EQUATIONS", eqs / eqs2);
          const Matrix<Coord> int_rays = inters.give("RAYS");
 
          const Int n_int_rays = int_rays.rows();
@@ -164,8 +162,7 @@ BigObject check_fan_objects(const Array<BigObject>& all_cones, OptionSet options
 }
 
 
-//template<typename Coord>
-typedef Rational Coord;
+template <typename Coord>
 BigObject check_fan(const Matrix<Coord>& i_rays, const IncidenceMatrix<>& i_cones, OptionSet options)
 {
    const Int n_i_cones = i_cones.rows();
@@ -179,34 +176,32 @@ BigObject check_fan(const Matrix<Coord>& i_rays, const IncidenceMatrix<>& i_cone
       all_cones[i].take("INPUT_RAYS") << i_rays.minor(i_cones[i], All);
       all_cones[i].take("INPUT_LINEALITY") << linealitySpace;
    }
-   BigObject f=check_fan_objects<Coord>(all_cones, options);
+   BigObject f = check_fan_objects<Coord>(all_cones, options);
    f.take("INPUT_RAYS") << i_rays;
    f.take("INPUT_CONES") << i_cones;
    return f;
 }
 
-
-UserFunction4perl("# @category Consistency check"
-                  "# Checks whether a given set of //rays// together with a list //cones//"
-                  "# defines a polyhedral fan."
-                  "# If this is the case, the ouput is the [[PolyhedralFan]] defined by //rays//"
-                  "# as [[INPUT_RAYS]], //cones// as [[INPUT_CONES]], //lineality_space// as"
-                  "# [[LINEALITY_SPACE]] if this option is given."
-                  "# @param Matrix rays"
-                  "# @param IncidenceMatrix cones"
-                  "# @option Matrix lineality_space Common lineality space for the cones."
-                  "# @option Bool verbose prints information about the check."
-                  "# @return PolyhedralFan",
-                  &check_fan,"check_fan($ $ {lineality_space=> undef, verbose=>0})");
+UserFunctionTemplate4perl("# @category Consistency check"
+                          "# Checks whether a given set of //rays// together with a list //cones//"
+                          "# defines a polyhedral fan."
+                          "# If this is the case, the ouput is the [[PolyhedralFan]] defined by //rays//"
+                          "# as [[INPUT_RAYS]], //cones// as [[INPUT_CONES]], //lineality_space// as"
+                          "# [[LINEALITY_SPACE]] if this option is given."
+                          "# @param Matrix rays"
+                          "# @param IncidenceMatrix cones"
+                          "# @option Matrix lineality_space Common lineality space for the cones."
+                          "# @option Bool verbose prints information about the check."
+                          "# @return PolyhedralFan",
+                          "check_fan<Coord>(Matrix<Coord>, IncidenceMatrix; {lineality_space=>undef, verbose=>false})");
 
 UserFunctionTemplate4perl("# @category Consistency check"
                           "# Checks whether the [[polytope::Cone]] objects form a polyhedral fan."
                           "# If this is the case, returns that [[PolyhedralFan]]."
                           "# @param Array<Cone> cones"
                           "# @option Bool verbose prints information about the check."
-                          "# @tparam Coord"
                           "# @return PolyhedralFan",
-                          "check_fan_objects<Coord>(Cone<Coord> +;{verbose=>0})");
+                          "check_fan_objects<Coord>(Cone<Coord> +; {verbose=>false})");
 
 } }
 

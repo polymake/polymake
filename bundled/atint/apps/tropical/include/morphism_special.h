@@ -33,6 +33,8 @@
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
 #include "polymake/Vector.h"
+#include "polymake/SparseVector.h"
+#include "polymake/SparseMatrix.h"
 #include "polymake/Set.h"
 #include "polymake/Map.h"
 
@@ -63,8 +65,8 @@ BigObject evaluation_map(Int n, const Matrix<Rational>& delta, Int i)
   Int modulidim = (N*(N-3))/2+1; 
 
   // The projection to R^r needs the first coordinate as homogenizing coordinate.
-  Matrix<Rational> projR = Matrix<Rational>(r,modulidim) | unit_matrix<Rational>(r);
-  projR = unit_vector<Rational>(projR.cols(),0) / projR;
+  const Matrix<Rational> projR = unit_vector<Rational>(r+modulidim, 0) /
+                                 (zero_matrix<Rational>(r, modulidim) | unit_matrix<Rational>(r));
 
   Matrix<Rational> projM = unit_matrix<Rational>(modulidim) | Matrix<Rational>(modulidim,r);
 
@@ -92,10 +94,7 @@ BigObject evaluation_map(Int n, const Matrix<Rational>& delta, Int i)
 
   Matrix<Rational> map_matrix = projR + G*projM;
 
-  BigObject morphism("Morphism", mlist<Addition>());
-  morphism.take("MATRIX") << map_matrix;
-
-  return morphism;
+  return BigObject("Morphism", mlist<Addition>(), "MATRIX", map_matrix);
 }
 
 // Documentation see perl wrapper
@@ -132,10 +131,7 @@ BigObject projection_map(Int n, const Set<Int>& coords)
     ++image_index;
   }
 
-  BigObject result("Morphism", mlist<Addition>());
-  result.take("MATRIX") << proj_matrix;
-
-  return result;
+  return BigObject("Morphism", mlist<Addition>(), "MATRIX", proj_matrix);
 }
 
 // Documentation see perl wrapper
@@ -164,16 +160,12 @@ BigObject forgetful_map(Int n, const Set<Int>& leaves_to_forget)
 
   // Check if we forget so many leaves that we get the zero map
   if (small_n <= 3) {
-    BigObject result("Morphism", mlist<Addition>());
-    result.take("MATRIX") << Matrix<Rational>(small_n == 3 ? 1 : 0, domain_dim);
-    return result;
+    return BigObject("Morphism", mlist<Addition>(), "MATRIX", Matrix<Rational>(small_n == 3 ? 1 : 0, domain_dim));
   }
   // Check if we don't forget anything at all
   if (leaves_to_forget.size() == 0) {
-    BigObject result("Morphism", mlist<Addition>());
-    Matrix<Rational> um = unit_matrix<Rational>(domain_dim);
-    result.take("MATRIX") << um;
-    return result;
+    return BigObject("Morphism", mlist<Addition>(),
+                     "MATRIX", unit_matrix<Rational>(domain_dim));
   }
 
   // Prepare map mapping remaining leaves to {1,..,n-|leaves_to_forget|}
@@ -241,11 +233,7 @@ BigObject forgetful_map(Int n, const Set<Int>& leaves_to_forget)
     } //END iterate l
   } //END iterate k
 
-  // Return result
-  BigObject result("Morphism", mlist<Addition>());
-  result.take("MATRIX") << ffm;
-
-  return result;
+  return BigObject("Morphism", mlist<Addition>(), "MATRIX", ffm);
 }
 
 } }

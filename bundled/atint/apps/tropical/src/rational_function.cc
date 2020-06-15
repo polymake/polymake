@@ -23,7 +23,7 @@
 	Technische Universität Berlin, Germany
 	https://polymake.org
 
-	Functions for the basic ruleset of RationalFunction
+	Functions for the basic ruleset of TropicalRationalFunction
 	*/
 
 #include "polymake/client.h"
@@ -123,7 +123,7 @@ void computeGeometricFunctionData(BigObject function)
  * @param Polynomial den The denominator
  * @param Int chart The index of the homogenizing variable
  * @tparam Addition Min or Max
- * @return RationalFunction
+ * @return TropicalRationalFunction
  */
 template <typename Addition>
 BigObject homogenize_quotient(const Polynomial<TropicalNumber<Addition>>& num, 
@@ -158,19 +158,18 @@ BigObject homogenize_quotient(const Polynomial<TropicalNumber<Addition>>& num,
   Polynomial<TropicalNumber<Addition> > new_num(num_coefs, new_num_mons);
   Polynomial<TropicalNumber<Addition> > new_den(den_coefs, new_den_mons);
 
-  BigObject result("RationalFunction", mlist<Addition>());
-  result.take("NUMERATOR") << new_num;
-  result.take("DENOMINATOR") << new_den;
-  return result;
+  return BigObject("TropicalRationalFunction", mlist<Addition>(),
+                   "NUMERATOR", new_num,
+                   "DENOMINATOR", new_den);
 }
 
 /*
  * @brief Takes two rational functions (which are not given as polynomial quotients) and
  * computes the sum (classical, not tropical)
- * @param RationalFunction f
- * @param RationalFunction g
+ * @param TropicalRationalFunction f
+ * @param TropicalRationalFunction g
  * @tparam Addition Min or Max
- * @return RationalFunction
+ * @return TropicalRationalFunction
  */
 template <typename Addition> 
 BigObject add_rational_functions(BigObject f, BigObject g)
@@ -209,18 +208,16 @@ BigObject add_rational_functions(BigObject f, BigObject g)
   }
 
   // Return result
-  BigObject func("RationalFunction", mlist<Addition>());
-  func.take("DOMAIN") << nDomain;
-  func.take("VERTEX_VALUES") << rValues;
-  func.take("LINEALITY_VALUES") << lValues;
-
-  return func;
+  return BigObject("TropicalRationalFunction", mlist<Addition>(),
+                   "DOMAIN", nDomain,
+                   "VERTEX_VALUES", rValues,
+                   "LINEALITY_VALUES", lValues);
 }
 
 FunctionTemplate4perl("computePolynomialDomain<Addition>(Polynomial<TropicalNumber<Addition>>)");
-FunctionTemplate4perl("computeDomain<Addition>(RationalFunction<Addition>)");
-FunctionTemplate4perl("computeGeometricFunctionData<Addition>(RationalFunction<Addition>)");
+FunctionTemplate4perl("computeDomain<Addition>(TropicalRationalFunction<Addition>)");
+FunctionTemplate4perl("computeGeometricFunctionData<Addition>(TropicalRationalFunction<Addition>)");
 FunctionTemplate4perl("homogenize_quotient<Addition>(Polynomial<TropicalNumber<Addition>>, Polynomial<TropicalNumber<Addition>>; $=0)");
-FunctionTemplate4perl("add_rational_functions<Addition>(RationalFunction<Addition>, RationalFunction<Addition>)");
+FunctionTemplate4perl("add_rational_functions<Addition>(TropicalRationalFunction<Addition>, TropicalRationalFunction<Addition>)");
 
 } }

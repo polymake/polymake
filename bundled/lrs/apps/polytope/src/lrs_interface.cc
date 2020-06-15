@@ -25,6 +25,9 @@
 #define MA
 #define GMP
 extern "C" {
+#ifdef HAVE_LRSDRIVER
+  #include <lrsdriver.h>
+#endif
   #include <lrslib.h>
 }
 #undef positive

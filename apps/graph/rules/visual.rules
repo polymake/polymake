@@ -127,7 +127,7 @@ sub run {
 # copy a graph and add a fully connected vertex to it
 sub component_connector {
    my ($self)=@_;
-   $self=new props::Graph($self);
+   $self=new GraphAdjacency($self);
    $self->squeeze;
    $self->add_node;
    my $n=$self->nodes-1;
@@ -284,8 +284,8 @@ user_method VISUAL_DUAL(%Visual::Lattice::decorations, { seed => undef }) {
 
 # @category Visualization
 # Write a graph in LEDA input format.
-# @param props::Graph G
-user_function LEDA_graph(props::Graph $) {
+# @param GraphAdjacency G
+user_function LEDA_graph(GraphAdjacency $) {
    my ($G, $out)=@_;
    my $n=$G->nodes;
    print $out <<".", ("|{}|\n")x$n, $G->edges, "\n";

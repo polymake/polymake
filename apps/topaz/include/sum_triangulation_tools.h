@@ -115,11 +115,11 @@ void glue_facet(const Set<Int>& _F,
                 std::vector<Set<Int>>& result);
 
 
-template<typename Scalar>
+template <typename Scalar>
 BigObject sum_triangulation_impl(BigObject p_in,
-                                    BigObject q_in,
-                                    const IncidenceMatrix<> webOfStars_in,
-                                    OptionSet options)
+                                 BigObject q_in,
+                                 const IncidenceMatrix<> webOfStars_in,
+                                 OptionSet options)
 {
    const Matrix<Scalar>
       pVert = p_in.give("COORDINATES"),
@@ -198,10 +198,6 @@ BigObject sum_triangulation_impl(BigObject p_in,
    }
 
 
-   // OUTPUT
-   BigObject pSumTri("topaz::GeometricSimplicialComplex", mlist<Scalar>());
-   pSumTri.set_description() << "a P sum triangulation of " << p_in.name() << " and " << q_in.name() << "." << endl;
-
    Matrix<Scalar> sumVert = (pVert | zero_matrix<Scalar>(pVert.rows(), qVert.cols())) /
                             (zero_matrix<Scalar>(qVert.rows(), pVert.cols()) | qVert);
    IncidenceMatrix<> output_facets(output_list);
@@ -237,9 +233,10 @@ BigObject sum_triangulation_impl(BigObject p_in,
 
    }
 
-   pSumTri.take("COORDINATES") << sumVert;
-   pSumTri.take("INPUT_FACES") << rows(output_facets);
-
+   BigObject pSumTri("topaz::GeometricSimplicialComplex", mlist<Scalar>(),
+                     "COORDINATES", sumVert,
+                     "INPUT_FACES", rows(output_facets));
+   pSumTri.set_description() << "a P sum triangulation of " << p_in.name() << " and " << q_in.name() << "." << endl;
    return pSumTri;
 }
 

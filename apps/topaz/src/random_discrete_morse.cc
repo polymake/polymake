@@ -520,18 +520,14 @@ Map<Array<Int>, Int> random_discrete_morse(const Lattice<BasicDecoration>& orig_
       ++morse_table[morse_vec];
 
       if (!remaining_facets.empty()) {
-           BigObject save_complex("SimplicialComplex");
-           save_complex.set_description()    << "Simplicial complex obtained by a sequence of random collapses."
-                                             << "\nparameters for the random_discrete_morse function:"
-                                             << "\nstrategy:       " << strategy
-                                             << "\nseed:           " << random_source.get()
-                                             << "\nfound on round: " << this_round
-                                             << endl;
-          save_complex.take("INPUT_FACES")   << remaining_facets;
-          std::stringstream ss;
-          ss <<save_to_filename<<"_"<<this_round;
-          std::string filename(ss.str());
-          save_complex.save(filename);
+         BigObject save_complex("SimplicialComplex", "INPUT_FACES", remaining_facets);
+         save_complex.set_description() << "Simplicial complex obtained by a sequence of random collapses."
+                                        << "\nparameters for the random_discrete_morse function:"
+                                        << "\nstrategy:       " << strategy
+                                        << "\nseed:           " << random_source.get()
+                                        << "\nfound on round: " << this_round
+                                        << endl;
+         save_complex.save(save_to_filename + '_' + std::to_string(this_round));
       }
    }
 

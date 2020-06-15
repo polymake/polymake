@@ -61,26 +61,19 @@ BigObject local_restrict(BigObject complex, const IncidenceMatrix<>& cones)
 
   // Adapt cone description and ray indices
   maximalCones = maximalCones.minor(remainingCones,All);
-  weights = weights.slice(remainingCones);
   Set<Int> usedRays = accumulate(rows(maximalCones),operations::add());
 
   // We have to take care when adapting the local restriction:
   // If cones is input by hand, it may have less columns then there are rays left.
   IncidenceMatrix<> newlocalcones(cones.rows(), rays.rows());
   newlocalcones.minor(All, sequence(0, cones.cols())) = cones;
-  newlocalcones = newlocalcones.minor(All,usedRays);
 
-  rays = rays.minor(usedRays,All);
-  maximalCones = maximalCones.minor(All,usedRays);
-
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("VERTICES") << rays;
-  result.take("MAXIMAL_POLYTOPES") << maximalCones;
-  result.take("LINEALITY_SPACE") << linspace;
-  result.take("WEIGHTS") << weights;
-  result.take("LOCAL_RESTRICTION") << newlocalcones;
-
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "VERTICES", rays.minor(usedRays, All),
+                   "MAXIMAL_POLYTOPES", maximalCones.minor(All, usedRays),
+                   "LINEALITY_SPACE", linspace,
+                   "WEIGHTS", weights.slice(remainingCones),
+                   "LOCAL_RESTRICTION", newlocalcones.minor(All,usedRays));
 }
 
 } }

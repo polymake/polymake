@@ -31,11 +31,11 @@
 # @category Divisor computation
 # This function computes the divisor of one or more rational functions on a tropical cycle.
 # @param Cycle C A tropical cycle
-# @param RationalFunction F An arbitrary list of rational functions (r_1,...r_n). The [[DOMAIN]]
+# @param TropicalRationalFunction F An arbitrary list of rational functions (r_1,...r_n). The [[DOMAIN]]
 # of r_i should contain the support of r_{i-1} * ... * r_1 * C. Note that using the ^-operator
 # on these rational functions is allowed and will result in applying the corresponding function several times.
 # @return Cycle The divisor r_n * ... * r_1 * C
-user_function divisor<Addition>(Cycle<Addition>; RationalFunction<Addition>+) {
+user_function divisor<Addition>(Cycle<Addition>; TropicalRationalFunction<Addition>+) {
    my ($cycle, $functions) = @_;
 
    if (@$functions > $cycle->PROJECTIVE_DIM) {
@@ -54,12 +54,12 @@ user_function divisor<Addition>(Cycle<Addition>; RationalFunction<Addition>+) {
 # It should only be called, if the [[DOMAIN]] of all occuring cycles is the cycle itself. 
 # This function will be faster than [[divisor]], since it computes no refinements.
 # @param Cycle C A tropical cycle
-# @param RationalFunction F An arbitrary list of rational functions (r_1,...r_n). The [[DOMAIN]]
+# @param TropicalRationalFunction F An arbitrary list of rational functions (r_1,...r_n). The [[DOMAIN]]
 # of each function should be equal (in terms of [[VERTICES]] and [[MAXIMAL_POLYTOPES]]) to the cycle.
 # Note that using the ^-operator on these rational functions is allowed and will result in 
 # applying the corresponding function several times.
 # @return Cycle The divisor r_n * ... * r_1 * C
-user_function divisor_nr<Addition>(Cycle<Addition>; RationalFunction<Addition>+) {
+user_function divisor_nr<Addition>(Cycle<Addition>; TropicalRationalFunction<Addition>+) {
    my ($cycle, $functions) = @_;
 
    if (@$functions == 0) {

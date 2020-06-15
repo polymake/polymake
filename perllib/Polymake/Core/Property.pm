@@ -125,16 +125,16 @@ sub new {
 }
 ####################################################################################
 sub clone {
-   my ($src)=@_;
-   my $self=inherit_class([ @$src ], $src);
+   my ($src) = @_;
+   my $self = inherit_class([ @$src ], $src);
    if ($src->new_instance_deputy) {
-      $self->new_instance_deputy=new NewMultiInstance($self, $src->new_instance_deputy->key);
+      $self->new_instance_deputy = new NewMultiInstance($self, $src->new_instance_deputy->key);
    }
    $self
 }
 ####################################################################################
 sub override_by {
-   my ($src, $name, $owner, $new_type)=@_;
+   my ($src, $name, $owner, $new_type) = @_;
    my $self = &clone;
    $self->name = $name;
    $self->belongs_to = $owner;
@@ -142,7 +142,7 @@ sub override_by {
       $self->overrides_for = $owner;
       $self->overrides = $src->name;
    }
-   if (defined $new_type) {
+   if (defined($new_type)) {
       $self->type = $new_type;
       if ($new_type->abstract) {
          $self->flags &= ~Flags::is_concrete;
@@ -158,18 +158,18 @@ sub override_by {
 # taking into account overrides and augmentations
 # Property, BigObjectType, downcast_flag => Property
 sub instance_for_owner {
-   my ($self, $proto, $down)=@_;
-   if ($self->belongs_to==$proto) {
+   my ($self, $proto, $down) = @_;
+   if ($self->belongs_to == $proto) {
       $self
    } elsif ($down) {
       $proto->property($self->name)
    } elsif ($proto->isa($self->defined_for)) {
       until ($proto->isa($self->belongs_to)) {
-         $self= $proto->lookup_property($self->name) //
-                (defined($self->overrides) &&
-                 $self->belongs_to->lookup_overridden_property($self)
-                   or croak( "internal error: can't find an instance of property ", $self->name,
-                             " for object type ", $proto->full_name ));
+         $self = $proto->lookup_property($self->name) //
+                 (defined($self->overrides) &&
+                  $self->belongs_to->lookup_overridden_property($self)
+                    or croak( "internal error: can't find an instance of property ", $self->name,
+                              " for object type ", $proto->full_name ));
       }
       $self
    } else {
@@ -178,7 +178,7 @@ sub instance_for_owner {
 }
 ####################################################################################
 sub analyze {
-   my ($self, $pkg)=@_;
+   my ($self, $pkg) = @_;
    if ($self->flags & Flags::is_subobject) {
       if ($self->flags & Flags::is_twin) {
          croak( "a twin property cannot be augmented" );
@@ -196,13 +196,15 @@ sub analyze {
 }
 ####################################################################################
 sub change_to_augmented {
-   my ($self, $augm)=@_;
+   my ($self, $augm) = @_;
    $self->type = $augm;
    if ($self->belongs_to->abstract) {
       $self->flags &= ~Flags::is_concrete;
-      choose_methods($self);
+   } else {
+      $self->flags |= Flags::is_concrete;
    }
    $self->flags |= Flags::is_augmented;
+   choose_methods($self);
    if ($self->new_instance_deputy) {
       $self->new_instance_deputy->update_flags;
    }
@@ -210,9 +212,9 @@ sub change_to_augmented {
 }
 ####################################################################################
 sub clone_for_augmented {
-   my ($src, $augm, $proto)=@_;
-   my $self=&clone;
-   $self->belongs_to=$proto;
+   my ($src, $augm, $proto) = @_;
+   my $self = &clone;
+   $self->belongs_to = $proto;
    change_to_augmented($self, $augm);
    $self
 }
@@ -244,7 +246,7 @@ sub clone_for_owner {
 }
 ####################################################################################
 sub choose_methods {
-   my ($self)=@_;
+   my ($self) = @_;
    if ($self->flags & Flags::is_concrete) {
       if ($self->flags & Flags::is_subobject) {
          $self->accept = \&accept_subobject;

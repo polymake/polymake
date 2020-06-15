@@ -29,16 +29,9 @@ BigObject k_cyclic(Int n, Vector<Rational> s)
    if (k < 1 || k >= n)
       throw std::runtime_error("k_cyclic: 1 <= k < n required");
 
-   BigObject p("Polytope<Rational>");
-   p.set_description() << k << "-cyclic polytope" << endl;
-
-   p.take("CONE_AMBIENT_DIM") << 2*k+1;
-   p.take("CONE_DIM") << 2*k+1;
-   p.take("N_VERTICES") << n;
-
    Matrix<Rational> vertices(n,2*k+1);
-   auto v=concat_rows(vertices).begin();
-   s*=2; s/=n;
+   auto v = concat_rows(vertices).begin();
+   s *= 2; s /= n;
 
    AccurateFloat sinK, cosK;
    for (Int i = 0; i < n; ++i) {
@@ -59,9 +52,13 @@ BigObject k_cyclic(Int n, Vector<Rational> s)
          }
       }
    }
-   p.take("VERTICES") << vertices;
-   p.take("BOUNDED") << true;
-
+   BigObject p("Polytope<Rational>",
+               "CONE_AMBIENT_DIM", 2*k+1,
+               "CONE_DIM", 2*k+1,
+               "N_VERTICES", n,
+               "VERTICES", vertices,
+               "BOUNDED", true);
+   p.set_description() << k << "-cyclic polytope" << endl;
    return p;
 }
 

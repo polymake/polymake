@@ -47,5 +47,8 @@
   {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>", "void"], "func": "find_representation_permutation", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "find_representation_permutation.X.X.X.x"},
   {"args": ["perl::Canned<const SparseMatrix<double, NonSymmetric>&>"], "func": "orthonormal_row_basis", "include": ["polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "sig": "orthonormal_row_basis.X"},
   {"args": ["perl::Canned<Vector<QuadraticExtension<Rational>>&>"], "func": "canonicalize_rays", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/Vector.h"], "sig": "canonicalize_rays.X1"},
+  {"args": ["perl::Canned<const Matrix<QuadraticExtension<Rational>>&>", "perl::Canned<const Matrix<QuadraticExtension<Rational>>&>", "perl::Canned<const SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>&>", "void"], "func": "find_representation_permutation", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "find_representation_permutation.X.X.X.x"},
+  {"args": ["perl::Canned<Matrix<Rational>&>"], "func": "canonicalize_facets", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "canonicalize_facets.X1"},
+  {"args": ["perl::Canned<SparseMatrix<Rational, NonSymmetric>&>"], "func": "canonicalize_facets", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "canonicalize_facets.X1"},
  null ],
 "version": 3}

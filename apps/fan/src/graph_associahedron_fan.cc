@@ -251,20 +251,19 @@ BigObject graph_associahedron_fan(const BigObject& g)
    for (const auto& p : dual_graph_edges)
       dual_graph.edge(p.first, p.second);
 
-   BigObject fan("PolyhedralFan");
-   fan.take("RAYS") << rays;
-   fan.take("MAXIMAL_CONES") << VIF;
-   fan.take("MAXIMAL_CONE_LABELS") << cone_label_list;
-   fan.take("LINEALITY_SPACE") << ones_matrix<Rational>(1, n);
-   fan.take("FAN_AMBIENT_DIM") << n;
-   fan.take("FAN_DIM") << n;
-   fan.take("FULL_DIM") << true;
-   fan.take("POINTED") << false;
-   fan.take("COMPLETE") << true;
-   fan.take("PURE") << true;
-   fan.take("SIMPLICIAL") << true;
-   fan.take("DUAL_GRAPH.ADJACENCY") << dual_graph;
-   return fan;
+   return BigObject("PolyhedralFan",
+                    "RAYS", rays,
+                    "MAXIMAL_CONES", VIF,
+                    "MAXIMAL_CONE_LABELS", cone_label_list,
+                    "LINEALITY_SPACE", ones_matrix<Rational>(1, n),
+                    "FAN_AMBIENT_DIM", n,
+                    "FAN_DIM", n,
+                    "FULL_DIM", true,
+                    "POINTED", false,
+                    "COMPLETE", true,
+                    "PURE", true,
+                    "SIMPLICIAL", true,
+                    "DUAL_GRAPH.ADJACENCY", dual_graph);
 }
 
 BigObject flip_tube(const BigObject& g, const BigObject& spine, Int t)
@@ -273,9 +272,7 @@ BigObject flip_tube(const BigObject& g, const BigObject& spine, Int t)
    const Graph<Directed> Spine = spine.give("ADJACENCY");
    const Tubing T(G, Spine);
    const Tubing T1(G, T, t);
-   BigObject new_spine("Graph<Directed>");
-   new_spine.take("ADJACENCY") << T1.get_spine();
-   return new_spine;
+   return BigObject("Graph<Directed>", "ADJACENCY", T1.get_spine());
 }
 
 BigObject cone_of_tubing(const BigObject& g, const BigObject& spine)
@@ -283,11 +280,10 @@ BigObject cone_of_tubing(const BigObject& g, const BigObject& spine)
    const Graph<Undirected> G = g.give("ADJACENCY");
    const Graph<Directed> Spine = spine.give("ADJACENCY");
    const Tubing T(G, Spine);
-   BigObject cone("Cone<Rational>");
-   cone.take("RAYS") << T.rays();
-   cone.take("INEQUALITIES") << T.inequalities();
-   cone.take("LINEALITY_SPACE") << ones_matrix<Rational>(1, G.nodes());
-   return cone;
+   return BigObject("Cone<Rational>",
+                    "RAYS", T.rays(),
+                    "INEQUALITIES", T.inequalities(),
+                    "LINEALITY_SPACE", ones_matrix<Rational>(1, G.nodes()));
 }
 
 Set<Set<Int>> tubes_of_tubing(const BigObject& g, const BigObject& spine)

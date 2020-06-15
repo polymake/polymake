@@ -511,9 +511,8 @@ Matrix<E> minkowski_sum_vertices_fukuda(const Array<BigObject>& summands)
 template <typename E>
 BigObject minkowski_sum_fukuda(const Array<BigObject>& summands)
 {
-   BigObject p("Polytope", mlist<E>());
-   p.take("VERTICES") << minkowski_sum_vertices_fukuda<E>(summands);
-   return p;
+   return BigObject("Polytope", mlist<E>(),
+                    "VERTICES", minkowski_sum_vertices_fukuda<E>(summands));
 }
 
 template <typename E>

@@ -54,17 +54,17 @@ BigObject matroid_from_graph(BigObject g)
    for (auto comp_it=entire(rows(components)); !comp_it.at_end(); ++comp_it) {
       if (comp_it->size() > 1) {
          Graph<> indg = renumber_nodes(induced_subgraph(graph,*comp_it));
-         bases = product(bases, shift_elements(graph::all_spanningtrees(indg), n_edges), operations::add());
+         bases = product(bases, shift_elements(graph::all_spanningtrees(indg).first, n_edges), operations::add());
          n_edges += indg.edges();
       }
    }
 
-   BigObject m("Matroid");  
-   m.take("BASES") << bases;
-   m.take("N_BASES") << bases.size();
-   m.take("RANK") << r;
-   m.take("N_ELEMENTS") << n_elements;
-   m.take("LABELS") << labels;
+   BigObject m("Matroid",
+               "BASES", bases,
+               "N_BASES", bases.size(),
+               "RANK", r,
+               "N_ELEMENTS", n_elements,
+               "LABELS", labels);
    m.set_description()<<"Matroid of graph "<<g.name()<<endl;
    return m;
 }

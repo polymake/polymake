@@ -26,9 +26,9 @@ namespace polymake { namespace fan {
 
 template <typename Scalar, typename TVector>
 BigObject mixed_subdivision(Int m,
-                               const BigObject cayley_embedding,
-                               const Array<Set<Int>>& vertices_in_cells,
-                               const GenericVector<TVector>& t)
+                            const BigObject cayley_embedding,
+                            const Array<Set<Int>>& vertices_in_cells,
+                            const GenericVector<TVector>& t)
 {
    // input sanity checks
    if (!m)
@@ -48,13 +48,10 @@ BigObject mixed_subdivision(Int m,
    std::vector<Set<Int>> vif_vector;
    for (auto vicit = entire(vertices_in_cells); !vicit.at_end(); ++vicit) {
 
-      BigObject cayley_cell(poly_type);
-      cayley_cell.take("POINTS") << V.minor(*vicit, All);
+      BigObject cayley_cell(poly_type, "POINTS", V.minor(*vicit, All));
       const Matrix<Scalar> F = cayley_cell.give("FACETS");
 
-      BigObject cayley_slice(poly_type);
-      cayley_slice.take("INEQUALITIES") << F;
-      cayley_slice.take("EQUATIONS") << slice_eqs;
+      BigObject cayley_slice(poly_type, "INEQUALITIES", F, "EQUATIONS", slice_eqs);
       const Matrix<Scalar> P = cayley_slice.give("VERTICES");
       if (!P.rows())
          throw std::runtime_error("mixed_subdivision: unexpectedly empty slice polytope");
@@ -73,10 +70,9 @@ BigObject mixed_subdivision(Int m,
    for (auto hit = entire(index_of_point); !hit.at_end(); ++hit)
       V_out[hit->second] = hit->first.slice(sequence(0, d+1));
 
-   BigObject p_out("PolyhedralComplex", mlist<Scalar>());
-   p_out.take("VERTICES") << V_out;
-   p_out.take("MAXIMAL_POLYTOPES") << IncidenceMatrix<>(vif_vector);
-   return p_out;
+   return BigObject("PolyhedralComplex", mlist<Scalar>(),
+                    "VERTICES", V_out,
+                    "MAXIMAL_POLYTOPES", IncidenceMatrix<>(vif_vector));
 }
 
 template <typename Scalar, typename TVector>

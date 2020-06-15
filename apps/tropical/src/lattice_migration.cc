@@ -69,6 +69,6 @@ covector_map_from_decoration(const Graph<Directed>& graph, const NodeMap<Directe
 }
 
 Function4perl(&migrate_hasse_properties, "migrate_hasse_properties(CovectorLattice)");
-Function4perl(&covector_map_from_decoration, "covector_map_from_decoration(props::Graph, NodeMap)");
+Function4perl(&covector_map_from_decoration, "covector_map_from_decoration(GraphAdjacency, NodeMap)");
 
 } }

@@ -36,10 +36,9 @@ BigObject principal_truncation(BigObject matroid, const Set<Int>& flat)
     }		
   }
 
-  BigObject result("Matroid");
-  result.take("N_ELEMENTS") << n;
-  result.take("BASES") << Array<Set<Int>>(result_bases);
-  return result;
+  return BigObject("Matroid",
+                   "N_ELEMENTS", n,
+                   "BASES", Array<Set<Int>>(result_bases));
 }
 
 BigObject truncation(BigObject matroid)
@@ -63,10 +62,9 @@ BigObject principal_extension(BigObject matroid, const Set<Int>& flat)
     }
   }		
 
-  BigObject result("Matroid");
-  result.take("N_ELEMENTS") << n+1;
-  result.take("BASES") << Array<Set<Int>>(result_bases);
-  return result;
+  return BigObject("Matroid",
+                   "N_ELEMENTS", n+1,
+                   "BASES", Array<Set<Int>>(result_bases));
 }
 
 BigObject free_extension(BigObject matroid)

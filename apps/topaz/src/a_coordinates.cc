@@ -26,10 +26,11 @@
 
 namespace polymake { namespace topaz {
 
-using namespace graph;
+using graph::DoublyConnectedEdgeList;
+using HalfEdge = DoublyConnectedEdgeList::HalfEdge;
 
-typedef Array<Polynomial<Rational, Int>> halfedge_variables;
-typedef std::list<Int> flip_sequence;
+using halfedge_variables = Array<Polynomial<Rational, Int>>;
+using flip_sequence = std::list<Int>;
 
 // return the outitude polynomial for edge of index edge_id (half edges: 2*edge_id, 2*edge_id+1)
 Polynomial<Rational, Int> getOutitudePolynomial(const Array<Array<Int>>& dcel_data, Int edge_id)
@@ -38,7 +39,7 @@ Polynomial<Rational, Int> getOutitudePolynomial(const Array<Array<Int>>& dcel_da
    DoublyConnectedEdgeList dcel(dcel_data);
    Int dim = 4*dcel.getNumHalfEdges()/3;  
    Int e = 2*edge_id;
-   const HalfEdge* halfEdge = &( dcel.getEdges()[e] );
+   const HalfEdge* halfEdge = dcel.getHalfEdge(e);
    Int a = dcel.getHalfEdgeId( halfEdge->getNext() );
    Int b = dcel.getHalfEdgeId( halfEdge->getPrev()->getTwin() );
    Int c = dcel.getHalfEdgeId( halfEdge->getTwin()->getNext() );
@@ -49,9 +50,6 @@ Polynomial<Rational, Int> getOutitudePolynomial(const Array<Array<Int>>& dcel_da
    return var(triangle_map[f],dim)*( var(e,dim)*var(a,dim) + var(f,dim)*var(b,dim) - var(e,dim)*var(f,dim) ) +
           var(triangle_map[e],dim)*( var(e,dim)*var(d,dim) + var(f,dim)*var(c,dim) - var(e,dim)*var(f,dim) );
 }
-//Function4perl(&getOutitudePolynomial,"getOutitudePolynomial( $$ )");
-
-
 
 // given dcel data, return all outitudes, one for each edge
 Array<Polynomial<Rational,Int>> outitudePolynomials(const Array<Array<Int>>& dcel_data)
@@ -63,6 +61,7 @@ Array<Polynomial<Rational,Int>> outitudePolynomials(const Array<Array<Int>>& dce
    }
    return outs;
 }
+
 UserFunction4perl("# @category Other"
                   "# Given a triangulation of a punctured surface this calculates all the outitude polynomials.\n" 
                   "# The first e = #{oriented edges} monomials correspond to A-coordinates of the oriented edges, labeled as in the input.\n" 

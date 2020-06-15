@@ -67,7 +67,7 @@ declare object Lattice<Decoration, SeqType = Nonsequential> [isa(Decoration, Bas
    # @category Combinatorics
    # This is the data associated to each node. The prototype for this is [[BasicDecoration]],
    # which consists of properties face and rank.
-   # @example [application polytope] [prefer cdd] The following prints this property of the face lattice of the 2-simplex (triangle):
+   # @example [application polytope] [prefer cdd] [require bundled:cdd] The following prints this property of the face lattice of the 2-simplex (triangle):
    # > print simplex(2)->HASSE_DIAGRAM->DECORATION;
    # | ({} 0)
    # | ({0} 1)
@@ -84,7 +84,7 @@ declare object Lattice<Decoration, SeqType = Nonsequential> [isa(Decoration, Bas
    # Internally these are realized differently, depending on whether the Lattice
    # is [[Sequential]] or [[Nonsequential]].
    # Both provide the same user methods though.
-   # @example [application polytope] [prefer cdd]The following prints this property of the face lattice of the 2-simplex (triangle), where the tuples represent the ranges of nodes belonging to a specific rank:
+   # @example [application polytope] [prefer cdd] [require bundled:cdd] The following prints this property of the face lattice of the 2-simplex (triangle), where the tuples represent the ranges of nodes belonging to a specific rank:
    # > print simplex(2)->HASSE_DIAGRAM->INVERSE_RANK_MAP;
    # | {(0 (0 0)) (1 (1 3)) (2 (4 6)) (3 (7 7))}
    property INVERSE_RANK_MAP : InverseRankMap<SeqType>;
@@ -98,7 +98,7 @@ declare object Lattice<Decoration, SeqType = Nonsequential> [isa(Decoration, Bas
 
    # @category Combinatorics
    # The index of the bottom node
-   # @example [application polytope] [prefer cdd] The following prints the bottom node of the face lattice of the 2-simplex (triangle):
+   # @example [application polytope] [prefer cdd] [require bundled:cdd] The following prints the bottom node of the face lattice of the 2-simplex (triangle):
    # > print simplex(2)->HASSE_DIAGRAM->BOTTOM_NODE;
    # | 0
    property BOTTOM_NODE : Int;
@@ -108,7 +108,7 @@ declare object Lattice<Decoration, SeqType = Nonsequential> [isa(Decoration, Bas
    # This property is kept for two reasons: As a convenient way to access only the face part
    # of the decoration (in this case the property is temporary) and
    # for reasons of backwards compatibility.
-   # @example [application polytope] [prefer cdd] The following prints the faces of the face lattice of the 2-simplex (triangle):
+   # @example [application polytope] [prefer cdd] [require bundled:cdd] The following prints the faces of the face lattice of the 2-simplex (triangle):
    # > print simplex(2)->HASSE_DIAGRAM->FACES;
    # | {}
    # | {0}
@@ -161,7 +161,7 @@ declare object Lattice<Decoration, SeqType = Nonsequential> [isa(Decoration, Bas
 
    # @category Combinatorics
    # @return Array<Set<Int> > For each node, contains the indices of maximal nodes it lies below.
-   # @example [application polytope] [prefer cdd] The following prints the dual faces of the face lattice of the 2-simplex (triangle):
+   # @example [application polytope] [prefer cdd] [require bundled:cdd] The following prints the dual faces of the face lattice of the 2-simplex (triangle):
    # > print simplex(2)->HASSE_DIAGRAM->dual_faces();
    # | {0 1 2}
    # | {1 2}

@@ -69,11 +69,10 @@ BigObject rep_family_fixed_vertex(BigObject family)
     }
   }
   *rep_pol_it = scalar2set(vert_index1) + vert_index2;
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("VERTICES") << vertices;
-  result.take("MAXIMAL_POLYTOPES") << rep_polytopes;
-  result.take("WEIGHTS") << ones_vector<Integer>(5);
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "VERTICES", vertices,
+                   "MAXIMAL_POLYTOPES", rep_polytopes,
+                   "WEIGHTS", ones_vector<Integer>(5));
 }
 
 template <typename Addition>
@@ -95,11 +94,10 @@ BigObject rep_family_moving_vertex(BigObject family)
     ++rep_pol_it;
   }
 
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("VERTICES") << vertices;
-  result.take("MAXIMAL_POLYTOPES") << rep_polytopes;
-  result.take("WEIGHTS") << ones_vector<Integer>(4);
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "VERTICES", vertices,
+                   "MAXIMAL_POLYTOPES", rep_polytopes,
+                   "WEIGHTS", ones_vector<Integer>(4));
 }
 
 template <typename Addition>
@@ -124,11 +122,10 @@ BigObject rep_family_fixed_edge(BigObject family)
     }
   }
        
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("VERTICES") << vertices;
-  result.take("MAXIMAL_POLYTOPES") << rep_polytopes;
-  result.take("WEIGHTS") << ones_vector<Integer>(5);
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "VERTICES", vertices,
+                   "MAXIMAL_POLYTOPES", rep_polytopes,
+                   "WEIGHTS", ones_vector<Integer>(5));
 }
 
 template <typename Addition>
@@ -169,12 +166,11 @@ BigObject rep_family_moving_edge(BigObject family)
   vertices.row(vert_index1) = v1;
   vertices.row(vert_index2) = v2;
 
-  BigObject result("Cycle", mlist<Addition>());
   Set<Int> used_vertices = far_vertices + vert_index1 + vert_index2;
-  result.take("VERTICES") << vertices.minor( used_vertices,All);
-  result.take("MAXIMAL_POLYTOPES") << (IncidenceMatrix<>(rep_polytopes)).minor(All, used_vertices);
-  result.take("WEIGHTS") << ones_vector<Integer>(5);
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "VERTICES", vertices.minor(used_vertices, All),
+                   "MAXIMAL_POLYTOPES", IncidenceMatrix<>(rep_polytopes).minor(All, used_vertices),
+                   "WEIGHTS", ones_vector<Integer>(5));
 }
 
 FunctionTemplate4perl("rep_family_fixed_vertex<Addition>(Cycle<Addition>)");

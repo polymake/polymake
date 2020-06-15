@@ -1,0 +1,6 @@
+{"app": "tropical", "embed": "lines_in_cubic_rep.cc",
+ "inst": [
+  {"args": ["Min", "void"], "func": "rep_family_fixed_edge", "include": ["polymake/TropicalNumber.h"], "sig": "rep_family_fixed_edge:T1.B", "tp": 1},
+  {"args": ["Min", "void"], "func": "rep_family_fixed_vertex", "include": ["polymake/TropicalNumber.h"], "sig": "rep_family_fixed_vertex:T1.B", "tp": 1},
+ null ],
+"version": 3}

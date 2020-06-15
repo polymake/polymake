@@ -114,7 +114,13 @@ UserFunction4perl("# @category Producing a new simplicial complex from others"
                   "#  If one of the specified labels already exists, a unique one is made"
                   "#  by appending ''_i'' where //i// is some small number."
                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
-                  "# @return SimplicialComplex",
+                  "# @return SimplicialComplex"
+                  "# @example The suspension of a 1-sphere is a 2-sphere:"
+                  "# > $s = new SimplicialComplex(FACETS=>[[0,1],[1,2],[2,0]]);"
+                  "# > print suspension($s)->HOMOLOGY;"
+                  "# | ({} 0)"
+                  "# | ({} 0)"
+                  "# | ({} 1)",
                   &suspension, "suspension(SimplicialComplex; $=0, { apex_labels => undef, no_labels => 0 })");
 } }
 

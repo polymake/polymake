@@ -27,39 +27,33 @@
 
 namespace polymake { namespace matroid {
   
-  //FIXME: Write dualizing method, keeping as much data as possible
-  // and using matroid's dual(..)?
+//FIXME: Write dualizing method, keeping as much data as possible
+// and using matroid's dual(..)?
   
-  template
-  <typename Addition, typename Scalar>
-  BigObject dual(BigObject vm) {
-    //Extract values
-    Int n = vm.give("N_ELEMENTS");
-    Array<Set<Int>> bases = vm.give("BASES");
-    Vector<TropicalNumber<Addition,Scalar> > valuation = vm.give("VALUATION_ON_BASES");
-    
-    //Convert bases
-    Array<Set<Int>> dual_bases(bases.size());
-    for(Int b = 0; b < bases.size(); b++) {
-	dual_bases[b] = sequence(0,n) - bases[b];
-    }
-    
-    BigObjectType t = vm.type();
-    
-    BigObject dvm(t);
-      dvm.take("N_ELEMENTS") << n;
-      dvm.take("BASES") << dual_bases;
-      dvm.take("VALUATION_ON_BASES") << valuation;
-      
-    return dvm;
-    
+template <typename Addition, typename Scalar>
+BigObject dual(BigObject vm)
+{
+  // Extract values
+  const Int n = vm.give("N_ELEMENTS");
+  const Array<Set<Int>> bases = vm.give("BASES");
+  Vector<TropicalNumber<Addition,Scalar> > valuation = vm.give("VALUATION_ON_BASES");
+
+  // Convert bases
+  Array<Set<Int>> dual_bases(bases.size());
+  for (Int b = 0; b < bases.size(); ++b) {
+    dual_bases[b] = sequence(0,n) - bases[b];
   }
 
-  UserFunctionTemplate4perl(
-	 "# @category Producing a matroid from matroids"
-    "# Computes the dual of a valuated matroid."
-    "# @param ValuatedMatroid<Addition,Scalar> M A valuated matroid"
-    "# @return ValuatedMatroid<Addition,Scalar> The dual valuated matroid.",
-    "dual<Addition,Scalar>(ValuatedMatroid<Addition,Scalar>)");
-  
-}}
+  return BigObject(vm.type(),
+                   "N_ELEMENTS", n,
+                   "BASES", dual_bases,
+                   "VALUATION_ON_BASES", valuation);
+}
+
+UserFunctionTemplate4perl("# @category Producing a matroid from matroids"
+                          "# Computes the dual of a valuated matroid."
+                          "# @param ValuatedMatroid<Addition,Scalar> M A valuated matroid"
+                          "# @return ValuatedMatroid<Addition,Scalar> The dual valuated matroid.",
+                          "dual<Addition,Scalar>(ValuatedMatroid<Addition,Scalar>)");
+
+} }

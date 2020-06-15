@@ -31,11 +31,10 @@ BigObject rand_inner_points(BigObject p_in, Int n, OptionSet options)
       throw std::runtime_error("rand_inner_points: unbounded input polyhedron");
 
    const RandomSeed seed(options["seed"]);
+   const auto start_seed = seed.get();
+
    const Int M = std::numeric_limits<Int>::max();
    UniformlyRandomRanged<Int> rg(M, seed);
-
-   BigObject p_out("Polytope<Rational>");
-   p_out.set_description() << "Random inner points of " << p_in.name() << "; seed=" << seed.get() << endl;
 
    const Matrix<Rational> V=p_in.give("VERTICES");
    const Int d = V.cols(), n_vertices = V.rows();
@@ -61,8 +60,10 @@ BigObject rand_inner_points(BigObject p_in, Int n, OptionSet options)
 
       *p_i = mu*V;
    }
-   
-   p_out.take("POINTS") << Points_out;
+
+   BigObject p_out("Polytope<Rational>",
+                   "POINTS", Points_out);
+   p_out.set_description() << "Random inner points of " << p_in.name() << "; seed=" << start_seed << endl;
    return p_out;
 }
 

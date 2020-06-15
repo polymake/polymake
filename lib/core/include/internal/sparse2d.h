@@ -36,8 +36,6 @@ template <typename Matrix> class Cols;
 
 namespace sparse2d {
 
-using pm::relocate;
-
 template <typename E>
 struct cell {
    typedef E mapped_type;
@@ -351,11 +349,6 @@ public:
       return key_comparator;
    }
 
-   friend void relocate(traits *from, traits *to)
-   {
-      pm::relocate(static_cast<Base*>(from), static_cast<Base*>(to), std::true_type());
-   }
-
    template <typename, bool, restriction_kind> friend class Table;
    template <typename> friend struct sym_permute_entries;
    template <typename, typename, bool> friend struct asym_permute_entries;
@@ -454,12 +447,15 @@ struct asym_permute_entries {
    typedef typename row_ruler::value_type tree_type;
    typedef typename tree_type::Node Node;
 
-   static void relocate(tree_type *from, tree_type *to) { relocate_tree(from, to, std::true_type()); }
+   static void relocate(tree_type *from, tree_type *to)
+   {
+      new(to) tree_type(std::move(*from));
+   }
 
    void operator()(row_ruler*, row_ruler* R) const
    {
       if (!restricted) {
-         for (auto ci=entire(*C);  !ci.at_end();  ++ci)
+         for (auto ci = entire(*C);  !ci.at_end();  ++ci)
             ci->init();
          R->prefix().set_cross_ruler(C);
          C->prefix().set_cross_ruler(R);
@@ -467,7 +463,7 @@ struct asym_permute_entries {
       Int r = 0;
       for (auto ri = entire(*R); !ri.at_end();  ++ri, ++r) {
          const Int old_r = ri->line_index;
-         const Int rdiff = r-old_r;
+         const Int rdiff = r - old_r;
          ri->line_index = r;
          for (auto e = ri->begin(); !e.at_end(); ++e) {
             Node* node = e.operator->();
@@ -739,12 +735,13 @@ protected:
    {
       Int i = 0, inew = 0;
       for (auto t = R->begin(), end = R->end(); t != end; ++t, ++i) {
+         using tree_type = pure_type_t<decltype(*t)>;
          if (t->size() != 0) {
-            if (Int idiff = i-inew) {
+            if (Int idiff = i - inew) {
                t->line_index = inew;
                for (auto e = entire(*t); !e.at_end(); ++e)
                   e->key -= idiff;
-               relocate_tree(t.operator->(), &t[-idiff], std::true_type());
+               new(&t[-idiff]) tree_type(std::move(*t));
             }
             nc(i, inew);  ++inew;
          } else {
@@ -860,11 +857,11 @@ struct sym_permute_entries
    using typename Traits::tree_t;
    using typename Traits::ruler;
    using typename Traits::entry_t;
-   typedef typename tree_t::Node Node;
+   using Node = typename tree_t::Node;
 
    static void relocate(tree_t* from, tree_t* to)
    {
-      relocate_tree(from, to, std::false_type());
+      new tree_t(*from, AVL::copy_without_nodes());
    }
 
    void complete_cross_links(ruler* R)
@@ -883,38 +880,39 @@ struct sym_permute_entries
 
    void operator()(ruler* Rold, ruler* R)
    {
-      // unfortunately I can't reuse the line_index entries in both old and new rulers,
-      // as the iterators always need correct values there
       const Int n = R->size();
-      std::vector<Int> perm(n);
       inv_perm_store.resize(n, -1);
 
       Int r = 0;
       for (entry_t& entry : *R) {
          if (this->is_alive(entry)) {
             tree_t& t = this->tree(entry);
-            perm[r] = t.line_index;
             inv_perm_store[t.line_index] = r;
             t.line_index = r;
          } else {
             this->handle_dead_entry(entry, r);
-            perm[r] = -1;
          }
          ++r;
       }
 
-      for (r = 0; r < n; ++r) {
-         const Int old_r = perm[r];
-         if (old_r >= 0) {
-            for (auto e = Traits::tree((*Rold)[old_r]).begin(); !e.at_end(); ) {
+      for (Int old_r = 0; old_r < n; ++old_r) {
+         r = inv_perm_store[old_r];
+         if (r >= 0) {
+            auto& old_tree = Traits::tree((*Rold)[old_r]);
+            for (auto e = old_tree.begin(); !e.at_end(); ) {
                Node* node = e.operator->();  ++e;
                const Int old_c = node->key - old_r;
-               const Int c = inv_perm_store[old_c];
-               if (old_r != old_c)
-                  Traits::tree((*Rold)[old_c]).unlink_node(node);
-               node->key = r+c;
-               Traits::tree((*R)[std::max(r,c)]).push_back_node(node);
+               // don't move nodes above the main diagonal,
+               // otherwise subsequent trees will look corrupted
+               if (old_c <= old_r) {
+                  const Int c = inv_perm_store[old_c];
+                  node->key = r+c;
+                  Traits::tree((*R)[std::max(r,c)]).insert_node(node);
+               } else {
+                  break;
+               }
             }
+            old_tree.init();
          }
       }
 
@@ -937,7 +935,7 @@ struct sym_permute_entries
                const Int dst_c = inv_perm[src_c];
                if (dst_c >= dst_r) {
                   tree_t& t = this->tree((*R_dst)[dst_c]);
-                  t.push_back_node(t.create_free_node(dst_r+dst_c, node->get_data()));
+                  t.insert_node(t.create_free_node(dst_r+dst_c, node->get_data()));
                }
             }
          } else {
@@ -1024,7 +1022,7 @@ public:
    void squeeze(const row_number_consumer& rnc)
    {
       Int r = 0, rnew = 0;
-      for (auto t = R->begin(), end = R->end(); t!=end; ++t, ++r) {
+      for (auto t = R->begin(), end = R->end(); t != end; ++t, ++r) {
          if (t->size() != 0) {
             if (Int rdiff = r-rnew) {
                const Int diag = 2 * r;
@@ -1033,7 +1031,7 @@ public:
                   c.key -= rdiff << (c.key == diag);
                }
                t->line_index = rnew;
-               relocate_tree(&*t, &t[-rdiff], std::true_type());
+               new(&t[-rdiff]) row_tree_type(std::move(*t));
             }
             rnc(r, rnew);  ++rnew;
          } else {

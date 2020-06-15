@@ -1135,7 +1135,9 @@ public:
 template <typename SetRef, typename ElemRef>
 struct spec_object_traits< SameElementSparseVector<SetRef, ElemRef> >
    : spec_object_traits<is_container> {
-   static const bool is_temporary = true, is_always_const = true;
+   static constexpr bool
+      is_temporary = true,
+      is_always_const = true;
 };
 
 template <typename SetRef, typename ElemRef>

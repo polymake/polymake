@@ -29,19 +29,18 @@ BigObject edge_middle(BigObject p_in)
    if (!bounded)
       throw std::runtime_error("edge_middle: unbounded polyhedron");
 
-   BigObject p_out("Polytope", mlist<Scalar>());
-   p_out.set_description() << "Convex hull of all edge middle points of " << p_in.name() << endl;
-
-   const Matrix<Scalar> V=p_in.give("VERTICES");
-   const Graph<> G=p_in.give("GRAPH.ADJACENCY");
+   const Matrix<Scalar> V = p_in.give("VERTICES");
+   const Graph<> G = p_in.give("GRAPH.ADJACENCY");
 
    Matrix<Scalar> V_out(G.edges(), V.cols());
    typename Rows< Matrix<Scalar> >::iterator v_out=rows(V_out).begin();
    for (auto e=entire(edges(G));  !e.at_end();  ++e, ++v_out)
       *v_out = (V[e.from_node()] + V[e.to_node()])/2;
             
-   p_out.take("VERTICES") << V_out;
-   p_out.take("BOUNDED") << true;
+   BigObject p_out("Polytope", mlist<Scalar>(),
+                   "VERTICES", V_out,
+                   "BOUNDED", true);
+   p_out.set_description() << "Convex hull of all edge middle points of " << p_in.name() << endl;
    return p_out;
 }
 

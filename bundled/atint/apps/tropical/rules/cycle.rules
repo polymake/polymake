@@ -3,17 +3,17 @@
 #  modify it under the terms of the GNU General Public License
 #  as published by the Free Software Foundation; either version 2
 #  of the License, or (at your option) any later version.
-#  
+#
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-#  
+#
 #  You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin Street, Fifth Floor,
 #  Boston, MA  02110-1301, USA.
-#  
+#
 #  ---
 #  Copyright (C) 2011-2015, Simon Hampe <simon.hampe@googlemail.com>
 #
@@ -29,35 +29,35 @@
 
 object Cycle {
 
-	#Operator overload 
+	#Operator overload
 	use overload('*' => 'mult', fallback => 1);
 
 	## PROPERTIES ###########################################
-	
-	# @category Weights and lattices 
+
+	# @category Weights and lattices
 	# For each lattice normal vector, this gives a vector of length (number of rays) + (lineality dim.), such that
-	# if a rational function is given by values on the rays and lin space generators, 
-	# the value of the corresponding normal [[LATTICE_NORMALS]]->{i}->{j} can be computed by 
-	# multiplying the function value vector with the vector [[LATTICE_NORMAL_FCT_VECTOR]]->{i}->{j}. 
-	# This is done in the following way:  
-	# We use the generating system (and indices refer to SEPARATED_VERTICES) <(r_i-r_0)_i>0, s_j, l_k>, 
+	# if a rational function is given by values on the rays and lin space generators,
+	# the value of the corresponding normal [[LATTICE_NORMALS]]->{i}->{j} can be computed by
+	# multiplying the function value vector with the vector [[LATTICE_NORMAL_FCT_VECTOR]]->{i}->{j}.
+	# This is done in the following way:
+	# We use the generating system (and indices refer to SEPARATED_VERTICES) <(r_i-r_0)_i>0, s_j, l_k>,
 	# where r_0 is the ray of the maximal cone with the lowest index in [[SEPARATED_VERTICES]],
-	# such that it fulfills x0 = 1, r_i are the remaining rays with x0 = 1, ordered according to their index 
-	# in [[SEPARATED_VERTICES]], s_j are the rays of the cone with x0 = 0 and l_k are the lineality space 
-	# generators. We will then store the coefficients a_i of (r_i - r_0) at the index of r_i, then - sum(a_i) at 
+	# such that it fulfills x0 = 1, r_i are the remaining rays with x0 = 1, ordered according to their index
+	# in [[SEPARATED_VERTICES]], s_j are the rays of the cone with x0 = 0 and l_k are the lineality space
+	# generators. We will then store the coefficients a_i of (r_i - r_0) at the index of r_i, then - sum(a_i) at
 	# the index of r_0 and the remaining coefficients at the appropriate places.
 	# In particular, the value of a lattice normal under a rational function can be computed
 	# simply by taking the scalar product of RAY_VALUES | LIN_VALUES with this FCT_VECTOR
 	property LATTICE_NORMAL_FCT_VECTOR : Map<Pair<Int,Int>,Vector<Rational>>;
-	
+
 	# @category Weights and lattices
 	# Rows of this matrix correspond to [[CODIMENSION_ONE_POLYTOPES]], and each row contains the weighted sum:
 	# sum_{cone > codim-1-face}( weight(cone) * [[LATTICE_NORMALS]]->{codim-1-face}->{cone})
 	property LATTICE_NORMAL_SUM : Matrix<Rational>;
-	
-	# @category Weights and lattices 
-	# Rows of this matrix correspond to [[SEPARATED_CODIMENSION_ONE_POLYTOPES]] and each row contains a function vector 
-	# for the corresponding row of [[LATTICE_NORMAL_SUM]]. This function vector is computed 
+
+	# @category Weights and lattices
+	# Rows of this matrix correspond to [[SEPARATED_CODIMENSION_ONE_POLYTOPES]] and each row contains a function vector
+	# for the corresponding row of [[LATTICE_NORMAL_SUM]]. This function vector is computed
 	# in the same way as described under [[LATTICE_NORMAL_FCT_VECTOR]].
 	# Note that for any codim-1-faces at which the complex is not balanced, the corresponding row is a zero row.
 	# If a face is balanced can be checked under [[UNBALANCED_FACES]].
@@ -68,60 +68,54 @@ object Cycle {
 	property UNBALANCED_FACES : Set<Int>;
 
 	# @category Weights and lattices
-	# A vector whose entries correspond to the rows of CODIMENSION_ONE_POLYTOPES. 
-	# The i-th entry is true, if and only if the complex is balanced at that face
-	# TODO: DEPRECATED, replace with user_function
-	property BALANCED_FACES : Array<Bool>;
-
-	# @category Weights and lattices
-	# Whether the cycle is balanced. As many functions in a-tint can 
+	# Whether the cycle is balanced. As many functions in a-tint can
 	# deal with non-balanced complexes, we include this as a property.
 	property IS_BALANCED : Bool;
 
 	# @category Defining morphisms and functions
-	# This is a matrix of vertices of the complex. More precisely, each ray r from [[VERTICES]] occurs  
+	# This is a matrix of vertices of the complex. More precisely, each ray r from [[VERTICES]] occurs
 	# as a row in this matrix...
 	# - once, if r_0 = 1
-	# - k times, if r_0 = 0 and k is the number of equivalence classes of maximal cones 
+	# - k times, if r_0 = 0 and k is the number of equivalence classes of maximal cones
 	# containing r with respect to the following relation:
-	# Two maximal cones m, m' containing r are equivalent, if they are equal or there exists a sequence 
-	# of maximal cones m = m_1,...m_r = m', such that r is contained in each m_i and each intersection 
+	# Two maximal cones m, m' containing r are equivalent, if they are equal or there exists a sequence
+	# of maximal cones m = m_1,...m_r = m', such that r is contained in each m_i and each intersection
 	# m_i cap m_i+1 contains at least one ray s with s_0 = 1.
-	# The reason for this is that, when for example specifying a piecewise affine linear function on a 
-	# polyhedral complex, the same far ray with x0 = 0 might be assigned two different values, if it is 
+	# The reason for this is that, when for example specifying a piecewise affine linear function on a
+	# polyhedral complex, the same far ray with x0 = 0 might be assigned two different values, if it is
 	# contained in two "non-connected" maximal cones (where connectedness is to be understood as described above).
-	# If there is a [[LOCAL_RESTRICTION]] the above equivalence relation is changed in such a 
+	# If there is a [[LOCAL_RESTRICTION]] the above equivalence relation is changed in such a
 	# way that the affine ray s with s_0 = 1 that must be contained in the intersection of
 	# two subsequent cones must be a compatible ray
 	property SEPARATED_VERTICES : Matrix<Rational>;
-	
+
 	# @category Defining morphisms and functions
-	# An incidence matrix describing which maximal polytope in the complex us generated by which rays. 
+	# An incidence matrix describing which maximal polytope in the complex us generated by which rays.
 	# Each row corresponds to a maximal polytope (More precisely, the i-th element represents the
-	# same maximal polytope as the i-th element of [[MAXIMAL_POLYTOPES]]). The indices in a row refer to rows 
-	# of [[SEPARATED_VERTICES]], i.e. the maximal polytope described by the i-th element is generated by 
+	# same maximal polytope as the i-th element of [[MAXIMAL_POLYTOPES]]). The indices in a row refer to rows
+	# of [[SEPARATED_VERTICES]], i.e. the maximal polytope described by the i-th element is generated by
 	# the vertices corresponding to these row indices.
 	property SEPARATED_MAXIMAL_POLYTOPES : IncidenceMatrix;
-	
+
 	# @category Defining morphisms and functions
-	# An incidence matrix describing which codimension one polytope in the complex is generated by which vertices. 
+	# An incidence matrix describing which codimension one polytope in the complex is generated by which vertices.
 	# Each row corresponds to a codimension one polytope (More precisely, the i-th element represents the
-	# same codim 1 polytope as the i-th element of [[CODIMENSION_ONE_POLYTOPES]]). The indices in a row refer 
+	# same codim 1 polytope as the i-th element of [[CODIMENSION_ONE_POLYTOPES]]). The indices in a row refer
 	# to rows of [[SEPARATED_VERTICES]].
 	property SEPARATED_CODIMENSION_ONE_POLYTOPES : IncidenceMatrix;
-		
+
 	# @category Defining morphisms and functions
-	# A vector with an entry for each row in [[SEPARATED_VERTICES]]. 
-	# More precisely, the i-th entry gives the row index of the ray in [[VERTICES]] 
+	# A vector with an entry for each row in [[SEPARATED_VERTICES]].
+	# More precisely, the i-th entry gives the row index of the ray in [[VERTICES]]
 	# that is equal to the i-th row of [[SEPARATED_VERTICES]].
-	property SEPARATED_CONVERSION_VECTOR : Vector<Int>;	
+	property SEPARATED_CONVERSION_VECTOR : Vector<Int>;
 
 	# @category Local computations
-	# This contains a list of sets of ray indices (referring to [[VERTICES]]). All of these sets should 
+	# This contains a list of sets of ray indices (referring to [[VERTICES]]). All of these sets should
 	# describe polyhedra of the polyhedral complex (though not necessarily maximal ones).
 	# A polyhedron is now called compatible with this property, if it contains one of these polyhedra
-	# If this list is not empty, all computations will be done only on (or around) compatible cones. 
-	# The documentation of each property will explain in what way this restriction is enforced. 
+	# If this list is not empty, all computations will be done only on (or around) compatible cones.
+	# The documentation of each property will explain in what way this restriction is enforced.
 	# If this list is empty or not defined, there is no restriction.
 	# Careful: The implementation assumes that ALL maximal cones are compatible. If in doubt,
 	# you can create a complex with a local restriction from a given complex by using one of
@@ -135,10 +129,10 @@ object Cycle {
 	# This is an irredundant list of all lattice generators of all maximal polyhedra.
 	# If this property exists, lattice normals might be computed faster
 	property LATTICE_GENERATORS : Matrix<Integer>;
-	
+
 	# @category Weights and lattices
-	# This incidence matrix gives a lattice basis for each maximal polytope. More precisely it 
-	# gives a lattice basis whose span contains the lattice of the maximal polytope. Row i 
+	# This incidence matrix gives a lattice basis for each maximal polytope. More precisely it
+	# gives a lattice basis whose span contains the lattice of the maximal polytope. Row i
 	# corresponds to cone i and gives lattice generator indices referring to [[LATTICE_GENERATORS]].
 	# If this property is computed via rules, it does indeed give a lattice basis for the
 	# cone lattice, but when it is computed during an operation like refinement or divisor
@@ -147,23 +141,23 @@ object Cycle {
 	property LATTICE_BASES : IncidenceMatrix;
 
 	# @category Weights and lattices
-	# A Z-basis (as rows) for the space of weight distributions on this 
-	# tropical cycle making it balanced (i.e. this cycle is irreducible, if and only if 
+	# A Z-basis (as rows) for the space of weight distributions on this
+	# tropical cycle making it balanced (i.e. this cycle is irreducible, if and only if
 	# [[WEIGHT_SPACE]] has only one row and the gcd of [[WEIGHTS]] is 1.
 	property WEIGHT_SPACE : Matrix<Rational>;
-	
+
 	# @category Weights and lattices
 	# The dual of [[WEIGHT_SPACE]].
 	property WEIGHT_SYSTEM : Matrix<Rational>;
-	
+
 	# @category Weights and lattices
 	# The intersection of [[WEIGHT_SPACE]] with the positive orthant.
 	property WEIGHT_CONE : polytope::Cone<Rational>;
-	
+
 	# @category Weights and lattices
 	# Whether this complex is irreducible.
 	property IS_IRREDUCIBLE : Bool;
-	
+
 	# @category Intersection theory
 	# The degree of the tropical variety, i.e. the weight of the intersection product with a
 	# uniform tropical linear space of complementary dimension.
@@ -188,7 +182,7 @@ object Cycle {
 		$this->UNBALANCED_FACES = $unbalanced_faces;
 	}
 
-	
+
 
 	rule LATTICE_NORMAL_FCT_VECTOR, LATTICE_NORMAL_SUM_FCT_VECTOR : LINEALITY_SPACE, SEPARATED_VERTICES, LATTICE_NORMALS, LATTICE_NORMAL_SUM, SEPARATED_MAXIMAL_POLYTOPES, SEPARATED_CODIMENSION_ONE_POLYTOPES, MAXIMAL_AT_CODIM_ONE {
 		computeLatticeFunctionData($this);
@@ -202,7 +196,7 @@ object Cycle {
 		codim_one_with_locality($this);
 	}
 	weight 2.5;
-	
+
 	rule WEIGHT_SPACE : VERTICES, LINEALITY_SPACE, MAXIMAL_POLYTOPES, CODIMENSION_ONE_POLYTOPES, MAXIMAL_AT_CODIM_ONE, LATTICE_NORMALS, PROJECTIVE_DIM, PROJECTIVE_AMBIENT_DIM {
 		$this->WEIGHT_SPACE = cycle_weight_space($this);
 	}
@@ -223,7 +217,7 @@ object Cycle {
 	rule DEGREE : PROJECTIVE_DIM, WEIGHTS, PROJECTIVE_AMBIENT_DIM, VERTICES, MAXIMAL_POLYTOPES, LINEALITY_SPACE {
 		$this->DEGREE = degree($this);
 	}
-	
+
 
 	## METHODS ##############################################
 
@@ -235,7 +229,7 @@ object Cycle {
 		my $aff = $X->affine_chart($chart);
 		return common::bounding_box($aff->VERTICES->minor(~$aff->FAR_VERTICES, All));
 	}
-	
+
 	# @category Visualization
 	# Takes offset and a chart as input and computes the facets of a bounding box. \
 	# @param Int offset. The offset of a facet from the nearest bounded vertex in the affine chart
@@ -250,7 +244,7 @@ object Cycle {
 	# @category Basic polyhedral operations
 	# Checks whether this polyhedral structure is a fan, i.e. has only a single vertex at the origin.
 	# @param Bool allow_translations. Optional and false by default. If true, a shifted fan is also accepted.
-	# @return Bool. 
+	# @return Bool.
 	user_method is_fan(;$=0) {
 		my ($this, $allow_translations) = @_;
 		my $far_face = $this->FAR_VERTICES;
@@ -276,8 +270,34 @@ object Cycle {
 		return new Cycle<Addition>(VERTICES=>$this->VERTICES,MAXIMAL_POLYTOPES=>$this->MAXIMAL_POLYTOPES, LINEALITY_SPACE=>$this->LINEALITY_SPACE, WEIGHTS=>$this->WEIGHTS);
 	}
 
+	# @category Local computations
+	# A vector whose entries correspond to the rows of CODIMENSION_ONE_POLYTOPES.
+	# The i-th entry is true, if and only if the complex is balanced at that face
+	# Complement of UNBALANCED_FACES.
+	# @return Set<Int>
+	# @example [application matroid] The following gives the balanced faces of the
+	#          pg23 matroid. In fact, all of its faces are balanced.
+	# > $a = tropical::matroid_fan<Max>(pg23_matroid());
+	# > print $a->balanced_faces();
+	# | {0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25}
+	# print $a->UNBALANCED_FACES;
+    # | {}
+	user_method balanced_faces {
+		my $this = shift;
+		my $result = new Set<Int>();
+		for (my $i=0; $i < $this->CODIMENSION_ONE_POLYTOPES->rows; $i++) {
+			$result->collect($i);
+
+		}
+		foreach (@{$this->UNBALANCED_FACES}) {
+			$result -= $_;
+		}
+
+		return $result;
+    }
+
 	# Operator overloading
-	
+
 	sub mult {
 		my ($this,$r) = @_;
 		return $this->multiply_weights($r);

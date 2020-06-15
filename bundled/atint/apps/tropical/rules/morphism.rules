@@ -198,7 +198,7 @@ object Morphism {
 		return add_morphisms($f,$g);
 	}
 
-	function mult_m(Morphism, RationalFunction) {
+	function mult_m(Morphism, TropicalRationalFunction) {
 		return pullback(@_);
 	}
 

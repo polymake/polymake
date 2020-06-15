@@ -130,7 +130,7 @@ int main() {
                    "The complete error log follows:\n\n$message\n",
                    "Please investigate the reasons and fix the installation.\n";
          } else {
-            my ($ddver,$ddfver) = $message =~ /dd Version ([0-9a-z.]+) .*\nddf Version ([0-9a-z.]+) /;
+            my ($ddver,$ddfver) = $message =~ /dd Version ([0-9a-z.]+).*\nddf Version ([0-9a-z.]+)/;
             if ($ddver ne $ddfver) {
                check_bundled() and !defined($cdd_path) or 
                   die "Your cddlib installation does not seem to contain the floating-point arithmetic version.\n",

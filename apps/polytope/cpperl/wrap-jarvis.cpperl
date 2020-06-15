@@ -4,5 +4,6 @@
   {"args": ["perl::Canned<const Matrix<double>&>"], "func": "jarvis", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "jarvis.X"},
   {"args": ["perl::Canned<const Matrix<QuadraticExtension<Rational>>&>"], "func": "jarvis", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "jarvis.X"},
   {"args": ["Matrix<QuadraticExtension<Rational>>", "perl::Canned<const pm::ListMatrix<pm::Vector<pm::QuadraticExtension<pm::Rational> > >&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "op": "new", "sig": "new.X"},
+  {"args": ["Matrix<double>", "perl::Canned<const pm::ListMatrix<pm::Vector<double> >&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "op": "new", "sig": "new.X"},
  null ],
 "version": 3}

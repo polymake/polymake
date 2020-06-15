@@ -47,13 +47,12 @@ namespace polymake { namespace tropical {
 template <typename Addition>
 BigObject empty_cycle(Int ambient_dim)
 {
-  BigObject cycle("Cycle", mlist<Addition>());
-  cycle.take("VERTICES") << Matrix<Rational>(0,ambient_dim+2);
-  cycle.take("MAXIMAL_POLYTOPES") << Array<Set<Int>>();
-  cycle.take("WEIGHTS") << Vector<Integer>();
-  cycle.take("PROJECTIVE_AMBIENT_DIM") << ambient_dim;
+  BigObject cycle("Cycle", mlist<Addition>(),
+                  "VERTICES", Matrix<Rational>(0, ambient_dim+2),
+                  "MAXIMAL_POLYTOPES", Array<Set<Int>>(),
+                  "WEIGHTS", Vector<Integer>(),
+                  "PROJECTIVE_AMBIENT_DIM", ambient_dim);
   cycle.set_description() << "Empty cycle in dimension " << ambient_dim;
-
   return cycle;
 }
 
@@ -74,12 +73,10 @@ BigObject point_collection(Matrix<Rational> m, const Vector<Integer>& weights)
   for (Int i = 0; i < polytopes.size(); ++i)
     polytopes[i] = scalar2set(i);
 
-  BigObject cycle("Cycle", mlist<Addition>());
-  cycle.take("PROJECTIVE_VERTICES") << m;
-  cycle.take("MAXIMAL_POLYTOPES") << polytopes;
-  cycle.take("WEIGHTS") << weights;
-
-  return cycle;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "PROJECTIVE_VERTICES", m,
+                   "MAXIMAL_POLYTOPES", polytopes,
+                   "WEIGHTS", weights);
 }
 
 template <typename Addition> 
@@ -109,10 +106,10 @@ BigObject uniform_linear_space(const Int n, const Int k, Integer weight = 1)
   Vector<Integer> weights = weight * ones_vector<Integer>(polytopes.size());
 
   // Create final object
-  BigObject fan("Cycle", mlist<Addition>());
-  fan.take("PROJECTIVE_VERTICES") << vertices;
-  fan.take("MAXIMAL_POLYTOPES") << polytopes;
-  fan.take("WEIGHTS") << weights;
+  BigObject fan("Cycle", mlist<Addition>(),
+                "PROJECTIVE_VERTICES", vertices,
+                "MAXIMAL_POLYTOPES", polytopes,
+                "WEIGHTS", weights);
   fan.set_description() << "Uniform linear space of dimension " << k << " in dimension " << n;
   return fan;
 }
@@ -126,31 +123,17 @@ BigObject halfspace_subdivision(const Rational& a, const Vector<Rational>& g, co
   if (!is_zero(accumulate(g, operations::add())))
     throw std::runtime_error("Normal vector must be homogenous, i.e. sum of entries must be zero");
 
-  // Create vertices
-  Matrix<Rational> vertices(0,g.dim());
-  vertices /= g;
-  vertices /= (-g);
-  vertices = zero_vector<Rational>(2) | vertices;
-
-  // Create lineality
+  const Vector<Rational> apex = Rational(1) | (a / sqr(g))*g;
+  const Matrix<Rational> vertices = vector2row(apex) / (0 | g) / (0 | -g);
   Matrix<Rational> lineality = zero_vector<Rational>() | null_space(g).minor(range_from(1), All);
 
-  // Compute apex
-  const Vector<Rational> apex = Rational(1) | (a / sqr(g))*g;
-  vertices = apex / vertices;
+  const IncidenceMatrix<> polytopes({{0, 2}, {0, 1}});
 
-  Array<Set<Int>> polytopes(2);
-  polytopes[0] = (sequence(0,3)-1);
-  polytopes[1] = (sequence(0,3)-2);
-
-  BigObject cycle("Cycle", mlist<Addition>());
-  cycle.take("PROJECTIVE_VERTICES") << vertices;
-  cycle.take("MAXIMAL_POLYTOPES") << polytopes;
-  if (lineality.rows() > 0)
-    cycle.take("LINEALITY_SPACE") << lineality;
-  cycle.take("WEIGHTS") << weight * ones_vector<Integer>(2);
-
-  return cycle;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "PROJECTIVE_VERTICES", vertices,
+                   "MAXIMAL_POLYTOPES", polytopes,
+                   "LINEALITY_SPACE", lineality,
+                   "WEIGHTS", same_element_vector(weight, 2));
 }
 
 template <typename Addition>
@@ -159,20 +142,16 @@ BigObject projective_torus(Int n, Integer weight)
   // Sanity check
   if (n < 0) throw std::runtime_error("Negative ambient dimension is not allowed.");
 
-  Matrix<Rational> vertex(0,n+2);
-  vertex /= unit_vector<Rational>(n+2,0);
-  Matrix<Rational> lineality = unit_matrix<Rational>(n);
-  lineality = Matrix<Rational>(n,2) | lineality;
+  const Matrix<Rational> vertex = vector2row(unit_vector<Rational>(n+2, 0));
+  const Matrix<Rational> lineality = zero_matrix<Rational>(n, 2) | unit_matrix<Rational>(n);
 
-  Array<Set<Int>> polytopes(1);
-  polytopes[0] = scalar2set(0);
+  const IncidenceMatrix<> polytopes({{0}});
 
-  BigObject cycle("Cycle", mlist<Addition>());
-  cycle.take("PROJECTIVE_VERTICES") << vertex;
-  cycle.take("MAXIMAL_POLYTOPES") << polytopes;
-  cycle.take("LINEALITY_SPACE") << lineality;
-  cycle.take("WEIGHTS") << (weight* ones_vector<Integer>(1));
-  return cycle;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "PROJECTIVE_VERTICES", vertex,
+                   "MAXIMAL_POLYTOPES", polytopes,
+                   "LINEALITY_SPACE", lineality,
+                   "WEIGHTS", same_element_vector(weight, 1));
 }
 
 template <typename Addition>
@@ -209,15 +188,11 @@ BigObject orthant_subdivision(Vector<Rational> point, Int chart = 0, Integer wei
   } // END create cones
 
   const IncidenceMatrix<> cones(std::move(cones_growing));
-  Vector<Integer> weights(cones.rows(), weight);
 
-  // Create result
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("PROJECTIVE_VERTICES") << thomog(rays,chart);
-  result.take("MAXIMAL_POLYTOPES") << cones;
-  result.take("WEIGHTS") << weights;
-
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "PROJECTIVE_VERTICES", thomog(rays, chart),
+                   "MAXIMAL_POLYTOPES", cones,
+                   "WEIGHTS", same_element_vector(weight, cones.rows()));
 }
 
 template <typename Addition>
@@ -238,13 +213,11 @@ BigObject affine_linear_space(const Matrix<Rational> &generators, Vector<Rationa
   Vector<Integer> weights(1);
   weights[0] = weight;
 
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("PROJECTIVE_VERTICES") << vertices;
-  result.take("MAXIMAL_POLYTOPES") << polytopes;
-  result.take("LINEALITY_SPACE") << (zero_vector<Rational>() | generators);
-  result.take("WEIGHTS") << weights;
-				
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "PROJECTIVE_VERTICES", vertices,
+                   "MAXIMAL_POLYTOPES", polytopes,
+                   "LINEALITY_SPACE", zero_vector<Rational>() | generators,
+                   "WEIGHTS", weights);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -263,20 +236,21 @@ BigObject cross_variety(Int n, Int k, Rational h = 1, Integer weight = 1)
 
   // First we treat the special case of k = 0
   if (k == 0) {
-    BigObject result("Cycle", mlist<Addition>());
     if (h == 0) {
-      rays = Matrix<Rational>(1,n+1);
-      rays(0,0) = 1;
+      rays = Matrix<Rational>(1, n+1);
+      rays(0, 0) = 1;
     } else {
-      rays = ones_vector<Rational>(rays.rows()) | (weight *rays);
+      rays = ones_vector<Rational>() | (weight * rays);
     }
-    Vector<Set<Int>> polytopes;
-    for (Int r = 0; r < rays.rows(); ++r) 
-      polytopes |= scalar2set(r);
-    result.take("VERTICES") << thomog(rays);
-    result.take("MAXIMAL_POLYTOPES") << polytopes;
-    result.take("WEIGHTS") << weight * ones_vector<Integer>(polytopes.dim());
-    return result;
+    const Int n_rays = rays.rows();
+    IncidenceMatrix<> polytopes(n_rays, n_rays);
+    for (Int r = 0; r < n_rays; ++r)
+      polytopes(r, r) = true;
+
+    return BigObject("Cycle", mlist<Addition>(),
+                     "VERTICES", thomog(rays),
+                     "MAXIMAL_POLYTOPES", polytopes,
+                     "WEIGHTS", same_element_vector(weight, n_rays));
   }
 
   // Now create the k-skeleton of the n-cube: For each n-k-set S of 0,..,n-1 and for each vertex
@@ -362,17 +336,15 @@ BigObject cross_variety(Int n, Int k, Rational h = 1, Integer weight = 1)
   }
   // Otherwise scale vertices appropriately
   else {
-    rays.minor(sequence(0,vertexnumber),All) *= h;
+    rays.minor(sequence(0, vertexnumber), All) *= h;
     Vector<Rational> leading_coordinate = ones_vector<Rational>(vertexnumber) | zero_vector<Rational>(vertexnumber);
     rays = leading_coordinate | rays;
   }
 
-
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("VERTICES") << thomog(rays);
-  result.take("MAXIMAL_POLYTOPES") << cones;
-  result.take("WEIGHTS") << weight * ones_vector<Integer>(cones.dim());
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "VERTICES", thomog(rays),
+                   "MAXIMAL_POLYTOPES", cones,
+                   "WEIGHTS", same_element_vector(weight, cones.dim()));
 }
 
 } }

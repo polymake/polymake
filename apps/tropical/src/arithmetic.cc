@@ -71,9 +71,11 @@ UserFunctionTemplate4perl("# @category Tropical operations"
                           "# For more details and background see "
                           "Akian, Gaubert & Guterman: Tropical Cramer determinants revisited. "
                           "Tropical and idempotent mathematics and applications, Contemp. Math., 616, AMS, 2014 "
-                          "Preprint http://arxiv.org/abs/1309.6298"
                           "# @param Matrix<TropicalNumber> matrix"
-                          "# @return Vector<TropicalNumber>" ,
+                          "# @return Vector<TropicalNumber>"
+                          "# @example"
+                          "# > print cramer(new Matrix<TropicalNumber<Min>>([[0,1,0],[0,4,1]]));"
+                          "# | 2 0 1" ,
                           "cramer(Matrix)");
 
 UserFunctionTemplate4perl("# @category Tropical operations"

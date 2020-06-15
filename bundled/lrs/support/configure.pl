@@ -64,6 +64,7 @@ sub proceed {
       } elsif (!-f "$lrs_inc/lrslib.h") {
          die "Invalid installation location of lrslib: header file lrslib.h not found\n";
       }
+      $CFLAGS .= " -DHAVE_LRSDRIVER" if -f "$lrs_inc/lrsdriver.h";
 
       if (-f "$lrs_lib/lib$lrs_libname.$Config::Config{so}" ) {
          $LDFLAGS = "-L$lrs_lib -Wl,-rpath,$lrs_lib";
@@ -82,6 +83,9 @@ sub proceed {
 #define GMP
 #define MA
 extern "C" {
+#ifdef HAVE_LRSDRIVER
+   #include <lrsdriver.h>
+#endif
    #include <lrslib.h>
 }
 
@@ -128,6 +132,10 @@ RETRY:
       # gnu ld and gold | ld64 (osx) | llvm-lld
       if ($error =~ /(cannot find|library not found for|unable to find library) -llrs/ && $lrs_libname eq "lrs") {
          $lrs_libname = "lrsgmp";
+         goto RETRY;
+      }
+      if ($error =~ /(lrs_restart_dat)/ && $CFLAGS !~ /HAVE_LRSDRIVER/) {
+         $CFLAGS .= " -DHAVE_LRSDRIVER";
          goto RETRY;
       }
 
@@ -182,7 +190,7 @@ RETRY:
       die "bundled lrs requested but it cannot be found" 
          if (! -e "bundled/lrs/external/lrs/lrslib.h");
       undef $LIBS;
-      $CFLAGS='-I${root}/bundled/lrs/external/lrs';
+      $CFLAGS='-I${root}/bundled/lrs/external/lrs -DHAVE_LRSDRIVER';
    } else {
       $LIBS="-l$lrs_libname";
       $CFLAGS.=" -DPOLYMAKE_LRS_SUPPRESS_OUTPUT=$suppress_output" if $suppress_output;

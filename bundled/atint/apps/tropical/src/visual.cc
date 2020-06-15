@@ -91,8 +91,9 @@ ListReturn computeBoundedVisual(BigObject fan, const Matrix<Rational> &bbFacets,
     // visualization and all the Facet options don't work
 
     if (polyRays.rows() >= fan_dim+1) {
-      BigObject polytope("polytope::Polytope<Rational>");
-      polytope.take("VERTICES") << polyRays; //The polytope shouldn't have a lineality space
+      // The polytope shouldn't have a lineality space
+      BigObject polytope("polytope::Polytope<Rational>",
+                         "VERTICES", polyRays);
       result << polytope;
 
       // If weight labels should be displayed, compute the vertex barycenter of the polytope and

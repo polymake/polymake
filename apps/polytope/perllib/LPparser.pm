@@ -254,6 +254,7 @@ sub new {
 
    @{$self->X}=@{$self->X}[@xorder];
    @{$self->Int}=@{$self->Int}[@xorder] if @{$self->Int};
+   shift(@{$self->Int}) if @{$self->Int}; # 0-th coordinate not required in convertation for the INTEGER_VARIABLES
    $self;
 }
 

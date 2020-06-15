@@ -26,19 +26,18 @@ namespace polymake { namespace polytope {
 template <typename Scalar>
 BigObject conv(const Array<BigObject>& pp_in)
 {
-   auto p_in=entire(pp_in);
+   auto p_in = entire(pp_in);
 
    if (p_in.at_end()) throw std::runtime_error("empty input");
 
-   ListMatrix< Vector<Scalar> > Points=p_in->give("VERTICES | POINTS");
-   ListMatrix< Vector<Scalar> > LinSpace=p_in->give("LINEALITY_SPACE");
+   ListMatrix<Vector<Scalar>> Points = p_in->give("VERTICES | POINTS");
+   ListMatrix<Vector<Scalar>> LinSpace = p_in->give("LINEALITY_SPACE");
 
-   BigObject p_out("Polytope", mlist<Scalar>());
-   std::string descr_names=p_in->name();
+   std::string descr_names = p_in->name();
 
    while (! (++p_in).at_end()) {
-      const Matrix<Scalar> V=p_in->give("VERTICES | POINTS");
-      const Matrix<Scalar> L=p_in->give("LINEALITY_SPACE");
+      const Matrix<Scalar> V = p_in->give("VERTICES | POINTS");
+      const Matrix<Scalar> L = p_in->give("LINEALITY_SPACE");
       if (V.cols() == Points.cols())
          Points /= V;
       else
@@ -47,13 +46,14 @@ BigObject conv(const Array<BigObject>& pp_in)
          LinSpace /= L;
       else
          throw std::runtime_error("conv - LinSpace dimension mismatch");
-      descr_names+=", ";
-      descr_names+=p_in->name();
+      descr_names += ", ";
+      descr_names += p_in->name();
    }
 
+   BigObject p_out("Polytope", mlist<Scalar>(),
+                   "INPUT_LINEALITY", LinSpace,
+                   "POINTS", Points);
    p_out.set_description() << "Convex hull of polytopes " << descr_names << endl;
-   p_out.take("INPUT_LINEALITY")<<LinSpace;
-   p_out.take("POINTS") << Points;
    return p_out;
 }
 

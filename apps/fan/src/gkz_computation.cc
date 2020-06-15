@@ -36,7 +36,7 @@ void secondary_fan_and_flipwords(BigObject surface)
    // get rays and cells of the secondary fan
    Matrix<Rational> fan_rays_matrix( bfs_it.node_visitor().getfan_num_vert() , bfs_it.node_visitor().getdim() );
    Vector<Rational> all_minus_one( -1 * ones_vector<Rational>( fan_rays_matrix.cols() ) );
-   for( const auto it: bfs_it.node_visitor().getfan_vertices() )
+   for( const auto& it: bfs_it.node_visitor().getfan_vertices() )
    {
       Vector<Rational> vec = it.first;
       for (Int j = 1 ; j < vec.size(); ++j)
@@ -48,9 +48,7 @@ void secondary_fan_and_flipwords(BigObject surface)
    Array<Set<Int>> secondary_fan_cells(bfs_it.node_visitor().getfan_cells());
 
    //TODO later we want a fan subobject instead
-   BigObject fan("PolyhedralFan<Rational>");
-   fan.take("RAYS") << secondary_fan_rays;
-   fan.take("MAXIMAL_CONES") << secondary_fan_cells;
+   BigObject fan("PolyhedralFan<Rational>", "RAYS", secondary_fan_rays, "MAXIMAL_CONES", secondary_fan_cells);
    surface.take("SECONDARY_FAN") << fan;
 
    //old
@@ -58,10 +56,9 @@ void secondary_fan_and_flipwords(BigObject surface)
    //surface.take("SECONDARY_FAN_CELLS") << secondary_fan_cells;
 
    // get flip words
-   Array< flip_sequence > flips{ bfs_it.node_visitor().getflipIds_to_node().size() };
-   for ( const auto it:  bfs_it.node_visitor().getflipIds_to_node() )
-   {
-      flip_sequence seq( it.second );
+   Array<flip_sequence> flips{ bfs_it.node_visitor().getflipIds_to_node().size() };
+   for (const auto& it : bfs_it.node_visitor().getflipIds_to_node()) {
+      flip_sequence seq(it.second);
       // remove double flips at the beginning
       if (seq.size() > 1) {
          Int front = seq.front();

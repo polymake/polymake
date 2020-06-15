@@ -1412,7 +1412,11 @@ public:
 
 template <typename ElemRef>
 struct spec_object_traits< repeated_value_container<ElemRef> >
-   : spec_object_traits< same_value_container<ElemRef> > {};
+   : spec_object_traits<is_container> {
+   static constexpr bool
+      is_temporary = true,
+      is_always_const = true;
+};
 
 template <typename E>
 auto repeat_value(E&& value, Int count)

@@ -462,7 +462,8 @@ void Output<Integer>::write_aut() const {
 
     string qualities_string = Result->getAutomorphismGroup().getQualitiesString();
 
-    out << qualities_string << "automorphism group of order " << Result->getAutomorphismGroup().getOrder() << endl << endl;
+    out << qualities_string << "automorphism group of order " << Result->getAutomorphismGroup().getOrder() << 
+    " (possibly only approximation)" << endl << endl;
 
     if (Result->getAutomorphismGroup().getOrder() == 1)
         return;
@@ -691,7 +692,7 @@ void Output<Integer>::write_inv_file() const {
         }
 
         if (Result->isComputed(ConeProperty::OriginalMonoidGenerators)) {
-            inv << "integer internal_index = " << Result->getIndex() << endl;
+            inv << "integer internal_index = " << Result->getInternalIndex() << endl;
         }
         if (Result->isComputed(ConeProperty::SupportHyperplanes)) {
             inv << "integer number_support_hyperplanes = " << Result->getNrSupportHyperplanes() << endl;
@@ -1059,8 +1060,7 @@ void Output<Integer>::write_files() const {
         const char* file = name_open.c_str();
         ofstream out(file);
         if (out.fail()) {
-            errorOutput() << "Cannot write to output file." << endl;
-            exit(1);
+            throw FatalException("Cannot write to output file.");
         }
 
         // write "header" of the .out file
@@ -1072,14 +1072,14 @@ void Output<Integer>::write_files() const {
             nr_orig_gens = Result->getNrOriginalMonoidGenerators();
             out << nr_orig_gens << " original generators of the toric ring" << endl;
         }
-        if (!homogeneous && Result->isComputed(ConeProperty::NumberLatticePoints)) {
+        if (!homogeneous && Result->isComputed(ConeProperty::NumberLatticePoints) && !Result->isIntHullCone()) {
             out << Result->getNumberLatticePoints() << module_generators_name << endl;
         }
-        if (Result->isComputed(ConeProperty::HilbertBasis)) {
+        if (Result->isComputed(ConeProperty::HilbertBasis) && !Result->isIntHullCone()) {
             out << Result->getNrHilbertBasis() << " Hilbert basis elements" << of_monoid << endl;
         }
         if (homogeneous && Result->isComputed(ConeProperty::NumberLatticePoints)) {
-            out << Result->getNumberLatticePoints() << module_generators_name << endl;
+             out << Result->getNumberLatticePoints() << module_generators_name << endl;
         }
         if (Result->isComputed(ConeProperty::IsReesPrimary) && Result->isComputed(ConeProperty::HilbertBasis)) {
             const Matrix<Integer>& Hilbert_Basis = Result->getHilbertBasisMatrix();
@@ -1136,7 +1136,7 @@ void Output<Integer>::write_files() const {
         }
 
         if (Result->isComputed(ConeProperty::OriginalMonoidGenerators)) {
-            out << "internal index = " << Result->getIndex() << endl;
+            out << "internal index = " << Result->getInternalIndex() << endl;
         }
 
         if (Result->isComputed(ConeProperty::MaximalSubspace)) {
@@ -1151,7 +1151,7 @@ void Output<Integer>::write_files() const {
             }
             else {
                 out << "original monoid is not integrally closed in chosen lattice" << endl;
-                if (Result->isComputed(ConeProperty::IsIntegrallyClosed) && !Result->isComputed(ConeProperty::HilbertBasis)) {
+                if (Result->isComputed(ConeProperty::WitnessNotIntegrallyClosed)) {
                     out << "witness for not being integrally closed:" << endl;
                     out << Result->getWitnessNotIntegrallyClosed();
                 }
@@ -1307,8 +1307,7 @@ void Output<Integer>::write_files() const {
                     Result->isComputed(ConeProperty::EuclideanAutomorphisms))) {
             write_aut();
             out << Result->getAutomorphismGroup().getQualitiesString() << "automorphism group has order "
-                << Result->getAutomorphismGroup().getOrder() << endl
-                << endl;
+                << Result->getAutomorphismGroup().getOrder() << " (possibly only approximation)" << endl << endl;
         }
 
         out << "***********************************************************************" << endl << endl;
@@ -1323,7 +1322,7 @@ void Output<Integer>::write_files() const {
             Result->getOriginalMonoidGeneratorsMatrix().pretty_print(out);
             out << endl;
         }
-        if (Result->isComputed(ConeProperty::ModuleGenerators)) {
+        if (Result->isComputed(ConeProperty::ModuleGenerators) && !Result->isIntHullCone()) {
             out << Result->getNrModuleGenerators() << module_generators_name << ":" << endl;
             Result->getModuleGeneratorsMatrix().pretty_print(out);
             out << endl;
@@ -1338,7 +1337,7 @@ void Output<Integer>::write_files() const {
             out << endl;
         }
 
-        if (Result->isComputed(ConeProperty::HilbertBasis)) {
+        if (Result->isComputed(ConeProperty::HilbertBasis) && !Result->isIntHullCone()) {
             const Matrix<Integer>& Hilbert_Basis = Result->getHilbertBasisMatrix();
 
             if (!Result->isComputed(ConeProperty::Deg1Elements)) {

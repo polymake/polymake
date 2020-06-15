@@ -708,6 +708,7 @@ protected:
       }
    }
 
+
    static
    Int compare(const Field& a, const Field& b, const Field& c, const Field& d, const Field& r)
    {
@@ -822,6 +823,12 @@ struct spec_object_traits<QuadraticExtension<Field>>
       return qe_one;
    }
 };
+
+// fast prime factorization via bundled flint
+#ifdef POLYMAKE_WITH_FLINT
+template < > 
+	void QuadraticExtension<Rational>::normalize();
+#endif
 
 template <typename Field>
 struct spec_object_traits< Serialized< QuadraticExtension<Field> > > :

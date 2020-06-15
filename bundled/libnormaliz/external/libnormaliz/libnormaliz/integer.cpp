@@ -353,7 +353,10 @@ long long int_max_value_primary() {
     long long k = sizeof(long long) * 8 - 12;  // number of bytes convetred to number of bits
     long long test = 1;
     test = test << k;  // 2^k
-    // test=0; // 10000;
+#ifdef NMZ_EXTENDED_TESTS
+    if(test_linear_algebra_GMP)
+        test=0;
+#endif
     max_value = test;
     int_max_value_primary_long_long_computed = true;
     return test;

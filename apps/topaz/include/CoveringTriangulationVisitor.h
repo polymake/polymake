@@ -31,14 +31,14 @@
 namespace polymake { namespace topaz {
 
 class CoveringTriangulationVisitor : public graph::NodeVisitor<> {
-
-   friend class graph::DoublyConnectedEdgeList;
-
 public:
    // A decorated edge consists of the half edge index and a matrix for the two decorating horocycles.
    using DecoratedEdge = std::pair<Int, Matrix<Rational>>;
    // Each DecoratedEdge that appears in the BFS will get an unique index via this map.
    using EdgeMap = Map<Int, DecoratedEdge>;
+
+   using DoublyConnectedEdgeList = graph::DoublyConnectedEdgeList;
+   using HalfEdge = DoublyConnectedEdgeList::HalfEdge;
 
 private:
    // The graph we want to iterate through, build during iterating.
@@ -46,7 +46,7 @@ private:
    Graph<Directed>& dual_tree;
 
    // The triangulation of the surface.
-   graph::DoublyConnectedEdgeList& dcel;
+   DoublyConnectedEdgeList& dcel;
 
    const Vector<Rational> angleVec;
 
@@ -81,7 +81,7 @@ public:
      the position of the first half edge via two horocycles [[p_1,q_1] , [p_2,q_2]]
      and the depth we want to visit the dual tree.
    */
-   CoveringTriangulationVisitor(Graph<Directed>& G, graph::DoublyConnectedEdgeList& dcel_, const Matrix<Rational>& first_halfedge_horo, Int dual_tree_depth)
+   CoveringTriangulationVisitor(Graph<Directed>& G, DoublyConnectedEdgeList& dcel_, const Matrix<Rational>& first_halfedge_horo, Int dual_tree_depth)
       : dual_tree(G)
       , dcel(dcel_)
       , angleVec(dcel.angleVector())
@@ -111,9 +111,9 @@ public:
       const DecoratedEdge& edge_pair = edge_map[n_to];
       Vector<Rational> horo_u = edge_pair.second[0];
       Vector<Rational> horo_v = edge_pair.second[1];
-      const graph::HalfEdge* uv = dcel.getHalfEdge(edge_pair.first);
-      const graph::HalfEdge* vw = uv->getNext();
-      const graph::HalfEdge* wu = vw->getNext();
+      const HalfEdge* uv = dcel.getHalfEdge(edge_pair.first);
+      const HalfEdge* vw = uv->getNext();
+      const HalfEdge* wu = vw->getNext();
       const Rational& lambda_uv = uv->getLength();
       const Rational& lambda_vw = vw->getLength();
       const Rational& lambda_wu = wu->getLength();
@@ -131,8 +131,8 @@ public:
       triangles[n_to] = Set<Int>{ vertex_map[horo_u], vertex_map[horo_v], vertex_map[horo_w] };
 
       if (dual_tree.nodes() < num_nodes_depth) {
-         const graph::HalfEdge* wv = vw->getTwin();
-         const graph::HalfEdge* uw = wu->getTwin();
+         const HalfEdge* wv = vw->getTwin();
+         const HalfEdge* uw = wu->getTwin();
 
          // Add the two new half edges to the queue, update the edge_map and the dual_tree.
          // Note that we change the sign of the second horocycle (head of wv and uw) since we want to guarantee a positive determinant.
@@ -228,11 +228,9 @@ public:
       Matrix<Rational> points = ones_vector<Rational>() | bfs_it.node_visitor().getPoints();
       Array<Set<Int>> triangles = bfs_it.node_visitor().getTriangles();
 
-      BigObject p("fan::PolyhedralComplex<Rational>");
-      p.take("POINTS") << points;
-      p.take("INPUT_POLYTOPES") << triangles;
-
-      return p;
+      return BigObject("fan::PolyhedralComplex<Rational>",
+                       "POINTS", points,
+                       "INPUT_POLYTOPES", triangles);
    }
 };
 

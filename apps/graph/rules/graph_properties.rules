@@ -27,7 +27,7 @@ file_suffix graph
 # | {1 2}
 # | {0 2}
 # | {0 1}
-property ADJACENCY : props::Graph<Dir>;
+property ADJACENCY : GraphAdjacency<Dir>;
 
 # permutation of nodes
 permutation NodePerm : PermBase;

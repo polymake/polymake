@@ -30,9 +30,6 @@ BigObject dwarfed_product_polygons(Int d, Int s)
       throw std::runtime_error("dwarfed_product_polygons: s >= 3 required");
    }
 
-   BigObject p("Polytope<Rational>");
-   p.set_description() << "dwarfed product of polygons of dimension " << d << " and size " << s << endl;
-
    Matrix<Int> F((d/2)*s+1,d+1);
    auto f = rows(F).begin();
    for (Int i = 1; i <= d/2; ++i) {
@@ -66,13 +63,14 @@ BigObject dwarfed_product_polygons(Int d, Int s)
       (*f)[2*i-1] = -1;
    }
    (*f)[0] = 2*s-1;
-    
-   p.take("CONE_AMBIENT_DIM") << d+1;
-   p.take("CONE_DIM") << d+1;
-   p.take("FACETS") << F;
-   p.take("BOUNDED") << true;
-   p.take("POSITIVE") << true;
 
+   BigObject p("Polytope<Rational>",
+               "CONE_AMBIENT_DIM", d+1,
+               "CONE_DIM", d+1,
+               "FACETS", F,
+               "BOUNDED", true,
+               "POSITIVE", true);
+   p.set_description() << "dwarfed product of polygons of dimension " << d << " and size " << s << endl;
    return p;
 }
 

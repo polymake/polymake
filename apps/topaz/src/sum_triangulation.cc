@@ -74,11 +74,11 @@ void glue_facet(const Set<Int>& F_in,
 }
 
 
-template<typename Scalar>
+template <typename Scalar>
 BigObject sum_triangulation(BigObject p_in,
-                               BigObject q_in,
-                               const IncidenceMatrix<> webOfStars_in,
-                               OptionSet options)
+                            BigObject q_in,
+                            const IncidenceMatrix<> webOfStars_in,
+                            OptionSet options)
 {
    return sum_triangulation_impl<Scalar>(p_in, q_in, webOfStars_in, options);
 }

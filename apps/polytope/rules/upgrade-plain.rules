@@ -262,7 +262,7 @@ object Polytope {
 	    return;
 	 }
       }
-      my $BG=new props::Graph($n);
+      my $BG=new GraphAdjacency($n);
       my @renumber= map { /^\s*\(\s*(\d+)/ } split /\n/, $value;
       my $from=0;
       foreach (split /\n/, $value) {

@@ -116,7 +116,7 @@ Integer computeFanMultiplicity(const Matrix<Rational>& xrays, const Matrix<Ratio
       bool is_in_boundary = false;
       if (fullcone->rows() > 0) {
         const Vector<Rational> eq_check = (*fullcone) * interior_point;
-        for (const auto c : eq_check) {
+        for (const auto& c : eq_check) {
           if (c == 0) {
             is_in_boundary = true; break;
           }
@@ -305,11 +305,11 @@ ListReturn intersect_check_transversality(BigObject X, BigObject Y, bool ensure_
   weights = weights.slice(~weight_zero_cones);
 
   // Finally create the result  
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("VERTICES") << thomog(interrays.minor(used_rays,All));
-  result.take("MAXIMAL_POLYTOPES") << intercones_matrix;
-  result.take("LINEALITY_SPACE") << thomog(interlin);
-  result.take("WEIGHTS") << weights;
+  BigObject result("Cycle", mlist<Addition>(),
+                   "VERTICES", thomog(interrays.minor(used_rays, All)),
+                   "MAXIMAL_POLYTOPES", intercones_matrix,
+                   "LINEALITY_SPACE", thomog(interlin),
+                   "WEIGHTS", weights);
 
   ListReturn positiveResult;
   positiveResult << result;

@@ -37,8 +37,14 @@
 namespace polymake { namespace graph {
    
 template <typename TGraph>
-Set<Int> initial_spanningtree(const TGraph& G)
+std::pair<Set<Int>, Array<std::pair<Int,Int>>> initial_spanningtree(const TGraph& G)
 {
+   Array<std::pair<Int, Int>> dictionary(G.edges());
+   Int k = 0;
+   for (auto eit = entire(edges(G)); !eit.at_end(); ++eit) {
+      dictionary[k] = std::pair<Int,Int>(eit.from_node(), eit.to_node());
+      k++;
+   }
    Set<Int> st;
    BFSiterator<TGraph> BFS_spanningtree(G, 0);
    Bitset visited; 
@@ -57,10 +63,10 @@ Set<Int> initial_spanningtree(const TGraph& G)
          st += i;
       }
    } while (!BFS_spanningtree.at_end());
-   return st;
+   return {st, dictionary};
 }
 
-Array<Set<Int>> all_spanningtrees(const Graph<>& G)
+std::pair<Array<Set<Int>>, Array<std::pair<Int,Int>>> all_spanningtrees(const Graph<>& G)
 {  
    typedef ArcLinking IM;
    typedef ArcLinking::IncidenceCell IC;
@@ -76,7 +82,8 @@ Array<Set<Int>> all_spanningtrees(const Graph<>& G)
    if (n > 2)
       s[0] = nullptr;
    Array<Int> b(n,-1);
-   Set<Int> init_st = initial_spanningtree<>(G);
+   auto initial_data = initial_spanningtree<>(G);
+   Set<Int> init_st = initial_data.first;
    Int st_index = 0;
    for (auto it = entire(init_st); !it.at_end(); ++it, ++st_index) {
       a[st_index] = arcs_by_id[*it];
@@ -190,7 +197,7 @@ Array<Set<Int>> all_spanningtrees(const Graph<>& G)
          }
       }
    }
-   return Array<Set<Int>>(st);
+   return {Array<Set<Int>>(st), initial_data.second};
 }
 
 } }

@@ -29,6 +29,7 @@
 #include "libnormaliz/input_type.cpp"
 #include "libnormaliz/cone_property.cpp"
 #include "libnormaliz/list_operations.cpp"
+#include "libnormaliz/collection.cpp"
 #include "libnormaliz/cone.cpp"
 
 #ifdef NMZ_MIC_OFFLOAD

@@ -22,7 +22,6 @@
 
 namespace polymake { namespace polytope {
 
-
 template <typename Scalar>
 BigObject crosscut_complex(BigObject p_in, OptionSet options)
 {

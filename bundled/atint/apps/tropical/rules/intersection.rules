@@ -55,7 +55,7 @@ user_function degree<Addition>(Cycle<Addition>) {
    my $coeffden = new Vector<TropicalNumber<Addition>>([0]);
    my $den = new Polynomial<TropicalNumber<Addition>>($coeffden, $expden);
    
-   my $rat_fct = new RationalFunction<Addition>(NUMERATOR=>$num, DENOMINATOR=>$den);
+   my $rat_fct = new TropicalRationalFunction<Addition>(NUMERATOR=>$num, DENOMINATOR=>$den);
 
 	my $div = divisor( $X, $rat_fct^$dim);
 	return $div->WEIGHTS * ones_vector<Integer>($div->WEIGHTS->dim());

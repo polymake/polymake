@@ -1,16 +1,51 @@
-=== polymake 4.0r1 ===
+=== polymake 4.1 ===
+
+-- general --
+  * Big object types and property types must have unique name within any application namespace
 
 -- distribution --
-  * compatibility with gmp 6.2
+  * add warning flags for clang 10 and gcc 10
+  * adaptions for upcoming perl 5.32
 
--- core --
-  * fix memory leak with pool allocator
-  * fix BigObject construct and cast from callable library
-  * fix --touch
-  * invalid TERMs will warn instead of die
+-- interfaces --
+  * flint:
+    - required by default but can be disabled explicitly
+    - used for normalization of QuadraticExtension
+    - attach prime factorization as 'factor' and 'expand'
+  * gmp:
+    - support for gmp 6.2
+  * normaliz: update bundled version to 3.8.5
+  * lrslib: update to 7.1
 
 -- common --
-  * improve type compatibility for GF2
+  * property type Graph renamed to GraphAdjacency on perl side, corresponding C++ class is still called Graph
+  * QuadraticExtension can now be normalized if polymake was built with flint
+
+-- graph --
+  * Add rand_spanningtree returning a random spanning tree
+  * Change output of all_spanningtrees to include a dictionary translating
+    indices into edges
+
+-- group --
+  * more and improved examples
+
+-- fan --
+  * HyperplaneArrangement:
+    - is now derived from polytope::VectorConfiguration
+    - AMBIENT_DIM got renamed to HYPERPLANE_AMBIENT_DIM
+    - Compute CELL_DECOMPOSITION via reverse search in C++
+    - add visualization
+  * SubdivisionOfPoints: new property UNIMODULAR
+  * secondary_fan: fixes for points not in general position
+
+-- polytope --
+  * Add method rand_normal for n random points from the unit ball
+  * Fix bugs in reverse_search_graph, renamed to simple_polytope_vertices_rs
+  * lp2poly: various improvements for integer variables
+
+-- tropical --
+  * big object type RationalFunction tentatively renamed to TropicalRationalFunction, pending further refactoring
+  * homology algorithm for patchworked hypersurface works with possibly non-regular triangulation as input
 
 === polymake 4.0 ===
 

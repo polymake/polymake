@@ -179,7 +179,7 @@ user_function zonotope<Scalar> (Matrix<Scalar>, { rows_are_points => 1, centered
 # @option Bool revert inverts the coordinate list
 # @option Bool nofm suppresses Fourier-Motzkin elimination
 # @return Cone
-# @example [prefer cdd] project the 3-cube along the first coordinate, i.e. to the subspace
+# @example [prefer cdd] [require bundled:cdd] project the 3-cube along the first coordinate, i.e. to the subspace
 # spanned by the second and third coordinate:
 # > $p = projection(cube(3),[1],revert=>1);
 # > print $p->VERTICES;

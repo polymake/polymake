@@ -21,7 +21,7 @@
 
 namespace polymake { namespace polytope {
 
-template<typename E>
+template <typename E>
 BigObject explicit_zonotope(const Matrix<E>& zones, OptionSet options)
 {
    const bool rows_are_points = options["rows_are_points"];
@@ -29,19 +29,18 @@ BigObject explicit_zonotope(const Matrix<E>& zones, OptionSet options)
    Matrix<E> points(1, dim+1);    // one zero-filled row
 
    for (auto z=entire(rows(zones)); !z.at_end(); ++z) {
-      Vector<E> hom_row (*z);
-      if (!rows_are_points) hom_row = (E(1) | hom_row);
+      Vector<E> hom_row(*z);
+      if (!rows_are_points)
+         hom_row = (E(1) | hom_row);
       points =
          ( points + repeat_row(hom_row, points.rows()) ) /
          ( points - repeat_row(hom_row, points.rows()) );
    }
    points.col(0).fill(1); // fix the homogenizing column that has been messed up by the sums
 
-   BigObject Z("Polytope");
-   Z.take("ZONOTOPE_INPUT_POINTS") << zones;
-   Z.take("POINTS") << points;
-
-   return Z;
+   return BigObject("Polytope", mlist<E>(),
+                    "ZONOTOPE_INPUT_POINTS", zones,
+                    "POINTS", points);
 }
 
 UserFunctionTemplate4perl("# @category Producing a polytope from scratch"

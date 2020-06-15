@@ -195,7 +195,7 @@ object Cone {
    weight 1.10;
 
    rule GROUP.FACETS_ACTION : GROUP.HOMOGENEOUS_COORDINATE_ACTION, FACETS {
-      $this->GROUP->FACETS_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "FACETS", "facet_action", "induced from homogeneous coordinate action", 1);
+      $this->GROUP->FACETS_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "FACETS", "facet_action", "induced from homogeneous coordinate action", 1, \&canonicalize_facets);
    }
    weight 1.10;
 
@@ -252,7 +252,7 @@ object Cone {
    #
 
    rule GROUP.INEQUALITIES_ACTION : GROUP.HOMOGENEOUS_COORDINATE_ACTION, INEQUALITIES {
-      $this->GROUP->INEQUALITIES_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "INEQUALITIES", "inequalities_action", "induced from homogeneous coordinate action", 1);
+      $this->GROUP->INEQUALITIES_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "INEQUALITIES", "inequalities_action", "induced from homogeneous coordinate action", 1, \&canonicalize_facets);
    }
    weight 1.10;
 
@@ -373,12 +373,12 @@ object Polytope {
    precondition : GROUP.PERMUTATION_ACTION.DEGREE, N_VERTICES { $this->GROUP->PERMUTATION_ACTION->DEGREE == $this->N_VERTICES }
 
    rule GROUP.FACETS_ACTION : GROUP.COORDINATE_ACTION, FACETS {
-      $this->GROUP->FACETS_ACTION = group::induce_permutation_action($this, "COORDINATE_ACTION", "FACETS", "facets_action", "induced from coordinate_action");
+      $this->GROUP->FACETS_ACTION = group::induce_permutation_action($this, "COORDINATE_ACTION", "FACETS", "facets_action", "induced from coordinate_action", 0, \&canonicalize_facets);
    }
    weight 1.10;
 
    rule GROUP.INEQUALITIES_ACTION : GROUP.COORDINATE_ACTION, INEQUALITIES {
-      $this->GROUP->INEQUALITIES_ACTION = group::induce_permutation_action($this, "COORDINATE_ACTION", "INEQUALITIES", "inequalities_action", "induced from coordinate_action");
+      $this->GROUP->INEQUALITIES_ACTION = group::induce_permutation_action($this, "COORDINATE_ACTION", "INEQUALITIES", "inequalities_action", "induced from coordinate_action", 0, \&canonicalize_facets);
    }
    weight 1.10;
 

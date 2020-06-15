@@ -166,6 +166,9 @@ public:
    }
 };
 
+// constructor tag
+struct copy_without_nodes {};
+
 template <typename Traits> class tree;
 
 template <typename Traits, link_index Dir>
@@ -931,38 +934,6 @@ public:
       return n;
    }
 
-   // This operation destroys the balancedness and should be used with uttermost caution
-   Node* unlink_node(Node *n)
-   {
-      --n_elem;
-      Ptr next=this->link(n,R),
-          prev=this->link(n,L);
-      if (prev.leaf()) {
-         if (next.leaf()) {
-            this->link(next,L)=prev;
-            this->link(prev,R)=next;
-         } else {
-            Ptr parent=this->link(n,P);
-            this->link(parent,parent.direction())=next;
-            this->link(next,P)=parent;
-            next.traverse_to_leaf(*this,L);
-            this->link(next,L)=prev;
-         }
-      } else {
-         Ptr parent=this->link(n,P);
-         this->link(parent,parent.direction())=prev;
-         this->link(prev,P)=parent;
-         prev.traverse_to_leaf(*this,R);
-         this->link(prev,R)=next;
-         if (!next.leaf()) {
-            this->link(next,P).set_direction(prev,R);
-            next.traverse_to_leaf(*this,L);
-            this->link(next,L).set(prev,LEAF);
-         }
-      }
-      return n;
-   }
-
    /// The key of the node has been changed: move it to the proper position.
    /// The new key must not violate the uniqueness requirement.
    void update_node(Node *n);
@@ -1042,9 +1013,9 @@ public:
    */
    void init()
    {
-      this->link(this->head_node(),L) = this->link(this->head_node(),R) = end_node();
-      this->link(this->head_node(),P) = nullptr;
-      n_elem=0;
+      this->link(this->head_node(), L) = this->link(this->head_node(), R) = end_node();
+      this->link(this->head_node(), P) = nullptr;
+      n_elem = 0;
    }
 
 private:
@@ -1087,14 +1058,34 @@ public:
       : Traits(t)
    {
       if (t.tree_form()) {
-         n_elem=t.n_elem;
-         Node *root=clone_tree(t.root_node(), Ptr(), Ptr());
-         this->link(this->head_node(),P)=root;
+         n_elem = t.n_elem;
+         Node* root = clone_tree(t.root_node(), Ptr(), Ptr());
+         this->link(this->head_node(),P) = root;
          this->link(root,P).set_direction(this->head_node(),P);
       } else {          // list form
          init();
-         for (Ptr n=t.first(); !n.end(); n=t.link(n,R))
+         for (Ptr n = t.first(); !n.end(); n = t.link(n,R))
             insert_node_at(end_node(), L, this->clone_node(n));
+      }
+   }
+
+   tree(const tree& t, copy_without_nodes)
+      : Traits(t)
+   {
+      init();
+   }
+
+   tree(tree&& t)
+      : Traits(static_cast<Traits&&>(t))
+   {
+      if (t.n_elem > 0) {
+         n_elem = t.n_elem;
+         this->link(first(), L) = this->link(last(), R) = end_node();
+         if (tree_form())
+            this->link(root_node(), P).set_direction(this->head_node(), P);
+         t.init();
+      } else {
+         init();
       }
    }
 
@@ -1137,23 +1128,9 @@ public:
       std::swap(n_elem, t.n_elem);
    }
 
-   template <bool with_nodes>
-   friend void relocate_tree(tree* from, tree* to, bool_constant<with_nodes>)
-   {
-      relocate(static_cast<Traits*>(from), static_cast<Traits*>(to));
-      if (with_nodes && from->n_elem) {
-         to->n_elem=from->n_elem;
-         to->link(to->first(),L)=to->link(to->last(),R)=to->end_node();
-         if (to->tree_form())
-            to->link(to->root_node(),P).set_direction(to->head_node(), P);
-      } else {
-         to->init();
-      }
-   }
-
    friend void relocate(tree* from, tree* to)
    {
-      relocate_tree(from, to, std::true_type());
+      new(to) tree(std::move(*from));
    }
 
    template <typename Iterator,

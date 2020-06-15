@@ -26,13 +26,10 @@ void add_action(BigObject& p,
               ? permutation_subgroup_generators(gens, sequence(0, rays_or_facets.rows()))
               : gens);
 
-   BigObject a("group::PermutationAction");
+   BigObject a("group::PermutationAction", action_name, "GENERATORS", subgens);
    a.set_description() << action_desc;
-   a.set_name(action_name);
-   a.take("GENERATORS") << subgens;
-   
    p.add("GROUP", g);
-   p.take("GROUP." + rf_prop) << a;
+   g.take(rf_prop) << a;
 }
 
 } // end anonymous namespace
@@ -52,8 +49,7 @@ BigObject linear_symmetries_matrix(const Matrix<Rational>& M)
 BigObject linear_symmetries_impl(BigObject p)
 {
    Matrix<Rational> rays, facets;
-   BigObject g("group::Group");
-   g.set_name("LinAut");
+   BigObject g("group::Group", "LinAut");
    g.set_description() << "linear symmetry group";
    
    if(p.type().name().find("Rational") == std::string::npos)

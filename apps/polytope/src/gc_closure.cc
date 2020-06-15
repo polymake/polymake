@@ -33,42 +33,38 @@ namespace polymake { namespace polytope {
  */
 BigObject gc_and_tdi(BigObject p_in, bool round)
 {
-   BigObject p_out("Polytope", mlist<Rational>()), C;
-  Matrix<Rational> vertices;  // Hilbert Basis and Vertices
-  Set<Vector<Rational> > hilbert_ineqs;  // the new inequalities
-  Vector<Rational> obj, this_vector;  // one inequality
-  Int n, i, k;  // counting variables
-  Rational val;  // right hand side of the inequality
+   Matrix<Rational> vertices;  // Hilbert Basis and Vertices
+   Set<Vector<Rational> > hilbert_ineqs;  // the new inequalities
+   Vector<Rational> obj, this_vector;  // one inequality
+   Int n, i, k;  // counting variables
+   Rational val;  // right hand side of the inequality
 
-  p_in.give("VERTICES") >> vertices;
-  p_in.give("N_VERTICES") >> n;
+   p_in.give("VERTICES") >> vertices;
+   p_in.give("N_VERTICES") >> n;
 
-  // For every vertex do
-  for (i=0; i<n; ++i) {
-    if (vertices(i,0) == 0)
-      continue;
-    // Compute the Hilbertbasis of its normal cone
-    C = call_function("normal_cone", p_in, i);
-    Matrix<Integer> hb=C.call_method("HILBERT_BASIS");
-    // For every Hilbertbasis element do
-    for (k=0; k < hb.rows(); ++k) {
-      // compute the right hand side
-      this_vector= hb.row(k);
-      obj = (0 | this_vector);
-      // round if the gc_closure is needed
-      val = (round == 1) ? (ceil(obj * (vertices[i]))) : val =  (obj * (vertices[i]));
-      this_vector = (-val | this_vector);
+   // For every vertex do
+   for (i = 0; i < n; ++i) {
+      if (vertices(i,0) == 0)
+         continue;
+      // Compute the Hilbertbasis of its normal cone
+      BigObject C = call_function("normal_cone", p_in, i);
+      Matrix<Integer> hb = C.call_method("HILBERT_BASIS");
+      // For every Hilbertbasis element do
+      for (k=0; k < hb.rows(); ++k) {
+         // compute the right hand side
+         this_vector= hb.row(k);
+         obj = (0 | this_vector);
+         // round if the gc_closure is needed
+         val = (round == 1) ? (ceil(obj * (vertices[i]))) : val =  (obj * (vertices[i]));
+         this_vector = (-val | this_vector);
 
-      // add inequality to the system
-      hilbert_ineqs +=  this_vector;
-    }
-  }
+         // add inequality to the system
+         hilbert_ineqs +=  this_vector;
+      }
+   }
 
-  p_out.take("INEQUALITIES") << hilbert_ineqs;
-
-  return p_out;	
+   return BigObject("Polytope", mlist<Rational>(), "INEQUALITIES", hilbert_ineqs);	
 }
-
 
 /*
  *  computes the gomory-chvatal closure of a polyhedron
@@ -92,73 +88,64 @@ BigObject make_totally_dual_integral(BigObject p_in)
  */
 bool totally_dual_integral(const Matrix<Rational>& inequalities)
 {
-  // checks if is not empty or if dimensions match
-  const Int dim = inequalities.cols();
-  if (dim == 0)
-    throw std::runtime_error("totally_dual_integral: non-empty matrix required");
+   // checks if is not empty or if dimensions match
+   const Int dim = inequalities.cols();
+   if (dim == 0)
+      throw std::runtime_error("totally_dual_integral: non-empty matrix required");
 
-  // variables decleration and initialization
-  BigObject p_in("Polytope<Rational>");
-  Int n_lattice;
-  BigObject C;
+   const Matrix<Rational> ineq = inequalities / unit_vector<Rational>(dim, 0);
+   BigObject p_in("Polytope<Rational>", "INEQUALITIES", ineq);
+   const Matrix<Rational> vertices = p_in.give("VERTICES");
+   const IncidenceMatrix<> eq_sets = p_in.give("INEQUALITIES_THRU_VERTICES");
 
-  Matrix<Rational> ineq (inequalities / (unit_vector<Rational>(dim,0)));
+   //FIXME constraint, since polymake cannot compute hilbertbasis of non pointed cones
+   const Int polytope_dim = p_in.give("CONE_DIM");
+   if (dim != polytope_dim)
+      throw std::runtime_error("totally_dual_integral: the inequalities should descibe a full dimensional polyhedron");
 
-  p_in.take("INEQUALITIES") << ineq;
-  const Matrix<Rational> vertices = p_in.give("VERTICES");
-  const IncidenceMatrix<> eq_sets = p_in.give("INEQUALITIES_THRU_VERTICES");
+   // for every vertex
+   for (Int i = 0; i < vertices.rows(); ++i) {
+      if (vertices(i,0) == 0)
+         continue;
+      // compute the normal_cone and its hilbert basis
+      BigObject C = call_function("normal_cone", p_in, i);
+      Matrix<Rational> hb = C.call_method("HILBERT_BASIS");
 
-  //FIXME constraint, since polymake cannot compute hilbertbasis of non pointed cones
-  const Int polytope_dim = p_in.give("CONE_DIM");
-  if (dim != polytope_dim)
-    throw std::runtime_error("totally_dual_integral: the inequalities should descibe a full dimensional polyhedron");
+      // for every hilbert basis element of the normal cone
+      // check weather it can be written as a non negative
+      // integral linear combination of the active constraints
+      for (Int j = 0; j < hb.rows(); ++j){
+         // solutions is a polyhedron of all possible linear combinations
+         // which give the hilbert basis element
+         Matrix<Rational> temp_matrix(-hb.row(j) | T(ineq.minor(eq_sets[i], range_from(1))));
 
-  // for every vertex
-  for (Int i = 0; i < vertices.rows(); ++i) {
-    if (vertices(i,0) == 0)
-      continue;
-    // compute the normal_cone and its hilbert basis
-    C = call_function("normal_cone", p_in, i);
-    Matrix<Rational> hb = C.call_method("HILBERT_BASIS");
+         BigObject solutions("Polytope<Rational>",
+                             "INEQUALITIES", unit_matrix<Rational>(temp_matrix.cols()),
+                             "EQUATIONS", temp_matrix);
 
-    // for every hilbert basis element of the normal cone
-    // check weather it can be written as a non negative
-    // integral linear combination of the active constraints
-    for (Int j = 0; j < hb.rows(); ++j){
-      // solutions is a polyhedron of all possible linear combinations
-      // which give the hilbert basis element
-      BigObject solutions("Polytope<Rational>");
+         // FIXME: workaround for the scheduling problem. Ticket #195
+         solutions.give("VERTICES") >> temp_matrix;
 
-      // building the equations and ineq
-      Matrix<Rational> temp_matrix(-hb.row(j) | T(ineq.minor(eq_sets[i], range_from(1))));
-      Matrix<Rational> unit(unit_matrix<Rational>(temp_matrix.cols()));
+         // check if there is an integral solution. If not -> return false
+         // if the solution polytope is not bounded we cannot just count them
+         // but we want to just count if it is possible because latte is fast
+         const bool bounded = solutions.give("BOUNDED");
 
-      solutions.take("INEQUALITIES") << unit;
-      solutions.take("EQUATIONS") << temp_matrix;
-
-      //FIXME: workaround for the scheduling problem. Ticket #195
-      solutions.give("VERTICES") >> temp_matrix;
-
-      // check if there is an integral solution. If not -> return false
-      // if the solution polytope is not bounded we cannot just count them
-      // but we want to just count if it is possible because latte is fast
-      bool bounded = 1;
-      solutions.give("BOUNDED") >> bounded;
-
-      if (bounded){
-         solutions.give("N_LATTICE_POINTS") >> n_lattice;
-      }else{
-         Array< Matrix<Rational> > latticepoints(3);
-         solutions.give("LATTICE_POINTS_GENERATORS") >> latticepoints;
-         n_lattice = latticepoints[0].rows();
+         Int n_lattice;
+         if (bounded) {
+            solutions.give("N_LATTICE_POINTS") >> n_lattice;
+         } else {
+            Array< Matrix<Rational> > latticepoints(3);
+            solutions.give("LATTICE_POINTS_GENERATORS") >> latticepoints;
+            n_lattice = latticepoints[0].rows();
+         }
+         if (n_lattice == 0)
+            return false;
       }
-      if (n_lattice == 0)
-        return false;
-    }
-  }
+   }
 
-  // if everything worked out -> return true
-  return true;
+   // if everything worked out -> return true
+   return true;
 }
 
 

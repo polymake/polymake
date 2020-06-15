@@ -104,10 +104,16 @@ rule MIN_WEIGHTS : VECTORS, MAXIMAL_CELLS {
     my $minus_ones = new Vector<Rational>(-ones_vector<Rational>($secTineqs->rows()));
     my $positive_orthant = zero_vector<Rational>|unit_matrix<Rational>($n_vectors);
     my $ineqs = ($minus_ones|$secTineqs) / $positive_orthant; # shifted ineqs intersected with positive orthant
-    my $ilp = new polytope::MixedIntegerLinearProgram<Rational>(LINEAR_OBJECTIVE=>(0|ones_vector<Rational>($n_vectors)));
+    my $C = new Cone(INEQUALITIES=>$ineqs);
+    my $inner = primitive($C->REL_INT_POINT);
+    my $objective = 0|ones_vector<Rational>($n_vectors);
+    my $val = $objective * $inner;
+    $ineqs = new Matrix($ineqs / new Vector($val | -ones_vector<Rational>($n_vectors)));
+    my $ilp = new polytope::MixedIntegerLinearProgram<Rational>(LINEAR_OBJECTIVE=>$objective);
     my $secTilp = new polytope::Polytope(INEQUALITIES=>$ineqs,MILP=>$ilp);
     $this->MIN_WEIGHTS = $secTilp->MILP->MINIMAL_SOLUTION->slice(~[0]);
 }
+weight 6.10;
 
 } # object SubdivisionOfVectors
 
@@ -162,7 +168,6 @@ rule MAXIMAL_CELLS : POINTS, WEIGHTS {
 weight 3.10;
 incurs CellPerm;
 
-#
 rule REGULAR, WEIGHTS : POINTS, MAXIMAL_CELLS {
    my $pair = polytope::is_regular($this->POINTS, rows($this->MAXIMAL_CELLS));
    if ($this->REGULAR = $pair->first) {
@@ -170,6 +175,10 @@ rule REGULAR, WEIGHTS : POINTS, MAXIMAL_CELLS {
    }
 }
 weight 3.10;
+
+rule UNIMODULAR : POINTS, MAXIMAL_CELLS {
+    $this->UNIMODULAR=unimodular( $this->POINTS, rows($this->MAXIMAL_CELLS) );
+}
 
 rule TIGHT_SPAN.HASSE_DIAGRAM.ADJACENCY, TIGHT_SPAN.HASSE_DIAGRAM.DECORATION, TIGHT_SPAN.HASSE_DIAGRAM.INVERSE_RANK_MAP, \
      TIGHT_SPAN.HASSE_DIAGRAM.TOP_NODE, TIGHT_SPAN.HASSE_DIAGRAM.BOTTOM_NODE : \

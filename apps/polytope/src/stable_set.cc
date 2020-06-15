@@ -54,14 +54,12 @@ BigObject stable_set(const BigObject& G_in)
        }
     }
 
-    // output
-    BigObject p_out("Polytope<Rational>");
+    BigObject p_out("Polytope<Rational>",
+                    "INEQUALITIES", ineqs,
+                    "BOUNDED", true,
+                    "ONE_VERTEX", unit_vector<Rational>(G.nodes()+1, 0),
+                    "FEASIBLE", true);
     p_out.set_description() << "stable set polytope of a Graph" << endl;   
-    p_out.take("INEQUALITIES") << ineqs;
-    p_out.take("BOUNDED") << true;
-    p_out.take("ONE_VERTEX") << unit_vector<Rational>(G.nodes()+1,0);
-    p_out.take("FEASIBLE") << true;
-
     return p_out;
 }
 

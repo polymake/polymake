@@ -36,19 +36,19 @@ namespace {
 
 class pool_allocator_constants : public __gnu_cxx::__pool_alloc_base {
 public:
-   static constexpr size_t align = _S_align, limit = _S_max_bytes;
+   static constexpr std::size_t align = _S_align, limit = _S_max_bytes;
 };
 
 }
 
-void* pm::allocator::reallocate(void* p, size_t old_sz, size_t new_sz)
+void* pm::allocator::reallocate(void* p, std::size_t old_sz, std::size_t new_sz)
 {
    if (!p) {
       assert(old_sz == 0);
       return allocate(new_sz);
    }
    static const bool use_new = getenv("GLIBCPP_FORCE_NEW") || getenv("GLIBCXX_FORCE_NEW");
-   constexpr size_t align_mask = pool_allocator_constants::align-1;
+   constexpr std::size_t align_mask = pool_allocator_constants::align-1;
    if (!use_new && ((old_sz+align_mask) & ~align_mask) == ((new_sz+align_mask) & ~align_mask) && new_sz < pool_allocator_constants::limit)
       return p;
    void* new_p = allocate(new_sz);

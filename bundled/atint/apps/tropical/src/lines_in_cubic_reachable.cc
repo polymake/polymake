@@ -114,11 +114,11 @@ ReachableResult reachablePoints(const Polynomial<TropicalNumber<Max>>& f, BigObj
   }
   Matrix<Rational> d_lineality(0,degree.cols());
   d_lineality /= degree.row(direction);
-  BigObject d_complex("Cycle", mlist<Max>());
-  d_complex.take("VERTICES") << thomog(d_rays);
-  d_complex.take("MAXIMAL_POLYTOPES") << d_cone_list;
-  d_complex.take("LINEALITY_SPACE") << thomog(d_lineality);
-  d_complex.take("PURE") << false;
+  BigObject d_complex("Cycle", mlist<Max>(),
+                      "VERTICES", thomog(d_rays),
+                      "MAXIMAL_POLYTOPES", d_cone_list,
+                      "LINEALITY_SPACE", thomog(d_lineality),
+                      "PURE", false);
   d_complex = call_function("intersect_container", d_complex, lindom);
 
   // We now go through all (new) vertices of this complex and "project" them onto the one-dimensional
@@ -176,11 +176,11 @@ ReachableResult reachablePoints(const Polynomial<TropicalNumber<Max>>& f, BigObj
 
   // Now take the refined edge complex, add lineality again and intersect it with d_complex to get
   // the final refined complex
-  BigObject d_vert_complex("Cycle", mlist<Max>());
-  d_vert_complex.take("VERTICES") << thomog(d_rays);
-  d_vert_complex.take("MAXIMAL_POLYTOPES") << d_cone_list;
-  d_vert_complex.take("LINEALITY_SPACE") << thomog(d_lineality);
-  d_vert_complex.take("PURE") << false;
+  BigObject d_vert_complex("Cycle", mlist<Max>(),
+                           "VERTICES", thomog(d_rays),
+                           "MAXIMAL_POLYTOPES", d_cone_list,
+                           "LINEALITY_SPACE", thomog(d_lineality),
+                           "PURE", false);
   BigObject final_refined = call_function("intersect_container", d_vert_complex, d_complex);
   Matrix<Rational> final_rays = final_refined.give("VERTICES");
   Set<Int> final_vertices = far_and_nonfar_vertices(final_rays).second;

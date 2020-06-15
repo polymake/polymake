@@ -136,7 +136,7 @@ user_method VISUAL(%Visual::Polygons::decorations, %geometric_options_linear, {C
          : undef;
    my $zero=new Vector<Float>($d);
    my @cells_visual = ();
-   my $rays_graph = new props::Graph($rays->rows+1);
+   my $rays_graph = new GraphAdjacency($rays->rows+1);
    $rays_graph->edge(0,$_) for 1 .. $rays->rows;
    my @labels;
    if ((@labels=@{$this->lookup("RAY_LABELS")})==undef) {

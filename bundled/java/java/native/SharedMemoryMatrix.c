@@ -26,7 +26,7 @@
 typedef struct PTL_Matrix {
    long refc;
    size_t size;
-   int dimr, dimc;
+   long dimr, dimc;
    double elem[1];
 } PTL_Matrix;
 
@@ -101,7 +101,7 @@ JNIEXPORT void JNICALL Java_de_tuberlin_polymake_common_SharedMemoryMatrix_copyC
 
    if ( (*jenv)->GetArrayLength( jenv, Points ) != m->dimr || dim != m->dimc) {
       char* msg=malloc(100);
-      snprintf(msg, 100, "dimension mismatch between shared matrix(%dx%d) and Java object Points(%dx%d)",
+      snprintf(msg, 100, "dimension mismatch between shared matrix(%ldx%ld) and Java object Points(%dx%d)",
                m->dimr, m->dimc, (*jenv)->GetArrayLength( jenv, Points ), dim);
       (*jenv)->ThrowNew( jenv, excCls, msg );
       free(msg);
@@ -130,7 +130,7 @@ JNIEXPORT void JNICALL Java_de_tuberlin_polymake_common_SharedMemoryMatrix_copyC
 
    if (i<0 || i>=m->dimr) {
       char* msg=malloc(100);
-      snprintf(msg, 100, "index %d out of range [0..%d[", i, m->dimr);
+      snprintf(msg, 100, "index %d out of range [0..%ld[", i, m->dimr);
       (*jenv)->ThrowNew( jenv, excCls, msg);
       free(msg);
       return;
@@ -139,7 +139,7 @@ JNIEXPORT void JNICALL Java_de_tuberlin_polymake_common_SharedMemoryMatrix_copyC
    Coords=(jdoubleArray) (*jenv)->GetObjectField( jenv, Point, pmpCoords );
    if ((*jenv)->GetArrayLength( jenv, Coords ) != m->dimc) {
       char* msg=malloc(100);
-      snprintf(msg, 100, "dimension mismatch between shared matrix(%dx%d) and Java object Point(%d)",
+      snprintf(msg, 100, "dimension mismatch between shared matrix(%ldx%ld) and Java object Point(%d)",
                m->dimr, m->dimc, (*jenv)->GetArrayLength( jenv, Coords ));
       (*jenv)->ThrowNew( jenv, excCls, msg);
       free(msg);
@@ -167,7 +167,7 @@ Java_de_tuberlin_polymake_common_SharedMemoryMatrix_setCoords__Lde_tuberlin_poly
 
    if ( (*jenv)->GetArrayLength( jenv, Points ) != m->dimr || dim != m->dimc) {
       char* msg=malloc(100);
-      snprintf(msg, 100, "dimension mismatch between shared matrix(%dx%d) and Java object Points(%dx%d)",
+      snprintf(msg, 100, "dimension mismatch between shared matrix(%ldx%ld) and Java object Points(%dx%d)",
                m->dimr, m->dimc, (*jenv)->GetArrayLength( jenv, Points ), dim);
       (*jenv)->ThrowNew( jenv, excCls, msg );
       free(msg);
@@ -195,7 +195,7 @@ JNIEXPORT void JNICALL Java_de_tuberlin_polymake_common_SharedMemoryMatrix_setCo
 
    if (i<0 || i>=m->dimr) {
       char* msg=malloc(100);
-      snprintf(msg, 100, "index %d out of range [0..%d[", i, m->dimr);
+      snprintf(msg, 100, "index %d out of range [0..%ld[", i, m->dimr);
       (*jenv)->ThrowNew( jenv, excCls, msg);
       free(msg);
       return;
@@ -204,7 +204,7 @@ JNIEXPORT void JNICALL Java_de_tuberlin_polymake_common_SharedMemoryMatrix_setCo
    Coords=(jdoubleArray) (*jenv)->GetObjectField( jenv, Point, pmpCoords );
    if ((*jenv)->GetArrayLength( jenv, Coords ) != m->dimc) {
       char* msg=malloc(100);
-      snprintf(msg, 100, "dimension mismatch between shared matrix(%dx%d) and Java object Point(%d)",
+      snprintf(msg, 100, "dimension mismatch between shared matrix(%ldx%ld) and Java object Point(%d)",
                m->dimr, m->dimc, (*jenv)->GetArrayLength( jenv, Coords ));
       (*jenv)->ThrowNew( jenv, excCls, msg);
       free(msg);
@@ -222,7 +222,7 @@ JNIEXPORT jint JNICALL Java_de_tuberlin_polymake_common_SharedMemoryMatrix_getNP
   (JNIEnv *jenv, jobject this)
 {
    PTL_Matrix *m =(PTL_Matrix*)(long)(*jenv)->GetLongField( jenv, this, jSmmAddr );
-   return m->dimr;
+   return (int) m->dimr;
 }
 
 
@@ -230,7 +230,7 @@ JNIEXPORT jint JNICALL Java_de_tuberlin_polymake_common_SharedMemoryMatrix_getDi
   (JNIEnv *jenv, jobject this)
 {
    PTL_Matrix *m =(PTL_Matrix*)(long)(*jenv)->GetLongField( jenv, this, jSmmAddr );
-   return m->dimc;
+   return (int) m->dimc;
 }
 
 // Local Variables:

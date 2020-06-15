@@ -40,9 +40,11 @@ void odd_complex_of_manifold(BigObject p)
       throw std::runtime_error("odd_complex_of_manifold: Complex is not a MANIFOLD");
 
    Lattice<BasicDecoration> HD;
-   BigObject hd("Lattice<BasicDecoration>");
-   if ((p.lookup("HASSE_DIAGRAM") >> hd)) HD=Lattice<BasicDecoration>(hd);
-   else  HD = hasse_diagram_from_facets(C);
+   BigObject hd;
+   if (p.lookup("HASSE_DIAGRAM") >> hd)
+      HD = Lattice<BasicDecoration>(hd);
+   else
+      HD = hasse_diagram_from_facets(C);
 
    if (C[0].size()-1 < 2)
       throw std::runtime_error("odd_complex_of_manifold: DIM of complex must be greater 2.");

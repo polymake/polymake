@@ -68,8 +68,37 @@ public:
    PermlibGroup(){};
    PermlibGroup(boost::shared_ptr<permlib::PermutationGroup> perm_group) : permlib_group(perm_group){};
 
-   PermlibGroup(const Array<Array<Int>>& generators)
+   PermlibGroup(const Array<Array<Int>>& _generators)
    {
+      /*
+        Issue #1194:
+
+        For a non-empty list of generators, we translate them directly into permlib format 
+        and return a pointer to a permlib::PermutationGroup object.
+        This also works if the list of generators consists of only an identity permutation.
+
+        However, if the list of generators is empty, paradoxically we have to do more work, because
+        permlib does not deal gracefully with a trivial group specified by giving no generators.
+        One issue that arises is that the degree (=cardinality of the ground set) of such a permutation is not known;
+        another issue is that the implementation of the Schreier-Sims algorithm fails in this case.
+
+        We work around this by substituting an empty list of generators 
+        by the list consisting of the permutation (0), of degree 1.
+
+        This has the disadvantage that the degree of the permutation group given by no generators
+        is manually set to 1. 
+        
+        If this should turn out to be a problem (like it did for empty matrices, which turned out to 
+        desperately want to know their number of rows and columns), the code needs to be reworked.
+       */
+      Array<Array<Int>> trivial_group_generators;
+      if (is_zero(_generators.size())) {
+         trivial_group_generators.append({{0}});
+      }
+      const Array<Array<Int>>& generators( is_zero(_generators.size())
+                                           ? trivial_group_generators
+                                           : _generators );
+      
       std::list<boost::shared_ptr<permlib::Permutation>> permutations;
       for (const auto& perm : generators) {
          boost::shared_ptr<permlib::Permutation> gen(new permlib::Permutation(perm.begin(), perm.end()));
@@ -85,7 +114,7 @@ public:
 
    Int order() const
    {
-      return permlib_group->order();
+      return permlib_group->order<Int>();
    }
   
    boost::shared_ptr<permlib::PermutationGroup> 

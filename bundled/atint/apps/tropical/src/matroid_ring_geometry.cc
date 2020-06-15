@@ -99,11 +99,10 @@ BigObject add_refined_cycles(Array<BigObject> cycles)
   Set<Int> used_vertices = accumulate( new_cones.slice(supp), operations::add());
   IncidenceMatrix<> new_cones_matrix(new_cones);
 
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("VERTICES") << vertices_total.minor(used_vertices,All);
-  result.take("MAXIMAL_POLYTOPES") << new_cones_matrix.minor(supp, used_vertices);
-  result.take("WEIGHTS") << new_weights.slice(supp);
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "VERTICES", vertices_total.minor(used_vertices, All),
+                   "MAXIMAL_POLYTOPES", new_cones_matrix.minor(supp, used_vertices),
+                   "WEIGHTS", new_weights.slice(supp));
 }
 
 FunctionTemplate4perl("add_refined_cycles<Addition>(Cycle<Addition>+)");

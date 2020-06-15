@@ -77,12 +77,11 @@ BigObject normalized_star_data(BigObject local_cycle, const Vector<Rational>& po
     used_rays += select(*p, can_rays);
   }
 
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("VERTICES") << thomog(vertices.minor(used_rays,All));
-  result.take("MAXIMAL_POLYTOPES") << final_polytopes.minor(All,used_rays);
-  result.take("LINEALITY_SPACE") << lineality;
-  result.take("WEIGHTS") << weights;
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "VERTICES", thomog(vertices.minor(used_rays, All)),
+                   "MAXIMAL_POLYTOPES", final_polytopes.minor(All, used_rays),
+                   "LINEALITY_SPACE", lineality,
+                   "WEIGHTS", weights);
 }
 
 template <typename Addition>

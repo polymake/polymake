@@ -2,5 +2,6 @@
  "inst": [
   {"args": ["perl::Canned<const ChainComplex<SparseMatrix<Integer, NonSymmetric>>&>", "Int"], "func": "boundary_matrix", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h", "polymake/topaz/ChainComplex.h"], "kind": "meth", "sig": "boundary_matrix:M.X"},
   {"args": ["perl::Canned<const Filtration<SparseMatrix<Rational, NonSymmetric>>&>", "Int(Int)", "Int(Int)"], "func": "boundary_matrix", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/topaz/Filtration.h"], "kind": "meth", "sig": "boundary_matrix:M.Int.Int"},
+  {"args": ["perl::Canned<const ChainComplex<SparseMatrix<GF2, NonSymmetric>>&>", "Int"], "func": "boundary_matrix", "include": ["polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h", "polymake/topaz/ChainComplex.h"], "kind": "meth", "sig": "boundary_matrix:M.X"},
  null ],
 "version": 3}

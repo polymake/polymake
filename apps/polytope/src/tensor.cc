@@ -42,10 +42,9 @@ BigObject tensor(BigObject p_in1, BigObject p_in2)
               rows(V_out.minor(All, range(1, adim_out))).begin());
    V_out.col(0).fill(1);
 
-   BigObject p_out("Polytope", mlist<Scalar>());
+   BigObject p_out("Polytope", mlist<Scalar>(),
+                   "POINTS", V_out);
    p_out.set_description() << "Tensor-product of " << p_in1.name() << " and " << p_in2.name() << endl;;
-  
-   p_out.take("POINTS") << V_out;
    return p_out;
 }
 

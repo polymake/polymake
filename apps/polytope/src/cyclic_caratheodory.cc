@@ -33,7 +33,7 @@ BigObject cyclic_caratheodory(const Int d, const Int n, OptionSet options)
    }
 
    const bool group = options["group"];
-   BigObject p(std::string(group ? "Polytope<Float>" : "Polytope<Rational>"));
+   BigObject p(group ? Str("Polytope<Float>") : Str("Polytope<Rational>"));
    p.set_description() << "Cyclic " << d << "-polytope on " << n << " vertices on the trigonometric moment curve" << endl;
 
    Matrix<Rational> Vertices(n,d+1);
@@ -56,11 +56,10 @@ BigObject cyclic_caratheodory(const Int d, const Int n, OptionSet options)
    p.take("BOUNDED") << true;
 
    if (group) {
-      BigObject g("group::Group");
-      const BigObject D(group::dihedral_group_impl(2*n));
+      BigObject g("group::Group", "fullCombinatorialGroup");
+      const BigObject D(group::dihedral_group(2*n));
       g.take("CHARACTER_TABLE") << D.give("CHARACTER_TABLE");
       g.set_description() << "full combinatorial group" << endl;
-      g.set_name("fullCombinatorialGroup");
       p.take("GROUP") << g;
       p.take("GROUP.VERTICES_ACTION") << D.give("PERMUTATION_ACTION");
    }

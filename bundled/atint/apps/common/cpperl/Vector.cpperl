@@ -1,7 +1,6 @@
 {"app": "common",
  "inst": [
   {"class": "Vector<IncidenceMatrix<NonSymmetric>>", "include": ["polymake/IncidenceMatrix.h", "polymake/Vector.h"], "pkg": "Polymake::common::Vector__IncidenceMatrix__NonSymmetric"},
-  {"args": ["Vector<Int>", "perl::Canned<const Vector<Int>&>"], "include": ["polymake/Vector.h"], "op": "new", "sig": "new.X"},
   {"args": ["Vector<Integer>", "perl::Canned<const Vector<Int>&>"], "include": ["polymake/Integer.h", "polymake/Vector.h"], "op": "new", "sig": "new.X"},
   {"args": ["Vector<Int>", "perl::Canned<const Vector<Rational>&>"], "include": ["polymake/Rational.h", "polymake/Vector.h"], "op": "convert", "ret": "empty", "sig": "convert:O"},
  null ],

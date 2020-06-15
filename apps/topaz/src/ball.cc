@@ -39,7 +39,7 @@ BigObject ball(const Int d)
    p.take("MANIFOLD") << true;
    p.take("BALL") << true;
    p.take("ORIENTED_PSEUDO_MANIFOLD") << true;
-   if (d>0)
+   if (d > 0)
       p.take("COORDINATES") << zero_vector<Rational>(d) / unit_matrix<Rational>(d);
    return p;
 }

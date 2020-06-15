@@ -204,10 +204,9 @@ BigObject nested_matroid_from_presentation(const IncidenceMatrix<> &presentation
     bases = bases.slice(~bad_bases);
   }
 
-  BigObject result("matroid::Matroid");
-  result.take("N_ELEMENTS") << n;
-  result.take("BASES") << bases;
-  return result;
+  return BigObject("matroid::Matroid",
+                   "N_ELEMENTS", n,
+                   "BASES", bases);
 }
 
 Function4perl(&presentation_from_chain, "presentation_from_chain($, $,$)");

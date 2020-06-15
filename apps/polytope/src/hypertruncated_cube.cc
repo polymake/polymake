@@ -22,8 +22,8 @@
 
 namespace polymake { namespace polytope {
 
-template<typename Scalar>
-BigObject hypertruncated_cube(const Int d, const Scalar k, const Scalar lambda)
+template <typename Scalar>
+BigObject hypertruncated_cube(const Int d, const Scalar& k, const Scalar& lambda)
 {
    if (d < 2)
       throw std::runtime_error("hypertruncated_cube: dimension d >= 2 required");
@@ -31,9 +31,6 @@ BigObject hypertruncated_cube(const Int d, const Scalar k, const Scalar lambda)
       throw std::runtime_error("hypertruncated_cube: 1 < k < d required");
    if (lambda*d <= k)
       throw std::runtime_error("hypertruncated_cube: lambda > k/d required");
-
-   BigObject p("Polytope", mlist<Scalar>());
-   p.set_description() << "hypertruncated_cube(" << d << "," << k << "," << lambda << ")" << endl;
 
    const Int n_ineqs = 4*d;
    Matrix<Scalar> Inequalities(n_ineqs, d+1);
@@ -67,19 +64,19 @@ BigObject hypertruncated_cube(const Int d, const Scalar k, const Scalar lambda)
       for (Int jj = j+1; jj <= d; ++jj)
          Inequalities(i,jj)=lambda-1;
    }
-  
-   p.take("CONE_AMBIENT_DIM") << d+1;
-   p.take("INEQUALITIES") << Inequalities;
-   p.take("BOUNDED") << true;
-   p.take("FEASIBLE") << true;
-   p.take("ONE_VERTEX") << unit_vector<Scalar>(d+1,0);
+
+   BigObject p("Polytope", mlist<Scalar>(),
+               "CONE_AMBIENT_DIM", d+1,
+               "INEQUALITIES", Inequalities,
+               "BOUNDED", true,
+               "FEASIBLE", true,
+               "ONE_VERTEX", unit_vector<Scalar>(d+1, 0));
 
    // symmetric linear objective function
-   BigObject LP("LinearProgram", mlist<Scalar>());
-   LP.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0|ones_vector<Scalar>(d));
-   LP.attach("INTEGER_VARIABLES") << Array<bool>(d,true);
-   p.take("LP") << LP;
-  
+   BigObject LP = p.add("LP", "LINEAR_OBJECTIVE", 0 | ones_vector<Scalar>(d));
+   LP.attach("INTEGER_VARIABLES") << Array<bool>(d, true);
+
+   p.set_description() << "hypertruncated_cube(" << d << "," << k << "," << lambda << ")" << endl;
    return p;
 }
 

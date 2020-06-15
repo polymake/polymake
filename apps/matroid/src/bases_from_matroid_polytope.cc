@@ -39,13 +39,11 @@ Array<Set<Int>> bases_from_matroid_polytope(const Matrix<Rational>& verts)
 
 BigObject matroid_from_matroid_polytope(BigObject p)
 {
-  BigObject m("Matroid");
-  m.take("BASES") << bases_from_matroid_polytope(p.give("VERTICES"));
   const Int n_elements = p.call_method("AMBIENT_DIM");
-  m.take("N_ELEMENTS") << n_elements;
-  m.take("POLYTOPE") << p;
-
-  return m;
+  return BigObject("Matroid",
+                   "BASES", bases_from_matroid_polytope(p.give("VERTICES")),
+                   "N_ELEMENTS", n_elements,
+                   "POLYTOPE", p);
 }
 
 Function4perl(&bases_from_matroid_polytope, "bases_from_matroid_polytope");

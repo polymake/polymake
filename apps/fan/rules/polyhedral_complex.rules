@@ -30,6 +30,12 @@ rule FAR_VERTICES : VERTICES {
 }
 weight 1.10;
 
+rule COMPLETE : {
+   $this->COMPLETE = false;
+}
+weight 0.10;
+
+
 }
 
 object topaz::HyperbolicSurface {

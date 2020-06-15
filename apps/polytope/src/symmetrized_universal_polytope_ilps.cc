@@ -34,11 +34,11 @@ namespace polymake { namespace polytope {
 typedef Bitset SetType;
 
 BigObject symmetrized_foldable_max_signature_ilp(Int d,
-                                                    const Matrix<Rational>& points,
-                                                    const Array<SetType>& facets,
-                                                    const Rational& vol,
-                                                    const Array<Array<Int>>& generators,
-                                                    const SparseMatrix<Rational>& symmetrized_foldable_cocircuit_equations)
+                                                 const Matrix<Rational>& points,
+                                                 const Array<SetType>& facets,
+                                                 const Rational& vol,
+                                                 const Array<Array<Int>>& generators,
+                                                 const SparseMatrix<Rational>& symmetrized_foldable_cocircuit_equations)
 {
    // ONLY for lattice polytopes!
    const Int
@@ -84,15 +84,12 @@ BigObject symmetrized_foldable_max_signature_ilp(Int d,
          volume_vect[2*i+2].negate();
    }
    
-   BigObject lp("LinearProgram<Rational>");
-   lp.attach("INTEGER_VARIABLES") << Array<bool>(n2,true);
-   lp.take("LINEAR_OBJECTIVE") << Vector<Rational>(0|volume_vect.slice(range_from(1)));
-
-   BigObject q("Polytope<Rational>");
-   q.take("FEASIBLE") << true;
-   q.take("INEQUALITIES") << Inequalities;
-   q.take("EQUATIONS") << Equations;
-   q.take("LP") << lp;
+   BigObject q("Polytope<Rational>",
+               "FEASIBLE", true,
+               "INEQUALITIES", Inequalities,
+               "EQUATIONS", Equations);
+   BigObject lp = q.add("LP", "LINEAR_OBJECTIVE", 0 | volume_vect.slice(range_from(1)));
+   lp.attach("INTEGER_VARIABLES") << Array<bool>(n2, true);
    return q;
 }
 

@@ -28,15 +28,13 @@ BigObject fractional_knapsack(const Vector<Rational> b)
   if (d < 1)
     throw std::runtime_error("knapsack: dimension d >= 1 required");
 
-  BigObject p("Polytope<Rational>");
-  p.set_description() << "knapsack " << b << endl;
-
-  Matrix<Rational> F = b / (zero_vector<Rational>(d) | unit_matrix<Rational>(d));
+  const Matrix<Rational> F = b / (zero_vector<Rational>(d) | unit_matrix<Rational>(d));
     
-  p.take("CONE_AMBIENT_DIM") << d+1;
-  p.take("INEQUALITIES") << F;
-  p.take("BOUNDED") << true;
-
+  BigObject p("Polytope<Rational>",
+              "CONE_AMBIENT_DIM", d+1,
+              "INEQUALITIES", F,
+              "BOUNDED", true);
+  p.set_description() << "knapsack " << b << endl;
   return p;
 }
 

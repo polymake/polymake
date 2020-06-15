@@ -357,13 +357,13 @@ Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s, Co
         }
     }
 
-    if (C.do_Hilbert_basis && C.descent_level > 0 && C.isComputed(ConeProperty::Grading)) {
-        HB_bound = volume * C.God_Father->HB_bound;
-        HB_bound_computed = true;
+    // if (C.do_Hilbert_basis && C.descent_level > 0 && C.isComputed(ConeProperty::Grading)) {
+    //    HB_bound = volume * C.God_Father->HB_bound;
+    //    HB_bound_computed = true;
         /* cout << "GF " << C.God_Father->HB_bound << " " << " VOL " << volume << " HB_bound " << HB_bound << endl;
         cout << gen_degrees;
         exit(0);*/
-    }
+    // }
 
     /*  if(Ind0_key.size()>0){
          #pragma omp atomic
@@ -613,27 +613,36 @@ void SimplexEvaluator<Integer>::reduce_against_global(Collector<Integer>& Coll) 
             // cout << "Nach " << *jj;
 
             // reduce against global reducers in C.OldCandidates and insert into HB_Elements
-            if (C.is_simplicial) {  // no global reduction necessary
+            if (C.is_simplicial) {  // no global reduction necessary at this point
                 Coll.HB_Elements.Candidates.push_back(Candidate<Integer>(*jj, C));
                 inserted = true;
             }
             else
                 inserted = Coll.HB_Elements.reduce_by_and_insert(*jj, C, C.OldCandidates);
+            // cout << "iiiii " << inserted << " -- " << *jj << endl;
+            
+            if(inserted && C.do_integrally_closed){ // we must safeduard against original generators
+                auto gen = C.Generator_Set.find(*jj);  // that appear in the Hilbert basis of
+                if(gen != C.Generator_Set.end())       // this simplicial cone
+                    inserted = false;                
+            }
 
             if (inserted) {
                 Coll.collected_elements_size++;
                 if (C.do_integrally_closed) {
-#pragma omp critical
+#pragma omp critical(INTEGRALLY_CLOSED)
                     {
                         C.do_Hilbert_basis = false;
                         C.Witness = *jj;
                         C.is_Computed.set(ConeProperty::WitnessNotIntegrallyClosed);
-                    }
+                    } // critical
                     if (!C.do_triangulation) {
                         throw NotIntegrallyClosedException();
                     }
                 }
-                if (C.God_Father->do_integrally_closed) {
+                
+                /* 
+                if (C.God_Father->do_integrally_closed && C.is_simplicial) {
                     bool GF_inserted = Coll.HB_Elements.reduce_by_and_insert(*jj, *(C.God_Father), C.God_Father->OldCandidates);
                     if (GF_inserted) {
 #pragma omp critical
@@ -648,6 +657,7 @@ void SimplexEvaluator<Integer>::reduce_against_global(Collector<Integer>& Coll) 
                         }
                     }
                 }
+                */
             }
         }
     }
@@ -709,7 +719,7 @@ void SimplexEvaluator<Integer>::conclude_evaluation(Collector<Integer>& Coll) {
 
 //---------------------------------------------------------------------------
 
-const long SimplexParallelEvaluationBound = 100000000;  // simplices larger than this bound/10
+long SimplexParallelEvaluationBound = 100000000;  // simplices larger than this bound/10
                                                         // are evaluated by parallel threads
                                                         // simplices larger than this bound  || (this bound/10 && Hilbert basis)
                                                         // are tried for subdivision
@@ -750,7 +760,15 @@ const size_t LocalReductionBound = 10000;  // number of candidates in a thread s
 const size_t SuperBlockLength = 1000000;   // number of blocks in a super block
 
 //---------------------------------------------------------------------------
-
+// The following routiner organizes the evaluation of a single large simplex in parallel trhreads.
+// This evaluation can be split into "superblocks" whose blocks are then run in parallel.
+// The reason or the existence of superblocks is the joint local reduction of the common results of
+// the individual blocks. Each block gets its parallel thread, and is done sequentially by this thread.
+// When the blockas in a superblock have been finished, the resulrs are transferred to the collector
+// of thread 0, and a local reduction is applied to it.
+// The joint local reduction is also done when a single trgrad has collected LocalReductionBound many
+// Hilbert basis elements.
+// Superblocks were introduced to give a better progress report of the current computation.
 template <typename Integer>
 void SimplexEvaluator<Integer>::evaluation_loop_parallel() {
     size_t block_length = ParallelBlockLength;
@@ -839,7 +857,8 @@ void SimplexEvaluator<Integer>::evaluation_loop_parallel() {
 }
 
 //---------------------------------------------------------------------------
-
+// runs the evaluation over all vectors in the basic parallelotope that are 
+// produced from block_start to block_end.
 template <typename Integer>
 void SimplexEvaluator<Integer>::evaluate_block(long block_start, long block_end, Collector<Integer>& Coll) {
     size_t last;

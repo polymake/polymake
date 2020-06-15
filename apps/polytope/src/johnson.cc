@@ -75,27 +75,22 @@ Array<Int> neighbors(const Matrix<double>& V, const Set<Int>& f_vert)
 {
    Matrix<double> FV = V.minor(f_vert,All);
 
-   BigObject facet("Polytope<Float>");
+   // project the points to a plane to make sure we get one polygon
+   // even though the coords are inexact
+   Matrix<double> basis(2, 4);
+   basis[0] = FV[2] - FV[0];
+   basis[1] = FV[1] - FV[0];
+   FV = ones_vector<double>() | FV * T(basis);
+   BigObject facet("Polytope<Float>", "VERTICES", FV);
 
-   //project the points to a plane to make sure we get one polygon
-   //even though the coords are inexact
-   Matrix<double> basis(2,4);
-   basis[0] = FV[2]-FV[0];
-   basis[1] = FV[1]-FV[0];
-   FV = FV * T(basis);
-   FV = ones_vector<double>() | FV;
-   facet.take("VERTICES")<< FV;
-
-   //sort VIF lexicographically to ensure the facet polytope is
-   //independent of permutations through convex hull algos
+   // sort VIF lexicographically to ensure the facet polytope is
+   // independent of permutations through convex hull algos
    IncidenceMatrix<> VIF = facet.give("VERTICES_IN_FACETS");
    Set<Set<Int>> VIF_sorted;
    for (auto f = entire(rows(VIF)); !f.at_end(); ++f)
       VIF_sorted += *f;
 
-   BigObject facetlex("Polytope<Float>");
-   facetlex.take("VERTICES")<<FV;
-   facetlex.take("VERTICES_IN_FACETS")<<VIF_sorted;
+   BigObject facetlex("Polytope<Float>", "VERTICES", FV, "VERTICES_IN_FACETS", VIF_sorted);
 
    //vertex indices in counterclockwise order
    Array<Array<Int>> FVIF = facetlex.give("VIF_CYCLIC_NORMAL");
@@ -161,7 +156,6 @@ Matrix<double> create_regular_polygon_vertices(const Int n, const double r, cons
 //creates an exact octagonal prism with z-coordinates z_1 and z_2
 BigObject exact_octagonal_prism(QE z_1, QE z_2)
 {
-  BigObject p("Polytope<QuadraticExtension>");
   Matrix<QE> V(16,4);
   V.col(0).fill(1);
   for (Int i = 0; i < 8; ++i) {
@@ -175,9 +169,7 @@ BigObject exact_octagonal_prism(QE z_1, QE z_2)
   V(0,2)=V(1,1)=V(2,1)=V(7,2)=V(8,2)=V(9,1)=V(10,1)=V(15,2)=q;
   V(3,2)=V(4,2)=V(5,1)=V(6,1)=V(11,2)=V(12,2)=V(13,1)=V(14,1)=-q;
 
-   p.take("VERTICES") << V;
-
-   return p;
+  return BigObject("Polytope<QuadraticExtension>", "VERTICES", V);
 }
 
 
@@ -349,16 +341,13 @@ BigObject elongate(BigObject p, const Set<Int>& f_vert)
 //uses sqrt to calculate side length, thus not exact
 BigObject rotate_facet(BigObject p, const Set<Int>& f_vert, double a)
 {
-  Matrix<double> V = p.give("VERTICES");
+  const Matrix<double> V = p.give("VERTICES");
+  const Matrix<double> FV = V.minor(f_vert, All);
+  const Matrix<double> W = V.minor(~f_vert, All);
+  const Vector<double> normal = find_facet_normal(V,f_vert);
 
-  Matrix<double> FV = V.minor(f_vert, All);
-  Matrix<double> W = V.minor(~f_vert, All);
-
-  Vector<double> normal = find_facet_normal(V,f_vert);
-
-  Matrix<double> trans = zero_vector<double>(FV.rows()) | repeat_row(normal - average(rows(FV)), FV.rows()).minor(All,sequence(1,3)); //translate barycenter to axis
-
-  Matrix<double> Rot = rotate(FV+trans, normal, a)-trans;
+  const Matrix<double> trans = zero_vector<double>(FV.rows()) | repeat_row(normal - average(rows(FV)), FV.rows()).minor(All,sequence(1,3)); // translate barycenter to axis
+  const Matrix<double> Rot = rotate(FV+trans, normal, a)-trans;
 
   BigObject p_out("Polytope<Float>");
   p_out.take("VERTICES") << (W/Rot);
@@ -399,14 +388,9 @@ BigObject gyroelongate(BigObject p, const Set<Int>& f_vert)
 BigObject create_prism(Int n)
 {
    Matrix<double> V = create_regular_polygon_vertices(n, 1, 0);
-
-   double side_length = norm(V[0]-V[1]);
-
-   BigObject p_out("Polytope<Float>");
-
-   p_out.take("VERTICES") << (V | zero_vector<double>()) / (V | same_element_vector(side_length, n));
-
-   return p_out;
+   const double side_length = norm(V[0]-V[1]);
+   return BigObject("Polytope<Float>",
+                    "VERTICES", (V | zero_vector<double>()) / (V | same_element_vector(side_length, n)));
 }
 
 //removes the facet given as vertex index set
@@ -441,7 +425,7 @@ template <typename E>
 void centralize(BigObject& p)
 {
   p.take("AFFINE_HULL") << Matrix<E>(0, 4);
-  p=call_function("center", p);
+  p = call_function("center", p);
 }
 
 template <typename E>
@@ -505,14 +489,13 @@ BigObject square_cupola_impl(bool centered)
   Matrix<QE> W(4,4);
   W.col(0).fill(1);
   W.col(3).fill(height);
-  W(0,1)=W(0,2)=W(1,1)=W(2,2)=1;
-  W(1,2)=W(2,1)=W(3,1)=W(3,2)=-1;
+  W(0,1) = W(0,2) = W(1,1) = W(2,2) = 1;
+  W(1,2) = W(2,1) = W(3,1) = W(3,2) = -1;
 
-  V/= W;
+  V /= W;
 
-  BigObject p=build_from_vertices(V, centered);
+  BigObject p = build_from_vertices(V, centered);
   p.set_description() << "Johnson solid J4: Square cupola" << endl;
-
   return p;
 }
 
@@ -525,11 +508,10 @@ BigObject pentagonal_cupola()
 {
   BigObject rico = call_function("rhombicosidodecahedron");
   Matrix<QE> V = rico.give("VERTICES");
-  V= V.minor(sequence(0,7),All) / V.minor(sequence(8,3),All) / V.row(13) / V.row(14) / V.row(18) / V.row(19) / V.row(24);
+  V = V.minor(sequence(0,7),All) / V.minor(sequence(8,3),All) / V.row(13) / V.row(14) / V.row(18) / V.row(19) / V.row(24);
 
-  BigObject p=build_from_vertices(V);
+  BigObject p = build_from_vertices(V);
   p.set_description() << "Johnson solid J5: Pentagonal cupola" << endl;
-
   return p;
 }
 
@@ -537,9 +519,9 @@ BigObject pentagonal_rotunda()
 {
   BigObject ico = call_function("icosidodecahedron");
   Matrix<QE> V = ico.give("VERTICES");
-  V= V.minor(sequence(0,17),All) / V.row(18) / V.row(19) / V.row(21);
+  V = V.minor(sequence(0,17),All) / V.row(18) / V.row(19) / V.row(21);
 
-  BigObject p=build_from_vertices(V);
+  BigObject p = build_from_vertices(V);
   p.set_description() << "Johnson solid J6: Pentagonal rotunda" << endl;
 
   return p;
@@ -553,9 +535,8 @@ BigObject elongated_triangular_pyramid()
 
   Matrix<QE> V( ones_vector<QE>(7) | (same_element_vector(c,3) / unit_matrix<QE>(3) / (unit_matrix<QE>(3) + same_element_matrix(s, 3, 3))));
 
-  BigObject p=build_from_vertices(V);
+  BigObject p = build_from_vertices(V);
   p.set_description() << "Johnson solid J7: Elongated triangular bipyramid" << endl;
-
   return p;
 }
 
@@ -564,15 +545,13 @@ BigObject elongated_square_pyramid_impl(bool centered)
   Matrix<QE> square_vertices =  create_square_vertices<QE>();
 
   Vector<QE> tip(4);
-  tip[0]=1;
-  tip[1]=tip[2]=0;
-  tip[3]=QE(0,1,2);
+  tip[0] = 1;
+  tip[3] = QE(0,1,2);
 
   Matrix<QE> V( ((square_vertices | zero_vector<QE>(4)) / (square_vertices | -2*ones_vector<QE>(4))) / tip );
 
-  BigObject p=build_from_vertices(V, centered);
+  BigObject p = build_from_vertices(V, centered);
   p.set_description() << "Johnson solid J8: Elongated square pyramid" << endl;
-
   return p;
 }
 
@@ -585,7 +564,7 @@ BigObject elongated_square_pyramid()
 BigObject elongated_pentagonal_pyramid()
 {
   BigObject p = pentagonal_pyramid();
-  p = elongate(p,sequence(1,5));
+  p = elongate(p, sequence(1,5));
 
   IncidenceMatrix<> VIF{ {6,7,8,9,10},
                          {1,3,6,8},
@@ -611,7 +590,7 @@ BigObject elongated_pentagonal_pyramid()
 BigObject gyroelongated_square_pyramid()
 {
    BigObject p = square_pyramid();
-   p = gyroelongate(p,sequence(0,4));
+   p = gyroelongate(p, sequence(0,4));
 
    IncidenceMatrix<> VIF{ {1,3,4},
                           {2,3,8},
@@ -641,9 +620,8 @@ BigObject gyroelongated_pentagonal_pyramid()
    Matrix<QE> V = ico.give("VERTICES");
    V = V.minor(sequence(0,11),All);
 
-   BigObject p=build_from_vertices(V);
+   BigObject p = build_from_vertices(V);
    p.set_description() << "Johnson solid J11: Gyroelongated pentagonal pyramid" << endl;
-
    return p;
 }
 
@@ -653,9 +631,8 @@ BigObject triangular_bipyramid()
 
   Matrix<Rational> V( ones_vector<Rational>(5) | unit_matrix<Rational>(3) / ones_vector<Rational>(3) / same_element_vector(c, 3));
 
-  BigObject p=build_from_vertices(V);
+  BigObject p = build_from_vertices(V);
   p.set_description() << "Johnson solid J12: Triangular bipyramid" << endl;
-
   return p;
 }
 
@@ -663,7 +640,7 @@ BigObject triangular_bipyramid()
 BigObject pentagonal_bipyramid()
 {
   BigObject p = pentagonal_pyramid();
-  p = augment(p,sequence(1,5));
+  p = augment(p, sequence(1,5));
 
   IncidenceMatrix<> VIF { {0,4,5},
                           {4,5,6},
@@ -692,9 +669,8 @@ BigObject elongated_triangular_bipyramid()
 
   Matrix<QE> V( ones_vector<QE>() | (same_element_vector(1+s, 3) / (same_element_vector(c, 3) / unit_matrix<QE>(3) / (unit_matrix<QE>(3) + same_element_matrix(s, 3, 3)))));
 
-  BigObject p=build_from_vertices(V);
+  BigObject p = build_from_vertices(V);
   p.set_description() << "Johnson solid J14: Elongated triangular bipyramid" << endl;
-
   return p;
 }
 
@@ -709,13 +685,11 @@ BigObject elongated_square_bipyramid()
   tip[1]=tip[2]=0;
   tip[3]=QE(-2,-1,2);
 
-  Matrix<QE> V = ( esp_vertices / tip);
+  Matrix<QE> V = esp_vertices / tip;
 
-  BigObject p=build_from_vertices(V);
+  BigObject p = build_from_vertices(V);
   p.set_description() << "Johnson solid J15: Elongated square bipyramid" << endl;
-
   return p;
-
 }
 
 //FIXME: coordinates #830
@@ -817,9 +791,8 @@ BigObject elongated_square_cupola_impl(bool centered)
   Matrix<QE> T = square_cupola_impl(false).give("VERTICES");
   V /= T.minor(sequence(8,4),All);
 
-  BigObject p=build_from_vertices(V, centered);
+  BigObject p = build_from_vertices(V, centered);
   p.set_description() << "Johnson solid J19: Elongated square cupola" << endl;
-
   return p;
 }
 
@@ -903,7 +876,6 @@ BigObject elongated_pentagonal_rotunda()
 
    centralize<double>(p);
    p.set_description() << "Johnson solid J21: Elongated pentagonal rotunda" << endl;
-
    return p;
 }
 
@@ -947,10 +919,8 @@ BigObject gyroelongated_square_cupola()
 {
   Matrix<double> V = square_cupola_impl(false).give("VERTICES");
   const double height = -2*sqrt(1-1.0/(4.0*cos(M_PI/16)*cos(M_PI/16)));
-  Matrix<double> W = create_regular_polygon_vertices(8, sqrt(2)*sqrt(2+sqrt(2)), 0);
-
-  BigObject p("Polytope<Float>");
-  Matrix<double> X = (W.minor(All, sequence(0,3)) | same_element_vector(height, 8)) / V;
+  const Matrix<double> W = create_regular_polygon_vertices(8, sqrt(2)*sqrt(2+sqrt(2)), 0);
+  const Matrix<double> X = (W.minor(All, sequence(0,3)) | same_element_vector(height, 8)) / V;
 
   IncidenceMatrix<> VIF{ {0,1,9},
                          {1,2,8},
@@ -979,12 +949,12 @@ BigObject gyroelongated_square_cupola()
                          {12,13,19},
                          {16,17,18,19} };
 
+  BigObject p("Polytope<Float>");
   p.take("VERTICES") << X;
   p.take("VERTICES_IN_FACETS") << VIF;
 
   centralize<double>(p);
   p.set_description() << "Johnson solid J23: Gyroelongated square cupola" << endl;
-
   return p;
 }
 
@@ -1083,7 +1053,6 @@ BigObject gyroelongated_pentagonal_rotunda()
 
    centralize<double>(p);
    p.set_description() << "Johnson solid J25: Gyroelongated pentagonal rotunda" << endl;
-
    return p;
 }
 
@@ -1205,7 +1174,8 @@ BigObject pentagonal_orthobicupola()
    return p;
 }
 
-BigObject pentagonal_gyrobicupola(){
+BigObject pentagonal_gyrobicupola()
+{
    BigObject p = pentagonal_pyramid();
    p = call_function("minkowski_sum", 1, p, -1, p);
 
@@ -1383,7 +1353,6 @@ BigObject elongated_triangular_gyrobicupola()
 
    centralize<double>(p);
    p.set_description() << "Johnson solid J36: Elongated triangular gyrobicupola" << endl;
-
    return p;
 }
 
@@ -1394,9 +1363,8 @@ BigObject elongated_square_gyrobicupola()
   V /= W.minor(sequence(12,4),All);
   V(20,3)=V(21,3)=V(22,3)=V(23,3)= V(20,3)-2;
 
-  BigObject p=build_from_vertices(V);
+  BigObject p = build_from_vertices(V);
   p.set_description() << "Johnson solid J37: Elongated square gyrobicupola" << endl;
-
   return p;
 }
 
@@ -1604,7 +1572,7 @@ BigObject elongated_pentagonal_gyrocupolarotunda()
 BigObject elongated_pentagonal_orthobirotunda()
 {
    BigObject p = elongated_pentagonal_rotunda();
-   p = rotunda(p,sequence(20,10));
+   p = rotunda(p, sequence(20,10));
 
    IncidenceMatrix<> VIF{ {22,23,30,31,35},
                           {23,26,31},
@@ -2019,10 +1987,8 @@ BigObject augmented_triangular_prism()
   BigObject p("Polytope<Float>");
   p.take("VERTICES") << V;
   p.take("VERTICES_IN_FACETS") << VIF;
-
   centralize<double>(p);
   p.set_description() << "Johnson solid J49: augmented triangular prism" << endl;
-
   return p;
 }
 

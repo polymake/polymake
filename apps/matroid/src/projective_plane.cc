@@ -59,9 +59,8 @@ BigObject projective_plane(const Int p)
    if (p < 1) {
       throw std::runtime_error("projective_plane: p should be positive.");	
    }
-   BigObject m("Matroid");
-   Int n_elements = p*p+p+1;
-   Int rank = 3;
+   const Int n_elements = p*p+p+1;
+   const Int rank = 3;
 
    // generators for SL_3(Z) (this is (mod p) not SL_3(F_p)) but sufficient.
    Matrix<Int> m0(3,3);
@@ -115,9 +114,10 @@ BigObject projective_plane(const Int p)
    Set<Int> basis{0L, 1L, p+1};
    Set<Set<Int>> bases{ sym_group.orbit(basis) };
 
-   m.take("BASES") << bases;
-   m.take("RANK") << rank;
-   m.take("N_ELEMENTS") << n_elements;
+   BigObject m("Matroid",
+               "BASES", bases,
+               "RANK", rank,
+               "N_ELEMENTS", n_elements);
    if (p == 2) {
       m.set_description()<<"The Fano matroid, also known as the 7-point projective plane of order 2, which is representable if and only if the corresponding Field has characteristic 2."<<endl;
    } else {

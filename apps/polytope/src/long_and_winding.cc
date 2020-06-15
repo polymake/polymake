@@ -68,9 +68,8 @@ BigObject construct_polytope(const SparseMatrix<puiseux_field>& I, const Vector<
          p.take("FEASIBLE") << true;
          p.take("FULL_DIM") << true;
       }
-      BigObject LP("LinearProgram", mlist<Rational>());
-      LP.take("LINEAR_OBJECTIVE") << unit_vector<Rational>(d,1);
-      p.take("LP") << LP;
+      p.take("LP.LINEAR_OBJECTIVE") << unit_vector<Rational>(d, 1);
+
    } else if (eval_float_flag) {
       double value = options["eval_float"];
       if (value <= 0.0) 
@@ -88,17 +87,14 @@ BigObject construct_polytope(const SparseMatrix<puiseux_field>& I, const Vector<
          p.take("FEASIBLE") << true;
          p.take("FULL_DIM") << true;
       }
-      BigObject LP("LinearProgram", mlist<double>());
-      LP.take("LINEAR_OBJECTIVE") << unit_vector<double>(d,1);
-      p.take("LP") << LP;
+      p.take("LP.LINEAR_OBJECTIVE") << unit_vector<double>(d, 1);
+
    } else {
       p = BigObject("Polytope", mlist<puiseux_field>());
       p.take("FACETS") << I;
       p.take("AFFINE_HULL") << SparseMatrix<puiseux_field>(0,d);
       p.take("REL_INT_POINT") << u;
-      BigObject LP("LinearProgram", mlist<puiseux_field>());
-      LP.take("LINEAR_OBJECTIVE") << unit_vector<puiseux_field>(d,1);
-      p.take("LP") << LP;
+      p.take("LP.LINEAR_OBJECTIVE") << unit_vector<puiseux_field>(d, 1);
    }
 
    p.take("BOUNDED") << true;

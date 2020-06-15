@@ -38,7 +38,7 @@ declare object_specialization PointOrbit = Polytope<Rational> {
          # correspond to the [[REPRESENTATIVE_CERTIFIERS]], 
          # which represent the different orbit polytopes
          # contained in the given orbit polytope.
-         property NOP_GRAPH : objects::Graph<Directed>;
+         property NOP_GRAPH : Graph<Directed>;
 
          # A matrix of representatives of all certifiers
          # for [[POINTS_GENERATORS]] with respect to the

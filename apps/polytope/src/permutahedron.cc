@@ -43,7 +43,7 @@ BigObject permutahedron(Int d, OptionSet options)
       ++r;
    } while (std::next_permutation(perm.begin(),perm.end()));
 
-// generate the combinatorial symmetry group on the coordinates
+   // generate the combinatorial symmetry group on the coordinates
    const bool group_flag = options["group"];
    if ( group_flag ) {
       Array<Array<Int>> gens(2);
@@ -58,16 +58,11 @@ BigObject permutahedron(Int d, OptionSet options)
       }
       gens[1] = gen;
 
-      BigObject a("group::PermutationAction");
-      a.take("GENERATORS") << gens;
-
-      BigObject g("group::Group");
+      BigObject a("group::PermutationAction", "GENERATORS", gens);
+      BigObject g("group::Group", "fullCombinatorialGroupOnCoords");
       g.set_description() << "full combinatorial group on coordinates of " << d << "-dim permutahedron" << endl;
-      g.set_name("fullCombinatorialGroupOnCoords");
-
       p.take("GROUP") << g;
       p.take("GROUP.COORDINATE_ACTION") << a;
-
    }
 
    p.take("CONE_AMBIENT_DIM") << d+2;
@@ -157,13 +152,9 @@ BigObject signed_permutahedron(Int d, OptionSet options)
       if(n_sym == 2)
          gens[d+1] = sym_gens[1];
 
-      BigObject a("group::PermutationAction");
-      a.take("GENERATORS") << gens;
-
-      BigObject g("group::Group");
+      BigObject a("group::PermutationAction", "GENERATORS", gens);
+      BigObject g("group::Group", "fullCombinatorialGroupOnVertices");
       g.set_description() << "full combinatorial group on vertices of " << d << "-dim signed permutahedron" << endl;
-      g.set_name("fullCombinatorialGroupOnVertices");
-
       p.take("GROUP") << g;
       p.take("GROUP.VERTICES_ACTION") << a;
 

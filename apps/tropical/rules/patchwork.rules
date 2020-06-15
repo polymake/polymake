@@ -18,58 +18,166 @@
 object Patchwork {
 
   # Sign distribution on the support of the [[POLYNOMIAL]].
+  # Indices correspond to row indices of [[MONOMIALS]].
   property SIGNS : Array<Bool>;
 
   # Facets of the real part of the patchworked hypersurface.
-  # Each row gives the indices of those facets of the original trop. hypersurface,
-  # which are present in the orthant described by the binary expression of the row number.
-  # E.g. in dimension 3, the 6th row will hold the facets present in the orthant [0,1,1].
+  # Row indices correspond to orthants (ordered lexicographically),
+  # column indices correspond to facets of the original hypersurface.
+  # This is the transpose of [[REAL_PHASE]].
   property REAL_FACETS : IncidenceMatrix<NonSymmetric>;
+
+  # Real phase structure of the patchworked hypersurface.
+  # Row indices correspond to facets of the original hypersurface,
+  # column indices correspond to orthants (ordered lexicographically).
+  # I.e., a copy of facet i appears in orthant j,
+  # iff the j-th entry in the i-th row is 1.
+  # This is the transpose of [[REAL_FACETS]].
+  # @example
+  # > $h = new tropical::Hypersurface<Max>(MONOMIALS=>unit_matrix(3),COEFFICIENTS=>ones_vector(3));
+  # > $p = $h->PATCHWORK(SIGNS=>[0,1,0]);
+  # > print $p->REAL_PHASE;
+  # | {0 2}
+  # | {2 3}
+  # | {0 3}
+  # > $p->realize->VISUAL;
+  property REAL_PHASE : IncidenceMatrix<NonSymmetric>;
 
   permutation TermPerm : PermBase;
 
   permutation ConesPerm : PermBase;
-
-  rule REAL_FACETS : ConesPerm.REAL_FACETS, ConesPerm.PERMUTATION {
-    $this->REAL_FACETS=permuted_cols($this->ConesPerm->REAL_FACETS, $this->ConesPerm->PERMUTATION);
-  }
-  # weight 1.10;
 
   rule SIGNS : TermPerm.SIGNS, TermPerm.PERMUTATION {
     $this->SIGNS=permuted($this->TermPerm->SIGNS, $this->TermPerm->PERMUTATION);
   }
   # weight 1.10;
 
-  # @param String method "rigid" (default) or "uniform"
-  # @return fan::PolyhedralComplex<Rational>
+  rule REAL_FACETS : ConesPerm.REAL_FACETS, ConesPerm.PERMUTATION {
+    $this->REAL_FACETS=permuted_cols($this->ConesPerm->REAL_FACETS, $this->ConesPerm->PERMUTATION);
+  }
+  # weight 1.10;
+
+  rule REAL_PHASE : ConesPerm.REAL_PHASE, ConesPerm.PERMUTATION {
+    $this->REAL_PHASE=permuted_rows($this->ConesPerm->REAL_PHASE, $this->ConesPerm->PERMUTATION);
+  }
+  # weight 1.10;
+
   # The real part of the patchworked hypersurface,
   # realized as a polyhedral hypersurface in IR^dim.
   # The vertices of each of the 2^dim copies of the hypersurface
   # will be moved to the interior of the respective orthant
   # (according to method), and relevant unbounded facets will be joined.
-  # If method is "rigid", vertices will be translated to the positive orthant,
+  # If method is "rigid" (default), vertices will be translated to the positive orthant,
   # and then reflected to their corresponding orthant.
   # If method is "uniform", vertices will be moved to the barycenter
   # of the respective dual cell in the dual subdivision of the support,
   # and then reflected to their corresponding orthant
   # (this only works if the hypersurface is simplicial, e.g. for curves).
+  # @param String method "rigid" (default) or "uniform"
+  # @return fan::PolyhedralComplex<Rational>
+  # @example Visualize a patchworked plane:
+  # > $h1 = new tropical::Hypersurface<Max>(POLYNOMIAL=>toTropicalPolynomial("max(a,b,c,d)"));
+  # > $p1 = $h1->PATCHWORK(SIGNS=>[1,0,1,0]);
+  # > $p1->realize->VISUAL;
+  # @example A "nice" visualization for a curve:
+  # > $h2 = harnack_curve(3);
+  # > $p2 = $h2->PATCHWORK;
+  # > $p2->realize("uniform")->VISUAL;
   user_method realize(;String = "rigid") : REAL_FACETS {
-    # exception if !defined($this->parent)
     my ($this, $method) = @_;
     return real_part_realize($this->parent->MONOMIALS, $this->parent->COEFFICIENTS, $this->parent->VERTICES, $this->parent->MAXIMAL_POLYTOPES, $this->parent->FAR_VERTICES, $this->REAL_FACETS, $method);
   }
+
+  # The cellular chain complex with Z_2 coefficients
+  # of the patchworked hypersurface.
+  # The d-th entry represents the d-th boundary matrix,
+  # i.e., the one mapping (d+1)-chains to d-chains.
+  # It is computed directly from the dual subdivision,
+  # which means that, instead of a tropical polynomial,
+  # one may initiate the Hypersurface object via its
+  # dual subdivision, which in turn allows this computation
+  # to be carried out on non-regular subdivisions.
+  # @example A patchworked line in the real projective plane is combinatorially a triangle:
+  # > $h = new tropical::Hypersurface<Max>(MONOMIALS=>unit_matrix(3),COEFFICIENTS=>ones_vector(3));
+  # > $p = $h->PATCHWORK(SIGNS=>[0,1,0]);
+  # > $c = $p->CHAIN_COMPLEX_Z2;
+  # > $b = $c->boundary_matrix(1);
+  # > print $b->rows, "x", $b->cols;
+  # | 3x3
+  # > print rank($b);
+  # | 2
+  # @example A non-regular example:
+  # > $points = [[1,4,0,0],[1,0,4,0],[1,0,0,4],[1,2,1,1],[1,1,2,1],[1,1,1,2]];
+  # > $cells = [[0,1,3],[0,2,5],[0,3,5],[1,2,4],[1,3,4],[2,4,5],[3,4,5]];
+  # > $moae = new fan::SubdivisionOfPoints(POINTS=>$points, MAXIMAL_CELLS=>$cells);
+  # > $h = new Hypersurface<Min>(DUAL_SUBDIVISION=>$moae);
+  # > $p = $h->PATCHWORK(SIGNS=>[0,0,0,0,0,0]);
+  # > print $p->CHAIN_COMPLEX_Z2->type->full_name;
+  # | ChainComplex<SparseMatrix<GF2, NonSymmetric>>
+  property CHAIN_COMPLEX_Z2 : topaz::ChainComplex<SparseMatrix<GF2>>;
+
+  # The Z_2 Betti numbers of the patchworked hypersurface.
+  # See the documentation of CHAIN_COMPLEX_Z2 for details.
+  # @example A patchworked hyperplane in n-dimensional real projective space
+  # is topologically the (n-1)-dimensional real projective space:
+  # > $h = new tropical::Hypersurface<Max>(POLYNOMIAL=>toTropicalPolynomial("max(a,b,c,d,e,f)"));
+  # > $p = $h->PATCHWORK(SIGNS=>[0,0,0,0,0,0]);
+  # > print $p->BETTI_NUMBERS_Z2;
+  # | 1 1 1 1 1
+  property BETTI_NUMBERS_Z2 : Array<Int>;
 
 }
 
 object Hypersurface {
 
+# property GENERIC : Bool;
+
 # @Category Combinatorics
-# This encodes a patchworking structure on the hypersurface.
-# Its lone input property is [[SIGNS]]
+# This encodes a patchworking structure on a tropical hypersurface.
+# Its lone input property is [[SIGNS]] - a sign distribution on the vertices
+# of the induced regular subdivision of the corresponding Newton polytope.
+# As it is a multiple subobject, you can create multiple patchworking structures
+# (for different sign distributions) on the same tropical hypersurface object.
+# @example
+# > $h = new tropical::Hypersurface<Max>(POLYNOMIAL=>toTropicalPolynomial("max(a,b,c)"));
+# > $p1 = $h->PATCHWORK(SIGNS=>[0,1,0]);
+# > $p2 = $h->PATCHWORK(SIGNS=>[1,1,1]);
 property PATCHWORK : Patchwork : multiple;
 
 rule PATCHWORK.REAL_FACETS : PATCHWORK.SIGNS, MONOMIALS, COEFFICIENTS, VERTICES, MAXIMAL_POLYTOPES {
+  if ($this->MONOMIALS->rows() != $this->PATCHWORK->SIGNS->size()) {
+    die "Error: dimension mismatch between signs and monomials";
+  }
   $this->PATCHWORK->REAL_FACETS = real_facets($this->PATCHWORK->SIGNS, $this->MONOMIALS, $this->COEFFICIENTS, $this->VERTICES, $this->MAXIMAL_POLYTOPES);
+}
+weight 5.05;
+
+rule PATCHWORK.REAL_FACETS : PATCHWORK.REAL_PHASE {
+  $this->PATCHWORK->REAL_FACETS = transpose($this->PATCHWORK->REAL_PHASE);
+}
+
+rule PATCHWORK.REAL_PHASE : PATCHWORK.SIGNS, MONOMIALS, COEFFICIENTS, VERTICES, MAXIMAL_POLYTOPES {
+  if ($this->MONOMIALS->rows() != $this->PATCHWORK->SIGNS->size()) {
+    die "Error: dimension mismatch between signs and monomials";
+  }
+  $this->PATCHWORK->REAL_PHASE = real_phase($this->PATCHWORK->SIGNS, $this->MONOMIALS, $this->COEFFICIENTS, $this->VERTICES, $this->MAXIMAL_POLYTOPES);
+}
+weight 5.05;
+
+rule PATCHWORK.REAL_PHASE : PATCHWORK.REAL_FACETS {
+  $this->PATCHWORK->REAL_PHASE = transpose($this->PATCHWORK->REAL_FACETS);
+}
+
+rule PATCHWORK.CHAIN_COMPLEX_Z2 : PATCHWORK.SIGNS, DUAL_SUBDIVISION.POLYHEDRAL_COMPLEX.VERTICES, DUAL_SUBDIVISION.POLYHEDRAL_COMPLEX.HASSE_DIAGRAM {
+  # $this->PATCHWORK->CHAIN_COMPLEX_Z2 = new topaz::ChainComplex<SparseMatrix<GF2>>(chain_complex_from_dualsub($this,$this->PATCHWORK->SIGNS));
+  my $cc = chain_complex_from_dualsub($this->PATCHWORK->SIGNS, $this->DUAL_SUBDIVISION->POLYHEDRAL_COMPLEX->HASSE_DIAGRAM, $this->DUAL_SUBDIVISION->POLYHEDRAL_COMPLEX->VERTICES);
+  $this->PATCHWORK->CHAIN_COMPLEX_Z2 = new topaz::ChainComplex<SparseMatrix<GF2>>($cc);
+  # $this->PATCHWORK->CHAIN_COMPLEX_Z2 = new topaz::ChainComplex<SparseMatrix<GF2>>(chain_complex_from_dualsub($this->PATCHWORK->SIGNS, $this->DUAL_SUBDIVISION->POLYHEDRAL_COMPLEX->HASSE_DIAGRAM, $this->DUAL_SUBDIVISION->POLYHEDRAL_COMPLEX->VERTICES));
+}
+weight 5.10;
+
+rule PATCHWORK.BETTI_NUMBERS_Z2 : PATCHWORK.CHAIN_COMPLEX_Z2 {
+  $this->PATCHWORK->BETTI_NUMBERS_Z2 = topaz::betti_numbers<GF2>($this->PATCHWORK->CHAIN_COMPLEX_Z2);
 }
 
 rule PATCHWORK.TermPerm.PERMUTATION = TermPerm.PERMUTATION;
@@ -80,9 +188,16 @@ rule PATCHWORK.ConesPerm.PERMUTATION = ConesPerm.PERMUTATION;
 
 ### examples:
 
-# Create a polyhedral model of the harnack curve (M-curve) of given degree.
+# This returns a Hypersurface object, and a unique attached [[PATCHWORK]] property
+# which represents an M-curve of given degree with Harnack's configuration.
 # @param Int d the degree of the curve
-# @return fan::PolyhedralComplex
+# @return tropical::Hypersurface<Min>
+# @example Create a Harnack curve of degree 6:
+# > $h = harnack_curve(6);
+# > $p = $h->PATCHWORK;
+# > print $p->BETTI_NUMBERS_Z2;
+# | 11 11
+# > $p->realize("uniform")->VISUAL;
 user_function harnack_curve( Int ) {
   my $n = shift;
   my @monoms;
@@ -100,11 +215,61 @@ user_function harnack_curve( Int ) {
   my $c = new Vector<TropicalNumber<Min>>(\@weights);
   my $s = new Array<Bool>(\@signs);
   my $h = new Hypersurface<Min>(MONOMIALS=>$m, COEFFICIENTS=>$c);
-  return $h->PATCHWORK(SIGNS=>$s)->realize("uniform");
+  $h->PATCHWORK(SIGNS=>$s);
+  return $h;
 }
 
-# Create a polyhedral model of a curve disproving the Ragsdale conjecture.
-# @return fan::PolyhedralComplex
+# This returns a Hypersurface object, and a unique attached [[PATCHWORK]] property
+# which represents an M-curve of degree 6 with Gudkov's configuration.
+# @return tropical::Hypersurface<Min>
+# @example
+# > $h = gudkov_curve;
+# > $p = $h->PATCHWORK;
+# > print $p->BETTI_NUMBERS_Z2;
+# | 11 11
+# > $p->realize("uniform")->VISUAL;
+user_function gudkov_curve {
+  my @monoms;
+  my $n = 6;
+  foreach my $i (0 .. $n) {
+    foreach my $j (0 .. $n-$i) {
+      push @monoms, [$n-$i-$j, $i, $j];
+    }
+  }
+  my $signs = [
+    1, 0, 0, 0, 0, 0, 1,
+    0, 0, 1, 0, 1, 0,
+    1, 0, 1, 0, 0,
+    0, 0, 0, 0,
+    1, 0, 1,
+    0, 0,
+    1
+  ];
+  my $weights = [
+    0,   0,   66,  156, 252, 369, 507,
+    0,   6,   23,  95,  200, 332,
+    66,  23,  24,  61,  178,
+    156, 95,  61,  45,
+    252, 200, 178,
+    369, 332,
+    507
+  ];
+  my $m = new Matrix<Int>(\@monoms);
+  my $c = new Vector<TropicalNumber<Min>>($weights);
+  my $s = new Array<Bool>($signs);
+  my $h = new Hypersurface<Min>(MONOMIALS=>$m, COEFFICIENTS=>$c);
+  $h->PATCHWORK(SIGNS=>$s);
+  return $h;
+}
+
+# This returns a Hypersurface object, and a unique attached [[PATCHWORK]] property
+# which represents a curve of degree 10 that is a counterexample
+# to Ragsdale's conjecture.
+# @return tropical::Hypersurface<Min>
+# @example
+# > $h = ragsdale_counterexample;
+# > $p = $h->PATCHWORK;
+# > $p->realize("uniform")->VISUAL;
 user_function ragsdale_counterexample {
   my @monoms;
   foreach my $i (0 .. 10) {
@@ -143,42 +308,8 @@ user_function ragsdale_counterexample {
   my $c = new Vector<TropicalNumber<Min>>($weights);
   my $s = new Array<Bool>($signs);
   my $h = new Hypersurface<Min>(MONOMIALS=>$m, COEFFICIENTS=>$c);
-  return $h->PATCHWORK(SIGNS=>$s)->realize("uniform");
-}
-
-# Create a polyhedral model of the gudkov curve of degree 6.
-# @return fan::PolyhedralComplex
-user_function gudkov_curve {
-  my @monoms;
-  my $n = 6;
-  foreach my $i (0 .. $n) {
-    foreach my $j (0 .. $n-$i) {
-      push @monoms, [$n-$i-$j, $i, $j];
-    }
-  }
-  my $signs = [
-    1, 0, 0, 0, 0, 0, 1,
-    0, 0, 1, 0, 1, 0,
-    1, 0, 1, 0, 0,
-    0, 0, 0, 0,
-    1, 0, 1,
-    0, 0,
-    1
-  ];
-  my $weights = [
-    0,   0,   66,  156, 252, 369, 507,
-    0,   6,   23,  95,  200, 332,
-    66,  23,  24,  61,  178,
-    156, 95,  61,  45,
-    252, 200, 178,
-    369, 332,
-    507
-  ];
-  my $m = new Matrix<Int>(\@monoms);
-  my $c = new Vector<TropicalNumber<Min>>($weights);
-  my $s = new Array<Bool>($signs);
-  my $h = new Hypersurface<Min>(MONOMIALS=>$m, COEFFICIENTS=>$c);
-  return $h->PATCHWORK(SIGNS=>$s)->realize("uniform");
+  $h->PATCHWORK(SIGNS=>$s);
+  return $h;
 }
 
 # Local Variables:

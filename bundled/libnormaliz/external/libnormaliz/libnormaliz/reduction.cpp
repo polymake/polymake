@@ -186,11 +186,13 @@ bool CandidateList<Integer>::is_reducible(Candidate<Integer>& c) const {
 
 //---------------------------------------------------------------------------
 
+/* // not used at present
 template <typename Integer>
 bool CandidateList<Integer>::is_reducible(vector<Integer> v, Candidate<Integer>& cand, const Full_Cone<Integer>& C) const {
     cand = Candidate<Integer>(v, C);
     return ((*this).is_reducible(cand));
 }
+*/
 
 //---------------------------------------------------------------------------
 

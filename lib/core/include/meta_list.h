@@ -245,6 +245,36 @@ struct mlist_slice<mlist<Elements...>, Start, End, TotalSize>
   static_assert(End > 0 && TotalSize > 0, "mlist_slice - invalid end index");
 };
 
+
+/// Extract elements at even positions
+template <typename List>
+struct mlist_even_subset
+   : mlist_even_subset<typename mlist_wrap<List>::type> {};
+
+template <typename T1, typename T2, typename... Tail>
+struct mlist_even_subset<mlist<T1, T2, Tail...>>
+   : mlist_concat<T1, typename mlist_even_subset<mlist<Tail...>>::type> {};
+
+template <>
+struct mlist_even_subset<mlist<>> {
+   using type = mlist<>;
+};
+
+/// Extract elements at odd positions
+template <typename List>
+struct mlist_odd_subset
+   : mlist_odd_subset<typename mlist_wrap<List>::type> {};
+
+template <typename T1, typename T2, typename... Tail>
+struct mlist_odd_subset<mlist<T1, T2, Tail...>>
+   : mlist_concat<T2, typename mlist_odd_subset<mlist<Tail...>>::type> {};
+
+template <>
+struct mlist_odd_subset<mlist<>> {
+   using type = mlist<>;
+};
+
+
 /// Check whether one list coincides with the tail of another list
 template <typename List1, typename List2, bool valid=(mlist_length<List2>::value >= mlist_length<List1>::value)>
 struct mlist_is_tail_of : std::false_type {};
@@ -749,6 +779,7 @@ struct mlist_match_all<List1, mlist<>, Compare> {
    using type2 = mlist<>;
    using complement2 = mlist<>;
 };
+
 
 /***********************************************************************
  *

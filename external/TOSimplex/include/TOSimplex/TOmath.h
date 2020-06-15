@@ -1,4 +1,4 @@
-/* Copyright (c) 2018
+/* Copyright (c) 2020
    Thomas Opfer
 
    This program is free software; you can redistribute it and/or modify it
@@ -16,17 +16,6 @@
 #ifndef TOMATH_H
 #define TOMATH_H
 
-#if defined(__APPLE__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
-#endif
-
-#include <gmpxx.h>
-
-#if defined(__APPLE__)
-#pragma clang diagnostic pop
-#endif
-
 #include <sstream>
 
 template <class T>
@@ -42,24 +31,10 @@ class TOmath
 };
 
 
-template<>
-inline mpq_class TOmath<mpq_class>::floor( const mpq_class &a ){
-	mpz_class b;
-	mpz_fdiv_q( b.get_mpz_t(), a.get_num_mpz_t(), a.get_den_mpz_t() );
-	return b;
-}
-
 template <class T>
 inline T TOmath<T>::floor( const T &a ){
 	throw std::runtime_error( "floor unimplemented for this data type." );
 	T b;
-	return b;
-}
-
-template<>
-inline mpq_class TOmath<mpq_class>::ceil( const mpq_class &a ){
-	mpz_class b;
-	mpz_cdiv_q( b.get_mpz_t(), a.get_num_mpz_t(), a.get_den_mpz_t() );
 	return b;
 }
 
@@ -77,23 +52,9 @@ inline T TOmath<T>::hugeposint(){
 	return b;
 }
 
-template<>
-inline mpq_class TOmath<mpq_class>::hugeposint(){
-	std::stringstream str;
-	str << std::numeric_limits<int64_t>::max();
-	return mpz_class( str.str() );
-}
-
 template <class T>
 inline T TOmath<T>::hugenegint(){
 	return - TOmath<T>::hugeposint();
-}
-
-template<>
-inline mpq_class TOmath<mpq_class>::hugenegint(){
-	std::stringstream str;
-	str << std::numeric_limits<int64_t>::min();
-	return mpz_class( str.str() );
 }
 
 template <class T>
@@ -101,21 +62,9 @@ inline bool TOmath<T>::isInt( const T &a ){
 	return TOmath<T>::floor( a ) == a;
 }
 
-template<>
-inline bool TOmath<mpq_class>::isInt( const mpq_class &a ){
-	return a.get_den() == 1;
-}
-
 template <class T>
 inline std::string TOmath<T>::toShortString( const T &a ){
 	return "(output unimplemented)";
-}
-
-template<>
-inline std::string TOmath<mpq_class>::toShortString( const mpq_class &a ){
-	std::stringstream str;
-	str << a.get_d();
-	return str.str();
 }
 
 

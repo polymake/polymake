@@ -62,5 +62,7 @@
   {"class": "UniPolynomial<Rational, Integer>", "include": ["polymake/Integer.h", "polymake/Rational.h", "polymake/RationalFunction.h"], "pkg": "Polymake::common::UniPolynomial_A_Rational_I_Integer_Z"},
   {"args": ["UniPolynomial<Rational, Integer>"], "include": ["polymake/Integer.h", "polymake/Rational.h", "polymake/RationalFunction.h"], "op": "new", "sig": "new"},
   {"args": ["UniPolynomial<Rational, Int>", "perl::Canned<const Vector<Rational>&>", "perl::Canned<const Array<Int>&>"], "include": ["polymake/Array.h", "polymake/Rational.h", "polymake/RationalFunction.h", "polymake/Vector.h"], "op": "new", "sig": "new.X.X"},
+  {"args": ["perl::Canned<const UniPolynomial<Rational, Int>&>", "Int"], "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "op": "_ne", "sig": "_ne:O.X.X"},
+  {"args": ["perl::Canned<const UniPolynomial<Rational, Int>&>", "Int"], "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "op": "_eq", "sig": "_eq:O.X.X"},
  null ],
 "version": 3}

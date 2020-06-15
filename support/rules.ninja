@@ -130,10 +130,11 @@ rule gen_sources
   command = ${GenerateCommand}
   description = GENERATE $out
 
-# rerun the configuration if the configuration script has changed
+# rerun the configuration if the configuration script has changed, unless we are using an alternative perl configuration right now
 rule reconfigure
-  command = ${PERL} -I${root}/perllib ${root}/support/configure.pl --builddir=${builddir}
+  command = if [ '${build.file}' = build.ninja ]; then ${PERL} -I${root}/perllib ${root}/support/configure.pl --builddir=${builddir}; else true; fi
   description = RECONFIGURE $out
+  restat = 1
   pool = console
 
 # install the core system

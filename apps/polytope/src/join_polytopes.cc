@@ -25,11 +25,12 @@ namespace polymake { namespace polytope {
 template <typename Scalar>
 BigObject join_polytopes(BigObject p1, BigObject p2, OptionSet options)
 {
-   const bool bounded=p1.give("BOUNDED") && p2.give("BOUNDED");
-   if (!bounded)
+   const bool bounded1 = p1.give("BOUNDED"),
+              bounded2 = p2.give("BOUNDED");
+   if (!bounded1 || !bounded2)
       throw std::runtime_error("join_polytopes: input polyhedron not BOUNDED");
 
-   const bool noc=options["no_coordinates"];
+   const bool noc = options["no_coordinates"];
 
    BigObject p_out("Polytope", mlist<Scalar>());
    p_out.set_description() << "Join of " << p1.name() << " and " << p2.name() << endl;
@@ -81,12 +82,9 @@ BigObject join_polytopes(BigObject p1, BigObject p2, OptionSet options)
             gens_out[i][j]+=n1;
       }
 
-      BigObject a("group::PermutationAction");
-      a.take("GENERATORS") << gens_out;
-
-      BigObject g("group::Group");
+      BigObject a("group::PermutationAction", "GENERATORS", gens_out);
+      BigObject g("group::Group", "canonicalGroup");
       g.set_description() << "canonical group induced by the group of the base polytopes" << endl;
-      g.set_name("canonicalGroup");
       p_out.take("GROUP") << g;
       p_out.take("GROUP.VERTICES_ACTION") << a;
    }

@@ -66,7 +66,10 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# @param SimplicialComplex complex"
                   "# @param Int k"
                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
-                  "# @return SimplicialComplex",
+                  "# @return SimplicialComplex"
+                  "# @example The 2-skeleton of the 3-simplex is its boundary, a 2-sphere:"
+                  "# > print isomorphic(k_skeleton(simplex(3),2), simplex(3)->BOUNDARY);"
+                  "# | true",
                   &combinatorial_k_skeleton, "k_skeleton(SimplicialComplex $ { no_labels=>0 })");
 
 UserFunctionTemplate4perl("# @category Producing a new simplicial complex from others\n"
@@ -74,7 +77,10 @@ UserFunctionTemplate4perl("# @category Producing a new simplicial complex from o
                           "# @param GeometricSimplicialComplex complex"
                           "# @param Int k"
                           "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
-                          "# @return GeometricSimplicialComplex",
+                          "# @return GeometricSimplicialComplex"
+                          "# @example The 2-skeleton of the 3-ball is its boundary, a 2-sphere:"
+                          "# > print isomorphic(k_skeleton(ball(3),2), ball(3)->BOUNDARY);"
+                          "# | true",
                           "k_skeleton<Scalar>(GeometricSimplicialComplex<Scalar> $ { no_labels=>0 })");
 } }
 

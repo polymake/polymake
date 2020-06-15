@@ -410,7 +410,7 @@ public:
 
 
 
-std::pair<SingularIdeal_wrap*, int> build_slack_ideal_minors(const Matrix<Rational>& slackMatrix, Int dim)
+std::pair<std::unique_ptr<SingularIdeal_wrap>, int> build_slack_ideal_minors(const Matrix<Rational>& slackMatrix, Int dim)
 {
    const int r = safe_cast(slackMatrix.rows());
    const int c = safe_cast(slackMatrix.cols());
@@ -439,7 +439,7 @@ std::pair<SingularIdeal_wrap*, int> build_slack_ideal_minors(const Matrix<Ration
 
    // The parameters may still be changed.
    ::ideal singMinor = getMinorIdeal(variableSlackMatrix, minorrk, 0, "Bareiss", nullptr, true);
-   return std::pair<SingularIdeal_wrap*, int>(new SingularIdeal_impl(singMinor, singRingHdl), nvars);
+   return { std::make_unique<SingularIdeal_impl>(singMinor, singRingHdl), nvars };
 }
 
 BigObject slack_ideal_non_saturated(BigObject P)
@@ -447,15 +447,15 @@ BigObject slack_ideal_non_saturated(BigObject P)
    const Matrix<Rational> slackMatrix = P.give("SLACK_MATRIX");
    Int dim = P.give("CONE_DIM");
    dim--;
-   std::pair<SingularIdeal_wrap*, int> minor_wrap = build_slack_ideal_minors(slackMatrix, dim);
-   BigObject result("Ideal");
-   result.take("N_VARIABLES") << minor_wrap.second;
-   result.take("GENERATORS") << minor_wrap.first->polynomials();
-   delete minor_wrap.first;
-   return result;
+   const auto minor_wrap = build_slack_ideal_minors(slackMatrix, dim);
+   return BigObject("Ideal",
+                    "N_VARIABLES", minor_wrap.second,
+                    "GENERATORS", minor_wrap.first->polynomials());
 }
 
 } // end namespace singular
+
+// FIXME: use std::unique_ptr instead of naked pointers
 
 SingularIdeal_wrap* SingularIdeal_wrap::create(const Array<Polynomial<>>& gens, const Vector<Int>& ord) 
 {

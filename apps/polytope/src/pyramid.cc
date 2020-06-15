@@ -68,18 +68,15 @@ BigObject pyramid(BigObject p_in, const Scalar& z, OptionSet options)
          (z0 | z);
    }
 
-   if(group){
+   if (group) {
       Array<Array<Int>> gens = p_in.give("GROUP.VERTICES_ACTION.GENERATORS");
 
-      for(auto i = entire(gens); !i.at_end(); ++i)
+      for (auto i = entire(gens); !i.at_end(); ++i)
          (*i).resize(n_vertices+1,n_vertices);
 
-      BigObject a("group::PermutationAction");
-      a.take("GENERATORS") << gens;
-
-      BigObject g("group::Group");
+      BigObject a("group::PermutationAction", "GENERATORS", gens);
+      BigObject g("group::Group", "canonicalGroup");
       g.set_description() << "canonical group induced by the group of the base polytope" << endl;
-      g.set_name("canonicalGroup");
       p_out.take("GROUP") << g;
       p_out.take("GROUP.VERTICES_ACTION") << a;
    }

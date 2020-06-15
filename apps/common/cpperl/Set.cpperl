@@ -145,5 +145,7 @@
   {"class": "Set<std::pair<std::string, Integer>>", "include": ["polymake/Integer.h", "polymake/Set.h", "polymake/client.h"], "pkg": "Polymake::common::Set__Pair_A_String_I_Integer_Z"},
   {"args": ["Set<std::pair<std::string, Integer>>"], "include": ["polymake/Integer.h", "polymake/Set.h", "polymake/client.h"], "op": "new", "sig": "new"},
   {"args": ["Set<std::pair<std::string, std::string>>"], "include": ["polymake/Set.h", "polymake/client.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<Set<Int>&>", "Int"], "include": ["polymake/Set.h"], "op": "Sub", "ret": "lvalue", "sig": "Sub:O.X1.X"},
+  {"args": ["perl::AnchorArg<perl::Canned<const pm::PointedSubset<pm::Series<long, true> >&>>"], "include": ["polymake/PowerSet.h", "polymake/Set.h"], "op": "com", "sig": "com:O.X11"},
  null ],
 "version": 3}

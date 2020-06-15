@@ -25,11 +25,11 @@ namespace polymake { namespace polytope  {
 
 template <typename Scalar>
 BigObject normal_cone_impl(BigObject p,
-                              const Set<Int>& F,
-                              const std::string& ftv_section,
-                              const std::string& rays_section,
-                              const std::string& facets_section,
-                              OptionSet options)
+                           const Set<Int>& F,
+                           const std::string& ftv_section,
+                           const std::string& rays_section,
+                           const std::string& facets_section,
+                           OptionSet options)
 {
    if (p.isa("Polytope")) {
       const Set<Int> far_face = p.give("FAR_FACE");

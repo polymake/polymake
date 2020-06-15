@@ -1114,9 +1114,8 @@ sub deserialize {
          $type = $app->eval_type($type) // croak( "invalid type $type for property $name" );
       }
       if ($prop_attrs && $prop_attrs->{attachment}) {
-         if (defined($type) && instanceof BigObjectType($type)) {
-            # resolve conflict between small and big object types with coinciding names
-            $type = $app->eval_type("props::".$prop_attrs->{_type}) // croak( "invalid type $prop_attrs->{_type} of attachment $name" );
+         if (instanceof BigObjectType($type)) {
+            croak( "invalid type $prop_attrs->{_type} of attachment $name" );
          }
          if (defined(my $construct_args = $prop_attrs->{construct})) {
             defined($type)

@@ -69,10 +69,11 @@ sub proceed {
    if(!$hasSCIP){
       # we try with libsoplex-pic.a first (for cmake builds)
       # if this cannot be found we try libsoplex.so (from make SHARED=true) later
-      $LIBS="-lsoplex-pic -lz";
+      $LIBS="-lz";
    } else {
       $LIBS = $Polymake::Bundled::scip::LIBS;
    }
+   $LIBS .= " -lsoplex-pic";
 
 
    # example code from src/example.cpp

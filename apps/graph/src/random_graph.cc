@@ -87,9 +87,10 @@ class Generator_pmodel {
 };
 
 template<typename Generator>
-BigObject erdos_renyi_model(Generator& gen, const bool try_connected, const Int max_attempts) {
+BigObject erdos_renyi_model(Generator& gen, const bool try_connected, const Int max_attempts)
+{
    Graph<> g = gen.next();
-   if (try_connected){
+   if (try_connected) {
       Int ct = 0;
       while (!is_connected(g) && ct++ < max_attempts)
          g = gen.next();

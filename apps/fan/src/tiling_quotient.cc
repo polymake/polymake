@@ -75,15 +75,12 @@ BigObject tiling_quotient(BigObject P, BigObject Q)
 
    // Take the Minkowski sum of the transformed P and Q 
    BigObjectType Polytope("Polytope", mlist<E>());
-   BigObject summand1(Polytope);
-   BigObject summand2(Polytope);
-   summand1.take("VERTICES") << (ones_vector<E>() | VPL);
-   summand2.take("VERTICES") << (ones_vector<E>() | VQL);
+   BigObject summand1(Polytope, "VERTICES", ones_vector<E>() | VPL);
+   BigObject summand2(Polytope, "VERTICES", ones_vector<E>() | VQL);
    const Matrix<E> MV = call_function("polytope::minkowski_sum_vertices_fukuda", mlist<E>(), summand1, summand2);
 
    // Find the interior and boundary lattice points of the Minkowski sum
-   BigObject M("Polytope", mlist<E>());
-   M.take("VERTICES") << MV;
+   BigObject M("Polytope", mlist<E>(), "VERTICES", MV);
    const Matrix<E> 
       ILP = M.give("INTERIOR_LATTICE_POINTS"),
       BLP = M.give("BOUNDARY_LATTICE_POINTS"),
@@ -115,8 +112,7 @@ BigObject tiling_quotient(BigObject P, BigObject Q)
       translated_facets.col(0) -= FQ.minor(All, range_from(1)) * (*lit);
 
       // intersect the translated polytope with P
-      BigObject Cell("Polytope", mlist<E>());
-      Cell.take("INEQUALITIES") << (translated_facets / FP);
+      BigObject Cell("Polytope", mlist<E>(), "INEQUALITIES", translated_facets / FP);
 
       // only proceed with full-dimensional faces
       const Int dd = Cell.give("COMBINATORIAL_DIM");
@@ -140,21 +136,20 @@ BigObject tiling_quotient(BigObject P, BigObject Q)
    }
 
    // done
-   BigObject PS("PolyhedralComplex", mlist<E>());
-   PS.take("VERTICES") << coos;
-   PS.take("MAXIMAL_POLYTOPES") << F;
-   return PS;
+   return BigObject("PolyhedralComplex", mlist<E>(),
+                    "VERTICES", coos,
+                    "MAXIMAL_POLYTOPES", F);
 }
 
 UserFunctionTemplate4perl("# @category Producing a polyhedral complex"
 			  "# Calculates the quotient of //P// by //Q//+L, where //Q//+L is a lattice tiling."
-           "# The result is a polytopal complex inside //Q//. "
+                          "# The result is a polytopal complex inside //Q//. "
 			  "# @param Polytope P a polytope"
 			  "# @param Polytope Q a polytope that tiles space"
 			  "# @tparam Coord"
 			  "# @return PolyhedralComplex",
 			  "tiling_quotient<E>(Polytope<E>, Polytope<E>)");
-    } }
+} }
 
 // Local Variables:
 // mode:C++

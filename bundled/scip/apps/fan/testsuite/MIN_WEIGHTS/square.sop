@@ -1,0 +1,20 @@
+{
+  "MAXIMAL_CELLS": [
+    [0, 1, 2],
+    [1, 2, 3],
+    {"cols": 4}
+  ],
+  "MIN_WEIGHTS": [1, 0, 0, 0],
+  "POINTS": [
+    ["1", "-1", "-1"],
+    ["1", "1", "-1"],
+    ["1", "-1", "1"],
+    ["1", "1", "1"]
+  ],
+  "_canonical": true,
+  "_id": "square",
+  "_ns": {
+    "polymake": ["https://polymake.org", "4.1"]
+  },
+  "_type": "fan::SubdivisionOfPoints<Rational>"
+}

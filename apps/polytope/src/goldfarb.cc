@@ -35,9 +35,6 @@ BigObject goldfarb(Int d, const Scalar& e, const Scalar& g)
    if (g>e/4)
       throw std::runtime_error("goldfarb: g <= e/4");
 
-   BigObject p("Polytope", mlist<Scalar>());
-   p.set_description() << "Goldfarb " << d << "-cube with parameters e=" << e << " and g=" << g << endl;
-
    Matrix<Scalar> IE(4+2*(d-2),d+1);
 
    // the first 4 inequalities
@@ -53,10 +50,12 @@ BigObject goldfarb(Int d, const Scalar& e, const Scalar& g)
       IE(i+1, 0 ) = 1; IE(i+1, k-1) = e*g; IE(i+1, k) = -e; IE(i+1, k+1) = -1;
    }
   
-   p.take("INEQUALITIES") << IE;
-   p.take("LP.LINEAR_OBJECTIVE") << unit_vector<Scalar>(d+1,d);
-   p.take("FEASIBLE") << 1;
-   p.take("BOUNDED") << 1;
+   BigObject p("Polytope", mlist<Scalar>(),
+               "INEQUALITIES", IE,
+               "LP.LINEAR_OBJECTIVE", unit_vector<Scalar>(d+1, d),
+               "FEASIBLE", true,
+               "BOUNDED", true);
+   p.set_description() << "Goldfarb " << d << "-cube with parameters e=" << e << " and g=" << g << endl;
    return p;
 }
 
@@ -73,7 +72,6 @@ BigObject goldfarb_sit(Int d, const Scalar& eps, const Scalar& delta)
    if (delta>Rational(1,2)) // 1/beta
       throw std::runtime_error("goldfarb_sit: delta <= 1/2");
 
-   BigObject p("Polytope", mlist<Scalar>());
    Matrix<Scalar> IE(4+2*(d-2), d+1);
 
    // the last 2 inequalities
@@ -95,12 +93,12 @@ BigObject goldfarb_sit(Int d, const Scalar& eps, const Scalar& delta)
       vec[k] = delta*vec[k+1];
    }
 
-   p.take("INEQUALITIES") << IE;
-   p.take("LP.LINEAR_OBJECTIVE") << vec;
-   p.take("FEASIBLE") << 1;
-   p.take("ONE_VERTEX") << unit_vector<Scalar>(d+1,0);
-   p.take("BOUNDED") << 1;
-   return p;
+   return BigObject("Polytope", mlist<Scalar>(),
+                    "INEQUALITIES", IE,
+                    "LP.LINEAR_OBJECTIVE", vec,
+                    "FEASIBLE", true,
+                    "ONE_VERTEX", unit_vector<Scalar>(d+1, 0),
+                    "BOUNDED", true);
 }
 
 UserFunctionTemplate4perl("# @category Producing a polytope from scratch"

@@ -41,11 +41,6 @@ BigObject transportation(const Vector<Scalar>& r, const Vector<Scalar>& c)
       if (*x < 0)
          throw std::runtime_error("transportation polytope: r and c must have nonnegative entries");
 
-   BigObject p("Polytope", mlist<Scalar>());
-   p.set_description() << "transportation polytope for r=(" << r << ") and c=(" << c << ")" << endl;
-
-   p.take("CONE_AMBIENT_DIM") << (m*n+1);
-
    Matrix<Scalar> ineq(m*n,m*n+1);
    ineq.minor(range(0,m*n-1),range(1,m*n)).diagonal().fill(1);
    Matrix<Scalar> eq(m+n,m*n+1);
@@ -55,12 +50,14 @@ BigObject transportation(const Vector<Scalar>& r, const Vector<Scalar>& c)
    }
    eq.col(0) = (-1) * (r | c);
 
-   p.take("INEQUALITIES") << ineq;
-   p.take("EQUATIONS") << eq;
-   p.take("BOUNDED") << true;
-   p.take("POSITIVE") << true;
-   p.take("FEASIBLE") << true;
-
+   BigObject p("Polytope", mlist<Scalar>(),
+               "CONE_AMBIENT_DIM", m*n+1,
+               "INEQUALITIES", ineq,
+               "EQUATIONS", eq,
+               "BOUNDED", true,
+               "POSITIVE", true,
+               "FEASIBLE", true);
+   p.set_description() << "transportation polytope for r=(" << r << ") and c=(" << c << ")" << endl;
    return p;
 }
 

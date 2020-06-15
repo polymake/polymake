@@ -72,11 +72,11 @@ ListReturn fan_decomposition(BigObject cycle)
     fanRays.row(*nf) = unit_vector<Rational>(fanRays.cols(),0);
     fanRays = fanRays.minor(usedRays,All);
 
-    BigObject fanCycle("Cycle", mlist<Addition>());
-    fanCycle.take("PROJECTIVE_VERTICES") << fanRays; 
-    fanCycle.take("MAXIMAL_POLYTOPES") << cones.minor(conesAtVertex,usedRays);
-    fanCycle.take("WEIGHTS") << weights.slice(conesAtVertex);
-    fanCycle.take("LINEALITY_SPACE") << lineality;
+    BigObject fanCycle("Cycle", mlist<Addition>(),
+                       "PROJECTIVE_VERTICES", fanRays,
+                       "MAXIMAL_POLYTOPES", cones.minor(conesAtVertex,usedRays),
+                       "WEIGHTS", weights.slice(conesAtVertex),
+                       "LINEALITY_SPACE", lineality);
     result << fanCycle;
   }
   return result;

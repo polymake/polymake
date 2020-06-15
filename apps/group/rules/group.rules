@@ -48,10 +48,14 @@ object Group {
 }
 
 # @category Producing a group
-# Constructs the symmetry group of a d-cube, acting on vertices, for 3 <= d <= 6 (for the moment),
+# Constructs the symmetry group of a d-cube, acting on vertices, for 1 <= d <= 6 (for the moment),
 # along with the corresponding character table and conjugacy class representatives.
 # @param Int d the dimension of the cube
 # @return Group
+# @example The following calculates the orbits of the vertices on a cube.
+# > $g = cube_group(3);
+# > print $g->PERMUTATION_ACTION->ORBITS;
+# | {0 1 2 3 4 5 6 7}
 user_function cube_group($) {
     my $d = shift;
     die ("Only 1 <= d <= 6 supported at the moment") unless $d >= 1 && $d <= 6;

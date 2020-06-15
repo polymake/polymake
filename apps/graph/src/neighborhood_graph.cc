@@ -18,8 +18,7 @@ BigObject neighborhood_graph(const Matrix<Rational>& D, const Rational& delta)
         G.edge(i, j);
     }
   }
-  BigObject GG("Graph");
-  GG.take("ADJACENCY") << G;
+  BigObject GG("Graph", "ADJACENCY", G);
   GG.set_description() << "Neighborhood graph of the input point set. Two vertices are adjacent if the distance of the corresponding points is less than " << delta << "." << endl;
   return GG;
 }

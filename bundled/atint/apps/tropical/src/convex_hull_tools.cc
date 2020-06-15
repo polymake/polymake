@@ -212,11 +212,10 @@ BigObject set_theoretic_intersection(BigObject A, BigObject B)
   FacetList flist;
   for (auto c = entire(rows(result.cones)); !c.at_end(); ++c) flist.insertMax(*c);
 
-  BigObject p("fan::PolyhedralComplex");
-  p.take("VERTICES") << tdehomog(result.rays);
-  p.take("MAXIMAL_POLYTOPES") << flist;
-  p.take("LINEALITY_SPACE") << tdehomog(result.lineality_space);
-  return p;
+  return BigObject("fan::PolyhedralComplex",
+                   "VERTICES", tdehomog(result.rays),
+                   "MAXIMAL_POLYTOPES", flist,
+                   "LINEALITY_SPACE", tdehomog(result.lineality_space));
 }
 
 

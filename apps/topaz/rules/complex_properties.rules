@@ -495,9 +495,17 @@ property G_DIM : Int;
 property VOLUME : Scalar;
 
 # A geometric simplicial complex is unimodular if all simplices have unit normalized volume.
+# @example Unit square, triangulated.
+# > $C = new GeometricSimplicialComplex(COORDINATES=>[[0,0],[1,0],[0,1],[1,1]], FACETS=>[[0,1,2],[1,2,3]]);
+# > print $C->UNIMODULAR
+# | true
 property UNIMODULAR : Bool;
 
-# count how many simplcies of a geometric simplicial complex are unimodular.
+# Count how many simplices of a geometric simplicial complex are unimodular.
+# @example Non-regular quadrangle, triangulated.
+# > $C = new GeometricSimplicialComplex(COORDINATES=>[[0,0],[1,0],[0,1],[2,1]],FACETS=>[[0,1,2],[1,2,3]]);
+# > print $C->N_UNIMODULAR
+# | 1
 property N_UNIMODULAR : Int;
 
 # Signature of a geometric simplicial complex embedded in the integer lattice.
@@ -528,11 +536,15 @@ rule VOLUME : FACETS, COORDINATES, DIM {
 }
 
 rule UNIMODULAR : FACETS, COORDINATES {
-  $this->UNIMODULAR=unimodular($this);
+    my $C = $this->COORDINATES;
+    my $n = $C->rows();
+    $this->UNIMODULAR=unimodular( ones_vector<Rational>($n)|$C, $this->FACETS );
 }
 
 rule N_UNIMODULAR : FACETS, COORDINATES {
-  $this->N_UNIMODULAR=n_unimodular($this);
+    my $C = $this->COORDINATES;
+    my $n = $C->rows();
+    $this->N_UNIMODULAR=n_unimodular( ones_vector<Rational>($n)|$C, $this->FACETS );
 }
 
 property BOUNDARY = override : self;

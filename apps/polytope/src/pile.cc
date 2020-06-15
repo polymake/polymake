@@ -25,9 +25,6 @@ namespace polymake { namespace polytope {
 
 BigObject pile(const Vector<Int>& sizes)
 {
-   BigObject p("Polytope<Rational>");
-   p.set_description() << "Lifted pile of cubes" << endl;
-
    const Int d = sizes.size();
    Int n = 1;
    for (auto s = entire(sizes); !s.at_end(); ++s)
@@ -42,8 +39,10 @@ BigObject pile(const Vector<Int>& sizes)
    for (MultiDimCounter<false,Rational> x(-limits, limits+ones_vector<Rational>(d)); !x.at_end(); ++x, ++V_i)
       *V_i = 1 | *x | (sqr(*x) / factor);
 
-   p.take("VERTICES") << V;
-   p.take("N_VERTICES") << n;
+   BigObject p("Polytope<Rational>",
+               "VERTICES", V,
+               "N_VERTICES", n);
+   p.set_description() << "Lifted pile of cubes" << endl;
    return p;
 }
 

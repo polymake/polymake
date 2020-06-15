@@ -23,7 +23,7 @@ namespace fan {
 template <typename Scalar>
 BigObject project_full_fan_impl(BigObject p_in, OptionSet options)
 {
-   if ( !p_in.exists("RAYS | INPUT_RAYS") )
+   if (!p_in.exists("RAYS | INPUT_RAYS"))
       throw std::runtime_error("projection is not defined for combinatorially given objects");
 
    const Matrix<Scalar> rays = p_in.give("RAYS | INPUT_RAYS");

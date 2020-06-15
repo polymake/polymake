@@ -181,12 +181,12 @@ BigObject perles_irrational_8_polytope()
    W.col(0) = ones_vector<QE>(W.rows());
 
    // done.
-   BigObject p("Polytope<QuadraticExtension<Rational>>");
+   BigObject p("Polytope<QuadraticExtension<Rational>>",
+               "POINTS", W,
+               "BOUNDED", true,
+               "POINTED", true,
+               "GALE_TRANSFORM", V);
    p.set_description() << "An 8-dimensional polytope with 12 vertices due to Perles that has no rational realization" << endl;
-   p.take("POINTS") << W;
-   p.take("BOUNDED") << true;
-   p.take("POINTED") << true;
-   p.take("GALE_TRANSFORM") << V;
    return p;
 }
 

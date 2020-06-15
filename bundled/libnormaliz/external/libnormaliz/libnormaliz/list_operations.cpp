@@ -73,6 +73,7 @@ void l_cut(list<vector<Integer> >& l, int size) {
 
 //---------------------------------------------------------------------------
 
+/*
 template <typename Integer>
 void l_cut_front(list<vector<Integer> >& l, int size) {
     vector<Integer> tmp;
@@ -82,5 +83,6 @@ void l_cut_front(list<vector<Integer> >& l, int size) {
         l.insert(i, tmp);
     }
 }
+*/
 
 }  // namespace libnormaliz

@@ -23,9 +23,6 @@
 
 namespace polymake { namespace perl_bindings {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
-   template <typename T, typename T0>
-   RecognizeType4perl("Polymake::common::Graph", (T0), Graph<T0>)
-
    template <typename T, typename T0, typename T1>
    RecognizeType4perl("Polymake::common::NodeMap", (T0,T1), NodeMap<T0,T1>)
 
@@ -37,6 +34,9 @@ namespace polymake { namespace perl_bindings {
 
    template <typename T, typename T0, typename T1>
    RecognizeType4perl("Polymake::common::EdgeHashMap", (T0,T1), EdgeHashMap<T0,T1>)
+
+   template <typename T, typename T0>
+   RecognizeType4perl("Polymake::common::GraphAdjacency", (T0), Graph<T0>)
 
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } }

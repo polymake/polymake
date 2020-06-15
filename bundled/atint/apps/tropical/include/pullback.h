@@ -86,12 +86,11 @@ BigObject pullback(BigObject morphism, BigObject function)
     const Vector<Rational>& translate = morphism.give("TRANSLATE");
     const Polynomial<TropicalNumber<Addition>>& numerator = function.give("NUMERATOR");
     const Polynomial<TropicalNumber<Addition>>& denominator = function.give("DENOMINATOR");
-    BigObject newfunction("RationalFunction", mlist<Addition>());
     std::pair<Polynomial<TropicalNumber<Addition>>, Polynomial<TropicalNumber<Addition>>> newpair =
       polynomialPullback(matrix, translate, numerator, denominator);
-    newfunction.take("NUMERATOR") << newpair.first;
-    newfunction.take("DENOMINATOR") << newpair.second;
-    return newfunction;
+    return BigObject("TropicalRationalFunction", mlist<Addition>(),
+                     "NUMERATOR", newpair.first,
+                     "DENOMINATOR", newpair.second);
   }
 
   const Vector<Rational>& function_vvalues = function.give("VERTEX_VALUES");
@@ -112,7 +111,7 @@ BigObject pullback(BigObject morphism, BigObject function)
   const Matrix<Rational>& result_vvalues = comp.give("VERTEX_VALUES");
   const Matrix<Rational>& result_lvalues = comp.give("LINEALITY_VALUES");
 
-  BigObject result("RationalFunction", mlist<Addition>());
+  BigObject result("TropicalRationalFunction", mlist<Addition>());
   result.take("DOMAIN") << resultDomain;
   result.take("VERTEX_VALUES") << tdehomog(result_vvalues,0,false).col(0);
   result.take("LINEALITY_VALUES") << (result_lvalues.rows() > 0 ? tdehomog(result_lvalues,0,false).col(0) : Vector<Rational>());
@@ -122,7 +121,7 @@ BigObject pullback(BigObject morphism, BigObject function)
     const Vector<Rational>& translate = morphism.give("TRANSLATE");
     const Polynomial<TropicalNumber<Addition>>& numerator = function.give("NUMERATOR");
     const Polynomial<TropicalNumber<Addition>>& denominator= function.give("DENOMINATOR");
-    BigObject newfunction("RationalFunction", mlist<Addition>());
+    BigObject newfunction("TropicalRationalFunction", mlist<Addition>());
     std::pair<Polynomial<TropicalNumber<Addition> >, Polynomial<TropicalNumber<Addition>>> newpair =
       polynomialPullback(matrix, translate, numerator, denominator);
     result.take("NUMERATOR") << newpair.first;

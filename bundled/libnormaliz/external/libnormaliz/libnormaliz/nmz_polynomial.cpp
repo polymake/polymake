@@ -44,6 +44,7 @@ ourFactorization::ourFactorization(const vector<RingElem>& myFactors,
     this->myRemainingFactor = myRemainingFactor;
 }
 
+/*
 ourFactorization::ourFactorization(const factorization<RingElem>& FF) {
     ourFactorization(FF.myFactors(), FF.myMultiplicities(), FF.myRemainingFactor());
 }
@@ -58,6 +59,7 @@ RingElem binomial(const RingElem& f, long k)
         g *= (f - i) / (i + 1);
     return (g);
 }
+*/
 
 RingElem ascFact(const RingElem& f, long k)
 // computes (f+1)*...*(f+k)
@@ -70,6 +72,7 @@ RingElem ascFact(const RingElem& f, long k)
     return (g);
 }
 
+/*
 RingElem descFact(const RingElem& f, long k)
 // computes f*(f-1)*...*(f-k+1)
 {
@@ -80,6 +83,7 @@ RingElem descFact(const RingElem& f, long k)
         g *= (f - i);
     return (g);
 }
+*/
 
 bool compareLength(const RingElem& p, const RingElem& q) {
     return (NumTerms(p) > NumTerms(q));
@@ -602,6 +606,10 @@ RingElem processInputPolynomial(const string& poly_as_string,
 
     long i, j;
     string dummy = poly_as_string;
+    size_t semicolon=dummy.find(';');
+    if(semicolon != string::npos){
+        dummy[semicolon]=' ';
+    }
     RingElem the_only_dactor = ReadExpr(R, dummy);  // there is only one
     vector<RingElem> factorsRead;
     factorsRead.push_back(the_only_dactor);
@@ -839,11 +847,13 @@ void CyclRatFunct::addCRF(const CyclRatFunct& r) {
     num += s.num;
 }
 
+/*
 void CyclRatFunct::multCRF(const CyclRatFunct& r) {
     // nmultiplies *this by r
     num *= r.num;
     denom = prodDenom(denom, r.denom);
 }
+*/
 
 void CyclRatFunct::showCRF() {
     if (!verbose_INT)

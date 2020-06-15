@@ -9,7 +9,7 @@ my $standalone_global_init = $ConfigFlags{BundledExts} =~ /\bsympol\b/ ? '' : ' 
   ? ( staticlib => {
         LIBNAME => 'lrsgmp',
         SOURCEDIR => '${root}/bundled/lrs/external/lrs',
-        SOURCES => [ qw(lrslib.c lrsgmp.c) ],
+        SOURCES => [ qw(lrslib.c lrsgmp.c lrsdriver.c) ],
         CFLAGS => '-DGMP -DMA -DLRS_QUIET',
       } )
   : ()

@@ -613,7 +613,7 @@ int main() {
    my $build_error;
 
    # try to use gold linker unless another linker has been prescribed by the user
-   unless ($^O eq "darwin" or "$CXXFLAGS $LDFLAGS" =~ /(?:^|\s)-fuse-ld[=\s]/) {
+   unless ($^O eq "darwin" or $Config::Config{archname} =~ /^mips/ or "$CXXFLAGS $LDFLAGS" =~ /(?:^|\s)-fuse-ld[=\s]/) {
       $build_error = build_test_program($cxx_tell_version, LDFLAGS => "-fuse-ld=gold");
       if ($?) {
          # did not work out, maybe gold is missing?
@@ -949,7 +949,7 @@ sub collect_compiler_specific_options {
       $CXXCOV="--coverage -O1";
       $CXXSANITIZE="-fno-omit-frame-pointer -O1 " . ($CXXDEBUG =~ /(?:^|\s)-g0/ ? "-g1" : $CXXDEBUG);
       # external libraries might be somehow dirtier
-      $CflagsSuppressWarnings="";
+      $CflagsSuppressWarnings="-Wno-unused-result";
       # gcc-specific flags
       $CXXFLAGS .= " -Wshadow -Wlogical-op -Wconversion -Wzero-as-null-pointer-constant -Wno-parentheses -Wno-error=unused-function";
       if (v_cmp($GCCversion, "6.3.0") >= 0 && v_cmp($GCCversion, "7.0.0") < 0) {
@@ -957,6 +957,10 @@ sub collect_compiler_specific_options {
       }
       if (v_cmp($GCCversion, "9.1.0") >= 0) {
          $CXXFLAGS .= " -Wno-stringop-overflow";
+         $CflagsSuppressWarnings.=" -Wno-stringop-overflow";
+      }
+      if (v_cmp($GCCversion, "10.0.0") >= 0) {
+         $CXXFLAGS .= " -Wno-array-bounds";
       }
 
    } elsif (defined($ICCversion)) {
@@ -1574,19 +1578,50 @@ You can also disable it by specifying --without-$ext instead.
    $BundledExts = join(" ", grep { $ext_survived{$_} } @ext_ordered);
 
    if ($options{prereq} ne ".none.") {
-      $warning .= <<"---" unless exists $ext_survived{"cdd"};
+      my $ext_warning;
+
+      $ext_warning .= <<"---" unless exists $ext_survived{"cdd"};
 
 WARNING: The bundled extension for cdd was either disabled or failed to configure.
          Running polymake without cdd is deprecated and not supported!
          Please recheck your configuration and $BundledLOGfile.
 ---
 
-      $warning .= <<"---" unless (exists $ext_survived{"nauty"} or exists $ext_survived{"bliss"});
+      $ext_warning .= <<"---" unless (exists $ext_survived{"nauty"} or exists $ext_survived{"bliss"});
 
 WARNING: The bundled extensions for bliss and nauty were both either disabled or failed to configure.
          Running polymake without a tool for graph-isomorphism tests is not supported!
          Please recheck your configuration and $BundledLOGfile.
 ---
+
+      $ext_warning .= <<"---" unless exists $ext_survived{"flint"};
+
+WARNING: The bundled extension for flint was either disabled or failed to configure.
+         Running polymake without flint is not supported!
+         QuadraticExtension types cannot be normalized in this configuration.
+         Please recheck your configuration and $BundledLOGfile.
+---
+
+      # check for non-supported configuration:
+      # failed required extensions but not disabled explicitly
+      if ($ext_failed{cdd} || $ext_failed{flint} ||
+          $ext_failed{bliss} && $ext_failed{nauty}) {
+
+         print $ext_warning;
+         die(<<"---");
+
+ERROR: Configuration failed:
+       At least one required bundled extension failed to configure.
+       This error can be suppressed by disabling them explicitly via '--without-<ext>'.
+---
+      } elsif ($ext_warning) {
+         $warning .= <<"---";
+$ext_warning
+* WARNING: Unsupported configuration:
+* Some required bundled extensions were disabled explicitly.
+* polymake will work but with reduced functionality.
+---
+      }
    }
 
    print "* If you want to change the configuration of bundled extensions please ",
@@ -1704,6 +1739,9 @@ sub write_perl_specific_configuration_file {
    # gcc 5 seems to not understand a #pragma ignoring -Wliteral-suffix
    if ($] < 5.020 && defined($GCCversion)) {
       $no_warn .= " -Wno-literal-suffix";
+   }
+   if (defined($CLANGversion) && v_cmp($CLANGversion, "10") >= 0) {
+      $no_warn .= " -Wno-xor-used-as-pow";
    }
 
    # Xcode 10 deeply hides perl headers at unpredictable locations, it requires a special clang option to find them

@@ -65,9 +65,7 @@ void all_cones_symmetry(BigObject f, Int dim)
    for (const auto& cone : cones) {
       const Int n_rays = cone.size();
       const Array<Int> cone_A(n_rays, entire(cone));
-      BigObject c("Cone");
-      c.take("RAYS") << rays.minor(cone, All);
-      c.take("LINEALITY_SPACE") << lin_space;
+      BigObject c("Cone", "RAYS", rays.minor(cone, All), "LINEALITY_SPACE", lin_space);
       const Lattice<BasicDecoration, Sequential> hd = c.give("HASSE_DIAGRAM");
       const Int c_dim = hd.rank();
       if (!dim_given) {

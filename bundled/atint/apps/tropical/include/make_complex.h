@@ -274,11 +274,10 @@ BigObject make_complex(Matrix<Rational> rays, Vector<Set<Int>> max_cones, Vector
     } //END iterate i
   } while(created);
 
-  BigObject result("Cycle", mlist<Addition>());
-  result.take("VERTICES") << thomog(rays);
-  result.take("MAXIMAL_POLYTOPES") << max_cones;
-  result.take("WEIGHTS") << weights;
-  return result;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "VERTICES", thomog(rays),
+                   "MAXIMAL_POLYTOPES", max_cones,
+                   "WEIGHTS", weights);
 }
 
 } }

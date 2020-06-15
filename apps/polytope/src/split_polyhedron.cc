@@ -38,27 +38,26 @@ BigObject split_polyhedron(BigObject p_in)
       Set<Int> left; //vertices of the left (>=) polytope
       for (Int k = 0; k < n; ++k) {
          const Scalar val=a*vert.row(k);
-         if (val>=0) {
+         if (val >= 0) {
             left.insert(k);
-            if (val>0) facets(j,k+1)=val;
+            if (val > 0)
+               facets(j,k+1) = val;
          }
       }
-      BigObject p_left("Polytope", mlist<Scalar>());
-      p_left.take("VERTICES")<<vert.minor(left,All);
-      const Vector<Scalar> left_centroid=p_left.give("CENTROID");
-      const Scalar left_volume=p_left.give("VOLUME");
-      facets(j,0)=-d*left_volume*(a*left_centroid);
+      BigObject p_left("Polytope", mlist<Scalar>(), "VERTICES", vert.minor(left, All));
+      const Vector<Scalar> left_centroid = p_left.give("CENTROID");
+      const Scalar left_volume = p_left.give("VOLUME");
+      facets(j, 0) = -d*left_volume*(a*left_centroid);
    }
-   BigObject p_out("Polytope", mlist<Scalar>());
-   p_out.take("FACETS")<<facets;
 
-   const Vector<Scalar> centroid=p_in.give("CENTROID");
-   const Scalar volume=p_in.give("VOLUME");
-   const Vector<Scalar> c=-d*volume*centroid;
-   p_out.take("AFFINE_HULL")<<(c|T(vert));
-   p_out.take("CONE_DIM")<<(n-d)+1;
+   const Vector<Scalar> centroid = p_in.give("CENTROID");
+   const Scalar volume = p_in.give("VOLUME");
+   const Vector<Scalar> c = -d*volume*centroid;
 
-   return p_out;
+   return BigObject("Polytope", mlist<Scalar>(),
+                    "FACETS", facets,
+                    "AFFINE_HULL", c | T(vert),
+                    "CONE_DIM", (n-d)+1);
 }
 
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"

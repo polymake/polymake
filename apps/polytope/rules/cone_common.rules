@@ -636,26 +636,34 @@ user_method DIM {
 }
 
 # @category Geometry
+# checks whether a given cone is containeed in another
+# @param Cone<Scalar> C_in
+# @return Bool
+
+user_method contains(Cone){
+  my ($self, $C_in)=@_;
+  return cone_contains($C_in, $self);
+}
+
+# @category Geometry
 # checks whether a given point is contained in a cone
 # @param Vector<Scalar> v point
 # @return Bool
-user_method contains {
+user_method contains (Vector) {
   my ($self,$v)=@_;
-  my $zero=0;
-  if (defined (my $f=$self->lookup("FACETS | INEQUALITIES"))) {
-    if (defined (my $ah=$self->lookup("LINEAR_SPAN | INPUT_LINEALITY")) ) {
-      if ( $ah->rows ) {
-        my $b=$ah*$v;
-        foreach (@{$b}) { if ( $_ != $zero ) { return false; } }
-      }
+  my $zero = 0;
+
+  # check if $v is zero 
+  foreach (@{$v}){
+    if ( $_ != $zero ) {
+       return cone_contains(new Cone<Scalar>(INPUT_RAYS=>[$v]), $self);
     }
-    my $b=$f*$v;
-    foreach (@{$b}) { if ( $_ < $zero ) { return false; } }
-    return true;
-  } else {
-    return cone_contains_point($self,$v,in_interior=>0);
   }
+
+  # 0 is in any cone
+  return true;
 }
+
 
 # @category Geometry
 # checks whether a given point is contained in the strict interior of a cone

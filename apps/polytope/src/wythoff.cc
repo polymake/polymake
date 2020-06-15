@@ -223,8 +223,8 @@ void wythoff(const std::string& type,
 }
 
 BigObject wythoff_dispatcher(const std::string& type,
-                                const Set<Int>& rings,
-                                const bool lattice = false)
+                             const Set<Int>& rings,
+                             const bool lattice = false)
 {
    if (type.size() < 2)
       throw std::runtime_error("Type needs single letter followed by rank.");
@@ -349,10 +349,7 @@ BigObject wythoff_dispatcher(const std::string& type,
    p.take("POINTED") << true;
    p.take("CENTERED") << true;
 
-   BigObject a("group::PermutationAction");
-   a.take("GENERATORS") << generators;
-   BigObject g("group::Group");
-   p.take("GROUP") << g;
+   BigObject a("group::PermutationAction", "GENERATORS", generators);
    p.take("GROUP.VERTICES_ACTION") << a;
 
    return p;
@@ -367,32 +364,31 @@ BigObject tetrahedron()
    Matrix<Scalar> RM(same_element_matrix(1,4,4));
    RM(0,2) = RM(0,3) = RM(1,1) = RM(1,3) = RM(2,1) = RM(2,2) = -1;
 
-   BigObject p("Polytope", mlist<Scalar>());
+   BigObject p("Polytope", mlist<Scalar>(),
+               "VERTICES", RM,
+               "N_VERTICES", 4,
+               "LINEALITY_SPACE", Matrix<Scalar>(0, 4),
+               "CONE_AMBIENT_DIM", 4,
+               "CONE_DIM", 4,
+               "BOUNDED", true,
+               "FEASIBLE", true,
+               "POINTED", true,
+               "CENTERED", true);
    p.set_description() << "regular tetrahedron" << endl;
-
-   p.take("VERTICES") << RM;
-   p.take("N_VERTICES") << 4;
-   p.take("LINEALITY_SPACE") << Matrix<Scalar>(0, 4);
-
-   p.take("CONE_AMBIENT_DIM") << 4;
-   p.take("CONE_DIM") << 4;
-   p.take("BOUNDED") << true;
-   p.take("FEASIBLE") << true;
-   p.take("POINTED") << true;
-   p.take("CENTERED") << true;
-
    return p;
 }
 
 // wythoff_dispatcher("B3", Set<Int>(0)) gives octahedron
 //
-BigObject truncated_cube() {
+BigObject truncated_cube()
+{
    BigObject p(wythoff_dispatcher("B3", {1, 2}));
    p.set_description("= truncated cube",true);
    return p;
 }
 
-BigObject cuboctahedron() {
+BigObject cuboctahedron()
+{
    BigObject p(wythoff_dispatcher("B3", {1}));
    p.set_description("= cuboctahedron",true);
    return p;
@@ -400,79 +396,92 @@ BigObject cuboctahedron() {
 
 // wythoff_dispatcher("B3", Set<Int>(2)) gives cube
 
-BigObject truncated_octahedron() {
+BigObject truncated_octahedron()
+{
    BigObject p(wythoff_dispatcher("B3", {0, 1}));
    p.set_description("= truncated octahedron",true);
    return p;
 }
 
-BigObject truncated_cuboctahedron() {
+BigObject truncated_cuboctahedron()
+{
    BigObject p(wythoff_dispatcher("B3", {0, 1, 2}));
    p.set_description("= truncated cuboctahedron",true);
    return p;
 }
 
-BigObject rhombicuboctahedron() {
+BigObject rhombicuboctahedron()
+{
    BigObject p(wythoff_dispatcher("B3", {0, 2}));
    p.set_description("= rhombicuboctahedron",true);
    return p;
 }
 
-BigObject regular_24_cell() {
+BigObject regular_24_cell()
+{
    BigObject p(wythoff_dispatcher("F4", {0}));
    p.set_description("= regular 24-cell",true);
    return p;
 }
 
-BigObject regular_120_cell() {
+BigObject regular_120_cell()
+{
    BigObject p(wythoff_dispatcher("H4", {0}));
    p.set_description("= regular 120-cell",true);
    return p;
 }
 
-BigObject regular_600_cell() {
+BigObject regular_600_cell()
+{
    BigObject p(wythoff_dispatcher("H4", {3}));
    p.set_description("= regular 600-cell",true);
    return p;
 }
 
-BigObject dodecahedron() {
+BigObject dodecahedron()
+{
    BigObject p(wythoff_dispatcher("H3", {0}));
    p.set_description("= regular dodecahedron",true);
    return p;
 }
 
-BigObject icosidodecahedron() {
+BigObject icosidodecahedron()
+{
    BigObject p(wythoff_dispatcher("H3", {1}));
    p.set_description("= icosidodecahedron",true);
    return p;
 }
 
-BigObject icosahedron() {
+BigObject icosahedron()
+{
    BigObject p(wythoff_dispatcher("H3", {2}));
    p.set_description("= regular icosahedron",true);
    return p;
 }
 
-BigObject truncated_dodecahedron() {
+BigObject truncated_dodecahedron()
+{
    BigObject p(wythoff_dispatcher("H3", {0, 1}));
    p.set_description("= truncated dodecahedron",true);
    return p;
 }
 
-BigObject rhombicosidodecahedron() {
+BigObject rhombicosidodecahedron()
+{
    BigObject p(wythoff_dispatcher("H3", {0, 2}));
    p.set_description("= rhombicosidodecahedron",true);
    return p;
 }
 
-BigObject truncated_icosahedron() {
+BigObject truncated_icosahedron()
+{
    BigObject p(wythoff_dispatcher("H3", {1, 2}));
    p.set_description("= truncated icosahedron",true);
    return p;
 }
 
-BigObject truncated_icosidodecahedron() {
+BigObject truncated_icosidodecahedron()
+{
    BigObject p(wythoff_dispatcher("H3", {0, 1, 2}));
    p.set_description("= truncated icosidodecahedron",true);
    return p;

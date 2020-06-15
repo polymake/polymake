@@ -27,27 +27,27 @@
 namespace polymake { namespace topaz {
 
 namespace {
-  
+
 // prodces a triangulated cube
 std::list<Set<Int>> triang_cube(const Int lower_corner, const Array<Int>& x_diff)
 {
   std::list<Set<Int>> cube;
   const Int dim = x_diff.size();
-  
+
   Array<Int> path(dim);
   for (Int i = 0; i < dim; ++i)
     path[i] = i;
-  
+
   // iterate over all monotonous paths from vertex 0 to vertex 2^dim-1
   while (true) {
     Set<Int> simplex;
     simplex += lower_corner;
-    
+
     // follow path
     Int vertex = 0;
     for (Int i = 0; i < dim; ++i) {
       vertex |= 1L << path[i];
-      
+
       // compute coordinates in the cube complex
       Int corner = lower_corner;
       for (Int j = 0; j < dim; ++j)
@@ -55,14 +55,14 @@ std::list<Set<Int>> triang_cube(const Int lower_corner, const Array<Int>& x_diff
           corner += x_diff[dim-j-1];
       simplex += corner;
     }
-    
+
     // add simplex
     cube.push_back(simplex);
-    
+
     // generate next path
     if (!std::next_permutation(path.begin(), path.end()))  break;
   }
-  
+
   return cube;
 }
 
@@ -78,23 +78,16 @@ BigObject cube_complex(Array<Int> x_param)
   Int n = x_param[dim-1];
   Array<Int> x_diff(dim);
   x_diff[dim-1] = 1;
-  
+
   for (Int i = dim-2; i >= 0; --i) {
     x_diff[i] = x_diff[i+1] * x_param[i+1];
     n *= x_param[i];
   }
-  
-  BigObject p("GeometricSimplicialComplex<Rational>");
-  std::ostringstream description;
-  for (Int i = 0; i < dim-1; ++i)
-    description << x_param[i]-1 << "x";
-  description << x_param[dim-1]-1 << " Pile of " << dim << "-dimensional triangulated cubes." << endl;
-  p.set_description() << description.str();
-  
+
   Matrix<Int> Coordinates(n, dim);
   std::list<Set<Int>> Pile;
   Int corner = 0;
-  for (MultiDimCounter<false> counter(x_param); !counter.at_end(); ++corner, ++counter) {     
+  for (MultiDimCounter<false> counter(x_param); !counter.at_end(); ++corner, ++counter) {
 
     // compute coordinates
     copy_range(entire(*counter), Coordinates[corner].begin());
@@ -106,19 +99,24 @@ BigObject cube_complex(Array<Int> x_param)
         cube_corner = false;
         break;
       }
-    
+
     if (cube_corner) {
       std::list<Set<Int>> cube = triang_cube(corner, x_diff);
       Pile.splice(Pile.end(), cube);
     }
   }
-  
-  p.take("FACETS") << Pile;
-  p.take("DIM") << dim;
-  p.take("COORDINATES") << Coordinates;
-  p.take("MANIFOLD") << true;
-  p.take("ORIENTED_PSEUDO_MANIFOLD") << true;
-  p.take("BALL") << true;
+
+  BigObject p("GeometricSimplicialComplex<Rational>",
+              "FACETS", Pile,
+              "DIM", dim,
+              "COORDINATES", Coordinates,
+              "MANIFOLD", true,
+              "ORIENTED_PSEUDO_MANIFOLD", true,
+              "BALL", true);
+
+  for (Int i = 0; i < dim-1; ++i)
+     p.append_description() << x_param[i]-1 << "x";
+  p.append_description() << x_param[dim-1]-1 << " Pile of " << dim << "-dimensional triangulated cubes." << endl;
   return p;
 }
 

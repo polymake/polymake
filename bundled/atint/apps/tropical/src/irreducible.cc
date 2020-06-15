@@ -224,11 +224,9 @@ BigObject weight_cone(BigObject fan, const Set<Int>& negative_directions)
     orthant.row(*coord).negate();
   }
 
-  BigObject cone("polytope::Cone");
-  if (wsystem.rows() > 0)
-    cone.take("EQUATIONS") << wsystem;
-  cone.take("INEQUALITIES") << orthant;
-  return cone;
+  return BigObject("polytope::Cone",
+                   "EQUATIONS", wsystem,
+                   "INEQUALITIES", orthant);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -264,10 +262,9 @@ BigObject decomposition_polytope(BigObject fan)
   // Facets = positive orthant
   Matrix<Rational> facets = zero_vector<Rational>() | unit_matrix<Rational>(crays.cols()-1);
 
-  BigObject p("polytope::Polytope");
-  p.take("INEQUALITIES") << facets;
-  p.take("EQUATIONS") << crays;
-  return p;
+  return BigObject("polytope::Polytope",
+                   "INEQUALITIES", facets,
+                   "EQUATIONS", crays);
 }
 
 // ------------------------- PERL WRAPPERS ---------------------------------------------------

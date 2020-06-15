@@ -186,28 +186,20 @@ rule MAXIMAL_CONES_INCIDENCES : RAYS, MAXIMAL_CONES, FACET_NORMALS, MAXIMAL_CONE
       $mci->[$i]->col($_)=$sh;
     }
   }
-  $this->MAXIMAL_CONES_INCIDENCES=$mci;
+  $this->MAXIMAL_CONES_INCIDENCES(temporary)=$mci;
 }
 
 rule HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE : \
      MAXIMAL_CONES, MAXIMAL_CONES_INCIDENCES, MAXIMAL_CONES_COMBINATORIAL_DIMS, COMBINATORIAL_DIM {
-   $this->HASSE_DIAGRAM=hasse_diagram($this);
+   if ($this->lookup("COMPLETE")) {
+      $this->HASSE_DIAGRAM=hasse_diagram($this,1,1);
+   } elsif ($this->lookup("PURE")) {
+      $this->HASSE_DIAGRAM=hasse_diagram($this,1,0);
+   } else {
+      $this->HASSE_DIAGRAM=hasse_diagram($this);
+   }
 }
 weight 6.50;
-
-rule HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE : \
-     MAXIMAL_CONES, COMBINATORIAL_DIM {
-   $this->HASSE_DIAGRAM=hasse_diagram($this,1,1);
-}
-precondition : COMPLETE;
-weight 6.10;
-
-rule HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE : \
-     MAXIMAL_CONES, COMBINATORIAL_DIM, MAXIMAL_CONES_INCIDENCES {
-   $this->HASSE_DIAGRAM=hasse_diagram($this,1,0);
-}
-precondition : PURE;
-weight 6.20;
 
 rule MAXIMAL_CONES : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.TOP_NODE {
    my @cones = map { $this->HASSE_DIAGRAM->DECORATION->[$_]->face } @{$this->HASSE_DIAGRAM->ADJACENCY->in_adjacent_nodes($this->HASSE_DIAGRAM->TOP_NODE)};
@@ -261,6 +253,12 @@ weight 0.1;
 rule REGULAR = PSEUDO_REGULAR;
 precondition : COMPLETE;
 
+rule COMPLETE : {
+   $this->COMPLETE = true;
+}
+precondition : REGULAR;
+weight 0.1;
+
 rule PSEUDO_REGULAR : RAYS, MAXIMAL_CONES {
    $this->PSEUDO_REGULAR = pseudo_regular($this)->rows == $this->RAYS->rows;
 }
@@ -294,7 +292,7 @@ weight 1.10;
 
 rule GRAPH.ADJACENCY : MAXIMAL_CONES {
    my $n=$this->MAXIMAL_CONES->cols;
-   my $G = new props::Graph($n);
+   my $G = new GraphAdjacency($n);
    for (my $i=0; $i<$n; ++$i)  {
       foreach (@{$this->MAXIMAL_CONES->col($i)}) {
         foreach (@{$this->MAXIMAL_CONES->row($_)}) {
@@ -329,13 +327,6 @@ rule FULL_DIM, DUAL_GRAPH.CONNECTED : {
    $this->DUAL_GRAPH->CONNECTED=1;
 }
 precondition : COMPLETE;
-weight 0.1;
-
-rule FULL_DIM, DUAL_GRAPH.CONNECTED : {
-   $this->FULL_DIM=1;
-   $this->DUAL_GRAPH->CONNECTED=1;
-}
-precondition : REGULAR;
 weight 0.1;
 
 rule SIMPLICIAL : MAXIMAL_CONES, COMBINATORIAL_DIM {

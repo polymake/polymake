@@ -161,34 +161,31 @@ ListReturn is_smooth(BigObject f)
 
     // If the above criterions did not suffice to determine if the curve is smooth or not the algorithem enters here
     Matrix<Int> map_full_dimensional;
-    if (R.is_smooth==2) {
+    if (R.is_smooth == 2) {
       // Restrict to the case where the fan is full dimensional
       Int Fan_Ambient_Dimension = g.give("PROJECTIVE_AMBIENT_DIM");
       Int codim_linear_span = Fan_Ambient_Dimension-Linear_Span_Dim;
       if (codim_linear_span != 0) {
-        g=full_dimensional<Addition>(g, map_full_dimensional);
+        g = full_dimensional<Addition>(g, map_full_dimensional);
         Fan_Ambient_Dimension = g.give("PROJECTIVE_AMBIENT_DIM");
       }
-      if (Fan_Dim==0) {
+      if (Fan_Dim == 0) {
         Array<Set<Int>> Bases(1);
-        Bases[0]=Bases[0]+0;
-        BigObject M("matroid::Matroid");
-        M.take("BASES") << Bases;
-        M.take("N_ELEMENTS") << 1;
-        R.is_smooth=1;
-        R.matroid=M;
-      } else if (Fan_Dim==1) {
-        R=smooth_dim1(g);
-      } else if (Fan_Dim==Fan_Ambient_Dimension-1) {
-        R=smooth_codim1(g);
-      } else if (Fan_Dim==2) {
-        R=smooth_dim2(g);
-      } else if (Fan_Dim==Fan_Ambient_Dimension) {
-        R.is_smooth=0;
+        Bases[0] = { 0 };
+        R.matroid = BigObject("matroid::Matroid", "BASES", Bases, "N_ELEMENTS", 1);
+        R.is_smooth = 1;
+      } else if (Fan_Dim == 1) {
+        R = smooth_dim1(g);
+      } else if (Fan_Dim == Fan_Ambient_Dimension-1) {
+        R = smooth_codim1(g);
+      } else if (Fan_Dim == 2) {
+        R = smooth_dim2(g);
+      } else if (Fan_Dim == Fan_Ambient_Dimension) {
+        R.is_smooth = 0;
       } else {
-        R.is_smooth=2;
+        R.is_smooth = 2;
       }
-      if (R.is_smooth==1) {
+      if (R.is_smooth == 1) {
         Array<Set<Int>> Bases = R.matroid.give("BASES");
         Int N_Elements = R.matroid.give("N_ELEMENTS");
         if (codim_linear_span!=0) {
@@ -197,31 +194,31 @@ ListReturn is_smooth(BigObject f)
             for (Int j = 0; j < Bases.size(); ++j) {
               if (Bases[j].contains(0)) {
                 Set<Int> NewBase = Bases[j]-0;
-                NewBase = NewBase+(N_Elements);
+                NewBase += N_Elements;
                 Bases.resize(Bases.size()+1, NewBase);
               }
             }
-            N_Elements=N_Elements+1;
+            ++N_Elements;
           }
           // Compute the map
           Matrix<Int> temp(R.map.rows()+codim_linear_span, R.map.cols()+codim_linear_span);
           for (Int i = 0; i < R.map.rows(); ++i) {
             for (Int j = 0; j < R.map.rows(); ++j) {
-              temp[i][j]=R.map[i][j];
+              temp(i, j) = R.map(i, j);
             }
           }
-          for (Int i = 0; i<codim_linear_span; ++i) {
-            for (Int j = 0; j<codim_linear_span; ++j) {
+          for (Int i = 0; i < codim_linear_span; ++i) {
+            for (Int j = 0; j < codim_linear_span; ++j) {
               if (i == j) {
-                temp[i + R.map.rows()][j + R.map.rows()]=1;
+                temp(i + R.map.rows(), j + R.map.rows()) = 1;
               } else {
-                temp[i + R.map.rows()][j + R.map.rows()]=0;
+                temp(i + R.map.rows(), j + R.map.rows()) = 0;
               }
             }
           }
-          R.map=temp*map_full_dimensional;
+          R.map = temp * map_full_dimensional;
         }
-        if (Lineality_Dim>0) {
+        if (Lineality_Dim > 0) {
           // Compute the matroid
           for (Int j = 0; j < Bases.size(); ++j)  {
             Bases[j] += sequence(N_Elements, Lineality_Dim);
@@ -231,24 +228,21 @@ ListReturn is_smooth(BigObject f)
           temp.minor( sequence(0, R.map.rows()), sequence(0, R.map.cols())) = R.map;
           // FIXME: suspicious coordinate expressions; is R.map always square?
           temp.minor( sequence(R.map.rows(), Lineality_Dim), sequence(R.map.rows(), Lineality_Dim)) = unit_matrix<Int>(Lineality_Dim);
-          R.map= temp*map_lineality_space;
+          R.map = temp * map_lineality_space;
         }
 
-        (R.matroid).take("BASES") << Bases;
-        (R.matroid).take("N_ELEMENTS") << N_Elements + Lineality_Dim;
+        R.matroid = BigObject("matroid::Matroid", "BASES", Bases, "N_ELEMENTS", N_Elements + Lineality_Dim);
       }
     }
   }
 
   ListReturn S;
   S << R.is_smooth;
-  if (R.is_smooth==1) {
+  if (R.is_smooth == 1) {
     S << R.matroid;
     // Construct a morphism from the map
     Matrix<Rational> mapmatrix = thomog_morphism(Matrix<Rational>(R.map), zero_vector<Rational>(R.map.cols())).first;
-    BigObject mapmorphism("Morphism", mlist<Addition>());
-    mapmorphism.take("MATRIX") << Addition::orientation() * mapmatrix;
-
+    BigObject mapmorphism("Morphism", mlist<Addition>(), "MATRIX", Addition::orientation() * mapmatrix);
     S << mapmorphism;
   }
   return S;
@@ -310,12 +304,11 @@ BigObject cut_out_lineality_space(BigObject f, Matrix<Int>& map_lineality_space)
 
   New_Rays = leading_coordinate | T(New_Rays);
 
-  IncidenceMatrix<> Maximal_Cones =f.give("MAXIMAL_POLYTOPES");
-  BigObject g("Cycle", mlist<Addition>());
-  g.take("VERTICES") << thomog(New_Rays);
-  g.take("MAXIMAL_POLYTOPES") << Maximal_Cones;
-  g.take("PROJECTIVE_AMBIENT_DIM") << (Fan_Ambient_Dimension-Lineality_Dim);
-  return g;
+  const IncidenceMatrix<> Maximal_Cones = f.give("MAXIMAL_POLYTOPES");
+  return BigObject("Cycle", mlist<Addition>(),
+                   "VERTICES", thomog(New_Rays),
+                   "MAXIMAL_POLYTOPES", Maximal_Cones,
+                   "PROJECTIVE_AMBIENT_DIM", Fan_Ambient_Dimension-Lineality_Dim);
 }
 
 template <typename Addition>
@@ -331,11 +324,10 @@ BigObject full_dimensional(BigObject f, Matrix<Int>& map_full_dimensional)
   if (Basis.size() == 0) {
     Int proj_amb = f.give("PROJECTIVE_AMBIENT_DIM");
     map_full_dimensional = unit_matrix<Int>(proj_amb);
-    BigObject point_result("Cycle", mlist<Addition>());
-    point_result.take("VERTICES") << Matrix<Rational>(0, proj_amb+2);
-    point_result.take("MAXIMAL_POLYTOPES") << f.give("MAXIMAL_POLYTOPES");
-    point_result.take("PROJECTIVE_AMBIENT_DIM") << proj_amb;
-    return point_result;
+    return BigObject("Cycle", mlist<Addition>(),
+                     "VERTICES", Matrix<Rational>(0, proj_amb+2),
+                     "MAXIMAL_POLYTOPES", f.give("MAXIMAL_POLYTOPES"),
+                     "PROJECTIVE_AMBIENT_DIM", proj_amb);
   }
 
   // The basis is written to the matrix Basis_Subspace
@@ -388,11 +380,9 @@ BigObject full_dimensional(BigObject f, Matrix<Int>& map_full_dimensional)
     }
   }
   New_Rays = leading_coordinate | T(New_Rays);
-  IncidenceMatrix<> Maximal_Cones =f.give("MAXIMAL_POLYTOPES");
-  BigObject g("Cycle", mlist<Addition>());
-  g.take("VERTICES") << thomog(New_Rays);
-  g.take("MAXIMAL_POLYTOPES") << Maximal_Cones;
-  return g;
+  return BigObject("Cycle", mlist<Addition>(),
+                   "VERTICES", thomog(New_Rays),
+                   "MAXIMAL_POLYTOPES", f.give("MAXIMAL_POLYTOPES"));
 }
 
 result smooth_dim1(BigObject f)
@@ -438,9 +428,7 @@ result smooth_dim1(BigObject f)
       }
     }
 
-    BigObject M("matroid::Matroid");
-    M.take("BASES") << Bases;
-    M.take("N_ELEMENTS") << Rays.cols()+1;
+    BigObject M("matroid::Matroid", "BASES", Bases, "N_ELEMENTS", Rays.cols()+1);
 
     // Prepare the output
     R.is_smooth = 1;
@@ -685,12 +673,8 @@ result is_combinatorial_right(BigObject f, const Vector<Vector<Int>>& combinator
           }
         }
 
-        BigObject M("matroid::Matroid");
-        M.take("BASES") << Bases;
-        M.take("N_ELEMENTS") << Fan_Ambient_Dimension+1;
-
+        R.matroid = BigObject("matroid::Matroid", "BASES", Bases, "N_ELEMENTS", Fan_Ambient_Dimension+1);
         R.is_smooth = 1;
-        R.matroid = M;
         R.map = convert_to<Int>(inv(A));
       }
     }
@@ -793,12 +777,8 @@ result smooth_codim1(BigObject f)
       for (Int i = 0; i <= Rays.cols(); ++i) {
         Bases[i] = E-i;
       }
-      BigObject M("matroid::Matroid");
-      M.take("BASES") << Bases;
-      M.take("N_ELEMENTS") << Rays.cols()+1;
-
+      R.matroid = BigObject("matroid::Matroid", "BASES", Bases, "N_ELEMENTS", Rays.cols()+1);
       R.is_smooth = 1;
-      R.matroid = M;
       R.map = convert_to<Int>(tfmatrix);
     } else {
       R.is_smooth = 0;

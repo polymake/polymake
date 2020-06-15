@@ -86,7 +86,7 @@ UserFunctionTemplate4perl("# @category Combinatorics"
                           "# | -1 2 -1 0"
                           "# | 0 -1 2 -1"
                           "# | -1 0 -1 2",
-                          "laplacian(props::Graph)");
+                          "laplacian(GraphAdjacency)");
 
 UserFunctionTemplate4perl("# @category Combinatorics"
                           "# Compute the eigenvalues of the discrete Laplacian of a graph."
@@ -96,7 +96,7 @@ UserFunctionTemplate4perl("# @category Combinatorics"
                           "# > $v = eigenvalues_laplacian(cycle_graph(4)->ADJACENCY);"
                           "# > print $v;"
                           "# | 4 2 2 0",
-                          "eigenvalues_laplacian(props::Graph)");
+                          "eigenvalues_laplacian(GraphAdjacency)");
 } }
 
 // Local Variables:

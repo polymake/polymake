@@ -392,6 +392,7 @@ sub write_build_ninja_file {
 builddir=$builddir
 buildmode=$mode
 buildtop=\${builddir}/\${buildmode}
+build.file=$filename
 config.file=\${builddir}/config.ninja
 ---
    if ($include_list) {
@@ -424,7 +425,7 @@ LDmodeFLAGS=\${LD${mode}FLAGS}
 include \${builddir}/targets.ninja
 
 # should rerun the target generation if any of the included files changes
-build $filename: phony | $depends \${builddir}/targets.ninja
+build \${build.file}: phony | $depends \${builddir}/targets.ninja
 ---
 
    close $conf;

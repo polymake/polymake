@@ -47,15 +47,13 @@ BigObject truncated_orbit_polytope(BigObject p, Scalar eps)
       inequalities_reps /=  h;
    }
 
-   BigObject a("group::PermutationAction");
-   a.take("GENERATORS") << action_gens;
-   a.take("INEQUALITIES_GENERATORS") << inequalities_reps;
+   BigObject a("group::PermutationAction",
+               "GENERATORS", action_gens,
+               "INEQUALITIES_GENERATORS", inequalities_reps);
 
-   BigObject q("Polytope", mlist<Scalar>());
-   q.take("AFFINE_HULL") << linear_span;
-   q.take("GROUP.COORDINATE_ACTION") << a;
-
-   return q;
+   return BigObject("Polytope", mlist<Scalar>(),
+                    "AFFINE_HULL", linear_span,
+                    "GROUP.COORDINATE_ACTION", a);
 }
 
 

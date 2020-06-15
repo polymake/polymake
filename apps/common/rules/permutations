@@ -74,9 +74,9 @@ function permuted_inv_cols(Matrix, *) : c++;
 function permuted_inv_cols(IncidenceMatrix, *) : c++;
 
 # Create a new graph by permuting the nodes of the given one.
-function permuted_nodes(Graph, *) : c++;
+function permuted_nodes(GraphAdjacency, *) : c++;
 
-function permuted_inv_nodes(Graph, *) : c++;
+function permuted_inv_nodes(GraphAdjacency, *) : c++;
 
 
 # @category Combinatorics

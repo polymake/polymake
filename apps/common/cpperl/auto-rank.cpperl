@@ -20,6 +20,7 @@
   {"args": ["perl::Canned<const pm::BlockMatrix<mlist<pm::Matrix<pm::Rational> const&, pm::SparseMatrix<pm::Rational, pm::NonSymmetric> const&, pm::Matrix<pm::Rational> const&>, std::integral_constant<bool, true> >&>"], "func": "rank", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/linalg.h"], "sig": "rank.X"},
   {"args": ["perl::Canned<const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Set<Int, pm::operations::cmp> const, pm::all_selector const&>&>"], "func": "rank", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h", "polymake/linalg.h"], "sig": "rank.X"},
   {"args": ["perl::Canned<const pm::BlockMatrix<mlist<pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&, pm::Matrix<pm::Rational> const&>, std::integral_constant<bool, true> >&>"], "func": "rank", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "rank.X"},
+  {"args": ["perl::Canned<const SparseMatrix<GF2, NonSymmetric>&>"], "func": "rank", "include": ["polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h", "polymake/linalg.h"], "sig": "rank.X"},
   {"args": ["perl::Canned<const Matrix<GF2>&>"], "func": "rank", "include": ["polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/linalg.h"], "sig": "rank.X"},
  null ],
 "version": 3}

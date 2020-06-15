@@ -122,9 +122,9 @@ Matrix<Int> dimension_k_prueferSequence(Int n, Int k)
   Matrix<Rational> ineq = unit_matrix<Rational>(vertex_count);
   ineq = same_element_vector(Rational(-3), vertex_count) | ineq;
 
-  BigObject p("polytope::Polytope");
-  p.take("INEQUALITIES") << ineq;
-  p.take("EQUATIONS") << eq;
+  BigObject p("polytope::Polytope",
+              "INEQUALITIES", ineq,
+              "EQUATIONS", eq);
   Matrix<Int> latt = p.call_method("LATTICE_POINTS");
   latt = latt.minor(All, range_from(1));
 

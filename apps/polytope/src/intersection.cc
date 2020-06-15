@@ -69,11 +69,10 @@ BigObject intersection(const Array<BigObject>& pp_in)
    }
 
    BigObjectType t(containsPolytope ? Str("Polytope") : Str("Cone"), mlist<Scalar>());
-   BigObject p_out(t);
-
-   p_out.take("INEQUALITIES") << Inequalities;
-   p_out.take("EQUATIONS") << Equations;
-   p_out.take("CONE_AMBIENT_DIM") << dim;
+   BigObject p_out(t,
+                   "INEQUALITIES", Inequalities,
+                   "EQUATIONS", Equations,
+                   "CONE_AMBIENT_DIM", dim);
 
    if (containsCone) {
       if (containsPolytope)
@@ -104,7 +103,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                           "# If the input contains both cones and polytopes, the output will be a polytope."
                           "# @param Cone C ... polyhedra and cones to be intersected"
                           "# @return Cone"
-                          "# @example [prefer cdd]"
+                          "# @example [prefer cdd] [require bundled:cdd]"
                           "# > $p = intersection(cube(2), cross(2,3/2));"
                           "# > print $p->VERTICES;"
                           "# | 1 -1/2 1"

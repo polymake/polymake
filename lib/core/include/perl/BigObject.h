@@ -136,23 +136,23 @@ protected:
    explicit BigObject(SV* ref_arg)
       : obj_ref(ref_arg) {}
 
+   template <typename T>
+   using looks_like_property_name = std::is_constructible<AnyString, std::add_lvalue_reference_t<std::add_const_t<T>>>;
+
+   template <typename Args>
+   using looks_like_property_list_impl = typename mlist_and<typename mlist_transform_unary<typename mlist_even_subset<Args>::type, looks_like_property_name>::type>::type;
+
+   template <typename Args, bool = mlist_length<Args>::value % 2 == 0>
+   struct looks_like_property_list : looks_like_property_list_impl<Args> {};
+
+   template <typename Args>
+   struct looks_like_property_list<Args, false> : std::false_type {};
+
 public:
    bool valid() const { return obj_ref; }
 
    // default constructor creates an invalid object
    BigObject() : obj_ref(nullptr) {}
-
-   // construct an empty object of the given type and with an optional name
-   explicit BigObject(const BigObjectType& type, const AnyString& name=AnyString());
-
-   // construct an empty object of the type given as a string and with an optional name
-   explicit BigObject(const AnyString& type_name, const AnyString& name=AnyString())
-      : BigObject(BigObjectType(type_name), name) {}
-
-   // construct an empty object of the given parametrized type and with an optional name
-   template <typename... Params>
-   BigObject(const AnyString& type_name, mlist<Params...> params, const AnyString& name=AnyString())
-      : BigObject(BigObjectType(type_name, params), name) {}
 
    // construct a copy of another object with possible property conversion
    BigObject(const BigObjectType& type, const BigObject& src);
@@ -164,6 +164,32 @@ public:
    BigObject(const AnyString& type_name, mlist<Params...> params, const BigObject& src)
       : BigObject(BigObjectType(type_name, params), src) {}
 
+   // construct an object with given name and optional set of initial properties
+   template <typename... Args, std::enable_if_t<looks_like_property_list<mlist<Args...>>::value, std::nullptr_t> = nullptr>
+   BigObject(const BigObjectType& type, const AnyString& name, Args&&... args)
+      : obj_ref((start_construction(type, name, sizeof...(Args)), pass_properties(std::forward<Args>(args)...), finish_construction(sizeof...(Args) > 0))) {}
+
+   template <typename... Args, std::enable_if_t<looks_like_property_list<mlist<Args...>>::value, std::nullptr_t> = nullptr>
+   BigObject(const AnyString& type_name, const AnyString& name, Args&&... args)
+      : BigObject(BigObjectType(type_name), name, std::forward<Args>(args)...) {}
+
+   template <typename... Params, typename... Args, std::enable_if_t<looks_like_property_list<mlist<Args...>>::value, std::nullptr_t> = nullptr>
+   BigObject(const AnyString& type_name, mlist<Params...> params, const AnyString& name, Args&&... args)
+      : BigObject(BigObjectType(type_name, params), name, std::forward<Args>(args)...) {}
+
+   // construct an object with empty name and optional set of initial properties
+   template <typename... Args, std::enable_if_t<looks_like_property_list<mlist<Args...>>::value, std::nullptr_t> = nullptr>
+   BigObject(const BigObjectType& type, Args&&... args)
+      : BigObject(type, AnyString(), std::forward<Args>(args)...) {}
+
+   template <typename... Args, std::enable_if_t<looks_like_property_list<mlist<Args...>>::value, std::nullptr_t> = nullptr>
+   explicit BigObject(const AnyString& type_name, Args&&... args)
+      : BigObject(BigObjectType(type_name), AnyString(), std::forward<Args>(args)...) {}
+
+   template <typename... Params, typename... Args, std::enable_if_t<looks_like_property_list<mlist<Args...>>::value, std::nullptr_t> = nullptr>
+   BigObject(const AnyString& type_name, mlist<Params...> params, Args&&... args)
+      : BigObject(BigObjectType(type_name, params), AnyString(), std::forward<Args>(args)...) {}
+
    // construct an exact copy (up to temporary properties and local extensions)
    BigObject copy() const;
 
@@ -173,7 +199,7 @@ public:
    BigObject(BigObject&& o) noexcept
       : obj_ref(o.obj_ref)
    {
-      o.obj_ref=nullptr;
+      o.obj_ref = nullptr;
    }
 
    ~BigObject();
@@ -235,13 +261,31 @@ public:
    description_ostream<true> append_description() { return this; }
 
 protected:
+   static void start_construction(const BigObjectType& type, const AnyString& name, size_t add_args = 0);
+   static SV* finish_construction(bool);
+   static void pass_property(const AnyString& prop_name, Value& val);
+
    SV* give_impl(const AnyString& name) const;
    SV* give_with_property_name_impl(const AnyString& name, std::string& given) const;
    SV* lookup_impl(const AnyString& name) const;
    SV* lookup_with_property_name_impl(const AnyString& name, std::string& given) const;
 
    void take_impl(const AnyString& name) const;
-   SV* add_impl(const AnyString& name, SV* sub_obj, property_kind t) const;
+
+   void start_add(const AnyString& prop_name, property_kind t, const AnyString& sub_name, SV* sub_obj, size_t add_args = 0) const;
+   static SV* finish_add();
+
+   template <typename Arg, typename...MoreArgs>
+   void pass_properties(const AnyString& prop_name, Arg&& value_arg, MoreArgs&&... more_args)
+   {
+      Value val(ValueFlags::read_only);
+      val << std::forward<Arg>(value_arg);
+      pass_property(prop_name, val);
+      pass_properties(std::forward<MoreArgs>(more_args)...);
+   }
+
+   void pass_properties() {}
+
 public:
    template <typename... TOptions>
    PropertyValue give(const AnyString& name, const TOptions&... options) const
@@ -283,14 +327,40 @@ public:
       return PropertyOut(t);
    }
 
-   BigObject add(const AnyString& name, const BigObject& sub_obj, property_kind t = property_kind::normal)
+   template <typename... Args, std::enable_if_t<looks_like_property_list<mlist<Args...>>::value, std::nullptr_t> = nullptr>
+   BigObject add(const AnyString& prop_name, property_kind t, const BigObject& sub_obj, Args&&... args)
    {
-      return BigObject(add_impl(name, sub_obj.obj_ref, t));
+      return BigObject((start_add(prop_name, t, AnyString(), sub_obj.obj_ref), pass_properties(std::forward<Args>(args)...), finish_add()));
    }
 
-   BigObject add(const AnyString& name, property_kind t = property_kind::normal)
+   template <typename... Args, std::enable_if_t<looks_like_property_list<mlist<Args...>>::value, std::nullptr_t> = nullptr>
+   BigObject add(const AnyString& prop_name, property_kind t, const AnyString& sub_name, Args&&... args)
    {
-      return BigObject(add_impl(name, nullptr, t));
+      return BigObject((start_add(prop_name, t, sub_name, nullptr), pass_properties(std::forward<Args>(args)...), finish_add()));
+   }
+
+   template <typename... Args, std::enable_if_t<looks_like_property_list<mlist<Args...>>::value, std::nullptr_t> = nullptr>
+   BigObject add(const AnyString& prop_name, property_kind t, Args&&... args)
+   {
+      return BigObject((start_add(prop_name, t, AnyString(), nullptr), pass_properties(std::forward<Args>(args)...), finish_add()));
+   }
+
+   template <typename... Args, std::enable_if_t<looks_like_property_list<mlist<Args...>>::value, std::nullptr_t> = nullptr>
+   BigObject add(const AnyString& prop_name, const BigObject& sub_obj, Args&&... args)
+   {
+      return add(prop_name, property_kind::normal, sub_obj, std::forward<Args>(args)...);
+   }
+
+   template <typename... Args, std::enable_if_t<looks_like_property_list<mlist<Args...>>::value, std::nullptr_t> = nullptr>
+   BigObject add(const AnyString& prop_name, const AnyString& sub_name, Args&&... args)
+   {
+      return add(prop_name, property_kind::normal, sub_name, std::forward<Args>(args)...);
+   }
+
+   template <typename... Args, std::enable_if_t<looks_like_property_list<mlist<Args...>>::value, std::nullptr_t> = nullptr>
+   BigObject add(const AnyString& prop_name, Args&&... args)
+   {
+      return add(prop_name, property_kind::normal, std::forward<Args>(args)...);
    }
 
    void remove(const AnyString& name);

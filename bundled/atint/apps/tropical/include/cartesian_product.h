@@ -52,8 +52,8 @@ namespace polymake { namespace tropical {
    by dehomogenizing and then later rehomogenizing after the first coordinate.
 */
 template <typename Addition>
-BigObject cartesian_product(const Array<BigObject>& complexes) {
-
+BigObject cartesian_product(const Array<BigObject>& complexes)
+{
   //** EXTRACT FIRST COMPLEX ********************************************
 
   BigObject firstComplex = complexes[0];
@@ -257,9 +257,9 @@ BigObject cartesian_product(const Array<BigObject>& complexes) {
       // If one variety is not local, we take all its cones for the product
       IncidenceMatrix<> product_locality(local_restriction);
       if (product_locality.rows() == 0) {
-        BigObject current_product("fan::PolyhedralComplex");
-        current_product.take("VERTICES") << rayMatrix;
-        current_product.take("MAXIMAL_POLYTOPES") << maximalCones;
+        BigObject current_product("fan::PolyhedralComplex",
+                                  "VERTICES", rayMatrix,
+                                  "MAXIMAL_POLYTOPES", maximalCones);
         product_locality = all_cones_as_incidence(current_product);
       }
       IncidenceMatrix<> pre_locality(pre_local_restriction);

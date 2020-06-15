@@ -1,0 +1,60 @@
+#  Copyright (c) 1997-2020
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# rename property name Graph into GraphAdjacency
+
+upgrade 4.0.1 common::Graph {
+   my ($obj, $attrs) = @_;
+   ($attrs // $obj)->{_type} =~ s/common::\KGraph\b/GraphAdjacency/;
+}
+
+# separate rule for attachments having unqualified type names
+
+upgrade 4.0.1 Graph {
+   my ($obj, $attrs) = @_;
+   $attrs->{_type} =~ s/^Graph\b/GraphAdjacency/;
+}
+
+# rename tropical::RationalFunction into TropicalRationalFunction
+
+upgrade 4.0.2 tropical::RationalFunction {
+   my ($obj) = @_;
+   $obj->{_type} =~ s/tropical::\K(?=RationalFunction\b)/Tropical/;
+}
+
+# rename fan::HyperplaneArrangement property AMBIENT_DIM to HYPERPLANE_AMBIENT_DIM
+upgrade 4.0.3 fan::HyperplaneArrangement.AMBIENT_DIM = rename HYPERPLANE_AMBIENT_DIM; 
+
+upgrade 4.0.4 fan::HyperplaneArrangement.CELL_SIGNATURES {
+   my($obj) = @_;
+   my $ar = new common::Array<common::Set<common::Int>>($obj->{"CELL_SIGNATURES"});
+   my $entire = new common::Set<common::Int>;
+   foreach my $set (@$ar){
+      $entire += $set;
+   }
+   my $ref = $obj->{"CELL_SIGNATURES"};
+   for(my $i=0; $i<$ar->size; $i++){
+      my $complement = $entire - $ar->[$i];
+      $ref->[$i] = \@$complement;
+   }
+   return 1;
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

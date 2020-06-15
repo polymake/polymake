@@ -29,9 +29,9 @@ namespace polymake { namespace polytope {
 
 
 template <typename Scalar>
-BigObject regularity_lp(const Matrix<Scalar> &verts, const Array<Set<Int>>& subdiv, OptionSet options) {
-   
-   if (subdiv.size()<2)
+BigObject regularity_lp(const Matrix<Scalar> &verts, const Array<Set<Int>>& subdiv, OptionSet options)
+{
+   if (subdiv.size() < 2)
       throw std::runtime_error("Subdivision is trivial.");   
 
    const auto mats = secondary_cone_ineq(full_dim_projection(verts), subdiv, options);
@@ -44,16 +44,13 @@ BigObject regularity_lp(const Matrix<Scalar> &verts, const Array<Set<Int>>& subd
    BigObject q("Polytope", mlist<Scalar>());
    q.take("FEASIBLE") << true;
    if (equats.rows() > 0)
-     q.take("EQUATIONS") << (zero_vector<Scalar>() | equats);
+      q.take("EQUATIONS") << (zero_vector<Scalar>() | equats);
    q.take("INEQUALITIES") << 
       (zero_vector<Scalar>(n_vertices) | unit_matrix<Scalar>(n_vertices)) /
       ((-epsilon * ones_vector<Scalar>(inequs.rows())) | inequs);
 
-   BigObject lp("LinearProgram", mlist<Scalar>());
+   BigObject lp = q.add("LP", "LINEAR_OBJECTIVE", 0 | ones_vector<Scalar>(n_vertices));
    lp.attach("INTEGER_VARIABLES") << Array<bool>(n_vertices, true);
-   lp.take("LINEAR_OBJECTIVE") << (Scalar(0) | ones_vector<Scalar>(n_vertices));
-   q.take("LP") << lp;
-   
    return q;
 }
 
@@ -65,9 +62,9 @@ is_regular(const Matrix<Scalar> &verts, const Array<Set<Int>>& subdiv, OptionSet
 {
    const auto mats = secondary_cone_ineq(full_dim_projection(verts), subdiv, options);
 
-   BigObject res("Cone", mlist<Scalar>());
-   res.take("INEQUALITIES") << mats.first;
-   res.take("EQUATIONS") << mats.second;
+   BigObject res("Cone", mlist<Scalar>(),
+                 "INEQUALITIES", mats.first,
+                 "EQUATIONS", mats.second);
 
    Vector<Scalar> w;
    try {
@@ -82,7 +79,7 @@ is_regular(const Matrix<Scalar> &verts, const Array<Set<Int>>& subdiv, OptionSet
    }
    const Vector<Scalar> slack = mats.first*w;
 
-   for(auto it=entire(slack); !it.at_end(); ++it) {
+   for (auto it=entire(slack); !it.at_end(); ++it) {
       if (*it==0)
          return std::pair<bool,Vector<Scalar>>(false,Vector<Scalar>());
    }

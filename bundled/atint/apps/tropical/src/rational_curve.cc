@@ -459,10 +459,10 @@ BigObject curveAndGraphFromMetric(Vector<Rational> metric)
     node_degrees[nn] = nodes_by_leaves[nn].size() + nodes_by_sets[nn].size();
   }
 
-  BigObject graph("graph::Graph");
-  graph.take("N_NODES") << G.nodes();
-  graph.take("ADJACENCY") << G;
-  graph.take("NODE_LABELS") << labels;
+  BigObject graph("graph::Graph",
+                  "N_NODES", G.nodes(),
+                  "ADJACENCY", G,
+                  "NODE_LABELS", labels);
 
   // The edges in G might now have a different order than the one in which we put it in
   // Hence we have to make sure, the order of SETS and COEFFS is compatible with the EDGES order
@@ -500,17 +500,15 @@ BigObject curveAndGraphFromMetric(Vector<Rational> metric)
     coeffs |= 0;
   }
 
-  BigObject curve("RationalCurve");
-  curve.take("SETS") << ordered_sets;
-  curve.take("COEFFS") << ordered_coeffs;
-  curve.take("N_LEAVES") << n;
-  curve.take("GRAPH") << graph;
-  curve.take("GRAPH_EDGE_LENGTHS") << ordered_coeffs;
-  curve.take("NODES_BY_LEAVES") << nodes_by_leaves;
-  curve.take("NODES_BY_SETS") << nodes_by_sets;
-  curve.take("NODE_DEGREES") << node_degrees;
-
-  return curve;
+  return BigObject("RationalCurve",
+                   "SETS", ordered_sets,
+                   "COEFFS", ordered_coeffs,
+                   "N_LEAVES", n,
+                   "GRAPH", graph,
+                   "GRAPH_EDGE_LENGTHS", ordered_coeffs,
+                   "NODES_BY_LEAVES", nodes_by_leaves,
+                   "NODES_BY_SETS", nodes_by_sets,
+                   "NODE_DEGREES", node_degrees);
 }
 
 // Documentation see perl wrapper

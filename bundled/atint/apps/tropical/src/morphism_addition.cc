@@ -55,11 +55,10 @@ BigObject refine_domain(BigObject f, BigObject cycle, bool need_to_refine)
   if (has_matrix) {
     Matrix<Rational> matrix = f.give("MATRIX");
     Vector<Rational> translate = f.give("TRANSLATE");
-    BigObject result("Morphism", mlist<Addition>());
-    result.take("DOMAIN") << nDomain;
-    result.take("MATRIX") << matrix;
-    result.take("TRANSLATE") << translate;
-    return result;
+    return BigObject("Morphism", mlist<Addition>(),
+                     "DOMAIN", nDomain,
+                     "MATRIX", matrix,
+                     "TRANSLATE", translate);
   }
 
   Matrix<Rational> rayRep = r.rayRepFromY;
@@ -84,11 +83,10 @@ BigObject refine_domain(BigObject f, BigObject cycle, bool need_to_refine)
     lValues /= total_values * linRep.row(l);
   }
 
-  BigObject result("Morphism", mlist<Addition>());
-  result.take("DOMAIN") << nDomain;
-  result.take("VERTEX_VALUES") << rValues;
-  result.take("LINEALITY_VALUES") << lValues;
-  return result;
+  return BigObject("Morphism", mlist<Addition>(),
+                   "DOMAIN", nDomain,
+                   "VERTEX_VALUES", rValues,
+                   "LINEALITY_VALUES", lValues);
 }
 
 /**
@@ -125,11 +123,10 @@ BigObject add_morphisms(BigObject f, BigObject g)
 	
   // If the map is given by a matrix, we're done
   if (f_global && g_global) {
-    BigObject result("Morphism", mlist<Addition>());
-    result.take("MATRIX") << sum_matrix;
-    result.take("TRANSLATE") << sum_translate;
-    result.take("DOMAIN") << nDomain;
-    return result;
+    return BigObject("Morphism", mlist<Addition>(),
+                     "MATRIX", sum_matrix,
+                     "TRANSLATE", sum_translate,
+                     "DOMAIN", nDomain);
   }
 
   // Otherwise, compute values on the new domain
@@ -141,12 +138,10 @@ BigObject add_morphisms(BigObject f, BigObject g)
   Matrix<Rational> fref_lin  = f_refined.give("LINEALITY_VALUES");
   Matrix<Rational> gref_lin  = g_refined.give("LINEALITY_VALUES");
 
-  BigObject result("Morphism", mlist<Addition>());
-  result.take("DOMAIN") << nDomain;
-  result.take("VERTEX_VALUES") << fref_vert + gref_vert;
-  result.take("LINEALITY_VALUES") << fref_lin + gref_lin;
-
-  return result;
+  return BigObject("Morphism", mlist<Addition>(),
+                   "DOMAIN", nDomain,
+                   "VERTEX_VALUES", fref_vert + gref_vert,
+                   "LINEALITY_VALUES", fref_lin + gref_lin);
 }
 
 UserFunctionTemplate4perl("# @category Morphisms"

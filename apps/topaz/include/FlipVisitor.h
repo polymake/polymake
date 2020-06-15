@@ -127,9 +127,8 @@ public:
       dcel.flipEdges(flipIds_to_node[n_to]);
 
       // calculate the secondary cone of triangulation n_to
-      BigObject p("polytope::Polytope<Rational>");
-      Matrix<Rational> M = dcel.DelaunayInequalities();
-      p.take("INEQUALITIES") << M;
+      BigObject p("polytope::Polytope<Rational>",
+                  "INEQUALITIES", dcel.DelaunayInequalities());
       IncidenceMatrix<> rays_in_facets = p.give("VERTICES_IN_FACETS");
       Matrix<Rational> rays = p.give("VERTICES");
       Matrix<Rational> facets = p.give("FACETS");
@@ -204,7 +203,7 @@ public:
    void add_cone(Cone new_cone)
    {
       Set<Int> fan_cell;
-      for (const auto it : new_cone) {
+      for (const auto& it : new_cone) {
          // case: the vertex is new
          if (!fan_vertices.exists(it)) {
             fan_vertices[it] = fan_num_vert;
@@ -257,7 +256,7 @@ public:
       Rational eps(epsilon);
       Vector<Rational> point(dim);
       Vector<Rational> sum(dim);
-      for (const auto it : facet_vertices) {
+      for (const auto& it : facet_vertices) {
          if (it[0] == 0) sum += it;
       }
       bool positive = false;

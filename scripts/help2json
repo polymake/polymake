@@ -73,8 +73,6 @@ sub resolve_ref {
    if ($ref =~ /[.:]/ && $ref =~ /^ (?: ($id_re)::)? ($hier_id_re) $/xo) {
       if ($1 eq "Core" || $1 eq "Visual") {
          @topics = @how ? $top_help->find(@how, $ref) : select_closest($help, find_in_tree($help, $ref));
-      } elsif ($1 eq "props") {
-         @topics = $top_help->find(@how, "property_types", $2);
       } else {
          # (BigObjectType::)SUBOBJECT.PROPERTY
          @topics = defined($1) ? $top_help->find(@how, "objects", $1) : defined($app) ? uniq( grep { defined } map { $_->help_topic } @{$app->object_types} ) : ();
@@ -90,7 +88,7 @@ sub resolve_ref {
                      # match parametrized types
                    | (?'objtype' $type_re)::(?'method' [^:]+) $
                  ) /xo  &&
-       defined ($obj_help = $top_help->find(@how, "objects", "property_types", $+{objtype}))) {
+       defined($obj_help = $top_help->find(@how, "objects", "property_types", $+{objtype}))) {
       # Qualified::Type::METHOD
       @topics = $obj_help->find("?rel", $+{method});
    }
@@ -260,13 +258,7 @@ sub find_simple_type {
    }
    my $top_help = defined($application) ? $application->help : $Core::Help::core;
    if ($type =~ /^($id_re)::($type_re)$/o) {
-      if ($1 eq "props") {
-         @where = qw(property_types);
-         $type = $2;
-      } elsif ($1 eq "objects") {
-         @where = qw(objects);
-         $type = $2;
-      } elsif ($1 eq "Core") {
+      if ($1 eq "Core") {
          $top_help = $Core::Help::core;
       } elsif (defined (my $app = lookup Core::Application($1))) {
          $top_help = $app->help;
@@ -383,7 +375,7 @@ sub add_examples {
 sub process_property_type {
    my ($help) = @_;
    my $tree = { '$text' => process_text($help) };
-   my $pkg = $application->pkg . "::props::" . $help->name;
+   my $pkg = $application->pkg."::".$help->name;
    my $proto;
    if (defined(my $get_proto = UNIVERSAL::can($pkg, "self"))) {
       $proto = $get_proto->(1);

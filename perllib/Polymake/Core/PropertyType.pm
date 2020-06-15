@@ -254,20 +254,6 @@ use Polymake::Struct (
    '@derived_abstract',
 );
 
-use Polymake::Struct (
-   [ 'alt.constructor' => '_new_generic' ],
-   [ new => '$$$$$' ],
-   [ '$name' => '#1' ],
-   [ '$pkg' => '#2' ],
-   [ '$application' => '#3' ],
-   [ '$extension' => '$Extension::loading' ],
-   [ '$super' => '#4' ],
-   [ '$generic' => 'undef' ],
-   [ '$params' => '#5' ],
-   [ '&abstract' => '\&type' ],
-   [ '&perform_typecheck' => 'undef' ],
-);
-
 ####################################################################################
 #
 #  Constructor
@@ -344,32 +330,41 @@ sub performs_deduction {
    $self->abstract && defined($self->perform_typecheck) && $self->perform_typecheck != \&context_sensitive_typecheck;
 }
 
-sub new_generic {
-   my ($self_pkg, $name, $pkg, $app, $params, $super, $subpkg)=@_;
-   my $self;
-   my $n_defaults=shift @$params;
-   my $min_params=@$params-$n_defaults;
-   my $param_index=-1;
-   my @param_holders=map { new ClassTypeParam($_, $pkg, $app, ++$param_index) } @$params;
-   my $symtab=get_symtab($pkg);
-   if (!defined($subpkg)) {
-      $self=_new_generic($self_pkg, $name, $pkg, $app, $super, \@param_holders);
-      if ($super) {
-         $self->dimension=$super->dimension;
-         $self->operators=$super->operators;
-         if ($self->construct_node=$super->construct_node) {
-            $self->create_method_new();
-         }
-         push @{$super->derived_abstract}, $self;
-         weak($super->derived_abstract->[-1]);
-      }
-      $subpkg="props";
-   }
-   define_function($symtab, "_min_params", sub { $min_params });
+sub create_param_placeholders {
+   my ($pkg, $app, $params) = @_;
+   my $n_defaults = shift @$params;
+   my $min_params = @$params-$n_defaults;
+   define_function($pkg, "_min_params", sub { $min_params });
+   my $param_index = -1;
+   [ map { new ClassTypeParam($_, $pkg, $app, ++$param_index) } @$params ];
+}
 
-   no strict 'refs';
-   *{$app->pkg."::$subpkg\::$name\::"}=$symtab;
-   $self // \@param_holders;
+use Polymake::Struct (
+   [ 'alt.constructor' => '_new_generic' ],
+   [ new => '$$$$;$' ],
+   [ '$name' => '#1' ],
+   [ '$pkg' => '#2' ],
+   [ '$application' => '#3' ],
+   [ '$extension' => '$Extension::loading' ],
+   [ '$super' => '#5' ],
+   [ '$generic' => 'undef' ],
+   [ '$params' => 'create_param_placeholders(#2, #3, #4)' ],
+   [ '&abstract' => '\&type' ],
+   [ '&perform_typecheck' => 'undef' ],
+);
+
+sub new_generic {
+   my $self = &_new_generic;
+   if (my $super = $self->super) {
+      $self->dimension = $super->dimension;
+      $self->operators = $super->operators;
+      if ($self->construct_node = $super->construct_node) {
+         $self->create_method_new();
+      }
+      push @{$super->derived_abstract}, $self;
+      weak($super->derived_abstract->[-1]);
+   }
+   $self
 }
 
 #################################################################################

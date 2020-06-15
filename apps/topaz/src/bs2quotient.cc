@@ -109,12 +109,11 @@ BigObject bs2quotient(BigObject p, BigObject bs)
       identified_facets += new_facet;
    }
 
-   BigObject q("topaz::SimplicialComplex");
-   q.take("FACETS") << identified_facets;
-   q.take("VERTEX_LABELS") << identified_labels;
-   q.take("PURE") << true;
-   q.take("DIM") << d;
-   return q;
+   return BigObject("topaz::SimplicialComplex",
+                    "FACETS", identified_facets,
+                    "VERTEX_LABELS", identified_labels,
+                    "PURE", true,
+                    "DIM", d);
 }
 
 InsertEmbeddedRule("REQUIRE_APPLICATION polytope\n\n");

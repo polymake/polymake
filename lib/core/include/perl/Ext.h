@@ -261,13 +261,19 @@ HV* get_cached_stash(pTHX_ SV* pkg)
 #define PmPrintHvNAME(hv) (int)HvNAMELEN(hv), HvNAME(hv)
 
 inline
-int get_named_constant(pTHX_ HV* stash, const AnyString& name)
+SV* get_named_constant_sv(pTHX_ HV* stash, const AnyString& name)
 {
    SV** gvp = hv_fetch(stash, name.ptr, I32(name.len), false);
    CV* cv;
    if (!gvp || (cv = GvCV(*gvp), !cv || !CvISXSUB(cv)))
       Perl_croak(aTHX_ "unknown constant %.*s::%.*s", PmPrintHvNAME(stash), (int)name.len, name.ptr);
-   return int(SvIV((SV*)XSANY.any_ptr));
+   return (SV*)XSANY.any_ptr;
+}
+
+inline
+int get_named_constant(pTHX_ HV* stash, const AnyString& name)
+{
+   return int(SvIV(get_named_constant_sv(aTHX_ stash, name)));
 }
 
 inline

@@ -57,9 +57,7 @@ BigObject mixed_integer_hull(BigObject p_in, const Array<Int>& int_coords)
     right_side = proj_lattice_points.row(i).slice(range_from(1));
     Matrix<Rational> temp_eq(-right_side | unit_matrix<Rational>(d).minor(int_coords, range_from(1)));
 
-    BigObject p_fiber("Polytope<Rational>");
-    p_fiber.take("INEQUALITIES") << temp_ineq;
-    p_fiber.take("EQUATIONS") << temp_eq;
+    BigObject p_fiber("Polytope<Rational>", "INEQUALITIES", temp_ineq, "EQUATIONS", temp_eq);
 
     // intersecting it with P
     BigObject p_intersection = call_function("intersection", p_in, p_fiber);
@@ -70,10 +68,8 @@ BigObject mixed_integer_hull(BigObject p_in, const Array<Int>& int_coords)
   }
 
   // convex hull of all vertices computed before
-  BigObject p_out("Polytope<Rational>");
-  p_out.take("POINTS") << out_points;
-
-  return p_out;	
+  return BigObject("Polytope<Rational>",
+                   "POINTS", out_points);	
 }
 
 

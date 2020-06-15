@@ -96,12 +96,9 @@ void quotient_space_faces(BigObject p)
    
    Array<Array<Int>> sym_group_generators;
    if (p.lookup("GROUP.VERTICES_ACTION.GENERATORS") >> sym_group_generators) {
-      BigObject sga("group::PermutationAction");
-      sga.take("GENERATORS") << induced_symmetry_group_generators(n_vert, sym_group_generators, face_orbits_of_dim);
-
-      BigObject g("group::Group");
-      g.take("PERMUTATION_ACTION") << sga;
-
+      BigObject sga("group::PermutationAction",
+                    "GENERATORS", induced_symmetry_group_generators(n_vert, sym_group_generators, face_orbits_of_dim));
+      BigObject g("group::Group", "PERMUTATION_ACTION", sga);
       p.take("QUOTIENT_SPACE.SYMMETRY_GROUP") << g;
    }
 }

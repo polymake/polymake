@@ -21,5 +21,7 @@
   {"args": ["on_container", "perl::Canned<const Array<Array<Int>>&>", "perl::Canned<const Vector<Rational>&>"], "func": "orbit", "include": ["polymake/Array.h", "polymake/Rational.h", "polymake/Vector.h", "polymake/group/orbit.h"], "sig": "orbit:T1.X.X", "tp": "1"},
   {"args": ["on_container", "perl::Canned<const Array<Int>&>", "perl::Canned<const Vector<Rational>&>"], "func": "action_inv", "include": ["polymake/Array.h", "polymake/Rational.h", "polymake/Vector.h", "polymake/group/orbit.h"], "sig": "action_inv:T1.X.X", "tp": "1"},
   {"args": ["on_container", "perl::Canned<const Array<Int>&>", "perl::Canned<const Map<Set<Int>, Set<Int>>&>"], "func": "action", "include": ["polymake/Array.h", "polymake/Map.h", "polymake/Set.h", "polymake/group/orbit.h"], "sig": "action:T1.X.X", "tp": "1"},
+  {"args": ["on_rows", "perl::Canned<const Array<Int>&>", "perl::Canned<const Matrix<Rational>&>"], "func": "action", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/group/orbit.h"], "sig": "action:T1.X.X", "tp": 1},
+  {"args": ["on_container", "perl::Canned<const Array<Int>&>", "perl::Canned<const Set<Int>&>"], "func": "action", "include": ["polymake/Array.h", "polymake/Set.h", "polymake/group/orbit.h"], "sig": "action:T1.X.X", "tp": 1},
  null ],
 "version": 3}

@@ -25,18 +25,16 @@ namespace polymake { namespace polytope {
 template <typename Coefficient, typename Exponent>
 BigObject newton(const Polynomial<Coefficient,Exponent>& p)
 {
-   BigObject np("Polytope<Rational>");
-   np.set_description() << "Newton polytope of " << p << endl;
-
    const Matrix<Exponent> exps(p.template monomials_as_matrix< Matrix<Exponent> >());
    const Int n = exps.rows();
    const Int d = exps.cols();
 
-   np.take("POINTS") << (same_element_vector(1,n) | exps);
-   np.take("CONE_AMBIENT_DIM") << d+1;
-   np.take("LATTICE") << true;
-   np.take("BOUNDED") << true;
-
+   BigObject np("Polytope<Rational>",
+                "POINTS", same_element_vector(1, n) | exps,
+                "CONE_AMBIENT_DIM", d+1,
+                "LATTICE", true,
+                "BOUNDED", true);
+   np.set_description() << "Newton polytope of " << p << endl;
    return np;
 }
 

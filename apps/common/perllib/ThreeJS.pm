@@ -877,7 +877,8 @@ use Polymake::Struct (
 sub newArrowHelper {
    my ($self, $var, $f, $t, $length, $color, $ahead_length, $ahead_width) = @_;
    return <<"%"
-   var length = allpoints[$t].vector.distanceTo(allpoints[$f].vector)-allpoints[$t].sphere.geometry.parameters.radius;
+   var pointradius = (allpoints[$t].sphere !== null) ? allpoints[$t].sphere.geometry.parameters.radius : 0;
+   var length = allpoints[$t].vector.distanceTo(allpoints[$f].vector) - pointradius;
    var direction = allpoints[$t].vector.clone()
    direction.sub(allpoints[$f].vector)
    direction.normalize();

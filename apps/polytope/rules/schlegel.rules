@@ -240,7 +240,7 @@ user_method TRIANGULATION_BOUNDARY(%Visual::Graph::decorations) {
                  ? sub { $G->EdgeThickness->(@_)*$th }
                  : $G->EdgeThickness*$th
                : $th;
-   my $adj = new props::Graph($P->TRIANGULATION->BOUNDARY->GRAPH->ADJACENCY - $P->GRAPH->ADJACENCY);
+   my $adj = new GraphAdjacency($P->TRIANGULATION->BOUNDARY->GRAPH->ADJACENCY - $P->GRAPH->ADJACENCY);
    my $graph = new graph::Graph(ADJACENCY => $adj);
    push @{$self->elements},
         new Visual::Graph(
@@ -324,7 +324,7 @@ user_method CONSTRUCTION(%Visual::Polygons::decorations) {
    $self->basis_graph->EdgeThickness=1.5;
    $self->basis_graph->Name="Schlegel diagram of ".$P->name;
    my $VP = $P->VISUAL( EdgeThickness => 1, FacetStyle => "hidden", VertexStyle => "hidden" )->elements->[0];
-   my $Cgraph = new props::Graph($P->N_VERTICES+1);
+   my $Cgraph = new GraphAdjacency($P->N_VERTICES+1);
    $Cgraph->edge(0,$_) for 1 .. $P->N_VERTICES;
    my $G = new graph::Graph(ADJACENCY => $Cgraph);
    my $Vpoint=dehomogenize(convert_to<Float>($self->SchlegelObject->VIEWPOINT));

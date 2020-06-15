@@ -42,14 +42,11 @@ USE fan matroid graph
 # A [[DOMAIN]] can be defined additionally (though one should take
 # care that both functions are actually piecewise affine linear on the cells), otherwise it will be
 # computed as the common refinement of the domains of affine linearity of the two polynomials.
-# Note: This has nothing to do with common's RationalFunction (which is univariate). If you want to 
-# access that type or use this type from another application, be sure to prepend the appropriate 
-# namespace identifier.
-declare object RationalFunction<Addition>;
+declare object TropicalRationalFunction<Addition>;
 
 # A morphism is a function between cycles which is locally affine linear and respects the lattices.
 # It is defined by a [[DOMAIN]], which is a cycle, and values on this domain, [[VERTEX_VALUES]] and
-# [[LINEALITY_VALUES]], much like [[RationalFunction]].
+# [[LINEALITY_VALUES]], much like [[TropicalRationalFunction]].
 # Alternatively, it can be defined as a global affine linear function by giving a matrix and a 
 # translation vector.
 declare object Morphism<Addition>;

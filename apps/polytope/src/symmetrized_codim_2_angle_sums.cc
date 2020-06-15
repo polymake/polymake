@@ -199,15 +199,12 @@ simplexity_ilp_with_angles(Int d,
                      SparseMatrix<Scalar>(angle_equations)  /
                      ((-Integer::fac(d) * vol) | volume_vect | zero_vector<Scalar>(delta_cols));
 
-   BigObject lp("LinearProgram", mlist<Scalar>());
+   BigObject q("Polytope", mlist<Scalar>(),
+               "FEASIBLE", true,
+               "EQUATIONS", Equations,
+               "INEQUALITIES", Inequalities);
+   BigObject lp = q.add("LP", "LINEAR_OBJECTIVE", 0 | ones_vector<Scalar>(facet_reps.size()));
    lp.attach("INTEGER_VARIABLES") << Array<bool>(ae_cols, true);
-   lp.take("LINEAR_OBJECTIVE") << Vector<Scalar>(0 | ones_vector<Scalar>(facet_reps.size()));
-
-   BigObject q("Polytope", mlist<Scalar>());
-   q.take("FEASIBLE") << true;
-   q.take("EQUATIONS") << Equations;
-   q.take("INEQUALITIES") << Inequalities;
-   q.take("LP") << lp;
    return q;
 }
 

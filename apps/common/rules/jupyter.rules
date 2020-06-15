@@ -46,7 +46,7 @@ sub PmSvg::Viewer::new {
 
 sub PmSvg::File::Writer::run : method {
    my ($self)=@_;
-   print STDOUT '.@@HTML@@', $self->toString, '.@@ENDHTML@@';
+   print STDOUT '.@@HTML@@', $self->toString."\n", '.@@ENDHTML@@';
 }
 
 # Local Variables:

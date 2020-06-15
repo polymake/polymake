@@ -1158,7 +1158,7 @@ sub try_type_completion {
       $app
    } else {
       if ($text !~ /::/) {
-         $shell->completion_proposals = [ map { "$_\::" } sort( grep { /^\Q$text\E/ } (($is_object_type ? "objects" : qw(objects props)), keys %{$app->used}) ) ];
+         $shell->completion_proposals = [ map { "$_\::" } sort( grep { /^\Q$text\E/ } keys %{$app->used}) ];
       }
       undef
    }

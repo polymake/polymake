@@ -92,6 +92,10 @@ UserFunction4perl("# @category Producing a new simplicial complex from others"
                   "# @param Set<Int> face specified by vertex indices."
                   "#  Please use [[labeled_vertices]] if you want to specify the face by vertex labels."
                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
+                  "# @example Deleting any face of the 3-simplex yields a pure 2-dimensional complex with 3 facets:"
+                  "# > $s = deletion(simplex(3),[0,1,2]);"
+                  "# > print $s->PURE, ', ', $s->DIM, ', ', $s->N_FACETS;"
+                  "# | true, 2, 3"
                   "# @return SimplicialComplex",
                   &deletion_complex, "deletion(SimplicialComplex $ { no_labels => 0 } )");
 } }

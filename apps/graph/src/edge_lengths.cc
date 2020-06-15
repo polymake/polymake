@@ -36,14 +36,14 @@ EdgeMap<Dir,double> edge_lengths(const Graph<Dir>& G, const GenericMatrix<Matrix
 UserFunctionTemplate4perl("# @category Other"
 			  "# Compute the lengths of all edges of a given graph //G// from"
 			  "# the coordinates //coords// of its nodes."
-			  "# @param props::Graph<Directed> G the input graph"
+			  "# @param GraphAdjacency<Directed> G the input graph"
 			  "# @param Matrix coords the coordinates of the nodes"
 			  "# @return EdgeMap"
 			  "# @example [application polytope] The following prints the edge length of the complete graph with 3 nodes"
 			  "# and edge lengths given by the coordiantes of the standard 2-simplex:"
            "# > print edge_lengths(complete(3)->ADJACENCY,simplex(2)->VERTICES);"
            "# | 1 1 1.414213562",
-			  "edge_lengths(props::Graph Matrix)");
+			  "edge_lengths(GraphAdjacency Matrix)");
 } }
 
 // Local Variables:

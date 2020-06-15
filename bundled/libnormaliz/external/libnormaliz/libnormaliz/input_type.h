@@ -75,10 +75,12 @@ enum InputType {
     excluded_faces,
     lattice_ideal,
     //
-    // prwecomputed data
+    // precomputed data
     //
     support_hyperplanes,
     extreme_rays,
+    maximal_subspace,
+    generated_lattice,
     hilbert_basis_rec_cone,
     //
     // deprecated
@@ -90,9 +92,13 @@ enum InputType {
     scale,
     //
     add_cone,
+    add_subspace,
     add_vertices,
     add_inequalities,
-    add_inhom_inequalities
+    add_inhom_inequalities,
+    add_equations,
+    add_inhom_equations
+    
 };
 }  // end namespace Type
 

@@ -317,11 +317,13 @@ HilbertSeries::HilbertSeries(const vector<mpz_class>& numerator, const map<long,
     initialize();
 }
 
+/* 
 // Constructor, string as created by to_string_rep
 HilbertSeries::HilbertSeries(const string& str) {
     from_string_rep(str);
     initialize();
 }
+*/
 
 void HilbertSeries::reset() {
     num.clear();
@@ -615,8 +617,6 @@ void HilbertSeries::computeHilbertQuasiPolynomial() const {
         return;
     simplify();
 
-    omp_set_nested(0);
-
     vector<long> denom_vec = to_vector(denom);
     if (nr_coeff_quasipol > (long)denom_vec.size()) {
         if (verbose)
@@ -848,6 +848,7 @@ void HilbertSeries::adjustShift() {
     }
 }
 
+/*
 // methods for textual transfer of a Hilbert Series
 string HilbertSeries::to_string_rep() const {
     collectData();
@@ -912,6 +913,7 @@ ostream& operator<<(ostream& out, const HilbertSeries& HS) {
     out << " )" << std::endl;
     return out;
 }
+*/
 
 //---------------------------------------------------------------------------
 // polynomial operations, for polynomials repr. as vector of coefficients
@@ -1227,6 +1229,7 @@ mpz_class IntegrationData::getWeightedEhrhartQuasiPolynomialDenom() const {
     return weighted_Ehrhart_series.first.getHilbertQuasiPolynomialDenom() * weighted_Ehrhart_series.second;
 }
 
+// the following 4 functions are nit used in Normaliz, bur provided for interfaces
 const vector<mpz_class>& IntegrationData::getNum_ZZ() const {
     return weighted_Ehrhart_series.first.getNum();
 }

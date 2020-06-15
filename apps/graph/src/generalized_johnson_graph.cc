@@ -33,7 +33,6 @@ BigObject generalized_johnson_graph (const Int n, const Int k, const Int i)
    if (k < 1 || k > n)
       throw std::runtime_error("generalized_johnson_graph: 1 <= k <= n required");
 
-   BigObject JGraph("Graph<Undirected>");
    Map<Set<Int>, Int> index_of;
    Array<std::string> labels(Int(Integer::binom(n, k)));
 
@@ -55,11 +54,11 @@ BigObject generalized_johnson_graph (const Int n, const Int k, const Int i)
          if ((mit1->first * mit2->first).size()==i)
 	    jgraph.edge(mit1->second, mit2->second);
 
-   JGraph.take("ADJACENCY") << jgraph;
-   JGraph.take("N_NODES") << ct;
-   JGraph.take("N_EDGES") << jgraph.edges();
-   JGraph.take("NODE_LABELS") << labels;
-   return JGraph;
+   return BigObject("Graph<Undirected>",
+                    "ADJACENCY", jgraph,
+                    "N_NODES", ct,
+                    "N_EDGES", jgraph.edges(),
+                    "NODE_LABELS", labels);
 }
 
 BigObject kneser_graph(const Int n, const Int k)

@@ -869,7 +869,7 @@ sub descend_and_create {
                   my $new_instance=$pv->property->create_subobject($self, $trans->entirely_temp);
                   $pv->ensure_unique_name($new_instance, $trans->entirely_temp);
                   # the new instance must appear as the default one until the rule has finished;
-                  # RuleTransaction::restore_backup will eventually bring it back to the ned of the list
+                  # RuleTransaction::restore_backup will eventually bring it back to the end of the list
                   unshift @{$pv->values}, $new_instance;
                   $#{$pv->values}
                };
@@ -1993,60 +1993,60 @@ sub add_credit {
 }
 ####################################################################################
 sub copy_permuted {
-   my $self=shift;
-   my $proto=$self->type->pure_type;
+   my $self = shift;
+   my $proto = $self->type->pure_type;
    my @perms;
    if ($_[0] eq "permutation") {
-      my $perm_name=splice @_, 0, 2;
+      my $perm_name = splice @_, 0, 2;
       if (ref($perm_name)) {
          @$perm_name or croak( "invalid option 'permutation => empty ARRAY'" );
-         $perms[0]=$perm_name;
+         $perms[0] = $perm_name;
       } else {
-         $perms[0]=[ $proto->encode_descending_path($perm_name, $self) ];
+         $perms[0] = [ $proto->encode_descending_path($perm_name, $self) ];
       }
       $perms[0]->[-1]->flags & Property::Flags::is_permutation
         or croak( "invalid option 'permutation => $perm_name' which is not a permutation" );
    } else {
-      my @path=$proto->encode_descending_path($_[0]);
+      my @path = $proto->encode_descending_path($_[0]);
       @perms = map { bless [ $_ ], "Polymake::Core::Rule::PermutationPath" }
                grep { defined($_->find_sensitive_sub_property(@path)) }
                     $proto->list_permutations;
       unless (@perms) {
-         my $subobj=$self;
+         my $subobj = $self;
          my ($content_index, $pv);
-         for (my $i=0; $i<$#path; ++$i) {
-            if (defined ($content_index=$subobj->dictionary->{$path[$i]->key}) &&
-                defined ($pv=$subobj->contents->[$content_index])) {
+         for (my $i=0; $i < $#path; ++$i) {
+            if (defined($content_index = $subobj->dictionary->{$path[$i]->key}) &&
+                defined($pv = $subobj->contents->[$content_index])) {
                if (@perms = map { bless [ @path[0..$i], $_ ], "Polymake::Core::Rule::PermutationPath" }
                             grep { defined($_->find_sensitive_sub_property(@path[$i+1..$#path])) }
                                  $pv->property->type->list_permutations) {
                   last;
                }
-               $subobj=$pv->value;
+               $subobj = $pv->value;
             } else {
                croak( "copy_permuted: ", join(".", map { $->name } @path[0..$i]), " does not exist in the object" );
             }
          }
          @perms or croak( "copy_permuted: $_[0] is not affected by any permutation" );
       }
-      for (my $i=2; $i<$#_; $i+=2) {
-         @path=$proto->encode_descending_path($_[$i]);
-         @perms= grep { defined($_->find_sensitive_sub_property(@path)) } @perms
+      for (my $i=2; $i < $#_; $i+=2) {
+         @path = $proto->encode_descending_path($_[$i]);
+         @perms = grep { defined($_->find_sensitive_sub_property(@path)) } @perms
            or croak( "copy_permuted: no permutation type known which would simultaneously affect ", join(", ", map { $_[$_*2] } 0..$i/2));
       }
-      if (@perms!=1) {
+      if (@perms != 1) {
          croak( "copy_permuted: permutation type can't be unambiguously chosen; permutations in question are ",
                 join(", ", map { Property::print_path($_) } @perms) );
       }
    }
 
-   my ($rule, $filter)=permuting Rule($proto, @perms);
-   my $copy=new($proto->pkg, $self->name);
+   my ($rule, $filter) = permuting Rule($proto, @perms);
+   my $copy = new($proto->pkg, $self->name);
    begin_transaction($copy);
    copy_contents($copy, $self, defined($self->parent) && $self->property->flags & Property::Flags::is_augmented, $filter);
-   $copy->description=$self->description;
+   $copy->description = $self->description;
 
-   for (my $i=0; $i<$#_; $i+=2) {
+   for (my $i=0; $i < $#_; $i+=2) {
       take($copy, $_[$i], $_[$i+1]);
    }
    Scheduler::resolve_permutation($copy, $rule) > 0
@@ -2057,62 +2057,62 @@ sub copy_permuted {
 ####################################################################################
 # private:
 sub search_for_sensitive {
-   my ($self, $prop_hash, $in_props, $taboo)=@_;
+   my ($self, $prop_hash, $in_props, $taboo) = @_;
    my ($content_index, $pv);
-   while (my ($prop_key, $down)=each %$prop_hash) {
+   while (my ($prop_key, $down) = each %$prop_hash) {
       if ($prop_key == $Permutation::sub_key) {
-         while (my ($prop_key, $sub_hash)=each %$down) {
-            if (defined ($content_index=$self->dictionary->{$prop_key}) &&
-                defined ($pv=$self->contents->[$content_index]) &&
-                defined ($pv->value)) {
+         while (my ($prop_key, $sub_hash) = each %$down) {
+            if (defined($content_index = $self->dictionary->{$prop_key}) &&
+                defined($pv = $self->contents->[$content_index]) &&
+                defined($pv->value)) {
                if ($pv->property->flags & Property::Flags::is_multiple) {
                   foreach (@{$pv->values}) {
                      if ($_ != $taboo && search_for_sensitive($_, $sub_hash, $in_props)) {
                         keys %$down; keys %$prop_hash;   # reset iterators
-                        return 1;
+                        return true;
                      }
                   }
                } elsif ($pv->value != $taboo && search_for_sensitive($pv->value, $sub_hash, $in_props)) {
                   keys %$down; keys %$prop_hash;   # reset iterators
-                  return 1;
+                  return true;
                }
             }
          }
       } else {
-         if (defined ($content_index=$self->dictionary->{$prop_key}) &&
-             defined ($pv=$self->contents->[$content_index]) &&
-             defined ($pv->value)) {
-            if ($in_props or $pv->value != $taboo && search_for_sensitive($pv->value, $down->sensitive_props,1)) {
+         if (defined($content_index = $self->dictionary->{$prop_key}) &&
+             defined($pv = $self->contents->[$content_index]) &&
+             defined($pv->value)) {
+            if ($in_props or $pv->value != $taboo && search_for_sensitive($pv->value, $down->sensitive_props, true)) {
                keys %$prop_hash;        # reset the iterator;
-               return 1;
+               return true;
             }
          }
       }
    }
-   0
+   false
 }
 
 sub search_for_sensitive_in_ancestors {
-   my ($self, $permutation)=@_;
-   my $hash=$permutation->parent_permutations;
+   my ($self, $permutation) = @_;
+   my $hash = $permutation->parent_permutations;
    while ($self->parent) {
-      $hash=$hash->{$self->property->key} or last;
-      if (defined (my $list=$hash->{$Permutation::sub_key})) {
+      $hash = $hash->{$self->property->key} or last;
+      if (defined(my $list = $hash->{$Permutation::sub_key})) {
          foreach my $parent_perm_prop (@$list) {
-            return 1 if has_sensitive_to($self->parent, $parent_perm_prop, $self);
+            return true if has_sensitive_to($self->parent, $parent_perm_prop, $self);
          }
       }
-      $self=$self->parent;
+      $self = $self->parent;
    }
-   0
+   false
 }
 
 sub has_sensitive_to {
-   my ($self, $permutation, $taboo)=@_;
+   my ($self, $permutation, $taboo) = @_;
    $self->sensitive_to->{$permutation->key} //=
-      (search_for_sensitive($self, $permutation->sensitive_props, 1) ||
-       search_for_sensitive($self, $permutation->sub_permutations, 0, $taboo) ||
-       ($self->parent ? &search_for_sensitive_in_ancestors : 0));
+      (search_for_sensitive($self, $permutation->sensitive_props, true) ||
+       search_for_sensitive($self, $permutation->sub_permutations, false, $taboo) ||
+       ($self->parent ? &search_for_sensitive_in_ancestors : false));
 }
 ####################################################################################
 # PropertyValue1, PropertyValue2, [ ignore list ] => scalar context: >0 if not equal, undef if equal

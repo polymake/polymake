@@ -146,7 +146,7 @@ user_function nestedOPGraph (Vector, Matrix, Matrix, group::PermutationAction, $
     }
 
     # fill graph
-    my $graph=new props::Graph<Directed>();
+    my $graph=new GraphAdjacency<Directed>();
     $graph->add_node; # added node for start
     for ( my $i=1; $i<$lp_reps->rows; ++$i) { # add edges to all lattice points inside orb\Gamma(start); skip $start at row 0
        $graph->add_node; # the node has the same number as the corresponding row in $lp_reps

@@ -51,9 +51,7 @@ Array<Set<Int>> delaunay_triangulation(BigObject p)
          if (det(sites.minor(*sim, All)) != 0) triang.emplace_back(*sim);
       }
       else if (sim->size()>dim) { //we have to triangulate ourselves
-         const Matrix<E> facet_points=points.minor(*sim, All);
-         BigObject facet_poly(poly_type);
-         facet_poly.take("VERTICES") << facet_points;
+         BigObject facet_poly(poly_type, "VERTICES", points.minor(*sim, All));
          const Array<Set<Int>> facet_triang = facet_poly.give("TRIANGULATION.FACETS");
          for (const Set<Int>& j : facet_triang) {
             const Set<Int> sim2(select(*sim, j));
@@ -70,7 +68,7 @@ UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
                           "# triangulated (by applying the beneath-beyond algorithm)."
                           "# @param VoronoiPolyhedron V"
                           "# @return Array<Set<Int>>"
-                          "# @example [prefer cdd]"
+                          "# @example [prefer cdd] [require bundled:cdd]"
                           "# > $VD = new VoronoiPolyhedron(SITES=>[[1,1,1],[1,0,1],[1,-1,1],[1,1,-1],[1,0,-1],[1,-1,-1]]);"
                           "# > $D = delaunay_triangulation($VD);"
                           "# > print $D;"

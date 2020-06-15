@@ -280,7 +280,9 @@ class Matrix {
     //  convert the remaining matrix to nmz_float
     Matrix<nmz_float> nmz_float_without_first_column() const;
 
+#ifdef ENFNORMALIZ
     void make_first_element_1_in_rows();
+#endif
     void standardize_basis();
     bool standardize_rows(const vector<Integer>& Norm);
     bool standardize_rows();
@@ -498,7 +500,7 @@ class Matrix {
 
     // try to sort the rows in such a way that the extreme points of the polytope spanned by the rows come first
 
-    size_t extreme_points_first(const vector<Integer> norm = vector<Integer>(0));
+    size_t extreme_points_first(bool verbose, const vector<Integer> norm = vector<Integer>(0));
 
     // find an inner point in the cone spanned by the rows of the matrix
 
@@ -523,26 +525,90 @@ class Matrix {
 //---------------------------------------------------------------------------
 //                  Matrices of binary expansions
 //---------------------------------------------------------------------------
+
+/* 
+ * Binary matrices contain matrices of nonnegative integers.
+ * Each entry is stored "vertically" as the binary expansion of an
+ * index (relaive to values) i. The k-th binary digit of i (counting k from 0)
+ * is in layer k.
+ * 
+ * The "true" value represented by i is values[i] (or mpz_values[i], see below).
+ *
+ * The goal is to store large matrices of relatively
+ * small numbers with as little space as possible.
+ * 
+ * Moreover this structure needs as a brifge to nauty.
+ * 
+ * It can happen that mpz_class values must be taken into account,
+ * even if Integer = long or long long. (See nmz_nauty.cpp,
+ * makeMMFromGensOnly). Therefore we have a field mpz_values in 
+ * addition to values. Transfer to *this via get_data_mpz. 
+ */
+
+template <typename Integer>
 class BinaryMatrix {
+    
+    template <typename>
+    friend class BinaryMatrix;
+    
     vector<vector<dynamic_bitset> > Layers;
     size_t nr_rows, nr_columns;
-    mpz_class offset;  // to be added to "entries" to get true value
+    // mpz_class offset;  // to be added to "entries" to get true value
+    
+    vector<Integer> values;
+    vector<mpz_class> mpz_values;
 
-   public:
-    template <typename Integer>
-    void insert(Integer val, key_t i, key_t j);
+    public:
+       
+    void insert(long val, key_t i, key_t j);
+    
+    size_t get_nr_rows() const;
+    size_t get_nr_columns() const;
+    size_t get_nr_layers() const;
 
     bool test(key_t i, key_t j, key_t k) const;
+    long val_entry(size_t i, size_t j) const;
+    Matrix<Integer> get_value_mat() const; 
+    Matrix<mpz_class> get_mpz_value_mat() const;
+    
+    const vector<vector<dynamic_bitset> >& get_layers() const;
+    const vector<Integer>& get_values() const;
+    const vector<mpz_class>& get_mpz_values() const;
+    
     BinaryMatrix();
     BinaryMatrix(size_t m, size_t n);
     BinaryMatrix(size_t m, size_t n, size_t height);
-    size_t nr_layers() const;
     BinaryMatrix reordered(const vector<key_t>& row_order, const vector<key_t>& col_order) const;
     bool equal(const BinaryMatrix& Comp) const;
-
-    template <typename Integer>
-    void set_offset(Integer M);
+    
+    void get_data_mpz(BinaryMatrix<mpz_class>&  BM_mpz);
+    void set_values(const vector<Integer>& V);
+    
+    void pretty_print(std::ostream& out, bool with_row_nr = false) const;
 };
+
+template <typename Integer>
+bool BM_compare(const BinaryMatrix<Integer>& A, const BinaryMatrix<Integer>& B){
+    if(A.get_nr_rows() < B.get_nr_rows())
+            return true;
+    if(A.get_nr_rows() > B.get_nr_rows())
+            return false;
+    if(A.get_nr_columns() < B.get_nr_columns())
+            return true;
+    if(A.get_nr_columns() > B.get_nr_columns())
+            return false;
+    if(A.get_values() < B.get_values())
+            return true;
+    if(A.get_values() > B.get_values())
+            return false;
+    if(A.get_mpz_values() < B.get_mpz_values())
+            return true;
+    if(A.get_mpz_values() > B.get_mpz_values())
+            return false;
+     if(A.get_layers() < B.get_layers())
+         return true;
+     return false;
+} 
 // class end *****************************************************************
 //                  LLL with returned transformation matrices
 //---------------------------------------------------------------------------
@@ -693,7 +759,7 @@ void convert(Matrix<ToType>& to_mat, const Matrix<FromType>& from_mat) {
 // only set to false in this routine
 // if a set occurs more than once, only the last instance is recognized as maximal
 template <typename IncidenceVector>
-void maximal_subsets(const vector<IncidenceVector>& ind, vector<bool>& is_max_subset);
+void maximal_subsets(const vector<IncidenceVector>& ind, IncidenceVector& is_max_subset);
 
 }  // namespace libnormaliz
 

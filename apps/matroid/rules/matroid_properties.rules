@@ -43,7 +43,7 @@ property N_BASES : Int;
 
 # @category Enumerative properties
 # The number of [[CIRCUITS]].
-# The circuits of the Fano matroid correspond to the seven lines in the the projective plane over GF2 and their complements.
+# @example The circuits of the Fano matroid correspond to the seven lines in the the projective plane over GF2 and their complements.
 # > print fano_matroid()->N_CIRCUITS;
 # | 14
 property N_CIRCUITS : Int;
@@ -137,6 +137,24 @@ property CIRCUITS : Array<Set>;
 
 # @category Axiom systems
 # Hyperplanes, i.e., flats of rank [[RANK]]-1.
+# @example The fano matroid's hyperplanes correspond to the lines of the fano plane.
+# > print fano_matroid()->MATROID_HYPERPLANES;
+# | {3 5 6}
+# | {2 4 6}
+# | {1 4 5}
+# | {1 2 3}
+# | {0 3 4}
+# | {0 2 5}
+# | {0 1 6}
+# @example Matroids can be defined in terms of their hyperplanes.
+# > $M = new Matroid(MATROID_HYPERPLANES=>[[0],[1],[2],[3]], N_ELEMENTS=>4);
+# > print $M->BASES;
+# | {0 1}
+# | {0 2}
+# | {0 3}
+# | {1 2}
+# | {1 3}
+# | {2 3}
 property MATROID_HYPERPLANES : Array<Set>;
 
 permutation HyperplanePerm : PermBase;
@@ -155,12 +173,19 @@ weight 1.10;
 # @category Axiom systems
 # The lattice of flats.
 # This is a graph with all closed sets as nodes and inclusion relations as edges.
+# @example The fano matroid's lattice of flats corresponds to the point-line incidence graph of the fano plane plus a top and bottom node.
+# > $l = fano_matroid()->LATTICE_OF_FLATS;
+# > $l->VISUAL;
 property LATTICE_OF_FLATS : Lattice<BasicDecoration, Sequential>;
 
 # @category Axiom systems
 # The lattice of cyclic flats of the matroid.
 # A flat is a cyclic flat, if and only if it is a union of circuits.
 # Their ranks can also be read off of this property using nodes_of_dim(..)
+# @example The nontrivial cyclic flats of the complete graph K5 correspond to complete subgraphs on three or four vertices.
+# > $g = graph::complete(5);
+# > $m = matroid_from_graph($g);
+# > $m->LATTICE_OF_CYCLIC_FLATS->VISUAL;
 property LATTICE_OF_CYCLIC_FLATS : Lattice<BasicDecoration, Sequential>;
 
 
@@ -171,59 +196,124 @@ property LATTICE_OF_CYCLIC_FLATS : Lattice<BasicDecoration, Sequential>;
 # coordinates for some realization. Specifying (rational) coordinates is one way
 # to define a matroid.  See also [[BINARY_VECTORS]] and [[TERNARY_VECTORS]] for
 # realization over GF(2) and GF(3).
+# @example Every graphic matroid is realizable.
+# > $g = graph::complete(4);
+# > $m = matroid_from_graph($g);
+# > print $m->VECTORS;
+# | 1 0 0
+# | 0 1 0
+# | 1 1 0
+# | 0 0 1
+# | 1 0 1
+# | 0 1 -1
 property VECTORS : Matrix;
 
 # @category Realizability
 # Whether or not the matroid is representable over GF(2).
+# @example The uniform matroid of rank 2 on 4 elements is not binary.
+# > print uniform_matroid(2,4)->BINARY;
+# | false
 property BINARY : Bool;
 
 # @category Realizability
 # If the matroid is realizable over the field GF(2) with two elements, this property may contain
 # coordinates for some realization.
+# @example The fano matroid is representable over GF(2). Its cannonical representation are the 7 nonzero vectors in the 3 dimensional vector space over GF(2).
+# > print fano_matroid()->BINARY_VECTORS();
+# | 1 1 1
+# | 0 0 1
+# | 0 1 0
+# | 0 1 1
+# | 1 0 0
+# | 1 0 1
+# | 1 1 0
 property BINARY_VECTORS : Matrix<Int>;
 
 # @category Realizability
 # Whether the matroid is representable over GF(3).
 # NOTE: the property my be 'undef' when polymake is unable to decide whether the matroid is ternary.
+# @example The Vámos matroid is not representable over any field, so it is not ternary.
+# > print vamos_matroid()->TERNARY;
+# | false
 property TERNARY : Bool;
 
 # @category Realizability
 # If the matroid is realizable over the field GF(3) with three elements, this property may contain
 # coordinates for some realization.
+# @example The matroid obtained from PG(2,3) is ternary. Its cannonical representation are the 13 points in PG(2,3).
+# > print pg23_matroid()->TERNARY_VECTORS;
+# | 1 0 0
+# | 0 1 0
+# | 1 1 0
+# | 0 0 1
+# | 1 -1 1
+# | 1 -1 -1
+# | 1 0 -1
+# | 1 1 1
+# | 0 1 -1
+# | 1 0 1
+# | 1 1 -1
+# | 0 1 1
+# | 1 -1 0
 property TERNARY_VECTORS : Matrix<Int>;
 
-# @category Advanced properties
+# @category Realizability
 # Whether the matroid is representable over every field, that is the repesentation is unimodular.
 # NOTE: the property my be 'undef' when polymake is unable to decide whether the matroid is regular.
+# @example The fano matroid is not representable over GF(3), hence it is not regular.
+# > print fano_matroid()->REGULAR;
+# | false
 property REGULAR : Bool;
 
 
 ## ADVANCED PROPERTIES ###
 
 # @category Advanced properties
-# Loops
+# Loops are one element dependent sets, i.e. they correspond to elements which are not included in any basis.
+# @example All elements in the uniform matroid of rank 0 are loops.
+# > print uniform_matroid(0,4)->LOOPS;
+# | {0 1 2 3}
 property LOOPS : Set;
 
 # @category Advanced properties
 # Polytope whose vertices are the characteristic vectors of the bases.
+# @example The polytope of the uniform matroid of rank 1 on 4 elements is the standard 3-simplex.
+# > print uniform_matroid(1,4)->POLYTOPE->VERTICES;
+# | 1 1 0 0 0
+# | 1 0 1 0 0
+# | 1 0 0 1 0
+# | 1 0 0 0 1
 property POLYTOPE : polytope::Polytope;
 
 # @category Advanced properties
 # If the matroid is transversal,
 # this is the unique maximal presentation. I.e. the set system consists of [[RANK]] many sets and none of the
 # sets can be increased without changing the matroid.
+# @example The uniform matroid of rank 2 on 4 elements has a transversal representation.
+# > print uniform_matroid(2,4)->MAXIMAL_TRANSVERSAL_PRESENTATION;
+# | {0 1 2 3}
+# | {0 1 2 3}
 property MAXIMAL_TRANSVERSAL_PRESENTATION : IncidenceMatrix;
 
 # @category Advanced properties
-# Whether the matroid is transversal, i.e., has a transversal presentation.
+# Whether the m atroid is transversal, i.e., has a transversal presentation.
+# @example The uniform matroid of rank 2 on 4 elements is transversal.
+# > print uniform_matroid(2,4)->TRANSVERSAL;
+# | true
 property TRANSVERSAL : Bool;
 
 # @category Advanced properties
 # Whether the matroid is nested, i.e., its [[LATTICE_OF_CYCLIC_FLATS]] forms a chain.
+# @example All uniform matroids are nested.
+# > print uniform_matroid(2,4)->NESTED;
+# | true
 property NESTED : Bool;
 
 # @category Advanced properties
-# Whether the matroid is paving.
+# Whether the matroid is paving, i.e. every circuit is at least as large as the matroid's rank.
+# @example All uniform matroids are paving.
+# > print uniform_matroid(2,4)->PAVING;
+# | true
 property PAVING : Bool;
 
 # @category Advanced properties
@@ -237,18 +327,27 @@ property UNIFORM : Bool;
 # Whether the matroid is isomorphic to its dual
 # If you want to check whether it is actually equal (not just isomorphic), ask for
 # [[IDENTICALLY_SELF_DUAL]].
+# @example The Vámos matroid is self dual.
+# > print vamos_matroid()->SELF_DUAL;
+# | true
 property SELF_DUAL : Bool;
 
 # @category Advanced properties
 # Whether the matroid is equal to its dual. Note that this does not check for isomorphy,
 # if you want to check whether the matroid is isomorphic to its dual, ask for
 # [[SELF_DUAL]].
+# @example The Vámos matroid is not identically self dual.
+# > print vamos_matroid()->IDENTICALLY_SELF_DUAL;
+# | false
 property IDENTICALLY_SELF_DUAL : Bool;
 
 # @category Advanced properties
 # The Tutte polynomial of a matroid.
 # It is a polynomial in the two variables x and y, which are chosen such that the tutte polynomial
 # of a single coloop is x and the tutte polynomial of a single loop is y.
+# @example The following computes the tutte polynomial of the fano matroid.
+# > print fano_matroid()->TUTTE_POLYNOMIAL;
+# | x_0^3 + 4*x_0^2 + 7*x_0*x_1 + 3*x_0 + x_1^4 + 3*x_1^3 + 6*x_1^2 + 3*x_1
 property TUTTE_POLYNOMIAL : common::Polynomial;
 
 # @category Advanced properties
@@ -259,6 +358,9 @@ property TUTTE_POLYNOMIAL : common::Polynomial;
 # The formal definition goes as follows: For each permutation p on n, we define a sequence r(p) = (r_1,...,r_n)
 # by r_1 = rank({p(1)}) and r_j = rank( {p(1),...,p(j)}) - rank( {p(1),...,p(j-1)}). Then
 # G(M) := sum_p r(p), where the sum runs over all permutations p.
+# @example The folowing computes the G-invariant of the fano matroid.
+# > print fano_matroid()->G_INVARIANT;
+# | {({0 1 2} 4032) ({0 1 3} 1008)}
 property G_INVARIANT : Map< Set<Int>, Integer>;
 
 # @category Advanced properties
@@ -268,18 +370,34 @@ property G_INVARIANT : Map< Set<Int>, Integer>;
 # For each maximal chain of flats F0,...,Fr = E of M, the corresponding composition is a0 = |F0| and a_i = |Fi \ Fi-1| for i > 0.
 # For a composition a, let v(M,a) be the number of maximal chains of flats with composition a. Then
 # G(M) := sum_a v(M,a) * a, where the sum runs over all compositions a.
+# @example The folowing computes the catenary g invariant of the fano matroid.
+# > print fano_matroid()->CATENARY_G_INVARIANT;
+# | {(<0 1 2 4> 21)}
 property CATENARY_G_INVARIANT : Map< Vector<Int>, Integer>;
 
 # @category Advanced properties
 # The coefficient of x of the [[TUTTE_POLYNOMIAL]].
+# @example The following computes the beta invariant of the fano matroid.
+# > print fano_matroid()->BETA_INVARIANT;
+# | 3
 property BETA_INVARIANT : Integer;
 
 # @category Advanced properties
 # Whether the matroid is connected
+# @example The fano matroid is connected.
+# > print fano_matroid()->CONNECTED;
+# | true
 property CONNECTED : Bool;
 
 # @category Advanced properties
 # The connected components
+# @example Every edge of a star graph is a connected component in the sense of matroids (<-> 2-connected component in graphs).
+# > print matroid_from_graph(graph::complete_bipartite(1,5))->CONNECTED_COMPONENTS;
+# | {0}
+# | {1}
+# | {2}
+# | {3}
+# | {4}
 property CONNECTED_COMPONENTS : Array<Set> {
    sub equal {
       defined(find_permutation(@_))
@@ -288,24 +406,39 @@ property CONNECTED_COMPONENTS : Array<Set> {
 
 # @category Advanced properties
 # The number of [[CONNECTED_COMPONENTS]]
+# @example Every edge of a star graph is a connected component in the sense of matroids (<-> 2-connected component in graphs).
+# > print matroid_from_graph(graph::complete_bipartite(1,5))->N_CONNECTED_COMPONENTS;
+# | 5
 property N_CONNECTED_COMPONENTS : Int;
 
 # @category Advanced properties
 # Whether the matroid is series-parallel
+# @example Every cycle graph is series parallel.
+# > print matroid_from_graph(graph::cycle_graph(5))->SERIES_PARALLEL;
+# | true
 property SERIES_PARALLEL : Bool;
 
 # @category Advanced properties
 # Whether the matroid is simple.
+# @example The Fano Matroid is simple.
+# > print fano_matroid()->SIMPLE;
+# | true
 property SIMPLE : Bool;
 
 # @category Advanced properties
 # Whether the matroid is sparse paving, i.e., both the matroid and its dual are paving.
+# @example The Fano Matroid is sparse paving.
+# > print fano_matroid()->SPARSE_PAVING;
+# | true
 property SPARSE_PAVING : Bool;
 
 # @category Advanced properties
 # Whether the matroid is laminar. This is the case if and only if for any two circuits C1,C2 with
 # non-empty intersection, their closures are comparable (i.e. one contains the other)
 # see also [Fife, Oxley: Laminar matroids. arXiv: 1606.08354]
+# @example The fano matroid is not laminar. Any two lines in the fano plane correspond to circuits which are also flats. Neither line is a subset of the other.
+# > print fano_matroid()->LAMINAR;
+# | false
 property LAMINAR : Bool;
 
 # @category Advanced properties
@@ -319,18 +452,32 @@ property SPLIT : Bool;
 
 # @category Advanced properties
 # The h-vector of a matroid
+# @example The following computes the h-vector of the Fano Matroid.
+# > print fano_matroid()->H_VECTOR;
+# | 1 4 10 13
 property H_VECTOR : Vector<Integer>;
 
 # @category Advanced properties
 # The f-vector of a matroid
+# @example The following computes the f-vector of the Fano Matroid.
+# > print fano_matroid()->F_VECTOR;
+# | 7 21 28
 property F_VECTOR : Vector<Integer>;
 
 # @category Advanced properties
 # A string listing the bases in revlex order. A '*' means the basis is present, a '0' that it is absent
+# @example The uniform matroid contains all bases of the same order. The Fano Matroid only contains some of the bases.
+# > print uniform_matroid(2,4)->REVLEX_BASIS_ENCODING;
+# | ******
+# > print fano_matroid()->REVLEX_BASIS_ENCODING;
+# | ***0***0***0*****0**0*******0****0*
 property REVLEX_BASIS_ENCODING : String;
 
 # @category Advanced properties
 # The automorphism group of the matroid, operating on the ground set.
+# @example Any two points in the fano plane may be exchanged, i.e. the group action on the groundset is transitive.
+# > print fano_matroid()->AUTOMORPHISM_GROUP->PERMUTATION_ACTION->ORBITS;
+# | {0 1 2 3 4 5 6}
 property AUTOMORPHISM_GROUP : group::Group;
 
 
@@ -343,12 +490,23 @@ property AUTOMORPHISM_GROUP : group::Group;
 # the labels may be assigned for you in a meaningful way.
 # If you build the matroid with a construction client, (e.g. [[matroid_from_graph]])
 # the labels may be assigned for you in a meaningful way.
+# @example The labels of a graphic matroid are the edges.
+# > print matroid_from_graph(graph::cycle_graph(4))->LABELS;
+# | {1 0} {2 1} {3 0} {3 2}
 property LABELS : Array<String> : mutable;
 
 # @category Input properties
 # A transversal matroid can be defined via a multiset of subsets of the ground set (0,...,n-1)
-# (i.e., [[N_ELEMENTS]] needs to be specified).
+# (i.e., [[N_ELEMENTS]] needs to be specified). The nodes of one parititon correspond to the
+# subsets in the multiset. These nodes are adjacent to the elements specified inside their
+# corresponding sets.
 # Its bases are the maximal matchings of the bipartite incidence graph.
+# @example A transveral presentation of the uniform matroid of rank 2 on 4 elements corresponds to a complete bipartite graph with partitions of size 2 and 4.
+# > $m = new Matroid(N_ELEMENTS=>4, TRANSVERSAL_PRESENTATION=>[[0,1,2,3],[0,1,2,3]]);
+# > print $m->RANK;
+# | 2
+# > print $m->UNIFORM;
+# | true
 property TRANSVERSAL_PRESENTATION : Array<Set<Int>>;
 
 }

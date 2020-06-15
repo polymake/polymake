@@ -47,7 +47,7 @@ BigObject disjoint_union(BigObject p1, BigObject p2,OptionSet options)
    p_out.take("FACETS") << UNION;
 
    if (relabel) {
-      merge_disjoint_vertices(Labels,L2);
+      merge_disjoint_vertices(Labels, L2);
       p_out.take("VERTEX_LABELS") << Labels;
    }
    return p_out;

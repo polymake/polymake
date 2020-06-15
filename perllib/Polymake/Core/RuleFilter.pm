@@ -137,42 +137,6 @@ sub multiple_func_definition {
    croak( "Multiple definition of a non-overloaded function" );
 }
 
-sub check_type_definition {
-   my $expected = shift;
-   my $pkg_entry = shift;
-   foreach (@_) {
-      unless (defined ($pkg_entry=$pkg_entry->{$_."::"})) {
-         if ($expected) {
-            croak( "Unknown ", $_[0] eq "props" ? "property" : "`big' object", " type" );
-         }
-         return;
-      }
-   }
-   if (defined (my $type_stash=*{$pkg_entry}{HASH})) {
-      if (exists $type_stash->{typeof}) {
-         return if $expected;
-         croak( "Multiple definition of ", $_[0] eq "props" ? "a property type" : @_==2 ? "an object type" : "a named type specialization" );
-      }
-   }
-   if ($expected) {
-      croak( "Unknown ", $_[0] eq "props" ? "property type" : @_==2 ? "`big' object type" : "type specialization");
-   }
-}
-
-sub multiple_prop_definition { check_type_definition(0, \%application::, "props", @_) }
-sub multiple_object_definition { check_type_definition(0, \%application::, "objects", @_) }
-
-sub check_proper_app_use {
-   my ($app, $other_app_name) = @_;
-   unless (exists $app->used->{$other_app_name}) {
-      if (lookup Application($other_app_name)) {
-         croak( "An application can only enhance own object/property types or those defined in an IMPORT'ed or USE'd application" );
-      } else {
-         croak( "Unknown application $other_app_name" );
-      }
-   }
-}
-
 sub check_application_pkg {
    my ($expect_app_scope) = @_;
    if (compiling_in(\%application::) != $expect_app_scope &&
@@ -961,23 +925,23 @@ my $catch_unknown_types=<<'.';
 .
 
 sub check_outer_pkg {
-   my ($self, $what)=@_;
+   my ($self, $what) = @_;
    my $outer_pkg = compiling_in_pkg();
    if ($outer_pkg ne $self->application->pkg) {
-      if ($enable_plausibility_checks && index($outer_pkg, $self->application->pkg."::")==0) {
-         my $msg= $what eq "object"
-                  ? "a `big' object type must be declared" :
-                  $what eq "property"
-                  ? "a property type must be declared" :
-                  $what eq "spez"
-                  ? "a `big' type specialization must be declared" :
-                  $what eq "objects"
-                  ? "a `big' object type scope must be directly contained" :
-                  $what eq "props"
-                  ? "a property type scope must be directly contained" :
-                  $what eq "spezs"
-                  ? "a `big' type specialization scope must be directly contained"
-                  : "??? internal error ???";
+      if ($enable_plausibility_checks && index($outer_pkg, $self->application->pkg."::") == 0) {
+         my $msg = $what eq "object"
+                   ? "a big object type must be declared" :
+                   $what eq "property"
+                   ? "a property type must be declared" :
+                   $what eq "spez"
+                   ? "a big type specialization must be declared" :
+                   $what eq "objects"
+                   ? "a big object type scope must be directly contained" :
+                   $what eq "props"
+                   ? "a property type scope must be directly contained" :
+                   $what eq "spezs"
+                   ? "a big type specialization scope must be directly contained"
+                   : "??? internal error ???";
          push @{$self->buffer},
               "BEGIN { die '$msg in the top-level (application) scope' }\n";
          return;
@@ -999,24 +963,19 @@ sub reopen_type {
    if (my ($type) = $header =~ /^$type_re \s*\{\s*$/xo) {
       my $preamble = check_outer_pkg($self, $where);
       return unless defined($preamble);
-      my ($outer_pkg, $check_app_pkg);
-      my $sanity_check = "";
+      my ($outer_pkg, $other_app_name);
       if ($type =~ s/^($id_re):://o) {
-         if ($enable_plausibility_checks) {
-            $sanity_check = "Core::RuleFilter::check_proper_app_use(application::self(), '$1'); ";
-         }
          $outer_pkg = "Polymake::$1";
-         $check_app_pkg = "\\%Polymake::, '$1'";
+         $other_app_name = "'$1'";
       } else {
          $outer_pkg = "Polymake::".$self->application->name;
-         $check_app_pkg = "\\%Polymake::, '".$self->application->name."'";
+         $other_app_name = "undef";
       }
 
       my ($generic_name) = $type =~ /^($id_re)/o;
       if ($enable_plausibility_checks) {
-         $sanity_check = "BEGIN { $sanity_check Core::RuleFilter::check_type_definition(1, $check_app_pkg, '$where', '$generic_name') } ";
+         $preamble .= "application::self()->check_existing_type($other_app_name, '$where', '$generic_name'); ";
       }
-      $preamble .= $sanity_check;
 
       if ($type =~ /</) {
          # may not create objects in a BEGIN block, thus have to construct the package name manually
@@ -1045,9 +1004,11 @@ sub reopen_specialization {
    if (my ($obj_type, $alias_name) = $header =~ /^($id_re)::($id_re) \s*\{\s*$/xo) {
       my $preamble = check_outer_pkg($self, "spezs");
       return unless defined($preamble);
-      my $sanity_check = $enable_plausibility_checks ? "BEGIN { Core::RuleFilter::check_type_definition(1, \\%application::, 'objects', '$obj_type', '$alias_name') } " : "";
+      if ($enable_plausibility_checks) {
+         $preamble .= "application::self()->check_existing_type(undef, 'spezs', '$obj_type\::$alias_name'); "
+      }
       push @{$self->buffer},
-           $preamble . $sanity_check . "{ package Polymake::".$self->application->name."::${obj_type}::$alias_name;" .
+           $preamble . "{ package Polymake::".$self->application->name."::${obj_type}::$alias_name;" .
            " local ref *__scope_type_params = typeof_gen(undef)->params if typeof_gen(undef)->abstract;  use namespaces::Params *__scope_type_params;  local \$Core::BigObjectType::scope_owner=typeof_gen(undef);\n";
    } else {
       push @{$self->buffer}, "BEGIN { die 'invalid type specialization reference' }\n";
@@ -1055,18 +1016,18 @@ sub reopen_specialization {
 }
 #####################################################################################################
 sub process_property_type {
-   my ($self, $header)=@_;
-   my $first_line=@{$self->buffer};
-   my $preamble=check_outer_pkg($self, "property");
+   my ($self, $header) = @_;
+   my $first_line = @{$self->buffer};
+   my $preamble = check_outer_pkg($self, "property");
    return unless defined($preamble);
 
    if ($header =~ /^ ($id_re) \s*=\s* ($type_re) \s*;\s* $/xo) {
-      my ($type_name, $alias)=@_;
+      my ($type_name, $alias) = @_;
       if ($enable_plausibility_checks) {
-         $preamble .= "BEGIN { Core::RuleFilter::multiple_prop_definition('$type_name') } ";
+         $preamble .= "BEGIN { application::self()->check_unique_type(qw(property $type_name)) } ";
       }
       push @{$self->buffer},
-           $preamble."{ my \$symtab=get_symtab((typeof $alias)->pkg); *application::$type_name\::=\$symtab; *application::props::$type_name\::=\$symtab; }\n";
+           $preamble."{ my \$symtab=get_symtab((typeof $alias)->pkg); *application::$type_name\::=\$symtab; }\n";
 
    } elsif ($header =~ /^ (?'type_name' $id_re) (?: \s*<\s* (?'tparams' \*) \s*>
                                                   | $type_params_variadic_re (?: $typechecks_re )?+ )?+
@@ -1081,9 +1042,9 @@ sub process_property_type {
       fill_help($self, "", "'property_types', '$type_name'") if $Help::gather;
 
       if ($enable_plausibility_checks) {
-         $preamble .= "BEGIN { Core::RuleFilter::multiple_prop_definition('$type_name') } ";
+         $preamble .= "BEGIN { application::self()->check_unique_type(qw(property $type_name)) } ";
       }
-      $preamble .= "{ package Polymake::".$self->application->name."::$type_name; BEGIN { *application::props::$type_name\::=get_symtab(__PACKAGE__) } namespaces::memorize_lexical_scope;\n";
+      $preamble .= "{ package Polymake::".$self->application->name."::$type_name; namespaces::memorize_lexical_scope;\n";
       push @{$self->buffer}, $preamble;
 
       my $buffer_size;
@@ -1197,23 +1158,23 @@ sub process_property_type {
 }
 #####################################################################################################
 sub process_object_decl {
-   my ($self, $header)=@_;
-   my $first_line=@{$self->buffer};
-   my $preamble=check_outer_pkg($self, "object");
+   my ($self, $header) = @_;
+   my $first_line = @{$self->buffer};
+   my $preamble = check_outer_pkg($self, "object");
    return unless defined($preamble);
 
    if ($header =~ /^ $parametrized_decl_re (?: (?: \s*:\s* (?'super' $type_exprs_re))?+ \s*(?: ; | (?'open_scope' \{))
                                              | (?('tparams') | \s*=\s* (?'alias' $type_re) (?: \s*;)?)) \s*$/xo) {
 
-      my ($type_name, $tparams, $typecheck, $super, $open_scope, $alias)=@+{qw(lead_name tparams typecheck super open_scope alias)};
+      my ($type_name, $tparams, $typecheck, $super, $open_scope, $alias) = @+{qw(lead_name tparams typecheck super open_scope alias)};
 
       if ($enable_plausibility_checks) {
-         $preamble .= "BEGIN { Core::RuleFilter::multiple_object_definition('$type_name') } ";
+         $preamble .= "BEGIN { application::self()->check_unique_type(qw(object $type_name)) } ";
       }
 
       if (defined($alias)) {
          push @{$self->buffer},
-              $preamble."{ my \$symtab=get_symtab((typeof $alias)->pkg); *application::$type_name\::=\$symtab; *application::objects::$type_name\::=\$symtab; }\n";
+              $preamble."{ my \$symtab=get_symtab((typeof $alias)->pkg); *application::$type_name\::=\$symtab; }\n";
 
       } else {
          # defining a new object type
@@ -1221,12 +1182,12 @@ sub process_object_decl {
 
          my $buffer_size;
          if ($accurate_linenumbers) {
-            $buffer_size=@{$self->buffer};
+            $buffer_size = @{$self->buffer};
             push @{$self->buffer}, injected_line_directive($self);
          }
 
          push @{$self->buffer},
-              $preamble."{ package Polymake::".$self->application->name."::$type_name; BEGIN { *application::objects::$type_name\::=get_symtab(__PACKAGE__); } namespaces::memorize_lexical_scope;\n";
+              $preamble."{ package Polymake::".$self->application->name."::$type_name; namespaces::memorize_lexical_scope;\n";
 
          if (defined($tparams)) {
             # parameterized template
@@ -1293,43 +1254,43 @@ sub process_object_specialization {
                      (?'obj_type' $type_expr_re) (?: \s*\[ (?'typecheck' $balanced_re) \s*\] )? \s*\{ /xo) {
 
       my ($spez_name, $tparams, $typecheck, $obj_type)=@+{qw(spez_name tparams typecheck obj_type)};
-      my $pkg_name=$spez_name;
-      my $visible_spez_name=$spez_name;
+      my $pkg_name = $spez_name;
+      my $visible_spez_name = $spez_name;
 
       my (@param_names, @prologue, @super_abstract, @super_instance, $generic_type, $concrete_type);
       if (defined $tparams) {
-         my $error=process_template_params($tparams, undef, $obj_type, @param_names, @prologue, @super_abstract, @super_instance, 1);
+         my $error = process_template_params($tparams, undef, $obj_type, @param_names, @prologue, @super_abstract, @super_instance, 1);
          if (is_string($error)) {
             $self->buffer->[$first_line]="BEGIN { die 'invalid type specialization declaration: $error' }\n";
             return;
          }
-         $generic_type=$super_abstract[0];
-         $concrete_type=$super_instance[0];
+         $generic_type = $super_abstract[0];
+         $concrete_type = $super_instance[0];
       } else {
          # a full specialization
-         ($generic_type)= $obj_type =~ /^($id_re)/o;
-         $concrete_type=$obj_type;
+         ($generic_type) = $obj_type =~ /^($id_re)/o;
+         $concrete_type = $obj_type;
       }
 
-      if (defined $spez_name) {
-         $spez_name="'${generic_type}::$spez_name'";
+      if (defined($spez_name)) {
+         $spez_name = "'${generic_type}::$spez_name'";
          fill_help($self, "typeof_gen $generic_type", "'specializations', $spez_name") if $Help::gather;
       } elsif (defined $tparams) {
-         $spez_name="undef";
+         $spez_name = "undef";
       } else {
-         $self->buffer->[$first_line]="BEGIN { die 'explicit full type specialization must have a unique name' }\n";
+         $self->buffer->[$first_line] = "BEGIN { die 'explicit full type specialization must have a unique name' }\n";
          return;
       }
 
       my $buffer_size;
       if ($accurate_linenumbers) {
-         $buffer_size=@{$self->buffer};
+         $buffer_size = @{$self->buffer};
          push @{$self->buffer}, injected_line_directive($self);
       }
 
       if (defined($pkg_name)) {
          if ($enable_plausibility_checks) {
-            $preamble .= "BEGIN { Core::RuleFilter::multiple_object_definition('$generic_type', '$pkg_name') } ";
+            $preamble .= "BEGIN { application::self()->check_unique_type(qw(object $generic_type $pkg_name)) } ";
          }
       } else {
          state $spez_cnt = 0;
@@ -1369,6 +1330,8 @@ sub process_object_specialization {
       if ($accurate_linenumbers) {
          $self->injected_lines += @{$self->buffer}-$buffer_size;
          push @{$self->buffer}, line_directive($.+1, $self->path);
+      } else {
+         push @{$self->buffer}, line_directive($.+1);
       }
       $self->prolonged = 0;
       $self->after_rule = 2;  # expect some preconditions
@@ -2297,6 +2260,48 @@ sub configure {
          }
          $self->rulefiles->{$rule_key} = 0;
       }
+   }
+}
+#################################################################################
+sub check_unique_type {
+   my ($self, $what, @path) = @_;
+ APPS:
+   foreach my $app ($self, @{$self->linear_imported}) {
+      my $pkg = get_symtab($app->pkg);
+      foreach (@path) {
+         $pkg = $pkg->{$_."::"} or next APPS;
+      }
+      if (defined(my $ref = $pkg->{typeof_gen})) {
+         if (defined(my $type_sub = *$ref{CODE})) {
+            my $defined_as_big_object = instanceof BigObjectType(&$type_sub);
+            if (($what eq "object") == $defined_as_big_object) {
+               croak( "$what $path[-1] is already defined", $self == $app ? () : (" in application ", $app->name) );
+            } else {
+               croak( "$what $path[-1] conflicts with ", $defined_as_big_object ? "big object" : "property", " type", $self == $app ? " of the same name" : " ".$app->name."::$path[-1]");
+            }
+         } else {
+            croak( "$what $path[-1] conflicts with an already defined package ", join("::", $app->pkg, @path) );
+         }
+      }
+   }
+}
+#################################################################################
+sub check_existing_type {
+   my ($self, $other_app_name, $where, $name) = @_;
+   my $app = $self;
+   if (defined($other_app_name) && !defined($app = $self->used->{$other_app_name})) {
+      if (lookup Application($other_app_name)) {
+         croak( "An application can only enhance own object/property types or those defined in an IMPORT'ed or USE'd application" );
+      } else {
+         croak( "Unknown application $other_app_name" );
+      }
+   }
+   if (defined(my $proto = eval $app->pkg."::$name\::typeof_gen(undef)")) {
+      if ($where ne (instanceof BigObjectType::Specialization($proto) ? "spezs" : instanceof BigObjectType($proto) ? "objects" : "props")) {
+         croak( $app->name."::$name", " is not a ", $where eq "spezs" ? "big object specialization" : $where eq "objects" ? "big object type" : "property type" );
+      }
+   } else {
+      croak( "unknown ", $where eq "spezs" ? "big object specialization" : $where eq "objects" ? "big object type" : "property type", " $name" );
    }
 }
 #################################################################################

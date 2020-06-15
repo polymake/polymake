@@ -395,8 +395,7 @@ BigObject billera_lee(const Vector<Integer>& H)
   }
 
   //...and construct a polytope from them.
-  BigObject cyclic("Polytope<Rational>");
-  cyclic.take("VERTICES")<<cyclic_V;
+  BigObject cyclic("Polytope<Rational>", "VERTICES", cyclic_V);
 
   const IncidenceMatrix<>& vif = cyclic.give("VERTICES_IN_FACETS");
   // get the indices of the good facets in vif
@@ -412,9 +411,8 @@ BigObject billera_lee(const Vector<Integer>& H)
                        unit_vector<Rational>(F.cols(),0));
 
   // construct a polytope from z and the points on the good facets
-  BigObject p("Polytope<Rational>");
-  Matrix<Rational> V = z / cyclic_V;
-  p.take("VERTICES") << V;
+  const Matrix<Rational> V = z / cyclic_V;
+  BigObject p("Polytope<Rational>", "VERTICES", V);
   // take the vertex figure of z
   BigObject out = call_function("vertex_figure", p, 0, OptionSet("no_labels", true));
   out.set_description() << "Billera-Lee construction for given H-vector "<< H << endl;

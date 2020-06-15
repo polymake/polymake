@@ -626,6 +626,8 @@ class FlintPolynomial {
       typename std::enable_if<fits_as_coefficient<T>::value, bool>::type
       operator== (const T& p2) const
       {
+         if (__builtin_expect(trivial(), 0))
+            return pm::is_zero(p2);
          return deg() == 0 && lc() == p2;
       }
 

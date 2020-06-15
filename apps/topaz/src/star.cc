@@ -22,7 +22,7 @@ namespace polymake { namespace topaz {
   
 BigObject stars(BigObject p_in, const Set<Int> &F,OptionSet options)
 {
-   const bool relabel=!options["no_labels"];
+   const bool relabel = !options["no_labels"];
    const Array<Set<Int>> C = p_in.give("FACETS");
    //   const Array<std::string> L = p_in.give("VERTEX_LABELS");
    const Int n_vert = p_in.give("N_VERTICES");

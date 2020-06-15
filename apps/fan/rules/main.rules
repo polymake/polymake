@@ -58,13 +58,13 @@ declare object PolyhedralFan<Scalar=Rational> [ is_ordered_field(Scalar) ];
 # | 1 0
 # | 1 1
 # > print $CD->MAXIMAL_CONES;
-# | {0 2}
 # | {1 2}
+# | {0 2}
 #
 # @example Coxeter hyperplane arrangement of type E8.
 # > $E8 = new HyperplaneArrangement(HYPERPLANES=>root_system("E8")->VECTORS->minor(All,~[0]));
 # Note that the roots lie "at infinity", which is why the leading zero column of the root vectors is eliminated.
-declare object HyperplaneArrangement<Scalar=Rational> [ is_ordered_field(Scalar) ];
+declare object HyperplaneArrangement<Scalar=Rational> [ is_ordered_field(Scalar) ] : VectorConfiguration<Scalar> ;
 
 # @category Geometry
 # A polyhedral complex.  The derivation from [[PolyhedralFan]] works like the derivation of [[Polytope]] from [[Cone]].
@@ -74,7 +74,7 @@ declare object PolyhedralComplex<Scalar=Rational> [ is_ordered_field(Scalar) ] :
 
 # @category Geometry
 # A special big object class devoted to planar unfoldings of 3-polytopes.  Its main functionality is the visualization.
-# @example To visualize a planar net of some Johnson solid (with flaps, such that you can print, cut and glue):
+# @example [require bundled:cdd] To visualize a planar net of some Johnson solid (with flaps, such that you can print, cut and glue):
 # > planar_net(polytope::johnson_solid(52))->VISUAL->FLAPS;
 declare object PlanarNet<Scalar=Rational> : PolyhedralComplex<Float>;
 
@@ -87,7 +87,7 @@ declare object SubdivisionOfVectors<Scalar=Rational> [ is_ordered_field(Scalar) 
 # @category Geometry
 # The inhomogeneous variant of [[SubdivisionOfVectors]], similar to the derivation of [[PointConfiguration]] from [[VectorConfiguration]].
 # @tparam Scalar default: [[Rational]]
-# @example [prefer cdd] To produce a regular subdivision of the vertices of a square:
+# @example [require bundled:cdd] [prefer cdd] To produce a regular subdivision of the vertices of a square:
 # > $c=new SubdivisionOfPoints(POINTS=>polytope::cube(2)->VERTICES,WEIGHTS=>[0,0,0,1]);
 # > print $c->MAXIMAL_CELLS;
 # | {0 1 2}

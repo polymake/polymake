@@ -37,12 +37,11 @@ BigObject stanley_reisner(BigObject C)
      gens[k] = Polynomial<Rational, Int>(1, same_element_sparse_vector<Int>(non_faces[k], n_vertices));
   }
 
-  BigObject I("ideal::Ideal");
-  I.take("GENERATORS") << gens;
-  I.take("MONOMIAL") << true;
-  I.take("N_VARIABLES") << n_vertices;
+  BigObject I("ideal::Ideal",
+              "GENERATORS", gens,
+              "MONOMIAL", true,
+              "N_VARIABLES", n_vertices);
   I.set_description() << "Stanley-Reisner ideal of " << C.name();
-
   return I;
 }
 

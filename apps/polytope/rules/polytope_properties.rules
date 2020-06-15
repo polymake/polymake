@@ -122,7 +122,7 @@ method canonical_ineq {
 # The i-th row is the normal vector of a hyperplane separating the i-th vertex from the others.
 # This property is a by-product of redundant point elimination algorithm.
 # All vectors in this section must be non-zero.
-# @example This prints a matrix in which each row represents a normal vector of a hyperplane seperating one vertex of a centered square
+# @example [require bundled:cdd] This prints a matrix in which each row represents a normal vector of a hyperplane seperating one vertex of a centered square
 # with side length 2 from the other ones. The first and the last hyperplanes as well as the second and third hyperplanes are the same
 # up to orientation.
 # > print cube(2)->VERTEX_NORMALS;
@@ -270,7 +270,7 @@ property N_VERTEX_FACET_INC = override N_RAY_FACET_INC;
 #     combinatorics of the quotient modulo the lineality space.
 # Therefore: [[VERTICES_IN_FACETS]] and each other property which is grouped under "Combinatorics"
 # always refers to some polytope.
-# @example [prefer cdd]
+# @example [prefer cdd] [require bundled:cdd]
 # The following prints the vertex-facet incidence matrix of a 5-gon by listing all facets as a set of contained vertices
 # in a cyclic order (each line corresponds to an edge):
 # > print n_gon(5)->VERTICES_IN_FACETS;
@@ -279,7 +279,7 @@ property N_VERTEX_FACET_INC = override N_RAY_FACET_INC;
 # | {3 4}
 # | {0 4}
 # | {0 1}
-# @example The following prints the Vertex_facet incidence matrix of the standard 3-simplex together with the facet numbers:
+# @example [prefer cdd] [require bundled:cdd] The following prints the Vertex_facet incidence matrix of the standard 3-simplex together with the facet numbers:
 # > print rows_numbered(simplex(3)->VERTICES_IN_FACETS);
 # | 0:1 2 3
 # | 1:0 2 3
@@ -319,7 +319,7 @@ property INEQUALITIES_THRU_VERTICES = override INEQUALITIES_THRU_RAYS;
 
 # @category Combinatorics
 # Number of incident facets for each vertex.
-# @example The following prints the number of incident facets for each vertex of the elongated pentagonal pyramid (Johnson solid 9)
+# @example [require bundled:cdd] The following prints the number of incident facets for each vertex of the elongated pentagonal pyramid (Johnson solid 9)
 # > print johnson_solid(9)->VERTEX_SIZES;
 # | 5 4 4 4 4 4 3 3 3 3 3
 property VERTEX_SIZES = override RAY_SIZES;
@@ -706,7 +706,7 @@ property SPLITS : Matrix<Scalar>;
 # @category Geometry
 # Two [[SPLITS]] are compatible if the defining hyperplanes do not intersect in the
 # interior of the polytope.  This defines a graph.
-property SPLIT_COMPATIBILITY_GRAPH : objects::Graph;
+property SPLIT_COMPATIBILITY_GRAPH : Graph;
 
 # @topic category properties/Matroid properties
 # Properties which belong to the corresponding (oriented) matroid

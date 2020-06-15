@@ -75,7 +75,7 @@ void rel_int_point(BigObject p)
          if (ah_eq)
             // we need to take care of the restriction that AFFINE_HULL may only be written if F contains the FACETS
             p_new.take( f=="FACETS" ? Str("AFFINE_HULL") : Str("EQUATIONS") ) << E;
-         p_new.take(f)<<F;
+         p_new.take(f) << F;
       } else {
          if (ah_eq)
             p_new.take("EQUATIONS") << E;

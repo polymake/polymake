@@ -327,12 +327,33 @@ private:
 // Heads of lists of cells pertaining to a certain vertex
 class vertex_list {
 public:
-   explicit vertex_list(Int vertex_arg)
-      : vertex(vertex_arg)
+   explicit vertex_list(Int vertex_)
+      : vertex(vertex_)
       , first_col(nullptr)
       , first_lex(nullptr) {}
 
    vertex_list(const vertex_list& l);
+
+   vertex_list(vertex_list&& l)
+      : vertex_list(l.vertex, std::move(l)) {}
+
+   vertex_list(Int vertex_, vertex_list&& l)
+      : vertex(vertex_)
+      , first_col(l.first_col)
+      , first_lex(l.first_lex)
+   {
+      if (first_col)
+      {
+         first_col->col.prev = col_head_cell();
+         l.first_col = nullptr;
+      }
+      if (first_lex)
+      {
+         first_lex->lex.prev = lex_head_cell();
+         l.first_lex = nullptr;
+      }
+   }
+
 private:
    // deleted
    void operator=(const vertex_list&);
@@ -366,15 +387,6 @@ public:
       return !first_col;
    }
 
-   friend void relocate(vertex_list* from, vertex_list* to)
-   {
-      to->vertex = from->vertex;
-      cell* first;
-      if ((to->first_col = first=from->first_col) != nullptr)
-         first->col.prev = to->col_head_cell();
-      if ((to->first_lex = first=from->first_lex) != nullptr)
-         first->lex.prev = to->lex_head_cell();
-   }
 protected:
    Int vertex;
    cell* first_col;
@@ -437,8 +449,9 @@ protected:
 class lex_ordered_vertex_list
    : public vertex_list {
 protected:
-   lex_ordered_vertex_list();
-   ~lex_ordered_vertex_list();
+   lex_ordered_vertex_list() = delete;
+   ~lex_ordered_vertex_list() = delete;
+   lex_ordered_vertex_list(const lex_ordered_vertex_list&) = delete;
 public:
    typedef lex_order_iterator iterator;
    typedef iterator const_iterator;
@@ -697,9 +710,7 @@ public:
                do
                   c->vertex = new_vertex;
                while ((c = c->col.next) != nullptr);
-               vertex_list* column_new = &column_it[new_vertex - old_vertex];
-               relocate(column_it.operator->(), column_new);
-               column_new->vertex = new_vertex;
+               new(&column_it[new_vertex - old_vertex]) vertex_list(new_vertex, std::move(*column_it));
             }
             ic(old_vertex, new_vertex);  ++new_vertex;
          }

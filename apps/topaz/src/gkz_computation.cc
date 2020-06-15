@@ -26,7 +26,9 @@
 
 namespace polymake { namespace topaz {
 
-typedef std::list<Int> flip_sequence;
+using flip_sequence = std::list<Int>;
+using graph::DoublyConnectedEdgeList;
+using HalfEdge = DoublyConnectedEdgeList::HalfEdge;
 
 // compute horocycle at w, given the three lengths of a triangle (u,v,w) and the horocycles at u and v
 // the determinant along (u,v) needs to be positive!
@@ -39,9 +41,9 @@ Vector<Rational> thirdHorocycle(const Vector<Rational>& horo_u, const Vector<Rat
 }
 
 // compute horo matrix of (unflipped) zero edge given horo coordinates
-Matrix<Rational> compute_horo(graph::DoublyConnectedEdgeList& dcel, const Rational& p_inf, const Rational& zero_head)
+Matrix<Rational> compute_horo(DoublyConnectedEdgeList& dcel, const Rational& p_inf, const Rational& zero_head)
 {
-   const graph::HalfEdge* zero = dcel.getHalfEdge(0);
+   const HalfEdge* zero = dcel.getHalfEdge(0);
 
    Rational q = zero->getLength() / p_inf;
    Rational p = zero_head * q;
@@ -52,22 +54,22 @@ Matrix<Rational> compute_horo(graph::DoublyConnectedEdgeList& dcel, const Ration
 
 // Calculate the horo matrix of the (flipped) zeroth edge in dependence of the surrounding quadrangle,
 // which is currently triangulated by (0,a,b) and (1,c,d).
-void compute_horo_flipped(graph::DoublyConnectedEdgeList& dcel, Matrix<Rational>& horo)
+void compute_horo_flipped(DoublyConnectedEdgeList& dcel, Matrix<Rational>& horo)
 {
-   const graph::HalfEdge* zero = dcel.getHalfEdge(0);
+   const HalfEdge* zero = dcel.getHalfEdge(0);
 
    const Vector<Rational> horo_tail = horo[0];
    const Vector<Rational> horo_head = horo[1];
 
    // horocycle third_zero=[p_1,q_1] at corner (a,b)
-   const graph::HalfEdge* a = zero->getNext();
-   const graph::HalfEdge* b = a->getNext();
+   const HalfEdge* a = zero->getNext();
+   const HalfEdge* b = a->getNext();
    const Vector<Rational> third_zero = thirdHorocycle(horo_tail, horo_head, zero->getLength(), a->getLength(), b->getLength());
 
    // horocycle third_one=[p_2,q_2] at corner (c,d)
-   const graph::HalfEdge* one = zero->getTwin();
-   const graph::HalfEdge* c = one->getNext();
-   const graph::HalfEdge* d = c->getNext();
+   const HalfEdge* one = zero->getTwin();
+   const HalfEdge* c = one->getNext();
+   const HalfEdge* d = c->getNext();
    const Vector<Rational> third_one = thirdHorocycle(horo_head, -horo_tail, one->getLength(), c->getLength(), d->getLength());
 
    // horocycles at the tail and head of the flipped edge 0 are -[p_2,q_2] and [p_1,q_1] respectively.
@@ -113,7 +115,7 @@ Matrix<Rational> gkz_vectors(BigObject surface, Int depth)
    const Rational& zero_head = first_horo.second;
 
    // Set up the surface from dcel_data:
-   graph::DoublyConnectedEdgeList dcel(dcel_data);
+   DoublyConnectedEdgeList dcel(dcel_data);
    dcel.setMetric(penner_coord);
 
    // Initialize vertex matrix of secondary polyhedron.
@@ -176,7 +178,7 @@ BigObject covering_triangulation(BigObject surface, Int flip_word_id, Int depth)
    const Rational& zero_head = first_horo.second;
 
    // Set up the surface from dcel_data:
-   graph::DoublyConnectedEdgeList dcel(dcel_data);
+   DoublyConnectedEdgeList dcel(dcel_data);
    dcel.setMetric(penner_coord);
 
    // We compute the position of the zeroth half edge (index 0) in the upper half plane.
@@ -207,15 +209,12 @@ BigObject secondary_polyhedron(BigObject surface, Int d)
    Matrix<Rational> neg = zero_vector<Rational>() | -unit_matrix<Rational>(vert.cols()-1);
    vert /= neg;
 
-   BigObject sp("polytope::Polytope<Float>");
-   sp.take("VERTICES") << vert;
-
    BigObject secfan = surface.give("SECONDARY_FAN");
    const Matrix<Rational> rays = secfan.give("RAYS");
    const IncidenceMatrix<> cells = secfan.give("MAXIMAL_CONES");
-   sp.take("VERTICES_IN_FACETS") << secPolyVif(rays,cells);
-
-   return sp;
+   return BigObject("polytope::Polytope<Float>",
+                    "VERTICES", vert,
+                    "VERTICES_IN_FACETS", secPolyVif(rays, cells));
 }
 
 InsertEmbeddedRule("REQUIRE_APPLICATION fan\n\n");

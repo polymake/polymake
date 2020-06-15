@@ -91,11 +91,11 @@ BigObject cyclic(const Int d, const Int n, OptionSet options)
    Matrix<Rational> vertices;
    if (spherical) {
       p.set_description() << "Spherical cyclic " << d << "-polytope on " << n << " vertices" << endl;
-      if (x_start<=0) x_start=1; // must be positive
-      vertices=spherical_cyclic_vertices(d,n,x_start);
+      if (x_start <= 0) x_start = 1; // must be positive
+      vertices = spherical_cyclic_vertices(d, n, x_start);
    } else {
       p.set_description() << "Cyclic " << d << "-polytope on " << n << " vertices" << endl;
-      vertices=cyclic_vertices(d,n,x_start);
+      vertices = cyclic_vertices(d, n, x_start);
    }
 
    p.take("CONE_AMBIENT_DIM") << d+1;

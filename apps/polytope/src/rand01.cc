@@ -31,13 +31,8 @@ BigObject rand01(Int d, Int n, OptionSet options)
       throw std::runtime_error("rand01 : 2 <= dim < #vertices <= 2^dim required");
 
    const RandomSeed seed(options["seed"]);
-   UniformlyRandom<Bitset> random(d,seed);
-
-   BigObject p("Polytope<Rational>");
-   p.set_description() << "Random 0-1 polytope; seed=" << seed.get() << endl;
-
-   p.take("CONE_AMBIENT_DIM") << d+1;
-   p.take("N_VERTICES") << n;
+   UniformlyRandom<Bitset> random(d, seed);
+   const auto start_seed = seed.get();
 
    hash_set<Bitset> bitvectors(n);
 
@@ -49,11 +44,16 @@ BigObject rand01(Int d, Int n, OptionSet options)
    for (auto v=entire(rows(V)); !v.at_end(); ++v, ++bv)
       *v = 1 | same_element_sparse_vector<Int>(*bv,d);
       
-   p.take("VERTICES") << V;
-   Matrix<Rational> empty_lin_space(0,V.cols());	
-   p.take("LINEALITY_SPACE") << empty_lin_space;
-   p.take("POINTED") << 1;
-   p.take("LINEALITY_DIM") << 0;
+   Matrix<Rational> empty_lin_space(0, V.cols());
+
+   BigObject p("Polytope<Rational>",
+               "CONE_AMBIENT_DIM", d+1,
+               "N_VERTICES", n,
+               "VERTICES", V,
+               "POINTED", true,
+               "LINEALITY_SPACE", empty_lin_space,
+               "LINEALITY_DIM", 0);
+   p.set_description() << "Random 0-1 polytope; seed=" << start_seed << endl;
    return p;
 }
 

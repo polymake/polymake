@@ -238,14 +238,13 @@ void SchlegelWindow::set_point(Int i)
 
 BigObject SchlegelWindow::store() const
 {
-   BigObject SD("SchlegelDiagram");
-   const Vector<double> FP=FacetPoint * T(inv_Rotation),
-      IP=FP - ViewRay * T(inv_Rotation);
-   SD.take("FACET") << proj_facet;
-   SD.take("ZOOM") << zoom;
-   SD.take("FACET_POINT") << FP;
-   SD.take("INNER_POINT") << IP;
-   return SD;
+   const Vector<double> FP = FacetPoint * T(inv_Rotation),
+                        IP = FP - ViewRay * T(inv_Rotation);
+   return BigObject("SchlegelDiagram",
+                    "FACET", proj_facet,
+                    "ZOOM", zoom,
+                    "FACET_POINT", FP,
+                    "INNER_POINT", IP);
 }
 
 void SchlegelWindow::restart(common::SimpleGeometryParser& parser)

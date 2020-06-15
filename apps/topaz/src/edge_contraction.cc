@@ -99,10 +99,9 @@ BigObject edge_contraction(BigObject p_in, OptionSet options)
       F.eraseSupersets(scalar2set(n_vert));
    F.squeeze();
 
-   BigObject p_out("SimplicialComplex");
+   BigObject p_out("SimplicialComplex", "FACETS", F);
    p_out.set_description() << "Simplicial complex obtained from " << p_in.name() << " by a series of edge contractions;\n"
                               "seed=" << seed.get() << endl;
-   p_out.take("FACETS") << F;
    return p_out;
 }
 
